@@ -8,12 +8,13 @@
   },
   "scripts": {
     "dev": "pnpm --filter @sacloud/web dev",
-    "build": "pnpm --filter @sacloud/web build",
+    "build": "pnpm clean && pnpm --filter @sacloud/web build",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "pnpm typecheck && pnpm lint && pnpm test"
+    "verify": "pnpm typecheck && pnpm lint && pnpm test",
+    "clean": "node -e \"require('fs').rmSync('apps/web/.next',{recursive:true,force:true})\""
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

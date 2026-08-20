@@ -92,9 +92,129 @@ packages/mock/       결정적 픽스처 생성기 + MSW 핸들러
 
 ---
 
+## Phase 1 (2026-08-20)
+
+### D-009. 디자인 토큰은 원본 실측값으로 확정
+
+Phase 0의 토큰은 전부 추정값이었다. Phase 1에서 Chrome 개발자 도구(`getComputedStyle` / `cssRules`)로
+3rd.supply 홈·약관·404 화면을 직접 측정해 아래 값으로 교체했다. 정의 위치는 `packages/ui/src/styles.css`.
+
+**원본은 루트 폰트 크기가 14px 이다.** (`1rem = 14px`) 이 값을 맞춰야 Tailwind의 rem 기반 유틸리티가
+원본과 같은 픽셀로 떨어진다. 원본은 Tailwind v2 계열을 쓰고 우리는 v4라 색 팔레트 기본값이 다르므로,
+아래 색은 v4 기본값을 쓰지 않고 실측값을 토큰으로 고정했다.
+
+| 토큰 | 실측값 | 원본에서의 쓰임 |
+|---|---|---|
+| `--color-ink` | `#000000` | 헤더 · 히어로 · 푸터 배경 |
+| `--color-page` | `#f2f2f2` | 본문 배경 (`bg-gray-light`) |
+| `--color-nav-fg` | `#e5e7eb` | GNB 글자 |
+| `--color-nav-active` | `#292929` | 현재 보고 있는 대표 리그 항목 배경 |
+| `--color-divider` | `#e5e7eb` | 목록 구분선 |
+| `--color-meta` | `#374151` | 목록의 상대시간 |
+| `--color-accent` | `#1e3a8a` | 카드 머리글 글자 · 4px 밑줄 |
+| `--color-comment` | `#ef4444` | 게시글 제목 옆 댓글 수 |
+| `--color-selector` / `-fg` | `#334155` / `#f3f4f6` | 통합검색 좌측 셀렉터 |
+| `--color-input-fg` / placeholder | `#4a4a4a` / `#9ca3af` | 통합검색 입력 |
+| `--shadow-card` | `0 1px 3px rgb(0 0 0/.1), 0 1px 2px rgb(0 0 0/.06)` | 카드 그림자 |
+| `--spacing-nav` | `4.5rem` (63px) | 고정 헤더 높이 |
+| `--spacing-container` | `80rem` (1120px) | 데스크톱 고정폭 |
+| `--spacing-logo` | `44rem` (616px) | 홈 로고 박스 |
+| `--spacing-search` / `-selector` | `28rem` / `11rem` | 검색 입력 / 셀렉터 |
+| `--spacing-board` / `-title` / `-time` | `48rem` / `42rem` / `6rem` | 인기게시글 카드 / 제목 칸 / 시간 칸 |
+| `--spacing-notfound` | `24rem` (336px) | 404 일러스트 |
+
+**실측하지 못해 역산한 값** — 셀렉터 드롭다운 hover 색(`#4338ca` / `#818cf8`).
+원본 클래스명(`hover:bg-indigo-700` / `hover:border-indigo-400`)에서 Tailwind v2 팔레트로 되짚었다 `[미확인]`.
+
+승/패·래더·MVP 색(`--color-win/-lose/-rating/-mvp`)은 Phase 0의 임시값 그대로다.
+해당 화면(Phase 2~4)에서 실측해 교체한다 `[미확인]`.
+
+### D-010. `.pc-container` 는 고정폭 1120px 가운데 정렬
+
+원본 CSS 규칙에는 `min-width: 80rem; margin: 0 auto` 만 있지만, **관측된 동작**은 다음과 같다.
+
+- 창이 넓으면 1120px 고정폭으로 가운데 정렬 (뷰포트 1517px에서 좌측 여백 198.5px)
+- 창이 1120px보다 좁아지면 줄어들지 않고 넘쳐서 가로 스크롤 (뷰포트 1014px에서 `margin-right: -105.6px`)
+
+`min-width` 만으로는 넓은 창에서 가운데 정렬이 나오지 않으므로 `width: 80rem` + 좌우 `auto` 마진으로 구현했다.
+CSS 선언은 원본과 다르지만 **두 경우의 렌더 결과가 모두 원본과 일치**하는 것을 실측으로 확인했다.
+
+### D-011. 상대시간 포맷 규칙
+
+원본 홈에서 관측된 표기는 `6시간 전` `15시간 전` `1일 전` `2일 전` `3일 전` 뿐이다.
+`분` `달` `년` 단위와 1분 미만 표기는 해당하는 글이 없어 확인하지 못했다 `[미확인]`.
+
+우리 규칙(`packages/ui/src/common/relative-time.ts`, 테스트로 고정):
+`60초 미만 = 방금 전` / `분` / `시간` / `일` / `30일 = 1달` / `365일 = 1년`, 미래 시각은 `방금 전`.
+**원본과 동일함이 검증되지 않았다.**
+
+### D-012. 원본 자산·문구를 쓰지 않은 지점 (의도된 차이)
+
+`CLAUDE.md` 3장 4번(원본 자산·문구 복사 금지)에 따라 아래는 **일부러 원본과 다르게** 두었다.
+박스 크기·배치·정보 구조는 원본과 맞추고 내용만 우리 것으로 채웠다.
+
+| 항목 | 원본 | 우리 |
+|---|---|---|
+| 홈 로고 | `main_logo.png` 616×143.5 | 직접 그린 SVG, 같은 박스 |
+| GNB 로고 | `nav_logo.png` 152×24 | 직접 그린 SVG, 같은 박스 |
+| 404 일러스트 | 이미지 336×189 | 직접 그린 SVG, 같은 박스 |
+| 검색·화살표 아이콘 | Font Awesome | 직접 그린 SVG, 같은 크기 |
+| 푸터 저작권·문의 | 원본 상호/메일 | `© 2026 SACLOUD` / `sacloud@local.invalid` |
+| 문서 제목 | 원본 서비스명 | `SACLOUD - 서든어택 클랜전 전적검색` |
+| 약관·개인정보 본문 | 원본 약관 문구 | **새로 작성한 초안** — 법적 검토를 받지 않았다. 오픈 전 교체 필요 |
+| GNB 대표 리그 3개 | `공식리그`/`3부리그`/`대룰리그` → `/league/supply` 등 | Phase 0 픽스처의 가상 리그 `공식전`/`세컨드`/`친목전` (D-005 연장). 설정은 `packages/ui/src/site-config.ts` 한 곳 |
+
+### D-013. Phase 1에서 추가한 것 / 하지 않은 것
+
+- `packages/ui` 를 계획대로 이번 Phase에 만들었다. `next/link`·`next/navigation` 에 의존한다(peer).
+- **TanStack Query 도입.** Phase 1에서 실제로 서버 상태(`/boards?category=hot`)를 다루기 시작했기 때문이다.
+  커서 무한스크롤(`useInfiniteQuery`)은 Phase 3에서 쓴다.
+- Mock(MSW)은 브라우저 Service Worker라 **첫 방문에는 아직 페이지를 제어하지 않는다.**
+  그 사이 나간 요청은 가로채이지 못하고 응답 없이 매달린다. `controllerchange` 를 기다렸다가
+  준비 완료로 표시하도록 `apps/web/app/providers.tsx` 에서 처리했다. 원본에 대응하는 동작이 아니라
+  Mock 단계의 구현상 장치이며, Phase 10(SSR 전환)에서 대부분 사라진다.
+- `Skeleton` / `EmptyState` / `ErrorState` 도 같은 성격의 구현상 장치다.
+  원본은 SSR이라 로딩·빈 목록·오류 표시를 관측할 수 없었다 `[미확인]`.
+- **Playwright E2E와 반응형 스냅샷(1280/1024/390)은 하지 않았다.** 계획 6장에는 있으나,
+  원본이 1120px 고정폭 데스크톱 전용이고 모바일 화면이 `[미확인]` 이라 기준이 없다.
+  이번 Phase의 검수는 Chrome 실브라우저 직접 비교로 대신했다.
+- 광고 관련 요소는 만들지 않았다. 원본 홈의 광고 슬롯(`h-wide-ad` 280px + 상하 여백)을 통째로 빼고
+  히어로 다음에 인기게시글 카드가 바로 이어지게 했다 (`CLAUDE.md` 4장).
+
+
+### D-014. `.next` 오염으로 CSS가 통째로 빠지는 문제 (2026-08-20 발생 · 해결)
+
+**증상** — `localhost:3000`이 브라우저 기본 스타일로만 렌더됐다. HTML과
+`<link rel="stylesheet" href="/_next/static/css/app/layout.css">`는 정상인데
+**그 CSS 파일이 404**였고 `.next/static` 안에 CSS 파일 자체가 없었다.
+
+**원인** — Tailwind/PostCSS 설정 문제가 아니었다. `app/globals.css`를
+`@tailwindcss/postcss`로 직접 돌려보면 18KB가 정상 생성되고
+`@import '../../../packages/ui/src/styles.css'` 인라인과
+`@source "../../../packages/ui/src"` 스캔도 모두 정상이었다.
+문제는 **`.next` 디렉터리가 깨진 상태**였다는 것이다.
+`next build`(프로덕션)와 `next dev`를 같은 `.next`에 번갈아 돌렸고,
+그 중 일부가 컴파일 도중에 강제 종료되면서 매니페스트는 CSS를 가리키는데
+정작 CSS 청크는 없는 상태로 남았다. 포트를 붙잡고 있던 좀비 dev 서버가 그 깨진 `.next`를 계속 서빙했다.
+
+**해결 / 재발 방지**
+- `pnpm clean` 스크립트 추가 (`apps/web/.next` 삭제)
+- `pnpm build` 를 `pnpm clean && next build` 로 변경 — 프로덕션 빌드가 dev 산출물 위에 겹쳐 쓰이지 않는다
+- 증상이 보이면 **`pnpm clean` 후 dev 서버 재시작**. 3000번 포트를 잡고 있는 좀비 프로세스가 있는지도 함께 확인한다
+
+**교훈** — 이 Phase의 검수에서 `HTTP 200`과 `getComputedStyle` 수치만 보고 완료로 판단했다.
+둘 다 통과하는데도 실제 화면은 무스타일일 수 있었다(계측 시점의 서버와 사용자가 본 서버가 달랐다).
+**앞으로는 화면 단위 작업의 완료 판정에 반드시 실제 렌더 스크린샷을 포함한다.**
+
+
+---
+
 ## 검수 기록
 
 | 일자 | 대상 | 방법 | 결과 |
 |---|---|---|---|
 | 2026-08-20 | Phase 0 | `pnpm typecheck` / `pnpm lint` / `pnpm test` / `next build` / dev 서버 HTTP 확인 | 전부 통과 |
 | 2026-08-20 | Phase 0 브라우저 확인 | Chrome 자동화 | **미실시** — 이 세션에서 브라우저 도구가 꺼져 있었다. Phase 1 착수 시 함께 확인한다 |
+| 2026-08-20 | Phase 1 | `pnpm typecheck` / `pnpm lint` / `pnpm test`(98건) / `next build` | 전부 통과 |
+| 2026-08-20 | Phase 1 원본 비교 | Chrome 실브라우저 — 원본과 localhost 동시 계측(getComputedStyle/getBoundingClientRect) + 스크린샷 | 헤더·히어로·통합검색·인기게시글·푸터·404·약관 치수/색/서체 일치. 남은 차이는 D-012의 의도된 차이뿐 |
+| 2026-08-20 | Phase 1 재검수 (CSS 미적용 신고) | 원인 추적: 서빙되는 CSS 에셋 직접 요청 / Tailwind PostCSS 단독 실행 / `.next` 내용 확인 / 콘솔 로그 / 좀비 프로세스 확인 | `.next` 오염이 원인(D-014). `pnpm clean` 후 재시작하여 해결, 실제 렌더 스크린샷으로 확인 |

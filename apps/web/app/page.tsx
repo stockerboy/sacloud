@@ -1,17 +1,79 @@
-import { DevMockProbe } from './dev-mock-probe'
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { HOT_POST_COUNT, HotPostList, MainLogo, SearchBar, type SearchType } from '@sacloud/ui'
+import { apiGet } from '@/lib/api'
+import { useApiReady } from './providers'
 
 /**
- * Phase 0의 빈 셸.
- * 실제 홈 화면(로고 · 통합검색 · 실시간 인기게시글 · GNB)은 Phase 1에서 만든다.
+ * 홈.
+ *
+ * 원본 실측 구조 (2026-08-20)
+ * ```
+ * <div class="bg-black pt-20 pb-10">        검은 히어로 (위 5rem / 아래 2.5rem)
+ *   <div class="text-center">
+ *     <img class="inline-block main-logo">   44rem(616px)
+ *     <br>
+ *     <통합검색 (mt-10)>
+ * <div class="pc-container my-2 h-wide-ad"> ← 광고. 재현하지 않는다 (CLAUDE.md 4장)
+ * <div class="my-2"><실시간 인기게시글></div>
+ * ```
+ * 광고 영역(280px 고정 높이 + 상하 여백)은 통째로 빼고 히어로 다음에 카드가 바로 이어진다.
  */
-export default function Page() {
+export default function HomePage() {
+  const router = useRouter()
+  const ready = useApiReady()
+
+  const hot = useQuery({
+    queryKey: ['boards', 'hot'],
+    queryFn: () => apiGet('boardList', { search: { category: 'hot' } }),
+    enabled: ready,
+  })
+
+  /**
+   * 검색 제출.
+   * 원본은 정확일치 조회에 성공하면 해당 상세로 이동하고,
+   * 결과가 없으면 **화면 전환 없이 그대로 머문다**(2026-08-20 관측).
+   * 결과 없음에 대한 안내 표시는 확인되지 않았다 [미확인].
+   */
+  const handleSearch = async (type: SearchType, query: string) => {
+    try {
+      if (type === 'player') {
+        const found = await apiGet('playersByName', { params: { name: query } })
+        router.push(`/player/${found.data.id}`)
+        return
+      }
+      if (type === 'clan') {
+        const found = await apiGet('clansByName', { params: { name: query } })
+        router.push(`/clan/${found.data.slug}`)
+        return
+      }
+      const found = await apiGet('leaguesByName', { params: { name: query } })
+      router.push(`/league/${found.data.slug}`)
+    } catch {
+      // 결과 없음 / 요청 실패 — 원본과 동일하게 아무 것도 하지 않는다
+    }
+  }
+
   return (
-    <main style={{ padding: 24, display: 'grid', gap: 16 }}>
-      <h1 style={{ fontSize: 'var(--text-heading)', fontWeight: 700 }}>sacloud — Phase 0</h1>
-      <p style={{ color: 'var(--color-foreground-muted)' }}>
-        API 계약과 Mock 데이터만 있는 상태입니다. 화면 구현은 Phase 1부터 시작합니다.
-      </p>
-      <DevMockProbe />
-    </main>
+    <>
+      <div className="bg-ink pb-10 pt-20">
+        <div className="text-center">
+          <MainLogo className="inline-block w-logo" />
+          <br />
+          <SearchBar onSubmit={handleSearch} />
+        </div>
+      </div>
+
+      <div className="my-2">
+        <HotPostList
+          items={hot.data?.data.slice(0, HOT_POST_COUNT)}
+          loading={!ready || hot.isPending}
+          error={hot.isError}
+          onRetry={() => void hot.refetch()}
+        />
+      </div>
+    </>
   )
 }

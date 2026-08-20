@@ -1,0 +1,41 @@
+/**
+ * 상단 GNB 설정.
+ *
+ * 원본은 대표 리그 3개(`/league/supply` `/league/sanply` `/league/daerule`)를
+ * GNB에 **하드코딩**해 두고, 그 뒤에 `리그` `게시판`을 둔다.
+ * 우리는 같은 구조(대표 리그 3개 + 리그 + 게시판)를 유지하되 링크 대상만 설정으로 뺐다.
+ *
+ * 리그 slug·이름은 Phase 0 픽스처 정책(docs/DECISIONS.md D-005)에 따라
+ * **원본 리그명을 쓰지 않고 우리가 만든 가상의 리그**를 가리킨다.
+ * 실제 운영 리그가 정해지면 이 배열만 바꾼다.
+ */
+
+export interface NavLink {
+  label: string
+  href: string
+}
+
+/** 대표 리그 3개 — 현재 리그를 보고 있으면 배경이 바뀐다(원본 `league-nav-active`) */
+export const FEATURED_LEAGUES: readonly NavLink[] = [
+  { label: '공식전', href: '/league/officialmain' },
+  { label: '세컨드', href: '/league/secondline' },
+  { label: '친목전', href: '/league/friendly01' },
+]
+
+/** 대표 리그 뒤에 오는 고정 메뉴 — 원본 `nav-active`(굵게 + 흰 밑줄) */
+export const PRIMARY_NAV: readonly NavLink[] = [
+  { label: '리그', href: '/leagues' },
+  { label: '게시판', href: '/board' },
+]
+
+/**
+ * 푸터 문구.
+ * 원본의 상호·연락처·저작권 표기는 그대로 가져오지 않는다(CLAUDE.md 3장 4번).
+ * 레이아웃(약관 링크 2개 → 저작권 → 문의 메일)만 동일하게 재현하고 값은 우리 것으로 채운다.
+ */
+export const SITE_BRAND = {
+  name: 'SACLOUD',
+  copyright: '© 2026 SACLOUD',
+  contactLabel: 'Terms of Service | 문의 :',
+  contactEmail: 'sacloud@local.invalid',
+} as const

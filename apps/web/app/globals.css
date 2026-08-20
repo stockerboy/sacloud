@@ -1,53 +1,6 @@
 @import 'tailwindcss';
+/* 디자인 토큰 · 전역 기본값 (원본 실측값) — packages/ui/src/styles.css */
+@import '../../../packages/ui/src/styles.css';
 
-/**
- * 디자인 토큰 (Phase 0 초기값)
- *
- * 원본 관찰값에서 확정된 것: 다크 헤더 / 라이트 본문, 승 = 파랑 계열, 패 = 빨강 계열.
- * 정확한 색상 코드·간격 수치는 아직 실측하지 않았다 [미확인].
- * Phase 1에서 원본과 Chrome으로 비교하며 이 값들을 맞춘다. 임의로 "더 예쁘게" 바꾸지 않는다.
- */
-@theme {
-  /* 표면 */
-  --color-header: #14161a;
-  --color-header-foreground: #f4f5f7;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f5f6f8;
-  --color-border: #e3e5e9;
-  --color-foreground: #1c1e22;
-  --color-foreground-muted: #6b7078;
-
-  /* 승/패 (원본 관찰: 승 파랑 / 패 빨강) */
-  --color-win: #1f6feb;
-  --color-lose: #d1373f;
-
-  /* 래더 점수 강조 */
-  --color-rating: #b4801a;
-
-  /* 상태 표기 */
-  --color-placement: #6b7078;
-  --color-mvp: #c9911f;
-  --color-unknown: #9aa0a8;
-
-  /* 타이포 스케일 */
-  --text-caption: 0.6875rem;
-  --text-body: 0.8125rem;
-  --text-title: 1rem;
-  --text-heading: 1.25rem;
-
-  /* 테이블·카드 간격 */
-  --spacing-cell-x: 0.75rem;
-  --spacing-cell-y: 0.5rem;
-  --spacing-card: 1rem;
-}
-
-html,
-body {
-  background-color: var(--color-surface-muted);
-  color: var(--color-foreground);
-}
-
-body {
-  font-size: var(--text-body);
-  line-height: 1.5;
-}
+/* 워크스페이스 UI 패키지의 클래스도 스캔 대상에 넣는다 */
+@source "../../../packages/ui/src";

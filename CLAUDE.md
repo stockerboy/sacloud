@@ -75,6 +75,11 @@
     `typecheck`, `lint`, `test`, `build`가 통과해야 "완료"라고 보고한다.
     실패했으면 실패했다고 그대로 보고한다. 통과하지 않은 작업을 완료로 표시하지 않는다.
 
+    **화면 단위 작업은 여기에 더해 실제 렌더 스크린샷을 반드시 확인한다.**
+    `HTTP 200`과 `getComputedStyle` 수치만으로 완료 판정하지 않는다.
+    둘 다 통과하는데도 화면이 무스타일일 수 있다 (`docs/DECISIONS.md` D-014).
+    CSS가 안 먹으면 `pnpm clean` 후 dev 서버 재시작 + 3000번 포트 좀비 프로세스 확인.
+
 11. **중요한 프로젝트 지식과 결정은 문서화**
     사양 판단, 자체 정책 결정, 원본과의 차이, 새로 확인/미확인된 사항은 `docs/`에 기록한다.
     대화에만 남기고 넘어가지 않는다.
@@ -150,18 +155,20 @@ Phase 10 SSR / SEO / 성능 / 운영 → V1 릴리스
 | pnpm | 11.22.0 (npm 전역 설치) — **패키지 매니저는 pnpm으로 통일한다** |
 | TypeScript | **5.9 고정** (7.x는 `next build`가 `next.config.ts`를 읽지 못함 — `docs/DECISIONS.md` D-007) |
 | Next.js / React | 15.5 / 19 |
-| 진행 단계 | Phase 0 완료 |
+| TanStack Query | Phase 1에서 도입 (서버 상태) |
+| 진행 단계 | Phase 1 완료 |
 
 ### 저장소 구조
 
 ```
-apps/web/            Next.js 15 (App Router) — 현재는 Phase 0용 빈 셸 + 개발 프로브
+apps/web/            Next.js 15 (App Router) — 전역 셸 · 홈 · 약관 · 404
 packages/contract/   Zod 스키마 + 엔드포인트 레지스트리   ← 계약의 단일 진실 원천
 packages/mock/       결정적 픽스처 생성기 + MSW 핸들러
+packages/ui/         공용 컴포넌트 + 디자인 토큰(원본 실측값)
 docs/                기준 문서 · 결정 기록
 ```
 
-`apps/worker`(Phase 8), `packages/db`(Phase 7), `packages/ui`(Phase 1)는 **해당 Phase에서 만든다.** 미리 만들지 않는다.
+`apps/worker`(Phase 8), `packages/db`(Phase 7)는 **해당 Phase에서 만든다.** 미리 만들지 않는다.
 
 ### 자주 쓰는 명령
 
@@ -172,7 +179,8 @@ pnpm typecheck        # 전 패키지 tsc --noEmit
 pnpm lint             # ESLint
 pnpm test             # Vitest
 pnpm verify           # typecheck + lint + test  ← 작업 완료 처리 전 필수
-pnpm build            # Next.js 프로덕션 빌드
+pnpm build            # Next.js 프로덕션 빌드 (clean 후 실행)
+pnpm clean            # apps/web/.next 삭제 — CSS가 안 먹거나 화면이 깨지면 먼저 이것부터
 ```
 
 ### 인프라 설치 원칙
@@ -184,6 +192,9 @@ pnpm build            # Next.js 프로덕션 빌드
 ## 8. 현재 상태
 
 - 완료: 개발환경 점검 / Git 초기화 / `docs` 기준 문서 정독 / `CLAUDE.md` 작성
-- 완료: **Phase 0** — 모노레포 초기화, API 계약(Zod + 엔드포인트 레지스트리), 결정적 Mock 픽스처, MSW 핸들러, 디자인 토큰 초기값
-- 다음: **Phase 1** (공통 레이아웃 + 홈) — **사용자 승인 후 착수**
-- Phase 0에서 정한 자체 결정과 임시값은 `docs/DECISIONS.md`에 있다. 그 값을 바꾸려면 문서도 함께 고친다.
+- 완료: **Phase 0** — 모노레포 초기화, API 계약(Zod + 엔드포인트 레지스트리), 결정적 Mock 픽스처, MSW 핸들러
+- 완료: **Phase 1** — 전역 셸(GNB/푸터), 홈(로고 · 통합검색 · 실시간 인기게시글), 약관 2종, 404,
+  디자인 토큰을 **원본 실측값으로 교체**. Chrome 실브라우저로 원본과 비교 검수 완료.
+- 다음: **Phase 3** (리그 & 랭킹 — Phase 2보다 먼저) — **사용자 승인 후 착수**
+- 자체 결정·임시값·원본과의 의도된 차이는 `docs/DECISIONS.md`에 있다. 그 값을 바꾸려면 문서도 함께 고친다.
+  Phase 1 관련은 D-009(실측 토큰) ~ D-013(추가/미실시 항목).

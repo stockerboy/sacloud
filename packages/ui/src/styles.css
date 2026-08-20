@@ -1,0 +1,107 @@
+/**
+ * 디자인 토큰 — Phase 1 (원본 실측값)
+ *
+ * 아래 값은 2026-08-20에 Chrome 개발자 도구(getComputedStyle / cssRules)로
+ * 3rd.supply 에서 직접 측정한 관찰값이다. 임의로 "더 예쁘게" 바꾸지 않는다.
+ * 측정 근거는 docs/DECISIONS.md D-009 에 정리했다.
+ *
+ * 원본은 루트 폰트 크기가 14px 이라 `1rem = 14px` 이다.
+ * Tailwind 의 rem 기반 유틸리티(px-5 = 1.25rem = 17.5px 등)가 원본과 같은 픽셀로
+ * 떨어지려면 이 루트 크기를 반드시 함께 맞춰야 한다.
+ */
+
+@theme {
+  /* ---------------------------------------------------------------- 색 --- */
+  /* 헤더·히어로·푸터 배경 */
+  --color-ink: #000000;
+  /* 본문 배경 */
+  --color-page: #f2f2f2;
+  --color-card: #ffffff;
+
+  /* 상단 GNB */
+  --color-nav-fg: #e5e7eb;
+  /* 대표 리그 항목이 현재 리그일 때의 배경 */
+  --color-nav-active: #292929;
+
+  --color-divider: #e5e7eb;
+  /* 목록의 보조 정보(상대시간 등) */
+  --color-meta: #374151;
+  /* 카드 머리글 강조 */
+  --color-accent: #1e3a8a;
+  /* 게시글 제목 옆 댓글 수 */
+  --color-comment: #ef4444;
+
+  /* 통합검색 좌측 셀렉터 */
+  --color-selector: #334155;
+  --color-selector-fg: #f3f4f6;
+  /* hover 값은 원본 클래스명(indigo-700 / indigo-400)에서 역산했다 — 실측 아님 [미확인] */
+  --color-selector-hover: #4338ca;
+  --color-selector-hover-edge: #818cf8;
+
+  /* 통합검색 입력 */
+  --color-input-fg: #4a4a4a;
+  --color-input-placeholder: #9ca3af;
+
+  /* 아래 4개는 Phase 0에서 정한 임시값이다. 해당 화면(Phase 2~4)에서 실측해 교체한다 [미확인] */
+  --color-win: #1f6feb;
+  --color-lose: #d1373f;
+  --color-rating: #b4801a;
+  --color-mvp: #c9911f;
+
+  /* -------------------------------------------------------------- 치수 --- */
+  /* 고정 헤더 높이 (원본 4.5rem = 63px) */
+  --spacing-nav: 4.5rem;
+  /* 데스크톱 고정폭 컨테이너 (원본 80rem = 1120px, min-width) */
+  --spacing-container: 80rem;
+  /* 홈 로고 (44rem = 616px) */
+  --spacing-logo: 44rem;
+  /* 통합검색 입력 (28rem = 392px) */
+  --spacing-search: 28rem;
+  /* 통합검색 셀렉터 (11rem = 154px) */
+  --spacing-selector: 11rem;
+  /* 홈 인기게시글 카드 (48rem = 672px) */
+  --spacing-board: 48rem;
+  /* 인기게시글 제목 칸 (42rem = 588px) */
+  --spacing-board-title: 42rem;
+  /* 인기게시글 상대시간 칸 (6rem = 84px) */
+  --spacing-board-time: 6rem;
+  /* 404 일러스트 (24rem = 336px) */
+  --spacing-notfound: 24rem;
+
+  /* ------------------------------------------------------------ 그림자 --- */
+  /* 카드 그림자 실측값. Tailwind v4 기본 shadow-sm 과 두 번째 레이어가 달라 직접 정의한다. */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
+
+  /* -------------------------------------------------------------- 서체 --- */
+  /* 원본 body font-family 실측값 */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
+    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* 원본 루트 폰트 크기. 모든 rem 값의 기준이다. */
+html {
+  font-size: 14px;
+}
+
+body {
+  background-color: var(--color-page);
+  color: var(--color-ink);
+}
+
+/**
+ * 데스크톱 고정폭 컨테이너.
+ *
+ * 원본 관측 동작 (2026-08-20)
+ * - 창이 넓으면 80rem(1120px) 고정폭으로 **가운데 정렬**된다
+ *   (뷰포트 1517px에서 좌측 여백 198.5px → GNB 첫 항목 글자가 212.5px에서 시작)
+ * - 창이 1120px보다 좁아지면 **줄어들지 않고** 넘쳐서 가로 스크롤이 생긴다
+ *   (뷰포트 1014px에서 margin-right 가 -105.6px 로 계산됨)
+ *
+ * 이 두 동작을 그대로 내려면 `width` + 좌우 auto 마진이면 된다.
+ */
+.pc-container {
+  width: var(--spacing-container);
+  margin-left: auto;
+  margin-right: auto;
+}
