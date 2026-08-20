@@ -36,6 +36,7 @@ import {
   type Writer,
 } from '@sacloud/contract'
 import { dataset } from './dataset'
+import { getMockRole } from './session'
 import { kdRate, killPerMatch, percentOf, winRate } from './derive'
 import type {
   MockBoard,
@@ -1057,15 +1058,37 @@ export function toUser(user: MockUser): User {
 }
 
 /**
- * Phase 0에서는 항상 비로그인 상태로 응답한다.
- * 로그인 사용자 전환(비로그인 / 일반 / 리그관리자)은 Phase 6에서 개발용 스위치로 붙인다.
+ * 부트스트랩 응답.
+ * 로그인 상태는 개발용 세션 스위치(`session.ts`)가 정한 역할을 따른다.
  */
 export function getInfos(): Infos {
   return {
     configs: dataset.configs,
     categories: dataset.categories,
-    user: null,
+    user: currentUser(),
   }
+}
+
+/**
+ * 개발용 세션 역할에 해당하는 사용자.
+ *
+ * - `guest` → null (비로그인)
+ * - `user` → 일반 회원 (픽스처 users[1])
+ * - `leagueAdmin` → 리그 관리자 (픽스처 users[0], `role: 2`)
+ */
+export function currentUser(): User | null {
+  const role = getMockRole()
+  if (role === 'guest') return null
+  const user = role === 'leagueAdmin' ? dataset.users[0] : dataset.users[1]
+  return user ? toUser(user) : null
+}
+
+/** 리그 관리자인지 (리그 관리 화면 접근 판정용) */
+export function isLeagueAdmin(leagueSlug: string): boolean {
+  if (getMockRole() !== 'leagueAdmin') return false
+  const league = leagueBySlug.get(leagueSlug)
+  if (!league) return false
+  return league.ownerUserId === dataset.users[0]?.id
 }
 
 export function getMaps() {

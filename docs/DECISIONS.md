@@ -255,6 +255,18 @@ Phase마다 아래 절차를 반복한다.
 - 3rd.supply 고유 산출물(래더·`rating_update`·리그/시즌/부리그·랭킹·배치고사)은
   운영자 협조 없이 확보 불가. `MIGRATION_GAPS.md` 4장에 결정 요청으로 정리했다.
 
+### D-018. 래더 사양 문서 신설 (2026-08-21)
+
+사용자가 제공한 래더 역추적 결과를 `docs/LADDER_IMPLEMENTATION_SPEC.md`에 정리했다.
+D-017에서 "없다"고 기록한 `LADDER_REVERSE_ENGINEERING.md`를 대신하는 문서다.
+
+핵심: 공식 1개(D=3400, Kw(R)=36.6-R/200) + division 조합별 K/multiplier,
+교차 division 보정은 **비대칭**(div1 측만 0.6 감쇠).
+`CLAUDE.md` 3-B장에 어기면 안 되는 원칙만 요약해 두었다.
+
+미확정으로 남긴 항목: 0.6의 적용 위치 · 2v1 경기 division 오염 · 배치 종료 후 초기 래더 ·
+시즌 전환 시 래더 처리 · rounding 순서.
+
 ### D-017. `LADDER_REVERSE_ENGINEERING.md` 는 아직 존재하지 않는다
 
 사용자 지시에서 참조된 문서지만 저장소에 없다(2026-08-20 확인).

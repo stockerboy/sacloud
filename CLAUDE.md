@@ -126,6 +126,29 @@ SACLOUD는 **빈 데이터베이스에서 새로 시작하지 않는다.**
 
 ---
 
+## 3-B. 래더 계산 핵심 원칙
+
+상세 사양은 `docs/LADDER_IMPLEMENTATION_SPEC.md`에 있다. **Phase 9 착수 시 반드시 먼저 읽는다.**
+아래는 어느 Phase에서도 어기면 안 되는 핵심만 추린 것이다.
+
+1. **공식은 하나뿐이다.** 스나이퍼용·라이플용 공식을 따로 만들지 않는다.
+   계산된 `rating_update`를 weapon에 따라 **기록만 분리**한다
+   (`sniper_rating_delta` / `rifle_rating_delta`). weapon은 계산에 영향을 주지 않는다.
+2. **통합 래더 = `base_rating + sniper_rating_delta + rifle_rating_delta`.**
+   무기 분리가 통합 래더 값을 바꾸면 안 된다. 공식 입력 `R`은 항상 통합 래더다.
+3. **kill/death/assist/MVP/damage/headshot/dropout/연승연패는 공식에 넣지 않는다.**
+4. **경기 당시 division 스냅샷을 저장하고 그것으로 계산한다.**
+   현재 division을 쓰면 승격·강등 후 과거 경기가 오염된다.
+   (`player_division_at_match` / `opponent_division_at_match`)
+5. **과거(3rd.supply) 경기의 `rating_update`를 재계산하지 않는다.** 원본값 그대로 보존한다.
+   신규 경기만 SACLOUD 공식으로 계산하고 `formula_version`을 남긴다.
+6. **래더 상수를 하드코딩하지 않는다.** `RatingConfig`로 분리한다.
+7. **배치고사 경기의 `rating_update`는 0이다.**
+8. 미확인 항목(0.6 감쇠의 적용 위치 · 배치 종료 후 초기 래더 · 시즌 전환 규칙 · rounding)을
+   임의로 확정하지 않는다.
+
+---
+
 ## 4. V1 복원 예외사항 — 광고
 
 3rd.supply의 **페이지 구조 · UI · 기능 · 사용자 흐름은 최대한 충실하게 재현**하지만, **광고는 복원 대상에서 완전히 제외한다.**
