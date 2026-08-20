@@ -12,10 +12,19 @@ import { SiteHeader } from './SiteHeader'
  *   <footer>
  * ```
  */
-export function SiteShell({ children }: { children: React.ReactNode }) {
+export function SiteShell({
+  children,
+  user,
+  onLogout,
+}: {
+  children: React.ReactNode
+  /** 로그인한 사용자 (없으면 비로그인) */
+  user?: { nickname: string } | null
+  onLogout?: () => void
+}) {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader user={user} onLogout={onLogout} />
       <div className="flex min-h-screen flex-col bg-page">
         <div className="flex-1 pt-nav">{children}</div>
         <SiteFooter />

@@ -36,7 +36,14 @@ export function MainLogo({ className }: { className?: string }) {
   )
 }
 
-export function NavLogo({ className }: { className?: string }) {
+export function NavLogo({
+  className,
+  /** 밝은 배경(인증 카드 등)에서는 글자를 어둡게 그린다 */
+  tone = 'light',
+}: {
+  className?: string
+  tone?: 'light' | 'dark'
+}) {
   return (
     <svg
       className={className}
@@ -51,7 +58,7 @@ export function NavLogo({ className }: { className?: string }) {
       <text
         x="12"
         y="18"
-        fill="#ffffff"
+        fill={tone === 'dark' ? '#1c1e22' : '#ffffff'}
         fontFamily="Arial, Helvetica, sans-serif"
         fontSize="17"
         fontWeight="700"

@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./browser": "./src/browser.ts",
-    "./node": "./src/node.ts"
+    "./node": "./src/node.ts",
+    "./session": "./src/session.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"

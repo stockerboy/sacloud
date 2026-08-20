@@ -29,11 +29,16 @@ const NAV_ITEM =
 export interface SiteHeaderProps {
   featuredLeagues?: readonly NavLink[]
   primaryNav?: readonly NavLink[]
+  /** 로그인한 사용자. null이면 `로그인` 링크를 보여준다 (원본 동작) */
+  user?: { nickname: string } | null
+  onLogout?: () => void
 }
 
 export function SiteHeader({
   featuredLeagues = FEATURED_LEAGUES,
   primaryNav = PRIMARY_NAV,
+  user = null,
+  onLogout,
 }: SiteHeaderProps) {
   const pathname = usePathname() ?? '/'
   const loginHref = `/auth/login?returnUrl=${encodeURIComponent(pathname)}`
@@ -77,10 +82,20 @@ export function SiteHeader({
         </div>
 
         <div className="relative flex flex-grow justify-end">
-          {/* 로그인 상태 UI(유저 메뉴)는 Phase 6. Mock은 항상 비로그인이다. */}
-          <Link href={loginHref} className={NAV_ITEM}>
-            로그인
-          </Link>
+          {user ? (
+            <>
+              <Link href="/me" className={NAV_ITEM}>
+                {user.nickname}
+              </Link>
+              <button type="button" onClick={onLogout} className={NAV_ITEM}>
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <Link href={loginHref} className={NAV_ITEM}>
+              로그인
+            </Link>
+          )}
         </div>
       </div>
     </nav>

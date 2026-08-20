@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
-import { SiteShell } from '@sacloud/ui'
 import { Providers } from './providers'
+import { AppShell } from '@/components/AppShell'
+import { DevRoleSwitch } from '@/components/DevRoleSwitch'
 import './globals.css'
 
 /**
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body>
         <Providers>
-          <SiteShell>{children}</SiteShell>
+          <AppShell>{children}</AppShell>
+          {/* Mock 단계 전용 세션 전환 스위치 — 원본에 없는 개발 장치 */}
+          <DevRoleSwitch />
         </Providers>
       </body>
     </html>

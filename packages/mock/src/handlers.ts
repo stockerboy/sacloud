@@ -7,6 +7,7 @@ import {
   type EndpointKey,
 } from '@sacloud/contract'
 import { dataset, FIXTURE_NOW } from './dataset'
+import { getMockRole, setMockRole } from './session'
 import * as store from './store'
 import type { Page } from './store'
 
@@ -28,6 +29,11 @@ function okPage<T>(page: Page<T>): Response {
 
 function notFound(): Response {
   return HttpResponse.json({ message: 'not found', data: null }, { status: 404 })
+}
+
+/** 로그인이 필요한 엔드포인트에 비로그인으로 접근한 경우 */
+function unauthorized(): Response {
+  return HttpResponse.json({ message: 'unauthorized', data: null }, { status: 401 })
 }
 
 function param(value: string | readonly string[] | undefined): string {
@@ -68,15 +74,28 @@ const resolvers: Record<EndpointKey, Resolver> = {
 
   /* -------------------------------- 인증 -------------------------------- */
   // Phase 0에서는 계약 형태만 반환한다. 실제 검증·세션 전환은 Phase 6에서 구현한다.
-  authLogin: () => ok(mockSession()),
-  authSignup: () => ok(mockSession()),
+  // 개발용 세션 스위치를 로그인 상태로 바꾼다 (실제 인증은 Phase 7 이후)
+  authLogin: () => {
+    if (getMockRole() === 'guest') setMockRole('user')
+    return ok(mockSession())
+  },
+  authSignup: () => {
+    if (getMockRole() === 'guest') setMockRole('user')
+    return ok(mockSession())
+  },
   authToken: () => ok(mockSession()),
   authPasswordForget: () => ok({ ok: true }),
   authPasswordReset: () => ok({ ok: true }),
   authEmailVerify: () => ok({ ok: true }),
 
-  meShow: () => ok(store.toUser(store.sampleUser())),
-  meSettingUpdate: () => ok(store.toUser(store.sampleUser())),
+  meShow: () => {
+    const user = store.currentUser()
+    return user ? ok(user) : unauthorized()
+  },
+  meSettingUpdate: () => {
+    const user = store.currentUser()
+    return user ? ok(user) : unauthorized()
+  },
   mePasswordUpdate: () => ok({ ok: true }),
   meLinkShow: () => ok(mockLinkState()),
   meLinkUpdate: () => ok(mockLinkState()),
@@ -325,7 +344,8 @@ function mockSession() {
     access_token: 'mock-access-token',
     refresh_token: 'mock-refresh-token',
     expires_at: FIXTURE_NOW,
-    user: store.toUser(store.sampleUser()),
+    // 세션 스위치가 정한 사용자. guest면 로그인 직후이므로 일반 회원으로 본다.
+    user: store.currentUser() ?? store.toUser(store.sampleUser()),
   }
 }
 

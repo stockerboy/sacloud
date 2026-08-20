@@ -73,3 +73,24 @@ export { PostView, formatPostDate } from './board/PostView'
 export { CommentList, CommentForm } from './board/CommentList'
 export { BoardSearch, type BoardSearchType } from './board/BoardSearch'
 export { sanitizePostContent } from './board/sanitize'
+
+/* --- Phase 6: 인증 · 마이페이지 · 관리 --- */
+export { AuthCard, AuthField, AuthInput, AuthSubmit } from './auth/AuthCard'
+export { SIGNUP_ALLOWED_EMAIL_DOMAINS } from '@sacloud/contract'
+export {
+  validateLeagueName,
+  validateLeagueSlug,
+  validateLeagueDraft,
+  LEAGUE_AGREEMENTS,
+  LEAGUE_NAME_PATTERN,
+  LEAGUE_SLUG_PATTERN,
+  type LeagueCreateDraft,
+} from './league/leagueCreate'
+export { ConfirmTypeToProceed } from './league/ConfirmTypeToProceed'
+export {
+  isAllowedSignupEmail,
+  validateSignupPassword,
+  validateSignupNickname,
+  canSubmitSignup,
+  type SignupDraft,
+} from './auth/signupRules'

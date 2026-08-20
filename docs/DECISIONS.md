@@ -255,6 +255,33 @@ Phase마다 아래 절차를 반복한다.
 - 3rd.supply 고유 산출물(래더·`rating_update`·리그/시즌/부리그·랭킹·배치고사)은
   운영자 협조 없이 확보 불가. `MIGRATION_GAPS.md` 4장에 결정 요청으로 정리했다.
 
+### D-019. Chrome 검수 시 탭이 백그라운드면 React 상태가 갱신되지 않는다 (2026-08-21)
+
+**증상** — 로그인 폼에 실제로 타이핑해도 버튼이 계속 비활성이었다.
+DOM `value`는 바뀌는데 React 상태가 안 바뀌고, 컨트롤드 입력인데도 React가 값을 되돌리지 않았다.
+`__reactProps`에 `onChange`는 정상적으로 붙어 있었고 콘솔 오류도 없었다.
+
+**원인** — 앱 버그가 아니다. 검수용 탭이 `document.visibilityState === 'hidden'` 상태였다.
+Chrome은 백그라운드 탭에서 타이머·MessageChannel을 throttle하는데,
+React 스케줄러가 이것을 쓰기 때문에 **상태 업데이트가 flush되지 않는다.**
+CDP 평가가 45초 타임아웃 나던 것("renderer frozen")도 같은 원인이다.
+
+**대응**
+- 상호작용을 검수할 때는 **탭이 visible인지 먼저 확인한다** (`document.visibilityState`).
+  스크린샷을 찍으면 대체로 활성화된다.
+- 데이터 렌더(React Query 결과)는 백그라운드에서도 보이므로 "화면이 나온다 = 상호작용도 된다"가 아니다.
+- 폼 검증 같은 순수 로직은 브라우저 대신 **단위 테스트로 고정**한다
+  (`signup-rules.test.ts`, `league-create.test.ts`).
+
+### D-020. 클라이언트 번들에 `@sacloud/mock` 진입점을 넣지 않는다 (2026-08-21)
+
+개발용 세션 스위치를 만들면서 클라이언트 컴포넌트가 `@sacloud/mock`(패키지 루트)을 import했다.
+루트 진입점은 `./handlers`(msw)와 `./dataset`(매치 3,000건 픽스처 생성)을 함께 끌어온다.
+그 결과 픽스처 생성 코드가 클라이언트 번들에 통째로 들어갔다.
+
+→ `@sacloud/mock/session` 서브경로를 만들어 세션 모듈만 가져오도록 바꿨다.
+루트 진입점에도 "클라이언트에서 import 금지" 주석을 달았다.
+
 ### D-018. 래더 사양 문서 신설 (2026-08-21)
 
 사용자가 제공한 래더 역추적 결과를 `docs/LADDER_IMPLEMENTATION_SPEC.md`에 정리했다.
