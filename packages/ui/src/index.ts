@@ -65,3 +65,11 @@ export {
 } from './record/RecordPanels'
 export { ratingClass, RATING_THRESHOLDS } from './common/rating'
 export { SeasonTable } from './record/SeasonTable'
+
+/* --- Phase 5: 게시판 --- */
+export { BoardNav } from './board/BoardNav'
+export { BoardTable, BoardPager } from './board/BoardTable'
+export { PostView, formatPostDate } from './board/PostView'
+export { CommentList, CommentForm } from './board/CommentList'
+export { BoardSearch, type BoardSearchType } from './board/BoardSearch'
+export { sanitizePostContent } from './board/sanitize'

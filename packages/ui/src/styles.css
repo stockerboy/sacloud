@@ -127,6 +127,27 @@
   /* MVP 표기 색은 아직 실측하지 못했다 [미확인] */
   --color-mvp: #c9911f;
 
+  /* --- Phase 5 (게시판) 실측값 --- */
+  /* 게시판 사이드 내비 (원본 coolGray-900 헤더 / coolGray-700 항목) */
+  --color-board-nav: #111827;
+  --color-board-nav-item: #374151;
+  /* 선택된 카테고리 (원본 .board-active) */
+  --color-board-active: #1f2937;
+  --color-board-active-fg: #fb923c;
+  /* 공지 행 · 글 헤더 박스 배경 (원본 boardBlue) */
+  --color-board-blue: #e4f0fb;
+  /* 목록 구분선 (원본 border) */
+  --color-board-line: #dbdbdb;
+  /* 목록 상단 테두리 (원본 mblack) */
+  --color-board-top: #4a4a4a;
+  /* 추천 / 비추천 아이콘 */
+  --color-vote-up: #60a5fa;
+  --color-vote-down: #f87171;
+  /* 로그인 작성자 닉네임 */
+  --color-writer: #3b82f6;
+  /* 추천 버튼 활성 테두리 (원본 .like-active) */
+  --color-like-active: #60a5fa;
+
   /* -------------------------------------------------------------- 치수 --- */
   /* 고정 헤더 높이 (원본 4.5rem = 63px) */
   --spacing-nav: 4.5rem;
