@@ -21,11 +21,32 @@ lint / typecheck / test / build → Git 체크포인트 커밋 → 다음 작업
 | Phase 3 | 리그 목록 · 리그홈 · 클랜랭킹 · 개인랭킹 | `62cf6e6` |
 | Phase 2 | 플레이어 프로필 · 클랜 프로필 · 클랜원 | `19cbbf9` |
 | Phase 4 | 개인/클랜 기록실 · 매치 상세 · 지난시즌 | `5d8a7aa` |
+| Phase 5 | 커뮤니티 게시판 (목록/상세/작성/댓글/검색) | `e3817ae` |
+| (문서) | 래더 계산 구현 사양 (LADDER_IMPLEMENTATION_SPEC.md) | `bbe44ff` |
+| Phase 6 | 인증 · 마이페이지 · 리그/클랜/플레이어 관리 | `0ed681a` |
 
-### 남은 Phase (Checkpoint 1 = 주요 UI 복원 완료까지)
-- **Phase 5** 커뮤니티 게시판
-- **Phase 6** 인증 · 마이페이지 · 리그/클랜 관리 화면
-→ 두 Phase가 끝나면 **Checkpoint 1**으로 보고하고 멈춘다.
+## ✅ Checkpoint 1 도달 — Mock 기반 UI/흐름 복원 완료 (2026-08-21)
 
-이후(Checkpoint 2~)는 Phase 7(DB) → 8(수집) → 8-M(마이그레이션) → 9(래더/시즌) → 10(SSR/운영).
+M1 마일스톤(계획서 4장) 달성. 여기서 사용자 보고 후 대기한다.
+
+### 이후 남은 작업 (Checkpoint 2~)
+- **Phase 7** DB 스키마 · 실제 API → **Checkpoint 2** (스키마 설계 완료 시)
+- **Phase 8** 넥슨 Open API 수집 파이프라인 → **Checkpoint 4** (소규모 실데이터 검증)
+- **Phase 8-M** historical 마이그레이션 → **Checkpoint 3** (dry-run + 원본 대조)
+- **Phase 9** 래더 · 배치고사 · 시즌 → **Checkpoint 5** (개발환경 시뮬레이션)
+- **Phase 10** SSR/SEO/성능/운영 → **Checkpoint 6** (배포 직전)
+
+### 밤새 발견하고 고친 것
+- 킬뎃은 `킬/데스` 비율이 아니라 **`킬/(킬+데스)×100` 백분율** (원본 실측으로 확정, Phase 0 회귀 수정)
+- 매치 카드 승/패 색이 Phase 0 추정값이었으나 실측값으로 교체
+- 최근매치 요약이 상대 클랜 수가 많으면 아래 카드와 겹치던 레이아웃 버그
+- 매치 상세 요청에 잘못된 `league_clan_id`를 넘기던 버그
+- 클랜 헤더에 없어야 할 갱신 버튼이 있던 것 (원본 실측 후 제거)
+- 인증 화면에 전역 GNB/푸터가 나오던 것 (원본은 단독 카드 레이아웃)
+- `@sacloud/mock` 루트 진입점을 클라이언트에서 import해 하이드레이션이 막히던 문제 (D-020)
+- `.next` 오염으로 CSS/라우트가 깨지는 문제 재발 → `pnpm clean` 후 재기동으로 해결 (D-014)
+
+### 검수 시 주의 (D-019)
+Chrome 탭이 **백그라운드면 React 상태가 flush되지 않는다.** 화면은 보이는데 클릭·입력이
+안 먹는 것처럼 보인다. 앱 버그로 오인하기 쉬우니 `document.visibilityState`를 먼저 확인할 것.
 
