@@ -1,0 +1,32 @@
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# 빌드 산출물 / TS 증분 빌드 정보
+dist/
+*.tsbuildinfo
+
+# 환경변수 (예시 파일만 커밋)
+.env
+.env.local
+.env.*.local
+
+# 테스트 / 커버리지
+coverage/
+test-results/
+playwright-report/
+
+# 에디터 / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 로그
+*.log
+npm-debug.log*
+pnpm-debug.log*

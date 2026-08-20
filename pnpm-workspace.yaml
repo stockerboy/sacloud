@@ -1,0 +1,10 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# 설치 시 스크립트 실행을 허용한 패키지 (pnpm 11 정책)
+# - msw: 브라우저용 Service Worker 설치 도우미
+# - sharp: Next.js 이미지 최적화 네이티브 바이너리
+allowBuilds:
+  msw: true
+  sharp: true
