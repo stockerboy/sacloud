@@ -25,6 +25,9 @@ export const PlayerLeagueEntry = z.object({
   win: Count,
   lose: Count,
   win_rate: Percent,
+  /** 참여중인 리그 카드가 `17,855킬 17,422데스`를 표시한다 (원본 관측) */
+  kill: Count,
+  death: Count,
   /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
   kd_rate: Percent,
   /** 배치고사 진행중이면 true (랭킹·래더 대신 `배치고사` 표기) */

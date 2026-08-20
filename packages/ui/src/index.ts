@@ -44,3 +44,13 @@ export {
 } from './league/LeagueHome'
 export { LeagueDescription } from './league/LeagueDescription'
 export { sanitizeLeagueDescription } from './league/sanitize'
+
+/* --- Phase 2: 플레이어 · 클랜 프로필 --- */
+export {
+  PlayerHeader,
+  ClanHeader,
+  RefreshButton,
+  type RefreshState,
+} from './profile/ProfileHeader'
+export { PlayerLeagueCards, ClanLeagueCards, ProfileTabs } from './profile/LeagueEntryCards'
+export { ClanMemberList } from './profile/ClanMemberList'

@@ -66,6 +66,22 @@
   /* 즐겨찾기 버튼 (원본 amber-400) */
   --color-favorite: #fbbf24;
 
+  /* --- Phase 2 (플레이어 · 클랜 프로필) 실측값 --- */
+  /* 플레이어 페이지 헤더 (원본 blueGray-default) */
+  --color-player-header: #374151;
+  /* 클랜 페이지 헤더 (원본 warmGray-800) */
+  --color-clan-header: #292524;
+  /* 클랜 헤더 안 구분선 (원본 warmGray-600) */
+  --color-clan-header-line: #57534e;
+  /* 정보갱신 / 전적갱신 버튼 (원본 blue-600 · 테두리 blue-700) */
+  --color-refresh: #2563eb;
+  --color-refresh-border: #1d4ed8;
+  /* 리그 참여 카드 글자 (원본 boardText) */
+  --color-card-text: #464c4c;
+
+  /* 프로필 헤더의 큰 클랜마크 (원본 .mark-max) */
+  --spacing-mark-max: 51px;
+
   /*
    * 승률·킬뎃 색 등급 (원본 실측)
    * 50 미만 = 기본 / 50~55 / 55~60 / 60~65 / 65 이상

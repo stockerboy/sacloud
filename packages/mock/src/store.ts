@@ -276,6 +276,8 @@ export function getPlayerLeagues(playerId: string): PlayerLeagueEntry[] {
       win: leaguePlayer.win,
       lose: leaguePlayer.lose,
       win_rate: winRate(leaguePlayer.win, leaguePlayer.lose),
+      kill: leaguePlayer.kill,
+      death: leaguePlayer.death,
       kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
       placement: leaguePlayer.placement,
       rank: rank.rank,

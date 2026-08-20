@@ -13,12 +13,16 @@
  * 배경·전경 2장을 같은 자리에 겹쳐 그린다. 기본 크기는 2rem(28px).
  */
 
-export type ClanMarkSize = 'sm' | 'md' | 'lg'
+export type ClanMarkSize = 'sm' | 'md' | 'lg' | 'max'
 
 const SIZE: Record<ClanMarkSize, string> = {
-  sm: 'w-6 h-6',
+  /** 소속 표시 등 (원본 w-7) */
+  sm: 'w-7 h-7',
+  /** 목록·표 기본 (원본 w-8) */
   md: 'w-8 h-8',
   lg: 'w-12 h-12',
+  /** 프로필 헤더 (원본 .mark-max = 51px 고정) */
+  max: 'w-mark-max h-mark-max',
 }
 
 export interface ClanMarkProps {

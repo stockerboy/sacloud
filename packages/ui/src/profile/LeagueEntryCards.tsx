@@ -1,0 +1,193 @@
+import Link from 'next/link'
+import type { ClanLeagueEntry, PlayerLeagueEntry } from '@sacloud/contract'
+import { Label } from '../common/Label'
+import { EmptyState } from '../common/EmptyState'
+import { Skeleton } from '../common/Skeleton'
+import { formatCount, formatRate } from '../common/format'
+import { rateClass } from '../common/rate'
+
+/**
+ * 참여중인 리그 카드.
+ *
+ * **플레이어와 클랜의 카드 구성이 서로 다르다** (원본 실측, 2026-08-20).
+ *
+ * 플레이어 — `flex flex-col shadow w-96 mt-4 mr-4 p-4 border text-boardText hover:bg-blue-50`
+ * ```
+ * {리그명} [공식]
+ *                              래더  3432점        ← flex-row-reverse, mt-6
+ * 2,153전 1,302승 851패        승률  60.5%         ← mt-2
+ * 17,855킬 17,422데스          킬뎃  50.6%         ← mt-2
+ * ```
+ * 클랜 — 같은 카드지만 `mt-4`가 없고 구성이 다르다
+ * ```
+ * {리그명} [공식]
+ * 1부리그로 참여중                                  ← mt-2
+ * 6,711전 3,624승 3,087패      승률  54%           ← mt-6, 래더·킬뎃 없음
+ * ```
+ *
+ * **주의** — 플레이어 카드의 래더는 `3432점`으로 **천 단위 콤마가 없다.**
+ * 같은 값이 랭킹 표에서는 `3,432점`으로 나온다. 원본이 실제로 이렇게 다르다.
+ */
+
+const CARD_BASE =
+  'flex flex-col w-96 mr-4 p-4 border border-divider shadow-card text-card-text cursor-pointer hover:bg-blue-50'
+
+/** 프로필 하위 탭 (플레이어: 리그정보 / 클랜: 리그정보·클랜원) */
+export function ProfileTabs({
+  tabs,
+  current,
+}: {
+  tabs: readonly { label: string; href: string }[]
+  current: string
+}) {
+  return (
+    <div className="bg-card">
+      <div className="pc-container flex items-center text-xl">
+        {tabs.map((tab) => (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={`flex cursor-pointer items-center justify-center border-2 border-transparent px-4 py-4 ${
+              tab.href === current ? 'border-b-[3px] border-b-black font-bold' : ''
+            }`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CardTitle({ name, official }: { name: string; official: boolean }) {
+  return (
+    <div className="flex items-center">
+      <div className="text-2xl font-semibold text-ink">{name}</div>
+      {official ? <Label name="공식" className="ml-2" /> : null}
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------- 플레이어 --- */
+
+function PlayerEntryCard({ entry }: { entry: PlayerLeagueEntry }) {
+  return (
+    <Link
+      href={`/league/${entry.league.slug}/player/${entry.league_player_id}`}
+      className={`${CARD_BASE} mt-4`}
+    >
+      <CardTitle name={entry.league.name} official={entry.league.official} />
+      <div className="mt-6 flex flex-row-reverse items-center">
+        <div className="flex items-center">
+          래더
+          {/* 배치고사 중이면 래더 자리에 `배치고사`를 표기한다 (원본 규칙) */}
+          <span className="ml-2 w-20 text-right text-2xl">
+            {entry.placement ? '배치고사' : `${entry.rating}점`}
+          </span>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <div>
+          {formatCount(entry.win + entry.lose)}전 {formatCount(entry.win)}승{' '}
+          {formatCount(entry.lose)}패
+        </div>
+        <div className="flex items-center">
+          승률
+          <span className={`ml-2 w-20 text-right text-2xl ${rateClass(entry.win_rate)}`}>
+            {formatRate(entry.win_rate)}%
+          </span>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <div>
+          {formatCount(entry.kill)}킬 {formatCount(entry.death)}데스
+        </div>
+        <div className="flex items-center">
+          킬뎃
+          <span className={`ml-2 w-20 text-right text-2xl ${rateClass(entry.kd_rate)}`}>
+            {formatRate(entry.kd_rate)}%
+          </span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+export function PlayerLeagueCards({
+  entries,
+  loading,
+}: {
+  entries?: readonly PlayerLeagueEntry[]
+  loading?: boolean
+}) {
+  if (loading) return <CardSkeleton />
+  if (!entries || entries.length === 0) {
+    return <EmptyState message="참여중인 리그가 없습니다." />
+  }
+  return (
+    <div className="flex flex-wrap">
+      {entries.map((entry) => (
+        <PlayerEntryCard key={entry.league.id} entry={entry} />
+      ))}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------- 클랜 --- */
+
+function ClanEntryCard({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: string }) {
+  return (
+    <Link href={`/league/${entry.league.slug}/clan/${clanSlug}`} className={CARD_BASE}>
+      <CardTitle name={entry.league.name} official={entry.league.official} />
+      <div className="mt-2">
+        <div>{entry.division}부리그로 참여중</div>
+      </div>
+      <div className="mt-6 flex items-center justify-between">
+        <div>
+          {formatCount(entry.win + entry.lose)}전 {formatCount(entry.win)}승{' '}
+          {formatCount(entry.lose)}패
+        </div>
+        <div className="flex items-center">
+          승률
+          <span className={`ml-2 text-2xl ${rateClass(entry.win_rate)}`}>
+            {formatRate(entry.win_rate)}%
+          </span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+export function ClanLeagueCards({
+  clanSlug,
+  entries,
+  loading,
+}: {
+  clanSlug: string
+  entries?: readonly ClanLeagueEntry[]
+  loading?: boolean
+}) {
+  if (loading) return <CardSkeleton />
+  if (!entries || entries.length === 0) {
+    return <EmptyState message="참여중인 리그가 없습니다." />
+  }
+  return (
+    <div className="flex flex-wrap">
+      {entries.map((entry) => (
+        <ClanEntryCard key={entry.league.id} entry={entry} clanSlug={clanSlug} />
+      ))}
+    </div>
+  )
+}
+
+function CardSkeleton() {
+  return (
+    <div className="flex flex-wrap">
+      {Array.from({ length: 2 }, (_, index) => (
+        <div key={index} className={`${CARD_BASE} mt-4`}>
+          <Skeleton className="h-[153px] w-full" />
+        </div>
+      ))}
+    </div>
+  )
+}
