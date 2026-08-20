@@ -79,6 +79,9 @@
     `HTTP 200`과 `getComputedStyle` 수치만으로 완료 판정하지 않는다.
     둘 다 통과하는데도 화면이 무스타일일 수 있다 (`docs/DECISIONS.md` D-014).
     CSS가 안 먹으면 `pnpm clean` 후 dev 서버 재시작 + 3000번 포트 좀비 프로세스 확인.
+    **404나 "옛날 화면"이 보이면 dev 서버가 여러 개 떠 있는지부터 의심한다.**
+    Next는 3000이 점유되면 3001…로 밀려 뜨고, 3000번에는 옛 서버가 남는다 (`docs/DECISIONS.md` D-021).
+    `pnpm dev:clean` 으로 정리한다.
 
 11. **중요한 프로젝트 지식과 결정은 문서화**
     사양 판단, 자체 정책 결정, 원본과의 차이, 새로 확인/미확인된 사항은 `docs/`에 기록한다.
@@ -244,6 +247,7 @@ pnpm test             # Vitest
 pnpm verify           # typecheck + lint + test  ← 작업 완료 처리 전 필수
 pnpm build            # Next.js 프로덕션 빌드 (clean 후 실행)
 pnpm clean            # apps/web/.next 삭제 — CSS가 안 먹거나 화면이 깨지면 먼저 이것부터
+pnpm dev:clean        # 기존 dev 서버 전부 종료 + .next 삭제 후 3000번에 하나만 기동
 ```
 
 ### 인프라 설치 원칙
