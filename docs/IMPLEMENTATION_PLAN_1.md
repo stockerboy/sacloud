@@ -78,6 +78,10 @@ packages/
 - Elo 래더, 부리그, 배치고사, 시즌, 1시간 주기 랭킹 갱신
 - 넥슨 병영수첩 기반 전적 수집
 - 어뷰징 방지: 글쓰기 rate limit, 캡차, 이메일 인증
+- **기존 3rd.supply 데이터 마이그레이션** (Phase 8-M) — 접근 가능한 범위 전량 이전 + Raw 보존 + 검증
+- **시즌 시스템 · 시즌 스냅샷 · 과거 시즌 조회** (기존 POST_V1 → V1으로 승격)
+- **스나이퍼 / 라이플 기록 분리 및 통합 래더 일관성** (기존 POST_V1 → V1으로 승격)
+- **관리자 시스템** (기존 POST_V1 → V1으로 승격)
 
 ### 제외 (V1 아님)
 - 모바일 전용 별도 빌드 → V1은 반응형 단일 레이아웃으로 대응 (원본의 모바일 화면은 `[미확인]`)
@@ -501,6 +505,85 @@ Upload(id, url, ownerKey, createdAt)
 - 실제 클랜 1개를 등록해 최근 경기가 기록실에 뜬다
 - 재수집 시 중복이 생기지 않는다
 - 수집 실패가 사용자 화면을 깨뜨리지 않는다(부분 데이터로 렌더)
+
+---
+
+### Phase 8-M — 기존 3rd.supply 데이터 마이그레이션  **[최우선 신규 요구사항]**
+
+SACLOUD는 빈 DB에서 시작하지 않는다. 접근 가능한 범위의 누적 기록을 최대한 보존해 이전한다.
+
+```
+1차 출처 (넥슨 Open API / 확보 가능한 공개 데이터)
+   ↓
+Raw Import Archive          ← 원본 응답 원형 보존
+   ↓
+정규화된 SACLOUD DB          ← 변환 로직이 틀려도 Raw에서 재변환 가능
+```
+
+**1) 선행 조사 결과 — `docs/MIGRATION_GAPS.md`**
+
+`api-v2.3rd.supply`는 외부 요청 403, `3rd.supply` 웹은 AWS WAF CAPTCHA로 자동 접근을 차단한다.
+**이 통제는 우회하지 않는다.** 경기 원천 기록은 1차 출처인 **넥슨 Open API**에서 직접 수집한다.
+3rd.supply 고유 산출물(래더 · `rating_update` · 리그/시즌/부리그 · 랭킹 · 배치고사)은
+**운영자 협조 없이는 확보 불가**하며 `MIGRATION_GAPS.md` 4장에 결정 요청으로 정리했다.
+
+**2) Raw Import Archive 최소 스키마**
+
+`source` / `endpoint` / `source_id` / `fetched_at` / `raw`(JSONB) / `migration_version`
++ `(source, endpoint, source_id)` 유니크 — 같은 대상을 다시 받아도 중복 저장되지 않는다.
+
+**3) Source ID 매핑 보존**
+
+`source_player_id` `source_clan_id` `source_match_id` `source_league_id`
+`source_season_id` `source_league_player_id` `source_league_clan_id`
+→ 엔티티에 컬럼으로 보존하거나 별도 매핑 테이블. **원본 ID를 버리지 않는다.**
+
+**4) 중단·재개 가능한 backfill 파이프라인**
+
+- 작업 단위(job)별 커서/페이지 진행상황 저장 → 프로세스가 죽어도 이어서 재개
+- `match_id` / `player` / `clan` / `season` 중복 생성 금지 (upsert + 유니크 제약)
+- 실패 요청 별도 기록 → 안전한 retry (exponential backoff)
+- rate limit 준수. **우회하지 않는다.**
+- 이미 정상 수집된 대상은 다시 호출하지 않는다
+- 진행률 조회 가능
+- **idempotent**: 같은 마이그레이션을 다시 돌려도 데이터가 망가지지 않는다
+
+**5) historical `rating_update` 원본 보존 — 절대 규칙**
+
+원본에 `rating_update`가 존재하면 **SACLOUD 추정 공식으로 다시 계산하지 않는다.**
+당시 실제 계산된 정답 데이터로 취급해 그대로 저장한다.
+
+```
+과거 기록      → 원본 rating_update 그대로 보존
+신규 경기      → SACLOUD 래더 공식으로 계산 (formula_version 기록)
+```
+
+**6) 검증 — 숫자로 대조 (`docs/MIGRATION_REPORT.md`)**
+
+"수집 완료" 로그로 판단하지 않는다. 전후 비교 항목:
+전체 경기/플레이어/클랜/시즌 수 · 시즌별 경기 수 · 플레이어별 경기/승패/킬뎃 합계 ·
+클랜별 경기/승패 합계 · 현재 rating/ranking · 시즌별 최종 기록 · 무기별 합계 · `rating_update` 합계.
+추가로 **랜덤 표본 플레이어·클랜 여러 건을 원본 화면과 직접 대조**한다.
+
+**7) 시즌 종료 순서 — 이 순서를 어기지 않는다**
+
+```
+수집 완료 → 데이터 검증 완료 → 최종 snapshot 완료 → 그 다음에야 시즌 종료
+```
+
+세 조건이 모두 충족되기 전에는 시즌을 종료하지 않는다.
+과거 시즌은 **hard delete 하지 않는다.** 개인·클랜 페이지에서 계속 조회 가능해야 한다.
+
+**8) 시즌 번호 연속성**
+
+`Season N` = 3rd.supply에서 이전한 마지막 시즌 / `Season N+1` = SACLOUD 신규 시즌.
+N은 임의로 정하지 않고 원본 시즌 구조를 확인해서 정한다 → 확인 불가 시 `MIGRATION_GAPS.md` D3 결정 필요.
+
+**9) 완료 조건**
+
+Raw 보존 · source ID 매핑 · 중단/재개 · 중복 방지 · 숫자 검증 통과 · `MIGRATION_REPORT.md` 작성 ·
+현재 시즌 최종 snapshot · 과거 시즌 조회 가능.
+
 
 ---
 
