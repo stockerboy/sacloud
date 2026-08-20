@@ -54,3 +54,14 @@ export {
 } from './profile/ProfileHeader'
 export { PlayerLeagueCards, ClanLeagueCards, ProfileTabs } from './profile/LeagueEntryCards'
 export { ClanMemberList } from './profile/ClanMemberList'
+
+/* --- Phase 4: 기록실 · 매치 상세 --- */
+export { MatchCard, formatPlayTime, formatRatingUpdate } from './record/MatchCard'
+export {
+  RecentMatchSummary,
+  PlayerStatSidebar,
+  TeammateTable,
+  type PlayerStatSidebarProps,
+} from './record/RecordPanels'
+export { ratingClass, RATING_THRESHOLDS } from './common/rating'
+export { SeasonTable } from './record/SeasonTable'

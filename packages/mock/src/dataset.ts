@@ -40,8 +40,15 @@ const NOW_EPOCH = Date.parse(FIXTURE_NOW)
 
 const DAY = 24 * 60 * 60 * 1000
 
-/** 관측: 현재 시즌 6 */
-export const CURRENT_SEASON = 6
+/**
+ * SACLOUD의 현재 시즌 번호.
+ *
+ * 3rd.supply는 시즌 7까지 운영했고(2026-08-20 사용자 확인),
+ * SACLOUD는 그 다음인 **시즌 8부터 시작**한다 (docs/MIGRATION_GAPS.md 6장 D3).
+ * 시즌 1~7은 3rd.supply의 과거 시즌이며 이전 대상이지만, 현재는 확보 경로가 없다.
+ * 픽스처에서는 시즌 6~7을 "지난시즌"으로 만들어 과거 시즌 조회 화면을 확인할 수 있게 한다.
+ */
+export const CURRENT_SEASON = 8
 
 /**
  * 배치고사 판정 경기 수.

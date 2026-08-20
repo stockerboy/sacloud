@@ -81,6 +81,10 @@
 
   /* 프로필 헤더의 큰 클랜마크 (원본 .mark-max) */
   --spacing-mark-max: 51px;
+  /* 매치 카드 양팀 클랜 칸 (원본 w-88 = 22rem) */
+  --spacing-88: 22rem;
+  /* 매치 카드 한쪽 클랜 칸 (원본 w-42 = 10.5rem) */
+  --spacing-42: 10.5rem;
 
   /*
    * 승률·킬뎃 색 등급 (원본 실측)
@@ -94,10 +98,33 @@
   --color-rate-4: #ffe30b;
   --color-rate-4-light: #ff3d3d;
 
-  /* 아래 4개는 Phase 0에서 정한 임시값이다. 해당 화면(Phase 2~4)에서 실측해 교체한다 [미확인] */
-  --color-win: #1f6feb;
-  --color-lose: #d1373f;
-  --color-rating: #b4801a;
+  /* --- Phase 4 (기록실 · 매치) 실측값 --- */
+  /* 승리 매치 카드 (원본 sky 계열) */
+  --color-win-bg: #e0f2fe;
+  --color-win-line: #bae6fd;
+  --color-win-bar: #0ea5e9;
+  --color-win: #0284c7;
+  /* 패배 매치 카드 (원본 red 계열) */
+  --color-lose-bg: #fee2e2;
+  --color-lose-line: #fecaca;
+  --color-lose-bar: #f87171;
+  --color-lose: #ef4444;
+
+  /* 기록실 우측 사이드 패널 (원본 blueGray-800 / 구분선 slate-700) */
+  --color-side: #1e293b;
+  --color-side-line: #334155;
+
+  /*
+   * 래더 점수 색 등급 (원본 실측 — 클래스명이 곧 하한값이다)
+   * 1600 미만 = 기본 / 1600~1800 / 1800~2000 / 2000~2500 / 2500 이상
+   * 티어 "이름"은 원본에 없다. 색만 있다 (CLAUDE.md 6장).
+   */
+  --color-rating-1600: #02ab18;
+  --color-rating-1800: #2185d0;
+  --color-rating-2000: #f2711c;
+  --color-rating-2500: #ff3d3d;
+
+  /* MVP 표기 색은 아직 실측하지 못했다 [미확인] */
   --color-mvp: #c9911f;
 
   /* -------------------------------------------------------------- 치수 --- */

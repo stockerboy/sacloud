@@ -21,12 +21,14 @@ export function useCursorQuery<T>(
   key: EndpointKey,
   queryKey: readonly unknown[],
   options: ApiGetOptions = {},
+  /** 상위 쿼리(예: 클랜 상세)가 끝나야 필요한 params가 채워지는 경우 false로 대기시킨다 */
+  enabled = true,
 ) {
   const ready = useApiReady()
 
   const query = useInfiniteQuery({
     queryKey,
-    enabled: ready,
+    enabled: ready && enabled,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam }) =>
       apiGet(key, {

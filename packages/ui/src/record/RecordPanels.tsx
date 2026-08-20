@@ -1,0 +1,250 @@
+import Link from 'next/link'
+import type { MatchSummary, TeammateStat } from '@sacloud/contract'
+import { ClanMark } from '../common/ClanMark'
+import { formatCount, formatRate } from '../common/format'
+import { rateClass } from '../common/rate'
+import { ratingClass } from '../common/rating'
+
+/**
+ * 기록실 상단 `최근매치` 요약 + 우측 사이드 패널.
+ *
+ * 원본 실측 (2026-08-20)
+ *
+ * 최근매치 — `<div class="px-4 py-2 bg-white shadow">`
+ * ```
+ * 최근매치
+ * [승률 도넛 80%]  20전 16승 4패 (80%)      vs saint   9전 7승 2패 (77.8%) - 킬뎃: 55.2%
+ *                  5연승 중                  vs MiraGe. 4전 4승 0패 (100%)  - 킬뎃: 73.7%
+ * ```
+ * 도넛 칸 `w-32 h-40`, 가운데 칸 `ml-5 h-40`, 상대 클랜 칸은 `border-l-2 border-gray-100`으로 구분한다.
+ *
+ * 사이드 — `<div class="px-3 py-3 bg-blueGray-800 text-gray-300 shadow">` (배경 #1E293B)
+ * ```
+ * 상세정보
+ * ──────────  ← .divide (border-top #334155, 상하 여백 0.5rem)
+ * 래더      3432점      ← .stat = flex justify-between py-2 text-3xl
+ * 승률      1,302승 851패 60.5%
+ * 킬뎃      17,855킬 17,422데스 50.6%
+ * 평균킬    판당 8.3킬
+ * MVP       213회
+ * 랭킹      5,578명중 1위
+ * 소속      des`per@do.
+ * ```
+ * 그 아래 `최근 같이한 플레이어` 표 (닉네임 / 승 / 패 / 승률).
+ */
+
+/** 승률 도넛 — 원본은 원형 게이지. SVG로 같은 크기(w-32 h-40 칸)에 그린다. */
+function WinRateDonut({ rate }: { rate: number }) {
+  const radius = 44
+  const circumference = 2 * Math.PI * radius
+  const filled = (Math.min(100, Math.max(0, rate)) / 100) * circumference
+  return (
+    <div className="relative flex min-h-40 w-32 shrink-0 items-center justify-center">
+      <svg viewBox="0 0 112 112" className="h-28 w-28 -rotate-90" aria-hidden>
+        <circle cx="56" cy="56" r={radius} fill="none" stroke="var(--color-divider)" strokeWidth="10" />
+        <circle
+          cx="56"
+          cy="56"
+          r={radius}
+          fill="none"
+          stroke="var(--color-win-bar)"
+          strokeWidth="10"
+          strokeDasharray={`${filled} ${circumference - filled}`}
+          strokeLinecap="butt"
+        />
+      </svg>
+      <div className="absolute text-2xl font-semibold">{formatRate(rate)}%</div>
+    </div>
+  )
+}
+
+function streakText(streak: MatchSummary['streak']): string {
+  if (streak.type === 'none' || streak.count === 0) return ''
+  return `${streak.count}${streak.type === 'win' ? '연승' : '연패'} 중`
+}
+
+export function RecentMatchSummary({
+  summary,
+  leagueSlug,
+}: {
+  summary: MatchSummary
+  leagueSlug: string
+}) {
+  return (
+    <div className="bg-card px-4 py-2 shadow-card">
+      <div className="text-lg">최근매치</div>
+      <div className="mt-4 flex">
+        <WinRateDonut rate={summary.win_rate} />
+        <div className="ml-5 flex min-h-40 items-center justify-center">
+          <div>
+            <div>
+              {formatCount(summary.recent_count)}전 {formatCount(summary.win)}승{' '}
+              {formatCount(summary.lose)}패 ({formatRate(summary.win_rate)}%)
+            </div>
+            <div className="mt-2">{streakText(summary.streak)}</div>
+          </div>
+        </div>
+        {/*
+          원본은 `h-40` 고정이지만, 최근 20전에서 만난 상대 클랜 수가 많으면 넘쳐서
+          아래 매치 카드와 겹친다(실제로 겹치는 것을 확인). 최소 높이로 바꿔 늘어나게 한다.
+          원본 표본(20전 / 상대 3클랜)에서는 렌더 결과가 동일하다.
+        */}
+        <div className="ml-20 flex min-h-40 items-center border-l-2 border-l-divider px-20">
+          <div>
+            {summary.opponents.length === 0 ? (
+              <div className="text-meta">상대 전적이 없습니다.</div>
+            ) : (
+              summary.opponents.map((entry) => (
+                <div key={entry.clan.id} className="flex items-center py-0.5 text-sm">
+                  <span className="mr-1 text-meta">vs</span>
+                  <Link
+                    href={`/league/${leagueSlug}/clan/${entry.clan.slug}`}
+                    className="inline-flex items-center"
+                  >
+                    <ClanMark
+                      mark={entry.clan.mark}
+                      size="xs"
+                      className="mr-1"
+                      alt={entry.clan.name}
+                    />
+                    <span className="max-w-[100px] truncate">{entry.clan.name}</span>
+                  </Link>
+                  <span className="ml-2">
+                    {formatCount(entry.win + entry.lose)}전 {formatCount(entry.win)}승{' '}
+                    {formatCount(entry.lose)}패 ({formatRate(entry.win_rate)}%)
+                  </span>
+                  <span className="ml-2 text-meta">
+                    - 킬뎃: <span className={rateClass(entry.kd_rate)}>{formatRate(entry.kd_rate)}%</span>
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------- 사이드 패널 --- */
+
+function Divider() {
+  return <div className="my-2 border-t border-t-side-line" />
+}
+
+function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between py-2 text-3xl">
+      <div>{label}</div>
+      <div className="flex items-center">{children}</div>
+    </div>
+  )
+}
+
+export interface PlayerStatSidebarProps {
+  rating: number
+  placement: boolean
+  win: number
+  lose: number
+  winRate: number
+  kill: number
+  death: number
+  kdRate: number
+  killPerMatch: number
+  mvpCount: number
+  rank: number | null
+  rankCount: number | null
+  clan: { slug: string; name: string } | null
+}
+
+export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
+  return (
+    <div className="bg-side px-3 py-3 text-line shadow-card">
+      <div>상세정보</div>
+      <Divider />
+      <Stat label="래더">
+        <span className={ratingClass(props.rating)}>
+          {props.placement ? '배치고사' : `${props.rating}점`}
+        </span>
+      </Stat>
+      <Divider />
+      <Stat label="승률">
+        <span className="mr-2 text-base">
+          {formatCount(props.win)}승 {formatCount(props.lose)}패
+        </span>
+        <span className={rateClass(props.winRate)}>{formatRate(props.winRate)}%</span>
+      </Stat>
+      <Divider />
+      <Stat label="킬뎃">
+        <span className="mr-2 text-base">
+          {formatCount(props.kill)}킬 {formatCount(props.death)}데스
+        </span>
+        <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
+      </Stat>
+      <Divider />
+      <Stat label="평균킬">
+        <span className="mr-2 text-base">판당</span>
+        {props.killPerMatch.toFixed(1)}킬
+      </Stat>
+      <Divider />
+      <Stat label="MVP">{formatCount(props.mvpCount)}회</Stat>
+      <Divider />
+      <Stat label="랭킹">
+        {props.rank === null ? (
+          '배치고사'
+        ) : (
+          <>
+            <span className="mr-2 text-base">{formatCount(props.rankCount ?? 0)}명중</span>
+            {formatCount(props.rank)}위
+          </>
+        )}
+      </Stat>
+      <Divider />
+      <Stat label="소속">
+        <span className="text-base">
+          {props.clan ? <Link href={`/clan/${props.clan.slug}`}>{props.clan.name}</Link> : '-'}
+        </span>
+      </Stat>
+    </div>
+  )
+}
+
+export function TeammateTable({
+  title,
+  teammates,
+}: {
+  /** 개인 기록실: `최근 같이한 플레이어` / 클랜 기록실: `최근 클랜전 플레이어` */
+  title: string
+  teammates: readonly TeammateStat[]
+}) {
+  return (
+    <div className="mt-2 bg-card shadow-card">
+      <div className="px-3 py-2 text-lg">{title}</div>
+      <div className="flex items-center border-b border-b-line px-3 py-1 text-sm text-meta">
+        <div className="flex-grow">닉네임</div>
+        <div className="w-14 text-right">승</div>
+        <div className="w-14 text-right">패</div>
+        <div className="w-16 text-right">승률</div>
+      </div>
+      {teammates.length === 0 ? (
+        <div className="px-3 py-4 text-center text-sm text-meta">기록이 없습니다.</div>
+      ) : (
+        teammates.map((entry) => (
+          <div
+            key={entry.player.id}
+            className="flex items-center border-b border-b-line px-3 py-1 text-sm last:border-b-0"
+          >
+            <div className="flex-grow truncate">
+              <Link href={`/player/${entry.player.id}`}>{entry.player.name}</Link>
+            </div>
+            <div className="w-14 text-right">{formatCount(entry.win)}승</div>
+            <div className="w-14 text-right">{formatCount(entry.lose)}패</div>
+            <div className={`w-16 text-right ${rateClass(entry.win_rate)}`}>
+              {formatRate(entry.win_rate)}%
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}

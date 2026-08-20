@@ -13,9 +13,13 @@
  * 배경·전경 2장을 같은 자리에 겹쳐 그린다. 기본 크기는 2rem(28px).
  */
 
-export type ClanMarkSize = 'sm' | 'md' | 'lg' | 'max'
+export type ClanMarkSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'max'
 
 const SIZE: Record<ClanMarkSize, string> = {
+  /** 매치 카드 라인업 (원본 w-4) */
+  xxs: 'w-4 h-4',
+  /** 매치 카드 클랜 (원본 w-6) */
+  xs: 'w-6 h-6',
   /** 소속 표시 등 (원본 w-7) */
   sm: 'w-7 h-7',
   /** 목록·표 기본 (원본 w-8) */
