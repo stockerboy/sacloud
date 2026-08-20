@@ -76,7 +76,8 @@ export const LeaguePlayer = z.object({
   death: Count,
   assist: Count,
   headshot: Count,
-  kd_rate: z.number().min(0),
+  /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
+  kd_rate: Percent,
   kill_per_match: z.number().min(0),
   mvp_count: Count,
   placement: z.boolean(),
@@ -96,7 +97,8 @@ export const LeaguePlayerSeason = z.object({
   win_rate: Percent,
   kill: Count,
   death: Count,
-  kd_rate: z.number().min(0),
+  /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
+  kd_rate: Percent,
 })
 export type LeaguePlayerSeason = z.infer<typeof LeaguePlayerSeason>
 
@@ -135,7 +137,8 @@ export const PlayerRankRow = z.object({
   win: Count,
   lose: Count,
   win_rate: Percent,
-  kd_rate: z.number().min(0),
+  /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
+  kd_rate: Percent,
   kill_per_match: z.number().min(0),
   rating: Rating,
 })

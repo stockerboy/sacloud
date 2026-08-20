@@ -33,11 +33,14 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/web/**/*.{ts,tsx}'],
+    // packages/ui 도 Next 컴포넌트(next/link, next/navigation)를 쓰므로 같은 규칙을 적용한다
+    files: ['apps/web/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}'],
     plugins: { '@next/next': nextPlugin },
     rules: {
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
+      // App Router 전용 저장소라 pages 디렉터리 검사는 의미가 없다
+      '@next/next/no-html-link-for-pages': 'off',
     },
   },
   {

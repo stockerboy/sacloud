@@ -20,6 +20,7 @@ import {
 } from '@sacloud/contract'
 import { buildDataset, dataset, FIXTURE_SIZE, PLACEMENT_MATCH_COUNT } from '../dataset'
 import * as store from '../store'
+import { kdRate, winRate } from '../derive'
 
 /**
  * "생성된 Mock 픽스처 전량이 Zod 파싱을 통과한다" (Phase 0 완료 조건).
@@ -244,5 +245,36 @@ describe('커서 페이지네이션', () => {
     const all = store.getPlayerRanks(league.id, null, 100000)
     expect(all?.cursor.next).toBeNull()
     expect(all?.cursor.prev).toBeNull()
+  })
+})
+
+describe('파생값 계산 규칙 (원본 실측 확정)', () => {
+  it('킬뎃은 킬/(킬+데스) 백분율이다 — 원본 1위 플레이어로 검증', () => {
+    // 원본 관측: 17,855킬 17,422데스 → 킬뎃 50.6%
+    expect(kdRate(17855, 17422)).toBe(50.6)
+    // 킬과 데스가 같으면 정확히 50%
+    expect(kdRate(100, 100)).toBe(50)
+    // 데스가 0이면 100%
+    expect(kdRate(10, 0)).toBe(100)
+    // 둘 다 0이면 0
+    expect(kdRate(0, 0)).toBe(0)
+  })
+
+  it('승률은 승/(승+패) 백분율이다 — 원본 1위 플레이어로 검증', () => {
+    // 원본 관측: 1,302승 851패 → 60.5%
+    expect(winRate(1302, 851)).toBe(60.5)
+    expect(winRate(0, 0)).toBe(0)
+  })
+
+  it('생성된 픽스처의 킬뎃이 0~100 범위 안에 있다', () => {
+    const ranks = store.getPlayerRanks(dataset.leagues[0]!.id, null, 20)
+    expect(ranks).not.toBeNull()
+    expect(ranks!.items.length).toBeGreaterThan(0)
+    for (const row of ranks!.items) {
+      expect(row.kd_rate).toBeGreaterThanOrEqual(0)
+      expect(row.kd_rate).toBeLessThanOrEqual(100)
+      expect(row.win_rate).toBeGreaterThanOrEqual(0)
+      expect(row.win_rate).toBeLessThanOrEqual(100)
+    }
   })
 })

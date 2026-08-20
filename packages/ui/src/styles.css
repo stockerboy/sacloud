@@ -42,6 +42,42 @@
   --color-input-fg: #4a4a4a;
   --color-input-placeholder: #9ca3af;
 
+  /* --- Phase 3 (리그 · 랭킹) 실측값 --- */
+  /* 리그 서브내비 배경 (원본 brownGray-900) */
+  --color-subnav: #292929;
+  /* 랭킹 테이블 행 배경 (원본 gray-light2) */
+  --color-row: #ececec;
+  /* 테이블 테두리 (원본 gray-300) */
+  --color-line: #d1d5db;
+  /* 본문 강조 글자 (원본 textBlack) */
+  --color-text-strong: #363636;
+  /* `더 불러오기` 버튼 (원본 indigo-500) */
+  --color-more: #6366f1;
+  /* 공식 배지 (원본 coolGray-800 + yellow-500 점) */
+  --color-badge: #1f2937;
+  --color-badge-dot: #f59e0b;
+  /* 탭 선택 상태 (원본 item-active: gray-700 배경 + gray-100 글자) */
+  --color-tab-active: #374151;
+  --color-tab-active-fg: #f3f4f6;
+  /* 리그 소개 본문 (원본 coolGray-600 / coolGray-900) */
+  --color-lede: #4b5563;
+  /* 리그홈 헤더 배경 (원본 purple-950) */
+  --color-league-header: #1a0533;
+  /* 즐겨찾기 버튼 (원본 amber-400) */
+  --color-favorite: #fbbf24;
+
+  /*
+   * 승률·킬뎃 색 등급 (원본 실측)
+   * 50 미만 = 기본 / 50~55 / 55~60 / 60~65 / 65 이상
+   * `rate-high-4`(노랑)는 어두운 배경용, 밝은 배경에서는 `rate-high-4-light`(빨강)가 쓰인다.
+   */
+  --color-rate-low: #ff3d3d;
+  --color-rate-1: #02ab18;
+  --color-rate-2: #f2711c;
+  --color-rate-3: #2185d0;
+  --color-rate-4: #ffe30b;
+  --color-rate-4-light: #ff3d3d;
+
   /* 아래 4개는 Phase 0에서 정한 임시값이다. 해당 화면(Phase 2~4)에서 실측해 교체한다 [미확인] */
   --color-win: #1f6feb;
   --color-lose: #d1373f;

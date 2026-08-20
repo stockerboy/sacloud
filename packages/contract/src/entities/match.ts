@@ -24,7 +24,8 @@ export const MatchPlayerStat = z.object({
   assist: Count,
   headshot: Count.nullable(),
   damage: Count.nullable(),
-  kd_rate: z.number().min(0),
+  /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
+  kd_rate: Percent,
   damage_percent: Percent.nullable(),
   headshot_percent: Percent.nullable(),
   weapon: Weapon,
@@ -98,7 +99,8 @@ export const OpponentSummaryEntry = z.object({
   win: Count,
   lose: Count,
   win_rate: Percent,
-  kd_rate: z.number().min(0),
+  /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
+  kd_rate: Percent,
 })
 export type OpponentSummaryEntry = z.infer<typeof OpponentSummaryEntry>
 

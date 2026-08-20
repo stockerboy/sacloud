@@ -13,10 +13,18 @@ export function winRate(win: number, lose: number): number {
   return Math.round((win / total) * 1000) / 10
 }
 
-/** 킬뎃 — 소수점 2자리. 데스가 0이면 킬 수를 그대로 쓴다. */
+/**
+ * 킬뎃 % — `킬 / (킬 + 데스) × 100`, 소수점 1자리.
+ *
+ * **원본 실측으로 확정 (2026-08-20).** 킬÷데스 비율이 아니라 **백분율**이다.
+ * 근거: 서플라이공식리그 1위 플레이어 `17,855킬 17,422데스 → 킬뎃 50.6%`
+ *       → 17855 / (17855 + 17422) = 0.5061 → 50.6 ✓
+ * 승률과 같은 색 등급(50/55/60/65)을 쓰는 것도 백분율이기 때문이다.
+ */
 export function kdRate(kill: number, death: number): number {
-  if (death === 0) return Math.round(kill * 100) / 100
-  return Math.round((kill / death) * 100) / 100
+  const total = kill + death
+  if (total === 0) return 0
+  return Math.round((kill / total) * 1000) / 10
 }
 
 /** 평균킬 — 소수점 2자리 */
