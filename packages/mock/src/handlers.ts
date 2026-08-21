@@ -87,6 +87,9 @@ const resolvers: Record<EndpointKey, Resolver> = {
   authPasswordForget: () => ok({ ok: true }),
   authPasswordReset: () => ok({ ok: true }),
   authEmailVerify: () => ok({ ok: true }),
+  // Mock 세션은 localStorage에 있어서 서버가 지울 것이 없다.
+  // 실제 서버는 httpOnly 쿠키를 지운다.
+  authLogout: () => ok({ ok: true }),
 
   meShow: () => {
     const user = store.currentUser()

@@ -19,6 +19,7 @@
     "db:start": "node scripts/db-local.mjs start",
     "db:stop": "node scripts/db-local.mjs stop",
     "db:reset": "node scripts/db-local.mjs reset",
+    "compare": "pnpm --filter @sacloud/web exec tsx scripts/compareMockLive.ts",
     "db:seed": "pnpm --filter @sacloud/db seed",
     "db:check": "pnpm --filter @sacloud/db exec tsx seed/check.ts",
     "db:generate": "pnpm --filter @sacloud/db generate",

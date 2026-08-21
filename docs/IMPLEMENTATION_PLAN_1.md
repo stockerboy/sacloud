@@ -42,7 +42,7 @@ Mock 서버와 실제 서버가 동일한 스키마를 구현하므로, Phase 7�
 | 스키마/검증 | **Zod** | API 계약을 타입과 런타임 검증에 동시에 재사용. Mock↔실서버 계약 일치를 강제 |
 | DB | **PostgreSQL** | 랭킹 집계·시즌 스냅샷·복합 인덱스가 많다 |
 | ORM | **Prisma** | 마이그레이션 관리와 타입 안전성. 팀 규모가 작을 때 유지보수 비용이 가장 낮음 |
-| 인증 | **Auth.js (NextAuth v5)** Credentials + 이메일 인증 | 원본이 이메일/비밀번호 단일 방식. OAuth 미사용 |
+| 인증 | ~~Auth.js (NextAuth v5)~~ → **`jose`(JWT) + `bcryptjs` 직접 구현** | 원본이 이메일/비밀번호 단일 방식. OAuth 미사용.<br>**Phase 7에서 변경됨** — Phase 0 계약이 `access_token`/`refresh_token` 자체 토큰 흐름을 정의해 NextAuth 세션 모델과 부딪힌다. 상세와 사유는 `docs/DECISIONS.md` D-025 |
 | 에디터 | **Tiptap** + `sanitize-html` | 원본 Quill과 동등한 리치텍스트. 저장 시 서버 측 화이트리스트 새니타이즈 필수 |
 | 백그라운드 작업 | **별도 Node 워커 프로세스 + BullMQ(Redis)** | 수집·랭킹 배치는 웹 요청과 수명주기가 다르다. 서버리스 타임아웃에 묶이면 안 됨 |
 | 캐시 | **Redis** | 랭킹 캐시(1시간), rate limit, 작업 큐 겸용 |

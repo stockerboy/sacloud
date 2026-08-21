@@ -157,9 +157,10 @@ model Clan {
   /// 3rd.supply의 클랜 ID
   sourceClanId String?
 
-  master      Player?      @relation("ClanMaster", fields: [masterPlayerId], references: [id], onDelete: SetNull)
-  members     Player[]     @relation("ClanMembers")
-  leagueClans LeagueClan[]
+  master        Player?        @relation("ClanMaster", fields: [masterPlayerId], references: [id], onDelete: SetNull)
+  members       Player[]       @relation("ClanMembers")
+  leagueClans   LeagueClan[]
+  leaguePlayers LeaguePlayer[] @relation("LeaguePlayerClan")
   invitations LeagueInvitation[]
 
   @@unique([sourceClanId])
@@ -335,6 +336,7 @@ model LeaguePlayer {
 
   league      League                   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   player      Player                   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  clan        Clan?                    @relation("LeaguePlayerClan", fields: [clanId], references: [id], onDelete: SetNull)
   weaponStats LeaguePlayerWeaponStat[]
   seasonStats LeaguePlayerSeason[]
 

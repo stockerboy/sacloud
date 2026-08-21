@@ -193,6 +193,64 @@ describe('픽스처가 계약 스키마를 만족한다', () => {
       for (const comment of store.listComments(board.id)) Comment.parse(comment)
     }
   })
+
+  /**
+   * 목록은 최신순이고 정렬 키는 id다. 작성시간이 id와 어긋나면
+   * 화면의 `작성시간` 열이 내림차순으로 보이지 않고, 실제 DB(createdAt 정렬)와도
+   * 순서가 달라진다. 실제로 어긋나 있던 것을 Phase 7에서 고쳤다.
+   */
+  it('게시글 작성시간이 id 순서와 일치한다 (목록이 최신순으로 보인다)', () => {
+    const times = dataset.boards.map((board) => Date.parse(board.createdAt))
+    for (let index = 1; index < times.length; index += 1) {
+      expect(times[index]!, `id가 큰 글이 더 최신이어야 한다 (index ${index})`).toBeGreaterThanOrEqual(
+        times[index - 1]!,
+      )
+    }
+
+    const listed = store.listBoards({ category: 'free', cursor: null, size: 500 }).items
+    for (let index = 1; index < listed.length; index += 1) {
+      expect(Date.parse(listed[index]!.created_at)).toBeLessThanOrEqual(
+        Date.parse(listed[index - 1]!.created_at),
+      )
+    }
+  })
+
+  it('댓글 작성시각이 글 이후이고 기준 시각을 넘지 않는다', () => {
+    const now = Date.parse(dataset.now)
+    const boardTime = new Map(dataset.boards.map((board) => [board.id, Date.parse(board.createdAt)]))
+    for (const comment of dataset.comments) {
+      const at = Date.parse(comment.createdAt)
+      expect(at).toBeLessThanOrEqual(now)
+      expect(at).toBeGreaterThanOrEqual(boardTime.get(comment.boardId)!)
+    }
+  })
+
+  /** 댓글 목록은 오래된 순으로 보여준다. id 순서와 시각 순서가 맞아야 한다. */
+  it('같은 글의 댓글은 id 순서와 시각 순서가 일치한다', () => {
+    const byBoard = new Map<string, number[]>()
+    for (const comment of dataset.comments) {
+      const list = byBoard.get(comment.boardId) ?? []
+      list.push(Date.parse(comment.createdAt))
+      byBoard.set(comment.boardId, list)
+    }
+    for (const [boardId, times] of byBoard) {
+      for (let index = 1; index < times.length; index += 1) {
+        expect(times[index]!, `글 ${boardId}의 댓글 시각이 역전됐다`).toBeGreaterThanOrEqual(
+          times[index - 1]!,
+        )
+      }
+    }
+  })
+
+  /** 대댓글은 부모보다 나중이어야 한다 */
+  it('대댓글은 부모 댓글보다 나중이다', () => {
+    const byId = new Map(dataset.comments.map((comment) => [comment.id, comment]))
+    for (const comment of dataset.comments) {
+      if (!comment.parentId) continue
+      const parent = byId.get(comment.parentId)!
+      expect(Date.parse(comment.createdAt)).toBeGreaterThanOrEqual(Date.parse(parent.createdAt))
+    }
+  })
 })
 
 describe('결측 처리 (알수없음)', () => {

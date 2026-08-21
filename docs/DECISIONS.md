@@ -273,6 +273,45 @@ CDP 평가가 45초 타임아웃 나던 것("renderer frozen")도 같은 원인�
 - 폼 검증 같은 순수 로직은 브라우저 대신 **단위 테스트로 고정**한다
   (`signup-rules.test.ts`, `league-create.test.ts`).
 
+### D-026. 라우트 세그먼트 이름을 계약과 1:1로 맞추지 않는다 (2026-08-21)
+
+계약은 같은 자리에 서로 다른 이름을 쓴다.
+
+```
+/leagues/:leagueSlug          /leagues/:leagueId/ranks/clans
+/leagues/:leagueSlug/clans/:clanSlug/show
+/leagues/:leagueSlug/clans/:leagueClanId/division
+```
+
+Next는 **한 세그먼트에 서로 다른 이름의 동적 라우트를 둘 수 없다.**
+그래서 파일 경로에서는 이름을 하나로 통일하고(`[league]`, `[clan]`),
+**핸들러마다 계약대로 슬러그인지 ID인지 해석**한다. 각 파일 주석에 어느 쪽인지 적어 둔다.
+
+외부에서 보이는 URL은 계약 그대로다. 바뀐 것은 우리 저장소의 폴더 이름뿐이다.
+
+### D-025. Auth.js(NextAuth)를 쓰지 않고 직접 구현한다 (2026-08-21)
+
+**계획 문서(`docs/IMPLEMENTATION_PLAN_1.md` 1장)와 어긋나는 결정이다.** 사용자 확인이 필요하다.
+
+계획은 인증에 Auth.js(NextAuth v5)를 적었다. 그런데 Phase 0에서 확정한 계약이
+자체 토큰 흐름을 정의하고 있다.
+
+```
+POST /auth/login  → { access_token, refresh_token, expires_at, user }
+POST /auth/token  → 토큰 갱신
+```
+
+NextAuth의 세션 모델(자체 쿠키 + `/api/auth/*` 예약 경로)과 정면으로 부딪힌다.
+NextAuth를 얹으면 계약을 맞추려고 감싸는 코드가 더 늘어난다.
+
+→ `jose`(JWT) + `bcryptjs`로 직접 구현했다.
+- 액세스 토큰: JWT 1시간. **httpOnly 쿠키로도 내려보낸다** (스크립트로 못 읽는다)
+- 리프레시 토큰: 불투명 문자열 30일. **평문을 저장하지 않고 해시만** DB에 둔다. 갱신 시 폐기(rotation)
+- 계약이 본문에도 토큰을 요구하므로 본문에도 넣는다
+
+로그아웃은 계약에 없었다(원본에 엔드포인트가 있는지 `[미확인]`). 세션이 httpOnly 쿠키라
+서버가 지워야 해서 `authLogout`을 **계약에 `designed`로 추가**했다.
+
 ### D-024. 닉네임 유일 제약을 걸지 않는다 (2026-08-21)
 
 Phase 7 스키마 초안에서 `User.nickname`에 `@unique`를 걸었다가 **되돌렸다.**

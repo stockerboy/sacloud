@@ -205,9 +205,21 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
     mapIds: rng.sample(maps, rng.int(3, 6)).map((map) => map.id),
     playerLimits: rng.chance(0.5) ? [5, 6] : [5],
     status: 1,
-    createdAt: toKstIso(NOW_EPOCH - rng.int(200, 900) * DAY),
+    // 아래에서 정렬된 값으로 다시 채운다
+    createdAt: '',
     season: CURRENT_SEASON,
   }))
+
+  /**
+   * 리그 목록의 순서 기준은 `[미확인]`이라 **개설이 오래된 순**으로 뒀다.
+   * 개설 시각이 id 순서와 어긋나면 Mock(배열 순서)과 실제 DB(`createdAt` 정렬)가
+   * 서로 다른 순서를 내놓는다. 시각만 정렬해 다시 나눠준다.
+   */
+  const drawnLeagueTimes = leagues.map(() => NOW_EPOCH - rng.int(200, 900) * DAY)
+  const orderedLeagueTimes = [...drawnLeagueTimes].sort((a, b) => a - b)
+  leagues.forEach((league, index) => {
+    league.createdAt = toKstIso(must(orderedLeagueTimes[index], '리그 개설시각 배치 실패'))
+  })
 
   // 리그 관리자는 서든어택 계정이 연동되어 있어야 한다 (관측된 제약)
   leagues.forEach((league, index) => {
@@ -220,6 +232,8 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
   const leaguePlayers: MockLeaguePlayer[] = []
   let leagueClanSerial = 0
   let leaguePlayerSerial = 0
+  /** 참여 시각도 뽑아만 두고 뒤에서 리그별로 정렬해 다시 나눠준다 (게시글·댓글과 같은 이유) */
+  const drawnJoinTimes: number[] = []
 
   leagues.forEach((league, leagueIndex) => {
     const spec = must(leagueSpecs[leagueIndex], '리그 스펙이 없습니다')
@@ -239,8 +253,10 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
         lose: 0,
         placement: true,
         status: 1,
-        joinedAt: toKstIso(NOW_EPOCH - rng.int(60, 400) * DAY),
+        // 아래에서 정렬된 값으로 다시 채운다
+        joinedAt: '',
       })
+      drawnJoinTimes.push(NOW_EPOCH - rng.int(60, 400) * DAY)
 
       clan.playerIds.forEach((playerId) => {
         leaguePlayerSerial += 1
@@ -262,6 +278,31 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
       })
     })
   })
+
+  /**
+   * 리그별로 **id가 작을수록 먼저 참여**한 것이 되도록 참여 시각을 재배치한다.
+   *
+   * 리그 목록은 대표 클랜 3개를 보여주는데(관측), 선정 규칙은 `[미확인]`이라
+   * "먼저 참여한 순"으로 뒀다. 참여 시각이 id 순서와 어긋나 있으면
+   * Mock(배열 순서)과 실제 DB(`joinedAt` 정렬)가 서로 다른 클랜을 고르게 된다.
+   */
+  const leagueClanIndexesByLeague = new Map<string, number[]>()
+  leagueClans.forEach((leagueClan, index) => {
+    const list = leagueClanIndexesByLeague.get(leagueClan.leagueId) ?? []
+    list.push(index)
+    leagueClanIndexesByLeague.set(leagueClan.leagueId, list)
+  })
+
+  for (const indexes of leagueClanIndexesByLeague.values()) {
+    const ordered = indexes
+      .map((index) => must(drawnJoinTimes[index], '참여 시각 배치 실패'))
+      .sort((a, b) => a - b)
+    indexes.forEach((leagueClanIndex, order) => {
+      must(leagueClans[leagueClanIndex], '참여 클랜 배치 실패').joinedAt = toKstIso(
+        must(ordered[order], '참여 시각 배치 실패'),
+      )
+    })
+  }
 
   const leaguePlayersByLeagueClan = new Map<string, MockLeaguePlayer[]>()
   for (const leaguePlayer of leaguePlayers) {
@@ -497,11 +538,22 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
   const boards: MockBoard[] = []
   const anonAlias = (): string => `${rng.pick(ANON_ALIAS_STEM)}-${rng.int(100, 999)}`
 
+  /**
+   * 작성시간과 편집시간은 뽑아만 두고 **뒤에서 정렬해 다시 나눠준다.**
+   *
+   * 이유: 게시판 목록은 최신순이고 우리 정렬 키는 id다. 그런데 작성시간을 무작위로 주면
+   * id 순서와 시간 순서가 어긋나서 목록의 `작성시간` 열이 내림차순으로 보이지 않는다.
+   * 실제 DB(Phase 7)는 `createdAt` 으로 정렬하므로 mock↔live 순서도 달라진다.
+   * rng를 뽑는 순서는 그대로 두고 **값의 배치만** 바꾼다(다른 필드가 흔들리지 않게).
+   */
+  const drawnTimes: number[] = []
+  const drawnEditOffsets: (number | null)[] = []
+
   for (let index = 0; index < FIXTURE_SIZE.BOARDS; index += 1) {
     const notice = index < 8
     const isAnonymous = !notice && rng.chance(0.45)
     const author = rng.pick(users)
-    const createdAt = NOW_EPOCH - rng.int(5 * 60 * 1000, 90 * DAY)
+    drawnTimes.push(NOW_EPOCH - rng.int(5 * 60 * 1000, 90 * DAY))
 
     boards.push({
       id: String(700000 + index),
@@ -519,12 +571,26 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
       dislikeCount: rng.int(0, 40),
       hasImage: rng.chance(0.3),
       notice,
-      createdAt: toKstIso(createdAt),
-      lastEdited: rng.chance(0.12) ? toKstIso(createdAt + rng.int(60, 3600) * 1000) : null,
+      // 아래에서 정렬된 값으로 다시 채운다
+      createdAt: '',
+      lastEdited: null,
     })
+    drawnEditOffsets.push(rng.chance(0.12) ? rng.int(60, 3600) : null)
   }
 
+  // index(= id)가 클수록 최신이 되도록 시간을 오름차순으로 나눠준다
+  const orderedTimes = [...drawnTimes].sort((a, b) => a - b)
+  boards.forEach((board, index) => {
+    const created = must(orderedTimes[index], '게시글 작성시간 배치 실패')
+    board.createdAt = toKstIso(created)
+    const offset = drawnEditOffsets[index]
+    board.lastEdited = offset == null ? null : toKstIso(created + offset * 1000)
+  })
+
   const comments: MockComment[] = []
+  /** 댓글 작성시각도 뽑아만 두고 뒤에서 글별로 정렬해 다시 나눠준다 (게시글과 같은 이유) */
+  const drawnCommentOffsets: number[] = []
+
   for (let index = 0; index < FIXTURE_SIZE.COMMENTS; index += 1) {
     const board = rng.pick(boards)
     const siblings = comments.filter(
@@ -547,7 +613,45 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
       likeCount: rng.int(0, 40),
       dislikeCount: rng.int(0, 8),
       deleted: rng.chance(0.05),
-      createdAt: toKstIso(Date.parse(board.createdAt) + rng.int(60, 20 * 3600) * 1000),
+      // 아래에서 정렬된 값으로 다시 채운다
+      createdAt: '',
+    })
+    drawnCommentOffsets.push(rng.int(60, 20 * 3600))
+  }
+
+  /**
+   * 같은 글 안에서 **id가 클수록 나중**이 되도록 시각을 재배치한다.
+   *
+   * 댓글 목록은 id 오름차순(= 오래된 순)으로 보여주는데, 시각이 뒤죽박죽이면
+   * 화면의 작성시각이 순서대로 보이지 않는다. 실제 DB(Phase 7)는 `createdAt`으로
+   * 정렬하므로 mock↔live 순서도 달라진다.
+   *
+   * 대댓글은 부모보다 항상 id가 크므로(부모를 기존 형제 중에서만 고른다)
+   * id 순서로 배치하면 부모보다 뒤에 오는 것이 보장된다.
+   *
+   * 글보다 뒤여야 하지만 **기준 시각을 넘어서는 안 된다.**
+   * 넘어가면 목록에 미래 시각이 찍혀 상대시간 표기가 깨진다.
+   */
+  const commentIndexesByBoard = new Map<string, number[]>()
+  comments.forEach((comment, index) => {
+    const list = commentIndexesByBoard.get(comment.boardId) ?? []
+    list.push(index)
+    commentIndexesByBoard.set(comment.boardId, list)
+  })
+
+  const boardCreatedAtEpoch = new Map(
+    boards.map((board) => [board.id, Date.parse(board.createdAt)]),
+  )
+
+  for (const [boardId, indexes] of commentIndexesByBoard) {
+    const base = must(boardCreatedAtEpoch.get(boardId), '댓글의 글을 찾지 못했다')
+    const offsets = indexes
+      .map((index) => must(drawnCommentOffsets[index], '댓글 작성시각 배치 실패'))
+      .sort((a, b) => a - b)
+    indexes.forEach((commentIndex, order) => {
+      const offset = must(offsets[order], '댓글 작성시각 배치 실패')
+      const comment = must(comments[commentIndex], '댓글 배치 실패')
+      comment.createdAt = toKstIso(Math.min(base + offset * 1000, NOW_EPOCH))
     })
   }
 

@@ -120,6 +120,15 @@ export const endpoints = {
     description: '이메일 인증 (화면은 관측, 경로는 자체 설계)',
     response: apiResponse(Ok),
   },
+  authLogout: {
+    method: 'POST',
+    path: '/auth/logout',
+    origin: 'designed',
+    // 원본에 로그아웃 엔드포인트가 있는지는 [미확인]이다(GNB의 `로그아웃` 링크만 관측).
+    // 우리는 세션을 httpOnly 쿠키로 두기 때문에 서버가 지워줘야 한다.
+    description: '로그아웃 — 세션 쿠키 삭제 + 리프레시 토큰 폐기 [자체 설계]',
+    response: apiResponse(Ok),
+  },
 
   /* ------------------------------ 마이페이지 ----------------------------- */
   meShow: {
