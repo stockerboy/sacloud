@@ -1,5 +1,6 @@
 source_player_id,nickname,league_slug,season,division,clan_name,wins,losses,win_rate,kills,deaths,kd,final_rating,final_rank,rank_count,source_url
-500123,리릭,supply,1,1,심연방위대,,,55,,,45,,,,https://3rd.supply/league/supply/player/500123/season
-500123,리릭,supply,2,1,심연방위대,61,39,61,1204,1110,52,1372,8,360,https://3rd.supply/league/supply/player/500123/season
-500123,리릭,supply,3,2,심연방위대,,,58,,,49,"1,082",12,,https://3rd.supply/league/supply/player/500123/season
-,닉네임만있는유저,sanply,7,,,,,47.5,,,50.1,,,,
+285626135,샘플유저A,supply,6,,,967,578,62.6,16875,10605,61.4,,1,6934,https://3rd.supply/league/supply/player/285626135/season
+285626135,샘플유저A,supply,5,,,1729,1232,58.4,30617,21596,58.6,,30,24987,https://3rd.supply/league/supply/player/285626135/season
+285626135,샘플유저A,supply,4,,,,,56.9,,,56.9,,122,29991,https://3rd.supply/league/supply/player/285626135/season
+285626135,샘플유저A,supply,3,,,,,55.8,,,58.1,,31,22018,https://3rd.supply/league/supply/player/285626135/season
+1074574325,샘플유저B,supply,6,,,218,173,55.8,3468,3197,52,,140,6934,https://3rd.supply/league/supply/player/1074574325/season

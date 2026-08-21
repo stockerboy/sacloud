@@ -272,3 +272,52 @@ describe('브라우저 스니펫과 규칙이 어긋나지 않는다', () => {
     expect(Object.keys(HEADER_MAP).length).toBeGreaterThan(0)
   })
 })
+
+/**
+ * 수집기(`collect-snippet.js`)는 5,000페이지를 사람이 도는 도구다.
+ * 파서와 어긋나면 **전부 다시 모아야 한다.** 여기서 막는다.
+ */
+describe('수집기와 규칙이 어긋나지 않는다', () => {
+  const collector = readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'collect-snippet.js'),
+    'utf8',
+  )
+
+  it('같은 CSV 열 목록을 쓴다', () => {
+    for (const column of LEGACY_CSV_HEADER) {
+      expect(collector, `수집기에 ${column} 이 없다`).toContain(`'${column}'`)
+    }
+  })
+
+  it('같은 카드 패턴을 쓴다', () => {
+    for (const pattern of [
+      '시즌\\s*(\\d+)',
+      '명\\s*중',
+      '승\\s*([\\d,]+)\\s*패',
+      '승률\\s*([\\d.]+)',
+      '킬\\s*([\\d,]+)\\s*데스',
+      '킬뎃\\s*([\\d.]+)',
+    ]) {
+      expect(collector, `수집기에 ${pattern} 패턴이 없다`).toContain(pattern)
+    }
+  })
+
+  /** 범위가 서플라이공식리그로 좁혀졌다. 다른 리그를 긁으면 안 된다. */
+  it('서플라이공식리그(supply)만 대상으로 한다', () => {
+    expect(collector).toContain("LEAGUE_SLUG = 'supply'")
+    for (const otherLeague of ['sanply', 'daerule', 'champs']) {
+      expect(collector, `${otherLeague} 가 들어 있다`).not.toContain(otherLeague)
+    }
+  })
+
+  /**
+   * 요청을 새로 보내거나 스스로 페이지를 넘기면 그 순간 **자동 크롤러**가 된다.
+   * 이 도구는 "사람이 연 페이지를 읽기만" 해야 한다 (CLAUDE.md 3-A 5번).
+   */
+  it('네트워크 요청을 보내거나 스스로 이동하지 않는다', () => {
+    expect(collector).not.toMatch(/\bfetch\s*\(/)
+    expect(collector).not.toContain('XMLHttpRequest')
+    expect(collector).not.toContain('sendBeacon')
+    expect(collector).not.toMatch(/location\.(href|assign|replace)\s*=/)
+  })
+})
