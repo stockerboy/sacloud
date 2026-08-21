@@ -118,6 +118,23 @@ async function start({ fresh = false } = {}) {
   console.info(
     `DATABASE_URL="postgresql://${LOCAL_DB.user}:${LOCAL_DB.password}@127.0.0.1:${LOCAL_DB.port}/${LOCAL_DB.database}?schema=public"`,
   )
+  console.info('')
+  console.info('※ 이 프로세스가 살아 있는 동안만 DB가 뜬다.')
+  console.info('  창을 닫거나 Ctrl+C를 누르면 PostgreSQL도 함께 종료되고,')
+  console.info('  API가 500을 반환한다. 개발하는 동안은 이 창을 그대로 둔다.')
+
+  // Ctrl+C로 끊을 때 데이터 디렉터리를 깨끗한 상태로 남긴다
+  const shutdown = async () => {
+    console.info('\nPostgreSQL 정지…')
+    try {
+      await pg.stop()
+    } catch {
+      /* 이미 내려갔으면 무시 */
+    }
+    process.exit(0)
+  }
+  process.on('SIGINT', () => void shutdown())
+  process.on('SIGTERM', () => void shutdown())
 }
 
 async function stop() {

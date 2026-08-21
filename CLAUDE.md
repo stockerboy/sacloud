@@ -261,6 +261,11 @@ pnpm compare          # Mock ↔ 실제 API 응답을 **값까지** 대조 ← �
 
 **개발 시작 순서**: `pnpm db:start` → (최초 1회) `pnpm db:migrate` → `pnpm db:seed` → `pnpm dev:clean`
 
+> **`pnpm db:start`는 켜 두는 명령이다.** 그 프로세스가 살아 있는 동안만 DB가 뜬다.
+> 창을 닫거나 Ctrl+C를 누르면 PostgreSQL도 함께 내려가고 **API가 전부 500**이 된다.
+> API가 갑자기 500이면 `netstat -ano | findstr :5433` 으로 DB부터 확인한다.
+> dev 서버와는 **별도 창**에서 띄운다.
+
 `apps/web/.env.local` 의 `NEXT_PUBLIC_API_MODE` 로 모드를 바꾼다 (`live` / `mock`).
 비밀키는 `.env.local` 에만 두고 **저장소에 넣지 않는다.**
 
