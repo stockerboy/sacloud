@@ -1,6 +1,6 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21. 최종 갱신 2026-08-21 (실응답 소량 검증 완료).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
+**작성 2026-08-21. 최종 갱신 2026-08-21 (Phase 8.1 — D-044 후속 검증 + 적응형 폴링).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 
 ---
@@ -19,7 +19,8 @@
 | 5 게시판 | ✅ 완료 |
 | 6 인증 & 관리 화면 | ✅ 완료 — 여기까지 **M1 (Mock 기반 화면·흐름 복원)** |
 | **7 DB + 실제 API** | ✅ **완료** (2026-08-21 최종 검수 완료) |
-| **8 전적 수집 파이프라인** | 🟨 **파이프라인 완성 + 실응답 검증까지 완료**(호출 15회). 대규모 수집은 **보류** — D-044(상대 팀 미제공) 해결 전까지 의미가 없다 |
+| **8 전적 수집 파이프라인** | ✅ 파이프라인 + 실응답 검증 완료 |
+| **8.1 D-044 검증 + 적응형 폴링** | 🟨 구조 완성. **D-044는 해결되지 않았다**(아래 F장). 대규모 수집 보류 |
 | 9 레이팅/시즌/랭킹 배치 | ⬜ |
 | 10 SSR/SEO/성능/운영 | ⬜ |
 
@@ -61,6 +62,9 @@ pnpm nexon:status                                  # 현재 적재 현황 + 키 
 pnpm nexon:identities --nicknames "닉1,닉2" [--dry-run]
 pnpm nexon:collect --ouid <OUID> | --all-identities [--dry-run] [--limit N]
 pnpm nexon:project [--league <slug>] [--reproject] [--allow-mock-league]
+pnpm nexon:poll --targets N [--detail-limit N] [--modes "폭파미션"]   # 적응형 폴링 (8.1)
+pnpm nexon:report                                  # 티어 분포 + 호출량 계측
+pnpm nexon:manual-refresh --player <playerId>      # 수동 갱신 최우선 표시
 pnpm nexon:refresh [--limit N]                     # 신선도 정책(기본 30일) 재수집
 pnpm nexon:check                                   # 숫자 대조 7항목
 pnpm --filter @sacloud/worker exec tsx src/dev/offlineSmoke.ts   # 네트워크 없이 전 구간 점검
@@ -83,8 +87,9 @@ pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
 - **시드 데이터는 전부 가짜다.** `Match.origin="mock"` / `formulaVersion="mock-fixture"` 로 표시 (D-023)
 - Legacy 테이블은 **현재 비어 있다** (`LegacyPlayerSeason` 0행, `LegacyCollectionJob` 0건)
 - 넥슨 테이블에 **실데이터가 소량 들어 있다** (2026-08-21 실응답 검증분, 닉네임 1명)
-  `RawImport` 11 · `NexonMatch` 698(상세 6) · `NexonMatchParticipant` 37 ·
-  `NexonIdentity` 1(unresolved) · `NexonNickname` 24 · 운영 `Match(origin=nexon)` **0**
+  `RawImport` 14 · `NexonMatch` **2,414**(상세 6) · `NexonMatchParticipant` 37 ·
+  `NexonIdentity` 3(전부 unresolved) · `NexonNickname` 27 · 운영 `Match(origin=nexon)` **0**
+- 마이그레이션 **8개** (`…_nexon_adaptive_polling` 까지)
 
 ### 검수 계정 (로컬 개발 전용, D-033)
 
@@ -106,9 +111,10 @@ pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
 | build | 통과 (37 페이지) |
 | `pnpm db:check` | **18항목 통과** (mock↔실수집 분리 검사 3건 추가) |
 | `pnpm compare` | **25/25 일치** (nullable 확장 후 재확인) |
-| **test** 재검증 | **275 passed / 1 skipped** (실응답 회귀 11건 포함) |
+| **test** 재검증 | **290 passed / 1 skipped** (실응답 11 + 폴링 정책 15 포함) |
 | `pnpm nexon:check` | 7항목 통과 (실데이터 기준) |
-| 오프라인 스모크 | 27항목 통과 (원본→스테이징→투영·멱등성) |
+| 오프라인 스모크 | **41항목 통과** (원본→스테이징→투영·멱등성·적응형 폴링) |
+| `pnpm db:check` (8.1) | **20항목 통과** (폴링 상태 격리 2건 추가) |
 
 > skip 1건은 "개발 서버가 없으면 계약 테스트를 건너뛴다"는 안내용 테스트다.
 > 서버가 떠 있으면 계약 테스트 8건이 돌고 이 1건이 skip된다. 정상이다.
@@ -283,121 +289,60 @@ User-Agent: SACLOUD-legacy-migration/1.0 (operator-authorized; contact: sacloud@
 
 ---
 
-## F. Phase 8 — 넥슨 수집 파이프라인 (2026-08-21 구현)
+## F. Phase 8 / 8.1 — 넥슨 수집 (2026-08-21)
 
-사양: `docs/NEXON_INGEST_SPEC.md` · 결정: `docs/DECISIONS.md` D-034 ~ D-042
+사양: `docs/NEXON_INGEST_SPEC.md` · 결정: `docs/DECISIONS.md` D-034 ~ D-051
 
-### 확정된 수집원 (공식 OpenAPI 스펙 실측)
-
-`https://open.api.nexon.com` · 헤더 `x-nxopen-api-key`
-
-| 경로 | 파라미터 |
-|---|---|
-| `/suddenattack/v1/id` | `user_name` → `ouid` |
-| `/suddenattack/v1/user/basic` | `ouid` |
-| `/suddenattack/v1/match` | `ouid`, **`match_mode` 필수**, `match_type` 선택. 최근 1000건, **커서 없음** |
-| `/suddenattack/v1/match-detail` | `match_id` |
-
-제약: **2025-01-24 이후 데이터만** · 평균 10분 지연 · **ouid 변경 가능** · **최소 30일마다 갱신**
-· **호출 한도 수치 비공개** (추측하지 않는다)
-
-### 넥슨이 주지 않는 것 — 전부 `null`
-
-무기 · 플레이시간 · 종료시각 · 선공진영 · MVP · 탈주 · 참가자 ouid(닉네임만) · 클랜 slug.
-`false`를 기본값으로 쓰지 않는다 (D-034). 스키마·계약·UI를 nullable로 넓혔다.
-
-### 흐름 (고정)
+### 파이프라인 (완성 · 실데이터로 검증됨)
 
 ```
-Nexon 응답
-  → RawImport            append-only. 같은 내용이면 fetchCount만 증가, 달라지면 새 행 (D-039)
-  → normalize            packages/nexon (순수 함수)
-  → NexonMatch / NexonMatchParticipant     스테이징
-  → validate
-  → projection rule      리그·맵·인원·클랜 소속·참가자 해석·승패 판정
-  → Match / MatchPlayerStat
+Nexon 응답 → RawImport(append-only) → normalize → NexonMatch/NexonMatchParticipant
+          → validate → projection rule → Match / MatchPlayerStat
 ```
 
-**넥슨 응답이 운영 `Match`에 바로 들어가는 경로는 없다.**
+- 신원은 ouid·닉네임 어느 쪽으로도 자동 병합하지 않는다 (D-036)
+- 넥슨이 주지 않는 값(무기·플레이시간·종료시각·선공·MVP·탈주)은 전부 `null` (D-034)
+- 실제 응답은 스펙과 두 가지가 달랐다: 클랜명 필드가 `guild_name`(D-043), **양 팀 미제공**(D-044)
 
-### 신원 처리 (자동 병합 금지)
+### ★ D-044 — 아직 **해결되지 않았다** (최대 BLOCKER)
 
-- `NexonIdentity.status` = `unresolved`(기본) · `active` · `superseded` · `conflicted`
-- ouid를 알아낸 것과 **누구인지 아는 것은 다르다.** 기본은 `unresolved`
-- 닉네임 일치·ouid 변경 의심은 `NexonIdentityCandidate`(open)로만 남긴다. **자동 승인 없음**
-- 참가자 해석은 `active` + `playerId` 신원만 근거로 쓰고, 둘 이상이면 `ambiguous`로 두고 보류
-- `Player.nexonOuid`는 비권위 캐시
+후속 검증(Phase 8.1)에서 확인한 것:
 
-### 멱등성
-
-| 단계 | 키 |
+| 검증 | 결과 |
 |---|---|
-| 원본 | `RawImport(source, endpoint, sourceId, migrationVersion, contentHash)` |
-| 스테이징 | `NexonMatch(source, sourceMatchId)` · `NexonMatchParticipant(nexonMatchId, slot)` |
-| 도메인 | `Match(origin, sourceMatchId)` · `MatchPlayerStat(matchId, playerId)` |
-| 작업 | `ImportJob(source, jobKey, migrationVersion)` |
+| 같은 `match_id` 재호출 (3건) | **응답이 완전히 동일**(contentHash 일치). 새 행 없이 `fetchCount`만 증가 |
+| 다른 참가자의 목록에 같은 경기가 있는가 | **있다.** 그 사람의 kill/death/assist·승패를 준다 (상세 값과 일치) |
+| 상대 팀 전원 확보 | **불가.** 상세가 상대 닉네임을 안 주므로 모르는 사람은 조회조차 못 한다 |
 
-체크포인트 단위는 `nexon:matchlist:<ouid>:<mode>` (넥슨에 커서가 없다). `--resume`은 `done`을 건너뛴다.
+분류: **CASE 1**(multi-OUID 재조회는 의미 없음) + **조건부 CASE 3**(우리가 이미 아는 사람만 보완 가능).
 
-### 오류 처리
+부수 발견: 닉네임으로 조회한 계정이 그 경기의 그 사람이 아닌 사례를 실제로 만났다(`혀반샷`).
+D-036(닉네임 자동 병합 금지)이 실데이터로 확인된 셈이다.
 
-`403`·키 오류 → **전체 중단**(우회하지 않는다) / `429` → `Retry-After` + 지수 백오프 + **자동 감속** /
-`5xx`·타임아웃 → 재시도 / `400`·계약 위반 → 재시도 없이 `ImportFailure` 기록.
+### 적응형 폴링 (Phase 8.1 신규)
 
-### 실응답 검증 결과 (2026-08-21 · 닉네임 1명 · 호출 15회)
+- `NexonPollState` — 계정별 tier/주기/다음 조회 시각/연속 빈 조회/수동 갱신 요청
+- 티어: `hot` 30분 · `warm` 3시간 · `cold` 1일 · `dormant` 7일 (전부 `NEXON_POLL_*` 설정값)
+- 우선순위: 수동 갱신 > hot > warm > cold > dormant, 같으면 오래 기다린 순
+- 크게 밀린 대상은 우선순위를 올려 **굶지 않게** 한다
+- 이미 상세를 가진 경기는 다시 부르지 않는다 (D-050). 신선도 기한만 예외
+- 목록에서 얻은 개인 기록은 `NexonMatchObservation`에 출처와 함께 쌓는다 (D-048)
+- 실행마다 호출량을 `NexonPollRun`에 남긴다 → `pnpm nexon:report`
 
-전부 성공했고 429·403은 한 번도 없었다. 테스트 키(`test_`)로 서든어택 API가 **정상 호출된다.**
+절감 계산: 고정 전수(30분·4모드·5,000명) 96만 호출/일 → 적응형 약 7.9만 호출/일(가정 분포).
+**분포는 가정이며 실제 값은 `NexonPollRun`으로 확인한다.**
 
-| 확인 | 결과 |
-|---|---|
-| `/id` | 200. ouid는 **32자리 16진수** |
-| `/match` | 200. 모드별 53 / 1 / 644 / 0건 (2025-02-10 ~ 2026-07-16) |
-| `/match-detail` | 200 (6건 조회) |
-| `match_id` | **18자리 숫자** — 698건 전부 |
-| `date_match` | 밀리초 포함 UTC |
-| RawImport | 재수집 시 새 행이 생기지 않고 `fetchCount`만 2로 올랐다 (append-only 동작 확인) |
-| 저장된 요청 파라미터 | API 키 없음 |
+### 실호출 누계 (2026-08-21)
 
-**스펙과 달랐던 것 (실제 응답 기준으로 수정 완료)**
-
-1. 참가자 클랜명 필드가 `clan_name`이 아니라 **`guild_name`** (D-043)
-2. **한 경기 응답에 양 팀이 함께 오지 않는다** (D-044) — 아래 참조
-
-### D-044 — Phase 9 선결 과제
-
-실측 5경기에서 상대 팀 라인업이 온 적이 한 번도 없다.
-승리 팀 전원 + (조회 대상이 졌으면) 본인 1명만 온다. 원인은 `[미확인]`.
-
-그래서 **클랜 vs 클랜 경기를 한 사람의 조회만으로 재구성할 수 없다.**
-우리 투영 규칙이 틀린 게 아니라 입력이 부족한 것이며, 실데이터 투영은 0건이 정상이다.
-
-해결 후보(전부 미검증): ① 같은 경기를 양쪽 클랜원 여러 명으로 조회해 합치기
-② 넥슨에 문의 ③ 클랜 단위 조회 수단 확보.
-
-### 실주행 명령 (그대로 재현 가능)
-
-```bash
-pnpm nexon:status                                       # API 키: 설정됨 확인
-pnpm nexon:identities --nicknames "<닉>" --dry-run       # 요청 0건
-pnpm nexon:identities --nicknames "<닉>"                 # /id 1회
-pnpm nexon:collect --all-identities --limit 1           # /match 4회 + 상세 1회
-pnpm nexon:collect --all-identities --resume --type "퀵매치 클랜전" --limit 2   # 상세만
-pnpm nexon:collect --all-identities --resume --match-id <ID>                  # 특정 경기 1건
-pnpm --filter @sacloud/worker exec tsx src/dev/exportFixtures.ts --source-id <ID>
-pnpm nexon:status && pnpm nexon:check
-```
-
-### 사고 기록 (D-045)
-
-`offlineSmoke.ts`가 실데이터 200건을 덮어썼다. **원본을 버리지 않아 전부 복구했다.**
-이후 `runCollect`/`runProject`에 대상 범위 인자를 강제해 재발을 막았다.
+Phase 8 검증 15회 + Phase 8.1 검증 7회 = **총 22회**. 429·403은 한 번도 없었다.
 
 ### 남은 BLOCKER
 
-1. **D-044 — 상대 팀 라인업을 얻을 수 없다.** 이게 풀리기 전에는 대규모 수집도, 래더 산정도 의미가 없다
+1. **D-044 미해결** — 양 팀 재구성 불가. 대규모 수집도 래더 산정도 이 문제 위에 있다
 2. 실제 리그·클랜·플레이어가 없다 (DB는 여전히 mock). 신원 연결은 사람이 승인해야 한다
-3. 테스트 키의 호출 한도는 여전히 `[미확인]` — 15회로는 한도에 닿지 않았다
-4. `user/basic`·`user/rank`·`user/tier`·`user/recent-info`는 아직 호출해 보지 않았다
+3. 테스트 키 호출 한도 `[미확인]` — 22회로는 한도에 닿지 않았다
+4. `user/basic`·`rank`·`tier`·`recent-info`는 아직 호출해 보지 않았다
+5. 적응형 폴링은 **오프라인 스모크로만** 검증했다 (실 API로 poll 실행은 아직)
 
 ## G. 다음 세션 첫 행동
 
@@ -411,7 +356,8 @@ pnpm nexon:status && pnpm nexon:check
 ### 사용자 확인이 필요한 열린 항목
 
 - [ ] Legacy: 운영자에게 **CSV** 를 요청할지, **WAF 예외** 를 요청할지, **수동 수집**(21시간)을 할지
-- [ ] **D-044 대응 방향 결정** — 여러 참가자 조회로 합칠지 / 넥슨에 문의할지 / 다른 경로를 찾을지
+- [ ] **D-044 대응 방향 결정** — multi-OUID 재조회는 **불가로 확인됨**.
+      남은 선택지: 넥슨 문의 / 리그 명단 전원 폴링 후 목록 관측값 병합(부분 복원) / 다른 출처
 - [ ] 대규모 수집 착수 여부 (D-044 해결 전에는 상대 팀 없는 반쪽 데이터만 쌓인다)
 - [ ] **Auth.js 미사용 결정(D-025) 승인** — 계획 문서와 다른 선택
 - [ ] 서든어택 계정 연동이 **소유권을 증명하지 않는다** — 운영 노출 전 반드시 해결

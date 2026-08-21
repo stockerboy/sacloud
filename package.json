@@ -33,7 +33,10 @@
     "nexon:project": "pnpm --filter @sacloud/worker nexon project",
     "nexon:refresh": "pnpm --filter @sacloud/worker nexon refresh",
     "nexon:check": "pnpm --filter @sacloud/worker nexon check",
-    "nexon:status": "pnpm --filter @sacloud/worker nexon status"
+    "nexon:status": "pnpm --filter @sacloud/worker nexon status",
+    "nexon:poll": "pnpm --filter @sacloud/worker nexon poll",
+    "nexon:report": "pnpm --filter @sacloud/worker nexon report",
+    "nexon:manual-refresh": "pnpm --filter @sacloud/worker nexon manual-refresh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

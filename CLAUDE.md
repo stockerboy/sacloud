@@ -269,6 +269,8 @@ pnpm nexon:status     # 적재 현황 + API 키 설정 여부 (키 값은 찍지
 pnpm nexon:identities --nicknames "닉1,닉2" [--dry-run]   # 닉네임 → ouid
 pnpm nexon:collect --all-identities [--limit N] [--dry-run]
 pnpm nexon:project [--league <slug>]    # 스테이징 → 운영 Match (조건 미충족이면 보류)
+pnpm nexon:poll --targets N             # 적응형 폴링 (활동량 기반, Phase 8.1)
+pnpm nexon:report                       # 티어 분포 + 호출량 계측
 pnpm nexon:refresh                      # 신선도 정책(기본 30일) 재수집
 pnpm nexon:check                        # 숫자 대조 7항목
 ```
@@ -317,9 +319,11 @@ pnpm nexon:check                        # 숫자 대조 7항목
   실제 응답은 스펙과 두 가지가 달랐다 — 클랜명 필드가 `guild_name`(D-043)이고,
   **한 경기 응답에 양 팀이 함께 오지 않는다(D-044).** 후자는 Phase 9의 선결 과제다.
   **대규모 수집은 D-044가 풀리기 전에는 하지 않는다.**
+- **Phase 8.1** — D-044 후속 검증(같은 match_id 재호출은 항상 같은 응답 → multi-OUID 합치기 불가)과
+  **적응형 폴링**(활동량 기반 hot/warm/cold/dormant, 호출량 계측)을 추가했다. D-044는 **미해결**이다.
   사양은 `docs/NEXON_INGEST_SPEC.md`, 인수인계는 `docs/HANDOFF_CURRENT.md`.
 - 자체 결정·임시값·원본과의 의도된 차이는 `docs/DECISIONS.md`에 있다. 그 값을 바꾸려면 문서도 함께 고친다.
-  Phase 1 관련은 D-009 ~ D-013, Phase 7 관련은 D-022 ~ D-033, Phase 8 관련은 D-034 ~ D-047.
+  Phase 1 관련은 D-009 ~ D-013, Phase 7 관련은 D-022 ~ D-033, Phase 8 관련은 D-034 ~ D-051.
 
 ### Phase 7에서 남긴 숙제
 

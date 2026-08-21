@@ -13,7 +13,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { prisma } from '@sacloud/db'
-import { hasApiKey, NexonClient, readNexonConfig } from '@sacloud/nexon'
+import { hasApiKey, MATCH_MODES, NexonClient, readNexonConfig, type MatchMode } from '@sacloud/nexon'
 import { loadEnvFiles } from './lib/env.js'
 import { fail, log, registerSecret, table } from './lib/log.js'
 import { AbortCollection, type JobContext } from './jobs/context.js'
@@ -22,6 +22,8 @@ import { runCollect } from './jobs/collect.js'
 import { runProject } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
 import { runCheck } from './jobs/check.js'
+import { ensurePollStates, requestManualRefresh, runPoll } from './jobs/poll.js'
+import { readPollingConfig } from './lib/pollingPolicy.js'
 
 interface Args {
   command: string
@@ -85,7 +87,10 @@ function usage(): void {
   log(`넥슨 수집 워커
 
   identities  --nicknames "닉1,닉2" | --nicknames-file <파일>
-  collect     --ouid <OUID>[,<OUID>] | --all-identities  [--type "퀵매치 클랜전"] [--match-id <ID>]
+  poll        [--targets N] [--detail-limit N] [--type "퀵매치 클랜전"] [--modes "폭파미션"]
+  manual-refresh --ouid <OUID> | --player <playerId>
+  report      [--limit N]
+  collect     --ouid <OUID>[,<OUID>] | --all-identities  [--type "퀵매치 클랜전"] [--match-id <ID>] [--modes "폭파미션"]
   project     [--league <slug>] [--reproject] [--allow-mock-league]
   refresh
   check
@@ -111,7 +116,7 @@ async function main(): Promise<number> {
     resume: boolFlag(args, 'resume'),
   }
 
-  const needsNetwork = ['identities', 'collect', 'refresh'].includes(args.command) && !dryRun
+  const needsNetwork = ['identities', 'collect', 'refresh', 'poll'].includes(args.command) && !dryRun
   if (needsNetwork) {
     if (!hasApiKey(config)) {
       fail('NEXON_API_KEY가 없다. apps/web/.env.local 에 키를 넣고 다시 실행한다.')
@@ -133,6 +138,9 @@ async function main(): Promise<number> {
         return 1
       }
       const result = await runIdentities(ctx, nicknames)
+      // 새 신원은 곧바로 폴링 대상이 된다
+      const created = await ensurePollStates()
+      if (created > 0) log(`폴링 대상 ${created}명 추가`)
       table([result as unknown as Record<string, unknown>])
       return 0
     }
@@ -166,8 +174,100 @@ async function main(): Promise<number> {
         .split(',')
         .map((value) => value.trim())
         .filter(Boolean)
-      const result = await runCollect(ctx, { ouids, detailMatchType, detailSourceMatchIds })
+      const modes = (stringFlag(args, 'modes') ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter((value): value is MatchMode => MATCH_MODES.includes(value as MatchMode))
+      const result = await runCollect(ctx, {
+        ouids,
+        detailMatchType,
+        detailSourceMatchIds,
+        modes,
+        skipDetails: boolFlag(args, 'no-detail'),
+      })
       table([result as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'poll': {
+      const modes = (stringFlag(args, 'modes') ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter((value): value is MatchMode => MATCH_MODES.includes(value as MatchMode))
+
+      const metrics = await runPoll(ctx, {
+        targets: numberFlag(args, 'targets') ?? 10,
+        detailLimit: numberFlag(args, 'detail-limit') ?? 0,
+        detailMatchType: stringFlag(args, 'type'),
+        modes,
+      })
+      table([metrics as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'manual-refresh': {
+      const count = await requestManualRefresh({
+        ouid: stringFlag(args, 'ouid'),
+        playerId: stringFlag(args, 'player'),
+      })
+      log(`수동 갱신 요청 표시: ${count}건 (다음 poll에서 최우선)`)
+      return count > 0 ? 0 : 1
+    }
+
+    case 'report': {
+      const config = readPollingConfig()
+      log(
+        `폴링 주기(분) — hot ${config.intervalMinutes.hot} · warm ${config.intervalMinutes.warm} · ` +
+          `cold ${config.intervalMinutes.cold} · dormant ${config.intervalMinutes.dormant}`,
+      )
+
+      const tiers = await prisma.nexonPollState.groupBy({
+        by: ['tier'],
+        _count: { _all: true },
+      })
+      log('')
+      log('티어 분포')
+      table(tiers.map((row) => ({ tier: row.tier, 대상: row._count._all })))
+
+      const runs = await prisma.nexonPollRun.findMany({
+        orderBy: { startedAt: 'desc' },
+        take: numberFlag(args, 'limit') ?? 5,
+      })
+      log('')
+      log('최근 실행 (호출량 계측)')
+      table(
+        runs.map((run) => ({
+          시작: run.startedAt.toISOString().slice(0, 19),
+          대상: run.playersPolled,
+          목록호출: run.matchListRequests,
+          신규경기: run.uniqueNewMatchIds,
+          중복경기: run.duplicateMatchIds,
+          상세호출: run.matchDetailRequests,
+          상세건너뜀: run.detailSkippedByDedupe,
+          빈조회: run.emptyPolls,
+          '429': run.rateLimitedCount,
+          실패: run.failedPolls,
+        })),
+      )
+
+      const totals = runs.reduce(
+        (acc, run) => ({
+          active: acc.active + run.activePlayersPolled,
+          inactive: acc.inactive + run.inactivePlayersPolled,
+          activeRequests: acc.activeRequests + run.requestsForActive,
+          inactiveRequests: acc.inactiveRequests + run.requestsForInactive,
+        }),
+        { active: 0, inactive: 0, activeRequests: 0, inactiveRequests: 0 },
+      )
+      log('')
+      log('평균 호출 수')
+      table([
+        {
+          '활동 대상당': totals.active > 0 ? (totals.activeRequests / totals.active).toFixed(2) : '-',
+          '비활동 대상당':
+            totals.inactive > 0 ? (totals.inactiveRequests / totals.inactive).toFixed(2) : '-',
+        },
+      ])
       return 0
     }
 
@@ -220,6 +320,27 @@ async function main(): Promise<number> {
           '미해결 실패': failures,
         },
       ])
+      const [pollStates, duePolls, manualPending, lastRun] = await Promise.all([
+        prisma.nexonPollState.count(),
+        prisma.nexonPollState.count({ where: { nextPollAt: { lte: new Date() } } }),
+        prisma.nexonPollState.count({ where: { manualRefreshRequestedAt: { not: null } } }),
+        prisma.nexonPollRun.findFirst({ orderBy: { startedAt: 'desc' } }),
+      ])
+      table([
+        {
+          '폴링 대상': pollStates,
+          '조회 예정(지금)': duePolls,
+          '수동 갱신 대기': manualPending,
+          '목록 관측값': await prisma.nexonMatchObservation.count(),
+        },
+      ])
+      if (lastRun) {
+        log(
+          `마지막 실행 ${lastRun.startedAt.toISOString().slice(0, 19)} — ` +
+            `대상 ${lastRun.playersPolled} · 목록 ${lastRun.matchListRequests}회 · ` +
+            `상세 ${lastRun.matchDetailRequests}회 · 신규 ${lastRun.uniqueNewMatchIds}건 · 429 ${lastRun.rateLimitedCount}`,
+        )
+      }
       log(`API 키: ${hasApiKey(config) ? '설정됨' : '없음'}`)
       return 0
     }

@@ -220,6 +220,57 @@ NEXON_REFRESH_INTERVAL_DAYS   기본 30 — 명시된 의무값
 
 ---
 
+## 7-A. 적응형 폴링 (Phase 8.1)
+
+고정 전수 조회를 하지 않는다. 한 명을 한 번 확인하는 데 **모드 4개 = 호출 4회**다.
+
+### 상태 (`NexonPollState`)
+
+`tier` · `intervalMinutes` · `nextPollAt` · `lastPolledAt` · `lastSuccessfulPollAt` ·
+`lastNewMatchAt` · `consecutiveEmptyPolls` · `recentNewMatchCount` ·
+`manualRefreshRequestedAt` · `lastPollStatus` · `totalPolls` · `totalNewMatches`
+
+### 티어와 전환 (기본값 — 전부 `NEXON_POLL_*` 설정값)
+
+| 티어 | 조건 | 주기 |
+|---|---|---|
+| `hot` | 새 경기 발견 | 30분 |
+| `warm` | 연속 빈 조회 ≥ 2 | 3시간 |
+| `cold` | 연속 빈 조회 ≥ 5 | 1일 |
+| `dormant` | 연속 ≥ 10 또는 30일간 새 경기 없음 | 7일 |
+
+- 새 경기 발견 → 즉시 `hot`, 연속 빈 조회 초기화
+- 실패·차단은 **활동량이 아니다** → 티어 유지, 다음 조회만 미룬다(백오프 ×2)
+- 우선순위: 수동 갱신 → hot → warm → cold → dormant, 같으면 오래 기다린 순
+- 예정보다 `NEXON_POLL_STARVATION_MINUTES` 이상 밀리면 우선순위를 올린다 (굶김 방지)
+
+### 호출량 절감 (계산 방식)
+
+```
+하루 호출 수 = Σ (티어별 대상 수 × 모드 수 × (1440 / 티어 주기(분)))
+```
+
+- 고정 전수(30분 주기, 모드 4개, 5,000명): 5,000 × 4 × 48 = **960,000 호출/일**
+- 적응형(가정 분포 hot 5% / warm 15% / cold 30% / dormant 50%):
+  48,000 + 24,000 + 6,000 + 1,430 ≈ **79,000 호출/일** (약 92% 감소)
+
+**분포는 가정이다.** 실제 값은 `NexonPollRun` 기록으로 계산한다 (`pnpm nexon:report`).
+
+추가 절감 여지: 실측에서 클랜전 계열은 **전부 `폭파미션` 모드**였다(미키 표본).
+`--modes "폭파미션"`으로 좁히면 대상당 호출이 4 → 1이 된다.
+다른 모드에 클랜전이 있을 수 있는지는 `[미확인]`이라 기본값은 4모드 그대로다.
+
+### 상세 재조회 (dedupe)
+
+`decideDetailFetch`가 판단한다. 이미 상세가 있으면 **부르지 않는다**(D-050).
+다른 사람의 목록에서 같은 경기가 나와도 마찬가지다 — 같은 `match_id`는 같은 응답이다(A-1 실측).
+예외는 신선도 기한 초과뿐이다.
+
+목록에서 얻은 개인 기록은 호출 없이 `NexonMatchObservation`에 출처와 함께 쌓인다(D-048).
+**상세 참가자와 섞지 않는다.**
+
+---
+
 ## 8. 멱등성 · 체크포인트 · 재시도
 
 ### 8-1. 멱등성

@@ -6,7 +6,10 @@
  * 응답 시간도 외부 API에 묶인다.
  *
  * 대신 `ImportJob`에 `pending`으로 등록만 하고, 실제 수집은 워커가 한다.
- *   pnpm nexon:collect --all-identities
+ *   pnpm nexon:poll --targets N
+ *
+ * 폴링 상태가 있는 플레이어면 `manualRefreshRequestedAt`을 찍어 **우선순위를 최상**으로 올린다
+ * (`apps/worker/src/lib/pollingPolicy.ts`).
  *
  * 큐 인프라(Redis/BullMQ)는 쓰지 않는다. 체크포인트는 DB에 있다 (C 결정).
  */
@@ -36,6 +39,15 @@ export async function enqueueRenewJob(input: {
   })
 
   if (existing?.status === 'running') return
+
+  // 폴링 대상이면 **최우선**으로 올린다 (Phase 8.1 적응형 폴링)
+  if (input.kind === 'player') {
+    const now = new Date()
+    await prisma.nexonPollState.updateMany({
+      where: { playerId: input.id },
+      data: { manualRefreshRequestedAt: now, nextPollAt: now },
+    })
+  }
 
   await prisma.importJob.upsert({
     where: {

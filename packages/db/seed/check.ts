@@ -111,6 +111,33 @@ async function main() {
     }),
   )
 
+  /* 7. 폴링 상태가 mock 데이터와 섞이지 않았는가 (Phase 8.1) */
+  const pollStates = await prisma.nexonPollState.findMany({ select: { ouid: true, playerId: true } })
+  const knownOuids = new Set(
+    (await prisma.nexonIdentity.findMany({ select: { ouid: true } })).map((row) => row.ouid),
+  )
+  check(
+    '신원 없는 폴링 상태',
+    0,
+    pollStates.filter((state) => !knownOuids.has(state.ouid)).length,
+  )
+
+  // 시드는 폴링 상태를 만들지 않는다. mock 플레이어가 폴링 대상이 되면 안 된다
+  const mockPlayerIds = new Set(
+    (
+      await prisma.matchPlayerStat.findMany({
+        where: { match: { origin: 'mock' } },
+        select: { playerId: true },
+        distinct: ['playerId'],
+      })
+    ).map((row) => row.playerId),
+  )
+  check(
+    'mock 플레이어에 걸린 폴링 상태',
+    0,
+    pollStates.filter((state) => state.playerId !== null && mockPlayerIds.has(state.playerId)).length,
+  )
+
   console.info(failed === 0 ? '\n전부 통과.' : `\n${failed}건 실패.`)
   if (failed > 0) process.exitCode = 1
 }

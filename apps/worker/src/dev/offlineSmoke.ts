@@ -25,10 +25,14 @@ import {
 import { runCollect } from '../jobs/collect.js'
 import { runIdentities } from '../jobs/identities.js'
 import { runProject } from '../jobs/project.js'
+import { runPoll } from '../jobs/poll.js'
+import { DEFAULT_POLLING_CONFIG } from '../lib/pollingPolicy.js'
 import type { JobContext } from '../jobs/context.js'
 
 const SMOKE_VERSION = 'smoke-offline'
 const SMOKE_OUID = 'SMOKE-OUID-0001'
+/** 같은 경기를 다른 사람이 발견하는 상황을 만들기 위한 두 번째 계정 */
+const SMOKE_OUID_2 = 'SMOKE-OUID-0002'
 const SMOKE_NICKNAME = '스모크닉'
 const SMOKE_MATCH_IDS = SAMPLE_MATCH_LIST.match.map((entry) => entry.match_id)
 
@@ -96,8 +100,10 @@ async function cleanup() {
     where: { nexonMatch: { sourceMatchId: { in: SMOKE_MATCH_IDS } } },
   })
   await prisma.nexonMatch.deleteMany({ where: { sourceMatchId: { in: SMOKE_MATCH_IDS } } })
-  await prisma.nexonIdentityCandidate.deleteMany({ where: { ouid: SMOKE_OUID } })
-  await prisma.nexonIdentity.deleteMany({ where: { ouid: SMOKE_OUID } })
+  await prisma.nexonIdentityCandidate.deleteMany({ where: { ouid: { startsWith: 'SMOKE-OUID' } } })
+  await prisma.nexonPollState.deleteMany({ where: { ouid: { startsWith: 'SMOKE-OUID' } } })
+  await prisma.nexonIdentity.deleteMany({ where: { ouid: { startsWith: 'SMOKE-OUID' } } })
+  await prisma.nexonPollRun.deleteMany({ where: { migrationVersion: SMOKE_VERSION } })
   await prisma.nexonNickname.deleteMany({
     where: {
       OR: [
@@ -266,7 +272,82 @@ async function main() {
 
   await cleanupLeague()
   if (createdMap) await prisma.gameMap.deleteMany({ where: { id: mapId } })
-  await prisma.nexonIdentity.deleteMany({ where: { ouid: { startsWith: SMOKE_OUID } } })
+  // 참가자용 파생 신원(SMOKE-OUID-0001-0 …)만 지운다. 폴링에 쓰는 기본 신원은 남긴다
+  await prisma.nexonIdentity.deleteMany({ where: { ouid: { startsWith: `${SMOKE_OUID}-` } } })
+
+  /* 6) 적응형 폴링 — 같은 경기를 다른 사람이 발견해도 중복이 생기지 않는다 */
+  await prisma.nexonIdentity.create({
+    data: { ouid: SMOKE_OUID_2, userName: '스모크닉2', status: 'unresolved' },
+  })
+
+  const SMOKE_OUIDS = [SMOKE_OUID, SMOKE_OUID_2]
+  const firstPoll = await runPoll(ctx, {
+    targets: 5,
+    detailLimit: 2,
+    ouids: SMOKE_OUIDS, // 실제 폴링 대상을 건드리지 않는다 (D-045)
+    config: DEFAULT_POLLING_CONFIG,
+  })
+  check('폴링 대상 2명', 2, firstPoll.playersPolled)
+  check('목록 호출 = 대상 × 모드 4개', 8, firstPoll.matchListRequests)
+  check('신규 경기는 한 번만 센다', 0, firstPoll.uniqueNewMatchIds)
+  check('이미 아는 경기는 중복으로 집계된다', true, firstPoll.duplicateMatchIds > 0)
+
+  const stagingAfterPoll = await prisma.nexonMatch.count({
+    where: { sourceMatchId: { in: SMOKE_MATCH_IDS } },
+  })
+  check('여러 사람이 같은 경기를 봐도 스테이징은 늘지 않는다', SMOKE_MATCH_IDS.length, stagingAfterPoll)
+
+  const observations = await prisma.nexonMatchObservation.findMany({
+    where: { nexonMatch: { sourceMatchId: SAMPLE_MATCH_DETAIL.match_id } },
+    select: { ouid: true, source: true, kill: true },
+  })
+  check('같은 경기에 사람별 관측값이 쌓인다', 2, observations.length)
+  check('관측값 출처가 남는다', 'player_match_list', observations[0]?.source ?? '')
+
+  const domainAfterPoll = await prisma.match.count({ where: { origin: 'nexon' } })
+  check('폴링이 운영 매치를 만들지 않는다 (투영은 별도 단계)', 0, domainAfterPoll)
+
+  const stateAfterFirst = await prisma.nexonPollState.findUnique({ where: { ouid: SMOKE_OUID } })
+  check('새 경기가 없으면 빈 조회로 기록된다', 'empty', stateAfterFirst?.lastPollStatus ?? '')
+  check('연속 빈 조회 1회', 1, stateAfterFirst?.consecutiveEmptyPolls ?? -1)
+
+  // 두 번째 폴링: 예정 시각을 지나게 만들어 다시 뽑히게 한다
+  await prisma.nexonPollState.updateMany({
+    where: { ouid: { startsWith: 'SMOKE-OUID' } },
+    data: { nextPollAt: new Date(Date.now() - 60_000) },
+  })
+  const secondPoll = await runPoll(ctx, {
+    targets: 5,
+    detailLimit: 2,
+    ouids: SMOKE_OUIDS,
+    config: DEFAULT_POLLING_CONFIG,
+  })
+  check('이미 상세를 가진 경기는 다시 부르지 않는다', 0, secondPoll.matchDetailRequests)
+
+  const stateAfterSecond = await prisma.nexonPollState.findUnique({ where: { ouid: SMOKE_OUID } })
+  check('빈 조회가 이어지면 강등된다', 'warm', stateAfterSecond?.tier ?? '')
+  check(
+    '주기가 길어진다',
+    DEFAULT_POLLING_CONFIG.intervalMinutes.warm,
+    stateAfterSecond?.intervalMinutes ?? -1,
+  )
+
+  // 수동 갱신 요청 → 최우선
+  await prisma.nexonPollState.update({
+    where: { ouid: SMOKE_OUID },
+    data: { manualRefreshRequestedAt: new Date(), tier: 'dormant' },
+  })
+  const manualPoll = await runPoll(ctx, {
+    targets: 1,
+    ouids: SMOKE_OUIDS,
+    config: DEFAULT_POLLING_CONFIG,
+  })
+  check('수동 갱신 요청이 최우선으로 뽑힌다', 1, manualPoll.playersPolled)
+  const stateAfterManual = await prisma.nexonPollState.findUnique({ where: { ouid: SMOKE_OUID } })
+  check('처리 후 수동 요청 표시는 지워진다', null, stateAfterManual?.manualRefreshRequestedAt ?? null)
+
+  const runs = await prisma.nexonPollRun.count({ where: { migrationVersion: SMOKE_VERSION } })
+  check('실행마다 호출량이 기록된다', 3, runs)
 
   await cleanup()
   const leftover = await prisma.nexonMatch.count({

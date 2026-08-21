@@ -15,6 +15,7 @@ import {
   normalizeMatchDetail,
   normalizeMatchList,
   validateMatchDetail,
+  type MatchMode,
   type NormalizedMatchListEntry,
 } from '@sacloud/nexon'
 import { log, warn } from '../lib/log.js'
@@ -34,7 +35,7 @@ export interface CollectResult {
 }
 
 /** 목록 항목 → 스테이징 매치. 상세를 이미 받아 둔 행은 덮어쓰지 않는다 */
-async function upsertStagingFromList(
+export async function upsertStagingFromList(
   entry: NormalizedMatchListEntry,
   input: { discoveredByOuid: string; listRawImportId: string },
 ): Promise<boolean> {
@@ -209,6 +210,10 @@ export async function runCollect(
     detailMatchType?: string | null
     /** 특정 경기 하나만 상세를 받는다. 응답 형태를 확인할 때 쓴다 */
     detailSourceMatchIds?: readonly string[]
+    /** 조회할 게임 모드를 좁힌다. 기본은 4개 전부 (넥슨이 mode를 필수로 요구한다) */
+    modes?: readonly MatchMode[]
+    /** 목록만 받고 상세는 건너뛴다. 호출 수를 아껴야 할 때 쓴다 */
+    skipDetails?: boolean
   },
 ): Promise<CollectResult> {
   const result: CollectResult = {
@@ -222,8 +227,9 @@ export async function runCollect(
   }
 
   /* ---------------------------------------------------------- 1) 매치 목록 --- */
+  const modes = input.modes?.length ? input.modes : MATCH_MODES
   for (const ouid of input.ouids) {
-    for (const mode of MATCH_MODES) {
+    for (const mode of modes) {
       const jobKey = `nexon:matchlist:${ouid}:${mode}`
 
       if (ctx.resume && (await isJobDone(NEXON_SOURCE, jobKey, ctx.config.migrationVersion))) {
@@ -292,6 +298,11 @@ export async function runCollect(
   }
 
   /* ---------------------------------------------------------- 2) 매치 상세 --- */
+  if (input.skipDetails) {
+    log('상세 조회는 건너뛴다 (--no-detail)')
+    return result
+  }
+
   if (ctx.dryRun) {
     const pendingCount = await prisma.nexonMatch.count({
       where: {
