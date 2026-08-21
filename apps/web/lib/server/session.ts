@@ -20,6 +20,7 @@ import { prisma } from '@sacloud/db'
  */
 
 const ACCESS_COOKIE = 'sacloud_session'
+const REFRESH_COOKIE = 'sacloud_refresh'
 const ACCESS_TTL_SECONDS = 60 * 60
 const REFRESH_TTL_DAYS = 30
 
@@ -51,13 +52,27 @@ export async function issueAccessToken(userId: string): Promise<{
 
 export async function issueRefreshToken(userId: string): Promise<string> {
   const token = randomBytes(32).toString('base64url')
+  const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000)
   await prisma.refreshToken.create({
-    data: {
-      userId,
-      tokenHash: hashToken(token),
-      expiresAt: new Date(Date.now() + REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000),
-    },
+    data: { userId, tokenHash: hashToken(token), expiresAt },
   })
+
+  /**
+   * 리프레시 토큰도 **httpOnly 쿠키로** 내려보낸다.
+   *
+   * 계약이 응답 본문으로도 주긴 하지만, 브라우저 클라이언트는 그걸 보관할 곳이 마땅치 않다.
+   * 쿠키에 두지 않으면 액세스 토큰(1시간)이 만료된 순간 **말없이 로그아웃된다**
+   * (실제로 그렇게 됐다). 갱신에 쓸 수 있게 서버가 들고 있는다.
+   */
+  const store = await cookies()
+  store.set(REFRESH_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    expires: expiresAt,
+  })
+
   return token
 }
 
@@ -76,6 +91,18 @@ export async function setSessionCookie(token: string, expiresAt: Date) {
 export async function clearSessionCookie() {
   const store = await cookies()
   store.delete(ACCESS_COOKIE)
+  store.delete(REFRESH_COOKIE)
+}
+
+/** 저장된 리프레시 토큰(쿠키)이 아직 유효하면 사용자 ID를 돌려준다 */
+async function userIdFromRefreshCookie(): Promise<string | null> {
+  const store = await cookies()
+  const token = store.get(REFRESH_COOKIE)?.value
+  if (!token) return null
+
+  const row = await prisma.refreshToken.findUnique({ where: { tokenHash: hashToken(token) } })
+  if (!row || row.revokedAt || row.expiresAt < new Date()) return null
+  return row.userId
 }
 
 async function tokenFromRequest(request: Request): Promise<string | null> {
@@ -88,17 +115,34 @@ async function tokenFromRequest(request: Request): Promise<string | null> {
   return null
 }
 
-/** 요청자의 사용자 ID. 로그인하지 않았으면 null. */
+/**
+ * 요청자의 사용자 ID. 로그인하지 않았으면 null.
+ *
+ * 액세스 토큰이 만료됐으면 **리프레시 쿠키로 조용히 다시 발급한다.**
+ * 그렇지 않으면 1시간마다 말없이 로그아웃된다.
+ *
+ * 이때 리프레시 토큰은 **돌리지 않는다(rotation 안 함).** 한 페이지가 여러 요청을
+ * 동시에 보내는데 그중 하나가 돌려버리면 나머지가 무효 토큰을 들고 실패한다.
+ * 회전은 명시적인 `POST /auth/token`에서만 한다.
+ */
 export async function currentUserId(request: Request): Promise<string | null> {
   const token = await tokenFromRequest(request)
-  if (!token) return null
-  try {
-    const { payload } = await jwtVerify(token, secret())
-    return typeof payload.sub === 'string' ? payload.sub : null
-  } catch {
-    // 만료·위조 토큰은 비로그인으로 취급한다
-    return null
+
+  if (token) {
+    try {
+      const { payload } = await jwtVerify(token, secret())
+      if (typeof payload.sub === 'string') return payload.sub
+    } catch {
+      // 만료·위조 — 아래에서 리프레시로 되살릴 수 있는지 본다
+    }
   }
+
+  const userId = await userIdFromRefreshCookie()
+  if (!userId) return null
+
+  const renewed = await issueAccessToken(userId)
+  await setSessionCookie(renewed.token, renewed.expiresAt)
+  return userId
 }
 
 /** 요청자 사용자 레코드 (연동된 플레이어·클랜 포함) */
