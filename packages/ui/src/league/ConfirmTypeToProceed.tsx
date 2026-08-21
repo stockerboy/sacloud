@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { isConfirmPhraseMatched } from './confirmPhrase'
 
 /**
  * 지정 문자열을 그대로 입력해야 실행되는 위험 작업 확인.
@@ -8,6 +9,9 @@ import { useState } from 'react'
  * 원본은 클랜 **추방** 시 `추방합니다` 를 입력해야 실행된다(관측).
  * 추방은 되돌릴 수 없고 재가입도 불가하다.
  * 입력이 정확히 일치하지 않으면 실행 버튼이 비활성 상태로 남는다.
+ *
+ * 화면 검증만 믿지 않는다 — 서버도 같은 문구를 다시 확인한다
+ * (`/api/leagues/:slug/clans/:id/expel`).
  */
 export function ConfirmTypeToProceed({
   title,
@@ -26,7 +30,7 @@ export function ConfirmTypeToProceed({
   onCancel: () => void
 }) {
   const [value, setValue] = useState('')
-  const matched = value === phrase
+  const matched = isConfirmPhraseMatched(value, phrase)
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50">
