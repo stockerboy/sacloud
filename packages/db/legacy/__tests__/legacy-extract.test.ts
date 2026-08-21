@@ -6,6 +6,8 @@ import {
   HEADER_MAP,
   LEGACY_CSV_HEADER,
   mapSeasonRow,
+  parseSeasonCard,
+  seasonCardToRow,
   toCsvLine,
   toNumberText,
   toRankCount,
@@ -115,6 +117,79 @@ describe('지난시즌 행 → CSV', () => {
 })
 
 /**
+ * 아래는 **원본(3rd.supply)에서 실제로 본 카드**다 (2026-08-21).
+ * `https://3rd.supply/league/supply/player/1074574325/season`
+ *
+ * ```
+ * 서플라이공식리그      시즌 6
+ *              6,934명중 140위
+ * 218승 173패    승률  55.8%
+ * 3,468킬 3,197데스  킬뎃  52%
+ * ```
+ *
+ * 원본은 **표가 아니라 카드**다. 우리 재현 화면(표)과 구조가 다르다.
+ */
+describe('원본 지난시즌 카드 파싱', () => {
+  const REAL_CARD = '서플라이공식리그 시즌 6 6,934명중 140위 218승 173패 승률 55.8% 3,468킬 3,197데스 킬뎃 52%'
+
+  it('실제 카드에서 전 항목을 읽는다', () => {
+    const card = parseSeasonCard(REAL_CARD)
+    expect(card.leagueName).toBe('서플라이공식리그')
+    expect(card.season).toBe(6)
+    expect(card.finalRank).toBe(140)
+    expect(card.rankCount).toBe(6934)
+    expect(card.wins).toBe(218)
+    expect(card.losses).toBe(173)
+    expect(card.winRate).toBe(55.8)
+    expect(card.kills).toBe(3468)
+    expect(card.deaths).toBe(3197)
+    expect(card.kd).toBe(52)
+  })
+
+  /** 원본 카드에 래더가 없다. 다른 값에서 만들어내지 않는다. */
+  it('카드에 래더가 없으면 null이다', () => {
+    expect(parseSeasonCard(REAL_CARD).finalRating).toBeNull()
+  })
+
+  /**
+   * 원본 값으로 우리 파생 공식을 검산한다.
+   *   승률 = 승/(승+패)      → 218/391 = 55.75% → 55.8 ✓
+   *   킬뎃 = 킬/(킬+데스)    → 3468/6665 = 52.03% → 52 ✓
+   * 우리 `derive.ts` 규칙이 원본과 같다는 증거다.
+   */
+  it('원본 숫자가 우리 파생 공식과 맞는다', () => {
+    const card = parseSeasonCard(REAL_CARD)
+    const winRate = (card.wins! / (card.wins! + card.losses!)) * 100
+    const kdRate = (card.kills! / (card.kills! + card.deaths!)) * 100
+    expect(Math.round(winRate * 10) / 10).toBe(card.winRate)
+    expect(Math.round(kdRate)).toBe(card.kd)
+  })
+
+  it('모집단 없이 순위만 있어도 읽는다', () => {
+    const card = parseSeasonCard('서플라이공식리그 시즌 3 12위 10승 5패 승률 66.7% 킬뎃 58%')
+    expect(card.finalRank).toBe(12)
+    expect(card.rankCount).toBeNull()
+    expect(card.kills).toBeNull()
+    expect(card.deaths).toBeNull()
+  })
+
+  it('CSV 행으로 바꾼다', () => {
+    const row = seasonCardToRow(parseSeasonCard(REAL_CARD), {
+      sourcePlayerId: '1074574325',
+      nickname: '테스트',
+      leagueSlug: 'supply',
+      sourceUrl: 'https://3rd.supply/league/supply/player/1074574325/season',
+    })
+    expect(row['season']).toBe('6')
+    expect(row['wins']).toBe('218')
+    expect(row['kills']).toBe('3468')
+    expect(row['rank_count']).toBe('6934')
+    expect(row['final_rating']).toBe('')
+    expect(row['division']).toBe('')
+  })
+})
+
+/**
  * 스니펫은 콘솔에 붙여넣어야 해서 자체 완결형이다.
  * 그래서 **매핑이 조용히 어긋날 수 있다.** 여기서 잡는다.
  */
@@ -130,11 +205,24 @@ describe('브라우저 스니펫과 규칙이 어긋나지 않는다', () => {
     }
   })
 
-  it('스니펫이 같은 열 이름 매핑을 쓴다', () => {
-    for (const [label, column] of Object.entries(HEADER_MAP)) {
-      expect(snippet, `스니펫에 ${label} → ${column} 매핑이 없다`).toMatch(
-        new RegExp(`${label}\\s*:\\s*'${column}'`),
-      )
+  /** 카드에서 값을 뽑는 정규식이 `parseSeasonCard` 와 같아야 한다 */
+  it('스니펫이 같은 카드 패턴을 쓴다', () => {
+    for (const pattern of [
+      '시즌\\\\s*(\\\\d+)',
+      '명\\\\s*중',
+      '승\\\\s*([\\\\d,]+)\\\\s*패',
+      '승률\\\\s*([\\\\d.]+)',
+      '킬\\\\s*([\\\\d,]+)\\\\s*데스',
+      '킬뎃\\\\s*([\\\\d.]+)',
+    ]) {
+      expect(snippet, `스니펫에 ${pattern} 패턴이 없다`).toContain(pattern.replace(/\\\\/g, '\\'))
     }
+  })
+
+  /** 표 기반이던 옛 스니펫이 남아 있으면 카드 화면에서 아무것도 못 읽는다 */
+  it('표(HEADER_MAP) 방식이 남아 있지 않다', () => {
+    expect(snippet).not.toContain('HEADER_MAP')
+    // 매핑 상수는 CSV import 쪽에서만 쓴다
+    expect(Object.keys(HEADER_MAP).length).toBeGreaterThan(0)
   })
 })

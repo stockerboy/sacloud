@@ -109,6 +109,115 @@ export function mapSeasonRow(
   return row
 }
 
+/* -------------------------------------------------------------------------- */
+/* 원본(3rd.supply) 지난시즌 — 카드 형식                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 원본의 지난시즌은 **표가 아니라 카드**다. (2026-08-21 실제 화면 확인)
+ *
+ * ```
+ * 서플라이공식리그      시즌 6
+ *              6,934명중 140위
+ * 218승 173패    승률  55.8%
+ * 3,468킬 3,197데스  킬뎃  52%
+ * ```
+ *
+ * 마크업이 아니라 **글자에서** 읽는다. Angular가 만든 div 구조는 언제든 바뀔 수 있지만,
+ * `218승 173패` 같은 표기는 화면에 보이는 그대로라 더 안정적이다.
+ *
+ * 없는 항목은 `null`이다. 만들어내지 않는다.
+ */
+export interface SeasonCard {
+  leagueName: string | null
+  season: number | null
+  finalRank: number | null
+  rankCount: number | null
+  wins: number | null
+  losses: number | null
+  winRate: number | null
+  kills: number | null
+  deaths: number | null
+  kd: number | null
+  finalRating: number | null
+}
+
+const toInt = (text: string | undefined): number | null => {
+  if (text === undefined) return null
+  const value = Number(text.replace(/,/g, ''))
+  return Number.isFinite(value) ? value : null
+}
+
+const toFloat = toInt
+
+export function parseSeasonCard(cardText: string): SeasonCard {
+  const text = cardText.replace(/\s+/g, ' ').trim()
+
+  // `시즌 6`
+  const season = /시즌\s*(\d+)/.exec(text)
+  // `6,934명중 140위`  (모집단이 없으면 `140위` 만 잡힌다)
+  const rankWithTotal = /([\d,]+)\s*명\s*중\s*([\d,]+)\s*위/.exec(text)
+  const rankOnly = rankWithTotal ? null : /([\d,]+)\s*위/.exec(text)
+  // `218승 173패`
+  const record = /([\d,]+)\s*승\s*([\d,]+)\s*패/.exec(text)
+  // `승률 55.8%`
+  const winRate = /승률\s*([\d.]+)\s*%/.exec(text)
+  // `3,468킬 3,197데스`
+  const killDeath = /([\d,]+)\s*킬\s*([\d,]+)\s*데스/.exec(text)
+  // `킬뎃 52%`
+  const kd = /킬뎃\s*([\d.]+)\s*%/.exec(text)
+  // `938점` — 지난시즌 카드에 래더가 있는 경우에만
+  const rating = /([\d,]+)\s*점/.exec(text)
+
+  /**
+   * 리그 이름은 카드 맨 앞에 온다. `시즌 N` 앞의 글자를 취한다.
+   * **슬러그가 아니라 표시 이름**이다 (`서플라이공식리그`). 슬러그는 URL에서 얻는다.
+   */
+  const leagueName = season ? text.slice(0, season.index).trim() : null
+
+  return {
+    leagueName: leagueName || null,
+    season: season ? toInt(season[1]) : null,
+    finalRank: rankWithTotal ? toInt(rankWithTotal[2]) : rankOnly ? toInt(rankOnly[1]) : null,
+    rankCount: rankWithTotal ? toInt(rankWithTotal[1]) : null,
+    wins: record ? toInt(record[1]) : null,
+    losses: record ? toInt(record[2]) : null,
+    winRate: winRate ? toFloat(winRate[1]) : null,
+    kills: killDeath ? toInt(killDeath[1]) : null,
+    deaths: killDeath ? toInt(killDeath[2]) : null,
+    kd: kd ? toFloat(kd[1]) : null,
+    finalRating: rating ? toInt(rating[1]) : null,
+  }
+}
+
+/** 카드 파싱 결과 → CSV 행 */
+export function seasonCardToRow(card: SeasonCard, context: ExtractContext): Record<string, string> {
+  const row: Record<string, string> = Object.fromEntries(
+    LEGACY_CSV_HEADER.map((column) => [column, '']),
+  )
+  const put = (column: string, value: number | null) => {
+    row[column] = value === null ? '' : String(value)
+  }
+
+  row['source_player_id'] = context.sourcePlayerId
+  row['nickname'] = context.nickname
+  row['league_slug'] = context.leagueSlug
+  row['source_url'] = context.sourceUrl
+
+  put('season', card.season)
+  put('wins', card.wins)
+  put('losses', card.losses)
+  put('win_rate', card.winRate)
+  put('kills', card.kills)
+  put('deaths', card.deaths)
+  put('kd', card.kd)
+  put('final_rating', card.finalRating)
+  put('final_rank', card.finalRank)
+  put('rank_count', card.rankCount)
+
+  return row
+}
+
 export function toCsvLine(row: Record<string, string>): string {
   return LEGACY_CSV_HEADER.map((column) => {
     const value = row[column] ?? ''
