@@ -52,6 +52,58 @@ function seasonRange(number: number): { startedAt: Date; endedAt: Date | null } 
   return { startedAt, endedAt }
 }
 
+/**
+ * 검수용 계정 두 개를 만든다. **로컬 개발 전용이다.**
+ *
+ * - `admin-test@naver.com` — 운영자(role 2). 리그를 소유하지 않지만 모든 리그 관리에 접근한다.
+ * - `user-test@naver.com`  — 일반 회원. **리그에 참여 중인 클랜 소속 플레이어**와 연동돼 있다.
+ *
+ * 이미 있으면 만들지 않는다 (여러 번 실행해도 안전하다).
+ */
+async function seedTestAccounts(passwordHash: string) {
+  const accounts = [
+    { email: 'admin-test@naver.com', nickname: '검수관리자', role: 2, link: false },
+    { email: 'user-test@naver.com', nickname: '검수회원', role: 0, link: true },
+  ] as const
+
+  for (const account of accounts) {
+    const existing = await prisma.user.findUnique({
+      where: { email: account.email },
+      select: { id: true },
+    })
+    if (existing) continue
+
+    const user = await prisma.user.create({
+      data: {
+        email: account.email,
+        passwordHash,
+        nickname: account.nickname,
+        role: account.role,
+        emailVerifiedAt: now,
+      },
+    })
+    if (!account.link) continue
+
+    /**
+     * 리그에 참여 중인 클랜에서 **아직 연동되지 않은** 플레이어를 하나 고른다.
+     * 한 플레이어는 한 계정에만 연결된다(스키마 유니크 제약).
+     */
+    const player = await prisma.player.findFirst({
+      where: {
+        userLink: null,
+        clan: { leagueClans: { some: {} } },
+      },
+      orderBy: { id: 'asc' },
+      select: { id: true },
+    })
+    if (!player) {
+      console.info('  경고: 연동할 플레이어를 찾지 못했다. user-test는 미연동 상태다.')
+      continue
+    }
+    await prisma.userPlayerLink.create({ data: { userId: user.id, playerId: player.id } })
+  }
+}
+
 async function main() {
   const started = Date.now()
   console.info('시드 시작 — 기존 데이터를 지우고 픽스처를 다시 넣는다.')
@@ -543,6 +595,20 @@ async function main() {
       await prisma.comment.createMany({ data: rows.slice(index, index + CHUNK) })
     }
   }
+
+  /* ---------------------------------------------------------------------- */
+  /* 10. 검수용 계정 (로컬 개발 전용)                                          */
+  /*                                                                        */
+  /*   픽스처 사용자만으로는 검수 조합이 하나 빈다 —                            */
+  /*   "리그에 참여 중인 클랜 소속인데 리그 소유자는 아닌" 계정이 없다.          */
+  /*   (픽스처는 리그 소유자에게만 플레이어를 연동한다.)                        */
+  /*   재현 가능하게 시드에서 함께 만든다.                                      */
+  /*                                                                        */
+  /*   **응답에 영향을 주지 않도록** 리그를 소유하게 하지 않는다.               */
+  /*   소유자를 바꾸면 리그 목록·상세의 `user`가 달라져 mock↔live 대조가 깨진다. */
+  /*   `admin-test`는 운영자 권한(role 2)으로 모든 리그 관리에 접근할 수 있다.   */
+  /* ---------------------------------------------------------------------- */
+  await seedTestAccounts(passwordHash)
 
   /* ---------------------------------------------------------------------- */
   /* 결과                                                                     */

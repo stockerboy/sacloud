@@ -7,6 +7,9 @@
 import { dataset } from '@sacloud/mock/dataset'
 import { prisma } from '../src/index.js'
 
+/** 시드가 함께 만드는 검수용 계정 수 (`admin-test` / `user-test`) */
+const TEST_ACCOUNT_COUNT = 2
+
 let failed = 0
 
 function check(name: string, expected: number | string, actual: number | string) {
@@ -19,7 +22,8 @@ async function main() {
   /* 1. 건수 대조 — 픽스처와 DB가 같아야 한다 */
   check('클랜', dataset.clans.length, await prisma.clan.count())
   check('플레이어', dataset.players.length, await prisma.player.count())
-  check('사용자', dataset.users.length, await prisma.user.count())
+  // 픽스처 사용자 + 검수용 계정 2개(admin-test / user-test). seed.ts의 `seedTestAccounts` 참조.
+  check('사용자', dataset.users.length + TEST_ACCOUNT_COUNT, await prisma.user.count())
   check('리그', dataset.leagues.length, await prisma.league.count())
   check('리그클랜', dataset.leagueClans.length, await prisma.leagueClan.count())
   check('리그플레이어', dataset.leaguePlayers.length, await prisma.leaguePlayer.count())
