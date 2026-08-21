@@ -24,8 +24,15 @@ function LoginForm() {
 
   const login = useMutation({
     mutationFn: () => apiSend('authLogin', { body: { email, password } }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries()
+    /**
+     * **갱신을 기다린 뒤에 이동한다.**
+     *
+     * `invalidateQueries`를 기다리지 않고 바로 `push`하면, 이동한 화면의 `AuthGuard`가
+     * 아직 갱신되지 않은 `/infos`(= 비로그인)를 보고 **다시 로그인으로 되돌린다.**
+     * 로그인은 성공했는데 로그인 화면에 그대로 남는 것처럼 보인다 (실제로 그랬다).
+     */
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['infos'] })
       router.push(returnUrl)
     },
   })

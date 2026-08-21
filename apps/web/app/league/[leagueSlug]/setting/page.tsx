@@ -90,6 +90,10 @@ function SettingBody({ leagueSlug }: { leagueSlug: string }) {
   const isOwner = !!me && data.user?.id === me.id
 
   if (!isOwner) {
+    // 갱신 중이면 아직 판정하지 않는다 — 방금 로그인한 관리자에게
+    // "관리자만 접근할 수 있습니다"가 잠깐 스치는 것을 막는다.
+    // (관리자일 때는 이 분기를 타지 않으므로 화면이 다시 마운트되지 않는다)
+    if (infos.isFetching) return <Skeleton className="mt-10 h-[300px] w-full" />
     return (
       <div className="pc-container mt-10 rounded bg-card px-6 py-10 text-center shadow-card">
         <div className="text-xl">이 리그의 관리자만 접근할 수 있습니다.</div>

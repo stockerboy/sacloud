@@ -13,6 +13,12 @@ export const prisma: PrismaClient =
   globalForPrisma.sacloudPrisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+    /**
+     * 기본 `errorFormat`은 오류마다 **소스 발췌를 붙이는데**, 번들된 Prisma 런타임에서는
+     * 그 발췌가 압축된 코드 수천 자다. DB가 안 떠 있을 때 로그가 통째로 묻힌다(실제로 겪었다).
+     * 원인만 보이게 줄인다.
+     */
+    errorFormat: 'minimal',
   })
 
 if (process.env.NODE_ENV !== 'production') {
