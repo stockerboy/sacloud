@@ -1,0 +1,876 @@
+// SACLOUD — Prisma 스키마 (Phase 7)
+//
+// 설계 기준
+// 1. `packages/contract`의 Zod 계약이 단일 진실 원천이다. 이 스키마는 그 계약을
+//    **채울 수 있는** 형태여야 한다. 계약에 없는 필드를 화면에 노출하지 않는다.
+// 2. `CLAUDE.md` 3-A장(마이그레이션 절대 규칙)을 스키마 수준에서 강제한다.
+//    - 원본 응답(Raw)을 버리지 않는다        → `RawImport`
+//    - 원본 ID를 버리지 않는다               → 각 엔티티의 `source*` 컬럼 + `SourceMapping`
+//    - 기존 rating_update를 덮어쓰지 않는다  → `MatchPlayerStat.origin` / `formulaVersion`
+//    - 중단 후 재개 가능한 파이프라인        → `ImportJob` / `ImportFailure`
+// 3. `docs/LADDER_IMPLEMENTATION_SPEC.md`의 재현성 요구를 반영한다.
+//    경기 시점 division 스냅샷과 계산 입력값을 참가자별로 저장한다.
+//
+// 파생값 저장 정책
+//   승률·킬뎃%·경기당킬 같은 **계산 가능한 값은 저장하지 않는다.** 조회 시 계산한다.
+//   원본과 어긋날 여지를 없애기 위함이다.
+//   예외: `rating`은 랭킹 정렬에 인덱스가 필요해 유지 컬럼으로 둔다(아래 주석 참조).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* ========================================================================== */
+/* 1. 계정 · 인증                                                              */
+/* ========================================================================== */
+
+/// 서비스 회원. 원본은 이메일/비밀번호 단일 방식이며 네이버 메일만 허용한다(관측).
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  /// **유일 제약을 걸지 않는다.** 원본이 닉네임 중복을 막는지는 [미확인]이라
+  /// 확인되지 않은 제약을 임의로 만들지 않는다 (CLAUDE.md 3장 7번).
+  /// 중복 금지가 확인되면 그때 `@unique`로 바꾸고 마이그레이션을 추가한다.
+  nickname        String
+  avatarUrl       String?
+  /// `codes.ts` ROLE: 0 = 일반, 2 = 운영자. 그 외 값의 의미는 [미확인]
+  role            Int       @default(0)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  playerLink    UserPlayerLink?
+  ownedLeagues  League[]
+  boards        Board[]
+  comments      Comment[]
+  authTokens    AuthToken[]
+  refreshTokens RefreshToken[]
+  uploads       Upload[]
+
+  @@index([createdAt])
+  @@index([nickname])
+}
+
+/// 서든어택 계정 연동. 연동해야 리그 생성이 가능하다(관측).
+/// 원본의 실제 소유권 인증 방식은 [미확인] — 연동 시각만 기록한다.
+model UserPlayerLink {
+  userId     String   @id
+  playerId   String   @unique
+  verifiedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+/// 이메일 인증 / 비밀번호 재설정 토큰. 평문을 저장하지 않고 해시만 보관한다.
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  /// "email_verify" | "password_reset"
+  kind      String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+}
+
+/// 리프레시 토큰. 계약의 `AuthSession.refresh_token`에 대응한다.
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/* ========================================================================== */
+/* 2. 도메인 — 플레이어 · 클랜                                                  */
+/* ========================================================================== */
+
+/// 서든어택 플레이어. 리그와 무관한 전역 엔티티다.
+model Player {
+  id        String    @id @default(cuid())
+  name      String
+  clanId    String?
+  /// 클랜 내 포지션 메모 (예: "2층")
+  position  String?
+  /// 플레이어 소개/메모 (원본 `note`)
+  note      String?
+  /// 마지막 `정보갱신` 시각
+  renewedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  /* --- 원본 대조용. 버리지 않는다 (CLAUDE.md 3-A 3번) --- */
+  /// 3rd.supply의 플레이어 ID
+  sourcePlayerId String?
+  /// 넥슨 병영수첩의 캐릭터 식별자
+  nexonOuid      String?
+
+  clan          Clan?           @relation("ClanMembers", fields: [clanId], references: [id], onDelete: SetNull)
+  masterOf      Clan[]          @relation("ClanMaster")
+  userLink      UserPlayerLink?
+  leaguePlayers LeaguePlayer[]
+  matchStats    MatchPlayerStat[]
+  mvpMatches    Match[]         @relation("MatchMvp")
+
+  @@unique([sourcePlayerId])
+  @@unique([nexonOuid])
+  @@index([name])
+  @@index([clanId])
+}
+
+/// 클랜. 원본은 넥슨 병영수첩 slug를 그대로 식별자로 쓴다(관측).
+model Clan {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  name           String
+  /// 클랜마크 2레이어. 원본 이미지를 복사하지 않고 URL만 보관한다.
+  markBgUrl      String?
+  markFrontUrl   String?
+  masterPlayerId String?
+  notice         String?
+  establishedAt  DateTime? @db.Date
+  /// 마지막 `전적갱신` 시각
+  renewedAt      DateTime?
+  /// 클랜 설정 — 리그 초대 차단
+  blockInvitation Boolean  @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  /// 3rd.supply의 클랜 ID
+  sourceClanId String?
+
+  master      Player?      @relation("ClanMaster", fields: [masterPlayerId], references: [id], onDelete: SetNull)
+  members     Player[]     @relation("ClanMembers")
+  leagueClans LeagueClan[]
+  invitations LeagueInvitation[]
+
+  @@unique([sourceClanId])
+  @@index([name])
+}
+
+/* ========================================================================== */
+/* 3. 리그 · 시즌                                                              */
+/* ========================================================================== */
+
+/// 리그맵. 실제 맵 목록은 원본 조사 범위 밖이라 [미확인].
+model GameMap {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  leagues LeagueMap[]
+  matches Match[]
+}
+
+model League {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  /// 리그소개 HTML. **저장 전 서버에서 새니타이즈한다.**
+  description   String?
+  ownerUserId   String?
+  /// 1 = 단일리그, 2 이상 = N부리그
+  divisionCount Int      @default(1)
+  /// 값 체계 [미확인] — 관측된 정상 리그는 1
+  status        Int      @default(1)
+  /// 공식 리그 배지. 원본 필드명은 [미확인] — 우리 계약에서 `official`로 확정
+  official      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  /// 3rd.supply의 리그 ID
+  sourceLeagueId String?
+
+  owner        User?               @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  maps         LeagueMap[]
+  playerLimits LeaguePlayerLimit[]
+  clans        LeagueClan[]
+  players      LeaguePlayer[]
+  seasons      Season[]
+  matches      Match[]
+  invitations  LeagueInvitation[]
+  rankSnapshots RankSnapshot[]
+  ratingConfigs RatingConfig[]
+
+  @@unique([sourceLeagueId])
+  @@index([official, createdAt])
+}
+
+/// 리그가 기록 대상으로 삼는 맵. 여기 없는 맵의 경기는 저장하지 않는다.
+model LeagueMap {
+  leagueId String
+  mapId    String
+
+  league League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  map    GameMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+
+  @@id([leagueId, mapId])
+}
+
+/// 리그가 기록 대상으로 삼는 대전 인원 (5 또는 6).
+model LeaguePlayerLimit {
+  leagueId    String
+  playerCount Int
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@id([leagueId, playerCount])
+}
+
+/// 시즌. **시즌 8부터 SACLOUD가 운영한다** (사용자 결정, 2026-08-20).
+/// 시즌 1~7은 3rd.supply에서 이전된 과거 기록이며 조회 전용이다.
+model Season {
+  id        String    @id @default(cuid())
+  leagueId  String
+  number    Int
+  startedAt DateTime
+  endedAt   DateTime?
+  /// "active" | "closed"
+  status    String    @default("active")
+  /// 이 시즌 기록이 3rd.supply에서 이전된 것인지
+  imported  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  league       League              @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  playerStats  LeaguePlayerSeason[]
+  clanStats    LeagueClanSeason[]
+  matches      Match[]
+
+  @@unique([leagueId, number])
+  @@index([leagueId, number])
+}
+
+/// 리그에 참여한 클랜. 래더·부리그·전적을 보유한다.
+model LeagueClan {
+  id       String @id @default(cuid())
+  leagueId String
+  clanId   String
+
+  /// 통합 래더. 랭킹 정렬 인덱스가 필요해 유지 컬럼으로 둔다.
+  rating   Int    @default(1500)
+  /// 1 = 1부리그
+  division Int    @default(1)
+  win      Int    @default(0)
+  lose     Int    @default(0)
+
+  /// 배치고사 진행 중이면 true — 랭킹 미표시, 래더 자리에 `배치고사` 표기
+  placement       Boolean @default(true)
+  /// 배치고사로 치른 경기 수
+  placementPlayed Int     @default(0)
+
+  /// 0 = 대기/배치, 1 = 정상 (관측값). 그 외 코드는 [미확인]
+  status           Int       @default(0)
+  joinedAt         DateTime  @default(now())
+  /// 클랜삭제 요청 시각. 1주일 뒤 자동 삭제(관측)
+  deleteRequestedAt DateTime?
+  deletesAt        DateTime?
+  /// 추방 시각. 되돌릴 수 없고 재가입 불가(관측)
+  expelledAt       DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  /// 3rd.supply의 league_clan ID
+  sourceLeagueClanId String?
+
+  league       League             @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  clan         Clan               @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  seasonStats  LeagueClanSeason[]
+  redMatches   Match[]            @relation("MatchRedClan")
+  blueMatches  Match[]            @relation("MatchBlueClan")
+
+  @@unique([leagueId, clanId])
+  @@unique([sourceLeagueClanId])
+  // 클랜랭킹: 부리그별 래더 내림차순
+  @@index([leagueId, division, rating(sort: Desc)])
+}
+
+/// 리그에 참여한 플레이어. 개인 래더와 누적 스탯을 보유한다.
+model LeaguePlayer {
+  id       String  @id @default(cuid())
+  leagueId String
+  playerId String
+  /// 경기 당시가 아니라 **현재** 소속 클랜 (표시용)
+  clanId   String?
+
+  /// 통합 래더 = baseRating + 무기별 ratingDelta 합.
+  /// 무기 분리가 통합 래더 값을 바꾸면 안 된다 (LADDER_IMPLEMENTATION_SPEC 6장).
+  /// 정렬 인덱스 때문에 유지 컬럼으로 두되, 정합성 검사를 테스트로 고정한다.
+  rating      Int @default(1500)
+  /// 배치고사 종료 시점의 시작 래더. 이후 증감은 무기별 delta에 누적된다.
+  baseRating  Int @default(1500)
+
+  win      Int @default(0)
+  lose     Int @default(0)
+  kill     Int @default(0)
+  death    Int @default(0)
+  assist   Int @default(0)
+  headshot Int @default(0)
+  mvpCount Int @default(0)
+
+  placement       Boolean @default(true)
+  placementPlayed Int     @default(0)
+
+  joinedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// 3rd.supply의 league_player ID
+  sourceLeaguePlayerId String?
+
+  league      League                   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  player      Player                   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  weaponStats LeaguePlayerWeaponStat[]
+  seasonStats LeaguePlayerSeason[]
+
+  @@unique([leagueId, playerId])
+  @@unique([sourceLeaguePlayerId])
+  // 개인랭킹: 래더 내림차순
+  @@index([leagueId, rating(sort: Desc)])
+}
+
+/// 무기별 분리 기록 (0 = 라이플, 1 = 스나이퍼).
+///
+/// `LADDER_IMPLEMENTATION_SPEC` 6장: `rating_update`는 무기와 무관하게 한 공식으로 계산하고,
+/// 그 값을 **해당 경기에서 쓴 무기 쪽 delta에만** 누적한다.
+/// 화면에는 무기별로 kills·deaths·KD%·wins·losses·win%·rating delta·weapon rank를 보여준다.
+model LeaguePlayerWeaponStat {
+  leaguePlayerId String
+  /// 0 = 라이플, 1 = 스나이퍼
+  weapon         Int
+
+  ratingDelta Int @default(0)
+  win         Int @default(0)
+  lose        Int @default(0)
+  kill        Int @default(0)
+  death       Int @default(0)
+  assist      Int @default(0)
+  headshot    Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  leaguePlayer LeaguePlayer @relation(fields: [leaguePlayerId], references: [id], onDelete: Cascade)
+
+  @@id([leaguePlayerId, weapon])
+  @@index([weapon, ratingDelta(sort: Desc)])
+}
+
+/* -------------------------- 시즌 스냅샷 (지난시즌) -------------------------- */
+
+/// 시즌 종료 시점에 고정되는 개인 성적. **hard delete 금지** (CLAUDE.md 3-A 7번).
+model LeaguePlayerSeason {
+  id             String @id @default(cuid())
+  leaguePlayerId String
+  seasonId       String
+  /// 조회 편의를 위한 비정규화. `Season.number`와 항상 같아야 한다.
+  season         Int
+
+  rank      Int?
+  rankCount Int?
+  rating    Int
+  win       Int @default(0)
+  lose      Int @default(0)
+  kill      Int @default(0)
+  death     Int @default(0)
+
+  /// 이 행이 3rd.supply에서 이전된 것인지. true면 값을 재계산하지 않는다.
+  imported  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  leaguePlayer LeaguePlayer @relation(fields: [leaguePlayerId], references: [id], onDelete: Cascade)
+  seasonRef    Season       @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([leaguePlayerId, seasonId])
+  @@index([seasonId, rating(sort: Desc)])
+}
+
+/// 시즌 종료 시점에 고정되는 클랜 성적.
+/// 개인과 컬럼 구성이 다른지는 [미확인] — 계약상 동일 형태로 둔다.
+model LeagueClanSeason {
+  id           String @id @default(cuid())
+  leagueClanId String
+  seasonId     String
+  season       Int
+
+  rank      Int?
+  rankCount Int?
+  rating    Int
+  division  Int @default(1)
+  win       Int @default(0)
+  lose      Int @default(0)
+
+  imported  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  leagueClan LeagueClan @relation(fields: [leagueClanId], references: [id], onDelete: Cascade)
+  seasonRef  Season     @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueClanId, seasonId])
+  @@index([seasonId, division, rating(sort: Desc)])
+}
+
+/// 리그 관리 — 클랜 초대. 초대링크 복사에 사용한다(관측).
+model LeagueInvitation {
+  id        String    @id @default(cuid())
+  leagueId  String
+  clanId    String
+  division  Int       @default(1)
+  token     String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  acceptedAt DateTime?
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  clan   Clan   @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@index([leagueId, createdAt])
+}
+
+/* ========================================================================== */
+/* 4. 매치 · 스탯                                                              */
+/* ========================================================================== */
+
+/// 한 경기.
+///
+/// 매치 ID는 원본 관측 규칙(`YYMMDDHHmmss` + 6자리, 총 18자리)을 그대로 쓴다.
+/// 승패·래더증감은 **보는 쪽에 따라 달라지므로** 여기 저장하지 않고
+/// 진영별 스냅샷에서 조회 시 계산한다.
+model Match {
+  /// 18자리 숫자 문자열
+  id          String   @id
+  leagueId    String
+  seasonId    String?
+  mapId       String
+  playerCount Int
+  startAt     DateTime
+  endAt       DateTime
+  /// 플레이 시간(초). endAt-startAt과 다를 수 있어 원본값을 그대로 보관한다.
+  playTime    Int
+
+  /// 선공 진영이 블루면 true (원본 표기: 선레드 / 선블루). 정확한 의미는 [미확인]
+  blueFirst   Boolean @default(false)
+  /// "red" | "blue"
+  winnerSide  String
+  mvpPlayerId String?
+
+  redLeagueClanId  String
+  blueLeagueClanId String
+
+  /* --- 경기 시점 스냅샷. 승격·강등 후에도 과거 경기가 오염되면 안 된다 --- */
+  /// LADDER_IMPLEMENTATION_SPEC 4장 — 필수
+  redDivisionAtMatch  Int
+  blueDivisionAtMatch Int
+  redRatingBefore     Int?
+  blueRatingBefore    Int?
+  redPlacement        Boolean @default(false)
+  bluePlacement       Boolean @default(false)
+  /// 클랜 래더 증감 (진영별). 배치고사면 0.
+  redRatingUpdate     Int?
+  blueRatingUpdate    Int?
+
+  /* --- 출처 추적 --- */
+  /// "3rd.supply" | "nexon" | "sacloud" | "mock"
+  /// `mock`은 개발용 시드 데이터다. 실제 기록과 섞이지 않게 출처를 남긴다.
+  origin       String   @default("sacloud")
+  sourceMatchId String?
+  ingestedAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  league    League      @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  season    Season?     @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  map       GameMap     @relation(fields: [mapId], references: [id])
+  redClan   LeagueClan  @relation("MatchRedClan", fields: [redLeagueClanId], references: [id], onDelete: Cascade)
+  blueClan  LeagueClan  @relation("MatchBlueClan", fields: [blueLeagueClanId], references: [id], onDelete: Cascade)
+  mvpPlayer Player?     @relation("MatchMvp", fields: [mvpPlayerId], references: [id], onDelete: SetNull)
+  stats     MatchPlayerStat[]
+
+  @@unique([origin, sourceMatchId])
+  // 기록실: 리그별 최신순
+  @@index([leagueId, startAt(sort: Desc)])
+  @@index([redLeagueClanId, startAt(sort: Desc)])
+  @@index([blueLeagueClanId, startAt(sort: Desc)])
+  @@index([seasonId])
+}
+
+/// 경기 참가자 한 명의 기록 + 래더 계산 재현 정보.
+///
+/// 결측 처리: 상대 클랜 소속 플레이어는 딜량·헤드샷을 알 수 없다.
+/// **추측해서 채우지 않고 `null`로 저장**하고 UI에서 `알수없음`으로 표기한다.
+model MatchPlayerStat {
+  id       String @id @default(cuid())
+  matchId  String
+  playerId String
+  /// "red" | "blue"
+  side     String
+
+  kill     Int
+  death    Int
+  assist   Int
+  /// 결측 가능 — `알수없음`
+  headshot Int?
+  /// 결측 가능 — `알수없음`
+  damage   Int?
+  /// 0 = 라이플, 1 = 스나이퍼 (라인업에 `[S]` 표기)
+  weapon   Int
+  dropout  Boolean @default(false)
+  mvp      Boolean @default(false)
+
+  /* --- 래더 재현 정보 (LADDER_IMPLEMENTATION_SPEC 5장) --- */
+  /// 배치고사 중이면 null (래더 자리에 `배치고사` 표기)
+  ratingBefore Int?
+  /// 배치고사 경기의 rating_update는 0
+  ratingUpdate Int?
+  ratingAfter  Int?
+  /// 경기 시점 division 스냅샷 — 필수
+  playerDivisionAtMatch   Int
+  opponentDivisionAtMatch Int
+  /// 상대 팀 선수들의 경기 직전 통합 개인 래더 평균 (공식 입력 Ro)
+  opponentAvgRating Int?
+  /// 사용된 K값 / 승리 배수 — 공식이 바뀌어도 당시 계산을 재현하기 위해 보관
+  kUsed          Float?
+  multiplierUsed Float?
+  /// 계산에 쓰인 공식 버전. 이전 기록은 "3rd.supply-imported"로 표기해
+  /// **추정 공식으로 덮어쓰지 않는다** (CLAUDE.md 3-A 2번)
+  formulaVersion String?
+  isPlacement    Boolean @default(false)
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId])
+  @@index([playerId, matchId])
+  @@index([matchId, side])
+}
+
+/* ========================================================================== */
+/* 5. 랭킹 스냅샷 (1시간 주기 배치)                                             */
+/* ========================================================================== */
+
+/// 배치가 만들어 두는 랭킹 결과. 조회는 이 스냅샷을 읽는다.
+model RankSnapshot {
+  id          String   @id @default(cuid())
+  leagueId    String
+  /// "clan" | "player"
+  kind        String
+  /// 개인랭킹은 부리그 구분이 없어 null
+  division    Int?
+  seasonNumber Int
+  generatedAt DateTime @default(now())
+  /// 정렬 완료된 랭킹 행 배열
+  payload     Json
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, kind, division, seasonNumber])
+  @@index([generatedAt])
+}
+
+/* ========================================================================== */
+/* 6. 게시판                                                                   */
+/* ========================================================================== */
+
+model BoardCategory {
+  slug   String  @id
+  name   String
+  /// 공지 카테고리는 목록 상단에 고정 노출된다
+  notice Boolean @default(false)
+  order  Int     @default(0)
+
+  boards Board[]
+
+  @@index([order])
+}
+
+model Board {
+  id           String @id @default(cuid())
+  categorySlug String
+  title        String
+  /// 저장된 HTML. **저장 전 서버에서 새니타이즈한다.**
+  content      String
+
+  /// 비로그인 익명 글이면 null
+  userId       String?
+  /// 익명 글의 자동 별칭
+  anonAlias    String?
+  /// 비로그인 글 삭제용 비밀번호 해시. 평문 저장 금지.
+  anonPasswordHash String?
+  /// 0 = 일반(닉네임 공개), 그 외 = 익명. 0 이외 값 체계는 [미확인]
+  discloseType Int    @default(0)
+  /// 0 = 웹, 1 = 앱
+  writerApp    Int    @default(0)
+
+  viewCount    Int     @default(0)
+  likeCount    Int     @default(0)
+  dislikeCount Int     @default(0)
+  commentCount Int     @default(0)
+  hasImage     Boolean @default(false)
+  /// 공지 고정 행 여부. 카테고리의 `notice`와 별개로 **글 단위**로도 고정할 수 있다
+  /// (계약 `BoardListItem.notice`가 행마다 내려온다).
+  notice       Boolean @default(false)
+
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  lastEdited DateTime?
+
+  category BoardCategory @relation(fields: [categorySlug], references: [slug])
+  user     User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  comments Comment[]
+
+  // 목록: 카테고리별 최신순 (커서 페이지네이션)
+  @@index([categorySlug, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  // 실시간 인기게시글
+  @@index([likeCount(sort: Desc), createdAt(sort: Desc)])
+}
+
+/// 댓글. 원본은 대댓글 1단계까지만 허용한다(관측).
+model Comment {
+  id       String  @id @default(cuid())
+  boardId  String
+  /// null이면 최상위 댓글. 대댓글은 1단계까지만 — 부모의 parentId는 반드시 null이어야 한다.
+  parentId String?
+  content  String
+
+  userId           String?
+  anonAlias        String?
+  anonPasswordHash String?
+  discloseType     Int     @default(0)
+  writerApp        Int     @default(0)
+
+  likeCount    Int @default(0)
+  dislikeCount Int @default(0)
+
+  /// true면 **행은 남기고 내용만 가린다** (원본 관측). 물리 삭제하지 않는다.
+  deleted    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  lastEdited DateTime?
+
+  board   Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+  user    User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([boardId, createdAt])
+  @@index([parentId])
+}
+
+/// 추천/비추천. 한 대상에 한 투표자당 1행.
+/// 비로그인 투표는 `voterKey`에 익명 식별자(해시)를 넣는다.
+model Vote {
+  id         String @id @default(cuid())
+  /// "board" | "comment"
+  targetType String
+  targetId   String
+  voterKey   String
+  /// -1 = 비추천, 0 = 취소, 1 = 추천. 정확한 값 체계는 [미확인]
+  type       Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([targetType, targetId, voterKey])
+  @@index([targetType, targetId])
+}
+
+model Upload {
+  id        String   @id @default(cuid())
+  url       String
+  ownerKey  String
+  userId    String?
+  byteSize  Int?
+  mimeType  String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([ownerKey])
+}
+
+/* ========================================================================== */
+/* 7. 마이그레이션 · 수집 (CLAUDE.md 3-A)                                       */
+/* ========================================================================== */
+
+/// **원본 응답 보관소. 어떤 경우에도 버리지 않는다.**
+///
+/// 변환 로직이나 래더 로직에 오류가 나와도 여기서 재변환·재검증할 수 있어야 한다
+/// (CLAUDE.md 3-A 1번). 같은 대상을 다시 받아도 `migrationVersion`이 다르면 별도 행으로 쌓인다.
+model RawImport {
+  id       String @id @default(cuid())
+  /// "3rd.supply" | "nexon"
+  source   String
+  /// 호출한 엔드포인트 경로
+  endpoint String
+  /// 원본 쪽 식별자 (클랜 slug, 매치 ID 등)
+  sourceId String
+  /// 요청 파라미터 — 재현에 필요하다
+  requestParams Json?
+  httpStatus    Int?
+  /// 응답 본문 원형. 가공하지 않는다.
+  raw           Json
+  fetchedAt     DateTime @default(now())
+  /// 수집 파이프라인 버전
+  migrationVersion String
+
+  /// 이 원본이 어떤 로컬 엔티티로 변환됐는지 (변환 전이면 null)
+  normalizedAt DateTime?
+
+  @@unique([source, endpoint, sourceId, migrationVersion])
+  @@index([source, endpoint, fetchedAt])
+  @@index([normalizedAt])
+}
+
+/// 원본 ID ↔ 로컬 ID 매핑. 엔티티 컬럼(`source*Id`)과 중복이지만,
+/// 아직 로컬 엔티티가 없는 단계에서도 대조가 가능해야 해서 별도로 둔다.
+model SourceMapping {
+  id         String @id @default(cuid())
+  source     String
+  /// "player" | "clan" | "league" | "league_clan" | "league_player" | "match"
+  entityType String
+  sourceId   String
+  localId    String
+
+  createdAt DateTime @default(now())
+
+  @@unique([source, entityType, sourceId])
+  @@index([source, entityType, localId])
+}
+
+/// 중단 후 재개 가능한 파이프라인의 진행 상태 (CLAUDE.md 3-A 4번).
+/// 일회성 스크립트를 금지하고, 커서를 DB에 남겨 언제든 이어받게 한다.
+model ImportJob {
+  id      String @id @default(cuid())
+  source  String
+  /// 작업 단위 키 (예: "clan:abc123:matches")
+  jobKey  String
+  /// "pending" | "running" | "done" | "failed"
+  status  String @default("pending")
+  /// 다음에 이어받을 위치
+  cursor  String?
+  /// 처리 완료 건수 — 숫자 대조 검증에 쓴다 (CLAUDE.md 3-A 6번)
+  processed Int   @default(0)
+  /// 원본이 알려준 전체 건수 (모르면 null)
+  expected  Int?
+
+  attempts    Int       @default(0)
+  lastError   String?
+  /// exponential backoff — 이 시각 전에는 재시도하지 않는다
+  nextRetryAt DateTime?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  migrationVersion String
+
+  @@unique([source, jobKey, migrationVersion])
+  @@index([status, nextRetryAt])
+}
+
+/// 개별 항목 실패 기록. **실패를 성공으로 처리하지 않기 위해** 남긴다.
+model ImportFailure {
+  id        String   @id @default(cuid())
+  source    String
+  jobKey    String
+  sourceId  String?
+  reason    String
+  detail    Json?
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([source, jobKey])
+  @@index([resolvedAt])
+}
+
+/// 마이그레이션 검증 결과. "수집 완료" 로그가 아니라 **숫자 대조**로 판정한다
+/// (CLAUDE.md 3-A 6번).
+model MigrationCheck {
+  id        String   @id @default(cuid())
+  /// 검사 이름 (예: "match_count:league:xxx")
+  name      String
+  /// 원본에서 센 값
+  expected  Int
+  /// 우리 DB에서 센 값
+  actual    Int
+  passed    Boolean
+  note      String?
+  checkedAt DateTime @default(now())
+
+  migrationVersion String
+
+  @@index([migrationVersion, passed])
+  @@index([name])
+}
+
+/* ========================================================================== */
+/* 8. 래더 설정                                                                */
+/* ========================================================================== */
+
+/// 래더 상수. **코드에 하드코딩하지 않는다** (LADDER_IMPLEMENTATION_SPEC 7장).
+/// 역추적 조사 결과가 갱신되면 이 설정값만 바꾼다.
+///
+/// division 조합별로 행을 둔다. `divisionKey` 예: "1v1", "2v2", "1v2", "2v1".
+model RatingConfig {
+  id       String  @id @default(cuid())
+  /// null이면 전역 기본값
+  leagueId String?
+  divisionKey String
+
+  /// D — 기대승률 분모 (관측 3400)
+  expectedScoreDivisor Float @default(3400)
+  /// 패배 시 K (div1: 24 / div2: 30)
+  loseK                Float
+  /// 승리 배수 (div1: 1.15 / div2: 1.00)
+  winMultiplier        Float
+  /// div1이 div2를 상대할 때 0.6 (div2 측은 1.0).
+  /// **0.6의 정확한 내부 적용 위치는 [미확인]** — 조사 후 확정한다.
+  crossDivisionMultiplier Float @default(1.0)
+
+  formulaVersion String
+  effectiveFrom  DateTime @default(now())
+
+  league League? @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, divisionKey, formulaVersion])
+}
+
+/* ========================================================================== */
+/* 9. 운영                                                                     */
+/* ========================================================================== */
+
+/// 관리자 조치 감사 로그. 되돌릴 수 없는 조치(추방·삭제·시즌 종료)를 남긴다.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  targetType String
+  targetId  String
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+/// 서버 측 rate limit (글쓰기 5분 제한 등, 관측).
+/// Redis 도입 전까지 DB로 처리한다. Phase 8에서 Redis로 옮길 수 있다.
+model RateLimit {
+  key       String   @id
+  count     Int      @default(0)
+  windowEnd DateTime
+
+  @@index([windowEnd])
+}

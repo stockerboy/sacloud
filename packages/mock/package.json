@@ -7,6 +7,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./dataset": "./src/dataset.ts",
     "./browser": "./src/browser.ts",
     "./node": "./src/node.ts",
     "./session": "./src/session.ts"

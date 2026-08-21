@@ -273,6 +273,56 @@ CDP 평가가 45초 타임아웃 나던 것("renderer frozen")도 같은 원인�
 - 폼 검증 같은 순수 로직은 브라우저 대신 **단위 테스트로 고정**한다
   (`signup-rules.test.ts`, `league-create.test.ts`).
 
+### D-024. 닉네임 유일 제약을 걸지 않는다 (2026-08-21)
+
+Phase 7 스키마 초안에서 `User.nickname`에 `@unique`를 걸었다가 **되돌렸다.**
+
+원본이 닉네임 중복을 막는지는 **관측되지 않았다**. 회원가입 폼에서 확인한 것은 길이 제약(2~16자)뿐이다.
+확인되지 않은 제약을 임의로 만드는 것은 `CLAUDE.md` 3장 7번 위반이다.
+게다가 Mock 픽스처(사용자 40명)에 이미 닉네임 충돌이 있어, 유일 제약을 걸면
+**mock 모드와 live 모드의 데이터가 달라진다.** 화면 비교의 기준이 무너진다.
+
+→ `@unique` 대신 조회용 `@@index([nickname])`만 둔다.
+원본이 중복을 막는다는 것이 확인되면 그때 제약과 마이그레이션을 추가한다.
+
+### D-023. 시드 데이터는 출처를 남긴다 (2026-08-21)
+
+개발 시드로 들어가는 3,000경기는 **가짜다.** 실제 3rd.supply 기록이 아니고,
+래더 값도 픽스처 난수라 SACLOUD 공식으로 계산된 것이 아니다.
+
+나중에 실제 기록과 섞이면 구분할 방법이 없어지므로 두 곳에 표시를 남긴다.
+
+- `Match.origin = "mock"` — 실제 수집분(`nexon` / `3rd.supply`)과 구분
+- `MatchPlayerStat.formulaVersion = "mock-fixture"` — 공식 계산 결과로 오인하지 않게
+
+같은 이유로 `CLAUDE.md` 3-A 2번(기존 `rating_update`를 추정 공식으로 덮어쓰지 않는다)을
+스키마 수준에서 지킬 수 있다. 이전된 과거 기록은 `formulaVersion`이 다르므로 재계산 대상에서 제외된다.
+
+### D-022. 로컬 개발 DB는 `embedded-postgres`로 띄운다 (2026-08-21)
+
+**문제** — 이 개발 PC에는 Docker도 PostgreSQL도 설치돼 있지 않다(2026-08-21 확인).
+관리자 권한 설치를 요구하지 않고 개발을 진행할 방법이 필요했다.
+
+**선택** — `embedded-postgres`(PostgreSQL 17 공식 바이너리를 `node_modules`에 내려받아
+일반 사용자 권한으로 기동). `pnpm db:start` / `db:stop` / `db:reset`으로 다룬다.
+**개발 전용이며 운영에는 쓰지 않는다.** 운영은 관리형 PostgreSQL을 쓴다.
+
+**한국어 Windows에서 막혔던 지점 두 가지** (둘 다 실제로 실패를 확인하고 우회했다)
+
+1. 데이터 디렉터리를 저장소 안(`C:\Users\LG\Desktop\서플라이\.pgdata`)에 두면
+   `initdb`가 경로를 CP949로 다뤄 깨진다. → 저장소 밖 **ASCII 경로**
+   (`%LOCALAPPDATA%\sacloud\pgdata`)에 둔다. `SACLOUD_PGDATA`로 바꿀 수 있다.
+2. 기본 로케일이 `Korean_Korea.949`라
+   - `initdb`가 "could not find suitable text search configuration"으로 실패 → `--locale=C`
+   - post-bootstrap의 `pg_import_system_collations()`가 Windows collation 이름을 CP949로 넣어
+     `invalid byte sequence for encoding "UTF8": 0xbc`로 실패 → 템플릿을 `--encoding=SQL_ASCII`로 만든다.
+
+   **템플릿만 SQL_ASCII이고, 실제 사용 DB(`sacloud`)는 `TEMPLATE template0`으로
+   UTF8 + `LC_COLLATE=C`로 따로 만든다.** 한글 저장은 UTF8이며,
+   `pnpm db:check`가 한글 왕복과 DB 인코딩을 매번 검증한다.
+
+**포트는 5433.** 나중에 시스템에 PostgreSQL을 설치해도 기본 포트(5432)와 겹치지 않는다.
+
 ### D-021. 개발 서버는 반드시 하나만 띄운다 (2026-08-21 사고)
 
 **증상** — `/auth/login`이 브라우저에서 **404**로 보였다. 그런데 코드·빌드·라우트는 전부 정상이었다.

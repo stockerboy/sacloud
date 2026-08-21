@@ -15,14 +15,24 @@
     "test:watch": "vitest",
     "verify": "pnpm typecheck && pnpm lint && pnpm test",
     "clean": "node -e \"require('fs').rmSync('apps/web/.next',{recursive:true,force:true})\"",
-    "dev:clean": "node scripts/dev-restart.mjs"
+    "dev:clean": "node scripts/dev-restart.mjs",
+    "db:start": "node scripts/db-local.mjs start",
+    "db:stop": "node scripts/db-local.mjs stop",
+    "db:reset": "node scripts/db-local.mjs reset",
+    "db:seed": "pnpm --filter @sacloud/db seed",
+    "db:check": "pnpm --filter @sacloud/db exec tsx seed/check.ts",
+    "db:generate": "pnpm --filter @sacloud/db generate",
+    "db:migrate": "pnpm --filter @sacloud/db migrate",
+    "db:studio": "pnpm --filter @sacloud/db studio"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "^15.1.0",
     "@types/node": "^26.2.0",
+    "embedded-postgres": "17.10.0-beta.17",
     "eslint": "^10.8.1",
     "globals": "^17.11.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.11"

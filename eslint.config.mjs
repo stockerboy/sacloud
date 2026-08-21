@@ -12,6 +12,8 @@ export default tseslint.config(
       '**/coverage/**',
       '**/public/mockServiceWorker.js',
       '**/next-env.d.ts',
+      // prisma generate 산출물 — 우리가 작성한 코드가 아니다
+      'packages/db/generated/**',
     ],
   },
   js.configs.recommended,

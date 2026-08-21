@@ -1,0 +1,30 @@
+{
+  "name": "@sacloud/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./rating": "./src/rating.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "studio": "prisma studio",
+    "seed": "tsx seed/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.3.0"
+  },
+  "devDependencies": {
+    "@sacloud/contract": "workspace:*",
+    "@sacloud/mock": "workspace:*",
+    "bcryptjs": "^3.0.2",
+    "prisma": "^6.3.0",
+    "tsx": "^4.23.12"
+  }
+}
