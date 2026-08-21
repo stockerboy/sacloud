@@ -26,7 +26,14 @@
     "db:migrate": "pnpm --filter @sacloud/db migrate",
     "db:studio": "pnpm --filter @sacloud/db studio",
     "legacy:import": "pnpm --filter @sacloud/db legacy:import",
-    "legacy:collect": "pnpm --filter @sacloud/db legacy:collect"
+    "legacy:collect": "pnpm --filter @sacloud/db legacy:collect",
+    "nexon": "pnpm --filter @sacloud/worker nexon",
+    "nexon:identities": "pnpm --filter @sacloud/worker nexon identities",
+    "nexon:collect": "pnpm --filter @sacloud/worker nexon collect",
+    "nexon:project": "pnpm --filter @sacloud/worker nexon project",
+    "nexon:refresh": "pnpm --filter @sacloud/worker nexon refresh",
+    "nexon:check": "pnpm --filter @sacloud/worker nexon check",
+    "nexon:status": "pnpm --filter @sacloud/worker nexon status"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

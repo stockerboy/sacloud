@@ -11,16 +11,17 @@
   },
   "dependencies": {
     "@sacloud/contract": "workspace:*",
+    "@sacloud/db": "workspace:*",
     "@sacloud/mock": "workspace:*",
+    "@sacloud/nexon": "workspace:*",
     "@sacloud/ui": "workspace:*",
     "@tanstack/react-query": "^5.62.0",
+    "bcryptjs": "^3.0.2",
+    "jose": "^6.0.11",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "zod": "^3.24.1",
-    "@sacloud/db": "workspace:*",
-    "bcryptjs": "^3.0.2",
-    "jose": "^6.0.11"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",

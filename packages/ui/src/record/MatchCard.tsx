@@ -50,7 +50,13 @@ function Lineup({
   entries,
   leagueSlug,
 }: {
-  entries: readonly { player_id: string; name: string; weapon: number; dropout: boolean }[]
+  entries: readonly {
+    player_id: string
+    name: string
+    /** 수집원이 무기를 주지 않으면 null — `[S]`를 붙일 근거가 없다 (D-034) */
+    weapon: number | null
+    dropout: boolean | null
+  }[]
   leagueSlug: string
 }) {
   return (
@@ -60,7 +66,8 @@ function Lineup({
           <div key={entry.player_id}>
             <Link className="inline-block" href={`/league/${leagueSlug}/player/${entry.player_id}`}>
               <span className={entry.dropout ? 'line-through' : ''}>{entry.name}</span>
-              {/* 무기: 0 = 라이플, 1 = 스나이퍼 → 스나이퍼만 [S] 표기 (원본 규칙) */}
+              {/* 무기: 0 = 라이플, 1 = 스나이퍼 → 스나이퍼만 [S] 표기 (원본 규칙).
+                  null(알 수 없음)이면 아무 표기도 하지 않는다 */}
               {entry.weapon === 1 ? <span>[S]</span> : null}
             </Link>
           </div>
@@ -137,7 +144,13 @@ export function MatchCard({
         <div className="flex items-center">
           <div className="w-24 text-center text-meta">
             <div className="text-sm font-semibold">{match.map.name}</div>
-            <div className="mb-1 text-sm">{formatPlayTime(match.play_time)}</div>
+            <div className="mb-1 text-sm">
+              {match.play_time === null ? (
+                <span className="text-unknown">알수없음</span>
+              ) : (
+                formatPlayTime(match.play_time)
+              )}
+            </div>
             <div className={`font-bold ${win ? 'text-win' : 'text-lose'}`}>
               {win ? '승리' : '패배'}
             </div>
@@ -235,7 +248,15 @@ function StatTable({ title, stats }: { title: string; stats: readonly MatchPlaye
           <div className="w-28 text-center">
             {stat.kill} / {stat.death} / {stat.assist}
           </div>
-          <div className="w-20 text-center">{stat.weapon === 1 ? '스나이퍼' : '라이플'}</div>
+          <div className="w-20 text-center">
+            {stat.weapon === null ? (
+              <span className="text-unknown">알수없음</span>
+            ) : stat.weapon === 1 ? (
+              '스나이퍼'
+            ) : (
+              '라이플'
+            )}
+          </div>
           {/* 상대 클랜 소속은 딜량·헤드샷이 결측된다 → `알수없음` (원본 규칙) */}
           <div className="w-24 text-center">
             {stat.damage === null ? (
@@ -267,8 +288,11 @@ function MatchDetailPanel({
   return (
     <div className="border-x border-b border-line bg-card px-4 py-3">
       <div className="flex items-center text-sm text-meta">
-        {/* `blue_team`의 정확한 의미는 [미확인] — 계약 주석 참조 */}
-        <div className="mr-4">{match.blue_team ? '선블루' : '선레드'}</div>
+        {/* `blue_team`의 정확한 의미는 [미확인] — 계약 주석 참조.
+            null이면 선공 진영을 모르는 것이므로 **표기하지 않는다** (false로 단정하지 않는다) */}
+        {match.blue_team === null ? null : (
+          <div className="mr-4">{match.blue_team ? '선블루' : '선레드'}</div>
+        )}
         <div className="mr-4">
           {new Intl.DateTimeFormat('ko-KR', {
             timeZone: 'Asia/Seoul',

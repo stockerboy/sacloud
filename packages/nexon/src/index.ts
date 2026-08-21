@@ -1,0 +1,16 @@
+/**
+ * `@sacloud/nexon` — 넥슨 Open API 클라이언트 + 정규화기.
+ *
+ * DB를 모른다. 화면도 모른다. 여기서 나온 값을 `apps/worker`가 스테이징에 넣는다.
+ * 사양은 `docs/NEXON_INGEST_SPEC.md`.
+ */
+export * from './config'
+export * from './endpoints'
+export * from './errors'
+export * from './hash'
+export * from './normalize'
+export * from './rateLimit'
+export * from './schemas'
+export * from './client'
+/** 테스트·스모크용 픽스처 (실제 넥슨 응답이 아니다. 키 수령 후 실응답으로 교체한다) */
+export * from './fixtures/sample'

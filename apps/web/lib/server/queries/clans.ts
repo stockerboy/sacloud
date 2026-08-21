@@ -11,6 +11,7 @@ import { cursorPage, type CursorPage } from '../cursorPage'
 import { toKstDateOrNull, toKstIso, toKstIsoOrNull } from '../format'
 import { LEAGUE_SUMMARY_SELECT, toLeagueSummary, toPlayerSummaryOrNull } from '../mappers'
 import { clanRankOf } from './leagues'
+import { enqueueRenewJob } from './ingestQueue'
 
 /**
  * 클랜 조회 · 갱신.
@@ -162,6 +163,8 @@ export async function renewClan(clanSlug: string): Promise<RenewResult | null> {
 
   const renewedAt = new Date()
   await prisma.clan.update({ where: { id: clan.id }, data: { renewedAt } })
+  // 넥슨 API를 인라인 호출하지 않는다. 수집 작업만 큐에 등록한다 (E 결정)
+  await enqueueRenewJob({ kind: 'clan', id: clan.id })
 
   return { accepted: true, renewed_at: toKstIso(renewedAt), retry_after: null }
 }

@@ -467,44 +467,70 @@ Upload(id, url, ownerKey, createdAt)
 
 ---
 
-### Phase 8 — 전적 수집 파이프라인
+### Phase 8 — 전적 수집 파이프라인  **[2026-08-21 착수 · 실측 반영]**
 
-**1) 구현 대상**
-넥슨 병영수첩에서 클랜전 기록을 가져와 `Match` / `MatchPlayerStat`로 정규화.
+> 이 절은 착수 시 **넥슨 공식 OpenAPI 스펙 실측 결과**로 다시 썼다.
+> 상세 사양은 `docs/NEXON_INGEST_SPEC.md`, 결정 기록은 `docs/DECISIONS.md` D-034 ~ D-042.
 
-**2) 생성할 주요 페이지**
-- (관리자 전용) 수집 상태 대시보드 — 최근 수집 시각, 실패 큐, 재시도 버튼
-  - 원본에 동일 화면이 있는지는 `[미확인]`. 운영에 필요하므로 내부용으로만 추가
+**1) 수집원 (확정)**
 
-**3) 필요한 컴포넌트**
-- `apps/worker`: `ClanSyncJob`, `MatchIngestJob`, `PlayerRefreshJob`
-- `SourceAdapter` 인터페이스 — 수집원 교체 가능하게 추상화
-- 정규화기: 원본 응답 → 내부 스키마 매핑, 중복 제거(matchId 기준 upsert)
-- 결측 처리: 상대팀 딜량·헤드샷이 없으면 `null`로 저장하고 UI에서 `알수없음`
+`https://open.api.nexon.com` · 헤더 `x-nxopen-api-key` 필수.
+계획 초안에 적혀 있던 `barracks.sa.nexon.com/api/ClanHome/*`(병영수첩 내부 API)는 **쓰지 않는다.**
+공식 Open API가 서든어택을 정식 지원하므로 그쪽을 1차 출처로 삼는다.
 
-**4) 필요한 데이터**
-- 확인된 수집원 (조사 시점 관찰값):
-  - `POST https://barracks.sa.nexon.com/api/ClanHome/GetClanInfo/{slug}`
-  - `POST .../GetClanUserList`
-  - `POST .../GetClanMatchList/`
-- 요청 파라미터 형식, 페이지네이션 방식, 인증/토큰 필요 여부, 호출 제한: **모두 `[미확인]`** → Phase 8 착수 시 실측 필요
-- 이용약관/robots 상 수집 허용 범위: `[미확인]` → 착수 전 확인 필요
+| 경로 | 파라미터 | 비고 |
+|---|---|---|
+| `/suddenattack/v1/id` | `user_name` | 닉네임 → ouid |
+| `/suddenattack/v1/user/basic` | `ouid` | 닉네임·클랜명·생성일 |
+| `/suddenattack/v1/match` | `ouid`, **`match_mode` 필수**, `match_type` 선택 | 최근 최대 1000건. **커서·날짜 필터 없음** |
+| `/suddenattack/v1/match-detail` | `match_id` | 맵 + 참가자별 k/d/a·헤드샷·딜량·클랜명 |
 
-**5) API/DB 의존성**
-- BullMQ 큐 + Redis
-- 스케줄: 클랜별 주기 동기화 + 사용자 `정보갱신`/`전적갱신` 요청 시 온디맨드 작업 투입
-- 기록 조건 필터: 리그의 `maps` / `playerLimits`에 맞고 **양쪽 클랜이 모두 해당 리그 소속**인 경기만 저장
+제약(스펙 명시): **2025-01-24 이후 데이터만** · 게임 데이터 평균 10분 지연 · **ouid 변경 가능**
+· 가져간 데이터는 **최소 30일마다 갱신**.
 
-**6) 테스트 방법**
-- 어댑터 단위 테스트: 저장해 둔 응답 픽스처로 정규화 결과 검증(네트워크 미사용)
-- 멱등성 테스트: 동일 매치 3회 수집 → 레코드 1건, 스탯 중복 없음
-- 필터 테스트: 맵/인원/미등록 클랜 조합에서 저장 제외 확인
-- 장애 주입: 429/5xx/타임아웃 시 백오프 재시도 후 실패 큐 적재
+**2) 넥슨이 주지 않는 값**
 
-**7) 완료 조건**
-- 실제 클랜 1개를 등록해 최근 경기가 기록실에 뜬다
-- 재수집 시 중복이 생기지 않는다
-- 수집 실패가 사용자 화면을 깨뜨리지 않는다(부분 데이터로 렌더)
+무기(라이플/스나이퍼) · 플레이시간 · 종료시각 · 선공진영 · MVP · 탈주 · 참가자 ouid · 클랜 slug.
+전부 `null`로 둔다. **기본값으로 채우지 않는다** (D-034).
+
+**3) 만든 것**
+
+```
+packages/nexon/     API 클라이언트 · Zod 응답 스키마 · 오류 분류 · 속도 제어 · 정규화 (순수)
+apps/worker/        수집 잡 + CLI (identities · collect · project · refresh · check · status)
+```
+
+BullMQ / Redis는 **도입하지 않았다** (D-040). 체크포인트는 `ImportJob`에 남긴다.
+
+**4) 흐름 (고정)**
+
+```
+Nexon 응답 → RawImport(append-only) → normalize → NexonMatch/NexonMatchParticipant
+          → validate → projection rule → Match / MatchPlayerStat
+```
+
+넥슨 응답을 운영 `Match`에 바로 넣지 않는다. 투영 조건은 매치 유형 · 맵 · 대전 인원 ·
+**양쪽 클랜이 모두 해당 리그 소속** · 전 참가자 해석 성공 · 승패 판정 가능.
+하나라도 어긋나면 사유를 남기고 보류한다(부분 저장 금지).
+
+**5) 테스트 방법**
+
+- 픽스처 기반 단위 테스트(네트워크 없음): 스키마 · 정규화 · 오류 분류 · 백오프 · 감속 · 리댁션
+- 순수 규칙 테스트: 투영 규칙 · 신원 판단 · 내부 ID · 신선도
+- 오프라인 스모크(`apps/worker/src/dev/offlineSmoke.ts`): `fetch`를 주입해 **실제 DB**에
+  원본→스테이징→투영을 돌리고 멱등성까지 확인한 뒤 자기가 만든 행만 지운다
+
+**6) 완료 조건**
+
+- 재수집해도 매치·참가자·원본이 중복되지 않는다 → 스모크로 확인
+- 수집 실패가 화면을 깨뜨리지 않는다 (수집은 워커에서만 돈다)
+- `pnpm nexon:check` 7항목 통과
+- **실제 API 키로 1차 실주행** → 스테이징 적재 확인 (키 수령 후, 사용자 승인 필요)
+
+**7) Phase 8에서 하지 않는 것**
+
+래더·랭킹·시즌 계산은 전부 Phase 9다. 넥슨 경기의 래더 컬럼은 `null`로 남긴다.
+관리자 수집 대시보드도 만들지 않는다 — CLI 리포트로 대체한다.
 
 ---
 

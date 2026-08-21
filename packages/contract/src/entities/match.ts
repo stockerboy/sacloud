@@ -28,15 +28,20 @@ export const MatchPlayerStat = z.object({
   kd_rate: Percent,
   damage_percent: Percent.nullable(),
   headshot_percent: Percent.nullable(),
-  weapon: Weapon,
+  /**
+   * 무기. 수집원이 무기를 제공하지 않으면 `null`(= 알 수 없음)이다.
+   * 넥슨 Open API에는 무기 정보가 없다 (`docs/DECISIONS.md` D-034).
+   */
+  weapon: Weapon.nullable(),
   /** 배치고사 진행중이면 래더 대신 `배치고사`를 표기하므로 null일 수 있다 */
   rating: Rating.nullable(),
   rating_update: RatingUpdate.nullable(),
   placement: z.boolean(),
-  /** 탈주 */
-  dropout: z.boolean(),
+  /** 탈주. **`false`는 "탈주하지 않았다"는 실제 정보다.** 모르면 `null` (D-034) */
+  dropout: z.boolean().nullable(),
   win: z.boolean(),
-  mvp: z.boolean(),
+  /** MVP. 모르면 `null` (D-034) */
+  mvp: z.boolean().nullable(),
 })
 export type MatchPlayerStat = z.infer<typeof MatchPlayerStat>
 
@@ -44,8 +49,9 @@ export type MatchPlayerStat = z.infer<typeof MatchPlayerStat>
 export const MatchLineupEntry = z.object({
   player_id: Id,
   name: z.string(),
-  weapon: Weapon,
-  dropout: z.boolean(),
+  /** 수집원이 주지 않으면 `null` — `[S]` 표기 근거가 없다 (D-034) */
+  weapon: Weapon.nullable(),
+  dropout: z.boolean().nullable(),
 })
 export type MatchLineupEntry = z.infer<typeof MatchLineupEntry>
 
@@ -69,12 +75,16 @@ export const MatchListItem = z.object({
   map: GameMap,
   player_count: Count,
   start_at: IsoDateTime,
-  end_at: IsoDateTime,
-  /** 플레이 시간(초) */
-  play_time: Count,
+  /** 수집원이 종료 시각을 주지 않으면 `null` (D-034) */
+  end_at: IsoDateTime.nullable(),
+  /** 플레이 시간(초). 모르면 `null` (D-034) */
+  play_time: Count.nullable(),
   win: z.boolean(),
-  /** 선공 진영이 블루면 true (원본 표기: 선레드 / 선블루). 정확한 의미는 [미확인] */
-  blue_team: z.boolean(),
+  /**
+   * 선공 진영이 블루면 true (원본 표기: 선레드 / 선블루). 정확한 의미는 [미확인].
+   * **모르면 `null`이다.** `false`는 "선레드였다"는 실제 정보다 (D-034).
+   */
+  blue_team: z.boolean().nullable(),
   placement: z.boolean(),
   rating_update: RatingUpdate.nullable(),
   mvp_player_id: Id.nullable(),

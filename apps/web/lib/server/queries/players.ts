@@ -15,6 +15,7 @@ import {
   toLeagueSummary,
 } from '../mappers'
 import { playerRankOf } from './leagues'
+import { enqueueRenewJob } from './ingestQueue'
 
 /**
  * 플레이어 조회 · 갱신.
@@ -109,8 +110,9 @@ export async function getPlayerLeagues(playerId: string): Promise<PlayerLeagueEn
 /**
  * `정보갱신` 요청.
  *
- * **실제 전적 수집은 Phase 8(수집 파이프라인)에서 붙인다.** 지금은 수집을 하지 않으므로
- * 마지막 갱신 시각만 현재 시각으로 올린다. 수집한 것처럼 꾸미지 않는다.
+ * **넥슨 API를 여기서 호출하지 않는다** (E 결정). 수집 작업을 큐(`ImportJob`)에 등록하고
+ * 마지막 갱신 시각만 올린다. 실제 수집은 워커(`pnpm nexon:collect`)가 한다.
+ * 수집이 끝난 것처럼 꾸미지 않는다.
  *
  * `retry_after`(재요청 제한)는 원본 값이 [미확인]이라 null로 둔다.
  * 로그인이 필요한 동작인지도 [미확인] — Mock과 같이 인증을 요구하지 않는다.
@@ -121,6 +123,7 @@ export async function renewPlayer(playerId: string): Promise<RenewResult | null>
 
   const renewedAt = new Date()
   await prisma.player.update({ where: { id: playerId }, data: { renewedAt } })
+  await enqueueRenewJob({ kind: 'player', id: playerId })
 
   return { accepted: true, renewed_at: toKstIso(renewedAt), retry_after: null }
 }

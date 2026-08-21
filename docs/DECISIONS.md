@@ -530,3 +530,100 @@ Phase 9(레이팅) 착수 시 새로 작성하며, 모든 항목을 **확정 / �
 mock↔live 대조(`pnpm compare`)가 깨진다. `admin-test`는 `role=2`로 모든 리그 관리에 접근한다.
 
 비밀번호는 시드 공통값(`DEV_PASSWORD`)이며 **개발 전용**이다. 운영에는 이 시드를 쓰지 않는다.
+
+---
+
+## Phase 8 — 넥슨 Open API 수집 (2026-08-21)
+
+사양 문서: `docs/NEXON_INGEST_SPEC.md` (엔드포인트 실측 · 흐름 · 규칙)
+
+### D-034. 원본이 주지 않는 값은 전부 `null`이다. `false`를 기본값으로 쓰지 않는다
+
+넥슨 Open API는 **무기 · 플레이시간 · 종료시각 · 선공진영 · MVP · 탈주**를 제공하지 않는다
+(공식 OpenAPI 스펙 실측, 2026-08-21).
+
+`mvp = false` / `dropout = false` / `blueFirst = false` 는 "아니다"라는 **실제 정보**다.
+우리는 그 사실을 모르므로 `null`(= 알 수 없음)이어야 한다.
+
+바꾼 것
+
+| 위치 | 변경 |
+|---|---|
+| `Match.endAt` `Match.playTime` `Match.blueFirst` | NOT NULL → nullable (기본값 제거) |
+| `MatchPlayerStat.weapon` `dropout` `mvp` | NOT NULL → nullable (기본값 제거) |
+| 계약 `MatchPlayerStat.weapon/dropout/mvp` | `.nullable()` |
+| 계약 `MatchListItem.end_at/play_time/blue_team` | `.nullable()` |
+| 계약 `MatchLineupEntry.weapon/dropout` | `.nullable()` |
+| UI `MatchCard` | 플레이시간·무기 `알수없음`, `[S]`·MVP·탈주 미표기, 선레드/선블루 **행 자체를 감춤** |
+
+**기존 mock 시드는 실제 값이 있으므로 그대로 둔다.** 값을 지우지 않는다.
+
+### D-035. 내부 ID와 외부 source ID를 분리한다
+
+```
+Match.id            = SACLOUD 내부 식별자 (18자리 숫자 규칙, 계약 MatchId)
+Match.origin        = "nexon" | "3rd.supply" | "sacloud" | "mock"
+Match.sourceMatchId = 넥슨 원본 match_id (문자열 원형)
+중복 방지            = @@unique([origin, sourceMatchId])
+```
+
+넥슨 `match_id`를 내부 `Match.id`로 쓰지 않는다. 외부 공급자의 ID 형식이 내부 도메인 규칙에
+침투하면 공급자가 늘 때마다 계약이 흔들린다. 내부 ID는 `YYMMDDHHmmss`(KST) + 6자리 일련번호로
+우리가 만든다. **원본 대조는 언제나 `sourceMatchId`로 한다.**
+
+### D-036. ouid로도, 닉네임으로도 동일인을 자동 확정하지 않는다
+
+- 넥슨은 "게임 콘텐츠 변경으로 ouid가 변경될 수 있다"고 명시했다 → **ouid는 영구 식별자가 아니다.**
+- 닉네임도 영구 식별자가 아니다 → 닉네임 일치만으로 병합하지 않는다.
+- `Player.nexonOuid`는 **비권위 캐시**다. 판단 근거로 쓰지 않는다.
+
+`NexonIdentity.status` = `unresolved`(기본) | `active` | `superseded` | `conflicted`.
+근거가 부족한 연결은 `NexonIdentityCandidate`(open/accepted/rejected)로만 남기고
+**자동 승인 경로를 만들지 않았다.** 참가자 해석은 `active` + `playerId`가 있는 신원만 쓰며,
+둘 이상 걸리면 `ambiguous`로 두고 투영을 보류한다.
+
+### D-037. 진영(red/blue) 배정은 내부 규칙이다
+
+넥슨은 진영 색을 주지 않고 `team_id`의 의미도 `[미확인]`이다.
+그래서 **`team_id` 오름차순으로 red/blue를 배정**한다. 재실행해도 같은 결과가 나오게 하려는
+내부 규칙일 뿐, "원본이 이랬다"는 주장이 아니다. 승패는 참가자 `match_result`로 판정하며
+갈리지 않으면 투영하지 않는다.
+
+### D-038. `damage` 정밀도 — 스테이징은 원본, 도메인은 정수
+
+넥슨 `damage`는 소수(double)다. 계약의 딜량은 정수(`Count`)다.
+`NexonMatchParticipant.damage`에 **소수 원본을 그대로** 두고, 운영 `MatchPlayerStat.damage`에만
+반올림해 넣는다. 정확한 값이 필요하면 스테이징·원본에서 다시 읽을 수 있다.
+
+### D-039. `RawImport`는 append-only다
+
+`contentHash`(sha256)를 유니크 키에 넣었다.
+
+- 같은 내용을 다시 받으면 **새 행을 만들지 않고** `fetchCount` / `lastFetchedAt`만 올린다.
+- 내용이 달라지면 **새 행**을 추가한다. 이전 원본을 덮어쓰지 않는다.
+
+30일 갱신 재수집이 과거 원본을 지워 버리면 `CLAUDE.md` 3-A 1번(원본 보존)이 깨진다.
+**요청 헤더는 저장하지 않는다.** API 키가 저장소에 들어갈 경로 자체를 없앴다.
+
+### D-040. Phase 8은 큐 인프라를 도입하지 않는다
+
+Redis / BullMQ를 쓰지 않는다. 체크포인트는 `ImportJob`(+`ImportFailure`)에 남기고
+실행은 워커 CLI가 한다. 넥슨 `/match`에 커서가 없어 체크포인트 단위는 매치가 아니라
+**대상(ouid × match_mode)** 이다. 규모가 실제로 문제가 되면 별도 Phase에서 큐를 얹는다.
+
+`정보갱신` / `전적갱신` 버튼은 넥슨 API를 인라인 호출하지 않고 `ImportJob`에 `pending`으로
+등록만 한다. 사용자 클릭이 곧바로 외부 호출이 되면 호출 한도를 순식간에 소진한다.
+
+### D-041. 신선도 주기는 설정값이다 (`NEXON_REFRESH_INTERVAL_DAYS`, 기본 30)
+
+넥슨 이용 조건에 "가져간 데이터는 최소 30일마다 갱신"이 명시돼 있다.
+다만 **그 의무가 어느 데이터 범위까지 어떻게 적용되는지는 검증되지 않았다 `[미확인]`.**
+그래서 특정 일수를 비즈니스 규칙처럼 코드에 고정하지 않고 환경변수로 받는다.
+기한이 지난 스테이징은 `refreshDueAt`으로 뽑아 재수집하고, 갱신하지 못하면 `staleAt`을 남긴다.
+
+### D-042. 호출 한도를 추측하지 않는다
+
+넥슨 스펙·문서 어디에도 호출 한도 수치가 없다. 테스트 키의 한도는 더더욱 모른다.
+그래서 `NEXON_RATE_LIMIT_PER_SEC`(보수적 기본값)에서 시작해 **429를 받으면 스스로 감속**한다
+(`Retry-After` 존중 + 지수 백오프 + 지터). 403·키 오류는 재시도하지 않고 **전체를 멈춘다.**
+"우리 추정 한도"를 코드에 적어 두지 않는다.

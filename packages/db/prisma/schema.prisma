@@ -120,7 +120,9 @@ model Player {
   /* --- 원본 대조용. 버리지 않는다 (CLAUDE.md 3-A 3번) --- */
   /// 3rd.supply의 플레이어 ID
   sourcePlayerId String?
-  /// 넥슨 병영수첩의 캐릭터 식별자
+  /// 넥슨 계정 식별자(ouid) **비권위 캐시**.
+  /// 넥슨이 ouid 변경 가능성을 명시했으므로 이 값을 영구 동일인 판단 근거로 쓰지 않는다.
+  /// 권위 있는 매핑은 `NexonIdentity`에 있다 (D-036).
   nexonOuid      String?
 
   clan          Clan?           @relation("ClanMembers", fields: [clanId], references: [id], onDelete: SetNull)
@@ -129,6 +131,8 @@ model Player {
   leaguePlayers LeaguePlayer[]
   matchStats    MatchPlayerStat[]
   mvpMatches    Match[]         @relation("MatchMvp")
+  nexonIdentities         NexonIdentity[]
+  nexonIdentityCandidates NexonIdentityCandidate[]
 
   @@unique([sourcePlayerId])
   @@unique([nexonOuid])
@@ -460,12 +464,15 @@ model Match {
   mapId       String
   playerCount Int
   startAt     DateTime
-  endAt       DateTime
+  /// 원본이 종료 시각을 주지 않으면 null (넥슨은 date_match 하나뿐) — D-034
+  endAt       DateTime?
   /// 플레이 시간(초). endAt-startAt과 다를 수 있어 원본값을 그대로 보관한다.
-  playTime    Int
+  /// 원본에 없으면 null = 알 수 없음 (D-034)
+  playTime    Int?
 
   /// 선공 진영이 블루면 true (원본 표기: 선레드 / 선블루). 정확한 의미는 [미확인]
-  blueFirst   Boolean @default(false)
+  /// **false를 기본값으로 쓰지 않는다.** 모르면 null이다 (D-034)
+  blueFirst   Boolean?
   /// "red" | "blue"
   winnerSide  String
   mvpPlayerId String?
@@ -527,10 +534,13 @@ model MatchPlayerStat {
   headshot Int?
   /// 결측 가능 — `알수없음`
   damage   Int?
-  /// 0 = 라이플, 1 = 스나이퍼 (라인업에 `[S]` 표기)
-  weapon   Int
-  dropout  Boolean @default(false)
-  mvp      Boolean @default(false)
+  /// 0 = 라이플, 1 = 스나이퍼 (라인업에 `[S]` 표기).
+  /// 넥슨 Open API는 무기를 주지 않는다 → null = 알 수 없음 (D-034)
+  weapon   Int?
+  /// 탈주. **모르면 null이다.** false는 "탈주하지 않았다"는 실제 정보다 (D-034)
+  dropout  Boolean?
+  /// MVP. 위와 같다 — 모르면 null (D-034)
+  mvp      Boolean?
 
   /* --- 래더 재현 정보 (LADDER_IMPLEMENTATION_SPEC 5장) --- */
   /// 배치고사 중이면 null (래더 자리에 `배치고사` 표기)
@@ -720,6 +730,7 @@ model RawImport {
   /// 원본 쪽 식별자 (클랜 slug, 매치 ID 등)
   sourceId String
   /// 요청 파라미터 — 재현에 필요하다
+  /// **API 키를 저장하지 않는다.** 키는 헤더로만 나가며 여기에 담기지 않는다.
   requestParams Json?
   httpStatus    Int?
   /// 응답 본문 원형. 가공하지 않는다.
@@ -728,11 +739,20 @@ model RawImport {
   /// 수집 파이프라인 버전
   migrationVersion String
 
+  /// 응답 본문의 내용 해시(sha256). **같은 내용이면 새 행을 만들지 않고**
+  /// `fetchCount`/`lastFetchedAt`만 올린다. 내용이 달라지면 새 행을 추가한다(append-only).
+  /// 유니크에 포함된 이유: 30일 갱신 재수집이 기존 원본을 덮어쓰면 원본 보존이 깨진다.
+  contentHash   String   @default("")
+  firstFetchedAt DateTime @default(now())
+  lastFetchedAt  DateTime @default(now())
+  fetchCount     Int      @default(1)
+
   /// 이 원본이 어떤 로컬 엔티티로 변환됐는지 (변환 전이면 null)
   normalizedAt DateTime?
 
-  @@unique([source, endpoint, sourceId, migrationVersion])
+  @@unique([source, endpoint, sourceId, migrationVersion, contentHash])
   @@index([source, endpoint, fetchedAt])
+  @@index([source, endpoint, sourceId])
   @@index([normalizedAt])
 }
 
@@ -956,6 +976,211 @@ model MigrationCheck {
 
   @@index([migrationVersion, passed])
   @@index([name])
+}
+
+/* ========================================================================== */
+/* 7-N. 넥슨 Open API 수집 스테이징 (Phase 8)                                   */
+/* ========================================================================== */
+//
+// 흐름은 반드시 아래 순서를 지킨다 (`docs/NEXON_INGEST_SPEC.md` 2장).
+//   Nexon 응답 → RawImport → normalize → NexonMatch/NexonMatchParticipant
+//              → validate → projection rule → Match / MatchPlayerStat
+// 넥슨 응답을 운영 `Match`에 **바로 넣지 않는다.**
+
+/// 넥슨 계정 식별자(ouid) 한 개. **ouid만으로 영구 동일인을 가정하지 않는다.**
+///
+/// 넥슨은 "게임 콘텐츠 변경으로 ouid가 변경될 수 있다"고 명시했고, 닉네임도 영구 식별자가
+/// 아니다. 그래서 `Player` 연결은 **근거가 있을 때만** 하고, 근거가 부족하면
+/// `NexonIdentityCandidate`로 남겨 사람이 판단하게 한다 (D-036).
+model NexonIdentity {
+  id       String  @id @default(cuid())
+  ouid     String  @unique
+  playerId String?
+
+  /// "unresolved" | "active" | "superseded" | "conflicted"
+  /// 기본값은 unresolved — ouid를 알아냈다고 해서 누구인지 아는 것은 아니다.
+  status   String  @default("unresolved")
+
+  /// 마지막으로 관측된 닉네임 (스냅샷, 식별자가 아니다)
+  userName String?
+
+  firstSeenAt    DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  /// 넥슨에서 마지막으로 값을 확인한 시각 (신선도 정책 기준)
+  lastVerifiedAt DateTime?
+
+  linkedAt   DateTime?
+  /// 연결 근거. 자동 연결을 금지하므로 사람이 남긴 사유가 들어간다
+  linkReason String?
+  linkedBy   String?
+
+  /// 같은 사람의 더 새로운 ouid가 확인됐을 때. **행을 지우지 않는다**
+  supersededByOuid String?
+  supersededAt     DateTime?
+
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  player     Player?                  @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  candidates NexonIdentityCandidate[] @relation("CandidateIdentity")
+
+  @@index([status])
+  @@index([playerId])
+  @@index([userName])
+}
+
+/// 닉네임 관측 이력. 매치 상세는 참가자 ouid를 주지 않고 닉네임만 준다.
+///
+/// 닉네임 → 플레이어 해석의 **보조 자료**일 뿐이다. 여기 있는 값으로 자동 병합하지 않는다.
+model NexonNickname {
+  id            String @id @default(cuid())
+  nickname      String
+  /// 대소문자 무시 비교용
+  nicknameLower String
+  /// 관측 출처가 매치 상세면 ouid를 모른다 → null
+  ouid          String?
+  /// `ouid ?? "-"`. Postgres는 NULL을 서로 다른 값으로 보므로 유니크에 NULL을 넣을 수 없다
+  /// (legacy `dedupeKey`와 같은 이유)
+  identityKey   String
+  source        String @default("nexon")
+  observations  Int    @default(1)
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([nicknameLower, identityKey])
+  @@index([ouid])
+  @@index([nicknameLower])
+}
+
+/// 신원 연결 **후보**. 자동 승인 경로는 만들지 않는다 (D-036).
+model NexonIdentityCandidate {
+  id   String @id @default(cuid())
+  ouid String
+
+  /// 연결 후보 플레이어 (있으면)
+  targetPlayerId String?
+  /// ouid 변경 후보 — 같은 사람으로 의심되는 다른 ouid
+  targetOuid     String?
+
+  /// "nickname_match" | "ouid_change" | "manual"
+  reason   String
+  /// 판단 근거 원문 (관측된 닉네임·시각·건수 등)
+  evidence Json?
+
+  /// "open" | "accepted" | "rejected"
+  status String @default("open")
+
+  /// 중복 후보 방지. `ouid|targetPlayerId ?? "-"|targetOuid ?? "-"|reason`
+  candidateKey String @unique
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  resolvedBy String?
+  note       String?
+
+  identity NexonIdentity @relation("CandidateIdentity", fields: [ouid], references: [ouid], onDelete: Cascade)
+  player   Player?       @relation(fields: [targetPlayerId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([ouid])
+  @@index([targetPlayerId])
+}
+
+/// 넥슨 매치 스테이징. 운영 `Match`와 **분리**된 표다.
+///
+/// `matchType`은 원본 그대로 보존한다. 클랜전이 아니라는 이유로 버리거나 바꾸지 않는다.
+/// 사용 여부 판단은 투영 규칙에서만 한다 (G 결정).
+model NexonMatch {
+  id            String @id @default(cuid())
+  source        String @default("nexon")
+  /// 넥슨 원본 match_id. **내부 `Match.id`로 쓰지 않는다** (B 결정)
+  sourceMatchId String
+
+  matchMode String?
+  matchType String?
+  dateMatch DateTime?
+  matchMap  String?
+  participantCount Int?
+
+  /// 이 경기를 처음 발견한 ouid (목록 조회 주체). 원본 전체는 RawImport에 있다
+  discoveredByOuid String?
+
+  listRawImportId   String?
+  detailRawImportId String?
+  detailFetchedAt   DateTime?
+
+  /// "pending" | "valid" | "invalid"
+  validationStatus String @default("pending")
+  validationIssues Json?
+
+  /// "pending" | "projected" | "skipped" | "blocked"
+  projectionStatus String  @default("pending")
+  projectionReason String?
+  /// 투영된 운영 매치의 내부 ID (FK를 걸지 않는다 — 스테이징은 외부 데이터의 거울이다)
+  projectedMatchId String?
+  projectedAt      DateTime?
+
+  /// 신선도 정책 (`NEXON_REFRESH_INTERVAL_DAYS`, 기본 30일)
+  lastVerifiedAt DateTime  @default(now())
+  refreshDueAt   DateTime?
+  staleAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants NexonMatchParticipant[]
+
+  @@unique([source, sourceMatchId])
+  @@index([projectionStatus])
+  @@index([validationStatus])
+  @@index([refreshDueAt])
+  @@index([dateMatch])
+  @@index([matchType])
+}
+
+/// 넥슨 매치 참가자 스테이징.
+///
+/// 넥슨은 참가자 ouid를 주지 않는다(닉네임만). 그래서 안정 키는 **응답 배열 순서(slot)** 뿐이다.
+/// 결측값은 전부 null이며 기본값으로 채우지 않는다.
+model NexonMatchParticipant {
+  id           String @id @default(cuid())
+  nexonMatchId String
+  slot         Int
+
+  teamId      String?
+  /// 원본 코드 그대로 (1 승 / 2 패 / 3 무)
+  matchResult String?
+  /// 해석값 "win" | "lose" | "draw" — 모르면 null
+  outcome     String?
+
+  userName    String?
+  seasonGrade String?
+  /// 클랜전 계열에서만 내려온다
+  clanName    String?
+
+  kill     Int?
+  death    Int?
+  assist   Int?
+  headshot Int?
+  damage   Float?
+
+  /// 닉네임 해석 결과. **모호하면 비워 둔다** (자동 병합 금지)
+  resolvedPlayerId String?
+  resolvedOuid     String?
+  /// "unresolved" | "resolved" | "ambiguous"
+  resolutionStatus String @default("unresolved")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nexonMatch NexonMatch @relation(fields: [nexonMatchId], references: [id], onDelete: Cascade)
+
+  @@unique([nexonMatchId, slot])
+  @@index([userName])
+  @@index([clanName])
+  @@index([resolvedPlayerId])
 }
 
 /* ========================================================================== */

@@ -10,7 +10,7 @@ import {
   type Weapon,
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
-import { toKstIso } from '../format'
+import { toKstIso, toKstIsoOrNull } from '../format'
 import { CLAN_SUMMARY_SELECT, PLAYER_SUMMARY_SELECT, toClanSummary } from '../mappers'
 
 /**
@@ -124,7 +124,7 @@ function lineupOf(match: MatchRow, side: TeamSide): MatchLineupEntry[] {
     .map((stat) => ({
       player_id: stat.playerId,
       name: stat.player.name,
-      weapon: stat.weapon as Weapon,
+      weapon: stat.weapon as Weapon | null,
       dropout: stat.dropout,
     }))
 }
@@ -156,7 +156,7 @@ function toMatchPlayerStat(match: MatchRow, stat: StatRow, visible: boolean): Ma
     kd_rate: kdRate(stat.kill, stat.death),
     damage_percent: damage === null ? null : percentOf(damage, teamDamage(match, stat.side)),
     headshot_percent: headshot === null ? null : percentOf(headshot, stat.kill),
-    weapon: stat.weapon as Weapon,
+    weapon: stat.weapon as Weapon | null,
     rating: stat.ratingBefore,
     rating_update: stat.ratingUpdate,
     placement: stat.isPlacement,
@@ -204,7 +204,7 @@ export function toMatchListItem(
     map: match.map,
     player_count: match.playerCount,
     start_at: toKstIso(match.startAt),
-    end_at: toKstIso(match.endAt),
+    end_at: toKstIsoOrNull(match.endAt),
     play_time: match.playTime,
     win: match.winnerSide === viewerSide,
     blue_team: match.blueFirst,

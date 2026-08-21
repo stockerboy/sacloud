@@ -27,11 +27,12 @@ async function main() {
   check('리그', dataset.leagues.length, await prisma.league.count())
   check('리그클랜', dataset.leagueClans.length, await prisma.leagueClan.count())
   check('리그플레이어', dataset.leaguePlayers.length, await prisma.leaguePlayer.count())
-  check('매치', dataset.matches.length, await prisma.match.count())
+  // 시드는 mock 출처만 만든다. 실제 수집분(origin=nexon)이 들어와도 이 검사가 흔들리면 안 된다
+  check('매치(mock)', dataset.matches.length, await prisma.match.count({ where: { origin: 'mock' } }))
   check(
-    '참가기록',
+    '참가기록(mock)',
     dataset.matches.reduce((sum, match) => sum + match.players.length, 0),
-    await prisma.matchPlayerStat.count(),
+    await prisma.matchPlayerStat.count({ where: { match: { origin: 'mock' } } }),
   )
   check('게시글', dataset.boards.length, await prisma.board.count())
   check('댓글', dataset.comments.length, await prisma.comment.count())
@@ -77,6 +78,38 @@ async function main() {
     where: { parent: { parentId: { not: null } } },
   })
   check('2단계 이상 대댓글', 0, deepReplies)
+
+  /* 6. mock 시드와 실제 수집이 섞이지 않았는가 (Phase 8) */
+  const mockLeagueIds = new Set(
+    (await prisma.match.groupBy({ by: ['leagueId'], where: { origin: 'mock' } })).map(
+      (row) => row.leagueId,
+    ),
+  )
+  const realLeagues = await prisma.match.groupBy({
+    by: ['leagueId'],
+    where: { origin: { not: 'mock' } },
+  })
+  check(
+    'mock·실수집 혼재 리그',
+    0,
+    realLeagues.filter((row) => mockLeagueIds.has(row.leagueId)).length,
+  )
+
+  // 시드는 넥슨 스테이징을 만들지 않는다
+  check(
+    'mock 시드가 만든 넥슨 스테이징',
+    0,
+    await prisma.nexonMatch.count({ where: { source: { not: 'nexon' } } }),
+  )
+
+  // 실제 수집분에 mock 공식 표기가 섞이면 안 된다
+  check(
+    '실수집에 mock 공식 표기',
+    0,
+    await prisma.matchPlayerStat.count({
+      where: { match: { origin: { not: 'mock' } }, formulaVersion: 'mock-fixture' },
+    }),
+  )
 
   console.info(failed === 0 ? '\n전부 통과.' : `\n${failed}건 실패.`)
   if (failed > 0) process.exitCode = 1

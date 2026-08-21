@@ -28,6 +28,7 @@
 | `docs/POST_V1_REQUIREMENTS.md` | **V1 이후** 확정 요구사항(관리자·시즌 스냅샷·래더 분리·유료상품·소유권 인증). **V1에서는 구현 금지**, 스키마 설계 시 확장 지점만 참고 |
 | `docs/HANDOFF_CURRENT.md` | **새 세션은 이 파일을 가장 먼저 읽는다.** 현재 Phase · DB · Legacy 상태 · 열린 결정 |
 | `docs/LEGACY_MIGRATION.md` | 3rd.supply 과거 기록 이관 계획 · 도구 · 차단 상태 |
+| `docs/NEXON_INGEST_SPEC.md` | **넥슨 Open API 수집 사양.** 엔드포인트 실측 · 수집 흐름 · 신원 규칙 · 신선도 정책. **Phase 8 작업 전에 읽는다** |
 | `CLAUDE.md` (이 문서) | 작업 원칙. 위 문서들보다 상위의 행동 규칙 |
 
 - 계획 문서 본문에는 기준 문서 경로가 `claude/3rd-supply-structure.md`로 적혀 있으나 **실제 경로는 `docs/3rd-supply-structure.md`** 이다.
@@ -229,14 +230,17 @@ Phase 10 SSR / SEO / 성능 / 운영 → V1 릴리스
 ### 저장소 구조
 
 ```
-apps/web/            Next.js 15 (App Router) — 전역 셸 · 홈 · 약관 · 404
+apps/web/            Next.js 15 (App Router) — 화면 + app/api/** 실제 API
+apps/worker/         넥슨 수집 잡 + CLI (Phase 8). Redis/BullMQ 없이 ImportJob 체크포인트
 packages/contract/   Zod 스키마 + 엔드포인트 레지스트리   ← 계약의 단일 진실 원천
 packages/mock/       결정적 픽스처 생성기 + MSW 핸들러
 packages/ui/         공용 컴포넌트 + 디자인 토큰(원본 실측값)
+packages/db/         Prisma 스키마 · 시드 · legacy 도구 (Phase 7)
+packages/nexon/      넥슨 Open API 클라이언트 · 응답 스키마 · 정규화 (Phase 8, 순수 — DB를 모른다)
 docs/                기준 문서 · 결정 기록
 ```
 
-`apps/worker`(Phase 8), `packages/db`(Phase 7)는 **해당 Phase에서 만든다.** 미리 만들지 않는다.
+새 패키지는 **해당 Phase에서 실제로 필요할 때 만든다.** 미리 만들지 않는다.
 
 ### 자주 쓰는 명령
 
@@ -259,7 +263,18 @@ pnpm db:migrate       # Prisma 마이그레이션
 pnpm db:seed          # Mock과 같은 결정적 픽스처를 DB에 적재
 pnpm db:check         # 시드 결과 숫자 대조 (건수 · 한글 UTF8 왕복 · 래더 정합성 · 스냅샷 누락)
 pnpm compare          # Mock ↔ 실제 API 응답을 **값까지** 대조 ← 두 모드가 같은지 판정하는 기준
+
+# --- Phase 8 이후 (넥슨 수집) ---
+pnpm nexon:status     # 적재 현황 + API 키 설정 여부 (키 값은 찍지 않는다)
+pnpm nexon:identities --nicknames "닉1,닉2" [--dry-run]   # 닉네임 → ouid
+pnpm nexon:collect --all-identities [--limit N] [--dry-run]
+pnpm nexon:project [--league <slug>]    # 스테이징 → 운영 Match (조건 미충족이면 보류)
+pnpm nexon:refresh                      # 신선도 정책(기본 30일) 재수집
+pnpm nexon:check                        # 숫자 대조 7항목
 ```
+
+> `--dry-run`은 **요청을 한 건도 보내지 않는다.** API 키 없이 파이프라인을 점검할 때 쓴다.
+> **대규모 실수집은 사용자 승인 후에만 한다.**
 
 **개발 시작 순서**: `pnpm db:start` → (최초 1회) `pnpm db:migrate` → `pnpm db:seed` → `pnpm dev:clean`
 
@@ -294,10 +309,14 @@ pnpm compare          # Mock ↔ 실제 API 응답을 **값까지** 대조 ← �
   시드, 실제 API 전량(라우트 57개), 실제 인증(JWT + httpOnly 쿠키 + 자동 갱신).
   **Mock ↔ 실제 API 응답 값 대조 25/25 일치.** 이제 글·댓글·추천·설정이 **실제로 저장된다.**
   화면 검수에서 결함 3건을 발견해 고쳤다 (D-030 · D-031). 검수 계정은 D-033.
-- 다음: **Phase 8** (전적 수집 파이프라인). **인수인계는 `docs/HANDOFF_CURRENT.md` 를 먼저 읽는다.**
-  **사용자 승인 후 착수한다.**
+- **진행 중: Phase 8** (넥슨 Open API 전적 수집). 사용자 승인으로 착수했고,
+  **API 키 없이 가능한 구간은 전부 완료**했다 — `packages/nexon`(클라이언트·정규화),
+  `apps/worker`(수집 CLI), 스테이징 스키마, 투영 규칙, 검증 명령.
+  넥슨이 주지 않는 값(무기·플레이시간·종료시각·선공진영·MVP·탈주)은 **전부 `null`** 이다 (D-034).
+  남은 것은 **실제 API 키 투입 후 1차 실주행**뿐이며, **대규모 수집은 사용자 승인 후**에만 한다.
+  사양은 `docs/NEXON_INGEST_SPEC.md`, 인수인계는 `docs/HANDOFF_CURRENT.md`.
 - 자체 결정·임시값·원본과의 의도된 차이는 `docs/DECISIONS.md`에 있다. 그 값을 바꾸려면 문서도 함께 고친다.
-  Phase 1 관련은 D-009 ~ D-013, Phase 7 관련은 D-022 ~ D-033.
+  Phase 1 관련은 D-009 ~ D-013, Phase 7 관련은 D-022 ~ D-033, Phase 8 관련은 D-034 ~ D-042.
 
 ### Phase 7에서 남긴 숙제
 
@@ -306,5 +325,6 @@ pnpm compare          # Mock ↔ 실제 API 응답을 **값까지** 대조 ← �
 - 캡차·이메일 발송·이미지 업로드(오브젝트 스토리지)는 아직 없다.
 - 리치텍스트 에디터는 아직 없다 (글쓰기가 단순 textarea).
 - 래더 점수는 여전히 픽스처 난수다. 실제 계산은 Phase 9.
+- 넥슨 계정 신원(`NexonIdentity`)은 기본이 `unresolved`다. **연결은 사람이 판단한다** (D-036).
 - 시드 데이터는 전부 가짜다. `Match.origin = "mock"` / `formulaVersion = "mock-fixture"`로
   표시해 두었다 (D-023).

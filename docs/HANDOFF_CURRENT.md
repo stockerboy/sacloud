@@ -1,6 +1,6 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21.** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
+**작성 2026-08-21. 최종 갱신 2026-08-21 (Phase 8 키 없는 구간 완료).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 
 ---
@@ -19,7 +19,7 @@
 | 5 게시판 | ✅ 완료 |
 | 6 인증 & 관리 화면 | ✅ 완료 — 여기까지 **M1 (Mock 기반 화면·흐름 복원)** |
 | **7 DB + 실제 API** | ✅ **완료** (2026-08-21 최종 검수 완료) |
-| **8 전적 수집 파이프라인** | ⬜ **다음 작업. 아직 시작 안 함** |
+| **8 전적 수집 파이프라인** | 🟨 **키 없이 가능한 구간 전부 완료.** 실제 API 키로 1차 실주행만 남음 (사용자 승인 필요) |
 | 9 레이팅/시즌/랭킹 배치 | ⬜ |
 | 10 SSR/SEO/성능/운영 | ⬜ |
 
@@ -36,6 +36,8 @@ packages/contract/   Zod 스키마 + 엔드포인트 레지스트리   ← 계�
 packages/mock/       결정적 픽스처 + MSW 핸들러
 packages/ui/         공용 컴포넌트 + 디자인 토큰(원본 실측값)
 packages/db/         Prisma 스키마 · 시드 · legacy 도구
+packages/nexon/      넥슨 Open API 클라이언트 · 스키마 · 정규화 (순수, DB 모름)
+apps/worker/         넥슨 수집 잡 + CLI (Redis/BullMQ 없음, ImportJob 체크포인트)
 docs/                기준 문서 · 결정 기록
 ```
 
@@ -54,6 +56,15 @@ pnpm build           # 프로덕션 빌드 (clean 후 실행)
 pnpm db:check        # 시드 자가 점검 15항목
 pnpm compare         # Mock ↔ 실제 API 응답을 **값까지** 대조
 
+# 넥슨 수집 (아래 F장)
+pnpm nexon:status                                  # 현재 적재 현황 + 키 설정 여부
+pnpm nexon:identities --nicknames "닉1,닉2" [--dry-run]
+pnpm nexon:collect --ouid <OUID> | --all-identities [--dry-run] [--limit N]
+pnpm nexon:project [--league <slug>] [--reproject] [--allow-mock-league]
+pnpm nexon:refresh [--limit N]                     # 신선도 정책(기본 30일) 재수집
+pnpm nexon:check                                   # 숫자 대조 7항목
+pnpm --filter @sacloud/worker exec tsx src/dev/offlineSmoke.ts   # 네트워크 없이 전 구간 점검
+
 # Legacy (아래 C장)
 pnpm legacy:import <파일.csv> [--dry-run]
 pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
@@ -67,10 +78,12 @@ pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
 
 - 로컬 개발 DB: `embedded-postgres` (Docker/PostgreSQL 미설치 환경, **개발 전용**, D-022)
 - 데이터 디렉터리: `%LOCALAPPDATA%\sacloud\pgdata` (저장소 경로에 한글이 있어 initdb가 깨진다)
-- 마이그레이션 6개 적용 완료 (`20260821000820_init` … `20260821091714_legacy_collection_job`)
+- 마이그레이션 **7개** 적용 완료 (`20260821000820_init` … `20260821194025_nexon_ingest`)
 - 시드: 클랜 60 · 플레이어 920 · 사용자 42 · 리그 4 · 매치 3,000 · 참가기록 31,462 · 게시글 400 · 댓글 1,200
 - **시드 데이터는 전부 가짜다.** `Match.origin="mock"` / `formulaVersion="mock-fixture"` 로 표시 (D-023)
 - Legacy 테이블은 **현재 비어 있다** (`LegacyPlayerSeason` 0행, `LegacyCollectionJob` 0건)
+- 넥슨 테이블도 **현재 비어 있다** (`NexonIdentity` / `NexonMatch` / `NexonMatchParticipant` /
+  `NexonNickname` / `NexonIdentityCandidate` 0행, `RawImport` 0행)
 
 ### 검수 계정 (로컬 개발 전용, D-033)
 
@@ -88,10 +101,12 @@ pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
 | 항목 | 결과 |
 |---|---|
 | typecheck / lint | 통과 |
-| **test** | **192 passed / 1 skipped** |
+| **test** | **257 passed / 1 skipped** (넥슨 40 + 워커 25 추가) |
 | build | 통과 (37 페이지) |
-| `pnpm db:check` | 15항목 통과 |
-| `pnpm compare` | **25/25 일치** |
+| `pnpm db:check` | **18항목 통과** (mock↔실수집 분리 검사 3건 추가) |
+| `pnpm compare` | **25/25 일치** (nullable 확장 후 재확인) |
+| `pnpm nexon:check` | 7항목 통과 (아직 수집 0건) |
+| 오프라인 스모크 | 27항목 통과 (원본→스테이징→투영·멱등성) |
 
 > skip 1건은 "개발 서버가 없으면 계약 테스트를 건너뛴다"는 안내용 테스트다.
 > 서버가 떠 있으면 계약 테스트 8건이 돌고 이 1건이 skip된다. 정상이다.
@@ -266,41 +281,90 @@ User-Agent: SACLOUD-legacy-migration/1.0 (operator-authorized; contact: sacloud@
 
 ---
 
-## F. Nexon Phase 8 (다음 우선순위)
+## F. Phase 8 — 넥슨 수집 파이프라인 (2026-08-21 구현)
 
-Legacy가 WAF로 막혔으므로 **기본 개발 우선순위는 Phase 8**이다.
+사양: `docs/NEXON_INGEST_SPEC.md` · 결정: `docs/DECISIONS.md` D-034 ~ D-042
+
+### 확정된 수집원 (공식 OpenAPI 스펙 실측)
+
+`https://open.api.nexon.com` · 헤더 `x-nxopen-api-key`
+
+| 경로 | 파라미터 |
+|---|---|
+| `/suddenattack/v1/id` | `user_name` → `ouid` |
+| `/suddenattack/v1/user/basic` | `ouid` |
+| `/suddenattack/v1/match` | `ouid`, **`match_mode` 필수**, `match_type` 선택. 최근 1000건, **커서 없음** |
+| `/suddenattack/v1/match-detail` | `match_id` |
+
+제약: **2025-01-24 이후 데이터만** · 평균 10분 지연 · **ouid 변경 가능** · **최소 30일마다 갱신**
+· **호출 한도 수치 비공개** (추측하지 않는다)
+
+### 넥슨이 주지 않는 것 — 전부 `null`
+
+무기 · 플레이시간 · 종료시각 · 선공진영 · MVP · 탈주 · 참가자 ouid(닉네임만) · 클랜 slug.
+`false`를 기본값으로 쓰지 않는다 (D-034). 스키마·계약·UI를 nullable로 넓혔다.
+
+### 흐름 (고정)
 
 ```
-Nexon Open API → raw 보존 → normalize → validate → 도메인 DB
+Nexon 응답
+  → RawImport            append-only. 같은 내용이면 fetchCount만 증가, 달라지면 새 행 (D-039)
+  → normalize            packages/nexon (순수 함수)
+  → NexonMatch / NexonMatchParticipant     스테이징
+  → validate
+  → projection rule      리그·맵·인원·클랜 소속·참가자 해석·승패 판정
+  → Match / MatchPlayerStat
 ```
 
-### 넥슨 콘솔에서 확인된 제약 (2026-08-21)
+**넥슨 응답이 운영 `Match`에 바로 들어가는 경로는 없다.**
 
-- **2025-01-24 이후 데이터만 조회 가능** → 그 이전은 넥슨으로 못 가져온다 (Legacy가 필요한 이유)
-- **크롤링한 데이터는 30일 이내에 갱신할 의무** → 일회성 수집이 아니라 **주기적 재수집**이 필수
-- **게임 콘텐츠 변경으로 `ouid`가 바뀔 수 있다** → `Player.nexonOuid`를 불변 키로 믿으면 안 된다
-- 게임 데이터는 평균 10분 후 조회 가능
-- 호출: `https://open.api.nexon.com` · 헤더 `x-nxopen-api-key`
+### 신원 처리 (자동 병합 금지)
 
-### API 키
+- `NexonIdentity.status` = `unresolved`(기본) · `active` · `superseded` · `conflicted`
+- ouid를 알아낸 것과 **누구인지 아는 것은 다르다.** 기본은 `unresolved`
+- 닉네임 일치·ouid 변경 의심은 `NexonIdentityCandidate`(open)로만 남긴다. **자동 승인 없음**
+- 참가자 해석은 `active` + `playerId` 신원만 근거로 쓰고, 둘 이상이면 `ambiguous`로 두고 보류
+- `Player.nexonOuid`는 비권위 캐시
 
-- `apps/web/.env.example` 에 `NEXON_API_KEY` 자리를 만들어 뒀다
-- 실제 값은 `apps/web/.env.local` (gitignore됨). **현재 비어 있다**
-- 사용자가 보유한 키는 `test_` 로 시작하는 **테스트 키**라 호출 한도가 낮다.
-  실수집 전 서비스 키 여부와 한도를 확인해야 한다
-- **키 값을 채팅·문서·커밋에 남기지 않는다**
+### 멱등성
 
-### 필수 고려 (스키마에 이미 자리가 있다)
+| 단계 | 키 |
+|---|---|
+| 원본 | `RawImport(source, endpoint, sourceId, migrationVersion, contentHash)` |
+| 스테이징 | `NexonMatch(source, sourceMatchId)` · `NexonMatchParticipant(nexonMatchId, slot)` |
+| 도메인 | `Match(origin, sourceMatchId)` · `MatchPlayerStat(matchId, playerId)` |
+| 작업 | `ImportJob(source, jobKey, migrationVersion)` |
 
-`idempotency` · `retry` · `cursor` · `import job` · **raw preservation** · API 장애 · OUID 변경 · 외부 신원 매핑
-→ `RawImport` / `SourceMapping` / `ImportJob` / `ImportFailure` / `MigrationCheck` 모델 참고
+체크포인트 단위는 `nexon:matchlist:<ouid>:<mode>` (넥슨에 커서가 없다). `--resume`은 `done`을 건너뛴다.
 
-### 하지 않는 것
+### 오류 처리
 
-**Phase 8에서 래더/랭킹 공식을 확정하지 않는다.** 그건 Phase 9다
-(`docs/LADDER_IMPLEMENTATION_SPEC.md` 를 Phase 9 착수 시 반드시 먼저 읽는다).
+`403`·키 오류 → **전체 중단**(우회하지 않는다) / `429` → `Retry-After` + 지수 백오프 + **자동 감속** /
+`5xx`·타임아웃 → 재시도 / `400`·계약 위반 → 재시도 없이 `ImportFailure` 기록.
 
----
+### 실제 키를 받은 뒤 1차 실주행 절차
+
+```bash
+# 1. 키를 apps/web/.env.local 에 넣는다 (저장소에 커밋 금지)
+#    NEXON_API_KEY="..."
+pnpm nexon:status                                    # "API 키: 설정됨" 확인
+pnpm nexon:identities --nicknames "<실제닉네임>" --dry-run   # 요청 없이 계획만
+pnpm nexon:identities --nicknames "<실제닉네임>"             # 실제 호출 1건
+pnpm nexon:collect --all-identities --limit 1        # 목록 4콜 + 상세 소량
+pnpm nexon:status && pnpm nexon:check
+```
+
+**대규모 수집은 사용자 승인 전에 하지 않는다.**
+현재 DB의 리그·클랜·플레이어는 전부 mock이라 **도메인 투영은 성공하지 않는 것이 정상**이다
+(수집기가 mock 리그에는 투영을 거부한다 — `--allow-mock-league` 필요).
+
+### 남은 BLOCKER
+
+1. **넥슨 API 키가 `.env.local`에 없다.** 실주행 불가 (`pnpm nexon:status` → "API 키: 없음")
+2. 사용자가 가진 키는 `test_` 접두 테스트 키다. **한도·서비스 키 여부 확인 필요**
+3. 실제 리그·클랜·플레이어가 없다 → 투영 성공 경로는 오프라인 스모크로만 검증됨
+4. 실제 응답 픽스처가 없다. `packages/nexon/src/fixtures/sample.ts`는 **스펙에서 조립한 값**이며
+   1차 실주행 후 실응답으로 교체해야 한다
 
 ## G. 다음 세션 첫 행동
 
@@ -314,6 +378,7 @@ Nexon Open API → raw 보존 → normalize → validate → 도메인 DB
 ### 사용자 확인이 필요한 열린 항목
 
 - [ ] Legacy: 운영자에게 **CSV** 를 요청할지, **WAF 예외** 를 요청할지, **수동 수집**(21시간)을 할지
-- [ ] Phase 8 착수 승인 (넥슨 API 키를 `.env.local` 에 넣어야 실수집 가능)
+- [ ] **넥슨 API 키 투입 + 1차 실주행 승인** (F장 절차). 키 없이 가능한 구현은 전부 끝났다
+- [ ] 실주행에 쓸 **실제 닉네임 1~2개**
 - [ ] **Auth.js 미사용 결정(D-025) 승인** — 계획 문서와 다른 선택
 - [ ] 서든어택 계정 연동이 **소유권을 증명하지 않는다** — 운영 노출 전 반드시 해결

@@ -166,3 +166,51 @@ UI로 확인하는 것이 불안정하다. 되돌릴 수 없는 작업이라 브
 - **넥슨 Open API 키** — Phase 8 실수집에 필요하다. 키 없이도 파이프라인 구조·검증 로직은 만들 수 있다.
 - **Auth.js 미사용 결정(D-025)** — 계획 문서와 다른 선택이라 사용자 확인이 아직 남아 있다.
 - **서든어택 계정 연동이 소유권을 증명하지 않는다** — 운영 노출 전 반드시 해결.
+
+---
+
+## Phase 8 — 넥슨 수집 파이프라인 (2026-08-21, 키 없는 구간 완료)
+
+### 먼저 한 일: 수집원 실측
+
+넥슨 개발자 포털 문서는 클라이언트 렌더링이라 정적으로 읽히지 않았다.
+문서 페이지가 참조하는 **공식 OpenAPI 3.0.3 스펙 파일**(`/static/api/suddenattack/*.yaml`)을
+직접 받아 엔드포인트·파라미터·응답 필드를 확정했다.
+
+키 없이 경로 존재 여부는 확인할 수 없다 — 게이트웨이가 **없는 경로에도 같은 400**을 준다
+(`/suddenattack/v1/no-such-endpoint` 로 확인).
+
+### 이 Phase의 가장 큰 발견
+
+**넥슨은 무기·MVP·탈주·플레이시간·종료시각·선공진영을 주지 않는다.**
+`weapon`을 0(라이플)으로 채우면 3rd.supply 재현이 아니라 **거짓말**이 된다.
+그래서 스키마·계약·UI를 전부 nullable로 넓혔고, `false`도 쓰지 않기로 했다 (D-034).
+`false`는 "아니다"라는 실제 정보이기 때문이다.
+
+### 만든 것
+
+- `packages/nexon` — 클라이언트(주입 가능한 fetch/시계) · Zod 스키마 · 오류 분류 ·
+  토큰버킷(429 자동 감속) · 지수 백오프 · 정규화 · 내용 해시 · 키 리댁션
+- `apps/worker` — identities / collect / project / refresh / check / status CLI,
+  `ImportJob` 체크포인트, `ImportFailure`, `MigrationCheck`
+- 마이그레이션 `20260821194025_nexon_ingest` — nullable 확장 · `RawImport` append-only ·
+  스테이징 5개 테이블
+- `apps/worker/src/dev/offlineSmoke.ts` — 네트워크 없이 실제 DB에 전 구간을 돌리고 정리까지 한다
+
+### 검증
+
+| 항목 | 결과 |
+|---|---|
+| typecheck / lint / build | 통과 |
+| test | 257 passed / 1 skipped (신규 65건) |
+| `pnpm db:check` | 18항목 통과 |
+| `pnpm compare` | 25/25 일치 (nullable 확장 후에도 Mock↔실제 동일) |
+| 오프라인 스모크 | 27항목 통과 — 멱등성·원본 보존·투영·정리 |
+| Chrome 육안 검수 | 기록실 카드/상세 정상 (플레이시간·[S]·MVP·선블루 표기 유지) |
+
+### 하지 않은 것
+
+- 실제 넥슨 호출 **0건** (키가 없다)
+- 래더·랭킹 계산 (Phase 9)
+- 관리자 수집 대시보드 (CLI 리포트로 대체)
+- Redis / BullMQ
