@@ -248,7 +248,21 @@ pnpm verify           # typecheck + lint + test  ← 작업 완료 처리 전 �
 pnpm build            # Next.js 프로덕션 빌드 (clean 후 실행)
 pnpm clean            # apps/web/.next 삭제 — CSS가 안 먹거나 화면이 깨지면 먼저 이것부터
 pnpm dev:clean        # 기존 dev 서버 전부 종료 + .next 삭제 후 3000번에 하나만 기동
+
+# --- Phase 7 이후 (DB) ---
+pnpm db:start         # 로컬 개발용 PostgreSQL 기동 (127.0.0.1:5433). 개발 전용 (D-022)
+pnpm db:stop          # 정지
+pnpm db:reset         # 데이터 디렉터리를 지우고 다시 만든다 ← 로컬 개발 DB에만 쓴다
+pnpm db:migrate       # Prisma 마이그레이션
+pnpm db:seed          # Mock과 같은 결정적 픽스처를 DB에 적재
+pnpm db:check         # 시드 결과 숫자 대조 (건수 · 한글 UTF8 왕복 · 래더 정합성 · 스냅샷 누락)
+pnpm compare          # Mock ↔ 실제 API 응답을 **값까지** 대조 ← 두 모드가 같은지 판정하는 기준
 ```
+
+**개발 시작 순서**: `pnpm db:start` → (최초 1회) `pnpm db:migrate` → `pnpm db:seed` → `pnpm dev:clean`
+
+`apps/web/.env.local` 의 `NEXT_PUBLIC_API_MODE` 로 모드를 바꾼다 (`live` / `mock`).
+비밀키는 `.env.local` 에만 두고 **저장소에 넣지 않는다.**
 
 ### 인프라 설치 원칙
 
@@ -267,6 +281,21 @@ pnpm dev:clean        # 기존 dev 서버 전부 종료 + .next 삭제 후 3000�
   원본 비교 → QA 독립 검수 → FAIL 수정 → 재검증 → lint/typecheck/test/build → 회귀 →
   Git 체크포인트 커밋 → 다음 Phase`를 반복한다.
   사용자에게 묻는 경우는 `docs/DECISIONS.md` D-015에 정리한 목록으로 한정한다.
-- 다음: **Phase 3** (리그 & 랭킹 — Phase 2보다 먼저)
+- 완료: **Phase 3 · 2 · 4 · 5 · 6** — 리그/랭킹, 플레이어·클랜 프로필, 기록실·매치 상세,
+  게시판, 인증·마이페이지·관리 화면. 여기까지가 **M1(Mock 기반 화면·흐름 복원)**.
+- 완료: **Phase 7** — `packages/db`(Prisma) 신설, 로컬 PostgreSQL, 시드, 실제 API 전량,
+  실제 인증(JWT + httpOnly 쿠키). **Mock ↔ 실제 API 응답 값 대조 25/25 일치.**
+  이제 글·댓글·추천·설정이 **실제로 저장된다.**
+- 다음: **Phase 8** (전적 수집 파이프라인) — 넥슨 Open API 키가 있어야 실수집이 가능하다.
 - 자체 결정·임시값·원본과의 의도된 차이는 `docs/DECISIONS.md`에 있다. 그 값을 바꾸려면 문서도 함께 고친다.
-  Phase 1 관련은 D-009(실측 토큰) ~ D-013(추가/미실시 항목).
+  Phase 1 관련은 D-009 ~ D-013, Phase 7 관련은 D-022 ~ D-029.
+
+### Phase 7에서 남긴 숙제
+
+- **서든어택 계정 연동이 소유권을 증명하지 않는다.** 닉네임으로 연결만 한다.
+  운영에 노출하기 전에 반드시 해결한다 (`/api/me/link` 주석 참조).
+- 캡차·이메일 발송·이미지 업로드(오브젝트 스토리지)는 아직 없다.
+- 리치텍스트 에디터는 아직 없다 (글쓰기가 단순 textarea).
+- 래더 점수는 여전히 픽스처 난수다. 실제 계산은 Phase 9.
+- 시드 데이터는 전부 가짜다. `Match.origin = "mock"` / `formulaVersion = "mock-fixture"`로
+  표시해 두었다 (D-023).
