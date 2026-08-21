@@ -165,6 +165,52 @@ describe('원본 지난시즌 카드 파싱', () => {
     expect(Math.round(kdRate)).toBe(card.kd)
   })
 
+  /**
+   * **오래된 시즌은 승/패와 킬/데스가 없다.** 비율만 남아 있다.
+   * (2026-08-21 원본 실측 — `/league/supply/player/285626135/season`)
+   *
+   *   시즌 6: 6,934명중 1위 · 967승 578패 · 62.6% · 16,875킬 10,605데스 · 61.4%
+   *   시즌 4: 29,991명중 122위 · 승률 56.9% · 킬뎃 56.9%      ← 승/패·킬/데스 없음
+   *
+   * 이 경우 **비율만 담고 원시 수치는 null로 둔다.** 역산하지 않는다.
+   */
+  it('시즌마다 있는 항목이 다르다 — 최근 시즌은 원시 수치까지 있다', () => {
+    const card = parseSeasonCard(
+      '서플라이공식리그 시즌 6 6,934명중 1위 967승 578패 승률 62.6% 16,875킬 10,605데스 킬뎃 61.4%',
+    )
+    expect(card.season).toBe(6)
+    expect(card.finalRank).toBe(1)
+    expect(card.rankCount).toBe(6934)
+    expect(card.wins).toBe(967)
+    expect(card.losses).toBe(578)
+    expect(card.kills).toBe(16875)
+    expect(card.deaths).toBe(10605)
+    expect(card.winRate).toBe(62.6)
+    expect(card.kd).toBe(61.4)
+  })
+
+  it('오래된 시즌은 비율만 있다 — 승/패·킬/데스를 만들어내지 않는다', () => {
+    const card = parseSeasonCard('서플라이공식리그 시즌 4 29,991명중 122위 승률 56.9% 킬뎃 56.9%')
+    expect(card.season).toBe(4)
+    expect(card.finalRank).toBe(122)
+    expect(card.rankCount).toBe(29991)
+    expect(card.winRate).toBe(56.9)
+    expect(card.kd).toBe(56.9)
+    // 여기가 핵심 — 비어 있어야 한다
+    expect(card.wins).toBeNull()
+    expect(card.losses).toBeNull()
+    expect(card.kills).toBeNull()
+    expect(card.deaths).toBeNull()
+  })
+
+  /** `승률` 의 `승` 이 `N승 M패` 로 잘못 잡히면 안 된다 */
+  it('"승률"을 승/패로 오인하지 않는다', () => {
+    const card = parseSeasonCard('서플라이공식리그 시즌 3 22,018명중 31위 승률 55.8% 킬뎃 58.1%')
+    expect(card.wins).toBeNull()
+    expect(card.losses).toBeNull()
+    expect(card.winRate).toBe(55.8)
+  })
+
   it('모집단 없이 순위만 있어도 읽는다', () => {
     const card = parseSeasonCard('서플라이공식리그 시즌 3 12위 10승 5패 승률 66.7% 킬뎃 58%')
     expect(card.finalRank).toBe(12)
