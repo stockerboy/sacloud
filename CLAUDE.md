@@ -26,6 +26,8 @@
 | `docs/IMPLEMENTATION_PLAN_1.md` | 실행 계획(Phase 0~10), 범위, 순서, 완료 조건, 미확인 목록 |
 | `docs/DECISIONS.md` | 원본 관측으로 정해지지 않아 **우리가 결정한** 사항의 기록. 구현 중 판단이 필요하면 먼저 확인 |
 | `docs/POST_V1_REQUIREMENTS.md` | **V1 이후** 확정 요구사항(관리자·시즌 스냅샷·래더 분리·유료상품·소유권 인증). **V1에서는 구현 금지**, 스키마 설계 시 확장 지점만 참고 |
+| `docs/HANDOFF_CURRENT.md` | **새 세션은 이 파일을 가장 먼저 읽는다.** 현재 Phase · DB · Legacy 상태 · 열린 결정 |
+| `docs/LEGACY_MIGRATION.md` | 3rd.supply 과거 기록 이관 계획 · 도구 · 차단 상태 |
 | `CLAUDE.md` (이 문서) | 작업 원칙. 위 문서들보다 상위의 행동 규칙 |
 
 - 계획 문서 본문에는 기준 문서 경로가 `claude/3rd-supply-structure.md`로 적혀 있으나 **실제 경로는 `docs/3rd-supply-structure.md`** 이다.
@@ -292,7 +294,7 @@ pnpm compare          # Mock ↔ 실제 API 응답을 **값까지** 대조 ← �
   시드, 실제 API 전량(라우트 57개), 실제 인증(JWT + httpOnly 쿠키 + 자동 갱신).
   **Mock ↔ 실제 API 응답 값 대조 25/25 일치.** 이제 글·댓글·추천·설정이 **실제로 저장된다.**
   화면 검수에서 결함 3건을 발견해 고쳤다 (D-030 · D-031). 검수 계정은 D-033.
-- 다음: **Phase 8** (전적 수집 파이프라인) — 넥슨 Open API 키가 있어야 실수집이 가능하다.
+- 다음: **Phase 8** (전적 수집 파이프라인). **인수인계는 `docs/HANDOFF_CURRENT.md` 를 먼저 읽는다.**
   **사용자 승인 후 착수한다.**
 - 자체 결정·임시값·원본과의 의도된 차이는 `docs/DECISIONS.md`에 있다. 그 값을 바꾸려면 문서도 함께 고친다.
   Phase 1 관련은 D-009 ~ D-013, Phase 7 관련은 D-022 ~ D-033.
