@@ -1,0 +1,104 @@
+{
+  "_note": "실제 넥슨 응답을 가명화한 픽스처다. 닉네임·클랜명·ouid·match_id는 실제 값이 아니다. 시각·수치·모드·맵 등 형식 검증에 쓰이는 값은 원본 그대로다.",
+  "_endpoint": "/suddenattack/v1/match-detail",
+  "_httpStatus": 200,
+  "_capturedAt": "2026-08-21T12:21:46.294Z",
+  "_pseudonymized": {
+    "match_id": 1,
+    "user_name": 7,
+    "guild_name": 7
+  },
+  "response": {
+    "match_id": "371827291649235112",
+    "match_map": "올드타운",
+    "date_match": "2026-07-16T09:05:38.130Z",
+    "match_mode": "폭파미션",
+    "match_type": "퀵매치 클랜전",
+    "match_detail": [
+      {
+        "kill": 9,
+        "death": 8,
+        "assist": 3,
+        "damage": 1675,
+        "team_id": "0",
+        "headshot": 0,
+        "user_name": "유저01",
+        "guild_name": "클랜1",
+        "match_result": "1",
+        "season_grade": "특급대장"
+      },
+      {
+        "kill": 14,
+        "death": 12,
+        "assist": 6,
+        "damage": 2725,
+        "team_id": "0",
+        "headshot": 6,
+        "user_name": "유저02",
+        "guild_name": "클랜2",
+        "match_result": "1",
+        "season_grade": "특급대장"
+      },
+      {
+        "kill": 11,
+        "death": 9,
+        "assist": 5,
+        "damage": 1881,
+        "team_id": "0",
+        "headshot": 0,
+        "user_name": "유저03",
+        "guild_name": "클랜3",
+        "match_result": "1",
+        "season_grade": "특급준장"
+      },
+      {
+        "kill": 13,
+        "death": 13,
+        "assist": 8,
+        "damage": 2404,
+        "team_id": "0",
+        "headshot": 1,
+        "user_name": "유저04",
+        "guild_name": "클랜4",
+        "match_result": "1",
+        "season_grade": "특급준장"
+      },
+      {
+        "kill": 15,
+        "death": 10,
+        "assist": 7,
+        "damage": 2369,
+        "team_id": "0",
+        "headshot": 3,
+        "user_name": "유저05",
+        "guild_name": "클랜2",
+        "match_result": "1",
+        "season_grade": "특급대장"
+      },
+      {
+        "kill": 13,
+        "death": 11,
+        "assist": 3,
+        "damage": 2036,
+        "team_id": "1",
+        "headshot": 0,
+        "user_name": "유저06",
+        "guild_name": "클랜5",
+        "match_result": "2",
+        "season_grade": "특급준장"
+      },
+      {
+        "kill": 12,
+        "death": 9,
+        "assist": 2,
+        "damage": 2342,
+        "team_id": "0",
+        "headshot": 0,
+        "user_name": "유저07",
+        "guild_name": "클랜6",
+        "match_result": "1",
+        "season_grade": "특급대장"
+      }
+    ]
+  }
+}

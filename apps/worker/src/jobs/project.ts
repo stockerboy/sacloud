@@ -216,6 +216,8 @@ export async function runProject(
     allowMockLeague?: boolean
     reproject?: boolean
     allowedMatchTypes?: readonly string[]
+    /** 특정 경기들만 투영 대상으로 삼는다 (스모크·디버깅에서 범위를 못 벗어나게) */
+    sourceMatchIds?: readonly string[]
   },
 ): Promise<ProjectResult> {
   const result: ProjectResult = { considered: 0, projected: 0, skipped: 0, reasons: {} }
@@ -233,6 +235,9 @@ export async function runProject(
     where: {
       validationStatus: 'valid',
       projectionStatus: input.reproject ? { in: ['pending', 'skipped'] } : 'pending',
+      ...(input.sourceMatchIds?.length
+        ? { sourceMatchId: { in: [...input.sourceMatchIds] } }
+        : {}),
     },
     orderBy: { dateMatch: 'asc' },
     take: ctx.limit ?? 200,

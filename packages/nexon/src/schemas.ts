@@ -98,8 +98,15 @@ export const NexonMatchDetailResponse = z
             match_result: LooseString,
             user_name: LooseString,
             season_grade: LooseString,
-            /** 클랜전·퀵매치 클랜전·클랜 랭크전에서만 내려온다(스펙 명시) */
+            /**
+             * 클랜명.
+             *
+             * **스펙에는 `clan_name`이라고 적혀 있지만 실제 응답은 `guild_name`으로 내려온다**
+             * (2026-08-21 실응답 실측, D-043). 둘 다 받아 두고 정규화에서 합친다.
+             * 클랜전 계열이 아니면 `null`이다.
+             */
             clan_name: LooseString,
+            guild_name: LooseString,
             kill: LooseNumber,
             death: LooseNumber,
             headshot: LooseNumber,

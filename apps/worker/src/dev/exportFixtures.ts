@@ -44,12 +44,40 @@ async function main(): Promise<number> {
   const secrets = [config.apiKey]
   let written = 0
 
+  // 특정 원본을 지정해 내보낼 수 있다 (대표성 있는 경기를 고르기 위함)
+  const sourceId = flagValue('source-id')
+
   for (const [endpoint, fileName] of Object.entries(FILE_NAME)) {
-    const raw = await prisma.rawImport.findFirst({
-      where: { source: NEXON_SOURCE, endpoint, migrationVersion: version },
+    let raw = await prisma.rawImport.findFirst({
+      where: {
+        source: NEXON_SOURCE,
+        endpoint,
+        migrationVersion: version,
+        ...(sourceId && endpoint === ENDPOINT.matchDetail ? { sourceId } : {}),
+      },
       orderBy: { lastFetchedAt: 'desc' },
       select: { raw: true, httpStatus: true, endpoint: true, lastFetchedAt: true },
     })
+
+    /**
+     * 매치 목록은 모드마다 하나씩 저장돼 있고 빈 응답도 있다.
+     * 픽스처로는 **비어 있지 않은 것 중 가장 작은 것**을 고른다.
+     * (형식 검증에는 한 건이면 충분하고, 수백 건짜리를 저장소에 넣을 이유가 없다)
+     */
+    if (endpoint === ENDPOINT.match) {
+      const candidates = await prisma.rawImport.findMany({
+        where: { source: NEXON_SOURCE, endpoint, migrationVersion: version },
+        select: { raw: true, httpStatus: true, endpoint: true, lastFetchedAt: true },
+      })
+      const sized = candidates
+        .map((candidate) => ({
+          candidate,
+          size: ((candidate.raw as { match?: unknown[] })?.match ?? []).length,
+        }))
+        .filter((entry) => entry.size > 0)
+        .sort((left, right) => left.size - right.size)
+      raw = sized[0]?.candidate ?? raw
+    }
 
     if (!raw) {
       log(`건너뜀: ${endpoint} — 저장된 원본이 없다 (version=${version})`)

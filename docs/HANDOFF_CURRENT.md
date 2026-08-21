@@ -1,6 +1,6 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21. 최종 갱신 2026-08-21 (Phase 8 키 없는 구간 완료).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
+**작성 2026-08-21. 최종 갱신 2026-08-21 (실응답 소량 검증 완료).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 
 ---
@@ -19,7 +19,7 @@
 | 5 게시판 | ✅ 완료 |
 | 6 인증 & 관리 화면 | ✅ 완료 — 여기까지 **M1 (Mock 기반 화면·흐름 복원)** |
 | **7 DB + 실제 API** | ✅ **완료** (2026-08-21 최종 검수 완료) |
-| **8 전적 수집 파이프라인** | 🟨 **키 없이 가능한 구간 전부 완료.** 실제 API 키로 1차 실주행만 남음 (사용자 승인 필요) |
+| **8 전적 수집 파이프라인** | 🟨 **파이프라인 완성 + 실응답 검증까지 완료**(호출 15회). 대규모 수집은 **보류** — D-044(상대 팀 미제공) 해결 전까지 의미가 없다 |
 | 9 레이팅/시즌/랭킹 배치 | ⬜ |
 | 10 SSR/SEO/성능/운영 | ⬜ |
 
@@ -82,8 +82,9 @@ pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
 - 시드: 클랜 60 · 플레이어 920 · 사용자 42 · 리그 4 · 매치 3,000 · 참가기록 31,462 · 게시글 400 · 댓글 1,200
 - **시드 데이터는 전부 가짜다.** `Match.origin="mock"` / `formulaVersion="mock-fixture"` 로 표시 (D-023)
 - Legacy 테이블은 **현재 비어 있다** (`LegacyPlayerSeason` 0행, `LegacyCollectionJob` 0건)
-- 넥슨 테이블도 **현재 비어 있다** (`NexonIdentity` / `NexonMatch` / `NexonMatchParticipant` /
-  `NexonNickname` / `NexonIdentityCandidate` 0행, `RawImport` 0행)
+- 넥슨 테이블에 **실데이터가 소량 들어 있다** (2026-08-21 실응답 검증분, 닉네임 1명)
+  `RawImport` 11 · `NexonMatch` 698(상세 6) · `NexonMatchParticipant` 37 ·
+  `NexonIdentity` 1(unresolved) · `NexonNickname` 24 · 운영 `Match(origin=nexon)` **0**
 
 ### 검수 계정 (로컬 개발 전용, D-033)
 
@@ -105,7 +106,8 @@ pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
 | build | 통과 (37 페이지) |
 | `pnpm db:check` | **18항목 통과** (mock↔실수집 분리 검사 3건 추가) |
 | `pnpm compare` | **25/25 일치** (nullable 확장 후 재확인) |
-| `pnpm nexon:check` | 7항목 통과 (아직 수집 0건) |
+| **test** 재검증 | **275 passed / 1 skipped** (실응답 회귀 11건 포함) |
+| `pnpm nexon:check` | 7항목 통과 (실데이터 기준) |
 | 오프라인 스모크 | 27항목 통과 (원본→스테이징→투영·멱등성) |
 
 > skip 1건은 "개발 서버가 없으면 계약 테스트를 건너뛴다"는 안내용 테스트다.
@@ -342,29 +344,60 @@ Nexon 응답
 `403`·키 오류 → **전체 중단**(우회하지 않는다) / `429` → `Retry-After` + 지수 백오프 + **자동 감속** /
 `5xx`·타임아웃 → 재시도 / `400`·계약 위반 → 재시도 없이 `ImportFailure` 기록.
 
-### 실제 키를 받은 뒤 1차 실주행 절차
+### 실응답 검증 결과 (2026-08-21 · 닉네임 1명 · 호출 15회)
+
+전부 성공했고 429·403은 한 번도 없었다. 테스트 키(`test_`)로 서든어택 API가 **정상 호출된다.**
+
+| 확인 | 결과 |
+|---|---|
+| `/id` | 200. ouid는 **32자리 16진수** |
+| `/match` | 200. 모드별 53 / 1 / 644 / 0건 (2025-02-10 ~ 2026-07-16) |
+| `/match-detail` | 200 (6건 조회) |
+| `match_id` | **18자리 숫자** — 698건 전부 |
+| `date_match` | 밀리초 포함 UTC |
+| RawImport | 재수집 시 새 행이 생기지 않고 `fetchCount`만 2로 올랐다 (append-only 동작 확인) |
+| 저장된 요청 파라미터 | API 키 없음 |
+
+**스펙과 달랐던 것 (실제 응답 기준으로 수정 완료)**
+
+1. 참가자 클랜명 필드가 `clan_name`이 아니라 **`guild_name`** (D-043)
+2. **한 경기 응답에 양 팀이 함께 오지 않는다** (D-044) — 아래 참조
+
+### D-044 — Phase 9 선결 과제
+
+실측 5경기에서 상대 팀 라인업이 온 적이 한 번도 없다.
+승리 팀 전원 + (조회 대상이 졌으면) 본인 1명만 온다. 원인은 `[미확인]`.
+
+그래서 **클랜 vs 클랜 경기를 한 사람의 조회만으로 재구성할 수 없다.**
+우리 투영 규칙이 틀린 게 아니라 입력이 부족한 것이며, 실데이터 투영은 0건이 정상이다.
+
+해결 후보(전부 미검증): ① 같은 경기를 양쪽 클랜원 여러 명으로 조회해 합치기
+② 넥슨에 문의 ③ 클랜 단위 조회 수단 확보.
+
+### 실주행 명령 (그대로 재현 가능)
 
 ```bash
-# 1. 키를 apps/web/.env.local 에 넣는다 (저장소에 커밋 금지)
-#    NEXON_API_KEY="..."
-pnpm nexon:status                                    # "API 키: 설정됨" 확인
-pnpm nexon:identities --nicknames "<실제닉네임>" --dry-run   # 요청 없이 계획만
-pnpm nexon:identities --nicknames "<실제닉네임>"             # 실제 호출 1건
-pnpm nexon:collect --all-identities --limit 1        # 목록 4콜 + 상세 소량
+pnpm nexon:status                                       # API 키: 설정됨 확인
+pnpm nexon:identities --nicknames "<닉>" --dry-run       # 요청 0건
+pnpm nexon:identities --nicknames "<닉>"                 # /id 1회
+pnpm nexon:collect --all-identities --limit 1           # /match 4회 + 상세 1회
+pnpm nexon:collect --all-identities --resume --type "퀵매치 클랜전" --limit 2   # 상세만
+pnpm nexon:collect --all-identities --resume --match-id <ID>                  # 특정 경기 1건
+pnpm --filter @sacloud/worker exec tsx src/dev/exportFixtures.ts --source-id <ID>
 pnpm nexon:status && pnpm nexon:check
 ```
 
-**대규모 수집은 사용자 승인 전에 하지 않는다.**
-현재 DB의 리그·클랜·플레이어는 전부 mock이라 **도메인 투영은 성공하지 않는 것이 정상**이다
-(수집기가 mock 리그에는 투영을 거부한다 — `--allow-mock-league` 필요).
+### 사고 기록 (D-045)
+
+`offlineSmoke.ts`가 실데이터 200건을 덮어썼다. **원본을 버리지 않아 전부 복구했다.**
+이후 `runCollect`/`runProject`에 대상 범위 인자를 강제해 재발을 막았다.
 
 ### 남은 BLOCKER
 
-1. **넥슨 API 키가 `.env.local`에 없다.** 실주행 불가 (`pnpm nexon:status` → "API 키: 없음")
-2. 사용자가 가진 키는 `test_` 접두 테스트 키다. **한도·서비스 키 여부 확인 필요**
-3. 실제 리그·클랜·플레이어가 없다 → 투영 성공 경로는 오프라인 스모크로만 검증됨
-4. 실제 응답 픽스처가 없다. `packages/nexon/src/fixtures/sample.ts`는 **스펙에서 조립한 값**이며
-   1차 실주행 후 실응답으로 교체해야 한다
+1. **D-044 — 상대 팀 라인업을 얻을 수 없다.** 이게 풀리기 전에는 대규모 수집도, 래더 산정도 의미가 없다
+2. 실제 리그·클랜·플레이어가 없다 (DB는 여전히 mock). 신원 연결은 사람이 승인해야 한다
+3. 테스트 키의 호출 한도는 여전히 `[미확인]` — 15회로는 한도에 닿지 않았다
+4. `user/basic`·`user/rank`·`user/tier`·`user/recent-info`는 아직 호출해 보지 않았다
 
 ## G. 다음 세션 첫 행동
 
@@ -378,7 +411,7 @@ pnpm nexon:status && pnpm nexon:check
 ### 사용자 확인이 필요한 열린 항목
 
 - [ ] Legacy: 운영자에게 **CSV** 를 요청할지, **WAF 예외** 를 요청할지, **수동 수집**(21시간)을 할지
-- [ ] **넥슨 API 키 투입 + 1차 실주행 승인** (F장 절차). 키 없이 가능한 구현은 전부 끝났다
-- [ ] 실주행에 쓸 **실제 닉네임 1~2개**
+- [ ] **D-044 대응 방향 결정** — 여러 참가자 조회로 합칠지 / 넥슨에 문의할지 / 다른 경로를 찾을지
+- [ ] 대규모 수집 착수 여부 (D-044 해결 전에는 상대 팀 없는 반쪽 데이터만 쌓인다)
 - [ ] **Auth.js 미사용 결정(D-025) 승인** — 계획 문서와 다른 선택
 - [ ] 서든어택 계정 연동이 **소유권을 증명하지 않는다** — 운영 노출 전 반드시 해결

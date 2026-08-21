@@ -1,0 +1,23 @@
+{
+  "_note": "실제 넥슨 응답을 가명화한 픽스처다. 닉네임·클랜명·ouid·match_id는 실제 값이 아니다. 시각·수치·모드·맵 등 형식 검증에 쓰이는 값은 원본 그대로다.",
+  "_endpoint": "/suddenattack/v1/match",
+  "_httpStatus": 200,
+  "_capturedAt": "2026-08-21T12:16:16.066Z",
+  "_pseudonymized": {
+    "match_id": 1
+  },
+  "response": {
+    "match": [
+      {
+        "kill": 7,
+        "death": 7,
+        "assist": 0,
+        "match_id": "371533204862161114",
+        "date_match": "2026-04-22T10:37:51.855Z",
+        "match_mode": "데스매치",
+        "match_type": "일반전",
+        "match_result": "1"
+      }
+    ]
+  }
+}

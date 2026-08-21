@@ -125,8 +125,12 @@ async function main() {
   check('신원 기본 상태는 unresolved (자동 연결 금지)', 'unresolved', identity?.status)
   check('Player 자동 연결 없음', null, identity?.playerId ?? null)
 
-  /* 2) 수집 1회차 — 원본 → 스테이징 */
-  const first = await runCollect(ctx, { ouids: [SMOKE_OUID] })
+  /* 2) 수집 1회차 — 원본 → 스테이징
+     **자기 경기만** 상세를 받는다. DB에 실제 수집분이 있어도 건드리면 안 된다 (D-045) */
+  const first = await runCollect(ctx, {
+    ouids: [SMOKE_OUID],
+    detailSourceMatchIds: SMOKE_MATCH_IDS,
+  })
   check('목록 호출 수 (모드 4개)', 4, first.listCalls)
   check('스테이징 신규 매치', SMOKE_MATCH_IDS.length, first.matchesCreated)
 
@@ -148,7 +152,10 @@ async function main() {
   const rawAfterFirst = await prisma.rawImport.count({ where: { migrationVersion: SMOKE_VERSION } })
 
   /* 3) 수집 2회차 — 같은 응답이면 원본도 스테이징도 늘지 않는다 (멱등성) */
-  const second = await runCollect(ctx, { ouids: [SMOKE_OUID] })
+  const second = await runCollect(ctx, {
+    ouids: [SMOKE_OUID],
+    detailSourceMatchIds: [SAMPLE_MATCH_DETAIL.match_id],
+  })
   check('재수집 시 신규 매치 없음', 0, second.matchesCreated)
 
   const rawAfterSecond = await prisma.rawImport.count({ where: { migrationVersion: SMOKE_VERSION } })
@@ -171,7 +178,7 @@ async function main() {
   check('참가자도 중복되지 않는다', SAMPLE_MATCH_DETAIL.match_detail.length, participantsAfterSecond)
 
   /* 4) 투영 — 리그 소속이 아니므로 보류돼야 한다 (부분 저장 금지) */
-  const projected = await runProject(ctx, {})
+  const projected = await runProject(ctx, { sourceMatchIds: SMOKE_MATCH_IDS })
   check('투영된 경기 없음 (리그 소속 클랜이 아니다)', 0, projected.projected)
   check('보류로 기록됨', true, projected.skipped > 0)
   const domainMatches = await prisma.match.count({ where: { origin: 'nexon' } })
@@ -219,7 +226,11 @@ async function main() {
     })
   }
 
-  const projectedAgain = await runProject(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG, reproject: true })
+  const projectedAgain = await runProject(ctx, {
+    leagueSlug: SMOKE_LEAGUE_SLUG,
+    reproject: true,
+    sourceMatchIds: SMOKE_MATCH_IDS,
+  })
   check('리그 구성 후 투영', 1, projectedAgain.projected)
 
   const domainMatch = await prisma.match.findUnique({
@@ -241,7 +252,11 @@ async function main() {
   check('formulaVersion 없음', null, firstStat?.formulaVersion ?? null)
   check('경기 시점 division 스냅샷', 1, firstStat?.playerDivisionAtMatch ?? 0)
 
-  const reprojected = await runProject(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG, reproject: true })
+  const reprojected = await runProject(ctx, {
+    leagueSlug: SMOKE_LEAGUE_SLUG,
+    reproject: true,
+    sourceMatchIds: SMOKE_MATCH_IDS,
+  })
   const domainCount = await prisma.match.count({ where: { origin: 'nexon' } })
   check('재투영해도 매치가 늘지 않는다', 1, domainCount)
   check('재투영 결과도 1건', 1, reprojected.considered)

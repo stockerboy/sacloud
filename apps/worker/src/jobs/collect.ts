@@ -203,7 +203,13 @@ export async function fetchAndStoreDetail(
 
 export async function runCollect(
   ctx: JobContext,
-  input: { ouids: readonly string[] },
+  input: {
+    ouids: readonly string[]
+    /** 상세를 받을 매치 유형을 좁힌다. 소량 검증에서 호출 수를 아끼기 위한 장치 */
+    detailMatchType?: string | null
+    /** 특정 경기 하나만 상세를 받는다. 응답 형태를 확인할 때 쓴다 */
+    detailSourceMatchIds?: readonly string[]
+  },
 ): Promise<CollectResult> {
   const result: CollectResult = {
     listCalls: 0,
@@ -221,7 +227,8 @@ export async function runCollect(
       const jobKey = `nexon:matchlist:${ouid}:${mode}`
 
       if (ctx.resume && (await isJobDone(NEXON_SOURCE, jobKey, ctx.config.migrationVersion))) {
-        log(`건너뜀(완료됨): ${jobKey}`)
+        // ouid는 계정 식별자다. 로그에 통째로 남기지 않는다
+        log(`건너뜀(완료됨): ${ouid.slice(0, 6)}… / ${mode}`)
         continue
       }
 
@@ -286,13 +293,23 @@ export async function runCollect(
 
   /* ---------------------------------------------------------- 2) 매치 상세 --- */
   if (ctx.dryRun) {
-    const pendingCount = await prisma.nexonMatch.count({ where: { detailFetchedAt: null } })
+    const pendingCount = await prisma.nexonMatch.count({
+      where: {
+        detailFetchedAt: null,
+        ...(input.detailMatchType ? { matchType: input.detailMatchType } : {}),
+      },
+    })
     log(`[dry-run] 상세 미수집 매치 ${pendingCount}건`)
     return result
   }
 
   const pending = await prisma.nexonMatch.findMany({
-    where: { detailFetchedAt: null },
+    where: input.detailSourceMatchIds?.length
+      ? { sourceMatchId: { in: [...input.detailSourceMatchIds] } }
+      : {
+          detailFetchedAt: null,
+          ...(input.detailMatchType ? { matchType: input.detailMatchType } : {}),
+        },
     orderBy: { createdAt: 'asc' },
     take: ctx.limit ?? 50,
     select: { id: true, sourceMatchId: true },

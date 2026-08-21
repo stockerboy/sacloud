@@ -85,7 +85,7 @@ function usage(): void {
   log(`넥슨 수집 워커
 
   identities  --nicknames "닉1,닉2" | --nicknames-file <파일>
-  collect     --ouid <OUID>[,<OUID>] | --all-identities
+  collect     --ouid <OUID>[,<OUID>] | --all-identities  [--type "퀵매치 클랜전"] [--match-id <ID>]
   project     [--league <slug>] [--reproject] [--allow-mock-league]
   refresh
   check
@@ -157,8 +157,16 @@ async function main(): Promise<number> {
         return 1
       }
 
-      log(`수집 대상 ouid ${ouids.length}건`)
-      const result = await runCollect(ctx, { ouids })
+      const detailMatchType = stringFlag(args, 'type')
+      log(
+        `수집 대상 ouid ${ouids.length}건` +
+          (detailMatchType ? ` · 상세는 "${detailMatchType}"만` : ''),
+      )
+      const detailSourceMatchIds = (stringFlag(args, 'match-id') ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+      const result = await runCollect(ctx, { ouids, detailMatchType, detailSourceMatchIds })
       table([result as unknown as Record<string, unknown>])
       return 0
     }

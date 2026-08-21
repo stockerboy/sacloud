@@ -16,8 +16,11 @@
 
 /** 가명화 대상 — 값을 형태만 남기고 바꾼다 */
 const SHAPE_KEYS = new Set(['ouid', 'match_id'])
-/** 가명화 대상 — 읽기 쉬운 이름으로 바꾼다 */
-const NAME_KEYS = new Set(['user_name', 'clan_name'])
+/**
+ * 가명화 대상 — 읽기 쉬운 이름으로 바꾼다.
+ * 실제 응답은 클랜명을 **`guild_name`** 으로 준다(D-043). 스펙 표기 `clan_name`도 함께 넣는다.
+ */
+const NAME_KEYS = new Set(['user_name', 'clan_name', 'guild_name'])
 
 function shiftDigit(char: string, offset: number): string {
   return String((Number(char) + offset) % 10)
@@ -30,8 +33,18 @@ function shiftLetter(char: string, offset: number, base: number): string {
 /**
  * 글자 종류를 유지한 채 값을 바꾼다.
  * `AAAA-1111` → `BBBB-2222` 처럼 길이·구분자·문자종류가 남는다.
+ *
+ * 값 전체가 16진수면 **16진수 안에서만** 바꾼다.
+ * (ouid가 32자리 hex라는 형식 근거가 픽스처에 남아야 한다)
  */
 export function maskPreservingShape(value: string, offset = 1): string {
+  // 숫자만으로 된 값(예: 18자리 match_id)은 숫자로 남겨야 한다.
+  // 16진수 처리는 a~f가 실제로 섞여 있을 때만 한다.
+  if (/^[0-9a-f]+$/.test(value) && /[a-f]/.test(value)) {
+    return [...value]
+      .map((char) => '0123456789abcdef'[(parseInt(char, 16) + offset) % 16] ?? char)
+      .join('')
+  }
   let out = ''
   for (const char of value) {
     if (char >= '0' && char <= '9') out += shiftDigit(char, offset)
@@ -72,7 +85,8 @@ export function pseudonymizeResponse(
     const existing = nameMap.get(mapKey)
     if (existing) return existing
     const index = [...nameMap.keys()].filter((entry) => entry.startsWith(`${key}:`)).length + 1
-    const label = key === 'clan_name' ? `클랜${index}` : `유저${String(index).padStart(2, '0')}`
+    const isClan = key === 'clan_name' || key === 'guild_name'
+    const label = isClan ? `클랜${index}` : `유저${String(index).padStart(2, '0')}`
     nameMap.set(mapKey, label)
     return label
   }

@@ -16,20 +16,34 @@ describe('픽스처 가명화', () => {
     expect(/^[A-Z]{2}\d{2}-[a-z]{2}\d{2}$/.test(masked)).toBe(true)
   })
 
-  it('실존 닉네임·클랜명을 커밋 가능한 표기로 바꾼다', () => {
+  it('16진수 값은 16진수 안에서만 바꾼다 (ouid 형식 근거 유지)', () => {
+    const masked = maskPreservingShape('03f1f7e697157d95bb0657ad3392f3ff')
+    expect(masked).toHaveLength(32)
+    expect(/^[0-9a-f]{32}$/.test(masked)).toBe(true)
+    expect(masked).not.toBe('03f1f7e697157d95bb0657ad3392f3ff')
+  })
+
+  it('숫자만으로 된 값은 숫자로 남는다 (18자리 match_id 형식 근거 유지)', () => {
+    const masked = maskPreservingShape('260716180538124001')
+    expect(masked).toMatch(/^\d{18}$/)
+    expect(masked).not.toBe('260716180538124001')
+  })
+
+  it('실존 닉네임·클랜명을 커밋 가능한 표기로 바꾼다 (실제 필드명은 guild_name)', () => {
     const { value } = pseudonymizeResponse({
       match_detail: [
-        { user_name: '실제닉네임', clan_name: '실제클랜', kill: 12 },
-        { user_name: '다른사람', clan_name: '실제클랜', kill: 3 },
+        { user_name: '실제닉네임', guild_name: '실제클랜', kill: 12 },
+        { user_name: '다른사람', guild_name: '실제클랜', kill: 3 },
       ],
     })
-    const detail = (value as { match_detail: { user_name: string; clan_name: string; kill: number }[] })
+    const detail = (value as { match_detail: { user_name: string; guild_name: string; kill: number }[] })
       .match_detail
 
     expect(detail[0]?.user_name).toBe('유저01')
     expect(detail[1]?.user_name).toBe('유저02')
     // 같은 값은 같은 가명으로 — 팀 구성 관계가 유지돼야 한다
-    expect(detail[0]?.clan_name).toBe(detail[1]?.clan_name)
+    expect(detail[0]?.guild_name).toBe(detail[1]?.guild_name)
+    expect(detail[0]?.guild_name).not.toBe('실제클랜')
     // 검증 대상(수치·시각 등)은 손대지 않는다
     expect(detail[0]?.kill).toBe(12)
   })

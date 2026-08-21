@@ -1,0 +1,12 @@
+{
+  "_note": "실제 넥슨 응답을 가명화한 픽스처다. 닉네임·클랜명·ouid·match_id는 실제 값이 아니다. 시각·수치·모드·맵 등 형식 검증에 쓰이는 값은 원본 그대로다.",
+  "_endpoint": "/suddenattack/v1/id",
+  "_httpStatus": 200,
+  "_capturedAt": "2026-08-21T12:13:28.799Z",
+  "_pseudonymized": {
+    "ouid": 1
+  },
+  "response": {
+    "ouid": "a3f1f7e697157d95bba6570d3392f3ff"
+  }
+}

@@ -33,7 +33,7 @@ export interface NormalizedParticipant {
   outcome: MatchOutcome | null
   userName: string | null
   seasonGrade: string | null
-  /** 클랜전 계열에서만 내려온다 */
+  /** 클랜전 계열에서만 내려온다. 원본 필드는 `guild_name`(실측) 또는 `clan_name`(스펙) */
   clanName: string | null
   kill: number | null
   death: number | null
@@ -115,7 +115,8 @@ export function normalizeMatchDetail(
       outcome: toMatchOutcome(item.match_result),
       userName: item.user_name,
       seasonGrade: item.season_grade,
-      clanName: item.clan_name,
+      // 스펙은 clan_name, 실제 응답은 guild_name (D-043). 원본은 RawImport에 둘 다 남는다
+      clanName: item.clan_name ?? item.guild_name,
       kill: item.kill,
       death: item.death,
       assist: item.assist,

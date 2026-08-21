@@ -1,11 +1,15 @@
 /**
- * 테스트용 응답 픽스처.
+ * 조립 픽스처 — **실제 넥슨 응답이 아니다.**
  *
- * **주의: 실제 넥슨 응답이 아니다.** 공식 OpenAPI 스펙(2026-08-21 실측)의 필드 정의로만
- * 조립한 값이다. API 키를 받아 1차 실주행을 하면 **실제 응답으로 교체한다**
- * (`docs/NEXON_INGEST_SPEC.md` 1장).
+ * 실제 응답은 `fixtures/real/*.json`에 있다(2026-08-21 실주행, 가명화).
+ * 이 파일은 그것으로 대체된 것이 아니라 **다른 목적**으로 남아 있다:
  *
- * 실제 값으로 교체하기 전에는 이 픽스처가 "넥슨이 이렇게 준다"는 증거가 될 수 없다.
+ *   실제 넥슨 응답에는 **양 팀이 함께 오지 않는다**(D-044).
+ *   그래서 "5 vs 5 클랜전이 온전히 왔다면" 이라는 가정 상황을 만들 수 없다.
+ *   투영 규칙·멱등성 테스트에는 그런 완전한 경기가 필요하므로 여기서 조립한다.
+ *
+ * 필드 이름은 실제 응답에 맞췄다 (`clan_name`이 아니라 `guild_name` — D-043).
+ * 이 픽스처는 "넥슨이 이렇게 준다"는 증거가 아니다. 증거는 `fixtures/real/`이다.
  */
 
 export const SPEC_DERIVED = true
@@ -35,7 +39,10 @@ export const SAMPLE_MATCH_LIST = {
   ],
 }
 
-/** 5 vs 5 클랜전. 레드가 승리 (team_id 값 자체의 의미는 [미확인] — 원본 문자열을 보존한다) */
+/**
+ * 5 vs 5 클랜전 **가정** 데이터. 레드가 승리.
+ * 실제 응답에서는 이렇게 양 팀이 온전히 오지 않는다 (D-044).
+ */
 export const SAMPLE_MATCH_DETAIL = {
   match_id: 'AAAA-1111',
   match_type: '클랜전',
@@ -48,7 +55,7 @@ export const SAMPLE_MATCH_DETAIL = {
       match_result: '1',
       user_name,
       season_grade: '이등병',
-      clan_name: '알파클랜',
+      guild_name: '알파클랜',
       kill: 12 + index,
       death: 8,
       headshot: 4,
@@ -60,7 +67,7 @@ export const SAMPLE_MATCH_DETAIL = {
       match_result: '2',
       user_name,
       season_grade: '일병',
-      clan_name: '브라보클랜',
+      guild_name: '브라보클랜',
       kill: 6 + index,
       death: 13,
       headshot: 2,

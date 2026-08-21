@@ -214,3 +214,37 @@ UI로 확인하는 것이 불안정하다. 되돌릴 수 없는 작업이라 브
 - 래더·랭킹 계산 (Phase 9)
 - 관리자 수집 대시보드 (CLI 리포트로 대체)
 - Redis / BullMQ
+
+---
+
+## Phase 8 — 실응답 소량 검증 (2026-08-21)
+
+닉네임 1명, **총 15회 호출**. 429·403 없음. 테스트 키(`test_`)로 서든어택 API가 정상 동작한다.
+
+### 스펙이 틀렸던 곳
+
+1. 참가자 클랜명은 `clan_name`이 아니라 **`guild_name`** (D-043). 스키마·정규화를 실제 기준으로 고쳤다.
+2. **한 경기 응답에 양 팀이 함께 오지 않는다** (D-044). 5경기 전부 그랬다.
+   승리 팀 전원 + (졌으면) 본인. 상대 팀 라인업이 없으니 클랜 vs 클랜 경기를 재구성할 수 없다.
+   투영 규칙이 틀린 게 아니라 **입력이 부족한 것**이다. Phase 9의 선결 과제로 올렸다.
+
+### 확인된 형식
+
+`ouid` 32자리 hex · `match_id` **18자리 숫자**(3rd.supply와 같은 형식) · `date_match` 밀리초 포함 UTC ·
+`damage` 정수 · `team_id`는 개인전에서 `null` · 참가자 `ouid` 없음 · 무기/MVP/탈주/플레이시간 필드 자체가 없음.
+
+### 사고와 복구 (D-045)
+
+빈 DB 기준으로 만든 `offlineSmoke.ts`가 실데이터가 있는 DB에서 돌면서
+**상세 미수집 스테이징 200건을 가짜 응답으로 덮어썼다.**
+
+`RawImport`에 목록 원본이 남아 있어 **200건 전부 되돌렸다.**
+"원본을 버리지 않는다"는 규칙이 실제로 사고를 막았다.
+이후 `runCollect(detailSourceMatchIds)` / `runProject(sourceMatchIds)`로 범위를 인자로 강제했다.
+
+### 검증
+
+- typecheck / lint 통과, test **275 passed / 1 skipped** (실응답 회귀 11건 추가)
+- `pnpm nexon:check` 7항목 · `pnpm db:check` 18항목 · 오프라인 스모크 27항목 통과
+- 최종 DB: RawImport 11 · NexonMatch 698(상세 6) · 참가자 37 · 운영 `Match(origin=nexon)` **0**
+- 실응답 픽스처 3종을 가명화해 저장 (`packages/nexon/src/fixtures/real/`)
