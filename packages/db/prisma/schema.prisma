@@ -810,6 +810,73 @@ model LegacyPlayerSeason {
   @@index([leagueSlug, season])
 }
 
+/// Legacy 자동 수집 작업 (`pnpm legacy:collect`).
+///
+/// 5,000명은 한 번에 끝나지 않는다. 중간에 멈춰도 **이어서 할 수 있어야** 한다.
+/// 그래서 진행 상황을 DB에 남긴다 (CLAUDE.md 3-A 4번: 일회성 스크립트 금지).
+model LegacyCollectionJob {
+  id     String @id @default(cuid())
+  /// "3rd.supply"
+  source String @default("3rd.supply")
+  /// 수집 대상 리그. 현재는 서플라이공식리그(`supply`)뿐이다.
+  leagueSlug String @default("supply")
+
+  /// "running" | "done" | "stopped" | "blocked"
+  /// `blocked` = 접근 통제(WAF/CAPTCHA/403)를 만나 **우회하지 않고 스스로 멈춘 상태**
+  status String @default("running")
+
+  totalPlayers     Int @default(0)
+  processedPlayers Int @default(0)
+  successPlayers   Int @default(0)
+  failedPlayers    Int @default(0)
+  rowsCreated      Int @default(0)
+
+  /// 마지막으로 처리한 플레이어. 재개 지점.
+  lastPlayerId String?
+  /// 멈춘 이유 (blocked/stopped일 때)
+  stopReason   String?
+
+  startedAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  finishedAt DateTime?
+
+  players LegacyCollectionPlayer[]
+
+  @@index([status, startedAt])
+}
+
+/// 플레이어 한 명의 수집 결과. 이미 끝난 사람은 재실행 때 건너뛴다.
+model LegacyCollectionPlayer {
+  id    String @id @default(cuid())
+  jobId String
+
+  sourcePlayerId String
+  nickname       String?
+
+  /// "pending" | "success" | "not_found" | "parse_failed" | "blocked" | "error"
+  status String @default("pending")
+  /// 재시도 횟수. 일시 오류(5xx·타임아웃)만 제한적으로 재시도한다.
+  attempts    Int  @default(0)
+  rowsCreated Int  @default(0)
+
+  /// "http_404" | "http_403" | "http_429" | "waf_captcha" | "timeout" | "parse" | ...
+  errorType    String?
+  errorMessage String?
+  httpStatus   Int?
+
+  /// 처리에 걸린 시간(ms). 평균 산출용.
+  durationMs Int?
+
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  job LegacyCollectionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, sourcePlayerId])
+  @@index([jobId, status])
+  @@index([sourcePlayerId])
+}
+
 /// 원본 ID ↔ 로컬 ID 매핑. 엔티티 컬럼(`source*Id`)과 중복이지만,
 /// 아직 로컬 엔티티가 없는 단계에서도 대조가 가능해야 해서 별도로 둔다.
 model SourceMapping {

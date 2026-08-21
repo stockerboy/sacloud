@@ -16,7 +16,8 @@
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
     "seed": "tsx seed/seed.ts",
-    "legacy:import": "tsx legacy/import.ts"
+    "legacy:import": "tsx legacy/import.ts",
+    "legacy:collect": "tsx legacy/collect.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.3.0"

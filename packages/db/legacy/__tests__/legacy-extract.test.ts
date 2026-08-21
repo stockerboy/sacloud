@@ -4,10 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   HEADER_MAP,
+  htmlToText,
   LEGACY_CSV_HEADER,
   mapSeasonRow,
   parseSeasonCard,
   seasonCardToRow,
+  splitSeasonCards,
   toCsvLine,
   toNumberText,
   toRankCount,
@@ -232,6 +234,67 @@ describe('원본 지난시즌 카드 파싱', () => {
     expect(row['rank_count']).toBe('6934')
     expect(row['final_rating']).toBe('')
     expect(row['division']).toBe('')
+  })
+})
+
+/**
+ * 자동 수집기는 브라우저가 아니라 **HTML**을 받는다.
+ * 태그를 걷어내면 페이지가 한 덩어리 글자가 되므로 카드로 잘라야 한다.
+ */
+describe('HTML 페이지 → 시즌 카드 분리', () => {
+  /**
+   * 실제 페이지 모양을 본뜬 것. **사이드바에도 `승률`·`킬뎃`이 있다** —
+   * 마지막 시즌 카드가 사이드바를 삼키면 값이 오염된다.
+   */
+  const PAGE = `
+    <div>지난시즌</div>
+    <div>서플라이공식리그 시즌 6 6,934명중 1위 967승 578패 승률 62.6% 16,875킬 10,605데스 킬뎃 61.4%</div>
+    <div>서플라이공식리그 시즌 5 24,987명중 30위 1,729승 1,232패 승률 58.4% 30,617킬 21,596데스 킬뎃 58.6%</div>
+    <div>서플라이공식리그 시즌 4 29,991명중 122위 승률 56.9% 킬뎃 56.9%</div>
+    <aside>상세정보 래더 3,567점 승률 736승 453패 61.9% 킬뎃 13,185킬 8,448데스 60.9%
+      평균킬 판당 11.1킬 MVP 411회 랭킹 5,580명중 3위 소속 없음</aside>
+    <script>window.__state = {"시즌":"무시해야 한다"}</script>
+  `
+
+  it('script 안쪽과 태그를 걷어낸다', () => {
+    const text = htmlToText(PAGE)
+    expect(text).not.toContain('<div>')
+    expect(text).not.toContain('무시해야 한다')
+    expect(text).toContain('시즌 6')
+  })
+
+  it('시즌 카드만 잘라낸다 (사이드바는 카드가 아니다)', () => {
+    const cards = splitSeasonCards(htmlToText(PAGE))
+    expect(cards).toHaveLength(3)
+    expect(cards[0]).toContain('시즌 6')
+    expect(cards[1]).toContain('시즌 5')
+    expect(cards[2]).toContain('시즌 4')
+  })
+
+  /** 이게 깨지면 마지막 시즌의 승률·킬뎃이 사이드바 값으로 바뀐다 */
+  it('마지막 카드가 사이드바를 삼키지 않는다', () => {
+    const cards = splitSeasonCards(htmlToText(PAGE))
+    const last = parseSeasonCard(cards[2]!)
+    expect(last.season).toBe(4)
+    expect(last.winRate).toBe(56.9)
+    expect(last.kd).toBe(56.9)
+    // 사이드바의 래더(3,567점)·승패(736승 453패)가 새어 들어오면 안 된다
+    expect(last.finalRating).toBeNull()
+    expect(last.wins).toBeNull()
+    expect(last.losses).toBeNull()
+  })
+
+  it('페이지 전체를 파싱하면 시즌별 값이 각각 맞는다', () => {
+    const parsed = splitSeasonCards(htmlToText(PAGE)).map(parseSeasonCard)
+    expect(parsed.map((c) => c.season)).toEqual([6, 5, 4])
+    expect(parsed[0]!.wins).toBe(967)
+    expect(parsed[1]!.kills).toBe(30617)
+    expect(parsed[2]!.kills).toBeNull()
+    expect(parsed.every((c) => c.finalRating === null)).toBe(true)
+  })
+
+  it('지난시즌이 없는 페이지에서는 빈 배열', () => {
+    expect(splitSeasonCards(htmlToText('<div>지난시즌 기록이 없습니다</div>'))).toEqual([])
   })
 })
 

@@ -25,7 +25,8 @@
     "db:generate": "pnpm --filter @sacloud/db generate",
     "db:migrate": "pnpm --filter @sacloud/db migrate",
     "db:studio": "pnpm --filter @sacloud/db studio",
-    "legacy:import": "pnpm --filter @sacloud/db legacy:import"
+    "legacy:import": "pnpm --filter @sacloud/db legacy:import",
+    "legacy:collect": "pnpm --filter @sacloud/db legacy:collect"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

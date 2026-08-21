@@ -190,6 +190,62 @@ export function parseSeasonCard(cardText: string): SeasonCard {
   }
 }
 
+/**
+ * 페이지 전체 텍스트 → 시즌 카드 조각들.
+ *
+ * 자동 수집기는 브라우저가 아니라 **HTML**을 받는다. 태그를 걷어내면 페이지 전체가
+ * 한 덩어리 글자가 되고, 그대로 `parseSeasonCard`에 넣으면 시즌이 전부 섞인다.
+ * 그래서 `시즌 N` 을 경계로 잘라 **카드 하나씩** 파서에 넘긴다.
+ *
+ * 마지막 카드가 사이드바까지 삼키지 않도록 **`킬뎃 N%` 에서 끊는다.**
+ * (사이드바에도 `승률`·`킬뎃`이 있어서, 안 끊으면 마지막 시즌 값이 오염된다.)
+ */
+export function splitSeasonCards(pageText: string): string[] {
+  const text = pageText.replace(/\s+/g, ' ')
+  const marks = [...text.matchAll(/시즌\s*\d+/g)]
+
+  const chunks: string[] = []
+  for (const [index, mark] of marks.entries()) {
+    if (mark.index === undefined) continue
+    const nextIndex = marks[index + 1]?.index ?? text.length
+    let chunk = text.slice(mark.index, nextIndex)
+
+    // 카드의 마지막 항목은 킬뎃이다. 거기서 끊는다.
+    const end = /킬뎃\s*[\d.]+\s*%/.exec(chunk)
+    if (end) chunk = chunk.slice(0, end.index + end[0].length)
+
+    // 시즌 카드가 아니면(예: "현재 시즌" 안내 문구) 버린다
+    if (!/승률\s*[\d.]+\s*%/.test(chunk)) continue
+    if (!/킬뎃\s*[\d.]+\s*%/.test(chunk)) continue
+
+    chunks.push(chunk.trim())
+  }
+  return chunks
+}
+
+/**
+ * HTML → 글자.
+ *
+ * DOM 라이브러리를 새로 넣지 않는다. 우리가 읽어야 하는 건
+ * `218승 173패` 같은 **눈에 보이는 글자**뿐이라 태그만 걷어내면 충분하다.
+ * `script`/`style` 안쪽은 화면에 안 보이므로 통째로 버린다.
+ */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 /** 카드 파싱 결과 → CSV 행 */
 export function seasonCardToRow(card: SeasonCard, context: ExtractContext): Record<string, string> {
   const row: Record<string, string> = Object.fromEntries(
