@@ -117,6 +117,7 @@ export async function requestManualRefresh(input: {
 function toPollState(row: {
   ouid: string
   tier: string
+  priorityClass: string
   intervalMinutes: number
   nextPollAt: Date
   lastPolledAt: Date | null
@@ -126,7 +127,11 @@ function toPollState(row: {
   manualRefreshRequestedAt: Date | null
   lastPollStatus: string | null
 }): PollState {
-  return { ...row, tier: row.tier as PollTier }
+  return {
+    ...row,
+    tier: row.tier as PollTier,
+    priorityClass: row.priorityClass === 'league' ? 'league' : 'general',
+  }
 }
 
 /**

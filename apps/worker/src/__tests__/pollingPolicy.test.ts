@@ -24,6 +24,7 @@ function state(overrides: Partial<PollState> = {}): PollState {
   return {
     ouid: 'OU-1',
     tier: 'hot',
+    priorityClass: 'general',
     intervalMinutes: DEFAULT_POLLING_CONFIG.intervalMinutes.hot,
     nextPollAt: NOW,
     lastPolledAt: null,

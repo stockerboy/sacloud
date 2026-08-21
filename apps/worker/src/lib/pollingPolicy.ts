@@ -33,6 +33,14 @@ export interface PollingConfig {
   failureBackoffFactor: number
   /** 예정보다 이만큼(분) 넘게 밀린 대상은 우선순위를 끌어올린다 (starvation 방지) */
   starvationMinutes: number
+  /**
+   * 공식리그 등록 선수를 같은 티어의 일반 유저보다 먼저 본다 (Phase 8.2 · D-053).
+   * 우리가 완성해야 하는 것은 리그 경기이고, 리그 경기의 완전성은 **등록 선수 전원의
+   * 관측**에 달려 있기 때문이다.
+   */
+  leaguePriorityBoost: number
+  /** 동료에게서 새 클랜전이 발견됐을 때 앞당길 대상 수 상한 (호출 폭주 방지) */
+  propagationFanout: number
 }
 
 export const DEFAULT_POLLING_CONFIG: PollingConfig = {
@@ -44,6 +52,8 @@ export const DEFAULT_POLLING_CONFIG: PollingConfig = {
   dormantAfterDays: 30,
   failureBackoffFactor: 2,
   starvationMinutes: 1440,
+  leaguePriorityBoost: 0.5,
+  propagationFanout: 20,
 }
 
 function positiveInt(raw: string | undefined, fallback: number): number {
@@ -72,13 +82,28 @@ export function readPollingConfig(
       base.failureBackoffFactor,
     ),
     starvationMinutes: positiveInt(env.NEXON_POLL_STARVATION_MINUTES, base.starvationMinutes),
+    leaguePriorityBoost: positiveNumber(
+      env.NEXON_POLL_LEAGUE_BOOST,
+      base.leaguePriorityBoost,
+    ),
+    propagationFanout: positiveInt(env.NEXON_POLL_PROPAGATION_FANOUT, base.propagationFanout),
   }
 }
 
+function positiveNumber(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw.trim() === '') return fallback
+  const value = Number(raw)
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
+
 /** 정책이 읽고 쓰는 상태 (DB 모델의 부분집합) */
+export type PollPriorityClass = 'league' | 'general'
+
 export interface PollState {
   ouid: string
   tier: PollTier
+  /** 공식리그 등록 선수인가 — 같은 티어면 먼저 본다 */
+  priorityClass: PollPriorityClass
   intervalMinutes: number
   nextPollAt: Date
   lastPolledAt: Date | null
@@ -203,19 +228,22 @@ const TIER_PRIORITY: Record<PollTier, number> = { hot: 1, warm: 2, cold: 3, dorm
  * 그렇지 않으면 hot이 계속 채워질 때 dormant는 영원히 조회되지 않는다.
  */
 export function effectivePriority(
-  state: Pick<PollState, 'tier' | 'nextPollAt' | 'manualRefreshRequestedAt'>,
+  state: Pick<PollState, 'tier' | 'nextPollAt' | 'manualRefreshRequestedAt' | 'priorityClass'>,
   now: Date,
   config: PollingConfig = DEFAULT_POLLING_CONFIG,
 ): number {
   if (state.manualRefreshRequestedAt !== null) return 0
+
+  const leagueBonus = state.priorityClass === 'league' ? config.leaguePriorityBoost : 0
   const overdueMinutes = (now.getTime() - state.nextPollAt.getTime()) / MINUTE_MS
-  if (overdueMinutes >= config.starvationMinutes) return 1
-  return TIER_PRIORITY[state.tier]
+  if (overdueMinutes >= config.starvationMinutes) return 1 - leagueBonus
+
+  return TIER_PRIORITY[state.tier] - leagueBonus
 }
 
 /** 큐 정렬 — 우선순위 → 오래 기다린 순 */
 export function comparePollTargets<
-  T extends Pick<PollState, 'tier' | 'nextPollAt' | 'manualRefreshRequestedAt'>,
+  T extends Pick<PollState, 'tier' | 'nextPollAt' | 'manualRefreshRequestedAt' | 'priorityClass'>,
 >(left: T, right: T, now: Date, config: PollingConfig = DEFAULT_POLLING_CONFIG): number {
   const byPriority =
     effectivePriority(left, now, config) - effectivePriority(right, now, config)
@@ -225,7 +253,7 @@ export function comparePollTargets<
 
 /** 조회 대상 선택 — 예정 시각이 지났거나 수동 요청이 걸린 대상만 */
 export function selectPollTargets<
-  T extends Pick<PollState, 'tier' | 'nextPollAt' | 'manualRefreshRequestedAt'>,
+  T extends Pick<PollState, 'tier' | 'nextPollAt' | 'manualRefreshRequestedAt' | 'priorityClass'>,
 >(candidates: readonly T[], now: Date, limit: number, config: PollingConfig = DEFAULT_POLLING_CONFIG): T[] {
   return candidates
     .filter(
@@ -265,4 +293,70 @@ export function decideDetailFetch(input: {
     return { fetch: true, reason: 'refresh_due' }
   }
   return { fetch: false, reason: 'already_have' }
+}
+
+/* ------------------------------------------------------------- 전파(propagation) --- */
+
+export interface PropagationInput {
+  /** 새 클랜전을 발견한 선수 */
+  discoveredBy: string
+  /** 그 선수와 같은 로스터(같은 클랜)에 등록된 동료 ouid */
+  rosterPeers: readonly string[]
+  /**
+   * 상대 클랜이 **증거로 확정된 경우에만** 넘긴다.
+   * 확정되지 않았으면 추측하지 않는다 (사용자 지시 H-2).
+   */
+  opponentPeers?: readonly string[]
+  config?: PollingConfig
+}
+
+/**
+ * 한 선수에게서 새 클랜전이 나오면, **같은 경기를 봤을 사람들**을 앞당겨 조회한다.
+ *
+ * 목적은 호출을 늘리는 것이 아니라 **완전성 확보 시점을 앞당기는 것**이다.
+ * 어차피 조회할 사람을 먼저 조회할 뿐이다.
+ */
+export function propagationTargets(input: PropagationInput): string[] {
+  const config = input.config ?? DEFAULT_POLLING_CONFIG
+  const targets = [...input.rosterPeers, ...(input.opponentPeers ?? [])].filter(
+    (ouid) => ouid !== input.discoveredBy,
+  )
+  return [...new Set(targets)].slice(0, config.propagationFanout)
+}
+
+/* --------------------------------------------------------------- 호출량 모델 --- */
+
+export interface CallVolumeModel {
+  /** 티어별 대상 수 */
+  distribution: Record<PollTier, number>
+  /** 대상 1명을 볼 때 부르는 모드 수 */
+  modesPerPoll: number
+  config?: PollingConfig
+}
+
+/**
+ * 하루 호출 수 추정.
+ *
+ * ```
+ * Σ (티어 대상 수 × 모드 수 × (1440 / 티어 주기(분)))
+ * ```
+ *
+ * **분포는 가정이다.** 실제 값은 `NexonPollRun` 기록으로 바꿔 계산한다 (D-051).
+ */
+export function estimateDailyCalls(model: CallVolumeModel): number {
+  const config = model.config ?? DEFAULT_POLLING_CONFIG
+  return POLL_TIERS.reduce((total, tier) => {
+    const users = model.distribution[tier] ?? 0
+    const pollsPerDay = (24 * 60) / config.intervalMinutes[tier]
+    return total + users * model.modesPerPoll * pollsPerDay
+  }, 0)
+}
+
+/** 고정 주기로 전원을 도는 경우 (비교 기준) */
+export function estimateFixedDailyCalls(input: {
+  users: number
+  modesPerPoll: number
+  intervalMinutes: number
+}): number {
+  return input.users * input.modesPerPoll * ((24 * 60) / input.intervalMinutes)
 }

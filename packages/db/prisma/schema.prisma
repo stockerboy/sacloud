@@ -133,6 +133,7 @@ model Player {
   mvpMatches    Match[]         @relation("MatchMvp")
   nexonIdentities         NexonIdentity[]
   nexonIdentityCandidates NexonIdentityCandidate[]
+  rosterMemberships       LeagueRosterMembership[]
 
   @@unique([sourcePlayerId])
   @@unique([nexonOuid])
@@ -214,6 +215,7 @@ model League {
   invitations  LeagueInvitation[]
   rankSnapshots RankSnapshot[]
   ratingConfigs RatingConfig[]
+  rosterMemberships LeagueRosterMembership[]
 
   @@unique([sourceLeagueId])
   @@index([official, createdAt])
@@ -258,6 +260,7 @@ model Season {
   playerStats  LeaguePlayerSeason[]
   clanStats    LeagueClanSeason[]
   matches      Match[]
+  rosterMemberships LeagueRosterMembership[]
 
   @@unique([leagueId, number])
   @@index([leagueId, number])
@@ -299,6 +302,7 @@ model LeagueClan {
   seasonStats  LeagueClanSeason[]
   redMatches   Match[]            @relation("MatchRedClan")
   blueMatches  Match[]            @relation("MatchBlueClan")
+  rosterMemberships LeagueRosterMembership[]
 
   @@unique([leagueId, clanId])
   @@unique([sourceLeagueClanId])
@@ -1118,6 +1122,10 @@ model NexonMatch {
   /// "pending" | "projected" | "skipped" | "blocked"
   projectionStatus String  @default("pending")
   projectionReason String?
+  /// roster 기반 재구성 판정 결과 요약 (관측 수 · 확정 참가자 수 · 팀별 인원 등).
+  /// **증거를 남기기 위한 것**이지 계산 결과가 아니다 (Phase 8.2)
+  reconstruction   Json?
+  reconstructedAt  DateTime?
   /// 투영된 운영 매치의 내부 ID (FK를 걸지 않는다 — 스테이징은 외부 데이터의 거울이다)
   projectedMatchId String?
   projectedAt      DateTime?
@@ -1252,6 +1260,13 @@ model NexonPollState {
   /// 사용자가 화면에서 `전적갱신`을 눌렀다. **최우선**으로 올라간다
   manualRefreshRequestedAt DateTime?
 
+  /// "league" = 공식리그 등록 선수 (우선 수집 대상) | "general"
+  /// 리그 선수를 먼저 보는 이유: 우리가 완성해야 하는 것은 **리그 경기**이기 때문이다 (D-053)
+  priorityClass String @default("general")
+  /// 같은 로스터 동료에게서 새 클랜전이 발견돼 앞당겨졌다 (match propagation)
+  propagatedAt  DateTime?
+  propagationReason String?
+
   /// "success" | "empty" | "failed" | "blocked"
   lastPollStatus String?
   lastError      String?
@@ -1266,6 +1281,7 @@ model NexonPollState {
   @@index([tier, nextPollAt])
   @@index([manualRefreshRequestedAt])
   @@index([playerId])
+  @@index([priorityClass, nextPollAt])
 }
 
 /// 수집 실행 1회의 호출량 계측 (Phase 8.1 — D 요구사항).
@@ -1296,6 +1312,47 @@ model NexonPollRun {
   note             String?
 
   @@index([startedAt])
+}
+
+/// 경기 시점의 **클랜 소속 근거** (Phase 8.2).
+///
+/// 넥슨은 참가자의 클랜을 문자열(`guild_name`)로만 주고, 그것도 상세에 나온 사람만 준다.
+/// 반면 SACLOUD는 리그 운영자로서 **누가 언제 어느 클랜 소속으로 등록됐는지**를 안다.
+/// 그 사실을 기간(from~to)으로 보존해, "이 경기 시각에 이 선수가 이 클랜이었는가"를
+/// 문자열 비교가 아니라 **등록 기록**으로 판정한다 (D-052).
+///
+/// 리그 시스템을 재설계하지 않는다. 판정에 필요한 최소한만 둔다.
+model LeagueRosterMembership {
+  id           String  @id @default(cuid())
+  leagueId     String
+  leagueClanId String
+  playerId     String
+  /// 시즌을 알면 남긴다. 몰라도 기간으로 판정할 수 있다
+  seasonId     String?
+
+  /// 소속 시작. **이 시각 이후의 경기부터** 이 클랜 소속으로 본다
+  joinedAt DateTime
+  /// 소속 종료 (null이면 현재까지)
+  leftAt   DateTime?
+
+  /// "manual" | "import" | "seed" — 근거의 출처
+  source   String  @default("manual")
+  /// 운영자가 확인했는가. 확인되지 않은 소속은 완전성 판정에 쓰지 않는다
+  verified Boolean @default(false)
+  note     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  league     League     @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  leagueClan LeagueClan @relation(fields: [leagueClanId], references: [id], onDelete: Cascade)
+  player     Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  season     Season?    @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  @@unique([leagueClanId, playerId, joinedAt])
+  @@index([playerId, joinedAt])
+  @@index([leagueId, joinedAt])
+  @@index([leagueClanId])
 }
 
 /* ========================================================================== */
