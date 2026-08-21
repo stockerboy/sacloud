@@ -7,7 +7,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['packages/*/src/**/*.test.ts', 'apps/*/**/*.test.ts'],
+    // `packages/db/legacy` 처럼 src 밖에 있는 도구도 테스트한다
+    include: ['packages/*/src/**/*.test.ts', 'packages/db/legacy/**/*.test.ts', 'apps/*/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/.next/**'],
     reporters: ['default'],
   },

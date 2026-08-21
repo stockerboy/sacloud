@@ -24,7 +24,8 @@
     "db:check": "pnpm --filter @sacloud/db exec tsx seed/check.ts",
     "db:generate": "pnpm --filter @sacloud/db generate",
     "db:migrate": "pnpm --filter @sacloud/db migrate",
-    "db:studio": "pnpm --filter @sacloud/db studio"
+    "db:studio": "pnpm --filter @sacloud/db studio",
+    "legacy:import": "pnpm --filter @sacloud/db legacy:import"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

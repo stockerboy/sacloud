@@ -1,0 +1,5 @@
+source_player_id,nickname,league_slug,season,division,clan_name,wins,losses,win_rate,kills,deaths,kd,final_rating,final_rank,rank_count,source_url
+500123,리릭,supply,1,1,심연방위대,,,55,,,45,,,,https://3rd.supply/league/supply/player/500123/season
+500123,리릭,supply,2,1,심연방위대,61,39,61,1204,1110,52,1372,8,360,https://3rd.supply/league/supply/player/500123/season
+500123,리릭,supply,3,2,심연방위대,,,58,,,49,"1,082",12,,https://3rd.supply/league/supply/player/500123/season
+,닉네임만있는유저,sanply,7,,,,,47.5,,,50.1,,,,

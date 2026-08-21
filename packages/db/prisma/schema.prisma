@@ -736,6 +736,80 @@ model RawImport {
   @@index([normalizedAt])
 }
 
+/// 3rd.supply의 **시즌 최종 요약 스냅샷** (Legacy).
+///
+/// 목표는 원본 복제가 아니다. "내가 과거 시즌에 승률 몇 %, 킬뎃 몇이었는지"를
+/// 사용자가 새 사이트에서 확인할 수 있는 수준까지만 보존한다.
+/// 개별 경기·참가자·경기별 rating_update·게시판은 **이관 대상이 아니다.**
+///
+/// 운영 데이터와 섞지 않는다
+/// - `LeaguePlayerSeason`(신규)과 **별도 테이블**이다. 조인하지 않는다.
+/// - **신규 래더 공식으로 재계산하지 않는다.** 원본에 적힌 값을 그대로 둔다
+///   (CLAUDE.md 3-A 2번).
+/// - 원본에 없는 값은 `null`이다. **추측하거나 역산하지 않는다.**
+///   승률만 있으면 `winRate`만 채우고 `wins`/`losses`는 null로 둔다.
+///
+/// 동일인 판정
+/// - 닉네임을 영구 ID로 보지 않는다. `sourcePlayerId`가 있으면 그것을 보존한다.
+/// - 닉네임만으로 현재 사용자와 **자동 병합하지 않는다.** 연결은 별도 검증 절차로 미룬다.
+model LegacyPlayerSeason {
+  id     String @id @default(cuid())
+  /// "3rd.supply"
+  source String @default("3rd.supply")
+
+  /// 원본의 안정적인 플레이어 식별자. 페이지에서 얻지 못하면 null.
+  sourcePlayerId String?
+  /// 화면에 보이던 닉네임. **식별자가 아니다** (바뀔 수 있다).
+  nickname       String
+
+  /**
+   * 지난시즌은 **리그마다 따로** 존재한다 (`/league/:slug/player/:id/season`).
+   * 리그를 빼면 같은 시즌 번호의 다른 리그 기록이 서로 덮어쓴다.
+   * 사용자 명세에는 없었지만 정확성에 필요해 넣었다.
+   */
+  leagueSlug String?
+  season     Int
+  division   Int?
+  clanName   String?
+
+  wins    Int?
+  losses  Int?
+  /// 승률 %. 원본이 승/패 없이 승률만 보여주면 이것만 채운다.
+  winRate Float?
+
+  kills  Int?
+  deaths Int?
+  /// 킬뎃 %. 원본 표기를 그대로 담는다 (`킬/(킬+데스)×100`).
+  kd     Float?
+
+  finalRating Int?
+  finalRank   Int?
+  /// 순위의 모집단 (원본이 "360명중 1위" 형태로 보여준다). 없으면 null.
+  rankCount   Int?
+
+  /// 어느 페이지에서 가져왔는지. 나중에 원본과 대조할 때 쓴다.
+  sourceUrl   String?
+  /// 화면에서 읽은 원문. 변환이 틀려도 여기서 다시 만들 수 있다 (CLAUDE.md 3-A 1번).
+  rawSnapshot Json?
+
+  importedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  /**
+   * 중복 방지 키. import 시 계산한다.
+   * `<source>|<sourcePlayerId ?? "nick:"+nickname>|<leagueSlug ?? "-">|<season>`
+   *
+   * 왜 컬럼을 따로 두나: Postgres의 유니크 인덱스는 NULL을 서로 다른 값으로 본다.
+   * `sourcePlayerId`나 `leagueSlug`가 비어 있으면 복합 유니크로는 중복이 걸러지지 않는다.
+   * 같은 CSV를 여러 번 넣어도 한 행만 남아야 하므로 키를 명시적으로 만든다.
+   */
+  dedupeKey String @unique
+
+  @@index([nickname])
+  @@index([sourcePlayerId])
+  @@index([leagueSlug, season])
+}
+
 /// 원본 ID ↔ 로컬 ID 매핑. 엔티티 컬럼(`source*Id`)과 중복이지만,
 /// 아직 로컬 엔티티가 없는 단계에서도 대조가 가능해야 해서 별도로 둔다.
 model SourceMapping {
