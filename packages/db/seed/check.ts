@@ -138,6 +138,25 @@ async function main() {
     pollStates.filter((state) => state.playerId !== null && mockPlayerIds.has(state.playerId)).length,
   )
 
+  /* 8. 로스터는 시드가 만들지 않는다 (Phase 8.2) */
+  const rosterRows = await prisma.leagueRosterMembership.findMany({
+    select: { playerId: true, joinedAt: true, leftAt: true, source: true, verified: true },
+  })
+  // 시드는 운영자 등록 기록을 만들지 않는다. mock 플레이어가 로스터에 들어가면
+  // 가짜 데이터가 재구성 판정의 근거가 된다
+  check(
+    'mock 플레이어가 들어간 로스터',
+    0,
+    rosterRows.filter((row) => mockPlayerIds.has(row.playerId)).length,
+  )
+  check('seed가 만든 로스터', 0, rosterRows.filter((row) => row.source === 'seed').length)
+  // 기간이 뒤집힌 소속은 "그 시각에 이 클랜이었는가"를 판정할 수 없게 만든다
+  check(
+    '기간이 뒤집힌 로스터',
+    0,
+    rosterRows.filter((row) => row.leftAt !== null && row.leftAt <= row.joinedAt).length,
+  )
+
   console.info(failed === 0 ? '\n전부 통과.' : `\n${failed}건 실패.`)
   if (failed > 0) process.exitCode = 1
 }

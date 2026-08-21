@@ -9,6 +9,7 @@
  */
 import { prisma } from '@sacloud/db'
 import {
+  CLAN_MATCH_TYPES,
   MATCH_MODES,
   NEXON_SOURCE,
   NexonApiError,
@@ -27,6 +28,7 @@ import {
   type PollTier,
 } from '../lib/pollingPolicy.js'
 import { fetchAndStoreDetail, upsertStagingFromList } from './collect.js'
+import { applyPropagation, collectPropagationPeers } from './propagate.js'
 import { handleJobError, requireClient, type JobContext } from './context.js'
 
 export interface PollMetrics {
@@ -44,6 +46,13 @@ export interface PollMetrics {
   inactivePlayersPolled: number
   requestsForActive: number
   requestsForInactive: number
+  /**
+   * 전파로 조회를 앞당긴 대상 수 (Phase 8.2).
+   * **호출 수가 아니다.** 어차피 조회할 사람의 순서를 당겼을 뿐이라 `NexonPollRun`에는
+   * 남기지 않는다. 대상별 사실은 `NexonPollState.propagatedAt`에 남는다.
+   */
+  propagationCandidates: number
+  propagatedTargets: number
 }
 
 function emptyMetrics(): PollMetrics {
@@ -62,6 +71,8 @@ function emptyMetrics(): PollMetrics {
     inactivePlayersPolled: 0,
     requestsForActive: 0,
     requestsForInactive: 0,
+    propagationCandidates: 0,
+    propagatedTargets: 0,
   }
 }
 
@@ -365,6 +376,33 @@ export async function runPoll(
           jobKey: `nexon:poll-detail:${staging.sourceMatchId}`,
           sourceId: staging.sourceMatchId,
         })
+      }
+    }
+
+    /* ---- 새 클랜전을 봤으면 같은 경기를 봤을 사람들의 조회를 앞당긴다 (D-055) ---- */
+    if (newStagingIds.length > 0) {
+      const newClanMatches = await prisma.nexonMatch.findMany({
+        where: { id: { in: newStagingIds }, matchType: { in: [...CLAN_MATCH_TYPES] } },
+        select: { id: true, sourceMatchId: true, dateMatch: true },
+      })
+      for (const staging of newClanMatches) {
+        const peers = await collectPropagationPeers({
+          nexonMatchId: staging.id,
+          discoveredByOuid: target.ouid,
+          at: staging.dateMatch ?? new Date(),
+        })
+        const propagated = await applyPropagation({
+          peers,
+          discoveredByOuid: target.ouid,
+          reason: `new_clan_match:${staging.sourceMatchId}`,
+          now: new Date(),
+          config,
+        })
+        metrics.propagationCandidates += propagated.candidates
+        metrics.propagatedTargets += propagated.pulledForward
+        if (propagated.pulledForward > 0) {
+          log(`  전파: ${staging.sourceMatchId} → ${propagated.pulledForward}명 조회를 앞당겼다`)
+        }
       }
     }
 

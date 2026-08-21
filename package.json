@@ -36,7 +36,10 @@
     "nexon:status": "pnpm --filter @sacloud/worker nexon status",
     "nexon:poll": "pnpm --filter @sacloud/worker nexon poll",
     "nexon:report": "pnpm --filter @sacloud/worker nexon report",
-    "nexon:manual-refresh": "pnpm --filter @sacloud/worker nexon manual-refresh"
+    "nexon:manual-refresh": "pnpm --filter @sacloud/worker nexon manual-refresh",
+    "nexon:roster": "pnpm --filter @sacloud/worker nexon roster",
+    "nexon:backfill-observations": "pnpm --filter @sacloud/worker nexon backfill-observations",
+    "nexon:reconstruct": "pnpm --filter @sacloud/worker nexon reconstruct"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

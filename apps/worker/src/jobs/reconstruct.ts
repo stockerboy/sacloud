@@ -48,8 +48,13 @@ export interface BackfillResult {
  * 보관된 매치 목록 원본 → `NexonMatchObservation`.
  *
  * **넥슨에 요청하지 않는다.** 이미 받아 둔 원본을 다시 읽을 뿐이다.
+ *
+ * `ouids`로 **범위를 제한할 수 있다.** 개발 도구는 자기 데이터 밖을 건드리면 안 된다(D-045).
+ * 범위를 주지 않으면 보관된 원본 전체를 다시 읽는다 — 운영자가 명령으로 부를 때만 그렇게 한다.
  */
-export async function backfillObservations(): Promise<BackfillResult> {
+export async function backfillObservations(
+  input: { ouids?: readonly string[] } = {},
+): Promise<BackfillResult> {
   const result: BackfillResult = {
     listRawsScanned: 0,
     entriesScanned: 0,
@@ -59,7 +64,14 @@ export async function backfillObservations(): Promise<BackfillResult> {
   }
 
   const raws = await prisma.rawImport.findMany({
-    where: { source: NEXON_SOURCE, endpoint: '/suddenattack/v1/match' },
+    where: {
+      source: NEXON_SOURCE,
+      endpoint: '/suddenattack/v1/match',
+      // sourceId 형식이 `<ouid>:<match_mode>`라 접두사로 범위를 좁힌다
+      ...(input.ouids?.length
+        ? { OR: input.ouids.map((ouid) => ({ sourceId: { startsWith: `${ouid}:` } })) }
+        : {}),
+    },
     select: { id: true, sourceId: true, raw: true },
     orderBy: { firstFetchedAt: 'asc' },
   })

@@ -9,7 +9,10 @@ import {
   comparePollTargets,
   decideDetailFetch,
   effectivePriority,
+  estimateDailyCalls,
+  estimateFixedDailyCalls,
   nextPollState,
+  propagationTargets,
   readPollingConfig,
   selectPollTargets,
   tierForEmptyPolls,
@@ -178,5 +181,125 @@ describe('상세 재조회 판단', () => {
     expect(
       decideDetailFetch({ hasDetail: true, refreshDueAt: null, now: NOW, force: true }).reason,
     ).toBe('forced')
+  })
+})
+
+/* ------------------------------------------------------------- Phase 8.2 --- */
+
+describe('공식리그 우선순위 (D-053)', () => {
+  it('같은 티어면 리그 등록 선수를 먼저 본다', () => {
+    const general = state({ ouid: 'general', priorityClass: 'general' })
+    const league = state({ ouid: 'league', priorityClass: 'league' })
+
+    expect(effectivePriority(league, NOW)).toBeLessThan(effectivePriority(general, NOW))
+    expect(selectPollTargets([general, league], NOW, 2).map((t) => t.ouid)).toEqual([
+      'league',
+      'general',
+    ])
+  })
+
+  it('티어를 뒤집지는 않는다 — hot 일반 유저가 warm 리그 선수보다 먼저다', () => {
+    const hotGeneral = state({ ouid: 'hot-general', tier: 'hot' })
+    const warmLeague = state({ ouid: 'warm-league', tier: 'warm', priorityClass: 'league' })
+    expect(comparePollTargets(hotGeneral, warmLeague, NOW)).toBeLessThan(0)
+  })
+
+  it('수동 갱신 요청은 리그 선수보다도 먼저다', () => {
+    const league = state({ ouid: 'league', priorityClass: 'league' })
+    const manual = state({ ouid: 'manual', tier: 'dormant', manualRefreshRequestedAt: NOW })
+    expect(selectPollTargets([league, manual], NOW, 1).map((t) => t.ouid)).toEqual(['manual'])
+  })
+
+  it('오래 밀린 리그 선수는 굶지 않는 대상 중에서도 먼저다', () => {
+    const starvingGeneral = state({
+      ouid: 'starving-general',
+      tier: 'dormant',
+      nextPollAt: new Date(NOW.getTime() - 5 * DAY),
+    })
+    const starvingLeague = state({
+      ouid: 'starving-league',
+      tier: 'dormant',
+      priorityClass: 'league',
+      nextPollAt: new Date(NOW.getTime() - 5 * DAY),
+    })
+    expect(selectPollTargets([starvingGeneral, starvingLeague], NOW, 1).map((t) => t.ouid)).toEqual([
+      'starving-league',
+    ])
+  })
+
+  it('우선순위 가산값은 설정으로 끌 수 있다', () => {
+    const config = { ...DEFAULT_POLLING_CONFIG, leaguePriorityBoost: 0 }
+    const general = state({ priorityClass: 'general' })
+    const league = state({ priorityClass: 'league' })
+    expect(effectivePriority(league, NOW, config)).toBe(effectivePriority(general, NOW, config))
+  })
+})
+
+describe('매치 전파 대상 선정 (D-055)', () => {
+  it('발견한 본인은 대상에서 뺀다', () => {
+    const targets = propagationTargets({
+      discoveredBy: 'OU-1',
+      rosterPeers: ['OU-1', 'OU-2', 'OU-3'],
+    })
+    expect(targets).toEqual(['OU-2', 'OU-3'])
+  })
+
+  it('증거로 확인된 상대 클랜만 함께 앞당긴다', () => {
+    const withoutOpponent = propagationTargets({ discoveredBy: 'OU-1', rosterPeers: ['OU-2'] })
+    expect(withoutOpponent).toEqual(['OU-2'])
+
+    const withOpponent = propagationTargets({
+      discoveredBy: 'OU-1',
+      rosterPeers: ['OU-2'],
+      opponentPeers: ['OU-9'],
+    })
+    expect(withOpponent).toEqual(['OU-2', 'OU-9'])
+  })
+
+  it('같은 사람이 양쪽에 들어와도 한 번만 앞당긴다', () => {
+    const targets = propagationTargets({
+      discoveredBy: 'OU-1',
+      rosterPeers: ['OU-2', 'OU-2'],
+      opponentPeers: ['OU-2'],
+    })
+    expect(targets).toEqual(['OU-2'])
+  })
+
+  it('한 번에 앞당기는 수에는 상한이 있다 (호출 폭주 방지)', () => {
+    const peers = Array.from({ length: 100 }, (_, index) => `OU-${index}`)
+    const targets = propagationTargets({ discoveredBy: 'OU-X', rosterPeers: peers })
+    expect(targets).toHaveLength(DEFAULT_POLLING_CONFIG.propagationFanout)
+  })
+
+  it('상한은 설정으로 바꾼다', () => {
+    const peers = ['OU-2', 'OU-3', 'OU-4']
+    const targets = propagationTargets({
+      discoveredBy: 'OU-1',
+      rosterPeers: peers,
+      config: { ...DEFAULT_POLLING_CONFIG, propagationFanout: 2 },
+    })
+    expect(targets).toEqual(['OU-2', 'OU-3'])
+  })
+
+  it('앞당길 사람이 없으면 아무 일도 하지 않는다', () => {
+    expect(propagationTargets({ discoveredBy: 'OU-1', rosterPeers: [] })).toEqual([])
+  })
+})
+
+describe('호출량 모델', () => {
+  it('티어별 주기로 하루 호출 수를 계산한다', () => {
+    const calls = estimateDailyCalls({
+      distribution: { hot: 1, warm: 0, cold: 0, dormant: 0 },
+      modesPerPoll: 4,
+    })
+    // 30분 주기 → 하루 48회 × 모드 4개
+    expect(calls).toBe(48 * 4)
+  })
+
+  it('적응형이 고정 전수 조회보다 적다 (같은 모집단 기준)', () => {
+    const distribution = { hot: 100, warm: 400, cold: 1500, dormant: 3000 }
+    const adaptive = estimateDailyCalls({ distribution, modesPerPoll: 4 })
+    const fixed = estimateFixedDailyCalls({ users: 5000, modesPerPoll: 4, intervalMinutes: 30 })
+    expect(adaptive).toBeLessThan(fixed)
   })
 })

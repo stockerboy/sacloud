@@ -4,7 +4,7 @@
  * "수집 완료" 로그는 판정 근거가 아니다 (`CLAUDE.md` 3-A 6번).
  * 결과는 `MigrationCheck`에 남겨 나중에 다시 볼 수 있게 한다.
  */
-import { prisma } from '@sacloud/db'
+import { prisma, Prisma } from '@sacloud/db'
 import { ENDPOINT, NEXON_SOURCE } from '@sacloud/nexon'
 import { log, table } from '../lib/log.js'
 import { recordCheck } from '../lib/jobStore.js'
@@ -137,6 +137,109 @@ export async function runCheck(input: {
     expected: 0,
     actual: stale,
     note: '갱신 기한이 지난 스테이징 매치 (nexon:refresh 대상)',
+  })
+
+  /* ----------------------------------------------------------- Phase 8.2 --- */
+
+  /* 8) 재구성 판정에는 반드시 근거가 남아야 한다 */
+  const judgedWithoutEvidence = await prisma.nexonMatch.count({
+    where: { reconstructedAt: { not: null }, reconstruction: { equals: Prisma.DbNull } },
+  })
+  await push({
+    name: 'reconstruction_evidence_recorded',
+    expected: 0,
+    actual: judgedWithoutEvidence,
+    note: '판정했는데 근거 요약이 없는 매치',
+  })
+
+  /* 9) 재구성으로 만든 경기의 참가자는 전원 **경기 시점 로스터**로 뒷받침돼야 한다.
+        이것이 깨지면 우리가 클랜을 추측했다는 뜻이다 (D-052 위반) */
+  const reconstructed = await prisma.nexonMatch.findMany({
+    where: { reconstructedAt: { not: null }, projectionStatus: 'projected' },
+    select: { projectedMatchId: true },
+  })
+  const reconstructedMatchIds = reconstructed
+    .map((row) => row.projectedMatchId)
+    .filter((value): value is string => value !== null)
+
+  let unbackedParticipants = 0
+  let unbalancedSides = 0
+  for (const matchId of reconstructedMatchIds) {
+    const match = await prisma.match.findUnique({
+      where: { id: matchId },
+      select: {
+        startAt: true,
+        redLeagueClanId: true,
+        blueLeagueClanId: true,
+        stats: { select: { playerId: true, side: true } },
+      },
+    })
+    if (!match) continue
+
+    const red = match.stats.filter((stat) => stat.side === 'red').length
+    if (red * 2 !== match.stats.length) unbalancedSides += 1
+
+    for (const stat of match.stats) {
+      const covering = await prisma.leagueRosterMembership.count({
+        where: {
+          playerId: stat.playerId,
+          leagueClanId: {
+            in: [match.redLeagueClanId, match.blueLeagueClanId].filter(
+              (value): value is string => value !== null,
+            ),
+          },
+          joinedAt: { lte: match.startAt },
+          OR: [{ leftAt: null }, { leftAt: { gt: match.startAt } }],
+        },
+      })
+      if (covering === 0) unbackedParticipants += 1
+    }
+  }
+  await push({
+    name: 'reconstructed_participants_roster_backed',
+    expected: 0,
+    actual: unbackedParticipants,
+    note: '경기 시점 로스터 근거가 없는 재구성 참가자',
+  })
+  await push({
+    name: 'reconstructed_sides_balanced',
+    expected: 0,
+    actual: unbalancedSides,
+    note: '양 팀 인원이 다른 재구성 경기 (반쪽 저장 금지)',
+  })
+
+  /* 10) 리그 우선 폴링 대상은 로스터로 뒷받침돼야 한다 (D-053) */
+  const leaguePriority = await prisma.nexonPollState.findMany({
+    where: { priorityClass: 'league' },
+    select: { playerId: true },
+  })
+  const rosterPlayerIds = new Set(
+    (
+      await prisma.leagueRosterMembership.findMany({
+        where: { leftAt: null },
+        select: { playerId: true },
+        distinct: ['playerId'],
+      })
+    ).map((row) => row.playerId),
+  )
+  await push({
+    name: 'league_priority_roster_backed',
+    expected: 0,
+    actual: leaguePriority.filter(
+      (state) => state.playerId === null || !rosterPlayerIds.has(state.playerId),
+    ).length,
+    note: '로스터 근거 없이 리그 우선순위가 붙은 폴링 대상',
+  })
+
+  /* 11) 앞당긴 대상에는 사유가 남아야 한다 (D-055) */
+  const propagatedWithoutReason = await prisma.nexonPollState.count({
+    where: { propagatedAt: { not: null }, propagationReason: null },
+  })
+  await push({
+    name: 'propagation_reason_recorded',
+    expected: 0,
+    actual: propagatedWithoutReason,
+    note: '사유 없이 조회가 앞당겨진 대상',
   })
 
   table(

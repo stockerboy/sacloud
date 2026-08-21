@@ -23,6 +23,13 @@ import { runProject } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
 import { runCheck } from './jobs/check.js'
 import { ensurePollStates, requestManualRefresh, runPoll } from './jobs/poll.js'
+import { backfillObservations, runReconstruct } from './jobs/reconstruct.js'
+import {
+  deriveRosterFromLeaguePlayers,
+  importRoster,
+  rosterStatus,
+  syncLeaguePriority,
+} from './jobs/roster.js'
 import { readPollingConfig } from './lib/pollingPolicy.js'
 
 interface Args {
@@ -95,6 +102,13 @@ function usage(): void {
   refresh
   check
   status
+
+  roster      --league <slug> --file <CSV> [--verified] | --from-league-players | --sync-priority
+              (플래그 없으면 등록 현황만 보여 준다)
+  backfill-observations [--ouid <OUID>[,<OUID>]]
+              보관된 목록 원본 → 관측값. **넥슨에 요청하지 않는다**
+  reconstruct [--league <slug>] [--redo] [--match-id <ID>[,<ID>]] [--allow-unverified-roster]
+              [--allow-mock-league]
 
 공통 플래그: --dry-run  --resume  --limit N
 `)
@@ -290,6 +304,113 @@ async function main(): Promise<number> {
       return 0
     }
 
+    /* ------------------------------------------------------------ Phase 8.2 --- */
+
+    case 'roster': {
+      const leagueSlug = stringFlag(args, 'league')
+      const file = stringFlag(args, 'file')
+
+      if (file) {
+        if (!leagueSlug) {
+          fail('--league <slug> 가 필요하다')
+          return 1
+        }
+        const result = await importRoster({
+          leagueSlug,
+          file,
+          verified: boolFlag(args, 'verified'),
+          dryRun,
+        })
+        table([
+          {
+            줄: result.rows,
+            신규: result.created,
+            갱신: result.updated,
+            거부: result.rejected.length,
+          },
+        ])
+        for (const rejected of result.rejected) {
+          fail(`  ${rejected.line}행: ${rejected.reason}`)
+        }
+        if (!dryRun) {
+          const synced = await syncLeaguePriority()
+          log(`폴링 우선순위 갱신 — league ${synced.leagueMarked}명 · general 복귀 ${synced.generalReset}명`)
+        }
+        return result.rejected.length > 0 ? 1 : 0
+      }
+
+      if (boolFlag(args, 'from-league-players')) {
+        if (!leagueSlug) {
+          fail('--league <slug> 가 필요하다')
+          return 1
+        }
+        const result = await deriveRosterFromLeaguePlayers({ leagueSlug, dryRun })
+        table([{ 후보: result.candidates, 생성: result.created, 건너뜀: result.skipped }])
+        log('파생된 소속은 전부 unverified다. 운영자가 확인해야 재구성에 쓰인다')
+        if (!dryRun) await syncLeaguePriority()
+        return 0
+      }
+
+      if (boolFlag(args, 'sync-priority')) {
+        const synced = await syncLeaguePriority()
+        table([{ 'league로 표시': synced.leagueMarked, 'general로 복귀': synced.generalReset }])
+        return 0
+      }
+
+      table(await rosterStatus(leagueSlug))
+      return 0
+    }
+
+    case 'backfill-observations': {
+      const ouids = (stringFlag(args, 'ouid') ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+      const result = await backfillObservations({ ouids })
+      table([result as unknown as Record<string, unknown>])
+      log(
+        '넥슨에 요청하지 않았다. 보관된 원본만 다시 읽었다' +
+          (ouids.length > 0 ? ` (대상 ${ouids.length}명)` : ' (전체)'),
+      )
+      return 0
+    }
+
+    case 'reconstruct': {
+      const sourceMatchIds = (stringFlag(args, 'match-id') ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+
+      const result = await runReconstruct(ctx, {
+        leagueSlug: stringFlag(args, 'league'),
+        allowMockLeague: boolFlag(args, 'allow-mock-league'),
+        // 기본은 **운영자가 확인한 로스터만** 인정한다
+        requireVerifiedRoster: !boolFlag(args, 'allow-unverified-roster'),
+        redo: boolFlag(args, 'redo'),
+        sourceMatchIds,
+      })
+      table([
+        { considered: result.considered, projected: result.projected, incomplete: result.incomplete },
+      ])
+      for (const [code, count] of Object.entries(result.reasons)) {
+        log(`  미완 사유 ${code}: ${count}건`)
+      }
+      if (result.samples.length > 0) {
+        log('')
+        log('경기별 관측 현황 (상위 20건)')
+        table(
+          result.samples.slice(0, 20).map((sample) => ({
+            매치: sample.sourceMatchId,
+            관측: sample.observations,
+            확정: sample.confirmed,
+            상세참가자: sample.detailParticipants,
+            판정: sample.code ?? 'projected',
+          })),
+        )
+      }
+      return 0
+    }
+
     case 'refresh': {
       const result = await runRefresh(ctx)
       table([result as unknown as Record<string, unknown>])
@@ -332,6 +453,25 @@ async function main(): Promise<number> {
           '조회 예정(지금)': duePolls,
           '수동 갱신 대기': manualPending,
           '목록 관측값': await prisma.nexonMatchObservation.count(),
+        },
+      ])
+
+      // Phase 8.2 — 재구성 조건이 얼마나 갖춰졌는가
+      const [rosterRows, rosterVerified, leaguePriority, propagated, reconstructed] =
+        await Promise.all([
+          prisma.leagueRosterMembership.count(),
+          prisma.leagueRosterMembership.count({ where: { verified: true } }),
+          prisma.nexonPollState.count({ where: { priorityClass: 'league' } }),
+          prisma.nexonPollState.count({ where: { propagatedAt: { not: null } } }),
+          prisma.nexonMatch.count({ where: { reconstructedAt: { not: null } } }),
+        ])
+      table([
+        {
+          '로스터 등록': rosterRows,
+          '확인된 소속': rosterVerified,
+          '리그 우선 대상': leaguePriority,
+          '전파로 앞당김': propagated,
+          '재구성 판정됨': reconstructed,
         },
       ])
       if (lastRun) {

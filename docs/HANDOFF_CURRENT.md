@@ -1,6 +1,6 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21. 최종 갱신 2026-08-21 (Phase 8.1 — D-044 후속 검증 + 적응형 폴링).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
+**작성 2026-08-21. 최종 갱신 2026-08-22 (Phase 8.2 — 로스터 기반 재구성 완료).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 
 ---
@@ -20,8 +20,9 @@
 | 6 인증 & 관리 화면 | ✅ 완료 — 여기까지 **M1 (Mock 기반 화면·흐름 복원)** |
 | **7 DB + 실제 API** | ✅ **완료** (2026-08-21 최종 검수 완료) |
 | **8 전적 수집 파이프라인** | ✅ 파이프라인 + 실응답 검증 완료 |
-| **8.1 D-044 검증 + 적응형 폴링** | 🟨 구조 완성. **D-044는 해결되지 않았다**(아래 F장). 대규모 수집 보류 |
-| 9 레이팅/시즌/랭킹 배치 | ⬜ |
+| **8.1 D-044 검증 + 적응형 폴링** | ✅ 완료 |
+| **8.2 로스터 기반 재구성** | ✅ 완료 (2026-08-22). **D-044는 여전히 해결되지 않았다** — 아래 F장 |
+| 9 레이팅/시즌/랭킹 배치 | 🟨 설계·시뮬레이션만 진행 (아래 H장). **공식 확정은 사용자 승인 대기** |
 | 10 SSR/SEO/성능/운영 | ⬜ |
 
 **Legacy 이관(3rd.supply 과거 기록)은 Phase 8과 별개 트랙**이며 현재 **WAF로 blocked** 상태다 (D장).
@@ -66,7 +67,15 @@ pnpm nexon:poll --targets N [--detail-limit N] [--modes "폭파미션"]   # 적�
 pnpm nexon:report                                  # 티어 분포 + 호출량 계측
 pnpm nexon:manual-refresh --player <playerId>      # 수동 갱신 최우선 표시
 pnpm nexon:refresh [--limit N]                     # 신선도 정책(기본 30일) 재수집
-pnpm nexon:check                                   # 숫자 대조 7항목
+
+# 로스터 기반 재구성 (8.2 — 아래 F장)
+pnpm nexon:roster                                          # 등록 현황
+pnpm nexon:roster --league <slug> --file <CSV> [--verified]
+pnpm nexon:roster --league <slug> --from-league-players    # 현재 소속에서 파생 (미확인 상태)
+pnpm nexon:roster --sync-priority                          # 폴링 우선순위 동기화
+pnpm nexon:backfill-observations [--ouid <OUID>]           # 보관 원본 → 관측값 (**요청 없음**)
+pnpm nexon:reconstruct [--league <slug>] [--redo] [--match-id <ID>] [--allow-unverified-roster]
+pnpm nexon:check                                   # 숫자 대조 12항목
 pnpm --filter @sacloud/worker exec tsx src/dev/offlineSmoke.ts   # 네트워크 없이 전 구간 점검
 
 # Legacy (아래 C장)
@@ -82,14 +91,17 @@ pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
 
 - 로컬 개발 DB: `embedded-postgres` (Docker/PostgreSQL 미설치 환경, **개발 전용**, D-022)
 - 데이터 디렉터리: `%LOCALAPPDATA%\sacloud\pgdata` (저장소 경로에 한글이 있어 initdb가 깨진다)
-- 마이그레이션 **7개** 적용 완료 (`20260821000820_init` … `20260821194025_nexon_ingest`)
+- 마이그레이션 **9개** 적용 완료 (`20260821000820_init` … `20260822004445_roster_backed_reconstruction`)
 - 시드: 클랜 60 · 플레이어 920 · 사용자 42 · 리그 4 · 매치 3,000 · 참가기록 31,462 · 게시글 400 · 댓글 1,200
 - **시드 데이터는 전부 가짜다.** `Match.origin="mock"` / `formulaVersion="mock-fixture"` 로 표시 (D-023)
 - Legacy 테이블은 **현재 비어 있다** (`LegacyPlayerSeason` 0행, `LegacyCollectionJob` 0건)
 - 넥슨 테이블에 **실데이터가 소량 들어 있다** (2026-08-21 실응답 검증분, 닉네임 1명)
-  `RawImport` 14 · `NexonMatch` **2,414**(상세 6) · `NexonMatchParticipant` 37 ·
-  `NexonIdentity` 3(전부 unresolved) · `NexonNickname` 27 · 운영 `Match(origin=nexon)` **0**
-- 마이그레이션 **8개** (`…_nexon_adaptive_polling` 까지)
+  `RawImport` 15 · `NexonMatch` **2,414**(상세 6) · `NexonMatchParticipant` 37 ·
+  `NexonIdentity` 3(전부 unresolved) · `NexonNickname` 26 · `NexonPollState` 3 ·
+  `NexonMatchObservation` **2,434** · 운영 `Match(origin=nexon)` **0**
+- `LeagueRosterMembership` **0행** — 로스터 등록은 운영자의 일이다. 이것이 비어 있으면
+  재구성은 한 건도 되지 않는다 (그게 정상이다)
+- 관측값 2,434건 중 2,414건은 **보관된 원본에서 백필**된 것이다 (넥슨 호출 없음, F장 사고 기록 참조)
 
 ### 검수 계정 (로컬 개발 전용, D-033)
 
@@ -102,22 +114,20 @@ pnpm legacy:collect --players <CSV> [--limit N] [--dry-run] | --resume
 | `user-test@naver.com` | 일반 회원, 리그 참여 클랜 소속 플레이어와 연동 |
 | `user005@naver.com` | 일반 회원, 연동 X, 권한 없음 |
 
-### 마지막 검증 (2026-08-21)
+### 마지막 검증 (2026-08-22, Phase 8.2)
 
 | 항목 | 결과 |
 |---|---|
 | typecheck / lint | 통과 |
-| **test** | **257 passed / 1 skipped** (넥슨 40 + 워커 25 추가) |
 | build | 통과 (37 페이지) |
-| `pnpm db:check` | **18항목 통과** (mock↔실수집 분리 검사 3건 추가) |
-| `pnpm compare` | **25/25 일치** (nullable 확장 후 재확인) |
-| **test** 재검증 | **290 passed / 1 skipped** (실응답 11 + 폴링 정책 15 포함) |
-| `pnpm nexon:check` | 7항목 통과 (실데이터 기준) |
-| 오프라인 스모크 | **41항목 통과** (원본→스테이징→투영·멱등성·적응형 폴링) |
-| `pnpm db:check` (8.1) | **20항목 통과** (폴링 상태 격리 2건 추가) |
+| **test** | **332 passed / 9 skipped** (재구성 37 + 폴링 확장 13 = 50건 신규) |
+| 오프라인 스모크 | **79항목 통과** (재구성·전파 27항목 추가) |
+| `pnpm nexon:check` | **12항목 통과** (로스터 근거·판정 근거·전파 사유 5항목 추가) |
+| `pnpm db:check` | **23항목 통과** (로스터 격리 3항목 추가) |
+| `pnpm compare` | 25/25 일치 (Phase 7 기준, 8.2에서 변경 없음) |
 
-> skip 1건은 "개발 서버가 없으면 계약 테스트를 건너뛴다"는 안내용 테스트다.
-> 서버가 떠 있으면 계약 테스트 8건이 돌고 이 1건이 skip된다. 정상이다.
+> skip 9건은 **개발 서버가 없을 때** 건너뛰는 계약 테스트다.
+> 서버가 떠 있으면 계약 테스트 8건이 돌고 안내용 1건만 skip된다. 정상이다.
 
 ---
 
@@ -336,13 +346,58 @@ D-036(닉네임 자동 병합 금지)이 실데이터로 확인된 셈이다.
 
 Phase 8 검증 15회 + Phase 8.1 검증 7회 = **총 22회**. 429·403은 한 번도 없었다.
 
+## F-2. Phase 8.2 — 로스터 기반 재구성 (2026-08-22)
+
+결정: `docs/DECISIONS.md` D-052 ~ D-056
+
+### 무엇을 한 것인가 (그리고 아닌 것)
+
+> **D-044를 해결한 것이 아니다.** 넥슨 상세는 여전히 참가자 일부만 준다.
+> Phase 8.2가 만든 것은 **공식리그 경기를 신뢰성 있게 재구성할 수 있는 조건**이다.
+
+근거는 넥슨 밖에서 온다.
+
+| 근거 | 출처 | 성격 |
+|---|---|---|
+| 개인 관측값 | 각 선수의 매치 목록 (`NexonMatchObservation`) | **1차.** 호출 없이 쌓인다 (D-048) |
+| 경기 시점 소속 | `LeagueRosterMembership` (운영자 등록) | **1차.** 넥슨이 주는 값이 아니다 (D-052) |
+| 매치 상세 | `NexonMatchParticipant` | **보조.** 교차검증 + 헤드샷/데미지 (D-054) |
+
+### 완전성 조건 (D-056 — 하나라도 모자라면 투영하지 않는다)
+
+참가자 전원 관측 · 전원 로스터 근거 · 클랜 정확히 2곳 · 양 팀 인원 동일 ·
+리그 대전 인원 일치 · 클랜별 승패 일관 · 승자 유일 · 상세와 불일치 없음
+
+미완 사유는 코드로 구분되어 `NexonMatch.reconstruction`(JSON)에 숫자로 남는다:
+`missing_observation` `incomplete_roster` `roster_mismatch` `conflict_with_detail`
+`inconsistent_outcome` `no_winner` `duplicate_player` `mock_league` `match_type` `map_not_in_league` 등
+
+### 폴링 쪽 변화 — **호출량은 늘지 않는다**
+
+- 리그 등록 선수를 **같은 티어 안에서** 먼저 본다 (D-053). 티어를 뒤집지 않는다
+- 새 클랜전을 발견하면 동료·**증거로 확인된** 상대 클랜의 조회를 앞당긴다 (D-055).
+  상한은 `NEXON_POLL_PROPAGATION_FANOUT`(기본 20). 티어·주기는 건드리지 않는다
+
+### 세 번째 범위 사고 (기록)
+
+`backfillObservations()`에 범위 인자가 없어서, 오프라인 스모크가 **실제 수집분의 목록 원본까지**
+다시 읽어 관측값 2,414건을 만들었다.
+
+- 넥슨 호출은 **0건**이다. 이미 보관한 원본을 다시 읽었을 뿐이다
+- 값 자체는 정당하다 (운영자가 `nexon:backfill-observations`를 부르면 나왔을 그 행이다)
+- 그래도 D-045 위반이다. `backfillObservations({ ouids })`로 범위를 넣고 스모크를 제한했다
+- 만들어진 행은 지우지 않았다 — 보관 원본에서 나온 실제 증거다
+
 ### 남은 BLOCKER
 
-1. **D-044 미해결** — 양 팀 재구성 불가. 대규모 수집도 래더 산정도 이 문제 위에 있다
-2. 실제 리그·클랜·플레이어가 없다 (DB는 여전히 mock). 신원 연결은 사람이 승인해야 한다
-3. 테스트 키 호출 한도 `[미확인]` — 22회로는 한도에 닿지 않았다
-4. `user/basic`·`rank`·`tier`·`recent-info`는 아직 호출해 보지 않았다
-5. 적응형 폴링은 **오프라인 스모크로만** 검증했다 (실 API로 poll 실행은 아직)
+1. **D-044 미해결** — 상대 팀 전원 확보는 여전히 불가하다.
+   로스터에 없는 클랜과의 경기는 재구성되지 않는다 (그게 설계다)
+2. **로스터가 비어 있다** (`LeagueRosterMembership` 0행). 재구성 실행 경로는 완성됐지만
+   **입력이 없다.** 운영자 등록 없이는 한 건도 재구성되지 않는다
+3. 실제 리그·클랜·플레이어가 없다 (DB는 여전히 mock). 신원 연결은 사람이 승인해야 한다
+4. 테스트 키 호출 한도 `[미확인]` — 22회로는 한도에 닿지 않았다
+5. `user/basic`·`rank`·`tier`·`recent-info`는 아직 호출해 보지 않았다
+6. 적응형 폴링·전파는 **오프라인 스모크로만** 검증했다 (실 API로 poll 실행은 아직)
 
 ## G. 다음 세션 첫 행동
 
@@ -357,7 +412,11 @@ Phase 8 검증 15회 + Phase 8.1 검증 7회 = **총 22회**. 429·403은 한 �
 
 - [ ] Legacy: 운영자에게 **CSV** 를 요청할지, **WAF 예외** 를 요청할지, **수동 수집**(21시간)을 할지
 - [ ] **D-044 대응 방향 결정** — multi-OUID 재조회는 **불가로 확인됨**.
-      남은 선택지: 넥슨 문의 / 리그 명단 전원 폴링 후 목록 관측값 병합(부분 복원) / 다른 출처
-- [ ] 대규모 수집 착수 여부 (D-044 해결 전에는 상대 팀 없는 반쪽 데이터만 쌓인다)
+      Phase 8.2가 택한 길은 "리그 로스터 + 목록 관측으로 **완전할 때만** 복원". 남은 선택지는
+      넥슨 문의 / 다른 출처
+- [ ] **로스터 등록 방식 결정** — 운영자 CSV를 받을지, `LeaguePlayer.clanId`에서 파생한 뒤
+      운영자가 확인(verified)할지. 이것 없이는 재구성이 시작되지 않는다
+- [ ] 대규모 수집 착수 여부 (로스터가 없으면 반쪽 데이터만 쌓인다)
+- [ ] **Phase 9 래더 공식 승인** — 후보·시뮬레이션은 아래 H장. **승인 전 production 적용 금지**
 - [ ] **Auth.js 미사용 결정(D-025) 승인** — 계획 문서와 다른 선택
 - [ ] 서든어택 계정 연동이 **소유권을 증명하지 않는다** — 운영 노출 전 반드시 해결

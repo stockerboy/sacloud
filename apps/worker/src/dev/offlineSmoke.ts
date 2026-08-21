@@ -26,6 +26,9 @@ import { runCollect } from '../jobs/collect.js'
 import { runIdentities } from '../jobs/identities.js'
 import { runProject } from '../jobs/project.js'
 import { runPoll } from '../jobs/poll.js'
+import { backfillObservations, runReconstruct } from '../jobs/reconstruct.js'
+import { applyPropagation, collectPropagationPeers } from '../jobs/propagate.js'
+import { syncLeaguePriority } from '../jobs/roster.js'
 import { DEFAULT_POLLING_CONFIG } from '../lib/pollingPolicy.js'
 import type { JobContext } from '../jobs/context.js'
 
@@ -348,6 +351,208 @@ async function main() {
 
   const runs = await prisma.nexonPollRun.count({ where: { migrationVersion: SMOKE_VERSION } })
   check('실행마다 호출량이 기록된다', 3, runs)
+
+  /* 7) 관측값 백필 — 보관된 원본만 다시 읽는다 (요청 없음) */
+  const backfill = await backfillObservations({ ouids: SMOKE_OUIDS })
+  check('보관된 목록 원본을 다시 읽는다', true, backfill.listRawsScanned > 0)
+  check('원본에서 관측값이 나온다', true, backfill.entriesScanned > 0)
+  const backfillAgain = await backfillObservations({ ouids: SMOKE_OUIDS })
+  check('백필은 멱등하다 (다시 돌려도 새 관측값이 없다)', 0, backfillAgain.observationsCreated)
+
+  /* 8) 로스터 기반 재구성 (Phase 8.2) — 상세가 반쪽이어도 관측으로 완성되는가 */
+  const rmap = await prisma.gameMap.findUnique({ where: { name: SMOKE_MAP_NAME ?? '' } })
+  const rMapId =
+    rmap?.id ?? (await prisma.gameMap.create({ data: { name: SMOKE_MAP_NAME ?? '스모크맵' } })).id
+  const createdMapForReconstruct = rmap === null
+
+  const rClans = await Promise.all(
+    ['알파클랜', '브라보클랜'].map((name, index) =>
+      prisma.clan.create({ data: { slug: SMOKE_CLAN_SLUGS[index]!, name } }),
+    ),
+  )
+  const rLeague = await prisma.league.create({
+    data: {
+      slug: SMOKE_LEAGUE_SLUG,
+      name: '스모크 리그',
+      maps: { create: [{ mapId: rMapId }] },
+      playerLimits: { create: [{ playerCount: 5 }] },
+      clans: { create: rClans.map((clan, index) => ({ clanId: clan.id, division: index + 1 })) },
+    },
+    include: { clans: true },
+  })
+  const leagueClanByClanId = new Map(rLeague.clans.map((row) => [row.clanId, row.id]))
+
+  // 참가자 10명 = 우리 리그 선수 10명. 신원은 **사람이 확인했다고 가정**하고 명시적으로 연결한다
+  const ROSTER_JOINED = new Date('2026-01-01T00:00:00Z')
+  for (const [index, participant] of SAMPLE_MATCH_DETAIL.match_detail.entries()) {
+    const player = await prisma.player.create({
+      data: { id: `${SMOKE_PLAYER_PREFIX}${index}`, name: participant.user_name },
+    })
+    await prisma.nexonIdentity.upsert({
+      where: { ouid: `${SMOKE_OUID}-${index}` },
+      create: {
+        ouid: `${SMOKE_OUID}-${index}`,
+        userName: participant.user_name,
+        playerId: player.id,
+        status: 'active',
+        linkReason: 'offline smoke — 사람이 확인했다고 가정',
+      },
+      update: { playerId: player.id, status: 'active' },
+    })
+    await prisma.leagueRosterMembership.create({
+      data: {
+        leagueId: rLeague.id,
+        leagueClanId: leagueClanByClanId.get(rClans[index < 5 ? 0 : 1]!.id)!,
+        playerId: player.id,
+        joinedAt: ROSTER_JOINED,
+        source: 'manual',
+        // 운영자가 확인한 소속만 완전성 판정에 쓴다
+        verified: true,
+      },
+    })
+  }
+
+  // 상세의 닉네임을 우리 선수로 해석시킨다 (투영 경로와 같은 규칙을 쓴다)
+  await runProject(ctx, {
+    leagueSlug: SMOKE_LEAGUE_SLUG,
+    reproject: true,
+    sourceMatchIds: [SAMPLE_MATCH_DETAIL.match_id],
+  })
+  await prisma.match.deleteMany({ where: { league: { slug: SMOKE_LEAGUE_SLUG } } })
+  await prisma.nexonMatch.updateMany({
+    where: { sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
+    data: { projectionStatus: 'pending', projectedMatchId: null, projectedAt: null },
+  })
+
+  const reconstructTarget = { leagueSlug: SMOKE_LEAGUE_SLUG, sourceMatchIds: [SAMPLE_MATCH_DETAIL.match_id], redo: true }
+
+  // 8-1) 관측이 없으면 재구성하지 않는다 — 상세만 가지고 만들어내지 않는다
+  const noObservation = await runReconstruct(ctx, reconstructTarget)
+  check('관측 없이는 재구성하지 않는다', 0, noObservation.projected)
+  check('사유는 관측 부족이다', 1, noObservation.reasons['missing_observation'] ?? 0)
+
+  // 8-2) 관측을 채우되 한 명의 kill을 어긋나게 둔다 → 자동 투영 금지
+  const stagingForReconstruct = await prisma.nexonMatch.findUnique({
+    where: {
+      source_sourceMatchId: { source: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
+    },
+    select: { id: true },
+  })
+  const observationRows = SAMPLE_MATCH_DETAIL.match_detail.map((participant, index) => ({
+    nexonMatchId: stagingForReconstruct!.id,
+    ouid: `${SMOKE_OUID}-${index}`,
+    userName: participant.user_name,
+    matchResult: participant.match_result,
+    outcome: participant.match_result === '1' ? 'win' : 'lose',
+    kill: participant.kill,
+    death: participant.death,
+    assist: participant.assist,
+  }))
+  await prisma.nexonMatchObservation.createMany({
+    data: observationRows.map((row, index) =>
+      index === 3 ? { ...row, kill: (row.kill ?? 0) + 5 } : row,
+    ),
+  })
+
+  const conflicted = await runReconstruct(ctx, reconstructTarget)
+  check('상세와 관측이 어긋나면 투영하지 않는다', 0, conflicted.projected)
+  check('사유는 상세 불일치다', 1, conflicted.reasons['conflict_with_detail'] ?? 0)
+
+  // 8-3) 어긋난 값을 바로잡으면 재구성된다
+  await prisma.nexonMatchObservation.update({
+    where: {
+      nexonMatchId_ouid: { nexonMatchId: stagingForReconstruct!.id, ouid: `${SMOKE_OUID}-3` },
+    },
+    data: { kill: observationRows[3]!.kill },
+  })
+  const reconstructed = await runReconstruct(ctx, reconstructTarget)
+  check('관측이 갖춰지면 재구성된다', 1, reconstructed.projected)
+
+  const reconstructedMatch = await prisma.match.findUnique({
+    where: {
+      origin_sourceMatchId: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
+    },
+    include: { stats: true },
+  })
+  check('재구성 경기의 참가자 10명', 10, reconstructedMatch?.stats.length ?? 0)
+  check('대전 인원은 5', 5, reconstructedMatch?.playerCount ?? 0)
+  check(
+    '양 팀 인원이 같다',
+    5,
+    reconstructedMatch?.stats.filter((stat) => stat.side === 'red').length ?? 0,
+  )
+  check('래더는 Phase 9 — 재구성도 값을 넣지 않는다', null, reconstructedMatch?.stats[0]?.ratingUpdate ?? null)
+  check('넥슨이 안 주는 endAt은 재구성해도 null', null, reconstructedMatch?.endAt ?? null)
+
+  const stagingAfterReconstruct = await prisma.nexonMatch.findUnique({
+    where: { id: stagingForReconstruct!.id },
+    select: { reconstruction: true, reconstructedAt: true, projectionStatus: true },
+  })
+  check('판정 근거가 남는다', true, stagingAfterReconstruct?.reconstruction !== null)
+  check('판정 시각이 남는다', true, stagingAfterReconstruct?.reconstructedAt !== null)
+  check('투영 상태가 갱신된다', 'projected', stagingAfterReconstruct?.projectionStatus ?? '')
+
+  const reconstructedAgain = await runReconstruct(ctx, reconstructTarget)
+  const reconstructedCount = await prisma.match.count({ where: { origin: 'nexon' } })
+  check('다시 돌려도 경기가 늘지 않는다 (멱등)', 1, reconstructedCount)
+  check('재판정 결과도 1건', 1, reconstructedAgain.projected)
+
+  /* 9) 리그 우선순위 + 매치 전파 — 호출을 늘리지 않고 순서만 바꾼다 */
+  for (const [index] of SAMPLE_MATCH_DETAIL.match_detail.entries()) {
+    await prisma.nexonPollState.create({
+      data: {
+        ouid: `${SMOKE_OUID}-${index}`,
+        playerId: `${SMOKE_PLAYER_PREFIX}${index}`,
+        nextPollAt: new Date(Date.now() + 6 * 60 * 60 * 1000),
+      },
+    })
+  }
+  const synced = await syncLeaguePriority()
+  check('로스터 선수는 리그 우선 대상이 된다', 10, synced.leagueMarked)
+
+  const peers = await collectPropagationPeers({
+    nexonMatchId: stagingForReconstruct!.id,
+    discoveredByOuid: `${SMOKE_OUID}-0`,
+    at: new Date(SAMPLE_MATCH_DETAIL.date_match),
+  })
+  check('같은 클랜 동료 4명을 찾는다', 4, peers.rosterPeers.length)
+  check('증거로 확인된 상대 클랜 5명도 찾는다', 5, peers.opponentPeers.length)
+  check('발견자 자신은 대상이 아니다', false, peers.rosterPeers.includes(`${SMOKE_OUID}-0`))
+
+  const propagationNow = new Date()
+  const propagated = await applyPropagation({
+    peers,
+    discoveredByOuid: `${SMOKE_OUID}-0`,
+    reason: 'smoke',
+    now: propagationNow,
+    config: DEFAULT_POLLING_CONFIG,
+  })
+  check('앞당긴 대상 9명', 9, propagated.pulledForward)
+  const pulled = await prisma.nexonPollState.findUnique({
+    where: { ouid: `${SMOKE_OUID}-1` },
+    select: { nextPollAt: true, propagatedAt: true, propagationReason: true },
+  })
+  check('예정 시각이 당겨진다', true, (pulled?.nextPollAt.getTime() ?? 0) <= propagationNow.getTime())
+  check('앞당긴 사유가 남는다', 'smoke', pulled?.propagationReason ?? '')
+
+  const propagatedTwice = await applyPropagation({
+    peers,
+    discoveredByOuid: `${SMOKE_OUID}-0`,
+    reason: 'smoke',
+    now: new Date(),
+    config: DEFAULT_POLLING_CONFIG,
+  })
+  check('이미 조회 예정인 대상은 더 당기지 않는다', 0, propagatedTwice.pulledForward)
+
+  const untouchedTier = await prisma.nexonPollState.findUnique({
+    where: { ouid: `${SMOKE_OUID}-1` },
+    select: { tier: true, intervalMinutes: true },
+  })
+  check('전파는 티어를 바꾸지 않는다', 'hot', untouchedTier?.tier ?? '')
+
+  await cleanupLeague()
+  await prisma.nexonIdentity.deleteMany({ where: { ouid: { startsWith: `${SMOKE_OUID}-` } } })
+  if (createdMapForReconstruct) await prisma.gameMap.deleteMany({ where: { id: rMapId } })
 
   await cleanup()
   const leftover = await prisma.nexonMatch.count({

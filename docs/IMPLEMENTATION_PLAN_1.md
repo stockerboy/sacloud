@@ -534,6 +534,61 @@ Nexon 응답 → RawImport(append-only) → normalize → NexonMatch/NexonMatchP
 
 ---
 
+### Phase 8.1 — 적응형 폴링  **[2026-08-21 완료]**
+
+5,000명 고정 전수 조회를 폐기하고 활동량 기반 티어(hot/warm/cold/dormant)로 바꿨다.
+실행마다 호출량을 `NexonPollRun`에 남긴다. 결정 D-046 ~ D-051.
+
+---
+
+### Phase 8.2 — 로스터 기반 재구성  **[2026-08-22 완료]**
+
+**목적은 D-044 해결이 아니다.** 넥슨 상세가 참가자 일부만 준다는 사실은 그대로다.
+Phase 8.2가 만든 것은 **앞으로 공식리그 경기를 신뢰성 있게 재구성할 수 있는 조건**이다.
+
+**1) 근거 두 가지**
+
+| 근거 | 출처 | 성격 |
+|---|---|---|
+| 개인 관측값 | 각 선수의 매치 목록 (`NexonMatchObservation`) | **1차 근거.** 호출 없이 쌓인다 |
+| 경기 시점 소속 | `LeagueRosterMembership` (운영자 등록) | **1차 근거.** 넥슨이 주는 값이 아니다 |
+| 매치 상세 | `NexonMatchParticipant` | **보조 증거.** 교차검증 + 헤드샷/데미지 보완 (D-054) |
+
+**2) 완전성 조건** (D-056 — 하나라도 모자라면 투영하지 않는다)
+
+참가자 전원 관측 · 전원 로스터 근거 · 클랜 정확히 2곳 · 양 팀 인원 동일 ·
+리그 대전 인원 일치 · 클랜별 승패 일관 · 승자 유일 · 상세와 불일치 없음
+
+**3) 실행 경로**
+
+```bash
+pnpm nexon:roster --league <slug> --file <CSV> [--verified]
+pnpm nexon:roster --from-league-players --league <slug>   # 파생, 항상 unverified
+pnpm nexon:roster --sync-priority
+pnpm nexon:backfill-observations [--ouid <OUID>]          # 보관 원본 → 관측값 (무호출)
+pnpm nexon:reconstruct [--league <slug>] [--redo] [--match-id <ID>] [--allow-unverified-roster]
+```
+
+**4) 폴링 쪽 변화** — 호출량은 늘리지 않는다
+
+- 리그 등록 선수를 **같은 티어 안에서** 먼저 본다 (D-053)
+- 새 클랜전을 발견하면 동료·**확인된** 상대 클랜의 조회를 앞당긴다 (D-055, 상한 있음)
+
+**5) 완료 조건** — 전부 통과
+
+- 재구성 전용 회귀 테스트 37건 + 폴링 확장 13건
+- `pnpm nexon:check` 12항목 · `pnpm db:check` 23항목 · 오프라인 스모크 79항목
+- 재구성 경기의 참가자가 **전원 경기 시점 로스터로 뒷받침**되는지 숫자로 검사
+
+**6) Phase 8.2에서 하지 않은 것**
+
+- D-044 해결 (상대 팀 전원 확보는 여전히 불가)
+- 대규모 수집 (실호출 누계 22회 그대로)
+- 래더 계산 (재구성 경기도 래더 컬럼 전부 `null`)
+- 운영 리그 로스터 등록 — 운영자가 할 일이다
+
+---
+
 ### Phase 8-M — 기존 3rd.supply 데이터 마이그레이션  **[최우선 신규 요구사항]**
 
 SACLOUD는 빈 DB에서 시작하지 않는다. 접근 가능한 범위의 누적 기록을 최대한 보존해 이전한다.
