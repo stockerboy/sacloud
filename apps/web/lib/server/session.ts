@@ -173,3 +173,24 @@ export async function voterKey(request: Request): Promise<string> {
   const userId = await currentUserId(request)
   return userId ? `user:${userId}` : `anon:${anonymousKey(request)}`
 }
+
+/**
+ * 운영자 확인 — **서버에서** 판정한다 (Phase 10 · 정책 22).
+ *
+ * 화면에서 버튼을 감추는 것은 보안이 아니다. 관리자 API는 전부 이 함수를 먼저 부른다.
+ * 일반 사용자가 요청을 직접 만들어 보내도 여기서 막힌다.
+ *
+ * 역할 코드는 `codes.ts` 관측값을 따른다 — `2 = 운영자`.
+ */
+export const ADMIN_ROLE = 2
+
+export async function requireAdmin(request: Request) {
+  const userId = await currentUserId(request)
+  if (!userId) return null
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, nickname: true, role: true },
+  })
+  if (!user || user.role !== ADMIN_ROLE) return null
+  return user
+}

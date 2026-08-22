@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./rating": "./src/rating.ts",
-    "./csv": "./legacy/csv.ts"
+    "./csv": "./legacy/csv.ts",
+    "./ops": "./ops/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

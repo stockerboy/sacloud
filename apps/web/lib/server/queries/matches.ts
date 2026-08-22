@@ -57,6 +57,7 @@ const MATCH_SELECT = {
   bluePlacement: true,
   redRatingUpdate: true,
   blueRatingUpdate: true,
+  origin: true,
   participantCompleteness: true,
   evidenceConfidence: true,
   official: true,
@@ -79,6 +80,7 @@ const MATCH_SELECT = {
       ratingBefore: true,
       ratingUpdate: true,
       isPlacement: true,
+      participantRole: true,
       player: { select: PLAYER_SUMMARY_SELECT },
     },
   },
@@ -176,15 +178,37 @@ function toConfidence(value: string | null): 'high' | 'medium' | 'low' | null {
 }
 
 /** 경기 시점 클랜 스냅샷 (당시 래더·부리그·배치 여부) */
+/**
+ * 본클랜원 수 → 클랜 래더 반영률 (D-081).
+ *
+ * `@sacloud/rating`의 `clanWeightForMembers`와 같은 표다. 화면에서 "왜 덜 올랐는지"를
+ * 보여 주기 위해 여기서도 계산한다.
+ */
+function clanWeight(members: number): number {
+  if (members >= 3) return 1
+  if (members === 2) return 0.7
+  if (members === 1) return 0.4
+  return 0
+}
+
 function snapshotOf(match: MatchRow, side: TeamSide) {
   const isRed = side === 'red'
   const leagueClan = isRed ? match.redClan : match.blueClan
+
+  // 재구성 경기만 역할이 기록돼 있다. 아니면 구성을 말할 근거가 없으므로 null이다
+  const sideStats = match.stats.filter((stat) => stat.side === side)
+  const reconstructed = match.origin === 'nexon' && sideStats.length > 0
+  const members = sideStats.filter((stat) => stat.participantRole === 'member').length
+
   return {
     league_clan_id: leagueClan.id,
     clan: toClanSummary(leagueClan.clan),
     rating: isRed ? match.redRatingBefore : match.blueRatingBefore,
     division: isRed ? match.redDivisionAtMatch : match.blueDivisionAtMatch,
     placement: isRed ? match.redPlacement : match.bluePlacement,
+    members_confirmed: reconstructed ? members : null,
+    mercenaries_confirmed: reconstructed ? sideStats.length - members : null,
+    clan_weight: reconstructed ? clanWeight(members) : null,
   }
 }
 

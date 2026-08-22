@@ -471,7 +471,7 @@ async function main(): Promise<number> {
             시즌: result.season ?? '-',
             '클랜 스냅샷': result.clanRows,
             '선수 스냅샷': result.playerRows,
-            종료시각: result.endedAt?.toISOString() ?? '-',
+            종료시각: result.endedAt ?? '-',
           },
         ])
         return result.season === null ? 1 : 0
@@ -486,16 +486,16 @@ async function main(): Promise<number> {
         })
         table([
           {
-            시즌: result.season ?? '-',
-            시작시각: result.startedAt?.toISOString() ?? '-',
-            승격: result.promoted ?? '-',
-            강등: result.relegated ?? '-',
+            시즌: result.nextNumber,
+            시작시각: result.startedAt ?? '(dry-run)',
+            승격: result.promoted?.clan ?? '-',
+            강등: result.relegated?.clan ?? '-',
             선수: result.players,
             클랜: result.clans,
             시작점수: result.baseline,
           },
         ])
-        return result.season === null ? 1 : 0
+        return result.ok ? 0 : 1
       }
 
       const status = await seasonStatus(leagueSlug)
@@ -505,14 +505,24 @@ async function main(): Promise<number> {
       }
       table([
         {
-          리그: status.league,
-          '활성 시즌': status.activeSeason ?? '없음',
-          시작: status.startedAt?.toISOString() ?? '-',
+          리그: status.leagueSlug,
+          '활성 시즌': status.activeSeason?.number ?? '없음',
+          시작: status.activeSeason?.startedAt ?? '-',
           '시즌 경기': status.matchesInSeason,
           공식: status.officialMatches,
           '참고 기록': status.referenceMatches,
         },
       ])
+      table(
+        status.seasons.map((season) => ({
+          시즌: season.number,
+          상태: season.status === 'active' ? '진행 중' : '종료',
+          시작: season.startedAt.slice(0, 10),
+          종료: season.endedAt?.slice(0, 10) ?? '-',
+          '클랜 스냅샷': season.hasClanSnapshot ? 'O' : '-',
+          '개인 스냅샷': season.hasPlayerSnapshot ? 'O' : '-',
+        })),
+      )
       log('시즌 전환은 --close → --start 를 운영자가 직접 실행할 때만 일어난다 (D-077)')
       return 0
     }

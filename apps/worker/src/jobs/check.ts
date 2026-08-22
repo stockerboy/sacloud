@@ -152,8 +152,9 @@ export async function runCheck(input: {
     note: '판정했는데 근거 요약이 없는 매치',
   })
 
-  /* 9) 재구성으로 만든 경기의 참가자는 전원 **경기 시점 로스터**로 뒷받침돼야 한다.
-        이것이 깨지면 우리가 클랜을 추측했다는 뜻이다 (D-052 위반) */
+  /* 9) **본클랜원**으로 기록된 참가자는 경기 시점 로스터로 뒷받침돼야 한다 (D-052).
+        용병(`participantRole = "mercenary"`)은 그 팀 로스터에 없는 것이 정상이다 (D-073) —
+        여기서 세면 정상 데이터를 사고로 오인한다 */
   const reconstructed = await prisma.nexonMatch.findMany({
     where: { reconstructedAt: { not: null }, projectionStatus: 'projected' },
     select: { projectedMatchId: true },
@@ -163,7 +164,6 @@ export async function runCheck(input: {
     .filter((value): value is string => value !== null)
 
   let unbackedParticipants = 0
-  let unbalancedSides = 0
   for (const matchId of reconstructedMatchIds) {
     const match = await prisma.match.findUnique({
       where: { id: matchId },
@@ -171,15 +171,15 @@ export async function runCheck(input: {
         startAt: true,
         redLeagueClanId: true,
         blueLeagueClanId: true,
-        stats: { select: { playerId: true, side: true } },
+        stats: { select: { playerId: true, side: true, participantRole: true } },
       },
     })
     if (!match) continue
 
-    const red = match.stats.filter((stat) => stat.side === 'red').length
-    if (red * 2 !== match.stats.length) unbalancedSides += 1
 
     for (const stat of match.stats) {
+      // 용병은 그 팀 로스터에 없다. 그게 정상이다
+      if (stat.participantRole !== 'member') continue
       const covering = await prisma.leagueRosterMembership.count({
         where: {
           playerId: stat.playerId,
@@ -196,16 +196,10 @@ export async function runCheck(input: {
     }
   }
   await push({
-    name: 'reconstructed_participants_roster_backed',
+    name: 'reconstructed_members_roster_backed',
     expected: 0,
     actual: unbackedParticipants,
-    note: '경기 시점 로스터 근거가 없는 재구성 참가자',
-  })
-  await push({
-    name: 'reconstructed_sides_balanced',
-    expected: 0,
-    actual: unbalancedSides,
-    note: '양 팀 인원이 다른 재구성 경기 (반쪽 저장 금지)',
+    note: '본클랜원으로 기록됐는데 경기 시점 로스터 근거가 없는 참가자',
   })
 
   /* 10) 리그 우선 폴링 대상은 로스터로 뒷받침돼야 한다 (D-053) */
@@ -244,18 +238,31 @@ export async function runCheck(input: {
 
   /* ------------------------------------------------------------ Phase 9 --- */
 
-  /* 12) 인정 기준(양측 3명 이상)을 어긴 경기가 저장돼 있으면 안 된다 (D-057) */
-  const belowMinimum = await prisma.nexonMatch.count({
-    where: {
-      projectionStatus: 'projected',
-      OR: [{ winnerMembersConfirmed: { lt: 3 } }, { loserMembersConfirmed: { lt: 3 } }],
-    },
+  /* 12) **공식** 경기는 한쪽이라도 본클랜원 3명을 채웠어야 한다 (D-079, OR 조건).
+        참고 기록은 둘 다 미달인 것이 정상이므로 여기서 세지 않는다 (D-080) */
+  const officialStagings = await prisma.nexonMatch.findMany({
+    where: { projectionStatus: 'projected', official: true },
+    select: { winnerMembersConfirmed: true, loserMembersConfirmed: true },
+  })
+  const officialBelowMinimum = officialStagings.filter(
+    (row) => (row.winnerMembersConfirmed ?? 0) < 3 && (row.loserMembersConfirmed ?? 0) < 3,
+  ).length
+  await push({
+    name: 'official_requires_three_members',
+    expected: 0,
+    actual: officialBelowMinimum,
+    note: '양 팀 모두 본클랜원 3명 미만인데 공식으로 인정된 경기',
+  })
+
+  /* 13) 참고 기록에는 래더가 붙으면 안 된다 (D-080) */
+  const referenceRated = await prisma.matchPlayerStat.count({
+    where: { match: { origin: NEXON_SOURCE, official: false }, ratingUpdate: { not: null } },
   })
   await push({
-    name: 'eligibility_min_confirmed',
+    name: 'reference_not_rated',
     expected: 0,
-    actual: belowMinimum,
-    note: '양 팀 본클랜원 3명 미만인데 인정된 경기',
+    actual: referenceRated,
+    note: '참고 기록인데 개인 래더가 계산된 참가 기록',
   })
 
   /* 13) 래더 값이 있으면 formulaVersion도 있어야 한다 (재현 가능해야 한다) */

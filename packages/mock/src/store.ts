@@ -564,6 +564,10 @@ function snapshotOf(match: MockMatch, side: TeamSide) {
     rating: side === 'red' ? match.redRating : match.blueRating,
     division: side === 'red' ? match.redDivision : match.blueDivision,
     placement: side === 'red' ? match.redPlacement : match.bluePlacement,
+    // mock 경기는 재구성이 아니라 본클랜원/용병 구분이라는 개념이 없다
+    members_confirmed: null,
+    mercenaries_confirmed: null,
+    clan_weight: null,
   }
 }
 

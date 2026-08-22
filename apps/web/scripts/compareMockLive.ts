@@ -100,12 +100,21 @@ async function compare(name: string, path: string, mockData: unknown, ignore: st
   }
 }
 
-/** 목록(커서) 응답 비교 — 항목 배열과 커서 메타를 함께 본다 */
+/**
+ * 목록(커서) 응답 비교 — 항목 배열과 커서 메타를 함께 본다.
+ *
+ * `matchByFixture`를 켜면 **픽스처에 있는 항목만** 골라서 대조한다.
+ * 베타 운영이 시작되면 실제 리그·클랜이 DB에 함께 있으므로, 목록 전체를 비교하면
+ * "mock에 없는 실제 데이터가 있다"는 이유로 계약 검증이 실패한다.
+ * 확인해야 하는 것은 **같은 대상에 대해 mock과 live가 같은 값을 주는가**이지
+ * "DB에 mock만 있는가"가 아니다.
+ */
 async function comparePage(
   name: string,
   path: string,
   mockPage: { items: unknown[]; cursor: unknown } | null,
   ignore: string[] = [],
+  matchByFixture = false,
 ) {
   cases += 1
   if (!mockPage) {
@@ -116,8 +125,16 @@ async function comparePage(
   try {
     const live = (await fetchLive(path)) as { data: unknown[]; metadata: { cursor: unknown } }
     const found: string[] = []
-    diff('data', mockPage.items, live.data, found)
-    diff('metadata.cursor', mockPage.cursor, live.metadata.cursor, found)
+
+    if (matchByFixture) {
+      const idOf = (row: unknown) => (row as { id?: string }).id
+      const fixtureIds = new Set(mockPage.items.map(idOf))
+      const liveSubset = live.data.filter((row) => fixtureIds.has(idOf(row)))
+      diff('data', mockPage.items, liveSubset, found)
+    } else {
+      diff('data', mockPage.items, live.data, found)
+      diff('metadata.cursor', mockPage.cursor, live.metadata.cursor, found)
+    }
     const out = withoutIgnored(found, ignore)
     if (out.length === 0) {
       console.info(`  같음   ${name}  (${live.data.length}건)`)
@@ -137,7 +154,8 @@ async function main() {
 
   /* ------------------------------ 리그 · 랭킹 ----------------------------- */
   console.info('[리그 · 랭킹]')
-  await comparePage('리그 목록', '/leagues', store.listLeagues(null, PAGE_SIZE.DEFAULT))
+  // 실운영 리그가 함께 있어도 픽스처 리그의 값이 같은지를 본다 (베타 운영 대비)
+  await comparePage('리그 목록', '/leagues', store.listLeagues(null, PAGE_SIZE.DEFAULT), [], true)
 
   const league = store.getLeague('officialmain')
   if (!league) throw new Error('Mock에 officialmain 리그가 없다')

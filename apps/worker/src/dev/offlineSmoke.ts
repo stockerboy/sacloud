@@ -192,7 +192,7 @@ async function main() {
   const projected = await runProject(ctx, { sourceMatchIds: SMOKE_MATCH_IDS })
   check('투영된 경기 없음 (리그 소속 클랜이 아니다)', 0, projected.projected)
   check('보류로 기록됨', true, projected.skipped > 0)
-  const domainMatches = await prisma.match.count({ where: { origin: 'nexon' } })
+  const domainMatches = await prisma.match.count({ where: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } })
   check('운영 테이블에 넥슨 경기 없음', 0, domainMatches)
 
   /* 5) 리그를 구성하면 투영된다 — 운영 테이블 쓰기 경로까지 확인한다 */
@@ -268,7 +268,7 @@ async function main() {
     reproject: true,
     sourceMatchIds: SMOKE_MATCH_IDS,
   })
-  const domainCount = await prisma.match.count({ where: { origin: 'nexon' } })
+  const domainCount = await prisma.match.count({ where: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } })
   check('재투영해도 매치가 늘지 않는다', 1, domainCount)
   check('재투영 결과도 1건', 1, reprojected.considered)
 
@@ -309,7 +309,7 @@ async function main() {
   check('같은 경기에 사람별 관측값이 쌓인다', 2, observations.length)
   check('관측값 출처가 남는다', 'player_match_list', observations[0]?.source ?? '')
 
-  const domainAfterPoll = await prisma.match.count({ where: { origin: 'nexon' } })
+  const domainAfterPoll = await prisma.match.count({ where: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } })
   check('폴링이 운영 매치를 만들지 않는다 (투영은 별도 단계)', 0, domainAfterPoll)
 
   const stateAfterFirst = await prisma.nexonPollState.findUnique({ where: { ouid: SMOKE_OUID } })
@@ -509,7 +509,7 @@ async function main() {
   check('투영 상태가 갱신된다', 'projected', stagingAfterReconstruct?.projectionStatus ?? '')
 
   const reconstructedAgain = await runReconstruct(ctx, reconstructTarget)
-  const reconstructedCount = await prisma.match.count({ where: { origin: 'nexon' } })
+  const reconstructedCount = await prisma.match.count({ where: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } })
   check('다시 돌려도 경기가 늘지 않는다 (멱등)', 1, reconstructedCount)
   check('재판정 결과도 1건', 1, reconstructedAgain.projected)
 
@@ -640,7 +640,10 @@ async function main() {
   check('확인 수준은 출전자 전원 기준이다', '5v3', mercenaryStaging?.participantCompleteness ?? '')
 
   const mercenaryStat = await prisma.matchPlayerStat.findFirst({
-    where: { playerId: `${SMOKE_PLAYER_PREFIX}9`, match: { origin: 'nexon' } },
+    where: {
+      playerId: `${SMOKE_PLAYER_PREFIX}9`,
+      match: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } },
+    },
     select: { participantRole: true, rosterLeagueClanId: true, side: true },
   })
   check('용병도 개인 기록을 받는다', true, mercenaryStat !== null)
@@ -709,7 +712,7 @@ async function main() {
   check('용병의 원소속 클랜 래더는 변하지 않는다', 1234, mercenaryHomeClan?.rating ?? -1)
 
   const ratedStats = await prisma.matchPlayerStat.findMany({
-    where: { match: { origin: 'nexon' } },
+    where: { match: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } },
     select: { playerId: true, ratingBefore: true, ratingUpdate: true, ratingAfter: true, formulaVersion: true },
     orderBy: { playerId: 'asc' },
   })
@@ -720,7 +723,7 @@ async function main() {
   await runRate(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
   const secondRun = JSON.stringify(
     await prisma.matchPlayerStat.findMany({
-      where: { match: { origin: 'nexon' } },
+      where: { match: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } },
       select: { playerId: true, ratingBefore: true, ratingUpdate: true, ratingAfter: true, formulaVersion: true },
       orderBy: { playerId: 'asc' },
     }),
@@ -731,7 +734,7 @@ async function main() {
   const noPlacement = { ...DEFAULT_RATING_CONSTANTS, placementMatches: 0 }
   await runRate(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG, constants: noPlacement })
   const livesStats = await prisma.matchPlayerStat.findMany({
-    where: { match: { origin: 'nexon' } },
+    where: { match: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } },
     select: { side: true, ratingUpdate: true },
   })
   const winnerSum = livesStats
@@ -744,7 +747,7 @@ async function main() {
   check('이긴 쪽은 오르고 진 쪽은 내린다', true, winnerSum > 0 && loserSum < 0)
 
   const ratedMatch = await prisma.match.findFirst({
-    where: { origin: 'nexon' },
+    where: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } },
     select: { redRatingUpdate: true, blueRatingUpdate: true, redRatingBefore: true },
   })
   check('클랜 증감도 경기에 남는다', true, (ratedMatch?.redRatingUpdate ?? 0) !== 0)
@@ -779,7 +782,9 @@ async function main() {
     [seasonStartRating()],
     [...new Set(afterStart.map((clan) => clan.rating))],
   )
-  const historyKept = await prisma.matchPlayerStat.count({ where: { match: { origin: 'nexon' } } })
+  const historyKept = await prisma.matchPlayerStat.count({
+    where: { match: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } },
+  })
   check('지난 시즌 경기 기록은 남는다', true, historyKept > 0)
 
   await cleanupLeague()

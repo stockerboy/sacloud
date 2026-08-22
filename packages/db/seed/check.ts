@@ -19,14 +19,31 @@ function check(name: string, expected: number | string, actual: number | string)
 }
 
 async function main() {
-  /* 1. 건수 대조 — 픽스처와 DB가 같아야 한다 */
-  check('클랜', dataset.clans.length, await prisma.clan.count())
-  check('플레이어', dataset.players.length, await prisma.player.count())
+  /* 1. 건수 대조 — **픽스처가 만든 행**이 DB에 그대로 있는가.
+        전체 개수를 세면 안 된다. 실운영 데이터(실제 클랜·리그·선수)가 들어오는 순간
+        시드 검사가 무너져서, 진짜 문제와 정상적인 운영 데이터를 구분할 수 없게 된다. */
+  const idsIn = <T extends { id: string }>(rows: readonly T[]) => ({
+    id: { in: rows.map((row) => row.id) },
+  })
+  check('클랜', dataset.clans.length, await prisma.clan.count({ where: idsIn(dataset.clans) }))
+  check(
+    '플레이어',
+    dataset.players.length,
+    await prisma.player.count({ where: idsIn(dataset.players) }),
+  )
   // 픽스처 사용자 + 검수용 계정 2개(admin-test / user-test). seed.ts의 `seedTestAccounts` 참조.
   check('사용자', dataset.users.length + TEST_ACCOUNT_COUNT, await prisma.user.count())
-  check('리그', dataset.leagues.length, await prisma.league.count())
-  check('리그클랜', dataset.leagueClans.length, await prisma.leagueClan.count())
-  check('리그플레이어', dataset.leaguePlayers.length, await prisma.leaguePlayer.count())
+  check('리그', dataset.leagues.length, await prisma.league.count({ where: idsIn(dataset.leagues) }))
+  check(
+    '리그클랜',
+    dataset.leagueClans.length,
+    await prisma.leagueClan.count({ where: idsIn(dataset.leagueClans) }),
+  )
+  check(
+    '리그플레이어',
+    dataset.leaguePlayers.length,
+    await prisma.leaguePlayer.count({ where: idsIn(dataset.leaguePlayers) }),
+  )
   // 시드는 mock 출처만 만든다. 실제 수집분(origin=nexon)이 들어와도 이 검사가 흔들리면 안 된다
   check('매치(mock)', dataset.matches.length, await prisma.match.count({ where: { origin: 'mock' } }))
   check(
@@ -34,8 +51,8 @@ async function main() {
     dataset.matches.reduce((sum, match) => sum + match.players.length, 0),
     await prisma.matchPlayerStat.count({ where: { match: { origin: 'mock' } } }),
   )
-  check('게시글', dataset.boards.length, await prisma.board.count())
-  check('댓글', dataset.comments.length, await prisma.comment.count())
+  check('게시글', dataset.boards.length, await prisma.board.count({ where: idsIn(dataset.boards) }))
+  check('댓글', dataset.comments.length, await prisma.comment.count({ where: idsIn(dataset.comments) }))
 
   /* 2. 한글이 깨지지 않고 저장됐는가 (DB 인코딩 확인) */
   const firstClan = dataset.clans[0]

@@ -62,6 +62,16 @@ export const MatchClanSnapshot = z.object({
   rating: Rating.nullable(),
   division: Division,
   placement: z.boolean(),
+  /**
+   * 이 경기에서 확인된 **본클랜원** 수 (D-081).
+   * 클랜 래더 반영률이 이 값으로 정해지므로 화면에서 그대로 보여 준다.
+   * 재구성 경기가 아니면 `null`.
+   */
+  members_confirmed: Count.nullable(),
+  /** 확인된 용병 수. 용병도 개인 기록은 100% 받는다 (D-082) */
+  mercenaries_confirmed: Count.nullable(),
+  /** 이 클랜의 클랜 래더 반영률 (1 / 0.7 / 0.4 / 0). 재구성 경기가 아니면 `null` */
+  clan_weight: z.number().min(0).max(1).nullable(),
 })
 export type MatchClanSnapshot = z.infer<typeof MatchClanSnapshot>
 

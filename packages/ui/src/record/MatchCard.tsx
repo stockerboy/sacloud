@@ -142,6 +142,21 @@ export function MatchCard({
       >
         <div className={`w-2 ${win ? 'bg-win-bar' : 'bg-lose-bar'}`} />
 
+        {/* 공식 경기와 참고 기록을 **목록에서** 구분한다 (D-080 · 정책 17).
+            숨기지 않되, 통계에 들어가지 않는다는 사실이 한눈에 보여야 한다. */}
+        {match.official ? null : (
+          <div className="flex w-16 items-center justify-center">
+            <div
+              className="rounded border border-lose-line px-1 py-0.5 text-center text-[10px] leading-tight text-lose"
+              title="양 팀 모두 본클랜원이 3명 미만이라 공식 통계·래더에 반영되지 않는다"
+            >
+              참고 기록
+              <br />
+              래더 미반영
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center">
           <div className="w-24 text-center text-meta">
             <div className="text-sm font-semibold">{match.map.name}</div>
@@ -304,16 +319,6 @@ function MatchDetailPanel({
         <div>
           {match.player_count} vs {match.player_count}
         </div>
-        {/* 참고 기록 — 기록실에는 남지만 공식 통계에 반영되지 않는다 (D-080).
-            숨기지 않고 화면에서 분명히 구분한다. */}
-        {match.official ? null : (
-          <div
-            className="ml-4 rounded border border-lose-line bg-lose-bg px-1.5 py-0.5 text-xs text-lose"
-            title="양 팀 모두 본클랜원이 3명 미만이라 공식 통계·래더에 반영되지 않는다"
-          >
-            참고 기록 · 래더 미반영
-          </div>
-        )}
         {/* 재구성 경기는 **우리가 몇 명을 확인했는지**를 숨기지 않는다 (D-068).
             5명 전원을 확인한 경기와 3명만 확인한 경기는 신뢰도가 다르다. */}
         {match.participant_completeness === null ? null : (
@@ -326,6 +331,23 @@ function MatchDetailPanel({
           </div>
         )}
       </div>
+      {/* 왜 이 경기에서 점수가 덜 올랐는지 화면에서 바로 알 수 있게 한다 (정책 16) */}
+      {match.league_clan.clan_weight === null ? null : (
+        <div className="mt-2 flex flex-wrap gap-4 border-b border-divider pb-2 text-sm text-meta">
+          {[match.league_clan, match.opponent].map((snapshot) => (
+            <div key={snapshot.league_clan_id}>
+              <span className="font-semibold text-ink">{snapshot.clan.name}</span>{' '}
+              클랜원 {snapshot.members_confirmed ?? 0} / 용병 {snapshot.mercenaries_confirmed ?? 0}
+              {' · '}
+              클랜 래더 반영률{' '}
+              <span className={snapshot.clan_weight === 1 ? '' : 'text-lose'}>
+                {Math.round((snapshot.clan_weight ?? 0) * 100)}%
+              </span>
+            </div>
+          ))}
+          <div>개인 래더는 용병 포함 전원 100% 반영된다</div>
+        </div>
+      )}
       {detail ? (
         <>
           <StatTable title="레드" stats={detail.red_stats} />
