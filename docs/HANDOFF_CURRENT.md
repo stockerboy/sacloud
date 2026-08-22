@@ -703,3 +703,77 @@ D-102의 "무소속 개인 커리어 숨김"은 **폐기됐다.**
   (`20260823001500_league_category`). 무소속리그는 **별도 League 행**이다
 - 공개 범위 판단은 `apps/web/lib/server/queries/visibility.ts` 한 곳
 - 회귀 `apps/web/tests/independentLeague.test.ts` **24건** (실제 DB에 임시 리그 2개를 만들어 검증)
+
+---
+
+## K. Phase 12 — 공개 Beta Season 실제 시작 (2026-08-23)
+
+> 결정: `docs/DECISIONS.md` **D-108 · D-109**
+
+### Beta 상태 — **ACTIVE**
+
+```
+리그      supply (서플라이공식리그)
+시즌      number 0 · seasonType beta · status active
+시작      2026-08-20 00:00:00 KST  (UTC 2026-08-19T15:00:00Z 저장 — 9시간 밀림 없음)
+클랜      1부 6곳 · 2부 1곳
+로스터    7명 (verified)
+baseline  개인·클랜 전원 1500
+```
+
+Season 7은 `closed`. 활성 시즌은 **정확히 1개**다. **Season 8은 만들지 않았다.**
+
+`pnpm nexon:beta-bootstrap --league supply` 로 다시 실행해도 안전하다
+(이미 열려 있으면 그대로 쓴다).
+
+### 실데이터 수집 결과 (8/20 00:00 ~ 8/23 06:00 KST)
+
+| 항목 | 수 |
+|---|---|
+| 스테이징 전체 | 3,749 |
+| 구간 내 경기 | 49 |
+| 구간 내 **클랜전 계열** | **22** (8/20 6 · 8/21 6 · 8/22 10) |
+| 상세 확보 | 22 |
+| 관측값 | 3,769 |
+| 운영 Match(공식 판정) | **0** |
+
+### ★ 왜 0건인가 — 로스터 규모가 벽이다
+
+파이프라인은 끝까지 정상 동작했다. 맵도 등록했고 신원도 근거로 연결했다.
+남은 것은 **입력 데이터**다.
+
+```
+공식 인정 조건   양 팀 중 한쪽이 본클랜원 3명 이상 (D-079)
+본클랜원 판정    LeagueRosterMembership (닉네임·guild_name이 아니다)
+현재 로스터      클랜당 1명 — 전체 7명
+결과            어떤 팀도 3명을 채울 수 없다 → single_clan 21건
+```
+
+실제 경기 데이터를 보면 두 Beta 클랜이 3명 이상씩 붙은 판이 실제로 있다
+(예: 8/22 01:00 `전설 3 vs lunatic\`Gaming 3`). 그런데 그 6명 중 **로스터에 등록된 사람은 1명**이라
+우리 기준으로는 확인할 수 없다.
+
+**사람이 해야 하는 일은 하나다 — 클랜별 실제 로스터 등록.**
+
+```bash
+pnpm nexon:roster --league supply --file <로스터.csv> --verified
+pnpm --filter @sacloud/worker nexon identity-link --league supply --confirm
+pnpm nexon:reconstruct --league supply --redo
+pnpm nexon:rate --league supply
+```
+
+로스터가 들어오면 위 네 줄로 끝난다. 코드는 더 고칠 것이 없다.
+
+### 이번에 만든 도구
+
+| 명령 | 하는 일 |
+|---|---|
+| `nexon beta-bootstrap` | 현재 시즌 종료 → Beta 시작. 클랜·로스터 자동 승계 |
+| `nexon identity-link` | 닉네임 정확 일치 + **실제 경기 guild_name 근거**로만 연결 (D-109) |
+| `nexon league-maps` | 실제 관측된 맵만 리그에 등록 |
+
+### 무소속
+
+- 무소속 **리그 0개**, 무소속 클랜이 참여한 리그 0곳 — **하나도 만들지 않았다**
+- `Clan.category='independent'` 1건은 이번 세션 이전부터 있던 것이고 어느 리그에도 없다
+- 등록 시점부터 기록이 시작되는 규칙은 `LeagueClan.joinedAt`으로 강제된다 (D-108)
