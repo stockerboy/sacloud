@@ -22,11 +22,28 @@ export async function POST(request: Request, context: { params: Promise<Record<s
       confirm?: boolean
       startedAt?: string
       skipPromotion?: boolean
+      /** `beta`면 번호 0의 공개 베타 시즌으로 시작한다. 정식 번호를 소모하지 않는다 (D-098) */
+      seasonType?: 'beta' | 'official'
+    }
+
+    const seasonType = body.seasonType ?? 'official'
+    if (seasonType !== 'beta' && seasonType !== 'official') {
+      return badRequest('seasonType은 beta 또는 official이어야 합니다')
     }
 
     const preview = await previewSeasonStart(league)
     if (!preview.ok) return badRequest(preview.reason)
-    if (!body.confirm) return ok({ preview, executed: false })
+    if (!body.confirm) {
+      return ok({
+        preview: {
+          ...preview,
+          seasonType,
+          // 베타는 정식 번호를 쓰지 않는다. 화면이 "Season 0"이라고 쓰지 않도록 이름을 같이 준다
+          label: seasonType === 'beta' ? 'Beta Season' : `Season ${preview.nextNumber}`,
+        },
+        executed: false,
+      })
+    }
 
     const startedAt = body.startedAt ? new Date(body.startedAt) : undefined
     if (startedAt && Number.isNaN(startedAt.getTime())) {
@@ -37,12 +54,13 @@ export async function POST(request: Request, context: { params: Promise<Record<s
       leagueSlug: league,
       startedAt,
       skipPromotion: body.skipPromotion,
+      seasonType,
     })
     if (!result.ok) return badRequest(result.reason)
 
     await writeAudit({
       user: admin,
-      action: 'season.start',
+      action: seasonType === 'beta' ? 'season.start.beta' : 'season.start',
       targetType: 'league',
       targetId: league,
       before: preview,

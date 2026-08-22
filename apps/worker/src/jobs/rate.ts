@@ -40,6 +40,8 @@ export interface RateRunResult {
   playersUpdated: number
   clansUpdated: number
   skipped: Record<string, number>
+  /** 무소속 클랜 소속으로 뛰어 공식 개인 커리어를 만들지 않은 참가 기록 수 (정책 15) */
+  skippedIndependent: number
   formulaVersion: string
 }
 
@@ -97,6 +99,7 @@ export async function runRate(
     playersUpdated: 0,
     clansUpdated: 0,
     skipped: {},
+    skippedIndependent: 0,
     formulaVersion: `${PERSONAL_FORMULA_VERSION}+${CLAN_FORMULA_VERSION}`,
   }
 
@@ -154,6 +157,9 @@ export async function runRate(
       redLeagueClanId: true,
       blueLeagueClanId: true,
       winnerSide: true,
+      // 무소속 클랜은 공식 개인 커리어를 만들지 않는다 (정책 15 · D-102)
+      redClan: { select: { clan: { select: { category: true } } } },
+      blueClan: { select: { clan: { select: { category: true } } } },
       stats: {
         select: {
           playerId: true,
@@ -259,7 +265,24 @@ export async function runRate(
       continue
     }
 
+    /* 무소속(independent) 클랜 쪽에서 뛴 선수는 **공식 개인 커리어를 쌓지 않는다** (정책 15 · D-102).
+       무소속 리그는 클랜 중심 기록(승·패·승률·Tier·부리그 상대전적)만 공개한다.
+       경기 상세의 K/D/A는 그대로 보이지만, 그것 때문에 개인 래더·랭킹이 생기지는 않는다.
+       판정은 **그 경기에서 뛴 팀** 기준이다. 원소속이 어디인지와는 무관하다. */
+    const independentSides = new Set(
+      [
+        match.redClan.clan.category === 'independent' ? 'red' : null,
+        match.blueClan.clan.category === 'independent' ? 'blue' : null,
+      ].filter((side): side is 'red' | 'blue' => side !== null),
+    )
+    const sideOfPlayer = new Map(match.stats.map((stat) => [stat.playerId, stat.side]))
+
     for (const player of rated.players) {
+      const side = sideOfPlayer.get(player.playerId)
+      if (side !== undefined && independentSides.has(side as 'red' | 'blue')) {
+        result.skippedIndependent += 1
+        continue
+      }
       playerRating.set(player.playerId, player.ratingAfter)
       playerMatches.set(player.playerId, (playerMatches.get(player.playerId) ?? 0) + 1)
       pendingStats.push({

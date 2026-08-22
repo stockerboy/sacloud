@@ -1327,3 +1327,68 @@ kill  death  assist  headshot  damage
 
 지금 스키마·래더·랭킹·UI를 먼저 만들어 두는 것도 하지 않는다.
 분류를 한 건도 받을 수 없는 통계 화면은 "라플 0판 / 스나 0판"만 영원히 띄운다.
+
+### D-098. 베타 시즌은 **번호 0**이고, 사용자에게는 `Beta Season`이다
+
+사용자에게 보이는 시즌 흐름은 하나로 이어져야 한다.
+
+```
+Season 1 … Season 7 → Beta Season → Season 8
+```
+
+`@@unique([leagueId, number])` 때문에 베타에도 번호가 필요한데, 정식 번호를 쓰면
+Season 7 다음이 8이 아니게 된다. 그래서 **0**을 쓴다.
+
+- 다음 정식 번호는 `max(number)+1`로 뽑으므로 7 다음은 그대로 8이다
+- **화면에 "Season 0"이라고 쓰지 않는다.** 표기는 `seasonLabel()` 한 곳에서만 정한다
+- 화면 정렬은 번호가 아니라 **`startedAt`** 기준이다. 그래야 베타가 7과 8 사이에 온다
+
+`Season.seasonType`은 `legacy` | `beta` | `official` 셋이다.
+`legacy`는 3rd.supply에서 이전된 기록이고 **재계산 대상이 아니다**.
+
+### D-099. 과거 시즌 카드의 빈 값은 `null`이다. 역산하지 않는다
+
+3rd.supply의 지난시즌 응답에는 `rank rank_count win lose win_rate kill death kd_rate`만 있다.
+`rating` `assist` `headshot` `kill_per_match` `mvp_count` `clan` `division`은 없다.
+
+승률·킬뎃은 승패·킬데스로 계산할 수 있지만 **계산하지 않는다.**
+원본이 준 값과 반올림이 다를 수 있고, 그러면 그 시즌의 화면과 우리 화면이 어긋난다.
+원본에 있으면 그대로 저장하고, 없으면 `null`로 둔다.
+
+없는 값을 채우려면 시즌 **마감 직전**의 현재 성적을 따로 떠서 병합해야 한다.
+`mergeRows()`가 그 일을 한다 — 뒤에 오는 `null`이 앞의 값을 덮지 않는다.
+
+### D-100. 과거 기록은 **닉네임으로 사람을 합치지 않는다**
+
+닉변·동명이인·OUID 변경이 전부 실재한다. 닉네임이 같다는 이유로 과거 카드를 붙이면
+엉뚱한 사람의 프로필에 남의 시즌 성적이 들어간다.
+
+그래서 과거 선수는 3rd.supply `player.id`로만 만든다 — `Player.id = "SUPPLY-{playerId}"`.
+`legacyPlayerId` / `legacyLeaguePlayerId` / `nicknameAtSeason`을 그대로 보존한다.
+현재 신원(`NexonIdentity`)과의 연결은 **근거가 있을 때 운영자가** 한다.
+
+### D-101. 시즌을 닫을 때 **카드**를 남기고, 시작할 때 **누적까지** 0으로 되돌린다
+
+Phase 11에서 찾은 실제 버그 두 개다. 둘은 같이 고쳐야 한다.
+
+| 문제 | 결과 |
+|---|---|
+| `startSeason`이 rating만 되돌렸다 | 베타의 승패·킬데스·MVP가 다음 시즌에 그대로 남는다 |
+| `closeSeason`이 시즌 카드를 안 만들었다 | 위를 고치는 순간 그 시즌 성적이 통째로 사라진다 |
+
+또 시즌 시작 로직이 `ops`와 `apps/worker`에 **두 벌** 있었다. 한쪽만 고치면
+CLI로 시작할 때 격리가 안 된다. `runSeasonStart`는 이제 `startSeason`에 위임한다.
+
+무기별 누적(`LeaguePlayerWeaponStat`)도 같이 비운다 —
+`통합 = baseRating + 무기별 delta 합` 불변식이 깨지기 때문이다.
+
+### D-102. 무소속 클랜에서 뛴 경기는 **공식 개인 커리어를 만들지 않는다**
+
+무소속 리그는 클랜 중심 기록(승·패·승률·Tier·부리그 상대전적)만 공개한다.
+경기 상세의 K/D/A는 그대로 보이지만, 그 때문에 개인 래더·랭킹이 생기지는 않는다.
+
+판정 기준은 **그 경기에서 뛴 팀**이다. 원소속이 어디인지와 무관하다.
+`Clan.category === 'independent'` 쪽 참가자는 개인 래더 누적에서 제외한다.
+
+> 상대가 무소속일 때 **공식 클랜 쪽** 선수까지 제외할지는 정해지지 않았다.
+> 지금은 제외하지 않는다 — 잘못 제외하면 실제 공식 기록이 사라지는 쪽이 더 큰 손해다.
