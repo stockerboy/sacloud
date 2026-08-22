@@ -30,6 +30,7 @@ export {
 } from './formula.js'
 
 export {
+  clanWeightForMembers,
   evaluateEligibility,
   lineupConfidence,
   type AssignedParticipant,

@@ -301,10 +301,10 @@ export function auditRows(constants: RatingConstants = C): Row[] {
   })
   add(
     '17. 3v3 confirmed',
-    `인정 ${three.eligibility.eligible} · 개인 결과 ${three.players.length}건 · 라인업 반영 ${three.clans.some((clan) => clan.lineupBlended)}`,
+    `인정 ${three.eligibility.official} · 개인 결과 ${three.players.length}건 · 라인업 반영 ${three.clans.some((clan) => clan.lineupBlended)}`,
   )
-  add('18. 4v3 confirmed', `인정 ${fourThree.eligible} · 수준 ${fourThree.completeness}`)
-  add('19. 5v2 confirmed', `인정 ${fiveTwo.eligible} · 사유 ${fiveTwo.status}`)
+  add('18. 4v3 confirmed', `공식 ${fourThree.official} · 수준 ${fourThree.completeness}`)
+  add('19. 5v2 confirmed', `공식 ${fiveTwo.official} · 상태 ${fiveTwo.status}`)
 
   return rows
 }

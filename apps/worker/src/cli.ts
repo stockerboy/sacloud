@@ -24,7 +24,9 @@ import { runRefresh } from './jobs/refresh.js'
 import { runCheck } from './jobs/check.js'
 import { ensurePollStates, requestManualRefresh, runPoll } from './jobs/poll.js'
 import { backfillObservations, runReconstruct } from './jobs/reconstruct.js'
-import { runRate, runSeasonStart } from './jobs/rate.js'
+import { runRate } from './jobs/rate.js'
+import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
+import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
 import {
   deriveRosterFromLeaguePlayers,
   importRoster,
@@ -112,9 +114,13 @@ function usage(): void {
               [--allow-mock-league]
   rate        --league <slug> [--season N] [--allow-mock-league] [--dry-run]
               재구성된 경기로 래더를 **처음부터 다시** 계산한다 (결정적 replay)
-  season-start --league <slug> [--dry-run]
-              새 시즌 시작 — 개인·클랜 전부 같은 점수에서 다시 시작한다.
-              지난 시즌 기록은 그대로 보존된다. **운영자가 부를 때만 돈다**
+  season      --league <slug> [--close | --start] [--at <ISO>] [--number N] [--no-promotion]
+              시즌 운영. 플래그가 없으면 현재 상태만 보여 준다.
+              --close 최종 랭킹 스냅샷 + 시즌 종료 / --start 승강 반영 + 전원 같은 점수로 시작
+              **자동으로 도는 것이 없다. 운영자가 부를 때만 실행된다**
+  clan        [--league <slug>] | --register --slug <s> --name <n> | --rename --slug <s> --name <n>
+              | --join --league <slug> --slug <s> --division N | --merge --from <s> --into <s>
+              클랜 등록·이름 변경·리그 참여·병합 (병합은 slug 두 개를 정확히 지정할 때만)
 
 공통 플래그: --dry-run  --resume  --limit N
 `)
@@ -445,15 +451,119 @@ async function main(): Promise<number> {
       return 0
     }
 
-    case 'season-start': {
+    case 'season': {
       const leagueSlug = stringFlag(args, 'league')
       if (!leagueSlug) {
         fail('--league <slug> 가 필요하다')
         return 1
       }
-      const result = await runSeasonStart(ctx, { leagueSlug })
-      table([{ 선수: result.players, 클랜: result.clans, 시작점수: result.baseline }])
-      log('모두 같은 점수에서 시작한다. 지난 시즌 기록은 그대로 보존된다 (D-064)')
+      const at = stringFlag(args, 'at')
+      const when = at ? new Date(at) : undefined
+      if (at && Number.isNaN(when?.getTime())) {
+        fail(`--at 날짜를 해석할 수 없다: ${at}`)
+        return 1
+      }
+
+      if (boolFlag(args, 'close')) {
+        const result = await runSeasonClose(ctx, { leagueSlug, endedAt: when })
+        table([
+          {
+            시즌: result.season ?? '-',
+            '클랜 스냅샷': result.clanRows,
+            '선수 스냅샷': result.playerRows,
+            종료시각: result.endedAt?.toISOString() ?? '-',
+          },
+        ])
+        return result.season === null ? 1 : 0
+      }
+
+      if (boolFlag(args, 'start')) {
+        const result = await runSeasonOpen(ctx, {
+          leagueSlug,
+          startedAt: when,
+          number: numberFlag(args, 'number') ?? undefined,
+          skipPromotion: boolFlag(args, 'no-promotion'),
+        })
+        table([
+          {
+            시즌: result.season ?? '-',
+            시작시각: result.startedAt?.toISOString() ?? '-',
+            승격: result.promoted ?? '-',
+            강등: result.relegated ?? '-',
+            선수: result.players,
+            클랜: result.clans,
+            시작점수: result.baseline,
+          },
+        ])
+        return result.season === null ? 1 : 0
+      }
+
+      const status = await seasonStatus(leagueSlug)
+      if (!status) {
+        fail(`리그를 찾을 수 없다: ${leagueSlug}`)
+        return 1
+      }
+      table([
+        {
+          리그: status.league,
+          '활성 시즌': status.activeSeason ?? '없음',
+          시작: status.startedAt?.toISOString() ?? '-',
+          '시즌 경기': status.matchesInSeason,
+          공식: status.officialMatches,
+          '참고 기록': status.referenceMatches,
+        },
+      ])
+      log('시즌 전환은 --close → --start 를 운영자가 직접 실행할 때만 일어난다 (D-077)')
+      return 0
+    }
+
+    case 'clan': {
+      if (boolFlag(args, 'register')) {
+        const slug = stringFlag(args, 'slug')
+        const name = stringFlag(args, 'name')
+        if (!slug || !name) {
+          fail('--slug 와 --name 이 필요하다')
+          return 1
+        }
+        const result = await registerClan(ctx, { slug, name })
+        return result.created || dryRun ? 0 : 1
+      }
+
+      if (boolFlag(args, 'rename')) {
+        const slug = stringFlag(args, 'slug')
+        const name = stringFlag(args, 'name')
+        if (!slug || !name) {
+          fail('--slug 와 --name 이 필요하다')
+          return 1
+        }
+        return (await renameClan(ctx, { slug, name })) || dryRun ? 0 : 1
+      }
+
+      if (boolFlag(args, 'join')) {
+        const joinLeagueSlug = stringFlag(args, 'league')
+        const slug = stringFlag(args, 'slug')
+        const division = numberFlag(args, 'division') ?? 1
+        if (!joinLeagueSlug || !slug) {
+          fail('--league 와 --slug 가 필요하다')
+          return 1
+        }
+        const ok = await joinLeague(ctx, { leagueSlug: joinLeagueSlug, clanSlug: slug, division })
+        return ok || dryRun ? 0 : 1
+      }
+
+      if (boolFlag(args, 'merge')) {
+        const fromSlug = stringFlag(args, 'from')
+        const intoSlug = stringFlag(args, 'into')
+        if (!fromSlug || !intoSlug) {
+          fail('--from 과 --into 에 **정확한 slug**를 지정해야 한다 (이름으로 추측하지 않는다)')
+          return 1
+        }
+        const result = await mergeClans(ctx, { fromSlug, intoSlug })
+        table([{ 옮긴선수: result.movedPlayers, 옮긴로스터: result.movedMemberships }])
+        return 0
+      }
+
+      table(await clanList(stringFlag(args, 'league')))
       return 0
     }
 

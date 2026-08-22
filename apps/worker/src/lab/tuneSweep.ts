@@ -157,7 +157,7 @@ export function lineupTracking(constants: RatingConstants): {
       clanRatings: { [`C${a}`]: clanRatings[a]!, [`C${b}`]: clanRatings[b]! },
       constants,
     })
-    if (!result.eligibility.eligible) continue
+    if (!result.eligibility.official) continue
 
     total += 1
     if (result.clans.some((clan) => clan.lineupBlended)) blended += 1

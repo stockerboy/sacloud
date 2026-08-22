@@ -59,6 +59,7 @@ const MATCH_SELECT = {
   blueRatingUpdate: true,
   participantCompleteness: true,
   evidenceConfidence: true,
+  official: true,
   map: { select: { id: true, name: true } },
   redClan: { select: { id: true, clan: { select: CLAN_SUMMARY_SELECT } } },
   blueClan: { select: { id: true, clan: { select: CLAN_SUMMARY_SELECT } } },
@@ -226,6 +227,7 @@ export function toMatchListItem(
     // 재구성 경기만 값이 있다 (D-068). 우리가 몇 명을 확인했는지 숨기지 않는다
     participant_completeness: match.participantCompleteness,
     evidence_confidence: toConfidence(match.evidenceConfidence),
+    official: match.official,
   }
 }
 

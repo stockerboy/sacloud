@@ -78,6 +78,11 @@ export interface ReconstructionLeague {
   slug: string
   allowedMatchTypes: readonly string[]
   mapIdByName: ReadonlyMap<string, string>
+  /**
+   * 클랜명 → `LeagueClan.id`. **정확히 일치할 때만** 쓴다.
+   * 넥슨 상세의 `guild_name`으로 팀을 식별하는 데 필요하다 (D-043).
+   */
+  leagueClanIdByClanName: ReadonlyMap<string, string>
   playerLimits: readonly number[]
   hasMockMatches: boolean
 }
@@ -111,6 +116,8 @@ export interface ReconstructionSidePlan {
 
 export interface ReconstructionPlan {
   leagueId: string
+  /** 공식 통계·래더에 반영하는 경기인가 (false면 참고 기록 — D-080) */
+  official: boolean
   mapId: string
   mapName: string
   startAt: Date
@@ -132,6 +139,11 @@ export interface ReconstructionSummary {
   ambiguousIdentities: number
   /** 확인은 됐지만 등록 클랜을 찾지 못한 인원 (용병·무소속) */
   unrosteredParticipants: number
+  /** 공식 통계 반영 대상인가 (D-079) */
+  official: boolean
+  /** 팀별 클랜 래더 반영률 (D-081) */
+  winnerClanWeight: number
+  loserClanWeight: number
   /* ── 확인 수준 (Phase 9 · D-068 · D-074) ── */
   /** 이긴 팀 · 진 팀의 **본클랜원** 확인 인원 — 공식전 인정 기준은 이 값이다 */
   winnerMembersConfirmed: number
@@ -222,6 +234,9 @@ function emptySummary(input: ReconstructionInput): ReconstructionSummary {
     conflicts: [],
     ambiguousIdentities: 0,
     unrosteredParticipants: 0,
+    official: false,
+    winnerClanWeight: 0,
+    loserClanWeight: 0,
     winnerMembersConfirmed: 0,
     loserMembersConfirmed: 0,
     winnerMercenariesConfirmed: 0,
@@ -272,6 +287,8 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     sources: ('player_match_list' | 'match_detail')[]
     headshot: number | null
     damage: number | null
+    /** 상세 `guild_name`이 리그 클랜과 정확히 일치할 때 그 클랜 (팀 식별 1차 근거) */
+    detailLeagueClanId: string | null
   }
   const confirmedByPlayer = new Map<string, Confirmed>()
 
@@ -321,6 +338,7 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
       sources: ['player_match_list'],
       headshot: null,
       damage: null,
+      detailLeagueClanId: null,
     })
   }
 
@@ -351,6 +369,8 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
         // 상세에만 있는 값은 여기서만 얻을 수 있다
         existing.headshot = participant.headshot
         existing.damage = participant.damage
+        existing.detailLeagueClanId =
+          input.league.leagueClanIdByClanName.get(participant.clanName ?? '') ?? null
       }
       continue
     }
@@ -378,6 +398,7 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
       sources: ['match_detail'],
       headshot: participant.headshot,
       damage: participant.damage,
+      detailLeagueClanId: input.league.leagueClanIdByClanName.get(participant.clanName ?? '') ?? null,
     })
   }
 
@@ -395,6 +416,9 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
   const participants: ConfirmedParticipant[] = confirmed.map((entry) => ({
     playerId: entry.playerId,
     rosterLeagueClanId: entry.membership?.leagueClanId ?? null,
+    // 상세가 준 그 경기 시점 클랜명(guild_name)이 리그 클랜과 **정확히** 일치할 때만 쓴다.
+    // 비슷한 이름을 같은 클랜으로 묶지 않는다 (정책 20)
+    detailLeagueClanId: entry.detailLeagueClanId,
     outcome: entry.outcome,
     kill: entry.kill,
     death: entry.death,
@@ -406,6 +430,9 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
   summary.observationParticipantCount = eligibility.observationParticipantCount
   summary.detailParticipantCount = eligibility.detailParticipantCount
   summary.participantCompleteness = eligibility.completeness
+  summary.official = eligibility.official
+  summary.winnerClanWeight = eligibility.winnerSide?.clanWeight ?? 0
+  summary.loserClanWeight = eligibility.loserSide?.clanWeight ?? 0
   summary.winnerMembersConfirmed = eligibility.winnerSide?.members ?? 0
   summary.loserMembersConfirmed = eligibility.loserSide?.members ?? 0
   summary.winnerMercenariesConfirmed = eligibility.winnerSide?.mercenaries ?? 0
@@ -422,7 +449,13 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
       (summary.perClan[participant.leagueClanId] ?? 0) + 1
   }
 
-  if (!eligibility.eligible || !eligibility.winnerSide || !eligibility.loserSide) {
+  /**
+   * **기록할 수 없을 때만** 실패다 (D-080).
+   *
+   * 참고 기록(양 팀 모두 본클랜원 3명 미만)은 실패가 아니다. 경기를 저장하되
+   * 공식 통계에 반영하지 않는다. 그래서 여기서 걸러지지 않는다.
+   */
+  if (!eligibility.recordable || !eligibility.winnerSide || !eligibility.loserSide) {
     return fail(eligibility.status, eligibility.reason)
   }
 
@@ -493,6 +526,7 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     summary,
     plan: {
       leagueId: input.league.leagueId,
+      official: eligibility.official,
       mapId,
       mapName: input.match.matchMap,
       startAt: at,

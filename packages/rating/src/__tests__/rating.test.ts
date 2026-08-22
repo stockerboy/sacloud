@@ -10,6 +10,7 @@ import {
   CLAN_FORMULA_VERSION,
   PERSONAL_FORMULA_VERSION,
   clanRatingUpdate,
+  clanWeightForMembers,
   evaluateEligibility,
   expectedScore,
   lineupConfidence,
@@ -46,14 +47,19 @@ function member(
   }
 }
 
-/** 용병 — 등록 클랜이 다른 곳이거나 없다. 팀은 **승패로** 정해진다 */
-function mercenary(
+/**
+ * 상세(`guild_name`) 근거로 팀이 정해지는 참가자.
+ *
+ * `playedFor`는 그 경기에서 뛴 팀, `roster`는 원소속이다. 둘이 다르면 용병이다.
+ */
+function detailSide(
   playerId: string,
-  homeClanId: string | null,
+  playedFor: string,
+  roster: string | null,
   outcome: 'win' | 'lose',
   ratingBefore = 1500,
 ): ConfirmedParticipant {
-  return member(playerId, homeClanId, outcome, ratingBefore)
+  return { ...member(playerId, roster, outcome, ratingBefore), detailLeagueClanId: playedFor }
 }
 
 function squad(
@@ -378,80 +384,91 @@ describe('시즌 시작 — 모두 같은 출발점 (D-064 · 2026-08-22 정책 
   })
 })
 
-describe('경기 인정 기준 — 양 팀 **본클랜원** 3명 이상 (D-057 · D-071)', () => {
-  it('본클랜원 3v3이면 인정한다', () => {
-    const result = evaluateEligibility({
-      participants: [...squad('A', 'CA', 'win', 3), ...squad('B', 'CB', 'lose', 3)],
+describe('공식 경기 판정 — 한쪽만 본클랜원 3명이어도 공식이다 (D-079, OR 조건)', () => {
+  const match = (homeMembers: number, homeMercs: number, awayMembers: number, awayMercs: number) =>
+    evaluateEligibility({
+      participants: [
+        ...squad('A', 'CA', 'win', homeMembers),
+        ...Array.from({ length: homeMercs }, (_, index) =>
+          detailSide(`AM${index}`, 'CA', 'CX', 'win'),
+        ),
+        ...squad('B', 'CB', 'lose', awayMembers),
+        ...Array.from({ length: awayMercs }, (_, index) =>
+          detailSide(`BM${index}`, 'CB', 'CY', 'lose'),
+        ),
+      ],
     })
-    expect(result.eligible).toBe(true)
-    expect(result.completeness).toBe('3v3')
+
+  it('클3+용2 vs 클3+용2 → 공식', () => {
+    const result = match(3, 2, 3, 2)
+    expect(result.official).toBe(true)
+    expect(result.status).toBe('official')
+    expect(result.completeness).toBe('5v5')
   })
 
-  it('본클랜원 4v3도 인정한다', () => {
-    const result = evaluateEligibility({
-      participants: [...squad('A', 'CA', 'win', 4), ...squad('B', 'CB', 'lose', 3)],
-    })
-    expect(result.eligible).toBe(true)
-    expect(result.completeness).toBe('4v3')
+  it('클3+용2 vs 클2+용3 → 공식 (한쪽만 채워도 된다)', () => {
+    const result = match(3, 2, 2, 3)
+    expect(result.official).toBe(true)
+    expect(result.winnerSide?.members).toBe(3)
+    expect(result.loserSide?.members).toBe(2)
   })
 
-  it('본클랜원 5v2는 인정하지 않는다', () => {
-    const result = evaluateEligibility({
-      participants: [...squad('A', 'CA', 'win', 5), ...squad('B', 'CB', 'lose', 2)],
-    })
-    expect(result.eligible).toBe(false)
-    expect(result.status).toBe('insufficient_members')
+  it('클3+용2 vs 클1+용4 → 공식', () => {
+    expect(match(3, 2, 1, 4).official).toBe(true)
   })
 
-  it('한쪽 클랜만 확인되면 인정하지 않는다', () => {
+  it('클3+용2 vs 클0+용5 → 공식 (상대가 본클랜원을 한 명도 안 내도)', () => {
+    const result = match(3, 2, 0, 5)
+    expect(result.official).toBe(true)
+    expect(result.loserSide?.members).toBe(0)
+    expect(result.loserSide?.leagueClanId).toBe('CB')
+  })
+
+  it('클2+용3 vs 클2+용3 → 참고 기록', () => {
+    const result = match(2, 3, 2, 3)
+    expect(result.official).toBe(false)
+    expect(result.recordable).toBe(true)
+    expect(result.status).toBe('reference')
+    expect(result.reason).toContain('참고 기록')
+  })
+
+  it('클2+용3 vs 클1+용4 → 참고 기록', () => {
+    expect(match(2, 3, 1, 4).official).toBe(false)
+  })
+
+  it('클1+용4 vs 클1+용4 → 참고 기록', () => {
+    expect(match(1, 4, 1, 4).official).toBe(false)
+  })
+
+  it('참고 기록도 경기 자체는 기록 가능하다 (지우지 않는다 — D-080)', () => {
+    const result = match(2, 3, 2, 3)
+    expect(result.recordable).toBe(true)
+    expect(result.assigned).toHaveLength(10)
+    expect(result.winnerLeagueClanId).toBe('CA')
+  })
+
+  it('한쪽 결과만 확인되면 기록하지 않는다', () => {
     const result = evaluateEligibility({ participants: squad('A', 'CA', 'win', 5) })
+    expect(result.recordable).toBe(false)
     expect(result.status).toBe('single_clan')
   })
 
-  it('본클랜원 조건을 채운 클랜이 셋이면 인정하지 않는다', () => {
+  it('어느 클랜인지 근거가 없으면 기록하지 않는다 (추측 금지)', () => {
     const result = evaluateEligibility({
       participants: [
-        ...squad('A', 'CA', 'win', 3),
-        ...squad('B', 'CB', 'lose', 3),
-        ...squad('X', 'CC', 'lose', 3),
+        member('A0', null, 'win'),
+        member('A1', null, 'win'),
+        member('B0', null, 'lose'),
+        member('B1', null, 'lose'),
       ],
     })
-    expect(result.status).toBe('too_many_clans')
+    expect(result.recordable).toBe(false)
+    expect(result.status).toBe('unidentified_side')
   })
 
-  it('본클랜원 승패가 정확히 반반이면 팀을 판정하지 않는다', () => {
-    const result = evaluateEligibility({
-      participants: [
-        ...squad('A', 'CA', 'win', 2),
-        member('A2', 'CA', 'lose'),
-        member('A3', 'CA', 'lose'),
-        ...squad('B', 'CB', 'lose', 3),
-      ],
-    })
-    expect(result.status).toBe('inconsistent_outcome')
-  })
-
-  it('다수와 다른 결과인 본클랜원 1명 때문에 경기를 버리지 않는다', () => {
-    // CA 본클랜원 3승 1패 → CA는 승리 팀, 나머지 1명은 상대 팀 용병으로 본다
-    const result = evaluateEligibility({
-      participants: [
-        ...squad('A', 'CA', 'win', 3),
-        member('A3', 'CA', 'lose'),
-        ...squad('B', 'CB', 'lose', 3),
-      ],
-    })
-    expect(result.eligible).toBe(true)
-    expect(result.winnerSide?.members).toBe(3)
-    const moved = result.assigned.find((participant) => participant.playerId === 'A3')
-    expect(moved?.leagueClanId).toBe('CB')
-    expect(moved?.role).toBe('mercenary')
-  })
-
-  it('양 팀 결과가 같으면 승자를 정하지 않는다', () => {
-    const result = evaluateEligibility({
-      participants: [...squad('A', 'CA', 'win', 3), ...squad('B', 'CB', 'win', 3)],
-    })
-    expect(result.status).toBe('no_winner')
+  it('확인 수준은 출전자 전원 기준이다 (본클랜원만 세지 않는다)', () => {
+    expect(match(1, 4, 1, 4).completeness).toBe('5v5')
+    expect(match(3, 0, 3, 1).completeness).toBe('4v3')
   })
 
   it('근거 출처를 숫자로 남긴다', () => {
@@ -474,98 +491,178 @@ describe('경기 인정 기준 — 양 팀 **본클랜원** 3명 이상 (D-057 �
   })
 })
 
-describe('용병 — 3명 조건에는 못 쓰지만 개인 기록은 받는다 (D-071 ~ D-076)', () => {
-  /** CASE A: 본클랜원 3+용병 2 vs 본클랜원 4+용병 1 */
+describe('클랜 래더 반영률 — 본클랜원 수에 따라 팀마다 다르다 (D-081)', () => {
+  it('3명 이상 100% · 2명 70% · 1명 40% · 0명 0%', () => {
+    expect(clanWeightForMembers(5)).toBe(1)
+    expect(clanWeightForMembers(3)).toBe(1)
+    expect(clanWeightForMembers(2)).toBe(0.7)
+    expect(clanWeightForMembers(1)).toBe(0.4)
+    expect(clanWeightForMembers(0)).toBe(0)
+  })
+
+  const rated = (awayMembers: number, awayMercs: number) =>
+    rateMatch({
+      participants: [
+        ...squad('A', 'CA', 'win', 3, 1500),
+        detailSide('AM0', 'CA', 'CX', 'win', 1500),
+        detailSide('AM1', 'CA', 'CX', 'win', 1500),
+        ...squad('B', 'CB', 'lose', awayMembers, 1500),
+        ...Array.from({ length: awayMercs }, (_, index) =>
+          detailSide(`BM${index}`, 'CB', 'CY', 'lose', 1500),
+        ),
+      ],
+      clanRatings: { CA: 1500, CB: 1500 },
+    })
+
+  it('CASE 1 — 클3+용2 vs 클3+용2 → 클랜 100% / 100%', () => {
+    const result = rated(3, 2)
+    const [winner, loser] = result.clans
+    expect(winner?.clanWeight).toBe(1)
+    expect(loser?.clanWeight).toBe(1)
+    expect(winner?.ratingUpdate).toBe(winner?.rawRatingUpdate)
+    expect(loser?.ratingUpdate).toBe(loser?.rawRatingUpdate)
+  })
+
+  it('CASE 2 — 상대가 본클랜원 2명이면 그 팀만 70%', () => {
+    const result = rated(2, 3)
+    const winner = result.clans.find((clan) => clan.leagueClanId === 'CA')!
+    const loser = result.clans.find((clan) => clan.leagueClanId === 'CB')!
+    expect(winner.clanWeight).toBe(1)
+    expect(loser.clanWeight).toBe(0.7)
+    expect(loser.ratingUpdate).toBe(Math.round(loser.rawRatingUpdate * 0.7))
+    // 이긴 팀은 그대로 100% 받는다 — 상대 구성 때문에 손해 보지 않는다
+    expect(winner.ratingUpdate).toBe(winner.rawRatingUpdate)
+  })
+
+  it('CASE 3 — 본클랜원 1명이면 40%', () => {
+    const loser = rated(1, 4).clans.find((clan) => clan.leagueClanId === 'CB')!
+    expect(loser.clanWeight).toBe(0.4)
+    expect(Math.abs(loser.ratingUpdate)).toBeLessThan(Math.abs(loser.rawRatingUpdate))
+  })
+
+  it('CASE 4 — 본클랜원 0명이면 클랜 래더가 움직이지 않는다', () => {
+    const loser = rated(0, 5).clans.find((clan) => clan.leagueClanId === 'CB')!
+    expect(loser.clanWeight).toBe(0)
+    expect(loser.ratingUpdate).toBe(0)
+    expect(loser.ratingAfter).toBe(loser.ratingBefore)
+  })
+
+  it('반영률은 승리·패배 양쪽에 같게 적용된다', () => {
+    const win = rateMatch({
+      participants: [
+        ...squad('A', 'CA', 'win', 2, 1500),
+        detailSide('AM0', 'CA', 'CX', 'win', 1500),
+        detailSide('AM1', 'CA', 'CX', 'win', 1500),
+        detailSide('AM2', 'CA', 'CX', 'win', 1500),
+        ...squad('B', 'CB', 'lose', 3, 1500),
+      ],
+      clanRatings: { CA: 1500, CB: 1500 },
+    })
+    const weighted = win.clans.find((clan) => clan.leagueClanId === 'CA')!
+    expect(weighted.clanWeight).toBe(0.7)
+    expect(weighted.ratingUpdate).toBeGreaterThan(0)
+    expect(weighted.ratingUpdate).toBeLessThan(weighted.rawRatingUpdate)
+  })
+
+  it('개인 래더에는 반영률을 적용하지 않는다 (D-082)', () => {
+    const result = rated(0, 5)
+    const mercenary = result.players.find((player) => player.playerId === 'BM0')!
+    const member0 = result.players.find((player) => player.playerId === 'A0')!
+    // 본클랜원 0명인 팀이어도 개인 증감은 정상 계산된다
+    expect(mercenary.ratingUpdate).not.toBe(0)
+    expect(Math.abs(mercenary.ratingUpdate)).toBe(Math.abs(member0.ratingUpdate))
+  })
+})
+
+describe('참고 기록 — 공식 통계에 전혀 반영하지 않는다 (D-080)', () => {
+  const reference = () =>
+    rateMatch({
+      participants: [
+        ...squad('A', 'CA', 'win', 2, 1600),
+        detailSide('AM0', 'CA', 'CX', 'win', 1600),
+        detailSide('AM1', 'CA', 'CX', 'win', 1600),
+        detailSide('AM2', 'CA', 'CX', 'win', 1600),
+        ...squad('B', 'CB', 'lose', 2, 1400),
+        detailSide('BM0', 'CB', 'CY', 'lose', 1400),
+        detailSide('BM1', 'CB', 'CY', 'lose', 1400),
+        detailSide('BM2', 'CB', 'CY', 'lose', 1400),
+      ],
+      clanRatings: { CA: 1600, CB: 1400 },
+    })
+
+  it('CASE 5 — 클2+용3 vs 클2+용3 → 개인·클랜 증감이 하나도 없다', () => {
+    const result = reference()
+    expect(result.eligibility.official).toBe(false)
+    expect(result.players).toHaveLength(0)
+    expect(result.clans).toHaveLength(0)
+  })
+
+  it('CASE 8 — 참가자와 기록 자체는 남는다 (기록실에 보여야 한다)', () => {
+    const result = reference()
+    expect(result.eligibility.recordable).toBe(true)
+    expect(result.eligibility.assigned).toHaveLength(10)
+    const one = result.eligibility.assigned.find((participant) => participant.playerId === 'A0')
+    expect(one?.kill).toBe(10)
+    expect(one?.death).toBe(8)
+  })
+
+  it('CASE 6 — 클2+용3 vs 클1+용4도 참고 기록이다', () => {
+    const result = rateMatch({
+      participants: [
+        ...squad('A', 'CA', 'win', 2),
+        detailSide('AM0', 'CA', 'CX', 'win'),
+        detailSide('AM1', 'CA', 'CX', 'win'),
+        detailSide('AM2', 'CA', 'CX', 'win'),
+        ...squad('B', 'CB', 'lose', 1),
+        ...Array.from({ length: 4 }, (_, index) =>
+          detailSide(`BM${index}`, 'CB', 'CY', 'lose'),
+        ),
+      ],
+      clanRatings: { CA: 1500, CB: 1500 },
+    })
+    expect(result.eligibility.official).toBe(false)
+    expect(result.players).toHaveLength(0)
+  })
+})
+
+describe('용병 — 개인 기록은 100%, 원소속 클랜은 불변 (D-073 · D-075 · D-082)', () => {
   const caseA = () =>
     rateMatch({
       participants: [
         ...squad('A', 'CA', 'win', 3, 1600),
-        mercenary('M-리릭', 'CC', 'win', 1700),
-        mercenary('M-무소속', null, 'win', 1400),
+        detailSide('M-리릭', 'CA', 'CC', 'win', 1700),
+        detailSide('M-무소속', 'CA', null, 'win', 1400),
         ...squad('B', 'CB', 'lose', 4, 1500),
-        mercenary('M-타클랜', 'CD', 'lose', 1550),
+        detailSide('M-타클랜', 'CB', 'CD', 'lose', 1550),
       ],
       clanRatings: { CA: 1600, CB: 1500, CC: 2000, CD: 900 },
     })
 
-  it('CASE A — 본클랜원 3명씩이면 용병이 섞여도 공식전이다', () => {
+  it('CASE 7 — 용병 3명이 섞여도 전원 개인 기록을 받는다', () => {
     const result = caseA()
-    expect(result.eligibility.eligible).toBe(true)
-    expect(result.eligibility.winnerSide?.members).toBe(3)
-    expect(result.eligibility.winnerSide?.mercenaries).toBe(2)
-    expect(result.eligibility.loserSide?.members).toBe(4)
-    expect(result.eligibility.loserSide?.mercenaries).toBe(1)
-  })
-
-  it('CASE A — 확인 수준은 출전자 전원 기준이다 (본클랜원만 세지 않는다)', () => {
-    expect(caseA().eligibility.completeness).toBe('5v5')
-    expect(caseA().confidence).toBe('high')
-  })
-
-  it('CASE A — 10명 전원이 개인 기록을 받는다 (용병 포함)', () => {
-    const result = caseA()
+    expect(result.eligibility.official).toBe(true)
     expect(result.players).toHaveLength(10)
     const mercenaries = result.players.filter((player) => player.role === 'mercenary')
     expect(mercenaries).toHaveLength(3)
     expect(mercenaries.every((player) => player.ratingUpdate !== 0)).toBe(true)
   })
 
-  it('CASE A — 용병의 원소속 클랜 래더는 변하지 않는다', () => {
-    const result = caseA()
-    const touched = result.clans.map((clan) => clan.leagueClanId).sort()
+  it('CASE 7 — 용병의 원소속 클랜 래더는 변하지 않는다', () => {
+    const touched = caseA().clans.map((clan) => clan.leagueClanId).sort()
     expect(touched).toEqual(['CA', 'CB'])
   })
 
-  it('CASE A — 용병은 뛴 팀의 결과를 따른다', () => {
-    const result = caseA()
-    const lyric = result.players.find((player) => player.playerId === 'M-리릭')
+  it('용병은 뛴 팀의 결과를 따른다', () => {
+    const lyric = caseA().players.find((player) => player.playerId === 'M-리릭')
     expect(lyric?.leagueClanId).toBe('CA')
     expect(lyric?.rosterLeagueClanId).toBe('CC')
     expect(lyric?.outcome).toBe('win')
     expect(lyric?.ratingUpdate).toBeGreaterThan(0)
   })
 
-  it('CASE B — 본클랜원 2 + 용병 3 은 인정하지 않는다', () => {
-    const result = rateMatch({
-      participants: [
-        ...squad('A', 'CA', 'win', 2),
-        mercenary('M1', 'CC', 'win'),
-        mercenary('M2', 'CD', 'win'),
-        mercenary('M3', null, 'win'),
-        ...squad('B', 'CB', 'lose', 5),
-      ],
-      clanRatings: { CA: 1500, CB: 1500 },
-    })
-    expect(result.eligibility.eligible).toBe(false)
-    expect(result.eligibility.status).toBe('insufficient_members')
-    expect(result.players).toHaveLength(0)
-    expect(result.clans).toHaveLength(0)
-  })
-
-  it('CASE C — 확인되지 않은 선수는 만들지 않는다 (3v3만 기록)', () => {
-    const result = rateMatch({
-      participants: [...squad('A', 'CA', 'win', 3), ...squad('B', 'CB', 'lose', 3)],
-      clanRatings: { CA: 1500, CB: 1500 },
-    })
-    expect(result.eligibility.eligible).toBe(true)
-    expect(result.players).toHaveLength(6)
-    expect(result.eligibility.completeness).toBe('3v3')
-  })
-
-  it('CASE D — 다른 클랜 소속이 용병으로 뛰면 원소속은 무관하다', () => {
-    const result = rateMatch({
-      participants: [
-        ...squad('A', 'CA', 'win', 3),
-        mercenary('X', 'CC', 'win', 1500),
-        ...squad('B', 'CB', 'lose', 3),
-      ],
-      clanRatings: { CA: 1500, CB: 1500, CC: 2500 },
-    })
-    const x = result.players.find((player) => player.playerId === 'X')
-    expect(x?.role).toBe('mercenary')
-    expect(x?.leagueClanId).toBe('CA')
-    expect(x?.outcome).toBe('win')
-    expect(result.clans.some((clan) => clan.leagueClanId === 'CC')).toBe(false)
+  it('확인 수준은 출전자 전원 기준이다', () => {
+    expect(caseA().eligibility.completeness).toBe('5v5')
+    expect(caseA().confidence).toBe('high')
   })
 
   it('본클랜원인데 상대 팀 결과로 관측되면 그 경기에서는 용병으로 본다', () => {
@@ -582,20 +679,58 @@ describe('용병 — 3명 조건에는 못 쓰지만 개인 기록은 받는다 
   })
 })
 
+describe('CASE 11 — 멸망전 10연전은 경기마다 순차 계산한다 (D-084)', () => {
+  it('앞 경기 결과가 다음 경기의 시작 래더가 된다', () => {
+    let clanA = 1500
+    let clanB = 1500
+    const updates: number[] = []
+
+    for (let index = 0; index < 10; index += 1) {
+      const result = rateMatch({
+        participants: [
+          ...squad('A', 'CA', 'win', 5, clanA),
+          ...squad('B', 'CB', 'lose', 5, clanB),
+        ],
+        clanRatings: { CA: clanA, CB: clanB },
+        priorSameOutcome: index,
+      })
+      expect(result.eligibility.official).toBe(true)
+      const winner = result.clans.find((clan) => clan.leagueClanId === 'CA')!
+      const loser = result.clans.find((clan) => clan.leagueClanId === 'CB')!
+      updates.push(winner.ratingUpdate)
+      clanA = winner.ratingAfter
+      clanB = loser.ratingAfter
+    }
+
+    // 10경기 전부 기록된다 — 반복이라고 빼거나 0점 처리하지 않는다
+    expect(updates).toHaveLength(10)
+    expect(updates.every((value) => value > 0)).toBe(true)
+    // 격차가 벌어질수록 보상이 줄어든다 (같은 값을 반복하지 않는다)
+    expect(updates[9]!).toBeLessThan(updates[0]!)
+    expect(clanA).toBeGreaterThan(1500)
+    expect(clanB).toBeLessThan(1500)
+  })
+})
+
 describe('개인 점수는 확인된 선수에게만 (D-067)', () => {
   it('3v3 경기에서 개인 결과는 6건뿐이다 — 없는 참가자를 만들지 않는다', () => {
     const result = rateMatch({
       participants: [...squad('A', 'CA', 'win', 3), ...squad('B', 'CB', 'lose', 3)],
       clanRatings: { CA: 1500, CB: 1500 },
     })
-    expect(result.eligibility.eligible).toBe(true)
+    expect(result.eligibility.official).toBe(true)
     expect(result.players).toHaveLength(6)
     expect(result.clans).toHaveLength(2)
   })
 
-  it('인정되지 않은 경기는 증감을 하나도 만들지 않는다', () => {
+  it('참고 기록은 증감을 하나도 만들지 않는다', () => {
     const result = rateMatch({
-      participants: [...squad('A', 'CA', 'win', 5), ...squad('B', 'CB', 'lose', 2)],
+      participants: [
+        ...squad('A', 'CA', 'win', 2),
+        detailSide('AM0', 'CA', 'CX', 'win'),
+        ...squad('B', 'CB', 'lose', 2),
+        detailSide('BM0', 'CB', 'CY', 'lose'),
+      ],
       clanRatings: { CA: 1500, CB: 1500 },
     })
     expect(result.players).toHaveLength(0)

@@ -304,6 +304,16 @@ function MatchDetailPanel({
         <div>
           {match.player_count} vs {match.player_count}
         </div>
+        {/* 참고 기록 — 기록실에는 남지만 공식 통계에 반영되지 않는다 (D-080).
+            숨기지 않고 화면에서 분명히 구분한다. */}
+        {match.official ? null : (
+          <div
+            className="ml-4 rounded border border-lose-line bg-lose-bg px-1.5 py-0.5 text-xs text-lose"
+            title="양 팀 모두 본클랜원이 3명 미만이라 공식 통계·래더에 반영되지 않는다"
+          >
+            참고 기록 · 래더 미반영
+          </div>
+        )}
         {/* 재구성 경기는 **우리가 몇 명을 확인했는지**를 숨기지 않는다 (D-068).
             5명 전원을 확인한 경기와 3명만 확인한 경기는 신뢰도가 다르다. */}
         {match.participant_completeness === null ? null : (

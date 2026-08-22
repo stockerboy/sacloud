@@ -102,6 +102,14 @@ export const MatchListItem = z.object({
   participant_completeness: z.string().nullable(),
   /** 확인 수준 등급. 재구성이 아니면 `null` */
   evidence_confidence: z.enum(['high', 'medium', 'low']).nullable(),
+  /**
+   * **공식 통계 반영 대상인가** (D-079 · D-080).
+   *
+   * `false`면 **참고 기록**이다. 기록실에는 그대로 보이지만 시즌 승패·킬뎃·평균킬·
+   * MVP·개인 래더·클랜 래더·랭킹에 반영되지 않는다.
+   * 양 팀 모두 본클랜원이 3명 미만인 경기가 여기 해당한다.
+   */
+  official: z.boolean(),
 })
 export type MatchListItem = z.infer<typeof MatchListItem>
 

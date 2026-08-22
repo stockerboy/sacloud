@@ -4,15 +4,22 @@
  * 같은 입력이면 몇 번을 돌려도 같은 값이 나온다. 시각·난수·DB를 쓰지 않는다.
  * 도메인 반영(`apps/worker`)은 이 함수의 결과를 **그대로 받아 적기만** 한다.
  *
- * ── 클랜과 개인을 분리한다 (D-075)
+ * ── 클랜과 개인을 분리한다 (D-075 · D-081 · D-082)
  *   클랜 래더 : 그 경기를 치른 **두 클랜**만 변한다.
  *               용병의 **원소속 클랜은 아무 영향도 받지 않는다.**
- *   개인 래더 : 출전이 확인된 **전원**이 받는다. 용병도 받는다.
+ *               반영률은 **팀마다 다르다** — 자기 본클랜원을 몇 명 냈는지로 정해진다
+ *               (3명↑ 100% · 2명 70% · 1명 40% · 0명 0%)
+ *   개인 래더 : 출전이 확인된 **전원**이 100% 받는다. 용병이라고 깎지 않는다
+ *
+ * ── 참고 기록 (D-080)
+ *   양 팀 모두 본클랜원 3명 미만이면 **아무 증감도 만들지 않는다.**
+ *   경기 자체는 저장되지만 공식 통계·래더·랭킹에 들어가지 않는다.
  */
 import {
   CLAN_FORMULA_VERSION,
   DEFAULT_RATING_CONSTANTS,
   PERSONAL_FORMULA_VERSION,
+  roundHalfUp,
   type RatingConstants,
 } from './constants.js'
 import { clanRatingUpdate, personalRatingUpdate } from './formula.js'
@@ -66,11 +73,16 @@ export interface ClanRatingResult {
   leagueClanId: string
   outcome: 'win' | 'lose'
   ratingBefore: number
+  /** 반영률을 곱한 **실제** 증감 */
   ratingUpdate: number
   ratingAfter: number
   opponentRatingUsed: number
   lineupBlended: boolean
   isPlacement: boolean
+  /** 이 팀의 본클랜원 수에서 나온 반영률 (1 / 0.7 / 0.4 / 0) */
+  clanWeight: number
+  /** 반영률을 곱하기 전의 증감 */
+  rawRatingUpdate: number
   formulaVersion: string
 }
 
@@ -95,7 +107,13 @@ export function rateMatch(input: MatchRatingInput): MatchRatingResult {
     eligibility.loserSide?.confirmed ?? 0,
   )
 
-  if (!eligibility.eligible || !eligibility.winnerSide || !eligibility.loserSide) {
+  /**
+   * 기록할 수 없거나(팀 식별 실패) **참고 기록**이면 증감을 하나도 만들지 않는다 (D-080).
+   *
+   * 참고 기록도 경기 자체는 저장된다 — 그건 `apps/worker`가 한다.
+   * 여기서는 "공식 통계에 무엇을 반영할지"만 정한다.
+   */
+  if (!eligibility.recordable || !eligibility.official || !eligibility.winnerSide || !eligibility.loserSide) {
     return { eligibility, confidence, players: [], clans: [] }
   }
 
@@ -115,6 +133,8 @@ export function rateMatch(input: MatchRatingInput): MatchRatingResult {
       // 라인업 전력에는 **실제 출전이 확인된 전원**이 들어간다 — 용병도 그 경기의 전력이다 (D-076)
       lineup: lineupStrength(members, constants),
       clanRating: input.clanRatings[summary.leagueClanId] ?? constants.initialRating,
+      // 본클랜원 수에 따른 클랜 래더 반영률. **팀마다 독립적이다** (D-081)
+      clanWeight: summary.clanWeight,
     }
   })
 
@@ -183,15 +203,27 @@ export function rateMatch(input: MatchRatingInput): MatchRatingResult {
       constants,
     })
 
+    /**
+     * 반영률을 곱한다 (D-081).
+     *
+     * 승리·패배 양쪽에 같은 배율을 쓴다. 팀마다 배율이 다르므로 **한 경기의 증감 합이
+     * 0이 아닐 수 있다** — 의도된 것이고, 장기 영향은 시뮬레이션으로 확인했다(D-083).
+     */
+    const weighted = roundHalfUp(result.ratingUpdate * side.clanWeight)
+
     return {
       leagueClanId: side.leagueClanId,
       outcome: side.outcome,
       ratingBefore: side.clanRating,
-      ratingUpdate: result.ratingUpdate,
-      ratingAfter: Math.max(constants.ratingFloor, side.clanRating + result.ratingUpdate),
+      ratingUpdate: weighted,
+      ratingAfter: Math.max(constants.ratingFloor, side.clanRating + weighted),
       opponentRatingUsed: effective.rating,
       lineupBlended: effective.blended,
       isPlacement,
+      /** 이 팀에 적용된 반영률 — 화면·검증에서 그대로 볼 수 있어야 한다 */
+      clanWeight: side.clanWeight,
+      /** 반영률을 곱하기 전의 원래 증감 */
+      rawRatingUpdate: result.ratingUpdate,
       formulaVersion: CLAN_FORMULA_VERSION,
     }
   })

@@ -113,9 +113,29 @@ export interface RatingConstants {
    */
   placementMatches: number
 
-  /* ── 경기 인정 (D-057) ── */
-  /** 양 클랜 각각 최소 이 인원이 확인돼야 경기로 인정한다 */
+  /* ── 경기 인정 (D-079) ── */
+  /**
+   * 공식 경기 판정 기준 인원.
+   *
+   * **양 팀 중 한쪽이라도** 같은 클랜 본클랜원이 이 인원 이상이면 공식 경기다 (OR 조건).
+   * 둘 다 미달이면 경기는 남기되 공식 통계에 반영하지 않는다(참고 기록 — D-080).
+   */
   minConfirmedPerSide: number
+
+  /**
+   * 본클랜원 수에 따른 **클랜 래더 반영률** (D-081).
+   *
+   * 자기 전력으로 얼마나 참가했는지를 클랜 점수에 반영한다.
+   * 팀마다 **독립적으로** 적용되므로 한 경기의 클랜 증감 합이 0이 아닐 수 있다.
+   * **개인 래더에는 적용하지 않는다** (D-082).
+   */
+  clanWeightByMembers: {
+    /** 3명 이상 */
+    full: number
+    two: number
+    one: number
+    none: number
+  }
 
   /** 시작 래더 */
   initialRating: number
@@ -156,6 +176,7 @@ export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
   placementMatches: 10,
 
   minConfirmedPerSide: 3,
+  clanWeightByMembers: { full: 1, two: 0.7, one: 0.4, none: 0 },
 
   initialRating: 1500,
   ratingFloor: 0,

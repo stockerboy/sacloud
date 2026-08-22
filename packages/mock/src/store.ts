@@ -611,6 +611,7 @@ function toMatchListItem(
     // mock 경기는 재구성이 아니다 — 확인 수준이라는 개념 자체가 없다
     participant_completeness: null,
     evidence_confidence: null,
+    official: true,
   }
 }
 

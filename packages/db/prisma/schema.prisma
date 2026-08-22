@@ -502,6 +502,13 @@ model Match {
   origin       String   @default("sacloud")
   sourceMatchId String?
 
+  /// **공식 통계 반영 대상인가** (Phase 9 · D-079 · D-080).
+  ///
+  /// `false`면 **참고 기록**이다 — 기록실에는 그대로 보이지만
+  /// 시즌 승패·킬뎃·평균킬·MVP·개인 래더·클랜 래더·랭킹에 **전혀 반영하지 않는다.**
+  /// 양 팀 모두 본클랜원이 3명 미만인 경기가 여기 해당한다. **경기를 지우지는 않는다.**
+  official     Boolean @default(true)
+
   /// 재구성으로 만든 경기의 **확인 수준** (Phase 9 · D-068).
   /// "5v4" 처럼 몇 명을 확인했는지, 그리고 그 확신 등급을 화면에 그대로 보여 준다.
   /// 우리가 모르는 것을 아는 척하지 않기 위한 값이다.
@@ -1159,6 +1166,8 @@ model NexonMatch {
   participantCompleteness     String?
   /// "high" | "medium" | "low"
   reconstructionConfidence    String?
+  /// 공식 통계 반영 대상인가 (D-079). false면 참고 기록이다
+  official                    Boolean @default(true)
 
   /// 투영된 운영 매치의 내부 ID (FK를 걸지 않는다 — 스테이징은 외부 데이터의 거울이다)
   projectedMatchId String?

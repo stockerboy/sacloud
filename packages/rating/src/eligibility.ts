@@ -1,35 +1,33 @@
 /**
- * 경기 인정 기준과 개인 반영 기준 — **순수 함수**.
+ * 경기 인정 기준과 참가자 처리 — **순수 함수**.
  *
- * ── 경기 인정 (D-057 · D-071에서 정밀화)
- *   같은 `sourceMatchId`에서 **양 팀의 본클랜원이 각각 3명 이상** 확인되면 공식전으로 인정한다.
- *   **용병은 이 3명을 채우는 데 쓰지 않는다.**
+ * ── 공식 통계 반영 기준 (D-079 — 2026-08-22 정책 변경)
+ *   **양 팀 중 한쪽이라도** 같은 클랜 본클랜원 3명 이상이 확인되면 **공식 경기**다.
  *
- *     베리타스 본클랜원 3 + 용병 2  vs  메쏘드 본클랜원 4 + 용병 1  → 인정
- *     베리타스 본클랜원 2 + 용병 3  vs  메쏘드 본클랜원 5          → 불인정
+ *     클3+용2 vs 클3+용2  → 공식
+ *     클3+용2 vs 클2+용3  → 공식
+ *     클3+용2 vs 클0+용5  → 공식
+ *     클2+용3 vs 클2+용3  → **참고 기록**
+ *     클1+용4 vs 클1+용4  → **참고 기록**
  *
- * ── 확인(confirmed)의 정의
- *   그 선수의 **자기 기록**(승패·k/d/a) 근거가 그 경기에 있어야 한다.
- *     - 목록 관측값(`NexonMatchObservation`) 또는
- *     - 매치 상세의 본인 행(`NexonMatchParticipant`)
- *   그리고 신원이 확정돼 있어야 한다.
+ *   조건은 `home >= 3 OR away >= 3` 다. **AND가 아니다.**
+ *   (기존 D-071의 AND 기준은 폐기한다.)
  *
- *   **로스터 등록만으로는 확인이 아니다** (D-068). 로스터는 "이 선수의 매치 목록을
- *   확인해 봐야 한다"는 **후보 목록**이지, 출전했다는 증거가 아니다.
+ * ── 참고 기록도 지우지 않는다 (D-080)
+ *   양쪽 다 3명 미만이어도 **경기 자체는 남긴다.** 기록실에서 참가자·K/D/A·맵·결과를 볼 수 있다.
+ *   다만 시즌 승패·킬뎃·평균킬·MVP·개인 래더·클랜 래더·랭킹에는 **전혀 반영하지 않는다.**
  *
- * ── 어느 팀으로 뛰었는가 (D-072)
- *   "원래 소속 클랜"과 "이 경기에서 뛴 팀"은 **다른 값**이다.
+ * ── 어느 팀으로 뛰었는가 (D-072 유지)
+ *   승자가 하나뿐이므로 **승패가 곧 팀**이다. 추측하지 않는다.
+ *   팀을 대표하는 클랜은 다음 순서로 정한다.
+ *     1. 매치 상세의 `guild_name`이 리그 클랜과 **정확히** 일치하는 것의 다수 (D-043 근거)
+ *     2. 없으면 그 팀 참가자들의 **등록 클랜 다수**
+ *     3. 둘 다 없으면 팀을 식별하지 못한 것이다 — 사유를 남기고 기록하지 않는다
  *
- *   1. 본클랜원 3명 이상이 모인 클랜 **두 곳**이 그 경기의 두 팀이다
- *   2. 각 팀의 승패는 그 팀 본클랜원들의 기록으로 정해진다
- *   3. 나머지 확인된 선수는 **자기 승패와 같은 팀**으로 배정한다 — 추측이 아니라 근거다
- *      (승자가 하나뿐이므로 승패가 곧 팀을 가리킨다)
- *   4. 배정된 팀이 자기 등록 클랜과 다르면 그 경기의 역할은 **용병**이다
- *
- * ── 개인 기록 (D-073)
- *   경기가 인정되면 **출전이 확인된 전원**이 개인 기록을 받는다. 용병도 받는다.
- *   본클랜원이 아니라는 이유로 개인 기록을 만들지 않는 일은 없다.
- *   반대로 확인되지 않은 사람은 만들지 않는다. 로스터에 있다고 출전을 추정하지 않는다.
+ * ── 클랜 래더 반영률 (D-081)
+ *   같은 공식 경기라도 팀마다 다르다. 자기 본클랜원을 몇 명 냈는지로 정한다.
+ *     3명 이상 100% · 2명 70% · 1명 40% · 0명 0%
+ *   개인 래더에는 이 차등을 적용하지 않는다 (D-082).
  */
 import { DEFAULT_RATING_CONSTANTS, type RatingConstants } from './constants.js'
 
@@ -46,6 +44,11 @@ export interface ConfirmedParticipant {
    * 이 값은 "원래 소속"이고, 실제로 어느 팀으로 뛰었는지와는 다르다.
    */
   rosterLeagueClanId: string | null
+  /**
+   * 매치 상세의 `guild_name`이 리그 클랜과 **정확히** 일치할 때 그 클랜.
+   * 팀 식별의 1차 근거다. 이름이 비슷하다는 이유로 넣으면 안 된다 (D-036 · 정책 20).
+   */
+  detailLeagueClanId?: string | null
   outcome: 'win' | 'lose'
   kill: number
   death: number
@@ -64,12 +67,14 @@ export interface AssignedParticipant extends ConfirmedParticipant {
 }
 
 export type ReconstructionStatus =
-  | 'eligible'
-  | 'insufficient_members'
+  /** 공식 경기 — 시즌 통계·래더에 반영한다 */
+  | 'official'
+  /** 참고 기록 — 기록실에는 남기지만 공식 통계에 반영하지 않는다 */
+  | 'reference'
+  | 'unidentified_side'
   | 'single_clan'
-  | 'too_many_clans'
-  | 'inconsistent_outcome'
   | 'no_winner'
+  | 'inconsistent_outcome'
   | 'conflict_with_detail'
 
 export interface EligibilityInput {
@@ -79,21 +84,24 @@ export interface EligibilityInput {
 
 export interface SideSummary {
   leagueClanId: string
-  /** 본클랜원 확인 인원 — **공식전 인정 기준은 이 값이다** */
+  /** 본클랜원 확인 인원 — **공식 여부와 클랜 반영률이 이 값으로 정해진다** */
   members: number
   /** 용병 확인 인원 */
   mercenaries: number
   /** 실제 확인된 출전 인원 = members + mercenaries */
   confirmed: number
   outcome: 'win' | 'lose'
+  /** 이 팀의 클랜 래더 반영률 (0 ~ 1) */
+  clanWeight: number
 }
 
 export interface EligibilityResult {
   status: ReconstructionStatus
-  eligible: boolean
-  /** 이긴 팀 */
+  /** 경기를 기록으로 남길 수 있는가 (양 팀을 식별했는가) */
+  recordable: boolean
+  /** 공식 통계·래더에 반영하는가 */
+  official: boolean
   winnerSide: SideSummary | null
-  /** 진 팀 */
   loserSide: SideSummary | null
   /**
    * `5v5` 처럼 **실제 확인된 출전 인원** 기준 (D-074).
@@ -103,33 +111,45 @@ export interface EligibilityResult {
   observationParticipantCount: number
   detailParticipantCount: number
   winnerLeagueClanId: string | null
-  /** 팀 배정이 끝난 참가자 (인정된 경기에서만 채워진다) */
+  /** 팀 배정이 끝난 참가자 (기록 가능한 경기에서만 채워진다) */
   assigned: AssignedParticipant[]
   reason: string
 }
 
 /**
- * 그 클랜 **본클랜원들의 다수 결과**로 클랜의 승패를 정한다.
+ * 본클랜원 수 → 클랜 래더 반영률 (D-081).
  *
- * 등록은 이 클랜인데 상대 팀 용병으로 뛴 사람이 있을 수 있다. 그 한 명 때문에
- * 클랜 전체를 "승패 불명"으로 버리지 않는다. 대신 **다수가 아닌 쪽은 그 경기에서
- * 다른 팀으로 뛴 것**으로 본다 (승패가 곧 팀을 가리키므로 추측이 아니다).
- *
- * 정확히 반반이면 판정하지 않는다 — 그때는 근거가 없다.
+ * 자기 전력으로 얼마나 참가했는지를 클랜 점수에 반영한다.
+ * 용병을 많이 쓸수록 클랜 래더 영향이 줄지만, **개인 래더에는 차등이 없다**.
  */
-function majorityOutcome(
-  members: readonly ConfirmedParticipant[],
-): { outcome: 'win' | 'lose'; coherent: number } | null {
-  const wins = members.filter((member) => member.outcome === 'win').length
-  const loses = members.length - wins
-  if (wins === loses) return null
-  return wins > loses ? { outcome: 'win', coherent: wins } : { outcome: 'lose', coherent: loses }
+export function clanWeightForMembers(
+  members: number,
+  constants: RatingConstants = DEFAULT_RATING_CONSTANTS,
+): number {
+  const weights = constants.clanWeightByMembers
+  if (members >= 3) return weights.full
+  if (members === 2) return weights.two
+  if (members === 1) return weights.one
+  return weights.none
+}
+
+/** 가장 많이 나온 값 (동률이면 null — 추측하지 않는다) */
+function plurality(values: readonly (string | null | undefined)[]): string | null {
+  const counts = new Map<string, number>()
+  for (const value of values) {
+    if (!value) continue
+    counts.set(value, (counts.get(value) ?? 0) + 1)
+  }
+  if (counts.size === 0) return null
+  const sorted = [...counts.entries()].sort((left, right) => right[1] - left[1])
+  if (sorted.length > 1 && sorted[0]![1] === sorted[1]![1]) return null
+  return sorted[0]![0]
 }
 
 /**
- * 경기를 인정할 수 있는가, 그리고 누가 어느 팀이었는가.
+ * 경기를 기록할 수 있는가, 공식인가, 그리고 누가 어느 팀이었는가.
  *
- * 인원이 모자라면 **부분 저장하지 않는다.** 인정하지 않고 사유를 남긴다.
+ * 참가자가 모자라도 **경기를 버리지 않는다.** 공식이 아닐 뿐이다 (D-080).
  */
 export function evaluateEligibility(input: EligibilityInput): EligibilityResult {
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
@@ -141,114 +161,67 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
     participant.sources.includes('match_detail'),
   ).length
 
-  /* --- 1) 본클랜원만으로 두 팀을 찾는다 (용병은 팀을 만들지 못한다) --- */
-  const byRosterClan = new Map<string, ConfirmedParticipant[]>()
-  for (const participant of input.participants) {
-    if (participant.rosterLeagueClanId === null) continue
-    const bucket = byRosterClan.get(participant.rosterLeagueClanId)
-    if (bucket) bucket.push(participant)
-    else byRosterClan.set(participant.rosterLeagueClanId, [participant])
-  }
-
-  /**
-   * 인정되지 않은 경기의 확인 수준.
-   *
-   * 팀을 배정하지 못했으므로 **등록 클랜 기준**으로라도 남긴다.
-   * "왜 모자랐는지"를 숫자로 봐야 다음 판단을 할 수 있기 때문이다.
-   */
-  const rosterCounts = [...byRosterClan.values()]
-    .map((members) => members.length)
-    .sort((left, right) => right - left)
+  const winners = input.participants.filter((participant) => participant.outcome === 'win')
+  const losers = input.participants.filter((participant) => participant.outcome === 'lose')
 
   const base = {
     observationParticipantCount,
     detailParticipantCount,
     winnerSide: null as SideSummary | null,
     loserSide: null as SideSummary | null,
-    completeness: rosterCounts.length > 0 ? rosterCounts.join('v') : '0',
+    completeness:
+      winners.length >= losers.length
+        ? `${winners.length}v${losers.length}`
+        : `${losers.length}v${winners.length}`,
     winnerLeagueClanId: null as string | null,
     assigned: [] as AssignedParticipant[],
+    recordable: false,
+    official: false,
   }
 
-  // 다수가 갈리지 않는 클랜(정확히 반반)은 근거가 없다. 인원이 충분한데 반반이면 사유를 남긴다
-  const tied = [...byRosterClan.entries()].find(
-    ([, members]) =>
-      members.length >= constants.minConfirmedPerSide && majorityOutcome(members) === null,
-  )
-  if (tied) {
+  if (winners.length === 0 || losers.length === 0) {
     return {
       ...base,
-      status: 'inconsistent_outcome',
-      eligible: false,
-      reason: `${tied[0]} 본클랜원의 승패가 정확히 반반이라 팀을 판정할 수 없다`,
+      status: 'single_clan',
+      reason: '한쪽 결과만 확인됐다. 상대 팀 선수의 관측이 없다',
     }
   }
 
-  const qualified = [...byRosterClan.entries()]
-    .map(([leagueClanId, members]) => ({ leagueClanId, members, majority: majorityOutcome(members) }))
-    .filter(
-      (clan): clan is { leagueClanId: string; members: ConfirmedParticipant[]; majority: { outcome: 'win' | 'lose'; coherent: number } } =>
-        clan.majority !== null && clan.majority.coherent >= constants.minConfirmedPerSide,
-    )
-    .sort((left, right) => right.majority.coherent - left.majority.coherent)
+  /* --- 팀을 대표하는 클랜 식별 — 추측하지 않는다 --- */
+  const identify = (side: readonly ConfirmedParticipant[]): string | null =>
+    plurality(side.map((participant) => participant.detailLeagueClanId)) ??
+    plurality(side.map((participant) => participant.rosterLeagueClanId))
 
-  if (qualified.length === 0) {
+  const winnerClanId = identify(winners)
+  const loserClanId = identify(losers)
+
+  if (winnerClanId === null || loserClanId === null) {
     return {
       ...base,
-      status: 'insufficient_members',
-      eligible: false,
-      reason: `본클랜원이 ${constants.minConfirmedPerSide}명 이상 확인된 클랜이 없다`,
+      status: 'unidentified_side',
+      reason: '어느 클랜의 팀인지 근거로 정할 수 없다 (상세 클랜명·등록 클랜 모두 불충분)',
     }
   }
-  if (qualified.length === 1) {
-    const only = qualified[0]!
+  if (winnerClanId === loserClanId) {
     return {
       ...base,
-      status: byRosterClan.size > 1 ? 'insufficient_members' : 'single_clan',
-      eligible: false,
-      reason:
-        byRosterClan.size > 1
-          ? `한쪽만 본클랜원 ${constants.minConfirmedPerSide}명을 채웠다 (${only.majority.coherent}명)`
-          : '한쪽 클랜만 확인됐다. 상대 클랜 본클랜원의 관측이 없다',
-    }
-  }
-  if (qualified.length > 2) {
-    return {
-      ...base,
-      status: 'too_many_clans',
-      eligible: false,
-      reason: `본클랜원 조건을 채운 클랜이 ${qualified.length}곳이다. 클랜전으로 볼 수 없다`,
+      status: 'single_clan',
+      reason: '양 팀이 같은 클랜으로 판정됐다. 클랜전으로 볼 수 없다',
     }
   }
 
-  const [first, second] = qualified as [typeof qualified[0], typeof qualified[0]]
-  const firstOutcome = first.majority.outcome
-  const secondOutcome = second.majority.outcome
-
-  if (firstOutcome === secondOutcome) {
-    return {
-      ...base,
-      status: 'no_winner',
-      eligible: false,
-      reason: '양 팀의 승패가 같다. 승자를 판정할 수 없다',
-    }
-  }
-
-  /* --- 2) 나머지 확인된 선수를 **자기 승패와 같은 팀**으로 배정한다 --- */
-  const sideByOutcome = new Map<'win' | 'lose', string>([
-    [firstOutcome, first.leagueClanId],
-    [secondOutcome, second.leagueClanId],
-  ])
-
-  const assigned: AssignedParticipant[] = input.participants.map((participant) => {
-    const leagueClanId = sideByOutcome.get(participant.outcome)!
-    return {
+  const assign = (
+    side: readonly ConfirmedParticipant[],
+    leagueClanId: string,
+  ): AssignedParticipant[] =>
+    side.map((participant) => ({
       ...participant,
       leagueClanId,
       // 뛴 팀이 자기 등록 클랜과 다르면 그 경기의 역할은 용병이다
       role: participant.rosterLeagueClanId === leagueClanId ? 'member' : 'mercenary',
-    }
-  })
+    }))
+
+  const assigned = [...assign(winners, winnerClanId), ...assign(losers, loserClanId)]
 
   const summarize = (leagueClanId: string, outcome: 'win' | 'lose'): SideSummary => {
     const side = assigned.filter((participant) => participant.leagueClanId === leagueClanId)
@@ -259,29 +232,36 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
       mercenaries: side.length - members,
       confirmed: side.length,
       outcome,
+      clanWeight: clanWeightForMembers(members, constants),
     }
   }
 
-  const firstSide = summarize(first.leagueClanId, firstOutcome)
-  const secondSide = summarize(second.leagueClanId, secondOutcome)
-  const winnerSide = firstOutcome === 'win' ? firstSide : secondSide
-  const loserSide = firstOutcome === 'win' ? secondSide : firstSide
+  const winnerSide = summarize(winnerClanId, 'win')
+  const loserSide = summarize(loserClanId, 'lose')
+
+  // **OR 조건** — 한쪽만 본클랜원 3명을 채워도 공식 경기다 (D-079)
+  const official =
+    winnerSide.members >= constants.minConfirmedPerSide ||
+    loserSide.members >= constants.minConfirmedPerSide
 
   return {
     observationParticipantCount,
     detailParticipantCount,
-    status: 'eligible',
-    eligible: true,
+    status: official ? 'official' : 'reference',
+    recordable: true,
+    official,
     winnerSide,
     loserSide,
-    // 확인 수준은 **실제 출전자 전원** 기준이다 (D-074)
     completeness:
       winnerSide.confirmed >= loserSide.confirmed
         ? `${winnerSide.confirmed}v${loserSide.confirmed}`
         : `${loserSide.confirmed}v${winnerSide.confirmed}`,
-    winnerLeagueClanId: firstOutcome === 'win' ? first.leagueClanId : second.leagueClanId,
+    winnerLeagueClanId: winnerClanId,
     assigned,
-    reason: '',
+    reason: official
+      ? ''
+      : `양 팀 모두 본클랜원이 ${constants.minConfirmedPerSide}명 미만이다 ` +
+        `(${winnerSide.members} / ${loserSide.members}). 참고 기록으로만 남긴다`,
   }
 }
 
@@ -294,11 +274,11 @@ export type LineupConfidence = 'high' | 'medium' | 'low'
  * 숫자를 감추지 않는다 — 등급과 원본 인원 수를 함께 남긴다.
  */
 export function lineupConfidence(
-  homeConfirmed: number,
-  awayConfirmed: number,
+  winnerConfirmed: number,
+  loserConfirmed: number,
   squadSize = 5,
 ): LineupConfidence {
-  const smaller = Math.min(homeConfirmed, awayConfirmed)
+  const smaller = Math.min(winnerConfirmed, loserConfirmed)
   if (smaller >= squadSize) return 'high'
   if (smaller >= squadSize - 1) return 'medium'
   return 'low'

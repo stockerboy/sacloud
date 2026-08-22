@@ -33,6 +33,10 @@ const LEAGUE: ReconstructionLeague = {
   slug: 'supply',
   allowedMatchTypes: ['클랜전', '퀵매치 클랜전', '클랜 랭크전'],
   mapIdByName: new Map([[MAP_NAME, 'MAP-1']]),
+  leagueClanIdByClanName: new Map([
+    ['알파', CLAN_A],
+    ['브라보', CLAN_B],
+  ]),
   playerLimits: [5],
   hasMockMatches: false,
 }
@@ -256,7 +260,7 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     expect(code).toBe('single_clan')
   })
 
-  it('양측 3명 미만이면 인정하지 않는다 (5명 2명)', () => {
+  it('한쪽만 본클랜원 3명이어도 공식 경기다 (5명 2명 — D-079)', () => {
     const base = fullMatch()
     const keep = new Set(['A0', 'A1', 'A2', 'A3', 'A4', 'B0', 'B1'])
     const result = evaluateReconstruction({
@@ -264,10 +268,27 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
       observations: base.observations.filter((row) => keep.has(row.playerId ?? '')),
       detail: [],
     })
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.code).toBe('insufficient_members')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.summary.official).toBe(true)
     expect(result.summary.participantCompleteness).toBe('5v2')
+    // 상대는 본클랜원 2명이라 클랜 래더를 70%만 받는다
+    expect(result.summary.loserClanWeight).toBe(0.7)
+  })
+
+  it('양 팀 모두 본클랜원 3명 미만이면 참고 기록이다 (D-080)', () => {
+    const base = fullMatch()
+    const keep = new Set(['A0', 'A1', 'B0', 'B1'])
+    const result = evaluateReconstruction({
+      ...base,
+      observations: base.observations.filter((row) => keep.has(row.playerId ?? '')),
+      detail: [],
+    })
+    // 경기는 기록한다. 공식 통계에만 반영하지 않는다
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.summary.official).toBe(false)
+    expect(result.plan.official).toBe(false)
   })
 
   it('상세와 k/d/a가 어긋나면 자동 투영하지 않는다', () => {
@@ -319,24 +340,8 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     expect(result.summary.loserMercenariesConfirmed).toBe(1)
   })
 
-  it('본클랜원 승패가 정확히 반반이면 팀을 판정하지 않는다', () => {
-    const base = fullMatch()
-    const flip = new Set(['A3', 'A4'])
-    const result = evaluateReconstruction({
-      ...base,
-      observations: base.observations
-        .filter((row) => !['A0'].includes(row.playerId ?? ''))
-        .map((row) =>
-          flip.has(row.playerId ?? '') ? { ...row, outcome: 'lose' as const } : row,
-        ),
-      detail: [],
-    })
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.code).toBe('inconsistent_outcome')
-  })
 
-  it('양쪽 다 이겼다고 나오면 승자를 정하지 않는다', () => {
+  it('한쪽 결과만 확인되면 기록하지 않는다', () => {
     const base = fullMatch()
     const result = evaluateReconstruction({
       ...base,
@@ -345,27 +350,9 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     })
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.code).toBe('no_winner')
+    expect(result.code).toBe('single_clan')
   })
 
-  it('본클랜원 3명을 채운 클랜이 셋이면 클랜전으로 보지 않는다', () => {
-    const base = fullMatch()
-    // A0~A2 = LC-AAA(승) · B0~B2 = LC-BBB(패) · B3·B4·A3 = LC-CCC(3명)
-    const charlie = new Set(['A3', 'B3', 'B4'])
-    const result = evaluateReconstruction({
-      ...base,
-      observations: base.observations
-        .filter((row) => row.playerId !== 'A4')
-        .map((row) => (row.playerId === 'A3' ? { ...row, outcome: 'lose' as const } : row)),
-      memberships: base.memberships.map((row) =>
-        charlie.has(row.playerId) ? { ...row, leagueClanId: 'LC-CCC', clanName: '찰리' } : row,
-      ),
-      detail: [],
-    })
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.code).toBe('too_many_clans')
-  })
 
   it('본클랜원이 3명 미만인 클랜은 팀이 되지 못한다 (용병으로 채워도 마찬가지)', () => {
     const base = fullMatch()
@@ -552,7 +539,7 @@ describe('판정 요약은 증거로 남는다', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.summary.confirmed).toBe(5)
-    expect(result.summary.winnerMembersConfirmed).toBe(0)
-    expect(result.reason).toContain('상대 클랜')
+    expect(result.summary.official).toBe(false)
+    expect(result.reason).toContain('상대 팀')
   })
 })

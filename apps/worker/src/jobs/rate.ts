@@ -135,6 +135,8 @@ export async function runRate(
     where: {
       leagueId: league.id,
       origin: 'nexon',
+      // 참고 기록은 공식 통계·래더에 반영하지 않는다 (D-080)
+      official: true,
       ...(season
         ? {
             startAt: {
@@ -249,7 +251,7 @@ export async function runRate(
       constants,
     })
 
-    if (!rated.eligibility.eligible) {
+    if (!rated.eligibility.official) {
       // 재구성 단계에서 인정된 경기만 저장돼 있으므로 보통 여기 오지 않는다.
       // 그래도 방어한다 — 인정되지 않으면 **아무 점수도 만들지 않는다**
       result.skipped[rated.eligibility.status] = (result.skipped[rated.eligibility.status] ?? 0) + 1

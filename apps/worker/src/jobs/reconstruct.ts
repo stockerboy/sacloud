@@ -168,6 +168,7 @@ async function loadLeagues(leagueSlug?: string | null): Promise<ReconstructionLe
       id: true,
       slug: true,
       maps: { select: { map: { select: { id: true, name: true } } } },
+      clans: { select: { id: true, clan: { select: { name: true } } } },
       playerLimits: { select: { playerCount: true } },
     },
   })
@@ -180,6 +181,7 @@ async function loadLeagues(leagueSlug?: string | null): Promise<ReconstructionLe
       slug: league.slug,
       allowedMatchTypes: CLAN_MATCH_TYPES,
       mapIdByName: new Map(league.maps.map((entry) => [entry.map.name, entry.map.id])),
+      leagueClanIdByClanName: new Map(league.clans.map((entry) => [entry.clan.name, entry.id])),
       playerLimits: league.playerLimits.map((entry) => entry.playerCount),
       hasMockMatches: mockCount > 0,
     })
@@ -250,6 +252,8 @@ async function writeReconstructedMatch(input: {
     // 우리가 몇 명을 확인했는지 화면까지 그대로 들고 간다 (D-068)
     participantCompleteness: input.participantCompleteness,
     evidenceConfidence: input.evidenceConfidence,
+    // 참고 기록이면 false — 기록실에는 보이지만 공식 통계에 들어가지 않는다 (D-080)
+    official: plan.official,
   }
 
   await prisma.match.upsert({
@@ -439,6 +443,7 @@ export async function runReconstruct(
           projectedAt: new Date(),
           reconstruction: lastSummary as Prisma.InputJsonValue,
           reconstructedAt: new Date(),
+          official: outcome.summary.official,
           winnerMembersConfirmed: outcome.summary.winnerMembersConfirmed,
           loserMembersConfirmed: outcome.summary.loserMembersConfirmed,
           winnerMercenariesConfirmed: outcome.summary.winnerMercenariesConfirmed,
@@ -451,7 +456,10 @@ export async function runReconstruct(
           reconstructionConfidence: outcome.summary.confidence,
         },
       })
-      log(`재구성 투영: ${staging.sourceMatchId} → Match ${matchId} (${league.slug})`)
+      log(
+        `재구성 ${outcome.summary.official ? '투영' : '참고 기록'}: ` +
+          `${staging.sourceMatchId} → Match ${matchId} (${league.slug})`,
+      )
       projected = true
       lastCode = null
       break
