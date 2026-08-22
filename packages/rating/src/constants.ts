@@ -186,3 +186,45 @@ export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
 export function roundHalfUp(value: number): number {
   return value < 0 ? -Math.floor(-value + 0.5) : Math.floor(value + 0.5)
 }
+
+/* ========================================================================== */
+/* 시즌 종류별 예외                                                             */
+/* ========================================================================== */
+
+/**
+ * 시즌 종류에 따른 정책 스위치 (D-112).
+ *
+ * 기본 배치고사 정책(10경기)은 **정식 시즌의 규칙이고 그대로 남는다.**
+ * 여기서 바꾸는 것은 공개 Beta 한 시즌뿐이다.
+ */
+export interface SeasonPolicyFlags {
+  /**
+   * Beta에서는 **1경기부터** 래더를 계산하고 랭킹에 표시한다.
+   *
+   * 왜: Beta의 목적이 "래더가 실제로 어떻게 움직이는지 보는 것"인데,
+   * 배치고사 10경기를 채우기 전에는 전원 1500에 랭킹도 비어 있어서 아무것도 검증되지 않는다.
+   *
+   * **이 예외는 `seasonType === 'beta'` 에만 걸린다.** 정식 시즌은 손대지 않는다.
+   */
+  betaImmediateRating: boolean
+}
+
+export const DEFAULT_SEASON_POLICY: SeasonPolicyFlags = {
+  betaImmediateRating: true,
+}
+
+/**
+ * 이 시즌에 적용할 상수를 만든다.
+ *
+ * Beta + `betaImmediateRating` 일 때만 `placementMatches`를 0으로 내린다.
+ * 그 외에는 **받은 상수를 그대로 돌려준다** — 정식 시즌 규칙은 건드리지 않는다.
+ */
+export function constantsForSeason(
+  base: RatingConstants,
+  season: { seasonType: string } | null | undefined,
+  flags: SeasonPolicyFlags = DEFAULT_SEASON_POLICY,
+): RatingConstants {
+  if (season?.seasonType !== 'beta') return base
+  if (!flags.betaImmediateRating) return base
+  return { ...base, placementMatches: 0 }
+}

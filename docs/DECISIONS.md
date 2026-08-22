@@ -1647,3 +1647,43 @@ D-051에서 틀렸던 사례(닉네임으로 찾은 계정의 목록에 그 경�
 연결 근거는 `linkReason`에 문장으로 남는다. 사람이 보고 끊을 수 있어야 하기 때문이다.
 `pnpm --filter @sacloud/worker nexon identity-link --league <slug>` 는 기본이 미리보기이고,
 `--confirm` 을 붙여야 실제로 연결한다.
+
+### D-112. 공개 Beta는 **1경기부터** 래더를 계산한다 (Beta 전용 예외)
+
+배치고사 10경기 정책(3-B 7번)은 **정식 시즌의 규칙이고 그대로 남는다.**
+바꾸는 것은 공개 Beta 한 시즌뿐이다.
+
+**왜:** Beta의 목적이 "래더가 실제로 어떻게 움직이는지 보는 것"인데,
+10경기를 채우기 전에는 전원 1500이고 랭킹도 비어 있어서 아무것도 검증되지 않는다.
+
+| | Beta Season | Season 8+ |
+|---|---|---|
+| 래더 계산 시작 | **1경기부터** | 배치고사 10경기 이후 |
+| 개인 랭킹 노출 | **1경기부터** | 배치고사 종료 후 |
+| 공식 경기만 반영 | 그대로 | 그대로 |
+
+**하드코딩하지 않았다.** `constantsForSeason(base, season, flags)` 한 곳에서 정한다.
+
+```
+seasonType === 'beta'  &&  flags.betaImmediateRating
+  → { ...base, placementMatches: 0 }
+그 외 → base 그대로
+```
+
+- `official` · `legacy` · 시즌 미상 → **손대지 않는다**
+- 배치고사 말고 다른 상수는 바꾸지 않는다
+- 스위치를 끄면(`betaImmediateRating: false`) Beta도 기존 정책으로 돌아간다
+- Beta가 끝나도 정식 시즌 정책이 따라 바뀌지 않는다 — 조건이 `seasonType`이기 때문이다
+
+회귀 `packages/rating/src/__tests__/seasonPolicy.test.ts` 9건.
+그 중 절반이 **"정식 시즌이 안 깨졌는가"** 를 본다. 예외를 넣을 때 가장 위험한 것이
+예외가 본 규칙까지 바꿔 버리는 것이라서다.
+
+### D-113. 래더 재계산은 **시즌 누적 전적도 같이** 쓴다
+
+`nexon:rate`가 rating만 되돌려 쓰고 승패·킬·데스·어시스트를 안 쌓고 있었다.
+그래서 경기가 6건 들어왔는데 화면에는 `0승 0패`로 보였다.
+
+replay 도중 확정된 참가자에서 승패와 K/D/A를 함께 누적해
+`LeaguePlayer` / `LeagueClan`에 같이 기록한다. 래더와 전적이 **같은 replay**에서 나오므로
+서로 어긋날 수 없다.

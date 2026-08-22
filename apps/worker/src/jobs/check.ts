@@ -303,17 +303,31 @@ export async function runCheck(input: {
       blueRatingBefore: { not: null },
     },
     select: {
+      id: true,
       redRatingBefore: true,
       blueRatingBefore: true,
       redRatingUpdate: true,
       blueRatingUpdate: true,
     },
   })
-  const nonZeroSum = clanRated.filter(
-    (match) =>
-      match.redRatingBefore === match.blueRatingBefore &&
-      (match.redRatingUpdate ?? 0) + (match.blueRatingUpdate ?? 0) !== 0,
-  ).length
+  /* 제로섬은 **양 팀의 반영률이 같을 때만** 성립한다 (D-081 · D-103).
+     본클랜원 수가 다르면 100%/70%/40%/0%가 서로 달라서 한 경기의 증감 합이 0이 아니다.
+     그건 버그가 아니라 의도된 결과다. 그래서 가중치가 같은 경기만 골라 검사한다. */
+  const weightBucket = (members: number): number =>
+    members >= 3 ? 3 : members === 2 ? 2 : members === 1 ? 1 : 0
+
+  let nonZeroSum = 0
+  for (const match of clanRated) {
+    if (match.redRatingBefore !== match.blueRatingBefore) continue
+    const stats = await prisma.matchPlayerStat.findMany({
+      where: { matchId: match.id },
+      select: { side: true, participantRole: true },
+    })
+    const membersOf = (side: string) =>
+      stats.filter((stat) => stat.side === side && stat.participantRole === 'member').length
+    if (weightBucket(membersOf('red')) !== weightBucket(membersOf('blue'))) continue
+    if ((match.redRatingUpdate ?? 0) + (match.blueRatingUpdate ?? 0) !== 0) nonZeroSum += 1
+  }
   await push({
     name: 'clan_rating_zero_sum',
     expected: 0,

@@ -21,6 +21,7 @@ import { prisma } from '@sacloud/db'
 import { previewSeasonStart, startSeason } from '@sacloud/db/ops'
 import {
   CLAN_FORMULA_VERSION,
+  constantsForSeason,
   DEFAULT_RATING_CONSTANTS,
   PERSONAL_FORMULA_VERSION,
   rateMatch,
@@ -54,17 +55,23 @@ const DAY_MS = 24 * 60 * 60 * 1000
 async function resolveSeason(
   leagueId: string,
   seasonNumber: number | null,
-): Promise<{ id: string; number: number; startedAt: Date; endedAt: Date | null } | null> {
+): Promise<{
+  id: string
+  number: number
+  startedAt: Date
+  endedAt: Date | null
+  seasonType: string
+} | null> {
   if (seasonNumber !== null) {
     return prisma.season.findUnique({
       where: { leagueId_number: { leagueId, number: seasonNumber } },
-      select: { id: true, number: true, startedAt: true, endedAt: true },
+      select: { id: true, number: true, startedAt: true, endedAt: true, seasonType: true },
     })
   }
   return prisma.season.findFirst({
     where: { leagueId, status: 'active' },
     orderBy: { number: 'desc' },
-    select: { id: true, number: true, startedAt: true, endedAt: true },
+    select: { id: true, number: true, startedAt: true, endedAt: true, seasonType: true },
   })
 }
 
@@ -88,7 +95,7 @@ export async function runRate(
     constants?: RatingConstants
   },
 ): Promise<RateRunResult> {
-  const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
+  const baseConstants = input.constants ?? DEFAULT_RATING_CONSTANTS
   const result: RateRunResult = {
     league: input.leagueSlug,
     season: null,
@@ -122,7 +129,16 @@ export async function runRate(
      시즌 귀속은 **실제 경기 시각(startAt)** 으로 정한다 (D-078).
      수집이 늦어져도 19:55에 치른 경기는 20:00에 시작한 새 시즌이 아니라 이전 시즌이다. */
   const season = await resolveSeason(league.id, input.seasonNumber ?? null)
+  /* 시즌 종류에 따른 예외를 여기서 한 번만 적용한다 (D-112).
+     Beta는 1경기부터 래더를 계산한다. 정식 시즌은 기존 배치고사 10경기 그대로다. */
+  const constants = constantsForSeason(baseConstants, season)
   if (season) {
+    if (constants.placementMatches !== baseConstants.placementMatches) {
+      log(
+        `Beta 예외 — 배치고사 ${baseConstants.placementMatches}경기 → ${constants.placementMatches}경기 ` +
+          `(1경기부터 래더 계산 · D-112). 정식 시즌에는 적용되지 않는다`,
+      )
+    }
     log(
       `시즌 ${season.number} 기준 — ${season.startedAt.toISOString().slice(0, 10)} ~ ` +
         `${season.endedAt ? season.endedAt.toISOString().slice(0, 10) : '진행 중'}`,
@@ -177,6 +193,8 @@ export async function runRate(
   /* ---- 2) 시작 상태 — 전부 초기값에서 다시 시작한다 (결정적 replay) ---- */
   const playerRating = new Map<string, number>()
   const playerMatches = new Map<string, number>()
+  const playerTotals = new Map<string, { win: number; lose: number; kill: number; death: number; assist: number }>()
+  const clanTotals = new Map<string, { win: number; lose: number }>()
   const clanRating = new Map<string, number>()
   const clanMatches = new Map<string, number>()
   /** 같은 클랜 쌍 · 같은 승자로 최근에 몇 번 만났는가 */
@@ -264,6 +282,34 @@ export async function runRate(
        무소속 선수를 1500 고정으로 두거나 계산에서 빼면 그 경기의 예상 승률 자체가 틀어진다.
        무소속은 rating engine의 차단 조건이 아니라 **공개 범위(visibility) 조건**이다 —
        숨기는 일은 조회 계층(`apps/web/lib/server/queries`)이 한다. */
+    /* 시즌 누적 — 래더만 다시 계산하고 승패·킬데스를 안 쌓으면
+       화면에는 경기가 있는데 `0승 0패`로 보인다 (실제로 그랬다). 여기서 함께 쌓는다. */
+    for (const assigned of rated.eligibility.assigned) {
+      const won = assigned.outcome === 'win'
+      const acc = playerTotals.get(assigned.playerId) ?? {
+        win: 0,
+        lose: 0,
+        kill: 0,
+        death: 0,
+        assist: 0,
+      }
+      acc.win += won ? 1 : 0
+      acc.lose += won ? 0 : 1
+      acc.kill += assigned.kill
+      acc.death += assigned.death
+      acc.assist += assigned.assist
+      playerTotals.set(assigned.playerId, acc)
+    }
+    for (const clanId of [match.redLeagueClanId, match.blueLeagueClanId]) {
+      const won =
+        (clanId === match.redLeagueClanId && match.winnerSide === 'red') ||
+        (clanId === match.blueLeagueClanId && match.winnerSide === 'blue')
+      const acc = clanTotals.get(clanId) ?? { win: 0, lose: 0 }
+      acc.win += won ? 1 : 0
+      acc.lose += won ? 0 : 1
+      clanTotals.set(clanId, acc)
+    }
+
     for (const player of rated.players) {
       playerRating.set(player.playerId, player.ratingAfter)
       playerMatches.set(player.playerId, (playerMatches.get(player.playerId) ?? 0) + 1)
@@ -349,11 +395,17 @@ export async function runRate(
       select: { id: true },
     })
     const played = playerMatches.get(playerId) ?? 0
+    const totals = playerTotals.get(playerId) ?? { win: 0, lose: 0, kill: 0, death: 0, assist: 0 }
     const data = {
       rating,
       baseRating: rating,
       placement: played < constants.placementMatches,
       placementPlayed: played,
+      win: totals.win,
+      lose: totals.lose,
+      kill: totals.kill,
+      death: totals.death,
+      assist: totals.assist,
     }
     if (existing) {
       await prisma.leaguePlayer.update({ where: { id: existing.id }, data })
@@ -369,7 +421,13 @@ export async function runRate(
     const played = clanMatches.get(leagueClanId) ?? 0
     await prisma.leagueClan.update({
       where: { id: leagueClanId },
-      data: { rating, placement: played < constants.placementMatches, placementPlayed: played },
+      data: {
+        rating,
+        placement: played < constants.placementMatches,
+        placementPlayed: played,
+        win: clanTotals.get(leagueClanId)?.win ?? 0,
+        lose: clanTotals.get(leagueClanId)?.lose ?? 0,
+      },
     })
     result.clansUpdated += 1
   }

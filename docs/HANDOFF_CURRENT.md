@@ -777,3 +777,32 @@ pnpm nexon:rate --league supply
 - 무소속 **리그 0개**, 무소속 클랜이 참여한 리그 0곳 — **하나도 만들지 않았다**
 - `Clan.category='independent'` 1건은 이번 세션 이전부터 있던 것이고 어느 리그에도 없다
 - 등록 시점부터 기록이 시작되는 규칙은 `LeagueClan.joinedAt`으로 강제된다 (D-108)
+
+### Beta 즉시 래더 (D-112 · 2026-08-23)
+
+**공개 Beta 한 시즌만** 배치고사를 면제한다. 정식 시즌 정책은 그대로다.
+
+```
+constantsForSeason(base, season, flags)
+  seasonType === 'beta' && betaImmediateRating → { ...base, placementMatches: 0 }
+  official · legacy · 미상                      → base 그대로
+```
+
+하드코딩이 아니라 `seasonType` 조건이라 **Beta가 끝나도 정식 시즌이 따라 바뀌지 않는다.**
+회귀 `packages/rating/src/__tests__/seasonPolicy.test.ts` 9건 (절반이 정식 시즌 보호 검사).
+
+같이 고친 것: `nexon:rate`가 래더만 쓰고 승패·킬데스를 안 쌓아서 화면에 `0승 0패`로
+보였다 (D-113). 이제 같은 replay에서 함께 누적한다.
+
+### 실제 Beta 기록 (2026-08-20 ~ 08-22)
+
+```
+공식 6경기 · 비공식 4경기 · 참가 기록 48건
+
+개인 랭킹                    클랜 1부
+ 1 씨야         1570  5승0패    1 UlsaN_CIaN     1539  5승0패
+ 2 울상진리     1570  5승0패    2 lunatic`Gaming 1508  1승0패
+ 3 중사형       1542  3승0패    3 전설           1482  0승6패
+ …
+11 MMA수련중    1476  2승4패
+```

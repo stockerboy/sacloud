@@ -117,7 +117,7 @@ export async function syncRosterFromBarracks(input: {
       continue
     }
 
-    let roster: Awaited<ReturnType<BarracksClient['rosterByMemberNickname']>> = null
+    let roster: Awaited<ReturnType<BarracksClient['rosterByMemberNickname']>>
     try {
       roster = await client.rosterByMemberNickname({
         nickname: seed.player.name,
