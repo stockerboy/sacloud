@@ -77,6 +77,14 @@ export interface ReconstructionLeague {
   leagueId: string
   slug: string
   allowedMatchTypes: readonly string[]
+  /**
+   * 클랜이 이 리그에 참여한 시각 (`LeagueClan.joinedAt`).
+   *
+   * **등록 이전 경기는 그 클랜의 기록으로 잡지 않는다** (D-108).
+   * 무소속 클랜은 운영자가 등록한 순간부터 기록이 시작된다 — 등록 전에 치른 경기를
+   * 소급해서 공식 기록으로 만들지 않는다. 새 컬럼을 만들지 않고 이 값을 쓴다.
+   */
+  clanJoinedAt?: ReadonlyMap<string, Date>
   mapIdByName: ReadonlyMap<string, string>
   /**
    * 클랜명 → `LeagueClan.id`. **정확히 일치할 때만** 쓴다.

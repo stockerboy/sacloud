@@ -36,6 +36,8 @@ import { runRefresh } from './jobs/refresh.js'
 import { runCheck } from './jobs/check.js'
 import { ensurePollStates, requestManualRefresh, runPoll } from './jobs/poll.js'
 import { backfillObservations, runReconstruct } from './jobs/reconstruct.js'
+import { bootstrapBeta, BETA_DATA_START } from './jobs/betaBootstrap.js'
+import { linkIdentitiesByEvidence, registerObservedMaps } from './jobs/identityLink.js'
 import { runRate } from './jobs/rate.js'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
@@ -610,6 +612,80 @@ async function main(): Promise<number> {
      *
      * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 기본은 미리보기다.
      */
+    case 'identity-link': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      const result = await linkIdentitiesByEvidence({
+        leagueSlug,
+        minEvidence: numberFlag(args, 'min-evidence') ?? 3,
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table([{ 검토: result.considered, 연결: result.linked, 보류: result.skipped }])
+      for (const candidate of result.candidates) {
+        log(
+          `  ${candidate.verdict.padEnd(12)} ${candidate.userName} — ${candidate.reason}` +
+            ` [${candidate.guildCounts.slice(0, 3).map(([name, count]) => `${name}×${count}`).join(' ')}]`,
+        )
+      }
+      if (!boolFlag(args, 'confirm')) log('후보만 보여 줬다. 실제로 연결하려면 --confirm')
+      return 0
+    }
+
+    case 'league-maps': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      const fromFlag = stringFlag(args, 'from')
+      const toFlag = stringFlag(args, 'to')
+      const result = await registerObservedMaps({
+        leagueSlug,
+        from: fromFlag ? new Date(fromFlag) : BETA_DATA_START,
+        to: toFlag ? new Date(toFlag) : new Date(),
+        confirm: boolFlag(args, 'confirm'),
+      })
+      log(`관측된 맵 ${result.observed.length}개: ${result.observed.join(', ')}`)
+      log(`${boolFlag(args, 'confirm') ? '등록함' : '등록 예정'} ${result.added.length}개: ${result.added.join(', ')}`)
+      return 0
+    }
+
+    case 'beta-bootstrap': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      const atFlag = stringFlag(args, 'at')
+      const startedAt = atFlag ? new Date(atFlag) : BETA_DATA_START
+      if (Number.isNaN(startedAt.getTime())) {
+        fail(`--at 이 날짜가 아니다: ${atFlag}`)
+        return 1
+      }
+
+      const result = await bootstrapBeta({ leagueSlug, startedAt, dryRun })
+      if (!result.ok) {
+        fail(result.reason)
+        return 1
+      }
+      table([
+        {
+          '닫은 시즌': result.closedSeason ?? '(없음)',
+          '베타 번호': result.betaNumber ?? '-',
+          '시작(KST)': result.startedAtKst ?? '-',
+          클랜: result.clans.length,
+          로스터: result.rosterMemberships,
+          선수: result.players,
+        },
+      ])
+      for (const clan of result.clans) log(`  ${clan.division}부 ${clan.name} (${clan.slug})`)
+      if (result.reason) log(result.reason)
+      return 0
+    }
+
     case 'legacy': {
       const leagueSlug = stringFlag(args, 'league')
       if (!leagueSlug) {

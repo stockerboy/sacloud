@@ -168,7 +168,7 @@ async function loadLeagues(leagueSlug?: string | null): Promise<ReconstructionLe
       id: true,
       slug: true,
       maps: { select: { map: { select: { id: true, name: true } } } },
-      clans: { select: { id: true, clan: { select: { name: true } } } },
+      clans: { select: { id: true, joinedAt: true, clan: { select: { name: true } } } },
       playerLimits: { select: { playerCount: true } },
     },
   })
@@ -181,6 +181,8 @@ async function loadLeagues(leagueSlug?: string | null): Promise<ReconstructionLe
       slug: league.slug,
       allowedMatchTypes: CLAN_MATCH_TYPES,
       mapIdByName: new Map(league.maps.map((entry) => [entry.map.name, entry.map.id])),
+      // 등록 이전 경기를 소급하지 않기 위한 기준 시각 (D-108)
+      clanJoinedAt: new Map(league.clans.map((entry) => [entry.id, entry.joinedAt])),
       leagueClanIdByClanName: new Map(league.clans.map((entry) => [entry.clan.name, entry.id])),
       playerLimits: league.playerLimits.map((entry) => entry.playerCount),
       hasMockMatches: mockCount > 0,
