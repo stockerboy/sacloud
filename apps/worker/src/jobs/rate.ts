@@ -18,6 +18,7 @@
  *     (그래야 `통합 = base + sniper + rifle` 불변식이 깨지지 않는다)
  */
 import { prisma } from '@sacloud/db'
+import { previewSeasonStart, startSeason } from '@sacloud/db/ops'
 import {
   CLAN_FORMULA_VERSION,
   DEFAULT_RATING_CONSTANTS,
@@ -414,37 +415,44 @@ export async function runRate(
  */
 export async function runSeasonStart(
   ctx: JobContext,
-  input: { leagueSlug: string; constants?: RatingConstants },
-): Promise<{ players: number; clans: number; baseline: number }> {
+  input: {
+    leagueSlug: string
+    constants?: RatingConstants
+    /** `beta`면 번호 0으로 시작한다. 정식 번호를 소모하지 않는다 (D-098) */
+    seasonType?: 'beta' | 'official'
+  },
+): Promise<{ players: number; clans: number; baseline: number; nextNumber: number }> {
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
   const baseline = seasonStartRating(constants)
-  const league = await prisma.league.findUnique({
-    where: { slug: input.leagueSlug },
-    select: { id: true },
-  })
-  if (!league) {
-    warn(`리그를 찾을 수 없다: ${input.leagueSlug}`)
-    return { players: 0, clans: 0, baseline }
-  }
 
-  const players = await prisma.leaguePlayer.count({ where: { leagueId: league.id } })
-  const clans = await prisma.leagueClan.count({ where: { leagueId: league.id } })
+  /* 초기화 규칙은 **`@sacloud/db/ops`에만** 둔다.
+     예전에는 여기서도 따로 updateMany를 돌렸는데, 그러다 ops 쪽에만
+     누적 전적 초기화가 들어가서 CLI로 시작하면 베타 전적이 남는 상태가 됐다 (D-101). */
+  const preview = await previewSeasonStart(input.leagueSlug)
+  if (!preview.ok) {
+    warn(preview.reason)
+    return { players: 0, clans: 0, baseline, nextNumber: 0 }
+  }
 
   if (ctx.dryRun) {
-    log(`[dry-run] 선수 ${players}명 · 클랜 ${clans}곳을 ${baseline}점에서 시작시킨다`)
-    return { players, clans, baseline }
+    log(
+      `[dry-run] 선수 ${preview.players}명 · 클랜 ${preview.clans}곳을 ${baseline}점에서 시작시킨다`,
+    )
+    return { players: preview.players, clans: preview.clans, baseline, nextNumber: preview.nextNumber }
   }
 
-  await prisma.leaguePlayer.updateMany({
-    where: { leagueId: league.id },
-    data: { rating: baseline, baseRating: baseline, placement: true, placementPlayed: 0 },
-  })
-  await prisma.leagueClan.updateMany({
-    where: { leagueId: league.id },
-    data: { rating: baseline, placement: true, placementPlayed: 0 },
-  })
+  const result = await startSeason({ leagueSlug: input.leagueSlug, seasonType: input.seasonType })
 
-  log(`새 시즌 시작 — 선수 ${players}명 · 클랜 ${clans}곳 전부 ${baseline}점에서 시작한다`)
+  log(
+    `${input.seasonType === 'beta' ? 'Beta Season' : `시즌 ${result.nextNumber}`} 시작 — ` +
+      `선수 ${result.players}명 · 클랜 ${result.clans}곳 전부 ${baseline}점에서 시작한다`,
+  )
+  log('누적 전적(승패·킬데스·MVP)도 0에서 시작한다. 직전 시즌 값은 시즌 카드에 남아 있다')
   log('지난 시즌 기록(경기·시즌 통계·랭킹 스냅샷)은 그대로 보존된다')
-  return { players, clans, baseline }
+  return {
+    players: result.players,
+    clans: result.clans,
+    baseline,
+    nextNumber: result.nextNumber,
+  }
 }

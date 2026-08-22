@@ -15,6 +15,20 @@ import { prisma } from '../src/index'
 /** 새 시즌의 공통 출발점. `@sacloud/rating`의 seasonBaseline과 같은 값이다 (D-064) */
 export const SEASON_BASELINE = 1500
 
+/**
+ * 베타 시즌의 내부 번호.
+ *
+ * `@@unique([leagueId, number])` 때문에 베타에도 번호가 필요하다.
+ * `0`을 쓰면 Season 7 다음 정식 번호가 8로 그대로 남는다.
+ * **사용자에게 "Season 0"이라고 보여 주지 않는다.** 화면 표기는 `Beta Season`이다 (D-098).
+ */
+export const BETA_SEASON_NUMBER = 0
+
+/** 화면에 쓸 시즌 이름. 번호를 그대로 노출해도 되는지 여기서만 판단한다 */
+export function seasonLabel(season: { number: number; seasonType: string }): string {
+  return season.seasonType === 'beta' ? 'Beta Season' : `Season ${season.number}`
+}
+
 export interface SeasonOverview {
   leagueSlug: string
   leagueName: string
@@ -238,6 +252,11 @@ export async function closeSeason(input: {
       rating: true,
       win: true,
       lose: true,
+      kill: true,
+      death: true,
+      assist: true,
+      headshot: true,
+      mvpCount: true,
       placement: true,
       player: { select: { id: true, name: true } },
     },
@@ -312,6 +331,58 @@ export async function closeSeason(input: {
           seasonNumber: active.number,
           payload: playerRows,
         },
+      })
+    }
+
+    /* 선수·클랜별 **시즌 카드**를 남긴다 (D-101).
+       랭킹 스냅샷은 "그 시즌 상위 목록"이고, 카드는 "이 선수의 그 시즌 성적"이다.
+       카드가 없으면 `startSeason`이 누적을 0으로 되돌리는 순간 그 시즌 기록이 사라진다.
+       배치고사 미완료라 순위가 없는 선수도 카드는 남긴다 — 전적 자체는 있었기 때문이다. */
+    const rankOf = new Map(playerRows.map((row) => [row.league_player_id, row.rank]))
+    for (const player of players) {
+      await tx.leaguePlayerSeason.upsert({
+        where: { leaguePlayerId_seasonId: { leaguePlayerId: player.id, seasonId: active.id } },
+        create: {
+          leaguePlayerId: player.id,
+          seasonId: active.id,
+          season: active.number,
+          rank: rankOf.get(player.id) ?? null,
+          rankCount: playerRows.length,
+          rating: player.rating,
+          win: player.win,
+          lose: player.lose,
+          kill: player.kill,
+          death: player.death,
+          assist: player.assist,
+          headshot: player.headshot,
+          mvpCount: player.mvpCount,
+        },
+        // 이미 확정된 카드(과거 이관분)를 덮어쓰지 않는다
+        update: {},
+      })
+    }
+
+    const clanRankOf = new Map<string, number>()
+    for (let division = 1; division <= Math.max(1, league.divisionCount); division += 1) {
+      clans
+        .filter((clan) => clan.division === division && !clan.placement)
+        .forEach((clan, index) => clanRankOf.set(clan.id, index + 1))
+    }
+    for (const clan of clans) {
+      await tx.leagueClanSeason.upsert({
+        where: { leagueClanId_seasonId: { leagueClanId: clan.id, seasonId: active.id } },
+        create: {
+          leagueClanId: clan.id,
+          seasonId: active.id,
+          season: active.number,
+          rank: clanRankOf.get(clan.id) ?? null,
+          rankCount: clanRankOf.size,
+          rating: clan.rating,
+          division: clan.division,
+          win: clan.win,
+          lose: clan.lose,
+        },
+        update: {},
       })
     }
 
@@ -426,9 +497,17 @@ export async function startSeason(input: {
   startedAt?: Date
   number?: number
   skipPromotion?: boolean
+  /**
+   * 어떤 시즌인가. 기본은 정식(`official`).
+   *
+   * `beta`는 **번호를 0으로** 만든다. 사용자에게는 `Beta Season`으로 보이고
+   * 다음 정식 시즌 번호를 소모하지 않는다 (D-098).
+   */
+  seasonType?: 'beta' | 'official'
 }): Promise<SeasonStartResult> {
   const preview = await previewSeasonStart(input.leagueSlug)
   if (!preview.ok) return { ...preview, startedAt: null }
+  const seasonType = input.seasonType ?? 'official'
 
   const league = await prisma.league.findUnique({
     where: { slug: input.leagueSlug },
@@ -437,7 +516,8 @@ export async function startSeason(input: {
   if (!league) return { ...preview, ok: false, reason: '리그를 찾을 수 없습니다', startedAt: null }
 
   const startedAt = input.startedAt ?? new Date()
-  const number = input.number ?? preview.nextNumber
+  // 베타는 정식 번호를 쓰지 않는다. Season 7 다음에 8이 그대로 남아 있어야 한다
+  const number = input.number ?? (seasonType === 'beta' ? BETA_SEASON_NUMBER : preview.nextNumber)
 
   await prisma.$transaction(async (tx) => {
     if (!input.skipPromotion && league.divisionCount >= 2) {
@@ -458,22 +538,43 @@ export async function startSeason(input: {
     }
 
     await tx.season.create({
-      data: { leagueId: league.id, number, startedAt, status: 'active' },
+      data: { leagueId: league.id, number, startedAt, status: 'active', seasonType },
     })
 
-    // 개인·클랜 모두 같은 점수에서 시작한다 (soft reset 폐기 — D-064)
+    /* 개인·클랜 모두 같은 점수에서 시작한다 (soft reset 폐기 — D-064).
+       **점수만이 아니라 누적 전적도 초기화한다** (D-101).
+       예전에는 rating만 되돌리고 win/lose/kill/death/mvpCount를 그대로 뒀다.
+       그러면 베타 시즌의 전적이 다음 시즌 화면에 그대로 남는다.
+       직전 시즌 값은 `closeSeason`이 LeaguePlayerSeason 카드로 이미 보존했다. */
     await tx.leaguePlayer.updateMany({
       where: { leagueId: league.id },
       data: {
         rating: SEASON_BASELINE,
         baseRating: SEASON_BASELINE,
+        win: 0,
+        lose: 0,
+        kill: 0,
+        death: 0,
+        assist: 0,
+        headshot: 0,
+        mvpCount: 0,
         placement: true,
         placementPlayed: 0,
       },
     })
+    // 통합 래더 = baseRating + 무기별 delta 합. 무기별 누적도 같이 비워야 정합성이 유지된다
+    await tx.leaguePlayerWeaponStat.deleteMany({
+      where: { leaguePlayer: { leagueId: league.id } },
+    })
     await tx.leagueClan.updateMany({
       where: { leagueId: league.id },
-      data: { rating: SEASON_BASELINE, placement: true, placementPlayed: 0 },
+      data: {
+        rating: SEASON_BASELINE,
+        win: 0,
+        lose: 0,
+        placement: true,
+        placementPlayed: 0,
+      },
     })
   })
 

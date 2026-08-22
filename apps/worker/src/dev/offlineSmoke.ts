@@ -30,6 +30,7 @@ import { backfillObservations, runReconstruct } from '../jobs/reconstruct.js'
 import { applyPropagation, collectPropagationPeers } from '../jobs/propagate.js'
 import { syncLeaguePriority } from '../jobs/roster.js'
 import { runRate, runSeasonStart } from '../jobs/rate.js'
+import { runSeasonClose } from '../jobs/season.js'
 import { DEFAULT_RATING_CONSTANTS, PERSONAL_FORMULA_VERSION, seasonStartRating } from '@sacloud/rating'
 import { DEFAULT_POLLING_CONFIG } from '../lib/pollingPolicy.js'
 import type { JobContext } from '../jobs/context.js'
@@ -786,6 +787,97 @@ async function main() {
     where: { match: { origin: 'nexon', league: { slug: SMOKE_LEAGUE_SLUG } } },
   })
   check('지난 시즌 경기 기록은 남는다', true, historyKept > 0)
+
+  /* 12-2) 베타 → 다음 정식 시즌 격리 (Phase 11-C · D-101)
+     "승계하지 않는다"를 로그로 주장하지 않고, 베타에 전적을 심어 두고
+     다음 시즌 시작 후 그 값이 **0인지 숫자로** 확인한다. */
+  const betaLeaguePlayers = await prisma.leaguePlayer.findMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    select: { id: true },
+  })
+  // 베타 시즌에서 뛴 것처럼 누적을 심는다
+  await prisma.leaguePlayer.updateMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    data: { win: 9, lose: 3, kill: 120, death: 80, assist: 11, headshot: 7, mvpCount: 4, rating: 1900 },
+  })
+  await prisma.leagueClan.updateMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    data: { win: 6, lose: 2, rating: 1800 },
+  })
+
+  // 종료 → 시작 순서를 강제한다. 열려 있는 시즌이 있으면 새 시즌은 시작되지 않는다
+  const closedBefore = await runSeasonClose(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
+  check('베타 직전 시즌을 먼저 닫는다', true, closedBefore.ok)
+
+  const betaStart = await runSeasonStart(ctx, {
+    leagueSlug: SMOKE_LEAGUE_SLUG,
+    seasonType: 'beta',
+  })
+  check('베타 시즌 번호는 0이다 (정식 번호를 쓰지 않는다)', 0, betaStart.nextNumber)
+  check('베타 시즌이 실제로 만들어졌다', true, betaStart.players > 0)
+  const betaRow = await prisma.season.findFirst({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG }, number: 0 },
+    select: { seasonType: true },
+  })
+  check('베타 시즌 타입', 'beta', betaRow?.seasonType ?? '(없음)')
+
+  // 베타에서 전적이 쌓인다
+  await prisma.leaguePlayer.updateMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    data: { win: 5, lose: 1, kill: 77, death: 40, assist: 9, headshot: 3, mvpCount: 2, rating: 1750 },
+  })
+  await prisma.leagueClan.updateMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    data: { win: 4, lose: 1, rating: 1700 },
+  })
+
+  // 베타를 닫으면 **카드로 보존**돼야 한다
+  await runSeasonClose(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
+  const betaCards = await prisma.leaguePlayerSeason.count({
+    where: { seasonRef: { league: { slug: SMOKE_LEAGUE_SLUG }, number: 0 } },
+  })
+  check('베타 기록은 시즌 카드로 보존된다 (지우지 않는다)', betaLeaguePlayers.length, betaCards)
+  const betaCard = await prisma.leaguePlayerSeason.findFirst({
+    where: { seasonRef: { league: { slug: SMOKE_LEAGUE_SLUG }, number: 0 } },
+    select: { win: true, kill: true, mvpCount: true, rating: true },
+  })
+  check('베타 카드에 그 시즌 전적이 그대로 남는다', 5, betaCard?.win ?? -1)
+  check('베타 카드 MVP', 2, betaCard?.mvpCount ?? -1)
+
+  // 정식 시즌 시작 — 여기서부터는 베타 값이 하나도 남으면 안 된다
+  await runSeasonStart(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
+  const afterOfficial = await prisma.leaguePlayer.findMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    select: { rating: true, win: true, lose: true, kill: true, death: true, assist: true, headshot: true, mvpCount: true },
+  })
+  const carried = afterOfficial.filter(
+    (row) =>
+      row.win + row.lose + row.kill + row.death + row.assist + row.headshot + row.mvpCount > 0,
+  )
+  check('베타 개인 전적이 정식 시즌으로 넘어오지 않는다', 0, carried.length)
+  check(
+    '베타 개인 래더가 정식 시즌으로 넘어오지 않는다',
+    [seasonStartRating()],
+    [...new Set(afterOfficial.map((row) => row.rating))],
+  )
+  const clansAfter = await prisma.leagueClan.findMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    select: { rating: true, win: true, lose: true },
+  })
+  check(
+    '베타 클랜 전적이 정식 시즌으로 넘어오지 않는다',
+    0,
+    clansAfter.filter((row) => row.win + row.lose > 0).length,
+  )
+  check(
+    '베타 클랜 래더가 정식 시즌으로 넘어오지 않는다',
+    [seasonStartRating()],
+    [...new Set(clansAfter.map((row) => row.rating))],
+  )
+  const betaCardsStill = await prisma.leaguePlayerSeason.count({
+    where: { seasonRef: { league: { slug: SMOKE_LEAGUE_SLUG }, number: 0 } },
+  })
+  check('정식 시즌을 시작해도 베타 기록은 그대로 남는다', betaLeaguePlayers.length, betaCardsStill)
 
   await cleanupLeague()
   await prisma.nexonIdentity.deleteMany({ where: { ouid: { startsWith: `${SMOKE_OUID}-` } } })
