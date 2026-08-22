@@ -27,6 +27,7 @@ import {
   toPlayerSummary,
 } from '../mappers'
 import { seasonLabel } from '@sacloud/db/ops'
+import { cumulativeKd, cumulativeKdRate, hidesCumulativeKd } from './visibility'
 import { clanRankOf, matchCountByPlayer, playerRankOf } from './leagues'
 import { leagueClanIdOfPlayer, sideOfLeagueClan } from './matches'
 
@@ -352,7 +353,7 @@ export async function getLeagueClanPlayers(
   size: number,
 ): Promise<CursorPage<PlayerRankRow> | null> {
   const [league, clan] = await Promise.all([
-    prisma.league.findUnique({ where: { slug: leagueSlug }, select: { id: true } }),
+    prisma.league.findUnique({ where: { slug: leagueSlug }, select: { id: true, category: true } }),
     prisma.clan.findUnique({ where: { slug: clanSlug }, select: CLAN_SUMMARY_SELECT }),
   ])
   if (!league || !clan) return null
@@ -425,7 +426,7 @@ export async function getLeagueClanPlayers(
       win: row.win,
       lose: row.lose,
       win_rate: winRate(row.win, row.lose),
-      kd_rate: kdRate(row.kill, row.death),
+      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death)),
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
     })),
@@ -501,11 +502,15 @@ export async function getLeaguePlayerDetail(
     win: leaguePlayer.win,
     lose: leaguePlayer.lose,
     win_rate: winRate(leaguePlayer.win, leaguePlayer.lose),
-    kill: leaguePlayer.kill,
-    death: leaguePlayer.death,
+    /* 무소속리그면 누적 킬·데스·킬뎃만 비운다 (D-107).
+       래더·승패·승률·평균킬·MVP·순위·최근 경기·경기별 K/D/A는 그대로다 */
+    ...cumulativeKd(league, {
+      kill: leaguePlayer.kill,
+      death: leaguePlayer.death,
+      kdRate: kdRate(leaguePlayer.kill, leaguePlayer.death),
+    }),
     assist: leaguePlayer.assist,
     headshot: leaguePlayer.headshot,
-    kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
     kill_per_match: killPerMatch(leaguePlayer.kill, matchCount),
     mvp_count: leaguePlayer.mvpCount,
     placement: leaguePlayer.placement,
@@ -526,9 +531,11 @@ export async function getLeaguePlayerSeasons(
 ): Promise<LeaguePlayerSeason[] | null> {
   const leaguePlayer = await prisma.leaguePlayer.findUnique({
     where: { id: leaguePlayerId },
-    select: { id: true },
+    select: { id: true, league: { select: { category: true } } },
   })
   if (!leaguePlayer) return null
+  // 무소속리그 시즌 카드에서도 누적 킬·데스·킬뎃만 가린다 (D-107 13장)
+  const hideKd = hidesCumulativeKd(leaguePlayer.league)
 
   /* 정렬은 번호가 아니라 **시작 시각** 내림차순이다.
      베타의 내부 번호는 0이라 번호로 정렬하면 Season 1보다 아래로 내려간다.
@@ -571,9 +578,9 @@ export async function getLeaguePlayerSeasons(
     /* 원본이 준 승률·킬뎃이 있으면 그대로 쓴다 (D-099).
        없고 **승패·킬데스도 모르면** 계산하지 않는다 — 0/0을 0%로 만들지 않는다 (D-106) */
     win_rate: row.winRate ?? winRateOrNull(row.win, row.lose),
-    kill: row.kill,
-    death: row.death,
-    kd_rate: row.kdRate ?? kdRateOrNull(row.kill, row.death),
+    kill: hideKd ? null : row.kill,
+    death: hideKd ? null : row.death,
+    kd_rate: hideKd ? null : (row.kdRate ?? kdRateOrNull(row.kill, row.death)),
     assist: row.assist,
     headshot: row.headshot,
     kill_per_match: row.killPerMatch,

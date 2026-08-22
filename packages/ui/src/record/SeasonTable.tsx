@@ -20,9 +20,17 @@ const UNKNOWN = '알수없음'
 export function SeasonTable({
   seasons,
   kind,
+  hidesCumulativeKd = false,
 }: {
   seasons?: readonly (LeaguePlayerSeason | LeagueClanSeason)[]
   kind: 'player' | 'clan'
+  /**
+   * 무소속리그인가 (D-107). `true`면 **킬뎃 칸 자체를 없앤다.**
+   *
+   * `알수없음`으로 두지 않는 이유: 그건 "원본이 값을 안 줬다"는 뜻이고(D-106),
+   * 여기는 "공개하지 않는다"는 뜻이라 서로 다른 상태다.
+   */
+  hidesCumulativeKd?: boolean
 }) {
   if (!seasons || seasons.length === 0) {
     return <EmptyState message="지난시즌 기록이 없습니다." />
@@ -36,7 +44,9 @@ export function SeasonTable({
         <div className="w-32 text-center">승리</div>
         <div className="w-32 text-center">패배</div>
         <div className="w-32 text-center">승률</div>
-        {kind === 'player' ? <div className="w-32 text-center">킬뎃</div> : null}
+        {kind === 'player' && !hidesCumulativeKd ? (
+          <div className="w-32 text-center">킬뎃</div>
+        ) : null}
         <div className="flex-grow text-center">래더</div>
       </div>
       {seasons.map((season) => {
@@ -59,7 +69,7 @@ export function SeasonTable({
             <div className={`w-32 text-center ${season.win_rate === null ? '' : rateClass(season.win_rate)}`}>
               {season.win_rate === null ? UNKNOWN : `${formatRate(season.win_rate)}%`}
             </div>
-            {isPlayer ? (
+            {isPlayer && !hidesCumulativeKd ? (
               <div className={`w-32 text-center ${season.kd_rate === null ? '' : rateClass(season.kd_rate)}`}>
                 {season.kd_rate === null ? UNKNOWN : `${formatRate(season.kd_rate)}%`}
               </div>

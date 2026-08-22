@@ -147,9 +147,11 @@ export interface PlayerStatSidebarProps {
   win: number
   lose: number
   winRate: number
-  kill: number
-  death: number
-  kdRate: number
+  /* 무소속리그는 누적 킬·데스·킬뎃을 공개하지 않는다 (D-107).
+     `null`이면 상세정보에서 **킬뎃 줄 자체를 뺀다.** 0으로 그리지 않는다. */
+  kill: number | null
+  death: number | null
+  kdRate: number | null
   killPerMatch: number
   mvpCount: number
   rank: number | null
@@ -174,13 +176,17 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
         </span>
         <span className={rateClass(props.winRate)}>{formatRate(props.winRate)}%</span>
       </Stat>
-      <Divider />
-      <Stat label="킬뎃">
-        <span className="mr-2 text-base">
-          {formatCount(props.kill)}킬 {formatCount(props.death)}데스
-        </span>
-        <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
-      </Stat>
+      {props.kill === null || props.death === null || props.kdRate === null ? null : (
+        <>
+          <Divider />
+          <Stat label="킬뎃">
+            <span className="mr-2 text-base">
+              {formatCount(props.kill)}킬 {formatCount(props.death)}데스
+            </span>
+            <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
+          </Stat>
+        </>
+      )}
       <Divider />
       <Stat label="평균킬">
         <span className="mr-2 text-base">판당</span>

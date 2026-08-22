@@ -176,6 +176,8 @@ function toLeagueSummary(league: MockLeague): LeagueSummary {
     name: league.name,
     official: league.official,
     division_count: league.divisionCount,
+    // 픽스처 리그는 전부 공식리그다. 무소속리그는 운영자가 만드는 실제 리그다 (D-107)
+    hides_cumulative_kd: false,
   }
 }
 
@@ -486,7 +488,7 @@ export function getClanRanks(
 export function getPlayerRanks(leagueId: string, cursor: string | null, size: number): Page<PlayerRankRow> | null {
   if (!leagueById.has(leagueId)) return null
   const rows: PlayerRankRow[] = rankedPlayers(leagueId)
-    .map((leaguePlayer, index) => {
+    .map((leaguePlayer, index): PlayerRankRow | null => {
       const player = playerById.get(leaguePlayer.playerId)
       const leagueClan = leagueClanById.get(leaguePlayer.leagueClanId)
       if (!player || !leagueClan) return null
@@ -859,7 +861,7 @@ export function getLeagueClanPlayers(
   const rows: PlayerRankRow[] = (leaguePlayersByLeague.get(league.id) ?? [])
     .filter((entry) => entry.leagueClanId === leagueClan.id)
     .sort((a, b) => b.rating - a.rating)
-    .map((leaguePlayer, index) => {
+    .map((leaguePlayer, index): PlayerRankRow | null => {
       const player = playerById.get(leaguePlayer.playerId)
       if (!player) return null
       const matchCount = matchCountByLeaguePlayer.get(`${league.id}:${leaguePlayer.playerId}`) ?? 0

@@ -215,9 +215,18 @@ export function PlayerRankTable({
               {formatRate(row.win_rate)}
               <Unit>%</Unit>
             </div>
-            <div className={`w-36 text-center ${rateClass(row.kd_rate)}`}>
-              {formatRate(row.kd_rate)}
-              <Unit>%</Unit>
+            {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107) */}
+            <div
+              className={`w-36 text-center ${row.kd_rate === null ? '' : rateClass(row.kd_rate)}`}
+            >
+              {row.kd_rate === null ? (
+                '-'
+              ) : (
+                <>
+                  {formatRate(row.kd_rate)}
+                  <Unit>%</Unit>
+                </>
+              )}
             </div>
             <div className="w-36 text-center">
               {formatAverage(row.kill_per_match)}

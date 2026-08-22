@@ -46,6 +46,8 @@ export interface LeagueFields {
   name: string
   official: boolean
   divisionCount: number
+  /** "official" | "independent" — 무소속리그면 누적 킬뎃을 응답에 넣지 않는다 (D-107) */
+  category: string
 }
 
 export function toLeagueSummary(league: LeagueFields): LeagueSummary {
@@ -55,6 +57,7 @@ export function toLeagueSummary(league: LeagueFields): LeagueSummary {
     name: league.name,
     official: league.official,
     division_count: league.divisionCount,
+    hides_cumulative_kd: league.category === 'independent',
   }
 }
 
@@ -150,6 +153,7 @@ export const LEAGUE_SUMMARY_SELECT = {
   name: true,
   official: true,
   divisionCount: true,
+  category: true,
 } as const
 
 export const PLAYER_SUMMARY_SELECT = { id: true, name: true } as const

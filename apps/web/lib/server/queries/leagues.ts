@@ -24,7 +24,7 @@ import {
   toPlayerSummary,
   toUserSummaryOrNull,
 } from '../mappers'
-import { isCareerPublic, PUBLIC_CAREER_WHERE } from './visibility'
+import { cumulativeKdRate } from './visibility'
 import { seasonLabel } from '@sacloud/db/ops'
 
 /**
@@ -243,9 +243,6 @@ async function rankOfFirstPlayer(
     where: {
       leagueId,
       placement: false,
-      // 목록에서 뺀 선수는 순위 계산 모집단에서도 빼야 한다.
-      // 안 그러면 "5,582명 중 302위"에서 명수와 등수의 기준이 어긋난다 (D-102)
-      ...PUBLIC_CAREER_WHERE,
       OR: [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }],
     },
   })
@@ -342,7 +339,10 @@ export async function getPlayerRanks(
   cursor: string | null,
   size: number,
 ): Promise<CursorPage<PlayerRankRow> | null> {
-  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { id: true } })
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { id: true, category: true },
+  })
   if (!league) return null
 
   const page = await cursorPage<{
@@ -362,9 +362,10 @@ export async function getPlayerRanks(
     idOf: (row) => row.id,
     fetch: (args) =>
       prisma.leaguePlayer.findMany({
-        // 무소속 선수의 **누적 개인 기록**은 공개하지 않는다 (D-102).
-        // 점수는 DB에 그대로 있고 클랜 래더 계산에도 계속 쓰인다. 목록에만 넣지 않는다
-        where: { leagueId, placement: false, ...PUBLIC_CAREER_WHERE },
+        /* 리그 안의 선수는 **전원** 랭킹에 들어간다 (D-107).
+           무소속리그에도 개인 랭킹이 있다. 리그가 다르면 애초에 다른 목록이라
+           여기서 걸러 낼 것이 없다. 무소속리그에서 감추는 것은 누적 킬뎃 컬럼뿐이다. */
+        where: { leagueId, placement: false },
         take: args.take,
         orderBy: args.orderBy as never,
         ...(args.cursor ? { cursor: args.cursor, skip: args.skip } : {}),
@@ -397,7 +398,8 @@ export async function getPlayerRanks(
       win: row.win,
       lose: row.lose,
       win_rate: winRate(row.win, row.lose),
-      kd_rate: kdRate(row.kill, row.death),
+      // 무소속리그면 누적 킬뎃만 비운다. 순위·승패·평균킬은 그대로 나간다 (D-107)
+      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death)),
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
     })),
@@ -427,13 +429,10 @@ export async function playerRankOf(leaguePlayer: {
   placement: boolean
 }): Promise<{ rank: number | null; rankCount: number | null }> {
   const rankCount = await prisma.leaguePlayer.count({
-    where: { leagueId: leaguePlayer.leagueId, placement: false, ...PUBLIC_CAREER_WHERE },
+    where: { leagueId: leaguePlayer.leagueId, placement: false },
   })
   if (leaguePlayer.placement) return { rank: null, rankCount: null }
-  // 무소속 선수는 공개 랭킹에 등장하지 않는다. 점수는 그대로 있다 (D-102)
-  if (!(await isCareerPublic(leaguePlayer.id))) {
-    return { rank: null, rankCount: null }
-  }
+  // 무소속리그 선수도 자기 리그 안에서 정상으로 순위를 받는다 (D-107)
   const rank = await rankOfFirstPlayer(leaguePlayer.leagueId, leaguePlayer)
   return { rank, rankCount }
 }

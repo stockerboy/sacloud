@@ -1,61 +1,81 @@
 /**
- * 공개 범위 (Phase 11 · D-102 정정).
+ * 공개 범위 (D-107 · 2026-08-23 확정. D-102의 "무소속 개인 커리어 숨김"은 폐기).
  *
- * 무소속(independent) 클랜은 **계산에서 빼지 않는다.** 공식 경기라면
- * 클랜 래더도 개인 래더도 1부/2부와 똑같이 계산하고 DB에 그대로 저장한다.
- * 클랜 경기의 전력차를 계산하려면 실제 참가 선수의 실력값이 필요하기 때문이다.
+ * ── 무소속리그는 **리그다.** 숨겨진 무엇이 아니다.
+ *   개인 래더 · 개인 랭킹 · 승패 · 승률 · 시즌 카드 · 최근 경기 · 경기 상세를
+ *   공식리그와 **똑같이** 가진다. 만들지 않는 것도, 감추는 것도 아니다.
  *
- * 무소속에서 달라지는 것은 **사용자에게 무엇을 보여 주는가**뿐이다.
+ * ── 기록은 리그 단위로 완전히 분리된다.
+ *   `LeaguePlayer(leagueId, playerId)` · `LeaguePlayerSeason(leaguePlayerId, seasonId)` ·
+ *   `Match.leagueId` 가 이미 그 구조다. 그래서 무소속리그는 **별도 League 행**이고,
+ *   한 리그의 경기 결과가 다른 리그의 개인 기록에 닿을 수 있는 경로가 없다.
+ *   길수의 공식리그 238전과 무소속리그 100전은 서로 다른 행에 쌓인다.
  *
- *   보여 준다   경기 상세(참가자·K/D/A·맵·시간·승패) · 클랜 래더 · 클랜 승패 · 상대별 전적
- *   숨긴다      그 선수의 **장기 누적 개인 기록**과 개인 랭킹 노출
+ * ── 딱 하나만 다르다.
+ *   무소속리그에서는 **누적** kill · death · 킬뎃을 사용자 화면에 내보내지 않는다.
  *
- * 즉 "수집 안 함 / 계산 안 함 / 저장 안 함"이 아니라 **"사용자에게 숨김"** 하나다.
+ *   보여 준다   래더 · 랭킹 · 승 · 패 · 승률 · 평균킬 · MVP · 시즌 카드 · 최근 경기 ·
+ *              **경기 한 판의 K/D/A** · 경기 상세 · 라인업 · 래더 증감
+ *   숨긴다      누적 킬 · 누적 데스 · 누적 킬뎃(%)
+ *
+ *   `23 / 7 / 3` 같은 그 경기의 성적은 숨기지 않는다. 숨기는 것은
+ *   `시즌 누적 13,123킬 / 12,837데스 / 50.6%` 뿐이다.
+ *
+ * ── 저장은 그대로 한다.
+ *   DB에는 누적 킬·데스가 계속 쌓인다. 계산에도 쓴다. 여기서 정하는 것은 **응답에 넣는가**다.
  */
 import { prisma } from '@sacloud/db'
 
-/** 무소속 클랜의 `Clan.category` 값 */
+/** 무소속리그의 `League.category` 값 */
+export const INDEPENDENT_LEAGUE = 'independent'
+
+/** 무소속 클랜의 `Clan.category` 값 (클랜 Tier 구조용 — D-104. 개인 기록과 무관하다) */
 export const INDEPENDENT_CATEGORY = 'independent'
 
 /**
- * 개인 누적 기록을 공개할 수 있는 선수인가.
+ * 이 리그에서 **누적** kill/death/킬뎃을 감추는가.
  *
- * 판단 기준은 **현재 소속 클랜**이다 (`LeaguePlayer.clanId` → `Clan.category`).
- * 소속이 없으면(무소속 개인) 공개하지 않는다 — 공개할 근거가 없다.
+ * 판단 기준은 리그다. 선수의 소속 클랜이 아니다 —
+ * 무소속 클랜 선수가 공식리그에 용병으로 뛰면 그 경기는 **공식리그 기록**이고,
+ * 공식리그 카드에는 누적 킬뎃이 정상으로 나온다 (D-107 11장).
  */
-export function showsCareer(clan: { category: string } | null | undefined): boolean {
-  return clan !== null && clan !== undefined && clan.category !== INDEPENDENT_CATEGORY
+export function hidesCumulativeKd(league: { category: string } | null | undefined): boolean {
+  return league?.category === INDEPENDENT_LEAGUE
 }
 
 /**
- * 개인 랭킹에서 제외할 조건.
+ * 응답에 넣을 누적 킬/데스/킬뎃.
  *
- * 랭킹은 "공개 개인 기록"의 목록이므로 숨김 대상은 애초에 들어가지 않는다.
- * 점수 자체는 DB에 그대로 있고, 클랜 래더 계산에도 계속 쓰인다.
+ * 감추는 리그면 셋 다 `null`이다. **0으로 만들지 않는다** — 0킬은 사실이 아니다.
+ * 화면은 `null`을 보고 그 항목을 아예 그리지 않는다 (D-107 8장 "항목만 제거").
  */
-export const PUBLIC_CAREER_WHERE = {
-  clan: { category: { not: INDEPENDENT_CATEGORY } },
-} as const
-
-/** 숨김 대상일 때 개인 누적 필드를 비운다. 0으로 채우지 않는다 — 0승 0패는 거짓이다 */
-export interface HiddenCareer {
-  hidden: true
+export interface CumulativeKd {
+  kill: number | null
+  death: number | null
+  kd_rate: number | null
 }
 
-export type CareerVisibility<T> = ({ hidden: false } & T) | HiddenCareer
-
-export function hideCareerIfIndependent<T>(
-  clan: { category: string } | null | undefined,
-  career: T,
-): CareerVisibility<T> {
-  return showsCareer(clan) ? { hidden: false, ...career } : { hidden: true }
+export function cumulativeKd(
+  league: { category: string } | null | undefined,
+  values: { kill: number; death: number; kdRate: number },
+): CumulativeKd {
+  if (hidesCumulativeKd(league)) return { kill: null, death: null, kd_rate: null }
+  return { kill: values.kill, death: values.death, kd_rate: values.kdRate }
 }
 
-/** 이 리그 참가 기록의 개인 누적을 공개해도 되는가 (`LeaguePlayer.id` 기준) */
-export async function isCareerPublic(leaguePlayerId: string): Promise<boolean> {
+/** 킬뎃만 필요한 자리 (개인랭킹 행) */
+export function cumulativeKdRate(
+  league: { category: string } | null | undefined,
+  kdRateValue: number,
+): number | null {
+  return hidesCumulativeKd(league) ? null : kdRateValue
+}
+
+/** 이 리그 참가 기록이 누적 킬뎃을 감추는가 (`LeaguePlayer.id` 기준) */
+export async function leagueHidesCumulativeKd(leaguePlayerId: string): Promise<boolean> {
   const entry = await prisma.leaguePlayer.findUnique({
     where: { id: leaguePlayerId },
-    select: { clan: { select: { category: true } } },
+    select: { league: { select: { category: true } } },
   })
-  return showsCareer(entry?.clan)
+  return hidesCumulativeKd(entry?.league)
 }

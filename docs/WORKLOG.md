@@ -788,3 +788,40 @@ D-102는 **클랜 래더 정확도** 때문에 그렇게 정정된 결정이다.
 
 Season 8은 시작하지 않았다. 실제 공식경기 E2E는 여전히 **PRE-PRODUCTION REQUIRED CHECK**다 —
 로스터가 비어 있어 자연 발생 공식경기가 0건이기 때문이다. 가짜로 만들지 않았다.
+
+---
+
+## D-107 확정 — 무소속리그 개인 기록 (2026-08-23)
+
+정책이 확정됐다. **무소속리그는 리그다.** 이전의 "무소속 개인 커리어를 숨긴다"(D-102)는 폐기.
+
+### 감사 결과 (정책 15장 10개 항목)
+
+| # | 항목 | 판정 |
+|---|---|---|
+| 1 | personal rating이 league 단위인가 | DONE — `LeaguePlayer(leagueId, playerId)` |
+| 2 | personal season stats가 league 단위인가 | DONE — `LeaguePlayerSeason(leaguePlayerId, seasonId)` |
+| 3 | ranking query가 league를 필터링하는가 | DONE |
+| 4 | 참여중인 리그 카드가 여러 리그 동시 노출 | DONE — `getPlayerLeagues`가 리그별 행 |
+| 5 | 공식/무소속 기록이 섞일 query가 있는가 | 없음 — 구조적으로 불가 |
+| 6 | 누적 KD 숨김이 read-path에서만 도는가 | **CONFLICT → 수정** |
+| 7 | 경기 상세 K/D/A를 잘못 숨기는가 | DONE — 숨기지 않는다 |
+| 8 | 무소속 최근 경기 query | DONE — 리그 단위 |
+| 9 | season snapshot이 league별 독립인가 | DONE |
+| 10 | 공식리그 용병 기록 반영 | DONE — 경기의 리그로 결정 |
+
+### 고친 것
+
+개인 기록 구조는 **이미 리그 단위였다.** 그래서 DB를 다시 짜지 않고 컬럼 하나만 넣었다.
+
+- `League.category` (`official` | `independent`) — 무소속리그는 별도 League 행
+- `visibility.ts` 전면 재작성: 리그 기준으로 **누적 킬·데스·킬뎃만** 응답에서 뺀다
+- 개인 랭킹에서 무소속을 제외하던 `PUBLIC_CAREER_WHERE` / `isCareerPublic` 제거
+  (순위 모집단 계산에서도 함께 뺐다 — 한쪽만 빼면 "N명 중 M위"가 어긋난다)
+- 감출 때는 `null`이다. 0으로 만들지 않는다. 화면은 그 항목·칸을 아예 그리지 않는다
+- `LeagueSummary.hides_cumulative_kd`를 계약에 실어 화면이 이유를 알게 했다
+
+### 검증
+
+`apps/web/tests/independentLeague.test.ts` **24건 통과** — 실제 DB에 임시 리그 두 개를 만들고
+실제 조회 함수를 그대로 돌린다. 정책 18장의 16개 요구 테스트를 전부 덮는다.

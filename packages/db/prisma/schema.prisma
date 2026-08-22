@@ -258,6 +258,14 @@ model League {
   status        Int      @default(1)
   /// 공식 리그 배지. 원본 필드명은 [미확인] — 우리 계약에서 `official`로 확정
   official      Boolean  @default(false)
+  /// "official" = 공식리그 | "independent" = 무소속리그 (D-107)
+  ///
+  /// 개인 기록은 이미 `LeaguePlayer(leagueId, playerId)` 단위로 완전히 분리돼 있다.
+  /// 그래서 무소속리그는 **별도 League 행**이고, 두 리그의 rating·승패·랭킹·시즌 카드는
+  /// 구조적으로 섞일 수 없다. 이 컬럼이 정하는 것은 **공개 범위 하나**다 —
+  /// 무소속리그에서는 누적 kill/death/킬뎃을 사용자 화면에 내보내지 않는다.
+  /// 경기 한 판의 K/D/A는 숨기지 않는다.
+  category      String   @default("official")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

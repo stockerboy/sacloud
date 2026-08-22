@@ -28,6 +28,14 @@ export const LeagueSummary = z.object({
   /** 공식 리그 배지. 원본의 필드명은 [미확인] — 우리 계약에서 `official`로 확정한다. */
   official: z.boolean(),
   division_count: Count,
+  /**
+   * 무소속리그인가 (D-107).
+   *
+   * 개인 기록 자체는 공식리그와 **똑같이 존재한다** — 래더·승패·승률·랭킹·시즌 카드·최근 경기.
+   * 이 값이 `true`면 화면에서 **누적 kill/death/킬뎃만** 내보내지 않는다.
+   * 경기 한 판의 K/D/A는 숨기지 않는다.
+   */
+  hides_cumulative_kd: z.boolean(),
 })
 export type LeagueSummary = z.infer<typeof LeagueSummary>
 

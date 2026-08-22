@@ -25,11 +25,12 @@ export const PlayerLeagueEntry = z.object({
   win: Count,
   lose: Count,
   win_rate: Percent,
-  /** 참여중인 리그 카드가 `17,855킬 17,422데스`를 표시한다 (원본 관측) */
-  kill: Count,
-  death: Count,
+  /** 참여중인 리그 카드가 `17,855킬 17,422데스`를 표시한다 (원본 관측).
+      무소속리그 카드에서는 이 셋만 `null`이다 — 나머지 기록은 그대로 나온다 (D-107) */
+  kill: Count.nullable(),
+  death: Count.nullable(),
   /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
-  kd_rate: Percent,
+  kd_rate: Percent.nullable(),
   /** 배치고사 진행중이면 true (랭킹·래더 대신 `배치고사` 표기) */
   placement: z.boolean(),
   rank: Count.nullable(),

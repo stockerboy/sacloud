@@ -103,17 +103,21 @@ function PlayerEntryCard({ entry, playerId }: { entry: PlayerLeagueEntry; player
           </span>
         </div>
       </div>
-      <div className="mt-2 flex items-center justify-between">
-        <div>
-          {formatCount(entry.kill)}킬 {formatCount(entry.death)}데스
+      {/* 무소속리그 카드에는 누적 킬·데스·킬뎃 줄이 아예 없다.
+          래더·승패·승률·순위는 공식리그 카드와 똑같이 나온다 (D-107) */}
+      {entry.kill === null || entry.death === null || entry.kd_rate === null ? null : (
+        <div className="mt-2 flex items-center justify-between">
+          <div>
+            {formatCount(entry.kill)}킬 {formatCount(entry.death)}데스
+          </div>
+          <div className="flex items-center">
+            킬뎃
+            <span className={`ml-2 w-20 text-right text-2xl ${rateClass(entry.kd_rate)}`}>
+              {formatRate(entry.kd_rate)}%
+            </span>
+          </div>
         </div>
-        <div className="flex items-center">
-          킬뎃
-          <span className={`ml-2 w-20 text-right text-2xl ${rateClass(entry.kd_rate)}`}>
-            {formatRate(entry.kd_rate)}%
-          </span>
-        </div>
-      </div>
+      )}
     </Link>
   )
 }

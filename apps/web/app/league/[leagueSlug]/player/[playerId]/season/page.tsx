@@ -21,6 +21,12 @@ export default function LeaguePlayerSeasonPage({
     enabled: ready,
   })
 
+  const league = useQuery({
+    queryKey: ['league', leagueSlug],
+    queryFn: () => apiGet('leagueShow', { params: { leagueSlug } }),
+    enabled: ready,
+  })
+
   const seasons = useQuery({
     queryKey: ['leagueplayer', detail.data?.data.id, 'seasons'],
     queryFn: () =>
@@ -39,7 +45,11 @@ export default function LeaguePlayerSeasonPage({
     <>
       <ProfileTabs tabs={tabs} current={`${base}/season`} />
       <div className="pc-container mt-6 pb-10">
-        <SeasonTable seasons={seasons.data?.data} kind="player" />
+        <SeasonTable
+          seasons={seasons.data?.data}
+          kind="player"
+          hidesCumulativeKd={league.data?.data.hides_cumulative_kd ?? false}
+        />
       </div>
     </>
   )

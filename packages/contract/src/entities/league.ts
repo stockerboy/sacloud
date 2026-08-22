@@ -79,12 +79,15 @@ export const LeaguePlayer = z.object({
   win: Count,
   lose: Count,
   win_rate: Percent,
-  kill: Count,
-  death: Count,
+  /* 누적 킬·데스·킬뎃은 **무소속리그에서 `null`** 이다 (D-107).
+     값이 없다는 뜻이 아니라 공개하지 않는다는 뜻이다 — `league.hides_cumulative_kd` 참조.
+     경기 한 판의 K/D/A는 이것과 무관하게 그대로 나온다. */
+  kill: Count.nullable(),
+  death: Count.nullable(),
   assist: Count,
   headshot: Count,
   /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
-  kd_rate: Percent,
+  kd_rate: Percent.nullable(),
   kill_per_match: z.number().min(0),
   mvp_count: Count,
   placement: z.boolean(),
@@ -177,8 +180,8 @@ export const PlayerRankRow = z.object({
   win: Count,
   lose: Count,
   win_rate: Percent,
-  /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
-  kd_rate: Percent,
+  /** 킬뎃 % — 무소속리그 개인랭킹에서는 `null`이다 (D-107) */
+  kd_rate: Percent.nullable(),
   kill_per_match: z.number().min(0),
   rating: Rating,
 })
