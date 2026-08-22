@@ -1687,3 +1687,57 @@ seasonType === 'beta'  &&  flags.betaImmediateRating
 replay 도중 확정된 참가자에서 승패와 K/D/A를 함께 누적해
 `LeaguePlayer` / `LeagueClan`에 같이 기록한다. 래더와 전적이 **같은 replay**에서 나오므로
 서로 어긋날 수 없다.
+
+### D-114. 라플/스나는 **병영수첩 BattleLog의 킬 신호**로 판정한다 (D-097 갱신)
+
+D-097의 결론("넥슨 Open API에 무기가 없어 역할 래더 불가")은 **Open API에 대해서는 그대로**다.
+바뀐 것은 **보조 출처가 생겼다**는 것이다.
+
+```
+POST /api/BattleLog/GetBattleLogClan/{match_key}/{clan_no}     ← 무기별 킬
+POST /api/Match/GetMatchClanDetail/{match_key}/C/{clan_slug}   ← AR/SR 적중 (조건부)
+```
+
+#### 실측한 응답 구조 (2026-08-23)
+
+**BattleLog는 집계표가 아니라 이벤트 로그다.** 한 줄에 한 사건이고,
+같은 사건이 **가해자·피해자 두 관점으로** 들어온다.
+
+```
+{ event_type: 'kill',  user_nexon_sn, user_nick, weapon: 'riple' }
+{ event_type: 'death', user_nexon_sn, target_user_nexon_sn, target_weapon: 'sniper' }
+```
+
+그래서 `event_type === 'kill'` 행만 센다. 두 관점을 다 세면 **킬이 두 배가 된다.**
+실제 확인한 한 경기(90 이벤트 · kill 49 · death 38)에서 선수별로 깨끗하게 갈렸다.
+
+```
+째근호 riple 10 · 채운2 sniper 4 · SC3..나실인 riple 13 · 제니 sniper 6 · 천사순수 riple 6
+```
+
+#### 판정 규칙
+
+| 신호 | 근거 |
+|---|---|
+| 킬 신호 | `riple` vs `sniper` 킬 수. **`throw`·`assist`·`close`·`special`·`c4-install` 제외** |
+| 적중 신호 | AR vs SR 적중 수 |
+
+- 두 신호가 같으면 그 답
+- **어긋나면 `unknown`** — 한쪽을 이기게 하지 않는다
+- 하나만 있으면 그것으로 판정, 둘 다 없으면 `unknown`
+- **동률이면 `unknown`.** 0킬도 `unknown` (0킬은 무기 근거가 아니다)
+- 선수 고정 포지션 금지 — 판정 단위는 **경기 × 선수**
+- 헤드샷·딜량으로 추정하지 않는다 (D-097의 금지 규칙 유지)
+
+#### 재현하지 못한 것
+
+전달받은 조사 결과 중 **AR/SR 교차검증(24/24)은 이 세션에서 재현하지 못했다.**
+`GetMatchClanDetail` 응답의 `user_battle_info`에 `M_PLAYER_hit_AR_*` 키가 **없었다**
+(키 9개 · 중첩 `MatchData`는 빈 배열). 경기·모드에 따라 제공 여부가 다른 것으로 보인다.
+
+그래서 지금 동작하는 것은 **킬 신호 단독 판정**이고, 적중 신호는 값이 올 때만 교차검증에 쓴다.
+3rd.supply 30/30 비교도 재현하지 않았다 — 그쪽은 WAF로 막혀 있다.
+
+**구현 상태**: 판정기와 파서는 완성됐고 회귀 18건으로 고정했다
+(`packages/nexon/src/__tests__/weapon.test.ts`).
+DB 저장(`weapon` 컬럼 채우기)과 라플/스나 버킷 집계는 **아직 붙이지 않았다.**

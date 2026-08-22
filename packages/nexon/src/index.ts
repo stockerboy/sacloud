@@ -14,3 +14,17 @@ export * from './schemas'
 export * from './client'
 /** 테스트·스모크용 픽스처 (실제 넥슨 응답이 아니다. 키 수령 후 실응답으로 교체한다) */
 export * from './fixtures/sample'
+export {
+  classifyWeapon,
+  killSignalsOf,
+  aggregateKillsFromBattleLog,
+  hitSignalsOf,
+  WEAPON_CODE,
+  WEAPON_CLASSIFIER_VERSION,
+  WEAPON_KILL_KEYS,
+  EXCLUDED_KILL_KEYS,
+  type WeaponRole,
+  type WeaponSignals,
+  type WeaponVerdict,
+  type BattleLogEvent,
+} from './weapon.js'
