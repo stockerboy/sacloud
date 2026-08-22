@@ -369,10 +369,47 @@ export async function buildRosterFromMatchEvidence(input: {
       /* 사람은 닉네임이 아니라 계정으로 고정돼야 한다.
          우리가 아는 계정(NexonIdentity → playerId)이 있을 때만 로스터에 넣는다.
          없으면 넣지 않는다 — 닉네임만으로 사람을 만들지 않는다 (D-036) */
-      const identity = await prisma.nexonIdentity.findFirst({
+      let identity = await prisma.nexonIdentity.findFirst({
         where: { userName: nickname, playerId: { not: null }, status: 'active' },
-        select: { playerId: true },
+        select: { ouid: true, playerId: true },
       })
+
+      /* 아직 사람이 없는 계정이면 **그 계정 전용 Player를 새로 만든다.**
+         남과 합치는 것이 아니라 1:1로 만드는 것이라 D-036에 걸리지 않는다.
+         같은 닉네임의 계정이 둘 이상이면 누구인지 정할 수 없으므로 건너뛴다. */
+      if (!identity?.playerId) {
+        const unresolved = await prisma.nexonIdentity.findMany({
+          where: { userName: nickname, playerId: null, NOT: { ouid: { startsWith: 'E2E-' } } },
+          select: { ouid: true },
+        })
+        if (unresolved.length !== 1) {
+          entry.tooWeak += 1
+          continue
+        }
+        const ouid = unresolved[0]!.ouid
+        if (!input.confirm) {
+          entry.created += 1
+          continue
+        }
+        const playerId = `NX-${ouid}`
+        await prisma.player.upsert({
+          where: { id: playerId },
+          create: { id: playerId, name: nickname, nexonOuid: ouid },
+          update: { name: nickname },
+          select: { id: true },
+        })
+        await prisma.nexonIdentity.update({
+          where: { ouid },
+          data: {
+            playerId,
+            status: 'active',
+            linkReason:
+              `계정 전용 Player 생성 — 경기 ${evidence.count}건에서 guild_name이 ` +
+              `"${leagueClan.clan.name}"으로 정확히 일치 (병합 아님)`,
+          },
+        })
+        identity = { ouid, playerId }
+      }
       if (!identity?.playerId) {
         entry.tooWeak += 1
         continue

@@ -224,8 +224,11 @@ describe.skipIf(!up)('시즌 관리 — 미리보기만 한다', () => {
       seasons: { number: number; status: string }[]
     }>('/seasons/supply')
     expect(result.status).toBe(200)
-    // 실운영 리그는 Season 7이 활성이어야 한다 (정책 7)
-    expect(result.data.activeSeason?.number).toBe(7)
+    /* 활성 시즌이 **정확히 하나** 있어야 한다.
+       번호를 박아 두지 않는다 — 시즌은 운영자가 넘긴다(Season 7 → Beta → Season 8).
+       예전에는 `7`을 기대했는데, 그건 정책이 아니라 그때의 DB 상태였다. */
+    expect(result.data.activeSeason).not.toBeNull()
+    expect(result.data.seasons.filter((season) => season.status === 'active')).toHaveLength(1)
   })
 
   it('종료 미리보기는 실제로 닫지 않는다', async () => {
@@ -240,7 +243,9 @@ describe.skipIf(!up)('시즌 관리 — 미리보기만 한다', () => {
     const after = await asAdmin<{ activeSeason: { number: number } | null }>('/seasons/supply', {
       cookie,
     })
-    expect(after.data.activeSeason?.number, '미리보기 후에도 시즌이 열려 있어야 한다').toBe(7)
+    // 미리보기 뒤에도 **같은 시즌이 그대로 열려 있어야** 한다 (번호는 무엇이든)
+    expect(after.data.activeSeason, '미리보기 후에도 시즌이 열려 있어야 한다').not.toBeNull()
+    expect(after.data.activeSeason?.number).toBe(preview.data.preview.season)
   })
 
   it('시작 미리보기는 활성 시즌이 있으면 거부한다 (종료 → 시작 순서를 강제한다)', async () => {
