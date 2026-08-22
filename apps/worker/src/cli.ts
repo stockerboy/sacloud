@@ -38,6 +38,7 @@ import { ensurePollStates, requestManualRefresh, runPoll } from './jobs/poll.js'
 import { backfillObservations, runReconstruct } from './jobs/reconstruct.js'
 import { bootstrapBeta, BETA_DATA_START } from './jobs/betaBootstrap.js'
 import { linkIdentitiesByEvidence, registerObservedMaps } from './jobs/identityLink.js'
+import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/rosterSync.js'
 import { runRate } from './jobs/rate.js'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
@@ -612,6 +613,58 @@ async function main(): Promise<number> {
      *
      * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 기본은 미리보기다.
      */
+    case 'roster-sync': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      if (boolFlag(args, 'from-match-evidence')) {
+        const rows = await buildRosterFromMatchEvidence({
+          leagueSlug,
+          from: BETA_DATA_START,
+          to: new Date(),
+          minAppearances: numberFlag(args, 'min-appearances') ?? 2,
+          confirm: boolFlag(args, 'confirm'),
+        })
+        table(
+          rows.map((row) => ({
+            클랜: row.clanName,
+            후보: row.candidates,
+            생성: row.created,
+            기존: row.existing,
+            근거부족: row.tooWeak,
+          })),
+        )
+        log('경기 근거 로스터는 verified=false 다. 운영자 확인 전에는 공식 판정에 쓰이지 않는다')
+        if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
+        return 0
+      }
+
+      const result = await syncRosterFromBarracks({
+        leagueSlug,
+        clanSlugFilter: stringFlag(args, 'clan'),
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table(
+        result.clans.map((clan) => ({
+          클랜: clan.clanName,
+          slug: clan.clanSlug ?? '-',
+          멤버: clan.members,
+          신규: clan.membershipsCreated,
+          기존: clan.membershipsExisting,
+          교체: clan.membershipsRepaired,
+          상태: clan.status,
+        })),
+      )
+      for (const clan of result.clans) {
+        if (clan.note) warn(`  ${clan.clanName}: ${clan.note}`)
+      }
+      log(`병영수첩 요청 ${result.requests}회`)
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
     case 'identity-link': {
       const leagueSlug = stringFlag(args, 'league')
       if (!leagueSlug) {
