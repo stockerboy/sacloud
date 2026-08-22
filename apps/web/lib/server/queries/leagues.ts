@@ -23,6 +23,7 @@ import {
   toPlayerSummary,
   toUserSummaryOrNull,
 } from '../mappers'
+import { isCareerPublic, PUBLIC_CAREER_WHERE } from './visibility'
 
 /**
  * 리그 · 랭킹 조회.
@@ -233,6 +234,9 @@ async function rankOfFirstPlayer(
     where: {
       leagueId,
       placement: false,
+      // 목록에서 뺀 선수는 순위 계산 모집단에서도 빼야 한다.
+      // 안 그러면 "5,582명 중 302위"에서 명수와 등수의 기준이 어긋난다 (D-102)
+      ...PUBLIC_CAREER_WHERE,
       OR: [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }],
     },
   })
@@ -341,7 +345,9 @@ export async function getPlayerRanks(
     idOf: (row) => row.id,
     fetch: (args) =>
       prisma.leaguePlayer.findMany({
-        where: { leagueId, placement: false },
+        // 무소속 선수의 **누적 개인 기록**은 공개하지 않는다 (D-102).
+        // 점수는 DB에 그대로 있고 클랜 래더 계산에도 계속 쓰인다. 목록에만 넣지 않는다
+        where: { leagueId, placement: false, ...PUBLIC_CAREER_WHERE },
         take: args.take,
         orderBy: args.orderBy as never,
         ...(args.cursor ? { cursor: args.cursor, skip: args.skip } : {}),
@@ -404,9 +410,13 @@ export async function playerRankOf(leaguePlayer: {
   placement: boolean
 }): Promise<{ rank: number | null; rankCount: number | null }> {
   const rankCount = await prisma.leaguePlayer.count({
-    where: { leagueId: leaguePlayer.leagueId, placement: false },
+    where: { leagueId: leaguePlayer.leagueId, placement: false, ...PUBLIC_CAREER_WHERE },
   })
   if (leaguePlayer.placement) return { rank: null, rankCount: null }
+  // 무소속 선수는 공개 랭킹에 등장하지 않는다. 점수는 그대로 있다 (D-102)
+  if (!(await isCareerPublic(leaguePlayer.id))) {
+    return { rank: null, rankCount: null }
+  }
   const rank = await rankOfFirstPlayer(leaguePlayer.leagueId, leaguePlayer)
   return { rank, rankCount }
 }

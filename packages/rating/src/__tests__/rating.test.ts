@@ -829,3 +829,133 @@ describe('결정적 replay', () => {
     expect(key(forward)).toBe(key(reversed))
   })
 })
+
+/**
+ * 정책 확정판 케이스 A~E (2026-08-22).
+ *
+ * 두 단계를 **분리해서** 확인한다.
+ *   1단계  공식 경기인가 — `home >= 3 OR away >= 3` 하나로만 판단한다
+ *   2단계  공식이면, 팀마다 **자기 본클랜원 수**로 클랜 증감을 가중한다 (100/70/40/0)
+ *
+ * 두 단계가 섞이면 "3+2 vs 0+5"가 비공식으로 떨어지거나,
+ * 반대로 가중치가 인정 조건처럼 쓰인다.
+ */
+describe('정책 확정판 — 공식 판정과 클랜 가중치는 별개 단계다', () => {
+  /** 홈 `클{m}+용{n}` vs 원정 `클{m}+용{n}` */
+  const build = (
+    homeMembers: number,
+    homeMercs: number,
+    awayMembers: number,
+    awayMercs: number,
+    homeRating = 1500,
+    awayRating = 1500,
+  ) =>
+    rateMatch({
+      participants: [
+        ...squad('A', 'CA', 'win', homeMembers, homeRating),
+        ...Array.from({ length: homeMercs }, (_, index) =>
+          detailSide(`AM${index}`, 'CA', 'CX', 'win', homeRating),
+        ),
+        ...squad('B', 'CB', 'lose', awayMembers, awayRating),
+        ...Array.from({ length: awayMercs }, (_, index) =>
+          detailSide(`BM${index}`, 'CB', 'CY', 'lose', awayRating),
+        ),
+      ],
+      clanRatings: { CA: 1500, CB: 1500 },
+    })
+
+  const clanOf = (result: ReturnType<typeof rateMatch>, id: string) =>
+    result.clans.find((clan) => clan.leagueClanId === id)!
+
+  it('CASE A — 클1+용4 vs 클5 → 공식. 40% / 100%', () => {
+    const result = build(1, 4, 5, 0)
+    expect(result.eligibility.official, '한쪽이 3명 이상이면 공식이다').toBe(true)
+
+    const home = clanOf(result, 'CA')
+    const away = clanOf(result, 'CB')
+    expect(home.clanWeight).toBe(0.4)
+    expect(away.clanWeight).toBe(1)
+    // 가중은 **원래 증감에 곱한 값**이다. 다른 공식을 쓰지 않는다
+    expect(home.ratingUpdate).toBe(Math.round(home.rawRatingUpdate * 0.4))
+    expect(away.ratingUpdate).toBe(away.rawRatingUpdate)
+
+    // 개인은 전원 100%. 용병도 줄이지 않는다
+    expect(result.players).toHaveLength(10)
+    expect(result.players.every((player) => player.ratingUpdate !== 0)).toBe(true)
+    const mercenaries = result.players.filter((player) => player.role === 'mercenary')
+    expect(mercenaries).toHaveLength(4)
+    const member0 = result.players.find((player) => player.playerId === 'A0')!
+    const merc0 = result.players.find((player) => player.playerId === 'AM0')!
+    expect(merc0.ratingUpdate, '같은 팀·같은 점수면 용병도 같은 증감이다').toBe(
+      member0.ratingUpdate,
+    )
+  })
+
+  it('CASE A — 져도 같은 가중치를 쓴다 (이길 때만 깎지 않는다)', () => {
+    // 홈이 지는 배치: 승패만 뒤집는다
+    const result = rateMatch({
+      participants: [
+        ...squad('A', 'CA', 'lose', 1),
+        ...Array.from({ length: 4 }, (_, index) =>
+          detailSide(`AM${index}`, 'CA', 'CX', 'lose'),
+        ),
+        ...squad('B', 'CB', 'win', 5),
+      ],
+      clanRatings: { CA: 1500, CB: 1500 },
+    })
+    const home = clanOf(result, 'CA')
+    expect(home.clanWeight).toBe(0.4)
+    expect(home.rawRatingUpdate).toBeLessThan(0)
+    expect(home.ratingUpdate).toBe(Math.round(home.rawRatingUpdate * 0.4))
+  })
+
+  it('CASE A — 합계가 0이 아니어도 강제로 맞추지 않는다 (비제로섬 허용)', () => {
+    const result = build(1, 4, 5, 0)
+    const total = clanOf(result, 'CA').ratingUpdate + clanOf(result, 'CB').ratingUpdate
+    expect(total).not.toBe(0)
+  })
+
+  it('CASE B — 클2+용3 vs 클5 → 공식. 70% / 100%', () => {
+    const result = build(2, 3, 5, 0)
+    expect(result.eligibility.official).toBe(true)
+    expect(clanOf(result, 'CA').clanWeight).toBe(0.7)
+    expect(clanOf(result, 'CB').clanWeight).toBe(1)
+  })
+
+  it('CASE C — 클2+용3 vs 클2+용3 → 비공식. 클랜·개인 증감 모두 없음', () => {
+    const result = build(2, 3, 2, 3)
+    expect(result.eligibility.official).toBe(false)
+    expect(result.clans).toHaveLength(0)
+    expect(result.players).toHaveLength(0)
+    // 경기 자체는 기록 가능하다. 저장은 worker가 한다
+    expect(result.eligibility.recordable).toBe(true)
+  })
+
+  it('CASE D — 무소속끼리도 계산은 똑같다 (래더 엔진은 category를 모른다)', () => {
+    const result = build(3, 2, 3, 2)
+    expect(result.eligibility.official).toBe(true)
+    expect(clanOf(result, 'CA').clanWeight).toBe(1)
+    expect(clanOf(result, 'CB').clanWeight).toBe(1)
+    expect(result.players).toHaveLength(10)
+    // 무소속 전용 K값·전용 공식은 없다
+    expect(clanOf(result, 'CA').ratingUpdate).toBe(clanOf(result, 'CA').rawRatingUpdate)
+  })
+
+  it('CASE E — 1부 클1+용4 vs 무소속 클5 → 공식. 40% / 100%, 개인은 양쪽 다 계산', () => {
+    const result = build(1, 4, 5, 0)
+    expect(result.eligibility.official).toBe(true)
+    expect(clanOf(result, 'CA').clanWeight).toBe(0.4)
+    expect(clanOf(result, 'CB').clanWeight).toBe(1)
+    // 무소속이라고 개인 계산을 생략하지 않는다 — 전력차 계산에 필요하다 (D-102)
+    expect(result.players.filter((player) => player.playerId.startsWith('B'))).toHaveLength(5)
+  })
+
+  it('실제 실력차가 클랜 증감에 반영된다 (무소속 선수를 1500 고정으로 두면 안 되는 이유)', () => {
+    const even = build(3, 2, 3, 2, 1500, 1500)
+    const strongHome = build(3, 2, 3, 2, 1900, 1300)
+    // 라인업 전력이 실제로 섞였는지부터 확인한다
+    expect(clanOf(strongHome, 'CA').lineupBlended, '양측 4명 이상 확인되면 라인업을 섞는다').toBe(true)
+    // 강팀이 이기면 덜 오른다 — 참가 선수의 실제 점수를 알아야 나오는 차이다
+    expect(clanOf(strongHome, 'CA').ratingUpdate).toBeLessThan(clanOf(even, 'CA').ratingUpdate)
+  })
+})
