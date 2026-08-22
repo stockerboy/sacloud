@@ -5,3 +5,5 @@
  */
 export * from './season'
 export * from './clan'
+export * from './legacySource'
+export * from './legacyImport'

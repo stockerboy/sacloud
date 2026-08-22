@@ -301,18 +301,30 @@ model LeaguePlayerLimit {
   @@id([leagueId, playerCount])
 }
 
-/// 시즌. **시즌 8부터 SACLOUD가 운영한다** (사용자 결정, 2026-08-20).
-/// 시즌 1~7은 3rd.supply에서 이전된 과거 기록이며 조회 전용이다.
+/// 시즌.
+///
+/// 사용자에게 보이는 흐름은 하나로 이어진다 (D-098):
+///   Season 1 … Season 7 → Beta Season → Season 8 …
+///
+/// 세 종류를 `seasonType`으로 구분한다.
+///   `legacy`   3rd.supply에서 이전된 과거 기록. **재계산하지 않는다**
+///   `beta`     공개 베타 시즌. 기록은 보여 주되 다음 정식 시즌에 승계하지 않는다
+///   `official` SACLOUD 정식 시즌
 model Season {
   id        String    @id @default(cuid())
   leagueId  String
+  /// 표시용 시즌 번호. **베타는 `0`이고 화면에 숫자로 쓰지 않는다** (`Beta Season`으로 표기)
   number    Int
   startedAt DateTime
   endedAt   DateTime?
   /// "active" | "closed"
   status    String    @default("active")
+  /// "legacy" | "beta" | "official"
+  seasonType String   @default("official")
   /// 이 시즌 기록이 3rd.supply에서 이전된 것인지
   imported  Boolean   @default(false)
+  /// 확정된 과거 기록인가. `true`면 수집·래더 재계산이 이 시즌의 값을 건드리지 못한다
+  frozen    Boolean   @default(false)
   createdAt DateTime  @default(now())
 
   league       League              @relation(fields: [leagueId], references: [id], onDelete: Cascade)
@@ -323,6 +335,8 @@ model Season {
 
   @@unique([leagueId, number])
   @@index([leagueId, number])
+  // 화면 정렬은 번호가 아니라 **시작 시각** 기준이다. 베타(number 0)가 7과 8 사이에 와야 한다
+  @@index([leagueId, startedAt])
 }
 
 /// 리그에 참여한 클랜. 래더·부리그·전적을 보유한다.
@@ -457,6 +471,26 @@ model LeaguePlayerSeason {
   kill      Int @default(0)
   death     Int @default(0)
 
+  /* 아래는 **원본에 있을 때만** 채운다. 없으면 `null`로 남긴다 — 역산하지 않는다 (D-099).
+     승률·킬뎃은 승패·킬데스로 계산할 수 있지만, 원본이 준 값과 반올림이 달라질 수 있어
+     원본 값을 그대로 보존한다. */
+  assist       Int?
+  headshot     Int?
+  winRate      Float?
+  kdRate       Float?
+  /// 평균킬 (원본 `kill_per_match`)
+  killPerMatch Float?
+  mvpCount     Int?
+  /// 그 시즌 시점의 소속·부리그·닉네임. 지금 값이 아니라 **그때의 값**이다
+  clanNameAtSeason String?
+  divisionAtSeason Int?
+  nicknameAtSeason String?
+  /// 3rd.supply 쪽 식별자. 닉네임 자동 병합을 하지 않기 위한 근거로 보존한다 (D-100)
+  legacyPlayerId       String?
+  legacyLeaguePlayerId String?
+  /// 어디서 왔는지 ("3rd.supply" 등). SACLOUD가 계산한 행은 `null`
+  source    String?
+
   /// 이 행이 3rd.supply에서 이전된 것인지. true면 값을 재계산하지 않는다.
   imported  Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -482,6 +516,12 @@ model LeagueClanSeason {
   division  Int @default(1)
   win       Int @default(0)
   lose      Int @default(0)
+
+  /* 원본에 있을 때만 채운다 (D-099) */
+  winRate           Float?
+  clanNameAtSeason  String?
+  legacyClanSlug    String?
+  source            String?
 
   imported  Boolean  @default(false)
   createdAt DateTime @default(now())
