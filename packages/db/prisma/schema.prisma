@@ -501,6 +501,13 @@ model Match {
   /// `mock`은 개발용 시드 데이터다. 실제 기록과 섞이지 않게 출처를 남긴다.
   origin       String   @default("sacloud")
   sourceMatchId String?
+
+  /// 재구성으로 만든 경기의 **확인 수준** (Phase 9 · D-068).
+  /// "5v4" 처럼 몇 명을 확인했는지, 그리고 그 확신 등급을 화면에 그대로 보여 준다.
+  /// 우리가 모르는 것을 아는 척하지 않기 위한 값이다.
+  participantCompleteness String?
+  /// "high" | "medium" | "low"
+  evidenceConfidence      String?
   ingestedAt   DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -1126,6 +1133,19 @@ model NexonMatch {
   /// **증거를 남기기 위한 것**이지 계산 결과가 아니다 (Phase 8.2)
   reconstruction   Json?
   reconstructedAt  DateTime?
+
+  /// 확인 수준 (Phase 9 · D-068).
+  /// 경기를 인정하는 기준은 "양측 3명 이상"이지만, **실제로 몇 명을 확인했는지**는 따로 남긴다.
+  /// 이 값이 없으면 "4명만 확인된 경기"와 "5명 전원 확인된 경기"를 구분할 수 없다.
+  clanAConfirmedCount         Int?
+  clanBConfirmedCount         Int?
+  observationParticipantCount Int?
+  detailParticipantCount      Int?
+  /// "5v4" 처럼 사람이 읽을 수 있는 확인 수준
+  participantCompleteness     String?
+  /// "high" | "medium" | "low"
+  reconstructionConfidence    String?
+
   /// 투영된 운영 매치의 내부 ID (FK를 걸지 않는다 — 스테이징은 외부 데이터의 거울이다)
   projectedMatchId String?
   projectedAt      DateTime?

@@ -880,3 +880,15 @@ Raw 보존 · source ID 매핑 · 중단/재개 · 중복 방지 · 숫자 검�
 - 매치 상세에 개별 URL 부여 (공유·SEO)
 - 래더 점수 외 티어 배지·시각화
 - `/league/:slug/rank/clan` 리다이렉트 버그에 해당하는 문제 없는 라우팅 설계 (V1에서 버그까지 재현하지는 않음)
+
+---
+
+## Phase 9 실제 구현 (2026-08-22)
+
+위 §Phase 9의 `[미확인]` 항목들은 **사용자가 정책으로 확정**했다 (`DECISIONS.md` D-057 ~ D-068).
+계획서의 "관찰 범위를 재현하는 파라미터화된 Elo"는 **원본 재현이 아니라 래더 품질 우선**으로
+방향이 바뀌었다. 자세한 내용은 `docs/HANDOFF_CURRENT.md` H장과 `docs/LADDER_TUNING_REPORT.md`.
+
+- 엔진: `packages/rating/` (순수 함수) · 반영: `pnpm nexon:rate`
+- 경기 인정 기준: 양측 3명 이상 (전원 복원 요구 폐기)
+- division은 공식에 넣지 않는다 / 동급 경기는 제로섬 / 양학·반복 대전 억제 / 시즌 soft reset

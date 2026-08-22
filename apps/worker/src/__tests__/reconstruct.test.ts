@@ -244,47 +244,28 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     return result.ok ? 'ok' : result.code
   }
 
-  it('한쪽 클랜만 관측되면 미완이다 (반쪽 경기를 저장하지 않는다)', () => {
+  it('한쪽 클랜만 확인되면 인정하지 않는다 (반쪽 경기를 저장하지 않는다)', () => {
     const base = fullMatch()
     const code = codeOf({
       ...base,
       observations: base.observations.filter((row) => row.playerId?.startsWith('A')),
       detail: [],
     })
-    expect(code).toBe('incomplete_roster')
+    expect(code).toBe('single_clan')
   })
 
-  it('양 팀 인원이 다르면 미완이다', () => {
+  it('양측 3명 미만이면 인정하지 않는다 (5명 2명)', () => {
     const base = fullMatch()
-    const code = codeOf({
-      ...base,
-      observations: base.observations.filter((row) => row.playerId !== 'B4'),
-      detail: [],
-    })
-    expect(code).toBe('incomplete_roster')
-  })
-
-  it('리그 대전 인원이 아니면 미완이다 (3v3)', () => {
-    const base = fullMatch()
-    const keep = new Set(['A0', 'A1', 'A2', 'B0', 'B1', 'B2'])
-    const code = codeOf({
+    const keep = new Set(['A0', 'A1', 'A2', 'A3', 'A4', 'B0', 'B1'])
+    const result = evaluateReconstruction({
       ...base,
       observations: base.observations.filter((row) => keep.has(row.playerId ?? '')),
       detail: [],
     })
-    expect(code).toBe('incomplete_roster')
-  })
-
-  it('상세에 나왔는데 목록 관측이 없는 등록 선수가 있으면 폴링이 더 필요하다', () => {
-    const base = fullMatch()
-    const result = evaluateReconstruction({
-      ...base,
-      observations: base.observations.filter((row) => row.playerId !== 'B0'),
-    })
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.code).toBe('missing_observation')
-    expect(result.summary.missingObservations).toBe(1)
+    expect(result.code).toBe('insufficient_participants')
+    expect(result.summary.participantCompleteness).toBe('5v2')
   })
 
   it('상세와 k/d/a가 어긋나면 자동 투영하지 않는다', () => {
@@ -346,7 +327,7 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     expect(result.code).toBe('no_winner')
   })
 
-  it('클랜이 셋이면 클랜전으로 보지 않는다', () => {
+  it('클랜이 셋이면 클랜전으로 보지 않는다 (too_many_clans)', () => {
     const base = fullMatch()
     const result = evaluateReconstruction({
       ...base,
@@ -357,7 +338,7 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     })
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.code).toBe('roster_mismatch')
+    expect(result.code).toBe('too_many_clans')
   })
 
   it('같은 플레이어가 두 계정으로 관측되면 판정하지 않는다', () => {
@@ -415,10 +396,11 @@ describe('신원과 로스터가 판정에 미치는 영향', () => {
       ),
       detail: [],
     })
-    expect(result.ok).toBe(false)
-    if (result.ok) return
+    // 확인 인원이 5v4로 줄지만 양측 3명 이상이라 경기는 인정된다 (D-068)
+    expect(result.ok).toBe(true)
     expect(result.summary.ambiguousIdentities).toBe(1)
-    expect(result.code).toBe('incomplete_roster')
+    expect(result.summary.participantCompleteness).toBe('5v4')
+    expect(result.summary.confidence).toBe('medium')
   })
 
   it('conflicted 신원도 참가자로 세지 않는다', () => {
@@ -430,8 +412,7 @@ describe('신원과 로스터가 판정에 미치는 영향', () => {
       ),
       detail: [],
     })
-    expect(result.ok).toBe(false)
-    if (result.ok) return
+    expect(result.ok).toBe(true)
     expect(result.summary.ambiguousIdentities).toBe(1)
   })
 
@@ -442,9 +423,10 @@ describe('신원과 로스터가 판정에 미치는 영향', () => {
       memberships: base.memberships.filter((row) => row.playerId !== 'B4'),
       detail: [],
     })
-    expect(result.ok).toBe(false)
-    if (result.ok) return
+    // 그 선수는 참가자로 세지 않는다. 나머지 인원으로 인정 여부를 판단한다
+    expect(result.ok).toBe(true)
     expect(result.summary.rosterMismatches).toBe(1)
+    expect(result.summary.participantCompleteness).toBe('5v4')
   })
 
   it('확인되지 않은 소속은 기본적으로 인정하지 않는다', () => {

@@ -93,6 +93,15 @@ export const MatchListItem = z.object({
   red: z.array(MatchLineupEntry),
   blue: z.array(MatchLineupEntry),
   player_stat: MatchPlayerStat.nullable(),
+  /**
+   * 재구성 경기의 **확인 수준** (`"5v4"`). 재구성이 아니면 `null` (Phase 9 · D-068).
+   *
+   * 우리가 5명 전원을 확인한 경기와 4명만 확인한 경기를 화면에서 구분하기 위한 값이다.
+   * 모르는 것을 아는 척하지 않는다.
+   */
+  participant_completeness: z.string().nullable(),
+  /** 확인 수준 등급. 재구성이 아니면 `null` */
+  evidence_confidence: z.enum(['high', 'medium', 'low']).nullable(),
 })
 export type MatchListItem = z.infer<typeof MatchListItem>
 

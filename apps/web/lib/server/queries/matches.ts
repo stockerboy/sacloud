@@ -57,6 +57,8 @@ const MATCH_SELECT = {
   bluePlacement: true,
   redRatingUpdate: true,
   blueRatingUpdate: true,
+  participantCompleteness: true,
+  evidenceConfidence: true,
   map: { select: { id: true, name: true } },
   redClan: { select: { id: true, clan: { select: CLAN_SUMMARY_SELECT } } },
   blueClan: { select: { id: true, clan: { select: CLAN_SUMMARY_SELECT } } },
@@ -167,6 +169,11 @@ function toMatchPlayerStat(match: MatchRow, stat: StatRow, visible: boolean): Ma
   }
 }
 
+/** DB의 문자열을 계약의 등급으로 좁힌다. 모르는 값이면 null이다 */
+function toConfidence(value: string | null): 'high' | 'medium' | 'low' | null {
+  return value === 'high' || value === 'medium' || value === 'low' ? value : null
+}
+
 /** 경기 시점 클랜 스냅샷 (당시 래더·부리그·배치 여부) */
 function snapshotOf(match: MatchRow, side: TeamSide) {
   const isRed = side === 'red'
@@ -216,6 +223,9 @@ export function toMatchListItem(
     red: lineupOf(match, 'red'),
     blue: lineupOf(match, 'blue'),
     player_stat: viewerStat ? toMatchPlayerStat(match, viewerStat, true) : null,
+    // 재구성 경기만 값이 있다 (D-068). 우리가 몇 명을 확인했는지 숨기지 않는다
+    participant_completeness: match.participantCompleteness,
+    evidence_confidence: toConfidence(match.evidenceConfidence),
   }
 }
 

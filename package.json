@@ -39,7 +39,9 @@
     "nexon:manual-refresh": "pnpm --filter @sacloud/worker nexon manual-refresh",
     "nexon:roster": "pnpm --filter @sacloud/worker nexon roster",
     "nexon:backfill-observations": "pnpm --filter @sacloud/worker nexon backfill-observations",
-    "nexon:reconstruct": "pnpm --filter @sacloud/worker nexon reconstruct"
+    "nexon:reconstruct": "pnpm --filter @sacloud/worker nexon reconstruct",
+    "nexon:rate": "pnpm --filter @sacloud/worker nexon rate",
+    "nexon:season-reset": "pnpm --filter @sacloud/worker nexon season-reset"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

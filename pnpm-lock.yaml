@@ -102,6 +102,9 @@ importers:
       '@sacloud/nexon':
         specifier: workspace:*
         version: link:../../packages/nexon
+      '@sacloud/rating':
+        specifier: workspace:*
+        version: link:../../packages/rating
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -152,6 +155,8 @@ importers:
       zod:
         specifier: ^3.24.1
         version: 3.25.76
+
+  packages/rating: {}
 
   packages/ui:
     dependencies:

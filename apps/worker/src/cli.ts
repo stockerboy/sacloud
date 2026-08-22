@@ -24,6 +24,7 @@ import { runRefresh } from './jobs/refresh.js'
 import { runCheck } from './jobs/check.js'
 import { ensurePollStates, requestManualRefresh, runPoll } from './jobs/poll.js'
 import { backfillObservations, runReconstruct } from './jobs/reconstruct.js'
+import { runRate, runSeasonSoftReset } from './jobs/rate.js'
 import {
   deriveRosterFromLeaguePlayers,
   importRoster,
@@ -109,6 +110,10 @@ function usage(): void {
               보관된 목록 원본 → 관측값. **넥슨에 요청하지 않는다**
   reconstruct [--league <slug>] [--redo] [--match-id <ID>[,<ID>]] [--allow-unverified-roster]
               [--allow-mock-league]
+  rate        --league <slug> [--allow-mock-league] [--dry-run]
+              재구성된 경기로 래더를 **처음부터 다시** 계산한다 (결정적 replay)
+  season-reset --league <slug> [--dry-run]
+              시즌 종료 soft reset. 완전 초기화가 아니다
 
 공통 플래그: --dry-run  --resume  --limit N
 `)
@@ -408,6 +413,44 @@ async function main(): Promise<number> {
           })),
         )
       }
+      return 0
+    }
+
+    case 'rate': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      const result = await runRate(ctx, {
+        leagueSlug,
+        allowMockLeague: boolFlag(args, 'allow-mock-league'),
+      })
+      table([
+        {
+          리그: result.league,
+          대상경기: result.matchesConsidered,
+          계산됨: result.matchesRated,
+          선수: result.playersUpdated,
+          클랜: result.clansUpdated,
+          공식: result.formulaVersion,
+        },
+      ])
+      for (const [code, count] of Object.entries(result.skipped)) {
+        log(`  제외 ${code}: ${count}건`)
+      }
+      return 0
+    }
+
+    case 'season-reset': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      const result = await runSeasonSoftReset(ctx, { leagueSlug })
+      table([{ 선수: result.players, 클랜: result.clans }])
+      log('soft reset이다. 순위 정보는 남고 폭만 줄어든다 (D-064)')
       return 0
     }
 

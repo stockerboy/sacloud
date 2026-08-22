@@ -303,6 +303,17 @@ function MatchDetailPanel({
         <div>
           {match.player_count} vs {match.player_count}
         </div>
+        {/* 재구성 경기는 **우리가 몇 명을 확인했는지**를 숨기지 않는다 (D-068).
+            5명 전원을 확인한 경기와 3명만 확인한 경기는 신뢰도가 다르다. */}
+        {match.participant_completeness === null ? null : (
+          <div
+            className="ml-4 rounded border border-line px-1.5 py-0.5 text-xs text-meta"
+            title="넥슨이 참가자 전원을 주지 않아, 확인된 인원만 표기한다"
+          >
+            확인 {match.participant_completeness}
+            {match.evidence_confidence === 'low' ? ' · 일부' : null}
+          </div>
+        )}
       </div>
       {detail ? (
         <>

@@ -242,6 +242,65 @@ export async function runCheck(input: {
     note: '사유 없이 조회가 앞당겨진 대상',
   })
 
+  /* ------------------------------------------------------------ Phase 9 --- */
+
+  /* 12) 인정 기준(양측 3명 이상)을 어긴 경기가 저장돼 있으면 안 된다 (D-057) */
+  const belowMinimum = await prisma.nexonMatch.count({
+    where: {
+      projectionStatus: 'projected',
+      OR: [{ clanAConfirmedCount: { lt: 3 } }, { clanBConfirmedCount: { lt: 3 } }],
+    },
+  })
+  await push({
+    name: 'eligibility_min_confirmed',
+    expected: 0,
+    actual: belowMinimum,
+    note: '양측 3명 미만인데 인정된 경기',
+  })
+
+  /* 13) 래더 값이 있으면 formulaVersion도 있어야 한다 (재현 가능해야 한다) */
+  const ratedWithoutVersion = await prisma.matchPlayerStat.count({
+    where: {
+      match: { origin: NEXON_SOURCE },
+      ratingUpdate: { not: null },
+      formulaVersion: null,
+    },
+  })
+  await push({
+    name: 'rating_formula_version_recorded',
+    expected: 0,
+    actual: ratedWithoutVersion,
+    note: '공식 버전 없이 계산된 래더 값',
+  })
+
+  /* 14) 클랜 래더는 동급 경기에서 제로섬이어야 한다 — 점수가 새로 생기면 안 된다 (D-060) */
+  const clanRated = await prisma.match.findMany({
+    where: {
+      origin: NEXON_SOURCE,
+      redRatingUpdate: { not: null },
+      blueRatingUpdate: { not: null },
+      redRatingBefore: { not: null },
+      blueRatingBefore: { not: null },
+    },
+    select: {
+      redRatingBefore: true,
+      blueRatingBefore: true,
+      redRatingUpdate: true,
+      blueRatingUpdate: true,
+    },
+  })
+  const nonZeroSum = clanRated.filter(
+    (match) =>
+      match.redRatingBefore === match.blueRatingBefore &&
+      (match.redRatingUpdate ?? 0) + (match.blueRatingUpdate ?? 0) !== 0,
+  ).length
+  await push({
+    name: 'clan_rating_zero_sum',
+    expected: 0,
+    actual: nonZeroSum,
+    note: '동급 클랜 경기인데 증감 합이 0이 아닌 경기',
+  })
+
   table(
     rows.map((row) => ({
       검사: row.name,

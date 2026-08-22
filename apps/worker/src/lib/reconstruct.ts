@@ -1,21 +1,36 @@
 /**
- * 로스터 기반 경기 재구성 — **순수 함수** (Phase 8.2).
+ * 로스터 기반 경기 재구성 — **순수 함수** (Phase 8.2 · 9에서 인정 기준 변경).
  *
  * 문제
  *   넥슨 `/match-detail`은 참가자 일부만 준다(D-044). 그것만으로는 클랜전을 복원할 수 없다.
  *
  * 접근
- *   SACLOUD는 리그 운영자로서 **누가 어느 클랜 소속인지**를 안다.
+ *   SACLOUD는 리그 운영자로서 **누가 어느 클랜 소속인지**를 안다(D-052).
  *   각 선수의 매치 목록에는 자기 자신의 기록이 들어 있다(D-048 관측값).
- *   따라서 같은 `match_id`를 여러 선수에게서 관측하면 참가자 구성을 **모을** 수 있다.
+ *   같은 `match_id`를 여러 선수에게서 관측하면 참가자 구성을 **모을** 수 있다.
  *
- * 절대 규칙
- *   1. **관측되지 않은 참가자를 만들지 않는다.** 그 선수의 목록에서 그 경기가 실제로
- *      나왔을 때만 참가자로 인정한다.
+ * ── 인정 기준이 바뀌었다 (2026-08-22 · D-057)
+ *   기존: 양 팀 전원(5v5) 복원 + 인원 일치
+ *   현재: **양측 클랜이 각각 3명 이상** 확인되면 경기로 인정한다
+ *         5명 2명은 인정하지 않는다. 4명 3명은 인정한다
+ *
+ *   경기를 인정하는 것과, 그 경기의 전력을 계산하는 것은 **다른 문제**다.
+ *   인정하되 확인 수준(`4v3` 등)과 근거 수를 함께 저장한다.
+ *
+ * 절대 규칙 (그대로다)
+ *   1. **관측되지 않은 참가자를 만들지 않는다.**
  *   2. 닉네임·클랜명 문자열로 소속을 판정하지 않는다. **로스터 등록 기록**으로 판정한다.
- *   3. 하나라도 조건이 모자라면 투영하지 않고 사유를 남긴다. 부분 저장은 없다.
- *   4. 상세와 관측값이 어긋나면 **자동 투영하지 않는다**(conflict).
+ *   3. 상세와 관측값이 어긋나면 **자동 투영하지 않는다**(conflict).
+ *   4. 확인되지 않은 선수의 개인 래더를 추정해 채우지 않는다 (D-067).
  */
+import {
+  DEFAULT_RATING_CONSTANTS,
+  evaluateEligibility,
+  lineupConfidence,
+  type ConfirmedParticipant,
+  type LineupConfidence,
+  type RatingConstants,
+} from '@sacloud/rating'
 
 export type Outcome = 'win' | 'lose' | 'draw'
 export type IdentityStatus = 'unresolved' | 'active' | 'superseded' | 'conflicted'
@@ -43,7 +58,7 @@ export interface ObservationInput {
   assist: number | null
 }
 
-/** 매치 상세에서 온 참가자 (`NexonMatchParticipant`) — **보조 증거**다 */
+/** 매치 상세에서 온 참가자 (`NexonMatchParticipant`) — **보조 증거**다 (D-054) */
 export interface DetailParticipantInput {
   slot: number
   teamId: string | null
@@ -71,7 +86,7 @@ export interface ReconstructedParticipant {
   playerId: string
   leagueClanId: string
   side: 'red' | 'blue'
-  outcome: Outcome
+  outcome: 'win' | 'lose'
   kill: number
   death: number
   assist: number
@@ -94,6 +109,7 @@ export interface ReconstructionPlan {
   mapId: string
   mapName: string
   startAt: Date
+  /** 리그 대전 인원. 확인 인원이 아니라 **리그가 정한 인원**이다 (아래 주석) */
   playerCount: number
   winnerSide: 'red' | 'blue'
   red: ReconstructionSidePlan
@@ -108,10 +124,18 @@ export interface ReconstructionSummary {
   perClan: Record<string, number>
   crossChecked: number
   conflicts: string[]
-  /** 상세에는 있는데 관측이 없는 사람 수 (그 사람 폴링이 남았다는 뜻) */
-  missingObservations: number
   ambiguousIdentities: number
   rosterMismatches: number
+  /* ── 확인 수준 (Phase 9 · D-068) ── */
+  clanAConfirmedCount: number
+  clanBConfirmedCount: number
+  observationParticipantCount: number
+  detailParticipantCount: number
+  /** `4v3` 처럼 실제 확인 수준 */
+  participantCompleteness: string
+  confidence: LineupConfidence
+  /** 상세에는 있는데 목록 관측이 없는 사람 — **보류 사유가 아니라 참고 수치다** */
+  missingObservations: number
 }
 
 export type ReconstructionResult =
@@ -170,6 +194,7 @@ export interface ReconstructionInput {
     allowMockLeague?: boolean
     /** 운영자가 확인한 로스터만 인정할지 (기본 true — 보수적으로) */
     requireVerifiedRoster?: boolean
+    constants?: RatingConstants
   }
 }
 
@@ -182,14 +207,21 @@ function emptySummary(input: ReconstructionInput): ReconstructionSummary {
     perClan: {},
     crossChecked: 0,
     conflicts: [],
-    missingObservations: 0,
     ambiguousIdentities: 0,
     rosterMismatches: 0,
+    clanAConfirmedCount: 0,
+    clanBConfirmedCount: 0,
+    observationParticipantCount: 0,
+    detailParticipantCount: 0,
+    participantCompleteness: '0',
+    confidence: 'low',
+    missingObservations: 0,
   }
 }
 
 export function evaluateReconstruction(input: ReconstructionInput): ReconstructionResult {
   const summary = emptySummary(input)
+  const constants = input.options?.constants ?? DEFAULT_RATING_CONSTANTS
   const requireVerified = input.options?.requireVerifiedRoster !== false
   const fail = (code: string, reason: string): ReconstructionResult => ({
     ok: false,
@@ -201,31 +233,38 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
   if (input.league.hasMockMatches && input.options?.allowMockLeague !== true) {
     return fail('mock_league', 'mock 시드 경기가 있는 리그다. 실제 기록과 섞지 않는다')
   }
-  if (input.match.dateMatch === null) {
-    return fail('no_date', '경기 시각을 알 수 없다')
-  }
+  if (input.match.dateMatch === null) return fail('no_date', '경기 시각을 알 수 없다')
   if (!input.match.matchType || !input.league.allowedMatchTypes.includes(input.match.matchType)) {
     return fail('match_type', `리그가 인정하지 않는 매치 유형이다: ${input.match.matchType ?? '없음'}`)
   }
   if (!input.match.matchMap) return fail('no_map', '맵 정보가 없다')
   const mapId = input.league.mapIdByName.get(input.match.matchMap)
-  if (!mapId) {
-    return fail('map_not_in_league', `리그 기록 대상 맵이 아니다: ${input.match.matchMap}`)
-  }
+  if (!mapId) return fail('map_not_in_league', `리그 기록 대상 맵이 아니다: ${input.match.matchMap}`)
 
   const at = input.match.dateMatch
 
-  /* --- 1) 관측값 → 확정 참가자 --------------------------------------------- */
+  /* --- 1) 근거 모으기 — 관측(1차) + 상세(보조) ----------------------------- */
   interface Confirmed {
     playerId: string
     membership: RosterMembership
-    outcome: Outcome
+    outcome: 'win' | 'lose'
     kill: number
     death: number
     assist: number
-    sources: string[]
+    sources: ('player_match_list' | 'match_detail')[]
+    headshot: number | null
+    damage: number | null
   }
-  const confirmed: Confirmed[] = []
+  const confirmedByPlayer = new Map<string, Confirmed>()
+
+  const admit = (playerId: string): RosterMembership | null => {
+    const membership = membershipAt(input.memberships, playerId, at)
+    if (!membership || (requireVerified && !membership.verified)) {
+      summary.rosterMismatches += 1
+      return null
+    }
+    return membership
+  }
 
   for (const observation of input.observations) {
     // 신원이 확정되지 않았으면 참가자로 인정하지 않는다 (닉네임 병합 금지 — D-036)
@@ -233,12 +272,13 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
       summary.ambiguousIdentities += 1
       continue
     }
-    const membership = membershipAt(input.memberships, observation.playerId, at)
-    if (!membership || (requireVerified && !membership.verified)) {
-      summary.rosterMismatches += 1
-      continue
+    if (confirmedByPlayer.has(observation.playerId)) {
+      return fail('duplicate_player', '같은 플레이어의 관측값이 중복됐다')
     }
-    if (observation.outcome === null) {
+    const membership = admit(observation.playerId)
+    if (!membership) continue
+
+    if (observation.outcome === null || observation.outcome === 'draw') {
       summary.conflicts.push(`${observation.playerId}: 승패를 알 수 없는 관측값`)
       continue
     }
@@ -248,7 +288,7 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     }
 
     summary.observationsUsable += 1
-    confirmed.push({
+    confirmedByPlayer.set(observation.playerId, {
       playerId: observation.playerId,
       membership,
       outcome: observation.outcome,
@@ -256,47 +296,74 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
       death: observation.death,
       assist: observation.assist,
       sources: ['player_match_list'],
+      headshot: null,
+      damage: null,
     })
   }
 
-  const playerIds = confirmed.map((entry) => entry.playerId)
-  if (new Set(playerIds).size !== playerIds.length) {
-    return fail('duplicate_player', '같은 플레이어의 관측값이 중복됐다')
-  }
-  summary.confirmed = confirmed.length
-
-  /* --- 2) 상세와 교차검증 (상세는 보조 증거다 — D-054) ---------------------- */
+  /* --- 2) 상세와 교차검증 + 상세만 있는 사람도 근거로 인정 (D-054·D-057) --- */
   const detailByPlayer = new Map<string, DetailParticipantInput>()
   for (const participant of input.detail) {
     if (participant.resolvedPlayerId) detailByPlayer.set(participant.resolvedPlayerId, participant)
   }
 
-  for (const entry of confirmed) {
-    const participant = detailByPlayer.get(entry.playerId)
-    if (!participant) continue
-    summary.crossChecked += 1
+  for (const [playerId, participant] of detailByPlayer) {
+    const existing = confirmedByPlayer.get(playerId)
 
-    const mismatched: string[] = []
-    if (participant.kill !== null && participant.kill !== entry.kill) mismatched.push('kill')
-    if (participant.death !== null && participant.death !== entry.death) mismatched.push('death')
-    if (participant.assist !== null && participant.assist !== entry.assist) mismatched.push('assist')
-    if (participant.outcome !== null && participant.outcome !== entry.outcome) {
-      mismatched.push('outcome')
+    if (existing) {
+      summary.crossChecked += 1
+      const mismatched: string[] = []
+      if (participant.kill !== null && participant.kill !== existing.kill) mismatched.push('kill')
+      if (participant.death !== null && participant.death !== existing.death) mismatched.push('death')
+      if (participant.assist !== null && participant.assist !== existing.assist) {
+        mismatched.push('assist')
+      }
+      if (participant.outcome !== null && participant.outcome !== existing.outcome) {
+        mismatched.push('outcome')
+      }
+      if (mismatched.length > 0) {
+        summary.conflicts.push(`${playerId}: 상세와 관측값 불일치 (${mismatched.join(', ')})`)
+      } else {
+        existing.sources.push('match_detail')
+        // 상세에만 있는 값은 여기서만 얻을 수 있다
+        existing.headshot = participant.headshot
+        existing.damage = participant.damage
+      }
+      continue
     }
-    if (mismatched.length > 0) {
-      summary.conflicts.push(`${entry.playerId}: 상세와 관측값 불일치 (${mismatched.join(', ')})`)
-    } else {
-      entry.sources.push('match_detail')
-      // 상세에만 있는 값은 여기서만 얻을 수 있다
+
+    // 목록 관측은 없지만 상세에 본인 기록이 있는 사람 — 그것도 **자기 기록**이다
+    summary.missingObservations += 1
+    if (
+      participant.outcome === null ||
+      participant.outcome === 'draw' ||
+      participant.kill === null ||
+      participant.death === null ||
+      participant.assist === null
+    ) {
+      continue
     }
+    const membership = admit(playerId)
+    if (!membership) continue
+
+    confirmedByPlayer.set(playerId, {
+      playerId,
+      membership,
+      outcome: participant.outcome,
+      kill: participant.kill,
+      death: participant.death,
+      assist: participant.assist,
+      sources: ['match_detail'],
+      headshot: participant.headshot,
+      damage: participant.damage,
+    })
   }
 
-  // 상세에 나왔고 로스터 소속인데 관측이 없는 사람 = 아직 폴링하지 못한 선수
-  for (const participant of input.detail) {
-    if (!participant.resolvedPlayerId) continue
-    if (playerIds.includes(participant.resolvedPlayerId)) continue
-    const membership = membershipAt(input.memberships, participant.resolvedPlayerId, at)
-    if (membership && (!requireVerified || membership.verified)) summary.missingObservations += 1
+  const confirmed = [...confirmedByPlayer.values()]
+  summary.confirmed = confirmed.length
+  for (const entry of confirmed) {
+    summary.perClan[entry.membership.leagueClanId] =
+      (summary.perClan[entry.membership.leagueClanId] ?? 0) + 1
   }
 
   if (summary.conflicts.length > 0) {
@@ -306,95 +373,76 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     )
   }
 
-  /* --- 3) 클랜별 구성 ------------------------------------------------------ */
-  const byClan = new Map<string, Confirmed[]>()
-  for (const entry of confirmed) {
-    const bucket = byClan.get(entry.membership.leagueClanId)
-    if (bucket) bucket.push(entry)
-    else byClan.set(entry.membership.leagueClanId, [entry])
-  }
-  for (const [clanId, members] of byClan) summary.perClan[clanId] = members.length
+  /* --- 3) 인정 기준 판정은 래더 엔진과 **같은 함수**를 쓴다 (D-057) --------- */
+  const participants: ConfirmedParticipant[] = confirmed.map((entry) => ({
+    playerId: entry.playerId,
+    leagueClanId: entry.membership.leagueClanId,
+    outcome: entry.outcome,
+    kill: entry.kill,
+    death: entry.death,
+    assist: entry.assist,
+    sources: entry.sources,
+  }))
+  const eligibility = evaluateEligibility({ participants, constants })
 
-  if (summary.missingObservations > 0) {
-    return fail(
-      'missing_observation',
-      `상세에 나왔지만 목록 관측이 없는 선수 ${summary.missingObservations}명 — 폴링이 더 필요하다`,
-    )
-  }
-  if (byClan.size < 2) {
-    return fail(
-      'incomplete_roster',
-      `확정된 클랜이 ${byClan.size}곳뿐이다 (관측 ${summary.confirmed}명). 상대 클랜 선수의 관측이 없다`,
-    )
-  }
-  if (byClan.size > 2) {
-    return fail('roster_mismatch', `클랜이 ${byClan.size}곳이다. 클랜전으로 볼 수 없다`)
-  }
+  summary.clanAConfirmedCount = eligibility.clanA?.confirmed ?? 0
+  summary.clanBConfirmedCount = eligibility.clanB?.confirmed ?? 0
+  summary.observationParticipantCount = eligibility.observationParticipantCount
+  summary.detailParticipantCount = eligibility.detailParticipantCount
+  summary.participantCompleteness = eligibility.completeness
+  summary.confidence = lineupConfidence(
+    summary.clanAConfirmedCount,
+    summary.clanBConfirmedCount,
+    input.league.playerLimits[0] ?? 5,
+  )
 
-  const [clanA, clanB] = [...byClan.keys()] as [string, string]
-  const sizeA = byClan.get(clanA)?.length ?? 0
-  const sizeB = byClan.get(clanB)?.length ?? 0
-
-  if (sizeA !== sizeB) {
-    return fail('incomplete_roster', `양 팀 인원이 다르다 (${sizeA} vs ${sizeB})`)
-  }
-  if (!input.league.playerLimits.includes(sizeA)) {
-    return fail(
-      'incomplete_roster',
-      `리그 대전 인원(${input.league.playerLimits.join('/')})이 아니다: ${sizeA}명`,
-    )
+  if (!eligibility.eligible || !eligibility.clanA || !eligibility.clanB) {
+    return fail(eligibility.status, eligibility.reason)
   }
 
-  /* --- 4) 승패 일관성 ------------------------------------------------------ */
-  const outcomesA = new Set((byClan.get(clanA) ?? []).map((entry) => entry.outcome))
-  const outcomesB = new Set((byClan.get(clanB) ?? []).map((entry) => entry.outcome))
-  if (outcomesA.size !== 1 || outcomesB.size !== 1) {
-    return fail('inconsistent_outcome', '같은 클랜 안에서 승패가 엇갈린다')
-  }
-  const outcomeA = [...outcomesA][0]
-  const outcomeB = [...outcomesB][0]
-  const winnerClan =
-    outcomeA === 'win' && outcomeB === 'lose'
-      ? clanA
-      : outcomeB === 'win' && outcomeA === 'lose'
-        ? clanB
-        : null
-  if (winnerClan === null) {
-    return fail('no_winner', '승패를 판정할 수 없다 (무승부이거나 결과가 엇갈린다)')
-  }
-
-  /* --- 5) 진영 배정 + 계획 -------------------------------------------------- */
+  /* --- 4) 진영 배정 + 계획 -------------------------------------------------- */
   const teamIdByClan = new Map<string, string>()
   for (const entry of confirmed) {
     const participant = detailByPlayer.get(entry.playerId)
     if (participant?.teamId) teamIdByClan.set(entry.membership.leagueClanId, participant.teamId)
   }
+  const clanA = eligibility.clanA.leagueClanId
+  const clanB = eligibility.clanB.leagueClanId
   const sides = assignSidesByEvidence([clanA, clanB], teamIdByClan)
 
   const buildSide = (clanId: string, side: 'red' | 'blue'): ReconstructionSidePlan => {
-    const members = byClan.get(clanId) ?? []
+    const members = confirmed.filter((entry) => entry.membership.leagueClanId === clanId)
     const first = members[0]!
     return {
       leagueClanId: clanId,
       clanName: first.membership.clanName,
       division: first.membership.division,
-      members: members.map((entry): ReconstructedParticipant => {
-        const participant = detailByPlayer.get(entry.playerId)
-        return {
-          playerId: entry.playerId,
-          leagueClanId: clanId,
-          side,
-          outcome: entry.outcome,
-          kill: entry.kill,
-          death: entry.death,
-          assist: entry.assist,
-          headshot: participant?.headshot ?? null,
-          damage: participant?.damage ?? null,
-          sources: entry.sources,
-        }
-      }),
+      members: members.map((entry): ReconstructedParticipant => ({
+        playerId: entry.playerId,
+        leagueClanId: clanId,
+        side,
+        outcome: entry.outcome,
+        kill: entry.kill,
+        death: entry.death,
+        assist: entry.assist,
+        headshot: entry.headshot,
+        damage: entry.damage,
+        sources: entry.sources,
+      })),
     }
   }
+
+  /**
+   * 대전 인원은 **리그가 정한 인원**을 쓴다.
+   *
+   * 확인 인원(예: 4명)을 그대로 쓰면 "4 vs 4 경기였다"고 잘못 말하게 된다.
+   * 우리가 4명만 확인했을 뿐이지 4명이 뛴 것이 아니다.
+   * 리그 대전 인원이 하나로 정해져 있으면 그 값을, 아니면 확인 인원의 최대값을 쓴다.
+   */
+  const playerCount =
+    input.league.playerLimits.length === 1
+      ? input.league.playerLimits[0]!
+      : Math.max(summary.clanAConfirmedCount, summary.clanBConfirmedCount)
 
   return {
     ok: true,
@@ -404,8 +452,8 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
       mapId,
       mapName: input.match.matchMap,
       startAt: at,
-      playerCount: sizeA,
-      winnerSide: winnerClan === sides.red ? 'red' : 'blue',
+      playerCount,
+      winnerSide: eligibility.winnerLeagueClanId === sides.red ? 'red' : 'blue',
       red: buildSide(sides.red, 'red'),
       blue: buildSide(sides.blue, 'blue'),
     },

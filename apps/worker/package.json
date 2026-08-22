@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@sacloud/db": "workspace:*",
-    "@sacloud/nexon": "workspace:*"
+    "@sacloud/nexon": "workspace:*",
+    "@sacloud/rating": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.23.12"

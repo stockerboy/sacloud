@@ -29,6 +29,8 @@ import { runPoll } from '../jobs/poll.js'
 import { backfillObservations, runReconstruct } from '../jobs/reconstruct.js'
 import { applyPropagation, collectPropagationPeers } from '../jobs/propagate.js'
 import { syncLeaguePriority } from '../jobs/roster.js'
+import { runRate, runSeasonSoftReset } from '../jobs/rate.js'
+import { DEFAULT_RATING_CONSTANTS, PERSONAL_FORMULA_VERSION, seasonSoftReset } from '@sacloud/rating'
 import { DEFAULT_POLLING_CONFIG } from '../lib/pollingPolicy.js'
 import type { JobContext } from '../jobs/context.js'
 
@@ -426,18 +428,32 @@ async function main() {
 
   const reconstructTarget = { leagueSlug: SMOKE_LEAGUE_SLUG, sourceMatchIds: [SAMPLE_MATCH_DETAIL.match_id], redo: true }
 
-  // 8-1) 관측이 없으면 재구성하지 않는다 — 상세만 가지고 만들어내지 않는다
-  const noObservation = await runReconstruct(ctx, reconstructTarget)
-  check('관측 없이는 재구성하지 않는다', 0, noObservation.projected)
-  check('사유는 관측 부족이다', 1, noObservation.reasons['missing_observation'] ?? 0)
-
-  // 8-2) 관측을 채우되 한 명의 kill을 어긋나게 둔다 → 자동 투영 금지
   const stagingForReconstruct = await prisma.nexonMatch.findUnique({
     where: {
       source_sourceMatchId: { source: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
     },
     select: { id: true },
   })
+
+  // 8-1) 상세에 본인 기록이 있으면 그것도 **자기 기록**이라 근거가 된다 (D-068).
+  //      로스터에만 있고 어디에도 기록이 없는 사람은 여전히 만들어내지 않는다.
+  const detailOnly = await runReconstruct(ctx, reconstructTarget)
+  check('상세 근거만으로도 인정된다', 1, detailOnly.projected)
+  const detailOnlyStaging = await prisma.nexonMatch.findUnique({
+    where: { id: stagingForReconstruct!.id },
+    select: { participantCompleteness: true, observationParticipantCount: true },
+  })
+  check('상세만 있으면 목록 관측 수는 0이다', 0, detailOnlyStaging?.observationParticipantCount ?? -1)
+  check('확인 수준은 5v5다', '5v5', detailOnlyStaging?.participantCompleteness ?? '')
+
+  // 다음 단계를 깨끗한 상태에서 보기 위해 되돌린다
+  await prisma.match.deleteMany({ where: { league: { slug: SMOKE_LEAGUE_SLUG } } })
+  await prisma.nexonMatch.updateMany({
+    where: { id: stagingForReconstruct!.id },
+    data: { projectionStatus: 'pending', projectedMatchId: null, projectedAt: null },
+  })
+
+  // 8-2) 관측을 채우되 한 명의 kill을 어긋나게 둔다 → 자동 투영 금지
   const observationRows = SAMPLE_MATCH_DETAIL.match_detail.map((participant, index) => ({
     nexonMatchId: stagingForReconstruct!.id,
     ouid: `${SMOKE_OUID}-${index}`,
@@ -549,6 +565,120 @@ async function main() {
     select: { tier: true, intervalMinutes: true },
   })
   check('전파는 티어를 바꾸지 않는다', 'hot', untouchedTier?.tier ?? '')
+
+  /* 10) 확인 수준 — 3명만 확인돼도 경기는 인정된다 (Phase 9 · D-057) */
+  const dropped = [`${SMOKE_OUID}-3`, `${SMOKE_OUID}-4`]
+  await prisma.nexonMatchObservation.deleteMany({
+    where: { nexonMatchId: stagingForReconstruct!.id, ouid: { in: dropped } },
+  })
+  // 상세에도 그 두 명이 남아 있으면 상세 근거로 다시 확인된다 → 상세 연결도 끊는다
+  await prisma.nexonMatchParticipant.updateMany({
+    where: {
+      nexonMatchId: stagingForReconstruct!.id,
+      resolvedPlayerId: { in: [`${SMOKE_PLAYER_PREFIX}3`, `${SMOKE_PLAYER_PREFIX}4`] },
+    },
+    data: { resolvedPlayerId: null, resolutionStatus: 'unresolved' },
+  })
+  await prisma.match.deleteMany({ where: { league: { slug: SMOKE_LEAGUE_SLUG } } })
+
+  const partial = await runReconstruct(ctx, reconstructTarget)
+  check('3명만 확인돼도 경기는 인정된다 (양측 3명 이상)', 1, partial.projected)
+
+  const partialStaging = await prisma.nexonMatch.findUnique({
+    where: { id: stagingForReconstruct!.id },
+    select: {
+      participantCompleteness: true,
+      reconstructionConfidence: true,
+      clanAConfirmedCount: true,
+      clanBConfirmedCount: true,
+    },
+  })
+  check('확인 수준이 기록된다', '5v3', partialStaging?.participantCompleteness ?? '')
+  check('확신 등급이 기록된다', 'low', partialStaging?.reconstructionConfidence ?? '')
+
+  const partialMatch = await prisma.match.findUnique({
+    where: {
+      origin_sourceMatchId: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
+    },
+    include: { stats: true },
+  })
+  check('확인된 8명만 참가 기록이 생긴다 (없는 참가자를 만들지 않는다)', 8, partialMatch?.stats.length ?? 0)
+  check('대전 인원은 리그 기준(5)을 쓴다', 5, partialMatch?.playerCount ?? 0)
+  check('확인 수준이 운영 매치까지 간다', '5v3', partialMatch?.participantCompleteness ?? '')
+
+  /* 11) 래더 반영 — 결정적 replay */
+  const rated = await runRate(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
+  check('래더를 계산한 경기 수', 1, rated.matchesRated)
+  check('선수 래더가 갱신된다', 8, rated.playersUpdated)
+  check('클랜 래더가 갱신된다', 2, rated.clansUpdated)
+
+  const ratedStats = await prisma.matchPlayerStat.findMany({
+    where: { match: { origin: 'nexon' } },
+    select: { playerId: true, ratingBefore: true, ratingUpdate: true, ratingAfter: true, formulaVersion: true },
+    orderBy: { playerId: 'asc' },
+  })
+  check('배치고사 구간이라 증감은 0이다', 0, ratedStats[0]?.ratingUpdate ?? -1)
+  check('formulaVersion이 남는다', PERSONAL_FORMULA_VERSION, ratedStats[0]?.formulaVersion ?? '')
+
+  const firstRun = JSON.stringify(ratedStats)
+  await runRate(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
+  const secondRun = JSON.stringify(
+    await prisma.matchPlayerStat.findMany({
+      where: { match: { origin: 'nexon' } },
+      select: { playerId: true, ratingBefore: true, ratingUpdate: true, ratingAfter: true, formulaVersion: true },
+      orderBy: { playerId: 'asc' },
+    }),
+  )
+  check('다시 계산해도 같은 값이 나온다 (결정적 replay)', firstRun, secondRun)
+
+  // 배치고사를 끄고 다시 계산하면 실제 증감이 나온다 (제로섬 확인)
+  const noPlacement = { ...DEFAULT_RATING_CONSTANTS, placementMatches: 0 }
+  await runRate(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG, constants: noPlacement })
+  const livesStats = await prisma.matchPlayerStat.findMany({
+    where: { match: { origin: 'nexon' } },
+    select: { side: true, ratingUpdate: true },
+  })
+  const winnerSum = livesStats
+    .filter((stat) => stat.side === 'red')
+    .reduce((sum, stat) => sum + (stat.ratingUpdate ?? 0), 0)
+  const loserSum = livesStats
+    .filter((stat) => stat.side === 'blue')
+    .reduce((sum, stat) => sum + (stat.ratingUpdate ?? 0), 0)
+  check('배치고사를 끄면 실제 증감이 나온다', true, winnerSum !== 0)
+  check('이긴 쪽은 오르고 진 쪽은 내린다', true, winnerSum > 0 && loserSum < 0)
+
+  const ratedMatch = await prisma.match.findFirst({
+    where: { origin: 'nexon' },
+    select: { redRatingUpdate: true, blueRatingUpdate: true, redRatingBefore: true },
+  })
+  check('클랜 증감도 경기에 남는다', true, (ratedMatch?.redRatingUpdate ?? 0) !== 0)
+  check(
+    '동급 클랜 경기는 제로섬이다',
+    0,
+    (ratedMatch?.redRatingUpdate ?? 0) + (ratedMatch?.blueRatingUpdate ?? 0),
+  )
+
+  const ratingConfig = await prisma.ratingConfig.findFirst({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    select: { expectedScoreDivisor: true, formulaVersion: true },
+  })
+  check('쓴 상수를 DB에 남긴다', DEFAULT_RATING_CONSTANTS.expectedScoreDivisor, ratingConfig?.expectedScoreDivisor ?? -1)
+
+  /* 12) 시즌 soft reset — 완전 초기화가 아니다 */
+  await prisma.leagueClan.updateMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    data: { rating: 2500 },
+  })
+  await runSeasonSoftReset(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
+  const afterReset = await prisma.leagueClan.findFirst({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG } },
+    select: { rating: true },
+  })
+  check(
+    'soft reset은 평균 쪽으로 절반만 되돌린다',
+    seasonSoftReset(2500),
+    afterReset?.rating ?? -1,
+  )
 
   await cleanupLeague()
   await prisma.nexonIdentity.deleteMany({ where: { ouid: { startsWith: `${SMOKE_OUID}-` } } })

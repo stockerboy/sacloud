@@ -608,6 +608,9 @@ function toMatchListItem(
     red: lineupOf(match, 'red'),
     blue: lineupOf(match, 'blue'),
     player_stat: viewerStat ? toMatchPlayerStat(match, viewerStat, true) : null,
+    // mock 경기는 재구성이 아니다 — 확인 수준이라는 개념 자체가 없다
+    participant_completeness: null,
+    evidence_confidence: null,
   }
 }
 

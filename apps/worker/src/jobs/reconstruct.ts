@@ -214,6 +214,8 @@ async function loadMemberships(leagueId: string): Promise<RosterMembership[]> {
 async function writeReconstructedMatch(input: {
   plan: ReconstructionPlan
   sourceMatchId: string
+  participantCompleteness: string
+  evidenceConfidence: string
 }): Promise<string> {
   const { plan, sourceMatchId } = input
 
@@ -245,6 +247,9 @@ async function writeReconstructedMatch(input: {
     blueDivisionAtMatch: plan.blue.division,
     origin: NEXON_SOURCE,
     sourceMatchId,
+    // 우리가 몇 명을 확인했는지 화면까지 그대로 들고 간다 (D-068)
+    participantCompleteness: input.participantCompleteness,
+    evidenceConfidence: input.evidenceConfidence,
   }
 
   await prisma.match.upsert({
@@ -419,6 +424,8 @@ export async function runReconstruct(
       const matchId = await writeReconstructedMatch({
         plan: outcome.plan,
         sourceMatchId: staging.sourceMatchId,
+        participantCompleteness: outcome.summary.participantCompleteness,
+        evidenceConfidence: outcome.summary.confidence,
       })
       await prisma.nexonMatch.update({
         where: { id: staging.id },
@@ -429,6 +436,12 @@ export async function runReconstruct(
           projectedAt: new Date(),
           reconstruction: lastSummary as Prisma.InputJsonValue,
           reconstructedAt: new Date(),
+          clanAConfirmedCount: outcome.summary.clanAConfirmedCount,
+          clanBConfirmedCount: outcome.summary.clanBConfirmedCount,
+          observationParticipantCount: outcome.summary.observationParticipantCount,
+          detailParticipantCount: outcome.summary.detailParticipantCount,
+          participantCompleteness: outcome.summary.participantCompleteness,
+          reconstructionConfidence: outcome.summary.confidence,
         },
       })
       log(`재구성 투영: ${staging.sourceMatchId} → Match ${matchId} (${league.slug})`)
@@ -460,6 +473,14 @@ export async function runReconstruct(
     result.reasons[code] = (result.reasons[code] ?? 0) + 1
 
     if (!ctx.dryRun) {
+      const counts = (lastSummary ?? {}) as {
+        clanAConfirmedCount?: number
+        clanBConfirmedCount?: number
+        observationParticipantCount?: number
+        detailParticipantCount?: number
+        participantCompleteness?: string
+        confidence?: string
+      }
       await prisma.nexonMatch.update({
         where: { id: staging.id },
         data: {
@@ -467,6 +488,13 @@ export async function runReconstruct(
           projectionReason: code,
           reconstruction: (lastSummary ?? {}) as Prisma.InputJsonValue,
           reconstructedAt: new Date(),
+          // 인정되지 않은 경기도 **왜 모자랐는지**를 숫자로 남긴다
+          clanAConfirmedCount: counts.clanAConfirmedCount ?? null,
+          clanBConfirmedCount: counts.clanBConfirmedCount ?? null,
+          observationParticipantCount: counts.observationParticipantCount ?? null,
+          detailParticipantCount: counts.detailParticipantCount ?? null,
+          participantCompleteness: counts.participantCompleteness ?? null,
+          reconstructionConfidence: counts.confidence ?? null,
         },
       })
     }

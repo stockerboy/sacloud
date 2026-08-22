@@ -1,0 +1,141 @@
+/**
+ * 래더 상수 — **코드에 박지 않는다.**
+ *
+ * 여기 있는 값은 "기본값"이고, 근거는 `docs/LADDER_TUNING_REPORT.md`의 시뮬레이션이다.
+ * 운영에서는 `RatingConfig` 행으로 덮어쓸 수 있어야 한다 (스펙 §0-6 · §7).
+ *
+ * ── 확정된 정책 (2026-08-22 사용자 승인, `docs/DECISIONS.md` D-057 ~ D-068)
+ *   - division(1부/2부)을 **공식에 넣지 않는다.** 시즌 상태일 뿐이다
+ *   - 동급 경기에서 점수가 계속 늘어나면 안 된다 (인플레이션 금지)
+ *   - 약체 반복 사냥(양학)이 정상 경기보다 유리하면 안 된다
+ *   - 업셋 보상은 유지한다
+ *   - 시즌 종료 시 soft reset (완전 초기화 금지)
+ */
+
+/** 개인 래더 공식의 계보. 표본이 생겨 P-B와 재비교할 수 있게 이름에 남긴다 (D-058) */
+export const PERSONAL_FORMULA_VERSION = 'sacloud-p1-PA'
+export const CLAN_FORMULA_VERSION = 'sacloud-c1-teamelo'
+
+export interface RatingConstants {
+  /**
+   * D — 기대승률 분모. 클수록 실력차 반영이 완만하다.
+   *
+   * 원본 관측은 **3400**이지만 SACLOUD는 **800**을 쓴다 (D-060).
+   * 3400은 너무 평평해서 1,000점 차이가 나도 기대승률이 0.66에 그친다.
+   * 그래서 약체 사냥이 끝없이 이득이 되고, 래더 폭이 관측치의 3배로 벌어졌다.
+   * 시뮬레이션(`docs/LADDER_TUNING_REPORT.md`)에서 800이 실력 상관·신규 안착 속도·
+   * 양학 마진 모두에서 가장 좋았다.
+   */
+  expectedScoreDivisor: number
+
+  /* ── 개인 ── */
+  /** K(R) = personalKBase - R / personalKSlope. 래더가 높을수록 변동이 작다 (원본 36.6 - R/200) */
+  personalKBase: number
+  personalKSlope: number
+  /** K가 이 밑으로는 내려가지 않는다. 0이면 상위권이 아예 안 움직인다 */
+  personalKFloor: number
+  /**
+   * 승리 배수. **1을 넘으면 시스템에 점수가 주입된다**(인플레이션).
+   * 원본은 1부에 1.15를 썼지만 D-060에 따라 1.0으로 둔다
+   */
+  personalWinMultiplier: number
+
+  /* ── 클랜 ── */
+  /**
+   * 클랜 Elo의 K.
+   *
+   * 관측된 클랜 래더는 개인보다 폭이 훨씬 좁다(987~1,840 vs 개인 3,432).
+   * 시뮬레이션에서 K를 낮출수록 폭이 좁아지고 전력 상관은 그대로였다.
+   * 16이 "폭은 좁히되 시즌 안에 수렴할 만큼은 움직인다"의 절충점이다.
+   */
+  clanK: number
+
+  /* ── 양학 억제 (D-062) ── */
+  /** 이 점수 차까지는 보상을 깎지 않는다 */
+  rewardCapStart: number
+  /** 이 점수 차부터는 승리 보상이 0이다 */
+  rewardCapFull: number
+  /** 깎이지 않는 구간에서 승리는 최소 이만큼은 준다 */
+  minWinReward: number
+
+  /* ── 반복 대전 감쇠 (D-063) ── */
+  /** 같은 상대에게 **같은 결과**가 반복될 때 곱해지는 비율 (n번째 재대결 → decay^n) */
+  repeatDecay: number
+  /** 감쇠가 멈추는 하한. 0이면 반복 경기가 완전히 무의미해진다 */
+  repeatDecayFloor: number
+  /** 반복으로 볼 기간 (일) */
+  repeatWindowDays: number
+
+  /* ── 시즌 soft reset (D-064) ── */
+  /** 회귀 중심 */
+  seasonBaseline: number
+  /** 이전 시즌 점수를 얼마나 끌고 가는가 (0=완전 초기화, 1=이월) */
+  seasonCarryRate: number
+
+  /* ── 라인업 전력 반영 (D-065) ── */
+  /** 상대 클랜 래더와 상대 **실제 라인업** 평균을 섞는 비율. 0이면 반영하지 않는다 */
+  lineupBlend: number
+  /** 양측 확인 인원이 이 수 미만이면 라인업 전력을 **반영하지 않는다** */
+  lineupMinConfirmed: number
+
+  /**
+   * 배치고사 경기 수 — 이 경기 수까지는 증감이 0이다.
+   *
+   * 원본의 정확한 판정 기준은 `[미확인]`이다(스펙 §3). 관측된 것은
+   * "배치고사가 끝난 대상만 랭킹에 표시된다"는 사실뿐이라, 우리가 10으로 정했다.
+   * 설정값이므로 실측이 나오면 바꾼다.
+   */
+  placementMatches: number
+
+  /* ── 경기 인정 (D-057) ── */
+  /** 양 클랜 각각 최소 이 인원이 확인돼야 경기로 인정한다 */
+  minConfirmedPerSide: number
+
+  /** 시작 래더 */
+  initialRating: number
+  /** 래더 하한 — 음수로 내려가지 않는다 */
+  ratingFloor: number
+}
+
+/**
+ * 기본 상수.
+ *
+ * 값의 근거는 `docs/LADDER_TUNING_REPORT.md`. 임의로 고른 값이 아니라
+ * 시나리오 13종을 후보 세트로 돌려 고른 것이다.
+ */
+export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
+  expectedScoreDivisor: 800,
+
+  personalKBase: 36.6,
+  personalKSlope: 200,
+  personalKFloor: 8,
+  personalWinMultiplier: 1,
+
+  clanK: 16,
+
+  rewardCapStart: 300,
+  rewardCapFull: 900,
+  minWinReward: 1,
+
+  repeatDecay: 0.6,
+  repeatDecayFloor: 0.15,
+  repeatWindowDays: 14,
+
+  seasonBaseline: 1500,
+  seasonCarryRate: 0.5,
+
+  lineupBlend: 0.5,
+  lineupMinConfirmed: 4,
+
+  placementMatches: 10,
+
+  minConfirmedPerSide: 3,
+
+  initialRating: 1500,
+  ratingFloor: 0,
+}
+
+/** 원본이 정수를 쓰므로 half-up으로 고정한다. 음수는 크기를 반올림한 뒤 부호를 붙인다 */
+export function roundHalfUp(value: number): number {
+  return value < 0 ? -Math.floor(-value + 0.5) : Math.floor(value + 0.5)
+}
