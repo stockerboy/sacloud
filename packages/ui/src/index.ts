@@ -58,6 +58,12 @@ export { ClanMemberList } from './profile/ClanMemberList'
 /* --- Phase 4: 기록실 · 매치 상세 --- */
 export { MatchCard, formatPlayTime, formatRatingUpdate } from './record/MatchCard'
 export {
+  ladderNotice,
+  showsClanWeight,
+  UNOFFICIAL_BADGE,
+  UNOFFICIAL_BADGE_TITLE,
+} from './record/officialCopy'
+export {
   RecentMatchSummary,
   PlayerStatSidebar,
   TeammateTable,

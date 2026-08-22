@@ -8,6 +8,11 @@ import { RelativeTime } from '../common/RelativeTime'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
+import {
+  ladderNotice,
+  showsClanWeight,
+  UNOFFICIAL_BADGE_TITLE,
+} from './officialCopy'
 
 /**
  * 매치 카드 (기록실 목록의 한 줄, 아코디언).
@@ -142,15 +147,15 @@ export function MatchCard({
       >
         <div className={`w-2 ${win ? 'bg-win-bar' : 'bg-lose-bar'}`} />
 
-        {/* 공식 경기와 참고 기록을 **목록에서** 구분한다 (D-080 · 정책 17).
+        {/* 공식 경기와 비공식 경기를 **목록에서** 구분한다 (D-080 · 정책 17).
             숨기지 않되, 통계에 들어가지 않는다는 사실이 한눈에 보여야 한다. */}
         {match.official ? null : (
           <div className="flex w-16 items-center justify-center">
             <div
               className="rounded border border-lose-line px-1 py-0.5 text-center text-[10px] leading-tight text-lose"
-              title="양 팀 모두 본클랜원이 3명 미만이라 공식 통계·래더에 반영되지 않는다"
+              title={UNOFFICIAL_BADGE_TITLE}
             >
-              참고 기록
+              비공식 경기
               <br />
               래더 미반영
             </div>
@@ -331,21 +336,30 @@ function MatchDetailPanel({
           </div>
         )}
       </div>
-      {/* 왜 이 경기에서 점수가 덜 올랐는지 화면에서 바로 알 수 있게 한다 (정책 16) */}
+      {/* 왜 이 경기에서 점수가 덜 올랐는지 화면에서 바로 알 수 있게 한다 (정책 16).
+          단, **반영률은 공식 경기에서만** 보여 준다 (정책 5).
+          비공식 경기는 애초에 계산 대상이 아니라서 `70%`를 띄우면 그만큼 반영된 것처럼 읽힌다.
+          구성은 그대로 보여 주되 반영률 자리에는 미반영이라고 못 박는다. */}
       {match.league_clan.clan_weight === null ? null : (
         <div className="mt-2 flex flex-wrap gap-4 border-b border-divider pb-2 text-sm text-meta">
           {[match.league_clan, match.opponent].map((snapshot) => (
             <div key={snapshot.league_clan_id}>
               <span className="font-semibold text-ink">{snapshot.clan.name}</span>{' '}
               클랜원 {snapshot.members_confirmed ?? 0} / 용병 {snapshot.mercenaries_confirmed ?? 0}
-              {' · '}
-              클랜 래더 반영률{' '}
-              <span className={snapshot.clan_weight === 1 ? '' : 'text-lose'}>
-                {Math.round((snapshot.clan_weight ?? 0) * 100)}%
-              </span>
+              {showsClanWeight(match.official) ? (
+                <>
+                  {' · '}
+                  클랜 래더 반영률{' '}
+                  <span className={snapshot.clan_weight === 1 ? '' : 'text-lose'}>
+                    {Math.round((snapshot.clan_weight ?? 0) * 100)}%
+                  </span>
+                </>
+              ) : null}
             </div>
           ))}
-          <div>개인 래더는 용병 포함 전원 100% 반영된다</div>
+          <div className={match.official ? undefined : 'text-lose'}>
+            {ladderNotice(match.official)}
+          </div>
         </div>
       )}
       {detail ? (

@@ -223,20 +223,30 @@ async function buildStreak(where: Prisma.MatchWhereInput, leagueClanId: string):
   }
 }
 
-/** 최근 20전 + 연승/연패를 한 번에 만든다. */
+/**
+ * 최근 20전 + 연승/연패를 한 번에 만든다.
+ *
+ * **비공식 경기는 여기 들어오지 않는다** (정책 3 · 13).
+ * 경기 목록에는 그대로 보이지만 승·패·승률·연승·킬뎃·팀원 집계에는 한 건도 넣지 않는다.
+ * 실제로 이걸 빼기 전에는 비공식 경기 한 판이 `1전 1승 0패 (100%)`로 표시됐다.
+ *
+ * mock 픽스처는 전부 공식 경기라서(`official` 기본값 `true`) 이 조건이
+ * mock↔live 대조 결과를 바꾸지 않는다.
+ */
 async function buildRecordSummary(
   where: Prisma.MatchWhereInput,
   leagueClanId: string,
   playerId: string | null,
 ): Promise<{ summary: MatchSummary; teammates: TeammateStat[] }> {
+  const officialOnly: Prisma.MatchWhereInput = { ...where, official: true }
   const [recent, streak] = await Promise.all([
     prisma.match.findMany({
-      where,
+      where: officialOnly,
       orderBy: MATCH_ORDER,
       take: RECENT_MATCH_COUNT,
       select: SUMMARY_MATCH_SELECT,
     }),
-    buildStreak(where, leagueClanId),
+    buildStreak(officialOnly, leagueClanId),
   ])
 
   return {

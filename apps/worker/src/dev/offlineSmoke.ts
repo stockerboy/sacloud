@@ -650,7 +650,7 @@ async function main() {
   check('역할이 기록된다', 'mercenary', mercenaryStat?.participantRole ?? '')
   check('원소속이 따로 기록된다', mercenaryLeagueClan.id, mercenaryStat?.rosterLeagueClanId ?? '')
 
-  /* 10-3) 참고 기록 — 양 팀 모두 본클랜원 3명 미만이면 저장은 하되 공식 통계 미반영 (D-080) */
+  /* 10-3) 비공식 경기 — 양 팀 모두 본클랜원 3명 미만이면 저장은 하되 공식 통계 미반영 (D-080) */
   const referenceDropped = [`${SMOKE_OUID}-0`, `${SMOKE_OUID}-5`, `${SMOKE_OUID}-6`]
   const referenceBackup = await prisma.nexonMatchObservation.findMany({
     where: { nexonMatchId: stagingForReconstruct!.id, ouid: { in: referenceDropped } },
@@ -670,7 +670,7 @@ async function main() {
   await prisma.match.deleteMany({ where: { league: { slug: SMOKE_LEAGUE_SLUG } } })
 
   const referenceRun = await runReconstruct(ctx, reconstructTarget)
-  check('참고 기록도 경기는 저장한다 (지우지 않는다)', 1, referenceRun.projected)
+  check('비공식 경기도 경기는 저장한다 (지우지 않는다)', 1, referenceRun.projected)
   const referenceMatch = await prisma.match.findUnique({
     where: {
       origin_sourceMatchId: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
@@ -681,7 +681,7 @@ async function main() {
   check('참가자 기록은 그대로 남는다', true, (referenceMatch?.stats.length ?? 0) > 0)
 
   const referenceRate = await runRate(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
-  check('참고 기록은 래더 계산 대상이 아니다', 0, referenceRate.matchesRated)
+  check('비공식 경기는 래더 계산 대상이 아니다', 0, referenceRate.matchesRated)
 
   // 되돌린다
   await prisma.nexonMatchObservation.createMany({

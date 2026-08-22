@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
           <Stat label="수집 경기(스테이징)" value={summary.matches.staged} />
           <Stat label="재구성 판정" value={summary.matches.reconstructed} />
           <Stat label="공식 경기" value={summary.matches.official} />
-          <Stat label="참고 기록" value={summary.matches.reference} hint="통계 미반영" />
+          <Stat label="비공식 경기" value={summary.matches.reference} hint="통계 미반영" />
           <Stat label="대기" value={summary.matches.pending} />
           <Stat label="보류" value={summary.matches.skipped} />
         </div>

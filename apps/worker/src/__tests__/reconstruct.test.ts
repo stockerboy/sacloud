@@ -276,7 +276,7 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     expect(result.summary.loserClanWeight).toBe(0.7)
   })
 
-  it('양 팀 모두 본클랜원 3명 미만이면 참고 기록이다 (D-080)', () => {
+  it('양 팀 모두 본클랜원 3명 미만이면 비공식 경기다 (D-080)', () => {
     const base = fullMatch()
     const keep = new Set(['A0', 'A1', 'B0', 'B1'])
     const result = evaluateReconstruction({

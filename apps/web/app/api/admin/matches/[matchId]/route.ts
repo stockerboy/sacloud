@@ -18,12 +18,12 @@ export async function GET(request: Request, context: { params: Promise<Record<st
 }
 
 /**
- * PATCH /api/admin/matches/{matchId} — 공식/참고 상태 수정.
+ * PATCH /api/admin/matches/{matchId} — 공식/비공식 상태 수정.
  *
  * 잘못 인식된 경기를 운영자가 바로잡기 위한 것이다 (정책 18).
  *
- * **공식 → 참고**는 바로 된다(통계에서 빼는 방향이라 안전하다).
- * **참고 → 공식**은 `reason`을 반드시 적어야 한다 — 근거 없이 통계에 넣지 않기 위해서다.
+ * **공식 → 비공식**은 바로 된다(통계에서 빼는 방향이라 안전하다).
+ * **비공식 → 공식**은 `reason`을 반드시 적어야 한다 — 근거 없이 통계에 넣지 않기 위해서다.
  * 어느 쪽이든 바꾸면 `nexon:rate`를 다시 돌려야 래더에 반영된다.
  */
 export async function PATCH(request: Request, context: { params: Promise<Record<string, string>> }) {
@@ -42,7 +42,7 @@ export async function PATCH(request: Request, context: { params: Promise<Record<
     if (!before) return notFound('경기를 찾을 수 없습니다')
 
     if (body.official === true && !body.reason?.trim()) {
-      return badRequest('참고 기록을 공식으로 바꾸려면 근거(reason)를 적어야 합니다')
+      return badRequest('비공식 경기를 공식으로 바꾸려면 근거(reason)를 적어야 합니다')
     }
 
     const after = await prisma.match.update({

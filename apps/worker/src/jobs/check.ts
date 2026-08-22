@@ -239,7 +239,7 @@ export async function runCheck(input: {
   /* ------------------------------------------------------------ Phase 9 --- */
 
   /* 12) **공식** 경기는 한쪽이라도 본클랜원 3명을 채웠어야 한다 (D-079, OR 조건).
-        참고 기록은 둘 다 미달인 것이 정상이므로 여기서 세지 않는다 (D-080) */
+        비공식 경기는 둘 다 미달인 것이 정상이므로 여기서 세지 않는다 (D-080) */
   const officialStagings = await prisma.nexonMatch.findMany({
     where: { projectionStatus: 'projected', official: true },
     select: { winnerMembersConfirmed: true, loserMembersConfirmed: true },
@@ -254,7 +254,7 @@ export async function runCheck(input: {
     note: '양 팀 모두 본클랜원 3명 미만인데 공식으로 인정된 경기',
   })
 
-  /* 13) 참고 기록에는 래더가 붙으면 안 된다 (D-080) */
+  /* 13) 비공식 경기에는 래더가 붙으면 안 된다 (D-080) */
   const referenceRated = await prisma.matchPlayerStat.count({
     where: { match: { origin: NEXON_SOURCE, official: false }, ratingUpdate: { not: null } },
   })
@@ -262,7 +262,7 @@ export async function runCheck(input: {
     name: 'reference_not_rated',
     expected: 0,
     actual: referenceRated,
-    note: '참고 기록인데 개인 래더가 계산된 참가 기록',
+    note: '비공식 경기인데 개인 래더가 계산된 참가 기록',
   })
 
   /* 13) 래더 값이 있으면 formulaVersion도 있어야 한다 (재현 가능해야 한다) */

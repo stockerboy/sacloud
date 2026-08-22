@@ -135,7 +135,7 @@ export async function runRate(
     where: {
       leagueId: league.id,
       origin: 'nexon',
-      // 참고 기록은 공식 통계·래더에 반영하지 않는다 (D-080)
+      // 비공식 경기는 공식 통계·래더에 반영하지 않는다 (D-080)
       official: true,
       ...(season
         ? {

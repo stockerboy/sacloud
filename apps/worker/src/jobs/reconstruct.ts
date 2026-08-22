@@ -252,7 +252,7 @@ async function writeReconstructedMatch(input: {
     // 우리가 몇 명을 확인했는지 화면까지 그대로 들고 간다 (D-068)
     participantCompleteness: input.participantCompleteness,
     evidenceConfidence: input.evidenceConfidence,
-    // 참고 기록이면 false — 기록실에는 보이지만 공식 통계에 들어가지 않는다 (D-080)
+    // 비공식 경기면 false — 기록실에는 보이지만 공식 통계에 들어가지 않는다 (D-080)
     official: plan.official,
   }
 
@@ -457,7 +457,7 @@ export async function runReconstruct(
         },
       })
       log(
-        `재구성 ${outcome.summary.official ? '투영' : '참고 기록'}: ` +
+        `재구성 ${outcome.summary.official ? '투영' : '비공식 경기'}: ` +
           `${staging.sourceMatchId} → Match ${matchId} (${league.slug})`,
       )
       projected = true

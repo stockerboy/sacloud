@@ -424,23 +424,23 @@ describe('공식 경기 판정 — 한쪽만 본클랜원 3명이어도 공식�
     expect(result.loserSide?.leagueClanId).toBe('CB')
   })
 
-  it('클2+용3 vs 클2+용3 → 참고 기록', () => {
+  it('클2+용3 vs 클2+용3 → 비공식 경기', () => {
     const result = match(2, 3, 2, 3)
     expect(result.official).toBe(false)
     expect(result.recordable).toBe(true)
     expect(result.status).toBe('reference')
-    expect(result.reason).toContain('참고 기록')
+    expect(result.reason).toContain('비공식 경기')
   })
 
-  it('클2+용3 vs 클1+용4 → 참고 기록', () => {
+  it('클2+용3 vs 클1+용4 → 비공식 경기', () => {
     expect(match(2, 3, 1, 4).official).toBe(false)
   })
 
-  it('클1+용4 vs 클1+용4 → 참고 기록', () => {
+  it('클1+용4 vs 클1+용4 → 비공식 경기', () => {
     expect(match(1, 4, 1, 4).official).toBe(false)
   })
 
-  it('참고 기록도 경기 자체는 기록 가능하다 (지우지 않는다 — D-080)', () => {
+  it('비공식 경기도 경기 자체는 기록 가능하다 (지우지 않는다 — D-080)', () => {
     const result = match(2, 3, 2, 3)
     expect(result.recordable).toBe(true)
     expect(result.assigned).toHaveLength(10)
@@ -574,7 +574,7 @@ describe('클랜 래더 반영률 — 본클랜원 수에 따라 팀마다 다�
   })
 })
 
-describe('참고 기록 — 공식 통계에 전혀 반영하지 않는다 (D-080)', () => {
+describe('비공식 경기 — 공식 통계에 전혀 반영하지 않는다 (D-080)', () => {
   const reference = () =>
     rateMatch({
       participants: [
@@ -606,7 +606,7 @@ describe('참고 기록 — 공식 통계에 전혀 반영하지 않는다 (D-08
     expect(one?.death).toBe(8)
   })
 
-  it('CASE 6 — 클2+용3 vs 클1+용4도 참고 기록이다', () => {
+  it('CASE 6 — 클2+용3 vs 클1+용4도 비공식 경기다', () => {
     const result = rateMatch({
       participants: [
         ...squad('A', 'CA', 'win', 2),
@@ -723,7 +723,7 @@ describe('개인 점수는 확인된 선수에게만 (D-067)', () => {
     expect(result.clans).toHaveLength(2)
   })
 
-  it('참고 기록은 증감을 하나도 만들지 않는다', () => {
+  it('비공식 경기는 증감을 하나도 만들지 않는다', () => {
     const result = rateMatch({
       participants: [
         ...squad('A', 'CA', 'win', 2),

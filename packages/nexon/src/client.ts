@@ -20,6 +20,23 @@ import {
 import { backoffDelayMs, systemClock, TokenBucket, type Clock } from './rateLimit'
 import type { z } from 'zod'
 
+/**
+ * 16자리 이상 `match_id`가 **따옴표 없이** 오면 파싱 전에 문자열로 감싼다.
+ *
+ * 왜 필요한가
+ *   `match_id`는 18자리다. `JSON.parse`는 이걸 `Number`로 만들고, 안전 정수 한계
+ *   9,007,199,254,740,991(16자리)를 넘는 순간 **끝자리가 조용히 바뀐다**.
+ *   `260716180538124001` → `260716180538124000`. 넥슨 외부 식별자가 변형되는 것이라
+ *   경기 하나가 통째로 다른 경기가 된다.
+ *
+ *   지금까지 받은 실제 응답은 전부 따옴표 붙은 문자열이었다(원본 2,414건 확인).
+ *   그래도 여기서 막아 두는 이유는, 이 변형이 일어나면 **오류 없이 조용히** 틀리기 때문이다.
+ *   따옴표가 이미 있으면 정규식이 걸리지 않으므로 정상 응답은 한 글자도 건드리지 않는다.
+ */
+export function quoteLongIds(bodyText: string): string {
+  return bodyText.replace(/"match_id"\s*:\s*(\d{16,})/g, '"match_id":"$1"')
+}
+
 export interface HttpHeadersLike {
   get(name: string): string | null
 }
@@ -128,7 +145,7 @@ export class NexonClient {
     let raw: unknown = null
     let parseFailed = false
     try {
-      raw = bodyText.trim() === '' ? null : JSON.parse(bodyText)
+      raw = bodyText.trim() === '' ? null : JSON.parse(quoteLongIds(bodyText))
     } catch {
       parseFailed = true
     }

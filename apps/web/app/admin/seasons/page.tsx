@@ -102,7 +102,7 @@ export default function AdminSeasonsPage() {
               />
               <Stat label="시즌 경기" value={overview.data.matchesInSeason} />
               <Stat label="공식" value={overview.data.officialMatches} />
-              <Stat label="참고 기록" value={overview.data.referenceMatches} />
+              <Stat label="비공식" value={overview.data.referenceMatches} />
               {overview.data.divisions.map((division) => (
                 <Stat
                   key={division.division}

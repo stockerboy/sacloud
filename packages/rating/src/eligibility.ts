@@ -7,13 +7,13 @@
  *     클3+용2 vs 클3+용2  → 공식
  *     클3+용2 vs 클2+용3  → 공식
  *     클3+용2 vs 클0+용5  → 공식
- *     클2+용3 vs 클2+용3  → **참고 기록**
- *     클1+용4 vs 클1+용4  → **참고 기록**
+ *     클2+용3 vs 클2+용3  → **비공식 경기**
+ *     클1+용4 vs 클1+용4  → **비공식 경기**
  *
  *   조건은 `home >= 3 OR away >= 3` 다. **AND가 아니다.**
  *   (기존 D-071의 AND 기준은 폐기한다.)
  *
- * ── 참고 기록도 지우지 않는다 (D-080)
+ * ── 비공식 경기도 지우지 않는다 (D-080)
  *   양쪽 다 3명 미만이어도 **경기 자체는 남긴다.** 기록실에서 참가자·K/D/A·맵·결과를 볼 수 있다.
  *   다만 시즌 승패·킬뎃·평균킬·MVP·개인 래더·클랜 래더·랭킹에는 **전혀 반영하지 않는다.**
  *
@@ -69,7 +69,7 @@ export interface AssignedParticipant extends ConfirmedParticipant {
 export type ReconstructionStatus =
   /** 공식 경기 — 시즌 통계·래더에 반영한다 */
   | 'official'
-  /** 참고 기록 — 기록실에는 남기지만 공식 통계에 반영하지 않는다 */
+  /** 비공식 경기 — 기록실에는 남기지만 공식 통계에 반영하지 않는다 */
   | 'reference'
   | 'unidentified_side'
   | 'single_clan'
@@ -261,7 +261,7 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
     reason: official
       ? ''
       : `양 팀 모두 본클랜원이 ${constants.minConfirmedPerSide}명 미만이다 ` +
-        `(${winnerSide.members} / ${loserSide.members}). 참고 기록으로만 남긴다`,
+        `(${winnerSide.members} / ${loserSide.members}). 비공식 경기으로만 남긴다`,
   }
 }
 

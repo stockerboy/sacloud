@@ -510,7 +510,7 @@ async function main(): Promise<number> {
           시작: status.activeSeason?.startedAt ?? '-',
           '시즌 경기': status.matchesInSeason,
           공식: status.officialMatches,
-          '참고 기록': status.referenceMatches,
+          '비공식 경기': status.referenceMatches,
         },
       ])
       table(

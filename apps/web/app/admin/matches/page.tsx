@@ -43,15 +43,15 @@ export default function AdminMatchesPage() {
   const toggle = async (row: MatchRow) => {
     const next = !row.official
     const reason = next
-      ? window.prompt('참고 기록을 공식으로 바꾸는 근거를 적어주세요 (필수)')
-      : window.prompt('공식에서 참고 기록으로 내리는 사유 (선택)') ?? ''
+      ? window.prompt('비공식 경기를 공식으로 바꾸는 근거를 적어주세요 (필수)')
+      : window.prompt('공식에서 비공식으로 내리는 사유 (선택)') ?? ''
     if (next && !reason) return
     try {
       await adminFetch(`/matches/${row.id}`, {
         method: 'PATCH',
         body: { official: next, reason },
       })
-      setMessage(`${row.id} → ${next ? '공식' : '참고 기록'} (래더 반영은 재계산이 필요하다)`)
+      setMessage(`${row.id} → ${next ? '공식' : '비공식'} (래더 반영은 재계산이 필요하다)`)
       void client.invalidateQueries({ queryKey: ['admin', 'matches'] })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '실패')
@@ -68,7 +68,7 @@ export default function AdminMatchesPage() {
         >
           <option value="">전체</option>
           <option value="true">공식 경기</option>
-          <option value="false">참고 기록</option>
+          <option value="false">비공식 경기</option>
         </select>
         <input
           className="w-56 border border-divider px-2 py-1"
@@ -130,7 +130,7 @@ export default function AdminMatchesPage() {
                     {row.official ? (
                       <span className="text-win">공식</span>
                     ) : (
-                      <span className="text-lose">참고 기록</span>
+                      <span className="text-lose">비공식</span>
                     )}
                   </td>
                   <td className="text-xs text-meta">
@@ -144,7 +144,7 @@ export default function AdminMatchesPage() {
                       className="cursor-pointer text-xs underline"
                       onClick={() => void toggle(row)}
                     >
-                      {row.official ? '참고 기록으로' : '공식으로'}
+                      {row.official ? '비공식으로' : '공식으로'}
                     </button>
                   </td>
                 </tr>

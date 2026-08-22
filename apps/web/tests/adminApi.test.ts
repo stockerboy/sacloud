@@ -254,7 +254,7 @@ describe.skipIf(!up)('시즌 관리 — 미리보기만 한다', () => {
 })
 
 describe.skipIf(!up)('경기 관리', () => {
-  it('공식/참고 기록을 나눠서 조회할 수 있다', async () => {
+  it('공식/비공식 경기를 나눠서 조회할 수 있다', async () => {
     const cookie = await adminCookie()
     const reference = await asAdmin<{ official: boolean; origin: string }[]>(
       '/matches?official=false',
@@ -275,7 +275,7 @@ describe.skipIf(!up)('경기 관리', () => {
     }
   })
 
-  it('참고 기록을 공식으로 올리려면 근거가 필요하다', async () => {
+  it('비공식 경기를 공식으로 올리려면 근거가 필요하다', async () => {
     const cookie = await adminCookie()
     const reference = await asAdmin<{ id: string }[]>('/matches?official=false', { cookie })
     const target = reference.data[0]

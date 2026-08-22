@@ -11,7 +11,7 @@
  *               (3명↑ 100% · 2명 70% · 1명 40% · 0명 0%)
  *   개인 래더 : 출전이 확인된 **전원**이 100% 받는다. 용병이라고 깎지 않는다
  *
- * ── 참고 기록 (D-080)
+ * ── 비공식 경기 (D-080)
  *   양 팀 모두 본클랜원 3명 미만이면 **아무 증감도 만들지 않는다.**
  *   경기 자체는 저장되지만 공식 통계·래더·랭킹에 들어가지 않는다.
  */
@@ -108,9 +108,9 @@ export function rateMatch(input: MatchRatingInput): MatchRatingResult {
   )
 
   /**
-   * 기록할 수 없거나(팀 식별 실패) **참고 기록**이면 증감을 하나도 만들지 않는다 (D-080).
+   * 기록할 수 없거나(팀 식별 실패) **비공식 경기**이면 증감을 하나도 만들지 않는다 (D-080).
    *
-   * 참고 기록도 경기 자체는 저장된다 — 그건 `apps/worker`가 한다.
+   * 비공식 경기도 경기 자체는 저장된다 — 그건 `apps/worker`가 한다.
    * 여기서는 "공식 통계에 무엇을 반영할지"만 정한다.
    */
   if (!eligibility.recordable || !eligibility.official || !eligibility.winnerSide || !eligibility.loserSide) {

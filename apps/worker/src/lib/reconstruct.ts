@@ -116,7 +116,7 @@ export interface ReconstructionSidePlan {
 
 export interface ReconstructionPlan {
   leagueId: string
-  /** 공식 통계·래더에 반영하는 경기인가 (false면 참고 기록 — D-080) */
+  /** 공식 통계·래더에 반영하는 경기인가 (false면 비공식 경기 — D-080) */
   official: boolean
   mapId: string
   mapName: string
@@ -452,7 +452,7 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
   /**
    * **기록할 수 없을 때만** 실패다 (D-080).
    *
-   * 참고 기록(양 팀 모두 본클랜원 3명 미만)은 실패가 아니다. 경기를 저장하되
+   * 비공식 경기(양 팀 모두 본클랜원 3명 미만)은 실패가 아니다. 경기를 저장하되
    * 공식 통계에 반영하지 않는다. 그래서 여기서 걸러지지 않는다.
    */
   if (!eligibility.recordable || !eligibility.winnerSide || !eligibility.loserSide) {
