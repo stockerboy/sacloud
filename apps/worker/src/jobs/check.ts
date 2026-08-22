@@ -77,20 +77,34 @@ export async function runCheck(input: {
   /* 4) 참가자 기록 수 */
   const projectedMatches = await prisma.nexonMatch.findMany({
     where: { projectionStatus: 'projected' },
-    select: { participantCount: true },
+    select: { participantCount: true, projectedMatchId: true },
   })
-  const expectedStats = projectedMatches.reduce(
-    (sum, match) => sum + (match.participantCount ?? 0),
-    0,
-  )
-  const actualStats = await prisma.matchPlayerStat.count({
-    where: { match: { origin: NEXON_SOURCE } },
+  /* 예전에는 "상세 참가자 수 = 참가 기록 수"를 기대했다. 그건 Phase 8의 투영 규칙이었다.
+     로스터 기반 재구성은 **확인된 참가자만** 기록한다 (D-056 — 관측되지 않은 사람을 만들지 않는다).
+     그래서 두 수는 같지 않은 것이 정상이다. 대신 지켜야 하는 것은 두 가지다.
+       1. 투영된 매치는 참가 기록이 **하나라도** 있어야 한다 (빈 경기를 만들지 않는다)
+       2. 참가 기록이 상세 참가자 수를 **넘지 않는다** (없는 사람을 만들어내지 않는다) */
+  const emptyProjected = await prisma.match.count({
+    where: { origin: NEXON_SOURCE, stats: { none: {} } },
   })
   await push({
-    name: 'domain_stat_count',
-    expected: expectedStats,
-    actual: actualStats,
-    note: '투영된 매치의 참가자 수 합계',
+    name: 'projected_match_has_stats',
+    expected: 0,
+    actual: emptyProjected,
+    note: '투영됐는데 참가 기록이 없는 매치',
+  })
+
+  let overCounted = 0
+  for (const match of projectedMatches) {
+    if (!match.projectedMatchId) continue
+    const stats = await prisma.matchPlayerStat.count({ where: { matchId: match.projectedMatchId } })
+    if (stats > (match.participantCount ?? 0)) overCounted += 1
+  }
+  await push({
+    name: 'stats_within_detail_participants',
+    expected: 0,
+    actual: overCounted,
+    note: '상세 참가자보다 참가 기록이 많은 매치 (없는 사람을 만들어낸 것)',
   })
 
   /* 5) mock 시드와 실제 수집이 같은 리그에 섞이지 않았는가 */
@@ -111,23 +125,22 @@ export async function runCheck(input: {
     note: 'mock 경기와 nexon 경기가 함께 있는 리그 수',
   })
 
-  /* 6) Phase 8은 래더를 만들지 않는다 */
-  const ratingTouched = await prisma.matchPlayerStat.count({
+  /* 6) 배치고사 경기의 래더 증감은 0이다 (`CLAUDE.md` 3-B 7번)
+
+     예전 이 자리에는 "Phase 8은 래더를 만들지 않는다"가 있었다. Phase 9의 래더 엔진이
+     실제로 값을 넣기 시작한 뒤로는 그 기대 자체가 틀렸다. 지금 지켜야 하는 불변식으로 바꾼다. */
+  const placementRated = await prisma.matchPlayerStat.count({
     where: {
       match: { origin: NEXON_SOURCE },
-      OR: [
-        { ratingBefore: { not: null } },
-        { ratingUpdate: { not: null } },
-        { ratingAfter: { not: null } },
-        { formulaVersion: { not: null } },
-      ],
+      isPlacement: true,
+      NOT: { ratingUpdate: 0 },
     },
   })
   await push({
-    name: 'nexon_rating_untouched',
+    name: 'placement_rating_update_zero',
     expected: 0,
-    actual: ratingTouched,
-    note: '래더 계산은 Phase 9다. Phase 8이 값을 넣으면 안 된다',
+    actual: placementRated,
+    note: '배치고사 경기인데 래더가 움직인 참가 기록',
   })
 
   /* 7) 신선도 정책을 넘긴 데이터 */

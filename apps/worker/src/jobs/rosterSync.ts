@@ -428,7 +428,11 @@ export async function buildRosterFromMatchEvidence(input: {
         continue
       }
 
-      const joinedAt = evidence.firstAt < leagueClan.joinedAt ? leagueClan.joinedAt : evidence.firstAt
+      /* 근거가 말하는 **첫 관측 경기 시각**을 그대로 쓴다.
+         예전에는 `LeagueClan.joinedAt` 아래로 못 내려가게 막았는데, 그 값은
+         "클랜이 리그에 참여한 시각"이 아니라 **DB 행이 만들어진 시각**일 수 있다.
+         그러면 이관된 클랜의 과거 경기가 통째로 "등록 전"으로 걸러진다 (실제로 그랬다). */
+      const joinedAt = evidence.firstAt
       await prisma.leagueRosterMembership.create({
         data: {
           leagueId: league.id,

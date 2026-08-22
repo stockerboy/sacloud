@@ -146,6 +146,15 @@ export async function bootstrapBeta(input: {
     )
   }
 
+  /* 승계된 클랜의 참여 시각을 **시즌 시작**으로 맞춘다.
+     `LeagueClan.joinedAt`은 DB 행이 만들어진 시각이라 시즌 시작보다 뒤일 수 있고,
+     그러면 D-108(등록 이전 경기 제외)이 시즌 구간 경기를 통째로 걸러 버린다.
+     이 클랜들은 Beta 시작 시점에 이미 참여 중이었다 — 그게 승계의 뜻이다. */
+  await prisma.leagueClan.updateMany({
+    where: { leagueId: league.id, joinedAt: { gt: startedAt } },
+    data: { joinedAt: startedAt },
+  })
+
   const [clans, roster, players] = await Promise.all([
     prisma.leagueClan.findMany({
       where: { leagueId: league.id },
