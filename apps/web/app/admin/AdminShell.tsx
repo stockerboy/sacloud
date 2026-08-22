@@ -8,6 +8,7 @@ const MENU = [
   { href: '/admin/clans', label: '클랜' },
   { href: '/admin/seasons', label: '시즌' },
   { href: '/admin/matches', label: '경기' },
+  { href: '/admin/legacy', label: '과거기록' },
 ]
 
 /**

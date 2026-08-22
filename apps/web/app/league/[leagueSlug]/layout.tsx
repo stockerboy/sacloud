@@ -30,7 +30,12 @@ export default function LeagueLayout({
 
   return (
     <>
-      <LeagueSubNav leagueSlug={leagueSlug} leagueName={league.data?.data.name ?? ''} />
+      <LeagueSubNav
+        leagueSlug={leagueSlug}
+        leagueName={league.data?.data.name ?? ""}
+        seasonType={league.data?.data.season_type}
+        seasonLabel={league.data?.data.season_label}
+      />
       <div className="pt-12">{children}</div>
     </>
   )

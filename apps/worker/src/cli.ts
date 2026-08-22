@@ -12,10 +12,22 @@
  * `--dry-run`은 **요청을 한 건도 보내지 않는다.** API 키 없이 파이프라인을 점검할 때 쓴다.
  */
 import { readFileSync } from 'node:fs'
+import { readdir, readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { prisma } from '@sacloud/db'
+import {
+  freezeSeason,
+  fromCsv,
+  fromJsonRows,
+  fromSupplyHtml,
+  fromSupplyState,
+  importLegacySeasons,
+  mergeRows,
+  type LegacySeasonRow,
+} from '@sacloud/db/ops'
 import { hasApiKey, MATCH_MODES, NexonClient, readNexonConfig, type MatchMode } from '@sacloud/nexon'
 import { loadEnvFiles } from './lib/env.js'
-import { fail, log, registerSecret, table } from './lib/log.js'
+import { fail, log, registerSecret, table, warn } from './lib/log.js'
 import { AbortCollection, type JobContext } from './jobs/context.js'
 import { runIdentities } from './jobs/identities.js'
 import { runCollect } from './jobs/collect.js'
@@ -581,6 +593,113 @@ async function main(): Promise<number> {
       const result = await runRefresh(ctx)
       table([result as unknown as Record<string, unknown>])
       return 0
+    }
+
+    /**
+     * 과거 시즌 기록 이관 (Phase 11-F).
+     *
+     *   pnpm nexon legacy --league supply --file ./s7.html
+     *   pnpm nexon legacy --league supply --dir ./saved --current-season 7
+     *   pnpm nexon legacy --league supply --dir ./saved --confirm
+     *   pnpm nexon legacy --league supply --freeze 7
+     *
+     * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 기본은 미리보기다.
+     */
+    case 'legacy': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+
+      const freeze = stringFlag(args, 'freeze')
+      if (freeze) {
+        const number = Number(freeze)
+        if (!Number.isInteger(number)) {
+          fail(`--freeze 는 시즌 번호여야 한다: ${freeze}`)
+          return 1
+        }
+        const result = await freezeSeason({ leagueSlug, number, seasonType: 'legacy' })
+        table([
+          {
+            시즌: result.number,
+            확정됨: result.frozen,
+            종류: result.seasonType,
+            '선수 카드': result.playerCards,
+          },
+        ])
+        log('확정된 시즌은 importer가 더 이상 수정하지 못한다')
+        return 0
+      }
+
+      const file = stringFlag(args, 'file')
+      const dir = stringFlag(args, 'dir')
+      if (!file && !dir) {
+        fail('--file <경로> 또는 --dir <폴더> 가 필요하다')
+        return 1
+      }
+      const currentSeasonFlag = stringFlag(args, 'current-season')
+      const currentSeason = currentSeasonFlag ? Number(currentSeasonFlag) : undefined
+      if (currentSeasonFlag && !Number.isInteger(currentSeason)) {
+        fail(`--current-season 은 시즌 번호여야 한다: ${currentSeasonFlag}`)
+        return 1
+      }
+
+      const paths = file
+        ? [file]
+        : (await readdir(dir as string))
+            .filter((name) => /\.(html?|json|csv)$/i.test(name))
+            .map((name) => join(dir as string, name))
+      if (paths.length === 0) {
+        fail('읽을 파일이 없다 (.html / .json / .csv)')
+        return 1
+      }
+
+      const rows: LegacySeasonRow[] = []
+      const warnings: string[] = []
+      for (const path of paths) {
+        const text = await readFile(path, 'utf8')
+        const parsed = /\.csv$/i.test(path)
+          ? fromCsv(text)
+          : /\.json$/i.test(path)
+            ? // 정규화된 배열일 수도, 저장한 state 페이로드일 수도 있다
+              (() => {
+                const json: unknown = JSON.parse(text)
+                return Array.isArray(json) ? fromJsonRows(json) : fromSupplyState(json, { currentSeason })
+              })()
+            : fromSupplyHtml(text, { currentSeason })
+        rows.push(...parsed.rows)
+        warnings.push(...parsed.warnings.map((message) => `${path}: ${message}`))
+        log(`${path} — 카드 ${parsed.rows.length}건`)
+      }
+
+      // 같은 (선수, 시즌)이 여러 파일에서 나오면 합친다 (마감 직전 + 마감 직후)
+      const merged = mergeRows(rows)
+      log(`파일 ${paths.length}개 → 카드 ${rows.length}건 → 병합 후 ${merged.length}건`)
+
+      const confirm = boolFlag(args, 'confirm')
+      const result = await importLegacySeasons({
+        leagueSlug,
+        rows: merged,
+        warnings,
+        confirm,
+      })
+      table([
+        {
+          시즌: result.seasons.join(', ') || '(없음)',
+          신규: result.counts.create,
+          중복: result.counts.duplicate,
+          충돌: result.counts.conflict,
+          '확정됨(거부)': result.counts.frozen,
+          실행: result.executed ? `${result.created}건 저장` : '미리보기',
+        },
+      ])
+      for (const message of result.warnings.slice(0, 20)) warn(message)
+      for (const plan of result.plans.filter((entry) => entry.verdict !== 'create').slice(0, 20)) {
+        warn(`${plan.row.legacyPlayerId} S${plan.row.season} — ${plan.verdict}: ${plan.note ?? ''}`)
+      }
+      if (!confirm) log('미리보기다. 실제로 넣으려면 --confirm 을 붙인다')
+      return result.counts.conflict > 0 && !confirm ? 1 : 0
     }
 
     case 'check': {

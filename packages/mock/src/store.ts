@@ -387,6 +387,9 @@ export function getLeague(leagueSlug: string): League | null {
     status: league.status,
     created_at: league.createdAt,
     season: league.season,
+    // mock 픽스처는 전부 정식 시즌이다. 베타 표기는 실제 운영 리그에서만 나온다 (D-098)
+    season_type: 'official' as const,
+    season_label: `Season ${league.season}`,
   }
 }
 
@@ -472,6 +475,8 @@ export function getClanRanks(
         lose: leagueClan.lose,
         win_rate: winRate(leagueClan.win, leagueClan.lose),
         rating: leagueClan.rating,
+        // 픽스처 클랜은 전부 공식리그 소속이다 (무소속은 실운영 데이터에서만 생긴다)
+        category: 'official',
       }
     })
     .filter((entry): entry is ClanRankRow => Boolean(entry))
@@ -885,6 +890,8 @@ export function getLeaguePlayerSeasons(leaguePlayerId: string): LeaguePlayerSeas
     .sort((a, b) => b.season - a.season)
     .map((entry) => ({
       season: entry.season,
+      season_label: `Season ${entry.season}`,
+      season_type: 'official' as const,
       rank: entry.rank,
       rank_count: entry.rankCount,
       rating: entry.rating,
@@ -894,6 +901,15 @@ export function getLeaguePlayerSeasons(leaguePlayerId: string): LeaguePlayerSeas
       kill: entry.kill,
       death: entry.death,
       kd_rate: kdRate(entry.kill, entry.death),
+      // 픽스처에는 아래 값이 없다. **0으로 채우지 않는다** (D-099)
+      assist: null,
+      headshot: null,
+      kill_per_match: null,
+      mvp_count: null,
+      nickname_at_season: null,
+      clan_name_at_season: null,
+      division_at_season: null,
+      source: null,
     }))
 }
 

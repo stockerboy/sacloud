@@ -7,6 +7,7 @@
  *   - mock 데이터가 운영 데이터로 보이지 않게 `origin`을 그대로 노출한다 (정책 25)
  */
 import { prisma } from '@sacloud/db'
+import { seasonLabel } from '@sacloud/db/ops'
 
 /* ------------------------------------------------------------- 대시보드 --- */
 
@@ -17,7 +18,15 @@ export interface AdminSummary {
    * mock 시드 리그와 실운영 리그를 한 줄로 합치면 운영 상태를 착각한다 (정책 25).
    * 그래서 리그별로 나열하고 mock 여부를 표시한다.
    */
-  activeSeasons: { league: string; number: number; startedAt: string; mock: boolean }[]
+  activeSeasons: {
+    league: string
+    number: number
+    /** 화면에 그대로 쓰는 이름. 베타는 `Beta Season` (D-098) */
+    label: string
+    seasonType: string
+    startedAt: string
+    mock: boolean
+  }[]
   clans: { total: number; official: number; independent: number; inactive: number }
   roster: { memberships: number; verified: number; players: number }
   matches: {
@@ -28,16 +37,48 @@ export interface AdminSummary {
     pending: number
     skipped: number
   }
-  rating: { ratedStats: number; lastFormulaVersion: string | null }
+  rating: {
+    ratedStats: number
+    lastFormulaVersion: string | null
+    /** 개인/클랜 래더 분포 요약 — 베타 기간에 값이 벌어지는지 보기 위한 것 */
+    playerRating: RatingSpread
+    clanRating: RatingSpread
+  }
+  /** 부리그·무소속별 경기 수 (실수집분만) */
+  matchesByGroup: { division1: number; division2: number; independent: number }
   poll: { targets: number; due: number; lastRunAt: string | null }
   betaOpenedAt: string | null
+}
+
+/** 래더 분포 한 줄 요약. 히스토그램까지 만들지 않는다 */
+export interface RatingSpread {
+  count: number
+  min: number | null
+  max: number | null
+  median: number | null
+}
+
+function spread(values: number[]): RatingSpread {
+  if (values.length === 0) return { count: 0, min: null, max: null, median: null }
+  const sorted = [...values].sort((a, b) => a - b)
+  return {
+    count: sorted.length,
+    min: sorted[0] ?? null,
+    max: sorted[sorted.length - 1] ?? null,
+    median: sorted[Math.floor(sorted.length / 2)] ?? null,
+  }
 }
 
 export async function adminSummary(): Promise<AdminSummary> {
   const activeSeasonRows = await prisma.season.findMany({
     where: { status: 'active' },
     orderBy: [{ league: { slug: 'asc' } }],
-    select: { number: true, startedAt: true, league: { select: { id: true, slug: true } } },
+    select: {
+      number: true,
+      startedAt: true,
+      seasonType: true,
+      league: { select: { id: true, slug: true } },
+    },
   })
   const mockLeagueIds = new Set(
     (await prisma.match.groupBy({ by: ['leagueId'], where: { origin: 'mock' } })).map(
@@ -85,12 +126,40 @@ export async function adminSummary(): Promise<AdminSummary> {
     prisma.nexonPollRun.findFirst({ orderBy: { startedAt: 'desc' }, select: { startedAt: true } }),
   ])
 
+  /* 래더 분포 — 실수집 리그(=mock이 아닌 리그)만 본다 */
+  const [playerRatings, clanRatings] = await Promise.all([
+    prisma.leaguePlayer.findMany({
+      where: { leagueId: { notIn: [...mockLeagueIds] }, placement: false },
+      select: { rating: true },
+    }),
+    prisma.leagueClan.findMany({
+      where: { leagueId: { notIn: [...mockLeagueIds] }, placement: false },
+      select: { rating: true },
+    }),
+  ])
+
+  const [division1, division2, independentMatches] = await Promise.all([
+    prisma.match.count({ where: { origin: 'nexon', redClan: { division: 1 } } }),
+    prisma.match.count({ where: { origin: 'nexon', redClan: { division: 2 } } }),
+    prisma.match.count({
+      where: {
+        origin: 'nexon',
+        OR: [
+          { redClan: { clan: { category: 'independent' } } },
+          { blueClan: { clan: { category: 'independent' } } },
+        ],
+      },
+    }),
+  ])
+
   const beta = await prisma.appSetting.findUnique({ where: { key: BETA_OPENED_AT } })
 
   return {
     activeSeasons: activeSeasonRows.map((season) => ({
       league: season.league.slug,
       number: season.number,
+      label: seasonLabel(season),
+      seasonType: season.seasonType,
       startedAt: season.startedAt.toISOString(),
       mock: mockLeagueIds.has(season.league.id),
     })),
@@ -104,7 +173,13 @@ export async function adminSummary(): Promise<AdminSummary> {
       pending,
       skipped,
     },
-    rating: { ratedStats, lastFormulaVersion: lastRated?.formulaVersion ?? null },
+    rating: {
+      ratedStats,
+      lastFormulaVersion: lastRated?.formulaVersion ?? null,
+      playerRating: spread(playerRatings.map((row) => row.rating)),
+      clanRating: spread(clanRatings.map((row) => row.rating)),
+    },
+    matchesByGroup: { division1, division2, independent: independentMatches },
     poll: {
       targets: pollTargets,
       due: pollDue,

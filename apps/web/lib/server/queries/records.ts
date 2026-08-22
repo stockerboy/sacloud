@@ -11,6 +11,7 @@ import {
   type OpponentSummaryEntry,
   type PlayerRankRow,
   type Streak,
+  type SeasonType,
   type TeammateStat,
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
@@ -23,6 +24,7 @@ import {
   toLeagueSummary,
   toPlayerSummary,
 } from '../mappers'
+import { seasonLabel } from '@sacloud/db/ops'
 import { clanRankOf, matchCountByPlayer, playerRankOf } from './leagues'
 import { leagueClanIdOfPlayer, sideOfLeagueClan } from './matches'
 
@@ -526,9 +528,12 @@ export async function getLeaguePlayerSeasons(
   })
   if (!leaguePlayer) return null
 
+  /* 정렬은 번호가 아니라 **시작 시각** 내림차순이다.
+     베타의 내부 번호는 0이라 번호로 정렬하면 Season 1보다 아래로 내려간다.
+     사용자에게는 `… Season 7 → Beta Season → Season 8` 순서로 이어져야 한다 (D-098). */
   const rows = await prisma.leaguePlayerSeason.findMany({
     where: { leaguePlayerId },
-    orderBy: [{ season: 'desc' }, { id: 'asc' }],
+    orderBy: [{ seasonRef: { startedAt: 'desc' } }, { id: 'asc' }],
     select: {
       season: true,
       rank: true,
@@ -538,20 +543,42 @@ export async function getLeaguePlayerSeasons(
       lose: true,
       kill: true,
       death: true,
+      assist: true,
+      headshot: true,
+      winRate: true,
+      kdRate: true,
+      killPerMatch: true,
+      mvpCount: true,
+      nicknameAtSeason: true,
+      clanNameAtSeason: true,
+      divisionAtSeason: true,
+      source: true,
+      seasonRef: { select: { seasonType: true, number: true } },
     },
   })
 
   return rows.map((row) => ({
     season: row.season,
+    season_label: seasonLabel(row.seasonRef),
+    season_type: row.seasonRef.seasonType as SeasonType,
     rank: row.rank,
     rank_count: row.rankCount,
     rating: row.rating,
     win: row.win,
     lose: row.lose,
-    win_rate: winRate(row.win, row.lose),
+    // 원본이 준 승률·킬뎃이 있으면 그대로 쓴다. 없을 때만 계산한다 (D-099)
+    win_rate: row.winRate ?? winRate(row.win, row.lose),
     kill: row.kill,
     death: row.death,
-    kd_rate: kdRate(row.kill, row.death),
+    kd_rate: row.kdRate ?? kdRate(row.kill, row.death),
+    assist: row.assist,
+    headshot: row.headshot,
+    kill_per_match: row.killPerMatch,
+    mvp_count: row.mvpCount,
+    nickname_at_season: row.nicknameAtSeason,
+    clan_name_at_season: row.clanNameAtSeason,
+    division_at_season: row.divisionAtSeason,
+    source: row.source,
   }))
 }
 

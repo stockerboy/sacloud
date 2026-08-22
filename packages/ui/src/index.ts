@@ -25,7 +25,7 @@ export { Label } from './common/Label'
 export { LoadMoreButton } from './common/LoadMoreButton'
 export { formatCount, formatRate, formatAverage, formatRating, formatDate } from './common/format'
 export { rateClass, rateTone, RATE_THRESHOLDS, type RateTone } from './common/rate'
-export { LeagueSubNav } from './league/LeagueSubNav'
+export { BetaBadge, BETA_NOTICE, LeagueSubNav } from './league/LeagueSubNav'
 export { DivisionTabs } from './league/DivisionTabs'
 export {
   RankHeader,

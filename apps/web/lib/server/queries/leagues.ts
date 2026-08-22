@@ -9,6 +9,7 @@ import {
   type LeagueListItem,
   type PlayerRankRow,
   type PlayerLimit,
+  type SeasonType,
 } from '@sacloud/contract'
 import { cursorPage, paginateArray, type CursorPage } from '../cursorPage'
 import { toKstIso } from '../format'
@@ -24,6 +25,7 @@ import {
   toUserSummaryOrNull,
 } from '../mappers'
 import { isCareerPublic, PUBLIC_CAREER_WHERE } from './visibility'
+import { seasonLabel } from '@sacloud/db/ops'
 
 /**
  * 리그 · 랭킹 조회.
@@ -84,7 +86,7 @@ export async function getLeague(leagueSlug: string): Promise<League | null> {
         where: { status: 'active' },
         orderBy: { number: 'desc' },
         take: 1,
-        select: { number: true },
+        select: { number: true, seasonType: true },
       },
     },
   })
@@ -102,6 +104,13 @@ export async function getLeague(leagueSlug: string): Promise<League | null> {
     status: league.status,
     created_at: toKstIso(league.createdAt),
     season: league.seasons[0]?.number ?? 0,
+    /* 베타는 내부 번호가 0이다. 화면이 "Season 0"이라고 쓰지 않도록
+       표시용 이름을 서버가 만들어서 내려 준다 (D-098) */
+    season_type: (league.seasons[0]?.seasonType ?? 'official') as SeasonType,
+    season_label: seasonLabel({
+      number: league.seasons[0]?.number ?? 0,
+      seasonType: league.seasons[0]?.seasonType ?? 'official',
+    }),
   }
 }
 
@@ -260,7 +269,14 @@ export async function getClanRanks(
     division: number
     win: number
     lose: number
-    clan: { id: string; slug: string; name: string; markBgUrl: string | null; markFrontUrl: string | null }
+    clan: {
+      id: string
+      slug: string
+      name: string
+      markBgUrl: string | null
+      markFrontUrl: string | null
+      category: string
+    }
   }>({
     cursor,
     size,
@@ -279,7 +295,7 @@ export async function getClanRanks(
           division: true,
           win: true,
           lose: true,
-          clan: { select: CLAN_SUMMARY_SELECT },
+          clan: { select: { ...CLAN_SUMMARY_SELECT, category: true } },
         },
       }),
   })
@@ -297,6 +313,7 @@ export async function getClanRanks(
       lose: row.lose,
       win_rate: winRate(row.win, row.lose),
       rating: row.rating,
+      category: row.clan.category,
     })),
   }
 }

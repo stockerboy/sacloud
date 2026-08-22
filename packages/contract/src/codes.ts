@@ -20,6 +20,19 @@ export type Weapon = z.infer<typeof Weapon>
 export const Division = z.number().int().min(1)
 export type Division = z.infer<typeof Division>
 
+/**
+ * 시즌 종류 (D-098).
+ *
+ *   legacy    3rd.supply에서 이전된 과거 기록. 재계산 대상이 아니다
+ *   beta      공개 베타 시즌. 기록은 보여 주되 다음 정식 시즌에 승계하지 않는다
+ *   official  SACLOUD 정식 시즌
+ *
+ * 베타의 내부 번호는 0이지만 **화면에 "Season 0"이라고 쓰지 않는다.**
+ * 표시용 이름은 항상 `season_label`을 쓴다.
+ */
+export const SeasonType = z.enum(['legacy', 'beta', 'official'])
+export type SeasonType = z.infer<typeof SeasonType>
+
 /** 팀 진영. 원본 매치 상세가 red[] / blue[] 두 배열로 내려온다. */
 export const TeamSide = z.enum(['red', 'blue'])
 export type TeamSide = z.infer<typeof TeamSide>

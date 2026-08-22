@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { Count, Id, IsoDateTime, Percent, Rating, Slug } from '../common'
-import { Division, LeagueClanStatus, LeagueStatus, PlayerLimit } from '../codes'
+import { Division, LeagueClanStatus, LeagueStatus, PlayerLimit, SeasonType } from '../codes'
 import { ClanSummary, LeagueSummary, PlayerSummary, UserSummary } from './summaries'
 
 /** 리그맵. 실제 맵 목록은 원본 조사 범위 밖이라 [미확인] — Mock은 자리표시자 이름을 쓴다. */
@@ -32,8 +32,15 @@ export const League = LeagueSummary.extend({
   clan_count: Count,
   status: LeagueStatus,
   created_at: IsoDateTime,
-  /** 현재 시즌 번호 */
+  /** 현재 시즌 번호. **베타는 0이다** — 화면에 숫자로 쓰지 않는다 (D-098) */
   season: Count,
+  /**
+   * 현재 시즌 종류 — `legacy` | `beta` | `official`.
+   * 활성 시즌이 없으면 `official`로 둔다(표시할 배지가 없다는 뜻).
+   */
+  season_type: SeasonType,
+  /** 화면에 그대로 쓰는 시즌 이름. 베타는 `Beta Season`이다 */
+  season_label: z.string(),
 })
 export type League = z.infer<typeof League>
 
@@ -86,9 +93,18 @@ export const LeaguePlayer = z.object({
 })
 export type LeaguePlayer = z.infer<typeof LeaguePlayer>
 
-/** GET /leagueplayers/{leaguePlayerId}/seasons — 지난시즌 */
+/**
+ * GET /leagueplayers/{leaguePlayerId}/seasons — 지난시즌.
+ *
+ * 아래 `nullable` 필드는 **원본에 있을 때만** 채운다.
+ * 과거 3rd.supply 지난시즌 응답에는 rating·평균킬·MVP·소속이 없다 (D-099).
+ * 없으면 `null`이고, 화면은 그 줄을 **생략**한다. 0이나 `-`로 채우지 않는다.
+ */
 export const LeaguePlayerSeason = z.object({
   season: Count,
+  /** 화면에 쓰는 이름. 베타는 `Beta Season` */
+  season_label: z.string(),
+  season_type: SeasonType,
   rank: Count.nullable(),
   rank_count: Count.nullable(),
   rating: Rating,
@@ -99,6 +115,17 @@ export const LeaguePlayerSeason = z.object({
   death: Count,
   /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
   kd_rate: Percent,
+  /* --- 원본에 있을 때만 --- */
+  assist: Count.nullable(),
+  headshot: Count.nullable(),
+  kill_per_match: z.number().nullable(),
+  mvp_count: Count.nullable(),
+  /** 그 시즌 시점의 값이다. 지금 값이 아니다 */
+  nickname_at_season: z.string().nullable(),
+  clan_name_at_season: z.string().nullable(),
+  division_at_season: Division.nullable(),
+  /** 이 카드가 이전된 기록인가 (`3rd.supply` 등). SACLOUD가 계산한 것이면 null */
+  source: z.string().nullable(),
 })
 export type LeaguePlayerSeason = z.infer<typeof LeaguePlayerSeason>
 
@@ -125,6 +152,13 @@ export const ClanRankRow = z.object({
   lose: Count,
   win_rate: Percent,
   rating: Rating,
+  /**
+   * 클랜 구분 — `official` | `independent`.
+   *
+   * **통합 래더에서만 의미가 있다.** 무소속 클랜도 같은 Team Elo로 계산되고
+   * 통합 순위에 그대로 들어간다. 화면에서 구분해 보여 주기 위한 값이다 (D-102).
+   */
+  category: z.string(),
 })
 export type ClanRankRow = z.infer<typeof ClanRankRow>
 

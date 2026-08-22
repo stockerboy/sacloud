@@ -5,8 +5,29 @@ import Link from 'next/link'
 import { AdminCard, AdminDenied, Stat } from './AdminShell'
 import { adminFetch, AdminError } from './lib'
 
+/** 래더 분포 한 줄 요약 */
+interface Spread {
+  count: number
+  min: number | null
+  max: number | null
+  median: number | null
+}
+
+/** 분포는 최저~중앙~최고 세 값이면 충분하다. 히스토그램까지 만들지 않는다 */
+function spreadText(spread: Spread): string {
+  if (spread.count === 0) return '기록 없음'
+  return `${spread.min} ~ ${spread.median} ~ ${spread.max}`
+}
+
 interface Summary {
-  activeSeasons: { league: string; number: number; startedAt: string; mock: boolean }[]
+  activeSeasons: {
+    league: string
+    number: number
+    label: string
+    seasonType: string
+    startedAt: string
+    mock: boolean
+  }[]
   clans: { total: number; official: number; independent: number; inactive: number }
   roster: { memberships: number; verified: number; players: number }
   matches: {
@@ -17,7 +38,13 @@ interface Summary {
     pending: number
     skipped: number
   }
-  rating: { ratedStats: number; lastFormulaVersion: string | null }
+  rating: {
+    ratedStats: number
+    lastFormulaVersion: string | null
+    playerRating: Spread
+    clanRating: Spread
+  }
+  matchesByGroup: { division1: number; division2: number; independent: number }
   poll: { targets: number; due: number; lastRunAt: string | null }
   betaOpenedAt: string | null
 }
@@ -55,12 +82,28 @@ export default function AdminDashboardPage() {
               <Stat
                 key={season.league}
                 label={`${season.league}${season.mock ? ' (MOCK)' : ''}`}
-                value={`Season ${season.number}`}
+                // 베타를 "Season 0"으로 쓰지 않는다. 서버가 준 이름을 그대로 쓴다 (D-098)
+                value={season.label}
                 hint={new Date(season.startedAt).toLocaleDateString('ko-KR')}
               />
             ))
           )}
           <Stat label="베타오픈 시각" value={summary.betaOpenedAt ?? '미설정'} />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-4">
+          <Stat label="1부 경기" value={summary.matchesByGroup.division1} />
+          <Stat label="2부 경기" value={summary.matchesByGroup.division2} />
+          <Stat label="무소속 경기" value={summary.matchesByGroup.independent} />
+          <Stat
+            label="개인 래더 분포"
+            value={spreadText(summary.rating.playerRating)}
+            hint={`${summary.rating.playerRating.count}명`}
+          />
+          <Stat
+            label="클랜 래더 분포"
+            value={spreadText(summary.rating.clanRating)}
+            hint={`${summary.rating.clanRating.count}곳`}
+          />
         </div>
         <div className="mt-2 text-sm text-meta">
           MOCK 표시는 개발용 시드 리그다. 실운영 판단에 쓰지 않는다.
@@ -88,6 +131,18 @@ export default function AdminDashboardPage() {
           <Stat label="재구성 판정" value={summary.matches.reconstructed} />
           <Stat label="공식 경기" value={summary.matches.official} />
           <Stat label="비공식 경기" value={summary.matches.reference} hint="통계 미반영" />
+          <Stat
+            label="공식 비율"
+            value={
+              summary.matches.official + summary.matches.reference === 0
+                ? '-'
+                : `${Math.round(
+                    (summary.matches.official /
+                      (summary.matches.official + summary.matches.reference)) *
+                      100,
+                  )}%`
+            }
+          />
           <Stat label="대기" value={summary.matches.pending} />
           <Stat label="보류" value={summary.matches.skipped} />
         </div>

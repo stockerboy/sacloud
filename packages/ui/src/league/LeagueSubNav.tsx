@@ -23,7 +23,40 @@ import { usePathname } from 'next/navigation'
 const ITEM =
   'flex items-center justify-center cursor-pointer border-2 border-transparent px-4 text-tab-active-fg hover:border-b-nav-fg'
 
-export function LeagueSubNav({ leagueSlug, leagueName }: { leagueSlug: string; leagueName: string }) {
+/**
+ * 베타 시즌 배지.
+ *
+ * 베타는 **숨겨진 시즌이 아니라 공개 시즌**이다. 그래서 감추지 않고 표시하되,
+ * 사이트 전체를 덮는 경고문으로 만들지 않는다 — 작은 배지 하나 + 설명이면 된다.
+ *
+ * 내부 번호가 0이라고 `Season 0`이라고 쓰지 않는다. 이름은 서버가 준 `season_label`이다 (D-098).
+ */
+export function BetaBadge({ label = 'Beta Season' }: { label?: string }) {
+  return (
+    <span
+      className="ml-2 rounded border border-white/60 px-1.5 py-0.5 text-[11px] font-bold leading-none"
+      title={BETA_NOTICE}
+    >
+      {label}
+    </span>
+  )
+}
+
+/** 베타 시즌 안내 문구. 화면 여러 곳에서 같은 문장을 쓴다 */
+export const BETA_NOTICE = '베타 시즌의 기록과 랭킹은 정식 Season 8에 승계되지 않습니다.'
+
+export function LeagueSubNav({
+  leagueSlug,
+  leagueName,
+  seasonType = 'official',
+  seasonLabel,
+}: {
+  leagueSlug: string
+  leagueName: string
+  /** 현재 활성 시즌 종류. `beta`면 리그명 옆에 배지를 붙인다 */
+  seasonType?: 'legacy' | 'beta' | 'official'
+  seasonLabel?: string
+}) {
   const pathname = usePathname() ?? ''
   const base = `/league/${leagueSlug}`
 
@@ -41,6 +74,7 @@ export function LeagueSubNav({ leagueSlug, leagueName }: { leagueSlug: string; l
           className="mr-14 flex w-52 items-center justify-center text-lg tracking-wider"
         >
           {leagueName}
+          {seasonType === 'beta' ? <BetaBadge label={seasonLabel} /> : null}
         </Link>
         {items.map((item) => (
           <Link
