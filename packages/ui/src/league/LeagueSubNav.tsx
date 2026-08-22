@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { BETA_NOTICE } from './betaNoticeText'
 
 /**
  * 리그 화면 공통 서브내비 — 전역 GNB 바로 아래 고정된다.
@@ -41,9 +42,6 @@ export function BetaBadge({ label = 'Beta Season' }: { label?: string }) {
     </span>
   )
 }
-
-/** 베타 시즌 안내 문구. 화면 여러 곳에서 같은 문장을 쓴다 */
-export const BETA_NOTICE = '베타 시즌의 기록과 랭킹은 정식 Season 8에 승계되지 않습니다.'
 
 export function LeagueSubNav({
   leagueSlug,

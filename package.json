@@ -40,6 +40,7 @@
     "nexon:roster": "pnpm --filter @sacloud/worker nexon roster",
     "nexon:backfill-observations": "pnpm --filter @sacloud/worker nexon backfill-observations",
     "nexon:reconstruct": "pnpm --filter @sacloud/worker nexon reconstruct",
+    "nexon:legacy": "pnpm --filter @sacloud/worker nexon legacy",
     "nexon:rate": "pnpm --filter @sacloud/worker nexon rate",
     "nexon:season": "pnpm --filter @sacloud/worker nexon season",
     "nexon:clan": "pnpm --filter @sacloud/worker nexon clan"

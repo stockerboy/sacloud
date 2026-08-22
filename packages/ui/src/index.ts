@@ -25,7 +25,16 @@ export { Label } from './common/Label'
 export { LoadMoreButton } from './common/LoadMoreButton'
 export { formatCount, formatRate, formatAverage, formatRating, formatDate } from './common/format'
 export { rateClass, rateTone, RATE_THRESHOLDS, type RateTone } from './common/rate'
-export { BetaBadge, BETA_NOTICE, LeagueSubNav } from './league/LeagueSubNav'
+export { BetaBadge, LeagueSubNav } from './league/LeagueSubNav'
+export { BetaNotice } from './league/BetaNotice'
+export {
+  betaNoticeFor,
+  BETA_NOTICE,
+  BETA_NOTICE_HEADLINE,
+  BETA_NOTICE_PURPOSE,
+  BETA_NOTICE_CARRYOVER,
+  type BetaNoticeContent,
+} from './league/betaNoticeText'
 export { DivisionTabs } from './league/DivisionTabs'
 export {
   RankHeader,

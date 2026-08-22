@@ -37,7 +37,10 @@ interface Summary {
     reference: number
     pending: number
     skipped: number
+    officialRate: number | null
+    skipReasons: { reason: string; count: number }[]
   }
+  unresolvedFailures: number
   rating: {
     ratedStats: number
     lastFormulaVersion: string | null
@@ -131,21 +134,30 @@ export default function AdminDashboardPage() {
           <Stat label="재구성 판정" value={summary.matches.reconstructed} />
           <Stat label="공식 경기" value={summary.matches.official} />
           <Stat label="비공식 경기" value={summary.matches.reference} hint="통계 미반영" />
+          {/* 비율은 서버가 계산한 값을 그대로 쓴다. 화면에서 다시 계산하지 않는다 */}
           <Stat
             label="공식 비율"
             value={
-              summary.matches.official + summary.matches.reference === 0
-                ? '-'
-                : `${Math.round(
-                    (summary.matches.official /
-                      (summary.matches.official + summary.matches.reference)) *
-                      100,
-                  )}%`
+              summary.matches.officialRate === null ? '-' : `${summary.matches.officialRate}%`
             }
           />
           <Stat label="대기" value={summary.matches.pending} />
           <Stat label="보류" value={summary.matches.skipped} />
+          <Stat
+            label="미해결 수집 실패"
+            value={summary.unresolvedFailures}
+            hint="사람이 확인해야 한다"
+          />
         </div>
+        {/* 보류는 숫자보다 **사유**가 중요하다. 다음에 할 일이 거기서 나온다 (정책 21) */}
+        {summary.matches.skipReasons.length > 0 ? (
+          <div className="mt-3 text-sm text-meta">
+            보류 사유 —{' '}
+            {summary.matches.skipReasons
+              .map((entry) => `${entry.reason} ${entry.count}건`)
+              .join(' · ')}
+          </div>
+        ) : null}
       </AdminCard>
 
       <AdminCard title="래더 · 수집기">

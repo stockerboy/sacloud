@@ -1,8 +1,10 @@
 import { prisma, type Prisma } from '@sacloud/db'
 import {
   kdRate,
+  kdRateOrNull,
   killPerMatch,
   winRate,
+  winRateOrNull,
   type LeagueClanSeason,
   type LeagueClanShow,
   type LeaguePlayerDetail,
@@ -566,11 +568,12 @@ export async function getLeaguePlayerSeasons(
     rating: row.rating,
     win: row.win,
     lose: row.lose,
-    // 원본이 준 승률·킬뎃이 있으면 그대로 쓴다. 없을 때만 계산한다 (D-099)
-    win_rate: row.winRate ?? winRate(row.win, row.lose),
+    /* 원본이 준 승률·킬뎃이 있으면 그대로 쓴다 (D-099).
+       없고 **승패·킬데스도 모르면** 계산하지 않는다 — 0/0을 0%로 만들지 않는다 (D-106) */
+    win_rate: row.winRate ?? winRateOrNull(row.win, row.lose),
     kill: row.kill,
     death: row.death,
-    kd_rate: row.kdRate ?? kdRate(row.kill, row.death),
+    kd_rate: row.kdRate ?? kdRateOrNull(row.kill, row.death),
     assist: row.assist,
     headshot: row.headshot,
     kill_per_match: row.killPerMatch,
@@ -592,9 +595,10 @@ export async function getLeagueClanSeasons(
   })
   if (!leagueClan) return null
 
+  /* 정렬은 선수 카드와 같은 이유로 **시작 시각** 기준이다 (베타 번호가 0이라서, D-098) */
   const rows = await prisma.leagueClanSeason.findMany({
     where: { leagueClanId },
-    orderBy: [{ season: 'desc' }, { id: 'asc' }],
+    orderBy: [{ seasonRef: { startedAt: 'desc' } }, { id: 'asc' }],
     select: {
       season: true,
       rank: true,
@@ -603,11 +607,14 @@ export async function getLeagueClanSeasons(
       division: true,
       win: true,
       lose: true,
+      seasonRef: { select: { seasonType: true, number: true } },
     },
   })
 
   return rows.map((row) => ({
     season: row.season,
+    season_label: seasonLabel(row.seasonRef),
+    season_type: row.seasonRef.seasonType as SeasonType,
     rank: row.rank,
     rank_count: row.rankCount,
     rating: row.rating,

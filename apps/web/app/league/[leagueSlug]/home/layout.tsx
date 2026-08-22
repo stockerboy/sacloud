@@ -3,7 +3,7 @@
 import { use } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { LeagueHeader, LeagueHomeTabs, Skeleton } from '@sacloud/ui'
+import { BetaNotice, LeagueHeader, LeagueHomeTabs, Skeleton } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -38,6 +38,8 @@ export default function LeagueHomeLayout({
           <Skeleton className="h-[35px] w-96" />
         </div>
       )}
+      {/* 베타일 때만 한 번 뜬다. 다른 리그 화면에는 서브내비 배지만 남는다 */}
+      <BetaNotice seasonType={league.data?.data.season_type} />
       <LeagueHomeTabs leagueSlug={leagueSlug} current={current} />
       <div>{children}</div>
     </div>

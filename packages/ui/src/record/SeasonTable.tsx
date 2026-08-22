@@ -9,7 +9,14 @@ import { rateClass } from '../common/rate'
  * 원본 실측(플레이어 상세 사이드 패널에서 확인한 것과 같은 구성):
  * `시즌 N | {n}명중 {rank}위 | {승}승 {패}패 | 승률 {%} | {킬}킬 {데스}데스 | 킬뎃 {%} | 래더 {점}`
  * 전용 페이지 레이아웃은 아직 확인하지 못했다 `[미확인]` — 랭킹 표와 같은 뼈대를 재사용했다.
+ *
+ * 두 가지를 서버가 준 대로만 그린다.
+ *  - 시즌 이름은 `season_label`이다. 베타의 내부 번호 0을 화면에 쓰지 않는다 (D-098)
+ *  - 과거 카드에 없는 값은 `null`로 온다. **0으로 그리지 않고 `알수없음`** 이다 (D-106)
  */
+
+/** 원본이 주지 않은 값. 0과 구분해서 표기한다 */
+const UNKNOWN = '알수없음'
 export function SeasonTable({
   seasons,
   kind,
@@ -39,21 +46,27 @@ export function SeasonTable({
             key={season.season}
             className="flex items-center border-b border-b-line bg-row py-3 text-lg text-meta last:border-b-0"
           >
-            <div className="w-32 text-center">시즌 {season.season}</div>
+            <div className="w-32 text-center">{season.season_label}</div>
             <div className="w-32 text-center">
               {season.rank === null ? '배치고사' : `${formatCount(season.rank)}위`}
             </div>
-            <div className="w-32 text-center">{formatCount(season.win)}승</div>
-            <div className="w-32 text-center">{formatCount(season.lose)}패</div>
-            <div className={`w-32 text-center ${rateClass(season.win_rate)}`}>
-              {formatRate(season.win_rate)}%
+            <div className="w-32 text-center">
+              {season.win === null ? UNKNOWN : `${formatCount(season.win)}승`}
+            </div>
+            <div className="w-32 text-center">
+              {season.lose === null ? UNKNOWN : `${formatCount(season.lose)}패`}
+            </div>
+            <div className={`w-32 text-center ${season.win_rate === null ? '' : rateClass(season.win_rate)}`}>
+              {season.win_rate === null ? UNKNOWN : `${formatRate(season.win_rate)}%`}
             </div>
             {isPlayer ? (
-              <div className={`w-32 text-center ${rateClass(season.kd_rate)}`}>
-                {formatRate(season.kd_rate)}%
+              <div className={`w-32 text-center ${season.kd_rate === null ? '' : rateClass(season.kd_rate)}`}>
+                {season.kd_rate === null ? UNKNOWN : `${formatRate(season.kd_rate)}%`}
               </div>
             ) : null}
-            <div className="flex-grow text-center">{formatCount(season.rating)}점</div>
+            <div className="flex-grow text-center">
+              {season.rating === null ? UNKNOWN : `${formatCount(season.rating)}점`}
+            </div>
           </div>
         )
       })}

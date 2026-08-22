@@ -920,6 +920,8 @@ export function getLeagueClanSeasons(leagueClanId: string): LeagueClanSeason[] |
     .sort((a, b) => b.season - a.season)
     .map((entry) => ({
       season: entry.season,
+      season_label: `Season ${entry.season}`,
+      season_type: 'official' as const,
       rank: entry.rank,
       rank_count: entry.rankCount,
       rating: entry.rating,

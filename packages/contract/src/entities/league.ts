@@ -107,14 +107,17 @@ export const LeaguePlayerSeason = z.object({
   season_type: SeasonType,
   rank: Count.nullable(),
   rank_count: Count.nullable(),
-  rating: Rating,
-  win: Count,
-  lose: Count,
-  win_rate: Percent,
-  kill: Count,
-  death: Count,
+  /* SACLOUD가 계산한 카드는 아래가 **항상 있다**.
+     과거(3rd.supply) 카드는 시즌마다 제공 필드가 달라 **없을 수 있다** —
+     시즌 4는 승률·킬뎃만 준다. 없는 값을 0으로 채우지 않는다 (D-106). */
+  rating: Rating.nullable(),
+  win: Count.nullable(),
+  lose: Count.nullable(),
+  win_rate: Percent.nullable(),
+  kill: Count.nullable(),
+  death: Count.nullable(),
   /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
-  kd_rate: Percent,
+  kd_rate: Percent.nullable(),
   /* --- 원본에 있을 때만 --- */
   assist: Count.nullable(),
   headshot: Count.nullable(),
@@ -132,6 +135,9 @@ export type LeaguePlayerSeason = z.infer<typeof LeaguePlayerSeason>
 /** 클랜 지난시즌. 개인과 컬럼 구성이 다른지는 [미확인] — 계약상 동일 형태로 둔다. */
 export const LeagueClanSeason = z.object({
   season: Count,
+  /** 화면에 쓰는 이름. 베타는 `Beta Season` — 내부 번호 0을 노출하지 않는다 (D-098) */
+  season_label: z.string(),
+  season_type: SeasonType,
   rank: Count.nullable(),
   rank_count: Count.nullable(),
   rating: Rating,

@@ -133,6 +133,11 @@ function usage(): void {
   clan        [--league <slug>] | --register --slug <s> --name <n> | --rename --slug <s> --name <n>
               | --join --league <slug> --slug <s> --division N | --merge --from <s> --into <s>
               클랜 등록·이름 변경·리그 참여·병합 (병합은 slug 두 개를 정확히 지정할 때만)
+  legacy      --league <slug> --file <파일> | --dir <폴더> [--current-season N] [--confirm]
+              --league <slug> --freeze N
+              과거 시즌 이관. 입력은 HTML(supplyPc-state) · JSON · CSV.
+              **--confirm 없이는 한 줄도 쓰지 않는다** (기본은 미리보기).
+              --freeze N 은 그 시즌을 확정해 이후 수정을 막는다
 
 공통 플래그: --dry-run  --resume  --limit N
 `)

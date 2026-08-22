@@ -1,6 +1,6 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21. 최종 갱신 2026-08-22 (Phase 10 — 베타 운영 준비 완료).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
+**작성 2026-08-21. 최종 갱신 2026-08-22 (Phase 11 — Beta 공개 UI · 클랜 래더 4종 · legacy importer).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 Phase 9 래더는 **H장** · `docs/LADDER_TUNING_REPORT.md` · `docs/DECISIONS.md` D-057~D-068에 있다.
 
@@ -25,6 +25,7 @@ Phase 9 래더는 **H장** · `docs/LADDER_TUNING_REPORT.md` · `docs/DECISIONS.
 | **8.2 로스터 기반 재구성** | ✅ 완료 (2026-08-22). **D-044는 여전히 해결되지 않았다** — 아래 F장 |
 | **9 레이팅/시즌/랭킹** | ✅ 완료 (2026-08-22) |
 | **10 베타 운영 준비** | ✅ 관리자 화면·실데이터 E2E 완료 (2026-08-22). 아래 I장 |
+| **11 Beta 공개 시즌 구조** | ✅ 시즌 타입·격리·클랜 래더 4종·legacy importer·Beta 공개 UI (2026-08-22). 아래 **J장** |
 | 10 SSR/SEO/성능/운영 | ⬜ |
 
 **Legacy 이관(3rd.supply 과거 기록)은 Phase 8과 별개 트랙**이며 현재 **WAF로 blocked** 상태다 (D장).
@@ -593,3 +594,100 @@ pnpm --filter @sacloud/worker exec tsx src/dev/e2eTeardown.ts  # 되돌리기 (m
 - [ ] 베타오픈 시각(`betaOpenedAt`) 설정 — 운영자가 정한다
 - [ ] 선수 신원 관리 전용 화면 (지금은 클랜 상세에서 연결 상태만 확인 가능)
 - [ ] 공식 경기가 실제로 나오는 로스터 규모 확보 후 래더 반영 E2E
+
+---
+
+## J. Phase 11 — Beta 공개 시즌 → Season 8 구조 (2026-08-22)
+
+> 결정: `docs/DECISIONS.md` **D-097 ~ D-107**
+
+### 시즌 흐름
+
+```
+Season 1 … Season 7   →   Beta Season   →   Season 8
+ (legacy · frozen)        (beta · 번호 0)     (official · 운영자가 시작)
+```
+
+- `Season.seasonType` = `legacy` | `beta` | `official`, `Season.frozen`으로 과거 확정 (D-098 · D-099)
+- 베타 내부 번호는 **0**이다. 화면에는 `Beta Season`으로만 쓰고, 정렬은 번호가 아니라 `startedAt` 기준
+- 다음 정식 번호는 `max(number)+1` → 베타가 8을 소모하지 않는다
+
+### Beta → Season 8 격리 (D-101)
+
+`startSeason`이 한 트랜잭션에서 되돌리는 것:
+
+```
+LeaguePlayer   rating · baseRating = 1500 · win/lose/kill/death/assist/headshot/mvpCount = 0 · 배치고사 재시작
+LeagueClan     rating = 1500 · win/lose = 0 · 배치고사 재시작
+LeaguePlayerWeaponStat  전량 삭제  (통합 = baseRating + 무기별 delta 합 불변식)
+```
+
+베타 기록은 **지우지 않는다.** `closeSeason`이 `LeaguePlayerSeason` / `LeagueClanSeason` 카드로
+굳혀 두고, 지난 시즌 화면에서 계속 보인다. 회귀는 `packages/db/ops/__tests__/seasonIsolation.test.ts`.
+
+> baseline은 `SEASON_BASELINE = 1500` 한 곳에서만 정한다 (`packages/db/ops/season.ts`).
+
+### 클랜 순위 네 가지 (D-104)
+
+| 순위 | 모집단 | 쓰임 |
+|---|---|---|
+| 1부 standings | 1부만 | **승강 판단** |
+| 2부 standings | 2부만 | **승강 판단** |
+| 무소속 Tier 내 / 무소속 전체 | 무소속 | Tier 화면 · Tier 무시 래더 |
+| 전체 통합 래더 | 1부+2부+무소속 | 부리그·Tier 무시, `rating`만 본다 |
+
+승강 기본안은 **1부 최하위 ↔ 2부 1위 1팀 교환**(`startSeason`). Tier는 운영자 값이라
+rating으로 자동으로 오르내리지 않는다. 구현은 `apps/web/lib/server/queries/ladders.ts`.
+
+### Beta 공개 UI (D-105)
+
+- 모든 리그 화면: 서브내비에 `Beta Season` 배지 (tooltip = 승계 안내)
+- 리그홈 헤더 아래 **한 번만**: 제목 + 두 문장 안내
+- 문구는 `packages/ui/src/league/betaNoticeText.ts` 한 곳에서 정한다
+- 정식·레거시 시즌, 그리고 **시즌 종류를 모를 때는 아무것도 띄우지 않는다**
+
+### 라플/스나 (D-097 보강)
+
+3rd.supply 자체 API(`api-v2.3rd.supply/leagues/1/players/{id}/matches`)의
+`matches[].summary.red[]/blue[]`에 **경기별 `weapon`(0=라이플 / 1=스나이퍼)이 실제로 있다**는 것이
+정상 브라우저로 확인됐다. 그래도 **역할 래더는 만들지 않는다** —
+
+1. 우리 수집 경로(넥슨 Open API)에는 그 필드가 없다
+2. 그 값의 원 출처가 검증되지 않았다
+3. 3rd.supply는 WAF로 막혀 있고 우회하지 않는다
+
+Beta에서 정상적인 수집 경로가 검증되면 그때 Season 8에 정식 적용한다.
+**헤드샷·딜량으로 추정하지 않는다.**
+
+### 이번 단계에서 하지 않은 것
+
+- **Season 8을 시작하지 않았다.** 시작은 운영자 액션이다 (`--start`, 관리자 화면)
+- 정식 시즌 기간(약 3개월)을 코드·DB 어디에도 박지 않았다. 자동 종료 없음
+- 라플/스나 스키마·랭킹·UI를 미리 만들지 않았다 (D-097)
+
+### Phase 11 감사에서 고친 것 (2026-08-22)
+
+**1. 과거 기록의 결측값이 0으로 저장되고 있었다 (D-106).**
+파서는 `null`을 냈는데 importer가 `?? 0`으로 채웠다. 시즌 4처럼 승률만 주는 카드가
+`0승 0패 · 승률 56.9%` 라는 거짓 기록이 됐다.
+
+- `LeaguePlayerSeason.rating/win/lose/kill/death` → **nullable**
+  (마이그레이션 `20260822235000_legacy_season_nullable_stats`)
+- 매핑을 `legacySeasonCardData()` 순수 함수 한 곳으로 모으고 회귀 테스트 9건 추가
+- 조회 계층은 `winRateOrNull` / `kdRateOrNull` — 모르면 계산하지 않는다
+- 화면은 `알수없음`
+
+**2. 지난시즌 표가 베타를 `시즌 0`으로 보여 줬다 (D-098 위반).**
+`season_label`을 쓰도록 고치고, 클랜 시즌 응답에도 `season_label` / `season_type`을 넣었다.
+클랜 시즌 정렬도 번호가 아니라 `startedAt` 기준으로 바꿨다.
+
+**3. 운영 지표·CLI 보완**
+- 관리자 대시보드에 **보류 사유별 건수**와 **미해결 수집 실패**를 노출 (정책 21)
+- `legacy` 명령이 CLI 도움말에 없었다 → 추가 + `pnpm nexon:legacy` 스크립트
+
+### ★ 사용자 판단이 필요한 정책 충돌 (D-107)
+
+**무소속 경기가 개인 래더를 올려도 되는가.**
+최신 정책 16장은 "올리지 않는다", 현재 코드(D-102)는 "계산·저장하고 화면에서만 숨긴다"다.
+D-102는 클랜 래더 정확도 때문에 그렇게 정정된 것이라 **임의로 되돌리지 않았다.**
+정하기 전까지 현행(D-102)을 유지한다. 자세한 내용은 D-107.

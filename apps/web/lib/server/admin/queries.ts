@@ -36,7 +36,13 @@ export interface AdminSummary {
     reference: number
     pending: number
     skipped: number
+    /** 공식 비율 % — 공식 / (공식 + 비공식). 판정할 경기가 없으면 null */
+    officialRate: number | null
+    /** 무엇 때문에 보류됐는가 (많은 순). 다음에 할 일을 알려 주는 값이다 */
+    skipReasons: { reason: string; count: number }[]
   }
+  /** 아직 사람이 확인하지 않은 수집 실패 (API 오류 · 차단 등) */
+  unresolvedFailures: number
   rating: {
     ratedStats: number
     lastFormulaVersion: string | null
@@ -111,6 +117,20 @@ export async function adminSummary(): Promise<AdminSummary> {
       prisma.nexonMatch.count({ where: { projectionStatus: 'skipped' } }),
     ])
 
+  /* 파이프라인이 무엇 때문에 막혀 있는지 (정책 21).
+     "보류 N건"만 보면 운영자가 다음에 무엇을 해야 할지 알 수 없다.
+     사유별로 보여 줘야 "관측이 모자란다 → 폴링/로스터"로 이어진다. */
+  const [skipReasonRows, unresolvedFailures] = await Promise.all([
+    prisma.nexonMatch.groupBy({
+      by: ['projectionReason'],
+      where: { projectionStatus: 'skipped', projectionReason: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { projectionReason: 'desc' } },
+      take: 6,
+    }),
+    prisma.importFailure.count({ where: { source: 'nexon', resolvedAt: null } }),
+  ])
+
   const ratedStats = await prisma.matchPlayerStat.count({
     where: { match: { origin: 'nexon' }, ratingUpdate: { not: null } },
   })
@@ -172,7 +192,16 @@ export async function adminSummary(): Promise<AdminSummary> {
       reference: referenceMatches,
       pending,
       skipped,
+      officialRate:
+        officialMatches + referenceMatches === 0
+          ? null
+          : Math.round((officialMatches / (officialMatches + referenceMatches)) * 1000) / 10,
+      skipReasons: skipReasonRows.map((row) => ({
+        reason: row.projectionReason ?? '(사유 없음)',
+        count: row._count._all,
+      })),
     },
+    unresolvedFailures,
     rating: {
       ratedStats,
       lastFormulaVersion: lastRated?.formulaVersion ?? null,

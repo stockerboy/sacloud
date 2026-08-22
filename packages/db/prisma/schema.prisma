@@ -465,11 +465,17 @@ model LeaguePlayerSeason {
 
   rank      Int?
   rankCount Int?
-  rating    Int
-  win       Int @default(0)
-  lose      Int @default(0)
-  kill      Int @default(0)
-  death     Int @default(0)
+
+  /* SACLOUD가 계산한 시즌 카드는 이 값들이 **항상 있다**.
+     과거(3rd.supply) 카드는 시즌마다 제공 필드가 달라서 **없을 수 있다** — 예를 들어
+     시즌 4는 승률·킬뎃만 주고 승/패/킬/데스를 주지 않는다.
+     그때 0을 넣으면 화면에 `0승 0패 · 승률 56.9%` 같은 **거짓말**이 남는다.
+     그래서 nullable이다. 없으면 `null`, 화면에는 `알수없음` (D-106). */
+  rating    Int?
+  win       Int?
+  lose      Int?
+  kill      Int?
+  death     Int?
 
   /* 아래는 **원본에 있을 때만** 채운다. 없으면 `null`로 남긴다 — 역산하지 않는다 (D-099).
      승률·킬뎃은 승패·킬데스로 계산할 수 있지만, 원본이 준 값과 반올림이 달라질 수 있어

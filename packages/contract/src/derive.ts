@@ -38,3 +38,23 @@ export function percentOf(value: number, total: number): number {
   if (total === 0) return 0
   return Math.round((value / total) * 1000) / 10
 }
+
+/* ------------------------------------------------------------------------ */
+/* 결측값 (D-106)                                                             */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * 모를 때는 계산하지 않는다.
+ *
+ * 과거(3rd.supply) 시즌 카드는 시즌마다 제공 필드가 다르다. 승패를 주지 않은 시즌에
+ * `winRate(0, 0)`을 부르면 **0%** 가 나오는데, 그건 "0%였다"는 거짓말이다.
+ * 입력 중 하나라도 모르면 결과도 모르는 값(`null`)이다.
+ */
+export function winRateOrNull(win: number | null, lose: number | null): number | null {
+  return win === null || lose === null ? null : winRate(win, lose)
+}
+
+/** 킬뎃 — 위와 같은 이유로 킬·데스 중 하나라도 모르면 `null`이다 */
+export function kdRateOrNull(kill: number | null, death: number | null): number | null {
+  return kill === null || death === null ? null : kdRate(kill, death)
+}

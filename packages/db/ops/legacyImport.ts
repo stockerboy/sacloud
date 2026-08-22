@@ -45,6 +45,41 @@ export interface LegacyImportPreview {
 }
 
 /** 3rd.supply playerId → 우리 Player.id */
+/**
+ * 과거 카드 한 줄 → 저장할 값 (**순수 함수**).
+ *
+ * 규칙은 하나다. **원본이 주지 않은 값은 `null`로 남긴다** (D-106).
+ * 예전에는 `?? 0`으로 채웠는데, 그러면 승률만 주는 시즌 4 카드가
+ * `0승 0패 · 승률 56.9%` 라는 **거짓 기록**이 된다. 0은 "모름"이 아니라 "0번"이다.
+ *
+ * 승률·킬뎃도 승패·킬데스로 역산하지 않는다 (D-099).
+ */
+export function legacySeasonCardData(row: LegacySeasonRow) {
+  return {
+    season: row.season,
+    rank: row.rank,
+    rankCount: row.rankCount,
+    rating: row.rating,
+    win: row.win,
+    lose: row.lose,
+    kill: row.kill,
+    death: row.death,
+    assist: row.assist,
+    headshot: row.headshot,
+    winRate: row.winRate,
+    kdRate: row.kdRate,
+    killPerMatch: row.killPerMatch,
+    mvpCount: row.mvpCount,
+    clanNameAtSeason: row.clanName,
+    divisionAtSeason: row.division,
+    nicknameAtSeason: row.nickname,
+    /* 닉네임 자동 병합을 하지 않기 위한 근거 (D-100). 원본 식별자를 그대로 보존한다 */
+    legacyPlayerId: row.legacyPlayerId,
+    legacyLeaguePlayerId: row.legacyLeaguePlayerId,
+    source: row.source,
+  }
+}
+
 export function legacyPlayerKey(legacyPlayerId: string): string {
   return `${LEGACY_PLAYER_PREFIX}${legacyPlayerId}`
 }
@@ -184,27 +219,7 @@ export async function importLegacySeasons(input: {
       data: {
         leaguePlayerId: leaguePlayer.id,
         seasonId: season.id,
-        season: row.season,
-        rank: row.rank,
-        rankCount: row.rankCount,
-        // 과거 기록의 rating은 원본에 없을 수 있다. 없으면 0으로 두되 별도 컬럼이 진실을 말한다
-        rating: row.rating ?? 0,
-        win: row.win ?? 0,
-        lose: row.lose ?? 0,
-        kill: row.kill ?? 0,
-        death: row.death ?? 0,
-        assist: row.assist,
-        headshot: row.headshot,
-        winRate: row.winRate,
-        kdRate: row.kdRate,
-        killPerMatch: row.killPerMatch,
-        mvpCount: row.mvpCount,
-        clanNameAtSeason: row.clanName,
-        divisionAtSeason: row.division,
-        nicknameAtSeason: row.nickname,
-        legacyPlayerId: row.legacyPlayerId,
-        legacyLeaguePlayerId: row.legacyLeaguePlayerId,
-        source: row.source,
+        ...legacySeasonCardData(row),
         imported: true,
       },
     })
