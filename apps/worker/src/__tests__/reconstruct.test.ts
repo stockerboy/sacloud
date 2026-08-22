@@ -182,6 +182,8 @@ describe('완전성 판정 — 재구성되는 경우', () => {
     expect(result.plan.blue.members).toHaveLength(5)
     expect(result.plan.mapId).toBe('MAP-1')
     expect(result.summary.confirmed).toBe(10)
+    expect(result.summary.winnerMembersConfirmed).toBe(5)
+    expect(result.summary.loserMembersConfirmed).toBe(5)
     expect(result.summary.observationsUsable).toBe(10)
     expect(result.summary.conflicts).toEqual([])
   })
@@ -264,7 +266,7 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     })
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.code).toBe('insufficient_participants')
+    expect(result.code).toBe('insufficient_members')
     expect(result.summary.participantCompleteness).toBe('5v2')
   })
 
@@ -301,13 +303,32 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     expect(result.ok).toBe(true)
   })
 
-  it('같은 클랜 안에서 승패가 엇갈리면 판정하지 않는다', () => {
+  it('본클랜원 다수와 다른 결과인 1명은 상대 팀 용병으로 본다 (D-072)', () => {
     const base = fullMatch()
     const result = evaluateReconstruction({
       ...base,
       observations: base.observations.map((row) =>
         row.playerId === 'A4' ? { ...row, outcome: 'lose' as const } : row,
       ),
+      detail: [],
+    })
+    // 한 명 때문에 경기를 버리지 않는다. 그 사람은 진 팀으로 뛴 것으로 본다
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.summary.winnerMembersConfirmed).toBe(4)
+    expect(result.summary.loserMercenariesConfirmed).toBe(1)
+  })
+
+  it('본클랜원 승패가 정확히 반반이면 팀을 판정하지 않는다', () => {
+    const base = fullMatch()
+    const flip = new Set(['A3', 'A4'])
+    const result = evaluateReconstruction({
+      ...base,
+      observations: base.observations
+        .filter((row) => !['A0'].includes(row.playerId ?? ''))
+        .map((row) =>
+          flip.has(row.playerId ?? '') ? { ...row, outcome: 'lose' as const } : row,
+        ),
       detail: [],
     })
     expect(result.ok).toBe(false)
@@ -327,18 +348,41 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     expect(result.code).toBe('no_winner')
   })
 
-  it('클랜이 셋이면 클랜전으로 보지 않는다 (too_many_clans)', () => {
+  it('본클랜원 3명을 채운 클랜이 셋이면 클랜전으로 보지 않는다', () => {
     const base = fullMatch()
+    // A0~A2 = LC-AAA(승) · B0~B2 = LC-BBB(패) · B3·B4·A3 = LC-CCC(3명)
+    const charlie = new Set(['A3', 'B3', 'B4'])
     const result = evaluateReconstruction({
       ...base,
+      observations: base.observations
+        .filter((row) => row.playerId !== 'A4')
+        .map((row) => (row.playerId === 'A3' ? { ...row, outcome: 'lose' as const } : row)),
       memberships: base.memberships.map((row) =>
-        row.playerId === 'A4' ? { ...row, leagueClanId: 'LC-CCC', clanName: '찰리' } : row,
+        charlie.has(row.playerId) ? { ...row, leagueClanId: 'LC-CCC', clanName: '찰리' } : row,
       ),
       detail: [],
     })
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.code).toBe('too_many_clans')
+  })
+
+  it('본클랜원이 3명 미만인 클랜은 팀이 되지 못한다 (용병으로 채워도 마찬가지)', () => {
+    const base = fullMatch()
+    const moved = new Set(['A3', 'A4'])
+    const result = evaluateReconstruction({
+      ...base,
+      // A3·A4를 다른 클랜 소속으로 바꾸면 LC-AAA 본클랜원은 3명이 남는다 → 여전히 인정
+      memberships: base.memberships.map((row) =>
+        moved.has(row.playerId) ? { ...row, leagueClanId: 'LC-DDD', clanName: '델타' } : row,
+      ),
+      detail: [],
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.summary.winnerMembersConfirmed).toBe(3)
+    expect(result.summary.winnerMercenariesConfirmed).toBe(2)
+    expect(result.summary.participantCompleteness).toBe('5v5')
   })
 
   it('같은 플레이어가 두 계정으로 관측되면 판정하지 않는다', () => {
@@ -416,17 +460,24 @@ describe('신원과 로스터가 판정에 미치는 영향', () => {
     expect(result.summary.ambiguousIdentities).toBe(1)
   })
 
-  it('로스터에 없는 사람은 클랜을 추측하지 않는다', () => {
+  it('로스터에 없어도 출전이 확인되면 용병으로 기록한다 (D-073)', () => {
     const base = fullMatch()
     const result = evaluateReconstruction({
       ...base,
       memberships: base.memberships.filter((row) => row.playerId !== 'B4'),
       detail: [],
     })
-    // 그 선수는 참가자로 세지 않는다. 나머지 인원으로 인정 여부를 판단한다
     expect(result.ok).toBe(true)
-    expect(result.summary.rosterMismatches).toBe(1)
-    expect(result.summary.participantCompleteness).toBe('5v4')
+    if (!result.ok) return
+    expect(result.summary.unrosteredParticipants).toBe(1)
+    // 확인 수준은 **출전자 전원** 기준이라 5v5 그대로다 (D-074)
+    expect(result.summary.participantCompleteness).toBe('5v5')
+    expect(result.summary.loserMembersConfirmed).toBe(4)
+    expect(result.summary.loserMercenariesConfirmed).toBe(1)
+    const mercenary = result.plan.blue.members.find((entry) => entry.playerId === 'B4')
+      ?? result.plan.red.members.find((entry) => entry.playerId === 'B4')
+    expect(mercenary?.role).toBe('mercenary')
+    expect(mercenary?.rosterLeagueClanId).toBeNull()
   })
 
   it('확인되지 않은 소속은 기본적으로 인정하지 않는다', () => {
@@ -439,7 +490,7 @@ describe('신원과 로스터가 판정에 미치는 영향', () => {
     const result = evaluateReconstruction(unverified)
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.summary.rosterMismatches).toBe(10)
+    expect(result.summary.unrosteredParticipants).toBe(10)
   })
 
   it('운영자가 허용하면 미확인 소속으로도 재구성한다', () => {
@@ -488,6 +539,7 @@ describe('판정 요약은 증거로 남는다', () => {
     expect(result.summary.observations).toBe(10)
     expect(result.summary.detailParticipants).toBe(3)
     expect(result.summary.perClan).toEqual({ [CLAN_A]: 5, [CLAN_B]: 5 })
+    expect(result.summary.participantCompleteness).toBe('5v5')
   })
 
   it('미완일 때도 무엇이 모자랐는지 남는다', () => {
@@ -500,7 +552,7 @@ describe('판정 요약은 증거로 남는다', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.summary.confirmed).toBe(5)
-    expect(result.summary.perClan).toEqual({ [CLAN_A]: 5 })
+    expect(result.summary.winnerMembersConfirmed).toBe(0)
     expect(result.reason).toContain('상대 클랜')
   })
 })

@@ -23,7 +23,7 @@ import {
   DEFAULT_RATING_CONSTANTS,
   PERSONAL_FORMULA_VERSION,
   rateMatch,
-  seasonSoftReset,
+  seasonStartRating,
   type ConfirmedParticipant,
   type RatingConstants,
 } from '@sacloud/rating'
@@ -32,6 +32,8 @@ import type { JobContext } from './context.js'
 
 export interface RateRunResult {
   league: string
+  /** 계산한 시즌 (없으면 null) */
+  season: number | null
   matchesConsidered: number
   matchesRated: number
   playersUpdated: number
@@ -41,6 +43,29 @@ export interface RateRunResult {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * 계산할 시즌을 정한다.
+ *
+ * **자동 전환하지 않는다** (D-077). 날짜가 바뀌었다고 다음 시즌으로 넘어가지 않는다.
+ * 운영자가 새 시즌을 만들기 전까지는 계속 지금 시즌이다.
+ */
+async function resolveSeason(
+  leagueId: string,
+  seasonNumber: number | null,
+): Promise<{ id: string; number: number; startedAt: Date; endedAt: Date | null } | null> {
+  if (seasonNumber !== null) {
+    return prisma.season.findUnique({
+      where: { leagueId_number: { leagueId, number: seasonNumber } },
+      select: { id: true, number: true, startedAt: true, endedAt: true },
+    })
+  }
+  return prisma.season.findFirst({
+    where: { leagueId, status: 'active' },
+    orderBy: { number: 'desc' },
+    select: { id: true, number: true, startedAt: true, endedAt: true },
+  })
+}
 
 /** 두 클랜 쌍을 순서에 무관하게 식별한다 */
 function pairKey(left: string, right: string): string {
@@ -56,6 +81,8 @@ export async function runRate(
   ctx: JobContext,
   input: {
     leagueSlug: string
+    /** 계산할 시즌 번호. 없으면 **활성 시즌**을 쓴다 (자동 전환하지 않는다 — D-077) */
+    seasonNumber?: number | null
     allowMockLeague?: boolean
     constants?: RatingConstants
   },
@@ -63,6 +90,7 @@ export async function runRate(
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
   const result: RateRunResult = {
     league: input.leagueSlug,
+    season: null,
     matchesConsidered: 0,
     matchesRated: 0,
     playersUpdated: 0,
@@ -87,9 +115,35 @@ export async function runRate(
     return result
   }
 
-  /* ---- 1) 계산 대상: 재구성된 넥슨 경기만, 시간 순 ---- */
+  /* ---- 1) 계산 대상 ----
+     **현재 시즌의** 재구성된 넥슨 경기만, 경기 시각 순.
+
+     시즌 귀속은 **실제 경기 시각(startAt)** 으로 정한다 (D-078).
+     수집이 늦어져도 19:55에 치른 경기는 20:00에 시작한 새 시즌이 아니라 이전 시즌이다. */
+  const season = await resolveSeason(league.id, input.seasonNumber ?? null)
+  if (season) {
+    log(
+      `시즌 ${season.number} 기준 — ${season.startedAt.toISOString().slice(0, 10)} ~ ` +
+        `${season.endedAt ? season.endedAt.toISOString().slice(0, 10) : '진행 중'}`,
+    )
+  } else {
+    log('시즌이 없다. 리그 전체 경기를 대상으로 계산한다')
+  }
+  result.season = season?.number ?? null
+
   const matches = await prisma.match.findMany({
-    where: { leagueId: league.id, origin: 'nexon' },
+    where: {
+      leagueId: league.id,
+      origin: 'nexon',
+      ...(season
+        ? {
+            startAt: {
+              gte: season.startedAt,
+              ...(season.endedAt ? { lt: season.endedAt } : {}),
+            },
+          }
+        : {}),
+    },
     orderBy: [{ startAt: 'asc' }, { id: 'asc' }],
     select: {
       id: true,
@@ -97,7 +151,17 @@ export async function runRate(
       redLeagueClanId: true,
       blueLeagueClanId: true,
       winnerSide: true,
-      stats: { select: { playerId: true, side: true, kill: true, death: true, assist: true } },
+      stats: {
+        select: {
+          playerId: true,
+          side: true,
+          kill: true,
+          death: true,
+          assist: true,
+          rosterLeagueClanId: true,
+          participantRole: true,
+        },
+      },
     },
   })
   result.matchesConsidered = matches.length
@@ -129,6 +193,7 @@ export async function runRate(
     opponentAvgRating: number
     kUsed: number
     isPlacement: boolean
+    role: 'member' | 'mercenary'
   }
   interface PendingMatch {
     matchId: string
@@ -146,7 +211,8 @@ export async function runRate(
   for (const match of matches) {
     const participants: ConfirmedParticipant[] = match.stats.map((stat) => ({
       playerId: stat.playerId,
-      leagueClanId: stat.side === 'red' ? match.redLeagueClanId : match.blueLeagueClanId,
+      // 재구성 단계에서 이미 판정한 **원소속 클랜**을 그대로 쓴다. 여기서 다시 추측하지 않는다
+      rosterLeagueClanId: stat.rosterLeagueClanId,
       outcome: match.winnerSide === stat.side ? ('win' as const) : ('lose' as const),
       kill: stat.kill,
       death: stat.death,
@@ -202,6 +268,7 @@ export async function runRate(
         opponentAvgRating: player.opponentAvgRating,
         kUsed: player.kUsed,
         isPlacement: player.isPlacement,
+        role: player.role,
       })
     }
 
@@ -246,6 +313,8 @@ export async function runRate(
         // 승리 배수를 쓰지 않는다 (D-060). 기록은 남긴다
         multiplierUsed: 1,
         isPlacement: stat.isPlacement,
+        // 용병 여부는 그 경기의 사실이다. 계산이 아니라 기록이다 (D-073)
+        participantRole: stat.role,
         formulaVersion: PERSONAL_FORMULA_VERSION,
       },
     })
@@ -330,52 +399,50 @@ export async function runRate(
 }
 
 /**
- * 시즌 종료 soft reset (D-064).
+ * 새 시즌 시작 — **모두 같은 출발점** (D-064 · 2026-08-22 정책 변경).
  *
- * **완전 초기화가 아니다.** 순위 정보는 남고 폭만 줄어든다.
- * 시즌을 실제로 닫는 일(스냅샷·시즌 상태 변경)은 하지 않는다 — 그것은 운영자 결정이다.
+ * soft reset(이전 점수를 비율로 이월)은 폐기했다. 개인·클랜 모두 `seasonBaseline`에서
+ * 똑같이 시작한다. 전 시즌 1위라고 높은 점수를 들고 가지 않는다.
+ *
+ * **지난 시즌 기록은 건드리지 않는다.**
+ *   `Match` · `MatchPlayerStat` · `LeaguePlayerSeason` · `LeagueClanSeason` · `RankSnapshot`
+ *   전부 그대로 남는다. 이 함수가 바꾸는 것은 "지금 시즌의 현재 점수"뿐이다.
+ *
+ * 시즌 전환은 **운영자가 부를 때만** 일어난다. 날짜로 자동 전환하지 않는다 (D-077).
  */
-export async function runSeasonSoftReset(
+export async function runSeasonStart(
   ctx: JobContext,
   input: { leagueSlug: string; constants?: RatingConstants },
-): Promise<{ players: number; clans: number }> {
+): Promise<{ players: number; clans: number; baseline: number }> {
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
+  const baseline = seasonStartRating(constants)
   const league = await prisma.league.findUnique({
     where: { slug: input.leagueSlug },
     select: { id: true },
   })
   if (!league) {
     warn(`리그를 찾을 수 없다: ${input.leagueSlug}`)
-    return { players: 0, clans: 0 }
+    return { players: 0, clans: 0, baseline }
   }
 
-  const players = await prisma.leaguePlayer.findMany({
-    where: { leagueId: league.id },
-    select: { id: true, rating: true },
-  })
-  const clans = await prisma.leagueClan.findMany({
-    where: { leagueId: league.id },
-    select: { id: true, rating: true },
-  })
+  const players = await prisma.leaguePlayer.count({ where: { leagueId: league.id } })
+  const clans = await prisma.leagueClan.count({ where: { leagueId: league.id } })
 
   if (ctx.dryRun) {
-    log(`[dry-run] 선수 ${players.length}명 · 클랜 ${clans.length}곳 soft reset 대상`)
-    return { players: players.length, clans: clans.length }
+    log(`[dry-run] 선수 ${players}명 · 클랜 ${clans}곳을 ${baseline}점에서 시작시킨다`)
+    return { players, clans, baseline }
   }
 
-  for (const player of players) {
-    const next = seasonSoftReset(player.rating, constants)
-    await prisma.leaguePlayer.update({
-      where: { id: player.id },
-      data: { rating: next, baseRating: next },
-    })
-  }
-  for (const clan of clans) {
-    await prisma.leagueClan.update({
-      where: { id: clan.id },
-      data: { rating: seasonSoftReset(clan.rating, constants) },
-    })
-  }
+  await prisma.leaguePlayer.updateMany({
+    where: { leagueId: league.id },
+    data: { rating: baseline, baseRating: baseline, placement: true, placementPlayed: 0 },
+  })
+  await prisma.leagueClan.updateMany({
+    where: { leagueId: league.id },
+    data: { rating: baseline, placement: true, placementPlayed: 0 },
+  })
 
-  return { players: players.length, clans: clans.length }
+  log(`새 시즌 시작 — 선수 ${players}명 · 클랜 ${clans}곳 전부 ${baseline}점에서 시작한다`)
+  log('지난 시즌 기록(경기·시즌 통계·랭킹 스냅샷)은 그대로 보존된다')
+  return { players, clans, baseline }
 }

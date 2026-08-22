@@ -16,11 +16,11 @@ import {
   clanRatingUpdate,
   personalRatingUpdate,
   rateMatch,
-  seasonSoftReset,
+  seasonStartRating,
   type ConfirmedParticipant,
   type RatingConstants,
 } from '@sacloud/rating'
-import { createRng, spearman } from './simulate.js'
+import { createRng } from './simulate.js'
 
 /* ------------------------------------------------------------------ 도구 --- */
 
@@ -141,7 +141,7 @@ function participant(
 ): ConfirmedParticipant {
   return {
     playerId,
-    leagueClanId,
+    rosterLeagueClanId: leagueClanId,
     outcome,
     kill: 10,
     death: 10,
@@ -329,16 +329,12 @@ export function runScenarios(constants: RatingConstants): ScenarioMetrics {
     constants,
   })
 
-  /* 12. 시즌 3회 연속 */
+  /* 12. 시즌 전환 — 모두 같은 출발점 (D-064) */
   const rng = createRng(808)
-  let population = Array.from({ length: 200 }, () => 1500 + (rng() - 0.5) * 1600)
-  const initialSpread = Math.max(...population) - Math.min(...population)
-  const initialOrder = [...population]
-  for (let season = 0; season < 3; season += 1) {
-    population = population.map((rating) => seasonSoftReset(rating, constants))
-  }
-  const seasonOrderPreserved = spearman(initialOrder, population)
-  const seasonSpreadRatio = (Math.max(...population) - Math.min(...population)) / initialSpread
+  const population = Array.from({ length: 200 }, () => 1500 + (rng() - 0.5) * 1600)
+  const afterSeason = population.map(() => seasonStartRating(constants))
+  const seasonOrderPreserved = new Set(afterSeason).size === 1 ? 1 : 0
+  const seasonSpreadRatio = 0
 
   /* 13. 대량 경기 — 수치 안전성 */
   let numericSafe = true
@@ -536,16 +532,6 @@ export function candidates(): Candidate[] {
       name: 'S5 반복 감쇠 약함',
       constants: { ...base, repeatDecay: 0.8, repeatDecayFloor: 0.4 },
       note: '반복을 거의 깎지 않는다',
-    },
-    {
-      name: 'S6 carry 0.3',
-      constants: { ...base, seasonCarryRate: 0.3 },
-      note: '시즌마다 크게 되돌린다',
-    },
-    {
-      name: 'S7 carry 0.7',
-      constants: { ...base, seasonCarryRate: 0.7 },
-      note: '시즌 점수를 많이 이월한다',
     },
     {
       name: 'S8 clanK 16',

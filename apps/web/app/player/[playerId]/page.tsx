@@ -58,7 +58,11 @@ export default function PlayerPage({ params }: { params: Promise<{ playerId: str
       />
       <div className="pc-container mt-6">
         <div className="mb-2 text-2xl">참여중인 리그</div>
-        <PlayerLeagueCards entries={leagues.data?.data} loading={!leagues.data} />
+        <PlayerLeagueCards
+          playerId={playerId}
+          entries={leagues.data?.data}
+          loading={!leagues.data}
+        />
       </div>
     </>
   )

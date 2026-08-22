@@ -12,7 +12,6 @@ import {
   farmMargin,
   lineupTracking,
   repeatSuppression,
-  seasonBehaviour,
   sweep,
 } from './tuneSweep.js'
 
@@ -53,9 +52,7 @@ function main(): void {
   console.info(`  강자 상대 45% 300경기 → ${m.grinderRating}`)
   console.info(`  같은 상대 20연승 +${m.repeatGain}  vs  새 상대 20연승 +${m.freshGain}`)
   console.info(`  신규 강자 ${m.strongNewcomerMatches}경기 · 신규 약자 ${m.weakNewcomerMatches}경기 만에 안정화`)
-  console.info(
-    `  시즌 3회 soft reset → 순위 상관 ${m.seasonOrderPreserved.toFixed(4)} · 폭 ${(m.seasonSpreadRatio * 100).toFixed(1)}%`,
-  )
+  console.info(`  시즌 전환 → 전원 같은 출발점 ${m.seasonOrderPreserved === 1 ? '예' : '아니오'}`)
   console.info(`  3v3 경기 개인 결과 ${m.partialPlayerResults}건 · 라인업 반영 ${m.partialLineupBlended}`)
   console.info(`  20,000경기 수치 안전 ${m.numericSafe} · 결정적 ${m.deterministic}`)
 
@@ -116,18 +113,6 @@ function main(): void {
     ).join('\n'),
   )
 
-  heading('[carryRate] 시즌 soft reset — 폭 축소 vs 순위 보존')
-  console.info(
-    sweep(
-      'carry',
-      [0.3, 0.4, 0.5, 0.6, 0.7],
-      (value) => ({ seasonCarryRate: value }),
-      (constants) => {
-        const result = seasonBehaviour(constants)
-        return `폭 ${(result.spreadRatio * 100).toFixed(0)}% 유지 · 순위상관 ${result.order.toFixed(4)}`
-      },
-    ).join('\n'),
-  )
 
   heading('[lineupBlend] 클랜 래더가 실제 출전 전력을 얼마나 따라가는가')
   console.info(

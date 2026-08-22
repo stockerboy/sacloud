@@ -7,6 +7,7 @@ import { ClanMark } from '../common/ClanMark'
 import { RelativeTime } from '../common/RelativeTime'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
+import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 
 /**
  * 매치 카드 (기록실 목록의 한 줄, 아코디언).
@@ -64,7 +65,7 @@ function Lineup({
       <div>
         {entries.map((entry) => (
           <div key={entry.player_id}>
-            <Link className="inline-block" href={`/league/${leagueSlug}/player/${entry.player_id}`}>
+            <Link className="inline-block" href={leaguePlayerPath(leagueSlug, entry.player_id)}>
               <span className={entry.dropout ? 'line-through' : ''}>{entry.name}</span>
               {/* 무기: 0 = 라이플, 1 = 스나이퍼 → 스나이퍼만 [S] 표기 (원본 규칙).
                   null(알 수 없음)이면 아무 표기도 하지 않는다 */}
@@ -89,7 +90,7 @@ function ClanSide({
   return (
     <div className={`w-42 ${align === 'right' ? 'flex flex-row-reverse' : ''}`}>
       <div className={`text-base ${align === 'right' ? 'text-right' : ''}`}>
-        <Link className="inline-block" href={`/league/${leagueSlug}/clan/${snapshot.clan.slug}`}>
+        <Link className="inline-block" href={leagueClanPath(leagueSlug, snapshot.clan.slug)}>
           <ClanMark
             mark={snapshot.clan.mark}
             size="xs"

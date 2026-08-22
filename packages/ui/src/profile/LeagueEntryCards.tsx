@@ -5,6 +5,7 @@ import { EmptyState } from '../common/EmptyState'
 import { Skeleton } from '../common/Skeleton'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
+import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 
 /**
  * 참여중인 리그 카드.
@@ -70,10 +71,14 @@ function CardTitle({ name, official }: { name: string; official: boolean }) {
 
 /* ---------------------------------------------------------------- 플레이어 --- */
 
-function PlayerEntryCard({ entry }: { entry: PlayerLeagueEntry }) {
+function PlayerEntryCard({ entry, playerId }: { entry: PlayerLeagueEntry; playerId: string }) {
   return (
     <Link
-      href={`/league/${entry.league.slug}/player/${entry.league_player_id}`}
+      /**
+       * 기록실 경로에는 **`playerId`** 를 넣는다 (`common/paths.ts` 참조).
+       * `league_player_id`를 넣으면 API가 404를 돌려주고 화면이 빈 페이지가 된다 — 실제 버그였다.
+       */
+      href={leaguePlayerPath(entry.league.slug, playerId)}
       className={`${CARD_BASE} mt-4`}
     >
       <CardTitle name={entry.league.name} official={entry.league.official} />
@@ -114,9 +119,12 @@ function PlayerEntryCard({ entry }: { entry: PlayerLeagueEntry }) {
 }
 
 export function PlayerLeagueCards({
+  playerId,
   entries,
   loading,
 }: {
+  /** 카드가 이동할 기록실 경로에 쓰인다. 리그 참가 ID가 아니라 **플레이어 ID**다 */
+  playerId: string
   entries?: readonly PlayerLeagueEntry[]
   loading?: boolean
 }) {
@@ -127,7 +135,7 @@ export function PlayerLeagueCards({
   return (
     <div className="flex flex-wrap">
       {entries.map((entry) => (
-        <PlayerEntryCard key={entry.league.id} entry={entry} />
+        <PlayerEntryCard key={entry.league.id} entry={entry} playerId={playerId} />
       ))}
     </div>
   )
@@ -137,7 +145,7 @@ export function PlayerLeagueCards({
 
 function ClanEntryCard({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: string }) {
   return (
-    <Link href={`/league/${entry.league.slug}/clan/${clanSlug}`} className={CARD_BASE}>
+    <Link href={leagueClanPath(entry.league.slug, clanSlug)} className={CARD_BASE}>
       <CardTitle name={entry.league.name} official={entry.league.official} />
       <div className="mt-2">
         <div>{entry.division}부리그로 참여중</div>

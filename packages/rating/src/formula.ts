@@ -64,19 +64,31 @@ export function rewardCapFactor(
 }
 
 /**
- * 반복 대전 감쇠 (D-063).
+ * 반복 대전 감쇠 (D-063 · D-070에서 조건 추가).
  *
- * **같은 상대에게 같은 결과가 반복될 때만** 깎는다.
+ * **같은 상대에게 같은 결과가 반복될 때만**, 그리고 **점수 차가 클 때만** 깎는다.
+ *
+ * 왜 조건을 붙였나
+ *   SACLOUD에는 같은 두 클랜이 연달아 붙는 **멸망전** 문화가 있다.
+ *   실력이 비슷한 팀끼리의 반복 대전은 정상적인 실력 검증이므로 깎으면 안 된다.
+ *   farming은 "큰 격차 상대를 반복해서 잡는 것"이므로 그 조건에서만 걸리게 한다.
+ *
  * 결과가 뒤집히면(졌던 팀이 이기면) 새 정보이므로 깎지 않는다.
- * 반복 경기를 금지하지 않는다 — farming 효율만 낮춘다.
+ * 반복 경기를 금지하지 않는다 — 기록도 승패도 전부 남는다.
  *
  * @param priorSameOutcome 기간 안에서 같은 방향으로 이미 나온 경기 수 (0이면 첫 대결)
+ * @param ratingGap 두 대상의 점수 차 (부호 무관 — 크기만 본다)
  */
 export function repeatDecayFactor(
   priorSameOutcome: number,
+  ratingGap = Number.POSITIVE_INFINITY,
   constants: RatingConstants = DEFAULT_RATING_CONSTANTS,
 ): number {
+  // 기본값은 꺼짐(1)이다. 켜야 할 근거가 생기면 설정으로 켠다
+  if (constants.repeatDecay >= 1) return 1
   if (priorSameOutcome <= 0) return 1
+  // 비슷한 실력끼리의 멸망전은 깎지 않는다
+  if (Math.abs(ratingGap) <= constants.repeatDecayMinGap) return 1
   const factor = constants.repeatDecay ** priorSameOutcome
   return Math.max(constants.repeatDecayFloor, factor)
 }
@@ -105,7 +117,11 @@ export function personalRatingUpdate(input: RatingUpdateInput): RatingUpdateResu
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
   const expected = expectedScore(input.ratingBefore, input.opponentRating, constants)
   const k = personalK(input.ratingBefore, constants)
-  const repeatFactor = repeatDecayFactor(input.priorSameOutcome ?? 0, constants)
+  const repeatFactor = repeatDecayFactor(
+    input.priorSameOutcome ?? 0,
+    input.ratingBefore - input.opponentRating,
+    constants,
+  )
 
   if (input.isPlacement) {
     return { ratingUpdate: 0, expected, kUsed: k, capFactor: 1, repeatFactor }
@@ -123,8 +139,12 @@ export function personalRatingUpdate(input: RatingUpdateInput): RatingUpdateResu
 
   const capFactor = rewardCapFactor(input.ratingBefore - input.opponentRating, constants)
   const raw = k * (1 - expected) * constants.personalWinMultiplier * capFactor * repeatFactor
-  // 깎이지 않는 구간에서는 이겨도 0점이 되지 않게 한다
-  const value = capFactor > 0 ? Math.max(constants.minWinReward, roundHalfUp(raw)) : roundHalfUp(raw)
+  // 깎이지 않는 구간에서는 이겨도 0점이 되지 않게 한다.
+  // 그리고 **승리 증감은 절대 음수가 되지 않는다** (D-069).
+  const value =
+    capFactor > 0
+      ? Math.max(constants.minWinReward, roundHalfUp(raw))
+      : Math.max(0, roundHalfUp(raw))
 
   return { ratingUpdate: value, expected, kUsed: k, capFactor, repeatFactor }
 }
@@ -134,7 +154,11 @@ export function clanRatingUpdate(input: RatingUpdateInput): RatingUpdateResult {
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
   const expected = expectedScore(input.ratingBefore, input.opponentRating, constants)
   const k = constants.clanK
-  const repeatFactor = repeatDecayFactor(input.priorSameOutcome ?? 0, constants)
+  const repeatFactor = repeatDecayFactor(
+    input.priorSameOutcome ?? 0,
+    input.ratingBefore - input.opponentRating,
+    constants,
+  )
 
   if (input.isPlacement) {
     return { ratingUpdate: 0, expected, kUsed: k, capFactor: 1, repeatFactor }
@@ -152,7 +176,10 @@ export function clanRatingUpdate(input: RatingUpdateInput): RatingUpdateResult {
 
   const capFactor = rewardCapFactor(input.ratingBefore - input.opponentRating, constants)
   const raw = k * (1 - expected) * capFactor * repeatFactor
-  const value = capFactor > 0 ? Math.max(constants.minWinReward, roundHalfUp(raw)) : roundHalfUp(raw)
+  const value =
+    capFactor > 0
+      ? Math.max(constants.minWinReward, roundHalfUp(raw))
+      : Math.max(0, roundHalfUp(raw))
 
   return { ratingUpdate: value, expected, kUsed: k, capFactor, repeatFactor }
 }
@@ -167,16 +194,16 @@ export function applyRating(
 }
 
 /**
- * 시즌 종료 soft reset (D-064).
+ * 새 시즌의 시작 래더 (D-064 — 2026-08-22 정책 변경).
  *
- * 완전 초기화가 아니다. 높은 점수는 내려오고 낮은 점수는 올라온다.
- * 순위 정보가 **사라지지는 않는다** — 순서는 그대로 보존된다.
+ * **모두 같은 값에서 시작한다.** 이전 시즌 점수는 시작점에 어떤 보정도 주지 않는다.
+ * 전 시즌 1위(2500)도, 하위권(1200)도 새 시즌에는 똑같이 `seasonBaseline`이다.
+ *
+ * 지난 시즌 기록(최종 랭킹·rating·승패·경기)은 **그대로 보존한다.**
+ * 이 함수는 "새 시즌의 현재 점수"만 정한다.
  */
-export function seasonSoftReset(
-  rating: number,
+export function seasonStartRating(
   constants: RatingConstants = DEFAULT_RATING_CONSTANTS,
 ): number {
-  return roundHalfUp(
-    constants.seasonBaseline + (rating - constants.seasonBaseline) * constants.seasonCarryRate,
-  )
+  return roundHalfUp(constants.seasonBaseline)
 }

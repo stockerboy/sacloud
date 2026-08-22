@@ -187,6 +187,32 @@ describe.skipIf(!up)('실제 API 계약 준수 (개발 서버 필요)', { timeou
     }
   })
 
+  /**
+   * 참여중인 리그 카드가 실제로 열리는가 (Phase 9 회귀).
+   *
+   * 카드가 기록실 경로에 `league_player_id`를 넣어서 클릭하면 빈 페이지가 됐다.
+   * 두 값이 **다르다는 것**과, 경로에는 `playerId`가 들어가야 한다는 것을 여기서 고정한다.
+   */
+  it('참여중인 리그 카드가 가리키는 기록실 경로가 실제로 열린다', async () => {
+    const leagues = await checkGet('playerLeagues', { params: { playerId } })
+    expect(leagues.data.length, '이 플레이어는 리그에 참여하고 있어야 한다').toBeGreaterThan(0)
+
+    for (const entry of leagues.data) {
+      const slug = entry.league.slug
+      const ok = await fetch(`${BASE}/leagues/${slug}/players/${playerId}`)
+      expect(ok.status, `/leagues/${slug}/players/${playerId} 가 200이 아니다`).toBe(200)
+
+      // 리그 참가 레코드 ID는 플레이어 ID가 아니다 — 넣으면 404가 난다
+      if (entry.league_player_id !== playerId) {
+        const wrong = await fetch(`${BASE}/leagues/${slug}/players/${entry.league_player_id}`)
+        expect(
+          wrong.status,
+          `league_player_id(${entry.league_player_id})로도 열리면 두 ID를 구분하지 못한다는 뜻이다`,
+        ).toBe(404)
+      }
+    }
+  })
+
   it('없는 대상은 404로 답한다 (HTML 오류 페이지가 아니라 계약 형태로)', async () => {
     const response = await fetch(`${BASE}/leagues/definitely-not-a-league`)
     expect(response.status).toBe(404)

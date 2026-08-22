@@ -14,6 +14,8 @@
 import { DEFAULT_RATING_CONSTANTS, type RatingConstants } from './constants.js'
 import type { ConfirmedParticipant } from './eligibility.js'
 
+/** 라인업 평균에는 **출전이 확인된 전원**이 들어간다 — 용병도 그 경기의 전력이다 (D-076) */
+
 export interface LineupStrength {
   /** 확인된 선수들의 개인 래더 평균 (없으면 null) */
   average: number | null

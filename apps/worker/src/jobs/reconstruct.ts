@@ -263,6 +263,9 @@ async function writeReconstructedMatch(input: {
     for (const member of side.members) {
       const statData = {
         side: member.side,
+        // 이 경기에서의 역할과 원소속 — 계산이 아니라 기록이다 (D-073 · D-075)
+        participantRole: member.role,
+        rosterLeagueClanId: member.rosterLeagueClanId,
         kill: member.kill,
         death: member.death,
         assist: member.assist,
@@ -436,8 +439,12 @@ export async function runReconstruct(
           projectedAt: new Date(),
           reconstruction: lastSummary as Prisma.InputJsonValue,
           reconstructedAt: new Date(),
-          clanAConfirmedCount: outcome.summary.clanAConfirmedCount,
-          clanBConfirmedCount: outcome.summary.clanBConfirmedCount,
+          winnerMembersConfirmed: outcome.summary.winnerMembersConfirmed,
+          loserMembersConfirmed: outcome.summary.loserMembersConfirmed,
+          winnerMercenariesConfirmed: outcome.summary.winnerMercenariesConfirmed,
+          loserMercenariesConfirmed: outcome.summary.loserMercenariesConfirmed,
+          winnerConfirmed: outcome.summary.winnerConfirmed,
+          loserConfirmed: outcome.summary.loserConfirmed,
           observationParticipantCount: outcome.summary.observationParticipantCount,
           detailParticipantCount: outcome.summary.detailParticipantCount,
           participantCompleteness: outcome.summary.participantCompleteness,
@@ -474,8 +481,12 @@ export async function runReconstruct(
 
     if (!ctx.dryRun) {
       const counts = (lastSummary ?? {}) as {
-        clanAConfirmedCount?: number
-        clanBConfirmedCount?: number
+        winnerMembersConfirmed?: number
+        loserMembersConfirmed?: number
+        winnerMercenariesConfirmed?: number
+        loserMercenariesConfirmed?: number
+        winnerConfirmed?: number
+        loserConfirmed?: number
         observationParticipantCount?: number
         detailParticipantCount?: number
         participantCompleteness?: string
@@ -489,8 +500,12 @@ export async function runReconstruct(
           reconstruction: (lastSummary ?? {}) as Prisma.InputJsonValue,
           reconstructedAt: new Date(),
           // 인정되지 않은 경기도 **왜 모자랐는지**를 숫자로 남긴다
-          clanAConfirmedCount: counts.clanAConfirmedCount ?? null,
-          clanBConfirmedCount: counts.clanBConfirmedCount ?? null,
+          winnerMembersConfirmed: counts.winnerMembersConfirmed ?? null,
+          loserMembersConfirmed: counts.loserMembersConfirmed ?? null,
+          winnerMercenariesConfirmed: counts.winnerMercenariesConfirmed ?? null,
+          loserMercenariesConfirmed: counts.loserMercenariesConfirmed ?? null,
+          winnerConfirmed: counts.winnerConfirmed ?? null,
+          loserConfirmed: counts.loserConfirmed ?? null,
           observationParticipantCount: counts.observationParticipantCount ?? null,
           detailParticipantCount: counts.detailParticipantCount ?? null,
           participantCompleteness: counts.participantCompleteness ?? null,

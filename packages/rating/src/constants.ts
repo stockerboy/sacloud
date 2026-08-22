@@ -9,7 +9,7 @@
  *   - 동급 경기에서 점수가 계속 늘어나면 안 된다 (인플레이션 금지)
  *   - 약체 반복 사냥(양학)이 정상 경기보다 유리하면 안 된다
  *   - 업셋 보상은 유지한다
- *   - 시즌 종료 시 soft reset (완전 초기화 금지)
+ *   - 새 시즌은 **모두 같은 출발점**에서 시작한다 (soft reset 폐기)
  */
 
 /** 개인 래더 공식의 계보. 표본이 생겨 P-B와 재비교할 수 있게 이름에 남긴다 (D-058) */
@@ -51,26 +51,52 @@ export interface RatingConstants {
   clanK: number
 
   /* ── 양학 억제 (D-062) ── */
-  /** 이 점수 차까지는 보상을 깎지 않는다 */
+  /**
+   * 이 점수 차까지는 보상을 깎지 않는다.
+   *
+   * **너무 이르게 깎으면 정직한 경기를 벌한다.** Elo는 원래 기대 승률대로 이기면
+   * 장기 기댓값이 0이 되게 설계돼 있는데, 승리만 깎고 패배는 그대로 두면
+   * "기대대로 이겼는데도 점수가 줄어드는" 구간이 생긴다.
+   * 그 구간이 실제 리그에서 자주 나오는 격차(≤600)에 걸리지 않게 뒤로 물렸다 (D-069).
+   */
   rewardCapStart: number
   /** 이 점수 차부터는 승리 보상이 0이다 */
   rewardCapFull: number
-  /** 깎이지 않는 구간에서 승리는 최소 이만큼은 준다 */
+  /** 깎이지 않는 구간에서 승리는 최소 이만큼은 준다. **승리 증감은 음수가 되지 않는다** */
   minWinReward: number
 
-  /* ── 반복 대전 감쇠 (D-063) ── */
-  /** 같은 상대에게 **같은 결과**가 반복될 때 곱해지는 비율 (n번째 재대결 → decay^n) */
+  /* ── 반복 대전 감쇠 (D-063 · 기본값 꺼짐 — D-070) ── */
+  /**
+   * 같은 상대에게 **같은 결과**가 반복될 때 곱해지는 비율 (n번째 재대결 → decay^n).
+   *
+   * **기본값은 1(꺼짐)이다.** 측정해 보니 점수차 보상 감쇠(cap)만으로 farming이 이미 죽어서,
+   * 반복 감쇠를 켜도 결과가 **한 점도 달라지지 않았다**(1800→1820, 켜도 꺼도 같음).
+   * 반대로 SACLOUD의 정상적인 **멸망전**을 잘못 벌할 위험만 남는다.
+   * 기능은 남겨 두되(격차 조건부) 기본값은 끈다. farming이 실제로 관측되면 설정으로 켠다.
+   */
   repeatDecay: number
   /** 감쇠가 멈추는 하한. 0이면 반복 경기가 완전히 무의미해진다 */
   repeatDecayFloor: number
   /** 반복으로 볼 기간 (일) */
   repeatWindowDays: number
+  /**
+   * 이 점수 차를 **넘을 때만** 반복 감쇠를 적용한다 (D-070).
+   *
+   * SACLOUD에는 같은 두 클랜이 연달아 붙는 **멸망전** 문화가 있다. 실력이 비슷한 팀끼리의
+   * 반복 대전은 정상적인 실력 검증이므로 깎지 않는다.
+   * 큰 격차 상대를 반복해서 잡는 farming에만 걸린다.
+   */
+  repeatDecayMinGap: number
 
-  /* ── 시즌 soft reset (D-064) ── */
-  /** 회귀 중심 */
+  /* ── 시즌 시작 (D-064 — 2026-08-22 정책 변경) ── */
+  /**
+   * 새 시즌의 **공통 출발점**.
+   *
+   * soft reset(이전 점수를 비율로 이월)은 **폐기했다**. 새 시즌에는 개인·클랜 모두
+   * 이 값에서 똑같이 시작한다. 전 시즌 1위라고 높은 점수에서 시작하지 않는다.
+   * 지난 시즌 점수는 **기록으로만** 남는다 (`LeaguePlayerSeason` 등은 건드리지 않는다).
+   */
   seasonBaseline: number
-  /** 이전 시즌 점수를 얼마나 끌고 가는가 (0=완전 초기화, 1=이월) */
-  seasonCarryRate: number
 
   /* ── 라인업 전력 반영 (D-065) ── */
   /** 상대 클랜 래더와 상대 **실제 라인업** 평균을 섞는 비율. 0이면 반영하지 않는다 */
@@ -113,16 +139,16 @@ export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
 
   clanK: 16,
 
-  rewardCapStart: 300,
-  rewardCapFull: 900,
+  rewardCapStart: 600,
+  rewardCapFull: 1200,
   minWinReward: 1,
 
-  repeatDecay: 0.6,
+  repeatDecay: 1,
   repeatDecayFloor: 0.15,
   repeatWindowDays: 14,
+  repeatDecayMinGap: 600,
 
   seasonBaseline: 1500,
-  seasonCarryRate: 0.5,
 
   lineupBlend: 0.5,
   lineupMinConfirmed: 4,

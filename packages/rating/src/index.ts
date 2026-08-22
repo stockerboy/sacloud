@@ -23,7 +23,7 @@ export {
   personalRatingUpdate,
   repeatDecayFactor,
   rewardCapFactor,
-  seasonSoftReset,
+  seasonStartRating,
   type Outcome,
   type RatingUpdateInput,
   type RatingUpdateResult,
@@ -32,12 +32,15 @@ export {
 export {
   evaluateEligibility,
   lineupConfidence,
+  type AssignedParticipant,
   type ConfirmedParticipant,
   type EligibilityInput,
   type EligibilityResult,
   type EvidenceSource,
   type LineupConfidence,
+  type ParticipantRole,
   type ReconstructionStatus,
+  type SideSummary,
 } from './eligibility.js'
 
 export {

@@ -15,7 +15,6 @@ import {
   clanRatingUpdate,
   personalRatingUpdate,
   rateMatch,
-  seasonSoftReset,
   type ConfirmedParticipant,
   type RatingConstants,
 } from '@sacloud/rating'
@@ -82,18 +81,6 @@ export function farmMargin(constants: RatingConstants): number {
   return play(1900, 0.65, 303) - play(900, 0.9, 202)
 }
 
-/** 시즌 soft reset — 폭 축소율과 순위 보존 */
-export function seasonBehaviour(constants: RatingConstants): {
-  spreadRatio: number
-  order: number
-} {
-  const rng = createRng(4242)
-  const before = Array.from({ length: 300 }, () => 1500 + (rng() - 0.5) * 2000)
-  const after = before.map((rating) => seasonSoftReset(rating, constants))
-  const spreadBefore = Math.max(...before) - Math.min(...before)
-  const spreadAfter = Math.max(...after) - Math.min(...after)
-  return { spreadRatio: spreadAfter / spreadBefore, order: spearman(before, after) }
-}
 
 function member(
   playerId: string,
@@ -103,7 +90,7 @@ function member(
 ): ConfirmedParticipant {
   return {
     playerId,
-    leagueClanId,
+    rosterLeagueClanId: leagueClanId,
     outcome,
     kill: 10,
     death: 10,

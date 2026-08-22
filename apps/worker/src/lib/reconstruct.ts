@@ -84,8 +84,13 @@ export interface ReconstructionLeague {
 
 export interface ReconstructedParticipant {
   playerId: string
+  /** 이 경기에서 **뛴 팀** */
   leagueClanId: string
   side: 'red' | 'blue'
+  /** 이 경기에서의 역할 — 용병도 개인 기록을 받는다 (D-073) */
+  role: 'member' | 'mercenary'
+  /** 원소속 클랜 (없으면 null). 이 클랜의 래더는 변하지 않는다 (D-075) */
+  rosterLeagueClanId: string | null
   outcome: 'win' | 'lose'
   kill: number
   death: number
@@ -125,13 +130,21 @@ export interface ReconstructionSummary {
   crossChecked: number
   conflicts: string[]
   ambiguousIdentities: number
-  rosterMismatches: number
-  /* ── 확인 수준 (Phase 9 · D-068) ── */
-  clanAConfirmedCount: number
-  clanBConfirmedCount: number
+  /** 확인은 됐지만 등록 클랜을 찾지 못한 인원 (용병·무소속) */
+  unrosteredParticipants: number
+  /* ── 확인 수준 (Phase 9 · D-068 · D-074) ── */
+  /** 이긴 팀 · 진 팀의 **본클랜원** 확인 인원 — 공식전 인정 기준은 이 값이다 */
+  winnerMembersConfirmed: number
+  loserMembersConfirmed: number
+  /** 용병 확인 인원 */
+  winnerMercenariesConfirmed: number
+  loserMercenariesConfirmed: number
+  /** 실제 확인된 출전 인원 (본클랜원 + 용병) */
+  winnerConfirmed: number
+  loserConfirmed: number
   observationParticipantCount: number
   detailParticipantCount: number
-  /** `4v3` 처럼 실제 확인 수준 */
+  /** `5v5` 처럼 **출전자 전원** 기준 확인 수준 */
   participantCompleteness: string
   confidence: LineupConfidence
   /** 상세에는 있는데 목록 관측이 없는 사람 — **보류 사유가 아니라 참고 수치다** */
@@ -208,9 +221,13 @@ function emptySummary(input: ReconstructionInput): ReconstructionSummary {
     crossChecked: 0,
     conflicts: [],
     ambiguousIdentities: 0,
-    rosterMismatches: 0,
-    clanAConfirmedCount: 0,
-    clanBConfirmedCount: 0,
+    unrosteredParticipants: 0,
+    winnerMembersConfirmed: 0,
+    loserMembersConfirmed: 0,
+    winnerMercenariesConfirmed: 0,
+    loserMercenariesConfirmed: 0,
+    winnerConfirmed: 0,
+    loserConfirmed: 0,
     observationParticipantCount: 0,
     detailParticipantCount: 0,
     participantCompleteness: '0',
@@ -246,7 +263,8 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
   /* --- 1) 근거 모으기 — 관측(1차) + 상세(보조) ----------------------------- */
   interface Confirmed {
     playerId: string
-    membership: RosterMembership
+    /** 경기 시점 **등록 클랜**. 용병·무소속이면 null (D-072) */
+    membership: RosterMembership | null
     outcome: 'win' | 'lose'
     kill: number
     death: number
@@ -257,10 +275,16 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
   }
   const confirmedByPlayer = new Map<string, Confirmed>()
 
-  const admit = (playerId: string): RosterMembership | null => {
+  /**
+   * 등록 클랜을 찾는다. **없어도 참가자에서 빼지 않는다** (D-073).
+   *
+   * 예전에는 로스터가 없으면 참가자로 세지 않았다. 그러면 용병이 통째로 사라진다.
+   * 지금은 등록 클랜을 `null`로 두고, 팀 배정은 승패 근거로 한다.
+   */
+  const rosterOf = (playerId: string): RosterMembership | null => {
     const membership = membershipAt(input.memberships, playerId, at)
     if (!membership || (requireVerified && !membership.verified)) {
-      summary.rosterMismatches += 1
+      summary.unrosteredParticipants += 1
       return null
     }
     return membership
@@ -275,8 +299,7 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     if (confirmedByPlayer.has(observation.playerId)) {
       return fail('duplicate_player', '같은 플레이어의 관측값이 중복됐다')
     }
-    const membership = admit(observation.playerId)
-    if (!membership) continue
+    const membership = rosterOf(observation.playerId)
 
     if (observation.outcome === null || observation.outcome === 'draw') {
       summary.conflicts.push(`${observation.playerId}: 승패를 알 수 없는 관측값`)
@@ -343,8 +366,7 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     ) {
       continue
     }
-    const membership = admit(playerId)
-    if (!membership) continue
+    const membership = rosterOf(playerId)
 
     confirmedByPlayer.set(playerId, {
       playerId,
@@ -361,10 +383,6 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
 
   const confirmed = [...confirmedByPlayer.values()]
   summary.confirmed = confirmed.length
-  for (const entry of confirmed) {
-    summary.perClan[entry.membership.leagueClanId] =
-      (summary.perClan[entry.membership.leagueClanId] ?? 0) + 1
-  }
 
   if (summary.conflicts.length > 0) {
     return fail(
@@ -373,10 +391,10 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     )
   }
 
-  /* --- 3) 인정 기준 판정은 래더 엔진과 **같은 함수**를 쓴다 (D-057) --------- */
+  /* --- 3) 인정 판정 + 팀 배정은 래더 엔진과 **같은 함수**를 쓴다 (D-057 · D-071) --- */
   const participants: ConfirmedParticipant[] = confirmed.map((entry) => ({
     playerId: entry.playerId,
-    leagueClanId: entry.membership.leagueClanId,
+    rosterLeagueClanId: entry.membership?.leagueClanId ?? null,
     outcome: entry.outcome,
     kill: entry.kill,
     death: entry.death,
@@ -385,50 +403,77 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
   }))
   const eligibility = evaluateEligibility({ participants, constants })
 
-  summary.clanAConfirmedCount = eligibility.clanA?.confirmed ?? 0
-  summary.clanBConfirmedCount = eligibility.clanB?.confirmed ?? 0
   summary.observationParticipantCount = eligibility.observationParticipantCount
   summary.detailParticipantCount = eligibility.detailParticipantCount
   summary.participantCompleteness = eligibility.completeness
+  summary.winnerMembersConfirmed = eligibility.winnerSide?.members ?? 0
+  summary.loserMembersConfirmed = eligibility.loserSide?.members ?? 0
+  summary.winnerMercenariesConfirmed = eligibility.winnerSide?.mercenaries ?? 0
+  summary.loserMercenariesConfirmed = eligibility.loserSide?.mercenaries ?? 0
+  summary.winnerConfirmed = eligibility.winnerSide?.confirmed ?? 0
+  summary.loserConfirmed = eligibility.loserSide?.confirmed ?? 0
   summary.confidence = lineupConfidence(
-    summary.clanAConfirmedCount,
-    summary.clanBConfirmedCount,
+    summary.winnerConfirmed,
+    summary.loserConfirmed,
     input.league.playerLimits[0] ?? 5,
   )
+  for (const participant of eligibility.assigned) {
+    summary.perClan[participant.leagueClanId] =
+      (summary.perClan[participant.leagueClanId] ?? 0) + 1
+  }
 
-  if (!eligibility.eligible || !eligibility.clanA || !eligibility.clanB) {
+  if (!eligibility.eligible || !eligibility.winnerSide || !eligibility.loserSide) {
     return fail(eligibility.status, eligibility.reason)
   }
 
   /* --- 4) 진영 배정 + 계획 -------------------------------------------------- */
+  const detailOf = (playerId: string) => detailByPlayer.get(playerId)
   const teamIdByClan = new Map<string, string>()
-  for (const entry of confirmed) {
-    const participant = detailByPlayer.get(entry.playerId)
-    if (participant?.teamId) teamIdByClan.set(entry.membership.leagueClanId, participant.teamId)
+  for (const participant of eligibility.assigned) {
+    const detail = detailOf(participant.playerId)
+    if (detail?.teamId) teamIdByClan.set(participant.leagueClanId, detail.teamId)
   }
-  const clanA = eligibility.clanA.leagueClanId
-  const clanB = eligibility.clanB.leagueClanId
-  const sides = assignSidesByEvidence([clanA, clanB], teamIdByClan)
+  const winnerClanId = eligibility.winnerSide.leagueClanId
+  const loserClanId = eligibility.loserSide.leagueClanId
+  const sides = assignSidesByEvidence([winnerClanId, loserClanId], teamIdByClan)
+
+  /** 클랜 이름·부리그는 그 팀의 **본클랜원** 등록 정보에서 가져온다 */
+  const clanInfo = (leagueClanId: string): { clanName: string; division: number } => {
+    const anchor = confirmed.find(
+      (entry) => entry.membership?.leagueClanId === leagueClanId,
+    )
+    return {
+      clanName: anchor?.membership?.clanName ?? leagueClanId,
+      division: anchor?.membership?.division ?? 1,
+    }
+  }
 
   const buildSide = (clanId: string, side: 'red' | 'blue'): ReconstructionSidePlan => {
-    const members = confirmed.filter((entry) => entry.membership.leagueClanId === clanId)
-    const first = members[0]!
+    const info = clanInfo(clanId)
+    const members = eligibility.assigned.filter(
+      (participant) => participant.leagueClanId === clanId,
+    )
     return {
       leagueClanId: clanId,
-      clanName: first.membership.clanName,
-      division: first.membership.division,
-      members: members.map((entry): ReconstructedParticipant => ({
-        playerId: entry.playerId,
-        leagueClanId: clanId,
-        side,
-        outcome: entry.outcome,
-        kill: entry.kill,
-        death: entry.death,
-        assist: entry.assist,
-        headshot: entry.headshot,
-        damage: entry.damage,
-        sources: entry.sources,
-      })),
+      clanName: info.clanName,
+      division: info.division,
+      members: members.map((participant): ReconstructedParticipant => {
+        const entry = confirmedByPlayer.get(participant.playerId)!
+        return {
+          playerId: participant.playerId,
+          leagueClanId: clanId,
+          side,
+          role: participant.role,
+          rosterLeagueClanId: participant.rosterLeagueClanId,
+          outcome: participant.outcome,
+          kill: participant.kill,
+          death: participant.death,
+          assist: participant.assist,
+          headshot: entry.headshot,
+          damage: entry.damage,
+          sources: participant.sources,
+        }
+      }),
     }
   }
 
@@ -437,12 +482,11 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
    *
    * 확인 인원(예: 4명)을 그대로 쓰면 "4 vs 4 경기였다"고 잘못 말하게 된다.
    * 우리가 4명만 확인했을 뿐이지 4명이 뛴 것이 아니다.
-   * 리그 대전 인원이 하나로 정해져 있으면 그 값을, 아니면 확인 인원의 최대값을 쓴다.
    */
   const playerCount =
     input.league.playerLimits.length === 1
       ? input.league.playerLimits[0]!
-      : Math.max(summary.clanAConfirmedCount, summary.clanBConfirmedCount)
+      : Math.max(summary.winnerConfirmed, summary.loserConfirmed)
 
   return {
     ok: true,
@@ -453,7 +497,7 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
       mapName: input.match.matchMap,
       startAt: at,
       playerCount,
-      winnerSide: eligibility.winnerLeagueClanId === sides.red ? 'red' : 'blue',
+      winnerSide: winnerClanId === sides.red ? 'red' : 'blue',
       red: buildSide(sides.red, 'red'),
       blue: buildSide(sides.blue, 'blue'),
     },

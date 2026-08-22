@@ -29,8 +29,8 @@ import { runPoll } from '../jobs/poll.js'
 import { backfillObservations, runReconstruct } from '../jobs/reconstruct.js'
 import { applyPropagation, collectPropagationPeers } from '../jobs/propagate.js'
 import { syncLeaguePriority } from '../jobs/roster.js'
-import { runRate, runSeasonSoftReset } from '../jobs/rate.js'
-import { DEFAULT_RATING_CONSTANTS, PERSONAL_FORMULA_VERSION, seasonSoftReset } from '@sacloud/rating'
+import { runRate, runSeasonStart } from '../jobs/rate.js'
+import { DEFAULT_RATING_CONSTANTS, PERSONAL_FORMULA_VERSION, seasonStartRating } from '@sacloud/rating'
 import { DEFAULT_POLLING_CONFIG } from '../lib/pollingPolicy.js'
 import type { JobContext } from '../jobs/context.js'
 
@@ -96,7 +96,7 @@ async function cleanupLeague() {
     where: { player: { id: { startsWith: SMOKE_PLAYER_PREFIX } } },
   })
   await prisma.player.deleteMany({ where: { id: { startsWith: SMOKE_PLAYER_PREFIX } } })
-  await prisma.clan.deleteMany({ where: { slug: { in: SMOKE_CLAN_SLUGS } } })
+  await prisma.clan.deleteMany({ where: { slug: { in: [...SMOKE_CLAN_SLUGS, 'smoke-charlie'] } } })
 }
 
 async function cleanup() {
@@ -589,8 +589,8 @@ async function main() {
     select: {
       participantCompleteness: true,
       reconstructionConfidence: true,
-      clanAConfirmedCount: true,
-      clanBConfirmedCount: true,
+      winnerMembersConfirmed: true,
+      loserMembersConfirmed: true,
     },
   })
   check('확인 수준이 기록된다', '5v3', partialStaging?.participantCompleteness ?? '')
@@ -606,11 +606,58 @@ async function main() {
   check('대전 인원은 리그 기준(5)을 쓴다', 5, partialMatch?.playerCount ?? 0)
   check('확인 수준이 운영 매치까지 간다', '5v3', partialMatch?.participantCompleteness ?? '')
 
+  /* 10-2) 용병 — 본클랜원이 아니어도 개인 기록을 받는다 (D-073 · D-075) */
+  const MERCENARY_CLAN = 'smoke-charlie'
+  const mercenaryClan = await prisma.clan.create({
+    data: { slug: MERCENARY_CLAN, name: '찰리클랜' },
+  })
+  const mercenaryLeagueClan = await prisma.leagueClan.create({
+    data: { leagueId: rLeague.id, clanId: mercenaryClan.id, division: 3, rating: 1234 },
+  })
+  // 진 팀의 마지막 선수를 **다른 클랜 소속**으로 바꾼다 → 이 경기에서는 용병이다.
+  // 이긴 팀은 이미 3명만 확인된 상태라(10번 항목) 건드리면 본클랜원 조건이 깨진다
+  await prisma.leagueRosterMembership.updateMany({
+    where: { playerId: `${SMOKE_PLAYER_PREFIX}9`, leagueId: rLeague.id },
+    data: { leagueClanId: mercenaryLeagueClan.id },
+  })
+  await prisma.match.deleteMany({ where: { league: { slug: SMOKE_LEAGUE_SLUG } } })
+
+  const withMercenary = await runReconstruct(ctx, reconstructTarget)
+  check('용병이 섞여도 본클랜원 3명이면 공식전이다', 1, withMercenary.projected)
+
+  const mercenaryStaging = await prisma.nexonMatch.findUnique({
+    where: { id: stagingForReconstruct!.id },
+    select: {
+      participantCompleteness: true,
+      winnerMembersConfirmed: true,
+      loserMembersConfirmed: true,
+      loserMercenariesConfirmed: true,
+    },
+  })
+  check('이긴 팀 본클랜원 확인 인원', 3, mercenaryStaging?.winnerMembersConfirmed ?? -1)
+  check('진 팀 본클랜원 확인 인원', 4, mercenaryStaging?.loserMembersConfirmed ?? -1)
+  check('용병 확인 인원도 따로 남는다', 1, mercenaryStaging?.loserMercenariesConfirmed ?? -1)
+  check('확인 수준은 출전자 전원 기준이다', '5v3', mercenaryStaging?.participantCompleteness ?? '')
+
+  const mercenaryStat = await prisma.matchPlayerStat.findFirst({
+    where: { playerId: `${SMOKE_PLAYER_PREFIX}9`, match: { origin: 'nexon' } },
+    select: { participantRole: true, rosterLeagueClanId: true, side: true },
+  })
+  check('용병도 개인 기록을 받는다', true, mercenaryStat !== null)
+  check('역할이 기록된다', 'mercenary', mercenaryStat?.participantRole ?? '')
+  check('원소속이 따로 기록된다', mercenaryLeagueClan.id, mercenaryStat?.rosterLeagueClanId ?? '')
+
   /* 11) 래더 반영 — 결정적 replay */
   const rated = await runRate(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
   check('래더를 계산한 경기 수', 1, rated.matchesRated)
   check('선수 래더가 갱신된다', 8, rated.playersUpdated)
   check('클랜 래더가 갱신된다', 2, rated.clansUpdated)
+
+  const mercenaryHomeClan = await prisma.leagueClan.findUnique({
+    where: { id: mercenaryLeagueClan.id },
+    select: { rating: true },
+  })
+  check('용병의 원소속 클랜 래더는 변하지 않는다', 1234, mercenaryHomeClan?.rating ?? -1)
 
   const ratedStats = await prisma.matchPlayerStat.findMany({
     where: { match: { origin: 'nexon' } },
@@ -664,21 +711,27 @@ async function main() {
   })
   check('쓴 상수를 DB에 남긴다', DEFAULT_RATING_CONSTANTS.expectedScoreDivisor, ratingConfig?.expectedScoreDivisor ?? -1)
 
-  /* 12) 시즌 soft reset — 완전 초기화가 아니다 */
+  /* 12) 새 시즌 시작 — 모두 같은 출발점 (D-064) */
   await prisma.leagueClan.updateMany({
     where: { league: { slug: SMOKE_LEAGUE_SLUG } },
     data: { rating: 2500 },
   })
-  await runSeasonSoftReset(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
-  const afterReset = await prisma.leagueClan.findFirst({
+  await prisma.leagueClan.updateMany({
+    where: { league: { slug: SMOKE_LEAGUE_SLUG }, division: 2 },
+    data: { rating: 900 },
+  })
+  await runSeasonStart(ctx, { leagueSlug: SMOKE_LEAGUE_SLUG })
+  const afterStart = await prisma.leagueClan.findMany({
     where: { league: { slug: SMOKE_LEAGUE_SLUG } },
     select: { rating: true },
   })
   check(
-    'soft reset은 평균 쪽으로 절반만 되돌린다',
-    seasonSoftReset(2500),
-    afterReset?.rating ?? -1,
+    '새 시즌은 전원 같은 점수에서 시작한다',
+    [seasonStartRating()],
+    [...new Set(afterStart.map((clan) => clan.rating))],
   )
+  const historyKept = await prisma.matchPlayerStat.count({ where: { match: { origin: 'nexon' } } })
+  check('지난 시즌 경기 기록은 남는다', true, historyKept > 0)
 
   await cleanupLeague()
   await prisma.nexonIdentity.deleteMany({ where: { ouid: { startsWith: `${SMOKE_OUID}-` } } })

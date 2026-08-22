@@ -553,6 +553,14 @@ model MatchPlayerStat {
   /// MVP. 위와 같다 — 모르면 null (D-034)
   mvp      Boolean?
 
+  /// 이 경기에서의 역할 — "member"(본클랜원) | "mercenary"(용병) (Phase 9 · D-073).
+  /// 용병도 개인 기록과 개인 래더를 정상적으로 받는다.
+  /// 공식전 인정(양 팀 본클랜원 3명)에만 쓰이지 않을 뿐이다.
+  participantRole String @default("member")
+  /// 경기 시점 **원소속 클랜**. 용병이면 뛴 팀과 다르고, 없으면 null.
+  /// **이 클랜의 래더는 이 경기로 변하지 않는다** (D-075)
+  rosterLeagueClanId String?
+
   /* --- 래더 재현 정보 (LADDER_IMPLEMENTATION_SPEC 5장) --- */
   /// 배치고사 중이면 null (래더 자리에 `배치고사` 표기)
   ratingBefore Int?
@@ -1134,14 +1142,20 @@ model NexonMatch {
   reconstruction   Json?
   reconstructedAt  DateTime?
 
-  /// 확인 수준 (Phase 9 · D-068).
-  /// 경기를 인정하는 기준은 "양측 3명 이상"이지만, **실제로 몇 명을 확인했는지**는 따로 남긴다.
-  /// 이 값이 없으면 "4명만 확인된 경기"와 "5명 전원 확인된 경기"를 구분할 수 없다.
-  clanAConfirmedCount         Int?
-  clanBConfirmedCount         Int?
+  /// 확인 수준 (Phase 9 · D-068 · D-074).
+  ///
+  /// 공식전 인정 기준은 **본클랜원** 3명씩이지만(D-071), 확인 수준은 **출전자 전원** 기준이다.
+  /// 두 숫자를 따로 남겨야 "본클랜원 3 + 용병 2"와 "본클랜원 5"를 구분할 수 있다.
+  winnerMembersConfirmed      Int?
+  loserMembersConfirmed       Int?
+  winnerMercenariesConfirmed  Int?
+  loserMercenariesConfirmed   Int?
+  /// 본클랜원 + 용병 (실제 확인된 출전 인원)
+  winnerConfirmed             Int?
+  loserConfirmed              Int?
   observationParticipantCount Int?
   detailParticipantCount      Int?
-  /// "5v4" 처럼 사람이 읽을 수 있는 확인 수준
+  /// "5v5" 처럼 사람이 읽을 수 있는 확인 수준 (출전자 전원 기준)
   participantCompleteness     String?
   /// "high" | "medium" | "low"
   reconstructionConfidence    String?

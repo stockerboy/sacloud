@@ -248,14 +248,14 @@ export async function runCheck(input: {
   const belowMinimum = await prisma.nexonMatch.count({
     where: {
       projectionStatus: 'projected',
-      OR: [{ clanAConfirmedCount: { lt: 3 } }, { clanBConfirmedCount: { lt: 3 } }],
+      OR: [{ winnerMembersConfirmed: { lt: 3 } }, { loserMembersConfirmed: { lt: 3 } }],
     },
   })
   await push({
     name: 'eligibility_min_confirmed',
     expected: 0,
     actual: belowMinimum,
-    note: '양측 3명 미만인데 인정된 경기',
+    note: '양 팀 본클랜원 3명 미만인데 인정된 경기',
   })
 
   /* 13) 래더 값이 있으면 formulaVersion도 있어야 한다 (재현 가능해야 한다) */

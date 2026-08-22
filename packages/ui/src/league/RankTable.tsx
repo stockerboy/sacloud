@@ -6,6 +6,7 @@ import { ErrorState } from '../common/ErrorState'
 import { Skeleton } from '../common/Skeleton'
 import { formatCount, formatAverage, formatRate, formatRating } from '../common/format'
 import { rateClass } from '../common/rate'
+import { leaguePlayerPath } from '../common/paths'
 
 /**
  * 클랜랭킹 / 개인랭킹 표.
@@ -194,7 +195,7 @@ export function PlayerRankTable({
             <div className="flex w-72 items-center">
               <Link
                 className="flex items-center"
-                href={`/league/${leagueSlug}/player/${row.player.id}`}
+                href={leaguePlayerPath(leagueSlug, row.player.id)}
               >
                 {row.clan ? (
                   <ClanMark mark={row.clan.mark} className="mr-2" alt={row.clan.name} />
