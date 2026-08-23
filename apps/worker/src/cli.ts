@@ -46,6 +46,7 @@ import { linkIdentitiesByEvidence, registerObservedMaps } from './jobs/identityL
 import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/rosterSync.js'
 import { applyWeaponToStats, importWeaponEvidence, rebuildWeaponBuckets } from './jobs/weapon.js'
 import { runRate } from './jobs/rate.js'
+import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
 import {
@@ -134,6 +135,10 @@ function usage(): void {
   supply-clans [--file <json>] [--league <slug>] [--confirm]
               3rd.supply 공식리그 참가 클랜 스냅샷 이관 (마크·division·slug 정규화)
               **--confirm 없이는 한 줄도 쓰지 않는다**
+  supply-matches [--file <json>] [--since <ISO>] [--until <ISO>] [--map <이름>]
+              [--player-count N] [--discover-only] [--detail-limit N] [--status] [--confirm]
+              공식리그 경기 **발견** — 3rd.supply 스냅샷의 match_id → 넥슨 /match-detail (D-127)
+              **--confirm 없이는 DB 에 쓰지 않고 넥슨도 부르지 않는다**
   reresolve   상세 보유 경기의 참가자 신원을 다시 붙인다 (투영 상태는 건드리지 않는다)
   reconstruct [--league <slug>] [--redo] [--match-id <ID>[,<ID>]] [--allow-unverified-roster]
               [--allow-mock-league]
@@ -177,8 +182,15 @@ async function main(): Promise<number> {
     resume: boolFlag(args, 'resume'),
   }
 
-  const needsNetwork = ['identities', 'collect', 'refresh', 'poll'].includes(args.command) && !dryRun
-  if (needsNetwork) {
+  const needsNetwork =
+    ['identities', 'collect', 'refresh', 'poll'].includes(args.command) && !dryRun
+  const needsNetworkOnConfirm =
+    args.command === 'supply-matches' &&
+    !dryRun &&
+    boolFlag(args, 'confirm') &&
+    !boolFlag(args, 'discover-only') &&
+    !boolFlag(args, 'status')
+  if (needsNetwork || needsNetworkOnConfirm) {
     if (!hasApiKey(config)) {
       fail('NEXON_API_KEY가 없다. apps/web/.env.local 에 키를 넣고 다시 실행한다.')
       fail('키 없이 파이프라인만 점검하려면 --dry-run 을 쓴다.')
@@ -699,6 +711,43 @@ async function main(): Promise<number> {
       for (const r of result.slugRenamed.slice(0, 20)) log(`  slug ${r.from} → ${r.to}`)
       for (const s of result.skipped) fail(`  건너뜀 ${s.slug}: ${s.reason}`)
       if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
+      return 0
+    }
+
+    case 'supply-matches': {
+      /* CLI는 `apps/worker`에서 실행되므로 저장소 루트 기준 경로로 풀어 준다 */
+      const file =
+        stringFlag(args, 'file') ??
+        join(process.cwd(), '..', '..', 'packages/db/data/supply-official-matches.json')
+
+      if (boolFlag(args, 'status')) {
+        table([await supplyMatchesStatus(file)])
+        return 0
+      }
+
+      const parseAt = (name: string): Date | null => {
+        const value = stringFlag(args, name)
+        if (!value) return null
+        const at = new Date(value)
+        if (Number.isNaN(at.getTime())) {
+          fail(`--${name} 값을 날짜로 읽을 수 없다: ${value}`)
+          throw new Error('bad-date')
+        }
+        return at
+      }
+
+      const result = await runSupplyMatches(ctx, {
+        snapshotPath: file,
+        since: parseAt('since'),
+        until: parseAt('until'),
+        map: stringFlag(args, 'map'),
+        playerCount: numberFlag(args, 'player-count'),
+        confirm: boolFlag(args, 'confirm'),
+        discoverOnly: boolFlag(args, 'discover-only'),
+        detailLimit: numberFlag(args, 'detail-limit'),
+      })
+      table([result as unknown as Record<string, unknown>])
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 수집하려면 --confirm 을 붙인다')
       return 0
     }
 

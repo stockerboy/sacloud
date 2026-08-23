@@ -1300,6 +1300,9 @@ model NexonMatch {
 
   /// 이 경기를 처음 발견한 ouid (목록 조회 주체). 원본 전체는 RawImport에 있다
   discoveredByOuid String?
+  /// 발견 경로. 넥슨 목록에서 나왔으면 null, 3rd.supply 스냅샷 seed 면 "3rd.supply" (D-127).
+  /// **사실값의 출처가 아니다** — 맵·참가자는 언제나 넥슨 /match-detail 응답에서 온다
+  discoverySource  String?
 
   listRawImportId   String?
   detailRawImportId String?
