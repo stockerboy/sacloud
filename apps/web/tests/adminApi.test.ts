@@ -12,7 +12,23 @@ import { describe, expect, it } from 'vitest'
  */
 
 const BASE = process.env.API_TEST_BASE_URL ?? 'http://localhost:3000/api'
-const ADMIN = { email: 'user001@naver.com', password: 'sacloud1234' }
+
+/**
+ * 관리자 계정은 **환경변수로만** 받는다 (D-119).
+ *
+ * 예전에는 시드의 공용 비밀번호가 여기 평문으로 박혀 있었다. 그 값은 폐기됐고,
+ * 시드 계정은 이제 기본적으로 로그인할 수 없다.
+ * 인증이 필요한 검사는 계정을 넘겨줄 때만 돌린다 — **없으면 조용히 통과시키지 않고 skip한다.**
+ *
+ * ```bash
+ * SACLOUD_TEST_ADMIN_EMAIL=... SACLOUD_TEST_ADMIN_PASSWORD=... pnpm test
+ * ```
+ */
+const ADMIN = {
+  email: process.env.SACLOUD_TEST_ADMIN_EMAIL ?? '',
+  password: process.env.SACLOUD_TEST_ADMIN_PASSWORD ?? '',
+}
+const hasAdmin = ADMIN.email !== '' && ADMIN.password !== ''
 
 async function serverUp(): Promise<boolean> {
   try {
@@ -91,7 +107,7 @@ describe.skipIf(!up)('관리자 권한', () => {
     }
   })
 
-  it('관리자는 대시보드를 볼 수 있다', async () => {
+  it.skipIf(!hasAdmin)('관리자는 대시보드를 볼 수 있다', async () => {
     const result = await asAdmin<{
       summary: {
         activeSeasons: { league: string; number: number; mock: boolean }[]
@@ -106,7 +122,7 @@ describe.skipIf(!up)('관리자 권한', () => {
   })
 })
 
-describe.skipIf(!up)('클랜 관리', () => {
+describe.skipIf(!up || !hasAdmin)('클랜 관리', () => {
   const slug = 'admin-test-clan'
 
   it('클랜을 등록하고 이름·구분·티어·활성을 바꾼다', async () => {
@@ -182,7 +198,7 @@ describe.skipIf(!up)('클랜 관리', () => {
   })
 })
 
-describe.skipIf(!up)('로스터 관리', () => {
+describe.skipIf(!up || !hasAdmin)('로스터 관리', () => {
   it('선수를 추가하고 확인 상태를 바꾸고 종료할 수 있다', async () => {
     const cookie = await adminCookie()
 
@@ -217,7 +233,7 @@ describe.skipIf(!up)('로스터 관리', () => {
   })
 })
 
-describe.skipIf(!up)('시즌 관리 — 미리보기만 한다', () => {
+describe.skipIf(!up || !hasAdmin)('시즌 관리 — 미리보기만 한다', () => {
   it('시즌 현황을 볼 수 있다', async () => {
     const result = await asAdmin<{
       activeSeason: { number: number } | null
@@ -258,7 +274,7 @@ describe.skipIf(!up)('시즌 관리 — 미리보기만 한다', () => {
   })
 })
 
-describe.skipIf(!up)('경기 관리', () => {
+describe.skipIf(!up || !hasAdmin)('경기 관리', () => {
   it('공식/비공식 경기를 나눠서 조회할 수 있다', async () => {
     const cookie = await adminCookie()
     const reference = await asAdmin<{ official: boolean; origin: string }[]>(

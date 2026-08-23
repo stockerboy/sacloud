@@ -16,6 +16,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { prisma } from '@sacloud/db'
 import {
+  countSharedPasswordAccounts,
   freezeSeason,
   fromCsv,
   fromJsonRows,
@@ -23,6 +24,9 @@ import {
   fromSupplyState,
   importLegacySeasons,
   mergeRows,
+  provisionTestAccount,
+  rotateSharedDevPasswords,
+  TEST_ACCOUNT_PASSWORD_ENV,
   type LegacySeasonRow,
 } from '@sacloud/db/ops'
 import { hasApiKey, MATCH_MODES, NexonClient, readNexonConfig, type MatchMode } from '@sacloud/nexon'
@@ -142,6 +146,11 @@ function usage(): void {
               과거 시즌 이관. 입력은 HTML(supplyPc-state) · JSON · CSV.
               **--confirm 없이는 한 줄도 쓰지 않는다** (기본은 미리보기).
               --freeze N 은 그 시즌을 확정해 이후 수정을 막는다
+
+  accounts    --rotate-shared | --audit
+              | --provision-test --email <주소> [--nickname <이름>] [--admin]
+              계정 보안. 공용 개발 비밀번호를 쓰는 계정을 **로그인 불가**로 만든다.
+              검수 계정 비밀번호는 인자가 아니라 환경변수로만 받는다.
 
 공통 플래그: --dry-run  --resume  --limit N
 `)
@@ -595,6 +604,64 @@ async function main(): Promise<number> {
       }
 
       table(await clanList(stringFlag(args, 'league')))
+      return 0
+    }
+
+    case 'accounts': {
+      if (boolFlag(args, 'rotate-shared')) {
+        const before = await countSharedPasswordAccounts()
+        if (dryRun) {
+          log(`[dry-run] 공용 비밀번호 계정 ${before.total}건 (관리자 ${before.admins}건) — 바꾸지 않았다`)
+          return 0
+        }
+        const result = await rotateSharedDevPasswords()
+        const after = await countSharedPasswordAccounts()
+        table([
+          {
+            검사: result.scanned,
+            무효화: result.rotated,
+            '그중 관리자': result.rotatedAdmins,
+            유지: result.untouched,
+            '남은 공용비번': after.total,
+          },
+        ])
+        // 새 값은 아무도 모르는 무작위다. 원문은 어디에도 남기지 않는다 (D-119)
+        log('무효화된 계정은 로그인할 수 없다. 새 비밀번호는 생성되지 않았다.')
+        return after.total === 0 ? 0 : 1
+      }
+
+      if (boolFlag(args, 'audit')) {
+        const found = await countSharedPasswordAccounts()
+        table([{ '공용 비밀번호 계정': found.total, '그중 관리자': found.admins }])
+        return found.total === 0 ? 0 : 1
+      }
+
+      if (boolFlag(args, 'provision-test')) {
+        const email = stringFlag(args, 'email')
+        if (!email) {
+          fail('--email <주소> 가 필요하다')
+          return 1
+        }
+        const result = await provisionTestAccount({
+          email,
+          nickname: stringFlag(args, 'nickname') ?? '검수계정',
+          admin: boolFlag(args, 'admin'),
+        })
+        if (!result.ok) {
+          fail(result.reason)
+          fail(`예: ${TEST_ACCOUNT_PASSWORD_ENV}='...' pnpm nexon:accounts --provision-test --email ...`)
+          return 1
+        }
+        log(
+          `검수 계정 ${result.created ? '생성' : '갱신'} — ${result.email} ` +
+            `(권한 ${result.role === 2 ? '운영자' : '일반'})`,
+        )
+        return 0
+      }
+
+      const found = await countSharedPasswordAccounts()
+      table([{ '공용 비밀번호 계정': found.total, '그중 관리자': found.admins }])
+      log('--rotate-shared 로 무효화한다')
       return 0
     }
 

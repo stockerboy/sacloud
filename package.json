@@ -48,7 +48,8 @@
     "nexon:beta-bootstrap": "pnpm --filter @sacloud/worker nexon beta-bootstrap",
     "nexon:rate": "pnpm --filter @sacloud/worker nexon rate",
     "nexon:season": "pnpm --filter @sacloud/worker nexon season",
-    "nexon:clan": "pnpm --filter @sacloud/worker nexon clan"
+    "nexon:clan": "pnpm --filter @sacloud/worker nexon clan",
+    "nexon:accounts": "pnpm --filter @sacloud/worker nexon accounts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

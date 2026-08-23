@@ -13,13 +13,33 @@
  *   `formulaVersion`을 `mock-fixture`로 남겨 **실제 계산 결과로 오인하지 않게** 한다.
  * - 이 스크립트는 개발 DB 전용이다. 운영 DB에 대고 실행하지 않는다 (CLAUDE.md 3-A).
  */
+import { randomBytes } from 'node:crypto'
 import { hashSync } from 'bcryptjs'
 // msw 핸들러까지 끌어오지 않도록 `dataset` 서브패스로 직접 가져온다
 import { dataset, CURRENT_SEASON } from '@sacloud/mock/dataset'
 import { prisma } from '../src/index.js'
 
-/** 시드 계정 공통 비밀번호. 개발 전용이며 운영에서는 쓰지 않는다. */
-const DEV_PASSWORD = 'sacloud1234'
+/**
+ * 시드 계정 비밀번호 (D-119).
+ *
+ * 예전에는 여기에 공용 비밀번호가 **평문으로 박혀** 있었고 42개 계정 전원이 그것을
+ * 공유했다. 그중 둘은 운영자(role 2)였다. 사이트가 잠깐이라도 외부에 열리면
+ * 누구나 관리자로 로그인할 수 있는 상태였다.
+ *
+ * 이제 기본값은 **아무도 모르는 무작위 값**이다 — 시드 계정은 기본적으로 로그인할 수 없다.
+ * 로컬에서 로그인이 필요하면 `SACLOUD_SEED_PASSWORD`를 직접 넣어 실행한다.
+ * 저장소에는 어떤 경우에도 평문을 남기지 않는다.
+ *
+ * ```bash
+ * SACLOUD_SEED_PASSWORD='...' pnpm db:seed
+ * ```
+ */
+function seedPassword(): { value: string; provided: boolean } {
+  const provided = process.env.SACLOUD_SEED_PASSWORD
+  if (provided && provided.trim().length >= 12) return { value: provided, provided: true }
+  // 32바이트 난수. 이 값은 어디에도 기록하지 않고 이 실행이 끝나면 사라진다
+  return { value: randomBytes(32).toString('base64'), provided: false }
+}
 
 /** 이 시드가 만든 매치의 출처 표시 */
 const ORIGIN = 'mock'
@@ -197,7 +217,8 @@ async function main() {
   /* ---------------------------------------------------------------------- */
   /* 3. 사용자 · 서든어택 계정 연동                                            */
   /* ---------------------------------------------------------------------- */
-  const passwordHash = hashSync(DEV_PASSWORD, 10)
+  const seedSecret = seedPassword()
+  const passwordHash = hashSync(seedSecret.value, 10)
   await prisma.user.createMany({
     data: dataset.users.map((user) => ({
       id: user.id,
@@ -633,7 +654,12 @@ async function main() {
 
   console.info(Object.entries(counts).map(([key, value]) => `${key}=${value}`).join('  '))
   console.info(`시드 완료 — ${((Date.now() - started) / 1000).toFixed(1)}초`)
-  console.info(`시드 계정 비밀번호: ${DEV_PASSWORD} (개발 전용)`)
+  /* 비밀번호 원문을 찍지 않는다 (D-119). 어떤 상태인지만 알린다 */
+  console.info(
+    seedSecret.provided
+      ? '시드 계정 비밀번호: SACLOUD_SEED_PASSWORD 로 설정됨'
+      : '시드 계정 비밀번호: 무작위(로그인 불가). 필요하면 SACLOUD_SEED_PASSWORD 를 넣고 다시 실행해라',
+  )
 }
 
 main()
