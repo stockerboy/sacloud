@@ -47,6 +47,7 @@ model User {
   updatedAt       DateTime  @updatedAt
 
   playerLink    UserPlayerLink?
+  linkClaims    PlayerLinkClaim[]
   ownedLeagues  League[]
   boards        Board[]
   comments      Comment[]
@@ -67,6 +68,40 @@ model UserPlayerLink {
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+/// 서든어택 계정 연동 **신청** (D-121).
+///
+/// 넥슨 Open API에는 사용자가 계정 소유를 증명할 수단이 없다 —
+/// 엔드포인트가 전부 닉네임으로 조회하는 **공개 정보**이고, OAuth도 동의 흐름도 없다.
+/// 그래서 "닉네임을 아는 사람이 곧 주인"이 되는 자동 연결을 폐기하고,
+/// **운영자가 근거를 보고 승인**하는 구조로 바꿨다.
+///
+/// 없는 증명을 흉내 내지 않는다. 확인할 수 없으면 확인했다고 하지 않는다.
+model PlayerLinkClaim {
+  id       String @id @default(cuid())
+  userId   String
+  playerId String
+
+  /// "pending" | "approved" | "rejected" | "cancelled"
+  status   String @default("pending")
+  /// 신청자가 적은 근거 (클랜 동료 확인·스크린샷 위치 등). 운영자가 읽고 판단한다
+  evidence String?
+
+  createdAt DateTime @default(now())
+  /// 처리 시각·처리자. 계정이 지워져도 이력은 남기려고 FK를 걸지 않는다
+  decidedAt        DateTime?
+  decidedByUserId  String?
+  decidedByEmail   String?
+  decisionNote     String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// 같은 사람이 같은 선수를 중복 신청하지 않는다
+  @@unique([userId, playerId])
+  @@index([status, createdAt])
+  @@index([playerId, status])
 }
 
 /// 이메일 인증 / 비밀번호 재설정 토큰. 평문을 저장하지 않고 해시만 보관한다.
@@ -131,6 +166,7 @@ model Player {
   clan          Clan?           @relation("ClanMembers", fields: [clanId], references: [id], onDelete: SetNull)
   masterOf      Clan[]          @relation("ClanMaster")
   userLink      UserPlayerLink?
+  linkClaims    PlayerLinkClaim[]
   leaguePlayers LeaguePlayer[]
   matchStats    MatchPlayerStat[]
   mvpMatches    Match[]         @relation("MatchMvp")

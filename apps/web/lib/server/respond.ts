@@ -33,7 +33,20 @@ export const badRequest = (message = '잘못된 요청입니다', errors?: Recor
   fail(400, message, errors)
 export const unauthorized = (message = '로그인이 필요합니다') => fail(401, message)
 export const forbidden = (message = '권한이 없습니다') => fail(403, message)
-export const tooManyRequests = (message = '잠시 후 다시 시도해주세요') => fail(429, message)
+/**
+ * 429 — 시도 제한.
+ *
+ * `Retry-After`(초)를 함께 내려 준다. 클라이언트가 언제 다시 시도할지 알 수 있어야
+ * 무작정 반복하지 않는다. **얼마나 남았는지 외에는 아무것도 알려주지 않는다** —
+ * 어떤 계정이 존재하는지, 몇 번 틀렸는지는 응답에 담지 않는다.
+ */
+export function tooManyRequests(message = '잠시 후 다시 시도해주세요', retryAfterSeconds?: number) {
+  const response = fail(429, message)
+  if (retryAfterSeconds !== undefined) {
+    response.headers.set('Retry-After', String(Math.max(1, Math.ceil(retryAfterSeconds))))
+  }
+  return response
+}
 
 /**
  * Route Handler 공통 예외 처리.

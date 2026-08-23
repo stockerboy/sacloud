@@ -1,25 +1,84 @@
 import { prisma } from '@sacloud/db'
 import { compareSync } from 'bcryptjs'
 import { LoginInput } from '@sacloud/contract'
-import { badRequest, guard, ok, unauthorized } from '@/lib/server/respond'
+import { badRequest, guard, ok, tooManyRequests, unauthorized } from '@/lib/server/respond'
 import { jsonBody } from '@/lib/server/request'
 import { startSession } from '@/lib/server/queries/auth'
+import {
+  clearQuota,
+  clientIdentity,
+  consumeQuota,
+  ipQuotaFor,
+  LOGIN_ACCOUNT_QUOTA,
+  loginAccountKey,
+  loginIpKey,
+  logThrottle,
+  peekQuota,
+} from '@/lib/server/rateLimit'
 
 /**
  * POST /api/auth/login
  *
  * 실패 메시지는 **아이디가 없는지 비밀번호가 틀린지 구분하지 않는다.**
  * 구분해서 알려주면 어떤 이메일이 가입돼 있는지 확인하는 데 쓰일 수 있다.
+ *
+ * ── 시도 제한 (D-120)
+ *   **실패만 센다.** 비밀번호를 제대로 넣는 사람은 몇 번을 로그인해도 걸리지 않는다.
+ *   계정별(15분 5회)과 IP별(15분 20회)을 함께 보고, 성공하면 그 계정의 기록을 지운다.
+ *   막혔을 때도 그 이메일이 존재하는지는 알려주지 않는다 — 남은 시간만 준다.
  */
 export async function POST(request: Request) {
   return guard(async () => {
     const parsed = LoginInput.safeParse(await jsonBody(request))
     if (!parsed.success) return badRequest('입력값을 확인해주세요')
 
+    const identity = clientIdentity(request)
+    const accountKey = loginAccountKey(parsed.data.email)
+    const ipKey = loginIpKey(identity)
+    const ipQuota = ipQuotaFor(identity, 'login')
+
+    /* 이미 한도를 넘었으면 비밀번호를 **검사하기 전에** 끊는다.
+       검사까지 가면 bcrypt 비용이 그대로 공격자의 무기가 된다. */
+    const accountState = await peekQuota(accountKey, LOGIN_ACCOUNT_QUOTA)
+    if (!accountState.allowed) {
+      logThrottle({
+        route: 'auth/login',
+        reason: 'account',
+        key: accountKey,
+        retryAfterSeconds: accountState.retryAfterSeconds,
+        trust: identity.trust,
+      })
+      return tooManyRequests(
+        '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요',
+        accountState.retryAfterSeconds,
+      )
+    }
+
+    const ipState = await peekQuota(ipKey, ipQuota)
+    if (!ipState.allowed) {
+      logThrottle({
+        route: 'auth/login',
+        reason: 'ip',
+        key: ipKey,
+        retryAfterSeconds: ipState.retryAfterSeconds,
+        trust: identity.trust,
+      })
+      return tooManyRequests(
+        '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요',
+        ipState.retryAfterSeconds,
+      )
+    }
+
     const user = await prisma.user.findUnique({ where: { email: parsed.data.email } })
     if (!user || !compareSync(parsed.data.password, user.passwordHash)) {
+      // 실패한 시도만 카운터를 올린다
+      await consumeQuota(accountKey, LOGIN_ACCOUNT_QUOTA)
+      await consumeQuota(ipKey, ipQuota)
       return unauthorized('이메일 또는 비밀번호가 올바르지 않습니다')
     }
+
+    // 성공했으면 그 계정의 실패 기록을 지운다 (정상 사용자가 누적으로 막히지 않게)
+    await clearQuota(accountKey)
 
     return ok(await startSession(user.id))
   })
