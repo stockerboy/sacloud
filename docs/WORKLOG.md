@@ -965,3 +965,61 @@ GNB는 시드 리그 3개를 하드코딩하고 있었고, 실제 운영 리그�
 - 판정: eligible 1 · incomplete 2 (파이프라인 정상 동작 확인)
 - 단 셋 다 Beta 기간(8/19~) 밖이라 전환 대상 0건
 - Beta 10경기·rating 그대로. purge/replay 미실행
+
+### 공식리그 경기 발견 파이프라인 + Beta 구간 실수집 (2026-08-24)
+
+D-127이 "발견 경로가 틀렸다"까지 확정해 둔 상태에서 시작했다. 결정 기록은 **D-128 · D-129**.
+
+#### 만든 것
+
+| 대상 | 내용 |
+|---|---|
+| `packages/db/data/supply-official-matches.json` | 공식 클랜 44곳의 최근매치 750건 스냅샷 |
+| `packages/db/ops/supplyMatches.ts` | 스냅샷 판독 + 스테이징 seed (넥슨을 부르지 않는다) |
+| `apps/worker/src/jobs/supplyMatches.ts` | 상세 보강 + `--status` 숫자 대조 |
+| `nexon supply-matches` | `--since/--until/--map/--player-count/--discover-only/--detail-limit/--status/--confirm` |
+| `NexonMatch.discoverySource` | 발견 경로 기록. 추가 전용 마이그레이션 |
+
+`--confirm` 없이는 DB 에 한 줄도 쓰지 않고 넥슨도 부르지 않는다. 중단해도 받은 상세는
+남으므로 그대로 재실행하면 이어진다.
+
+#### 스냅샷 수집 방법
+
+정상 브라우저로 `/league/supply/clan/{slug}` 44곳을 1.2초 간격으로 열고
+`#supplyPc-state` 를 읽었다. Node fetch 는 여전히 405 — **우회하지 않았다.**
+브라우저 → 로컬 파일 전달은 `window.name` 핸드오프로 했다(외부 전송 없음).
+
+#### 실행 결과
+
+```
+스냅샷 750  →  스테이징 750 (신규 707 · 기존 43)      넥슨 호출 0회
+상세 747건 수집 → 750/750 확보                        실패 0 · invalid 0
+  맵 제3보급창고 750/750  ← 발견한 id 가 100% 공식리그 경기였다
+Beta 구간(8/19~8/24) 214건만 재구성 · 나머지 536건은 스테이징까지만
+league-maps --confirm 으로 제3보급창고 등록
+reconstruct  considered 214 → projected 72 · incomplete 142
+  (single_clan 94 · unidentified_side 48)
+운영 Match 10 → 82
+```
+
+#### 래더는 바뀌지 않았다 — 그게 맞다
+
+새로 들어온 72건은 전부 `official = false` 다. 로스터가 23명뿐이라 어느 팀도
+본클랜원 3명(D-079)을 못 채우기 때문이다. 비공식 경기는 D-080대로 기록만 남고
+래더·시즌 통계·랭킹에 반영되지 않는다. `nexon:rate` 결과는 그대로 **6경기**였다.
+
+**경기 데이터는 이제 충분하다. 부족한 것은 명단이다.**
+
+#### 예상 밖의 발견 (D-129)
+
+스냅샷에 양 팀 10명 라인업이 통째로 있다 — 선수 id · 닉네임 · 소속 클랜 · weapon,
+그리고 양 클랜 시점의 원본 `rating_update` 까지. 739/750 건이 10명 전원이다.
+넥슨이 214건 중 42건만 10명을 주는 것과 대조된다(D-044).
+
+**쓰지 않았다.** 사실값 출처를 넥슨으로 고정한 D-128과 충돌하고,
+원본 래더 승계 여부는 CLAUDE.md 3-A 규칙 2와 D-101이 서로 다른 답을 가리킨다.
+스냅샷에 보존만 해 두고 선택지 3안을 D-129에 적었다. **사람이 정할 항목이다.**
+
+#### 검증
+
+`nexon:check` 16항목 전 항목 PASS · 회귀 9건 신규 · typecheck 통과

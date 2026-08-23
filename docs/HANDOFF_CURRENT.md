@@ -1,6 +1,7 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21. 최종 갱신 2026-08-22 (Phase 11 — Beta 공개 UI · 클랜 래더 4종 · legacy importer).** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
+**작성 2026-08-21. 최종 갱신 2026-08-24 (Phase 13 — 공식리그 경기 발견 파이프라인 · Beta 구간 실수집).**
+> **지금 상태를 가장 빨리 알려면 맨 아래 L장을 먼저 읽는다.** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 Phase 9 래더는 **H장** · `docs/LADDER_TUNING_REPORT.md` · `docs/DECISIONS.md` D-057~D-068에 있다.
 
@@ -865,3 +866,84 @@ Player mock=920 sacloud=23 · Board mock=400 sacloud=1
 - Beta 예외(D-112)는 `constantsForSeason` 한 곳에 갇혀 있고 **Season 8 정책을 오염시키지 않는다**
 - 공식 판정 OR 조건 · 클랜 가중치 0.4/0.7/1.0 · 용병 개인 100% · 원소속 클랜 불변 ·
   시각순 replay · baseline 1500 — 실저장값과 전부 일치
+
+---
+
+## L. Phase 13 — 공식리그 경기 발견 파이프라인 (2026-08-24) ← **가장 최신**
+
+> 결정: `docs/DECISIONS.md` **D-128 · D-129** · 경위: `docs/WORKLOG.md`
+
+### 현재 HEAD
+
+`git log --oneline -3` 으로 확인한다. 이번 작업의 커밋은 세 개다.
+
+```
+data: 공식리그 경기 발견 스냅샷 — 3rd.supply 클랜 44곳 최근매치 750건
+feat(nexon): supply-matches — 3rd.supply 발견 → 넥슨 상세 보강 파이프라인 (D-127)
+docs: 공식리그 경기 발견 결과 + Beta 구간 실수집 (D-128 · D-129)
+```
+
+### 이번에 완료한 것
+
+1. **발견 스냅샷 확보** — 공식 클랜 44곳의 `/league/supply/clan/{slug}` 공개 SSR payload에서
+   최근매치 750건. **맵이 전부 제3보급창고**다. `packages/db/data/supply-official-matches.json`
+2. **`nexon supply-matches` 파이프라인** — 스냅샷 → 스테이징 seed → 넥슨 `/match-detail` 보강.
+   `--confirm` 없이는 DB에 쓰지 않고 넥슨도 부르지 않는다. 중단 후 재실행하면 이어진다
+3. **상세 747건 실수집 → 750/750 확보** — 실패 0 · invalid 0.
+   **맵이 750/750 전부 제3보급창고**다. 발견한 id 가 100% 공식리그 경기였다
+4. **제3보급창고를 리그 맵에 등록** (`nexon league-maps --confirm`)
+5. **재구성** — projected 72 · incomplete 142. 운영 `Match` **10 → 82**
+6. **래더 replay** — `nexon:rate` 결과 그대로 **6경기**. 공개 래더는 바뀌지 않았다
+7. Beta 구간 밖 536건은 **스테이징까지만** 두었다 (재구성·투영하지 않았다)
+
+### 남은 작업 — 순서대로
+
+1. **클랜별 로스터 등록** ← 이것 하나가 전부를 막고 있다
+   ```bash
+   pnpm nexon:roster --league supply --file <로스터.csv> --verified
+   pnpm nexon identity-link --league supply --confirm
+   pnpm nexon:reconstruct --league supply --redo --limit 400
+   pnpm nexon:rate --league supply
+   ```
+   현재 `LeagueRosterMembership` 23명 / 리그 클랜 48곳. 팀당 3명(D-079)을 못 채워
+   새 경기 72건이 전부 `official = false` 로 들어갔다
+2. **D-129 결정** — 3rd.supply 라인업(양 팀 10명 · weapon · 원본 rating_update)을 쓸지.
+   A 안 유지 / B 라인업만 보강 / C 과거 이관 경로로 분리. **사람이 정한다**
+3. Beta 구간 밖 536건을 어떻게 다룰지 (과거 시즌 이관 대상인가)
+4. 스냅샷 페이지네이션 — 클랜당 최근 20건만 받았다. `metadata.cursor.next` 가 있어
+   더 받을 수 있지만 이번엔 하지 않았다
+
+### 주의사항 · 금지사항
+
+- **3rd.supply 는 Node fetch 가 405 다.** 헤더를 위조하거나 우회하지 않는다.
+  스냅샷은 정상 브라우저로만 다시 뜬다
+- **스냅샷의 map · player_count · 라인업은 필터 힌트일 뿐이다.** 스테이징 사실값은
+  전부 넥슨 `/match-detail` 응답이다 (D-128). 이 경계를 흐리지 않는다
+- `nexon supply-matches` 는 `--confirm` 없이는 아무것도 하지 않는다. 그대로 둔다
+- 기존 경기·rating 을 지우지 않았다. purge 하지 않는다
+- `prisma migrate dev` 를 쓰지 않는다 — 대화형 프롬프트에서 리셋 위험. 이번 마이그레이션도
+  손으로 쓰고 `migrate deploy` 로 적용했다
+- 로컬 마이그레이션 이력에 **기존 drift** 가 있다 (DB 에만 있는
+  `20260823120000_public_data_origin`). 이번 작업 이전부터의 상태이며 건드리지 않았다
+
+### 검증 결과
+
+```
+pnpm typecheck            통과 (8 프로젝트)
+pnpm lint                 통과
+pnpm test                 통과 (신규 회귀 9건 포함)
+pnpm nexon:check          16항목 전 항목 PASS
+pnpm nexon:supply-matches --status   스냅샷 750 = 스테이징 750 = 상세확보 750 · 미수집 0
+```
+
+### working tree 상태
+
+clean. 이번 작업분은 전부 커밋됐다.
+
+### 실행 환경 메모
+
+- Prisma client 재생성이 `EPERM` 으로 막히면 `next start` 가 query engine DLL 을 물고 있는
+  것이다. 그 프로세스를 내리고 `pnpm db:generate` 를 다시 돌린다.
+  이번 작업 중 3000번에 떠 있던 `next start`(전날 기동)를 그 이유로 내렸다 — **다시 띄우려면**
+  `pnpm dev:clean` 또는 `pnpm --filter @sacloud/web start`
+- `pnpm db:start` 는 켜 두는 명령이다. 내리면 API가 전부 500이 된다
