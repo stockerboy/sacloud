@@ -936,6 +936,17 @@ pnpm nexon:check          16항목 전 항목 PASS
 pnpm nexon:supply-matches --status   스냅샷 750 = 스테이징 750 = 상세확보 750 · 미수집 0
 ```
 
+실화면 경로도 확인했다 (localhost:3000, 실 DB).
+
+```
+GET /api/leagueclans/<Iatency->/matches   →  제3보급창고 20건 · official=false
+GET /api/leagues/supply/clans/ddorr/show  →  match_summary.recent_count = 0
+```
+
+**둘 다 맞는 동작이다** — D-080대로 비공식 경기는 기록실 목록에는 보이고
+승패·킬뎃·래더 요약에는 들어가지 않는다. 로스터가 채워져 `official = true` 가 되면
+요약에도 자동으로 반영된다.
+
 ### working tree 상태
 
 clean. 이번 작업분은 전부 커밋됐다.
