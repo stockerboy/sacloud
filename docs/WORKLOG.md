@@ -926,3 +926,11 @@ GNB는 시드 리그 3개를 하드코딩하고 있었고, 실제 운영 리그�
 
 기존 10경기를 지우지 않았다. 실제 제3보급창고 5vs5를 최소 1건 확보한 뒤
 전환한다는 지시에 따른 것이다. raw·staging은 그대로 보존돼 있다.
+
+### 공식 클랜 44개 이관 (2026-08-23)
+
+- 공개 SSR payload에서 44개 확보 → `packages/db/data/supply-official-clans.json` 스냅샷
+- `pnpm nexon:supply-clans [--confirm]` — 미리보기 기본, `--confirm` 없이는 한 줄도 안 쓴다
+- 실제 마크 44/44 · sourceClanId 44/44 · slug 정규화 2건(별칭 보존)
+- dev 잔존 4개 비활성 + 공개 조회가 `Clan.active`를 보도록 수정
+- 검증: `clan_count = 44`, 화면 `44개의 클랜 참여중`, dev slug 0건, 마크 렌더 확인

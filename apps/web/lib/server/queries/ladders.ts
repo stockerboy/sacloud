@@ -93,7 +93,7 @@ async function ladderRows(where: object): Promise<LadderRow[]> {
  * 배치고사 중인 클랜은 순위를 매기지 않는다(다른 랭킹과 같은 규칙).
  */
 export async function getOverallClanLadder(leagueId: string): Promise<ClanRankRow[]> {
-  const rows = await ladderRows({ leagueId, placement: false })
+  const rows = await ladderRows({ leagueId, placement: false, clan: { active: true } })
   return rows.map((row, index) => toRow(row, index + 1))
 }
 
@@ -110,7 +110,7 @@ export async function getIndependentLadder(leagueId: string): Promise<Independen
   const rows = await ladderRows({
     leagueId,
     placement: false,
-    clan: { category: INDEPENDENT_CATEGORY },
+    clan: { active: true, category: INDEPENDENT_CATEGORY },
   })
 
   // Tier별 순번은 이미 rating 순으로 정렬된 배열을 훑으며 세면 된다

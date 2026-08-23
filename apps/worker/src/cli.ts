@@ -23,6 +23,7 @@ import {
   fromSupplyHtml,
   fromSupplyState,
   importLegacySeasons,
+  importSupplyOfficialClans,
   mergeRows,
   provisionTestAccount,
   rotateSharedDevPasswords,
@@ -130,6 +131,9 @@ function usage(): void {
               (플래그 없으면 등록 현황만 보여 준다)
   backfill-observations [--ouid <OUID>[,<OUID>]]
               보관된 목록 원본 → 관측값. **넥슨에 요청하지 않는다**
+  supply-clans [--file <json>] [--league <slug>] [--confirm]
+              3rd.supply 공식리그 참가 클랜 스냅샷 이관 (마크·division·slug 정규화)
+              **--confirm 없이는 한 줄도 쓰지 않는다**
   reresolve   상세 보유 경기의 참가자 신원을 다시 붙인다 (투영 상태는 건드리지 않는다)
   reconstruct [--league <slug>] [--redo] [--match-id <ID>[,<ID>]] [--allow-unverified-roster]
               [--allow-mock-league]
@@ -663,6 +667,38 @@ async function main(): Promise<number> {
       const found = await countSharedPasswordAccounts()
       table([{ '공용 비밀번호 계정': found.total, '그중 관리자': found.admins }])
       log('--rotate-shared 로 무효화한다')
+      return 0
+    }
+
+    case 'supply-clans': {
+      /* CLI는 `apps/worker`에서 실행되므로 저장소 루트 기준 경로로 풀어 준다 */
+      const file =
+        stringFlag(args, 'file') ??
+        join(process.cwd(), '..', '..', 'packages/db/data/supply-official-clans.json')
+      const snapshot = JSON.parse(readFileSync(file, 'utf8'))
+      log(
+        `스냅샷 ${snapshot.source} (${snapshot.capturedAt}) — 확인된 ${snapshot.capturedCount}개 / ` +
+          `원본 표기 ${snapshot.officialTotalReported}개`,
+      )
+      const result = await importSupplyOfficialClans({
+        snapshot,
+        leagueSlug: stringFlag(args, 'league') ?? 'supply',
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table([
+        {
+          대상: result.rows,
+          '클랜 생성': result.clansCreated,
+          '클랜 갱신': result.clansUpdated,
+          'slug 변경': result.slugRenamed.length,
+          '별칭 보존': result.aliasesKept,
+          '리그참가 생성': result.leagueClansCreated,
+          '마크 반영': result.marksSet,
+        },
+      ])
+      for (const r of result.slugRenamed.slice(0, 20)) log(`  slug ${r.from} → ${r.to}`)
+      for (const s of result.skipped) fail(`  건너뜀 ${s.slug}: ${s.reason}`)
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
       return 0
     }
 

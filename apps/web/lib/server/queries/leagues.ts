@@ -38,6 +38,15 @@ import { seasonLabel } from '@sacloud/db/ops'
  * 동점이 흔한 데이터라(래더·승패) 타이브레이커가 없으면 커서 페이지네이션이 흔들린다.
  */
 
+/**
+ * 공개 화면에 내보내는 참가 클랜 조건.
+ *
+ * `Clan.active`는 스키마 주석대로 **삭제 대신 쓰는 값**이다.
+ * 경기가 걸려 있어 지울 수 없는 dev 잔존 클랜을 목록·랭킹·집계에서 빼는 데 쓴다.
+ * 이걸 반영하지 않으면 "확인된 44개"에 잔존 4개가 섞여 48처럼 보인다 (D-124).
+ */
+const ACTIVE_CLAN = { clan: { active: true } } as const
+
 /* -------------------------------- 리그 목록 ------------------------------- */
 
 export async function listLeagues(cursor: string | null, size: number): Promise<CursorPage<LeagueListItem>> {
@@ -49,7 +58,7 @@ export async function listLeagues(cursor: string | null, size: number): Promise<
       ...LEAGUE_SUMMARY_SELECT,
       createdAt: true,
       owner: { select: USER_SUMMARY_SELECT },
-      _count: { select: { clans: true } },
+      _count: { select: { clans: { where: ACTIVE_CLAN } } },
       // 목록에 노출되는 대표 클랜 (관측: 3개)
       clans: {
         take: 3,
@@ -85,7 +94,7 @@ export async function getLeague(leagueSlug: string): Promise<League | null> {
       owner: { select: USER_SUMMARY_SELECT },
       maps: { select: { map: { select: { id: true, name: true } } } },
       playerLimits: { select: { playerCount: true } },
-      _count: { select: { clans: true } },
+      _count: { select: { clans: { where: ACTIVE_CLAN } } },
       seasons: {
         where: { status: 'active' },
         orderBy: { number: 'desc' },
@@ -175,7 +184,7 @@ export async function getLeagueClans(
     idOf: (row) => row.id,
     fetch: async (args) => {
       const rows = await prisma.leagueClan.findMany({
-        where: { leagueId },
+        where: { leagueId, ...ACTIVE_CLAN },
         take: args.take,
         orderBy: args.orderBy as never,
         ...(args.cursor ? { cursor: args.cursor, skip: args.skip } : {}),
@@ -267,7 +276,7 @@ export async function getClanRanks(
   const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { id: true } })
   if (!league) return null
 
-  const where = { leagueId, division, placement: false }
+  const where = { leagueId, division, placement: false, ...ACTIVE_CLAN }
 
   const page = await cursorPage<{
     id: string
