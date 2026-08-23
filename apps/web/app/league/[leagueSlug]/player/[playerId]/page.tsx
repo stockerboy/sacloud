@@ -73,10 +73,23 @@ export default function LeaguePlayerRecordPage({
     { label: '지난시즌', href: `${base}/season` },
   ]
 
-  if (!detail.data) {
+  /* 로딩과 "없음"을 구분한다.
+     예전에는 둘 다 스켈레톤이라, 조회가 404를 내면 화면이 **영원히 로딩 중**으로 보였다.
+     실제로 이 리그 선수 전원이 그 상태였다 (D-117). */
+  if (detail.isPending) {
     return (
       <div className="pc-container mt-10">
         <Skeleton className="h-[200px] w-full" />
+      </div>
+    )
+  }
+
+  if (!detail.data) {
+    return (
+      <div className="pc-container mt-10">
+        <div className="border border-divider bg-row px-6 py-10 text-center text-meta">
+          기록을 찾을 수 없습니다.
+        </div>
       </div>
     )
   }

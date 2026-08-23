@@ -488,7 +488,10 @@ export async function getLeaguePlayerDetail(
       rating: leaguePlayer.rating,
       placement: leaguePlayer.placement,
     }),
-    prisma.matchPlayerStat.count({ where: { playerId, match: { leagueId: league.id } } }),
+    // 평균킬 분모 — 분자가 공식 경기만 누적하므로 여기도 공식만 센다 (D-080)
+    prisma.matchPlayerStat.count({
+      where: { playerId, match: { leagueId: league.id, official: true } },
+    }),
     buildRecordSummary(where, leagueClanId, playerId),
   ])
 

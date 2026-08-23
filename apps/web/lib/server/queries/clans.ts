@@ -10,6 +10,7 @@ import {
 import { cursorPage, type CursorPage } from '../cursorPage'
 import { toKstDateOrNull, toKstIso, toKstIsoOrNull } from '../format'
 import { LEAGUE_SUMMARY_SELECT, toLeagueSummary, toPlayerSummaryOrNull } from '../mappers'
+import { publicOriginWhere } from './publicScope'
 import { clanRankOf } from './leagues'
 import { enqueueRenewJob } from './ingestQueue'
 
@@ -23,8 +24,9 @@ import { enqueueRenewJob } from './ingestQueue'
 /* --------------------------------- 기본정보 -------------------------------- */
 
 export async function getClan(clanSlug: string): Promise<Clan | null> {
-  const clan = await prisma.clan.findUnique({
-    where: { slug: clanSlug },
+  const clan = await prisma.clan.findFirst({
+    // 시드 클랜은 공개 화면에서 없는 것으로 다룬다 (D-116)
+    where: { slug: clanSlug, ...publicOriginWhere() },
     select: {
       id: true,
       slug: true,

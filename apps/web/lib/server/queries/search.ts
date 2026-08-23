@@ -7,6 +7,7 @@ import {
   toClanSummaryOrNull,
   toLeagueSummary,
 } from '../mappers'
+import { publicOriginWhere } from './publicScope'
 
 /**
  * 통합검색 (플레이어 · 클랜 · 리그).
@@ -35,7 +36,7 @@ function keywordOf(query: string): string {
  */
 export async function findPlayerByName(name: string): Promise<PlayerSearchItem | null> {
   const player = await prisma.player.findFirst({
-    where: { name },
+    where: { name, ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
   })
@@ -48,7 +49,7 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
   if (!keyword) return []
 
   const players = await prisma.player.findMany({
-    where: { name: { contains: keyword } },
+    where: { name: { contains: keyword }, ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     take: SEARCH_LIMIT,
     select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
@@ -64,7 +65,7 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
 
 export async function findClanByName(name: string): Promise<ClanSummary | null> {
   const clan = await prisma.clan.findFirst({
-    where: { name },
+    where: { name, ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     select: CLAN_SUMMARY_SELECT,
   })
@@ -77,7 +78,7 @@ export async function searchClans(query: string): Promise<ClanSummary[]> {
   if (!keyword) return []
 
   const clans = await prisma.clan.findMany({
-    where: { OR: [{ name: { contains: keyword } }, { slug: { contains: keyword } }] },
+    where: { OR: [{ name: { contains: keyword } }, { slug: { contains: keyword } }], ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     take: SEARCH_LIMIT,
     select: CLAN_SUMMARY_SELECT,
@@ -89,7 +90,7 @@ export async function searchClans(query: string): Promise<ClanSummary[]> {
 
 export async function findLeagueByName(name: string): Promise<LeagueSummary | null> {
   const league = await prisma.league.findFirst({
-    where: { name },
+    where: { name, ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     select: LEAGUE_SUMMARY_SELECT,
   })
@@ -101,7 +102,7 @@ export async function searchLeagues(query: string): Promise<LeagueSummary[]> {
   if (!keyword) return []
 
   const leagues = await prisma.league.findMany({
-    where: { OR: [{ name: { contains: keyword } }, { slug: { contains: keyword } }] },
+    where: { OR: [{ name: { contains: keyword } }, { slug: { contains: keyword } }], ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     take: SEARCH_LIMIT,
     select: LEAGUE_SUMMARY_SELECT,

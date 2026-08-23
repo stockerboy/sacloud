@@ -12,6 +12,7 @@ import {
 import { cursorPage, type CursorPage } from '../cursorPage'
 import { toKstIso, toKstIsoOrNull } from '../format'
 import { CLAN_SUMMARY_SELECT, PLAYER_SUMMARY_SELECT, toClanSummary } from '../mappers'
+import { publicOriginWhere } from './publicScope'
 
 /**
  * 매치 조회 (기록실 목록 · 매치 상세).
@@ -104,7 +105,8 @@ const MATCH_ORDER_REVERSED = [{ startAt: 'asc' }, { id: 'asc' }] as const
 export async function resolveLeagueId(leagueIdOrSlug: string): Promise<string | null> {
   if (!leagueIdOrSlug) return null
   const league = await prisma.league.findFirst({
-    where: { OR: [{ slug: leagueIdOrSlug }, { id: leagueIdOrSlug }] },
+    // 시드 리그는 공개 경로에서 없는 것으로 다룬다 (D-116)
+    where: { OR: [{ slug: leagueIdOrSlug }, { id: leagueIdOrSlug }], ...publicOriginWhere() },
     select: { id: true },
   })
   return league?.id ?? null

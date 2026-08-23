@@ -1,4 +1,5 @@
 import { prisma } from '@sacloud/db'
+import { publicOriginWhere } from './queries/publicScope'
 
 /**
  * `/infos`가 내려주는 전역 설정.
@@ -26,8 +27,11 @@ export const RANK_REFRESH_INTERVAL = 3600
  * 진행 중인 시즌 중 가장 큰 번호를 쓴다. 시즌이 하나도 없으면 0.
  */
 export async function currentSeasonNumber(): Promise<number> {
+  /* 시드 리그의 시즌은 세지 않는다 (D-116).
+     예전에는 픽스처 리그 4개의 `Season 8 active`가 이겨서, 실제로는 베타 중인데
+     `CURRENT_SEASON=8`이 내려갔고 새로 만든 리그가 시즌 8로 시작했다. */
   const season = await prisma.season.findFirst({
-    where: { status: 'active' },
+    where: { status: 'active', league: { ...publicOriginWhere() } },
     orderBy: { number: 'desc' },
     select: { number: true },
   })

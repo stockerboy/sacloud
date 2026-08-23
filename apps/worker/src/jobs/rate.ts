@@ -388,6 +388,23 @@ export async function runRate(
     })
   }
 
+  /* 현재 소속 클랜 — `LeaguePlayer.clanId`는 스키마 주석대로 **표시용 현재 소속**이다.
+     경기 시점 소속은 `MatchPlayerStat`/`Match`의 스냅샷이 따로 들고 있으므로 여기서는
+     지금 유효한 로스터 등록(`leftAt = null`)을 그대로 옮겨 적는다.
+
+     이걸 빼면 조회 계층이 통째로 무너진다 (D-117). `records.ts`·`matches.ts`가
+     "리그 선수는 클랜에 속한다"를 전제로 `clanId`에서 `LeagueClan`을 찾기 때문에,
+     null이면 개인 상세가 404, 개인 기록실이 빈 배열, 클랜원 목록이 0명이 된다. */
+  const rosterClanByPlayer = new Map<string, string>()
+  for (const membership of await prisma.leagueRosterMembership.findMany({
+    where: { leagueId: league.id, leftAt: null },
+    select: { playerId: true, joinedAt: true, leagueClan: { select: { clanId: true } } },
+    orderBy: { joinedAt: 'asc' },
+  })) {
+    // 여러 건이면 가장 최근 등록을 쓴다 (오름차순이라 뒤가 이긴다)
+    rosterClanByPlayer.set(membership.playerId, membership.leagueClan.clanId)
+  }
+
   /* 개인 — 무기별 분리를 하지 않으므로 전량 baseRating에 누적한다 (위 주석) */
   for (const [playerId, rating] of playerRating) {
     const existing = await prisma.leaguePlayer.findUnique({
@@ -396,6 +413,7 @@ export async function runRate(
     })
     const played = playerMatches.get(playerId) ?? 0
     const totals = playerTotals.get(playerId) ?? { win: 0, lose: 0, kill: 0, death: 0, assist: 0 }
+    const clanId = rosterClanByPlayer.get(playerId) ?? null
     const data = {
       rating,
       baseRating: rating,
@@ -406,6 +424,8 @@ export async function runRate(
       kill: totals.kill,
       death: totals.death,
       assist: totals.assist,
+      // 로스터에 없으면 건드리지 않는다. 있던 소속을 null로 지우지 않기 위해서다
+      ...(clanId ? { clanId } : {}),
     }
     if (existing) {
       await prisma.leaguePlayer.update({ where: { id: existing.id }, data })

@@ -25,6 +25,7 @@ import {
   toUserSummaryOrNull,
 } from '../mappers'
 import { cumulativeKdRate } from './visibility'
+import { publicOriginWhere } from './publicScope'
 import { seasonLabel } from '@sacloud/db/ops'
 
 /**
@@ -41,6 +42,8 @@ import { seasonLabel } from '@sacloud/db/ops'
 
 export async function listLeagues(cursor: string | null, size: number): Promise<CursorPage<LeagueListItem>> {
   const leagues = await prisma.league.findMany({
+    // 개발용 시드 리그는 공개 목록에 넣지 않는다 (D-116)
+    where: { ...publicOriginWhere() },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     select: {
       ...LEAGUE_SUMMARY_SELECT,
@@ -71,8 +74,9 @@ export async function listLeagues(cursor: string | null, size: number): Promise<
 /* --------------------------------- 리그 상세 ------------------------------ */
 
 export async function getLeague(leagueSlug: string): Promise<League | null> {
-  const league = await prisma.league.findUnique({
-    where: { slug: leagueSlug },
+  const league = await prisma.league.findFirst({
+    // 시드 리그는 **없는 것처럼** 다룬다. 숨김이 아니라 404다 (D-116)
+    where: { slug: leagueSlug, ...publicOriginWhere() },
     select: {
       ...LEAGUE_SUMMARY_SELECT,
       description: true,
@@ -115,7 +119,10 @@ export async function getLeague(leagueSlug: string): Promise<League | null> {
 }
 
 export async function getLeagueIdBySlug(leagueSlug: string): Promise<string | null> {
-  const league = await prisma.league.findUnique({ where: { slug: leagueSlug }, select: { id: true } })
+  const league = await prisma.league.findFirst({
+    where: { slug: leagueSlug, ...publicOriginWhere() },
+    select: { id: true },
+  })
   return league?.id ?? null
 }
 
@@ -130,7 +137,9 @@ export async function getLeagueIdBySlug(leagueSlug: string): Promise<string | nu
  */
 export async function resolveLeagueId(value: string): Promise<string | null> {
   const league = await prisma.league.findFirst({
-    where: { OR: [{ id: value }, { slug: value }] },
+    // 시드 리그는 여기서 막는다. 리그 스코프 공개 경로가 전부 이 함수를 지나므로
+    // 한 곳만 막으면 랭킹·기록실·매치 상세가 함께 닫힌다 (D-116)
+    where: { OR: [{ id: value }, { slug: value }], ...publicOriginWhere() },
     select: { id: true },
   })
   return league?.id ?? null
@@ -328,7 +337,9 @@ export async function matchCountByPlayer(
   if (playerIds.length === 0) return new Map()
   const grouped = await prisma.matchPlayerStat.groupBy({
     by: ['playerId'],
-    where: { playerId: { in: playerIds }, match: { leagueId } },
+    // 평균킬의 **분모**다. 분자(`LeaguePlayer.kill`)가 공식 경기만 누적하므로
+    // 분모도 공식 경기만 세야 한다. 비공식은 평균킬에 반영하지 않는다 (D-080).
+    where: { playerId: { in: playerIds }, match: { leagueId, official: true } },
     _count: { _all: true },
   })
   return new Map(grouped.map((row) => [row.playerId, row._count._all]))

@@ -806,3 +806,52 @@ constantsForSeason(base, season, flags)
  …
 11 MMA수련중    1476  2승4패
 ```
+
+
+---
+
+## J. Phase 11 — PUBLIC 실데이터 전환 (2026-08-23)
+
+> 결정: `docs/DECISIONS.md` **D-116 ~ D-118** · 경위: `docs/WORKLOG.md`
+
+### 지금 공개 화면에 나가는 것
+
+**실데이터 리그 `supply` 하나뿐이다.** 시드 리그 4개(`officialmain` `secondline`
+`friendly01` `tourney2026`)는 공개 경로에서 **404**다. 검색·게시판·인기글·기록실도 같다.
+
+거르는 곳은 한 곳이다 — `apps/web/lib/server/queries/publicScope.ts`.
+판별자는 `origin` 컬럼이고 시드는 `mock`이다.
+
+```
+League mock=4 sacloud=1 · Clan mock=60 sacloud=8
+Player mock=920 sacloud=23 · Board mock=400 sacloud=1
+```
+
+> **`pnpm compare`를 돌리려면** 서버를 `SACLOUD_PUBLIC_SCOPE=all` 로 띄워야 한다.
+> 그 도구는 "실제 API가 시드를 그대로 돌려준다"를 전제로 값을 대조하기 때문이다.
+
+### 실 Beta 데이터 현황
+
+리그 `supply` · Season 0(beta) 활성 · 클랜 7 · 선수 11 · 경기 10건(공식 6 · 비공식 4)
+개인 래더 1476~1570 · 클랜 래더 1482~1539 · 라플/스나 판정 17건
+
+### 아직 사람이 판단해야 하는 것
+
+- [ ] **시드 계정 42명이 전원 같은 비밀번호(`sacloud1234`)이고 그중 2개가 관리자다.**
+      외부 공개 전에 무효화하거나 권한을 낮춰야 한다 (D-033의 검수 계정)
+- [ ] 로그인·가입·비밀번호찾기에 **rate limit이 없다**
+- [ ] `PUT /api/me/link`가 **소유권을 증명하지 않는다** — 닉네임 선착순 선점이 가능하다
+      (코드 주석이 스스로 "운영에 노출하면 안 된다"고 적어 둔 상태)
+- [ ] 공개 게시판 최상단 글 제목이 **운영자 이메일**이다 (실제 작성분이라 임의 삭제하지 않았다)
+- [ ] 공개 랭킹에 E2E 자리표시자 `E2E-MMA수련중` · 클랜 `admin-test-clan-div`가 남아 있다
+- [ ] 실 클랜 slug에 dev 접두사 `real-`이 그대로 붙어 공개 URL에 노출된다
+- [ ] 보안 헤더(CSP · X-Frame-Options 등)가 하나도 없다
+- [ ] 고정 1280px 레이아웃이라 모바일에서 가로 스크롤이 강제된다 (원본 재현이라 의도일 수 있음)
+
+### 감사에서 확인된 **정상** 항목 (다시 조사하지 말 것)
+
+- 관리자 API 비인증 접근 **403 차단** · 시크릿 클라이언트 미노출 · 소스맵 없음
+- **DB 5433은 127.0.0.1 바인딩** — 외부 노출 없음
+- Beta 예외(D-112)는 `constantsForSeason` 한 곳에 갇혀 있고 **Season 8 정책을 오염시키지 않는다**
+- 공식 판정 OR 조건 · 클랜 가중치 0.4/0.7/1.0 · 용병 개인 100% · 원소속 클랜 불변 ·
+  시각순 replay · baseline 1500 — 실저장값과 전부 일치

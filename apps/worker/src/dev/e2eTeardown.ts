@@ -22,6 +22,25 @@ async function main(): Promise<void> {
   })
 
   if (league) {
+    /* ── 안전장치 (D-116) ──────────────────────────────────────────────
+       이 스크립트는 `supply`가 E2E 발판이던 시절에 쓰였다. 지금 `supply`는
+       **공개 Beta 운영 리그**이고 실제 수집 경기가 들어 있다.
+       실수집 경기가 하나라도 있으면 지우지 않고 멈춘다.
+       지워야 한다면 사람이 이 검사를 보고 판단해야 한다. */
+    const collected = await prisma.match.count({
+      where: { leagueId: league.id, origin: { not: 'mock' } },
+    })
+    if (collected > 0) {
+      console.error(
+        `중단: supply 리그에 실수집 경기 ${collected}건이 있다. ` +
+          '이 스크립트는 실운영 데이터를 지우지 않는다.',
+      )
+      console.error('정말 지워야 한다면 백업 후 수동으로 진행해라.')
+      await prisma.$disconnect()
+      process.exitCode = 1
+      return
+    }
+
     // League → LeagueClan · LeagueRosterMembership · Season · Match 는 cascade로 지워진다
     await prisma.match.deleteMany({ where: { leagueId: league.id } })
     await prisma.league.delete({ where: { id: league.id } })

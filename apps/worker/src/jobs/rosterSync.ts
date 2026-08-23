@@ -204,6 +204,15 @@ async function applyMember(input: {
   const playerId = barracksPlayerKey(input.member.userNexonSn)
   const out = { playerCreated: false, membershipCreated: false, membershipExisting: false, repaired: false }
 
+  /* 병영수첩 멤버 목록은 **그 클랜의 공식 명단**이므로 현재 소속의 근거가 된다.
+     `Player.clanId`(전역 표시용 현재 소속)를 여기서 같이 채운다 (D-117).
+     비워 두면 클랜 상세의 소속 선수가 0명으로 나오고 `member_count`도 0이 된다 —
+     5승 0패인 클랜에 인원이 없다고 표시됐다. */
+  const leagueClan = await prisma.leagueClan.findUnique({
+    where: { id: input.leagueClanId },
+    select: { clanId: true },
+  })
+
   const existingPlayer = await prisma.player.findUnique({ where: { id: playerId }, select: { id: true } })
   if (!existingPlayer) {
     await prisma.player.create({
@@ -211,12 +220,19 @@ async function applyMember(input: {
         id: playerId,
         name: input.member.nickname,
         sourcePlayerId: String(input.member.userNexonSn),
+        ...(leagueClan ? { clanId: leagueClan.clanId } : {}),
       },
     })
     out.playerCreated = true
   } else {
     // 닉네임이 바뀌었으면 현재 이름을 따라간다. 사람은 계정 번호로 고정돼 있다
-    await prisma.player.update({ where: { id: playerId }, data: { name: input.member.nickname } })
+    await prisma.player.update({
+      where: { id: playerId },
+      data: {
+        name: input.member.nickname,
+        ...(leagueClan ? { clanId: leagueClan.clanId } : {}),
+      },
+    })
   }
 
   /* 같은 닉네임의 E2E 자리표시자가 이 클랜에 등록돼 있으면 실제 Player로 옮긴다 */

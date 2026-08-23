@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto'
 import { compareSync, hashSync } from 'bcryptjs'
 import { prisma } from '@sacloud/db'
+import { hidesSeedData, SEED_ORIGIN } from './publicScope'
 import type { Prisma } from '@sacloud/db'
 import {
   BoardWriteInput,
@@ -240,6 +241,9 @@ export interface BoardListQuery {
  */
 function boardFilter(query: BoardListQuery, params: SqlParams): string {
   const parts: string[] = ['"Board"."deletedAt" IS NULL']
+
+  // 개발용 시드 글은 공개 목록·인기글·검색에 넣지 않는다 (D-116)
+  if (hidesSeedData()) parts.push(`"Board"."origin" <> ${params.bind(SEED_ORIGIN)}`)
 
   if (query.category === 'hot') {
     parts.push('"Board"."notice" = false')

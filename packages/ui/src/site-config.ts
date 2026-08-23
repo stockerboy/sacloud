@@ -15,11 +15,15 @@ export interface NavLink {
   href: string
 }
 
-/** 대표 리그 3개 — 현재 리그를 보고 있으면 배경이 바뀐다(원본 `league-nav-active`) */
+/**
+ * 대표 리그 — 현재 리그를 보고 있으면 배경이 바뀐다(원본 `league-nav-active`).
+ *
+ * **여기에 개발용 시드 리그를 넣지 않는다** (D-116). 예전에는 픽스처 리그 3개
+ * (`officialmain` · `secondline` · `friendly01`)가 박혀 있어서, 사이트 어디에도
+ * 실제 운영 리그로 가는 링크가 없고 방문자가 가짜 리그부터 보게 됐다.
+ */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
-  { label: '공식전', href: '/league/officialmain' },
-  { label: '세컨드', href: '/league/secondline' },
-  { label: '친목전', href: '/league/friendly01' },
+  { label: '서플라이', href: '/league/supply' },
 ]
 
 /** 대표 리그 뒤에 오는 고정 메뉴 — 원본 `nav-active`(굵게 + 흰 밑줄) */

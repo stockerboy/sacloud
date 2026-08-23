@@ -124,6 +124,9 @@ model Player {
   /// 넥슨이 ouid 변경 가능성을 명시했으므로 이 값을 영구 동일인 판단 근거로 쓰지 않는다.
   /// 권위 있는 매핑은 `NexonIdentity`에 있다 (D-036).
   nexonOuid      String?
+  /// "sacloud" | "nexon" | "3rd.supply" | "mock" — 이 행이 어디서 왔는가 (D-116).
+  /// `mock`은 개발용 시드다. **공개 화면에 내보내지 않는다.**
+  origin         String  @default("sacloud")
 
   clan          Clan?           @relation("ClanMembers", fields: [clanId], references: [id], onDelete: SetNull)
   masterOf      Clan[]          @relation("ClanMaster")
@@ -140,6 +143,7 @@ model Player {
   @@unique([nexonOuid])
   @@index([name])
   @@index([clanId])
+  @@index([origin])
 }
 
 /// 클랜. 원본은 넥슨 병영수첩 slug를 그대로 식별자로 쓴다(관측).
@@ -170,6 +174,9 @@ model Clan {
 
   /// 3rd.supply의 클랜 ID
   sourceClanId String?
+  /// "sacloud" | "nexon" | "3rd.supply" | "mock" — 이 행이 어디서 왔는가 (D-116).
+  /// `mock`은 개발용 시드다. **공개 화면에 내보내지 않는다.**
+  origin       String  @default("sacloud")
 
   master        Player?        @relation("ClanMaster", fields: [masterPlayerId], references: [id], onDelete: SetNull)
   members       Player[]       @relation("ClanMembers")
@@ -180,6 +187,7 @@ model Clan {
 
   @@unique([sourceClanId])
   @@index([name])
+  @@index([origin])
 }
 
 /// 클랜의 다른 표기 (Phase 10).
@@ -272,6 +280,9 @@ model League {
 
   /// 3rd.supply의 리그 ID
   sourceLeagueId String?
+  /// "sacloud" | "3rd.supply" | "mock" — 이 행이 어디서 왔는가 (D-116).
+  /// `mock`은 개발용 시드다. **공개 화면에 내보내지 않는다.**
+  origin        String   @default("sacloud")
 
   owner        User?               @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
   maps         LeagueMap[]
@@ -287,6 +298,7 @@ model League {
 
   @@unique([sourceLeagueId])
   @@index([official, createdAt])
+  @@index([origin])
 }
 
 /// 리그가 기록 대상으로 삼는 맵. 여기 없는 맵의 경기는 저장하지 않는다.
@@ -775,6 +787,10 @@ model Board {
   /// (계약 `BoardListItem.notice`가 행마다 내려온다).
   notice       Boolean @default(false)
 
+  /// "sacloud" | "mock" — 이 행이 어디서 왔는가 (D-116).
+  /// `mock`은 개발용 시드다. **공개 화면에 내보내지 않는다.**
+  origin     String    @default("sacloud")
+
   deletedAt  DateTime?
   createdAt  DateTime  @default(now())
   lastEdited DateTime?
@@ -788,6 +804,8 @@ model Board {
   @@index([createdAt(sort: Desc)])
   // 실시간 인기게시글
   @@index([likeCount(sort: Desc), createdAt(sort: Desc)])
+  // 공개 목록: 시드 제외 + 최신순
+  @@index([origin, createdAt(sort: Desc)])
 }
 
 /// 댓글. 원본은 대댓글 1단계까지만 허용한다(관측).
