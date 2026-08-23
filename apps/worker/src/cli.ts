@@ -35,7 +35,7 @@ import { fail, log, registerSecret, table, warn } from './lib/log.js'
 import { AbortCollection, type JobContext } from './jobs/context.js'
 import { runIdentities } from './jobs/identities.js'
 import { runCollect } from './jobs/collect.js'
-import { runProject } from './jobs/project.js'
+import { runProject, runReresolve } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
 import { runCheck } from './jobs/check.js'
 import { ensurePollStates, requestManualRefresh, runPoll } from './jobs/poll.js'
@@ -130,6 +130,7 @@ function usage(): void {
               (플래그 없으면 등록 현황만 보여 준다)
   backfill-observations [--ouid <OUID>[,<OUID>]]
               보관된 목록 원본 → 관측값. **넥슨에 요청하지 않는다**
+  reresolve   상세 보유 경기의 참가자 신원을 다시 붙인다 (투영 상태는 건드리지 않는다)
   reconstruct [--league <slug>] [--redo] [--match-id <ID>[,<ID>]] [--allow-unverified-roster]
               [--allow-mock-league]
   rate        --league <slug> [--season N] [--allow-mock-league] [--dry-run]
@@ -662,6 +663,13 @@ async function main(): Promise<number> {
       const found = await countSharedPasswordAccounts()
       table([{ '공용 비밀번호 계정': found.total, '그중 관리자': found.admins }])
       log('--rotate-shared 로 무효화한다')
+      return 0
+    }
+
+    case 'reresolve': {
+      const result = await runReresolve(ctx)
+      table([result as unknown as Record<string, unknown>])
+      log('투영 상태와 운영 매치는 건드리지 않았다. 신원만 다시 붙였다')
       return 0
     }
 

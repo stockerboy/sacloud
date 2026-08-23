@@ -49,6 +49,7 @@
     "nexon:rate": "pnpm --filter @sacloud/worker nexon rate",
     "nexon:season": "pnpm --filter @sacloud/worker nexon season",
     "nexon:clan": "pnpm --filter @sacloud/worker nexon clan",
+    "nexon:reresolve": "pnpm --filter @sacloud/worker nexon reresolve",
     "nexon:accounts": "pnpm --filter @sacloud/worker nexon accounts"
   },
   "devDependencies": {

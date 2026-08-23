@@ -12,6 +12,7 @@ export * from './normalize'
 export * from './rateLimit'
 export * from './schemas'
 export * from './client'
+export * from './supplyLeagueScope'
 /** 테스트·스모크용 픽스처 (실제 넥슨 응답이 아니다. 키 수령 후 실응답으로 교체한다) */
 export * from './fixtures/sample'
 export {

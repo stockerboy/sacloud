@@ -12,6 +12,7 @@ import { CLAN_MATCH_TYPES, NEXON_SOURCE } from '@sacloud/nexon'
 import { log, warn } from '../lib/log.js'
 import { allocateInternalMatchId } from '../lib/internalMatchId.js'
 import { resolveParticipant, type IdentityRow, type IdentityStatus } from '../lib/identity.js'
+import { participantIdentity } from '../lib/observedPlayer.js'
 import {
   evaluateProjection,
   type LeagueProfile,
@@ -82,7 +83,7 @@ export async function loadLeagueProfiles(input: {
  * **연결된(active) 신원만** 근거로 쓴다. 모호하면 비워 두고 투영을 보류한다.
  * 닉네임이 같다는 이유로 자동 병합하지 않는다.
  */
-async function resolveParticipants(stagingId: string): Promise<void> {
+export async function resolveParticipants(stagingId: string): Promise<void> {
   const participants = await prisma.nexonMatchParticipant.findMany({
     where: { nexonMatchId: stagingId },
     select: { id: true, userName: true },
@@ -104,22 +105,63 @@ async function resolveParticipants(stagingId: string): Promise<void> {
 
   for (const participant of participants) {
     const resolution = resolveParticipant(participant.userName, rows)
+
+    if (resolution.status === 'resolved') {
+      await prisma.nexonMatchParticipant.update({
+        where: { id: participant.id },
+        data: {
+          resolvedPlayerId: resolution.playerId,
+          resolvedOuid: resolution.ouid,
+          resolutionStatus: 'resolved',
+        },
+      })
+      continue
+    }
+
+    /* 신원을 확정하지 못했다고 **참가자를 버리지 않는다** (D-123).
+       원본이 10명을 줬는데 우리가 아는 사람만 남기면 화면에 4명짜리 경기가 나온다.
+       실제로 그랬다 — 668명 중 7명(1%)만 resolved였다.
+
+       그래서 관측 전용 Player를 만든다. 실제로 뛴 것은 사실이므로 기록은 남기고,
+       "누구인지"는 확정하지 않는다. 기존 Player와 **합치지 않는다** (D-036 · D-100). */
+    const identity = participantIdentity({
+      userName: participant.userName,
+      resolvedPlayerId: null,
+    })
+
+    if (!identity) {
+      // 닉네임조차 없다 — 원본에 사람이 없는 것이다
+      await prisma.nexonMatchParticipant.update({
+        where: { id: participant.id },
+        data: { resolvedPlayerId: null, resolvedOuid: null, resolutionStatus: resolution.status },
+      })
+      continue
+    }
+
+    await ensureObservedPlayer(identity.playerId, participant.userName ?? '')
     await prisma.nexonMatchParticipant.update({
       where: { id: participant.id },
-      data:
-        resolution.status === 'resolved'
-          ? {
-              resolvedPlayerId: resolution.playerId,
-              resolvedOuid: resolution.ouid,
-              resolutionStatus: 'resolved',
-            }
-          : {
-              resolvedPlayerId: null,
-              resolvedOuid: null,
-              resolutionStatus: resolution.status,
-            },
+      data: {
+        resolvedPlayerId: identity.playerId,
+        resolvedOuid: null,
+        resolutionStatus: 'observed',
+      },
     })
   }
+}
+
+/**
+ * 관측 전용 Player를 만든다 (없으면).
+ *
+ * `origin`은 `nexon`이다 — 개발용 시드가 아니라 **실제로 관측된 사람**이기 때문이다.
+ * `NexonIdentity`나 `UserPlayerLink`는 만들지 않는다. 그건 근거가 생겼을 때 사람이 한다.
+ */
+async function ensureObservedPlayer(playerId: string, userName: string): Promise<void> {
+  const existing = await prisma.player.findUnique({ where: { id: playerId }, select: { id: true } })
+  if (existing) return
+  await prisma.player.create({
+    data: { id: playerId, name: userName.trim() || playerId, origin: NEXON_SOURCE },
+  })
 }
 
 /** 운영 매치 저장. 같은 경기를 다시 투영해도 행이 늘지 않는다 */
@@ -345,4 +387,46 @@ export async function runProject(
   }
 
   return result
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* 신원 재해석만                                                                 */
+/* -------------------------------------------------------------------------- */
+
+export interface ReresolveResult {
+  matchesScanned: number
+  participants: number
+  resolved: number
+  observed: number
+  stillUnresolved: number
+}
+
+/**
+ * 상세를 가진 스테이징 전체의 참가자 신원을 **다시 붙인다**.
+ *
+ * 투영 상태(`projectionStatus`)와 운영 `Match`는 **건드리지 않는다.**
+ * 이미 공개된 경기를 지우지 않고 신원만 채우기 위한 경로다 (D-123).
+ *
+ * `--reproject`는 `pending`/`skipped`만 보기 때문에, 이미 `projected`된 경기의
+ * 참가자는 영원히 재해석되지 않았다. 그 구멍을 메운다.
+ */
+export async function runReresolve(ctx: JobContext): Promise<ReresolveResult> {
+  const staged = await prisma.nexonMatch.findMany({
+    where: { detailFetchedAt: { not: null } },
+    orderBy: { dateMatch: 'asc' },
+    take: ctx.limit ?? 5000,
+    select: { id: true },
+  })
+
+  for (const staging of staged) await resolveParticipants(staging.id)
+
+  const [participants, resolved, observed, stillUnresolved] = await Promise.all([
+    prisma.nexonMatchParticipant.count(),
+    prisma.nexonMatchParticipant.count({ where: { resolutionStatus: 'resolved' } }),
+    prisma.nexonMatchParticipant.count({ where: { resolutionStatus: 'observed' } }),
+    prisma.nexonMatchParticipant.count({ where: { resolvedPlayerId: null } }),
+  ])
+
+  return { matchesScanned: staged.length, participants, resolved, observed, stillUnresolved }
 }
