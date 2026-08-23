@@ -1,0 +1,32 @@
+{"source":"nexon_barracks","endpoint":"/api/BattleLog/GetBattleLogClan/{matchKey}/{clanNo}","collectedAt":"2026-08-23T00:09:45.045Z","matches":[
+{"matchKey":"260820162642124001","clanNo":"070716026783","status":200,"totalEvents":135,"killEvents":73,"payloadHash":"3451911968","error":null,"players":[
+{"sn":"252187085","nick":"종원","rifleKills":0,"sniperKills":16},
+{"sn":"269421695","nick":"울상진리","rifleKills":13,"sniperKills":0},
+{"sn":"772196995","nick":"씨야","rifleKills":0,"sniperKills":8},
+{"sn":"822931202","nick":"솔희요","rifleKills":7,"sniperKills":0},
+{"sn":"2080854582","nick":"중사형","rifleKills":12,"sniperKills":0},
+{"sn":"2097480349","nick":"nooooob","rifleKills":8,"sniperKills":0}]},
+{"matchKey":"260820170327124001","clanNo":"070716026783","status":200,"totalEvents":96,"killEvents":50,"payloadHash":"2146670796","error":null,"players":[
+{"sn":"252187085","nick":"종원","rifleKills":0,"sniperKills":4},
+{"sn":"269421695","nick":"울상진리","rifleKills":6,"sniperKills":0},
+{"sn":"772196995","nick":"씨야","rifleKills":0,"sniperKills":4},
+{"sn":"822931202","nick":"솔희요","rifleKills":6,"sniperKills":0},
+{"sn":"2080854582","nick":"중사형","rifleKills":11,"sniperKills":0},
+{"sn":"2097480349","nick":"nooooob","rifleKills":4,"sniperKills":0}]},
+{"matchKey":"260820171438124001","clanNo":"070716026783","status":200,"totalEvents":154,"killEvents":79,"payloadHash":"2061495283","error":null,"players":[
+{"sn":"252187085","nick":"종원","rifleKills":0,"sniperKills":5},
+{"sn":"269421695","nick":"울상진리","rifleKills":15,"sniperKills":0},
+{"sn":"772196995","nick":"씨야","rifleKills":0,"sniperKills":4},
+{"sn":"822931202","nick":"솔희요","rifleKills":16,"sniperKills":0},
+{"sn":"2080854582","nick":"중사형","rifleKills":17,"sniperKills":0},
+{"sn":"2097480349","nick":"nooooob","rifleKills":3,"sniperKills":0}]},
+{"matchKey":"260821200627124001","clanNo":"070716026783","status":0,"totalEvents":0,"killEvents":0,"payloadHash":null,"error":"빈 응답 (BattleLog 미제공)","players":[]},
+{"matchKey":"260821202900124002","clanNo":"070716026783","status":0,"totalEvents":0,"killEvents":0,"payloadHash":null,"error":"빈 응답 (BattleLog 미제공)","players":[]},
+{"matchKey":"260822010049124001","clanNo":"070716026783","status":200,"totalEvents":90,"killEvents":49,"payloadHash":"1531746866","error":null,"players":[
+{"sn":"184857918","nick":"라렌s","rifleKills":3,"sniperKills":0},
+{"sn":"805648341","nick":"제니","rifleKills":0,"sniperKills":6},
+{"sn":"889385256","nick":"째근호","rifleKills":10,"sniperKills":0},
+{"sn":"1560728705","nick":"SC3..나실인","rifleKills":13,"sniperKills":0},
+{"sn":"1677958644","nick":"천사순수","rifleKills":6,"sniperKills":0},
+{"sn":"1711646341","nick":"채운2","rifleKills":0,"sniperKills":4}]}
+]}

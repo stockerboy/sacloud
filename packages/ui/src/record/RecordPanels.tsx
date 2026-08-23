@@ -254,3 +254,49 @@ export function TeammateTable({
     </div>
   )
 }
+
+/**
+ * 무기별 기록 (D-115).
+ *
+ * 판정된 경기만 나온다. `unknown`은 통합 기록에만 남고 여기 오지 않는다 —
+ * 억지로 라플/스나 중 하나에 넣지 않는다.
+ *
+ * 판정된 경기가 하나도 없으면 **패널 자체를 그리지 않는다.**
+ * `0경기 0킬 0데스`는 정보가 아니라 소음이다.
+ */
+export interface PlayerWeaponStatRow {
+  weapon: 0 | 1
+  games: number
+  win: number
+  lose: number
+  kill: number
+  death: number
+  kd_rate: number
+  kill_per_match: number
+}
+
+export function WeaponStatPanel({ stats }: { stats?: readonly PlayerWeaponStatRow[] }) {
+  const rows = (stats ?? []).filter((row) => row.games > 0)
+  if (rows.length === 0) return null
+
+  return (
+    <div className="mt-3 bg-side px-3 py-3 text-line shadow-card">
+      <div>무기별 기록</div>
+      {rows.map((row) => (
+        <div key={row.weapon}>
+          <Divider />
+          <Stat label={row.weapon === 1 ? '스나이퍼' : '라이플'}>
+            <span className="mr-2 text-base">
+              {formatCount(row.games)}판 {formatCount(row.win)}승 {formatCount(row.lose)}패
+            </span>
+            <span className={rateClass(row.kd_rate)}>{formatRate(row.kd_rate)}%</span>
+          </Stat>
+          <div className="px-1 pb-1 text-right text-base">
+            {formatCount(row.kill)}킬 {formatCount(row.death)}데스 · 판당{' '}
+            {row.kill_per_match.toFixed(1)}킬
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

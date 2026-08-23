@@ -27,4 +27,4 @@ export {
   type WeaponSignals,
   type WeaponVerdict,
   type BattleLogEvent,
-} from './weapon.js'
+} from './weapon'

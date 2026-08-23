@@ -39,6 +39,7 @@ import { backfillObservations, runReconstruct } from './jobs/reconstruct.js'
 import { bootstrapBeta, BETA_DATA_START } from './jobs/betaBootstrap.js'
 import { linkIdentitiesByEvidence, registerObservedMaps } from './jobs/identityLink.js'
 import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/rosterSync.js'
+import { applyWeaponToStats, importWeaponEvidence, rebuildWeaponBuckets } from './jobs/weapon.js'
 import { runRate } from './jobs/rate.js'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
@@ -613,6 +614,72 @@ async function main(): Promise<number> {
      *
      * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 기본은 미리보기다.
      */
+    case 'weapon-import': {
+      const file = stringFlag(args, 'file')
+      if (!file) {
+        fail('--file <수집.json> 이 필요하다')
+        return 1
+      }
+      const result = await importWeaponEvidence({ file, confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          경기: result.matches,
+          성공: result.succeeded,
+          실패: result.failed,
+          '원문 신규': result.rawStored,
+          '원문 중복': result.rawDuplicate,
+          '근거 신규': result.evidence.created,
+          '근거 갱신': result.evidence.updated,
+        },
+      ])
+      table([
+        {
+          라플: result.classification.rifle,
+          스나: result.classification.sniper,
+          unknown: result.classification.unknown,
+          '사람 미확정': result.unresolved,
+        },
+      ])
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    case 'weapon-apply': {
+      const result = await applyWeaponToStats({ confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          근거: result.evidence,
+          '반영됨': result.statsUpdated,
+          'unknown 제외': result.skippedUnknown,
+          '경기기록 없음': result.skippedNoStat,
+          충돌: result.conflicts,
+        },
+      ])
+      if (result.conflicts > 0) warn('이미 다른 값이 있는 기록은 덮어쓰지 않았다. 사람이 확인해야 한다')
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    case 'weapon-rebuild': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      const result = await rebuildWeaponBuckets({ leagueSlug, confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          선수: result.players,
+          버킷: result.buckets,
+          '라플 경기': result.rifleGames,
+          '스나 경기': result.sniperGames,
+          '무기 미상': result.unknownGames,
+        },
+      ])
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
     case 'roster-sync': {
       const leagueSlug = stringFlag(args, 'league')
       if (!leagueSlug) {

@@ -1741,3 +1741,29 @@ POST /api/Match/GetMatchClanDetail/{match_key}/C/{clan_slug}   ← AR/SR 적중 
 **구현 상태**: 판정기와 파서는 완성됐고 회귀 18건으로 고정했다
 (`packages/nexon/src/__tests__/weapon.test.ts`).
 DB 저장(`weapon` 컬럼 채우기)과 라플/스나 버킷 집계는 **아직 붙이지 않았다.**
+
+### D-115. 라플/스나 누적은 **판정된 공식 경기만** 쌓는다
+
+`LeaguePlayerWeaponStat`(이미 있던 모델)을 그대로 쓴다. 새 모델을 만들지 않았다.
+
+| | 규칙 |
+|---|---|
+| 대상 | **공식 경기만**. 비공식은 통합 기록에도 안 들어간다 (D-080) |
+| `unknown` | 어느 버킷에도 넣지 않는다. 통합 기록에는 이미 들어가 있다 |
+| deaths | 그 경기 death **전부**를 그 역할 버킷에 넣는다. "무엇에 죽었나"는 역할별 KD와 무관하다 |
+| 재작성 | 처음부터 다시 만든다. 두 번 돌려도 값이 두 배가 되지 않는다 |
+| 래더 | 무기별 래더는 **만들지 않는다.** 통합 래더가 진실이다 (`CLAUDE.md` 3-B 1·2번) |
+
+화면은 판정된 경기가 하나도 없으면 **패널 자체를 그리지 않는다.**
+`0경기 0킬 0데스`는 정보가 아니라 소음이다.
+
+수집은 정상 브라우저가 하고 워커는 그 결과 파일을 읽는다 — Node에서 병영수첩을 부르면
+403이고, UA를 위조해 뚫지 않는다.
+
+```bash
+pnpm nexon:weapon-import  --file <수집.json> [--confirm]   # 원문 + 근거 (멱등)
+pnpm nexon:weapon-apply   [--confirm]                      # 근거 → MatchPlayerStat.weapon
+pnpm nexon:weapon-rebuild --league <slug> [--confirm]      # 공식 경기 → 라플/스나 누적
+```
+
+판정기를 고쳐도 **외부에 다시 요청하지 않는다.** 저장된 근거에서 다시 계산한다.

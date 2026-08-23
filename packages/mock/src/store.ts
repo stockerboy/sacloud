@@ -109,6 +109,27 @@ for (const comment of dataset.comments) {
 const matchCountByLeagueClan = new Map<string, number>()
 for (const [id, list] of matchesByLeagueClan) matchCountByLeagueClan.set(id, list.length)
 
+/** 무기별 누적 (leaguePlayerId → weapon → 합계). `packages/db/seed/seed.ts`와 **같은 규칙**이다.
+    한쪽만 고치면 mock↔실제 대조가 깨진다 (실제로 깨졌다). */
+const weaponStatsByLeaguePlayer = new Map<
+  string,
+  Map<number, { win: number; lose: number; kill: number; death: number }>
+>()
+for (const match of dataset.matches) {
+  for (const stat of match.players) {
+    const leaguePlayer = leaguePlayerByLeagueAndPlayer.get(`${match.leagueId}:${stat.playerId}`)
+    if (!leaguePlayer) continue
+    const byWeapon = weaponStatsByLeaguePlayer.get(leaguePlayer.id) ?? new Map()
+    const bucket = byWeapon.get(stat.weapon) ?? { win: 0, lose: 0, kill: 0, death: 0 }
+    if (stat.win) bucket.win += 1
+    else bucket.lose += 1
+    bucket.kill += stat.kill
+    bucket.death += stat.death
+    byWeapon.set(stat.weapon, bucket)
+    weaponStatsByLeaguePlayer.set(leaguePlayer.id, byWeapon)
+  }
+}
+
 const matchCountByLeaguePlayer = new Map<string, number>()
 for (const [key, list] of matchesByPlayer) matchCountByLeaguePlayer.set(key, list.length)
 
@@ -820,6 +841,7 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     rank_count: rank.rankCount,
     match_summary: buildMatchSummary(matches, leaguePlayer.leagueClanId, playerId),
     teammates: buildTeammates(matches, leaguePlayer.leagueClanId, playerId),
+    weapon_stats: weaponStatsOf(leaguePlayer.id),
   }
 }
 
@@ -884,6 +906,27 @@ export function getLeagueClanPlayers(
 }
 
 /* ------------------------------ 지난시즌 ------------------------------ */
+
+/** 무기별 누적 → 응답 형태 (D-115). 판정된 경기가 없으면 빈 배열이다 */
+function weaponStatsOf(leaguePlayerId: string) {
+  const byWeapon = weaponStatsByLeaguePlayer.get(leaguePlayerId)
+  if (!byWeapon) return []
+  return [...byWeapon.entries()]
+    .sort((left, right) => left[0] - right[0])
+    .map(([weapon, bucket]) => {
+      const games = bucket.win + bucket.lose
+      return {
+        weapon: weapon as 0 | 1,
+        games,
+        win: bucket.win,
+        lose: bucket.lose,
+        kill: bucket.kill,
+        death: bucket.death,
+        kd_rate: kdRate(bucket.kill, bucket.death),
+        kill_per_match: killPerMatch(bucket.kill, games),
+      }
+    })
+}
 
 export function getLeaguePlayerSeasons(leaguePlayerId: string): LeaguePlayerSeason[] | null {
   if (!leaguePlayerById.has(leaguePlayerId)) return null

@@ -1,3 +1,4 @@
+export { WeaponStatPanel, type PlayerWeaponStatRow } from './record/RecordPanels'
 export { SiteShell } from './layout/SiteShell'
 export { SiteHeader, type SiteHeaderProps } from './layout/SiteHeader'
 export { SiteFooter } from './layout/SiteFooter'

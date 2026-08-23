@@ -518,12 +518,41 @@ export async function getLeaguePlayerDetail(
     rank_count: rank.rankCount,
     match_summary: record.summary,
     teammates: record.teammates,
+    weapon_stats: await weaponStatsOf(leaguePlayer.id),
   }
 }
 
 /* -------------------------------------------------------------------------- */
 /* 지난시즌                                                                     */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * 무기별 누적 (D-115).
+ *
+ * 판정된 경기만 들어 있다. `unknown`은 여기 오지 않고 통합 기록에만 남는다.
+ * 버킷이 없으면 **빈 배열**이다 — 0으로 채운 가짜 줄을 만들지 않는다.
+ */
+async function weaponStatsOf(leaguePlayerId: string) {
+  const rows = await prisma.leaguePlayerWeaponStat.findMany({
+    where: { leaguePlayerId },
+    orderBy: { weapon: 'asc' },
+    select: { weapon: true, win: true, lose: true, kill: true, death: true },
+  })
+
+  return rows.map((row) => {
+    const games = row.win + row.lose
+    return {
+      weapon: row.weapon as 0 | 1,
+      games,
+      win: row.win,
+      lose: row.lose,
+      kill: row.kill,
+      death: row.death,
+      kd_rate: kdRate(row.kill, row.death),
+      kill_per_match: killPerMatch(row.kill, games),
+    }
+  })
+}
 
 /** GET /leagueplayers/{leaguePlayerId}/seasons */
 export async function getLeaguePlayerSeasons(

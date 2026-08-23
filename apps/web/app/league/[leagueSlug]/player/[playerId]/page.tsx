@@ -10,6 +10,7 @@ import {
   RecentMatchSummary,
   Skeleton,
   TeammateTable,
+  WeaponStatPanel,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -122,6 +123,8 @@ export default function LeaguePlayerRecordPage({
             rankCount={data.rank_count}
             clan={data.clan}
           />
+          {/* 무기 판정이 있는 경기가 있을 때만 뜬다 (D-115) */}
+          <WeaponStatPanel stats={data.weapon_stats} />
           <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
         </div>
       </div>
