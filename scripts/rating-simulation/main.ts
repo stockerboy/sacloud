@@ -17,6 +17,7 @@ import {
   DEFAULT_PERSONAL,
   compositionScore,
   confidenceFor,
+  setCompositionParams,
   type ClanConstants,
   type ConfidenceMode,
   type PersonalConstants,
@@ -42,6 +43,15 @@ import {
   runReshuffle,
 } from './scenarios.js'
 import { renderReport } from './report.js'
+import {
+  CANDIDATE2_DECAY,
+  CANDIDATE2_DISPLAY,
+  LAB_MATCHUPS,
+  runLab,
+  type DecayConfig,
+  type DisplayConfig,
+} from './candidate2.js'
+import { bandCounts, driversVerdict, rankDrivers } from './analysis.js'
 
 interface Options {
   seed: number
@@ -85,6 +95,9 @@ function runSeason(
   clanConstants: ClanConstants,
   /** 후보 1안: 상한 있는 구성 보정을 최종 점수에 더한다 (D-140) */
   useBoundedComposition = false,
+  /** 후보 2안 (D-141) */
+  decay: DecayConfig = { mode: 'none', floor: 3000 },
+  display?: DisplayConfig,
 ) {
   const rng = new Rng(seed)
   const base = makePlayers(rng, options.players)
@@ -92,8 +105,9 @@ function runSeason(
   const allPlayers = [...base, ...archetypes]
   const clans = makeClans(rng, allPlayers, options.clans)
   const matches = scheduleSeason(rng, allPlayers, clans, options.seasonDays)
-  const result = replay(matches, personal, clanConstants)
-  const personalRows = personalLeaderboard(result, allPlayers)
+  const seasonMinutes = options.seasonDays * 24 * 60
+  const result = replay(matches, personal, clanConstants, decay, seasonMinutes)
+  const personalRows = personalLeaderboard(result, allPlayers, display, seasonMinutes)
   const clanRows = clanLeaderboard(result, clans, useBoundedComposition)
   return { rng, allPlayers, clans, matches, result, personalRows, clanRows }
 }
@@ -320,6 +334,139 @@ function main(): void {
     score: compositionScore(avg),
   }))
 
+  /* ============================ 후보 2안 (D-141) ============================ */
+
+  /* 후보 2안 개인 상수 — 퍼포먼스 비중은 아래 sweep 결과를 반영해 **±2%** 로 둔다.
+     ±5% 는 "일정 감안 승리의 질" 상관을 0.98 → 0.90 으로 떨어뜨리면서
+     실력 재현도는 전혀 못 올린다 (D-141). */
+  const c2Personal = { ...CANDIDATE1_PERSONAL, performanceWeight: 0.02, displayScale: 1 }
+  const c2 = (seed: number, opts = options, display = CANDIDATE2_DISPLAY, decay = CANDIDATE2_DECAY) =>
+    runSeason(seed, opts, c2Personal, CANDIDATE1_CLAN, true, decay, display)
+
+  const candidate2Primary = c2(options.seed)
+
+  /* --- 무엇이 순위를 만드는가 (승패 vs KD) --- */
+  const drivers = rankDrivers(candidate2Primary.personalRows)
+  /* 퍼포먼스 0% 기준선 — KD 상관 중 "공짜로 생기는" 몫을 재려면 대조군이 필요하다 */
+  const zeroPerfSeason = runSeason(
+    options.seed, options, { ...c2Personal, performanceWeight: 0 },
+    CANDIDATE1_CLAN, true, CANDIDATE2_DECAY, CANDIDATE2_DISPLAY,
+  )
+  const baselineDrivers = rankDrivers(zeroPerfSeason.personalRows)
+  const driversPass = driversVerdict(drivers, baselineDrivers.kd)
+
+  /* --- 퍼포먼스 비중 sweep — KD 영향이 실제로 커지는지 --- */
+  const c2PerformanceSweep = [0, 0.02, 0.05, 0.1].map((w) => {
+    const season = runSeason(
+      options.seed, options, { ...c2Personal, performanceWeight: w },
+      CANDIDATE1_CLAN, true, CANDIDATE2_DECAY, CANDIDATE2_DISPLAY,
+    )
+    const d = rankDrivers(season.personalRows)
+    const bias = roleBias(season.personalRows)
+    return {
+      weight: w,
+      skillCorr: skillCorrelation(season.personalRows),
+      winsAboveExpected: d.winsAboveExpected,
+      winRate: d.winRate,
+      kd: d.kd,
+      mvpRate: d.mvpRate,
+      sniperEdge:
+        (bias.find((b) => b.role === 'sniper')?.avgOverRating ?? 0) -
+        (bias.find((b) => b.role === 'support')?.avgOverRating ?? 0),
+      verdict: driversVerdict(d, baselineDrivers.kd).pass,
+    }
+  })
+
+  /* --- 표시 변환 3종 --- */
+  const transformSweep = ([
+    { transform: 'linear', scale: 3.3 },
+    { transform: 'piecewise', scale: 3.0, upperScale: 4.6 },
+    { transform: 'convex', scale: 3.0, curvature: 0.45 },
+  ] as DisplayConfig[]).map((cfg) => {
+    const season = c2(options.seed, options, cfg)
+    const rows = season.personalRows
+    return {
+      config: cfg,
+      skillCorr: skillCorrelation(rows),
+      top: rows[0]?.displayed ?? 0,
+      p10: rows[9]?.displayed ?? 0,
+      median: rows[Math.floor(rows.length / 2)]?.displayed ?? 0,
+      bands: bandCounts(rows),
+    }
+  })
+
+  /* --- 미참여 감점 A vs B vs 없음 --- */
+  const decaySweep = (['none', 'tier', 'continuous'] as const).map((mode) => {
+    const cfg: DecayConfig = { mode, floor: 3000 }
+    const season = c2(options.seed, options, CANDIDATE2_DISPLAY, cfg)
+    const rows = season.personalRows
+    const idle = rows.filter((r) => r.idleDays >= 21)
+    const active = rows.filter((r) => r.idleDays < 7)
+    return {
+      mode,
+      skillCorr: skillCorrelation(rows),
+      top: rows[0]?.displayed ?? 0,
+      /** 3주 이상 잠수한 사람이 top20 에 몇 명 남는가 — 잠수 왕좌 지표 */
+      idleInTop20: rows.slice(0, 20).filter((r) => r.idleDays >= 21).length,
+      idleAvgLost: idle.length ? idle.reduce((a, r) => a + r.decayLost, 0) / idle.length : 0,
+      activeAvgLost: active.length ? active.reduce((a, r) => a + r.decayLost, 0) / active.length : 0,
+      /** 감점을 한 번이라도 받은 사람 비율 */
+      decayedShare: rows.filter((r) => r.decayTicks > 0).length / Math.max(1, rows.length),
+    }
+  })
+
+  /* --- 구성 상한 × window sweep --- */
+  const compositionSweep: {
+    cap: number
+    window: number
+    clanCorr: number
+    bonusShareTop10: number
+    negBaseTop10: number
+  }[] = []
+  for (const cap of [50, 70, 100]) {
+    for (const win of [10, 20, 30, 50]) {
+      setCompositionParams(cap, win)
+      const season = c2(options.seed)
+      const rows = season.clanRows
+      const latentSorted = [...rows].sort((a, b) => b.latentStrength - a.latentStrength)
+      const latentRank = new Map(latentSorted.map((r, i) => [r.clanId, i + 1]))
+      const n = rows.length
+      let sum = 0
+      for (const r of rows) {
+        const d = r.rank - (latentRank.get(r.clanId) ?? r.rank)
+        sum += d * d
+      }
+      const top10 = rows.slice(0, 10)
+      compositionSweep.push({
+        cap,
+        window: win,
+        clanCorr: n > 1 ? 1 - (6 * sum) / (n * (n * n - 1)) : 0,
+        bonusShareTop10:
+          top10.reduce((a, r) => a + r.compositionScore, 0) /
+          Math.max(1, top10.reduce((a, r) => a + Math.abs(r.rating - 3000) + r.compositionScore, 0)),
+        negBaseTop10: top10.filter((r) => r.baseDeltaTotal < 0).length,
+      })
+    }
+  }
+  setCompositionParams(100, 20) // 기본값 복구
+
+  /* --- 4900/5000 희귀성: 모집단 × 시드 --- */
+  const rarity: { players: number; clans: number; seed: number; top: number; bands: Record<string, number> }[] = []
+  for (const [pl, cl] of [[150, 50], [220, 100], [500, 150]] as const) {
+    for (let i = 0; i < Math.min(4, options.runs); i += 1) {
+      const seed = options.seed + i * 977
+      const season = c2(seed, { ...options, players: pl, clans: cl })
+      rarity.push({ players: pl, clans: cl, seed, top: season.personalRows[0]?.displayed ?? 0, bands: bandCounts(season.personalRows) })
+    }
+  }
+
+  /* --- 정면 대결 (사용자 지시 9장) --- */
+  const labs = LAB_MATCHUPS.map((m) => {
+    const a = runLab(m.a, c2Personal, CANDIDATE2_DISPLAY)
+    const b = runLab(m.b, c2Personal, CANDIDATE2_DISPLAY)
+    return { name: m.name, expect: m.expect, a, b, winner: a.display >= b.display ? a.label : b.label }
+  })
+
   /* ------------------------------------------------------- 매트릭스 ---------- */
   const evenTable = evenMatchTable(DEFAULT_CLAN)
   const compMatrix = compositionMatrix(DEFAULT_CLAN)
@@ -371,6 +518,25 @@ function main(): void {
     altDeathmatch,
     candidateRuns,
     compositionCurve,
+    candidate2: {
+      personalConstants: c2Personal,
+      display: CANDIDATE2_DISPLAY,
+      decay: CANDIDATE2_DECAY,
+      personalRows: candidate2Primary.personalRows,
+      clanRows: candidate2Primary.clanRows,
+      skillCorr: skillCorrelation(candidate2Primary.personalRows),
+      drivers,
+      baselineDrivers,
+      driversPass,
+      bands: bandCounts(candidate2Primary.personalRows),
+      anomalies: detectAnomalies(candidate2Primary.personalRows, candidate2Primary.allPlayers),
+    },
+    c2PerformanceSweep,
+    transformSweep,
+    decaySweep,
+    compositionSweep,
+    rarity,
+    labs,
     candidate: {
       personalRows: candidatePrimary.personalRows,
       clanRows: candidatePrimary.clanRows,

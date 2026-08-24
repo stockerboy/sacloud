@@ -239,22 +239,37 @@ export function compositionScore(
   avgMembers: number,
   curve: readonly [number, number][] = COMPOSITION_CURVE,
 ): number {
-  if (avgMembers <= curve[0]![0]) return curve[0]![1]
+  const ratio = COMPOSITION_CAP / 100
+  const at = (value: number): number => value * ratio
+  if (avgMembers <= curve[0]![0]) return at(curve[0]![1])
   const last = curve[curve.length - 1]!
-  if (avgMembers >= last[0]) return last[1]
+  if (avgMembers >= last[0]) return at(last[1])
   for (let i = 1; i < curve.length; i += 1) {
     const [x1, y1] = curve[i - 1]!
     const [x2, y2] = curve[i]!
     if (avgMembers <= x2) {
       const t = (avgMembers - x1) / (x2 - x1)
-      return y1 + t * (y2 - y1)
+      return at(y1 + t * (y2 - y1))
     }
   }
-  return last[1]
+  return at(last[1])
 }
 
 /** 최근 N경기만 본다 — 옛날에 잘 모았다고 계속 받으면 그것도 누적이다 */
-export const COMPOSITION_WINDOW = 20
+export let COMPOSITION_WINDOW = 20
+/** 구성 보정 상한. 곡선 전체를 이 값에 맞춰 늘리거나 줄인다 */
+export let COMPOSITION_CAP = 100
+
+/**
+ * 상한·창 크기를 바꾼다 (sweep 용).
+ *
+ * 시뮬레이션 파라미터 탐색에만 쓴다 — 운영이라면 설정으로 뺄 값이다.
+ * 곡선 모양은 유지하고 **비례로만** 늘리고 줄인다.
+ */
+export function setCompositionParams(cap: number, window: number): void {
+  COMPOSITION_CAP = cap
+  COMPOSITION_WINDOW = window
+}
 
 export function averageMembers(recent: readonly number[], window = COMPOSITION_WINDOW): number {
   if (recent.length === 0) return 0

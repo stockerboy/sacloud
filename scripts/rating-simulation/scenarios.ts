@@ -24,6 +24,7 @@ function mkPlayer(id: string, skill: number, clanId: string | null, role: Role =
     clanId,
     targetGames: 0,
     opponentBias: 0,
+    activeUntil: 1,
   }
 }
 

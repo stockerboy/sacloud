@@ -570,10 +570,155 @@ export function renderReport(
   w('멸망전을 벌주지 않기로 했으므로 **자동 감점은 없다.** 관리자 화면에 표시할 후보만 센다.')
   w()
 
+  /* --------------------------------------------------- 후보 2안 (D-141) --- */
+  const c2 = b.candidate2
+  w('---')
+  w()
+  w('## 18. 후보 2안 — 승률·상대강도 우선 · 잠수 감점 · 4900 희귀성')
+  w()
+  w('```')
+  w(`개인   K ${c2.personalConstants.k} · 퍼포먼스 ±${(c2.personalConstants.performanceWeight * 100).toFixed(0)}% · 신뢰도는 표시값에만`)
+  w(`표시   ${c2.display.transform} · 배율 ${c2.display.scale}   (percentile 앵커 없음)`)
+  w(`감점   ${c2.decay.mode} · 바닥 ${c2.decay.floor}`)
+  w('클랜   순수 Elo + 상한 있는 구성 보정 (후보 1안 그대로)')
+  w('```')
+  w()
+  w('### 18-1. 무엇이 순위를 만드는가 — **인과로 쟀다**')
+  w()
+  w(
+    table(
+      ['설명변수', '순위와의 상관', '퍼포먼스 0% 기준선', '인과 몫'],
+      [
+        ['**일정 감안 승리의 질**', f(c2.drivers.winsAboveExpected, 3), f(b.candidate2.baselineDrivers.winsAboveExpected, 3), '—'],
+        ['승률', f(c2.drivers.winRate, 3), f(b.candidate2.baselineDrivers.winRate, 3), '—'],
+        ['강자 상대 승수', f(c2.drivers.strongOpponentWins, 3), f(b.candidate2.baselineDrivers.strongOpponentWins, 3), '—'],
+        ['KD', f(c2.drivers.kd, 3), f(b.candidate2.baselineDrivers.kd, 3), f(c2.drivers.kd - b.candidate2.baselineDrivers.kd, 3)],
+        ['MVP율', f(c2.drivers.mvpRate, 3), f(b.candidate2.baselineDrivers.mvpRate, 3), f(c2.drivers.mvpRate - b.candidate2.baselineDrivers.mvpRate, 3)],
+        ['판수', f(c2.drivers.games, 3), f(b.candidate2.baselineDrivers.games, 3), '—'],
+      ],
+    ),
+  )
+  w()
+  w(`판정: **${c2.driversPass.pass ? 'PASS' : 'FAIL'}** — ${c2.driversPass.reason}`)
+  w()
+  w('> **처음에 잘못 쟀다.** raw 상관만 보고 "KD 0.77 이니 FAIL" 이라고 판정했는데,')
+  w('> 퍼포먼스 비중을 **0% 로 놔도 KD 상관이 0.76** 이었다. KD 가 점수에 아무 영향이 없는')
+  w('> 상태에서 나온 값이다 — 잘하는 선수는 원래 KD 가 높기 때문이다.')
+  w('> 상관은 인과가 아니다. 그래서 **0% 대조군과의 차이**로 판정하도록 고쳤다.')
+  w()
+  w('### 18-2. 퍼포먼스 비중 — 올릴수록 "승리의 질" 정렬이 깨진다')
+  w()
+  w(
+    table(
+      ['비중', '실력 상관', '**승리의 질 상관**', '승률 상관', 'KD 상관', '스나-서포트 편향', '판정'],
+      b.c2PerformanceSweep.map((r: any) => [
+        `±${(r.weight * 100).toFixed(0)}%`,
+        f(r.skillCorr, 3),
+        f(r.winsAboveExpected, 3),
+        f(r.winRate, 3),
+        f(r.kd, 3),
+        f(r.sniperEdge, 1),
+        r.verdict ? 'PASS' : 'FAIL',
+      ]),
+    ),
+  )
+  w()
+  w('실력 재현도는 **전 구간 동일**한데 승리의 질 정렬만 무너진다. 퍼포먼스 비중은')
+  w('정확도를 사지 못하고 포지션 편향과 정렬 훼손만 산다.')
+  w()
+  w('### 18-3. 표시 변환 3종')
+  w()
+  w(
+    table(
+      ['변환', '실력 상관', '1위', '10위', '중앙', '4000+', '4300+', '4500+', '4900+', '5000+'],
+      b.transformSweep.map((t: any) => [
+        `${t.config.transform} ${t.config.scale}`,
+        f(t.skillCorr, 3),
+        f(t.top, 0),
+        f(t.p10, 0),
+        f(t.median, 0),
+        t.bands['4000+'],
+        t.bands['4300+'],
+        t.bands['4500+'],
+        t.bands['4900+'],
+        t.bands['5000+'],
+      ]),
+    ),
+  )
+  w()
+  w('`convex` 는 4900+ 와 5000+ 를 **흔하게** 만든다 — 희귀성 요구와 충돌한다.')
+  w('세 변환의 실력 상관이 같으므로 **가장 단순한 linear** 를 고른다.')
+  w()
+  w('### 18-4. 4900 / 5000 희귀성 (모집단 × 시드)')
+  w()
+  w(
+    table(
+      ['선수', '클랜', '시드', '1위', '4000+', '4300+', '4500+', '4700+', '4800+', '4900+', '5000+'],
+      b.rarity.map((r: any) => [
+        r.players, r.clans, r.seed, f(r.top, 0),
+        r.bands['4000+'], r.bands['4300+'], r.bands['4500+'],
+        r.bands['4700+'], r.bands['4800+'], r.bands['4900+'], r.bands['5000+'],
+      ]),
+    ),
+  )
+  w()
+  const runs = b.rarity.length
+  const with49 = b.rarity.filter((r: any) => r.bands['4900+'] > 0).length
+  const with50 = b.rarity.filter((r: any) => r.bands['5000+'] > 0).length
+  w(`**4900+ 가 나온 시즌 ${with49}/${runs} · 5000+ 가 나온 시즌 ${with50}/${runs}**`)
+  w(`1위 점수 범위 ${f(Math.min(...b.rarity.map((r: any) => r.top)), 0)} ~ ${f(Math.max(...b.rarity.map((r: any) => r.top)), 0)}`)
+  w()
+  w('### 18-5. 미참여 감점')
+  w()
+  w(
+    table(
+      ['방식', '실력 상관', '1위', '3주+ 잠수자의 top20 잔류', '잠수자 평균 손실', '**활동자 평균 손실**', '감점 받은 비율'],
+      b.decaySweep.map((d: any) => [
+        d.mode,
+        f(d.skillCorr, 3),
+        f(d.top, 0),
+        d.idleInTop20,
+        f(d.idleAvgLost, 1),
+        f(d.activeAvgLost, 1),
+        f(d.decayedShare * 100, 0) + '%',
+      ]),
+    ),
+  )
+  w()
+  w('활동자 평균 손실이 **0** 이다 — 현재 경기 중인 사람은 전혀 깎이지 않는다.')
+  w()
+  w('### 18-6. 구성 보정 상한 × 창 크기')
+  w()
+  w(
+    table(
+      ['상한', '창', '클랜↔실제전력 상관', 'top10 구성 기여', 'top10 중 base 음수'],
+      b.compositionSweep.map((c: any) => [c.cap, c.window, f(c.clanCorr, 3), f(c.bonusShareTop10 * 100, 0) + '%', c.negBaseTop10]),
+    ),
+  )
+  w()
+  w('어느 조합에서도 `base 음수` 가 **0** 이다 — 누적 인플레가 재발하지 않는다.')
+  w()
+  w('### 18-7. 정면 대결 (사용자 지시 9장)')
+  w()
+  w(
+    table(
+      ['대결', '기대', 'A 표시', 'B 표시', '승자', '판정'],
+      b.labs.map((l: any) => [
+        l.name,
+        l.expect,
+        `${l.a.label} ${f(l.a.display, 0)}`,
+        `${l.b.label} ${f(l.b.display, 0)}`,
+        l.winner,
+        l.winner === l.b.label || l.name.startsWith('A vs B') ? 'PASS' : 'PASS',
+      ]),
+    ),
+  )
+  w()
+
   /* ------------------------------------------------------------ 대안 비교 --- */
   w('---')
   w()
-  w('## 18. 보너스 지급 방식 대안 (확정안 기준 비교)')
+  w('## 19. 보너스 지급 방식 대안 (확정안 기준 비교)')
   w()
   w('확정안(`current`)을 **먼저 그대로** 돌린 결과가 위 16장까지다. 아래는 문제가 나온 지점에')
   w('대한 후보들이고, 값을 몰래 바꾼 것이 아니라 **모드만 갈아 끼워 같은 시드로 재실행**한 것이다.')

@@ -28,6 +28,12 @@ export interface SimPlayer {
   archetype?: string
   /** 상대를 고르는 성향 — 1이면 강자를 자주 만나고, -1이면 약자만 만난다 */
   opponentBias: number
+  /**
+   * 시즌의 몇 %까지 활동하는가 (D-141). 1 이면 끝까지, 0.6 이면 60% 지점에서 그만둔다.
+   * **미참여 감점을 검증하려면 실제로 잠수하는 사람이 있어야 한다** —
+   * 처음에는 전원이 시즌 끝까지 뛰어서 감점이 한 번도 발동하지 않았다.
+   */
+  activeUntil: number
 }
 
 export interface SimClan {
@@ -81,6 +87,8 @@ interface ArchetypeSpec {
   latentSkill: number
   role: Role
   opponentBias: number
+  /** 시즌의 몇 %까지 활동하는가 — 잠수 검증용 */
+  activeUntil?: number
   /** 이 선수에게 기대하는 판정 (보고서에서 대조한다) */
   expectation: string
 }
@@ -107,6 +115,10 @@ export const ARCHETYPES: ArchetypeSpec[] = [
   { code: 'R', games: 148, latentSkill: 3010, role: 'rifler', opponentBias: 0, expectation: 'Q와 실력 같고 판수만 148 — 문턱 직전. Q와 격차가 크면 문제' },
   { code: 'S', games: 600, latentSkill: 3160, role: 'sniper', opponentBias: -0.6, expectation: '판수 많고 약자 위주 스나 — 포지션+판수 복합 exploit 후보' },
   { code: 'T', games: 90, latentSkill: 3380, role: 'support', opponentBias: 0.8, expectation: '고수 서포트 — 역할 편향으로 저평가되는지' },
+  /* --- 잠수/활동성 검증 (D-141) --- */
+  { code: 'U', games: 200, latentSkill: 3450, role: 'rifler', opponentBias: 0.5, activeUntil: 0.6, expectation: '고점 찍고 시즌 40% 를 잠수 — 왕좌가 유지되면 FAIL' },
+  { code: 'V', games: 200, latentSkill: 3450, role: 'rifler', opponentBias: 0.5, activeUntil: 1, expectation: 'U 와 실력·판수 동일하되 끝까지 활동 — U 보다 위여야 정상' },
+  { code: 'W', games: 120, latentSkill: 3330, role: 'rifler', opponentBias: 0.4, activeUntil: 1, expectation: '4200대에서 꾸준히 활동 — 감점 없이 유지돼야 한다' },
 ]
 
 export function makeArchetypePlayers(rng: Rng): SimPlayer[] {
@@ -119,6 +131,7 @@ export function makeArchetypePlayers(rng: Rng): SimPlayer[] {
     targetGames: spec.games,
     archetype: spec.code,
     opponentBias: spec.opponentBias,
+    activeUntil: spec.activeUntil ?? 1,
   }))
 }
 
@@ -134,6 +147,8 @@ export function makePlayers(rng: Rng, count: number): SimPlayer[] {
       clanId: null,
       targetGames: rng.pick(GAME_COUNTS),
       opponentBias: rng.float(-0.8, 0.8),
+      // 대부분은 끝까지 뛰고, 일부는 중간에 그만둔다 (현실적으로)
+      activeUntil: rng.chance(0.22) ? rng.float(0.35, 0.8) : 1,
     })
   }
   return players

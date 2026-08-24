@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest'
 import { Rng } from '../rng'
 import {
   CANDIDATE1_CLAN,
+  CANDIDATE1_PERSONAL,
   DEFAULT_CLAN,
   DEFAULT_PERSONAL,
   averageMembers,
@@ -28,6 +29,7 @@ import {
   personalUpdate,
 } from '../engine'
 import { evenMatchTable } from '../scenarios'
+import { LAB_MATCHUPS, applyTransform, decayAmount, displayScore, runLab } from '../candidate2'
 
 describe('난수 결정성', () => {
   it('같은 시드는 같은 수열을 낸다', () => {
@@ -301,5 +303,103 @@ describe('후보 1안 — 표시 배율', () => {
 
   it('배율 1 이면 예전과 같다', () => {
     expect(displayRating(3400, 200, 'display', 1)).toBe(3400)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* 후보 2안 (D-141)                                                            */
+/* -------------------------------------------------------------------------- */
+
+describe('후보 2안 — 표시 변환', () => {
+  it('linear 는 baseline 을 그대로 둔다', () => {
+    expect(applyTransform(0, { transform: 'linear', scale: 3.3 })).toBe(3000)
+  })
+
+  it('linear 는 편차에 비례한다', () => {
+    expect(applyTransform(400, { transform: 'linear', scale: 3.3 })).toBeCloseTo(4320, 6)
+  })
+
+  it('convex 는 위로 갈수록 더 벌어진다', () => {
+    const cfg = { transform: 'convex' as const, scale: 3.0, curvature: 0.45 }
+    const low = applyTransform(200, cfg) - 3000
+    const high = applyTransform(400, cfg) - 3000
+    // 편차가 2배인데 점수는 2배보다 더 벌어져야 convex 다
+    expect(high / low).toBeGreaterThan(2)
+  })
+
+  it('piecewise 는 4000 아래에서 linear 와 같다', () => {
+    const cfg = { transform: 'piecewise' as const, scale: 3.0, upperScale: 4.6 }
+    expect(applyTransform(100, cfg)).toBeCloseTo(3300, 6)
+  })
+
+  it('신뢰도가 변환 **앞에** 곱해진다 — 신규를 3배로 부풀리지 않는다', () => {
+    const personal = { ...CANDIDATE1_PERSONAL, displayScale: 1 }
+    const cfg = { transform: 'linear' as const, scale: 3.3 }
+    // 20판(신뢰 0.4) 내부 3400 → 3000 + 400×0.4×3.3 = 3528
+    expect(displayScore(3400, 20, personal, cfg)).toBeCloseTo(3528, 6)
+    // 200판(신뢰 1.0) 같은 내부 → 3000 + 400×3.3 = 4320
+    expect(displayScore(3400, 200, personal, cfg)).toBeCloseTo(4320, 6)
+  })
+})
+
+describe('후보 2안 — 미참여 감점', () => {
+  const cfg = { mode: 'tier' as const, floor: 3000 }
+
+  it('유예 기간 안에는 깎지 않는다', () => {
+    expect(decayAmount(3500, 3, cfg)).toBe(0)
+    expect(decayAmount(3500, 6, cfg)).toBe(0)
+  })
+
+  it('낮은 점수는 아예 대상이 아니다 — 일반 유저를 괴롭히지 않는다', () => {
+    expect(decayAmount(3100, 60, cfg)).toBe(0)
+    expect(decayAmount(3000, 60, cfg)).toBe(0)
+    expect(decayAmount(2800, 60, cfg)).toBe(0)
+  })
+
+  it('높이 올라갈수록 유지 비용이 크다', () => {
+    const high = decayAmount(3500, 30, cfg)
+    const mid = decayAmount(3350, 30, cfg)
+    const low = decayAmount(3250, 30, cfg)
+    expect(high).toBeGreaterThan(mid)
+    expect(mid).toBeGreaterThan(low)
+  })
+
+  it('mode none 이면 아무것도 안 깎는다', () => {
+    expect(decayAmount(3600, 90, { mode: 'none', floor: 3000 })).toBe(0)
+  })
+
+  it('바닥 아래로는 안 내려간다', () => {
+    expect(decayAmount(2999, 90, cfg)).toBe(0)
+  })
+})
+
+describe('후보 2안 — 정면 대결 (사용자 지시 9장)', () => {
+  const personal = { ...CANDIDATE1_PERSONAL, performanceWeight: 0.02, displayScale: 1 }
+  const display = { transform: 'linear' as const, scale: 3.3 }
+  const run = (p: (typeof LAB_MATCHUPS)[number]['a']) => runLab(p, personal, display)
+
+  it('KD 82 · 승률 45% 가 강일정 57% 를 **이기지 못한다**', () => {
+    const m = LAB_MATCHUPS.find((x) => x.name.startsWith('C vs D'))!
+    expect(run(m.a).display).toBeLessThan(run(m.b).display)
+  })
+
+  it('약일정 66% 가 강일정 58% 를 압도하지 못한다', () => {
+    const m = LAB_MATCHUPS.find((x) => x.name.startsWith('A vs B'))!
+    expect(run(m.a).display).toBeGreaterThan(run(m.b).display)
+  })
+
+  it('40판 75% 신규가 500판 검증 상위권을 제치지 못한다', () => {
+    const m = LAB_MATCHUPS.find((x) => x.name.startsWith('신규 반짝'))!
+    expect(run(m.a).display).toBeLessThan(run(m.b).display)
+  })
+
+  it('1000판 41% 가 150판 60% 를 이기지 못한다', () => {
+    const m = LAB_MATCHUPS.find((x) => x.name.startsWith('판수 박치기'))!
+    expect(run(m.a).display).toBeLessThan(run(m.b).display)
+  })
+
+  it('150판 72% 약팀이 400판 58% 강팀을 이기지 못한다', () => {
+    const m = LAB_MATCHUPS.find((x) => x.name.startsWith('E vs F'))!
+    expect(run(m.a).display).toBeLessThan(run(m.b).display)
   })
 })

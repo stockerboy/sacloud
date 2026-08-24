@@ -322,3 +322,107 @@ export function inflationReport(
     topRating: rows[0]?.rating ?? 0,
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* 무엇이 순위를 만드는가 (D-141)                                                */
+/* -------------------------------------------------------------------------- */
+
+/** 스피어만 순위상관 — 두 값의 순위가 얼마나 같이 가는가 */
+function spearman(rows: readonly LeaderRow[], pick: (r: LeaderRow) => number): number {
+  const n = rows.length
+  if (n < 2) return 0
+  const sorted = [...rows].sort((a, b) => pick(b) - pick(a))
+  const rankOf = new Map(sorted.map((r, i) => [r.playerId, i + 1]))
+  let sum = 0
+  for (const row of rows) {
+    const d = row.rank - (rankOf.get(row.playerId) ?? row.rank)
+    sum += d * d
+  }
+  return 1 - (6 * sum) / (n * (n * n - 1))
+}
+
+export interface RankDrivers {
+  /** 일정을 감안한 승리의 질 (기대 대비 초과 승리) */
+  winsAboveExpected: number
+  /** 강자 상대 승수 */
+  strongOpponentWins: number
+  /** 단순 승률 */
+  winRate: number
+  /** 평균 상대 강도 */
+  scheduleStrength: number
+  kd: number
+  mvpRate: number
+  games: number
+}
+
+/**
+ * 순위를 실제로 만드는 것이 무엇인지 잰다.
+ *
+ * 사용자가 요구한 순서는 명확하다.
+ *   일정 감안 승리의 질 > 승률 >>> KD > MVP
+ * 이 순서가 뒤집히면 그 설계는 FAIL 이다.
+ */
+export function rankDrivers(rows: readonly LeaderRow[]): RankDrivers {
+  return {
+    winsAboveExpected: spearman(rows, (r) => r.winsAboveExpected),
+    strongOpponentWins: spearman(rows, (r) => r.vsTop30Wins),
+    winRate: spearman(rows, (r) => r.winRate),
+    scheduleStrength: spearman(rows, (r) => r.avgOpponentRating),
+    kd: spearman(rows, (r) => r.kd),
+    mvpRate: spearman(rows, (r) => r.mvpRate),
+    games: spearman(rows, (r) => r.games),
+  }
+}
+
+/**
+ * 승패·상대강도가 KD/MVP 보다 확실히 큰가 — **인과로 판정한다.**
+ *
+ * ── 처음에 잘못 쟀다 (기록으로 남긴다)
+ *   원래는 "KD 순위상관이 승률 순위상관보다 충분히 낮은가"로 판정했다. 그래서 FAIL 이 났다.
+ *   그런데 퍼포먼스 비중을 **0% 로 놓아도** KD 상관이 0.761 이었다.
+ *   KD 가 점수에 **아무 영향도 주지 않는 상태**에서 나온 값이다.
+ *
+ *   이유는 당연하다 — 잘하는 선수는 원래 KD 가 높다. 상관은 인과가 아니다.
+ *   그래서 raw 상관으로 판정하면 **영원히 FAIL** 이 나오는 잘못된 잣대였다.
+ *
+ * ── 그래서 이렇게 판정한다
+ *   1. 순위가 **일정 감안 승리의 질**과 강하게 맞물려 있는가 (≥ 0.90)
+ *   2. 퍼포먼스 비중 때문에 KD 상관이 **0% 기준선보다 유의하게 올라갔는가**
+ *      올라갔다면 그만큼이 KD 가 실제로 순위를 만든 몫이다
+ */
+export function driversVerdict(
+  d: RankDrivers,
+  /** 퍼포먼스 비중 0% 일 때의 KD 상관 — "공짜로 생기는" 몫 */
+  baselineKd?: number,
+): { pass: boolean; reason: string } {
+  if (d.winsAboveExpected < 0.9) {
+    return {
+      pass: false,
+      reason: `일정 감안 승리의 질 상관이 ${d.winsAboveExpected.toFixed(3)} 뿐이다 — 순위가 승리의 질을 못 따라간다`,
+    }
+  }
+  if (baselineKd !== undefined) {
+    const causal = d.kd - baselineKd
+    if (causal > 0.02) {
+      return {
+        pass: false,
+        reason: `KD 상관이 기준선(${baselineKd.toFixed(3)})보다 ${causal.toFixed(3)} 높다 — KD 가 순위를 만들고 있다`,
+      }
+    }
+    return {
+      pass: true,
+      reason:
+        `승리의 질 ${d.winsAboveExpected.toFixed(3)} · KD 는 기준선 대비 ${causal >= 0 ? '+' : ''}${causal.toFixed(3)} — ` +
+        `KD 상관 ${d.kd.toFixed(3)} 은 대부분 "잘하면 KD 도 높다" 는 자연 상관이다`,
+    }
+  }
+  return { pass: true, reason: `일정 감안 승리의 질 상관 ${d.winsAboveExpected.toFixed(3)}` }
+}
+
+/** 표시 점수대별 인원 — 4900/5000 희귀성 검증 */
+export function bandCounts(rows: readonly LeaderRow[]): Record<string, number> {
+  const bands = [4000, 4100, 4300, 4500, 4700, 4800, 4900, 5000]
+  const out: Record<string, number> = {}
+  for (const b of bands) out[`${b}+`] = rows.filter((r) => r.displayed >= b).length
+  return out
+}

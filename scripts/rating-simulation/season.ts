@@ -4,6 +4,7 @@
  * replay 는 운영과 같은 원칙이다: `startAt` 오름차순, 결정적, 같은 입력이면 같은 결과.
  */
 import { type Rng } from './rng.js'
+import { decayAmount, displayScore, type DecayConfig, type DisplayConfig } from './candidate2.js'
 import {
   BASELINE,
   averageMembers,
@@ -37,6 +38,18 @@ export interface PlayerState {
   /** 기대 승률 60% 초과였는데 진 경기 */
   upsetLosses: number
   performanceSum: number
+  /** 마지막 경기 시각(분) — 미참여 감점 계산에 쓴다 */
+  lastMinute: number
+  /** 감점으로 잃은 누적 점수 */
+  decayLost: number
+  decayTicks: number
+  /** 상위 10% · 30% 상대와의 경기/승리 — "누구와 싸워 얼마나 이겼나" */
+  vsTop10Games: number
+  vsTop10Wins: number
+  vsTop30Games: number
+  vsTop30Wins: number
+  /** 기대 대비 초과 승리 누계 — 일정을 감안한 승리의 질 */
+  winsAboveExpected: number
 }
 
 export interface ClanState {
@@ -53,6 +66,8 @@ export interface ClanState {
   recentMembers: number[]
   /** 상대별 대전 횟수 — **감점용이 아니라 탐지용**이다 (자동 감쇠 없음) */
   opponentCounts: Map<string, number>
+  lastMinute: number
+  decayLost: number
 }
 
 export interface SeasonResult {
@@ -81,6 +96,14 @@ function newPlayerState(id: string): PlayerState {
     upsetWins: 0,
     upsetLosses: 0,
     performanceSum: 0,
+    lastMinute: 0,
+    decayLost: 0,
+    decayTicks: 0,
+    vsTop10Games: 0,
+    vsTop10Wins: 0,
+    vsTop30Games: 0,
+    vsTop30Wins: 0,
+    winsAboveExpected: 0,
   }
 }
 
@@ -97,6 +120,8 @@ function newClanState(id: string): ClanState {
     opponentRatingSum: 0,
     recentMembers: [],
     opponentCounts: new Map(),
+    lastMinute: 0,
+    decayLost: 0,
   }
 }
 
@@ -109,6 +134,10 @@ export function replay(
   matches: readonly SimMatch[],
   personalConstants: PersonalConstants,
   clanConstants: ClanConstants,
+  /** 미참여 감점 (D-141). 주지 않으면 감점 없음 */
+  decayConfig: DecayConfig = { mode: 'none', floor: BASELINE },
+  /** 시즌 길이(분) — 감점 tick 을 돌릴 범위 */
+  seasonMinutes = 90 * 24 * 60,
 ): Omit<SeasonResult, 'matches'> {
   const players = new Map<string, PlayerState>()
   const clans = new Map<string, ClanState>()
@@ -133,7 +162,39 @@ export function replay(
     return s
   }
 
+  const WEEK = 7 * 24 * 60
+  let nextDecayAt = WEEK
+
+  /** 주 단위로 미참여 감점을 돌린다 */
+  const runDecay = (now: number): void => {
+    while (now >= nextDecayAt) {
+      const at = nextDecayAt
+      for (const state of players.values()) {
+        const idleDays = (at - state.lastMinute) / (24 * 60)
+        const amount = decayAmount(state.internal, idleDays, decayConfig)
+        if (amount <= 0) continue
+        const after = Math.max(decayConfig.floor, state.internal - amount)
+        state.decayLost += state.internal - after
+        state.internal = after
+        state.decayTicks += 1
+      }
+      for (const state of clans.values()) {
+        const idleDays = (at - state.lastMinute) / (24 * 60)
+        // 클랜은 개인과 같은 표를 억지로 쓰지 않는다 — 더 완만하게 (사용자 지시 7장)
+        if (idleDays < 14 || state.rating <= decayConfig.floor) continue
+        if (decayConfig.mode === 'none') continue
+        const amount = Math.min(20, Math.max(0, (state.rating - 3150) * 0.05))
+        if (amount <= 0) continue
+        const after = Math.max(decayConfig.floor, state.rating - amount)
+        state.decayLost += state.rating - after
+        state.rating = after
+      }
+      nextDecayAt += WEEK
+    }
+  }
+
   for (const match of ordered) {
+    runDecay(match.minute)
     const all = [...match.red, ...match.blue]
 
     /* --- 개인 --- */
@@ -168,6 +229,20 @@ export function replay(
         if (won && result.expected < 0.4) state.upsetWins += 1
         if (!won && result.expected > 0.6) state.upsetLosses += 1
         state.performanceSum += performance
+        state.lastMinute = match.minute
+
+        /* "누구와 싸워 얼마나 이겼나" — 사용자가 개인 랭킹의 1순위로 지목한 값이다.
+           기준선은 그 시점 rating 분포가 아니라 **절대값**으로 둔다. 분포 기준으로 하면
+           시즌 초반(전원 3000)에 아무도 강자가 아니게 되어 값이 왜곡된다. */
+        if (opponentAvg >= 3250) {
+          state.vsTop10Games += 1
+          if (won) state.vsTop10Wins += 1
+        }
+        if (opponentAvg >= 3120) {
+          state.vsTop30Games += 1
+          if (won) state.vsTop30Wins += 1
+        }
+        state.winsAboveExpected += (won ? 1 : 0) - result.expected
       }
     }
 
@@ -216,6 +291,7 @@ export function replay(
         state.baseDeltaTotal += result.baseDelta
         state.opponentRatingSum += opponentBefore
         state.recentMembers.push(members)
+        state.lastMinute = match.minute
       }
 
       /* 상대 반복 횟수 — **자동 감점은 하지 않는다.** 이상 패턴 탐지용으로만 센다 (D-140) */
@@ -223,6 +299,10 @@ export function replay(
       blue.opponentCounts.set(match.redClanId, (blue.opponentCounts.get(match.redClanId) ?? 0) + 1)
     }
   }
+
+  /* 시즌 마지막 경기 이후에도 남은 기간만큼 감점이 돌아야 한다 —
+     "고점 찍고 시즌 끝까지 잠수" 가 바로 이 구간에서 일어난다 */
+  runDecay(seasonMinutes)
 
   return { players, clans, clanRatingCreated, personalConstants, clanConstants }
 }
@@ -343,10 +423,14 @@ export function scheduleSeason(
     const blue = fillTeam(away, awayMembers, used)
     if (red.length < 5 || blue.length < 5) break
 
+    /* 경기 시각은 **참가자 전원이 아직 활동 중인** 구간에서 뽑는다.
+       그래야 "시즌 60% 지점에 그만둔 선수" 가 실제로 그 뒤로 안 나온다 (D-141). */
+    const limit = Math.min(...[...red, ...blue].map((p) => p.activeUntil))
+    const latest = Math.max(1, Math.floor(minutesTotal * limit))
     matches.push(
       buildMatch(rng, {
         index,
-        minute: rng.int(0, minutesTotal),
+        minute: rng.int(0, latest),
         redPlayers: red,
         bluePlayers: blue,
         redClanId: home.id,
@@ -382,11 +466,27 @@ export interface LeaderRow {
   confidence: number
   displayed: number
   latentSkill: number
+  /* --- 후보 2안 (D-141) --- */
+  /** 상위 10%급 상대와의 경기/승리 — 개인 랭킹의 1순위 근거 */
+  vsTop10Games: number
+  vsTop10Wins: number
+  vsTop30Games: number
+  vsTop30Wins: number
+  /** 기대 대비 초과 승리 — 일정을 감안한 승리의 질 */
+  winsAboveExpected: number
+  /** 미참여로 잃은 점수 · 감점 횟수 */
+  decayLost: number
+  decayTicks: number
+  /** 시즌 종료 시점 기준 미접속 일수 */
+  idleDays: number
 }
 
 export function personalLeaderboard(
   season: Omit<SeasonResult, 'matches'>,
   players: readonly SimPlayer[],
+  /** 후보 2안 표시 변환 (D-141). 없으면 기존 선형 배율 */
+  displayConfig?: DisplayConfig,
+  seasonMinutes = 90 * 24 * 60,
 ): LeaderRow[] {
   const byId = new Map(players.map((p) => [p.id, p]))
   const rows: LeaderRow[] = []
@@ -412,13 +512,23 @@ export function personalLeaderboard(
       upsetWins: state.upsetWins,
       internal: state.internal,
       confidence,
-      displayed: displayRating(
-        state.internal,
-        state.games,
-        season.personalConstants.confidenceMode,
-        season.personalConstants.displayScale,
-      ),
+      displayed: displayConfig
+        ? displayScore(state.internal, state.games, season.personalConstants, displayConfig)
+        : displayRating(
+            state.internal,
+            state.games,
+            season.personalConstants.confidenceMode,
+            season.personalConstants.displayScale,
+          ),
       latentSkill: player.latentSkill,
+      vsTop10Games: state.vsTop10Games,
+      vsTop10Wins: state.vsTop10Wins,
+      vsTop30Games: state.vsTop30Games,
+      vsTop30Wins: state.vsTop30Wins,
+      winsAboveExpected: state.winsAboveExpected,
+      decayLost: state.decayLost,
+      decayTicks: state.decayTicks,
+      idleDays: Math.max(0, (seasonMinutes - state.lastMinute) / (24 * 60)),
     })
   }
   rows.sort((a, b) => b.displayed - a.displayed)
@@ -450,6 +560,7 @@ export interface ClanLeaderRow {
   finalScore: number
   /** 가장 많이 만난 상대와의 대전 횟수 (탐지용) */
   topOpponentGames: number
+  decayLost: number
   latentStrength: number
 }
 
@@ -483,6 +594,7 @@ export function clanLeaderboard(
       compositionScore: composition,
       finalScore: state.rating + composition,
       topOpponentGames: Math.max(0, ...state.opponentCounts.values()),
+      decayLost: state.decayLost,
       latentStrength: clan.latentStrength,
     })
   }
