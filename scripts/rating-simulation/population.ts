@@ -119,6 +119,39 @@ export const ARCHETYPES: ArchetypeSpec[] = [
   { code: 'U', games: 200, latentSkill: 3450, role: 'rifler', opponentBias: 0.5, activeUntil: 0.6, expectation: '고점 찍고 시즌 40% 를 잠수 — 왕좌가 유지되면 FAIL' },
   { code: 'V', games: 200, latentSkill: 3450, role: 'rifler', opponentBias: 0.5, activeUntil: 1, expectation: 'U 와 실력·판수 동일하되 끝까지 활동 — U 보다 위여야 정상' },
   { code: 'W', games: 120, latentSkill: 3330, role: 'rifler', opponentBias: 0.4, activeUntil: 1, expectation: '4200대에서 꾸준히 활동 — 감점 없이 유지돼야 한다' },
+  /* --- 최종안 검증 (D-142) — 자유대전 환경의 핵심 위협 --- */
+  {
+    code: 'X',
+    games: 300,
+    latentSkill: 3400,
+    role: 'rifler',
+    opponentBias: -1,
+    expectation: '양학 — 실력은 최상위인데 약팀만 300판 고른다. 정상 일정 동급을 넘으면 FAIL',
+  },
+  {
+    code: 'Y',
+    games: 300,
+    latentSkill: 3400,
+    role: 'rifler',
+    opponentBias: 1,
+    expectation: 'X 와 실력·판수가 같고 상대만 강자 — X 보다 위여야 정상',
+  },
+  {
+    code: 'Z',
+    games: 700,
+    latentSkill: 3900,
+    role: 'rifler',
+    opponentBias: 1,
+    expectation: 'HISTORIC_OUTLIER — 압도적 실력 · 최다 판수 · 최강 일정. 5000 접근 여부를 본다',
+  },
+  {
+    code: 'AA',
+    games: 300,
+    latentSkill: 2950,
+    role: 'sniper',
+    opponentBias: -1,
+    expectation: '평범한 실력의 양학러 — 상위권이면 FAIL',
+  },
 ]
 
 export function makeArchetypePlayers(rng: Rng): SimPlayer[] {

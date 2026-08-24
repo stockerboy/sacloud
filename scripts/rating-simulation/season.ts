@@ -6,6 +6,15 @@
 import { type Rng } from './rng.js'
 import { decayAmount, displayScore, type DecayConfig, type DisplayConfig } from './candidate2.js'
 import {
+  CLAN_PENALTY_RECOVERY_PER_GAME,
+  FINAL_DISPLAY_SCALE,
+  PENALTY_RECOVERY_PER_GAME,
+  cappedPenalty,
+  clanDailyPenalty,
+  dailyPenalty,
+  finalDisplay,
+} from './final.js'
+import {
   BASELINE,
   averageMembers,
   clanUpdate,
@@ -43,6 +52,8 @@ export interface PlayerState {
   /** 감점으로 잃은 누적 점수 */
   decayLost: number
   decayTicks: number
+  /** 최종안(D-142): 표시 점수에서만 빼는 활동 페널티. 내부 실력은 건드리지 않는다 */
+  activityPenalty: number
   /** 상위 10% · 30% 상대와의 경기/승리 — "누구와 싸워 얼마나 이겼나" */
   vsTop10Games: number
   vsTop10Wins: number
@@ -68,6 +79,7 @@ export interface ClanState {
   opponentCounts: Map<string, number>
   lastMinute: number
   decayLost: number
+  activityPenalty: number
 }
 
 export interface SeasonResult {
@@ -99,6 +111,7 @@ function newPlayerState(id: string): PlayerState {
     lastMinute: 0,
     decayLost: 0,
     decayTicks: 0,
+    activityPenalty: 0,
     vsTop10Games: 0,
     vsTop10Wins: 0,
     vsTop30Games: 0,
@@ -122,6 +135,7 @@ function newClanState(id: string): ClanState {
     opponentCounts: new Map(),
     lastMinute: 0,
     decayLost: 0,
+    activityPenalty: 0,
   }
 }
 
@@ -138,6 +152,13 @@ export function replay(
   decayConfig: DecayConfig = { mode: 'none', floor: BASELINE },
   /** 시즌 길이(분) — 감점 tick 을 돌릴 범위 */
   seasonMinutes = 90 * 24 * 60,
+  /**
+   * 최종안(D-142)의 활동 페널티를 쓸지.
+   *
+   * 켜면 `decayConfig` 대신 **표시 점수 기준 구간표**로 페널티를 쌓고, 내부 Elo 는 그대로 둔다.
+   * 끄면 기존(D-141) 동작 그대로다 — 회귀 테스트를 깨지 않기 위해 기본은 꺼져 있다.
+   */
+  activityDecay = false,
 ): Omit<SeasonResult, 'matches'> {
   const players = new Map<string, PlayerState>()
   const clans = new Map<string, ClanState>()
@@ -163,10 +184,48 @@ export function replay(
   }
 
   const WEEK = 7 * 24 * 60
-  let nextDecayAt = WEEK
+  const DAY = 24 * 60
+  let nextDecayAt = activityDecay ? DAY : WEEK
 
-  /** 주 단위로 미참여 감점을 돌린다 */
+  /**
+   * 최종안 — **하루 단위**로 활동 페널티를 쌓는다.
+   *
+   * 구간을 표시 점수로 잡았기 때문에 내려갈수록 감점 속도도 같이 줄어 자기 제한이 걸린다.
+   * 내부 Elo(실력 추정치)는 절대 건드리지 않는다 — 사라진 것은 실력이 아니라 자격이다.
+   */
+  const runActivityDecay = (now: number): void => {
+    while (now >= nextDecayAt) {
+      const at = nextDecayAt
+      for (const state of players.values()) {
+        if (state.games === 0) continue
+        const idleDays = (at - state.lastMinute) / DAY
+        const before = finalDisplay(state.internal, state.games, FINAL_DISPLAY_SCALE)
+        const add = dailyPenalty(before - state.activityPenalty, idleDays)
+        if (add <= 0) continue
+        const next = cappedPenalty(before, state.activityPenalty + add)
+        state.decayLost += next - state.activityPenalty
+        state.activityPenalty = next
+        state.decayTicks += 1
+      }
+      for (const state of clans.values()) {
+        if (state.matches === 0) continue
+        const idleDays = (at - state.lastMinute) / DAY
+        const add = clanDailyPenalty(idleDays)
+        if (add <= 0) continue
+        const next = Math.max(0, Math.min(state.activityPenalty + add, state.rating - BASELINE))
+        state.decayLost += next - state.activityPenalty
+        state.activityPenalty = next
+      }
+      nextDecayAt += DAY
+    }
+  }
+
+  /** 주 단위로 미참여 감점을 돌린다 (D-141 · 구버전) */
   const runDecay = (now: number): void => {
+    if (activityDecay) {
+      runActivityDecay(now)
+      return
+    }
     while (now >= nextDecayAt) {
       const at = nextDecayAt
       for (const state of players.values()) {
@@ -230,6 +289,9 @@ export function replay(
         if (!won && result.expected > 0.6) state.upsetLosses += 1
         state.performanceSum += performance
         state.lastMinute = match.minute
+        /* 경기로만 페널티가 회복된다 — **한 판으로 다 지워지지 않는다.**
+           "1판 던지고 초기화" 를 막는 유일한 장치다 (사용자 지시 7장 마지막 줄). */
+        state.activityPenalty = Math.max(0, state.activityPenalty - PENALTY_RECOVERY_PER_GAME)
 
         /* "누구와 싸워 얼마나 이겼나" — 사용자가 개인 랭킹의 1순위로 지목한 값이다.
            기준선은 그 시점 rating 분포가 아니라 **절대값**으로 둔다. 분포 기준으로 하면
@@ -292,6 +354,7 @@ export function replay(
         state.opponentRatingSum += opponentBefore
         state.recentMembers.push(members)
         state.lastMinute = match.minute
+        state.activityPenalty = Math.max(0, state.activityPenalty - CLAN_PENALTY_RECOVERY_PER_GAME)
       }
 
       /* 상대 반복 횟수 — **자동 감점은 하지 않는다.** 이상 패턴 탐지용으로만 센다 (D-140) */
@@ -404,24 +467,46 @@ export function scheduleSeason(
     const want = desiredOpponentStrength(seed.opponentBias)
     const candidates = clans.filter((c) => c.id !== home.id)
     if (candidates.length === 0) break
-    const scored = candidates.map((c) => ({
-      clan: c,
-      // 원하는 강도와의 거리 + 약간의 잡음 (같은 상대만 만나지 않게)
-      score: -Math.abs(c.latentStrength - want) + rng.normal(0, 90),
-    }))
-    scored.sort((a, b) => b.score - a.score)
-    const away = scored[0]!.clan
 
     const used = new Set<string>()
     // seed 선수는 반드시 홈 팀에 넣는다
     used.add(seed.id)
     const homeMembers = Math.max(1, Math.min(5, Math.round(home.avgMembers + rng.normal(0, 0.6))))
-    const awayMembers = Math.max(1, Math.min(5, Math.round(away.avgMembers + rng.normal(0, 0.6))))
-
     const redRest = fillTeam(home, homeMembers, used)
     const red = [seed, ...redRest].slice(0, 5)
-    const blue = fillTeam(away, awayMembers, used)
-    if (red.length < 5 || blue.length < 5) break
+    if (red.length < 5) break
+
+    /* **실제로 나올 수 있는 라인업**으로 상대를 고른다 (D-142).
+   
+       예전에는 클랜의 `latentStrength` 만 보고 상대 클랜을 정했다. 그런데 그 클랜이
+       5명을 못 채우면 `fillTeam` 이 남은 아무나로 채우기 때문에, 고른 클랜이 아무리
+       강해도 **실제 나온 팀은 전체 평균으로 회귀**했다.
+       그 결과 "강자만 고른다(bias +1)" 와 "약자만 고른다(bias -1)" 의 상대 실력 차이가
+       114점밖에 안 났다 (클랜 실력 범위는 2624~3517인데도). 양학 검증이 통째로 무의미했다.
+   
+       그래서 후보 클랜 몇 곳을 **실제로 채워 본 뒤** 원하는 강도에 가장 가까운 라인업을 쓴다. */
+    const shortlist = candidates
+      .map((c) => ({ clan: c, score: -Math.abs(c.latentStrength - want) + rng.normal(0, 60) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+
+    let away: SimClan | null = null
+    let blue: SimPlayer[] = []
+    let bestGap = Infinity
+    for (const { clan: candidate } of shortlist) {
+      const trial = new Set(used)
+      const lineup = fillTeam(candidate, Math.max(1, Math.min(5, Math.round(candidate.avgMembers + rng.normal(0, 0.6)))), trial)
+      if (lineup.length < 5) continue
+      const avgLatent = lineup.reduce((sum, p) => sum + p.latentSkill, 0) / lineup.length
+      const gap = Math.abs(avgLatent - want)
+      if (gap < bestGap) {
+        bestGap = gap
+        away = candidate
+        blue = lineup
+      }
+    }
+    if (!away || blue.length < 5) break
+    for (const p of blue) used.add(p.id)
 
     /* 경기 시각은 **참가자 전원이 아직 활동 중인** 구간에서 뽑는다.
        그래야 "시즌 60% 지점에 그만둔 선수" 가 실제로 그 뒤로 안 나온다 (D-141). */
@@ -479,6 +564,9 @@ export interface LeaderRow {
   decayTicks: number
   /** 시즌 종료 시점 기준 미접속 일수 */
   idleDays: number
+  /** 최종안 — 감점 전 표시 점수와 쌓인 활동 페널티 */
+  displayBeforePenalty: number
+  activityPenalty: number
 }
 
 export function personalLeaderboard(
@@ -487,6 +575,8 @@ export function personalLeaderboard(
   /** 후보 2안 표시 변환 (D-141). 없으면 기존 선형 배율 */
   displayConfig?: DisplayConfig,
   seasonMinutes = 90 * 24 * 60,
+  /** 최종안 — 표시 점수에서 활동 페널티를 뺀다 */
+  activityDecay = false,
 ): LeaderRow[] {
   const byId = new Map(players.map((p) => [p.id, p]))
   const rows: LeaderRow[] = []
@@ -529,7 +619,17 @@ export function personalLeaderboard(
       decayLost: state.decayLost,
       decayTicks: state.decayTicks,
       idleDays: Math.max(0, (seasonMinutes - state.lastMinute) / (24 * 60)),
+      displayBeforePenalty: 0,
+      activityPenalty: state.activityPenalty,
     })
+  }
+  if (activityDecay) {
+    for (const row of rows) {
+      row.displayBeforePenalty = row.displayed
+      row.displayed = row.displayed - Math.min(row.activityPenalty, Math.max(0, row.displayed - BASELINE))
+    }
+  } else {
+    for (const row of rows) row.displayBeforePenalty = row.displayed
   }
   rows.sort((a, b) => b.displayed - a.displayed)
   rows.forEach((row, i) => {
@@ -562,6 +662,8 @@ export interface ClanLeaderRow {
   topOpponentGames: number
   decayLost: number
   latentStrength: number
+  /** 최종안 — 클랜 활동 페널티 */
+  activityPenalty: number
 }
 
 export function clanLeaderboard(
@@ -569,6 +671,8 @@ export function clanLeaderboard(
   clans: readonly SimClan[],
   /** 후보 1안: 상한 있는 구성 보정을 최종 점수에 더한다 (D-140) */
   useBoundedComposition = false,
+  /** 최종안 — 최종 점수에서 활동 페널티를 뺀다 */
+  activityDecay = false,
 ): ClanLeaderRow[] {
   const byId = new Map(clans.map((c) => [c.id, c]))
   const rows: ClanLeaderRow[] = []
@@ -592,10 +696,11 @@ export function clanLeaderboard(
       rating: state.rating,
       recentAvgMembers: recentAvg,
       compositionScore: composition,
-      finalScore: state.rating + composition,
+      finalScore: state.rating + composition - (activityDecay ? state.activityPenalty : 0),
       topOpponentGames: Math.max(0, ...state.opponentCounts.values()),
       decayLost: state.decayLost,
       latentStrength: clan.latentStrength,
+      activityPenalty: state.activityPenalty,
     })
   }
   // 순위는 **최종 표시점수** 기준이다 (Elo + 상한 있는 구성 보정)

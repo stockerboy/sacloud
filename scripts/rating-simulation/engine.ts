@@ -60,6 +60,11 @@ export interface PersonalConstants {
    * 1 이면 내부값 그대로. 3.3 이면 내부 3387 → 표시 4277.
    */
   displayScale: number
+  /**
+   * **약팀 사냥 차단선** (D-142). 기대 승률이 이 값 이상이면 이겨도 점수가 오르지 않는다.
+   * `undefined` 면 끄기 (기존 동작). 지는 것은 언제나 그대로 손해다.
+   */
+  winGainCutoff?: number
 }
 
 export const DEFAULT_PERSONAL: PersonalConstants = {
@@ -125,6 +130,20 @@ export function personalUpdate(input: PersonalInput): PersonalResult {
   const expected = expectedScore(input.ratingBefore, input.opponentAvgRating)
   const actual = input.won ? 1 : 0
   let baseDelta = input.constants.k * (actual - expected)
+
+  /* **너무 약한 상대를 이겨서는 더 오르지 않는다** (D-142).
+ 
+     순수 Elo 는 "3100 상대 95% 승" 과 "3500 상대 60% 승" 을 같게 본다. 수학적으로는 맞지만
+     제3보급창고에는 매치메이킹이 없어서 **상대를 직접 고를 수 있다.** 그래서 약팀만 300판
+     골라 잡는 것만으로 4,876 까지 올라갔다 — 강한 상대를 한 번도 이기지 않고서.
+ 
+     기대 승률이 이미 문턱을 넘었으면 이겨도 0 이다. 지는 것은 그대로 손해다.
+     별도의 "강팀전 보너스" 를 만들지 않고 **expected-score 하나로** 해결한다 (사용자 지시 2장).
+     설명도 한 문장이다 — "너무 약한 상대를 이기면 점수가 오르지 않는다." */
+  const cutoff = input.constants.winGainCutoff
+  if (cutoff !== undefined && input.won && expected >= cutoff) {
+    baseDelta = 0
+  }
 
   if (input.constants.confidenceMode === 'delta') {
     baseDelta *= confidenceFor(input.gamesBefore)
