@@ -31,6 +31,7 @@ import {
   type EligibilityResult,
   type LineupConfidence,
   type ParticipantRole,
+  type SideEvidence,
 } from './eligibility.js'
 import { effectiveOpponentRating, lineupStrength } from './lineup.js'
 
@@ -46,6 +47,11 @@ export interface MatchRatingInput {
   /** 기간 안에서 **같은 방향**으로 이미 나온 두 클랜의 경기 수 */
   priorSameOutcome?: number
   constants?: RatingConstants
+  /**
+   * 팀 식별 보조 증거 (D-133).
+   * replay 는 **저장된 팀 배정**을 그대로 넘겨 재구성과 같은 판정을 재현한다.
+   */
+  sideEvidence?: SideEvidence | null
 }
 
 export interface PlayerRatingResult {
@@ -101,7 +107,13 @@ export interface MatchRatingResult {
  */
 export function rateMatch(input: MatchRatingInput): MatchRatingResult {
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
-  const eligibility = evaluateEligibility({ participants: input.participants, constants })
+  /* replay 는 재구성 때 **이미 확정된 팀**을 그대로 써야 한다 (D-133).
+     같은 경기를 두 단계가 다르게 판정하면 재구성에서 인정한 경기가 래더에서 빠진다. */
+  const eligibility = evaluateEligibility({
+    participants: input.participants,
+    constants,
+    sideEvidence: input.sideEvidence ?? null,
+  })
   const confidence = lineupConfidence(
     eligibility.winnerSide?.confirmed ?? 0,
     eligibility.loserSide?.confirmed ?? 0,

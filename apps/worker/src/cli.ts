@@ -48,6 +48,7 @@ import { applyWeaponToStats, importWeaponEvidence, rebuildWeaponBuckets } from '
 import { runRate } from './jobs/rate.js'
 import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
 import { readCurrentMembership, runSupplyRosters } from './jobs/supplyRosters.js'
+import { explainMatches } from './dev/explainMatches.js'
 import {
   backfillMatchTimeAffiliation,
   cleanupDuplicateSupplyPlayers,
@@ -152,6 +153,8 @@ function usage(): void {
   supply-players [--file <json>] [--league <slug>] [--cleanup] [--confirm]
               넥슨 참가자 ↔ 3rd.supply 선수 id 연결 (**같은 경기 · 닉네임 정확 일치** · D-132)
               --cleanup 은 기록이 하나도 없는 중복 행만 정리한다
+  explain-matches [--league <slug>] [--match-id <ID>[,<ID>]] [--limit N]
+              재구성된 경기를 사람이 읽을 수 있게 풀어 쓴다 (읽기 전용)
   affiliation [--league <slug>] [--redo] [--confirm]
               **경기 당시** 소속 스냅샷 복원 (넥슨 상세 guild_name → 로스터 순 · D-131)
               현재 소속은 건드리지 않는다. **--confirm 없이는 한 줄도 쓰지 않는다**
@@ -865,6 +868,19 @@ async function main(): Promise<number> {
       }
 
       if (!confirm) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
+      return 0
+    }
+
+    case 'explain-matches': {
+      const ids = (stringFlag(args, 'match-id') ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+      await explainMatches({
+        leagueSlug: stringFlag(args, 'league') ?? 'supply',
+        sourceMatchIds: ids,
+        limit: numberFlag(args, 'limit') ?? 5,
+      })
       return 0
     }
 

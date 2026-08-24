@@ -258,8 +258,20 @@ export async function runRate(
       (clanId) => (clanMatches.get(clanId) ?? 0) < constants.placementMatches,
     )
 
+    /* 팀 배정은 **재구성 때 이미 확정돼 저장돼 있다.** replay 가 그것을 다시 추론하면
+       같은 경기를 두 단계가 다르게 판정할 수 있다 — 그러면 인정된 경기가 래더에서 빠진다.
+       저장된 진영 클랜을 그대로 넘겨 재구성과 같은 판정을 재현한다 (D-133). */
+    const storedSides = {
+      winnerLeagueClanId:
+        match.winnerSide === 'red' ? match.redLeagueClanId : match.blueLeagueClanId,
+      loserLeagueClanId:
+        match.winnerSide === 'red' ? match.blueLeagueClanId : match.redLeagueClanId,
+      source: 'stored-match',
+    }
+
     const rated = rateMatch({
       participants,
+      sideEvidence: storedSides,
       clanRatings: {
         [match.redLeagueClanId]: clanRatingOf(match.redLeagueClanId),
         [match.blueLeagueClanId]: clanRatingOf(match.blueLeagueClanId),
