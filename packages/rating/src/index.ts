@@ -39,6 +39,7 @@ export {
   type AssignedParticipant,
   type ConfirmedParticipant,
   type EligibilityInput,
+  type SideEvidence,
   type EligibilityResult,
   type EvidenceSource,
   type LineupConfidence,

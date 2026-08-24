@@ -30,6 +30,7 @@ import {
   type ConfirmedParticipant,
   type LineupConfidence,
   type RatingConstants,
+  type SideEvidence,
 } from '@sacloud/rating'
 
 export type Outcome = 'win' | 'lose' | 'draw'
@@ -91,6 +92,8 @@ export interface ReconstructionLeague {
    * 넥슨 상세의 `guild_name`으로 팀을 식별하는 데 필요하다 (D-043).
    */
   leagueClanIdByClanName: ReadonlyMap<string, string>
+  /** 클랜 slug → `LeagueClan.id`. 라인업 보조 증거가 slug 로 오기 때문이다 (D-133) */
+  leagueClanIdBySlug?: ReadonlyMap<string, string>
   playerLimits: readonly number[]
   hasMockMatches: boolean
 }
@@ -169,6 +172,8 @@ export interface ReconstructionSummary {
   confidence: LineupConfidence
   /** 상세에는 있는데 목록 관측이 없는 사람 — **보류 사유가 아니라 참고 수치다** */
   missingObservations: number
+  /** 팀 식별에 보조 증거를 썼으면 그 출처 (D-133). 넥슨으로 정해졌으면 null */
+  sideEvidenceUsed: string | null
 }
 
 export type ReconstructionResult =
@@ -222,6 +227,11 @@ export interface ReconstructionInput {
   observations: readonly ObservationInput[]
   detail: readonly DetailParticipantInput[]
   memberships: readonly RosterMembership[]
+  /**
+   * 팀 식별 **보조 증거** (D-133).
+   * 넥슨 상세로 양 팀 클랜이 정해지면 쓰이지 않는다. 참가자를 만들지도 않는다.
+   */
+  sideEvidence?: SideEvidence | null
   league: ReconstructionLeague
   options?: {
     allowMockLeague?: boolean
@@ -256,6 +266,7 @@ function emptySummary(input: ReconstructionInput): ReconstructionSummary {
     participantCompleteness: '0',
     confidence: 'low',
     missingObservations: 0,
+    sideEvidenceUsed: null,
   }
 }
 
@@ -433,12 +444,13 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     assist: entry.assist,
     sources: entry.sources,
   }))
-  const eligibility = evaluateEligibility({ participants, constants })
+  const eligibility = evaluateEligibility({ participants, constants, sideEvidence: input.sideEvidence ?? null })
 
   summary.observationParticipantCount = eligibility.observationParticipantCount
   summary.detailParticipantCount = eligibility.detailParticipantCount
   summary.participantCompleteness = eligibility.completeness
   summary.official = eligibility.official
+  summary.sideEvidenceUsed = eligibility.sideEvidenceUsed
   summary.winnerClanWeight = eligibility.winnerSide?.clanWeight ?? 0
   summary.loserClanWeight = eligibility.loserSide?.clanWeight ?? 0
   summary.winnerMembersConfirmed = eligibility.winnerSide?.members ?? 0

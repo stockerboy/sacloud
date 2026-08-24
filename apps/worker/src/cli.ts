@@ -157,7 +157,10 @@ function usage(): void {
               현재 소속은 건드리지 않는다. **--confirm 없이는 한 줄도 쓰지 않는다**
   reresolve   상세 보유 경기의 참가자 신원을 다시 붙인다 (투영 상태는 건드리지 않는다)
   reconstruct [--league <slug>] [--redo] [--match-id <ID>[,<ID>]] [--allow-unverified-roster]
-              [--allow-mock-league]
+              [--allow-mock-league] [--lineup-evidence [<json>]]
+              --lineup-evidence 는 3rd.supply 라인업을 **팀 식별에만** 보조로 쓴다 (D-133).
+              참가자를 만들지 않고 경기 당시 소속으로도 쓰지 않는다.
+              넥슨 승패와 어긋나면 그 경기는 보조 증거를 버린다
   rate        --league <slug> [--season N] [--allow-mock-league] [--dry-run]
               재구성된 경기로 래더를 **처음부터 다시** 계산한다 (결정적 replay)
   season      --league <slug> [--close | --start] [--at <ISO>] [--number N] [--no-promotion]
@@ -456,6 +459,19 @@ async function main(): Promise<number> {
         .map((value) => value.trim())
         .filter(Boolean)
 
+      /* 라인업 보조 증거 (D-133). 경로를 안 주면 기본 스냅샷을 쓴다 */
+      const lineupFlag = args.flags.get('lineup-evidence')
+      const lineupPath =
+        typeof lineupFlag === 'string'
+          ? lineupFlag
+          : lineupFlag === true
+            ? join(process.cwd(), '..', '..', 'packages/db/data/supply-official-matches.json')
+            : null
+      const lineupSnapshot = lineupPath ? JSON.parse(readFileSync(lineupPath, 'utf8')) : null
+      if (lineupSnapshot) {
+        log(`라인업 보조 증거 사용 — 경기 ${lineupSnapshot.matches.length}건 (팀 식별에만 쓴다)`)
+      }
+
       const result = await runReconstruct(ctx, {
         leagueSlug: stringFlag(args, 'league'),
         allowMockLeague: boolFlag(args, 'allow-mock-league'),
@@ -463,9 +479,17 @@ async function main(): Promise<number> {
         requireVerifiedRoster: !boolFlag(args, 'allow-unverified-roster'),
         redo: boolFlag(args, 'redo'),
         sourceMatchIds,
+        lineupSnapshot,
       })
       table([
-        { considered: result.considered, projected: result.projected, incomplete: result.incomplete },
+        {
+          considered: result.considered,
+          projected: result.projected,
+          incomplete: result.incomplete,
+          '보조증거 사용': result.sideEvidenceUsed,
+          '보조증거 충돌': result.sideEvidenceConflicts,
+          '검증 불가': result.sideEvidenceUnverifiable,
+        },
       ])
       for (const [code, count] of Object.entries(result.reasons)) {
         log(`  미완 사유 ${code}: ${count}건`)

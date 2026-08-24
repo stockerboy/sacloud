@@ -77,9 +77,30 @@ export type ReconstructionStatus =
   | 'inconsistent_outcome'
   | 'conflict_with_detail'
 
+/**
+ * 팀 식별 **보조 증거** (D-133).
+ *
+ * 넥슨 상세만으로 어느 클랜의 팀인지 정하지 못하는 경기가 있다.
+ * `guild_name`이 리그 클랜과 정확히 일치하지 않거나, 양쪽이 같은 클랜으로 판정되는 경우다.
+ * 그때 **외부 출처가 알려 준 진영별 클랜**을 쓴다.
+ *
+ * 규칙
+ *   · 넥슨 근거로 이미 두 클랜이 서로 다르게 정해지면 **넥슨이 이긴다.** 이 값은 안 본다
+ *   · 이 값만으로 참가자를 만들지 않는다. 팀의 **이름표**일 뿐이다
+ *   · 승/패 그룹은 여전히 넥슨 `outcome` 으로 나눈다. 이 값이 그것을 바꾸지 않는다
+ */
+export interface SideEvidence {
+  winnerLeagueClanId: string | null
+  loserLeagueClanId: string | null
+  /** 근거 출처 표시 — 저장해서 나중에 어디서 온 판단인지 알 수 있게 한다 */
+  source: string
+}
+
 export interface EligibilityInput {
   participants: readonly ConfirmedParticipant[]
   constants?: RatingConstants
+  /** 팀 식별 보조 증거. 넥슨으로 정해지면 쓰이지 않는다 */
+  sideEvidence?: SideEvidence | null
 }
 
 export interface SideSummary {
@@ -113,6 +134,8 @@ export interface EligibilityResult {
   winnerLeagueClanId: string | null
   /** 팀 배정이 끝난 참가자 (기록 가능한 경기에서만 채워진다) */
   assigned: AssignedParticipant[]
+  /** 팀 식별에 보조 증거를 썼는가. 썼으면 그 출처 (D-133). 넥슨으로 정해졌으면 null */
+  sideEvidenceUsed: string | null
   reason: string
 }
 
@@ -175,6 +198,7 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
         : `${losers.length}v${winners.length}`,
     winnerLeagueClanId: null as string | null,
     assigned: [] as AssignedParticipant[],
+    sideEvidenceUsed: null as string | null,
     recordable: false,
     official: false,
   }
@@ -192,14 +216,22 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
     plurality(side.map((participant) => participant.detailLeagueClanId)) ??
     plurality(side.map((participant) => participant.rosterLeagueClanId))
 
-  const winnerClanId = identify(winners)
-  const loserClanId = identify(losers)
+  const nexonWinnerClanId = identify(winners)
+  const nexonLoserClanId = identify(losers)
+
+  /* 넥슨 근거로 **두 클랜이 서로 다르게** 정해지면 그대로 쓴다 (넥슨 우선 · D-133).
+     정하지 못했거나 양쪽이 같은 클랜으로 나온 경우에만 보조 증거를 본다. */
+  const nexonDecided =
+    nexonWinnerClanId !== null && nexonLoserClanId !== null && nexonWinnerClanId !== nexonLoserClanId
+
+  const winnerClanId = nexonDecided ? nexonWinnerClanId : (input.sideEvidence?.winnerLeagueClanId ?? nexonWinnerClanId)
+  const loserClanId = nexonDecided ? nexonLoserClanId : (input.sideEvidence?.loserLeagueClanId ?? nexonLoserClanId)
 
   if (winnerClanId === null || loserClanId === null) {
     return {
       ...base,
       status: 'unidentified_side',
-      reason: '어느 클랜의 팀인지 근거로 정할 수 없다 (상세 클랜명·등록 클랜 모두 불충분)',
+      reason: '어느 클랜의 팀인지 근거로 정할 수 없다 (상세 클랜명·등록 클랜·보조 증거 모두 불충분)',
     }
   }
   if (winnerClanId === loserClanId) {
@@ -258,6 +290,7 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
         : `${loserSide.confirmed}v${winnerSide.confirmed}`,
     winnerLeagueClanId: winnerClanId,
     assigned,
+    sideEvidenceUsed: nexonDecided ? null : (input.sideEvidence?.source ?? null),
     reason: official
       ? ''
       : `양 팀 모두 본클랜원이 ${constants.minConfirmedPerSide}명 미만이다 ` +

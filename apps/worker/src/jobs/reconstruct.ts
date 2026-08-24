@@ -17,6 +17,12 @@ import {
   normalizeMatchList,
 } from '@sacloud/nexon'
 import { log, warn } from '../lib/log.js'
+import {
+  buildLineupSides,
+  toSideEvidence,
+  verifyAgreement,
+  type LineupSides,
+} from '../lib/lineupSideEvidence.js'
 import { allocateInternalMatchId } from '../lib/internalMatchId.js'
 import {
   evaluateReconstruction,
@@ -159,6 +165,13 @@ export interface ReconstructRunResult {
     detailParticipants: number
     code: string | null
   }[]
+  /* --- 팀 식별 보조 증거 (D-133) --- */
+  /** 보조 증거로 팀을 식별한 경기 수 */
+  sideEvidenceUsed: number
+  /** 넥슨 승패와 라인업 진영이 어긋나 **버린** 경기 수 */
+  sideEvidenceConflicts: number
+  /** 겹치는 참가자가 없어 검증 자체가 불가능했던 경기 수 */
+  sideEvidenceUnverifiable: number
 }
 
 async function loadLeagues(leagueSlug?: string | null): Promise<ReconstructionLeague[]> {
@@ -168,7 +181,7 @@ async function loadLeagues(leagueSlug?: string | null): Promise<ReconstructionLe
       id: true,
       slug: true,
       maps: { select: { map: { select: { id: true, name: true } } } },
-      clans: { select: { id: true, joinedAt: true, clan: { select: { name: true } } } },
+      clans: { select: { id: true, joinedAt: true, clan: { select: { name: true, slug: true } } } },
       playerLimits: { select: { playerCount: true } },
     },
   })
@@ -184,6 +197,8 @@ async function loadLeagues(leagueSlug?: string | null): Promise<ReconstructionLe
       // 등록 이전 경기를 소급하지 않기 위한 기준 시각 (D-108)
       clanJoinedAt: new Map(league.clans.map((entry) => [entry.id, entry.joinedAt])),
       leagueClanIdByClanName: new Map(league.clans.map((entry) => [entry.clan.name, entry.id])),
+      // 라인업 보조 증거는 클랜 slug 로 온다 (D-133)
+      leagueClanIdBySlug: new Map(league.clans.map((entry) => [entry.clan.slug, entry.id])),
       playerLimits: league.playerLimits.map((entry) => entry.playerCount),
       hasMockMatches: mockCount > 0,
     })
@@ -312,6 +327,11 @@ export async function runReconstruct(
     /** 이미 판정한 경기도 다시 본다 */
     redo?: boolean
     sourceMatchIds?: readonly string[]
+    /**
+     * 3rd.supply 라인업 스냅샷 (D-133).
+     * **팀 식별에만** 쓴다. 참가자를 만들지 않고 경기 당시 소속으로도 쓰지 않는다.
+     */
+    lineupSnapshot?: Parameters<typeof buildLineupSides>[0] | null
   } = {},
 ): Promise<ReconstructRunResult> {
   const result: ReconstructRunResult = {
@@ -320,7 +340,15 @@ export async function runReconstruct(
     incomplete: 0,
     reasons: {},
     samples: [],
+    sideEvidenceUsed: 0,
+    sideEvidenceConflicts: 0,
+    sideEvidenceUnverifiable: 0,
   }
+
+  /* 라인업 보조 증거 — 경기별 진영 정보. 스냅샷을 안 주면 전부 null 이다 */
+  const lineupSides: ReadonlyMap<string, LineupSides> = input.lineupSnapshot
+    ? buildLineupSides(input.lineupSnapshot)
+    : new Map()
 
   const leagues = await loadLeagues(input.leagueSlug ?? null)
   if (leagues.length === 0) {
@@ -397,9 +425,26 @@ export async function runReconstruct(
     let lastCode: string | null = null
     let lastSummary: Record<string, unknown> | null = null
 
+    /* --- 팀 식별 보조 증거 (D-133) ---
+       넥슨 참가자의 승패와 라인업 진영이 **완전히 일치할 때만** 쓴다.
+       한 명이라도 어긋나면 그 경기는 보조 증거 없이 판정한다 (넥슨 우선). */
+    const sides = lineupSides.get(staging.sourceMatchId) ?? null
+    let agreementOk = false
+    if (sides) {
+      const verdict = verifyAgreement(sides, detail)
+      if (verdict.agrees) agreementOk = true
+      else if (verdict.checked === 0) result.sideEvidenceUnverifiable += 1
+      else result.sideEvidenceConflicts += 1
+    }
+
     for (const league of leagues) {
       const memberships = await loadMemberships(league.leagueId)
+      const sideEvidence =
+        agreementOk && sides && league.leagueClanIdBySlug
+          ? toSideEvidence(sides, league.leagueClanIdBySlug)
+          : null
       const outcome = evaluateReconstruction({
+        sideEvidence,
         match: {
           sourceMatchId: staging.sourceMatchId,
           matchType: staging.matchType,
@@ -418,6 +463,7 @@ export async function runReconstruct(
       })
 
       lastSummary = { ...outcome.summary, league: league.slug }
+      if (outcome.summary.sideEvidenceUsed) result.sideEvidenceUsed += 1
       if (!outcome.ok) {
         lastCode = outcome.code
         continue
