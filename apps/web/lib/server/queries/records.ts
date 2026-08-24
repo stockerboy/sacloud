@@ -14,6 +14,7 @@ import {
   type PlayerRankRow,
   type Streak,
   type SeasonType,
+  type TeamSide,
   type TeammateStat,
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
@@ -23,6 +24,7 @@ import {
   LEAGUE_SUMMARY_SELECT,
   PLAYER_SUMMARY_SELECT,
   toClanSummary,
+  toClanSummaryOrNull,
   toLeagueSummary,
   toPlayerSummary,
 } from '../mappers'
@@ -94,6 +96,24 @@ type StreakMatchRow = Prisma.MatchGetPayload<{ select: typeof STREAK_MATCH_SELEC
  * 그 중 보는 클랜이 참여하지 않은 경기는 승패·상대 집계에서만 제외된다
  * (플레이어가 클랜을 옮긴 경우에만 생긴다).
  */
+/**
+ * 이 경기를 **누구의 눈으로 보는가** (D-135).
+ *
+ * 선수 기록실이면 그 선수가 실제로 뛴 진영, 클랜 기록실이면 그 클랜의 진영이다.
+ * 선수의 현재 소속으로 판정하지 않는다 — 무소속이거나 이적했으면 어긋난다.
+ */
+function sideOfPlayerOrClan(
+  match: { redLeagueClanId: string; blueLeagueClanId: string; stats?: { playerId: string; side: string }[] },
+  leagueClanId: string,
+  playerId: string | null,
+): TeamSide | null {
+  if (playerId) {
+    const stat = match.stats?.find((row) => row.playerId === playerId)
+    if (stat) return stat.side as TeamSide
+  }
+  return sideOfLeagueClan(match, leagueClanId)
+}
+
 function buildMatchSummary(
   matches: SummaryMatchRow[],
   streak: Streak,
@@ -108,7 +128,9 @@ function buildMatchSummary(
   >()
 
   for (const match of matches) {
-    const side = sideOfLeagueClan(match, leagueClanId)
+    /* 선수 기록실은 **그 경기에서 본인이 뛴 팀** 기준이다 (D-131 · D-135).
+       고정된 현재 소속으로 판정하면 이적한 선수와 무소속 선수의 요약이 통째로 비어 버린다. */
+    const side = sideOfPlayerOrClan(match, leagueClanId, playerId)
     if (!side) continue
     const won = match.winnerSide === side
     if (won) win += 1
@@ -475,9 +497,10 @@ export async function getLeaguePlayerDetail(
   })
   if (!leaguePlayer) return null
 
-  const leagueClanId = await leagueClanIdOfPlayer(league.id, leaguePlayer.clanId)
-  // store.ts도 소속 리그클랜을 못 찾으면 404다
-  if (!leagueClanId || !leaguePlayer.clan) return null
+  /* 소속 클랜이 없어도 선수는 존재한다 (D-135).
+     D-134로 무소속·용병도 정상적인 선수가 됐다. 클랜이 없다는 이유로 404를 내면
+     개인 랭킹에는 보이는 사람의 프로필이 열리지 않는다. 계약도 `clan`을 nullable로 둔다. */
+  const leagueClanId = (await leagueClanIdOfPlayer(league.id, leaguePlayer.clanId)) ?? ''
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
@@ -500,7 +523,7 @@ export async function getLeaguePlayerDetail(
     league_id: league.id,
     league: toLeagueSummary(league),
     player: toPlayerSummary(leaguePlayer.player),
-    clan: toClanSummary(leaguePlayer.clan),
+    clan: toClanSummaryOrNull(leaguePlayer.clan),
     rating: leaguePlayer.rating,
     win: leaguePlayer.win,
     lose: leaguePlayer.lose,
