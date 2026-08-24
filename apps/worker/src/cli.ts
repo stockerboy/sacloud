@@ -1044,13 +1044,31 @@ async function main(): Promise<number> {
         fail('--league <slug> 가 필요하다')
         return 1
       }
+      /* 같은 경기·같은 닉네임 근거로 기존 선수와 잇는다. 없으면 새로 만든다 (D-134) */
+      const lineupFlag = args.flags.get('lineup')
+      const lineupPath =
+        typeof lineupFlag === 'string'
+          ? lineupFlag
+          : lineupFlag === false
+            ? null
+            : join(process.cwd(), '..', '..', 'packages/db/data/supply-official-matches.json')
+
       const result = await linkIdentitiesByEvidence({
         leagueSlug,
-        minEvidence: numberFlag(args, 'min-evidence') ?? 3,
+        minEvidence: numberFlag(args, 'min-evidence') ?? 1,
+        lineupPath,
         confirm: boolFlag(args, 'confirm'),
       })
-      table([{ 검토: result.considered, 연결: result.linked, 보류: result.skipped }])
-      for (const candidate of result.candidates) {
+      table([
+        {
+          검토: result.considered,
+          '기존 선수와 연결': result.linked,
+          '새 선수 생성': result.created,
+          충돌: result.conflicts,
+          보류: result.skipped,
+        },
+      ])
+      for (const candidate of result.candidates.filter((row) => row.verdict !== 'created').slice(0, 30)) {
         log(
           `  ${candidate.verdict.padEnd(12)} ${candidate.userName} — ${candidate.reason}` +
             ` [${candidate.guildCounts.slice(0, 3).map(([name, count]) => `${name}×${count}`).join(' ')}]`,
