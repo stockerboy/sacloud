@@ -211,7 +211,7 @@ export function replay(
         state.decayTicks += 1
       }
       for (const state of clans.values()) {
-        if (state.matches === 0) continue
+        if (state.games === 0) continue
         const idleDays = (at - state.lastMinute) / DAY
         const add = clanDailyPenalty(idleDays)
         if (add <= 0) continue
@@ -245,7 +245,7 @@ export function replay(
         // 클랜은 개인과 같은 표를 억지로 쓰지 않는다 — 더 완만하게 (사용자 지시 7장)
         if (idleDays < 14 || state.rating <= decayConfig.floor) continue
         if (decayConfig.mode === 'none') continue
-        const amount = Math.min(20, Math.max(0, (state.rating - 3150) * 0.05))
+        const amount = Math.min(20, Math.max(0, (state.rating - (BASELINE + 150)) * 0.05))
         if (amount <= 0) continue
         const after = Math.max(decayConfig.floor, state.rating - amount)
         state.decayLost += state.rating - after
@@ -287,7 +287,7 @@ export function replay(
         state.assist += slot.assist
         if (slot.mvp) state.mvpCount += 1
         state.opponentRatingSum += opponentAvg
-        if (opponentAvg >= 3200) state.strongOpponentGames += 1
+        if (opponentAvg >= BASELINE + 200) state.strongOpponentGames += 1
         if (won && result.expected < 0.4) state.upsetWins += 1
         if (!won && result.expected > 0.6) state.upsetLosses += 1
         state.performanceSum += performance
@@ -298,12 +298,13 @@ export function replay(
 
         /* "누구와 싸워 얼마나 이겼나" — 사용자가 개인 랭킹의 1순위로 지목한 값이다.
            기준선은 그 시점 rating 분포가 아니라 **절대값**으로 둔다. 분포 기준으로 하면
-           시즌 초반(전원 3000)에 아무도 강자가 아니게 되어 값이 왜곡된다. */
-        if (opponentAvg >= 3250) {
+           시즌 초반(전원 기준점)에 아무도 강자가 아니게 되어 값이 왜곡된다.
+           기준점이 바뀔 수 있으므로 **기준점 대비 상대값**으로 쓴다 (D-145). */
+        if (opponentAvg >= BASELINE + 250) {
           state.vsTop10Games += 1
           if (won) state.vsTop10Wins += 1
         }
-        if (opponentAvg >= 3120) {
+        if (opponentAvg >= BASELINE + 120) {
           state.vsTop30Games += 1
           if (won) state.vsTop30Wins += 1
         }
@@ -420,7 +421,7 @@ export function scheduleSeason(
   }
 
   /** 성향 → 원하는 상대 강도. +1이면 강자, -1이면 약자 */
-  const desiredOpponentStrength = (bias: number): number => 3000 + bias * 320
+  const desiredOpponentStrength = (bias: number): number => BASELINE + bias * 320
 
   /**
    * 팀을 채운다. 본클랜원 `wantMembers` 명을 먼저, 나머지는 용병.

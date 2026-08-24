@@ -19,28 +19,55 @@ import {
   type SimClan,
   type SimPlayer,
 } from './population.js'
+import { personalLeaderboard, replay, scheduleSeason, type LeaderRow } from './season.js'
+import type { SimMatch } from './match.js'
 import {
-  personalLeaderboard,
-  replay,
-  scheduleSeason,
-  type LeaderRow,
-  type SimMatch,
-} from './season.js'
-import { CANDIDATE1_CLAN, CANDIDATE1_PERSONAL, setCompositionParams } from './engine.js'
-import { FINAL_DISPLAY_SCALE, FINAL_SUPPRESSION } from './final.js'
+  CANDIDATE1_CLAN,
+  CANDIDATE1_PERSONAL,
+  setBaseline,
+  setCompositionParams,
+  setConfidenceCurve,
+  type ConfidenceCurve,
+} from './engine.js'
+import { FINAL_DISPLAY_SCALE, FINAL_SUPPRESSION, setDisplayScale, setSuppression } from './final.js'
+
+/** D-145 후보 조합 */
+export interface SpecConfig {
+  baseline: number
+  displayScale: number
+  confidence: ConfidenceCurve
+  suppression: { full: number; zero: number }
+}
+
+export const D143_SPEC: SpecConfig = {
+  baseline: 3000,
+  displayScale: 3.5,
+  confidence: 'step',
+  suppression: { full: 0.8, zero: 0.88 },
+}
+
+/** 전역 상태를 후보에 맞춘다. 시뮬레이션 전용 — 운영이라면 설정 주입이다 */
+export function applyConfig(config: SpecConfig): void {
+  setBaseline(config.baseline)
+  setDisplayScale(config.displayScale)
+  setConfidenceCurve(config.confidence)
+  setSuppression(config.suppression)
+  setCompositionParams(50, 20)
+}
 
 export const SNAPSHOT_DAYS = [7, 14, 30, 45, 60, 75, 90] as const
 export const SEASON_DAYS = 90
 const DAY = 24 * 60
 
 /** D-143 최종 사양 그대로 */
-export const SPEC_PERSONAL = {
-  ...CANDIDATE1_PERSONAL,
-  performanceWeight: 0,
-  displayScale: 1,
-  weakWinSuppression: FINAL_SUPPRESSION,
+export function specPersonal() {
+  return {
+    ...CANDIDATE1_PERSONAL,
+    performanceWeight: 0,
+    displayScale: 1,
+    weakWinSuppression: FINAL_SUPPRESSION,
+  }
 }
-const DISPLAY = { transform: 'linear' as const, scale: FINAL_DISPLAY_SCALE }
 
 export interface ScenarioSpec {
   label: string
@@ -48,6 +75,7 @@ export interface ScenarioSpec {
   clans: number
   seed: number
   population?: PopulationOptions
+  config?: SpecConfig
 }
 
 export interface Snapshot {
@@ -60,7 +88,7 @@ export function buildSeason(spec: ScenarioSpec): {
   clans: SimClan[]
   matches: SimMatch[]
 } {
-  setCompositionParams(50, 20)
+  applyConfig(spec.config ?? D143_SPEC)
   const rng = new Rng(spec.seed)
   const players = [...makePlayers(rng, spec.players, spec.population), ...makeArchetypePlayers(rng)]
   const clans = makeClans(rng, players, spec.clans)
@@ -76,12 +104,27 @@ export function snapshotAt(
 ): LeaderRow[] {
   const cutoff = day * DAY
   const upTo = matches.filter((m) => m.minute <= cutoff)
-  const season = replay(upTo, SPEC_PERSONAL, CANDIDATE1_CLAN, { mode: 'none', floor: 3000 }, cutoff, true)
-  return personalLeaderboard(season, players, DISPLAY, cutoff, true, 'soft')
+  const season = replay(
+    upTo,
+    specPersonal(),
+    CANDIDATE1_CLAN,
+    { mode: 'none', floor: Number.NEGATIVE_INFINITY },
+    cutoff,
+    true,
+  )
+  return personalLeaderboard(
+    season,
+    players,
+    { transform: 'linear', scale: FINAL_DISPLAY_SCALE },
+    cutoff,
+    true,
+    'soft',
+  )
 }
 
 export function snapshots(spec: ScenarioSpec): Snapshot[] {
   const { players, matches } = buildSeason(spec)
+  // buildSeason 이 설정을 이미 적용했다. 스냅샷마다 다시 적용할 필요는 없다
   return SNAPSHOT_DAYS.map((day) => ({ day, rows: snapshotAt(day, players, matches) }))
 }
 

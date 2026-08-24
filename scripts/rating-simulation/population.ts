@@ -10,6 +10,7 @@
  *   스나이퍼는 구조적으로 킬·KD·MVP 가 유리할 수 있다. 같은 실력인데 포지션만으로
  *   순위가 올라간다면 그건 퍼포먼스 공식의 결함이다. 검사하려면 역할이 있어야 한다.
  */
+import { BASELINE } from './engine.js'
 import type { Rng } from './rng.js'
 
 export type Role = 'rifler' | 'sniper' | 'support'
@@ -166,7 +167,8 @@ export function makeArchetypePlayers(rng: Rng): SimPlayer[] {
   return ARCHETYPES.map((spec) => ({
     id: `ARCH-${spec.code}`,
     name: `archetype-${spec.code}`,
-    latentSkill: spec.latentSkill + rng.normal(0, 8),
+    // archetype 은 3000 기준으로 적혀 있으므로 기준점 이동분을 더한다 (D-145)
+    latentSkill: spec.latentSkill - 3000 + BASELINE + rng.normal(0, 8),
     role: spec.role,
     clanId: null,
     targetGames: spec.games,
@@ -206,7 +208,7 @@ export function makePlayers(
     players.push({
       id: `P${String(i).padStart(4, '0')}`,
       name: `player-${i}`,
-      latentSkill: 3000 + (rng.normal(tier.mean, tier.sd) - 3000) * compression,
+      latentSkill: BASELINE + (rng.normal(tier.mean, tier.sd) - 3000) * compression,
       role: rng.pick(ROLES),
       clanId: null,
       targetGames: Math.max(10, Math.round(rng.pick(GAME_COUNTS) * activity)),
@@ -232,7 +234,7 @@ export function makeClans(rng: Rng, players: SimPlayer[], count: number): SimCla
     clans.push({
       id: `C${String(i).padStart(3, '0')}`,
       name: `clan-${i}`,
-      latentStrength: rng.normal(tier.mean, tier.sd),
+      latentStrength: BASELINE + (rng.normal(tier.mean, tier.sd) - 3000),
       // 1.0 ~ 5.0 — 클랜마다 "얼마나 자기 사람으로 채우는가"가 다르다
       avgMembers: Math.max(1, Math.min(5, rng.float(1, 5.2))),
       memberIds: [],

@@ -14,7 +14,32 @@
  *   6. 본클랜원 수는 **경기 당시 소속** 기준이다
  */
 
-export const BASELINE = 3000
+/**
+ * 기준점 (D-145 에서 가변으로 바꿨다).
+ *
+ * Elo 는 **점수 차이**로만 기대 승률을 계산하므로 기준점을 옮겨도 실력 계산은 그대로다.
+ * 바뀌는 것은 사람이 보는 숫자뿐이다. 그래서 2500 후보를 같은 경기 기록 위에서 비교할 수 있다.
+ */
+export let BASELINE = 3000
+
+export function setBaseline(value: number): void {
+  BASELINE = value
+}
+
+/* -------------------------------------------------------------------------- */
+/* 신뢰도 곡선 (D-145)                                                          */
+/* -------------------------------------------------------------------------- */
+
+export type ConfidenceCurve = 'step' | 'sqrt' | 'smoothstep'
+
+export let CONFIDENCE_CURVE: ConfidenceCurve = 'step'
+
+export function setConfidenceCurve(curve: ConfidenceCurve): void {
+  CONFIDENCE_CURVE = curve
+}
+
+/** 신뢰도가 100% 가 되는 경기 수. 이 뒤로는 판수가 점수를 더 주지 않는다 */
+export const CONFIDENCE_FULL_AT = 150
 
 /* -------------------------------------------------------------------------- */
 /* Elo 기본                                                                     */
@@ -34,12 +59,29 @@ export function expectedScore(rating: number, opponentRating: number): number {
  * 150판을 넘으면 더 준다고 올라가지 않는다 — 판수 박치기를 막는 지점이다.
  */
 export function confidenceFor(games: number): number {
-  if (games >= 150) return 1.0
-  if (games >= 121) return 0.95
-  if (games >= 91) return 0.85
-  if (games >= 61) return 0.7
-  if (games >= 31) return 0.55
-  return 0.4
+  if (games >= CONFIDENCE_FULL_AT) return 1
+  const x = Math.max(0, games) / CONFIDENCE_FULL_AT
+
+  switch (CONFIDENCE_CURVE) {
+    case 'sqrt':
+      /* 초반을 낮게 열고 완만하게 올린다. 150 에서 정확히 1 이 된다.
+         한 경기당 변화가 가장 큰 지점이 경기 수가 가장 적을 때라, 그때의 편차 자체가
+         작아서 표시 점수 점프가 크지 않다. */
+      return Math.sqrt(x)
+
+    case 'smoothstep':
+      /* 시작과 끝이 모두 평평하다. 초반을 가장 강하게 억제한다 */
+      return x * x * (3 - 2 * x)
+
+    case 'step':
+    default:
+      /* 기존 계단식 (D-143). 한 경기로 15%p 가 뛰는 구간이 있다 */
+      if (games >= 121) return 0.95
+      if (games >= 91) return 0.85
+      if (games >= 61) return 0.7
+      if (games >= 31) return 0.55
+      return 0.4
+  }
 }
 
 /** 신뢰도를 어디에 적용하는가 */

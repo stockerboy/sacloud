@@ -30,7 +30,11 @@ import { Rng } from './rng.js'
  *   그런데 convex 는 4900+ 를 3명, 5000+ 를 2명 만들어 희귀성 요구와 정면 충돌했다.
  *   정확도가 같다면 **설명할 수 있는 쪽**을 고른다 (사용자 지시 22장).
  */
-export const FINAL_DISPLAY_SCALE = 3.5
+export let FINAL_DISPLAY_SCALE = 3.5
+
+export function setDisplayScale(value: number): void {
+  FINAL_DISPLAY_SCALE = value
+}
 
 /**
  * **약팀 사냥 차단선** — 기대 승률이 이 값 이상이면 이겨도 점수가 오르지 않는다.
@@ -133,9 +137,14 @@ export function applyWinRateBands(
  * 클랜 점수는 내부 Elo 스케일(3000 ± 400)이라 개인 표시 점수와 구간이 다르다.
  */
 export const CLAN_WIN_RATE_BANDS: { minScore: number; minWinRate: number }[] = [
-  { minScore: 3150, minWinRate: 0.45 },
-  { minScore: 3300, minWinRate: 0.5 },
+  { minScore: 150, minWinRate: 0.45 },
+  { minScore: 300, minWinRate: 0.5 },
 ]
+
+/** 클랜 구간은 **기준점 대비 상대값**으로 정의한다 (D-145 — 기준점이 움직일 수 있다) */
+function clanBandFloor(minScore: number): number {
+  return BASELINE + minScore
+}
 
 /** 클랜 스케일에 맞춘 부족분 벌점 (개인 20점의 1/3.5) */
 export const CLAN_SHORTFALL_PENALTY_PER_POINT = 6
@@ -152,7 +161,7 @@ export function applyClanWinRateBands(
     if (winRate >= band.minWinRate) continue
     const shortfall = band.minWinRate - winRate
     const extra = mode === 'soft' ? shortfall * 100 * CLAN_SHORTFALL_PENALTY_PER_POINT : 0
-    ceiling = Math.min(ceiling, band.minScore - 1 - extra)
+    ceiling = Math.min(ceiling, clanBandFloor(band.minScore) - 1 - extra)
   }
   return Math.min(score, ceiling)
 }
@@ -167,7 +176,11 @@ export function applyClanWinRateBands(
  * `full` 이하로 예상된 결과는 그대로, `zero` 이상으로 예상된 결과는 반영하지 않는다.
  * **이변은 언제나 만점**이다 — 강한 상대를 실제로 이긴 것이 가장 크게 평가돼야 한다.
  */
-export const FINAL_SUPPRESSION = { full: 0.8, zero: 0.88 } as const
+export let FINAL_SUPPRESSION: { full: number; zero: number } = { full: 0.8, zero: 0.88 }
+
+export function setSuppression(value: { full: number; zero: number }): void {
+  FINAL_SUPPRESSION = value
+}
 
 /**
  * ── 왜 0.80 ~ 0.88 인가 (스윕 결과)
