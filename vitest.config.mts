@@ -13,6 +13,8 @@ export default defineConfig({
       'packages/db/legacy/**/*.test.ts',
       'packages/db/ops/**/*.test.ts',
       'apps/*/**/*.test.ts',
+      // rating 설계 검증 시뮬레이션 (운영 코드가 아니다 — scripts/)
+      'scripts/**/*.test.ts',
     ],
     exclude: ['**/node_modules/**', '**/.next/**'],
     reporters: ['default'],

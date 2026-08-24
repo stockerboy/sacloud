@@ -50,4 +50,20 @@ export default tseslint.config(
     files: ['packages/mock/**/*.ts', 'apps/web/app/**/dev-*.tsx'],
     rules: { 'no-console': 'off' },
   },
+  {
+    /**
+     * rating 설계 검증 시뮬레이션 (`scripts/rating-simulation/`).
+     *
+     * **운영 코드가 아니다.** 결과를 사람이 읽는 리포트로 뽑는 것이 목적이라
+     * 콘솔 출력을 쓰고, 리포트 렌더러는 집계 번들을 느슨한 타입으로 받는다.
+     * 엔진·시나리오 등 **판정 로직 쪽은 그대로 엄격하게** 검사한다.
+     */
+    files: ['scripts/rating-simulation/**/*.ts'],
+    rules: { 'no-console': 'off' },
+  },
+  {
+    // 리포트 렌더러만 집계 번들을 any 로 받는다 (표를 그리는 코드다)
+    files: ['scripts/rating-simulation/report.ts'],
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
+  },
 )
