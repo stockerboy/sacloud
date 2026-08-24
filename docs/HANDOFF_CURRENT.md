@@ -1,6 +1,6 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21. 최종 갱신 2026-08-24 (Phase 15 — D-129 적용 · 라인업 팀 식별 보조 증거).**
+**작성 2026-08-21. 최종 갱신 2026-08-24 (Phase 16 — D-109 완화 · 로스터를 신원 조건에서 제거).**
 > **지금 상태를 가장 빨리 알려면 맨 아래 L장을 먼저 읽는다.** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 Phase 9 래더는 **H장** · `docs/LADDER_TUNING_REPORT.md` · `docs/DECISIONS.md` D-057~D-068에 있다.
@@ -1181,6 +1181,96 @@ rate 2회 실행     결과 동일 (결정적 replay)
 ```
 
 검수 도구 — `pnpm nexon explain-matches --limit 5` 로 경기별 근거를 사람이 읽을 수 있다.
+
+### working tree 상태
+
+clean.
+
+---
+
+## O. Phase 16 — D-109 완화 · 로스터를 신원 조건에서 제거 (2026-08-24) ← **가장 최신**
+
+> 결정: `docs/DECISIONS.md` **D-134** (사용자 결정) · 경위: `docs/WORKLOG.md`
+
+### 현재 HEAD
+
+```
+c07eb92 feat(identity) 로스터를 신원의 조건에서 뺀다 — 강한 넥슨 식별자 기준 (D-134)
+```
+
+### D-134 — 확정된 정책
+
+```
+신원 생성 조건   강한 넥슨 식별자 (필수)
+로스터의 역할    본클랜원 / 용병 판정에만
+```
+
+**강한 넥슨 식별자** = `ouid` + **그 계정이 실제로 뛴 경기**(`NexonMatchObservation`).
+닉네임 → ouid 만으로는 틀린 적이 있어서(D-051) 관측값을 요구한다.
+
+**기존 선수와 잇는 근거** = 같은 경기 · 같은 닉네임 (D-132와 동일).
+이을 곳이 없으면 **새 선수를 만든다** — 무소속·용병도 선수가 되고,
+나중에 공식 클랜에 가입해도 `ouid` 덕분에 **같은 `Player` 행이 이어진다**.
+
+유지되는 금지 사항 — fuzzy 매칭 금지 · 근거 갈리면 conflict · 선점된 선수 안 뺏음 ·
+`--confirm` 없이 안 씀 · `linkReason` 에 사유 기록.
+
+### 실행 결과
+
+```
+NexonIdentity   active 26 → 49  (기존 선수 연결 10 · 새 선수 13) · 충돌 0
+로스터 없는 active 신원   0 → 15명     ← 완화가 실제로 동작한다
+Player          1,742 → 1,755
+재실행          연결 0 · 생성 0 (idempotent)
+
+incomplete      88 → 88   (변화 없음)
+official        17 → 17
+래더 반영 경기   17 · 선수 58
+```
+
+### 남은 문제 — 이제 **정책이 아니라 호출 한도**다
+
+나머지 155계정은 매치 목록을 못 받아 `no_activity` 로 보류됐다.
+
+```
+속도 2/s   → HTTP 429
+속도 0.5/s → 여전히 HTTP 429
+⇒ 초당 속도가 아니라 **키의 기간 할당량 소진**
+```
+
+이 세션에서 상세 747 + 신원 204 + 목록 ~150회를 썼다. 우회하지 않고 중단했다.
+
+### 다음 정확한 작업
+
+1. **할당량 회복 후** 목록 수집 재개 — 그대로 이어진다
+   ```bash
+   pnpm nexon:collect --all-identities --no-detail --modes "폭파미션" --resume
+   pnpm nexon:backfill-observations
+   pnpm nexon identity-link --league supply --confirm
+   pnpm nexon:reconstruct --league supply --redo --lineup-evidence --limit 300
+   pnpm nexon:rate --league supply
+   ```
+2. 그 뒤 incomplete / official 변화를 다시 재어 본다
+3. 이후 **production readiness 점검 → 도메인 연결/외부 공개 준비**
+
+### 주의사항 · 금지사항
+
+- **HTTP 429는 기간 할당량이다.** 속도를 낮춰도 안 된다. 우회 금지 — 시간을 기다린다
+- 신원은 **경기 기록이 있어야** 만든다. 닉네임만으로 만들지 않는다 (D-051)
+- 근거가 없으면 기존 선수에 붙이지 말고 **새로 만든다** (fuzzy 금지)
+- 로스터를 신원 조건으로 되돌리지 않는다 (D-134가 D-109를 대체)
+- 래더 공식은 이번에도 건드리지 않았다
+- raw/staging 삭제 없음 · `migrate dev` 미사용 · 스키마 변경 없음 · 터널 닫힘 유지
+
+### 검증 결과
+
+```
+pnpm typecheck    통과 (0 errors)      pnpm lint   통과
+pnpm test         723 passed / 17 skipped  (신규 9건)
+pnpm build        통과
+pnpm nexon:check  16항목 전 항목 PASS
+identity-link     재실행 시 연결 0 · 생성 0 (idempotent)
+```
 
 ### working tree 상태
 
