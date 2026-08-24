@@ -44,6 +44,30 @@ export const FINAL_DISPLAY_SCALE = 3.5
  */
 export const FINAL_WIN_GAIN_CUTOFF = 0.9
 
+/**
+ * **개인 퍼포먼스(KD·MVP) 반영 비율 — 0.**
+ *
+ * 시드 3개로 0% / ±2% / ±5% 를 비교했다.
+ *
+ *   비중    실력 재현도      일정 감안 승리의 질
+ *   0%      0.9066/0.9173/0.8915   0.987/0.982/0.979
+ *   ±2%     0.9076/0.9179/0.8929   0.973/0.969/0.973
+ *   ±5%     0.9087/0.9191/0.8938   0.903/0.915/0.921
+ *
+ * ±2% 는 실력 재현도를 **+0.001** 올리고, 사용자가 1순위로 지목한
+ * "일정을 감안한 승리의 질" 을 **−0.011** 내린다. 세 시드 모두 같은 방향이다.
+ * 1순위 지표를 더 많이 깎으면서 사는 것이므로 **손해 보는 거래**다.
+ *
+ * 그래서 0 으로 확정한다. KD·MVP 는 프로필 통계로만 보여 준다.
+ * 덕분에 설명도 한 문장으로 끝난다 — **"킬뎃은 점수에 들어가지 않는다."**
+ */
+export const FINAL_PERFORMANCE_WEIGHT = 0
+
+/** 구성 보정 상한 — 상한 0/30/50/70/100 스윕에서 고른 값 */
+export const FINAL_COMPOSITION_CAP = 50
+/** 구성 보정 창 — 최근 N경기 */
+export const FINAL_COMPOSITION_WINDOW = 20
+
 export function finalDisplay(internal: number, games: number, scale = FINAL_DISPLAY_SCALE): number {
   return BASELINE + (internal - BASELINE) * confidenceFor(games) * scale
 }
@@ -202,6 +226,8 @@ export function runSchedule(
   personal: PersonalConstants,
   scale = FINAL_DISPLAY_SCALE,
   poolSize = OPPONENT_POOL_SIZE,
+  /** 경로 시드 — 같은 조건이라도 승패 순서가 다르면 도착점이 다르다 */
+  pathSeed = 0,
 ): {
   profile: ScheduleProfile
   internal: number
@@ -233,7 +259,7 @@ export function runSchedule(
  
      그래서 승패 배열과 상대 선택을 고정 시드로 섞어 주기 공명을 없앤다.
      시드가 고정이라 재현성은 그대로다. */
-  const rng = new Rng(profile.games * 1000 + Math.round(profile.winRate * 1000))
+  const rng = new Rng(profile.games * 1000 + Math.round(profile.winRate * 1000) + pathSeed * 7919)
   const outcomes = Array.from({ length: profile.games }, (_, i) => i < targetWins)
   for (let i = outcomes.length - 1; i > 0; i -= 1) {
     const j = rng.int(0, i)
@@ -315,4 +341,36 @@ export const HISTORIC_OUTLIER: ScheduleProfile = {
   opponentMax: 3650,
   performance: 0.3,
   note: '많이 · 강자와 · 실제로 이김 — 역대급 시즌',
+}
+
+/**
+ * 같은 조건을 **여러 경로로** 돌려 평균을 낸다.
+ *
+ * ── 왜 필요한가 (D-142 · 하네스 결함 #7)
+ *   처음에는 경로 하나만 돌려서 결론을 냈다. 그런데 Elo 는 평형점 **주위를 랜덤워크**한다.
+ *   K=50 에서 한 경로의 도착점은 평형점에서 내부 ±100 (표시 ±350) 까지 벌어진다.
+ *   그 탓에 "500판 55% 검증된 강자(3410)" 가 "40판 75% 신규(3577)" 에게 지는,
+ *   조건상 나올 수 없는 결과가 나왔다. 경로 하나를 설계 판정의 근거로 쓰면 안 된다.
+ *
+ *   경로 9개의 평균을 쓰면 표준오차가 1/3 로 줄어 판정이 안정된다.
+ */
+export const LAB_PATHS = 25
+
+export function runScheduleAverage(
+  profile: ScheduleProfile,
+  personal: PersonalConstants,
+  scale = FINAL_DISPLAY_SCALE,
+  poolSize = OPPONENT_POOL_SIZE,
+  paths = LAB_PATHS,
+): { display: number; internal: number; spread: number } {
+  const runs = Array.from({ length: paths }, (_, i) =>
+    runSchedule(profile, personal, scale, poolSize, i),
+  )
+  const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length
+  const displays = runs.map((r) => r.display)
+  return {
+    display: mean(displays),
+    internal: mean(runs.map((r) => r.internal)),
+    spread: Math.max(...displays) - Math.min(...displays),
+  }
 }
