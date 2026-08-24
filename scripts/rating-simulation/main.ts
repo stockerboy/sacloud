@@ -11,8 +11,11 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { Rng } from './rng.js'
 import {
+  CANDIDATE1_CLAN,
+  CANDIDATE1_PERSONAL,
   DEFAULT_CLAN,
   DEFAULT_PERSONAL,
+  compositionScore,
   confidenceFor,
   type ClanConstants,
   type ConfidenceMode,
@@ -80,6 +83,8 @@ function runSeason(
   options: Options,
   personal: PersonalConstants,
   clanConstants: ClanConstants,
+  /** 후보 1안: 상한 있는 구성 보정을 최종 점수에 더한다 (D-140) */
+  useBoundedComposition = false,
 ) {
   const rng = new Rng(seed)
   const base = makePlayers(rng, options.players)
@@ -89,7 +94,7 @@ function runSeason(
   const matches = scheduleSeason(rng, allPlayers, clans, options.seasonDays)
   const result = replay(matches, personal, clanConstants)
   const personalRows = personalLeaderboard(result, allPlayers)
-  const clanRows = clanLeaderboard(result, clans)
+  const clanRows = clanLeaderboard(result, clans, useBoundedComposition)
   return { rng, allPlayers, clans, matches, result, personalRows, clanRows }
 }
 
@@ -259,6 +264,62 @@ function main(): void {
     return { mode, created: r.ratingCreated, aRating: r.aRating, bRating: r.bRating }
   })
 
+  /* ------------------------------- 후보 1안 vs 확정안 (같은 시드) ------------- */
+  const candidateRuns = Array.from({ length: Math.min(5, options.runs) }, (_, i) => {
+    const seed = options.seed + i * 977
+    const cur = runSeason(seed, options, personal, DEFAULT_CLAN, false)
+    const cand = runSeason(seed, options, CANDIDATE1_PERSONAL, CANDIDATE1_CLAN, true)
+
+    const clanCorr = (rows: typeof cur.clanRows): number => {
+      const latentSorted = [...rows].sort((a, b) => b.latentStrength - a.latentStrength)
+      const latentRank = new Map(latentSorted.map((r, idx) => [r.clanId, idx + 1]))
+      const n = rows.length
+      let sum = 0
+      for (const r of rows) {
+        const d = r.rank - (latentRank.get(r.clanId) ?? r.rank)
+        sum += d * d
+      }
+      return n > 1 ? 1 - (6 * sum) / (n * (n * n - 1)) : 0
+    }
+    const negBase = (rows: typeof cur.clanRows): number =>
+      rows.slice(0, 10).filter((r) => r.baseDeltaTotal < 0).length
+
+    return {
+      seed,
+      current: {
+        personalCorr: skillCorrelation(cur.personalRows),
+        personalTop: cur.personalRows[0]?.displayed ?? 0,
+        clanCorr: clanCorr(cur.clanRows),
+        clanTop: cur.clanRows[0]?.finalScore ?? 0,
+        clanAvg: cur.clanRows.reduce((a, r) => a + r.finalScore, 0) / Math.max(1, cur.clanRows.length),
+        created: cur.result.clanRatingCreated,
+        negBaseTop10: negBase(cur.clanRows),
+        avgMembersTop10: cur.clanRows.slice(0, 10).reduce((a, r) => a + r.avgMembers, 0) / 10,
+      },
+      candidate: {
+        personalCorr: skillCorrelation(cand.personalRows),
+        personalTop: cand.personalRows[0]?.displayed ?? 0,
+        clanCorr: clanCorr(cand.clanRows),
+        clanTop: cand.clanRows[0]?.finalScore ?? 0,
+        clanAvg: cand.clanRows.reduce((a, r) => a + r.finalScore, 0) / Math.max(1, cand.clanRows.length),
+        created: cand.result.clanRatingCreated,
+        negBaseTop10: negBase(cand.clanRows),
+        avgMembersTop10: cand.clanRows.slice(0, 10).reduce((a, r) => a + r.avgMembers, 0) / 10,
+        maxComposition: Math.max(...cand.clanRows.map((r) => r.compositionScore)),
+        avgComposition:
+          cand.clanRows.reduce((a, r) => a + r.compositionScore, 0) / Math.max(1, cand.clanRows.length),
+      },
+    }
+  })
+
+  const candidatePrimary = runSeason(options.seed, options, CANDIDATE1_PERSONAL, CANDIDATE1_CLAN, true)
+
+  /** 구성 곡선 표 — 사람이 값을 눈으로 확인할 수 있게 */
+  const compositionCurve = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((avg) => ({
+    avg,
+    score: compositionScore(avg),
+  }))
+
   /* ------------------------------------------------------- 매트릭스 ---------- */
   const evenTable = evenMatchTable(DEFAULT_CLAN)
   const compMatrix = compositionMatrix(DEFAULT_CLAN)
@@ -308,6 +369,21 @@ function main(): void {
     gapMatrix,
     alternatives,
     altDeathmatch,
+    candidateRuns,
+    compositionCurve,
+    candidate: {
+      personalRows: candidatePrimary.personalRows,
+      clanRows: candidatePrimary.clanRows,
+      personalConstants: CANDIDATE1_PERSONAL,
+      clanConstants: CANDIDATE1_CLAN,
+      anomalies: detectAnomalies(candidatePrimary.personalRows, candidatePrimary.allPlayers),
+      correlation: skillCorrelation(candidatePrimary.personalRows),
+      /* 같은 상대와 지나치게 반복한 클랜 — **감점이 아니라 탐지만** (D-140) */
+      repeatFlags: candidatePrimary.clanRows
+        .filter((r) => r.games >= 10 && r.topOpponentGames / r.games > 0.5)
+        .map((r) => ({ name: r.name, games: r.games, topOpponentGames: r.topOpponentGames }))
+        .slice(0, 10),
+    },
   }
 
   if (options.json) {

@@ -6,7 +6,9 @@
 import { type Rng } from './rng.js'
 import {
   BASELINE,
+  averageMembers,
   clanUpdate,
+  compositionScore,
   confidenceFor,
   displayRating,
   personalUpdate,
@@ -47,6 +49,10 @@ export interface ClanState {
   bonusTotal: number
   baseDeltaTotal: number
   opponentRatingSum: number
+  /** 최근 경기의 본클랜원 수 (상한 있는 구성 보정용 · D-140) */
+  recentMembers: number[]
+  /** 상대별 대전 횟수 — **감점용이 아니라 탐지용**이다 (자동 감쇠 없음) */
+  opponentCounts: Map<string, number>
 }
 
 export interface SeasonResult {
@@ -89,6 +95,8 @@ function newClanState(id: string): ClanState {
     bonusTotal: 0,
     baseDeltaTotal: 0,
     opponentRatingSum: 0,
+    recentMembers: [],
+    opponentCounts: new Map(),
   }
 }
 
@@ -207,7 +215,12 @@ export function replay(
         state.bonusTotal += result.bonus
         state.baseDeltaTotal += result.baseDelta
         state.opponentRatingSum += opponentBefore
+        state.recentMembers.push(members)
       }
+
+      /* 상대 반복 횟수 — **자동 감점은 하지 않는다.** 이상 패턴 탐지용으로만 센다 (D-140) */
+      red.opponentCounts.set(match.blueClanId, (red.opponentCounts.get(match.blueClanId) ?? 0) + 1)
+      blue.opponentCounts.set(match.redClanId, (blue.opponentCounts.get(match.redClanId) ?? 0) + 1)
     }
   }
 
@@ -399,7 +412,12 @@ export function personalLeaderboard(
       upsetWins: state.upsetWins,
       internal: state.internal,
       confidence,
-      displayed: displayRating(state.internal, state.games, season.personalConstants.confidenceMode),
+      displayed: displayRating(
+        state.internal,
+        state.games,
+        season.personalConstants.confidenceMode,
+        season.personalConstants.displayScale,
+      ),
       latentSkill: player.latentSkill,
     })
   }
@@ -422,19 +440,32 @@ export interface ClanLeaderRow {
   bonusTotal: number
   baseDeltaTotal: number
   avgOpponentRating: number
+  /** 순수 Elo (제로섬) */
   rating: number
+  /** 최근 N경기 평균 본클랜원 수 */
+  recentAvgMembers: number
+  /** 상한 있는 구성 보정 (0~100 · D-140) */
+  compositionScore: number
+  /** 화면에 보여 주는 최종 점수 = Elo + 구성 보정 */
+  finalScore: number
+  /** 가장 많이 만난 상대와의 대전 횟수 (탐지용) */
+  topOpponentGames: number
   latentStrength: number
 }
 
 export function clanLeaderboard(
   season: Omit<SeasonResult, 'matches'>,
   clans: readonly SimClan[],
+  /** 후보 1안: 상한 있는 구성 보정을 최종 점수에 더한다 (D-140) */
+  useBoundedComposition = false,
 ): ClanLeaderRow[] {
   const byId = new Map(clans.map((c) => [c.id, c]))
   const rows: ClanLeaderRow[] = []
   for (const [id, state] of season.clans) {
     const clan = byId.get(id)
     if (!clan || state.games === 0) continue
+    const recentAvg = averageMembers(state.recentMembers)
+    const composition = useBoundedComposition ? compositionScore(recentAvg) : 0
     rows.push({
       rank: 0,
       clanId: id,
@@ -448,10 +479,15 @@ export function clanLeaderboard(
       baseDeltaTotal: state.baseDeltaTotal,
       avgOpponentRating: state.opponentRatingSum / state.games,
       rating: state.rating,
+      recentAvgMembers: recentAvg,
+      compositionScore: composition,
+      finalScore: state.rating + composition,
+      topOpponentGames: Math.max(0, ...state.opponentCounts.values()),
       latentStrength: clan.latentStrength,
     })
   }
-  rows.sort((a, b) => b.rating - a.rating)
+  // 순위는 **최종 표시점수** 기준이다 (Elo + 상한 있는 구성 보정)
+  rows.sort((a, b) => b.finalScore - a.finalScore)
   rows.forEach((row, i) => {
     row.rank = i + 1
   })

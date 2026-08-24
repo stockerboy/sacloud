@@ -55,6 +55,11 @@ export interface PersonalConstants {
   performanceWeight: number
   confidenceMode: ConfidenceMode
   ratingFloor: number
+  /**
+   * 표시 배율 (D-140). 내부 Elo 는 그대로 두고 **보여 주는 숫자만** 늘린다.
+   * 1 이면 내부값 그대로. 3.3 이면 내부 3387 → 표시 4277.
+   */
+  displayScale: number
 }
 
 export const DEFAULT_PERSONAL: PersonalConstants = {
@@ -62,6 +67,31 @@ export const DEFAULT_PERSONAL: PersonalConstants = {
   performanceWeight: 0.1,
   confidenceMode: 'display',
   ratingFloor: 1000,
+  displayScale: 1,
+}
+
+/**
+ * **후보 1안** (D-140) — 사용자가 시뮬레이션 결과를 보고 정한 운영 후보.
+ *
+ *   K 50 · 퍼포먼스 ±5% · 신뢰도는 표시값에만 · 표시 배율 3.3
+ */
+export const CANDIDATE1_PERSONAL: PersonalConstants = {
+  k: 50,
+  performanceWeight: 0.05,
+  confidenceMode: 'display',
+  ratingFloor: 1000,
+  displayScale: 3.3,
+}
+
+/**
+ * **후보 1안** 클랜 — 순수 Elo 만. 누적 보너스를 아예 끈다.
+ * 구성은 래더 밖에서 상한 100 의 보정으로 얹는다 (`compositionScore`).
+ */
+export const CANDIDATE1_CLAN: ClanConstants = {
+  k: 50,
+  compositionWinBonus: [0, 0, 0, 0, 0, 0],
+  ratingFloor: 1000,
+  bonusMode: 'separate-track',
 }
 
 export interface PersonalInput {
@@ -114,14 +144,27 @@ export function personalUpdate(input: PersonalInput): PersonalResult {
   }
 }
 
-/** 표시 rating. `display` 모드에서만 신뢰도로 당긴다 */
+/**
+ * 표시 rating.
+ *
+ * ── 배율을 왜 따로 두는가 (후보 1안 · D-140)
+ *   K를 40 → 70 으로 올려도 1위가 14점밖에 안 움직였다. **K는 점수판의 높이를 정하는
+ *   다이얼이 아니다** — 레이팅이 얼마나 빨리 움직이는지를 정할 뿐이다.
+ *   그래서 내부 Elo 는 안정적으로 두고 **보여 주는 숫자만** 배율로 늘린다.
+ *
+ *     내부 3387 · 배율 3.3  →  3000 + 387 × 3.3 = 4277
+ *
+ *   내부 계산을 억지로 4300 에 맞추지 않는 것이 요점이다.
+ *   신뢰도는 배율 **앞에** 적용한다 — 덜 검증된 사람의 점수를 3배로 부풀리면 안 된다.
+ */
 export function displayRating(
   internal: number,
   games: number,
   mode: ConfidenceMode,
+  displayScale = 1,
 ): number {
-  if (mode !== 'display') return internal
-  return BASELINE + (internal - BASELINE) * confidenceFor(games)
+  const confidence = mode === 'display' ? confidenceFor(games) : 1
+  return BASELINE + (internal - BASELINE) * confidence * displayScale
 }
 
 /* -------------------------------------------------------------------------- */
@@ -159,6 +202,64 @@ export const DEFAULT_CLAN: ClanConstants = {
   compositionWinBonus: [0, 0, 3, 6, 9, 12],
   ratingFloor: 1000,
   bonusMode: 'current',
+}
+
+/* -------------------------------------------------------------------------- */
+/* 후보 1안 — 상한 있는 구성 보정 (D-140)                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 최근 N경기 평균 본클랜원 수 → **구성 보정 점수** (상한 100).
+ *
+ * ── 왜 누적을 버리는가
+ *   매 승리마다 +12 를 영구히 더하면 **판수가 곧 점수**가 된다.
+ *   실측에서 clan-65 는 Elo 누적이 -1,762 인데 보너스 +2,178 로 6위였다.
+ *   "잘해서가 아니라 많이 해서" 올라간 것이라, 막으려던 문제가 다른 얼굴로 돌아온 셈이다.
+ *
+ * ── 그래서 상태값으로 바꾼다
+ *   구성도는 **쌓이는 것이 아니라 현재 상태**다. 최근 경기에서 자기 클랜원을 몇 명
+ *   데려왔는지를 보고 최대 100점을 얹는다. 500판을 해도 100을 넘지 않는다.
+ *
+ * ── 곡선
+ *   사용자가 준 기준점은 "평균 2명대 → 최대 +20 · 3명대 → +40 · 4명대 → +70 · 5명 → +100" 이다.
+ *   구간 안에서 뚝뚝 끊기면 2.99 와 3.00 이 20점씩 벌어지므로 **기준점 사이를 직선으로 잇는다.**
+ *   그래야 "한 명 더 데려오면 조금 더 받는다"가 성립해 행동을 유도한다.
+ *
+ *     1.0 → 0 · 2.0 → 20 · 3.0 → 40 · 4.0 → 70 · 5.0 → 100
+ */
+export const COMPOSITION_CURVE: readonly [number, number][] = [
+  [1, 0],
+  [2, 20],
+  [3, 40],
+  [4, 70],
+  [5, 100],
+]
+
+export function compositionScore(
+  avgMembers: number,
+  curve: readonly [number, number][] = COMPOSITION_CURVE,
+): number {
+  if (avgMembers <= curve[0]![0]) return curve[0]![1]
+  const last = curve[curve.length - 1]!
+  if (avgMembers >= last[0]) return last[1]
+  for (let i = 1; i < curve.length; i += 1) {
+    const [x1, y1] = curve[i - 1]!
+    const [x2, y2] = curve[i]!
+    if (avgMembers <= x2) {
+      const t = (avgMembers - x1) / (x2 - x1)
+      return y1 + t * (y2 - y1)
+    }
+  }
+  return last[1]
+}
+
+/** 최근 N경기만 본다 — 옛날에 잘 모았다고 계속 받으면 그것도 누적이다 */
+export const COMPOSITION_WINDOW = 20
+
+export function averageMembers(recent: readonly number[], window = COMPOSITION_WINDOW): number {
+  if (recent.length === 0) return 0
+  const slice = recent.slice(-window)
+  return slice.reduce((sum, n) => sum + n, 0) / slice.length
 }
 
 /** 본클랜원 수 → 승리 보너스. 범위를 벗어나면 끝값으로 자른다 */

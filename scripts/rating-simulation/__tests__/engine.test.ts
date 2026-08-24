@@ -15,10 +15,13 @@
 import { describe, expect, it } from 'vitest'
 import { Rng } from '../rng'
 import {
+  CANDIDATE1_CLAN,
   DEFAULT_CLAN,
   DEFAULT_PERSONAL,
+  averageMembers,
   clanUpdate,
   compositionBonus,
+  compositionScore,
   confidenceFor,
   displayRating,
   expectedScore,
@@ -206,5 +209,97 @@ describe('보너스 모드 (대안)', () => {
     const even = clanUpdate({ ratingBefore: 3000, opponentRating: 3000, won: true, members: 5, constants })
     expect(farm.bonus).toBeLessThan(3)
     expect(even.bonus).toBeCloseTo(12, 6)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* 후보 1안 (D-140)                                                            */
+/* -------------------------------------------------------------------------- */
+
+describe('후보 1안 — 상한 있는 구성 보정', () => {
+  it('기준점이 지시대로다', () => {
+    expect(compositionScore(1)).toBe(0)
+    expect(compositionScore(2)).toBe(20)
+    expect(compositionScore(3)).toBe(40)
+    expect(compositionScore(4)).toBe(70)
+    expect(compositionScore(5)).toBe(100)
+  })
+
+  it('기준점 사이는 직선이다 — 한 명 더 데려오면 조금 더 받는다', () => {
+    expect(compositionScore(2.5)).toBe(30)
+    expect(compositionScore(3.5)).toBe(55)
+    expect(compositionScore(4.5)).toBe(85)
+  })
+
+  it('단조 증가한다', () => {
+    let prev = -1
+    for (let a = 1; a <= 5; a += 0.1) {
+      const score = compositionScore(a)
+      expect(score).toBeGreaterThanOrEqual(prev)
+      prev = score
+    }
+  })
+
+  it('**상한 100 을 넘지 않는다** — 판수로 무한 적립되지 않는다', () => {
+    expect(compositionScore(5)).toBe(100)
+    expect(compositionScore(10)).toBe(100)
+    expect(compositionScore(999)).toBe(100)
+  })
+
+  it('1명 미만·0명은 0이다', () => {
+    expect(compositionScore(0)).toBe(0)
+    expect(compositionScore(0.5)).toBe(0)
+  })
+
+  it('최근 N경기만 본다 — 옛날 기록으로 계속 받지 않는다', () => {
+    const history = [...Array(30).fill(5), ...Array(20).fill(1)]
+    // 최근 20경기가 전부 1명이므로 평균도 1이어야 한다
+    expect(averageMembers(history, 20)).toBe(1)
+    expect(compositionScore(averageMembers(history, 20))).toBe(0)
+  })
+
+  it('경기가 없으면 0이다', () => {
+    expect(averageMembers([])).toBe(0)
+  })
+})
+
+describe('후보 1안 — 클랜 Elo 는 순수 제로섬이다', () => {
+  it('승자 이득과 패자 손실이 정확히 상쇄된다', () => {
+    for (const [a, b] of [[3000, 3000], [3400, 3000], [3000, 3400], [4000, 3000]] as const) {
+      const win = clanUpdate({ ratingBefore: a, opponentRating: b, won: true, members: 5, constants: CANDIDATE1_CLAN })
+      const lose = clanUpdate({ ratingBefore: b, opponentRating: a, won: false, members: 5, constants: CANDIDATE1_CLAN })
+      expect(win.delta + lose.delta).toBeCloseTo(0, 9)
+    }
+  })
+
+  it('구성이 몇 명이든 래더 delta 가 같다 — 누적 보너스가 없다', () => {
+    const deltas = [1, 2, 3, 4, 5].map(
+      (m) => clanUpdate({ ratingBefore: 3000, opponentRating: 3000, won: true, members: m, constants: CANDIDATE1_CLAN }).delta,
+    )
+    expect(new Set(deltas.map((d) => Math.round(d * 1e6))).size).toBe(1)
+    expect(Math.round(deltas[0]!)).toBe(25) // K 50 · 동급전 ±25
+  })
+})
+
+describe('후보 1안 — 표시 배율', () => {
+  it('내부는 그대로 두고 표시만 늘린다', () => {
+    // 내부 3387 · 배율 3.3 → 3000 + 387×3.3 = 4277.1
+    expect(displayRating(3387, 200, 'display', 3.3)).toBeCloseTo(4277.1, 6)
+  })
+
+  it('baseline 은 배율과 무관하게 3000 이다', () => {
+    expect(displayRating(3000, 200, 'display', 3.3)).toBe(3000)
+  })
+
+  it('신뢰도를 배율보다 **먼저** 적용한다 — 덜 검증된 점수를 3배로 부풀리지 않는다', () => {
+    // 20판(신뢰도 0.4) · 내부 3400 → 3000 + 400×0.4×3.3 = 3528
+    expect(displayRating(3400, 20, 'display', 3.3)).toBeCloseTo(3528, 6)
+    // 신뢰도를 나중에 적용했다면 3000 + 400×3.3×0.4 = 3528 로 같지만,
+    // 순서가 바뀌면 baseline 처리가 달라진다 — 아래가 그것을 고정한다
+    expect(displayRating(2600, 20, 'display', 3.3)).toBeCloseTo(3000 - 400 * 0.4 * 3.3, 6)
+  })
+
+  it('배율 1 이면 예전과 같다', () => {
+    expect(displayRating(3400, 200, 'display', 1)).toBe(3400)
   })
 })

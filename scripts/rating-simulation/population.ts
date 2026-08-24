@@ -194,6 +194,23 @@ export function makeClans(rng: Rng, players: SimPlayer[], count: number): SimCla
     }
   }
 
+  /* 클랜원은 **자기 클랜이 뛸 때 같이 뛴다.**
+
+     이걸 안 맞추면 클랜이 "본클랜원 5명으로 가겠다"고 해도 그 선수들의 목표 판수가
+     먼저 소진돼 용병으로 채워진다. 실측에서 최대 평균 본클랜원이 3.5 에 그쳐
+     상한 있는 구성 보정(D-140)이 거의 작동하지 않았다 — 검증 자체가 불가능해진다.
+     그래서 그 클랜이 자주 내보낼 선수들에게 **클랜 일정만큼의 목표 판수**를 보장한다. */
+  for (const clan of clans) {
+    const needed = Math.ceil(clan.avgMembers) + 2
+    const core = clan.memberIds.slice(0, needed)
+    for (const id of core) {
+      const player = players.find((p) => p.id === id)
+      // archetype 선수는 판수 자체가 검증 대상이라 건드리지 않는다
+      if (!player || player.archetype) continue
+      player.targetGames = Math.max(player.targetGames, clan.targetGames)
+    }
+  }
+
   /* 클랜의 공표 전력을 **실제 구성원 평균**으로 맞춘다.
      이래야 "강한 클랜"이라는 말이 그 클랜이 내보내는 선수와 일치한다. */
   const byId = new Map(players.map((p) => [p.id, p]))

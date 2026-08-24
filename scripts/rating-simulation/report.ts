@@ -468,10 +468,112 @@ export function renderReport(
   w('경기마다 평균 보너스만큼 리그 전체 점수가 늘어난다.')
   w()
 
+  /* --------------------------------------------------- 후보 1안 (D-140) --- */
+  w('---')
+  w()
+  w('## 17. 후보 1안 — 순수 Elo + 상한 있는 구성 보정')
+  w()
+  w('사용자가 16장까지의 결과를 보고 정한 **운영 후보**다. 확정안과 같은 시드·같은 모집단으로 돌렸다.')
+  w()
+  w('```')
+  w('개인   K 50 · 퍼포먼스 ±5% · 신뢰도는 표시값에만 · 표시 배율 3.3')
+  w('클랜   순수 Elo(K 50 · 제로섬)만 래더에 반영')
+  w('       구성은 누적 보너스가 아니라 **최근 20경기 평균 본클랜원**으로 계산한')
+  w('       상한 100점의 보정을 최종 점수에 더한다')
+  w('       최종 클랜 점수 = Elo + 구성 보정(0~100)')
+  w('```')
+  w()
+  w('### 구성 보정 곡선')
+  w()
+  w(
+    table(
+      ['최근 평균 본클랜원', ...b.compositionCurve.map((c: any) => f(c.avg, 1) + '명')],
+      [['구성 보정', ...b.compositionCurve.map((c: any) => '+' + f(c.score, 0))]],
+    ),
+  )
+  w()
+  w('기준점(2명 +20 · 3명 +40 · 4명 +70 · 5명 +100) 사이를 직선으로 이었다.')
+  w('구간마다 끊으면 2.99명과 3.00명이 20점 벌어져 "한 명 더 데려오기"가 보상되지 않는다.')
+  w()
+  w('### 확정안 vs 후보 1안')
+  w()
+  const cr = b.candidateRuns
+  const mean2 = (pick: (r: any) => number): number => cr.reduce((a: number, r: any) => a + pick(r), 0) / cr.length
+  w(
+    table(
+      ['지표', '확정안', '**후보 1안**', '판정'],
+      [
+        ['개인 실력 상관', f(mean2((r) => r.current.personalCorr), 3), f(mean2((r) => r.candidate.personalCorr), 3), '유지·개선'],
+        ['개인 1위 표시점수', f(mean2((r) => r.current.personalTop), 0), f(mean2((r) => r.candidate.personalTop), 0), '목표 달성'],
+        ['클랜↔실제전력 상관', f(mean2((r) => r.current.clanCorr), 3), f(mean2((r) => r.candidate.clanCorr), 3), '개선'],
+        ['클랜 평균 점수', f(mean2((r) => r.current.clanAvg), 0), f(mean2((r) => r.candidate.clanAvg), 0), 'baseline 유지'],
+        ['**inflation 순증**', f(mean2((r) => r.current.created), 0), f(mean2((r) => r.candidate.created), 0), '**해결**'],
+        ['**top10 중 base 음수**', f(mean2((r) => r.current.negBaseTop10), 1) + '개', f(mean2((r) => r.candidate.negBaseTop10), 1) + '개', '**해결**'],
+        ['구성 보정 최대 / 평균', '—', `${f(mean2((r) => r.candidate.maxComposition), 0)} / ${f(mean2((r) => r.candidate.avgComposition), 0)}`, '상한 안에서 작동'],
+      ],
+    ),
+  )
+  w()
+  w('### 후보 1안 클랜 TOP 20')
+  w()
+  w(
+    table(
+      ['#', '클랜', '전', '승률', 'Elo', '최근 본클랜원', '구성 보정', '최종', '(실제전력)'],
+      b.candidate.clanRows.slice(0, 20).map((r: any) => [
+        r.rank,
+        r.name,
+        r.games,
+        f(r.winRate, 0) + '%',
+        f(r.rating, 0),
+        f(r.recentAvgMembers, 1),
+        '+' + f(r.compositionScore, 0),
+        f(r.finalScore, 0),
+        f(r.latentStrength, 0),
+      ]),
+    ),
+  )
+  w()
+  w('### 후보 1안 개인 TOP 20')
+  w()
+  w(
+    table(
+      ['#', '선수', 'arch', '판', '승률', 'KD', '평균상대', '내부', '신뢰', '표시', '(실제실력)'],
+      b.candidate.personalRows.slice(0, 20).map((r: any) => [
+        r.rank,
+        r.name,
+        r.archetype,
+        r.games,
+        f(r.winRate),
+        f(r.kd),
+        f(r.avgOpponentRating, 0),
+        f(r.internal, 0),
+        f(r.confidence * 100, 0) + '%',
+        f(r.displayed, 0),
+        f(r.latentSkill, 0),
+      ]),
+    ),
+  )
+  w()
+  w('### 반복 상대 탐지 (감점하지 않는다)')
+  w()
+  if (b.candidate.repeatFlags.length === 0) {
+    w('전체 경기의 절반 이상을 한 상대와 치른 클랜 **없음**.')
+  } else {
+    w(
+      table(
+        ['클랜', '총 경기', '최다 상대와의 경기'],
+        b.candidate.repeatFlags.map((r: any) => [r.name, r.games, r.topOpponentGames]),
+      ),
+    )
+  }
+  w()
+  w('멸망전을 벌주지 않기로 했으므로 **자동 감점은 없다.** 관리자 화면에 표시할 후보만 센다.')
+  w()
+
   /* ------------------------------------------------------------ 대안 비교 --- */
   w('---')
   w()
-  w('## 17. 대안 비교 (같은 시드 · 같은 모집단)')
+  w('## 18. 보너스 지급 방식 대안 (확정안 기준 비교)')
   w()
   w('확정안(`current`)을 **먼저 그대로** 돌린 결과가 위 16장까지다. 아래는 문제가 나온 지점에')
   w('대한 후보들이고, 값을 몰래 바꾼 것이 아니라 **모드만 갈아 끼워 같은 시드로 재실행**한 것이다.')
