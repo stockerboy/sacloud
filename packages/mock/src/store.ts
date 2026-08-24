@@ -544,7 +544,9 @@ export function getPlayerRanks(leagueId: string, cursor: string | null, size: nu
 function matchTimeClanOf(playerId: string) {
   const clanId = playerById.get(playerId)?.clanId
   const clan = clanId ? clanById.get(clanId) : undefined
-  return clan ? toClanSummary(clan) : null
+  if (!clan) return null
+  const summary = toClanSummary(clan)
+  return { league_clan_id: summary.id, slug: summary.slug, name: summary.name, mark: summary.mark }
 }
 
 function lineupOf(match: MockMatch, side: TeamSide): MatchLineupEntry[] {

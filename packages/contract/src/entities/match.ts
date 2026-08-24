@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Count, Id, IsoDateTime, Percent, Rating, RatingUpdate } from '../common'
+import { ClanMark, Count, Id, IsoDateTime, Percent, Rating, RatingUpdate, Slug } from '../common'
 import { Division, TeamSide, Weapon } from '../codes'
 import { ClanSummary, PlayerSummary } from './summaries'
 import { GameMap } from './league'
@@ -10,6 +10,23 @@ import { GameMap } from './league'
  * 뒤 6자리 코드의 의미는 [미확인].
  */
 export const MatchId = z.string().regex(/^\d{18}$/, '매치 ID는 18자리 숫자입니다')
+
+/**
+ * **그 경기를 했을 당시** 소속 클랜 (D-131 · D-138).
+ *
+ * 현재 소속이 아니다. 선수가 이적해도 이 값은 변하지 않는다.
+ *
+ * 우리 리그 밖의 클랜일 수 있다. 그때는 **이름만 알고** `league_clan_id`·`slug`는 `null`이다 —
+ * 빈 문자열로 있는 척하지 않는다 (그렇게 했다가 계약 검증이 깨져 목록이 통째로 비었다).
+ */
+export const MatchTimeClan = z.object({
+  /** 우리 리그 클랜과 연결됐으면 그 id. 외부 클랜이면 `null` */
+  league_clan_id: Id.nullable(),
+  slug: Slug.nullable(),
+  name: z.string(),
+  mark: ClanMark,
+})
+export type MatchTimeClan = z.infer<typeof MatchTimeClan>
 
 /**
  * 매치 상세의 플레이어 스탯.
@@ -49,7 +66,7 @@ export const MatchPlayerStat = z.object({
    * 기록실과 경기 상세는 역사를 역사대로 보여 준다.
    * 근거가 없으면 `null`(= 알 수 없음)이다. 현재 소속으로 메우지 않는다.
    */
-  match_time_clan: ClanSummary.nullable(),
+  match_time_clan: MatchTimeClan.nullable(),
 })
 export type MatchPlayerStat = z.infer<typeof MatchPlayerStat>
 
@@ -61,7 +78,7 @@ export const MatchLineupEntry = z.object({
   weapon: Weapon.nullable(),
   dropout: z.boolean().nullable(),
   /** **그 경기 당시** 소속 클랜 (D-131). 현재 소속이 아니다 */
-  match_time_clan: ClanSummary.nullable(),
+  match_time_clan: MatchTimeClan.nullable(),
 })
 export type MatchLineupEntry = z.infer<typeof MatchLineupEntry>
 

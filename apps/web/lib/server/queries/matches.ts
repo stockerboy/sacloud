@@ -2,10 +2,10 @@ import { prisma, type Prisma } from '@sacloud/db'
 import {
   kdRate,
   percentOf,
-  type ClanSummary,
   type MatchDetail,
   type MatchLineupEntry,
   type MatchListItem,
+  type MatchTimeClan,
   type MatchPlayerStat,
   type TeamSide,
   type Weapon,
@@ -140,12 +140,12 @@ export function sideOfLeagueClan(
  * 선수가 이적하면 과거 기록실이 통째로 바뀌기 때문이다.
  * 근거가 없으면 `null`이다. 현재 소속으로 메우지 않는다.
  */
-function matchTimeClanOf(stat: StatRow): ClanSummary | null {
+function matchTimeClanOf(stat: StatRow): MatchTimeClan | null {
   if (!stat.matchTimeClanName) return null
   return {
-    // 우리 리그 클랜과 연결됐으면 그 id, 아니면 이름만 아는 외부 클랜이다
-    id: stat.matchTimeLeagueClanId ?? '',
-    slug: stat.matchTimeClanSlug ?? '',
+    // 우리 리그 밖의 클랜이면 이름만 안다. 빈 문자열로 있는 척하지 않는다 (D-138)
+    league_clan_id: stat.matchTimeLeagueClanId,
+    slug: stat.matchTimeClanSlug,
     name: stat.matchTimeClanName,
     mark: { bg: stat.matchTimeClanMarkBgUrl, front: stat.matchTimeClanMarkFrontUrl },
   }
