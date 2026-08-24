@@ -2707,3 +2707,93 @@ NexonIdentity  active 26 → 49   (기존 선수 연결 10 · 새 선수 13) · 
 우회하지 않고 중단했다. 할당량이 회복되면 `--resume` 으로 이어진다.
 
 즉 88건은 **정책이 아니라 호출 한도**가 막고 있다. 정책은 이제 풀려 있다.
+
+### D-135. 무소속 선수 프로필이 404였다 — D-134 이후의 구멍
+
+개인 랭킹에는 보이는데 프로필을 열면 404였다.
+`getLeaguePlayerDetail` 이 소속 리그클랜을 못 찾으면 `null` 을 돌려주고 있었다.
+
+D-134로 무소속·용병도 정상적인 선수가 되면서 그 가정이 깨졌다 —
+실측 리그 선수 58명 중 **14명이 clanId 없음**, 전원 프로필 404.
+
+계약은 이미 `clan: ClanSummary.nullable()` 이었다. **서버 쪽 가드만 과했다.**
+
+같이 고친 것 — `buildMatchSummary` 가 고정된 현재 소속으로 진영을 판정하고 있었다.
+무소속이면 요약이 통째로 비고, 이적한 선수는 과거 경기가 빠졌다.
+**그 경기에서 본인이 뛴 진영**을 쓰도록 바꿨다 (D-131과 같은 원칙).
+
+```
+선수 상세 API  44/58 → 57/58
+남은 1건은 E2E 자리표시자 (400) — 공개 전 정리 대상
+```
+
+### D-136. 보안 헤더를 넣는다
+
+외부 공개 전까지 **하나도 없었다.**
+
+```
+Content-Security-Policy · X-Frame-Options: DENY · X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin · Permissions-Policy
+Cross-Origin-Opener-Policy: same-origin · Strict-Transport-Security
+poweredByHeader: false
+```
+
+CSP 는 **실제로 필요한 것만** 열었다.
+
+- `img-src` 에 `https://static.3rd.supply` — 클랜마크가 거기서 온다.
+  원본 자산을 복사해 오지 않고 링크한다 (CLAUDE.md 3장 4번)
+- `connect-src 'self'` — `NEXT_PUBLIC_API_BASE_URL=/api` 라 같은 오리진이다
+- `frame-ancestors 'none'` — 클릭재킹 차단
+
+**남은 타협** — `script-src 'unsafe-inline'`.
+Next 하이드레이션 부트스트랩 때문이다. nonce 로 바꾸려면 미들웨어가 필요해서 이번 범위 밖이다.
+의도된 타협이고 숙제로 남긴다.
+
+HSTS 에 `preload` 는 넣지 않았다 — 도메인이 확정되고 HTTPS 가 안정된 뒤 사람이 정한다.
+
+### D-137. `/api/health` — 수집이 멈춘 것을 사람보다 먼저 안다
+
+원본 서플라이는 넥슨 패치 뒤 며칠씩 전적 갱신이 밀리곤 했다. 그것을 막기 위한 것이다.
+
+```
+checks.db         쿼리가 도는가
+checks.collector  마지막 성공 시각 · 24시간 신규 · 상세 실패율 · 429 발생
+checks.data       공개 화면이 비어 보이지 않을 최소 조건
+```
+
+`degraded` 조건 — 마지막 성공 48시간 초과 · 최근 24시간 429 · 상세 실패율 50% 초과 ·
+공개 클랜/선수 0. `down` 이면 HTTP 503, 그 외 200.
+
+**인증 없이 열어 둔다.** 대신 민감한 값을 하나도 담지 않는다 — 숫자·시각·판정뿐이다.
+회귀 6건이 그것을 강제한다(금지 문자열 전수 검사 포함).
+
+### D-138. `match_time_clan` 이 기록실을 통째로 비우고 있었다
+
+Phase 14에서 만든 버그다. **읽기 화면 전체가 조용히 비는 종류**라 따로 남긴다.
+
+경기 당시 소속을 `ClanSummary` 로 실었는데, 우리 리그 **밖** 클랜은 id·slug 를 모른다.
+그래서 빈 문자열로 채웠다 — 그런데 `Id`·`Slug` 는 `z.string().min(1)` 이다.
+
+```
+외부 클랜이 한 명이라도 낀 경기가 목록에 있으면
+→ 계약 검증 실패 → 그 목록 **전체가 빈 배열**
+→ 화면에는 "기록된 경기가 없습니다"
+```
+
+API 는 200에 15건을 돌려주는데 화면만 비어 있어서 눈에 안 띄었다.
+
+전용 스키마를 만들어 고쳤다 — **아는 것만 싣는다.**
+
+```ts
+MatchTimeClan { league_clan_id: Id | null, slug: Slug | null, name, mark }
+```
+
+실화면 확인 (Haunted 클랜 기록실)
+
+```
+전:  "기록된 경기가 없습니다"
+후:  경기 15건 · 비공식 배지 14 · 클랜마크 234개 전부 로드
+```
+
+**교훈** — 없는 식별자를 빈 문자열로 있는 척하지 않는다. `null` 로 둔다.
+`apiContract.test.ts` 가 이것을 잡는 테스트였고 지금은 통과한다.

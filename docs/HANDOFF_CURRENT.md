@@ -1,6 +1,6 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21. 최종 갱신 2026-08-24 (Phase 16 — D-109 완화 · 로스터를 신원 조건에서 제거).**
+**작성 2026-08-21. 최종 갱신 2026-08-24 (Phase 17 — 외부 공개 준비 · production readiness).**
 > **지금 상태를 가장 빨리 알려면 맨 아래 L장을 먼저 읽는다.** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 Phase 9 래더는 **H장** · `docs/LADDER_TUNING_REPORT.md` · `docs/DECISIONS.md` D-057~D-068에 있다.
@@ -1270,6 +1270,116 @@ pnpm test         723 passed / 17 skipped  (신규 9건)
 pnpm build        통과
 pnpm nexon:check  16항목 전 항목 PASS
 identity-link     재실행 시 연결 0 · 생성 0 (idempotent)
+```
+
+### working tree 상태
+
+clean.
+
+---
+
+## P. Phase 17 — 외부 공개 준비 (2026-08-24) ← **가장 최신**
+
+> 상세: **`docs/PRODUCTION_READINESS.md`** (배포 구조 · env · DB 이전 · 도메인 · 체크리스트)
+> 결정: `docs/DECISIONS.md` **D-135 ~ D-138**
+
+### 현재 HEAD
+
+```
+592f762 fix(public) 무소속 선수 프로필 404 (D-135)
+2b99148 fix(public) 기록실이 비던 계약 위반 + 보안 헤더 + 상태 점검 (D-136~D-138)
+```
+
+### 넥슨 할당량 — **아직 안 풀렸다**
+
+**단 1회** 호출로 확인했다(무차별 재시도 금지 원칙대로).
+
+```
+GET /suddenattack/v1/id  →  HTTP 429 (OPENAPI00007)
+```
+
+88건 backfill 은 **실행하지 않았다.** 명령은 그대로 대기 상태다
+(`PRODUCTION_READINESS.md` 8장에 그대로 있다). `--resume` 이라 언제든 이어진다.
+
+```
+incomplete 88 · official 17 · 래더 반영 경기 17  ← 전부 변화 없음
+```
+
+### production readiness 결과 — **코드 blocker 0**
+
+점검 중 실제 결함 **3건을 찾아 고쳤다.**
+
+| | 증상 | 원인 |
+|---|---|---|
+| D-135 | 무소속 선수 프로필 **404** (58명 중 14명) | D-134로 무소속 선수가 생겼는데 조회가 클랜을 필수로 봤다 |
+| D-138 | 클랜 기록실이 **통째로 빈다** | `match_time_clan` 이 외부 클랜에 빈 문자열 id → 계약 검증 실패 → 목록 전체가 빈 배열 |
+| D-136 | 보안 헤더 **0개** | 없었다 |
+
+D-138은 API 는 200에 15건을 주는데 **화면만 비어서** 눈에 안 띄던 종류다.
+
+```
+스모크 22종 전부 200 · 응답 0.3초 미만 · 500 없음
+선수 상세 44/58 → 57/58
+클랜 기록실  "없습니다" → 경기 15건 · 마크 234개 로드
+```
+
+### 새로 생긴 것
+
+- **보안 헤더** — CSP · XFO · nosniff · Referrer · Permissions · COOP · HSTS · `x-powered-by` off
+- **`/api/health`** — db · collector(마지막 성공·24h 신규·실패율·429) · 공개 데이터.
+  민감한 값 없음. 지금 응답은 `degraded`(429를 봤기 때문 — 정확하다)
+- **`docs/PRODUCTION_READINESS.md`** — 배포 구조 · env 목록 · DB 이전 · 도메인 · 복구 절차 · 체크리스트
+
+### 외부 공개를 막는 것 — **데이터 5건** (코드 아님)
+
+1. E2E 자리표시자 `Player` **7건** (`E2E-` 접두사)이 공개 랭킹에 보인다
+2. dev slug 클랜 **4건** (`real-` 접두사)이 공개 URL 에 노출된다
+3. 게시판 최상단 글 제목이 **운영자 이메일** (실제 작성분이라 임의로 안 지웠다)
+4. 관리자 계정 2개 — 운영자가 비밀번호를 새로 정해야 한다
+5. 모바일 가로 스크롤 — `.pc-container` 고정폭. **원본 재현이라 의도된 것**이지만 인지하고 가야 한다
+
+### 배포 추천 구조
+
+```
+웹      Vercel (apps/web)
+DB      managed Postgres (Neon / Supabase / RDS)
+수집기  작은 VPS 또는 GitHub Actions cron  ← Vercel 부적합
+```
+
+`apps/worker` 는 1회 수집이 수백~수천 호출에 수십 분이라 서버리스 실행 시간에 안 맞는다.
+**수집기는 반드시 한 곳에서만 돌린다** — 두 곳이면 서로 429를 유발한다(실측).
+
+로컬 `embedded-postgres` 는 **개발 전용**이다(D-022). 운영에 쓰지 않는다.
+
+### 다음 정확한 작업
+
+1. 위 **데이터 5건 정리** (운영자 판단이 필요한 3·4번 포함)
+2. managed Postgres 생성 → `PRODUCTION_READINESS.md` 4장대로 이관
+3. Vercel 배포 (env 는 3장) · 수집기 VPS/Actions 이전
+4. `/api/health` 를 업타임 감시에 등록
+5. 도메인 연결 (5장)
+6. 넥슨 할당량 회복되면 88건 backfill (8장)
+
+### 주의사항 · 금지사항
+
+- **429는 기간 할당량이다.** 속도를 낮춰도 안 된다. 무차별 재시도 금지 — 시간을 기다린다
+- **`prisma migrate dev` 금지.** 운영 이전은 `migrate deploy` 만 쓴다
+- `_prisma_migrations` 를 데이터 덤프에 넣지 않는다
+- ID(`cuid`)·`sourceMatchId`·`sourcePlayerId`·`ouid` 를 새로 만들지 않는다
+- **raw/staging 750건을 먼저 옮긴다.** 파생 데이터는 명령으로 다시 만들 수 있지만 raw 는 못 만든다
+- 없는 식별자를 **빈 문자열로 있는 척하지 않는다** (D-138의 교훈). `null` 로 둔다
+- 래더 공식·수집 로직은 이번에도 건드리지 않았다
+
+### 검증 결과
+
+```
+pnpm typecheck    통과 (0 errors)      pnpm lint   통과
+pnpm test         729 passed / 17 skipped  (신규 6건)
+pnpm build        통과
+pnpm db:check     전부 통과
+pnpm nexon:check  16항목 전 항목 PASS
+스모크 22종       전부 200
+/api/health       degraded (429 관측 — 정확한 판정)
 ```
 
 ### working tree 상태
