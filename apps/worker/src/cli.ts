@@ -48,7 +48,11 @@ import { applyWeaponToStats, importWeaponEvidence, rebuildWeaponBuckets } from '
 import { runRate } from './jobs/rate.js'
 import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
 import { readCurrentMembership, runSupplyRosters } from './jobs/supplyRosters.js'
-import { backfillMatchTimeAffiliation } from '@sacloud/db/ops'
+import {
+  backfillMatchTimeAffiliation,
+  cleanupDuplicateSupplyPlayers,
+  linkSupplyPlayerIds,
+} from '@sacloud/db/ops'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
 import {
@@ -145,6 +149,9 @@ function usage(): void {
               **현재** 클랜원 자동 갱신 (경기 스냅샷 라인업 clan 에서 도출 · D-130)
               신규·이적·탈퇴를 감지해 소속 이력을 남긴다. 경기 당시 소속은 건드리지 않는다
               **--confirm 없이는 한 줄도 쓰지 않는다**
+  supply-players [--file <json>] [--league <slug>] [--cleanup] [--confirm]
+              넥슨 참가자 ↔ 3rd.supply 선수 id 연결 (**같은 경기 · 닉네임 정확 일치** · D-132)
+              --cleanup 은 기록이 하나도 없는 중복 행만 정리한다
   affiliation [--league <slug>] [--redo] [--confirm]
               **경기 당시** 소속 스냅샷 복원 (넥슨 상세 guild_name → 로스터 순 · D-131)
               현재 소속은 건드리지 않는다. **--confirm 없이는 한 줄도 쓰지 않는다**
@@ -792,6 +799,48 @@ async function main(): Promise<number> {
         if (per.status !== 'ok') fail(`  ${per.slug}: ${per.status} — ${per.note}`)
       }
       if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
+      return 0
+    }
+
+    case 'supply-players': {
+      const file =
+        stringFlag(args, 'file') ??
+        join(process.cwd(), '..', '..', 'packages/db/data/supply-official-matches.json')
+      const snapshot = JSON.parse(readFileSync(file, 'utf8'))
+      const confirm = boolFlag(args, 'confirm')
+      const result = await linkSupplyPlayerIds({
+        snapshot,
+        leagueSlug: stringFlag(args, 'league') ?? 'supply',
+        confirm,
+      })
+      table([
+        {
+          '대조 경기': result.matchesScanned,
+          '닉네임 중복으로 제외': result.matchesSkippedDuplicateNickname,
+          '참가 기록': result.statsScanned,
+          연결: result.linked,
+          '이미 연결': result.alreadyLinked,
+          '빈 행 비켜줌': result.placeholdersReleased,
+          충돌: result.conflicts.length,
+          '근거 없음': result.noEvidence,
+        },
+      ])
+      for (const c of result.conflicts.slice(0, 10)) {
+        fail(`  충돌 ${c.playerName}: 기존 ${c.existing} ≠ 새 근거 ${c.incoming}`)
+      }
+
+      if (boolFlag(args, 'cleanup')) {
+        const cleaned = await cleanupDuplicateSupplyPlayers({ confirm })
+        table([
+          {
+            '중복 후보': cleaned.candidates,
+            제거: cleaned.removed,
+            '기록이 있어 보존': cleaned.keptBecauseReferenced,
+          },
+        ])
+      }
+
+      if (!confirm) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
       return 0
     }
 
