@@ -47,6 +47,8 @@ import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/ros
 import { applyWeaponToStats, importWeaponEvidence, rebuildWeaponBuckets } from './jobs/weapon.js'
 import { runRate } from './jobs/rate.js'
 import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
+import { readCurrentMembership, runSupplyRosters } from './jobs/supplyRosters.js'
+import { backfillMatchTimeAffiliation } from '@sacloud/db/ops'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
 import {
@@ -139,6 +141,13 @@ function usage(): void {
               [--player-count N] [--discover-only] [--detail-limit N] [--status] [--confirm]
               공식리그 경기 **발견** — 3rd.supply 스냅샷의 match_id → 넥슨 /match-detail (D-127)
               **--confirm 없이는 DB 에 쓰지 않고 넥슨도 부르지 않는다**
+  supply-rosters [--file <json>] [--league <slug>] [--confirm] [--no-verified]
+              **현재** 클랜원 자동 갱신 (경기 스냅샷 라인업 clan 에서 도출 · D-130)
+              신규·이적·탈퇴를 감지해 소속 이력을 남긴다. 경기 당시 소속은 건드리지 않는다
+              **--confirm 없이는 한 줄도 쓰지 않는다**
+  affiliation [--league <slug>] [--redo] [--confirm]
+              **경기 당시** 소속 스냅샷 복원 (넥슨 상세 guild_name → 로스터 순 · D-131)
+              현재 소속은 건드리지 않는다. **--confirm 없이는 한 줄도 쓰지 않는다**
   reresolve   상세 보유 경기의 참가자 신원을 다시 붙인다 (투영 상태는 건드리지 않는다)
   reconstruct [--league <slug>] [--redo] [--match-id <ID>[,<ID>]] [--allow-unverified-roster]
               [--allow-mock-league]
@@ -748,6 +757,54 @@ async function main(): Promise<number> {
       })
       table([result as unknown as Record<string, unknown>])
       if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 수집하려면 --confirm 을 붙인다')
+      return 0
+    }
+
+    case 'supply-rosters': {
+      const file =
+        stringFlag(args, 'file') ??
+        join(process.cwd(), '..', '..', 'packages/db/data/supply-official-matches.json')
+      const membership = readCurrentMembership(file)
+      log(
+        `현재 소속 도출 — 선수 ${membership.rows.length}명 · 근거 갈림 ${membership.conflicts.length}명 ` +
+          `(관측 ${membership.capturedAt})`,
+      )
+      const result = await runSupplyRosters({
+        membership,
+        leagueSlug: stringFlag(args, 'league') ?? 'supply',
+        confirm: boolFlag(args, 'confirm'),
+        verified: !boolFlag(args, 'no-verified'),
+      })
+      table([
+        {
+          클랜: result.clans,
+          관측선수: result.observedPlayers,
+          '근거 갈림': result.conflicts,
+          '선수 생성': result.playersCreated,
+          '소속 신규': result.membershipsOpened,
+          '소속 유지': result.membershipsUnchanged,
+          '소속 종료': result.membershipsClosed,
+          이적: result.transfers,
+          '현재클랜 갱신': result.currentClanUpdated,
+        },
+      ])
+      for (const per of result.perClan) {
+        if (per.status !== 'ok') fail(`  ${per.slug}: ${per.status} — ${per.note}`)
+      }
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
+      return 0
+    }
+
+    case 'affiliation': {
+      const result = await backfillMatchTimeAffiliation({
+        leagueSlug: stringFlag(args, 'league') ?? 'supply',
+        confirm: boolFlag(args, 'confirm'),
+        redo: boolFlag(args, 'redo'),
+        limit: ctx.limit,
+      })
+      table([result as unknown as Record<string, unknown>])
+      log('현재 소속(Player.clanId · LeaguePlayer.clanId)은 건드리지 않았다')
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
       return 0
     }
 

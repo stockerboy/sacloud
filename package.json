@@ -51,6 +51,8 @@
     "nexon:clan": "pnpm --filter @sacloud/worker nexon clan",
     "nexon:supply-clans": "pnpm --filter @sacloud/worker nexon supply-clans",
     "nexon:supply-matches": "pnpm --filter @sacloud/worker nexon supply-matches",
+    "nexon:supply-rosters": "pnpm --filter @sacloud/worker nexon supply-rosters",
+    "nexon:affiliation": "pnpm --filter @sacloud/worker nexon affiliation",
     "nexon:reresolve": "pnpm --filter @sacloud/worker nexon reresolve",
     "nexon:accounts": "pnpm --filter @sacloud/worker nexon accounts"
   },
