@@ -152,6 +152,14 @@ export const ARCHETYPES: ArchetypeSpec[] = [
     opponentBias: -1,
     expectation: '평범한 실력의 양학러 — 상위권이면 FAIL',
   },
+  /* --- 잠수 타임라인 검증 (D-144) — 실제 시즌 안에 심는다 ---
+     전부 같은 실력·같은 성향이고 **활동 구간만** 다르다. 그래야 순위 차이가
+     오직 미참여 때문임을 말할 수 있다. IE 가 대조군이다. */
+  { code: 'IA', games: 260, latentSkill: 3520, role: 'rifler', opponentBias: 0.8, activeUntil: 35 / 90, expectation: 'day35 이후 시즌 끝까지 잠수 (55일)' },
+  { code: 'IB', games: 260, latentSkill: 3520, role: 'rifler', opponentBias: 0.8, activeUntil: 40 / 90, expectation: 'day40 이후 잠수 — day60 시점 20일' },
+  { code: 'IC', games: 260, latentSkill: 3520, role: 'rifler', opponentBias: 0.8, activeUntil: 45 / 90, expectation: 'day45 이후 잠수 (45일)' },
+  { code: 'ID', games: 260, latentSkill: 3520, role: 'rifler', opponentBias: 0.8, activeUntil: 60 / 90, expectation: 'day60 이후 잠수 (30일)' },
+  { code: 'IE', games: 260, latentSkill: 3520, role: 'rifler', opponentBias: 0.8, activeUntil: 1, expectation: '대조군 — 끝까지 활동' },
 ]
 
 export function makeArchetypePlayers(rng: Rng): SimPlayer[] {
@@ -168,17 +176,40 @@ export function makeArchetypePlayers(rng: Rng): SimPlayer[] {
   }))
 }
 
-export function makePlayers(rng: Rng, count: number): SimPlayer[] {
+/**
+ * 모집단 변형 (D-144).
+ *
+ * 한 가지 모델만 돌리면 "그 모델의 성질" 을 시스템의 성질로 착각하게 된다.
+ * 특히 기존 합성 모집단은 상위권 승률이 90~95% 로 극단적이었다 —
+ * 실제 제3보급이 그렇다는 근거는 없다.
+ */
+export interface PopulationOptions {
+  /**
+   * 실력 분산 압축 비율. 1 이면 기존 그대로, 0.5 면 기준점(3000)에서의 거리를 절반으로 줄인다.
+   * 작을수록 "실력이 고만고만한 커뮤니티" 가 된다.
+   */
+  skillCompression?: number
+  /** 목표 판수 배율. LOW/NORMAL/HIGH/EXTREME 시나리오용 */
+  activityMultiplier?: number
+}
+
+export function makePlayers(
+  rng: Rng,
+  count: number,
+  options: PopulationOptions = {},
+): SimPlayer[] {
+  const compression = options.skillCompression ?? 1
+  const activity = options.activityMultiplier ?? 1
   const players: SimPlayer[] = []
   for (let i = 0; i < count; i += 1) {
     const tier = tierFor(rng)
     players.push({
       id: `P${String(i).padStart(4, '0')}`,
       name: `player-${i}`,
-      latentSkill: rng.normal(tier.mean, tier.sd),
+      latentSkill: 3000 + (rng.normal(tier.mean, tier.sd) - 3000) * compression,
       role: rng.pick(ROLES),
       clanId: null,
-      targetGames: rng.pick(GAME_COUNTS),
+      targetGames: Math.max(10, Math.round(rng.pick(GAME_COUNTS) * activity)),
       opponentBias: rng.float(-0.8, 0.8),
       // 대부분은 끝까지 뛰고, 일부는 중간에 그만둔다 (현실적으로)
       activeUntil: rng.chance(0.22) ? rng.float(0.35, 0.8) : 1,
