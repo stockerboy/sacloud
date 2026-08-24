@@ -13,6 +13,9 @@ import {
   clanDailyPenalty,
   dailyPenalty,
   finalDisplay,
+  applyWinRateBands,
+  applyClanWinRateBands,
+  type BandGateMode,
 } from './final.js'
 import {
   BASELINE,
@@ -577,6 +580,8 @@ export function personalLeaderboard(
   seasonMinutes = 90 * 24 * 60,
   /** 최종안 — 표시 점수에서 활동 페널티를 뺀다 */
   activityDecay = false,
+  /** 승률 자격선 (D-143). 'off' 면 적용하지 않는다 */
+  bandMode: BandGateMode = 'off',
 ): LeaderRow[] {
   const byId = new Map(players.map((p) => [p.id, p]))
   const rows: LeaderRow[] = []
@@ -623,13 +628,15 @@ export function personalLeaderboard(
       activityPenalty: state.activityPenalty,
     })
   }
-  if (activityDecay) {
-    for (const row of rows) {
-      row.displayBeforePenalty = row.displayed
-      row.displayed = row.displayed - Math.min(row.activityPenalty, Math.max(0, row.displayed - BASELINE))
+  for (const row of rows) {
+    /* 승률 자격선을 **먼저** 적용한다 (D-143).
+       "랭커 자격" 은 실력에 대한 판정이고, 활동 페널티는 그 위에 붙는 별개의 감점이다.
+       순서를 바꾸면 잠수로 4000 아래로 내려간 사람이 자격선을 우회하게 된다. */
+    row.displayed = applyWinRateBands(row.displayed, row.winRate / 100, bandMode)
+    row.displayBeforePenalty = row.displayed
+    if (activityDecay) {
+      row.displayed -= Math.min(row.activityPenalty, Math.max(0, row.displayed - BASELINE))
     }
-  } else {
-    for (const row of rows) row.displayBeforePenalty = row.displayed
   }
   rows.sort((a, b) => b.displayed - a.displayed)
   rows.forEach((row, i) => {
@@ -673,6 +680,8 @@ export function clanLeaderboard(
   useBoundedComposition = false,
   /** 최종안 — 최종 점수에서 활동 페널티를 뺀다 */
   activityDecay = false,
+  /** 클랜 상위 자격선 (D-143) */
+  bandMode: BandGateMode = 'off',
 ): ClanLeaderRow[] {
   const byId = new Map(clans.map((c) => [c.id, c]))
   const rows: ClanLeaderRow[] = []
@@ -696,7 +705,12 @@ export function clanLeaderboard(
       rating: state.rating,
       recentAvgMembers: recentAvg,
       compositionScore: composition,
-      finalScore: state.rating + composition - (activityDecay ? state.activityPenalty : 0),
+      finalScore:
+        applyClanWinRateBands(
+          state.rating + composition,
+          state.games > 0 ? state.wins / state.games : 0,
+          bandMode,
+        ) - (activityDecay ? state.activityPenalty : 0),
       topOpponentGames: Math.max(0, ...state.opponentCounts.values()),
       decayLost: state.decayLost,
       latentStrength: clan.latentStrength,

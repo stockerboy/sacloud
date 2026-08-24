@@ -11,7 +11,7 @@
  *   그래서 공식 자체가 매칭 필터 역할을 어느 정도 해야 한다 —
  *   "약한 상대만 골라 잡아서는 고점에 갈 수 없다" 가 공식 안에서 성립해야 한다.
  */
-import { BASELINE, confidenceFor, expectedScore, type PersonalConstants } from './engine.js'
+import { BASELINE, confidenceFor, expectedOutcomeFactor, expectedScore, type PersonalConstants } from './engine.js'
 import { Rng } from './rng.js'
 
 /* -------------------------------------------------------------------------- */
@@ -63,6 +63,131 @@ export const FINAL_WIN_GAIN_CUTOFF = 0.9
  */
 export const FINAL_PERFORMANCE_WEIGHT = 0
 
+/* -------------------------------------------------------------------------- */
+/* 랭커 자격선 — 승률 (D-143)                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * **강한 상대와 많이 붙었다는 사실은 랭커 자격이 아니다.**
+ * 랭커가 되려면 최소 48% 이상 실제로 이겨야 한다.
+ *
+ * ── 왜 필요한가
+ *   순수 Elo 는 "최상위(3400~3600) 상대에게 30% 승" 을 내부 3,318 로 평가한다.
+ *   수학적으로는 맞다 — 그 정도 상대에게 30% 를 따내면 평균보다 확실히 위다.
+ *   그런데 표시 4,115 는 "확실한 랭커" 구간이다. **10판 중 7판을 지는 사람이 랭커가 된다.**
+ *   상대 강도는 승리의 **가치**를 정하는 것이지, 패배의 **면죄부**가 아니다.
+ *
+ * ── 왜 밴드마다 다른가
+ *   4000 하나만 막으면 47% 선수들이 전부 3,999 에 몰린다. 그리고 "점수가 높을수록
+ *   실제 승률도 높아야 한다" 는 요구를 4000 한 줄로는 표현할 수 없다.
+ *
+ * 이 표는 **표시 점수에만** 적용한다. 내부 Elo(실력 추정치)는 건드리지 않는다.
+ */
+export const WIN_RATE_BANDS: { minDisplay: number; minWinRate: number }[] = [
+  { minDisplay: 4000, minWinRate: 0.48 },
+  { minDisplay: 4300, minWinRate: 0.5 },
+  { minDisplay: 4500, minWinRate: 0.52 },
+  { minDisplay: 4700, minWinRate: 0.55 },
+  { minDisplay: 4800, minWinRate: 0.58 },
+  { minDisplay: 4900, minWinRate: 0.6 },
+]
+
+/** 부족한 승률 1%p 당 자격선 아래로 더 내려가는 점수 (B안) */
+export const SHORTFALL_PENALTY_PER_POINT = 20
+
+export type BandGateMode = 'hard' | 'soft' | 'off'
+
+/**
+ * 승률 자격선을 표시 점수에 적용한다.
+ *
+ *   hard — 자격 미달이면 그 밴드 바로 아래(−1)로 자른다. 설명이 가장 쉽다
+ *   soft — 자른 뒤 **부족한 승률만큼 더** 내린다. 3,999 에 몰리는 현상을 없앤다
+ *   off  — 적용하지 않는다 (대조군)
+ */
+export function applyWinRateBands(
+  display: number,
+  winRate: number,
+  mode: BandGateMode = 'soft',
+  bands = WIN_RATE_BANDS,
+): number {
+  if (mode === 'off') return display
+  let ceiling = Number.POSITIVE_INFINITY
+  for (const band of bands) {
+    if (winRate >= band.minWinRate) continue
+    const shortfall = band.minWinRate - winRate
+    const extra = mode === 'soft' ? shortfall * 100 * SHORTFALL_PENALTY_PER_POINT : 0
+    ceiling = Math.min(ceiling, band.minDisplay - 1 - extra)
+  }
+  return Math.min(display, ceiling)
+}
+
+/**
+ * **클랜 상위 자격선** (D-143 · 사용자 지시 12장).
+ *
+ * 개인의 48% 를 그대로 복붙하지 않는다. 클랜은 조직이라 로스터가 돌고 일정도 덩어리진다.
+ * 그래서 **더 느슨하게** 잡는다.
+ *
+ * 그래도 방치하면 안 된다 — 실측에서 승률 **42%** 클랜이 강팀만 상대했다는 이유로
+ * 100팀 중 **7위**에 올랐다. 개인과 같은 이유로 이상하다.
+ *
+ * 클랜 점수는 내부 Elo 스케일(3000 ± 400)이라 개인 표시 점수와 구간이 다르다.
+ */
+export const CLAN_WIN_RATE_BANDS: { minScore: number; minWinRate: number }[] = [
+  { minScore: 3150, minWinRate: 0.45 },
+  { minScore: 3300, minWinRate: 0.5 },
+]
+
+/** 클랜 스케일에 맞춘 부족분 벌점 (개인 20점의 1/3.5) */
+export const CLAN_SHORTFALL_PENALTY_PER_POINT = 6
+
+export function applyClanWinRateBands(
+  score: number,
+  winRate: number,
+  mode: BandGateMode = 'soft',
+  bands = CLAN_WIN_RATE_BANDS,
+): number {
+  if (mode === 'off') return score
+  let ceiling = Number.POSITIVE_INFINITY
+  for (const band of bands) {
+    if (winRate >= band.minWinRate) continue
+    const shortfall = band.minWinRate - winRate
+    const extra = mode === 'soft' ? shortfall * 100 * CLAN_SHORTFALL_PENALTY_PER_POINT : 0
+    ceiling = Math.min(ceiling, band.minScore - 1 - extra)
+  }
+  return Math.min(score, ceiling)
+}
+
+/* -------------------------------------------------------------------------- */
+/* 일방적인 경기 억제 (D-143)                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 차단선(D-142)을 대체한다.
+ *
+ * `full` 이하로 예상된 결과는 그대로, `zero` 이상으로 예상된 결과는 반영하지 않는다.
+ * **이변은 언제나 만점**이다 — 강한 상대를 실제로 이긴 것이 가장 크게 평가돼야 한다.
+ */
+export const FINAL_SUPPRESSION = { full: 0.8, zero: 0.88 } as const
+
+/**
+ * ── 왜 0.80 ~ 0.88 인가 (스윕 결과)
+ *
+ *   변형        시즌 실력상관  일정승리질  시즌 최고  약팀600전승  OUTLIER
+ *   hard .90    0.9066       0.987      4,781     4,945       5,638
+ *   .70-.85     0.8881       0.915      4,348     4,614       5,399
+ *   .75-.85     0.8920       0.935      4,453     4,627       5,455
+ *   .80-.88     0.8988       0.960      4,618     4,774       5,536   <- 채택
+ *   .80-.90     0.8995       0.965      4,652     4,873       5,550
+ *
+ * 완벽한 양학(600판 전승)의 상한은 **끝점(zero)** 이 정한다 — "사냥하는 팀 중 가장 센 팀 +
+ * diff(zero)". 0.90 이면 4,873 으로 역사적 영역(4900)에 닿아 실패다. 0.88 이 경계다.
+ *
+ * 시작점(full)은 **정상 상위권이 얼마나 깎이는가**를 정한다. 낮출수록 양학은 더 막히지만
+ * 모집단이 작아 상위권이 자기 수준의 상대를 못 만나는 SACLOUD 에서는 **정상 강자까지** 깎인다.
+ * 0.65 로 잡았더니 시즌 최고가 4,781 → 4,145 로 무너지고 4300+ 가 0명이 됐다 —
+ * 밴드 의미 자체가 붕괴한다. 0.80 이 양학 차단과 밴드 보존이 함께 성립하는 지점이다.
+ */
+
 /** 구성 보정 상한 — 상한 0/30/50/70/100 스윕에서 고른 값 */
 export const FINAL_COMPOSITION_CAP = 50
 /** 구성 보정 창 — 최근 N경기 */
@@ -70,6 +195,17 @@ export const FINAL_COMPOSITION_WINDOW = 20
 
 export function finalDisplay(internal: number, games: number, scale = FINAL_DISPLAY_SCALE): number {
   return BASELINE + (internal - BASELINE) * confidenceFor(games) * scale
+}
+
+/** 표시 점수 + 승률 자격선까지 적용한 최종 표시 점수 */
+export function finalDisplayGated(
+  internal: number,
+  games: number,
+  winRate: number,
+  mode: BandGateMode = 'soft',
+  scale = FINAL_DISPLAY_SCALE,
+): number {
+  return applyWinRateBands(finalDisplay(internal, games, scale), winRate, mode)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -228,6 +364,8 @@ export function runSchedule(
   poolSize = OPPONENT_POOL_SIZE,
   /** 경로 시드 — 같은 조건이라도 승패 순서가 다르면 도착점이 다르다 */
   pathSeed = 0,
+  /** 승률 자격선 적용 방식 */
+  bandMode: BandGateMode = 'soft',
 ): {
   profile: ScheduleProfile
   internal: number
@@ -275,8 +413,11 @@ export function runSchedule(
 
     const expected = expectedScore(internal, opponent)
     let base = personal.k * ((won ? 1 : 0) - expected)
-    // 약팀 사냥 차단선 — 엔진(personalUpdate)과 같은 규칙을 쓴다
+    // 엔진(personalUpdate)과 **같은 규칙**을 쓴다. 어긋나면 실험실 결과가 거짓이 된다
     if (personal.winGainCutoff !== undefined && won && expected >= personal.winGainCutoff) base = 0
+    if (personal.weakWinSuppression) {
+      base *= expectedOutcomeFactor(won ? expected : 1 - expected, personal.weakWinSuppression)
+    }
     const perf = Math.abs(base) * personal.performanceWeight * profile.performance
     internal = Math.max(personal.ratingFloor, internal + base + perf)
     // 상대도 같은 크기만큼 반대로 움직인다 (제로섬)
@@ -288,7 +429,11 @@ export function runSchedule(
   return {
     profile,
     internal,
-    display: finalDisplay(internal, profile.games, scale),
+    display: applyWinRateBands(
+      finalDisplay(internal, profile.games, scale),
+      profile.winRate,
+      bandMode,
+    ),
     avgOpponent: opponentSum / profile.games,
     poolDrift: poolEnd - poolStart,
     winsAboveExpected,
@@ -362,9 +507,10 @@ export function runScheduleAverage(
   scale = FINAL_DISPLAY_SCALE,
   poolSize = OPPONENT_POOL_SIZE,
   paths = LAB_PATHS,
+  bandMode: BandGateMode = 'soft',
 ): { display: number; internal: number; spread: number } {
   const runs = Array.from({ length: paths }, (_, i) =>
-    runSchedule(profile, personal, scale, poolSize, i),
+    runSchedule(profile, personal, scale, poolSize, i, bandMode),
   )
   const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length
   const displays = runs.map((r) => r.display)

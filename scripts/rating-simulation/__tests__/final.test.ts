@@ -11,8 +11,11 @@ import {
   FINAL_COMPOSITION_WINDOW,
   FINAL_DISPLAY_SCALE,
   FINAL_PERFORMANCE_WEIGHT,
-  FINAL_WIN_GAIN_CUTOFF,
+  FINAL_SUPPRESSION,
   PENALTY_RECOVERY_PER_GAME,
+  WIN_RATE_BANDS,
+  applyClanWinRateBands,
+  applyWinRateBands,
   clanDailyPenalty,
   decayTierFor,
   displayAfterIdle,
@@ -22,13 +25,18 @@ import {
   runScheduleAverage,
   type ScheduleProfile,
 } from '../final.js'
-import { CANDIDATE1_PERSONAL, compositionScore, setCompositionParams } from '../engine.js'
+import {
+  CANDIDATE1_PERSONAL,
+  compositionScore,
+  expectedOutcomeFactor,
+  setCompositionParams,
+} from '../engine.js'
 
 const FINAL = {
   ...CANDIDATE1_PERSONAL,
   performanceWeight: FINAL_PERFORMANCE_WEIGHT,
   displayScale: 1,
-  winGainCutoff: FINAL_WIN_GAIN_CUTOFF,
+  weakWinSuppression: FINAL_SUPPRESSION,
 }
 
 const profile = (games: number, winRate: number, min: number, max: number): ScheduleProfile => ({
@@ -39,7 +47,7 @@ const profile = (games: number, winRate: number, min: number, max: number): Sche
  * Elo 는 평형점 주위를 랜덤워크하므로 경로 하나로 판정하면 안 된다 (하네스 결함 #7).
  */
 const score = (games: number, winRate: number, min: number, max: number): number =>
-  runScheduleAverage(profile(games, winRate, min, max), FINAL, FINAL_DISPLAY_SCALE, 30).display
+  runScheduleAverage(profile(games, winRate, min, max), FINAL, FINAL_DISPLAY_SCALE, 30, 25, 'soft').display
 
 describe('최종 상수', () => {
   it('퍼포먼스는 0 이다 — KD·MVP 는 점수에 들어가지 않는다', () => {
@@ -61,10 +69,13 @@ describe('상대 강도 우선 — 승률만으로는 못 올라간다', () => {
     expect(score(300, 0.6, 3400, 3600)).toBeGreaterThan(score(300, 0.9, 3000, 3200))
   })
 
-  it('완벽한 양학(600판 전승)조차 5000 을 넘지 못한다', () => {
-    // 차단선 때문에 양학의 상한은 "내가 잡는 팀 중 가장 센 팀 + 382" 로 고정된다.
-    // 600판 전승이라는 비현실적 조건에서도 이 선을 넘지 못한다.
-    expect(score(600, 1, 3000, 3200)).toBeLessThan(5000)
+  it('강한 일정 58% 가 약한 일정 70% 보다 높다', () => {
+    expect(score(300, 0.58, 3200, 3400)).toBeGreaterThan(score(300, 0.7, 2900, 3050))
+  })
+
+  it('완벽한 양학(600판 전승)은 역사적 영역(4800+)에 들어오지 못한다', () => {
+    // 억제 끝점(0.88)이 양학의 상한을 "사냥하는 팀 중 가장 센 팀 + diff(0.88)" 로 고정한다.
+    expect(score(600, 1, 3000, 3200)).toBeLessThan(4800)
   })
 
   it('역대급 outlier 는 완벽한 양학보다 확실히 높다', () => {
@@ -80,18 +91,19 @@ describe('상대 강도 우선 — 승률만으로는 못 올라간다', () => {
   })
 })
 
-describe('약팀 사냥 차단선', () => {
-  it('정직한 일정의 점수는 차단선이 있어도 없어도 같다', () => {
-    const noCutoff = { ...FINAL, winGainCutoff: undefined }
-    for (const [g, w, a, b] of [[300, 0.55, 3250, 3450], [300, 0.5, 3400, 3600], [500, 0.55, 3100, 3300]] as const) {
+describe('약팀 사냥 억제', () => {
+  it('정직한 일정의 점수는 억제가 있어도 없어도 사실상 같다', () => {
+    const noCutoff = { ...FINAL, weakWinSuppression: undefined }
+    for (const [g, w, a, b] of [[300, 0.55, 3250, 3450], [500, 0.55, 3100, 3300]] as const) {
       const withCut = runScheduleAverage(profile(g, w, a, b), FINAL, FINAL_DISPLAY_SCALE, 30).display
       const without = runScheduleAverage(profile(g, w, a, b), noCutoff, FINAL_DISPLAY_SCALE, 30).display
-      expect(withCut).toBeCloseTo(without, 6)
+      // 정상 일정은 억제의 영향이 거의 없다 (1% 이내)
+      expect(Math.abs(withCut - without) / without).toBeLessThan(0.01)
     }
   })
 
-  it('양학 점수는 차단선이 있으면 반드시 낮아진다', () => {
-    const noCutoff = { ...FINAL, winGainCutoff: undefined }
+  it('양학 점수는 억제가 있으면 반드시 낮아진다', () => {
+    const noCutoff = { ...FINAL, weakWinSuppression: undefined }
     const farm = profile(600, 0.98, 3000, 3200)
     expect(runScheduleAverage(farm, FINAL, FINAL_DISPLAY_SCALE, 30).display).toBeLessThan(
       runScheduleAverage(farm, noCutoff, FINAL_DISPLAY_SCALE, 30).display,
@@ -185,5 +197,77 @@ describe('결정적 재현', () => {
     expect(score(300, 0.58, 3100, 3300)).toBe(score(300, 0.58, 3100, 3300))
     expect(runSchedule(profile(300, 0.58, 3100, 3300), FINAL, FINAL_DISPLAY_SCALE, 30, 3).display)
       .toBe(runSchedule(profile(300, 0.58, 3100, 3300), FINAL, FINAL_DISPLAY_SCALE, 30, 3).display)
+  })
+})
+
+describe('랭커 승률 자격선 (D-143)', () => {
+  it('최상위 상대 승률 30% 는 랭커가 아니다', () => {
+    expect(score(300, 0.3, 3400, 3600)).toBeLessThan(4000)
+  })
+
+  it('최상위 상대 승률 45% 도 랭커가 아니다', () => {
+    expect(score(300, 0.45, 3400, 3600)).toBeLessThan(4000)
+  })
+
+  it('최상위 상대 승률 48% 는 랭커가 될 수 있다', () => {
+    expect(score(300, 0.48, 3400, 3600)).toBeGreaterThanOrEqual(4000)
+  })
+
+  it('승률이 오를수록 도달 가능한 점수도 오른다', () => {
+    const s30 = score(300, 0.3, 3400, 3600)
+    const s48 = score(300, 0.48, 3400, 3600)
+    const s55 = score(300, 0.55, 3400, 3600)
+    const s60 = score(300, 0.6, 3400, 3600)
+    expect(s48).toBeGreaterThan(s30)
+    expect(s55).toBeGreaterThan(s48)
+    expect(s60).toBeGreaterThan(s55)
+  })
+
+  it('자격선은 표시 점수만 자른다 — 밴드별 최소 승률이 지켜진다', () => {
+    for (const band of WIN_RATE_BANDS) {
+      const justUnder = band.minWinRate - 0.01
+      expect(applyWinRateBands(5500, justUnder, 'hard')).toBeLessThan(band.minDisplay)
+      expect(applyWinRateBands(5500, band.minWinRate, 'hard')).toBeGreaterThanOrEqual(band.minDisplay)
+    }
+  })
+
+  it('soft 는 자격 미달자를 한 점에 몰지 않는다', () => {
+    const a = applyWinRateBands(5000, 0.3, 'soft')
+    const b = applyWinRateBands(5000, 0.47, 'soft')
+    expect(a).toBeLessThan(b)
+    expect(applyWinRateBands(5000, 0.3, 'hard')).toBe(applyWinRateBands(5000, 0.47, 'hard'))
+  })
+
+  it('자격을 갖춘 선수의 점수는 건드리지 않는다', () => {
+    expect(applyWinRateBands(4250, 0.62, 'soft')).toBe(4250)
+    expect(applyWinRateBands(3500, 0.3, 'soft')).toBe(3500)
+  })
+
+  it('클랜은 개인과 다른(더 느슨한) 자격선을 쓴다', () => {
+    // 42% 클랜이 강팀만 상대했다는 이유로 상위권에 오르지 못한다
+    expect(applyClanWinRateBands(3303, 0.42, 'soft')).toBeLessThan(3150)
+    // 정상 승률 클랜은 그대로다
+    expect(applyClanWinRateBands(3303, 0.55, 'soft')).toBe(3303)
+  })
+})
+
+describe('일방적인 경기 억제 (D-143)', () => {
+  it('이변(약팀이 이김)은 언제나 만점으로 반영된다', () => {
+    // 기대 승률이 낮은 쪽이 이기면 억제가 걸리지 않는다
+    expect(expectedOutcomeFactor(0.1, FINAL_SUPPRESSION)).toBe(1)
+    expect(expectedOutcomeFactor(0.5, FINAL_SUPPRESSION)).toBe(1)
+  })
+
+  it('예상대로 끝난 일방적인 경기는 양쪽 모두 덜 움직인다', () => {
+    expect(expectedOutcomeFactor(0.95, FINAL_SUPPRESSION)).toBe(0)
+    expect(expectedOutcomeFactor(0.84, FINAL_SUPPRESSION)).toBeGreaterThan(0)
+    expect(expectedOutcomeFactor(0.84, FINAL_SUPPRESSION)).toBeLessThan(1)
+  })
+
+  it('계단이 없다 — 경계에서 연속이다', () => {
+    const { full, zero } = FINAL_SUPPRESSION
+    expect(expectedOutcomeFactor(full, FINAL_SUPPRESSION)).toBe(1)
+    expect(expectedOutcomeFactor(full + 1e-6, FINAL_SUPPRESSION)).toBeCloseTo(1, 4)
+    expect(expectedOutcomeFactor(zero - 1e-6, FINAL_SUPPRESSION)).toBeCloseTo(0, 4)
   })
 })

@@ -63,8 +63,17 @@ export interface PersonalConstants {
   /**
    * **약팀 사냥 차단선** (D-142). 기대 승률이 이 값 이상이면 이겨도 점수가 오르지 않는다.
    * `undefined` 면 끄기 (기존 동작). 지는 것은 언제나 그대로 손해다.
+   *
+   * @deprecated D-143 에서 `weakWinSuppression` 으로 대체됐다. 비교용으로만 남긴다.
    */
   winGainCutoff?: number
+  /**
+   * **일방적인 경기 억제** (D-143) — 차단선의 계단을 없앤 매끄러운 버전.
+   *
+   * `full` 이하의 기대 승률에서는 그대로(1), `zero` 이상에서는 0, 사이는 선형으로 줄인다.
+   * **예상대로 끝난 일방적인 경기에만** 적용한다 — 이변(underdog 승)은 언제나 만점이다.
+   */
+  weakWinSuppression?: { full: number; zero: number }
 }
 
 export const DEFAULT_PERSONAL: PersonalConstants = {
@@ -126,6 +135,20 @@ export interface PersonalResult {
  *   승리 +35 · 잘함(+1) → +35 + 35×0.10 = +38.5
  *   패배 -35 · 잘함(+1) → -35 + 35×0.10 = -31.5   (덜 깎인다)
  */
+/**
+ * 결과가 얼마나 예상됐는지(0.5~1) → 반영 비율(1~0).
+ *
+ * `full` 이하면 그대로 반영하고, `zero` 이상이면 반영하지 않는다. 사이는 선형이다.
+ */
+export function expectedOutcomeFactor(
+  howExpected: number,
+  { full, zero }: { full: number; zero: number },
+): number {
+  if (howExpected <= full) return 1
+  if (howExpected >= zero) return 0
+  return 1 - (howExpected - full) / (zero - full)
+}
+
 export function personalUpdate(input: PersonalInput): PersonalResult {
   const expected = expectedScore(input.ratingBefore, input.opponentAvgRating)
   const actual = input.won ? 1 : 0
@@ -135,14 +158,30 @@ export function personalUpdate(input: PersonalInput): PersonalResult {
  
      순수 Elo 는 "3100 상대 95% 승" 과 "3500 상대 60% 승" 을 같게 본다. 수학적으로는 맞지만
      제3보급창고에는 매치메이킹이 없어서 **상대를 직접 고를 수 있다.** 그래서 약팀만 300판
-     골라 잡는 것만으로 4,876 까지 올라갔다 — 강한 상대를 한 번도 이기지 않고서.
- 
-     기대 승률이 이미 문턱을 넘었으면 이겨도 0 이다. 지는 것은 그대로 손해다.
-     별도의 "강팀전 보너스" 를 만들지 않고 **expected-score 하나로** 해결한다 (사용자 지시 2장).
-     설명도 한 문장이다 — "너무 약한 상대를 이기면 점수가 오르지 않는다." */
+     골라 잡는 것만으로 4,876 까지 올라갔다 — 강한 상대를 한 번도 이기지 않고서. */
   const cutoff = input.constants.winGainCutoff
   if (cutoff !== undefined && input.won && expected >= cutoff) {
     baseDelta = 0
+  }
+
+  /* **일방적인 경기는 양쪽 모두 조금만 움직인다** (D-143).
+ 
+     차단선(D-142)에는 두 가지 문제가 있었다.
+       1. 계단이다. 기대 89.9% 는 제값을 받고 90.0% 부터 갑자기 0 이 된다.
+       2. **이긴 쪽만** 0 이 되고 진 쪽은 그대로 잃는다. 점수가 사라지고(제로섬 위반),
+          강자에게 사냥당한 약팀만 일방적으로 손해를 본다.
+ 
+     그래서 **결과가 예상대로 나온 일방적인 경기**에서는 양쪽의 변동을 함께 줄인다.
+     이변(약팀이 이김)은 새로운 정보이므로 **언제나 만점**으로 반영한다 —
+     그래야 "강한 상대를 실제로 이긴 것" 이 가장 크게 평가된다.
+ 
+     기준값은 **그 결과가 얼마나 예상됐는가**다.
+       이겼으면 expected, 졌으면 1 − expected.
+     둘 다 0.5 근처(접전)면 1 이고, 한쪽으로 치우칠수록 0 에 가까워진다. */
+  const suppression = input.constants.weakWinSuppression
+  if (suppression) {
+    const howExpected = input.won ? expected : 1 - expected
+    baseDelta *= expectedOutcomeFactor(howExpected, suppression)
   }
 
   if (input.constants.confidenceMode === 'delta') {
