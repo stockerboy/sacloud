@@ -286,7 +286,8 @@ afterAll(async () => {
 describe.runIf(up)('기록실·경기 상세는 경기 당시 소속을 보여 준다', () => {
   it('기록실 라인업에 그 경기 당시 클랜(A)이 붙는다 — 현재 클랜(B)이 아니다', async () => {
     const page = await getLeaguePlayerMatches(ids!.leagueId, ids!.playerId, null, 20)
-    const card = page.items.find((item) => item.id === MATCH_ID)
+    expect(page).not.toBeNull()
+    const card = page!.items.find((item) => item.id === MATCH_ID)
     expect(card).toBeDefined()
 
     const entry = card!.red.find((row) => row.player_id === ids!.playerId)
@@ -334,19 +335,20 @@ describe.runIf(up)('현재 화면은 현재 소속을 보여 준다', () => {
 
   it('개인 랭킹은 현재 클랜(B)이다', async () => {
     const page = await getPlayerRanks(ids!.leagueId, null, 50)
-    const row = page.items.find((item) => item.player.id === ids!.playerId)
+    expect(page).not.toBeNull()
+    const row = page!.items.find((item) => item.player.id === ids!.playerId)
     expect(row).toBeDefined()
     expect(row!.clan?.name).toBe(`${P}클랜B`)
   })
 
   it('현재 클랜B 의 클랜원 목록에 선수가 들어 있다', async () => {
     const page = await getLeagueClanPlayers(SLUG, `${P.toLowerCase()}b`, null, 50)
-    expect(page.items.some((item) => item.player.id === ids!.playerId)).toBe(true)
+    expect(page!.items.some((item) => item.player.id === ids!.playerId)).toBe(true)
   })
 
   it('현재 클랜A 의 클랜원 목록에는 더 이상 없다', async () => {
     const page = await getLeagueClanPlayers(SLUG, `${P.toLowerCase()}a`, null, 50)
-    expect(page.items.some((item) => item.player.id === ids!.playerId)).toBe(false)
+    expect(page!.items.some((item) => item.player.id === ids!.playerId)).toBe(false)
   })
 })
 
