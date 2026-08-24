@@ -42,6 +42,14 @@ export const MatchPlayerStat = z.object({
   win: z.boolean(),
   /** MVP. 모르면 `null` (D-034) */
   mvp: z.boolean().nullable(),
+  /**
+   * **그 경기를 했을 당시** 소속 클랜 (D-131).
+   *
+   * 현재 소속이 아니다. 선수가 이적해도 이 값은 변하지 않는다 —
+   * 기록실과 경기 상세는 역사를 역사대로 보여 준다.
+   * 근거가 없으면 `null`(= 알 수 없음)이다. 현재 소속으로 메우지 않는다.
+   */
+  match_time_clan: ClanSummary.nullable(),
 })
 export type MatchPlayerStat = z.infer<typeof MatchPlayerStat>
 
@@ -52,6 +60,8 @@ export const MatchLineupEntry = z.object({
   /** 수집원이 주지 않으면 `null` — `[S]` 표기 근거가 없다 (D-034) */
   weapon: Weapon.nullable(),
   dropout: z.boolean().nullable(),
+  /** **그 경기 당시** 소속 클랜 (D-131). 현재 소속이 아니다 */
+  match_time_clan: ClanSummary.nullable(),
 })
 export type MatchLineupEntry = z.infer<typeof MatchLineupEntry>
 

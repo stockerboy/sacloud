@@ -4,6 +4,17 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
+
+/**
+ * 경기 당시 소속 클랜 (D-131).
+ *
+ * **현재 소속이 아니다.** 선수가 이적해도 과거 경기 화면은 변하지 않아야 한다.
+ * 근거가 없으면 `null`이고, 그때는 마크를 그리지 않는다 — 현재 소속으로 메우지 않는다.
+ */
+export interface MatchTimeClan {
+  name: string
+  mark: { bg: string | null; front: string | null }
+}
 import { RelativeTime } from '../common/RelativeTime'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
@@ -62,14 +73,26 @@ function Lineup({
     /** 수집원이 무기를 주지 않으면 null — `[S]`를 붙일 근거가 없다 (D-034) */
     weapon: number | null
     dropout: boolean | null
+    /** **그 경기 당시** 소속 클랜. 현재 소속이 아니다 (D-131) */
+    match_time_clan: MatchTimeClan | null
   }[]
   leagueSlug: string
 }) {
   return (
-    <div className="flex w-40 items-center py-1 text-sm text-meta">
+    <div className="flex w-48 items-center py-1 text-sm text-meta">
       <div>
         {entries.map((entry) => (
-          <div key={entry.player_id}>
+          <div key={entry.player_id} className="flex items-center">
+            {/* 경기 당시 소속 클랜마크. 근거가 없으면 아무것도 그리지 않는다 —
+                현재 소속으로 대신 채우지 않는다 (D-131) */}
+            {entry.match_time_clan ? (
+              <ClanMark
+                mark={entry.match_time_clan.mark}
+                alt={entry.match_time_clan.name}
+                size="xxs"
+                className="mr-1"
+              />
+            ) : null}
             <Link className="inline-block" href={leaguePlayerPath(leagueSlug, entry.player_id)}>
               <span className={entry.dropout ? 'line-through' : ''}>{entry.name}</span>
               {/* 무기: 0 = 라이플, 1 = 스나이퍼 → 스나이퍼만 [S] 표기 (원본 규칙).
@@ -259,7 +282,16 @@ function StatTable({ title, stats }: { title: string; stats: readonly MatchPlaye
           key={stat.player_id}
           className="flex items-center border-b border-b-line py-1 text-sm last:border-b-0"
         >
-          <div className="w-40 px-2">
+          <div className="flex w-40 items-center px-2">
+            {/* 경기 당시 소속 클랜 (D-131). 지금 어느 클랜인지가 아니다 */}
+            {stat.match_time_clan ? (
+              <ClanMark
+                mark={stat.match_time_clan.mark}
+                alt={stat.match_time_clan.name}
+                size="xxs"
+                className="mr-1"
+              />
+            ) : null}
             <span className={stat.dropout ? 'line-through' : ''}>{stat.name}</span>
             {stat.mvp ? <span className="ml-1 text-mvp">MVP</span> : null}
           </div>

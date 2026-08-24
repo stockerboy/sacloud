@@ -2,6 +2,7 @@ import { prisma, type Prisma } from '@sacloud/db'
 import {
   kdRate,
   percentOf,
+  type ClanSummary,
   type MatchDetail,
   type MatchLineupEntry,
   type MatchListItem,
@@ -82,6 +83,13 @@ const MATCH_SELECT = {
       ratingUpdate: true,
       isPlacement: true,
       participantRole: true,
+      /* 경기 당시 소속 스냅샷 (D-131). **현재 소속을 join 하지 않는다** —
+         선수가 이적해도 과거 화면이 바뀌면 안 된다 */
+      matchTimeClanName: true,
+      matchTimeLeagueClanId: true,
+      matchTimeClanSlug: true,
+      matchTimeClanMarkBgUrl: true,
+      matchTimeClanMarkFrontUrl: true,
       player: { select: PLAYER_SUMMARY_SELECT },
     },
   },
@@ -125,6 +133,24 @@ export function sideOfLeagueClan(
   return null
 }
 
+/**
+ * 경기 당시 소속 클랜 (D-131).
+ *
+ * `MatchPlayerStat`에 박아 둔 스냅샷만 읽는다. **현재 소속을 join 하지 않는다** —
+ * 선수가 이적하면 과거 기록실이 통째로 바뀌기 때문이다.
+ * 근거가 없으면 `null`이다. 현재 소속으로 메우지 않는다.
+ */
+function matchTimeClanOf(stat: StatRow): ClanSummary | null {
+  if (!stat.matchTimeClanName) return null
+  return {
+    // 우리 리그 클랜과 연결됐으면 그 id, 아니면 이름만 아는 외부 클랜이다
+    id: stat.matchTimeLeagueClanId ?? '',
+    slug: stat.matchTimeClanSlug ?? '',
+    name: stat.matchTimeClanName,
+    mark: { bg: stat.matchTimeClanMarkBgUrl, front: stat.matchTimeClanMarkFrontUrl },
+  }
+}
+
 function lineupOf(match: MatchRow, side: TeamSide): MatchLineupEntry[] {
   return match.stats
     .filter((stat) => stat.side === side)
@@ -133,6 +159,7 @@ function lineupOf(match: MatchRow, side: TeamSide): MatchLineupEntry[] {
       name: stat.player.name,
       weapon: stat.weapon as Weapon | null,
       dropout: stat.dropout,
+      match_time_clan: matchTimeClanOf(stat),
     }))
 }
 
@@ -171,6 +198,7 @@ function toMatchPlayerStat(match: MatchRow, stat: StatRow, visible: boolean): Ma
     // DB는 진영 승패만 들고 있다 (참가자별 win 컬럼 없음). 진영으로 판정한다.
     win: match.winnerSide === stat.side,
     mvp: stat.mvp,
+    match_time_clan: matchTimeClanOf(stat),
   }
 }
 
@@ -336,20 +364,20 @@ export async function getLeaguePlayerMatches(
   })
   if (!leaguePlayer) return null
 
-  const leagueClanId = await leagueClanIdOfPlayer(leagueId, leaguePlayer.clanId)
-  // 소속 리그클랜이 없으면 store.ts도 전 항목이 걸러져 빈 페이지가 된다
-  if (!leagueClanId) return { items: [], cursor: { prev: null, next: null } }
+  /* 보는 기준은 **그 경기에서 뛴 팀**이다. 현재 소속으로 거르지 않는다 (D-131).
+     현재 클랜으로 필터하면 이적한 선수의 과거 경기가 자기 기록실에서 통째로 사라진다.
+     `stats.some`이 이미 "이 선수가 뛴 경기"로 좁히므로 클랜 조건은 필요 없다. */
+  return matchPage({ leagueId, stats: { some: { playerId } } }, cursor, size, (match) => ({
+    leagueClanId: leagueClanOfPlayerInMatch(match, playerId),
+    playerId,
+  }))
+}
 
-  return matchPage(
-    {
-      leagueId,
-      stats: { some: { playerId } },
-      OR: [{ redLeagueClanId: leagueClanId }, { blueLeagueClanId: leagueClanId }],
-    },
-    cursor,
-    size,
-    () => ({ leagueClanId, playerId }),
-  )
+/** 그 경기에서 이 선수가 뛴 팀의 리그클랜. 참가 기록이 없으면 red 쪽을 기본으로 본다 */
+function leagueClanOfPlayerInMatch(match: MatchRow, playerId: string): string {
+  const stat = match.stats.find((row) => row.playerId === playerId)
+  if (!stat) return match.redLeagueClanId
+  return stat.side === 'red' ? match.redLeagueClanId : match.blueLeagueClanId
 }
 
 /**

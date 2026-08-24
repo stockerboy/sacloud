@@ -535,6 +535,18 @@ export function getPlayerRanks(leagueId: string, cursor: string | null, size: nu
 /* 매치                                                                         */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * 경기 당시 소속 클랜 (D-131).
+ *
+ * Mock 픽스처에는 **이적이 없다.** 그래서 경기 당시 소속과 현재 소속이 같고,
+ * 선수의 클랜을 그대로 쓴다. 실제 API는 `MatchPlayerStat`에 박아 둔 스냅샷을 읽는다.
+ */
+function matchTimeClanOf(playerId: string) {
+  const clanId = playerById.get(playerId)?.clanId
+  const clan = clanId ? clanById.get(clanId) : undefined
+  return clan ? toClanSummary(clan) : null
+}
+
 function lineupOf(match: MockMatch, side: TeamSide): MatchLineupEntry[] {
   return match.players
     .filter((stat) => stat.side === side)
@@ -543,6 +555,7 @@ function lineupOf(match: MockMatch, side: TeamSide): MatchLineupEntry[] {
       name: playerById.get(stat.playerId)?.name ?? '알수없음',
       weapon: stat.weapon,
       dropout: stat.dropout,
+      match_time_clan: matchTimeClanOf(stat.playerId),
     }))
 }
 
@@ -578,6 +591,7 @@ function toMatchPlayerStat(match: MockMatch, stat: MockMatchPlayer, visible: boo
     dropout: stat.dropout,
     win: stat.win,
     mvp: stat.mvp,
+    match_time_clan: matchTimeClanOf(stat.playerId),
   }
 }
 
