@@ -1023,3 +1023,72 @@ reconstruct  considered 214 → projected 72 · incomplete 142
 #### 검증
 
 `nexon:check` 16항목 전 항목 PASS · 회귀 9건 신규 · typecheck 통과
+
+### 현재 소속 자동 갱신 + 경기 당시 소속 분리 (2026-08-24)
+
+결정 기록은 **D-130 · D-131 · D-132**.
+
+#### 로스터 출처를 찾다가 전제가 두 번 뒤집혔다
+
+```
+병영수첩 클랜 멤버      403 · 비로그인 브라우저에도 없음   → 로그인 게이트. 우회 안 함
+3rd.supply 클랜원 목록  1,235명 중 181명이 두 곳에 동시    → 이력이지 현재가 아니다
+3rd.supply 라인업 clan  1,091명이 11개월간 변화 0          → 현재 소속 ← 이것을 쓴다
+넥슨 guild_name         1,341명 중 69명 변화, 65명은 기간 안 겹침 → 경기 당시 소속
+```
+
+같은 "클랜" 필드가 출처에 따라 **정반대 의미**였다. 이 대비가 없었으면
+경기 당시 소속에 현재 클랜을 넣을 뻔했다.
+
+#### 만든 것
+
+| 명령 | 하는 일 |
+|---|---|
+| `nexon supply-rosters` | 라인업 clan → 현재 소속. 신규·이적·탈퇴 감지 + 이력 |
+| `nexon supply-players` | 넥슨 참가자 ↔ 3rd.supply 선수 id 연결 (같은 경기 닉네임 일치) |
+| `nexon affiliation` | 경기 당시 소속 스냅샷 복원 (넥슨 guild_name → 로스터) |
+
+전부 `--confirm` 없이는 DB 에 쓰지 않고, 미리보기에서도 숫자를 실제와 같게 센다.
+전부 idempotent다(재실행 확인).
+
+스키마는 추가 전용 — `LeagueRosterMembership.observedAt/confidence/sourceRef`,
+`MatchPlayerStat.matchTimeClan*` 8개. `migrate deploy` 로만 적용했다.
+
+#### 실행 순서와 결과
+
+```
+supply-players --confirm   연결 212 · 충돌 0 · 근거 없음 0 · 빈 행 비켜줌 135
+supply-rosters --confirm   소속 452 · 클랜 43곳 · 근거 갈림 0
+reconstruct --redo         projected 72 (변화 없음) · incomplete 142
+affiliation --confirm      복원 626/639 · 리그클랜 연결 495 · null 13
+rate                       경기 16 · 선수 56 · 클랜 10
+
+경기 참가자의 로스터 보유  17명 → 135명
+official 경기              6건 → 17건
+래더 반영 경기             6건 → 16건
+```
+
+**incomplete 142건은 그대로다.** 사유가 `single_clan`(94) · `unidentified_side`(48)이고
+둘 다 로스터가 아니라 **넥슨이 상대 팀을 안 주는 문제**(D-044)다. 로스터로는 안 풀린다.
+
+#### 화면
+
+기록실 라인업과 경기 상세 선수 행에 **경기 당시** 클랜마크를 붙였다.
+프로필·랭킹·클랜원 목록은 **현재** 소속 그대로다.
+
+실화면 확인 — 산툐리, 8/20 경기
+```
+경기 상세 · 라인업  VaIiant    (경기 당시)
+선수 프로필         dravelior  (현재)
+```
+
+#### 같이 고친 버그
+
+개인 기록실이 **현재** 소속 리그클랜으로 경기를 걸러내고 있었다.
+이적한 선수의 과거 경기가 자기 기록실에서 통째로 사라졌다.
+회귀 테스트를 쓰다가 걸렸다.
+
+#### 검증
+
+typecheck · lint · build 통과 · test **677 passed / 31 skipped** (신규 20건)
+db:check 전 항목 · nexon:check 16항목 PASS

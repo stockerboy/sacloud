@@ -1,6 +1,6 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-**작성 2026-08-21. 최종 갱신 2026-08-24 (Phase 13 — 공식리그 경기 발견 파이프라인 · Beta 구간 실수집).**
+**작성 2026-08-21. 최종 갱신 2026-08-24 (Phase 14 — 현재 소속 자동 갱신 · 경기 당시 소속 분리).**
 > **지금 상태를 가장 빨리 알려면 맨 아래 L장을 먼저 읽는다.** 새 세션은 **이 파일 하나만 읽어도** 상황을 파악할 수 있어야 한다.
 읽는 순서: `CLAUDE.md` → 이 파일 → `git log --oneline -10`.
 Phase 9 래더는 **H장** · `docs/LADDER_TUNING_REPORT.md` · `docs/DECISIONS.md` D-057~D-068에 있다.
@@ -958,3 +958,137 @@ clean. 이번 작업분은 전부 커밋됐다.
   이번 작업 중 3000번에 떠 있던 `next start`(전날 기동)를 그 이유로 내렸다 — **다시 띄우려면**
   `pnpm dev:clean` 또는 `pnpm --filter @sacloud/web start`
 - `pnpm db:start` 는 켜 두는 명령이다. 내리면 API가 전부 500이 된다
+
+---
+
+## M. Phase 14 — 현재 소속 자동 갱신 · 경기 당시 소속 분리 (2026-08-24) ← **가장 최신**
+
+> 결정: `docs/DECISIONS.md` **D-130 · D-131 · D-132** · 경위: `docs/WORKLOG.md`
+
+### 현재 HEAD
+
+`git log --oneline -4` 로 확인한다. 이번 작업 커밋은 넷이다.
+
+```
+feat(roster)      현재 소속 자동 갱신 — 3rd.supply 라인업 clan 기반 (D-130)
+feat(affiliation) 경기 당시 소속 스냅샷 + 넥슨↔3rd.supply 선수 연결 (D-131 · D-132)
+feat(ui)          기록실·경기 상세에 경기 당시 소속 표시 + 이적 선수 과거 경기 복구
+docs              D-130~D-132 · WORKLOG · HANDOFF
+```
+
+### 이번에 완료한 작업
+
+1. **현재 로스터 자동 갱신** — `nexon supply-rosters`. 사람이 CSV를 넣지 않는다
+2. **넥슨 ↔ 3rd.supply 선수 연결** — `nexon supply-players` (같은 경기 · 닉네임 정확 일치)
+3. **경기 당시 소속 스냅샷** — `nexon affiliation` (넥슨 guild_name → 로스터)
+4. **화면 분리** — 기록실/경기상세 = 경기 당시 · 프로필/랭킹/클랜원 = 현재
+5. **버그 수정** — 이적하면 개인 기록실에서 과거 경기가 사라지던 문제
+6. 회귀 20건 신규 (실제 DB 통합 11건 + 순수 함수 9건)
+
+### DB schema 변경 (추가 전용 · `migrate deploy` 로만 적용)
+
+```
+LeagueRosterMembership  observedAt · confidence · sourceRef
+MatchPlayerStat         matchTimeClanName · matchTimeLeagueClanId · matchTimeClanSlug
+                        matchTimeClanMarkBgUrl · matchTimeClanMarkFrontUrl
+                        matchTimeClanSource · matchTimeClanObservedAt · matchTimeClanConfidence
+NexonMatch              discoverySource (Phase 13)
+```
+
+### 로스터 source — 실측으로 정했다
+
+| 후보 | 결과 |
+|---|---|
+| 병영수첩 클랜 멤버 | **로그인 게이트** (서버 403 · 비로그인 브라우저에도 없음). 우회 안 함 |
+| 3rd.supply 클랜원 목록 | 1,235명 중 181명이 두 곳 동시 → **이력**이지 현재가 아니다 |
+| **3rd.supply 라인업 clan** | 1,091명 11개월간 변화 0 → **현재 소속** ← 쓴다 |
+| **넥슨 guild_name** | 69명 변화 · 65명 기간 안 겹침 → **경기 당시 소속** |
+
+> **캡처는 브라우저가 필요하다.** 3rd.supply 는 서버 fetch 가 405/403 이다.
+> 스냅샷은 커밋돼 있고 갱신 명령은 그것만 읽는다 — 운영자가 이름을 타이핑할 일은 없다.
+
+### current / match-time membership 정책
+
+```
+현재 소속      Player.clanId · LeaguePlayer.clanId · LeagueRosterMembership(leftAt=null)
+경기 당시 소속  MatchPlayerStat.matchTimeClan* (표시·근거) + rosterLeagueClanId (내부 판정)
+```
+
+- 둘을 **같은 값으로 덮어쓰지 않는다**
+- `joinedAt` 을 지어내지 않는다 (처음 = 클랜의 리그 참여 시각 / 이적 = 관측 시각)
+- 이적 시 이전 소속을 **지우지 않고** `leftAt` 으로 닫는다
+- 근거가 없으면 `null`. 현재 소속으로 메우지 않는다
+
+### 기록실 표시 정책
+
+| 화면 | 소속 |
+|---|---|
+| 기록실 목록 라인업 · 경기 상세 선수 행 | **경기 당시** |
+| 선수 프로필 · 개인 랭킹 · 클랜원 목록 | **현재** |
+| 본클랜원/용병/official/클랜 승패/클랜 래더 | **경기 당시** |
+
+> **원본과의 의도된 차이.** 3rd.supply 원본은 라인업에도 현재 클랜을 붙인다.
+> 우리는 사용자 지시로 경기 당시 소속을 보여 준다 (D-131).
+
+### 실행 결과
+
+```
+supply-players --confirm   연결 212 · 충돌 0 · 근거 없음 0 · 빈 행 비켜줌 135
+supply-rosters --confirm   소속 452 · 클랜 43곳 · 근거 갈림 0
+affiliation --confirm      복원 626/639 (98%) · 리그클랜 연결 495 · null 13
+rate                       경기 16 · 선수 56 · 클랜 10
+
+경기 참가자의 로스터 보유   17명 → 135명
+official 경기               6건 → 17건
+래더 반영 경기              6건 → 16건
+과거 소속 스냅샷 복원       626건 (현재와 실제로 다른 것 4건)
+incomplete                 142건 → 142건 (변화 없음)
+```
+
+### 남은 문제
+
+1. **incomplete 142건은 로스터로 안 풀린다.** 사유가 `single_clan`(94) ·
+   `unidentified_side`(48)이고 둘 다 **넥슨이 상대 팀을 안 주는 문제**(D-044)다.
+   D-129의 3rd.supply 라인업으로 참가자를 보강하는 안이 남아 있다 —
+   **아직 결정되지 않았다**
+2. 경기 참가자 229명 중 로스터 미보유 **94명** — 라인업 관측이 없는 사람들이다
+3. 근거 없어 `null` 로 둔 경기 당시 소속 **13건**
+4. 스냅샷 캡처가 브라우저 의존이다. 자동 스케줄링 불가
+
+### 다음 정확한 작업
+
+1. **D-129 결정** — 3rd.supply 라인업을 참가자 복원 근거로 쓸지.
+   쓰면 `unidentified_side` 48건이 풀릴 가능성이 있다. **사람이 정한다**
+2. 스냅샷 재캡처 주기 정하기 (현재 수동)
+3. Beta 구간 밖 536건을 과거 시즌으로 이관할지 (Phase 13에서 넘어온 항목)
+
+### 주의사항 · 금지사항
+
+- **3rd.supply · 병영수첩 모두 서버 fetch 가 막혀 있다.** 헤더 위조·로그인 우회 금지
+- **경기 당시 소속에 3rd.supply 라인업 clan 을 쓰지 않는다** (현재 소속이다 · D-130)
+- **현재 소속을 join 해서 과거 화면을 그리지 않는다.** 스냅샷을 읽는다 (D-131)
+- 탈퇴 감지는 **이 명령이 만든 소속만** 닫는다. 운영자 수기 로스터 불변
+- 이름 유사 매칭 금지. slug/닉네임 **정확 일치**만
+- `prisma migrate dev` 금지 (리셋 위험). 손으로 쓰고 `migrate deploy`
+- 래더 공식은 이번 작업에서 **건드리지 않았다**
+
+### 검증 결과
+
+```
+pnpm typecheck    통과 (8 프로젝트)
+pnpm lint         통과
+pnpm test         677 passed / 31 skipped  (신규 20건)
+pnpm build        통과
+pnpm db:check     전 항목 통과
+pnpm nexon:check  16항목 전 항목 PASS
+```
+
+실화면 확인 (localhost:3000 · 실 DB) — 산툐리, 8/20 경기
+```
+경기 상세 · 라인업  VaIiant    (경기 당시)
+선수 프로필         dravelior  (현재)
+```
+
+### working tree 상태
+
+clean.
