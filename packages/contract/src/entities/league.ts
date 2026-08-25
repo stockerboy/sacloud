@@ -93,6 +93,18 @@ export const LeaguePlayer = z.object({
   placement: z.boolean(),
   rank: Count.nullable(),
   rank_count: Count.nullable(),
+  /**
+   * 무기별 랭킹 (D-146).
+   *
+   * 넥슨 Open API 는 무기를 주지 않는다 (D-034). 그 무기로 뛴 기록이 없으면 `null` 이고,
+   * 화면은 `집계 없음` 으로 표시한다. **표본이 없는데 순위를 만들지 않는다.**
+   */
+  sniper_rank: Count.nullable().default(null),
+  sniper_rank_count: Count.nullable().default(null),
+  sniper_games: Count.default(0),
+  rifle_rank: Count.nullable().default(null),
+  rifle_rank_count: Count.nullable().default(null),
+  rifle_games: Count.default(0),
 })
 export type LeaguePlayer = z.infer<typeof LeaguePlayer>
 

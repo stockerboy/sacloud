@@ -134,7 +134,17 @@ export default function LeaguePlayerRecordPage({
             mvpCount={data.mvp_count}
             rank={data.rank}
             rankCount={data.rank_count}
-            clan={data.clan}
+            sniperRank={data.sniper_rank}
+            sniperRankCount={data.sniper_rank_count}
+            sniperGames={data.sniper_games}
+            rifleRank={data.rifle_rank}
+            rifleRankCount={data.rifle_rank_count}
+            rifleGames={data.rifle_games}
+            clan={
+              data.clan
+                ? { ...data.clan, isOfficialClan: data.clan.is_official_clan }
+                : null
+            }
           />
           {/* 무기 판정이 있는 경기가 있을 때만 뜬다 (D-115) */}
           <WeaponStatPanel stats={data.weapon_stats} />

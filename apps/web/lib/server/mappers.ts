@@ -25,14 +25,34 @@ export interface ClanFields {
   name: string
   markBgUrl: string | null
   markFrontUrl: string | null
+  /** 3rd.supply 공식 클랜 레지스트리의 id. 있으면 공식 1/2부 등록 클랜이다 */
+  sourceClanId?: string | null
+}
+
+/**
+ * SACLOUD 공식 1/2부 등록 클랜인가 (D-146).
+ *
+ * 판정 기준은 **`sourceClanId` 하나**다. 3rd.supply 공식 클랜 레지스트리에서 이관된
+ * 44개 클랜만 이 값을 가진다. 이름·slug 문자열로 추측하지 않는다 —
+ * 비슷한 이름의 외부 클랜을 공식으로 잘못 올리는 것이 가장 위험하다.
+ *
+ * `sourceClanId` 가 없는 클랜에는 개발용으로 만든 `real-` 접두 클랜 4개도 포함된다.
+ * 그것들도 공식이 아니다.
+ */
+export function isOfficialLeagueClan(clan: Pick<ClanFields, 'sourceClanId'>): boolean {
+  return Boolean(clan.sourceClanId)
 }
 
 export function toClanSummary(clan: ClanFields): ClanSummary {
+  const official = isOfficialLeagueClan(clan)
   return {
     id: clan.id,
     slug: clan.slug,
     name: clan.name,
-    mark: { bg: clan.markBgUrl, front: clan.markFrontUrl },
+    /* 등록 클랜이 아니면 **실제 마크를 내보내지 않는다.**
+       화면은 마크가 비어 있으면 공통 fallback 마크를 그린다. */
+    mark: official ? { bg: clan.markBgUrl, front: clan.markFrontUrl } : { bg: null, front: null },
+    is_official_clan: official,
   }
 }
 
@@ -145,6 +165,8 @@ export const CLAN_SUMMARY_SELECT = {
   name: true,
   markBgUrl: true,
   markFrontUrl: true,
+  // 공식 등록 클랜 판정에 쓴다 (D-146)
+  sourceClanId: true,
 } as const
 
 export const LEAGUE_SUMMARY_SELECT = {

@@ -156,7 +156,51 @@ export interface PlayerStatSidebarProps {
   mvpCount: number
   rank: number | null
   rankCount: number | null
-  clan: { slug: string; name: string } | null
+  /**
+   * 무기별 랭킹 (D-146).
+   *
+   * 넥슨 Open API 는 무기를 주지 않는다 (D-034). 그 무기로 뛴 기록이 없으면 `null` 이고
+   * **`집계 없음` 으로 표시한다.** 표본이 없는데 순위를 만들어 내지 않는다.
+   */
+  sniperRank?: number | null
+  sniperRankCount?: number | null
+  sniperGames?: number
+  rifleRank?: number | null
+  rifleRankCount?: number | null
+  rifleGames?: number
+  /**
+   * 소속.
+   *
+   * `isOfficialClan` 이 false 면 **공식 등록 클랜이 아니다.** 이름은 남기되
+   * 공식 소속처럼 강조하지 않고 `미등록` 을 함께 적는다 (D-146).
+   */
+  clan: { slug: string; name: string; isOfficialClan?: boolean } | null
+}
+
+/** 무기별 랭킹 한 줄. 표본이 없으면 정직하게 `집계 없음` 이다 */
+function WeaponRank({
+  label,
+  rank,
+  rankCount,
+  games,
+}: {
+  label: string
+  rank: number | null | undefined
+  rankCount: number | null | undefined
+  games: number | undefined
+}) {
+  return (
+    <Stat label={label}>
+      {rank === null || rank === undefined || !games ? (
+        <span className="text-unknown">집계 없음</span>
+      ) : (
+        <>
+          <span className="mr-2 text-base">{formatCount(rankCount ?? 0)}명중</span>
+          {formatCount(rank)}위
+        </>
+      )}
+    </Stat>
+  )
 }
 
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
@@ -206,9 +250,37 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
         )}
       </Stat>
       <Divider />
+      {/* 무기별 랭킹은 통합 랭킹과 **별도로** 보여 준다 (D-146).
+          무기 분리는 기록만 나누고 통합 래더 값을 바꾸지 않는다 */}
+      <WeaponRank
+        label="스나이퍼"
+        rank={props.sniperRank}
+        rankCount={props.sniperRankCount}
+        games={props.sniperGames}
+      />
+      <Divider />
+      <WeaponRank
+        label="라이플"
+        rank={props.rifleRank}
+        rankCount={props.rifleRankCount}
+        games={props.rifleGames}
+      />
+      <Divider />
       <Stat label="소속">
         <span className="text-base">
-          {props.clan ? <Link href={`/clan/${props.clan.slug}`}>{props.clan.name}</Link> : '-'}
+          {props.clan === null ? (
+            '-'
+          ) : props.clan.isOfficialClan === false ? (
+            /* 공식 1/2부 등록 클랜이 아니다 (D-146).
+               이름은 남기되 링크를 걸지 않고 `미등록` 을 붙인다 —
+               외부 클랜이 SACLOUD 공식 소속처럼 보이면 안 된다. */
+            <>
+              <span className="text-meta">{props.clan.name}</span>
+              <span className="ml-1 text-xs text-unknown">미등록</span>
+            </>
+          ) : (
+            <Link href={`/clan/${props.clan.slug}`}>{props.clan.name}</Link>
+          )}
         </span>
       </Stat>
     </div>

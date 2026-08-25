@@ -18,6 +18,17 @@ export const ClanSummary = z.object({
   slug: Slug,
   name: z.string(),
   mark: ClanMark,
+  /**
+   * SACLOUD 공식 1/2부 등록 클랜인가 (D-146).
+   *
+   * 등록 클랜만 **실제 클랜마크**를 쓴다. 외부·미등록 클랜은 마크를 내보내지 않고
+   * 화면에서 공통 fallback 마크를 그린다 — 외부 클랜의 emblem 을 우리 화면에서
+   * 공식 소속처럼 보여 주지 않기 위해서다.
+   *
+   * 판정은 **서버가** 한다. 클라이언트가 slug 문자열로 추측하지 않는다.
+   * 기본값 `false` 라 기존 응답과도 호환된다.
+   */
+  is_official_clan: z.boolean().default(false),
 })
 export type ClanSummary = z.infer<typeof ClanSummary>
 

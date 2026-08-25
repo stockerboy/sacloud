@@ -80,6 +80,8 @@ beforeAll(async () => {
         slug: `${P.toLowerCase()}a`,
         name: `${P}클랜A`,
         category: 'official',
+        // D-146: sourceClanId 가 있어야 공식 1/2부 등록 클랜이고 실제 마크를 쓴다
+        sourceClanId: `${P}-src-a`,
         markBgUrl: 'https://example.invalid/a-bg.png',
         markFrontUrl: 'https://example.invalid/a-front.png',
       },
@@ -89,6 +91,7 @@ beforeAll(async () => {
         slug: `${P.toLowerCase()}b`,
         name: `${P}클랜B`,
         category: 'official',
+        sourceClanId: `${P}-src-b`,
         markBgUrl: 'https://example.invalid/b-bg.png',
         markFrontUrl: 'https://example.invalid/b-front.png',
       },
@@ -303,6 +306,8 @@ describe.runIf(up)('기록실·경기 상세는 경기 당시 소속을 보여 �
     expect(row?.match_time_clan?.name).toBe(`${P}클랜A`)
     expect(row?.match_time_clan?.mark.bg).toBe('https://example.invalid/a-bg.png')
     expect(row?.match_time_clan?.mark.front).toBe('https://example.invalid/a-front.png')
+    // 공식 등록 클랜이므로 실제 마크를 쓴다 (D-146)
+    expect(row?.match_time_clan?.is_official_clan).toBe(true)
   })
 
   it('근거가 없는 참가자는 null 이다 — 현재 소속으로 메우지 않는다', async () => {

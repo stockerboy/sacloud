@@ -442,6 +442,41 @@ export async function clanRankOf(leagueClan: {
   return { rank, rankCount }
 }
 
+/**
+ * 무기별 랭킹 (D-146).
+ *
+ * `LeaguePlayerWeaponStat.ratingDelta` 기준이다 — 무기 분리는 **기록만** 나누고
+ * 통합 래더 값을 바꾸지 않는다 (LADDER_IMPLEMENTATION_SPEC 6장).
+ *
+ * **넥슨 Open API 는 무기를 주지 않는다** (D-034). 그래서 무기가 확인된 경기가 없는
+ * 선수는 `null` 이다 — 표본이 없는데 순위를 만들어 내지 않는다.
+ * 화면은 `null` 을 "집계 없음" 으로 표시한다.
+ */
+export async function playerWeaponRankOf(
+  leaguePlayerId: string,
+  leagueId: string,
+  weapon: 0 | 1,
+): Promise<{ rank: number | null; rankCount: number | null; games: number }> {
+  const mine = await prisma.leaguePlayerWeaponStat.findUnique({
+    where: { leaguePlayerId_weapon: { leaguePlayerId, weapon } },
+    select: { ratingDelta: true, win: true, lose: true },
+  })
+  const games = (mine?.win ?? 0) + (mine?.lose ?? 0)
+  // 그 무기로 뛴 기록이 없으면 순위를 만들지 않는다
+  if (!mine || games === 0) return { rank: null, rankCount: null, games: 0 }
+
+  const where = {
+    weapon,
+    leaguePlayer: { leagueId, placement: false },
+    OR: [{ win: { gt: 0 } }, { lose: { gt: 0 } }],
+  }
+  const rankCount = await prisma.leaguePlayerWeaponStat.count({ where })
+  const above = await prisma.leaguePlayerWeaponStat.count({
+    where: { ...where, ratingDelta: { gt: mine.ratingDelta } },
+  })
+  return { rank: above + 1, rankCount, games }
+}
+
 export async function playerRankOf(leaguePlayer: {
   id: string
   leagueId: string

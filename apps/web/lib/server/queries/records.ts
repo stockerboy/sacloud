@@ -30,7 +30,7 @@ import {
 } from '../mappers'
 import { seasonLabel } from '@sacloud/db/ops'
 import { cumulativeKd, cumulativeKdRate, hidesCumulativeKd } from './visibility'
-import { clanRankOf, matchCountByPlayer, playerRankOf } from './leagues'
+import { clanRankOf, matchCountByPlayer, playerRankOf, playerWeaponRankOf } from './leagues'
 import { leagueClanIdOfPlayer, sideOfLeagueClan } from './matches'
 
 /**
@@ -504,13 +504,16 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, matchCount, record] = await Promise.all([
+  const [rank, sniper, rifle, matchCount, record] = await Promise.all([
     playerRankOf({
       id: leaguePlayer.id,
       leagueId: leaguePlayer.leagueId,
       rating: leaguePlayer.rating,
       placement: leaguePlayer.placement,
     }),
+    // 무기별 랭킹 — 무기가 확인된 경기가 없으면 null 이다 (D-146)
+    playerWeaponRankOf(leaguePlayer.id, league.id, 1),
+    playerWeaponRankOf(leaguePlayer.id, league.id, 0),
     // 평균킬 분모 — 분자가 공식 경기만 누적하므로 여기도 공식만 센다 (D-080)
     prisma.matchPlayerStat.count({
       where: { playerId, match: { leagueId: league.id, official: true } },
@@ -542,6 +545,12 @@ export async function getLeaguePlayerDetail(
     placement: leaguePlayer.placement,
     rank: rank.rank,
     rank_count: rank.rankCount,
+    sniper_rank: sniper.rank,
+    sniper_rank_count: sniper.rankCount,
+    sniper_games: sniper.games,
+    rifle_rank: rifle.rank,
+    rifle_rank_count: rifle.rankCount,
+    rifle_games: rifle.games,
     match_summary: record.summary,
     teammates: record.teammates,
     weapon_stats: await weaponStatsOf(leaguePlayer.id),

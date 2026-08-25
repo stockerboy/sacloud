@@ -25,6 +25,13 @@ export const MatchTimeClan = z.object({
   slug: Slug.nullable(),
   name: z.string(),
   mark: ClanMark,
+  /**
+   * 그 **경기 당시** 공식 1/2부 등록 클랜이었는가 (D-146).
+   *
+   * 현재 소속이 아니라 경기 당시 기준이다. 선수가 이적해도 과거 기록의 마크는 바뀌지 않는다.
+   * 등록 클랜이 아니면 마크를 내보내지 않고 화면이 fallback 마크를 그린다.
+   */
+  is_official_clan: z.boolean().default(false),
 })
 export type MatchTimeClan = z.infer<typeof MatchTimeClan>
 

@@ -1,4 +1,6 @@
 export { WeaponStatPanel, type PlayerWeaponStatRow } from './record/RecordPanels'
+export { FallbackClanMark, type FallbackClanMarkProps } from './common/FallbackClanMark'
+
 export { SiteShell } from './layout/SiteShell'
 export { SiteHeader, type SiteHeaderProps } from './layout/SiteHeader'
 export { SiteFooter } from './layout/SiteFooter'

@@ -13,6 +13,8 @@
  * 배경·전경 2장을 같은 자리에 겹쳐 그린다. 기본 크기는 2rem(28px).
  */
 
+import { FallbackClanMark } from './FallbackClanMark'
+
 export type ClanMarkSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'max'
 
 const SIZE: Record<ClanMarkSize, string> = {
@@ -43,6 +45,13 @@ export interface ClanMarkSource {
 }
 
 export function ClanMark({ mark, size = 'md', className, alt = '' }: ClanMarkProps) {
+  /* 마크가 비어 있으면 **공통 fallback 마크**를 그린다 (D-146).
+     서버가 공식 1/2부 등록 클랜이 아닌 클랜의 마크를 비워서 내려보낸다 —
+     외부 클랜의 emblem 을 우리 화면에서 공식 소속처럼 보여 주지 않기 위해서다.
+     마크를 설정하지 않은 등록 클랜도 같은 마크를 쓴다 (깨진 이미지보다 낫다). */
+  if (!mark.bg && !mark.front) {
+    return <FallbackClanMark className={`${SIZE[size]} shrink-0 ${className ?? ''}`} alt={alt} />
+  }
   return (
     <span className={`${SIZE[size]} shrink-0 ${className ?? ''}`}>
       <span className="relative block h-full w-full">

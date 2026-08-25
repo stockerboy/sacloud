@@ -187,6 +187,8 @@ function toClanSummary(clan: MockClan): ClanSummary {
     slug: clan.slug,
     name: clan.name,
     mark: { bg: clan.markBg, front: clan.markFront },
+    // Mock 의 클랜은 전부 리그에 등록된 클랜으로 본다 (D-146)
+    is_official_clan: true,
   }
 }
 
@@ -546,7 +548,14 @@ function matchTimeClanOf(playerId: string) {
   const clan = clanId ? clanById.get(clanId) : undefined
   if (!clan) return null
   const summary = toClanSummary(clan)
-  return { league_clan_id: summary.id, slug: summary.slug, name: summary.name, mark: summary.mark }
+  return {
+    league_clan_id: summary.id,
+    slug: summary.slug,
+    name: summary.name,
+    mark: summary.mark,
+    // Mock 의 클랜은 전부 등록 클랜으로 본다 (D-146)
+    is_official_clan: true,
+  }
 }
 
 function lineupOf(match: MockMatch, side: TeamSide): MatchLineupEntry[] {
@@ -855,6 +864,14 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     placement: leaguePlayer.placement,
     rank: rank.rank,
     rank_count: rank.rankCount,
+    /* Mock 은 무기 기록이 항상 있으므로 무기별 랭킹도 채운다 (D-146).
+       실제 운영에서는 넥슨이 무기를 주지 않아 null 인 경우가 많다 */
+    sniper_rank: rank.rank,
+    sniper_rank_count: rank.rankCount,
+    sniper_games: weaponStatsOf(leaguePlayer.id).find((w) => w.weapon === 1)?.win ?? 0,
+    rifle_rank: rank.rank,
+    rifle_rank_count: rank.rankCount,
+    rifle_games: weaponStatsOf(leaguePlayer.id).find((w) => w.weapon === 0)?.win ?? 0,
     match_summary: buildMatchSummary(matches, leaguePlayer.leagueClanId, playerId),
     teammates: buildTeammates(matches, leaguePlayer.leagueClanId, playerId),
     weapon_stats: weaponStatsOf(leaguePlayer.id),
