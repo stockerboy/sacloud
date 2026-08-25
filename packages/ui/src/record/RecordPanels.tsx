@@ -4,6 +4,7 @@ import { ClanMark } from '../common/ClanMark'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
+import { weaponStatView } from './weaponCopy'
 
 /**
  * 기록실 상단 `최근매치` 요약 + 우측 사이드 패널.
@@ -165,9 +166,17 @@ export interface PlayerStatSidebarProps {
   sniperRank?: number | null
   sniperRankCount?: number | null
   sniperGames?: number
+  sniperKnownGames?: number
+  sniperKill?: number
+  sniperDeath?: number
+  sniperKdRate?: number | null
   rifleRank?: number | null
   rifleRankCount?: number | null
   rifleGames?: number
+  rifleKnownGames?: number
+  rifleKill?: number
+  rifleDeath?: number
+  rifleKdRate?: number | null
   /**
    * 소속.
    *
@@ -177,29 +186,79 @@ export interface PlayerStatSidebarProps {
   clan: { slug: string; name: string; isOfficialClan?: boolean } | null
 }
 
-/** 무기별 랭킹 한 줄. 표본이 없으면 정직하게 `집계 없음` 이다 */
-function WeaponRank({
+/**
+ * 무기별 전적 한 칸 (D-149).
+ *
+ * 보여 주는 것 — 전(경기 수) · K/D · 순위.
+ * K/D 는 통합 킬뎃과 **같은 정의**다(`킬 / (킬 + 데스) × 100`). 정의가 다르면
+ * 나란히 놓았을 때 사용자가 비교할 수 없다.
+ *
+ * 무엇을 보여 줄지는 `weaponStatView` 가 정한다 — 분기는 그쪽에서 테스트로 고정한다.
+ */
+function WeaponStat({
   label,
+  games,
+  knownGames,
+  kill,
+  death,
+  kdRate,
   rank,
   rankCount,
-  games,
 }: {
   label: string
+  games: number | undefined
+  knownGames: number | undefined
+  kill: number | undefined
+  death: number | undefined
+  kdRate: number | null | undefined
   rank: number | null | undefined
   rankCount: number | null | undefined
-  games: number | undefined
 }) {
-  return (
-    <Stat label={label}>
-      {rank === null || rank === undefined || !games ? (
+  const view = weaponStatView({ games, knownGames, kill, death, kdRate })
+
+  if (view.kind === 'none') {
+    return (
+      <Stat label={label}>
         <span className="text-unknown">집계 없음</span>
-      ) : (
-        <>
-          <span className="mr-2 text-base">{formatCount(rankCount ?? 0)}명중</span>
-          {formatCount(rank)}위
-        </>
-      )}
-    </Stat>
+      </Stat>
+    )
+  }
+
+  return (
+    <div className="flex items-start justify-between py-2">
+      <div className="text-lg">{label}</div>
+      <div className="text-right text-base leading-6">
+        <div>
+          <span className="mr-2 text-meta">{formatCount(view.games)}전</span>
+          {view.kind === 'unknown' ? (
+            /* 뛴 건 알지만 K/D 를 모른다. 0%로 채우지 않는다 */
+            <span className="text-unknown">K/D -</span>
+          ) : (
+            <>
+              <span className="mr-1 text-meta">
+                {formatCount(view.kill)}킬 {formatCount(view.death)}데스
+              </span>
+              <span className={rateClass(view.kdRate)}>{formatRate(view.kdRate)}%</span>
+            </>
+          )}
+        </div>
+        <div className="text-meta">
+          {rank === null || rank === undefined ? (
+            /* 기록을 아는 경기가 없어 비교할 실적이 없다 */
+            <span className="text-unknown">순위 없음</span>
+          ) : (
+            <>
+              {formatCount(rankCount ?? 0)}명중 {formatCount(rank)}위
+            </>
+          )}
+          {view.kind === 'known' && view.partial ? (
+            <span className="ml-2 text-unknown" title="넥슨이 K/D를 주지 않은 경기가 있습니다">
+              (기록 {formatCount(view.knownGames)}전)
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -252,18 +311,26 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       <Divider />
       {/* 무기별 랭킹은 통합 랭킹과 **별도로** 보여 준다 (D-146).
           무기 분리는 기록만 나누고 통합 래더 값을 바꾸지 않는다 */}
-      <WeaponRank
+      <WeaponStat
         label="스나이퍼"
+        games={props.sniperGames}
+        knownGames={props.sniperKnownGames}
+        kill={props.sniperKill}
+        death={props.sniperDeath}
+        kdRate={props.sniperKdRate}
         rank={props.sniperRank}
         rankCount={props.sniperRankCount}
-        games={props.sniperGames}
       />
       <Divider />
-      <WeaponRank
+      <WeaponStat
         label="라이플"
+        games={props.rifleGames}
+        knownGames={props.rifleKnownGames}
+        kill={props.rifleKill}
+        death={props.rifleDeath}
+        kdRate={props.rifleKdRate}
         rank={props.rifleRank}
         rankCount={props.rifleRankCount}
-        games={props.rifleGames}
       />
       <Divider />
       <Stat label="소속">

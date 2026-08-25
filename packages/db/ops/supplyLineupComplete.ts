@@ -55,6 +55,10 @@ export interface LineupCompleteResult {
   /** 저장된 sourcePlayerId 가 근거와 달라 무시한 수 */
   storedLinkConflicts: number
   createdStats: number
+  /** 이미 있던 참가 기록에 라인업의 무기를 채운 수 (D-149) */
+  weaponsBackfilled: number
+  /** 이미 다른 무기 값이 있어 덮어쓰지 않은 수 */
+  weaponConflicts: number
   /** 라인업 인원을 넘겨 쓰지 않고 넘어간 경기 (신원 문제 의심) */
   overfilled: number
   skipped: Record<string, number>
@@ -98,6 +102,8 @@ export async function completeLineupsFromSupply(input: {
     identitiesAmbiguous: 0,
     storedLinkConflicts: 0,
     createdStats: 0,
+    weaponsBackfilled: 0,
+    weaponConflicts: 0,
     overfilled: 0,
     skipped: {},
   }
@@ -136,6 +142,7 @@ export async function completeLineupsFromSupply(input: {
     stats: {
       playerId: string
       side: string
+      weapon: number | null
       player: { id: string; name: string; sourcePlayerId: string | null }
     }[]
   }
@@ -154,6 +161,7 @@ export async function completeLineupsFromSupply(input: {
           select: {
             playerId: true,
             side: true,
+            weapon: true,
             player: { select: { id: true, name: true, sourcePlayerId: true } },
           },
         },
@@ -291,10 +299,9 @@ export async function completeLineupsFromSupply(input: {
 
   for (const { match, entries } of targets) {
     const present = new Set(match.stats.map((stat) => stat.playerId))
-    if (present.size >= entries.length) {
-      result.alreadyComplete += 1
-      continue
-    }
+    /* 인원이 이미 다 찼어도 **무기는 채워야 한다.** 여기서 continue 하면
+       10명이 완성된 경기일수록 무기가 영영 비어 있게 된다 (D-149) */
+    if (present.size >= entries.length) result.alreadyComplete += 1
 
     /* 이 경기 안의 근거가 가장 강하다 — 같은 경기에 이미 그 이름/그 supply id 로
        앉아 있는 사람이면 그 사람이다. 전역 근거가 갈렸더라도 이건 흔들리지 않는다.
@@ -339,8 +346,32 @@ export async function completeLineupsFromSupply(input: {
     }
 
     for (const row of planned) {
-      if (present.has(row.playerId)) continue
       const { entry } = row
+
+      /* 이미 앉아 있는 사람(넥슨이 KDA 를 준 사람)이라도 **무기는 라인업에만 있다.**
+         넥슨은 무기를 주지 않는다 (D-034). 여기서 채우지 않으면
+         `무기 + KDA` 를 둘 다 아는 참가자가 한 명도 안 생겨 무기별 집계가
+         영원히 `집계 없음` 이 된다 — D-148 1차에서 실제로 그랬다 (D-149).
+
+         이미 다른 무기 값이 있으면 **덮어쓰지 않는다.** 병영(barracks) 근거로
+         들어간 값이 있을 수 있다. 어긋나면 숫자로 남겨 사람이 본다. */
+      if (present.has(row.playerId)) {
+        if (entry.weapon === null) continue
+        const existing = match.stats.find((stat) => stat.playerId === row.playerId)
+        if (existing?.weapon === entry.weapon) continue
+        if (existing?.weapon !== null && existing?.weapon !== undefined) {
+          result.weaponConflicts += 1
+          continue
+        }
+        if (!input.dryRun) {
+          await prisma.matchPlayerStat.update({
+            where: { matchId_playerId: { matchId: match.id, playerId: row.playerId } },
+            data: { weapon: entry.weapon },
+          })
+        }
+        result.weaponsBackfilled += 1
+        continue
+      }
 
       if (row.create) {
         if (!input.dryRun) {

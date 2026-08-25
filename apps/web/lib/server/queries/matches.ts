@@ -62,10 +62,24 @@ const MATCH_SELECT = {
   origin: true,
   participantCompleteness: true,
   evidenceConfidence: true,
-  official: true,
   map: { select: { id: true, name: true } },
-  redClan: { select: { id: true, clan: { select: CLAN_SUMMARY_SELECT } } },
-  blueClan: { select: { id: true, clan: { select: CLAN_SUMMARY_SELECT } } },
+  /* 구성 보정은 클랜의 **현재** 값이다 (D-149). 경기별 값이 아니다 */
+  redClan: {
+    select: {
+      id: true,
+      compositionScore: true,
+      compositionMembers: true,
+      clan: { select: CLAN_SUMMARY_SELECT },
+    },
+  },
+  blueClan: {
+    select: {
+      id: true,
+      compositionScore: true,
+      compositionMembers: true,
+      clan: { select: CLAN_SUMMARY_SELECT },
+    },
+  },
   stats: {
     orderBy: { id: 'asc' },
     select: {
@@ -243,15 +257,12 @@ function toConfidence(value: string | null): 'high' | 'medium' | 'low' | null {
  * 클랜 래더 반영률 — **D-145 에서 폐기됐다.**
  *
  * 예전에는 본클랜원 수로 증감을 깎았다(3명↑ 100% · 2명 70% · 1명 40% · 0명 0%).
- * 지금은 정상 5v5 면 **양 팀 모두 100%** 다. 클랜원 수는 증감을 깎지 않고,
- * 최근 20경기 평균이 상한 +50 의 구성 보정으로만 반영된다.
+ * **D-145 에서 폐기됐다.** 정상 5v5 면 양 팀 모두 그대로 반영되고, 클랜원 수는
+ * 최근 20경기 평균이 상한 +50 의 구성 보정으로만 클랜 점수에 들어간다.
  *
- * 계약(`clan_weight`)은 과거 기록과의 호환을 위해 남기되 **항상 1** 이다.
- * 화면에서는 이 값을 퍼센트로 보여 주지 않는다 (`officialCopy` 참조).
+ * 그래서 `clan_weight`(반영률) 필드도 D-149 에서 **없앴다** — 남겨 두면
+ * 누군가 다시 퍼센트로 그린다. 대신 실제 구성 보정값을 그대로 내보낸다.
  */
-function clanWeight(_members: number): number {
-  return 1
-}
 
 function snapshotOf(match: MatchRow, side: TeamSide) {
   const isRed = side === 'red'
@@ -270,7 +281,9 @@ function snapshotOf(match: MatchRow, side: TeamSide) {
     placement: isRed ? match.redPlacement : match.bluePlacement,
     members_confirmed: reconstructed ? members : null,
     mercenaries_confirmed: reconstructed ? sideStats.length - members : null,
-    clan_weight: reconstructed ? clanWeight(members) : null,
+    /* DB 에 계산돼 있는 값을 그대로 쓴다. 여기서 다시 계산하지 않는다 (D-149) */
+    composition_score: leagueClan.compositionScore ?? null,
+    composition_members: leagueClan.compositionMembers ?? null,
   }
 }
 
@@ -314,7 +327,7 @@ export function toMatchListItem(
     // 재구성 경기만 값이 있다 (D-068). 우리가 몇 명을 확인했는지 숨기지 않는다
     participant_completeness: match.participantCompleteness,
     evidence_confidence: toConfidence(match.evidenceConfidence),
-    official: match.official,
+
   }
 }
 

@@ -73,11 +73,12 @@ export {
   COMPOSITION_NOTICE,
   NOT_RATED_BADGE,
   NOT_RATED_BADGE_TITLE,
+  NOT_RATED_INLINE,
+  NOT_RATED_INLINE_TITLE,
   isRated,
   ladderNotice,
-  UNOFFICIAL_BADGE,
-  UNOFFICIAL_BADGE_TITLE,
 } from './record/officialCopy'
+export { weaponStatView, type WeaponStatView } from './record/weaponCopy'
 export {
   RecentMatchSummary,
   PlayerStatSidebar,

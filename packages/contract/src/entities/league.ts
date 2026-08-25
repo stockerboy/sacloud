@@ -94,17 +94,40 @@ export const LeaguePlayer = z.object({
   rank: Count.nullable(),
   rank_count: Count.nullable(),
   /**
-   * 무기별 랭킹 (D-146).
+   * 무기별 전적 (D-146 · D-149).
    *
-   * 넥슨 Open API 는 무기를 주지 않는다 (D-034). 그 무기로 뛴 기록이 없으면 `null` 이고,
-   * 화면은 `집계 없음` 으로 표시한다. **표본이 없는데 순위를 만들지 않는다.**
+   * 넥슨 Open API 는 무기를 주지 않는다 (D-034). 무기는 3rd.supply 라인업에서,
+   * K/D/A 는 넥슨 상세에서 온다. 둘을 합쳐 무기별로 나눠 담은 값이다.
+   *
+   * ── `games` 와 `known_games` 를 나누는 이유
+   *   무기는 아는데 K/D/A 를 모르는 경기가 있다. 그 경기를 0킬로 세면 평균이 거짓이 된다.
+   *   `games` 는 그 무기로 뛴 경기 전부, `known_games` 는 그중 기록을 아는 경기다.
+   *   킬·데스·킬뎃의 분모는 **`known_games`** 다.
+   *
+   * ── `kd_rate`
+   *   통합 킬뎃과 **같은 정의**다 — `킬 / (킬 + 데스) × 100`.
+   *   아는 경기가 없으면 `null` 이다 (0%가 아니라 모르는 것이다).
+   *
+   * ── 순위
+   *   그 무기로 얻은 래더 증감 합으로 매긴다. **무기별 공식은 없다** (3-B 1번).
+   *   기록을 아는 경기가 한 판도 없으면 순위를 만들지 않는다 — 화면은 `집계 없음`.
    */
   sniper_rank: Count.nullable().default(null),
   sniper_rank_count: Count.nullable().default(null),
   sniper_games: Count.default(0),
+  sniper_known_games: Count.default(0),
+  sniper_kill: Count.default(0),
+  sniper_death: Count.default(0),
+  sniper_assist: Count.default(0),
+  sniper_kd_rate: Percent.nullable().default(null),
   rifle_rank: Count.nullable().default(null),
   rifle_rank_count: Count.nullable().default(null),
   rifle_games: Count.default(0),
+  rifle_known_games: Count.default(0),
+  rifle_kill: Count.default(0),
+  rifle_death: Count.default(0),
+  rifle_assist: Count.default(0),
+  rifle_kd_rate: Percent.nullable().default(null),
 })
 export type LeaguePlayer = z.infer<typeof LeaguePlayer>
 

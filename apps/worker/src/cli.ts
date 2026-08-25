@@ -44,7 +44,7 @@ import { backfillObservations, runReconstruct } from './jobs/reconstruct.js'
 import { bootstrapBeta, BETA_DATA_START } from './jobs/betaBootstrap.js'
 import { linkIdentitiesByEvidence, registerObservedMaps } from './jobs/identityLink.js'
 import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/rosterSync.js'
-import { applyWeaponToStats, importWeaponEvidence, rebuildWeaponBuckets } from './jobs/weapon.js'
+import { applyWeaponToStats, importWeaponEvidence } from './jobs/weapon.js'
 import { runRate } from './jobs/rate.js'
 import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
 import { formatSnapshot, takeDbSnapshot } from './jobs/dbSnapshot.js'
@@ -57,6 +57,7 @@ import {
   linkSupplyPlayerIds,
   completeLineupsFromSupply,
 } from '@sacloud/db/ops'
+import { rebuildWeaponStats } from './jobs/weaponRebuild.js'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
 import {
@@ -950,6 +951,8 @@ async function main(): Promise<number> {
           '저장된 연결 충돌': result.storedLinkConflicts,
           '인원 초과로 보류': result.overfilled,
           '추가된 참가 기록': result.createdStats,
+          '무기 채움': result.weaponsBackfilled,
+          '무기 충돌': result.weaponConflicts,
         },
       ])
       if (Object.keys(result.skipped).length > 0) table([result.skipped])
@@ -1058,14 +1061,23 @@ async function main(): Promise<number> {
         fail('--league <slug> 가 필요하다')
         return 1
       }
-      const result = await rebuildWeaponBuckets({ leagueSlug, confirm: boolFlag(args, 'confirm') })
+      const result = await rebuildWeaponStats({ leagueSlug, confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          '살펴본 참가행': result.scanned,
+          '무기 있음': result.withWeapon,
+          '무기 없음': result.withoutWeapon,
+          '무기+KDA': result.withWeaponAndStats,
+        },
+      ])
       table([
         {
           선수: result.players,
           버킷: result.buckets,
-          '라플 경기': result.rifleGames,
-          '스나 경기': result.sniperGames,
-          '무기 미상': result.unknownGames,
+          '라플 전': result.rifleGames,
+          '라플 기록': result.rifleKnownGames,
+          '스나 전': result.sniperGames,
+          '스나 기록': result.sniperKnownGames,
         },
       ])
       if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')

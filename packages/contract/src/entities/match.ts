@@ -110,12 +110,17 @@ export const MatchClanSnapshot = z.object({
   /** 확인된 용병 수. 용병도 개인 기록은 100% 받는다 (D-082) */
   mercenaries_confirmed: Count.nullable(),
   /**
-   * 이 클랜의 클랜 래더 반영률.
+   * 이 클랜의 **현재** 구성 보정 (D-149).
    *
-   * **D-145 에서 폐기됐다 — 정상 5v5 면 항상 1 이다.** 필드는 과거 기록·계약 호환으로 남긴다.
-   * 클랜원 수는 증감을 깎지 않고 최근 20경기 평균이 구성 보정(상한 +50)으로만 반영된다.
+   * 경기별 값이 아니다. 최근 20경기 평균 본클랜원 수로 정해지는 클랜 점수 가산이며
+   * 상한은 +50 이다 (1명 +0 · 2명 +10 · 3명 +20 · 4명 +35 · 5명 +50, 사이는 선형).
+   *
+   * **경기 하나의 증감을 깎는 값이 아니다.** 예전의 반영률(100/70/40/0%)은 폐기됐다.
+   * DB 에 계산돼 있는 값을 그대로 내보낸다 — 화면에서 다시 계산하지 않는다.
    */
-  clan_weight: z.number().min(0).max(1).nullable(),
+  composition_score: z.number().nullable(),
+  /** 그 보정을 만든 입력값 — 최근 20경기 평균 본클랜원 수 */
+  composition_members: z.number().nullable(),
 })
 export type MatchClanSnapshot = z.infer<typeof MatchClanSnapshot>
 
@@ -156,14 +161,19 @@ export const MatchListItem = z.object({
   participant_completeness: z.string().nullable(),
   /** 확인 수준 등급. 재구성이 아니면 `null` */
   evidence_confidence: z.enum(['high', 'medium', 'low']).nullable(),
-  /**
-   * **공식 통계 반영 대상인가** (D-079 · D-080).
+  /*
+   * `official` 은 **공개 계약에서 뺐다** (D-149).
    *
-   * `false`면 **비공식 경기**이다. 기록실에는 그대로 보이지만 시즌 승패·킬뎃·평균킬·
-   * MVP·개인 래더·클랜 래더·랭킹에 반영되지 않는다.
-   * 양 팀 모두 본클랜원이 3명 미만인 경기가 여기 해당한다.
+   * D-079·D-080 시절에는 이 값이 통계·래더 반영 여부를 정했다.
+   * **D-145 에서 그 규칙이 폐기됐다** — 기준은 정상 5v5 인가 하나뿐이다.
+   * 그런데 필드를 남겨 두면 화면이 다시 `공식/비공식` 배지를 그리게 되고,
+   * 사용자는 "비공식이라 점수를 덜 준다"고 읽는다. 실제로 그랬다.
+   *
+   * DB 의 `Match.official` 은 **지우지 않았다.** 출처(provenance)와 관리자 화면에서
+   * 계속 쓴다 (`/api/admin/matches`). 일반 사용자 응답에만 넣지 않는다.
+   *
+   * 래더 반영 여부는 `participant_completeness` 로 판정한다 (`officialCopy.isRated`).
    */
-  official: z.boolean(),
 })
 export type MatchListItem = z.infer<typeof MatchListItem>
 

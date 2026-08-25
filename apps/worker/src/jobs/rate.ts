@@ -541,17 +541,22 @@ export async function runRate(
   }
 
   /** 클랜 최종 점수 = 내부 Elo + 구성 보정 − 활동 페널티 */
-  const clanFinal = new Map<string, { display: number; composition: number; penalty: number }>()
+  const clanFinal = new Map<
+    string,
+    { display: number; composition: number; penalty: number; members: number }
+  >()
   for (const [leagueClanId, internal] of clanRating) {
-    const composition = compositionScore(
-      averageMembers(clanRecentMembers.get(leagueClanId) ?? [], constants),
-      constants,
-    )
+    /* 구성 보정의 **입력값**인 평균 본클랜원 수도 함께 저장한다 (D-149).
+       화면이 보정값만 받으면 "왜 +35 인가"를 설명할 수 없고,
+       UI 가 스스로 되짚어 계산하면 여기와 어긋난다 */
+    const members = averageMembers(clanRecentMembers.get(leagueClanId) ?? [], constants)
+    const composition = compositionScore(members, constants)
     const penalty = clanPenalty.get(leagueClanId) ?? 0
     clanFinal.set(leagueClanId, {
       display: roundHalfUp(internal + composition - penalty),
       composition,
       penalty,
+      members,
     })
   }
 
@@ -596,7 +601,7 @@ export async function runRate(
       win: totals.win,
       lose: totals.lose,
       opponentAvg: opp.n > 0 ? opp.sum / opp.n : 0,
-      avgMembers: averageMembers(clanRecentMembers.get(leagueClanId) ?? [], constants),
+      avgMembers: final.members,
     })
   }
   result.report.clans.sort((a, b) => b.display - a.display)
@@ -739,6 +744,7 @@ export async function runRate(
         rating: final.display,
         internalRating: rating,
         compositionScore: final.composition,
+        compositionMembers: final.members,
         activityPenalty: final.penalty,
         lastRatedAt: clanLastAt.get(leagueClanId) ?? null,
         placement: played < constants.placementMatches,
@@ -773,6 +779,7 @@ export async function runRate(
       rating: constants.initialRating,
       internalRating: constants.initialRating,
       compositionScore: 0,
+      compositionMembers: 0,
       activityPenalty: 0,
       lastRatedAt: null,
       placement: true,

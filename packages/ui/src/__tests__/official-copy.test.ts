@@ -10,8 +10,6 @@ import {
   COMPOSITION_NOTICE,
   NOT_RATED_BADGE,
   NOT_RATED_BADGE_TITLE,
-  UNOFFICIAL_BADGE,
-  UNOFFICIAL_BADGE_TITLE,
   isRated,
   ladderNotice,
 } from '../record/officialCopy'
@@ -46,9 +44,12 @@ describe('래더 안내 문구', () => {
 })
 
 describe('폐기된 규칙이 문구에 남아 있지 않다', () => {
-  it('비공식 배지가 래더 미반영을 뜻하지 않는다', () => {
-    expect(UNOFFICIAL_BADGE).not.toContain('미반영')
-    expect(UNOFFICIAL_BADGE_TITLE).toContain('래더에는 정상적으로 반영')
+  it('공식/비공식 배지 자체가 없다 (D-149)', async () => {
+    /* 배지를 지웠으므로 모듈에 그 상수가 존재하면 안 된다.
+       남아 있으면 누군가 다시 화면에 붙일 수 있다 */
+    const mod = (await import('../record/officialCopy')) as Record<string, unknown>
+    expect(mod['UNOFFICIAL_BADGE']).toBeUndefined()
+    expect(mod['UNOFFICIAL_BADGE_TITLE']).toBeUndefined()
   })
 
   it('래더 미반영 배지는 참가자 수를 이유로 든다 — 공식 여부가 아니다', () => {

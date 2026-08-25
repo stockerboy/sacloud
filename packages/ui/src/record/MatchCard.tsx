@@ -23,10 +23,10 @@ import {
   COMPOSITION_NOTICE,
   NOT_RATED_BADGE,
   NOT_RATED_BADGE_TITLE,
+  NOT_RATED_INLINE,
+  NOT_RATED_INLINE_TITLE,
   isRated,
   ladderNotice,
-  UNOFFICIAL_BADGE,
-  UNOFFICIAL_BADGE_TITLE,
 } from './officialCopy'
 
 /**
@@ -139,8 +139,11 @@ function ClanSide({
             '배치고사'
           ) : snapshot.rating === null ? (
             /* 래더에 반영되지 않은 경기는 그 시점 클랜 점수 자체가 없다 (D-146).
-               `0점` 으로 그리면 클랜 점수가 0이었던 것처럼 읽힌다. */
-            <span className="text-unknown">알수없음</span>
+               `0점` 으로 그리면 클랜 점수가 0이었던 것처럼 읽히고,
+               `알수없음` 은 모른다는 뜻이라 이것도 틀리다 — 없는 것이다 (D-149) */
+            <span className="text-unknown" title={NOT_RATED_INLINE_TITLE}>
+              {NOT_RATED_INLINE}
+            </span>
           ) : (
             `${formatCount(snapshot.rating)}점`
           )}
@@ -182,28 +185,19 @@ export function MatchCard({
       >
         <div className={`w-2 ${win ? 'bg-win-bar' : 'bg-lose-bar'}`} />
 
-        {/* 두 가지를 **따로** 보여 준다 (D-145).
-            `비공식`은 클랜원 구성에 대한 역사적 라벨이고 래더와 무관하다.
-            래더 반영 여부는 **정상 5v5 인가**로만 정해진다. 둘을 한 배지에 묶으면
-            "비공식이라 래더 미반영" 이라는 폐기된 규칙을 다시 말하게 된다. */}
-        {match.official && isRated(match.participant_completeness) ? null : (
-          <div className="flex w-16 flex-col items-center justify-center gap-0.5">
-            {match.official ? null : (
-              <div
-                className="rounded border border-line px-1 py-0.5 text-center text-[10px] leading-tight text-meta"
-                title={UNOFFICIAL_BADGE_TITLE}
-              >
-                {UNOFFICIAL_BADGE}
-              </div>
-            )}
-            {isRated(match.participant_completeness) ? null : (
-              <div
-                className="rounded border border-lose-line px-1 py-0.5 text-center text-[10px] leading-tight text-lose"
-                title={NOT_RATED_BADGE_TITLE}
-              >
-                {NOT_RATED_BADGE}
-              </div>
-            )}
+        {/* 사용자에게 필요한 상태는 **래더에 반영됐는가** 하나다 (D-149).
+            `공식/비공식` 배지는 없앴다 — D-145 에서 `official` 은 래더 자격도
+            가중치도 아니게 됐는데, 배지로 남겨 두면 "비공식이라 점수를 덜 준다"는
+            폐기된 규칙을 화면이 계속 말하게 된다.
+            `official` 값 자체는 출처·관리자용으로 DB 에 그대로 남는다. */}
+        {isRated(match.participant_completeness) ? null : (
+          <div className="flex w-16 flex-col items-center justify-center">
+            <div
+              className="rounded border border-lose-line px-1 py-0.5 text-center text-[10px] leading-tight text-lose"
+              title={NOT_RATED_BADGE_TITLE}
+            >
+              {NOT_RATED_BADGE}
+            </div>
           </div>
         )}
 
@@ -237,7 +231,11 @@ export function MatchCard({
                 {formatRatingUpdate(match.rating_update)}
               </div>
             ) : (
-              <div className="font-semibold text-unknown">알수없음</div>
+              /* 모르는 게 아니라 **없는** 것이다 (D-149).
+                 5v5 가 아니라 래더에 반영되지 않은 경기다 */
+              <div className="font-semibold text-unknown" title={NOT_RATED_INLINE_TITLE}>
+                {NOT_RATED_INLINE}
+              </div>
             )}
           </div>
         </div>
@@ -248,8 +246,14 @@ export function MatchCard({
             <div className="text-center">
               <div className="h-5">{stat.mvp ? <span className="text-mvp">MVP</span> : null}</div>
               {stat.kill === null && stat.death === null && stat.assist === null ? (
-                /* 명단만 복원된 참가자다 — KDA 를 모른다 (D-148) */
-                <div className="text-xl font-semibold text-unknown">알수없음</div>
+                /* 명단만 복원된 참가자다 — K/D/A 를 **모른다** (D-148).
+                   큰 `알수없음` 은 오류처럼 보인다. 값 자리에 `-` 만 둔다 (D-149) */
+                <div
+                  className="text-xl font-semibold text-unknown"
+                  title="넥슨이 이 참가자의 K/D/A를 주지 않았습니다"
+                >
+                  - / - / -
+                </div>
               ) : (
                 <>
                   <div className="text-xl font-semibold">
@@ -411,20 +415,33 @@ function MatchDetailPanel({
           </div>
         )}
       </div>
-      {/* 구성(클랜원/용병)은 그대로 보여 준다. **반영률(100/70/40/0%)은 폐기됐다** (D-145) —
-          클랜원 수가 그 경기의 증감을 깎지 않기 때문에 "이 경기의 반영률" 이라는 값 자체가 없다. */}
-      {match.league_clan.clan_weight === null ? null : (
-        <div className="mt-2 flex flex-wrap gap-4 border-b border-divider pb-2 text-sm text-meta">
-          {[match.league_clan, match.opponent].map((snapshot) => (
-            <div key={snapshot.league_clan_id}>
-              <span className="font-semibold text-ink">{snapshot.clan.name}</span>{' '}
-              클랜원 {snapshot.members_confirmed ?? 0} / 용병 {snapshot.mercenaries_confirmed ?? 0}
-            </div>
-          ))}
-          <div className={isRated(match.participant_completeness) ? undefined : 'text-lose'}>
+      {/* 구성(본클랜원/용병)을 보여 주는 이유는 **설명**이다 (D-149).
+          "본클랜 2명이라 이번 경기 40% 반영" 같은 말은 하지 않는다 — 그 규칙은 폐기됐다.
+          클랜원 수는 이 경기의 증감을 깎지 않고, 최근 20경기 평균이 클랜 점수의
+          구성 보정(상한 +50)으로만 들어간다. 보정값은 DB 계산값을 그대로 쓴다. */}
+      {match.league_clan.members_confirmed === null ? null : (
+        <div className="mt-2 border-b border-divider pb-2 text-sm text-meta">
+          <div className="flex flex-wrap gap-4">
+            {[match.league_clan, match.opponent].map((snapshot) => (
+              <div key={snapshot.league_clan_id}>
+                <span className="font-semibold text-ink">{snapshot.clan.name}</span>{' '}
+                본클랜 {snapshot.members_confirmed ?? 0} / 용병{' '}
+                {snapshot.mercenaries_confirmed ?? 0}
+                {snapshot.composition_score === null ? null : (
+                  <span className="ml-2 text-xs">
+                    구성 보정 {formatRatingUpdate(Math.round(snapshot.composition_score))}
+                    {snapshot.composition_members === null ? null : (
+                      <> · 최근 20경기 평균 본클랜 {snapshot.composition_members.toFixed(1)}명</>
+                    )}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className={isRated(match.participant_completeness) ? 'mt-1' : 'mt-1 text-lose'}>
             {ladderNotice(match.participant_completeness)}
           </div>
-          <div className="basis-full text-xs">{COMPOSITION_NOTICE}</div>
+          <div className="mt-1 text-xs">{COMPOSITION_NOTICE}</div>
         </div>
       )}
       {detail ? (

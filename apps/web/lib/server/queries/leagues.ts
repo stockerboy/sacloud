@@ -457,34 +457,90 @@ export async function clanRankOf(leagueClan: {
  * 선수는 `null` 이다 — 표본이 없는데 순위를 만들어 내지 않는다.
  * 화면은 `null` 을 "집계 없음" 으로 표시한다.
  */
+/**
+ * 무기별 전적 + 그 무기 안에서의 순위 (D-149).
+ *
+ * ── 순위 기준
+ *   `ratingDelta` — **그 무기로 뛴 경기에서 얻은 래더 증감의 합**이다.
+ *   새 점수식을 만든 것이 아니다. D-145 통합 공식이 이미 계산해 둔 `ratingUpdate` 를
+ *   무기에 따라 나눠 담기만 한다 (`CLAUDE.md` 3-B 1번 — 무기별 공식은 없다).
+ *   개인 래더(`LeaguePlayer.rating`)는 무기별로 쪼개지 않는다.
+ *
+ *   D-149 이전에는 이 값이 항상 0이라 전원 동점이었고 모두 1위로 나왔다.
+ *
+ * ── 모집단
+ *   **K/D 를 아는 경기가 한 판이라도 있는 선수**만 순위에 넣는다 (`knownStatGames > 0`).
+ *   무기만 알고 기록을 모르는 선수를 순위에 넣으면 비교할 실적이 없는 사람이 등수를 받는다.
+ *   배치고사 중인 선수는 기존 규칙 그대로 순위를 받지 않는다.
+ */
 export async function playerWeaponRankOf(
   leaguePlayerId: string,
   leagueId: string,
   weapon: 0 | 1,
-): Promise<{ rank: number | null; rankCount: number | null; games: number }> {
+): Promise<{
+  rank: number | null
+  rankCount: number | null
+  games: number
+  knownGames: number
+  kill: number
+  death: number
+  assist: number
+  kdRate: number | null
+}> {
+  const empty = {
+    rank: null,
+    rankCount: null,
+    games: 0,
+    knownGames: 0,
+    kill: 0,
+    death: 0,
+    assist: 0,
+    kdRate: null,
+  }
   const mine = await prisma.leaguePlayerWeaponStat.findUnique({
     where: { leaguePlayerId_weapon: { leaguePlayerId, weapon } },
-    select: { ratingDelta: true, win: true, lose: true, leaguePlayer: { select: { placement: true } } },
+    select: {
+      ratingDelta: true,
+      games: true,
+      knownStatGames: true,
+      kill: true,
+      death: true,
+      assist: true,
+      leaguePlayer: { select: { placement: true } },
+    },
   })
-  const games = (mine?.win ?? 0) + (mine?.lose ?? 0)
-  // 그 무기로 뛴 기록이 없으면 순위를 만들지 않는다
-  if (!mine || games === 0) return { rank: null, rankCount: null, games: 0 }
+  // 그 무기로 뛴 기록이 아예 없으면 만들어 내지 않는다
+  if (!mine || mine.games === 0) return empty
+
+  const stat = {
+    games: mine.games,
+    knownGames: mine.knownStatGames,
+    kill: mine.kill,
+    death: mine.death,
+    assist: mine.assist,
+    /* K/D 정의는 통합 킬뎃과 **같다** — `킬 / (킬 + 데스) × 100`.
+       전체와 무기별이 다른 정의를 쓰면 나란히 놓았을 때 거짓말이 된다.
+       아는 경기가 없으면 계산하지 않는다 (0%가 아니라 모르는 것이다) */
+    kdRate: mine.knownStatGames === 0 ? null : kdRate(mine.kill, mine.death),
+  }
 
   /* **본인이 랭킹 모집단에 들어가지 않으면 순위도 없다.**
      배치고사 중인 선수를 세지 않으면서 그 선수에게만 순위를 주면
      "0명중 1위" 같은 값이 나온다. 실제로 그렇게 나왔다. */
-  if (mine.leaguePlayer.placement) return { rank: null, rankCount: null, games }
+  if (mine.leaguePlayer.placement || mine.knownStatGames === 0) {
+    return { ...empty, ...stat, rank: null, rankCount: null }
+  }
 
   const where = {
     weapon,
     leaguePlayer: { leagueId, placement: false },
-    OR: [{ win: { gt: 0 } }, { lose: { gt: 0 } }],
+    knownStatGames: { gt: 0 },
   }
   const rankCount = await prisma.leaguePlayerWeaponStat.count({ where })
   const above = await prisma.leaguePlayerWeaponStat.count({
     where: { ...where, ratingDelta: { gt: mine.ratingDelta } },
   })
-  return { rank: above + 1, rankCount, games }
+  return { ...stat, rank: above + 1, rankCount }
 }
 
 export async function playerRankOf(leaguePlayer: {

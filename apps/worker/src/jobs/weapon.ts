@@ -268,13 +268,13 @@ export interface WeaponBucketResult {
 }
 
 /**
- * 공식 경기의 무기 판정 → `LeaguePlayerWeaponStat` 누적 (D-115).
+ * @deprecated D-149 에서 `jobs/weaponRebuild.ts` 의 `rebuildWeaponStats` 로 대체됐다.
  *
- * - **공식 경기만** 센다. 비공식은 통합 기록에도 안 들어간다 (D-080)
- * - `unknown`은 어느 버킷에도 넣지 않는다. 통합 기록에는 이미 들어가 있다
- * - deaths는 그 경기의 실제 death 전부를 그 역할 버킷에 넣는다.
- *   "무엇에 죽었나"는 역할별 KD와 무관하다 (정책 12장)
- * - 처음부터 다시 만든다. 두 번 돌려도 값이 두 배가 되지 않는다
+ * 이 함수는 `games`/`knownStatGames` 를 구분하지 않고 `ratingDelta` 를 항상 0으로 넣어,
+ * 무기 랭킹이 전원 동점(전부 1위)이 되는 결함이 있었다.
+ * KDA 가 `null` 인 참가자도 0킬로 세어 평균을 떨어뜨렸다.
+ *
+ * 남겨 둔 이유는 과거 결과를 재현해 대조할 수 있게 하기 위함이다. **호출하지 마라.**
  */
 export async function rebuildWeaponBuckets(input: {
   leagueSlug: string

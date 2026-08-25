@@ -17,12 +17,16 @@
 /** 정상 경기 한 팀 인원 */
 const SQUAD_SIZE = 5
 
-/** 비공식 라벨 — 래더와 무관한 **역사적 구분**이다 */
-export const UNOFFICIAL_BADGE = '비공식 경기'
-
-/** 배지에 붙는 설명 */
-export const UNOFFICIAL_BADGE_TITLE =
-  '양쪽 모두 동일 클랜원 3명 미만으로 치른 경기입니다. 래더에는 정상적으로 반영됩니다'
+/*
+ * `비공식 경기` 배지는 **없앴다** (D-149).
+ *
+ * D-145 에서 `official` 은 래더 자격도 가중치도 아니게 됐다. 그런데 배지로 남겨 두면
+ * 화면이 "비공식이라 점수를 덜 준다"는 폐기된 규칙을 계속 말하게 된다.
+ * 사용자에게 필요한 상태는 **래더에 반영됐는가** 하나뿐이다.
+ *
+ * `Match.official` 값 자체는 지우지 않았다 — 출처(provenance)·관리자 화면에서 쓴다.
+ * 다만 **일반 사용자 화면에 배지로 노출하지 않는다.**
+ */
 
 /** 래더에 반영되지 않은 경기 배지 */
 export const NOT_RATED_BADGE = '래더 미반영'
@@ -57,3 +61,15 @@ export function ladderNotice(completeness: string | null): string {
  */
 export const COMPOSITION_NOTICE =
   '클랜원 수는 이 경기의 증감을 깎지 않습니다. 최근 20경기 평균 클랜원 수가 클랜 점수에 최대 +50까지 반영됩니다'
+
+/**
+ * 래더 증감 자리에 쓰는 짧은 표기 (D-149).
+ *
+ * 예전에는 `알수없음` 이었다. 그건 **틀린 말**이다 — 우리는 그 경기가 래더에 반영되지
+ * 않았다는 것을 정확히 안다. 모르는 게 아니라 **없는** 것이다.
+ * `알수없음` 은 값을 정말 모를 때만 쓴다 (딜량·헤드샷 결측 등 · `CLAUDE.md` 6장).
+ */
+export const NOT_RATED_INLINE = '미반영'
+
+export const NOT_RATED_INLINE_TITLE =
+  '참가자 10명(5대5)이 확인되지 않아 래더에 반영되지 않은 경기입니다'

@@ -410,6 +410,9 @@ model LeagueClan {
   internalRating Float @default(3000)
   /// 최근 N경기 평균 본클랜원 수에서 나온 구성 보정 (상한 +50)
   compositionScore Float @default(0)
+  /// 최근 20경기 평균 본클랜원 수 — compositionScore 의 입력값 (D-149).
+  /// 화면은 이 값을 그대로 보여 준다. UI 에서 다시 계산하지 않는다.
+  compositionMembers Float @default(0)
   /// 미참여로 쌓인 활동 페널티. **내부 Elo 는 건드리지 않는다**
   activityPenalty  Float @default(0)
   /// 마지막 래더 대상 경기 시각 — 미참여 일수 계산에 쓴다
@@ -514,6 +517,10 @@ model LeaguePlayerWeaponStat {
   weapon         Int
 
   ratingDelta Int @default(0)
+  /// 그 무기로 뛴 경기 전부 (KDA 를 모르는 경기 포함)
+  games          Int @default(0)
+  /// 그중 K/D/A 를 아는 경기. 킬·데스·어시의 **분모**다 (D-149)
+  knownStatGames Int @default(0)
   win         Int @default(0)
   lose        Int @default(0)
   kill        Int @default(0)

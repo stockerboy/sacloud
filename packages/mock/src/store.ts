@@ -620,7 +620,9 @@ function snapshotOf(match: MockMatch, side: TeamSide) {
     // mock 경기는 재구성이 아니라 본클랜원/용병 구분이라는 개념이 없다
     members_confirmed: null,
     mercenaries_confirmed: null,
-    clan_weight: null,
+    /* Mock 픽스처는 재구성 경기가 아니라 구성 근거가 없다 (D-149) */
+    composition_score: null,
+    composition_members: null,
   }
 }
 
@@ -668,7 +670,7 @@ function toMatchListItem(
     // mock 경기는 재구성이 아니다 — 확인 수준이라는 개념 자체가 없다
     participant_completeness: null,
     evidence_confidence: null,
-    official: true,
+
   }
 }
 
@@ -843,6 +845,11 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
   const matches = matchesByPlayer.get(`${league.id}:${playerId}`) ?? []
   const matchCount = matches.length
   const rank = playerRankOf(leaguePlayer)
+  /* Mock 은 무기와 K/D 가 항상 함께 있으므로 games === known_games 다 (D-149).
+     운영은 무기(3rd.supply)와 KDA(넥슨) 출처가 달라 다를 수 있다 */
+  const weaponBuckets = weaponStatsOf(leaguePlayer.id)
+  const sniperBucket = weaponBuckets.find((row) => row.weapon === 1) ?? null
+  const rifleBucket = weaponBuckets.find((row) => row.weapon === 0) ?? null
 
   return {
     id: leaguePlayer.id,
@@ -864,14 +871,25 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     placement: leaguePlayer.placement,
     rank: rank.rank,
     rank_count: rank.rankCount,
-    /* Mock 은 무기 기록이 항상 있으므로 무기별 랭킹도 채운다 (D-146).
-       실제 운영에서는 넥슨이 무기를 주지 않아 null 인 경우가 많다 */
-    sniper_rank: rank.rank,
-    sniper_rank_count: rank.rankCount,
-    sniper_games: weaponStatsOf(leaguePlayer.id).find((w) => w.weapon === 1)?.win ?? 0,
-    rifle_rank: rank.rank,
-    rifle_rank_count: rank.rankCount,
-    rifle_games: weaponStatsOf(leaguePlayer.id).find((w) => w.weapon === 0)?.win ?? 0,
+    /* Mock 은 무기 기록이 항상 있으므로 무기별 전적도 채운다 (D-146 · D-149).
+       실제 운영에서는 무기(3rd.supply)와 KDA(넥슨) 출처가 달라 한쪽만 있는 경우가 있다.
+       Mock 은 둘 다 있으므로 `games === known_games` 다 */
+    sniper_rank: sniperBucket === null ? null : rank.rank,
+    sniper_rank_count: sniperBucket === null ? null : rank.rankCount,
+    sniper_games: sniperBucket?.games ?? 0,
+    sniper_known_games: sniperBucket?.games ?? 0,
+    sniper_kill: sniperBucket?.kill ?? 0,
+    sniper_death: sniperBucket?.death ?? 0,
+    sniper_assist: 0,
+    sniper_kd_rate: sniperBucket?.kd_rate ?? null,
+    rifle_rank: rifleBucket === null ? null : rank.rank,
+    rifle_rank_count: rifleBucket === null ? null : rank.rankCount,
+    rifle_games: rifleBucket?.games ?? 0,
+    rifle_known_games: rifleBucket?.games ?? 0,
+    rifle_kill: rifleBucket?.kill ?? 0,
+    rifle_death: rifleBucket?.death ?? 0,
+    rifle_assist: 0,
+    rifle_kd_rate: rifleBucket?.kd_rate ?? null,
     match_summary: buildMatchSummary(matches, leaguePlayer.leagueClanId, playerId),
     teammates: buildTeammates(matches, leaguePlayer.leagueClanId, playerId),
     weapon_stats: weaponStatsOf(leaguePlayer.id),

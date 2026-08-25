@@ -137,9 +137,17 @@ export default function LeaguePlayerRecordPage({
             sniperRank={data.sniper_rank}
             sniperRankCount={data.sniper_rank_count}
             sniperGames={data.sniper_games}
+            sniperKnownGames={data.sniper_known_games}
+            sniperKill={data.sniper_kill}
+            sniperDeath={data.sniper_death}
+            sniperKdRate={data.sniper_kd_rate}
             rifleRank={data.rifle_rank}
             rifleRankCount={data.rifle_rank_count}
             rifleGames={data.rifle_games}
+            rifleKnownGames={data.rifle_known_games}
+            rifleKill={data.rifle_kill}
+            rifleDeath={data.rifle_death}
+            rifleKdRate={data.rifle_kd_rate}
             clan={
               data.clan
                 ? { ...data.clan, isOfficialClan: data.clan.is_official_clan }
