@@ -325,11 +325,22 @@ function StatTable({ title, stats }: { title: string; stats: readonly MatchPlaye
             )}
           </div>
           {/* 상대 클랜 소속은 딜량·헤드샷이 결측된다 → `알수없음` (원본 규칙) */}
-          <div className="w-24 text-center">
+          <div className="w-24 px-1 text-center">
             {stat.damage === null ? (
               <span className="text-unknown">알수없음</span>
             ) : (
-              formatCount(stat.damage)
+              <>
+                <div>{formatCount(stat.damage)}</div>
+                {/* 팀 내 딜량 비중 막대 — 숫자만으로는 기여도가 안 읽힌다 */}
+                {stat.damage_percent === null ? null : (
+                  <div className="mt-0.5 h-1 w-full rounded bg-line">
+                    <div
+                      className="h-full rounded bg-accent"
+                      style={{ width: `${Math.min(100, Math.max(0, stat.damage_percent))}%` }}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
           <div className="w-24 text-center">

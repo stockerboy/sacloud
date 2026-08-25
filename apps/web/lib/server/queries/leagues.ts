@@ -459,11 +459,16 @@ export async function playerWeaponRankOf(
 ): Promise<{ rank: number | null; rankCount: number | null; games: number }> {
   const mine = await prisma.leaguePlayerWeaponStat.findUnique({
     where: { leaguePlayerId_weapon: { leaguePlayerId, weapon } },
-    select: { ratingDelta: true, win: true, lose: true },
+    select: { ratingDelta: true, win: true, lose: true, leaguePlayer: { select: { placement: true } } },
   })
   const games = (mine?.win ?? 0) + (mine?.lose ?? 0)
   // 그 무기로 뛴 기록이 없으면 순위를 만들지 않는다
   if (!mine || games === 0) return { rank: null, rankCount: null, games: 0 }
+
+  /* **본인이 랭킹 모집단에 들어가지 않으면 순위도 없다.**
+     배치고사 중인 선수를 세지 않으면서 그 선수에게만 순위를 주면
+     "0명중 1위" 같은 값이 나온다. 실제로 그렇게 나왔다. */
+  if (mine.leaguePlayer.placement) return { rank: null, rankCount: null, games }
 
   const where = {
     weapon,
