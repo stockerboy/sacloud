@@ -8,7 +8,8 @@ import { dataset } from '@sacloud/mock/dataset'
 import { prisma } from '../src/index.js'
 
 /** 시드가 함께 만드는 검수용 계정 수 (`admin-test` / `user-test`) */
-const TEST_ACCOUNT_COUNT = 2
+const TEST_ACCOUNT_EMAILS = ['admin-test@naver.com', 'user-test@naver.com']
+const TEST_ACCOUNT_COUNT = TEST_ACCOUNT_EMAILS.length
 
 let failed = 0
 
@@ -31,8 +32,19 @@ async function main() {
     dataset.players.length,
     await prisma.player.count({ where: idsIn(dataset.players) }),
   )
-  // 픽스처 사용자 + 검수용 계정 2개(admin-test / user-test). seed.ts의 `seedTestAccounts` 참조.
-  check('사용자', dataset.users.length + TEST_ACCOUNT_COUNT, await prisma.user.count())
+  /* 사용자 — **픽스처 행만** 센다 (D-147).
+ 
+     예전에는 `prisma.user.count()` 로 전체를 세고 `픽스처 + 검수계정 2` 를 기대했다.
+     그래서 실제 사람이 한 명 가입하는 순간 검사가 깨졌다 (42 기대 / 43 실제).
+     시드 검사는 "시드가 제대로 들어갔는가" 를 보는 것이지 가입자 수를 통제하는 것이 아니다.
+     다른 항목은 전부 `idsIn(...)` 으로 픽스처만 세고 있었다 — 여기만 빠져 있었다. */
+  check('사용자(픽스처)', dataset.users.length, await prisma.user.count({ where: idsIn(dataset.users) }))
+  /* 검수용 계정 2개(admin-test / user-test)는 따로 확인한다. seed.ts 의 `seedTestAccounts` 참조 */
+  check(
+    '검수용 계정',
+    TEST_ACCOUNT_COUNT,
+    await prisma.user.count({ where: { email: { in: TEST_ACCOUNT_EMAILS } } }),
+  )
   check('리그', dataset.leagues.length, await prisma.league.count({ where: idsIn(dataset.leagues) }))
   check(
     '리그클랜',

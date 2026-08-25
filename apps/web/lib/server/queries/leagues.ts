@@ -61,6 +61,11 @@ export async function listLeagues(cursor: string | null, size: number): Promise<
       _count: { select: { clans: { where: ACTIVE_CLAN } } },
       // 목록에 노출되는 대표 클랜 (관측: 3개)
       clans: {
+        /* **개수와 같은 조건으로 거른다** (D-147).
+           `_count` 는 `ACTIVE_CLAN` 으로 44개를 세는데 이 미리보기에는 필터가 없어서,
+           비활성 처리된 개발용 클랜(`real-` 접두 4개)이 공개 리그 목록에 그대로 나왔다.
+           세는 집합과 보여 주는 집합이 다르면 안 된다. */
+        where: ACTIVE_CLAN,
         take: 3,
         orderBy: { joinedAt: 'asc' },
         select: { clan: { select: CLAN_SUMMARY_SELECT } },

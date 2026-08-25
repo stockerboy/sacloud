@@ -47,6 +47,7 @@ import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/ros
 import { applyWeaponToStats, importWeaponEvidence, rebuildWeaponBuckets } from './jobs/weapon.js'
 import { runRate } from './jobs/rate.js'
 import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
+import { formatSnapshot, takeDbSnapshot } from './jobs/dbSnapshot.js'
 import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
 import { readCurrentMembership, runSupplyRosters } from './jobs/supplyRosters.js'
 import { explainMatches } from './dev/explainMatches.js'
@@ -171,6 +172,8 @@ function usage(): void {
               replay 전 래더 스냅샷을 JSON 으로 백업한다. **replay 전에 반드시 돌린다**
   rating-restore --file <경로> [--dry-run]
               백업 스냅샷으로 되돌린다 (삭제하지 않고 값만 복원)
+  db-snapshot [--stamp <문자열>]
+              DB 이전 검증용 기준선 — 모델별 행 수 · 기간 · 무결성. 읽기만 한다
   season      --league <slug> [--close | --start] [--at <ISO>] [--number N] [--no-promotion]
               시즌 운영. 플래그가 없으면 현재 상태만 보여 준다.
               --close 최종 랭킹 스냅샷 + 시즌 종료 / --start 승강 반영 + 전원 같은 점수로 시작
@@ -565,6 +568,18 @@ async function main(): Promise<number> {
           checksum: made.snapshot.checksum,
         },
       ])
+      return 0
+    }
+
+    case 'db-snapshot': {
+      const stamp = stringFlag(args, 'stamp') ?? new Date().toISOString()
+      const snapshot = await takeDbSnapshot(stamp)
+      log(formatSnapshot(snapshot))
+      const failed = snapshot.integrity.filter((row) => !row.pass)
+      if (failed.length > 0) {
+        fail(`무결성 검사 ${failed.length}건 실패`)
+        return 1
+      }
       return 0
     }
 

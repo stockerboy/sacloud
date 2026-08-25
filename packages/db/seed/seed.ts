@@ -124,7 +124,32 @@ async function seedTestAccounts(passwordHash: string) {
   }
 }
 
+/**
+ * 운영 DB 안전장치 (D-147).
+ *
+ * 시드는 **가짜** 리그·클랜·선수·게시글을 만든다. 운영 DB 에서 한 번 돌면
+ * 사용자 화면에 가짜 데이터가 섞이고 되돌리기 어렵다.
+ *
+ * 그래서 로컬 개발 DB 가 아니면 **실행을 거부한다.**
+ * 정말 필요하면 `SACLOUD_ALLOW_REMOTE_SEED=yes` 를 명시적으로 넣어야 한다.
+ */
+function assertLocalDatabase(): void {
+  if (process.env.SACLOUD_ALLOW_REMOTE_SEED === 'yes') return
+  const url = process.env.DATABASE_URL ?? ''
+  const isLocal = /@(127\.0\.0\.1|localhost)[:/]/.test(url)
+  if (isLocal) return
+  console.error(
+    [
+      '시드를 중단한다 — DATABASE_URL 이 로컬 개발 DB 가 아니다.',
+      '  시드는 가짜 데이터를 만든다. 운영 DB 에서 돌리면 안 된다.',
+      '  의도한 것이면 SACLOUD_ALLOW_REMOTE_SEED=yes 를 넣어라.',
+    ].join('\n'),
+  )
+  process.exit(1)
+}
+
 async function main() {
+  assertLocalDatabase()
   const started = Date.now()
   console.info('시드 시작 — 기존 데이터를 지우고 픽스처를 다시 넣는다.')
 
