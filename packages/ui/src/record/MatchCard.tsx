@@ -247,12 +247,22 @@ export function MatchCard({
           <div className="flex w-32 items-center justify-center text-meta">
             <div className="text-center">
               <div className="h-5">{stat.mvp ? <span className="text-mvp">MVP</span> : null}</div>
-              <div className="text-xl font-semibold">
-                {stat.kill} / <span className="text-lose">{stat.death}</span> / {stat.assist}
-              </div>
-              <div className={`text-sm ${rateClass(stat.kd_rate)}`}>
-                ({formatRate(stat.kd_rate)}%)
-              </div>
+              {stat.kill === null && stat.death === null && stat.assist === null ? (
+                /* 명단만 복원된 참가자다 — KDA 를 모른다 (D-148) */
+                <div className="text-xl font-semibold text-unknown">알수없음</div>
+              ) : (
+                <>
+                  <div className="text-xl font-semibold">
+                    {stat.kill ?? '-'} / <span className="text-lose">{stat.death ?? '-'}</span> /{' '}
+                    {stat.assist ?? '-'}
+                  </div>
+                  {stat.kd_rate === null ? null : (
+                    <div className={`text-sm ${rateClass(stat.kd_rate)}`}>
+                      ({formatRate(stat.kd_rate)}%)
+                    </div>
+                  )}
+                </>
+              )}
               <div className="h-5">
                 {stat.dropout ? <span className="text-sm text-lose">탈주</span> : null}
               </div>

@@ -421,9 +421,10 @@ export async function runRate(
       }
       acc.win += won ? 1 : 0
       acc.lose += won ? 0 : 1
-      acc.kill += assigned.kill
-      acc.death += assigned.death
-      acc.assist += assigned.assist
+      /* 모르는 KDA 는 더하지 않는다 (D-148). 래더에는 애초에 쓰지 않는다 */
+      acc.kill += assigned.kill ?? 0
+      acc.death += assigned.death ?? 0
+      acc.assist += assigned.assist ?? 0
       playerTotals.set(assigned.playerId, acc)
     }
     for (const clanId of [match.redLeagueClanId, match.blueLeagueClanId]) {
@@ -470,8 +471,14 @@ export async function runRate(
       })
     }
 
-    const red = rated.clans.find((clan) => clan.leagueClanId === match.redLeagueClanId)!
-    const blue = rated.clans.find((clan) => clan.leagueClanId === match.blueLeagueClanId)!
+    const red = rated.clans.find((clan) => clan.leagueClanId === match.redLeagueClanId)
+    const blue = rated.clans.find((clan) => clan.leagueClanId === match.blueLeagueClanId)
+    if (!red || !blue) {
+      /* 판정된 두 팀이 Match 의 진영 클랜과 다르다 — 팀 식별이 어긋난 것이다.
+         추측해서 맞추지 않는다. 래더에서 빼고 이유를 남긴다 (D-148) */
+      result.skipped['side_clan_mismatch'] = (result.skipped['side_clan_mismatch'] ?? 0) + 1
+      continue
+    }
     clanRating.set(red.leagueClanId, red.ratingAfter)
     clanRating.set(blue.leagueClanId, blue.ratingAfter)
     clanMatches.set(red.leagueClanId, (clanMatches.get(red.leagueClanId) ?? 0) + 1)

@@ -272,7 +272,9 @@ pnpm nexon:project [--league <slug>]    # 스테이징 → 운영 Match (조건 
 pnpm nexon:poll --targets N             # 적응형 폴링 (활동량 기반, Phase 8.1)
 pnpm nexon:report                       # 티어 분포 + 호출량 계측
 pnpm nexon:refresh                      # 신선도 정책(기본 30일) 재수집
-pnpm nexon:check                        # 숫자 대조 7항목
+pnpm nexon:check                        # 숫자 대조 17항목
+pnpm --filter @sacloud/worker nexon lineup-complete [--confirm]
+                      # 3rd.supply 라인업으로 참가자 10명 명단 완성 (D-148, idempotent)
 ```
 
 > `--dry-run`은 **요청을 한 건도 보내지 않는다.** API 키 없이 파이프라인을 점검할 때 쓴다.

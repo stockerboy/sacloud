@@ -351,9 +351,9 @@ export async function matchCountByPlayer(
   if (playerIds.length === 0) return new Map()
   const grouped = await prisma.matchPlayerStat.groupBy({
     by: ['playerId'],
-    // 평균킬의 **분모**다. 분자(`LeaguePlayer.kill`)가 공식 경기만 누적하므로
-    // 분모도 공식 경기만 세야 한다. 비공식은 평균킬에 반영하지 않는다 (D-080).
-    where: { playerId: { in: playerIds }, match: { leagueId, official: true } },
+    /* 평균킬의 **분모**다. 분자(`LeaguePlayer.kill`)는 래더 경기를 누적하므로
+       분모도 래더 경기를 센다. `official` 라벨은 D-145 에서 래더와 무관해졌다 (D-148). */
+    where: { playerId: { in: playerIds }, match: { leagueId, redRatingUpdate: { not: null } } },
     _count: { _all: true },
   })
   return new Map(grouped.map((row) => [row.playerId, row._count._all]))

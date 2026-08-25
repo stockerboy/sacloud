@@ -50,9 +50,10 @@ export interface ConfirmedParticipant {
    */
   detailLeagueClanId?: string | null
   outcome: 'win' | 'lose'
-  kill: number
-  death: number
-  assist: number
+  /** KDA 는 래더 계산에 **쓰지 않는다** (CLAUDE.md 3-B 3번). 모르면 null 이다 (D-148) */
+  kill: number | null
+  death: number | null
+  assist: number | null
   /** 이 선수를 확인한 근거 (하나 이상) */
   sources: EvidenceSource[]
   /** 경기 시점 개인 래더 — 라인업 전력 계산에 쓴다 */

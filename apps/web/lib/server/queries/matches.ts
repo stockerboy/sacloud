@@ -1,6 +1,6 @@
 import { prisma, type Prisma } from '@sacloud/db'
 import {
-  kdRate,
+  kdRateOrNull,
   percentOf,
   type MatchDetail,
   type MatchLineupEntry,
@@ -218,9 +218,9 @@ function toMatchPlayerStat(
     assist: stat.assist,
     headshot,
     damage,
-    kd_rate: kdRate(stat.kill, stat.death),
+    kd_rate: kdRateOrNull(stat.kill, stat.death),
     damage_percent: damage === null ? null : percentOf(damage, teamDamage(match, stat.side)),
-    headshot_percent: headshot === null ? null : percentOf(headshot, stat.kill),
+    headshot_percent: headshot === null || stat.kill === null ? null : percentOf(headshot, stat.kill),
     weapon: stat.weapon as Weapon | null,
     rating: stat.ratingBefore,
     rating_update: stat.ratingUpdate,

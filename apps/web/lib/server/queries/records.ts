@@ -149,8 +149,9 @@ function buildMatchSummary(
     for (const stat of match.stats) {
       if (stat.side !== side) continue
       if (playerId && stat.playerId !== playerId) continue
-      entry.kill += stat.kill
-      entry.death += stat.death
+      /* KDA 를 모르는 참가자는 합계에서 뺀다. 0으로 더하면 평균이 거짓이 된다 (D-148) */
+      entry.kill += stat.kill ?? 0
+      entry.death += stat.death ?? 0
     }
     opponentMap.set(opponentClan.id, entry)
   }
@@ -253,11 +254,16 @@ async function buildStreak(where: Prisma.MatchWhereInput, leagueClanId: string):
 /**
  * 최근 20전 + 연승/연패를 한 번에 만든다.
  *
- * **비공식 경기는 여기 들어오지 않는다** (정책 3 · 13).
- * 경기 목록에는 그대로 보이지만 승·패·승률·연승·킬뎃·팀원 집계에는 한 건도 넣지 않는다.
- * 실제로 이걸 빼기 전에는 비공식 경기 한 판이 `1전 1승 0패 (100%)`로 표시됐다.
+ * **래더에 반영된 경기만 넣는다.**
+ * 경기 목록에는 전부 보이지만 승·패·승률·연승·킬뎃·팀원 집계에는 래더 경기만 넣는다.
+ * 이걸 빼기 전에는 집계 대상이 아닌 경기 한 판이 `1전 1승 0패 (100%)`로 표시됐다.
  *
- * mock 픽스처는 전부 공식 경기라서(`official` 기본값 `true`) 이 조건이
+ * 판정 기준은 `official` 라벨이 **아니라** `redRatingUpdate` 유무다 (D-148).
+ * D-145 에서 `official` 은 래더와 무관해졌다 — 기준은 정상 5v5 인가뿐이다.
+ * 라벨로 거르면 래더는 오르는데 `0전 0승 0패` 로 보인다. 실제로 그랬다.
+ * replay 는 래더 대상이 아닌 경기의 증감을 지우므로 이 값은 항상 최신이다.
+ *
+ * mock 픽스처는 전부 증감을 들고 있어(3000/3000) 이 조건이
  * mock↔live 대조 결과를 바꾸지 않는다.
  */
 async function buildRecordSummary(
@@ -265,15 +271,15 @@ async function buildRecordSummary(
   leagueClanId: string,
   playerId: string | null,
 ): Promise<{ summary: MatchSummary; teammates: TeammateStat[] }> {
-  const officialOnly: Prisma.MatchWhereInput = { ...where, official: true }
+  const ratedOnly: Prisma.MatchWhereInput = { ...where, redRatingUpdate: { not: null } }
   const [recent, streak] = await Promise.all([
     prisma.match.findMany({
-      where: officialOnly,
+      where: ratedOnly,
       orderBy: MATCH_ORDER,
       take: RECENT_MATCH_COUNT,
       select: SUMMARY_MATCH_SELECT,
     }),
-    buildStreak(officialOnly, leagueClanId),
+    buildStreak(ratedOnly, leagueClanId),
   ])
 
   return {
@@ -514,9 +520,10 @@ export async function getLeaguePlayerDetail(
     // 무기별 랭킹 — 무기가 확인된 경기가 없으면 null 이다 (D-146)
     playerWeaponRankOf(leaguePlayer.id, league.id, 1),
     playerWeaponRankOf(leaguePlayer.id, league.id, 0),
-    // 평균킬 분모 — 분자가 공식 경기만 누적하므로 여기도 공식만 센다 (D-080)
+    /* 평균킬 분모 — 분자(`LeaguePlayer.kill`)는 **래더 경기**를 누적한다.
+       `official` 로 세면 분자·분모 기준이 달라 119킬인데 `판당 0.0킬`이 된다 (D-148) */
     prisma.matchPlayerStat.count({
-      where: { playerId, match: { leagueId: league.id, official: true } },
+      where: { playerId, match: { leagueId: league.id, redRatingUpdate: { not: null } } },
     }),
     buildRecordSummary(where, leagueClanId, playerId),
   ])

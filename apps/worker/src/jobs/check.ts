@@ -94,17 +94,36 @@ export async function runCheck(input: {
     note: '투영됐는데 참가 기록이 없는 매치',
   })
 
+  /* 넥슨 상세 참가자보다 참가 기록이 많으면 원래는 "없는 사람을 만들어낸 것"이었다.
+     D-148 부터는 3rd.supply 라인업으로 명단을 채우므로 **정상적으로** 더 많다.
+     다만 그건 `matchTimeClanSource='supply-lineup'` 인 행에 한한다 —
+     그 표시가 없는 행이 상세 참가자보다 많으면 여전히 지어낸 것이다. */
   let overCounted = 0
   for (const match of projectedMatches) {
     if (!match.projectedMatchId) continue
-    const stats = await prisma.matchPlayerStat.count({ where: { matchId: match.projectedMatchId } })
-    if (stats > (match.participantCount ?? 0)) overCounted += 1
+    const fromNexon = await prisma.matchPlayerStat.count({
+      where: {
+        matchId: match.projectedMatchId,
+        matchTimeClanSource: { not: 'supply-lineup' },
+      },
+    })
+    if (fromNexon > (match.participantCount ?? 0)) overCounted += 1
   }
   await push({
     name: 'stats_within_detail_participants',
     expected: 0,
     actual: overCounted,
-    note: '상세 참가자보다 참가 기록이 많은 매치 (없는 사람을 만들어낸 것)',
+    note: '상세 참가자보다 넥슨 유래 참가 기록이 많은 매치 (없는 사람을 만들어낸 것)',
+  })
+
+  /* D-148 — 라인업으로 채운 행은 KDA 를 모른다. 0으로 채워 두면 안 된다 */
+  await push({
+    name: 'supply_lineup_kda_is_null',
+    expected: 0,
+    actual: await prisma.matchPlayerStat.count({
+      where: { matchTimeClanSource: 'supply-lineup', kill: { not: null } },
+    }),
+    note: '명단만 복원한 참가자인데 KDA 가 채워진 기록 (지어낸 값)',
   })
 
   /* 5) mock 시드와 실제 수집이 같은 리그에 섞이지 않았는가 */
@@ -184,7 +203,14 @@ export async function runCheck(input: {
         startAt: true,
         redLeagueClanId: true,
         blueLeagueClanId: true,
-        stats: { select: { playerId: true, side: true, participantRole: true } },
+        stats: {
+          select: {
+            playerId: true,
+            side: true,
+            participantRole: true,
+            matchTimeClanSource: true,
+          },
+        },
       },
     })
     if (!match) continue
@@ -193,6 +219,11 @@ export async function runCheck(input: {
     for (const stat of match.stats) {
       // 용병은 그 팀 로스터에 없다. 그게 정상이다
       if (stat.participantRole !== 'member') continue
+      /* 이 검사는 **우리가 추론한** 본클랜원 판정을 검증하는 것이다.
+         3rd.supply 라인업으로 채운 행은 추론이 아니라 원본이 그 경기의 소속을
+         직접 적어 준 것이다 (D-148). 우리 로스터에 없는 사람이 대부분이고,
+         그게 정상이다 — 우리는 그 클랜의 로스터를 가진 적이 없다. */
+      if (stat.matchTimeClanSource === 'supply-lineup') continue
       const covering = await prisma.leagueRosterMembership.count({
         where: {
           playerId: stat.playerId,
@@ -267,15 +298,26 @@ export async function runCheck(input: {
     note: '양 팀 모두 본클랜원 3명 미만인데 공식으로 인정된 경기',
   })
 
-  /* 13) 비공식 경기에는 래더가 붙으면 안 된다 (D-080) */
-  const referenceRated = await prisma.matchPlayerStat.count({
-    where: { match: { origin: NEXON_SOURCE, official: false }, ratingUpdate: { not: null } },
+  /* 13) 래더가 붙은 경기는 **정상 5v5** 여야 한다 (D-145).
+
+     예전 이 자리에는 "비공식 경기에는 래더가 붙으면 안 된다"(D-080)가 있었다.
+     D-145 에서 그 정책은 폐기됐다 — 기준은 `official` 라벨이 아니라 5v5 인가뿐이다.
+     라벨로 검사하면 정상 5v5 경기가 래더에 들어갔다는 이유로 FAIL 이 뜬다.
+     지금 지켜야 할 것은 **5v5 가 아닌 경기에 래더가 붙지 않는 것**이다. */
+  const ratedMatches = await prisma.match.findMany({
+    where: { origin: NEXON_SOURCE, redRatingUpdate: { not: null } },
+    select: { id: true, stats: { select: { side: true } } },
   })
+  const ratedNotFiveVsFive = ratedMatches.filter((match) => {
+    const red = match.stats.filter((stat) => stat.side === 'red').length
+    const blue = match.stats.length - red
+    return red !== 5 || blue !== 5
+  }).length
   await push({
-    name: 'reference_not_rated',
+    name: 'rated_matches_are_5v5',
     expected: 0,
-    actual: referenceRated,
-    note: '비공식 경기인데 개인 래더가 계산된 참가 기록',
+    actual: ratedNotFiveVsFive,
+    note: '5v5 가 아닌데 래더가 계산된 경기 (D-145 위반)',
   })
 
   /* 13) 래더 값이 있으면 formulaVersion도 있어야 한다 (재현 가능해야 한다) */

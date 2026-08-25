@@ -108,9 +108,10 @@ export interface ReconstructedParticipant {
   /** 원소속 클랜 (없으면 null). 이 클랜의 래더는 변하지 않는다 (D-075) */
   rosterLeagueClanId: string | null
   outcome: 'win' | 'lose'
-  kill: number
-  death: number
-  assist: number
+  /** KDA. 명단만 복원된 참가자는 모른다 → `null` (D-148) */
+  kill: number | null
+  death: number | null
+  assist: number | null
   /** 상세에만 있는 값. 없으면 `null`(= 알 수 없음) */
   headshot: number | null
   damage: number | null
@@ -300,9 +301,9 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
     /** 경기 시점 **등록 클랜**. 용병·무소속이면 null (D-072) */
     membership: RosterMembership | null
     outcome: 'win' | 'lose'
-    kill: number
-    death: number
-    assist: number
+    kill: number | null
+    death: number | null
+    assist: number | null
     sources: ('player_match_list' | 'match_detail')[]
     headshot: number | null
     damage: number | null

@@ -726,9 +726,9 @@ model MatchPlayerStat {
   /// "red" | "blue"
   side     String
 
-  kill     Int
-  death    Int
-  assist   Int
+  kill     Int?
+  death    Int?
+  assist   Int?
   /// 결측 가능 — `알수없음`
   headshot Int?
   /// 결측 가능 — `알수없음`

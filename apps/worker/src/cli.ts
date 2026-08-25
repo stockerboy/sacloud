@@ -55,6 +55,7 @@ import {
   backfillMatchTimeAffiliation,
   cleanupDuplicateSupplyPlayers,
   linkSupplyPlayerIds,
+  completeLineupsFromSupply,
 } from '@sacloud/db/ops'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
@@ -920,6 +921,38 @@ async function main(): Promise<number> {
         ])
       }
 
+      if (!confirm) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
+      return 0
+    }
+
+    case 'lineup-complete': {
+      const file =
+        stringFlag(args, 'file') ??
+        join(process.cwd(), '..', '..', 'packages/db/data/supply-official-matches.json')
+      const snapshot = JSON.parse(readFileSync(file, 'utf8'))
+      const confirm = boolFlag(args, 'confirm')
+      const result = await completeLineupsFromSupply({
+        snapshot,
+        leagueSlug: stringFlag(args, 'league') ?? 'supply',
+        dryRun: !confirm,
+        onlyExisting: !boolFlag(args, 'include-new'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          '스냅샷 경기': result.considered,
+          '우리 DB 에 있는 경기': result.targeted,
+          '이미 10명': result.alreadyComplete,
+          '10명이 된 경기': result.completed,
+          '새 선수': result.createdPlayers,
+          '신원 확정': result.identitiesResolved,
+          '근거 갈림': result.identitiesAmbiguous,
+          '저장된 연결 충돌': result.storedLinkConflicts,
+          '인원 초과로 보류': result.overfilled,
+          '추가된 참가 기록': result.createdStats,
+        },
+      ])
+      if (Object.keys(result.skipped).length > 0) table([result.skipped])
       if (!confirm) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
       return 0
     }

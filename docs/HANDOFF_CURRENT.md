@@ -1,5 +1,42 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
+> ## ⬛ 참가자 10명 복원 완료 (2026-08-25 · D-148)
+>
+> ### 무엇이 문제였나
+> 경기 상세에 5vs5 10명이 다 나오지 않았고 래더도 거의 반영되지 않았다.
+> **원인은 두 개**였다 — 넥슨 `match-detail` 이 한 경기에 6~9명만 준다는 것(D-044),
+> 그리고 D-145 에서 폐기된 `official` 라벨이 집계 필터로 남아 있었다는 것.
+>
+> ### 결과
+> | | 전 | 후 |
+> |---|---|---|
+> | 10명인 경기 | 39 / 136 | **126 / 136** |
+> | 래더가 붙은 경기 | 17 | **98** |
+> | `nexon:check` | 3 FAIL | **17항목 전 통과** |
+>
+> 명단은 `packages/db/data/supply-official-matches.json` 에서 가져왔다.
+> **무기 정보도 여기서 온다** — 넥슨은 무기를 주지 않는다 (D-034).
+>
+> ### 지켜야 할 것
+> - **모르는 KDA 는 `null` 이다.** 3rd.supply 는 킬/데스/어시를 주지 않으므로
+>   명단만 복원한 224명은 `알수없음` 이다. **0으로 채우면 안 된다**
+> - **신원 해석 순서를 바꾸지 마라.** 같은 경기 안의 근거가 전역 근거보다 우선이다.
+>   반대로 하면 한 사람이 두 줄이 된다 (실제로 그랬다 — 경기당 11~16명)
+> - 집계 기준은 `Match.official` 이 아니라 **`Match.redRatingUpdate != null`** 이다
+>
+> ### 남은 것
+> - 3rd.supply 스냅샷에 있으나 우리 DB 에 없는 경기 **624건**. import 는 별도 작업이며
+>   **사용자 승인 전에는 하지 않는다**
+> - `side_clan_mismatch` 2건 · 전역 신원 확정 실패 26건 — 추측해 메우지 않았다
+>
+> ```bash
+> pnpm --filter @sacloud/worker nexon lineup-complete --confirm   # idempotent
+> pnpm --filter @sacloud/worker nexon rate --league supply
+> pnpm --filter @sacloud/worker nexon weapon-rebuild --league supply --confirm
+> ```
+>
+> 상세는 `docs/DECISIONS.md` D-148.
+
 > ## ⬛ 가오픈 준비 완료 (2026-08-25 · D-147)
 >
 > **`docs/GO_LIVE_CHECKLIST.md` 를 보고 그대로 따라 하면 된다.**

@@ -298,7 +298,10 @@ export async function rebuildWeaponBuckets(input: {
   }
 
   const stats = await prisma.matchPlayerStat.findMany({
-    where: { match: { leagueId: league.id, official: true } },
+    /* 무기별 누적도 **래더 경기** 기준이다. `official` 라벨은 D-145 에서 래더와
+       무관해졌고, 그 라벨로 거르면 래더에 반영된 경기가 무기 집계에서 빠져
+       화면에 `집계 없음` 이 남는다 (D-148). */
+    where: { match: { leagueId: league.id, redRatingUpdate: { not: null } } },
     select: {
       playerId: true,
       weapon: true,

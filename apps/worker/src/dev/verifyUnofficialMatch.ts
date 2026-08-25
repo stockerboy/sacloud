@@ -72,7 +72,7 @@ async function main(): Promise<void> {
   check(
     'K/D/A가 경기 단위로 남아 있다',
     true,
-    match.stats.every((stat) => stat.kill >= 0 && stat.death >= 0 && stat.assist >= 0),
+    match.stats.every((stat) => stat.kill === null || (stat.kill >= 0 && (stat.death ?? 0) >= 0 && (stat.assist ?? 0) >= 0)),
   )
   check(
     '클랜원/용병 구분이 남아 있다',

@@ -43,13 +43,18 @@ export const MatchPlayerStat = z.object({
   player_id: Id,
   name: z.string(),
   side: TeamSide,
-  kill: Count,
-  death: Count,
-  assist: Count,
+  /**
+   * 킬/데스/어시. **모르면 `null`(= 알수없음)** 이다 (D-148).
+   * 3rd.supply 라인업으로 명단만 복원한 참가자는 넥슨 상세에 없어 KDA 가 없다.
+   * 0으로 채우면 "0킬을 했다"는 거짓 정보가 되므로 채우지 않는다.
+   */
+  kill: Count.nullable(),
+  death: Count.nullable(),
+  assist: Count.nullable(),
   headshot: Count.nullable(),
   damage: Count.nullable(),
   /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
-  kd_rate: Percent,
+  kd_rate: Percent.nullable(),
   damage_percent: Percent.nullable(),
   headshot_percent: Percent.nullable(),
   /**

@@ -76,11 +76,23 @@ describe.runIf(up)('상태 점검', () => {
   })
 
   it('공개 데이터 수치가 실제 DB와 맞는다', async () => {
+    /* 다른 테스트 파일이 같은 DB 에 `origin='sacloud'|'nexon'` 픽스처를 만들었다 지운다.
+       한 시점의 수치와 정확히 비교하면 그 사이에 값이 움직여 실패한다 (실제로 그랬다).
+       그래서 **앞뒤로 재고 그 범위 안에 있는지** 본다. 이 테스트가 보려는 것은
+       "getHealth 가 공개 범위(origin != mock)를 센다" 이지 정확한 절대값이 아니다. */
+    const before = {
+      leagues: await prisma.league.count({ where: { origin: { not: 'mock' } } }),
+      matches: await prisma.match.count({ where: { origin: { not: 'mock' } } }),
+    }
     const report = await getHealth()
-    const leagues = await prisma.league.count({ where: { origin: { not: 'mock' } } })
-    const matches = await prisma.match.count({ where: { origin: { not: 'mock' } } })
-    expect(report.metrics.publicLeagues).toBe(leagues)
-    expect(report.metrics.publicMatches).toBe(matches)
+    const after = {
+      leagues: await prisma.league.count({ where: { origin: { not: 'mock' } } }),
+      matches: await prisma.match.count({ where: { origin: { not: 'mock' } } }),
+    }
+    expect(report.metrics.publicLeagues).toBeGreaterThanOrEqual(Math.min(before.leagues, after.leagues))
+    expect(report.metrics.publicLeagues).toBeLessThanOrEqual(Math.max(before.leagues, after.leagues))
+    expect(report.metrics.publicMatches).toBeGreaterThanOrEqual(Math.min(before.matches, after.matches))
+    expect(report.metrics.publicMatches).toBeLessThanOrEqual(Math.max(before.matches, after.matches))
   })
 
   it('전체 상태는 가장 나쁜 항목을 따른다', async () => {
