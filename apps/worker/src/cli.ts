@@ -46,6 +46,7 @@ import { linkIdentitiesByEvidence, registerObservedMaps } from './jobs/identityL
 import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/rosterSync.js'
 import { applyWeaponToStats, importWeaponEvidence, rebuildWeaponBuckets } from './jobs/weapon.js'
 import { runRate } from './jobs/rate.js'
+import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
 import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
 import { readCurrentMembership, runSupplyRosters } from './jobs/supplyRosters.js'
 import { explainMatches } from './dev/explainMatches.js'
@@ -166,6 +167,10 @@ function usage(): void {
               넥슨 승패와 어긋나면 그 경기는 보조 증거를 버린다
   rate        --league <slug> [--season N] [--allow-mock-league] [--dry-run]
               재구성된 경기로 래더를 **처음부터 다시** 계산한다 (결정적 replay)
+  rating-backup  --league <slug> [--stamp <문자열>]
+              replay 전 래더 스냅샷을 JSON 으로 백업한다. **replay 전에 반드시 돌린다**
+  rating-restore --file <경로> [--dry-run]
+              백업 스냅샷으로 되돌린다 (삭제하지 않고 값만 복원)
   season      --league <slug> [--close | --start] [--at <ISO>] [--number N] [--no-promotion]
               시즌 운영. 플래그가 없으면 현재 상태만 보여 준다.
               --close 최종 랭킹 스냅샷 + 시즌 종료 / --start 승강 반영 + 전원 같은 점수로 시작
@@ -538,6 +543,39 @@ async function main(): Promise<number> {
       for (const [code, count] of Object.entries(result.skipped)) {
         log(`  제외 ${code}: ${count}건`)
       }
+      return 0
+    }
+
+    case 'rating-backup': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      const stamp = stringFlag(args, 'stamp') ?? new Date().toISOString().replace(/[:.]/g, '-')
+      const made = await createRatingSnapshot({ leagueSlug, stamp })
+      if (!made) return 1
+      table([
+        {
+          파일: made.path,
+          선수: made.snapshot.counts.leaguePlayers,
+          클랜: made.snapshot.counts.leagueClans,
+          경기스탯: made.snapshot.counts.matchPlayerStats,
+          경기: made.snapshot.counts.matches,
+          checksum: made.snapshot.checksum,
+        },
+      ])
+      return 0
+    }
+
+    case 'rating-restore': {
+      const path = stringFlag(args, 'file')
+      if (!path) {
+        fail('--file <경로> 가 필요하다')
+        return 1
+      }
+      const result = await restoreRatingSnapshot({ path, dryRun: ctx.dryRun })
+      table([result.restored])
       return 0
     }
 

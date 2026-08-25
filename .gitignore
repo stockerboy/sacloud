@@ -30,3 +30,6 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# 래더 백업 스냅샷 (로컬 전용 — 저장소에 넣지 않는다)
+apps/worker/backups/

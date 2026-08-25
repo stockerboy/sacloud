@@ -48,6 +48,40 @@ export interface RateRunResult {
   clansUpdated: number
   skipped: Record<string, number>
   formulaVersion: string
+  /** D-145 이전 정책(official=true)에서는 빠졌지만 이번에 새로 포함된 경기 수 */
+  newlyIncluded: number
+  /** 검증용 리포트 (dry-run·실행 공통) */
+  report: {
+    players: {
+      playerId: string
+      display: number
+      internal: number
+      games: number
+      win: number
+      lose: number
+      winRate: number
+      confidence: number
+      penalty: number
+      opponentAvg: number
+      strongWins: number
+      strongGames: number
+    }[]
+    clans: {
+      leagueClanId: string
+      display: number
+      internal: number
+      composition: number
+      penalty: number
+      games: number
+      win: number
+      lose: number
+      opponentAvg: number
+      avgMembers: number
+    }[]
+    /** 승률 48% 미만인데 표시 4000 이상 — **0이어야 한다** */
+    underMinWinRateAt4000: number
+    nonFinite: number
+  }
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -107,6 +141,8 @@ export async function runRate(
     clansUpdated: 0,
     skipped: {},
     formulaVersion: `${PERSONAL_FORMULA_VERSION}+${CLAN_FORMULA_VERSION}`,
+    newlyIncluded: 0,
+    report: { players: [], clans: [], underMinWinRateAt4000: 0, nonFinite: 0 },
   }
 
   const league = await prisma.league.findUnique({
@@ -169,6 +205,7 @@ export async function runRate(
     select: {
       id: true,
       startAt: true,
+      official: true,
       redLeagueClanId: true,
       blueLeagueClanId: true,
       winnerSide: true,
@@ -196,7 +233,10 @@ export async function runRate(
   const playerRating = new Map<string, number>()
   const playerMatches = new Map<string, number>()
   const playerTotals = new Map<string, { win: number; lose: number; kill: number; death: number; assist: number }>()
+  /** 검증용 — 상대 평균 강도와 강자 상대 전적 */
+  const playerOpp = new Map<string, { sum: number; n: number; strongWins: number; strongGames: number }>()
   const clanTotals = new Map<string, { win: number; lose: number }>()
+  const clanOpp = new Map<string, { sum: number; n: number }>()
   const clanRating = new Map<string, number>()
   const clanMatches = new Map<string, number>()
 
@@ -347,11 +387,19 @@ export async function runRate(
 
     if (!rated.eligibility.ratingEligible) {
       /* 정상 5v5 가 아니면 래더에 넣지 않는다 (D-145).
-         경기 기록 자체는 그대로 남는다 — 여기서는 래더만 다룬다. */
-      result.skipped[rated.eligibility.status === 'official' ? 'incomplete_squad' : rated.eligibility.status] =
-        (result.skipped[rated.eligibility.status === 'official' ? 'incomplete_squad' : rated.eligibility.status] ?? 0) + 1
+         경기 기록 자체는 그대로 남는다 — 여기서는 래더만 다룬다.
+
+         제외 사유는 **실제 이유**로 적는다. `official` 라벨은 더 이상 래더와 무관하므로
+         'reference' 로 뭉뚱그리면 로그가 거짓말이 된다. */
+      const code = rated.eligibility.recordable
+        ? `incomplete_squad_${rated.eligibility.completeness}`
+        : rated.eligibility.status
+      result.skipped[code] = (result.skipped[code] ?? 0) + 1
       continue
     }
+
+    // 예전 정책이라면 빠졌을 경기인가
+    if (!match.official) result.newlyIncluded += 1
 
     /* 무소속(independent) 클랜이라고 계산을 생략하지 않는다 (D-102 정정).
        클랜 경기의 전력차를 계산하려면 **실제 참가 선수의 실력값**이 필요하다.
@@ -390,6 +438,17 @@ export async function runRate(
       playerRating.set(player.playerId, player.ratingAfter)
       playerMatches.set(player.playerId, (playerMatches.get(player.playerId) ?? 0) + 1)
       playerLastAt.set(player.playerId, match.startAt)
+      {
+        const acc = playerOpp.get(player.playerId) ?? { sum: 0, n: 0, strongWins: 0, strongGames: 0 }
+        acc.sum += player.opponentAvgRating
+        acc.n += 1
+        // "강한 상대" = 기준점 + 120 이상 (시뮬레이션의 상위 30% 기준과 같은 정의)
+        if (player.opponentAvgRating >= constants.initialRating + 120) {
+          acc.strongGames += 1
+          if (player.outcome === 'win') acc.strongWins += 1
+        }
+        playerOpp.set(player.playerId, acc)
+      }
       /* 경기로만 페널티가 회복된다 — **한 판으로 다 지워지지 않는다.**
          "1판 던지고 초기화" 를 막는 유일한 장치다 */
       playerPenalty.set(
@@ -417,6 +476,12 @@ export async function runRate(
     clanMatches.set(blue.leagueClanId, (clanMatches.get(blue.leagueClanId) ?? 0) + 1)
     for (const clan of [red, blue]) {
       clanLastAt.set(clan.leagueClanId, match.startAt)
+      {
+        const acc = clanOpp.get(clan.leagueClanId) ?? { sum: 0, n: 0 }
+        acc.sum += clan.opponentRatingUsed
+        acc.n += 1
+        clanOpp.set(clan.leagueClanId, acc)
+      }
       clanPenalty.set(
         clan.leagueClanId,
         Math.max(0, (clanPenalty.get(clan.leagueClanId) ?? 0) - constants.clanDecayRecoveryPerGame),
@@ -479,6 +544,52 @@ export async function runRate(
       penalty,
     })
   }
+
+  /* ---- 검증 리포트 ---- */
+  for (const [playerId, shown] of playerDisplay) {
+    const totals = playerTotals.get(playerId) ?? { win: 0, lose: 0, kill: 0, death: 0, assist: 0 }
+    const played = totals.win + totals.lose
+    const opp = playerOpp.get(playerId) ?? { sum: 0, n: 0, strongWins: 0, strongGames: 0 }
+    const internal = playerRating.get(playerId) ?? constants.initialRating
+    if (!Number.isFinite(shown.display) || !Number.isFinite(internal)) result.report.nonFinite += 1
+    const winRate = played > 0 ? totals.win / played : 0
+    if (winRate < 0.48 && shown.display >= 4000) result.report.underMinWinRateAt4000 += 1
+    result.report.players.push({
+      playerId,
+      display: shown.display,
+      internal,
+      games: playerMatches.get(playerId) ?? 0,
+      win: totals.win,
+      lose: totals.lose,
+      winRate: winRate * 100,
+      confidence: shown.confidence,
+      penalty: playerPenalty.get(playerId) ?? 0,
+      opponentAvg: opp.n > 0 ? opp.sum / opp.n : 0,
+      strongWins: opp.strongWins,
+      strongGames: opp.strongGames,
+    })
+  }
+  result.report.players.sort((a, b) => b.display - a.display)
+
+  for (const [leagueClanId, final] of clanFinal) {
+    const internal = clanRating.get(leagueClanId) ?? constants.initialRating
+    if (!Number.isFinite(final.display) || !Number.isFinite(internal)) result.report.nonFinite += 1
+    const opp = clanOpp.get(leagueClanId) ?? { sum: 0, n: 0 }
+    const totals = clanTotals.get(leagueClanId) ?? { win: 0, lose: 0 }
+    result.report.clans.push({
+      leagueClanId,
+      display: final.display,
+      internal,
+      composition: final.composition,
+      penalty: final.penalty,
+      games: clanMatches.get(leagueClanId) ?? 0,
+      win: totals.win,
+      lose: totals.lose,
+      opponentAvg: opp.n > 0 ? opp.sum / opp.n : 0,
+      avgMembers: averageMembers(clanRecentMembers.get(leagueClanId) ?? [], constants),
+    })
+  }
+  result.report.clans.sort((a, b) => b.display - a.display)
 
   if (ctx.dryRun) {
     log(`[dry-run] ${result.matchesRated}경기 계산 — 아무것도 쓰지 않았다`)
