@@ -237,6 +237,8 @@ export async function runRate(
   const playerOpp = new Map<string, { sum: number; n: number; strongWins: number; strongGames: number }>()
   const clanTotals = new Map<string, { win: number; lose: number }>()
   const clanOpp = new Map<string, { sum: number; n: number }>()
+  /** 이번 replay 에서 실제로 래더에 반영된 경기 */
+  const ratedMatchIds = new Set<string>()
   const clanRating = new Map<string, number>()
   const clanMatches = new Map<string, number>()
 
@@ -501,6 +503,7 @@ export async function runRate(
       bluePlacement: blue.isPlacement,
     })
 
+    ratedMatchIds.add(match.id)
     result.matchesRated += 1
   }
 
@@ -632,6 +635,40 @@ export async function runRate(
     })
   }
 
+  /* 래더 대상이 아닌 경기에 남아 있는 **옛 공식의 증감을 지운다** (D-145).
+
+     replay 는 이 시즌의 래더 상태를 통째로 다시 정의한다. 지우지 않으면
+     5v5 가 아니라 이제는 반영되지 않는 경기에 예전 값이 그대로 남아,
+     화면에서는 점수가 오른 것처럼 보이는데 실제 래더에는 없는 상태가 된다. */
+  const staleMatchIds = matches.filter((m) => !ratedMatchIds.has(m.id)).map((m) => m.id)
+  if (staleMatchIds.length > 0) {
+    await prisma.matchPlayerStat.updateMany({
+      where: { matchId: { in: staleMatchIds } },
+      data: {
+        ratingBefore: null,
+        ratingUpdate: null,
+        ratingAfter: null,
+        opponentAvgRating: null,
+        kUsed: null,
+        multiplierUsed: null,
+        isPlacement: false,
+        formulaVersion: null,
+      },
+    })
+    await prisma.match.updateMany({
+      where: { id: { in: staleMatchIds } },
+      data: {
+        redRatingBefore: null,
+        blueRatingBefore: null,
+        redRatingUpdate: null,
+        blueRatingUpdate: null,
+        redPlacement: false,
+        bluePlacement: false,
+      },
+    })
+    log(`래더 대상이 아닌 경기 ${staleMatchIds.length}건의 옛 증감을 지웠다`)
+  }
+
   /* 현재 소속 클랜 — `LeaguePlayer.clanId`는 스키마 주석대로 **표시용 현재 소속**이다.
      경기 시점 소속은 `MatchPlayerStat`/`Match`의 스냅샷이 따로 들고 있으므로 여기서는
      지금 유효한 로스터 등록(`leftAt = null`)을 그대로 옮겨 적는다.
@@ -704,6 +741,41 @@ export async function runRate(
       },
     })
     result.clansUpdated += 1
+  }
+
+  /* 이번 replay 에 한 번도 나오지 않은 선수·클랜은 **기준점으로 되돌린다** (D-145).
+
+     그대로 두면 예전 1500 기준 값이 남아 랭킹에 섞인다. 실제로 replay 직후
+     최저 래더가 1,476 으로 찍혔다 — 이제 기준점이 3000 이므로 있을 수 없는 값이다.
+     승패·킬데스 같은 **기록은 건드리지 않는다.** 래더 관련 값만 초기화한다. */
+  const untouchedPlayers = await prisma.leaguePlayer.updateMany({
+    where: { leagueId: league.id, playerId: { notIn: [...playerRating.keys()] } },
+    data: {
+      rating: constants.initialRating,
+      baseRating: constants.initialRating,
+      internalRating: constants.initialRating,
+      activityPenalty: 0,
+      lastRatedAt: null,
+      placement: true,
+      placementPlayed: 0,
+    },
+  })
+  const untouchedClans = await prisma.leagueClan.updateMany({
+    where: { leagueId: league.id, id: { notIn: [...clanRating.keys()] } },
+    data: {
+      rating: constants.initialRating,
+      internalRating: constants.initialRating,
+      compositionScore: 0,
+      activityPenalty: 0,
+      lastRatedAt: null,
+      placement: true,
+      placementPlayed: 0,
+    },
+  })
+  if (untouchedPlayers.count > 0 || untouchedClans.count > 0) {
+    log(
+      `래더 경기가 없는 선수 ${untouchedPlayers.count} · 클랜 ${untouchedClans.count} 을 기준점(${constants.initialRating})으로 되돌렸다`,
+    )
   }
 
   /* ---- 5) 쓴 상수를 DB에 남긴다 (스펙 §7 — 설정만 바꿔도 되게) ---- */

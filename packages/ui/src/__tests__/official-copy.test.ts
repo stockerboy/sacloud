@@ -1,56 +1,65 @@
+/**
+ * 공식 라벨 · 래더 반영 문구 회귀 테스트 (D-145 기준).
+ *
+ * 여기서 고정하는 것은 하나다 —
+ * **래더 반영 여부는 `official` 이 아니라 "정상 5v5 인가" 로만 정해진다.**
+ * 이 둘이 다시 엮이면 폐기된 규칙("비공식이라 래더 미반영")이 화면에 되살아난다.
+ */
 import { describe, expect, it } from 'vitest'
 import {
-  ladderNotice,
-  showsClanWeight,
+  COMPOSITION_NOTICE,
+  NOT_RATED_BADGE,
+  NOT_RATED_BADGE_TITLE,
   UNOFFICIAL_BADGE,
   UNOFFICIAL_BADGE_TITLE,
+  isRated,
+  ladderNotice,
 } from '../record/officialCopy'
 
-/**
- * 공식/비공식 문구 회귀 (Phase 10 final cleanup).
- *
- * 실제로 났던 문제
- *   비공식 경기 상세에 "개인 래더는 용병 포함 전원 100% 반영된다"와
- *   "클랜 래더 반영률 70%"가 같이 떠서, 반영되지 않은 경기가 반영된 것처럼 보였다.
- */
+describe('래더 반영 판정', () => {
+  it('5v5 면 반영된다', () => {
+    expect(isRated('5v5')).toBe(true)
+  })
 
-describe('사용자에게 보이는 상태는 공식/비공식 둘뿐이다 (정책 1)', () => {
-  it('"참고"라는 표현을 쓰지 않는다', () => {
-    const strings = [UNOFFICIAL_BADGE, UNOFFICIAL_BADGE_TITLE, ladderNotice(true), ladderNotice(false)]
-    for (const text of strings) {
-      expect(text, `"참고"가 남아 있다: ${text}`).not.toContain('참고')
+  it('5v5 가 아니면 반영되지 않는다', () => {
+    for (const value of ['5v4', '4v5', '5v3', '3v1', '1v1', null]) {
+      expect(isRated(value)).toBe(false)
     }
   })
+})
 
-  it('비공식 배지는 래더 미반영을 같이 알린다 (정책 7)', () => {
-    expect(UNOFFICIAL_BADGE).toBe('비공식 경기 · 래더 미반영')
-    expect(UNOFFICIAL_BADGE_TITLE).toContain('3명 미만')
+describe('래더 안내 문구', () => {
+  it('5v5 는 반영된다고 말한다', () => {
+    const notice = ladderNotice('5v5')
+    expect(notice).toContain('반영')
+    expect(notice).not.toContain('반영되지 않습니다')
+  })
+
+  it('5v5 가 아니면 반영되지 않는다고 말한다', () => {
+    expect(ladderNotice('5v4')).toContain('반영되지 않습니다')
+    expect(ladderNotice(null)).toContain('반영되지 않습니다')
+  })
+
+  it('기록은 남는다는 것을 함께 말한다 — 경기를 버리지 않는다', () => {
+    expect(ladderNotice('5v4')).toContain('기록은 남습니다')
   })
 })
 
-describe('래더 안내 문구는 official 상태로 갈린다 (정책 4)', () => {
-  it('공식 경기에서만 개인 래더 100% 반영을 알린다', () => {
-    expect(ladderNotice(true)).toBe('실제 출전이 확인된 선수는 용병 포함 개인 래더 100% 반영')
+describe('폐기된 규칙이 문구에 남아 있지 않다', () => {
+  it('비공식 배지가 래더 미반영을 뜻하지 않는다', () => {
+    expect(UNOFFICIAL_BADGE).not.toContain('미반영')
+    expect(UNOFFICIAL_BADGE_TITLE).toContain('래더에는 정상적으로 반영')
   })
 
-  it('비공식 경기에서는 미반영이라고만 말한다', () => {
-    expect(ladderNotice(false)).toBe(
-      '비공식 경기이므로 개인/클랜 래더 및 시즌 누적 통계에 반영되지 않습니다',
-    )
+  it('래더 미반영 배지는 참가자 수를 이유로 든다 — 공식 여부가 아니다', () => {
+    expect(NOT_RATED_BADGE).toBe('래더 미반영')
+    expect(NOT_RATED_BADGE_TITLE).toContain('10명')
+    expect(NOT_RATED_BADGE_TITLE).not.toContain('비공식')
   })
 
-  it('비공식 문구에 "100%"나 "반영된다"가 들어가면 안 된다 — 그게 원래 버그였다', () => {
-    expect(ladderNotice(false)).not.toContain('100%')
-    expect(ladderNotice(false)).not.toContain('반영된다')
-  })
-})
-
-describe('클랜 반영률은 공식 경기에서만 보여 준다 (정책 5 · 6)', () => {
-  it('공식 경기면 보여 준다 — 100/70/40/0%는 그대로 유지한다', () => {
-    expect(showsClanWeight(true)).toBe(true)
-  })
-
-  it('비공식 경기면 숨긴다 — 70%가 실제 적용된 것처럼 보이면 안 된다', () => {
-    expect(showsClanWeight(false)).toBe(false)
+  it('반영률(100/70/40/0%) 개념을 더 이상 말하지 않는다', () => {
+    expect(COMPOSITION_NOTICE).not.toContain('반영률')
+    expect(COMPOSITION_NOTICE).toContain('깎지 않습니다')
+    expect(COMPOSITION_NOTICE).toContain('+50')
   })
 })

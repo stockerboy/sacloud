@@ -497,25 +497,61 @@ Elo 가 제로섬이라 반복 대전으로 점수가 새로 생기지 않는다
 
 기존 컬럼은 **하나도 지우거나 타입을 바꾸지 않는다.**
 
-## 9. 운영 데이터 replay 계획 (실행 금지 — 다음 작업)
+## 9. 운영 이식 · replay 결과 (2026-08-25 완료)
 
-1. **보존.** `rating_update` · `ratingAfter` · `formulaVersion` 을 통째로 스냅샷 테이블에 복사한다.
-   raw/staging 은 절대 건드리지 않는다.
-2. **새 버전.** 신규 계산은 `formulaVersion = "sacloud-v1"`. 과거 3rd.supply 이관분은
-   `origin = "3rd.supply"` 로 두고 **재계산하지 않는다.**
-3. **재생.** `startAt` → `matchId` 순으로 모든 complete 5v5 를 시간순 재생.
-   경기 당시 소속으로 본클랜원 수를 세고, 미참여 감점 tick 을 하루 단위로 섞는다.
-4. **대상 전환.** 기존 `official=false` 경기도 전부 레이팅 대상으로 올린다.
-   `official` 컬럼은 label 로만 남긴다.
-5. **incomplete 88건.** 여전히 제외한다. 넥슨 할당량 회복 후 backfill 되면 그때 다시 재생한다.
-   **억지로 complete 처리하지 않는다.**
-6. **용병.** 소속과 무관하게 개인 레이팅을 받는다. 클랜 레이팅에는 그 경기의 클랜만 반영한다.
-7. **대조.** before/after 를 나란히 저장하고 ① 총합 제로섬 ② 상위 50명 순위 변동
-   ③ 밴드 분포 ④ 배치고사 인원 ⑤ **승률 48% 미만인데 4000+ 인 사람이 0명인지** 를 숫자로 대조한다.
-8. **rollback.** 스냅샷 테이블에서 되돌린다. 마이그레이션은 additive 만 —
-   `prisma migrate dev` 금지 · reset 금지.
+**실행했다.** 아래는 실제 결과다.
 
----
+### 백업
+
+| 항목 | 값 |
+|---|---|
+| 파일 | `apps/worker/backups/rating/supply-d145-pre.json` (git 미추적) |
+| checksum | `e16c100f49739bd2aa79579db1df8043` |
+| 보존 행 | LeaguePlayer 58 · LeagueClan 48 · MatchPlayerStat 1,084 · Match 136 |
+| 복원 | `pnpm --filter @sacloud/worker nexon rating-restore --file <경로>` |
+| 검증 | replay → restore 왕복으로 **원래 값 복귀 확인 (PASS)** |
+
+`pg_dump` 는 이 환경에 없다 (embedded-postgres 에 포함돼 있지 않다).
+JSON 스냅샷이 rollback 수단이다. **한계**: 값은 되돌리지만 replay 가 새로 만든
+행(LeaguePlayer 등)은 삭제하지 않는다 — 다시 replay 하면 덮어써지므로 문제되지 않는다.
+
+### replay 결과 (`supply` 리그 · Beta 시즌 0)
+
+| 항목 | 값 |
+|---|---|
+| 시즌 범위 경기 | 109 |
+| **래더 반영** | **29** |
+| **새로 포함 (구 정책에서 제외됐던 경기)** | **24** |
+| 제외 | 5v4 20 · 5v1 19 · 5v2 18 · 5v3 14 · 4v1 6 · 3v1 2 · 1v1 1 (전부 5v5 아님) |
+| 선수 | 155 |
+| 클랜 | 17 |
+| formula version | `sacloud-d145` (290 stat 행) |
+
+### 검증 결과
+
+| 검사 | 결과 |
+|---|---|
+| 결정적 replay (dry-run 2회 해시 비교) | **PASS** — 동일 |
+| idempotent (실제 replay 2회 DB 해시 비교) | **PASS** — 동일 |
+| NaN / Infinity | **0** |
+| 래더 반영됐는데 5v5 아닌 경기 | **0** |
+| 승률 48% 미만인데 표시 4000+ | **0** |
+| 경기별 증감 합 (제로섬) | **0** |
+| 옛 공식(`sacloud-p1-PA`) 잔존 | **0** — 대상 아닌 경기의 옛 증감을 지웠다 |
+| official 게이트 잔존 | **0** |
+| 클랜원 가중치(100/70/40/0) 잔존 | **0** |
+
+### 후속 처리
+
+- 래더 대상이 아닌 경기에 남아 있던 **옛 공식의 증감을 지운다.**
+  안 지우면 화면에서는 점수가 오른 것처럼 보이는데 실제 래더에는 없는 상태가 된다.
+- 래더 경기가 하나도 없는 선수·클랜은 **기준점 3000 으로 되돌린다.**
+  안 하면 예전 1500 기준 값이 남아 랭킹에 섞인다 (실제로 최저 1,476 이 찍혔다).
+
+### 아직 하지 않은 것
+
+- **incomplete 88건은 그대로 제외**다. raw/staging 은 보존돼 있고, 넥슨 할당량이
+  회복되면 backfill 후 다시 replay 하면 된다. KDA 를 0으로 채워 complete 처리하지 않았다.
 
 ## 10. 남은 미확정
 

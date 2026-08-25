@@ -1,5 +1,66 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
+> ## ⬛ D-145 운영 이식 · Beta replay **완료** (2026-08-25)
+>
+> **레이팅 설계 논의는 여기서 끝난다.** 사양은 `docs/RATING_FINAL_SPEC.md` (D-145 FINAL LOCK).
+> formula version **`sacloud-d145`**
+>
+> ### 운영에 들어간 것
+> - `packages/rating` — 기준점 3000 · K 50 고정 · divisor 400 · floor 1000 · 제로섬
+>   `delta = K x (actual - E) x m`, `m = ramp(h, 0.80 -> 0.86)` (이변은 만점)
+>   신뢰도 `min(1, sqrt(games/150))` · 표시 `3000 + (내부-3000) x 신뢰도 x 3.5`
+>   -> **승률 자격선** -> **활동 페널티** (이 순서 고정)
+> - **official 게이트 폐기.** 정상 5v5 + 참가자 10명이면 전부 래더 대상
+> - 제거: 가변 K · rewardCap · repeatDecay · lineupBlend · 승리배수 · minWinReward ·
+>   클랜원 가중치(100/70/40/0) · 구식 lab 튜닝 도구 7개
+> - 스키마 **추가만**: `internalRating` · `activityPenalty` · `lastRatedAt`
+>   (+ LeagueClan `compositionScore`). `rating(Int)` 은 유지하되 의미가 **표시 점수**로 바뀜
+>   migration `20260825090000_d145_rating_columns` (deploy 로 적용 · destructive 없음)
+>
+> ### Beta replay 결과 (`supply` · 시즌 0)
+> 시즌 범위 109경기 중 **29경기 반영** · **새로 포함 24경기** · 선수 155 · 클랜 17
+> 제외는 전부 5v5 아님 (5v4 20 · 5v1 19 · 5v2 18 · 5v3 14 · 4v1 6 · 3v1 2 · 1v1 1)
+> 표시 점수 분포 **2,943 ~ 3,050** (Beta 는 1인당 최대 4경기라 신뢰도가 12~16%)
+> 4000+ 인원 0명 — **모집단·경기량이 적어서다. 이것 때문에 식을 다시 튜닝하지 않는다**
+>
+> ### 검증 (전부 PASS)
+> 결정적 replay 2회 동일 · idempotent 2회 동일 · NaN 0 ·
+> 5v5 아닌데 반영된 경기 0 · 승률 48% 미만인데 4000+ 0 · 경기별 증감 합 0 (제로섬) ·
+> 옛 공식 잔존 0 · official 게이트 잔존 0 · 클랜원 가중치 잔존 0
+>
+> ### 백업 / rollback
+> `apps/worker/backups/rating/supply-d145-pre.json` (checksum `e16c100f49739bd2aa79579db1df8043`)
+> 복원: `pnpm --filter @sacloud/worker nexon rating-restore --file <경로>`
+> **replay -> restore 왕복으로 실제 복구 확인함.**
+> 한계: 값은 되돌리지만 replay 가 새로 만든 행은 지우지 않는다 (재replay 하면 덮어써짐).
+> `pg_dump` 는 이 환경에 없다 (embedded-postgres 미포함).
+>
+> ### 이번에 함께 고친 것
+> - **CSP 가 개발 모드 하이드레이션을 막고 있었다** (D-136 부작용).
+>   `unsafe-eval` 이 없어 react-refresh 가 죽고 **모든 클라이언트 화면이 스켈레톤에서 멈췄다.**
+>   개발 모드에서만 열도록 고쳤다. 운영 빌드에는 들어가지 않는다.
+> - UI 문구: "비공식 경기 · 래더 미반영" -> **비공식(라벨)과 래더 미반영(5v5 아님)을 분리**.
+>   "클랜 래더 반영률 70%" 표시 제거 -> 구성 보정 안내로 교체.
+>
+> ### 알려진 상태
+> - `pnpm db:check` 1건 실패 — `사용자 기대=42 실제=43`. **D-145 와 무관**한 기존 드리프트
+>   (이전 검수에서 만든 계정). D-145 는 User 를 건드리지 않는다
+> - 서버가 떠 있을 때 `adminApi`/`authAttack` 일부 테스트가 5s 타임아웃.
+>   Next dev 의 라우트 최초 컴파일 지연이다 — 라우트를 예열하면 통과한다. 회귀 아님
+> - incomplete 88건은 여전히 제외. 넥슨 할당량 회복 후 backfill -> 재replay
+>
+> ### 남은 UI TODO (이번 범위 밖 · 상태만 확인)
+> - **A. 클랜 상세 경기 펼침** — `MatchCard` 를 쓰고 있다. 완성형 상세표인지 별도 확인 필요
+> - **B. 외부 클랜 fallback 마크(검은 원 + 파란 구름)** — **미구현.** 관련 코드 없음
+> - **C. 스나이퍼/라이플 랭킹 분리** — 무기별 컴포넌트는 있으나 선수 상세 카드 분리 확인 필요
+> - **D. 공식 1/2부 등록 클랜만 공식 소속 표시** — **미구현.** 판정 코드 없음
+>
+> ### 다음 작업
+> > UI 마무리 — 위 A~D. 레이팅은 더 논의하지 않는다.
+
+---
+
+
 > ## ⬛ 마지막 튜닝 검증 — **승인 대기** (2026-08-25 · PROPOSED D-145)
 >
 > **`docs/RATING_D145_PROPOSAL.md`** — 기준점 2500 후보 + 연속 신뢰도 + 억제 재조정 검증 결과.

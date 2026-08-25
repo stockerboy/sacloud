@@ -133,7 +133,8 @@ export default function AdminDashboardPage() {
           <Stat label="수집 경기(스테이징)" value={summary.matches.staged} />
           <Stat label="재구성 판정" value={summary.matches.reconstructed} />
           <Stat label="공식 경기" value={summary.matches.official} />
-          <Stat label="비공식 경기" value={summary.matches.reference} hint="통계 미반영" />
+          {/* D-145: 비공식은 클랜원 구성 라벨일 뿐 래더와 무관하다 */}
+          <Stat label="비공식 경기" value={summary.matches.reference} hint="라벨 · 래더는 반영됨" />
           {/* 비율은 서버가 계산한 값을 그대로 쓴다. 화면에서 다시 계산하지 않는다 */}
           <Stat
             label="공식 비율"

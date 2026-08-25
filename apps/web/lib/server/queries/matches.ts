@@ -209,16 +209,17 @@ function toConfidence(value: string | null): 'high' | 'medium' | 'low' | null {
 
 /** 경기 시점 클랜 스냅샷 (당시 래더·부리그·배치 여부) */
 /**
- * 본클랜원 수 → 클랜 래더 반영률 (D-081).
+ * 클랜 래더 반영률 — **D-145 에서 폐기됐다.**
  *
- * `@sacloud/rating`의 `clanWeightForMembers`와 같은 표다. 화면에서 "왜 덜 올랐는지"를
- * 보여 주기 위해 여기서도 계산한다.
+ * 예전에는 본클랜원 수로 증감을 깎았다(3명↑ 100% · 2명 70% · 1명 40% · 0명 0%).
+ * 지금은 정상 5v5 면 **양 팀 모두 100%** 다. 클랜원 수는 증감을 깎지 않고,
+ * 최근 20경기 평균이 상한 +50 의 구성 보정으로만 반영된다.
+ *
+ * 계약(`clan_weight`)은 과거 기록과의 호환을 위해 남기되 **항상 1** 이다.
+ * 화면에서는 이 값을 퍼센트로 보여 주지 않는다 (`officialCopy` 참조).
  */
-function clanWeight(members: number): number {
-  if (members >= 3) return 1
-  if (members === 2) return 0.7
-  if (members === 1) return 0.4
-  return 0
+function clanWeight(_members: number): number {
+  return 1
 }
 
 function snapshotOf(match: MatchRow, side: TeamSide) {

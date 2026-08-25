@@ -20,8 +20,12 @@ import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 import {
+  COMPOSITION_NOTICE,
+  NOT_RATED_BADGE,
+  NOT_RATED_BADGE_TITLE,
+  isRated,
   ladderNotice,
-  showsClanWeight,
+  UNOFFICIAL_BADGE,
   UNOFFICIAL_BADGE_TITLE,
 } from './officialCopy'
 
@@ -170,18 +174,28 @@ export function MatchCard({
       >
         <div className={`w-2 ${win ? 'bg-win-bar' : 'bg-lose-bar'}`} />
 
-        {/* 공식 경기와 비공식 경기를 **목록에서** 구분한다 (D-080 · 정책 17).
-            숨기지 않되, 통계에 들어가지 않는다는 사실이 한눈에 보여야 한다. */}
-        {match.official ? null : (
-          <div className="flex w-16 items-center justify-center">
-            <div
-              className="rounded border border-lose-line px-1 py-0.5 text-center text-[10px] leading-tight text-lose"
-              title={UNOFFICIAL_BADGE_TITLE}
-            >
-              비공식 경기
-              <br />
-              래더 미반영
-            </div>
+        {/* 두 가지를 **따로** 보여 준다 (D-145).
+            `비공식`은 클랜원 구성에 대한 역사적 라벨이고 래더와 무관하다.
+            래더 반영 여부는 **정상 5v5 인가**로만 정해진다. 둘을 한 배지에 묶으면
+            "비공식이라 래더 미반영" 이라는 폐기된 규칙을 다시 말하게 된다. */}
+        {match.official && isRated(match.participant_completeness) ? null : (
+          <div className="flex w-16 flex-col items-center justify-center gap-0.5">
+            {match.official ? null : (
+              <div
+                className="rounded border border-line px-1 py-0.5 text-center text-[10px] leading-tight text-meta"
+                title={UNOFFICIAL_BADGE_TITLE}
+              >
+                {UNOFFICIAL_BADGE}
+              </div>
+            )}
+            {isRated(match.participant_completeness) ? null : (
+              <div
+                className="rounded border border-lose-line px-1 py-0.5 text-center text-[10px] leading-tight text-lose"
+                title={NOT_RATED_BADGE_TITLE}
+              >
+                {NOT_RATED_BADGE}
+              </div>
+            )}
           </div>
         )}
 
@@ -368,30 +382,20 @@ function MatchDetailPanel({
           </div>
         )}
       </div>
-      {/* 왜 이 경기에서 점수가 덜 올랐는지 화면에서 바로 알 수 있게 한다 (정책 16).
-          단, **반영률은 공식 경기에서만** 보여 준다 (정책 5).
-          비공식 경기는 애초에 계산 대상이 아니라서 `70%`를 띄우면 그만큼 반영된 것처럼 읽힌다.
-          구성은 그대로 보여 주되 반영률 자리에는 미반영이라고 못 박는다. */}
+      {/* 구성(클랜원/용병)은 그대로 보여 준다. **반영률(100/70/40/0%)은 폐기됐다** (D-145) —
+          클랜원 수가 그 경기의 증감을 깎지 않기 때문에 "이 경기의 반영률" 이라는 값 자체가 없다. */}
       {match.league_clan.clan_weight === null ? null : (
         <div className="mt-2 flex flex-wrap gap-4 border-b border-divider pb-2 text-sm text-meta">
           {[match.league_clan, match.opponent].map((snapshot) => (
             <div key={snapshot.league_clan_id}>
               <span className="font-semibold text-ink">{snapshot.clan.name}</span>{' '}
               클랜원 {snapshot.members_confirmed ?? 0} / 용병 {snapshot.mercenaries_confirmed ?? 0}
-              {showsClanWeight(match.official) ? (
-                <>
-                  {' · '}
-                  클랜 래더 반영률{' '}
-                  <span className={snapshot.clan_weight === 1 ? '' : 'text-lose'}>
-                    {Math.round((snapshot.clan_weight ?? 0) * 100)}%
-                  </span>
-                </>
-              ) : null}
             </div>
           ))}
-          <div className={match.official ? undefined : 'text-lose'}>
-            {ladderNotice(match.official)}
+          <div className={isRated(match.participant_completeness) ? undefined : 'text-lose'}>
+            {ladderNotice(match.participant_completeness)}
           </div>
+          <div className="basis-full text-xs">{COMPOSITION_NOTICE}</div>
         </div>
       )}
       {detail ? (

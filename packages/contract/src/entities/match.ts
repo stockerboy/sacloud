@@ -97,7 +97,12 @@ export const MatchClanSnapshot = z.object({
   members_confirmed: Count.nullable(),
   /** 확인된 용병 수. 용병도 개인 기록은 100% 받는다 (D-082) */
   mercenaries_confirmed: Count.nullable(),
-  /** 이 클랜의 클랜 래더 반영률 (1 / 0.7 / 0.4 / 0). 재구성 경기가 아니면 `null` */
+  /**
+   * 이 클랜의 클랜 래더 반영률.
+   *
+   * **D-145 에서 폐기됐다 — 정상 5v5 면 항상 1 이다.** 필드는 과거 기록·계약 호환으로 남긴다.
+   * 클랜원 수는 증감을 깎지 않고 최근 20경기 평균이 구성 보정(상한 +50)으로만 반영된다.
+   */
   clan_weight: z.number().min(0).max(1).nullable(),
 })
 export type MatchClanSnapshot = z.infer<typeof MatchClanSnapshot>
