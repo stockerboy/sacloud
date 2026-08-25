@@ -105,10 +105,8 @@ describe('공식 판정·클랜 반영률은 그대로다', () => {
     })
     expect(result.official).toBe(true)
     expect(result.winnerSide?.members).toBe(3)
-    expect(result.winnerSide?.clanWeight).toBe(1)
     // 진 팀은 본클랜원 0명 → 클랜 래더에 반영되지 않는다
     expect(result.loserSide?.members).toBe(0)
-    expect(result.loserSide?.clanWeight).toBe(0)
   })
 
   it('양 팀 모두 본클랜원 3명 미만이면 보조 증거를 써도 비공식이다', () => {
@@ -122,8 +120,6 @@ describe('공식 판정·클랜 반영률은 그대로다', () => {
     })
     expect(result.recordable).toBe(true)
     expect(result.official).toBe(false)
-    expect(result.winnerSide?.clanWeight).toBe(0.7)
-    expect(result.loserSide?.clanWeight).toBe(0.4)
   })
 
   it('용병 판정도 그대로다 — 뛴 팀과 등록 클랜이 다르면 용병', () => {

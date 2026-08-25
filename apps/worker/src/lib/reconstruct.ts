@@ -451,8 +451,11 @@ export function evaluateReconstruction(input: ReconstructionInput): Reconstructi
   summary.participantCompleteness = eligibility.completeness
   summary.official = eligibility.official
   summary.sideEvidenceUsed = eligibility.sideEvidenceUsed
-  summary.winnerClanWeight = eligibility.winnerSide?.clanWeight ?? 0
-  summary.loserClanWeight = eligibility.loserSide?.clanWeight ?? 0
+  /* D-145 에서 클랜원 수 반영률(100/70/40/0)을 폐기했다.
+     정상 5v5 는 전부 100% 반영된다. 구성은 상한 있는 보정으로만 반영한다.
+     이 요약 필드는 화면·로그 호환을 위해 남기되 항상 1 이다. */
+  summary.winnerClanWeight = eligibility.winnerSide ? 1 : 0
+  summary.loserClanWeight = eligibility.loserSide ? 1 : 0
   summary.winnerMembersConfirmed = eligibility.winnerSide?.members ?? 0
   summary.loserMembersConfirmed = eligibility.loserSide?.members ?? 0
   summary.winnerMercenariesConfirmed = eligibility.winnerSide?.mercenaries ?? 0

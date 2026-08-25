@@ -24,7 +24,7 @@ const LEGACY_SEASON = { seasonType: 'legacy' }
 const RED = 'LC-RED'
 const BLUE = 'LC-BLUE'
 
-/** 3v3 공식 경기 하나 (양 팀 본클랜원 3명 → D-079 충족) */
+/** 정상 5v5 경기 하나 — D-145 에서 래더 대상은 5v5 다 */
 function match(): ConfirmedParticipant[] {
   const make = (
     id: string,
@@ -39,15 +39,19 @@ function match(): ConfirmedParticipant[] {
     death: 8,
     assist: 2,
     sources: ['player_match_list'],
-    ratingBefore: 1500,
+    ratingBefore: 3000,
   })
   return [
     make('R1', RED, 'win'),
     make('R2', RED, 'win'),
     make('R3', RED, 'win'),
+    make('R4', RED, 'win'),
+    make('R5', RED, 'win'),
     make('B1', BLUE, 'lose'),
     make('B2', BLUE, 'lose'),
     make('B3', BLUE, 'lose'),
+    make('B4', BLUE, 'lose'),
+    make('B5', BLUE, 'lose'),
   ]
 }
 

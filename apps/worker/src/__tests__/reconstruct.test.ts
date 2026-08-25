@@ -260,7 +260,7 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     expect(code).toBe('single_clan')
   })
 
-  it('한쪽만 본클랜원 3명이어도 공식 경기다 (5명 2명 — D-079)', () => {
+  it('한쪽만 본클랜원 3명이어도 공식 라벨이 붙는다 (5명 2명 — D-079)', () => {
     const base = fullMatch()
     const keep = new Set(['A0', 'A1', 'A2', 'A3', 'A4', 'B0', 'B1'])
     const result = evaluateReconstruction({
@@ -273,7 +273,8 @@ describe('완전성 판정 — 재구성하지 않는 경우', () => {
     expect(result.summary.official).toBe(true)
     expect(result.summary.participantCompleteness).toBe('5v2')
     // 상대는 본클랜원 2명이라 클랜 래더를 70%만 받는다
-    expect(result.summary.loserClanWeight).toBe(0.7)
+    // D-145: 클랜원 수 반영률(100/70/40/0) 폐기 — 정상 5v5 는 양쪽 100% 다
+    expect(result.summary.loserClanWeight).toBe(1)
   })
 
   it('양 팀 모두 본클랜원 3명 미만이면 비공식 경기다 (D-080)', () => {

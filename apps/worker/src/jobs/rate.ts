@@ -21,10 +21,16 @@ import { prisma } from '@sacloud/db'
 import { previewSeasonStart, startSeason } from '@sacloud/db/ops'
 import {
   CLAN_FORMULA_VERSION,
+  averageMembers,
+  clanDailyDecay,
+  compositionScore,
   constantsForSeason,
   DEFAULT_RATING_CONSTANTS,
+  dailyDecay,
+  displayScore,
   PERSONAL_FORMULA_VERSION,
   rateMatch,
+  roundHalfUp,
   seasonStartRating,
   type ConfirmedParticipant,
   type RatingConstants,
@@ -75,10 +81,6 @@ async function resolveSeason(
   })
 }
 
-/** 두 클랜 쌍을 순서에 무관하게 식별한다 */
-function pairKey(left: string, right: string): string {
-  return left < right ? `${left}|${right}` : `${right}|${left}`
-}
 
 /**
  * 리그 하나의 래더를 **처음부터 다시 계산한다**.
@@ -152,8 +154,8 @@ export async function runRate(
     where: {
       leagueId: league.id,
       origin: 'nexon',
-      // 비공식 경기는 공식 통계·래더에 반영하지 않는다 (D-080)
-      official: true,
+      /* **official 필터를 쓰지 않는다** (D-145).
+         "비공식이라 레이팅 0" 은 폐기됐다. 정상 5v5 인지는 `rateMatch` 가 판정한다. */
       ...(season
         ? {
             startAt: {
@@ -197,8 +199,75 @@ export async function runRate(
   const clanTotals = new Map<string, { win: number; lose: number }>()
   const clanRating = new Map<string, number>()
   const clanMatches = new Map<string, number>()
-  /** 같은 클랜 쌍 · 같은 승자로 최근에 몇 번 만났는가 */
-  const recentPairs: { key: string; winner: string; at: Date }[] = []
+
+  /* --- D-145 활동성·구성 상태 ---
+     활동 페널티는 **표시 점수에서만** 뺀다. 내부 Elo 는 건드리지 않는다 —
+     한 달 쉬었다고 실력이 사라진 것은 아니고, 사라진 것은 왕좌를 지킬 자격이다. */
+  const playerPenalty = new Map<string, number>()
+  const clanPenalty = new Map<string, number>()
+  const playerLastAt = new Map<string, Date>()
+  const clanLastAt = new Map<string, Date>()
+  /** 클랜별 최근 경기의 본클랜원 수 — 구성 보정의 입력 */
+  const clanRecentMembers = new Map<string, number[]>()
+
+  /** 마지막으로 감점 tick 을 돌린 시각 */
+  let decayCursor: Date | null = null
+
+  /**
+   * 미참여 감점을 **하루 단위로** `until` 까지 진행한다.
+   *
+   * 경기 재생과 시간순으로 섞어야 한다 — 나중에 한꺼번에 돌리면
+   * "고점을 찍고 쉬는 동안" 이 재현되지 않는다.
+   */
+  const advanceDecay = (until: Date): void => {
+    if (!decayCursor) {
+      decayCursor = until
+      return
+    }
+    const DAY = DAY_MS
+    let cursor = decayCursor.getTime()
+    const target = until.getTime()
+    // 하루씩. 아주 긴 공백에서도 폭주하지 않게 상한을 둔다
+    let guard = 0
+    while (cursor + DAY <= target && guard < 4000) {
+      cursor += DAY
+      guard += 1
+      const at = new Date(cursor)
+      for (const [playerId, internal] of playerRating) {
+        const games = playerMatches.get(playerId) ?? 0
+        if (games === 0) continue
+        const totals = playerTotals.get(playerId)
+        const played = (totals?.win ?? 0) + (totals?.lose ?? 0)
+        const winRate = played > 0 ? (totals?.win ?? 0) / played : 0
+        const last = playerLastAt.get(playerId)
+        if (!last) continue
+        const idleDays = (at.getTime() - last.getTime()) / DAY
+        const penalty = playerPenalty.get(playerId) ?? 0
+        const before = displayScore({ internalRating: internal, games, winRate, constants }).gated
+        const add = dailyDecay(before - penalty, idleDays, constants)
+        if (add <= 0) continue
+        // 감점만으로 기준점 아래로 내려가지 않는다
+        const capped = Math.max(0, Math.min(penalty + add, Math.max(0, before - constants.initialRating)))
+        playerPenalty.set(playerId, capped)
+      }
+      for (const [leagueClanId, internal] of clanRating) {
+        const last = clanLastAt.get(leagueClanId)
+        if (!last) continue
+        const idleDays = (at.getTime() - last.getTime()) / DAY
+        const add = clanDailyDecay(idleDays, constants)
+        if (add <= 0) continue
+        const penalty = clanPenalty.get(leagueClanId) ?? 0
+        const composition = compositionScore(
+          averageMembers(clanRecentMembers.get(leagueClanId) ?? [], constants),
+          constants,
+        )
+        const before = internal + composition
+        const capped = Math.max(0, Math.min(penalty + add, Math.max(0, before - constants.initialRating)))
+        clanPenalty.set(leagueClanId, capped)
+      }
+    }
+    decayCursor = until
+  }
 
   const ratingOf = (playerId: string): number =>
     playerRating.get(playerId) ?? constants.initialRating
@@ -243,13 +312,8 @@ export async function runRate(
       ratingBefore: ratingOf(stat.playerId),
     }))
 
-    const key = pairKey(match.redLeagueClanId, match.blueLeagueClanId)
-    const winnerClanId =
-      match.winnerSide === 'red' ? match.redLeagueClanId : match.blueLeagueClanId
-    const windowStart = match.startAt.getTime() - constants.repeatWindowDays * DAY_MS
-    const priorSameOutcome = recentPairs.filter(
-      (entry) => entry.key === key && entry.winner === winnerClanId && entry.at.getTime() >= windowStart,
-    ).length
+    /* 감점 tick 을 이 경기 시각까지 진행한 뒤 경기를 반영한다 — 시간순으로 섞는다 */
+    advanceDecay(match.startAt)
 
     const placementPlayerIds = participants
       .filter((participant) => (playerMatches.get(participant.playerId) ?? 0) < constants.placementMatches)
@@ -278,14 +342,14 @@ export async function runRate(
       },
       placementPlayerIds,
       placementClanIds,
-      priorSameOutcome,
       constants,
     })
 
-    if (!rated.eligibility.official) {
-      // 재구성 단계에서 인정된 경기만 저장돼 있으므로 보통 여기 오지 않는다.
-      // 그래도 방어한다 — 인정되지 않으면 **아무 점수도 만들지 않는다**
-      result.skipped[rated.eligibility.status] = (result.skipped[rated.eligibility.status] ?? 0) + 1
+    if (!rated.eligibility.ratingEligible) {
+      /* 정상 5v5 가 아니면 래더에 넣지 않는다 (D-145).
+         경기 기록 자체는 그대로 남는다 — 여기서는 래더만 다룬다. */
+      result.skipped[rated.eligibility.status === 'official' ? 'incomplete_squad' : rated.eligibility.status] =
+        (result.skipped[rated.eligibility.status === 'official' ? 'incomplete_squad' : rated.eligibility.status] ?? 0) + 1
       continue
     }
 
@@ -325,6 +389,13 @@ export async function runRate(
     for (const player of rated.players) {
       playerRating.set(player.playerId, player.ratingAfter)
       playerMatches.set(player.playerId, (playerMatches.get(player.playerId) ?? 0) + 1)
+      playerLastAt.set(player.playerId, match.startAt)
+      /* 경기로만 페널티가 회복된다 — **한 판으로 다 지워지지 않는다.**
+         "1판 던지고 초기화" 를 막는 유일한 장치다 */
+      playerPenalty.set(
+        player.playerId,
+        Math.max(0, (playerPenalty.get(player.playerId) ?? 0) - constants.decayRecoveryPerGame),
+      )
       pendingStats.push({
         matchId: match.id,
         playerId: player.playerId,
@@ -344,6 +415,16 @@ export async function runRate(
     clanRating.set(blue.leagueClanId, blue.ratingAfter)
     clanMatches.set(red.leagueClanId, (clanMatches.get(red.leagueClanId) ?? 0) + 1)
     clanMatches.set(blue.leagueClanId, (clanMatches.get(blue.leagueClanId) ?? 0) + 1)
+    for (const clan of [red, blue]) {
+      clanLastAt.set(clan.leagueClanId, match.startAt)
+      clanPenalty.set(
+        clan.leagueClanId,
+        Math.max(0, (clanPenalty.get(clan.leagueClanId) ?? 0) - constants.clanDecayRecoveryPerGame),
+      )
+      const recent = clanRecentMembers.get(clan.leagueClanId) ?? []
+      recent.push(clan.members)
+      clanRecentMembers.set(clan.leagueClanId, recent)
+    }
 
     pendingMatches.push({
       matchId: match.id,
@@ -355,8 +436,48 @@ export async function runRate(
       bluePlacement: blue.isPlacement,
     })
 
-    recentPairs.push({ key, winner: winnerClanId, at: match.startAt })
     result.matchesRated += 1
+  }
+
+  /* 마지막 경기 이후에도 남은 기간만큼 감점이 돌아야 한다 —
+     "고점 찍고 그대로 잠수" 가 바로 이 구간에서 일어난다.
+
+     끝점은 **현재 시각이 아니라** 시즌 종료일(없으면 마지막 경기 시각)이다.
+     `new Date()` 를 쓰면 돌릴 때마다 결과가 달라져 결정적 replay 가 깨진다. */
+  const lastMatchAt = matches[matches.length - 1]?.startAt ?? null
+  const decayUntil = season?.endedAt ?? lastMatchAt
+  if (decayUntil) advanceDecay(decayUntil)
+
+  /** 개인 최종 표시 점수 */
+  const playerDisplay = new Map<string, ReturnType<typeof displayScore>>()
+  for (const [playerId, internal] of playerRating) {
+    const totals = playerTotals.get(playerId) ?? { win: 0, lose: 0, kill: 0, death: 0, assist: 0 }
+    const played = totals.win + totals.lose
+    playerDisplay.set(
+      playerId,
+      displayScore({
+        internalRating: internal,
+        games: playerMatches.get(playerId) ?? 0,
+        winRate: played > 0 ? totals.win / played : 0,
+        activityPenalty: playerPenalty.get(playerId) ?? 0,
+        constants,
+      }),
+    )
+  }
+
+  /** 클랜 최종 점수 = 내부 Elo + 구성 보정 − 활동 페널티 */
+  const clanFinal = new Map<string, { display: number; composition: number; penalty: number }>()
+  for (const [leagueClanId, internal] of clanRating) {
+    const composition = compositionScore(
+      averageMembers(clanRecentMembers.get(leagueClanId) ?? [], constants),
+      constants,
+    )
+    const penalty = clanPenalty.get(leagueClanId) ?? 0
+    clanFinal.set(leagueClanId, {
+      display: roundHalfUp(internal + composition - penalty),
+      composition,
+      penalty,
+    })
   }
 
   if (ctx.dryRun) {
@@ -426,9 +547,14 @@ export async function runRate(
     const played = playerMatches.get(playerId) ?? 0
     const totals = playerTotals.get(playerId) ?? { win: 0, lose: 0, kill: 0, death: 0, assist: 0 }
     const clanId = rosterClanByPlayer.get(playerId) ?? null
+    const shown = playerDisplay.get(playerId)!
     const data = {
-      rating,
-      baseRating: rating,
+      // `rating` 은 **표시 점수**다 (D-145). 랭킹 정렬이 이 컬럼을 쓴다
+      rating: shown.display,
+      baseRating: shown.display,
+      internalRating: rating,
+      activityPenalty: playerPenalty.get(playerId) ?? 0,
+      lastRatedAt: playerLastAt.get(playerId) ?? null,
       placement: played < constants.placementMatches,
       placementPlayed: played,
       win: totals.win,
@@ -451,10 +577,15 @@ export async function runRate(
 
   for (const [leagueClanId, rating] of clanRating) {
     const played = clanMatches.get(leagueClanId) ?? 0
+    const final = clanFinal.get(leagueClanId)!
     await prisma.leagueClan.update({
       where: { id: leagueClanId },
       data: {
-        rating,
+        rating: final.display,
+        internalRating: rating,
+        compositionScore: final.composition,
+        activityPenalty: final.penalty,
+        lastRatedAt: clanLastAt.get(leagueClanId) ?? null,
         placement: played < constants.placementMatches,
         placementPlayed: played,
         win: clanTotals.get(leagueClanId)?.win ?? 0,
@@ -477,15 +608,16 @@ export async function runRate(
       leagueId: league.id,
       divisionKey: 'all',
       expectedScoreDivisor: constants.expectedScoreDivisor,
-      loseK: constants.personalKBase,
-      winMultiplier: constants.personalWinMultiplier,
+      loseK: constants.personalK,
+      // D-145 는 승리 배수를 쓰지 않는다 (제로섬). 기록만 남긴다
+      winMultiplier: 1,
       crossDivisionMultiplier: 1,
       formulaVersion: PERSONAL_FORMULA_VERSION,
     },
     update: {
       expectedScoreDivisor: constants.expectedScoreDivisor,
-      loseK: constants.personalKBase,
-      winMultiplier: constants.personalWinMultiplier,
+      loseK: constants.personalK,
+      winMultiplier: 1,
       crossDivisionMultiplier: 1,
     },
   })

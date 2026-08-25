@@ -29,7 +29,7 @@
  *     3명 이상 100% · 2명 70% · 1명 40% · 0명 0%
  *   개인 래더에는 이 차등을 적용하지 않는다 (D-082).
  */
-import { DEFAULT_RATING_CONSTANTS, type RatingConstants } from './constants.js'
+import type { RatingConstants } from './constants.js'
 
 /** 확인 근거 */
 export type EvidenceSource = 'player_match_list' | 'match_detail'
@@ -96,6 +96,11 @@ export interface SideEvidence {
   source: string
 }
 
+/** 공식 라벨이 붙는 최소 본클랜원 수 — **래더 지급 조건이 아니다** (D-145) */
+export const OFFICIAL_LABEL_MIN_MEMBERS = 3
+/** 정상 경기 한 팀 인원 */
+export const SQUAD_SIZE = 5
+
 export interface EligibilityInput {
   participants: readonly ConfirmedParticipant[]
   constants?: RatingConstants
@@ -112,16 +117,26 @@ export interface SideSummary {
   /** 실제 확인된 출전 인원 = members + mercenaries */
   confirmed: number
   outcome: 'win' | 'lose'
-  /** 이 팀의 클랜 래더 반영률 (0 ~ 1) */
-  clanWeight: number
 }
 
 export interface EligibilityResult {
   status: ReconstructionStatus
   /** 경기를 기록으로 남길 수 있는가 (양 팀을 식별했는가) */
   recordable: boolean
-  /** 공식 통계·래더에 반영하는가 */
+  /**
+   * 공식 라벨 (D-079 의 `본클랜원 3명` 판정).
+   *
+   * **D-145 부터 래더 지급 여부와 무관하다.** 통계·UI 라벨로만 남긴다.
+   * 래더 대상 판정은 `ratingEligible` 이다.
+   */
   official: boolean
+  /**
+   * 래더 대상인가 (D-145).
+   *
+   * 정상 5v5 + 실제 참가자 10명이면 대상이다.
+   * `official` 여부는 보지 않는다 — "비공식이라 레이팅 0" 은 폐기됐다.
+   */
+  ratingEligible: boolean
   winnerSide: SideSummary | null
   loserSide: SideSummary | null
   /**
@@ -137,23 +152,6 @@ export interface EligibilityResult {
   /** 팀 식별에 보조 증거를 썼는가. 썼으면 그 출처 (D-133). 넥슨으로 정해졌으면 null */
   sideEvidenceUsed: string | null
   reason: string
-}
-
-/**
- * 본클랜원 수 → 클랜 래더 반영률 (D-081).
- *
- * 자기 전력으로 얼마나 참가했는지를 클랜 점수에 반영한다.
- * 용병을 많이 쓸수록 클랜 래더 영향이 줄지만, **개인 래더에는 차등이 없다**.
- */
-export function clanWeightForMembers(
-  members: number,
-  constants: RatingConstants = DEFAULT_RATING_CONSTANTS,
-): number {
-  const weights = constants.clanWeightByMembers
-  if (members >= 3) return weights.full
-  if (members === 2) return weights.two
-  if (members === 1) return weights.one
-  return weights.none
 }
 
 /** 가장 많이 나온 값 (동률이면 null — 추측하지 않는다) */
@@ -172,11 +170,9 @@ function plurality(values: readonly (string | null | undefined)[]): string | nul
 /**
  * 경기를 기록할 수 있는가, 공식인가, 그리고 누가 어느 팀이었는가.
  *
- * 참가자가 모자라도 **경기를 버리지 않는다.** 공식이 아닐 뿐이다 (D-080).
+ * 참가자가 모자라도 **경기를 버리지 않는다.** 래더 대상이 아닐 뿐이다.
  */
 export function evaluateEligibility(input: EligibilityInput): EligibilityResult {
-  const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
-
   const observationParticipantCount = input.participants.filter((participant) =>
     participant.sources.includes('player_match_list'),
   ).length
@@ -201,6 +197,7 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
     sideEvidenceUsed: null as string | null,
     recordable: false,
     official: false,
+    ratingEligible: false,
   }
 
   if (winners.length === 0 || losers.length === 0) {
@@ -264,17 +261,22 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
       mercenaries: side.length - members,
       confirmed: side.length,
       outcome,
-      clanWeight: clanWeightForMembers(members, constants),
     }
   }
 
   const winnerSide = summarize(winnerClanId, 'win')
   const loserSide = summarize(loserClanId, 'lose')
 
-  // **OR 조건** — 한쪽만 본클랜원 3명을 채워도 공식 경기다 (D-079)
+  /* 공식 라벨은 그대로 계산한다 — **다만 래더 지급과는 무관하다** (D-145).
+     OR 조건: 한쪽만 본클랜원 3명을 채워도 공식 라벨이 붙는다 (D-079) */
   const official =
-    winnerSide.members >= constants.minConfirmedPerSide ||
-    loserSide.members >= constants.minConfirmedPerSide
+    winnerSide.members >= OFFICIAL_LABEL_MIN_MEMBERS ||
+    loserSide.members >= OFFICIAL_LABEL_MIN_MEMBERS
+
+  /* **래더 대상 판정** (D-145).
+     정상 5v5 + 실제 참가자 10명이면 대상이다. official 은 보지 않는다.
+     클1용4 vs 클1용4 도 정상적으로 점수를 받는다. */
+  const ratingEligible = winnerSide.confirmed === SQUAD_SIZE && loserSide.confirmed === SQUAD_SIZE
 
   return {
     observationParticipantCount,
@@ -282,6 +284,7 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
     status: official ? 'official' : 'reference',
     recordable: true,
     official,
+    ratingEligible,
     winnerSide,
     loserSide,
     completeness:
@@ -291,10 +294,9 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
     winnerLeagueClanId: winnerClanId,
     assigned,
     sideEvidenceUsed: nexonDecided ? null : (input.sideEvidence?.source ?? null),
-    reason: official
+    reason: ratingEligible
       ? ''
-      : `양 팀 모두 본클랜원이 ${constants.minConfirmedPerSide}명 미만이다 ` +
-        `(${winnerSide.members} / ${loserSide.members}). 비공식 경기으로만 남긴다`,
+      : `정상 5v5 가 아니다 (${winnerSide.confirmed} vs ${loserSide.confirmed}). 래더에 반영하지 않는다`,
   }
 }
 

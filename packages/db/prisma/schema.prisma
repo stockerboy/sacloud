@@ -402,8 +402,18 @@ model LeagueClan {
   leagueId String
   clanId   String
 
-  /// 통합 래더. 랭킹 정렬 인덱스가 필요해 유지 컬럼으로 둔다.
-  rating   Int    @default(1500)
+  /// **표시 점수** — 화면·랭킹 정렬에 쓰는 값 (D-145).
+  /// `internalRating` 에서 구성 보정을 더하고 활동 페널티를 뺀 정수다.
+  rating   Int    @default(3000)
+  /// **내부 Elo** — 실력 추정치 (D-145). 실수로 유지한다.
+  /// 경기마다 반올림하면 제로섬이 깨진다.
+  internalRating Float @default(3000)
+  /// 최근 N경기 평균 본클랜원 수에서 나온 구성 보정 (상한 +50)
+  compositionScore Float @default(0)
+  /// 미참여로 쌓인 활동 페널티. **내부 Elo 는 건드리지 않는다**
+  activityPenalty  Float @default(0)
+  /// 마지막 래더 대상 경기 시각 — 미참여 일수 계산에 쓴다
+  lastRatedAt      DateTime?
   /// 1 = 1부리그
   division Int    @default(1)
   win      Int    @default(0)
@@ -451,9 +461,18 @@ model LeaguePlayer {
   /// 통합 래더 = baseRating + 무기별 ratingDelta 합.
   /// 무기 분리가 통합 래더 값을 바꾸면 안 된다 (LADDER_IMPLEMENTATION_SPEC 6장).
   /// 정렬 인덱스 때문에 유지 컬럼으로 두되, 정합성 검사를 테스트로 고정한다.
-  rating      Int @default(1500)
+  /// **표시 점수** — 화면·랭킹 정렬에 쓰는 값 (D-145).
+  /// `3000 + (internalRating − 3000) × 신뢰도 × 3.5` 에 승률 자격선과 활동 페널티를 적용한 정수다.
+  rating      Int @default(3000)
   /// 배치고사 종료 시점의 시작 래더. 이후 증감은 무기별 delta에 누적된다.
-  baseRating  Int @default(1500)
+  baseRating  Int @default(3000)
+  /// **내부 Elo** — 실력 추정치 (D-145). 실수로 유지한다.
+  /// 표시 점수와 달리 신뢰도·자격선·미참여 감점의 영향을 받지 않는다.
+  internalRating Float @default(3000)
+  /// 미참여로 쌓인 활동 페널티. 표시 점수에서만 뺀다
+  activityPenalty Float @default(0)
+  /// 마지막 래더 대상 경기 시각
+  lastRatedAt     DateTime?
 
   win      Int @default(0)
   lose     Int @default(0)

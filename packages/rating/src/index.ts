@@ -11,29 +11,42 @@ export {
   DEFAULT_RATING_CONSTANTS,
   PERSONAL_FORMULA_VERSION,
   CLAN_FORMULA_VERSION,
+  FORMULA_VERSION,
+  CONFIDENCE_FULL_AT,
   roundHalfUp,
   constantsForSeason,
   DEFAULT_SEASON_POLICY,
+  type DecayTier,
   type RatingConstants,
   type SeasonPolicyFlags,
+  type SuppressionRange,
+  type WinRateBand,
 } from './constants.js'
 
 export {
   applyRating,
+  applyWinRateBands,
+  averageMembers,
+  clanDailyDecay,
   clanRatingUpdate,
+  compositionScore,
+  confidenceFor,
+  dailyDecay,
+  displayScore,
   expectedScore,
-  personalK,
   personalRatingUpdate,
-  repeatDecayFactor,
-  rewardCapFactor,
   seasonStartRating,
+  suppressionFactor,
+  type DisplayInput,
+  type DisplayResult,
   type Outcome,
   type RatingUpdateInput,
   type RatingUpdateResult,
 } from './formula.js'
 
 export {
-  clanWeightForMembers,
+  OFFICIAL_LABEL_MIN_MEMBERS,
+  SQUAD_SIZE,
   evaluateEligibility,
   lineupConfidence,
   type AssignedParticipant,
@@ -47,12 +60,6 @@ export {
   type ReconstructionStatus,
   type SideSummary,
 } from './eligibility.js'
-
-export {
-  effectiveOpponentRating,
-  lineupStrength,
-  type LineupStrength,
-} from './lineup.js'
 
 export {
   rateMatch,
