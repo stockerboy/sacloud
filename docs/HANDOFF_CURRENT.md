@@ -1,5 +1,48 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
+> ## ⬛ 가오픈 준비 완료 (2026-08-25 · D-147)
+>
+> **`docs/GO_LIVE_CHECKLIST.md` 를 보고 그대로 따라 하면 된다.**
+> 실제 배포·DNS 는 하지 않았다. Deploy 버튼 직전까지의 준비만 끝냈다.
+>
+> ### 결론
+> **가오픈 가능하다.** worker(수집기) 없이도 사이트는 정상이다 —
+> web 은 넥슨 API 를 호출하지 않고, 수집·replay 는 전부 worker CLI 다.
+> worker 가 없으면 **신규 경기 자동 수집만** 멈춘다.
+>
+> ### 이번에 고친 것
+> - **개발 클랜이 공개 리그 목록에 노출되던 버그** — 대표 클랜 미리보기가 `_count` 와
+>   다른 조건으로 조회돼 `active=false` 인 `real-` 클랜이 그대로 나왔다.
+>   데이터는 이미 올바르게 비활성이라 **삭제하지 않고 필터만** 맞췄다
+> - seed 가 로컬 DB 가 아니면 실행 거부 (운영에 가짜 데이터 유입 차단)
+> - `/api/uploads` 가 운영에서 503 으로 명확히 거절 (Vercel FS 는 읽기 전용)
+> - `db:check` 의 User 검사가 전체를 세면서 픽스처 수를 기대해 실제 가입 1명에 깨지던 것(42/43)
+> - `nexon db-snapshot` 신설 — DB 이전 검증용 기준선 (51모델 · 기간 · 무결성 6종)
+>
+> ### 검수 결과
+> - production build **성공** · CSP 에 `unsafe-eval` **없음** · 보안 헤더 6종 전부 존재
+> - production `next start` smoke 11개 route 전부 200
+> - auth: 미인증 `/api/me` 401 · `/api/admin/*` 403 · 쿠키 httpOnly/lax/secure(prod)
+> - `db:check` PASS · typecheck/lint/test/build PASS
+> - 랭킹·리그 목록에 `real-` / `E2E-` / mock 시드 노출 **0건**
+>
+> ### 삭제하지 않은 것 (의도)
+> - **E2E placeholder Player 7건** — 전부 실제 `MatchPlayerStat` 을 가진다.
+>   지우면 경기 참가자가 사라진다. 랭킹 노출은 0건이라 위험을 감수할 이유가 없다
+> - **`real-` 개발 클랜 4건** — 이미 `active=false`. 노출 경로만 막았다
+>
+> ### 미검수 (정직하게)
+> - **모바일 viewport** — 세션 중 Chrome 창이 깨져(viewport 0×0) 확인 못 함
+> - **fallback 마크 시각 확인** — 로직은 테스트로 고정, 눈으로는 미확인
+> 둘 다 가오픈 직후 실기기에서 확인해야 한다
+>
+> ### 다음
+> > `docs/GO_LIVE_CHECKLIST.md` 10장 STEP 1~5 순서대로.
+> > managed PostgreSQL 생성 → pg_dump 이전 → Vercel 배포 → vercel.app smoke → 도메인
+
+---
+
+
 > ## ⬛ UI A~D 마무리 (2026-08-25 · D-146)
 >
 > **레이팅은 건드리지 않았다.** `packages/rating` · formula · replay 결과 전부 그대로다.
