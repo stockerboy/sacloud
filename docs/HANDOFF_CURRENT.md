@@ -1,5 +1,68 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
+> ## ⬛ UI A~D 마무리 (2026-08-25 · D-146)
+>
+> **레이팅은 건드리지 않았다.** `packages/rating` · formula · replay 결과 전부 그대로다.
+>
+> | 항목 | 상태 |
+> |---|---|
+> | A. 클랜 상세 경기 펼침 = 완성형 상세표 | **완료** (원래 이미 공유 · 딜량 막대만 추가) |
+> | B. 미등록·외부 클랜 fallback 구름 마크 | **완료** |
+> | C. 스나이퍼/라이플 랭킹 분리 | **완료** (데이터 없으면 `집계 없음`) |
+> | D. 공식 1/2부 등록 클랜만 공식 소속 표시 | **완료** |
+>
+> ### 공식 등록 클랜 판정 (단일 기준)
+> `Clan.sourceClanId != null` — 3rd.supply 공식 레지스트리에서 이관된 **44개**뿐이다.
+> 이름·slug 문자열로 추측하지 않는다. 개발용 `real-` 접두 클랜 4개도 공식이 아니다.
+> 판정은 **서버**가 하고 (`isOfficialLeagueClan`), 클라이언트는 판단하지 않는다.
+>
+> ### 현재 / 과거 분리
+> - **현재 화면**(프로필·랭킹·클랜원): 현재 소속 기준 — `toClanSummary`
+> - **과거 경기**(기록실·매치 상세): **경기 당시 소속** 기준 — `matchTimeClanOf` +
+>   `officialLeagueClanIds(leagueId)` 로 그 당시 등록 클랜이었는지 판정
+> - 실데이터: match_time_clan 1,058건 중 공식 **779** / 외부 **279** (두 경로 모두 사용됨)
+> - 현재 소속 기준: 공식 등록 **89명** / 미등록·무소속 **83명**
+>
+> ### 구현
+> - `packages/ui/src/common/FallbackClanMark.tsx` — 인라인 SVG (검은 원 + 하늘색 구름).
+>   외부 자산 아님. `ClanMark` 가 **마크가 비면 자동으로** 이걸 그린다 → 모든 화면에 일괄 적용
+> - 서버가 미등록 클랜의 마크를 **비워서** 내려보낸다 (이름·slug 는 보존)
+> - 계약 additive: `ClanSummary.is_official_clan` · `MatchTimeClan.is_official_clan` ·
+>   `LeaguePlayer.sniper_rank/rifle_rank/...`
+> - 무기 랭킹: `playerWeaponRankOf` (`LeaguePlayerWeaponStat.ratingDelta` 기준)
+>
+> ### 이번에 잡은 버그 2건
+> 1. **무기 랭킹 "0명중 1위"** — 배치고사 선수를 모집단에서 빼면서 순위는 매기고 있었다.
+>    본인이 모집단에 없으면 순위도 없다
+> 2. **래더 미반영 경기의 클랜 점수가 "0점"** 으로 보였다 — 값이 없는 것(null)이므로 `알수없음`
+>
+> ### 검증 한계 (정직하게)
+> - 기능 검증은 끝났다 — `get_page_text` 로 실제 렌더 확인 + API 응답 + 테스트 802건
+>   확인한 것: `스나이퍼 집계 없음` / `라이플 집계 없음` / `소속 -` /
+>   `비공식 경기`·`래더 미반영` 배지 **분리** / 5v5 는 래더 반영, 그 외 미반영
+> - **fallback 마크의 시각 확인은 못 했다.** 세션 중 Chrome 창이 깨져
+>   (viewport 0x0 · screenshot CDP 오류) 캡처가 불가능해졌다. 자산 자체는 사용자에게 전달함
+> - 모바일 viewport 확인도 같은 이유로 못 했다
+>
+> ### 내가 직접 확인할 route
+> 1. 공식 등록 클랜 선수 — `/league/supply/player/OBS-f234f1743622c0d10da68e20` (하연수담당일진 · Iatency-)
+> 2. 외부·미등록 선수 — `/league/supply/player/OBS-dc37dbc824867181603a2e4c` (은호리움 · 소속 없음)
+> 3. 이적 이력 선수 — **없다** (Beta 기간이 짧아 로스터 변경이 아직 없다)
+> 4. 클랜 상세에서 펼칠 경기 — `/league/supply/clan/ddorr` → `260823233540000001` (5v5 · 래더 −29)
+> 5. 무기 기록 있는 선수 — `/league/supply/player/NX-1935c05a1505ed2e540cd2efb797c560` (중사형 · 라이플 3판)
+>    → 배치고사 중이라 `집계 없음` 으로 나온다. 정상이다
+>
+> ### 남은 TODO
+> - fallback 마크 **시각 검수** (브라우저 복구 후)
+> - 모바일 viewport 확인
+> - `LeaguePlayerWeaponStat` 이 **stale** 하다 — 9건 전부 `ratingDelta 0` · `placement true`.
+>   D-145 replay 가 무기 통계를 다시 만들지 않는다 (넥슨이 무기를 안 줘서 새로 쌓일 것도 없다).
+>   무기 데이터가 생기면 그때 재집계 경로가 필요하다
+> - 사전 정리: E2E placeholder Player 7건 · `real-` 접두 개발 클랜 4건
+
+---
+
+
 > ## ⬛ D-145 운영 이식 · Beta replay **완료** (2026-08-25)
 >
 > **레이팅 설계 논의는 여기서 끝난다.** 사양은 `docs/RATING_FINAL_SPEC.md` (D-145 FINAL LOCK).

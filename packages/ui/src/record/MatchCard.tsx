@@ -135,7 +135,15 @@ function ClanSide({
         </Link>
         <div className="text-sm text-meta">
           {snapshot.division}부리그{' '}
-          {snapshot.placement ? '배치고사' : `${formatCount(snapshot.rating ?? 0)}점`}
+          {snapshot.placement ? (
+            '배치고사'
+          ) : snapshot.rating === null ? (
+            /* 래더에 반영되지 않은 경기는 그 시점 클랜 점수 자체가 없다 (D-146).
+               `0점` 으로 그리면 클랜 점수가 0이었던 것처럼 읽힌다. */
+            <span className="text-unknown">알수없음</span>
+          ) : (
+            `${formatCount(snapshot.rating)}점`
+          )}
         </div>
       </div>
     </div>
