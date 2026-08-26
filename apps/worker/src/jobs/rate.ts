@@ -117,6 +117,30 @@ async function resolveSeason(
 
 
 /**
+ * replay 가 읽는 경기 한 건.
+ *
+ * `prisma.match.findMany` 의 select 와 **모양이 같아야 한다.** DB 에서 온 경기와
+ * 주입한 경기를 똑같이 다루기 위한 타입이다 (D-150).
+ */
+export interface RateMatchRow {
+  id: string
+  startAt: Date
+  official: boolean
+  redLeagueClanId: string
+  blueLeagueClanId: string
+  winnerSide: string
+  stats: {
+    playerId: string
+    side: string
+    kill: number | null
+    death: number | null
+    assist: number | null
+    rosterLeagueClanId: string | null
+    participantRole: string
+  }[]
+}
+
+/**
  * 리그 하나의 래더를 **처음부터 다시 계산한다**.
  *
  * `dryRun`이면 아무것도 쓰지 않고 계산 결과만 돌려준다.
@@ -129,6 +153,17 @@ export async function runRate(
     seasonNumber?: number | null
     allowMockLeague?: boolean
     constants?: RatingConstants
+    /**
+     * DB 에 아직 없는 경기를 **계산에만** 끼워 넣는다 (D-150 감사용).
+     *
+     * 3rd.supply 스냅샷의 미수입 경기를 넣었을 때 래더가 어떻게 되는지 미리 보기 위한
+     * 주입 지점이다. 여기 넣은 경기는 DB 에 저장되지 않는다 —
+     * `ctx.dryRun` 과 **함께** 써야 하고, 아니면 거부한다.
+     *
+     * 공식을 복제한 별도 시뮬레이터를 만들지 않으려고 이 방법을 쓴다.
+     * 복제하면 언젠가 갈라지고, 갈라진 예측은 예측이 아니다.
+     */
+    extraMatches?: RateMatchRow[]
   },
 ): Promise<RateRunResult> {
   const baseConstants = input.constants ?? DEFAULT_RATING_CONSTANTS
@@ -186,7 +221,7 @@ export async function runRate(
   }
   result.season = season?.number ?? null
 
-  const matches = await prisma.match.findMany({
+  const stored = await prisma.match.findMany({
     where: {
       leagueId: league.id,
       origin: 'nexon',
@@ -222,6 +257,18 @@ export async function runRate(
       },
     },
   })
+
+  if (input.extraMatches && input.extraMatches.length > 0 && !ctx.dryRun) {
+    /* 안전장치 — 주입한 경기가 DB 에 새겨지는 일은 없어야 한다 */
+    throw new Error('extraMatches 는 dry-run 에서만 쓸 수 있다')
+  }
+
+  /* 시간순은 replay 의 전제다. 끼워 넣은 뒤 **다시 정렬한다** —
+     DB 정렬만 믿고 뒤에 붙이면 과거 경기가 미래 뒤에 놓여 결과가 달라진다 */
+  const matches = [...stored, ...(input.extraMatches ?? [])].sort(
+    (left, right) =>
+      left.startAt.getTime() - right.startAt.getTime() || (left.id < right.id ? -1 : 1),
+  )
   result.matchesConsidered = matches.length
 
   if (matches.length === 0) {

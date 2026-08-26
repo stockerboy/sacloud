@@ -57,6 +57,11 @@ import {
   linkSupplyPlayerIds,
   completeLineupsFromSupply,
 } from '@sacloud/db/ops'
+import {
+  compositionCurveSample,
+  projectComposition,
+  runSnapshotAudit,
+} from './jobs/snapshotAudit.js'
 import { rebuildWeaponStats } from './jobs/weaponRebuild.js'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
@@ -923,6 +928,316 @@ async function main(): Promise<number> {
       }
 
       if (!confirm) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
+      return 0
+    }
+
+    case 'snapshot-audit': {
+      /* D-150 — 3rd.supply 미수입 경기를 넣어도 되는지 **수치로** 판정한다.
+         이 명령에는 `--confirm` 이 없다. 쓰기 경로 자체가 없다. */
+      const file =
+        stringFlag(args, 'file') ??
+        join(process.cwd(), '..', '..', 'packages/db/data/supply-official-matches.json')
+      const leagueSlug = stringFlag(args, 'league') ?? 'supply'
+      const audit = await runSnapshotAudit(
+        { ...ctx, dryRun: true },
+        { leagueSlug, file, limit: numberFlag(args, 'limit') ?? undefined },
+      )
+
+      log('')
+      log('[1] 집합')
+      table([
+        {
+          '스냅샷 총': audit.set.snapshotTotal,
+          '중복 id': audit.set.duplicateIds,
+          '형식 오류 id': audit.set.malformedIds,
+          'DB 에 있음': audit.set.existsInDb,
+          '미수입': audit.set.missing,
+        },
+      ])
+
+      log('')
+      log('[2] 미수입 경기 원본 품질')
+      const c = audit.coverage
+      table([
+        {
+          경기: c.matches,
+          'start_at': c.withStartAt,
+          맵: c.withMap,
+          '플레이시간': c.withPlayTime,
+          '종료시각': c.withEndAt,
+          MVP: c.withMvp,
+          '승패': c.withResult,
+        },
+      ])
+      table([
+        {
+          '정확히 10명': c.roster.exactly10,
+          '9명 이하': c.roster.under10,
+          '11명 이상': c.roster.over10,
+          '5대5': c.teams.balanced5v5,
+          '팀 불균형': c.teams.unbalanced,
+          '경기내 닉네임 중복': c.duplicateNicknameInMatch,
+          '경기내 참가자 중복': c.duplicatePlayerIdInMatch,
+        },
+      ])
+      table([
+        {
+          '참가 행': c.participantRows,
+          'player id 없음': c.rowsWithoutPlayerId,
+          '닉네임 없음': c.rowsWithoutNickname,
+          '클랜 있음': c.rowsWithClan,
+          '클랜 없음': c.rowsWithoutClan,
+        },
+      ])
+      table([
+        {
+          '라이플(0)': c.weapon.rifle,
+          '스나이퍼(1)': c.weapon.sniper,
+          '무기 미상': c.weapon.unknown,
+          '그 외 값': JSON.stringify(c.weapon.other),
+        },
+      ])
+
+      log('')
+      log('[3] 기존 136경기와 원본 구조 비교 (같은 스냅샷 기준)')
+      const e = audit.coverageExisting
+      table([
+        { 구분: '미수입', 경기: c.matches, '10명': c.roster.exactly10, '승패': c.withResult, '무기 미상': c.weapon.unknown },
+        { 구분: '기존', 경기: e.matches, '10명': e.roster.exactly10, '승패': e.withResult, '무기 미상': e.weapon.unknown },
+      ])
+
+      log('')
+      log('[4] 넥슨 저장 증거 대조 (새 API 호출 없음)')
+      table([
+        {
+          'A 스냅샷+넥슨 10명↑': audit.nexon.aSnapshotAndNexonFull,
+          'B 스냅샷+넥슨 일부': audit.nexon.bSnapshotAndNexonPartial,
+          'C 스냅샷만': audit.nexon.cSnapshotOnly,
+          'D 넥슨만': audit.nexon.dNexonOnly,
+          '관측만': audit.nexon.observationOnly,
+        },
+      ])
+
+      log('')
+      log('[5] 투영 (DB 에 한 줄도 쓰지 않았다)')
+      const p = audit.projection
+      table([
+        {
+          '살펴본 경기': p.considered,
+          '투영된 경기': p.projected.length,
+          '충돌 제외': p.conflicts.length,
+          '참가 행': p.participantRows,
+          '재사용 Player': p.reusedPlayers.size,
+          '새 Player': p.newPlayers.size,
+        },
+      ])
+      if (Object.keys(p.skipped).length > 0) table([p.skipped])
+      table([p.identity as unknown as Record<string, number>])
+      table([
+        {
+          '공식리그 소속': p.affiliation.officialLeague,
+          '외부 클랜': p.affiliation.external,
+          '무소속': p.affiliation.none,
+        },
+      ])
+      table([
+        {
+          '무기+KDA 있음': p.stats.weaponAndKdaKnown,
+          '무기만': p.stats.weaponOnly,
+          'KDA만': p.stats.kdaOnly,
+          '둘 다 없음': p.stats.neither,
+        },
+      ])
+
+      const conflictKinds = new Map<string, number>()
+      for (const row of p.conflicts) {
+        conflictKinds.set(row.reason, (conflictKinds.get(row.reason) ?? 0) + 1)
+      }
+      if (conflictKinds.size > 0) {
+        log('')
+        log('[6] 충돌 사유별')
+        for (const [reason, count] of [...conflictKinds].sort((a, b) => b[1] - a[1])) {
+          log(`  ${count.toString().padStart(4)}건  ${reason}`)
+        }
+        for (const row of p.conflicts.slice(0, 10)) {
+          log(`    예) ${row.matchId} — ${row.reason}${row.detail ? ` (${row.detail})` : ''}`)
+        }
+      }
+
+      log('')
+      log('[7] 래더 하네스 검증')
+      table([
+        {
+          '기준 dry-run 경기': audit.baseline.matchesConsidered,
+          '기준 반영': audit.baseline.matchesRated,
+          'DB 와 대조': audit.baselineMatchesDb.compared,
+          '불일치': audit.baselineMatchesDb.mismatched,
+          판정: audit.baselineMatchesDb.mismatched === 0 ? 'PASS' : 'FAIL',
+        },
+      ])
+      for (const row of audit.baselineMatchesDb.sample) warn(`  ${row}`)
+
+      log('')
+      log('[8] 래더 투영 결과')
+      const bands = [4000, 4100, 4300, 4500, 4700, 4800, 4900, 5000]
+      const countAbove = (rows: { display: number }[], at: number) =>
+        rows.filter((row) => row.display >= at).length
+      table([
+        {
+          구분: '현재',
+          '대상 경기': audit.baseline.matchesConsidered,
+          '반영 경기': audit.baseline.matchesRated,
+          선수: audit.baseline.players.length,
+        },
+        {
+          구분: '투영',
+          '대상 경기': audit.projected.matchesConsidered,
+          '반영 경기': audit.projected.matchesRated,
+          선수: audit.projected.players.length,
+        },
+      ])
+      table([
+        {
+          구분: '현재',
+          ...Object.fromEntries(bands.map((at) => [`${at}+`, countAbove(audit.baseline.players, at)])),
+        },
+        {
+          구분: '투영',
+          ...Object.fromEntries(bands.map((at) => [`${at}+`, countAbove(audit.projected.players, at)])),
+        },
+      ])
+
+      log('  래더에서 빠진 사유 (투영 기준)')
+      for (const [code, count] of Object.entries(audit.projected.skipped).sort(
+        (a, b) => b[1] - a[1],
+      )) {
+        log(`    ${count.toString().padStart(4)}건  ${code}`)
+      }
+
+      log('')
+      log('[9] 투영 개인 상위 20')
+      for (const [index, row] of audit.projected.players.slice(0, 20).entries()) {
+        log(
+          `  ${(index + 1).toString().padStart(2)}. ${Math.round(row.display).toString().padStart(5)} ` +
+            `(내부 ${Math.round(row.internal)}) ${row.games}전 ${row.win}승${row.lose}패 ` +
+            `${row.winRate.toFixed(1)}% conf ${(row.confidence * 100).toFixed(0)}% ` +
+            `상대평균 ${Math.round(row.opponentAvg)} 강팀 ${row.strongWins}/${row.strongGames} ` +
+            `패널티 ${Math.round(row.penalty)}  ${row.playerId}`,
+        )
+      }
+
+      log('')
+      log('[10] 판수 분포')
+      const games = audit.projected.players.map((row) => row.games).sort((a, b) => a - b)
+      const median = games.length === 0 ? 0 : (games[Math.floor(games.length / 2)] ?? 0)
+      const mean = games.length === 0 ? 0 : games.reduce((a, b) => a + b, 0) / games.length
+      table([
+        {
+          '평균 판수': mean.toFixed(1),
+          중앙값: median,
+          '30판+': games.filter((n) => n >= 30).length,
+          '60판+': games.filter((n) => n >= 60).length,
+          '90판+': games.filter((n) => n >= 90).length,
+          '120판+': games.filter((n) => n >= 120).length,
+          '150판+(conf 100%)': games.filter((n) => n >= 150).length,
+        },
+      ])
+      const confs = audit.projected.players.map((row) => row.confidence)
+      table([
+        {
+          'confidence 평균': confs.length === 0 ? '0' : (confs.reduce((a, b) => a + b, 0) / confs.length).toFixed(3),
+          'confidence 100%': confs.filter((v) => v >= 1).length,
+          '상위10 평균 판수':
+            audit.projected.players.slice(0, 10).reduce((a, b) => a + b.games, 0) / 10,
+        },
+      ])
+
+      log('')
+      log('[11] 클랜 상위 10')
+      log(`  구성 보정 곡선: ${compositionCurveSample()}`)
+      const composition = await projectComposition(leagueSlug, audit.projected)
+      for (const [index, row] of audit.projected.clans.slice(0, 10).entries()) {
+        log(
+          `  ${(index + 1).toString().padStart(2)}. ${Math.round(row.display).toString().padStart(5)} ` +
+            `(내부 ${Math.round(row.internal)} 구성 +${row.composition.toFixed(1)} 패널티 ${Math.round(row.penalty)}) ` +
+            `${row.games}전 ${row.win}승${row.lose}패 평균클랜원 ${row.avgMembers.toFixed(2)}  ${row.leagueClanId}`,
+        )
+      }
+      log('  구성 보정 변화 (현재 → 투영)')
+      for (const row of composition
+        .slice()
+        .sort((a, b) => b.nextScore - a.nextScore)
+        .slice(0, 10)) {
+        log(
+          `    ${row.name.padEnd(16)} +${row.currentScore.toFixed(1)} (${row.currentMembers.toFixed(2)}명)` +
+            ` → +${row.nextScore.toFixed(1)} (${row.nextMembers.toFixed(2)}명)`,
+        )
+      }
+
+      log('')
+      log('[12] 무기별 집계 투영')
+      {
+        /* 투영 참가 행을 선수·무기로 묶어 본다. 실제 rebuild 와 같은 규칙 —
+           K/D 를 아는 경기만 knownStatGames 에 들어간다 (D-149) */
+        const sniper = new Map<string, number>()
+        const rifle = new Map<string, number>()
+        let known = 0
+        for (const match of p.projected) {
+          for (const row of match.participants) {
+            if (row.weapon === null) continue
+            const bucket = row.weapon === 1 ? sniper : rifle
+            bucket.set(row.playerId, (bucket.get(row.playerId) ?? 0) + 1)
+            if (row.kill !== null) known += 1
+          }
+        }
+        const both = [...sniper.keys()].filter((id) => rifle.has(id)).length
+        const current = await prisma.leaguePlayerWeaponStat.findMany({
+          where: { leaguePlayer: { league: { slug: leagueSlug } } },
+          select: { weapon: true, leaguePlayerId: true },
+        })
+        const curSniper = new Set(current.filter((r) => r.weapon === 1).map((r) => r.leaguePlayerId))
+        const curRifle = new Set(current.filter((r) => r.weapon === 0).map((r) => r.leaguePlayerId))
+        table([
+          {
+            구분: '현재',
+            스나: curSniper.size,
+            라플: curRifle.size,
+            '둘 다': [...curSniper].filter((id) => curRifle.has(id)).length,
+          },
+          {
+            구분: '투영 추가분',
+            스나: sniper.size,
+            라플: rifle.size,
+            '둘 다': both,
+          },
+        ])
+        log(`  투영 참가 행 ${p.participantRows} · 무기 있음 ${p.participantRows} · KDA 아는 행 ${known}`)
+      }
+
+      log('')
+      log('[13] 기록실 페이지')
+      {
+        /* 목록 페이지 크기는 계약 상수와 같다 (`PAGE_SIZE.DEFAULT` = 20).
+           worker 는 contract 를 의존하지 않으므로 값만 적고 출처를 남긴다 */
+        const perPage = 20
+        log(
+          `  목록 ${perPage}건/페이지 — 신규 경기 ${p.projected.length}건 ≈ ` +
+            `${Math.ceil(p.projected.length / perPage)}페이지 (리그 전체 기준)`,
+        )
+      }
+
+      log('')
+      log('[14] 안전 검사')
+      table([
+        {
+          결정적: audit.deterministic ? 'PASS' : 'FAIL',
+          'NaN/Inf': audit.projected.nonFinite === 0 ? 'PASS' : 'FAIL',
+          '승률<48% 4000+': audit.projected.underMinWinRateAt4000 === 0 ? 'PASS' : 'FAIL',
+          'DB 쓰기': '0건 (dry-run 전용)',
+        },
+      ])
+      log('')
+      log('감사 전용이다. 이 명령에는 --confirm 이 없다.')
       return 0
     }
 
