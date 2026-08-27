@@ -83,7 +83,17 @@ export function PlayerHeader({
   onRefresh,
 }: {
   name: string
-  clan: { slug: string; name: string; mark: ClanMarkSource } | null
+  /**
+   * 소속 클랜. **무소속이면 `null` 을 그대로 넘긴다** — 마크를 통째로 지우지 않는다 (D-146).
+   * `is_official_clan` 을 함께 받아야 등록 클랜만 실제 마크를 쓴다는 판정이 성립한다
+   * (빠지면 `ClanMark` 가 전부 fallback 으로 떨어뜨린다).
+   */
+  clan: {
+    slug: string
+    name: string
+    mark: ClanMarkSource
+    is_official_clan?: boolean | null
+  } | null
   renewedAt: string | null
   refreshState: RefreshState
   onRefresh: () => void
@@ -92,7 +102,8 @@ export function PlayerHeader({
     <div className="mt-5 bg-player-header py-10 text-white">
       <div className="pc-container">
         <div className="flex items-center">
-          {clan ? <ClanMark mark={clan.mark} size="max" alt={clan.name} /> : null}
+          {/* 무소속이어도 자리를 비우지 않는다 — fallback 마크가 그려진다 (D-146) */}
+          <ClanMark clan={clan} size="max" alt={clan?.name ?? ''} />
           <div className="ml-5 text-4xl">{name}</div>
           <RefreshButton
             label="정보갱신"
@@ -106,7 +117,7 @@ export function PlayerHeader({
             소속:
             {clan ? (
               <Link href={`/clan/${clan.slug}`} className="ml-5 inline-flex items-center">
-                <ClanMark mark={clan.mark} size="sm" className="mr-2" alt={clan.name} />
+                <ClanMark clan={clan} size="sm" className="mr-2" alt={clan.name} />
                 {clan.name}
               </Link>
             ) : (

@@ -102,8 +102,10 @@ export function RecentMatchSummary({
                     href={`/league/${leagueSlug}/clan/${entry.clan.slug}`}
                     className="inline-flex items-center"
                   >
+                    {/* 등록 클랜 판정은 마크 URL 이 아니라 클랜 객체가 한다 (D-146).
+                        미등록 상대 클랜도 자리를 비우지 않고 fallback 마크를 그린다 */}
                     <ClanMark
-                      mark={entry.clan.mark}
+                      clan={entry.clan}
                       size="xs"
                       className="mr-1"
                       alt={entry.clan.name}

@@ -72,6 +72,7 @@ import {
   syncLeaguePriority,
 } from './jobs/roster.js'
 import { readPollingConfig } from './lib/pollingPolicy.js'
+import { runSupplyMirror } from './jobs/supplyMirror.js'
 
 interface Args {
   command: string
@@ -928,6 +929,38 @@ async function main(): Promise<number> {
       }
 
       if (!confirm) log('미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
+      return 0
+    }
+
+    case 'supply-mirror': {
+      /* D-153 — 3rd.supply 시즌7 미러링 수집.
+         커서를 끝까지 따라가고, 경기마다 상세를 받아 K/D/A·딜량·헤드샷·
+         경기 당시 선수별 래더까지 가져온다. 받은 응답은 **그대로** 파일에 쌓는다.
+         중단 후 재개 가능하고, 다시 돌리면 새 경기만 받는다(증분 동기화). */
+      const leagueSlug = stringFlag(args, 'league') ?? 'supply'
+      /* 리그마다 **파일을 따로** 쓴다. 한 파일에 섞으면 어느 리그 경기인지
+         나중에 가릴 수 없고, 체크포인트도 서로를 덮어쓴다 */
+      const file =
+        stringFlag(args, 'file') ??
+        join(process.cwd(), '..', '..', `packages/db/data/supply-mirror-${leagueSlug}.json`)
+      const result = await runSupplyMirror(ctx, {
+        leagueSlug,
+        leagueId: numberFlag(args, 'league-id') ?? undefined,
+        floor: stringFlag(args, 'floor') ?? '2026-06-01',
+        file,
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          클랜: result.clans,
+          '경기 목록': result.matches,
+          '경기 상세': result.details,
+          '이번에 추가': `목록 +${result.newMatches} · 상세 +${result.newDetails}`,
+          실패: result.failures,
+        },
+      ])
+      if (result.range) log(`  기간 ${result.range[0]} ~ ${result.range[1]}`)
+      log(`  파일 ${result.file}`)
       return 0
     }
 
