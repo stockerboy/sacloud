@@ -54,3 +54,6 @@ apps/web/generated/
 # 언제든 `nexon supply-mirror` 로 다시 만든다.
 packages/db/data/supply-mirror-*.json
 packages/db/data/supply-season7.json
+
+# 성능 측정용 임시 빌드 산출물
+apps/web/.next-perf/

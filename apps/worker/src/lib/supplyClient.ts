@@ -33,6 +33,20 @@ const DELAY_MS = Number(process.env['SUPPLY_DELAY_MS'] ?? 130)
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/**
+ * 같은 경고를 도배하지 않는다.
+ *
+ * 동시 10개가 한꺼번에 끊기면 같은 줄이 10번 찍힌다. 로그가 그걸로 덮이면
+ * 정작 봐야 할 것이 안 보인다. 10초에 한 번만 남긴다.
+ */
+let lastWarnAt = 0
+function warnOnce(message: string): void {
+  const now = Date.now()
+  if (now - lastWarnAt < 10_000) return
+  lastWarnAt = now
+  console.warn(`[supply] ${message}`)
+}
+
 export interface SupplyCursor {
   next: string | null
   prev: string | null
@@ -61,7 +75,21 @@ export class SupplyApiError extends Error {
  * 호출한 쪽이 기록할 수 있어야 한다 (`CLAUDE.md` 3-A 4번).
  */
 export async function supplyGet<T>(path: string, tries = 0): Promise<SupplyEnvelope<T>> {
-  const res = await fetch(`${BASE}${path}`, { headers: APP_HEADERS })
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, { headers: APP_HEADERS })
+  } catch (e) {
+    /**
+     * 네트워크가 끊기는 것은 **정상이다.** 수만 건을 받는 동안 한 번쯤은 끊긴다.
+     * 예전에는 여기서 그대로 던져서 `fetch failed` 한 줄로 잡 전체가 죽었다 —
+     * 몇 시간 받은 것이 그 한 번 때문에 멈췄다. 물러섰다가 다시 시도한다.
+     */
+    if (tries >= 5) throw e
+    const wait = Math.min(30_000, 1000 * 2 ** tries)
+    warnOnce(`네트워크 오류 — ${wait}ms 쉬고 다시 (${path})`)
+    await sleep(wait)
+    return supplyGet<T>(path, tries + 1)
+  }
 
   if (res.status === 429 || res.status >= 500) {
     if (tries >= 5) throw new SupplyApiError(res.status, path)
@@ -93,7 +121,7 @@ export async function supplyGet<T>(path: string, tries = 0): Promise<SupplyEnvel
  *
  * `SUPPLY_CONCURRENCY` 로 조절한다. **올리기 전에 429 가 나는지 먼저 본다.**
  */
-export const SUPPLY_CONCURRENCY = Number(process.env['SUPPLY_CONCURRENCY'] ?? 6)
+export const SUPPLY_CONCURRENCY = Number(process.env['SUPPLY_CONCURRENCY'] ?? 10)
 
 export async function supplyMapLimited<T, R>(
   items: readonly T[],

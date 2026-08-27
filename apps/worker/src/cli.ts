@@ -73,6 +73,7 @@ import {
 } from './jobs/roster.js'
 import { readPollingConfig } from './lib/pollingPolicy.js'
 import { runSupplyMirror } from './jobs/supplyMirror.js'
+import { runSupplyImport } from './jobs/supplyImport.js'
 
 interface Args {
   command: string
@@ -163,6 +164,11 @@ function usage(): void {
   supply-players [--file <json>] [--league <slug>] [--cleanup] [--confirm]
               넥슨 참가자 ↔ 3rd.supply 선수 id 연결 (**같은 경기 · 닉네임 정확 일치** · D-132)
               --cleanup 은 기록이 하나도 없는 중복 행만 정리한다
+  supply-import [--league <slug>] [--file <json>] [--limit N] [--confirm]
+              [--update-source] [--league-name <이름>]
+              3rd.supply 미러링 수집 파일 → 우리 DB (D-153). **네트워크를 쓰지 않는다**
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 이미 있는 경기는 건너뛴다.
+              --update-source 는 있는 경기의 **비어 있는** 원본점수 칸만 채운다
   explain-matches [--league <slug>] [--match-id <ID>[,<ID>]] [--limit N]
               재구성된 경기를 사람이 읽을 수 있게 풀어 쓴다 (읽기 전용)
   affiliation [--league <slug>] [--redo] [--confirm]
@@ -968,9 +974,37 @@ async function main(): Promise<number> {
           실패: result.failures,
         },
       ])
-      if (result.range) log(`  기간 ${result.range[0]} ~ ${result.range[1]}`)
-      log(`  파일 ${result.file}`)
+      log(`  파일 ${result.file} (+ .matches.jsonl / .details.jsonl)`)
       return 0
+    }
+
+    case 'supply-import': {
+      /* D-153 — 미러링 수집 파일 → 우리 DB.
+         수집(`supply-mirror`)과 분리돼 있고 **네트워크를 쓰지 않는다.**
+         기본은 미리보기다. `--confirm` 이 있어야만 쓴다. */
+      const leagueSlug = stringFlag(args, 'league') ?? 'supply'
+      /* `--file` 은 `supply-mirror` 와 같은 규칙으로 **저장소 루트 기준**으로 푼다 */
+      const repoRoot = join(process.cwd(), '..', '..')
+      const fileFlag = stringFlag(args, 'file')
+      const file = fileFlag
+        ? isAbsolute(fileFlag)
+          ? fileFlag
+          : join(repoRoot, fileFlag)
+        : join(repoRoot, `packages/db/data/supply-mirror-${leagueSlug}.json`)
+
+      const confirm = boolFlag(args, 'confirm')
+      const output = await runSupplyImport({
+        file,
+        leagueSlug,
+        confirm,
+        updateSource: boolFlag(args, 'update-source'),
+        createLeagueName: stringFlag(args, 'league-name') ?? null,
+        limit: numberFlag(args, 'limit'),
+      })
+      log(`  파일 ${file}`)
+      return output.imported.written.matches === 0 && confirm && output.reconciliation.supplyOnly > 0
+        ? 1
+        : 0
     }
 
     case 'snapshot-audit': {
