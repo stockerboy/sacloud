@@ -13,7 +13,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 import { prisma } from '@sacloud/db'
 import {
   countSharedPasswordAccounts,
@@ -939,10 +939,19 @@ async function main(): Promise<number> {
          중단 후 재개 가능하고, 다시 돌리면 새 경기만 받는다(증분 동기화). */
       const leagueSlug = stringFlag(args, 'league') ?? 'supply'
       /* 리그마다 **파일을 따로** 쓴다. 한 파일에 섞으면 어느 리그 경기인지
-         나중에 가릴 수 없고, 체크포인트도 서로를 덮어쓴다 */
-      const file =
-        stringFlag(args, 'file') ??
-        join(process.cwd(), '..', '..', `packages/db/data/supply-mirror-${leagueSlug}.json`)
+         나중에 가릴 수 없고, 체크포인트도 서로를 덮어쓴다.
+
+         `--file` 은 **저장소 루트 기준**으로 푼다. 이 CLI 는 `apps/worker` 에서 도는데
+         사람은 루트 기준으로 경로를 적는다. 그대로 두면 `apps/worker/packages/db/...`
+         같은 엉뚱한 자리에 새 파일이 생기고, 기존 체크포인트를 못 찾아 처음부터 다시 받는다.
+         실제로 그렇게 24MB 를 헛수집했다. */
+      const repoRoot = join(process.cwd(), '..', '..')
+      const fileFlag = stringFlag(args, 'file')
+      const file = fileFlag
+        ? isAbsolute(fileFlag)
+          ? fileFlag
+          : join(repoRoot, fileFlag)
+        : join(repoRoot, `packages/db/data/supply-mirror-${leagueSlug}.json`)
       const result = await runSupplyMirror(ctx, {
         leagueSlug,
         leagueId: numberFlag(args, 'league-id') ?? undefined,

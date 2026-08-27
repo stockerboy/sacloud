@@ -696,6 +696,13 @@ model Match {
   redRatingUpdate     Int?
   blueRatingUpdate    Int?
 
+  /* 원본(3rd.supply)이 보여 준 클랜 점수 — 위 값과 분리한다 (D-153).
+     위는 우리가 계산한 값이고, 아래는 원본이 그 경기에 실제로 보여 준 값이다. */
+  redSourceRating       Int?
+  blueSourceRating      Int?
+  redSourceRatingUpdate  Int?
+  blueSourceRatingUpdate Int?
+
   /* --- 출처 추적 --- */
   /// "3rd.supply" | "nexon" | "sacloud" | "mock"
   /// `mock`은 개발용 시드 데이터다. 실제 기록과 섞이지 않게 출처를 남긴다.
@@ -805,6 +812,19 @@ model MatchPlayerStat {
   /// **추정 공식으로 덮어쓰지 않는다** (CLAUDE.md 3-A 2번)
   formulaVersion String?
   isPlacement    Boolean @default(false)
+
+  /* --- 원본(3rd.supply) 점수 — 우리 계산과 **완전히 분리한다** (D-153) -------
+     위의 `ratingBefore` / `ratingUpdate` 는 **우리가 계산한** 값이다(D-145).
+     아래는 3rd.supply 가 그 경기에 실제로 보여 준 값이다. 둘을 한 칸에 담으면
+     어느 쪽 숫자인지 알 수 없게 되고, 한 번 섞이면 되돌릴 수 없다.
+
+     시즌7 베타의 **운영 화면은 아래 source 값을 쓴다.** 우리 공식(D-145)은
+     코드와 컬럼을 남겨 두되 화면에 적용하지 않는다 — 미러가 안정된 뒤
+     별도 검증을 거쳐 전환한다. */
+  /// 3rd.supply 가 보여 준 **경기 당시** 선수 래더. 배치고사면 원본도 값을 주지 않는다
+  sourceRating      Int?
+  /// 3rd.supply 의 그 경기 증감. 원본값 그대로다 — 재계산하지 않는다 (3-A 2번)
+  sourceRatingDelta Int?
 
   match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)

@@ -22,7 +22,9 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname } from 'node:path'
 import {
   SupplyApiError,
+  SUPPLY_CONCURRENCY,
   supplyGet,
+  supplyMapLimited,
   supplyPaginate,
   supplyRoutes,
   type SupplyClanShow,
@@ -133,11 +135,26 @@ export async function runSupplyMirror(
       `체크포인트의 리그(${state.leagueId})와 요청한 리그(${leagueId})가 다르다 — 파일을 섞지 않는다: ${input.file}`,
     )
   }
-  /* floor 를 바꿔서 다시 돌리면 이미 받은 범위와 섞인다. 파일에 적힌 값을 따른다 */
-  if (state.floor !== input.floor) {
-    warn(`파일의 floor(${state.floor})와 요청(${input.floor})이 다르다 — 파일 값을 쓴다`)
+  /**
+   * floor 를 **과거로 넓히는 것**은 허용한다.
+   *
+   * 클랜은 floor 를 만나면 거기서 멈추고 `done` 이 된다. 그때 커서는 이미
+   * 그 다음 페이지를 가리키고 있으므로, `done` 만 풀면 **멈춘 지점부터 이어서** 받는다.
+   * 이미 받은 경기를 다시 받지 않는다.
+   *
+   * 반대로 floor 를 미래로 좁히는 것은 막는다. 이미 받은 과거 경기가 파일에 남아 있는데
+   * floor 만 올리면 "이 파일은 이 기간 것" 이라는 기록이 거짓이 된다.
+   */
+  let floor = state.floor
+  if (input.floor < state.floor) {
+    log(`floor 를 과거로 넓힌다: ${state.floor} → ${input.floor}`)
+    for (const clan of Object.values(state.clans)) clan.done = false
+    state.floor = input.floor
+    floor = input.floor
+    write(input.file, state)
+  } else if (input.floor > state.floor) {
+    warn(`요청 floor(${input.floor})가 파일(${state.floor})보다 늦다 — 파일 값을 쓴다`)
   }
-  const floor = state.floor
 
   if (ctx.dryRun) {
     log('[dry-run] 요청을 한 건도 보내지 않는다. 현재 체크포인트만 보고한다')
@@ -225,21 +242,28 @@ export async function runSupplyMirror(
   /* 3) 경기 상세 — 여기에만 K/D/A·딜량·헤드샷·경기 당시 선수별 래더가 있다 */
   const pending = Object.keys(state.matches).filter((id) => !state.details[id])
   const target = input.limit ? pending.slice(0, input.limit) : pending
-  log(`3) 경기 상세 ${target.length}건 (전체 미수신 ${pending.length})`)
-  for (const [i, matchId] of target.entries()) {
-    try {
-      const r = await supplyGet<unknown>(supplyRoutes.matchDetail(leagueId, matchId))
-      state.details[matchId] = r.data ?? r
-    } catch (e) {
-      /* 실패를 삼키지 않는다. 무엇이 왜 빠졌는지 남긴다 (3-A 4번) */
-      const status = e instanceof SupplyApiError ? String(e.status) : String((e as Error).message)
-      state.failures.push({ matchId, status, at: new Date().toISOString() })
-    }
-    if ((i + 1) % 25 === 0) {
-      write(input.file, state)
-      log(`   상세 ${i + 1}/${target.length}`)
-    }
-  }
+  log(`3) 경기 상세 ${target.length}건 (전체 미수신 ${pending.length}) · 동시 ${SUPPLY_CONCURRENCY}`)
+  /* 경기당 1요청이라 여기가 병목이다. 제한된 동시성으로 겹쳐 돌린다.
+     체크포인트는 200건마다 쓴다 — 매 건 쓰면 수십 MB 파일을 계속 다시 쓰게 된다 */
+  await supplyMapLimited(
+    target,
+    async (matchId) => {
+      try {
+        const r = await supplyGet<unknown>(supplyRoutes.matchDetail(leagueId, matchId))
+        state.details[matchId] = r.data ?? r
+      } catch (e) {
+        /* 실패를 삼키지 않는다. 무엇이 왜 빠졌는지 남긴다 (3-A 4번) */
+        const status = e instanceof SupplyApiError ? String(e.status) : String((e as Error).message)
+        state.failures.push({ matchId, status, at: new Date().toISOString() })
+      }
+    },
+    (done) => {
+      if (done % 200 === 0) {
+        write(input.file, state)
+        log(`   상세 ${done}/${target.length}`)
+      }
+    },
+  )
   write(input.file, state)
 
   return summarize(

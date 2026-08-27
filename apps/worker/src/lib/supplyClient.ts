@@ -84,6 +84,42 @@ export async function supplyGet<T>(path: string, tries = 0): Promise<SupplyEnvel
   return (await res.json()) as SupplyEnvelope<T>
 }
 
+/**
+ * 여러 건을 **제한된 동시성**으로 가져온다.
+ *
+ * 경기 상세는 경기당 1요청이라 순차로 돌리면 2년치가 몇 시간이다.
+ * 그렇다고 한꺼번에 던지면 남의 사이트를 때리는 것이다.
+ * 동시에 도는 수를 정해 두고 그 안에서만 겹치게 한다 (기본 6).
+ *
+ * `SUPPLY_CONCURRENCY` 로 조절한다. **올리기 전에 429 가 나는지 먼저 본다.**
+ */
+export const SUPPLY_CONCURRENCY = Number(process.env['SUPPLY_CONCURRENCY'] ?? 6)
+
+export async function supplyMapLimited<T, R>(
+  items: readonly T[],
+  worker: (item: T, index: number) => Promise<R>,
+  onDone?: (completed: number) => void,
+): Promise<R[]> {
+  const out = new Array<R>(items.length)
+  let next = 0
+  let completed = 0
+
+  const lanes = Array.from({ length: Math.min(SUPPLY_CONCURRENCY, items.length) }, async () => {
+    for (;;) {
+      const i = next
+      next += 1
+      if (i >= items.length) return
+      const item = items[i] as T
+      out[i] = await worker(item, i)
+      completed += 1
+      onDone?.(completed)
+    }
+  })
+
+  await Promise.all(lanes)
+  return out
+}
+
 /** 커서를 끝까지 따라간다. `stop` 이 true 를 주면 거기서 멈춘다 */
 export async function supplyPaginate<T>(
   buildPath: (cursor: string | null) => string,
