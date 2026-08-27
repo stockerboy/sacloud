@@ -158,6 +158,9 @@ describe('픽스처가 계약 스키마를 만족한다', () => {
     }
   })
 
+  /* 픽스처 3,000경기를 전부 Zod 로 통과시키는 무거운 검증이다. 단독으로 2.5초쯤 걸려
+     기본 5초로는 여유가 없다 — DB 를 쓰는 다른 테스트와 같이 돌면 CPU 를 나눠 쓰다
+     타임아웃으로 깨진다. 검증 내용이 아니라 시간 여유가 문제라 시간을 늘린다 */
   it('매치 목록 전량 + 매치 상세', () => {
     let parsed = 0
     for (const leagueClan of dataset.leagueClans) {
@@ -173,7 +176,7 @@ describe('픽스처가 계약 스키마를 만족한다', () => {
     for (const match of dataset.matches.slice(0, 50)) {
       MatchDetail.parse(store.getMatch(match.leagueId, match.id, match.redLeagueClanId))
     }
-  })
+  }, 30_000)
 
   it('지난시즌', () => {
     for (const leaguePlayer of dataset.leaguePlayers.slice(0, 300)) {

@@ -38,12 +38,17 @@ const up = await dbUp()
 const ctx = (dryRun: boolean) =>
   ({ config: null, client: null, dryRun, limit: null, resume: false }) as never
 
-/* 감사 한 번이 replay 를 세 번 돌린다(699경기). 테스트마다 새로 돌리면
-   CPU 를 오래 잡아 **다른 테스트 파일이 타임아웃된다** — 실제로 그랬다.
-   한 번만 돌리고 결과를 나눠 쓴다. 감사는 순수 조회라 공유해도 안전하다. */
+/* 감사 한 번이 replay 를 세 번 돌린다. 전량(624건)으로 돌리면 CPU 를 오래 잡아
+   **다른 테스트 파일이 타임아웃된다** — 실제로 그랬다.
+   여기서는 한 번만, 그리고 일부만 투영해서 확인한다.
+
+   여기서 보는 성질(쓰기 0건 · 결정적 · 10명 5대5 · K/D null 보존 · 기존 경기 불간섭)은
+   **표본 크기와 무관하다.** 전량 수치는 CLI 로 뽑는다:
+     pnpm --filter @sacloud/worker nexon snapshot-audit --league supply */
+const SAMPLE = 40
 let cached: Promise<Awaited<ReturnType<typeof runSnapshotAudit>>> | null = null
 const audited = () => {
-  cached ??= runSnapshotAudit(ctx(true), { leagueSlug: 'supply', file: SNAPSHOT })
+  cached ??= runSnapshotAudit(ctx(true), { leagueSlug: 'supply', file: SNAPSHOT, limit: SAMPLE })
   return cached
 }
 
@@ -83,7 +88,9 @@ describe.skipIf(!up)('감사를 돌려도 DB 가 바뀌지 않는다', () => {
     const snapshotState = async () => ({
       matches: await prisma.match.count({ where: scope }),
       stats: await prisma.matchPlayerStat.count({ where: { match: scope } }),
-      supplyPlayers: await prisma.player.count({ where: { origin: '3rd.supply' } }),
+      /* 리그 안에서만 센다. `origin='3rd.supply'` 를 전역으로 세면
+         다른 테스트가 만들었다 지우는 픽스처에 흔들린다 (실제로 22↔24 로 흔들렸다) */
+      leaguePlayers: await prisma.leaguePlayer.count({ where: scope }),
       weaponStats: await prisma.leaguePlayerWeaponStat.count({
         where: { leaguePlayer: scope },
       }),
