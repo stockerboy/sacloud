@@ -1,3 +1,4 @@
+import path from 'node:path'
 import type { NextConfig } from 'next'
 
 /**
@@ -58,6 +59,25 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@sacloud/contract', '@sacloud/mock', '@sacloud/ui'],
   // 서버 종류(Next 버전·런타임)를 광고하지 않는다
   poweredByHeader: false,
+  /**
+   * 서버리스 번들에 **Prisma 쿼리 엔진을 같이 넣는다** (D-151).
+   *
+   * 생성된 Prisma 클라이언트는 `packages/db/generated/client` 에 있다 — `apps/web` 바깥이다.
+   * Next 의 파일 트레이싱은 기본적으로 프로젝트 폴더 기준이라 그 바깥의 네이티브 바이너리
+   * (`libquery_engine-rhel-openssl-3.0.x.so.node`)를 람다에 복사하지 않는다.
+   * 그래서 배포는 성공했는데 **런타임에 DB 질의가 전부 죽었다** —
+   * `/api/health` 가 503, 화면은 데이터 없이 떴다.
+   *
+   * `outputFileTracingRoot` 로 추적 범위를 모노레포 루트까지 넓히고,
+   * `outputFileTracingIncludes` 로 엔진 파일을 명시적으로 포함시킨다.
+   *
+   * `next build` 는 항상 이 패키지 폴더에서 도므로(로컬 · Vercel Root Directory 둘 다
+   * `apps/web`) `process.cwd()` 기준 두 단계 위가 저장소 루트다.
+   */
+  outputFileTracingRoot: path.join(process.cwd(), '..', '..'),
+  outputFileTracingIncludes: {
+    '/**': ['../../packages/db/generated/client/**'],
+  },
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }]
   },

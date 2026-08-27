@@ -19,6 +19,18 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/client"
+  /**
+   * 운영(Vercel) 런타임용 엔진을 함께 받는다.
+   *
+   * Vercel 의 서버리스 런타임은 Amazon Linux 라 `rhel-openssl-3.0.x` 엔진이 필요하다.
+   * `native` 만 두면 개발 PC(Windows) 엔진만 생기고, 배포하면 런타임에서
+   * "could not locate the Query Engine for runtime rhel-openssl-3.0.x" 로 죽는다.
+   * 실제로 그렇게 죽었다 (2026-08-27 · D-151).
+   *
+   * 엔진 파일을 람다 번들에 **복사**하는 것은 별개 문제다 —
+   * `apps/web/next.config.ts` 의 `outputFileTracingIncludes` 가 담당한다.
+   */
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
