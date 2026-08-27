@@ -1,70 +1,75 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
-> ## ⬛ Vercel 프로덕션 배포 성공 (2026-08-27 · D-151)
->
-> **처음으로 프로덕션 배포가 성공했다.** 그 전 3번은 전부 24초 만에 죽었다.
+> ## ⬛ Vercel 프로덕션 배포 성공 · **DB 자격증명만 남았다** (2026-08-27 · D-151)
 >
 > | | |
 > |---|---|
 > | 프로젝트 | `softgw01-8957s-projects/sacloud-web` (기존 · 새로 만들지 않았다) |
-> | 배포 | `sacloud-m1lgv6d1i-…` · **Ready** · 2분 |
-> | 커밋 | `5d50960` |
-> | Root Directory | `apps/web` |
-> | DB | Supabase (transaction pooler 6543) |
+> | URL | https://sacloud-web-softgw01-8957s-projects.vercel.app |
+> | 커밋 | `941780d` |
+> | 화면 | **전 경로 200** · 보안 헤더 정상 · `x-powered-by` 없음 |
+> | DB | **연결 안 됨** — 아래 참조 |
 >
-> ### 원인 — pnpm 11 은 무시한 빌드 스크립트를 오류로 만든다
+> ### ⛔ 지금 해야 할 일 하나 — `DATABASE_URL` 사용자명
+>
+> ```
+> Authentication failed against database server,
+> the provided database credentials for `postgres` are not valid.
+> ```
+>
+> Supabase **transaction pooler(6543)** 는 사용자명이 `postgres` 가 아니라
+> **`postgres.<project-ref>`** 여야 한다. 지금은 `postgres` 로 들어가 있다.
+>
+> Vercel → Settings → Environment Variables → `DATABASE_URL` 을 아래 형태로 고친다.
+>
+> ```
+> postgresql://postgres.<project-ref>:<비밀번호>@aws-0-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+> ```
+>
+> - `pgbouncer=true` 를 빼면 Prisma 가 prepared statement 오류를 낸다
+> - 값이 Sensitive 로 설정돼 있어 **CLI 로 읽을 수 없다.** 사람이 직접 고쳐야 한다
+> - 고친 뒤 재배포하면 `/api/health` 가 `ok` 가 되어야 한다
+>
+> ### 여기까지 오면서 고친 것 두 가지
+>
+> **1. `pnpm install` 이 exit 1** — 배포가 build 에 들어가지도 못했다
 >
 > ```
 > [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @embedded-postgres/linux-x64
-> Error: Command "pnpm install" exited with 1
 > ```
 >
-> `allowBuilds` 에 `@embedded-postgres/windows-x64` 만 있었다. 개발 PC 가 Windows 라
-> 로컬은 통과하고 **Vercel(Linux)에서만** `linux-x64` 가 목록에 없어 설치가 죽는다.
-> pnpm 11 은 목록에 없는 스크립트를 **경고가 아니라 exit 1** 로 처리한다.
+> pnpm 11 은 `allowBuilds` 에 없는 빌드 스크립트를 **경고가 아니라 오류**로 만든다.
+> `windows-x64` 만 허용해 뒀더니 개발 PC 는 통과하고 Vercel(Linux)만 죽었다.
+> `true`(실행) 뿐 아니라 **`false`(실행 안 함을 명시)** 도 적어야 한다.
 >
-> 그래서 `true`(실행) 뿐 아니라 **`false`(실행하지 않는다고 명시)** 도 적어야 한다.
-> `@embedded-postgres/*` 를 전 플랫폼 명시했고, 개발용 `windows-x64` 만 `true` 다.
+> > Linux 재현법 — 매니페스트와 lockfile 만 빈 폴더에 복사하고 `pnpm-workspace.yaml` 에
+> > `supportedArchitectures: {os: [linux], cpu: [x64]}` 를 넣은 뒤 `pnpm install --frozen-lockfile`.
 >
-> > 빌드 로그의 `@prisma/client` "could not find your Prisma schema" 는 **원인이 아니다.**
-> > 그 postinstall 은 오류 경로에서도 항상 `process.exit(0)` 한다. 스키마는
-> > `packages/db/prisma/schema.prisma` 에 정상적으로 있고 빌드 명령이 제대로 찾는다.
+> **2. 배포는 됐는데 DB 질의가 전부 죽음** — Prisma 엔진이 번들에 없었다
 >
-> ### 재현 방법 (다음에 또 막히면)
+> 생성 클라이언트가 `packages/db/generated/client` 에 있는데 Next 가 번들하면 위치를 잃는다.
+> 런타임에 Prisma 는 정해진 곳만 찾고, **첫 번째가 `/var/task/apps/web/generated/client`** 다.
 >
-> Linux 를 흉내 내서 로컬에서 재현할 수 있다. 매니페스트와 lockfile 만 빈 폴더에 복사하고
-> `pnpm-workspace.yaml` 에 아래를 넣은 뒤 `pnpm install --frozen-lockfile` 을 돌린다.
+> `outputFileTracingIncludes` 는 **상대 경로를 유지**하므로 `packages/db/...` 를 넣으면
+> Prisma 가 보지 않는 곳에 떨어진다 — 실제로 그렇게 한 번 더 실패했다.
+> 그래서 `scripts/copy-prisma-engine.mjs` 로 엔진을 `apps/web/generated/client/` 에 복사한다.
 >
-> ```yaml
-> supportedArchitectures:
->   os: [linux]
->   cpu: [x64]
-> ```
+> `binaryTargets = ["native", "rhel-openssl-3.0.x"]` 도 함께 필요하다.
+> 개발 PC 가 Windows 라 `native` 만 두면 Linux 엔진이 아예 생기지 않는다.
 >
-> ### ⚠ 남은 관문 — Deployment Protection 이 켜져 있다
+> ### 바꾼 프로젝트 설정 (대시보드)
 >
-> 배포는 성공했지만 **모든 경로가 302 로 `vercel.com/sso-api` 로 튄다.**
-> Vercel Authentication(배포 보호)이 켜져 있어 로그인한 팀원만 볼 수 있다.
-> 가오픈하려면 대시보드에서 꺼야 한다 —
-> **Project Settings → Deployment Protection → Vercel Authentication → Disabled.**
+> - Build Command → `pnpm --filter @sacloud/db exec prisma generate && node scripts/copy-prisma-engine.mjs && next build`
+> - Deployment Protection(Vercel Authentication) → **껐다.** 켜져 있으면 전 경로가 302 로
+>   SSO 로 튀어서 아무도 못 본다. 지금은 **공개 상태**다
 >
-> 이게 켜져 있는 동안은 프로덕션 URL smoke test 를 할 수 없다. 코드 문제가 아니다.
+> ### TODO (배포를 막지 않는다)
 >
-> ### ⚠ 확인하지 못한 것 — Supabase pooler 와 Prisma
->
-> `DATABASE_URL` 이 transaction pooler(6543)인데 운영 환경변수가 **Sensitive 로 설정돼
-> 값을 읽을 수 없어** 확인하지 못했다. pooler 를 쓰면 Prisma 는 연결 문자열에
-> `?pgbouncer=true` 가 필요하다. 없으면 런타임에 prepared statement 오류가 난다.
-> `schema.prisma` 에 `directUrl` 도 없다. **보호를 끈 뒤 `/api/health` 로 가장 먼저 확인할 것.**
->
-> ### TODO (배포를 막지는 않는다)
->
-> - 스키마 drift 1건 — 로컬 DB 에 `MatchPlayerStat(matchTimeLeagueClanId)` 인덱스가 있는데
->   `schema.prisma` 에는 없다. 운영은 저장소 기준이라 이 인덱스가 없다. 성능 차이만 있고
->   동작은 같다. 고칠 때는 forward-only 로, `IF NOT EXISTS` 를 써서 만든다
-> - Vercel 빌드마다 `@embedded-postgres/linux-x64` 타르볼을 내려받는다(빌드 스크립트는
->   막았지만 다운로드는 남는다). 설치를 `--filter @sacloud/web...` 로 좁히면 없앨 수 있다
-
+> - 스키마 drift — 로컬 DB 에만 `MatchPlayerStat(matchTimeLeagueClanId)` 인덱스가 있다.
+>   고칠 때는 forward-only · `IF NOT EXISTS`
+> - Vercel 빌드마다 `@embedded-postgres/linux-x64` 타르볼을 내려받는다(스크립트는 막았다).
+>   설치를 `--filter @sacloud/web...` 로 좁히면 없앨 수 있다
+> - D-150 데이터 정리(E2E 자리표시자 · dev slug)는 **공개 랭킹에 보인다.** DB 가 붙으면 드러난다
 
 > ## ⬛ 624경기 적재 감사 완료 · **승인 대기** (2026-08-27 · D-150)
 >
