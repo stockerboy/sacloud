@@ -1,5 +1,71 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
+> ## ⬛ Vercel 프로덕션 배포 성공 (2026-08-27 · D-151)
+>
+> **처음으로 프로덕션 배포가 성공했다.** 그 전 3번은 전부 24초 만에 죽었다.
+>
+> | | |
+> |---|---|
+> | 프로젝트 | `softgw01-8957s-projects/sacloud-web` (기존 · 새로 만들지 않았다) |
+> | 배포 | `sacloud-m1lgv6d1i-…` · **Ready** · 2분 |
+> | 커밋 | `5d50960` |
+> | Root Directory | `apps/web` |
+> | DB | Supabase (transaction pooler 6543) |
+>
+> ### 원인 — pnpm 11 은 무시한 빌드 스크립트를 오류로 만든다
+>
+> ```
+> [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @embedded-postgres/linux-x64
+> Error: Command "pnpm install" exited with 1
+> ```
+>
+> `allowBuilds` 에 `@embedded-postgres/windows-x64` 만 있었다. 개발 PC 가 Windows 라
+> 로컬은 통과하고 **Vercel(Linux)에서만** `linux-x64` 가 목록에 없어 설치가 죽는다.
+> pnpm 11 은 목록에 없는 스크립트를 **경고가 아니라 exit 1** 로 처리한다.
+>
+> 그래서 `true`(실행) 뿐 아니라 **`false`(실행하지 않는다고 명시)** 도 적어야 한다.
+> `@embedded-postgres/*` 를 전 플랫폼 명시했고, 개발용 `windows-x64` 만 `true` 다.
+>
+> > 빌드 로그의 `@prisma/client` "could not find your Prisma schema" 는 **원인이 아니다.**
+> > 그 postinstall 은 오류 경로에서도 항상 `process.exit(0)` 한다. 스키마는
+> > `packages/db/prisma/schema.prisma` 에 정상적으로 있고 빌드 명령이 제대로 찾는다.
+>
+> ### 재현 방법 (다음에 또 막히면)
+>
+> Linux 를 흉내 내서 로컬에서 재현할 수 있다. 매니페스트와 lockfile 만 빈 폴더에 복사하고
+> `pnpm-workspace.yaml` 에 아래를 넣은 뒤 `pnpm install --frozen-lockfile` 을 돌린다.
+>
+> ```yaml
+> supportedArchitectures:
+>   os: [linux]
+>   cpu: [x64]
+> ```
+>
+> ### ⚠ 남은 관문 — Deployment Protection 이 켜져 있다
+>
+> 배포는 성공했지만 **모든 경로가 302 로 `vercel.com/sso-api` 로 튄다.**
+> Vercel Authentication(배포 보호)이 켜져 있어 로그인한 팀원만 볼 수 있다.
+> 가오픈하려면 대시보드에서 꺼야 한다 —
+> **Project Settings → Deployment Protection → Vercel Authentication → Disabled.**
+>
+> 이게 켜져 있는 동안은 프로덕션 URL smoke test 를 할 수 없다. 코드 문제가 아니다.
+>
+> ### ⚠ 확인하지 못한 것 — Supabase pooler 와 Prisma
+>
+> `DATABASE_URL` 이 transaction pooler(6543)인데 운영 환경변수가 **Sensitive 로 설정돼
+> 값을 읽을 수 없어** 확인하지 못했다. pooler 를 쓰면 Prisma 는 연결 문자열에
+> `?pgbouncer=true` 가 필요하다. 없으면 런타임에 prepared statement 오류가 난다.
+> `schema.prisma` 에 `directUrl` 도 없다. **보호를 끈 뒤 `/api/health` 로 가장 먼저 확인할 것.**
+>
+> ### TODO (배포를 막지는 않는다)
+>
+> - 스키마 drift 1건 — 로컬 DB 에 `MatchPlayerStat(matchTimeLeagueClanId)` 인덱스가 있는데
+>   `schema.prisma` 에는 없다. 운영은 저장소 기준이라 이 인덱스가 없다. 성능 차이만 있고
+>   동작은 같다. 고칠 때는 forward-only 로, `IF NOT EXISTS` 를 써서 만든다
+> - Vercel 빌드마다 `@embedded-postgres/linux-x64` 타르볼을 내려받는다(빌드 스크립트는
+>   막았지만 다운로드는 남는다). 설치를 `--filter @sacloud/web...` 로 좁히면 없앨 수 있다
+
+
 > ## ⬛ 624경기 적재 감사 완료 · **승인 대기** (2026-08-27 · D-150)
 >
 > **아직 아무것도 넣지 않았다.** DB 에 한 줄도 쓰지 않았다.
