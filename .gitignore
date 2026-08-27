@@ -33,3 +33,15 @@ pnpm-debug.log*
 
 # 래더 백업 스냅샷 (로컬 전용 — 저장소에 넣지 않는다)
 apps/worker/backups/
+
+# 운영 DB 백업/덤프 — 로컬 전용. 절대 커밋하지 않는다.
+# **경로를 좁혀 둔다.** `*.sql` 로 넓게 잡으면
+# `packages/db/prisma/migrations/*/migration.sql` 까지 가려 버린다.
+/backups/
+/*.sql
+/*.sql.gz
+
+# Vercel CLI 로컬 연결 정보 · CLI 가 받아 오는 토큰 파일 — 커밋하지 않는다.
+# (`.env.local` 은 위 환경변수 규칙에서 이미 무시된다. `.env*` 로 넓게 잡으면
+#  추적 중인 `.env.example` 까지 가려서 좁게 둔다)
+.vercel

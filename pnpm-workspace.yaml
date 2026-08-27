@@ -2,14 +2,37 @@ packages:
   - "apps/*"
   - "packages/*"
 
-# 설치 시 스크립트 실행을 허용한 패키지 (pnpm 11 정책)
-# - msw: 브라우저용 Service Worker 설치 도우미
-# - sharp: Next.js 이미지 최적화 네이티브 바이너리
-# - prisma / @prisma/*: 쿼리 엔진 바이너리 내려받기 + 클라이언트 생성
-# - @embedded-postgres/windows-x64: 로컬 개발용 PostgreSQL 바이너리 (개발 전용, D-022)
-# - esbuild: tsx(시드·스크립트용 TS 실행기)의 네이티브 바이너리
+# 설치 시 스크립트 실행 정책 (pnpm 11)
+#
+# pnpm 11 은 빌드 스크립트를 **말없이 건너뛰지 않는다.** 목록에 없는 패키지가 스크립트를
+# 갖고 있으면 `ERR_PNPM_IGNORED_BUILDS` 로 **설치를 실패시킨다**(exit 1).
+# 그래서 `true`(실행) 뿐 아니라 `false`(실행하지 않는다고 **명시**)도 적어야 한다.
+#
+# true — 실제로 필요하다
+#   msw            브라우저용 Service Worker 설치 도우미
+#   sharp          Next.js 이미지 최적화 네이티브 바이너리
+#   prisma/@prisma 쿼리 엔진 바이너리 + 클라이언트 생성
+#   esbuild        tsx(시드·스크립트용 TS 실행기)의 네이티브 바이너리
+#
+# false — 운영 빌드에서 실행하면 안 된다
+#   @embedded-postgres/*  로컬 개발용 PostgreSQL 바이너리다 (개발 전용 · D-022).
+#     빌드 스크립트가 수백 MB짜리 PostgreSQL 을 풀어 놓는데, Vercel 같은 운영 빌드에는
+#     쓸 일이 없다. 그런데 **명시하지 않으면 설치가 통째로 실패한다** —
+#     Windows 에서만 `windows-x64` 를 허용해 뒀더니 Vercel(Linux)에서 `linux-x64` 가
+#     목록에 없어 `pnpm install` 이 exit 1 로 죽었다 (2026-08-27 재현).
+#     운영에서는 전부 `false` 로 막고, 개발 PC 의 플랫폼만 `true` 로 연다.
+#
+#   ※ Windows 외 OS 에서 개발한다면 자기 플랫폼 항목을 `true` 로 바꾼다.
+#     그래야 `pnpm db:start` 가 동작한다. 그 변경은 커밋하지 않는 편이 낫다.
 allowBuilds:
   '@embedded-postgres/windows-x64': true
+  '@embedded-postgres/linux-x64': false
+  '@embedded-postgres/linux-arm64': false
+  '@embedded-postgres/linux-arm': false
+  '@embedded-postgres/linux-ia32': false
+  '@embedded-postgres/linux-ppc64': false
+  '@embedded-postgres/darwin-x64': false
+  '@embedded-postgres/darwin-arm64': false
   '@prisma/client': true
   '@prisma/engines': true
   esbuild: true
