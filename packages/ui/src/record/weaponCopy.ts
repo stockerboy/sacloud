@@ -53,3 +53,43 @@ export function weaponStatView(input: {
     partial: knownGames < games,
   }
 }
+
+/**
+ * 선수 **포지션** — 그 무기로 뛴 **경기 수**로만 정한다 (D-152).
+ *
+ * ── 왜 경기 수인가
+ *   킬 수·킬뎃·현재 클랜으로 정하지 않는다. 그건 판단이지 사실이 아니다.
+ *   "스나로 몇 판 뛰었나"는 경기마다 기록된 사실이고, 세면 끝난다.
+ *
+ * ── 동률은 반드시 `멀티`
+ *   한쪽으로 몰아 주면 근거 없이 한 포지션을 지어내는 것이다.
+ *   0판 대 0판(아직 무기 기록이 없는 선수)도 동률이므로 `멀티` 가 아니라
+ *   **`none`** 이다 — 뛴 적이 없는데 "멀티로 뛴다"고 말할 수는 없다.
+ *
+ * `games`(그 무기로 뛴 경기 전부)를 쓴다. `knownGames`(K/D 를 아는 경기)가 아니다.
+ * K/D 를 모른다고 그 경기를 안 뛴 것으로 칠 수는 없다.
+ */
+export type PlayerPosition = 'sniper' | 'rifle' | 'multi' | 'none'
+
+export function resolvePlayerPosition(sniperGames: number, rifleGames: number): PlayerPosition {
+  const sniper = Number.isFinite(sniperGames) ? Math.max(0, sniperGames) : 0
+  const rifle = Number.isFinite(rifleGames) ? Math.max(0, rifleGames) : 0
+  if (sniper === 0 && rifle === 0) return 'none'
+  if (sniper > rifle) return 'sniper'
+  if (rifle > sniper) return 'rifle'
+  return 'multi'
+}
+
+/** 화면에 그대로 쓰는 한글 표기. 원본 용어를 바꾸지 않는다 (CLAUDE.md 6장) */
+export function positionLabel(position: PlayerPosition): string {
+  switch (position) {
+    case 'sniper':
+      return '스나이퍼'
+    case 'rifle':
+      return '라이플'
+    case 'multi':
+      return '멀티'
+    case 'none':
+      return '집계 없음'
+  }
+}

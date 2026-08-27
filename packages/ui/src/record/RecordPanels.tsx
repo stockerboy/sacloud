@@ -4,7 +4,7 @@ import { ClanMark } from '../common/ClanMark'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
-import { weaponStatView } from './weaponCopy'
+import { positionLabel, resolvePlayerPosition, weaponStatView } from './weaponCopy'
 
 /**
  * 기록실 상단 `최근매치` 요약 + 우측 사이드 패널.
@@ -307,6 +307,18 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
             {formatCount(props.rank)}위
           </>
         )}
+      </Stat>
+      <Divider />
+      {/* 포지션 — **경기 수로만** 정한다. 동률이면 `멀티` 다 (D-152).
+          판정은 `resolvePlayerPosition` 이 하고 테스트로 고정돼 있다. */}
+      <Stat label="포지션">
+        {positionLabel(resolvePlayerPosition(props.sniperGames ?? 0, props.rifleGames ?? 0))}
+        {(props.sniperGames ?? 0) + (props.rifleGames ?? 0) > 0 ? (
+          <span className="ml-2 text-base text-meta">
+            스나 {formatCount(props.sniperGames ?? 0)}전 · 라플{' '}
+            {formatCount(props.rifleGames ?? 0)}전
+          </span>
+        ) : null}
       </Stat>
       <Divider />
       {/* 무기별 랭킹은 통합 랭킹과 **별도로** 보여 준다 (D-146).
