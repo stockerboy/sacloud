@@ -247,10 +247,15 @@ async function rankOfFirstClan(
 ): Promise<number> {
   if (!first) return 1
   const before = await prisma.leagueClan.count({
+    /* **목록과 같은 조건으로 센다** (D-147 과 같은 이유).
+       `getClanRanks` 는 `ACTIVE_CLAN` 으로 비활성 클랜을 빼고 보여 주는데
+       여기서 빼지 않으면, 앞자리에 놓인 비활성 클랜이 순위에만 더해져
+       "1위인데 rank=2" 처럼 목록에 없는 자리가 생긴다. */
     where: {
       leagueId,
       division,
       placement: false,
+      ...ACTIVE_CLAN,
       OR: [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }],
     },
   })
@@ -263,6 +268,9 @@ async function rankOfFirstPlayer(
 ): Promise<number> {
   if (!first) return 1
   const before = await prisma.leaguePlayer.count({
+    /* 여기에는 `ACTIVE_CLAN` 을 넣지 않는다. 개인 랭킹 목록(`getPlayerRanks`)이
+       클랜으로 거르지 않기 때문이다 — 리그 안의 선수는 **전원** 들어간다 (D-107).
+       무소속 선수는 `clanId` 가 null 이라 클랜 조건을 걸면 통째로 빠진다. */
     where: {
       leagueId,
       placement: false,
@@ -440,7 +448,15 @@ export async function clanRankOf(leagueClan: {
   rating: number
   placement: boolean
 }): Promise<{ rank: number | null; rankCount: number | null }> {
-  const where = { leagueId: leagueClan.leagueId, division: leagueClan.division, placement: false }
+  /* `rankCount` 는 클랜랭킹의 **모집단 크기**다. 랭킹 목록(`getClanRanks`)이
+     비활성 클랜을 빼고 내보내므로 분모도 같은 집합이어야 한다.
+     아니면 "3 / 7 위" 처럼 목록에 7번째가 없는 분모가 나온다 (D-147 과 같은 이유). */
+  const where = {
+    leagueId: leagueClan.leagueId,
+    division: leagueClan.division,
+    placement: false,
+    ...ACTIVE_CLAN,
+  }
   const rankCount = await prisma.leagueClan.count({ where })
   if (leagueClan.placement) return { rank: null, rankCount: null }
   const rank = await rankOfFirstClan(leagueClan.leagueId, leagueClan.division, leagueClan)
