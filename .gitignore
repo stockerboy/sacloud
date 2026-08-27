@@ -45,3 +45,6 @@ apps/worker/backups/
 # (`.env.local` 은 위 환경변수 규칙에서 이미 무시된다. `.env*` 로 넓게 잡으면
 #  추적 중인 `.env.example` 까지 가려서 좁게 둔다)
 .vercel
+
+# Prisma 엔진 복사본 (빌드 산출물 · D-151)
+apps/web/generated/

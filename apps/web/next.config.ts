@@ -62,21 +62,22 @@ const nextConfig: NextConfig = {
   /**
    * 서버리스 번들에 **Prisma 쿼리 엔진을 같이 넣는다** (D-151).
    *
-   * 생성된 Prisma 클라이언트는 `packages/db/generated/client` 에 있다 — `apps/web` 바깥이다.
-   * Next 의 파일 트레이싱은 기본적으로 프로젝트 폴더 기준이라 그 바깥의 네이티브 바이너리
-   * (`libquery_engine-rhel-openssl-3.0.x.so.node`)를 람다에 복사하지 않는다.
-   * 그래서 배포는 성공했는데 **런타임에 DB 질의가 전부 죽었다** —
-   * `/api/health` 가 503, 화면은 데이터 없이 떴다.
+   * 생성된 Prisma 클라이언트는 `packages/db/generated/client` 에 있고 Next 가 그걸 번들하면
+   * 모듈이 원래 위치를 잃는다. 그래서 런타임에 Prisma 는 네이티브 엔진을 **정해진 몇 군데**
+   * 에서만 찾는데, 그 첫 번째가 `<번들루트>/apps/web/generated/client` 다.
    *
-   * `outputFileTracingRoot` 로 추적 범위를 모노레포 루트까지 넓히고,
-   * `outputFileTracingIncludes` 로 엔진 파일을 명시적으로 포함시킨다.
+   * `outputFileTracingIncludes` 는 파일의 **상대 경로를 유지**하므로 `packages/db/...` 를
+   * 그대로 넣으면 Prisma 가 보지 않는 곳에 떨어진다 — 실제로 그렇게 실패했다.
+   * 그래서 `scripts/copy-prisma-engine.mjs` 가 엔진을 `apps/web/generated/client/` 로
+   * 먼저 옮기고, 여기서 그 경로를 번들에 포함시킨다.
    *
-   * `next build` 는 항상 이 패키지 폴더에서 도므로(로컬 · Vercel Root Directory 둘 다
-   * `apps/web`) `process.cwd()` 기준 두 단계 위가 저장소 루트다.
+   * `outputFileTracingRoot` 는 모노레포 루트로 둔다. 그래야 번들 루트가 저장소 루트가 되고
+   * `apps/web/...` 상대 경로가 런타임 검색 경로와 맞는다.
+   * `next build` 는 항상 이 패키지 폴더에서 돈다(로컬 · Vercel Root Directory 둘 다 `apps/web`).
    */
   outputFileTracingRoot: path.join(process.cwd(), '..', '..'),
   outputFileTracingIncludes: {
-    '/**': ['../../packages/db/generated/client/**'],
+    '/**': ['./generated/client/**'],
   },
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }]
