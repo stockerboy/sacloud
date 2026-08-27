@@ -54,3 +54,16 @@ export function formatDate(value: string): string {
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? ''
   return `${get('year')}년 ${get('month')}월 ${get('day')}일`
 }
+
+/**
+ * 경기의 양 팀 인원 표기 — `5 vs 5` (D-152).
+ *
+ * **총원을 양쪽에 그대로 쓰면 안 된다.** 예전에는 `player_count`(총 10)를 양쪽에 써서
+ * 정상 5대5 경기가 `10 vs 10` 으로 보였다. 운영에서 실제로 그렇게 나갔다.
+ *
+ * **총원을 2로 나누지도 않는다.** 인원이 어긋난 경기(5대4)를 반올림해
+ * 5대5 인 척하게 된다. 라인업 배열의 길이가 사실이고, 어긋나면 어긋난 대로 보인다.
+ */
+export function formatTeamCounts(redCount: number, blueCount: number): string {
+  return `${redCount} vs ${blueCount}`
+}

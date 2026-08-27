@@ -16,7 +16,7 @@ export interface MatchTimeClan {
   mark: { bg: string | null; front: string | null }
 }
 import { RelativeTime } from '../common/RelativeTime'
-import { formatCount, formatRate } from '../common/format'
+import { formatCount, formatRate, formatTeamCounts } from '../common/format'
 import { rateClass } from '../common/rate'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 import {
@@ -400,9 +400,12 @@ function MatchDetailPanel({
             timeStyle: 'short',
           }).format(new Date(match.start_at))}
         </div>
-        <div>
-          {match.player_count} vs {match.player_count}
-        </div>
+        {/* **양 팀 실제 인원**을 쓴다 (D-152).
+            `player_count` 는 **총원**이다. 그걸 양쪽에 그대로 쓰면 정상 5대5 경기가
+            `10 vs 10` 으로 보인다 — 운영에서 실제로 그렇게 보였다.
+            `player_count / 2` 로 나누지도 않는다. 인원이 어긋난 경기(5대4)를
+            반올림해 5대5 인 척하게 되기 때문이다. 라인업 배열의 길이가 사실이다. */}
+        <div>{formatTeamCounts(match.red.length, match.blue.length)}</div>
         {/* 재구성 경기는 **우리가 몇 명을 확인했는지**를 숨기지 않는다 (D-068).
             5명 전원을 확인한 경기와 3명만 확인한 경기는 신뢰도가 다르다. */}
         {match.participant_completeness === null ? null : (
