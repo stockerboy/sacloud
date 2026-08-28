@@ -186,13 +186,26 @@ function ClanSide({
       {/* 모바일은 **가운데 정렬**이다. 원본은 `[마크] afterpray / vs / [마크] ★PURPLE★` 가
           `vs` 를 축으로 위아래 가운데가 맞는다. 왼쪽 정렬로 두면 이름 길이가 달라
           축이 어긋나 보인다 (2026-08-28 사용자 지적). PC 는 좌우 배치라 그대로 둔다. */}
-      <div className={`text-base max-md:text-center ${align === 'right' ? 'text-right' : ''}`}>
-        <Link className="inline-block" href={leagueClanPath(leagueSlug, snapshot.clan.slug)}>
+      {/* 모바일에서는 **한 줄을 flex 로** 만든다.
+          `inline-block` + `align-middle` 로 두면 1.25rem 짜리 마크가 글자 줄높이를
+          비대칭으로 늘려서, 위아래 클랜 줄 높이가 달라지고 그 사이의 `vs` 가
+          네모칸 아래쪽으로 치우쳐 보인다 (2026-08-28 사용자 지적).
+          flex 로 바꾸면 줄 높이가 마크 높이로 고정돼 위아래가 정확히 대칭이 된다. */}
+      <div
+        className={`text-base max-md:flex max-md:items-center max-md:justify-center ${
+          align === 'right' ? 'text-right' : ''
+        }`}
+      >
+        <Link
+          className="inline-block max-md:flex max-md:min-w-0 max-md:items-center"
+          href={leagueClanPath(leagueSlug, snapshot.clan.slug)}
+        >
           {/* 등록 클랜 판정은 마크 URL 이 아니라 클랜 객체가 한다 (D-146) */}
           <ClanMark
             clan={snapshot.clan}
             size="xs"
-            className="mr-1 inline-block align-middle"
+            /* 모바일에서만 1.5rem → 1.25rem 으로 조금 줄인다 (2026-08-28 사용자 지시) */
+            className="mr-1 shrink-0 max-md:h-5 max-md:w-5"
             alt={snapshot.clan.name}
           />
           <span className="inline-block max-w-[100px] truncate align-middle max-md:max-w-[160px]">
@@ -347,7 +360,7 @@ export function MatchCard({
                       {/* 모바일 kda 는 원본이 더 작다 (2026-08-28 원본 화면과 나란히 대조).
                           `text-xl`(1.25rem) 로 두니 원본보다 약 35% 커 보였다.
                           PC 는 원본 실측값 그대로 두고 좁은 화면에서만 줄인다. */}
-                      <div className="text-xl font-semibold max-md:text-base">
+                      <div className="text-xl font-semibold max-md:text-lg">
                         {stat.kill ?? '-'} / <span className="text-lose">{stat.death ?? '-'}</span> /{' '}
                         {stat.assist ?? '-'}
                       </div>
@@ -358,14 +371,18 @@ export function MatchCard({
                       )}
                     </>
                   )}
-                  {stat.dropout ? <div className="text-sm text-lose">탈주</div> : null}
+                  {/* `탈주` 라벨은 접힌 카드에서 빼라는 지시다 (2026-08-28).
+                      탈주 여부는 펼친 상세의 닉네임 취소선으로 이미 드러난다.
+                      여기 두면 줄이 하나 늘어 카드가 높아지고, 원본에도 없다. */}
                 </div>
               </div>
             ) : null}
 
             <div className="flex w-88 items-center max-md:w-auto max-md:min-w-0 max-md:flex-1 max-md:flex-col max-md:items-stretch">
               <ClanSide snapshot={match.league_clan} leagueSlug={leagueSlug} align="right" />
-              <div className="px-2 text-sm text-meta max-md:px-0 max-md:text-center">vs</div>
+              <div className="px-2 text-sm text-meta max-md:flex max-md:items-center max-md:justify-center max-md:px-0 max-md:leading-none">
+                vs
+              </div>
               <ClanSide snapshot={match.opponent} leagueSlug={leagueSlug} align="left" />
             </div>
 
