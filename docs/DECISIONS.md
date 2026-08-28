@@ -3691,3 +3691,289 @@ D-149 는 "래더에 반영되지 않는다는 **사실을 아는** 것이라, �
 
 `npx vitest run packages/ui/src/__tests__/` → **17 파일 / 162 테스트 통과**.
 `pnpm typecheck` → 8개 패키지 전부 통과. 감독관이 독립 재실행해 같은 결과를 확인했다.
+
+---
+
+## D-160 — 선수의 **현재 소속 클랜**은 가장 최근 경기에서 온다 (2026-08-28)
+
+근거: `packages/db/ops/supplyRollup.ts` · `packages/db/ops/__tests__/supplyRollup.test.ts` ·
+`apps/worker/src/jobs/supplyRollup.ts`
+
+### 무엇이 비어 있었나
+
+개인랭킹 표가 닉네임 옆에 클랜 마크를 하나도 띄우지 못했다. 화면 질의
+(`apps/web/lib/server/queries/leagues.ts` 의 `getPlayerRanks`)는 `LeaguePlayer.clanId` 를 읽는데
+**적재도 집계도 그 칸을 채우지 않았다.**
+
+| 칸 | 채워짐 |
+|---|---|
+| `LeaguePlayer.clanId` (supply) | 113 / 10,388 |
+| `LeaguePlayer.clanId` (sanply · daerule) | 0 |
+| `Player.clanId` (`origin='3rd.supply'`) | 0 / 21,107 |
+
+### 규칙 — `sourceRating` 과 같다
+
+원본이 참가 기록에 붙여 주는 `player.clan` 은 **경기 당시가 아니라 수집 시점의 현재 소속**이다
+(실측: 3,322명 중 경기별로 소속이 달라진 사람 0명 — D-153 · `supplyMirrorParse.ts` 머리말).
+그래서 **가장 최근 경기의 값 하나**를 현재 소속으로 옮긴다.
+
+- 값은 `MatchPlayerStat.matchTimeClanSlug` 에서 읽는다. **`MatchPlayerStat` 은 고치지 않는다** —
+  과거 경기 화면은 그 경기에 박힌 스냅샷을 계속 쓴다 (D-131).
+- 래더와 딱 하나 다르다. 래더는 **값이 있는 행 중** 최신을 고르지만, 소속은 **경기 자체의 최신**을
+  고른다. `null` 이 "무소속" 이라는 실제 정보라, 값이 있는 행만 고르면 클랜을 나온 선수가
+  영영 예전 클랜에 남는다.
+- 시각이 같으면 `matchId` 로 순서를 고정한다.
+
+### 지어내지 않는다
+
+- 최신 경기에 클랜이 없으면 **무소속**이다 → 칸을 아예 쓰지 않는다(새 행은 `null` 로 남는다).
+- 클랜 slug 는 있는데 `Clan` 표에 행이 없으면 **클랜을 만들지 않는다** → 역시 쓰지 않는다.
+- `Player.clanId` 는 **`origin='3rd.supply'` 인 선수만** 건드린다. 조건을 읽을 때와 쓸 때 양쪽에
+  걸어, 넥슨 경로로 들어온 선수의 소속을 미러 값으로 덮지 않는다.
+- `Player` 는 전역 표라 리그마다 따로 쓰면 마지막에 돌린 리그가 이긴다. 리그별 근거를
+  `mergePlayerClanPicks` 로 합쳐 **한 번만** 쓴다 — `--league` 를 무엇으로 주든 값이 흔들리지 않는다.
+
+### 결과 (로컬 · 2026-08-28)
+
+| 리그 | `LeaguePlayer.clanId` | 최신 경기에 클랜 있음 | `Clan` 표에서 찾음 |
+|---|---|---|---|
+| supply | 2,635 / 10,388 | 2,978 / 10,324 | 2,622 |
+| sanply | 3,719 / 15,312 | 4,420 / 15,312 | 3,719 |
+| daerule | 820 / 4,157 | 1,124 / 4,157 | 820 |
+
+`Player.clanId` = **4,419 / 21,107**. 다른 `origin` 선수 1,041명은 손대지 않았다.
+
+두 번 돌려 값이 같았다 — 2회차는 `Player.clanId` 갱신 0건 · "이미 같음" 4,419건이었다.
+
+수집 파일(`.matches.jsonl`)만 보고 선수별 최신 clan 을 **DB 없이 다시 구해** 대조했다.
+29,798행 중 **9행(0.03%)만 달랐다.** 전부 설명된다 —
+5행은 그 선수의 DB 최신 행이 미러가 아닌 다른 3rd.supply 경로로 들어와 클랜이 없는 경우이고,
+4행은 **이미 값이 있어 지우지 않은** 행이다.
+
+### 남은 것 — 원본이 우리보다 소속을 많이 알고 있다 [미확인]
+
+미러 수집 파일 자체가 선수의 **71%를 무소속으로 준다.** 참가 기록 행 기준으로는 60%에 클랜이
+붙어 있는데, 선수 기준으로는 21,342명 중 5,674명(26.6%)만 한 번이라도 클랜이 찍힌다.
+supply 래더 상위 20명 중 클랜이 붙은 사람은 1명뿐이다 — 3,065경기를 뛴 `chococake` 는
+supply·sanply 합쳐 **5,768행 전부** `clan: null` 이다.
+
+그런데 3rd.supply 클랜원 목록(`supply-clan-rosters.json`)은 같은 선수를 `smite` 소속으로 싣는다.
+**원본 개인랭킹의 마크가 참가 기록의 `player.clan` 이 아닌 다른 칸에서 올 가능성이 있다.**
+supply 기준 대조: 클랜원 목록에 있는 1,084명 중 707명은 우리 값과 같고, 139명은 다르며(그 목록은
+"1경기 이상 뛴 이력" 이라 한 선수가 여러 클랜에 실린다), 238명은 우리가 무소속으로 둔다.
+반대로 목록에 없는데 우리가 채운 선수가 1,789명이다.
+
+추가로, 원본이 준 클랜 slug 인데 우리 `Clan` 표에 행이 없는 클랜이 **439개**(선수 1,090명)다.
+이 리그들에서 팀으로 뛴 적이 없어 행이 만들어지지 않았다. 수집 파일에는 이름·slug·마크 URL 이
+전부 있으므로 만들 수는 있으나, **이번 작업 범위가 아니라 만들지 않았다.**
+
+---
+
+## D-165 — 무소속리그: **티어 = 부리그(division)** · 새 축을 만들지 않는다 (2026-08-28)
+
+> **번호 정정(감독관 2026-08-28 12:10)**: `D-161` 을 세 작업이 동시에 가져갔다 —
+> 선수 포지션/프로필(코드 인용 23곳) · 이 항목(8곳) · 래더 조회 조건(3곳).
+> 인용이 가장 많은 선수 포지션이 `D-161` 을 유지하고, 이 항목은 `D-165`,
+> 래더 조회 조건은 `D-164` 로 옮겼다. 코드 주석과 `CLAUDE.md` 도 함께 고쳤다.
+
+사용자 지시로 만든 **신규 기능**이다 (`CLAUDE.md` 3장 3번 "임의 기능 추가 금지"의 예외 —
+원본 복제가 아니라 소유자가 직접 요구했다).
+
+> "리그 카테고리를 따로 만들어라. 거기에 공식리그 무소속리그 열산리그 대룰리그를 집어넣어라.
+>  무소속리그 페이지는 지금부터 만든다. 1티어부터 5티어까지의 칸을 만들고
+>  관리자 권한으로 각 티어에 클랜을 등록할 수 있게 만들어라."
+>
+> "등록된 무소속 클랜끼리의 기록들은 공식리그와 같은 방식으로 각 개인과 클랜에 기록한다.
+>  유일한 하나의 차이점은 무소속리그는 킬데스를 기록하지 않는다.
+>  킬데스를 계산하긴 하지만 킬데스를 숨겨라. 그 외에는 전부 공식리그와 동일하다."
+
+### 결정 1 — 티어 1~5 는 `LeagueClan.division` 1~5 다. **새 축이 아니다**
+
+`League.divisionCount = 5` 인 무소속리그를 만들고, 화면 **표기만** `1부리그` → `1티어` 로 바꾼다.
+
+| | 공식리그 | 무소속리그 |
+|---|---|---|
+| 저장 | `LeagueClan.division` | `LeagueClan.division` (같은 칸) |
+| 표기 | `1부리그` · `2부리그` | `1티어` … `5티어` |
+| 승강 | 운영자 | 운영자 (**자동 아님** — D-104 ①) |
+
+왜 이렇게 하나
+  클랜랭킹 탭 · 커서 페이지네이션 · `getClanRanks(leagueId, division, …)` · 순위 계산이
+  전부 이미 `division` 으로 돈다. 티어를 새 축으로 만들면 그 네 가지를 전부 복제해야 하고,
+  두 벌이 되는 순간 반드시 어긋난다.
+
+표기 변환은 **한 곳**이다 — `packages/ui/src/league/divisionLabel.ts`.
+조건은 `league.category === 'independent'` 하나뿐이라 **공식리그 표기는 바뀔 수 없다**
+(회귀 `packages/ui/src/__tests__/division-label.test.ts` 5건이 그것만 본다).
+
+### 결정 2 — 값이 두 곳에 있다. **항상 같이 쓴다**
+
+`LeagueClan.division` (리그 안의 티어) 과 `Clan.tier` (D-104 무소속 래더 질의가 읽는 값)가
+따로 있다. 등록·이동은 **둘을 한 번에** 쓴다. 한쪽만 고치면 부리그 탭과 무소속 전체 래더가
+서로 다른 답을 낸다.
+
+- 기준은 **`LeagueClan.division`** 이다. `Clan.tier` 가 그것을 따라간다
+- 어긋난 것을 되맞추는 명령이 있다 — `independent-league --sync` (재실행해도 결과가 같다)
+- 티어 이동은 `division` 만 바꾼다. rating·승패·placement 는 건드리지 않는다
+
+### 결정 3 — 킬뎃 숨김은 **D-107 그대로**다. 새로 만들지 않았다
+
+사용자 지시가 D-107 과 정확히 같아서 기존 장치를 그대로 쓴다.
+
+- 계약 `LeagueSummary.hides_cumulative_kd` · `PlayerRankRow.kd_rate` (nullable)
+- 조회 `apps/web/lib/server/queries/visibility.ts`
+- 화면 `RankTable` 이 `kd_rate === null` 이면 칸을 비운다
+
+**킬·데스는 계산해서 저장한다.** DB 에 `null` 로 넣지 않는다 — 그건 "원본이 안 줬다" 는
+뜻이라 의미가 다르다 (D-034 · D-106). 감추는 것은 **응답에 넣는가** 하나뿐이고,
+감추는 대상은 **누적** kill/death/킬뎃이다. 경기 한 판의 K/D/A 는 그대로 보인다.
+
+래더 공식은 하나뿐이다 (`CLAUDE.md` 3-B 1번). 무소속용 공식·무소속용 K값을 만들지 않았고,
+`rate.ts` 는 예전부터 무소속 클랜을 계산에서 빼지 않는다 (D-102 정정분).
+
+### 계약 변경 (추가만)
+
+- `LeagueSummary.category` — `official` | `independent`, 기본값 `official`.
+  화면이 **표기**를 고르는 값이다. `hides_cumulative_kd`(무엇을 감추는가)와 뜻이 달라 합치지 않았다
+- `leagueClanRegister` — `POST /leagues/:leagueSlug/clans`.
+  초대(`leagueInvite`)는 클랜 마스터가 링크로 수락하는 흐름이고,
+  이것은 **운영자가 티어를 정해 직접 넣는** 흐름이다
+
+### 스키마 변경 — **없다**
+
+필요한 칸이 전부 이미 있었다: `League.category`(D-107) · `League.divisionCount` ·
+`Clan.category` · `Clan.tier` · `LeagueClan.division`. 마이그레이션을 만들지 않았다.
+
+리그 행은 마이그레이션이 아니라 **재실행 가능한 명령**으로 만든다.
+
+```bash
+pnpm --filter @sacloud/worker nexon independent-league --confirm
+pnpm --filter @sacloud/worker nexon independent-league --register <클랜slug> --tier 3 --confirm
+pnpm --filter @sacloud/worker nexon independent-league --sync --confirm
+```
+
+`--confirm` 이 없으면 한 줄도 쓰지 않는다. `slug = nolink` · `category = independent` ·
+`divisionCount = 5` · `origin = sacloud`(`mock` 이면 공개 화면에서 걸러진다 — D-116) ·
+`official = false`(공식 배지는 공식리그의 것이다).
+
+### 권한
+
+새 경로도 **기존 리그 관리자 검사**(`requireLeagueAdmin`)를 그대로 받는다.
+비인증 401 · 리그 관리자가 아니면 403. `apps/web/tests/adminApi.test.ts` 에 회귀를 추가했다.
+관리자 화면의 **티어 등록 칸은 무소속리그에서만** 나온다 — 공식리그 관리 화면은 원본 그대로다.
+
+### `[미확인]`
+
+1. **같은 클랜이 공식리그와 무소속리그에 동시에 있을 수 있는가.** 원본에서 확인되지 않았다.
+   막지 않고 `warnings` 로 알린다 — 없는 규칙을 지어내지 않는다.
+   등록하면 `Clan.category` 가 `independent` 로 바뀌므로 운영자가 알아야 한다
+2. **경기별 kda 까지 감추는가.** D-107 은 **누적**만 감춘다고 정했고 그 범위를 넓히지 않았다
+3. **무기별 누적**(`sniper_kill` · `rifle_kill` · `sniper_kd_rate` …, D-149)은 지금
+   무소속리그에서도 그대로 나간다. 이것도 누적 킬·데스라 D-107 의 뜻과 어긋날 수 있으나,
+   D-107 이 정한 범위가 아니라 **넓히지 않았다.** 판단이 필요하다
+4. **무소속리그에 시즌이 없다.** 시즌 카드·시즌 범위 replay 가 필요하면 운영자가 연다
+   (`nexon season --start`). 래더 계산 자체는 시즌 없이도 돈다
+
+---
+
+## D-161 — 선수 `포지션` 은 **원본에 있다**. 잘못 지운 줄을 되살린다 (2026-08-28)
+
+### 무엇이 틀렸나
+
+2026-08-27 UI 대조 감사(`docs/UI_PARITY_AUDIT.md` 6-2)에서 선수 기록실 사이드 `상세정보` 의
+`포지션` 줄을 **"원본에 없다"** 고 판정하고 지웠다. **그 판정이 틀렸다.**
+
+원본 `상세정보` 는 이 순서다 (2026-08-28 원본 모바일 실측).
+
+```
+상세정보
+래더        3260점
+포지션      A 숏        ← 있다. 래더 바로 아래다
+승률        525승 367패  58.9%
+킬뎃        9,371킬 6,228데스  60.1%
+평균킬      판당  10.5킬
+MVP         246회
+랭킹        5,599명중  6위
+소속        없음
+```
+
+감사에서 못 본 이유는 **값이 있는 선수에게만 그 줄이 나오기 때문**이다.
+표본으로 본 선수들은 값이 `null` 이라 줄이 아예 없었다.
+`null` 이면 `-` 도 `알수없음` 도 아니고 **줄째로 사라진다** (D-099 · D-106 과 같은 규칙).
+
+### 두 `포지션` 은 서로 다른 것이다
+
+| | 원본의 `포지션` | 우리가 만들었던 `포지션` |
+|---|---|---|
+| 출처 | **선수가 직접 설정**하는 프로필 값 | 무기별 **경기 수를 세어 계산** |
+| 값 | `A 숏` 같은 맵 포지션 | `스나이퍼` / `라이플` / `멀티` / `집계 없음` |
+| 코드 | `data.player.position` | `packages/ui/src/record/weaponCopy.ts` `resolvePlayerPosition` |
+
+계산식 블록을 화면에서 뺀 것은 **옳았다.** 원본에 없는 개념이다.
+잘못은 그것과 함께 **원본에 있는 줄까지 지운 것**이다.
+`resolvePlayerPosition` 은 지우지 않았지만 **어떤 화면에도 쓰지 않는다.**
+그 파일 주석에 "원본의 `포지션` 과 다른 개념" 을 명시했다.
+
+### 원본 응답 (실측 2026-08-28)
+
+```
+GET /players/1896093983
+GET /leagues/{supply|sanply|daerule}/players/1896093983   ← .data.player 가 같다
+{"id":1896093983,"name":"Yolloanswag","clan":null,"note":null,
+ "position":3,"me":false,"renewed_at":"2026-08-05 06:53:00"}
+```
+
+- **`position` 은 문자열이 아니라 숫자 코드다.** 화면이 코드를 한글 표기로 바꿔 그린다.
+- 세 값(`position` · `note` · `renewed_at`)은 **리그와 무관한 전역 선수 값**이다.
+  세 리그에서 같은 선수를 조회하면 셋 다 같은 값이 온다 — 그래서 선수당 **1요청**만 한다.
+- `renewed_at` 은 ISO 가 아니라 `YYYY-MM-DD HH:mm:ss` 다. 시간대 표기가 없어
+  기존 `parseSupplyDateTime`(KST → UTC) 규칙을 따른다.
+- `/clans/{slug}/players` 도 `position` 을 준다 (클랜원 목록용 · 이번 수집에는 쓰지 않았다).
+
+### 코드 → 표기 매핑은 **대부분 `[미확인]` 이다**
+
+원본이 코드를 주므로 표기는 원본 화면을 봐야 안다. 우리가 화면에서 **직접 확인한 것은 하나뿐이다.**
+
+| 코드 | 표기 | 근거 |
+|---|---|---|
+| 3 | `A 숏` | 원본 모바일 실측 (선수 `Yolloanswag`) |
+| 0 · 1 · 2 · 4 · 5 · 6 | `[미확인]` | 코드의 존재는 확인, 표기는 못 봄 |
+
+**지어내지 않는다** (3장 7번 · 3-A 8번). `SUPPLY_POSITION_LABELS`
+(`packages/db/ops/supplyPlayerProfiles.ts`)에는 확인한 것만 넣는다.
+표기를 모르는 코드는 `Player.position` 을 비워 두고 **몇 명인지 센다.**
+`supply-player-profiles-import` 가 코드별 인원과 **확인용 대표 선수 URL** 을 함께 낸다.
+
+원본 코드는 수집 JSONL 에 그대로 남아 있으므로(3-A 1번), 표기가 확인되면
+**네트워크 없이** 표만 고쳐 다시 적재하면 된다.
+
+> 표기를 알아내려고 원본 **웹페이지 HTML** 을 받아 보려 했으나 AWS WAF 봇 차단이 걸린다.
+> `CLAUDE.md` 3-A 5번에 따라 **우회하지 않고 멈췄다.** 공개 API 에는 코드 목록 엔드포인트가 없다
+> (`/positions` · `/codes` · `/configs` 전부 404).
+
+### 수집이 값을 버리고 있었다
+
+`apps/worker/src/jobs/supplySeasons.ts` 가 이미 `/leagues/{slug}/players/{id}` 를 부르면서
+응답에서 `player_id` · `league_player_id` · `player_name` 만 뽑고 **세 값을 버렸다.**
+`CLAUDE.md` 3-A 1번(원본 응답을 버리지 않는다) 위반이었다. 두 가지를 했다.
+
+1. 그 잡의 색인 레코드에 `position` · `note` · `renewed_at` 을 **함께 남기게** 고쳤다.
+   이미 받은 줄에는 세 칸이 아예 없으므로(`undefined`) `?` 로 두어
+   **"값이 null 이다" 와 "물어보지 않았다" 를 구분**한다.
+2. 이미 받은 29,798줄은 되살릴 수 없어 새 잡으로 한 번 더 받았다 —
+   `supply-player-profiles` (선수당 1요청 · 중단 후 재개 · `--dry-run` 은 무요청).
+
+적재는 `supply-player-profiles-import` 다. **네트워크를 쓰지 않고**,
+`origin='3rd.supply'` 선수만 건드리며(넥슨 경로·개발 시드를 덮지 않는다),
+값이 이미 같으면 쓰지 않는다. `--confirm` 없이는 한 줄도 쓰지 않는다.
+
+### 계약 · 화면
+
+- `LeaguePlayerProfile`(`packages/contract/src/entities/detail.ts`) —
+  `PlayerSummary` + `position` · `note`. 둘 다 `nullable`, 기본값 `null` 이라
+  이 필드가 없던 응답과도 호환된다. 계약은 **표기 문자열만** 받는다 —
+  숫자 코드가 그대로 흘러 화면에 `3` 이 뜨는 것을 막는다.
+- `note` 는 원본이 **어느 화면에 쓰는지 확인하지 못했다** `[미확인]`.
+  계약에는 담되 화면에는 붙이지 않는다.
+- `PlayerStatSidebar` — `래더` 바로 아래에 `포지션` 줄. `null` 이면 렌더하지 않는다.
+- Mock 도 같은 자리에 같은 모양으로 내보낸다 (픽스처는 40%만 값을 가진다).

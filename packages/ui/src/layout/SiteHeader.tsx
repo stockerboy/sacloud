@@ -3,7 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { FEATURED_LEAGUES, PRIMARY_NAV, type NavLink } from '../site-config'
+import {
+  FEATURED_LEAGUES,
+  MOBILE_NAV_GROUPS,
+  PRIMARY_NAV,
+  type NavGroup,
+  type NavLink,
+} from '../site-config'
 import { NavLogo } from './BrandLogo'
 
 /**
@@ -30,6 +36,8 @@ const NAV_ITEM =
 export interface SiteHeaderProps {
   featuredLeagues?: readonly NavLink[]
   primaryNav?: readonly NavLink[]
+  /** 모바일 서랍의 묶음 구성. 원본 서랍은 `홈`/`리그`/`게시판` 으로 나뉜다 */
+  navGroups?: readonly NavGroup[]
   /** 로그인한 사용자. null이면 `로그인` 링크를 보여준다 (원본 동작) */
   user?: { nickname: string } | null
   onLogout?: () => void
@@ -38,6 +46,7 @@ export interface SiteHeaderProps {
 export function SiteHeader({
   featuredLeagues = FEATURED_LEAGUES,
   primaryNav = PRIMARY_NAV,
+  navGroups = MOBILE_NAV_GROUPS,
   user = null,
   onLogout,
 }: SiteHeaderProps) {
@@ -126,25 +135,38 @@ export function SiteHeader({
         </div>
       </div>
 
-      {/* --- 모바일 서랍 — PC 에서 GNB 에 늘어서 있던 항목을 그대로 담는다 --- */}
+      {/*
+        --- 모바일 서랍 ---
+
+        원본 모바일 서랍은 **제목이 붙은 묶음**이다 (2026-08-28 원본 관측).
+        `홈` / `리그` / `게시판` 묶음이 있고, `리그` 묶음 안에 리그들이 들어간다.
+        제목 줄은 아이콘 + 회색 글씨이고, 항목은 그 아래 들여쓰기 없이 이어진다.
+      */}
       {open ? (
-        <div className="bg-ink pb-2 md:hidden">
-          {[...featuredLeagues, ...primaryNav].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`block border-b border-white/10 px-4 py-3 text-nav-fg ${
-                isActive(pathname, item.href) ? 'bg-nav-active font-bold' : ''
-              }`}
-            >
-              {item.label}
-            </Link>
+        <div className="bg-card pb-2 md:hidden">
+          {navGroups.map((group) => (
+            <div key={group.label} className="border-b border-divider py-2">
+              <div className="flex items-center gap-2 px-4 py-2 font-bold text-ink">
+                {group.label}
+              </div>
+              {group.items.map((item) => (
+                <Link
+                  key={`${group.label}:${item.href}`}
+                  href={item.href}
+                  className={`block px-6 py-3 text-meta ${
+                    isActive(pathname, item.href) ? 'bg-row font-bold text-ink' : ''
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           ))}
           {user ? (
             <button
               type="button"
               onClick={onLogout}
-              className="block w-full px-4 py-3 text-left text-nav-fg"
+              className="block w-full px-4 py-3 text-left text-meta"
             >
               로그아웃
             </button>

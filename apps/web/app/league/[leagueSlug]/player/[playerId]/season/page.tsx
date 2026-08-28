@@ -40,6 +40,8 @@ export default function LeaguePlayerSeasonPage({
       <SeasonTable
         seasons={seasons.data?.data}
         kind="player"
+        /* 카드 왼쪽 위 리그 이름은 원본 카드에 있는 값이다 (관측 2026-08-28) */
+        leagueName={league.data?.data.name}
         hidesCumulativeKd={league.data?.data.hides_cumulative_kd ?? false}
       />
     </div>

@@ -4,6 +4,7 @@ import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
+  LoadMoreButton,
   MatchCard,
   PlayerStatSidebar,
   RecentMatchSummary,
@@ -116,12 +117,21 @@ export default function LeaguePlayerRecordPage({
                 />
               ))
             )}
+            {/* 기록실에는 `더 불러오기` 가 없었다. 첫 페이지(20건)만 보이고 그 뒤의
+                경기는 화면에서 닿을 수 없었다 — 사용자가 "기록이 분명 더 있는데
+                버튼이 없다" 고 지적한 그것이다. 랭킹·게시판과 같은 커서 방식이라
+                같은 버튼을 쓴다. 다음 커서가 없으면 렌더하지 않는다 (원본 동작). */}
+            {matches.hasMore ? (
+              <LoadMoreButton onClick={matches.loadMore} loading={matches.loadingMore} />
+            ) : null}
           </div>
         </div>
         <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">
           <PlayerStatSidebar
             rating={data.rating}
             placement={data.placement}
+            /* 선수가 직접 설정하는 값이다 (D-161). `null` 이면 사이드바가 줄을 그리지 않는다 */
+            position={data.player.position}
             win={data.win}
             lose={data.lose}
             winRate={data.win_rate}
@@ -139,11 +149,14 @@ export default function LeaguePlayerRecordPage({
             }
           />
           {/*
-            `무기별 기록`(`WeaponStatPanel`) 과 사이드바의 `포지션` 줄은 **원본에 없어서 뺐다**
-            (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1 · 6-2).
-            컴포넌트와 판정 함수는 `packages/ui` 에 그대로 있고, 계약의 무기별 필드
-            (`weapon_stats` · `sniper_*` · `rifle_*`)도 건드리지 않았다 — 다시 붙일 자리가
-            정해지면 이 줄만 되살리면 된다.
+            `무기별 기록`(`WeaponStatPanel`) 은 **원본에 없어서 뺐다**
+            (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1). 컴포넌트와 계약 필드
+            (`weapon_stats` · `sniper_*` · `rifle_*`)는 그대로 두었다.
+
+            사이드바의 `포지션` 줄은 **되살렸다** (D-161).
+            "원본에 없다" 던 2026-08-27 판정이 틀렸다 — 값이 있는 선수에게만 나오는 줄이라
+            표본에서 안 보였을 뿐이다. 원본 응답 `data.player.position` 이 그 값이고,
+            선수가 직접 설정한다. 무기별 경기 수로 계산하던 예전의 `포지션` 과는 다른 것이다.
           */}
           <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
         </div>

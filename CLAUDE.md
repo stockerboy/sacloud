@@ -275,6 +275,10 @@ pnpm nexon:refresh                      # 신선도 정책(기본 30일) 재수�
 pnpm nexon:check                        # 숫자 대조 17항목
 pnpm --filter @sacloud/worker nexon lineup-complete [--confirm]
                       # 3rd.supply 라인업으로 참가자 10명 명단 완성 (D-148, idempotent)
+pnpm --filter @sacloud/worker nexon independent-league [--confirm]
+                      # 무소속리그(`nolink`) 만들기 (D-165, idempotent)
+                      #   --register <클랜slug> --tier <1~5>   그 티어에 등록/이동
+                      #   --sync                               Clan.tier ↔ LeagueClan.division 정합
 ```
 
 > `--dry-run`은 **요청을 한 건도 보내지 않는다.** API 키 없이 파이프라인을 점검할 때 쓴다.

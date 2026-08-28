@@ -32,8 +32,30 @@ export interface NavLink {
  */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
   { label: '공식리그', href: '/league/supply' },
+  { label: '무소속리그', href: '/league/nolink' },
   { label: '열산리그', href: '/league/sanply' },
   { label: '대룰리그', href: '/league/daerule' },
+]
+
+/**
+ * 모바일 서랍의 묶음 구성.
+ *
+ * 원본 모바일 서랍은 **제목이 붙은 묶음**으로 나뉜다 (2026-08-28 원본 관측) —
+ * `홈` 묶음 아래 `Home`, `리그` 묶음 아래 리그들, `게시판` 묶음 아래 게시판들.
+ * PC GNB 는 한 줄에 늘어놓지만 서랍은 이 묶음을 쓴다.
+ *
+ * 게시판 하위 목록은 원본에 있으나 우리 카테고리 구성이 확정되지 않아
+ * 지금은 `게시판` 한 줄만 둔다 — 없는 카테고리를 지어내지 않는다 (CLAUDE.md 3장 7번).
+ */
+export interface NavGroup {
+  label: string
+  items: readonly NavLink[]
+}
+
+export const MOBILE_NAV_GROUPS: readonly NavGroup[] = [
+  { label: '홈', items: [{ label: 'Home', href: '/' }] },
+  { label: '리그', items: [...FEATURED_LEAGUES, { label: '리그', href: '/leagues' }] },
+  { label: '게시판', items: [{ label: '게시판', href: '/board' }] },
 ]
 
 /** 대표 리그 뒤에 오는 고정 메뉴 — 원본 `nav-active`(굵게 + 흰 밑줄) */

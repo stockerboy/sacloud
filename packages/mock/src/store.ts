@@ -34,6 +34,8 @@ import {
   type TeamSide,
   type User,
   type Writer,
+  isBarracksUrl,
+  playerRefsFromBarracksUrl,
 } from '@sacloud/contract'
 import { dataset } from './dataset'
 import { getMockRole } from './session'
@@ -201,6 +203,7 @@ function toLeagueSummary(league: MockLeague): LeagueSummary {
     division_count: league.divisionCount,
     // 픽스처 리그는 전부 공식리그다. 무소속리그는 운영자가 만드는 실제 리그다 (D-107)
     hides_cumulative_kd: false,
+    category: 'official',
   }
 }
 
@@ -238,7 +241,26 @@ const fold = (value: string): string => value.toLowerCase()
 const sameName = (a: string, b: string): boolean => fold(a) === fold(b)
 const hasPart = (haystack: string, needle: string): boolean => fold(haystack).includes(fold(needle))
 
+/**
+ * 병영수첩 주소를 붙여 넣으면 그 선수를 찾는다 (D-162).
+ *
+ * 파서는 `@sacloud/contract` 에 있다 — 실제 API 와 **같은 규칙**을 써야
+ * 두 모드 응답이 어긋나지 않는다. Mock 에는 `nexonOuid` 가 없어 닉네임 후보만 쓴다.
+ */
+function findPlayerByBarracksUrl(input: string): PlayerSearchItem | null {
+  if (!isBarracksUrl(input)) return null
+  for (const ref of playerRefsFromBarracksUrl(input)) {
+    if (ref.kind !== 'nickname') continue
+    const player = dataset.players.find((entry) => sameName(entry.name, ref.value))
+    if (player) return { id: player.id, name: player.name, clan: playerClanSummary(player) }
+  }
+  return null
+}
+
 export function findPlayerByName(name: string): PlayerSearchItem | null {
+  const fromUrl = findPlayerByBarracksUrl(name)
+  if (fromUrl) return fromUrl
+
   const player = dataset.players.find((entry) => sameName(entry.name, name))
   if (!player) return null
   return { id: player.id, name: player.name, clan: playerClanSummary(player) }
@@ -247,6 +269,11 @@ export function findPlayerByName(name: string): PlayerSearchItem | null {
 export function searchPlayers(query: string, limit = 10): PlayerSearchItem[] {
   const keyword = query.trim()
   if (!keyword) return []
+  /* 주소를 붙여 넣는 중에 부분일치가 끼어들면 방해가 되므로 그 결과만 준다 (D-162) */
+  if (isBarracksUrl(keyword)) {
+    const found = findPlayerByBarracksUrl(keyword)
+    return found ? [found] : []
+  }
   return dataset.players
     .filter((entry) => hasPart(entry.name, keyword))
     .slice(0, limit)
@@ -867,7 +894,9 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     id: leaguePlayer.id,
     league_id: league.id,
     league: toLeagueSummary(league),
-    player: { id: player.id, name: player.name },
+    /* 선수가 직접 설정하는 값이라 픽스처도 **일부만** 채운다 (D-161).
+       원본 실측에서도 21,107명 중 대부분이 `null` 이다 — 화면은 그때 줄을 그리지 않는다 */
+    player: { id: player.id, name: player.name, position: player.position, note: player.note },
     clan: clanSummaryOf(leagueClan.clanId),
     rating: leaguePlayer.rating,
     win: leaguePlayer.win,

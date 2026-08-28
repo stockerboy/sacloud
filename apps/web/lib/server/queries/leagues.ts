@@ -25,7 +25,8 @@ import {
   toUserSummaryOrNull,
 } from '../mappers'
 import { cumulativeKdRate } from './visibility'
-import { MIRROR_ORIGIN, publicOriginWhere } from './publicScope'
+import { publicOriginWhere } from './publicScope'
+import { ladderMatchWhere } from './ladderScope'
 import { seasonLabel } from '@sacloud/db/ops'
 
 /**
@@ -366,13 +367,7 @@ export async function matchCountByPlayer(
      * 미러링한 3rd.supply 경기에는 들어 있지 않다. 실측: supply 리그 13만 경기 중
      * `redRatingUpdate` 가 있는 것은 98건뿐이라 분모가 0이 됐고, 화면에 평균킬이
      * 전부 `0.0킬` 로 나왔다. 미러 경기는 전부 래더 경기다 (원본이 래더 경기만 준다). */
-    where: {
-      playerId: { in: playerIds },
-      match: {
-        leagueId,
-        OR: [{ redRatingUpdate: { not: null } }, { origin: MIRROR_ORIGIN }],
-      },
-    },
+    where: { playerId: { in: playerIds }, match: { leagueId, ...ladderMatchWhere() } },
     _count: { _all: true },
   })
   return new Map(grouped.map((row) => [row.playerId, row._count._all]))

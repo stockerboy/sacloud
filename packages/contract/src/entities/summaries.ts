@@ -47,6 +47,18 @@ export const LeagueSummary = z.object({
    * 경기 한 판의 K/D/A는 숨기지 않는다.
    */
   hides_cumulative_kd: z.boolean(),
+  /**
+   * 리그 구분 — `official` | `independent` (D-107 · D-165).
+   *
+   * 화면이 **표기**를 고르는 데 쓴다. 무소속리그는 부리그 칸을 `1부리그` 가 아니라
+   * `1티어` 로 쓴다 (D-165). 값의 구조는 같다 — `LeagueClan.division` 그대로다.
+   *
+   * `hides_cumulative_kd` 와 지금은 같은 조건에서 켜지지만 **뜻이 다르다.**
+   * 하나는 "무엇을 감추는가", 다른 하나는 "무엇이라 부르는가"다. 합치지 않는다.
+   *
+   * 기본값이 있어 기존 응답과도 호환된다.
+   */
+  category: z.enum(['official', 'independent']).default('official'),
 })
 export type LeagueSummary = z.infer<typeof LeagueSummary>
 

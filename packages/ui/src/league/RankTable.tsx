@@ -215,9 +215,10 @@ export function PlayerRankTable({
                 className="flex min-w-0 items-center"
                 href={leaguePlayerPath(leagueSlug, row.player.id)}
               >
-                {row.clan ? (
-                  <ClanMark mark={row.clan.mark} className="mr-2" alt={row.clan.name} />
-                ) : null}
+                {/* 무소속이어도 **자리를 비우지 않는다** — fallback 마크를 그린다 (D-146).
+                    `clan ? ... : null` 로 감싸면 소속 없는 선수 옆이 통째로 빈다.
+                    `clan` 을 그대로 넘기면 `clanMarkView` 가 fallback 으로 떨어뜨린다. */}
+                <ClanMark clan={row.clan} className="mr-2" alt={row.clan?.name ?? ''} />
                 <span className="truncate">{row.player.name}</span>
               </Link>
             </div>

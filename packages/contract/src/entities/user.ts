@@ -151,6 +151,16 @@ export type LeagueInvitation = z.infer<typeof LeagueInvitation>
 export const DivisionChangeInput = z.object({ division: Division })
 export type DivisionChangeInput = z.infer<typeof DivisionChangeInput>
 
+/**
+ * 리그 관리자가 클랜을 **직접** 부리그/티어에 등록한다 (D-165).
+ *
+ * 초대(`leagueInvite`)와 다르다. 초대는 클랜 마스터가 링크로 수락하는 흐름이고,
+ * 이것은 운영자가 티어를 직접 정해 넣는 흐름이다 — 무소속리그 티어 편성이 그렇다.
+ * `division` 은 무소속리그에서 **티어 번호**로 표시된다. 값의 구조는 같다.
+ */
+export const LeagueClanRegisterInput = z.object({ clan_slug: Slug, division: Division })
+export type LeagueClanRegisterInput = z.infer<typeof LeagueClanRegisterInput>
+
 /** 클랜변경(승계): 전적을 새 클랜이 그대로 승계. 새 클랜 마스터의 수락이 필요하다. */
 export const ClanSuccessionInput = z.object({ clan_slug: Slug })
 export type ClanSuccessionInput = z.infer<typeof ClanSuccessionInput>

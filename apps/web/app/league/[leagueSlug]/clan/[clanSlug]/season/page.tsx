@@ -31,7 +31,11 @@ export default function LeagueClanSeasonPage({
   /* 헤더·탭은 레이아웃이 그린다 (`../layout.tsx`) */
   return (
     <div className="pc-container mt-6 pb-10">
-      <SeasonTable seasons={seasons.data?.data} kind="clan" />
+      <SeasonTable
+        seasons={seasons.data?.data}
+        kind="clan"
+        leagueName={detail.data?.data.league.name}
+      />
     </div>
   )
 }

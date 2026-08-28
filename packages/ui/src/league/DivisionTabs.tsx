@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { divisionLabel } from './divisionLabel'
 
 /**
  * 부리그 탭.
@@ -15,20 +16,27 @@ import Link from 'next/link'
  * - 첫 탭만 왼쪽 둥근 모서리, 마지막 탭만 오른쪽 둥근 모서리 (버튼 그룹)
  * - 첫 탭은 테두리 4면, 나머지는 왼쪽 테두리를 빼서 선이 겹치지 않게 한다
  * - `division_count === 1`(단일리그)이면 **탭 자체를 렌더하지 않는다**
+ *
+ * 무소속리그는 같은 탭을 `1티어 … 5티어` 로 **표기만** 바꿔 쓴다 (D-165).
+ * 탭이 5개면 좁은 화면에서 한 줄에 들어가지 않으므로 **탭 줄 안에서만** 가로로 민다
+ * (`.mobile-scroll-x` — 본문은 밀리지 않는다).
  */
 export function DivisionTabs({
   leagueSlug,
   divisionCount,
   current,
+  leagueCategory,
 }: {
   leagueSlug: string
   divisionCount: number
   current: number
+  /** `official` | `independent` — 표기만 바꾼다 (D-165). 없으면 공식리그 표기 */
+  leagueCategory?: string
 }) {
   if (divisionCount <= 1) return null
 
   return (
-    <div className="mb-5 flex items-stretch text-lg">
+    <div className="mobile-scroll-x mb-5 flex items-stretch text-lg">
       {Array.from({ length: divisionCount }, (_, index) => {
         const division = index + 1
         const first = index === 0
@@ -38,13 +46,13 @@ export function DivisionTabs({
             key={division}
             href={`/league/${leagueSlug}/rank/clan/${division}`}
             className={[
-              'px-5 py-3 border-line',
+              'shrink-0 whitespace-nowrap px-5 py-3 border-line',
               first ? 'border rounded-l' : 'border-t border-r border-b',
               last ? 'rounded-r' : '',
               division === current ? 'bg-tab-active text-tab-active-fg' : '',
             ].join(' ')}
           >
-            {division}부리그
+            {divisionLabel(division, leagueCategory)}
           </Link>
         )
       })}

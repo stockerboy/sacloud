@@ -420,6 +420,13 @@ export const endpoints = {
     description: '클랜 초대 + 초대링크 발급',
     response: apiResponse(LeagueInvitation),
   },
+  leagueClanRegister: {
+    method: 'POST',
+    path: '/leagues/:leagueSlug/clans',
+    origin: 'designed',
+    description: '리그 관리자가 클랜을 부리그/티어에 직접 등록 (무소속리그 티어 편성 · D-165)',
+    response: apiResponse(LeagueClan),
+  },
   leagueClanDivisionUpdate: {
     method: 'PUT',
     path: '/leagues/:leagueSlug/clans/:leagueClanId/division',

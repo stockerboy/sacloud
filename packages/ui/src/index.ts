@@ -15,7 +15,14 @@ export { Skeleton } from './common/Skeleton'
 export { EmptyState } from './common/EmptyState'
 export { ErrorState } from './common/ErrorState'
 
-export { FEATURED_LEAGUES, PRIMARY_NAV, SITE_BRAND, type NavLink } from './site-config'
+export {
+  FEATURED_LEAGUES,
+  MOBILE_NAV_GROUPS,
+  PRIMARY_NAV,
+  SITE_BRAND,
+  type NavGroup,
+  type NavLink,
+} from './site-config'
 
 /* --- Phase 3: 리그 · 랭킹 --- */
 export {
@@ -39,6 +46,7 @@ export {
   type BetaNoticeContent,
 } from './league/betaNoticeText'
 export { DivisionTabs } from './league/DivisionTabs'
+export { divisionLabel, divisionUnit } from './league/divisionLabel'
 export {
   RankHeader,
   RankBox,

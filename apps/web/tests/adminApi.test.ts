@@ -107,6 +107,42 @@ describe.skipIf(!up)('관리자 권한', () => {
     }
   })
 
+  /**
+   * 리그 관리 API 는 `/api/admin/*` 이 아니라 `/api/leagues/{slug}/...` 에 있고,
+   * 권한 검사도 다른 함수(`requireLeagueAdmin`)를 쓴다. **새 경로가 이 검사를 빠져나가면 안 된다.**
+   *
+   * 무소속리그 티어 등록(D-165)도 여기 들어간다 —
+   * 로그인하지 않으면 401, 로그인했지만 그 리그 관리자가 아니면 403이다.
+   */
+  it(
+    '리그 관리 API 도 비인증이면 막힌다 (티어 등록 포함 · D-165)',
+    async () => {
+      const attempts: [string, string, unknown][] = [
+        ['/leagues/supply/clans', 'POST', { clan_slug: 'x', division: 1 }],
+        ['/leagues/nolink/clans', 'POST', { clan_slug: 'x', division: 3 }],
+        ['/leagues/supply/clans/whatever/division', 'PUT', { division: 2 }],
+        ['/leagues/supply/invitations', 'POST', { clan_slug: 'x', division: 1 }],
+      ]
+      /* 한 줄씩 기다리면 dev 서버의 라우트 최초 컴파일 때문에 5초를 넘긴다.
+         순서가 의미 없는 검사라 **함께 보낸다.** 타임아웃도 넉넉히 준다 */
+      const results = await Promise.all(
+        attempts.map(async ([path, method, body]) => {
+          const response = await fetch(`${BASE}${path}`, {
+            method,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(60_000),
+          })
+          return [path, response.status] as const
+        }),
+      )
+      for (const [path, status] of results) {
+        expect([401, 403], `${path} 가 막히지 않았다 (${status})`).toContain(status)
+      }
+    },
+    90_000,
+  )
+
   it.skipIf(!hasAdmin)('관리자는 대시보드를 볼 수 있다', async () => {
     const result = await asAdmin<{
       summary: {

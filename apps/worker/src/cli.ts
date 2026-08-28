@@ -24,6 +24,10 @@ import {
   fromSupplyState,
   importLegacySeasons,
   importSupplyOfficialClans,
+  ensureIndependentLeague,
+  registerClanTier,
+  syncIndependentTiers,
+  INDEPENDENT_LEAGUE_SLUG,
   mergeRows,
   provisionTestAccount,
   rotateSharedDevPasswords,
@@ -76,6 +80,14 @@ import { runSupplyMirror } from './jobs/supplyMirror.js'
 import { runSupplyPush } from './jobs/supplyPush.js'
 import { runSupplyImport } from './jobs/supplyImport.js'
 import { runSupplyRollup } from './jobs/supplyRollup.js'
+import { countCollected, runSupplySeasons, supplySeasonsPaths } from './jobs/supplySeasons.js'
+import { runSupplySeasonsImport } from './jobs/supplySeasonsImport.js'
+import {
+  countProfiles,
+  runSupplyPlayerProfiles,
+  supplyPlayerProfilesPaths,
+} from './jobs/supplyPlayerProfiles.js'
+import { runSupplyPlayerProfilesImport } from './jobs/supplyPlayerProfilesImport.js'
 
 interface Args {
   command: string
@@ -148,6 +160,12 @@ function usage(): void {
   check
   status
 
+  independent-league [--league <slug>] [--confirm]
+              무소속리그(기본 slug nolink) 행을 만든다 (D-165). **재실행해도 중복이 없다**
+              티어 1~5 = League.divisionCount = 5 인 리그의 division 1~5 다. 새 축이 아니다
+              --register <클랜slug> --tier <1~5>  그 티어에 클랜을 등록/이동한다
+              --sync   Clan.tier 를 LeagueClan.division 에 맞춘다 (기준은 division)
+              **--confirm 없이는 한 줄도 쓰지 않는다**
   roster      --league <slug> --file <CSV> [--verified] | --from-league-players | --sync-priority
               (플래그 없으면 등록 현황만 보여 준다)
   backfill-observations [--ouid <OUID>[,<OUID>]]
@@ -172,6 +190,23 @@ function usage(): void {
               --incremental 은 커서를 버리고 목록 맨 앞부터 새 경기만 훑는다 (주기 실행용)
               --seen-from-db 는 "이미 받은 것" 을 DB 에서 읽는다 —
               JSONL 이 없는 빈 작업공간(GitHub Actions)에서 증분을 돌릴 때 쓴다
+  supply-seasons [--league <slug>] [--file <json>] [--limit N] [--dry-run]
+              3rd.supply **지난시즌 카드** 수집 (D-159). 경기는 가져오지 않는다.
+              선수당 2요청 — leaguePlayerId 색인 + /leagueplayers/{id}/seasons.
+              중단 후 재개된다. --dry-run 은 요청을 한 건도 보내지 않고 예상 요청 수만 낸다
+  supply-seasons-import [--league <slug>] [--file <json>] [--limit N] [--confirm]
+              지난시즌 수집 파일 → LeaguePlayerSeason (D-159). **네트워크를 쓰지 않는다**
+              원본값을 그대로 넣는다. 우리가 계산한 카드(imported=false)는 덮어쓰지 않는다.
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 로컬 DB 가 아니면 거부한다
+  supply-player-profiles [--file <json>] [--limit N] [--dry-run]
+              3rd.supply **선수 프로필** 수집 — position · note · renewed_at (D-161)
+              /players/{id} 로 **선수당 1요청**. 세 값은 리그와 무관한 전역 값이다.
+              중단 후 재개된다. --dry-run 은 요청을 한 건도 보내지 않고 예상 요청 수만 낸다
+  supply-player-profiles-import [--file <json>] [--limit N] [--confirm]
+              프로필 수집 파일 → Player.position / note / renewedAt. **네트워크를 쓰지 않는다**
+              origin='3rd.supply' 선수만 건드린다. position 은 숫자 코드라 표기를 아는
+              코드만 채우고, 모르는 코드는 비운 채 **몇 명인지 센다** (표기 대부분 [미확인])
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 로컬 DB 가 아니면 거부한다
   supply-import [--league <slug>] [--file <json>] [--limit N] [--confirm]
               [--update-source] [--league-name <이름>]
               3rd.supply 미러링 수집 파일 → 우리 DB (D-153). **네트워크를 쓰지 않는다**
@@ -183,7 +218,7 @@ function usage(): void {
               미러 경기(origin='3rd.supply') → LeaguePlayer · LeagueClan 집계.
               선수 점수는 가장 최근 경기의 sourceRating 을 그대로 옮긴다 (D-153).
               선수 소속(LeaguePlayer.clanId · Player.clanId)도 같은 규칙이다 —
-              **가장 최근 경기**에 적힌 클랜을 현재 소속으로 쓴다 (D-160).
+              **가장 최근 경기**에 적힌 클랜을 현재 소속으로 쓴다 (D-161).
               무소속이거나 Clan 표에 없는 클랜이면 칸을 쓰지 않는다(만들지 않는다).
               Player.clanId 는 origin='3rd.supply' 인 선수만 건드린다.
               클랜 점수·승패·부리그는 **수집 파일 클랜 목록** 값을 그대로 쓴다 (D-157).
@@ -1023,6 +1058,169 @@ async function main(): Promise<number> {
       return 0
     }
 
+    case 'supply-seasons': {
+      /* D-159 — 3rd.supply 지난시즌 카드 수집. **경기는 받지 않는다.**
+         `--file` 은 다른 supply 잡과 같은 규칙으로 저장소 루트 기준으로 푼다. */
+      const leagueSlug = stringFlag(args, 'league') ?? 'supply'
+      const repoRoot = join(process.cwd(), '..', '..')
+      const fileFlag = stringFlag(args, 'file')
+      const file = fileFlag
+        ? isAbsolute(fileFlag)
+          ? fileFlag
+          : join(repoRoot, fileFlag)
+        : join(repoRoot, `packages/db/data/supply-seasons-${leagueSlug}.json`)
+
+      const result = await runSupplySeasons(ctx, {
+        leagueSlug,
+        file,
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          리그: result.leagueSlug,
+          대상: result.targets,
+          '이미 받음': result.alreadyDone,
+          '이번 색인': result.newRefs,
+          '이번 수집': result.newCards,
+          '카드 있는 선수': result.playersWithSeasons,
+          '시즌 줄': result.seasonRows,
+          실패: result.failures,
+        },
+      ])
+      log(`  파일 ${result.file} (+ .leagueplayers.jsonl / .seasons.jsonl)`)
+      return 0
+    }
+
+    case 'supply-player-profiles': {
+      /* D-161 — 선수 프로필(position · note · renewed_at) 수집.
+         리그를 받지 않는다. 세 값은 **리그와 무관한 전역 값**이다 (실측 2026-08-28). */
+      const repoRoot = join(process.cwd(), '..', '..')
+      const fileFlag = stringFlag(args, 'file')
+      const file = fileFlag
+        ? isAbsolute(fileFlag)
+          ? fileFlag
+          : join(repoRoot, fileFlag)
+        : join(repoRoot, 'packages/db/data/supply-player-profiles.json')
+
+      const result = await runSupplyPlayerProfiles(ctx, {
+        file,
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          대상: result.targets,
+          '이미 받음': result.alreadyDone,
+          '이번 수집': result.newRows,
+          '받은 선수': result.collected,
+          '포지션 있음': result.withPosition,
+          '메모 있음': result.withNote,
+          실패: result.failures,
+        },
+      ])
+      table(
+        Object.entries(result.positionCodes)
+          .sort((a, b) => Number(a[0]) - Number(b[0]))
+          .map(([code, count]) => ({ '포지션 코드': code, 인원: count })),
+      )
+      log(`  파일 ${supplyPlayerProfilesPaths.rowsPath(result.file)}`)
+      return 0
+    }
+
+    case 'supply-player-profiles-import': {
+      /* D-161 — 수집 파일 → Player.position / note / renewedAt. 네트워크를 쓰지 않는다.
+         기본은 미리보기이고 `--confirm` 이 있어야만 쓴다. */
+      const repoRoot = join(process.cwd(), '..', '..')
+      const fileFlag = stringFlag(args, 'file')
+      const base = fileFlag
+        ? isAbsolute(fileFlag)
+          ? fileFlag
+          : join(repoRoot, fileFlag)
+        : join(repoRoot, 'packages/db/data/supply-player-profiles.json')
+      const rows = supplyPlayerProfilesPaths.rowsPath(base)
+
+      const counted = await countProfiles(rows)
+      const imported = await runSupplyPlayerProfilesImport({
+        file: rows,
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit'),
+      })
+      table([
+        {
+          '파일 선수': counted.collected,
+          '포지션 코드 있음': counted.withPosition,
+          '메모 있음': counted.withNote,
+          'DB 와 연결': imported.matched,
+          'DB 에 없음': imported.unknownPlayers,
+          '값 변경': imported.updated,
+          '이미 같음': imported.unchanged,
+          '포지션 채움': imported.positionSet,
+          '표기 모르는 코드': imported.positionUnknownCode,
+          '메모 채움': imported.noteSet,
+          '갱신시각 채움': imported.renewedAtSet,
+          '빈 줄(404)': imported.emptyRows,
+        },
+      ])
+      const unknown = Object.entries(imported.unknownCodeSamples).sort(
+        (a, b) => Number(a[0]) - Number(b[0]),
+      )
+      if (unknown.length > 0) {
+        /* 지어내지 않는다. 사람이 원본에서 확인할 수 있게 **대표 선수**를 함께 낸다 */
+        warn('표기를 모르는 포지션 코드가 있다 — 원본 화면에서 확인해 SUPPLY_POSITION_LABELS 에 넣어라')
+        table(
+          unknown.map(([code, s]) => ({
+            '포지션 코드': code,
+            인원: s.count,
+            '확인용 선수': `https://3rd.supply/player/${s.samplePlayerId}`,
+          })),
+        )
+      }
+      return 0
+    }
+
+    case 'supply-seasons-import': {
+      /* D-159 — 수집 파일 → LeaguePlayerSeason. 네트워크를 쓰지 않는다.
+         기본은 미리보기이고 `--confirm` 이 있어야만 쓴다. */
+      const leagueSlug = stringFlag(args, 'league') ?? 'supply'
+      const repoRoot = join(process.cwd(), '..', '..')
+      const fileFlag = stringFlag(args, 'file')
+      const base = fileFlag
+        ? isAbsolute(fileFlag)
+          ? fileFlag
+          : join(repoRoot, fileFlag)
+        : join(repoRoot, `packages/db/data/supply-seasons-${leagueSlug}.json`)
+      const cards = supplySeasonsPaths.cardsPath(base)
+
+      const counted = await countCollected(cards)
+      const imported = await runSupplySeasonsImport({
+        file: cards,
+        leagueSlug,
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit'),
+      })
+      table([
+        {
+          리그: imported.leagueSlug,
+          '파일 선수': imported.readPlayers,
+          '카드 있는 선수': counted.playersWithSeasons,
+          '시즌 줄': imported.readRows,
+          'DB 와 연결': imported.matchedPlayers,
+          'DB 에 없음': imported.unknownPlayers,
+          '시즌 생성': imported.seasonsCreated,
+          '행 생성': imported.rowsCreated,
+          '행 갱신': imported.rowsUpdated,
+          '우리 카드 보호': imported.rowsSkippedOurs,
+          'source id 채움': imported.sourceIdsFilled,
+        },
+      ])
+      table(
+        Object.entries(imported.bySeason)
+          .map(([season, rows]) => ({ 시즌: Number(season), 줄: rows }))
+          .sort((a, b) => b.시즌 - a.시즌),
+      )
+      log(`  파일 ${cards}`)
+      return 0
+    }
+
     case 'supply-import': {
       /* D-153 — 미러링 수집 파일 → 우리 DB.
          수집(`supply-mirror`)과 분리돼 있고 **네트워크를 쓰지 않는다.**
@@ -1820,6 +2018,64 @@ async function main(): Promise<number> {
       }
       if (!confirm) log('미리보기다. 실제로 넣으려면 --confirm 을 붙인다')
       return result.counts.conflict > 0 && !confirm ? 1 : 0
+    }
+
+    /**
+     * 무소속리그 만들기 · 티어 편성 (D-165).
+     *
+     * 스키마 변경이 없다. 필요한 컬럼(`League.category` · `divisionCount` ·
+     * `Clan.category` · `Clan.tier` · `LeagueClan.division`)은 전부 이미 있다.
+     *
+     * **재실행해도 중복이 생기지 않는다.** `--confirm` 없이는 한 줄도 쓰지 않는다.
+     */
+    case 'independent-league': {
+      const leagueSlug = stringFlag(args, 'league') ?? INDEPENDENT_LEAGUE_SLUG
+      const confirm = boolFlag(args, 'confirm')
+      const write = confirm && !dryRun
+
+      if (boolFlag(args, 'sync')) {
+        const synced = await syncIndependentTiers({ leagueSlug, dryRun: !write })
+        log(`${leagueSlug} — 검사 ${synced.checked}건 · 어긋남 ${synced.fixed.length}건`)
+        if (synced.fixed.length > 0) table(synced.fixed)
+        if (!write) log('--confirm 이 없어 한 줄도 쓰지 않았다')
+        return 0
+      }
+
+      const clanSlug = stringFlag(args, 'register')
+      if (clanSlug) {
+        const tier = numberFlag(args, 'tier')
+        if (tier === null) {
+          fail('--tier <1~5> 가 필요하다')
+          return 1
+        }
+        const result = await registerClanTier({ leagueSlug, clanSlug, tier, dryRun: !write })
+        for (const warning of result.warnings) warn(warning)
+        if (!result.ok) {
+          fail(`등록하지 못했다: ${result.reason}`)
+          return 1
+        }
+        log(
+          `${clanSlug} → ${leagueSlug} ${tier}티어 ` +
+            `(${result.created ? '신규 등록' : `이동 ${result.fromTier ?? '-'} → ${tier}`})`,
+        )
+        if (!write) log('--confirm 이 없어 한 줄도 쓰지 않았다')
+        return 0
+      }
+
+      const ensured = await ensureIndependentLeague({ dryRun: !write })
+      table([
+        {
+          slug: ensured.league.slug,
+          이름: ensured.league.name,
+          구분: ensured.league.category,
+          티어수: ensured.league.divisionCount,
+          origin: ensured.league.origin,
+          신규: ensured.created,
+        },
+      ])
+      for (const fixedItem of ensured.fixed) log(`고침: ${fixedItem}`)
+      if (!write) log('--confirm 이 없어 한 줄도 쓰지 않았다')
+      return 0
     }
 
     case 'check': {

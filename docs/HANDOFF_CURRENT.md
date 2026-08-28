@@ -1,5 +1,68 @@
 # HANDOFF_CURRENT.md — 현재 상태 인수인계
 
+> ## ⬛ 무소속리그 신설 · 티어 = 부리그(division) (2026-08-28 · D-161)
+>
+> 사용자 지시로 만든 **신규 기능**이다. `slug = nolink` · `category = independent` ·
+> `divisionCount = 5` · `origin = sacloud`. GNB·모바일 서랍은 이미 `/league/nolink` 를 건다.
+>
+> ### 핵심 — 새 축을 만들지 않았다
+>
+> **티어 1~5 = `LeagueClan.division` 1~5.** 화면 표기만 `1부리그` → `1티어` 로 바꾼다
+> (`packages/ui/src/league/divisionLabel.ts` 한 곳). 조건은 `league.category === 'independent'`
+> 하나라 **공식리그 표기는 바뀔 수 없다.** 그래서 클랜랭킹·개인랭킹·탭·커서가 그대로 돈다.
+>
+> `Clan.tier` 는 D-104 무소속 래더 질의가 읽는 값이라 **같이** 맞춘다.
+> 기준은 `LeagueClan.division` 이고, 어긋나면 `--sync` 로 되맞춘다.
+>
+> ### 킬뎃 숨김은 **D-107 그대로**다. 새로 만들지 않았다
+>
+> 킬·데스는 **계산해서 저장한다.** `null` 로 넣지 않는다 (D-034 · D-106 과 뜻이 다르다).
+> 감추는 것은 **누적** kill/death/킬뎃뿐이고, 경기 한 판의 K/D/A 는 그대로 보인다.
+> 래더 공식도 하나뿐이다 — 무소속용 공식을 만들지 않았다.
+>
+> ### 스키마 변경 없음
+>
+> 필요한 칸이 전부 이미 있었다. **마이그레이션을 만들지 않았다.**
+>
+> ```bash
+> pnpm --filter @sacloud/worker nexon independent-league --confirm                       # 리그 만들기(멱등)
+> pnpm --filter @sacloud/worker nexon independent-league --register <클랜slug> --tier 3 --confirm
+> pnpm --filter @sacloud/worker nexon independent-league --sync --confirm                # tier ↔ division 정합
+> ```
+>
+> `--confirm` 없이는 한 줄도 쓰지 않는다. **로컬 DB 에만 만들었다** — 운영 반영은 아직이다.
+>
+> ### 관리자 화면
+>
+> `/league/nolink/setting` 에 **티어 등록** 칸이 생겼다 (무소속리그에서만 나온다).
+> 클랜 이름/slug 로 찾아 → 티어 고르고 → 등록. 이동은 기존 부리그 select 가 그대로 하고,
+> 빼는 것은 기존 삭제(7일 대기)·추방이다. 권한은 기존 `requireLeagueAdmin` 그대로 —
+> 비인증 401 · 비관리자 403 (`apps/web/tests/adminApi.test.ts` 회귀 추가).
+>
+> ### 검증
+>
+> | | |
+> |---|---|
+> | typecheck | 통과 |
+> | 신규 테스트 | `independentTier.test.ts` 15건 · `division-label.test.ts` 5건 **전부 통과** |
+> | 전체 test | 1,090 passed / 32 skipped · **health.test.ts 2건 타임아웃** (아래) |
+> | lint | 내가 바꾼 파일 **0건**. `cli.ts` 4건은 다른 작업(`supplyPlayerProfiles`) 미완성분 |
+> | `/league/nolink` 질의 | 리그홈·1~5티어 클랜랭킹·개인랭킹·참여클랜 전부 정상 응답(0건) |
+>
+> `health.test.ts` 2건은 **5초 기본 타임아웃**이다. `--testTimeout=30000` 이면 6/6 통과한다.
+> DB 에 경기가 365,582건이라 `match.count()` 가 느려진 것이고 이번 변경과 무관하다.
+>
+> ### 남은 일 · `[미확인]`
+>
+> - **운영 DB 에는 아직 없다.** 위 명령을 운영 `DATABASE_URL` 로 한 번 돌려야 한다
+> - 무소속리그에 **시즌이 없다.** 시즌 카드가 필요하면 운영자가 연다. 래더는 시즌 없이도 돈다
+> - 같은 클랜이 공식리그와 무소속리그에 **동시에** 있을 수 있는지는 `[미확인]`. 막지 않고 경고만 한다
+> - **무기별 누적**(`sniper_kill` 등 · D-149)은 무소속리그에서도 그대로 나간다.
+>   D-107 이 정한 범위가 아니라 넓히지 않았다 — 판단이 필요하다
+> - 경기가 실제로 `nolink` 리그에 쌓이려면 수집·투영이 그 리그를 대상으로 잡아야 한다.
+>   무소속 경기 수집 경로는 **이번 범위 밖**이다
+
+
 > ## ⬛ 3rd.supply 미러 수집 진행 중 · 클랜 랭킹 원본 일치 (2026-08-28 · D-153~D-158)
 >
 > **결정 기록을 따라잡았다.** D-151 ~ D-158 이 코드·마이그레이션·이 문서에서 이미 쓰이고 있었는데

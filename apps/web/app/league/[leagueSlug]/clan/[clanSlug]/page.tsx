@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
   ClanStatSidebar,
+  LoadMoreButton,
   MatchCard,
   RecentMatchSummary,
   Skeleton,
@@ -108,6 +109,12 @@ export default function LeagueClanRecordPage({
               />
             ))
           )}
+          {/* 기록실에 `더 불러오기` 가 없어 첫 페이지 뒤의 경기에 닿을 수 없었다.
+              랭킹·게시판과 같은 커서 방식이라 같은 버튼을 쓴다.
+              다음 커서가 없으면 렌더하지 않는다 (원본 동작). */}
+          {matches.hasMore ? (
+            <LoadMoreButton onClick={matches.loadMore} loading={matches.loadingMore} />
+          ) : null}
         </div>
       </div>
       <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">

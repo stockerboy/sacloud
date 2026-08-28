@@ -1,5 +1,12 @@
 import { prisma } from '@sacloud/db'
-import type { ClanSummary, GameMap, LeagueSummary, PlayerSearchItem } from '@sacloud/contract'
+import {
+  isBarracksUrl,
+  playerRefsFromBarracksUrl,
+  type ClanSummary,
+  type GameMap,
+  type LeagueSummary,
+  type PlayerSearchItem,
+} from '@sacloud/contract'
 import {
   CLAN_SUMMARY_SELECT,
   LEAGUE_SUMMARY_SELECT,
@@ -49,6 +56,11 @@ function keywordOf(query: string): string {
  * id가 가장 앞선 1건을 준다. Mock이 배열에서 처음 찾은 항목을 주는 것과 같다.
  */
 export async function findPlayerByName(name: string): Promise<PlayerSearchItem | null> {
+  /* 병영수첩 주소를 그대로 붙여 넣으면 그 선수로 간다 (D-162).
+     주소가 아니면 아래 닉네임 조회로 그대로 내려간다 */
+  const fromUrl = await findPlayerByBarracksUrl(name)
+  if (fromUrl) return fromUrl
+
   const player = await prisma.player.findFirst({
     where: { name: ciEquals(name), ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
@@ -58,9 +70,43 @@ export async function findPlayerByName(name: string): Promise<PlayerSearchItem |
   return { id: player.id, name: player.name, clan: toClanSummaryOrNull(player.clan) }
 }
 
+/**
+ * 넥슨 병영수첩 주소로 선수를 찾는다.
+ *
+ * 주소에서 뽑은 후보를 **순서대로** 시도한다 — 계정 번호(ouid)가 먼저다.
+ * 그게 사람의 확정 키이고, 닉네임은 바뀌거나 겹칠 수 있다.
+ * 주소가 아니거나 우리 DB 에 없으면 `null` 이다. **없는 선수를 만들어 내지 않는다.**
+ */
+async function findPlayerByBarracksUrl(input: string): Promise<PlayerSearchItem | null> {
+  if (!isBarracksUrl(input)) return null
+
+  for (const ref of playerRefsFromBarracksUrl(input)) {
+    const where =
+      ref.kind === 'ouid'
+        ? { nexonOuid: ref.value, ...publicOriginWhere() }
+        : { name: ciEquals(ref.value), ...publicOriginWhere() }
+    const player = await prisma.player.findFirst({
+      where,
+      orderBy: [{ id: 'asc' }],
+      select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
+    })
+    if (player) {
+      return { id: player.id, name: player.name, clan: toClanSummaryOrNull(player.clan) }
+    }
+  }
+  return null
+}
+
 export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> {
   const keyword = keywordOf(query)
   if (!keyword) return []
+
+  /* 자동완성에도 주소를 받는다. 주소를 붙여 넣는 중에 부분일치가 엉뚱하게 뜨면
+     오히려 방해가 되므로, 주소로 찾은 결과가 있으면 **그것만** 준다 (D-162) */
+  if (isBarracksUrl(keyword)) {
+    const found = await findPlayerByBarracksUrl(keyword)
+    return found ? [found] : []
+  }
 
   const players = await prisma.player.findMany({
     where: { name: ci(keyword), ...publicOriginWhere() },

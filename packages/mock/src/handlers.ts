@@ -273,6 +273,14 @@ const resolvers: Record<EndpointKey, Resolver> = {
       created_at: FIXTURE_NOW,
       expires_at: null,
     }),
+  /* 관리자가 클랜을 티어/부리그에 직접 등록한다 (D-165).
+     Mock 은 저장하지 않는다 — 계약 형태만 돌려준다 (Phase 5~6 규칙). */
+  leagueClanRegister: ({ params }) => {
+    const slug = leagueSlugOf(param(params['leagueSlug']))
+    const page = slug ? store.getLeagueClans(slug, null, PAGE_SIZE.DEFAULT) : null
+    const first = page?.items[0]
+    return first ? ok(first) : notFound()
+  },
   leagueClanDivisionUpdate: ({ params }) => {
     const slug = leagueSlugOf(param(params['leagueSlug']))
     const page = slug ? store.getLeagueClans(slug, null, PAGE_SIZE.DEFAULT) : null

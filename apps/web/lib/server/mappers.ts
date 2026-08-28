@@ -78,6 +78,9 @@ export function toLeagueSummary(league: LeagueFields): LeagueSummary {
     official: league.official,
     division_count: league.divisionCount,
     hides_cumulative_kd: league.category === 'independent',
+    /* 화면이 부리그 칸을 `1부리그` 로 쓸지 `1티어` 로 쓸지 정하는 값이다 (D-165).
+       DB 에 다른 값이 들어와 있어도 계약 밖의 문자열을 그대로 내보내지 않는다. */
+    category: league.category === 'independent' ? 'independent' : 'official',
   }
 }
 

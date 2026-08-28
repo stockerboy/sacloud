@@ -34,18 +34,32 @@ export async function PUT(request: Request, context: { params: Promise<Record<st
 
     const league = await prisma.league.findUnique({
       where: { id: check.leagueId },
-      select: { divisionCount: true },
+      select: { divisionCount: true, category: true },
     })
     if (!league) return notFound('리그를 찾을 수 없습니다')
     if (parsed.data.division > league.divisionCount) {
-      return badRequest(`이 리그는 ${league.divisionCount}부리그까지 있습니다`)
+      return badRequest(
+        league.category === 'independent'
+          ? `이 리그는 ${league.divisionCount}티어까지 있습니다`
+          : `이 리그는 ${league.divisionCount}부리그까지 있습니다`,
+      )
     }
 
     const existing = await prisma.leagueClan.findFirst({
       where: { id: leagueClanId, leagueId: check.leagueId },
-      select: { id: true, division: true },
+      select: { id: true, division: true, clanId: true },
     })
     if (!existing) return notFound('참여 클랜을 찾을 수 없습니다')
+
+    /* 무소속리그의 division 은 **티어**다. `Clan.tier` 도 같이 옮긴다 (D-165).
+       한쪽만 고치면 부리그 탭(division 기준)과 무소속 래더(D-104 · `Clan.tier` 기준)가
+       서로 다른 답을 낸다. 공식리그에서는 `Clan.tier` 를 건드리지 않는다. */
+    if (league.category === 'independent') {
+      await prisma.clan.update({
+        where: { id: existing.clanId },
+        data: { category: 'independent', tier: parsed.data.division },
+      })
+    }
 
     const updated = await prisma.leagueClan.update({
       where: { id: existing.id },

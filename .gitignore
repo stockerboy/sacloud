@@ -65,3 +65,15 @@ apps/web/.next-verify/
 packages/db/data/supply-mirror-*.jsonl
 packages/db/data/supply-mirror-*.legacy
 packages/db/data/supply-mirror-*.corrupt
+
+# 지난시즌 수집 체크포인트 (B10). 미러 파일과 같은 원칙이다 —
+# 계속 커지고(수집 시작 20분 만에 5MB, supply 한 리그만 요청 2만건),
+# 원본 보존은 git 이 아니라 DB 가 맡는다. `nexon supply-seasons` 로 다시 만든다.
+packages/db/data/supply-seasons-*.json
+packages/db/data/supply-seasons-*.jsonl
+
+# 3rd.supply 선수 프로필 수집 (position · note · renewed_at · D-161).
+# 위 수집 파일들과 같은 이유로 뺀다 — 21,107줄 5MB 이고
+# `nexon supply-player-profiles` 로 언제든 다시 만든다.
+packages/db/data/supply-player-profiles.json
+packages/db/data/supply-player-profiles.jsonl

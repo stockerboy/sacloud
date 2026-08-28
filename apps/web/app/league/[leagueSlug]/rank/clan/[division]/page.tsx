@@ -43,10 +43,12 @@ export default function ClanRankPage({
           title="클랜랭킹"
           notice="랭킹은 1시간마다 갱신되며, 배치고사가 종료된 클랜만 표시됩니다."
         />
+        {/* 무소속리그는 같은 탭을 `1티어 … 5티어` 로 표기한다 (D-165). 값은 division 그대로다 */}
         <DivisionTabs
           leagueSlug={leagueSlug}
           divisionCount={league.data?.data.division_count ?? 1}
           current={current}
+          leagueCategory={league.data?.data.category}
         />
         <RankBox>
           <ClanRankTable

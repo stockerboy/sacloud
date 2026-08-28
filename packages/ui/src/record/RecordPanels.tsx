@@ -33,15 +33,29 @@ import { ratingClass } from '../common/rating'
  * 그 아래 `최근 같이한 플레이어` 표 (닉네임 / 승 / 패 / 승률).
  */
 
-/** 승률 도넛 — 원본은 원형 게이지. SVG로 같은 크기(w-32 h-40 칸)에 그린다. */
+/**
+ * 승률 도넛 — 원본은 원형 게이지. SVG로 같은 크기(w-32 h-40 칸)에 그린다.
+ *
+ * 남은 조각은 **패배**다 (2026-08-28 원본 모바일 관측 — 승=파랑 · 패=빨강).
+ * 예전에는 회색 트랙(`--color-divider`)으로 그려서 "패배"라는 뜻이 사라져 있었다.
+ * 색은 매치 카드가 이미 쓰는 토큰(`win-bar` / `lose-bar`)을 그대로 쓴다 — 새로 만들지 않는다.
+ */
 function WinRateDonut({ rate }: { rate: number }) {
   const radius = 44
   const circumference = 2 * Math.PI * radius
   const filled = (Math.min(100, Math.max(0, rate)) / 100) * circumference
   return (
-    <div className="relative flex min-h-40 w-32 shrink-0 items-center justify-center">
+    /* 모바일은 고정 최소 높이(10rem)를 풀어 도넛 위아래 빈 공간을 없앤다 — 원본도 붙어 있다 */
+    <div className="relative flex min-h-40 w-32 shrink-0 items-center justify-center max-md:min-h-0">
       <svg viewBox="0 0 112 112" className="h-28 w-28 -rotate-90" aria-hidden>
-        <circle cx="56" cy="56" r={radius} fill="none" stroke="var(--color-divider)" strokeWidth="10" />
+        <circle
+          cx="56"
+          cy="56"
+          r={radius}
+          fill="none"
+          stroke="var(--color-lose-bar)"
+          strokeWidth="10"
+        />
         <circle
           cx="56"
           cy="56"
@@ -63,6 +77,16 @@ function streakText(streak: MatchSummary['streak']): string {
   return `${streak.count}${streak.type === 'win' ? '연승' : '연패'} 중`
 }
 
+/**
+ * 연승/연패 문구 색 (2026-08-28 원본 모바일 관측 — `1연패 중` 빨강 · `6연승 중` 파랑).
+ * 도넛과 같은 뜻이므로 같은 토큰 계열(`win` / `lose`)을 쓴다.
+ */
+function streakClass(streak: MatchSummary['streak']): string {
+  if (streak.type === 'win') return 'text-win'
+  if (streak.type === 'lose') return 'text-lose'
+  return ''
+}
+
 export function RecentMatchSummary({
   summary,
   leagueSlug,
@@ -82,18 +106,29 @@ export function RecentMatchSummary({
   return (
     <div className="bg-card px-4 py-2 shadow-card">
       <div className="text-lg">최근매치</div>
-      {/* 모바일에서는 세로로 쌓는다 — 도넛(8rem) + 요약 + 상대 목록이 한 줄에 들어가지 않는다.
+      {/* 모바일은 2단이다 (2026-08-28 원본 모바일 관측).
+          1단 `[도넛 | 전적·연승연패]` · 가로 구분선 · 2단 `상대 클랜 목록`.
           항목을 빼지 않고 배치만 바꾼다 (`docs/UI_PARITY_AUDIT.md` 부록 A).
-          `max-md:` 규칙은 md 이상에 아예 생성되지 않으므로 PC 는 그대로 가로 배치다. */}
+          `max-md:` 규칙은 md 이상에 아예 생성되지 않으므로 PC 는 그대로 한 줄 3칸이다. */}
       <div className="mt-4 flex max-md:flex-col">
-        <WinRateDonut rate={summary.win_rate} />
-        <div className="ml-5 flex min-h-40 items-center justify-center max-md:ml-0 max-md:min-h-0 max-md:py-2">
-          <div>
+        {/* 도넛과 요약 문구는 **모바일에서도 한 줄**이다 (2026-08-28 원본 모바일 관측).
+            예전에는 세로로 쌓아서 도넛 아래에 문구가 따로 떨어졌다.
+            PC 는 이 묶음이 그대로 바깥 flex 의 첫 칸이라 렌더 결과가 같다. */}
+        <div className="flex">
+          <WinRateDonut rate={summary.win_rate} />
+          <div className="ml-5 flex min-h-40 items-center justify-center max-md:min-h-0 max-md:py-2">
             <div>
-              {formatCount(summary.recent_count)}전 {formatCount(summary.win)}승{' '}
-              {formatCount(summary.lose)}패 ({formatRate(summary.win_rate)}%)
+              <div>
+                {formatCount(summary.recent_count)}전 {formatCount(summary.win)}승{' '}
+                {formatCount(summary.lose)}패 (
+                {/* 원본은 이 괄호 안 승률에도 색 등급을 준다 (85% → 빨강).
+                    랭킹 표와 같은 `rateClass` 규칙이라 새 경계를 만들지 않는다 */}
+                <span className={rateClass(summary.win_rate)}>{formatRate(summary.win_rate)}%</span>)
+              </div>
+              <div className={`mt-2 ${streakClass(summary.streak)}`}>
+                {streakText(summary.streak)}
+              </div>
             </div>
-            <div className="mt-2">{streakText(summary.streak)}</div>
           </div>
         </div>
         {/*
@@ -106,12 +141,15 @@ export function RecentMatchSummary({
             세로 구분선(`border-l-2`)을 위쪽 구분선으로 바꾼다 — 쌓인 배치에서 왼쪽 선은 뜻이 없다.
             상대가 많거나 클랜명이 길면 줄 하나가 여전히 넘칠 수 있어 **이 블록 안에서만** 스크롤한다. */}
         <div className="mobile-scroll-x ml-20 flex min-h-40 items-center border-l-2 border-l-divider px-20 max-md:ml-0 max-md:min-h-0 max-md:border-l-0 max-md:border-t-2 max-md:border-t-divider max-md:px-0 max-md:pt-2">
-          <div className="max-md:w-max">
+          <div className="max-md:w-full">
             {summary.opponents.length === 0 ? (
               <div className="text-meta">상대 전적이 없습니다.</div>
             ) : (
               summary.opponents.map((entry) => (
-                <div key={entry.clan.id} className="flex items-center py-0.5 text-sm">
+                /* 모바일 원본은 `vs {클랜}` 한 줄, 전적·킬뎃이 그 아래 들여쓴 줄로 온다.
+                   예전에는 한 줄로 두고 넘치면 가로로 밀었다 — 원본은 밀지 않고 접는다.
+                   항목·순서·문구는 그대로다. `max-md:` 뿐이라 PC 는 한 줄 그대로다. */
+                <div key={entry.clan.id} className="flex items-center py-0.5 text-sm max-md:flex-wrap">
                   <span className="mr-1 text-meta">vs</span>
                   <Link
                     href={`/league/${leagueSlug}/clan/${entry.clan.slug}`}
@@ -125,20 +163,26 @@ export function RecentMatchSummary({
                       className="mr-1"
                       alt={entry.clan.name}
                     />
-                    <span className="max-w-[100px] truncate">{entry.clan.name}</span>
-                  </Link>
-                  <span className="ml-2">
-                    {formatCount(entry.win + entry.lose)}전 {formatCount(entry.win)}승{' '}
-                    {formatCount(entry.lose)}패 ({formatRate(entry.win_rate)}%)
-                  </span>
-                  {showKdRate ? (
-                    <span className="ml-2 text-meta">
-                      - 킬뎃:{' '}
-                      <span className={rateClass(entry.kd_rate)}>
-                        {formatRate(entry.kd_rate)}%
-                      </span>
+                    {/* 모바일은 클랜명이 자기 줄을 통째로 쓰므로 100px 로 자르지 않는다 —
+                        원본 모바일도 `supremacy-` 같은 이름을 끝까지 보여 준다 */}
+                    <span className="max-w-[100px] truncate max-md:max-w-none">
+                      {entry.clan.name}
                     </span>
-                  ) : null}
+                  </Link>
+                  <span className="flex items-center max-md:mt-0.5 max-md:w-full max-md:pl-6">
+                    <span className="ml-2 max-md:ml-0">
+                      {formatCount(entry.win + entry.lose)}전 {formatCount(entry.win)}승{' '}
+                      {formatCount(entry.lose)}패 ({formatRate(entry.win_rate)}%)
+                    </span>
+                    {showKdRate ? (
+                      <span className="ml-2 text-meta">
+                        - 킬뎃:{' '}
+                        <span className={rateClass(entry.kd_rate)}>
+                          {formatRate(entry.kd_rate)}%
+                        </span>
+                      </span>
+                    ) : null}
+                  </span>
                 </div>
               ))
             )}
@@ -167,6 +211,17 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 export interface PlayerStatSidebarProps {
   rating: number
   placement: boolean
+  /**
+   * 포지션 — 선수가 **직접 설정하는 값**이다 (D-161).
+   *
+   * 경기를 세서 만들어 내는 값이 아니다. `weaponCopy.resolvePlayerPosition`
+   * (무기별 경기 수로 스나/라플/멀티를 정하는 것)과는 **다른 개념**이다.
+   *
+   * `null` 이면 **줄 자체를 그리지 않는다.** 원본이 그렇다 —
+   * 값이 없는 선수의 `상세정보` 에는 `포지션` 줄이 아예 없었다 (2026-08-28 실측).
+   * `-` 나 `알수없음` 으로 채우지 않는다 (D-099 · D-106).
+   */
+  position?: string | null
   win: number
   lose: number
   winRate: number
@@ -198,6 +253,20 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
           {props.placement ? '배치고사' : `${props.rating}점`}
         </span>
       </Stat>
+      {/*
+        `포지션` — **래더 바로 아래**다 (원본 모바일 실측 2026-08-28).
+        값이 있는 선수에게만 나온다. 없으면 줄째로 사라진다 — 그래서 우리는 예전에
+        이 줄을 "원본에 없다" 고 **잘못 판단해 지웠다** (`docs/UI_PARITY_AUDIT.md` 6-2).
+      */}
+      {props.position == null || props.position === '' ? null : (
+        <>
+          <Divider />
+          {/* 크기는 `Stat` 기본값을 쓴다 — 위아래 `래더 3260점` · `승률 … 58.9%` 와 같은
+              오른쪽 **주값** 자리다. `소속` 처럼 `text-base` 로 줄이지 않는다.
+              (원본 폰트 크기를 픽셀로 재지는 못했다 `[미확인]` — 같은 열의 이웃에 맞췄다) */}
+          <Stat label="포지션">{props.position}</Stat>
+        </>
+      )}
       <Divider />
       <Stat label="승률">
         <span className="mr-2 text-base">
@@ -236,20 +305,21 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       </Stat>
       <Divider />
       {/*
-        여기 있던 `포지션` · `스나이퍼` · `라이플` 세 줄은 **원본에 없어서 뺐다**
-        (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1 · 6-2).
-        원본 사이드바는 래더 · 승률 · 킬뎃 · 평균킬 · MVP · 랭킹 · 소속 일곱 줄이 전부다.
-        원본에 없는 UI 를 우리가 덧붙인 것이라 `CLAUDE.md` 3장 3번 위반이었다.
+        여기 있던 `스나이퍼` · `라이플` 두 줄은 **원본에 없어서 뺐다**
+        (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1).
 
-        판정 함수(`resolvePlayerPosition` · `positionLabel` · `weaponStatView`)와 그 테스트는
-        `record/weaponCopy.ts` 에 **그대로 남겨 두었다.** 무기 분리는 `CLAUDE.md` 3-A 에서
-        V1 범위로 승격된 항목이라 언젠가 어디에 어떻게 보여 줄지 정해질 수 있다.
-        지금 없는 것은 **화면에 그리는 곳**뿐이고, 되살릴 때 로직을 다시 쓸 필요는 없다.
+        같이 지웠던 `포지션` 은 **판단이 틀렸다.** 원본에 있다 — 위쪽 `래더` 바로 아래로
+        되살렸다 (D-161). 다만 원본의 `포지션` 은 **선수가 직접 설정하는 값**이고,
+        우리가 지웠던 것은 무기별 경기 수로 스나/라플/멀티를 **계산하던** 다른 것이었다.
+        계산식 쪽(`resolvePlayerPosition` · `positionLabel`)은 `record/weaponCopy.ts` 에
+        남아 있지만 **화면에는 쓰지 않는다.** 원본에 없는 개념이다.
       */}
       <Stat label="소속">
         <span className="text-base">
           {props.clan === null ? (
-            '-'
+            /* 무소속은 `없음` 이다 (2026-08-28 원본 모바일 관측). 빈칸도 `-` 도 아니다 —
+               전역 프로필 헤더(`PlayerHeader` 의 `소속: 없음`)와도 같은 표기가 된다 */
+            '없음'
           ) : props.clan.isOfficialClan === false ? (
             /* 공식 1/2부 등록 클랜이 아니다 (D-146).
                이름은 남기되 링크를 걸지 않고 `미등록` 을 붙인다 —

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { LeagueClanDetail, LeaguePlayer } from './league'
-import { LeagueSummary } from './summaries'
+import { LeagueSummary, PlayerSummary } from './summaries'
 import { MatchSummary, TeammateStat } from './match'
 
 /**
@@ -30,8 +30,35 @@ export const PlayerWeaponStat = z.object({
 })
 export type PlayerWeaponStat = z.infer<typeof PlayerWeaponStat>
 
+/**
+ * 기록실 상세가 함께 내보내는 **선수 프로필 값** (D-161).
+ *
+ * 원본 응답도 이 자리에 담아 준다 — `data.player.{position,note}` (실측 2026-08-28).
+ * 리그별 값이 아니라 **전역 선수 값**이라 어느 리그에서 조회해도 같다.
+ *
+ * ── `position`
+ *   선수가 **직접 설정하는 값**이다. 경기 기록을 세서 만들어 내는 값이 아니다
+ *   (`packages/ui/src/record/weaponCopy.ts` 의 `resolvePlayerPosition` 과 **다른 개념**이다).
+ *   원본 응답은 숫자 코드로 주고 화면이 한글 표기로 바꿔 그린다 — 우리는 **표기**를 담는다.
+ *   값이 없으면 `null` 이고, 그때 화면은 **줄 자체를 그리지 않는다** (D-099 · D-106).
+ *   `-` 나 `알수없음` 으로 채우지 않는다.
+ *
+ * ── `note`
+ *   선수 소개/메모. 원본이 이 값을 **어느 화면에 쓰는지 확인하지 못했다** `[미확인]`.
+ *   그래서 계약에는 담되 화면에는 붙이지 않는다.
+ *
+ * 기본값이 있어 이 필드가 없던 응답과도 호환된다.
+ */
+export const LeaguePlayerProfile = PlayerSummary.extend({
+  position: z.string().nullable().default(null),
+  note: z.string().nullable().default(null),
+})
+export type LeaguePlayerProfile = z.infer<typeof LeaguePlayerProfile>
+
 export const LeaguePlayerDetail = LeaguePlayer.extend({
   league: LeagueSummary,
+  /** 선수 프로필 — `PlayerSummary` + `position` · `note` (D-161) */
+  player: LeaguePlayerProfile,
   /** 무기별 기록. 판정된 경기가 없으면 빈 배열이다 */
   weapon_stats: z.array(PlayerWeaponStat),
   /** 최근 20전 요약 + 상대 클랜별 전적 */

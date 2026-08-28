@@ -2,9 +2,16 @@
 
 import { use, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { LeagueClan } from '@sacloud/contract'
+import type { ClanSummary, LeagueClan } from '@sacloud/contract'
 import { EXPEL_CONFIRM_PHRASE } from '@sacloud/contract'
-import { ClanMark, ConfirmTypeToProceed, LoadMoreButton, Skeleton } from '@sacloud/ui'
+import {
+  ClanMark,
+  ConfirmTypeToProceed,
+  divisionLabel,
+  divisionUnit,
+  LoadMoreButton,
+  Skeleton,
+} from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { apiSend } from '@/lib/apiSend'
 import { useApiReady } from '@/app/providers'
@@ -23,12 +30,21 @@ import { AuthGuard } from '@/components/AuthGuard'
  *
  * 엔드포인트 경로·본문은 관측되지 않아 우리가 설계했다 (docs/DECISIONS.md D-003).
  * 화면 배치도 원본을 확인하지 못했다 `[미확인]` — 기능 구성만 맞췄다.
+ *
+ * ── 무소속리그 티어 편성 (D-165 · 사용자 지시로 추가된 신규 기능)
+ *   무소속리그에서는 `부리그` 자리가 `티어`다. 값은 같은 `LeagueClan.division` 이고
+ *   **표기만** 바뀐다. 그리고 초대 링크 대신 **관리자가 클랜을 직접 티어에 넣는다.**
+ *   승강은 자동이 아니다 — 운영자가 고른 티어 그대로다 (D-104 ①).
+ *   이 등록 칸은 무소속리그에서만 나온다. 공식리그 관리 화면은 원본 그대로 둔다.
  */
 function SettingBody({ leagueSlug }: { leagueSlug: string }) {
   const ready = useApiReady()
   const queryClient = useQueryClient()
   const [inviteUrl, setInviteUrl] = useState('')
   const [expelTarget, setExpelTarget] = useState<LeagueClan | null>(null)
+  const [clanQuery, setClanQuery] = useState('')
+  const [pickedClan, setPickedClan] = useState<ClanSummary | null>(null)
+  const [registerTier, setRegisterTier] = useState(1)
 
   const league = useQuery({
     queryKey: ['league', leagueSlug],
@@ -46,7 +62,31 @@ function SettingBody({ leagueSlug }: { leagueSlug: string }) {
     params: { leagueSlug },
   })
 
-  const refresh = () => void queryClient.invalidateQueries({ queryKey: ['league', leagueSlug] })
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['league', leagueSlug] })
+    // 참여 클랜 목록은 별도 키다. 등록·이동 결과가 바로 보이려면 같이 무효화해야 한다
+    void queryClient.invalidateQueries({ queryKey: ['league', leagueSlug, 'clans'] })
+  }
+
+  /** 클랜 자동완성 — 등록할 클랜을 이름·slug 로 찾는다 */
+  const clanSearch = useQuery({
+    queryKey: ['clans', 'search', clanQuery],
+    queryFn: () => apiGet('clansSearch', { params: { q: clanQuery } }),
+    enabled: ready && clanQuery.trim().length > 0,
+  })
+
+  const registerClan = useMutation({
+    mutationFn: (input: { clanSlug: string; division: number }) =>
+      apiSend('leagueClanRegister', {
+        params: { leagueSlug },
+        body: { clan_slug: input.clanSlug, division: input.division },
+      }),
+    onSuccess: () => {
+      setPickedClan(null)
+      setClanQuery('')
+      refresh()
+    },
+  })
 
   const lookup = useMutation({
     mutationFn: () => apiSend('leagueClanLookup', { params: { leagueSlug }, body: { url: inviteUrl } }),
@@ -105,6 +145,76 @@ function SettingBody({ leagueSlug }: { leagueSlug: string }) {
     <div className="pc-container mt-10 pb-10">
       <div className="text-3xl">{data.name} 리그 관리</div>
 
+      {/* --- 무소속리그 전용: 티어 편성 (D-165). 공식리그 화면은 원본 그대로 둔다 --- */}
+      {data.category === 'independent' ? (
+        <section className="mt-6 rounded bg-card px-6 py-6 shadow-card">
+          <div className="text-xl font-semibold">티어 등록</div>
+          <div className="mt-2 text-sm text-meta">
+            클랜을 찾아 1티어 ~ {data.division_count}티어 중 하나에 등록합니다. 티어는 성적으로
+            자동으로 바뀌지 않습니다.
+          </div>
+          <div className="mt-3 flex items-center">
+            <input
+              value={clanQuery}
+              onChange={(event) => {
+                setClanQuery(event.target.value)
+                setPickedClan(null)
+              }}
+              placeholder="클랜 이름 또는 영문이름"
+              className="h-11 flex-grow rounded border border-line px-3"
+            />
+            <select
+              value={registerTier}
+              onChange={(event) => setRegisterTier(Number(event.target.value))}
+              className="ml-3 h-11 rounded border border-line bg-card px-2"
+            >
+              {Array.from({ length: data.division_count }, (_, index) => index + 1).map((tier) => (
+                <option key={tier} value={tier}>
+                  {divisionLabel(tier, data.category)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!pickedClan || registerClan.isPending}
+              onClick={() =>
+                pickedClan &&
+                registerClan.mutate({ clanSlug: pickedClan.slug, division: registerTier })
+              }
+              className="ml-3 h-11 w-24 rounded bg-more text-white disabled:opacity-60"
+            >
+              등록
+            </button>
+          </div>
+
+          {clanQuery.trim() && clanSearch.data ? (
+            <div className="mt-3 border border-line">
+              {clanSearch.data.data.length === 0 ? (
+                <div className="px-4 py-3 text-meta">찾는 클랜이 없습니다.</div>
+              ) : (
+                clanSearch.data.data.slice(0, 10).map((clan) => (
+                  <button
+                    key={clan.id}
+                    type="button"
+                    onClick={() => setPickedClan(clan)}
+                    className={`flex w-full items-center border-b border-b-line px-4 py-2 text-left last:border-b-0 ${
+                      pickedClan?.id === clan.id ? 'bg-row font-semibold' : ''
+                    }`}
+                  >
+                    <ClanMark mark={clan.mark} className="mr-2" alt={clan.name} />
+                    <span className="truncate">{clan.name}</span>
+                    <span className="ml-2 text-sm text-meta">{clan.slug}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
+          {registerClan.isError ? (
+            <div className="mt-3 text-lose">등록하지 못했습니다.</div>
+          ) : null}
+        </section>
+      ) : null}
+
       <section className="mt-6 rounded bg-card px-6 py-6 shadow-card">
         <div className="text-xl font-semibold">클랜 초대</div>
         <div className="mt-2 text-sm text-meta">
@@ -153,7 +263,8 @@ function SettingBody({ leagueSlug }: { leagueSlug: string }) {
         <div className="mt-4 border border-line">
           <div className="flex items-center border-b border-b-line py-2 text-meta">
             <div className="w-72 px-4">클랜</div>
-            <div className="w-40 text-center">부리그</div>
+            {/* 무소속리그에서는 이 칸이 `티어`다. 값은 같은 division 이다 (D-165) */}
+            <div className="w-40 text-center">{divisionUnit(data.category)}</div>
             <div className="flex-grow text-center">작업</div>
           </div>
           {clans.loading ? (
@@ -182,7 +293,7 @@ function SettingBody({ leagueSlug }: { leagueSlug: string }) {
                     {Array.from({ length: data.division_count }, (_, index) => index + 1).map(
                       (division) => (
                         <option key={division} value={division}>
-                          {division}부리그
+                          {divisionLabel(division, data.category)}
                         </option>
                       ),
                     )}

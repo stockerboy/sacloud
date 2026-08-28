@@ -24,9 +24,15 @@ export const SEASON_BASELINE = 1500
  */
 export const BETA_SEASON_NUMBER = 0
 
-/** 화면에 쓸 시즌 이름. 번호를 그대로 노출해도 되는지 여기서만 판단한다 */
+/**
+ * 화면에 쓸 시즌 이름. 번호를 그대로 노출해도 되는지 여기서만 판단한다.
+ *
+ * 정식·과거 시즌은 **`시즌 N`** 이다 — 2026-08-28 원본 지난시즌 카드 관측(`시즌 6`)에 맞췄다.
+ * 그 전에는 `Season N` 이었는데, 그건 관측 전의 추정이었다 (D-098 → D-159).
+ * 베타는 원본에 없는 우리 시즌이라 이름도 우리 것(`Beta Season`)을 그대로 둔다.
+ */
 export function seasonLabel(season: { number: number; seasonType: string }): string {
-  return season.seasonType === 'beta' ? 'Beta Season' : `Season ${season.number}`
+  return season.seasonType === 'beta' ? 'Beta Season' : `시즌 ${season.number}`
 }
 
 export interface SeasonOverview {

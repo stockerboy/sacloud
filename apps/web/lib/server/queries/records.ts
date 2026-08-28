@@ -18,6 +18,7 @@ import {
   type TeammateStat,
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
+import { ladderMatchWhere, withLadderMatch } from './ladderScope'
 import { toKstIso } from '../format'
 import {
   CLAN_SUMMARY_SELECT,
@@ -298,10 +299,13 @@ async function buildStreak(
  * 경기 목록에는 전부 보이지만 승·패·승률·연승·킬뎃·팀원 집계에는 래더 경기만 넣는다.
  * 이걸 빼기 전에는 집계 대상이 아닌 경기 한 판이 `1전 1승 0패 (100%)`로 표시됐다.
  *
- * 판정 기준은 `official` 라벨이 **아니라** `redRatingUpdate` 유무다 (D-148).
+ * 판정 기준은 `official` 라벨이 **아니라** 래더 반영 여부다 (D-148 · D-164).
  * D-145 에서 `official` 은 래더와 무관해졌다 — 기준은 정상 5v5 인가뿐이다.
  * 라벨로 거르면 래더는 오르는데 `0전 0승 0패` 로 보인다. 실제로 그랬다.
  * replay 는 래더 대상이 아닌 경기의 증감을 지우므로 이 값은 항상 최신이다.
+ *
+ * `redRatingUpdate` 만 보면 **미러링한 경기가 통째로 빠진다** — 그 칸은 우리 공식이
+ * 채우는 것이라 3rd.supply 경기에는 없다 (D-153). 조건은 `ladderScope.ts` 한 곳에 있다.
  *
  * mock 픽스처는 전부 증감을 들고 있어(3000/3000) 이 조건이
  * mock↔live 대조 결과를 바꾸지 않는다.
@@ -312,7 +316,8 @@ async function buildRecordSummary(
   leagueClanId: string,
   playerId: string | null,
 ): Promise<{ summary: MatchSummary; teammates: TeammateStat[] }> {
-  const ratedOnly: Prisma.MatchWhereInput = { ...where, redRatingUpdate: { not: null } }
+  /* `where` 에 이미 `OR` 가 있을 수 있어 펼치지 않고 `AND` 로 감싼다 (D-164) */
+  const ratedOnly: Prisma.MatchWhereInput = withLadderMatch(where)
   const recent = await prisma.match.findMany({
     where: ratedOnly,
     orderBy: MATCH_ORDER,
@@ -545,7 +550,10 @@ export async function getLeaguePlayerDetail(
       headshot: true,
       mvpCount: true,
       placement: true,
-      player: { select: PLAYER_SUMMARY_SELECT },
+      /* 기록실 사이드 `상세정보` 의 `포지션` 줄이 이 값을 쓴다 (D-161).
+         `PLAYER_SUMMARY_SELECT` 를 넓히지 않는다 — 라인업·최근 같이한 플레이어처럼
+         이 값이 필요 없는 곳까지 매 행마다 두 칸을 더 읽게 된다 */
+      player: { select: { ...PLAYER_SUMMARY_SELECT, position: true, note: true } },
       clan: { select: CLAN_SUMMARY_SELECT },
     },
   })
@@ -574,7 +582,7 @@ export async function getLeaguePlayerDetail(
     /* 평균킬 분모 — 분자(`LeaguePlayer.kill`)는 **래더 경기**를 누적한다.
        `official` 로 세면 분자·분모 기준이 달라 119킬인데 `판당 0.0킬`이 된다 (D-148) */
     prisma.matchPlayerStat.count({
-      where: { playerId, match: { leagueId: league.id, redRatingUpdate: { not: null } } },
+      where: { playerId, match: { leagueId: league.id, ...ladderMatchWhere() } },
     }),
     // 무기별 누적도 나머지와 같이 나간다. 예전에는 응답을 만들며 마지막에 홀로 기다렸다
     weaponStatsOf(leaguePlayer.id),
@@ -587,7 +595,13 @@ export async function getLeaguePlayerDetail(
     id: leaguePlayer.id,
     league_id: league.id,
     league: toLeagueSummary(league),
-    player: toPlayerSummary(leaguePlayer.player),
+    player: {
+      ...toPlayerSummary(leaguePlayer.player),
+      /* 선수가 직접 설정하는 값이다 (D-161). 없으면 `null` 이고 화면은 줄을 그리지 않는다.
+         `-` 나 `알수없음` 으로 채우지 않는다 (D-099 · D-106) */
+      position: leaguePlayer.player.position,
+      note: leaguePlayer.player.note,
+    },
     clan: toClanSummaryOrNull(leaguePlayer.clan),
     rating: leaguePlayer.rating,
     win: leaguePlayer.win,
