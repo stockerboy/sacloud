@@ -280,8 +280,14 @@ export function MatchCard({
           `상세보기` 글자 버튼을 없앴고, 양 팀 클랜 칸(`w-88`)은 모바일에서만 유동폭으로 쌓는다.
           그래서 예전의 `.mobile-scroll-x` 도 필요 없어져 뺐다. */}
       <div
-        /* 카드 최소 높이도 모바일에서 줄인다 — 원본 카드가 더 낮다 */
-        className={`mt-2 flex min-h-28 items-stretch border-b border-r border-t max-md:mt-1.5 max-md:min-h-0 ${
+        /*
+         * 카드 높이·간격은 **원본 스크린샷 실측값**이다 (2026-08-28).
+         *   원본 카드 273 device px · 카드 사이 간격 28 device px
+         *   우리   234 device px ·            17 device px   ← 17% 낮고 답답했다
+         * 기기 배율 3x 이므로 273/3 = 91 CSS px ≈ 6.5rem, 28/3 ≈ 9.3 CSS px ≈ 0.66rem.
+         * 좌우 여백은 `.pc-container` 에서 0 으로 뺐다 — 원본은 벽 끝까지 찬다.
+         */
+        className={`mobile-bleed mt-2 flex min-h-28 items-stretch border-b border-r border-t max-md:mt-[0.66rem] max-md:min-h-[6.5rem] ${
           win ? 'border-win-line bg-win-bg' : 'border-lose-line bg-lose-bg'
         }`}
       >
@@ -338,10 +344,20 @@ export function MatchCard({
             {/* 개인 기록실에서만 본인 K/D/A가 표시된다 (클랜 기록실에서는 null) */}
             {stat ? (
               <div className="flex w-32 shrink-0 items-center justify-center text-meta max-md:w-28">
-                <div className="text-center">
+                {/*
+                  모바일에서 `vs` 가 kda 가로선과 어긋나 보였다 (2026-08-28 사용자 지적).
+                  원인은 이 칸이 [MVP 알약][kda][킬뎃%] **세 줄 묶음의 가운데**를 잡는데,
+                  옆 클랜 칸은 [클랜][vs][클랜] 세 줄의 가운데를 잡기 때문이다.
+                  MVP 유무에 따라 묶음 중심이 오르내려서 줄이 계속 어긋난다.
+
+                  그래서 좁은 화면에서는 MVP 알약과 킬뎃% 를 **레이아웃에서 뺀다**(absolute).
+                  그러면 이 칸의 높이는 kda 한 줄뿐이라 kda 가 정확히 세로 중앙에 오고,
+                  옆 칸의 `vs` 도 세로 중앙이므로 **두 줄이 항상 맞는다.**
+                */}
+                <div className="text-center max-md:relative">
                   {/* MVP 는 kda **위**의 빨간 알약이다 (원본 모바일 관측) */}
                   {stat.mvp ? (
-                    <div className="mb-0.5 flex justify-center">
+                    <div className="mb-0.5 flex justify-center max-md:absolute max-md:inset-x-0 max-md:bottom-full max-md:mb-0">
                       <MvpPill />
                     </div>
                   ) : null}
@@ -371,7 +387,9 @@ export function MatchCard({
                         {stat.assist ?? '-'}
                       </div>
                       {stat.kd_rate === null ? null : (
-                        <div className={`text-sm ${rateClass(stat.kd_rate)}`}>
+                        <div
+                          className={`text-sm ${rateClass(stat.kd_rate)} max-md:absolute max-md:inset-x-0 max-md:top-full`}
+                        >
                           ({formatRate(stat.kd_rate)}%)
                         </div>
                       )}
