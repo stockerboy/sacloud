@@ -43,9 +43,9 @@ export default function ClanLayout({
           establishedAt={clan.data.data.established_at}
         />
       ) : (
-        <div className="mt-5 h-52 bg-clan-header py-10">
+        <div className="mt-5 h-52 bg-clan-header py-10 max-md:mt-0 max-md:h-auto max-md:py-5">
           <div className="pc-container">
-            <Skeleton className="h-[51px] w-96" />
+            <Skeleton className="h-[51px] w-96 max-w-full" />
           </div>
         </div>
       )}

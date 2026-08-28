@@ -123,14 +123,19 @@ export function ratingCellView(stat: { placement: boolean; rating: number | null
 /* ------------------------------------------------------------------ 무기 --- */
 
 /**
- * 무기 칸 표기. **모르면 `null`** 이고 호출부가 `알수없음` 을 그린다.
+ * 무기 칸 표기 — **`스나` / `라플`** (원본 경기 상세 표기, 2026-08-28 사용자 확인).
  *
+ * 선수 상세 사이드바의 포지션 표기(`weaponCopy.positionLabel`)는 여러 경기를 센 결과라
+ * `스나이퍼` / `라이플` 을 그대로 쓴다. **여기는 경기 한 판의 무기 칸이라 축약형이다.**
+ * 두 곳의 문맥이 달라 문구도 다르다 — 한쪽을 고칠 때 다른 쪽을 따라 고치지 않는다.
+ *
+ * **모르면 `null`** 이고 호출부가 `알수없음` 을 그린다.
  * 넥슨 Open API 에는 무기가 없어 실제로 `null` 인 경기가 많다 (D-034).
- * `null` 을 라이플로 떨어뜨리지 않는다 — 그건 없는 사실을 만드는 것이다.
+ * `null` 을 라플로 떨어뜨리지 않는다 — 그건 없는 사실을 만드는 것이다.
  */
 export function matchWeaponLabel(weapon: number | null | undefined): string | null {
-  if (weapon === WEAPON.SNIPER) return '스나이퍼'
-  if (weapon === WEAPON.RIFLE) return '라이플'
+  if (weapon === WEAPON.SNIPER) return '스나'
+  if (weapon === WEAPON.RIFLE) return '라플'
   return null
 }
 
@@ -166,16 +171,33 @@ export function formatMatchStartAt(value: string): string {
  * 서든어택 클랜전은 전반·후반에 진영을 바꾸므로, 원본은 두 팀에 각각
  * **처음 어느 진영에서 시작했는지**를 적는다(관측: 한 경기에 `선레드`와 `선블루`가 함께 나온다).
  *
- * `blue_team` 의 정확한 의미는 여전히 `[미확인]` 이다(계약 주석 참조).
- * 그래서 **값으로 어느 팀이 선공인지 단정하지 않고**, `null`(= 진영 정보를 모름)일 때
- * 양쪽 모두 표기하지 않는 근거로만 쓴다. 모르면 안 적는다 (D-034).
+ * ── 왜 `blue_team` 을 보지 않나 (2026-08-28 변경)
+ *   이 라벨은 **그 블록이 어느 진영인가**로 정해진다. 레드 블록은 `선레드`, 블루 블록은 `선블루` 다.
+ *   `blue_team` 을 게이트로 쓰던 예전 구현은, 넥슨이 그 값을 주지 않아(D-034) 사실상
+ *   모든 경기에서 표기를 통째로 지웠다. 그런데 참가자를 red/blue 로 나눈 것 자체가
+ *   저장된 사실(`Match.redLeagueClanId` / `blueLeagueClanId`)이므로, 어느 블록이 레드인지는 안다.
+ *
+ *   `[미확인]` — 우리가 저장한 red/blue 가 원본이 말하는 **선공** 진영과 같은지는 검증되지 않았다.
+ *   원본과 동일함이 검증되지 않은 표기다.
  */
-export function firstSideLabel(
-  blueTeam: boolean | null | undefined,
-  side: 'red' | 'blue',
-): string | null {
-  if (blueTeam === null || blueTeam === undefined) return null
+export function firstSideLabel(side: 'red' | 'blue'): string {
   return side === 'blue' ? '선블루' : '선레드'
+}
+
+/**
+ * 접힌 매치 카드(클랜 기록실)의 선공 진영 한 칸 — `선레드` / `선블루`.
+ *
+ * 원본 클랜 기록실 카드에는 **이 칸이 있다** (2026-08-27 실측: 양 팀 점수와 라인업 사이).
+ * 우리는 항목 자체를 지워 두고 있었다 (UI_PARITY_AUDIT 5-8).
+ *
+ * 팀 블록용 `firstSideLabel` 과 달리 여기서는 **값을 읽는다** —
+ * 계약이 `blue_team = 선공 진영이 블루면 true` 라고 정의하고 있고, 원본에서도
+ * 카드마다 `선레드`/`선블루` 가 번갈아 나온다(경기 단위 사실이라는 뜻).
+ * `null` 은 모르는 것이라 호출부가 `알수없음` 을 그린다 — 플레이시간과 같은 규칙이다 (D-034).
+ */
+export function matchFirstSideLabel(blueTeam: boolean | null | undefined): string | null {
+  if (blueTeam === null || blueTeam === undefined) return null
+  return blueTeam ? '선블루' : '선레드'
 }
 
 /** 팀 승패 판정에 필요한 최소 모양 */

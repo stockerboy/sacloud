@@ -733,7 +733,22 @@ model Match {
   mvpPlayer Player?     @relation("MatchMvp", fields: [mvpPlayerId], references: [id], onDelete: SetNull)
   stats     MatchPlayerStat[]
 
-  @@unique([origin, sourceMatchId])
+  /**
+   * 같은 경기가 **여러 리그에 기록될 수 있다** (D-155).
+   *
+   * 클랜은 리그를 겸한다. e2stro- 와 The|vub 가 둘 다 공식리그·열산리그 소속이면
+   * 그 경기는 **양쪽 리그에 다 찍혀야 한다.** 예전 제약 `unique(origin, sourceMatchId)` 은
+   * 한 경기를 한 리그에만 묶어서, 먼저 들어간 리그에만 남고 나머지는 버려졌다 —
+   * 실측으로 공식리그 1,828건 · 열산리그 28건이 그렇게 스킵됐다.
+   *
+   * 리그마다 **값이 다르다.** 부리그(`redDivisionAtMatch`)·클랜 래더·증감은 리그별이다.
+   * 그래서 한 행을 공유할 수 없고 리그마다 행을 둔다. 같은 물리 경기가 여러 행이 되지만
+   * 그 둘은 서로 다른 리그 기록이다.
+   *
+   * `id` 는 리그별로 다르게 만들고(`<matchId>@<leagueSlug>`), 실제 경기 번호는
+   * `sourceMatchId` 에 그대로 남는다 — 원본 대조 키를 잃지 않는다 (3-A 3번).
+   */
+  @@unique([leagueId, origin, sourceMatchId])
   // 기록실: 리그별 최신순
   @@index([leagueId, startAt(sort: Desc)])
   @@index([redLeagueClanId, startAt(sort: Desc)])

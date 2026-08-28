@@ -27,11 +27,17 @@ import {
   toClanSummaryOrNull,
   toLeagueSummary,
   toPlayerSummary,
+  type ClanFields,
 } from '../mappers'
 import { seasonLabel } from '@sacloud/db/ops'
 import { cumulativeKd, cumulativeKdRate, hidesCumulativeKd } from './visibility'
 import { clanRankOf, matchCountByPlayer, playerRankOf, playerWeaponRankOf } from './leagues'
-import { leagueClanIdOfPlayer, sideOfLeagueClan } from './matches'
+import {
+  leagueClanIdOfPlayer,
+  loadLeagueClanContext,
+  sideOfLeagueClan,
+  type LeagueClanContext,
+} from './matches'
 
 /**
  * 기록실 상세(상단 요약 · 사이드 통계) · 리그 클랜원 목록 · 지난시즌.
@@ -56,13 +62,16 @@ const MATCH_ORDER = [{ startAt: 'desc' as const }, { id: 'desc' as const }]
 /* 요약 계산에 필요한 컬럼                                                        */
 /* -------------------------------------------------------------------------- */
 
-/** 최근 20전 요약에 필요한 최소 컬럼. 매치마다 추가 쿼리를 내지 않도록 한 번에 읽는다. */
+/**
+ * 최근 20전 요약에 필요한 최소 컬럼. 매치마다 추가 쿼리를 내지 않도록 한 번에 읽는다.
+ *
+ * 상대 클랜은 `redClan{clan}` · `blueClan{clan}` 으로 읽지 않는다 — Prisma 는 중첩 관계마다
+ * 쿼리를 따로 던지므로 그것만으로 왕복이 4번 늘어난다. `loadLeagueClanContext` 로 모아 읽는다.
+ */
 const SUMMARY_MATCH_SELECT = {
   winnerSide: true,
   redLeagueClanId: true,
   blueLeagueClanId: true,
-  redClan: { select: { id: true, clan: { select: CLAN_SUMMARY_SELECT } } },
-  blueClan: { select: { id: true, clan: { select: CLAN_SUMMARY_SELECT } } },
   stats: {
     select: {
       playerId: true,
@@ -119,12 +128,13 @@ function buildMatchSummary(
   streak: Streak,
   leagueClanId: string,
   playerId: string | null,
+  clans: LeagueClanContext,
 ): MatchSummary {
   let win = 0
   let lose = 0
   const opponentMap = new Map<
     string,
-    { clan: SummaryMatchRow['redClan']['clan']; win: number; lose: number; kill: number; death: number }
+    { clan: ClanFields; win: number; lose: number; kill: number; death: number }
   >()
 
   for (const match of matches) {
@@ -136,9 +146,9 @@ function buildMatchSummary(
     if (won) win += 1
     else lose += 1
 
-    const opponentClan = side === 'red' ? match.blueClan : match.redClan
-    const entry = opponentMap.get(opponentClan.id) ?? {
-      clan: opponentClan.clan,
+    const opponentId = side === 'red' ? match.blueLeagueClanId : match.redLeagueClanId
+    const entry = opponentMap.get(opponentId) ?? {
+      clan: clans.get(opponentId)?.clan ?? EMPTY_CLAN,
       win: 0,
       lose: 0,
       kill: 0,
@@ -153,7 +163,7 @@ function buildMatchSummary(
       entry.kill += stat.kill ?? 0
       entry.death += stat.death ?? 0
     }
-    opponentMap.set(opponentClan.id, entry)
+    opponentMap.set(opponentId, entry)
   }
 
   const opponents: OpponentSummaryEntry[] = []
@@ -179,6 +189,16 @@ function buildMatchSummary(
 }
 
 /** 최근 20전에서 같은 편이었던 플레이어의 승률. 경기 수 내림차순 상위 10명. */
+/** 우리 리그 밖의 리그클랜이라 정보를 못 찾았을 때. 비어 있는 것을 그대로 드러낸다 */
+const EMPTY_CLAN: ClanFields = {
+  id: '',
+  slug: '',
+  name: '',
+  markBgUrl: null,
+  markFrontUrl: null,
+  sourceClanId: null,
+}
+
 function buildTeammates(
   matches: SummaryMatchRow[],
   leagueClanId: string,
@@ -216,22 +236,21 @@ function buildTeammates(
 /**
  * 연승/연패 — 최근 경기부터 같은 결과가 이어진 횟수.
  * 결과가 바뀌는 순간 멈추므로 전체를 다 읽는 일은 거의 없다.
+ *
+ * **최근 20전을 씨앗으로 받는다.** 요약에서 이미 읽어 온 바로 그 경기들이고
+ * 정렬·필터가 같으므로 다시 읽을 이유가 없다. 20연승/20연패가 아닌 이상 여기서 끝나서
+ * 쿼리가 한 번도 나가지 않는다. 예전에는 무조건 200건짜리 쿼리를 한 번 더 던졌다.
  */
-async function buildStreak(where: Prisma.MatchWhereInput, leagueClanId: string): Promise<Streak> {
+async function buildStreak(
+  where: Prisma.MatchWhereInput,
+  leagueClanId: string,
+  seed: readonly StreakMatchRow[],
+): Promise<Streak> {
   let type: Streak['type'] = 'none'
   let count = 0
-  let skip = 0
 
-  for (;;) {
-    const rows: StreakMatchRow[] = await prisma.match.findMany({
-      where,
-      orderBy: MATCH_ORDER,
-      skip,
-      take: STREAK_CHUNK,
-      select: STREAK_MATCH_SELECT,
-    })
-    if (rows.length === 0) return { type, count }
-
+  /** 결과가 뒤집히면 그 자리에서 확정한다. 아니면 `null`(더 봐야 한다) */
+  const consume = (rows: readonly StreakMatchRow[]): Streak | null => {
     for (const row of rows) {
       const side = sideOfLeagueClan(row, leagueClanId)
       if (!side) continue
@@ -245,6 +264,27 @@ async function buildStreak(where: Prisma.MatchWhereInput, leagueClanId: string):
         return { type, count }
       }
     }
+    return null
+  }
+
+  const fromSeed = consume(seed)
+  if (fromSeed) return fromSeed
+  // 씨앗이 한 페이지를 못 채웠다면 그게 전부다
+  if (seed.length < RECENT_MATCH_COUNT) return { type, count }
+
+  let skip = seed.length
+  for (;;) {
+    const rows: StreakMatchRow[] = await prisma.match.findMany({
+      where,
+      orderBy: MATCH_ORDER,
+      skip,
+      take: STREAK_CHUNK,
+      select: STREAK_MATCH_SELECT,
+    })
+    if (rows.length === 0) return { type, count }
+
+    const done = consume(rows)
+    if (done) return done
 
     if (rows.length < STREAK_CHUNK) return { type, count }
     skip += STREAK_CHUNK
@@ -267,23 +307,31 @@ async function buildStreak(where: Prisma.MatchWhereInput, leagueClanId: string):
  * mock↔live 대조 결과를 바꾸지 않는다.
  */
 async function buildRecordSummary(
+  leagueId: string,
   where: Prisma.MatchWhereInput,
   leagueClanId: string,
   playerId: string | null,
 ): Promise<{ summary: MatchSummary; teammates: TeammateStat[] }> {
   const ratedOnly: Prisma.MatchWhereInput = { ...where, redRatingUpdate: { not: null } }
-  const [recent, streak] = await Promise.all([
-    prisma.match.findMany({
-      where: ratedOnly,
-      orderBy: MATCH_ORDER,
-      take: RECENT_MATCH_COUNT,
-      select: SUMMARY_MATCH_SELECT,
-    }),
-    buildStreak(ratedOnly, leagueClanId),
+  const recent = await prisma.match.findMany({
+    where: ratedOnly,
+    orderBy: MATCH_ORDER,
+    take: RECENT_MATCH_COUNT,
+    select: SUMMARY_MATCH_SELECT,
+  })
+
+  /* 상대 클랜 정보와 연승연패는 서로를 기다릴 이유가 없다.
+     연승연패는 위에서 읽은 20건으로 대개 그 자리에서 끝난다(쿼리 0회) */
+  const [clans, streak] = await Promise.all([
+    loadLeagueClanContext(
+      leagueId,
+      recent.flatMap((match) => [match.redLeagueClanId, match.blueLeagueClanId]),
+    ),
+    buildStreak(ratedOnly, leagueClanId, recent),
   ])
 
   return {
-    summary: buildMatchSummary(recent, streak, leagueClanId, playerId),
+    summary: buildMatchSummary(recent, streak, leagueClanId, playerId, clans),
     teammates: buildTeammates(recent, leagueClanId, playerId),
   }
 }
@@ -335,7 +383,7 @@ export async function getLeagueClanShow(
       rating: leagueClan.rating,
       placement: leagueClan.placement,
     }),
-    buildRecordSummary(where, leagueClan.id, null),
+    buildRecordSummary(leagueClan.leagueId, where, leagueClan.id, null),
   ])
 
   return {
@@ -505,12 +553,15 @@ export async function getLeaguePlayerDetail(
 
   /* 소속 클랜이 없어도 선수는 존재한다 (D-135).
      D-134로 무소속·용병도 정상적인 선수가 됐다. 클랜이 없다는 이유로 404를 내면
-     개인 랭킹에는 보이는 사람의 프로필이 열리지 않는다. 계약도 `clan`을 nullable로 둔다. */
-  const leagueClanId = (await leagueClanIdOfPlayer(league.id, leaguePlayer.clanId)) ?? ''
+     개인 랭킹에는 보이는 사람의 프로필이 열리지 않는다. 계약도 `clan`을 nullable로 둔다.
+
+     **기다리지 않고 시작만 해 둔다.** 순위·무기별 집계는 이 값을 쓰지 않으므로
+     여기서 `await` 하면 뒤의 모든 조회가 왕복 한 번만큼 뒤로 밀린다. */
+  const leagueClanIdPromise = leagueClanIdOfPlayer(league.id, leaguePlayer.clanId)
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, sniper, rifle, matchCount, record] = await Promise.all([
+  const [rank, sniper, rifle, matchCount, weaponStats, record] = await Promise.all([
     playerRankOf({
       id: leaguePlayer.id,
       leagueId: leaguePlayer.leagueId,
@@ -525,7 +576,11 @@ export async function getLeaguePlayerDetail(
     prisma.matchPlayerStat.count({
       where: { playerId, match: { leagueId: league.id, redRatingUpdate: { not: null } } },
     }),
-    buildRecordSummary(where, leagueClanId, playerId),
+    // 무기별 누적도 나머지와 같이 나간다. 예전에는 응답을 만들며 마지막에 홀로 기다렸다
+    weaponStatsOf(leaguePlayer.id),
+    leagueClanIdPromise.then((leagueClanId) =>
+      buildRecordSummary(league.id, where, leagueClanId ?? '', playerId),
+    ),
   ])
 
   return {
@@ -571,7 +626,7 @@ export async function getLeaguePlayerDetail(
     rifle_kd_rate: rifle.kdRate,
     match_summary: record.summary,
     teammates: record.teammates,
-    weapon_stats: await weaponStatsOf(leaguePlayer.id),
+    weapon_stats: weaponStats,
   }
 }
 

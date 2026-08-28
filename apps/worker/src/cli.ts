@@ -73,7 +73,9 @@ import {
 } from './jobs/roster.js'
 import { readPollingConfig } from './lib/pollingPolicy.js'
 import { runSupplyMirror } from './jobs/supplyMirror.js'
+import { runSupplyPush } from './jobs/supplyPush.js'
 import { runSupplyImport } from './jobs/supplyImport.js'
+import { runSupplyRollup } from './jobs/supplyRollup.js'
 
 interface Args {
   command: string
@@ -164,11 +166,33 @@ function usage(): void {
   supply-players [--file <json>] [--league <slug>] [--cleanup] [--confirm]
               넥슨 참가자 ↔ 3rd.supply 선수 id 연결 (**같은 경기 · 닉네임 정확 일치** · D-132)
               --cleanup 은 기록이 하나도 없는 중복 행만 정리한다
+  supply-mirror [--league <slug>] [--league-id N] [--floor <YYYY-MM-DD>] [--file <json>]
+              [--limit N] [--incremental] [--seen-from-db]
+              3rd.supply 공개 API 미러링 수집 (D-153). 받은 응답을 그대로 JSONL 에 쌓는다
+              --incremental 은 커서를 버리고 목록 맨 앞부터 새 경기만 훑는다 (주기 실행용)
+              --seen-from-db 는 "이미 받은 것" 을 DB 에서 읽는다 —
+              JSONL 이 없는 빈 작업공간(GitHub Actions)에서 증분을 돌릴 때 쓴다
   supply-import [--league <slug>] [--file <json>] [--limit N] [--confirm]
               [--update-source] [--league-name <이름>]
               3rd.supply 미러링 수집 파일 → 우리 DB (D-153). **네트워크를 쓰지 않는다**
+              예전 단일 JSON 과 줄 단위(.matches.jsonl/.details.jsonl) 둘 다 읽는다.
+              줄 단위는 **흘려 읽는다** — 13만 건도 통째로 메모리에 올리지 않는다
               **--confirm 없이는 한 줄도 쓰지 않는다.** 이미 있는 경기는 건너뛴다.
               --update-source 는 있는 경기의 **비어 있는** 원본점수 칸만 채운다
+  supply-rollup [--league <slug>] [--file <json>] [--confirm]
+              미러 경기(origin='3rd.supply') → LeaguePlayer · LeagueClan 집계.
+              선수 점수는 가장 최근 경기의 sourceRating 을 그대로 옮긴다 (D-153).
+              선수 소속(LeaguePlayer.clanId · Player.clanId)도 같은 규칙이다 —
+              **가장 최근 경기**에 적힌 클랜을 현재 소속으로 쓴다 (D-160).
+              무소속이거나 Clan 표에 없는 클랜이면 칸을 쓰지 않는다(만들지 않는다).
+              Player.clanId 는 origin='3rd.supply' 인 선수만 건드린다.
+              클랜 점수·승패·부리그는 **수집 파일 클랜 목록** 값을 그대로 쓴다 (D-157).
+              그 목록이 클랜랭킹의 기준 집합이다 — 경기가 아직 없는 등록 클랜도
+              Clan·LeagueClan 행을 만들어 랭킹에 올리고,
+              목록에 없는 클랜은 랭킹에서 뺀다(placement=true · 경기는 그대로 남는다).
+              우리 공식값(ratingBefore/ratingUpdate/formulaVersion)은 건드리지 않는다.
+              --league 를 생략하면 미러 경기가 있는 리그 전부.
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 두 번 돌려도 같은 결과다
   explain-matches [--league <slug>] [--match-id <ID>[,<ID>]] [--limit N]
               재구성된 경기를 사람이 읽을 수 있게 풀어 쓴다 (읽기 전용)
   affiliation [--league <slug>] [--redo] [--confirm]
@@ -938,6 +962,22 @@ async function main(): Promise<number> {
       return 0
     }
 
+    case 'supply-push': {
+      /* D-156 — 로컬에 적재한 미러 결과를 운영으로 대량 전송한다.
+         운영에 직접 적재하면 왕복 때문에 12.8만 경기가 4시간이다. */
+      const targetUrl = process.env['SUPPLY_PUSH_TARGET_URL'] ?? ''
+      if (targetUrl === '') {
+        warn('SUPPLY_PUSH_TARGET_URL 이 없다 — 옮길 대상을 알 수 없다')
+        return 1
+      }
+      const rows = await runSupplyPush(ctx, {
+        targetUrl,
+        leagueSlug: stringFlag(args, 'league') ?? undefined,
+      })
+      if (rows.length > 0) table(rows as unknown as Record<string, unknown>[])
+      return 0
+    }
+
     case 'supply-mirror': {
       /* D-153 — 3rd.supply 시즌7 미러링 수집.
          커서를 끝까지 따라가고, 경기마다 상세를 받아 K/D/A·딜량·헤드샷·
@@ -964,6 +1004,11 @@ async function main(): Promise<number> {
         floor: stringFlag(args, 'floor') ?? '2026-06-01',
         file,
         limit: numberFlag(args, 'limit') ?? undefined,
+        /* `--incremental` — 새 경기만 훑는다. 주기 실행에 쓴다 */
+        incremental: boolFlag(args, 'incremental'),
+        /* `--seen-from-db` — "이미 받은 것" 을 DB 에서 읽는다.
+           JSONL 이 없는 빈 작업공간(GitHub Actions)에서 증분을 돌릴 때 쓴다 */
+        seenFromDb: boolFlag(args, 'seen-from-db'),
       })
       table([
         {
@@ -1003,6 +1048,67 @@ async function main(): Promise<number> {
       })
       log(`  파일 ${file}`)
       return output.imported.written.matches === 0 && confirm && output.reconciliation.supplyOnly > 0
+        ? 1
+        : 0
+    }
+
+    case 'supply-rollup': {
+      /* 미러 경기 → 리그 집계. 네트워크를 쓰지 않는다.
+         점수는 원본값 그대로 옮긴다(D-153). 우리 공식값은 읽지도 쓰지도 않는다 */
+      const confirm = boolFlag(args, 'confirm')
+      const rollup = await runSupplyRollup({
+        leagueSlug: stringFlag(args, 'league'),
+        file: stringFlag(args, 'file'),
+        confirm,
+      })
+
+      table(
+        rollup.leagues.map((row) => ({
+          리그: row.leagueSlug,
+          경기: row.matches,
+          참가행: row.stats,
+          선수: row.players.aggregated,
+          생성: row.players.created,
+          갱신: row.players.updated,
+          '점수 있음': row.players.withRating,
+          '점수 없음': row.players.withoutRating,
+          '소속 있음': row.players.withClan,
+          무소속: row.players.clanless,
+          'Clan 행 없음': row.players.clanNotInDb,
+        })),
+      )
+      table([
+        {
+          '현재 소속 근거': rollup.playerClans.candidates,
+          '소속 있음': rollup.playerClans.withClan,
+          무소속: rollup.playerClans.clanless,
+          'Clan 행 없음': rollup.playerClans.clanNotInDb,
+          '다른 origin': rollup.playerClans.otherOrigin,
+          '이미 같음': rollup.playerClans.unchanged,
+          'Player.clanId 갱신': rollup.playerClans.updated,
+        },
+      ])
+      table(
+        rollup.leagues.map((row) => ({
+          리그: row.leagueSlug,
+          '경기에 나온 클랜': row.clans.inMatches,
+          '등록 클랜': row.clans.registered,
+          '랭킹 반영': row.clans.ranked,
+          '랭킹 제외': row.clans.unranked,
+          '점수 있음': row.clans.withRating,
+          '점수 없음': row.clans.withoutRating,
+          '클랜 생성': row.clans.clansCreated,
+          '리그클랜 생성': row.clans.leagueClansCreated,
+          충돌: row.clans.conflicts,
+          '되짚기와 다름': row.clans.ratingDiffersFromDerived,
+        })),
+      )
+      if (rollup.skipped.length > 0) {
+        log('건드리지 않은 것 —')
+        table(rollup.skipped.map((row) => ({ 리그: row.league, 사유: row.reason })))
+      }
+      if (!confirm) log('미리보기다. 실제로 넣으려면 --confirm')
+      return rollup.leagues.some((row) => row.clans.conflicts > 0 || row.clans.registryMissing)
         ? 1
         : 0
     }

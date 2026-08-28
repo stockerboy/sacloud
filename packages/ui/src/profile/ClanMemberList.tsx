@@ -22,8 +22,9 @@ export function ClanMemberList({
   return (
     <div className="mt-10 border border-line">
       <div className="flex items-center border-b border-b-line py-2 text-meta">
-        <div className="w-96 px-6">닉네임</div>
-        <div className="flex-grow px-6">포지션</div>
+        {/* 모바일은 24rem 고정폭이 화면을 넘는다 — 절반으로 나눈다. 컬럼은 그대로 둘 다 보인다 */}
+        <div className="w-96 px-6 max-md:w-1/2 max-md:px-3">닉네임</div>
+        <div className="flex-grow px-6 max-md:px-3">포지션</div>
       </div>
       {error ? (
         <EmptyState message="클랜원 목록을 불러오지 못했습니다." />
@@ -43,11 +44,13 @@ export function ClanMemberList({
             key={member.id}
             className="flex items-center border-b border-b-line bg-row py-3 text-lg text-meta last:border-b-0"
           >
-            <div className="w-96 px-6">
+            <div className="w-96 px-6 max-md:w-1/2 max-md:min-w-0 max-md:truncate max-md:px-3">
               <Link href={`/player/${member.id}`}>{member.name}</Link>
               {member.master ? <span className="ml-2 text-sm">클랜마스터</span> : null}
             </div>
-            <div className="flex-grow px-6">{member.position ?? ''}</div>
+            <div className="flex-grow px-6 max-md:min-w-0 max-md:truncate max-md:px-3">
+              {member.position ?? ''}
+            </div>
           </div>
         ))
       )}

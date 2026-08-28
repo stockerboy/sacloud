@@ -17,12 +17,15 @@ import { BETA_NOTICE } from './betaNoticeText'
  *     <a class="nav-item" href="/league/{slug}/rank/player">개인랭킹
  * ```
  * 실측: 높이 3rem(42px) · 배경 #292929 · 글자 #F3F4F6 · 리그명 칸 13rem(182px) + 오른쪽 여백 3.5rem
- * 각 항목 앞에 아이콘이 붙고(`pr-2`), 현재 위치는 `nav-active`(굵게 + 3px 흰 밑줄)다.
+ * 각 항목 앞에 아이콘이 붙고(`pr-2`), 현재 위치는 `nav-active`다.
+ * `nav-active` 실측(2026-08-27): 글자·밑줄 **주황 #F59E0B · 4px · 굵기 700**.
+ * 예전에는 흰 글자 + 흰 3px 밑줄이었다 (UI_PARITY_AUDIT 2-4).
  * 본문은 이 높이만큼 `pt-12`로 밀린다.
  */
 
 const ITEM =
-  'flex items-center justify-center cursor-pointer border-2 border-transparent px-4 text-tab-active-fg hover:border-b-nav-fg'
+  'flex items-center justify-center cursor-pointer border-b-4 border-b-transparent px-4 text-tab-active-fg'
+const ITEM_ACTIVE = 'border-b-subnav-active font-bold text-subnav-active'
 
 /**
  * 베타 시즌 배지.
@@ -46,46 +49,78 @@ export function BetaBadge({ label = 'Beta Season' }: { label?: string }) {
 export function LeagueSubNav({
   leagueSlug,
   leagueName,
-  seasonType = 'official',
-  seasonLabel,
 }: {
   leagueSlug: string
   leagueName: string
-  /** 현재 활성 시즌 종류. `beta`면 리그명 옆에 배지를 붙인다 */
-  seasonType?: 'legacy' | 'beta' | 'official'
-  seasonLabel?: string
 }) {
   const pathname = usePathname() ?? ''
   const base = `/league/${leagueSlug}`
 
+  /* 아이콘은 원본이 클랜랭킹·개인랭킹 **둘 다 정렬 아이콘**을 쓴다 (2026-08-27 실측).
+     우리는 막대그래프/사람으로 갈라 놓았었다 (UI_PARITY_AUDIT 2-7). */
   const items = [
     { label: '리그홈', href: `${base}/home`, icon: <HomeIcon /> },
-    { label: '클랜랭킹', href: `${base}/rank/clan`, icon: <ClanIcon /> },
-    { label: '개인랭킹', href: `${base}/rank/player`, icon: <PlayerIcon /> },
+    { label: '클랜랭킹', href: `${base}/rank/clan`, icon: <SortIcon /> },
+    { label: '개인랭킹', href: `${base}/rank/player`, icon: <SortIcon /> },
   ]
 
   return (
-    <div className="fixed top-nav z-30 h-12 w-full bg-subnav text-tab-active-fg shadow-inner">
-      <div className="pc-container flex h-full items-stretch">
-        <Link
-          href={`${base}/home/info`}
-          className="mr-14 flex w-52 items-center justify-center text-lg tracking-wider"
-        >
-          {leagueName}
-          {seasonType === 'beta' ? <BetaBadge label={seasonLabel} /> : null}
-        </Link>
-        {items.map((item) => (
+    <div className="fixed top-nav z-30 w-full text-tab-active-fg shadow-inner">
+      {/* --- PC: 리그명과 탭이 한 줄이다 (원본 실측 구조 그대로) --- */}
+      <div className="hidden h-12 bg-subnav md:block">
+        <div className="pc-container flex h-full items-stretch">
+          {/*
+            리그명 옆에 붙어 있던 `Beta Season` 배지는 **원본에 없다** — 뺐다
+            (UI_PARITY_AUDIT 2-2 · 2-3). 배지에 밀려 리그명이 두 줄로 깨지기도 했다.
+            `BetaBadge` 컴포넌트 자체는 관리자 화면 등에서 쓸 수 있어 남겨 둔다.
+          */}
           <Link
-            key={item.href}
-            href={item.href === `${base}/home` ? `${base}/home/info` : item.href}
-            className={`${ITEM} ${
-              pathname.startsWith(item.href) ? 'border-b-[3px] border-b-white font-bold' : ''
-            }`}
+            href={`${base}/home`}
+            className="mr-14 flex w-52 items-center justify-center text-lg tracking-wider"
           >
-            <span className="pr-2">{item.icon}</span>
-            {item.label}
+            {leagueName}
           </Link>
-        ))}
+          {items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`${ITEM} ${pathname.startsWith(item.href) ? ITEM_ACTIVE : ''}`}
+            >
+              <span className="pr-2">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* --- 모바일: 두 줄이다. 리그명 줄 + 탭 줄 (2026-08-28 원본 관측) --- */}
+      <div className="md:hidden">
+        {/* 1줄 — 왼쪽 리그명, 오른쪽 `리그홈`(주황) */}
+        <div className="flex h-12 items-center justify-between bg-ink px-3">
+          <span className="truncate text-base tracking-wider">{leagueName}</span>
+          <Link
+            href={`${base}/home`}
+            className="flex shrink-0 items-center gap-1.5 pl-3 text-subnav-active"
+          >
+            <HomeIcon />
+            <span className="font-bold">리그홈</span>
+          </Link>
+        </div>
+
+        {/* 2줄 — 탭 3개가 화면 폭을 균등 분할한다 */}
+        <div className="flex h-12 items-stretch bg-subnav">
+          {items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-1 items-center justify-center border-b-4 border-b-transparent text-base ${
+                pathname.startsWith(item.href) ? ITEM_ACTIVE : 'text-tab-active-fg'
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -101,19 +136,12 @@ function HomeIcon() {
   )
 }
 
-function ClanIcon() {
+/** 정렬 아이콘 — 원본은 클랜랭킹·개인랭킹에 **같은** 아이콘을 쓴다 (2026-08-27 실측) */
+function SortIcon() {
   return (
     <svg viewBox="0 0 18 14" className="h-[14px] w-[18px]" fill="currentColor" aria-hidden>
-      <path d="M0 12h4v2H0zM7 6h4v8H7zM14 9h4v5h-4z" />
-    </svg>
-  )
-}
-
-function PlayerIcon() {
-  return (
-    <svg viewBox="0 0 18 14" className="h-[14px] w-[18px]" fill="currentColor" aria-hidden>
-      <circle cx="9" cy="4" r="3.2" />
-      <path d="M2.5 14c0-3.6 2.9-5.6 6.5-5.6s6.5 2 6.5 5.6z" />
+      <path d="M4 0h1.6v10.4L8 8l1.1 1.1-4.3 4.3-4.3-4.3L1.6 8l2.4 2.4z" />
+      <path d="M11 1h7v1.6h-7zM11 5h5.5v1.6H11zM11 9h4v1.6h-4z" />
     </svg>
   )
 }

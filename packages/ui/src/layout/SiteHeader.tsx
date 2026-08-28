@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { FEATURED_LEAGUES, PRIMARY_NAV, type NavLink } from '../site-config'
 import { NavLogo } from './BrandLogo'
 
@@ -42,11 +43,28 @@ export function SiteHeader({
 }: SiteHeaderProps) {
   const pathname = usePathname() ?? '/'
   const loginHref = `/auth/login?returnUrl=${encodeURIComponent(pathname)}`
+  const [open, setOpen] = useState(false)
+
+  /* 화면을 옮기면 서랍을 닫는다. 열어 둔 채로 넘어가면 새 화면을 가린다 */
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
 
   return (
     <nav className="fixed top-0 z-50 h-nav w-full bg-ink">
       <div className="pc-container flex h-full items-stretch">
-        <div className="flex flex-grow items-stretch">
+        {/* --- 모바일: 햄버거. 원본 모바일은 1단에 이것과 로그인만 둔다 --- */}
+        <button
+          type="button"
+          aria-label="메뉴"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center px-2 text-nav-fg md:hidden"
+        >
+          <MenuIcon />
+        </button>
+
+        <div className="hidden flex-grow items-stretch md:flex">
           {/* 홈에서는 숨긴다 — 홈은 본문 가운데에 큰 로고가 있다 */}
           <Link
             href="/"
@@ -81,24 +99,89 @@ export function SiteHeader({
           ))}
         </div>
 
-        <div className="relative flex flex-grow justify-end">
+        {/* 모바일에서는 가운데를 비워 둔다 — 원본 1단에는 로고가 없다 */}
+        <div className="flex-grow md:hidden" />
+
+        <div className="relative flex justify-end md:flex-grow">
           {user ? (
             <>
-              <Link href="/me" className={NAV_ITEM}>
-                {user.nickname}
+              <Link href="/me" className={`${NAV_ITEM} max-md:px-2`}>
+                <span className="hidden md:inline">{user.nickname}</span>
+                <span className="md:hidden">
+                  <AccountIcon />
+                </span>
               </Link>
-              <button type="button" onClick={onLogout} className={NAV_ITEM}>
+              <button type="button" onClick={onLogout} className={`${NAV_ITEM} max-md:hidden`}>
                 로그아웃
               </button>
             </>
           ) : (
-            <Link href={loginHref} className={NAV_ITEM}>
-              로그인
+            <Link href={loginHref} aria-label="로그인" className={`${NAV_ITEM} max-md:px-2`}>
+              <span className="hidden md:inline">로그인</span>
+              <span className="md:hidden">
+                <LoginIcon />
+              </span>
             </Link>
           )}
         </div>
       </div>
+
+      {/* --- 모바일 서랍 — PC 에서 GNB 에 늘어서 있던 항목을 그대로 담는다 --- */}
+      {open ? (
+        <div className="bg-ink pb-2 md:hidden">
+          {[...featuredLeagues, ...primaryNav].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`block border-b border-white/10 px-4 py-3 text-nav-fg ${
+                isActive(pathname, item.href) ? 'bg-nav-active font-bold' : ''
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+          {user ? (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="block w-full px-4 py-3 text-left text-nav-fg"
+            >
+              로그아웃
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </nav>
+  )
+}
+
+/* 아이콘은 원본 자산을 가져오지 않고 같은 크기로 새로 그렸다 (CLAUDE.md 3장 4번) */
+
+function MenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
+      <rect x="2" y="5" width="20" height="2.2" rx="1.1" />
+      <rect x="2" y="11" width="20" height="2.2" rx="1.1" />
+      <rect x="2" y="17" width="20" height="2.2" rx="1.1" />
+    </svg>
+  )
+}
+
+function LoginIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
+      <path d="M12 3.2h7.2c.9 0 1.6.7 1.6 1.6v14.4c0 .9-.7 1.6-1.6 1.6H12v-2h6.8V5.2H12z" />
+      <path d="M9.9 7.6 8.5 9l2 2H3.2v2h7.3l-2 2 1.4 1.4L14.3 12z" />
+    </svg>
+  )
+}
+
+function AccountIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor" aria-hidden>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20.5c0-3.6 3.6-5.5 8-5.5s8 1.9 8 5.5z" />
+    </svg>
   )
 }
 

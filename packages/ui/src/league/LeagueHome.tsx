@@ -6,6 +6,7 @@ import { EmptyState } from '../common/EmptyState'
 import { Skeleton } from '../common/Skeleton'
 import { formatCount, formatDate, formatRate, formatRating } from '../common/format'
 import { rateClass } from '../common/rate'
+import { NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_IDLE } from '../common/navTab'
 
 /**
  * 리그홈 (리그정보 / 리그소개).
@@ -66,9 +67,7 @@ export function LeagueHomeTabs({ leagueSlug, current }: { leagueSlug: string; cu
         <Link
           key={tab.segment}
           href={`/league/${leagueSlug}/home/${tab.segment}`}
-          className={`flex cursor-pointer items-center justify-center border-2 border-transparent px-4 py-4 ${
-            tab.segment === current ? 'border-b-[3px] border-b-black font-bold' : ''
-          }`}
+          className={`${NAV_TAB} ${tab.segment === current ? NAV_TAB_ACTIVE : NAV_TAB_IDLE}`}
         >
           {tab.label}
         </Link>
@@ -176,10 +175,23 @@ export function LeagueInfoPanel({
   )
 }
 
-function StarIcon() {
+/**
+ * 즐겨찾기 별 — 원본은 **빈 별**(외곽선)이다 (2026-08-27 실측: Font Awesome `far fa-star`).
+ * 채운 별은 "이미 즐겨찾기에 넣었다"는 뜻으로 읽혀서 비로그인 상태와 어긋난다
+ * (UI_PARITY_AUDIT 2-8). 자산을 가져오지 않고 같은 크기로 새로 그렸다.
+ */
+export function StarIcon({ className = 'mr-1 h-3 w-[15px]' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 15 12" className="mr-1 h-3 w-[15px]" fill="currentColor" aria-hidden>
-      <path d="M7.5 0 9.3 4h4.2l-3.4 2.6 1.3 4.1L7.5 8.2 3.6 10.7l1.3-4.1L1.5 4h4.2z" />
+    <svg
+      viewBox="0 0 16 15"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M8 1.2l1.9 4 4.3.6-3.1 3 .7 4.3L8 11.1l-3.8 2 .7-4.3-3.1-3 4.3-.6z" />
     </svg>
   )
 }

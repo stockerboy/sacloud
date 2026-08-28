@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ProfileTabs, SeasonTable } from '@sacloud/ui'
+import { SeasonTable } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -34,23 +34,14 @@ export default function LeaguePlayerSeasonPage({
     enabled: ready && !!detail.data,
   })
 
-  const base = `/league/${leagueSlug}/player/${playerId}`
-  const tabs = [
-    { label: '기본정보', href: `/player/${playerId}` },
-    { label: '기록실', href: base },
-    { label: '지난시즌', href: `${base}/season` },
-  ]
-
+  /* 헤더·탭은 레이아웃이 그린다 (`../layout.tsx`) */
   return (
-    <>
-      <ProfileTabs tabs={tabs} current={`${base}/season`} />
-      <div className="pc-container mt-6 pb-10">
-        <SeasonTable
-          seasons={seasons.data?.data}
-          kind="player"
-          hidesCumulativeKd={league.data?.data.hides_cumulative_kd ?? false}
-        />
-      </div>
-    </>
+    <div className="pc-container mt-6 pb-10">
+      <SeasonTable
+        seasons={seasons.data?.data}
+        kind="player"
+        hidesCumulativeKd={league.data?.data.hides_cumulative_kd ?? false}
+      />
+    </div>
   )
 }

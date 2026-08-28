@@ -25,7 +25,7 @@ import {
   toUserSummaryOrNull,
 } from '../mappers'
 import { cumulativeKdRate } from './visibility'
-import { publicOriginWhere } from './publicScope'
+import { MIRROR_ORIGIN, publicOriginWhere } from './publicScope'
 import { seasonLabel } from '@sacloud/db/ops'
 
 /**
@@ -360,8 +360,19 @@ export async function matchCountByPlayer(
   const grouped = await prisma.matchPlayerStat.groupBy({
     by: ['playerId'],
     /* 평균킬의 **분모**다. 분자(`LeaguePlayer.kill`)는 래더 경기를 누적하므로
-       분모도 래더 경기를 센다. `official` 라벨은 D-145 에서 래더와 무관해졌다 (D-148). */
-    where: { playerId: { in: playerIds }, match: { leagueId, redRatingUpdate: { not: null } } },
+       분모도 래더 경기를 센다. `official` 라벨은 D-145 에서 래더와 무관해졌다 (D-148).
+     *
+     * `redRatingUpdate` 하나만 보면 안 된다 — 그건 **우리 공식(D-145)이 계산한** 값이라
+     * 미러링한 3rd.supply 경기에는 들어 있지 않다. 실측: supply 리그 13만 경기 중
+     * `redRatingUpdate` 가 있는 것은 98건뿐이라 분모가 0이 됐고, 화면에 평균킬이
+     * 전부 `0.0킬` 로 나왔다. 미러 경기는 전부 래더 경기다 (원본이 래더 경기만 준다). */
+    where: {
+      playerId: { in: playerIds },
+      match: {
+        leagueId,
+        OR: [{ redRatingUpdate: { not: null } }, { origin: MIRROR_ORIGIN }],
+      },
+    },
     _count: { _all: true },
   })
   return new Map(grouped.map((row) => [row.playerId, row._count._all]))

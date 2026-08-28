@@ -58,9 +58,13 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="bg-ink pb-10 pt-20">
+      {/*
+        모바일은 히어로 여백을 줄이고 좌우 여백을 준다 — 로고(44rem)와 검색바(39rem)가
+        좁은 화면을 넘어가기 때문이다. `md:` 이상은 원본 실측값 그대로다.
+      */}
+      <div className="bg-ink pb-10 pt-20 max-md:px-3 max-md:pb-6 max-md:pt-10">
         <div className="text-center">
-          <MainLogo className="inline-block w-logo" />
+          <MainLogo className="inline-block w-logo max-w-full" />
           <br />
           <SearchBar onSubmit={handleSearch} />
         </div>

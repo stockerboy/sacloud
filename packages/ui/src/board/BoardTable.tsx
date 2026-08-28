@@ -125,36 +125,44 @@ export function BoardTable({
   onRetry?: () => void
 }) {
   return (
-    <div className="mb-8 mt-2 flex flex-col">
-      <div className={HEAD}>
-        <div className="flex w-8/12 items-center justify-center">제목</div>
-        <div className="flex w-1/12 items-center">작성시간</div>
-        <div className="flex w-1/12 items-center">조회수</div>
-        <div className="flex w-2/12 items-center">작성자</div>
-      </div>
+    /*
+     * 모바일 — 컬럼을 **하나도 감추지 않는다.** 원본 모바일이 이 표에서 무엇을 감추는지
+     * 확인하지 못했기 때문이다 `[미확인]`. 대신 표를 **자기 안에서만** 가로로 밀리게 해
+     * 본문(body)에는 가로 스크롤이 생기지 않게 한다 (UI_PARITY_AUDIT 부록 A 2·4번 방식).
+     * `.mobile-scroll-x` 는 `@media (max-width:767px)` 안에서만 정의돼 있어 PC 는 무영향이다.
+     */
+    <div className="mobile-scroll-x">
+      <div className="mb-8 mt-2 flex flex-col max-md:min-w-[38rem]">
+        <div className={HEAD}>
+          <div className="flex w-8/12 items-center justify-center">제목</div>
+          <div className="flex w-1/12 items-center">작성시간</div>
+          <div className="flex w-1/12 items-center">조회수</div>
+          <div className="flex w-2/12 items-center">작성자</div>
+        </div>
 
-      {error ? (
-        <ErrorState message="글 목록을 불러오지 못했습니다." onRetry={onRetry} />
-      ) : loading ? (
-        <>
-          {Array.from({ length: 15 }, (_, index) => (
-            <div key={index} className={ROW}>
-              <Skeleton className="my-2 h-[25px] w-full" />
-            </div>
-          ))}
-        </>
-      ) : (
-        <>
-          {notices?.map((item) => (
-            <Row key={`notice-${item.id}`} item={{ ...item, notice: true }} />
-          ))}
-          {!items || items.length === 0 ? (
-            <EmptyState message="글이 없습니다." />
-          ) : (
-            items.map((item) => <Row key={item.id} item={item} />)
-          )}
-        </>
-      )}
+        {error ? (
+          <ErrorState message="글 목록을 불러오지 못했습니다." onRetry={onRetry} />
+        ) : loading ? (
+          <>
+            {Array.from({ length: 15 }, (_, index) => (
+              <div key={index} className={ROW}>
+                <Skeleton className="my-2 h-[25px] w-full" />
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            {notices?.map((item) => (
+              <Row key={`notice-${item.id}`} item={{ ...item, notice: true }} />
+            ))}
+            {!items || items.length === 0 ? (
+              <EmptyState message="글이 없습니다." />
+            ) : (
+              items.map((item) => <Row key={item.id} item={item} />)
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

@@ -73,9 +73,16 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
   }
 
   return (
-    <div ref={rootRef} className="mx-auto mt-10 inline-block text-center">
+    /*
+     * 모바일은 **전체폭**이다 — `inline-block` 고정폭(11rem + 28rem = 39rem)이
+     * 좁은 화면을 넘어간다. 넓은 화면(`md:` 이상)은 원본 실측 그대로 둔다.
+     */
+    <div
+      ref={rootRef}
+      className="mx-auto mt-10 inline-block text-center max-md:mt-6 max-md:block max-md:w-full"
+    >
       <div className="flex items-stretch justify-center">
-        <div className="relative">
+        <div className="relative max-md:shrink-0">
           <div
             role="button"
             tabIndex={0}
@@ -88,19 +95,20 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
                 setOpen((value) => !value)
               }
             }}
-            className="flex w-selector cursor-pointer select-none items-center justify-between rounded-l-lg bg-selector px-5 py-4 text-lg text-selector-fg"
+            className="flex w-selector cursor-pointer select-none items-center justify-between rounded-l-lg bg-selector px-5 py-4 text-lg text-selector-fg max-md:w-36 max-md:shrink-0 max-md:px-3 max-md:py-3 max-md:text-base"
           >
-            <div className="text-left">{selected.label}</div>
+            <div className="text-left max-md:whitespace-nowrap">{selected.label}</div>
             {/* 실측: 아이콘 칸 11×24.5px + 아래 여백 7px. 이 24.5+7+상하패딩 28이 셀렉터 높이 59.5px를 만든다 */}
-            <div className="mb-2 flex h-7 w-3 items-center justify-end">
+            <div className="mb-2 flex h-7 w-3 items-center justify-end max-md:mb-0">
               <CaretDownIcon />
             </div>
           </div>
 
+          {/* 모바일은 셀렉터 높이가 달라 `top-20`(5rem) 고정이 뜬다 → 바로 아래에 붙인다 */}
           {open ? (
             <div
               role="listbox"
-              className="absolute left-0 top-20 z-10 w-selector select-none rounded-lg bg-selector py-1.5 text-left text-selector-fg"
+              className="absolute left-0 top-20 z-10 w-selector select-none rounded-lg bg-selector py-1.5 text-left text-selector-fg max-md:top-full max-md:mt-1 max-md:w-40"
             >
               {OPTIONS.map((option) => (
                 <div
@@ -120,7 +128,7 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
           ) : null}
         </div>
 
-        <div className="relative">
+        <div className="relative max-md:min-w-0 max-md:flex-1">
           <input
             type="text"
             value={text}
@@ -129,7 +137,7 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
             onKeyDown={(event) => {
               if (event.key === 'Enter') submit()
             }}
-            className="w-search appearance-none rounded-r-lg bg-card py-5 pl-5 pr-16 text-lg text-input-fg placeholder:text-input-placeholder focus:outline-none"
+            className="w-search appearance-none rounded-r-lg bg-card py-5 pl-5 pr-16 text-lg text-input-fg placeholder:text-input-placeholder focus:outline-none max-md:w-full max-md:py-3 max-md:pl-3 max-md:pr-11 max-md:text-base"
           />
           <div
             role="button"
@@ -139,7 +147,7 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
             onKeyDown={(event) => {
               if (event.key === 'Enter') submit()
             }}
-            className="absolute right-4 top-4 h-8 w-8 cursor-pointer text-input-fg"
+            className="absolute right-4 top-4 h-8 w-8 cursor-pointer text-input-fg max-md:right-3 max-md:top-2.5 max-md:h-6 max-md:w-6"
           >
             <SearchIcon />
           </div>
@@ -170,7 +178,7 @@ function SearchIcon() {
     <svg
       viewBox="0 0 32 32"
       aria-hidden
-      className="h-8 w-8"
+      className="h-full w-full"
       fill="none"
       stroke="currentColor"
       xmlns="http://www.w3.org/2000/svg"

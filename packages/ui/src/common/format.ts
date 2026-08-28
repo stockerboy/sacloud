@@ -28,9 +28,15 @@ export function formatRate(value: number): string {
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
 }
 
-/** `8.3` → `8.3` (평균킬. 항상 소수점 1자리 — 원본 관측) */
+/**
+ * `8.3` → `8.3` / `8` → `8` (평균킬)
+ *
+ * 승률·킬뎃과 **같은 규칙**이다 — 소수점이 0이면 떼어 낸다.
+ * 2026-08-27 개인랭킹 실측: `8.3킬` `11.1킬` 사이에 `8킬` `9킬` 이 그대로 섞여 나온다.
+ * 예전에는 항상 `.toFixed(1)` 이라 `9.0킬` 이 됐다 (UI_PARITY_AUDIT 4-1).
+ */
 export function formatAverage(value: number): string {
-  return (Math.round(value * 10) / 10).toFixed(1)
+  return formatRate(value)
 }
 
 /** `3432` → `3,432점` */

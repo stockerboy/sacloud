@@ -34,12 +34,14 @@ describe('formatRate — 소수점 1자리, 정수면 생략', () => {
   })
 })
 
-describe('formatAverage — 평균킬은 항상 소수점 1자리', () => {
-  it('원본 관측값', () => {
+describe('formatAverage — 평균킬은 정수면 소수점을 뗀다', () => {
+  it('원본 관측값 (2026-08-27 개인랭킹 실측)', () => {
     expect(formatAverage(8.3)).toBe('8.3')
+    expect(formatAverage(9.6)).toBe('9.6')
     expect(formatAverage(11.1)).toBe('11.1')
-    // 정수여도 .0을 붙인다 (원본 `8.0킬` 형태 — 표기 폭을 맞추기 위함)
-    expect(formatAverage(9)).toBe('9.0')
+    // 같은 표에 `8킬` `9킬` 이 그대로 섞여 나온다. 예전 구현은 `9.0` 을 만들었다
+    expect(formatAverage(8)).toBe('8')
+    expect(formatAverage(9)).toBe('9')
   })
 })
 

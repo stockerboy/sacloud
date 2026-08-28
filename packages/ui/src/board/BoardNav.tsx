@@ -31,15 +31,22 @@ export function BoardNav({
   const items = categories.filter((category) => !category.notice)
 
   return (
-    <div className="flex w-60 flex-shrink-0 flex-col text-nav-fg">
+    /*
+     * 모바일은 세로 사이드가 아니라 **가로 줄**이다 — 카테고리는 하나도 빼지 않고
+     * 넘치면 이 줄 안에서만 가로로 밀린다(본문은 밀리지 않는다).
+     * 넓은 화면(`md:` 이상)은 원본 실측 그대로 15rem 사이드다.
+     */
+    <div className="flex w-60 flex-shrink-0 flex-col text-nav-fg max-md:w-full">
       <div className="z-10 flex w-full flex-col justify-center">
-        <div className="bg-board-nav px-5 py-4 text-center">커뮤니티 게시판</div>
-        <div className="flex flex-col justify-center">
+        <div className="bg-board-nav px-5 py-4 text-center max-md:py-2 max-md:text-sm">
+          커뮤니티 게시판
+        </div>
+        <div className="flex flex-col justify-center max-md:flex-row max-md:overflow-x-auto">
           {items.map((category) => (
             <Link
               key={category.slug}
               href={`/board/${category.slug}`}
-              className={`mx-1 px-7 py-2 ${
+              className={`mx-1 px-7 py-2 max-md:whitespace-nowrap max-md:px-5 max-md:py-3 ${
                 category.slug === current
                   ? 'bg-board-active text-board-active-fg'
                   : 'bg-board-nav-item hover:bg-tab-active'

@@ -226,8 +226,20 @@ function playerClanSummary(player: MockPlayer): ClanSummary | null {
 /* 검색                                                                         */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * 검색은 **대소문자를 구분하지 않는다.**
+ *
+ * 예전에는 `===` / `String.includes` 를 그대로 썼다. 그랬더니 사용자가 `Huwho` 를
+ * 넣었을 때 저장된 이름이 `huwho` 라 0건이 나왔다 — 검색이 사실상 동작하지 않았다.
+ * 실제 API(`apps/web/lib/server/queries/search.ts`)도 같은 규칙으로 맞춰 두 모드의
+ * 응답이 어긋나지 않게 했다. 원본의 정확한 조건은 **[미확인]** 이다.
+ */
+const fold = (value: string): string => value.toLowerCase()
+const sameName = (a: string, b: string): boolean => fold(a) === fold(b)
+const hasPart = (haystack: string, needle: string): boolean => fold(haystack).includes(fold(needle))
+
 export function findPlayerByName(name: string): PlayerSearchItem | null {
-  const player = dataset.players.find((entry) => entry.name === name)
+  const player = dataset.players.find((entry) => sameName(entry.name, name))
   if (!player) return null
   return { id: player.id, name: player.name, clan: playerClanSummary(player) }
 }
@@ -236,13 +248,13 @@ export function searchPlayers(query: string, limit = 10): PlayerSearchItem[] {
   const keyword = query.trim()
   if (!keyword) return []
   return dataset.players
-    .filter((entry) => entry.name.includes(keyword))
+    .filter((entry) => hasPart(entry.name, keyword))
     .slice(0, limit)
     .map((entry) => ({ id: entry.id, name: entry.name, clan: playerClanSummary(entry) }))
 }
 
 export function findClanByName(name: string): ClanSummary | null {
-  const clan = dataset.clans.find((entry) => entry.name === name)
+  const clan = dataset.clans.find((entry) => sameName(entry.name, name))
   return clan ? toClanSummary(clan) : null
 }
 
@@ -250,13 +262,13 @@ export function searchClans(query: string, limit = 10): ClanSummary[] {
   const keyword = query.trim()
   if (!keyword) return []
   return dataset.clans
-    .filter((entry) => entry.name.includes(keyword) || entry.slug.includes(keyword))
+    .filter((entry) => hasPart(entry.name, keyword) || hasPart(entry.slug, keyword))
     .slice(0, limit)
     .map(toClanSummary)
 }
 
 export function findLeagueByName(name: string): LeagueSummary | null {
-  const league = dataset.leagues.find((entry) => entry.name === name)
+  const league = dataset.leagues.find((entry) => sameName(entry.name, name))
   return league ? toLeagueSummary(league) : null
 }
 
@@ -264,7 +276,7 @@ export function searchLeagues(query: string, limit = 10): LeagueSummary[] {
   const keyword = query.trim()
   if (!keyword) return []
   return dataset.leagues
-    .filter((entry) => entry.name.includes(keyword) || entry.slug.includes(keyword))
+    .filter((entry) => hasPart(entry.name, keyword) || hasPart(entry.slug, keyword))
     .slice(0, limit)
     .map(toLeagueSummary)
 }

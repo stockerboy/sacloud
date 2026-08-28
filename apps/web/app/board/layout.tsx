@@ -24,10 +24,14 @@ export default function BoardLayout({ children }: { children: React.ReactNode })
   })
 
   return (
-    <div className="pc-container mt-16 pb-10">
-      <div className="flex flex-row">
+    /*
+     * 모바일에서는 좌측 내비(15rem)를 옆에 둘 폭이 없다. 위아래로 쌓고
+     * 카테고리는 가로로 눕힌다(`BoardNav`). 항목을 빼지는 않는다.
+     */
+    <div className="pc-container mt-16 pb-10 max-md:mt-6">
+      <div className="flex flex-row max-md:flex-col">
         <BoardNav categories={infos.data?.data.categories ?? []} current={current} />
-        <div className="ml-2 flex-grow">{children}</div>
+        <div className="ml-2 flex-grow max-md:ml-0 max-md:mt-2 max-md:min-w-0">{children}</div>
       </div>
     </div>
   )

@@ -6,11 +6,9 @@ import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
   MatchCard,
   PlayerStatSidebar,
-  ProfileTabs,
   RecentMatchSummary,
   Skeleton,
   TeammateTable,
-  WeaponStatPanel,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -66,13 +64,6 @@ export default function LeaguePlayerRecordPage({
       .then((response) => setExpanded((prev) => ({ ...prev, [matchId]: response.data })))
   }
 
-  const base = `/league/${leagueSlug}/player/${playerId}`
-  const tabs = [
-    { label: '기본정보', href: `/player/${playerId}` },
-    { label: '기록실', href: base },
-    { label: '지난시즌', href: `${base}/season` },
-  ]
-
   /* 로딩과 "없음"을 구분한다.
      예전에는 둘 다 스켈레톤이라, 조회가 404를 내면 화면이 **영원히 로딩 중**으로 보였다.
      실제로 이 리그 선수 전원이 그 상태였다 (D-117). */
@@ -98,10 +89,17 @@ export default function LeaguePlayerRecordPage({
 
   return (
     <>
-      <ProfileTabs tabs={tabs} current={base} />
-      <div className="pc-container mt-2 flex">
-        <div className="w-3/4">
-          <RecentMatchSummary summary={data.match_summary} leagueSlug={leagueSlug} />
+      {/*
+        모바일 — 3:1 두 칸을 위아래로 쌓는다 (기록 → 상세정보 순서는 그대로).
+        `최근매치` 블록 안쪽(`packages/ui/src/record/RecordPanels.tsx`)은 다른 담당 구역이라
+        손대지 않고, 넘칠 때 **그 블록 안에서만** 가로로 밀리도록 감싸기만 한다.
+        `.mobile-scroll-x` 는 `@media (max-width:767px)` 안에서만 정의돼 PC 는 무영향이다.
+      */}
+      <div className="pc-container mt-2 flex max-md:flex-col">
+        <div className="w-3/4 max-md:w-full max-md:min-w-0">
+          <div className="mobile-scroll-x">
+            <RecentMatchSummary summary={data.match_summary} leagueSlug={leagueSlug} />
+          </div>
           <div className="mt-2">
             {matches.loading ? (
               <Skeleton className="h-[105px] w-full" />
@@ -120,7 +118,7 @@ export default function LeaguePlayerRecordPage({
             )}
           </div>
         </div>
-        <div className="ml-2 w-1/4">
+        <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">
           <PlayerStatSidebar
             rating={data.rating}
             placement={data.placement}
@@ -134,28 +132,19 @@ export default function LeaguePlayerRecordPage({
             mvpCount={data.mvp_count}
             rank={data.rank}
             rankCount={data.rank_count}
-            sniperRank={data.sniper_rank}
-            sniperRankCount={data.sniper_rank_count}
-            sniperGames={data.sniper_games}
-            sniperKnownGames={data.sniper_known_games}
-            sniperKill={data.sniper_kill}
-            sniperDeath={data.sniper_death}
-            sniperKdRate={data.sniper_kd_rate}
-            rifleRank={data.rifle_rank}
-            rifleRankCount={data.rifle_rank_count}
-            rifleGames={data.rifle_games}
-            rifleKnownGames={data.rifle_known_games}
-            rifleKill={data.rifle_kill}
-            rifleDeath={data.rifle_death}
-            rifleKdRate={data.rifle_kd_rate}
             clan={
               data.clan
                 ? { ...data.clan, isOfficialClan: data.clan.is_official_clan }
                 : null
             }
           />
-          {/* 무기 판정이 있는 경기가 있을 때만 뜬다 (D-115) */}
-          <WeaponStatPanel stats={data.weapon_stats} />
+          {/*
+            `무기별 기록`(`WeaponStatPanel`) 과 사이드바의 `포지션` 줄은 **원본에 없어서 뺐다**
+            (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1 · 6-2).
+            컴포넌트와 판정 함수는 `packages/ui` 에 그대로 있고, 계약의 무기별 필드
+            (`weapon_stats` · `sniper_*` · `rifle_*`)도 건드리지 않았다 — 다시 붙일 자리가
+            정해지면 이 줄만 되살리면 된다.
+          */}
           <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
         </div>
       </div>

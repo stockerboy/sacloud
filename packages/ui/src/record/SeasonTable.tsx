@@ -36,8 +36,12 @@ export function SeasonTable({
     return <EmptyState message="지난시즌 기록이 없습니다." />
   }
 
+  /* 컬럼이 6~7개(`w-32` = 8rem 씩)라 모바일에서 넘친다.
+     컬럼을 감추지 않고(원본 모바일의 지난시즌 표는 관찰하지 못했다 `[미확인]`)
+     표 안에서만 가로로 스크롤한다. `.mobile-scroll-x` · `max-md:` 둘 다
+     767px 이하에만 존재하는 규칙이라 PC 렌더는 바뀌지 않는다. */
   return (
-    <div className="mt-10 border border-line">
+    <div className="mobile-scroll-x mt-10 border border-line max-md:[&>div]:w-max">
       <div className="flex items-center border-b border-b-line py-2 text-meta">
         <div className="w-32 text-center">시즌</div>
         <div className="w-32 text-center">순위</div>
@@ -47,7 +51,9 @@ export function SeasonTable({
         {kind === 'player' && !hidesCumulativeKd ? (
           <div className="w-32 text-center">킬뎃</div>
         ) : null}
-        <div className="flex-grow text-center">래더</div>
+        {/* 모바일에서는 행 폭이 `max-content` 라 `flex-grow` 가 늘어날 자리가 없다.
+            머리글과 본문 행의 폭이 어긋나지 않도록 마지막 칸도 다른 칸과 같은 고정폭으로 둔다 */}
+        <div className="flex-grow text-center max-md:w-32 max-md:flex-none">래더</div>
       </div>
       {seasons.map((season) => {
         const isPlayer = 'kd_rate' in season
@@ -74,7 +80,7 @@ export function SeasonTable({
                 {season.kd_rate === null ? UNKNOWN : `${formatRate(season.kd_rate)}%`}
               </div>
             ) : null}
-            <div className="flex-grow text-center">
+            <div className="flex-grow text-center max-md:w-32 max-md:flex-none">
               {season.rating === null ? UNKNOWN : `${formatCount(season.rating)}점`}
             </div>
           </div>

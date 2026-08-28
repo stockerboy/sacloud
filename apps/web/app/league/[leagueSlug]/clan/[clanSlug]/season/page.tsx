@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ProfileTabs, SeasonTable } from '@sacloud/ui'
+import { SeasonTable } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -28,19 +28,10 @@ export default function LeagueClanSeasonPage({
     enabled: ready && !!detail.data,
   })
 
-  const base = `/league/${leagueSlug}/clan/${clanSlug}`
-  const tabs = [
-    { label: '기본정보', href: `/clan/${clanSlug}` },
-    { label: '기록실', href: base },
-    { label: '지난시즌', href: `${base}/season` },
-  ]
-
+  /* 헤더·탭은 레이아웃이 그린다 (`../layout.tsx`) */
   return (
-    <>
-      <ProfileTabs tabs={tabs} current={`${base}/season`} />
-      <div className="pc-container mt-6 pb-10">
-        <SeasonTable seasons={seasons.data?.data} kind="clan" />
-      </div>
-    </>
+    <div className="pc-container mt-6 pb-10">
+      <SeasonTable seasons={seasons.data?.data} kind="clan" />
+    </div>
   )
 }

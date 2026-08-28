@@ -57,3 +57,11 @@ packages/db/data/supply-season7.json
 
 # 성능 측정용 임시 빌드 산출물
 apps/web/.next-perf/
+
+# 성능 검증용 임시 빌드 산출물
+apps/web/.next-verify/
+
+# 미러 수집 파일 — 수십~수백 MB. 원본 보존은 DB(RawImport)가 맡는다
+packages/db/data/supply-mirror-*.jsonl
+packages/db/data/supply-mirror-*.legacy
+packages/db/data/supply-mirror-*.corrupt

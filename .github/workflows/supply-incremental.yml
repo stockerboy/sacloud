@@ -1,0 +1,209 @@
+# 3rd.supply 실시간 증분 동기화 (D-153 · D-155 · D-157)
+#
+# ── 무엇을 하는가
+#   원본(3rd.supply)에 새로 쌓인 경기를 주기적으로 **새것만** 받아 우리 DB 에 넣고,
+#   리그 집계(랭킹)를 다시 계산한다. 리그마다 순서대로 돈다.
+#
+#     supply-mirror --incremental --seen-from-db   원본 공개 API → 새 경기만 JSONL
+#     supply-import --confirm                      JSONL → DB (네트워크 안 씀 · idempotent)
+#     supply-rollup --confirm                      미러 경기 → LeaguePlayer · LeagueClan
+#     db-snapshot                                  행 수 · 무결성 검사 (읽기만)
+#
+# ── 왜 Vercel 이 아니라 GitHub Actions 인가
+#   Vercel 서버리스 함수는 실행 시간 상한이 짧다. 이 파이프라인은 집계 한 번에
+#   36만 경기 · 360만 참가행을 훑어야 해서 그 안에 못 끝낸다.
+#
+# ── 왜 `--seen-from-db` 가 필요한가
+#   평소에는 `packages/db/data/supply-mirror-*.jsonl` 이 "이미 받은 경기"를 기억한다.
+#   그 파일은 세 리그 합쳐 **2GB** 라 저장소에도(.gitignore) CI 캐시에도 올릴 수 없다.
+#   러너는 매번 **빈 작업공간**에서 시작하므로 아는 경기가 0건이 되고, 그러면 증분이
+#   멈출 줄을 몰라 2년치를 통째로 다시 받는다 — 남의 사이트를 때리는 짓이다.
+#   그래서 "이미 받은 것"을 DB(`Match.sourceMatchId`)에서 **읽어 온다.**
+#   그 결과 이 워크플로가 만드는 JSONL 에는 **이번에 새로 받은 경기만** 들어간다.
+#
+# ── 원본에 대한 예의 (CLAUDE.md 3-A 5번)
+#   동시 요청 3 · 요청 간격 250ms 로 낮춰 둔다. 대량 수집 때 쓰던 값(10 · 130ms)보다
+#   훨씬 느리다. 주기 실행은 오래 도는 것이라 순간 속도보다 지속 부하가 중요하다.
+#
+# ── 주기를 30분으로 정한 근거
+#   한 번 도는 데 드는 **고정 요청 수**가 리그 3개 합쳐 약 590건이다
+#   (리그 조회 3 + 클랜랭킹 ~14 + 클랜 show 190 + 클랜별 경기목록 첫 2페이지 380).
+#   여기에 새 경기 상세만 더 붙는다.
+#   원본에 하루 쌓이는 새 경기는 세 리그 합쳐 **약 440건**이다
+#   (실측: 누적 362,572경기 ÷ 827일, floor 2024-05-24 ~ 2026-08-28).
+#
+#     15분(96회/일) → 약 56,800 요청/일   새 경기는 회당 4.6건뿐인데 고정비만 2배
+#     30분(48회/일) → 약 28,600 요청/일 ≈ 평균 0.33 req/s   ← 채택
+#     60분(24회/일) → 약 14,500 요청/일   신선도가 한 시간까지 밀린다
+#
+#   집계(rollup)가 36만 경기 전수 재계산이라 한 번에 10~25분이 걸린다.
+#   15분 주기로는 새 경기가 있는 시간대마다 실행이 겹친다. 30분이 겹치지 않는 하한이다.
+#   **새 경기가 0건이면 적재·집계를 건너뛴다** — 한산한 시간대의 실행은 3분 안에 끝난다.
+#
+#   더 자주/덜 자주 돌리고 싶으면 아래 `cron` 한 줄만 고친다.
+
+name: 3rd.supply 증분 동기화
+
+on:
+  schedule:
+    # UTC 기준. 매시 정각·30분
+    - cron: '0,30 * * * *'
+  workflow_dispatch:
+    inputs:
+      leagues:
+        description: '동기화할 리그 slug (쉼표)'
+        required: false
+        default: 'supply,daerule,sanply'
+      dry_run:
+        description: '요청도 쓰기도 하지 않고 현황만 본다'
+        type: boolean
+        required: false
+        default: false
+      force_rollup:
+        description: '새 경기가 없어도 집계를 다시 돌린다'
+        type: boolean
+        required: false
+        default: false
+
+# 겹치면 **취소가 아니라 대기**한다.
+# 적재·집계가 도는 중에 같은 것을 또 시작하면 같은 행을 두 곳에서 건드린다.
+# 진행 중인 쪽을 죽이면 절반만 적재된 상태로 끝나므로 `cancel-in-progress` 는 false 다.
+concurrency:
+  group: supply-incremental
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: 수집 → 적재 → 집계 → 검증
+    runs-on: ubuntu-latest
+    # 집계가 세 리그 전수 재계산이라 길다. 그래도 무한정 붙잡지 않는다
+    timeout-minutes: 55
+
+    env:
+      # 운영 DB. **값을 로그에 찍지 않는다** (GitHub 이 자동 마스킹하지만 우리도 찍지 않는다)
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # 원본 웹 클라이언트 공개 앱 헤더. 앱 버전이 올라가면 403 이 나므로 시크릿으로 갈아끼울 수 있게 둔다.
+      # **비워 두면 코드의 기본값을 쓴다** — 빈 문자열을 헤더로 보내면 403 이다 (아래에서 unset 한다)
+      SUPPLY_APP_ID: ${{ secrets.SUPPLY_APP_ID }}
+      SUPPLY_APP_VER: ${{ secrets.SUPPLY_APP_VER }}
+      # 원본에 대한 예의. 대량 수집 때(10 · 130ms)보다 훨씬 느리게 간다
+      SUPPLY_CONCURRENCY: '3'
+      SUPPLY_DELAY_MS: '250'
+      LEAGUES: ${{ inputs.leagues || 'supply,daerule,sanply' }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+      FORCE_ROLLUP: ${{ inputs.force_rollup || 'false' }}
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: pnpm 설치
+        # 버전은 package.json 의 `packageManager` 를 따른다 (pnpm@11.22.0)
+        uses: pnpm/action-setup@v4
+
+      - name: Node 24 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma 클라이언트 생성
+        run: pnpm --filter @sacloud/db exec prisma generate
+
+      - name: 시크릿 확인 (값은 찍지 않는다)
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL 시크릿이 없다. 리포지터리 Settings → Secrets 에 넣는다"
+            exit 1
+          fi
+          echo "DATABASE_URL 설정됨"
+          echo "리그: ${LEAGUES}"
+          echo "dry-run: ${DRY_RUN} · force-rollup: ${FORCE_ROLLUP}"
+          echo "원본 속도: 동시 ${SUPPLY_CONCURRENCY} · 간격 ${SUPPLY_DELAY_MS}ms"
+
+      - name: 수집 → 적재 → 집계
+        id: sync
+        run: |
+          # 한 단계라도 실패하면 그대로 죽는다. 조용히 성공하지 않는다
+          set -euo pipefail
+
+          # 시크릿을 안 넣었으면 **빈 문자열이 아니라 미설정**이어야 한다.
+          # 빈 헤더를 보내면 원본이 403 을 준다 (apps/worker/src/lib/supplyClient.ts)
+          if [ -z "${SUPPLY_APP_ID:-}" ]; then unset SUPPLY_APP_ID; fi
+          if [ -z "${SUPPLY_APP_VER:-}" ]; then unset SUPPLY_APP_VER; fi
+
+          worker() { pnpm --filter @sacloud/worker nexon "$@"; }
+
+          imported_any=0
+          summary=''
+
+          for slug in $(echo "$LEAGUES" | tr ',' ' '); do
+            echo "::group::[$slug] 1/3 수집 (supply-mirror --incremental --seen-from-db)"
+            if [ "$DRY_RUN" = 'true' ]; then
+              # dry-run 은 **요청을 한 건도 보내지 않는다.** 체크포인트도 만들지 않으므로
+              # 뒤의 적재·집계는 돌릴 것이 없다 — 여기서 끝낸다
+              worker supply-mirror --league "$slug" --incremental --seen-from-db --dry-run
+              echo '::endgroup::'
+              continue
+            fi
+            worker supply-mirror --league "$slug" --incremental --seen-from-db
+            echo '::endgroup::'
+
+            # 이번에 새로 받은 것이 있나. `--seen-from-db` 덕분에 이 파일에는
+            # **이번 실행에서 새로 받은 경기만** 들어 있다 (러너는 빈 작업공간에서 시작한다)
+            details="packages/db/data/supply-mirror-${slug}.details.jsonl"
+            if [ -f "$details" ]; then
+              new_count=$(wc -l < "$details" | tr -d ' ')
+            else
+              new_count=0
+            fi
+            echo "[$slug] 새 경기 상세 ${new_count}건"
+            summary="${summary}${slug}=${new_count} "
+
+            if [ "$new_count" -eq 0 ] && [ "$FORCE_ROLLUP" != 'true' ]; then
+              echo "[$slug] 새 경기가 없다 — 적재·집계를 건너뛴다"
+              continue
+            fi
+            imported_any=1
+
+            if [ "$new_count" -gt 0 ]; then
+              echo "::group::[$slug] 2/3 적재 (supply-import --confirm)"
+              # 네트워크를 쓰지 않는다. 이미 있는 경기는 건너뛴다 (idempotent · D-153)
+              worker supply-import --league "$slug" --confirm
+              echo '::endgroup::'
+            fi
+
+            echo "::group::[$slug] 3/3 집계 (supply-rollup --confirm)"
+            # 클랜 점수·승패·부리그는 수집 파일 클랜 목록 값을 그대로 쓴다 (D-157).
+            # 그 목록은 방금 수집이 클랜랭킹 API 에서 새로 받아 체크포인트에 넣은 것이다.
+            # 원본 클랜 id 충돌이 있으면 이 명령이 exit 1 을 낸다 → 잡이 실패한다
+            worker supply-rollup --league "$slug" --confirm
+            echo '::endgroup::'
+          done
+
+          echo "새 경기 요약: ${summary:-(없음)}"
+          echo "imported_any=${imported_any}" >> "$GITHUB_OUTPUT"
+
+      - name: 검증 — 행 수 · 무결성 (읽기만 한다)
+        if: ${{ inputs.dry_run != true }}
+        # 무결성 검사가 하나라도 깨지면 exit 1 → 잡이 실패한다
+        run: pnpm --filter @sacloud/worker nexon db-snapshot --stamp "gha-${{ github.run_id }}"
+
+      - name: 이번에 받은 원본 보관 (디버깅용 · 7일)
+        if: ${{ always() && inputs.dry_run != true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: supply-mirror-${{ github.run_id }}
+          # 이번 실행에서 **새로 받은 것만** 들어 있다. 원본 응답 그대로다 (3-A 1번)
+          path: |
+            packages/db/data/supply-mirror-*.json
+            packages/db/data/supply-mirror-*.jsonl
+          if-no-files-found: ignore
+          retention-days: 7

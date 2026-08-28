@@ -17,12 +17,26 @@ import { publicOriginWhere } from './publicScope'
  * - `search/{q}` 는 **부분일치** 자동완성. 최대 10건.
  * - 빈 검색어는 조회하지 않고 빈 배열을 준다 (Mock과 동일).
  *
- * 부분일치는 Postgres의 `contains`(대소문자 구분)라 JS `String.includes`와 결과가 같다.
  * 정렬 기준 컬럼이 따로 없어 **고유 키(id) 오름차순**으로 고정한다 — 같은 검색어에 항상 같은 순서다.
+ *
+ * ── 대소문자를 구분하지 않는다
+ *   예전에는 `contains` 기본값(대소문자 구분)을 썼다. JS `String.includes` 와 결과를
+ *   맞추려던 것인데, **검색이 사실상 동작하지 않았다.** 사용자가 `Huwho` 를 넣었는데
+ *   저장된 이름이 `huwho` 라 0건이 나왔다 (실측: `Huwho` 0건 · `huwho` 1건).
+ *   닉네임을 사람이 손으로 치는 화면에서 이건 결함이다.
+ *
+ *   원본이 정확히 어떤 조건인지는 **[미확인]** 이다. 다만 "친 대로 안 나오면 안 된다"는
+ *   쪽이 원본 동작에 더 가깝다고 보고 대소문자 무시로 정했다.
+ *   Mock 쪽(`packages/mock`)도 같은 규칙으로 맞춰 두 모드의 응답이 어긋나지 않게 했다.
  */
 
 /** 자동완성 노출 건수 (Mock 기본값과 동일). 원본의 실제 상한은 [미확인] */
 const SEARCH_LIMIT = 10
+
+/** 대소문자를 구분하지 않는 부분일치 조건 */
+const ci = (value: string) => ({ contains: value, mode: 'insensitive' as const })
+/** 대소문자를 구분하지 않는 정확일치 조건 */
+const ciEquals = (value: string) => ({ equals: value, mode: 'insensitive' as const })
 
 function keywordOf(query: string): string {
   return query.trim()
@@ -36,7 +50,7 @@ function keywordOf(query: string): string {
  */
 export async function findPlayerByName(name: string): Promise<PlayerSearchItem | null> {
   const player = await prisma.player.findFirst({
-    where: { name, ...publicOriginWhere() },
+    where: { name: ciEquals(name), ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
   })
@@ -49,7 +63,7 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
   if (!keyword) return []
 
   const players = await prisma.player.findMany({
-    where: { name: { contains: keyword }, ...publicOriginWhere() },
+    where: { name: ci(keyword), ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     take: SEARCH_LIMIT,
     select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
@@ -65,7 +79,7 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
 
 export async function findClanByName(name: string): Promise<ClanSummary | null> {
   const clan = await prisma.clan.findFirst({
-    where: { name, ...publicOriginWhere() },
+    where: { name: ciEquals(name), ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     select: CLAN_SUMMARY_SELECT,
   })
@@ -78,7 +92,7 @@ export async function searchClans(query: string): Promise<ClanSummary[]> {
   if (!keyword) return []
 
   const clans = await prisma.clan.findMany({
-    where: { OR: [{ name: { contains: keyword } }, { slug: { contains: keyword } }], ...publicOriginWhere() },
+    where: { OR: [{ name: ci(keyword) }, { slug: ci(keyword) }], ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     take: SEARCH_LIMIT,
     select: CLAN_SUMMARY_SELECT,
@@ -90,7 +104,7 @@ export async function searchClans(query: string): Promise<ClanSummary[]> {
 
 export async function findLeagueByName(name: string): Promise<LeagueSummary | null> {
   const league = await prisma.league.findFirst({
-    where: { name, ...publicOriginWhere() },
+    where: { name: ciEquals(name), ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     select: LEAGUE_SUMMARY_SELECT,
   })
@@ -102,7 +116,7 @@ export async function searchLeagues(query: string): Promise<LeagueSummary[]> {
   if (!keyword) return []
 
   const leagues = await prisma.league.findMany({
-    where: { OR: [{ name: { contains: keyword } }, { slug: { contains: keyword } }], ...publicOriginWhere() },
+    where: { OR: [{ name: ci(keyword) }, { slug: ci(keyword) }], ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     take: SEARCH_LIMIT,
     select: LEAGUE_SUMMARY_SELECT,

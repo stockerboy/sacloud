@@ -7,7 +7,12 @@ export default tseslint.config(
   {
     ignores: [
       '**/node_modules/**',
+      /* `.next` 뿐 아니라 **다른 이름으로 뽑은 Next 빌드 산출물**도 뺀다.
+         검증용으로 `--distDir .next-verify` 같은 자리에 빌드하면 그 안의 생성 타입
+         파일이 그대로 검사돼 오류가 만 단위로 쏟아졌다 (실측 17,846건).
+         우리가 쓴 코드가 아니다. */
       '**/.next/**',
+      '**/.next-*/**',
       '**/dist/**',
       '**/coverage/**',
       '**/public/mockServiceWorker.js',

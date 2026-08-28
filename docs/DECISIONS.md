@@ -3220,3 +3220,474 @@ pnpm --filter @sacloud/worker nexon snapshot-audit --league supply
 ```
 
 `--confirm` 이 없다. 적재 도구(`snapshot-import`)는 **아직 만들지 않았다** — 승인 후에 만든다.
+
+---
+
+## D-151 — Vercel 프로덕션 배포 (2026-08-27)
+
+첫 프로덕션 배포를 성공시키면서 **네 가지**를 결정했다. 전부 "운영에서만 죽는" 종류라
+개발 PC 에서는 끝까지 드러나지 않았다.
+
+근거: `pnpm-workspace.yaml` · `apps/web/next.config.ts` · `apps/web/scripts/copy-prisma-engine.mjs` ·
+`packages/contract/src/config.ts` · 커밋 `5d50960` `f19605f` `941780d` `fc8d846` `ba5aeab`
+
+### 1. `allowBuilds` 에 **`false` 도 명시한다**
+
+pnpm 11 은 목록에 없는 빌드 스크립트를 **경고가 아니라 오류**로 만든다 (`ERR_PNPM_IGNORED_BUILDS`,
+`pnpm install` exit 1). `@embedded-postgres/windows-x64` 만 `true` 로 적어 뒀더니
+개발 PC(Windows)는 통과하고 **Vercel(Linux)에서 `linux-x64` 가 목록에 없어 설치가 죽었다.**
+배포가 build 단계에 들어가지도 못했다.
+
+그래서 `@embedded-postgres/*` 를 **플랫폼별로 전부 적는다** — 개발 PC 플랫폼만 `true`,
+나머지는 **`false`(실행하지 않는다고 명시)** 다. `false` 는 "안 쓴다"가 아니라
+"안 쓴다는 것을 pnpm 에게 말해 둔다"는 뜻이다.
+
+> Linux 재현법 — 매니페스트와 lockfile 만 빈 폴더에 복사하고 `pnpm-workspace.yaml` 에
+> `supportedArchitectures: {os: [linux], cpu: [x64]}` 를 넣은 뒤 `pnpm install --frozen-lockfile`.
+
+Windows 외 OS 에서 개발한다면 자기 플랫폼 항목만 `true` 로 바꾼다. 그 변경은 커밋하지 않는 편이 낫다.
+
+### 2. Prisma 쿼리 엔진을 **`apps/web/generated/client/` 로 복사한다**
+
+생성된 클라이언트는 `packages/db/generated/client` 에 있는데, Next 가 그것을 번들하면
+모듈이 원래 위치를 잃는다. 런타임에 Prisma 는 네이티브 엔진(`.so.node`)을 **정해진 몇 군데**
+에서만 찾고, **첫 번째가 `/var/task/apps/web/generated/client`** 다.
+
+`outputFileTracingIncludes` 는 파일의 **상대 경로를 유지**하므로 `packages/db/...` 를 그대로
+넣으면 Prisma 가 보지 않는 곳에 떨어진다 — 실제로 그렇게 한 번 더 실패했다.
+그래서 `scripts/copy-prisma-engine.mjs` 가 엔진을 첫 번째 검색 경로로 먼저 옮기고,
+`next.config.ts` 가 `outputFileTracingIncludes: { '/**': ['./generated/client/**'] }` 로 번들에 넣는다.
+`outputFileTracingRoot` 는 모노레포 루트다 — 그래야 번들 루트가 저장소 루트가 되어
+`apps/web/...` 상대 경로가 런타임 검색 경로와 맞는다.
+
+`binaryTargets = ["native", "rhel-openssl-3.0.x"]` 도 함께 필요하다.
+개발 PC 가 Windows 라 `native` 만 두면 **Linux 엔진이 아예 생기지 않는다.**
+
+`apps/web/generated/` 는 커밋하지 않는다. 매 빌드마다 다시 만드는 산출물이다.
+
+### 3. `resolveApiBaseUrl` 은 **Mock 주소로 떨어지지 않는다**
+
+`NEXT_PUBLIC_API_BASE_URL` 이 없으면 예전에는 `DEFAULT_API_BASE_URL`(`https://api.sacloud.local`,
+MSW 가 가로채는 가짜 주소)로 떨어졌다. 그래서 운영 배포에서 **서버 API 는 멀쩡한데 브라우저만
+존재하지 않는 도메인으로 요청을 보내 화면이 "불러오지 못했습니다"로 죽었다.**
+
+D-116 이 `resolveApiMode` 에 적용한 것과 같은 원칙 — **안전한 쪽으로 실패한다.**
+미설정이면 모드를 보고, `mock` 일 때만 Mock 주소를 쓴다. 그 외에는 같은 오리진(`/api`)이다.
+빈 문자열도 미설정으로 본다(환경변수를 만들어 두고 값을 비우는 실수가 잦다).
+`NEXT_PUBLIC_*` 은 빌드 시점에 인라인되므로 되돌리려면 **재빌드가 필요하다** — 그래서 기본값이 중요하다.
+
+### 4. Deployment Protection 을 껐다
+
+Vercel Authentication 이 켜져 있으면 전 경로가 302 로 SSO 로 튀어 아무도 못 본다.
+공개 사이트이므로 껐다. **지금 배포는 공개 상태다.**
+
+### 배포 설정 (Vercel 대시보드)
+
+- Root Directory `apps/web`
+- Build Command
+  `pnpm --filter @sacloud/db exec prisma generate && node scripts/copy-prisma-engine.mjs && next build`
+
+### 남은 것 · 알아 둔 것
+
+- `DATABASE_URL` — Supabase **transaction pooler(6543)** 는 사용자명이 `postgres` 가 아니라
+  **`postgres.<project-ref>`** 여야 한다. `pgbouncer=true` 를 빼면 Prisma 가 prepared statement
+  오류를 낸다. 값이 Sensitive 라 CLI 로 읽을 수 없어 **사람이 직접 고쳐야 한다.**
+  (자격증명 자체는 문서에 적지 않는다.)
+- 스키마 drift — 로컬 DB 에만 `MatchPlayerStat(matchTimeLeagueClanId)` 인덱스가 있다.
+  고칠 때는 forward-only · `IF NOT EXISTS`.
+- Vercel 빌드마다 `@embedded-postgres/linux-x64` 타르볼을 내려받는다(스크립트 실행은 막았다).
+  설치를 `--filter @sacloud/web...` 로 좁히면 없앨 수 있다.
+
+---
+
+## D-152 — 경기 인원과 선수 포지션은 **세어서** 정한다 (2026-08-27)
+
+근거: `packages/ui/src/common/format.ts` · `packages/ui/src/record/weaponCopy.ts` ·
+`packages/ui/src/__tests__/team-counts.test.ts` · `packages/ui/src/__tests__/position.test.ts` ·
+커밋 `fc0d9e8` `514d866`
+
+### 1. `5 vs 5` — 총원을 양쪽에 쓰지도, 2로 나누지도 않는다
+
+운영에서 **정상 5대5 경기가 `10 vs 10` 으로 나갔다.** `player_count`(총원 10)를 양쪽에
+그대로 썼기 때문이다.
+
+- **총원을 그대로 쓰지 않는다** — 위 사고 그대로다.
+- **총원을 2로 나누지도 않는다** — 인원이 어긋난 경기(5대4)를 반올림해 5대5 인 척하게 된다.
+  라인업 배열의 길이가 사실이고, **어긋나면 어긋난 대로 보인다** (`5 vs 4`).
+- 비어 있으면 `0 vs 0` 이다. 숫자를 지어내지 않는다.
+
+`formatTeamCounts(redCount, blueCount)` 하나만 쓴다. 회귀 테스트로 고정했다.
+
+### 2. 포지션은 **그 무기로 뛴 경기 수**로만 정한다
+
+킬 수·킬뎃·현재 클랜으로 정하지 않는다. 그건 판단이지 사실이 아니다.
+"스나로 몇 판 뛰었나"는 경기마다 기록된 사실이고, 세면 끝난다.
+
+| 조건 | 결과 |
+|---|---|
+| 스나 경기 > 라플 경기 | `스나이퍼` |
+| 라플 경기 > 스나 경기 | `라이플` |
+| 동률 (0판 대 0판 제외) | **반드시 `멀티`** |
+| 둘 다 0판 | `집계 없음` — 뛴 적이 없는데 "멀티로 뛴다"고 말할 수는 없다 |
+
+동률을 한쪽으로 몰아 주면 **근거 없이 포지션을 지어내는 것**이라 하지 않는다 (3장 7번).
+분모는 `games`(그 무기로 뛴 경기 전부)다. `knownGames`(K/D 를 아는 경기)가 아니다 —
+K/D 를 모른다고 그 경기를 안 뛴 것으로 칠 수는 없다 (D-034).
+
+표기는 원본 용어 그대로 `스나이퍼 / 라이플 / 멀티 / 집계 없음` 이다 (CLAUDE.md 6장).
+
+---
+
+## D-153 — 3rd.supply 미러링 수집 · 원본 점수를 우리 계산과 **분리 보관** (2026-08-27)
+
+근거: `packages/db/prisma/schema.prisma`(`sourceRating` / `sourceRatingDelta`) ·
+`packages/db/prisma/migrations/20260827090000_d153_source_rating/migration.sql` ·
+`packages/db/ops/supplyRollup.ts` · `packages/db/ops/supplyMirrorParse.ts` ·
+`apps/worker/src/jobs/supplyMirror.ts` · `apps/worker/src/lib/jsonlStore.ts` ·
+커밋 `eb3b8a7` `c302815` `f42cd48` `e800d9f`
+
+### 왜 컬럼을 따로 두는가
+
+기존 `ratingBefore` / `ratingUpdate` 는 **우리가 계산한** 값이다(D-145).
+여기에 원본 점수를 덮어쓰면 어느 쪽 숫자인지 알 수 없게 되고, 한 번 섞이면 되돌릴 수 없다.
+`CLAUDE.md` 3-A 2번 — **기존 `rating_update` 를 추정 공식으로 덮어쓰지 않는다.**
+
+그래서 원본값 전용 컬럼을 새로 만들었다.
+
+| 표 | 컬럼 |
+|---|---|
+| `MatchPlayerStat` | `sourceRating` · `sourceRatingDelta` |
+| `Match` | `redSourceRating` · `blueSourceRating` · `redSourceRatingUpdate` · `blueSourceRatingUpdate` |
+
+전부 **NULL 허용 · 기본값 없음**이다. 마이그레이션이 **기존 행을 하나도 바꾸지 않는다.**
+되돌리려면 컬럼만 지우면 된다 — 파괴적 변경이 아니다.
+
+시즌7 베타 운영 화면은 **이 source 값을 쓴다.** 우리 공식은 코드와 컬럼을 그대로 두되
+화면에 적용하지 않는다.
+
+### `sourceRating` 은 "경기 당시" 값이 **아니다** (실측)
+
+한 선수의 5,978경기에서 이 값의 distinct 가 **3개뿐**이었다(초기 표본 162경기에서는 전부 같았다).
+원본은 **수집 시점의 현재 래더**를 모든 행에 그대로 붙인다. `opponent.rating` / `opponent.division`
+도 클랜별로 값이 하나뿐이라 같은 성격이다.
+
+따라서 **래더 재현의 입력으로 쓰면 안 된다.** 원본 화면을 그대로 재현하려고 담아 둘 뿐이다.
+집계에서는 **가장 최근 행의 값 = 그 선수의 현재 원본 래더**로 보고 그것 하나만 옮긴다.
+평균을 내거나 증감을 누적하면 원본과 어긋난다.
+
+`sourceRatingDelta` 는 다르다 — **경기마다 값이 다르고 진짜 증감이 맞다.** 원본값 그대로
+보관하고 재계산하지 않는다 (3-A 2번).
+
+근거가 아예 없는 선수(모든 행이 `null`)는 **rating 을 건드리지 않는다.** 기본값 3000 을
+써 넣으면 "원본 점수가 3000이다"라는 거짓이 남는다 (3-A 8번).
+
+### 수집 방식
+
+사람이 승인한 뒤(2026-08-27), 웹 클라이언트 공개 앱 헤더(`SP-APP-*`)를 붙여 사이트 자신의
+공개 API 를 **페이지와 같은 속도로** 불러 받았다. 커서를 끝까지 따라간다 — 예전 스냅샷은
+클랜당 첫 20건뿐이었다. 이는 `packages/db/legacy/collect-snippet.js` 의 "헤더 위조 없음"
+원칙과는 다르며, **사용자 승인 사항**이다. 체크포인트 파일의 `note` 에 그대로 적어 두었다.
+
+수집 범위(`floor`)는 **2024-05-24 ~ 현재**다.
+
+### 저장은 줄 단위(JSONL)
+
+한 리그가 수십만 경기다. 단일 JSON 으로는 읽고 쓸 때마다 통째로 메모리에 올라가
+실제로 파일이 깨졌다(`supply-mirror-supply.json.corrupt` 가 그 흔적이다).
+그래서 `packages/db/data/supply-mirror-<slug>.matches.jsonl` / `.details.jsonl` 로 나누고,
+체크포인트(`.json`)에는 클랜 목록·커서·실패만 남긴다. **중단 후 재개 가능**하다 (3-A 4번).
+
+---
+
+## D-154 — 배치고사 완료는 되돌아가지 않는다 · 랭킹의 세는 집합과 보여 주는 집합 (2026-08-27)
+
+근거: 커밋 `31c9642` · `packages/db/ops/supplyRollup.ts` ·
+`apps/web/tests/clanRankPopulation.test.ts` · `packages/db/ops/__tests__/supplyRollup.test.ts`
+
+### 1. 랭킹 필터 자체는 결함이 아니었다
+
+1부리그에 6개만 뜨던 이유를 수치로 확정했다.
+
+```
+LeagueClan 48 (1부 26 / 2부 22)
+placement=true 26 · clan.active=false 4
+division=1 · placement=false · active → 6   ← 화면과 정확히 일치
+```
+
+필터는 `placement: false` + `clan.active` 둘뿐이고, `CLAUDE.md` 6장(배치고사 진행 중이면
+랭킹 미표시)과 원본 안내 문구를 그대로 지킨다. 고칠 게 없었다.
+
+### 2. 원본은 배치고사 완료를 **되돌리지 않는다** (근거 셋)
+
+`rate.ts` 의 `untouchedClans` 는 이번 시즌 창에 경기가 없는 클랜을 전부 `placement=true` 로
+되돌린다. 베타는 `placementMatches=0`(D-112)이라 베타 창에 래더경기 1건이라도 있어야 랭킹에 오른다.
+**원본은 그렇게 하지 않는다.**
+
+1. 원본 클랜랭킹을 커서 끝까지 받으니 1부 22개가 전부 올라와 있다. 우리 1부 활성 클랜 22개와
+   `sourceClanId` 로 **22/22 일치**.
+2. 그중 3개(`smite` · `gaIactico-` · `supremacy-`)는 원본 자신의 4,891경기 캡처에도
+   베타 창 경기 흔적이 없다. **그런데도 원본 랭킹에 있다.**
+3. 캡처한 4,891경기 중 `placement:true` 가 **0건**이다.
+
+그래서 미러 집계(`supplyRollup`)는 **미러 경기가 있는 선수를 `placement = false` 로 둔다.**
+클랜은 D-157 대로 **수집 파일 클랜 목록에 있으면 `false`**, 없으면 `true` 다.
+`placement = true` 는 **랭킹에서만 빠지는 표시**이지 경기를 지우는 것이 아니다 —
+기록실에는 그대로 남는다.
+
+> **[미확인]** 원본이 시즌 경계에서 배치 완료를 **유지**하는지, 아니면 리그 최초 가입 때
+> **한 번만** 배치고사를 보는지는 관측으로 갈리지 않았다. 임의로 정하지 않았고 `rate.ts` 도
+> 건드리지 않았다.
+
+### 3. 세는 집합과 보여 주는 집합을 맞췄다
+
+D-147 이 같은 파일에서 이미 금지한 패턴인데 두 군데가 빠져 있었다.
+
+| 함수 | 증상 |
+|---|---|
+| `rankOfFirstClan()` | `ACTIVE_CLAN` 누락 → 순위 번호에만 비활성 클랜이 더해진다 |
+| `clanRankOf()` | `ACTIVE_CLAN` 누락 → `rankCount`(분모)가 목록보다 커진다 |
+
+"목록엔 6개인데 3 / 7 위", "1위인데 rank=2" 로 드러난다. 지금은 비활성 1부 4개가 전부
+배치고사라 안 보이지만, 그중 하나가 배치를 통과하는 순간 드러난다.
+
+개인 랭킹(`rankOfFirstPlayer`)에는 **일부러 넣지 않았다.** `getPlayerRanks` 가 클랜으로
+거르지 않고, 무소속 선수는 `clanId` 가 null 이라 넣으면 통째로 빠진다(D-107).
+
+---
+
+## D-155 — 같은 경기를 **여러 리그에 기록**한다 (2026-08-27)
+
+근거: `packages/db/prisma/migrations/20260827180000_d155_match_per_league/migration.sql` ·
+`packages/db/ops/supplyMirrorImport.ts` · `apps/web/lib/server/queries/matches.ts` ·
+`apps/web/tests/matchPerLeague.test.ts` · `packages/contract/src/entities/match.ts`
+
+### 문제
+
+클랜은 리그를 겸한다. `e2stro-` 와 `The|vub` 가 둘 다 공식리그·열산리그 소속이면
+그 경기는 **양쪽 리그에 다 찍혀야 한다.** 그런데 `unique(origin, sourceMatchId)` 이
+한 경기를 한 리그에만 묶어서, **먼저 들어간 리그에만 남고 나머지는 버려졌다.**
+
+실측 — 공식리그 **1,828건** · 열산리그 **28건**이 `exists_in_other_league` 로 스킵됐다.
+
+### 결정 — 리그마다 행을 둔다
+
+리그마다 값이 다르다. 부리그·클랜 래더·증감은 리그별이라 **한 행을 공유할 수 없다.**
+
+```
+unique(origin, sourceMatchId)  →  unique(leagueId, origin, sourceMatchId)
+Match.id                       =  <18자리 경기번호>@<리그slug>
+Match.sourceMatchId            =  18자리 경기번호 (원본 대조 키)
++ index Match(sourceMatchId)      "이 경기가 어느 리그들에 있나"
+```
+
+제약을 **좁히는 것이 아니라 넓히는** 것이라 기존 행은 하나도 바뀌지 않고 새 제약도 그대로
+만족한다. 되돌리려면 인덱스만 되돌리면 된다 — 데이터 손실이 없다.
+원본 대조 키(`sourceMatchId`)를 잃지 않는다 (3-A 3번).
+
+### 밖으로 나가는 경기 번호는 `sourceMatchId` 다 — `id` 가 아니다
+
+`<번호>@<리그slug>` 는 **우리 저장 사정**이라 사용자 URL 이나 API 응답에 새어 나가면 안 된다.
+계약상 경기 id 는 **원본 그대로 18자리**다. 옛 행은 `id === sourceMatchId` 라 그대로 떨어지고,
+mock 시드처럼 `sourceMatchId` 가 없는 행도 `match.sourceMatchId ?? match.id` 로 기존 동작이 유지된다.
+
+### 조회할 때는 **리그를 반드시 함께 건다**
+
+리그 없이 경기 번호로만 찾으면 **엉뚱한 리그의 기록**이 나온다 — 공식리그와 열산리그에
+같은 번호의 행이 1,828건 겹친다. `getMatch` 는
+`where: { leagueId, OR: [{ sourceMatchId }, { id }] }` 로 찾는다.
+적재 쪽 중복 판정도 **그 리그 안에서만** 본다 — 다른 리그에 같은 경기가 있는 것은 **정상**이다.
+
+회귀 테스트: `apps/web/tests/matchPerLeague.test.ts`.
+
+---
+
+## D-156 — 운영 전송은 **로컬 적재 후 대량 push** (2026-08-27)
+
+근거: `apps/worker/src/jobs/supplyPush.ts` · `apps/worker/src/cli.ts`
+
+### 왜
+
+미러 적재를 운영(Supabase)에 **직접** 돌렸더니 **초당 9.3경기**였다. 공식리그 12.8만 경기면
+**3시간 49분**이다. 경기마다 개별 INSERT 를 네트워크 너머로 보내기 때문이다.
+
+그래서 적재는 **로컬에서** 하고(왕복이 없어 빠르다), 결과만 옮긴다.
+`createMany` 로 1000행씩 묶으면 왕복이 12.8만 번에서 **1,400번쯤**으로 준다.
+로컬 읽기는 5,000행 커서 단위다 — 130만 행을 통째로 메모리에 올리지 않는다.
+
+`pg_dump` 를 쓰지 않는다 — 이 저장소의 로컬 DB 는 `embedded-postgres` 인데 서버 바이너리만
+들어 있고 클라이언트 도구(`pg_dump` / `psql`)가 없다.
+
+### 무엇을 옮기는가
+
+**미러가 만든 것만** 옮긴다 (`origin = '3rd.supply'`). 개발 시드(`origin='mock'`)나 넥슨
+수집분은 건드리지 않는다 — 운영에 개발 데이터가 새어 나가면 안 된다 (D-116).
+FK 순서대로 `League → GameMap → LeagueMap → Clan → LeagueClan → Player → Match → MatchPlayerStat`.
+
+### id 재매핑 — 이것이 이 잡의 핵심이다
+
+`Clan` 은 `slug` 와 `sourceClanId` 가 각각 unique 다. 같은 클랜이 운영에 **다른 id 로** 이미
+있으면 `skipDuplicates` 가 조용히 건너뛰는데, `LeagueClan` 은 **로컬 id** 를 가리키고 있어
+**FK 가 깨진다.** 실제로 그렇게 실패했다 (`Clan 62 읽음 · 0 씀`).
+
+그래서 로컬 id → 운영 id 대응표를 만들고 **참조하는 쪽을 옮길 때 바꿔 넣는다.**
+선수도 `sourcePlayerId` / `nexonOuid` 가 unique 라 같은 재매핑이 필요하다.
+`LeagueClan.sourceLeagueClanId` 는 전역 unique 라 다른 리그 것과 부딪힐 수 있어 **비운다.**
+
+**운영에 이미 있는 행을 고치지 않는다.** 우리 쪽 참조만 맞춘다.
+
+### 안전 · 한계
+
+전부 `skipDuplicates` 다. 여러 번 돌려도 같은 결과이고 **삭제하지 않는다** (3-A 4번).
+
+그 대가로 **이 잡은 create-only 다.** 운영에 이미 있는 행의 값은 갱신되지 않는다 —
+특히 집계표가 그렇다. `LeagueClan` 은 있어도 새로 만들 때만 값이 들어가고,
+`LeaguePlayer` 는 아예 옮기지 않는다. **운영 집계는 `supply-rollup` 을 운영 DB 에 대고
+직접 돌려서 맞춘다.**
+
+---
+
+## D-157 — 클랜 랭킹 값은 **수집 파일 클랜 목록**에서 온다 (2026-08-27)
+
+근거: `packages/db/ops/supplyRollup.ts` · `packages/db/ops/__tests__/supplyRollup.test.ts` ·
+`apps/worker/src/jobs/supplyMirror.ts`
+
+### 선수와 클랜을 다르게 다룬다
+
+- **선수** — 경기 기록을 되짚어 승패·K/D/A 를 만든다. 점수만 원본값을 옮긴다 (D-153).
+- **클랜** — 점수·승패·부리그를 **되짚지 않는다.** 수집 파일 체크포인트의 **클랜 목록 값을
+  그대로 쓴다.** 그 값이 원본 클랜랭킹 화면이 실제로 보여 주는 숫자다.
+
+### 되짚기가 틀린다는 증거
+
+| 클랜 | 되짚은 값 | 원본 |
+|---|---|---|
+| `saint` | 1,525 | **1,561** |
+| `One.PoinT` | 1,117 | **1,079** |
+| `smite` | 3,000 (기본값 — 자기 진영 점수가 담긴 경기가 하나도 없다) | **1,718** |
+
+원본은 경기 화면에 **한쪽 진영의 점수만** 실어 준다. 그래서 되짚기로는 채워지지 않는 클랜이 생기고,
+채워지는 클랜도 어긋난다.
+
+### 랭킹 **모집단**도 그 목록이 정한다
+
+- 상대 클랜으로만 등장한 클랜은 리그 등록 클랜이 아니어서 원본 클랜랭킹에 없다. 우리도 뺀다 —
+  supply 1부가 22개여야 하는데 되짚으니 **31개**가 됐다(부리그를 몰라 기본값 1로 들어간 9개가 섞였다).
+- 반대 방향도 마찬가지다. **경기가 한 건도 없는 등록 클랜도 원본은 랭킹에 띄운다.**
+  랭킹 값이 전부 목록에서 오므로 경기가 0건이어도 값은 완전하다. 막고 있던 것은
+  "경기가 없으면 `Clan`·`LeagueClan` 행이 아예 안 만들어진다" 하나뿐이라 **집계에서 만든다.**
+  daerule 1부가 15개여야 하는데 9개였다.
+- 목록에 없는데 경기에는 나온 클랜은 `placement = true` 로 **랭킹에서만 뺀다.**
+  점수·승패를 건드리지 않고 경기도 그대로 남는다.
+
+선수는 다르다 — **선수는 경기가 있어야 존재하는 것이 맞다.** 그대로 둔다.
+
+### 값을 지어내지 않는다
+
+`rating` 이 `null` 이면 그 칸을 아예 쓰지 않는다(기존 값 보존). `win`/`lose` 가 `null` 이면
+0으로 채우지 않는다. 부리그는 목록이 항상 준다. 우리 공식값(`internalRating` ·
+`compositionScore` · `activityPenalty` · `lastRatedAt`)은 **건드리지 않는다** (D-145).
+
+집계는 누적하지 않고 **처음부터 다시 계산해 덮어쓴다.** 두 번 돌려도 값이 두 배가 되지 않는다.
+
+### 대조 결과 (2026-08-27~28)
+
+세 리그 모두 **"수집 파일 클랜 수 == 랭킹 반영 클랜 수"** 다.
+
+| 리그 | 클랜 | 부리그 |
+|---|---|---|
+| supply (서플라이공식리그) | 49 | 1부 22 · 2부 27 |
+| daerule (대룰리그) | 45 | 1부 15 · 2부 30 |
+| sanply (열산리그) | 96 | 1부 96 (단일리그) |
+
+supply 는 원본 클랜랭킹과 **순위·점수 전부 일치**를 확인했다.
+
+---
+
+## D-158 — 스냅샷 감사 안전장치 테스트의 **전제** 갱신 (2026-08-28)
+
+`apps/worker/src/__tests__/snapshotAuditSafety.test.ts` 3건이 실패하고 있었다.
+전부 **세상이 바뀌어 전제가 깨진 것**이지 결함이 아니었다. 단언이 지키려던 **성질**은 그대로 두고
+**전제 요구만** 걷어냈다.
+
+### 1. `audit.set.missing > 0` → `audit.set.snapshotTotal > 0`
+
+D-150 당시에는 스냅샷 파일의 624경기가 아직 DB 에 없었다. 지금은 **미러 적재로 전부 들어와
+`missing = 0`** 이다 (D-155). 그건 결함이 아니라 목표를 달성한 상태다.
+
+이 테스트가 지키는 것은 **"감사를 돌려도 DB 가 안 바뀐다"** 이지 "감사할 거리가 남아 있다"가
+아니다. 그래서 전제를 요구하지 않고, **감사가 실제로 무언가를 읽었다**는 것만 확인한다.
+`before`/`after` 스냅샷 비교는 그대로다.
+
+### 2. `baselineMatchesDb.mismatched === 0` → **미러링 리그에서는 단언하지 않는다**
+
+하네스는 D-145 공식으로 replay 한 값을 내는데, `LeaguePlayer.rating` 에는 **3rd.supply
+원본 점수**가 들어 있다 (D-153). **서로 다른 것이 정상**이고, 같기를 요구하면
+"원본값을 그대로 보존한다"(3-A 2번)는 원칙과 **정면으로 충돌한다.**
+실제로 207건이 어긋났는데 그건 설계다.
+
+미러링 여부는 **`Match.origin = '3rd.supply'` 가 그 리그에 존재하는가**로 판정한다.
+미러링 리그에서는 `compared > 0`(하네스가 돌았는가)만 보고, 미러링이 아닌 리그에서는
+기존 `mismatched === 0` 단언이 그대로 작동한다.
+
+### 3. `unknown.length > 0` 요구 삭제
+
+지키려는 성질은 **"모르는 값을 0으로 채우지 않는다"**(D-034)이지 "모르는 값이 존재한다"가 아니다.
+미러 적재로 스냅샷의 경기가 전부 DB 에 들어와 **투영 대상 자체가 0건**이 됐다 (D-155).
+대상이 없으면 어길 것도 없다. 대상이 생기면 `kill === null` 인 행에 대한
+`death`/`assist` 도 `null` 이라는 단언이 그대로 작동한다.
+
+### 결과
+
+**8/8 통과.** 코드(단언)만 고쳤고 감사 도구·투영 로직·DB 는 건드리지 않았다.
+
+---
+
+## D-159 — 매치 상세 표기 정정: `미반영` 폐기 · 무기 칸 축약 · 안내 문구 제거 (2026-08-28)
+
+사용자 지시로 매치 상세 화면 표기를 원본에 맞춰 고쳤다. **D-149 의 결론 하나를 뒤집는다.**
+
+### 1. 인라인 `미반영` → `알수없음` (D-149 를 뒤집는다)
+
+D-149 는 "래더에 반영되지 않는다는 **사실을 아는** 것이라, 모른다는 뜻의 `알수없음` 은 틀린 말"
+이라며 인라인 표기로 `미반영` 을 썼다. 논리 자체는 지금도 맞다.
+
+그러나 사용자가 원본 화면 기준으로 **`알수없음` 하나로 통일**하라고 지시했다.
+원본이 두 표기를 구분하지 않는다면 우리 쪽 논리적 정합성보다 **원본 재현이 우선**이다
+(`CLAUDE.md` 2장 V1 최우선 목표).
+
+- 적용: `packages/ui/src/record/MatchCard.tsx` L209-214 · L311-316 · L499-505
+- 상수 `NOT_RATED_INLINE` 삭제. 툴팁용 `NOT_RATED_INLINE_TITLE` 은 유지
+- **접힌 매치 카드의 상태 배지 `NOT_RATED_BADGE = '래더 미반영'` 은 그대로 둔다.**
+  그건 매치 상세 표의 값 칸이 아니라 기록실 카드의 상태 배지다.
+  `래더 알수없음` 으로 바꾸면 오히려 틀린 말이 된다. **[미확인]** — 원본에 이 배지가
+  어떻게 표기되는지는 확인되지 않았다
+
+### 2. 무기 칸은 축약형 `스나` / `라플`
+
+`matchWeaponLabel` (`packages/ui/src/record/matchDetailView.ts:136-140`).
+선수 상세 사이드바의 포지션 표기(`weaponCopy.positionLabel`)는 **여러 경기를 센 결과**라
+`스나이퍼` / `라이플` 을 그대로 쓴다. 문맥이 다르므로 한쪽을 고칠 때 다른 쪽을 따라 고치지 않는다.
+무기를 모르면 여전히 `null` → 호출부가 `알수없음` (D-034). `null` 을 라플로 떨어뜨리지 않는다.
+
+### 3. 팀바 `선레드` / `선블루` 를 항상 표시
+
+전에는 `blue_team === null` 이면 라벨이 통째로 사라졌다. 넥슨이 진영을 주지 않아
+**대부분의 경기에서 사라졌다.** 이제 팀 블록의 진영 기준으로 항상 그린다.
+**[미확인]** — 우리가 저장한 red/blue 가 원본의 **선공** 진영과 같은지는 검증되지 않았다.
+
+### 4. 설명 문구 전면 제거
+
+`ladderNotice()` 와 `COMPOSITION_NOTICE`(`클랜원 수는 이 경기의 증감을 깎지 않습니다 …`) 삭제.
+매치 상세 패널에 렌더되는 문장형 안내는 **0건**이다.
+데이터 표기인 `확인 5v5 · 일부` 칩(D-068)은 안내 문구가 아니라서 유지했다.
+
+### 5. MVP 표기는 `★`
+
+글자 배지 `MVP` → `★` (title/aria-label 은 `MVP` 유지).
+**[미확인]** — 원본 경기 상세 펼침 관찰에 실패해(`docs/UI_PARITY_AUDIT.md` 7장)
+원본의 실제 모양은 모른다.
+
+### 검증
+
+`npx vitest run packages/ui/src/__tests__/` → **17 파일 / 162 테스트 통과**.
+`pnpm typecheck` → 8개 패키지 전부 통과. 감독관이 독립 재실행해 같은 결과를 확인했다.

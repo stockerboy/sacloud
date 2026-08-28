@@ -12,7 +12,12 @@ import {
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
 import { toKstIso, toKstIsoOrNull } from '../format'
-import { CLAN_SUMMARY_SELECT, PLAYER_SUMMARY_SELECT, toClanSummary } from '../mappers'
+import {
+  CLAN_SUMMARY_SELECT,
+  PLAYER_SUMMARY_SELECT,
+  isOfficialLeagueClan,
+  toClanSummary,
+} from '../mappers'
 import { publicOriginWhere } from './publicScope'
 
 /**
@@ -33,14 +38,24 @@ import { publicOriginWhere } from './publicScope'
 /**
  * 매치 한 건을 카드/상세로 만드는 데 필요한 전부.
  *
- * 한 번의 `findMany`로 맵·양쪽 클랜·참가자 기록·참가자 이름까지 같이 읽는다.
+ * 한 번의 `findMany`로 맵·참가자 기록·참가자 이름까지 같이 읽는다.
  * 경기마다 추가 쿼리를 날리면 한 페이지(20건)에 수십 번의 왕복이 생긴다(N+1).
+ *
+ * **양쪽 클랜은 여기서 읽지 않는다.** Prisma 는 중첩 `select` 하나당 쿼리를 한 번 더
+ * 던지므로 `redClan{clan}` · `blueClan{clan}` 만으로 왕복이 4번 늘어나고,
+ * 거기에 공식 클랜 판정용 쿼리가 또 하나 붙어 있었다(합 5회).
+ * 서버리스 + 풀러 환경에서는 왕복 1회가 곧 네트워크 지연 1회다.
+ * 대신 페이지에 등장하는 리그클랜을 모아 `loadLeagueClanContext` 로 **한 번에** 읽는다.
  *
  * 참가자 정렬은 `id asc`다. 시드가 red 로스터 → blue 로스터 순으로 넣으므로
  * 삽입 순서가 그대로 유지된다. 원본의 라인업 정렬 기준은 [미확인].
  */
 const MATCH_SELECT = {
   id: true,
+  /* 밖으로 나가는 경기 번호는 이 값이다 — `id` 가 아니다 (D-155).
+     DB 는 같은 경기를 리그마다 다른 행으로 갖느라 기본키에 리그 slug 를 붙인다
+     (`<18자리>@<리그slug>`). 그건 우리 저장 사정이라 사용자 URL 에 새어 나가면 안 된다 */
+  sourceMatchId: true,
   leagueId: true,
   playerCount: true,
   startAt: true,
@@ -63,23 +78,6 @@ const MATCH_SELECT = {
   participantCompleteness: true,
   evidenceConfidence: true,
   map: { select: { id: true, name: true } },
-  /* 구성 보정은 클랜의 **현재** 값이다 (D-149). 경기별 값이 아니다 */
-  redClan: {
-    select: {
-      id: true,
-      compositionScore: true,
-      compositionMembers: true,
-      clan: { select: CLAN_SUMMARY_SELECT },
-    },
-  },
-  blueClan: {
-    select: {
-      id: true,
-      compositionScore: true,
-      compositionMembers: true,
-      clan: { select: CLAN_SUMMARY_SELECT },
-    },
-  },
   stats: {
     orderBy: { id: 'asc' },
     select: {
@@ -135,6 +133,71 @@ export async function resolveLeagueId(leagueIdOrSlug: string): Promise<string | 
 }
 
 /* -------------------------------------------------------------------------- */
+/* 리그클랜 컨텍스트                                                             */
+/* -------------------------------------------------------------------------- */
+
+/** 경기 카드 한 장이 클랜에 대해 알아야 하는 전부 */
+export interface LeagueClanInfo {
+  id: string
+  /** 구성 보정은 클랜의 **현재** 값이다 (D-149). 경기별 값이 아니다 */
+  compositionScore: number | null
+  compositionMembers: number | null
+  clan: {
+    id: string
+    slug: string
+    name: string
+    markBgUrl: string | null
+    markFrontUrl: string | null
+    sourceClanId: string | null
+  }
+}
+
+/** 리그클랜 id → 정보. 없는 id 는 "우리 리그 밖" 이라는 뜻이다 */
+export type LeagueClanContext = ReadonlyMap<string, LeagueClanInfo>
+
+/**
+ * 페이지에 등장하는 리그클랜을 **한 번에** 읽는다.
+ *
+ * 예전에는 같은 정보를 세 군데서 따로 읽었다 — `redClan` 중첩 select, `blueClan` 중첩
+ * select, 그리고 공식 등록 여부를 위한 `officialLeagueClanIds`. Prisma 는 중첩 관계마다
+ * 쿼리를 따로 던지므로 실제로는 왕복이 5번이었다.
+ *
+ * `leagueId` 로 함께 좁히는 것은 예전 `officialLeagueClanIds(leagueId)` 와 같은 규칙을
+ * 지키기 위해서다 — **다른 리그의 리그클랜은 공식으로 보지 않는다.**
+ * 여기서 찾지 못한 id 는 예전에 `Set.has()` 가 false 를 내던 경우와 같다.
+ */
+export async function loadLeagueClanContext(
+  leagueId: string,
+  ids: Iterable<string | null>,
+): Promise<LeagueClanContext> {
+  const wanted = [...new Set([...ids].filter((id): id is string => Boolean(id)))]
+  if (wanted.length === 0) return new Map()
+
+  const rows = await prisma.leagueClan.findMany({
+    where: { leagueId, id: { in: wanted } },
+    select: {
+      id: true,
+      compositionScore: true,
+      compositionMembers: true,
+      clan: { select: CLAN_SUMMARY_SELECT },
+    },
+  })
+  return new Map(rows.map((row) => [row.id, row]))
+}
+
+/** 매치 목록/상세가 참조하는 모든 리그클랜 id (양 진영 + 참가자의 경기 당시 소속) */
+function leagueClanIdsOf(matches: readonly MatchRow[]): string[] {
+  const ids: string[] = []
+  for (const match of matches) {
+    ids.push(match.redLeagueClanId, match.blueLeagueClanId)
+    for (const stat of match.stats) {
+      if (stat.matchTimeLeagueClanId) ids.push(stat.matchTimeLeagueClanId)
+    }
+  }
+  return ids
+}
+
+/* -------------------------------------------------------------------------- */
 /* 매핑                                                                         */
 /* -------------------------------------------------------------------------- */
 
@@ -154,13 +217,13 @@ export function sideOfLeagueClan(
  * 선수가 이적하면 과거 기록실이 통째로 바뀌기 때문이다.
  * 근거가 없으면 `null`이다. 현재 소속으로 메우지 않는다.
  */
-function matchTimeClanOf(stat: StatRow, officialLeagueClanIds: ReadonlySet<string>): MatchTimeClan | null {
+function matchTimeClanOf(stat: StatRow, clans: LeagueClanContext): MatchTimeClan | null {
   if (!stat.matchTimeClanName) return null
   /* **경기 당시** 공식 1/2부 등록 클랜이었는가 (D-146).
      우리 리그 클랜으로 연결됐고, 그 클랜이 공식 레지스트리에서 온 것이어야 한다.
      외부 클랜은 이름만 남기고 마크는 내보내지 않는다 — 화면이 fallback 마크를 그린다. */
-  const official =
-    stat.matchTimeLeagueClanId !== null && officialLeagueClanIds.has(stat.matchTimeLeagueClanId)
+  const linked = stat.matchTimeLeagueClanId ? clans.get(stat.matchTimeLeagueClanId) : undefined
+  const official = linked ? isOfficialLeagueClan(linked.clan) : false
   return {
     // 우리 리그 밖의 클랜이면 이름만 안다. 빈 문자열로 있는 척하지 않는다 (D-138)
     league_clan_id: stat.matchTimeLeagueClanId,
@@ -173,24 +236,10 @@ function matchTimeClanOf(stat: StatRow, officialLeagueClanIds: ReadonlySet<strin
   }
 }
 
-/**
- * 공식 1/2부 등록 LeagueClan id 집합 (D-146).
- *
- * `Clan.sourceClanId` 가 있는 클랜만 공식이다 — 3rd.supply 공식 레지스트리에서 이관된
- * 44개다. 이름이나 slug 문자열로 추측하지 않는다.
- */
-export async function officialLeagueClanIds(leagueId: string): Promise<Set<string>> {
-  const rows = await prisma.leagueClan.findMany({
-    where: { leagueId, clan: { sourceClanId: { not: null } } },
-    select: { id: true },
-  })
-  return new Set(rows.map((row) => row.id))
-}
-
 function lineupOf(
   match: MatchRow,
   side: TeamSide,
-  officialIds: ReadonlySet<string>,
+  clans: LeagueClanContext,
 ): MatchLineupEntry[] {
   return match.stats
     .filter((stat) => stat.side === side)
@@ -199,7 +248,7 @@ function lineupOf(
       name: stat.player.name,
       weapon: stat.weapon as Weapon | null,
       dropout: stat.dropout,
-      match_time_clan: matchTimeClanOf(stat, officialIds),
+      match_time_clan: matchTimeClanOf(stat, clans),
     }))
 }
 
@@ -219,7 +268,7 @@ function toMatchPlayerStat(
   match: MatchRow,
   stat: StatRow,
   visible: boolean,
-  officialIds: ReadonlySet<string>,
+  clans: LeagueClanContext,
 ): MatchPlayerStat {
   const damage = visible ? stat.damage : null
   const headshot = visible ? stat.headshot : null
@@ -243,7 +292,7 @@ function toMatchPlayerStat(
     // DB는 진영 승패만 들고 있다 (참가자별 win 컬럼 없음). 진영으로 판정한다.
     win: match.winnerSide === stat.side,
     mvp: stat.mvp,
-    match_time_clan: matchTimeClanOf(stat, officialIds),
+    match_time_clan: matchTimeClanOf(stat, clans),
   }
 }
 
@@ -264,9 +313,12 @@ function toConfidence(value: string | null): 'high' | 'medium' | 'low' | null {
  * 누군가 다시 퍼센트로 그린다. 대신 실제 구성 보정값을 그대로 내보낸다.
  */
 
-function snapshotOf(match: MatchRow, side: TeamSide) {
+function snapshotOf(match: MatchRow, side: TeamSide, clans: LeagueClanContext) {
   const isRed = side === 'red'
-  const leagueClan = isRed ? match.redClan : match.blueClan
+  const leagueClanId = isRed ? match.redLeagueClanId : match.blueLeagueClanId
+  /* 경기가 걸려 있으면 리그클랜 행은 반드시 있다(FK). 그래도 조회 결과가 비면
+     여기서 터뜨리지 말고 빈 값으로 내려보낸다 — 목록 전체가 500이 되는 편이 더 나쁘다 */
+  const leagueClan = clans.get(leagueClanId)
 
   // 재구성 경기만 역할이 기록돼 있다. 아니면 구성을 말할 근거가 없으므로 null이다
   const sideStats = match.stats.filter((stat) => stat.side === side)
@@ -274,16 +326,25 @@ function snapshotOf(match: MatchRow, side: TeamSide) {
   const members = sideStats.filter((stat) => stat.participantRole === 'member').length
 
   return {
-    league_clan_id: leagueClan.id,
-    clan: toClanSummary(leagueClan.clan),
+    league_clan_id: leagueClanId,
+    clan: toClanSummary(
+      leagueClan?.clan ?? {
+        id: '',
+        slug: '',
+        name: '',
+        markBgUrl: null,
+        markFrontUrl: null,
+        sourceClanId: null,
+      },
+    ),
     rating: isRed ? match.redRatingBefore : match.blueRatingBefore,
     division: isRed ? match.redDivisionAtMatch : match.blueDivisionAtMatch,
     placement: isRed ? match.redPlacement : match.bluePlacement,
     members_confirmed: reconstructed ? members : null,
     mercenaries_confirmed: reconstructed ? sideStats.length - members : null,
     /* DB 에 계산돼 있는 값을 그대로 쓴다. 여기서 다시 계산하지 않는다 (D-149) */
-    composition_score: leagueClan.compositionScore ?? null,
-    composition_members: leagueClan.compositionMembers ?? null,
+    composition_score: leagueClan?.compositionScore ?? null,
+    composition_members: leagueClan?.compositionMembers ?? null,
   }
 }
 
@@ -296,7 +357,7 @@ export function toMatchListItem(
   match: MatchRow,
   viewerLeagueClanId: string,
   viewerPlayerId: string | null,
-  officialIds: ReadonlySet<string>,
+  clans: LeagueClanContext,
 ): MatchListItem | null {
   const viewerSide = sideOfLeagueClan(match, viewerLeagueClanId)
   if (!viewerSide) return null
@@ -307,7 +368,9 @@ export function toMatchListItem(
     : undefined
 
   return {
-    id: match.id,
+    /* 원본 경기 번호(18자리)를 그대로 내보낸다. 옛 행은 `id` 가 곧 경기 번호라 그대로 떨어진다.
+       mock 시드처럼 `sourceMatchId` 가 없는 행도 기존 동작이 유지된다 (D-155) */
+    id: match.sourceMatchId ?? match.id,
     league_id: match.leagueId,
     map: match.map,
     player_count: match.playerCount,
@@ -319,11 +382,11 @@ export function toMatchListItem(
     placement: viewerSide === 'red' ? match.redPlacement : match.bluePlacement,
     rating_update: viewerSide === 'red' ? match.redRatingUpdate : match.blueRatingUpdate,
     mvp_player_id: match.mvpPlayerId,
-    league_clan: snapshotOf(match, viewerSide),
-    opponent: snapshotOf(match, opponentSide),
-    red: lineupOf(match, 'red', officialIds),
-    blue: lineupOf(match, 'blue', officialIds),
-    player_stat: viewerStat ? toMatchPlayerStat(match, viewerStat, true, officialIds) : null,
+    league_clan: snapshotOf(match, viewerSide, clans),
+    opponent: snapshotOf(match, opponentSide, clans),
+    red: lineupOf(match, 'red', clans),
+    blue: lineupOf(match, 'blue', clans),
+    player_stat: viewerStat ? toMatchPlayerStat(match, viewerStat, true, clans) : null,
     // 재구성 경기만 값이 있다 (D-068). 우리가 몇 명을 확인했는지 숨기지 않는다
     participant_completeness: match.participantCompleteness,
     evidence_confidence: toConfidence(match.evidenceConfidence),
@@ -359,14 +422,14 @@ async function matchPage(
       }),
   })
 
-  /* 공식 등록 클랜 집합은 페이지마다 한 번만 읽는다 (D-146) */
-  const officialIds = await officialLeagueClanIds(leagueId)
+  /* 페이지에 등장하는 리그클랜을 한 번에 읽는다 (공식 등록 판정 포함, D-146) */
+  const clans = await loadLeagueClanContext(leagueId, leagueClanIdsOf(page.items))
 
   return {
     cursor: page.cursor,
     items: page.items.flatMap((match) => {
       const viewer = viewerOf(match)
-      const item = toMatchListItem(match, viewer.leagueClanId, viewer.playerId, officialIds)
+      const item = toMatchListItem(match, viewer.leagueClanId, viewer.playerId, clans)
       return item ? [item] : []
     }),
   }
@@ -466,15 +529,25 @@ export async function getMatch(
   matchId: string,
   viewerLeagueClanId: string | null,
 ): Promise<MatchDetail | null> {
+  /**
+   * **리그를 반드시 함께 건다** (D-155).
+   *
+   * 같은 경기 번호가 여러 리그에 있다 — 클랜이 리그를 겸하면 그 경기는 양쪽에 다 찍힌다.
+   * 리그 없이 경기 번호로만 찾으면 **엉뚱한 리그의 기록**이 나온다. 실제로 나올 수 있다:
+   * 공식리그와 열산리그에 같은 번호의 행이 1,828건 겹친다.
+   *
+   * `sourceMatchId` 를 먼저 보고 `id` 도 함께 본다 — 이 파이프라인이 예전에 넣은 행은
+   * `id === sourceMatchId` 이고(12,567행), mock 시드는 `sourceMatchId` 가 없다.
+   */
   const match = await prisma.match.findFirst({
-    where: { id: matchId, leagueId },
+    where: { leagueId, OR: [{ sourceMatchId: matchId }, { id: matchId }] },
     select: MATCH_SELECT,
   })
   if (!match) return null
 
-  const officialIds = await officialLeagueClanIds(leagueId)
+  const clans = await loadLeagueClanContext(leagueId, leagueClanIdsOf([match]))
   const viewerId = viewerLeagueClanId ?? match.redLeagueClanId
-  const base = toMatchListItem(match, viewerId, null, officialIds)
+  const base = toMatchListItem(match, viewerId, null, clans)
   if (!base) return null
   const viewerSide = sideOfLeagueClan(match, viewerId)
   if (!viewerSide) return null
@@ -482,7 +555,7 @@ export async function getMatch(
   const statsOf = (side: TeamSide): MatchPlayerStat[] =>
     match.stats
       .filter((stat) => stat.side === side)
-      .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide, officialIds))
+      .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide, clans))
 
   return { ...base, red_stats: statsOf('red'), blue_stats: statsOf('blue') }
 }

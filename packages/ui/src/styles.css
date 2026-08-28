@@ -59,6 +59,18 @@
   /* 탭 선택 상태 (원본 item-active: gray-700 배경 + gray-100 글자) */
   --color-tab-active: #374151;
   --color-tab-active-fg: #f3f4f6;
+  /*
+   * 흰 배경 위 탭(`.nav-item` / `.nav-active`) — 리그홈 탭 · 프로필 탭 공용.
+   * 2026-08-27 실측: 활성 글자·밑줄 rgb(99,102,241) 4px · 굵기 700,
+   * 비활성 글자 rgb(107,114,128). 우리는 검정 3px 밑줄을 쓰고 있었다.
+   */
+  --color-tab-underline: #6366f1;
+  --color-tab-idle: #6b7280;
+  /*
+   * 리그 서브내비(검은 띠) 활성 — 흰 배경 탭과 색이 다르다.
+   * 2026-08-27 실측: 글자·밑줄 rgb(245,158,11) 4px · 굵기 700, 비활성 글자 #F3F4F6.
+   */
+  --color-subnav-active: #f59e0b;
   /* 리그 소개 본문 (원본 coolGray-600 / coolGray-900) */
   --color-lede: #4b5563;
   /* 리그홈 헤더 배경 (원본 purple-950) */
@@ -76,6 +88,18 @@
   /* 정보갱신 / 전적갱신 버튼 (원본 blue-600 · 테두리 blue-700) */
   --color-refresh: #2563eb;
   --color-refresh-border: #1d4ed8;
+  /*
+   * 기록실 헤더의 나머지 버튼 (2026-08-27 실측)
+   * `기본정보`  gray-500 배경 + gray-600 테두리
+   * `즐겨찾기`  클랜 화면은 coolGray-700 + coolGray-800, 선수 화면은 gray-800 + gray-900.
+   *            두 화면의 밝기가 실제로 다르다 — 하나로 합치지 않는다.
+   */
+  --color-btn-neutral: #6b7280;
+  --color-btn-neutral-border: #4b5563;
+  --color-btn-fav: #374151;
+  --color-btn-fav-border: #1f2937;
+  --color-btn-fav-dark: #1f2937;
+  --color-btn-fav-dark-border: #111827;
   /* 리그 참여 카드 글자 (원본 boardText) */
   --color-card-text: #464c4c;
 
@@ -204,4 +228,57 @@ body {
   width: var(--spacing-container);
   margin-left: auto;
   margin-right: auto;
+}
+
+/**
+ * ---------------------------------------------------------------- 모바일 ---
+ *
+ * 원본은 **모바일 전용 레이아웃을 따로 가지고 있다** (2026-08-28 원본 화면 관측).
+ * 예전 문서에 "원본은 PC 전용" 이라고 적혀 있었는데 그건 틀린 관측이었다.
+ *
+ * 관측한 것
+ * - 상단이 2단이다. 1단은 햄버거(좌) + 로그인 아이콘(우) 뿐이고,
+ *   2단에 리그명(좌) + `리그홈`(우, 주황) 이 온다.
+ * - 리그 탭 3개가 화면 폭을 균등 분할한 큰 버튼이 된다.
+ * - 랭킹 표는 컬럼을 줄인다 — 클랜랭킹 `순위·클랜·래더`, 개인랭킹 `순위·닉네임·점수`.
+ * - 글자와 행 높이가 PC 보다 크다.
+ *
+ * 경계는 768px 로 잡는다. 미디어쿼리의 `rem` 은 루트 폰트 크기가 아니라
+ * 초기값(16px)을 기준으로 하므로 `48rem = 768px` 이다. `html` 을 14px 로
+ * 두었다고 해서 달라지지 않는다.
+ *
+ * **넓은 화면 동작은 건드리지 않는다.** 원본도 PC 는 지금 그대로다.
+ */
+@media (max-width: 767px) {
+  /* 원본 모바일은 글자가 PC 보다 크다. 루트를 올리면 rem 기반 값이 함께 올라간다 */
+  html {
+    font-size: 16px;
+  }
+
+  /* 고정폭을 풀고 화면을 꽉 채운다. 가로 스크롤이 생기면 안 된다 */
+  .pc-container {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* 표는 넘칠 때 **자기 안에서만** 가로로 스크롤한다. 본문이 밀리면 안 된다 */
+  .mobile-scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/**
+ * 좁은 화면에서 숨기는 표 컬럼.
+ *
+ * 원본 모바일이 실제로 감추는 것만 붙인다 —
+ * 클랜랭킹은 승리·패배·승률, 개인랭킹은 승패·승률·킬뎃·평균킬.
+ * 데이터를 지우는 것이 아니라 **보이지 않게** 할 뿐이라 PC 는 그대로다.
+ */
+@media (max-width: 767px) {
+  .mobile-hide {
+    display: none;
+  }
 }

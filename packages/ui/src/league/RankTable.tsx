@@ -33,7 +33,25 @@ import { leaguePlayerPath } from '../common/paths'
 
 const HEAD = 'flex items-center border-b border-b-line py-2 text-meta'
 const ROW =
-  'flex items-center border-b border-b-line bg-row py-3 text-lg text-meta last:border-b-0'
+  'flex items-center border-b border-b-line bg-row py-3 text-lg text-meta last:border-b-0 max-md:py-4'
+
+/**
+ * 모바일 컬럼 규칙 (2026-08-28 원본 관측).
+ *
+ * 원본 모바일은 랭킹 표를 **세 칸으로 줄인다** —
+ * 클랜랭킹 `순위 · 클랜 · 래더`, 개인랭킹 `순위 · 닉네임 · 점수`.
+ * 승리·패배·승률·킬뎃·평균킬은 **감춘다.** 가로로 밀어 보게 하지 않는다.
+ *
+ * 값을 지우는 게 아니라 보이지 않게만 한다. 넓은 화면은 그대로다.
+ */
+/** 순위 칸 — 좁은 화면에서는 폭을 줄인다 */
+const COL_RANK = 'w-40 text-center max-md:w-12'
+/** 이름 칸 — 좁은 화면에서는 남는 폭을 다 쓴다 */
+const COL_NAME = 'flex items-center max-md:min-w-0 max-md:flex-1'
+/** 점수 칸 — 좁은 화면에서는 오른쪽에 붙인다 */
+const COL_RATING = 'flex-grow text-center max-md:w-24 max-md:flex-none max-md:pr-1 max-md:text-right'
+/** 좁은 화면에서 감추는 칸 */
+const COL_HIDDEN = 'max-md:hidden'
 
 function Unit({ children }: { children: React.ReactNode }) {
   return <span className="ml-0.5">{children}</span>
@@ -108,12 +126,12 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
   return (
     <>
       <div className={HEAD}>
-        <div className="w-40 text-center">순위</div>
-        <div className="w-96">클랜</div>
-        <div className="w-44 text-center">승리</div>
-        <div className="w-44 text-center">패배</div>
-        <div className="w-44 text-center">승률</div>
-        <div className="flex-grow text-center">래더</div>
+        <div className={COL_RANK}>순위</div>
+        <div className={`w-96 ${COL_NAME}`}>클랜</div>
+        <div className={`w-44 text-center ${COL_HIDDEN}`}>승리</div>
+        <div className={`w-44 text-center ${COL_HIDDEN}`}>패배</div>
+        <div className={`w-44 text-center ${COL_HIDDEN}`}>승률</div>
+        <div className={COL_RATING}>래더</div>
       </div>
       <TableBody
         loading={loading}
@@ -125,29 +143,29 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
       >
         {rows?.map((row) => (
           <div key={row.clan.id} className={ROW}>
-            <div className="w-40 text-center">{row.rank}</div>
-            <div className="flex w-96 items-center">
+            <div className={COL_RANK}>{row.rank}</div>
+            <div className={`w-96 ${COL_NAME}`}>
               <Link
-                className="flex items-center"
+                className="flex min-w-0 items-center"
                 href={`/league/${leagueSlug}/clan/${row.clan.slug}`}
               >
                 <ClanMark mark={row.clan.mark} className="mr-2" alt={row.clan.name} />
-                <span>{row.clan.name}</span>
+                <span className="truncate">{row.clan.name}</span>
               </Link>
             </div>
-            <div className="w-44 text-center">
+            <div className={`w-44 text-center ${COL_HIDDEN}`}>
               {formatCount(row.win)}
               <Unit>승</Unit>
             </div>
-            <div className="w-44 text-center">
+            <div className={`w-44 text-center ${COL_HIDDEN}`}>
               {formatCount(row.lose)}
               <Unit>패</Unit>
             </div>
-            <div className={`w-44 text-center ${rateClass(row.win_rate)}`}>
+            <div className={`w-44 text-center ${rateClass(row.win_rate)} ${COL_HIDDEN}`}>
               {formatRate(row.win_rate)}
               <Unit>%</Unit>
             </div>
-            <div className="flex-grow text-center">{formatRating(row.rating)}</div>
+            <div className={COL_RATING}>{formatRating(row.rating)}</div>
           </div>
         ))}
       </TableBody>
@@ -172,14 +190,14 @@ export function PlayerRankTable({
   return (
     <>
       <div className={HEAD}>
-        <div className="w-40 text-center">순위</div>
-        <div className="w-72">닉네임</div>
-        <div className="w-36 text-center">승리</div>
-        <div className="w-36 text-center">패배</div>
-        <div className="w-36 text-center">승률</div>
-        <div className="w-36 text-center">킬뎃</div>
-        <div className="w-36 text-center">평균킬</div>
-        <div className="flex-grow text-center">래더</div>
+        <div className={COL_RANK}>순위</div>
+        <div className={`w-72 ${COL_NAME}`}>닉네임</div>
+        <div className={`w-36 text-center ${COL_HIDDEN}`}>승리</div>
+        <div className={`w-36 text-center ${COL_HIDDEN}`}>패배</div>
+        <div className={`w-36 text-center ${COL_HIDDEN}`}>승률</div>
+        <div className={`w-36 text-center ${COL_HIDDEN}`}>킬뎃</div>
+        <div className={`w-36 text-center ${COL_HIDDEN}`}>평균킬</div>
+        <div className={COL_RATING}>래더</div>
       </div>
       <TableBody
         loading={loading}
@@ -191,33 +209,33 @@ export function PlayerRankTable({
       >
         {rows?.map((row) => (
           <div key={row.player.id} className={ROW}>
-            <div className="w-40 text-center">{row.rank}</div>
-            <div className="flex w-72 items-center">
+            <div className={COL_RANK}>{row.rank}</div>
+            <div className={`w-72 ${COL_NAME}`}>
               <Link
-                className="flex items-center"
+                className="flex min-w-0 items-center"
                 href={leaguePlayerPath(leagueSlug, row.player.id)}
               >
                 {row.clan ? (
                   <ClanMark mark={row.clan.mark} className="mr-2" alt={row.clan.name} />
                 ) : null}
-                <span>{row.player.name}</span>
+                <span className="truncate">{row.player.name}</span>
               </Link>
             </div>
-            <div className="w-36 text-center">
+            <div className={`w-36 text-center ${COL_HIDDEN}`}>
               {formatCount(row.win)}
               <Unit>승</Unit>
             </div>
-            <div className="w-36 text-center">
+            <div className={`w-36 text-center ${COL_HIDDEN}`}>
               {formatCount(row.lose)}
               <Unit>패</Unit>
             </div>
-            <div className={`w-36 text-center ${rateClass(row.win_rate)}`}>
+            <div className={`w-36 text-center ${rateClass(row.win_rate)} ${COL_HIDDEN}`}>
               {formatRate(row.win_rate)}
               <Unit>%</Unit>
             </div>
             {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107) */}
             <div
-              className={`w-36 text-center ${row.kd_rate === null ? '' : rateClass(row.kd_rate)}`}
+              className={`w-36 text-center ${row.kd_rate === null ? '' : rateClass(row.kd_rate)} ${COL_HIDDEN}`}
             >
               {row.kd_rate === null ? (
                 '-'
@@ -228,11 +246,11 @@ export function PlayerRankTable({
                 </>
               )}
             </div>
-            <div className="w-36 text-center">
+            <div className={`w-36 text-center ${COL_HIDDEN}`}>
               {formatAverage(row.kill_per_match)}
               <Unit>킬</Unit>
             </div>
-            <div className="flex-grow text-center">{formatRating(row.rating)}</div>
+            <div className={COL_RATING}>{formatRating(row.rating)}</div>
           </div>
         ))}
       </TableBody>

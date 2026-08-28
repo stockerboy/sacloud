@@ -51,7 +51,8 @@ export function RefreshButton({
   onClick: () => void
 }) {
   return (
-    <div className="ml-8">
+    /* 모바일은 이름 아래로 내려간다 (`ml-8` 을 풀고 위 여백을 준다) */
+    <div className="ml-8 max-md:ml-0 max-md:mt-3 max-md:w-full">
       <button
         type="button"
         disabled={state === 'pending'}
@@ -99,12 +100,15 @@ export function PlayerHeader({
   onRefresh: () => void
 }) {
   return (
-    <div className="mt-5 bg-player-header py-10 text-white">
+    /* 모바일은 여백을 줄이고, 이름 + 갱신 버튼을 줄바꿈한다. `md:` 이상은 원본 그대로 */
+    <div className="mt-5 bg-player-header py-10 text-white max-md:mt-0 max-md:py-5">
       <div className="pc-container">
-        <div className="flex items-center">
+        <div className="flex items-center max-md:flex-wrap">
           {/* 무소속이어도 자리를 비우지 않는다 — fallback 마크가 그려진다 (D-146) */}
           <ClanMark clan={clan} size="max" alt={clan?.name ?? ''} />
-          <div className="ml-5 text-4xl">{name}</div>
+          <div className="ml-5 text-4xl max-md:ml-3 max-md:min-w-0 max-md:flex-1 max-md:truncate max-md:text-2xl">
+            {name}
+          </div>
           <RefreshButton
             label="정보갱신"
             state={refreshState}
@@ -112,7 +116,7 @@ export function PlayerHeader({
             onClick={onRefresh}
           />
         </div>
-        <div className="mt-10 text-lg text-nav-fg">
+        <div className="mt-10 text-lg text-nav-fg max-md:mt-5 max-md:text-base">
           <div className="flex items-center">
             소속:
             {clan ? (
@@ -142,18 +146,24 @@ export function ClanHeader({
   establishedAt: string | null
 }) {
   return (
-    <div className="mt-5 h-52 bg-clan-header py-10 text-white">
+    /*
+     * 모바일은 고정 높이(13rem)를 풀어야 한다 — 클랜마스터/설립일이 세로로 쌓이면서
+     * 고정 높이를 넘어 다음 블록을 덮는다.
+     */
+    <div className="mt-5 h-52 bg-clan-header py-10 text-white max-md:mt-0 max-md:h-auto max-md:py-5">
       <div className="pc-container">
         <div className="flex items-center">
           <ClanMark mark={mark} size="max" alt={name} />
-          <div className="ml-5 text-4xl">{name}</div>
+          <div className="ml-5 text-4xl max-md:ml-3 max-md:min-w-0 max-md:flex-1 max-md:truncate max-md:text-2xl">
+            {name}
+          </div>
         </div>
-        <div className="mt-10 flex items-center text-lg text-nav-fg">
-          <div className="border-r border-r-clan-header-line px-4">
+        <div className="mt-10 flex items-center text-lg text-nav-fg max-md:mt-4 max-md:flex-col max-md:items-start max-md:text-base">
+          <div className="border-r border-r-clan-header-line px-4 max-md:border-r-0 max-md:px-0">
             클랜마스터:{' '}
             {master ? <Link href={`/player/${master.id}`}>{master.name}</Link> : '-'}
           </div>
-          <div className="px-4">
+          <div className="px-4 max-md:mt-1 max-md:px-0">
             클랜설립일: {establishedAt ? formatDate(establishedAt) : '-'}
           </div>
         </div>

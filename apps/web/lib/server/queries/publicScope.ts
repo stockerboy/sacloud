@@ -28,6 +28,9 @@ export type EnvLike = Record<string, string | undefined>
 /** 개발용 시드 행의 `origin` 값 */
 export const SEED_ORIGIN = 'mock'
 
+/** 3rd.supply 미러링으로 들어온 행의 `origin` 값 (D-153) */
+export const MIRROR_ORIGIN = '3rd.supply'
+
 export type PublicScope = 'real' | 'all'
 
 /**

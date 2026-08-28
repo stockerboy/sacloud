@@ -21,9 +21,19 @@ export interface NavLink {
  * **여기에 개발용 시드 리그를 넣지 않는다** (D-116). 예전에는 픽스처 리그 3개
  * (`officialmain` · `secondline` · `friendly01`)가 박혀 있어서, 사이트 어디에도
  * 실제 운영 리그로 가는 링크가 없고 방문자가 가짜 리그부터 보게 됐다.
+ *
+ * 원본 실측(2026-08-27): GNB 대표 리그는 **3개**이고 순서·경로가 아래와 같다.
+ * `공식리그 /league/supply` · `열산리그 /league/sanply` · `대룰리그 /league/daerule`.
+ * 우리 DB에도 같은 slug 의 리그가 셋 다 있는데 GNB 에는 하나만 걸려 있어서,
+ * 나머지 두 리그로 가는 링크가 사이트 어디에도 없었다 (UI_PARITY_AUDIT 2-1).
+ *
+ * `sanply` 의 표시 이름은 사용자 지시로 `3부리그` → **`열산리그`** 로 바꿨다.
+ * slug 는 `sanply` 그대로다. 운영 DB `League.name` 도 `열산리그` 라 화면 전체가 일치한다.
  */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
-  { label: '서플라이', href: '/league/supply' },
+  { label: '공식리그', href: '/league/supply' },
+  { label: '열산리그', href: '/league/sanply' },
+  { label: '대룰리그', href: '/league/daerule' },
 ]
 
 /** 대표 리그 뒤에 오는 고정 메뉴 — 원본 `nav-active`(굵게 + 흰 밑줄) */

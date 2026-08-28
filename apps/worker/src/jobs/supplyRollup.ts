@@ -1,0 +1,200 @@
+/**
+ * 리그 집계 잡 — 미러 경기(`origin='3rd.supply'`) → `LeaguePlayer` · `LeagueClan`.
+ *
+ * 집계 규칙은 전부 `@sacloud/db/ops` 의 `supplyRollup` 에 있다. 여기서는
+ * 리그를 고르고 · 수집 파일을 읽고 · 진행 상황을 찍고 · 실패를 사유별로 세는 일만 한다.
+ *
+ * 클랜 점수·승패·부리그는 **수집 파일 체크포인트의 클랜 목록**에서 온다 (D-157).
+ * 그 목록이 원본 클랜랭킹 화면이 쓰는 값이자, 랭킹에 올라갈 클랜의 모집단이다.
+ * `apps/worker/src/jobs/supplyMirror.ts` 의 `SupplyMirrorClan` 을 **읽기만** 한다.
+ *
+ * **기본은 미리보기다.** `--confirm` 없이는 한 줄도 쓰지 않는다.
+ */
+import { existsSync, readFileSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
+import {
+  applySupplyPlayerClans,
+  listSupplyMirrorLeagues,
+  mergePlayerClanPicks,
+  parseClanRegistry,
+  rollupSupplyLeague,
+  type PlayerClanPick,
+  type SupplyClanRegistry,
+  type SupplyPlayerClanResult,
+  type SupplyRollupResult,
+} from '@sacloud/db/ops'
+import { REPO_ROOT } from '../lib/env.js'
+import { log, warn } from '../lib/log.js'
+
+export interface SupplyRollupRunResult {
+  leagues: SupplyRollupResult[]
+  /**
+   * 전역 현재 소속 (`Player.clanId`) 결과 (D-160).
+   * 리그별 근거를 합쳐 **한 번만** 쓴다 — 리그 순서에 값이 흔들리지 않게 하려는 것이다.
+   */
+  playerClans: SupplyPlayerClanResult
+  /** 사유별 실패 — 삼키지 않고 그대로 올린다 */
+  skipped: { reason: string; league: string }[]
+}
+
+/** 리그별 수집 체크포인트 경로. `supply-mirror` / `supply-import` 와 같은 규칙이다 */
+export function mirrorCheckpointPath(leagueSlug: string, override?: string | null): string {
+  if (override) return isAbsolute(override) ? override : join(REPO_ROOT, override)
+  return join(REPO_ROOT, 'packages', 'db', 'data', `supply-mirror-${leagueSlug}.json`)
+}
+
+function readClanRegistry(
+  leagueSlug: string,
+  file: string,
+): { registry: SupplyClanRegistry | undefined; reason: string | null } {
+  if (!existsSync(file)) {
+    return { registry: undefined, reason: `수집 파일 없음 (${file})` }
+  }
+  let raw: unknown
+  try {
+    raw = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (error) {
+    /* 체크포인트가 깨졌으면 **클랜을 통째로 건너뛴다.** 반쪽 목록으로 쓰면
+       멀쩡한 클랜이 랭킹에서 사라진다 */
+    return { registry: undefined, reason: `수집 파일을 읽지 못했다: ${String(error)}` }
+  }
+  const { registry, dropped } = parseClanRegistry(raw)
+  if (registry.size === 0) {
+    return { registry: undefined, reason: '수집 파일에 클랜 목록이 없다' }
+  }
+  if (dropped > 0) {
+    warn(`[${leagueSlug}] 모양이 다른 클랜 ${dropped} 건을 목록에서 버렸다`)
+  }
+  return { registry, reason: null }
+}
+
+export async function runSupplyRollup(input: {
+  leagueSlug?: string | null
+  file?: string | null
+  confirm?: boolean
+}): Promise<SupplyRollupRunResult> {
+  const result: SupplyRollupRunResult = {
+    leagues: [],
+    playerClans: {
+      candidates: 0,
+      withClan: 0,
+      clanless: 0,
+      clanNotInDb: 0,
+      otherOrigin: 0,
+      unchanged: 0,
+      updated: 0,
+    },
+    skipped: [],
+  }
+
+  const all = await listSupplyMirrorLeagues()
+  if (all.length === 0) {
+    warn("origin='3rd.supply' 경기가 있는 리그가 없다. 먼저 supply-import 를 돌린다")
+    return result
+  }
+
+  const targets = input.leagueSlug
+    ? all.filter((league) => league.leagueSlug === input.leagueSlug)
+    : all
+  if (targets.length === 0) {
+    /* 리그 이름을 잘못 적었을 때 조용히 0건으로 끝나면 성공처럼 보인다. 사유를 남긴다 */
+    result.skipped.push({ reason: '미러 경기가 없는 리그', league: input.leagueSlug ?? '(전체)' })
+    warn(
+      `${input.leagueSlug} 에는 미러 경기가 없다. 대상: ${all.map((row) => row.leagueSlug).join(' · ')}`,
+    )
+    return result
+  }
+
+  /* 리그를 넘어 합치는 "현재 소속" 근거 (D-160). `Player.clanId` 는 전역 칸이라
+     리그마다 따로 쓰면 마지막 리그가 이긴다 — 다 모은 뒤 한 번만 쓴다 */
+  const playerClanPicks = new Map<string, PlayerClanPick>()
+
+  for (const league of targets) {
+    const file = mirrorCheckpointPath(league.leagueSlug, input.file)
+    const { registry, reason } = readClanRegistry(league.leagueSlug, file)
+    if (reason) {
+      result.skipped.push({ reason: `클랜 건너뜀 — ${reason}`, league: league.leagueSlug })
+      warn(`[${league.leagueSlug}] 클랜을 건너뛴다 — ${reason}`)
+    } else {
+      log(`[${league.leagueSlug}] 등록 클랜 ${registry?.size ?? 0} — ${file}`)
+    }
+
+    log(`[${league.leagueSlug}] 미러 경기 ${league.matches} 건 집계 시작`)
+    let lastLogged = 0
+    const rolled = await rollupSupplyLeague({
+      league,
+      clanRegistry: registry,
+      confirm: input.confirm,
+      onProgress: (done, total) => {
+        // 10% 단위로만 찍는다 — 13만 경기를 청크마다 찍으면 로그가 본문을 덮는다
+        const step = Math.max(1, Math.floor(total / 10))
+        if (done - lastLogged < step && done < total) return
+        lastLogged = done
+        log(`[${league.leagueSlug}] 경기 ${done} / ${total}`)
+      },
+    })
+    result.leagues.push(rolled)
+    mergePlayerClanPicks(playerClanPicks, rolled.playerClans)
+
+    if (rolled.players.clanNotInDb > 0) {
+      /* 원본이 준 클랜인데 우리 `Clan` 표에 행이 없다. **만들지 않는다** — 지어내지 않기 위해서다 */
+      result.skipped.push({
+        reason: `클랜 slug 는 있는데 Clan 행이 없음(소속 미변경) ${rolled.players.clanNotInDb}`,
+        league: league.leagueSlug,
+      })
+    }
+
+    if (rolled.clans.conflicts > 0) {
+      /* 같은 slug 인데 원본 클랜 id 가 다르다. 어느 쪽이 맞는지 우리가 모른다 — 사람이 본다 */
+      result.skipped.push({
+        reason: `원본 클랜 id 충돌 ${rolled.clans.conflicts}`,
+        league: league.leagueSlug,
+      })
+      warn(`[${league.leagueSlug}] 같은 slug 인데 원본 클랜 id 가 달라 손대지 않은 클랜 ${rolled.clans.conflicts}`)
+    }
+    if (rolled.clans.leagueClansCreated > 0) {
+      log(
+        `[${league.leagueSlug}] 경기가 아직 없는 등록 클랜 ${rolled.clans.leagueClansCreated} 개를 랭킹에 올린다 ` +
+          `(Clan 행 신규 ${rolled.clans.clansCreated})`,
+      )
+    }
+    if (rolled.clans.unranked > 0) {
+      result.skipped.push({
+        reason: `미등록 클랜 랭킹 제외(경기는 남는다) ${rolled.clans.unranked}`,
+        league: league.leagueSlug,
+      })
+    }
+    if (rolled.players.withoutRating > 0) {
+      result.skipped.push({
+        reason: `원본 점수 근거 없음(rating 미변경) ${rolled.players.withoutRating}`,
+        league: league.leagueSlug,
+      })
+    }
+    if (rolled.players.withoutKnownStats > 0) {
+      result.skipped.push({
+        reason: `KDA 아는 경기 없음(킬뎃 미변경) ${rolled.players.withoutKnownStats}`,
+        league: league.leagueSlug,
+      })
+    }
+  }
+
+  /* 전역 현재 소속. `origin='3rd.supply'` 인 선수만 건드린다 (D-160) */
+  result.playerClans = await applySupplyPlayerClans({
+    picks: playerClanPicks,
+    confirm: input.confirm,
+  })
+  if (result.playerClans.clanNotInDb > 0) {
+    result.skipped.push({
+      reason: `Player.clanId — Clan 행이 없어 미변경 ${result.playerClans.clanNotInDb}`,
+      league: '(전역)',
+    })
+  }
+  if (result.playerClans.otherOrigin > 0) {
+    result.skipped.push({
+      reason: `Player.clanId — origin 이 3rd.supply 가 아니라 미변경 ${result.playerClans.otherOrigin}`,
+      league: '(전역)',
+    })
+  }
+
+  return result
+}

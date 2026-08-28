@@ -5,6 +5,7 @@ import { EmptyState } from '../common/EmptyState'
 import { Skeleton } from '../common/Skeleton'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
+import { NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_IDLE } from '../common/navTab'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 
 /**
@@ -30,8 +31,14 @@ import { leagueClanPath, leaguePlayerPath } from '../common/paths'
  * 같은 값이 랭킹 표에서는 `3,432점`으로 나온다. 원본이 실제로 이렇게 다르다.
  */
 
+/**
+ * 카드 한 장.
+ *
+ * 모바일에서는 `w-96`(24rem) 고정폭이 화면을 넘기 때문에 **전체폭 한 장씩** 쌓는다.
+ * 항목·순서·문구는 그대로다 — 줄이지 않는다. 넓은 화면은 원본 실측 그대로 24rem 이다.
+ */
 const CARD_BASE =
-  'flex flex-col w-96 mr-4 p-4 border border-divider shadow-card text-card-text cursor-pointer hover:bg-blue-50'
+  'flex flex-col w-96 mr-4 p-4 border border-divider shadow-card text-card-text cursor-pointer hover:bg-blue-50 max-md:w-full max-md:mr-0 max-md:mt-3'
 
 /** 프로필 하위 탭 (플레이어: 리그정보 / 클랜: 리그정보·클랜원) */
 export function ProfileTabs({
@@ -43,13 +50,14 @@ export function ProfileTabs({
 }) {
   return (
     <div className="bg-card">
-      <div className="pc-container flex items-center text-xl">
+      {/* 탭이 3개면 좁은 화면에서 넘친다 — 탭 줄 안에서만 가로로 밀리게 한다 */}
+      <div className="pc-container flex items-center text-xl max-md:overflow-x-auto">
         {tabs.map((tab) => (
           <Link
             key={tab.href}
             href={tab.href}
-            className={`flex cursor-pointer items-center justify-center border-2 border-transparent px-4 py-4 ${
-              tab.href === current ? 'border-b-[3px] border-b-black font-bold' : ''
+            className={`${NAV_TAB} max-md:whitespace-nowrap ${
+              tab.href === current ? NAV_TAB_ACTIVE : NAV_TAB_IDLE
             }`}
           >
             {tab.label}

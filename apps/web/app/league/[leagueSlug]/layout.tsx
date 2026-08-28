@@ -11,6 +11,8 @@ import { useApiReady } from '@/app/providers'
  *
  * 원본은 전역 GNB(4.5rem) 아래에 리그 서브내비(3rem)를 하나 더 고정하고,
  * 본문을 그만큼(`pt-12`) 아래로 민다.
+ *
+ * 모바일에서는 서브내비가 **두 줄**(리그명 줄 + 탭 줄)이라 그만큼 더 민다 — `pt-24`.
  */
 export default function LeagueLayout({
   children,
@@ -30,13 +32,9 @@ export default function LeagueLayout({
 
   return (
     <>
-      <LeagueSubNav
-        leagueSlug={leagueSlug}
-        leagueName={league.data?.data.name ?? ""}
-        seasonType={league.data?.data.season_type}
-        seasonLabel={league.data?.data.season_label}
-      />
-      <div className="pt-12">{children}</div>
+      {/* 시즌 배지는 넘기지 않는다 — 원본 서브내비에 그런 표시가 없다 (UI_PARITY_AUDIT 2-2) */}
+      <LeagueSubNav leagueSlug={leagueSlug} leagueName={league.data?.data.name ?? ''} />
+      <div className="pt-24 md:pt-12">{children}</div>
     </>
   )
 }

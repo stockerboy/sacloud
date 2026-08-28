@@ -6,13 +6,7 @@
  * 이 둘이 다시 엮이면 폐기된 규칙("비공식이라 래더 미반영")이 화면에 되살아난다.
  */
 import { describe, expect, it } from 'vitest'
-import {
-  COMPOSITION_NOTICE,
-  NOT_RATED_BADGE,
-  NOT_RATED_BADGE_TITLE,
-  isRated,
-  ladderNotice,
-} from '../record/officialCopy'
+import { NOT_RATED_BADGE, NOT_RATED_BADGE_TITLE, isRated } from '../record/officialCopy'
 
 describe('래더 반영 판정', () => {
   it('5v5 면 반영된다', () => {
@@ -26,20 +20,17 @@ describe('래더 반영 판정', () => {
   })
 })
 
-describe('래더 안내 문구', () => {
-  it('5v5 는 반영된다고 말한다', () => {
-    const notice = ladderNotice('5v5')
-    expect(notice).toContain('반영')
-    expect(notice).not.toContain('반영되지 않습니다')
+describe('설명·안내 문구는 화면에서 사라졌다 (2026-08-28 사용자 지시)', () => {
+  it('래더 반영 안내 문구와 클랜 구성 안내 문구가 모듈에 없다', async () => {
+    /* 상수가 남아 있으면 누군가 다시 화면에 붙인다. 실제로 그렇게 붙어 있었다 */
+    const mod = (await import('../record/officialCopy')) as Record<string, unknown>
+    expect(mod['ladderNotice']).toBeUndefined()
+    expect(mod['COMPOSITION_NOTICE']).toBeUndefined()
   })
 
-  it('5v5 가 아니면 반영되지 않는다고 말한다', () => {
-    expect(ladderNotice('5v4')).toContain('반영되지 않습니다')
-    expect(ladderNotice(null)).toContain('반영되지 않습니다')
-  })
-
-  it('기록은 남는다는 것을 함께 말한다 — 경기를 버리지 않는다', () => {
-    expect(ladderNotice('5v4')).toContain('기록은 남습니다')
+  it('`미반영` 인라인 표기가 없다 — 결측 표기는 `알수없음` 하나다', async () => {
+    const mod = (await import('../record/officialCopy')) as Record<string, unknown>
+    expect(mod['NOT_RATED_INLINE']).toBeUndefined()
   })
 })
 
@@ -58,9 +49,12 @@ describe('폐기된 규칙이 문구에 남아 있지 않다', () => {
     expect(NOT_RATED_BADGE_TITLE).not.toContain('비공식')
   })
 
-  it('반영률(100/70/40/0%) 개념을 더 이상 말하지 않는다', () => {
-    expect(COMPOSITION_NOTICE).not.toContain('반영률')
-    expect(COMPOSITION_NOTICE).toContain('깎지 않습니다')
-    expect(COMPOSITION_NOTICE).toContain('+50')
+  it('반영률(100/70/40/0%) 개념을 어디에서도 말하지 않는다', async () => {
+    const mod = (await import('../record/officialCopy')) as Record<string, unknown>
+    for (const value of Object.values(mod)) {
+      if (typeof value !== 'string') continue
+      expect(value).not.toContain('반영률')
+      expect(value).not.toContain('클랜원 수')
+    }
   })
 })

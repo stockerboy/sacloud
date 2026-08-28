@@ -32,9 +32,9 @@ export default function PlayerPage({ params }: { params: Promise<{ playerId: str
   if (!player.data) {
     return (
       <>
-        <div className="mt-5 bg-player-header py-10">
+        <div className="mt-5 bg-player-header py-10 max-md:mt-0 max-md:py-5">
           <div className="pc-container">
-            <Skeleton className="h-[51px] w-96" />
+            <Skeleton className="h-[51px] w-96 max-w-full" />
           </div>
         </div>
       </>

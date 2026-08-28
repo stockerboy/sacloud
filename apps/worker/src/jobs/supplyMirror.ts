@@ -29,6 +29,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { prisma } from '@sacloud/db'
 import {
   SupplyApiError,
   SUPPLY_CONCURRENCY,
@@ -52,6 +53,19 @@ export interface SupplyMirrorClan {
   division: number
   done: boolean
   cursor: string | null
+  /**
+   * 클랜랭킹 응답이 그대로 보여 주는 값 (D-157).
+   *
+   * **원본 화면이 쓰는 바로 그 숫자다.** 경기에서 유추한 값이 아니다.
+   * 처음에는 이걸 저장하지 않아서, 경기 기록에서 클랜 점수를 되짚어 만들었더니
+   * 원본과 어긋났다 — `saint` 1,525 vs 원본 1,561 처럼.
+   *
+   * `null` 이면 아직 안 받은 것이다. 0 으로 채우지 않는다.
+   */
+  rating: number | null
+  win: number | null
+  lose: number | null
+  rank: number | null
 }
 
 /** 체크포인트 파일. **데이터는 여기 담지 않는다** — 커지면 못 읽는다 */
@@ -138,6 +152,23 @@ function migrateLegacy(base: string): { matches: number; details: number } | nul
   return { matches: matchRows.length, details: detailRows.length }
 }
 
+/**
+ * 체크포인트에 이미 적혀 있는 리그 숫자 id 만 훔쳐본다.
+ *
+ * 이게 없으면 리그 id 를 알아내려고 **`--dry-run` 에서도 요청을 한 건 보낸다.**
+ * `--dry-run` 은 "요청을 한 건도 보내지 않는다" 가 약속이다 (`CLAUDE.md` 7장).
+ * 파일이 없거나 깨져 있으면 `null` — 그때는 원본에 묻는다.
+ */
+function peekLeagueId(base: string): number | null {
+  if (!existsSync(base)) return null
+  try {
+    const raw = JSON.parse(readFileSync(base, 'utf8')) as { leagueId?: unknown }
+    return typeof raw.leagueId === 'number' && raw.leagueId > 0 ? raw.leagueId : null
+  } catch {
+    return null
+  }
+}
+
 function readCheckpoint(
   base: string,
   leagueSlug: string,
@@ -170,7 +201,37 @@ export interface SupplyMirrorResult {
 
 export async function runSupplyMirror(
   ctx: JobContext,
-  input: { leagueSlug: string; leagueId?: number; floor: string; file: string; limit?: number },
+  input: {
+    leagueSlug: string
+    leagueId?: number
+    floor: string
+    file: string
+    limit?: number
+    /**
+     * 증분 모드 — **새 경기만** 훑는다.
+     *
+     * 전체 수집이 끝나면 클랜마다 커서가 **가장 오래된 지점**에 멈춰 있다.
+     * 그 상태로 다시 돌리면 새 경기를 못 찾는다 — 새 경기는 목록 **맨 앞**에 쌓이는데
+     * 커서는 맨 뒤를 보고 있기 때문이다. 그래서 증분에서는 커서를 버리고 맨 앞부터
+     * 다시 훑되, **이미 아는 경기를 연속으로 만나면 거기서 멈춘다.**
+     *
+     * 클랜당 보통 1~2페이지면 끝난다. 자주 돌릴 수 있어야 원본이 멈춰도 우리가 먼저 안다.
+     */
+    incremental?: boolean
+    /**
+     * "이미 받은 것" 을 **DB 에서** 읽어 온다 (증분 스케줄러용).
+     *
+     * 평소에는 `.matches.jsonl` / `.details.jsonl` 이 그 기억을 맡는다. 그런데 그 파일은
+     * 세 리그 합쳐 2GB 라 저장소에도 CI 캐시에도 올릴 수 없다 (`.gitignore` D-153).
+     * GitHub Actions 처럼 **매번 빈 작업공간에서 시작하는 곳**에서는 아는 경기가 0건이 되고,
+     * 그러면 증분이 멈출 줄을 몰라 2년치를 통째로 다시 받는다 — 남의 사이트를 때리는 짓이다.
+     *
+     * 이미 적재된 경기는 DB(`Match.sourceMatchId`, `origin='3rd.supply'`)가 알고 있다.
+     * 그 목록을 "이미 받은 것" 으로 삼으면, 빈 작업공간에서도 **새 경기만** 받고
+     * 새로 받은 것만 작은 JSONL 에 쌓인다. 읽기만 한다.
+     */
+    seenFromDb?: boolean
+  },
 ): Promise<SupplyMirrorResult> {
   const base = input.file
 
@@ -180,9 +241,19 @@ export async function runSupplyMirror(
    * 다른 경로(`/leagues/{id}/ranks/clans`, `/leagues/{id}/matches/{matchId}`)가
    * **숫자 id** 를 요구하는데 사람이 아는 건 slug 뿐이다.
    * 리그마다 id 를 손으로 적어 넘기게 하면 언젠가 틀린 리그를 긁는다.
+   *
+   * 이미 받아 둔 체크포인트에 그 값이 있으면 그것을 쓴다. 그래야 `--dry-run` 이
+   * **요청을 한 건도 보내지 않는다.** 체크포인트도 `--league-id` 도 없는 dry-run 은
+   * 리그 id 를 모르는 채로 "이미 받은 것" 만 세고 끝낸다 — 지어내지 않는다.
    */
-  const leagueId =
-    input.leagueId ?? (await supplyGet<SupplyLeague>(supplyRoutes.league(input.leagueSlug))).data.id
+  let leagueId = input.leagueId ?? peekLeagueId(base) ?? 0
+  if (leagueId === 0) {
+    if (ctx.dryRun) {
+      warn('체크포인트도 --league-id 도 없다 — dry-run 이라 리그 id 를 묻지 않는다')
+    } else {
+      leagueId = (await supplyGet<SupplyLeague>(supplyRoutes.league(input.leagueSlug))).data.id
+    }
+  }
 
   migrateLegacy(base)
   const state = readCheckpoint(base, input.leagueSlug, leagueId, input.floor)
@@ -221,6 +292,30 @@ export async function runSupplyMirror(
   )
   log(`이미 받은 것 — 경기 ${seenMatches.size} · 상세 ${seenDetails.size}`)
 
+  /* 빈 작업공간(CI)에서도 아는 경기를 알아야 증분이 멈출 줄 안다. 읽기만 한다 */
+  if (input.seenFromDb === true) {
+    const rows = await prisma.match.findMany({
+      where: {
+        origin: '3rd.supply',
+        sourceMatchId: { not: null },
+        league: { slug: input.leagueSlug },
+      },
+      select: { sourceMatchId: true },
+    })
+    let added = 0
+    for (const row of rows) {
+      const id = row.sourceMatchId
+      if (id === null || seenMatches.has(id)) continue
+      seenMatches.add(id)
+      /* DB 에 경기가 있다는 것은 상세까지 판독돼 들어갔다는 뜻이다 —
+         적재는 상세가 있는 경기만 만든다(`openSupplyMirrorSource` 의 2차 통과).
+         그러니 상세를 다시 받지 않는다 */
+      seenDetails.add(id)
+      added += 1
+    }
+    log(`DB 에서 이미 아는 경기 ${rows.length}건 (파일에 없던 것 ${added}건)`)
+  }
+
   if (ctx.dryRun) {
     log('[dry-run] 요청을 한 건도 보내지 않는다')
     return {
@@ -236,9 +331,15 @@ export async function runSupplyMirror(
 
   const before = { m: seenMatches.size, d: seenDetails.size }
 
-  /* 1) 클랜 목록 — 부리그별로 커서 끝까지 */
-  if (Object.keys(state.clans).length === 0) {
-    log('1) 클랜 목록')
+  /* 1) 클랜 목록 — 부리그별로 커서 끝까지.
+     **클랜랭킹 응답의 점수·승패·순위도 함께 저장한다.** 원본 화면이 그 값을 쓴다.
+     경기에서 되짚어 만들면 어긋난다 (D-157).
+
+     이미 클랜을 받아 뒀어도 점수가 비어 있으면 다시 받는다 — 예전 수집에는 없던 값이다. */
+  const clanCount = Object.keys(state.clans).length
+  const missingRating = Object.values(state.clans).some((c) => c.rating === undefined || c.rating === null)
+  if (clanCount === 0 || missingRating) {
+    log(clanCount === 0 ? '1) 클랜 목록' : '1) 클랜 목록 — 점수가 비어 있어 다시 받는다')
     for (const division of [1, 2]) {
       await supplyPaginate<SupplyRankClanRow>(
         (cursor) => supplyRoutes.rankClans(leagueId, division, cursor),
@@ -246,27 +347,44 @@ export async function runSupplyMirror(
           for (const row of rows) {
             const c = row.clan
             if (!c?.slug) continue
-            state.clans[c.slug] ??= {
-              leagueClanId: null,
+            const prev = state.clans[c.slug]
+            state.clans[c.slug] = {
+              leagueClanId: prev?.leagueClanId ?? null,
               clanId: c.id,
               name: c.name,
               division: row.division ?? division,
-              done: false,
-              cursor: null,
+              done: prev?.done ?? false,
+              cursor: prev?.cursor ?? null,
+              /* 원본 클랜랭킹이 보여 주는 값 그대로. 없으면 null — 0 으로 채우지 않는다 */
+              rating: row.rating ?? null,
+              win: row.win ?? null,
+              lose: row.lose ?? null,
+              rank: row.rank ?? null,
             }
           }
         },
       )
     }
     writeCheckpoint(base, state)
-    log(`   클랜 ${Object.keys(state.clans).length}개`)
+    const withRating = Object.values(state.clans).filter((c) => c.rating !== null).length
+    log(`   클랜 ${Object.keys(state.clans).length}개 · 점수 있음 ${withRating}`)
   }
 
   /* 2) 클랜별 경기 목록 — 클랜끼리 병렬로 돈다.
      한 클랜이 2년치를 받으려면 페이지가 수백 장이라 순차로는 목록만 수십 분이다. */
   const slugs = Object.keys(state.clans)
+  if (input.incremental === true) {
+    /* 커서를 버리고 맨 앞부터 다시 훑는다. 새 경기는 목록 앞에 쌓인다 */
+    for (const clan of Object.values(state.clans)) {
+      clan.done = false
+      clan.cursor = null
+    }
+  }
   const pendingClans = slugs.filter((s) => state.clans[s] && !state.clans[s]?.done)
-  log(`2) 경기 목록 — 받을 클랜 ${pendingClans.length}/${slugs.length} · 동시 ${SUPPLY_CONCURRENCY}`)
+  log(
+    `2) 경기 목록 — 받을 클랜 ${pendingClans.length}/${slugs.length} · 동시 ${SUPPLY_CONCURRENCY}` +
+      (input.incremental === true ? ' · 증분(새 경기만)' : ''),
+  )
 
   await supplyMapLimited(pendingClans, async (slug) => {
     const clan = state.clans[slug]
@@ -285,6 +403,10 @@ export async function runSupplyMirror(
 
     let added = 0
     let cursor = clan.cursor
+    /* 증분에서 "이미 아는 경기만 나온 페이지" 를 몇 장 연속으로 봤는가.
+       한 장만 보고 멈추면 위험하다 — 같은 경기가 양 클랜에 나오므로 다른 클랜이
+       먼저 받아 둔 경기가 앞쪽에 섞여 있을 수 있다. 두 장 연속이면 따라잡은 것으로 본다 */
+    let knownPages = 0
     for (;;) {
       const r = await supplyGet<SupplyMatchListRow[]>(supplyRoutes.clanMatches(leagueClanId, cursor))
       const rows = r.data ?? []
@@ -307,6 +429,17 @@ export async function runSupplyMirror(
       appendJsonlMany(matchesPath(base), fresh)
       cursor = r.metadata?.cursor?.next ?? null
       clan.cursor = cursor
+
+      if (input.incremental === true) {
+        knownPages = fresh.length === 0 ? knownPages + 1 : 0
+        if (knownPages >= 2) {
+          /* 따라잡았다. 커서를 비워 둬야 다음 증분도 맨 앞부터 본다 */
+          clan.cursor = null
+          clan.done = true
+          break
+        }
+      }
+
       if (hitFloor || cursor === null || rows.length === 0) {
         clan.done = true
         break

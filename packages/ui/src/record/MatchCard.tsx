@@ -27,7 +27,6 @@ import { leagueClanPath } from '../common/paths'
 import {
   NOT_RATED_BADGE,
   NOT_RATED_BADGE_TITLE,
-  NOT_RATED_INLINE,
   NOT_RATED_INLINE_TITLE,
   isRated,
 } from './officialCopy'
@@ -39,6 +38,7 @@ import {
   formatMatchStartAt,
   headshotView,
   kdaView,
+  matchFirstSideLabel,
   matchWeaponLabel,
   maxDamage,
   mvpBadgeVisible,
@@ -72,7 +72,7 @@ import {
  * ── 패배 블록 (옅은 red 배경) ────────────────────────────────────────────────
  * 패배 (마크)e2stro-  (선레드)  -  2부리그 1,149점
  * 플레이어        래더      kda        무기      딜량            헤드샷
- * (마크)sexgod    1,540점   9 / 9 / 4  라이플    ▬▬ 1,438        1
+ * (마크)sexgod    1,540점   9 / 9 / 4  라플      ▬▬ 1,438        1
  *                           (50%)                                (11.1%)
  * ── 승리 블록 (옅은 blue 배경) ───────────────────────────────────────────────
  * ```
@@ -206,10 +206,11 @@ function ClanSide({
             '배치고사'
           ) : snapshot.rating === null ? (
             /* 래더에 반영되지 않은 경기는 그 시점 클랜 점수 자체가 없다 (D-146).
-               `0점` 으로 그리면 클랜 점수가 0이었던 것처럼 읽히고,
-               `알수없음` 은 모른다는 뜻이라 이것도 틀리다 — 없는 것이다 (D-149) */
+               `0점` 으로 그리면 클랜 점수가 0이었던 것처럼 읽힌다.
+               표기는 `알수없음` 하나로 통일한다 (2026-08-28 사용자 지시 — 예전 `미반영`).
+               왜 값이 없는지는 툴팁으로만 알린다 */
             <span className="text-unknown" title={NOT_RATED_INLINE_TITLE}>
-              {NOT_RATED_INLINE}
+              {UNKNOWN}
             </span>
           ) : (
             `${formatCount(snapshot.rating)}점`
@@ -225,6 +226,7 @@ export function MatchCard({
   leagueSlug,
   detail,
   onExpand,
+  variant = 'player',
 }: {
   match: MatchListItem
   leagueSlug: string
@@ -232,10 +234,19 @@ export function MatchCard({
   detail?: MatchDetail
   /** 아코디언을 펼칠 때 상세를 요청한다. 어느 기록실에서 펼쳤는지는 매치가 알고 있다. */
   onExpand?: (match: MatchListItem) => void
+  /**
+   * 어느 기록실의 카드인가.
+   *
+   * 원본은 두 화면의 접힌 카드 구성이 **서로 다르다** (2026-08-27 실측).
+   * 선수 화면은 본인 K/D/A 칸이 있고 선공 진영·대전인원이 없다.
+   * 클랜 화면은 그 반대다 — K/D/A 칸이 없고 `선레드/선블루` + `5 vs 5` 가 있다.
+   */
+  variant?: 'player' | 'clan'
 }) {
   const [open, setOpen] = useState(false)
   const win = match.win
   const stat = match.player_stat
+  const firstSide = matchFirstSideLabel(match.blue_team)
 
   const toggle = () => {
     const next = !open
@@ -245,8 +256,13 @@ export function MatchCard({
 
   return (
     <div>
+      {/* 접힌 카드는 고정폭 칸의 합이 1,100px 을 넘어 모바일에서 화면 밖으로 나간다.
+          **칸을 감추지 않는다** — 원본 모바일이 무엇을 감추는지 확인되지 않았다 `[미확인]`.
+          대신 카드 안에서만 가로로 스크롤한다 (`.mobile-scroll-x` 는 767px 이하에만 정의돼 있고,
+          `max-md:` 규칙도 md 이상에는 아예 생성되지 않으므로 PC 는 그대로다).
+          자식에 `shrink-0` 을 주지 않으면 칸이 눌려 찌그러진다 — 스크롤이 아니라 압축이 된다. */}
       <div
-        className={`mt-2 flex min-h-28 items-stretch border-b border-r border-t ${
+        className={`mobile-scroll-x mt-2 flex min-h-28 items-stretch border-b border-r border-t max-md:[&>*]:shrink-0 ${
           win ? 'border-win-line bg-win-bg' : 'border-lose-line bg-lose-bg'
         }`}
       >
@@ -298,10 +314,10 @@ export function MatchCard({
                 {formatRatingUpdate(match.rating_update)}
               </div>
             ) : (
-              /* 모르는 게 아니라 **없는** 것이다 (D-149).
-                 5v5 가 아니라 래더에 반영되지 않은 경기다 */
+              /* 5v5 가 아니라 래더에 반영되지 않은 경기다.
+                 표기는 `알수없음` 하나로 통일한다 (2026-08-28 사용자 지시 — 예전 `미반영`) */
               <div className="font-semibold text-unknown" title={NOT_RATED_INLINE_TITLE}>
-                {NOT_RATED_INLINE}
+                {UNKNOWN}
               </div>
             )}
           </div>
@@ -314,12 +330,14 @@ export function MatchCard({
               <div className="h-5">{stat.mvp ? <span className="text-mvp">MVP</span> : null}</div>
               {stat.kill === null && stat.death === null && stat.assist === null ? (
                 /* 명단만 복원된 참가자다 — K/D/A 를 **모른다** (D-148).
-                   큰 `알수없음` 은 오류처럼 보인다. 값 자리에 `-` 만 둔다 (D-149) */
+                   표기는 `알수없음` 하나로 통일한다 (CLAUDE.md 6장 · UI_PARITY_AUDIT 6-6).
+                   예전의 `- / - / -` 는 도메인 용어에 없는 표기였고, 같은 결측을
+                   펼친 상세에서는 `알수없음` 으로 적고 있어 화면마다 말이 달랐다. */
                 <div
-                  className="text-xl font-semibold text-unknown"
+                  className="text-sm text-unknown"
                   title="넥슨이 이 참가자의 K/D/A를 주지 않았습니다"
                 >
-                  - / - / -
+                  {UNKNOWN}
                 </div>
               ) : (
                 <>
@@ -346,6 +364,21 @@ export function MatchCard({
           <div className="px-2 text-sm text-meta">vs</div>
           <ClanSide snapshot={match.opponent} leagueSlug={leagueSlug} align="left" />
         </div>
+
+        {/* 클랜 기록실 카드에만 있는 칸 — 선공 진영 + 양 팀 인원 (UI_PARITY_AUDIT 5-8 · 5-9).
+            선공 진영은 넥슨이 주지 않아 실제로는 대부분 `알수없음` 이다 (D-034).
+            플레이시간과 같은 규칙으로 **자리는 남기고** 모른다고 적는다 —
+            예전에는 항목을 통째로 지워서, 같은 성격의 결측을 서로 다르게 다루고 있었다. */}
+        {variant === 'clan' ? (
+          <div className="flex w-24 items-center justify-center text-center text-sm text-meta">
+            <div>
+              <div>
+                {firstSide === null ? <span className="text-unknown">{UNKNOWN}</span> : firstSide}
+              </div>
+              <div className="mt-1">{formatTeamCounts(match.red.length, match.blue.length)}</div>
+            </div>
+          </div>
+        ) : null}
 
         <Lineup entries={match.red} leagueSlug={leagueSlug} />
         <Lineup entries={match.blue} leagueSlug={leagueSlug} />
@@ -383,7 +416,6 @@ function TeamBlock({
   side,
   stats,
   snapshot,
-  blueTeam,
   mvpPlayerId,
   matchMaxDamage,
   leagueSlug,
@@ -392,14 +424,15 @@ function TeamBlock({
   stats: readonly MatchPlayerStat[]
   /** 이 진영의 클랜. 어느 클랜인지 잇지 못했으면 `null` — 지어내지 않는다 */
   snapshot: MatchClanSnapshot | null
-  blueTeam: boolean | null
   mvpPlayerId: string | null
   /** 딜량 막대의 기준값 (경기 전체 최대). 아무도 모르면 `null` */
   matchMaxDamage: number | null
   leagueSlug: string
 }) {
   const won = teamWon(stats)
-  const first = firstSideLabel(blueTeam, side)
+  /* 이 블록이 어느 진영인가로 정한다 — 레드 블록은 `선레드`, 블루 블록은 `선블루`.
+     예전에는 `blue_team` 이 null 이면(= 넥슨 미제공, 대부분) 표기를 통째로 지웠다 */
+  const first = firstSideLabel(side)
 
   const tone =
     won === null
@@ -408,8 +441,11 @@ function TeamBlock({
         ? 'border-win-line bg-win-bg'
         : 'border-lose-line bg-lose-bg'
 
+  /* 6컬럼 합이 46rem 이라 모바일에서 넘친다. 컬럼을 감추지 않고(원본이 무엇을 감추는지 `[미확인]`)
+     팀 블록 안에서만 가로 스크롤한다. 자식 행에 `w-max`(= max-content)를 줘야
+     칸이 눌리지 않고 제 폭으로 이어진다. 둘 다 767px 이하 전용이라 PC 는 그대로다. */
   return (
-    <div className={`mt-2 border ${tone}`}>
+    <div className={`mobile-scroll-x mt-2 border max-md:[&>div]:w-max ${tone}`}>
       <div className="flex items-center px-2 py-1.5 text-sm">
         {won === null ? null : (
           <span className={`font-bold ${won ? 'text-win' : 'text-lose'}`}>
@@ -430,13 +466,13 @@ function TeamBlock({
               />
               <span className="max-w-[160px] truncate text-base">{snapshot.clan.name}</span>
             </Link>
-            {first === null ? null : <span className="ml-2 text-meta">({first})</span>}
+            <span className="ml-2 text-meta">({first})</span>
             <span className="mx-2 text-meta">-</span>
             <span className="text-meta">
               {snapshot.division}부리그 <SnapshotRating snapshot={snapshot} />
             </span>
           </>
-        ) : first === null ? null : (
+        ) : (
           <span className="ml-2 text-meta">({first})</span>
         )}
       </div>
@@ -464,14 +500,15 @@ function TeamBlock({
   )
 }
 
-/** 팀 헤더의 클랜 점수. 배치고사·래더 미반영을 숫자로 위장하지 않는다 (D-149) */
+/** 팀 헤더의 클랜 점수. 배치고사·래더 미반영을 숫자로 위장하지 않는다 */
 function SnapshotRating({ snapshot }: { snapshot: MatchClanSnapshot }) {
   if (snapshot.placement) return <>배치고사</>
   if (snapshot.rating === null) {
-    /* 모르는 게 아니라 **없는** 것이다 — 래더에 반영되지 않은 경기다 (D-149) */
+    /* 래더에 반영되지 않은 경기라 그 시점 클랜 점수가 없다.
+       표기는 `알수없음` 하나로 통일한다 (2026-08-28 사용자 지시 — 예전 `미반영`) */
     return (
       <span className="text-unknown" title={NOT_RATED_INLINE_TITLE}>
-        {NOT_RATED_INLINE}
+        {UNKNOWN}
       </span>
     )
   }
@@ -509,9 +546,14 @@ function StatRow({
           {/* 무기는 옆 컬럼에 그대로 적히므로 이름 옆 `[S]` 는 붙이지 않는다 (원본에 없다) */}
           <span className={stat.dropout ? 'line-through' : ''}>{stat.name}</span>
         </PlayerLink>
+        {/* MVP 는 **별 하나**로 표시한다 (2026-08-28 사용자 지시).
+            글자 배지(`MVP`)는 닉네임 칸에서 자리를 크게 먹어 긴 닉네임을 밀어냈다.
+            색만으로는 뜻이 전달되지 않으므로 `title`·`aria-label` 로 MVP 임을 남긴다.
+            `[미확인]` — 원본의 MVP 표시가 정확히 어떤 모양인지는 관찰하지 못했다
+            (`docs/UI_PARITY_AUDIT.md` 7 — 경기 상세 펼침 관찰 실패) */}
         {mvpBadgeVisible(stat.player_id, stat.mvp, mvpPlayerId) ? (
-          <span className="ml-1 rounded bg-mvp px-1 py-0.5 text-[10px] font-bold leading-none text-white">
-            MVP
+          <span className="ml-1 leading-none text-mvp" title="MVP" aria-label="MVP">
+            ★
           </span>
         ) : null}
       </div>
@@ -588,9 +630,9 @@ function StatRow({
  * 펼친 경기 상세.
  *
  * 원본 구조는 **맵·인원·게임시작시간 한 줄 + 팀 블록 2개**가 전부다.
- * 구성 보정·래더 반영 설명 문구는 원본에 없어서 그리지 않는다 —
- * 상수(`ladderNotice` · `COMPOSITION_NOTICE`)는 관리자 화면 등에서 쓸 수 있으니 남겨 두고
- * 이 화면에서만 렌더하지 않는다.
+ * 구성 보정·래더 반영 같은 **설명·안내 문구는 여기에 그리지 않는다** — 원본에 없다.
+ * 예전에 남겨 두었던 상수(`ladderNotice` · `COMPOSITION_NOTICE`)도 지웠다
+ * (2026-08-28 사용자 지시). 규칙 설명은 화면이 아니라 `docs/` 가 한다.
  */
 function MatchDetailPanel({
   match,
@@ -615,8 +657,10 @@ function MatchDetailPanel({
     redIsViewer === null ? null : redIsViewer ? match.opponent : match.league_clan
 
   return (
-    <div className="border-x border-b border-line bg-card px-4 py-3">
-      <div className="flex items-center text-sm text-meta">
+    <div className="border-x border-b border-line bg-card px-4 py-3 max-md:px-2">
+      {/* 맵 · 인원 · 확인 · 게임시작시간 한 줄. 모바일에서는 시작시각(`ml-auto`)까지 한 줄에
+          들어가지 않아 넘친다 — 항목을 빼지 않고 줄만 넘긴다 */}
+      <div className="flex items-center text-sm text-meta max-md:flex-wrap max-md:gap-y-1">
         <div className="text-base font-semibold text-ink">{match.map.name}</div>
         {/* **양 팀 실제 인원**을 쓴다 (D-152).
             `player_count` 는 **총원**이다. 그걸 양쪽에 그대로 쓰면 정상 5대5 경기가
@@ -645,7 +689,6 @@ function MatchDetailPanel({
             side="red"
             stats={detail.red_stats}
             snapshot={redSnapshot}
-            blueTeam={match.blue_team}
             mvpPlayerId={match.mvp_player_id}
             matchMaxDamage={matchMaxDamage}
             leagueSlug={leagueSlug}
@@ -654,7 +697,6 @@ function MatchDetailPanel({
             side="blue"
             stats={detail.blue_stats}
             snapshot={blueSnapshot}
-            blueTeam={match.blue_team}
             mvpPlayerId={match.mvp_player_id}
             matchMaxDamage={matchMaxDamage}
             leagueSlug={leagueSlug}

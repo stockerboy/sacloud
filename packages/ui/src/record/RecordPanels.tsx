@@ -1,10 +1,9 @@
 import Link from 'next/link'
 import type { MatchSummary, TeammateStat } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
-import { formatCount, formatRate } from '../common/format'
+import { formatAverage, formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
-import { positionLabel, resolvePlayerPosition, weaponStatView } from './weaponCopy'
 
 /**
  * 기록실 상단 `최근매치` 요약 + 우측 사이드 패널.
@@ -67,16 +66,28 @@ function streakText(streak: MatchSummary['streak']): string {
 export function RecentMatchSummary({
   summary,
   leagueSlug,
+  showKdRate = true,
 }: {
   summary: MatchSummary
   leagueSlug: string
+  /**
+   * 상대 클랜 줄에 `- 킬뎃: %` 를 붙일지.
+   *
+   * 원본은 **선수 기록실에만** 붙인다. 클랜 기록실의 같은 줄에는 킬뎃이 없다
+   * (2026-08-27 실측 · UI_PARITY_AUDIT 5-7). 클랜 대 클랜 전적에 개인 킬뎃 합계를
+   * 얹으면 무엇의 비율인지 읽히지 않는다.
+   */
+  showKdRate?: boolean
 }) {
   return (
     <div className="bg-card px-4 py-2 shadow-card">
       <div className="text-lg">최근매치</div>
-      <div className="mt-4 flex">
+      {/* 모바일에서는 세로로 쌓는다 — 도넛(8rem) + 요약 + 상대 목록이 한 줄에 들어가지 않는다.
+          항목을 빼지 않고 배치만 바꾼다 (`docs/UI_PARITY_AUDIT.md` 부록 A).
+          `max-md:` 규칙은 md 이상에 아예 생성되지 않으므로 PC 는 그대로 가로 배치다. */}
+      <div className="mt-4 flex max-md:flex-col">
         <WinRateDonut rate={summary.win_rate} />
-        <div className="ml-5 flex min-h-40 items-center justify-center">
+        <div className="ml-5 flex min-h-40 items-center justify-center max-md:ml-0 max-md:min-h-0 max-md:py-2">
           <div>
             <div>
               {formatCount(summary.recent_count)}전 {formatCount(summary.win)}승{' '}
@@ -90,8 +101,12 @@ export function RecentMatchSummary({
           아래 매치 카드와 겹친다(실제로 겹치는 것을 확인). 최소 높이로 바꿔 늘어나게 한다.
           원본 표본(20전 / 상대 3클랜)에서는 렌더 결과가 동일하다.
         */}
-        <div className="ml-20 flex min-h-40 items-center border-l-2 border-l-divider px-20">
-          <div>
+        {/* PC 는 원본 실측대로 좌우 5rem(`ml-20` · `px-20`) 여백을 둔다.
+            모바일에서는 그 15rem(≈240px)이 화면을 통째로 밀어내므로 여백을 없애고,
+            세로 구분선(`border-l-2`)을 위쪽 구분선으로 바꾼다 — 쌓인 배치에서 왼쪽 선은 뜻이 없다.
+            상대가 많거나 클랜명이 길면 줄 하나가 여전히 넘칠 수 있어 **이 블록 안에서만** 스크롤한다. */}
+        <div className="mobile-scroll-x ml-20 flex min-h-40 items-center border-l-2 border-l-divider px-20 max-md:ml-0 max-md:min-h-0 max-md:border-l-0 max-md:border-t-2 max-md:border-t-divider max-md:px-0 max-md:pt-2">
+          <div className="max-md:w-max">
             {summary.opponents.length === 0 ? (
               <div className="text-meta">상대 전적이 없습니다.</div>
             ) : (
@@ -116,9 +131,14 @@ export function RecentMatchSummary({
                     {formatCount(entry.win + entry.lose)}전 {formatCount(entry.win)}승{' '}
                     {formatCount(entry.lose)}패 ({formatRate(entry.win_rate)}%)
                   </span>
-                  <span className="ml-2 text-meta">
-                    - 킬뎃: <span className={rateClass(entry.kd_rate)}>{formatRate(entry.kd_rate)}%</span>
-                  </span>
+                  {showKdRate ? (
+                    <span className="ml-2 text-meta">
+                      - 킬뎃:{' '}
+                      <span className={rateClass(entry.kd_rate)}>
+                        {formatRate(entry.kd_rate)}%
+                      </span>
+                    </span>
+                  ) : null}
                 </div>
               ))
             )}
@@ -160,108 +180,12 @@ export interface PlayerStatSidebarProps {
   rank: number | null
   rankCount: number | null
   /**
-   * 무기별 랭킹 (D-146).
-   *
-   * 넥슨 Open API 는 무기를 주지 않는다 (D-034). 그 무기로 뛴 기록이 없으면 `null` 이고
-   * **`집계 없음` 으로 표시한다.** 표본이 없는데 순위를 만들어 내지 않는다.
-   */
-  sniperRank?: number | null
-  sniperRankCount?: number | null
-  sniperGames?: number
-  sniperKnownGames?: number
-  sniperKill?: number
-  sniperDeath?: number
-  sniperKdRate?: number | null
-  rifleRank?: number | null
-  rifleRankCount?: number | null
-  rifleGames?: number
-  rifleKnownGames?: number
-  rifleKill?: number
-  rifleDeath?: number
-  rifleKdRate?: number | null
-  /**
    * 소속.
    *
    * `isOfficialClan` 이 false 면 **공식 등록 클랜이 아니다.** 이름은 남기되
    * 공식 소속처럼 강조하지 않고 `미등록` 을 함께 적는다 (D-146).
    */
   clan: { slug: string; name: string; isOfficialClan?: boolean } | null
-}
-
-/**
- * 무기별 전적 한 칸 (D-149).
- *
- * 보여 주는 것 — 전(경기 수) · K/D · 순위.
- * K/D 는 통합 킬뎃과 **같은 정의**다(`킬 / (킬 + 데스) × 100`). 정의가 다르면
- * 나란히 놓았을 때 사용자가 비교할 수 없다.
- *
- * 무엇을 보여 줄지는 `weaponStatView` 가 정한다 — 분기는 그쪽에서 테스트로 고정한다.
- */
-function WeaponStat({
-  label,
-  games,
-  knownGames,
-  kill,
-  death,
-  kdRate,
-  rank,
-  rankCount,
-}: {
-  label: string
-  games: number | undefined
-  knownGames: number | undefined
-  kill: number | undefined
-  death: number | undefined
-  kdRate: number | null | undefined
-  rank: number | null | undefined
-  rankCount: number | null | undefined
-}) {
-  const view = weaponStatView({ games, knownGames, kill, death, kdRate })
-
-  if (view.kind === 'none') {
-    return (
-      <Stat label={label}>
-        <span className="text-unknown">집계 없음</span>
-      </Stat>
-    )
-  }
-
-  return (
-    <div className="flex items-start justify-between py-2">
-      <div className="text-lg">{label}</div>
-      <div className="text-right text-base leading-6">
-        <div>
-          <span className="mr-2 text-meta">{formatCount(view.games)}전</span>
-          {view.kind === 'unknown' ? (
-            /* 뛴 건 알지만 K/D 를 모른다. 0%로 채우지 않는다 */
-            <span className="text-unknown">K/D -</span>
-          ) : (
-            <>
-              <span className="mr-1 text-meta">
-                {formatCount(view.kill)}킬 {formatCount(view.death)}데스
-              </span>
-              <span className={rateClass(view.kdRate)}>{formatRate(view.kdRate)}%</span>
-            </>
-          )}
-        </div>
-        <div className="text-meta">
-          {rank === null || rank === undefined ? (
-            /* 기록을 아는 경기가 없어 비교할 실적이 없다 */
-            <span className="text-unknown">순위 없음</span>
-          ) : (
-            <>
-              {formatCount(rankCount ?? 0)}명중 {formatCount(rank)}위
-            </>
-          )}
-          {view.kind === 'known' && view.partial ? (
-            <span className="ml-2 text-unknown" title="넥슨이 K/D를 주지 않은 경기가 있습니다">
-              (기록 {formatCount(view.knownGames)}전)
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
@@ -295,7 +219,7 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       <Divider />
       <Stat label="평균킬">
         <span className="mr-2 text-base">판당</span>
-        {props.killPerMatch.toFixed(1)}킬
+        {formatAverage(props.killPerMatch)}킬
       </Stat>
       <Divider />
       <Stat label="MVP">{formatCount(props.mvpCount)}회</Stat>
@@ -311,42 +235,17 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
         )}
       </Stat>
       <Divider />
-      {/* 포지션 — **경기 수로만** 정한다. 동률이면 `멀티` 다 (D-152).
-          판정은 `resolvePlayerPosition` 이 하고 테스트로 고정돼 있다. */}
-      <Stat label="포지션">
-        {positionLabel(resolvePlayerPosition(props.sniperGames ?? 0, props.rifleGames ?? 0))}
-        {(props.sniperGames ?? 0) + (props.rifleGames ?? 0) > 0 ? (
-          <span className="ml-2 text-base text-meta">
-            스나 {formatCount(props.sniperGames ?? 0)}전 · 라플{' '}
-            {formatCount(props.rifleGames ?? 0)}전
-          </span>
-        ) : null}
-      </Stat>
-      <Divider />
-      {/* 무기별 랭킹은 통합 랭킹과 **별도로** 보여 준다 (D-146).
-          무기 분리는 기록만 나누고 통합 래더 값을 바꾸지 않는다 */}
-      <WeaponStat
-        label="스나이퍼"
-        games={props.sniperGames}
-        knownGames={props.sniperKnownGames}
-        kill={props.sniperKill}
-        death={props.sniperDeath}
-        kdRate={props.sniperKdRate}
-        rank={props.sniperRank}
-        rankCount={props.sniperRankCount}
-      />
-      <Divider />
-      <WeaponStat
-        label="라이플"
-        games={props.rifleGames}
-        knownGames={props.rifleKnownGames}
-        kill={props.rifleKill}
-        death={props.rifleDeath}
-        kdRate={props.rifleKdRate}
-        rank={props.rifleRank}
-        rankCount={props.rifleRankCount}
-      />
-      <Divider />
+      {/*
+        여기 있던 `포지션` · `스나이퍼` · `라이플` 세 줄은 **원본에 없어서 뺐다**
+        (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1 · 6-2).
+        원본 사이드바는 래더 · 승률 · 킬뎃 · 평균킬 · MVP · 랭킹 · 소속 일곱 줄이 전부다.
+        원본에 없는 UI 를 우리가 덧붙인 것이라 `CLAUDE.md` 3장 3번 위반이었다.
+
+        판정 함수(`resolvePlayerPosition` · `positionLabel` · `weaponStatView`)와 그 테스트는
+        `record/weaponCopy.ts` 에 **그대로 남겨 두었다.** 무기 분리는 `CLAUDE.md` 3-A 에서
+        V1 범위로 승격된 항목이라 언젠가 어디에 어떻게 보여 줄지 정해질 수 있다.
+        지금 없는 것은 **화면에 그리는 곳**뿐이고, 되살릴 때 로직을 다시 쓸 필요는 없다.
+      */}
       <Stat label="소속">
         <span className="text-base">
           {props.clan === null ? (
@@ -368,11 +267,71 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
   )
 }
 
+/**
+ * 클랜 기록실 사이드 `상세정보` (UI_PARITY_AUDIT 5-2).
+ *
+ * 우리 클랜 기록실에는 이 블록이 **아예 없었다** — 사이드에 표 하나만 있었다.
+ * 원본 실측(2026-08-27, `afterpray`)
+ * ```
+ * 상세정보
+ * 래더   1677점                    ← 천 단위 콤마 **없음** (선수 사이드와 같다)
+ * 승률   7,917승 7,424패  51.6%
+ * 랭킹   2부리그  8위
+ * ```
+ * 선수 사이드와 같은 `Stat` / `Divider` 를 쓴다 — 원본도 같은 패널이다.
+ */
+export function ClanStatSidebar({
+  rating,
+  placement,
+  win,
+  lose,
+  winRate,
+  division,
+  rank,
+}: {
+  rating: number
+  placement: boolean
+  win: number
+  lose: number
+  winRate: number
+  division: number
+  /** 클랜랭킹 순위. 배치고사 중이면 `null` — 순위 자리에 `배치고사` 를 쓴다 (원본 규칙) */
+  rank: number | null
+}) {
+  return (
+    <div className="bg-side px-3 py-3 text-line shadow-card">
+      <div>상세정보</div>
+      <Divider />
+      <Stat label="래더">
+        <span className={ratingClass(rating)}>{placement ? '배치고사' : `${rating}점`}</span>
+      </Stat>
+      <Divider />
+      <Stat label="승률">
+        <span className="mr-2 text-base">
+          {formatCount(win)}승 {formatCount(lose)}패
+        </span>
+        <span className={rateClass(winRate)}>{formatRate(winRate)}%</span>
+      </Stat>
+      <Divider />
+      <Stat label="랭킹">
+        {rank === null ? (
+          '배치고사'
+        ) : (
+          <>
+            <span className="mr-2 text-base">{division}부리그</span>
+            {formatCount(rank)}위
+          </>
+        )}
+      </Stat>
+    </div>
+  )
+}
+
 export function TeammateTable({
   title,
   teammates,
 }: {
-  /** 개인 기록실: `최근 같이한 플레이어` / 클랜 기록실: `최근 클랜전 플레이어` */
+  /** 개인 기록실: `최근 같이한 플레이어` / 클랜 기록실: `최근 클랜전 플레이어 승률` */
   title: string
   teammates: readonly TeammateStat[]
 }) {

@@ -11,13 +11,15 @@
  *   2. 비율은 분모를 아는 경우에만 만든다 (0킬 헤드샷 비율을 만들지 않는다)
  *   3. 모르면 `알수없음` — 0 으로 채우지 않는다 (D-034 · D-148)
  *   4. 배치고사면 래더 자리에 `배치고사`
- *   5. 진영 정보를 모르면(`blue_team === null`) 선레드/선블루를 적지 않는다
+ *   5. 팀 블록의 `선레드`/`선블루` 는 그 블록의 진영으로 정한다 (`blue_team` 에 걸려 사라지지 않는다)
+ *   6. 무기 칸은 `라플`/`스나` 다 — 선수 상세의 포지션 표기(`라이플`/`스나이퍼`)와 다른 문맥이다
  */
 import { describe, expect, it } from 'vitest'
 import { WEAPON } from '@sacloud/contract'
 import {
   damageBarPercent,
   firstSideLabel,
+  matchFirstSideLabel,
   headshotView,
   kdaView,
   matchWeaponLabel,
@@ -158,9 +160,14 @@ describe('래더 칸', () => {
 /* ------------------------------------------------------------------ 무기 --- */
 
 describe('무기 칸', () => {
-  it('0 은 라이플, 1 은 스나이퍼다', () => {
-    expect(matchWeaponLabel(WEAPON.RIFLE)).toBe('라이플')
-    expect(matchWeaponLabel(WEAPON.SNIPER)).toBe('스나이퍼')
+  it('0 은 라플, 1 은 스나다 (원본 경기 상세 표기)', () => {
+    expect(matchWeaponLabel(WEAPON.RIFLE)).toBe('라플')
+    expect(matchWeaponLabel(WEAPON.SNIPER)).toBe('스나')
+  })
+
+  it('선수 상세 포지션 표기(스나이퍼/라이플)를 여기에 쓰지 않는다 — 문맥이 다르다', () => {
+    expect(matchWeaponLabel(WEAPON.RIFLE)).not.toBe('라이플')
+    expect(matchWeaponLabel(WEAPON.SNIPER)).not.toBe('스나이퍼')
   })
 
   it('모르면 null 이고 화면이 알수없음을 그린다 (D-034)', () => {
@@ -169,24 +176,37 @@ describe('무기 칸', () => {
   })
 
   it('0 을 falsy 로 흘려 알수없음으로 만들지 않는다', () => {
-    expect(matchWeaponLabel(0)).toBe('라이플')
+    expect(matchWeaponLabel(0)).toBe('라플')
   })
 })
 
 /* -------------------------------------------------------------- 팀 헤더 --- */
 
-describe('선공 표기는 진영 정보를 알 때만 적는다', () => {
-  it('blue_team 이 null 이면 어느 팀에도 적지 않는다', () => {
-    expect(firstSideLabel(null, 'red')).toBeNull()
-    expect(firstSideLabel(null, 'blue')).toBeNull()
-    expect(firstSideLabel(undefined, 'red')).toBeNull()
+describe('팀 블록의 진영 표기는 그 블록의 진영으로 정한다', () => {
+  it('레드 블록은 선레드, 블루 블록은 선블루다', () => {
+    expect(firstSideLabel('red')).toBe('선레드')
+    expect(firstSideLabel('blue')).toBe('선블루')
   })
 
-  it('알면 진영대로 적는다 — 레드 블록은 선레드, 블루 블록은 선블루', () => {
-    expect(firstSideLabel(true, 'red')).toBe('선레드')
-    expect(firstSideLabel(true, 'blue')).toBe('선블루')
-    expect(firstSideLabel(false, 'red')).toBe('선레드')
-    expect(firstSideLabel(false, 'blue')).toBe('선블루')
+  it('blue_team(넥슨 미제공)에 걸려 표기가 사라지지 않는다', () => {
+    /* 예전 구현은 `blue_team === null` 이면 양 팀 모두 표기를 지웠고,
+       넥슨이 그 값을 주지 않아(D-034) 사실상 모든 경기에서 칸이 비었다 */
+    for (const side of ['red', 'blue'] as const) {
+      expect(firstSideLabel(side)).not.toBeNull()
+      expect(firstSideLabel(side)).toMatch(/^선(레드|블루)$/)
+    }
+  })
+})
+
+describe('접힌 클랜 카드의 선공 진영 칸', () => {
+  it('모르면 null — 호출부가 `알수없음`을 그린다', () => {
+    expect(matchFirstSideLabel(null)).toBeNull()
+    expect(matchFirstSideLabel(undefined)).toBeNull()
+  })
+
+  it('계약대로 값을 읽는다 (blue_team = 선공 진영이 블루면 true)', () => {
+    expect(matchFirstSideLabel(true)).toBe('선블루')
+    expect(matchFirstSideLabel(false)).toBe('선레드')
   })
 })
 

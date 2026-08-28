@@ -52,8 +52,10 @@ export {
   LeagueHeader,
   LeagueHomeTabs,
   LeagueInfoPanel,
+  StarIcon,
   LEAGUE_HOME_TABS,
 } from './league/LeagueHome'
+export { NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_IDLE } from './common/navTab'
 export { LeagueDescription } from './league/LeagueDescription'
 export { sanitizeLeagueDescription } from './league/sanitize'
 
@@ -65,23 +67,25 @@ export {
   type RefreshState,
 } from './profile/ProfileHeader'
 export { PlayerLeagueCards, ClanLeagueCards, ProfileTabs } from './profile/LeagueEntryCards'
+export {
+  LeaguePlayerRecordHeader,
+  LeagueClanRecordHeader,
+} from './profile/LeagueRecordHeader'
 export { ClanMemberList } from './profile/ClanMemberList'
 
 /* --- Phase 4: 기록실 · 매치 상세 --- */
 export { MatchCard, formatPlayTime, formatRatingUpdate } from './record/MatchCard'
 export {
-  COMPOSITION_NOTICE,
   NOT_RATED_BADGE,
   NOT_RATED_BADGE_TITLE,
-  NOT_RATED_INLINE,
   NOT_RATED_INLINE_TITLE,
   isRated,
-  ladderNotice,
 } from './record/officialCopy'
 export { weaponStatView, type WeaponStatView } from './record/weaponCopy'
 export {
   RecentMatchSummary,
   PlayerStatSidebar,
+  ClanStatSidebar,
   TeammateTable,
   type PlayerStatSidebarProps,
 } from './record/RecordPanels'
@@ -94,6 +98,11 @@ export { BoardTable, BoardPager } from './board/BoardTable'
 export { PostView, formatPostDate } from './board/PostView'
 export { CommentList, CommentForm } from './board/CommentList'
 export { BoardSearch, type BoardSearchType } from './board/BoardSearch'
+export {
+  boardHeading,
+  boardAllowsWriteAndSearch,
+  DEFAULT_BOARD_SLUG,
+} from './board/boardCopy'
 export { sanitizePostContent } from './board/sanitize'
 
 /* --- Phase 6: 인증 · 마이페이지 · 관리 --- */

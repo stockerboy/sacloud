@@ -25,7 +25,9 @@ import { formatCount, formatDate } from '../common/format'
  *     <div class="w-1/4">관리자: {이름}</div>
  *     <div class="w-1/6">{개설일}</div>
  * ```
- * 머리글은 첫 칸에만 `리그명`이 있고 나머지 3칸은 비어 있다 (원본 그대로).
+ * 머리글은 **첫 칸 `리그명` · 마지막 칸 `개설일`** 이고 가운데 두 칸은 비어 있다.
+ * (2026-08-27 재실측. 예전에는 네 칸 중 첫 칸만 채워 두고 `개설일`이 빠져 있었다 —
+ *  UI_PARITY_AUDIT 8-1)
  */
 export function LeagueListTable({
   items,
@@ -44,7 +46,7 @@ export function LeagueListTable({
         <div className="w-5/12 text-center">리그명</div>
         <div className="w-1/6" />
         <div className="w-1/4" />
-        <div className="w-1/6" />
+        <div className="w-1/6">개설일</div>
       </div>
 
       {error ? (
