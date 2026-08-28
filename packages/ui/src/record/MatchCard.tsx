@@ -183,7 +183,10 @@ function ClanSide({
         align === 'right' ? 'flex flex-row-reverse max-md:block' : ''
       }`}
     >
-      <div className={`text-base max-md:text-left ${align === 'right' ? 'text-right' : ''}`}>
+      {/* 모바일은 **가운데 정렬**이다. 원본은 `[마크] afterpray / vs / [마크] ★PURPLE★` 가
+          `vs` 를 축으로 위아래 가운데가 맞는다. 왼쪽 정렬로 두면 이름 길이가 달라
+          축이 어긋나 보인다 (2026-08-28 사용자 지적). PC 는 좌우 배치라 그대로 둔다. */}
+      <div className={`text-base max-md:text-center ${align === 'right' ? 'text-right' : ''}`}>
         <Link className="inline-block" href={leagueClanPath(leagueSlug, snapshot.clan.slug)}>
           {/* 등록 클랜 판정은 마크 URL 이 아니라 클랜 객체가 한다 (D-146) */}
           <ClanMark
@@ -192,7 +195,7 @@ function ClanSide({
             className="mr-1 inline-block align-middle"
             alt={snapshot.clan.name}
           />
-          <span className="inline-block max-w-[100px] truncate align-middle">
+          <span className="inline-block max-w-[100px] truncate align-middle max-md:max-w-[160px]">
             {snapshot.clan.name}
           </span>
         </Link>
@@ -559,11 +562,13 @@ function StatRow({
       {/* 플레이어 칸은 **한 칸 2줄**이다 — 위 `[마크] 닉네임`, 아래 작은 글씨로 그 시점 래더.
           예전에는 `플레이어` 칸과 `래더` 칸이 따로였다 (원본 모바일에는 래더 컬럼이 없다) */}
       <div className="flex w-52 items-center px-2 max-md:w-auto max-md:min-w-0 max-md:flex-1">
-        {/* 경기 당시 소속 클랜 (D-131). 무소속·미등록이면 fallback 마크가 그려진다 (D-146) */}
+        {/* 경기 당시 소속 클랜 (D-131). 무소속·미등록이면 fallback 마크가 그려진다 (D-146).
+            크기는 `xxs`(1rem) 에서 `xs`(1.5rem) 로 올렸다 — 정확히 1.5배다.
+            사용자가 원본과 대조해 "마크가 너무 작다, 1.5배로" 라고 지정했다 (2026-08-28). */}
         <ClanMark
           clan={stat.match_time_clan}
           alt={stat.match_time_clan?.name ?? ''}
-          size="xxs"
+          size="xs"
           className="mr-1 shrink-0"
         />
         <div className="min-w-0">

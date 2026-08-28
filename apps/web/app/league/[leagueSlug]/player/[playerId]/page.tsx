@@ -91,13 +91,16 @@ export default function LeaguePlayerRecordPage({
   return (
     <>
       {/*
-        모바일 — 3:1 두 칸을 위아래로 쌓는다 (기록 → 상세정보 순서는 그대로).
+        모바일 — 3:1 두 칸을 위아래로 쌓되 **상세정보를 위로 올린다.**
+        원본 모바일은 프로필 헤더 바로 아래가 `상세정보` 이고 기록 목록은 그 밑이다
+        (2026-08-28 사용자 지시 — "첫번째 카드가 최상단에 있어야 하고 그 밑에부터 기록").
+        `order` 로만 바꾼다 — DOM 순서는 그대로라 PC(가로 배치)는 영향이 없다.
         `최근매치` 블록 안쪽(`packages/ui/src/record/RecordPanels.tsx`)은 다른 담당 구역이라
         손대지 않고, 넘칠 때 **그 블록 안에서만** 가로로 밀리도록 감싸기만 한다.
         `.mobile-scroll-x` 는 `@media (max-width:767px)` 안에서만 정의돼 PC 는 무영향이다.
       */}
       <div className="pc-container mt-2 flex max-md:flex-col">
-        <div className="w-3/4 max-md:w-full max-md:min-w-0">
+        <div className="w-3/4 max-md:w-full max-md:min-w-0 max-md:order-2">
           <div className="mobile-scroll-x">
             <RecentMatchSummary summary={data.match_summary} leagueSlug={leagueSlug} />
           </div>
@@ -126,7 +129,7 @@ export default function LeaguePlayerRecordPage({
             ) : null}
           </div>
         </div>
-        <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">
+        <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-0 max-md:w-full max-md:order-1 max-md:mb-2">
           <PlayerStatSidebar
             rating={data.rating}
             placement={data.placement}

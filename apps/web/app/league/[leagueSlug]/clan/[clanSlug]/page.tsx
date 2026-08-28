@@ -83,7 +83,7 @@ export default function LeagueClanRecordPage({
       손대지 않고 넘칠 때 그 블록 안에서만 가로로 밀리게 감싼다 (개인 기록실과 동일).
     */
     <div className="pc-container mt-2 flex max-md:flex-col">
-      <div className="w-3/4 max-md:w-full max-md:min-w-0">
+      <div className="w-3/4 max-md:w-full max-md:min-w-0 max-md:order-2">
         {/* 클랜 화면의 상대 클랜 줄에는 킬뎃이 없다 (원본 실측 · UI_PARITY_AUDIT 5-7) */}
         <div className="mobile-scroll-x">
           <RecentMatchSummary
@@ -117,7 +117,7 @@ export default function LeagueClanRecordPage({
           ) : null}
         </div>
       </div>
-      <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">
+      <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-0 max-md:w-full max-md:order-1 max-md:mb-2">
         <ClanStatSidebar
           rating={data.rating}
           placement={data.placement}
