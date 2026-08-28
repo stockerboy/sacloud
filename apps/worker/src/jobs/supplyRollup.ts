@@ -68,11 +68,33 @@ function readClanRegistry(
   return { registry, reason: null }
 }
 
+/**
+ * 증분 기준 창(시간). 이 시간 안에 **적재된** 경기가 건드린 선수만 다시 계산한다.
+ *
+ * 5분마다 도는데 24시간을 되돌아보는 이유는 **겹치기 위해서**다.
+ * 사이클 하나가 실패하거나 건너뛰어도(GitHub Actions 예약은 자주 밀린다) 다음 사이클의
+ * 창이 그 구간을 덮으므로 값이 조용히 낡지 않는다. 창을 넓혀도 비용은 그 안에 적재된
+ * 경기 수에 비례할 뿐이라 싸다 (실측: 세 리그 하루 161경기).
+ */
+export const DEFAULT_ROLLUP_WINDOW_HOURS = 24
+
 export async function runSupplyRollup(input: {
   leagueSlug?: string | null
   file?: string | null
   confirm?: boolean
+  /**
+   * 전수 재계산. **없애지 않는다** — 증분 값이 어긋났을 때 되돌릴 길이다.
+   * 기본은 증분(`sinceHours`)이다.
+   */
+  full?: boolean
+  /** 증분 창(시간). 생략하면 `DEFAULT_ROLLUP_WINDOW_HOURS` */
+  sinceHours?: number | null
 }): Promise<SupplyRollupRunResult> {
+  const since = input.full
+    ? null
+    : new Date(
+        Date.now() - (input.sinceHours ?? DEFAULT_ROLLUP_WINDOW_HOURS) * 3_600_000,
+      )
   const result: SupplyRollupRunResult = {
     leagues: [],
     playerClans: {
@@ -119,18 +141,23 @@ export async function runSupplyRollup(input: {
       log(`[${league.leagueSlug}] 등록 클랜 ${registry?.size ?? 0} — ${file}`)
     }
 
-    log(`[${league.leagueSlug}] 미러 경기 ${league.matches} 건 집계 시작`)
+    log(
+      since
+        ? `[${league.leagueSlug}] 증분 집계 — ${since.toISOString()} 이후 적재분이 건드린 선수만`
+        : `[${league.leagueSlug}] 전수 집계 — 미러 경기 ${league.matches} 건`,
+    )
     let lastLogged = 0
     const rolled = await rollupSupplyLeague({
       league,
       clanRegistry: registry,
       confirm: input.confirm,
+      since,
       onProgress: (done, total) => {
         // 10% 단위로만 찍는다 — 13만 경기를 청크마다 찍으면 로그가 본문을 덮는다
         const step = Math.max(1, Math.floor(total / 10))
         if (done - lastLogged < step && done < total) return
         lastLogged = done
-        log(`[${league.leagueSlug}] 경기 ${done} / ${total}`)
+        log(`[${league.leagueSlug}] ${since ? '선수' : '경기'} ${done} / ${total}`)
       },
     })
     result.leagues.push(rolled)

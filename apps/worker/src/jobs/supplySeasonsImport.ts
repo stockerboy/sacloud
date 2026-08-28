@@ -1,5 +1,5 @@
 /**
- * 3rd.supply 지난시즌 카드 수집 파일 → 우리 DB (D-159).
+ * 3rd.supply 지난시즌 카드 수집 파일 → 우리 DB (D-166).
  *
  * **네트워크를 쓰지 않는다.** 입력은 `supply-seasons` 가 쌓아 둔 `.seasons.jsonl` 뿐이다.
  *

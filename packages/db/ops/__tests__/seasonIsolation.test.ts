@@ -22,7 +22,7 @@ describe('베타 시즌 번호 (D-098)', () => {
     expect(seasonLabel({ number: 0, seasonType: 'beta' })).not.toContain('0')
   })
 
-  /* 원본 지난시즌 카드 관측(2026-08-28)이 `시즌 6` 이었다. `Season N` 은 관측 전 추정이었다 (D-159) */
+  /* 원본 지난시즌 카드 관측(2026-08-28)이 `시즌 6` 이었다. `Season N` 은 관측 전 추정이었다 (D-166) */
   it('정식·과거 시즌은 원본 표기 `시즌 N` 을 쓴다', () => {
     expect(seasonLabel({ number: 7, seasonType: 'legacy' })).toBe('시즌 7')
     expect(seasonLabel({ number: 8, seasonType: 'official' })).toBe('시즌 8')

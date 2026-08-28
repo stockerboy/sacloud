@@ -196,7 +196,13 @@ function ClanSide({
             {snapshot.clan.name}
           </span>
         </Link>
-        <div className="text-sm text-meta">
+        {/*
+          원본 모바일 접힌 카드에는 **클랜 이름만** 있다 (2026-08-28 원본 관측).
+          부리그·그 시점 클랜 점수 줄이 없다. 우리는 그 줄 때문에 카드가 한 줄씩 더 높았고
+          사용자가 "UI 가 너무 크다" 고 지적했다.
+          PC 는 예전 관측(`- 2부리그 1,149점`)이 있어 그대로 두고 모바일에서만 감춘다.
+        */}
+        <div className="text-sm text-meta max-md:hidden">
           {snapshot.division}부리그{' '}
           {snapshot.placement ? (
             '배치고사'

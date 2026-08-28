@@ -30,9 +30,14 @@ import { rateClass } from '../common/rate'
  *   **순위 색은 `[미확인]`** 이다. `1위`·`17위`·`30위`·`31위` 는 노랑, `122위` 는 파랑으로
  *   보였지만 경계를 모른다. 임의로 100 같은 값을 만들지 않고 기본색(흰색)으로 둔다.
  *
- * ── 순위 0
- *   원본이 `rank: 0` 을 준다(판수가 적은 선수에서 관측). 뜻은 `[미확인]` 이라
- *   해석하지 않고 원본값 그대로 `0위` 로 쓴다.
+ * ── 순위 0 = 배치고사
+ *   원본은 `rank: null` 을 주지 않는다. **`0`** 을 준다.
+ *   수집분 14,441줄을 대조해 보니 `rank = 0` 인 줄은 **판수가 전부 9판 이하**였고
+ *   (`sanply` 922줄 최대 9 · `supply` 1,280줄 최대 9), `rank > 0` 은 10판 이상이었다.
+ *   즉 배치고사(10판 미만)라 순위를 매기지 않은 상태다.
+ *   그래서 `0위` 라고 쓰지 않고 우리가 이미 쓰는 표기 `배치고사` 로 그린다.
+ *   그 줄에 `{모수}명중` 을 함께 쓰는지는 `[미확인]` — 순위가 없으므로 함께 쓰지 않는다.
+ *   DB 에는 **원본값 0 을 그대로** 저장한다. 해석은 화면에서만 한다 (3-A 2번).
  */
 
 /** 한 줄 — 왼쪽 원시 수치 / 오른쪽 `라벨 + 값`. 양쪽 다 없으면 아예 그리지 않는다 */
@@ -113,17 +118,22 @@ export function SeasonTable({
             </div>
             <div className="mt-2 border-t border-side-line" />
 
-            {/* 순위 — 오른쪽에만 온다. `{모수}명중` 은 작은 회색, 순위는 크다 */}
-            {season.rank === null ? null : (
-              <div className="mt-2 flex items-baseline justify-end gap-2">
-                {season.rank_count === null ? null : (
-                  <span className="text-sm text-input-placeholder">
-                    {formatCount(season.rank_count)}명중
-                  </span>
-                )}
-                <span className="text-xl font-bold">{formatCount(season.rank)}위</span>
-              </div>
-            )}
+            {/* 순위 — 오른쪽에만 온다. `{모수}명중` 은 작은 회색, 순위는 크다.
+                `null`(우리 카드)과 `0`(3rd.supply 카드) 둘 다 배치고사다 */}
+            <div className="mt-2 flex items-baseline justify-end gap-2">
+              {season.rank === null || season.rank === 0 ? (
+                <span className="text-xl font-bold">배치고사</span>
+              ) : (
+                <>
+                  {season.rank_count === null ? null : (
+                    <span className="text-sm text-input-placeholder">
+                      {formatCount(season.rank_count)}명중
+                    </span>
+                  )}
+                  <span className="text-xl font-bold">{formatCount(season.rank)}위</span>
+                </>
+              )}
+            </div>
 
             <StatLine
               raw={winLose}

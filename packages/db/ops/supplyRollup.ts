@@ -70,6 +70,21 @@
  *
  * ── 결정성
  *   누적하지 않고 **처음부터 다시 계산해 덮어쓴다.** 두 번 돌려도 값이 두 배가 되지 않는다.
+ *
+ * ── 증분 (`since`)
+ *   전수 재계산은 supply 13만 · sanply 20만 경기를 매번 훑는다. 새 경기 한두 건 때문에
+ *   그러는 것은 낭비라 **바뀐 경기가 건드린 선수만** 다시 계산한다.
+ *
+ *   위험한 것은 "증분 = 더하기" 로 만드는 것이다. 같은 경기가 두 번 들어오면 값이 두 배가 되고,
+ *   한 번 어긋나면 원인을 찾을 수 없다. 그래서 **더하지 않는다** —
+ *   영향받은 선수를 골라내기만 하고, 그 선수의 값은 **그 리그 전 경기에서 처음부터 다시 만든다.**
+ *   집계 함수(`accumulatePlayerRollups`)도 전수 경로와 **같은 것 하나**를 쓴다.
+ *   그래서 증분 결과는 전수 결과와 **같을 수밖에 없고**, 두 번 돌려도 값이 변하지 않는다.
+ *
+ *   클랜은 애초에 경기를 되짚지 않는다 (D-157). 수집 파일 목록 값을 그대로 쓰므로
+ *   증분이든 전수든 **하는 일이 완전히 같다.**
+ *
+ *   전수 경로를 없애지 않는다. 값이 어긋났을 때 되돌릴 길이 있어야 한다 — `--full` 이 그것이다.
  */
 import { prisma } from '../src/index'
 // 적재 잡과 **같은 상수**를 쓴다. 출처 문자열이 두 곳에서 갈라지면 집계가 조용히 0건이 된다
@@ -507,6 +522,13 @@ export interface SupplyRollupLeague {
 }
 
 export interface SupplyRollupResult extends SupplyRollupLeague {
+  /**
+   * `full` — 리그 전 경기를 훑었다.
+   * `incremental` — 바뀐 경기가 건드린 선수만 다시 계산했다. **그 선수들의 값은 전수와 같다.**
+   */
+  mode: 'full' | 'incremental'
+  /** 증분에서 기준이 된 경기 수 (`Match.ingestedAt >= since`). 전수면 `null` */
+  changedMatches: number | null
   /** 읽은 참가 기록 수 */
   stats: number
   players: {
@@ -532,7 +554,10 @@ export interface SupplyRollupResult extends SupplyRollupLeague {
    */
   playerClans: Map<string, PlayerClanPick>
   clans: {
-    /** 미러 경기에 등장한 클랜 (등록 여부와 무관) */
+    /**
+     * 미러 경기에 등장한 클랜 (등록 여부와 무관).
+     * **증분에서는 세지 않는다(0).** 리그 전 경기를 훑어야 나오는 진단용 숫자다.
+     */
     inMatches: number
     /** 수집 파일 클랜 목록의 크기 = 원본 클랜랭킹의 모집단 */
     registered: number
@@ -550,7 +575,11 @@ export interface SupplyRollupResult extends SupplyRollupLeague {
     leagueClansCreated: number
     /** 같은 slug 인데 원본 클랜 id 가 달라 손대지 않은 수. 사람이 봐야 한다 */
     conflicts: number
-    /** 경기에서 되짚은 값과 원본 값이 다른 클랜 수 — 되짚기를 버린 근거다 */
+    /**
+     * 경기에서 되짚은 값과 원본 값이 다른 클랜 수 — 되짚기를 버린 근거다.
+     * **증분에서는 세지 않는다(항상 0).** 되짚기 값을 만들려면 전 경기를 훑어야 하는데
+     * 그 값은 어디에도 쓰이지 않는 진단용 숫자다.
+     */
     ratingDiffersFromDerived: number
     /** 수집 파일을 못 읽어 클랜을 통째로 건너뛴 경우 */
     registryMissing: boolean
@@ -604,6 +633,138 @@ export interface SupplyRollupInput {
   confirm?: boolean
   /** 오래 걸리는 잡이라 진행 상황을 호출부가 찍을 수 있게 열어 둔다 */
   onProgress?: (done: number, total: number) => void
+  /**
+   * 증분 기준 시각. 이 시각 이후 **적재된**(`Match.ingestedAt`) 경기가 건드린 선수만
+   * 다시 계산한다. `null`/생략이면 전수다.
+   *
+   * `startAt`(경기 시각)이 아니라 `ingestedAt`(우리가 넣은 시각)인 이유 —
+   * 원본이 옛 경기를 뒤늦게 내줄 수 있고, 그때 기준이 경기 시각이면 그 경기는 영영 안 잡힌다.
+   *
+   * **넉넉하게 잡는 편이 안전하다.** 더 많이 잡으면 계산이 조금 늘 뿐이고,
+   * 덜 잡으면 값이 조용히 낡는다. 사이클 하나가 실패해도 다음 사이클의 창이 겹쳐 스스로 낫는다.
+   */
+  since?: Date | null
+}
+
+/** 선수 집계에 필요한 참가 기록 + 그 경기 정보 (증분 경로용 join 결과) */
+interface JoinedStatRow {
+  playerId: string
+  side: string
+  kill: number | null
+  death: number | null
+  assist: number | null
+  headshot: number | null
+  sourceRating: number | null
+  matchTimeClanSlug: string | null
+  match: { id: string; startAt: Date; winnerSide: string }
+}
+
+/** 한 번에 `IN (...)` 으로 넘기는 선수 수 */
+const PLAYER_CHUNK = 500
+
+/**
+ * 후보 `LeagueClan` 중 **미러 경기에 실제로 나오는** 것만 골라낸다 (증분 경로용).
+ *
+ * 전수 경로는 경기를 다 훑으면서 알아내지만 증분은 그러지 않는다. 그렇다고 조건을
+ * 빼 버리면 "경기가 한 건도 없는 미등록 클랜" 까지 랭킹에서 빼게 되어 전수와 답이 달라진다.
+ * 후보 수는 리그당 수백 건이고 `[진영clanId, startAt desc]` 인덱스를 타므로 싸다.
+ */
+async function leagueClansWithMatches(
+  leagueId: string,
+  candidateIds: readonly string[],
+): Promise<Set<string>> {
+  const found = new Set<string>()
+  if (candidateIds.length === 0) return found
+  const ids = [...candidateIds]
+  const [red, blue] = await Promise.all([
+    prisma.match.groupBy({
+      by: ['redLeagueClanId'],
+      where: { leagueId, origin: SUPPLY_ORIGIN, redLeagueClanId: { in: ids } },
+      _count: { _all: true },
+    }),
+    prisma.match.groupBy({
+      by: ['blueLeagueClanId'],
+      where: { leagueId, origin: SUPPLY_ORIGIN, blueLeagueClanId: { in: ids } },
+      _count: { _all: true },
+    }),
+  ])
+  for (const row of red) found.add(row.redLeagueClanId)
+  for (const row of blue) found.add(row.blueLeagueClanId)
+  return found
+}
+
+/**
+ * 증분 — 바뀐 경기가 건드린 선수를 **처음부터 다시** 계산한다.
+ *
+ * 두 단계다.
+ *   1. `ingestedAt >= since` 인 경기의 참가자 = 영향받은 선수
+ *   2. 그 선수들의 **그 리그 전 경기** 참가 기록을 읽어 전수와 같은 함수로 누적
+ *
+ * 2단계가 핵심이다. 1단계 경기만 더하면 idempotent 가 아니다 —
+ * 같은 경기를 두 번 넣으면 값이 두 배가 된다. 처음부터 다시 만들면 몇 번을 돌려도 같다.
+ */
+async function collectPlayersIncremental(input: {
+  leagueId: string
+  changedMatchIds: readonly string[]
+  onProgress?: (done: number, total: number) => void
+}): Promise<{ players: Map<string, PlayerRollup>; stats: number }> {
+  const players = new Map<string, PlayerRollup>()
+  let stats = 0
+  if (input.changedMatchIds.length === 0) return { players, stats }
+
+  /* 1) 영향받은 선수 */
+  const touched = new Set<string>()
+  const ids = [...input.changedMatchIds]
+  for (let index = 0; index < ids.length; index += MATCH_CHUNK) {
+    const rows = await prisma.matchPlayerStat.findMany({
+      where: { matchId: { in: ids.slice(index, index + MATCH_CHUNK) } },
+      select: { playerId: true },
+      distinct: ['playerId'],
+    })
+    for (const row of rows) touched.add(row.playerId)
+  }
+
+  /* 2) 그 선수들의 리그 전 경기를 다시 읽는다.
+     `MatchPlayerStat` 은 `[playerId, matchId]` 인덱스가 있어 선수 단위 조회가 싸다 */
+  const playerIds = [...touched]
+  for (let index = 0; index < playerIds.length; index += PLAYER_CHUNK) {
+    const rows: JoinedStatRow[] = await prisma.matchPlayerStat.findMany({
+      where: {
+        playerId: { in: playerIds.slice(index, index + PLAYER_CHUNK) },
+        match: { leagueId: input.leagueId, origin: SUPPLY_ORIGIN },
+      },
+      select: {
+        playerId: true,
+        side: true,
+        kill: true,
+        death: true,
+        assist: true,
+        headshot: true,
+        sourceRating: true,
+        matchTimeClanSlug: true,
+        match: { select: { id: true, startAt: true, winnerSide: true } },
+      },
+    })
+    stats += rows.length
+    accumulatePlayerRollups(
+      rows.map((row) => ({
+        playerId: row.playerId,
+        won: row.match.winnerSide === row.side,
+        kill: row.kill,
+        death: row.death,
+        assist: row.assist,
+        headshot: row.headshot,
+        sourceRating: row.sourceRating,
+        clanSlug: row.matchTimeClanSlug,
+        matchId: row.match.id,
+        startAt: row.match.startAt,
+      })),
+      players,
+    )
+    input.onProgress?.(Math.min(index + PLAYER_CHUNK, playerIds.length), playerIds.length)
+  }
+
+  return { players, stats }
 }
 
 /**
@@ -614,14 +775,37 @@ export interface SupplyRollupInput {
  */
 export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<SupplyRollupResult> {
   const { league } = input
-  const players = new Map<string, PlayerRollup>()
+  const incremental = input.since instanceof Date
+  let players = new Map<string, PlayerRollup>()
   const clans = new Map<string, ClanRollup>()
   let stats = 0
   let done = 0
+  let changedMatches: number | null = null
 
-  /* 경기 id 커서로 끊어 읽는다. 정렬 기준이 유일 키라 청크 경계가 흔들리지 않는다 */
+  if (incremental) {
+    /* 바뀐 경기 = 이 시각 이후 적재된 미러 경기. id 만 읽는다 */
+    const changed = await prisma.match.findMany({
+      where: {
+        leagueId: league.leagueId,
+        origin: SUPPLY_ORIGIN,
+        ingestedAt: { gte: input.since as Date },
+      },
+      select: { id: true },
+    })
+    changedMatches = changed.length
+    const collected = await collectPlayersIncremental({
+      leagueId: league.leagueId,
+      changedMatchIds: changed.map((row) => row.id),
+      onProgress: input.onProgress,
+    })
+    players = collected.players
+    stats = collected.stats
+  }
+
+  /* 전수 — 경기 id 커서로 끊어 읽는다. 정렬 기준이 유일 키라 청크 경계가 흔들리지 않는다.
+     증분은 위에서 이미 끝났으므로 이 아래로 들어오지 않는다 */
   let cursor: string | null = null
-  for (;;) {
+  while (!incremental) {
     const matches: RollupMatch[] = await prisma.match.findMany({
       where: {
         leagueId: league.leagueId,
@@ -692,6 +876,8 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
 
   const result: SupplyRollupResult = {
     ...league,
+    mode: incremental ? 'incremental' : 'full',
+    changedMatches,
     stats,
     players: {
       aggregated: players.size,
@@ -826,8 +1012,9 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
       const leagueClanId = clan ? leagueClanByClanId.get(clan.id) : undefined
       if (leagueClanId) {
         rankedWrites.push({ id: leagueClanId, data })
-        /* 되짚기 값과 원본 값이 얼마나 어긋나는지 세어 둔다. 되짚기를 버린 근거다 */
-        if (row.rating !== null && (clans.get(leagueClanId)?.rating ?? null) !== row.rating) {
+        /* 되짚기 값과 원본 값이 얼마나 어긋나는지 세어 둔다. 되짚기를 버린 근거다.
+           증분에는 되짚기 값 자체가 없으므로 세지 않는다 — 0 과 "다르다" 를 혼동하면 안 된다 */
+        if (!incremental && row.rating !== null && (clans.get(leagueClanId)?.rating ?? null) !== row.rating) {
           result.clans.ratingDiffersFromDerived += 1
         }
       } else {
@@ -839,10 +1026,18 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
       else result.clans.withRating += 1
     }
 
-    for (const leagueClanId of clans.keys()) {
-      const slug = slugOfLeagueClan.get(leagueClanId)
-      // 경기에는 있는데 `LeagueClan` 행이 없을 수는 없다(외래키). 방어적으로만 건너뛴다
-      if (!slug || registry.has(slug)) continue
+    /* 목록에 없는데 **경기에는 나오는** 클랜만 랭킹에서 뺀다.
+       전수는 방금 훑은 경기에서 알고, 증분은 후보를 좁혀 DB 에 되묻는다 —
+       "경기에 나온다" 라는 조건을 전수와 똑같이 지켜야 두 경로의 결과가 같아진다.
+       (경기가 한 건도 없는 미등록 클랜은 전수도 건드리지 않는다) */
+    const candidates = [...slugOfLeagueClan.entries()].flatMap(([id, slug]) =>
+      registry.has(slug) ? [] : [id],
+    )
+    const inMatches = incremental
+      ? await leagueClansWithMatches(league.leagueId, candidates)
+      : new Set(clans.keys())
+    for (const leagueClanId of candidates) {
+      if (!inMatches.has(leagueClanId)) continue
       unrankedIds.push(leagueClanId)
     }
 

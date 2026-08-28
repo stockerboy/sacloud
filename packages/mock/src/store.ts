@@ -453,7 +453,7 @@ export function getLeague(leagueSlug: string): League | null {
     season: league.season,
     // mock 픽스처는 전부 정식 시즌이다. 베타 표기는 실제 운영 리그에서만 나온다 (D-098)
     season_type: 'official' as const,
-    season_label: `Season ${league.season}`,
+    season_label: `시즌 ${league.season}`,
   }
 }
 
@@ -1027,7 +1027,7 @@ export function getLeaguePlayerSeasons(leaguePlayerId: string): LeaguePlayerSeas
     .sort((a, b) => b.season - a.season)
     .map((entry) => ({
       season: entry.season,
-      season_label: `Season ${entry.season}`,
+      season_label: `시즌 ${entry.season}`,
       season_type: 'official' as const,
       rank: entry.rank,
       rank_count: entry.rankCount,
@@ -1057,7 +1057,7 @@ export function getLeagueClanSeasons(leagueClanId: string): LeagueClanSeason[] |
     .sort((a, b) => b.season - a.season)
     .map((entry) => ({
       season: entry.season,
-      season_label: `Season ${entry.season}`,
+      season_label: `시즌 ${entry.season}`,
       season_type: 'official' as const,
       rank: entry.rank,
       rank_count: entry.rankCount,

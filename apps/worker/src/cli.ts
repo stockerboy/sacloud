@@ -185,17 +185,22 @@ function usage(): void {
               넥슨 참가자 ↔ 3rd.supply 선수 id 연결 (**같은 경기 · 닉네임 정확 일치** · D-132)
               --cleanup 은 기록이 하나도 없는 중복 행만 정리한다
   supply-mirror [--league <slug>] [--league-id N] [--floor <YYYY-MM-DD>] [--file <json>]
-              [--limit N] [--incremental] [--seen-from-db]
+              [--limit N] [--incremental] [--seen-from-db] [--adaptive]
               3rd.supply 공개 API 미러링 수집 (D-153). 받은 응답을 그대로 JSONL 에 쌓는다
               --incremental 은 커서를 버리고 목록 맨 앞부터 새 경기만 훑는다 (주기 실행용)
               --seen-from-db 는 "이미 받은 것" 을 DB 에서 읽는다 —
               JSONL 이 없는 빈 작업공간(GitHub Actions)에서 증분을 돌릴 때 쓴다
+              --adaptive 는 **활동량이 있는 클랜만** 훑는다 (D-162).
+              등급은 그 클랜의 마지막 경기 시각으로 정하고(DB 에서 읽는다 · 요청 0건),
+              등급별 주기는 SUPPLY_POLL_* 로 조절한다. 어떤 클랜도 24시간을 넘겨
+              방치되지 않는다. 원본 league_clan id 와 리그 id 도 DB 에서 채워
+              /clans/{slug}/show · /leagues/{slug} 를 부르지 않는다
   supply-seasons [--league <slug>] [--file <json>] [--limit N] [--dry-run]
-              3rd.supply **지난시즌 카드** 수집 (D-159). 경기는 가져오지 않는다.
+              3rd.supply **지난시즌 카드** 수집 (D-166). 경기는 가져오지 않는다.
               선수당 2요청 — leaguePlayerId 색인 + /leagueplayers/{id}/seasons.
               중단 후 재개된다. --dry-run 은 요청을 한 건도 보내지 않고 예상 요청 수만 낸다
   supply-seasons-import [--league <slug>] [--file <json>] [--limit N] [--confirm]
-              지난시즌 수집 파일 → LeaguePlayerSeason (D-159). **네트워크를 쓰지 않는다**
+              지난시즌 수집 파일 → LeaguePlayerSeason (D-166). **네트워크를 쓰지 않는다**
               원본값을 그대로 넣는다. 우리가 계산한 카드(imported=false)는 덮어쓰지 않는다.
               **--confirm 없이는 한 줄도 쓰지 않는다.** 로컬 DB 가 아니면 거부한다
   supply-player-profiles [--file <json>] [--limit N] [--dry-run]
@@ -214,8 +219,13 @@ function usage(): void {
               줄 단위는 **흘려 읽는다** — 13만 건도 통째로 메모리에 올리지 않는다
               **--confirm 없이는 한 줄도 쓰지 않는다.** 이미 있는 경기는 건너뛴다.
               --update-source 는 있는 경기의 **비어 있는** 원본점수 칸만 채운다
-  supply-rollup [--league <slug>] [--file <json>] [--confirm]
+  supply-rollup [--league <slug>] [--file <json>] [--confirm] [--full] [--since-hours N]
               미러 경기(origin='3rd.supply') → LeaguePlayer · LeagueClan 집계.
+              **기본은 증분이다** (D-162) — 최근 N시간(기본 24) 안에 적재된 경기가
+              건드린 선수만 다시 계산한다. 더하지 않는다: 그 선수의 값을 리그 전 경기에서
+              **처음부터 다시** 만들므로 같은 경기를 두 번 넣어도 값이 변하지 않는다.
+              --full 은 전수 재계산이다. 값이 어긋났을 때 되돌리는 길이라 없애지 않는다.
+              클랜은 증분·전수가 하는 일이 같다 — 수집 파일 목록 값을 그대로 쓴다 (D-157).
               선수 점수는 가장 최근 경기의 sourceRating 을 그대로 옮긴다 (D-153).
               선수 소속(LeaguePlayer.clanId · Player.clanId)도 같은 규칙이다 —
               **가장 최근 경기**에 적힌 클랜을 현재 소속으로 쓴다 (D-161).
@@ -1044,22 +1054,38 @@ async function main(): Promise<number> {
         /* `--seen-from-db` — "이미 받은 것" 을 DB 에서 읽는다.
            JSONL 이 없는 빈 작업공간(GitHub Actions)에서 증분을 돌릴 때 쓴다 */
         seenFromDb: boolFlag(args, 'seen-from-db'),
+        /* `--adaptive` — 활동량이 있는 클랜만 훑는다 (`supplyPollingPolicy.ts`) */
+        adaptive: boolFlag(args, 'adaptive'),
       })
       table([
         {
           클랜: result.clans,
+          '훑은 클랜': result.clansScanned,
           '경기 목록': result.matches,
           '경기 상세': result.details,
           '이번에 추가': `목록 +${result.newMatches} · 상세 +${result.newDetails}`,
+          요청: result.requests,
           실패: result.failures,
         },
       ])
+      if (result.selection) {
+        table([
+          {
+            사이클: result.selection.cycleIndex,
+            hot: `${result.selection.byTier.hot.due}/${result.selection.byTier.hot.total}`,
+            warm: `${result.selection.byTier.warm.due}/${result.selection.byTier.warm.total}`,
+            cold: `${result.selection.byTier.cold.due}/${result.selection.byTier.cold.total}`,
+            dormant: `${result.selection.byTier.dormant.due}/${result.selection.byTier.dormant.total}`,
+            미룸: result.selection.deferred,
+          },
+        ])
+      }
       log(`  파일 ${result.file} (+ .matches.jsonl / .details.jsonl)`)
       return 0
     }
 
     case 'supply-seasons': {
-      /* D-159 — 3rd.supply 지난시즌 카드 수집. **경기는 받지 않는다.**
+      /* D-166 — 3rd.supply 지난시즌 카드 수집. **경기는 받지 않는다.**
          `--file` 은 다른 supply 잡과 같은 규칙으로 저장소 루트 기준으로 푼다. */
       const leagueSlug = stringFlag(args, 'league') ?? 'supply'
       const repoRoot = join(process.cwd(), '..', '..')
@@ -1178,7 +1204,7 @@ async function main(): Promise<number> {
     }
 
     case 'supply-seasons-import': {
-      /* D-159 — 수집 파일 → LeaguePlayerSeason. 네트워크를 쓰지 않는다.
+      /* D-166 — 수집 파일 → LeaguePlayerSeason. 네트워크를 쓰지 않는다.
          기본은 미리보기이고 `--confirm` 이 있어야만 쓴다. */
       const leagueSlug = stringFlag(args, 'league') ?? 'supply'
       const repoRoot = join(process.cwd(), '..', '..')
@@ -1258,11 +1284,15 @@ async function main(): Promise<number> {
         leagueSlug: stringFlag(args, 'league'),
         file: stringFlag(args, 'file'),
         confirm,
+        /* 기본은 증분이다. `--full` 은 되돌릴 길로 남겨 둔다 */
+        full: boolFlag(args, 'full'),
+        sinceHours: numberFlag(args, 'since-hours'),
       })
 
       table(
         rollup.leagues.map((row) => ({
           리그: row.leagueSlug,
+          방식: row.mode === 'full' ? '전수' : `증분(바뀐 경기 ${row.changedMatches ?? 0})`,
           경기: row.matches,
           참가행: row.stats,
           선수: row.players.aggregated,

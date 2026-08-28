@@ -44,6 +44,12 @@ import {
 } from '../lib/supplyClient.js'
 import { appendJsonlMany, readJsonlIds } from '../lib/jsonlStore.js'
 import { log, warn } from '../lib/log.js'
+import {
+  readSupplyPollingConfig,
+  selectSupplyClansToScan,
+  type SupplyClanActivity,
+  type SupplyPollSelection,
+} from '../lib/supplyPollingPolicy.js'
 import type { JobContext } from './context.js'
 
 export interface SupplyMirrorClan {
@@ -169,6 +175,89 @@ function peekLeagueId(base: string): number | null {
   }
 }
 
+/**
+ * 리그 숫자 id 를 **DB 에서** 읽는다 (`League.sourceLeagueId`).
+ *
+ * 빈 작업공간(GitHub Actions)에는 체크포인트가 없어서 사이클마다 리그마다 한 건씩
+ * `/leagues/{slug}` 를 물었다. 우리가 이미 아는 값이라 물을 이유가 없다.
+ * 모르면 `null` — 그때만 원본에 묻는다. **지어내지 않는다.**
+ */
+async function leagueIdFromDb(leagueSlug: string): Promise<number | null> {
+  const row = await prisma.league.findUnique({
+    where: { slug: leagueSlug },
+    select: { sourceLeagueId: true },
+  })
+  const raw = row?.sourceLeagueId
+  if (raw === null || raw === undefined) return null
+  const value = Number(raw)
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
+/** 클랜 한 줄에 필요한 DB 근거 — 원본 league_clan id 와 마지막 경기 시각 */
+interface ClanDbFacts {
+  sourceLeagueClanId: number | null
+  lastMatchAt: Date | null
+}
+
+/**
+ * 등록 클랜의 **원본 league_clan id** 와 **마지막 경기 시각**을 DB 에서 한 번에 읽는다.
+ *
+ * ── 왜 필요한가
+ *   1. `leagueClanId` 가 비어 있으면 클랜마다 `/clans/{slug}/show` 를 한 건씩 물었다.
+ *      사이클마다 190건이다. 그 값은 `LeagueClan.sourceLeagueClanId` 에 이미 있다 (3-A 3번).
+ *   2. 적응형 폴링의 티어는 **마지막 경기 시각**으로 정한다. 그 값도 우리 DB 가 안다.
+ *
+ * 읽기만 한다. 근거가 없으면 `null` 이고, 그때는 원본에 묻거나 `dormant` 로 본다.
+ */
+async function clanFactsFromDb(
+  leagueSlug: string,
+  slugs: readonly string[],
+): Promise<Map<string, ClanDbFacts>> {
+  const facts = new Map<string, ClanDbFacts>()
+  if (slugs.length === 0) return facts
+
+  const rows = await prisma.leagueClan.findMany({
+    where: { league: { slug: leagueSlug }, clan: { slug: { in: [...slugs] } } },
+    select: { id: true, sourceLeagueClanId: true, clan: { select: { slug: true } } },
+  })
+  if (rows.length === 0) return facts
+
+  const slugOfId = new Map(rows.map((row) => [row.id, row.clan.slug]))
+  const ids = rows.map((row) => row.id)
+  const last = new Map<string, Date>()
+  /* 진영이 둘이라 두 번 묶는다. 인덱스가 `[진영clanId, startAt desc]` 라 등록 클랜만 보면 빠르다 */
+  const [red, blue] = await Promise.all([
+    prisma.match.groupBy({
+      by: ['redLeagueClanId'],
+      where: { origin: '3rd.supply', redLeagueClanId: { in: ids } },
+      _max: { startAt: true },
+    }),
+    prisma.match.groupBy({
+      by: ['blueLeagueClanId'],
+      where: { origin: '3rd.supply', blueLeagueClanId: { in: ids } },
+      _max: { startAt: true },
+    }),
+  ])
+  const remember = (id: string, at: Date | null) => {
+    if (at === null) return
+    const kept = last.get(id)
+    if (!kept || kept < at) last.set(id, at)
+  }
+  for (const row of red) remember(row.redLeagueClanId, row._max.startAt)
+  for (const row of blue) remember(row.blueLeagueClanId, row._max.startAt)
+
+  for (const row of rows) {
+    const slug = slugOfId.get(row.id)
+    if (slug === undefined) continue
+    const source = row.sourceLeagueClanId === null ? null : Number(row.sourceLeagueClanId)
+    facts.set(slug, {
+      sourceLeagueClanId: Number.isFinite(source) && (source ?? 0) > 0 ? source : null,
+      lastMatchAt: last.get(row.id) ?? null,
+    })
+  }
+  return facts
+}
+
 function readCheckpoint(
   base: string,
   leagueSlug: string,
@@ -197,6 +286,12 @@ export interface SupplyMirrorResult {
   newDetails: number
   failures: number
   file: string
+  /** 적응형 폴링이 이번 사이클에 고른 결과. `--adaptive` 가 아니면 `null` */
+  selection: SupplyPollSelection | null
+  /** 이번 사이클에 실제로 훑은 클랜 수 */
+  clansScanned: number
+  /** 원본에 보낸 요청 수 (경기목록·클랜show·클랜랭킹·상세 전부) */
+  requests: number
 }
 
 export async function runSupplyMirror(
@@ -231,9 +326,21 @@ export async function runSupplyMirror(
      * 새로 받은 것만 작은 JSONL 에 쌓인다. 읽기만 한다.
      */
     seenFromDb?: boolean
+    /**
+     * 적응형 클랜 폴링 — **활동량이 있는 클랜만** 훑는다 (`supplyPollingPolicy.ts`).
+     *
+     * 등록 클랜 190개를 사이클마다 전부 훑으면, 5분 주기에서 새 경기 0.6건을 찾자고
+     * 190건을 쓴다. 클랜의 마지막 경기 시각(우리 DB 가 안다)으로 티어를 나누고
+     * 티어마다 주기를 달리해 **평균 27.7개**만 본다. 어떤 클랜도 24시간을 넘겨
+     * 방치되지 않는다 — 등급 판정과 대상 선정은 전부 순수 함수라 테스트로 고정돼 있다.
+     */
+    adaptive?: boolean
   },
 ): Promise<SupplyMirrorResult> {
   const base = input.file
+  const polling = readSupplyPollingConfig()
+  /** 원본에 보낸 요청 수. 부하를 숫자로 남긴다 (3-A 5번) */
+  let requests = 0
 
   /**
    * 리그 숫자 id 는 slug 로 알아낸다.
@@ -248,10 +355,16 @@ export async function runSupplyMirror(
    */
   let leagueId = input.leagueId ?? peekLeagueId(base) ?? 0
   if (leagueId === 0) {
+    /* 체크포인트가 없어도 우리 DB 가 알고 있을 수 있다. 아는 것을 남에게 묻지 않는다 */
+    leagueId = (await leagueIdFromDb(input.leagueSlug)) ?? 0
+    if (leagueId > 0) log(`리그 id ${leagueId} 를 DB 에서 읽었다 (요청 0건)`)
+  }
+  if (leagueId === 0) {
     if (ctx.dryRun) {
       warn('체크포인트도 --league-id 도 없다 — dry-run 이라 리그 id 를 묻지 않는다')
     } else {
       leagueId = (await supplyGet<SupplyLeague>(supplyRoutes.league(input.leagueSlug))).data.id
+      requests += 1
     }
   }
 
@@ -316,6 +429,51 @@ export async function runSupplyMirror(
     log(`DB 에서 이미 아는 경기 ${rows.length}건 (파일에 없던 것 ${added}건)`)
   }
 
+  /* 클랜의 원본 id 와 마지막 경기 시각. 둘 다 우리 DB 가 아는 값이라 읽기만 한다.
+     `--adaptive` 일 때만 필요하고, dry-run 에서도 요청을 만들지 않으므로 안전하다 */
+  const clanFacts =
+    input.adaptive === true
+      ? await clanFactsFromDb(input.leagueSlug, Object.keys(state.clans))
+      : new Map<string, ClanDbFacts>()
+
+  /* 원본 league_clan id 를 DB 에서 채운다 → `/clans/{slug}/show` 를 부르지 않는다.
+     체크포인트에 이미 있으면 그대로 둔다 (파일이 더 최근일 수 있다) */
+  let hydrated = 0
+  for (const [slug, clan] of Object.entries(state.clans)) {
+    if (clan.leagueClanId !== null) continue
+    const source = clanFacts.get(slug)?.sourceLeagueClanId ?? null
+    if (source === null) continue
+    clan.leagueClanId = source
+    hydrated += 1
+  }
+  if (hydrated > 0) log(`원본 league_clan id ${hydrated}건을 DB 에서 채웠다 (요청 0건)`)
+
+  /* 적응형 선택은 **요청 전에** 정한다. dry-run 에서도 무엇을 볼지 보여 준다 */
+  const selection =
+    input.adaptive === true
+      ? selectSupplyClansToScan({
+          clans: Object.keys(state.clans).map(
+            (slug): SupplyClanActivity => ({
+              slug,
+              lastMatchAt: clanFacts.get(slug)?.lastMatchAt ?? null,
+            }),
+          ),
+          now: new Date(),
+          config: polling,
+        })
+      : null
+
+  if (selection) {
+    const tiers = (['hot', 'warm', 'cold', 'dormant'] as const)
+      .map((tier) => `${tier} ${selection.byTier[tier].due}/${selection.byTier[tier].total}`)
+      .join(' · ')
+    log(
+      `적응형 폴링 — 사이클 #${selection.cycleIndex} · 훑을 클랜 ${selection.scan.length}/` +
+        `${Object.keys(state.clans).length} (${tiers})` +
+        (selection.deferred > 0 ? ` · 상한으로 미룸 ${selection.deferred}` : ''),
+    )
+  }
+
   if (ctx.dryRun) {
     log('[dry-run] 요청을 한 건도 보내지 않는다')
     return {
@@ -326,6 +484,9 @@ export async function runSupplyMirror(
       newDetails: 0,
       failures: state.failures.length,
       file: base,
+      selection,
+      clansScanned: 0,
+      requests: 0,
     }
   }
 
@@ -338,12 +499,16 @@ export async function runSupplyMirror(
      이미 클랜을 받아 뒀어도 점수가 비어 있으면 다시 받는다 — 예전 수집에는 없던 값이다. */
   const clanCount = Object.keys(state.clans).length
   const missingRating = Object.values(state.clans).some((c) => c.rating === undefined || c.rating === null)
-  if (clanCount === 0 || missingRating) {
-    log(clanCount === 0 ? '1) 클랜 목록' : '1) 클랜 목록 — 점수가 비어 있어 다시 받는다')
+  /* 증분 사이클에서는 **매번** 다시 받는다. 클랜 점수·승패·부리그는 이 목록이 유일한 출처라
+     (D-157) 한 번 받아 두고 재사용하면 클랜랭킹이 그 자리에 얼어붙는다.
+     리그 3개 합쳐 페이지 14장 남짓이라 사이클 비용에서 차지하는 몫이 작다 */
+  if (clanCount === 0 || missingRating || input.incremental === true) {
+    log(clanCount === 0 ? '1) 클랜 목록' : '1) 클랜 목록 — 다시 받는다')
     for (const division of [1, 2]) {
       await supplyPaginate<SupplyRankClanRow>(
         (cursor) => supplyRoutes.rankClans(leagueId, division, cursor),
         (rows) => {
+          requests += 1
           for (const row of rows) {
             const c = row.clan
             if (!c?.slug) continue
@@ -380,10 +545,14 @@ export async function runSupplyMirror(
       clan.cursor = null
     }
   }
-  const pendingClans = slugs.filter((s) => state.clans[s] && !state.clans[s]?.done)
+  const duePending = slugs.filter((s) => state.clans[s] && !state.clans[s]?.done)
+  /* 적응형이면 **이번 차례인 클랜만** 남긴다. 나머지는 자기 주기의 다음 차례에 온다 */
+  const scanSet = selection ? new Set(selection.scan) : null
+  const pendingClans = scanSet ? duePending.filter((s) => scanSet.has(s)) : duePending
   log(
     `2) 경기 목록 — 받을 클랜 ${pendingClans.length}/${slugs.length} · 동시 ${SUPPLY_CONCURRENCY}` +
-      (input.incremental === true ? ' · 증분(새 경기만)' : ''),
+      (input.incremental === true ? ' · 증분(새 경기만)' : '') +
+      (scanSet ? ' · 적응형' : ''),
   )
 
   await supplyMapLimited(pendingClans, async (slug) => {
@@ -391,7 +560,9 @@ export async function runSupplyMirror(
     if (!clan) return
 
     if (clan.leagueClanId === null) {
+      /* DB 에도 체크포인트에도 없을 때만 묻는다. 있으면 위에서 이미 채웠다 */
       const show = await supplyGet<SupplyClanShow>(supplyRoutes.clanShow(input.leagueSlug, slug))
+      requests += 1
       clan.leagueClanId = show.data?.id ?? null
       clan.division = show.data?.division ?? clan.division
     }
@@ -403,12 +574,20 @@ export async function runSupplyMirror(
 
     let added = 0
     let cursor = clan.cursor
-    /* 증분에서 "이미 아는 경기만 나온 페이지" 를 몇 장 연속으로 봤는가.
-       한 장만 보고 멈추면 위험하다 — 같은 경기가 양 클랜에 나오므로 다른 클랜이
-       먼저 받아 둔 경기가 앞쪽에 섞여 있을 수 있다. 두 장 연속이면 따라잡은 것으로 본다 */
+    /**
+     * 증분에서 "새것이 하나도 없는 페이지" 를 몇 장 연속으로 봤는가.
+     *
+     * 경기 목록은 **최신순**이다. 그래서 이미 아는 경기를 만난 시점부터 그 아래는 전부
+     * 과거이고, 한 장만 보고 멈춰도 새 경기를 놓치지 않는다 (기본 `knownPagesToStop = 1`).
+     * 예전에는 두 장을 봤다 — 같은 경기가 양 클랜에 나오므로 "이 페이지에 새것이 없다"가
+     * 곧 "따라잡았다"는 아니라고 봤기 때문이다. 하지만 그 경우 그 경기는 **다른 클랜을 훑을 때
+     * 이미 받아 둔 것**이라 어차피 빠지지 않는다. 원본 정렬을 의심할 일이 생기면
+     * `SUPPLY_POLL_KNOWN_PAGES` 로 되돌린다.
+     */
     let knownPages = 0
     for (;;) {
       const r = await supplyGet<SupplyMatchListRow[]>(supplyRoutes.clanMatches(leagueClanId, cursor))
+      requests += 1
       const rows = r.data ?? []
       let hitFloor = false
       const fresh: unknown[] = []
@@ -432,7 +611,7 @@ export async function runSupplyMirror(
 
       if (input.incremental === true) {
         knownPages = fresh.length === 0 ? knownPages + 1 : 0
-        if (knownPages >= 2) {
+        if (knownPages >= polling.knownPagesToStop) {
           /* 따라잡았다. 커서를 비워 둬야 다음 증분도 맨 앞부터 본다 */
           clan.cursor = null
           clan.done = true
@@ -467,6 +646,8 @@ export async function runSupplyMirror(
     target,
     async (matchId) => {
       try {
+        /* 실패해도 요청은 나갔다. 세는 자리를 호출 앞에 둔다 */
+        requests += 1
         const r = await supplyGet<Record<string, unknown>>(
           supplyRoutes.matchDetail(leagueId, matchId),
         )
@@ -498,5 +679,8 @@ export async function runSupplyMirror(
     newDetails: seenDetails.size - before.d,
     failures: state.failures.length,
     file: base,
+    selection,
+    clansScanned: pendingClans.length,
+    requests,
   }
 }
