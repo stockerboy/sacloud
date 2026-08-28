@@ -46,7 +46,12 @@ export function DivisionTabs({
             key={division}
             href={`/league/${leagueSlug}/rank/clan/${division}`}
             className={[
-              'shrink-0 whitespace-nowrap px-5 py-3 border-line',
+              /* 좁은 화면에서는 버튼을 조금 줄인다.
+                 [미확인] 원본 모바일 탭은 픽셀로 재지 못했다. 실측한 값(표 행 간격 36px)의
+                 리듬에 어긋나지 않는 선까지만 줄인 값이다 —
+                 줄높이 1.5rem(21px) + 상하 padding 0.5rem×2(14px) + 테두리 2px = 37px ≈ 36px.
+                 원본 사진을 재게 되면 눈대중이 아니라 이 계산식을 고친다. */
+              'shrink-0 whitespace-nowrap px-5 py-3 border-line max-md:px-3.5 max-md:py-2 max-md:text-base',
               first ? 'border rounded-l' : 'border-t border-r border-b',
               last ? 'rounded-r' : '',
               division === current ? 'bg-tab-active text-tab-active-fg' : '',

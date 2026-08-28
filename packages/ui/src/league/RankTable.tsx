@@ -31,9 +31,39 @@ import { leaguePlayerPath } from '../common/paths'
  * - 개인랭킹: 순위 `w-40` / 닉네임 `w-72` / 승·패·승률·킬뎃·평균킬 `w-36` / 래더 `flex-grow`
  */
 
-const HEAD = 'flex items-center border-b border-b-line py-2 text-meta'
+/**
+ * 모바일 치수 근거 (2026-08-28, 원본/우리 스크린샷 픽셀 실측 · 기기 배율 3x · 1125×2436).
+ *
+ * | 항목            | 우리(전) | 원본 | CSS px (÷3) |
+ * |-----------------|---------|------|-------------|
+ * | 표 행 간격      | 170     | 108  | **36**      |
+ * | 행 숫자 글자높이 | 33      | 26   | 8.7         |
+ * | 클랜마크 지름   | 77      | 58   | **19.3**    |
+ * | 제목 세로 범위  | 121(2줄) | 78   | **26**      |
+ *
+ * 루트 폰트는 PC·모바일 모두 14px 이다 (`styles.css`). 그래서 `1rem = 14px`.
+ *
+ * 행 간격 36px 을 만드는 계산 (아래 `ROW` 의 모바일 값)
+ * ```
+ * 클랜마크 1.4rem(19.6px)   ← 행에서 가장 높은 요소. 글자 줄높이보다 크다
+ * + 상하 padding 0.55rem×2 = 15.4px
+ * + 아래 테두리 1px
+ * = 36.0px                  ← 실측 목표 36
+ * ```
+ * 글자는 `text-lg`(15.75px) → `text-sm`(12.25px). 실측 비율 33/26 = 1.27 이고
+ * `text-lg / text-sm` = 1.125/0.875 = 1.29 로 가장 가깝다
+ * (`text-base` 는 1.125 배라 실측 비율에 못 미친다).
+ * `text-sm` 줄높이는 1.25rem(17.5px)이라 마크(19.6px)보다 낮아 행 높이를 바꾸지 않는다.
+ */
+const HEAD = 'flex items-center border-b border-b-line py-2 text-meta max-md:text-sm'
+/* PC 는 `py-3 text-lg` 그대로. 모바일만 위 계산값으로 바꾼다 */
 const ROW =
-  'flex items-center border-b border-b-line bg-row py-3 text-lg text-meta last:border-b-0 max-md:py-4'
+  'flex items-center border-b border-b-line bg-row py-3 text-lg text-meta last:border-b-0 max-md:py-[0.55rem] max-md:text-sm'
+/**
+ * 표 안의 클랜마크 — 좁은 화면에서만 줄인다.
+ * 실측 58 device px ÷ 3 = 19.3 CSS px ≈ 1.4rem(19.6px). `SIZE` 맵(`md` = 2rem)은 건드리지 않는다.
+ */
+const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'
 
 /**
  * 모바일 컬럼 규칙 (2026-08-28 원본 관측).
@@ -63,16 +93,30 @@ function Unit({ children }: { children: React.ReactNode }) {
  */
 export function RankHeader({ title, notice }: { title: string; notice: string }) {
   return (
-    <div className="mb-5 flex items-center">
-      <div className="text-2xl">{title}</div>
-      <div className="ml-3 text-sm text-meta">{notice}</div>
+    /* 좁은 화면에서는 한 줄에 나란히 두지 않는다 —
+       안내문구가 제목을 밀어 `클랜랭` / `킹` 으로 쪼개졌다 (실측 121 device px = 두 줄).
+       제목 한 줄 → 그 아래 작은 회색 안내문구 한 줄로 쌓는다. */
+    <div className="mb-5 flex items-center max-md:flex-col max-md:items-start">
+      {/* 원본 제목 세로 범위 78 device px ÷ 3 = 26 CSS px.
+          한글 글자 높이는 폰트 크기의 약 0.85 배이므로 폰트 ≈ 30.6px ≈ 2rem(28px).
+          우리 한 줄 기준 실측 60 device px 에서 역산해도 21px × (78/60) ≈ 27.3px 로 같은 자리다. */}
+      {/* `leading-tight` 는 줄높이만 따로 준다 — `text-2xl` 이 물고 있는 줄높이 28px 이
+          폰트 28px 과 같아져 글자가 눌리지 않게 하려는 것이다 */}
+      <div className="text-2xl max-md:whitespace-nowrap max-md:text-[2rem] max-md:leading-tight">
+        {title}
+      </div>
+      <div className="ml-3 text-sm text-meta max-md:ml-0 max-md:mt-1">{notice}</div>
     </div>
   )
 }
 
 /** 표 테두리 박스 (원본 `mt-10 border border-gray-300`) */
 export function RankBox({ children }: { children: React.ReactNode }) {
-  return <div className="mt-10 border border-line">{children}</div>
+  /* 좁은 화면에서는 표가 화면 끝까지 찬다 (`.mobile-bleed` — 컨테이너 좌우 여백을 음수 마진으로 되뺀다).
+     원본 표는 좌우 여백이 0이다.
+     위 여백 `mt-10`(2.5rem = 35px)은 원본이 더 붙어 있어 모바일만 `mt-4`(14px)로 줄인다.
+     [미확인] 원본 스크린샷에서 이 간격은 재지 못했다 — 아래 표 행 간격 36px 리듬에 맞춘 값이다. */
+  return <div className="mobile-bleed mt-10 border border-line max-md:mt-4">{children}</div>
 }
 
 interface TableStateProps {
@@ -106,7 +150,8 @@ function RankSkeleton({ columns }: { columns: number }) {
         <div key={row} className={ROW}>
           {Array.from({ length: columns }, (_, col) => (
             <div key={col} className="flex-1 px-4">
-              <Skeleton className="h-[25px] w-full" />
+              {/* 모바일 행 높이(36px)에 맞춘 막대. PC 25px : 57px 비율을 그대로 옮겼다 */}
+              <Skeleton className="h-[25px] w-full max-md:h-[1.25rem]" />
             </div>
           ))}
         </div>
@@ -149,7 +194,7 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
                 className="flex min-w-0 items-center"
                 href={`/league/${leagueSlug}/clan/${row.clan.slug}`}
               >
-                <ClanMark mark={row.clan.mark} className="mr-2" alt={row.clan.name} />
+                <ClanMark mark={row.clan.mark} className={MARK} alt={row.clan.name} />
                 <span className="truncate">{row.clan.name}</span>
               </Link>
             </div>
@@ -218,7 +263,7 @@ export function PlayerRankTable({
                 {/* 무소속이어도 **자리를 비우지 않는다** — fallback 마크를 그린다 (D-146).
                     `clan ? ... : null` 로 감싸면 소속 없는 선수 옆이 통째로 빈다.
                     `clan` 을 그대로 넘기면 `clanMarkView` 가 fallback 으로 떨어뜨린다. */}
-                <ClanMark clan={row.clan} className="mr-2" alt={row.clan?.name ?? ''} />
+                <ClanMark clan={row.clan} className={MARK} alt={row.clan?.name ?? ''} />
                 <span className="truncate">{row.player.name}</span>
               </Link>
             </div>

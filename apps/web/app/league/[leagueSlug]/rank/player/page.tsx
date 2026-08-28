@@ -17,7 +17,9 @@ export default function PlayerRankPage({ params }: { params: Promise<{ leagueSlu
 
   return (
     <div className="pc-container">
-      <div className="p-6">
+      {/* 좁은 화면에서는 좌우 안쪽 여백을 없앤다 — `.mobile-bleed`(표)가 화면 끝까지 가도록.
+          자세한 근거는 클랜랭킹 페이지 주석 참조. 위아래 여백은 그대로 둔다. */}
+      <div className="p-6 max-md:px-0">
         <RankHeader
           title="플레이어 개인랭킹"
           notice="랭킹은 1시간마다 갱신되며, 배치고사가 종료된 플레이어만 표시됩니다."

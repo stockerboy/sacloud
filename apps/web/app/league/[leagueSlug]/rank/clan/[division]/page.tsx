@@ -38,7 +38,11 @@ export default function ClanRankPage({
 
   return (
     <div className="pc-container">
-      <div className="p-6">
+      {/* 좁은 화면에서는 좌우 안쪽 여백을 없앤다.
+          `.mobile-bleed`(표)는 `.pc-container` 의 0.75rem 만 되빼도록 만들어져 있어서,
+          여기 `p-6`(1.5rem)이 남아 있으면 표가 화면 끝까지 가지 못한다.
+          위아래 여백은 그대로 둔다. */}
+      <div className="p-6 max-md:px-0">
         <RankHeader
           title="클랜랭킹"
           notice="랭킹은 1시간마다 갱신되며, 배치고사가 종료된 클랜만 표시됩니다."
