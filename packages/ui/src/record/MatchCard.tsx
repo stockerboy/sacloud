@@ -204,8 +204,9 @@ function ClanSide({
           <ClanMark
             clan={snapshot.clan}
             size="xs"
-            /* 모바일에서만 1.5rem → 1.25rem 으로 조금 줄인다 (2026-08-28 사용자 지시) */
-            className="mr-1 shrink-0 max-md:h-5 max-md:w-5"
+            /* 원본 실측: 접힌 카드 클랜 마크가 **39 device px** (기기 배율 3x → 13 CSS px).
+               우리는 48px 이었다. 13/14rem ≈ 0.93rem 으로 맞춘다 (2026-08-28 픽셀 대조) */
+            className="mr-1 shrink-0 max-md:h-[0.93rem] max-md:w-[0.93rem]"
             alt={snapshot.clan.name}
           />
           <span className="inline-block max-w-[100px] truncate align-middle max-md:max-w-[160px]">
@@ -360,7 +361,12 @@ export function MatchCard({
                       {/* 모바일 kda 는 원본이 더 작다 (2026-08-28 원본 화면과 나란히 대조).
                           `text-xl`(1.25rem) 로 두니 원본보다 약 35% 커 보였다.
                           PC 는 원본 실측값 그대로 두고 좁은 화면에서만 줄인다. */}
-                      <div className="text-xl font-semibold max-md:text-lg">
+                      {/* 원본 스크린샷을 픽셀로 재서 맞췄다 (2026-08-28).
+                          같은 기기·같은 배율에서 kda 글자 높이가 우리 43px · 원본 38px 이었다
+                          (배율 1.13). `text-lg`(1.125rem) ÷ 1.13 ≈ 1rem 이라 `text-base` 로 둔다.
+                          같은 사진에서 `제3보급창고 - 5일 전` 줄은 우리 33px · 원본 32px 로
+                          이미 일치했다 — 루트 폰트와 `text-sm` 은 맞다는 뜻이다. */}
+                      <div className="text-xl font-semibold max-md:text-base">
                         {stat.kill ?? '-'} / <span className="text-lose">{stat.death ?? '-'}</span> /{' '}
                         {stat.assist ?? '-'}
                       </div>
@@ -580,13 +586,16 @@ function StatRow({
           예전에는 `플레이어` 칸과 `래더` 칸이 따로였다 (원본 모바일에는 래더 컬럼이 없다) */}
       <div className="flex w-52 items-center px-2 max-md:w-auto max-md:min-w-0 max-md:flex-1">
         {/* 경기 당시 소속 클랜 (D-131). 무소속·미등록이면 fallback 마크가 그려진다 (D-146).
-            크기는 `xxs`(1rem) 에서 `xs`(1.5rem) 로 올렸다 — 정확히 1.5배다.
-            사용자가 원본과 대조해 "마크가 너무 작다, 1.5배로" 라고 지정했다 (2026-08-28). */}
+
+            크기는 **원본 스크린샷을 재서** 정했다 (2026-08-28) —
+            상세표 선수 마크가 원본에서 45×48 device px 였다 (배율 3x → 약 15.3 CSS px).
+            `xxs`(1rem) 는 작고 `xs`(1.5rem) 는 컸다. 1.1rem 이 실측값이다.
+            눈대중으로 한 단계씩 올렸다 내렸다 하지 말고 이 숫자를 기준으로 고쳐라. */}
         <ClanMark
           clan={stat.match_time_clan}
           alt={stat.match_time_clan?.name ?? ''}
           size="xs"
-          className="mr-1 shrink-0"
+          className="mr-1 shrink-0 max-md:h-[1.1rem] max-md:w-[1.1rem]"
         />
         <div className="min-w-0">
           <div className="flex min-w-0 items-center">
