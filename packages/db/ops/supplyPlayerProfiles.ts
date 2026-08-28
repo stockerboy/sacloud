@@ -54,22 +54,36 @@ export function supplyPositionLabel(code: number | null | undefined): string | n
   return SUPPLY_POSITION_LABELS[code] ?? null
 }
 
+/** 프로필이 알려 주는 **현재 소속 클랜**. 수집 파일이 준 값만 담는다 */
+export interface SupplyPlayerProfileClan {
+  /** 3rd.supply 의 클랜 id */
+  sourceClanId: string
+  name: string
+  slug: string
+  markBgUrl: string | null
+  markFrontUrl: string | null
+}
+
 /** 적재 입력 한 줄 — 수집 파일에서 뽑아 온 값 그대로 */
 export interface SupplyPlayerProfileInput {
   /** 3rd.supply 의 player id */
   playerId: string
+  /** 원본이 **지금** 쓰는 닉네임. 우리 행의 이름이 옛것일 수 있다 (D-162) */
+  name: string | null
   /** 포지션 **코드**. 원본에 없으면 `null` */
   position: number | null
   note: string | null
   /** `YYYY-MM-DD HH:mm:ss` (KST 표기). 모양이 다르면 버린다 */
   renewedAt: string | null
+  /** 현재 소속. 무소속이면 `null` */
+  clan: SupplyPlayerProfileClan | null
 }
 
 export interface SupplyPlayerProfilesApplyResult {
   confirm: boolean
   /** 넘겨받은 줄 수 */
   read: number
-  /** 우리 DB 의 `origin='3rd.supply'` 선수와 이어진 줄 */
+  /** 우리 DB 의 선수와 이어진 줄 (`sourcePlayerId` 기준 · origin 을 가리지 않는다) */
   matched: number
   /** 원본에는 있는데 우리 DB 에 없는 선수 (추측해 만들지 않는다) */
   unknownPlayers: number
@@ -87,6 +101,28 @@ export interface SupplyPlayerProfilesApplyResult {
   renewedAtSet: number
   /** `renewed_at` 이 왔는데 모양이 달라 버린 줄 */
   renewedAtUnparsed: number
+
+  /* ── 닉네임 (D-162) ── */
+  /** 우리 이름이 원본의 **현재 닉네임**과 달라 바꾼(바꿀) 선수 */
+  namesChanged: number
+  /** 사람이 원본과 대조할 수 있게 남기는 표본 (최대 20명) */
+  nameChangeSamples: { playerId: string; before: string; after: string }[]
+
+  /* ── 소속 클랜 (D-162) ── */
+  /** 프로필이 클랜을 알려 준 줄 */
+  clanGiven: number
+  /** `Player.clanId` 를 프로필 값으로 바꾼(바꿀) 선수 */
+  clanSet: number
+  /** 이미 그 클랜이라 건드리지 않은 선수 */
+  clanUnchanged: number
+  /** 프로필에 클랜이 없어 기존 값(D-160 경기 파생)을 그대로 둔 선수 */
+  clanLeftToFallback: number
+  /** 우리 `Clan` 표에 없어 새로 만든(만들) 클랜 */
+  clansCreated: number
+  /** slug 로는 있었는데 `sourceClanId` 가 비어 있어 채운 클랜 */
+  clansAdopted: number
+  /** 마크가 비어 있어 채운 클랜 — 사용자가 fallback 마크 말고 진짜 마크를 요구했다 */
+  clansMarkFilled: number
 }
 
 function emptyResult(confirm: boolean): SupplyPlayerProfilesApplyResult {
@@ -103,11 +139,132 @@ function emptyResult(confirm: boolean): SupplyPlayerProfilesApplyResult {
     noteSet: 0,
     renewedAtSet: 0,
     renewedAtUnparsed: 0,
+    namesChanged: 0,
+    nameChangeSamples: [],
+    clanGiven: 0,
+    clanSet: 0,
+    clanUnchanged: 0,
+    clanLeftToFallback: 0,
+    clansCreated: 0,
+    clansAdopted: 0,
+    clansMarkFilled: 0,
   }
 }
 
 export function createSupplyPlayerProfilesResult(confirm: boolean): SupplyPlayerProfilesApplyResult {
   return emptyResult(confirm)
+}
+
+/**
+ * 프로필이 알려 준 클랜들을 우리 `Clan` 표에 맞춰 놓고 `sourceClanId → Clan.id` 를 돌려준다.
+ *
+ * ── 왜 만들기까지 하는가
+ *   선수가 열산리그에만 등록된 클랜 소속일 수 있다. 그 클랜이 우리 리그에서 팀으로 뛴 적이
+ *   없으면 `Clan` 행이 아예 없다. 행이 없으면 소속이 `없음` 으로 나오고, 마크도 fallback 이
+ *   그려진다 — 사용자가 지적한 그 상태다. **수집 파일이 준 값만으로** 행을 만든다.
+ *
+ * ── 지어내지 않는 것
+ *   `establishedAt` · `notice` · `masterPlayerId` · `category` · `tier` 는 프로필이 주지 않는다.
+ *   비워 둔다 (`category` 는 스키마 기본값이 적용된다).
+ *
+ * ── 이미 있는 클랜은 **이름을 바꾸지 않는다**
+ *   클랜 이름·랭킹 집계는 다른 경로(`supplyRollup`)가 맡는다. 여기서는 비어 있는 칸
+ *   (`sourceClanId` · 마크)만 채운다. 채우는 이유는 마크가 비면 화면이 fallback 을 그리기 때문이다.
+ */
+async function resolveClans(
+  clans: readonly SupplyPlayerProfileClan[],
+  input: { confirm: boolean; result: SupplyPlayerProfilesApplyResult },
+): Promise<Map<string, string>> {
+  const { confirm, result } = input
+  const wanted = new Map<string, SupplyPlayerProfileClan>()
+  for (const clan of clans) wanted.set(clan.sourceClanId, clan)
+  const idBySourceId = new Map<string, string>()
+  if (wanted.size === 0) return idBySourceId
+
+  const bySourceId = await prisma.clan.findMany({
+    where: { sourceClanId: { in: [...wanted.keys()] } },
+    select: { id: true, sourceClanId: true, markBgUrl: true, markFrontUrl: true },
+  })
+  for (const clan of bySourceId) {
+    idBySourceId.set(clan.sourceClanId as string, clan.id)
+    /* 마크가 비어 있으면 채운다. 있는 값을 덮지는 않는다 */
+    const bg = clan.markBgUrl ?? wanted.get(clan.sourceClanId as string)?.markBgUrl ?? null
+    const front = clan.markFrontUrl ?? wanted.get(clan.sourceClanId as string)?.markFrontUrl ?? null
+    if (clan.markBgUrl === null && bg !== null) {
+      result.clansMarkFilled += 1
+      if (confirm) {
+        await prisma.clan.update({
+          where: { id: clan.id },
+          data: { markBgUrl: bg, markFrontUrl: front },
+        })
+      }
+    }
+  }
+
+  const missing = [...wanted.values()].filter((c) => !idBySourceId.has(c.sourceClanId))
+  if (missing.length === 0) return idBySourceId
+
+  /* slug 로는 이미 있을 수 있다 — 다른 경로가 `sourceClanId` 없이 만들어 둔 행이다.
+     새로 만들면 slug 유니크에 걸린다. 그 행을 **입양**해 원본 id 를 채운다 */
+  const bySlug = await prisma.clan.findMany({
+    where: { slug: { in: missing.map((c) => c.slug) } },
+    select: { id: true, slug: true, sourceClanId: true, markBgUrl: true, markFrontUrl: true },
+  })
+  const slugRow = new Map(bySlug.map((c) => [c.slug, c]))
+
+  for (const clan of missing) {
+    const existing = slugRow.get(clan.slug)
+    if (existing) {
+      idBySourceId.set(clan.sourceClanId, existing.id)
+      if (existing.sourceClanId === null) {
+        result.clansAdopted += 1
+        if (existing.markBgUrl === null && clan.markBgUrl !== null) result.clansMarkFilled += 1
+        if (confirm) {
+          await prisma.clan.update({
+            where: { id: existing.id },
+            data: {
+              sourceClanId: clan.sourceClanId,
+              markBgUrl: existing.markBgUrl ?? clan.markBgUrl,
+              markFrontUrl: existing.markFrontUrl ?? clan.markFrontUrl,
+            },
+          })
+        }
+      }
+      continue
+    }
+
+    result.clansCreated += 1
+    if (!confirm) {
+      /* 미리보기에서도 **무엇을 쓸 뻔했는지** 숫자가 똑같이 나와야 한다.
+         아직 행이 없어 진짜 id 가 없으므로 자리표시자를 넣는다 —
+         `confirm` 이 없으면 어차피 아무것도 쓰지 않으므로 DB 에 닿지 않는다 */
+      idBySourceId.set(clan.sourceClanId, `(new:${clan.slug})`)
+      continue
+    }
+    try {
+      const created = await prisma.clan.create({
+        data: {
+          slug: clan.slug,
+          name: clan.name,
+          markBgUrl: clan.markBgUrl,
+          markFrontUrl: clan.markFrontUrl,
+          sourceClanId: clan.sourceClanId,
+          origin: '3rd.supply',
+        },
+        select: { id: true },
+      })
+      idBySourceId.set(clan.sourceClanId, created.id)
+    } catch {
+      /* 같은 slug 를 다른 쪽이 방금 만들었다. 실패를 삼키지 않고 다시 찾아 잇는다 */
+      const again = await prisma.clan.findUnique({
+        where: { slug: clan.slug },
+        select: { id: true },
+      })
+      if (again) idBySourceId.set(clan.sourceClanId, again.id)
+    }
+  }
+
+  return idBySourceId
 }
 
 /**
@@ -129,20 +286,52 @@ export async function applySupplyPlayerProfiles(
     byPlayerId.set(row.playerId, row)
   }
 
-  /* `origin` 을 조건에 넣는다 — 넥슨 경로로 들어온 행을 덮지 않기 위해서다 */
+  /**
+   * **`origin` 으로 거르지 않는다** (D-162).
+   *
+   * 예전에는 `origin='3rd.supply'` 만 봤다. 그래서 넥슨 경기 수집이 먼저 만든 행
+   * (`OBS-` · `origin='nexon'`)이 통째로 빠졌고, 그 선수들은 **닉네임이 옛것이고
+   * 소속이 비어** 있었다 — 선수 `huwho` 가 그 예다(우리 화면에서 `후후시치` · 소속 없음).
+   * 기준은 출처가 아니라 **`sourcePlayerId` 가 그 선수를 가리키는가** 다.
+   *
+   * 개발 시드(`origin='mock'`)에는 `sourcePlayerId` 가 없어 애초에 걸리지 않지만,
+   * 실수로 붙는 날을 대비해 명시적으로 뺀다.
+   */
   const players = await prisma.player.findMany({
-    where: { origin: '3rd.supply', sourcePlayerId: { in: [...byPlayerId.keys()] } },
-    select: { id: true, sourcePlayerId: true, position: true, note: true, renewedAt: true },
+    where: {
+      sourcePlayerId: { in: [...byPlayerId.keys()] },
+      origin: { not: 'mock' },
+    },
+    select: {
+      id: true,
+      sourcePlayerId: true,
+      name: true,
+      position: true,
+      note: true,
+      renewedAt: true,
+      clanId: true,
+    },
   })
-  const found = new Map(players.map((p) => [p.sourcePlayerId as string, p]))
+  const found = new Map<string, (typeof players)[number][]>()
+  for (const player of players) {
+    const key = player.sourcePlayerId as string
+    const list = found.get(key)
+    if (list) list.push(player)
+    else found.set(key, [player])
+  }
+
+  /* 클랜을 먼저 정리한다 — 선수 갱신이 `Clan.id` 를 필요로 한다 */
+  const clanIdBySourceId = await resolveClans(
+    [...byPlayerId.values()].flatMap((row) => (row.clan ? [row.clan] : [])),
+    { confirm, result },
+  )
 
   for (const [playerId, row] of byPlayerId) {
-    const player = found.get(playerId)
-    if (!player) {
+    const matches = found.get(playerId)
+    if (!matches || matches.length === 0) {
       result.unknownPlayers += 1
       continue
     }
-    result.matched += 1
 
     const label = supplyPositionLabel(row.position)
     if (row.position !== null && label === null) {
@@ -157,26 +346,61 @@ export async function applySupplyPlayerProfiles(
     const renewedAt = parseSupplyDateTime(row.renewedAt)
     if (row.renewedAt !== null && renewedAt === null) result.renewedAtUnparsed += 1
 
-    if (label !== null) result.positionSet += 1
-    if (row.note !== null) result.noteSet += 1
-    if (renewedAt !== null) result.renewedAtSet += 1
+    /* 소속 — 프로필 값이 **우선**이다 (D-162).
+       프로필에 없으면 기존 값(D-160 이 최신 경기에서 되짚은 값)을 그대로 둔다.
+       프로필이 "무소속" 이라고 말한 것과 "모른다" 를 구분할 수 없어서다 —
+       원본 응답의 `clan: null` 은 둘 중 어느 쪽인지 말해 주지 않는다 `[미확인]`. */
+    const clanId = row.clan ? (clanIdBySourceId.get(row.clan.sourceClanId) ?? null) : null
+    if (row.clan) result.clanGiven += 1
+    else result.clanLeftToFallback += 1
 
-    const same =
-      player.position === label &&
-      player.note === row.note &&
-      (player.renewedAt?.getTime() ?? null) === (renewedAt?.getTime() ?? null)
-    if (same) {
-      result.unchanged += 1
-      continue
+    /* 원본이 **지금** 쓰는 닉네임. 빈 문자열은 이름이 아니다 — 그때는 바꾸지 않는다 */
+    const name = row.name !== null && row.name.trim() !== '' ? row.name : null
+
+    for (const player of matches) {
+      result.matched += 1
+      if (label !== null) result.positionSet += 1
+      if (row.note !== null) result.noteSet += 1
+      if (renewedAt !== null) result.renewedAtSet += 1
+
+      const nameChanged = name !== null && player.name !== name
+      if (nameChanged) {
+        result.namesChanged += 1
+        if (result.nameChangeSamples.length < 20) {
+          result.nameChangeSamples.push({ playerId, before: player.name, after: name })
+        }
+      }
+
+      const clanChanged = clanId !== null && player.clanId !== clanId
+      if (clanChanged) result.clanSet += 1
+      else if (clanId !== null) result.clanUnchanged += 1
+
+      const same =
+        player.position === label &&
+        player.note === row.note &&
+        (player.renewedAt?.getTime() ?? null) === (renewedAt?.getTime() ?? null) &&
+        !nameChanged &&
+        !clanChanged
+      if (same) {
+        result.unchanged += 1
+        continue
+      }
+
+      result.updated += 1
+      if (!confirm) continue
+
+      await prisma.player.update({
+        where: { id: player.id },
+        data: {
+          position: label,
+          note: row.note,
+          renewedAt,
+          /* 값이 없으면 **건드리지 않는다.** 빈 값으로 밀어 지우지 않는다 */
+          ...(nameChanged ? { name } : {}),
+          ...(clanChanged ? { clanId } : {}),
+        },
+      })
     }
-
-    result.updated += 1
-    if (!confirm) continue
-
-    await prisma.player.update({
-      where: { id: player.id },
-      data: { position: label, note: row.note, renewedAt },
-    })
   }
 
   return result

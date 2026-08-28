@@ -19,6 +19,7 @@ import {
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
 import { ladderMatchWhere, withLadderMatch } from './ladderScope'
+import { buildPlayerForm } from './playerForm'
 import { toKstIso } from '../format'
 import {
   CLAN_SUMMARY_SELECT,
@@ -569,7 +570,7 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, sniper, rifle, matchCount, weaponStats, record] = await Promise.all([
+  const [rank, sniper, rifle, matchCount, weaponStats, record, form] = await Promise.all([
     playerRankOf({
       id: leaguePlayer.id,
       leagueId: leaguePlayer.leagueId,
@@ -589,6 +590,9 @@ export async function getLeaguePlayerDetail(
     leagueClanIdPromise.then((leagueClanId) =>
       buildRecordSummary(league.id, where, leagueClanId ?? '', playerId),
     ),
+    /* 최근 폼 — 6개월 월별 킬뎃 + 최근 10경기 판정 (D-167).
+       소속 클랜을 보지 않으므로 `leagueClanIdPromise` 를 기다릴 이유가 없다 */
+    buildPlayerForm(league.id, playerId),
   ])
 
   return {
@@ -639,6 +643,8 @@ export async function getLeaguePlayerDetail(
     rifle_assist: rifle.assist,
     rifle_kd_rate: rifle.kdRate,
     match_summary: record.summary,
+    /* 최근 폼 (D-167). 원본에 없는 화면이다 — 사용자 요구로 추가했다 */
+    form,
     teammates: record.teammates,
     weapon_stats: weaponStats,
   }

@@ -3,6 +3,7 @@ import {
   DEFAULT_API_BASE_URL,
   endpointList,
   PAGE_SIZE,
+  parseRankWeapon,
   SUCCESS_MESSAGE,
   type EndpointKey,
 } from '@sacloud/contract'
@@ -208,12 +209,27 @@ const resolvers: Record<EndpointKey, Resolver> = {
       : null
     return page ? okPage(page) : notFound()
   },
+  /**
+   * 개인랭킹. `weapon=all|sniper|rifle` 로 무기 축을 고른다 (D-169, 원본에 없는 신규 기능).
+   * 파라미터가 없으면 `all` — 기존 동작 그대로다.
+   */
   leagueRankPlayers: ({ params, request }) => {
     const leagueId = resolveLeagueId(param(params['leagueId']))
-    const page = leagueId
-      ? store.getPlayerRanks(leagueId, query(request, 'cursor'), PAGE_SIZE.RANK)
-      : null
+    if (!leagueId) return notFound()
+    const cursor = query(request, 'cursor')
+    const weapon = parseRankWeapon(query(request, 'weapon'))
+    const page =
+      weapon === 'all'
+        ? store.getPlayerRanks(leagueId, cursor, PAGE_SIZE.RANK)
+        : store.getPlayerRanksByWeapon(leagueId, weapon, cursor, PAGE_SIZE.RANK)
     return page ? okPage(page) : notFound()
+  },
+  leagueRankForm: ({ params, request }) => {
+    const leagueId = resolveLeagueId(param(params['leagueId']))
+    const form = leagueId
+      ? store.getFormTop(leagueId, parseRankWeapon(query(request, 'weapon')))
+      : null
+    return form ? ok(form) : notFound()
   },
   leaguePlayerMatches: ({ params, request }) => {
     const leagueId = resolveLeagueId(param(params['leagueId']))

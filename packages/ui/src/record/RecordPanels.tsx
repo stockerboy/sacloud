@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import type { MatchSummary, TeammateStat } from '@sacloud/contract'
+import type { MatchSummary, PlayerForm, TeammateStat } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { formatAverage, formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
+import { PlayerFormPanel } from './PlayerFormPanel'
 
 /**
  * 기록실 상단 `최근매치` 요약 + 우측 사이드 패널.
@@ -39,6 +40,11 @@ import { ratingClass } from '../common/rating'
  * 남은 조각은 **패배**다 (2026-08-28 원본 모바일 관측 — 승=파랑 · 패=빨강).
  * 예전에는 회색 트랙(`--color-divider`)으로 그려서 "패배"라는 뜻이 사라져 있었다.
  * 색은 매치 카드가 이미 쓰는 토큰(`win-bar` / `lose-bar`)을 그대로 쓴다 — 새로 만들지 않는다.
+ *
+ * **선수 기록실에는 더 이상 그리지 않는다** (D-167 · 사용자 지시).
+ * 그 자리는 `최근 폼` 그래프가 대신한다. 도넛이 보여 주던 승률 숫자는 바로 옆
+ * `20전 16승 4패 (80%)` 에 그대로 있어서 사라지는 정보는 없다.
+ * **클랜 기록실은 그대로 도넛이다** — 사용자가 바꾸라고 한 것은 선수 프로필뿐이다.
  */
 function WinRateDonut({ rate }: { rate: number }) {
   const radius = 44
@@ -91,6 +97,7 @@ export function RecentMatchSummary({
   summary,
   leagueSlug,
   showKdRate = true,
+  form,
 }: {
   summary: MatchSummary
   leagueSlug: string
@@ -102,7 +109,21 @@ export function RecentMatchSummary({
    * 얹으면 무엇의 비율인지 읽히지 않는다.
    */
   showKdRate?: boolean
+  /**
+   * 선수 기록실의 `최근 폼` (D-167).
+   *
+   * **이 값이 있으면 승률 도넛을 그리지 않는다.** 사용자 지시로 선수 프로필에서는
+   * 도넛을 빼고 그 자리에 최근 6개월 월별 킬뎃 그래프를 넣었다.
+   * 클랜 기록실은 이 값을 넘기지 않으므로 도넛이 그대로 남는다.
+   *
+   * `null`(응답에 폼이 없거나 계산할 수 없음)이면 폼 블록을 그리지 않고
+   * 도넛도 되살리지 않는다 — 빈 자리를 무언가로 메우지 않는다.
+   */
+  form?: PlayerForm | null
 }) {
+  /** 선수 기록실인가 — 폼 값을 넘긴 쪽이 선수 기록실이다 */
+  const isPlayerRecord = form !== undefined
+
   return (
     <div className="bg-card px-4 py-2 shadow-card">
       <div className="text-lg">최근매치</div>
@@ -115,8 +136,14 @@ export function RecentMatchSummary({
             예전에는 세로로 쌓아서 도넛 아래에 문구가 따로 떨어졌다.
             PC 는 이 묶음이 그대로 바깥 flex 의 첫 칸이라 렌더 결과가 같다. */}
         <div className="flex">
-          <WinRateDonut rate={summary.win_rate} />
-          <div className="ml-5 flex min-h-40 items-center justify-center max-md:min-h-0 max-md:py-2">
+          {/* 도넛은 **클랜 기록실에만** 남는다 (D-167) */}
+          {isPlayerRecord ? null : <WinRateDonut rate={summary.win_rate} />}
+          <div
+            className={`flex min-h-40 items-center justify-center max-md:min-h-0 max-md:py-2 ${
+              /* 도넛이 빠지면 왼쪽 여백도 같이 뺀다 — 빈 자리를 남기지 않는다 */
+              isPlayerRecord ? '' : 'ml-5'
+            }`}
+          >
             <div>
               <div>
                 {formatCount(summary.recent_count)}전 {formatCount(summary.win)}승{' '}
@@ -189,6 +216,18 @@ export function RecentMatchSummary({
           </div>
         </div>
       </div>
+      {/*
+        `최근 폼` (D-167) — 예전 승률 도넛이 있던 자리를 대신한다.
+        도넛은 `w-32` 한 칸이었지만 6개월 꺾은선은 그 폭에 들어가지 않아
+        **같은 카드 안의 아래 줄**로 내렸다. 위 줄과는 카드가 이미 쓰고 있는
+        구분선(`border-t-divider`)으로 나눈다 — 새 색·새 간격을 만들지 않는다.
+        모바일에서도 같은 자리라 배치가 갈리지 않는다.
+      */}
+      {form == null ? null : (
+        <div className="mt-2 border-t border-t-divider pt-2">
+          <PlayerFormPanel form={form} />
+        </div>
+      )}
     </div>
   )
 }

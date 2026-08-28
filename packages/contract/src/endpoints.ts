@@ -11,6 +11,7 @@ import {
   ClanRankRow,
   ClanSummary,
   Comment,
+  FormTop,
   GameMap,
   Infos,
   League,
@@ -342,9 +343,18 @@ export const endpoints = {
     method: 'GET',
     path: '/leagues/:leagueId/ranks/players',
     origin: 'observed',
-    description: '개인랭킹',
+    description: '개인랭킹. `weapon=all|sniper|rifle` 로 무기 축을 고른다 (D-169, 신규)',
     response: paginatedResponse(PlayerRankRow),
-    query: CURSOR,
+    query: [...CURSOR, 'weapon'],
+  },
+  leagueRankForm: {
+    method: 'GET',
+    path: '/leagues/:leagueId/ranks/form',
+    /* 원본에 없는 신규 기능이라 경로도 우리가 설계했다 (D-169) */
+    origin: 'designed',
+    description: '폼 TOP3 — 그날(KST) 얻은 래더 증감 합 상위 3명. 무기 축별',
+    response: apiResponse(FormTop),
+    query: ['weapon'],
   },
   leaguePlayerMatches: {
     method: 'GET',

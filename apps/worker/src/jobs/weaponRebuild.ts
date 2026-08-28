@@ -147,9 +147,20 @@ export async function rebuildWeaponStats(input: {
 
   /* 모집단은 **래더에 반영된 경기**다 (D-148).
      `official` 라벨은 D-145 에서 래더와 무관해졌으므로 여기서 보지 않는다.
-     라벨로 거르면 래더에 반영된 경기가 무기 집계에서 빠져 `집계 없음` 이 남는다. */
+     라벨로 거르면 래더에 반영된 경기가 무기 집계에서 빠져 `집계 없음` 이 남는다.
+
+     ⚠ `redRatingUpdate` 하나만 보면 **미러링한 경기가 통째로 빠진다** (D-164).
+     그 칸은 우리 공식(D-145)이 채우는 것이라 3rd.supply 에서 들여온 경기에는 없다 —
+     실측: supply 130,022 경기 중 98건뿐이다. 실제로 그래서 무기별 집계가 사실상 비어
+     있었다 (`LeaguePlayerWeaponStat` 2,978행 중 `games > 0` 이 286행).
+     미러 경기는 원본이 래더 경기만 주므로 전부 래더 경기다. */
   const stats = await prisma.matchPlayerStat.findMany({
-    where: { match: { leagueId: league.id, redRatingUpdate: { not: null } } },
+    where: {
+      match: {
+        leagueId: league.id,
+        OR: [{ redRatingUpdate: { not: null } }, { origin: '3rd.supply' }],
+      },
+    },
     select: {
       playerId: true,
       weapon: true,
@@ -158,6 +169,8 @@ export async function rebuildWeaponStats(input: {
       assist: true,
       headshot: true,
       ratingUpdate: true,
+      /* 미러 경기는 원본이 **선수별로** 증감을 준다 (D-153). 참가행 130만 건에 전부 있다 */
+      sourceRatingDelta: true,
       side: true,
       match: { select: { winnerSide: true } },
     },
@@ -181,7 +194,9 @@ export async function rebuildWeaponStats(input: {
       death: stat.death,
       assist: stat.assist,
       headshot: stat.headshot,
-      ratingUpdate: stat.ratingUpdate,
+      /* 우리 계산값이 없으면 원본값을 쓴다. 무기별 공식은 없다 —
+         통합 래더가 정한 증감을 무기에 따라 **기록만** 나눈다 (CLAUDE.md 3-B 1번) */
+      ratingUpdate: stat.ratingUpdate ?? stat.sourceRatingDelta,
       won: stat.match.winnerSide === stat.side,
     })),
   )

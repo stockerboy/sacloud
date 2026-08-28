@@ -123,7 +123,8 @@ async function main() {
   for (const slug of LEAGUES) {
     console.log(`\n======== ${slug} ========`)
 
-    let full = { hash: '(생략)', players: 0, clans: 0 }
+    /* 두 갈래가 반드시 값을 넣으므로 초기값을 두지 않는다 (초기값을 두면 아무도 안 읽는다) */
+    let full: Awaited<ReturnType<typeof checksum>>
     if (!SKIP_FULL) {
       const t0 = Date.now()
       await runSupplyRollup({ leagueSlug: slug, confirm: true, full: true })

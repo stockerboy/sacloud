@@ -102,7 +102,13 @@ export default function LeaguePlayerRecordPage({
       <div className="pc-container mt-2 flex max-md:flex-col">
         <div className="w-3/4 max-md:w-full max-md:min-w-0 max-md:order-2">
           <div className="mobile-scroll-x">
-            <RecentMatchSummary summary={data.match_summary} leagueSlug={leagueSlug} />
+            {/* `form` 을 넘기면 승률 도넛 대신 `최근 폼` 그래프가 그려진다 (D-167).
+                클랜 기록실은 이 값을 넘기지 않으므로 도넛이 그대로 남는다 */}
+            <RecentMatchSummary
+              summary={data.match_summary}
+              leagueSlug={leagueSlug}
+              form={data.form}
+            />
           </div>
           <div className="mt-2">
             {matches.loading ? (

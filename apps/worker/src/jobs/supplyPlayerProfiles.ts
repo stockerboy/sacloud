@@ -49,8 +49,16 @@ import type { JobContext } from './context.js'
 /** `/players/{id}` 의 `data` — 실측 그대로. 우리가 쓰지 않는 칸도 버리지 않는다 */
 export interface SupplyPlayerProfileRaw {
   id: number
+  /** 원본이 **지금** 쓰는 닉네임. 우리 행의 이름이 옛것일 수 있다 (D-162) */
   name: string
-  clan: { id: number; name: string; slug: string } | null
+  /** 현재 소속 클랜. 리그와 무관한 전역 값이다. 무소속이면 `null` */
+  clan: {
+    id: number
+    name: string
+    slug: string
+    mark_bg: string | null
+    mark_front: string | null
+  } | null
   /** 선수 소개/메모. 선수가 직접 쓴다 */
   note: string | null
   /** 포지션 **코드**. 화면 표기는 따로 매핑된다 (`0 1 2 3 4 5 6` 관측) */
@@ -121,14 +129,22 @@ function writeCheckpoint(file: string, checkpoint: SupplyPlayerProfilesCheckpoin
 }
 
 /**
- * 대상 — **우리 DB 의 `origin='3rd.supply'` 선수 전원**이다.
+ * 대상 — **`sourcePlayerId` 가 있는 선수 전원**이다. `origin` 으로 거르지 않는다 (D-162).
  *
- * 넥슨 경로로 들어온 선수(`origin='nexon'`)와 개발 시드(`origin='mock'`)는 대상이 아니다.
- * 원본에 없는 사람을 원본에 물어볼 수 없고, 시드 값을 원본 값으로 덮지도 않는다.
+ * ── 처음에 틀렸던 것
+ *   처음에는 `origin='3rd.supply'` 만 대상으로 잡았다. 그래서 넥슨 경기 수집이 먼저 만든
+ *   행(`OBS-` · `origin='nexon'`)이 빠졌고, 그 선수들은 **닉네임이 옛것이고 소속이 비어**
+ *   있었다. 선수 `huwho` 가 우리 화면에서 `후후시치` · 소속 없음 으로 나온 원인이다.
+ *
+ *   기준은 출처가 아니라 **원본에 물어볼 id 가 있는가** 다.
+ *   `sourcePlayerId` 가 없는 선수(닉네임만 관측된 넥슨 행)는 물어볼 id 자체가 없어
+ *   여기서 다룰 수 없다 — 그것은 `supply-players`(D-132)가 잇는 일이다.
+ *
+ * 개발 시드(`origin='mock'`)에는 `sourcePlayerId` 가 없어 자연히 빠진다.
  */
 export async function playerProfileTargets(): Promise<string[]> {
   const rows = await prisma.player.findMany({
-    where: { origin: '3rd.supply', sourcePlayerId: { not: null } },
+    where: { sourcePlayerId: { not: null }, origin: { not: 'mock' } },
     select: { sourcePlayerId: true },
     orderBy: { id: 'asc' },
   })

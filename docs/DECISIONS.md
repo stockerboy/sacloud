@@ -4671,3 +4671,123 @@ packages/ui/src/record/RecordPanels.tsx    form 이 있으면 도넛을 그리�
 경계값을 바꾸려면 `FORM_TREND_THRESHOLD_PP` 와 **이 문서를 함께** 고친다.
 회귀 테스트는 `packages/contract/src/__tests__/form.test.ts` ·
 `packages/ui/src/__tests__/form-chart.test.ts` 에 있다.
+
+---
+
+## D-169 — 개인랭킹을 **통합 / 스나 / 라플** 로 나누고, 각 탭 위에 **폼 TOP3** 를 둔다 (2026-08-28)
+
+### 배경
+
+사용자가 명시적으로 지시한 **신규 기능 두 가지**다. 원본 3rd.supply 에는 둘 다 없다.
+`CLAUDE.md` 3장 3번("임의 기능 추가 금지")의 예외다 — 임의가 아니라 지시받은 것이다.
+
+> "개인랭킹 차트는 스나수와 라플수를 나누어 랭킹을 한다.
+>  통합랭킹 / 스나랭킹 / 라플랭킹"
+> "가져온 시즌7의 랭킹도 통합 스나 라플 로 분류할거라는것도 인지해줘"
+
+적용 범위는 **모든 리그**다. 미러링해 온 시즌7 기록에도 그대로 적용된다.
+(무소속리그의 누적 킬뎃 비공개는 별개 축이다 — D-107. 여기서 바뀌지 않는다.)
+
+### 정한 것 ①  무기 축은 **기록만** 나눈다
+
+`CLAUDE.md` 3-B 1번을 그대로 지킨다. **스나용·라플용 공식을 따로 만들지 않았다.**
+통합 공식이 이미 계산해 둔 경기별 증감을 무기에 따라 나눠 담은
+`LeaguePlayerWeaponStat.ratingDelta` 를 **읽기만** 한다.
+
+| 탭 | 모집단 | 정렬 | 래더 칸에 쓰는 값 |
+|---|---|---|---|
+| 통합 | 배치 종료 선수 전원 | `LeaguePlayer.rating` 내림차순 | 통합 래더 (`rating`) |
+| 스나 | 배치 종료 + `weapon=1` 기록 있음 + `knownStatGames>0` | `ratingDelta` 내림차순 | **그 무기 래더증감** |
+| 라플 | 배치 종료 + `weapon=0` 기록 있음 + `knownStatGames>0` | `ratingDelta` 내림차순 | **그 무기 래더증감** |
+
+통합 탭은 기존 `getPlayerRanks` 를 **그대로** 부른다. 코드 한 줄도 바꾸지 않았다.
+`weapon` 파라미터가 없거나 모르는 값이면 `all` 로 떨어져 **기존 동작 그대로**다.
+
+정렬 기준을 `ratingDelta` 로 잡은 것은 선수 프로필의 무기별 순위(`playerWeaponRankOf`, D-149)와
+**같아야 하기 때문**이다. 기준이 다르면 프로필의 `3위 / 1,204명` 과 랭킹 목록의 3번째 줄이 어긋난다.
+
+### 정한 것 ②  무기별 **절대 점수를 만들지 않는다**
+
+`baseRating + ratingDelta` 같은 "스나 래더 점수" 를 지어내지 않았다. 두 가지 이유다.
+
+1. 통합 래더와 **다른 축의 숫자**가 생긴다. 3-B 2번이 금지하는 방향이다.
+2. `baseRating` 은 선수마다 다르다. 그러면 정렬 기준(`ratingDelta`)과 표시값(`base+delta`)이
+   어긋나 표가 **뒤죽박죽 정렬된 것처럼** 보인다.
+
+그래서 무기 탭의 마지막 칸은 머리글부터 `래더증감` 이고 값은 `+1,836점` 처럼 부호를 붙인다.
+같은 자리에 다른 뜻의 숫자를 넣으면서 이름만 `래더` 로 두면 거짓말이 된다.
+
+### 정한 것 ③  폼 TOP3 규칙 (사용자와 확정)
+
+- **그날 하루 동안 얻은 래더 증감의 합**이 큰 순서로 3명
+- **최소 3경기** 이상 한 선수만 후보
+- 동점이면 **경기 수가 많은 쪽**이 위 (그 다음은 `playerId` 로 고정 — 화면이 흔들리지 않게)
+- 표시 형식 `+48점 (5경기)`
+- 랭킹 탭(통합/스나/라플)을 따라간다 — 탭을 바꾸면 폼 TOP3 도 그 축으로 다시 계산된다
+
+### [미확인] — 원본이 알려주지 않아 우리가 정한 것
+
+1. **"그날"의 기준 시각.** 한국 서비스이므로 **KST 자정**을 하루 경계로 정했다.
+   원본과 동일함이 검증되지 않았다. (`kstDayRange` · `apps/web/lib/server/queries/rankings.ts`)
+2. **대상 날짜는 "가장 최근에 경기가 있었던 날"** 이다. 오늘 경기가 있으면 곧 오늘이다.
+   오늘 경기가 하나도 없을 때 빈 칸을 남기지 않으려는 폴백이고, 물러섰다는 사실은
+   응답의 `is_today = false` 와 화면의 날짜 표기로 **드러낸다** — 감추지 않는다.
+3. 무기 탭·폼 TOP3 의 **레이아웃**. 원본에 대응 화면이 없어 새로 만들었지만,
+   모양은 부리그 탭(`DivisionTabs`)과 랭킹 표(`RankTable`)의 실측 치수를 **그대로** 재사용했다.
+   새 크기를 추측하지 않았다 (`packages/ui/src/league/rankStyles.ts`).
+4. 탭 상태를 URL 이 아니라 컴포넌트 상태로 둔다. 원본에 이 축의 URL 규칙이 없기 때문이다.
+
+### 함정 — 미러 경기의 증감은 다른 칸에 있다 (D-164 · D-153)
+
+`MatchPlayerStat.ratingUpdate` 는 **우리 공식(D-145)이 계산한 경기에만** 있다.
+3rd.supply 에서 미러링해 온 시즌7 경기에는 비어 있고, 그 증감은 `sourceRatingDelta` 에 있다.
+폼 TOP3 는 모집단이 거의 전부 미러 경기라, 폴백을 빠뜨리면 **화면이 통째로 빈다.**
+그래서 집계는 `SUM(COALESCE(ratingUpdate, sourceRatingDelta, 0))` 이다.
+Prisma `groupBy` 로는 두 칸을 합쳐 더할 수 없어 이 한 곳만 raw SQL 이다.
+회귀 테스트(`apps/web/tests/weaponRanking.test.ts`)는 픽스처 경기를 **전부 미러 경기로** 만들어
+이 함정을 고정한다 — 폴백이 빠지면 그 테스트가 먼저 깨진다.
+
+### 항등식 실측 — `rating = baseRating + 스나 + 라플`
+
+3-B 2번의 항등식을 운영 DB 전량으로 확인했다 (2026-08-28, **조회만**).
+
+| 리그 | 대상 | 성립 | `baseRating = 3000` |
+|---|---:|---:|---:|
+| officialmain · secondline · friendly01 · tourney2026 (시드) | 1,350 | **1,350 (100%)** | 0 |
+| supply | 10,388 | 11 | 10,134 |
+| daerule | 4,157 | 0 | 4,157 |
+| sanply | 15,312 | 0 | 15,312 |
+
+시드 리그는 **한 명도 어긋나지 않는다** — 시드가 `baseRating = rating − Σdelta` 로 맞춰 넣기 때문이다.
+
+미러 리그에서 어긋나는 것은 **이 작업 이전부터의 데이터 상태**이고 원인이 분명하다.
+미러 적재는 `LeaguePlayer.rating` 에 **3rd.supply 가 보여 주던 값을 그대로** 넣고
+(D-153), `baseRating` 은 기본값 3000 으로 둔다. 즉 그 `rating` 은 우리 공식이 만든 값이 아니라
+원본 표시값이라 우리 증감 합과 이어지지 않는다.
+
+**이 작업은 `rating` 도 `baseRating` 도 쓰지 않는다.** 무기 축은 읽기 전용이다.
+통합 랭킹 상위 5명(`근면 3432 · chococake 3376 · 으어어어 3367 · kinder 3312 · mozz'a' 3303`)은
+무기 축 도입 전후가 **완전히 같다** — 무기 분리가 통합 래더 값을 바꾸지 않았다.
+
+미러 리그의 항등식을 실제로 성립시키려면 적재 쪽에서 `baseRating` 을 보정해야 한다.
+그건 `apps/worker` 의 일이고 **여기서 하지 않았다.** 별도 과제로 남긴다.
+
+### 계약 · 코드 위치
+
+- 계약: `packages/contract/src/entities/league.ts` — `RankWeapon` · `RANK_WEAPON_CODE` ·
+  `parseRankWeapon` · `FormTop` · `FormTopRow` · `FORM_TOP_MIN_GAMES` · `FORM_TOP_SIZE`.
+  `PlayerRankRow` 에 `weapon` · `rating_delta` 를 **선택 필드**로 더했다
+  (클랜원 목록 등 기존 소비자를 깨지 않기 위해서다)
+- 엔드포인트: `leagueRankPlayers` 에 `weapon` 쿼리 추가 · `leagueRankForm` 신설(`designed`)
+- 조회: `apps/web/lib/server/queries/rankings.ts`
+- API: `apps/web/app/api/leagues/[league]/ranks/players` · `.../ranks/form`
+- 화면: `packages/ui/src/league/RankWeaponTabs.tsx` · `FormTop3.tsx` · `rankStyles.ts` ·
+  `apps/web/app/league/[leagueSlug]/rank/player/page.tsx`
+- Mock: `packages/mock/src/store.ts` (`getPlayerRanksByWeapon` · `getFormTop`) · `handlers.ts`
+- 테스트: `apps/web/tests/weaponRanking.test.ts` · `packages/mock/src/__tests__/rankWeapon.test.ts`
+
+### 바꾸려면
+
+정렬 기준을 바꾸면 `playerWeaponRankOf`(D-149)도 **같이** 바꾼다. 한쪽만 고치면
+프로필의 순위와 랭킹 목록이 어긋난다. 폼 TOP3 의 상수는 `FORM_TOP_MIN_GAMES` ·
+`FORM_TOP_SIZE` 하나뿐이니 하드코딩을 새로 만들지 않는다.

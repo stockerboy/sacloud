@@ -61,11 +61,23 @@ export async function runSupplyPlayerProfilesImport(input: {
       return
     }
     taken += 1
+    const clan = record.raw.clan
     pending.push({
       playerId: record.player_id,
+      name: record.raw.name ?? null,
       position: record.raw.position ?? null,
       note: record.raw.note ?? null,
       renewedAt: record.raw.renewed_at ?? null,
+      /* 원본이 준 값만 옮긴다. 없는 칸을 만들어 내지 않는다 */
+      clan: clan
+        ? {
+            sourceClanId: String(clan.id),
+            name: clan.name,
+            slug: clan.slug,
+            markBgUrl: clan.mark_bg ?? null,
+            markFrontUrl: clan.mark_front ?? null,
+          }
+        : null,
     })
     if (pending.length >= CHUNK) chunks.push(pending.splice(0, pending.length))
   })

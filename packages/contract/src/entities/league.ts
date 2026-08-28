@@ -206,6 +206,37 @@ export const ClanRankRow = z.object({
 })
 export type ClanRankRow = z.infer<typeof ClanRankRow>
 
+/**
+ * 개인랭킹 무기 축 (D-169) — **원본에 없는 우리 신규 기능**이다.
+ *
+ * 사용자 지시로 개인랭킹을 셋으로 나눈다. 화면 표기는 `통합 / 스나 / 라플`.
+ *
+ *   `all`     통합 — 스나·라플 구분 없이 모든 기록을 합친 기존 개인 래더 (`LeaguePlayer.rating`)
+ *   `sniper`  스나 — `MatchPlayerStat.weapon = 1` 경기만
+ *   `rifle`   라플 — `MatchPlayerStat.weapon = 0` 경기만
+ *
+ * **무기별 공식은 없다** (`CLAUDE.md` 3-B 1번). 통합 공식이 계산한 증감을
+ * 무기에 따라 **기록만** 나눠 담은 `LeaguePlayerWeaponStat.ratingDelta` 를 읽을 뿐이다.
+ * 무기 축을 도입해도 통합 래더 값은 한 점도 바뀌지 않는다.
+ */
+export const RankWeapon = z.enum(['all', 'sniper', 'rifle'])
+export type RankWeapon = z.infer<typeof RankWeapon>
+
+/** 무기 축 → `MatchPlayerStat.weapon` 코드 (`CLAUDE.md` 6장: 0 = 라이플, 1 = 스나이퍼) */
+export const RANK_WEAPON_CODE = { sniper: 1, rifle: 0 } as const
+
+/** 화면 표기 — 사용자가 쓴 말 그대로 (`통합 / 스나 / 라플`) */
+export const RANK_WEAPON_LABEL: Record<RankWeapon, string> = {
+  all: '통합',
+  sniper: '스나',
+  rifle: '라플',
+}
+
+/** 문자열 하나를 무기 축으로 좁힌다. 모르는 값은 `all` (기존 동작 유지) */
+export function parseRankWeapon(value: string | null | undefined): RankWeapon {
+  return value === 'sniper' || value === 'rifle' ? value : 'all'
+}
+
 /** GET /leagues/{leagueId}/ranks/players */
 export const PlayerRankRow = z.object({
   rank: Count,
@@ -218,9 +249,67 @@ export const PlayerRankRow = z.object({
   /** 킬뎃 % — 무소속리그 개인랭킹에서는 `null`이다 (D-107) */
   kd_rate: Percent.nullable(),
   kill_per_match: z.number().min(0),
+  /**
+   * 통합 개인 래더 (`LeaguePlayer.rating`).
+   *
+   * **무기 탭에서도 이 값은 통합 래더 그대로다.** 무기별로 쪼갠 절대 점수를 만들지 않는다
+   * (`CLAUDE.md` 3-B 2번 — 무기 분리가 통합 래더 값을 바꾸면 안 된다).
+   */
   rating: Rating,
+  /**
+   * 이 줄이 어느 축의 랭킹인가 (D-169). 통합이면 `all`.
+   *
+   * 기존 소비자(클랜원 목록)를 깨지 않으려고 선택 필드로 둔다.
+   */
+  weapon: RankWeapon.optional(),
+  /**
+   * 그 무기로 뛴 경기에서 얻은 **래더 증감의 합** (`LeaguePlayerWeaponStat.ratingDelta`).
+   * 무기 탭의 정렬 기준이자 표시값이다. 통합 랭킹에서는 `null`.
+   */
+  rating_delta: z.number().int().nullable().optional(),
 })
 export type PlayerRankRow = z.infer<typeof PlayerRankRow>
+
+/**
+ * 폼 TOP3 규칙 상수 (D-169, 사용자 확정).
+ *
+ * 기존 `FORM_RECENT_GAMES` / `FORM_BASELINE_GAMES`(선수 상세의 폼 판정)와는 **다른 기능**이다.
+ * 이름을 `FORM_TOP_*` 으로 구분한다.
+ */
+/** 최소 이 경기 수를 채운 선수만 후보 */
+export const FORM_TOP_MIN_GAMES = 3
+/** 몇 명을 보여 주는가 */
+export const FORM_TOP_SIZE = 3
+
+/** 폼 TOP3 한 줄 (D-169) */
+export const FormTopRow = z.object({
+  rank: Count,
+  league_player_id: Id,
+  player: PlayerSummary,
+  clan: ClanSummary.nullable(),
+  /** 그날 얻은 래더 증감의 합. 음수일 수 있다 */
+  rating_delta: z.number().int(),
+  /** 그날 그 축으로 뛴 경기 수 */
+  games: Count,
+})
+export type FormTopRow = z.infer<typeof FormTopRow>
+
+/**
+ * GET /leagues/{leagueId}/ranks/form — 폼 TOP3 (D-169).
+ *
+ * **원본에 없는 우리 신규 기능**이다. 규칙은 사용자와 확정했다 —
+ * 그날 하루 동안 얻은 래더 증감의 합이 큰 순서로 3명, 최소 3경기,
+ * 동점이면 경기 수가 많은 쪽이 위.
+ */
+export const FormTop = z.object({
+  /** 집계 대상 날짜 (KST 자정 기준, `YYYY-MM-DD`). 경기가 하나도 없으면 `null` */
+  date: z.string().nullable(),
+  /** 그 날짜가 오늘(KST)인가. 오늘 경기가 없어 최근 경기일로 물러섰으면 `false` */
+  is_today: z.boolean(),
+  weapon: RankWeapon,
+  rows: z.array(FormTopRow),
+})
+export type FormTop = z.infer<typeof FormTop>
 
 /** POST /leagues — 리그 만들기 입력 (관측된 폼 제약을 그대로 강제) */
 export const LeagueCreateInput = z.object({

@@ -9,6 +9,7 @@ import {
   type ClanRankRow,
   type ClanSummary,
   type Comment,
+  type FormTop,
   type CommentReply,
   type CursorMetadata,
   type Infos,
@@ -27,14 +28,26 @@ import {
   type MatchSummary,
   type OpponentSummaryEntry,
   type Player,
+  type PlayerForm,
+  type PlayerFormMonth,
   type PlayerLeagueEntry,
   type PlayerRankRow,
   type PlayerSearchItem,
+  type RankWeapon,
   type TeammateStat,
   type TeamSide,
   type User,
   type Writer,
+  FORM_BASELINE_GAMES,
+  FORM_MONTHS,
+  FORM_RECENT_GAMES,
+  FORM_TOP_MIN_GAMES,
+  FORM_TOP_SIZE,
+  RANK_WEAPON_CODE,
+  formMonthKey,
+  formMonthKeys,
   isBarracksUrl,
+  judgeFormTrend,
   playerRefsFromBarracksUrl,
 } from '@sacloud/contract'
 import { dataset } from './dataset'
@@ -113,20 +126,41 @@ for (const [id, list] of matchesByLeagueClan) matchCountByLeagueClan.set(id, lis
 
 /** 무기별 누적 (leaguePlayerId → weapon → 합계). `packages/db/seed/seed.ts`와 **같은 규칙**이다.
     한쪽만 고치면 mock↔실제 대조가 깨진다 (실제로 깨졌다). */
-const weaponStatsByLeaguePlayer = new Map<
-  string,
-  Map<number, { win: number; lose: number; kill: number; death: number }>
->()
+interface MockWeaponBucket {
+  win: number
+  lose: number
+  kill: number
+  death: number
+  /**
+   * 그 무기로 뛴 경기에서 얻은 래더 증감의 합 (`LeaguePlayerWeaponStat.ratingDelta`).
+   * 무기별 개인랭킹(D-169)의 정렬 기준이다. **무기별 공식은 없다** —
+   * 통합 공식이 계산한 경기별 증감을 무기에 따라 나눠 담을 뿐이다 (`CLAUDE.md` 3-B 1번).
+   */
+  ratingDelta: number
+  /** 그 무기로 뛴 경기 수. Mock 픽스처는 K/D 를 항상 알므로 `knownStatGames` 와 같다 */
+  games: number
+}
+
+const weaponStatsByLeaguePlayer = new Map<string, Map<number, MockWeaponBucket>>()
 for (const match of dataset.matches) {
   for (const stat of match.players) {
     const leaguePlayer = leaguePlayerByLeagueAndPlayer.get(`${match.leagueId}:${stat.playerId}`)
     if (!leaguePlayer) continue
     const byWeapon = weaponStatsByLeaguePlayer.get(leaguePlayer.id) ?? new Map()
-    const bucket = byWeapon.get(stat.weapon) ?? { win: 0, lose: 0, kill: 0, death: 0 }
+    const bucket: MockWeaponBucket = byWeapon.get(stat.weapon) ?? {
+      win: 0,
+      lose: 0,
+      kill: 0,
+      death: 0,
+      ratingDelta: 0,
+      games: 0,
+    }
     if (stat.win) bucket.win += 1
     else bucket.lose += 1
     bucket.kill += stat.kill
     bucket.death += stat.death
+    bucket.ratingDelta += stat.ratingUpdate ?? 0
+    bucket.games += 1
     byWeapon.set(stat.weapon, bucket)
     weaponStatsByLeaguePlayer.set(leaguePlayer.id, byWeapon)
   }
@@ -566,10 +600,132 @@ export function getPlayerRanks(leagueId: string, cursor: string | null, size: nu
         kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
         kill_per_match: killPerMatch(leaguePlayer.kill, matchCount),
         rating: leaguePlayer.rating,
+        weapon: 'all',
+        rating_delta: null,
       }
     })
     .filter((entry): entry is PlayerRankRow => Boolean(entry))
   return paginate(rows, cursor, size, (item) => item.league_player_id)
+}
+
+/* ------------------------- 무기별 개인랭킹 · 폼 TOP3 (D-169) ------------------------- */
+
+/** 한 무기 축(스나·라플)만 가리키는 좁은 타입 — `all` 은 여기 오지 않는다 */
+export type WeaponAxis = Exclude<RankWeapon, 'all'>
+
+/**
+ * 무기별 개인랭킹 — **원본에 없는 우리 신규 기능**이다 (D-169).
+ *
+ * 실제 API(`apps/web/lib/server/queries/rankings.ts`)와 **같은 규칙**이어야 한다.
+ *   · 정렬: `ratingDelta` 내림차순, 동점이면 `leaguePlayerId` 오름차순
+ *   · 모집단: 배치고사가 끝났고 그 무기로 뛴 기록이 있는 선수
+ *   · 승·패·킬·데스는 **그 무기 버킷의 값**이다. 통합 누적을 섞지 않는다
+ *   · 통합 래더(`rating`)는 무기 탭에서도 통합 래더 그대로다 (`CLAUDE.md` 3-B 2번)
+ */
+export function getPlayerRanksByWeapon(
+  leagueId: string,
+  weapon: WeaponAxis,
+  cursor: string | null,
+  size: number,
+): Page<PlayerRankRow> | null {
+  if (!leagueById.has(leagueId)) return null
+  const code = RANK_WEAPON_CODE[weapon]
+
+  const rows: PlayerRankRow[] = (leaguePlayersByLeague.get(leagueId) ?? [])
+    .filter((entry) => !entry.placement)
+    .flatMap((leaguePlayer) => {
+      const bucket = weaponStatsByLeaguePlayer.get(leaguePlayer.id)?.get(code)
+      if (!bucket || bucket.games === 0) return []
+      const player = playerById.get(leaguePlayer.playerId)
+      const leagueClan = leagueClanById.get(leaguePlayer.leagueClanId)
+      if (!player || !leagueClan) return []
+      return [{ leaguePlayer, bucket, player, leagueClan }]
+    })
+    .sort(
+      (a, b) =>
+        b.bucket.ratingDelta - a.bucket.ratingDelta ||
+        a.leaguePlayer.id.localeCompare(b.leaguePlayer.id),
+    )
+    .map(({ leaguePlayer, bucket, player, leagueClan }, index) => ({
+      rank: index + 1,
+      league_player_id: leaguePlayer.id,
+      player: { id: player.id, name: player.name },
+      clan: clanSummaryOf(leagueClan.clanId),
+      win: bucket.win,
+      lose: bucket.lose,
+      win_rate: winRate(bucket.win, bucket.lose),
+      kd_rate: kdRate(bucket.kill, bucket.death),
+      kill_per_match: killPerMatch(bucket.kill, bucket.games),
+      rating: leaguePlayer.rating,
+      weapon,
+      rating_delta: bucket.ratingDelta,
+    }))
+
+  return paginate(rows, cursor, size, (item) => item.league_player_id)
+}
+
+/**
+ * 폼 TOP3 — **원본에 없는 우리 신규 기능**이다 (D-169).
+ *
+ * 그날(KST 자정 기준) 하루 동안 얻은 래더 증감의 합이 큰 순서로 3명.
+ * 최소 3경기, 동점이면 경기 수가 많은 쪽이 위.
+ * 대상 날짜는 **가장 최근에 경기가 있었던 날**이다 (실제 API와 같은 규칙).
+ *
+ * Mock 픽스처의 `startAt` 은 이미 KST 고정 오프셋 문자열이라 앞 10글자가 곧 KST 날짜다.
+ */
+export function getFormTop(leagueId: string, weapon: RankWeapon): FormTop | null {
+  if (!leagueById.has(leagueId)) return null
+  const empty: FormTop = { date: null, is_today: false, weapon, rows: [] }
+
+  const inLeague = matchesDesc.filter((match) => match.leagueId === leagueId)
+  const latest = inLeague[0]
+  if (!latest) return empty
+
+  const day = latest.startAt.slice(0, 10)
+  const isToday = day === kstToday()
+  const code = weapon === 'all' ? null : RANK_WEAPON_CODE[weapon]
+
+  const acc = new Map<string, { delta: number; games: number }>()
+  for (const match of inLeague) {
+    if (match.startAt.slice(0, 10) !== day) continue
+    for (const stat of match.players) {
+      if (code !== null && stat.weapon !== code) continue
+      const entry = acc.get(stat.playerId) ?? { delta: 0, games: 0 }
+      entry.delta += stat.ratingUpdate ?? 0
+      entry.games += 1
+      acc.set(stat.playerId, entry)
+    }
+  }
+
+  const rows = [...acc.entries()]
+    .filter(([, value]) => value.games >= FORM_TOP_MIN_GAMES)
+    .sort(
+      (a, b) => b[1].delta - a[1].delta || b[1].games - a[1].games || a[0].localeCompare(b[0]),
+    )
+    .slice(0, FORM_TOP_SIZE)
+    .flatMap(([playerId, value], index) => {
+      const leaguePlayer = leaguePlayerByLeagueAndPlayer.get(`${leagueId}:${playerId}`)
+      const player = playerById.get(playerId)
+      if (!leaguePlayer || !player) return []
+      const leagueClan = leagueClanById.get(leaguePlayer.leagueClanId)
+      return [
+        {
+          rank: index + 1,
+          league_player_id: leaguePlayer.id,
+          player: { id: player.id, name: player.name },
+          clan: leagueClan ? clanSummaryOf(leagueClan.clanId) : null,
+          rating_delta: value.delta,
+          games: value.games,
+        },
+      ]
+    })
+
+  return { date: day, is_today: isToday, weapon, rows }
+}
+
+/** 오늘(KST) `YYYY-MM-DD` */
+function kstToday(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -872,6 +1028,74 @@ function buildTeammates(matches: MockMatch[], leagueClanId: string, playerId: st
   return rows.slice(0, 10)
 }
 
+/* --------------------------------- 최근 폼 --------------------------------- */
+
+/**
+ * 선수 프로필 `최근 폼` (D-167) — 6개월 월별 킬뎃 + 최근 10경기 판정.
+ *
+ * 계산 규칙·상수는 `@sacloud/contract` 의 `form.ts` 에 있고, 실제 서버
+ * (`apps/web/lib/server/queries/playerForm.ts`)도 **같은 함수**를 쓴다.
+ * 여기서 다르게 계산하면 mock↔live 대조가 어긋난다.
+ *
+ * Mock 픽스처는 K/D 가 항상 있으므로 결측 제외 규칙(D-148)이 눈에 띄지 않는다.
+ * 운영에서는 미러 경기에 KDA 없는 참가 기록이 섞여 있어 그쪽에서만 갈린다.
+ */
+function buildPlayerForm(matches: MockMatch[], playerId: string, now: Date): PlayerForm {
+  const keys = formMonthKeys(now, FORM_MONTHS)
+  const buckets = new Map(keys.map((key) => [key, { games: 0, kill: 0, death: 0 }]))
+
+  /** 이 선수가 그 경기에서 남긴 기록 */
+  const statOf = (match: MockMatch): MockMatchPlayer | undefined =>
+    match.players.find((stat) => stat.playerId === playerId)
+
+  for (const match of matches) {
+    const stat = statOf(match)
+    if (!stat) continue
+    const bucket = buckets.get(formMonthKey(new Date(match.startAt)))
+    if (!bucket) continue
+    bucket.games += 1
+    bucket.kill += stat.kill
+    bucket.death += stat.death
+  }
+
+  const months: PlayerFormMonth[] = keys.map((month) => {
+    const bucket = buckets.get(month) ?? { games: 0, kill: 0, death: 0 }
+    return {
+      month,
+      games: bucket.games,
+      kill: bucket.kill,
+      death: bucket.death,
+      /* 경기가 없던 달은 `null` — 0% 로 채우지 않는다 (D-106) */
+      kd_rate: bucket.games === 0 ? null : kdRate(bucket.kill, bucket.death),
+    }
+  })
+
+  /* `matchesByPlayer` 는 이미 최신순이다 */
+  const window = matches
+    .slice(0, FORM_RECENT_GAMES + FORM_BASELINE_GAMES)
+    .map(statOf)
+    .filter((stat): stat is MockMatchPlayer => stat !== undefined)
+
+  const tally = (rows: MockMatchPlayer[]) => ({
+    games: rows.length,
+    kill: rows.reduce((sum, row) => sum + row.kill, 0),
+    death: rows.reduce((sum, row) => sum + row.death, 0),
+  })
+  const recent = tally(window.slice(0, FORM_RECENT_GAMES))
+  const baseline = tally(window.slice(FORM_RECENT_GAMES))
+  const judged = judgeFormTrend(recent, baseline)
+
+  return {
+    months,
+    trend: judged.trend,
+    recent_games: recent.games,
+    recent_kd_rate: judged.recentKdRate,
+    baseline_games: baseline.games,
+    baseline_kd_rate: judged.baselineKdRate,
+    delta: judged.delta,
+  }
+}
+
 export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): LeaguePlayerDetail | null {
   const league = leagueBySlug.get(leagueSlug)
   if (!league) return null
@@ -932,6 +1156,8 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     rifle_assist: 0,
     rifle_kd_rate: rifleBucket?.kd_rate ?? null,
     match_summary: buildMatchSummary(matches, leaguePlayer.leagueClanId, playerId),
+    /* 최근 폼 (D-167). 원본에 없는 화면이다 — 사용자 요구로 추가했다 */
+    form: buildPlayerForm(matches, playerId, new Date()),
     teammates: buildTeammates(matches, leaguePlayer.leagueClanId, playerId),
     weapon_stats: weaponStatsOf(leaguePlayer.id),
   }

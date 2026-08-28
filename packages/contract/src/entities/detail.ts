@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { Count, Percent } from '../common'
 import { LeagueClanDetail, LeaguePlayer } from './league'
 import { LeagueSummary, PlayerSummary } from './summaries'
 import { MatchSummary, TeammateStat } from './match'
@@ -55,6 +56,55 @@ export const LeaguePlayerProfile = PlayerSummary.extend({
 })
 export type LeaguePlayerProfile = z.infer<typeof LeaguePlayerProfile>
 
+/* -------------------------------------------------------------------------- */
+/* 최근 폼 (D-167)                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 월별 킬뎃 한 칸.
+ *
+ * 경기가 없던 달도 **자리를 지킨다.** `games = 0` 이고 `kd_rate = null` 이다 —
+ * 0% 로 채우지 않는다 (D-106). 화면은 그 달을 `알수없음` 으로 두고 선을 끊는다.
+ */
+export const PlayerFormMonth = z.object({
+  /** `YYYY-MM` (KST 기준) */
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  /** K/D 를 아는 경기 수. 모르는 참가 기록은 세지 않는다 (D-148) */
+  games: Count,
+  kill: Count,
+  death: Count,
+  /** 킬뎃 % — `킬/(킬+데스)×100`. 경기가 없으면 `null` */
+  kd_rate: Percent.nullable(),
+})
+export type PlayerFormMonth = z.infer<typeof PlayerFormMonth>
+
+export const PlayerFormTrend = z.enum(['rising', 'steady', 'falling', 'unknown'])
+export type PlayerFormTrend = z.infer<typeof PlayerFormTrend>
+
+/**
+ * 선수 프로필 `최근 폼` (D-167).
+ *
+ * **원본에 없는 화면이다.** 사용자 요구로 추가했고, 판정 경계값은
+ * `packages/contract/src/form.ts` 의 `FORM_TREND_THRESHOLD_PP` 하나에만 있다.
+ *
+ * 그래프(`months`)와 판정(`trend`)의 기준이 서로 다르다 —
+ * 그래프는 최근 6개월, 판정은 최근 10경기다. 사용자 지시이며 통일하지 않는다.
+ */
+export const PlayerForm = z.object({
+  /** 오래된 달 → 최신 달 순. 항상 `FORM_MONTHS` 개다 */
+  months: z.array(PlayerFormMonth),
+  trend: PlayerFormTrend,
+  /** 판정에 실제로 쓴 최근 경기 수 (부족하면 `FORM_RECENT_GAMES` 보다 작다) */
+  recent_games: Count,
+  recent_kd_rate: Percent.nullable(),
+  /** 비교 구간(최근 경기 바로 앞) 경기 수 */
+  baseline_games: Count,
+  baseline_kd_rate: Percent.nullable(),
+  /** 최근 − 비교 (%p). 판정 불가면 `null` */
+  delta: z.number().nullable(),
+})
+export type PlayerForm = z.infer<typeof PlayerForm>
+
 export const LeaguePlayerDetail = LeaguePlayer.extend({
   league: LeagueSummary,
   /** 선수 프로필 — `PlayerSummary` + `position` · `note` (D-161) */
@@ -63,6 +113,13 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
   weapon_stats: z.array(PlayerWeaponStat),
   /** 최근 20전 요약 + 상대 클랜별 전적 */
   match_summary: MatchSummary,
+  /**
+   * 최근 폼 — 6개월 월별 킬뎃 + 최근 10경기 판정 (D-167).
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   * `null` 이면 화면은 폼 블록을 **그리지 않는다** — 빈 그래프를 그리지 않는다.
+   */
+  form: PlayerForm.nullable().default(null),
   /** 최근 같이한 플레이어 승률 */
   teammates: z.array(TeammateStat),
 })

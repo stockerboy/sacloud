@@ -1186,6 +1186,31 @@ async function main(): Promise<number> {
           '빈 줄(404)': imported.emptyRows,
         },
       ])
+      /* D-162 — 닉네임·소속은 사용자가 화면에서 지적한 결함이라 따로 낸다 */
+      table([
+        {
+          '닉네임 변경': imported.namesChanged,
+          '프로필이 클랜 알려줌': imported.clanGiven,
+          '소속 채움': imported.clanSet,
+          '소속 그대로': imported.clanUnchanged,
+          '프로필에 클랜 없음': imported.clanLeftToFallback,
+          '클랜 생성': imported.clansCreated,
+          '클랜 입양': imported.clansAdopted,
+          '마크 채움': imported.clansMarkFilled,
+        },
+      ])
+      if (imported.nameChangeSamples.length > 0) {
+        /* 표본은 사람이 **원본과 대조**하라고 내는 것이다. 숫자만 믿지 않는다 (3-A 6번) */
+        log('닉네임이 바뀐 선수 표본 — 원본과 대조해라')
+        table(
+          imported.nameChangeSamples.map((s) => ({
+            '원본 player id': s.playerId,
+            '우리 이름(전)': s.before,
+            '원본 이름(후)': s.after,
+            원본: `https://3rd.supply/player/${s.playerId}`,
+          })),
+        )
+      }
       const unknown = Object.entries(imported.unknownCodeSamples).sort(
         (a, b) => Number(a[0]) - Number(b[0]),
       )
@@ -1236,15 +1261,24 @@ async function main(): Promise<number> {
           '행 갱신': imported.rowsUpdated,
           '우리 카드 보호': imported.rowsSkippedOurs,
           'source id 채움': imported.sourceIdsFilled,
+          'DB 행': imported.dbRows,
+          대조: imported.reconciled ? '일치' : '불일치',
         },
       ])
+      /* 숫자 대조 — 파일 줄 수와 DB 행 수를 시즌별로 나란히 본다 (3-A 6번) */
       table(
-        Object.entries(imported.bySeason)
-          .map(([season, rows]) => ({ 시즌: Number(season), 줄: rows }))
-          .sort((a, b) => b.시즌 - a.시즌),
+        [...new Set([...Object.keys(imported.bySeason), ...Object.keys(imported.dbRowsBySeason)])]
+          .map(Number)
+          .sort((a, b) => b - a)
+          .map((season) => ({
+            시즌: season,
+            '파일 줄': imported.bySeason[season] ?? 0,
+            'DB 행': imported.dbRowsBySeason[season] ?? 0,
+            일치: (imported.bySeason[season] ?? 0) === (imported.dbRowsBySeason[season] ?? 0),
+          })),
       )
       log(`  파일 ${cards}`)
-      return 0
+      return imported.confirm && !imported.reconciled ? 1 : 0
     }
 
     case 'supply-import': {

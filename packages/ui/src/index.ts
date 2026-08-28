@@ -33,7 +33,14 @@ export {
 } from './common/ClanMark'
 export { Label } from './common/Label'
 export { LoadMoreButton } from './common/LoadMoreButton'
-export { formatCount, formatRate, formatAverage, formatRating, formatDate } from './common/format'
+export {
+  formatCount,
+  formatRate,
+  formatAverage,
+  formatRating,
+  formatRatingDelta,
+  formatDate,
+} from './common/format'
 export { rateClass, rateTone, RATE_THRESHOLDS, type RateTone } from './common/rate'
 export { BetaBadge, LeagueSubNav } from './league/LeagueSubNav'
 export { BetaNotice } from './league/BetaNotice'
@@ -55,6 +62,9 @@ export {
   type ClanRankTableProps,
   type PlayerRankTableProps,
 } from './league/RankTable'
+/* 개인랭킹 무기 축 · 폼 TOP3 (D-169 — 원본에 없는 신규 기능) */
+export { RankWeaponTabs } from './league/RankWeaponTabs'
+export { FormTop3 } from './league/FormTop3'
 export { LeagueListTable } from './league/LeagueListTable'
 export {
   LeagueHeader,
@@ -97,6 +107,17 @@ export {
   TeammateTable,
   type PlayerStatSidebarProps,
 } from './record/RecordPanels'
+/* 최근 폼 (D-167) — 원본에 없는 화면이다. 사용자 요구로 승률 도넛 자리를 대신한다 */
+export { PlayerFormPanel } from './record/PlayerFormPanel'
+export { FORM_TREND_TEXT, FORM_TREND_CLASS, formMonthLabel } from './record/formCopy'
+export {
+  formChartDomain,
+  formChartSegments,
+  formChartX,
+  formChartY,
+  type FormChartDomain,
+  type FormChartSegment,
+} from './record/formChart'
 export { ratingClass, RATING_THRESHOLDS } from './common/rating'
 export { SeasonTable } from './record/SeasonTable'
 

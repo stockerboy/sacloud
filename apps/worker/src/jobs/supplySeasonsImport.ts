@@ -63,6 +63,12 @@ export interface SupplySeasonsImportResult {
   rowsSkippedOurs: number
   /** `sourceLeaguePlayerId` 를 새로 채운 LeaguePlayer 수 */
   sourceIdsFilled: number
+  /* ── 숫자 대조 (3-A 6번). "적재 완료" 로그가 아니라 이 값으로 판정한다.
+     실행 끝에 DB 를 다시 세어 담는다 — 미리보기로 다시 돌리면 그대로 검증이 된다 */
+  dbRows: number
+  dbRowsBySeason: Record<number, number>
+  /** 파일 줄 수와 DB 행 수가 시즌별로 전부 같은가 */
+  reconciled: boolean
 }
 
 /** 원본 값을 그대로 옮긴다. 없는 값은 `null` 이다 — 0 으로 만들지 않는다 */
@@ -153,6 +159,9 @@ export async function runSupplySeasonsImport(input: {
     rowsUpdated: 0,
     rowsSkippedOurs: 0,
     sourceIdsFilled: 0,
+    dbRows: 0,
+    dbRowsBySeason: {},
+    reconciled: false,
   }
 
   /* ── 3. Season 행 확보 */
@@ -167,6 +176,7 @@ export async function runSupplySeasonsImport(input: {
   if (!confirm) {
     log('미리보기다 — 한 줄도 쓰지 않았다. 반영하려면 --confirm 을 붙인다')
     if (missing.length > 0) log(`  새로 만들 시즌: ${missing.join(', ')} (seasonType=legacy)`)
+    await reconcile(league.id, result)
     return result
   }
 
@@ -257,5 +267,34 @@ export async function runSupplySeasonsImport(input: {
     }
   }
 
+  await reconcile(league.id, result)
   return result
+}
+
+/**
+ * 숫자 대조 — DB 를 **다시 세어서** 파일과 맞는지 본다 (3-A 6번).
+ *
+ * 이관 행(`source = '3rd.supply'`)만 센다. 우리가 계산한 카드는 대조 대상이 아니다.
+ * `--confirm` 없이 다시 돌리면 이 대조만 수행된다.
+ */
+async function reconcile(leagueId: string, result: SupplySeasonsImportResult): Promise<void> {
+  const rows = await prisma.leaguePlayerSeason.groupBy({
+    by: ['season'],
+    where: { source: '3rd.supply', leaguePlayer: { leagueId } },
+    _count: { _all: true },
+  })
+  const bySeason: Record<number, number> = {}
+  let total = 0
+  for (const row of rows) {
+    bySeason[row.season] = row._count._all
+    total += row._count._all
+  }
+  result.dbRows = total
+  result.dbRowsBySeason = bySeason
+
+  const seasons = new Set([
+    ...Object.keys(result.bySeason).map(Number),
+    ...Object.keys(bySeason).map(Number),
+  ])
+  result.reconciled = [...seasons].every((s) => (result.bySeason[s] ?? 0) === (bySeason[s] ?? 0))
 }

@@ -45,6 +45,17 @@ export function formatRating(value: number): string {
 }
 
 /**
+ * 래더 **증감** — `48` → `+48점` / `-12` → `-12점` / `0` → `0점` (D-169).
+ *
+ * 절대 점수(`formatRating`)와 같은 자리에 놓이므로 **부호를 반드시 붙인다.**
+ * 부호가 없으면 `48점` 이 래더 48점처럼 읽힌다.
+ * `Intl` 의 `signDisplay` 를 쓰지 않는 이유는 0을 `+0` 으로 만들지 않기 위해서다.
+ */
+export function formatRatingDelta(value: number): string {
+  return `${value > 0 ? '+' : ''}${NF.format(value)}점`
+}
+
+/**
  * ISO 8601 → `2021년 10월 14일`
  * 원본은 0 패딩을 하지 않는다. 표시 기준 시간대는 `Asia/Seoul`.
  */

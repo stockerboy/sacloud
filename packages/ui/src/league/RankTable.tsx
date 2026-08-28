@@ -1,12 +1,19 @@
 import Link from 'next/link'
-import type { ClanRankRow, PlayerRankRow } from '@sacloud/contract'
+import type { ClanRankRow, PlayerRankRow, RankWeapon } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
 import { Skeleton } from '../common/Skeleton'
-import { formatCount, formatAverage, formatRate, formatRating } from '../common/format'
+import {
+  formatCount,
+  formatAverage,
+  formatRate,
+  formatRating,
+  formatRatingDelta,
+} from '../common/format'
 import { rateClass } from '../common/rate'
 import { leaguePlayerPath } from '../common/paths'
+import { COL_HIDDEN, COL_NAME, COL_RANK, COL_RATING, HEAD, MARK, ROW } from './rankStyles'
 
 /**
  * 클랜랭킹 / 개인랭킹 표.
@@ -55,33 +62,8 @@ import { leaguePlayerPath } from '../common/paths'
  * (`text-base` 는 1.125 배라 실측 비율에 못 미친다).
  * `text-sm` 줄높이는 1.25rem(17.5px)이라 마크(19.6px)보다 낮아 행 높이를 바꾸지 않는다.
  */
-const HEAD = 'flex items-center border-b border-b-line py-2 text-meta max-md:text-sm'
-/* PC 는 `py-3 text-lg` 그대로. 모바일만 위 계산값으로 바꾼다 */
-const ROW =
-  'flex items-center border-b border-b-line bg-row py-3 text-lg text-meta last:border-b-0 max-md:py-[0.55rem] max-md:text-sm'
-/**
- * 표 안의 클랜마크 — 좁은 화면에서만 줄인다.
- * 실측 58 device px ÷ 3 = 19.3 CSS px ≈ 1.4rem(19.6px). `SIZE` 맵(`md` = 2rem)은 건드리지 않는다.
- */
-const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'
-
-/**
- * 모바일 컬럼 규칙 (2026-08-28 원본 관측).
- *
- * 원본 모바일은 랭킹 표를 **세 칸으로 줄인다** —
- * 클랜랭킹 `순위 · 클랜 · 래더`, 개인랭킹 `순위 · 닉네임 · 점수`.
- * 승리·패배·승률·킬뎃·평균킬은 **감춘다.** 가로로 밀어 보게 하지 않는다.
- *
- * 값을 지우는 게 아니라 보이지 않게만 한다. 넓은 화면은 그대로다.
- */
-/** 순위 칸 — 좁은 화면에서는 폭을 줄인다 */
-const COL_RANK = 'w-40 text-center max-md:w-12'
-/** 이름 칸 — 좁은 화면에서는 남는 폭을 다 쓴다 */
-const COL_NAME = 'flex items-center max-md:min-w-0 max-md:flex-1'
-/** 점수 칸 — 좁은 화면에서는 오른쪽에 붙인다 */
-const COL_RATING = 'flex-grow text-center max-md:w-24 max-md:flex-none max-md:pr-1 max-md:text-right'
-/** 좁은 화면에서 감추는 칸 */
-const COL_HIDDEN = 'max-md:hidden'
+/* 위 실측값의 실제 클래스 문자열은 `rankStyles.ts` 에 모아 두었다 (파일 위 import 참조) —
+   폼 TOP3(D-169) 처럼 랭킹 화면에 덧붙는 것들이 **같은 치수 체계**를 쓰게 하려는 것이다. */
 
 function Unit({ children }: { children: React.ReactNode }) {
   return <span className="ml-0.5">{children}</span>
@@ -223,6 +205,14 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
 export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 'emptyMessage'> {
   leagueSlug: string
   rows?: readonly PlayerRankRow[]
+  /**
+   * 무기 축 (D-169). 기본값 `all` — **넘기지 않으면 기존 개인랭킹 그대로다.**
+   *
+   * `sniper` / `rifle` 이면 마지막 칸이 통합 래더가 아니라
+   * **그 무기로 얻은 래더 증감의 합**(`rating_delta`)이 된다.
+   * 무기별 절대 점수를 지어내지 않는다 — 무기 분리는 기록만 나눈다 (`CLAUDE.md` 3-B).
+   */
+  weapon?: RankWeapon
 }
 
 export function PlayerRankTable({
@@ -231,7 +221,9 @@ export function PlayerRankTable({
   loading,
   error,
   onRetry,
+  weapon = 'all',
 }: PlayerRankTableProps) {
+  const byWeapon = weapon !== 'all'
   return (
     <>
       <div className={HEAD}>
@@ -242,7 +234,9 @@ export function PlayerRankTable({
         <div className={`w-36 text-center ${COL_HIDDEN}`}>승률</div>
         <div className={`w-36 text-center ${COL_HIDDEN}`}>킬뎃</div>
         <div className={`w-36 text-center ${COL_HIDDEN}`}>평균킬</div>
-        <div className={COL_RATING}>래더</div>
+        {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
+            머리글을 그대로 `래더` 로 두면 같은 자리에 다른 뜻의 숫자가 들어가 거짓말이 된다. */}
+        <div className={COL_RATING}>{byWeapon ? '래더증감' : '래더'}</div>
       </div>
       <TableBody
         loading={loading}
@@ -296,7 +290,9 @@ export function PlayerRankTable({
               {formatAverage(row.kill_per_match)}
               <Unit>킬</Unit>
             </div>
-            <div className={COL_RATING}>{formatRating(row.rating)}</div>
+            <div className={COL_RATING}>
+              {byWeapon ? formatRatingDelta(row.rating_delta ?? 0) : formatRating(row.rating)}
+            </div>
           </div>
         ))}
       </TableBody>
