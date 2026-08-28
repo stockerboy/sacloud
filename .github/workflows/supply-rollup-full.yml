@@ -56,6 +56,8 @@ jobs:
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # 점수의 주인은 우리 공식이다 (D-173) — 원본 점수로 되돌려 쓰지 않는다
+      SACLOUD_RATING_OWNER: formula
       LEAGUES: ${{ inputs.leagues || 'supply,daerule,sanply' }}
       DRY_RUN: ${{ inputs.dry_run || 'false' }}
 

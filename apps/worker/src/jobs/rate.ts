@@ -82,6 +82,15 @@ export interface RateRunResult {
     underMinWinRateAt4000: number
     nonFinite: number
   }
+  /** `collectStats` 일 때만 채운다 — 경기별 참가행 계산 결과 (무기별 분리용 · D-171) */
+  stats?: {
+    matchId: string
+    playerId: string
+    ratingBefore: number
+    ratingUpdate: number
+    ratingAfter: number
+    isPlacement: boolean
+  }[]
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -164,6 +173,16 @@ export async function runRate(
      * 복제하면 언젠가 갈라지고, 갈라진 예측은 예측이 아니다.
      */
     extraMatches?: RateMatchRow[]
+    /**
+     * 계산 범위를 바꾼다 (시즌0 재계산용 · D-171).
+     *
+     * 기본은 `origin='nexon'` + 활성 시즌이다. 여기에 값을 주면 **그 범위**를 replay 한다.
+     * 미러 경기를 우리 공식으로 다시 계산해 보는 용도라 **`ctx.dryRun` 과 함께만 쓴다.**
+     * 아니면 거부한다 — 원본 점수를 덮어쓰는 일이 있어서는 안 된다 (CLAUDE.md 3-A 2번).
+     */
+    matchScope?: { origin: string; from?: Date; to?: Date }
+    /** dry-run 결과에 경기별 참가행 계산 결과를 담아 돌려준다 (무기별 분리용) */
+    collectStats?: boolean
   },
 ): Promise<RateRunResult> {
   const baseConstants = input.constants ?? DEFAULT_RATING_CONSTANTS
@@ -204,7 +223,9 @@ export async function runRate(
   const season = await resolveSeason(league.id, input.seasonNumber ?? null)
   /* 시즌 종류에 따른 예외를 여기서 한 번만 적용한다 (D-112).
      Beta는 1경기부터 래더를 계산한다. 정식 시즌은 기존 배치고사 10경기 그대로다. */
-  const constants = constantsForSeason(baseConstants, season)
+  /* 범위를 직접 지정한 replay(시즌0 등)는 **시즌 종류 예외를 쓰지 않는다** (D-171).
+     임의의 창을 다시 재는 것이지 그 시즌을 운영하는 게 아니다. 정식 규칙(배치고사 10경기)으로 잰다 */
+  const constants = input.matchScope ? baseConstants : constantsForSeason(baseConstants, season)
   if (season) {
     if (constants.placementMatches !== baseConstants.placementMatches) {
       log(
@@ -221,20 +242,65 @@ export async function runRate(
   }
   result.season = season?.number ?? null
 
+  /* ---- 미러 구간 경계 (D-170) ----
+     원본(3rd.supply)이 이미 가진 기간의 경기를 우리 공식으로 다시 계산하면
+     **같은 시즌에 두 가지 점수 체계가 섞인다.** 실측(2026-08-29 · supply):
+
+       원본 점수      10,329명   0 ~ 3,432 (평균 834)
+       우리 공식        59명  2,940 ~ 3,049 (평균 3,001)
+
+     기준점이 3000 이라 2판짜리 행이 원본 상위권을 통째로 밀어냈다
+     (개인랭킹 상위 100 중 61명이 10판 미만). 넥슨 재구성 경기 136건은
+     **전부 미러 구간 안**이었고 그 뒤 신규 경기는 0건이었다.
+
+     그래서 미러가 커버하는 구간은 원본을 정본으로 두고 계산하지 않는다.
+     CLAUDE.md 3-B 5번(과거 경기 재계산 금지)과 이 파일 머리말의 원칙을 그대로 지키는 것이다.
+     미러 마지막 경기 **뒤**의 넥슨 경기는 진짜 신규이므로 평소대로 계산한다. */
+  if (input.matchScope && !ctx.dryRun) {
+    throw new Error('matchScope 는 dry-run 에서만 쓸 수 있다 (원본 점수를 덮지 않는다)')
+  }
+  const scopeOrigin = input.matchScope?.origin ?? 'nexon'
+
+  const mirrorEdge = await prisma.match.aggregate({
+    where: { leagueId: league.id, origin: '3rd.supply' },
+    _max: { startAt: true },
+  })
+  /* 미러 구간 가드는 **넥슨 재구성 경기를 계산할 때만** 건다.
+     미러 경기를 일부러 replay 하는 시즌0 계산에까지 걸면 전부 걸러진다 */
+  const mirrorMax = scopeOrigin === 'nexon' ? mirrorEdge._max.startAt : null
+  if (mirrorMax) {
+    const covered = await prisma.match.count({
+      where: { leagueId: league.id, origin: 'nexon', startAt: { lte: mirrorMax } },
+    })
+    if (covered > 0) {
+      log(
+        `미러 구간(~${mirrorMax.toISOString()}) 안의 넥슨 재구성 경기 ${covered}건은 계산하지 않는다 ` +
+          `— 원본 점수가 정본이다 (D-170)`,
+      )
+      result.skipped['mirror_covered'] = covered
+    }
+  }
+
+  /* 범위를 지정하면 그 창을 쓴다. 시즌 창과 섞지 않는다 — 섞으면 무엇을 재는지 흐려진다 */
+  const startAtWhere: { gte?: Date; lt?: Date; gt?: Date } = input.matchScope
+    ? {
+        ...(input.matchScope.from ? { gte: input.matchScope.from } : {}),
+        ...(input.matchScope.to ? { lt: input.matchScope.to } : {}),
+      }
+    : {
+        ...(season
+          ? { gte: season.startedAt, ...(season.endedAt ? { lt: season.endedAt } : {}) }
+          : {}),
+        ...(mirrorMax ? { gt: mirrorMax } : {}),
+      }
+
   const stored = await prisma.match.findMany({
     where: {
       leagueId: league.id,
-      origin: 'nexon',
+      origin: scopeOrigin,
       /* **official 필터를 쓰지 않는다** (D-145).
          "비공식이라 레이팅 0" 은 폐기됐다. 정상 5v5 인지는 `rateMatch` 가 판정한다. */
-      ...(season
-        ? {
-            startAt: {
-              gte: season.startedAt,
-              ...(season.endedAt ? { lt: season.endedAt } : {}),
-            },
-          }
-        : {}),
+      ...(Object.keys(startAtWhere).length > 0 ? { startAt: startAtWhere } : {}),
     },
     orderBy: [{ startAt: 'asc' }, { id: 'asc' }],
     select: {
@@ -301,6 +367,8 @@ export async function runRate(
 
   /** 마지막으로 감점 tick 을 돌린 시각 */
   let decayCursor: Date | null = null
+  /** 계측 — 감점이 실제로 돌았는지 확인용 */
+  const decayTrace = { days: 0, applied: 0, playersSeen: 0, tierMisses: 0, graceSkips: 0 }
 
   /**
    * 미참여 감점을 **하루 단위로** `until` 까지 진행한다.
@@ -321,6 +389,7 @@ export async function runRate(
     while (cursor + DAY <= target && guard < 4000) {
       cursor += DAY
       guard += 1
+      decayTrace.days += 1
       const at = new Date(cursor)
       for (const [playerId, internal] of playerRating) {
         const games = playerMatches.get(playerId) ?? 0
@@ -334,7 +403,13 @@ export async function runRate(
         const penalty = playerPenalty.get(playerId) ?? 0
         const before = displayScore({ internalRating: internal, games, winRate, constants }).gated
         const add = dailyDecay(before - penalty, idleDays, constants)
-        if (add <= 0) continue
+        decayTrace.playersSeen += 1
+        if (add <= 0) {
+          if (idleDays >= 7) decayTrace.tierMisses += 1
+          else decayTrace.graceSkips += 1
+          continue
+        }
+        decayTrace.applied += add
         // 감점만으로 기준점 아래로 내려가지 않는다
         const capped = Math.max(0, Math.min(penalty + add, Math.max(0, before - constants.initialRating)))
         playerPenalty.set(playerId, capped)
@@ -343,19 +418,25 @@ export async function runRate(
         const last = clanLastAt.get(leagueClanId)
         if (!last) continue
         const idleDays = (at.getTime() - last.getTime()) / DAY
-        const add = clanDailyDecay(idleDays, constants)
-        if (add <= 0) continue
         const penalty = clanPenalty.get(leagueClanId) ?? 0
         const composition = compositionScore(
           averageMembers(clanRecentMembers.get(leagueClanId) ?? [], constants),
           constants,
         )
         const before = internal + composition
+        /* v2 는 남은 점수를 알아야 "한 달이면 기준점" 을 맞출 수 있다 (D-173) */
+        const add = clanDailyDecay(idleDays, constants, before - penalty)
+        if (add <= 0) continue
         const capped = Math.max(0, Math.min(penalty + add, Math.max(0, before - constants.initialRating)))
         clanPenalty.set(leagueClanId, capped)
       }
     }
-    decayCursor = until
+    /* ⚠ 커서를 `until` 로 밀면 **감점이 영원히 안 돈다** (D-173).
+       경기가 하루 86건씩 촘촘해서 호출 간격이 몇 분뿐이고,
+       매번 커서를 그 시각으로 밀면 "하루가 지났는가" 가 영원히 거짓이 된다.
+       실측: 181일치를 재생했는데 진행한 날 **0일** · 감점 받은 선수 0명이었다.
+       그래서 **넘긴 하루 경계까지만** 옮기고 자투리는 다음 호출에 넘긴다. */
+    decayCursor = new Date(cursor)
   }
 
   const ratingOf = (playerId: string): number =>
@@ -432,6 +513,10 @@ export async function runRate(
       placementPlayerIds,
       placementClanIds,
       constants,
+      /* v2 의 판수별 K 용. v1 상수에는 표가 없어 무시된다 (D-172) */
+      playerGames: Object.fromEntries(
+        participants.map((p) => [p.playerId, playerMatches.get(p.playerId) ?? 0]),
+      ),
     })
 
     if (!rated.eligibility.ratingEligible) {
@@ -500,10 +585,21 @@ export async function runRate(
         playerOpp.set(player.playerId, acc)
       }
       /* 경기로만 페널티가 회복된다 — **한 판으로 다 지워지지 않는다.**
-         "1판 던지고 초기화" 를 막는 유일한 장치다 */
+         "1판 던지고 초기화" 를 막는 유일한 장치다.
+
+         v2 는 감점이 최대 1,900점까지 커지므로 경기당 8점 고정으로는
+         237판을 뛰어야 회복된다 — 사실상 영구 낙인이다. 그래서 **비율**로 바꾼다
+         (D-173). `decayRecoveryGames` 판이면 대부분 사라진다 */
+      const recoveryGames = constants.v2?.decayRecoveryGames
+      const currentPenalty = playerPenalty.get(player.playerId) ?? 0
       playerPenalty.set(
         player.playerId,
-        Math.max(0, (playerPenalty.get(player.playerId) ?? 0) - constants.decayRecoveryPerGame),
+        Math.max(
+          0,
+          recoveryGames && recoveryGames > 0
+            ? currentPenalty - currentPenalty / recoveryGames
+            : currentPenalty - constants.decayRecoveryPerGame,
+        ),
       )
       pendingStats.push({
         matchId: match.id,
@@ -538,9 +634,16 @@ export async function runRate(
         acc.n += 1
         clanOpp.set(clan.leagueClanId, acc)
       }
+      const clanRecoveryGames = constants.v2?.decayRecoveryGames
+      const clanCurrentPenalty = clanPenalty.get(clan.leagueClanId) ?? 0
       clanPenalty.set(
         clan.leagueClanId,
-        Math.max(0, (clanPenalty.get(clan.leagueClanId) ?? 0) - constants.clanDecayRecoveryPerGame),
+        Math.max(
+          0,
+          clanRecoveryGames && clanRecoveryGames > 0
+            ? clanCurrentPenalty - clanCurrentPenalty / clanRecoveryGames
+            : clanCurrentPenalty - constants.clanDecayRecoveryPerGame,
+        ),
       )
       const recent = clanRecentMembers.get(clan.leagueClanId) ?? []
       recent.push(clan.members)
@@ -569,6 +672,10 @@ export async function runRate(
   const lastMatchAt = matches[matches.length - 1]?.startAt ?? null
   const decayUntil = season?.endedAt ?? lastMatchAt
   if (decayUntil) advanceDecay(decayUntil)
+  log(
+    `감점 계측 — 진행한 날 ${decayTrace.days} · 검사한 선수-일 ${decayTrace.playersSeen} · ` +
+      `적용 합계 ${decayTrace.applied.toFixed(1)} · 구간밖 ${decayTrace.tierMisses} · 유예 ${decayTrace.graceSkips}`,
+  )
 
   /** 개인 최종 표시 점수 */
   const playerDisplay = new Map<string, ReturnType<typeof displayScore>>()
@@ -657,6 +764,16 @@ export async function runRate(
     log(`[dry-run] ${result.matchesRated}경기 계산 — 아무것도 쓰지 않았다`)
     result.playersUpdated = playerRating.size
     result.clansUpdated = clanRating.size
+    if (input.collectStats) {
+      result.stats = pendingStats.map((s) => ({
+        matchId: s.matchId,
+        playerId: s.playerId,
+        ratingBefore: s.ratingBefore,
+        ratingUpdate: s.ratingUpdate,
+        ratingAfter: s.ratingAfter,
+        isPlacement: s.isPlacement,
+      }))
+    }
     return result
   }
 
@@ -808,8 +925,52 @@ export async function runRate(
      그대로 두면 예전 1500 기준 값이 남아 랭킹에 섞인다. 실제로 replay 직후
      최저 래더가 1,476 으로 찍혔다 — 이제 기준점이 3000 이므로 있을 수 없는 값이다.
      승패·킬데스 같은 **기록은 건드리지 않는다.** 래더 관련 값만 초기화한다. */
+  /* ⚠ 미러 리그에서는 **되돌리기 대상을 우리 공식이 관리하는 선수로 한정한다** (D-170).
+
+     이 updateMany 는 원래 "넥슨 경기만 있는 리그" 를 전제로 짰다. 미러(3rd.supply)를
+     들여온 뒤로는 전제가 깨졌다 — 그대로 두면 replay 한 번에 **원본 점수 10,329명이
+     전부 3000 으로 덮어써진다.** CLAUDE.md 3-A 2번(기존 점수를 추정 공식으로 덮어쓰지
+     않는다)을 정면으로 어기는 동작이라 범위를 좁힌다.
+
+     우리 공식이 관리하는 선수 = 미러 구간 **뒤** 넥슨 경기에 참가한 선수.
+     그런 경기가 없으면 되돌릴 대상도 없다. */
+  const ourPlayerIds = mirrorMax
+    ? (
+        await prisma.matchPlayerStat.findMany({
+          where: {
+            match: { leagueId: league.id, origin: 'nexon', startAt: { gt: mirrorMax } },
+          },
+          select: { playerId: true },
+          distinct: ['playerId'],
+        })
+      ).map((r) => r.playerId)
+    : null
+  const ourClanIds = mirrorMax
+    ? [
+        ...new Set(
+          (
+            await prisma.match.findMany({
+              where: { leagueId: league.id, origin: 'nexon', startAt: { gt: mirrorMax } },
+              select: { redLeagueClanId: true, blueLeagueClanId: true },
+            })
+          ).flatMap((m) => [m.redLeagueClanId, m.blueLeagueClanId]),
+        ),
+      ]
+    : null
+  if (ourPlayerIds !== null) {
+    log(
+      `되돌리기 범위 — 미러 뒤 넥슨 경기 참가 선수 ${ourPlayerIds.length} · 클랜 ${ourClanIds?.length ?? 0} 로 한정 (D-170)`,
+    )
+  }
+
   const untouchedPlayers = await prisma.leaguePlayer.updateMany({
-    where: { leagueId: league.id, playerId: { notIn: [...playerRating.keys()] } },
+    where: {
+      leagueId: league.id,
+      playerId: {
+        notIn: [...playerRating.keys()],
+        ...(ourPlayerIds !== null ? { in: ourPlayerIds } : {}),
+      },
+    },
     data: {
       rating: constants.initialRating,
       baseRating: constants.initialRating,
@@ -821,7 +982,13 @@ export async function runRate(
     },
   })
   const untouchedClans = await prisma.leagueClan.updateMany({
-    where: { leagueId: league.id, id: { notIn: [...clanRating.keys()] } },
+    where: {
+      leagueId: league.id,
+      id: {
+        notIn: [...clanRating.keys()],
+        ...(ourClanIds !== null ? { in: ourClanIds } : {}),
+      },
+    },
     data: {
       rating: constants.initialRating,
       internalRating: constants.initialRating,

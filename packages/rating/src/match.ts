@@ -17,6 +17,7 @@
  */
 import {
   CLAN_FORMULA_VERSION,
+  clanCompositionWeight,
   DEFAULT_RATING_CONSTANTS,
   PERSONAL_FORMULA_VERSION,
   type RatingConstants,
@@ -48,6 +49,11 @@ export interface MatchRatingInput {
    * replay 는 **저장된 팀 배정**을 그대로 넘겨 재구성과 같은 판정을 재현한다.
    */
   sideEvidence?: SideEvidence | null
+  /**
+   * 경기 직전까지의 선수별 누적 판수 (v2 의 판수별 K 용 · D-172).
+   * 없으면 고정 K 를 쓴다 — D-145 와 완전히 같다.
+   */
+  playerGames?: Readonly<Record<string, number>>
 }
 
 export interface PlayerRatingResult {
@@ -163,15 +169,26 @@ export function rateMatch(input: MatchRatingInput): MatchRatingResult {
         ? opponentRatings.reduce((sum, rating) => sum + rating, 0) / opponentRatings.length
         : constants.initialRating
 
+    /* v2 — 기대승률을 **팀 평균 대 팀 평균**으로 한 번만 계산한다 (D-172).
+       그러면 같은 경기를 이긴 5명이 전부 같은 값을 받는다.
+       강한 팀에 얹혀 간 선수가 더 받는 일이 없어진다 */
+    const ownRatings = side.members.map((m) => m.ratingBefore ?? constants.initialRating)
+    const ownAvg =
+      ownRatings.length > 0
+        ? ownRatings.reduce((sum, r) => sum + r, 0) / ownRatings.length
+        : constants.initialRating
+
     for (const member of side.members) {
       const ratingBefore = member.ratingBefore ?? constants.initialRating
       const isPlacement = placementPlayers.has(member.playerId)
       const result = personalRatingUpdate({
-        ratingBefore,
+        /* v2 면 내 개인 점수가 아니라 **우리 팀 평균**이 기준이다 */
+        ratingBefore: constants.v2?.teamExpectation ? ownAvg : ratingBefore,
         opponentRating: opponentAvg,
         outcome: member.outcome,
         isPlacement,
         constants,
+        games: input.playerGames?.[member.playerId],
       })
 
       players.push({
@@ -207,12 +224,19 @@ export function rateMatch(input: MatchRatingInput): MatchRatingResult {
       constants,
     })
 
+    /* v2 — 그 경기에 나간 **본클랜원 수**로 증감을 곱한다 (D-172).
+       고용주 1명 + 용병 4명으로 이겨도 점수를 다 받지 않는다.
+       "최근 20경기 평균" 이 아니라 그 경기 그 자리에서 적용된다.
+       개인 증감에는 걸지 않는다 — 용병으로 뛰어도 개인 실력은 개인 실력이다 */
+    const weight = clanCompositionWeight(side.memberCount, constants)
+    const ratingUpdate = result.ratingUpdate * weight
+
     return {
       leagueClanId: side.leagueClanId,
       outcome: side.outcome,
       ratingBefore: side.clanRating,
-      ratingUpdate: result.ratingUpdate,
-      ratingAfter: Math.max(constants.ratingFloor, side.clanRating + result.ratingUpdate),
+      ratingUpdate,
+      ratingAfter: Math.max(constants.ratingFloor, side.clanRating + ratingUpdate),
       opponentRatingUsed: opponent.clanRating,
       isPlacement,
       suppression: result.suppression,

@@ -373,6 +373,21 @@ export async function matchCountByPlayer(
   return new Map(grouped.map((row) => [row.playerId, row._count._all]))
 }
 
+/**
+ * 평균킬의 분모 — **집계에 실제로 들어간 판수** (D-172).
+ *
+ * `matchCountByPlayer` 는 그 리그의 래더 경기를 **전부** 센다. 시즌 단위로 집계하기
+ * 시작하면서 분자(`LeaguePlayer.kill`)는 그 시즌 것만 담게 됐는데 분모는 전 기간이라,
+ * 실측에서 평균킬이 `0.29킬` 처럼 터무니없이 작게 나왔다.
+ *
+ * `LeaguePlayerWeaponStat.knownStatGames` 는 **같은 집계에서 나온 값**이고
+ * K/D 를 아는 경기만 센다 (D-149). 그래서 분자와 분모의 출처가 같아진다.
+ * 무기별 행이 하나도 없으면 예전 방식으로 물러난다.
+ */
+function knownGamesOf(rows: { knownStatGames: number }[]): number {
+  return rows.reduce((sum, row) => sum + row.knownStatGames, 0)
+}
+
 export async function getPlayerRanks(
   leagueId: string,
   cursor: string | null,
@@ -393,6 +408,7 @@ export async function getPlayerRanks(
     death: number
     player: { id: string; name: string }
     clan: { id: string; slug: string; name: string; markBgUrl: string | null; markFrontUrl: string | null } | null
+    weaponStats: { knownStatGames: number }[]
   }>({
     cursor,
     size,
@@ -417,6 +433,8 @@ export async function getPlayerRanks(
           death: true,
           player: { select: PLAYER_SUMMARY_SELECT },
           clan: { select: CLAN_SUMMARY_SELECT },
+          /* 평균킬 분모 — 분자와 같은 집계에서 나온 판수를 쓴다 (D-172) */
+          weaponStats: { select: { knownStatGames: true } },
         },
       }),
   })
@@ -439,7 +457,10 @@ export async function getPlayerRanks(
       win_rate: winRate(row.win, row.lose),
       // 무소속리그면 누적 킬뎃만 비운다. 순위·승패·평균킬은 그대로 나간다 (D-107)
       kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death)),
-      kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
+      kill_per_match: killPerMatch(
+        row.kill,
+        knownGamesOf(row.weaponStats) || (counts.get(row.player.id) ?? 0),
+      ),
       rating: row.rating,
     })),
   }
@@ -528,6 +549,7 @@ export async function playerWeaponRankOf(
       kill: true,
       death: true,
       assist: true,
+      isMain: true,
       leaguePlayer: { select: { placement: true } },
     },
   })
@@ -549,7 +571,10 @@ export async function playerWeaponRankOf(
   /* **본인이 랭킹 모집단에 들어가지 않으면 순위도 없다.**
      배치고사 중인 선수를 세지 않으면서 그 선수에게만 순위를 주면
      "0명중 1위" 같은 값이 나온다. 실제로 그렇게 나왔다. */
-  if (mine.leaguePlayer.placement || mine.knownStatGames === 0) {
+  /* 주무기가 아니면 그 무기 랭킹의 모집단이 아니다 (D-173).
+     기록은 위에서 그대로 돌려주고 **순위만** 주지 않는다 —
+     목록(`rankings.ts`)과 모집단이 같아야 "N위 / M명" 이 어긋나지 않는다 */
+  if (mine.leaguePlayer.placement || mine.knownStatGames === 0 || !mine.isMain) {
     return { ...empty, ...stat, rank: null, rankCount: null }
   }
 
@@ -557,6 +582,7 @@ export async function playerWeaponRankOf(
     weapon,
     leaguePlayer: { leagueId, placement: false },
     knownStatGames: { gt: 0 },
+    isMain: true,
   }
   const rankCount = await prisma.leaguePlayerWeaponStat.count({ where })
   const above = await prisma.leaguePlayerWeaponStat.count({

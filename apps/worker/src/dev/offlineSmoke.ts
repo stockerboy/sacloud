@@ -245,8 +245,10 @@ async function main() {
   })
   check('리그 구성 후 투영', 1, projectedAgain.projected)
 
-  const domainMatch = await prisma.match.findUnique({
-    where: { origin_sourceMatchId: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id } },
+  /* 고유 키가 `[leagueId, origin, sourceMatchId]` 로 바뀌었다.
+     이 스모크는 리그를 하나만 만들므로 `findFirst` 로 찾는다 */
+  const domainMatch = await prisma.match.findFirst({
+    where: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
     include: { stats: true },
   })
   check('내부 ID는 우리 규칙(18자리)이다', true, /^\d{18}$/.test(domainMatch?.id ?? ''))
@@ -485,10 +487,8 @@ async function main() {
   const reconstructed = await runReconstruct(ctx, reconstructTarget)
   check('관측이 갖춰지면 재구성된다', 1, reconstructed.projected)
 
-  const reconstructedMatch = await prisma.match.findUnique({
-    where: {
-      origin_sourceMatchId: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
-    },
+  const reconstructedMatch = await prisma.match.findFirst({
+    where: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
     include: { stats: true },
   })
   check('재구성 경기의 참가자 10명', 10, reconstructedMatch?.stats.length ?? 0)
@@ -597,10 +597,8 @@ async function main() {
   check('확인 수준이 기록된다', '5v3', partialStaging?.participantCompleteness ?? '')
   check('확신 등급이 기록된다', 'low', partialStaging?.reconstructionConfidence ?? '')
 
-  const partialMatch = await prisma.match.findUnique({
-    where: {
-      origin_sourceMatchId: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
-    },
+  const partialMatch = await prisma.match.findFirst({
+    where: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
     include: { stats: true },
   })
   check('확인된 8명만 참가 기록이 생긴다 (없는 참가자를 만들지 않는다)', 8, partialMatch?.stats.length ?? 0)
@@ -672,10 +670,8 @@ async function main() {
 
   const referenceRun = await runReconstruct(ctx, reconstructTarget)
   check('비공식 경기도 경기는 저장한다 (지우지 않는다)', 1, referenceRun.projected)
-  const referenceMatch = await prisma.match.findUnique({
-    where: {
-      origin_sourceMatchId: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
-    },
+  const referenceMatch = await prisma.match.findFirst({
+    where: { origin: 'nexon', sourceMatchId: SAMPLE_MATCH_DETAIL.match_id },
     include: { stats: true },
   })
   check('공식 통계 대상이 아니다', false, referenceMatch?.official ?? true)

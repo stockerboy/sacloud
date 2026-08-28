@@ -238,8 +238,15 @@ async function writeReconstructedMatch(input: {
 }): Promise<string> {
   const { plan, sourceMatchId } = input
 
+  /* 고유 키는 `[leagueId, origin, sourceMatchId]` 다 (D-155) */
   const existing = await prisma.match.findUnique({
-    where: { origin_sourceMatchId: { origin: NEXON_SOURCE, sourceMatchId } },
+    where: {
+      leagueId_origin_sourceMatchId: {
+        leagueId: plan.leagueId,
+        origin: NEXON_SOURCE,
+        sourceMatchId,
+      },
+    },
     select: { id: true },
   })
   const matchId =

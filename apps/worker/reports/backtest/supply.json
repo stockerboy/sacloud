@@ -1,0 +1,694 @@
+{
+  "league": "supply",
+  "from": "2026-01-01T00:00:00.000Z",
+  "to": "2026-07-01T00:00:00.000Z",
+  "burnInDays": 30,
+  "results": [
+    {
+      "system": "v1 (지금 · D-145)",
+      "matchesConsidered": 18443,
+      "matchesRated": 18324,
+      "scored": 14408,
+      "clan": {
+        "accuracy": 0.5372015546918378,
+        "brier": 0.2571931233432293,
+        "logLoss": 0.7104744958884899
+      },
+      "lineup": {
+        "accuracy": 0.5748195446973904,
+        "brier": 0.24110728054123806,
+        "logLoss": 0.6750468286991318
+      },
+      "byComposition": [
+        {
+          "members": 0,
+          "n": 7877,
+          "accuracy": 0.566713215691253,
+          "brier": 0.24258929708634946
+        },
+        {
+          "members": 1,
+          "n": 4026,
+          "accuracy": 0.5802285146547441,
+          "brier": 0.24048398159288037
+        },
+        {
+          "members": 2,
+          "n": 1711,
+          "accuracy": 0.5885447106954997,
+          "brier": 0.23830795111513095
+        },
+        {
+          "members": 3,
+          "n": 651,
+          "accuracy": 0.5821812596006144,
+          "brier": 0.23924532866778953
+        },
+        {
+          "members": 4,
+          "n": 138,
+          "accuracy": 0.6811594202898551,
+          "brier": 0.21700203068835608
+        },
+        {
+          "members": 5,
+          "n": 5,
+          "accuracy": 0.4,
+          "brier": 0.27388028806818754
+        }
+      ],
+      "gamesRankCorrelation": 0.15458430713980795,
+      "zeroDeltaMatchRate": 0.0018739589117157136,
+      "personalDrift": 12290.632515350017,
+      "clanDrift": 581.0826163992629,
+      "rankedPlayers": 1464,
+      "top": [
+        {
+          "name": "daram",
+          "display": 4123,
+          "games": 481,
+          "win": 282,
+          "lose": 199
+        },
+        {
+          "name": "fIare",
+          "display": 4082,
+          "games": 900,
+          "win": 541,
+          "lose": 359
+        },
+        {
+          "name": "mallang",
+          "display": 4064,
+          "games": 436,
+          "win": 264,
+          "lose": 172
+        },
+        {
+          "name": "friendshiplng",
+          "display": 4063,
+          "games": 194,
+          "win": 118,
+          "lose": 76
+        },
+        {
+          "name": "근면",
+          "display": 3977,
+          "games": 211,
+          "win": 139,
+          "lose": 72
+        },
+        {
+          "name": "울라숑",
+          "display": 3937,
+          "games": 145,
+          "win": 94,
+          "lose": 51
+        },
+        {
+          "name": "chiwawaa",
+          "display": 3931,
+          "games": 1005,
+          "win": 564,
+          "lose": 441
+        },
+        {
+          "name": "xek",
+          "display": 3921,
+          "games": 823,
+          "win": 477,
+          "lose": 346
+        },
+        {
+          "name": "신민아",
+          "display": 3921,
+          "games": 158,
+          "win": 104,
+          "lose": 54
+        },
+        {
+          "name": "찬글루",
+          "display": 3912,
+          "games": 456,
+          "win": 289,
+          "lose": 167
+        },
+        {
+          "name": "예리한대",
+          "display": 3912,
+          "games": 126,
+          "win": 76,
+          "lose": 50
+        },
+        {
+          "name": "MageIIan",
+          "display": 3871,
+          "games": 496,
+          "win": 315,
+          "lose": 181
+        },
+        {
+          "name": "Junsik",
+          "display": 3841,
+          "games": 154,
+          "win": 91,
+          "lose": 63
+        },
+        {
+          "name": "보벼라햼스터",
+          "display": 3826,
+          "games": 405,
+          "win": 231,
+          "lose": 174
+        },
+        {
+          "name": "조성빈",
+          "display": 3804,
+          "games": 370,
+          "win": 224,
+          "lose": 146
+        },
+        {
+          "name": "1rock",
+          "display": 3800,
+          "games": 120,
+          "win": 87,
+          "lose": 33
+        },
+        {
+          "name": "노란색깔수박",
+          "display": 3792,
+          "games": 401,
+          "win": 211,
+          "lose": 190
+        },
+        {
+          "name": "chococake",
+          "display": 3783,
+          "games": 97,
+          "win": 69,
+          "lose": 28
+        },
+        {
+          "name": "부리♡",
+          "display": 3780,
+          "games": 609,
+          "win": 349,
+          "lose": 260
+        },
+        {
+          "name": "전렉다이슨",
+          "display": 3769,
+          "games": 760,
+          "win": 370,
+          "lose": 390
+        }
+      ],
+      "topClans": [
+        {
+          "name": "Castle",
+          "display": 3586,
+          "games": 1686,
+          "win": 981,
+          "lose": 705
+        },
+        {
+          "name": "MiraGe.",
+          "display": 3417,
+          "games": 1463,
+          "win": 733,
+          "lose": 730
+        },
+        {
+          "name": "mercedes-",
+          "display": 3380,
+          "games": 213,
+          "win": 132,
+          "lose": 81
+        },
+        {
+          "name": "des`per@do.",
+          "display": 3365,
+          "games": 677,
+          "win": 375,
+          "lose": 302
+        },
+        {
+          "name": "멘토르",
+          "display": 3238,
+          "games": 1219,
+          "win": 598,
+          "lose": 621
+        },
+        {
+          "name": "-tsAr.nTc",
+          "display": 3171,
+          "games": 758,
+          "win": 445,
+          "lose": 313
+        },
+        {
+          "name": "Chamundara",
+          "display": 3135,
+          "games": 782,
+          "win": 369,
+          "lose": 413
+        },
+        {
+          "name": "마왕",
+          "display": 3116,
+          "games": 60,
+          "win": 39,
+          "lose": 21
+        },
+        {
+          "name": "야부리！",
+          "display": 3107,
+          "games": 363,
+          "win": 163,
+          "lose": 200
+        },
+        {
+          "name": "One.PoinT",
+          "display": 3102,
+          "games": 1549,
+          "win": 703,
+          "lose": 846
+        },
+        {
+          "name": "smite",
+          "display": 3101,
+          "games": 194,
+          "win": 115,
+          "lose": 79
+        },
+        {
+          "name": "recent.wct-",
+          "display": 3092,
+          "games": 703,
+          "win": 358,
+          "lose": 345
+        },
+        {
+          "name": "PokerFace.",
+          "display": 3079,
+          "games": 641,
+          "win": 280,
+          "lose": 361
+        },
+        {
+          "name": "lunatic`Gaming",
+          "display": 3074,
+          "games": 132,
+          "win": 51,
+          "lose": 81
+        },
+        {
+          "name": "gaIactico-",
+          "display": 3064,
+          "games": 332,
+          "win": 174,
+          "lose": 158
+        },
+        {
+          "name": "CeIebrity",
+          "display": 3061,
+          "games": 572,
+          "win": 341,
+          "lose": 231
+        },
+        {
+          "name": "eternalrz",
+          "display": 3057,
+          "games": 792,
+          "win": 429,
+          "lose": 363
+        },
+        {
+          "name": "hing",
+          "display": 3051,
+          "games": 51,
+          "win": 32,
+          "lose": 19
+        },
+        {
+          "name": "supremacy-",
+          "display": 3028,
+          "games": 19,
+          "win": 10,
+          "lose": 9
+        },
+        {
+          "name": "dravelior",
+          "display": 3024,
+          "games": 1321,
+          "win": 705,
+          "lose": 616
+        }
+      ]
+    },
+    {
+      "system": "v2 (제안 · D-172)",
+      "matchesConsidered": 18443,
+      "matchesRated": 18324,
+      "scored": 14408,
+      "clan": {
+        "accuracy": 0.5406024430871738,
+        "brier": 0.25075565839944736,
+        "logLoss": 0.6954218838011965
+      },
+      "lineup": {
+        "accuracy": 0.5822459744586341,
+        "brier": 0.23955585808832827,
+        "logLoss": 0.6718432443780264
+      },
+      "byComposition": [
+        {
+          "members": 0,
+          "n": 7877,
+          "accuracy": 0.5706487241335534,
+          "brier": 0.24179368101268744
+        },
+        {
+          "members": 1,
+          "n": 4026,
+          "accuracy": 0.5906607054148038,
+          "brier": 0.237901300480221
+        },
+        {
+          "members": 2,
+          "n": 1711,
+          "accuracy": 0.592051431911163,
+          "brier": 0.23651764838787623
+        },
+        {
+          "members": 3,
+          "n": 651,
+          "accuracy": 0.620583717357911,
+          "brier": 0.23497147283668413
+        },
+        {
+          "members": 4,
+          "n": 138,
+          "accuracy": 0.7028985507246377,
+          "brier": 0.21552481876833232
+        },
+        {
+          "members": 5,
+          "n": 5,
+          "accuracy": 0.4,
+          "brier": 0.34615841359210353
+        }
+      ],
+      "gamesRankCorrelation": 0.11280991857214183,
+      "zeroDeltaMatchRate": 0.0018739589117157136,
+      "personalDrift": 7631.629099834696,
+      "clanDrift": -339.2938863206382,
+      "rankedPlayers": 1464,
+      "top": [
+        {
+          "name": "레몬씨!!네??",
+          "display": 4893,
+          "games": 417,
+          "win": 269,
+          "lose": 148
+        },
+        {
+          "name": "chococake",
+          "display": 4631,
+          "games": 97,
+          "win": 69,
+          "lose": 28
+        },
+        {
+          "name": "1rock",
+          "display": 4619,
+          "games": 120,
+          "win": 87,
+          "lose": 33
+        },
+        {
+          "name": "신민아",
+          "display": 4577,
+          "games": 158,
+          "win": 104,
+          "lose": 54
+        },
+        {
+          "name": "로얄젤리",
+          "display": 4549,
+          "games": 427,
+          "win": 261,
+          "lose": 166
+        },
+        {
+          "name": "encIave",
+          "display": 4524,
+          "games": 721,
+          "win": 385,
+          "lose": 336
+        },
+        {
+          "name": "fIare",
+          "display": 4502,
+          "games": 900,
+          "win": 541,
+          "lose": 359
+        },
+        {
+          "name": "xek",
+          "display": 4441,
+          "games": 823,
+          "win": 477,
+          "lose": 346
+        },
+        {
+          "name": "조성빈",
+          "display": 4425,
+          "games": 370,
+          "win": 224,
+          "lose": 146
+        },
+        {
+          "name": "찬글루",
+          "display": 4367,
+          "games": 456,
+          "win": 289,
+          "lose": 167
+        },
+        {
+          "name": "현누",
+          "display": 4342,
+          "games": 731,
+          "win": 457,
+          "lose": 274
+        },
+        {
+          "name": "friendshiplng",
+          "display": 4263,
+          "games": 194,
+          "win": 118,
+          "lose": 76
+        },
+        {
+          "name": "냥말이",
+          "display": 4234,
+          "games": 311,
+          "win": 188,
+          "lose": 123
+        },
+        {
+          "name": "깊어지지말것",
+          "display": 4228,
+          "games": 135,
+          "win": 89,
+          "lose": 46
+        },
+        {
+          "name": "chiwawaa",
+          "display": 4223,
+          "games": 1005,
+          "win": 564,
+          "lose": 441
+        },
+        {
+          "name": "Nostalgia♡",
+          "display": 4208,
+          "games": 56,
+          "win": 35,
+          "lose": 21
+        },
+        {
+          "name": "bao",
+          "display": 4204,
+          "games": 530,
+          "win": 329,
+          "lose": 201
+        },
+        {
+          "name": "첨시빵야",
+          "display": 4144,
+          "games": 384,
+          "win": 222,
+          "lose": 162
+        },
+        {
+          "name": "인혁",
+          "display": 4134,
+          "games": 977,
+          "win": 553,
+          "lose": 424
+        },
+        {
+          "name": "Jerryvt",
+          "display": 4132,
+          "games": 688,
+          "win": 396,
+          "lose": 292
+        }
+      ],
+      "topClans": [
+        {
+          "name": "des`per@do.",
+          "display": 3376,
+          "games": 677,
+          "win": 375,
+          "lose": 302
+        },
+        {
+          "name": "Castle",
+          "display": 3308,
+          "games": 1686,
+          "win": 981,
+          "lose": 705
+        },
+        {
+          "name": "mercedes-",
+          "display": 3276,
+          "games": 213,
+          "win": 132,
+          "lose": 81
+        },
+        {
+          "name": "-tsAr.nTc",
+          "display": 3249,
+          "games": 758,
+          "win": 445,
+          "lose": 313
+        },
+        {
+          "name": "마왕",
+          "display": 3212,
+          "games": 60,
+          "win": 39,
+          "lose": 21
+        },
+        {
+          "name": "Chamundara",
+          "display": 3196,
+          "games": 782,
+          "win": 369,
+          "lose": 413
+        },
+        {
+          "name": "멘토르",
+          "display": 3184,
+          "games": 1219,
+          "win": 598,
+          "lose": 621
+        },
+        {
+          "name": "recent.wct-",
+          "display": 3179,
+          "games": 703,
+          "win": 358,
+          "lose": 345
+        },
+        {
+          "name": "One.PoinT",
+          "display": 3175,
+          "games": 1549,
+          "win": 703,
+          "lose": 846
+        },
+        {
+          "name": "MiraGe.",
+          "display": 3145,
+          "games": 1463,
+          "win": 733,
+          "lose": 730
+        },
+        {
+          "name": "gaIactico-",
+          "display": 3081,
+          "games": 332,
+          "win": 174,
+          "lose": 158
+        },
+        {
+          "name": "dravelior",
+          "display": 3076,
+          "games": 1321,
+          "win": 705,
+          "lose": 616
+        },
+        {
+          "name": "hing",
+          "display": 3048,
+          "games": 51,
+          "win": 32,
+          "lose": 19
+        },
+        {
+          "name": "lunatic`Gaming",
+          "display": 3047,
+          "games": 132,
+          "win": 51,
+          "lose": 81
+        },
+        {
+          "name": "smite",
+          "display": 3040,
+          "games": 194,
+          "win": 115,
+          "lose": 79
+        },
+        {
+          "name": "야부리！",
+          "display": 3031,
+          "games": 363,
+          "win": 163,
+          "lose": 200
+        },
+        {
+          "name": "eternalrz",
+          "display": 3027,
+          "games": 792,
+          "win": 429,
+          "lose": 363
+        },
+        {
+          "name": "CeIebrity",
+          "display": 3021,
+          "games": 572,
+          "win": 341,
+          "lose": 231
+        },
+        {
+          "name": "PokerFace.",
+          "display": 3010,
+          "games": 641,
+          "win": 280,
+          "lose": 361
+        },
+        {
+          "name": "stylecIan",
+          "display": 3008,
+          "games": 1445,
+          "win": 804,
+          "lose": 641
+        }
+      ]
+    }
+  ]
+}

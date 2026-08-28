@@ -9,6 +9,9 @@
  */
 export {
   DEFAULT_RATING_CONSTANTS,
+  V2_RATING_CONSTANTS,
+  clanCompositionWeight,
+  personalKFor,
   PERSONAL_FORMULA_VERSION,
   CLAN_FORMULA_VERSION,
   FORMULA_VERSION,
@@ -18,6 +21,7 @@ export {
   DEFAULT_SEASON_POLICY,
   type DecayTier,
   type RatingConstants,
+  type RatingV2Flags,
   type SeasonPolicyFlags,
   type SuppressionRange,
   type WinRateBand,

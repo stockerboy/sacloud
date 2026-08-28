@@ -46,6 +46,60 @@ export interface DecayTier {
   weekly: number
 }
 
+/**
+ * v2 스위치 (D-172) — **없으면 D-145 그대로 동작한다.**
+ *
+ * 두 시스템을 같은 코드로 나란히 돌려 실데이터로 비교하기 위한 것이다.
+ * 공식을 복제한 별도 시뮬레이터를 만들지 않는다 — 복제하면 언젠가 갈라진다.
+ */
+export interface RatingV2Flags {
+  /**
+   * 개인 기대승률을 **팀 평균 대 팀 평균**으로 계산하고, 그 경기의 증감을
+   * 10명에게 **똑같이** 나눈다.
+   *
+   * D-145 는 "내 개인점수 vs 상대팀 평균" 이라, 강한 팀에 얹혀 간 약한 선수가
+   * 같은 승리로 더 많이 받는다. 실력순 랭킹을 흐리는 가장 큰 원인이다.
+   */
+  teamExpectation?: boolean
+  /** 일방적 경기 억제를 쓰지 않는다 — "이겼는데 0점" 을 없앤다 */
+  disableSuppression?: boolean
+  /** 표시 점수에 신뢰도를 곱하지 않는다 — 판수가 순위를 올리지 못하게 한다 */
+  disableDisplayConfidence?: boolean
+  /** 승률 자격선을 쓰지 않는다 (억제를 빼면 필요 없어진다) */
+  disableWinRateBands?: boolean
+  /**
+   * 판수 구간별 개인 K. 큰 `minGames` 부터 찾아 첫 번째로 맞는 것을 쓴다.
+   * 신입은 빨리 제자리를 찾고, 자리 잡은 선수는 천천히 움직인다.
+   */
+  personalKByGames?: { minGames: number; k: number }[]
+  /**
+   * **미참여 감점을 기준점까지 끌어내리는 기간** (일). 사장님 지시 (D-173).
+   *
+   * "최근 한 달 동안 게임을 안 했으면 거의 기본점수로 내려간다."
+   * `decayGraceDays` 까지는 깎지 않고, 그 뒤 이 날짜에 정확히 기준점(3000)에 닿는다.
+   * 구간(4000↑)만 깎던 `decayTiers` 를 대체한다 — 점수대와 무관하게 전원 적용된다.
+   */
+  decayToBaselineDays?: number
+  /** 이 날까지는 깎지 않는다 */
+  decayGraceDays?: number
+  /**
+   * 복귀 후 감점이 대부분 사라지는 데 걸리는 경기 수.
+   *
+   * 경기마다 남은 감점의 `1/n` 을 덜어 낸다. 고정값(경기당 8점)으로는
+   * 최대 1,900점짜리 감점을 237판 뛰어야 지울 수 있어 영구 낙인이 된다.
+   * "한 판 던지고 초기화" 는 여전히 막는다 — 한 판에 다 사라지지 않는다.
+   */
+  decayRecoveryGames?: number
+  /**
+   * 그 경기에 나간 **본클랜원 수**로 클랜 증감에 곱하는 가중치.
+   * `[인원, 가중치]` 오름차순. 사이 값은 계단으로 본다.
+   *
+   * 고용주 1명 + 용병 4명으로 이겨도 점수를 다 받지 않게 하는 장치다.
+   * **개인 점수에는 적용하지 않는다** — 용병으로 뛰어도 잘하면 잘하는 것이다.
+   */
+  clanCompositionWeight?: [number, number][]
+}
+
 export interface RatingConstants {
   /**
    * D — 기대승률 분모.
@@ -111,6 +165,9 @@ export interface RatingConstants {
    * 원본의 정확한 판정 기준은 `[미확인]` 이라 우리가 10으로 정했다.
    */
   placementMatches: number
+
+  /** v2 스위치. 없으면 D-145 그대로다 */
+  v2?: RatingV2Flags
 }
 
 export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
@@ -164,6 +221,65 @@ export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
   compositionWindow: 20,
 
   placementMatches: 10,
+}
+
+/**
+ * v2 후보 상수 (D-172) — 사장님 확정 요구사항을 반영한 것.
+ *
+ *   · 개인·클랜 모두 실력순이 최우선   → 팀 대 팀 기대승률 · 판수 인플레 제거
+ *   · 미참여 감점은 반드시 유지        → `decayTiers` 그대로 둔다
+ *   · 본클랜원이 많을수록 높은 점수     → `clanCompositionWeight`
+ *
+ * 값은 **아직 확정이 아니다.** 실데이터 백테스트로 검증한 뒤 정한다.
+ */
+export const V2_RATING_CONSTANTS: RatingConstants = {
+  ...DEFAULT_RATING_CONSTANTS,
+  /* 가산점 방식 구성 보정은 끈다 — 곱하는 방식으로 대체한다 */
+  compositionCap: 0,
+  v2: {
+    teamExpectation: true,
+    disableSuppression: true,
+    disableDisplayConfidence: true,
+    disableWinRateBands: true,
+    personalKByGames: [
+      { minGames: 0, k: 40 },
+      { minGames: 30, k: 28 },
+      { minGames: 100, k: 20 },
+    ],
+    clanCompositionWeight: [
+      [1, 0.3],
+      [2, 0.55],
+      [3, 0.75],
+      [4, 0.9],
+      [5, 1],
+    ],
+    decayGraceDays: 7,
+    decayToBaselineDays: 30,
+    decayRecoveryGames: 5,
+  },
+}
+
+/** 판수 구간별 K. 없으면 고정 K 를 쓴다 */
+export function personalKFor(games: number, constants: RatingConstants): number {
+  const table = constants.v2?.personalKByGames
+  if (!table || table.length === 0) return constants.personalK
+  let k = constants.personalK
+  for (const row of [...table].sort((a, b) => a.minGames - b.minGames)) {
+    if (games >= row.minGames) k = row.k
+  }
+  return k
+}
+
+/** 그 경기에 나간 본클랜원 수 → 클랜 증감에 곱할 가중치. 없으면 1 */
+export function clanCompositionWeight(members: number, constants: RatingConstants): number {
+  const curve = constants.v2?.clanCompositionWeight
+  if (!curve || curve.length === 0) return 1
+  const sorted = [...curve].sort((a, b) => a[0] - b[0])
+  let weight = sorted[0]![1]
+  for (const [count, value] of sorted) {
+    if (members >= count) weight = value
+  }
+  return weight
 }
 
 /** 원본이 정수를 쓰므로 half-up으로 고정한다. 음수는 크기를 반올림한 뒤 부호를 붙인다 */

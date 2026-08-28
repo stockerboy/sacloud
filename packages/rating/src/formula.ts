@@ -8,7 +8,12 @@
  *   뻔한 경기는 이겨도 져도 거의 안 움직이고, **이변은 온전히 반영된다.**
  *   킬뎃은 점수에 들어가지 않는다. 판수만 많다고 오르지 않는다.
  */
-import { DEFAULT_RATING_CONSTANTS, roundHalfUp, type RatingConstants } from './constants.js'
+import {
+  DEFAULT_RATING_CONSTANTS,
+  personalKFor,
+  roundHalfUp,
+  type RatingConstants,
+} from './constants.js'
 
 export type Outcome = 'win' | 'lose'
 
@@ -52,6 +57,8 @@ export interface RatingUpdateInput {
   /** 배치고사 경기는 증감이 0이다 */
   isPlacement?: boolean
   constants?: RatingConstants
+  /** 경기 직전까지의 누적 판수. v2 의 판수별 K 에만 쓴다 (없으면 고정 K) */
+  games?: number
 }
 
 export interface RatingUpdateResult {
@@ -73,7 +80,11 @@ function ratingUpdate(input: RatingUpdateInput, k: number): RatingUpdateResult {
 
   const actual = input.outcome === 'win' ? 1 : 0
   const howExpected = input.outcome === 'win' ? expected : 1 - expected
-  const suppression = suppressionFactor(howExpected, constants)
+  /* v2 — 억제를 끄면 "이겼는데 0점" 이 사라진다 (D-172).
+     Elo 자체가 이미 약한 상대를 이겼을 때 조금만 주므로 이중 장치였다 */
+  const suppression = constants.v2?.disableSuppression
+    ? 1
+    : suppressionFactor(howExpected, constants)
 
   return {
     ratingUpdate: k * (actual - expected) * suppression,
@@ -86,7 +97,8 @@ function ratingUpdate(input: RatingUpdateInput, k: number): RatingUpdateResult {
 /** 개인 래더 증감 */
 export function personalRatingUpdate(input: RatingUpdateInput): RatingUpdateResult {
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
-  return ratingUpdate(input, constants.personalK)
+  /* v2 — 판수 구간별 K. 표가 없으면 고정 K 라 D-145 와 같다 */
+  return ratingUpdate(input, personalKFor(input.games ?? Number.POSITIVE_INFINITY, constants))
 }
 
 /** 클랜 래더 증감 — 개인과 **같은 공식·같은 K** 다 */
@@ -185,10 +197,16 @@ export interface DisplayResult {
 export function displayScore(input: DisplayInput): DisplayResult {
   const constants = input.constants ?? DEFAULT_RATING_CONSTANTS
   const confidence = confidenceFor(input.games, constants)
+  /* v2 — 신뢰도를 표시에서 빼면 **판수가 순위를 올리지 못한다** (D-172).
+     같은 실력인데 판수만 많은 선수가 위에 오던 문제를 없앤다.
+     작은 표본은 배치고사(10경기)와 판수별 K 가 막는다 */
+  const confidenceUsed = constants.v2?.disableDisplayConfidence ? 1 : confidence
   const base =
     constants.initialRating +
-    (input.internalRating - constants.initialRating) * confidence * constants.displayScale
-  const gated = applyWinRateBands(base, input.winRate, constants)
+    (input.internalRating - constants.initialRating) * confidenceUsed * constants.displayScale
+  const gated = constants.v2?.disableWinRateBands
+    ? base
+    : applyWinRateBands(base, input.winRate, constants)
   // 감점만으로 기준점 아래로 내려가지 않는다
   const penaltyApplied = Math.max(
     0,
@@ -219,6 +237,20 @@ export function dailyDecay(
   idleDays: number,
   constants: RatingConstants = DEFAULT_RATING_CONSTANTS,
 ): number {
+  /* v2 — **한 달 쉬면 기준점까지** 내려온다 (D-173, 사장님 지시).
+     남은 점수를 남은 날수로 나눠 매일 덜어 내므로 `decayToBaselineDays` 에 정확히 0 이 된다.
+     점수 구간(4000↑)을 보지 않는다 — 3,200점도 쉬면 똑같이 내려온다.
+     `displayBeforePenalty` 는 이미 지금까지의 감점을 뺀 값이라 그대로 남은 몫이다. */
+  const toBaseline = constants.v2?.decayToBaselineDays
+  if (toBaseline && toBaseline > 0) {
+    const grace = constants.v2?.decayGraceDays ?? 0
+    if (idleDays < grace) return 0
+    const above = displayBeforePenalty - constants.initialRating
+    if (above <= 0) return 0
+    const daysLeft = Math.max(1, toBaseline - idleDays + 1)
+    return above / daysLeft
+  }
+
   const tier = constants.decayTiers.find((t) => displayBeforePenalty >= t.minDisplay)
   if (!tier) return 0
   if (idleDays < tier.graceDays) return 0
@@ -229,7 +261,19 @@ export function dailyDecay(
 export function clanDailyDecay(
   idleDays: number,
   constants: RatingConstants = DEFAULT_RATING_CONSTANTS,
+  /** 지금까지의 감점을 뺀 클랜 점수. v2 의 "한 달이면 기준점" 계산에만 쓴다 */
+  scoreBeforePenalty?: number,
 ): number {
+  /* v2 — 개인과 같은 규칙을 클랜에도 적용한다 (D-173) */
+  const toBaseline = constants.v2?.decayToBaselineDays
+  if (toBaseline && toBaseline > 0 && scoreBeforePenalty !== undefined) {
+    const grace = constants.v2?.decayGraceDays ?? 0
+    if (idleDays < grace) return 0
+    const above = scoreBeforePenalty - constants.initialRating
+    if (above <= 0) return 0
+    return above / Math.max(1, toBaseline - idleDays + 1)
+  }
+
   const tier = constants.clanDecayTiers.find((t) => idleDays >= t.minIdleDays)
   return tier ? tier.weekly / 7 : 0
 }

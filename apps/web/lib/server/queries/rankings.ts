@@ -78,6 +78,10 @@ function weaponRankWhere(leagueId: string, weapon: WeaponAxis) {
   return {
     weapon: RANK_WEAPON_CODE[weapon],
     knownStatGames: { gt: 0 },
+    /* **주무기만** 그 무기 랭킹에 오른다 (D-173).
+       라플수가 어쩌다 든 스나 몇 판으로 스나 랭킹에 들어오면 안 된다.
+       기록(판수·킬데스·증감)은 주무기가 아니어도 프로필에 그대로 나온다 */
+    isMain: true,
     leaguePlayer: { leagueId, placement: false },
   }
 }

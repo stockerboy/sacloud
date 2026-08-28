@@ -235,9 +235,17 @@ export async function rebuildWeaponStats(input: {
     const leaguePlayerId = leaguePlayerOf.get(playerId)
     if (!leaguePlayerId) continue
     result.players += 1
+    /* 주무기 판정 — 그 무기 판수가 절반 이상이면 주무기다 (D-173).
+       무기 랭킹의 모집단이 이 값이라, 여기서 안 세우면 재작성 후 랭킹이 통째로 빈다 */
+    const weaponTotal = [...byWeapon.values()].reduce((sum, b) => sum + b.games, 0)
     for (const [weapon, bucket] of byWeapon) {
       await prisma.leaguePlayerWeaponStat.create({
-        data: { leaguePlayerId, weapon, ...bucket },
+        data: {
+          leaguePlayerId,
+          weapon,
+          ...bucket,
+          isMain: weaponTotal > 0 && bucket.games * 2 >= weaponTotal,
+        },
       })
       result.buckets += 1
     }

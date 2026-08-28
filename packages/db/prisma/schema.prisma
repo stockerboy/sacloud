@@ -540,12 +540,20 @@ model LeaguePlayerWeaponStat {
   assist      Int @default(0)
   headshot    Int @default(0)
 
+  /// **주무기인가** (D-173). 그 무기로 뛴 판수가 전체의 절반 이상이면 참이다.
+  ///
+  /// 무기 랭킹의 모집단이다 — 스나 랭킹에는 스나수만 올린다.
+  /// 이게 없으면 라플수가 어쩌다 든 스나 몇 판으로 스나 랭킹에 들어온다.
+  /// 기록 자체(판수·킬데스·증감)는 주무기가 아니어도 그대로 남는다.
+  isMain Boolean @default(false)
+
   updatedAt DateTime @updatedAt
 
   leaguePlayer LeaguePlayer @relation(fields: [leaguePlayerId], references: [id], onDelete: Cascade)
 
   @@id([leaguePlayerId, weapon])
   @@index([weapon, ratingDelta(sort: Desc)])
+  @@index([weapon, isMain, ratingDelta(sort: Desc)])
 }
 
 /* -------------------------- 시즌 스냅샷 (지난시즌) -------------------------- */

@@ -171,8 +171,16 @@ async function writeMatch(input: {
 }): Promise<{ matchId: string; created: boolean }> {
   const { plan, sourceMatchId } = input
 
+  /* 고유 키가 `[leagueId, origin, sourceMatchId]` 다 (D-155 — 한 경기가 여러 리그에 기록된다).
+     예전 2필드 키를 그대로 쓰고 있어 실행하면 Prisma 가 거부한다. 리그를 포함해 찾는다 */
   const existing = await prisma.match.findUnique({
-    where: { origin_sourceMatchId: { origin: NEXON_SOURCE, sourceMatchId } },
+    where: {
+      leagueId_origin_sourceMatchId: {
+        leagueId: plan.leagueId,
+        origin: NEXON_SOURCE,
+        sourceMatchId,
+      },
+    },
     select: { id: true },
   })
 

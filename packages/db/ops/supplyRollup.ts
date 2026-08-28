@@ -381,7 +381,8 @@ export interface PlayerWriteData {
   headshot?: number
   /** 현재 소속 클랜 (D-160). 근거가 없으면 **칸 자체가 없다** */
   clanId?: string
-  placement: false
+  /** 점수 주인이 우리 공식이면 이 칸도 쓰지 않는다 (D-173) */
+  placement?: false
 }
 
 /**
@@ -389,12 +390,27 @@ export interface PlayerWriteData {
  *   무소속이거나 `Clan` 행이 없으면 `null`/`undefined` 를 넘긴다 — 칸을 쓰지 않는다.
  *   **여기서 클랜을 만들지 않는다** (3-A 8번).
  */
+/**
+ * 점수·배치 상태의 **주인이 우리 공식**일 때는 그 두 칸을 쓰지 않는다 (D-173).
+ *
+ * 시즌0부터 `LeaguePlayer.rating` 은 우리 공식(v2)이 계산한 값이다.
+ * 이 잡은 30분마다 도는데, 그때마다 원본 점수로 되돌려 쓰면
+ * **사이트가 30분 만에 원래대로 돌아간다.** 실제로 그 사고가 났다.
+ *
+ * 승패·킬데스 같은 **기록**은 계속 이 잡이 갱신한다. 점수만 손대지 않는다.
+ */
+export function ratingOwnedByFormula(): boolean {
+  return process.env.SACLOUD_RATING_OWNER === 'formula'
+}
+
 export function toPlayerWriteData(
   rollup: PlayerRollup,
   clanId?: string | null,
 ): PlayerWriteData {
+  /* 점수 주인이 우리 공식이면 `rating` · `placement` 를 쓰지 않는다 (D-173) */
+  const formulaOwns = ratingOwnedByFormula()
   return {
-    ...(rollup.rating !== null ? { rating: rollup.rating } : {}),
+    ...(!formulaOwns && rollup.rating !== null ? { rating: rollup.rating } : {}),
     ...(clanId ? { clanId } : {}),
     win: rollup.win,
     lose: rollup.lose,
@@ -404,7 +420,7 @@ export function toPlayerWriteData(
       : {}),
     ...(rollup.knownHeadshotGames > 0 ? { headshot: rollup.headshot } : {}),
     // 미러 경기가 있으면 원본은 이미 랭킹에 올려 두었다 (D-154)
-    placement: false,
+    ...(formulaOwns ? {} : { placement: false as const }),
   }
 }
 
@@ -443,17 +459,21 @@ export interface ClanWriteData {
   win?: number
   lose?: number
   division: number
-  placement: false
+  /** 점수 주인이 우리 공식이면 쓰지 않는다 (D-173) */
+  placement?: false
 }
 
 export function toClanWriteData(row: SupplyClanRegistryRow): ClanWriteData {
+  /* 개인과 같은 이유다 — 30분마다 원본 점수로 되돌려 쓰면 안 된다 (D-173).
+     등급(division)과 승패는 계속 갱신한다. 점수와 배치 상태만 손대지 않는다 */
+  const formulaOwns = ratingOwnedByFormula()
   return {
-    ...(row.rating !== null ? { rating: row.rating } : {}),
+    ...(!formulaOwns && row.rating !== null ? { rating: row.rating } : {}),
     ...(row.win !== null ? { win: row.win } : {}),
     ...(row.lose !== null ? { lose: row.lose } : {}),
     division: row.division,
     // 수집 파일 목록에 있다 = 리그 등록 클랜이다. 원본 클랜랭킹에 올라 있다
-    placement: false,
+    ...(formulaOwns ? {} : { placement: false as const }),
   }
 }
 
