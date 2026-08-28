@@ -74,6 +74,14 @@ const MATCH_SELECT = {
   bluePlacement: true,
   redRatingUpdate: true,
   blueRatingUpdate: true,
+  /* 미러링해 온 경기는 우리 공식(D-145)이 계산한 위 두 칸이 **비어 있다.**
+     원본이 준 점수는 아래 `source` 칸에 있다 (D-153). 그래서 둘 다 읽고,
+     우리 값이 없으면 원본값을 쓴다. 이걸 안 읽어서 매치 카드 오른쪽 위가
+     `알수없음` 으로 나왔다 — supply 13만 경기 중 우리 값이 있는 것은 98건뿐이다. */
+  redSourceRating: true,
+  blueSourceRating: true,
+  redSourceRatingUpdate: true,
+  blueSourceRatingUpdate: true,
   origin: true,
   participantCompleteness: true,
   evidenceConfidence: true,
@@ -93,6 +101,9 @@ const MATCH_SELECT = {
       mvp: true,
       ratingBefore: true,
       ratingUpdate: true,
+      /* 참가자도 같다 — 미러 경기는 원본이 **선수별로** 점수와 증감을 준다 (D-153) */
+      sourceRating: true,
+      sourceRatingDelta: true,
       isPlacement: true,
       participantRole: true,
       /* 경기 당시 소속 스냅샷 (D-131). **현재 소속을 join 하지 않는다** —
@@ -285,8 +296,11 @@ function toMatchPlayerStat(
     damage_percent: damage === null ? null : percentOf(damage, teamDamage(match, stat.side)),
     headshot_percent: headshot === null || stat.kill === null ? null : percentOf(headshot, stat.kill),
     weapon: stat.weapon as Weapon | null,
-    rating: stat.ratingBefore,
-    rating_update: stat.ratingUpdate,
+    /* 우리 계산값이 없으면 원본값을 쓴다 (D-153 · D-164 와 같은 이유).
+       `sourceRating` 은 **경기 당시가 아니라 수집 시점의 현재 래더**다 — 원본 화면도
+       그 값을 그대로 보여 준다. 래더 재계산에는 절대 쓰지 않는다 (스키마 주석 참조). */
+    rating: stat.ratingBefore ?? stat.sourceRating,
+    rating_update: stat.ratingUpdate ?? stat.sourceRatingDelta,
     placement: stat.isPlacement,
     dropout: stat.dropout,
     // DB는 진영 승패만 들고 있다 (참가자별 win 컬럼 없음). 진영으로 판정한다.
@@ -337,7 +351,10 @@ function snapshotOf(match: MatchRow, side: TeamSide, clans: LeagueClanContext) {
         sourceClanId: null,
       },
     ),
-    rating: isRed ? match.redRatingBefore : match.blueRatingBefore,
+    /* 클랜 점수도 우리 계산값이 없으면 원본값을 쓴다 (D-153) */
+    rating: isRed
+      ? (match.redRatingBefore ?? match.redSourceRating)
+      : (match.blueRatingBefore ?? match.blueSourceRating),
     division: isRed ? match.redDivisionAtMatch : match.blueDivisionAtMatch,
     placement: isRed ? match.redPlacement : match.bluePlacement,
     members_confirmed: reconstructed ? members : null,
@@ -380,7 +397,10 @@ export function toMatchListItem(
     win: match.winnerSide === viewerSide,
     blue_team: match.blueFirst,
     placement: viewerSide === 'red' ? match.redPlacement : match.bluePlacement,
-    rating_update: viewerSide === 'red' ? match.redRatingUpdate : match.blueRatingUpdate,
+    rating_update:
+      viewerSide === 'red'
+        ? (match.redRatingUpdate ?? match.redSourceRatingUpdate)
+        : (match.blueRatingUpdate ?? match.blueSourceRatingUpdate),
     mvp_player_id: match.mvpPlayerId,
     league_clan: snapshotOf(match, viewerSide, clans),
     opponent: snapshotOf(match, opponentSide, clans),

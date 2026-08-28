@@ -263,7 +263,8 @@ export function MatchCard({
           `상세보기` 글자 버튼을 없앴고, 양 팀 클랜 칸(`w-88`)은 모바일에서만 유동폭으로 쌓는다.
           그래서 예전의 `.mobile-scroll-x` 도 필요 없어져 뺐다. */}
       <div
-        className={`mt-2 flex min-h-28 items-stretch border-b border-r border-t ${
+        /* 카드 최소 높이도 모바일에서 줄인다 — 원본 카드가 더 낮다 */
+        className={`mt-2 flex min-h-28 items-stretch border-b border-r border-t max-md:mt-1.5 max-md:min-h-0 ${
           win ? 'border-win-line bg-win-bg' : 'border-lose-line bg-lose-bg'
         }`}
       >
@@ -340,7 +341,10 @@ export function MatchCard({
                     </div>
                   ) : (
                     <>
-                      <div className="text-xl font-semibold">
+                      {/* 모바일 kda 는 원본이 더 작다 (2026-08-28 원본 화면과 나란히 대조).
+                          `text-xl`(1.25rem) 로 두니 원본보다 약 35% 커 보였다.
+                          PC 는 원본 실측값 그대로 두고 좁은 화면에서만 줄인다. */}
+                      <div className="text-xl font-semibold max-md:text-base">
                         {stat.kill ?? '-'} / <span className="text-lose">{stat.death ?? '-'}</span> /{' '}
                         {stat.assist ?? '-'}
                       </div>
