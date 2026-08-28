@@ -319,8 +319,17 @@ export function MatchCard({
             </div>
           </div>
 
-          {/* 2행 — 승패 · 본인 kda · 양 팀 클랜 · 꺾쇠 */}
-          <div className="flex flex-grow items-center">
+          {/*
+            2행 — 승패 · 본인 kda · 양 팀 클랜 · 꺾쇠
+
+            이 줄은 **1행(맵·증감)을 뺀 나머지 공간**의 가운데에 놓인다. 그래서 카드 전체로
+            보면 1행 높이의 절반만큼 아래로 치우친다 — 사용자가 "박스 가운데보다 밑에 있다"
+            고 지적한 것이 이것이다 (2026-08-28).
+
+            좁은 화면에서만 그 절반만큼 끌어올려 **카드 세로 정중앙**에 맞춘다.
+            1행은 `pt-1.5`(0.375rem) + `text-sm` 한 줄이라 약 1.6rem 이고, 그 절반이 0.8rem 이다.
+          */}
+          <div className="flex flex-grow items-center max-md:-mt-[0.8rem]">
             {/* 사용자에게 필요한 상태는 **래더에 반영됐는가** 하나다 (D-149).
                 `공식/비공식` 배지는 없앴다 — D-145 에서 `official` 은 래더 자격도
                 가중치도 아니게 됐는데, 배지로 남겨 두면 "비공식이라 점수를 덜 준다"는
@@ -620,7 +629,10 @@ function StatRow({
             <div className="min-w-0 truncate">
               <PlayerLink leagueSlug={leagueSlug} playerId={stat.player_id}>
                 {/* 무기는 옆 컬럼에 그대로 적히므로 이름 옆 `[S]` 는 붙이지 않는다 (원본에 없다) */}
-                <span className={stat.dropout ? 'line-through' : ''}>{stat.name}</span>
+                {/* 탈주 표시는 하지 않는다 (2026-08-28 사용자 지시).
+                    닉네임에 취소선을 그으면 그 선수가 지워진 것처럼 읽힌다.
+                    `dropout` 값은 DB·계약에 그대로 남는다 — 표시만 안 한다. */}
+                <span>{stat.name}</span>
               </PlayerLink>
             </div>
             {/* MVP 는 **닉네임 오른쪽 빨간 원 안의 별**이다 (원본 모바일 관측).

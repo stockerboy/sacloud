@@ -397,10 +397,19 @@ export function toMatchListItem(
     win: match.winnerSide === viewerSide,
     blue_team: match.blueFirst,
     placement: viewerSide === 'red' ? match.redPlacement : match.bluePlacement,
+    /* 카드 오른쪽 위 증감.
+
+       **선수 본인 값을 먼저 쓴다.** 원본 화면도 그 선수의 증감을 보여 준다.
+       클랜 단위 칸(`red/blueSourceRatingUpdate`)은 **한 경기에 한쪽만** 채워져 있다 —
+       실측: supply 13만 경기 중 red 64,860 · blue 65,162 로 합이 딱 13만이다.
+       그래서 반대편에서 보면 늘 비었고 화면에 `알수없음` 이 절반이나 나왔다.
+       선수별 값(`sourceRatingDelta`)은 참가행 130만 건에 **전부** 있다. */
     rating_update:
-      viewerSide === 'red'
+      viewerStat?.ratingUpdate ??
+      viewerStat?.sourceRatingDelta ??
+      (viewerSide === 'red'
         ? (match.redRatingUpdate ?? match.redSourceRatingUpdate)
-        : (match.blueRatingUpdate ?? match.blueSourceRatingUpdate),
+        : (match.blueRatingUpdate ?? match.blueSourceRatingUpdate)),
     mvp_player_id: match.mvpPlayerId,
     league_clan: snapshotOf(match, viewerSide, clans),
     opponent: snapshotOf(match, opponentSide, clans),
