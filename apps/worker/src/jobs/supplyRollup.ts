@@ -89,12 +89,18 @@ export async function runSupplyRollup(input: {
   full?: boolean
   /** 증분 창(시간). 생략하면 `DEFAULT_ROLLUP_WINDOW_HOURS` */
   sinceHours?: number | null
+  /**
+   * 증분 기준 시각을 **그대로** 준다. 주면 `sinceHours` 보다 우선한다.
+   *
+   * 검증용이다. 시간 창은 호출 시각 기준이라 같은 명령을 두 번 돌려도 경계가 밀리는데,
+   * 대조 실험에서는 그 밀림이 값 차이로 보인다 — 실제로 그렇게 거짓 FAIL 을 두 번 봤다.
+   */
+  since?: Date | null
 }): Promise<SupplyRollupRunResult> {
   const since = input.full
     ? null
-    : new Date(
-        Date.now() - (input.sinceHours ?? DEFAULT_ROLLUP_WINDOW_HOURS) * 3_600_000,
-      )
+    : (input.since ??
+      new Date(Date.now() - (input.sinceHours ?? DEFAULT_ROLLUP_WINDOW_HOURS) * 3_600_000))
   const result: SupplyRollupRunResult = {
     leagues: [],
     playerClans: {
@@ -162,6 +168,16 @@ export async function runSupplyRollup(input: {
     })
     result.leagues.push(rolled)
     mergePlayerClanPicks(playerClanPicks, rolled.playerClans)
+
+    /* 창에 리그의 상당 부분이 걸리면 증분이 전수보다 **느리고 무겁다** —
+       고른 선수마다 그 리그 전 경기를 다시 읽기 때문이다. 오래 멈췄다가
+       한꺼번에 따라잡을 때 그렇게 된다. 조용히 느려지지 않게 말해 준다 */
+    if (rolled.mode === 'incremental' && (rolled.changedMatches ?? 0) > league.matches / 4) {
+      warn(
+        `[${league.leagueSlug}] 창에 걸린 경기 ${rolled.changedMatches} / ${league.matches} — ` +
+          '증분이 전수보다 무겁다. 이런 규모라면 `--full` 이 낫다',
+      )
+    }
 
     if (rolled.players.clanNotInDb > 0) {
       /* 원본이 준 클랜인데 우리 `Clan` 표에 행이 없다. **만들지 않는다** — 지어내지 않기 위해서다 */

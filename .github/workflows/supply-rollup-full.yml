@@ -1,0 +1,158 @@
+# 3rd.supply 리그 집계 — **전수 재계산** (하루 1회 정합성 보정 · D-168)
+#
+# ── 왜 따로 있는가
+#   평소 집계는 5분마다 도는 증분이다 (`supply-incremental.yml`). 새로 적재된 경기가
+#   건드린 선수만 **처음부터 다시** 만든다 — 누적이 아니라 재계산이라 두 번 돌려도 값이 같다.
+#
+#   그래도 전수 경로를 없애지 않는다. 증분이 못 보는 경우가 있다.
+#     · 경기가 **적재 없이** 바뀐 경우 (수동 교정 · 다른 잡의 백필)
+#     · `ingestedAt` 이 없거나 뒤로 밀린 행
+#     · 증분 창(24시간)보다 오래 실패가 이어진 경우
+#   그럴 때 값이 조용히 낡는다. 하루 한 번 전부 다시 계산해 **되돌려 놓는다.**
+#
+#   증분 결과와 전수 결과가 같다는 것은 대조로 확인했다 —
+#   `apps/worker/src/dev/rollupParity.ts` (전수 → 값 훼손 → 증분 → 체크섬 일치).
+#   실측(로컬): supply 전수 121.4초 / 증분 15.4초 · daerule 45.8초 / 7.5초.
+#
+# ── 언제 도는가
+#   19:00 UTC = 04:00 KST. 원본 활동이 가장 적은 시간대다.
+#   **네트워크를 쓰지 않는다** — DB 안에서만 도는 계산이라 원본에 요청이 0건이다.
+#
+# ── 증분과 절대 겹치면 안 된다
+#   둘 다 같은 `LeaguePlayer` · `LeagueClan` 행을 쓴다. 그래서 `concurrency` 그룹을
+#   `supply-incremental.yml` 과 **같은 이름**으로 둔다. 겹치면 취소가 아니라 대기다.
+
+name: 3rd.supply 전수 집계 (정합성 보정)
+
+on:
+  schedule:
+    # UTC 19:00 = KST 04:00
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+    inputs:
+      leagues:
+        description: '집계할 리그 slug (쉼표)'
+        required: false
+        default: 'supply,daerule,sanply'
+      dry_run:
+        description: '미리보기 — 한 줄도 쓰지 않는다'
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: supply-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollup:
+    name: 전수 재계산
+    runs-on: ubuntu-latest
+    # 실측 세 리그 합 5분 남짓(로컬). 운영 DB 는 더 느릴 수 있어 넉넉히 잡되 무한정은 아니다
+    timeout-minutes: 90
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      LEAGUES: ${{ inputs.leagues || 'supply,daerule,sanply' }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: pnpm 설치
+        uses: pnpm/action-setup@v4
+
+      - name: Node 24 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma 클라이언트 생성
+        run: pnpm --filter @sacloud/db exec prisma generate
+
+      - name: 시크릿 확인 (값은 찍지 않는다)
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL 시크릿이 없다"
+            exit 1
+          fi
+          echo "DATABASE_URL 설정됨 · 리그 ${LEAGUES} · dry-run ${DRY_RUN}"
+
+      - name: 클랜 목록 받아 두기 — 집계가 클랜을 건너뛰지 않게
+        if: ${{ inputs.dry_run != true }}
+        # 클랜 점수·승패·부리그의 출처는 **수집 파일 클랜 목록** 하나뿐이다 (D-157).
+        # 러너는 빈 작업공간이라 그 파일이 없고, 없으면 집계가 클랜을 통째로 건너뛴다
+        # (값을 지어내지 않기 위해서다) — 그 상태로는 이 잡이 exit 1 로 끝난다.
+        #
+        # 그래서 증분 사이클을 **한 번** 돌려 체크포인트를 만든다. 평소 사이클과 같은 명령이라
+        # 새 경기가 있으면 그것도 같이 받아 둔다. 요청은 리그당 수십 건이다.
+        env:
+          SUPPLY_APP_ID: ${{ secrets.SUPPLY_APP_ID }}
+          SUPPLY_APP_VER: ${{ secrets.SUPPLY_APP_VER }}
+          SUPPLY_CONCURRENCY: '3'
+          SUPPLY_DELAY_MS: '250'
+          SUPPLY_POLL_CYCLE_MINUTES: '5'
+        run: |
+          set -uo pipefail
+          if [ -z "${SUPPLY_APP_ID:-}" ]; then unset SUPPLY_APP_ID; fi
+          if [ -z "${SUPPLY_APP_VER:-}" ]; then unset SUPPLY_APP_VER; fi
+          for slug in $(echo "$LEAGUES" | tr ',' ' '); do
+            echo "::group::[$slug] 클랜 목록 + 새 경기"
+            pnpm --filter @sacloud/worker nexon supply-mirror \
+              --league "$slug" --incremental --seen-from-db --adaptive || \
+              echo "::warning::[$slug] 수집 실패 — 클랜은 건너뛴 채 선수만 집계된다"
+            echo '::endgroup::'
+          done
+
+      - name: 새로 받은 경기 적재 (있으면)
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          set -uo pipefail
+          for slug in $(echo "$LEAGUES" | tr ',' ' '); do
+            details="packages/db/data/supply-mirror-${slug}.details.jsonl"
+            if [ ! -s "$details" ]; then
+              echo "[$slug] 새 경기 없음 — 적재 건너뜀"
+              continue
+            fi
+            echo "::group::[$slug] 적재"
+            pnpm --filter @sacloud/worker nexon supply-import --league "$slug" --confirm || \
+              echo "::warning::[$slug] 적재 실패"
+            echo '::endgroup::'
+          done
+
+      - name: 전수 재계산
+        run: |
+          set -uo pipefail
+          worker() { pnpm --filter @sacloud/worker nexon "$@"; }
+
+          confirm='--confirm'
+          if [ "$DRY_RUN" = 'true' ]; then confirm=''; fi
+
+          failed=0
+          for slug in $(echo "$LEAGUES" | tr ',' ' '); do
+            echo "::group::[$slug] 전수 집계 (--full)"
+            # `--full` 이 전수다. 붙이지 않으면 기본이 증분이라 보정이 되지 않는다
+            if ! worker supply-rollup --league "$slug" --full $confirm; then
+              echo "::error::[$slug] 전수 집계 실패"
+              failed=$(( failed + 1 ))
+            fi
+            echo '::endgroup::'
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::${failed}개 리그의 전수 집계가 실패했다"
+            exit 1
+          fi
+
+      - name: 검증 — 행 수 · 무결성 (읽기만 한다)
+        if: ${{ inputs.dry_run != true }}
+        run: pnpm --filter @sacloud/worker nexon db-snapshot --stamp "full-${{ github.run_id }}"

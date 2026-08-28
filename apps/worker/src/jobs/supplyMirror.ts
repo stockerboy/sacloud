@@ -258,6 +258,57 @@ async function clanFactsFromDb(
   return facts
 }
 
+/**
+ * 등록 클랜 목록을 **DB 에서** 되살린다 — 체크포인트가 없는 작업공간용 (D-168).
+ *
+ * ── 무엇이 깨져 있었나
+ *   `--adaptive` 는 "이번에 볼 클랜" 을 고르는데, 그 판단을 **클랜랭킹을 받기 전에** 한다.
+ *   GitHub Actions 는 매번 **빈 작업공간**에서 시작하므로 그 시점의 `state.clans` 가 비어 있고,
+ *   그러면 고를 후보가 0개라 **한 클랜도 훑지 않는다.** 같은 이유로 `clanFactsFromDb` 도
+ *   빈 목록을 받아, `/clans/{slug}/show` 190건을 피하려던 것도 그대로 다시 나갔다.
+ *   즉 CI 에서는 두 절약이 **둘 다 무효**였다.
+ *
+ * ── 왜 DB 로 되살려도 되는가
+ *   등록 클랜은 이미 `LeagueClan.placement=false` 로 우리 DB 에 있다 (D-157).
+ *   여기서 되살리는 것은 **어떤 클랜이 있는가**(모집단)뿐이다.
+ *   점수·승패·부리그 **값**은 아래 1) 단계가 원본 클랜랭킹에서 받아 덮어쓴다 —
+ *   D-157 의 "값의 출처는 클랜랭킹 응답" 은 그대로다.
+ *
+ * 읽기만 한다. 요청을 보내지 않으므로 `--dry-run` 에서도 안전하다.
+ */
+async function registeredClansFromDb(
+  leagueSlug: string,
+): Promise<Record<string, SupplyMirrorClan>> {
+  const rows = await prisma.leagueClan.findMany({
+    where: { league: { slug: leagueSlug }, placement: false },
+    select: {
+      division: true,
+      sourceLeagueClanId: true,
+      clan: { select: { slug: true, name: true, sourceClanId: true } },
+    },
+  })
+  const clans: Record<string, SupplyMirrorClan> = {}
+  for (const row of rows) {
+    const sourceClanId = Number(row.clan.sourceClanId)
+    const leagueClanId = Number(row.sourceLeagueClanId)
+    clans[row.clan.slug] = {
+      leagueClanId: Number.isFinite(leagueClanId) && leagueClanId > 0 ? leagueClanId : null,
+      /* 원본 clan id 를 모르면 0 이다. **지어내지 않는다** — 아래 1) 단계가 진짜 값으로 덮어쓴다 */
+      clanId: Number.isFinite(sourceClanId) && sourceClanId > 0 ? sourceClanId : 0,
+      name: row.clan.name,
+      division: row.division,
+      done: false,
+      cursor: null,
+      /* 값은 DB 에서 가져오지 않는다. 출처는 클랜랭킹 응답 하나뿐이다 (D-157) */
+      rating: null,
+      win: null,
+      lose: null,
+      rank: null,
+    }
+  }
+  return clans
+}
+
 function readCheckpoint(
   base: string,
   leagueSlug: string,
@@ -429,6 +480,20 @@ export async function runSupplyMirror(
     log(`DB 에서 이미 아는 경기 ${rows.length}건 (파일에 없던 것 ${added}건)`)
   }
 
+  /* 체크포인트가 없으면 등록 클랜 목록부터 DB 로 되살린다 (D-168).
+     이걸 안 하면 아래 `clanFacts` · `selection` 이 **빈 목록**을 보고 판단해,
+     CI 처럼 빈 작업공간에서는 클랜 show 190건이 그대로 나가고 훑을 클랜은 0개가 된다. */
+  if (Object.keys(state.clans).length === 0) {
+    const restored = await registeredClansFromDb(input.leagueSlug)
+    const count = Object.keys(restored).length
+    if (count > 0) {
+      state.clans = restored
+      log(`등록 클랜 ${count}개를 DB 에서 되살렸다 (요청 0건 · 값은 1) 단계가 덮어쓴다)`)
+    }
+  }
+  /** 되살리기 전부터 알던 클랜. 1) 단계에서 **새로 등록된 클랜**을 가려내는 기준이다 */
+  const knownBefore = new Set(Object.keys(state.clans))
+
   /* 클랜의 원본 id 와 마지막 경기 시각. 둘 다 우리 DB 가 아는 값이라 읽기만 한다.
      `--adaptive` 일 때만 필요하고, dry-run 에서도 요청을 만들지 않으므로 안전하다 */
   const clanFacts =
@@ -548,6 +613,18 @@ export async function runSupplyMirror(
   const duePending = slugs.filter((s) => state.clans[s] && !state.clans[s]?.done)
   /* 적응형이면 **이번 차례인 클랜만** 남긴다. 나머지는 자기 주기의 다음 차례에 온다 */
   const scanSet = selection ? new Set(selection.scan) : null
+  /* 1) 단계에서 **처음 본 클랜**은 차례를 따지지 않고 이번에 훑는다 (D-168).
+     선택은 1) 이전에 끝나므로 새로 등록된 클랜은 후보에 없었다. 그대로 두면
+     자기 티어(경기가 없어 `dormant`)의 차례가 올 때까지 최대 24시간 방치된다 */
+  if (scanSet) {
+    let added = 0
+    for (const slug of slugs) {
+      if (knownBefore.has(slug) || scanSet.has(slug)) continue
+      scanSet.add(slug)
+      added += 1
+    }
+    if (added > 0) log(`   새로 등록된 클랜 ${added}개는 차례를 기다리지 않고 이번에 훑는다`)
+  }
   const pendingClans = scanSet ? duePending.filter((s) => scanSet.has(s)) : duePending
   log(
     `2) 경기 목록 — 받을 클랜 ${pendingClans.length}/${slugs.length} · 동시 ${SUPPLY_CONCURRENCY}` +

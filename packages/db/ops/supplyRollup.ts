@@ -573,6 +573,15 @@ export interface SupplyRollupResult extends SupplyRollupLeague {
     clansCreated: number
     /** 행이 없어 새로 만든(만들) `LeagueClan` 수 */
     leagueClansCreated: number
+    /**
+     * **이미 있던 행**에 원본 `league_clan` id 를 채운 수 (3-A 3번).
+     *
+     * 예전에는 행을 **만들 때만** 그 값을 넣었다. 이미 있던 행은 클랜랭킹 응답이
+     * 사이클마다 그 값을 들고 와도 그냥 버렸다 — 원본 id 를 버리지 말라는 규칙 위반이다.
+     * 게다가 그 값이 비어 있으면 수집이 클랜마다 `/clans/{slug}/show` 를 다시 물어야 한다.
+     * 실측: `supply` 등록 클랜 49개 중 44개가 비어 있었다.
+     */
+    sourceIdsFilled: number
     /** 같은 slug 인데 원본 클랜 id 가 달라 손대지 않은 수. 사람이 봐야 한다 */
     conflicts: number
     /**
@@ -659,8 +668,21 @@ interface JoinedStatRow {
   match: { id: string; startAt: Date; winnerSide: string }
 }
 
-/** 한 번에 `IN (...)` 으로 넘기는 선수 수 */
-const PLAYER_CHUNK = 500
+/**
+ * 한 번에 `IN (...)` 으로 넘기는 선수 수.
+ *
+ * **500 이었다가 100 으로 내렸다.** 증분은 고른 선수의 *리그 전 경기*를 다시 읽는데,
+ * 오래 뛴 선수는 한 명이 수천 경기다. 500명이면 한 번의 `findMany` 가 수십만 행이 되고
+ * 그 상태로 Prisma 쿼리 엔진이 죽는다 — 실측으로 봤다:
+ *
+ *   daerule · 창에 걸린 경기 29,085건 · 영향 선수 4,094명
+ *   → `memory allocation of 1605648 bytes failed` (프로세스 종료)
+ *
+ * 평소 사이클(창 24시간 · 영향 선수 수십 명)에서는 어느 값이든 한 배치로 끝나 차이가 없다.
+ * 문제가 되는 것은 **오래 멈췄다가 한꺼번에 따라잡는 경우**뿐인데, 그때 죽지 않는 쪽이 낫다.
+ * 배치를 잘게 나눠도 결과는 같다 — 누적 함수 하나에 이어서 넣을 뿐이다.
+ */
+const PLAYER_CHUNK = 100
 
 /**
  * 후보 `LeagueClan` 중 **미러 경기에 실제로 나오는** 것만 골라낸다 (증분 경로용).
@@ -900,6 +922,7 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
       withoutRating: 0,
       clansCreated: 0,
       leagueClansCreated: 0,
+      sourceIdsFilled: 0,
       conflicts: 0,
       ratingDiffersFromDerived: 0,
       registryMissing: !input.clanRegistry,
@@ -960,10 +983,29 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
      선수는 다르다 — 선수는 경기가 있어야 존재하는 것이 맞다. */
   const existingClans = await prisma.leagueClan.findMany({
     where: { leagueId: league.leagueId },
-    select: { id: true, clanId: true, clan: { select: { slug: true } } },
+    /* `sourceLeagueClanId` 도 읽는다 — 비어 있는 행을 채우기 위해서다 (3-A 3번) */
+    select: {
+      id: true,
+      clanId: true,
+      sourceLeagueClanId: true,
+      clan: { select: { slug: true } },
+    },
   })
   const leagueClanByClanId = new Map(existingClans.map((row) => [row.clanId, row.id]))
   const slugOfLeagueClan = new Map(existingClans.map((row) => [row.id, row.clan.slug]))
+  /** 이미 원본 id 를 가진 행 — 비어 있는 것만 채운다 */
+  const hasSourceId = new Set(
+    existingClans.flatMap((row) => (row.sourceLeagueClanId === null ? [] : [row.id])),
+  )
+
+  /**
+   * 원본 `league_clan` id 가 비어 있어 이번에 채울 행 (3-A 3번).
+   *
+   * 클랜랭킹 응답은 사이클마다 이 값을 들고 오는데, 예전에는 행을 **만들 때만** 넣고
+   * 이미 있는 행에는 버렸다. 그 칸이 비면 수집이 클랜마다 `/clans/{slug}/show` 를
+   * 다시 물어야 한다 — 실측으로 `supply` 등록 클랜 49개 중 44개가 비어 있었다.
+   */
+  const sourceIdFills: { id: string; sourceLeagueClanId: string }[] = []
 
   /** 이미 있는 행 → 원본 값으로 갱신 */
   const rankedWrites: { id: string; data: ClanWriteData }[] = []
@@ -1012,6 +1054,11 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
       const leagueClanId = clan ? leagueClanByClanId.get(clan.id) : undefined
       if (leagueClanId) {
         rankedWrites.push({ id: leagueClanId, data })
+        /* 원본 league_clan id 가 비어 있으면 이번에 채운다 (3-A 3번).
+           이미 값이 있으면 **건드리지 않는다** — 원본 id 를 덮어쓰지 않는다 */
+        if (!hasSourceId.has(leagueClanId) && row.sourceLeagueClanId !== null) {
+          sourceIdFills.push({ id: leagueClanId, sourceLeagueClanId: row.sourceLeagueClanId })
+        }
         /* 되짚기 값과 원본 값이 얼마나 어긋나는지 세어 둔다. 되짚기를 버린 근거다.
            증분에는 되짚기 값 자체가 없으므로 세지 않는다 — 0 과 "다르다" 를 혼동하면 안 된다 */
         if (!incremental && row.rating !== null && (clans.get(leagueClanId)?.rating ?? null) !== row.rating) {
@@ -1041,6 +1088,7 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
       unrankedIds.push(leagueClanId)
     }
 
+    result.clans.sourceIdsFilled = sourceIdFills.length
     result.clans.ranked = rankedWrites.length + leagueClanCreates.length
     result.clans.unranked = unrankedIds.length
     result.clans.clansCreated = clanCreates.length
@@ -1092,17 +1140,34 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
     clanIdBySlug.set(row.slug, created.id)
   }
 
+  /* `sourceLeagueClanId` 는 **전역 unique** 다. 다른 리그가 이미 쓰고 있으면 비워 둔다 —
+     남의 행을 뺏지도, 없는 값을 지어내지도 않는다 (D-155 와 같은 규칙).
+     채우기와 만들기가 **같은 집합**을 봐야 서로 같은 값을 집지 않는다 */
+  const taken =
+    sourceIdFills.length > 0 || leagueClanCreates.length > 0
+      ? new Set(
+          (
+            await prisma.leagueClan.findMany({
+              where: { sourceLeagueClanId: { not: null } },
+              select: { sourceLeagueClanId: true },
+            })
+          ).map((row) => row.sourceLeagueClanId as string),
+        )
+      : new Set<string>()
+
+  /* 비어 있던 원본 league_clan id 를 채운다 (3-A 3번).
+     `updateMany` + `sourceLeagueClanId: null` 조건으로 건다 — 읽은 뒤에 다른 잡이
+     채웠으면 건드리지 않는다. 값이 이미 있는 행을 덮어쓰지 않기 위해서다 */
+  for (const row of sourceIdFills) {
+    if (taken.has(row.sourceLeagueClanId)) continue
+    await prisma.leagueClan.updateMany({
+      where: { id: row.id, sourceLeagueClanId: null },
+      data: { sourceLeagueClanId: row.sourceLeagueClanId },
+    })
+    taken.add(row.sourceLeagueClanId)
+  }
+
   if (leagueClanCreates.length > 0) {
-    /* `sourceLeagueClanId` 는 **전역 unique** 다. 다른 리그가 이미 쓰고 있으면
-       비워 두고 만든다 — 남의 행을 뺏지도, 없는 값을 지어내지도 않는다 (D-155 와 같은 규칙) */
-    const taken = new Set(
-      (
-        await prisma.leagueClan.findMany({
-          where: { sourceLeagueClanId: { not: null } },
-          select: { sourceLeagueClanId: true },
-        })
-      ).map((row) => row.sourceLeagueClanId as string),
-    )
     for (const row of leagueClanCreates) {
       const clanId = row.clanId ?? clanIdBySlug.get(row.slug)
       if (!clanId) {

@@ -142,17 +142,17 @@ async function main() {
     console.log(`   망가진 체크섬 ${broken.hash} (기준선과 ${broken.hash === full.hash ? '같다 — 망가뜨리지 못했다!' : '다르다 ✓'})`)
 
     const t1 = Date.now()
-    await runSupplyRollup({ leagueSlug: slug, confirm: true, sinceHours: windowHours() })
+    await runSupplyRollup({ leagueSlug: slug, confirm: true, since })
     const incMs = Date.now() - t1
     const inc = await checksum(slug)
     console.log(`3) 증분 집계 ${(incMs / 1000).toFixed(1)}초 · 체크섬 ${inc.hash}`)
     console.log(`   전수와 ${inc.hash === full.hash ? '일치 ✓' : '불일치 ✗'}`)
 
     const t2 = Date.now()
-    await runSupplyRollup({ leagueSlug: slug, confirm: true, sinceHours: windowHours() })
+    await runSupplyRollup({ leagueSlug: slug, confirm: true, since })
     const again = await checksum(slug)
     const t3 = Date.now()
-    await runSupplyRollup({ leagueSlug: slug, confirm: true, sinceHours: windowHours() })
+    await runSupplyRollup({ leagueSlug: slug, confirm: true, since })
     const third = await checksum(slug)
     console.log(
       `4) 증분 반복 ${((t3 - t2) / 1000).toFixed(1)}초 · ${((Date.now() - t3) / 1000).toFixed(1)}초 — ` +
