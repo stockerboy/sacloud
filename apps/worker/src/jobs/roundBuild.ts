@@ -29,6 +29,7 @@ import {
   rosterOf,
   roundResultsOf,
   roundTallyOf,
+  secondsOf,
   type RoundStateEvent,
 } from '@sacloud/nexon'
 
@@ -40,6 +41,31 @@ const TEAM_SIZE = 5
 
 /** 매치의 사나이 판정 기준 — **20분 초과** (사양 4절 · 6절) */
 const LONG_MATCH_SECONDS = 20 * 60
+
+/**
+ * 배틀로그만으로 잰 경기 길이 — **마지막 이벤트의 누적 시각**이다.
+ *
+ * `event_time` 은 경기 시작부터의 누적이므로(D-174) 마지막 킬의 시각이 곧 경기 길이의
+ * **하한**이다. 마지막 킬 뒤에도 폭탄이 터지거나 시간이 흐르므로 실제보다 **짧게** 잡힌다.
+ *
+ * ── 왜 이게 필요한가
+ *   플레이시간은 경기 정보(`Match.playTime`)에 있는데, 수집한 배틀로그 2,449경기 중
+ *   우리 `Match` 표에 있는 것이 **344건뿐**이다(86%가 미러에 없는 경기다).
+ *   그것만 쓰면 20분 초과가 40건이라 매치의 사나이가 사실상 아무에게도 안 붙는다.
+ *
+ *   그래서 **경기 정보가 있으면 그 값을 쓰고, 없으면 이 하한을 쓴다.**
+ *   하한이라 20분을 넘겼는데 못 넘긴 것으로 볼 수는 있어도, 그 반대는 없다 —
+ *   틀리는 방향이 "적게 세는" 쪽이다 (D-106 과 같은 원칙).
+ */
+function lastEventSeconds(events: readonly RoundStateEvent[]): number | null {
+  let max: number | null = null
+  for (const event of events) {
+    const at = secondsOf(event.event_time)
+    if (at === null) continue
+    if (max === null || at > max) max = at
+  }
+  return max
+}
 
 interface ClanRow {
   matchKey: string
@@ -203,7 +229,8 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
       }
     }
 
-    const playTime = playTimes.get(matchKey) ?? null
+    /* 경기 정보가 있으면 그 값이 정본이다. 없으면 배틀로그가 주는 하한을 쓴다 */
+    const playTime = playTimes.get(matchKey) ?? lastEventSeconds(events)
     const isLong = playTime !== null && playTime > LONG_MATCH_SECONDS
     if (isLong) result.longMatches += 1
     const manOfMatch = isLong ? lastRoundTopKiller(events) : null
