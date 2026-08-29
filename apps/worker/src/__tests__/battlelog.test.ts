@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { eventsOf, importBattleLogs } from '../jobs/battlelog.js'
+import { eventsOf, importBattleLogs, isClanResponse } from '../jobs/battlelog.js'
 
 function fixture(payload: unknown): string {
   const dir = mkdtempSync(join(tmpdir(), 'battlelog-'))
@@ -79,5 +79,55 @@ describe('원문 적재 미리보기', () => {
     const file = fixture({ rows: [], failures: [{ matchKey: 'T174-d', error: '500' }] })
     const result = await importBattleLogs({ file })
     expect(result.failures).toBe(1)
+  })
+})
+
+describe('클랜 단위 응답과 선수 단위 응답을 가른다 (D-184)', () => {
+  it('`teamList` 가 있으면 클랜 응답이다', () => {
+    expect(isClanResponse({ battleLog: [], teamList: [{ team_no: '0', clan_no: '1' }] })).toBe(true)
+  })
+
+  it('`teamList` 가 없으면 선수 응답이다', () => {
+    expect(isClanResponse({ battleLog: [{ str_usn: 'AAA' }] })).toBe(false)
+    expect(isClanResponse(null)).toBe(false)
+    expect(isClanResponse([{ str_usn: 'AAA' }])).toBe(false)
+  })
+
+  /**
+   * 이걸 안 가르면 클랜 응답이 **첫 선수의 개인 로그로 둔갑한다.**
+   * 그 선수 혼자 한 경기에서 10명분 좌표를 가진 것이 되어
+   * 포지션 판정(`subjectKind: 'user'` 만 읽는다)이 통째로 오염된다.
+   */
+  it('클랜 응답의 주인은 안에 든 선수가 아니라 **클랜**이다', async () => {
+    const file = fixture({
+      rows: [
+        {
+          matchKey: '260820162642124001',
+          clanNo: '070716026783',
+          raw: {
+            teamList: [
+              { team_no: '0', clan_no: '070716026783' },
+              { team_no: '1', clan_no: '060503000068' },
+            ],
+            battleLog: [
+              { str_usn: '5A380D89F8DB6C66SA', event_type: 'kill', kill_x: 227, kill_y: 159, round: '1' },
+            ],
+          },
+        },
+      ],
+    })
+    /* `--confirm` 없이 돌린다 — DB 를 건드리지 않고 셈만 본다 */
+    const result = await importBattleLogs({ file })
+    expect(result.rows).toBe(1)
+    expect(result.skipped).toBe(0)
+    expect(result.events).toBe(1)
+  })
+
+  it('클랜 번호가 없는 클랜 응답은 넣지 않는다 — 주인을 지어내지 않는다', async () => {
+    const file = fixture({
+      rows: [{ matchKey: '260820162642124001', raw: { teamList: [], battleLog: [{ str_usn: 'AAA' }] } }],
+    })
+    const result = await importBattleLogs({ file })
+    expect(result.skipped).toBe(1)
   })
 })

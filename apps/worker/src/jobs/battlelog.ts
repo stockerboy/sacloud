@@ -65,6 +65,8 @@ export interface BattleLogImportRow {
   usn?: string
   clanNo?: string
   barracksId?: string
+  /** 클랜 단위 수집기가 붙이는 주인 이름표. `teamList` 가 있으면 이쪽이 이긴다 (D-184) */
+  subject?: string
   /** 2026-08-28 수집분에는 포지션 정답이 행마다 붙어 있다 */
   pos?: string
   fetched_at?: string
@@ -149,12 +151,33 @@ export function eventsOf(raw: unknown): BattleLogPositionEvent[] {
  * 갈라진 적이 있다**(2026-08-29 실측: 어제 수집분 20명 + 오늘 수집분 5명 = 25명으로 셈).
  */
 function subjectOf(row: BattleLogImportRow): string | null {
+  /* 클랜 단위 응답이면 주인은 **클랜**이다. 안에 든 `str_usn` 은 그 클랜 선수들이라
+     그중 아무나 주인으로 삼으면 같은 응답이 선수 로그로 둔갑한다 (D-184) */
+  if (isClanResponse(rawOf(row))) {
+    const clan = row.clanNo ?? row.subject
+    return clan ? String(clan) : null
+  }
   const fromEvents = eventsOf(rawOf(row))[0]?.str_usn
   if (fromEvents !== null && fromEvents !== undefined && String(fromEvents).trim() !== '') {
     return String(fromEvents)
   }
   const explicit = row.strUsn ?? row.userNexonSn ?? row.usn ?? row.barracksId ?? row.clanNo
   return explicit ? String(explicit) : null
+}
+
+/**
+ * 클랜 단위 응답인가 — **`teamList` 로 가른다** (D-184).
+ *
+ * 수집기가 붙인 이름표를 믿지 않는다. 응답 자신이 갖고 있는 표시를 본다.
+ * 클랜 응답에는 `teamList`(팀번호 ↔ 클랜번호 짝)가 최상위에 오고 선수 응답에는 없다.
+ *
+ * 이걸 안 가르면 클랜 응답이 **첫 선수의 개인 로그로 둔갑한다.**
+ * 그러면 그 선수 혼자 한 경기에서 10명분 좌표를 가진 것이 되어
+ * 포지션 판정(`subjectKind: 'user'` 만 읽는다)이 통째로 오염된다.
+ */
+export function isClanResponse(raw: unknown): boolean {
+  if (raw === null || typeof raw !== 'object') return false
+  return Array.isArray((raw as Record<string, unknown>).teamList)
 }
 
 /**
@@ -217,7 +240,11 @@ export async function importBattleLogs(input: {
         endpoint: row.endpoint ?? DEFAULT_ENDPOINT,
         matchKey,
         subject,
-        subjectKind: row.clanNo && !row.strUsn && !row.userNexonSn && !row.usn ? 'clan' : 'user',
+        /* 응답 자신이 가진 표시(`teamList`)를 먼저 본다 — 수집기 이름표는 흔들린다 (D-184) */
+        subjectKind:
+          isClanResponse(raw) || (row.clanNo && !row.strUsn && !row.userNexonSn && !row.usn)
+            ? 'clan'
+            : 'user',
         payload: raw as object,
         payloadHash,
         status: 'ok',
