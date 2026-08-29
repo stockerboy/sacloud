@@ -55,31 +55,91 @@ const CLAN_DELAY_MS = 320
 const CLAN_DEFAULT_MATCHES = 200
 /** 우리가 쓰는 맵. 다른 맵 경기는 받지 않는다 */
 const CLAN_MAP_NAME = '제3보급창고'
-const CLAN_STORE_KEY = 'sacloud_clan_battlelog_v1'
+/** **완료 표시만** 담는다. 원문은 담지 않는다 (아래 참조) */
+const CLAN_STORE_KEY = 'sacloud_clan_battlelog_done_v2'
+/**
+ * 이만큼 모이면 파일로 내리고 메모리를 비운다.
+ *
+ * ⚠ **원문을 `localStorage` 에 쌓지 않는다.** 경기 하나가 이벤트 100~130건이라
+ * 원문이 **90KB 안팎**이다. 수천 경기면 수백 MB 인데 `localStorage` 는 보통 5~10MB 다.
+ * 예전 방식대로 쌓으면 중간에 조용히 저장이 끊기고, "저장된 줄 알았던" 것이 사라진다.
+ *
+ * 그래서 원문은 **메모리에만** 두고 40건마다 파일로 내린다(≈3~4MB).
+ * `localStorage` 에는 "이건 이미 받았다" 는 표시만 남긴다.
+ */
+const CLAN_FLUSH_EVERY = 40
 
 const clanSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /* ------------------------------------------------------------------ 저장 --- */
 
-function clanEmptyStore() {
-  return { rows: [], failures: [], done: [], seenMatches: [] }
+/** 아직 파일로 안 내린 것들 — **메모리에만** 있다 */
+const clanBuffer = { rows: [], failures: [], part: 0 }
+
+/** 밖에서 지켜보라고 두는 진행 상황. 숫자만 담는다 */
+const clanState = {
+  running: false,
+  stop: false,
+  slug: null,
+  slugsDone: 0,
+  slugsTotal: 0,
+  rows: 0,
+  startedAt: null,
+  finishedAt: null,
 }
 
-function clanLoadStore() {
+function clanLoadDone() {
   try {
-    return JSON.parse(localStorage.getItem(CLAN_STORE_KEY) ?? '') ?? clanEmptyStore()
+    const raw = JSON.parse(localStorage.getItem(CLAN_STORE_KEY) ?? '')
+    return new Set(Array.isArray(raw?.done) ? raw.done : [])
   } catch {
-    return clanEmptyStore()
+    return new Set()
   }
 }
 
-function clanSaveStore(store) {
+/**
+ * 완료 표시를 남긴다. **파일로 내린 뒤에만 부른다** —
+ * 받자마자 표시하면, 내리기 전에 창이 죽었을 때 그 조각을 영영 다시 안 받는다.
+ */
+function clanSaveDone(done) {
   try {
-    localStorage.setItem(CLAN_STORE_KEY, JSON.stringify(store))
+    localStorage.setItem(CLAN_STORE_KEY, JSON.stringify({ done: [...done] }))
   } catch (error) {
-    /* 용량이 차면 저장만 못 하는 것이지 수집이 틀린 것은 아니다. 조용히 넘기지 말고 알린다 */
-    console.warn('[수집] 진행 상황을 저장하지 못했다 — 창을 닫으면 처음부터다:', error)
+    console.warn('[수집] 완료 표시를 저장하지 못했다 — 다시 돌리면 겹쳐 받는다:', error)
   }
+}
+
+/** 버퍼를 파일 하나로 내리고 비운다. 내린 뒤에 완료 표시를 남긴다 */
+function clanFlush(done, pending) {
+  if (clanBuffer.rows.length === 0 && clanBuffer.failures.length === 0) return false
+  clanBuffer.part += 1
+  const name = `barracks-clan-battlelog-${String(clanBuffer.part).padStart(3, '0')}.json`
+  clanDownload(name, {
+    collected_at: new Date().toISOString(),
+    part: clanBuffer.part,
+    note: '클랜 단위 배틀로그 원문 (D-184). team_no 는 진영이 아니라 클랜 번호다 — teamList 참조',
+    rows: clanBuffer.rows,
+    failures: clanBuffer.failures,
+  })
+  console.info(`[수집] ${name} 내림 — ${clanBuffer.rows.length}건 (실패 ${clanBuffer.failures.length})`)
+  clanBuffer.rows = []
+  clanBuffer.failures = []
+  for (const key of pending) done.add(key)
+  pending.clear()
+  clanSaveDone(done)
+  return true
+}
+
+function clanDownload(name, payload) {
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 /* ------------------------------------------------------------------ 요청 --- */
@@ -158,7 +218,7 @@ function clanMatchTime(matchKey) {
  * @param slugs   클랜 URL 조각 배열 (`['4473', 'eee07']`)
  * @param options `{ matches: 최근 몇 경기, from: 'YYYY-MM-DD', map: '제3보급창고' }`
  */
-async function collectClanBattleLogs(slugs, options = {}) {
+window.collectClanBattleLogs = async function collectClanBattleLogs(slugs, options = {}) {
   if (!Array.isArray(slugs) || slugs.length === 0) {
     console.error('클랜 slug 배열을 넘겨라. 예: collectClanBattleLogs(["4473"])')
     return null
@@ -167,17 +227,26 @@ async function collectClanBattleLogs(slugs, options = {}) {
   const mapName = options.map ?? CLAN_MAP_NAME
   const from = options.from ? new Date(`${options.from}T00:00:00+09:00`).getTime() : null
 
-  const store = clanLoadStore()
-  const done = new Set(store.done)
+  const done = clanLoadDone()
+  /** 받았지만 아직 파일로 안 내린 것 — 내린 뒤에 `done` 으로 옮긴다 */
+  const pending = new Set()
+  clanState.running = true
+  clanState.stop = false
+  clanState.slugsTotal = slugs.length
+  clanState.slugsDone = 0
+  clanState.rows = 0
+  clanState.startedAt = new Date().toISOString()
+  clanState.finishedAt = null
 
   for (const slug of slugs) {
+    if (clanState.stop) break
+    clanState.slug = slug
     console.info(`[수집] 클랜 ${slug} — 경기 목록`)
     let list
     try {
       list = await clanMatchList(slug, limit)
     } catch (error) {
-      store.failures.push({ slug, stage: 'matchList', error: String(error) })
-      clanSaveStore(store)
+      clanBuffer.failures.push({ slug, stage: 'matchList', error: String(error) })
       continue
     }
 
@@ -191,6 +260,7 @@ async function collectClanBattleLogs(slugs, options = {}) {
     console.info(`[수집] 클랜 ${slug} — 목록 ${list.length}건 중 ${mapName} ${targets.length}건`)
 
     for (const row of targets) {
+      if (clanState.stop) break
       const matchKey = String(row.match_key)
       /* ⚠ 응답에 **`red_clan_no` · `blue_clan_no` 는 없다** (2026-08-29 실측).
          있는 것은 조회한 클랜의 `clan_no` 하나와, 양 팀의 **이름**뿐이다.
@@ -198,18 +268,18 @@ async function collectClanBattleLogs(slugs, options = {}) {
          상대 쪽은 그 클랜을 조회할 차례에 받는다. 39곳을 다 돌면 양쪽이 채워진다. */
       const clanNo = String(row.clan_no ?? '')
       if (clanNo === '') {
-        store.failures.push({ matchKey, slug, stage: 'clanNo', error: '응답에 clan_no 가 없다' })
+        clanBuffer.failures.push({ matchKey, slug, stage: 'clanNo', error: '응답에 clan_no 가 없다' })
         continue
       }
       const key = `${matchKey}:${clanNo}`
-      if (done.has(key)) continue
+      if (done.has(key) || pending.has(key)) continue
       try {
         const json = await clanPost(`/api/BattleLog/GetBattleLogClan/${matchKey}/${clanNo}`)
         const events = Array.isArray(json?.battleLog) ? json.battleLog : []
         if (events.length === 0) {
-          store.failures.push({ matchKey, clanNo, stage: 'battleLog', error: '이벤트 0건' })
+          clanBuffer.failures.push({ matchKey, clanNo, stage: 'battleLog', error: '이벤트 0건' })
         } else {
-          store.rows.push({
+          clanBuffer.rows.push({
             source: 'nexon_barracks',
             endpoint: `/api/BattleLog/GetBattleLogClan/${matchKey}/${clanNo}`,
             matchKey,
@@ -232,53 +302,69 @@ async function collectClanBattleLogs(slugs, options = {}) {
             raw: json,
           })
         }
-        done.add(key)
-        store.done = [...done]
-        clanSaveStore(store)
+        pending.add(key)
+        clanState.rows += 1
+        /* 쌓아 두지 않고 40건마다 내린다 — 메모리와 유실 폭을 동시에 줄인다 */
+        if (clanBuffer.rows.length >= CLAN_FLUSH_EVERY) clanFlush(done, pending)
       } catch (error) {
-        store.failures.push({ matchKey, clanNo, stage: 'battleLog', error: String(error) })
-        clanSaveStore(store)
+        clanBuffer.failures.push({ matchKey, clanNo, stage: 'battleLog', error: String(error) })
       }
       await clanSleep(CLAN_DELAY_MS)
     }
-    console.info(`[수집] 클랜 ${slug} 끝 — 지금까지 ${store.rows.length}건`)
+    clanState.slugsDone += 1
+    console.info(`[수집] 클랜 ${slug} 끝 — 누적 ${clanState.rows}건 (파일 ${clanBuffer.part}개)`)
   }
 
-  return __clanLogExport()
+  clanFlush(done, pending)
+  clanState.running = false
+  clanState.finishedAt = new Date().toISOString()
+  console.info(`[수집] 전부 끝 — ${clanState.rows}건 · 파일 ${clanBuffer.part}개`)
+  return window.__clanLogStatus()
 }
 
 /* ------------------------------------------------------------------ 도구 --- */
 
-function __clanLogStatus() {
-  const store = clanLoadStore()
-  const matches = new Set(store.rows.map((row) => row.matchKey))
-  console.info(
-    `받은 응답 ${store.rows.length}건 · 경기 ${matches.size}건 · 실패 ${store.failures.length}건`,
-  )
-  return { rows: store.rows.length, matches: matches.size, failures: store.failures.length }
-}
-
-function __clanLogExport() {
-  const store = clanLoadStore()
-  const payload = {
-    collected_at: new Date().toISOString(),
-    note: '클랜 단위 배틀로그 원문 (D-184). team_no 는 진영이 아니라 클랜 번호다 — teamList 참조',
-    rows: store.rows,
-    failures: store.failures,
+/**
+ * 지금 진행 상황. **숫자만 돌려준다** — 원문을 돌려주면 콘솔이 잠긴다.
+ *
+ * 오래 도는 수집을 밖에서 지켜보려고 만든 것이다.
+ * `javascript_tool` 은 30초에 끊기므로 수집은 `await` 하지 말고 띄워 두고 이걸로 본다.
+ */
+window.__clanLogStatus = function __clanLogStatus() {
+  return {
+    running: clanState.running,
+    slug: clanState.slug,
+    slugsDone: clanState.slugsDone,
+    slugsTotal: clanState.slugsTotal,
+    rows: clanState.rows,
+    buffered: clanBuffer.rows.length,
+    files: clanBuffer.part,
+    failures: clanBuffer.failures.length,
+    startedAt: clanState.startedAt,
+    finishedAt: clanState.finishedAt,
   }
-  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'barracks-clan-battlelog.json'
-  a.click()
-  URL.revokeObjectURL(url)
-  __clanLogStatus()
-  return payload
 }
 
-function __clanLogReset() {
+/** 아직 안 내린 버퍼를 지금 내린다. 중간에 멈추고 싶을 때 쓴다 */
+window.__clanLogExport = function __clanLogExport() {
+  const done = clanLoadDone()
+  const pending = new Set()
+  const flushed = clanFlush(done, pending)
+  if (!flushed) console.info('내릴 것이 없다')
+  return window.__clanLogStatus()
+}
+
+/** 돌던 수집을 멈춘다. 다음 경기 직전에 빠져나온다 */
+window.__clanLogStop = function __clanLogStop() {
+  clanState.stop = true
+  console.info('멈추라고 표시했다. 받던 것 하나는 마저 받는다')
+}
+
+window.__clanLogReset = function __clanLogReset() {
   localStorage.removeItem(CLAN_STORE_KEY)
+  clanBuffer.rows = []
+  clanBuffer.failures = []
+  clanBuffer.part = 0
   console.info('지웠다. 다음 실행은 처음부터다')
 }
 
