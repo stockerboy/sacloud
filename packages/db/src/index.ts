@@ -48,9 +48,67 @@ function warnIfPoolerMisconfigured(url: string | undefined): void {
 
 if (!globalForPrisma.sacloudPrisma) warnIfPoolerMisconfigured(process.env.DATABASE_URL)
 
+/**
+ * **로컬 개발 DB 에만** 커넥션 상한을 붙인다 (D-187).
+ *
+ * ── 진짜 원인은 우리 코드가 아니었다 (2026-08-30 실측)
+ *   테스트 전체 실행에서 매번 1~3건이 `Can't reach database server at 127.0.0.1:5433` 로
+ *   실패했고 **실패하는 파일이 실행마다 바뀌었다.** 며칠 동안 "원인 미상" 이었다.
+ *
+ *   원인은 이 컴퓨터의 **소켓 계층**이다. Prisma 도 PostgreSQL 도 vitest 도 아니다.
+ *   생 TCP 로 재 봤다 (node `net.connect`, 프로젝트 코드 한 줄도 안 거침):
+ *   ```
+ *   127.0.0.1:5433 (열린 포트)  200회 중 3회 EFAULT
+ *   127.0.0.1:5433 (다른 시점)  100회 중 21회 EFAULT
+ *   127.0.0.1:59999 (닫힌 포트) 60회 중 3회 EFAULT · 나머지는 정상 ECONNREFUSED
+ *   ```
+ *   **닫힌 포트에 붙을 때도 EFAULT 가 난다.** 즉 상대가 PostgreSQL 인지와 무관하다.
+ *   `EFAULT`(WSAEFAULT)는 네트워크 오류가 아니라 **시스템 호출 인자가 잘못됐다**는 뜻이라
+ *   정상적인 소켓 사용에서는 나올 수 없는 값이다. 같은 이유로 `next dev` 의
+ *   `listen()` 도 `EFAULT` 로 죽어서 이 환경에서는 개발 서버가 아예 뜨지 않는다.
+ *   연결 간격을 0ms · 5ms · 20ms 로 벌려도 실패율이 그대로였다 — 몰림 문제도 아니다.
+ *
+ *   고칠 곳은 저장소가 아니라 **컴퓨터**다 (`netsh winsock reset` + 재부팅 ·
+ *   네트워크 필터 드라이버 점검). 저장소에서 할 수 있는 것은 노출 횟수를 줄이는 것뿐이다.
+ *
+ * ── 그래서 상한을 둔다
+ *   Prisma 기본 풀은 `CPU × 2 + 1`(이 컴퓨터에서 17)이라 그만큼 커넥션을 연다.
+ *   5로 줄이면 **여는 횟수 자체가 줄어** 그 확률에 노출되는 빈도가 준다.
+ *   근본 해결이 아니라 **완화**다. 실측: 5에서 가장 안정적이었고
+ *   8·12 에서는 첫 연결부터 실패해 테스트가 통째로 skip 되는 일이 잦았다.
+ *
+ * ── 왜 루프백에서만 하는가
+ *   운영은 Supabase **transaction pooler(6543)** 라 성격이 완전히 다르다.
+ *   거기 값을 우리가 여기서 정하면 안 된다. 그래서 호스트가 루프백일 때만,
+ *   그리고 URL 에 이미 `connection_limit` 이 없을 때만 붙인다.
+ *   **URL 을 로그에 찍지 않는다** (비밀번호가 들어 있다).
+ */
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]'])
+
+/** `[미확인]` 실측으로 고른 값이다. 사양에 없는 우리 값이라 원본과 무관하다 */
+const LOCAL_CONNECTION_LIMIT = 5
+
+function localDatasourceUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return undefined
+  }
+  if (!LOOPBACK_HOSTS.has(parsed.hostname)) return undefined
+  if (parsed.searchParams.has('connection_limit')) return undefined
+
+  parsed.searchParams.set('connection_limit', String(LOCAL_CONNECTION_LIMIT))
+  return parsed.toString()
+}
+
+const localUrl = localDatasourceUrl(process.env.DATABASE_URL)
+
 export const prisma: PrismaClient =
   globalForPrisma.sacloudPrisma ??
   new PrismaClient({
+    ...(localUrl ? { datasources: { db: { url: localUrl } } } : {}),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
     /**
      * 기본 `errorFormat`은 오류마다 **소스 발췌를 붙이는데**, 번들된 Prisma 런타임에서는
