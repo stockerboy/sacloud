@@ -120,9 +120,19 @@ const localUrl = localDatasourceUrl(process.env.DATABASE_URL)
  */
 const RETRY_DELAYS_MS = [25, 50, 75, 100, 150, 250, 400, 600]
 
+/**
+ * "커넥션이 아예 안 열렸다"(`P1001`)인가.
+ *
+ * ⚠ **Prisma 는 오류 종류에 따라 코드를 다른 칸에 담는다.**
+ * 쿼리 중 실패는 `PrismaClientKnownRequestError.code`, 클라이언트가 처음 붙을 때 실패는
+ * `PrismaClientInitializationError.errorCode` 다. 한쪽만 보면 **처음 붙을 때의 실패를
+ * 통째로 놓친다** — 테스트가 최상위에서 `SELECT 1` 로 DB 를 확인하는 자리가 정확히 그곳이라,
+ * 그때 실패하면 테스트가 실패가 아니라 **조용히 skip** 된다.
+ */
 function isUnreachable(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) return false
-  return (error as { code?: unknown }).code === 'P1001'
+  const holder = error as { code?: unknown; errorCode?: unknown }
+  return holder.code === 'P1001' || holder.errorCode === 'P1001'
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
