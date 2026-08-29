@@ -1,0 +1,32 @@
+{
+  "note": "사용자가 2026-08-29 에 준 정답 표본 23명. 병영수첩 프로필 주소로 받았다. barracksId 는 주소의 조각(16진+SA)이고, BattleLog API 가 쓰는 user_nexon_sn(숫자)과 다른 값이다 — 수집 때 채운다(`userNexonSn`). 스나수는 포함하지 않는다(스나 든 판은 판정에서 제외하므로 표본이 남지 않는다).",
+  "source": "사용자 직접 지정 (확실한 포지션만)",
+  "labels": [
+    { "barracksId": "BE60BA2EA16C2A94SA", "userNexonSn": null, "position": "B" },
+    { "barracksId": "ABAC4D9DD6600636SA", "userNexonSn": null, "position": "B" },
+    { "barracksId": "79BEC17430DF291ESA", "userNexonSn": null, "position": "B" },
+    { "barracksId": "D8B3C973C06BB0FESA", "userNexonSn": null, "position": "B" },
+    { "barracksId": "293ED6C0C2B49B57SA", "userNexonSn": null, "position": "B" },
+    { "barracksId": "5CA3F0623A30124ASA", "userNexonSn": null, "position": "B" },
+
+    { "barracksId": "51975267F8A18F52SA", "userNexonSn": null, "position": "2F" },
+    { "barracksId": "95ED5BDBB18CDA27SA", "userNexonSn": null, "position": "2F" },
+    { "barracksId": "791C5776190D4589SA", "userNexonSn": null, "position": "2F" },
+    { "barracksId": "F0BB03E0F4771644SA", "userNexonSn": null, "position": "2F" },
+    { "barracksId": "BE670A90968922B5SA", "userNexonSn": null, "position": "2F" },
+
+    { "barracksId": "C348189581244C65SA", "userNexonSn": null, "position": "SHORT" },
+    { "barracksId": "7C313643067A5FCASA", "userNexonSn": null, "position": "SHORT" },
+    { "barracksId": "FBD6DA3C1C1526C4SA", "userNexonSn": null, "position": "SHORT" },
+    { "barracksId": "D596137C144C183CSA", "userNexonSn": null, "position": "SHORT" },
+    { "barracksId": "5680A2E6F8308820SA", "userNexonSn": null, "position": "SHORT" },
+    { "barracksId": "C26B14561456F162SA", "userNexonSn": null, "position": "SHORT" },
+
+    { "barracksId": "02773269A8CAF900SA", "userNexonSn": null, "position": "LIBERO" },
+    { "barracksId": "67C2B2BC7406EC34SA", "userNexonSn": null, "position": "LIBERO" },
+    { "barracksId": "1F43552B9AB9EB13SA", "userNexonSn": null, "position": "LIBERO" },
+    { "barracksId": "0316133F90948FC6SA", "userNexonSn": null, "position": "LIBERO" },
+    { "barracksId": "A49F0592B0050E7BSA", "userNexonSn": null, "position": "LIBERO" },
+    { "barracksId": "3F6FDE57149B54E6SA", "userNexonSn": null, "position": "LIBERO" }
+  ]
+}
