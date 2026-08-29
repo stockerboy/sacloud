@@ -17,12 +17,14 @@
  *   양쪽 다 3명 미만이어도 **경기 자체는 남긴다.** 기록실에서 참가자·K/D/A·맵·결과를 볼 수 있다.
  *   다만 시즌 승패·킬뎃·평균킬·MVP·개인 래더·클랜 래더·랭킹에는 **전혀 반영하지 않는다.**
  *
- * ── 어느 팀으로 뛰었는가 (D-072 유지)
+ * ── 어느 팀으로 뛰었는가 (D-072 유지 · 우선순위는 D-180)
  *   승자가 하나뿐이므로 **승패가 곧 팀**이다. 추측하지 않는다.
  *   팀을 대표하는 클랜은 다음 순서로 정한다.
+ *     0. `sideEvidence.authority === 'primary'` 면 **그 값이 정본**이다 (D-180).
+ *        출처가 자기 기록에 "A vs B" 로 적어 둔 경기(미러)에만 붙는다
  *     1. 매치 상세의 `guild_name`이 리그 클랜과 **정확히** 일치하는 것의 다수 (D-043 근거)
  *     2. 없으면 그 팀 참가자들의 **등록 클랜 다수**
- *     3. 둘 다 없으면 팀을 식별하지 못한 것이다 — 사유를 남기고 기록하지 않는다
+ *     3. 둘 다 없으면 `sideEvidence`(fallback), 그것도 없으면 팀을 식별하지 못한 것이다
  *
  * ── 클랜 래더 반영률 (D-081)
  *   같은 공식 경기라도 팀마다 다르다. 자기 본클랜원을 몇 명 냈는지로 정한다.
@@ -79,22 +81,36 @@ export type ReconstructionStatus =
   | 'conflict_with_detail'
 
 /**
- * 팀 식별 **보조 증거** (D-133).
+ * 진영별 클랜 근거 (D-133 · 우선순위는 D-180).
  *
  * 넥슨 상세만으로 어느 클랜의 팀인지 정하지 못하는 경기가 있다.
  * `guild_name`이 리그 클랜과 정확히 일치하지 않거나, 양쪽이 같은 클랜으로 판정되는 경우다.
  * 그때 **외부 출처가 알려 준 진영별 클랜**을 쓴다.
  *
  * 규칙
- *   · 넥슨 근거로 이미 두 클랜이 서로 다르게 정해지면 **넥슨이 이긴다.** 이 값은 안 본다
  *   · 이 값만으로 참가자를 만들지 않는다. 팀의 **이름표**일 뿐이다
- *   · 승/패 그룹은 여전히 넥슨 `outcome` 으로 나눈다. 이 값이 그것을 바꾸지 않는다
+ *   · 승/패 그룹은 여전히 참가자 `outcome` 으로 나눈다. 이 값이 그것을 바꾸지 않는다
+ *   · 다수결과 어느 쪽이 이기는지는 `authority` 가 정한다 (아래)
  */
 export interface SideEvidence {
   winnerLeagueClanId: string | null
   loserLeagueClanId: string | null
   /** 근거 출처 표시 — 저장해서 나중에 어디서 온 판단인지 알 수 있게 한다 */
   source: string
+  /**
+   * 이 근거의 **권한** (D-180). 기본은 `fallback` 이다 — 넣지 않으면 D-133 그대로다.
+   *
+   *   `fallback`  참가자 다수결이 먼저다. 다수결이 두 클랜을 서로 다르게 뽑아내면
+   *               이 값은 **보지도 않는다**. 넥슨 재구성 경기가 여기에 해당한다 —
+   *               그쪽 진영 클랜은 애초에 라인업 근거로 정해진 값이라 성격이 같다
+   *   `primary`   이 값이 **정본**이다. 다수결은 이 값이 없을 때만 쓴다.
+   *               외부 출처가 자기 화면에 "A vs B" 로 **적어 둔** 판정일 때만 쓴다
+   *               (미러 = 3rd.supply 경기). 추론이 아니라 기록이기 때문이다
+   *
+   * `primary` 를 붙이는 판단은 **래더 패키지가 하지 않는다.** 이 패키지는 origin 을 모른다.
+   * 어느 경기가 `primary` 인지는 `apps/worker/src/lib/sideEvidencePolicy.ts` 한 곳에서 정한다.
+   */
+  authority?: 'primary' | 'fallback'
 }
 
 /** 공식 라벨이 붙는 최소 본클랜원 수 — **래더 지급 조건이 아니다** (D-145) */
@@ -222,8 +238,38 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
   const nexonDecided =
     nexonWinnerClanId !== null && nexonLoserClanId !== null && nexonWinnerClanId !== nexonLoserClanId
 
-  const winnerClanId = nexonDecided ? nexonWinnerClanId : (input.sideEvidence?.winnerLeagueClanId ?? nexonWinnerClanId)
-  const loserClanId = nexonDecided ? nexonLoserClanId : (input.sideEvidence?.loserLeagueClanId ?? nexonLoserClanId)
+  /* ---- 우선순위가 뒤집히는 단 하나의 지점 (D-180) ----
+
+     `authority === 'primary'` 이면 **적혀 있는 진영 클랜이 정본**이다.
+     다수결(`identify`)은 이 값이 없거나 반쪽일 때만 쓴다.
+
+     왜 뒤집나 — 다수결의 입력인 `rosterLeagueClanId` 는 미러 참가행의 **41%가 비어 있다**
+     (클랜명 없음 31.6% + 이 리그에 등록되지 않은 클랜 9.2% · D-179 조사).
+     `plurality()` 는 최다 득표가 동률만 아니면 그대로 반환하므로, 5명 중 4명이 소속 불명이면
+     **남은 한 명이 팀 이름을 정한다.** 실측으로 어긋난 쪽의 절반(supply 721/1,630)이
+     한 명이 정한 것이었고, **5명 전원이 기록과 다른 경기는 supply 에 0건**이었다.
+     얇은 추론이 두꺼운 기록을 이기고 있었던 것이다.
+
+     `primary` 조건은 **두 진영이 다 있고 서로 다를 때**로 한정한다. 반쪽짜리 이름표나
+     같은 클랜 두 개는 정본이 될 수 없다 — 그때는 평소대로 다수결로 내려간다. */
+  const evidencePrimary =
+    input.sideEvidence?.authority === 'primary' &&
+    input.sideEvidence.winnerLeagueClanId !== null &&
+    input.sideEvidence.loserLeagueClanId !== null &&
+    input.sideEvidence.winnerLeagueClanId !== input.sideEvidence.loserLeagueClanId
+
+  const evidenceDecides = evidencePrimary || !nexonDecided
+
+  const winnerClanId = evidencePrimary
+    ? input.sideEvidence!.winnerLeagueClanId
+    : nexonDecided
+      ? nexonWinnerClanId
+      : (input.sideEvidence?.winnerLeagueClanId ?? nexonWinnerClanId)
+  const loserClanId = evidencePrimary
+    ? input.sideEvidence!.loserLeagueClanId
+    : nexonDecided
+      ? nexonLoserClanId
+      : (input.sideEvidence?.loserLeagueClanId ?? nexonLoserClanId)
 
   if (winnerClanId === null || loserClanId === null) {
     return {
@@ -294,7 +340,7 @@ export function evaluateEligibility(input: EligibilityInput): EligibilityResult 
         : `${loserSide.confirmed}v${winnerSide.confirmed}`,
     winnerLeagueClanId: winnerClanId,
     assigned,
-    sideEvidenceUsed: nexonDecided ? null : (input.sideEvidence?.source ?? null),
+    sideEvidenceUsed: evidenceDecides ? (input.sideEvidence?.source ?? null) : null,
     reason: ratingEligible
       ? ''
       : `정상 5v5 가 아니다 (${winnerSide.confirmed} vs ${loserSide.confirmed}). 래더에 반영하지 않는다`,

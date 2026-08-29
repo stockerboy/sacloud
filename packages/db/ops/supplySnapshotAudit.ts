@@ -684,6 +684,8 @@ export function toRateMatchRows(projection: SnapshotProjection): {
   id: string
   startAt: Date
   official: boolean
+  /** 3rd.supply 스냅샷에서 온 경기다. 저장된 경기와 **같은 진영 판정**을 받아야 한다 (D-180) */
+  origin: string
   redLeagueClanId: string
   blueLeagueClanId: string
   winnerSide: string
@@ -701,6 +703,9 @@ export function toRateMatchRows(projection: SnapshotProjection): {
     id: match.id,
     startAt: match.startAt,
     official: match.official,
+    /* 미러 origin 을 그대로 붙인다 — 안 붙이면 투영 경기만 옛 판정(다수결 우선)을 받아
+       "투영을 넣었을 때 래더가 어떻게 되나" 의 답이 실제와 갈라진다 (D-180) */
+    origin: '3rd.supply',
     redLeagueClanId: match.redLeagueClanId,
     blueLeagueClanId: match.blueLeagueClanId,
     winnerSide: match.winnerSide,

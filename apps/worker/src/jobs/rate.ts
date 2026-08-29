@@ -36,6 +36,7 @@ import {
   type RatingConstants,
 } from '@sacloud/rating'
 import { log, warn } from '../lib/log.js'
+import { storedSideEvidence } from '../lib/sideEvidencePolicy.js'
 import type { JobContext } from './context.js'
 
 export interface RateRunResult {
@@ -135,6 +136,9 @@ export interface RateMatchRow {
   id: string
   startAt: Date
   official: boolean
+  /** 중복 제거용. 주입 경기(`extraMatches`)는 없을 수 있다 */
+  origin?: string
+  sourceMatchId?: string | null
   redLeagueClanId: string
   blueLeagueClanId: string
   winnerSide: string
@@ -174,13 +178,17 @@ export async function runRate(
      */
     extraMatches?: RateMatchRow[]
     /**
-     * 계산 범위를 바꾼다 (시즌0 재계산용 · D-171).
+     * 계산 범위를 바꾼다 (시즌0 재계산용 · D-171 · D-175).
      *
      * 기본은 `origin='nexon'` + 활성 시즌이다. 여기에 값을 주면 **그 범위**를 replay 한다.
      * 미러 경기를 우리 공식으로 다시 계산해 보는 용도라 **`ctx.dryRun` 과 함께만 쓴다.**
      * 아니면 거부한다 — 원본 점수를 덮어쓰는 일이 있어서는 안 된다 (CLAUDE.md 3-A 2번).
+     *
+     * `origins` 는 **여럿을 줄 수 있다** (D-175). 시즌0 창은 미러와 넥슨에 걸쳐 있다.
+     * 여럿이면 같은 `sourceMatchId` 를 가진 경기가 나올 수 있으므로 **중복을 제거한다** —
+     * `origins` 앞쪽에 있는 origin 을 남긴다. `to` 는 `null` 이면 상한 없음(열린 구간)이다.
      */
-    matchScope?: { origin: string; from?: Date; to?: Date }
+    matchScope?: { origins: string[]; from?: Date; to?: Date | null }
     /** dry-run 결과에 경기별 참가행 계산 결과를 담아 돌려준다 (무기별 분리용) */
     collectStats?: boolean
   },
@@ -259,15 +267,19 @@ export async function runRate(
   if (input.matchScope && !ctx.dryRun) {
     throw new Error('matchScope 는 dry-run 에서만 쓸 수 있다 (원본 점수를 덮지 않는다)')
   }
-  const scopeOrigin = input.matchScope?.origin ?? 'nexon'
+  const scopeOrigins = input.matchScope?.origins ?? ['nexon']
 
   const mirrorEdge = await prisma.match.aggregate({
     where: { leagueId: league.id, origin: '3rd.supply' },
     _max: { startAt: true },
   })
-  /* 미러 구간 가드는 **넥슨 재구성 경기를 계산할 때만** 건다.
-     미러 경기를 일부러 replay 하는 시즌0 계산에까지 걸면 전부 걸러진다 */
-  const mirrorMax = scopeOrigin === 'nexon' ? mirrorEdge._max.startAt : null
+  /* 미러 구간 가드는 **범위를 지정하지 않은 평소 계산에만** 건다 (D-175).
+     가드의 목적은 "한 리그에 원본 점수와 우리 점수가 섞이는 것" 을 막는 것이다.
+     `matchScope` replay 는 그 창 전체를 우리 공식 **하나로만** 재고, dry-run 이라
+     원본 `Match.*RatingUpdate` 를 한 줄도 건드리지 않는다. 그러니 섞일 것이 없다.
+     반대로 가드를 그대로 두면 시즌0 창의 넥슨 경기가 통째로 빠져,
+     7월 이후에만 뛴 선수가 0승 0패 · `배치고사` 로 남는다 (실측). */
+  const mirrorMax = input.matchScope ? null : mirrorEdge._max.startAt
   if (mirrorMax) {
     const covered = await prisma.match.count({
       where: { leagueId: league.id, origin: 'nexon', startAt: { lte: mirrorMax } },
@@ -297,7 +309,7 @@ export async function runRate(
   const stored = await prisma.match.findMany({
     where: {
       leagueId: league.id,
-      origin: scopeOrigin,
+      origin: { in: scopeOrigins },
       /* **official 필터를 쓰지 않는다** (D-145).
          "비공식이라 레이팅 0" 은 폐기됐다. 정상 5v5 인지는 `rateMatch` 가 판정한다. */
       ...(Object.keys(startAtWhere).length > 0 ? { startAt: startAtWhere } : {}),
@@ -307,6 +319,8 @@ export async function runRate(
       id: true,
       startAt: true,
       official: true,
+      origin: true,
+      sourceMatchId: true,
       redLeagueClanId: true,
       blueLeagueClanId: true,
       winnerSide: true,
@@ -331,10 +345,47 @@ export async function runRate(
 
   /* 시간순은 replay 의 전제다. 끼워 넣은 뒤 **다시 정렬한다** —
      DB 정렬만 믿고 뒤에 붙이면 과거 경기가 미래 뒤에 놓여 결과가 달라진다 */
-  const matches = [...stored, ...(input.extraMatches ?? [])].sort(
+  const sorted = [...stored, ...(input.extraMatches ?? [])].sort(
     (left, right) =>
       left.startAt.getTime() - right.startAt.getTime() || (left.id < right.id ? -1 : 1),
   )
+
+  /* ---- 같은 경기를 두 번 세지 않는다 (D-175) ----
+     미러(3rd.supply)와 넥슨 재구성은 **같은 경기를 각자의 id 로** 저장한다.
+     `Match.id` 가 달라 PK 로는 걸러지지 않고, `sourceMatchId` 만 같다.
+     실측(2026-08-29 · 로컬): **한 리그 안에서는 아직 0건**이다. 겹치는 30건은
+     supply(nexon) ↔ sanply(mirror) 로 **리그가 달라** 이중 계산이 아니다 (D-155).
+     그래도 막아 둔다 — 두 수집이 같은 리그에서 만나면 조용히 두 번 세게 된다.
+
+     남기는 쪽은 `origins` 앞쪽 origin 이다 — 시즌0 은 미러가 앞이다.
+     `sourceMatchId` 가 없는 경기는 대조할 근거가 없으므로 **그대로 둔다.** 추측하지 않는다. */
+  const originRank = new Map(scopeOrigins.map((origin, index) => [origin, index]))
+  const bestOf = new Map<string, (typeof sorted)[number]>()
+  const noKey: typeof sorted = []
+  for (const match of sorted) {
+    const key = match.sourceMatchId ?? null
+    if (!key) {
+      noKey.push(match)
+      continue
+    }
+    const previous = bestOf.get(key)
+    if (!previous) {
+      bestOf.set(key, match)
+      continue
+    }
+    const rankOf = (m: (typeof sorted)[number]): number =>
+      originRank.get(m.origin ?? '') ?? Number.MAX_SAFE_INTEGER
+    if (rankOf(match) < rankOf(previous)) bestOf.set(key, match)
+  }
+  const duplicates = sorted.length - (bestOf.size + noKey.length)
+  const matches = [...bestOf.values(), ...noKey].sort(
+    (left, right) =>
+      left.startAt.getTime() - right.startAt.getTime() || (left.id < right.id ? -1 : 1),
+  )
+  if (duplicates > 0) {
+    result.skipped['duplicate_source_match'] = duplicates
+    log(`같은 sourceMatchId 를 가진 경기 ${duplicates}건을 중복으로 뺐다 (D-175)`)
+  }
   result.matchesConsidered = matches.length
 
   if (matches.length === 0) {
@@ -494,14 +545,11 @@ export async function runRate(
 
     /* 팀 배정은 **재구성 때 이미 확정돼 저장돼 있다.** replay 가 그것을 다시 추론하면
        같은 경기를 두 단계가 다르게 판정할 수 있다 — 그러면 인정된 경기가 래더에서 빠진다.
-       저장된 진영 클랜을 그대로 넘겨 재구성과 같은 판정을 재현한다 (D-133). */
-    const storedSides = {
-      winnerLeagueClanId:
-        match.winnerSide === 'red' ? match.redLeagueClanId : match.blueLeagueClanId,
-      loserLeagueClanId:
-        match.winnerSide === 'red' ? match.blueLeagueClanId : match.redLeagueClanId,
-      source: 'stored-match',
-    }
+       저장된 진영 클랜을 그대로 넘겨 재구성과 같은 판정을 재현한다 (D-133).
+
+       미러 경기는 그 값이 **정본**이다 (D-180). 우선순위를 정하는 곳은
+       `lib/sideEvidencePolicy.ts` 하나뿐이다 — 여기서 origin 을 다시 보지 않는다. */
+    const storedSides = storedSideEvidence(match)
 
     const rated = rateMatch({
       participants,

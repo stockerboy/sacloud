@@ -50,8 +50,8 @@ import {
 } from '@sacloud/rating'
 import { REPO_ROOT } from '../lib/env.js'
 import { log } from '../lib/log.js'
+import { MIRROR_ORIGIN, storedSideEvidence } from '../lib/sideEvidencePolicy.js'
 
-const MIRROR_ORIGIN = '3rd.supply'
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export interface BacktestMetrics {
@@ -86,6 +86,8 @@ export interface BacktestMetrics {
 interface MatchRow {
   id: string
   startAt: Date
+  /** 진영 판정 우선순위를 정하는 값 (D-180). 이 백테스트는 미러 경기만 읽는다 */
+  origin?: string
   redLeagueClanId: string
   blueLeagueClanId: string
   winnerSide: string
@@ -200,13 +202,8 @@ export async function backtest(input: {
 
     const rated = rateMatch({
       participants,
-      sideEvidence: {
-        winnerLeagueClanId:
-          match.winnerSide === 'red' ? match.redLeagueClanId : match.blueLeagueClanId,
-        loserLeagueClanId:
-          match.winnerSide === 'red' ? match.blueLeagueClanId : match.redLeagueClanId,
-        source: 'stored-match',
-      },
+      /* 진영 판정은 `lib/sideEvidencePolicy.ts` 한 곳에서만 정한다 (D-180) */
+      sideEvidence: storedSideEvidence(match),
       clanRatings: {
         [match.redLeagueClanId]: clanRatingOf(match.redLeagueClanId),
         [match.blueLeagueClanId]: clanRatingOf(match.blueLeagueClanId),
@@ -377,6 +374,7 @@ async function main(): Promise<void> {
     select: {
       id: true,
       startAt: true,
+      origin: true,
       redLeagueClanId: true,
       blueLeagueClanId: true,
       winnerSide: true,
