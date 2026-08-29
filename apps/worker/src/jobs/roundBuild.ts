@@ -33,8 +33,9 @@ import {
   type RoundStateEvent,
 } from '@sacloud/nexon'
 
-/** 집계 규칙 버전. 규칙이 바뀌면 이 값을 올린다 — 옛 줄은 남는다 */
-export const ROUND_BUILDER_VERSION = 'round-v1'
+/* 버전은 `../lib/roundBuilderVersion` 한 곳에만 있다 — 화면도 그 파일을 읽는다 */
+export { ROUND_BUILDER_VERSION } from '../lib/roundBuilderVersion.js'
+import { ROUND_BUILDER_VERSION } from '../lib/roundBuilderVersion.js'
 
 /** 클랜전은 5대5 다. `plimit` 이 다른 경기는 복원 대상이 아니다 */
 const TEAM_SIZE = 5
@@ -210,7 +211,9 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
         )
         if (teams.size === 1) myTeam = [...teams][0]
       }
-      if (myTeam === undefined) continue
+      /* 명단에 없는 팀 번호면 버린다. 그대로 두면 `find` 가 **아무 팀이나** 골라
+         그 팀에 `!won` 이 뒤집혀 박힌다 — 세이브·소수싸움 승패가 통째로 반대가 된다 */
+      if (myTeam === undefined || !roster.teams.includes(myTeam)) continue
 
       const foe = roster.teams.find((team) => team !== myTeam)
       if (foe === undefined) continue
@@ -235,6 +238,10 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
     if (isLong) result.longMatches += 1
     const manOfMatch = isLong ? lastRoundTopKiller(events) : null
     if (manOfMatch !== null) result.matchManDecided += 1
+    /* **동률이라 아무도 못 뽑은 경기는 분모에도 넣지 않는다.**
+       넣으면 아무도 분자에 못 들어가는 경기가 분모만 늘려 비율이 통째로 낮아진다.
+       실측상 20분 초과 322건 중 113건이 동률이다 — 분모의 35%다 */
+    const countsForMatchMan = isLong && manOfMatch !== null
 
     const accounts = accountMapOf(events as unknown as Record<string, unknown>[])
 
@@ -263,7 +270,7 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
       accum.aloneWon += tally.aloneWon
       accum.outnumbered += tally.outnumbered
       accum.outnumberedWon += tally.outnumberedWon
-      if (isLong) {
+      if (countsForMatchMan) {
         accum.longMatches += 1
         if (manOfMatch === usn) accum.matchMan += 1
       }

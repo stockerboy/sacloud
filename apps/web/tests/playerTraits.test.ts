@@ -222,12 +222,19 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(traits.measuring).toBe(true)
   })
 
-  it('판수가 모자란 선수는 모집단에도 들어가지 않고 전부 `경기 부족` 이다', async () => {
+  it('판수가 모자란 선수는 모집단에 안 들어가지만 이유는 `경기 부족` 이다', async () => {
+    /*
+      **`주무기 미정` 이 아니다.** 둘은 기다려야 하는 것이 다르다 —
+      하나는 더 뛰면 되고, 하나는 무기를 한쪽으로 몰아야 한다.
+      예전에는 모집단에서 빠진 선수에게 무기까지 `null` 로 넘겨서
+      판수가 모자란 선수 전원이 `주무기 미정` 으로 떴다.
+    */
     const { traits } = await playerTraits(leagueId, `${P}few`)
-    expect(traits.weapon).toBeNull()
+    expect(traits.weapon).toBe(0)
+    /* 모집단에 못 들었으므로 견줄 무리가 없다 */
     expect(traits.cohort).toBeNull()
     expect(traits.measured).toBe(0)
-    expect(traits.axes.every((axis) => axis.pending === 'weapon')).toBe(true)
+    expect(traits.axes.every((axis) => axis.pending === 'games')).toBe(true)
   })
 
   it('무기가 반반인 선수는 어느 무리에도 넣지 않는다', async () => {

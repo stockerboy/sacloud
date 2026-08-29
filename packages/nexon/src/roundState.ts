@@ -173,7 +173,21 @@ export function roundStatesOf(events: readonly RoundStateEvent[]): Map<number, R
     byRound.get(round)?.deaths.push({ usn, team, at })
   }
 
-  for (const state of byRound.values()) state.deaths.sort((a, b) => a.at - b.at)
+  for (const state of byRound.values()) {
+    state.deaths.sort((a, b) => a.at - b.at)
+    /* **한 라운드에서 한 사람은 한 번만 죽는다.**
+       위 `seen` 은 시각까지 같아야 걸러 내는데, 한 경기를 두 클랜이 각각 보내면
+       같은 죽음의 `event_time` 이 1초 어긋나 들어오는 일이 있다. 그러면 그 사람이
+       두 번 죽은 것이 되어 **없던 세이브가 만들어진다** — 적게 세는 쪽이 아니라
+       많이 세는 쪽으로 틀리므로 D-106 원칙 자체를 어긴다.
+       가장 이른 죽음만 남긴다 (이미 시각순으로 정렬돼 있다). */
+    const once = new Set<string>()
+    state.deaths = state.deaths.filter((death) => {
+      if (once.has(death.usn)) return false
+      once.add(death.usn)
+      return true
+    })
+  }
   return byRound
 }
 
@@ -231,6 +245,12 @@ export function roundTallyOf(input: {
     const mates = mine.filter((death) => death.usn !== input.usn)
     /* 본인이 죽었다면 **동료들이 다 죽은 뒤**여야 그 상황을 겪은 것이다 */
     const survivedUntil = myDeath === undefined ? Number.POSITIVE_INFINITY : myDeath.at
+
+    /* `event_time` 은 `MM:SS` 라 **초 단위**다. 동료와 내가 같은 초에 죽었으면
+       누가 먼저인지 알 수 없고, 그 한 명 때문에 `혼자 남음` 과 `둘이 남음` 이
+       서로 뒤바뀐다. 모르는 것을 어느 쪽으로도 밀지 않는다 — 그 라운드를 버린다 */
+    if (mates.some((death) => death.at === survivedUntil)) continue
+
     const matesDeadBefore = mates.filter((death) => death.at < survivedUntil).length
 
     const won = input.wonRound(state.round)
@@ -251,10 +271,12 @@ export function roundTallyOf(input: {
         .filter((death) => death.at < survivedUntil)
         .map((death) => death.at)
         .sort((a, b) => a - b)
-      /* 동료 `teamSize-2` 번째가 죽은 그 순간 */
-      const at = times[input.teamSize - 3]
+      /* 마지막으로 죽은 동료의 시각 — 그 순간부터 우리 팀은 둘이다 */
+      const at = times.at(-1)
       if (at === undefined) continue
-      const foesAlive = input.teamSize - theirs.filter((death) => death.at < at).length
+      /* 같은 초에 죽은 상대는 **죽은 것으로 센다.** 그래야 `2:1 은 세지 않는다` 가
+         초 단위 해상도에서도 지켜진다 — 살아 있는 쪽으로 세면 2:1 이 2:2 로 잡힌다 */
+      const foesAlive = input.teamSize - theirs.filter((death) => death.at <= at).length
       if (foesAlive < 2) continue
       tally.outnumbered += 1
       if (won === true) tally.outnumberedWon += 1

@@ -1159,13 +1159,21 @@ interface MockCohort {
   damageSorted: number[]
 }
 
-const traitCohortCache = new Map<string, { rifle: MockCohort; sniper: MockCohort }>()
+const traitCohortCache = new Map<
+  string,
+  { rifle: MockCohort; sniper: MockCohort; belowMin: Map<string, { weapon: 0 | 1; games: number }> }
+>()
 
 function emptyMockCohort(): MockCohort {
   return { values: new Map(), killSorted: [], damageSorted: [] }
 }
 
-function traitCohortsOf(leagueId: string): { rifle: MockCohort; sniper: MockCohort } {
+function traitCohortsOf(leagueId: string): {
+  rifle: MockCohort
+  sniper: MockCohort
+  /** 주무기는 정해졌는데 판수가 모자란 선수. 실제 서버와 같은 이유로 따로 담는다 */
+  belowMin: Map<string, { weapon: 0 | 1; games: number }>
+} {
   const hit = traitCohortCache.get(leagueId)
   if (hit) return hit
 
@@ -1188,12 +1196,18 @@ function traitCohortsOf(leagueId: string): { rifle: MockCohort; sniper: MockCoho
 
   const rifle = emptyMockCohort()
   const sniper = emptyMockCohort()
+  const belowMin = new Map<string, { weapon: 0 | 1; games: number }>()
   for (const [id, entry] of acc) {
     const weapon = mainWeaponOf(entry.games[0], entry.games[1])
     if (weapon === null) continue
     const games = entry.games[weapon]
-    /* 표본이 모자란 선수는 모집단에도 넣지 않는다 — 실제 서버와 같은 규칙이다 */
-    if (games < TRAIT_MIN_GAMES) continue
+    /* 표본이 모자란 선수는 모집단에도 넣지 않는다 — 실제 서버와 같은 규칙이다.
+       다만 무기와 판수는 남겨 둔다. 그래야 화면이 `주무기 미정` 이 아니라
+       `경기 부족` 이라고 정확히 말한다 */
+    if (games < TRAIT_MIN_GAMES) {
+      belowMin.set(id, { weapon, games })
+      continue
+    }
     const value = {
       knownGames: games,
       killPerGame: entry.kill[weapon] / games,
@@ -1209,7 +1223,7 @@ function traitCohortsOf(leagueId: string): { rifle: MockCohort; sniper: MockCoho
     cohort.damageSorted.sort((a, b) => a - b)
   }
 
-  const built = { rifle, sniper }
+  const built = { rifle, sniper, belowMin }
   traitCohortCache.set(leagueId, built)
   return built
 }
@@ -1218,13 +1232,14 @@ function buildTraits(leagueId: string, playerId: string) {
   const cohorts = traitCohortsOf(leagueId)
   const rifleValue = cohorts.rifle.values.get(playerId)
   const sniperValue = cohorts.sniper.values.get(playerId)
-  const weapon: 0 | 1 | null = rifleValue ? 0 : sniperValue ? 1 : null
+  const below = cohorts.belowMin.get(playerId)
+  const weapon: 0 | 1 | null = rifleValue ? 0 : sniperValue ? 1 : (below?.weapon ?? null)
   const cohort = weapon === 1 ? cohorts.sniper : cohorts.rifle
   const value = weapon === 1 ? sniperValue : rifleValue
 
   return buildPlayerTraits({
     weapon,
-    knownGames: value?.knownGames ?? 0,
+    knownGames: value?.knownGames ?? below?.games ?? 0,
     cohort: weapon === null ? null : cohort.killSorted.length,
     carryPercentile: value ? percentileOf(cohort.killSorted, value.killPerGame) : null,
     damagePercentile: value ? percentileOf(cohort.damageSorted, value.damagePerGame) : null,

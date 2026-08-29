@@ -635,8 +635,12 @@ export async function getLeaguePlayerDetail(
          그래야 `totals` 를 기다리지 않고 **같이** 나갈 수 있다 */
       playerTodayTally(league.id, playerId),
       /* 전투력 육각형 + 플레이스타일 바 (4절 · 8절 · D-185).
-         리그 분포는 캐시돼 있어 보통은 즉시 돌아온다 (`playerTraits.ts`) */
-      playerTraits(league.id, playerId),
+         리그 분포는 캐시돼 있어 보통은 즉시 돌아온다 (`playerTraits.ts`).
+
+         **여기서 실패해도 프로필 전체를 죽이지 않는다.** 육각형은 없어도 되는 카드이고
+         계약도 `nullable` 이다. 분포 계산은 리그 전체를 훑으므로 다른 조회보다 깨질 여지가
+         크다 — 그 하나 때문에 기록실이 통째로 안 열리면 안 된다 */
+      playerTraits(league.id, playerId).catch(() => null),
     ])
 
   return {
@@ -702,9 +706,10 @@ export async function getLeaguePlayerDetail(
        기준은 상세정보와 같은 모집단에서 나온 시즌 평균이다 */
     today: toTodayPerformance(buildTodayPerformance(todayTally, totals.kdRate)),
     /* 전투력 육각형 · 플레이스타일 바 (4절 · 8절 · D-185).
-       모양을 손보지 않는다 — `buildPlayerTraits()` 가 계약 모양 그대로 만들어 준다 */
-    traits: traits.traits,
-    playstyle: traits.playstyle,
+       모양을 손보지 않는다 — `buildPlayerTraits()` 가 계약 모양 그대로 만들어 준다.
+       계산이 실패했으면 `null` 이고 화면은 카드를 그리지 않는다 */
+    traits: traits?.traits ?? null,
+    playstyle: traits?.playstyle ?? null,
     teammates: record.teammates,
     weapon_stats: weaponStats,
   }

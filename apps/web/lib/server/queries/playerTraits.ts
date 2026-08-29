@@ -34,6 +34,7 @@ import { prisma } from '@sacloud/db'
 import {
   TRAIT_MIN_GAMES,
   TRAIT_MIN_ROUNDS,
+  TRAIT_MIN_COHORT,
   buildPlayerPlaystyle,
   buildPlayerTraits,
   mainWeaponOf,
@@ -41,6 +42,8 @@ import {
   type PlaystyleBars,
   type TraitHexagon,
 } from '@sacloud/contract'
+/* 집계 버전은 잡이 정하고 화면이 따라 읽는다. 두 곳에 적어 두면 언젠가 갈라진다 */
+import { ROUND_BUILDER_VERSION } from '../../../../worker/src/lib/roundBuilderVersion'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
 
@@ -92,6 +95,14 @@ interface LeagueDistribution {
   sniper: WeaponCohort
   /** playerId → 라운드 복원 비율. **자료가 있는 선수만** 들어 있다 */
   rounds: Map<string, RoundValue>
+  /**
+   * 주무기는 정해졌는데 **판수가 모자라** 모집단에 못 든 선수.
+   *
+   * 이게 없으면 그런 선수에게 무기도 판수도 못 알려 줘서, 화면이 `경기 부족` 대신
+   * **`주무기 미정`** 이라고 말하게 된다. 둘은 기다려야 하는 것이 다르다 —
+   * 하나는 더 뛰면 되고, 하나는 무기를 한쪽으로 몰아야 한다.
+   */
+  belowMin: Map<string, { weapon: 0 | 1; knownGames: number }>
 }
 
 const cache = new Map<string, { at: number; value: Promise<LeagueDistribution> }>()
@@ -122,7 +133,9 @@ function emptyCohort(): WeaponCohort {
  */
 async function roundValues(): Promise<Map<string, RoundValue>> {
   const rows = await prisma.playerRoundProfile.findMany({
-    where: { playerId: { not: null } },
+    /* **버전을 반드시 건다.** 규칙이 바뀌면 옛 줄이 남으므로(`roundBuild.ts`),
+       필터가 없으면 같은 선수에 두 줄이 잡히고 **DB 반환 순서에 따라** 아무 쪽이나 이긴다 */
+    where: { playerId: { not: null }, builderVersion: ROUND_BUILDER_VERSION },
     select: {
       playerId: true,
       alone: true,
@@ -193,6 +206,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
 
   const rifle = emptyCohort()
   const sniper = emptyCohort()
+  const belowMin = new Map<string, { weapon: 0 | 1; knownGames: number }>()
 
   for (const [playerId, entry] of byPlayer) {
     /* 주무기 하나만 고른다. 반반인 선수는 어느 무리에도 넣지 않는다 —
@@ -203,7 +217,11 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     const killGames = entry.killGames[weapon]
     /* 표본이 모자란 선수는 **모집단에도 넣지 않는다.** 두세 판짜리 값이 분포 안에 섞이면
        백분위 자체가 흔들린다 — 그 선수의 축을 `측정중` 으로 두는 것과 같은 이유다 */
-    if (killGames < TRAIT_MIN_GAMES) continue
+    if (killGames < TRAIT_MIN_GAMES) {
+      /* 무기와 판수는 알려 준다 — 화면이 `경기 부족` 이라고 정확히 말할 수 있어야 한다 */
+      belowMin.set(playerId, { weapon, knownGames: killGames })
+      continue
+    }
 
     const damageGames = entry.damageGames[weapon]
     const value: PlayerValue = {
@@ -234,7 +252,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     cohort.matchManSorted.sort((a, b) => a - b)
   }
 
-  return { rifle, sniper, rounds }
+  return { rifle, sniper, rounds, belowMin }
 }
 
 function distributionOf(leagueId: string, now: number): Promise<LeagueDistribution> {
@@ -248,6 +266,13 @@ function distributionOf(leagueId: string, now: number): Promise<LeagueDistributi
   })
   cache.set(leagueId, { at: now, value })
   return value
+}
+
+/** 모집단이 `TRAIT_MIN_COHORT` 이상일 때만 백분위를 낸다 */
+function percentileIn(sorted: readonly number[], value: number | null | undefined): number | null {
+  if (value === null || value === undefined) return null
+  if (sorted.length < TRAIT_MIN_COHORT) return null
+  return percentileOf(sorted, value)
 }
 
 /**
@@ -265,7 +290,10 @@ export async function playerTraits(
 
   const rifleValue = distribution.rifle.values.get(playerId)
   const sniperValue = distribution.sniper.values.get(playerId)
-  const weapon: 0 | 1 | null = rifleValue ? 0 : sniperValue ? 1 : null
+  /* 모집단에 못 든 선수라도 **주무기가 정해졌으면** 그것을 쓴다.
+     그래야 `경기 부족` 과 `주무기 미정` 이 갈린다 */
+  const below = distribution.belowMin.get(playerId)
+  const weapon: 0 | 1 | null = rifleValue ? 0 : sniperValue ? 1 : (below?.weapon ?? null)
   const cohort = weapon === 1 ? distribution.sniper : distribution.rifle
   const value = weapon === 1 ? sniperValue : rifleValue
   const round = distribution.rounds.get(playerId)
@@ -276,7 +304,7 @@ export async function playerTraits(
       /* 분포에 든 선수는 이미 `TRAIT_MIN_GAMES` 를 넘겼다. 못 든 선수는 `0` 으로 넘겨
          `buildPlayerTraits` 가 `경기 부족` 으로 판정하게 둔다 — 그 경계를 두 곳에
          적어 두지 않는다 */
-      knownGames: value?.knownGames ?? 0,
+      knownGames: value?.knownGames ?? below?.knownGames ?? 0,
       cohort: weapon === null ? null : cohort.killSorted.length,
       carryPercentile: value ? percentileOf(cohort.killSorted, value.killPerGame) : null,
       damagePercentile:
@@ -284,16 +312,11 @@ export async function playerTraits(
           ? percentileOf(cohort.damageSorted, value.damagePerGame)
           : null,
       /* 라운드 축 (D-194). 자료가 없으면 `null` 이고 화면은 `라운드 복원 필요` 를 적는다 */
-      savePercentile:
-        round?.saveRate != null ? percentileOf(cohort.saveSorted, round.saveRate) : null,
-      outnumberedPercentile:
-        round?.outnumberedRate != null
-          ? percentileOf(cohort.outnumberedSorted, round.outnumberedRate)
-          : null,
-      matchManPercentile:
-        round?.matchManRate != null
-          ? percentileOf(cohort.matchManSorted, round.matchManRate)
-          : null,
+      /* 모집단이 너무 작으면 백분위가 뜻을 잃는다 — 1명이면 **항상 50%** 다.
+         화면은 `같은 라플수 N명 안에서 견줬습니다` 라고 적는데 실제로는 혼자 잰 값이 된다 */
+      savePercentile: percentileIn(cohort.saveSorted, round?.saveRate),
+      outnumberedPercentile: percentileIn(cohort.outnumberedSorted, round?.outnumberedRate),
+      matchManPercentile: percentileIn(cohort.matchManSorted, round?.matchManRate),
       hasRoundData: round !== undefined,
     }),
     /* 두 줄 다 아직 못 잰다 (8절 · D-184). 화면 자리와 `측정중` 만 먼저 만든다 */
