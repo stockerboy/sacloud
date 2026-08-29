@@ -75,7 +75,7 @@ pnpm --filter @sacloud/worker nexon independent-league --confirm
 | 2 | grave | `grave` | https://barracks.sa.nexon.com/clan/saffggaaz | 사용자 제공 |
 | 3 | Quassar | `QuasaR-` | https://barracks.sa.nexon.com/clan/pigforever | 확실 |
 | 3 | Atraxia | `Atraxia` | https://barracks.sa.nexon.com/clan/eee07 | 사용자 제공 |
-| 3 | nightbloom | — | — | **미확인** |
+| 3 | nightbloom → **pIacebo** | `pIacebo` (대문자 I) | https://barracks.sa.nexon.com/clan/ytsys | 사용자 확정 |
 | 3 | pleniue | `pleniIune` | https://barracks.sa.nexon.com/clan/JJUN | 사용자 제공 |
 | 3 | celestial | `ceIestial` (대문자 I) | https://barracks.sa.nexon.com/clan/IrenecIan | 확실 |
 | 3 | methodcrew | `methodcrew` | https://barracks.sa.nexon.com/clan/ssdko | 사용자 제공 |
@@ -93,9 +93,9 @@ pnpm --filter @sacloud/worker nexon independent-league --confirm
 | 5 | overstep | `overstep` | https://barracks.sa.nexon.com/clan/rokasa12 | 확실 |
 | 5 | publicity | `publicity` | https://barracks.sa.nexon.com/clan/adelioz | 확실 |
 | 5 | needbackup | `NeedΒackup` (그리스 Β) | https://barracks.sa.nexon.com/clan/yoonsh1971 | 확실 |
-| 5 | swell | — | — | **미확인** |
+| 5 | ~~swell~~ → **romantico** | `romantico` | https://barracks.sa.nexon.com/clan/zzim1 | 사용자 확정 |
 | 5 | reBellion | `reBelIion` (대문자 I) | https://barracks.sa.nexon.com/clan/JosenFam | 확실 |
-| 5 | major | `Major-` | https://barracks.sa.nexon.com/clan/jjangkangsu | **추정** |
+| 5 | major | `Major-` | https://barracks.sa.nexon.com/clan/jjangkangsu | 사용자 확정 |
 | 6 | everwhite | `everwhite` | https://barracks.sa.nexon.com/clan/kelly123 | 확실 |
 | 6 | Flexible | `FlexibIe` (대문자 I) | https://barracks.sa.nexon.com/clan/lee2 | 확실 |
 | 6 | 베이직 | `베이직` | https://barracks.sa.nexon.com/clan/WebClanGood | 확실 |
@@ -103,29 +103,28 @@ pnpm --filter @sacloud/worker nexon independent-league --confirm
 | 6 | Lyrical | `Lyrical:` | https://barracks.sa.nexon.com/clan/DooLii | 확실 |
 | 6 | Raze’ | `Raze'` | https://barracks.sa.nexon.com/clan/tjdwlsqhrdl | 확실 |
 
-**분포 4 / 6 / 7 / 8 / 8 / 6 = 39곳.**
-사용자 목록은 39곳인데 이관 지시문에는 `40개의 등록된 클랜`이라고 적혀 있다 — **한 곳이 비는지 확인 필요.**
+**분포 4 / 6 / 7 / 8 / 8 / 6 = 39곳. 전부 URL 이 확정됐다.**
 
-### 못 찾은 두 곳 — 추측으로 메우지 않았다
+> `[미확인]` 이관 지시문에는 `40개의 등록된 클랜`이라고 적혀 있는데 명단은 **39곳**이다.
+> `swell` 을 빼고 `romantico` 를 넣어도 수는 그대로다. **한 곳이 비는지 확인 필요.**
 
-**`nightbloom` (3티어)**
-검색 `night`(171건 전수) · `bloom`(13건 전수) · `Ioom` · `ghtb` 를 다 훑어 이름이 걸리는 곳은
-`nightbIoom`(slug `nightbloom`) · `nightbloom`(slug `nightbloom1`) 둘인데 **둘 다 전적 0전 · 클랜원 1~2명**이다.
-확인된 리그 클랜 10곳의 클랜전 약 1,900경기에서 상대 클랜명 177개를 모았으나 `night`/`bloom` 계열은
-`blacknight` 하나뿐이고 이름이 안 맞는다. **클랜명 변경이나 해체 가능성**이 있으나 확인할 수 없다.
+### 조사로 못 찾았고, 사용자가 직접 정해 준 세 곳 (2026-08-29)
 
-**`swell` (5티어)**
-`swell`(qwrqwrqwrq) 은 최근 200전에 **제3보급창고가 0전**이다(듀오 130 · A보급창고 70) — 조건 ②를 못 넘는다.
-`swellow`(1923991) 는 클랜전 0건. 동형문자 변형(`sweII` `swelI` `sweIl` `ѕwell` `swеll` `swe11`)과
-부분문자열 `sw` 로 잡히는 클랜 372곳 이름을 전부 훑었으나 없다.
-5·6티어 클랜 10곳의 제3보급창고 상대 명단 58개에도 없다.
+조사가 막힌 자리를 **추측으로 메우지 않고 남겨 두었더니** 사용자가 답을 주었다.
+아래 세 줄이 그 결말이다. **명단의 정본은 사용자다.**
 
-### 확신이 약한 한 곳
+| 조사 결과 | 사용자 지시 | 확정 |
+|---|---|---|
+| `nightbloom` 미확인 | "nightbloom → pIacebo" | `pIacebo` · `/clan/ytsys` |
+| `swell` 미확인 | "swell 제거 후 romantico 등록" | `romantico` · `/clan/zzim1` |
+| `Major-` 추정 | "major 이 병영으로 등록" | `Major-` · `/clan/jjangkangsu` |
 
-**`Major-` (5티어 · 추정)**
-이름도 맞고 제3보급창고 기록도 40전 있으나 **상대가 `pleniIune`·`〃veritas` 둘뿐**이다.
-이 둘은 1~2티어라 5티어 풀(overstep·publicity·souffler·베이직·NeedΒackup)과 전혀 겹치지 않는다.
-`major`/`ajor`/`majo` 가 들어간 클랜 17곳을 전수 확인했고 제3보급창고 기록이 있는 곳은 여기 하나뿐이다.
+클랜명은 병영수첩에서 직접 확인했다 — `zzim1` = `romantico`, `ytsys` = `pIacebo`(대문자 I).
+`pIacebo` 는 조사 단계에서 리그 클랜들의 **상대 명단에 이미 잡혀 있던 이름**이다.
+이름이 `nightbloom` 과 전혀 달라 우리 쪽에서는 이어 붙일 수 없었다.
+
+**`swell` 은 명단에서 빠졌다.** 조사 기록만 남긴다 — `swell`(qwrqwrqwrq) 은 최근 200전에
+제3보급창고가 **0전**이었다(듀오 130 · A보급창고 70). 판정 조건을 못 넘긴 것이 맞았다.
 
 ---
 
@@ -265,7 +264,7 @@ POST /api/Profile/GetProfileMain/<식별자>SA     (본문 없음)
 
 - ~~`[미확인]` IPL = 기존 `nolink` 리그인가~~ → **확정: 같은 리그다. 6단으로 간다** (1장)
 - `[미확인]` 등록 클랜이 39곳인가 40곳인가 (사용자 목록 39 · 지시문 40)
-- `[미확인]` `nightbloom` · `swell` 의 실제 클랜
+- ~~`[미확인]` `nightbloom` · `swell` 의 실제 클랜~~ → **확정: `pIacebo` · `romantico`** (2장)
 - `[미확인]` 공식리그 1·2부 ↔ IPL 배타를 **코드로 막을지, 경고만 할지**
   (D-165 는 "막지 않고 경고만 한다" 로 두었다)
 - `[미확인]` 열산리그 "킬데스와 승률만" 이 **다른 수치를 감추라는 뜻인지**,
