@@ -1,0 +1,83 @@
+/**
+ * 배틀로그 원문 적재 (D-174).
+ *
+ * 여기서 고정하는 것
+ *   1. 응답의 이벤트 배열을 **키 이름이 흔들려도** 찾는다
+ *   2. 주인(사람 키)을 모르는 줄은 **넣지 않는다.** 추측해서 키를 만들지 않는다
+ *   3. `--confirm` 없이는 **DB 를 건드리지 않는다**
+ */
+import { describe, expect, it } from 'vitest'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { eventsOf, importBattleLogs } from '../jobs/battlelog.js'
+
+function fixture(payload: unknown): string {
+  const dir = mkdtempSync(join(tmpdir(), 'battlelog-'))
+  const file = join(dir, 'sample.json')
+  writeFileSync(file, JSON.stringify(payload), 'utf8')
+  return file
+}
+
+describe('이벤트 배열 찾기', () => {
+  it('배열이 그대로 오면 그대로 쓴다', () => {
+    expect(eventsOf([{ event_type: 'kill' }])).toHaveLength(1)
+  })
+
+  it('battleLog / battleLogs / logs 어느 키에 있어도 찾는다', () => {
+    expect(eventsOf({ battleLog: [{ event_type: 'kill' }] })).toHaveLength(1)
+    expect(eventsOf({ battleLogs: [{ event_type: 'kill' }] })).toHaveLength(1)
+    expect(eventsOf({ logs: [{ event_type: 'kill' }] })).toHaveLength(1)
+  })
+
+  it('못 찾으면 빈 배열이다 — 던지지 않는다. 원문은 그대로 보존해야 한다', () => {
+    expect(eventsOf({ 무엇인가: 1 })).toEqual([])
+    expect(eventsOf(null)).toEqual([])
+  })
+})
+
+describe('원문 적재 미리보기', () => {
+  it('--confirm 없으면 한 줄도 쓰지 않고 세기만 한다', async () => {
+    const file = fixture({
+      rows: [
+        {
+          matchKey: 'T174-a',
+          strUsn: 'u1',
+          raw: {
+            battleLog: [
+              { event_type: 'kill', kill_x: 100, kill_y: 200 },
+              { event_type: 'death', death_x: 110, death_y: 210 },
+            ],
+          },
+        },
+      ],
+    })
+    const result = await importBattleLogs({ file })
+    expect(result.rows).toBe(1)
+    expect(result.stored).toBe(0)
+    expect(result.events).toBe(2)
+    expect(result.points).toBe(2)
+  })
+
+  it('주인을 모르는 줄은 넣지 않는다', async () => {
+    const file = fixture({ rows: [{ matchKey: 'T174-b', raw: { battleLog: [] } }] })
+    const result = await importBattleLogs({ file })
+    expect(result.skipped).toBe(1)
+    expect(result.stored).toBe(0)
+  })
+
+  it('주인이 안 적혀 있어도 이벤트의 str_usn 으로 알아낸다', async () => {
+    const file = fixture({
+      rows: [{ matchKey: 'T174-c', raw: { battleLog: [{ event_type: 'kill', str_usn: 'u9', kill_x: 1, kill_y: 2 }] } }],
+    })
+    const result = await importBattleLogs({ file })
+    expect(result.skipped).toBe(0)
+    expect(result.points).toBe(1)
+  })
+
+  it('수집 실패는 실패로 센다 — 조용히 넘어가지 않는다', async () => {
+    const file = fixture({ rows: [], failures: [{ matchKey: 'T174-d', error: '500' }] })
+    const result = await importBattleLogs({ file })
+    expect(result.failures).toBe(1)
+  })
+})

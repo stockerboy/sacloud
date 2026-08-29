@@ -186,6 +186,7 @@ model Player {
   nexonIdentityCandidates NexonIdentityCandidate[]
   rosterMemberships       LeagueRosterMembership[]
   weaponEvidence          MatchWeaponEvidence[]
+  positionProfiles        PlayerPositionProfile[]
 
   @@unique([sourcePlayerId])
   @@unique([nexonOuid])
@@ -1769,6 +1770,79 @@ model BarracksRawImport {
   @@unique([matchKey, clanNo, payloadHash])
   @@index([matchKey])
   @@index([fetchedAt])
+}
+
+/// 병영수첩 BattleLog **원문** — 좌표까지 그대로 (D-174).
+///
+/// `BarracksRawImport` 와 나눠 둔 이유: 그쪽은 **클랜 단위** 응답을 무기 판정용으로 담는다.
+/// 포지션은 **선수 단위** 응답(`GetBattleLog/<match_key>/<str_usn>`)이 필요하고,
+/// 한 경기에 최대 10줄이 생긴다. 키가 다르므로 표를 나눈다.
+///
+/// **가공한 값을 여기 넣지 않는다.** 구역·포지션은 이 원문에서 언제든 다시 계산한다
+/// (`CLAUDE.md` 3-A 1번). 규칙을 바꿔도 재수집하지 않는다.
+model BarracksBattleLogRaw {
+  id       String @id @default(cuid())
+  source   String @default("nexon_barracks")
+  endpoint String
+  /// 넥슨 match_id 와 같은 값 (= `Match.sourceMatchId`)
+  matchKey String
+  /// 이 로그의 주인. 선수 단위면 `str_usn`, 클랜 단위면 클랜 번호
+  subject String
+  /// "user" | "clan" — 어느 단위로 받은 응답인지. 섞이면 참가자 수가 거짓이 된다
+  subjectKind String @default("user")
+
+  payload     Json
+  /// 같은 응답을 여러 번 넣어도 행이 늘지 않게 하는 키
+  payloadHash String
+  /// "ok" | "error"
+  status    String  @default("ok")
+  errorCode String?
+
+  fetchedAt DateTime @default(now())
+  /// 같은 내용이면 다시 저장하지 않고 이 값만 올린다
+  fetchCount Int @default(1)
+
+  @@unique([matchKey, subject, payloadHash])
+  @@index([matchKey])
+  @@index([subject])
+  @@index([fetchedAt])
+}
+
+/// 선수의 **자리 분포와 포지션 판정** (D-174).
+///
+/// 원본이 주는 `Player.position`(선수가 직접 등록한 값)과 **다른 값이다. 섞지 않는다.**
+/// 분포(`histogram`)를 함께 저장해 판정 규칙이 바뀌어도 원문 재수집 없이 다시 고른다.
+model PlayerPositionProfile {
+  id String @id @default(cuid())
+  /// 병영수첩 계정 번호. **닉네임이 아니라 이 값이 사람의 키다**
+  userNexonSn String
+  /// 우리 Player 와 연결된 경우만. 못 찾으면 null 로 두고 분포는 그대로 보존한다
+  playerId String?
+
+  /// "2F" | "B" | "SHORT" | ... 못 고르면 null — 찍지 않는다
+  position String?
+  /// 1등 중심과의 닮음 (0~1)
+  score Float @default(0)
+  /// 2등과의 차이. 붙어 있으면 믿을 값이 아니다
+  margin Float @default(0)
+
+  /// 분포에 쓴 경기 수 (스나 든 판을 뺀 뒤)
+  games Int @default(0)
+  /// 스나를 들어서 뺀 경기 수
+  sniperGamesExcluded Int @default(0)
+  /// 좌표 개수
+  points Int @default(0)
+  /// 격자 분포 — 이 값이 있으면 재계산에 원문이 필요 없다
+  histogram Json
+
+  classifierVersion String
+  computedAt        DateTime @default(now())
+
+  player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@unique([userNexonSn, classifierVersion])
+  @@index([playerId])
+  @@index([position])
 }
 
 /// 경기 × 선수 무기 판정 근거 (D-114).

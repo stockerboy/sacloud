@@ -29,3 +29,5 @@ export {
   type WeaponVerdict,
   type BattleLogEvent,
 } from './weapon'
+/** 좌표 기반 포지션 판정 (D-174). 무기 판정과 같은 BattleLog 를 쓰지만 보는 필드가 다르다 */
+export * from './position'

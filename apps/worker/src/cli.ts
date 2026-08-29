@@ -35,7 +35,7 @@ import {
   type LegacySeasonRow,
 } from '@sacloud/db/ops'
 import { hasApiKey, MATCH_MODES, NexonClient, readNexonConfig, type MatchMode } from '@sacloud/nexon'
-import { loadEnvFiles } from './lib/env.js'
+import { loadEnvFiles, REPO_ROOT } from './lib/env.js'
 import { fail, log, registerSecret, table, warn } from './lib/log.js'
 import { AbortCollection, type JobContext } from './jobs/context.js'
 import { runIdentities } from './jobs/identities.js'
@@ -49,6 +49,8 @@ import { bootstrapBeta, BETA_DATA_START } from './jobs/betaBootstrap.js'
 import { linkIdentitiesByEvidence, registerObservedMaps } from './jobs/identityLink.js'
 import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/rosterSync.js'
 import { applyWeaponToStats, importWeaponEvidence } from './jobs/weapon.js'
+/** 병영수첩 BattleLog 원문 적재 + 좌표 기반 포지션 판정 (D-174) */
+import { buildPositionProfiles, importBattleLogs } from './jobs/battlelog.js'
 import { runRate } from './jobs/rate.js'
 import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
 import { formatSnapshot, takeDbSnapshot } from './jobs/dbSnapshot.js'
@@ -1839,6 +1841,76 @@ async function main(): Promise<number> {
           '스나 기록': result.sniperKnownGames,
         },
       ])
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    /**
+     * 병영수첩 BattleLog 원문 적재 (D-174).
+     *
+     *   pnpm --filter @sacloud/worker nexon battlelog-import --file ./barracks-battlelog.json
+     *   pnpm --filter @sacloud/worker nexon battlelog-import --file ... --confirm
+     *
+     * 수집은 브라우저가 한다 (`packages/db/legacy/barracks-battlelog-snippet.js`).
+     * **`--confirm` 없이는 한 줄도 쓰지 않는다.**
+     */
+    case 'battlelog-import': {
+      const file = stringFlag(args, 'file')
+      if (!file) {
+        fail('--file <수집.json> 이 필요하다')
+        return 1
+      }
+      const result = await importBattleLogs({ file, confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          줄: result.rows,
+          '원문 신규': result.stored,
+          '원문 중복': result.duplicate,
+          '주인 불명': result.skipped,
+          '수집 실패': result.failures,
+          이벤트: result.events,
+          좌표: result.points,
+        },
+      ])
+      if (result.rows > 0 && result.points === 0) {
+        warn('좌표가 하나도 없다. 이 파일로는 포지션 판정을 할 수 없다')
+      }
+      if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    /**
+     * 좌표 → 격자 분포 → 포지션 판정 (D-174).
+     *
+     *   pnpm --filter @sacloud/worker nexon position-build
+     *   pnpm --filter @sacloud/worker nexon position-build --labels data/barracks/position-labels.json --confirm
+     *
+     * 라벨(정답)이 없으면 **분포만** 만들고 포지션은 비운다. 중심 없이 찍지 않는다.
+     */
+    case 'position-build': {
+      const result = await buildPositionProfiles({
+        zonemapFile: stringFlag(args, 'zonemap') ?? join(REPO_ROOT, 'data/barracks/zonemap.json'),
+        labelsFile: stringFlag(args, 'labels'),
+        minGames: numberFlag(args, 'min-games') ?? 10,
+        cell: numberFlag(args, 'cell') ?? 20,
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table([
+        {
+          사람: result.subjects,
+          '분포 만듦': result.profiled,
+          '표본 부족': result.tooFewGames,
+          '스나 판 제외': result.sniperGamesExcluded,
+          라벨: result.labeled,
+          정확도: result.accuracy === null ? '(라벨 없음)' : `${(result.accuracy * 100).toFixed(1)}%`,
+          저장: result.written,
+        },
+      ])
+      if (Object.keys(result.zoneCounts).length > 0) table([result.zoneCounts])
+      if (result.misses.length > 0) table(result.misses.slice(0, 20))
+      if (result.labeled === 0) {
+        log('정답 라벨이 없다. `data/barracks/position-labels.json` 을 만들면 포지션까지 정한다')
+      }
       if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
       return 0
     }

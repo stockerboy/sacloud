@@ -275,6 +275,10 @@ pnpm nexon:refresh                      # 신선도 정책(기본 30일) 재수�
 pnpm nexon:check                        # 숫자 대조 17항목
 pnpm --filter @sacloud/worker nexon lineup-complete [--confirm]
                       # 3rd.supply 라인업으로 참가자 10명 명단 완성 (D-148, idempotent)
+pnpm --filter @sacloud/worker nexon battlelog-import --file <수집.json> [--confirm]
+                      # 병영수첩 BattleLog 원문 적재 — 좌표까지 그대로 (D-174, 멱등)
+pnpm --filter @sacloud/worker nexon position-build [--labels <라벨.json>] [--min-games N] [--confirm]
+                      # 좌표 → 격자 분포 → 포지션 판정. 라벨이 없으면 분포만 만든다 (D-174)
 pnpm --filter @sacloud/worker nexon independent-league [--confirm]
                       # 무소속리그(`nolink`) 만들기 (D-165, idempotent)
                       #   --register <클랜slug> --tier <1~5>   그 티어에 등록/이동

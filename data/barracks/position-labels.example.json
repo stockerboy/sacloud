@@ -1,0 +1,9 @@
+{
+  "note": "정답 라벨 예시. 실제 파일 이름은 position-labels.json 이다. userNexonSn 은 병영수첩 계정 번호(str_usn)이고, 닉네임이 아니다 — 닉네임은 바뀐다. position 은 2F(2층) · B · SHORT(숏/A) · LIBERO(리베) 중 하나를 쓴다.",
+  "labels": [
+    { "userNexonSn": "000000000", "playerName": "예시-2층수", "position": "2F" },
+    { "userNexonSn": "000000001", "playerName": "예시-B포지", "position": "B" },
+    { "userNexonSn": "000000002", "playerName": "예시-숏", "position": "SHORT" },
+    { "userNexonSn": "000000003", "playerName": "예시-리베", "position": "LIBERO" }
+  ]
+}
