@@ -25,6 +25,7 @@ import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
 import { buildPlayerForm } from './playerForm'
 import { playerTodayTally } from './todayPerformance'
+import { playerTraits } from './playerTraits'
 import { toKstIso } from '../format'
 import {
   CLAN_SUMMARY_SELECT,
@@ -604,35 +605,39 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, sniperRank, rifleRank, totals, weaponStats, record, form, todayTally] = await Promise.all([
-    playerRankOf({
-      id: leaguePlayer.id,
-      leagueId: leaguePlayer.leagueId,
-      rating: leaguePlayer.rating,
-      placement: leaguePlayer.placement,
-    }),
-    // 무기별 랭킹 — 무기가 확인된 경기가 없으면 null 이다 (D-146)
-    playerWeaponRankOf(leaguePlayer.id, league.id, 1),
-    playerWeaponRankOf(leaguePlayer.id, league.id, 0),
-    /* 누적 전적을 **경기에서 직접 센다** (D-176).
-       예전에는 `LeaguePlayer` 의 누적 칸을 읽었는데, 그 칸은 배치 집계가 채우는 값이라
-       집계가 훑는 기간(시즌 창) 밖의 경기가 한 판도 들어가지 않았다. 그래서 같은 화면에서
-       `최근매치` 는 `20전 11승 9패` 인데 `상세정보` 는 `0승 0패 · 0킬 0데스 · MVP 0회` 가 됐다.
-       기준은 `최근매치` 와 **똑같이** "래더에 반영된 경기" 하나뿐이다 (D-164). */
-    playerLadderTotals(league.id, playerId),
-    // 무기별 누적도 나머지와 같이 나간다. 예전에는 응답을 만들며 마지막에 홀로 기다렸다
-    weaponStatsOf(leaguePlayer.id),
-    leagueClanIdPromise.then((leagueClanId) =>
-      buildRecordSummary(league.id, where, leagueClanId ?? '', playerId),
-    ),
-    /* 최근 폼 — 6개월 월별 킬뎃 + 최근 10경기 판정 (D-167).
-       소속 클랜을 보지 않으므로 `leagueClanIdPromise` 를 기다릴 이유가 없다 */
-    buildPlayerForm(league.id, playerId),
-    /* 오늘 퍼포먼스 — 재료만 센다 (10절 · D-182).
-       시즌 평균과 견주는 일은 `buildTodayPerformance()` 가 아래에서 한다.
-       그래야 `totals` 를 기다리지 않고 **같이** 나갈 수 있다 */
-    playerTodayTally(league.id, playerId),
-  ])
+  const [rank, sniperRank, rifleRank, totals, weaponStats, record, form, todayTally, traits] =
+    await Promise.all([
+      playerRankOf({
+        id: leaguePlayer.id,
+        leagueId: leaguePlayer.leagueId,
+        rating: leaguePlayer.rating,
+        placement: leaguePlayer.placement,
+      }),
+      // 무기별 랭킹 — 무기가 확인된 경기가 없으면 null 이다 (D-146)
+      playerWeaponRankOf(leaguePlayer.id, league.id, 1),
+      playerWeaponRankOf(leaguePlayer.id, league.id, 0),
+      /* 누적 전적을 **경기에서 직접 센다** (D-176).
+         예전에는 `LeaguePlayer` 의 누적 칸을 읽었는데, 그 칸은 배치 집계가 채우는 값이라
+         집계가 훑는 기간(시즌 창) 밖의 경기가 한 판도 들어가지 않았다. 그래서 같은 화면에서
+         `최근매치` 는 `20전 11승 9패` 인데 `상세정보` 는 `0승 0패 · 0킬 0데스 · MVP 0회` 가 됐다.
+         기준은 `최근매치` 와 **똑같이** "래더에 반영된 경기" 하나뿐이다 (D-164). */
+      playerLadderTotals(league.id, playerId),
+      // 무기별 누적도 나머지와 같이 나간다. 예전에는 응답을 만들며 마지막에 홀로 기다렸다
+      weaponStatsOf(leaguePlayer.id),
+      leagueClanIdPromise.then((leagueClanId) =>
+        buildRecordSummary(league.id, where, leagueClanId ?? '', playerId),
+      ),
+      /* 최근 폼 — 6개월 월별 킬뎃 + 최근 10경기 판정 (D-167).
+         소속 클랜을 보지 않으므로 `leagueClanIdPromise` 를 기다릴 이유가 없다 */
+      buildPlayerForm(league.id, playerId),
+      /* 오늘 퍼포먼스 — 재료만 센다 (10절 · D-182).
+         시즌 평균과 견주는 일은 `buildTodayPerformance()` 가 아래에서 한다.
+         그래야 `totals` 를 기다리지 않고 **같이** 나갈 수 있다 */
+      playerTodayTally(league.id, playerId),
+      /* 전투력 육각형 + 플레이스타일 바 (4절 · 8절 · D-185).
+         리그 분포는 캐시돼 있어 보통은 즉시 돌아온다 (`playerTraits.ts`) */
+      playerTraits(league.id, playerId),
+    ])
 
   return {
     id: leaguePlayer.id,
@@ -696,6 +701,10 @@ export async function getLeaguePlayerDetail(
     /* 오늘 퍼포먼스 (10절 · D-182). 폼 판정은 **킬데스만** 본다 —
        기준은 상세정보와 같은 모집단에서 나온 시즌 평균이다 */
     today: toTodayPerformance(buildTodayPerformance(todayTally, totals.kdRate)),
+    /* 전투력 육각형 · 플레이스타일 바 (4절 · 8절 · D-185).
+       모양을 손보지 않는다 — `buildPlayerTraits()` 가 계약 모양 그대로 만들어 준다 */
+    traits: traits.traits,
+    playstyle: traits.playstyle,
     teammates: record.teammates,
     weapon_stats: weaponStats,
   }

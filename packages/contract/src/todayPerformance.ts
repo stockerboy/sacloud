@@ -68,20 +68,38 @@ export type TodayFormTrend = 'rising' | 'steady' | 'falling' | 'unknown'
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 
 /**
- * `오늘 00:00 KST` 의 UTC 시각. 조회 조건(`startAt >= …`)에 그대로 쓴다.
+ * 하루가 시작되는 시각 — **오전 7시 KST**. 사용자 확정 (2026-08-29 · D-186).
+ *
+ * > "오늘의 기준은 오전 7시부터 다음날 오전 7시까지의 기록이 그 날 하루의 기록인거야.
+ * >  8/22 오전 10시부터 그날 새벽 1시까지 게임했으면 그 기록들을 기록하고,
+ * >  8/23 오전 7시에 초기화한다."
+ *
+ * **자정으로 자르면 안 되는 이유가 실제 사용 패턴에 있다.** 클랜전은 밤에 열리고
+ * 새벽 1~3시까지 이어진다. 자정에 자르면 **한 번 앉아서 한 판들이 이틀로 쪼개진다** —
+ * 그러면 어느 쪽도 그 사람의 "오늘" 이 아니다.
+ */
+export const DAY_START_HOUR_KST = 7
+
+/**
+ * 지금이 속한 하루의 시작 시각(UTC `Date`). 조회 조건(`startAt >= …`)에 그대로 쓴다.
+ *
+ * 경계는 `오전 7시 KST` 다 (`DAY_START_HOUR_KST`). 지금이 오전 7시 전이면
+ * **어제 오전 7시**가 시작이다 — 새벽에 뛴 판이 어젯밤 판들과 같은 하루에 남는다.
  *
  * 서버는 UTC 로 도는데 경기 시각 표기는 전부 KST 다 (`toKstIso` · `formMonthKey`).
- * UTC 로 자르면 **매일 00:00~09:00 KST 경기가 "어제" 로 새어 나간다** — 클랜전이
- * 가장 많이 열리는 시간대가 통째로 빠진다.
+ * UTC 로 자르면 시차 9시간만큼 통째로 어긋난다.
  */
 export function kstDayStart(now: Date): Date {
   const shifted = new Date(now.getTime() + KST_OFFSET_MS)
-  const midnightKst = Date.UTC(
+  /* 오전 7시 전이면 아직 어제 하루 안이다 */
+  const dayOffset = shifted.getUTCHours() < DAY_START_HOUR_KST ? -1 : 0
+  const startKst = Date.UTC(
     shifted.getUTCFullYear(),
     shifted.getUTCMonth(),
-    shifted.getUTCDate(),
+    shifted.getUTCDate() + dayOffset,
+    DAY_START_HOUR_KST,
   )
-  return new Date(midnightKst - KST_OFFSET_MS)
+  return new Date(startKst - KST_OFFSET_MS)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -118,8 +136,14 @@ export interface TodayPerformance {
   sentence: string
 }
 
-/** 오늘 경기가 한 판도 없을 때. **폼을 판정하지 않는다** */
-export const NO_GAMES_TODAY = '오늘 경기기록 없음'
+/**
+ * 오늘 경기가 한 판도 없을 때. **폼을 판정하지 않는다.**
+ *
+ * 문구는 사용자 확정 = `미접속` (2026-08-29 · D-186).
+ * `0전 0승 0패` 로 적지 않는다 — 0승 0패는 "지지도 이기지도 않았다" 는 결과처럼 읽히지만
+ * 실제로 말하려는 것은 **그날 아예 안 왔다** 는 사실이다.
+ */
+export const NO_GAMES_TODAY = '미접속'
 
 const TREND_WORD: Record<Exclude<TodayFormTrend, 'unknown'>, string> = {
   rising: '상승중',

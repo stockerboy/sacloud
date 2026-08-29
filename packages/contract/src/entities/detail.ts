@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { Count, Percent } from '../common'
+import { PLAYSTYLE_SIDE_KEYS, TRAIT_AXIS_KEYS, TRAIT_PENDING_KEYS } from '../traits'
 import { LeagueClanDetail, LeaguePlayer } from './league'
 import { LeagueSummary, PlayerSummary } from './summaries'
 import { MatchSummary, TeammateStat } from './match'
@@ -135,6 +136,63 @@ export const PlayerTodayPerformance = z.object({
 })
 export type PlayerTodayPerformance = z.infer<typeof PlayerTodayPerformance>
 
+/* -------------------------------------------------------------------------- */
+/* 전투력 육각형 · 플레이스타일 바 (D-185)                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 육각형 꼭지점 하나 (`docs/PLAYER_TRAITS_SPEC.md` 4절).
+ *
+ * 판정·라벨은 `packages/contract/src/traits.ts` 한 곳에 있다.
+ * `percentile` 이 `null` 이면 **0이 아니라 아직 모르는 축**이고, `pending` 이 그 이유다 (D-106).
+ */
+export const PlayerTraitAxis = z.object({
+  key: z.enum(TRAIT_AXIS_KEYS),
+  /** 주무기까지 반영한 화면 표기 (`스나싸움` / `샷싸움` …) */
+  label: z.string(),
+  /** 같은 무기 선수들 안에서의 백분위 0~100 */
+  percentile: Percent.nullable(),
+  pending: z.enum(TRAIT_PENDING_KEYS).nullable(),
+})
+export type PlayerTraitAxis = z.infer<typeof PlayerTraitAxis>
+
+export const PlayerTraits = z.object({
+  /** `0 = 라이플` · `1 = 스나이퍼`. 반반이면 `null` (traits.ts `mainWeaponOf`) */
+  weapon: z.union([z.literal(0), z.literal(1)]).nullable(),
+  /** 백분위를 낸 모집단 크기(같은 주무기 선수 수) */
+  cohort: Count.nullable(),
+  known_games: Count,
+  /** 항상 6개 · `TRAIT_AXIS_KEYS` 순서 */
+  axes: z.array(PlayerTraitAxis),
+  measured: Count,
+  measuring: z.boolean(),
+})
+export type PlayerTraits = z.infer<typeof PlayerTraits>
+
+/**
+ * 플레이스타일 바 한 줄 (8절 · D-182).
+ *
+ * `value` 는 `-100`(왼쪽) ~ `+100`(오른쪽)이고 `0` 이 `정석` 이다.
+ * **`0` 과 `null` 은 다르다** — 0은 "재 봤더니 가운데", null은 "아직 못 잰다".
+ */
+export const PlayerPlaystyleBar = z.object({
+  key: z.enum(PLAYSTYLE_SIDE_KEYS),
+  side_label: z.string(),
+  left_label: z.string(),
+  center_label: z.string(),
+  right_label: z.string(),
+  value: z.number().min(-100).max(100).nullable(),
+  pending: z.enum(TRAIT_PENDING_KEYS).nullable(),
+})
+export type PlayerPlaystyleBar = z.infer<typeof PlayerPlaystyleBar>
+
+export const PlayerPlaystyle = z.object({
+  /** 항상 2줄 — 블루(수비) · 레드(공격) */
+  bars: z.array(PlayerPlaystyleBar),
+  measuring: z.boolean(),
+})
+export type PlayerPlaystyle = z.infer<typeof PlayerPlaystyle>
+
 export const LeaguePlayerDetail = LeaguePlayer.extend({
   league: LeagueSummary,
   /** 선수 프로필 — `PlayerSummary` + `position` · `note` (D-161) */
@@ -158,6 +216,16 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
    * 오늘 경기가 없는 것과 **다르다** — 그때는 값이 있고 문구가 `오늘 경기기록 없음` 이다.
    */
   today: PlayerTodayPerformance.nullable().default(null),
+  /**
+   * 전투력 육각형 (4절 · D-185).
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   * `null` 이면 화면은 카드를 **그리지 않는다**. 축이 전부 `측정중` 인 것과 **다르다** —
+   * 그때는 값이 있고 `measuring` 이 참이다.
+   */
+  traits: PlayerTraits.nullable().default(null),
+  /** 플레이스타일 바 2줄 (8절 · D-185). 위와 같은 규칙이다 */
+  playstyle: PlayerPlaystyle.nullable().default(null),
   /** 최근 같이한 플레이어 승률 */
   teammates: z.array(TeammateStat),
 })

@@ -6,10 +6,12 @@ import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
   LoadMoreButton,
   MatchCard,
+  PlaystyleBars,
   PlayerStatSidebar,
   RecentMatchSummary,
   Skeleton,
   TeammateTable,
+  TraitHexagon,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -91,23 +93,73 @@ export default function LeaguePlayerRecordPage({
   return (
     <>
       {/*
-        모바일 — 3:1 두 칸을 위아래로 쌓되 **상세정보를 위로 올린다.**
-        원본 모바일은 프로필 헤더 바로 아래가 `상세정보` 이고 기록 목록은 그 밑이다
+        개인 기록 카드 배치 (`docs/PLAYER_TRAITS_SPEC.md` 9절 · D-185).
+
+        ```
+        ┌ 육각형 ─────────────────┬ 상세정보 ┐
+        ├ 플레이스타일 바 2줄 ──────┴─────────┤
+        ├ 최근매치 요약 + **오늘 기록** ──────┤
+        └ 경기 상세기록 (기존 그대로) ────────┘
+        ```
+
+        `상세정보` 는 **옮긴 것**이지 새로 만든 것이 아니다 — 사이드에 있던 그 패널
+        그대로다(사양 9절 "자리만 육각형 옆으로 옮긴다"). 그래서 오른쪽 칸에는
+        `최근 같이한 플레이어` 만 남는다.
+
+        **오늘 기록은 따로 카드를 두지 않는다** (D-186). `최근매치` 카드 안에서
+        예전 `최근 폼` 이 있던 자리를 그대로 이어받는다 — 사용자가 그 자리를 지목했다.
+
+        육각형·바·오늘 줄은 **원본에 없는 화면**이다. 값이 없는 축을 0으로 그리지 않고
+        `측정중` 으로 둔다 (D-106).
+      */}
+      <div className="pc-container mt-2 flex max-md:flex-col">
+        <div className="w-3/4 max-md:w-full max-md:min-w-0">
+          {data.traits === null ? null : <TraitHexagon traits={data.traits} />}
+        </div>
+        <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">
+          <PlayerStatSidebar
+            rating={data.rating}
+            placement={data.placement}
+            /* 선수가 직접 설정하는 값이다 (D-161). `null` 이면 사이드바가 줄을 그리지 않는다 */
+            position={data.player.position}
+            win={data.win}
+            lose={data.lose}
+            winRate={data.win_rate}
+            kill={data.kill}
+            death={data.death}
+            kdRate={data.kd_rate}
+            killPerMatch={data.kill_per_match}
+            mvpCount={data.mvp_count}
+            rank={data.rank}
+            rankCount={data.rank_count}
+            clan={data.clan ? { ...data.clan, isOfficialClan: data.clan.is_official_clan } : null}
+          />
+        </div>
+      </div>
+      <div className="pc-container">
+        {data.playstyle === null ? null : <PlaystyleBars playstyle={data.playstyle} />}
+      </div>
+
+      {/*
+        모바일 — 3:1 두 칸을 위아래로 쌓는다.
+        예전에는 `order` 로 `상세정보` 를 이 묶음의 맨 위로 끌어올렸다
         (2026-08-28 사용자 지시 — "첫번째 카드가 최상단에 있어야 하고 그 밑에부터 기록").
-        `order` 로만 바꾼다 — DOM 순서는 그대로라 PC(가로 배치)는 영향이 없다.
+        **이제 `상세정보` 는 위 카드로 올라갔으므로** 그 뒤집기가 필요 없다 — 그대로 두면
+        `최근 같이한 플레이어` 가 경기 기록 위로 올라와 그 지시를 거스른다.
         `최근매치` 블록 안쪽(`packages/ui/src/record/RecordPanels.tsx`)은 다른 담당 구역이라
         손대지 않고, 넘칠 때 **그 블록 안에서만** 가로로 밀리도록 감싸기만 한다.
         `.mobile-scroll-x` 는 `@media (max-width:767px)` 안에서만 정의돼 PC 는 무영향이다.
       */}
       <div className="pc-container mt-2 flex max-md:flex-col">
-        <div className="w-3/4 max-md:w-full max-md:min-w-0 max-md:order-2">
+        <div className="w-3/4 max-md:w-full max-md:min-w-0">
           <div className="mobile-scroll-x">
-            {/* `form` 을 넘기면 승률 도넛 대신 `최근 폼` 그래프가 그려진다 (D-167).
+            {/* `today` 를 넘기면 승률 도넛 자리에 **오늘 기록**이 들어간다 (D-186).
+                예전에는 여기가 `최근 폼` 6개월 그래프였다 — 사용자 지시로 뺐다.
                 클랜 기록실은 이 값을 넘기지 않으므로 도넛이 그대로 남는다 */}
             <RecentMatchSummary
               summary={data.match_summary}
               leagueSlug={leagueSlug}
-              form={data.form}
+              today={data.today}
             />
           </div>
           <div className="mt-2">
@@ -135,37 +187,14 @@ export default function LeaguePlayerRecordPage({
             ) : null}
           </div>
         </div>
-        <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-0 max-md:w-full max-md:order-1 max-md:mb-2">
-          <PlayerStatSidebar
-            rating={data.rating}
-            placement={data.placement}
-            /* 선수가 직접 설정하는 값이다 (D-161). `null` 이면 사이드바가 줄을 그리지 않는다 */
-            position={data.player.position}
-            win={data.win}
-            lose={data.lose}
-            winRate={data.win_rate}
-            kill={data.kill}
-            death={data.death}
-            kdRate={data.kd_rate}
-            killPerMatch={data.kill_per_match}
-            mvpCount={data.mvp_count}
-            rank={data.rank}
-            rankCount={data.rank_count}
-            clan={
-              data.clan
-                ? { ...data.clan, isOfficialClan: data.clan.is_official_clan }
-                : null
-            }
-          />
+        <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">
           {/*
+            `상세정보`(`PlayerStatSidebar`) 는 **위 카드로 옮겼다** (사양 9절 · D-185).
+            같은 패널을 그대로 옮긴 것이라 항목·순서·표기는 하나도 바뀌지 않았다.
+
             `무기별 기록`(`WeaponStatPanel`) 은 **원본에 없어서 뺐다**
             (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1). 컴포넌트와 계약 필드
             (`weapon_stats` · `sniper_*` · `rifle_*`)는 그대로 두었다.
-
-            사이드바의 `포지션` 줄은 **되살렸다** (D-161).
-            "원본에 없다" 던 2026-08-27 판정이 틀렸다 — 값이 있는 선수에게만 나오는 줄이라
-            표본에서 안 보였을 뿐이다. 원본 응답 `data.player.position` 이 그 값이고,
-            선수가 직접 설정한다. 무기별 경기 수로 계산하던 예전의 `포지션` 과는 다른 것이다.
           */}
           <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
         </div>

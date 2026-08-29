@@ -122,6 +122,23 @@ export {
   type FormChartDomain,
   type FormChartSegment,
 } from './record/formChart'
+/* 전투력 육각형 · 플레이스타일 바 · 오늘 퍼포먼스 (PLAYER_TRAITS_SPEC 4·8·10절 · D-185).
+   전부 **원본에 없는 화면**이다 — 사용자 지시로 만든 신규 기능이다 */
+export { TraitHexagon } from './record/TraitHexagon'
+export { PlaystyleBars } from './record/PlaystyleBars'
+export { TodayPerformance } from './record/TodayPerformance'
+export {
+  HEX_CENTER,
+  HEX_LABEL_RADIUS,
+  HEX_RADIUS,
+  axisLabelAnchor,
+  hexPoint,
+  hexPolygon,
+  hexRing,
+  pendingSummary,
+  pendingText,
+  topPercentText,
+} from './record/traitCopy'
 export { ratingClass, RATING_THRESHOLDS } from './common/rating'
 export { SeasonTable } from './record/SeasonTable'
 

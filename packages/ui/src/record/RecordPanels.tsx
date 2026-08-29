@@ -1,10 +1,10 @@
 import Link from 'next/link'
-import type { MatchSummary, PlayerForm, TeammateStat } from '@sacloud/contract'
+import type { MatchSummary, PlayerTodayPerformance, TeammateStat } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { formatAverage, formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
-import { PlayerFormPanel } from './PlayerFormPanel'
+import { TodayPerformance } from './TodayPerformance'
 
 /**
  * 기록실 상단 `최근매치` 요약 + 우측 사이드 패널.
@@ -97,7 +97,7 @@ export function RecentMatchSummary({
   summary,
   leagueSlug,
   showKdRate = true,
-  form,
+  today,
 }: {
   summary: MatchSummary
   leagueSlug: string
@@ -110,19 +110,22 @@ export function RecentMatchSummary({
    */
   showKdRate?: boolean
   /**
-   * 선수 기록실의 `최근 폼` (D-167).
+   * 선수 기록실의 **오늘 기록** (D-186).
    *
    * **이 값이 있으면 승률 도넛을 그리지 않는다.** 사용자 지시로 선수 프로필에서는
-   * 도넛을 빼고 그 자리에 최근 6개월 월별 킬뎃 그래프를 넣었다.
+   * 도넛을 뺐고(D-167), 그 자리를 한동안 `최근 폼`(6개월 꺾은선)이 채우다가
+   * **2026-08-29 에 오늘 기록으로 바뀌었다** (D-186).
+   *
    * 클랜 기록실은 이 값을 넘기지 않으므로 도넛이 그대로 남는다.
    *
-   * `null`(응답에 폼이 없거나 계산할 수 없음)이면 폼 블록을 그리지 않고
-   * 도넛도 되살리지 않는다 — 빈 자리를 무언가로 메우지 않는다.
+   * `null`(응답에 값이 없음)이면 이 블록을 그리지 않고 도넛도 되살리지 않는다 —
+   * 빈 자리를 무언가로 메우지 않는다. **오늘 경기가 없는 것과 다르다** —
+   * 그때는 값이 있고 문구가 `미접속` 이다.
    */
-  form?: PlayerForm | null
+  today?: PlayerTodayPerformance | null
 }) {
-  /** 선수 기록실인가 — 폼 값을 넘긴 쪽이 선수 기록실이다 */
-  const isPlayerRecord = form !== undefined
+  /** 선수 기록실인가 — 오늘 기록을 넘긴 쪽이 선수 기록실이다 */
+  const isPlayerRecord = today !== undefined
 
   return (
     <div className="bg-card px-4 py-2 shadow-card">
@@ -217,15 +220,18 @@ export function RecentMatchSummary({
         </div>
       </div>
       {/*
-        `최근 폼` (D-167) — 예전 승률 도넛이 있던 자리를 대신한다.
-        도넛은 `w-32` 한 칸이었지만 6개월 꺾은선은 그 폭에 들어가지 않아
-        **같은 카드 안의 아래 줄**로 내렸다. 위 줄과는 카드가 이미 쓰고 있는
-        구분선(`border-t-divider`)으로 나눈다 — 새 색·새 간격을 만들지 않는다.
-        모바일에서도 같은 자리라 배치가 갈리지 않는다.
+        **오늘 기록** (D-186) — 예전 승률 도넛(원본) → `최근 폼`(D-167) → 이 자리다.
+
+        `최근 폼` 을 뺀 이유는 사용자 지시다. 6개월 꺾은선은 "어떻게 흘러왔나" 를
+        답하는데, 이 자리에서 궁금한 것은 **"오늘 어땠나"** 였다.
+        판정 문구도 같이 사라진다 — `최근 10경기 45.4% · 직전 30경기 49.2%` 를
+        나란히 적어 놓고 `꾸준` 이라고 부르던 그 모순이 여기서 끝난다.
+
+        구분선은 카드가 이미 쓰고 있는 것(`border-t-divider`)을 그대로 쓴다.
       */}
-      {form == null ? null : (
+      {today == null ? null : (
         <div className="mt-2 border-t border-t-divider pt-2">
-          <PlayerFormPanel form={form} />
+          <TodayPerformance today={today} />
         </div>
       )}
     </div>

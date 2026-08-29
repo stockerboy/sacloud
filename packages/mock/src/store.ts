@@ -44,6 +44,11 @@ import {
   FORM_TOP_MIN_GAMES,
   FORM_TOP_SIZE,
   RANK_WEAPON_CODE,
+  TRAIT_MIN_GAMES,
+  buildPlayerPlaystyle,
+  buildPlayerTraits,
+  mainWeaponOf,
+  percentileOf,
   buildTodayPerformance,
   formMonthKey,
   formMonthKeys,
@@ -1137,6 +1142,95 @@ function buildPlayerForm(matches: MockMatch[], playerId: string, now: Date): Pla
   }
 }
 
+/* --------------------------- 전투력 육각형 (4절) --------------------------- */
+
+/**
+ * 리그 안 **같은 주무기 선수 전원**의 판당 킬 · 판당 딜량 분포 (D-185).
+ *
+ * 판정과 라벨은 `@sacloud/contract` 의 `buildPlayerTraits()` 가 전부 한다.
+ * 실제 서버(`apps/web/lib/server/queries/playerTraits.ts`)도 **같은 함수**를 쓴다.
+ *
+ * 픽스처는 결정적이고 변하지 않으므로 한 번 세서 그대로 들고 있는다 —
+ * 실제 서버가 TTL 캐시를 두는 이유(0.5초짜리 스캔)가 여기엔 없다.
+ */
+interface MockCohort {
+  values: Map<string, { knownGames: number; killPerGame: number; damagePerGame: number }>
+  killSorted: number[]
+  damageSorted: number[]
+}
+
+const traitCohortCache = new Map<string, { rifle: MockCohort; sniper: MockCohort }>()
+
+function emptyMockCohort(): MockCohort {
+  return { values: new Map(), killSorted: [], damageSorted: [] }
+}
+
+function traitCohortsOf(leagueId: string): { rifle: MockCohort; sniper: MockCohort } {
+  const hit = traitCohortCache.get(leagueId)
+  if (hit) return hit
+
+  /* playerId → 무기별 합계. Mock 은 무기·K/D·딜량이 항상 함께 있다 (운영은 결측이 섞인다) */
+  const acc = new Map<string, { games: [number, number]; kill: [number, number]; damage: [number, number] }>()
+  for (const match of dataset.matches) {
+    if (match.leagueId !== leagueId) continue
+    for (const row of match.players) {
+      const weapon = row.weapon === 1 ? 1 : 0
+      let entry = acc.get(row.playerId)
+      if (!entry) {
+        entry = { games: [0, 0], kill: [0, 0], damage: [0, 0] }
+        acc.set(row.playerId, entry)
+      }
+      entry.games[weapon] += 1
+      entry.kill[weapon] += row.kill
+      entry.damage[weapon] += row.damage
+    }
+  }
+
+  const rifle = emptyMockCohort()
+  const sniper = emptyMockCohort()
+  for (const [id, entry] of acc) {
+    const weapon = mainWeaponOf(entry.games[0], entry.games[1])
+    if (weapon === null) continue
+    const games = entry.games[weapon]
+    /* 표본이 모자란 선수는 모집단에도 넣지 않는다 — 실제 서버와 같은 규칙이다 */
+    if (games < TRAIT_MIN_GAMES) continue
+    const value = {
+      knownGames: games,
+      killPerGame: entry.kill[weapon] / games,
+      damagePerGame: entry.damage[weapon] / games,
+    }
+    const cohort = weapon === 1 ? sniper : rifle
+    cohort.values.set(id, value)
+    cohort.killSorted.push(value.killPerGame)
+    cohort.damageSorted.push(value.damagePerGame)
+  }
+  for (const cohort of [rifle, sniper]) {
+    cohort.killSorted.sort((a, b) => a - b)
+    cohort.damageSorted.sort((a, b) => a - b)
+  }
+
+  const built = { rifle, sniper }
+  traitCohortCache.set(leagueId, built)
+  return built
+}
+
+function buildTraits(leagueId: string, playerId: string) {
+  const cohorts = traitCohortsOf(leagueId)
+  const rifleValue = cohorts.rifle.values.get(playerId)
+  const sniperValue = cohorts.sniper.values.get(playerId)
+  const weapon: 0 | 1 | null = rifleValue ? 0 : sniperValue ? 1 : null
+  const cohort = weapon === 1 ? cohorts.sniper : cohorts.rifle
+  const value = weapon === 1 ? sniperValue : rifleValue
+
+  return buildPlayerTraits({
+    weapon,
+    knownGames: value?.knownGames ?? 0,
+    cohort: weapon === null ? null : cohort.killSorted.length,
+    carryPercentile: value ? percentileOf(cohort.killSorted, value.killPerGame) : null,
+    damagePercentile: value ? percentileOf(cohort.damageSorted, value.damagePerGame) : null,
+  })
+}
+
 export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): LeaguePlayerDetail | null {
   const league = leagueBySlug.get(leagueSlug)
   if (!league) return null
@@ -1220,6 +1314,11 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
         sentence: perf.sentence,
       }
     })(),
+    /* 전투력 육각형 · 플레이스타일 바 (4절 · 8절 · D-185).
+       바 두 줄은 재료(라운드별 진영)가 없어 Mock 에서도 `측정중` 이다 —
+       픽스처에 가짜 성향값을 지어내지 않는다 */
+    traits: buildTraits(league.id, playerId),
+    playstyle: buildPlayerPlaystyle(),
     teammates: buildTeammates(matches, leaguePlayer.leagueClanId, playerId),
     weapon_stats: weaponStatsOf(leaguePlayer.id),
   }
