@@ -201,7 +201,12 @@ export interface RoundTally {
   alone: number
   /** 그중 이긴 라운드 수 */
   aloneWon: number
-  /** 본인 포함 둘이 남은 라운드 수 (**2:1 은 세지 않는다**) */
+  /**
+   * 본인 포함 둘이 남은 라운드 수 (**2:1 은 세지 않는다**).
+   *
+   * ⚠ **혼자 남기까지 간 라운드는 여기 들어오지 않는다** — 그 라운드는 `alone` 이다.
+   * 두 축의 분모가 겹치면 한 상황이 세이브와 소수싸움 양쪽에서 두 번 평가된다.
+   */
   outnumbered: number
   /** 그중 이긴 라운드 수 */
   outnumberedWon: number
