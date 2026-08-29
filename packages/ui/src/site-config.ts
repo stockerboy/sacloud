@@ -38,6 +38,24 @@ export const FEATURED_LEAGUES: readonly NavLink[] = [
 ]
 
 /**
+ * **서비스 준비중**인 리그 (D-178 · 2026-08-29 사용자 지시).
+ *
+ * 대룰리그(`daerule`)는 접는다. 랭킹·집계를 화면에 내보내지 않고 안내만 띄운다.
+ *
+ * - **데이터는 지우지 않는다.** DB 의 리그·클랜·경기·시즌 카드는 그대로 있다.
+ *   여기서 정하는 것은 "화면에 그리는가" 하나다 (`publicScope.ts` 와 같은 성격).
+ * - **GNB 링크도 그대로 둔다.** 링크를 지우면 눌렀을 때 빈 화면·404 가 되는데,
+ *   사용자가 원한 것은 **안내가 나오는 것**이다.
+ * - 다시 열 때는 이 배열에서 slug 하나를 빼면 된다. 화면 코드에는 slug 가 없다.
+ */
+export const PREPARING_LEAGUE_SLUGS: readonly string[] = ['daerule']
+
+/** 그 리그가 준비중인가 */
+export function isLeaguePreparing(leagueSlug: string): boolean {
+  return PREPARING_LEAGUE_SLUGS.includes(leagueSlug)
+}
+
+/**
  * 모바일 서랍의 묶음 구성.
  *
  * 원본 모바일 서랍은 **제목이 붙은 묶음**으로 나뉜다 (2026-08-28 원본 관측) —
