@@ -52,6 +52,7 @@ import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/ros
 import { applyWeaponToStats, importWeaponEvidence } from './jobs/weapon.js'
 /** 병영수첩 BattleLog 원문 적재 + 좌표 기반 포지션 판정 (D-174) */
 import { buildPositionProfiles, importBattleLogs } from './jobs/battlelog.js'
+import { buildRoundProfiles } from './jobs/roundBuild.js'
 import { runRate } from './jobs/rate.js'
 import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
 import { formatSnapshot, takeDbSnapshot } from './jobs/dbSnapshot.js'
@@ -1919,6 +1920,32 @@ async function main(): Promise<number> {
      * 수집은 브라우저가 한다 (`packages/db/legacy/barracks-battlelog-snippet.js`).
      * **`--confirm` 없이는 한 줄도 쓰지 않는다.**
      */
+    /**
+     * 라운드 복원 집계 (D-194).
+     *
+     *   pnpm --filter @sacloud/worker nexon round-build
+     *   pnpm --filter @sacloud/worker nexon round-build --confirm
+     *
+     * 세이브 · 소수싸움 · 매치의 사나이의 재료를 `PlayerRoundProfile` 에 쌓는다.
+     * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 멱등이다.
+     */
+    case 'round-build': {
+      const result = await buildRoundProfiles({ confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          '클랜응답 경기': result.matches,
+          '복원 성공': result.restored,
+          '20분 초과': result.longMatches,
+          '매치의사나이 확정': result.matchManDecided,
+          '계정 불명': result.unknownAccounts,
+          프로필: result.profiles,
+          '선수 연결': result.linked,
+        },
+      ])
+      if (!result.written) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
     case 'battlelog-import': {
       const file = stringFlag(args, 'file')
       if (!file) {

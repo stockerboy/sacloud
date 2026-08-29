@@ -76,6 +76,17 @@ export const TRAIT_PENDING_TEXT: Record<TraitPending, string> = {
  */
 export const TRAIT_MIN_GAMES = 10
 
+/**
+ * 라운드 축(세이브 · 소수싸움)의 최소 표본 — **그 상황을 겪은 라운드 수**다 (D-194).
+ *
+ * 판수가 아니라 라운드 수인 이유: 세이브는 "혼자 남은 라운드" 안에서만 성패가 갈리므로
+ * 30판을 뛰어도 혼자 남은 적이 두 번뿐이면 성공률이 0% 아니면 50% 밖에 안 나온다.
+ *
+ * > `[미확인]` 사양에 숫자가 없다. 10은 우리가 고른 값이고
+ * > **원본과 동일함이 검증되지 않았다** (`CLAUDE.md` 3장 7번).
+ */
+export const TRAIT_MIN_ROUNDS = 10
+
 /* -------------------------------------------------------------------------- */
 /* 백분위                                                                       */
 /* -------------------------------------------------------------------------- */
@@ -164,6 +175,22 @@ export interface TraitInput {
   carryPercentile: number | null
   /** 판당 평균 딜량의 백분위 (2 샷싸움 · **라플 전용**) */
   damagePercentile: number | null
+  /**
+   * 라운드 복원(D-194)에서 나오는 세 축.
+   *
+   * 필드가 없으면 "재료가 아직 없다" 는 뜻이다 — 이 계약이 라운드 복원보다 먼저 있었고,
+   * 그때 만든 호출부가 그대로 돌아야 한다.
+   */
+  savePercentile?: number | null
+  outnumberedPercentile?: number | null
+  matchManPercentile?: number | null
+  /**
+   * 그 선수에게 **라운드 복원 자료 자체가 있는가**.
+   *
+   * 백분위가 `null` 인 이유를 가른다 — 자료가 없으면 `라운드 복원 필요`,
+   * 있는데 표본이 모자라면 `경기 부족` 이다. 둘은 다른 말이고, 기다려야 하는 것도 다르다.
+   */
+  hasRoundData?: boolean
 }
 
 /**
@@ -209,10 +236,23 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
         /* 스나 `작업 성공률` = 상대 라플을 잡은 비율 → 킬로그 필요.
            라플 `원어택 성공률` = **같은 포지션** 상대를 잡은 비율 → 포지션 판정이 먼저다 */
         return { key, label: label(key), percentile: null, pending: sniper ? 'battlelog' : 'position' }
-      default:
+      default: {
         /* 1 세이브 · 4 매치의사나이 · 6 소수싸움 — 전부 그 경기 10명 전원의 로그로
-           **라운드를 복원**해야 나온다 (사양 4절 표) */
-        return { key, label: label(key), percentile: null, pending: 'rounds' }
+           **라운드를 복원**해야 나온다 (사양 4절 표 · D-194) */
+        const value =
+          key === 'save'
+            ? (input.savePercentile ?? null)
+            : key === 'outnumbered'
+              ? (input.outnumberedPercentile ?? null)
+              : (input.matchManPercentile ?? null)
+        return {
+          key,
+          label: label(key),
+          percentile: value,
+          /* 자료가 아예 없는 것과 표본이 모자란 것을 구분한다 */
+          pending: value !== null ? null : input.hasRoundData === true ? 'games' : 'rounds',
+        }
+      }
     }
   })
 
