@@ -1,0 +1,85 @@
+{
+  "note": "수집 파일에서 뽑은 포지션 정답 (C:/Users/LG/Downloads/positions (2).json)",
+  "labels": [
+    {
+      "userNexonSn": "BE60BA2EA16C2A94SA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "ABAC4D9DD6600636SA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "79BEC17430DF291ESA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "D8B3C973C06BB0FESA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "293ED6C0C2B49B57SA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "5CA3F0623A30124ASA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "51975267F8A18F52SA",
+      "position": "2F"
+    },
+    {
+      "userNexonSn": "95ED5BDBB18CDA27SA",
+      "position": "2F"
+    },
+    {
+      "userNexonSn": "791C5776190D4589SA",
+      "position": "2F"
+    },
+    {
+      "userNexonSn": "F0BB03E0F4771644SA",
+      "position": "2F"
+    },
+    {
+      "userNexonSn": "BE670A90968922B5SA",
+      "position": "2F"
+    },
+    {
+      "userNexonSn": "C348189581244C65SA",
+      "position": "SHORT"
+    },
+    {
+      "userNexonSn": "7C313643067A5FCASA",
+      "position": "SHORT"
+    },
+    {
+      "userNexonSn": "FBD6DA3C1C1526C4SA",
+      "position": "SHORT"
+    },
+    {
+      "userNexonSn": "D596137C144C183CSA",
+      "position": "SHORT"
+    },
+    {
+      "userNexonSn": "5680A2E6F8308820SA",
+      "position": "SHORT"
+    },
+    {
+      "userNexonSn": "02773269A8CAF900SA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "67C2B2BC7406EC34SA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "1F43552B9AB9EB13SA",
+      "position": "B"
+    },
+    {
+      "userNexonSn": "0316133F90948FC6SA",
+      "position": "B"
+    }
+  ]
+}

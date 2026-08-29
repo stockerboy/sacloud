@@ -1,0 +1,12 @@
+{
+  "status": "미해결 — 이 값을 쓰지 마라",
+  "why": "좌표의 28.9% 만 맵 안쪽에 들어간다. 정렬이 맞았다면 90% 이상이어야 한다. 원인은 마스크가 맵 안쪽을 그림의 12.5% 로만 잡은 것이다(벽 선이 안 닫혀 flood fill 이 안쪽까지 먹었다). 뒤집기 4종(normal/flipX/flipY/flipXY)도 전부 안 맞았다.",
+  "note": "배틀로그 좌표 → 미니맵 그림 픽셀. 픽셀 = 좌표 * scale + offset (마스크 크기 기준)",
+  "maskWidth": 560,
+  "maskHeight": 552,
+  "scale": 0.995,
+  "offsetX": 19,
+  "offsetY": -80,
+  "insideRate": 28.89,
+  "points": 12903
+}

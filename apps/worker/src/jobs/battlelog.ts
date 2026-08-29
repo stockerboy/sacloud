@@ -43,21 +43,75 @@ const DEFAULT_ENDPOINT = '/api/BattleLog/GetBattleLog'
 
 /* ============================================================ 원문 적재 === */
 
-/** 브라우저 스니펫이 저장하는 파일 모양. 가공하지 않은 응답을 그대로 담는다 */
+/**
+ * 브라우저 스니펫이 저장하는 파일 모양. 가공하지 않은 응답을 그대로 담는다.
+ *
+ * **두 가지 모양을 다 받는다.** 손으로 모은 파일을 버리지 않기 위해서다 —
+ * 형식이 조금 다르다고 다시 받게 하면 원본에 쓸데없는 요청을 보내는 셈이다.
+ *
+ * ```
+ * 지금 스니펫   { matchKey, strUsn, raw: { battleLog: [...] } }
+ * 2026-08-28 판 { match_key, usn, pos, battleLog: [...] }      ← 라벨(pos)이 같이 있다
+ * ```
+ */
+export interface BattleLogImportRow {
+  source?: string
+  endpoint?: string
+  matchKey?: string
+  match_key?: string
+  /** 선수 단위면 `str_usn`(또는 주소 조각). 스니펫 구버전은 `clanNo` 로 적는다 */
+  strUsn?: string
+  userNexonSn?: string
+  usn?: string
+  clanNo?: string
+  barracksId?: string
+  /** 2026-08-28 수집분에는 포지션 정답이 행마다 붙어 있다 */
+  pos?: string
+  fetched_at?: string
+  raw?: unknown
+  battleLog?: unknown
+}
+
 export interface BattleLogImportFile {
   collected_at?: string
-  rows?: {
-    source?: string
-    endpoint?: string
-    matchKey: string
-    /** 선수 단위면 `str_usn`. 스니펫 구버전은 `clanNo` 로 적는다 */
-    strUsn?: string
-    userNexonSn?: string
-    clanNo?: string
-    fetched_at?: string
-    raw: unknown
-  }[]
+  rows?: BattleLogImportRow[]
   failures?: { matchKey?: string; error?: string }[]
+}
+
+/** 행에서 경기 번호를 고른다 — 두 형식을 다 받는다 */
+function matchKeyOf(row: BattleLogImportRow): string | null {
+  const key = row.matchKey ?? row.match_key
+  return key ? String(key) : null
+}
+
+/** 행에서 원문을 고른다. `raw` 가 없으면 행 자체가 응답을 품고 있는 형식이다 */
+function rawOf(row: BattleLogImportRow): unknown {
+  return row.raw ?? (row.battleLog !== undefined ? { battleLog: row.battleLog } : row)
+}
+
+/**
+ * 포지션 코드를 하나로 맞춘다.
+ *
+ * **우리 포지션은 네 개뿐이다 — 스나 · 숏 · 2층 · B** (2026-08-29 사용자 확정).
+ * `리베` 는 **B 로 합친다.** 따로 두면 좌표로 갈라지지 않아 정확도만 떨어진다
+ * (4분류 80% → 3분류 85% · 실측). 스나는 좌표가 아니라 **주무기**로 정해진다.
+ *
+ * 2026-08-28 수집분은 `F2` · `RIBE` 로 적혀 있어 여기서 흡수한다.
+ * 모르는 코드는 **바꾸지 않고 그대로 둔다** — 조용히 다른 뜻으로 만들지 않기 위해서다.
+ */
+const POSITION_ALIAS: Record<string, string> = {
+  F2: '2F',
+  '2F': '2F',
+  B: 'B',
+  SHORT: 'SHORT',
+  A: 'SHORT',
+  /* 리베는 B 다 (사용자 확정) */
+  RIBE: 'B',
+  LIBERO: 'B',
+}
+
+export function normalizePosition(code: string): string {
+  return POSITION_ALIAS[code.trim().toUpperCase()] ?? code.trim()
 }
 
 export interface BattleLogImportResult {
@@ -70,6 +124,8 @@ export interface BattleLogImportResult {
   events: number
   /** 좌표가 있는 이벤트 수. 이게 0 이면 포지션 판정을 할 수 없다 */
   points: number
+  /** 파일에 포지션 정답이 같이 들어 있으면 여기 모인다 (사람 키 → 포지션) */
+  labels: Record<string, string>
 }
 
 /** 응답에서 이벤트 배열을 찾는다. 키 이름이 흔들려도 원문은 버리지 않는다 */
@@ -84,12 +140,21 @@ export function eventsOf(raw: unknown): BattleLogPositionEvent[] {
   return []
 }
 
-/** 이 줄의 주인(사람 키)을 고른다. 없으면 `null` — 주인을 모르는 원문은 넣지 않는다 */
-function subjectOf(row: NonNullable<BattleLogImportFile['rows']>[number]): string | null {
-  const explicit = row.strUsn ?? row.userNexonSn ?? row.clanNo
-  if (explicit) return String(explicit)
-  const first = eventsOf(row.raw)[0]?.str_usn
-  return first === null || first === undefined ? null : String(first)
+/**
+ * 이 줄의 주인(사람 키)을 고른다. 없으면 `null` — 주인을 모르는 원문은 넣지 않는다.
+ *
+ * **원문 안의 `str_usn` 을 가장 먼저 본다.** 그것이 그 로그의 주인이라고 응답 자신이
+ * 말하는 값이기 때문이다. 파일 바깥에 적힌 값(수집기가 붙인 것)보다 우선한다 —
+ * 수집기가 어떤 때는 숫자 번호를, 어떤 때는 주소 조각을 붙여서 **같은 사람이 두 명으로
+ * 갈라진 적이 있다**(2026-08-29 실측: 어제 수집분 20명 + 오늘 수집분 5명 = 25명으로 셈).
+ */
+function subjectOf(row: BattleLogImportRow): string | null {
+  const fromEvents = eventsOf(rawOf(row))[0]?.str_usn
+  if (fromEvents !== null && fromEvents !== undefined && String(fromEvents).trim() !== '') {
+    return String(fromEvents)
+  }
+  const explicit = row.strUsn ?? row.userNexonSn ?? row.usn ?? row.barracksId ?? row.clanNo
+  return explicit ? String(explicit) : null
 }
 
 /**
@@ -112,25 +177,30 @@ export async function importBattleLogs(input: {
     failures: parsed.failures?.length ?? 0,
     events: 0,
     points: 0,
+    labels: {},
   }
 
   for (const row of rows) {
     const subject = subjectOf(row)
-    if (!subject || !row.matchKey) {
+    const matchKey = matchKeyOf(row)
+    if (!subject || !matchKey) {
       /* 주인이나 경기를 모르면 넣지 않는다. 추측해서 키를 만들지 않는다 */
       result.skipped += 1
       continue
     }
 
-    const events = eventsOf(row.raw)
+    const raw = rawOf(row)
+    const events = eventsOf(raw)
     result.events += events.length
     result.points += positionPointsOf(events).length
+    /* 행에 붙어 있는 포지션 정답은 **원문과 함께 보존한다** — 라벨을 다시 받지 않기 위해서다 */
+    if (row.pos) result.labels[subject] = normalizePosition(row.pos)
 
     if (!input.confirm) continue
 
-    const payloadHash = contentHash(row.raw)
+    const payloadHash = contentHash(raw)
     const existing = await prisma.barracksBattleLogRaw.findUnique({
-      where: { matchKey_subject_payloadHash: { matchKey: String(row.matchKey), subject, payloadHash } },
+      where: { matchKey_subject_payloadHash: { matchKey, subject, payloadHash } },
       select: { id: true },
     })
     if (existing) {
@@ -145,10 +215,10 @@ export async function importBattleLogs(input: {
       data: {
         source: row.source ?? SOURCE,
         endpoint: row.endpoint ?? DEFAULT_ENDPOINT,
-        matchKey: String(row.matchKey),
+        matchKey,
         subject,
-        subjectKind: row.clanNo && !row.strUsn && !row.userNexonSn ? 'clan' : 'user',
-        payload: row.raw as object,
+        subjectKind: row.clanNo && !row.strUsn && !row.userNexonSn && !row.usn ? 'clan' : 'user',
+        payload: raw as object,
         payloadHash,
         status: 'ok',
       },
@@ -168,7 +238,24 @@ export async function importBattleLogs(input: {
 export interface PositionLabelFile {
   /** 라벨을 누가 언제 준 것인지. 근거를 남긴다 */
   note?: string
-  labels: { userNexonSn?: string; playerName?: string; position: string }[]
+  labels: {
+    /** 숫자 번호. 우리 DB(`Player.sourcePlayerId`)와 같은 형식 */
+    userNexonSn?: string | null
+    /** 병영수첩 프로필 주소 조각(16진+SA). API 가 이 값도 키로 받는다(실측) */
+    barracksId?: string | null
+    playerName?: string
+    position: string
+  }[]
+}
+
+/**
+ * 라벨 한 줄의 사람 키.
+ *
+ * 원문(`BarracksBattleLogRaw.subject`)이 어느 형식으로 저장됐는지에 따라 달라서
+ * **둘 다 받는다.** 하나로 강제하면 손으로 모은 라벨을 못 쓴다.
+ */
+function labelKeysOf(label: PositionLabelFile['labels'][number]): string[] {
+  return [label.userNexonSn, label.barracksId].filter(Boolean).map(String)
 }
 
 export interface PositionBuildResult {
@@ -277,10 +364,11 @@ export async function buildPositionProfiles(input: {
   /* ---- 정답 표본 → 중심 ---- */
   const samples: LabeledHistogram[] = []
   for (const label of labels?.labels ?? []) {
-    const key = label.userNexonSn ? String(label.userNexonSn) : null
+    /* 라벨은 숫자 번호로도, 주소 조각으로도 온다. 분포가 있는 쪽을 쓴다 */
+    const key = labelKeysOf(label).find((candidate) => histograms.has(candidate))
     const hist = key ? histograms.get(key) : undefined
     if (!key || !hist) continue
-    samples.push({ key, position: label.position, hist })
+    samples.push({ key, position: normalizePosition(label.position), hist })
   }
   result.labeled = samples.length
   const centroids = centroidsOf(samples)

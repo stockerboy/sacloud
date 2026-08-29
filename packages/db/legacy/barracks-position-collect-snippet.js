@@ -70,27 +70,23 @@ function download(name, value) {
 /* ------------------------------------------------------------ 신원 확인 --- */
 
 /**
- * 프로필 주소 조각(16진+SA) → BattleLog API 가 쓰는 `user_nexon_sn`(숫자).
+ * 주소 조각으로 **바로 API 를 부를 수 있다** (2026-08-29 실측).
  *
- * 둘은 **다른 값이다.** 주소 조각으로는 API 를 부를 수 없어서 프로필 화면을 한 번 받아
- * 그 안에 있는 숫자를 찾는다. 못 찾으면 **찍지 않고 실패로 남긴다.**
+ *   POST /api/Match/GetMatchList/  {"user_nexon_sn":"3F6FDE57149B54E6SA","mode_flag":"ALL"}
+ *     → rtnCode 20 · 경기 20건 · 첫 행에 `user_nexon_sn: 973207158`
+ *
+ * 즉 이 API 는 **주소 조각(16진+SA)** 을 키로 받고, 응답에는 **숫자 번호**가 함께 온다.
+ * `SA` 를 떼면 `rtnCode -999` 다 — 떼지 마라.
+ *
+ * 숫자 번호는 우리 DB(`Player.sourcePlayerId` · `MatchWeaponEvidence.userNexonSn`)와
+ * 같은 형식이라 **사람을 잇는 키**로 쓴다. 응답에 없으면 `null` 로 두고 지어내지 않는다.
  */
-async function resolveUserSn(barracksId) {
-  const response = await fetch(`/${barracksId}/match`, { credentials: 'include' })
-  if (!response.ok) throw new Error(`프로필 ${response.status}`)
-  const html = await response.text()
-
-  const patterns = [
-    /"user_nexon_sn"\s*:\s*"?(\d{6,})"?/,
-    /"str_usn"\s*:\s*"?(\d{6,})"?/,
-    /userNexonSn["'\s:=]+(\d{6,})/,
-    /strUsn["'\s:=]+(\d{6,})/,
-  ]
-  for (const pattern of patterns) {
-    const found = html.match(pattern)
-    if (found) return found[1]
-  }
-  throw new Error('프로필에서 user_nexon_sn 을 못 찾았다')
+async function resolveIdentity(barracksId) {
+  const page = await fetchMatchList(barracksId, null)
+  if (page?.rtnCode !== 20) throw new Error(`목록 rtnCode ${page?.rtnCode ?? '(없음)'}`)
+  const rows = Array.isArray(page?.result) ? page.result : []
+  const numeric = rows.find((row) => row?.user_nexon_sn)?.user_nexon_sn ?? null
+  return { numericSn: numeric === null ? null : String(numeric), page }
 }
 
 /* ------------------------------------------------------------ 경기 목록 --- */
@@ -112,12 +108,20 @@ async function fetchMatchList(userSn, seqNo) {
   return response.json()
 }
 
-/** 경기 번호를 원하는 수만큼 모은다. 더 없으면 그만둔다 */
-async function matchKeysOf(userSn, want) {
+/**
+ * 경기 번호를 원하는 수만큼 모은다. 더 없으면 그만둔다.
+ *
+ * 첫 페이지는 신원 확인 때 이미 받았으므로 **다시 받지 않는다** — 같은 것을 두 번
+ * 부르지 않는 것도 원본에 대한 예의다.
+ */
+async function matchKeysOf(barracksId, want, firstPage) {
   const keys = []
+  let page = firstPage ?? null
   let cursor = null
   while (keys.length < want) {
-    const page = await fetchMatchList(userSn, cursor)
+    if (!page) {
+      page = await fetchMatchList(barracksId, cursor)
+    }
     const rows = Array.isArray(page?.result) ? page.result : []
     if (rows.length === 0) break
     for (const row of rows) {
@@ -125,6 +129,7 @@ async function matchKeysOf(userSn, want) {
       if (key) keys.push(String(key))
     }
     cursor = page?.message
+    page = null
     if (!cursor) break
     await sleep(DELAY_MS)
   }
@@ -133,8 +138,8 @@ async function matchKeysOf(userSn, want) {
 
 /* -------------------------------------------------------------- 배틀로그 --- */
 
-async function fetchBattleLog(matchKey, userSn) {
-  const url = `/api/BattleLog/GetBattleLog/${matchKey}/${userSn}`
+async function callBattleLog(matchKey, key) {
+  const url = `/api/BattleLog/GetBattleLog/${matchKey}/${key}`
   const response = await fetch(url, {
     method: 'POST',
     credentials: 'include',
@@ -143,6 +148,48 @@ async function fetchBattleLog(matchKey, userSn) {
   /* ⚠ 이 응답에는 rtnCode 가 없다. 그걸 검사하면 전부 실패로 처리된다 */
   if (!response.ok) throw new Error(`${response.status} ${url}`)
   return { url, raw: await response.json() }
+}
+
+/** 이벤트가 실제로 들어 있는가 — 200 이어도 빈 껍데기면 다른 키를 써야 한다 */
+function eventCountOf(raw) {
+  if (Array.isArray(raw)) return raw.length
+  if (raw === null || typeof raw !== 'object') return 0
+  for (const value of Object.values(raw)) if (Array.isArray(value)) return value.length
+  return 0
+}
+
+/**
+ * 배틀로그는 **어느 키를 받는지 모른다** — 주소 조각인지 숫자 번호인지.
+ * 그래서 첫 경기에서 한 번만 둘 다 시도해 보고, 되는 쪽을 기억해 나머지에 쓴다.
+ * 둘 다 안 되면 실패로 적는다. 지어내지 않는다.
+ */
+let battleLogKeyKind = null
+
+async function fetchBattleLog(matchKey, keys) {
+  const order = battleLogKeyKind
+    ? [battleLogKeyKind]
+    : ['barracksId', 'numericSn']
+  let lastError = null
+  for (const kind of order) {
+    const key = keys[kind]
+    if (!key) continue
+    try {
+      const result = await callBattleLog(matchKey, key)
+      if (eventCountOf(result.raw) === 0 && !battleLogKeyKind && kind !== order[order.length - 1]) {
+        lastError = new Error(`${kind} 로는 이벤트가 0건이다`)
+        continue
+      }
+      if (!battleLogKeyKind) {
+        battleLogKeyKind = kind
+        console.info(`배틀로그 키는 ${kind} 다`)
+      }
+      return result
+    } catch (error) {
+      lastError = error
+    }
+    await sleep(DELAY_MS)
+  }
+  throw lastError ?? new Error('배틀로그 키를 못 정했다')
 }
 
 /* ------------------------------------------------------------------ 본체 --- */
@@ -159,48 +206,43 @@ window.collectPositions = async function collectPositions(labels, options = {}) 
     const barracksId = label.barracksId ?? label.id
     if (!barracksId) continue
 
-    let userSn = store.resolved[barracksId] ?? label.userNexonSn ?? null
-    if (!userSn) {
-      try {
-        userSn = await resolveUserSn(barracksId)
-        store.resolved[barracksId] = userSn
-        saveStore(store)
-        console.info(`${barracksId} → ${userSn}`)
-      } catch (error) {
-        store.failures.push({ barracksId, stage: 'resolve', error: String(error) })
-        saveStore(store)
-        console.warn(`${barracksId} 신원 실패 — ${error}`)
-        continue
-      }
-      await sleep(DELAY_MS)
-    }
-
-    let keys
+    let numericSn = store.resolved[barracksId] ?? label.userNexonSn ?? null
+    let matchKeys
     try {
-      keys = await matchKeysOf(userSn, want)
+      /* 주소 조각이 곧 API 키다. 숫자 번호는 응답에서 얻는다 (지어내지 않는다) */
+      const identity = await resolveIdentity(barracksId)
+      numericSn = identity.numericSn ?? numericSn
+      if (numericSn) store.resolved[barracksId] = numericSn
+      saveStore(store)
+      console.info(`${barracksId} → 숫자번호 ${numericSn ?? '(응답에 없다)'}`)
+      await sleep(DELAY_MS)
+      matchKeys = await matchKeysOf(barracksId, want, identity.page)
     } catch (error) {
-      store.failures.push({ barracksId, userSn, stage: 'matchlist', error: String(error) })
+      store.failures.push({ barracksId, stage: 'matchlist', error: String(error) })
       saveStore(store)
       console.warn(`${barracksId} 목록 실패 — ${error}`)
       continue
     }
-    console.info(`${barracksId} (${userSn}) 경기 ${keys.length}건`)
+    console.info(`${barracksId} 경기 ${matchKeys.length}건`)
 
-    for (const matchKey of keys) {
-      const mark = `${matchKey}|${userSn}`
+    for (const matchKey of matchKeys) {
+      const mark = `${matchKey}|${barracksId}`
       if (doneKeys.has(mark)) continue
       try {
-        const { url, raw } = await fetchBattleLog(matchKey, userSn)
+        const { url, raw } = await fetchBattleLog(matchKey, { barracksId, numericSn })
         store.rows.push({
           source: 'nexon_barracks',
           endpoint: url,
           matchKey,
-          strUsn: String(userSn),
+          /* 사람 키는 **숫자 번호**다 — 우리 DB 가 그 형식을 쓴다.
+             응답에 없었으면 주소 조각으로라도 남긴다. 비워 두지 않는다 */
+          strUsn: String(numericSn ?? barracksId),
+          barracksId,
           fetched_at: new Date().toISOString(),
           raw,
         })
       } catch (error) {
-        store.failures.push({ matchKey, userSn, stage: 'battlelog', error: String(error) })
+        store.failures.push({ matchKey, barracksId, stage: 'battlelog', error: String(error) })
       }
       doneKeys.add(mark)
       store.done = [...doneKeys]
