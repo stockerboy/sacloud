@@ -36,18 +36,41 @@ if (!url) {
   process.exit(1)
 }
 
+/**
+ * 마이그레이션은 **풀러로 돌리면 안 된다.**
+ *
+ * 운영 `DATABASE_URL` 은 Supabase **transaction pooler(6543)** 다. 앱 런타임에는 맞지만,
+ * 마이그레이션은 세션 단위 기능(자문 잠금 `advisory lock`)을 쓰기 때문에 거기서는
+ * **잡히지 않고 그대로 멈춘다.** 실제로 `migrate status` 가 응답 없이 멈추는 것을 봤다.
+ *
+ * 같은 호스트의 **5432 는 session pooler** 다. 자격증명은 같고 포트만 다르다.
+ * 그래서 여기서 포트를 바꾸고 풀러 전용 옵션(`pgbouncer` · `connection_limit`)을 뗀다.
+ * **앱이 쓰는 주소는 건드리지 않는다** — 이 프로세스 안에서만 만든 주소다.
+ */
+function migrationUrlOf(runtimeUrl) {
+  const parsed = new URL(runtimeUrl)
+  if (parsed.port === '6543') parsed.port = '5432'
+  parsed.searchParams.delete('pgbouncer')
+  parsed.searchParams.delete('connection_limit')
+  parsed.searchParams.delete('pool_timeout')
+  return parsed.toString()
+}
+
 /** 주소는 **호스트만** 찍는다. 전체 URL 은 절대 찍지 않는다 */
 const host = new URL(url).host
 if (host.includes('127.0.0.1') || host.includes('localhost')) {
   console.error(`대상이 로컬이다 (${host}). 이 스크립트는 운영용이다.`)
   process.exit(1)
 }
-console.info(`대상: ${host}`)
+const migrationUrl = migrationUrlOf(url)
+const migrationHost = new URL(migrationUrl).host
+console.info(`앱이 쓰는 주소  : ${host}`)
+console.info(`마이그레이션 주소: ${migrationHost}  ← 풀러(6543)로는 마이그레이션이 멈춘다`)
 console.info(confirm ? '적용한다 (migrate deploy)' : '상태만 본다 — 실제로 적용하려면 --confirm')
 
 const run = (args) =>
   spawnSync('pnpm', ['--filter', '@sacloud/db', 'exec', 'prisma', ...args], {
-    env: { ...process.env, DATABASE_URL: url },
+    env: { ...process.env, DATABASE_URL: migrationUrl },
     stdio: 'inherit',
     shell: true,
   })
