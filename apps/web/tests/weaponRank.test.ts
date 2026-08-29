@@ -69,6 +69,8 @@ beforeAll(async () => {
   unknownOnlyId = await make('unknown', false)
   bothId = await make('both', false)
 
+  /* `isMain` 은 **그 무기 판수가 그 선수 전체 판수의 절반 이상**일 때 참이다 (D-173).
+     여기서는 그 규칙대로 손으로 계산해 넣는다 — 규칙이 바뀌면 이 픽스처도 같이 바꿔야 한다 */
   await prisma.leaguePlayerWeaponStat.createMany({
     data: [
       /* 4전 중 3전만 K/D 를 안다. 나머지 한 판은 넥슨이 주지 않았다 */
@@ -82,6 +84,7 @@ beforeAll(async () => {
         kill: 30,
         death: 20,
         ratingDelta: 40,
+        isMain: true,
       },
       {
         leaguePlayerId: placementId,
@@ -93,6 +96,7 @@ beforeAll(async () => {
         kill: 40,
         death: 10,
         ratingDelta: 90,
+        isMain: true,
       },
       /* 뛴 건 알지만 K/D 를 하나도 모른다 — 순위 모집단에 넣지 않는다 */
       {
@@ -105,8 +109,10 @@ beforeAll(async () => {
         kill: 0,
         death: 0,
         ratingDelta: 5,
+        isMain: true,
       },
-      /* 두 무기를 모두 쓴다. 값이 서로 섞이면 안 된다 */
+      /* 두 무기를 모두 쓴다. 값이 서로 섞이면 안 된다.
+         8판 중 라플은 2판뿐이라 **라플은 부무기**다 (2×2 < 8) */
       {
         leaguePlayerId: bothId,
         weapon: 0,
@@ -117,6 +123,7 @@ beforeAll(async () => {
         kill: 10,
         death: 10,
         ratingDelta: 3,
+        isMain: false,
       },
       {
         leaguePlayerId: bothId,
@@ -128,6 +135,7 @@ beforeAll(async () => {
         kill: 60,
         death: 20,
         ratingDelta: 77,
+        isMain: true,
       },
     ],
   })
@@ -217,8 +225,9 @@ describe.skipIf(!up)('부분 집계 — 뛴 경기와 기록을 아는 경기는
 
   it('기록 없는 선수는 다른 사람의 모집단 수도 늘리지 않는다', async () => {
     const rifle = await playerWeaponRankOf(rankedId, leagueId, 0)
-    // 라이플 모집단 = ranked · both (placement 는 배치, unknown 은 기록 0)
-    expect(rifle.rankCount).toBe(2)
+    /* 라이플 모집단 = ranked 뿐이다 —
+       placement 는 배치고사 · unknown 은 기록 0 · both 는 라플이 부무기다 (D-173) */
+    expect(rifle.rankCount).toBe(1)
   })
 })
 
@@ -244,9 +253,19 @@ describe.skipIf(!up)('스나이퍼와 라이플은 섞이지 않는다', () => {
 
   it('무기별 모집단도 서로 다르다', async () => {
     const sniper = await playerWeaponRankOf(bothId, leagueId, 1)
-    const rifle = await playerWeaponRankOf(bothId, leagueId, 0)
     // 스나 기록은 이 선수뿐이다
     expect(sniper.rankCount).toBe(1)
-    expect(rifle.rankCount).toBe(2)
+    expect(sniper.rank).toBe(1)
+  })
+
+  it('부무기는 기록만 남고 순위는 없다 (D-173)', async () => {
+    const rifle = await playerWeaponRankOf(bothId, leagueId, 0)
+    // 8판 중 라플 2판 — 라플 랭킹의 모집단이 아니다
+    expect(rifle.rank).toBeNull()
+    expect(rifle.rankCount).toBeNull()
+    // 그래도 기록 자체는 지우지 않는다
+    expect(rifle.games).toBe(2)
+    expect(rifle.kill).toBe(10)
+    expect(rifle.kdRate).toBe(kdRate(10, 10))
   })
 })

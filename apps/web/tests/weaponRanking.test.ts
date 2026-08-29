@@ -52,13 +52,24 @@ const pid = new Map<string, string>()
  * 시드(`packages/db/seed/seed.ts`)가 하는 것과 같은 규칙이다.
  */
 const PLAYERS = [
-  //           base   스나   라플   배치고사
+  //           base   스나   라플   배치고사        판수(스나/라플)
   { name: 'sniperace', base: 3000, sniper: 200, rifle: 10, placement: false },
   { name: 'sniper2', base: 2900, sniper: 150, rifle: 0, placement: false },
   { name: 'rifleace', base: 3100, sniper: -20, rifle: 300, placement: false },
   { name: 'rifle2', base: 3000, sniper: 0, rifle: 120, placement: false },
   /* 배치고사 중 — 어떤 무기 랭킹에도 들어가지 않는다 */
   { name: 'placement', base: 3000, sniper: 900, rifle: 900, placement: true },
+  /* 라플수인데 스나를 두 판 들었다 — **스나 랭킹에 올라오면 안 된다** (D-173).
+     기록(판수·증감)은 그대로 남고 모집단에서만 빠진다 */
+  {
+    name: 'subweapon',
+    base: 3000,
+    sniper: 50,
+    rifle: 100,
+    placement: false,
+    sniperGames: 2,
+    rifleGames: 18,
+  },
 ] as const
 
 beforeAll(async () => {
@@ -101,18 +112,26 @@ beforeAll(async () => {
     })
     lp.set(entry.name, leaguePlayer.id)
 
-    for (const [weapon, delta] of [
-      [1, entry.sniper],
-      [0, entry.rifle],
-    ] as const) {
-      if (delta === 0) continue
+    /* 주무기 판정은 **운영과 같은 규칙**으로 픽스처에서도 계산한다 (D-173) —
+       그 무기 판수가 그 선수 전체 판수의 절반 이상이면 주무기다.
+       판수를 안 적은 선수는 두 무기를 10판씩 뛴 것으로 본다(= 둘 다 주무기) */
+    const weaponRows = (
+      [
+        [1, entry.sniper, 'sniperGames' in entry ? entry.sniperGames : 10],
+        [0, entry.rifle, 'rifleGames' in entry ? entry.rifleGames : 10],
+      ] as const
+    ).filter(([, delta]) => delta !== 0)
+    const totalGames = weaponRows.reduce((acc, [, , games]) => acc + games, 0)
+
+    for (const [weapon, delta, games] of weaponRows) {
       await prisma.leaguePlayerWeaponStat.create({
         data: {
           leaguePlayerId: leaguePlayer.id,
           weapon,
           ratingDelta: delta,
-          games: 10,
-          knownStatGames: 10,
+          games,
+          knownStatGames: games,
+          isMain: games * 2 >= totalGames,
           win: weapon === 1 ? 7 : 6,
           lose: weapon === 1 ? 3 : 4,
           kill: weapon === 1 ? 100 : 80,
@@ -138,6 +157,8 @@ beforeAll(async () => {
       ratingDelta: 999,
       games: 5,
       knownStatGames: 0,
+      /* 주무기는 맞다 — 빠지는 이유는 **K/D 를 아는 경기가 0** 이기 때문이어야 한다 */
+      isMain: true,
       win: 3,
       lose: 2,
       kill: 0,
@@ -295,6 +316,16 @@ describe.skipIf(!up)('무기별 개인랭킹', () => {
     const row = page?.items.find((entry) => entry.player.name === `${P}sniperace`)
     // base 3000 + 스나 200 + 라플 10
     expect(row?.rating).toBe(3210)
+  })
+
+  it('부무기는 그 무기 랭킹에 오르지 않는다 (D-173)', async () => {
+    /* subweapon 은 라플 18판 · 스나 2판이다. 스나 증감 50점은 남지만 스나 랭킹에는 없다 —
+       이게 빠지면 라플수가 어쩌다 든 스나 몇 판으로 스나 랭킹에 올라온다 */
+    const sniper = await getPlayerRanksByWeapon(leagueId, 'sniper', null, 20)
+    expect(sniper?.items.map((row) => row.player.name)).not.toContain(`${P}subweapon`)
+
+    const rifle = await getPlayerRanksByWeapon(leagueId, 'rifle', null, 20)
+    expect(rifle?.items.map((row) => row.player.name)).toContain(`${P}subweapon`)
   })
 
   it('배치고사 중이거나 K/D 를 아는 경기가 없으면 무기 랭킹에 없다', async () => {

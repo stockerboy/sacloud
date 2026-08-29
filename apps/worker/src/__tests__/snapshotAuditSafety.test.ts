@@ -140,9 +140,17 @@ describe.skipIf(!up)('감사 결과 자체의 성질', () => {
        "원본값을 그대로 보존한다" 는 원칙과 정면으로 충돌한다.
        실제로 207건이 어긋났는데 그건 결함이 아니라 설계다.
 
-       그래서 미러링 리그에서는 **하네스가 돌았는지만** 본다. */
+       그래서 미러링 리그에서는 **하네스가 돌았는지만** 본다.
+
+       **D-170 이후로는 비교 대상이 0 일 수 있다.** 미러 구간 안의 넥슨 경기는
+       원본 점수가 정본이라 replay 자체를 하지 않는다(`skipped.mirror_covered`).
+       비교할 것이 없는 것은 결함이 아니다 — 다만 **그 이유가 미러 가드여야 한다.**
+       아무 이유 없이 0 이면 하네스가 죽은 것이므로 그건 여전히 실패다. */
     const audit = await audited()
-    expect(audit.baselineMatchesDb.compared).toBeGreaterThan(0)
+    if (audit.baselineMatchesDb.compared === 0) {
+      expect(audit.baseline.skipped['mirror_covered'] ?? 0).toBeGreaterThan(0)
+      return
+    }
     if (!mirrored) expect(audit.baselineMatchesDb.mismatched).toBe(0)
   }, 600_000)
 
