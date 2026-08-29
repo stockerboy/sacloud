@@ -4,8 +4,11 @@
  * 사용자 지시(2026-08-28): "무소속리그 페이지를 만든다. 1티어부터 5티어까지의 칸을 만들고
  * 관리자 권한으로 각 티어에 클랜을 등록할 수 있게 만들어라."
  *
+ * 사용자 확정(2026-08-29 · D-181): **`IPL` 은 이 무소속리그의 다른 이름이고, 티어는 6단이다.**
+ * 그래서 `INDEPENDENT_TIER_COUNT` 가 5 에서 6 이 됐다. 리그를 새로 만들지 않았다.
+ *
  * ── 티어는 **새 축이 아니다.** `LeagueClan.division` 그대로다 (D-165).
- *   `League.divisionCount = 5` 인 리그의 division 1~5 를 `1티어 … 5티어` 로 **표기만** 바꾼다.
+ *   `League.divisionCount = N` 인 리그의 division 1~N 을 `1티어 … N티어` 로 **표기만** 바꾼다.
  *   그래서 클랜랭킹·개인랭킹·부리그 탭·커서 페이지네이션이 새 코드 없이 그대로 돈다.
  *   `1부/2부` 표기는 공식리그 쪽에서 바뀌지 않는다 — 표기 변환은 리그 `category` 로 갈린다.
  *
@@ -26,8 +29,17 @@ export const INDEPENDENT_LEAGUE_SLUG = 'nolink'
 /** 무소속리그 이름 */
 export const INDEPENDENT_LEAGUE_NAME = '무소속리그'
 
-/** 티어 수 = `League.divisionCount`. `Clan.tier` 의 허용 범위(1~5)와 같아야 한다 */
-export const INDEPENDENT_TIER_COUNT = 5
+/**
+ * 티어 수 = `League.divisionCount`. `Clan.tier` 의 허용 범위와 **같은 값이어야 한다** —
+ * `updateClan()` 이 이 상수로 검사하므로 여기만 고치면 둘이 함께 움직인다.
+ *
+ * **2026-08-29 사용자 확정: IPL = 이 무소속리그이고 티어는 6단이다** (D-181).
+ * D-165 는 5단으로 만들었다. `ensureIndependentLeague()` 가 기존 리그의
+ * `divisionCount` 도 이 값으로 맞추므로, 명령을 한 번 더 돌리면 5 → 6 이 된다.
+ *
+ * 이 값을 **줄이지 마라.** 이미 그 티어에 클랜이 등록돼 있으면 갈 곳이 없어진다.
+ */
+export const INDEPENDENT_TIER_COUNT = 6
 
 /** `League.category` / `Clan.category` 의 무소속 값 */
 export const INDEPENDENT_CATEGORY = 'independent'

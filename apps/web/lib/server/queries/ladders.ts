@@ -56,7 +56,7 @@ type LadderRow = {
 
 /** 무소속 클랜의 한 줄. 순위가 **두 종류**라 별도 타입이다 */
 export interface IndependentLadderRow extends ClanRankRow {
-  /** 운영자가 정한 Tier (1~5). 지정되지 않았으면 null */
+  /** 운영자가 정한 Tier (1~`INDEPENDENT_TIER_COUNT`). 지정되지 않았으면 null */
   tier: number | null
   /** 같은 Tier 안에서의 순위. Tier가 없으면 null */
   tier_rank: number | null

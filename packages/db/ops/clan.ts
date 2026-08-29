@@ -7,12 +7,13 @@
  *   - 로스터는 "출전했다"는 증거가 아니라 **확인해야 할 후보 목록**이다 (D-068)
  */
 import { prisma } from '../src/index'
+import { INDEPENDENT_TIER_COUNT } from './independentLeague'
 
 export interface ClanUpdateInput {
   name?: string
   /** "official" | "independent" */
   category?: string
-  /** 무소속 티어 1~5. 자동 승강하지 않는다 */
+  /** 무소속 티어 1~`INDEPENDENT_TIER_COUNT`. 자동 승강하지 않는다 — 운영자가 정한다 */
   tier?: number | null
   active?: boolean
 }
@@ -24,8 +25,14 @@ export async function updateClan(slug: string, input: ClanUpdateInput) {
   })
   if (!before) return null
 
-  if (input.tier !== undefined && input.tier !== null && (input.tier < 1 || input.tier > 5)) {
-    throw new Error('무소속 티어는 1~5입니다')
+  /* 상한을 숫자로 박지 않는다 — 티어 수가 바뀌면 여기만 조용히 낡는다.
+     `League.divisionCount` 와 같은 상수를 쓴다 (D-181 로 5 → 6) */
+  if (
+    input.tier !== undefined &&
+    input.tier !== null &&
+    (!Number.isInteger(input.tier) || input.tier < 1 || input.tier > INDEPENDENT_TIER_COUNT)
+  ) {
+    throw new Error(`무소속 티어는 1~${INDEPENDENT_TIER_COUNT}입니다`)
   }
   if (input.category !== undefined && !['official', 'independent'].includes(input.category)) {
     throw new Error('구분은 official 또는 independent 입니다')

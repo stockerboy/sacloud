@@ -5,7 +5,7 @@
  * 순수 함수 테스트로는 "티어가 정말 클랜랭킹 탭으로 이어지는가"를 증명할 수 없다.
  *
  * 여기서 고정하는 약속
- *   1. 티어 1~5 는 **새 축이 아니다** — `LeagueClan.division` 1~5 그대로다
+ *   1. 티어는 **새 축이 아니다** — `LeagueClan.division` 그대로다 (단 수는 `INDEPENDENT_TIER_COUNT`)
  *   2. 등록·이동은 `LeagueClan.division` 과 `Clan.tier` 를 **항상 같이** 쓴다
  *   3. 승강은 **자동이 아니다** — rating 이 높아도 티어는 그대로다
  *   4. 무소속리그 개인랭킹은 **누적 킬뎃을 내보내지 않는다** (D-107 그대로)
@@ -180,10 +180,12 @@ describe.runIf(up)('티어 등록 (D-165)', () => {
   })
 
   it('범위 밖 티어와 공식리그는 거절한다', async () => {
+    /* 상한을 숫자로 박지 않는다 — 티어 수가 바뀌면(D-181 로 5 → 6) 이 단언이 조용히
+       "정상 티어를 거절하라" 로 뒤집힌다. 실제로 그럴 뻔했다 */
     const tooHigh = await registerClanTier({
       leagueSlug: INDEP_SLUG,
       clanSlug: `${CLAN_PREFIX}b`,
-      tier: 6,
+      tier: INDEPENDENT_TIER_COUNT + 1,
     })
     expect(tooHigh.ok).toBe(false)
     expect(tooHigh.reason).toBe('tierOutOfRange')

@@ -28,6 +28,7 @@ import {
   registerClanTier,
   syncIndependentTiers,
   INDEPENDENT_LEAGUE_SLUG,
+  INDEPENDENT_TIER_COUNT,
   mergeRows,
   provisionTestAccount,
   rotateSharedDevPasswords,
@@ -165,8 +166,9 @@ function usage(): void {
 
   independent-league [--league <slug>] [--confirm]
               무소속리그(기본 slug nolink) 행을 만든다 (D-165). **재실행해도 중복이 없다**
-              티어 1~5 = League.divisionCount = 5 인 리그의 division 1~5 다. 새 축이 아니다
-              --register <클랜slug> --tier <1~5>  그 티어에 클랜을 등록/이동한다
+              티어 1~6 = League.divisionCount = 6 인 리그의 division 1~6 이다. 새 축이 아니다
+              (IPL 은 이 리그의 다른 이름이다 · 6단 — D-181)
+              --register <클랜slug> --tier <1~6>  그 티어에 클랜을 등록/이동한다
               --sync   Clan.tier 를 LeagueClan.division 에 맞춘다 (기준은 division)
               **--confirm 없이는 한 줄도 쓰지 않는다**
   roster      --league <slug> --file <CSV> [--verified] | --from-league-players | --sync-priority
@@ -2267,7 +2269,7 @@ async function main(): Promise<number> {
       if (clanSlug) {
         const tier = numberFlag(args, 'tier')
         if (tier === null) {
-          fail('--tier <1~5> 가 필요하다')
+          fail(`--tier <1~${INDEPENDENT_TIER_COUNT}> 가 필요하다`)
           return 1
         }
         const result = await registerClanTier({ leagueSlug, clanSlug, tier, dryRun: !write })

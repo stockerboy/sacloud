@@ -24,9 +24,30 @@
 
 즉 배타는 **공식리그 1·2부 ↔ IPL** 한 방향뿐이고, 열산리그와는 겹쳐도 된다.
 
-> `[미확인]` 기존 무소속리그(`slug = nolink` · D-165)가 곧 IPL 인지, 별개 리그인지 확정 필요.
-> D-165 는 `divisionCount = 5` 로 만들었는데 이번 티어는 **6단**이다. 같은 리그라면
-> `divisionCount` 를 6으로 올려야 한다.
+### IPL = 기존 무소속리그다 (2026-08-29 사용자 확정)
+
+> "같은 리그가 맞다. 무소속 리그의 다른 이름이다. IPL 은 6단으로 진행하라."
+
+**새 리그를 만들지 않는다.** `slug = nolink` · `category = independent` 그대로이고,
+바뀌는 것은 티어 수 하나다.
+
+| | D-165 | 지금 |
+|---|---|---|
+| `League.divisionCount` | 5 | **6** |
+| `Clan.tier` 허용 범위 | 1~5 | **1~6** |
+
+상한의 단일 출처는 `packages/db/ops/independentLeague.ts` 의 `INDEPENDENT_TIER_COUNT` 다.
+`updateClan()` · `registerClanTier()` · CLI 도움말 · 테스트가 전부 이 상수를 읽는다.
+**숫자를 다시 박지 마라.**
+
+`ensureIndependentLeague()` 는 이미 있는 리그의 `divisionCount` 도 이 값으로 맞추므로,
+아래를 한 번 더 돌리면 5 → 6 이 된다 (멱등).
+
+```bash
+pnpm --filter @sacloud/worker nexon independent-league --confirm
+```
+
+관리자 화면의 티어 select 는 `division_count` 에서 만들어지므로 **코드 변경 없이** 6칸이 된다.
 
 ---
 
@@ -242,7 +263,7 @@ POST /api/Profile/GetProfileMain/<식별자>SA     (본문 없음)
 
 ## 8. 아직 정해지지 않은 것
 
-- `[미확인]` IPL = 기존 `nolink` 리그인가, 별개 리그인가. `divisionCount` 5 → 6 필요
+- ~~`[미확인]` IPL = 기존 `nolink` 리그인가~~ → **확정: 같은 리그다. 6단으로 간다** (1장)
 - `[미확인]` 등록 클랜이 39곳인가 40곳인가 (사용자 목록 39 · 지시문 40)
 - `[미확인]` `nightbloom` · `swell` 의 실제 클랜
 - `[미확인]` 공식리그 1·2부 ↔ IPL 배타를 **코드로 막을지, 경고만 할지**

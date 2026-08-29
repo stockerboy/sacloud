@@ -89,7 +89,7 @@ export default function AdminClansPage() {
             <input
               className="w-20 border border-divider px-2 py-1"
               value={form.tier}
-              placeholder="1~5"
+              placeholder="1~6"
               onChange={(event) => setForm({ ...form, tier: event.target.value })}
             />
           </label>

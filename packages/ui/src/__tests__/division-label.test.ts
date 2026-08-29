@@ -22,13 +22,15 @@ describe('부리그 · 티어 표기', () => {
 
   it('무소속리그만 `N티어`다', () => {
     expect(divisionLabel(1, 'independent')).toBe('1티어')
-    expect(divisionLabel(5, 'independent')).toBe('5티어')
+    expect(divisionLabel(6, 'independent')).toBe('6티어')
     expect(divisionUnit('independent')).toBe('티어')
   })
 
-  it('1~5티어가 전부 만들어진다', () => {
-    const labels = [1, 2, 3, 4, 5].map((tier) => divisionLabel(tier, 'independent'))
-    expect(labels).toEqual(['1티어', '2티어', '3티어', '4티어', '5티어'])
+  /* IPL 이 6단이 됐다 (D-181). 표기 함수는 상한을 모르는 것이 정상이라
+     6티어까지 나오는지만 본다 — 숫자를 아는 곳은 `INDEPENDENT_TIER_COUNT` 하나다 */
+  it('1~6티어가 전부 만들어진다', () => {
+    const labels = [1, 2, 3, 4, 5, 6].map((tier) => divisionLabel(tier, 'independent'))
+    expect(labels).toEqual(['1티어', '2티어', '3티어', '4티어', '5티어', '6티어'])
   })
 
   it('모르는 값은 무소속으로 보지 않는다', () => {

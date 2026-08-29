@@ -5773,8 +5773,25 @@ IPL 은 `2026-01-01 ~ 2026-08-29` 이고 8/30 부터 끊지 않고 이어 간다
 팀 판정 근거로 쓸 수 있다는 뜻이다. 반면 `match_time_date` 는 항상 `0001-01-01` 로
 쓸모없고, 절대시각은 `match_key` 앞 12자리(`YYMMDDHHMMSS`)에서 뽑아야 한다.
 
+### 정한 것 ⑥  IPL = 기존 무소속리그(`nolink`)다. **6단으로 간다**
+
+사용자 확정(2026-08-29): "같은 리그가 맞다. 무소속 리그의 다른 이름이다. IPL 은 6단으로 진행하라."
+
+**새 리그를 만들지 않았다.** `slug = nolink` · `category = independent` 그대로이고
+`League.divisionCount` 만 5 → 6 이다 (D-165 는 5단이었다).
+
+상한의 단일 출처는 `packages/db/ops/independentLeague.ts` 의 `INDEPENDENT_TIER_COUNT` 다.
+`updateClan()` 이 박아 두었던 `1~5` 숫자를 걷어내고 이 상수를 읽게 했다 —
+**숫자를 다시 박지 마라.** `independentTier.test.ts` 의 "범위 밖" 단언도
+`INDEPENDENT_TIER_COUNT + 1` 로 바꿨다. 그대로 뒀으면 티어 수가 바뀌는 순간
+그 테스트가 "정상 티어를 거절하라" 로 조용히 뒤집혔을 것이다.
+
+관리자 화면 티어 select 는 `division_count` 에서 만들어지므로 코드 변경이 없다.
+표기 함수(`divisionLabel`)도 상한을 모르므로 그대로 돈다.
+
+**이 값을 줄이지 마라.** 이미 그 티어에 등록된 클랜이 갈 곳을 잃는다.
+
 ### 미확정
 
-`docs/IPL_SPEC.md` 8장에 모아 두었다. 특히 **IPL 이 기존 `nolink` 리그인지**(D-165 는
-`divisionCount = 5` 인데 이번 티어는 6단이다)와 **등록 클랜이 39곳인지 40곳인지**
+`docs/IPL_SPEC.md` 8장에 모아 두었다. 특히 **등록 클랜이 39곳인지 40곳인지**
 (사용자 목록 39 · 지시문 40)는 착수 전에 확인해야 한다.

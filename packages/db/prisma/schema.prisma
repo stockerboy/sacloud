@@ -214,7 +214,9 @@ model Clan {
   /* --- 운영 구분 (Phase 10) --- */
   /// "official" = 공식리그 참여 클랜 | "independent" = 무소속
   category   String  @default("official")
-  /// 무소속 클랜의 티어 1~5. **자동 승강하지 않는다.** 운영자가 직접 정한다
+  /// 무소속 클랜의 티어 1~6 (D-181 로 5 → 6). **자동 승강하지 않는다.** 운영자가 직접 정한다
+  /// 상한의 단일 출처는 `packages/db/ops/independentLeague.ts` 의 `INDEPENDENT_TIER_COUNT` 다
+  /// — 숫자를 여기저기 박지 마라. 이 주석은 설명일 뿐 검사는 `updateClan()` 이 한다
   tier       Int?
   /// 비활성 클랜은 랭킹·목록에서 감춘다. **삭제 대신 이 값을 쓴다**
   active     Boolean @default(true)
