@@ -105,9 +105,30 @@ function localDatasourceUrl(url: string | undefined): string | undefined {
 
 const localUrl = localDatasourceUrl(process.env.DATABASE_URL)
 
-export const prisma: PrismaClient =
-  globalForPrisma.sacloudPrisma ??
-  new PrismaClient({
+/**
+ * **로컬에서만** 커넥션 실패(`P1001`)를 다시 시도한다 (D-187).
+ *
+ * 위 주석의 EFAULT 는 커넥션이 **아예 열리지 않은** 상태다. 그러면 쿼리가 서버에서
+ * 실행됐을 리가 없으므로 쓰기 작업이라도 다시 보내는 것이 안전하다 —
+ * "보냈는데 응답을 못 받은" 경우와 다르다.
+ *
+ * 실측(동시 10 x 20회 = 커넥션 200): 첫 시도 실패 45건 → 재시도로 44건 회복 → 최종 1건.
+ * `connection_limit` 만으로는 47% → 27% 밖에 못 줄였다. **재시도가 핵심이다.**
+ *
+ * vitest 의 `--retry` 로는 이걸 못 잡는다. 남는 실패가 대부분 `beforeAll`/`afterAll`
+ * 훅 안에서 나는데 vitest 는 훅을 다시 돌리지 않는다.
+ */
+const RETRY_DELAYS_MS = [25, 50, 75, 100, 150, 250, 400, 600]
+
+function isUnreachable(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  return (error as { code?: unknown }).code === 'P1001'
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+function createClient(): PrismaClient {
+  const base = new PrismaClient({
     ...(localUrl ? { datasources: { db: { url: localUrl } } } : {}),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
     /**
@@ -117,6 +138,36 @@ export const prisma: PrismaClient =
      */
     errorFormat: 'minimal',
   })
+
+  /* 운영에서는 **재시도하지 않는다.** 거기서 P1001 이 나면 그건 진짜 장애이고,
+     조용히 덮으면 장애를 못 본다. 로컬의 깨진 소켓과 성격이 다르다 */
+  if (!localUrl) return base
+
+  const extended = base.$extends({
+    query: {
+      async $allOperations({ args, query }) {
+        let lastError: unknown
+        for (let attempt = 0; ; attempt += 1) {
+          try {
+            return await query(args)
+          } catch (error) {
+            if (!isUnreachable(error)) throw error
+            lastError = error
+            const delay = RETRY_DELAYS_MS[attempt]
+            if (delay === undefined) throw lastError
+            await sleep(delay)
+          }
+        }
+      },
+    },
+  })
+
+  /* 확장 클라이언트는 타입이 달라지지만 **동작은 같다** — 재시도만 얹혔다.
+     이 캐스팅이 없으면 이 모듈을 쓰는 쪽이 전부 새 타입을 알아야 한다 */
+  return extended as unknown as PrismaClient
+}
+
+export const prisma: PrismaClient = globalForPrisma.sacloudPrisma ?? createClient()
 
 globalForPrisma.sacloudPrisma = prisma
 

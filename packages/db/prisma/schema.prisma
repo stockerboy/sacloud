@@ -187,6 +187,7 @@ model Player {
   rosterMemberships       LeagueRosterMembership[]
   weaponEvidence          MatchWeaponEvidence[]
   positionProfiles        PlayerPositionProfile[]
+  roundProfiles           PlayerRoundProfile[]
 
   @@unique([sourcePlayerId])
   @@unique([nexonOuid])
@@ -1845,6 +1846,50 @@ model PlayerPositionProfile {
   @@unique([userNexonSn, classifierVersion])
   @@index([playerId])
   @@index([position])
+}
+
+/// 선수의 **라운드 복원 집계** (D-194).
+///
+/// 육각형 세 축(세이브 · 매치의 사나이 · 소수싸움)과 우리 MVP 가 이 값을 쓴다.
+/// `PlayerPositionProfile`(D-174)과 같은 자리에 같은 방식으로 둔다 —
+/// 사람의 키는 닉네임이 아니라 **병영수첩 계정 번호**다.
+///
+/// **원본(3rd.supply)에 없는 값이다.** 원본의 `save_cnt` 와도 다르다 —
+/// 넥슨은 1대3 이상만 세이브로 세지만 우리는 **혼자 남으면 전부** 센다 (사양 4절).
+///
+/// 세지 못한 경기는 여기 들어오지 않는다. 그래서 분모(`matches`)가 그 선수가 실제로
+/// 뛴 판수보다 **작다.** 0으로 채우지 않는다 (D-106).
+model PlayerRoundProfile {
+  id String @id @default(cuid())
+  /// 병영수첩 계정 번호. **닉네임이 아니라 이 값이 사람의 키다**
+  userNexonSn String
+  /// 우리 Player 와 연결된 경우만. 못 찾으면 null 로 두고 집계는 그대로 보존한다
+  playerId String?
+
+  /// 라운드 복원에 **성공한** 경기 수 (양 팀 5명이 전부 확인된 경기)
+  matches Int @default(0)
+  /// 혼자 남은 라운드 수 — 세이브의 분모
+  alone Int @default(0)
+  /// 그중 이긴 라운드 수 — 세이브의 분자
+  aloneWon Int @default(0)
+  /// 본인 포함 둘이 남은 라운드 수. **2:1 은 세지 않는다** (사양 4절)
+  outnumbered Int @default(0)
+  outnumberedWon Int @default(0)
+
+  /// 20분 초과 경기 중 **마지막 라운드 최다 킬**이었던 횟수
+  matchMan Int @default(0)
+  /// 그 판정이 가능했던 20분 초과 경기 수 — 매치의 사나이의 분모.
+  /// 동률이라 아무도 못 뽑은 경기는 여기 들어오지 않는다
+  longMatches Int @default(0)
+
+  /// 집계 규칙 버전. 규칙이 바뀌면 새 줄이 생기고 옛 줄은 남는다
+  builderVersion String
+  computedAt     DateTime @default(now())
+
+  player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@unique([userNexonSn, builderVersion])
+  @@index([playerId])
 }
 
 /// 경기 × 선수 무기 판정 근거 (D-114).
