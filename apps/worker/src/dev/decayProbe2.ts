@@ -1,6 +1,7 @@
 /** 감점이 계산 단계에서 나오는지 직접 확인 — 읽기만 한다. */
 import { V2_RATING_CONSTANTS, dailyDecay, displayScore } from '@sacloud/rating'
 import { runRate } from '../jobs/rate.js'
+import { season0Scope } from '../lib/season0Window.js'
 import type { JobContext } from '../jobs/context.js'
 
 const DRY: JobContext = { config: {} as never, client: null, dryRun: true, limit: null, resume: false }
@@ -14,11 +15,7 @@ async function main(): Promise<void> {
 
   const result = await runRate(DRY, {
     leagueSlug: 'supply',
-    matchScope: {
-      origin: '3rd.supply',
-      from: new Date('2026-01-01T00:00:00.000Z'),
-      to: new Date('2026-07-01T00:00:00.000Z'),
-    },
+    matchScope: season0Scope(),
     constants: V2_RATING_CONSTANTS,
   })
 

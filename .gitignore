@@ -77,3 +77,6 @@ packages/db/data/supply-seasons-*.jsonl
 # `nexon supply-player-profiles` 로 언제든 다시 만든다.
 packages/db/data/supply-player-profiles.json
 packages/db/data/supply-player-profiles.jsonl
+
+# 워커 리포트 산출물 (로컬 전용 — 백업과 같은 성격이다)
+apps/worker/reports/

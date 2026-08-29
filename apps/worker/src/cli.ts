@@ -11,7 +11,7 @@
  * 큐 인프라(Redis/BullMQ)를 쓰지 않는다. 체크포인트는 DB(`ImportJob`)에 남는다 (C 결정).
  * `--dry-run`은 **요청을 한 건도 보내지 않는다.** API 키 없이 파이프라인을 점검할 때 쓴다.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { prisma } from '@sacloud/db'
@@ -70,6 +70,7 @@ import {
 } from './jobs/snapshotAudit.js'
 import { rebuildWeaponStats } from './jobs/weaponRebuild.js'
 import { runSeasonClose, runSeasonOpen, seasonStatus } from './jobs/season.js'
+import { runSeason0Close } from './jobs/season0Close.js'
 import { clanList, joinLeague, mergeClans, registerClan, renameClan } from './jobs/clan.js'
 import {
   deriveRosterFromLeaguePlayers,
@@ -263,6 +264,12 @@ function usage(): void {
               시즌 운영. 플래그가 없으면 현재 상태만 보여 준다.
               --close 최종 랭킹 스냅샷 + 시즌 종료 / --start 승강 반영 + 전원 같은 점수로 시작
               **자동으로 도는 것이 없다. 운영자가 부를 때만 실행된다**
+  season0-finish --league <slug> [--open --number N] [--at <ISO>] [--no-promotion] [--confirm]
+              시즌0(테스트 시즌) 마감 — 선수·클랜 **지난시즌 카드**와 랭킹 스냅샷을 굳힌다 (D-175).
+              열려 있는 시즌이 시즌0(number 0 · beta)이 아니면 거부한다.
+              --open 은 이어서 다음 시즌을 연다. **--number 를 반드시 준다**
+              (이관된 시즌 1~7 때문에 "시즌1" 의 번호가 [미확인]이다).
+              **--confirm 없이는 한 줄도 쓰지 않는다**
   clan        [--league <slug>] | --register --slug <s> --name <n> | --rename --slug <s> --name <n>
               | --join --league <slug> --slug <s> --division N | --merge --from <s> --into <s>
               클랜 등록·이름 변경·리그 참여·병합 (병합은 slug 두 개를 정확히 지정할 때만)
@@ -752,6 +759,62 @@ async function main(): Promise<number> {
         })),
       )
       log('시즌 전환은 --close → --start 를 운영자가 직접 실행할 때만 일어난다 (D-077)')
+      return 0
+    }
+
+    /* 시즌0(테스트 시즌) 마감 — 지난시즌 카드를 굳힌다 (D-175) */
+    case 'season0-finish': {
+      const leagueSlug = stringFlag(args, 'league')
+      if (!leagueSlug) {
+        fail('--league <slug> 가 필요하다')
+        return 1
+      }
+      const at = stringFlag(args, 'at')
+      const when = at ? new Date(at) : undefined
+      if (at && Number.isNaN(when?.getTime())) {
+        fail(`--at 날짜를 해석할 수 없다: ${at}`)
+        return 1
+      }
+      const wantsOpen = boolFlag(args, 'open')
+      const openNumber = numberFlag(args, 'number')
+      if (wantsOpen && openNumber === null) {
+        fail(
+          '--open 에는 --number N 이 필요하다. ' +
+            '이관된 시즌 1~7 이 이미 있어 "시즌1" 의 번호를 우리가 정할 수 없다 (D-175 [미확인])',
+        )
+        return 1
+      }
+      /* 기본은 미리보기다. `--confirm` 이 있어야 쓴다 */
+      const confirmed = boolFlag(args, 'confirm')
+      const result = await runSeason0Close(
+        { ...ctx, dryRun: !confirmed },
+        {
+          leagueSlug,
+          endedAt: when,
+          open: wantsOpen
+            ? {
+                number: openNumber!,
+                startedAt: when,
+                skipPromotion: boolFlag(args, 'no-promotion'),
+              }
+            : undefined,
+        },
+      )
+      if (!result.ok) {
+        fail(result.reason)
+        return 1
+      }
+      table([
+        {
+          '닫은 시즌': result.closedSeason ?? '-',
+          '개인 카드': result.playerCards,
+          '점수 있는 카드': result.playerCardsWithRating,
+          '클랜 카드': result.clanCards,
+          '시작시각 보정': result.alignedStartedAt ?? '-',
+          '연 시즌': result.openedSeason ?? '-',
+        },
+      ])
+      if (!confirmed) log('미리보기다. 아무것도 쓰지 않았다. 적용하려면 --confirm')
       return 0
     }
 
@@ -1874,6 +1937,29 @@ async function main(): Promise<number> {
       ])
       if (result.rows > 0 && result.points === 0) {
         warn('좌표가 하나도 없다. 이 파일로는 포지션 판정을 할 수 없다')
+      }
+      const labelled = Object.entries(result.labels)
+      if (labelled.length > 0) {
+        log(`파일에 포지션 정답이 ${labelled.length}명분 들어 있다`)
+        const byPosition: Record<string, number> = {}
+        for (const [, position] of labelled) byPosition[position] = (byPosition[position] ?? 0) + 1
+        table([byPosition])
+        const out = stringFlag(args, 'labels-out')
+        if (out) {
+          writeFileSync(
+            out,
+            JSON.stringify(
+              {
+                note: `수집 파일에서 뽑은 포지션 정답 (${file})`,
+                labels: labelled.map(([userNexonSn, position]) => ({ userNexonSn, position })),
+              },
+              null,
+              2,
+            ),
+            'utf8',
+          )
+          log(`정답 라벨을 저장했다 — ${out}`)
+        }
       }
       if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
       return 0

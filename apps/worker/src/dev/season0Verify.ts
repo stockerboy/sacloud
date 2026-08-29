@@ -1,9 +1,25 @@
-/** 시즌0 반영 결과 확인 — 화면이 읽는 조건 그대로 조회한다. 읽기만 한다. */
+/**
+ * 시즌0 반영 결과 확인 — 화면이 읽는 조건 그대로 조회한다. 읽기만 한다.
+ *
+ * ```bash
+ * pnpm --filter @sacloud/worker exec tsx src/dev/season0Verify.ts            # supply
+ * pnpm --filter @sacloud/worker exec tsx src/dev/season0Verify.ts --league sanply
+ * ```
+ */
 import { prisma } from '@sacloud/db'
 
 async function main(): Promise<void> {
-  const league = await prisma.league.findUnique({ where: { slug: 'supply' }, select: { id: true } })
-  if (!league) return
+  const index = process.argv.indexOf('--league')
+  const slug =
+    index >= 0 && process.argv[index + 1]
+      ? process.argv[index + 1]!
+      : (process.argv.find((a) => a.startsWith('--league='))?.split('=')[1] ?? 'supply')
+  const league = await prisma.league.findUnique({ where: { slug }, select: { id: true } })
+  if (!league) {
+    console.log(`리그를 찾을 수 없다: ${slug}`)
+    return
+  }
+  console.log(`리그 ${slug}`)
 
   const ranked = await prisma.leaguePlayer.count({
     where: { leagueId: league.id, placement: false },

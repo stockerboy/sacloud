@@ -12,8 +12,17 @@
  */
 import { prisma } from '../src/index'
 
-/** 새 시즌의 공통 출발점. `@sacloud/rating`의 seasonBaseline과 같은 값이다 (D-064) */
-export const SEASON_BASELINE = 1500
+/**
+ * 새 시즌의 공통 출발점. `@sacloud/rating` 의 `seasonBaseline` 과 **같은 값이어야 한다** (D-064).
+ *
+ * D-145 에서 기준점을 1500 → 3000 으로 올렸는데 **이 상수만 1500 으로 남아 있었다** (D-175).
+ * 그대로 두면 시즌1 을 여는 순간 전원이 1500 에서 시작하고, 그 다음 경기부터 계산하는
+ * 우리 공식은 3000 을 기준점으로 보므로 두 값이 어긋난다.
+ *
+ * `@sacloud/db` 는 `@sacloud/rating` 에 의존하지 않는다(순수 계산 패키지를 DB 쪽으로 끌어오지
+ * 않는다). 그래서 값을 **베껴 적고**, 어긋나지 않게 `seasonIsolation.test.ts` 가 지킨다.
+ */
+export const SEASON_BASELINE = 3000
 
 /**
  * 베타 시즌의 내부 번호.
@@ -175,8 +184,18 @@ export async function previewSeasonClose(leagueSlug: string): Promise<SeasonClos
     orderBy: [{ division: 'asc' }, { rating: 'desc' }],
     select: { division: true, rating: true, clan: { select: { name: true } } },
   })
+  /* 카드가 실제로 만들어질 행 수 — `closeSeason` 과 **같은 조건**으로 센다 (D-175).
+     예전에는 `placement: false` 를 셌는데, 카드는 배치고사 중인 선수에게도 나가므로
+     미리보기와 실제 결과가 달랐다 */
   const players = await prisma.leaguePlayer.count({
-    where: { leagueId: league.id, placement: false },
+    where: {
+      leagueId: league.id,
+      OR: [{ win: { gt: 0 } }, { lose: { gt: 0 } }, { kill: { gt: 0 } }, { death: { gt: 0 } }, { mvpCount: { gt: 0 } }],
+    },
+  })
+
+  const clanCards = await prisma.leagueClan.count({
+    where: { leagueId: league.id, OR: [{ win: { gt: 0 } }, { lose: { gt: 0 } }] },
   })
 
   const leaders: { division: number; clan: string; rating: number }[] = []
@@ -189,7 +208,7 @@ export async function previewSeasonClose(leagueSlug: string): Promise<SeasonClos
     ok: true,
     reason: '',
     season: active.number,
-    clanRows: clans.length,
+    clanRows: clanCards,
     playerRows: players,
     divisionLeaders: leaders,
   }
@@ -343,29 +362,37 @@ export async function closeSeason(input: {
     /* 선수·클랜별 **시즌 카드**를 남긴다 (D-101).
        랭킹 스냅샷은 "그 시즌 상위 목록"이고, 카드는 "이 선수의 그 시즌 성적"이다.
        카드가 없으면 `startSeason`이 누적을 0으로 되돌리는 순간 그 시즌 기록이 사라진다.
-       배치고사 미완료라 순위가 없는 선수도 카드는 남긴다 — 전적 자체는 있었기 때문이다. */
+       배치고사 미완료라 순위가 없는 선수도 카드는 남긴다 — 전적 자체는 있었기 때문이다.
+
+       ⚠ **그 시즌에 아무것도 하지 않은 행은 뺀다** (D-175).
+       위 문장의 근거가 "전적 자체는 있었기 때문" 인데, 판수도 킬데스도 0 인 행은
+       그 전적이 없다. 시즌0 실측(2026-08-29 · 로컬 supply): `LeaguePlayer` 10,393행 중
+       그 시즌에 한 판이라도 뛴 선수는 1,096명뿐이었다. 나머지 9,297명에게
+       `0승 0패` 카드를 만들면 뛰지도 않은 시즌이 프로필에 생긴다. */
+    const played = (row: { win: number; lose: number; kill: number; death: number; mvpCount: number }): boolean =>
+      row.win + row.lose > 0 || row.kill > 0 || row.death > 0 || row.mvpCount > 0
     const rankOf = new Map(playerRows.map((row) => [row.league_player_id, row.rank]))
-    for (const player of players) {
-      await tx.leaguePlayerSeason.upsert({
-        where: { leaguePlayerId_seasonId: { leaguePlayerId: player.id, seasonId: active.id } },
-        create: {
-          leaguePlayerId: player.id,
-          seasonId: active.id,
-          season: active.number,
-          rank: rankOf.get(player.id) ?? null,
-          rankCount: playerRows.length,
-          rating: player.rating,
-          win: player.win,
-          lose: player.lose,
-          kill: player.kill,
-          death: player.death,
-          assist: player.assist,
-          headshot: player.headshot,
-          mvpCount: player.mvpCount,
-        },
-        // 이미 확정된 카드(과거 이관분)를 덮어쓰지 않는다
-        update: {},
-      })
+    const playerCards = players.filter(played).map((player) => ({
+      leaguePlayerId: player.id,
+      seasonId: active.id,
+      season: active.number,
+      rank: rankOf.get(player.id) ?? null,
+      rankCount: playerRows.length,
+      rating: player.rating,
+      win: player.win,
+      lose: player.lose,
+      kill: player.kill,
+      death: player.death,
+      assist: player.assist,
+      headshot: player.headshot,
+      mvpCount: player.mvpCount,
+    }))
+    /* `skipDuplicates` 는 예전 `update: {}` 와 뜻이 같다 —
+       **이미 확정된 카드(과거 이관분)를 덮어쓰지 않는다.**
+       한 줄씩 upsert 하면 만 건이 넘는 리그에서 트랜잭션이 시간 초과로 통째로 죽는다
+       (실측: `Transaction not found` · D-175). */
+    if (playerCards.length > 0) {
+      await tx.leaguePlayerSeason.createMany({ data: playerCards, skipDuplicates: true })
     }
 
     const clanRankOf = new Map<string, number>()
@@ -374,29 +401,30 @@ export async function closeSeason(input: {
         .filter((clan) => clan.division === division && !clan.placement)
         .forEach((clan, index) => clanRankOf.set(clan.id, index + 1))
     }
-    for (const clan of clans) {
-      await tx.leagueClanSeason.upsert({
-        where: { leagueClanId_seasonId: { leagueClanId: clan.id, seasonId: active.id } },
-        create: {
-          leagueClanId: clan.id,
-          seasonId: active.id,
-          season: active.number,
-          rank: clanRankOf.get(clan.id) ?? null,
-          rankCount: clanRankOf.size,
-          rating: clan.rating,
-          division: clan.division,
-          win: clan.win,
-          lose: clan.lose,
-        },
-        update: {},
-      })
+    const clanCards = clans
+      .filter((clan) => clan.win + clan.lose > 0)
+      .map((clan) => ({
+        leagueClanId: clan.id,
+        seasonId: active.id,
+        season: active.number,
+        rank: clanRankOf.get(clan.id) ?? null,
+        rankCount: clanRankOf.size,
+        rating: clan.rating,
+        division: clan.division,
+        win: clan.win,
+        lose: clan.lose,
+      }))
+    if (clanCards.length > 0) {
+      await tx.leagueClanSeason.createMany({ data: clanCards, skipDuplicates: true })
     }
 
     await tx.season.update({
       where: { id: active.id },
       data: { status: 'closed', endedAt },
     })
-  })
+  },
+  /* 미러를 들여온 뒤로 한 리그의 선수가 만 명이 넘는다. 기본 5초로는 못 끝낸다 (D-175) */
+  { timeout: 120_000, maxWait: 20_000 })
 
   return {
     ok: true,

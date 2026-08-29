@@ -30,8 +30,10 @@ describe('베타 시즌 번호 (D-098)', () => {
 })
 
 describe('Season 8 출발점 (정책 4)', () => {
+  /* D-145 에서 기준점이 3000 이 됐는데 이 상수만 1500 으로 남아 있었다 (D-175).
+     `@sacloud/rating` 의 `seasonBaseline` 과 같은 값이어야 한다 */
   it('개인·클랜 모두 코드가 가진 baseline에서 시작한다', () => {
-    expect(SEASON_BASELINE).toBe(1500)
+    expect(SEASON_BASELINE).toBe(3000)
   })
 })
 

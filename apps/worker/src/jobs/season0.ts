@@ -1,10 +1,15 @@
 /**
- * 시즌0 재계산 — 2026-01-01 ~ 2026-06-30 미러 기록을 **우리 점수 시스템**으로 다시 매긴다 (D-171).
+ * 시즌0 재계산 — **2026-04-01(KST) ~ 현재(열린 구간)** 을 우리 점수 시스템으로 다시 매긴다
+ * (D-171 · 창 재정의는 D-175).
  *
  * ── 무엇을 하나
  *
- * 3rd.supply 에서 가져온 그 기간의 경기를 시간순으로 처음부터 다시 재생해서
+ * 그 창의 경기를 **미러(3rd.supply)·넥슨 가리지 않고** 시간순으로 처음부터 다시 재생해서
  * 개인 **통합 / 스나 / 라플** 랭킹과 **클랜** 랭킹을 만든다.
+ * 창과 대상 origin 은 `../lib/season0Window.ts` 한 곳에만 있다.
+ *
+ * 창 밖(2024-05 ~ 2026-03) 기록은 **지우지 않는다.** `Match` · `MatchPlayerStat` 에
+ * 그대로 남고 기록실·지난시즌 조회는 창으로 거르지 않는다. 빠지는 것은 집계뿐이다.
  *
  * ── 공식을 새로 짜지 않는다
  *
@@ -45,11 +50,21 @@ import { REPO_ROOT } from '../lib/env.js'
 import { log } from '../lib/log.js'
 import { V2_RATING_CONSTANTS, type RatingConstants } from '@sacloud/rating'
 import { runRate } from './rate.js'
+import {
+  season0MatchWhere as matchWhere,
+  season0Scope as scope,
+  season0WindowLabel,
+} from '../lib/season0Window.js'
 import type { JobContext } from './context.js'
 
-const MIRROR_ORIGIN = '3rd.supply'
-export const SEASON0_FROM = new Date('2026-01-01T00:00:00.000Z')
-export const SEASON0_TO = new Date('2026-07-01T00:00:00.000Z')
+/* 창·대상 origin 은 여기서 정의하지 않는다. 한 곳(`season0Window`)에서만 온다 (D-175) */
+export {
+  SEASON0_FROM,
+  SEASON0_TO,
+  SEASON0_ORIGINS,
+  season0MatchWhere,
+  season0Scope,
+} from '../lib/season0Window.js'
 /** 0 = 라이플, 1 = 스나이퍼 */
 const RIFLE = 0
 const SNIPER = 1
@@ -150,11 +165,11 @@ export async function runSeason0(
   })
   if (!league) return null
 
-  log(`[${leagueSlug}] 시즌0 재계산 — ${SEASON0_FROM.toISOString().slice(0, 10)} ~ 2026-06-30`)
+  log(`[${leagueSlug}] 시즌0 재계산 — ${season0WindowLabel()}`)
 
   const rated = await runRate(DRY_CTX, {
     leagueSlug,
-    matchScope: { origin: MIRROR_ORIGIN, from: SEASON0_FROM, to: SEASON0_TO },
+    matchScope: scope(),
     collectStats: true,
     constants,
   })
@@ -162,13 +177,7 @@ export async function runSeason0(
   /* ---- 무기별 분리 ----
      경기별 참가행의 weapon 을 읽어, 계산된 증감을 그 무기 쪽에 **기록만** 나눈다 */
   const weaponRows = await prisma.matchPlayerStat.findMany({
-    where: {
-      match: {
-        leagueId: league.id,
-        origin: MIRROR_ORIGIN,
-        startAt: { gte: SEASON0_FROM, lt: SEASON0_TO },
-      },
-    },
+    where: { match: { leagueId: league.id, ...matchWhere() } },
     select: { matchId: true, playerId: true, weapon: true },
   })
   const weaponOf = new Map<string, number | null>()
@@ -343,7 +352,8 @@ function printTop(title: string, rows: Season0PlayerRow[], top: number, key: 'di
       판수: key === 'sniperDelta' ? r.sniperGames : key === 'rifleDelta' ? r.rifleGames : r.games,
       승: r.win,
       패: r.lose,
-      승률: `${(r.winRate * 100).toFixed(1)}%`,
+      /* `runRate` 의 리포트가 이미 백분율이다. 여기서 다시 100 을 곱하면 `6299.2%` 가 된다 */
+      승률: `${r.winRate.toFixed(1)}%`,
     })),
   )
 }
