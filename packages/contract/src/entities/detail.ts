@@ -105,6 +105,36 @@ export const PlayerForm = z.object({
 })
 export type PlayerForm = z.infer<typeof PlayerForm>
 
+/**
+ * `오늘 퍼포먼스` 한 줄 (`docs/PLAYER_TRAITS_SPEC.md` 10절 · D-182).
+ *
+ * 계산과 문구는 `packages/contract/src/todayPerformance.ts` 한 곳에 있다.
+ * **폼 판정은 킬데스만 본다** — 승률은 문구에만 들어간다 (사용자 지시).
+ *
+ * 최근 폼(`PlayerForm` · D-167)과 **다른 것**이다. 그쪽은 `최근 10경기 vs 직전 30경기`,
+ * 이쪽은 `오늘 vs 시즌평균` 이다.
+ */
+export const PlayerTodayPerformance = z.object({
+  /** 오늘(KST) 뛴 래더 경기 전부 */
+  games: Count,
+  /** 그중 K/D 를 아는 경기 — 킬데스의 분모 */
+  known_games: Count,
+  win: Count,
+  lose: Count,
+  /** 오늘 경기가 없으면 `null` */
+  win_rate: Percent.nullable(),
+  /** K/D 를 아는 경기가 없으면 `null` — **0이 아니라 모르는 것이다** (D-106) */
+  kd_rate: Percent.nullable(),
+  /** 견준 기준 = 시즌 평균 킬데스 */
+  season_kd_rate: Percent.nullable(),
+  /** 오늘 − 시즌평균 (%p). 판정 불가면 `null` */
+  delta: z.number().nullable(),
+  trend: PlayerFormTrend,
+  /** 화면에 그대로 쓰는 문구. 오늘 경기가 없으면 `오늘 경기기록 없음` */
+  sentence: z.string(),
+})
+export type PlayerTodayPerformance = z.infer<typeof PlayerTodayPerformance>
+
 export const LeaguePlayerDetail = LeaguePlayer.extend({
   league: LeagueSummary,
   /** 선수 프로필 — `PlayerSummary` + `position` · `note` (D-161) */
@@ -120,6 +150,14 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
    * `null` 이면 화면은 폼 블록을 **그리지 않는다** — 빈 그래프를 그리지 않는다.
    */
   form: PlayerForm.nullable().default(null),
+  /**
+   * 오늘 퍼포먼스 한 줄 (10절 · D-182).
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   * `null` 이면 화면은 이 줄을 **그리지 않는다**.
+   * 오늘 경기가 없는 것과 **다르다** — 그때는 값이 있고 문구가 `오늘 경기기록 없음` 이다.
+   */
+  today: PlayerTodayPerformance.nullable().default(null),
   /** 최근 같이한 플레이어 승률 */
   teammates: z.array(TeammateStat),
 })

@@ -1,11 +1,14 @@
 import { prisma, type Prisma } from '@sacloud/db'
 import {
+  buildTodayPerformance,
   kdRate,
   kdRateOrNull,
   killPerMatch,
   winRate,
   winRateOrNull,
   type LeagueClanSeason,
+  type PlayerTodayPerformance,
+  type TodayPerformance,
   type LeagueClanShow,
   type LeaguePlayerDetail,
   type LeaguePlayerSeason,
@@ -21,6 +24,7 @@ import { cursorPage, type CursorPage } from '../cursorPage'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
 import { buildPlayerForm } from './playerForm'
+import { playerTodayTally } from './todayPerformance'
 import { toKstIso } from '../format'
 import {
   CLAN_SUMMARY_SELECT,
@@ -529,6 +533,27 @@ export async function getLeagueClanPlayers(
 /* -------------------------------------------------------------------------- */
 
 /**
+ * `오늘 퍼포먼스` 를 계약 모양(snake_case)으로 옮긴다 (D-182).
+ *
+ * 계산은 `@sacloud/contract` 의 `buildTodayPerformance()` 가 전부 한다.
+ * 여기서 값을 손보지 않는다 — 문구까지 이미 만들어져 온다.
+ */
+function toTodayPerformance(value: TodayPerformance): PlayerTodayPerformance {
+  return {
+    games: value.games,
+    known_games: value.knownGames,
+    win: value.win,
+    lose: value.lose,
+    win_rate: value.winRate,
+    kd_rate: value.kdRate,
+    season_kd_rate: value.seasonKdRate,
+    delta: value.delta,
+    trend: value.trend,
+    sentence: value.sentence,
+  }
+}
+
+/**
  * GET /leagues/{leagueSlug}/players/{playerId}
  *
  * 요약의 대상 경기는 **그 플레이어가 참가한 리그 내 전 경기**다.
@@ -579,7 +604,7 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, sniperRank, rifleRank, totals, weaponStats, record, form] = await Promise.all([
+  const [rank, sniperRank, rifleRank, totals, weaponStats, record, form, todayTally] = await Promise.all([
     playerRankOf({
       id: leaguePlayer.id,
       leagueId: leaguePlayer.leagueId,
@@ -603,6 +628,10 @@ export async function getLeaguePlayerDetail(
     /* 최근 폼 — 6개월 월별 킬뎃 + 최근 10경기 판정 (D-167).
        소속 클랜을 보지 않으므로 `leagueClanIdPromise` 를 기다릴 이유가 없다 */
     buildPlayerForm(league.id, playerId),
+    /* 오늘 퍼포먼스 — 재료만 센다 (10절 · D-182).
+       시즌 평균과 견주는 일은 `buildTodayPerformance()` 가 아래에서 한다.
+       그래야 `totals` 를 기다리지 않고 **같이** 나갈 수 있다 */
+    playerTodayTally(league.id, playerId),
   ])
 
   return {
@@ -664,6 +693,9 @@ export async function getLeaguePlayerDetail(
     match_summary: record.summary,
     /* 최근 폼 (D-167). 원본에 없는 화면이다 — 사용자 요구로 추가했다 */
     form,
+    /* 오늘 퍼포먼스 (10절 · D-182). 폼 판정은 **킬데스만** 본다 —
+       기준은 상세정보와 같은 모집단에서 나온 시즌 평균이다 */
+    today: toTodayPerformance(buildTodayPerformance(todayTally, totals.kdRate)),
     teammates: record.teammates,
     weapon_stats: weaponStats,
   }

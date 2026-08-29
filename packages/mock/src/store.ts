@@ -44,11 +44,15 @@ import {
   FORM_TOP_MIN_GAMES,
   FORM_TOP_SIZE,
   RANK_WEAPON_CODE,
+  buildTodayPerformance,
   formMonthKey,
   formMonthKeys,
   isBarracksUrl,
   judgeFormTrend,
+  kstDayStart,
   playerRefsFromBarracksUrl,
+  type TodayPerformance,
+  type TodayTally,
 } from '@sacloud/contract'
 import { dataset } from './dataset'
 import { getMockRole } from './session'
@@ -1028,6 +1032,43 @@ function buildTeammates(matches: MockMatch[], leagueClanId: string, playerId: st
   return rows.slice(0, 10)
 }
 
+/* ------------------------------ 오늘 퍼포먼스 ------------------------------ */
+
+/**
+ * `오늘 퍼포먼스` (10절 · D-182) — 오늘(KST) 뛴 경기를 센다.
+ *
+ * 판정과 문구는 `@sacloud/contract` 의 `buildTodayPerformance()` 가 전부 한다.
+ * 실제 서버(`apps/web/lib/server/queries/todayPerformance.ts`)도 **같은 함수**를 쓴다.
+ * 여기서 다르게 계산하면 mock↔live 대조가 어긋난다.
+ *
+ * 픽스처는 결정적이지만 `오늘` 은 그렇지 않다 — 픽스처 경기가 오늘 날짜에 걸리지 않으면
+ * `오늘 경기기록 없음` 이 나온다. **그것이 정상이고, 가짜 오늘 경기를 지어내지 않는다.**
+ */
+function buildTodayPerf(
+  matches: MockMatch[],
+  playerId: string,
+  seasonKdRate: number | null,
+  now: Date,
+): TodayPerformance {
+  const from = kstDayStart(now).getTime()
+  const tally: TodayTally = { games: 0, knownGames: 0, win: 0, lose: 0, kill: 0, death: 0 }
+
+  for (const match of matches) {
+    if (new Date(match.startAt).getTime() < from) continue
+    const stat = match.players.find((row) => row.playerId === playerId)
+    if (!stat) continue
+    tally.games += 1
+    /* Mock 픽스처는 K/D 가 항상 있다. 운영에서는 미러 경기에 결측이 섞인다 (D-148) */
+    tally.knownGames += 1
+    tally.kill += stat.kill
+    tally.death += stat.death
+    if (stat.side === match.winnerSide) tally.win += 1
+    else tally.lose += 1
+  }
+
+  return buildTodayPerformance(tally, seasonKdRate)
+}
+
 /* --------------------------------- 최근 폼 --------------------------------- */
 
 /**
@@ -1158,6 +1199,27 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     match_summary: buildMatchSummary(matches, leaguePlayer.leagueClanId, playerId),
     /* 최근 폼 (D-167). 원본에 없는 화면이다 — 사용자 요구로 추가했다 */
     form: buildPlayerForm(matches, playerId, new Date()),
+    /* 오늘 퍼포먼스 (10절 · D-182). 기준은 상세정보와 **같은** 시즌 킬뎃이다 */
+    today: (() => {
+      const perf = buildTodayPerf(
+        matches,
+        playerId,
+        kdRate(leaguePlayer.kill, leaguePlayer.death),
+        new Date(),
+      )
+      return {
+        games: perf.games,
+        known_games: perf.knownGames,
+        win: perf.win,
+        lose: perf.lose,
+        win_rate: perf.winRate,
+        kd_rate: perf.kdRate,
+        season_kd_rate: perf.seasonKdRate,
+        delta: perf.delta,
+        trend: perf.trend,
+        sentence: perf.sentence,
+      }
+    })(),
     teammates: buildTeammates(matches, leaguePlayer.leagueClanId, playerId),
     weapon_stats: weaponStatsOf(leaguePlayer.id),
   }
