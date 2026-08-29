@@ -7,7 +7,9 @@
  *   - mock 데이터가 운영 데이터로 보이지 않게 `origin`을 그대로 노출한다 (정책 25)
  */
 import { prisma } from '@sacloud/db'
-import { seasonLabel } from '@sacloud/db/ops'
+/* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178).
+   `@sacloud/db/ops` 의 `seasonLabel()` 은 CLI 로그용이라 `Beta Season` 그대로다 */
+import { seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 
 /* ------------------------------------------------------------- 대시보드 --- */
 

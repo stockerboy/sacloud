@@ -22,12 +22,29 @@
  *   원본은 **래더 경기만** 준다. 그래서 `origin='3rd.supply'` 이면 래더 경기다.
  *   추측이 아니라 수집 범위에서 나오는 사실이다 (`docs/NEXON_INGEST_SPEC.md`).
  *
+ * ── 넥슨 재구성 경기도 포함한다 (D-178 — D-164 를 넓혔다)
+ *   예전에는 `redRatingUpdate` 아니면 미러, 둘뿐이었다. 그런데 시즌0 재계산은
+ *   **읽기 전용 replay 라 원본 칸(`Match.redRatingUpdate`)을 채우지 않는다** (D-171).
+ *   그래서 `origin='nexon'` 경기가 화면에서만 통째로 빠졌다. 실측(2026-08-29 · 로컬):
+ *
+ *     시즌0 창 안 supply 경기   엔진 집계 대상 10,019 · 화면 래더 판정 9,981
+ *     차이 38건 = `origin='nexon'` 이고 `redRatingUpdate` 가 `null` 인 경기
+ *     선수 `OBS-4d31283ebf60773a1296254f`   엔진 70판 · 화면 66판
+ *
+ *   엔진(`apps/worker/src/jobs/rate.ts`)의 집계 대상 origin 은
+ *   `SEASON0_ORIGINS`(`3rd.supply` + `nexon`) 다. **같은 상수를 그대로 쓴다** —
+ *   `'nexon'` 을 여기 또 적으면 두 곳이 갈라진다.
+ *
  * ── 배치고사는 여기서 거르지 않는다
  *   배치고사 경기는 `rating_update` 가 0이지 `null` 이 아니다 (3-B 7번).
  *   "래더에 반영됐는가" 와 "점수가 움직였는가" 는 다른 질문이다.
+ *
+ * ── 여기서 **기간**은 보지 않는다
+ *   시즌 창은 다른 축이다 (`season0Scope.ts`). 기록실은 창으로 거르지 않고
+ *   성적 수치만 거르기 때문에, 두 조건을 한 함수에 묶으면 기록실이 같이 잘린다.
  */
 import type { Prisma } from '@sacloud/db'
-import { MIRROR_ORIGIN } from './publicScope'
+import { SEASON0_ORIGINS } from './season0Scope'
 
 /**
  * 래더에 반영된 경기인가 — `Match` 에 바로 거는 조건.
@@ -42,10 +59,12 @@ import { MIRROR_ORIGIN } from './publicScope'
 export function ladderMatchWhere(): Prisma.MatchWhereInput {
   return {
     OR: [
-      /* 우리 공식이 계산한 경기 (D-145) */
+      /* 우리 공식이 계산해 **원본 칸에 써 넣은** 경기 (D-145) */
       { redRatingUpdate: { not: null } },
-      /* 3rd.supply 에서 미러링한 경기 — 원본이 래더 경기만 준다 (D-153) */
-      { origin: MIRROR_ORIGIN },
+      /* 엔진이 시즌0 집계 대상으로 훑는 origin 그대로 (D-175 · D-178).
+         `3rd.supply` = 미러(원본이 래더 경기만 준다 · D-153),
+         `nexon` = 넥슨 재구성(읽기 전용 replay 라 원본 칸이 비어 있다 · D-171) */
+      { origin: { in: [...SEASON0_ORIGINS] } },
     ],
   }
 }

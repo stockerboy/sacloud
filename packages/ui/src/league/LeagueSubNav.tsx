@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BETA_NOTICE } from './betaNoticeText'
+import { BETA_NOTICE, BETA_NOTICE_HEADLINE } from './betaNoticeText'
 
 /**
  * 리그 화면 공통 서브내비 — 전역 GNB 바로 아래 고정된다.
@@ -35,7 +35,7 @@ const ITEM_ACTIVE = 'border-b-subnav-active font-bold text-subnav-active'
  *
  * 내부 번호가 0이라고 `Season 0`이라고 쓰지 않는다. 이름은 서버가 준 `season_label`이다 (D-098).
  */
-export function BetaBadge({ label = 'Beta Season' }: { label?: string }) {
+export function BetaBadge({ label = BETA_NOTICE_HEADLINE }: { label?: string }) {
   return (
     <span
       className="ml-2 rounded border border-white/60 px-1.5 py-0.5 text-[11px] font-bold leading-none"

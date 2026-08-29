@@ -12,6 +12,7 @@ import {
   type PlayerFormMonth,
 } from '@sacloud/contract'
 import { ladderMatchWhere } from './ladderScope'
+import { SEASON0_FROM, seasonWindowWhere } from './season0Scope'
 
 /**
  * 선수 프로필 `최근 폼` (D-167).
@@ -31,9 +32,15 @@ import { ladderMatchWhere } from './ladderScope'
  *   `kill`·`death` 가 둘 다 있는 기록만 센다.
  */
 
-/** 폼 계산에 쓰는 경기 모집단 — 이 리그의 **래더 반영 경기** */
+/**
+ * 폼 계산에 쓰는 경기 모집단 — 이 리그의 **현재 시즌 창 안 래더 반영 경기** (D-178).
+ *
+ * 창을 거는 이유는 상세정보·랭킹 표와 **같은 모집단**이어야 하기 때문이다.
+ * 폼 그래프만 창 밖(2026-03 이전)을 더 세면 같은 프로필 안에서 숫자가 어긋난다.
+ * 창 밖 경기는 기록실에서 계속 보인다 — 여기서만 뺀다 (D-175 정한 것 ②).
+ */
 function formMatchWhere(leagueId: string): Prisma.MatchWhereInput {
-  return { leagueId, ...ladderMatchWhere() }
+  return { leagueId, ...seasonWindowWhere(), ...ladderMatchWhere() }
 }
 
 /** K/D 가 **둘 다 있는** 이 선수의 참가 기록만 */
@@ -75,7 +82,12 @@ export async function buildPlayerForm(
     prisma.matchPlayerStat.findMany({
       where: {
         ...formStatWhere(leagueId, playerId),
-        match: { ...formMatchWhere(leagueId), startAt: { gte: rangeStart } },
+        /* 6개월 범위와 시즌 창 중 **늦은 쪽**이 시작이다.
+           `formMatchWhere` 가 이미 창 시작을 걸어 두므로 여기서는 더 늦은 값만 덮는다 */
+        match: {
+          ...formMatchWhere(leagueId),
+          startAt: { gte: rangeStart > SEASON0_FROM ? rangeStart : SEASON0_FROM },
+        },
       },
       select: { kill: true, death: true, match: { select: { startAt: true } } },
     }),

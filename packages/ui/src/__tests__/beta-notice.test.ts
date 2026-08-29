@@ -33,19 +33,24 @@ describe('베타 안내 노출 조건', () => {
 })
 
 describe('베타 안내 문구', () => {
-  it('제목은 Beta Season이고 내부 번호 0을 노출하지 않는다', () => {
-    expect(BETA_NOTICE_HEADLINE).toBe('Beta Season')
-    expect(betaNoticeFor('beta')?.headline).not.toContain('0')
+  it('제목은 시즌0 이다 (D-178 — 예전 `Beta Season`)', () => {
+    /* 예전에는 내부 번호 0 을 감추려고 `Beta Season` 이라고 썼다 (D-098).
+       사용자가 `시즌0` 이라고 부르기로 정해서 **번호를 그대로 드러낸다** (D-178) */
+    expect(BETA_NOTICE_HEADLINE).toBe('시즌0')
+    expect(betaNoticeFor('beta')?.headline).toBe('시즌0')
   })
 
   it('무엇을 검증하는 시즌인지 알려 준다', () => {
     expect(BETA_NOTICE_PURPOSE).toBe('현재 SACLOUD 래더 시스템을 검증하는 공개 테스트 시즌입니다.')
   })
 
-  it('정식 Season 8에 승계되지 않는다는 사실을 명시한다', () => {
+  it('다음 정식 시즌에 승계되지 않는다는 사실을 명시한다', () => {
+    /* 시즌1 의 **번호가 `[미확인]`** 이라 문구에 숫자를 넣지 않는다 (D-175 · D-178).
+       예전 문구는 `정식 Season 8` 이라고 못 박고 있었다 */
     expect(BETA_NOTICE_CARRYOVER).toBe(
-      '베타 시즌의 랭킹과 점수는 정식 Season 8에 승계되지 않습니다.',
+      '시즌0의 랭킹과 점수는 다음 정식 시즌에 승계되지 않습니다.',
     )
+    expect(BETA_NOTICE_CARRYOVER).not.toContain('Season')
     expect(betaNoticeFor('beta')?.lines).toContain(BETA_NOTICE_CARRYOVER)
   })
 

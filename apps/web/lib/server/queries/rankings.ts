@@ -50,7 +50,8 @@ import {
   toPlayerSummary,
 } from '../mappers'
 import { cumulativeKdRate } from './visibility'
-import { MIRROR_ORIGIN } from './publicScope'
+import { ladderMatchWhere } from './ladderScope'
+import { SEASON0_ORIGINS, seasonWindowWhere } from './season0Scope'
 
 /** 한 무기 축(스나·라플)만 가리키는 좁은 타입 — `all` 은 여기 오지 않는다 */
 export type WeaponAxis = Exclude<RankWeapon, 'all'>
@@ -259,13 +260,13 @@ export async function getFormTop(leagueId: string, weapon: RankWeapon): Promise<
 
   const empty: FormTop = { date: null, is_today: false, weapon, rows: [] }
 
-  /* 래더에 반영된 경기 중 가장 최근 것 (`ladderMatchWhere()` 와 같은 조건 — D-164).
+  /* 래더에 반영된 경기 중 가장 최근 것 — 조건을 **베껴 적지 않고** 불러 쓴다 (D-164 · D-178).
+     예전에는 여기에 같은 `OR` 를 다시 적어 두어서, 판정이 넓어졌을 때
+     (`origin='nexon'` 추가) 이 줄만 옛 조건으로 남았다.
+     시즌 창도 같이 건다 — 폼 TOP3 는 성적 수치다.
      `@@index([leagueId, startAt desc])` 를 그대로 탄다 */
   const latest = await prisma.match.findFirst({
-    where: {
-      leagueId,
-      OR: [{ redRatingUpdate: { not: null } }, { origin: MIRROR_ORIGIN }],
-    },
+    where: { leagueId, ...seasonWindowWhere(), ...ladderMatchWhere() },
     orderBy: { startAt: 'desc' },
     select: { startAt: true },
   })
@@ -276,6 +277,11 @@ export async function getFormTop(leagueId: string, weapon: RankWeapon): Promise<
   const isToday = day === toKstDate(new Date())
 
   const weaponCode = weapon === 'all' ? null : RANK_WEAPON_CODE[weapon]
+
+  /* `ladderMatchWhere()` 와 **같은 origin 목록**이다 (D-178).
+     Prisma `groupBy` 로는 두 칸을 합쳐 더할 수 없어 여기만 raw SQL 인데,
+     조건까지 손으로 베껴 적으면 두 곳이 갈라진다. 목록만 바인드 파라미터로 넘긴다 */
+  const ladderOrigins = [...SEASON0_ORIGINS]
 
   /* `$queryRaw` 태그드 템플릿은 값을 전부 바인드 파라미터로 넘긴다 (SQL 주입 없음).
      무기 조건은 `weaponCode` 가 null 이면 항상 참이 되게 써서 질의를 한 벌로 유지한다 */
@@ -288,7 +294,7 @@ export async function getFormTop(leagueId: string, weapon: RankWeapon): Promise<
      WHERE m."leagueId" = ${leagueId}
        AND m."startAt" >= ${from}
        AND m."startAt" < ${to}
-       AND (m."redRatingUpdate" IS NOT NULL OR m."origin" = ${MIRROR_ORIGIN})
+       AND (m."redRatingUpdate" IS NOT NULL OR m."origin" = ANY(${ladderOrigins}::text[]))
        AND (${weaponCode}::int IS NULL OR s."weapon" = ${weaponCode}::int)
      GROUP BY s."playerId"
     HAVING COUNT(*) >= ${FORM_TOP_MIN_GAMES}

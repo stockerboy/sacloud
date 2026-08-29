@@ -55,9 +55,14 @@ export interface CumulativeKd {
   kd_rate: number | null
 }
 
+/**
+ * 들어오는 값 자체가 `null` 일 수 있다 — 감추는 것과는 다른 이유다.
+ * K/D 를 아는 경기가 한 판도 없으면 누적 킬·데스는 **모르는 값**이다 (D-034 · D-106 · D-176).
+ * 0으로 바꾸지 않고 그대로 통과시킨다.
+ */
 export function cumulativeKd(
   league: { category: string } | null | undefined,
-  values: { kill: number; death: number; kdRate: number },
+  values: { kill: number | null; death: number | null; kdRate: number | null },
 ): CumulativeKd {
   if (hidesCumulativeKd(league)) return { kill: null, death: null, kd_rate: null }
   return { kill: values.kill, death: values.death, kd_rate: values.kdRate }

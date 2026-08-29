@@ -35,6 +35,14 @@ async function dbUp(): Promise<boolean> {
 
 const up = await dbUp()
 
+/**
+ * 폼 TOP3 픽스처를 몰아 넣는 KST 날짜.
+ *
+ * **시즌0 창 안**이어야 한다 (D-178 — 폼 TOP3 도 창을 본다).
+ * 예전에는 `2026-03-10` 이었는데 창 시작(2026-04-01 KST)보다 앞이라 결과가 통째로 비었다.
+ */
+const FORM_DAY = '2026-05-10'
+
 let leagueId = ''
 let mapId = ''
 let redClanId = ''
@@ -171,9 +179,13 @@ beforeAll(async () => {
      증감은 `sourceRatingDelta` 에만 있다 — D-164 함정을 그대로 재현한다.
      이 조건에서 결과가 비면 폴백이 빠진 것이다.
 
-     KST 같은 날(2026-03-10)에 몰아 넣는다. 마지막 경기가 그날이므로
-     `getFormTop` 이 고르는 대상 날짜도 그날이 된다. */
-  const day = '2026-03-10'
+     KST 같은 날에 몰아 넣는다. 마지막 경기가 그날이므로
+     `getFormTop` 이 고르는 대상 날짜도 그날이 된다.
+
+     날짜는 **시즌0 창 안**이어야 한다 (D-178 — 폼 TOP3 도 창을 본다).
+     예전에는 `2026-03-10` 이었는데 창 시작(2026-04-01 KST)보다 앞이라
+     폼 TOP3 가 통째로 비었다. */
+  const day = FORM_DAY
   const stats: {
     who: string
     delta: number
@@ -341,7 +353,7 @@ describe.skipIf(!up)('무기별 개인랭킹', () => {
 describe.skipIf(!up)('폼 TOP3', () => {
   it('미러 경기(D-164)를 센다 — sourceRatingDelta 폴백이 빠지면 여기서 빈다', async () => {
     const form = await getFormTop(leagueId, 'all')
-    expect(form?.date).toBe('2026-03-10')
+    expect(form?.date).toBe(FORM_DAY)
     expect(form?.rows.length).toBeGreaterThan(0)
   })
 

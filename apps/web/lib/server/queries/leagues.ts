@@ -27,7 +27,9 @@ import {
 import { cumulativeKdRate } from './visibility'
 import { publicOriginWhere } from './publicScope'
 import { ladderMatchWhere } from './ladderScope'
-import { seasonLabel } from '@sacloud/db/ops'
+/* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
+import { seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
+import { seasonWindowWhere } from './season0Scope'
 
 /**
  * 리그 · 랭킹 조회.
@@ -366,8 +368,15 @@ export async function matchCountByPlayer(
      * `redRatingUpdate` 하나만 보면 안 된다 — 그건 **우리 공식(D-145)이 계산한** 값이라
      * 미러링한 3rd.supply 경기에는 들어 있지 않다. 실측: supply 리그 13만 경기 중
      * `redRatingUpdate` 가 있는 것은 98건뿐이라 분모가 0이 됐고, 화면에 평균킬이
-     * 전부 `0.0킬` 로 나왔다. 미러 경기는 전부 래더 경기다 (원본이 래더 경기만 준다). */
-    where: { playerId: { in: playerIds }, match: { leagueId, ...ladderMatchWhere() } },
+     * 전부 `0.0킬` 로 나왔다. 미러 경기는 전부 래더 경기다 (원본이 래더 경기만 준다).
+     *
+     * 분자(`LeaguePlayer.kill`)는 **시즌0 창 안**만 담는다(엔진 집계). 그래서 분모에도
+     * 같은 창을 건다 (D-178). 창이 없으면 분모만 전 기간이 되어 평균킬이 `0.29킬` 처럼
+     * 터무니없이 작아진다 — D-172 가 고친 것과 같은 종류의 어긋남이다. */
+    where: {
+      playerId: { in: playerIds },
+      match: { leagueId, ...seasonWindowWhere(), ...ladderMatchWhere() },
+    },
     _count: { _all: true },
   })
   return new Map(grouped.map((row) => [row.playerId, row._count._all]))

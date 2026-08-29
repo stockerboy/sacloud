@@ -9,9 +9,16 @@
  *
  * 문구를 화면마다 다시 쓰지 않는다. 여기 한 곳에서만 정한다.
  */
+import { BETA_SEASON_LABEL } from '@sacloud/contract'
 
-/** 시즌 이름. 내부 번호가 0이라고 `Season 0`이라고 쓰지 않는다 (D-098) */
-export const BETA_NOTICE_HEADLINE = 'Beta Season'
+/**
+ * 시즌 이름.
+ *
+ * 예전에는 `Beta Season` 이었다 (D-098). 사용자 지시로 **`시즌0`** 이 됐다 (D-178) —
+ * 시즌1 오픈 전의 테스트 시즌이고 사용자가 그 이름으로 부른다 (D-175).
+ * 문자열은 `@sacloud/contract` 한 곳에만 있다. 화면(`apps/web`)도 같은 값을 쓴다.
+ */
+export const BETA_NOTICE_HEADLINE = BETA_SEASON_LABEL
 
 /** 이 시즌이 무엇인지 */
 export const BETA_NOTICE_PURPOSE = '현재 SACLOUD 래더 시스템을 검증하는 공개 테스트 시즌입니다.'
@@ -19,10 +26,11 @@ export const BETA_NOTICE_PURPOSE = '현재 SACLOUD 래더 시스템을 검증하
 /**
  * 승계되지 않는다는 사실.
  *
- * `Season 8`은 베타 다음에 오는 **정식 시즌 이름**이라 문구에 그대로 쓴다.
- * 날짜·기간을 박아 넣는 것과는 다른 문제다 (기간은 어디에도 하드코딩하지 않는다).
+ * 예전에는 `정식 Season 8` 이라고 번호를 박아 두었는데, **시즌1 의 번호가 `[미확인]`** 이다
+ * (D-175 — 이관 시즌 1~7 이 이미 있어 다음 번호가 8 인지 사용자가 정한다).
+ * 모르는 번호를 화면에 쓰지 않는다 (CLAUDE.md 3장 7번). 오픈 날짜도 사용자가 정한다.
  */
-export const BETA_NOTICE_CARRYOVER = '베타 시즌의 랭킹과 점수는 정식 Season 8에 승계되지 않습니다.'
+export const BETA_NOTICE_CARRYOVER = `${BETA_SEASON_LABEL}의 랭킹과 점수는 다음 정식 시즌에 승계되지 않습니다.`
 
 /** 배지 tooltip처럼 한 문장만 필요한 자리에서 쓴다 */
 export const BETA_NOTICE = BETA_NOTICE_CARRYOVER

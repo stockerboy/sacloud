@@ -18,7 +18,8 @@ import {
   type TeammateStat,
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
-import { ladderMatchWhere, withLadderMatch } from './ladderScope'
+import { withLadderMatch } from './ladderScope'
+import { seasonWindowWhere } from './season0Scope'
 import { buildPlayerForm } from './playerForm'
 import { toKstIso } from '../format'
 import {
@@ -31,9 +32,11 @@ import {
   toPlayerSummary,
   type ClanFields,
 } from '../mappers'
-import { seasonLabel } from '@sacloud/db/ops'
+/* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
+import { seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { cumulativeKd, cumulativeKdRate, hidesCumulativeKd } from './visibility'
 import { clanRankOf, matchCountByPlayer, playerRankOf, playerWeaponRankOf } from './leagues'
+import { playerLadderTotals } from './playerTotals'
 import {
   leagueClanIdOfPlayer,
   loadLeagueClanContext,
@@ -310,6 +313,10 @@ async function buildStreak(
  *
  * mock 픽스처는 전부 증감을 들고 있어(3000/3000) 이 조건이
  * mock↔live 대조 결과를 바꾸지 않는다.
+ *
+ * **현재 시즌(시즌0) 창도 같이 건다** (D-178). 이 요약은 상세정보 옆에 나란히 붙는
+ * 성적 수치라 모집단이 다르면 같은 카드 안에서 숫자가 어긋난다 — D-176 이 그 사고였다.
+ * 창 밖(2026-03 이전) 경기는 **경기 목록·매치 상세에서는 그대로 보인다.** 여기서만 뺀다.
  */
 async function buildRecordSummary(
   leagueId: string,
@@ -318,7 +325,9 @@ async function buildRecordSummary(
   playerId: string | null,
 ): Promise<{ summary: MatchSummary; teammates: TeammateStat[] }> {
   /* `where` 에 이미 `OR` 가 있을 수 있어 펼치지 않고 `AND` 로 감싼다 (D-164) */
-  const ratedOnly: Prisma.MatchWhereInput = withLadderMatch(where)
+  const ratedOnly: Prisma.MatchWhereInput = withLadderMatch({
+    AND: [where, seasonWindowWhere()],
+  })
   const recent = await prisma.match.findMany({
     where: ratedOnly,
     orderBy: MATCH_ORDER,
@@ -570,7 +579,7 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, sniper, rifle, matchCount, weaponStats, record, form] = await Promise.all([
+  const [rank, sniperRank, rifleRank, totals, weaponStats, record, form] = await Promise.all([
     playerRankOf({
       id: leaguePlayer.id,
       leagueId: leaguePlayer.leagueId,
@@ -580,11 +589,12 @@ export async function getLeaguePlayerDetail(
     // 무기별 랭킹 — 무기가 확인된 경기가 없으면 null 이다 (D-146)
     playerWeaponRankOf(leaguePlayer.id, league.id, 1),
     playerWeaponRankOf(leaguePlayer.id, league.id, 0),
-    /* 평균킬 분모 — 분자(`LeaguePlayer.kill`)는 **래더 경기**를 누적한다.
-       `official` 로 세면 분자·분모 기준이 달라 119킬인데 `판당 0.0킬`이 된다 (D-148) */
-    prisma.matchPlayerStat.count({
-      where: { playerId, match: { leagueId: league.id, ...ladderMatchWhere() } },
-    }),
+    /* 누적 전적을 **경기에서 직접 센다** (D-176).
+       예전에는 `LeaguePlayer` 의 누적 칸을 읽었는데, 그 칸은 배치 집계가 채우는 값이라
+       집계가 훑는 기간(시즌 창) 밖의 경기가 한 판도 들어가지 않았다. 그래서 같은 화면에서
+       `최근매치` 는 `20전 11승 9패` 인데 `상세정보` 는 `0승 0패 · 0킬 0데스 · MVP 0회` 가 됐다.
+       기준은 `최근매치` 와 **똑같이** "래더에 반영된 경기" 하나뿐이다 (D-164). */
+    playerLadderTotals(league.id, playerId),
     // 무기별 누적도 나머지와 같이 나간다. 예전에는 응답을 만들며 마지막에 홀로 기다렸다
     weaponStatsOf(leaguePlayer.id),
     leagueClanIdPromise.then((leagueClanId) =>
@@ -608,40 +618,49 @@ export async function getLeaguePlayerDetail(
     },
     clan: toClanSummaryOrNull(leaguePlayer.clan),
     rating: leaguePlayer.rating,
-    win: leaguePlayer.win,
-    lose: leaguePlayer.lose,
-    win_rate: winRate(leaguePlayer.win, leaguePlayer.lose),
+    win: totals.win,
+    lose: totals.lose,
+    win_rate: winRate(totals.win, totals.lose),
     /* 무소속리그면 누적 킬·데스·킬뎃만 비운다 (D-107).
        래더·승패·승률·평균킬·MVP·순위·최근 경기·경기별 K/D/A는 그대로다 */
     ...cumulativeKd(league, {
-      kill: leaguePlayer.kill,
-      death: leaguePlayer.death,
-      kdRate: kdRate(leaguePlayer.kill, leaguePlayer.death),
+      kill: totals.kill,
+      death: totals.death,
+      kdRate: totals.kdRate,
     }),
-    assist: leaguePlayer.assist,
-    headshot: leaguePlayer.headshot,
-    kill_per_match: killPerMatch(leaguePlayer.kill, matchCount),
-    mvp_count: leaguePlayer.mvpCount,
+    /* 어시·헤드샷은 계약이 숫자만 받는다. 아는 경기가 하나도 없으면 `null` 이 오는데
+       그때만 0으로 내린다 — 그 이상은 채우지 않는다 ([미확인] 계약을 nullable 로
+       넓힐지는 화면 작업과 함께 판단한다) */
+    assist: totals.assist ?? 0,
+    headshot: totals.headshot ?? 0,
+    /* 평균킬 — 분자·분모가 **같은 집계**에서 나와야 한다 (D-172).
+       분자는 K/D 를 아는 경기의 킬 합이므로 분모도 그 판수다 (D-149) */
+    kill_per_match: killPerMatch(totals.kill ?? 0, totals.knownGames),
+    mvp_count: totals.mvpCount,
     placement: leaguePlayer.placement,
     rank: rank.rank,
     rank_count: rank.rankCount,
-    /* 무기별 전적 (D-149). 통합 킬뎃과 **같은 정의**의 K/D 를 함께 내보낸다 */
-    sniper_rank: sniper.rank,
-    sniper_rank_count: sniper.rankCount,
-    sniper_games: sniper.games,
-    sniper_known_games: sniper.knownGames,
-    sniper_kill: sniper.kill,
-    sniper_death: sniper.death,
-    sniper_assist: sniper.assist,
-    sniper_kd_rate: sniper.kdRate,
-    rifle_rank: rifle.rank,
-    rifle_rank_count: rifle.rankCount,
-    rifle_games: rifle.games,
-    rifle_known_games: rifle.knownGames,
-    rifle_kill: rifle.kill,
-    rifle_death: rifle.death,
-    rifle_assist: rifle.assist,
-    rifle_kd_rate: rifle.kdRate,
+    /* 무기별 전적 (D-149 · D-176).
+       **순위**는 선수끼리 비교하는 값이라 레이팅 엔진이 채운 `LeaguePlayerWeaponStat`
+       에서 온다(목록과 모집단이 같아야 한다). **기록**은 통합 전적과 같은 근거에서
+       그 자리에서 센다 — 둘이 다른 곳에서 오면 나란히 놓았을 때 어긋난다.
+       K/D 정의는 통합과 **하나**다: `킬 / (킬 + 데스) × 100` */
+    sniper_rank: sniperRank.rank,
+    sniper_rank_count: sniperRank.rankCount,
+    sniper_games: totals.sniper.games,
+    sniper_known_games: totals.sniper.knownGames,
+    sniper_kill: totals.sniper.kill,
+    sniper_death: totals.sniper.death,
+    sniper_assist: totals.sniper.assist,
+    sniper_kd_rate: totals.sniper.kdRate,
+    rifle_rank: rifleRank.rank,
+    rifle_rank_count: rifleRank.rankCount,
+    rifle_games: totals.rifle.games,
+    rifle_known_games: totals.rifle.knownGames,
+    rifle_kill: totals.rifle.kill,
+    rifle_death: totals.rifle.death,
+    rifle_assist: totals.rifle.assist,
+    rifle_kd_rate: totals.rifle.kdRate,
     match_summary: record.summary,
     /* 최근 폼 (D-167). 원본에 없는 화면이다 — 사용자 요구로 추가했다 */
     form,

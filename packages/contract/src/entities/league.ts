@@ -108,25 +108,32 @@ export const LeaguePlayer = z.object({
    *   통합 킬뎃과 **같은 정의**다 — `킬 / (킬 + 데스) × 100`.
    *   아는 경기가 없으면 `null` 이다 (0%가 아니라 모르는 것이다).
    *
+   * ── 킬 · 데스 · 어시가 `null` 인 경우 (D-176)
+   *   `known_games === 0` 이면 그 무기로 뛴 것은 알지만 **기록을 모른다.**
+   *   `0` 으로 내리면 "0킬을 했다"는 거짓이 된다 — 화면은 `알수없음` 을 그린다
+   *   (D-034 · D-106). 판수(`games` · `known_games`)는 세는 값이라 항상 숫자다.
+   *
    * ── 순위
    *   그 무기로 얻은 래더 증감 합으로 매긴다. **무기별 공식은 없다** (3-B 1번).
    *   기록을 아는 경기가 한 판도 없으면 순위를 만들지 않는다 — 화면은 `집계 없음`.
+   *   순위는 선수끼리 비교하는 값이라 레이팅 엔진이 채운 집계에서 오고,
+   *   기록은 통합 전적과 같은 근거를 그 자리에서 센다 (D-176).
    */
   sniper_rank: Count.nullable().default(null),
   sniper_rank_count: Count.nullable().default(null),
   sniper_games: Count.default(0),
   sniper_known_games: Count.default(0),
-  sniper_kill: Count.default(0),
-  sniper_death: Count.default(0),
-  sniper_assist: Count.default(0),
+  sniper_kill: Count.nullable().default(null),
+  sniper_death: Count.nullable().default(null),
+  sniper_assist: Count.nullable().default(null),
   sniper_kd_rate: Percent.nullable().default(null),
   rifle_rank: Count.nullable().default(null),
   rifle_rank_count: Count.nullable().default(null),
   rifle_games: Count.default(0),
   rifle_known_games: Count.default(0),
-  rifle_kill: Count.default(0),
-  rifle_death: Count.default(0),
-  rifle_assist: Count.default(0),
+  rifle_kill: Count.nullable().default(null),
+  rifle_death: Count.nullable().default(null),
+  rifle_assist: Count.nullable().default(null),
   rifle_kd_rate: Percent.nullable().default(null),
 })
 export type LeaguePlayer = z.infer<typeof LeaguePlayer>

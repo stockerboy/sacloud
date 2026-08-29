@@ -199,6 +199,10 @@ beforeAll(async () => {
       blueDivisionAtMatch: 1,
       official: true,
       origin: 'sacloud',
+      /* **래더에 반영된 경기**여야 개인 상세의 누적에 들어간다 (D-164 · D-176).
+         예전에는 이 값이 비어 있어 경기가 있는데도 최근매치 요약이 `0전` 이었다 */
+      redRatingUpdate: 12,
+      blueRatingUpdate: -12,
       stats: {
         create: [
           {
@@ -249,6 +253,9 @@ beforeAll(async () => {
       blueDivisionAtMatch: 1,
       official: true,
       origin: 'sacloud',
+      // 래더 경기 (D-164 · D-176) — 위 무소속 경기와 같은 이유다
+      redRatingUpdate: 9,
+      blueRatingUpdate: -9,
       stats: {
         create: [
           {
@@ -357,15 +364,23 @@ describe.runIf(up)('리그별 개인 기록 분리', () => {
   })
 })
 
+/* 개인 상세의 누적은 **경기에서 그 자리에서 센다** (D-176).
+   `LeaguePlayer` 의 누적 칸은 배치 집계가 시즌 창 안에서만 채우는 값이라,
+   창 밖 경기를 뛴 선수가 `0승 0패 · 0킬 0데스 · MVP 0회` 로 보였다.
+   그래서 아래 기대값은 픽스처의 누적 칸(`INDEP` · `OFFICIAL`)이 아니라
+   **실제로 만들어 둔 래더 경기**에서 나온다. 래더 점수(`rating`)와 순위는 그대로 칸에서 온다. */
 describe.runIf(up)('무소속 개인 기록 페이지', () => {
   it('개인 상세가 정상으로 만들어진다 (숨기는 리그가 아니다)', async () => {
     const detail = await getLeaguePlayerDetail(INDEPENDENT_SLUG, ids!.playerId)
 
     expect(detail).not.toBeNull()
+    // 래더 점수와 순위는 레이팅 엔진이 채운 값이다
     expect(detail!.rating).toBe(INDEP.rating)
-    expect(detail!.win).toBe(INDEP.win)
-    expect(detail!.mvp_count).toBe(17)
     expect(detail!.rank).not.toBeNull()
+    // 승패·MVP 는 실제 경기에서 센다 — 무소속리그에 만들어 둔 래더 경기는 한 판(승)이다
+    expect(detail!.win).toBe(1)
+    expect(detail!.lose).toBe(0)
+    expect(detail!.mvp_count).toBe(1)
   })
 
   it('상세정보에서 누적 킬·데스·킬뎃만 빠진다', async () => {
@@ -375,15 +390,18 @@ describe.runIf(up)('무소속 개인 기록 페이지', () => {
     expect(detail!.death).toBeNull()
     expect(detail!.kd_rate).toBeNull()
     // 평균킬·MVP·어시스트는 감추지 않는다
-    expect(detail!.mvp_count).toBe(17)
-    expect(detail!.assist).not.toBeNull()
+    expect(detail!.mvp_count).toBe(1)
+    expect(detail!.assist).toBe(3)
+    expect(detail!.kill_per_match).toBeGreaterThan(0)
   })
 
   it('공식리그 상세에는 누적 킬뎃이 그대로 있다', async () => {
     const detail = await getLeaguePlayerDetail(OFFICIAL_SLUG, ids!.playerId)
 
-    expect(detail!.kill).toBe(OFFICIAL.kill)
-    expect(detail!.kd_rate).not.toBeNull()
+    // 용병으로 뛴 공식리그 경기 한 판 — 30킬 5데스
+    expect(detail!.kill).toBe(30)
+    expect(detail!.death).toBe(5)
+    expect(detail!.kd_rate).toBe(85.7)
   })
 })
 

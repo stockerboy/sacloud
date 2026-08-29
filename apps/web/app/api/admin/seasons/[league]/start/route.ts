@@ -3,6 +3,7 @@ import { jsonBody, routeParam } from '@/lib/server/request'
 import { requireAdmin } from '@/lib/server/session'
 import { writeAudit } from '@/lib/server/admin/audit'
 import { previewSeasonStart, startSeason } from '@sacloud/db/ops'
+import { seasonDisplayLabel } from '@sacloud/contract'
 
 /**
  * POST /api/admin/seasons/{league}/start — 새 시즌 시작.
@@ -38,8 +39,12 @@ export async function POST(request: Request, context: { params: Promise<Record<s
         preview: {
           ...preview,
           seasonType,
-          // 베타는 정식 번호를 쓰지 않는다. 화면이 "Season 0"이라고 쓰지 않도록 이름을 같이 준다
-          label: seasonType === 'beta' ? 'Beta Season' : `Season ${preview.nextNumber}`,
+          /* 베타는 정식 번호를 쓰지 않는다. 화면이 "Season 0"이라고 쓰지 않도록 이름을 같이 준다.
+             표기는 계약 한 곳에서만 정한다 — 베타는 `시즌0` 이다 (D-178) */
+          label: seasonDisplayLabel({
+            number: preview.nextNumber,
+            seasonType,
+          }),
         },
         executed: false,
       })

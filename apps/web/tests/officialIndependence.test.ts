@@ -44,6 +44,15 @@ let ratedMatchId = ''
 /** 래더가 붙지 않은 경기 (official = true 로 만든다) */
 let unratedMatchId = ''
 
+/**
+ * `rated` 가 거짓인 경기는 **origin 도 래더 밖**이어야 한다 (D-178).
+ *
+ * 화면의 래더 판정이 `redRatingUpdate != null` **또는** `origin ∈ {3rd.supply, nexon}`
+ * 으로 넓어졌다 — 시즌0 replay 가 원본 칸을 채우지 않기 때문이다 (D-171).
+ * 그래서 `origin='nexon'` 이면 증감이 비어 있어도 래더 경기다.
+ * 이 테스트가 보려는 것은 `official` 라벨이 통계를 바꾸지 않는다는 것뿐이라,
+ * "래더 밖" 표본은 두 조건을 모두 벗어나게 만든다.
+ */
 async function makeMatch(input: {
   id: string
   official: boolean
@@ -60,7 +69,7 @@ async function makeMatch(input: {
       startAt: input.startAt,
       winnerSide: 'red',
       official: input.official,
-      origin: 'nexon',
+      origin: input.rated ? 'nexon' : 'sacloud',
       playerCount: 10,
       participantCompleteness: '5v5',
       redDivisionAtMatch: 1,
