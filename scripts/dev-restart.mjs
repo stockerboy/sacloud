@@ -8,6 +8,16 @@
  *
  * 이 스크립트는 3000~3010을 듣고 있는 프로세스를 정리하고, `.next`를 지운 뒤
  * 서버를 한 번만 띄운다.
+ *
+ * ── IPv4 로 못박는다 (2026-08-30 · D-187)
+ *   `next dev` 는 기본으로 **IPv6 전체(`::`)** 에 붙는다. 이 개발 PC 는 그 호출이
+ *   `listen EFAULT: bad address in system call argument :::3000` 으로 죽는다.
+ *   실측 오류에 `address: '::'` 가 그대로 찍힌다.
+ *
+ *   그래서 `apps/web` 의 `dev` 를 `next dev -H 127.0.0.1` 로 고정했다.
+ *   화면 주소는 그대로 `http://localhost:3000` 이다.
+ *   **같은 기계에서만 붙을 수 있게 되는 것**은 개발 서버로는 오히려 맞다.
+ *   다른 기기에서 붙어야 하면 `-H 0.0.0.0` 으로 바꾼다.
  */
 import { execSync, spawn } from 'node:child_process'
 import { rmSync } from 'node:fs'
