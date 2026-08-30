@@ -11,7 +11,11 @@ import { describe, expect, it } from 'vitest'
  * 실행 조건은 `apiContract.test.ts`와 같다 — 서버가 없으면 조용히 통과시키지 않고 skip한다.
  */
 
-const BASE = process.env.API_TEST_BASE_URL ?? 'http://localhost:3000/api'
+/* **`localhost` 가 아니라 `127.0.0.1` 이다.**
+   `localhost` 는 이 컴퓨터에서 `::1` 로 먼저 풀리는데, dev 서버는 IPv4 로 못박혀 있고
+   (`next dev -H 127.0.0.1`) IPv6 쪽으로 붙으면 `connect EFAULT ::1:3000` 이 난다 (D-187).
+   실측: 이 한 글자 때문에 계약 테스트가 통째로 `fetch failed` 였다 */
+const BASE = process.env.API_TEST_BASE_URL ?? 'http://127.0.0.1:3000/api'
 
 /**
  * 관리자 계정은 **환경변수로만** 받는다 (D-119).
