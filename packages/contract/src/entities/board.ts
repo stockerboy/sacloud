@@ -142,3 +142,28 @@ export const DeleteInput = z.object({
   password: z.string().min(1).nullable(),
 })
 export type DeleteInput = z.infer<typeof DeleteInput>
+
+/**
+ * 게시판 카테고리 **기본 목록** — Mock 픽스처와 실제 DB 가 같은 표를 본다.
+ *
+ * 앞의 다섯은 원본(3rd.supply)에서 관측한 것이고, `spl` · `ipl` 은 사용자가
+ * 새로 요구한 것이다 (`docs/SITE_SPEC_V2.md` 2절 — "자유게시판/SPL/IPL").
+ *
+ * ── 원본 카테고리를 **지우지 않는다**
+ *   사용자 지시가 "바꿀 때는 전 버전도 남긴다" 이고, 이미 쌓인 글이 갈 곳을
+ *   잃으면 안 된다. 새 게시판은 **덧붙이고** 원본은 순번만 뒤로 민다.
+ *
+ * > `[미확인]` YSL(열산리그) 게시판은 사양 원문에 없다. 그래서 만들지 않았다.
+ */
+export const BOARD_CATEGORIES: readonly Category[] = [
+  { slug: 'notice', name: '공지', notice: true, order: 0 },
+  { slug: 'hot', name: '인기', notice: false, order: 1 },
+  { slug: 'free', name: '자유', notice: false, order: 2 },
+  { slug: 'spl', name: 'SPL', notice: false, order: 3 },
+  { slug: 'ipl', name: 'IPL', notice: false, order: 4 },
+  { slug: 'officialmain', name: '공식전', notice: false, order: 5 },
+  { slug: 'secondline', name: '세컨드', notice: false, order: 6 },
+  { slug: 'friendly01', name: '친목전', notice: false, order: 7 },
+  { slug: 'rankedplay', name: '랭크전', notice: false, order: 8 },
+  { slug: 'streamer', name: '방송', notice: false, order: 9 },
+]

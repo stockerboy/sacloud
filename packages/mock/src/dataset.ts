@@ -1,3 +1,4 @@
+import { BOARD_CATEGORIES } from '@sacloud/contract'
 import type { TeamSide, Weapon } from '@sacloud/contract'
 import { FIXTURE_SEED, Rng } from './rng'
 import {
@@ -519,16 +520,9 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
   }
 
   /* ------------------------------- 게시판 ------------------------------ */
-  const categories: MockCategory[] = [
-    { slug: 'notice', name: '공지', notice: true, order: 0 },
-    { slug: 'hot', name: '인기', notice: false, order: 1 },
-    { slug: 'free', name: '자유', notice: false, order: 2 },
-    { slug: 'officialmain', name: '공식전', notice: false, order: 3 },
-    { slug: 'secondline', name: '세컨드', notice: false, order: 4 },
-    { slug: 'friendly01', name: '친목전', notice: false, order: 5 },
-    { slug: 'rankedplay', name: '랭크전', notice: false, order: 6 },
-    { slug: 'streamer', name: '방송', notice: false, order: 7 },
-  ]
+  /* 목록의 단일 원천은 계약이다 (`packages/contract/src/entities/board.ts`).
+     Mock 과 실제 DB 가 같은 표를 봐야 `pnpm compare` 가 의미를 갖는다 */
+  const categories: MockCategory[] = BOARD_CATEGORIES.map((category) => ({ ...category }))
 
   /** 글이 실제로 저장되는 카테고리 (`hot`은 집계로 만들어지는 가상 카테고리) */
   const writableCategories = categories

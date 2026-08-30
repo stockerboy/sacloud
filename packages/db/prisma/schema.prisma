@@ -463,6 +463,7 @@ model LeagueClan {
   redMatches   Match[]            @relation("MatchRedClan")
   blueMatches  Match[]            @relation("MatchBlueClan")
   rosterMemberships LeagueRosterMembership[]
+  roundProfiles ClanRoundProfile[]
 
   @@unique([leagueId, clanId])
   @@unique([sourceLeagueClanId])
@@ -1938,6 +1939,86 @@ model PlayerRoundProfile {
 
   @@unique([userNexonSn, builderVersion])
   @@index([playerId])
+}
+
+/// 클랜의 **라운드 복원 집계** — 배틀로그로만 잴 수 있는 지표 다섯 + 클린시트
+/// (`docs/SITE_SPEC_V2.md` 5-5절).
+///
+/// ```
+/// 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트(반코트)
+/// ```
+///
+/// **원본(3rd.supply)에 없는 값이다.** 사용자 지시로 만든 신규 지표다.
+///
+/// ── 왜 `LeagueClan` 이 키인가
+///   같은 클랜이 여러 리그를 겸하고, 같은 물리 경기가 리그마다 다른 `Match` 행이 된다
+///   (D-155). 클랜 단위로 묶으면 리그가 섞여 클랜페이지(리그별 화면)와 모집단이 어긋난다.
+///
+/// ── 분자와 분모를 **따로** 담는다 (D-106)
+///   비율을 미리 계산해 넣지 않는다. 진영을 모르는 라운드는 분모에서도 빠지므로,
+///   표본이 얼마인지(`roundsKnown` / `roundsTotal`)를 함께 봐야 값의 무게를 안다.
+///   표본이 최소치에 못 미치면 화면은 `측정중` 이다 — **0% 가 아니다.**
+model ClanRoundProfile {
+  id           String @id @default(cuid())
+  leagueClanId String
+  /// 병영수첩 클랜 번호. 어느 응답에서 나온 값인지 되짚는 근거다 (D-200)
+  clanNo String?
+
+  /// 배틀로그가 있고 모집단(래더 + 시즌 창) 안이라 훑은 경기 수
+  matches Int @default(0)
+  /// 그중 **진영 교대를 확인해** 실제로 지표에 쓴 경기 수.
+  /// 교대를 못 본 경기는 아는 라운드가 "폭탄이 터진 라운드" 뿐이라 표본이 근거와
+  /// 같아진다 — 통째로 뺀다 (`packages/nexon/src/clanRound.ts` 머리말)
+  sidedMatches Int @default(0)
+
+  /// 이벤트로 확인된 라운드 수 (진영을 몰라도 센다)
+  roundsTotal Int @default(0)
+  /// 그중 진영을 **아는** 라운드 수. 둘의 차이가 못 잰 몫이다
+  roundsKnown Int @default(0)
+
+  /// 블루방어율 — 수비 라운드 중 내준 비율의 분모/분자
+  defenseRounds   Int @default(0)
+  defenseConceded Int @default(0)
+
+  /// 어택성공률 — 공격 라운드 중 딴 비율의 분모/분자
+  attackRounds Int @default(0)
+  attackWon    Int @default(0)
+  /// 폭탄 설치의 분모(승패를 몰라도 세는 공격 라운드)와 분자
+  attackSideRounds Int @default(0)
+  plantRounds      Int @default(0)
+
+  /// 조직력 — 잰 공격 라운드 수와 그중 30초를 넘긴 횟수.
+  /// **5대5가 확인된 경기에서만** 잰다 (빠진 이벤트가 없는 조직력을 만들어 내지 않게)
+  organizedRounds Int @default(0)
+  organizedHeld   Int @default(0)
+
+  /// 폭발력 — 잰 공격 라운드 수와 그 안에서 일어난 연속 제거 횟수
+  burstRounds Int @default(0)
+  bursts      Int @default(0)
+
+  /// 게임템포 — 라운드 길이의 **중앙값**(초). 표본이 없으면 null 이다.
+  ///
+  /// 두 벌을 남긴다. `span` 은 관측 구간(마지막−첫 이벤트)이라 실제 길이의 **하한**이고,
+  /// `gap` 은 다음 라운드까지의 간격이라 **상한**이다. 어느 쪽을 화면이 쓸지 바뀌어도
+  /// 다시 집계하지 않게 둘 다 보존한다 (사용자 지시 — 바꿔도 앞 버전을 남긴다)
+  tempoSpanRounds Int    @default(0)
+  tempoSpanMedian Float?
+  tempoGapRounds  Int    @default(0)
+  tempoGapMedian  Float?
+
+  /// 클린시트(반코트) — 한 진영에서 5라운드를 전승한 경기 수와 그 판정이 가능했던 경기 수.
+  /// 한 경기에서 두 진영을 다 쓸어도 **한 번**으로 센다 (원문 `800판중 120회`)
+  cleanSheetMatches Int @default(0)
+  cleanSheets       Int @default(0)
+
+  /// 집계 규칙 버전. 규칙이 바뀌면 새 줄이 생기고 옛 줄은 남는다
+  builderVersion String
+  computedAt     DateTime @default(now())
+
+  leagueClan LeagueClan @relation(fields: [leagueClanId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueClanId, builderVersion])
+  @@index([leagueClanId])
 }
 
 /// 경기 × 선수 무기 판정 근거 (D-114).

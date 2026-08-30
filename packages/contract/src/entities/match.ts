@@ -85,6 +85,28 @@ export const MatchPlayerStat = z.object({
    * 근거가 없으면 `null`(= 알 수 없음)이다. 현재 소속으로 메우지 않는다.
    */
   match_time_clan: MatchTimeClan.nullable(),
+  /**
+   * 이 선수의 **고유 포지션** — `스나수` · `2F` · `B리베` · `숏포지` (D-199).
+   *
+   * ── 이건 "그 판에 무슨 총을 들었나" 가 **아니다**
+   *   포지션은 여러 경기를 센 결과이고 경기마다 바뀌지 않는다. 그 판에 실제로
+   *   스나를 들었는지는 바로 위 `weapon` 이 말한다 — 사용자 지시:
+   *   **"스나수가 무조건 스나를 드는것만은 아니야"**.
+   *   그래서 화면은 `누검 숏포지 (S)` 처럼 **둘을 나란히** 적는다.
+   *   포지션으로 무기를 추측하거나 무기로 포지션을 만들지 않는다.
+   *
+   * ── 모르면 `null` 이고 화면은 **이름만** 적는다
+   *   좌표 판정이 없거나 1·2등 격차가 좁으면(`POSITION_MIN_MARGIN`) 비운다.
+   *   `-` 나 `알수없음` 으로 채우지 않는다 (D-106).
+   *
+   * ── 경기 **목록**에서는 채우지 않는다
+   *   포지션을 붙이려면 선수마다 판정을 읽어야 해서, 한 페이지에 15경기 ×
+   *   10명이면 왕복이 통째로 늘어난다. **펼친 경기 상세**(`red_stats`/`blue_stats`)
+   *   에서만 채운다. 목록의 `player_stat` 은 `null` 이다 — mock 도 같다.
+   *
+   * 기본값이 있어 이 필드가 없던 응답과도 호환된다.
+   */
+  position_label: z.string().nullable().default(null),
 })
 export type MatchPlayerStat = z.infer<typeof MatchPlayerStat>
 

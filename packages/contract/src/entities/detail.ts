@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { Count, Percent } from '../common'
 import { PLAYSTYLE_SIDE_KEYS, TRAIT_AXIS_KEYS, TRAIT_PENDING_KEYS } from '../traits'
 import { ClanMetrics } from '../clanMetrics'
+import { ClanRoster } from '../clanRoster'
 import { LeagueClanDetail, LeaguePlayer } from './league'
 import { LeagueSummary, PlayerSummary } from './summaries'
 import { MatchSummary, TeammateStat } from './match'
@@ -346,5 +347,16 @@ export const LeagueClanShow = LeagueClanDetail.extend({
    * `null` 이면 화면은 카드를 **그리지 않는다** — 빈 표를 그리지 않는다 (D-106).
    */
   metrics: ClanMetrics.nullable().default(null),
+  /**
+   * 클랜원 정리 — 포지션별 · 1군/2군 (`docs/SITE_SPEC_V2.md` 5-2 · `../clanRoster`).
+   *
+   * 기존 클랜원 목록(`/league/{slug}/clan/{slug}/player`)을 **대체하지 않는다.**
+   * 그쪽은 그대로 두고 이 정리를 새 섹터로 얹는다 — 방식을 바꿀 때 앞 버전도
+   * 남긴다는 사용자 지시다.
+   *
+   * 클랜원이 없으면 `null` 이고 화면은 카드를 **그리지 않는다** (D-106).
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   */
+  roster: ClanRoster.nullable().default(null),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>
