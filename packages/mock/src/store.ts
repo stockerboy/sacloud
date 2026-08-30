@@ -81,8 +81,20 @@ import {
   clanBestWinStreak,
   type ClanMatchRow,
   type ClanMetrics,
+  /* 배틀로그 지표 — 판정 규칙도 계약 한 곳에만 둔다 (SITE_SPEC_V2 5-5절) */
+  CLAN_TEMPO_MIN_ROUNDS,
+  buildClanRoundMetrics as buildClanRoundMetricsOf,
+  type ClanRoundMetrics,
+  type ClanRoundTallyInput,
+  /* 클랜원 정리 — 나누는 규칙도 계약 한 곳에만 둔다 (SITE_SPEC_V2 5-2 · D-199) */
+  buildClanRoster as buildClanRosterOf,
+  type ClanRoster,
+  type ClanRosterInput,
+  type PositionCode,
+  type ResolvedPosition,
 } from '@sacloud/contract'
 import { dataset, toKstIso } from './dataset'
+import { Rng } from './rng'
 import { getMockRole } from './session'
 import { kdRate, killPerMatch, percentOf, winRate } from './derive'
 import type {
@@ -200,6 +212,25 @@ for (const match of dataset.matches) {
 
 const matchCountByLeaguePlayer = new Map<string, number>()
 for (const [key, list] of matchesByPlayer) matchCountByLeaguePlayer.set(key, list.length)
+
+/**
+ * 선수의 **고유 포지션** (D-199).
+ *
+ * 고르는 규칙은 여기 없다 — 실제 서버와 **같은 함수**(`resolvePlayerPositionOf`)를 쓴다.
+ * 다르게 고르면 mock↔live 대조가 조용히 어긋난다.
+ *
+ * Mock 픽스처에는 **좌표 판정이 없다.** 그래서 사람이 정한 값과 주무기만 본다 —
+ * 없는 판정을 지어내지 않는다 (D-106).
+ */
+function resolvePositionOf(leagueId: string, playerId: string): ResolvedPosition {
+  const leaguePlayer = leaguePlayerByLeagueAndPlayer.get(`${leagueId}:${playerId}`)
+  const byWeapon = leaguePlayer ? weaponStatsByLeaguePlayer.get(leaguePlayer.id) : undefined
+  return resolvePlayerPositionOf({
+    userSet: playerById.get(playerId)?.position ?? null,
+    mainWeapon: mainWeaponOf(byWeapon?.get(0)?.games ?? 0, byWeapon?.get(1)?.games ?? 0),
+    judged: null,
+  })
+}
 
 /* -------------------------------------------------------------------------- */
 /* 커서 페이지네이션                                                              */
@@ -807,7 +838,16 @@ function teamDamage(match: MockMatch, side: TeamSide): number {
  * Mock 데이터에는 양쪽 값이 모두 있지만, **보는 쪽이 아닌 팀**의 값을 응답에서 null로 지운다.
  * (원본의 노출 한계를 그대로 재현하기 위한 것으로, 데이터 자체가 없는 것은 아니다.)
  */
-function toMatchPlayerStat(match: MockMatch, stat: MockMatchPlayer, visible: boolean): MatchPlayerStat {
+function toMatchPlayerStat(
+  match: MockMatch,
+  stat: MockMatchPlayer,
+  visible: boolean,
+  /**
+   * 선수의 **고유 포지션** 표기 (D-199). 경기 **상세**에서만 채운다 —
+   * 목록에서는 비어 있고(`null`) 화면은 이름만 적는다. 실제 서버와 같은 규칙이다.
+   */
+  positions?: Map<string, string | null>,
+): MatchPlayerStat {
   const damage = visible ? stat.damage : null
   const headshot = visible ? stat.headshot : null
   return {
@@ -830,6 +870,9 @@ function toMatchPlayerStat(match: MockMatch, stat: MockMatchPlayer, visible: boo
     win: stat.win,
     mvp: stat.mvp,
     match_time_clan: matchTimeClanOf(stat.playerId),
+    /* 포지션은 이 경기의 사실이 아니라 **그 선수의 고유 자리**다 (D-199).
+       그 판에 실제로 스나를 들었는지는 위 `weapon` 이 따로 말한다 */
+    position_label: positions?.get(stat.playerId) ?? null,
   }
 }
 
@@ -947,10 +990,15 @@ export function getMatch(
   const viewerSide = sideOfLeagueClan(match, viewerId)
   if (!viewerSide) return null
 
+  /* 참가자 포지션 — **여기서만** 채운다 (D-199). 목록에서는 비운다 (실제 서버와 같다) */
+  const positions = new Map<string, string | null>(
+    match.players.map((stat) => [stat.playerId, resolvePositionOf(leagueId, stat.playerId).label]),
+  )
+
   const statsOf = (side: TeamSide): MatchPlayerStat[] =>
     match.players
       .filter((stat) => stat.side === side)
-      .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide))
+      .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide, positions))
 
   return { ...base, red_stats: statsOf('red'), blue_stats: statsOf('blue') }
 }
@@ -1613,6 +1661,152 @@ function buildClanMetrics(leagueClan: MockLeagueClan): ClanMetrics | null {
   })
 }
 
+/**
+ * 클랜원 정리 — 포지션별 · 1군/2군 (SITE_SPEC_V2 5-2).
+ *
+ * 나누는 규칙은 계약(`buildClanRoster`)이 정한다. 여기서는 재료만 맞춰 준다 —
+ * 실제 서버(`apps/web/lib/server/queries/clanRoster.ts`)와 **같은 함수**를 부른다.
+ *
+ * 판수는 실제 서버와 같은 뜻(그 리그에서 뛴 판수)이다. Mock 픽스처의 경기는
+ * 전부 래더 경기이고 시즌 창 밖 경기가 없어, 창을 따로 걸지 않아도 같은 값이 나온다.
+ */
+function buildClanRoster(leagueClan: MockLeagueClan): ClanRoster | null {
+  const rows: ClanRosterInput[] = (leaguePlayersByLeague.get(leagueClan.leagueId) ?? [])
+    .filter((entry) => entry.leagueClanId === leagueClan.id)
+    .map((leaguePlayer): ClanRosterInput | null => {
+      const player = playerById.get(leaguePlayer.playerId)
+      if (!player) return null
+      const position = resolvePositionOf(leagueClan.leagueId, leaguePlayer.playerId)
+      return {
+        leaguePlayerId: leaguePlayer.id,
+        playerId: player.id,
+        playerName: player.name,
+        rating: leaguePlayer.rating,
+        placement: leaguePlayer.placement,
+        games:
+          matchCountByLeaguePlayer.get(`${leagueClan.leagueId}:${leaguePlayer.playerId}`) ?? 0,
+        /* 사람이 우리 코드가 아닌 말로 적었으면 `code` 는 `null` 이고 글자만 남는다 */
+        position: (position.code ?? null) as PositionCode | null,
+        positionLabel: position.label,
+        positionSource: position.source,
+      }
+    })
+    .filter((entry): entry is ClanRosterInput => Boolean(entry))
+
+  return buildClanRosterOf(rows)
+}
+
+/* ------------------- 클랜 배틀로그 지표 (SITE_SPEC_V2 5-5절) ------------------- */
+
+/**
+ * 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트.
+ *
+ * 판정은 `@sacloud/contract` 의 `buildClanRoundMetrics()` 가 전부 한다.
+ * 실제 서버(`apps/web/lib/server/queries/clanRoundMetrics.ts`)도 **같은 함수**를 쓴다.
+ *
+ * ⚠ **이 값은 실제 서버와 일치하지 않는다. 일치할 수 없다.**
+ *   운영은 병영수첩 **배틀로그 원문**에서 라운드를 복원해 센다 (D-184 · D-194).
+ *   Mock 픽스처에는 배틀로그가 없다 — 경기 한 건이 라인업과 합계 스탯뿐이라
+ *   "몇 라운드째에 누가 죽었나" 가 아예 없다. 그래서 여기서는 **화면을 보기 위한
+ *   결정적 가짜값**을 만든다. 시드가 같으면 언제나 같은 값이 나온다.
+ *
+ *   `metrics`(추이 시작점)와 같은 성격의 **알려진 차이**다. 배틀로그를 계약으로
+ *   올리기 전까지 남는다.
+ *
+ * ── 그래도 **모양은 실측을 따라간다**
+ *   2026-08-30 로컬 실측을 흉내 낸다 — 배틀로그가 있는 경기 중 진영 교대를 확인한
+ *   것이 1/7 남짓이고, 블루가 5라운드중 1.6라운드를 내주며, 레드가 2.4라운드를 따고
+ *   폭탄을 2.1번 심는다. 화면이 현실적인 자릿수를 받게 하려는 것이다.
+ */
+/**
+ * 진영 교대까지 확인되는 경기의 비율.
+ *
+ * 실측은 1/7 남짓이지만 Mock 은 **0.45** 로 잡았다. 픽스처 클랜은 경기가 마흔 판쯤이라
+ * 실측 비율을 그대로 쓰면 라운드가 스무 개도 안 돼 **모든 축이 `측정중`** 으로 나온다.
+ * 그러면 화면을 볼 수 없다. 비율(방어·공격·설치)은 실측을 그대로 따르고 **표본 크기만**
+ * 키운다 — 어차피 가짜값이고, Mock 의 목적은 화면을 그려 보는 것이다.
+ */
+const MOCK_ROUND_SIDED_SHARE = 0.45
+const MOCK_ROUND_PER_MATCH = 11
+
+/** 문자열 → 32비트 정수 (FNV-1a). 같은 클랜은 언제나 같은 값이 나온다 */
+function mockSeedOf(text: string): number {
+  let hash = 2166136261
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function mockRoundTallyOf(leagueClan: MockLeagueClan): ClanRoundTallyInput {
+  const matchCount = (matchesByLeagueClan.get(leagueClan.id) ?? []).length
+  const rng = new Rng(mockSeedOf(leagueClan.id))
+
+  /* 배틀로그를 받은 경기는 일부뿐이고, 그중 진영 교대까지 확인된 것은 다시 일부다 */
+  const seen = Math.floor(matchCount * rng.float(0.5, 0.9, 3))
+  const sided = Math.floor(seen * MOCK_ROUND_SIDED_SHARE * rng.float(0.6, 1.4, 3))
+
+  const attackSide = sided * rng.int(3, 5)
+  const defense = sided * rng.int(3, 5)
+  const attack = Math.round(attackSide * rng.float(0.9, 1, 3))
+
+  return {
+    matches: seen,
+    sidedMatches: sided,
+    roundsTotal: seen * MOCK_ROUND_PER_MATCH,
+    roundsKnown: attackSide + defense,
+    defenseRounds: defense,
+    /* 실측 1.60/5 = 32% 언저리 */
+    defenseConceded: Math.round(defense * rng.float(0.24, 0.42, 3)),
+    attackRounds: attack,
+    /* 실측 2.42/5 = 48% 언저리 */
+    attackWon: Math.round(attack * rng.float(0.4, 0.58, 3)),
+    attackSideRounds: attackSide,
+    /* 실측 2.08/5 = 42% 언저리 */
+    plantRounds: Math.round(attackSide * rng.float(0.33, 0.5, 3)),
+    organizedRounds: attackSide,
+    /* 30초를 넘긴 라운드는 실측에서 4% 언저리다 */
+    organizedHeld: Math.round(attackSide * rng.float(0.01, 0.08, 3)),
+    burstRounds: attackSide,
+    bursts: Math.round(attackSide * rng.float(0.01, 0.08, 3)),
+    tempoRounds: Math.round(attackSide * rng.float(0.7, 0.95, 3)),
+    /* 실측 중앙값 분포는 66~104초였다 */
+    tempoMedian: sided === 0 ? null : rng.float(64, 106, 1),
+    cleanSheetMatches: Math.round(sided * rng.float(0.5, 0.9, 3)),
+    /* 분자는 분모가 정해진 뒤에 채운다 — 분모를 넘지 않게 */
+    cleanSheets: 0,
+  }
+}
+
+/** 같은 리그 클랜들의 템포 중앙값. 픽스처는 변하지 않으므로 한 번 세서 들고 있는다 */
+const mockTempoCohortCache = new Map<string, number[]>()
+
+function mockTempoCohortOf(leagueId: string): number[] {
+  const hit = mockTempoCohortCache.get(leagueId)
+  if (hit) return hit
+  const cohort: number[] = []
+  for (const entry of leagueClansByLeague.get(leagueId) ?? []) {
+    const tally = mockRoundTallyOf(entry)
+    /* 표본이 모자란 클랜은 분포에도 넣지 않는다 — 실제 서버와 같은 규칙이다 */
+    if (tally.tempoMedian !== null && tally.tempoRounds >= CLAN_TEMPO_MIN_ROUNDS) {
+      cohort.push(tally.tempoMedian)
+    }
+  }
+  mockTempoCohortCache.set(leagueId, cohort)
+  return cohort
+}
+
+function buildClanRoundMetrics(leagueClan: MockLeagueClan): ClanRoundMetrics | null {
+  const tally = mockRoundTallyOf(leagueClan)
+  const rng = new Rng(mockSeedOf(`${leagueClan.id}:cleansheet`))
+  tally.cleanSheets = Math.round(tally.cleanSheetMatches * rng.float(0, 0.12, 3))
+  return buildClanRoundMetricsOf({
+    tally,
+    tempoCohort: mockTempoCohortOf(leagueClan.leagueId),
+  })
+}
+
 export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueClanShow | null {
   const league = leagueBySlug.get(leagueSlug)
   const clan = clanBySlug.get(clanSlug)
@@ -1634,6 +1828,9 @@ export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueC
     match_summary: buildMatchSummary(matches, leagueClan.id, null),
     teammates: buildTeammates(matches, leagueClan.id, null),
     metrics: buildClanMetrics(leagueClan),
+    round_metrics: buildClanRoundMetrics(leagueClan),
+    /* 클랜원 정리 (SITE_SPEC_V2 5-2 · D-199). 기존 클랜원 목록은 그대로 둔다 */
+    roster: buildClanRoster(leagueClan),
   }
 }
 

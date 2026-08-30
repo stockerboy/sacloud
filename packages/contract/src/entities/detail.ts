@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { Count, Percent } from '../common'
 import { PLAYSTYLE_SIDE_KEYS, TRAIT_AXIS_KEYS, TRAIT_PENDING_KEYS } from '../traits'
 import { ClanMetrics } from '../clanMetrics'
+import { ClanRoundMetrics } from '../clanRoundMetrics'
 import { ClanRoster } from '../clanRoster'
 import { LeagueClanDetail, LeaguePlayer } from './league'
 import { LeagueSummary, PlayerSummary } from './summaries'
@@ -358,5 +359,16 @@ export const LeagueClanShow = LeagueClanDetail.extend({
    * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
    */
   roster: ClanRoster.nullable().default(null),
+  /**
+   * 배틀로그 지표 — 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트
+   * (`docs/SITE_SPEC_V2.md` 5-5절 · `../clanRoundMetrics`).
+   *
+   * `metrics` 와 나누는 이유: 저쪽은 `Match` 만으로 되고 이쪽은 **병영수첩 배틀로그**가
+   * 있어야 한다. 한 클랜이 한쪽만 갖는 일이 흔해서 한 필드로 묶으면 절반이 비어 온다.
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   * `null` 이면 화면은 카드를 **그리지 않는다** — 빈 표를 그리지 않는다 (D-106).
+   */
+  round_metrics: ClanRoundMetrics.nullable().default(null),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>

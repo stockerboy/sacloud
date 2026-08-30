@@ -5,6 +5,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
   ClanMetrics,
+  ClanRoundMetrics,
+  ClanRoster,
   ClanStatSidebar,
   LoadMoreButton,
   MatchCard,
@@ -93,6 +95,13 @@ export default function LeagueClanRecordPage({
             showKdRate={false}
           />
         </div>
+        {/* 클랜원 포지션 정리 (SITE_SPEC_V2 5-2 · D-199) — 지표보다 위다.
+            사양이 `클랜명 → 클랜원 → 승률 추이 → 지표` 순서로 적혀 있다.
+
+            **기존 클랜원 목록을 대체하지 않는다.** `클랜원` 탭(`/clan/{slug}/player`)의
+            표는 그대로 있고 이것은 그 위에 얹은 새 섹터다 — 방식을 바꿀 때 앞 버전도
+            남긴다는 사용자 지시다. 클랜원이 없으면 `null` 이고 그리지 않는다 (D-106) */}
+        {data.roster ? <ClanRoster roster={data.roster} leagueSlug={leagueSlug} /> : null}
         {/* 클랜 지표 (SITE_SPEC_V2 5절) — 경기 목록보다 위다. 지표가 먼저 읽히고
             그 근거인 경기가 아래에 이어진다. 재료가 없으면 `null` 이고 그리지 않는다 (D-106) */}
         {data.metrics ? (
@@ -102,6 +111,9 @@ export default function LeagueClanRecordPage({
             leagueCategory={data.league.category}
           />
         ) : null}
+        {/* 배틀로그 지표 (SITE_SPEC_V2 5-5절) — 클랜 지표 **바로 아래**다.
+            배틀로그가 없는 클랜은 `null` 이고 그리지 않는다 (D-106) */}
+        {data.round_metrics ? <ClanRoundMetrics metrics={data.round_metrics} /> : null}
         <div className="mt-2">
           {matches.loading ? (
             <Skeleton className="h-[105px] w-full" />

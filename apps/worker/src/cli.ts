@@ -53,6 +53,8 @@ import { applyWeaponToStats, importWeaponEvidence } from './jobs/weapon.js'
 /** 병영수첩 BattleLog 원문 적재 + 좌표 기반 포지션 판정 (D-174) */
 import { buildPositionProfiles, importBattleLogs } from './jobs/battlelog.js'
 import { buildRoundProfiles } from './jobs/roundBuild.js'
+/** 클랜 라운드 지표 (SITE_SPEC_V2 5-5절) — 블루방어율·어택성공률·조직력·폭발력·템포·클린시트 */
+import { buildClanRoundProfiles } from './jobs/clanRoundBuild.js'
 import { linkClanNumbers } from './jobs/clanNumber.js'
 import { runRate } from './jobs/rate.js'
 import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
@@ -1967,6 +1969,47 @@ async function main(): Promise<number> {
           '선수 연결': result.linked,
         },
       ])
+      if (!result.written) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    /**
+     * 클랜 라운드 지표 집계 (`docs/SITE_SPEC_V2.md` 5-5절).
+     *
+     *   pnpm --filter @sacloud/worker nexon clan-round-build
+     *   pnpm --filter @sacloud/worker nexon clan-round-build --confirm
+     *
+     * 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트의 재료를
+     * `ClanRoundProfile` 에 쌓는다. **`--confirm` 없이는 한 줄도 쓰지 않는다.** 멱등이다.
+     */
+    case 'clan-round-build': {
+      const result = await buildClanRoundProfiles({ confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          '원문 줄': result.rows,
+          '클랜번호 미연결': result.unlinkedClanNo,
+          '모집단 밖': result.outOfScope,
+          '진영 불일치': result.sideMismatch,
+          '읽기 실패': result.unreadable + result.unknownTeamNo,
+          집계: result.tallied,
+          '교대 확인': result.sided,
+          '근거 모순': result.conflicts,
+          프로필: result.profiles,
+        },
+      ])
+      table([
+        {
+          '본 라운드': result.roundsTotal,
+          '진영 아는 라운드': result.roundsKnown,
+          비율:
+            result.roundsTotal === 0
+              ? '-'
+              : `${((result.roundsKnown / result.roundsTotal) * 100).toFixed(1)}%`,
+        },
+      ])
+      if (result.tallied > 0 && result.sided === 0) {
+        warn('진영 교대를 확인한 경기가 없다. 다섯 지표는 전부 측정중으로 나간다')
+      }
       if (!result.written) log('미리보기다. 실제로 넣으려면 --confirm')
       return 0
     }

@@ -45,6 +45,41 @@ export function usedSniper(weapon: number | null | undefined): boolean {
  * `leagueSlug` 도 함께 본다. 하나라도 비면 `/league//player/…` 같은 깨진 경로가 만들어지고,
  * 그건 404 로 끝나는 게 아니라 **빈 페이지**가 된다 (`paths.ts` 주석의 사고와 같은 종류).
  */
+/* ------------------------------------------------------------ 포지션 줄 --- */
+
+/**
+ * 경기 상세의 **포지션 줄** 한 사람 — `누검 숏포지 (S)` (D-199 · 사용자 원문).
+ *
+ * ```
+ * 차값 B리베 / 누검 숏포지 (S) / 쨔잉나 2F / yuhwan 숏포지 / huwho 스나수
+ * ```
+ *
+ * ── 두 값은 **다른 것**이다
+ *   포지션은 그 선수의 **고유 자리**라 경기마다 바뀌지 않고, `(S)` 는 **이 판 한 판의
+ *   사실**이다. 사용자가 못 박았다 — **"스나수가 무조건 스나를 드는것만은 아니야"**.
+ *   그래서 포지션으로 `(S)` 를 붙이지 않고, `(S)` 로 포지션을 만들지도 않는다.
+ *
+ * ── 모르면 **이름만** 적는다 (D-106)
+ *   포지션 판정이 없으면 자리 글자를 빼고, 무기가 `null` 이면 `(S)` 를 안 붙인다.
+ *   `-` 나 `알수없음` 으로 채우지 않는다 — 안 붙은 것이 "라이플이었다" 는 뜻도 아니다.
+ */
+export function lineupPositionText(entry: {
+  name: string
+  position_label: string | null
+  weapon: number | null
+}): string {
+  const position = entry.position_label?.trim()
+  const sniper = usedSniper(entry.weapon) ? ' (S)' : ''
+  return position ? `${entry.name} ${position}${sniper}` : `${entry.name}${sniper}`
+}
+
+/** 포지션 줄을 그릴 값이 있는가. 아무도 포지션을 모르면 줄 자체를 그리지 않는다 */
+export function hasAnyPosition(
+  entries: readonly { position_label: string | null }[],
+): boolean {
+  return entries.some((entry) => Boolean(entry.position_label?.trim()))
+}
+
 export function lineupPlayerHref(
   leagueSlug: string | null | undefined,
   playerId: string | null | undefined,

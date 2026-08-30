@@ -44,6 +44,9 @@ async function main(): Promise<void> {
 
   const numbers: string[] = []
   const indexOf = new Map<string, number>()
+  /** 경기키 꼬리 6자리 사전 — 종류가 열 몇 개뿐이라 번호로 줄인다 */
+  const suffixes: string[] = []
+  const suffixIndex = new Map<string, number>()
   const parts: string[] = []
   for (const match of matches) {
     const key = match.sourceMatchId
@@ -60,11 +63,22 @@ async function main(): Promise<void> {
       numbers.push(clanNo)
       indexOf.set(clanNo, idx)
     }
-    parts.push(`${key}-${String(idx).padStart(2, '0')}`)
+    /* 경기키 18자 = `26` + `MMDDHHMMSS` + 6자리 꼬리.
+       해가 하나뿐이고 꼬리는 종류가 적어서, 둘을 빼면 목록이 3할 짧아진다.
+       브라우저에서 `S[꼬리번호]` 로 되돌린다 */
+    const tail = key.slice(12)
+    let tailIdx = suffixIndex.get(tail)
+    if (tailIdx === undefined) {
+      tailIdx = suffixes.length
+      suffixes.push(tail)
+      suffixIndex.set(tail, tailIdx)
+    }
+    parts.push(`${key.slice(2, 12)}${tailIdx.toString(36)}${String(idx).padStart(2, '0')}`)
     if (parts.length >= limit) break
   }
 
   console.info(`const C=${JSON.stringify(numbers)};`)
+  console.info(`const S=${JSON.stringify(suffixes)};`)
   console.info(`const P=${JSON.stringify(parts.join(' '))};`)
   console.error(`남은 후보 ${parts.length}건 · 아는 클랜 ${known.length}`)
 }

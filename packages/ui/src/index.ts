@@ -118,6 +118,9 @@ export {
 export { PlayerFormPanel } from './record/PlayerFormPanel'
 /* 클랜 지표 (SITE_SPEC_V2 5절) — 이것도 원본에 없는 신규 화면이다 */
 export { ClanMetrics } from './record/ClanMetrics'
+/* 배틀로그 지표 (SITE_SPEC_V2 5-5절) — 클랜 지표 바로 아래에 붙는다 */
+export { ClanRoundMetrics } from './record/ClanRoundMetrics'
+export { ClanRoster } from './record/ClanRoster'
 export { FORM_TREND_TEXT, FORM_TREND_CLASS, formMonthLabel } from './record/formCopy'
 export {
   formChartDomain,

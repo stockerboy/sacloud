@@ -31,7 +31,7 @@ import {
   NOT_RATED_INLINE_TITLE,
   isRated,
 } from './officialCopy'
-import { lineupPlayerHref } from './lineupCopy'
+import { hasAnyPosition, lineupPlayerHref, lineupPositionText } from './lineupCopy'
 import {
   UNKNOWN,
   damageBarPercent,
@@ -540,6 +540,27 @@ function TeamBlock({
         ) : null}
         <span className="ml-auto shrink-0 pl-2 text-meta">{first}</span>
       </div>
+
+      {/* 포지션 줄 (D-199 · SITE_SPEC_V2). 사용자 원문 그대로의 한 줄이다 —
+          `차값 B리베 / 누검 숏포지 (S) / 쨔잉나 2F / yuhwan 숏포지 / huwho 스나수`.
+          포지션은 그 선수의 고유 자리이고, `(S)` 는 **이 판에 스나를 들었다**는 뜻이다.
+          둘은 다른 것이라 나란히 적는다 — 포지션으로 무기를 추측하지 않는다.
+          아무도 포지션을 모르면 줄을 통째로 그리지 않는다 (D-106) */}
+      {hasAnyPosition(stats) ? (
+        <div className="flex items-baseline border-t border-t-line px-2 py-1 text-sm">
+          <div className="w-14 shrink-0 text-meta max-md:hidden">포지션</div>
+          <div className="min-w-0 flex-grow">
+            {stats.map((stat, index) => (
+              <span key={stat.player_id} className="whitespace-nowrap">
+                {index === 0 ? null : <span className="mx-1 text-meta">/</span>}
+                <PlayerLink leagueSlug={leagueSlug} playerId={stat.player_id}>
+                  {lineupPositionText(stat)}
+                </PlayerLink>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* 컬럼 헤더는 팀 블록마다 반복한다 (원본 구조).
           `헤드샷` 은 원본 모바일에 없다 — PC 는 그대로 두고 모바일에서만 감춘다 */}

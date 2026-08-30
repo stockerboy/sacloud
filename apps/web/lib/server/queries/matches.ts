@@ -19,6 +19,7 @@ import {
   toClanSummary,
 } from '../mappers'
 import { publicOriginWhere } from './publicScope'
+import { resolvePositionsOf } from './playerPositionQuery'
 
 /**
  * 매치 조회 (기록실 목록 · 매치 상세).
@@ -280,6 +281,11 @@ function toMatchPlayerStat(
   stat: StatRow,
   visible: boolean,
   clans: LeagueClanContext,
+  /**
+   * 선수의 **고유 포지션** 표기 (D-199). 경기 **상세**에서만 채운다 —
+   * 목록에서는 비어 있고(`null`) 화면은 이름만 적는다. 계약 주석 참조.
+   */
+  positions?: Map<string, string | null>,
 ): MatchPlayerStat {
   const damage = visible ? stat.damage : null
   const headshot = visible ? stat.headshot : null
@@ -307,6 +313,11 @@ function toMatchPlayerStat(
     win: match.winnerSide === stat.side,
     mvp: stat.mvp,
     match_time_clan: matchTimeClanOf(stat, clans),
+    /* 포지션은 이 경기의 사실이 아니라 **그 선수의 고유 자리**다 (D-199).
+       바로 위 `weapon` 과 나란히 놓으면 `숏포지 · 스나` 처럼 읽힌다 —
+       "스나수가 무조건 스나를 드는것만은 아니야" 를 화면이 그대로 말할 수 있다.
+       모르면 `null` 이고 화면은 이름만 적는다 (D-106) */
+    position_label: positions?.get(stat.playerId) ?? null,
   }
 }
 
@@ -581,10 +592,21 @@ export async function getMatch(
   const viewerSide = sideOfLeagueClan(match, viewerId)
   if (!viewerSide) return null
 
+  /* 참가자 포지션 — **여기서만** 읽는다 (D-199). 목록에서는 읽지 않는다.
+     한 경기 열 명이라 왕복 세 번으로 끝난다 (`resolvePositionsOf`).
+     실패해도 경기 상세를 죽이지 않는다 — 그때는 포지션 없이 그린다 */
+  const positionsResolved = await resolvePositionsOf(
+    leagueId,
+    match.stats.map((stat) => stat.playerId),
+  ).catch(() => new Map())
+  const positions = new Map<string, string | null>(
+    [...positionsResolved].map(([id, value]) => [id, value.label]),
+  )
+
   const statsOf = (side: TeamSide): MatchPlayerStat[] =>
     match.stats
       .filter((stat) => stat.side === side)
-      .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide, clans))
+      .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide, clans, positions))
 
   return { ...base, red_stats: statsOf('red'), blue_stats: statsOf('blue') }
 }

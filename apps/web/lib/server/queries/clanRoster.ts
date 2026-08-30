@@ -39,10 +39,11 @@ const ROSTER_LIMIT = 300
  */
 export async function leagueClanRoster(
   leagueId: string,
-  leagueClanId: string,
+  /** **Clan.id** 다. `LeaguePlayer` 는 현재 소속을 `clanId` 로 들고 있다 (LeagueClan 이 아니다) */
+  clanId: string,
 ): Promise<ClanRoster | null> {
   const members = await prisma.leaguePlayer.findMany({
-    where: { leagueId, leagueClanId },
+    where: { leagueId, clanId },
     /* 래더 높은 순. 동점 정렬은 계약(`buildClanRoster`)이 다시 못 박으므로
        여기서는 상한(`take`)이 잘라 낼 쪽만 정하면 된다 */
     orderBy: [{ rating: 'desc' }, { id: 'asc' }],

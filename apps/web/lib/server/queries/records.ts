@@ -30,6 +30,7 @@ import { playerTierBreakdown } from './tierBreakdown'
 import { playerJudgedPosition } from './playerPositionQuery'
 import { playerTraits } from './playerTraits'
 import { leagueClanMetrics } from './clanMetrics'
+import { leagueClanRoundMetrics } from './clanRoundMetrics'
 import { leagueClanRoster } from './clanRoster'
 import { toKstIso } from '../format'
 import {
@@ -400,7 +401,7 @@ export async function getLeagueClanShow(
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
   }
 
-  const [rank, record, metrics, roster] = await Promise.all([
+  const [rank, record, metrics, roster, roundMetrics] = await Promise.all([
     clanRankOf({
       id: leagueClan.id,
       leagueId: leagueClan.leagueId,
@@ -414,7 +415,10 @@ export async function getLeagueClanShow(
     /* 클랜원 정리 — 포지션별 · 1군/2군 (SITE_SPEC_V2 5-2 · D-199).
        기존 클랜원 목록(`/clan/{slug}/player`)을 **대체하지 않는다** — 그쪽은 그대로 둔다.
        실패해도 클랜 화면 전체를 죽이지 않는다. `null` 이면 카드를 안 그린다 */
-    leagueClanRoster(leagueClan.leagueId, leagueClan.id).catch(() => null),
+    leagueClanRoster(leagueClan.leagueId, clan.id).catch(() => null),
+    /* 배틀로그 지표 (SITE_SPEC_V2 5-5절). 집계는 `nexon clan-round-build` 가 미리 해 둔다.
+       배틀로그가 없는 클랜은 `null` 이고 화면은 카드를 안 그린다 (D-106) */
+    leagueClanRoundMetrics(leagueClan.leagueId, leagueClan.id).catch(() => null),
   ])
 
   return {
@@ -437,6 +441,7 @@ export async function getLeagueClanShow(
     teammates: record.teammates,
     metrics,
     roster,
+    round_metrics: roundMetrics,
   }
 }
 
