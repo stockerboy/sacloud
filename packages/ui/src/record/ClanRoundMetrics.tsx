@@ -3,12 +3,14 @@ import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 
 /**
- * 클랜페이지 **배틀로그 지표** — 블루방어율 · 어택성공률 · 조직력 · 폭발력 ·
+ * 클랜페이지 **배틀로그 지표** — 소수싸움 · 블루방어율 · 어택성공률 · 조직력 · 폭발력 ·
  * 게임템포 · 클린시트 (`docs/SITE_SPEC_V2.md` 5-5절).
  *
  * ```
  * 배틀로그 지표                        25판 · 진영 아는 라운드 229/2,020
  * ─────────────────────────────────────────────────────────────────────
+ * 소수싸움     51.5%   839회중 432회 승리
+ *                     숫자가 밀린 839라운드 · 진영을 가리지 않는다
  * 블루방어율   71.6%   블루 5라운드중 1.4라운드 허용
  *                     수비 109라운드 · 31라운드 내줌
  * 어택성공률   46.6%   레드 5라운드중 2.3라운드 · 폭탄설치 1.9번
@@ -35,6 +37,11 @@ import { rateClass } from '../common/rate'
  *   줄마다 오른쪽에 그 값을 만든 라운드 수를 적는다. 머리에는 몇 판을 봤고 그중
  *   진영을 아는 라운드가 몇인지 적는다. `10라운드로 잰 82%` 와 `500라운드로 잰 82%` 는
  *   같은 숫자지만 같은 뜻이 아니다.
+ *
+ * ── 소수싸움만 표본이 크다
+ *   그 축은 **진영을 보지 않아서**(`packages/nexon/src/clanRound.ts`) 교대를 못 본
+ *   경기에서도 세어진다. 머리의 `진영 아는 라운드` 와 앞뒤가 안 맞아 보이는 것이
+ *   정상이라, 그 줄의 표본에 `진영을 가리지 않는다` 를 함께 적는다.
  */
 
 function SectionTitle({ title, note }: { title: string; note?: string }) {
@@ -173,6 +180,28 @@ function Tempo({ tempo }: { tempo: ClanRoundMetricsData['tempo'] }) {
   )
 }
 
+/**
+ * 소수싸움 — 원문: `소수싸움:839회중 432회 승리 n%`.
+ *
+ * 문구를 원문 형식 그대로 쓴다. 큰 값이 비율이고, 옆에 `839회중 432회 승리` 가 붙는다.
+ *
+ * ── 표본이 다른 줄보다 **훨씬 크다**
+ *   이 축만 진영을 보지 않는다 (`packages/nexon/src/clanRound.ts`). 그래서 `수비
+ *   109라운드` 옆에 `소수싸움 839회` 가 나란히 서도 어긋난 것이 아니다. 왜 큰지를
+ *   표본 줄에 한마디로 적어 둔다 — 안 적으면 다른 줄과 견주다 숫자를 의심하게 된다.
+ */
+function Outnumbered({ outnumbered }: { outnumbered: ClanRoundMetricsData['outnumbered'] }) {
+  return (
+    <MetricRow
+      value={outnumbered.rate === null ? null : formatRate(outnumbered.rate)}
+      unit="%"
+      tone={outnumbered.rate}
+      detail={`${formatCount(outnumbered.rounds)}회중 ${formatCount(outnumbered.won)}회 승리`}
+      sample={`숫자가 밀린 ${formatCount(outnumbered.rounds)}라운드 · 진영을 가리지 않는다`}
+    />
+  )
+}
+
 /** 클린시트(반코트) — 원문: `800판중 120회 n%` */
 function CleanSheet({ sheet }: { sheet: ClanRoundMetricsData['clean_sheet'] }) {
   return (
@@ -207,7 +236,15 @@ export function ClanRoundMetrics({ metrics }: { metrics: ClanRoundMetricsData })
         라운드별 진영은 폭탄 이벤트로 되짚는다. 진영을 모르는 라운드는 분모에서도 뺐다.
       </div>
 
+      {/* 사양 원문에서 소수싸움이 블루방어율보다 **앞**에 있다. 순서를 그대로 둔다 */}
       <div className="mt-3 border-t border-t-divider pt-3">
+        <SectionTitle title="소수싸움" note="숫자가 밀린 라운드를 이겨 낸 비율" />
+        <div className="mt-2">
+          <Outnumbered outnumbered={metrics.outnumbered} />
+        </div>
+      </div>
+
+      <div className="mt-4">
         <SectionTitle title="블루방어율" note="수비 라운드를 지킨 비율" />
         <div className="mt-2">
           <BlueDefense defense={metrics.blue_defense} />

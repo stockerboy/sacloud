@@ -30,7 +30,7 @@ import { playerTierBreakdown } from './tierBreakdown'
 import { playerJudgedPosition } from './playerPositionQuery'
 import { playerTraits } from './playerTraits'
 import { leagueClanMetrics } from './clanMetrics'
-import { leagueClanRoundMetrics } from './clanRoundMetrics'
+import { leagueClanHexagon, leagueClanRoundMetrics } from './clanRoundMetrics'
 import { leagueClanRoster } from './clanRoster'
 import { toKstIso } from '../format'
 import {
@@ -401,7 +401,7 @@ export async function getLeagueClanShow(
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
   }
 
-  const [rank, record, metrics, roster, roundMetrics] = await Promise.all([
+  const [rank, record, metrics, roster, roundMetrics, hexagon] = await Promise.all([
     clanRankOf({
       id: leagueClan.id,
       leagueId: leagueClan.leagueId,
@@ -419,6 +419,8 @@ export async function getLeagueClanShow(
     /* 배틀로그 지표 (SITE_SPEC_V2 5-5절). 집계는 `nexon clan-round-build` 가 미리 해 둔다.
        배틀로그가 없는 클랜은 `null` 이고 화면은 카드를 안 그린다 (D-106) */
     leagueClanRoundMetrics(leagueClan.leagueId, leagueClan.id).catch(() => null),
+    /* 클랜 육각형 (SITE_SPEC_V2 5-5절). 위 지표와 **같은 캐시**를 읽는다 — 질의가 늘지 않는다 */
+    leagueClanHexagon(leagueClan.leagueId, leagueClan.id).catch(() => null),
   ])
 
   return {
@@ -442,6 +444,7 @@ export async function getLeagueClanShow(
     metrics,
     roster,
     round_metrics: roundMetrics,
+    hexagon,
   }
 }
 

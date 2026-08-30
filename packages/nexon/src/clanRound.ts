@@ -1,5 +1,5 @@
 /**
- * 클랜 지표 다섯 — **배틀로그로만 잴 수 있는 것들** (`docs/SITE_SPEC_V2.md` 5-5절).
+ * 클랜 지표 — **배틀로그로만 잴 수 있는 것들** (`docs/SITE_SPEC_V2.md` 5-5절).
  *
  * 순수 함수만 있다. DB 도 네트워크도 모른다. `roundState.ts` · `roundSide.ts` 의 형제 모듈이다.
  *
@@ -11,10 +11,15 @@
  *                   아무도 죽지 않은 횟수"
  *     폭발력       "레드선수들이 2초 이하 간격으로 3명 이상 제거한 횟수"
  *     게임템포     "레드일 때 라운드가 빨리 끝날수록 템포 높음"
+ *     소수싸움     "839회중 432회 승리 n%"
  *
- *   다섯 개 전부 **진영(레드=공격 / 블루=수비)** 을 알아야 시작된다. 그런데 `Match` 의
+ *   앞의 다섯은 전부 **진영(레드=공격 / 블루=수비)** 을 알아야 시작된다. 그런데 `Match` 의
  *   red/blue 클랜은 경기 단위 값이라 라운드별 진영이 아니다 — 그래서 폭탄 이벤트로
  *   되짚는다 (`roundSide.ts` · D-184).
+ *
+ *   **소수싸움만 진영을 안 본다.** 숫자가 밀리는 것은 공격이든 수비든 똑같이 일어난다.
+ *   그래서 `switchRound` 가 `null` 인 경기에서도 셀 수 있고, 표본이 나머지 다섯보다
+ *   훨씬 두껍다 (`outnumberedRounds` 주석 참조).
  *
  * ── 모르는 라운드는 **분모에도 넣지 않는다** (D-106)
  *   진영을 모르는 라운드가 실제로 많다. 폭탄이 한 번도 안 터진 경기는 진영을 통째로
@@ -49,6 +54,7 @@ import {
   secondsOf,
   isRestorable,
   rosterOf,
+  type RoundDeath,
   type RoundStateEvent,
 } from './roundState'
 import { bombEvidenceOf, roundSidesOf, type RoundSideEvent, type RoundSide } from './roundSide'
@@ -130,7 +136,87 @@ export function burstCountOf(times: readonly number[]): number {
   return bursts
 }
 
-/** 한 경기에서 그 클랜의 다섯 지표 재료 */
+/**
+ * **클랜 단위 소수싸움** — 이 라운드에서 우리 팀이 숫자에 밀린 적이 있었나.
+ *
+ * `roundStateOf` 가 준 **죽은 순서**로 생존자 수를 되짚는다. 양 팀 다섯에서 시작해
+ * 죽을 때마다 하나씩 줄이고, **우리 생존자 < 상대 생존자** 가 되는 순간이 한 번이라도
+ * 있었으면 `true` 다.
+ *
+ * > `[미확인]` 사양 원문은 `소수싸움:839회중 432회 승리 n%` 한 줄뿐이고 **무엇을 분모로
+ * > 삼았는지 적혀 있지 않다.** 위 정의(숫자가 밀린 순간이 있었던 라운드)는 우리가 정한
+ * > 것이고 **원본과 동일함이 검증되지 않았다** (`CLAUDE.md` 3장 7번). 실측에서 우리
+ * > 정의의 승률은 28.6% 로, 원문 예시의 51.5% 보다 낮다 — 분모에 진 라운드가 거의
+ * > 전부 들어오기 때문이다(질 때는 결국 전멸한다). 원문의 분모가 확인되면 이 함수와
+ * > `clanRoundBuilderVersion` 을 함께 고친다.
+ *
+ * ── 왜 선수 단위(`roundTallyOf`)를 클랜별로 더하면 안 되나
+ *   (a) 한 라운드에 우리 편이 둘 남으면 두 선수가 각각 그 라운드를 세어 **두 번** 세어진다
+ *   (b) 선수를 **현재 소속** 클랜으로 조인해야 하는데, 그건 "경기 당시 소속" 원칙
+ *       (`CLAUDE.md` 3-B 4번)에 어긋난다
+ *   그래서 라운드 판정을 클랜 기준으로 새로 한다. 정의도 다르다 — 선수 축은
+ *   `본인 포함 둘이 남았고 상대는 둘 이상` 이고, 이쪽은 **숫자가 밀린 모든 라운드**다.
+ *
+ * ── 판정할 수 없으면 `null` 이다. **`false` 로 밀지 않는다** (D-106)
+ *   `false` 는 "겪었는데 안 밀렸다" 라는 실제 관측이고, 지금은 "셀 수 없다" 이다.
+ *   `null` 이 되는 경우는 둘이다.
+ *
+ *     · 우리·상대가 아닌 **제3의 팀** 번호가 섞였다 (응답이 어긋났다)
+ *     · 팀 인원보다 많이 죽었다 (같은 사람이 두 번 죽은 응답)
+ *     · 같은 초에 양쪽이 죽어 **순서에 따라 답이 갈린다**
+ *
+ *   마지막이 핵심이다. `event_time` 은 `MM:SS` 라 초 단위이고, 우리 한 명과 상대 한 명이
+ *   같은 초에 죽으면 누가 먼저인지 모른다. 우리가 먼저면 그 찰나에 숫자가 밀린 것이고,
+ *   상대가 먼저면 안 밀린 것이다. 모르는 것을 어느 쪽으로도 밀지 않고 라운드를 버린다
+ *   (`roundTallyOf` 가 같은 자리에서 같은 판단을 한다).
+ *
+ *   같은 초 묶음의 **끝**에서 이미 밀렸으면 순서와 무관하게 밀린 것이므로 그때는
+ *   `true` 다. 애매한 것은 "끝에서는 안 밀렸는데 우리가 먼저 죽는 순서라면 밀렸을"
+ *   경우뿐이다.
+ *
+ * `deaths` 는 시각 오름차순이어야 한다 — `roundStatesOf` 가 그렇게 준다.
+ */
+export function outnumberedRound(input: {
+  deaths: readonly RoundDeath[]
+  /** 우리 `team_no` */
+  ourTeam: string
+  /** 상대 `team_no` */
+  foeTeam: string
+  teamSize: number
+}): boolean | null {
+  let ours = input.teamSize
+  let foes = input.teamSize
+
+  let i = 0
+  while (i < input.deaths.length) {
+    const at = (input.deaths[i] as RoundDeath).at
+    /* 같은 초에 죽은 사람들을 한 묶음으로 본다 — 그 안의 순서는 모른다 */
+    let mine = 0
+    let theirs = 0
+    while (i < input.deaths.length && (input.deaths[i] as RoundDeath).at === at) {
+      const team = (input.deaths[i] as RoundDeath).team
+      if (team === input.ourTeam) mine += 1
+      else if (team === input.foeTeam) theirs += 1
+      else return null
+      i += 1
+    }
+    /* 인원보다 많이 죽었다 = 응답이 어긋났다 */
+    if (mine > ours || theirs > foes) return null
+
+    /* 우리가 먼저 다 죽는 순서를 가정한 최악값. 양쪽이 같은 초에 죽었을 때만 뜻이 있다 */
+    const ambiguous = mine > 0 && theirs > 0 && ours - mine < foes
+
+    ours -= mine
+    foes -= theirs
+
+    /* 묶음 끝에서 밀렸으면 **순서와 무관하게** 밀린 것이다 */
+    if (ours < foes) return true
+    if (ambiguous) return null
+  }
+  return false
+}
+
+/** 한 경기에서 그 클랜의 지표 재료 */
 export interface ClanRoundTally {
   /** 이벤트로 확인된 라운드 수 (진영을 몰라도 센다) */
   rounds: number
@@ -212,6 +298,24 @@ export interface ClanRoundTally {
    * 어느 쪽을 쓸지는 **화면이 정한다** — 둘 다 돌려주는 이유다.
    */
   roundGaps: number[]
+
+  /* 6 소수싸움 — 숫자가 밀린 라운드를 얼마나 이겨 냈나 (사양 원문 `839회중 432회 승리`) */
+  /**
+   * 우리 생존자가 상대보다 적어진 순간이 있었고 **승패까지 아는** 라운드 (분모).
+   *
+   * ⚠ **진영을 보지 않는다.** 위의 다섯 축은 진영을 아는 라운드만 세지만 이 축은
+   * 모든 라운드를 센다 — 숫자가 밀리는 것은 공격이든 수비든 똑같이 일어난다.
+   * 그래서 `switchRound` 가 `null` 인 경기에서도 세어지고, **표본이 다섯 축보다
+   * 훨씬 두껍다.** 화면에서 `수비 109라운드` 옆에 `소수싸움 839회` 가 나란히 서도
+   * 어긋난 것이 아니다.
+   *
+   * 대신 **5대5가 확인된 경기에서만** 잰다. 이벤트가 한 명분이라도 빠지면 그 사람이
+   * 계속 살아 있는 것이 되어, 밀린 라운드를 **안 밀린 것으로** 만든다. 조직력과 같은
+   * 이유로 `isRestorable` 을 건다.
+   */
+  outnumberedRounds: number
+  /** 그중 이긴 라운드 (분자) */
+  outnumberedWon: number
 }
 
 const EMPTY: ClanRoundTally = {
@@ -232,6 +336,8 @@ const EMPTY: ClanRoundTally = {
   bursts: 0,
   roundSpans: [],
   roundGaps: [],
+  outnumberedRounds: 0,
+  outnumberedWon: 0,
 }
 
 /**
@@ -245,11 +351,16 @@ const EMPTY: ClanRoundTally = {
  * 라운드를 하나도 못 읽으면 `null` 이다. **0 을 돌려주지 않는다** — 0회는 "겪었는데
  * 없었다" 이고 지금은 "셀 수 없다" 이다 (D-106).
  *
- * ── 조직력만 `isRestorable` 을 건다
+ * ── 조직력과 소수싸움만 `isRestorable` 을 건다
  *   이벤트가 한 명분이라도 빠지면 "아무도 안 죽었다" 가 **거짓으로 참이 된다** —
- *   없는 조직력이 만들어진다. 그래서 양 팀 인원이 정확히 `teamSize` 명 확인된
- *   경기에서만 센다. 나머지 넷은 빠진 이벤트가 값을 **낮추는** 쪽으로만 틀리므로
+ *   없는 조직력이 만들어진다. 소수싸움도 같다: 빠진 사람이 계속 살아 있는 것이 되어
+ *   밀린 라운드가 안 밀린 것으로 보인다. 그래서 양 팀 인원이 정확히 `teamSize` 명
+ *   확인된 경기에서만 센다. 나머지 넷은 빠진 이벤트가 값을 **낮추는** 쪽으로만 틀리므로
  *   (딴 라운드가 줄고 · 연속 제거가 끊기고 · 구간이 짧아진다) 굳이 표본을 버리지 않는다.
+ *
+ * ── 소수싸움은 진영을 안 본다
+ *   그래서 진영을 모르는 라운드에서도 세어진다. 아래 루프에서 **진영 검사보다 먼저**
+ *   세는 이유다 (`outnumberedRounds` 주석).
  */
 export function clanRoundTallyOf(input: {
   events: readonly ClanRoundEvent[]
@@ -268,7 +379,12 @@ export function clanRoundTallyOf(input: {
   const sideOf = (round: number): RoundSide | undefined => sides.side.get(round)
 
   const states = roundStatesOf(input.events)
-  const restorable = isRestorable(rosterOf(input.events), input.teamSize)
+  const roster = rosterOf(input.events)
+  const restorable = isRestorable(roster, input.teamSize)
+  /* 소수싸움은 상대 팀 번호를 알아야 센다. 우리 팀이 명단에 없으면 아예 못 잰다 */
+  const foeTeam = roster.teams.includes(input.teamNo)
+    ? (roster.teams.find((team) => team !== input.teamNo) ?? null)
+    : null
 
   /* 우리 팀이 폭탄을 심은 라운드. 같은 설치가 두 줄로(또는 양 클랜 응답으로) 올 수 있어
      **라운드 단위로 접는다** — 그러지 않으면 "라운드당 설치 수" 가 부풀어 오른다.
@@ -287,12 +403,29 @@ export function clanRoundTallyOf(input: {
   for (let i = 0; i < roundNumbers.length; i += 1) {
     const round = roundNumbers[i] as number
     const clock = clocks.get(round) as RoundClock
+    const won = input.wonRound(round)
+    const deaths = states.get(round)?.deaths ?? []
+
+    /* ───────── 소수싸움 — **진영을 보지 않는다** ─────────
+       공격이든 수비든 숫자는 똑같이 밀린다. 그래서 진영 검사 **위**에 둔다.
+       승패를 모르면 분모에서도 뺀다 — 이긴 쪽으로도 진 쪽으로도 밀지 않는다 (D-106) */
+    if (restorable && foeTeam !== null && won !== null) {
+      const pushed = outnumberedRound({
+        deaths,
+        ourTeam: input.teamNo,
+        foeTeam,
+        teamSize: input.teamSize,
+      })
+      if (pushed === true) {
+        tally.outnumberedRounds += 1
+        if (won) tally.outnumberedWon += 1
+      }
+    }
+
     const side = sideOf(round)
     /* 진영을 모르는 라운드는 **분모에도 넣지 않는다** */
     if (side === undefined) continue
     tally.sidedRounds += 1
-
-    const won = input.wonRound(round)
 
     if (side === 'defense') {
       if (won === null) continue
@@ -309,8 +442,6 @@ export function clanRoundTallyOf(input: {
       tally.attackRounds += 1
       if (won) tally.attackWon += 1
     }
-
-    const deaths = states.get(round)?.deaths ?? []
 
     /* 조직력 — 라운드 시작(근사)부터 **우리 팀 첫 죽음**까지가 30초를 넘었나.
        아무도 안 죽었으면 라운드 끝까지 버틴 것이므로 관측 구간 전체를 쓴다 */

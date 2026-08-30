@@ -6,12 +6,15 @@
  *
  * ── 무엇을 여섯 축으로 골랐나
  *   사용자가 클랜 지표를 아홉 개 적었다. 그중 **비율로 견줄 수 있는 여섯**을 꼭지점으로
- *   삼고, 나머지 셋(소수싸움 · 클린시트 · 최다연승)은 숫자 그대로 줄로 적는다.
- *   횟수는 판수가 많은 클랜이 무조건 커져서 꼭지점으로 쓸 수 없다.
+ *   삼고, 나머지 셋(화력 · 클린시트 · 최다연승)은 숫자 그대로 줄로 적는다.
  *
  *   ```
- *   화력 · 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포
+ *   소수싸움 · 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포
  *   ```
+ *
+ *   원문에서도 `6각형` 바로 다음 줄이 `소수싸움` 이다. 그리고 여섯 축의 재료가
+ *   전부 `ClanRoundProfile` 한 표에 들어 있어, 리그 전체 분포를 한 번에 읽는다.
+ *   화력을 넣으려면 클랜마다 경기를 다시 훑어야 해서 그림 하나에 질의 수십 번이 든다.
  *
  * ── 왜 계약에 두는가
  *   실제 서버와 Mock 이 **같은 함수**를 부른다. 두 곳에서 따로 판정하면
@@ -23,11 +26,13 @@
  *   특히 배틀로그 축 다섯은 **진영을 아는 라운드가 10.8% 뿐이라** 대부분 비어 있다.
  */
 
+import { z } from 'zod'
+import { Count, Percent } from './common'
 import { percentileOf } from './traits'
 
 /** 꼭지점 여섯. **이 순서가 화면의 시계방향 순서**다 */
 export const CLAN_TRAIT_AXIS_KEYS = [
-  'firepower',
+  'outnumbered',
   'defense',
   'attack',
   'organized',
@@ -38,7 +43,7 @@ export type ClanTraitAxisKey = (typeof CLAN_TRAIT_AXIS_KEYS)[number]
 
 /** 화면에 그대로 쓰는 이름 — 사용자가 적어 준 말을 그대로 쓴다 */
 export const CLAN_TRAIT_AXIS_LABEL: Record<ClanTraitAxisKey, string> = {
-  firepower: '화력',
+  outnumbered: '소수싸움',
   defense: '블루방어율',
   attack: '어택성공률',
   organized: '조직력',
@@ -55,8 +60,8 @@ export const CLAN_TRAIT_PENDING_TEXT: Record<ClanTraitPending, string> = {
   battlelog: '배틀로그 필요',
   /** 배틀로그는 있는데 **라운드별 진영**을 못 정했다 (교대를 못 봤다 · D-184) */
   side: '진영 판정 필요',
-  /** 이긴 경기가 모자라 화력을 못 낸다 */
-  matches: '경기 부족',
+  /** 라운드 표본이 모자라 못 낸다 */
+  matches: '표본 부족',
   /** 견줄 클랜이 모자라 백분위를 못 낸다 */
   cohort: '비교 대상 부족',
 }
@@ -71,25 +76,27 @@ export const CLAN_TRAIT_PENDING_TEXT: Record<ClanTraitPending, string> = {
  */
 export const CLAN_TRAIT_MIN_COHORT = 5
 
-export interface ClanTraitAxis {
-  key: ClanTraitAxisKey
-  label: string
+export const ClanTraitAxis = z.object({
+  key: z.enum(CLAN_TRAIT_AXIS_KEYS),
+  label: z.string(),
   /** 0~100 백분위. 재료가 없으면 `null` — **0이 아니라 모르는 것이다** */
-  percentile: number | null
+  percentile: Percent.nullable(),
   /** 못 재는 이유. 잴 수 있었으면 `null` */
-  pending: ClanTraitPending | null
-}
+  pending: z.enum(CLAN_TRAIT_PENDING_KEYS).nullable(),
+})
+export type ClanTraitAxis = z.infer<typeof ClanTraitAxis>
 
-export interface ClanHexagon {
+export const ClanHexagon = z.object({
   /** 백분위를 낸 모집단의 크기(같은 리그 클랜 수). 못 냈으면 `null` */
-  cohort: number | null
+  cohort: Count.nullable(),
   /** 항상 6개 · `CLAN_TRAIT_AXIS_KEYS` 순서 */
-  axes: ClanTraitAxis[]
+  axes: z.array(ClanTraitAxis),
   /** 값이 있는 축 수 */
-  measured: number
+  measured: Count,
   /** 여섯 축이 다 차지 않았다 */
-  measuring: boolean
-}
+  measuring: z.boolean(),
+})
+export type ClanHexagon = z.infer<typeof ClanHexagon>
 
 /** 한 축의 재료 — 그 클랜의 값과, 같은 리그 클랜들의 값 분포 */
 export interface ClanAxisInput {

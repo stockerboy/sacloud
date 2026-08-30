@@ -82,8 +82,14 @@ import {
   type ClanMatchRow,
   type ClanMetrics,
   /* 배틀로그 지표 — 판정 규칙도 계약 한 곳에만 둔다 (SITE_SPEC_V2 5-5절) */
+  CLAN_OUTNUMBERED_MIN_ROUNDS,
+  CLAN_ROUND_MIN_ROUNDS,
   CLAN_TEMPO_MIN_ROUNDS,
+  buildClanHexagon as buildClanHexagonOf,
   buildClanRoundMetrics as buildClanRoundMetricsOf,
+  type ClanAxisInput,
+  type ClanHexagon,
+  type ClanTraitAxisKey,
   type ClanRoundMetrics,
   type ClanRoundTallyInput,
   /* 클랜원 정리 — 나누는 규칙도 계약 한 곳에만 둔다 (SITE_SPEC_V2 5-2 · D-199) */
@@ -1699,7 +1705,7 @@ function buildClanRoster(leagueClan: MockLeagueClan): ClanRoster | null {
 /* ------------------- 클랜 배틀로그 지표 (SITE_SPEC_V2 5-5절) ------------------- */
 
 /**
- * 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트.
+ * 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트 · 소수싸움.
  *
  * 판정은 `@sacloud/contract` 의 `buildClanRoundMetrics()` 가 전부 한다.
  * 실제 서버(`apps/web/lib/server/queries/clanRoundMetrics.ts`)도 **같은 함수**를 쓴다.
@@ -1751,7 +1757,9 @@ function mockRoundTallyOf(leagueClan: MockLeagueClan): ClanRoundTallyInput {
   const defense = sided * rng.int(3, 5)
   const attack = Math.round(attackSide * rng.float(0.9, 1, 3))
 
-  return {
+  /* ⚠ 아래 `rng` 호출 **순서가 곧 값**이다. 새 축은 반드시 **맨 뒤**에 붙인다 —
+     가운데에 끼워 넣으면 그 뒤의 모든 픽스처 값이 통째로 바뀐다 */
+  const tally: ClanRoundTallyInput = {
     matches: seen,
     sidedMatches: sided,
     roundsTotal: seen * MOCK_ROUND_PER_MATCH,
@@ -1776,7 +1784,19 @@ function mockRoundTallyOf(leagueClan: MockLeagueClan): ClanRoundTallyInput {
     cleanSheetMatches: Math.round(sided * rng.float(0.5, 0.9, 3)),
     /* 분자는 분모가 정해진 뒤에 채운다 — 분모를 넘지 않게 */
     cleanSheets: 0,
+    /* 분모부터 정하고 아래에서 채운다 */
+    outnumberedRounds: 0,
+    outnumberedWon: 0,
   }
+
+  /* 소수싸움은 **진영을 안 보는 축**이라 교대를 못 본 경기에서도 쌓인다.
+     그래서 분모가 `sided` 가 아니라 **본 경기 전체(`seen`)** 기준이고, 위의 축들보다
+     훨씬 크다 — 화면에서 `수비 40라운드` 옆에 `소수싸움 300회` 가 서는 것이 정상이다 */
+  tally.outnumberedRounds = Math.round(seen * MOCK_ROUND_PER_MATCH * rng.float(0.3, 0.5, 3))
+  /* 밀리고도 이기는 비율. 사양 원문 `839회중 432회 승리` 가 51.5% 다 */
+  tally.outnumberedWon = Math.round(tally.outnumberedRounds * rng.float(0.42, 0.58, 3))
+
+  return tally
 }
 
 /** 같은 리그 클랜들의 템포 중앙값. 픽스처는 변하지 않으므로 한 번 세서 들고 있는다 */
@@ -1807,6 +1827,57 @@ function buildClanRoundMetrics(leagueClan: MockLeagueClan): ClanRoundMetrics | n
   })
 }
 
+
+/**
+ * 클랜 육각형 (SITE_SPEC_V2 5-5절) — 실제 서버(`apps/web/lib/server/queries/clanRoundMetrics.ts`)와
+ * **같은 계약 함수**를 부른다. 재료도 배틀로그 지표와 같은 것을 쓴다.
+ */
+function buildClanHexagonOfMock(leagueClan: MockLeagueClan): ClanHexagon | null {
+  const values = (entry: MockLeagueClan): Record<ClanTraitAxisKey, number | null> => {
+    const t = mockRoundTallyOf(entry)
+    const rate = (num: number, den: number, min: number): number | null =>
+      den < min ? null : (num / den) * 100
+    return {
+      outnumbered: rate(t.outnumberedWon, t.outnumberedRounds, CLAN_OUTNUMBERED_MIN_ROUNDS),
+      defense: rate(t.defenseRounds - t.defenseConceded, t.defenseRounds, CLAN_ROUND_MIN_ROUNDS),
+      attack: rate(t.attackWon, t.attackRounds, CLAN_ROUND_MIN_ROUNDS),
+      organized: rate(t.organizedHeld, t.organizedRounds, CLAN_ROUND_MIN_ROUNDS),
+      burst: rate(t.bursts, t.burstRounds, CLAN_ROUND_MIN_ROUNDS),
+      tempo:
+        t.tempoRounds >= CLAN_TEMPO_MIN_ROUNDS && t.tempoMedian !== null ? t.tempoMedian : null,
+    }
+  }
+
+  const keys: ClanTraitAxisKey[] = [
+    'outnumbered',
+    'defense',
+    'attack',
+    'organized',
+    'burst',
+    'tempo',
+  ]
+  const cohorts = new Map<ClanTraitAxisKey, number[]>(keys.map((key) => [key, []]))
+  for (const entry of leagueClansByLeague.get(leagueClan.leagueId) ?? []) {
+    const other = values(entry)
+    for (const key of keys) {
+      const value = other[key]
+      if (value !== null) (cohorts.get(key) as number[]).push(value)
+    }
+  }
+
+  const mine = values(leagueClan)
+  const inputs = {} as Record<ClanTraitAxisKey, ClanAxisInput>
+  for (const key of keys) {
+    inputs[key] = {
+      value: mine[key],
+      cohort: cohorts.get(key) ?? [],
+      pending: key === 'outnumbered' ? 'matches' : 'side',
+      lowerIsBetter: key === 'tempo',
+    }
+  }
+  return buildClanHexagonOf(inputs)
+}
+
 export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueClanShow | null {
   const league = leagueBySlug.get(leagueSlug)
   const clan = clanBySlug.get(clanSlug)
@@ -1829,6 +1900,7 @@ export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueC
     teammates: buildTeammates(matches, leagueClan.id, null),
     metrics: buildClanMetrics(leagueClan),
     round_metrics: buildClanRoundMetrics(leagueClan),
+    hexagon: buildClanHexagonOfMock(leagueClan),
     /* 클랜원 정리 (SITE_SPEC_V2 5-2 · D-199). 기존 클랜원 목록은 그대로 둔다 */
     roster: buildClanRoster(leagueClan),
   }

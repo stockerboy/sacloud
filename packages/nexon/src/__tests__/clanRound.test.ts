@@ -9,6 +9,7 @@
  *   4. 폭탄 설치는 라운드 단위로 접는다 — 두 줄로 와도 한 번이다
  *   5. 승패를 모르는 라운드도 설치·조직력·폭발력·템포에는 남는다
  *   6. 라운드 하나뿐이어도 무너지지 않고, 분모가 0 이면 비율은 **null 이다. 0 이 아니다**
+ *   7. **소수싸움만 진영을 안 본다** — 폭탄이 없어 진영을 하나도 모르는 경기에서도 세어진다
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -17,6 +18,7 @@ import {
   ORGANIZED_SECONDS,
   burstCountOf,
   clanRoundTallyOf,
+  outnumberedRound,
   per5,
   rateOf,
   roundClocksOf,
@@ -663,6 +665,130 @@ describe('게임템포 — 라운드 길이', () => {
     const tally = tallyOf(events, wonUnknown)
     expect(tally?.roundSpans).toEqual([10])
     expect(tally?.roundGaps).toEqual([])
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* 6 소수싸움 (클랜 단위)                                                        */
+/* -------------------------------------------------------------------------- */
+
+/** 죽음 한 건 — `outnumberedRound` 를 직접 부를 때 쓴다 */
+function deathAt(usn: string, team: string, at: number) {
+  return { usn, team, at }
+}
+
+describe('outnumberedRound — 숫자가 밀린 순간이 있었나', () => {
+  const call = (deaths: { usn: string; team: string; at: number }[]) =>
+    outnumberedRound({ deaths, ourTeam: '0', foeTeam: '1', teamSize: 5 })
+
+  it('우리가 먼저 죽으면 그 순간 밀린 것이다', () => {
+    expect(call([deathAt('A1', '0', 10)])).toBe(true)
+  })
+
+  it('한 명씩 주고받으면 밀린 적이 없다 — **false 다. null 이 아니다**', () => {
+    expect(call([deathAt('B1', '1', 10), deathAt('A1', '0', 20)])).toBe(false)
+  })
+
+  it('죽음이 하나도 없으면 안 밀린 것이다', () => {
+    expect(call([])).toBe(false)
+  })
+
+  it('회복해도 **밀린 순간이 있었으면** 센다', () => {
+    /* 10초에 4:5 로 밀렸다가 20초에 4:3 이 된다 */
+    expect(
+      call([deathAt('A1', '0', 10), deathAt('B1', '1', 20), deathAt('B2', '1', 20)]),
+    ).toBe(true)
+  })
+
+  it('같은 초에 한 명씩 죽으면 순서를 몰라 **라운드를 버린다** — null 이다', () => {
+    expect(call([deathAt('A1', '0', 10), deathAt('B1', '1', 10)])).toBeNull()
+  })
+
+  it('같은 초 묶음 **끝에서** 이미 밀렸으면 순서와 무관하다 — true 다', () => {
+    expect(
+      call([deathAt('A1', '0', 10), deathAt('A2', '0', 10), deathAt('B1', '1', 10)]),
+    ).toBe(true)
+  })
+
+  it('제3의 팀 번호가 섞이면 **null 이다** — 어느 쪽으로도 밀지 않는다', () => {
+    expect(call([deathAt('C1', '2', 10)])).toBeNull()
+  })
+
+  it('인원보다 많이 죽으면 null 이다 — 응답이 어긋난 것이다', () => {
+    /* 상대가 여섯 번 죽었다. 우리 쪽이 넘치는 경우는 그 전에 이미 밀려 `true` 로 끝난다 */
+    const six = [1, 2, 3, 4, 5, 6].map((n) => deathAt('B' + n, '1', n * 10))
+    expect(call(six)).toBeNull()
+  })
+})
+
+describe('클랜 소수싸움 — 진영을 보지 않는다', () => {
+  /** 3라운드에서 우리 A1 이 먼저 죽어 4:5 가 된다. **폭탄 근거가 없다** */
+  function pushedMatch(): ClanRoundEvent[] {
+    return [...fullRoster(), kill(3, 100, B(1), A(1))]
+  }
+
+  it('폭탄이 한 번도 안 터져 **진영을 하나도 몰라도** 센다 — 다른 다섯 축과 다른 점이다', () => {
+    const tally = tallyOf(pushedMatch(), wonOnly(3))
+    /* 진영을 아는 라운드가 하나도 없다 */
+    expect(tally?.sidedRounds).toBe(0)
+    expect(tally?.defenseRounds).toBe(0)
+    expect(tally?.attackSideRounds).toBe(0)
+    /* 그런데 소수싸움은 세어진다 */
+    expect(tally?.outnumberedRounds).toBe(1)
+    expect(tally?.outnumberedWon).toBe(1)
+  })
+
+  it('밀렸는데 졌으면 분모에만 남는다', () => {
+    const tally = tallyOf(pushedMatch(), wonOnly(9))
+    expect(tally?.outnumberedRounds).toBe(1)
+    expect(tally?.outnumberedWon).toBe(0)
+  })
+
+  it('승패를 모르면 **분모에도 안 들어간다** (D-106)', () => {
+    const tally = tallyOf(pushedMatch(), wonUnknown)
+    expect(tally?.outnumberedRounds).toBe(0)
+    expect(tally?.outnumberedWon).toBe(0)
+  })
+
+  it('안 밀린 라운드는 분모에 들어가지 않는다 — 분모는 "밀린 적이 있는 라운드" 다', () => {
+    const events = [...fullRoster(), kill(3, 100, A(1), B(1))]
+    expect(tallyOf(events, wonOnly(3))?.outnumberedRounds).toBe(0)
+  })
+
+  it('수비 라운드도 센다 — 소수싸움은 공격/수비를 가리지 않는다', () => {
+    /* `sideEvidence` 로 1라운드는 수비다 */
+    const events = [...fullRoster(), ...sideEvidence(), kill(1, 40, B(1), A(1))]
+    const tally = tallyOf(events, wonOnly(1))
+    expect(tally?.defenseRounds).toBe(1)
+    expect(tally?.outnumberedRounds).toBe(1)
+    expect(tally?.outnumberedWon).toBe(1)
+  })
+
+  it('5대5가 확인 안 되면 **분모를 0 으로 둔다** — 빠진 죽음이 밀린 라운드를 감춘다', () => {
+    const events = [kill(3, 100, B(1), A(1))]
+    expect(tallyOf(events, wonOnly(3))?.outnumberedRounds).toBe(0)
+  })
+
+  it('여러 라운드가 쌓인다 — 진영을 아는 축보다 표본이 두껍다', () => {
+    const events = [
+      ...fullRoster(),
+      ...sideEvidence(),
+      kill(3, 100, B(1), A(1)),
+      kill(4, 200, B(2), A(2)),
+      kill(5, 300, A(3), B(3)),
+    ]
+    const tally = tallyOf(events, wonOnly(3, 5))
+    expect(tally?.outnumberedRounds).toBe(2)
+    expect(tally?.outnumberedWon).toBe(1)
+  })
+
+  it('같은 초에 양쪽이 죽은 라운드는 통째로 빠진다', () => {
+    const events = [
+      ...fullRoster(),
+      kill(3, 100, B(1), A(1)),
+      kill(3, 100, A(2), B(1)),
+    ]
+    expect(tallyOf(events, wonOnly(3))?.outnumberedRounds).toBe(0)
   })
 })
 

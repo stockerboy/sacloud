@@ -2,8 +2,13 @@
  * 클랜 라운드 지표 집계를 `ClanRoundProfile` 에 쌓는다 (`docs/SITE_SPEC_V2.md` 5-5절).
  *
  * ```
- * 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트(반코트)
+ * 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트(반코트) · 소수싸움
  * ```
+ *
+ * ── 소수싸움만 모집단이 넓다
+ *   앞의 여섯은 라운드별 진영을 알아야 하지만 소수싸움은 **진영을 보지 않는다.**
+ *   그래서 교대를 못 본 경기(아래 `usable === false`)에서도 쌓인다. 저장된 값에서
+ *   `outnumberedRounds` 가 `defenseRounds + attackRounds` 보다 훨씬 큰 것은 정상이다.
  *
  * 판정은 전부 `@sacloud/nexon` 의 순수 함수(`clanRoundTallyOf` · `roundResultsOf` ·
  * `tempoOf`)가 한다. 여기서는 DB 를 읽고 쓰기만 한다 — `roundBuild.ts`(D-194)와 같은 꼴이다.
@@ -122,6 +127,15 @@ interface Accum {
   gaps: number[]
   cleanSheetMatches: number
   cleanSheets: number
+  /**
+   * 소수싸움 — **교대를 못 본 경기에서도 쌓인다.**
+   *
+   * 이 축만 진영을 보지 않으므로(`packages/nexon/src/clanRound.ts`) 아래 루프에서
+   * `usable` 검사보다 **위**에 더한다. 그래서 이 값은 `defenseRounds` · `attackRounds`
+   * 보다 훨씬 크다 — 어긋난 것이 아니다.
+   */
+  outnumberedRounds: number
+  outnumberedWon: number
 }
 
 const zero = (): Accum => ({
@@ -144,6 +158,8 @@ const zero = (): Accum => ({
   gaps: [],
   cleanSheetMatches: 0,
   cleanSheets: 0,
+  outnumberedRounds: 0,
+  outnumberedWon: 0,
 })
 
 /**
@@ -372,8 +388,12 @@ export async function buildClanRoundProfiles(input: {
       accum.clanNo = row.subject
       accum.matches += 1
       accum.roundsTotal += tally.rounds
+      /* 소수싸움은 **진영을 안 본다.** 그래서 `usable` 검사 위에 있다 —
+         교대를 못 본 경기도 숫자가 밀렸는지는 그대로 셀 수 있다 */
+      accum.outnumberedRounds += tally.outnumberedRounds
+      accum.outnumberedWon += tally.outnumberedWon
       totals.set(leagueClanId, accum)
-      /* 교대를 못 본 경기는 여기서 끊는다 — 분모에도 넣지 않는다 */
+      /* 교대를 못 본 경기는 여기서 끊는다 — 나머지 축은 분모에도 넣지 않는다 */
       if (!usable) continue
 
       accum.sidedMatches += 1
@@ -426,6 +446,8 @@ export async function buildClanRoundProfiles(input: {
       tempoGapMedian: gap?.median ?? null,
       cleanSheetMatches: accum.cleanSheetMatches,
       cleanSheets: accum.cleanSheets,
+      outnumberedRounds: accum.outnumberedRounds,
+      outnumberedWon: accum.outnumberedWon,
       computedAt: new Date(),
     }
     await prisma.clanRoundProfile.upsert({

@@ -3,6 +3,7 @@ import { Count, Percent } from '../common'
 import { PLAYSTYLE_SIDE_KEYS, TRAIT_AXIS_KEYS, TRAIT_PENDING_KEYS } from '../traits'
 import { ClanMetrics } from '../clanMetrics'
 import { ClanRoundMetrics } from '../clanRoundMetrics'
+import { ClanHexagon } from '../clanTraits'
 import { ClanRoster } from '../clanRoster'
 import { LeagueClanDetail, LeaguePlayer } from './league'
 import { LeagueSummary, PlayerSummary } from './summaries'
@@ -370,5 +371,15 @@ export const LeagueClanShow = LeagueClanDetail.extend({
    * `null` 이면 화면은 카드를 **그리지 않는다** — 빈 표를 그리지 않는다 (D-106).
    */
   round_metrics: ClanRoundMetrics.nullable().default(null),
+  /**
+   * 클랜 육각형 (`docs/SITE_SPEC_V2.md` 5-5절의 `6각형` · `../clanTraits`).
+   *
+   * 여섯 축은 `round_metrics` 와 **같은 재료**이고, 그 값들을 같은 리그 클랜들 안에서
+   * 백분위로 다시 잰 것이다. 그림은 넓이로 정도를 보여 주므로 `round_metrics` 의
+   * 숫자와 나란히 두어도 겹치지 않는다 — 하나는 값이고 하나는 상대 위치다.
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   */
+  hexagon: ClanHexagon.nullable().default(null),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>

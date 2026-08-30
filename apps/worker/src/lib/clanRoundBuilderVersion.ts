@@ -10,5 +10,11 @@
  *
  * 규칙이 바뀌면 이 값을 올린다. 옛 줄은 지우지 않고 남는다 —
  * 기준이 다른 집계가 한 칸에 섞이면 안 된다.
+ *
+ * ── 이력
+ *   `clan-round-v1`  블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 · 클린시트
+ *   `clan-round-v2`  **소수싸움**(`outnumberedRounds` · `outnumberedWon`)이 늘었다.
+ *                    v1 줄에는 그 칸이 `0` 으로 채워져 있는데, 그 0 은 "안 밀렸다" 가
+ *                    아니라 "안 셌다" 이다. 버전을 올려 v1 줄을 읽지 않게 한다 (D-106)
  */
-export const CLAN_ROUND_BUILDER_VERSION = 'clan-round-v1'
+export const CLAN_ROUND_BUILDER_VERSION = 'clan-round-v2'

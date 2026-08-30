@@ -4,6 +4,7 @@ import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
+  ClanHexagon,
   ClanMetrics,
   ClanRoundMetrics,
   ClanRoster,
@@ -113,6 +114,13 @@ export default function LeagueClanRecordPage({
         ) : null}
         {/* 배틀로그 지표 (SITE_SPEC_V2 5-5절) — 클랜 지표 **바로 아래**다.
             배틀로그가 없는 클랜은 `null` 이고 그리지 않는다 (D-106) */}
+        {/* 육각형은 배틀로그 지표 **바로 위**에 둔다 — 사양 원문도 `6각형` 다음 줄부터
+            숫자가 이어진다. 그림으로 먼저 형태를 보고 아래에서 값을 읽는다 */}
+        {data.round_metrics ? (
+          <div className="mt-2 bg-card px-3 py-3 shadow-card">
+            {data.hexagon ? <ClanHexagon hexagon={data.hexagon} /> : null}
+          </div>
+        ) : null}
         {data.round_metrics ? <ClanRoundMetrics metrics={data.round_metrics} /> : null}
         <div className="mt-2">
           {matches.loading ? (

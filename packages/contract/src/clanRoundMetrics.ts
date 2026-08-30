@@ -9,6 +9,7 @@
  * 폭발력       "레드선수들이 2초이하 단위로 상대팀을 3명이상 제거한 횟수"
  * 게임템포     "레드일 때 라운드가 빨리 끝날수록 높다"
  * 클린시트     "800판중 120회" — 반코트(한 진영에서 5라운드 전승)
+ * 소수싸움     "839회중 432회 승리 n%"
  * ```
  *
  * **원본(3rd.supply)에 없는 화면이다.** 사용자 지시로 만든 신규 지표이고
@@ -91,6 +92,30 @@ export const CLAN_TEMPO_MIN_COHORT = 5
  * > `[미확인]` 우리가 고른 값이다. 실측에서 이 선을 넘는 클랜이 11팀이다.
  */
 export const CLAN_CLEAN_SHEET_MIN_MATCHES = 5
+
+/**
+ * 소수싸움 비율을 보여 주기 시작하는 최소 **라운드** 수.
+ *
+ * 이 축은 **진영을 보지 않아**(`packages/nexon/src/clanRound.ts`) 표본이 위의 축들보다
+ * 훨씬 두껍다. 그래도 최소치를 따로 두는 이유는 같다 — 세 라운드짜리 100% 를
+ * `소수싸움 3회중 3회 승리 100%` 라고 적으면 안 된다.
+ *
+ * > `[미확인]` 사양에 숫자가 없다. 다른 축과 같은 20이고 **원본과 동일함이 검증되지
+ * > 않았다** (`CLAUDE.md` 3장 7번). 표본이 두꺼운 축이라 이 선은 사실상 대부분의
+ * > 클랜이 넘는다 — 그래도 못 넘으면 `측정중` 이고 **0% 로 찍지 않는다** (D-106).
+ * > 실측(2026-08-30 · 로컬 · `clan-round-v2`): 프로필 106개 중 **101개**가 이 선을
+ * > 넘었다. 진영을 쓰는 축들이 20라운드를 못 넘긴 30개도 이 축은 넘었다.
+ *
+ * ── 실측값 (2026-08-30 · 로컬)
+ *   ```
+ *   소수싸움 합계   35,007회중 9,996회 승리 28.6%
+ *   가장 두꺼운 클랜  1,986회중   538회 승리 27.1%   (같은 클랜 수비 173 · 공격 160라운드)
+ *   ```
+ *   사양 원문의 예시(`839회중 432회 승리` = 51.5%)보다 **비율이 낮다.** 우리 정의의
+ *   분모가 "숫자가 밀린 적이 있는 모든 라운드" 라 진 라운드가 거의 전부 들어오기
+ *   때문이다(질 때는 결국 전멸한다). 원문이 어떤 분모를 썼는지는 `[미확인]` 이다.
+ */
+export const CLAN_OUTNUMBERED_MIN_ROUNDS = 20
 
 /** 사양이 쓰는 표기 단위 — `5라운드중 n라운드` */
 export const CLAN_ROUND_PER = 5
@@ -212,6 +237,32 @@ export const ClanCleanSheet = z.object({
 })
 export type ClanCleanSheet = z.infer<typeof ClanCleanSheet>
 
+/**
+ * 소수싸움 — 숫자가 밀린 라운드를 얼마나 이겨 냈나. 원문 `839회중 432회 승리 n%`.
+ *
+ * 분모는 **우리 생존자가 상대보다 적어진 순간이 있었던 라운드**이고 분자는 그중
+ * 이긴 라운드다. 화면 문구도 원문 형식 그대로 `839회중 432회 승리 51.5%` 다.
+ *
+ * ── 다른 축과 **표본이 다르다**
+ *   이 축만 진영을 보지 않는다. 숫자가 밀리는 것은 공격이든 수비든 일어나므로
+ *   진영 교대를 못 본 경기에서도 세어진다. 그래서 `rounds` 가 `blue_defense.rounds`
+ *   나 `attack.rounds` 보다 훨씬 크다 — **어긋난 것이 아니다.**
+ *
+ * ── 선수 축을 더한 값이 **아니다**
+ *   `PlayerRoundProfile.outnumbered`(D-194)를 클랜별로 합치면 한 라운드가 두 번
+ *   세어지고(우리 편이 둘 남으면 두 선수가 각각 센다), 선수를 **현재 소속**으로
+ *   조인해야 해서 "경기 당시 소속" 원칙(`CLAUDE.md` 3-B 4번)도 깨진다.
+ */
+export const ClanOutnumbered = z.object({
+  /** 숫자가 밀린 적이 있고 승패까지 아는 라운드 (분모) */
+  rounds: Count,
+  /** 그중 이긴 라운드 (분자) */
+  won: Count,
+  /** 표본이 모자라면 `null`. **0% 로 채우지 않는다** (D-106) */
+  rate: Percent.nullable(),
+})
+export type ClanOutnumbered = z.infer<typeof ClanOutnumbered>
+
 /** 클랜페이지가 한 번에 받는 배틀로그 지표 묶음 */
 export const ClanRoundMetrics = z.object({
   sample: ClanRoundSample,
@@ -221,6 +272,7 @@ export const ClanRoundMetrics = z.object({
   burst: ClanRoundEventRate,
   tempo: ClanTempo,
   clean_sheet: ClanCleanSheet,
+  outnumbered: ClanOutnumbered,
 })
 export type ClanRoundMetrics = z.infer<typeof ClanRoundMetrics>
 
@@ -253,6 +305,9 @@ export interface ClanRoundTallyInput {
   tempoMedian: number | null
   cleanSheetMatches: number
   cleanSheets: number
+  /** 소수싸움 — **진영을 안 보는 축이라 위의 라운드 수들보다 크다** */
+  outnumberedRounds: number
+  outnumberedWon: number
 }
 
 /* -------------------------------------------------------------------------- */
@@ -308,9 +363,13 @@ export function clanTempoPercentile(
 /**
  * 배틀로그 지표 묶음.
  *
- * 재료가 하나도 없으면(`sidedMatches === 0`) `null` 이다 — 전부 `측정중` 인 빈 카드를
- * 그리지 않는다. 그 클랜은 **아직 배틀로그로 잰 것이 하나도 없다**는 뜻이고,
- * 화면은 카드 자체를 그리지 않는다 (`clanMetrics` 가 `null` 을 쓰는 방식과 같다).
+ * 재료가 하나도 없으면 `null` 이다 — 전부 `측정중` 인 빈 카드를 그리지 않는다.
+ * 그 클랜은 **아직 배틀로그로 잰 것이 하나도 없다**는 뜻이고, 화면은 카드 자체를
+ * 그리지 않는다 (`clanMetrics` 가 `null` 을 쓰는 방식과 같다).
+ *
+ * "하나도 없다" 는 **진영을 확인한 경기가 없고(`sidedMatches === 0`) 소수싸움도 못 잰**
+ * 경우다. 소수싸움은 진영을 안 보므로 교대를 못 본 클랜도 그 축만은 잴 수 있다 —
+ * 잰 것이 있는데 카드를 통째로 감추면 D-106 이 지키려는 것을 잃는다.
  *
  * `tempoCohort` 는 **같은 리그** 클랜들의 템포 중앙값이다. 자기 자신도 들어 있어야
  * 백분위가 자기 위치를 제대로 잡는다.
@@ -320,7 +379,7 @@ export function buildClanRoundMetrics(input: {
   tempoCohort: readonly number[]
 }): ClanRoundMetrics | null {
   const t = input.tally
-  if (t.sidedMatches <= 0) return null
+  if (t.sidedMatches <= 0 && t.outnumberedRounds <= 0) return null
 
   const tempoMedian = t.tempoRounds >= CLAN_TEMPO_MIN_ROUNDS ? t.tempoMedian : null
   const percentile = clanTempoPercentile(tempoMedian, input.tempoCohort)
@@ -373,6 +432,11 @@ export function buildClanRoundMetrics(input: {
       matches: t.cleanSheetMatches,
       count: t.cleanSheets,
       rate: rateOf(t.cleanSheets, t.cleanSheetMatches, CLAN_CLEAN_SHEET_MIN_MATCHES),
+    },
+    outnumbered: {
+      rounds: t.outnumberedRounds,
+      won: t.outnumberedWon,
+      rate: rateOf(t.outnumberedWon, t.outnumberedRounds, CLAN_OUTNUMBERED_MIN_ROUNDS),
     },
   }
 }
