@@ -21,9 +21,15 @@
  *   그래서 승패는 **응답 하나씩** 읽어 팀 번호에 붙이고, 두 응답이 어긋나면
  *   그 라운드를 버린다 (D-106 · 다수결하지 않는다).
  */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { prisma } from '@sacloud/db'
 import {
   clanByTeamNo,
+  duelTallyOf,
+  killsOf,
+  weaponByPlayerOf,
+  type ZoneCells,
   isRestorable,
   lastRoundTopKiller,
   rosterOf,
@@ -42,6 +48,17 @@ const TEAM_SIZE = 5
 
 /** 매치의 사나이 판정 기준 — **20분 초과** (사양 4절 · 6절) */
 const LONG_MATCH_SECONDS = 20 * 60
+
+/**
+ * 스나싸움 구역 (D-195 · 사양 4절 2번).
+ *
+ * 사용자가 좌표 산점도 위에 직접 칠한 것이다 (`data/barracks/sniper-lane.json`).
+ * 뱃지 전용이라 다른 구역과 겹쳐도 된다 (사양 2절).
+ */
+function sniperLane(): ZoneCells {
+  const file = path.resolve(process.cwd(), '../../data/barracks/sniper-lane.json')
+  return JSON.parse(readFileSync(file, 'utf8')) as ZoneCells
+}
 
 /**
  * 배틀로그만으로 잰 경기 길이 — **마지막 이벤트의 누적 시각**이다.
@@ -82,6 +99,10 @@ interface Accum {
   outnumberedWon: number
   matchMan: number
   longMatches: number
+  snipeDuels: number
+  snipeDuelWins: number
+  workKills: number
+  workRifleKills: number
 }
 
 const zero = (): Accum => ({
@@ -92,6 +113,10 @@ const zero = (): Accum => ({
   outnumberedWon: 0,
   matchMan: 0,
   longMatches: 0,
+  snipeDuels: 0,
+  snipeDuelWins: 0,
+  workKills: 0,
+  workRifleKills: 0,
 })
 
 interface RawShape {
@@ -141,6 +166,8 @@ export interface RoundBuildResult {
   profiles: number
   /** 그중 우리 Player 와 이어진 것 */
   linked: number
+  /** 그 경기에서 **스나를 든 것으로 확인된** 선수-경기 수 */
+  sniperEntries: number
   written: boolean
 }
 
@@ -181,8 +208,11 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
     unknownAccounts: 0,
     profiles: 0,
     linked: 0,
+    sniperEntries: 0,
     written: false,
   }
+
+  const zone = sniperLane()
 
   for (const [matchKey, group] of byMatch) {
     const events: RoundStateEvent[] = []
@@ -245,6 +275,11 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
 
     const accounts = accountMapOf(events as unknown as Record<string, unknown>[])
 
+    /* 스나싸움·작업 성공률 (D-195). 무기는 킬로그에서 되짚는다 —
+       우리 DB 344경기를 정답으로 대조했을 때 정확도 99.9% 였다 */
+    const kills = killsOf(events as never)
+    const weaponByPlayer = weaponByPlayerOf(kills)
+
     for (const [usn, team] of roster.teamOf) {
       const account = accounts.get(usn)
       if (account === undefined) {
@@ -264,8 +299,17 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
       })
       if (!tally) continue
 
+      const duel = duelTallyOf({ kills, weaponByPlayer, usn, zone })
+
       const accum = totals.get(account) ?? zero()
       accum.matches += 1
+      if (duel) {
+        result.sniperEntries += 1
+        accum.snipeDuels += duel.snipeDuels
+        accum.snipeDuelWins += duel.snipeDuelWins
+        accum.workKills += duel.workKills
+        accum.workRifleKills += duel.workRifleKills
+      }
       accum.alone += tally.alone
       accum.aloneWon += tally.aloneWon
       accum.outnumbered += tally.outnumbered
@@ -307,6 +351,10 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
       outnumberedWon: accum.outnumberedWon,
       matchMan: accum.matchMan,
       longMatches: accum.longMatches,
+      snipeDuels: accum.snipeDuels,
+      snipeDuelWins: accum.snipeDuelWins,
+      workKills: accum.workKills,
+      workRifleKills: accum.workRifleKills,
       computedAt: new Date(),
     }
     await prisma.playerRoundProfile.upsert({

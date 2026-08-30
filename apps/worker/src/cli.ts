@@ -1937,6 +1937,7 @@ async function main(): Promise<number> {
           '복원 성공': result.restored,
           '20분 초과': result.longMatches,
           '매치의사나이 확정': result.matchManDecided,
+          '스나 확인': result.sniperEntries,
           '계정 불명': result.unknownAccounts,
           프로필: result.profiles,
           '선수 연결': result.linked,

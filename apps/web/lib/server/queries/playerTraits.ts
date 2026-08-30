@@ -66,6 +66,10 @@ interface RoundValue {
   saveRate: number | null
   outnumberedRate: number | null
   matchManRate: number | null
+  /** 스나싸움 — 구역 안에서 상대 스나와의 교전 승률 (D-195 · **스나수만**) */
+  snipeDuelRate: number | null
+  /** 작업 성공률 — 내 킬 중 상대가 라플이었던 비율 (D-195 · **스나수만**) */
+  workRate: number | null
 }
 
 /** 한 선수의 값 — 판당 평균 킬 · 판당 평균 딜량 */
@@ -87,6 +91,9 @@ interface WeaponCohort {
   saveSorted: number[]
   outnumberedSorted: number[]
   matchManSorted: number[]
+  /** 스나 전용 두 축 (D-195). 라플 무리에서는 늘 비어 있다 */
+  snipeDuelSorted: number[]
+  workSorted: number[]
 }
 
 interface LeagueDistribution {
@@ -120,6 +127,8 @@ function emptyCohort(): WeaponCohort {
     saveSorted: [],
     outnumberedSorted: [],
     matchManSorted: [],
+    snipeDuelSorted: [],
+    workSorted: [],
   }
 }
 
@@ -144,6 +153,10 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
       outnumberedWon: true,
       matchMan: true,
       longMatches: true,
+      snipeDuels: true,
+      snipeDuelWins: true,
+      workKills: true,
+      workRifleKills: true,
     },
   })
 
@@ -157,6 +170,10 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
       /* 매치의 사나이는 **경기** 단위다 — 20분 초과 경기 중 몇 번 뽑혔나 */
       matchManRate:
         row.longMatches >= TRAIT_MIN_ROUNDS ? row.matchMan / row.longMatches : null,
+      /* 교전 수가 라운드 수와 성격이 같아 같은 최소 표본을 쓴다 */
+      snipeDuelRate:
+        row.snipeDuels >= TRAIT_MIN_ROUNDS ? row.snipeDuelWins / row.snipeDuels : null,
+      workRate: row.workKills >= TRAIT_MIN_ROUNDS ? row.workRifleKills / row.workKills : null,
     })
   }
   return out
@@ -241,6 +258,8 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
       if (round.saveRate !== null) cohort.saveSorted.push(round.saveRate)
       if (round.outnumberedRate !== null) cohort.outnumberedSorted.push(round.outnumberedRate)
       if (round.matchManRate !== null) cohort.matchManSorted.push(round.matchManRate)
+      if (round.snipeDuelRate !== null) cohort.snipeDuelSorted.push(round.snipeDuelRate)
+      if (round.workRate !== null) cohort.workSorted.push(round.workRate)
     }
   }
 
@@ -250,6 +269,8 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     cohort.saveSorted.sort((a, b) => a - b)
     cohort.outnumberedSorted.sort((a, b) => a - b)
     cohort.matchManSorted.sort((a, b) => a - b)
+    cohort.snipeDuelSorted.sort((a, b) => a - b)
+    cohort.workSorted.sort((a, b) => a - b)
   }
 
   return { rifle, sniper, rounds, belowMin }
@@ -317,6 +338,9 @@ export async function playerTraits(
       savePercentile: percentileIn(cohort.saveSorted, round?.saveRate),
       outnumberedPercentile: percentileIn(cohort.outnumberedSorted, round?.outnumberedRate),
       matchManPercentile: percentileIn(cohort.matchManSorted, round?.matchManRate),
+      /* 스나 전용 두 축 (D-195). 라플수에게는 재료 자체가 없어 항상 `null` 이다 */
+      snipeDuelPercentile: percentileIn(cohort.snipeDuelSorted, round?.snipeDuelRate),
+      workPercentile: percentileIn(cohort.workSorted, round?.workRate),
       hasRoundData: round !== undefined,
     }),
     /* 두 줄 다 아직 못 잰다 (8절 · D-184). 화면 자리와 `측정중` 만 먼저 만든다 */

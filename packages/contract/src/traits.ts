@@ -195,6 +195,12 @@ export interface TraitInput {
   outnumberedPercentile?: number | null
   matchManPercentile?: number | null
   /**
+   * 스나 전용 두 축 (D-195). **라플수에게는 재료가 없다** —
+   * 스나싸움은 스나끼리의 교전이고, 작업 성공률은 스나가 라플을 잡는 비율이다.
+   */
+  snipeDuelPercentile?: number | null
+  workPercentile?: number | null
+  /**
    * 그 선수에게 **라운드 복원 자료 자체가 있는가**.
    *
    * 백분위가 `null` 인 이유를 가른다 — 자료가 없으면 `라운드 복원 필요`,
@@ -232,20 +238,37 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
           percentile: input.carryPercentile,
           pending: input.carryPercentile === null ? 'games' : null,
         }
-      case 'duel':
-        /* 스나의 `스나싸움` 은 상대가 그 경기에서 무엇을 들었는지를 킬로그로 봐야 한다.
-           라플의 `샷싸움` 은 딜량이라 지금 잴 수 있다 (사양 4절) */
-        if (sniper) return { key, label: label(key), percentile: null, pending: 'battlelog' }
+      case 'duel': {
+        /* 스나 `스나싸움` = 스나싸움 구역에서 상대 **스나**와의 교전 승률 (D-195).
+           라플 `샷싸움` = 딜량 (사양 4절). 둘은 아예 다른 값이라 축 이름도 다르다 */
+        if (sniper) {
+          const value = input.snipeDuelPercentile ?? null
+          return {
+            key,
+            label: label(key),
+            percentile: value,
+            pending: value !== null ? null : input.hasRoundData === true ? 'games' : 'battlelog',
+          }
+        }
         return {
           key,
           label: label(key),
           percentile: input.damagePercentile,
           pending: input.damagePercentile === null ? 'games' : null,
         }
-      case 'finish':
-        /* 스나 `작업 성공률` = 상대 라플을 잡은 비율 → 킬로그 필요.
+      }
+      case 'finish': {
+        /* 스나 `작업 성공률` = 내 킬 중 상대가 **라플**이었던 비율 (D-195).
            라플 `원어택 성공률` = **같은 포지션** 상대를 잡은 비율 → 포지션 판정이 먼저다 */
-        return { key, label: label(key), percentile: null, pending: sniper ? 'battlelog' : 'position' }
+        if (!sniper) return { key, label: label(key), percentile: null, pending: 'position' }
+        const value = input.workPercentile ?? null
+        return {
+          key,
+          label: label(key),
+          percentile: value,
+          pending: value !== null ? null : input.hasRoundData === true ? 'games' : 'battlelog',
+        }
+      }
       default: {
         /* 1 세이브 · 4 매치의사나이 · 6 소수싸움 — 전부 그 경기 10명 전원의 로그로
            **라운드를 복원**해야 나온다 (사양 4절 표 · D-194) */

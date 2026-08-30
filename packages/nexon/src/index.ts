@@ -33,3 +33,4 @@ export {
 export * from './position'
 export * from './roundSide'
 export * from './roundState'
+export * from './duel'
