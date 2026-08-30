@@ -170,6 +170,7 @@ export {
   HEX_LABEL_RADIUS,
   HEX_RADIUS,
   axisLabelAnchor,
+  axisValueText,
   hexPoint,
   hexPolygon,
   hexRing,

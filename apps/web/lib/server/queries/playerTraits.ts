@@ -23,9 +23,14 @@
  *
  * ── 어느 축이 재지나 (2026-08-30)
  *   3 캐리력(판당 평균 킬) · 라플수의 2 샷싸움(판당 평균 딜량)은 경기 기록만으로 된다.
- *   1 세이브 · 6 소수싸움 · 4 매치의 사나이는 **라운드 복원**(D-194)이 채운다 —
+ *   ⚠ 딜량은 **탈주판을 빼고** 평균 낸다 — 그 판은 딜량이 `0` 으로 박혀 있어서, 넣고 세면
+ *   축이 딜량이 아니라 팀의 탈주 빈도를 절반쯤 재게 된다 (`dropoutScope.ts` · D-209).
+ *   1 세이브 · 6 소수싸움은 **라운드 복원**(D-194)이 채운다 —
  *   `PlayerRoundProfile` 이 그 재료이고, 배틀로그를 받은 선수에게만 있다.
  *   남은 것은 스나의 2·5(킬로그의 상대 무기)와 라플의 5(포지션 자동 판정)다.
+ *   **4번은 빈 자리다** (D-206) — `매치의 사나이` 를 내렸고 무엇을 잴지 아직 안 정했다.
+ *   그래도 그 값은 **계속 센다**(`matchManRate` · `matchManSorted`). 재료도 집계 잡도
+ *   MVP 규칙(D-182)도 그대로라서, 축이 다시 정해질 때 바로 붙일 수 있어야 한다.
  *
  *   라운드 축은 리그로 거르지 않고 읽는다 — 병영수첩 배틀로그는 리그를 모른다.
  *   대신 **견주는 무리**는 다른 축과 똑같이 "그 리그의 같은 주무기 선수" 다.
@@ -44,6 +49,7 @@ import {
 } from '@sacloud/contract'
 /* 집계 버전은 잡이 정하고 화면이 따라 읽는다. 두 곳에 적어 두면 언젠가 갈라진다 */
 import { ROUND_BUILDER_VERSION } from '../../../../worker/src/lib/roundBuilderVersion'
+import { playedGamesWhere } from './dropoutScope'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
 
@@ -76,10 +82,16 @@ interface RoundValue {
 
 /** 한 선수의 값 — 판당 평균 킬 · 판당 평균 딜량 */
 interface PlayerValue {
-  /** 주무기로 뛴 판 중 **K/D 를 아는 판수** — 두 평균의 분모다 (D-148) */
+  /** 주무기로 뛴 판 중 **K/D 를 아는 판수** — 판당 킬의 분모다 (D-148) */
   knownGames: number
   killPerGame: number
-  /** 딜량이 결측인 선수는 `null` 이다. **0으로 채우지 않는다** (D-034 · D-106) */
+  /**
+   * 판당 평균 딜량 — 분모는 `knownGames` 가 **아니다.**
+   *
+   * 탈주판은 딜량이 `0` 으로 박혀 있어 평균을 끌어내린다 (`dropoutScope.ts` · D-209).
+   * 그래서 딜량은 `damage > 0` 인 판만 세고, 그 판수가 `TRAIT_MIN_GAMES` 에 못 미치면
+   * `null` 이다. **0으로 채우지 않는다** (D-034 · D-106)
+   */
   damagePerGame: number | null
 }
 
@@ -199,18 +211,32 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
  */
 async function buildDistribution(leagueId: string): Promise<LeagueDistribution> {
   const rounds = await roundValues()
-  const rows = await prisma.matchPlayerStat.groupBy({
-    by: ['playerId', 'weapon'],
-    where: {
-      /* 무기를 모르는 참가 기록은 어느 무리에도 넣지 않는다 (D-034 · D-115) */
-      weapon: { in: [0, 1] },
-      match: withLadderMatch({ leagueId, ...seasonWindowWhere() }),
-    },
-    _sum: { kill: true, damage: true },
-    /* `_count.kill` 은 **`null` 이 아닌 행**만 센다 — 킬의 분모다 (D-148).
-       딜량은 결측 양상이 달라서 분모를 따로 센다 */
-    _count: { _all: true, kill: true, damage: true },
-  })
+
+  /* 무기를 모르는 참가 기록은 어느 무리에도 넣지 않는다 (D-034 · D-115) */
+  const statWhere = {
+    weapon: { in: [0, 1] },
+    match: withLadderMatch({ leagueId, ...seasonWindowWhere() }),
+  }
+
+  /* 킬과 딜량은 **모집단이 다르다.** 킬·데스는 결측이 없어 전부 세지만, 딜량은 탈주판에
+     `0` 으로 박혀 있어 그 판을 빼야 한다 (`dropoutScope.ts` · D-209). 한 질의에 담으면
+     둘 중 하나가 반드시 틀린 모집단을 쓰게 되므로 나눠서 같이 보낸다 */
+  const [rows, damageRows] = await Promise.all([
+    prisma.matchPlayerStat.groupBy({
+      by: ['playerId', 'weapon'],
+      where: statWhere,
+      _sum: { kill: true },
+      /* `_count.kill` 은 **`null` 이 아닌 행**만 센다 — 킬의 분모다 (D-148) */
+      _count: { _all: true, kill: true },
+    }),
+    prisma.matchPlayerStat.groupBy({
+      by: ['playerId', 'weapon'],
+      where: { ...statWhere, ...playedGamesWhere() },
+      _sum: { damage: true },
+      /* 이미 `damage > 0` 만 남았으므로 `_all` 이 곧 딜량을 아는 판수다 */
+      _count: { _all: true },
+    }),
+  ])
 
   /** playerId → 무기별 집계 */
   const byPlayer = new Map<
@@ -218,18 +244,37 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     { games: [number, number]; kill: [number, number]; killGames: [number, number]; damage: [number, number]; damageGames: [number, number] }
   >()
 
+  const blank = () => ({
+    games: [0, 0] as [number, number],
+    kill: [0, 0] as [number, number],
+    killGames: [0, 0] as [number, number],
+    damage: [0, 0] as [number, number],
+    damageGames: [0, 0] as [number, number],
+  })
+
   for (const row of rows) {
     const weapon = row.weapon === 1 ? 1 : 0
     let entry = byPlayer.get(row.playerId)
     if (!entry) {
-      entry = { games: [0, 0], kill: [0, 0], killGames: [0, 0], damage: [0, 0], damageGames: [0, 0] }
+      entry = blank()
       byPlayer.set(row.playerId, entry)
     }
     entry.games[weapon] = row._count._all
     entry.kill[weapon] = row._sum.kill ?? 0
     entry.killGames[weapon] = row._count.kill
+  }
+
+  /* 딜량은 걸러진 모집단에서 따로 붙인다. 탈주만 한 선수는 여기 줄이 아예 없고,
+     그러면 `damageGames` 가 0 으로 남아 아래에서 `null` 이 된다 */
+  for (const row of damageRows) {
+    const weapon = row.weapon === 1 ? 1 : 0
+    let entry = byPlayer.get(row.playerId)
+    if (!entry) {
+      entry = blank()
+      byPlayer.set(row.playerId, entry)
+    }
     entry.damage[weapon] = row._sum.damage ?? 0
-    entry.damageGames[weapon] = row._count.damage
+    entry.damageGames[weapon] = row._count._all
   }
 
   const rifle = emptyCohort()
@@ -251,11 +296,16 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
       continue
     }
 
+    /* 딜량의 분모는 **탈주판을 뺀 판수**라 킬 판수보다 적다 (D-209).
+       실측(2026-08-30 · `supply` 리그): 라플 891명 중 891 → 708명, 스나 159명 중 159 → 136명만
+       이 문턱을 넘는다. 그래서 문턱을 여기 한 번 더 건다 — 그러지 않으면 두세 판짜리
+       평균이 백분위 안에 섞인다. 킬 판수에 거는 것과 **같은 상수**를 쓴다 */
     const damageGames = entry.damageGames[weapon]
     const value: PlayerValue = {
       knownGames: killGames,
       killPerGame: entry.kill[weapon] / killGames,
-      damagePerGame: damageGames === 0 ? null : entry.damage[weapon] / damageGames,
+      damagePerGame:
+        damageGames < TRAIT_MIN_GAMES ? null : entry.damage[weapon] / damageGames,
     }
 
     const cohort = weapon === 1 ? sniper : rifle
@@ -350,6 +400,9 @@ export async function playerTraits(
          화면은 `같은 라플수 N명 안에서 견줬습니다` 라고 적는데 실제로는 혼자 잰 값이 된다 */
       savePercentile: percentileIn(cohort.saveSorted, round?.saveRate),
       outnumberedPercentile: percentileIn(cohort.outnumberedSorted, round?.outnumberedRate),
+      /* 육각형은 더 이상 이 축을 그리지 않는다 (D-206). 그래도 **계산은 살려 둔다** —
+         사용자 상시 지시("방식을 바꾸면 전의 방식 버전도 남겨라")이고, 축이 다시
+         정해질 때 재료가 이미 있어야 한다. `buildPlayerTraits` 가 지금은 무시한다 */
       matchManPercentile: percentileIn(cohort.matchManSorted, round?.matchManRate),
       /* 스나 전용 두 축 (D-195). 라플수에게는 재료 자체가 없어 항상 `null` 이다 */
       snipeDuelPercentile: percentileIn(cohort.snipeDuelSorted, round?.snipeDuelRate),

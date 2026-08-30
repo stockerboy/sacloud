@@ -8,11 +8,11 @@ import {
   HEX_RING_SCALES,
   HEX_RING_SCALES_WIDE,
   axisLabelAnchor,
+  axisValueText,
   hexPoint,
   hexPolygon,
   hexRing,
   pendingSummary,
-  topPercentText,
 } from './traitCopy'
 
 /**
@@ -26,11 +26,11 @@ import {
  *            측정중
  *   스나싸움  ╱      ╲  캐리력
  *   측정중   │   ◆   │  상위 12%
- *   작업성공  ╲      ╱  매치의사나이
+ *   작업성공  ╲      ╱  미정
  *              소수싸움
  *
  *   같은 라플수 2,006명 안에서 견줬습니다
- *   측정중 5항목 — 라운드 복원 필요 · 배틀로그 필요 · 포지션 판정 필요
+ *   측정중 4항목 — 라운드 복원 필요 · 배틀로그 필요 · 포지션 판정 필요
  * ```
  *
  * ── 세 가지 모습
@@ -41,6 +41,11 @@ import {
  *
  *   사양(4절)이 정한 것은 1과 3이다. 2는 지금 재료가 두 축밖에 없어서 생긴 상태이고,
  *   잰 값을 버리지 않으려고 우리가 더했다 — 배틀로그가 들어오면 자연히 1로 넘어간다.
+ *
+ * ── 4번 꼭지점은 **비어 있다** (D-206)
+ *   `매치의 사나이` 를 내렸고 그 자리를 아직 채우지 않았다. 꼭지점은 그대로 6개이고
+ *   (사용자가 육각형을 유지하기로 했다) 그 자리에는 `미정` 만 적는다.
+ *   **0 으로 찍지 않는다** — 0 은 "꼴찌" 라는 실제 값이다 (D-106).
  */
 
 /** 백분위 → 반지름. 0%도 점이 보이도록 최소값을 준다 (0은 "꼴찌"라는 **실제 값**이다) */
@@ -171,7 +176,10 @@ export function TraitHexagon({
         {/* 축 이름과 값 */}
         {traits.axes.map((axis, index) => {
           const at = axisLabelAnchor(index)
-          const top = topPercentText(axis.percentile)
+          const value = axisValueText(axis)
+          /* 빈 자리(D-206)는 축 이름도 값도 `미정` 이다. 같은 말을 두 줄 적지 않는다 —
+             이름 줄만 남기고 값 줄은 비운다 */
+          const undecided = axis.pending === 'undecided'
           return (
             <g key={axis.key}>
               <text
@@ -181,19 +189,23 @@ export function TraitHexagon({
                 fontSize={labelSize}
                 /* 예전에는 `--color-line`(선 색)이었다. 바닥이 검어지면서 글자가
                    그대로 사라졌다 — 축 이름은 보조 글자색으로 읽는다 */
-                fill="var(--color-meta)"
+                fill={undecided ? 'var(--color-side-meta)' : 'var(--color-meta)'}
               >
                 {axis.label}
               </text>
-              <text
-                x={at.x}
-                y={at.y + (dense ? 11 : 12)}
-                textAnchor={at.anchor}
-                fontSize={labelSize}
-                fill={top === null ? 'var(--color-side-meta)' : 'var(--color-win-bar)'}
-              >
-                {top ?? '측정중'}
-              </text>
+              {undecided ? null : (
+                <text
+                  x={at.x}
+                  y={at.y + (dense ? 11 : 12)}
+                  textAnchor={at.anchor}
+                  fontSize={labelSize}
+                  fill={
+                    axis.percentile === null ? 'var(--color-side-meta)' : 'var(--color-win-bar)'
+                  }
+                >
+                  {value}
+                </text>
+              )}
             </g>
           )
         })}

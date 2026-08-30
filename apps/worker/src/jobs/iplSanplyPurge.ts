@@ -1,0 +1,129 @@
+/**
+ * `nexon ipl-sanply-purge` · `nexon ipl-sanply-check` (D-210).
+ *
+ * **IPL 클랜끼리의 경기는 열산(`sanply`) 기록이 아니다.**
+ *
+ * 규칙 자체와 DB 로직은 `packages/db/ops/iplSanplyGuard.ts` 에 있다.
+ * 여기는 CLI 표면(플래그·로그·백업 파일 쓰기)만 맡는다 —
+ * 화면과 CLI 가 같은 코드를 쓰게 하려는 `packages/db/ops` 의 원칙 그대로다.
+ *
+ * ```
+ *   nexon ipl-sanply-check                     # 남은 건수. **0 이어야 한다**
+ *   nexon ipl-sanply-purge                     # 미리보기 (한 줄도 안 지운다)
+ *   nexon ipl-sanply-purge --confirm           # 백업 뜨고 지운다
+ * ```
+ *
+ * 예전에는 `src/dev/iplSanplyPurge.ts` 였다. dev 스크립트로 두면 다음 사람이 못 찾는다.
+ * 되풀이되는 일이라 정식 명령으로 올렸다.
+ */
+import { mkdirSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
+import {
+  countIplOnlyMatches,
+  purgeIplOnlyMatches,
+  type IplOnlyMatchScope,
+  type PurgeIplOnlyMatchesResult,
+} from '@sacloud/db/ops'
+import { REPO_ROOT } from '../lib/env.js'
+import { log, table, warn } from '../lib/log.js'
+
+/** 지우기 전 원본을 뜨는 곳. `.gitignore` 에 들어 있다 */
+export const IPL_PURGE_BACKUP_DIR = path.join(REPO_ROOT, 'apps', 'worker', 'backups', 'iplSanply')
+
+export interface IplSanplyPurgeInput {
+  confirm?: boolean
+  /** 기본 `sanply` */
+  targetLeagueSlug?: string
+  /** 기본 `nolink` */
+  iplLeagueSlug?: string
+  /** 백업 폴더. 기본 `apps/worker/backups/iplSanply` */
+  backupDir?: string
+}
+
+function reportScope(scope: IplOnlyMatchScope): void {
+  table([
+    {
+      대상리그: `${scope.targetLeagueSlug}${scope.targetLeagueExists ? '' : '(없음)'}`,
+      IPL리그: `${scope.iplLeagueSlug}${scope.iplLeagueExists ? '' : '(없음)'}`,
+      'IPL 등록 클랜': scope.iplClanCount,
+      '그중 대상리그에도 등록행이 있는 곳': scope.registeredInTarget,
+      'IPL끼리의 경기': scope.matchIds.length,
+    },
+  ])
+}
+
+/**
+ * 대조 — 열산에 남은 IPL끼리의 경기 건수. **읽기만 한다.**
+ *
+ * 0 이 아니면 호출부가 `exit 1` 로 끝내야 한다. 막는 규칙이 샜다는 뜻이다.
+ */
+export async function runIplSanplyCheck(
+  input: { targetLeagueSlug?: string; iplLeagueSlug?: string } = {},
+): Promise<IplOnlyMatchScope> {
+  const scope = await countIplOnlyMatches(input)
+  log('')
+  log('[대조] IPL 클랜끼리의 경기가 열산에 남아 있는가 (D-210)')
+  reportScope(scope)
+  if (scope.matchIds.length === 0) {
+    log('  남은 IPL끼리의 경기 0건 — 통과')
+  } else {
+    warn(`  남은 IPL끼리의 경기 ${scope.matchIds.length}건 (목표 0)`)
+    warn(`  예시 id: ${scope.matchIds.slice(0, 5).join(', ')}`)
+    warn('  `nexon ipl-sanply-purge --confirm` 으로 치운다')
+  }
+  return scope
+}
+
+/** 치우기 — 백업을 뜬 뒤에만 지운다 */
+export async function runIplSanplyPurge(
+  input: IplSanplyPurgeInput = {},
+): Promise<PurgeIplOnlyMatchesResult> {
+  const backupDir = input.backupDir ?? IPL_PURGE_BACKUP_DIR
+
+  const result = await purgeIplOnlyMatches({
+    targetLeagueSlug: input.targetLeagueSlug,
+    iplLeagueSlug: input.iplLeagueSlug,
+    confirm: input.confirm,
+    backupDir,
+    /* 지우는 행 전부를 JSON 으로 먼저 떠 둔다 (`CLAUDE.md` 3-A 1번 · 7번).
+       ops 쪽은 파일 시스템을 모른다 — 쓰기만 여기서 한다 */
+    writeBackup: (fileName, json) => {
+      mkdirSync(backupDir, { recursive: true })
+      const file = path.join(backupDir, fileName)
+      writeFileSync(file, json, 'utf8')
+      return file
+    },
+  })
+
+  log('')
+  log(`[1] 범위 ${input.confirm ? '(실제 삭제)' : '(미리보기 — 한 줄도 지우지 않았다)'}`)
+  reportScope(result.scope)
+  table([
+    {
+      '지울 경기': result.matches,
+      '함께 사라지는 참가 기록': result.stats,
+      '참조가 남아 추방표시만 할 등록행': result.stillReferenced,
+      '행째 지울 등록행': result.removable,
+    },
+  ])
+
+  if (input.confirm) {
+    log('')
+    log('[2] 실제로 한 것')
+    table([
+      {
+        '경기 삭제': result.written.matchesDeleted,
+        '등록행 삭제': result.written.leagueClansDeleted,
+        '등록행 추방표시': result.written.leagueClansExpelled,
+        백업: result.written.backupPath ?? '(지울 것이 없어 만들지 않음)',
+      },
+    ])
+    log('  원문(수집 JSONL)은 그대로다 — 지운 것은 `Match` 행뿐이다 (3-A 1번)')
+  } else {
+    log('')
+    log('미리보기다. 실제로 지우려면 --confirm 을 붙인다')
+  }
+
+  for (const note of result.notes) warn(`  ${note}`)
+  return result
+}

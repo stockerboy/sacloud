@@ -11,14 +11,15 @@
  *   2. 비율은 분모를 아는 경우에만 만든다 (0킬 헤드샷 비율을 만들지 않는다)
  *   3. 모르면 `알수없음` — 0 으로 채우지 않는다 (D-034 · D-148)
  *   4. 배치고사면 래더 자리에 `배치고사`
- *   5. 팀 블록의 `선레드`/`선블루` 는 그 블록의 진영으로 정한다 (`blue_team` 에 걸려 사라지지 않는다)
+ *   5. `선레드`/`선블루` 는 **근거(`first_side`)** 로 정한다. 슬롯 이름으로 적지 않고,
+ *      근거가 없으면 아무것도 적지 않는다 (D-207)
  *   6. 무기 칸은 `라플`/`스나` 다 — 선수 상세의 포지션 표기(`라이플`/`스나이퍼`)와 다른 문맥이다
  */
 import { describe, expect, it } from 'vitest'
 import { WEAPON } from '@sacloud/contract'
 import {
   damageBarPercent,
-  firstSideLabel,
+  teamFirstSideLabel,
   matchFirstSideLabel,
   headshotView,
   kdaView,
@@ -182,31 +183,48 @@ describe('무기 칸', () => {
 
 /* -------------------------------------------------------------- 팀 헤더 --- */
 
-describe('팀 블록의 진영 표기는 그 블록의 진영으로 정한다', () => {
-  it('레드 블록은 선레드, 블루 블록은 선블루다', () => {
-    expect(firstSideLabel('red')).toBe('선레드')
-    expect(firstSideLabel('blue')).toBe('선블루')
+describe('팀 블록의 진영 표기는 **근거**로 정한다 (D-207)', () => {
+  /* 예전 구현은 `side === 'blue' ? '선블루' : '선레드'` 로 **슬롯 이름**을 그대로 적었다.
+     그런데 우리 red/blue 는 `team_id` 오름차순으로 정한 내부 자리이고, 배틀로그 폭탄
+     근거로 대조하니 red 슬롯이 전반 **수비**인 경기가 99.87% 였다 — 표기가 뒤집혀 있었다. */
+
+  it('보는 쪽 블록은 응답값 그대로, 상대 블록은 반대다', () => {
+    expect(teamFirstSideLabel(true, 'red')).toBe('선레드')
+    expect(teamFirstSideLabel(false, 'red')).toBe('선블루')
+    expect(teamFirstSideLabel(true, 'blue')).toBe('선블루')
+    expect(teamFirstSideLabel(false, 'blue')).toBe('선레드')
   })
 
-  it('blue_team(넥슨 미제공)에 걸려 표기가 사라지지 않는다', () => {
-    /* 예전 구현은 `blue_team === null` 이면 양 팀 모두 표기를 지웠고,
-       넥슨이 그 값을 주지 않아(D-034) 사실상 모든 경기에서 칸이 비었다 */
-    for (const side of ['red', 'blue'] as const) {
-      expect(firstSideLabel(side)).not.toBeNull()
-      expect(firstSideLabel(side)).toMatch(/^선(레드|블루)$/)
+  it('한 경기에는 선레드와 선블루가 하나씩 나온다', () => {
+    for (const first of ['red', 'blue'] as const) {
+      const viewer = teamFirstSideLabel(true, first)
+      const other = teamFirstSideLabel(false, first)
+      expect(viewer).not.toBe(other)
+      expect([viewer, other].sort()).toEqual(['선레드', '선블루'].sort())
     }
+  })
+
+  it('근거가 없으면 **아무것도 적지 않는다** — 슬롯 순서로 메우지 않는다', () => {
+    expect(teamFirstSideLabel(true, null)).toBeNull()
+    expect(teamFirstSideLabel(false, null)).toBeNull()
+    expect(teamFirstSideLabel(true, undefined)).toBeNull()
+  })
+
+  it('어느 블록이 보는 쪽인지 모르면 라벨도 없다', () => {
+    expect(teamFirstSideLabel(null, 'red')).toBeNull()
+    expect(teamFirstSideLabel(null, null)).toBeNull()
   })
 })
 
-describe('접힌 클랜 카드의 선공 진영 칸', () => {
-  it('모르면 null — 호출부가 `알수없음`을 그린다', () => {
+describe('접힌 클랜 카드의 전반 진영 칸', () => {
+  it('근거가 없으면 null — 호출부가 칸을 **비운다** (`알수없음` 도 아니다)', () => {
     expect(matchFirstSideLabel(null)).toBeNull()
     expect(matchFirstSideLabel(undefined)).toBeNull()
   })
 
-  it('계약대로 값을 읽는다 (blue_team = 선공 진영이 블루면 true)', () => {
-    expect(matchFirstSideLabel(true)).toBe('선블루')
-    expect(matchFirstSideLabel(false)).toBe('선레드')
+  it('계약대로 읽는다 — red 진영(공격)이 선레드, blue 진영(수비)이 선블루', () => {
+    expect(matchFirstSideLabel('red')).toBe('선레드')
+    expect(matchFirstSideLabel('blue')).toBe('선블루')
   })
 })
 

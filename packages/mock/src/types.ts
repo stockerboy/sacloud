@@ -128,8 +128,11 @@ export interface MockMatch {
   redPlacement: boolean
   bluePlacement: boolean
   winnerSide: TeamSide
-  /** 선공 진영이 블루인지 (원본 `blue_team`) */
-  blueTeam: boolean
+  /**
+   * 전반에 **레드진영(공격)** 을 맡은 슬롯 — `'red'` | `'blue'` (D-207).
+   * 근거가 없으면 `null` 이고 화면은 `선레드`/`선블루` 를 **적지 않는다**.
+   */
+  firstHalfAttackSide: TeamSide | null
   redRatingUpdate: number | null
   blueRatingUpdate: number | null
   mvpPlayerId: string | null

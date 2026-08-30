@@ -1,4 +1,9 @@
-import { TRAIT_PENDING_TEXT, type PlayerTraitAxis, type TraitPending } from '@sacloud/contract'
+import {
+  TRAIT_PENDING_TEXT,
+  isMeasurablePending,
+  type PlayerTraitAxis,
+  type TraitPending,
+} from '@sacloud/contract'
 
 /**
  * 전투력 육각형의 **좌표와 문구** (`docs/PLAYER_TRAITS_SPEC.md` 4절 · D-185).
@@ -101,16 +106,37 @@ export function pendingText(pending: TraitPending | null): string {
 }
 
 /**
+ * 꼭지점 밑에 적을 한마디 — `상위 N%` · `측정중` · `미정`.
+ *
+ * **`측정중` 과 `미정` 은 다른 말이다** (D-206).
+ * `측정중` 은 재료가 들어오면 채워진다는 뜻이고, `미정` 은 **무엇을 잴지 사람이
+ * 정해야 한다**는 뜻이다. 기다린다고 채워지지 않는다.
+ */
+export function axisValueText(axis: PlayerTraitAxis): string {
+  const top = topPercentText(axis.percentile)
+  if (top !== null) return top
+  return axis.pending !== null && !isMeasurablePending(axis.pending)
+    ? TRAIT_PENDING_TEXT[axis.pending]
+    : '측정중'
+}
+
+/**
  * 아래 한 줄에 적을 요약 — **무엇이 없어서 못 재는지**를 중복 없이 모은다.
  *
  * ```
  * 측정중 5항목 — 라운드 복원 필요 · 배틀로그 필요 · 포지션 판정 필요
  * ```
  *
- * 다 쟀으면 빈 문자열이다.
+ * **빈 자리(`미정`)는 세지 않는다** (D-206). 그 축은 재료를 기다리는 중이 아니라
+ * 아직 정해지지 않은 것이라, `측정중 N항목` 에 넣으면 "곧 채워진다" 로 읽힌다.
+ * 그 사실은 꼭지점의 `미정` 이 이미 말하고 있다.
+ *
+ * 잴 수 있는 축을 다 쟀으면 빈 문자열이다.
  */
 export function pendingSummary(axes: readonly PlayerTraitAxis[]): string {
-  const pending = axes.filter((axis) => axis.pending !== null)
+  const pending = axes.filter(
+    (axis) => axis.pending !== null && isMeasurablePending(axis.pending),
+  )
   if (pending.length === 0) return ''
 
   const reasons: string[] = []

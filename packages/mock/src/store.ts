@@ -934,7 +934,15 @@ function toMatchListItem(
     end_at: match.endAt,
     play_time: match.playTime,
     win: match.winnerSide === viewerSide,
-    blue_team: match.blueTeam,
+    /* 보는 쪽이 전반에 선 진영 (D-207). 저장된 값은 **슬롯** 이름이라
+       보는 쪽 슬롯과 같으면 `선레드`(= 'red'), 아니면 `선블루`(= 'blue') 다.
+       실제 API(`apps/web/lib/server/queries/matches.ts` 의 `firstSideOf`)와 같은 규칙이다 */
+    first_side:
+      match.firstHalfAttackSide === null
+        ? null
+        : match.firstHalfAttackSide === viewerSide
+          ? 'red'
+          : 'blue',
     placement: viewerSide === 'red' ? match.redPlacement : match.bluePlacement,
     rating_update: viewerSide === 'red' ? match.redRatingUpdate : match.blueRatingUpdate,
     mvp_player_id: match.mvpPlayerId,

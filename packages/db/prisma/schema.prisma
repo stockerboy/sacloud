@@ -688,9 +688,31 @@ model Match {
   /// 원본에 없으면 null = 알 수 없음 (D-034)
   playTime    Int?
 
-  /// 선공 진영이 블루면 true (원본 표기: 선레드 / 선블루). 정확한 의미는 [미확인]
-  /// **false를 기본값으로 쓰지 않는다.** 모르면 null이다 (D-034)
+  /// **폐기됐다 (D-207).** 읽지 마라 — 화면도 API 도 더 이상 보지 않는다.
+  ///
+  /// 뜻이 `[미확인]` 인 채로 남아 있던 칸이다. 실제로 값이 든 것은 mock 시드뿐이고
+  /// (`project`·`reconstruct`·`supplyMirrorImport` 는 전부 null 을 넣는다) 그 mock 값도
+  /// 난수였다. 전반 공수는 아래 `firstHalfAttackSide` 가 **근거로** 정한다.
+  /// 열은 지우지 않는다 — 과거 행의 값을 없애지 않기 위해서다.
   blueFirst   Boolean?
+
+  /// **전반에 레드진영(공격)을 맡은 쪽** — `"red"` | `"blue"` (D-207).
+  ///
+  /// 값은 우리 슬롯 이름이다. `"red"` 면 `redLeagueClanId` 클랜이 전반 공격(= `선레드`)이고
+  /// `blueLeagueClanId` 클랜이 `선블루` 다. `"blue"` 면 정반대다.
+  ///
+  /// ── 슬롯 이름을 그대로 진영으로 읽으면 안 된다
+  ///   red/blue 슬롯은 수집 시 `team_id` 오름차순으로 정한 **내부 자리**다
+  ///   (`assignSides()`). 실측 3,750경기 중 3,745경기(99.87%)에서 `redLeagueClanId` 쪽이
+  ///   **전반 수비**였다. 그래서 슬롯 이름으로 `선레드` 를 적던 화면이 뒤집혀 있었다.
+  ///   **슬롯 배정은 바꾸지 않는다** — 래더·집계 전체가 그 값을 쓴다. 표기만 여기서 만든다.
+  ///
+  /// ── 근거가 없으면 null 이다
+  ///   `team_id` 순서를 후퇴값으로 쓰지 않는다. 반례 5건(0.13%)이 실재한다.
+  firstHalfAttackSide String?
+  /// 위 값을 무엇이 정했나 — `"barracks_bomb"`(병영수첩 배틀로그 C4 설치/해체 · D-184).
+  /// 근거가 없으면 null. 추측한 값을 여기에 적지 않는다.
+  firstSideEvidence   String?
   /// "red" | "blue"
   winnerSide  String
   mvpPlayerId String?
@@ -1796,6 +1818,45 @@ model BarracksBattleLogRaw {
   /// "user" | "clan" — 어느 단위로 받은 응답인지. 섞이면 참가자 수가 거짓이 된다
   subjectKind String @default("user")
 
+  payload     Json
+  /// 같은 응답을 여러 번 넣어도 행이 늘지 않게 하는 키
+  payloadHash String
+  /// "ok" | "error"
+  status    String  @default("ok")
+  errorCode String?
+
+  fetchedAt DateTime @default(now())
+  /// 같은 내용이면 다시 저장하지 않고 이 값만 올린다
+  fetchCount Int @default(1)
+
+  @@unique([matchKey, subject, payloadHash])
+  @@index([matchKey])
+  @@index([subject])
+  @@index([fetchedAt])
+}
+
+/// 병영수첩 **클랜전 목록** 원문 (`GetClanMatchList`) — IPL 기록 이관.
+///
+/// `BarracksBattleLogRaw` 와 나눠 둔 이유: 그쪽은 **한 경기 안의 사건 로그**(좌표·킬)다.
+/// 이 표는 **클랜의 경기 목록 한 줄**이다. 한 줄에 양 팀 이름과 라운드 스코어가 함께 온다
+/// (`docs/IPL_SPEC.md` 7장). 넥슨 Open API 의 D-044 제약이 여기엔 없다.
+///
+/// **같은 경기가 양쪽 클랜 목록에 다 나온다.** 그래서 조회 주체(`subject`)가 키에 들어간다.
+/// 두 줄은 `result_wdl`(조회 주체 기준 승/패)이 서로 달라 내용도 다르다. 지우지 않는다.
+///
+/// **가공한 값을 여기 넣지 않는다.** 경기·참가자·래더로의 투영은 규칙이 따로 있고
+/// (D-155 · `CLAUDE.md` 3-B) 별도 작업이다. 이 표는 원문 보존까지만 한다
+/// (`CLAUDE.md` 3-A 1번).
+model BarracksClanMatchRaw {
+  id       String @id @default(cuid())
+  source   String @default("nexon_barracks")
+  endpoint String @default("/api/ClanHome/GetClanMatchList/")
+  /// 넥슨 match_id 와 같은 값 (= `Match.sourceMatchId`). 앞 12자리가 경기 시각이다
+  matchKey String
+  /// 이 목록을 **조회한 클랜**의 병영수첩 slug (`clan_id`). 경기의 주인이 아니다
+  subject String
+
+  /// `GetClanMatchList` 응답 배열의 **한 항목 그대로**
   payload     Json
   /// 같은 응답을 여러 번 넣어도 행이 늘지 않게 하는 키
   payloadHash String

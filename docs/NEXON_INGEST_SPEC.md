@@ -87,7 +87,7 @@
 | `weapon` (라이플/스나이퍼) | ❌ (실응답에 필드 없음 확인) | `null` = 알 수 없음 |
 | `playTime` | ❌ | `null` |
 | `endAt` | ❌ (`date_match` 하나뿐) | `null` |
-| `blueFirst` (선레드/선블루) | ❌ | `null` |
+| 전반 진영 (선레드/선블루) | ❌ (경기 응답에 없다) | `null`. **배틀로그 폭탄 근거**(D-184)로만 판정한다 — `Match.firstHalfAttackSide` · D-207. 옛 `blueFirst` 는 폐기 |
 | `mvp` | ❌ | `null` |
 | `dropout` (탈주) | ❌ | `null` |
 | 참가자 `ouid` | ❌ (닉네임만 — 실응답 확인) | 신원 해석 필요 (5장) |

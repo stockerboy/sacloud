@@ -23,9 +23,32 @@
  *   실측(경기 `260820162642124001`): team 1 이 4라운드에 해체(수비),
  *   10·11라운드에 설치(공격). 14라운드 경기이므로 전·후반 교대와 앞뒤가 맞는다.
  *
+ * ── 상대 팀의 폭탄도 **우리** 근거다 (D-208)
+ *   폭파미션은 한 라운드에 공격이 **한 팀뿐**이다. 그러니 상대가 심었으면 우리는 수비,
+ *   상대가 해체했으면 우리는 공격이다. 예전에는 자기 팀 줄만 남기고 나머지를 버려서
+ *   근거의 3분의 2가 그냥 사라졌다.
+ *
+ *   실측(2026-08-30 · 클랜-경기 6,989쌍): 교대를 확인한 쌍이
+ *   자기 팀 근거만 1,035쌍(14.8%) → 상대 것까지 3,747쌍(53.6%).
+ *
+ * ── 전반은 **한 팀이 5라운드를 따면** 끝난다 (D-208)
+ *   `switchAt = (누적 라운드 승수가 처음 5가 되는 라운드) + 1`.
+ *   실측에서 반례가 없었다 — 전반 마지막 라운드의 최고 누적 승수가 190/190 정확히 5였고,
+ *   그 규칙으로 예측한 교대 지점이 190/190 적중했으며, 폭탄 브래킷과도 2,964/2,964 ·
+ *   4,854/4,854 로 어긋나지 않았다. 4승 규칙과 6승 규칙은 각각 0% 였다.
+ *
+ *   **총 라운드 수로는 설명되지 않는다.** "9라운드 뒤 교대" 는 틀렸다 — 교대가 10라운드에
+ *   몰려 보인 건 5:4 가 가장 흔한 전반 스코어여서다. 같은 총 라운드에서도 교대 지점이
+ *   세 가지로 갈렸다.
+ *
  * ── 모르는 라운드를 채우지 않는다
- *   폭탄이 없는 라운드는 그냥 모른다. **교대가 한 번뿐이라는 성질**을 써서
+ *   폭탄이 없는 라운드는 그냥 모른다. **교대가 한 번뿐이라는 성질**과 위의 5승 규칙으로
  *   앞뒤로 넓히기는 하지만, 근거가 양쪽에서 어긋나면 `null` 로 둔다 (D-106).
+ *
+ *   **`K라운드 이하면 채운다` 는 쓰지 않는다.** 간격은 교대 지점을 정하는 값이 아니다.
+ *   그리고 **진영의 방향은 끝까지 폭탄이 정한다** — 5승 규칙은 *어디서* 바뀌는지만 말한다.
+ *   폭탄 근거가 하나도 없는 쌍은 비워 둔다. `team_no` 순서를 후퇴값으로 쓰지 않는다
+ *   (반례가 실제로 있다).
  */
 
 /** 진영. 원본 표기를 그대로 쓴다 — `공격` 은 폭탄을 심는 쪽이다 */
@@ -115,67 +138,181 @@ export interface RoundSideMap {
 
 const EMPTY: RoundSideMap = { side: new Map(), switchRound: null, bracket: null, conflict: false }
 
+const conflicted = (): RoundSideMap => ({
+  side: new Map(),
+  switchRound: null,
+  bracket: null,
+  conflict: true,
+})
+
+const other = (side: RoundSide): RoundSide => (side === 'attack' ? 'defense' : 'attack')
+
+/* ============================================== 전반 종료 — 5승 규칙 (D-208) === */
+
+/**
+ * 전반은 **한 팀이 라운드 5승을 채우면** 끝난다 (2026-08-30 실측 · 반례 0건).
+ */
+export const HALF_WIN_TARGET = 5
+
+/**
+ * 전반 마지막 라운드의 상한. 한 팀이 5승을 채우기까지 아무리 늘어져도 9라운드다
+ * (4:4 다음 라운드에 반드시 한쪽이 5가 된다).
+ */
+export const MAX_FIRST_HALF_ROUNDS = HALF_WIN_TARGET * 2 - 1
+
+/** 전반 마지막 라운드 `e` 가 들어갈 수 있는 구간 `[lo, hi]` */
+export interface HalfEndBounds {
+  lo: number
+  hi: number
+}
+
+/**
+ * 라운드 승패로 **전반 마지막 라운드** `e` 를 좁힌다. 교대는 `e + 1` 이다.
+ *
+ * 승패를 1..T 전부 알면 `lo === hi` 로 딱 떨어진다. 구멍이 있으면 **모르는 라운드를
+ * 양극단으로 놓아** 구간을 만든다 — 채우지 않고 구간으로 다룬다 (D-106).
+ *
+ *   `lo`  아직 모르는 라운드를 전부 한쪽에 몰아주면 가장 빨리 5승이 되는 라운드
+ *   `hi`  양쪽을 최대한 4승 이하로 붙들 수 있는 마지막 라운드 + 1
+ *
+ * **정보가 없으면 구간을 좁히지 않는다.** 아무도 5승에 닿지 못하는 짧은 경기
+ * (몰수·기권 등)에서는 `lo = 1`, `hi = T` 로 두어 폭탄 근거를 방해하지 않는다.
+ * 여기서 `e = T` 라고 단정하면 실제로 교대가 있었던 경기를 모순으로 몰아 버린다.
+ */
+export function halfEndBoundsOf(
+  wonRound: (round: number) => boolean | null,
+  totalRounds: number,
+): HalfEndBounds {
+  if (totalRounds < 1) return { lo: 1, hi: 1 }
+
+  let won = 0
+  let lost = 0
+  let unknown = 0
+  /** 어느 한쪽이 5승에 **닿을 수 있는** 가장 이른 라운드 */
+  let reach: number | null = null
+  /** 양쪽 다 4승 이하로 붙들 수 있는 마지막 라운드 */
+  let open = 0
+
+  for (let round = 1; round <= totalRounds; round += 1) {
+    const result = wonRound(round)
+    if (result === true) won += 1
+    else if (result === false) lost += 1
+    else unknown += 1
+
+    if (
+      reach === null &&
+      (won + unknown >= HALF_WIN_TARGET || lost + unknown >= HALF_WIN_TARGET)
+    ) {
+      reach = round
+    }
+    /* 라운드 수가 9에 닿으면 모르는 라운드를 어떻게 나눠도 한쪽이 5승이다 */
+    if (round < MAX_FIRST_HALF_ROUNDS && won < HALF_WIN_TARGET && lost < HALF_WIN_TARGET) {
+      open = round
+    }
+  }
+
+  return { lo: reach ?? 1, hi: Math.min(open + 1, totalRounds) }
+}
+
 /**
  * 한 경기에서 **그 팀**의 라운드별 진영을 정한다.
  *
- * 폭탄이 있는 라운드만 직접 알 수 있다. 나머지는 **교대가 한 번뿐**이라는 성질로 채운다 —
- * 전반 내내 한 진영, 후반 내내 반대 진영이다.
+ * 근거는 둘이고, 하는 일이 다르다.
  *
- * 근거가 "전반에 공격이었다가 다시 전반에 수비" 처럼 어긋나면 **아무것도 확정하지 않는다.**
- * 억지로 다수결하지 않는다 — 틀린 진영으로 네 축을 계산하면 조용히 거짓이 된다.
+ *   폭탄     진영의 **방향**을 정한다 (설치=공격 · 해체=수비). 상대 팀 줄은 **뒤집어서** 쓴다
+ *   5승 규칙 교대가 **어디서** 일어났는지를 정한다 (`switchAt = 5승 도달 라운드 + 1`)
+ *
+ * 둘을 **교집합**한다. 폭탄이 좁힌 구간과 승수가 좁힌 구간이 겹치는 자리만 남기고,
+ * 겹치는 곳이 없으면 아무것도 확정하지 않는다.
+ *
+ * 근거가 "전반에 공격이었다가 다시 전반에 수비" 처럼 어긋나도 마찬가지다.
+ * 억지로 다수결하지 않는다 — 틀린 진영으로 여섯 축을 계산하면 조용히 거짓이 된다.
+ *
+ * `wonRound` 는 **그 팀 기준**의 라운드 승패다 (`roundResultsOf`). 주지 않으면 5승 규칙
+ * 없이 폭탄만으로 판정한다 — 예전과 같은 결과가 나온다.
  */
 export function roundSidesOf(
   events: readonly RoundSideEvent[],
   teamNo: string,
   totalRounds: number,
+  wonRound?: (round: number) => boolean | null,
 ): RoundSideMap {
-  const evidence = bombEvidenceOf(events).filter((row) => row.team === teamNo)
+  const evidence = bombEvidenceOf(events)
+  /* 폭탄이 없으면 방향을 알 길이 없다. `team_no` 순서를 후퇴값으로 쓰지 않는다 (D-208) */
   if (evidence.length === 0) return EMPTY
+  /* 팀이 셋 이상이면 "상대" 를 특정할 수 없다 — 뒤집기가 성립하지 않는다 */
+  if (new Set(evidence.map((row) => row.team)).size > 2) return conflicted()
 
-  /* 라운드마다 직접 아는 진영. 같은 라운드에 설치와 해체가 둘 다 있으면 모순이다 */
+  /* 라운드마다 직접 아는 진영. 상대 팀 줄은 뒤집는다 — 공격은 한 라운드에 한 팀뿐이다.
+     같은 라운드에서 두 근거가 반대를 가리키면 모순이다 */
   const known = new Map<number, RoundSide>()
   for (const row of evidence) {
-    const side: RoundSide = row.action === 'install' ? 'attack' : 'defense'
+    const actor: RoundSide = row.action === 'install' ? 'attack' : 'defense'
+    const side: RoundSide = row.team === teamNo ? actor : other(actor)
     const seen = known.get(row.round)
-    if (seen !== undefined && seen !== side) {
-      return { side: new Map(), switchRound: null, bracket: null, conflict: true }
-    }
+    if (seen !== undefined && seen !== side) return conflicted()
     known.set(row.round, side)
   }
 
   const rounds = [...known.keys()].sort((a, b) => a - b)
+  const limit = Math.max(totalRounds, rounds[rounds.length - 1] as number)
   const firstSide = known.get(rounds[0] as number) as RoundSide
 
-  /* 앞에서부터 같은 진영이 이어지다 한 번 바뀌고, 그 뒤로는 다시 안 바뀌어야 한다 */
-  let switchAt: number | null = null
-  for (const round of rounds) {
-    const side = known.get(round) as RoundSide
-    if (switchAt === null) {
-      if (side !== firstSide) switchAt = round
-    } else if (side === firstSide) {
-      /* 바뀐 뒤에 원래 진영이 또 나왔다 — 교대가 한 번이라는 전제가 깨진다 */
-      return { side: new Map(), switchRound: null, bracket: null, conflict: true }
+  /** 폭탄이 허용하는 `(전반 진영, e 구간)` 후보들 */
+  const candidates: { first: RoundSide; lo: number; hi: number }[] = []
+
+  if (new Set(known.values()).size === 2) {
+    /* 교대를 직접 봤다. 앞에서부터 한 진영이 이어지다 한 번 바뀌고 다시 안 바뀌어야 한다 */
+    let flipAt: number | null = null
+    for (const round of rounds) {
+      const side = known.get(round) as RoundSide
+      if (flipAt === null) {
+        if (side !== firstSide) flipAt = round
+      } else if (side === firstSide) {
+        /* 바뀐 뒤에 원래 진영이 또 나왔다 — 교대가 한 번이라는 전제가 깨진다 */
+        return conflicted()
+      }
     }
+    const at = flipAt as number
+    candidates.push({ first: firstSide, lo: Math.max(...rounds.filter((r) => r < at)), hi: at - 1 })
+  } else {
+    /* 한쪽 진영만 봤다. 그 근거가 **전반**인지 **후반**인지는 폭탄만으로 못 가른다.
+       두 가설을 다 세워 두고, 5승 규칙이 하나를 떨어뜨려 주기를 기다린다 */
+    const lowest = rounds[0] as number
+    const highest = rounds[rounds.length - 1] as number
+    candidates.push({ first: firstSide, lo: highest, hi: limit })
+    candidates.push({ first: other(firstSide), lo: 1, hi: lowest - 1 })
   }
 
-  if (switchAt === null) {
-    /* 아직 교대를 못 봤다. 아는 라운드만 돌려준다 — 나머지를 지어내지 않는다 */
+  const bounds = wonRound ? halfEndBoundsOf(wonRound, limit) : { lo: 1, hi: limit }
+  const viable = candidates
+    .map((row) => ({
+      first: row.first,
+      lo: Math.max(row.lo, bounds.lo),
+      hi: Math.min(row.hi, bounds.hi),
+    }))
+    .filter((row) => row.lo <= row.hi)
+
+  /* 폭탄과 승수가 서로를 부정한다 — 아무것도 확정하지 않는다 */
+  if (viable.length === 0) return conflicted()
+  /* 방향을 못 골랐다. 아는 라운드만 돌려준다 — 나머지를 지어내지 않는다 */
+  if (viable.length > 1) {
     return { side: new Map(known), switchRound: null, bracket: null, conflict: false }
   }
 
-  const lastBefore = Math.max(...rounds.filter((r) => r < switchAt))
+  const pick = viable[0] as { first: RoundSide; lo: number; hi: number }
+  const second = other(pick.first)
   const side = new Map<number, RoundSide>()
-  const flipped: RoundSide = firstSide === 'attack' ? 'defense' : 'attack'
-  for (let round = 1; round <= Math.max(totalRounds, switchAt); round += 1) {
-    if (round <= lastBefore) side.set(round, firstSide)
-    else if (round >= switchAt) side.set(round, flipped)
-    /* lastBefore 와 switchAt 사이는 **비워 둔다.** 어디서 바뀌었는지 모른다 */
+  for (let round = 1; round <= limit; round += 1) {
+    if (round <= pick.lo) side.set(round, pick.first)
+    else if (round > pick.hi) side.set(round, second)
+    /* `lo` 와 `hi` 사이는 **비워 둔다.** 어디서 바뀌었는지 아직 모른다 */
   }
 
   return {
     side,
-    switchRound: switchAt,
-    bracket: [lastBefore, switchAt],
+    switchRound: pick.hi + 1,
+    bracket: [pick.lo, pick.hi + 1],
     conflict: false,
   }
 }

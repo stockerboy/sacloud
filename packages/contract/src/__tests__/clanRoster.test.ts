@@ -93,7 +93,7 @@ describe('buildClanRoster — 포지션 묶음', () => {
   it('네 포지션은 아무도 없어도 자리를 지킨다. 빈 자리를 남는 선수로 메우지 않는다', () => {
     const roster = buildClanRoster([member({ leaguePlayerId: 'p1', position: 'SHORT' })])
     const first = roster?.squads.find((s) => s.squad === 'first')
-    expect(first?.groups.map((g) => g.label)).toEqual(['숏포지', '2F', '스나수', 'B리베'])
+    expect(first?.groups.map((g) => g.label)).toEqual(['숏', '2F', '스나수', 'B리베'])
     expect(first?.groups.find((g) => g.position === 'SNIPER')?.members).toEqual([])
   })
 

@@ -34,21 +34,17 @@ import {
 import {
   SNIPER_MARK,
   SNIPER_MARK_TITLE,
-  hasAnyPosition,
   lineupPlayerHref,
-  lineupPositionText,
   usedSniper,
 } from './lineupCopy'
 import {
   UNKNOWN,
-  damageBarPercent,
-  firstSideLabel,
+  teamFirstSideLabel,
   formatMatchStartAt,
   headshotView,
   kdaView,
   matchFirstSideLabel,
   matchWeaponLabel,
-  maxDamage,
   mvpBadgeVisible,
   ratingCellView,
   teamIsViewerClan,
@@ -275,7 +271,8 @@ export function MatchCard({
   const [open, setOpen] = useState(false)
   const win = match.win
   const stat = match.player_stat
-  const firstSide = matchFirstSideLabel(match.blue_team)
+  /* 보는 쪽(`league_clan`)이 전반에 선 진영. 근거가 없으면 `null` 이고 칸을 비운다 (D-207) */
+  const firstSide = matchFirstSideLabel(match.first_side)
 
   const toggle = () => {
     const next = !open
@@ -433,17 +430,16 @@ export function MatchCard({
               <ClanSide snapshot={match.opponent} leagueSlug={leagueSlug} align="left" />
             </div>
 
-            {/* 클랜 기록실 카드에만 있는 칸 — 선공 진영 + 양 팀 인원 (UI_PARITY_AUDIT 5-8 · 5-9).
-                선공 진영은 넥슨이 주지 않아 실제로는 대부분 `알수없음` 이다 (D-034).
-                플레이시간과 같은 규칙으로 **자리는 남기고** 모른다고 적는다 —
-                예전에는 항목을 통째로 지워서, 같은 성격의 결측을 서로 다르게 다루고 있었다. */}
+            {/* 클랜 기록실 카드에만 있는 칸 — 전반 진영 + 양 팀 인원 (UI_PARITY_AUDIT 5-8 · 5-9).
+                `선레드`/`선블루` 는 **배틀로그 폭탄 근거**가 있을 때만 적는다 (D-207).
+                근거가 없으면 **아무것도 적지 않는다** — `알수없음` 으로도 채우지 않는다.
+                예전에는 red/blue 슬롯 이름으로 라벨을 붙였는데 그것이 뒤집힌 표기였다.
+                근거 없는 라벨은 결측을 감추는 것이 아니라 **틀린 사실을 만드는 것**이다 (D-106). */}
             {variant === 'clan' ? (
               <div className="flex w-24 shrink-0 items-center justify-center text-center text-sm text-meta">
                 <div>
-                  <div>
-                    {firstSide === null ? <span className="text-faint">{UNKNOWN}</span> : firstSide}
-                  </div>
-                  <div className="mt-1">
+                  {firstSide === null ? null : <div>{firstSide}</div>}
+                  <div className={firstSide === null ? undefined : 'mt-1'}>
                     {formatTeamCounts(match.red.length, match.blue.length)}
                   </div>
                 </div>
@@ -498,7 +494,8 @@ function TeamCompare({
     key: 'red' | 'blue'
     won: boolean | null
     snapshot: MatchClanSnapshot | null
-    first: string
+    /** 전반 진영 표기. 근거가 없으면 `null` — 칸을 비운다 (D-207) */
+    first: string | null
   }[]
   leagueSlug: string
 }) {
@@ -544,7 +541,7 @@ function TeamCompare({
               ) : null}
             </div>
 
-            <div className="w-14 shrink-0 text-right text-faint">{row.first}</div>
+            <div className="w-14 shrink-0 text-right text-faint">{row.first ?? ''}</div>
 
             <div className="w-40 shrink-0 text-right text-faint max-md:hidden">
               {row.snapshot ? (
@@ -579,31 +576,27 @@ function TeamCompare({
  * - `무기` 컬럼(라이플/스나이퍼/알수없음) · `MVP` · `배치고사` · `알수없음`
  */
 function TeamBlock({
-  side,
+  first,
   stats,
   snapshot,
   mvpPlayerId,
-  matchMaxDamage,
   leagueSlug,
   viewerPlayerId,
   showExtra,
 }: {
-  side: 'red' | 'blue'
+  /** 이 블록의 전반 진영 표기 (`선레드`/`선블루`). 근거가 없으면 `null` — 비워 둔다 (D-207) */
+  first: string | null
   stats: readonly MatchPlayerStat[]
   /** 이 진영의 클랜. 어느 클랜인지 잇지 못했으면 `null` — 지어내지 않는다 */
   snapshot: MatchClanSnapshot | null
   mvpPlayerId: string | null
-  /** 딜량 막대의 기준값 (경기 전체 최대). 아무도 모르면 `null` */
-  matchMaxDamage: number | null
   leagueSlug: string
   /** 이 기록실의 주인. 그 행을 한 단 밝게 한다. 클랜 기록실이면 `null` */
   viewerPlayerId: string | null
-  /** `자세히` 가 켜져 있는가 — 포지션 줄과 헤드샷 컬럼이 여기 달려 있다 */
+  /** `자세히` 가 켜져 있는가 — 이제 헤드샷 컬럼만 여기 달려 있다 */
   showExtra: boolean
 }) {
   const won = teamWon(stats)
-  /* 이 블록이 어느 진영인가로 정한다 — 레드 블록은 `선레드`, 블루 블록은 `선블루` */
-  const first = firstSideLabel(side)
 
   return (
     <div className="mt-3 flex items-stretch border border-line">
@@ -633,38 +626,25 @@ function TeamBlock({
               </span>
             </Link>
           ) : null}
-          <span className="ml-auto shrink-0 pl-2 text-faint">{first}</span>
+          {first === null ? null : (
+            <span className="ml-auto shrink-0 pl-2 text-faint">{first}</span>
+          )}
         </div>
 
-        {/* 포지션 줄 (D-199 · SITE_SPEC_V2). 사용자 원문 그대로의 한 줄이다 —
-            `차값 B리베 / 누검 숏포지 (S) / 쨔잉나 2F / yuhwan 숏포지 / huwho 스나수`.
-            포지션은 그 선수의 고유 자리이고, `(S)` 는 **이 판에 스나를 들었다**는 뜻이다.
-            둘은 다른 것이라 나란히 적는다 — 포지션으로 무기를 추측하지 않는다.
-            아무도 포지션을 모르면 줄을 통째로 그리지 않는다 (D-106) */}
-        {showExtra && hasAnyPosition(stats) ? (
-          <div className="flex items-baseline border-t border-t-line-soft px-3 py-1.5 text-sm">
-            <div className="w-14 shrink-0 text-xs tracking-[0.12em] text-faint max-md:hidden">
-              포지션
-            </div>
-            <div className="min-w-0 flex-grow text-meta">
-              {stats.map((stat, index) => (
-                <span key={stat.player_id} className="whitespace-nowrap">
-                  {index === 0 ? null : <span className="mx-1 text-faint">/</span>}
-                  <PlayerLink leagueSlug={leagueSlug} playerId={stat.player_id}>
-                    {lineupPositionText(stat)}
-                  </PlayerLink>
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : null}
+        {/* 예전에 여기 있던 **포지션 줄**은 없앴다 (2026-08-30 사용자 지시).
+            포지션이 참가자 표의 정식 칸이 되었으므로 같은 값을 두 번 그리지 않는다.
+            한 줄로 늘어놓던 `차값 B리베 / 누검 숏 (S) / …` 형태는 사라졌고,
+            `lineupPositionText` 는 다른 화면이 쓰고 있어 남겨 둔다 */}
 
         {/* 컬럼 머리 — 표마다 반복한다. 헤드샷은 `자세히` 에 달려 있다 */}
         <div className="flex items-center border-t border-t-line-soft py-1.5 text-xs tracking-[0.12em] text-faint">
           <div className="w-52 px-3 max-md:w-auto max-md:min-w-0 max-md:flex-1">플레이어</div>
           <div className="w-28 text-center max-md:w-20">kda</div>
           <div className="w-20 text-center max-md:w-12">무기</div>
-          <div className="w-36 text-center max-md:w-24">딜량</div>
+          {/* 딜량 자리에 **포지션**을 넣었다 (2026-08-30 사용자 지시).
+              딜량은 상대 클랜 소속이면 결측이라 `알수없음` 이 절반이었고,
+              포지션은 매 행에 있는 값이라 표가 훨씬 잘 읽힌다 */}
+          <div className="w-24 text-center max-md:w-16">포지션</div>
           {showExtra ? <div className="mobile-hide w-24 text-center">헤드샷</div> : null}
         </div>
 
@@ -673,7 +653,6 @@ function TeamBlock({
             key={stat.player_id}
             stat={stat}
             mvpPlayerId={mvpPlayerId}
-            matchMaxDamage={matchMaxDamage}
             leagueSlug={leagueSlug}
             viewerPlayerId={viewerPlayerId}
             showExtra={showExtra}
@@ -702,14 +681,12 @@ function SnapshotRating({ snapshot }: { snapshot: MatchClanSnapshot }) {
 function StatRow({
   stat,
   mvpPlayerId,
-  matchMaxDamage,
   leagueSlug,
   viewerPlayerId,
   showExtra,
 }: {
   stat: MatchPlayerStat
   mvpPlayerId: string | null
-  matchMaxDamage: number | null
   leagueSlug: string
   viewerPlayerId: string | null
   showExtra: boolean
@@ -717,16 +694,25 @@ function StatRow({
   const kda = kdaView(stat)
   const rating = ratingCellView(stat)
   const weapon = matchWeaponLabel(stat.weapon)
-  const bar = damageBarPercent(stat.damage, matchMaxDamage)
+  /* 딜량 칸을 없앴으므로 막대도 더 이상 그리지 않는다 (2026-08-30 사용자 지시).
+     `damage` 값 자체는 계약·DB 에 그대로 남는다 — 화면에서만 뺐다 */
   const headshot = headshotView(stat.headshot, stat.kill)
   /* 보고 있는 선수의 행. `적진` 에서는 색을 얹지 않고 **바탕을 한 단 올린다**
      (`--color-card-2`). 얼룩무늬가 아니라 한 행에만 붙는 표시다 */
   const isViewer = viewerPlayerId !== null && viewerPlayerId === stat.player_id
+  /* MVP 행은 **표에서 가장 세게** 표시한다 (2026-08-30 사용자 지시 — "조금 더 화려하고 세게").
+     좌측 진홍 막대 + 한 단 올린 바탕 + 바깥으로 새는 빛. 이 표에서 빛이 새는 행은 이것뿐이라
+     열 줄 중 어느 것이 MVP 인지 한눈에 잡힌다. 보고 있는 선수 표시(`bg-card-2`)보다 위다 */
+  const isMvp = mvpPlayerId !== null && mvpPlayerId === stat.player_id
 
   return (
     <div
-      className={`flex items-center border-t border-t-line-soft py-1.5 text-sm ${
-        isViewer ? 'bg-card-2' : ''
+      className={`relative flex items-center border-t border-t-line-soft py-1.5 text-sm ${
+        isMvp
+          ? 'bg-card-2 shadow-[inset_3px_0_0_0_var(--color-accent),0_0_18px_-8px_var(--color-accent)]'
+          : isViewer
+            ? 'bg-card-2'
+            : ''
       }`}
     >
       {/* 플레이어 칸은 **한 칸 2줄**이다 — 위 `[마크] 닉네임 [S]`, 아래 작은 글씨로 그 시점 래더 */}
@@ -762,15 +748,19 @@ function StatRow({
               </span>
             ) : null}
 
-            {/* MVP — 닉네임 오른쪽의 별. 색만으로는 뜻이 전달되지 않으므로
-                `title`·`aria-label` 로 MVP 임을 남긴다 */}
+            {/* MVP — 닉네임 오른쪽. 예전에는 작은 별 하나였는데
+                열 줄 사이에서 눈에 안 띄었다. **채운 알약**으로 올렸다
+                (2026-08-30 사용자 지시 — "조금 더 화려하고 세게").
+                이 표에서 면을 채우는 것은 이것 하나뿐이라 그만큼 세게 읽힌다.
+                색만으로는 뜻이 전달되지 않으므로 `title`·`aria-label` 도 남긴다 */}
             {mvpBadgeVisible(stat.player_id, stat.mvp, mvpPlayerId) ? (
               <span
-                className="ml-1 shrink-0 text-xs leading-none text-mvp"
+                className="ml-1.5 inline-flex shrink-0 items-center gap-0.5 rounded-[var(--radius)] bg-mvp px-1.5 py-[1px] text-[10px] font-bold leading-none text-ink shadow-[0_0_10px_-2px_var(--color-mvp)]"
                 title="MVP"
                 aria-label="MVP"
               >
                 <span aria-hidden="true">★</span>
+                MVP
               </span>
             ) : null}
           </div>
@@ -814,23 +804,16 @@ function StatRow({
         {weapon === null ? <span className="text-faint">{UNKNOWN}</span> : weapon}
       </div>
 
-      {/* 딜량 — 가로 막대 + 숫자. 막대 길이는 **그 경기 최대 딜량 대비**다.
-          막대는 색을 쓰지 않는다 — 열 명이 모두 빨간 막대면 진홍이 화면을 덮는다.
-          상대 클랜 소속은 딜량이 결측돼 내려오므로 `알수없음` 이 자주 나온다 */}
-      <div className="w-36 px-2 max-md:w-24 max-md:px-1">
-        {stat.damage === null ? (
-          <div className="text-center text-faint">{UNKNOWN}</div>
+      {/* 포지션 — 그 선수의 **고유 자리**다 (`스나수` · `2F` · `B리베` · `숏`).
+          바로 왼쪽 `무기` 칸과 다른 것이다: 무기는 **이 판 한 판의 사실**이고
+          포지션은 경기마다 바뀌지 않는다. 사용자가 못 박았다 —
+          **"스나수가 무조건 스나를 드는것만은 아니야"**.
+          판정이 없으면 비운다. `-` 나 `알수없음` 으로 채우지 않는다 (D-106) */}
+      <div className="w-24 text-center text-meta max-md:w-16">
+        {stat.position_label?.trim() ? (
+          stat.position_label
         ) : (
-          <div className="flex items-center">
-            <div className="mr-2 h-1 min-w-0 flex-grow bg-line-soft max-md:mr-1">
-              {bar === null ? null : (
-                <div className="h-full bg-meta" style={{ width: `${bar}%` }} />
-              )}
-            </div>
-            <div className="num w-12 shrink-0 text-right text-text-strong">
-              {formatCount(stat.damage)}
-            </div>
-          </div>
+          <span className="text-faint">·</span>
         )}
       </div>
 
@@ -887,7 +870,6 @@ function MatchDetailPanel({
 
   /* 딜량 막대의 기준은 **경기 전체**의 최대 딜량이다. 팀별로 따로 잡으면
      같은 딜량이 팀에 따라 다른 길이로 보인다 */
-  const matchMaxDamage = detail ? maxDamage([...detail.red_stats, ...detail.blue_stats]) : null
 
   /* 응답은 팀을 `league_clan` / `opponent`(보는 쪽 기준)로 주고 참가자는 진영으로 준다.
      둘을 이어야 팀 헤더에 클랜명을 적을 수 있다 (`teamIsViewerClan` 주석 참조) */
@@ -895,6 +877,15 @@ function MatchDetailPanel({
   const redSnapshot = redIsViewer === null ? null : redIsViewer ? match.league_clan : match.opponent
   const blueSnapshot =
     redIsViewer === null ? null : redIsViewer ? match.opponent : match.league_clan
+
+  /* 전반 진영 표기 (D-207). 응답의 `first_side` 는 **보는 쪽 기준**이라, 어느 슬롯이
+     보는 쪽인지(`redIsViewer`)를 알아야 두 블록에 나눠 붙일 수 있다.
+     슬롯 이름(red/blue)으로 적으면 안 된다 — 그것이 뒤집혀 있던 원인이다. */
+  const redFirstLabel = teamFirstSideLabel(redIsViewer, match.first_side)
+  const blueFirstLabel = teamFirstSideLabel(
+    redIsViewer === null ? null : !redIsViewer,
+    match.first_side,
+  )
 
   /* 이 기록실의 주인이 누구인지는 **응답이 이미 알려 준다** — 개인 기록실에서만
      `player_stat` 에 본인 스탯이 담긴다 (계약 주석). 별도 prop 을 받지 않는다.
@@ -947,34 +938,32 @@ function MatchDetailPanel({
                 key: 'red',
                 won: teamWon(detail.red_stats),
                 snapshot: redSnapshot,
-                first: firstSideLabel('red'),
+                first: redFirstLabel,
               },
               {
                 key: 'blue',
                 won: teamWon(detail.blue_stats),
                 snapshot: blueSnapshot,
-                first: firstSideLabel('blue'),
+                first: blueFirstLabel,
               },
             ]}
           />
 
           {/* 레드 팀을 먼저 그린다 */}
           <TeamBlock
-            side="red"
+            first={redFirstLabel}
             stats={detail.red_stats}
             snapshot={redSnapshot}
             mvpPlayerId={match.mvp_player_id}
-            matchMaxDamage={matchMaxDamage}
             leagueSlug={leagueSlug}
             viewerPlayerId={viewerPlayerId}
             showExtra={showExtra}
           />
           <TeamBlock
-            side="blue"
+            first={blueFirstLabel}
             stats={detail.blue_stats}
             snapshot={blueSnapshot}
             mvpPlayerId={match.mvp_player_id}
-            matchMaxDamage={matchMaxDamage}
             leagueSlug={leagueSlug}
             viewerPlayerId={viewerPlayerId}
             showExtra={showExtra}

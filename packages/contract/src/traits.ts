@@ -20,8 +20,41 @@
 /* 축                                                                          */
 /* -------------------------------------------------------------------------- */
 
-/** 육각형 꼭지점 6개. **이 순서가 화면의 시계방향 순서**다 (사양 4절 표의 순서) */
+/**
+ * 육각형 꼭지점 6개. **이 순서가 화면의 시계방향 순서**다 (사양 4절 표의 순서).
+ *
+ * 4번은 **빈 자리**다 — 무엇을 잴지 아직 정하지 않았다 (D-206). 꼭지점을 빼서
+ * 오각형으로 만들지 않는다. 사용자가 육각형을 유지하기로 했다
+ * (원문: *"육각그래프는 꼭 쓰고싶은데"*).
+ */
 export const TRAIT_AXIS_KEYS = [
+  'save',
+  'duel',
+  'carry',
+  'undecided',
+  'finish',
+  'outnumbered',
+] as const
+export type TraitAxisKey = (typeof TRAIT_AXIS_KEYS)[number]
+
+/**
+ * **4번 자리를 비우기 전**의 여섯 축 (D-206). 지우지 않는다.
+ *
+ * 사용자 상시 지시 — "방식을 바꾸면 전의 방식 버전도 남겨라". 4번은 `매치의 사나이`였다.
+ * 그 값을 만드는 재료(`PlayerRoundProfile.matchMan` / `longMatches`)도, 그것을 만드는
+ * 집계 잡(`roundBuild.ts`)도, 그것을 쓰는 **MVP 규칙(D-182)** 도 전부 그대로 살아 있다.
+ * **육각형 축에서만 내렸다.**
+ *
+ * ── 왜 내렸나 (실측 2026-08-30 · 로컬 미러)
+ * ```
+ * 값이 뜨는 인원   supply 라플 154/891 · 스나 23/159 · 대룰 0/156
+ * 반분신뢰도       0.235      ← 캐리력 0.645 · 소수싸움 0.313 · 세이브 0.262
+ * 평균 비율        0.093      ← 10명 중 1명이 뽑히는 순수 확률(0.100)과 사실상 같다
+ * ```
+ * 즉 그 축은 **실력이 아니라 동전 던지기**를 재고 있었다. MVP 규칙에서는 "있으면 붙는다"
+ * 라 표본이 적어도 되지만, 백분위는 표본이 곧 축의 뜻이다.
+ */
+export const TRAIT_AXIS_KEYS_V1 = [
   'save',
   'duel',
   'carry',
@@ -29,29 +62,54 @@ export const TRAIT_AXIS_KEYS = [
   'finish',
   'outnumbered',
 ] as const
-export type TraitAxisKey = (typeof TRAIT_AXIS_KEYS)[number]
+export type TraitAxisKeyV1 = (typeof TRAIT_AXIS_KEYS_V1)[number]
 
 /**
- * 축 이름 — **주무기에 따라 2번·5번이 바뀐다** (사양 4절).
+ * 축 이름 — **주무기에 따라 갈린다** (사양 4절).
  *
  * 스나수 화면에는 `스나싸움` · `작업 성공률`, 라플수 화면에는 `샷싸움` · `원어택 성공률`.
- * 나머지 네 축은 무기와 무관하게 같은 이름이다.
+ * 나머지 축은 지금 무기와 무관하게 같은 이름이지만 **구조는 무기별로 갈라 둔다** —
+ * 새로 정해질 4번 축이 무기별로 갈릴 수 있다.
+ *
+ * ⚠ 4번(`undecided`)의 이름은 **아직 없다.** 무엇을 잴지 사용자가 정하지 않았다
+ * (2026-08-30 · D-206). 축이 정해지면 **이 표 한 줄과 `TRAIT_AXIS_KEYS` 한 칸**만
+ * 고치면 된다 — 화면(`TraitHexagon`)은 `axis.label` 만 읽는다.
+ *
+ * 옛 4번(`matchman`)의 이름도 남긴다. `TRAIT_AXIS_KEYS_V1` 참조.
  */
-export const TRAIT_AXIS_LABEL: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
+export const TRAIT_AXIS_LABEL: Record<
+  TraitAxisKey | TraitAxisKeyV1,
+  { sniper: string; rifle: string }
+> = {
   save: { sniper: '세이브', rifle: '세이브' },
   duel: { sniper: '스나싸움', rifle: '샷싸움' },
   carry: { sniper: '캐리력', rifle: '캐리력' },
+  /** 빈 자리 (D-206). 이름이 곧 상태다 — 재료가 없는 게 아니라 **안 정한 것**이다 */
+  undecided: { sniper: '미정', rifle: '미정' },
+  /** 옛 4번 축 (D-206). 육각형에서는 내려왔지만 이름은 남긴다 */
   matchman: { sniper: '매치의 사나이', rifle: '매치의 사나이' },
   finish: { sniper: '작업 성공률', rifle: '원어택 성공률' },
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
 
 /**
- * 그 축을 **아직 못 재는 이유**.
+ * 그 축에 **값이 없는 이유**.
  *
  * 화면에 그대로 적는다. "측정중" 만 쓰면 무엇이 없어서 못 재는지 아무도 모른다.
+ *
+ * ⚠ **`undecided` 만 성격이 다르다.** 나머지 다섯은 전부 *"재료가 없어서 못 잰다"* 이고
+ * 재료가 들어오면 저절로 채워진다. `undecided` 는 *"무엇을 잴지 사람이 아직 안 정했다"*
+ * 이고, 기다린다고 채워지지 않는다 (D-206). 그래서 화면도 `측정중` 이 아니라 `미정`
+ * 이라고 적고, `측정중 N항목` 집계에서도 뺀다.
  */
-export const TRAIT_PENDING_KEYS = ['rounds', 'battlelog', 'position', 'games', 'weapon'] as const
+export const TRAIT_PENDING_KEYS = [
+  'rounds',
+  'battlelog',
+  'position',
+  'games',
+  'weapon',
+  'undecided',
+] as const
 export type TraitPending = (typeof TRAIT_PENDING_KEYS)[number]
 
 export const TRAIT_PENDING_TEXT: Record<TraitPending, string> = {
@@ -65,6 +123,17 @@ export const TRAIT_PENDING_TEXT: Record<TraitPending, string> = {
   games: '경기 부족',
   /** 주무기가 정해지지 않아 **누구와 견줄지**를 모른다 */
   weapon: '주무기 미정',
+  /** **무엇을 잴지 정하지 않았다.** 기다려서 채워지는 값이 아니다 (D-206) */
+  undecided: '미정',
+}
+
+/**
+ * 기다리면 채워지는 사유인가.
+ *
+ * `false` 면 사람이 정해야 한다 — 화면은 그 축을 `측정중` 으로 세지 않는다.
+ */
+export function isMeasurablePending(pending: TraitPending): boolean {
+  return pending !== 'undecided'
 }
 
 /**
@@ -193,6 +262,13 @@ export interface TraitInput {
    */
   savePercentile?: number | null
   outnumberedPercentile?: number | null
+  /**
+   * 옛 4번 축 `매치의 사나이` (D-206). **육각형은 더 이상 이 값을 그리지 않는다.**
+   *
+   * 재료(`PlayerRoundProfile.matchMan` / `longMatches`)도 집계 잡도 그대로 살아 있고,
+   * MVP 규칙(D-182)은 계속 쓴다. 넘겨도 무시되지만 **지우지 않는다** — 축이 다시
+   * 정해질 때 붙일 자리이고, 그때까지 "옛 방식이 무엇이었는지" 를 남겨 둔다.
+   */
   matchManPercentile?: number | null
   /**
    * 스나 전용 두 축 (D-195). **라플수에게는 재료가 없다** —
@@ -215,8 +291,10 @@ export interface TraitInput {
  * 여섯 축을 만든다.
  *
  * **지금 잴 수 있는 축은 둘뿐이다** — 3 캐리력(판당 킬)과, 라플수의 2 샷싸움(딜량).
- * 나머지는 라운드 복원(1·4·6) · 배틀로그(스나의 2·5) · 포지션 판정(라플의 5)이
+ * 나머지는 라운드 복원(1·6) · 배틀로그(스나의 2·5) · 포지션 판정(라플의 5)이
  * 있어야 계산된다. 그 사실을 축마다 `pending` 으로 남긴다.
+ *
+ * **4번은 비어 있다** (D-206). 재료가 없어서가 아니라 무엇을 잴지 정하지 않아서다.
  */
 export function buildPlayerTraits(input: TraitInput): TraitHexagon {
   const weapon = input.weapon
@@ -230,6 +308,11 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
     weapon === null ? 'weapon' : input.knownGames < TRAIT_MIN_GAMES ? 'games' : null
 
   const axes: TraitAxis[] = TRAIT_AXIS_KEYS.map((key) => {
+    /* 4번 자리는 **선수와 무관하게** 비어 있다 (D-206). 무기를 몰라도 판수가 모자라도
+       이유는 `미정` 이다 — 더 뛴다고 채워지는 축이 아니라서, `경기 부족` 이라고 적으면
+       "조금만 더 뛰면 나온다" 는 거짓말이 된다. 그래서 `blocked` 보다 먼저 본다 */
+    if (key === 'undecided') return { key, label: label(key), percentile: null, pending: 'undecided' }
+
     if (blocked !== null) return { key, label: label(key), percentile: null, pending: blocked }
 
     switch (key) {
@@ -281,14 +364,11 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
         }
       }
       default: {
-        /* 1 세이브 · 4 매치의사나이 · 6 소수싸움 — 전부 그 경기 10명 전원의 로그로
-           **라운드를 복원**해야 나온다 (사양 4절 표 · D-194) */
+        /* 1 세이브 · 6 소수싸움 — 그 경기 10명 전원의 로그로 **라운드를 복원**해야
+           나온다 (사양 4절 표 · D-194).
+           4번(옛 `매치의 사나이`)도 여기 있었다. 지금은 빈 자리라 위에서 걸러진다 (D-206) */
         const value =
-          key === 'save'
-            ? (input.savePercentile ?? null)
-            : key === 'outnumbered'
-              ? (input.outnumberedPercentile ?? null)
-              : (input.matchManPercentile ?? null)
+          key === 'save' ? (input.savePercentile ?? null) : (input.outnumberedPercentile ?? null)
         return {
           key,
           label: label(key),

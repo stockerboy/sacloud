@@ -380,7 +380,10 @@ async function main() {
     startAt: date(match.startAt),
     endAt: date(match.endAt),
     playTime: match.playTime,
-    blueFirst: match.blueTeam,
+    /* 옛 `blueFirst` 는 폐기됐다 (D-207) — 시드도 더 이상 채우지 않는다.
+       전반 공수는 근거로 정해진 아래 칸이 담는다 */
+    firstHalfAttackSide: match.firstHalfAttackSide,
+    firstSideEvidence: match.firstHalfAttackSide === null ? null : 'mock',
     winnerSide: match.winnerSide,
     mvpPlayerId: match.mvpPlayerId,
     redLeagueClanId: match.redLeagueClanId,

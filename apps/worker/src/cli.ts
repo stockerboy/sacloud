@@ -52,6 +52,15 @@ import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/ros
 import { applyWeaponToStats, importWeaponEvidence } from './jobs/weapon.js'
 /** 병영수첩 BattleLog 원문 적재 + 좌표 기반 포지션 판정 (D-174) */
 import { buildPositionProfiles, importBattleLogs } from './jobs/battlelog.js'
+/** 병영수첩 클랜전 목록 원문 적재 — IPL 기록 이관 */
+import {
+  checkIplMatches,
+  findClanMatchFiles,
+  formatMatchStamp,
+  importIplMatches,
+} from './jobs/iplMatchImport.js'
+/** IPL 클랜끼리의 경기를 열산에서 막고 치운다 (D-210) */
+import { runIplSanplyCheck, runIplSanplyPurge } from './jobs/iplSanplyPurge.js'
 import { buildRoundProfiles } from './jobs/roundBuild.js'
 /** 클랜 라운드 지표 (SITE_SPEC_V2 5-5절) — 블루방어율·어택성공률·조직력·폭발력·템포·클린시트 */
 import { buildClanRoundProfiles } from './jobs/clanRoundBuild.js'
@@ -175,6 +184,21 @@ function usage(): void {
               --register <클랜slug> --tier <1~6>  그 티어에 클랜을 등록/이동한다
               --sync   Clan.tier 를 LeagueClan.division 에 맞춘다 (기준은 division)
               **--confirm 없이는 한 줄도 쓰지 않는다**
+  iplmatch-import --dir <폴더> [--file <한 파일>] [--confirm]
+              병영수첩 **클랜전 목록**(GetClanMatchList) 원문 적재 — IPL 기록 이관
+              브라우저가 내려받은 ipl-<클랜slug>-<건수>.json 을 읽는다.
+              크롬이 이름을 못 바꿔 .tmp 로 남은 것도 **내용으로 알아본다** (D-203)
+              **Match 로 투영하지 않는다.** 원문 보존까지만 한다 (투영은 D-155 · 3-B)
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
+  iplmatch-check [--dir <폴더>]
+              적재 숫자 대조 — 파일↔DB · 맵 · 기간 · 양쪽 다 등록클랜인 경기 수
+  ipl-sanply-check [--league <slug>] [--ipl-league <slug>]
+              **열산에 남은 IPL끼리의 경기**를 센다 (D-210). 0 이 아니면 exit 1
+              막는 규칙은 적재(supply-import)에 들어 있다 — 이건 새는지 보는 대조다
+  ipl-sanply-purge [--league <slug>] [--ipl-league <slug>] [--backup-dir <폴더>] [--confirm]
+              이미 들어온 IPL끼리의 경기를 지우고 IPL 클랜을 열산에서 뺀다 (D-210)
+              **지우기 전에 백업 JSON 을 뜬다.** 원문(수집 JSONL)은 건드리지 않는다
+              **--confirm 없이는 한 줄도 지우지 않는다**
   roster      --league <slug> --file <CSV> [--verified] | --from-league-players | --sync-priority
               (플래그 없으면 등록 현황만 보여 준다)
   backfill-observations [--ouid <OUID>[,<OUID>]]
@@ -2011,6 +2035,144 @@ async function main(): Promise<number> {
         warn('진영 교대를 확인한 경기가 없다. 다섯 지표는 전부 측정중으로 나간다')
       }
       if (!result.written) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    /**
+     * 병영수첩 클랜전 목록 원문 적재 — IPL 기록 이관.
+     *
+     *   pnpm --filter @sacloud/worker nexon iplmatch-import --dir <폴더>
+     *   pnpm --filter @sacloud/worker nexon iplmatch-import --dir <폴더> --confirm
+     *
+     * 수집은 브라우저가 한다 (Node 로 병영수첩을 부르면 403 · `docs/IPL_SPEC.md` 7장).
+     * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 멱등이다.
+     * **`Match` 로 투영하지 않는다** — 원문 보존까지만 한다.
+     */
+    case 'iplmatch-import': {
+      const dir = stringFlag(args, 'dir')
+      const file = stringFlag(args, 'file')
+      if (!dir && !file) {
+        fail('--dir <폴더> (또는 --file <한 파일>) 이 필요하다')
+        return 1
+      }
+      const files = file ? [file] : findClanMatchFiles(dir as string)
+      if (files.length === 0) {
+        warn(`${dir} 에서 클랜전 목록 파일을 하나도 못 찾았다`)
+        return 1
+      }
+      const confirm = boolFlag(args, 'confirm')
+      const result = await importIplMatches({ files, confirm })
+      table([
+        {
+          파일: result.files,
+          '실패 파일': result.failedFiles,
+          줄: result.rows,
+          [confirm ? '신규' : '넣을 것']: result.stored,
+          중복: result.duplicate,
+          '주인 불명': result.skipped,
+          '고유 경기': result.uniqueMatches,
+          '고유 (경기,주체)': result.uniquePairs,
+        },
+      ])
+      log(
+        `기간 ${formatMatchStamp(result.earliestMatchKey)} ~ ` +
+          `${formatMatchStamp(result.latestMatchKey)} (match_key 앞 12자리 · KST)`,
+      )
+      const otherMaps = Object.entries(result.otherMaps)
+      if (otherMaps.length > 0) {
+        warn('제3보급창고가 아닌 줄이 섞였다')
+        table([Object.fromEntries(otherMaps)])
+      }
+      for (const failed of result.perFile.filter((item) => item.error)) {
+        warn(`읽지 못한 파일: ${failed.file} — ${failed.error}`)
+      }
+      if (!confirm) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    /**
+     * IPL 목록 원문 숫자 대조.
+     *
+     *   pnpm --filter @sacloud/worker nexon iplmatch-check [--dir <폴더>]
+     *
+     * `--dir` 을 주면 파일 쪽 숫자와 DB 를 맞대 본다. 안 주면 DB 쪽만 본다.
+     */
+    case 'iplmatch-check': {
+      const result = await checkIplMatches({ dir: stringFlag(args, 'dir') ?? undefined })
+      table([
+        {
+          '파일 줄': result.fileRows ?? '(안 봄)',
+          '파일 고유 경기': result.fileUniqueMatches ?? '(안 봄)',
+          '파일 (경기,주체)': result.fileUniquePairs ?? '(안 봄)',
+          'DB 행': result.dbRows,
+          'DB 고유 경기': result.dbUniqueMatches,
+          'DB 주체': result.dbSubjects,
+        },
+      ])
+      log(
+        `기간 ${formatMatchStamp(result.earliestMatchKey)} ~ ` +
+          `${formatMatchStamp(result.latestMatchKey)} (KST)`,
+      )
+      table([
+        {
+          '제3보급창고 아닌 행': Object.values(result.otherMaps).reduce((a, b) => a + b, 0),
+          '2026-04-01 이전 경기': result.beforeApril,
+          '2026-01-01 이전 경기': result.beforeYear,
+          '양쪽 다 등록클랜': result.bothRegistered,
+          '한쪽만 등록클랜': result.oneRegistered,
+        },
+      ])
+      const other = Object.entries(result.otherMaps)
+      if (other.length > 0) table([Object.fromEntries(other)])
+      const subjects = new Set(result.registered.map((item) => item.subject))
+      log(
+        `등록 클랜(데이터에서 도출) ${subjects.size}곳 · 클랜명 ${result.registered.length}개 ` +
+          `(개명한 클랜은 이름이 여러 개다)`,
+      )
+      for (const item of result.registered) {
+        log(
+          `  ${item.subject} = ${item.clanName} (${item.rows}줄 · ${(item.ratio * 100).toFixed(1)}%)`,
+        )
+      }
+      for (const failure of result.failures) fail(`FAIL ${failure}`)
+      if (result.passed) log('통과')
+      return result.passed ? 0 : 1
+    }
+
+    /**
+     * **IPL 클랜끼리의 경기는 열산 기록이 아니다** — 대조 (D-210).
+     *
+     *   pnpm --filter @sacloud/worker nexon ipl-sanply-check
+     *
+     * 막는 일은 적재(`supply-import`)가 한다. 이건 **새는지** 보는 것이다.
+     * 0 이 아니면 exit 1 — 5분마다 도는 동기화가 규칙을 빠져나갔다는 뜻이다.
+     */
+    case 'ipl-sanply-check': {
+      const scope = await runIplSanplyCheck({
+        targetLeagueSlug: stringFlag(args, 'league') ?? undefined,
+        iplLeagueSlug: stringFlag(args, 'ipl-league') ?? undefined,
+      })
+      return scope.matchIds.length === 0 ? 0 : 1
+    }
+
+    /**
+     * 이미 들어온 IPL끼리의 경기를 치운다 (D-210).
+     *
+     *   pnpm --filter @sacloud/worker nexon ipl-sanply-purge
+     *   pnpm --filter @sacloud/worker nexon ipl-sanply-purge --confirm
+     *
+     * **지우기 전에 백업 JSON 을 뜬다** (`CLAUDE.md` 3-A 1번 · 7번).
+     * 원문(수집 JSONL)은 건드리지 않는다 — 지우는 것은 `Match` 행뿐이다.
+     */
+    case 'ipl-sanply-purge': {
+      const result = await runIplSanplyPurge({
+        confirm: boolFlag(args, 'confirm'),
+        targetLeagueSlug: stringFlag(args, 'league') ?? undefined,
+        iplLeagueSlug: stringFlag(args, 'ipl-league') ?? undefined,
+        backupDir: stringFlag(args, 'backup-dir') ?? undefined,
+      })
+      /* 백업을 못 떠서 아무것도 안 지운 경우를 성공으로 보고하지 않는다 */
+      if (result.notes.length > 0 && boolFlag(args, 'confirm')) return 1
       return 0
     }
 

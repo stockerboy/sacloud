@@ -23,6 +23,7 @@ import {
   type ClanMetrics,
   type ClanStreakMember,
 } from '@sacloud/contract'
+import { DROPOUT_DAMAGE_ZERO } from './dropoutScope'
 import { withLadderMatch } from './ladderScope'
 import { SEASON0_FROM, seasonWindowWhere } from './season0Scope'
 import { toKstIso } from '../format'
@@ -141,7 +142,21 @@ export async function leagueClanMetrics(
  *
  * 참가 기록을 한 줄씩 읽지 않고 `groupBy` 로 DB 에 합계를 시킨다. 최다 클랜이면
  * 이긴 경기가 1,300건이라 줄 수로는 6,500행이 넘는다.
- * `_count.damage` 는 **null 이 아닌 칸의 수**라, `_all` 과 같아야 결측이 없다는 뜻이다.
+ *
+ * ── 결측이 두 모양이다 (D-209)
+ *   `_count.damage` 는 **null 이 아닌 칸의 수**라, `_all` 과 같아야 `null` 결측이 없다는 뜻이다.
+ *   그런데 결측의 대부분은 `null` 이 아니라 **`0`** 이다 — 탈주한 사람의 딜량이 0으로
+ *   박혀 있다 (`dropoutScope.ts`). 다섯 중 하나가 0이면 팀 합계가 그만큼 모자란 거짓이므로
+ *   `_min.damage` 로 잡아 그 경기를 통째로 뺀다. 화면은 이미 `딜량 결측 N판 제외` 라고 적는다.
+ *
+ *   실측(2026-08-31 · `supply` 리그): 이긴 팀 5인 묶음 129,596개 중
+ *   **2,715개(2.1%)** 가 이렇게 빠진다. `null` 결측으로 이미 빠지던 것은 4개뿐이었다.
+ *
+ * ── 왜 `dropoutScope.ts` 의 조건 함수를 쓰지 않는가
+ *   저 둘은 **행 단위** 조건이다. 여기는 행이 아니라 **팀 5명 묶음**을 통째로 넣거나 뺀다 —
+ *   한 명만 걸러 내면 남은 넷의 합이 "팀 전체 딜량" 인 척하게 된다. 그래서 `where` 로
+ *   거르지 않고 묶음을 다 읽은 뒤 `_count` · `_min` 으로 판정한다.
+ *   같은 이유로 `_count._all !== TEAM_SIZE` 검사도 살아 있어야 한다.
  */
 const TEAM_SIZE = 5
 
@@ -156,13 +171,18 @@ async function teamDamageOf(
     by: ['matchId', 'side'],
     where: { matchId: { in: [...wonIds] } },
     _sum: { damage: true },
+    _min: { damage: true },
     _count: { _all: true, damage: true },
   })
 
   for (const row of grouped) {
     if (row.side !== sideOf.get(row.matchId)) continue
     if (row._count._all !== TEAM_SIZE) continue
+    /* `null` 결측 */
     if (row._count.damage !== row._count._all) continue
+    /* `0` 결측 — 한 명이라도 탈주했으면 팀 합계가 거짓이다 (D-209).
+       `_min` 은 `null` 을 무시하므로 위의 `null` 검사와 따로 봐야 한다 */
+    if ((row._min.damage ?? DROPOUT_DAMAGE_ZERO) <= DROPOUT_DAMAGE_ZERO) continue
     const sum = row._sum.damage
     if (sum === null) continue
     out.set(row.matchId, sum)

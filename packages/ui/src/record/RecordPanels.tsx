@@ -444,7 +444,7 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       </Stat>
       {/*
         `포지션` — **승률 바로 아래** (2026-08-30 사용자 지시 · D-199).
-        `스나수` · `2F` · `B리베` · `숏포지` 중 하나다.
+        `스나수` · `2F` · `B리베` · `숏` 중 하나다.
         값이 없으면 줄째로 사라진다 — `-` 나 `알수없음` 으로 채우지 않는다 (D-106).
       */}
       {props.position == null || props.position === '' ? null : (

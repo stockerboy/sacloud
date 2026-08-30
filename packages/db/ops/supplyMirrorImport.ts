@@ -38,6 +38,11 @@
  */
 import { prisma } from '../src/index'
 import type { Prisma } from '../src/index'
+import {
+  IPL_ONLY_SKIP_REASON,
+  loadIplOnlyMatchGuard,
+  type IplOnlyMatchGuard,
+} from './iplSanplyGuard'
 import type { ParsedSupplyClan, ParsedSupplyMatch, ParsedSupplySource } from './supplyMirrorParse'
 
 /**
@@ -89,6 +94,13 @@ export interface SupplyMirrorImportInput {
   createLeagueName?: string | null
   /** 쓰기에 쓸 클라이언트. 기본은 전역 `prisma` 다 (검증용 트랜잭션을 넣을 수 있다) */
   client?: SupplyImportDb
+  /**
+   * **IPL 클랜끼리의 경기를 열산에 만들지 않는 규칙** (D-210).
+   *
+   * 기본은 DB 에서 IPL 등록 명단을 읽어 스스로 만든다. 규칙이 안 걸리는 리그면
+   * DB 를 읽지도 않는다. 테스트가 임시 리그로 시험할 때만 직접 넣는다.
+   */
+  iplOnlyGuard?: IplOnlyMatchGuard
 }
 
 export interface SupplyMirrorImportResult {
@@ -233,6 +245,22 @@ export async function importSupplyMirror(
       bump(result.skipped, 'league_not_found')
     }
     return result
+  }
+
+  /**
+   * **IPL 클랜끼리의 경기는 열산 기록이 아니다** (D-210).
+   *
+   * 명단을 여기서 한 번만 읽는다. 경기마다 DB 를 되묻지 않는다.
+   * 열산이 아닌 리그면 이 호출은 DB 를 읽지도 않고 "아무것도 막지 않음" 을 돌려준다 —
+   * DPL(`supply`)·대룰(`daerule`)은 그대로다.
+   */
+  const iplGuard =
+    input.iplOnlyGuard ??
+    (await loadIplOnlyMatchGuard({ targetLeagueSlug: input.leagueSlug, client: db }))
+  if (iplGuard.enabled) {
+    result.notes.push(
+      `IPL끼리 경기 차단이 켜져 있다 (리그 ${input.leagueSlug} · IPL 등록 클랜 ${iplGuard.iplClanCount}곳) — D-210`,
+    )
   }
 
   /* ── 이미 있는 것들을 미리 읽어 둔다 (경기마다 조회하면 느리다) ─────────────── */
@@ -514,6 +542,15 @@ export async function importSupplyMirror(
     /* validate 를 통과했으므로 아래 값들은 전부 있다 */
     const redClan = match.redClan as ParsedSupplyClan
     const blueClan = match.blueClan as ParsedSupplyClan
+
+    /* **IPL 클랜끼리의 경기는 열산 기록이 아니다** (D-210).
+       `already_in_db` 보다 **먼저** 본다 — 이 사유의 건수가 곧 "원본이 이 리그에 밀어넣으려
+       한 IPL끼리 경기" 의 수라서, 대조 명령(`ipl-sanply-check`)과 같은 것을 세게 된다.
+       원문(수집 JSONL)은 그대로 남는다. 안 만드는 것은 `Match` 행뿐이다 (3-A 1번) */
+    if (iplGuard.blocks(redClan, blueClan)) {
+      bump(result.skipped, IPL_ONLY_SKIP_REASON)
+      return
+    }
 
     /* **이 리그에** 이미 있는지만 본다. 다른 리그에 있는 것은 정상이다 (D-155) */
     const existing = existingInLeague.get(match.sourceMatchId) ?? null

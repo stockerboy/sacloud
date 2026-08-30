@@ -41,12 +41,18 @@
  *   그 쌍의 원문만 읽는다. 클랜 응답 하나에 양 팀 10명이 다 실려 오므로
  *   (D-184 실측) 라운드 복원에 필요한 것은 모자라지 않는다.
  *
- * ── 교대를 못 본 경기는 **버린다**
+ * ── 교대를 못 본 경기는 **버린다**. 다만 그런 경기가 크게 줄었다 (D-208)
  *   진영 근거가 폭탄뿐이라(D-184), 전·후반 교대 지점을 못 찾으면 진영을 아는 라운드가
  *   **폭탄이 터진 라운드 그 자체**뿐이다. 그 라운드들은 정의상 설치 성공률이 100% 에
  *   가깝고 승률도 높아, 재려는 값이 표본을 고르는 셈이 된다
  *   (`packages/nexon/src/clanRound.ts` 머리말의 실측 참조).
- *   그래서 `switchRound` 가 `null` 이거나 근거가 어긋난 경기는 지표에서 뺀다.
+ *   그래서 `switchRound` 가 `null` 이거나 근거가 어긋난 경기는 지금도 지표에서 뺀다.
+ *
+ *   바뀐 것은 **그 관문을 통과하는 경기 수**다. `roundSidesOf` 가 상대 팀 폭탄을 뒤집어
+ *   쓰고, 전반이 `한 팀 5승`에서 끝난다는 규칙으로 교대 지점을 좁히면서
+ *   라운드 커버리지가 **11.4% → 90%대**로 올라갔다 (D-208). 판정 규칙이 아니라
+ *   근거가 늘어난 것이라, 버리는 기준 자체는 그대로다.
+ *
  *   대신 **몇 판을 봤고 몇 판을 썼는지**를 함께 저장한다 (D-106).
  */
 import { prisma } from '@sacloud/db'
@@ -380,7 +386,9 @@ export async function buildClanRoundProfiles(input: {
     if (usable) {
       const clocks = roundClocksOf(events)
       const totalRounds = Math.max(...clocks.keys())
-      sheet = cleanSheetOf(roundSidesOf(events, teamNo, totalRounds).side, wonRound)
+      /* `clanRoundTallyOf` 와 **같은 입력**이어야 한다 — 승패를 빼면 5승 규칙(D-208)이
+         빠져 클린시트만 다른 진영표를 보게 된다 */
+      sheet = cleanSheetOf(roundSidesOf(events, teamNo, totalRounds, wonRound).side, wonRound)
     }
 
     for (const leagueClanId of leagueClanIds) {

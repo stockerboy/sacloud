@@ -2,7 +2,7 @@
  * 경기 상세 **포지션 줄** (D-199 · SITE_SPEC_V2).
  *
  * ```
- * 차값 B리베 / 누검 숏포지 (S) / 쨔잉나 2F / yuhwan 숏포지 / huwho 스나수
+ * 차값 B리베 / 누검 숏 (S) / 쨔잉나 2F / yuhwan 숏 / huwho 스나수
  * ```
  *
  * ── 왜 테스트가 있나
@@ -19,13 +19,13 @@ describe('lineupPositionText — 포지션 + 그 판의 무기', () => {
   it('사용자 원문 그대로 만든다', () => {
     const entries = [
       { name: '차값', position_label: 'B리베', weapon: WEAPON.RIFLE },
-      { name: '누검', position_label: '숏포지', weapon: WEAPON.SNIPER },
+      { name: '누검', position_label: '숏', weapon: WEAPON.SNIPER },
       { name: '쨔잉나', position_label: '2F', weapon: null },
-      { name: 'yuhwan', position_label: '숏포지', weapon: WEAPON.RIFLE },
+      { name: 'yuhwan', position_label: '숏', weapon: WEAPON.RIFLE },
       { name: 'huwho', position_label: '스나수', weapon: null },
     ]
     expect(entries.map(lineupPositionText).join(' / ')).toBe(
-      '차값 B리베 / 누검 숏포지 (S) / 쨔잉나 2F / yuhwan 숏포지 / huwho 스나수',
+      '차값 B리베 / 누검 숏 (S) / 쨔잉나 2F / yuhwan 숏 / huwho 스나수',
     )
   })
 
@@ -36,8 +36,8 @@ describe('lineupPositionText — 포지션 + 그 판의 무기', () => {
   })
 
   it('스나수가 아니어도 그 판에 스나를 들었으면 `(S)` 가 붙는다', () => {
-    expect(lineupPositionText({ name: '누검', position_label: '숏포지', weapon: WEAPON.SNIPER })).toBe(
-      '누검 숏포지 (S)',
+    expect(lineupPositionText({ name: '누검', position_label: '숏', weapon: WEAPON.SNIPER })).toBe(
+      '누검 숏 (S)',
     )
   })
 

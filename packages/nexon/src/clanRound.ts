@@ -375,7 +375,8 @@ export function clanRoundTallyOf(input: {
   const roundNumbers = [...clocks.keys()].sort((a, b) => a - b)
   const totalRounds = roundNumbers[roundNumbers.length - 1] as number
 
-  const sides = roundSidesOf(input.events, input.teamNo, totalRounds)
+  /* 승패를 함께 넘긴다 — 5승 규칙이 교대 지점을 좁힌다 (D-208). 방향은 여전히 폭탄이 정한다 */
+  const sides = roundSidesOf(input.events, input.teamNo, totalRounds, input.wonRound)
   const sideOf = (round: number): RoundSide | undefined => sides.side.get(round)
 
   const states = roundStatesOf(input.events)

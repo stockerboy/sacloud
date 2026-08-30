@@ -296,12 +296,17 @@ describe('clanRoundTallyOf — 진영을 모르는 라운드', () => {
     expect(tally?.sidedRounds).toBe(0)
   })
 
-  it('`team_no` 를 진영으로 읽지 않는다 — 상대 팀 폭탄은 우리 진영을 뒤집는다', () => {
-    /* 상대(`1`)가 1라운드에 심었다 = 그 라운드 우리는 **수비**다 */
+  it('`team_no` 를 진영으로 읽지 않는다 — 상대 팀 폭탄은 우리 진영을 뒤집는다 (D-208)', () => {
+    /* 상대(`1`)가 1라운드에 심었다 = 그 라운드 우리는 **수비**다.
+       폭파미션은 한 라운드에 공격이 한 팀뿐이라, 상대 근거를 뒤집으면 곧 우리 근거다 */
     const events = [...fullRoster(), bomb(1, 30, '1', 'install'), kill(1, 50, B(1), A(1))]
     const tally = clanRoundTallyOf({ events, teamNo: US, teamSize: 5, wonRound: wonOnly() })
-    /* 우리 팀 근거가 없으므로 우리 진영은 모른다 — 상대 것을 우리 것으로 읽지 않는다 */
-    expect(tally?.sidedRounds).toBe(0)
+    expect(tally?.sideConflict).toBe(false)
+    expect(tally?.sidedRounds).toBe(1)
+    /* 우리가 진 수비 라운드다 — `team_no` 를 그대로 읽었다면 공격으로 셌을 자리다 */
+    expect(tally?.defenseRounds).toBe(1)
+    expect(tally?.defenseConceded).toBe(1)
+    expect(tally?.attackSideRounds).toBe(0)
   })
 })
 
@@ -394,8 +399,11 @@ describe('어택성공률 — 공격 라운드 중 딴 비율 + 폭탄 설치', 
   })
 
   it('상대가 심은 것은 우리 설치가 아니다', () => {
-    const events = [...attacks(), bomb(3, 160, '1', 'install')]
+    /* 우리가 해체한 1라운드에 상대가 심었다 — 진영으로는 앞뒤가 맞고(우리 수비),
+       **설치 수**에는 들어가면 안 된다 */
+    const events = [...attacks(), bomb(1, 25, '1', 'install')]
     const tally = tallyOf(events, wonUnknown)
+    expect(tally?.sideConflict).toBe(false)
     expect(tally?.plantRounds).toBe(2)
   })
 

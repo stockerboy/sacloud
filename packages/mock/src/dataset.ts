@@ -455,7 +455,11 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
       redPlacement,
       bluePlacement,
       winnerSide,
-      blueTeam: rng.chance(0.5),
+      /* 전반에 레드진영(공격)을 맡은 **슬롯** (D-207).
+         실제 값은 배틀로그 폭탄 근거가 정하고, 근거가 없는 경기는 `null` 이다.
+         Mock 도 그 성질을 그대로 흉내 낸다 — 4경기 중 1경기는 근거가 없다고 둔다.
+         전부 채워 두면 화면의 "근거 없으면 비운다" 경로가 Mock 에서 한 번도 안 밟힌다 */
+      firstHalfAttackSide: rng.chance(0.75) ? (rng.chance(0.5) ? 'red' : 'blue') : null,
       redRatingUpdate,
       blueRatingUpdate,
       mvpPlayerId,

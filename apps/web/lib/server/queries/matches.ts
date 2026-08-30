@@ -62,7 +62,9 @@ const MATCH_SELECT = {
   startAt: true,
   endAt: true,
   playTime: true,
-  blueFirst: true,
+  /* 전반 공수 (D-207). 옛 `blueFirst` 는 **읽지 않는다** — 뜻이 `[미확인]` 인 채였고
+     실제로 값이 든 것은 mock 시드뿐이었다. 근거로 정해진 값은 이쪽이다 */
+  firstHalfAttackSide: true,
   winnerSide: true,
   mvpPlayerId: true,
   redLeagueClanId: true,
@@ -223,6 +225,33 @@ export function sideOfLeagueClan(
 }
 
 /**
+ * 보는 쪽이 **전반에 선 진영** — 화면의 `선레드` / `선블루` (D-207).
+ *
+ * ```
+ * 선레드 = 레드진영(공격)을 먼저 한 팀
+ * 선블루 = 블루진영(수비)을 먼저 한 팀
+ * ```
+ *
+ * ── 슬롯과 진영을 구분한다
+ *   `Match.firstHalfAttackSide` 는 **슬롯 이름**(`"red"`/`"blue"`)으로 적힌
+ *   "전반에 공격을 맡은 쪽"이다. 보는 쪽이 그 슬롯이면 공격으로 시작했다는 뜻이므로
+ *   `선레드`(→ `'red'`), 아니면 `선블루`(→ `'blue'`) 다.
+ *
+ *   슬롯 자체는 `assignSides()` 가 `team_id` 오름차순으로 정한 내부 자리라
+ *   **진영이 아니다.** 실측: red 슬롯이 전반 수비인 경기가 99.87% 였다.
+ *
+ * ── 모르면 `null`
+ *   저장된 값이 없거나 우리가 아는 두 값이 아니면 비운다. 슬롯 순서로 메우지 않는다.
+ */
+export function firstSideOf(
+  firstHalfAttackSide: string | null,
+  viewerSide: TeamSide,
+): 'red' | 'blue' | null {
+  if (firstHalfAttackSide !== 'red' && firstHalfAttackSide !== 'blue') return null
+  return firstHalfAttackSide === viewerSide ? 'red' : 'blue'
+}
+
+/**
  * 경기 당시 소속 클랜 (D-131).
  *
  * `MatchPlayerStat`에 박아 둔 스냅샷만 읽는다. **현재 소속을 join 하지 않는다** —
@@ -314,7 +343,7 @@ function toMatchPlayerStat(
     mvp: stat.mvp,
     match_time_clan: matchTimeClanOf(stat, clans),
     /* 포지션은 이 경기의 사실이 아니라 **그 선수의 고유 자리**다 (D-199).
-       바로 위 `weapon` 과 나란히 놓으면 `숏포지 · 스나` 처럼 읽힌다 —
+       바로 위 `weapon` 과 나란히 놓으면 `숏 · 스나` 처럼 읽힌다 —
        "스나수가 무조건 스나를 드는것만은 아니야" 를 화면이 그대로 말할 수 있다.
        모르면 `null` 이고 화면은 이름만 적는다 (D-106) */
     position_label: positions?.get(stat.playerId) ?? null,
@@ -406,7 +435,18 @@ export function toMatchListItem(
     end_at: toKstIsoOrNull(match.endAt),
     play_time: match.playTime,
     win: match.winnerSide === viewerSide,
-    blue_team: match.blueFirst,
+    /* 보는 쪽이 **전반에 선 진영** (D-207).
+
+       `firstHalfAttackSide` 는 우리 **슬롯** 이름이다 — 전반에 레드진영(공격)을 맡은
+       슬롯이 red 였나 blue 였나. 보는 쪽이 그 슬롯이면 `선레드`, 아니면 `선블루` 다.
+
+       **슬롯 이름을 그대로 진영으로 내보내지 않는다.** red/blue 슬롯은 `assignSides()` 가
+       `team_id` 오름차순으로 정한 내부 자리이고, 실측상 red 슬롯은 99.87% 가 전반 **수비**였다.
+       그걸 `선레드` 로 적던 것이 이번에 고친 결함이다.
+
+       근거가 없으면 `null` 이다. `team_id` 순서를 후퇴값으로 쓰지 않는다 —
+       반례 5건(0.13%)이 실재한다. */
+    first_side: firstSideOf(match.firstHalfAttackSide, viewerSide),
     placement: viewerSide === 'red' ? match.redPlacement : match.bluePlacement,
     /* 카드 오른쪽 위 증감.
 

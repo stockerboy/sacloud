@@ -177,38 +177,54 @@ export function formatMatchStartAt(value: string): string {
 /* -------------------------------------------------------------- 팀 헤더 --- */
 
 /**
- * 팀 블록의 진영 표기 — `선레드` / `선블루`.
+ * 전반에 선 진영 → 화면 표기 (D-207).
  *
- * 서든어택 클랜전은 전반·후반에 진영을 바꾸므로, 원본은 두 팀에 각각
- * **처음 어느 진영에서 시작했는지**를 적는다(관측: 한 경기에 `선레드`와 `선블루`가 함께 나온다).
+ * ```
+ * 선레드 = 레드진영(공격)을 먼저 한 팀
+ * 선블루 = 블루진영(수비)을 먼저 한 팀
+ * ```
+ * 2026-08-30 사용자가 확정한 뜻이다. 더 이상 `[미확인]` 이 아니다.
  *
- * ── 왜 `blue_team` 을 보지 않나 (2026-08-28 변경)
- *   이 라벨은 **그 블록이 어느 진영인가**로 정해진다. 레드 블록은 `선레드`, 블루 블록은 `선블루` 다.
- *   `blue_team` 을 게이트로 쓰던 예전 구현은, 넥슨이 그 값을 주지 않아(D-034) 사실상
- *   모든 경기에서 표기를 통째로 지웠다. 그런데 참가자를 red/blue 로 나눈 것 자체가
- *   저장된 사실(`Match.redLeagueClanId` / `blueLeagueClanId`)이므로, 어느 블록이 레드인지는 안다.
- *
- *   `[미확인]` — 우리가 저장한 red/blue 가 원본이 말하는 **선공** 진영과 같은지는 검증되지 않았다.
- *   원본과 동일함이 검증되지 않은 표기다.
+ * 근거가 없으면 `null` 이고 화면은 **아무것도 적지 않는다.** `알수없음` 으로도 채우지 않는다 —
+ * 지금까지 붙이던 라벨이 사실은 근거가 없었다는 것이 이번 발견이다 (D-106).
  */
-export function firstSideLabel(side: 'red' | 'blue'): string {
-  return side === 'blue' ? '선블루' : '선레드'
+export function matchFirstSideLabel(
+  firstSide: 'red' | 'blue' | null | undefined,
+): string | null {
+  if (firstSide === 'red') return '선레드'
+  if (firstSide === 'blue') return '선블루'
+  return null
 }
 
 /**
- * 접힌 매치 카드(클랜 기록실)의 선공 진영 한 칸 — `선레드` / `선블루`.
+ * 펼친 경기 상세에서 **한 팀 블록**의 진영 표기.
  *
- * 원본 클랜 기록실 카드에는 **이 칸이 있다** (2026-08-27 실측: 양 팀 점수와 라인업 사이).
- * 우리는 항목 자체를 지워 두고 있었다 (UI_PARITY_AUDIT 5-8).
+ * ── 예전 구현이 왜 틀렸나 (2026-08-30 · D-207)
+ *   예전에는 `side === 'blue' ? '선블루' : '선레드'` 로, **그 블록이 어느 슬롯인가**만 보고
+ *   적었다. 그런데 우리 red/blue 는 수집 시 `team_id` 오름차순으로 정한 **내부 슬롯**이지
+ *   진영이 아니다 (`assignSides()` — 문서에도 "의미는 `[미확인]`"). 배틀로그 폭탄 근거로
+ *   대조하니 `red` 슬롯이 전반 **수비**인 경기가 3,750 중 3,745(99.87%)였다.
+ *   즉 레드 블록에 `선레드` 를 적던 표기가 사실상 통째로 뒤집혀 있었다.
  *
- * 팀 블록용 `firstSideLabel` 과 달리 여기서는 **값을 읽는다** —
- * 계약이 `blue_team = 선공 진영이 블루면 true` 라고 정의하고 있고, 원본에서도
- * 카드마다 `선레드`/`선블루` 가 번갈아 나온다(경기 단위 사실이라는 뜻).
- * `null` 은 모르는 것이라 호출부가 `알수없음` 을 그린다 — 플레이시간과 같은 규칙이다 (D-034).
+ * ── 그래서 근거에서 만든다
+ *   응답의 `first_side` 는 **보는 쪽(`league_clan`) 기준**이다. 이 블록이 보는 쪽이면
+ *   그 값 그대로, 상대편이면 반대다. 한 경기에 `선레드` 와 `선블루` 가 하나씩 나온다.
+ *
+ * @param isViewerTeam 이 블록이 보는 쪽인가. 모르면(`null`) 라벨도 없다
+ * @param viewerFirstSide 보는 쪽이 전반에 선 진영. 근거가 없으면 `null`
  */
-export function matchFirstSideLabel(blueTeam: boolean | null | undefined): string | null {
-  if (blueTeam === null || blueTeam === undefined) return null
-  return blueTeam ? '선블루' : '선레드'
+export function teamFirstSideLabel(
+  isViewerTeam: boolean | null,
+  viewerFirstSide: 'red' | 'blue' | null | undefined,
+): string | null {
+  if (isViewerTeam === null) return null
+  if (viewerFirstSide !== 'red' && viewerFirstSide !== 'blue') return null
+  const side = isViewerTeam
+    ? viewerFirstSide
+    : viewerFirstSide === 'red'
+      ? 'blue'
+      : 'red'
+  return matchFirstSideLabel(side)
 }
 
 /** 팀 승패 판정에 필요한 최소 모양 */

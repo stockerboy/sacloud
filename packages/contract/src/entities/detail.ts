@@ -311,7 +311,7 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
    */
   tier_breakdown: z.array(PlayerTierRecord).default([]),
   /**
-   * 화면에 적을 **포지션 한 줄** (D-199). `스나수` · `2F` · `B리베` · `숏포지` 중 하나.
+   * 화면에 적을 **포지션 한 줄** (D-199). `스나수` · `2F` · `B리베` · `숏` 중 하나.
    *
    * 사람이 정한 값 > 주무기가 스나 > 좌표 판정 순으로 이긴다.
    * 아무것도 없으면 `null` 이고 화면은 그 줄을 그리지 않는다 — 지어내지 않는다.

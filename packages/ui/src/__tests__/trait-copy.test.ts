@@ -14,6 +14,7 @@ import {
   HEX_LABEL_RADIUS,
   HEX_RADIUS,
   axisLabelAnchor,
+  axisValueText,
   hexPoint,
   hexPolygon,
   hexRing,
@@ -235,6 +236,31 @@ describe('pendingText — 못 재는 이유', () => {
     expect(pendingText('position')).toBe('포지션 판정 필요')
     expect(pendingText('games')).toBe('경기 부족')
     expect(pendingText('weapon')).toBe('주무기 미정')
+    // 빈 자리 (D-206) — 나머지 다섯과 뜻이 다르다
+    expect(pendingText('undecided')).toBe('미정')
+  })
+})
+
+describe('axisValueText — 꼭지점 밑 한마디', () => {
+  it('쟀으면 `상위 N%` 다', () => {
+    expect(axisValueText(axis({ percentile: 88, pending: null }))).toBe('상위 12%')
+  })
+
+  it('재료를 기다리는 축은 `측정중` 이다', () => {
+    for (const pending of ['rounds', 'battlelog', 'position', 'games', 'weapon'] as const) {
+      expect(axisValueText(axis({ pending }))).toBe('측정중')
+    }
+  })
+
+  it('빈 자리는 `미정` 이다 — `측정중` 과 구분한다 (D-206)', () => {
+    // `측정중` 은 곧 채워진다는 뜻이고, `미정` 은 사람이 정해야 한다는 뜻이다
+    expect(axisValueText(axis({ key: 'undecided', label: '미정', pending: 'undecided' }))).toBe(
+      '미정',
+    )
+  })
+
+  it('값이 있으면 pending 보다 값이 이긴다', () => {
+    expect(axisValueText(axis({ percentile: 50, pending: 'undecided' }))).toBe('상위 50%')
   })
 })
 
@@ -250,12 +276,13 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
       axis({ key: 'save', pending: 'rounds' }),
       axis({ key: 'duel', percentile: 64.8, pending: null }),
       axis({ key: 'carry', percentile: 71.2, pending: null }),
-      axis({ key: 'matchman', pending: 'rounds' }),
+      axis({ key: 'undecided', label: '미정', pending: 'undecided' }),
       axis({ key: 'finish', pending: 'position' }),
       axis({ key: 'outnumbered', pending: 'rounds' }),
     ]
-    // `라운드 복원 필요` 가 세 축이지만 문구는 한 번만 나온다
-    expect(pendingSummary(axes)).toBe('측정중 4항목 — 라운드 복원 필요 · 포지션 판정 필요')
+    // `라운드 복원 필요` 가 두 축이지만 문구는 한 번만 나온다.
+    // 빈 자리(`미정`)는 항목에서 빠진다 (D-206)
+    expect(pendingSummary(axes)).toBe('측정중 3항목 — 라운드 복원 필요 · 포지션 판정 필요')
   })
 
   it('항목 수는 축 수이고 이유 수와 다를 수 있다', () => {
@@ -268,11 +295,22 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
       axis({ key: 'finish', pending: 'position' }),
       axis({ key: 'save', pending: 'rounds' }),
       axis({ key: 'duel', pending: 'battlelog' }),
-      axis({ key: 'matchman', pending: 'rounds' }),
+      axis({ key: 'save', pending: 'rounds' }),
     ]
     expect(pendingSummary(axes)).toBe(
       '측정중 4항목 — 포지션 판정 필요 · 라운드 복원 필요 · 배틀로그 필요',
     )
+  })
+
+  it('빈 자리(`미정`)는 `측정중 N항목` 에 넣지 않는다 (D-206)', () => {
+    // 재료를 기다리는 중이 아니라 **아직 정하지 않은** 축이다. 섞어 세면 "곧 채워진다" 로 읽힌다
+    const axes = [
+      axis({ key: 'save', pending: 'rounds' }),
+      axis({ key: 'undecided', label: '미정', pending: 'undecided' }),
+    ]
+    expect(pendingSummary(axes)).toBe('측정중 1항목 — 라운드 복원 필요')
+    // 빈 자리 하나만 남았으면 아무 말도 하지 않는다 — 꼭지점의 `미정` 이 이미 말한다
+    expect(pendingSummary([axis({ key: 'undecided', label: '미정', pending: 'undecided' })])).toBe('')
   })
 
   it('값이 있어도 pending 이 남아 있으면 항목에 센다', () => {

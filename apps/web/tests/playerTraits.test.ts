@@ -39,6 +39,9 @@ let mapId = ''
 let redClanId = ''
 let blueClanId = ''
 
+/** 픽스처 만들기·지우기에 주는 시간. 기본 10초는 로컬 DB 가 붐빌 때 모자란다 */
+const HOOK_TIMEOUT_MS = 60_000
+
 const DAY = 24 * 60 * 60 * 1000
 /** 창 **안** — 시작 시각보다 확실히 뒤 */
 const IN_WINDOW = new Date(SEASON0_FROM.getTime() + 30 * DAY)
@@ -64,6 +67,18 @@ const PLAYERS = [
 
 /** 무기가 정확히 반반인 선수 — 주무기가 없다 */
 const MIXED = `${P}mixed`
+
+/**
+ * **탈주만 한 라플수** (D-209).
+ *
+ * `damage = 0` 은 "0딜을 넣었다" 가 아니라 **결측**이다. 10판을 뛰었지만 딜량을 잴 판이
+ * 하나도 없으므로 `샷싸움` 은 `경기 부족` 이어야 한다. 예전 규칙이라면 `판당 0딜` 로
+ * 계산돼 분포 맨 아래에 실제 백분위가 찍혔다.
+ */
+const DROPPER = `${P}drop`
+
+/** 탈주판 수 — `TRAIT_MIN_GAMES` 와 같게 둬서 "판수는 채웠지만 딜량 표본이 없다" 를 만든다 */
+const DROPOUT_GAMES = TRAIT_MIN_GAMES
 
 async function addStat(
   matchId: string,
@@ -106,7 +121,7 @@ beforeAll(async () => {
   redClanId = await makeClan('red')
   blueClanId = await makeClan('blue')
 
-  for (const entry of [...PLAYERS.map((row) => row.id), MIXED]) {
+  for (const entry of [...PLAYERS.map((row) => row.id), MIXED, DROPPER]) {
     await prisma.player.create({ data: { id: entry, name: entry } })
     await prisma.leaguePlayer.create({
       data: { leagueId, playerId: entry, placement: false, rating: 3000 },
@@ -142,10 +157,58 @@ beforeAll(async () => {
     await addStat(match.id, MIXED, index < 5 ? 0 : 1, 3, 3000)
   }
 
+  /*
+    탈주판 (D-209) — `damage = 0` 은 결측이지 0딜이 아니다.
+    같은 판에 두 사람을 넣는다.
+
+      r3       정상 10판(판당 3000딜) + 여기 10판 → 딜량 평균은 **3000** 이어야 한다.
+               탈주판을 세면 30000/20 = 1500 이 되고 백분위가 50 에서 30 으로 내려간다
+      DROPPER  여기 10판만 → **딜량을 잴 판이 하나도 없다**. 킬은 아는 값이라
+               캐리력은 재지고 `샷싸움` 만 `경기 부족` 이다
+  */
+  const dropoutIds = Array.from({ length: DROPOUT_GAMES }, (_, index) => `${P}d${index}`)
+  /* 한 줄씩 만들면 왕복이 30번이라 `beforeAll` 이 기본 10초를 넘긴다. 한 번에 넣는다 */
+  await prisma.match.createMany({
+    data: dropoutIds.map((id, index) => ({
+      id,
+      leagueId,
+      mapId,
+      redLeagueClanId: redClanId,
+      blueLeagueClanId: blueClanId,
+      startAt: new Date(IN_WINDOW.getTime() + (100 + index) * DAY),
+      winnerSide: 'red',
+      official: true,
+      origin: '3rd.supply',
+      playerCount: 10,
+      participantCompleteness: '5v5',
+      redDivisionAtMatch: 1,
+      blueDivisionAtMatch: 1,
+    })),
+  })
+  await prisma.matchPlayerStat.createMany({
+    data: dropoutIds.flatMap((matchId) =>
+      [`${P}r3`, DROPPER].map((playerId) => ({
+        matchId,
+        playerId,
+        side: 'red',
+        kill: 3,
+        death: 5,
+        /* 실제 탈주판은 어시·헤드샷도 전원 0 이다 (D-209 실측) */
+        assist: 0,
+        headshot: 0,
+        damage: 0,
+        weapon: 0,
+        playerDivisionAtMatch: 1,
+        opponentDivisionAtMatch: 1,
+      })),
+    ),
+  })
+
   /* 픽스처를 만든 뒤에 캐시를 비운다. 리그가 새로 생겼으니 원래 비어 있지만,
      같은 프로세스에서 다른 테스트가 먼저 이 리그를 읽었을 가능성을 없앤다 */
   clearTraitDistributionCache()
-})
+  /* 픽스처가 100행이 넘고 로컬 DB 를 다른 작업과 나눠 쓴다. 기본 10초로는 모자란다 */
+}, HOOK_TIMEOUT_MS)
 
 afterAll(async () => {
   if (!up || !leagueId) return
@@ -158,14 +221,15 @@ afterAll(async () => {
   await prisma.clan.deleteMany({ where: { slug: { startsWith: P } } })
   await prisma.player.deleteMany({ where: { name: { startsWith: P } } })
   await prisma.gameMap.deleteMany({ where: { name: { startsWith: P } } })
-})
+}, HOOK_TIMEOUT_MS)
 
 describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () => {
   it('라플수는 라플수끼리만 견준다 — 스나수는 그 무리에 없다', async () => {
     const { traits } = await playerTraits(leagueId, `${P}r3`)
     expect(traits.weapon).toBe(0)
-    /* 라플 5명. 스나 1명 · 판수 부족 1명 · 반반 1명은 들어오지 않는다 */
-    expect(traits.cohort).toBe(5)
+    /* 라플 5명 + 탈주만 한 1명. 스나 1명 · 판수 부족 1명 · 반반 1명은 들어오지 않는다.
+       탈주만 한 선수도 **킬은 아는 값**이라 캐리력 모집단에는 든다 (D-209) */
+    expect(traits.cohort).toBe(6)
   })
 
   it('판당 킬이 가장 높은 선수가 가장 위다', async () => {
@@ -174,9 +238,9 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     const carry = (result: Awaited<ReturnType<typeof playerTraits>>) =>
       result.traits.axes.find((axis) => axis.key === 'carry')?.percentile
 
-    /* 5명 중 꼴찌는 mid-rank 로 10, 1등은 90 이다 (동점 없음) */
-    expect(carry(bottom)).toBe(10)
-    expect(carry(top)).toBe(90)
+    /* 판당 킬 [1, 2, 3, 3, 5 …] 6명. mid-rank 로 꼴찌 8.3, 1등 91.7 이다 */
+    expect(carry(bottom)).toBe(8.3)
+    expect(carry(top)).toBe(91.7)
   })
 
   it('상세정보의 `평균킬` 과 같은 경기를 센다', async () => {
@@ -212,14 +276,26 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(axis('carry')?.percentile).toBe(50)
   })
 
-  it('라운드 복원이 필요한 세 축은 항상 `측정중` 이다', async () => {
+  it('라운드 복원이 필요한 두 축은 항상 `측정중` 이다', async () => {
     const { traits } = await playerTraits(leagueId, `${P}r3`)
-    for (const key of ['save', 'matchman', 'outnumbered']) {
+    for (const key of ['save', 'outnumbered']) {
       const axis = traits.axes.find((row) => row.key === key)
       expect(axis?.percentile).toBeNull()
       expect(axis?.pending).toBe('rounds')
     }
     expect(traits.measuring).toBe(true)
+  })
+
+  it('4번 자리는 비어 있다 — `매치의 사나이` 가 아니라 `미정` 이다 (D-206)', async () => {
+    const { traits } = await playerTraits(leagueId, `${P}r3`)
+    /* 꼭지점은 그대로 6개다. 오각형이 되지 않는다 */
+    expect(traits.axes).toHaveLength(6)
+    const axis = traits.axes[3]
+    expect(axis?.key).toBe('undecided')
+    expect(axis?.label).toBe('미정')
+    expect(axis?.percentile).toBeNull()
+    expect(axis?.pending).toBe('undecided')
+    expect(traits.axes.some((row) => row.label === '매치의 사나이')).toBe(false)
   })
 
   it('판수가 모자란 선수는 모집단에 안 들어가지만 이유는 `경기 부족` 이다', async () => {
@@ -234,13 +310,49 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     /* 모집단에 못 들었으므로 견줄 무리가 없다 */
     expect(traits.cohort).toBeNull()
     expect(traits.measured).toBe(0)
-    expect(traits.axes.every((axis) => axis.pending === 'games')).toBe(true)
+    /* 빈 자리(D-206)는 판수와 무관하게 `미정` 이다 — 더 뛴다고 채워지지 않는다 */
+    expect(
+      traits.axes.filter((axis) => axis.key !== 'undecided').every((axis) => axis.pending === 'games'),
+    ).toBe(true)
   })
 
   it('무기가 반반인 선수는 어느 무리에도 넣지 않는다', async () => {
     const { traits } = await playerTraits(leagueId, MIXED)
     expect(traits.weapon).toBeNull()
     expect(traits.measured).toBe(0)
+  })
+
+  /*
+    ── 탈주판은 딜량 평균에 넣지 않는다 (D-209)
+
+    `MatchPlayerStat.damage = 0` 은 결측이 0 으로 저장된 것이다. 실측(2026-08-30 · 미러 DB)
+    으로 그런 행의 98.4% 가 탈주였고, 같은 행에서 `assist` 와 `headshot` 도 전원 0 이었다.
+    그걸 평균에 넣으면 `샷싸움` 축이 딜량이 아니라 **팀의 탈주 빈도**를 재게 된다 —
+    운영 데이터에서 라플 판당딜 중앙값이 919.7 로 찍혔다(실제 1,400대).
+  */
+  it('탈주판(`딜량 0`)은 판당 딜량 평균에서 빠진다', async () => {
+    const { traits } = await playerTraits(leagueId, `${P}r3`)
+    const duel = traits.axes.find((axis) => axis.key === 'duel')
+
+    /* r3 은 3000딜 10판 + 탈주 10판이다. 딜량 평균은 **3000** —
+       [1000, 2000, 3000, 4000, 5000] 안에서 한가운데라 50 이다.
+       탈주판을 세면 평균이 1500 이 되고 백분위가 30 으로 내려간다 */
+    expect(duel?.percentile).toBe(50)
+    expect(duel?.pending).toBeNull()
+  })
+
+  it('탈주만 한 선수는 `샷싸움` 을 못 잰다 — `판당 0딜` 로 세지 않는다', async () => {
+    const { traits } = await playerTraits(leagueId, DROPPER)
+    const axis = (key: string) => traits.axes.find((row) => row.key === key)
+
+    /* 킬은 아는 값이라 캐리력은 재진다 — 딜량만 잴 판이 없는 것이다 */
+    expect(traits.weapon).toBe(0)
+    expect(axis('carry')?.percentile).not.toBeNull()
+
+    /* 예전 규칙이라면 `판당 0딜` 로 분포 맨 아래(8.3%)에 실제 숫자가 찍혔다.
+       0은 "딜을 못 넣는다" 가 아니라 **모른다** 이므로 `null` 이어야 한다 (D-106) */
+    expect(axis('duel')?.percentile).toBeNull()
+    expect(axis('duel')?.pending).toBe('games')
   })
 
   it('플레이스타일 바 두 줄은 아직 못 잰다 — 가운데로 채우지 않는다', async () => {

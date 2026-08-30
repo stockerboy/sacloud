@@ -39,8 +39,13 @@
  *
  *   `knownGames === 0` 이면 킬·데스·킬뎃은 `0` 이 아니라 `null` 이다.
  *   승·패와 MVP 는 K/D 를 몰라도 아는 값이라 `games` 기준으로 센다.
+ *
+ *   **어시·헤드샷은 모집단이 또 다르다** (D-209). 탈주판에는 딜량·어시·헤드샷이 전부
+ *   `0` 으로 박혀 있어서 그 판은 세지 않는다 (`dropoutScope.ts`). 킬·데스는 결측이 없어
+ *   그대로 센다 — 그래서 이 파일은 같은 조건에 **거른 것과 안 거른 것** 두 벌을 낸다.
  */
 import { prisma, type Prisma } from '@sacloud/db'
+import { withNotZeroed } from './dropoutScope'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
 
@@ -92,7 +97,9 @@ function rate(kill: number, death: number, knownGames: number): number | null {
 }
 
 function weaponTotals(
-  row: { _count: { _all: number; kill: number }; _sum: { kill: number | null; death: number | null; assist: number | null } } | undefined,
+  row: { _count: { _all: number; kill: number }; _sum: { kill: number | null; death: number | null } } | undefined,
+  /** 탈주판을 뺀 어시 합. 그런 판이 하나도 없으면 `null` — 0어시가 아니라 모르는 것이다 */
+  assist: number | null,
 ): WeaponTotals {
   if (!row || row._count._all === 0) return EMPTY_WEAPON
   const knownGames = row._count.kill
@@ -103,7 +110,7 @@ function weaponTotals(
     knownGames,
     kill: knownGames === 0 ? null : kill,
     death: knownGames === 0 ? null : death,
-    assist: row._sum.assist,
+    assist,
     kdRate: rate(kill, death, knownGames),
   }
 }
@@ -125,12 +132,31 @@ export async function playerLadderTotals(
     match: withLadderMatch({ leagueId, ...seasonWindowWhere() }),
   }
 
-  const [agg, win, mvpCount, byWeapon] = await Promise.all([
+  /* 어시·헤드샷은 **탈주판을 빼고** 센다 (`dropoutScope.ts` · D-209).
+     그 판은 셋(딜량·어시·헤드샷)이 전부 `0` 으로 박혀 있어 "0어시를 했다" 가 아니라
+     모르는 값이다. 킬·데스와 모집단이 달라 질의를 따로 낸다 — 한 질의에 담으면
+     둘 중 하나가 반드시 틀린 모집단을 쓴다.
+
+     ⚠ `playedGamesWhere`(딜량>0)가 아니라 `notZeroedWhere`(딜량이 0이 아니다)다.
+     어시가 0으로 박히는 표식은 `damage = 0` 이지 `damage IS NULL` 이 아니다 —
+     딜량을 못 받아 온 기록이라도 어시는 진짜 값일 수 있다 (2026-08-31 정정).
+     실측으로 `damage IS NULL` 265행이 어시 144 를 들고 있다.
+
+     `OR` 를 쓰는 조건이라 펼치지 않고 `withNotZeroed()` 로 감싼다 — 언젠가 `statWhere`
+     에 `OR` 가 생기면 펼친 쪽이 조용히 덮인다 */
+  const playedWhere: Prisma.MatchPlayerStatWhereInput = withNotZeroed(statWhere)
+
+  const [agg, played, win, mvpCount, byWeapon, byWeaponPlayed] = await Promise.all([
     prisma.matchPlayerStat.aggregate({
       where: statWhere,
-      _sum: { kill: true, death: true, assist: true, headshot: true },
+      /* 킬·데스는 결측이 없다. 거르지 않는다 (`dropoutScope.ts`) */
+      _sum: { kill: true, death: true },
       /* `_count.kill` 은 **`null` 이 아닌 행**만 센다 — 그게 `knownGames` 다 */
       _count: { _all: true, kill: true },
+    }),
+    prisma.matchPlayerStat.aggregate({
+      where: playedWhere,
+      _sum: { assist: true, headshot: true },
     }),
     /* 이긴 경기 — 내가 뛴 진영이 승리 진영과 같은 경기.
        현재 소속으로 판정하지 않는다. 이적·용병이면 어긋난다 (D-131 · D-135) */
@@ -148,8 +174,13 @@ export async function playerLadderTotals(
     prisma.matchPlayerStat.groupBy({
       by: ['weapon'],
       where: { ...statWhere, weapon: { in: [0, 1] } },
-      _sum: { kill: true, death: true, assist: true },
+      _sum: { kill: true, death: true },
       _count: { _all: true, kill: true },
+    }),
+    prisma.matchPlayerStat.groupBy({
+      by: ['weapon'],
+      where: { ...playedWhere, weapon: { in: [0, 1] } },
+      _sum: { assist: true },
     }),
   ])
 
@@ -169,11 +200,17 @@ export async function playerLadderTotals(
     death: knownGames === 0 ? null : death,
     /* 어시·헤드샷은 아는 행이 한 줄도 없으면 Prisma 가 `null` 을 준다.
        그대로 넘긴다 — 0으로 바꾸면 "0어시를 했다"는 거짓이 된다 (D-034 · D-106) */
-    assist: agg._sum.assist,
-    headshot: agg._sum.headshot,
+    assist: played._sum.assist,
+    headshot: played._sum.headshot,
     kdRate: rate(kill, death, knownGames),
     mvpCount,
-    rifle: weaponTotals(byWeapon.find((row) => row.weapon === 0)),
-    sniper: weaponTotals(byWeapon.find((row) => row.weapon === 1)),
+    rifle: weaponTotals(
+      byWeapon.find((row) => row.weapon === 0),
+      byWeaponPlayed.find((row) => row.weapon === 0)?._sum.assist ?? null,
+    ),
+    sniper: weaponTotals(
+      byWeapon.find((row) => row.weapon === 1),
+      byWeaponPlayed.find((row) => row.weapon === 1)?._sum.assist ?? null,
+    ),
   }
 }
