@@ -322,19 +322,40 @@ export function RecentMatchSummary({
 
 /* ------------------------------------------------------------- 사이드 패널 --- */
 
+/**
+ * 상세정보 카드 (2026-08-30 사용자 선택 · 시안 `표`).
+ *
+ * ── 왜 바꿨나
+ *   예전 카드는 한 줄이 `text-3xl` 이라 아홉 줄이 세로로 길게 늘어졌고,
+ *   폰에서 `킬뎃 8,290킬 5,486데스 스나 60.2%` 처럼 값이 라벨을 밀고 나갔다.
+ *   사용자 지적: *"글씨 크기도 너무 부담스럽고 세로로 긴것도 개짜치고 글씨 삐져나오고"*
+ *
+ * ── 지금 규칙
+ *   라벨은 왼쪽·보통 굵기·`--color-meta`, 값은 오른쪽 정렬. 선은 행 사이 1px 하나뿐이고
+ *   카드 테두리 말고는 아무 선도 쓰지 않는다. 보조 수치(승·패, 킬·데스, 명중)는
+ *   `StatSub` 로 **값보다 작고 흐리게** 앞에 붙어, 길어져도 값과 겹치지 않는다.
+ */
 function Divider() {
-  return <div className="my-2 border-t border-t-line-soft" />
+  /* 행 사이 선은 `Stat` 이 직접 그린다. 이 자리는 비워 둔다 — 호출부를 건드리지 않기 위해 남긴다 */
+  return null
 }
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between py-2 text-3xl">
+    <div className="flex items-baseline justify-between gap-3 border-t border-t-line-soft py-[7px] text-[13.5px] first-of-type:border-t-0">
       {/* 라벨은 **줄바꿈하지 않는다.** 오른쪽 값이 두 줄이 되면(킬뎃의 무기별 표기)
           라벨 칸이 눌려 `킬 / 뎃` 으로 쪼개졌다 */}
-      <div className="shrink-0 whitespace-nowrap">{label}</div>
-      <div className="flex min-w-0 items-center">{children}</div>
+      <div className="shrink-0 whitespace-nowrap text-meta">{label}</div>
+      <div className="flex min-w-0 items-baseline justify-end gap-2 text-right font-semibold text-text-strong">
+        {children}
+      </div>
     </div>
   )
+}
+
+/** 값 옆의 보조 수치 — `320승 188패` · `8,290킬 5,486데스` · `1,464명중` */
+function StatSub({ children }: { children: React.ReactNode }) {
+  return <span className="whitespace-nowrap text-[11px] font-normal text-faint">{children}</span>
 }
 
 export interface PlayerStatSidebarProps {
@@ -406,8 +427,8 @@ const longWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나이퍼'
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
   const { main: mainWeapon, other: otherWeapon } = splitWeapons(props.weaponStats)
   return (
-    <div className="rounded-[2px] border border-line bg-card px-5 py-4 text-text">
-      <div>상세정보</div>
+    <div className="rounded-[2px] border border-line bg-card px-4 py-3 text-text">
+      <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-faint">상세정보</div>
       <Divider />
       <Stat label="래더">
         <span className={ratingClass(props.rating)}>
@@ -416,9 +437,9 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       </Stat>
       <Divider />
       <Stat label="승률">
-        <span className="mr-2 whitespace-nowrap text-base">
+        <StatSub>
           {formatCount(props.win)}승 {formatCount(props.lose)}패
-        </span>
+        </StatSub>
         <span className={rateClass(props.winRate)}>{formatRate(props.winRate)}%</span>
       </Stat>
       {/*
@@ -450,9 +471,9 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
             <>
               <Divider />
               <Stat label="킬뎃">
-                <span className="mr-2 whitespace-nowrap text-base">
+                <StatSub>
                   {formatCount(props.kill)}킬 {formatCount(props.death)}데스
-                </span>
+                </StatSub>
                 <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
               </Stat>
             </>
@@ -462,9 +483,9 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
                 <div key={row.weapon}>
                   <Divider />
                   <Stat label={index === 0 ? '킬뎃' : longWeaponName(row.weapon)}>
-                    <span className="mr-2 whitespace-nowrap text-base">
+                    <StatSub>
                       {formatCount(row.kill)}킬 {formatCount(row.death)}데스
-                    </span>
+                    </StatSub>
                     <span className={`whitespace-nowrap ${rateClass(row.kd_rate)}`}>
                       {index === 0 ? `${shortWeaponName(row.weapon)} ` : ''}
                       {formatRate(row.kd_rate)}%
@@ -478,7 +499,7 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       )}
       <Divider />
       <Stat label="평균킬">
-        <span className="mr-2 text-base">판당</span>
+        <StatSub>판당</StatSub>
         {formatAverage(props.killPerMatch)}킬
       </Stat>
       <Divider />
@@ -489,7 +510,7 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
           '배치고사'
         ) : (
           <>
-            <span className="mr-2 text-base">{formatCount(props.rankCount ?? 0)}명중</span>
+            <StatSub>{formatCount(props.rankCount ?? 0)}명중</StatSub>
             {formatCount(props.rank)}위
           </>
         )}
@@ -560,17 +581,17 @@ export function ClanStatSidebar({
   rank: number | null
 }) {
   return (
-    <div className="rounded-[2px] border border-line bg-card px-5 py-4 text-text">
-      <div>상세정보</div>
+    <div className="rounded-[2px] border border-line bg-card px-4 py-3 text-text">
+      <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-faint">상세정보</div>
       <Divider />
       <Stat label="래더">
         <span className={ratingClass(rating)}>{placement ? '배치고사' : `${rating}점`}</span>
       </Stat>
       <Divider />
       <Stat label="승률">
-        <span className="mr-2 text-base">
+        <StatSub>
           {formatCount(win)}승 {formatCount(lose)}패
-        </span>
+        </StatSub>
         <span className={rateClass(winRate)}>{formatRate(winRate)}%</span>
       </Stat>
       <Divider />
@@ -579,7 +600,7 @@ export function ClanStatSidebar({
           '배치고사'
         ) : (
           <>
-            <span className="mr-2 text-base">{division}부리그</span>
+            <StatSub>{division}부리그</StatSub>
             {formatCount(rank)}위
           </>
         )}
@@ -659,9 +680,9 @@ export function WeaponStatPanel({ stats }: { stats?: readonly PlayerWeaponStatRo
         <div key={row.weapon}>
           <Divider />
           <Stat label={row.weapon === 1 ? '스나이퍼' : '라이플'}>
-            <span className="mr-2 whitespace-nowrap text-base">
+            <StatSub>
               {formatCount(row.games)}판 {formatCount(row.win)}승 {formatCount(row.lose)}패
-            </span>
+            </StatSub>
             <span className={rateClass(row.kd_rate)}>{formatRate(row.kd_rate)}%</span>
           </Stat>
           <div className="px-1 pb-1 text-right text-base">

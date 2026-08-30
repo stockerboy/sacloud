@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankWeapon } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
+/* 승률·킬뎃 두 칸만 서플라이 등급색을 쓴다 (2026-08-30 사용자 지시) */
+import { rateClass } from '../common/rate'
 import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
 import { Skeleton } from '../common/Skeleton'
@@ -43,9 +45,10 @@ import {
  *
  * ── 색
  *   표 전체에서 빨강(`--color-accent`)은 **1위 숫자 하나**에만 쓴다.
- *   예전에 쓰던 승률·킬뎃 5단계 색등급(`rateClass` — 초록/주황/파랑/빨강)은 쓰지 않는다.
- *   `적진` 팔레트는 강조색이 하나뿐이라, 등급색을 그대로 두면 표가 무지개가 된다.
- *   등급 자체(`common/rate.ts`)는 다른 화면이 쓰고 있어 남겨 둔다.
+ *   **승률과 킬뎃 두 칸만은 예외로 서플라이 등급색을 그대로 쓴다** (2026-08-30 사용자 지시:
+ *   *"승률과 킬뎃은 서플라이의 색깔체계를 똑같이 따라해 나머지는 서플을 아무것도 따라하지마"*).
+ *   50%↑ 초록 · 55%↑ 주황 · 60%↑ 파랑 · 65%↑ 노랑. 65 이상만 원본의 밝은배경용 빨강 대신
+ *   어두운배경용 노랑을 쓴다 — 빨강은 강조색과 겹친다. 그 밖의 칸은 무채색이다.
  *
  * ── 모바일 (2026-08-28 실측 유지)
  *   좁은 화면에서는 `순위 · 이름 · 래더` 세 칸으로 줄인다.
@@ -62,15 +65,24 @@ function Stat({
   unit,
   sub,
   className = '',
+  /**
+   * 승률·킬뎃 등급색 (2026-08-30 사용자 지시).
+   *
+   * *"승률과 킬뎃은 서플라이의 색깔체계를 똑같이 따라해"* — 그래서 이 두 칸만
+   * `rateClass` 를 다시 붙인다. 나머지 칸(래더·순위·이름)은 무채색 그대로다.
+   * 색 정의는 `packages/ui/src/common/rate.ts` 와 `styles.css` 의 `--color-rate-*` 다.
+   */
+  tone = '',
 }: {
   value: string
   unit?: string
   sub?: React.ReactNode
   className?: string
+  tone?: string
 }) {
   return (
     <div className={className}>
-      <span className={`${NUM} text-text-strong`}>{value}</span>
+      <span className={`${NUM} ${tone === '' ? 'text-text-strong' : tone}`}>{value}</span>
       {unit ? <Unit>{unit}</Unit> : null}
       {sub ? <span className={SUB}>{sub}</span> : null}
     </div>
@@ -189,6 +201,7 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
             <Stat
               className={`${COL_STAT} ${COL_HIDDEN}`}
               value={formatRate(row.win_rate)}
+              tone={rateClass(row.win_rate)}
               unit="%"
               sub={
                 <>
@@ -267,6 +280,7 @@ export function PlayerRankTable({
             <Stat
               className={`${COL_STAT} ${COL_HIDDEN}`}
               value={formatRate(row.win_rate)}
+              tone={rateClass(row.win_rate)}
               unit="%"
               sub={
                 <>
@@ -282,6 +296,7 @@ export function PlayerRankTable({
               <Stat
                 className={`${COL_STAT} ${COL_HIDDEN}`}
                 value={formatRate(row.kd_rate)}
+                tone={rateClass(row.kd_rate)}
                 unit="%"
                 sub={<>{formatAverage(row.kill_per_match)}킬</>}
               />

@@ -37,11 +37,18 @@ const TONE_CLASS: Record<RateTone, string> = {
   r1: 'text-rate-1',
   r2: 'text-rate-2',
   r3: 'text-rate-3',
-  // 밝은 배경이므로 원본과 동일하게 `-light`(빨강) 쪽을 쓴다
-  r4: 'text-rate-4-light',
+  /*
+   * 65 이상은 **노랑**(`rate-4`)이다 — 2026-08-30 사용자가 시안을 보고 골랐다.
+   *
+   * 원본은 밝은 배경에서 빨강(`rate-4-light`)을 썼고 우리도 그것을 따라갔었다.
+   * 배경이 검정으로 바뀐 뒤로는 그 빨강이 강조색(`--color-accent` #d92b2b)과 겹쳐
+   * "1위·활성 표시" 와 "승률 65% 이상" 이 같은 색이 된다. 원본이 어두운 배경용으로
+   * 갖고 있던 노랑을 쓰면 그 충돌이 사라진다.
+   */
+  r4: 'text-rate-4',
 }
 
-/** 밝은 배경(랭킹 표 등)에서 쓰는 색 클래스 */
+/** 승률·킬뎃 색 클래스 (배경은 검정이다) */
 export function rateClass(value: number | null | undefined): string {
   return TONE_CLASS[rateTone(value)]
 }

@@ -112,7 +112,9 @@ export async function getClanLeagues(clanSlug: string): Promise<ClanLeagueEntry[
   if (!clan) return null
 
   const rows = await prisma.leagueClan.findMany({
-    where: { clanId: clan.id },
+    /* 추방(등록 해제)된 리그는 `참여중인 리그` 가 아니다 (2026-08-30).
+       경기 기록은 그대로 남는다 — 이 목록에서만 빠진다 */
+    where: { clanId: clan.id, expelledAt: null },
     orderBy: [{ id: 'asc' }],
     select: {
       id: true,

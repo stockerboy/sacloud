@@ -78,9 +78,18 @@ function toRow(row: LadderRow, rank: number): ClanRankRow {
   }
 }
 
+/**
+ * 래더의 단일 통로.
+ *
+ * ── 추방된 클랜은 순위에 넣지 않는다 (2026-08-30)
+ *   `expelledAt` 은 지금까지 투영 잡만 보고 **랭킹은 아무도 보지 않았다.**
+ *   그래서 추방해도 랭킹에 그대로 남아 "등록 해제" 가 되지 않았다.
+ *   여기서 한 번 거르면 전체·부리그·무소속 래더가 전부 따라온다.
+ *   **경기 기록은 지우지 않는다** — 순위에서만 빠진다.
+ */
 async function ladderRows(where: object): Promise<LadderRow[]> {
   return prisma.leagueClan.findMany({
-    where,
+    where: { ...where, expelledAt: null },
     orderBy: LADDER_ORDER,
     select: LADDER_SELECT,
   }) as Promise<LadderRow[]>
@@ -151,7 +160,11 @@ export async function getTierLadder(
 /** 이 리그에서 실제로 쓰이고 있는 무소속 Tier 목록 (운영자가 지정한 것만) */
 export async function getIndependentTiers(leagueId: string): Promise<number[]> {
   const rows = await prisma.leagueClan.findMany({
-    where: { leagueId, clan: { category: INDEPENDENT_CATEGORY, tier: { not: null } } },
+    where: {
+      leagueId,
+      expelledAt: null,
+      clan: { category: INDEPENDENT_CATEGORY, tier: { not: null } },
+    },
     select: { clan: { select: { tier: true } } },
     distinct: ['clanId'],
   })

@@ -40,8 +40,11 @@ describe.skipIf(!up)('공개 노출 범위', () => {
   it('대표 클랜은 개수(clan_count)가 세는 집합에서만 나온다', async () => {
     const page = await listLeagues(null, 20)
     for (const league of page.items) {
+      /* 공개 조건은 `ACTIVE_CLAN` 이다 — 비활성 클랜 **그리고 추방된 클랜**을 뺀다.
+         `expelledAt` 은 2026-08-30 에 이 조건에 들어왔다. 여기서 빼지 않으면
+         테스트가 "화면보다 많은 수" 를 기대해 API 가 맞는데도 실패한다 */
       const activeCount = await prisma.leagueClan.count({
-        where: { leagueId: league.id, clan: { active: true } },
+        where: { leagueId: league.id, clan: { active: true }, expelledAt: null },
       })
       expect(league.clan_count).toBe(activeCount)
       // 보여 주는 것은 세는 것의 부분집합이어야 한다
