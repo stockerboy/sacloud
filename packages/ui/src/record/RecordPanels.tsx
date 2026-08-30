@@ -373,78 +373,30 @@ export interface PlayerStatSidebarProps {
 }
 
 /**
- * `킬뎃` 줄 — **주무기를 크게, 나머지와 통합을 작게** (2026-08-30 사용자 지시).
+ * 무기별 기록에서 **주무기와 나머지**를 가른다 (2026-08-30 사용자 지시).
  *
- * ```
- * 킬뎃   2,068킬 1,648데스   라플 55.7%
- *                            스나 60.8% · 통합 56.9%
- * ```
- *
- * ── 왜 통합을 주값에서 뺐나
- *   스나를 섞어 쓰는 선수는 통합 하나에 실제 성적이 묻힌다.
- *   실측: 호젤은 스나 58.8% / 라플 49.0% 인데 통합은 56.9% 다 — 10%p 가 가려진다.
- *
- * ── 주무기는 **판수가 한 판이라도 많은 쪽**이다
- *   같으면 어느 쪽도 고르지 않는다 — 그때는 통합만 크게 나온다 (D-106).
- *   무기별 기록이 아예 없어도 마찬가지다.
+ * 주무기는 **판수가 한 판이라도 많은 쪽**이다. 같으면 어느 쪽도 고르지 않는다 (D-106).
  */
-function KdStat({
-  kill,
-  death,
-  kdRate,
-  weaponStats,
-}: {
-  kill: number
-  death: number
-  kdRate: number
-  weaponStats?: readonly PlayerWeaponStatRow[]
-}) {
-  const sniper = weaponStats?.find((row) => row.weapon === 1 && row.games > 0)
-  const rifle = weaponStats?.find((row) => row.weapon === 0 && row.games > 0)
-  const main =
-    sniper && rifle
-      ? sniper.games === rifle.games
-        ? null
-        : sniper.games > rifle.games
-          ? sniper
-          : rifle
-      : (sniper ?? rifle ?? null)
-  const other = main === null ? null : main.weapon === 1 ? rifle : sniper
-  const nameOf = (weapon: 0 | 1) => (weapon === 1 ? '스나' : '라플')
-
-  return (
-    <Stat label="킬뎃">
-      <div className="text-right">
-        <div>
-          <span className="mr-2 text-base">
-            {formatCount(kill)}킬 {formatCount(death)}데스
-          </span>
-          {main === null ? (
-            <span className={rateClass(kdRate)}>{formatRate(kdRate)}%</span>
-          ) : (
-            <span className={rateClass(main.kd_rate)}>
-              {nameOf(main.weapon)} {formatRate(main.kd_rate)}%
-            </span>
-          )}
-        </div>
-        {main === null ? null : (
-          <div className="text-base text-side-meta">
-            {other ? (
-              <>
-                {nameOf(other.weapon)}{' '}
-                <span className={rateClass(other.kd_rate)}>{formatRate(other.kd_rate)}%</span>
-                {' · '}
-              </>
-            ) : null}
-            통합 <span className={rateClass(kdRate)}>{formatRate(kdRate)}%</span>
-          </div>
-        )}
-      </div>
-    </Stat>
-  )
+function splitWeapons(weaponStats?: readonly PlayerWeaponStatRow[]): {
+  main: PlayerWeaponStatRow | null
+  other: PlayerWeaponStatRow | null
+} {
+  const sniper = weaponStats?.find((row) => row.weapon === 1 && row.games > 0) ?? null
+  const rifle = weaponStats?.find((row) => row.weapon === 0 && row.games > 0) ?? null
+  if (sniper && rifle) {
+    if (sniper.games === rifle.games) return { main: null, other: null }
+    return sniper.games > rifle.games ? { main: sniper, other: rifle } : { main: rifle, other: sniper }
+  }
+  return { main: sniper ?? rifle, other: null }
 }
 
+/** 짧은 무기 이름 — 값 옆에 붙어서 좁다 */
+const shortWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나' : '라플')
+/** 긴 무기 이름 — 줄 라벨 자리다 */
+const longWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나이퍼' : '라이플')
+
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
+  const { main: mainWeapon, other: otherWeapon } = splitWeapons(props.weaponStats)
   return (
     <div className="bg-side px-3 py-3 text-line shadow-card">
       <div>상세정보</div>
@@ -469,12 +421,25 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       {props.kill === null || props.death === null || props.kdRate === null ? null : (
         <>
           <Divider />
-          <KdStat
-            kill={props.kill}
-            death={props.death}
-            kdRate={props.kdRate}
-            weaponStats={props.weaponStats}
-          />
+          {/*
+            `킬뎃` 은 **그 사람이 많이 쓴 무기 하나만** 적는다 (2026-08-30 사용자 지시).
+            나머지 무기와 통합은 이 카드 **맨 아래**로 내린다 — 한 줄에 퍼센트를
+            여럿 늘어놓으면 어느 게 그 사람의 값인지 안 읽힌다.
+            주무기를 못 고르면(판수가 같거나 무기별 기록이 없으면) 통합을 그대로 쓴다.
+          */}
+          <Stat label="킬뎃">
+            {/* 좁은 칸이라 `278킬 211데스` 가 접힌다. 이 조각은 줄바꿈하지 않는다 */}
+            <span className="mr-2 whitespace-nowrap text-base">
+              {formatCount(props.kill)}킬 {formatCount(props.death)}데스
+            </span>
+            {mainWeapon === null ? (
+              <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
+            ) : (
+              <span className={`whitespace-nowrap ${rateClass(mainWeapon.kd_rate)}`}>
+                {shortWeaponName(mainWeapon.weapon)} {formatRate(mainWeapon.kd_rate)}%
+              </span>
+            )}
+          </Stat>
         </>
       )}
       <Divider />
@@ -525,6 +490,32 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
           )}
         </span>
       </Stat>
+      {/*
+        **맨 아래** — 주무기가 아닌 쪽과 통합 킬뎃 (2026-08-30 사용자 지시).
+
+        위 `킬뎃` 줄은 그 사람이 많이 쓴 무기 하나만 말한다. 나머지는 참고값이라
+        같은 줄에 늘어놓지 않고 여기로 내렸다.
+        주무기를 못 고르면(판수가 같거나 무기별 기록이 없으면) 위 줄이 이미 통합이므로
+        여기는 **아무것도 그리지 않는다** — 같은 값을 두 번 적지 않는다.
+      */}
+      {mainWeapon === null || props.kdRate === null ? null : (
+        <>
+          {otherWeapon === null ? null : (
+            <>
+              <Divider />
+              <Stat label={longWeaponName(otherWeapon.weapon)}>
+                <span className={rateClass(otherWeapon.kd_rate)}>
+                  {formatRate(otherWeapon.kd_rate)}%
+                </span>
+              </Stat>
+            </>
+          )}
+          <Divider />
+          <Stat label="통합">
+            <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
+          </Stat>
+        </>
+      )}
     </div>
   )
 }
@@ -660,7 +651,7 @@ export function WeaponStatPanel({ stats }: { stats?: readonly PlayerWeaponStatRo
         <div key={row.weapon}>
           <Divider />
           <Stat label={row.weapon === 1 ? '스나이퍼' : '라이플'}>
-            <span className="mr-2 text-base">
+            <span className="mr-2 whitespace-nowrap text-base">
               {formatCount(row.games)}판 {formatCount(row.win)}승 {formatCount(row.lose)}패
             </span>
             <span className={rateClass(row.kd_rate)}>{formatRate(row.kd_rate)}%</span>
