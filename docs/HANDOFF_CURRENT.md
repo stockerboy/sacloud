@@ -24,14 +24,17 @@
 > ### 수집이 어디까지 왔나 (2026-08-30 오후 · 계속 늘고 있다)
 >
 > ```
-> BarracksBattleLogRaw  subjectKind='clan'   6,239행     (하루 전 2,760)
-> BarracksClanNumber    아는 클랜 번호           81개     (35 → 49 → 61 → 75 → 81)
-> PlayerPositionProfile 포지션 판정           1,031명     (25 → 517 → 776 → 1,031)
+> BarracksBattleLogRaw  subjectKind='clan'   6,989행     (아침 2,760)
+> BarracksClanNumber    아는 클랜 번호          121개     (35 → 49 → 61 → 75 → 81 → 121)
+> PlayerPositionProfile 포지션 판정           1,227명     (25 → 517 → 776 → 1,031 → 1,227)
 >                       정답 23명 대조 정확도  91.3%
-> PlayerRoundProfile    라운드 집계           3,390명 · 선수 연결 2,669
-> ClanRoundProfile      클랜 라운드 집계         83팀 · 진영 아는 라운드 10.8%
-> 시즌0 창 안 남은 경기                      약 26,000건
+> PlayerRoundProfile    라운드 집계           4,329명 · 선수 연결 3,608
+> ClanRoundProfile      클랜 라운드 집계        109팀 · 진영 아는 라운드 11.4%
+> 시즌0 창 안 남은 경기                      약 25,000건
 > ```
+>
+> **수집은 크롬 다운로드 한도에서 멈췄다 (D-203).** 이어서 받는 절차는 그 항목에 있다.
+> 새 브라우저로 다시 시작하면 그대로 이어진다.
 >
 > **수집 방법은 D-200 이다** — 병영수첩은 서버에서 부르면 403(WAF), 브라우저에서 부르면 200.
 > 브라우저가 모아 파일로 내려받고 `nexon battlelog-import` 로 적재한다. 우회가 아니다.
