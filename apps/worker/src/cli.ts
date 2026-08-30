@@ -184,13 +184,15 @@ function usage(): void {
               --register <클랜slug> --tier <1~6>  그 티어에 클랜을 등록/이동한다
               --sync   Clan.tier 를 LeagueClan.division 에 맞춘다 (기준은 division)
               **--confirm 없이는 한 줄도 쓰지 않는다**
-  iplmatch-import --dir <폴더> [--file <한 파일>] [--confirm]
+  iplmatch-import --dir <폴더> [--file <한 파일>] [--since <YYYY-MM-DD>] [--confirm]
               병영수첩 **클랜전 목록**(GetClanMatchList) 원문 적재 — IPL 기록 이관
               브라우저가 내려받은 ipl-<클랜slug>-<건수>.json 을 읽는다.
               크롬이 이름을 못 바꿔 .tmp 로 남은 것도 **내용으로 알아본다** (D-203)
               **Match 로 투영하지 않는다.** 원문 보존까지만 한다 (투영은 D-155 · 3-B)
+              --since 는 그 날짜 이후에 받은 파일만 본다 — 내려받기 폴더에 상관없는
+              파일이 수백 개면 살펴보는 것만으로 10분이 넘는다
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
-  iplmatch-check [--dir <폴더>]
+  iplmatch-check [--dir <폴더>] [--since <YYYY-MM-DD>]
               적재 숫자 대조 — 파일↔DB · 맵 · 기간 · 양쪽 다 등록클랜인 경기 수
   ipl-sanply-check [--league <slug>] [--ipl-league <slug>]
               **열산에 남은 IPL끼리의 경기**를 센다 (D-210). 0 이 아니면 exit 1
@@ -2055,7 +2057,13 @@ async function main(): Promise<number> {
         fail('--dir <폴더> (또는 --file <한 파일>) 이 필요하다')
         return 1
       }
-      const files = file ? [file] : findClanMatchFiles(dir as string)
+      const sinceText = stringFlag(args, 'since')
+      const since = sinceText ? new Date(sinceText) : undefined
+      if (since && Number.isNaN(since.getTime())) {
+        fail(`--since 를 날짜로 읽지 못했다: ${sinceText}`)
+        return 1
+      }
+      const files = file ? [file] : await findClanMatchFiles(dir as string, since)
       if (files.length === 0) {
         warn(`${dir} 에서 클랜전 목록 파일을 하나도 못 찾았다`)
         return 1
@@ -2098,7 +2106,16 @@ async function main(): Promise<number> {
      * `--dir` 을 주면 파일 쪽 숫자와 DB 를 맞대 본다. 안 주면 DB 쪽만 본다.
      */
     case 'iplmatch-check': {
-      const result = await checkIplMatches({ dir: stringFlag(args, 'dir') ?? undefined })
+      const checkSinceText = stringFlag(args, 'since')
+      const checkSince = checkSinceText ? new Date(checkSinceText) : undefined
+      if (checkSince && Number.isNaN(checkSince.getTime())) {
+        fail(`--since 를 날짜로 읽지 못했다: ${checkSinceText}`)
+        return 1
+      }
+      const result = await checkIplMatches({
+        dir: stringFlag(args, 'dir') ?? undefined,
+        since: checkSince,
+      })
       table([
         {
           '파일 줄': result.fileRows ?? '(안 봄)',

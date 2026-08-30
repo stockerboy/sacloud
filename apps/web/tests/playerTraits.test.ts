@@ -355,13 +355,24 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(axis('duel')?.pending).toBe('games')
   })
 
-  it('플레이스타일 바 두 줄은 아직 못 잰다 — 가운데로 채우지 않는다', async () => {
+  /**
+   * 이 픽스처에는 **배틀로그가 없다** — `PlayerPlaystyleProfile` 이 한 줄도 없다.
+   * 그러니 두 줄 다 못 재는 것이 맞다.
+   *
+   * ⚠ 못 재는 **이유**가 D-211 에서 바뀌었다. 예전에는 `배틀로그 필요`(`battlelog`)로
+   * 뭉뚱그렸는데, 이제는 자료 자체가 없으면 `라운드 복원 필요`(`rounds`)이고
+   * 자료는 있는데 표본이 모자라면 `경기 부족`(`games`)이다. 둘을 가르지 않으면
+   * "더 뛰면 나온다" 와 "자료가 아예 없다" 가 같은 말이 된다.
+   */
+  it('배틀로그가 없으면 두 줄 다 못 잰다 — 가운데로 채우지 않는다', async () => {
     const { playstyle } = await playerTraits(leagueId, `${P}r3`)
     expect(playstyle.bars).toHaveLength(2)
     expect(playstyle.bars.map((bar) => bar.key)).toEqual(['blue', 'red'])
     for (const bar of playstyle.bars) {
       expect(bar.value).toBeNull()
-      expect(bar.pending).toBe('battlelog')
+      /* 0 은 "재 봤더니 가운데(정석)" 라는 실제 판정이다. 모르는 것과 섞지 않는다 */
+      expect(bar.value).not.toBe(0)
+      expect(bar.pending).toBe('rounds')
     }
     expect(playstyle.measuring).toBe(true)
   })

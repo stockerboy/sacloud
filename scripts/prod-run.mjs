@@ -48,11 +48,9 @@ const ALLOWED = {
     writes: true,
     what: '시즌0 창 + 배치고사 10판 규칙을 운영에 적용한다 (--leagues <slug> 필요) ⚠ 백업 후 --revert 가능',
   },
-  'ipl-sanply-purge': {
-    file: 'iplSanplyPurge',
-    writes: true,
-    what: '열산에서 IPL끼리의 경기를 지우고 6곳을 등록 해제한다 ⚠ 지우기 전에 백업 파일을 남긴다',
-  },
+  /* dev 스크립트에서 **정식 잡으로 승격**됐다 (D-210). `nexon` CLI 를 통해 부른다 */
+  'ipl-sanply-check': { cli: ['nexon', 'ipl-sanply-check'], writes: false, what: '열산에 남은 IPL끼리 경기를 센다 (0 이어야 한다)' },
+  'ipl-sanply-purge': { cli: ['nexon', 'ipl-sanply-purge'], writes: true, what: '열산에서 IPL끼리의 경기를 지우고 등록 해제한다 ⚠ 지우기 전에 백업을 뜬다' },
 }
 
 const args = process.argv.slice(2)
@@ -99,9 +97,14 @@ console.info(`대상 : ${host}`)
 console.info(`작업 : ${entry.what}`)
 console.info(`모드 : ${willWrite ? '⚠ 실제로 쓴다' : '미리보기 (쓰지 않는다)'}\n`)
 
+/* `cli` 가 있으면 정식 명령, `file` 이면 `src/dev/*.ts` 스크립트다 */
+const argv = entry.cli
+  ? ['--filter', '@sacloud/worker', ...entry.cli, ...rest]
+  : ['--filter', '@sacloud/worker', 'exec', 'tsx', `src/dev/${entry.file}.ts`, ...rest]
+
 const result = spawnSync(
   'pnpm',
-  ['--filter', '@sacloud/worker', 'exec', 'tsx', `src/dev/${entry.file}.ts`, ...rest],
+  argv,
   {
     stdio: 'inherit',
     shell: true,

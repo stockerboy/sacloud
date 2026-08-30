@@ -32,6 +32,7 @@
 import { createReadStream, existsSync, readFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import {
+  IPL_ONLY_SKIP_REASON,
   absorbClanList,
   absorbClansFromMatchRow,
   countParsedMatch,
@@ -391,8 +392,18 @@ export async function runSupplyImport(input: SupplyImportInput): Promise<SupplyI
       '원본표시 래더': reconciliation.db.sourceRatingComplete,
     },
   ])
-  if (reconciliation.supplyOnly > 0) {
-    warn(`  3rd.supply only 가 ${reconciliation.supplyOnly}건이다 (목표 0)`)
+  /* 일부러 안 넣은 경기는 "빠진 경기" 가 아니다 (D-210).
+     이 숫자를 그대로 두면 다음 사람이 결함으로 알고 쫓는다 — 몫을 갈라 적는다 */
+  const blockedByIplRule = imported.skipped[IPL_ONLY_SKIP_REASON] ?? 0
+  if (blockedByIplRule > 0) {
+    log(
+      `  그중 ${blockedByIplRule}건은 **일부러 안 넣은 것**이다 — IPL 클랜끼리의 경기는 ` +
+        `열산 기록이 아니다 (D-210). 원문(수집 JSONL)은 그대로 남아 있다`,
+    )
+  }
+  const unexplained = reconciliation.supplyOnly - blockedByIplRule
+  if (unexplained > 0) {
+    warn(`  설명되지 않는 3rd.supply only 가 ${unexplained}건이다 (목표 0)`)
   }
   if (!input.confirm) log('\n미리보기다. 실제로 쓰려면 --confirm 을 붙인다')
 

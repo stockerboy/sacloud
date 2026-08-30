@@ -36,3 +36,5 @@ export * from './roundState'
 export * from './duel'
 /** 클랜 지표 다섯 — 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 (SITE_SPEC_V2 5-5절) */
 export * from './clanRound'
+/** 플레이스타일 바의 재료 — 진영별 오프닝 관여 · 첫 교전 지연 · 자리 흩어짐 (사양 8절 · D-211) */
+export * from './playstyle'

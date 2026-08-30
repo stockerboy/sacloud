@@ -102,8 +102,8 @@ export async function runIplSanplyPurge(
     {
       '지울 경기': result.matches,
       '함께 사라지는 참가 기록': result.stats,
-      '참조가 남아 추방표시만 할 등록행': result.stillReferenced,
-      '행째 지울 등록행': result.removable,
+      '이번에 추방표시할 등록행': result.toExpel,
+      '지운 뒤에도 남는 열산 경기(그 클랜들의 다른 상대전)': result.stillReferenced,
     },
   ])
 
@@ -113,12 +113,12 @@ export async function runIplSanplyPurge(
     table([
       {
         '경기 삭제': result.written.matchesDeleted,
-        '등록행 삭제': result.written.leagueClansDeleted,
         '등록행 추방표시': result.written.leagueClansExpelled,
         백업: result.written.backupPath ?? '(지울 것이 없어 만들지 않음)',
       },
     ])
-    log('  원문(수집 JSONL)은 그대로다 — 지운 것은 `Match` 행뿐이다 (3-A 1번)')
+    log('  원문(수집 JSONL)은 그대로다 — 지운 것은 Match 행뿐이다 (3-A 1번)')
+    log('  등록행은 지우지 않는다 — 지우면 supply-rollup 이 다시 만들어 등록이 되살아난다')
   } else {
     log('')
     log('미리보기다. 실제로 지우려면 --confirm 을 붙인다')

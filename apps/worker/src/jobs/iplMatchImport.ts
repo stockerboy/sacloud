@@ -18,7 +18,8 @@
  *   (D-155 · `CLAUDE.md` 3-B) 별도 작업이다. 잘못 이으면 운영까지 번진다.
  *   이 파일은 **원문 보존까지만** 한다.
  */
-import { closeSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { open } from 'node:fs/promises'
 import { join } from 'node:path'
 import { prisma } from '@sacloud/db'
 import { contentHash } from '@sacloud/nexon'
@@ -63,26 +64,45 @@ export function matchKeyOf(row: IplMatchRow): string | null {
   return text === '' ? null : text
 }
 
+/** 파일 하나를 살펴보는 데 이보다 오래 걸리면 포기한다 */
+const SNIFF_TIMEOUT_MS = 5_000
+
 /**
  * 이 파일이 우리가 찾는 목록 파일인가 — **앞부분만 읽어 판정한다.**
  *
  * 크롬이 이름을 못 바꿔 `.tmp` 로 남는 경우가 있다 (D-203). 내용은 멀쩡한 JSON 이라
  * 확장자를 믿지 않고 **내용으로** 고른다. 배틀로그 수집 파일과 섞이지 않도록
  * 목록 응답에만 있는 칸(`red_clan_name`)까지 확인한다.
+ *
+ * ── 왜 비동기이고 왜 시간을 재는가
+ *   내려받기 폴더에는 **다른 프로그램이 붙잡고 있는 파일**이 섞인다. 동기 읽기로 그런
+ *   파일을 열면 커널에서 영영 멈춘다 — 실제로 남의 `.tmp` 하나 때문에 적재가 통째로
+ *   9분 넘게 멈춰 있었다 (2026-08-31 실측). 비동기로 읽고 시간을 재면 그 파일만 버린다.
  */
-function looksLikeClanMatchFile(path: string): boolean {
-  let fd: number | null = null
+async function looksLikeClanMatchFile(path: string): Promise<boolean> {
+  const sniff = async (): Promise<boolean> => {
+    const handle = await open(path, 'r')
+    try {
+      const buffer = Buffer.alloc(16 * 1024)
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)
+      const head = buffer.subarray(0, bytesRead).toString('utf8')
+      if (head.trimStart()[0] !== '[') return false
+      return head.includes('"subject"') && head.includes('"red_clan_name"')
+    } finally {
+      await handle.close()
+    }
+  }
+  /* 멈춘 읽기는 되돌아오지 않는다. 그래도 **기다리기만 멈춘다** — 그 뒤 파일은 계속 본다 */
+  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), SNIFF_TIMEOUT_MS))
   try {
-    fd = openSync(path, 'r')
-    const buffer = Buffer.alloc(16 * 1024)
-    const read = readSync(fd, buffer, 0, buffer.length, 0)
-    const head = buffer.subarray(0, read).toString('utf8')
-    if (head.trimStart()[0] !== '[') return false
-    return head.includes('"subject"') && head.includes('"red_clan_name"')
+    const verdict = await Promise.race([sniff(), timeout])
+    if (verdict === null) {
+      warn(`살펴보다 멈춰 건너뛴다 (${SNIFF_TIMEOUT_MS / 1000}초 초과): ${path}`)
+      return false
+    }
+    return verdict
   } catch {
     return false
-  } finally {
-    if (fd !== null) closeSync(fd)
   }
 }
 
@@ -92,7 +112,7 @@ function looksLikeClanMatchFile(path: string): boolean {
  * `ipl-<클랜slug>-<건수>.json` 이 정상 이름이고, `.tmp` 로 남은 것도 같이 훑는다.
  * 그 외 확장자는 열어 보지도 않는다.
  */
-export function findClanMatchFiles(dir: string): string[] {
+export async function findClanMatchFiles(dir: string, since?: Date): Promise<string[]> {
   const names = readdirSync(dir)
   const found: string[] = []
   for (const name of names) {
@@ -100,11 +120,20 @@ export function findClanMatchFiles(dir: string): string[] {
     if (!lower.endsWith('.json') && !lower.endsWith('.tmp')) continue
     const path = join(dir, name)
     try {
-      if (!statSync(path).isFile()) continue
+      const stat = statSync(path)
+      if (!stat.isFile()) continue
+      /*
+        `--since` 는 **열어 보기 전에** 거른다.
+
+        내려받기 폴더에는 상관없는 `.tmp` 가 수백 개 있고, 백신이 열 때마다 검사해서
+        한 개 살펴보는 데 1초 가까이 걸린다 (2026-08-31 실측 · 450개에 10분 이상).
+        수집한 날짜를 알면 그 앞은 볼 필요가 없다.
+      */
+      if (since && stat.mtime < since) continue
     } catch {
       continue
     }
-    if (looksLikeClanMatchFile(path)) found.push(path)
+    if (await looksLikeClanMatchFile(path)) found.push(path)
   }
   return found.sort()
 }
@@ -236,9 +265,10 @@ async function withRetry<T>(label: string, run: () => Promise<T>): Promise<T> {
 export async function importIplMatches(input: {
   dir?: string
   files?: string[]
+  since?: Date
   confirm?: boolean
 }): Promise<IplMatchImportResult> {
-  const files = input.files ?? (input.dir ? findClanMatchFiles(input.dir) : [])
+  const files = input.files ?? (input.dir ? await findClanMatchFiles(input.dir, input.since) : [])
   const result: IplMatchImportResult = {
     files: files.length,
     failedFiles: 0,
@@ -469,7 +499,10 @@ interface CountRow {
  * 등록 클랜 이름은 **데이터에서 도출한다** — 어느 slug 의 목록이든 그 클랜 자신은
  * 모든 줄에 red 나 blue 로 나오기 때문이다. 명단을 코드에 박지 않는다.
  */
-export async function checkIplMatches(input: { dir?: string }): Promise<IplMatchCheckResult> {
+export async function checkIplMatches(input: {
+  dir?: string
+  since?: Date
+}): Promise<IplMatchCheckResult> {
   const failures: string[] = []
 
   const [dbRows, uniq] = await Promise.all([
@@ -605,7 +638,7 @@ export async function checkIplMatches(input: { dir?: string }): Promise<IplMatch
     const seenMatches = new Set<string>()
     const seenPairs = new Set<string>()
     let rows = 0
-    for (const file of findClanMatchFiles(input.dir)) {
+    for (const file of await findClanMatchFiles(input.dir, input.since)) {
       let parsed: unknown
       try {
         parsed = JSON.parse(readFileSync(file, 'utf8'))

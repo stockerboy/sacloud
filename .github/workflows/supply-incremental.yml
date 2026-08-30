@@ -270,6 +270,19 @@ jobs:
         # 무결성 검사가 하나라도 깨지면 exit 1 → 잡이 실패한다
         run: pnpm --filter @sacloud/worker nexon db-snapshot --stamp "gha-${{ github.run_id }}"
 
+      # IPL 클랜끼리의 경기가 열산에 새로 쌓였는가 (D-210).
+      #
+      # 막는 규칙은 `supply-import` 안에 있다. 이 단계는 **그 규칙이 샜는지** 보는 대조다.
+      # 0 이 아니면 `nexon ipl-sanply-purge --confirm` 으로 치운다.
+      #
+      # ⚠ 지금은 **경고만** 한다 (`continue-on-error`). 운영에 아직 치우지 않은 잔여분이
+      #   남아 있어서다. 운영을 한 번 치운 뒤에는 이 줄을 지워 **잡을 실패시킨다.**
+      # 2026-08-31: 운영 잔여분(23건)을 치웠으므로 **경고에서 실패로 올렸다**.
+      # 여기서 빨개지면 차단 규칙(D-210)이 새고 있다는 뜻이다 — 조용히 넘기지 마라.
+      - name: 검증 — 열산에 IPL끼리의 경기가 남았는가 (D-210)
+        if: ${{ inputs.dry_run != true }}
+        run: pnpm --filter @sacloud/worker nexon ipl-sanply-check
+
       - name: 이번에 받은 원본 보관 (디버깅용 · 7일)
         if: ${{ always() && inputs.dry_run != true }}
         uses: actions/upload-artifact@v4

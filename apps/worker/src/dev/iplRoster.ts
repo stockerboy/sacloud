@@ -38,6 +38,9 @@ export const IPL_ROSTER: readonly IplClan[] = [
   { given: 'hardcores', name: 'hardcores', barracks: 'ckdals2457', tier: 2 },
   { given: 'vuvuzela', name: 'vuvuzela', barracks: 'uava01', tier: 2 },
   { given: 'grave', name: 'grave', barracks: 'saffggaaz', tier: 2 },
+  /* 2026-08-31 사용자 추가. 병영수첩 검색 결과가 하나뿐이고 활발하다
+     (최근 20경기 중 16건이 제3보급창고) */
+  { given: 'idylic', name: 'idylic', barracks: 'EVOA', tier: 2 },
 
   /* --- 3티어 --- */
   { given: 'Quassar', name: 'QuasaR-', barracks: 'pigforever', tier: 3 },
@@ -67,6 +70,13 @@ export const IPL_ROSTER: readonly IplClan[] = [
   { given: 'romantico', name: 'romantico', barracks: 'zzim1', tier: 5 },
   { given: 'reBellion', name: 'reBelIion', barracks: 'JosenFam', tier: 5 },
   { given: 'major', name: 'Major-', barracks: 'jjangkangsu', tier: 5 },
+  /* 2026-08-31 사용자 추가.
+     ⚠ 우리 DB 에 `recent.wct-` 라는 이름이 **두 곳**이다. 근거로 골랐다:
+       friendliness1  6,298경기 · 어제까지 뛰고 있음 · 최근 20건 중 13건이 제3보급창고  ← 이쪽
+       recent15         117경기 · 병영수첩에 매치가 **아예 없다** (죽은 동명이인)
+     비슷한 이름의 다른 클랜도 있다 — `recentwct-`(skytak, 점 없음) ·
+     `recent.wct`(luminouszzang, 뒤 대시 없음). 넷은 서로 다른 클랜이다 */
+  { given: 'recent.wct-', name: 'recent.wct-', barracks: 'friendliness1', tier: 5 },
 
   /* --- 6티어 --- */
   { given: 'everwhite', name: 'everwhite', barracks: 'kelly123', tier: 6 },

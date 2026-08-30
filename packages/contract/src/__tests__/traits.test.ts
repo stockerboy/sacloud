@@ -16,6 +16,7 @@ import {
   TRAIT_MIN_GAMES,
   TRAIT_PENDING_TEXT,
   buildPlayerPlaystyle,
+  playstyleValueOf,
   buildPlayerTraits,
   isMeasurablePending,
   mainWeaponOf,
@@ -400,11 +401,11 @@ describe('buildPlayerPlaystyle — 플레이스타일 바', () => {
     expect(bars.bars.map((bar) => bar.side_label)).toEqual(['블루', '레드'])
   })
 
-  it('아직 두 줄 다 못 잰다 — 가운데(정석)로 채우지 않는다', () => {
+  it('재료가 없으면 두 줄 다 못 잰다 — 가운데(정석)로 채우지 않는다', () => {
     for (const bar of bars.bars) {
       expect(bar.value).toBeNull()
       expect(bar.value).not.toBe(0) // 0 은 "재 봤더니 가운데" 라는 뜻이다
-      expect(bar.pending).toBe('battlelog')
+      expect(bar.pending).toBe('rounds')
     }
     expect(bars.measuring).toBe(true)
   })
@@ -413,5 +414,67 @@ describe('buildPlayerPlaystyle — 플레이스타일 바', () => {
     const [blue, red] = bars.bars
     expect(blue).toMatchObject({ left_label: '안전함', center_label: '정석', right_label: '변칙적' })
     expect(red).toMatchObject({ left_label: '느린전개', center_label: '정석', right_label: '빠른전개' })
+  })
+
+  /* ---- D-211 — 재료가 들어오면 실제로 찍힌다 ---- */
+
+  it('백분위 50 은 정석(0)이고, 100·0 이 양 끝이다', () => {
+    expect(playstyleValueOf(50)).toBe(0)
+    expect(playstyleValueOf(100)).toBe(100)
+    expect(playstyleValueOf(0)).toBe(-100)
+    expect(playstyleValueOf(75)).toBe(50)
+  })
+
+  it('못 잰 백분위는 null 그대로다 — 가운데로 접지 않는다', () => {
+    expect(playstyleValueOf(null)).toBeNull()
+  })
+
+  it('두 줄 다 재면 measuring 이 false 다', () => {
+    const measured = buildPlayerPlaystyle({
+      weapon: 0,
+      bluePercentile: 80,
+      redPercentile: 20,
+      hasRoundData: true,
+    })
+    expect(measured.bars.map((bar) => bar.value)).toEqual([60, -60])
+    expect(measured.bars.every((bar) => bar.pending === null)).toBe(true)
+    expect(measured.measuring).toBe(false)
+  })
+
+  it('한 줄만 재면 그 줄만 찍고 나머지는 이유를 남긴다', () => {
+    const half = buildPlayerPlaystyle({
+      weapon: 1,
+      bluePercentile: 30,
+      redPercentile: null,
+      hasRoundData: true,
+    })
+    expect(half.bars[0]?.value).toBe(-40)
+    expect(half.bars[1]?.value).toBeNull()
+    /* 자료는 있는데 표본이 모자란 것이라 `경기 부족` 이다 */
+    expect(half.bars[1]?.pending).toBe('games')
+    expect(half.measuring).toBe(true)
+  })
+
+  it('주무기를 모르면 누구와 견줄지도 모른다 — 두 줄 다 주무기 미정이다', () => {
+    const unknown = buildPlayerPlaystyle({
+      weapon: null,
+      bluePercentile: 90,
+      redPercentile: 90,
+      hasRoundData: true,
+    })
+    for (const bar of unknown.bars) {
+      expect(bar.value).toBeNull()
+      expect(bar.pending).toBe('weapon')
+    }
+  })
+
+  it('자료 자체가 없으면 `라운드 복원 필요` 다 — `경기 부족` 과 구분한다', () => {
+    const none = buildPlayerPlaystyle({
+      weapon: 0,
+      bluePercentile: null,
+      redPercentile: null,
+      hasRoundData: false,
+    })
+    for (const bar of none.bars) expect(bar.pending).toBe('rounds')
   })
 })

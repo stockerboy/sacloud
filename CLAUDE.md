@@ -328,6 +328,12 @@ pnpm --filter @sacloud/worker nexon battlelog-import --file <수집.json> [--con
                       # 병영수첩 BattleLog 원문 적재 — 좌표까지 그대로 (D-174, 멱등)
 pnpm --filter @sacloud/worker nexon position-build [--labels <라벨.json>] [--min-games N] [--confirm]
                       # 좌표 → 격자 분포 → 포지션 판정. 라벨이 없으면 분포만 만든다 (D-174)
+pnpm --filter @sacloud/worker nexon ipl-sanply-check
+                      # 열산에 남은 **IPL끼리의 경기** 건수 (D-210). 0 이 아니면 exit 1
+                      # 막는 규칙은 supply-import 안에 있다 — 이건 새는지 보는 대조다
+pnpm --filter @sacloud/worker nexon ipl-sanply-purge [--confirm]
+                      # 이미 들어온 IPL끼리의 경기를 지우고 IPL 클랜을 열산에서 뺀다 (D-210)
+                      # **지우기 전에 백업 JSON 을 뜬다.** 원문(수집 JSONL)은 건드리지 않는다
 pnpm --filter @sacloud/worker nexon independent-league [--confirm]
                       # 무소속리그(`nolink`) 만들기 (D-165, idempotent)
                       #   --register <클랜slug> --tier <1~5>   그 티어에 등록/이동

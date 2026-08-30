@@ -37,6 +37,7 @@
  */
 import { prisma } from '@sacloud/db'
 import {
+  PLAYSTYLE_MIN_ROUNDS,
   TRAIT_MIN_GAMES,
   TRAIT_MIN_ROUNDS,
   TRAIT_MIN_COHORT,
@@ -49,6 +50,9 @@ import {
 } from '@sacloud/contract'
 /* 집계 버전은 잡이 정하고 화면이 따라 읽는다. 두 곳에 적어 두면 언젠가 갈라진다 */
 import { ROUND_BUILDER_VERSION } from '../../../../worker/src/lib/roundBuilderVersion'
+import { PLAYSTYLE_BUILDER_VERSION } from '../../../../worker/src/lib/playstyleBuilderVersion'
+/* 흩어짐·지연을 재는 식은 **집계를 만든 쪽**에 있다. 여기서 다시 쓰면 두 벌이 된다 */
+import { emptySideTally, entryDelay, positionSpread } from '@sacloud/nexon'
 import { playedGamesWhere } from './dropoutScope'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
@@ -95,12 +99,46 @@ interface PlayerValue {
   damagePerGame: number | null
 }
 
+/**
+ * 플레이스타일 바 두 줄의 재료 (사양 8절 · D-211).
+ *
+ * 그 진영으로 뛴 라운드만 골라서 잰 값이다. 표본이 `PLAYSTYLE_MIN_ROUNDS` 에
+ * 못 미치면 **아예 만들지 않는다** — 세 라운드짜리 값이 분포에 섞이면 백분위가 흔들린다.
+ *
+ * ── 어느 재료를 골랐나 (2026-08-31 · 로컬 반분신뢰도 실측 · 최소 20라운드)
+ *   ```
+ *                  블루(수비)  레드(공격)
+ *   자리 흩어짐        0.877      0.846
+ *   오프닝 관여율      0.762      0.650
+ *   첫 교전 지연       0.629      0.697
+ *   ```
+ *
+ *   **블루는 `자리 흩어짐`.** 신뢰도가 가장 높고, 사양 8절의 표현
+ *   ("여러 곳에 흩어져 있고 그 정도가 평균보다 크면 변칙적")과 뜻이 그대로 맞는다.
+ *
+ *   **레드는 `첫 교전 지연`.** 자리 흩어짐이 숫자로는 더 높지만(0.846) 그건
+ *   `느린전개 ↔ 빠른전개` 가 아니라 **자리의 다양성**이라 이 줄에 쓰면 축 이름이
+ *   거짓이 된다. 사양이 말하는 레드는 시각이다 —
+ *   "가장 먼저 킬/데스할수록 빠른전개" · "맨 마지막에 죽으면 느린전개".
+ *   그래서 뜻이 맞는 것 중 가장 높은 `첫 교전 지연`(0.697)을 쓴다.
+ *   숫자가 높다고 뜻이 다른 값을 붙이지 않는다.
+ */
+interface PlaystyleValue {
+  /** 수비 라운드의 자리 흩어짐. **클수록 변칙적** */
+  blueSpread: number | null
+  /** 공격 라운드의 첫 교전 지연(초). **작을수록 빠른전개** — 그래서 부호를 뒤집어 쓴다 */
+  redDelay: number | null
+}
+
 interface WeaponCohort {
   /** playerId → 그 선수의 값 */
   values: Map<string, PlayerValue>
   /** 오름차순 — `percentileOf()` 가 이진탐색으로 읽는다 */
   killSorted: number[]
   damageSorted: number[]
+  /** 플레이스타일 두 줄 (D-211). 레드는 **뒤집어서**(−초) 담는다 — 큰 값이 곧 빠른전개다 */
+  blueSpreadSorted: number[]
+  redSpeedSorted: number[]
   /** 라운드 축은 **무기와 무관**하지만 견주는 무리는 같다 (사양 4절: 같은 무기끼리) */
   saveSorted: number[]
   outnumberedSorted: number[]
@@ -118,6 +156,8 @@ interface LeagueDistribution {
   sniper: WeaponCohort
   /** playerId → 라운드 복원 비율. **자료가 있는 선수만** 들어 있다 */
   rounds: Map<string, RoundValue>
+  /** playerId → 플레이스타일 재료. **자료가 있는 선수만** 들어 있다 (D-211) */
+  playstyle: Map<string, PlaystyleValue>
   /**
    * 주무기는 정해졌는데 **판수가 모자라** 모집단에 못 든 선수.
    *
@@ -140,6 +180,8 @@ function emptyCohort(): WeaponCohort {
     values: new Map(),
     killSorted: [],
     damageSorted: [],
+    blueSpreadSorted: [],
+    redSpeedSorted: [],
     saveSorted: [],
     outnumberedSorted: [],
     matchManSorted: [],
@@ -203,6 +245,59 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
 }
 
 /**
+ * 플레이스타일 재료를 읽는다 (사양 8절 · D-211).
+ *
+ * `roundValues()` 와 같은 이유로 리그로 거르지 않는다 — 병영수첩 배틀로그는 리그를 모른다.
+ * 견주는 무리는 아래에서 "그 리그의 같은 주무기 선수" 로 좁혀진다.
+ *
+ * 표본이 `PLAYSTYLE_MIN_ROUNDS` 에 못 미치면 `null` 이다. **가운데로 채우지 않는다** —
+ * `정석` 은 "재 봤더니 가운데" 라는 뜻이라 모르는 것을 그렇게 적으면 거짓이 된다 (D-106).
+ */
+async function playstyleValues(): Promise<Map<string, PlaystyleValue>> {
+  const rows = await prisma.playerPlaystyleProfile.findMany({
+    /* **버전을 반드시 건다.** 규칙이 바뀌면 옛 줄이 남으므로(`playstyleBuild.ts`),
+       필터가 없으면 같은 선수에 두 줄이 잡히고 **DB 반환 순서에 따라** 아무 쪽이나 이긴다 */
+    where: { playerId: { not: null }, builderVersion: PLAYSTYLE_BUILDER_VERSION },
+    select: {
+      playerId: true,
+      defenseRounds: true,
+      defensePosX: true,
+      defensePosY: true,
+      defensePosX2: true,
+      defensePosY2: true,
+      defensePosN: true,
+      attackRounds: true,
+      attackDelaySum: true,
+      attackDelayN: true,
+    },
+  })
+
+  const out = new Map<string, PlaystyleValue>()
+  for (const row of rows) {
+    if (!row.playerId) continue
+
+    /* 저장된 합계를 집계 그릇 모양으로 되돌려 **같은 함수**에 넣는다 */
+    const defense = emptySideTally()
+    defense.posX = row.defensePosX
+    defense.posY = row.defensePosY
+    defense.posX2 = row.defensePosX2
+    defense.posY2 = row.defensePosY2
+    defense.posN = row.defensePosN
+
+    const attack = emptySideTally()
+    attack.delaySum = row.attackDelaySum
+    attack.delayN = row.attackDelayN
+
+    out.set(row.playerId, {
+      blueSpread:
+        row.defenseRounds >= PLAYSTYLE_MIN_ROUNDS ? positionSpread(defense) : null,
+      redDelay: row.attackRounds >= PLAYSTYLE_MIN_ROUNDS ? entryDelay(attack) : null,
+    })
+  }
+  return out
+}
+
+/**
  * 그 리그의 **같은 무기 선수 전원**의 판당 킬·판당 딜량 분포를 만든다.
  *
  * 무기를 `groupBy` 축으로 두고 한 번에 읽는다. 라플 모집단·스나 모집단을 따로 두 번
@@ -210,7 +305,7 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
  * 어차피 양쪽이 다 있어야 나온다.
  */
 async function buildDistribution(leagueId: string): Promise<LeagueDistribution> {
-  const rounds = await roundValues()
+  const [rounds, playstyle] = await Promise.all([roundValues(), playstyleValues()])
 
   /* 무기를 모르는 참가 기록은 어느 무리에도 넣지 않는다 (D-034 · D-115) */
   const statWhere = {
@@ -313,6 +408,15 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     cohort.killSorted.push(value.killPerGame)
     if (value.damagePerGame !== null) cohort.damageSorted.push(value.damagePerGame)
 
+    /* 플레이스타일 두 줄도 **같은 무리** 안에서 견준다 (D-211).
+       레드는 부호를 뒤집어 담는다 — 지연이 짧을수록 빠른전개라, 그대로 담으면
+       백분위가 클수록 `느린전개` 가 되어 축이 거꾸로 붙는다 */
+    const style = playstyle.get(playerId)
+    if (style) {
+      if (style.blueSpread !== null) cohort.blueSpreadSorted.push(style.blueSpread)
+      if (style.redDelay !== null) cohort.redSpeedSorted.push(-style.redDelay)
+    }
+
     /* 라운드 축의 모집단도 **같은 무리** 안에서 만든다 (사양 4절: 같은 무기끼리 줄 세운다) */
     const round = rounds.get(playerId)
     if (round) {
@@ -328,6 +432,8 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
   for (const cohort of [rifle, sniper]) {
     cohort.killSorted.sort((a, b) => a - b)
     cohort.damageSorted.sort((a, b) => a - b)
+    cohort.blueSpreadSorted.sort((a, b) => a - b)
+    cohort.redSpeedSorted.sort((a, b) => a - b)
     cohort.saveSorted.sort((a, b) => a - b)
     cohort.outnumberedSorted.sort((a, b) => a - b)
     cohort.matchManSorted.sort((a, b) => a - b)
@@ -336,7 +442,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     cohort.oneAttackSorted.sort((a, b) => a - b)
   }
 
-  return { rifle, sniper, rounds, belowMin }
+  return { rifle, sniper, rounds, playstyle, belowMin }
 }
 
 function distributionOf(leagueId: string, now: number): Promise<LeagueDistribution> {
@@ -381,6 +487,7 @@ export async function playerTraits(
   const cohort = weapon === 1 ? distribution.sniper : distribution.rifle
   const value = weapon === 1 ? sniperValue : rifleValue
   const round = distribution.rounds.get(playerId)
+  const style = distribution.playstyle.get(playerId)
 
   return {
     traits: buildPlayerTraits({
@@ -410,7 +517,17 @@ export async function playerTraits(
       oneAttackPercentile: percentileIn(cohort.oneAttackSorted, round?.oneAttackRate),
       hasRoundData: round !== undefined,
     }),
-    /* 두 줄 다 아직 못 잰다 (8절 · D-184). 화면 자리와 `측정중` 만 먼저 만든다 */
-    playstyle: buildPlayerPlaystyle(),
+    /* 플레이스타일 바 두 줄 (8절 · D-211).
+       블루는 자리 흩어짐(클수록 변칙적), 레드는 첫 교전 지연을 뒤집은 것(클수록 빠른전개)이다.
+       못 재면 `null` 이고 화면이 `측정중` 을 적는다 — **가운데(`정석`)로 채우지 않는다** */
+    playstyle: buildPlayerPlaystyle({
+      weapon,
+      bluePercentile: percentileIn(cohort.blueSpreadSorted, style?.blueSpread),
+      redPercentile: percentileIn(
+        cohort.redSpeedSorted,
+        style?.redDelay === null || style?.redDelay === undefined ? null : -style.redDelay,
+      ),
+      hasRoundData: style !== undefined,
+    }),
   }
 }

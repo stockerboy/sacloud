@@ -262,13 +262,12 @@ export interface PurgeIplOnlyMatchesResult {
   matches: number
   /** 함께 사라지는(사라진) 참가 기록 수 */
   stats: number
-  /** 지운 뒤에도 대상 리그 경기가 남는 IPL 클랜 등록행 (= 추방 표시만 한다) */
+  /** 지운 뒤에도 대상 리그 경기가 남는 IPL 클랜 등록행 (참고용) */
   stillReferenced: number
-  /** 참조가 사라져 행 자체를 지울 수 있는 등록행 */
-  removable: number
+  /** 아직 추방 표시가 없는 등록행 = 이번에 추방할 것 */
+  toExpel: number
   written: {
     matchesDeleted: number
-    leagueClansDeleted: number
     leagueClansExpelled: number
     backupPath: string | null
   }
@@ -287,12 +286,20 @@ export interface PurgeIplOnlyMatchesResult {
  *   그 DB 에는 아직 없는 열을 SELECT 해서 죽고, 반대로 스키마에 없는 열은 놓친다.
  *   `select *` 는 **그 DB 에 실제로 있는 것을 그대로** 담는다.
  *
- * ── 등록 해제는 두 갈래다
- *   IPL 클랜에는 **IPL 상대가 아닌 열산 경기가 수만 건** 남아 있고 그 경기들이
- *   등록행을 가리킨다. 행을 지우면 그 경기가 통째로 깨진다(`onDelete: Cascade`).
- *   사용자 지시는 **IPL끼리의 기록만** 지우라는 것이었으므로 남의 경기까지 지우지 않는다.
- *     · 참조가 남으면 → `expelledAt` (랭킹 질의가 이 값을 본다)
- *     · 참조가 없으면 → 행 삭제
+ * ── 등록 해제는 **추방 표시(`expelledAt`)로만** 한다. 행을 지우지 않는다
+ *   두 가지 이유가 있다.
+ *
+ *   1. IPL 클랜에는 **IPL 상대가 아닌 열산 경기가 수만 건** 남아 있고 그 경기들이
+ *      등록행을 가리킨다. 행을 지우면 그 경기가 통째로 깨진다(`onDelete: Cascade`).
+ *      사용자 지시는 **IPL끼리의 기록만** 지우라는 것이었다.
+ *   2. **행을 지우면 되살아난다.** `supply-rollup` 은 원본 클랜랭킹을 기준으로
+ *      없는 등록행을 다시 만든다 — 그때 `expelledAt` 은 당연히 비어 있다.
+ *      추방행이 남아 있으면 rollup 은 `update` 경로로 가고 `expelledAt` 을
+ *      건드리지 않는다(`toClanWriteData` 가 그 칸을 쓰지 않는다).
+ *      **추방행은 되풀이를 막는 묘비다.**
+ *
+ *   랭킹 질의는 2026-08-30 부터 `expelledAt` 을 본다(`apps/web/lib/server/queries/ladders.ts`).
+ *   그 전에는 아무도 안 봐서 추방해도 랭킹에 남았다 — 그래서 행을 지웠던 것이다.
  */
 export async function purgeIplOnlyMatches(
   input: PurgeIplOnlyMatchesInput = {},
@@ -313,10 +320,9 @@ export async function purgeIplOnlyMatches(
     matches: scope.matchIds.length,
     stats: 0,
     stillReferenced: 0,
-    removable: 0,
+    toExpel: 0,
     written: {
       matchesDeleted: 0,
-      leagueClansDeleted: 0,
       leagueClansExpelled: 0,
       backupPath: null,
     },
@@ -336,8 +342,8 @@ export async function purgeIplOnlyMatches(
     where: { matchId: { in: scope.matchIds } },
   })
 
-  /* 지운 뒤에도 이 등록행을 가리키는 경기가 남는가 */
-  const remaining = await prisma.match.findMany({
+  /* 지운 뒤에도 이 등록행을 가리키는 경기가 남는가 (참고용 — 삭제 여부를 가르지 않는다) */
+  const stillReferenced = await prisma.match.count({
     where: {
       leagueId: scope.targetLeagueId as string,
       OR: [
@@ -346,20 +352,16 @@ export async function purgeIplOnlyMatches(
       ],
       id: { notIn: scope.matchIds },
     },
-    /* 최소 select — 운영에 없는 열을 건드리지 않는다 */
-    select: { redLeagueClanId: true, blueLeagueClanId: true },
   })
-  const targetIdSet = new Set(scope.targetLeagueClanIds)
-  const stillUsed = new Set<string>()
-  for (const row of remaining) {
-    if (targetIdSet.has(row.redLeagueClanId)) stillUsed.add(row.redLeagueClanId)
-    if (targetIdSet.has(row.blueLeagueClanId)) stillUsed.add(row.blueLeagueClanId)
-  }
-  result.stillReferenced = stillUsed.size
-  result.removable = scope.targetLeagueClanIds.length - stillUsed.size
+  result.stillReferenced = stillReferenced
+
+  /* 아직 추방 표시가 없는 등록행만 손댄다. 두 번 돌려도 결과가 같다 (idempotent) */
+  result.toExpel = await prisma.leagueClan.count({
+    where: { id: { in: scope.targetLeagueClanIds }, expelledAt: null },
+  })
 
   if (!confirm) return result
-  if (scope.matchIds.length === 0 && result.removable === 0 && stillUsed.size === 0) return result
+  if (scope.matchIds.length === 0 && result.toExpel === 0) return result
 
   /* ── 백업 — 지우기 전에 반드시 ─────────────────────────────────────────── */
   if (scope.matchIds.length > 0) {
@@ -401,19 +403,12 @@ export async function purgeIplOnlyMatches(
     result.written.matchesDeleted = deleted.count
   }
 
-  /* ── 등록 해제 ─────────────────────────────────────────────────────────── */
-  for (const id of scope.targetLeagueClanIds) {
-    if (stillUsed.has(id)) {
-      const updated = await prisma.leagueClan.updateMany({
-        where: { id, expelledAt: null },
-        data: { expelledAt: new Date() },
-      })
-      result.written.leagueClansExpelled += updated.count
-      continue
-    }
-    await prisma.leagueClan.delete({ where: { id } })
-    result.written.leagueClansDeleted += 1
-  }
+  /* ── 등록 해제 — **행은 남긴다.** 지우면 rollup 이 다시 만들어 되살아난다 ─── */
+  const expelled = await prisma.leagueClan.updateMany({
+    where: { id: { in: scope.targetLeagueClanIds }, expelledAt: null },
+    data: { expelledAt: new Date() },
+  })
+  result.written.leagueClansExpelled = expelled.count
 
   return result
 }

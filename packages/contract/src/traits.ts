@@ -410,6 +410,21 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
 export const PLAYSTYLE_SIDE_KEYS = ['blue', 'red'] as const
 export type PlaystyleSide = (typeof PLAYSTYLE_SIDE_KEYS)[number]
 
+/**
+ * 바 한 줄을 재기 시작하는 최소 **라운드** 수 — 그 진영으로 뛴 라운드다 (D-211).
+ *
+ * 판수가 아니라 라운드 수인 이유는 육각형의 `TRAIT_MIN_ROUNDS` 와 같다.
+ * 한 경기에서 그 진영으로 뛴 라운드가 대여섯뿐이라 판수로 재면 표본을 크게 오해한다.
+ *
+ * 육각형(10)보다 높게 잡았다. 저 축들은 "혼자 남은 라운드" 처럼 **드물게 일어나는 일**의
+ * 성패라 한 라운드가 한 번의 관측이지만, 여기 값들은 **매 라운드 관측되는 연속값**의
+ * 평균이라 표본이 같은 수라도 의미가 다르고, 반대로 20라운드는 두세 경기면 채워진다.
+ *
+ * > `[미확인]` 사양에 숫자가 없다. 20은 우리가 고른 값이고 **원본과 동일함이
+ * > 검증되지 않았다** (`CLAUDE.md` 3장 7번).
+ */
+export const PLAYSTYLE_MIN_ROUNDS = 20
+
 export const PLAYSTYLE_BAR_COPY: Record<
   PlaystyleSide,
   { side: string; left: string; center: string; right: string }
@@ -441,26 +456,87 @@ export interface PlaystyleBars {
 }
 
 /**
- * 지금은 **두 줄 다 잴 수 없다.**
+ * 백분위(0~100)를 바 위치(`-100` ~ `+100`)로 옮긴다.
  *
- * 네 축(스나/라플 × 블루/레드)이 전부 라운드별 진영 + 라운드 복원 + 맵 구역을 요구하는데,
- * 클랜 단위 배틀로그 수집분이 아직 0건이다 (D-184). 사양 8절이 "화면 자리와 측정중
- * 표시는 먼저 만들 수 있다" 고 한 그 상태다. **가운데(`정석`)로 채우지 않는다** —
- * `정석` 은 "재 봤더니 가운데" 라는 뜻이라 모르는 것을 그렇게 적으면 거짓이 된다.
+ * 백분위 50 이 `정석`(0)이고, 100 이 오른쪽 끝, 0 이 왼쪽 끝이다.
+ * **`null` 은 그대로 `null` 이다** — 가운데로 접지 않는다 (D-106).
  */
-export function buildPlayerPlaystyle(): PlaystyleBars {
-  return {
-    bars: PLAYSTYLE_SIDE_KEYS.map((key) => ({
+export function playstyleValueOf(percentile: number | null): number | null {
+  if (percentile === null) return null
+  const value = Math.round((percentile - 50) * 2)
+  return Math.max(-100, Math.min(100, value))
+}
+
+/**
+ * 바 두 줄의 재료 (D-211).
+ *
+ * 백분위는 **이미 계산돼서 들어온다** — 육각형과 같은 구조다. 누구와 견줄지(모집단)를
+ * 아는 것은 질의 쪽이고, 계약은 그 결과를 화면 모양으로 맞추기만 한다.
+ * 그래야 Mock 과 실제 API 가 **같은 함수**를 쓸 수 있다.
+ */
+export interface PlaystyleInput {
+  /** `0 = 라이플` · `1 = 스나이퍼`. 모르면 누구와 견줄지도 모른다 */
+  weapon: 0 | 1 | null
+  /** 수비 라운드 — 클수록 **변칙적** */
+  bluePercentile: number | null
+  /** 공격 라운드 — 클수록 **빠른전개** */
+  redPercentile: number | null
+  /**
+   * 그 선수의 라운드 복원 자료가 **있기는 한가.**
+   *
+   * 없으면 `라운드 복원 필요`, 있는데 표본이 모자라면 `경기 부족` 이다.
+   * 둘을 뭉뚱그리면 "더 뛰면 나온다" 와 "자료 자체가 없다" 가 같은 말이 된다.
+   */
+  hasRoundData?: boolean
+}
+
+/**
+ * 플레이스타일 바 두 줄.
+ *
+ * ```
+ * 블루 = 수비   안전함   ↔  변칙적
+ * 레드 = 공격   느린전개 ↔  빠른전개
+ * ```
+ *
+ * ── 무엇으로 재는가 (D-211 · 사양 8절)
+ *   그 진영으로 뛴 **라운드만** 골라서 잰다 (D-182 · 사용자 확정). 라운드별 진영은
+ *   폭탄이 말해 준다 (D-184 · D-208). 재료는 `@sacloud/nexon` 의 `playstyle.ts` 가
+ *   세고, 무엇을 어떻게 섞었는지는 그 파일 머리말에 있다.
+ *
+ * ── 재료가 없으면 `null` 이다
+ *   **가운데(`정석`)로 채우지 않는다** — `정석` 은 "재 봤더니 가운데" 라는 뜻이라
+ *   모르는 것을 그렇게 적으면 거짓이 된다 (D-106).
+ *
+ * 인자를 주지 않으면 두 줄 다 `측정중` 이다 — Mock 과 옛 호출부가 그대로 돈다.
+ */
+export function buildPlayerPlaystyle(input?: PlaystyleInput | null): PlaystyleBars {
+  /* 무기를 모르면 **누구와 견줄지**를 모른다. 스나는 원래 더 일찍 교전하므로
+     (실측 7~8초 대 라플 12초) 라플 무리에 섞어 줄 세우면 스나가 전원 `빠른전개` 가 된다 */
+  const blocked: TraitPending | null =
+    input == null ? 'rounds' : input.weapon === null ? 'weapon' : null
+
+  const percentileOfSide = (key: PlaystyleSide): number | null => {
+    if (input == null || blocked !== null) return null
+    return key === 'blue' ? input.bluePercentile : input.redPercentile
+  }
+
+  const bars: PlaystyleBar[] = PLAYSTYLE_SIDE_KEYS.map((key) => {
+    const value = playstyleValueOf(percentileOfSide(key))
+    return {
       key,
       side_label: PLAYSTYLE_BAR_COPY[key].side,
       left_label: PLAYSTYLE_BAR_COPY[key].left,
       center_label: PLAYSTYLE_BAR_COPY[key].center,
       right_label: PLAYSTYLE_BAR_COPY[key].right,
-      value: null,
-      pending: 'battlelog',
-    })),
-    measuring: true,
-  }
+      value,
+      pending:
+        value !== null
+          ? null
+          : (blocked ?? (input?.hasRoundData === true ? 'games' : 'rounds')),
+    }
+  })
+
+  return { bars, measuring: bars.some((bar) => bar.value === null) }
 }
 
 /* -------------------------------------------------------------------------- */

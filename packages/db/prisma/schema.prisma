@@ -188,6 +188,7 @@ model Player {
   weaponEvidence          MatchWeaponEvidence[]
   positionProfiles        PlayerPositionProfile[]
   roundProfiles           PlayerRoundProfile[]
+  playstyleProfiles       PlayerPlaystyleProfile[]
 
   @@unique([sourcePlayerId])
   @@unique([nexonOuid])
@@ -2130,4 +2131,68 @@ model MatchWeaponEvidence {
   @@index([matchKey])
   @@index([playerId])
   @@index([classification])
+}
+
+/// 선수의 **플레이스타일 바** 재료 — 진영별 집계 (`docs/PLAYER_TRAITS_SPEC.md` 8절 · D-211).
+///
+/// ```
+/// 블루 = 수비   안전함   ↔  변칙적
+/// 레드 = 공격   느린전개 ↔  빠른전개
+/// ```
+///
+/// **원본(3rd.supply)에 없는 값이다.** 사용자 지시로 만든 신규 지표다.
+///
+/// ── 왜 `PlayerRoundProfile` 에 칸을 더하지 않았나
+///   저건 육각형(세이브·소수싸움·매치의 사나이)의 그릇이고 **진영을 보지 않는다.**
+///   여기 값들은 전부 진영으로 갈라 센 것이라 최소 표본도 판정 시점도 다르다.
+///   한 표에 섞으면 `builderVersion` 하나가 성격이 다른 두 집계를 함께 묶게 된다.
+///
+/// ── 분자와 분모를 **따로** 담는다 (D-106)
+///   비율을 미리 계산해 넣지 않는다. 진영을 모르는 라운드는 분모에서도 빠지므로
+///   표본이 얼마인지(`defenseRounds` / `attackRounds`)를 함께 봐야 값의 무게를 안다.
+///   표본이 최소치에 못 미치면 화면은 `측정중` 이다 — **가운데(`정석`)가 아니다.**
+model PlayerPlaystyleProfile {
+  id String @id @default(cuid())
+  /// 병영수첩 계정 번호. **닉네임이 아니라 이 값이 사람의 키다**
+  userNexonSn String
+  /// 우리 Player 와 연결된 경우만. 못 찾으면 null 로 두고 집계는 그대로 보존한다
+  playerId String?
+
+  /// 진영을 확정해 실제로 쓴 경기 수
+  matches Int @default(0)
+
+  /* --- 블루(수비) 라운드 --- */
+  /// 수비로 뛴, 교전이 있었던 라운드 수 — 모든 수비 축의 분모
+  defenseRounds Int @default(0)
+  /// 그중 **라운드 첫 교전의 당사자**였던 라운드 수
+  defenseOpening Int @default(0)
+  /// 첫 교전 지연의 합(초)과 잰 라운드 수
+  defenseDelaySum Float @default(0)
+  defenseDelayN   Int   @default(0)
+  /// 자리 흩어짐의 재료 — 교전 좌표의 합·제곱합. 분산은 `E[x²] − E[x]²` 로 나온다
+  defensePosX  Float @default(0)
+  defensePosY  Float @default(0)
+  defensePosX2 Float @default(0)
+  defensePosY2 Float @default(0)
+  defensePosN  Int   @default(0)
+
+  /* --- 레드(공격) 라운드 --- */
+  attackRounds  Int @default(0)
+  attackOpening Int @default(0)
+  attackDelaySum Float @default(0)
+  attackDelayN   Int   @default(0)
+  attackPosX  Float @default(0)
+  attackPosY  Float @default(0)
+  attackPosX2 Float @default(0)
+  attackPosY2 Float @default(0)
+  attackPosN  Int   @default(0)
+
+  /// 집계 규칙 버전. 규칙이 바뀌면 새 줄이 생기고 **옛 줄은 남는다**
+  builderVersion String
+  computedAt     DateTime @default(now())
+
+  player Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+
+  @@unique([userNexonSn, builderVersion])
+  @@index([playerId])
 }
