@@ -9,6 +9,7 @@
  * 경기키(18자) + `-` + 두 자리 번호 꼴이라 사람이 눈으로도 읽힌다.
  */
 import { prisma } from '@sacloud/db'
+import { season0MatchWhere } from '../lib/season0Window'
 
 async function main(): Promise<void> {
   const limit = Number(process.argv[2] ?? 600)
@@ -30,17 +31,47 @@ async function main(): Promise<void> {
   const clanOfLeagueClan = new Map(leagueClans.map((row) => [row.id, row.clanId]))
   const noOfClan = new Map(known.map((row) => [row.clanId, row.clanNo]))
 
+  /* **시즌0 창 안**만 받는다 (`docs/DECISIONS.md` D-175).
+     아는 클랜이 뛴 경기는 30만 건이 넘는데, 지표도 포지션도 시즌0 창만 본다.
+     창 밖을 받는 것은 요청을 버리는 것이다 */
   const matches = await prisma.match.findMany({
     where: {
       sourceMatchId: { not: null },
+      ...season0MatchWhere(),
       OR: [
         { redLeagueClanId: { in: [...clanOfLeagueClan.keys()] } },
         { blueLeagueClanId: { in: [...clanOfLeagueClan.keys()] } },
       ],
     },
-    select: { sourceMatchId: true, redLeagueClanId: true, blueLeagueClanId: true },
+    select: {
+      id: true,
+      sourceMatchId: true,
+      redLeagueClanId: true,
+      blueLeagueClanId: true,
+    },
     orderBy: { startAt: 'desc' },
   })
+
+  /* **포지션을 아직 모르는 선수가 많이 뛴 경기부터** 받는다.
+     한 요청이 열 명의 좌표를 준다. 이미 다 아는 경기를 다시 받으면 아무것도 안 는다 */
+  const judged = new Set(
+    (await prisma.playerPositionProfile.findMany({ select: { playerId: true } }))
+      .map((row) => row.playerId)
+      .filter((id): id is string => id !== null),
+  )
+  const unknownCount = new Map<string, number>()
+  for (let i = 0; i < matches.length; i += 800) {
+    const slice = matches.slice(i, i + 800)
+    const stats = await prisma.matchPlayerStat.findMany({
+      where: { matchId: { in: slice.map((m) => m.id) } },
+      select: { matchId: true, playerId: true },
+    })
+    for (const stat of stats) {
+      if (judged.has(stat.playerId)) continue
+      unknownCount.set(stat.matchId, (unknownCount.get(stat.matchId) ?? 0) + 1)
+    }
+  }
+  matches.sort((a, b) => (unknownCount.get(b.id) ?? 0) - (unknownCount.get(a.id) ?? 0))
 
   const numbers: string[] = []
   const indexOf = new Map<string, number>()
