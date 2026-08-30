@@ -110,7 +110,8 @@ async function main() {
     let written = 0
     for (let i = 0; i < rounds.length; i += CHUNK) {
       for (const row of rounds.slice(i, i + CHUNK)) {
-        const { id, playerId, userNexonSn, builderVersion, ...rest } = row
+        /* `id` 는 **일부러 뺀다** — 운영은 자기 id 를 쓴다. 로컬 id 를 옮기면 충돌한다 */
+        const { id: _id, playerId, userNexonSn, builderVersion, ...rest } = row
         const data = { ...rest, playerId: mapPlayer(playerId) }
         await prod.playerRoundProfile.upsert({
           where: { userNexonSn_builderVersion: { userNexonSn, builderVersion } },
@@ -125,7 +126,8 @@ async function main() {
     let posWritten = 0
     for (let i = 0; i < positions.length; i += CHUNK) {
       for (const row of positions.slice(i, i + CHUNK)) {
-        const { id, playerId, userNexonSn, classifierVersion, ...rest } = row
+        /* `id` 는 **일부러 뺀다** — 운영은 자기 id 를 쓴다 */
+        const { id: _id, playerId, userNexonSn, classifierVersion, ...rest } = row
         const data = { ...rest, playerId: mapPlayer(playerId) }
         await prod.playerPositionProfile.upsert({
           where: { userNexonSn_classifierVersion: { userNexonSn, classifierVersion } },

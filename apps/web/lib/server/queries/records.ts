@@ -733,7 +733,8 @@ export async function getLeaguePlayerDetail(
       const resolved = resolvePlayerPositionOf({
         userSet: leaguePlayer.player.position,
         mainWeapon: sniperGames === rifleGames ? null : sniperGames > rifleGames ? 1 : 0,
-        judged: judgedPosition,
+        judged: judgedPosition?.position ?? null,
+        judgedMargin: judgedPosition?.margin ?? null,
       })
       return { position_label: resolved.label, position_source: resolved.source }
     })(),

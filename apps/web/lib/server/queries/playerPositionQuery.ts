@@ -10,12 +10,18 @@
 import { prisma } from '@sacloud/db'
 import { POSITION_CLASSIFIER_VERSION } from '@sacloud/nexon'
 
-export async function playerJudgedPosition(playerId: string): Promise<string | null> {
+export interface JudgedPosition {
+  position: string | null
+  /** 1등·2등 닮음의 격차. 좁으면 화면이 그 판정을 쓰지 않는다 (D-199) */
+  margin: number | null
+}
+
+export async function playerJudgedPosition(playerId: string): Promise<JudgedPosition | null> {
   const row = await prisma.playerPositionProfile.findFirst({
     /* 판정 규칙 버전을 **반드시 건다.** 규칙이 바뀌면 옛 줄이 남으므로,
        필터가 없으면 DB 반환 순서에 따라 아무 쪽이나 이긴다 */
     where: { playerId, classifierVersion: POSITION_CLASSIFIER_VERSION },
-    select: { position: true },
+    select: { position: true, margin: true },
   })
-  return row?.position ?? null
+  return row ? { position: row.position, margin: row.margin } : null
 }
