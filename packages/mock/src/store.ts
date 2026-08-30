@@ -54,7 +54,12 @@ import {
   formMonthKeys,
   isBarracksUrl,
   judgeFormTrend,
+  dayLabelOf,
+  kdRateOrNull,
+  kstDayKey,
   kstDayStart,
+  winRateOrNull,
+  type PlayerDayRecord,
   playerRefsFromBarracksUrl,
   type TodayPerformance,
   type TodayTally,
@@ -1074,6 +1079,79 @@ function buildTodayPerf(
   return buildTodayPerformance(tally, seasonKdRate)
 }
 
+/* ------------------------------ 최근 3일치 기록 ------------------------------ */
+
+/**
+ * 최근 3일치 **일별 기록** (D-198).
+ *
+ * 실제 서버(`apps/web/lib/server/queries/recentDays.ts`)와 **같은 규칙**이다 —
+ * 첫 줄은 언제나 오늘, 그 아래는 실제로 뛴 날 두 개, 하루 경계는 오전 7시 KST.
+ * 여기서 다르게 세면 mock ↔ live 대조가 어긋난다.
+ */
+function buildRecentDays(
+  matches: MockMatch[],
+  playerId: string,
+  now: Date,
+): PlayerDayRecord[] {
+  interface Bucket {
+    games: number
+    win: number
+    lose: number
+    kill: number
+    death: number
+  }
+  const byDay = new Map<string, Bucket>()
+  for (const match of matches) {
+    const stat = match.players.find((row) => row.playerId === playerId)
+    if (!stat) continue
+    const key = kstDayKey(new Date(match.startAt))
+    const bucket = byDay.get(key) ?? { games: 0, win: 0, lose: 0, kill: 0, death: 0 }
+    bucket.games += 1
+    bucket.kill += stat.kill
+    bucket.death += stat.death
+    if (stat.side === match.winnerSide) bucket.win += 1
+    else bucket.lose += 1
+    byDay.set(key, bucket)
+  }
+
+  const todayKey = kstDayKey(now)
+  const toRow = (key: string): PlayerDayRecord => {
+    const bucket = byDay.get(key)
+    const label = dayLabelOf(key, todayKey)
+    if (!bucket || bucket.games === 0) {
+      return {
+        date: key,
+        label,
+        played: false,
+        games: 0,
+        win: 0,
+        lose: 0,
+        win_rate: null,
+        kd_rate: null,
+        kill_per_match: null,
+      }
+    }
+    return {
+      date: key,
+      label,
+      played: true,
+      games: bucket.games,
+      win: bucket.win,
+      lose: bucket.lose,
+      win_rate: winRateOrNull(bucket.win, bucket.lose),
+      kd_rate: kdRateOrNull(bucket.kill, bucket.death),
+      kill_per_match: killPerMatch(bucket.kill, bucket.games),
+    }
+  }
+
+  const rest = [...byDay.keys()]
+    .filter((key) => key !== todayKey)
+    .sort()
+    .reverse()
+    .slice(0, 2)
+  return [toRow(todayKey), ...rest.map(toRow)]
+}
+
 /* --------------------------------- 최근 폼 --------------------------------- */
 
 /**
@@ -1309,6 +1387,8 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     /* 최근 폼 (D-167). 원본에 없는 화면이다 — 사용자 요구로 추가했다 */
     form: buildPlayerForm(matches, playerId, new Date()),
     /* 오늘 퍼포먼스 (10절 · D-182). 기준은 상세정보와 **같은** 시즌 킬뎃이다 */
+    /* 최근 3일치 일별 기록 (D-198). 첫 줄은 언제나 오늘이다 */
+    recent_days: buildRecentDays(matches, playerId, new Date()),
     today: (() => {
       const perf = buildTodayPerf(
         matches,

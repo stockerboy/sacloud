@@ -137,6 +137,26 @@ export interface TodayPerformance {
 }
 
 /**
+ * 그 시각이 속한 **하루의 날짜 키** — `YYYY-MM-DD` (오전 7시 경계 · D-186).
+ *
+ * 새벽 3시 경기는 **전날** 로 묶인다. 자정으로 자르면 한 번 앉아서 한 판들이
+ * 이틀로 쪼개진다는 그 이유 그대로다.
+ */
+export function kstDayKey(at: Date): string {
+  const start = kstDayStart(at)
+  const shifted = new Date(start.getTime() + KST_OFFSET_MS)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`
+}
+
+/** 날짜 키 → 화면 표기. 오늘이면 `오늘`, 아니면 `8/16` (D-198) */
+export function dayLabelOf(key: string, todayKey: string): string {
+  if (key === todayKey) return '오늘'
+  const parts = key.split('-')
+  return `${Number(parts[1])}/${Number(parts[2])}`
+}
+
+/**
  * 오늘 경기가 한 판도 없을 때. **폼을 판정하지 않는다.**
  *
  * 문구는 사용자 확정 = `미접속` (2026-08-29 · D-186).

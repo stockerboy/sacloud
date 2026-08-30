@@ -25,6 +25,7 @@ import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
 import { buildPlayerForm } from './playerForm'
 import { playerTodayTally } from './todayPerformance'
+import { playerRecentDays } from './recentDays'
 import { playerTraits } from './playerTraits'
 import { toKstIso } from '../format'
 import {
@@ -605,7 +606,7 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, sniperRank, rifleRank, totals, weaponStats, record, form, todayTally, traits] =
+  const [rank, sniperRank, rifleRank, totals, weaponStats, record, form, todayTally, traits, recentDays] =
     await Promise.all([
       playerRankOf({
         id: leaguePlayer.id,
@@ -641,6 +642,8 @@ export async function getLeaguePlayerDetail(
          계약도 `nullable` 이다. 분포 계산은 리그 전체를 훑으므로 다른 조회보다 깨질 여지가
          크다 — 그 하나 때문에 기록실이 통째로 안 열리면 안 된다 */
       playerTraits(league.id, playerId).catch(() => null),
+      /* 최근 3일치 일별 기록 (D-198). 실패해도 카드 전체를 죽이지 않는다 */
+      playerRecentDays(league.id, playerId).catch(() => []),
     ])
 
   return {
@@ -705,6 +708,8 @@ export async function getLeaguePlayerDetail(
     /* 오늘 퍼포먼스 (10절 · D-182). 폼 판정은 **킬데스만** 본다 —
        기준은 상세정보와 같은 모집단에서 나온 시즌 평균이다 */
     today: toTodayPerformance(buildTodayPerformance(todayTally, totals.kdRate)),
+    /* 최근 3일치 일별 기록 (D-198). 첫 줄은 언제나 오늘이다 */
+    recent_days: recentDays,
     /* 전투력 육각형 · 플레이스타일 바 (4절 · 8절 · D-185).
        모양을 손보지 않는다 — `buildPlayerTraits()` 가 계약 모양 그대로 만들어 준다.
        계산이 실패했으면 `null` 이고 화면은 카드를 그리지 않는다 */

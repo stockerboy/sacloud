@@ -160,6 +160,7 @@ export default function LeaguePlayerRecordPage({
               summary={data.match_summary}
               leagueSlug={leagueSlug}
               today={data.today}
+              days={data.recent_days}
             />
           </div>
           <div className="mt-2">

@@ -1,9 +1,16 @@
 import Link from 'next/link'
-import type { MatchSummary, PlayerTodayPerformance, TeammateStat } from '@sacloud/contract'
+import type {
+  MatchSummary,
+  PlayerDayRecord,
+  PlayerTodayPerformance,
+  TeammateStat,
+} from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { formatAverage, formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
+/* `알수없음` 문구는 한 곳에서만 온다 — 매치 상세와 같은 글자를 써야 한다 (D-159) */
+import { UNKNOWN } from './matchDetailView'
 import { TodayPerformance } from './TodayPerformance'
 
 /**
@@ -78,6 +85,57 @@ function WinRateDonut({ rate }: { rate: number }) {
   )
 }
 
+/**
+ * 최근 3일치 **일별 기록** (D-198 · 사용자 지시).
+ *
+ * ```
+ * 오늘    미접속
+ * 8/16    6전 4승 2패 · 승률 67% · 킬뎃 54% · 판킬 9.2
+ * ```
+ *
+ * 첫 줄은 언제나 오늘이다 — 경기가 없으면 `미접속` 이다. **`0전 0승 0패` 로 적지 않는다**
+ * (D-186 과 같은 이유: 0승 0패는 결과처럼 읽힌다).
+ * 아래 두 줄은 **실제로 뛴 날**이라 날짜가 건너뛴다.
+ */
+function RecentDays({ days }: { days: PlayerDayRecord[] }) {
+  if (days.length === 0) return null
+  return (
+    <div className="w-full">
+      {days.map((day) => (
+        <div key={day.date} className="flex items-baseline py-1">
+          <div className="w-12 shrink-0 text-meta">{day.label}</div>
+          {day.played ? (
+            <div className="min-w-0">
+              <span>
+                {formatCount(day.games)}전 {formatCount(day.win)}승 {formatCount(day.lose)}패
+              </span>
+              {day.win_rate === null ? null : (
+                <span className={`ml-2 ${rateClass(day.win_rate)}`}>
+                  {formatRate(day.win_rate)}%
+                </span>
+              )}
+              <span className="ml-2 text-xs text-meta">
+                킬뎃{' '}
+                {day.kd_rate === null ? (
+                  <span className="text-unknown">{UNKNOWN}</span>
+                ) : (
+                  <span className={rateClass(day.kd_rate)}>{formatRate(day.kd_rate)}%</span>
+                )}
+                {day.kill_per_match === null ? null : (
+                  <> · 판킬 {formatAverage(day.kill_per_match)}</>
+                )}
+              </span>
+            </div>
+          ) : (
+            /* 그날 아예 안 왔다는 뜻이다 (D-186 의 `미접속` 과 같은 말) */
+            <div className="text-meta">미접속</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function streakText(streak: MatchSummary['streak']): string {
   if (streak.type === 'none' || streak.count === 0) return ''
   return `${streak.count}${streak.type === 'win' ? '연승' : '연패'} 중`
@@ -98,6 +156,7 @@ export function RecentMatchSummary({
   leagueSlug,
   showKdRate = true,
   today,
+  days = [],
 }: {
   summary: MatchSummary
   leagueSlug: string
@@ -123,6 +182,8 @@ export function RecentMatchSummary({
    * 그때는 값이 있고 문구가 `미접속` 이다.
    */
   today?: PlayerTodayPerformance | null
+  /** 최근 3일치 일별 기록 (D-198). 선수 기록실에만 온다 */
+  days?: PlayerDayRecord[]
 }) {
   /** 선수 기록실인가 — 오늘 기록을 넘긴 쪽이 선수 기록실이다 */
   const isPlayerRecord = today !== undefined
@@ -147,18 +208,33 @@ export function RecentMatchSummary({
               isPlayerRecord ? '' : 'ml-5'
             }`}
           >
-            <div>
+            {/*
+              선수 기록실은 `20전 11승 9패` 요약과 `3연승 중` 을 **빼고**
+              **최근 3일치 일별 기록**을 넣는다 (D-198 · 사용자 지시).
+              클랜 기록실은 예전 그대로다 — 일별 기록은 선수 화면에만 있다.
+
+              계약 필드(`recent_count`·`win`·`lose`·`streak`)는 남겨 뒀다.
+              `WeaponStatPanel` 과 같은 처리다 — 값은 그대로 내려오고 화면만 안 쓴다.
+            */}
+            {isPlayerRecord ? (
+              <RecentDays days={days} />
+            ) : (
               <div>
-                {formatCount(summary.recent_count)}전 {formatCount(summary.win)}승{' '}
-                {formatCount(summary.lose)}패 (
-                {/* 원본은 이 괄호 안 승률에도 색 등급을 준다 (85% → 빨강).
-                    랭킹 표와 같은 `rateClass` 규칙이라 새 경계를 만들지 않는다 */}
-                <span className={rateClass(summary.win_rate)}>{formatRate(summary.win_rate)}%</span>)
+                <div>
+                  {formatCount(summary.recent_count)}전 {formatCount(summary.win)}승{' '}
+                  {formatCount(summary.lose)}패 (
+                  {/* 원본은 이 괄호 안 승률에도 색 등급을 준다 (85% → 빨강).
+                      랭킹 표와 같은 `rateClass` 규칙이라 새 경계를 만들지 않는다 */}
+                  <span className={rateClass(summary.win_rate)}>
+                    {formatRate(summary.win_rate)}%
+                  </span>
+                  )
+                </div>
+                <div className={`mt-2 ${streakClass(summary.streak)}`}>
+                  {streakText(summary.streak)}
+                </div>
               </div>
-              <div className={`mt-2 ${streakClass(summary.streak)}`}>
-                {streakText(summary.streak)}
-              </div>
-            </div>
+            )}
           </div>
         </div>
         {/*

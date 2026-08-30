@@ -115,6 +115,28 @@ export type PlayerForm = z.infer<typeof PlayerForm>
  * 최근 폼(`PlayerForm` · D-167)과 **다른 것**이다. 그쪽은 `최근 10경기 vs 직전 30경기`,
  * 이쪽은 `오늘 vs 시즌평균` 이다.
  */
+/**
+ * 하루치 성적 한 줄 (D-198).
+ *
+ * 모르는 값은 `null` 이다. **0 으로 채우지 않는다** — 0%는 "다 졌다" 는 뜻이고
+ * `null` 은 "잴 수 없다" 는 뜻이다 (D-106).
+ */
+export const PlayerDayRecord = z.object({
+  /** `YYYY-MM-DD` (오전 7시 KST 경계) */
+  date: z.string(),
+  /** 화면 표기 — `오늘` 또는 `8/16` */
+  label: z.string(),
+  /** 그날 경기가 있었나. `false` 면 화면이 `미접속` 을 적는다 */
+  played: z.boolean(),
+  games: z.number().int(),
+  win: z.number().int(),
+  lose: z.number().int(),
+  win_rate: z.number().nullable(),
+  kd_rate: z.number().nullable(),
+  kill_per_match: z.number().nullable(),
+})
+export type PlayerDayRecord = z.infer<typeof PlayerDayRecord>
+
 export const PlayerTodayPerformance = z.object({
   /** 오늘(KST) 뛴 래더 경기 전부 */
   games: Count,
@@ -216,6 +238,16 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
    * 오늘 경기가 없는 것과 **다르다** — 그때는 값이 있고 문구가 `오늘 경기기록 없음` 이다.
    */
   today: PlayerTodayPerformance.nullable().default(null),
+  /**
+   * **최근 3일치 일별 기록** (D-198 · 사용자 지시).
+   *
+   * 첫 줄은 **언제나 오늘**이다 — 경기가 없으면 `played: false` 이고 화면이 `미접속`을 적는다.
+   * 그 아래는 **가장 최근에 경기한 날** 두 개다. 달력상 어제·그제가 아니라
+   * **실제로 뛴 날**이라 날짜가 건너뛴다 (예: 오늘 · 8/16 · 8/8).
+   *
+   * 하루의 경계는 **오전 7시 KST** 다 (D-186).
+   */
+  recent_days: z.array(PlayerDayRecord).default([]),
   /**
    * 전투력 육각형 (4절 · D-185).
    *
