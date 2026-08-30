@@ -27,19 +27,27 @@ export function WriterName({
   showAffiliation?: boolean
 }) {
   const affiliation = showAffiliation ? affiliationLabel(writer.clan?.name) : null
-  // 공개 작성자는 파란 닉네임, 익명은 기본색 (원본 관측 규칙을 그대로 둔다)
-  const tone = writer.anonymous ? 'text-card-text' : 'text-writer'
+  /*
+   * `적진` — 색을 하나만 쓰므로 공개/익명은 **색이 아니라 밝기**로 가른다.
+   * 공개 작성자(누를 수 있는 이름)가 밝고, 익명은 한 단계 죽인다.
+   * 진홍은 여기에 쓰지 않는다 — 목록이 전부 빨개진다.
+   */
+  const tone = writer.anonymous ? 'text-meta' : 'text-text-strong'
 
   return (
     <span className="inline-flex min-w-0 items-baseline gap-1">
       {affiliation ? (
-        <span className="shrink-0 text-xs text-meta" title={affiliation}>
+        <span className="shrink-0 text-xs text-faint" title={affiliation}>
           {affiliation}
         </span>
       ) : null}
       {!writer.anonymous && writer.player ? (
-        <Link href={`/player/${writer.player.id}`} className={`${tone} truncate hover:underline`}>
-          {writer.nickname}
+        /* 색은 안쪽 `span` 이 가진다 — `a { color: inherit }` 가 유틸리티를 누른다.
+           가리켰을 때 진홍이 켜지는 것은 전역 `a:hover` 가 아니라 이 `group-hover` 다 */
+        <Link href={`/player/${writer.player.id}`} className="group min-w-0 truncate">
+          <span className={`${tone} transition-colors duration-100 group-hover:text-accent`}>
+            {writer.nickname}
+          </span>
         </Link>
       ) : (
         <span className={`${tone} truncate`}>{writer.nickname}</span>

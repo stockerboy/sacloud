@@ -9,24 +9,32 @@ import { sanitizePostContent } from './sanitize'
 import { WriterName } from './WriterName'
 
 /**
- * 댓글 목록.
+ * 댓글 목록 — `적진`.
  *
- * 원본 규칙 (docs/3rd-supply-structure.md · 계약)
+ * 규칙은 그대로다.
  * - 대댓글은 **1단계까지만** 허용된다 (`comments[]` 중첩이 한 겹)
  * - 삭제된 댓글은 행을 남기고 내용만 가린다 (`deleted`)
  * - 글쓴이가 단 댓글에는 표식이 붙는다 (`board_writer`)
  * - 익명 댓글은 자동 별칭(`무명-123` 형태)으로 표시된다
  *
- * 원본의 댓글 영역 세부 배치는 실측하지 못했다 `[미확인]` — 글 상세와 같은 뼈대를 재사용했다.
+ * 겉만 바꿨다 — 구분선을 `--color-line-soft` 1px 하나로 줄이고, 대댓글은 선 대신
+ * 들여쓰기 + 왼쪽 얇은 선으로 나눈다. 진홍은 **내가 누른 추천/비추천**에서만 나온다.
  */
+
+const FIELD =
+  'rounded-[var(--radius)] border border-line bg-card px-3 py-2 text-sm text-text placeholder:text-faint outline-none transition-colors duration-100 focus:border-accent'
+const INPUT = `w-full ${FIELD}`
+
+const SUBMIT =
+  'inline-flex h-9 shrink-0 items-center justify-center rounded-[var(--radius)] border border-accent px-4 text-sm text-accent transition-colors duration-100 hover:bg-card-2 disabled:border-line disabled:text-faint'
 
 function CommentBody({ comment }: { comment: Comment | CommentReply }) {
   if (comment.deleted) {
-    return <div className="py-1 text-meta">삭제된 댓글입니다.</div>
+    return <div className="py-1 text-sm text-faint">삭제된 댓글입니다.</div>
   }
   return (
     <div
-      className="break-words py-1 leading-6"
+      className="max-w-[68ch] break-words py-1 text-[0.95rem] leading-6"
       dangerouslySetInnerHTML={{ __html: sanitizePostContent(comment.content) }}
     />
   )
@@ -34,17 +42,19 @@ function CommentBody({ comment }: { comment: Comment | CommentReply }) {
 
 function CommentHead({ comment }: { comment: Comment | CommentReply }) {
   return (
-    <div className="flex items-center text-sm">
+    <div className="flex flex-wrap items-center gap-x-2 text-sm">
       {/* 반익명 — 소속(`veritas 소속`) + 이름(`글쓴이` · `익명1` …). 번호는 서버가 매긴다 */}
       <WriterName writer={comment.writer} />
       {/* 익명 이름이 이미 `글쓴이` 면 배지를 겹쳐 달지 않는다 */}
       {comment.board_writer && !comment.writer.anonymous ? (
-        <span className="ml-1 rounded bg-badge px-1 text-xs text-white">글쓴이</span>
+        <span className="rounded-[var(--radius)] border border-line px-1.5 text-xs text-meta">
+          글쓴이
+        </span>
       ) : null}
-      <span className="ml-2 text-meta">
+      <span className="num text-xs text-faint">
         <RelativeTime value={comment.created_at} />
       </span>
-      {comment.last_edited ? <span className="ml-1 text-meta">(수정됨)</span> : null}
+      {comment.last_edited ? <span className="text-xs text-faint">(수정됨)</span> : null}
     </div>
   )
 }
@@ -57,21 +67,24 @@ function VoteRow({
   onVote: (commentId: string, type: number) => void
 }) {
   if (comment.deleted) return null
+  const base = 'num text-xs transition-colors duration-100 hover:text-text-strong'
   return (
-    <div className="mt-1 flex items-center text-sm">
+    <div className="mt-1 flex items-center gap-3">
       <button
         type="button"
         onClick={() => onVote(comment.id, 1)}
-        className={`mr-2 ${comment.like_type === 1 ? 'text-vote-up' : 'text-meta'}`}
+        aria-pressed={comment.like_type === 1}
+        className={`${base} ${comment.like_type === 1 ? 'text-accent' : 'text-faint'}`}
       >
-        ▲ {formatCount(comment.like_count)}
+        <span aria-hidden>▲</span> {formatCount(comment.like_count)}
       </button>
       <button
         type="button"
         onClick={() => onVote(comment.id, -1)}
-        className={comment.like_type === -1 ? 'text-vote-down' : 'text-meta'}
+        aria-pressed={comment.like_type === -1}
+        className={`${base} ${comment.like_type === -1 ? 'text-accent' : 'text-faint'}`}
       >
-        ▼ {formatCount(comment.dislike_count)}
+        <span aria-hidden>▼</span> {formatCount(comment.dislike_count)}
       </button>
     </div>
   )
@@ -90,24 +103,24 @@ export function CommentList({
 }) {
   const [replyTo, setReplyTo] = useState<string | null>(null)
 
-  if (loading) return <div className="py-6 text-center text-meta">댓글을 불러오는 중…</div>
+  if (loading) return <div className="py-6 text-center text-sm text-faint">댓글을 불러오는 중…</div>
   if (!comments || comments.length === 0) {
     return <EmptyState message="첫 댓글을 남겨보세요." />
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col text-text">
       {comments.map((comment) => (
-        <div key={comment.id} className="border-b border-b-divider py-3 last:border-b-0">
+        <div key={comment.id} className="border-b border-b-line-soft py-4 last:border-b-0">
           <CommentHead comment={comment} />
           <CommentBody comment={comment} />
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
             <VoteRow comment={comment} onVote={onVote} />
             {!comment.deleted ? (
               <button
                 type="button"
                 onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
-                className="ml-3 mt-1 text-sm text-meta"
+                className="mt-1 text-xs text-faint transition-colors duration-100 hover:text-text-strong"
               >
                 답글
               </button>
@@ -123,9 +136,9 @@ export function CommentList({
             />
           ) : null}
 
-          {/* 대댓글은 1단계까지만 — 여기서 더 중첩하지 않는다 (원본 규칙) */}
+          {/* 대댓글은 1단계까지만 — 여기서 더 중첩하지 않는다 */}
           {comment.comments.length > 0 ? (
-            <div className="mt-2 border-l-2 border-l-divider pl-4">
+            <div className="mt-3 border-l border-l-line-soft pl-4">
               {comment.comments.map((reply) => (
                 <div key={reply.id} className="py-2">
                   <CommentHead comment={reply} />
@@ -144,12 +157,12 @@ export function CommentList({
 function ReplyForm({ onSubmit }: { onSubmit: (content: string) => void }) {
   const [value, setValue] = useState('')
   return (
-    <div className="mt-2 flex items-start">
+    <div className="mt-3 flex items-start gap-2">
       <textarea
         value={value}
         onChange={(event) => setValue(event.target.value)}
         rows={2}
-        className="flex-grow rounded border border-line px-2 py-1"
+        className={INPUT}
         placeholder="답글을 입력하세요."
       />
       <button
@@ -159,7 +172,7 @@ function ReplyForm({ onSubmit }: { onSubmit: (content: string) => void }) {
           onSubmit(value.trim())
           setValue('')
         }}
-        className="ml-2 h-10 w-20 rounded bg-more text-white disabled:opacity-60"
+        className={SUBMIT}
       >
         등록
       </button>
@@ -168,7 +181,7 @@ function ReplyForm({ onSubmit }: { onSubmit: (content: string) => void }) {
 }
 
 /**
- * 댓글 작성 폼 (원본: `댓글쓰기` 제목 + 에디터 + 등록 버튼).
+ * 댓글 작성 폼.
  *
  * 반익명 체크박스는 **옵트인**이다 (`showAnonymousToggle`).
  * 호출부가 체크 값을 `disclose_type` 으로 서버에 보낼 준비가 됐을 때만 켠다 —
@@ -183,7 +196,7 @@ export function CommentForm({
 }: {
   /** `anonymous` 가 false 면 닉네임과 소속이 모두 공개된다 (SITE_SPEC_V2 2절) */
   onSubmit: (content: string, password: string | null, anonymous: boolean) => void
-  /** 비로그인 작성이면 삭제용 비밀번호를 받는다 (원본 동작) */
+  /** 비로그인 작성이면 삭제용 비밀번호를 받는다 */
   requirePassword: boolean
   /** 익명 체크박스를 보일지 */
   showAnonymousToggle?: boolean
@@ -197,23 +210,23 @@ export function CommentForm({
   const canSubmit = content.trim().length > 0 && (!requirePassword || password.length > 0)
 
   return (
-    <div className="mb-4 flex flex-col">
-      <div className="my-4 font-bold">댓글쓰기</div>
+    <div className="mt-8 flex flex-col border-t border-t-line pt-6">
+      <div className="mb-3 text-sm tracking-[0.12em] text-faint">댓글쓰기</div>
       <textarea
         value={content}
         onChange={(event) => setContent(event.target.value)}
         rows={3}
-        className="rounded border border-line px-3 py-2"
+        className={INPUT}
         placeholder="댓글을 입력하세요."
       />
-      <div className="mt-4 flex h-14 items-center">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         {showAnonymousToggle ? (
-          <label className="mr-3 flex cursor-pointer select-none items-center text-sm">
+          <label className="flex cursor-pointer select-none items-center gap-1 text-sm text-meta">
             <input
               type="checkbox"
               checked={anonymous}
               onChange={(event) => setAnonymous(event.target.checked)}
-              className="mr-1"
+              className="accent-[var(--color-accent)]"
             />
             익명
           </label>
@@ -224,7 +237,7 @@ export function CommentForm({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="삭제용 비밀번호"
-            className="mr-3 h-10 w-48 rounded border border-line px-3"
+            className={`h-9 w-48 ${FIELD}`}
           />
         ) : null}
         <button
@@ -235,7 +248,7 @@ export function CommentForm({
             setContent('')
             setPassword('')
           }}
-          className="inline-flex h-10 w-24 items-center justify-center rounded bg-more px-4 py-2 text-white shadow-card disabled:opacity-60"
+          className={`${SUBMIT} ml-auto w-24`}
         >
           등록
         </button>

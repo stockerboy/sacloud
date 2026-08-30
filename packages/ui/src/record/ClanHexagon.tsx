@@ -79,11 +79,9 @@ export function ClanHexagon({ hexagon }: { hexagon: ClanHexagonData }) {
         {/* 여섯 축을 다 쟀을 때만 잇는다 — 반쪽 도형은 넓이를 거짓말한다 */}
         {filled ? (
           <polygon
-            points={hexPolygon(
-              hexagon.axes.map((axis) => radiusOf(axis.percentile as number)),
-            )}
+            points={hexPolygon(hexagon.axes.map((axis) => radiusOf(axis.percentile as number)))}
             fill="var(--color-win-bar)"
-            fillOpacity="0.35"
+            fillOpacity="0.16"
             stroke="var(--color-win-bar)"
             strokeWidth="1.4"
           />
@@ -112,7 +110,9 @@ export function ClanHexagon({ hexagon }: { hexagon: ClanHexagonData }) {
                 y={at.y}
                 textAnchor={at.anchor}
                 fontSize={9}
-                fill="var(--color-ink)"
+                /* `--color-ink` 는 페이지 바닥색(#060505)이라 카드(#120c0c) 위에서
+                   글자가 사라진다. 축 이름은 본문 강조색으로 그린다 (`적진`) */
+                fill="var(--color-text-strong)"
               >
                 {axis.label}
               </text>
@@ -121,9 +121,7 @@ export function ClanHexagon({ hexagon }: { hexagon: ClanHexagonData }) {
                 y={at.y + 11}
                 textAnchor={at.anchor}
                 fontSize={9}
-                fill={
-                  axis.percentile === null ? 'var(--color-meta)' : 'var(--color-win-bar)'
-                }
+                fill={axis.percentile === null ? 'var(--color-meta)' : 'var(--color-win-bar)'}
               >
                 {axis.percentile === null
                   ? '측정중'

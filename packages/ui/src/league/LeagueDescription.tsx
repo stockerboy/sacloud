@@ -11,7 +11,7 @@ export function LeagueDescription({ html }: { html: string | null }) {
 
   return (
     <div
-      className="border-x border-b border-divider bg-card px-6 py-6"
+      className="border-b border-line-soft px-8 py-8 leading-relaxed text-text max-md:px-4"
       // sanitizeLeagueDescription 을 거친 문자열만 들어온다
       dangerouslySetInnerHTML={{ __html: clean }}
     />

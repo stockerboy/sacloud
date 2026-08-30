@@ -1,6 +1,7 @@
 'use client'
 
 import { RANK_WEAPON_LABEL, type RankWeapon } from '@sacloud/contract'
+import { TAB, TAB_ACTIVE, TAB_IDLE, TAB_ROW } from './rankStyles'
 
 /**
  * 개인랭킹 무기 탭 — `통합 / 스나 / 라플` (D-169).
@@ -25,28 +26,19 @@ export function RankWeaponTabs({
   onChange: (weapon: RankWeapon) => void
 }) {
   return (
-    <div className="mobile-scroll-x mb-5 flex items-stretch text-lg">
-      {TABS.map((weapon, index) => {
-        const first = index === 0
-        const last = index === TABS.length - 1
-        return (
-          <button
-            key={weapon}
-            type="button"
-            onClick={() => onChange(weapon)}
-            aria-pressed={weapon === current}
-            className={[
-              /* 아래 값은 `DivisionTabs` 와 **완전히 같다.** 근거도 그쪽 주석에 있다 */
-              'shrink-0 whitespace-nowrap px-5 py-3 border-line max-md:px-3.5 max-md:py-2 max-md:text-base',
-              first ? 'border rounded-l' : 'border-t border-r border-b',
-              last ? 'rounded-r' : '',
-              weapon === current ? 'bg-tab-active text-tab-active-fg' : '',
-            ].join(' ')}
-          >
-            {RANK_WEAPON_LABEL[weapon]}
-          </button>
-        )
-      })}
+    <div className={TAB_ROW}>
+      {TABS.map((weapon) => (
+        <button
+          key={weapon}
+          type="button"
+          onClick={() => onChange(weapon)}
+          aria-pressed={weapon === current}
+          /* 클래스는 `DivisionTabs` 와 **완전히 같은 상수**다 (`rankStyles.ts`) */
+          className={`${TAB} ${weapon === current ? TAB_ACTIVE : TAB_IDLE}`}
+        >
+          {RANK_WEAPON_LABEL[weapon]}
+        </button>
+      ))}
     </div>
   )
 }

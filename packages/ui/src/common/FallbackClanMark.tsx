@@ -18,6 +18,9 @@
  *   예전에는 하늘색으로 속을 채운 실루엣이었다. 사용자가 색과 형태를 지정해 바꿨다 —
  *   "빨간 구름모양 테두리, 테두리 안까지 빨간색으로 채우지 마라. 그냥 테두리로만 그려라".
  *
+ *   `적진` 으로 넘어오면서 색값을 **토큰(`--color-card` · `--color-accent`)** 으로 바꿨다.
+ *   형태는 그대로다. 하드코딩된 `#141414` / `#E23A3A` 는 팔레트를 다시 칠할 때 따라오지 않는다.
+ *
  *   실루엣이 아니라 윤곽선이라 작은 크기에서 선이 사라지기 쉽다. 그래서
  *   원 세 개를 겹친 단순한 형태를 **하나의 외곽 경로**로 그리고 선을 굵게 잡았다.
  *   `vector-effect` 를 쓰지 않는다 — 뷰박스가 고정이라 확대해도 선 굵기가 비율을 지킨다.
@@ -40,7 +43,7 @@ export function FallbackClanMark({ className, alt = '' }: FallbackClanMarkProps)
       aria-label={alt || undefined}
       aria-hidden={alt ? undefined : true}
     >
-      <circle cx="16" cy="16" r="16" fill="#141414" />
+      <circle cx="16" cy="16" r="16" fill="var(--color-card)" />
       {/*
         구름 윤곽선 하나. 왼쪽 아래에서 시작해 작은 봉우리 → 큰 봉우리 → 오른쪽 봉우리를
         지나 밑변으로 닫는다. `fill="none"` 이라 **안이 비어 있다** — 지시대로 테두리뿐이다.
@@ -52,7 +55,7 @@ export function FallbackClanMark({ className, alt = '' }: FallbackClanMarkProps)
            a4.1 4.1 0 0 1 1.6 10.1
            Z"
         fill="none"
-        stroke="#E23A3A"
+        stroke="var(--color-accent)"
         strokeWidth="2"
         strokeLinejoin="round"
         strokeLinecap="round"

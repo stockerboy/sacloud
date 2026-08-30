@@ -36,7 +36,7 @@ export default function BoardWritePage({ params }: { params: Promise<{ category:
 
   return (
     <>
-      <div className="my-2 text-2xl">글쓰기</div>
+      <h1 className="mb-6 display text-2xl text-text-strong">글쓰기</h1>
       <PostForm
         requirePassword={!loggedIn}
         submitting={create.isPending}

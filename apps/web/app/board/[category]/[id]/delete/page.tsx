@@ -43,10 +43,10 @@ export default function BoardDeletePage({
   const needsPassword = !post.data.data.login
 
   return (
-    <div className="rounded bg-card px-6 py-6 shadow-card">
-      <div className="text-2xl">글을 삭제할까요?</div>
-      <div className="mt-3 text-meta">{post.data.data.title}</div>
-      <div className="mt-1 text-meta">삭제한 글은 되돌릴 수 없습니다.</div>
+    <div className="rounded-[var(--radius)] border border-line bg-card px-6 py-6 text-text max-md:px-4">
+      <h1 className="display text-2xl text-text-strong">글을 삭제할까요?</h1>
+      <div className="mt-4 text-meta">{post.data.data.title}</div>
+      <div className="mt-1 text-sm text-faint">삭제한 글은 되돌릴 수 없습니다.</div>
 
       {needsPassword ? (
         <input
@@ -54,27 +54,26 @@ export default function BoardDeletePage({
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           placeholder="작성 시 입력한 비밀번호"
-          className="mt-4 h-10 w-64 rounded border border-line px-3"
+          className="mt-5 h-10 w-64 rounded-[var(--radius)] border border-line bg-card px-3 text-sm text-text placeholder:text-faint outline-none transition-colors duration-100 focus:border-accent"
         />
       ) : null}
 
       {remove.isError ? (
-        <div className="mt-3 text-lose">삭제하지 못했습니다. 비밀번호를 확인해 주세요.</div>
+        <div className="mt-3 text-sm text-accent">
+          삭제하지 못했습니다. 비밀번호를 확인해 주세요.
+        </div>
       ) : null}
 
-      <div className="mt-5 flex">
+      <div className="mt-6 flex gap-2">
         <button
           type="button"
           disabled={remove.isPending || (needsPassword && !password)}
           onClick={() => remove.mutate()}
-          className="mr-2 h-10 w-24 rounded bg-lose text-white disabled:opacity-60"
+          className="h-10 w-24 rounded-[var(--radius)] border border-accent text-sm text-accent transition-colors duration-100 hover:bg-card-2 disabled:border-line disabled:text-faint"
         >
           삭제
         </button>
-        <Link
-          href={`/board/${category}/${id}`}
-          className="inline-flex h-10 w-24 items-center justify-center rounded border border-line"
-        >
+        <Link href={`/board/${category}/${id}`} className="btn-line h-10 w-24 text-sm">
           취소
         </Link>
       </div>

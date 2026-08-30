@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   AuthCard,
+  AuthError,
   AuthField,
   AuthInput,
   AuthSubmit,
+  AuthTitle,
   canSubmitSignup,
   isAllowedSignupEmail,
   validateSignupNickname,
@@ -54,19 +56,14 @@ export default function SignupPage() {
   return (
     <AuthCard
       footer={
-        <Link href="/auth/login" className="underline">
+        <Link href="/auth/login" className="text-text-strong underline underline-offset-4">
           로그인으로 돌아가기
         </Link>
       }
     >
-      <div className="mb-4">
-        <div className="font-bold">이메일인증</div>
-        <div className="mt-1 text-sm text-meta">
-          가입 과정에서 이메일 인증을 진행합니다.
-          <br />
-          가입은 네이버 메일 주소로만 할 수 있습니다.
-        </div>
-      </div>
+      <AuthTitle hint="가입 과정에서 이메일 인증을 진행합니다. 가입은 네이버 메일 주소로만 할 수 있습니다.">
+        회원가입
+      </AuthTitle>
 
       <AuthField label="이메일">
         <AuthInput
@@ -77,7 +74,7 @@ export default function SignupPage() {
         />
       </AuthField>
       {email && !domainOk ? (
-        <div className="-mt-2 mb-3 text-sm text-lose">네이버 메일 주소만 사용할 수 있습니다.</div>
+        <div className="-mt-4 mb-5 text-sm text-accent">네이버 메일 주소만 사용할 수 있습니다.</div>
       ) : null}
 
       <AuthField label="비밀번호">
@@ -89,7 +86,7 @@ export default function SignupPage() {
         />
       </AuthField>
       {password && passwordError ? (
-        <div className="-mt-2 mb-3 text-sm text-lose">{passwordError}</div>
+        <div className="-mt-4 mb-5 text-sm text-accent">{passwordError}</div>
       ) : null}
 
       <AuthField label="닉네임">
@@ -101,29 +98,37 @@ export default function SignupPage() {
         />
       </AuthField>
       {nickname && nicknameError ? (
-        <div className="-mt-2 mb-3 text-sm text-lose">{nicknameError}</div>
+        <div className="-mt-4 mb-5 text-sm text-accent">{nicknameError}</div>
       ) : null}
 
-      <label className="flex items-start text-sm">
+      <label className="flex items-start text-sm text-meta">
         <input
           type="checkbox"
           checked={agreed}
           onChange={(event) => setAgreed(event.target.checked)}
-          className="mr-2 mt-0.5"
+          className="mr-2 mt-0.5 accent-accent"
         />
         <span>
-          <Link href="/clause/service" target="_blank" className="underline">
+          <Link
+            href="/clause/service"
+            target="_blank"
+            className="text-text underline underline-offset-4"
+          >
             이용약관
           </Link>
           과{' '}
-          <Link href="/clause/policy" target="_blank" className="underline">
+          <Link
+            href="/clause/policy"
+            target="_blank"
+            className="text-text underline underline-offset-4"
+          >
             개인정보 취급방침
           </Link>
           에 동의합니다.
         </span>
       </label>
 
-      {signup.isError ? <div className="mt-3 text-lose">가입하지 못했습니다.</div> : null}
+      {signup.isError ? <AuthError>가입하지 못했습니다.</AuthError> : null}
 
       <AuthSubmit disabled={!canSubmit || signup.isPending} onClick={() => signup.mutate()}>
         회원가입

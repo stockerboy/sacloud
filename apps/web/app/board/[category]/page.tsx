@@ -9,6 +9,7 @@ import {
   BoardSearch,
   BoardTable,
   boardAllowsWriteAndSearch,
+  boardDisplayName,
   boardHeading,
   type BoardSearchType,
 } from '@sacloud/ui'
@@ -23,8 +24,11 @@ import { useApiReady } from '@/app/providers'
  * - 페이지 이동은 `?cursor=` 를 URL에 실어 이동한다 (랭킹의 `더 불러오기`와 다름)
  * - 한 페이지 15건 (`PAGE_SIZE.BOARD`)
  *
- * 화면 순서도 원본을 따른다 — **소제목 + 글쓰기 → 검색 폼 → 목록 → 페이지 이동**.
- * 인기게시판은 집계 화면이라 글쓰기·검색이 **둘 다 없다** (UI_PARITY_AUDIT 9-1 · 9-2 · 9-5).
+ * 화면 순서 — **소제목 + 글쓰기 → 검색 폼 → 목록 → 페이지 이동**.
+ * Hot게시판은 집계 화면이라 글쓰기·검색이 **둘 다 없다**.
+ *
+ * 소제목의 이름은 `boardDisplayName` 을 거친다 — 서버가 주는 `인기` 는 화면에서 `Hot` 이다
+ * (사용자 지시, 2026-08-30). slug(`hot`)·API·DB 는 그대로다.
  */
 export default function BoardListPage({ params }: { params: Promise<{ category: string }> }) {
   const { category } = use(params)
@@ -58,7 +62,7 @@ export default function BoardListPage({ params }: { params: Promise<{ category: 
     enabled: ready && showNotice,
   })
 
-  /* 소제목은 카테고리 **이름**으로 만든다 (`자유` → `자유게시판`).
+  /* 소제목은 카테고리 **표시 이름**으로 만든다 (`자유` → `자유게시판`, `인기` → `Hot게시판`).
      이름은 레이아웃이 이미 받아 둔 `GET /infos` 에서 온다 — 캐시를 공유하므로 추가 호출이 없다. */
   const infos = useQuery({
     queryKey: ['infos'],
@@ -75,15 +79,16 @@ export default function BoardListPage({ params }: { params: Promise<{ category: 
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <div className="text-2xl">
-          {q ? `"${q}" 검색 결과` : categoryName ? boardHeading(categoryName) : null}
-        </div>
+      <div className="mb-6 flex items-baseline justify-between gap-4">
+        <h1 className="display text-2xl text-text-strong">
+          {q
+            ? `"${q}" 검색 결과`
+            : categoryName
+              ? boardHeading(boardDisplayName(category, categoryName))
+              : null}
+        </h1>
         {writable ? (
-          <Link
-            href={`/board/${category}/write`}
-            className="my-2 inline-flex items-center rounded bg-more px-4 py-2 text-white"
-          >
+          <Link href={`/board/${category}/write`} className="btn-line shrink-0 px-4 py-1.5 text-sm">
             글쓰기
           </Link>
         ) : null}

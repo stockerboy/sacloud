@@ -101,9 +101,7 @@ function BlueDefense({ defense }: { defense: ClanRoundMetricsData['blue_defense'
       unit="%"
       tone={defense.rate}
       detail={
-        defense.conceded_per5 === null
-          ? ''
-          : `블루 5라운드중 ${defense.conceded_per5}라운드 허용`
+        defense.conceded_per5 === null ? '' : `블루 5라운드중 ${defense.conceded_per5}라운드 허용`
       }
       sample={`수비 ${formatCount(defense.rounds)}라운드 · ${formatCount(defense.conceded)}라운드 내줌`}
     />
@@ -112,16 +110,13 @@ function BlueDefense({ defense }: { defense: ClanRoundMetricsData['blue_defense'
 
 /** 어택성공률 — 원문: `레드 5라운드중 2.6라운드를 따고 폭탄설치 1.4번 성공` */
 function Attack({ attack }: { attack: ClanRoundMetricsData['attack'] }) {
-  const plant =
-    attack.plant_per5 === null ? '' : ` · 폭탄설치 ${attack.plant_per5}번`
+  const plant = attack.plant_per5 === null ? '' : ` · 폭탄설치 ${attack.plant_per5}번`
   return (
     <MetricRow
       value={attack.rate === null ? null : formatRate(attack.rate)}
       unit="%"
       tone={attack.rate}
-      detail={
-        attack.won_per5 === null ? '' : `레드 5라운드중 ${attack.won_per5}라운드${plant}`
-      }
+      detail={attack.won_per5 === null ? '' : `레드 5라운드중 ${attack.won_per5}라운드${plant}`}
       sample={`공격 ${formatCount(attack.rounds)}라운드 · 설치 ${formatCount(attack.plants)}/${formatCount(attack.plant_rounds)}라운드`}
     />
   )
@@ -172,9 +167,7 @@ function Tempo({ tempo }: { tempo: ClanRoundMetricsData['tempo'] }) {
       value={formatRate(tempo.percentile)}
       unit="%"
       tone={tempo.percentile}
-      detail={
-        tempo.median_seconds === null ? '' : `라운드 중앙값 ${tempo.median_seconds}초`
-      }
+      detail={tempo.median_seconds === null ? '' : `라운드 중앙값 ${tempo.median_seconds}초`}
       sample={`템포 ${formatCount(tempo.rounds)}라운드 · 같은 리그 ${formatCount(tempo.cohort)}팀 중`}
     />
   )
@@ -209,9 +202,7 @@ function CleanSheet({ sheet }: { sheet: ClanRoundMetricsData['clean_sheet'] }) {
       value={sheet.rate === null ? null : formatCount(sheet.count)}
       unit="회"
       detail={
-        sheet.rate === null
-          ? ''
-          : `${formatCount(sheet.matches)}판중 ${formatRate(sheet.rate)}%`
+        sheet.rate === null ? '' : `${formatCount(sheet.matches)}판중 ${formatRate(sheet.rate)}%`
       }
       sample={`판정한 ${formatCount(sheet.matches)}판`}
     />
@@ -221,7 +212,7 @@ function CleanSheet({ sheet }: { sheet: ClanRoundMetricsData['clean_sheet'] }) {
 export function ClanRoundMetrics({ metrics }: { metrics: ClanRoundMetricsData }) {
   const { sample } = metrics
   return (
-    <div className="mt-2 bg-card px-3 py-3 shadow-card">
+    <div className="mt-2 rounded-[2px] border border-line bg-card px-5 py-4">
       <div className="flex items-baseline justify-between">
         <div className="text-lg">배틀로그 지표</div>
         {/* 표본을 머리에 박아 둔다. 아래 값들이 몇 판을 보고 나온 것인지 숨기지 않는다 */}
@@ -237,7 +228,7 @@ export function ClanRoundMetrics({ metrics }: { metrics: ClanRoundMetricsData })
       </div>
 
       {/* 사양 원문에서 소수싸움이 블루방어율보다 **앞**에 있다. 순서를 그대로 둔다 */}
-      <div className="mt-3 border-t border-t-divider pt-3">
+      <div className="mt-3 border-t border-t-line-soft pt-3">
         <SectionTitle title="소수싸움" note="숫자가 밀린 라운드를 이겨 낸 비율" />
         <div className="mt-2">
           <Outnumbered outnumbered={metrics.outnumbered} />

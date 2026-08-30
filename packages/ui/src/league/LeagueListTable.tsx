@@ -6,28 +6,17 @@ import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
 import { Skeleton } from '../common/Skeleton'
 import { formatCount, formatDate } from '../common/format'
+import { HEAD, NUM, ROW } from './rankStyles'
 
 /**
  * 리그 목록 표 (`/leagues`).
  *
- * 원본 실측 구조
- * ```
- * <div class="border border-gray-200 mt-10 text-textBlack">
- *   <div class="flex items-center text-lg bg-gray-light py-2 border-b-2 border-gray-200">  ← 머리글 40px
- *     <div class="w-5/12 text-center">리그명</div><div class="w-1/6"></div>
- *     <div class="w-1/4"></div><div class="w-1/6"></div>
- *   <a class="flex items-center text-xl py-5 bg-gray-light2 border-b border-gray-300
- *             text-gray-700 last:border-b-0">                                              ← 행 64px
- *     <div class="flex items-center w-5/12 px-4">
- *       <div class="mr-3 font-semibold">{리그명}</div>
- *       <배지>  <클랜마크 ×3>
- *     <div class="w-1/6">{n}개의 클랜참여중</div>
- *     <div class="w-1/4">관리자: {이름}</div>
- *     <div class="w-1/6">{개설일}</div>
- * ```
- * 머리글은 **첫 칸 `리그명` · 마지막 칸 `개설일`** 이고 가운데 두 칸은 비어 있다.
- * (2026-08-27 재실측. 예전에는 네 칸 중 첫 칸만 채워 두고 `개설일`이 빠져 있었다 —
- *  UI_PARITY_AUDIT 8-1)
+ * `적진` 톤 — 얼룩무늬·그림자 없이 1px 선으로만 나눈다. 랭킹 표와 **같은 행 토큰**을 쓴다
+ * (`rankStyles.ts`) — 한 사이트에 두 가지 표 리듬을 만들지 않는다.
+ *
+ * 칸 구성은 그대로다: `리그명 · 참여 클랜 수 · 관리자 · 개설일`.
+ * 좁은 화면에서는 관리자·개설일을 감춘다 (랭킹 표와 같은 규칙 — 가로로 밀어 보게 하지 않는다).
+ * **이동 경로(href)는 바뀌지 않았다.**
  */
 export function LeagueListTable({
   items,
@@ -41,12 +30,12 @@ export function LeagueListTable({
   onRetry?: () => void
 }) {
   return (
-    <div className="mt-10 border border-divider text-text-strong">
-      <div className="flex items-center border-b-2 border-b-divider bg-page py-2 text-lg">
-        <div className="w-5/12 text-center">리그명</div>
-        <div className="w-1/6" />
-        <div className="w-1/4" />
-        <div className="w-1/6">개설일</div>
+    <div className="mt-6 rounded-[var(--radius)] border border-line">
+      <div className={HEAD}>
+        <div className="min-w-0 flex-1">리그명</div>
+        <div className="w-40 shrink-0 text-right max-md:hidden">참여 클랜</div>
+        <div className="w-48 shrink-0 text-right max-md:hidden">관리자</div>
+        <div className="w-40 shrink-0 text-right max-md:hidden">개설일</div>
       </div>
 
       {error ? (
@@ -54,13 +43,8 @@ export function LeagueListTable({
       ) : loading ? (
         <>
           {Array.from({ length: 5 }, (_, index) => (
-            <div key={index} className="flex items-center bg-row py-5">
-              <div className="w-5/12 px-4">
-                <Skeleton className="h-[28px] w-64" />
-              </div>
-              <div className="w-1/6" />
-              <div className="w-1/4" />
-              <div className="w-1/6" />
+            <div key={index} className={ROW}>
+              <Skeleton className="h-[22px] w-64" />
             </div>
           ))}
         </>
@@ -71,18 +55,26 @@ export function LeagueListTable({
           <Link
             key={league.id}
             href={`/league/${league.slug}/home/info`}
-            className="flex items-center border-b border-b-line bg-row py-5 text-xl text-meta last:border-b-0"
+            className={`${ROW} hover:text-text-strong`}
           >
-            <div className="flex w-5/12 items-center px-4">
-              <div className="mr-3 font-semibold">{league.name}</div>
-              {league.official ? <Label name="공식" className="mr-2" /> : null}
-              {league.clans.map((clan) => (
-                <ClanMark key={clan.id} mark={clan.mark} className="mr-2" alt={clan.name} />
-              ))}
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="truncate font-semibold text-text-strong">{league.name}</span>
+              {league.official ? <Label name="공식" /> : null}
+              <span className="flex items-center gap-1 max-md:hidden">
+                {league.clans.map((clan) => (
+                  <ClanMark key={clan.id} mark={clan.mark} alt={clan.name} />
+                ))}
+              </span>
             </div>
-            <div className="w-1/6">{formatCount(league.clan_count)}개의 클랜참여중</div>
-            <div className="w-1/4">관리자: {league.user?.nickname ?? "-"}</div>
-            <div className="w-1/6">{formatDate(league.created_at)}</div>
+            <div className="w-40 shrink-0 text-right text-sm text-meta max-md:hidden">
+              <span className={NUM}>{formatCount(league.clan_count)}</span>개 참여중
+            </div>
+            <div className="w-48 shrink-0 truncate text-right text-sm text-meta max-md:hidden">
+              {league.user?.nickname ?? '-'}
+            </div>
+            <div className={`w-40 shrink-0 text-right text-xs ${NUM} text-faint max-md:hidden`}>
+              {formatDate(league.created_at)}
+            </div>
           </Link>
         ))
       )}

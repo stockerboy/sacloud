@@ -4,13 +4,10 @@ import { SiteHeader } from './SiteHeader'
 /**
  * 전역 셸 — 모든 페이지가 공유하는 헤더/본문/푸터 골격.
  *
- * 원본 실측 구조 (2026-08-20)
- * ```
- * <nav class="fixed ...">                                   본문 흐름 밖(고정)
- * <div class="flex flex-col min-h-screen bg-gray-light">     본문 배경 #F2F2F2
- *   <div class="pt-18 flex-1"> …페이지 내용… </div>           고정 헤더 높이(4.5rem)만큼 위 여백
- *   <footer>
- * ```
+ * ── 2026-08-30: 자체 디자인(`적진`)
+ *   헤더는 화면에 고정된 64px 띠라 본문을 그만큼 내려 준다.
+ *   본문 배경은 페이지 색 하나뿐이다 — 헤더·본문·푸터를 다른 색으로 나누지 않고
+ *   **1px 선과 여백**으로만 구분한다.
  */
 export function SiteShell({
   children,
@@ -25,8 +22,9 @@ export function SiteShell({
   return (
     <>
       <SiteHeader user={user} onLogout={onLogout} />
-      <div className="flex min-h-screen flex-col bg-page">
-        <div className="flex-1 pt-nav">{children}</div>
+      <div className="flex min-h-screen flex-col bg-page text-[var(--color-text,#d6c9c9)]">
+        {/* 고정 헤더 높이만큼 본문을 내린다 — `SiteHeader` 의 `NAV_HEIGHT` 와 같은 값이다 */}
+        <div className="flex-1 pt-[var(--spacing-nav,64px)]">{children}</div>
         <SiteFooter />
       </div>
     </>

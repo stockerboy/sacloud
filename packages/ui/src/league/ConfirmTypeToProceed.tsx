@@ -33,31 +33,31 @@ export function ConfirmTypeToProceed({
   const matched = isConfirmPhraseMatched(value, phrase)
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50">
-      <div className="w-[420px] rounded bg-card px-6 py-6 shadow-card">
-        <div className="text-xl font-semibold">{title}</div>
-        <div className="mt-2 text-meta">{description}</div>
-        <div className="mt-4 text-sm">
-          계속하려면 <span className="font-bold">{phrase}</span> 를 입력하세요.
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-page/80">
+      <div className="w-[420px] rounded-[var(--radius)] border border-line bg-card px-6 py-6">
+        <div className="font-display text-xl tracking-wide text-text-strong">{title}</div>
+        <div className="mt-2 text-sm leading-relaxed text-meta">{description}</div>
+        <div className="mt-5 text-sm text-text">
+          계속하려면 <span className="font-bold text-text-strong">{phrase}</span> 를 입력하세요.
         </div>
         <input
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          className="mt-2 h-11 w-full rounded border border-line px-3"
+          className="mt-2 h-11 w-full rounded-[var(--radius)] border border-line bg-card-2 px-3 text-text"
         />
         <div className="mt-5 flex flex-row-reverse">
           <button
             type="button"
             disabled={!matched}
             onClick={onConfirm}
-            className="ml-2 h-10 w-24 rounded bg-lose text-white disabled:opacity-50"
+            className="ml-2 h-10 w-24 rounded-[var(--radius)] bg-accent font-semibold text-text-strong disabled:opacity-40"
           >
             {actionLabel}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="h-10 w-24 rounded border border-line"
+            className="h-10 w-24 rounded-[var(--radius)] border border-line text-meta hover:text-text-strong"
           >
             취소
           </button>

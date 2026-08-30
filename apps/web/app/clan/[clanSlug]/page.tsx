@@ -2,11 +2,11 @@
 
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ClanLeagueCards } from '@sacloud/ui'
+import { ClanLeagueList } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
-/** 클랜 리그정보 탭 — 참여중인 리그 카드. */
+/** 클랜 리그정보 탭 — 참여중인 리그. 가는 곳은 그대로 `/league/{slug}/clan/{slug}` 다 */
 export default function ClanLeaguesPage({
   params,
 }: {
@@ -22,9 +22,8 @@ export default function ClanLeaguesPage({
   })
 
   return (
-    <div className="pc-container mt-6">
-      <div className="mb-2 text-2xl">참여중인 리그</div>
-      <ClanLeagueCards
+    <div className="pc-container pb-[40px]">
+      <ClanLeagueList
         clanSlug={clanSlug}
         entries={leagues.data?.data}
         loading={!leagues.data}

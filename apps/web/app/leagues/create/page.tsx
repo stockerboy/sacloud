@@ -18,9 +18,12 @@ import { AuthGuard } from '@/components/AuthGuard'
 /**
  * 리그 만들기 `/leagues/create`.
  *
- * 원본 관측 제약을 그대로 강제한다 (`packages/ui/src/league/leagueCreate.ts` 참조).
+ 입력 제약은 `packages/ui/src/league/leagueCreate.ts` 가 들고 있다.
  * **서든어택 계정 연동을 마친 회원만** 만들 수 있다 → `AuthGuard requireLinked`.
- * 원본은 reCAPTCHA를 쓰지만 Mock 단계에서는 토큰 자리만 채운다.
+ * 캡차는 아직 없다 — 토큰 자리만 채운다.
+ *
+ * `적진` 톤 — 카드 그림자를 걷어내고 1px 선과 여백으로만 나눈다.
+ * 선택된 칩은 면을 칠하지 않고 **진홍 테두리**로 표시한다. 버튼이 하는 일은 그대로다.
  */
 function CreateForm() {
   const router = useRouter()
@@ -63,15 +66,15 @@ function CreateForm() {
   }
 
   return (
-    <div className="pc-container mt-10 pb-10">
-      <div className="text-3xl">리그 만들기</div>
+    <div className="pc-container py-[var(--section-gap)] pb-20">
+      <h1 className="font-display text-3xl tracking-wide text-text-strong">리그 만들기</h1>
 
-      <div className="mt-6 rounded bg-card px-6 py-6 shadow-card">
+      <div className="mt-8 max-w-3xl rounded-[var(--radius)] border border-line px-8 py-8 max-md:px-4">
         <Field label="리그이름" hint="한글·영어·숫자 2~8자. 이름이 &quot;리그&quot;로 끝날 수 없습니다.">
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="h-11 w-80 rounded border border-line px-3"
+            className="h-11 w-80 max-w-full rounded-[var(--radius)] border border-line bg-card-2 px-3 text-text"
           />
           <FieldError message={name ? validateLeagueName(name) : null} />
         </Field>
@@ -80,9 +83,9 @@ function CreateForm() {
           <input
             value={slug}
             onChange={(event) => setSlug(event.target.value)}
-            className="h-11 w-80 rounded border border-line px-3"
+            className="h-11 w-80 max-w-full rounded-[var(--radius)] border border-line bg-card-2 px-3 text-text"
           />
-          <div className="mt-1 text-sm text-meta">/league/{slug || 'yourleague'}</div>
+          <div className="mt-1.5 font-num text-sm text-faint">/league/{slug || 'yourleague'}</div>
           <FieldError message={slug ? validateLeagueSlug(slug) : null} />
         </Field>
 
@@ -93,10 +96,10 @@ function CreateForm() {
                 key={count}
                 type="button"
                 onClick={() => setDivisionCount(count)}
-                className={`mr-2 rounded border px-4 py-2 ${
+                className={`mr-2 rounded-[var(--radius)] border px-4 py-2 ${
                   divisionCount === count
-                    ? 'border-tab-active bg-tab-active text-tab-active-fg'
-                    : 'border-line'
+                    ? 'border-accent font-semibold text-text-strong'
+                    : 'border-line text-meta'
                 }`}
               >
                 {count === 1 ? '단일리그' : `${count}부리그`}
@@ -115,10 +118,10 @@ function CreateForm() {
                   key={map.id}
                   type="button"
                   onClick={() => toggle(mapIds, map.id, setMapIds)}
-                  className={`mb-2 mr-2 rounded border px-4 py-2 ${
+                  className={`mb-2 mr-2 rounded-[var(--radius)] border px-4 py-2 ${
                     mapIds.includes(map.id)
-                      ? 'border-tab-active bg-tab-active text-tab-active-fg'
-                      : 'border-line'
+                      ? 'border-accent font-semibold text-text-strong'
+                      : 'border-line text-meta'
                   }`}
                 >
                   {map.name}
@@ -135,10 +138,10 @@ function CreateForm() {
                 key={limit}
                 type="button"
                 onClick={() => toggle(playerLimits, limit, setPlayerLimits)}
-                className={`mr-2 rounded border px-4 py-2 ${
+                className={`mr-2 rounded-[var(--radius)] border px-4 py-2 ${
                   playerLimits.includes(limit)
-                    ? 'border-tab-active bg-tab-active text-tab-active-fg'
-                    : 'border-line'
+                    ? 'border-accent font-semibold text-text-strong'
+                    : 'border-line text-meta'
                 }`}
               >
                 {limit} vs {limit}
@@ -149,7 +152,7 @@ function CreateForm() {
 
         <Field label="동의 항목">
           {LEAGUE_AGREEMENTS.map((text, index) => (
-            <label key={text} className="mb-2 flex items-start">
+            <label key={text} className="mb-2 flex items-start text-sm leading-relaxed text-meta">
               <input
                 type="checkbox"
                 checked={agreements[index] ?? false}
@@ -173,7 +176,7 @@ function CreateForm() {
             type="button"
             disabled={!!formError || create.isPending}
             onClick={() => create.mutate()}
-            className="h-12 w-40 rounded bg-more text-lg text-white disabled:opacity-60"
+            className="h-12 w-40 rounded-[var(--radius)] bg-accent font-semibold tracking-wide text-text-strong disabled:opacity-40"
           >
             리그 만들기
           </button>
@@ -193,9 +196,9 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="mb-6">
-      <div className="mb-2 font-semibold">{label}</div>
-      {hint ? <div className="mb-2 text-sm text-meta">{hint}</div> : null}
+    <div className="mb-8">
+      <div className="mb-2 font-semibold text-text-strong">{label}</div>
+      {hint ? <div className="mb-2.5 text-sm leading-relaxed text-faint">{hint}</div> : null}
       {children}
     </div>
   )

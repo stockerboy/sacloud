@@ -111,8 +111,8 @@ export default function AdminDashboardPage() {
         <div className="mt-2 text-sm text-meta">
           MOCK 표시는 개발용 시드 리그다. 실운영 판단에 쓰지 않는다.
         </div>
-        <div className="mt-3 text-sm text-meta">
-          시즌 전환은 <Link className="underline" href="/admin/seasons">시즌 화면</Link>에서
+        <div className="mt-4 text-sm text-meta">
+          시즌 전환은 <Link className="text-text-strong underline underline-offset-4" href="/admin/seasons">시즌 화면</Link>에서
           운영자가 직접 실행할 때만 일어난다. 날짜·배포로 자동 전환되지 않는다.
         </div>
       </AdminCard>
@@ -152,7 +152,7 @@ export default function AdminDashboardPage() {
         </div>
         {/* 보류는 숫자보다 **사유**가 중요하다. 다음에 할 일이 거기서 나온다 (정책 21) */}
         {summary.matches.skipReasons.length > 0 ? (
-          <div className="mt-3 text-sm text-meta">
+          <div className="mt-4 text-sm text-meta">
             보류 사유 —{' '}
             {summary.matches.skipReasons
               .map((entry) => `${entry.reason} ${entry.count}건`)
@@ -177,7 +177,7 @@ export default function AdminDashboardPage() {
           <div className="text-meta">아직 기록된 변경이 없다.</div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="text-meta">
+            <thead className="text-xs text-meta">
               <tr>
                 <th className="py-1 text-left">시각</th>
                 <th className="text-left">실행자</th>
@@ -188,7 +188,7 @@ export default function AdminDashboardPage() {
             </thead>
             <tbody>
               {audit.map((row) => (
-                <tr key={row.id} className="border-t border-divider">
+                <tr key={row.id} className="border-t border-line-soft">
                   <td className="py-1">{new Date(row.createdAt).toLocaleString('ko-KR')}</td>
                   <td>{row.userEmail}</td>
                   <td>{row.action}</td>

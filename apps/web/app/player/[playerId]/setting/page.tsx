@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@sacloud/ui'
+import { ProfileSkeleton, SectionTitle } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { apiSend } from '@/lib/apiSend'
 import { useApiReady } from '@/app/providers'
@@ -11,9 +11,10 @@ import { AuthGuard } from '@/components/AuthGuard'
 /**
  * 플레이어 설정 `/player/{id}/setting`.
  *
- * **원본 화면 상세는 로그인이 필요해 관측하지 못했다 `[미확인]`.**
- * 계약(`PlayerSettingInput`)의 항목(포지션 메모 / 메모)만 구현한다.
- * 포지션 메모는 클랜원 목록에 표시된다(원본 관측: "2층", "B 사이트").
+ * 항목은 그대로다 — 포지션 메모 / 메모. 저장하는 API 도 `playerSettingUpdate` 그대로다.
+ * 겉만 `적진` 팔레트로 바꿨다.
+ *
+ * 포지션 메모는 클랜원 명단에서 **묶음 이름**으로 쓰인다. 비워 두면 `포지션 미정` 으로 간다.
  */
 function PlayerSettingBody({ playerId }: { playerId: string }) {
   const ready = useApiReady()
@@ -43,40 +44,59 @@ function PlayerSettingBody({ playerId }: { playerId: string }) {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['player', playerId] }),
   })
 
-  if (!player.data) return <Skeleton className="mt-10 h-[240px] w-full" />
+  if (!player.data) {
+    return (
+      <div className="pc-container pt-[40px]">
+        <ProfileSkeleton rows={1} height={240} />
+      </div>
+    )
+  }
 
   return (
-    <div className="pc-container mt-10 pb-10">
-      <div className="text-3xl">{player.data.data.name} 설정</div>
-      <div className="mt-6 rounded bg-card px-6 py-6 shadow-card">
-        <div className="mb-2 font-semibold">포지션 메모</div>
+    <div className="pc-container pb-[40px] pt-[40px]">
+      <SectionTitle title="설정" note={player.data.data.name} />
+
+      <div className="mt-6 max-w-[560px]">
+        <label className="block text-[12px] text-meta" htmlFor="setting-position">
+          포지션 메모
+        </label>
         <input
+          id="setting-position"
           value={position}
           onChange={(event) => setPosition(event.target.value)}
           placeholder="예: 2층, B 사이트"
-          className="h-11 w-80 rounded border border-line px-3"
+          className="mt-2 h-11 w-full rounded-[2px] border border-line bg-card px-3 text-[15px] text-text placeholder:text-faint focus:border-accent focus:outline-none"
         />
+        <p className="mt-2 text-[12px] text-faint">
+          비워 두면 클랜원 명단에서 `포지션 미정` 으로 묶입니다.
+        </p>
 
-        <div className="mb-2 mt-5 font-semibold">메모</div>
+        <label className="mt-7 block text-[12px] text-meta" htmlFor="setting-note">
+          메모
+        </label>
         <textarea
+          id="setting-note"
           value={note}
           onChange={(event) => setNote(event.target.value)}
           rows={3}
-          className="w-full rounded border border-line px-3 py-2"
+          className="mt-2 w-full rounded-[2px] border border-line bg-card px-3 py-2 text-[15px] text-text placeholder:text-faint focus:border-accent focus:outline-none"
         />
 
-        {save.isSuccess ? <div className="mt-3 text-win">저장했습니다.</div> : null}
-        {save.isError ? <div className="mt-3 text-lose">저장하지 못했습니다.</div> : null}
-
-        <div className="mt-5">
+        <div className="mt-7 flex items-center gap-4">
           <button
             type="button"
             disabled={save.isPending}
             onClick={() => save.mutate()}
-            className="h-10 w-24 rounded bg-more text-white disabled:opacity-60"
+            className="h-10 rounded-[2px] border border-accent px-6 text-[13px] text-accent transition-colors hover:bg-accent hover:text-page disabled:opacity-50"
           >
-            저장
+            {save.isPending ? '저장중' : '저장'}
           </button>
+          {save.isSuccess ? (
+            <span className="text-[12px] text-meta">저장했습니다.</span>
+          ) : null}
+          {save.isError ? (
+            <span className="text-[12px] text-accent">저장하지 못했습니다.</span>
+          ) : null}
         </div>
       </div>
     </div>

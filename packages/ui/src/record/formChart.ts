@@ -102,8 +102,7 @@ export function formChartSegments(
       key: String(run[0]!.index),
       points: run
         .map(
-          (point) =>
-            `${formChartX(point.index, months.length)},${formChartY(point.value, domain)}`,
+          (point) => `${formChartX(point.index, months.length)},${formChartY(point.value, domain)}`,
         )
         .join(' '),
     }))

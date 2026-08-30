@@ -23,21 +23,31 @@ export default function MeLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthGuard>
-      <div className="pc-container mt-10 pb-10">
-        <div className="text-3xl">마이페이지</div>
-        <div className="mt-5 flex items-center border-b-2 border-b-divider text-xl">
-          {TABS.map((tab) => (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`-mb-[2px] flex items-center justify-center px-6 py-4 ${
-                pathname === tab.href ? 'border-b-2 border-b-black font-bold' : ''
-              }`}
-            >
-              {tab.label}
-            </Link>
-          ))}
+      {/* 제목은 이 시안의 큰 제목 글꼴(`display`)을 쓰는 자리다 — 화면당 하나만 둔다 */}
+      <div className="pc-container mt-14 pb-20">
+        <h1 className="display text-3xl text-text-strong">마이페이지</h1>
+
+        {/* 탭. 활성 표시는 **진홍 1px 밑줄** 하나다.
+            예전에는 `border-b-black` 이라 검정 바탕에서 아예 보이지 않았다 */}
+        <div className="mt-8 flex items-center gap-1 border-b border-line text-sm">
+          {TABS.map((tab) => {
+            const active = pathname === tab.href
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`-mb-px border-b px-4 py-3 transition-colors duration-100 ${
+                  active
+                    ? 'border-accent font-bold text-text-strong'
+                    : 'border-transparent text-meta hover:text-text'
+                }`}
+              >
+                {tab.label}
+              </Link>
+            )
+          })}
         </div>
+
         <div className="mt-10">{children}</div>
       </div>
     </AuthGuard>

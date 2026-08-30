@@ -78,9 +78,12 @@ export function TraitHexagon({
   const labelSize = dense ? 9 : 10
 
   return (
-    <div className={dense ? 'bg-side px-3 py-2 text-line shadow-card' : 'bg-side px-3 py-3 text-line shadow-card'}>
+    /* `적진` — 그림자를 쓰지 않는다. 면 대신 1px 선과 여백으로 카드를 만든다 */
+    <div
+      className={`rounded-[2px] border border-line bg-card text-text ${dense ? 'px-5 py-4' : 'px-5 py-5'}`}
+    >
       <div className="flex items-baseline justify-between">
-        <div>전투력</div>
+        <div className="font-display text-[20px] leading-none text-text-strong">전투력</div>
         {traits.measuring ? (
           <div className="text-xs text-side-meta">
             전투력 측정중 {formatCount(traits.measured)}/{traits.axes.length}
@@ -132,7 +135,7 @@ export function TraitHexagon({
           <polygon
             points={hexPolygon(traits.axes.map((axis) => radiusOf(axis.percentile as number)))}
             fill="var(--color-win-bar)"
-            fillOpacity="0.35"
+            fillOpacity="0.16"
             stroke="var(--color-win-bar)"
             strokeWidth={dense ? '1.4' : '2'}
           />
@@ -176,7 +179,9 @@ export function TraitHexagon({
                 y={at.y}
                 textAnchor={at.anchor}
                 fontSize={labelSize}
-                fill="var(--color-line)"
+                /* 예전에는 `--color-line`(선 색)이었다. 바닥이 검어지면서 글자가
+                   그대로 사라졌다 — 축 이름은 보조 글자색으로 읽는다 */
+                fill="var(--color-meta)"
               >
                 {axis.label}
               </text>

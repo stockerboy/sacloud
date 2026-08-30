@@ -6,6 +6,7 @@ import { Skeleton } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { apiSend } from '@/lib/apiSend'
 import { useApiReady } from '@/app/providers'
+import { MeButton, MeError, MeField, MeHeading, MeInput, MeNotice, MePanel } from '../ui'
 
 /** 정보 수정 `/me/setting` — 닉네임 변경. */
 export default function MeSettingPage() {
@@ -35,28 +36,24 @@ export default function MeSettingPage() {
   const ok = nickname.trim().length >= 2 && nickname.trim().length <= 16
 
   return (
-    <div className="rounded bg-card px-6 py-6 shadow-card">
-      <label className="mb-2 block font-semibold">닉네임</label>
-      <input
-        value={nickname}
-        onChange={(event) => setNickname(event.target.value)}
-        className="h-11 w-80 rounded border border-line px-3"
-      />
+    <MePanel className="max-w-[480px]">
+      <MeHeading>정보 수정</MeHeading>
+
+      <MeField label="닉네임">
+        <MeInput value={nickname} onChange={(event) => setNickname(event.target.value)} />
+      </MeField>
+
       {nickname && !ok ? (
-        <div className="mt-2 text-sm text-lose">닉네임은 2~16자여야 합니다.</div>
+        <div className="-mt-3 text-sm text-accent">닉네임은 2~16자여야 합니다.</div>
       ) : null}
-      {save.isSuccess ? <div className="mt-2 text-win">저장했습니다.</div> : null}
-      {save.isError ? <div className="mt-2 text-lose">저장하지 못했습니다.</div> : null}
-      <div className="mt-5">
-        <button
-          type="button"
-          disabled={!ok || save.isPending}
-          onClick={() => save.mutate()}
-          className="h-10 w-24 rounded bg-more text-white disabled:opacity-60"
-        >
+      {save.isSuccess ? <MeNotice>저장했습니다.</MeNotice> : null}
+      {save.isError ? <MeError>저장하지 못했습니다.</MeError> : null}
+
+      <div className="mt-6">
+        <MeButton disabled={!ok || save.isPending} onClick={() => save.mutate()}>
           저장
-        </button>
+        </MeButton>
       </div>
-    </div>
+    </MePanel>
   )
 }

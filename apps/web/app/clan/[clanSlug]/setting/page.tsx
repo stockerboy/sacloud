@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Skeleton } from '@sacloud/ui'
+import { ProfileSkeleton, SectionTitle } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { apiSend } from '@/lib/apiSend'
 import { useApiReady } from '@/app/providers'
@@ -11,9 +11,8 @@ import { AuthGuard } from '@/components/AuthGuard'
 /**
  * 클랜 설정 `/clan/{slug}/setting`.
  *
- * **원본 화면 상세는 로그인이 필요해 관측하지 못했다 `[미확인]`.**
- * 계약(`ClanSettingInput`)에 정의한 항목(클랜 공지 / 리그 초대 차단)만 구현한다.
- * 실측되면 화면을 원본에 맞춰 고친다.
+ * 항목은 그대로다 — 클랜 공지 / 리그 초대 차단. 저장 API 도 `clanSettingUpdate` 그대로다.
+ * 겉만 `적진` 팔레트로 바꿨다.
  */
 function ClanSettingBody({ clanSlug }: { clanSlug: string }) {
   const ready = useApiReady()
@@ -40,42 +39,55 @@ function ClanSettingBody({ clanSlug }: { clanSlug: string }) {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['clan', clanSlug] }),
   })
 
-  if (!clan.data) return <Skeleton className="mt-10 h-[240px] w-full" />
+  if (!clan.data) {
+    return (
+      <div className="pc-container pt-[40px]">
+        <ProfileSkeleton rows={1} height={240} />
+      </div>
+    )
+  }
 
   return (
-    <div className="pc-container mt-10 pb-10">
-      <div className="text-3xl">{clan.data.data.name} 클랜 설정</div>
-      <div className="mt-6 rounded bg-card px-6 py-6 shadow-card">
-        <div className="mb-2 font-semibold">클랜 공지</div>
+    <div className="pc-container pb-[40px] pt-[40px]">
+      <SectionTitle title="클랜 설정" note={clan.data.data.name} />
+
+      <div className="mt-6 max-w-[560px]">
+        <label className="block text-[12px] text-meta" htmlFor="clan-notice">
+          클랜 공지
+        </label>
         <textarea
+          id="clan-notice"
           value={notice}
           onChange={(event) => setNotice(event.target.value)}
           rows={4}
-          className="w-full rounded border border-line px-3 py-2"
+          className="mt-2 w-full rounded-[2px] border border-line bg-card px-3 py-2 text-[15px] text-text placeholder:text-faint focus:border-accent focus:outline-none"
         />
 
-        <label className="mt-4 flex items-center">
+        <label className="mt-5 flex items-center gap-2 text-[14px] text-text">
           <input
             type="checkbox"
             checked={blockInvitation}
             onChange={(event) => setBlockInvitation(event.target.checked)}
-            className="mr-2"
+            className="accent-accent"
           />
           리그 초대 받지 않기
         </label>
 
-        {save.isSuccess ? <div className="mt-3 text-win">저장했습니다.</div> : null}
-        {save.isError ? <div className="mt-3 text-lose">저장하지 못했습니다.</div> : null}
-
-        <div className="mt-5">
+        <div className="mt-7 flex items-center gap-4">
           <button
             type="button"
             disabled={save.isPending}
             onClick={() => save.mutate()}
-            className="h-10 w-24 rounded bg-more text-white disabled:opacity-60"
+            className="h-10 rounded-[2px] border border-accent px-6 text-[13px] text-accent transition-colors hover:bg-accent hover:text-page disabled:opacity-50"
           >
-            저장
+            {save.isPending ? '저장중' : '저장'}
           </button>
+          {save.isSuccess ? (
+            <span className="text-[12px] text-meta">저장했습니다.</span>
+          ) : null}
+          {save.isError ? (
+            <span className="text-[12px] text-accent">저장하지 못했습니다.</span>
+          ) : null}
         </div>
       </div>
     </div>

@@ -39,7 +39,7 @@ import { leaguePlayerPath } from '../common/paths'
  *   `1자리` / `2자리` 는 한 팀이 서는 정원이라 **실제 인원과 다를 수 있고**,
  *   다르면 다른 대로 보이는 것이 맞다.
  *
- * 카드 모양(`bg-card` · `shadow-card` · 구분선)은 바로 아래 `ClanMetrics` 와 같다.
+ * 카드 모양(1px 선 + 여백)은 바로 아래 `ClanMetrics` 와 같다. `적진` 은 그림자를 쓰지 않는다.
  * 새 색·새 스타일을 만들지 않는다.
  */
 
@@ -63,10 +63,7 @@ function Member({
   const ownLabel = showLabel ? member.position_label?.trim() : undefined
   return (
     <span className="mr-3 inline-block whitespace-nowrap">
-      <Link
-        href={leaguePlayerPath(leagueSlug, member.player.id)}
-        className="mr-1 hover:underline"
-      >
+      <Link href={leaguePlayerPath(leagueSlug, member.player.id)} className="mr-1 hover:underline">
         {member.player.name}
       </Link>
       {ownLabel ? <span className="mr-1 text-xs text-meta">{ownLabel}</span> : null}
@@ -74,7 +71,7 @@ function Member({
         /* 배치고사 중이면 래더 자리에 `배치고사` 를 쓴다 (CLAUDE.md 6장) */
         <span className="text-xs text-meta">배치고사</span>
       ) : (
-        <span className={`text-xs ${ratingClass(member.rating)}`}>
+        <span className={`num text-xs ${ratingClass(member.rating)}`}>
           {formatCount(member.rating)}점
         </span>
       )}
@@ -85,13 +82,11 @@ function Member({
 /** 포지션 한 줄 */
 function Group({ group, leagueSlug }: { group: ClanRosterGroup; leagueSlug: string }) {
   return (
-    <div className="flex items-baseline border-b border-b-divider py-1.5 last:border-b-0">
+    <div className="flex items-baseline border-b border-b-line-soft py-1.5 last:border-b-0">
       <div className="w-24 shrink-0 text-sm text-meta">
         {group.label}
         {/* 한 팀에 몇 자리인가. `포지션 미정` 은 정원이라는 개념이 없어 적지 않는다 */}
-        {group.slots === null ? null : (
-          <span className="ml-1 text-xs">{group.slots}자리</span>
-        )}
+        {group.slots === null ? null : <span className="num ml-1 text-xs">{group.slots}자리</span>}
       </div>
       <div className="min-w-0 flex-grow text-sm">
         {group.members.length === 0 ? (
@@ -112,15 +107,9 @@ function Group({ group, leagueSlug }: { group: ClanRosterGroup; leagueSlug: stri
   )
 }
 
-export function ClanRoster({
-  roster,
-  leagueSlug,
-}: {
-  roster: ClanRosterData
-  leagueSlug: string
-}) {
+export function ClanRoster({ roster, leagueSlug }: { roster: ClanRosterData; leagueSlug: string }) {
   return (
-    <div className="mt-2 bg-card px-3 py-3 shadow-card">
+    <div className="mt-2 rounded-[2px] border border-line bg-card px-5 py-4">
       <div className="flex items-baseline justify-between">
         <div className="text-lg">클랜원 포지션</div>
         <div className="text-xs text-meta">
@@ -136,18 +125,14 @@ export function ClanRoster({
         <div key={squad.squad} className="mt-3">
           <div className="flex items-baseline justify-between">
             <div className="text-base">{squad.label}</div>
-            <div className="text-xs text-meta">{formatCount(squad.count)}명</div>
+            <div className="num text-xs text-meta">{formatCount(squad.count)}명</div>
           </div>
           {squad.count === 0 ? (
             <div className="mt-2 text-sm text-meta">해당하는 클랜원이 없습니다.</div>
           ) : (
             <div className="mt-1">
               {squad.groups.map((group) => (
-                <Group
-                  key={group.position ?? 'unknown'}
-                  group={group}
-                  leagueSlug={leagueSlug}
-                />
+                <Group key={group.position ?? 'unknown'} group={group} leagueSlug={leagueSlug} />
               ))}
             </div>
           )}
@@ -157,9 +142,9 @@ export function ClanRoster({
       {/* 왜 `포지션 미정` 이 있는지 밝힌다. 이 줄이 없으면 고장으로 보인다.
           좌표 판정이 없거나 1·2등 격차가 좁은 선수다 — 틀린 자리를 적느니 비운다 (D-199) */}
       {roster.unknown_position_count > 0 ? (
-        <div className="mt-3 border-t border-t-divider pt-2 text-xs text-meta">
-          포지션 미정 {formatCount(roster.unknown_position_count)}명 — 판정할 기록이
-          모자라거나 자리가 갈리지 않는 선수입니다.
+        <div className="mt-3 border-t border-t-line-soft pt-2 text-xs text-meta">
+          포지션 미정 {formatCount(roster.unknown_position_count)}명 — 판정할 기록이 모자라거나
+          자리가 갈리지 않는 선수입니다.
         </div>
       ) : null}
     </div>

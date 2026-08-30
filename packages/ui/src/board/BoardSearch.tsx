@@ -3,21 +3,11 @@
 import { useState } from 'react'
 
 /**
- * 게시판 검색.
+ * 게시판 검색 — `적진`.
  *
- * 2026-08-27 원본 실측 (`/board/free`)
- * ```
- * <form>
- *   <select>
- *     <option value="board">제목+내용</option>
- *     <option value="ipname">작성자[별칭]</option>
- *     <option value="nickname">작성자[닉네임]</option>
- *   <input type="text" placeholder="검색어">
- *   <button type="submit"><아이콘></button>     ← 버튼에 글자가 없다
- * ```
- * 위치는 **소제목·글쓰기 줄 바로 아래, 목록 위**다. 우리는 목록 아래에 두고 있었고
- * 셀렉트 라벨의 대괄호·placeholder·버튼 글자가 전부 달랐다
- * (UI_PARITY_AUDIT 9-5 · 9-9 · 9-10 · 9-11).
+ * 검색 종류(제목+내용 / 작성자[별칭] / 작성자[닉네임])와 제출 동작은 그대로다.
+ * 겉만 바꿨다 — 채운 색 버튼 대신 테두리, 각진 모서리(`--radius`), 얇은 선 하나.
+ * 진홍은 **포커스와 hover 에서만** 나타난다.
  */
 
 export type BoardSearchType = 'board' | 'ipname' | 'nickname'
@@ -48,11 +38,11 @@ export function BoardSearch({
   }
 
   return (
-    <form onSubmit={submit} className="flex items-center justify-center py-4">
+    <form onSubmit={submit} className="flex items-center gap-2 py-4">
       <select
         value={type}
         onChange={(event) => setType(event.target.value as BoardSearchType)}
-        className="h-10 rounded-l border border-line bg-card px-3"
+        className="h-9 rounded-[var(--radius)] border border-line bg-card px-2 text-sm text-text outline-none transition-colors duration-100 focus:border-accent"
       >
         {TYPES.map((item) => (
           <option key={item.value} value={item.value}>
@@ -64,20 +54,16 @@ export function BoardSearch({
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="검색어"
-        className="h-10 w-72 border-y border-line px-3"
+        className="h-9 w-64 rounded-[var(--radius)] border border-line bg-card px-3 text-sm text-text placeholder:text-faint outline-none transition-colors duration-100 focus:border-accent max-md:w-full max-md:min-w-0"
       />
-      <button
-        type="submit"
-        aria-label="검색"
-        className="flex h-10 w-10 items-center justify-center rounded-r border border-more bg-more text-white"
-      >
+      <button type="submit" aria-label="검색" className="btn-line h-9 w-9 shrink-0">
         <SearchIcon />
       </button>
     </form>
   )
 }
 
-/** 돋보기 — 원본은 Font Awesome 을 쓰지만 자산을 가져오지 않고 새로 그렸다 */
+/** 돋보기 — 자산을 가져오지 않고 새로 그렸다 */
 function SearchIcon() {
   return (
     <svg
@@ -85,7 +71,7 @@ function SearchIcon() {
       className="h-4 w-4"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.6"
       aria-hidden
     >
       <circle cx="6.8" cy="6.8" r="4.8" />

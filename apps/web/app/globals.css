@@ -1,6 +1,49 @@
 @import 'tailwindcss';
-/* 디자인 토큰 · 전역 기본값 (원본 실측값) — packages/ui/src/styles.css */
+/* 디자인 토큰 · 전역 기본값 (`적진`) — packages/ui/src/styles.css */
 @import '../../../packages/ui/src/styles.css';
 
 /* 워크스페이스 UI 패키지의 클래스도 스캔 대상에 넣는다 */
 @source "../../../packages/ui/src";
+
+/*
+ * 앱 셸에만 해당하는 전역 마감.
+ * 토큰과 공용 기본값은 위 styles.css 가 가진다 — 여기에 색값을 새로 적지 마라.
+ */
+
+/* 페이지가 짧아도 바닥이 흰색으로 새지 않게 한다 */
+html,
+body {
+  background-color: var(--color-page);
+}
+
+/* 드래그 선택. 진홍을 아주 옅게 깐다 */
+::selection {
+  background-color: rgb(217 43 43 / 0.28);
+  color: var(--color-text-strong);
+}
+
+/*
+ * 스크롤바.
+ * 밝은 기본 스크롤바가 검은 화면 옆에 붙으면 그것만 튄다.
+ * `color-scheme: dark` 로 대부분 해결되지만, 크로미움에서 한 단 더 죽인다.
+ */
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background-color: var(--color-ink);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-line);
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-faint);
+  }
+}

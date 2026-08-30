@@ -3,30 +3,21 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * 통합검색.
+ * 통합검색 — 메인의 주인공.
  *
- * 원본 실측 구조 (2026-08-20)
- * ```
- * <div class="inline-block mt-10 text-center mx-auto">        위 여백 2.5rem
- *   <div class="flex justify-center items-stretch">
- *     <div class="relative">                                  ← 셀렉터
- *       <div class="flex justify-between items-center w-44 px-5 py-4
- *                   rounded-l-lg text-lg bg-blueGray-700 text-gray-100
- *                   select-none cursor-pointer">
- *         <div class="text-left">플레이어 검색</div>
- *         <div class="w-3 text-right mb-2"><아래 화살표 아이콘></div>
- *       [열림] <div class="absolute w-44 top-20 left-0 rounded-lg bg-blueGray-700
- *                          text-gray-100 select-none text-left py-1.5 z-10">
- *                <div class="px-4 py-4 border-l-4 border-transparent
- *                            hover:bg-indigo-700 hover:border-indigo-400"> … 3개
- *     <div class="relative">                                  ← 입력
- *       <input class="search-input pl-5 pr-16 py-5 rounded-r-lg text-lg text-mblack">
- *       <div class="absolute top-4 right-4 w-8 h-8"><돋보기 아이콘></div>
- * ```
- * 실측값: 셀렉터 11rem(154px) · 입력 28rem(392px) · 전체 높이 59.5px · 모서리 0.5rem
- * 셀렉터 배경 #334155 / 글자 #F3F4F6, 입력 글자 #4A4A4A / placeholder #9CA3AF
+ * ── 2026-08-30: 원본 재현을 그만두고 자체 디자인(`적진`)으로 다시 그렸다
+ *   예전 모양(파란 셀렉터 + 흰 입력 + 둥근 모서리)은 3rd.supply 실측을 그대로 옮긴
+ *   것이었다. 이제 원본을 따라갈 이유가 없다.
  *
- * 아이콘은 원본이 Font Awesome을 쓰지만 자산을 가져오지 않고 같은 크기로 새로 그렸다.
+ * ── 동작은 하나도 바뀌지 않았다
+ *   검색 종류 셋(플레이어 / 클랜 / 리그), 엔터·돋보기 제출, 바깥을 누르면 닫히는
+ *   드롭다운까지 전부 그대로다. **모양만** 바꿨다.
+ *
+ * ── 모양 규칙
+ *   - 면을 칠하지 않는다. 1px 선으로 그린 한 덩어리다
+ *   - 진홍은 **포커스가 닿았을 때의 테두리**와 돋보기 하나에만 쓴다
+ *   - 모서리는 거의 각지게(`--radius`)
+ *   - 입력 글자는 본문 서체, 크기만 키운다. 제목 서체를 쓰지 않는다
  */
 
 export type SearchType = 'player' | 'clan' | 'league'
@@ -39,21 +30,17 @@ interface SearchOption {
 
 const OPTIONS: readonly SearchOption[] = [
   /*
-   * 플레이어 placeholder 를 원본 문구(`닉네임을 입력하세요.`)에서 넓혔다.
-   *
-   * 사양이 "플레이어검색(닉네임 또는 병영복붙)" 이다 (`docs/SITE_SPEC_V2.md` 3절).
+   * 플레이어 placeholder 는 `닉네임 또는 병영수첩 주소` 다.
    * 주소 붙여넣기는 이미 동작한다 — 서버가 `playerRefsFromBarracksUrl`(D-162)로
-   * 주소에서 식별자를 뽑는다. **되는데 안내가 없어서 아무도 안 쓰는 상태**였다.
-   * 기능을 바꾼 것이 아니라 이미 있는 기능을 적어 준 것이다.
+   * 주소에서 식별자를 뽑는다. 되는데 안내가 없어서 아무도 안 쓰던 기능이다.
    */
   {
     type: 'player',
-    label: '플레이어 검색',
-    placeholder: '닉네임 또는 병영수첩 주소를 입력하세요.',
+    label: '플레이어',
+    placeholder: '닉네임 또는 병영수첩 주소',
   },
-  { type: 'clan', label: '클랜 검색', placeholder: '클랜명을 입력하세요.' },
-  // 리그 검색의 placeholder는 원본에서 확인하지 못했다 [미확인] — 위 두 개의 표기 규칙을 따랐다
-  { type: 'league', label: '리그 검색', placeholder: '리그명을 입력하세요.' },
+  { type: 'clan', label: '클랜', placeholder: '클랜명' },
+  { type: 'league', label: '리그', placeholder: '리그명' },
 ]
 
 export interface SearchBarProps {
@@ -65,6 +52,7 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
   const [type, setType] = useState<SearchType>('player')
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
+  const [focused, setFocused] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
   const selected = OPTIONS.find((option) => option.type === type) ?? OPTIONS[0]!
@@ -85,118 +73,106 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
   }
 
   return (
-    /*
-     * 모바일은 **전체폭**이다 — `inline-block` 고정폭(11rem + 28rem = 39rem)이
-     * 좁은 화면을 넘어간다. 넓은 화면(`md:` 이상)은 원본 실측 그대로 둔다.
-     */
-    <div
-      ref={rootRef}
-      className="mx-auto mt-10 inline-block text-center max-md:mt-6 max-md:block max-md:w-full"
-    >
-      <div className="flex items-stretch justify-center">
-        <div className="relative max-md:shrink-0">
-          <div
-            role="button"
-            tabIndex={0}
+    <div ref={rootRef} className="mx-auto w-full max-w-[560px] text-left">
+      <div
+        className={`flex items-stretch rounded-[var(--radius,2px)] border transition-colors duration-100 ${
+          focused || open ? 'border-accent' : 'border-line'
+        }`}
+      >
+        {/* --- 검색 종류 --- */}
+        <div className="relative shrink-0">
+          <button
+            type="button"
             aria-haspopup="listbox"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                setOpen((value) => !value)
-              }
-            }}
-            className="flex w-selector cursor-pointer select-none items-center justify-between rounded-l-lg bg-selector px-5 py-4 text-lg text-selector-fg max-md:w-36 max-md:shrink-0 max-md:px-3 max-md:py-3 max-md:text-base"
+            className="flex h-full w-[112px] cursor-pointer select-none items-center justify-between gap-2 border-r border-line px-4 text-[13px] text-meta transition-colors duration-100 hover:text-[var(--color-text-strong,#f6eded)] max-md:w-[92px] max-md:px-3"
           >
-            <div className="text-left max-md:whitespace-nowrap">{selected.label}</div>
-            {/* 실측: 아이콘 칸 11×24.5px + 아래 여백 7px. 이 24.5+7+상하패딩 28이 셀렉터 높이 59.5px를 만든다 */}
-            <div className="mb-2 flex h-7 w-3 items-center justify-end max-md:mb-0">
-              <CaretDownIcon />
-            </div>
-          </div>
+            <span className="whitespace-nowrap">{selected.label}</span>
+            <CaretDownIcon />
+          </button>
 
-          {/* 모바일은 셀렉터 높이가 달라 `top-20`(5rem) 고정이 뜬다 → 바로 아래에 붙인다 */}
           {open ? (
             <div
               role="listbox"
-              className="absolute left-0 top-20 z-10 w-selector select-none rounded-lg bg-selector py-1.5 text-left text-selector-fg max-md:top-full max-md:mt-1 max-md:w-40"
+              className="absolute left-[-1px] top-full z-10 mt-1 w-[112px] select-none border border-line bg-card py-1 text-left max-md:w-[92px]"
             >
               {OPTIONS.map((option) => (
-                <div
+                <button
                   key={option.type}
+                  type="button"
                   role="option"
                   aria-selected={option.type === type}
                   onClick={() => {
                     setType(option.type)
                     setOpen(false)
                   }}
-                  className="cursor-pointer border-l-4 border-transparent px-4 py-4 hover:border-selector-hover-edge hover:bg-selector-hover"
+                  className={`block w-full cursor-pointer border-l border-transparent px-4 py-2.5 text-left text-[13px] transition-colors duration-100 hover:border-l-accent hover:text-[var(--color-text-strong,#f6eded)] ${
+                    option.type === type
+                      ? 'border-l-accent text-[var(--color-text-strong,#f6eded)]'
+                      : 'text-meta'
+                  }`}
                 >
                   {option.label}
-                </div>
+                </button>
               ))}
             </div>
           ) : null}
         </div>
 
-        <div className="relative max-md:min-w-0 max-md:flex-1">
-          <input
-            type="text"
-            value={text}
-            placeholder={selected.placeholder}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') submit()
-            }}
-            className="w-search appearance-none rounded-r-lg bg-card py-5 pl-5 pr-16 text-lg text-input-fg placeholder:text-input-placeholder focus:outline-none max-md:w-full max-md:py-3 max-md:pl-3 max-md:pr-11 max-md:text-base"
-          />
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="검색"
-            onClick={submit}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') submit()
-            }}
-            className="absolute right-4 top-4 h-8 w-8 cursor-pointer text-input-fg max-md:right-3 max-md:top-2.5 max-md:h-6 max-md:w-6"
-          >
-            <SearchIcon />
-          </div>
-        </div>
+        {/* --- 입력 --- */}
+        <input
+          type="text"
+          value={text}
+          placeholder={selected.placeholder}
+          onChange={(event) => setText(event.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') submit()
+          }}
+          className="min-w-0 flex-1 appearance-none bg-transparent px-4 py-4 text-[15px] text-[var(--color-text-strong,#f6eded)] placeholder:text-[var(--color-faint,#6b5555)] focus:outline-none max-md:px-3 max-md:py-3"
+        />
+
+        <button
+          type="button"
+          aria-label="검색"
+          onClick={submit}
+          className="flex shrink-0 cursor-pointer items-center px-4 text-meta transition-colors duration-100 hover:text-accent max-md:px-3"
+        >
+          <SearchIcon />
+        </button>
       </div>
     </div>
   )
 }
 
-/** 실측: 20×21px 아래 방향 삼각형 */
 function CaretDownIcon() {
   return (
     <svg
-      viewBox="0 0 20 21"
+      viewBox="0 0 20 20"
       aria-hidden
-      className="h-[21px] w-5 shrink-0"
+      className="h-3 w-3 shrink-0"
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M3.5 7.5h13L10 15.5z" />
+      <path d="M3.5 7h13L10 15.5z" />
     </svg>
   )
 }
 
-/** 실측: 입력 오른쪽 안쪽 28×28px 돋보기 */
 function SearchIcon() {
   return (
     <svg
       viewBox="0 0 32 32"
       aria-hidden
-      className="h-full w-full"
+      className="h-[18px] w-[18px]"
       fill="none"
       stroke="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <circle cx="13" cy="13" r="9.5" strokeWidth="3.5" />
-      <path d="M19.9 19.9 29 29" strokeWidth="4" strokeLinecap="round" />
+      <circle cx="13" cy="13" r="9.5" strokeWidth="3" />
+      <path d="M19.9 19.9 29 29" strokeWidth="3.5" strokeLinecap="round" />
     </svg>
   )
 }

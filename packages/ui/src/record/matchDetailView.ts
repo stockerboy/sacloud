@@ -81,7 +81,13 @@ export interface KdaLike {
 
 export type KdaView =
   | { kind: 'unknown' }
-  | { kind: 'known'; kill: number | null; death: number | null; assist: number | null; rate: number | null }
+  | {
+      kind: 'known'
+      kill: number | null
+      death: number | null
+      assist: number | null
+      rate: number | null
+    }
 
 /**
  * kda 칸.
@@ -103,9 +109,7 @@ export function kdaView(stat: KdaLike): KdaView {
 /* ------------------------------------------------------------------ 래더 --- */
 
 export type RatingCellView =
-  | { kind: 'placement' }
-  | { kind: 'rating'; value: number }
-  | { kind: 'unknown' }
+  { kind: 'placement' } | { kind: 'rating'; value: number } | { kind: 'unknown' }
 
 /**
  * 래더 칸.
@@ -114,7 +118,10 @@ export type RatingCellView =
  * 배치도 아닌데 값이 없으면 **모르는 것**이라 `알수없음` 이다 —
  * 예전 구현의 `rating ?? 0` 은 그 선수의 래더가 0점이었다고 말하는 것이라 틀렸다.
  */
-export function ratingCellView(stat: { placement: boolean; rating: number | null }): RatingCellView {
+export function ratingCellView(stat: {
+  placement: boolean
+  rating: number | null
+}): RatingCellView {
   if (stat.placement) return { kind: 'placement' }
   if (stat.rating === null) return { kind: 'unknown' }
   return { kind: 'rating', value: stat.rating }

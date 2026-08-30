@@ -26,8 +26,13 @@ import { prisma } from '../src/index'
 /** 무소속리그 slug. GNB·모바일 서랍이 이미 `/league/nolink` 를 가리킨다 */
 export const INDEPENDENT_LEAGUE_SLUG = 'nolink'
 
-/** 무소속리그 이름 */
-export const INDEPENDENT_LEAGUE_NAME = '무소속리그'
+/**
+ * 무소속리그의 **표시 이름** (2026-08-30 사용자 지시로 `무소속리그` → `IPL`).
+ *
+ * slug(`nolink`)·`category`(`independent`)·화면의 `무소속 티어` 같은 **분류 용어는 그대로다.**
+ * 바뀐 것은 리그가 화면에 보이는 이름 하나뿐이다.
+ */
+export const INDEPENDENT_LEAGUE_NAME = 'IPL'
 
 /**
  * 티어 수 = `League.divisionCount`. `Clan.tier` 의 허용 범위와 **같은 값이어야 한다** —

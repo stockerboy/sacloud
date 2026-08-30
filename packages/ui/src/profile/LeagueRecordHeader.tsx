@@ -5,67 +5,65 @@ import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 import { RelativeTime } from '../common/RelativeTime'
 import { StarIcon } from '../league/LeagueHome'
 import type { RefreshState } from './ProfileHeader'
+import { IdentityBand, MetaDot } from '../player/profileKit'
 
 /**
- * 리그 기록실(선수 · 클랜) 상단 헤더.
+ * 리그 기록실(선수 · 클랜) 상단 헤더 — `적진` 팔레트.
  *
- * 우리 기록실에는 **이 블록이 통째로 없었다** — 탭만 있었다 (UI_PARITY_AUDIT 5-3~5-6 · 6-3 · 6-4).
- * 아래 구조는 2026-08-27 원본 DOM 실측이다.
+ * 예전에는 원본(3rd.supply)의 실측 구조였다 — 고정 높이 14rem 의 회색 띠에
+ * 흰 글자, 48px 높이의 채운 파란 버튼 세 개. 재현을 그만두면서 전부 걷어냈다.
  *
- * 클랜 `/league/{slug}/clan/{slug}`
- * ```
- * <div class="mt-5 bg-warmGray-800 h-56 py-10 text-white">
- *   <div class="pc-container">
- *     <div class="flex items-center">
- *       <sp-common-clan-mark class="mark-max">
- *       <div class="flex flex-col content-between ml-5">
- *         <div class="text-sm">서플라이공식리그 - 2부리그<span> - 8위</span></div>
- *         <div class="text-4xl">afterpray</div>
- *     <div class="flex flex-col ml-20 mt-5">
- *       <div class="flex items-center">
- *         <button class="… bg-blue-600 border-blue-700 text-white w-28 h-12 text-lg">전적갱신</button>
- *         <a      class="… bg-gray-500 border-gray-600 text-white ml-2 px-5 h-12 text-lg">기본정보</a>
- *         <div    class="… bg-coolGray-700 border-coolGray-800 text-amber-400 ml-2 px-5 h-12 text-lg">☆ 즐겨찾기</div>
- *       <div class="text-xs mt-0.5 text-gray-300">최근갱신: 16분 전</div>
- * ```
+ * 지금은 전역 프로필(`/player/{id}` · `/clan/{slug}`)과 **같은 신원 띠**를 쓴다.
+ * 같은 사람·같은 클랜을 두 화면에서 볼 때 머리가 다시 자리를 찾지 않아도 되게 하려는 것이다.
  *
- * 선수 `/league/{slug}/player/{id}` — 같은 구조인데 세 가지가 다르다.
- * 배경이 `blueGray-default`, **`전적갱신`과 `최근갱신`이 없고**, 버튼 두 개가
- * 이름 오른쪽(`flex items-center ml-10`)에 붙는다. 즐겨찾기 배경도 한 단계 어둡다.
- *
- * `즐겨찾기`는 원본에서도 링크가 아니라 클릭 가능한 `div` 다. 로그인이 필요한 기능이라
- * 표시만 원본과 같게 하고 동작은 붙이지 않는다 — 저장 위치·노출 지점은 `[미확인]`
- * (`LeagueHeader` 의 즐겨찾기와 같은 상태다).
+ * **하는 일은 그대로다** — `전적갱신` 은 `clanRenew` 를 부르고, `기본정보` 는 전역
+ * 프로필로 가고, `즐겨찾기` 는 여전히 표시 전용이다(저장 위치·노출 지점 `[미확인]`).
+ * 리그 이름 문자열은 받은 그대로 흘려보낸다 — 이 파일이 가공하지 않는다.
  */
 
-const BTN = 'inline-flex h-12 items-center justify-center border px-5 text-lg'
-const BTN_NEUTRAL = `${BTN} border-btn-neutral-border bg-btn-neutral text-white`
+/**
+ * 헤더 안의 보조 버튼 — 면을 채우지 않고 1px 선으로 만든다 (`적진`).
+ *
+ * **글자색을 여기에 넣지 않는다.** `styles.css` 의 `a { color: inherit }` 는 레이어
+ * 밖이라 `<a>` 에 직접 준 Tailwind 색 유틸리티를 눌러 버린다. 링크에 쓸 때는
+ * 색을 안쪽 `<span>` 이 맡는다 (`group-hover`).
+ */
+const HEADER_BTN =
+  'group inline-flex h-9 items-center justify-center rounded-[2px] border border-line px-4 text-[13px] transition-colors hover:border-accent'
 
-/** 즐겨찾기 — 표시 전용. 원본도 `div` 라 시맨틱을 바꾸지 않는다 */
-function FavoriteButton({ dark }: { dark: boolean }) {
-  const tone = dark
-    ? 'border-btn-fav-dark-border bg-btn-fav-dark'
-    : 'border-btn-fav-border bg-btn-fav'
+/** `HEADER_BTN` 안쪽 글자 — 색은 여기가 쓴다 */
+const HEADER_BTN_LABEL = 'text-text transition-colors group-hover:text-accent'
+
+/**
+ * 즐겨찾기 — 표시 전용.
+ * 원본에서도 링크가 아니라 클릭 가능한 `div` 였고, 로그인이 필요한 기능이라
+ * 표시만 두고 동작은 붙이지 않는다 (`LeagueHeader` 의 즐겨찾기와 같은 상태다).
+ */
+function FavoriteButton() {
   return (
-    <div className={`${BTN} ml-2 cursor-pointer text-favorite ${tone}`}>
-      <StarIcon className="mr-1 h-[15px] w-4" />
-      즐겨찾기
+    <div className={`${HEADER_BTN} cursor-pointer`}>
+      <StarIcon className="mr-1.5 h-[13px] w-3.5" />
+      <span className={HEADER_BTN_LABEL}>즐겨찾기</span>
     </div>
   )
 }
 
 /**
- * 브레드크럼 한 줄 — `{리그명} - {2부리그}` + `<span> - 8위</span>`.
+ * 리그 · 순위 한 줄.
  *
- * 뒷조각(순위)은 원본이 `<span>` 으로 따로 감싼다. 순위가 없으면(배치고사 중)
- * 그 조각을 **만들지 않는다** — `- 0위` 같은 값을 지어내지 않는다.
+ * 순위가 없으면(배치고사 중) 그 조각을 **만들지 않는다** — `- 0위` 를 지어내지 않는다.
  */
-function Breadcrumb({ head, tail }: { head: string; tail: string | null }) {
+function LeagueLine({ head, tail }: { head: string; tail: string | null }) {
   return (
-    <div className="text-sm">
-      {head}
-      {tail === null ? null : <span> {tail}</span>}
-    </div>
+    <span className="flex items-center gap-2">
+      <span className="text-text">{head}</span>
+      {tail === null ? null : (
+        <>
+          <MetaDot />
+          <span className="font-num text-text tabular-nums">{tail}</span>
+        </>
+      )}
+    </span>
   )
 }
 
@@ -95,35 +93,35 @@ export function LeaguePlayerRecordHeader({
   position?: string | null
 }) {
   return (
-    /*
-     * 모바일은 고정 높이(14rem)를 풀고 버튼 줄을 이름 아래로 내린다.
-     * 넓은 화면(`md:` 이상)은 원본 실측 그대로 한 줄이다.
-     */
-    <div className="mt-5 h-56 bg-player-header py-10 text-white max-md:mt-0 max-md:h-auto max-md:py-5">
-      <div className="pc-container">
-        <div className="flex items-center max-md:flex-wrap">
-          <ClanMark clan={clan} size="max" alt={clan?.name ?? ''} />
-          <div className="ml-5 flex flex-col max-md:ml-3 max-md:min-w-0 max-md:flex-1">
-            <Breadcrumb
-              head={leagueName}
-              tail={rank === null ? null : `- 개인랭킹 ${rank}위`}
-            />
-            {/* 포지션은 **이름 위**다 (사용자 지시). 리그·순위 줄 바로 아래라
-                "이 사람이 어느 자리를 보는 사람인가" 를 이름보다 먼저 읽게 된다 */}
-            {position ? (
-              <div className="text-sm text-white/80 max-md:text-xs">포지션: {position}</div>
-            ) : null}
-            <div className="text-4xl max-md:truncate max-md:text-2xl">{name}</div>
-          </div>
-          <div className="ml-10 flex items-center max-md:ml-0 max-md:mt-3 max-md:w-full">
-            <Link href={infoHref} className={BTN_NEUTRAL}>
-              기본정보
-            </Link>
-            <FavoriteButton dark />
-          </div>
+    <IdentityBand
+      mark={<ClanMark clan={clan} size="max" alt={clan?.name ?? ''} />}
+      name={name}
+      meta={
+        <>
+          <LeagueLine
+            head={leagueName}
+            tail={rank === null ? null : `개인랭킹 ${rank}위`}
+          />
+          {position ? (
+            <>
+              <MetaDot />
+              <span className="flex items-center gap-2">
+                <span className="text-faint">포지션</span>
+                <span className="text-text">{position}</span>
+              </span>
+            </>
+          ) : null}
+        </>
+      }
+      action={
+        <div className="flex items-center gap-2">
+          <Link href={infoHref} className={HEADER_BTN}>
+            <span className={HEADER_BTN_LABEL}>기본정보</span>
+          </Link>
+          <FavoriteButton />
         </div>
-      </div>
-    </div>
+      }
+    />
   )
 }
 
@@ -156,47 +154,48 @@ export function LeagueClanRecordHeader({
   refreshState: RefreshState
   onRefresh: () => void
 }) {
+  /* 리그 이름은 손대지 않는다. 부리그 표기만 뒤에 붙인다 */
   const head = divisionCount > 1 ? `${leagueName} - ${division}부리그` : leagueName
 
   return (
-    /* 모바일 — 고정 높이 해제 + 버튼 줄의 왼쪽 들여쓰기(`ml-20`) 제거 */
-    <div className="mt-5 h-56 bg-clan-header py-10 text-white max-md:mt-0 max-md:h-auto max-md:py-5">
-      <div className="pc-container">
-        <div className="flex items-center">
-          <ClanMark clan={clan} size="max" alt={clan.name} />
-          <div className="ml-5 flex min-w-0 flex-col max-md:ml-3">
-            <Breadcrumb head={head} tail={rank === null ? null : `- ${rank}위`} />
-            <div className="text-4xl max-md:truncate max-md:text-2xl">{name}</div>
-          </div>
-        </div>
-        <div className="ml-20 mt-5 flex flex-col max-md:ml-0 max-md:mt-3">
-          <div className="flex items-center max-md:flex-wrap max-md:gap-y-2">
-            <button
-              type="button"
-              disabled={refreshState === 'pending'}
-              onClick={onRefresh}
-              className={`${BTN} w-28 border-refresh-border bg-refresh px-0 text-white focus:outline-none disabled:opacity-60`}
-            >
-              {refreshState === 'pending' ? '갱신중' : '전적갱신'}
-            </button>
-            <Link href={infoHref} className={`${BTN_NEUTRAL} ml-2`}>
-              기본정보
-            </Link>
-            <FavoriteButton dark={false} />
-          </div>
-          <div className="mt-0.5 text-xs text-line">
+    <IdentityBand
+      mark={<ClanMark clan={clan} size="max" alt={clan.name} />}
+      name={name}
+      meta={
+        <>
+          <LeagueLine head={head} tail={rank === null ? null : `${rank}위`} />
+          <MetaDot />
+          <span className="flex items-center gap-2">
+            <span className="text-faint">최근갱신</span>
             {refreshState === 'failed' ? (
-              '갱신에 실패했습니다'
+              <span className="text-accent">갱신 실패</span>
             ) : renewedAt === null ? (
-              '갱신 기록 없음'
+              <span className="text-faint">기록 없음</span>
             ) : (
-              <>
-                최근갱신: <RelativeTime value={renewedAt} />
-              </>
+              <span className="text-text">
+                <RelativeTime value={renewedAt} />
+              </span>
             )}
-          </div>
+          </span>
+        </>
+      }
+      action={
+        <div className="flex items-center gap-2">
+          {/* 실패 문구는 위 `최근갱신` 줄이 이미 말한다 — 버튼 아래에 또 적지 않는다 */}
+          <button
+            type="button"
+            disabled={refreshState === 'pending'}
+            onClick={onRefresh}
+            className={`${HEADER_BTN} border-accent text-accent disabled:opacity-50`}
+          >
+            {refreshState === 'pending' ? '갱신중' : '전적갱신'}
+          </button>
+          <Link href={infoHref} className={HEADER_BTN}>
+            <span className={HEADER_BTN_LABEL}>기본정보</span>
+          </Link>
+          <FavoriteButton />
         </div>
-      </div>
-    </div>
+      }
+    />
   )
 }

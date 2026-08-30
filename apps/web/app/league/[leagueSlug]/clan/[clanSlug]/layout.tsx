@@ -3,7 +3,7 @@
 import { use } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { LeagueClanRecordHeader, ProfileTabs, Skeleton } from '@sacloud/ui'
+import { LeagueClanRecordHeader, ProfileNav, ProfileSkeleton } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useRefresh } from '@/lib/useRefresh'
@@ -60,13 +60,11 @@ export default function LeagueClanLayout({
           onRefresh={refresh.run}
         />
       ) : (
-        <div className="mt-5 h-56 bg-clan-header py-10 max-md:mt-0 max-md:h-auto max-md:py-5">
-          <div className="pc-container">
-            <Skeleton className="h-[51px] w-96 max-w-full" />
-          </div>
+        <div className="pc-container pt-[40px]">
+          <ProfileSkeleton rows={1} height={120} />
         </div>
       )}
-      <ProfileTabs tabs={leagueClanTabs(leagueSlug, clanSlug)} current={pathname} />
+      <ProfileNav tabs={leagueClanTabs(leagueSlug, clanSlug)} current={pathname} />
       {children}
     </>
   )

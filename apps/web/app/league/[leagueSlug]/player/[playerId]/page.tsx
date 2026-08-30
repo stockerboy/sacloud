@@ -4,12 +4,14 @@ import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
-  LoadMoreButton,
   MatchCard,
   PlaystyleBars,
   PlayerStatSidebar,
+  ProfileEmpty,
+  ProfileLoadMore,
+  ProfileSkeleton,
   RecentMatchSummary,
-  Skeleton,
+  SectionTitle,
   TeammateTable,
   TierBreakdown,
   TraitHexagon,
@@ -19,10 +21,24 @@ import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 
 /**
- * 개인 기록실 `/league/{slug}/player/{id}`.
+ * 개인 기록실 `/league/{slug}/player/{id}` — `적진` 팔레트.
  *
- * 원본 구성: 최근매치 요약 → 매치 카드(아코디언) 목록 + 우측 사이드(상세정보·최근 같이한 플레이어).
- * 탭: 기본정보(전역 `/player/{id}`) / 기록실(현재) / 지난시즌.
+ * ── 읽는 순서 (위 → 아래)
+ * ```
+ * 1  전투력          육각형 여섯 축.  이 화면의 주인공이다
+ * 2  플레이스타일     블루/레드 축 바
+ * 3  기록            래더 · 전적 · 킬뎃 (예전 우측 `상세정보`)
+ * 4  최근 경기        오늘 기록 + 최근매치 요약 → 경기 카드 목록
+ * 5  더 보기          티어별 게임빈도 · 최근 같이한 플레이어 (접어 둔다)
+ * ```
+ *
+ * 예전에는 3:1 두 칸에 여섯 덩어리를 한꺼번에 쏟았다. 육각형 옆에 상세정보가 붙고
+ * 그 아래로 바 · 최근매치 · 경기 · 티어 · 같이한 플레이어가 동시에 보였다.
+ * 지표가 주인공이 되게 **한 줄로 세우고**, 덜 중요한 두 표는 접었다.
+ *
+ * **바뀐 것은 배치와 겉모습뿐이다.** 부르는 API · 넘기는 값 · 링크가 가는 곳은 그대로다.
+ * 육각형 · 바 · 오늘 줄은 원본에 없는 화면이고, 값이 없는 축은 여전히 0 이 아니라
+ * `측정중` 으로 남는다 (D-106 · D-185 · D-186).
  */
 export default function LeaguePlayerRecordPage({
   params,
@@ -33,6 +49,8 @@ export default function LeaguePlayerRecordPage({
   const ready = useApiReady()
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState<Record<string, MatchDetail>>({})
+  /* 덜 중요한 표는 기본으로 접는다 — 화면을 한 번에 다 쏟지 않기 위해서다 */
+  const [moreOpen, setMoreOpen] = useState(false)
 
   const detail = useQuery({
     queryKey: ['league', leagueSlug, 'player', playerId],
@@ -73,18 +91,16 @@ export default function LeaguePlayerRecordPage({
      실제로 이 리그 선수 전원이 그 상태였다 (D-117). */
   if (detail.isPending) {
     return (
-      <div className="pc-container mt-10">
-        <Skeleton className="h-[200px] w-full" />
+      <div className="pc-container pt-[40px]">
+        <ProfileSkeleton rows={2} height={180} />
       </div>
     )
   }
 
   if (!detail.data) {
     return (
-      <div className="pc-container mt-10">
-        <div className="border border-divider bg-row px-6 py-10 text-center text-meta">
-          기록을 찾을 수 없습니다.
-        </div>
+      <div className="pc-container pt-[40px]">
+        <ProfileEmpty message="기록을 찾을 수 없습니다." />
       </div>
     )
   }
@@ -92,32 +108,27 @@ export default function LeaguePlayerRecordPage({
   const data = detail.data.data
 
   return (
-    <>
-      {/*
-        개인 기록 카드 배치 (`docs/PLAYER_TRAITS_SPEC.md` 9절 · D-185).
+    <div className="pc-container pb-[40px]">
+      {/* ── 1. 전투력 — 이 화면에서 제일 먼저 보여 주고 싶은 것 */}
+      {data.traits === null ? null : (
+        /* 카드가 스스로 `전투력` 제목을 그린다 — 위에 제목을 또 얹지 않는다 */
+        <section className="mt-[40px]">
+          <TraitHexagon traits={data.traits} />
+        </section>
+      )}
 
-        ```
-        ┌ 육각형 ─────────────────┬ 상세정보 ┐
-        ├ 플레이스타일 바 2줄 ──────┴─────────┤
-        ├ 최근매치 요약 + **오늘 기록** ──────┤
-        └ 경기 상세기록 (기존 그대로) ────────┘
-        ```
+      {/* ── 2. 플레이스타일 */}
+      {data.playstyle === null ? null : (
+        <section className="mt-[40px]">
+          <PlaystyleBars playstyle={data.playstyle} />
+        </section>
+      )}
 
-        `상세정보` 는 **옮긴 것**이지 새로 만든 것이 아니다 — 사이드에 있던 그 패널
-        그대로다(사양 9절 "자리만 육각형 옆으로 옮긴다"). 그래서 오른쪽 칸에는
-        `최근 같이한 플레이어` 만 남는다.
-
-        **오늘 기록은 따로 카드를 두지 않는다** (D-186). `최근매치` 카드 안에서
-        예전 `최근 폼` 이 있던 자리를 그대로 이어받는다 — 사용자가 그 자리를 지목했다.
-
-        육각형·바·오늘 줄은 **원본에 없는 화면**이다. 값이 없는 축을 0으로 그리지 않고
-        `측정중` 으로 둔다 (D-106).
-      */}
-      <div className="pc-container mt-2 flex max-md:flex-col">
-        <div className="w-3/4 max-md:w-full max-md:min-w-0">
-          {data.traits === null ? null : <TraitHexagon traits={data.traits} />}
-        </div>
-        <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">
+      {/* ── 3. 기록 — 예전 우측 사이드의 `상세정보` 를 본문 폭으로 내렸다.
+             항목·순서·표기는 하나도 바뀌지 않았다 (사양 9절 "자리만 옮긴다") */}
+      {/* 카드가 스스로 `상세정보` 제목을 그린다 — 위에 제목을 또 얹지 않는다 */}
+      <section className="mt-[40px]">
+        <div>
           <PlayerStatSidebar
             rating={data.rating}
             placement={data.placement}
@@ -139,79 +150,77 @@ export default function LeaguePlayerRecordPage({
             weaponStats={data.weapon_stats}
           />
         </div>
-      </div>
-      <div className="pc-container">
-        {data.playstyle === null ? null : <PlaystyleBars playstyle={data.playstyle} />}
-      </div>
+      </section>
+
+      {/* ── 4. 최근 경기 — 요약(오늘 기록 포함) 다음에 그 근거인 경기가 이어진다.
+             `today` 를 넘기면 승률 도넛 자리에 **오늘 기록**이 들어간다 (D-186) */}
+      <section className="mt-[40px]">
+        <SectionTitle title="최근 경기" />
+        <div className="mobile-scroll-x mt-4">
+          <RecentMatchSummary
+            summary={data.match_summary}
+            leagueSlug={leagueSlug}
+            today={data.today}
+            days={data.recent_days}
+          />
+        </div>
+        <div className="mt-3">
+          {matches.loading ? (
+            <ProfileSkeleton rows={3} height={104} />
+          ) : matches.items.length === 0 ? (
+            <ProfileEmpty message="기록된 경기가 없습니다." />
+          ) : (
+            matches.items.map((match) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                leagueSlug={leagueSlug}
+                detail={expanded[match.id]}
+                onExpand={loadDetail}
+              />
+            ))
+          )}
+          {/* 랭킹·게시판과 같은 커서 방식이다. 다음 커서가 없으면 렌더하지 않는다 */}
+          {matches.hasMore ? (
+            <ProfileLoadMore onClick={matches.loadMore} loading={matches.loadingMore} />
+          ) : null}
+        </div>
+      </section>
 
       {/*
-        모바일 — 3:1 두 칸을 위아래로 쌓는다.
-        예전에는 `order` 로 `상세정보` 를 이 묶음의 맨 위로 끌어올렸다
-        (2026-08-28 사용자 지시 — "첫번째 카드가 최상단에 있어야 하고 그 밑에부터 기록").
-        **이제 `상세정보` 는 위 카드로 올라갔으므로** 그 뒤집기가 필요 없다 — 그대로 두면
-        `최근 같이한 플레이어` 가 경기 기록 위로 올라와 그 지시를 거스른다.
-        `최근매치` 블록 안쪽(`packages/ui/src/record/RecordPanels.tsx`)은 다른 담당 구역이라
-        손대지 않고, 넘칠 때 **그 블록 안에서만** 가로로 밀리도록 감싸기만 한다.
-        `.mobile-scroll-x` 는 `@media (max-width:767px)` 안에서만 정의돼 PC 는 무영향이다.
-      */}
-      <div className="pc-container mt-2 flex max-md:flex-col">
-        <div className="w-3/4 max-md:w-full max-md:min-w-0">
-          <div className="mobile-scroll-x">
-            {/* `today` 를 넘기면 승률 도넛 자리에 **오늘 기록**이 들어간다 (D-186).
-                예전에는 여기가 `최근 폼` 6개월 그래프였다 — 사용자 지시로 뺐다.
-                클랜 기록실은 이 값을 넘기지 않으므로 도넛이 그대로 남는다 */}
-            <RecentMatchSummary
-              summary={data.match_summary}
-              leagueSlug={leagueSlug}
-              today={data.today}
-              days={data.recent_days}
-            />
-          </div>
-          <div className="mt-2">
-            {matches.loading ? (
-              <Skeleton className="h-[105px] w-full" />
-            ) : matches.items.length === 0 ? (
-              <div className="mt-4 text-center text-meta">기록된 경기가 없습니다.</div>
-            ) : (
-              matches.items.map((match) => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  leagueSlug={leagueSlug}
-                  detail={expanded[match.id]}
-                  onExpand={loadDetail}
-                />
-              ))
-            )}
-            {/* 기록실에는 `더 불러오기` 가 없었다. 첫 페이지(20건)만 보이고 그 뒤의
-                경기는 화면에서 닿을 수 없었다 — 사용자가 "기록이 분명 더 있는데
-                버튼이 없다" 고 지적한 그것이다. 랭킹·게시판과 같은 커서 방식이라
-                같은 버튼을 쓴다. 다음 커서가 없으면 렌더하지 않는다 (원본 동작). */}
-            {matches.hasMore ? (
-              <LoadMoreButton onClick={matches.loadMore} loading={matches.loadingMore} />
-            ) : null}
-          </div>
-        </div>
-        <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-2 max-md:w-full">
-          {/*
-            `상세정보`(`PlayerStatSidebar`) 는 **위 카드로 옮겼다** (사양 9절 · D-185).
-            같은 패널을 그대로 옮긴 것이라 항목·순서·표기는 하나도 바뀌지 않았다.
+        ── 5. 더 보기 — 접어 둔다.
+        티어별 게임빈도와 최근 같이한 플레이어는 **읽는 순서의 끝**이다.
+        지우지 않는다. 누르면 그대로 나온다.
 
-            `무기별 기록`(`WeaponStatPanel`) 은 **원본에 없어서 뺐다**
-            (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1). 컴포넌트와 계약 필드
-            (`weapon_stats` · `sniper_*` · `rifle_*`)는 그대로 두었다.
-          */}
-          {/* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절).
-              `상세정보` 와 같은 사이드 카드라 같은 칸에 둔다. 부리그/티어 표기는
-              리그 구분이 정한다 (D-165) — 화면이 임의로 고르지 않는다 */}
-          <TierBreakdown
-            rows={data.tier_breakdown}
-            leagueSlug={leagueSlug}
-            leagueCategory={data.league.category}
-          />
-          <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
-        </div>
-      </div>
-    </>
+        `무기별 기록`(`WeaponStatPanel`) 은 예전에 뺀 그대로다 — 컴포넌트와 계약 필드
+        (`weapon_stats` · `sniper_*` · `rifle_*`)는 살아 있고 화면만 부르지 않는다.
+      */}
+      <section className="mt-[40px]">
+        <SectionTitle
+          title="더 보기"
+          note={moreOpen ? undefined : '티어별 게임빈도 · 최근 같이한 플레이어'}
+          action={
+            <button
+              type="button"
+              onClick={() => setMoreOpen((value) => !value)}
+              className="text-[12px] text-meta transition-colors hover:text-accent"
+            >
+              {moreOpen ? '접기' : '펼치기'}
+            </button>
+          }
+        />
+        {moreOpen ? (
+          <div className="mt-4 grid grid-cols-2 gap-3 max-md:grid-cols-1">
+            {/* 부리그/티어 표기는 리그 구분이 정한다 (D-165) — 화면이 임의로 고르지 않는다 */}
+            <TierBreakdown
+              rows={data.tier_breakdown}
+              leagueSlug={leagueSlug}
+              leagueCategory={data.league.category}
+            />
+            <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
+          </div>
+        ) : null}
+      </section>
+    </div>
   )
 }

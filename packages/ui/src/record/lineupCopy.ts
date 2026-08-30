@@ -74,9 +74,7 @@ export function lineupPositionText(entry: {
 }
 
 /** 포지션 줄을 그릴 값이 있는가. 아무도 포지션을 모르면 줄 자체를 그리지 않는다 */
-export function hasAnyPosition(
-  entries: readonly { position_label: string | null }[],
-): boolean {
+export function hasAnyPosition(entries: readonly { position_label: string | null }[]): boolean {
   return entries.some((entry) => Boolean(entry.position_label?.trim()))
 }
 

@@ -101,13 +101,14 @@ const ARTICLES: ReadonlyArray<{ title: string; body: readonly string[] }> = [
 
 export default function ClauseServicePage() {
   return (
-    <div className="pb-20">
-      <h1 className="mb-6 text-xl font-bold">이용약관</h1>
+    <div className="pb-24">
+      {/* 문서 제목은 이 화면에서 유일한 큰 활자다 */}
+      <h1 className="display mb-10 text-2xl text-text-strong">이용약관</h1>
       {ARTICLES.map((article) => (
-        <section key={article.title} className="mb-6">
-          <h2 className="mb-1 font-bold">{article.title}</h2>
+        <section key={article.title} className="mb-8">
+          <h2 className="mb-2 text-sm font-bold text-text-strong">{article.title}</h2>
           {article.body.map((line) => (
-            <p key={line} className="whitespace-pre-wrap">
+            <p key={line} className="whitespace-pre-wrap text-sm leading-7 text-meta">
               {line}
             </p>
           ))}

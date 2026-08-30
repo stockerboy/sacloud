@@ -62,7 +62,7 @@ export default function AdminMatchesPage() {
     <AdminCard title="경기 관리">
       <div className="mb-3 flex flex-wrap gap-2">
         <select
-          className="border border-divider px-2 py-1"
+          className="h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
           value={official}
           onChange={(event) => setOfficial(event.target.value)}
         >
@@ -71,13 +71,13 @@ export default function AdminMatchesPage() {
           <option value="false">비공식 경기</option>
         </select>
         <input
-          className="w-56 border border-divider px-2 py-1"
+          className="w-56 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
           placeholder="sourceMatchId"
           value={sourceMatchId}
           onChange={(event) => setSourceMatchId(event.target.value)}
         />
         <input
-          className="w-40 border border-divider px-2 py-1"
+          className="w-40 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
           placeholder="클랜 slug"
           value={clan}
           onChange={(event) => setClan(event.target.value)}
@@ -91,7 +91,7 @@ export default function AdminMatchesPage() {
         <div className="text-meta">조건에 맞는 경기가 없다.</div>
       ) : (
         <table className="w-full text-sm">
-          <thead className="text-meta">
+          <thead className="text-xs text-meta">
             <tr>
               <th className="py-1 text-left">경기</th>
               <th className="text-left">출처</th>
@@ -107,7 +107,7 @@ export default function AdminMatchesPage() {
             {list.data.map((row) => {
               const origin = originLabel(row.origin)
               return (
-                <tr key={row.id} className="border-t border-divider">
+                <tr key={row.id} className="border-t border-line-soft">
                   <td className="py-1">
                     <div>{row.id}</div>
                     <div className="text-xs text-meta">{row.sourceMatchId ?? '-'}</div>
@@ -128,9 +128,9 @@ export default function AdminMatchesPage() {
                   </td>
                   <td>
                     {row.official ? (
-                      <span className="text-win">공식</span>
+                      <span className="text-text-strong">공식</span>
                     ) : (
-                      <span className="text-lose">비공식</span>
+                      <span className="text-accent">비공식</span>
                     )}
                   </td>
                   <td className="text-xs text-meta">
@@ -141,7 +141,7 @@ export default function AdminMatchesPage() {
                   <td>
                     <button
                       type="button"
-                      className="cursor-pointer text-xs underline"
+                      className="cursor-pointer text-xs text-meta underline underline-offset-4 hover:text-accent"
                       onClick={() => void toggle(row)}
                     >
                       {row.official ? '비공식으로' : '공식으로'}

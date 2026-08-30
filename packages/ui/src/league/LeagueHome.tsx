@@ -5,32 +5,21 @@ import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
 import { Skeleton } from '../common/Skeleton'
 import { formatCount, formatDate, formatRate, formatRating } from '../common/format'
-import { rateClass } from '../common/rate'
-import { NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_IDLE } from '../common/navTab'
+import { COL_STAT, NUM, SUB, TAB, TAB_ACTIVE, TAB_IDLE } from './rankStyles'
 
 /**
  * 리그홈 (리그정보 / 리그소개).
  *
- * 원본 실측 구조
- * ```
- * <div class="mt-10 pc-container">
- *   <div class="px-10 py-10 text-white bg-purple-950">          ← 리그 헤더
- *     <div class="flex items-center">
- *       <div class="text-4xl tracking-wider">{리그명}</div>
- *       <배지 공식>  <div class="text-gray-300 ml-5">{n}개의 클랜 참여중</div>
- *       <div class="… border border-amber-400 text-amber-400 text-sm">즐겨찾기</div>
- *   <div class="flex items-center text-xl bg-white">            ← 탭 57px
- *     <a class="nav-item nav-active">리그정보</a><a class="nav-item">리그소개</a>
- *   <div>
- *     <div><div class="title">리그관리자</div><div class="content flex items-center">…</div></div>
- *     <div><div class="title">리그맵</div><div class="content">…</div></div>
- *     <div><div class="title">대전인원</div><div class="content">…</div></div>
- *     <div><div class="title">참여중인 클랜</div><div>…</div></div>
- * ```
- * 실측 CSS
- * - 헤더 배경 `#1A0533`, 즐겨찾기 테두리·글자 `#FBBF24`
- * - `.title`  테두리 1px `#E5E7EB` / 배경 흰색 / padding 7px 21px / 15.75px·600
- * - `.content` 좌·우·아래 테두리 / 배경 `#ECECEC` / padding 14px 21px / 17.5px / 글자 `#4A4A4A`
+ * `적진` 톤으로 다시 그렸다 (2026-08-30).
+ * - 헤더의 검보라 판(`--color-league-header`)을 걷어냈다. 배경은 카드 검정 하나뿐이고,
+ *   리그명은 `--font-display` 로 크게 세운다. 면을 칠하는 대신 **여백과 1px 선**으로 나눈다
+ * - 정보 항목을 상자 안의 상자(제목 박스 + 내용 박스)에서 **한 줄짜리 정의 목록**으로 폈다.
+ *   화면을 꽉 채우지 않는다
+ * - 참여 클랜 목록은 랭킹 표와 **같은 치수·색 토큰**(`rankStyles.ts`)을 쓴다.
+ *   승/패는 승률 아래로 접었다 — 데이터는 그대로 있고 위계만 바뀌었다
+ * - 빨강은 쓰지 않는다. 이 화면에는 1위도 활성 탭 밑줄 말고는 강조할 숫자가 없다
+ *
+ * **탭이 가리키는 곳(href)과 버튼이 하는 일은 그대로다.**
  */
 
 export const LEAGUE_HOME_TABS = [
@@ -40,18 +29,20 @@ export const LEAGUE_HOME_TABS = [
 
 export function LeagueHeader({ league }: { league: League }) {
   return (
-    <div className="bg-league-header px-10 py-10 text-white">
-      <div className="flex items-center">
-        <div className="flex items-center">
-          <div className="text-4xl tracking-wider">{league.name}</div>
-          {league.official ? <Label name="공식" className="ml-2" /> : null}
-          <div className="ml-5 text-line">{formatCount(league.clan_count)}개의 클랜 참여중</div>
+    <div className="border-b border-line bg-card px-8 py-10 max-md:px-4 max-md:py-7">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h1 className="font-display text-4xl tracking-wide text-text-strong max-md:text-3xl">
+          {league.name}
+        </h1>
+        {league.official ? <Label name="공식" /> : null}
+        <div className="text-sm text-meta">
+          <span className={NUM}>{formatCount(league.clan_count)}</span>개의 클랜 참여중
         </div>
         {/*
-          즐겨찾기는 로그인이 필요한 기능이다. 표시는 원본과 동일하게 하고
-          실제 동작은 Phase 6(인증)에서 붙인다. 저장 위치·노출 지점은 아직 `[미확인]`.
+          즐겨찾기는 로그인이 필요한 기능이다. 표시만 하고 실제 동작은 그대로 미구현이다.
+          저장 위치·노출 지점은 아직 `[미확인]`.
         */}
-        <div className="ml-5 flex cursor-pointer items-center justify-center border border-favorite px-2 py-1 text-sm text-favorite">
+        <div className="ml-auto flex cursor-pointer select-none items-center rounded-[var(--radius)] border border-line px-2.5 py-1 text-xs text-meta hover:text-text-strong">
           <StarIcon />
           즐겨찾기
         </div>
@@ -62,12 +53,13 @@ export function LeagueHeader({ league }: { league: League }) {
 
 export function LeagueHomeTabs({ leagueSlug, current }: { leagueSlug: string; current: string }) {
   return (
-    <div className="flex items-center bg-card text-xl">
+    /* 랭킹 화면의 탭과 같은 상수를 쓴다 — 한 사이트에 두 가지 탭 디자인을 만들지 않는다 */
+    <div className="flex items-stretch gap-1 border-b border-line px-8 max-md:px-4">
       {LEAGUE_HOME_TABS.map((tab) => (
         <Link
           key={tab.segment}
           href={`/league/${leagueSlug}/home/${tab.segment}`}
-          className={`${NAV_TAB} ${tab.segment === current ? NAV_TAB_ACTIVE : NAV_TAB_IDLE}`}
+          className={`${TAB} ${tab.segment === current ? TAB_ACTIVE : TAB_IDLE}`}
         >
           {tab.label}
         </Link>
@@ -76,13 +68,14 @@ export function LeagueHomeTabs({ leagueSlug, current }: { leagueSlug: string; cu
   )
 }
 
+/** 정보 한 줄 — 제목(왼쪽, 옅게) + 내용. 상자를 겹치지 않는다 */
 function Field({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="border border-divider bg-card px-6 py-2 text-lg font-semibold">{title}</div>
-      <div className="border-x border-b border-divider bg-row px-6 py-4 text-xl text-input-fg">
-        {children}
+    <div className="flex border-b border-b-line-soft px-8 py-4 max-md:flex-col max-md:px-4">
+      <div className="w-36 shrink-0 text-xs tracking-[0.14em] text-faint max-md:mb-1.5 max-md:w-auto">
+        {title}
       </div>
+      <div className="min-w-0 flex-1 text-text">{children}</div>
     </div>
   )
 }
@@ -103,7 +96,7 @@ export function LeagueInfoPanel({
         {league.maps.length === 0 ? (
           '-'
         ) : (
-          <span className="flex flex-wrap gap-x-6 gap-y-1">
+          <span className="flex flex-wrap gap-x-5 gap-y-1">
             {league.maps.map((map) => (
               <span key={map.id}>{map.name}</span>
             ))}
@@ -114,25 +107,29 @@ export function LeagueInfoPanel({
         {league.player_limits.length === 0 ? (
           '-'
         ) : (
-          <span className="flex flex-wrap gap-x-6 gap-y-1">
+          <span className="flex flex-wrap gap-x-5 gap-y-1">
             {league.player_limits.map((limit) => (
-              <span key={limit}>
+              <span key={limit} className={NUM}>
                 {limit} vs {limit}
               </span>
             ))}
           </span>
         )}
       </Field>
-      <div>
-        <div className="border border-divider bg-card px-6 py-2 text-lg font-semibold">
+
+      <div className="mt-10">
+        <div className="px-8 pb-3 text-xs tracking-[0.14em] text-faint max-md:px-4">
           참여중인 클랜
         </div>
-        <div className="border-x border-b border-divider">
+        <div className="border-y border-line">
           {clansLoading ? (
             <>
               {Array.from({ length: 6 }, (_, index) => (
-                <div key={index} className="flex items-center border-b border-b-line bg-row py-3">
-                  <Skeleton className="mx-6 h-[25px] w-full" />
+                <div
+                  key={index}
+                  className="flex items-center border-b border-b-line-soft py-3 last:border-b-0"
+                >
+                  <Skeleton className="mx-8 h-[22px] w-full max-md:mx-4" />
                 </div>
               ))}
             </>
@@ -143,27 +140,30 @@ export function LeagueInfoPanel({
               <Link
                 key={entry.id}
                 href={`/league/${league.slug}/clan/${entry.clan.slug}`}
-                className="flex items-center border-b border-b-line bg-row px-6 py-3 text-meta last:border-b-0"
+                className="flex items-center border-b border-b-line-soft px-8 py-3 text-text last:border-b-0 hover:text-text-strong max-md:px-4"
               >
                 <ClanMark mark={entry.clan.mark} className="mr-2" alt={entry.clan.name} />
-                <span className="w-64 font-semibold">{entry.clan.name}</span>
-                <span className="w-24">{entry.division}부리그</span>
-                <span className="w-28 text-right">
-                  {formatCount(entry.win)}
-                  <span className="ml-0.5">승</span>
+                <span className="min-w-0 flex-1 truncate">{entry.clan.name}</span>
+                <span className="w-24 shrink-0 text-right text-sm text-meta max-md:hidden">
+                  {entry.division}부리그
                 </span>
-                <span className="w-28 text-right">
-                  {formatCount(entry.lose)}
-                  <span className="ml-0.5">패</span>
+                {/* 승/패는 승률 아래로 접었다 (랭킹 표와 같은 규칙) */}
+                <span className={COL_STAT}>
+                  <span className={`${NUM} text-text-strong`}>{formatRate(entry.win_rate)}</span>
+                  <span className="ml-0.5 text-xs text-faint">%</span>
+                  <span className={SUB}>
+                    {formatCount(entry.win)}승 {formatCount(entry.lose)}패
+                  </span>
                 </span>
-                <span className={`w-24 text-right ${rateClass(entry.win_rate)}`}>
-                  {formatRate(entry.win_rate)}
-                  <span className="ml-0.5">%</span>
+                <span className={`w-28 shrink-0 text-right ${NUM} text-text-strong max-md:w-20`}>
+                  {/* 배치고사 중이면 점수 대신 그 표기가 그대로 나온다 */}
+                  {entry.placement ? (
+                    <span className="font-body text-sm text-meta">배치고사</span>
+                  ) : (
+                    formatRating(entry.rating)
+                  )}
                 </span>
-                <span className="w-28 text-right">
-                  {entry.placement ? '배치고사' : formatRating(entry.rating)}
-                </span>
-                <span className="flex-grow text-right">
+                <span className="w-40 shrink-0 text-right text-xs text-faint max-md:hidden">
                   {formatDate(entry.joined_at)} 가입
                 </span>
               </Link>
@@ -176,11 +176,10 @@ export function LeagueInfoPanel({
 }
 
 /**
- * 즐겨찾기 별 — 원본은 **빈 별**(외곽선)이다 (2026-08-27 실측: Font Awesome `far fa-star`).
- * 채운 별은 "이미 즐겨찾기에 넣었다"는 뜻으로 읽혀서 비로그인 상태와 어긋난다
- * (UI_PARITY_AUDIT 2-8). 자산을 가져오지 않고 같은 크기로 새로 그렸다.
+ * 즐겨찾기 별 — 빈 별(외곽선)이다. 채운 별은 "이미 즐겨찾기에 넣었다"는 뜻으로 읽혀
+ * 비로그인 상태와 어긋난다. 자산을 가져오지 않고 새로 그렸다.
  */
-export function StarIcon({ className = 'mr-1 h-3 w-[15px]' }: { className?: string }) {
+export function StarIcon({ className = 'mr-1.5 h-3 w-[15px]' }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 16 15"

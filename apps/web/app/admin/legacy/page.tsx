@@ -102,7 +102,7 @@ export default function LegacyImportPage() {
         <label className="text-sm">
           리그{' '}
           <input
-            className="w-32 border border-divider px-2 py-1"
+            className="w-32 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
             value={leagueSlug}
             onChange={(event) => setLeagueSlug(event.target.value)}
           />
@@ -110,7 +110,7 @@ export default function LegacyImportPage() {
         <label className="text-sm">
           진행 중 시즌 번호{' '}
           <input
-            className="w-20 border border-divider px-2 py-1"
+            className="w-20 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
             placeholder="7"
             value={currentSeason}
             onChange={(event) => setCurrentSeason(event.target.value)}
@@ -129,7 +129,7 @@ export default function LegacyImportPage() {
         <button
           type="button"
           disabled={busy}
-          className="cursor-pointer border border-divider px-3 py-1 text-sm"
+          className="btn-line h-9 px-4 text-sm disabled:opacity-50"
           onClick={() => void send(false)}
         >
           미리보기
@@ -137,7 +137,7 @@ export default function LegacyImportPage() {
         <button
           type="button"
           disabled={busy || !result || result.counts.create === 0}
-          className="cursor-pointer border border-divider px-3 py-1 text-sm font-semibold"
+          className="btn-line h-9 px-4 text-sm font-bold disabled:opacity-50"
           onClick={() => void send(true)}
         >
           확정 저장{result ? ` (${result.counts.create}건)` : ''}
@@ -157,7 +157,7 @@ export default function LegacyImportPage() {
           </div>
 
           {result.warnings.length > 0 ? (
-            <div className="mb-3 border border-lose-line p-2 text-sm text-lose">
+            <div className="mb-4 border-l-2 border-accent py-1 pl-3 text-sm text-text">
               {result.warnings.map((warning) => (
                 <div key={warning}>{warning}</div>
               ))}
@@ -167,7 +167,7 @@ export default function LegacyImportPage() {
           {result.issues.length > 0 ? (
             <table className="mb-3 w-full text-sm">
               <thead>
-                <tr className="border-b border-divider text-left">
+                <tr className="border-b border-line-soft text-left">
                   <th>선수</th>
                   <th>시즌</th>
                   <th>사유</th>
@@ -175,13 +175,13 @@ export default function LegacyImportPage() {
               </thead>
               <tbody>
                 {result.issues.map((issue) => (
-                  <tr key={`${issue.legacy_player_id}-${issue.season}`} className="border-b border-divider">
+                  <tr key={`${issue.legacy_player_id}-${issue.season}`} className="border-b border-line-soft">
                     <td>
                       {issue.nickname ?? '-'}{' '}
                       <span className="text-xs text-meta">{issue.legacy_player_id}</span>
                     </td>
                     <td>{issue.season}</td>
-                    <td className="text-lose">
+                    <td className="text-accent">
                       {VERDICT_LABEL[issue.verdict] ?? issue.verdict}
                       {issue.note ? <span className="text-meta"> — {issue.note}</span> : null}
                     </td>
@@ -194,7 +194,7 @@ export default function LegacyImportPage() {
           {result.sample.length > 0 ? (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-divider text-left">
+                <tr className="border-b border-line-soft text-left">
                   <th>시즌</th>
                   <th>선수</th>
                   <th>순위</th>
@@ -204,7 +204,7 @@ export default function LegacyImportPage() {
               </thead>
               <tbody>
                 {result.sample.map((row) => (
-                  <tr key={`${row.legacyPlayerId}-${row.season}`} className="border-b border-divider">
+                  <tr key={`${row.legacyPlayerId}-${row.season}`} className="border-b border-line-soft">
                     <td>{row.season}</td>
                     <td>
                       {row.nickname ?? '-'}{' '}

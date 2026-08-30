@@ -78,7 +78,7 @@ export function PlayerFormPanel({ form }: { form: PlayerForm }) {
         <div className="py-6 text-center text-meta">최근 6개월간 기록된 경기가 없습니다.</div>
       ) : (
         <>
-          <div className="relative mt-2 h-28 border-t border-b border-t-divider border-b-divider">
+          <div className="relative mt-2 h-28 border-t border-b border-t-line-soft border-b-line-soft">
             {/* 킬뎃 50% 기준선. 킬과 데스가 같아지는 지점이라 위/아래가 뜻을 갖는다.
                 축 범위 밖이면 그리지 않는다 */}
             {domain.lo <= 50 && domain.hi >= 50 ? (

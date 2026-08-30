@@ -29,8 +29,8 @@ export default function LeagueInfoPage({
 
   if (!league.data) {
     return (
-      <div className="border-x border-b border-divider bg-row px-6 py-6">
-        <Skeleton className="h-[25px] w-full" />
+      <div className="border-b border-line-soft px-8 py-6 max-md:px-4">
+        <Skeleton className="h-[22px] w-full" />
       </div>
     )
   }

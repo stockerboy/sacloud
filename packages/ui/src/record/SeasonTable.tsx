@@ -58,8 +58,8 @@ function StatLine({
       <div className="text-base">{raw ?? ''}</div>
       {value === null ? null : (
         <div className="flex items-baseline gap-2">
-          <span className="text-sm text-input-placeholder">{label}</span>
-          <span className={`text-base ${valueClass}`}>{value}</span>
+          <span className="text-sm text-faint">{label}</span>
+          <span className={`num text-base ${valueClass}`}>{value}</span>
         </div>
       )}
     </div>
@@ -110,13 +110,13 @@ export function SeasonTable({
         return (
           <div
             key={season.season}
-            className="w-full bg-side px-4 py-3 text-white shadow-card"
+            className="w-full rounded-[2px] border border-line bg-card px-5 py-3 text-text-strong"
           >
             <div className="flex items-baseline justify-between gap-3">
               <div className="text-lg font-bold">{leagueName ?? ''}</div>
-              <div className="text-lg">{season.season_label}</div>
+              <div className="num text-lg">{season.season_label}</div>
             </div>
-            <div className="mt-2 border-t border-side-line" />
+            <div className="mt-2 border-t border-line-soft" />
 
             {/* 순위 — 오른쪽에만 온다. `{모수}명중` 은 작은 회색, 순위는 크다.
                 `null`(우리 카드)과 `0`(3rd.supply 카드) 둘 다 배치고사다 */}
@@ -126,11 +126,11 @@ export function SeasonTable({
               ) : (
                 <>
                   {season.rank_count === null ? null : (
-                    <span className="text-sm text-input-placeholder">
+                    <span className="num text-sm text-faint">
                       {formatCount(season.rank_count)}명중
                     </span>
                   )}
-                  <span className="text-xl font-bold">{formatCount(season.rank)}위</span>
+                  <span className="num text-xl font-bold">{formatCount(season.rank)}위</span>
                 </>
               )}
             </div>

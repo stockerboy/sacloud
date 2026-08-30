@@ -83,13 +83,14 @@ const SECTIONS: ReadonlyArray<{ title: string; body: readonly string[] }> = [
 
 export default function ClausePolicyPage() {
   return (
-    <div className="pb-20">
-      <h1 className="mb-6 text-xl font-bold">개인정보 취급방침</h1>
+    <div className="pb-24">
+      {/* 문서 제목은 이 화면에서 유일한 큰 활자다 */}
+      <h1 className="display mb-10 text-2xl text-text-strong">개인정보 취급방침</h1>
       {SECTIONS.map((section) => (
-        <section key={section.title} className="mb-6">
-          <h2 className="mb-1 font-bold">{section.title}</h2>
+        <section key={section.title} className="mb-8">
+          <h2 className="mb-2 text-sm font-bold text-text-strong">{section.title}</h2>
           {section.body.map((line) => (
-            <p key={line} className="whitespace-pre-wrap">
+            <p key={line} className="whitespace-pre-wrap text-sm leading-7 text-meta">
               {line}
             </p>
           ))}

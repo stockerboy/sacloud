@@ -125,7 +125,7 @@ function RecentDays({ days }: { days: PlayerDayRecord[] }) {
               <span className="ml-2 text-xs text-meta">
                 킬뎃{' '}
                 {day.kd_rate === null ? (
-                  <span className="text-unknown">{UNKNOWN}</span>
+                  <span className="text-faint">{UNKNOWN}</span>
                 ) : (
                   <span className={rateClass(day.kd_rate)}>{formatRate(day.kd_rate)}%</span>
                 )}
@@ -197,7 +197,7 @@ export function RecentMatchSummary({
   const isPlayerRecord = today !== undefined
 
   return (
-    <div className="bg-card px-4 py-2 shadow-card">
+    <div className="rounded-[2px] border border-line bg-card px-5 py-4">
       <div className="text-lg">최근매치</div>
       {/* 모바일은 2단이다 (2026-08-28 원본 모바일 관측).
           1단 `[도넛 | 전적·연승연패]` · 가로 구분선 · 2단 `상대 클랜 목록`.
@@ -254,7 +254,7 @@ export function RecentMatchSummary({
             모바일에서는 그 15rem(≈240px)이 화면을 통째로 밀어내므로 여백을 없애고,
             세로 구분선(`border-l-2`)을 위쪽 구분선으로 바꾼다 — 쌓인 배치에서 왼쪽 선은 뜻이 없다.
             상대가 많거나 클랜명이 길면 줄 하나가 여전히 넘칠 수 있어 **이 블록 안에서만** 스크롤한다. */}
-        <div className="mobile-scroll-x ml-20 flex min-h-40 items-center border-l-2 border-l-divider px-20 max-md:ml-0 max-md:min-h-0 max-md:border-l-0 max-md:border-t-2 max-md:border-t-divider max-md:px-0 max-md:pt-2">
+        <div className="mobile-scroll-x ml-20 flex min-h-40 items-center border-l-2 border-l-divider px-20 max-md:ml-0 max-md:min-h-0 max-md:border-l-0 max-md:border-t-2 max-md:border-t-line-soft max-md:px-0 max-md:pt-2">
           <div className="max-md:w-full">
             {summary.opponents.length === 0 ? (
               <div className="text-meta">상대 전적이 없습니다.</div>
@@ -263,7 +263,10 @@ export function RecentMatchSummary({
                 /* 모바일 원본은 `vs {클랜}` 한 줄, 전적·킬뎃이 그 아래 들여쓴 줄로 온다.
                    예전에는 한 줄로 두고 넘치면 가로로 밀었다 — 원본은 밀지 않고 접는다.
                    항목·순서·문구는 그대로다. `max-md:` 뿐이라 PC 는 한 줄 그대로다. */
-                <div key={entry.clan.id} className="flex items-center py-0.5 text-sm max-md:flex-wrap">
+                <div
+                  key={entry.clan.id}
+                  className="flex items-center py-0.5 text-sm max-md:flex-wrap"
+                >
                   <span className="mr-1 text-meta">vs</span>
                   <Link
                     href={`/league/${leagueSlug}/clan/${entry.clan.slug}`}
@@ -271,12 +274,7 @@ export function RecentMatchSummary({
                   >
                     {/* 등록 클랜 판정은 마크 URL 이 아니라 클랜 객체가 한다 (D-146).
                         미등록 상대 클랜도 자리를 비우지 않고 fallback 마크를 그린다 */}
-                    <ClanMark
-                      clan={entry.clan}
-                      size="xs"
-                      className="mr-1"
-                      alt={entry.clan.name}
-                    />
+                    <ClanMark clan={entry.clan} size="xs" className="mr-1" alt={entry.clan.name} />
                     {/* 모바일은 클랜명이 자기 줄을 통째로 쓰므로 100px 로 자르지 않는다 —
                         원본 모바일도 `supremacy-` 같은 이름을 끝까지 보여 준다 */}
                     <span className="max-w-[100px] truncate max-md:max-w-none">
@@ -314,7 +312,7 @@ export function RecentMatchSummary({
         `today` 를 넘기면 언제든 되살릴 수 있게 자리를 그대로 둔다.
       */}
       {SHOW_TODAY_CARD && today != null ? (
-        <div className="mt-2 border-t border-t-divider pt-2">
+        <div className="mt-2 border-t border-t-line-soft pt-2">
           <TodayPerformance today={today} />
         </div>
       ) : null}
@@ -325,7 +323,7 @@ export function RecentMatchSummary({
 /* ------------------------------------------------------------- 사이드 패널 --- */
 
 function Divider() {
-  return <div className="my-2 border-t border-t-side-line" />
+  return <div className="my-2 border-t border-t-line-soft" />
 }
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
@@ -393,7 +391,9 @@ function splitWeapons(weaponStats?: readonly PlayerWeaponStatRow[]): {
   const rifle = weaponStats?.find((row) => row.weapon === 0 && row.games > 0) ?? null
   if (sniper && rifle) {
     if (sniper.games === rifle.games) return { main: null, other: null }
-    return sniper.games > rifle.games ? { main: sniper, other: rifle } : { main: rifle, other: sniper }
+    return sniper.games > rifle.games
+      ? { main: sniper, other: rifle }
+      : { main: rifle, other: sniper }
   }
   return { main: sniper ?? rifle, other: null }
 }
@@ -406,7 +406,7 @@ const longWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나이퍼'
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
   const { main: mainWeapon, other: otherWeapon } = splitWeapons(props.weaponStats)
   return (
-    <div className="bg-side px-3 py-3 text-line shadow-card">
+    <div className="rounded-[2px] border border-line bg-card px-5 py-4 text-text">
       <div>상세정보</div>
       <Divider />
       <Stat label="래더">
@@ -517,7 +517,7 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
                외부 클랜이 SACLOUD 공식 소속처럼 보이면 안 된다. */
             <>
               <span className="text-meta">{props.clan.name}</span>
-              <span className="ml-1 text-xs text-unknown">미등록</span>
+              <span className="ml-1 text-xs text-faint">미등록</span>
             </>
           ) : (
             <Link href={`/clan/${props.clan.slug}`}>{props.clan.name}</Link>
@@ -560,7 +560,7 @@ export function ClanStatSidebar({
   rank: number | null
 }) {
   return (
-    <div className="bg-side px-3 py-3 text-line shadow-card">
+    <div className="rounded-[2px] border border-line bg-card px-5 py-4 text-text">
       <div>상세정보</div>
       <Divider />
       <Stat label="래더">
@@ -597,7 +597,7 @@ export function TeammateTable({
   teammates: readonly TeammateStat[]
 }) {
   return (
-    <div className="mt-2 bg-card shadow-card">
+    <div className="mt-2 rounded-[2px] border border-line bg-card">
       <div className="px-3 py-2 text-lg">{title}</div>
       <div className="flex items-center border-b border-b-line px-3 py-1 text-sm text-meta">
         <div className="flex-grow">닉네임</div>
@@ -653,7 +653,7 @@ export function WeaponStatPanel({ stats }: { stats?: readonly PlayerWeaponStatRo
   if (rows.length === 0) return null
 
   return (
-    <div className="mt-3 bg-side px-3 py-3 text-line shadow-card">
+    <div className="mt-3 rounded-[2px] border border-line bg-card px-5 py-4 text-text">
       <div>무기별 기록</div>
       {rows.map((row) => (
         <div key={row.weapon}>

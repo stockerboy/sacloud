@@ -60,7 +60,7 @@ export default function AdminClansPage() {
           <label className="text-sm">
             <div className="text-meta">slug</div>
             <input
-              className="w-40 border border-divider px-2 py-1"
+              className="w-40 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
               value={form.slug}
               onChange={(event) => setForm({ ...form, slug: event.target.value })}
             />
@@ -68,7 +68,7 @@ export default function AdminClansPage() {
           <label className="text-sm">
             <div className="text-meta">클랜명</div>
             <input
-              className="w-48 border border-divider px-2 py-1"
+              className="w-48 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
             />
@@ -76,7 +76,7 @@ export default function AdminClansPage() {
           <label className="text-sm">
             <div className="text-meta">구분</div>
             <select
-              className="border border-divider px-2 py-1"
+              className="h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
               value={form.category}
               onChange={(event) => setForm({ ...form, category: event.target.value })}
             >
@@ -87,7 +87,7 @@ export default function AdminClansPage() {
           <label className="text-sm">
             <div className="text-meta">무소속 티어</div>
             <input
-              className="w-20 border border-divider px-2 py-1"
+              className="w-20 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
               value={form.tier}
               placeholder="1~6"
               onChange={(event) => setForm({ ...form, tier: event.target.value })}
@@ -95,7 +95,7 @@ export default function AdminClansPage() {
           </label>
           <button
             type="button"
-            className="cursor-pointer border border-divider bg-card px-3 py-1"
+            className="btn-line h-9 px-4 text-sm disabled:opacity-50"
             disabled={create.isPending || !form.slug || !form.name}
             onClick={() => create.mutate()}
           >
@@ -111,13 +111,13 @@ export default function AdminClansPage() {
       <AdminCard title="클랜 목록">
         <div className="mb-3 flex gap-2">
           <input
-            className="w-60 border border-divider px-2 py-1"
+            className="w-60 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
             placeholder="클랜명 검색"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
           <select
-            className="border border-divider px-2 py-1"
+            className="h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
           >
@@ -131,7 +131,7 @@ export default function AdminClansPage() {
           <div className="text-meta">불러오는 중…</div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="text-meta">
+            <thead className="text-xs text-meta">
               <tr>
                 <th className="py-1 text-left">클랜</th>
                 <th className="text-left">구분</th>
@@ -144,9 +144,9 @@ export default function AdminClansPage() {
             </thead>
             <tbody>
               {list.data.map((clan) => (
-                <tr key={clan.slug} className="border-t border-divider">
+                <tr key={clan.slug} className="border-t border-line-soft">
                   <td className="py-1">
-                    <Link className="underline" href={`/admin/clans/${clan.slug}`}>
+                    <Link className="text-text-strong underline underline-offset-4" href={`/admin/clans/${clan.slug}`}>
                       {clan.name}
                     </Link>
                     <span className="ml-2 text-xs text-meta">{clan.slug}</span>

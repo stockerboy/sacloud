@@ -9,10 +9,13 @@ import {
   ClanRoundMetrics,
   ClanRoster,
   ClanStatSidebar,
-  LoadMoreButton,
   MatchCard,
+  ProfileEmpty,
+  ProfileLoadMore,
+  ProfileSkeleton,
+  PROFILE_PANEL,
   RecentMatchSummary,
-  Skeleton,
+  SectionTitle,
   TeammateTable,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
@@ -20,11 +23,24 @@ import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 
 /**
- * 클랜 기록실 `/league/{slug}/clan/{slug}`.
+ * 클랜 기록실 `/league/{slug}/clan/{slug}` — `적진` 팔레트.
  *
- * 헤더·탭은 레이아웃이 그린다. 개인 기록실과 같은 배치지만 카드에 개인 KDA 대신
- * 팀 단위 정보가 나오고(매치의 `player_stat`이 null), 사이드는
- * `상세정보` + `최근 클랜전 플레이어 승률` 이다.
+ * ── 읽는 순서 (위 → 아래)
+ * ```
+ * 1  클랜 육각형      여섯 축.  개인 기록실의 전투력 육각형과 같은 자리다
+ * 2  라운드 지표      배틀로그에서 나온 숫자들
+ * 3  포지션별 명단    클랜원이 어느 자리를 보는가
+ * 4  클랜 지표        티어별 승률 · 승률 추이
+ * 5  기록            래더 · 전적 · 부리그 · 순위 (예전 우측 `상세정보`)
+ * 6  최근 경기        요약 → 경기 카드 목록
+ * 7  더 보기          최근 클랜전 플레이어 승률 (접어 둔다)
+ * ```
+ *
+ * 예전에는 3:1 두 칸이었고 지표·명단·경기가 한꺼번에 보였다.
+ * 지표가 주인공이 되게 한 줄로 세우고, 마지막 표 하나는 접었다.
+ *
+ * **바뀐 것은 배치와 겉모습뿐이다.** 부르는 API · 넘기는 값 · 링크가 가는 곳은 그대로다.
+ * 재료가 없는 블록은 여전히 `null` 이라 그리지 않는다 (D-106) — 0 으로 채우지 않는다.
  */
 export default function LeagueClanRecordPage({
   params,
@@ -35,6 +51,7 @@ export default function LeagueClanRecordPage({
   const ready = useApiReady()
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState<Record<string, MatchDetail>>({})
+  const [moreOpen, setMoreOpen] = useState(false)
 
   const detail = useQuery({
     queryKey: ['league', leagueSlug, 'clan', clanSlug, 'show'],
@@ -73,8 +90,8 @@ export default function LeagueClanRecordPage({
 
   if (!detail.data) {
     return (
-      <div className="pc-container mt-10">
-        <Skeleton className="h-[200px] w-full" />
+      <div className="pc-container pt-[40px]">
+        <ProfileSkeleton rows={2} height={180} />
       </div>
     )
   }
@@ -82,51 +99,76 @@ export default function LeagueClanRecordPage({
   const data = detail.data.data
 
   return (
-    /*
-      모바일 — 3:1 두 칸을 위아래로 쌓는다. `최근매치` 블록 안쪽은 다른 담당 구역이라
-      손대지 않고 넘칠 때 그 블록 안에서만 가로로 밀리게 감싼다 (개인 기록실과 동일).
-    */
-    <div className="pc-container mt-2 flex max-md:flex-col">
-      <div className="w-3/4 max-md:w-full max-md:min-w-0 max-md:order-2">
-        {/* 클랜 화면의 상대 클랜 줄에는 킬뎃이 없다 (원본 실측 · UI_PARITY_AUDIT 5-7) */}
-        <div className="mobile-scroll-x">
+    <div className="pc-container pb-[40px]">
+      {/* ── 1. 클랜 육각형. 배틀로그가 없으면 `null` 이라 통째로 빠진다 */}
+      {data.hexagon ? (
+        <section className="mt-[40px]">
+          <div className={`${PROFILE_PANEL} px-5 py-4`}>
+            <ClanHexagon hexagon={data.hexagon} />
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── 2. 라운드 지표 (SITE_SPEC_V2 5-5절) — 육각형 바로 아래.
+             그림으로 형태를 보고 여기서 값을 읽는다 */}
+      {data.round_metrics ? (
+        <section className="mt-[40px]">
+          <ClanRoundMetrics metrics={data.round_metrics} />
+        </section>
+      ) : null}
+
+      {/* ── 3. 포지션별 명단 (SITE_SPEC_V2 5-2 · D-199).
+             `클랜원` 탭(`/clan/{slug}/player`)의 명단을 대체하지 않는다 — 별개다 */}
+      {data.roster ? (
+        <section className="mt-[40px]">
+          <ClanRoster roster={data.roster} leagueSlug={leagueSlug} />
+        </section>
+      ) : null}
+
+      {/* ── 4. 클랜 지표 (SITE_SPEC_V2 5절) */}
+      {data.metrics ? (
+        <section className="mt-[40px]">
+          <ClanMetrics
+            metrics={data.metrics}
+            leagueSlug={leagueSlug}
+            leagueCategory={data.league.category}
+          />
+        </section>
+      ) : null}
+
+      {/* ── 5. 기록 — 예전 우측 사이드의 `상세정보` 를 본문 폭으로 내렸다.
+             항목·순서·표기는 그대로다 */}
+      {/* 카드가 스스로 `상세정보` 제목을 그린다 — 위에 제목을 또 얹지 않는다 */}
+      <section className="mt-[40px]">
+        <div>
+          <ClanStatSidebar
+            rating={data.rating}
+            placement={data.placement}
+            win={data.win}
+            lose={data.lose}
+            winRate={data.win_rate}
+            division={data.division}
+            rank={data.rank}
+          />
+        </div>
+      </section>
+
+      {/* ── 6. 최근 경기.
+             클랜 화면의 상대 클랜 줄에는 킬뎃이 없다 (원본 실측 · UI_PARITY_AUDIT 5-7) */}
+      <section className="mt-[40px]">
+        <SectionTitle title="최근 경기" />
+        <div className="mobile-scroll-x mt-4">
           <RecentMatchSummary
             summary={data.match_summary}
             leagueSlug={leagueSlug}
             showKdRate={false}
           />
         </div>
-        {/* 클랜원 포지션 정리 (SITE_SPEC_V2 5-2 · D-199) — 지표보다 위다.
-            사양이 `클랜명 → 클랜원 → 승률 추이 → 지표` 순서로 적혀 있다.
-
-            **기존 클랜원 목록을 대체하지 않는다.** `클랜원` 탭(`/clan/{slug}/player`)의
-            표는 그대로 있고 이것은 그 위에 얹은 새 섹터다 — 방식을 바꿀 때 앞 버전도
-            남긴다는 사용자 지시다. 클랜원이 없으면 `null` 이고 그리지 않는다 (D-106) */}
-        {data.roster ? <ClanRoster roster={data.roster} leagueSlug={leagueSlug} /> : null}
-        {/* 클랜 지표 (SITE_SPEC_V2 5절) — 경기 목록보다 위다. 지표가 먼저 읽히고
-            그 근거인 경기가 아래에 이어진다. 재료가 없으면 `null` 이고 그리지 않는다 (D-106) */}
-        {data.metrics ? (
-          <ClanMetrics
-            metrics={data.metrics}
-            leagueSlug={leagueSlug}
-            leagueCategory={data.league.category}
-          />
-        ) : null}
-        {/* 배틀로그 지표 (SITE_SPEC_V2 5-5절) — 클랜 지표 **바로 아래**다.
-            배틀로그가 없는 클랜은 `null` 이고 그리지 않는다 (D-106) */}
-        {/* 육각형은 배틀로그 지표 **바로 위**에 둔다 — 사양 원문도 `6각형` 다음 줄부터
-            숫자가 이어진다. 그림으로 먼저 형태를 보고 아래에서 값을 읽는다 */}
-        {data.round_metrics ? (
-          <div className="mt-2 bg-card px-3 py-3 shadow-card">
-            {data.hexagon ? <ClanHexagon hexagon={data.hexagon} /> : null}
-          </div>
-        ) : null}
-        {data.round_metrics ? <ClanRoundMetrics metrics={data.round_metrics} /> : null}
-        <div className="mt-2">
+        <div className="mt-3">
           {matches.loading ? (
-            <Skeleton className="h-[105px] w-full" />
+            <ProfileSkeleton rows={3} height={104} />
           ) : matches.items.length === 0 ? (
-            <div className="mt-4 text-center text-meta">기록된 경기가 없습니다.</div>
+            <ProfileEmpty message="기록된 경기가 없습니다." />
           ) : (
             matches.items.map((match) => (
               <MatchCard
@@ -139,26 +181,34 @@ export default function LeagueClanRecordPage({
               />
             ))
           )}
-          {/* 기록실에 `더 불러오기` 가 없어 첫 페이지 뒤의 경기에 닿을 수 없었다.
-              랭킹·게시판과 같은 커서 방식이라 같은 버튼을 쓴다.
-              다음 커서가 없으면 렌더하지 않는다 (원본 동작). */}
+          {/* 랭킹·게시판과 같은 커서 방식이다. 다음 커서가 없으면 렌더하지 않는다 */}
           {matches.hasMore ? (
-            <LoadMoreButton onClick={matches.loadMore} loading={matches.loadingMore} />
+            <ProfileLoadMore onClick={matches.loadMore} loading={matches.loadingMore} />
           ) : null}
         </div>
-      </div>
-      <div className="ml-2 w-1/4 max-md:ml-0 max-md:mt-0 max-md:w-full max-md:order-1 max-md:mb-2">
-        <ClanStatSidebar
-          rating={data.rating}
-          placement={data.placement}
-          win={data.win}
-          lose={data.lose}
-          winRate={data.win_rate}
-          division={data.division}
-          rank={data.rank}
+      </section>
+
+      {/* ── 7. 더 보기 — 접어 둔다. 지우지 않는다 */}
+      <section className="mt-[40px]">
+        <SectionTitle
+          title="더 보기"
+          note={moreOpen ? undefined : '최근 클랜전 플레이어 승률'}
+          action={
+            <button
+              type="button"
+              onClick={() => setMoreOpen((value) => !value)}
+              className="text-[12px] text-meta transition-colors hover:text-accent"
+            >
+              {moreOpen ? '접기' : '펼치기'}
+            </button>
+          }
         />
-        <TeammateTable title="최근 클랜전 플레이어 승률" teammates={data.teammates} />
-      </div>
+        {moreOpen ? (
+          <div className="mt-4">
+            <TeammateTable title="최근 클랜전 플레이어 승률" teammates={data.teammates} />
+          </div>
+        ) : null}
+      </section>
     </div>
   )
 }

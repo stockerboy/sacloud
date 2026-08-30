@@ -70,7 +70,7 @@ async function main(): Promise<void> {
     league = await prisma.league.create({
       data: {
         slug: LEAGUE_SLUG,
-        name: '서플라이공식리그',
+        name: 'DPL',
         official: true,
         divisionCount: 2,
         maps: { create: [{ mapId: map.id }] },

@@ -4,18 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 /**
- * 약관 문서 공통 레이아웃.
+ * 약관 문서 공통 레이아웃 — `적진`.
  *
- * 원본 실측 구조 (2026-08-20)
- * ```
- * <div class="pc-container">
- *   <div class="flex items-stretch text-xl border-b-2 border-b-gray-200">
- *     <a class="clause-item [active]">이용약관</a>
- *     <a class="clause-item [active]">개인정보 취급방침</a>
- *   <div class="mt-10"> …문서 본문… </div>
- * ```
- * `.clause-item` : padding 1rem 1.5rem · margin-bottom -2px (아래 테두리 위에 겹침)
- * `.clause-item.active` : 아래 테두리 2px 검정 + 굵게
+ * 3rd.supply 재현을 그만뒀다 (2026-08-30). 원본의 `2px 검정 밑줄` 탭은 검정 바탕에서
+ * 아예 보이지 않는다. 활성 표시는 이 시안의 규칙대로 **진홍 1px 밑줄** 하나로 바꿨다.
+ *
+ * 약관은 읽는 화면이다. 카드로 감싸지 않고 본문 폭만 좁혀(`max-w-[760px]`) 줄이 길어지지
+ * 않게 한다 — 한 화면을 꽉 채우지 않는다.
  */
 
 const TABS = [
@@ -27,21 +22,26 @@ export default function ClauseLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname()
 
   return (
-    <div className="pc-container">
-      <div className="flex items-stretch border-b-2 border-b-divider text-xl">
-        {TABS.map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={`-mb-[2px] flex items-center justify-center px-6 py-4 ${
-              pathname === tab.href ? 'border-b-2 border-b-black font-bold' : ''
-            }`}
-          >
-            {tab.label}
-          </Link>
-        ))}
+    <div className="pc-container mt-14">
+      <div className="flex items-stretch gap-1 border-b border-line text-sm">
+        {TABS.map((tab) => {
+          const active = pathname === tab.href
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`-mb-px flex items-center justify-center border-b px-4 py-3 transition-colors duration-100 ${
+                active
+                  ? 'border-accent font-bold text-text-strong'
+                  : 'border-transparent text-meta hover:text-text'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
       </div>
-      <div className="mt-10">{children}</div>
+      <div className="mt-10 max-w-[760px]">{children}</div>
     </div>
   )
 }

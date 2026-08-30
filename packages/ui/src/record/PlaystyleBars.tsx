@@ -66,7 +66,7 @@ function Bar({ bar }: { bar: PlayerPlaystyleBar }) {
 
 export function PlaystyleBars({ playstyle }: { playstyle: PlayerPlaystyle }) {
   return (
-    <div className="mt-2 bg-side px-3 py-3 text-line shadow-card">
+    <div className="mt-2 rounded-[2px] border border-line bg-card px-5 py-4 text-text">
       <div className="flex items-baseline justify-between">
         <div>플레이스타일</div>
         {/* 무엇을 뜻하는 바인지 한 번은 밝혀 둔다 — 블루/레드는 색이 아니라 진영이다 */}

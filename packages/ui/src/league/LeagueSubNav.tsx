@@ -7,25 +7,20 @@ import { BETA_NOTICE, BETA_NOTICE_HEADLINE } from './betaNoticeText'
 /**
  * 리그 화면 공통 서브내비 — 전역 GNB 바로 아래 고정된다.
  *
- * 원본 실측 구조
- * ```
- * <div class="fixed top-18 w-full h-12 z-30 bg-brownGray-900 shadow-inner text-gray-100">
- *   <div class="flex items-stretch pc-container h-full">
- *     <a class="flex items-center justify-center w-52 mr-14 tracking-wider text-lg">{리그명}</a>
- *     <a class="nav-item" href="/league/{slug}/home">      리그홈
- *     <a class="nav-item" href="/league/{slug}/rank/clan"> 클랜랭킹
- *     <a class="nav-item" href="/league/{slug}/rank/player">개인랭킹
- * ```
- * 실측: 높이 3rem(42px) · 배경 #292929 · 글자 #F3F4F6 · 리그명 칸 13rem(182px) + 오른쪽 여백 3.5rem
- * 각 항목 앞에 아이콘이 붙고(`pr-2`), 현재 위치는 `nav-active`다.
- * `nav-active` 실측(2026-08-27): 글자·밑줄 **주황 #F59E0B · 4px · 굵기 700**.
- * 예전에는 흰 글자 + 흰 3px 밑줄이었다 (UI_PARITY_AUDIT 2-4).
- * 본문은 이 높이만큼 `pt-12`로 밀린다.
+ * `적진` 톤 (2026-08-30) — 회색 띠(#292929)와 주황 강조를 걷어냈다.
+ * 배경은 카드 검정, 아래는 1px 선, 현재 위치만 **진홍 밑줄 2px**이다.
+ * 띠 높이(3rem)와 본문 밀림(`pt-12` / 모바일 `pt-24`)은 그대로다 — 레이아웃이 어긋나면 안 된다.
+ *
+ * 구조
+ * - PC  : 한 줄. 리그명(왼쪽) + 탭 3개
+ * - 모바일: 두 줄. 리그명 줄 + 탭 3개가 화면 폭을 균등 분할한 줄
+ *
+ * **이동 경로(href)는 하나도 바뀌지 않았다.**
  */
 
 const ITEM =
-  'flex items-center justify-center cursor-pointer border-b-4 border-b-transparent px-4 text-tab-active-fg'
-const ITEM_ACTIVE = 'border-b-subnav-active font-bold text-subnav-active'
+  'flex cursor-pointer items-center justify-center border-b-2 border-b-transparent px-4 text-sm tracking-wide text-meta hover:text-text'
+const ITEM_ACTIVE = 'border-b-accent font-bold text-text-strong'
 
 /**
  * 베타 시즌 배지.
@@ -38,7 +33,7 @@ const ITEM_ACTIVE = 'border-b-subnav-active font-bold text-subnav-active'
 export function BetaBadge({ label = BETA_NOTICE_HEADLINE }: { label?: string }) {
   return (
     <span
-      className="ml-2 rounded border border-white/60 px-1.5 py-0.5 text-[11px] font-bold leading-none"
+      className="ml-2 rounded-[var(--radius)] border border-line px-1.5 py-0.5 text-[11px] font-bold leading-none text-meta"
       title={BETA_NOTICE}
     >
       {label}
@@ -65,9 +60,9 @@ export function LeagueSubNav({
   ]
 
   return (
-    <div className="fixed top-nav z-30 w-full text-tab-active-fg shadow-inner">
-      {/* --- PC: 리그명과 탭이 한 줄이다 (원본 실측 구조 그대로) --- */}
-      <div className="hidden h-12 bg-subnav md:block">
+    <div className="fixed top-nav z-30 w-full">
+      {/* --- PC: 리그명과 탭이 한 줄이다 --- */}
+      <div className="hidden h-12 border-b border-line bg-card md:block">
         <div className="pc-container flex h-full items-stretch">
           {/*
             리그명 옆에 붙어 있던 `Beta Season` 배지는 **원본에 없다** — 뺐다
@@ -76,7 +71,7 @@ export function LeagueSubNav({
           */}
           <Link
             href={`${base}/home`}
-            className="mr-14 flex w-52 items-center justify-center text-lg tracking-wider"
+            className="mr-14 flex w-52 items-center font-display text-lg tracking-wide text-text-strong"
           >
             {leagueName}
           </Link>
@@ -96,11 +91,13 @@ export function LeagueSubNav({
       {/* --- 모바일: 두 줄이다. 리그명 줄 + 탭 줄 (2026-08-28 원본 관측) --- */}
       <div className="md:hidden">
         {/* 1줄 — 왼쪽 리그명, 오른쪽 `리그홈`(주황) */}
-        <div className="flex h-12 items-center justify-between bg-ink px-3">
-          <span className="truncate text-base tracking-wider">{leagueName}</span>
+        <div className="flex h-12 items-center justify-between border-b border-line-soft bg-card px-3">
+          <span className="truncate font-display text-base tracking-wide text-text-strong">
+            {leagueName}
+          </span>
           <Link
             href={`${base}/home`}
-            className="flex shrink-0 items-center gap-1.5 pl-3 text-subnav-active"
+            className="flex shrink-0 items-center gap-1.5 pl-3 text-sm text-meta"
           >
             <HomeIcon />
             <span className="font-bold">리그홈</span>
@@ -108,13 +105,13 @@ export function LeagueSubNav({
         </div>
 
         {/* 2줄 — 탭 3개가 화면 폭을 균등 분할한다 */}
-        <div className="flex h-12 items-stretch bg-subnav">
+        <div className="flex h-12 items-stretch border-b border-line bg-card">
           {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-1 items-center justify-center border-b-4 border-b-transparent text-base ${
-                pathname.startsWith(item.href) ? ITEM_ACTIVE : 'text-tab-active-fg'
+              className={`flex flex-1 items-center justify-center border-b-2 border-b-transparent text-sm tracking-wide ${
+                pathname.startsWith(item.href) ? ITEM_ACTIVE : 'text-meta'
               }`}
             >
               {item.label}
@@ -126,7 +123,7 @@ export function LeagueSubNav({
   )
 }
 
-/* 아이콘은 원본이 Font Awesome을 쓰지만 자산을 가져오지 않고 같은 크기로 새로 그렸다 (18×14) */
+/* 아이콘은 자산을 가져오지 않고 직접 그렸다 (18×14) */
 
 function HomeIcon() {
   return (
@@ -136,7 +133,7 @@ function HomeIcon() {
   )
 }
 
-/** 정렬 아이콘 — 원본은 클랜랭킹·개인랭킹에 **같은** 아이콘을 쓴다 (2026-08-27 실측) */
+/** 정렬 아이콘 — 클랜랭킹·개인랭킹이 같은 아이콘을 쓴다 */
 function SortIcon() {
   return (
     <svg viewBox="0 0 18 14" className="h-[14px] w-[18px]" fill="currentColor" aria-hidden>

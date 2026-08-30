@@ -10,45 +10,33 @@ import { formatCount } from '../common/format'
 import { WriterName } from './WriterName'
 
 /**
- * 게시판 목록 표.
+ * 게시판 목록 표 — `적진`.
  *
- * 원본 실측 구조 (2026-08-20)
- * ```
- * 머리글  <div class="flex items-stretch h-12 border-t border-t-mblack border-b border-b-border">
- *   <div class="flex justify-center items-center w-8/12">제목</div>
- *   <div class="flex items-center w-1/12">작성시간</div>
- *   <div class="flex items-center w-1/12">조회수</div>
- *   <div class="flex items-center w-2/12">작성자</div>
+ * 선을 줄이고 **여백으로 나눈다.**
+ * - 얼룩무늬(zebra) 없음. 행 구분은 `--color-line-soft` 1px 하나뿐이다
+ * - 머리글만 `--color-line` 로 조금 진하게 받쳐 표의 시작을 알린다
+ * - 색은 진홍 하나. 목록에서 진홍이 쓰이는 곳은 **댓글 수**와 `공지` 표식뿐이다
+ * - 숫자는 전부 `--font-num` + `tabular-nums` — 세로로 자릿수가 맞는다
  *
- * 공지행  <div class="flex items-stretch h-12 pl-2 border-b border-b-border bg-boardBlue">
- *   <div class="w-1/8"><div class="rounded px-1.5 py-0.5 bg-red-500 text-white text-sm">공지</div></div>
- *
- * 일반행  <div class="flex items-stretch h-12 pl-2 border-b border-b-border">
- *   <div class="flex items-center w-1/8">
- *     <div class="flex w-16"><추천아이콘 text-blue-400/>{추천}</div>
- *     <div class="flex w-16"><비추천아이콘 text-red-400/>{비추천}</div>
- *   <div class="flex items-center w-13/24">
- *     <a href="/board/{cat}/{id}"><div class="hover:underline">{제목}</div>
- *       <div class="ml-1 text-red-500">[{댓글수}]</div></a>
- *   <div class="w-1/12">{상대시간}</div>
- *   <div class="w-1/12">{조회수}</div>
- *   <div class="w-2/12">{작성자}</div>       로그인 작성자는 #3B82F6, 익명은 #464C4C
- * ```
- * 행 높이 3rem(42px). 머리글은 제목만 가운데 정렬이고 나머지는 왼쪽 정렬이다.
- *
- * **주의** — 머리글의 컬럼 폭(`w-8/12`)과 실제 행의 폭(`w-1/8` + `w-13/24`)이 서로 다르다.
- * 원본이 실제로 그렇다. 행은 추천/비추천 칸이 앞에 하나 더 있고, 머리글에는 그 칸이 없다.
- * `w-1/8`(12.5%)과 `w-13/24`(54.1667%)는 Tailwind 기본 스케일에 없어 임의값으로 적었다.
+ * 담고 있는 정보는 이전과 같다. 추천·비추천·조회수·상대시간·작성자·이미지 표식·공지,
+ * 그리고 링크 주소(`/board/{category}/{id}`)까지 그대로다. 겉만 바꿨다.
  */
 
-const HEAD = 'flex items-stretch h-12 border-t border-t-board-top border-b border-b-board-line'
-const ROW = 'flex items-stretch h-12 pl-2 border-b border-b-board-line'
+/* 컬럼 폭 — 머리글과 행이 같은 값을 쓴다 */
+const COL_VOTE = 'w-24 shrink-0'
+const COL_TIME = 'w-24 shrink-0 text-right'
+const COL_VIEW = 'w-16 shrink-0 text-right'
+const COL_WRITER = 'w-44 shrink-0 pl-6'
+
+const NUM = 'num'
+const ROW =
+  'flex items-center gap-3 border-b border-b-line-soft py-3 transition-colors duration-100 hover:bg-card-2'
 
 function VoteIcon({ up }: { up: boolean }) {
   return (
     <svg
       viewBox="0 0 14 12"
-      className={`mr-1 h-3 w-3.5 self-center ${up ? 'text-vote-up' : 'text-vote-down'}`}
+      className={`mr-1 h-2.5 w-3 self-center ${up ? 'text-meta' : 'text-faint'}`}
       fill="currentColor"
       aria-hidden
     >
@@ -59,41 +47,52 @@ function VoteIcon({ up }: { up: boolean }) {
 
 function Row({ item }: { item: BoardListItem }) {
   return (
-    <div className={`${ROW} ${item.notice ? 'bg-board-blue' : ''}`}>
-      <div className="flex w-[12.5%] items-center">
+    <div className={ROW}>
+      <div className={`flex items-center ${COL_VOTE}`}>
         {item.notice ? (
-          <div className="flex items-center justify-center rounded bg-lose px-1.5 py-0.5 text-sm text-white">
+          /* 공지 — 채운 블록 대신 테두리 표식. 진홍은 여기서만 아껴 쓴다 */
+          <span className="rounded-[var(--radius)] border border-accent px-1.5 py-0.5 text-xs text-accent">
             공지
-          </div>
+          </span>
         ) : (
           <>
-            <div className="flex w-16">
+            <span className={`flex w-12 items-center text-sm text-meta ${NUM}`}>
               <VoteIcon up />
-              <div>{formatCount(item.like_count)}</div>
-            </div>
-            <div className="flex w-16">
+              {formatCount(item.like_count)}
+            </span>
+            <span className={`flex w-12 items-center text-sm text-faint ${NUM}`}>
               <VoteIcon up={false} />
-              <div>{formatCount(item.dislike_count)}</div>
-            </div>
+              {formatCount(item.dislike_count)}
+            </span>
           </>
         )}
       </div>
 
-      <div className="flex w-[54.1667%] items-center">
-        <Link className="flex items-start" href={`/board/${item.category}/${item.id}`}>
-          <div className="hover:underline">{item.title}</div>
+      <div className="min-w-0 flex-1">
+        <Link href={`/board/${item.category}/${item.id}`} className="group flex items-center gap-1">
+          {/* 색은 안쪽 `span` 이 가진다 — `a { color: inherit }` 가 유틸리티를 누른다 */}
+          <span
+            className={`truncate transition-colors duration-100 group-hover:text-text-strong ${
+              item.notice ? 'text-text-strong' : 'text-text'
+            }`}
+          >
+            {item.title}
+          </span>
+          {/* 댓글 수 — 대괄호를 남긴다. 없으면 제목의 일부처럼 읽힌다 */}
           {item.comment_count > 0 ? (
-            <div className="ml-1 text-comment">[{formatCount(item.comment_count)}]</div>
+            <span className={`shrink-0 text-sm text-accent ${NUM}`}>
+              [{formatCount(item.comment_count)}]
+            </span>
           ) : null}
           {item.has_image ? <ImageIcon /> : null}
         </Link>
       </div>
 
-      <div className="flex w-1/12 items-center">
+      <div className={`text-sm text-faint ${COL_TIME} ${NUM}`}>
         <RelativeTime value={item.created_at} />
       </div>
-      <div className="flex w-1/12 items-center">{formatCount(item.view_count)}</div>
-      <div className="flex w-2/12 items-center">
+      <div className={`text-sm text-faint ${COL_VIEW} ${NUM}`}>{formatCount(item.view_count)}</div>
+      <div className={`min-w-0 truncate text-sm ${COL_WRITER}`}>
         {/* 반익명 — 소속(`veritas 소속`) + 이름. 익명 글은 목록에서 번호 없이 `익명` 이다
             (번호는 글 안에서만 뜻이 있다 · SITE_SPEC_V2 2절) */}
         <WriterName writer={item.writer} />
@@ -104,7 +103,12 @@ function Row({ item }: { item: BoardListItem }) {
 
 function ImageIcon() {
   return (
-    <svg viewBox="0 0 12 12" className="ml-1 h-3 w-3 self-center text-meta" fill="currentColor" aria-hidden>
+    <svg
+      viewBox="0 0 12 12"
+      className="h-3 w-3 shrink-0 self-center text-faint"
+      fill="currentColor"
+      aria-hidden
+    >
       <path d="M1 1h10v10H1zm1.5 7.5 2-2.5 1.5 2L8.5 5l2 3.5z" />
     </svg>
   )
@@ -117,7 +121,7 @@ export function BoardTable({
   error,
   onRetry,
 }: {
-  /** 공지는 `category=notice` 로 따로 받아 목록 위에 고정한다 (원본 동작) */
+  /** 공지는 `category=notice` 로 따로 받아 목록 위에 고정한다 */
   notices?: readonly BoardListItem[]
   items?: readonly BoardListItem[]
   loading?: boolean
@@ -126,18 +130,19 @@ export function BoardTable({
 }) {
   return (
     /*
-     * 모바일 — 컬럼을 **하나도 감추지 않는다.** 원본 모바일이 이 표에서 무엇을 감추는지
-     * 확인하지 못했기 때문이다 `[미확인]`. 대신 표를 **자기 안에서만** 가로로 밀리게 해
-     * 본문(body)에는 가로 스크롤이 생기지 않게 한다 (UI_PARITY_AUDIT 부록 A 2·4번 방식).
-     * `.mobile-scroll-x` 는 `@media (max-width:767px)` 안에서만 정의돼 있어 PC 는 무영향이다.
+     * 모바일 — 컬럼을 **하나도 감추지 않는다.** 표를 자기 안에서만 가로로 밀리게 해
+     * 본문(body)에는 가로 스크롤이 생기지 않게 한다.
      */
     <div className="mobile-scroll-x">
-      <div className="mb-8 mt-2 flex flex-col max-md:min-w-[38rem]">
-        <div className={HEAD}>
-          <div className="flex w-8/12 items-center justify-center">제목</div>
-          <div className="flex w-1/12 items-center">작성시간</div>
-          <div className="flex w-1/12 items-center">조회수</div>
-          <div className="flex w-2/12 items-center">작성자</div>
+      <div className="flex flex-col max-md:min-w-[38rem]">
+        <div className="flex items-center gap-3 border-b border-b-line pb-2 text-xs tracking-[0.12em] text-faint">
+          {/* 추천·비추천 칸에는 머리글을 두지 않는다 (아이콘이 곧 이름이다) */}
+          <div className={COL_VOTE} aria-hidden />
+
+          <div className="min-w-0 flex-1">제목</div>
+          <div className={COL_TIME}>작성시간</div>
+          <div className={COL_VIEW}>조회수</div>
+          <div className={COL_WRITER}>작성자</div>
         </div>
 
         {error ? (
@@ -145,8 +150,8 @@ export function BoardTable({
         ) : loading ? (
           <>
             {Array.from({ length: 15 }, (_, index) => (
-              <div key={index} className={ROW}>
-                <Skeleton className="my-2 h-[25px] w-full" />
+              <div key={index} className="border-b border-b-line-soft py-3">
+                <Skeleton className="h-4 w-full" />
               </div>
             ))}
           </>
@@ -170,8 +175,7 @@ export function BoardTable({
 /**
  * 목록 하단 이전/다음.
  *
- * 원본은 랭킹의 `더 불러오기`와 달리 **커서를 URL 쿼리에 실어 페이지를 이동**한다.
- * `<a class="flex items-center px-4 py-2 border border-gray-400 rounded-md" href="/board/free?cursor=...">다음</a>`
+ * 커서를 URL 쿼리에 실어 페이지를 이동한다 — 동작은 그대로다.
  */
 export function BoardPager({
   category,
@@ -182,26 +186,21 @@ export function BoardPager({
   prev: string | null
   next: string | null
 }) {
+  /* 공용 헬퍼 `.btn-line` — 테두리만 있는 버튼. hover 에서만 진홍이 켜진다 */
+  const button = 'btn-line px-4 py-2 text-sm'
+
   return (
-    <div className="h-20">
-      <div className="flex items-center justify-center">
-        {prev ? (
-          <Link
-            href={`/board/${category}?cursor=${encodeURIComponent(prev)}`}
-            className="mr-2 flex items-center rounded-md border border-line px-4 py-2 hover:border-meta"
-          >
-            <span className="mr-2">‹</span> 이전
-          </Link>
-        ) : null}
-        {next ? (
-          <Link
-            href={`/board/${category}?cursor=${encodeURIComponent(next)}`}
-            className="flex items-center rounded-md border border-line px-4 py-2 hover:border-meta"
-          >
-            다음 <span className="ml-2">›</span>
-          </Link>
-        ) : null}
-      </div>
+    <div className="flex items-center justify-center gap-2 py-10">
+      {prev ? (
+        <Link href={`/board/${category}?cursor=${encodeURIComponent(prev)}`} className={button}>
+          <span aria-hidden>‹</span> 이전
+        </Link>
+      ) : null}
+      {next ? (
+        <Link href={`/board/${category}?cursor=${encodeURIComponent(next)}`} className={button}>
+          다음 <span aria-hidden>›</span>
+        </Link>
+      ) : null}
     </div>
   )
 }

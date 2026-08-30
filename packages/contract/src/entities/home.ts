@@ -36,7 +36,7 @@ export type HomeTopRow = z.infer<typeof HomeTopRow>
 /** 리그 하나의 TOP3 묶음 */
 export const HomeLeagueTop = z.object({
   slug: Slug,
-  /** 사용자가 정한 약칭 — `SPL` · `IPL` · `YSL` (SITE_SPEC_V2 1절) */
+  /** 사용자가 정한 약칭 — `DPL` · `IPL` · `열산` (2026-08-30 이름 변경) */
   abbr: z.string(),
   /** DB 의 리그명. 리그가 아직 없으면 약칭 표 쪽 이름으로 물러난다 */
   name: z.string(),
@@ -58,13 +58,20 @@ export type HomeTop = z.infer<typeof HomeTop>
 export const HOME_TOP_SIZE = 3
 
 /**
- * 메인에 거는 리그와 그 약칭 (SITE_SPEC_V2 1절, 사용자 확정).
+ * 메인에 거는 리그와 그 이름 (SITE_SPEC_V2 1절, 사용자 확정).
  *
- * 순서도 사양 원문 순서다 — `SPL / IPL / YSL`.
+ * 순서도 사양 원문 순서다 — `DPL / IPL / 열산`.
  * 대룰리그(`daerule`)는 서비스 준비중이라 여기 없다 (D-178).
+ *
+ * ── 2026-08-30 사용자 지시로 **표시 이름을 바꿨다.** slug 는 하나도 건드리지 않았다.
+ *   `supply`  서플라이공식리그 · SPL → **DPL**
+ *   `nolink`  무소속리그 · IPL       → **IPL** (약칭이 곧 이름이 됐다)
+ *   `sanply`  열산리그 · YSL         → **열산**
+ *   약칭과 이름이 같아졌지만 계약의 두 칸은 그대로 둔다 — 화면이 이미 둘을
+ *   다르게 쓰고 있고(약칭은 배지, 이름은 제목), 나중에 다시 갈릴 수 있다.
  */
 export const HOME_LEAGUES: readonly { slug: string; abbr: string; name: string }[] = [
-  { slug: 'supply', abbr: 'SPL', name: '서플라이공식리그' },
-  { slug: 'nolink', abbr: 'IPL', name: '무소속리그' },
-  { slug: 'sanply', abbr: 'YSL', name: '열산리그' },
+  { slug: 'supply', abbr: 'DPL', name: 'DPL' },
+  { slug: 'nolink', abbr: 'IPL', name: 'IPL' },
+  { slug: 'sanply', abbr: '열산', name: '열산' },
 ]

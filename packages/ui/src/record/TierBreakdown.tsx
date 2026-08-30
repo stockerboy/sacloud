@@ -50,30 +50,30 @@ export function TierBreakdown({
   if (rows.length === 0) return null
 
   return (
-    <div className="bg-side px-3 py-3 text-line shadow-card">
+    <div className="rounded-[2px] border border-line bg-card px-5 py-4 text-text">
       <div className="flex items-baseline justify-between">
         <div>{divisionUnit(leagueCategory)}별 전적</div>
         {/* 왜 어떤 줄의 승률이 비어 있는지 밝힌다. 이 줄이 없으면 `—` 가 고장으로 보인다 */}
-        <div className="text-xs text-side-meta">
-          {TIER_WIN_RATE_MIN_GAMES}판부터 승률을 봅니다
-        </div>
+        <div className="text-xs text-side-meta">{TIER_WIN_RATE_MIN_GAMES}판부터 승률을 봅니다</div>
       </div>
       {rows.map((row) => (
         <div key={row.tier}>
-          <div className="my-2 border-t border-t-side-line" />
+          <div className="my-2 border-t border-t-line-soft" />
           <div className="flex justify-between py-2 text-3xl">
             <div className="shrink-0 whitespace-nowrap">
               vs {divisionLabel(row.tier, leagueCategory)}
             </div>
             <div className="flex min-w-0 items-center">
-              <span className="mr-2 whitespace-nowrap text-base">
+              <span className="num mr-2 whitespace-nowrap text-base">
                 {formatCount(row.games)}판
               </span>
               {row.win_rate === null ? (
                 /* 판수가 모자란다. **0% 로 채우지 않는다** (D-106) */
                 <span className="text-side-meta">—</span>
               ) : (
-                <span className={rateClass(row.win_rate)}>{formatRate(row.win_rate)}%</span>
+                <span className={`num ${rateClass(row.win_rate)}`}>
+                  {formatRate(row.win_rate)}%
+                </span>
               )}
             </div>
           </div>
@@ -84,7 +84,7 @@ export function TierBreakdown({
                 <span key={nemesis.slug}>
                   {index === 0 ? null : <span className="text-side-meta"> · </span>}
                   <Link href={`/league/${leagueSlug}/clan/${nemesis.slug}`}>{nemesis.name}</Link>
-                  <span className="text-side-meta">
+                  <span className="num text-side-meta">
                     {' '}
                     {formatCount(nemesis.games)}판 {formatRate(nemesis.win_rate)}%
                   </span>

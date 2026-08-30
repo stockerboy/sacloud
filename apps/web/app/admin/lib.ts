@@ -28,16 +28,22 @@ export async function adminFetch<T>(
   return payload.data
 }
 
-/** 데이터 출처 배지 — mock을 운영 데이터로 착각하지 않게 한다 (정책 25) */
+/**
+ * 데이터 출처 배지 — mock을 운영 데이터로 착각하지 않게 한다 (정책 25).
+ *
+ * 색을 넷으로 나누던 것을 그만뒀다 (`적진` 은 색이 하나뿐이다). 대신 **`MOCK` 하나만**
+ * 진홍 테두리로 튀게 두고 나머지는 회색으로 가라앉힌다 — 실수를 막아야 하는 것은
+ * "이건 가짜다" 하나이지, 출처 네 갈래의 구분이 아니다.
+ */
 export function originLabel(origin: string): { text: string; className: string } {
   switch (origin) {
     case 'mock':
-      return { text: 'MOCK', className: 'border-lose-line bg-lose-bg text-lose' }
+      return { text: 'MOCK', className: 'border-accent bg-card text-accent' }
     case 'nexon':
-      return { text: 'NEXON', className: 'border-win-line bg-win-bg text-win' }
+      return { text: 'NEXON', className: 'border-line bg-card text-text' }
     case '3rd.supply':
-      return { text: 'LEGACY', className: 'border-divider bg-card text-meta' }
+      return { text: 'LEGACY', className: 'border-line bg-card text-meta' }
     default:
-      return { text: 'MANUAL', className: 'border-divider bg-card text-meta' }
+      return { text: 'MANUAL', className: 'border-line bg-card text-meta' }
   }
 }

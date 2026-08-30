@@ -7,34 +7,20 @@ import { formatCount } from '../common/format'
 import { WriterName } from './WriterName'
 
 /**
- * 글 상세.
+ * 글 상세 — `적진`.
  *
- * 원본 실측 구조 (2026-08-20)
- * ```
- * <div class="flex flex-col px-6 shadow rounded bg-white min-h-1100px">
- *   <div class="flex flex-col mt-6 px-4 py-3 bg-boardBlue border-board-blue">
- *     <div class="flex items-stretch h-8">
- *       <div>{조회수}<eye/></div><div class="ml-3">{추천}</div><div class="ml-3">{비추천}</div>
- *     <div class="text-3xl">{제목}</div>
- *     <div class="flex justify-between mt-2">
- *       <div>작성자: <span class="text-boardText">{작성자}</span></div>
- *       <div>작성일: 2026년 8월 20일 오후 11시 33분</div>
- *   <div class="my-5 border-b-2 border-gray-200"></div>
- *   <div class="my-6 px-3 leading-6 text-lg min-h-250px text-content break-words">{본문}</div>
- *   <div class="my-5 border-b-2 border-gray-200"></div>
- *   <div class="flex my-3 justify-center items-center select-none">
- *     <div class="like-btn mr-3 like-inactive">{추천}</div><div class="like-btn like-inactive">{비추천}</div>
- *   <div class="flex flex-row-reverse my-5 select-none">
- *     <a class="update-btn">삭제</a><a class="update-btn mr-2">수정</a>
- *   <div class="text-xl font-semibold">댓글 {n}개</div>
- * ```
- * 실측 — `.like-btn` 6rem 폭 / 테두리 1px / padding 0.5rem 0.75rem / 가운데 정렬,
- * 비활성 테두리 #E5E7EB · 활성 #60A5FA, `.update-btn` 테두리·글자 #6366F1.
+ * 담는 것과 하는 일은 그대로다 (조회수 · 추천 · 비추천 · 제목 · 작성자 · 작성일 · 본문 ·
+ * 추천/비추천 버튼 · 수정/삭제 · 댓글 수). 겉만 바꿨다.
+ *
+ * - 제목은 `--font-display`. 이 화면에서 큰 글씨는 여기 하나뿐이다
+ * - 파란 머리글 상자와 그림자를 걷어내고 **얇은 선 하나**로 본문을 나눈다
+ * - 본문 폭을 잡아 두어 한 줄이 너무 길어지지 않게 한다
+ * - 진홍은 추천을 **누른 상태**에서만 나온다. 누르지 않은 버튼은 회색이다
  *
  * 수정/삭제 버튼은 본인 글일 때만 보인다(계약의 `me`). 비로그인 익명 글은 비밀번호로 삭제한다.
  */
 
-/** `2026년 8월 20일 오후 11시 33분` (원본 표기) */
+/** `2026년 8월 20일 오후 11시 33분` */
 export function formatPostDate(value: string): string {
   const time = Date.parse(value)
   if (Number.isNaN(time)) return ''
@@ -66,12 +52,16 @@ function VoteButton({
     <button
       type="button"
       onClick={onClick}
-      className={`w-24 cursor-pointer rounded border px-3 py-2 text-center ${
-        active ? 'border-like-active' : 'border-divider'
-      } ${up ? '' : 'ml-3'}`}
+      aria-pressed={active}
+      className={`inline-flex w-28 items-center justify-center gap-2 rounded-[var(--radius)] border py-2 text-sm transition-colors duration-100 ${
+        active
+          ? 'border-accent text-accent'
+          : 'border-line text-meta hover:border-meta hover:text-text-strong'
+      }`}
     >
-      <span className={`mr-1 ${up ? 'text-vote-up' : 'text-vote-down'}`}>{up ? '▲' : '▼'}</span>
-      {formatCount(count)}
+      <span aria-hidden>{up ? '▲' : '▼'}</span>
+      <span className="num">{formatCount(count)}</span>
+      <span className="sr-only">{up ? '추천' : '비추천'}</span>
     </button>
   )
 }
@@ -85,35 +75,40 @@ export function PostView({
   onVote: (type: number) => void
 }) {
   return (
-    <div className="flex min-h-[1100px] flex-col rounded bg-card px-6 shadow-card">
-      <div className="mt-6 flex flex-col bg-board-blue px-4 py-3">
-        <div className="flex h-8 items-stretch text-sm text-meta">
-          <div>조회 {formatCount(post.view_count)}</div>
-          <div className="ml-3 text-vote-up">추천 {formatCount(post.like_count)}</div>
-          <div className="ml-3 text-vote-down">비추천 {formatCount(post.dislike_count)}</div>
-        </div>
-        <div className="text-3xl">{post.title}</div>
-        <div className="mt-2 flex justify-between">
-          <div className="flex min-w-0 items-baseline">
-            <span className="mr-1 shrink-0">작성자:</span>
+    <article className="rounded-[var(--radius)] border border-line bg-card px-6 py-6 text-text max-md:px-4">
+      <header className="flex flex-col gap-3">
+        <h1 className="display text-3xl leading-snug text-text-strong">{post.title}</h1>
+
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-sm text-faint">
+          <div className="flex min-w-0 items-baseline gap-1">
+            <span className="shrink-0">작성자</span>
             <WriterName writer={post.writer} />
           </div>
-          <div>작성일: {formatPostDate(post.created_at)}</div>
+          <div className="num">{formatPostDate(post.created_at)}</div>
         </div>
-      </div>
 
-      <div className="my-5 border-b-2 border-b-divider" />
+        <div className="flex items-center gap-4 text-xs text-faint">
+          <span className="num">조회 {formatCount(post.view_count)}</span>
+          <span className="num">추천 {formatCount(post.like_count)}</span>
+          <span className="num">비추천 {formatCount(post.dislike_count)}</span>
+        </div>
+      </header>
+
+      <div className="my-6 border-b border-b-line" />
 
       <div
-        className="my-6 min-h-[250px] break-words px-3 text-lg leading-6"
+        className="max-w-[68ch] break-words text-[1.05rem] leading-7"
         // sanitizePostContent 를 거친 문자열만 들어온다
         dangerouslySetInnerHTML={{ __html: sanitizePostContent(post.content) }}
       />
 
-      <div className="my-5 border-b-2 border-b-divider" />
-
-      <div className="my-3 flex select-none items-center justify-center">
-        <VoteButton count={post.like_count} up active={post.like_type === 1} onClick={() => onVote(1)} />
+      <div className="mt-10 flex select-none items-center justify-center gap-2">
+        <VoteButton
+          count={post.like_count}
+          up
+          active={post.like_type === 1}
+          onClick={() => onVote(1)}
+        />
         <VoteButton
           count={post.dislike_count}
           up={false}
@@ -122,26 +117,27 @@ export function PostView({
         />
       </div>
 
-      {/* 본인 글일 때만 수정/삭제가 보인다 (원본 관측). 비로그인 글은 비밀번호로 삭제한다. */}
+      {/* 본인 글일 때만 수정/삭제가 보인다. 비로그인 글은 비밀번호로 삭제한다. */}
       {post.me || !post.login ? (
-        <div className="my-5 flex select-none flex-row-reverse">
+        <div className="mt-6 flex select-none flex-row-reverse gap-2">
           <Link
             href={`/board/${post.category}/${post.id}/delete`}
-            className="cursor-pointer rounded border border-more px-4 py-1.5 text-more"
+            className="btn-line px-3 py-1.5 text-sm"
           >
             삭제
           </Link>
           <Link
             href={`/board/${post.category}/${post.id}/update`}
-            className="mr-2 cursor-pointer rounded border border-more px-4 py-1.5 text-more"
+            className="btn-line px-3 py-1.5 text-sm"
           >
             수정
           </Link>
         </div>
       ) : null}
 
-      <div className="text-xl font-semibold">댓글 {formatCount(post.comment_count)}개</div>
-      <div className="my-7 border-b-2 border-b-divider" />
-    </div>
+      <div className="mt-10 border-t border-t-line pt-5 text-sm tracking-[0.12em] text-faint">
+        댓글 <span className="num">{formatCount(post.comment_count)}</span>개
+      </div>
+    </article>
   )
 }

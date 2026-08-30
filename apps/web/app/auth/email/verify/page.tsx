@@ -4,7 +4,7 @@ import { Suspense, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
-import { AuthCard } from '@sacloud/ui'
+import { AuthCard, AuthError, AuthNotice, AuthTitle } from '@sacloud/ui'
 import { apiSend } from '@/lib/apiSend'
 
 /**
@@ -28,24 +28,24 @@ function VerifyBody() {
   return (
     <AuthCard
       footer={
-        <Link href="/auth/login" className="underline">
+        <Link href="/auth/login" className="text-text-strong underline underline-offset-4">
           로그인으로 돌아가기
         </Link>
       }
     >
-      <div className="mb-4 font-bold">이메일 인증</div>
+      <AuthTitle>이메일 인증</AuthTitle>
       {!token ? (
-        <div className="text-sm text-meta">
+        <p className="text-sm leading-relaxed text-meta">
           가입하신 메일로 인증 링크를 보냈습니다.
           <br />
           메일의 링크를 눌러 인증을 완료해 주세요.
-        </div>
+        </p>
       ) : verify.isPending ? (
-        <div className="text-sm text-meta">인증하는 중…</div>
+        <p className="text-sm text-meta">인증하는 중…</p>
       ) : verify.isSuccess ? (
-        <div className="text-win">인증이 완료되었습니다.</div>
+        <AuthNotice>인증이 완료되었습니다.</AuthNotice>
       ) : (
-        <div className="text-lose">인증하지 못했습니다. 링크가 만료되었을 수 있습니다.</div>
+        <AuthError>인증하지 못했습니다. 링크가 만료되었을 수 있습니다.</AuthError>
       )}
     </AuthCard>
   )

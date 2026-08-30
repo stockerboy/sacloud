@@ -4,7 +4,7 @@ import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AuthCard, AuthField, AuthInput, AuthSubmit } from '@sacloud/ui'
+import { AuthCard, AuthError, AuthField, AuthInput, AuthSubmit, AuthTitle } from '@sacloud/ui'
 import { apiSend } from '@/lib/apiSend'
 
 /**
@@ -42,12 +42,14 @@ function LoginForm() {
       footer={
         <>
           회원이 아니신가요?{' '}
-          <Link href="/auth/signup" className="underline">
-            회원가입하기
+          <Link href="/auth/signup" className="text-text-strong underline underline-offset-4">
+            회원가입
           </Link>
         </>
       }
     >
+      <AuthTitle>로그인</AuthTitle>
+
       <AuthField label="이메일">
         <AuthInput
           type="text"
@@ -57,8 +59,8 @@ function LoginForm() {
         />
       </AuthField>
 
-      <div className="relative mb-10">
-        <label className="mb-3 block font-bold">비밀번호</label>
+      <div className="mb-1">
+        <label className="mb-2 block text-sm font-bold text-meta">비밀번호</label>
         <div className="flex h-11 items-stretch">
           <AuthInput
             type="password"
@@ -70,14 +72,17 @@ function LoginForm() {
             }}
           />
         </div>
-        <div className="absolute right-0 mt-1 text-sm underline">
-          <Link href="/auth/password/forget">비밀번호를 잊으셨나요?</Link>
-        </div>
       </div>
 
-      {login.isError ? (
-        <div className="text-lose">로그인하지 못했습니다.</div>
-      ) : null}
+      {/* 원본은 이 링크를 입력칸에 겹쳐 절대배치했다. 겹치면 좁은 카드에서 글자가 붙는다 —
+          같은 자리에 흐름대로 놓는다. 가는 링크라 회색으로 두고 hover 에서만 진홍이 켜진다 */}
+      <div className="text-right text-sm text-meta">
+        <Link href="/auth/password/forget" className="underline underline-offset-4">
+          비밀번호를 잊으셨나요?
+        </Link>
+      </div>
+
+      {login.isError ? <AuthError>로그인하지 못했습니다.</AuthError> : null}
 
       <AuthSubmit disabled={!email || !password || login.isPending} onClick={() => login.mutate()}>
         로그인

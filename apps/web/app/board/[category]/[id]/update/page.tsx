@@ -43,7 +43,7 @@ export default function BoardUpdatePage({
 
   return (
     <>
-      <div className="my-2 text-2xl">글 수정</div>
+      <h1 className="mb-6 display text-2xl text-text-strong">글 수정</h1>
       <PostForm
         initialTitle={post.data.data.title}
         initialContent={post.data.data.content}

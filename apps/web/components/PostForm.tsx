@@ -14,6 +14,10 @@ import { useState } from 'react'
  * - 익명 작성 선택이 있다 (`disclose_type`)
  * - 5분에 1글 rate limit + 캡차 (Mock에서는 서버가 형태만 응답)
  */
+/** 입력칸 공통 — `적진`: 얇은 선, 각진 모서리, 포커스에서만 진홍 */
+const FIELD =
+  'rounded-[var(--radius)] border border-line bg-card px-3 py-2 text-text placeholder:text-faint outline-none transition-colors duration-100 focus:border-accent'
+
 export function PostForm({
   initialTitle = '',
   initialContent = '',
@@ -47,29 +51,29 @@ export function PostForm({
     (!requirePassword || password.length > 0)
 
   return (
-    <div className="rounded bg-card px-6 py-6 shadow-card">
+    <div className="rounded-[var(--radius)] border border-line bg-card px-6 py-6 text-text max-md:px-4">
       <input
         value={title}
         onChange={(event) => setTitle(event.target.value)}
         maxLength={100}
         placeholder="제목을 입력하세요."
-        className="h-12 w-full rounded border border-line px-3 text-lg"
+        className={`h-12 w-full text-lg ${FIELD}`}
       />
       <textarea
         value={content}
         onChange={(event) => setContent(event.target.value)}
         rows={16}
         placeholder="내용을 입력하세요."
-        className="mt-3 w-full rounded border border-line px-3 py-2 leading-6"
+        className={`mt-3 w-full leading-7 ${FIELD}`}
       />
 
-      <div className="mt-4 flex items-center">
-        <label className="mr-4 flex items-center">
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <label className="flex cursor-pointer select-none items-center gap-1 text-sm text-meta">
           <input
             type="checkbox"
             checked={anonymous}
             onChange={(event) => setAnonymous(event.target.checked)}
-            className="mr-1"
+            className="accent-[var(--color-accent)]"
           />
           익명으로 작성
         </label>
@@ -79,12 +83,12 @@ export function PostForm({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="삭제용 비밀번호"
-            className="h-10 w-48 rounded border border-line px-3"
+            className={`h-10 w-48 ${FIELD}`}
           />
         ) : null}
       </div>
 
-      {error ? <div className="mt-3 text-lose">{error}</div> : null}
+      {error ? <div className="mt-3 text-sm text-accent">{error}</div> : null}
 
       <div className="mt-4 flex flex-row-reverse">
         <button
@@ -98,7 +102,7 @@ export function PostForm({
               password: requirePassword ? password : null,
             })
           }
-          className="inline-flex h-10 w-24 items-center justify-center rounded bg-more text-white disabled:opacity-60"
+          className="inline-flex h-10 w-24 items-center justify-center rounded-[var(--radius)] border border-accent text-sm text-accent transition-colors duration-100 hover:bg-card-2 disabled:border-line disabled:text-faint"
         >
           {submitting ? '저장중' : submitLabel}
         </button>

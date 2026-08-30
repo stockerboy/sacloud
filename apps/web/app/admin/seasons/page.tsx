@@ -76,11 +76,11 @@ export default function AdminSeasonsPage() {
     <>
       <AdminCard title="리그 선택">
         <input
-          className="w-48 border border-divider px-2 py-1"
+          className="w-48 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
           value={league}
           onChange={(event) => setLeague(event.target.value)}
         />
-        {message ? <span className="ml-3 text-sm text-lose">{message}</span> : null}
+        {message ? <span className="ml-3 text-sm text-accent">{message}</span> : null}
       </AdminCard>
 
       {!overview.data ? (
@@ -113,7 +113,7 @@ export default function AdminSeasonsPage() {
             </div>
 
             <table className="mt-4 w-full text-sm">
-              <thead className="text-meta">
+              <thead className="text-xs text-meta">
                 <tr>
                   <th className="py-1 text-left">시즌</th>
                   <th className="text-left">시작</th>
@@ -124,7 +124,7 @@ export default function AdminSeasonsPage() {
               </thead>
               <tbody>
                 {overview.data.seasons.map((season) => (
-                  <tr key={season.number} className="border-t border-divider">
+                  <tr key={season.number} className="border-t border-line-soft">
                     <td className="py-1">Season {season.number}</td>
                     <td>{new Date(season.startedAt).toLocaleDateString('ko-KR')}</td>
                     <td>{season.endedAt ? new Date(season.endedAt).toLocaleDateString('ko-KR') : '-'}</td>
@@ -145,7 +145,7 @@ export default function AdminSeasonsPage() {
             </p>
             <button
               type="button"
-              className="cursor-pointer border border-divider bg-card px-3 py-1"
+              className="btn-line h-9 px-4 text-sm disabled:opacity-50"
               onClick={async () => {
                 setMessage(null)
                 const result = await call<ClosePreview>(`/seasons/${league}/close`, {
@@ -158,11 +158,11 @@ export default function AdminSeasonsPage() {
             </button>
 
             {closePreview?.preview.ok ? (
-              <div className="mt-3 rounded border border-lose-line bg-lose-bg p-3 text-sm">
-                <div className="font-semibold text-lose">
+              <div className="mt-4 border-l-2 border-accent py-1 pl-3 text-sm">
+                <div className="font-bold text-accent">
                   Season {closePreview.preview.season}을 종료하시겠습니까?
                 </div>
-                <ul className="mt-2 text-ink">
+                <ul className="mt-2 text-text-strong">
                   <li>클랜 스냅샷 {closePreview.preview.clanRows}개</li>
                   <li>개인 스냅샷 {closePreview.preview.playerRows}명</li>
                   {closePreview.preview.divisionLeaders.map((leader) => (
@@ -174,7 +174,7 @@ export default function AdminSeasonsPage() {
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
-                    className="cursor-pointer border border-lose-line bg-card px-3 py-1 text-lose"
+                    className="btn-line h-9 border-accent px-4 text-sm text-text-strong disabled:opacity-50"
                     onClick={async () => {
                       const result = await call<ClosePreview>(`/seasons/${league}/close`, {
                         confirm: true,
@@ -190,7 +190,7 @@ export default function AdminSeasonsPage() {
                   </button>
                   <button
                     type="button"
-                    className="cursor-pointer border border-divider px-3 py-1"
+                    className="btn-line h-9 px-4 text-sm disabled:opacity-50"
                     onClick={() => setClosePreview(null)}
                   >
                     취소
@@ -207,7 +207,7 @@ export default function AdminSeasonsPage() {
             </p>
             <button
               type="button"
-              className="cursor-pointer border border-divider bg-card px-3 py-1"
+              className="btn-line h-9 px-4 text-sm disabled:opacity-50"
               onClick={async () => {
                 setMessage(null)
                 const result = await call<StartPreview>(`/seasons/${league}/start`, {
@@ -220,11 +220,11 @@ export default function AdminSeasonsPage() {
             </button>
 
             {startPreview?.preview.ok ? (
-              <div className="mt-3 rounded border border-lose-line bg-lose-bg p-3 text-sm">
-                <div className="font-semibold text-lose">
+              <div className="mt-4 border-l-2 border-accent py-1 pl-3 text-sm">
+                <div className="font-bold text-accent">
                   Season {startPreview.preview.nextNumber}을 시작하시겠습니까?
                 </div>
-                <ul className="mt-2 text-ink">
+                <ul className="mt-2 text-text-strong">
                   <li>승격 {startPreview.preview.promoted?.clan ?? '없음'}</li>
                   <li>강등 {startPreview.preview.relegated?.clan ?? '없음'}</li>
                   <li>
@@ -235,7 +235,7 @@ export default function AdminSeasonsPage() {
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
-                    className="cursor-pointer border border-lose-line bg-card px-3 py-1 text-lose"
+                    className="btn-line h-9 border-accent px-4 text-sm text-text-strong disabled:opacity-50"
                     onClick={async () => {
                       const result = await call<StartPreview>(`/seasons/${league}/start`, {
                         confirm: true,
@@ -251,7 +251,7 @@ export default function AdminSeasonsPage() {
                   </button>
                   <button
                     type="button"
-                    className="cursor-pointer border border-divider px-3 py-1"
+                    className="btn-line h-9 px-4 text-sm disabled:opacity-50"
                     onClick={() => setStartPreview(null)}
                   >
                     취소

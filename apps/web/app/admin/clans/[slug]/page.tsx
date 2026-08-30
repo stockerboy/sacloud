@@ -76,7 +76,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
           <label className="text-sm">
             <div className="text-meta">클랜명</div>
             <input
-              className="w-48 border border-divider px-2 py-1"
+              className="w-48 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
               defaultValue={clan.name}
               onBlur={(event) => {
                 if (event.target.value !== clan.name) {
@@ -88,7 +88,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
           <label className="text-sm">
             <div className="text-meta">구분</div>
             <select
-              className="border border-divider px-2 py-1"
+              className="h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
               value={clan.category}
               onChange={(event) =>
                 void run(() => update.mutateAsync({ category: event.target.value }), '구분 변경됨')
@@ -101,7 +101,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
           <label className="text-sm">
             <div className="text-meta">무소속 티어 (자동 승강 없음)</div>
             <select
-              className="border border-divider px-2 py-1"
+              className="h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
               value={clan.tier ?? ''}
               onChange={(event) =>
                 void run(
@@ -123,7 +123,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
           </label>
           <button
             type="button"
-            className="cursor-pointer border border-divider bg-card px-3 py-1"
+            className="btn-line h-9 px-4 text-sm disabled:opacity-50"
             onClick={() =>
               void run(
                 () => update.mutateAsync({ active: !clan.active }),
@@ -139,14 +139,14 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
       <AdminCard title="넥슨 클랜명(guild_name) 연결">
         <div className="mb-2 flex gap-2">
           <input
-            className="w-60 border border-divider px-2 py-1"
+            className="w-60 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
             placeholder="넥슨에 보이는 클랜명 그대로"
             value={aliasInput}
             onChange={(event) => setAliasInput(event.target.value)}
           />
           <button
             type="button"
-            className="cursor-pointer border border-divider bg-card px-3 py-1"
+            className="btn-line h-9 px-4 text-sm disabled:opacity-50"
             disabled={!aliasInput}
             onClick={() =>
               void run(async () => {
@@ -173,7 +173,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
                 <span className="text-xs text-meta">{alias.source}</span>
                 <button
                   type="button"
-                  className="cursor-pointer text-xs text-lose underline"
+                  className="cursor-pointer text-xs text-accent underline underline-offset-4"
                   onClick={() =>
                     void run(
                       () =>
@@ -196,7 +196,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
             <label className="text-sm">
               <div className="text-meta">부리그 (래더 공식과 무관)</div>
               <select
-                className="border border-divider px-2 py-1"
+                className="h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
                 value={entry.division}
                 onChange={(event) =>
                   void run(
@@ -225,7 +225,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
           </div>
 
           <table className="w-full text-sm">
-            <thead className="text-meta">
+            <thead className="text-xs text-meta">
               <tr>
                 <th className="py-1 text-left">선수</th>
                 <th className="text-left">Nexon 신원</th>
@@ -237,7 +237,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
             </thead>
             <tbody>
               {entry.rosterMemberships.map((row) => (
-                <tr key={row.id} className="border-t border-divider">
+                <tr key={row.id} className="border-t border-line-soft">
                   <td className="py-1">
                     {row.player.name}
                     <span className="ml-2 text-xs text-meta">{row.player.id}</span>
@@ -255,7 +255,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
                   <td className="flex gap-2 py-1">
                     <button
                       type="button"
-                      className="cursor-pointer text-xs underline"
+                      className="cursor-pointer text-xs text-meta underline underline-offset-4 hover:text-accent"
                       onClick={() =>
                         void run(
                           () =>
@@ -272,7 +272,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
                     {row.leftAt ? null : (
                       <button
                         type="button"
-                        className="cursor-pointer text-xs text-lose underline"
+                        className="cursor-pointer text-xs text-accent underline underline-offset-4"
                         onClick={() =>
                           void run(
                             () =>
@@ -297,7 +297,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
             <label className="text-sm">
               <div className="text-meta">playerId</div>
               <input
-                className="w-48 border border-divider px-2 py-1"
+                className="w-48 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
                 value={rosterForm.playerId}
                 onChange={(event) =>
                   setRosterForm({ ...rosterForm, playerId: event.target.value })
@@ -307,7 +307,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
             <label className="text-sm">
               <div className="text-meta">등록 시작 (비우면 지금)</div>
               <input
-                className="w-48 border border-divider px-2 py-1"
+                className="w-48 h-9 rounded border border-line bg-card-2 px-2 text-sm text-text transition-colors duration-100 placeholder:text-faint focus:border-accent focus:outline-none"
                 placeholder="2026-08-01"
                 value={rosterForm.joinedAt}
                 onChange={(event) =>
@@ -317,7 +317,7 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
             </label>
             <button
               type="button"
-              className="cursor-pointer border border-divider bg-card px-3 py-1"
+              className="btn-line h-9 px-4 text-sm disabled:opacity-50"
               disabled={!rosterForm.playerId}
               onClick={() =>
                 void run(async () => {

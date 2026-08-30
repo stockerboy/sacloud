@@ -38,8 +38,7 @@ export default function PostPage({
   }
 
   const vote = useMutation({
-    mutationFn: (type: number) =>
-      apiSend('boardVote', { params: { boardId: id }, body: { type } }),
+    mutationFn: (type: number) => apiSend('boardVote', { params: { boardId: id }, body: { type } }),
     onSuccess: invalidate,
   })
 
@@ -70,7 +69,7 @@ export default function PostPage({
   return (
     <>
       <PostView post={post.data.data} onVote={(type) => vote.mutate(type)} />
-      <div className="mt-4 rounded bg-card px-6 py-4 shadow-card">
+      <div className="mt-[var(--section-gap)] rounded-[var(--radius)] border border-line bg-card px-6 py-5 max-md:px-4">
         <CommentList
           comments={comments.data?.data}
           loading={!comments.data}

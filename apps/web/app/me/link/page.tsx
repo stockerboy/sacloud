@@ -7,6 +7,7 @@ import { Skeleton, formatDate } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { apiSend } from '@/lib/apiSend'
 import { useApiReady } from '@/app/providers'
+import { MeButton, MeError, MeHeading, MeInput, MePanel } from '../ui'
 
 /**
  * 서든어택 계정 연동 `/me/link`.
@@ -35,46 +36,44 @@ export default function MeLinkPage() {
   const state = link.data.data
 
   return (
-    <div className="rounded bg-card px-6 py-6 shadow-card">
+    <MePanel className="max-w-[560px]">
       {state.linked && state.player ? (
         <>
-          <div className="text-xl">연동된 계정</div>
-          <div className="mt-3">
-            <Link href={`/player/${state.player.id}`} className="underline">
+          <MeHeading>연동된 계정</MeHeading>
+          <div className="flex items-baseline gap-3">
+            <Link
+              href={`/player/${state.player.id}`}
+              className="text-text-strong underline underline-offset-4"
+            >
               {state.player.name}
             </Link>
             {state.linked_at ? (
-              <span className="ml-3 text-meta">{formatDate(state.linked_at)} 연동</span>
+              <span className="num text-sm text-meta">{formatDate(state.linked_at)} 연동</span>
             ) : null}
           </div>
         </>
       ) : (
         <>
-          <div className="text-xl">서든어택 계정 연동</div>
-          <div className="mt-2 text-meta">
-            연동을 마치면 리그를 만들 수 있습니다. 게임 내 닉네임을 입력해 주세요.
-          </div>
-          <div className="mt-4 flex items-center">
-            <input
+          <MeHeading hint="연동을 마치면 리그를 만들 수 있습니다. 게임 내 닉네임을 입력해 주세요.">
+            서든어택 계정 연동
+          </MeHeading>
+          <div className="flex items-center gap-3">
+            <MeInput
               value={playerName}
               onChange={(event) => setPlayerName(event.target.value)}
               placeholder="서든어택 닉네임"
-              className="h-11 w-80 rounded border border-line px-3"
             />
-            <button
-              type="button"
+            <MeButton
               disabled={!playerName.trim() || save.isPending}
               onClick={() => save.mutate()}
-              className="ml-3 h-11 w-24 rounded bg-more text-white disabled:opacity-60"
+              className="h-11 shrink-0"
             >
               연동
-            </button>
+            </MeButton>
           </div>
-          {save.isError ? (
-            <div className="mt-3 text-lose">연동하지 못했습니다. 닉네임을 확인해 주세요.</div>
-          ) : null}
+          {save.isError ? <MeError>연동하지 못했습니다. 닉네임을 확인해 주세요.</MeError> : null}
         </>
       )}
-    </div>
+    </MePanel>
   )
 }

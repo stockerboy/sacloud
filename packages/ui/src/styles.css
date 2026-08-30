@@ -1,293 +1,430 @@
 /**
- * 디자인 토큰 — Phase 1 (원본 실측값)
+ * 디자인 토큰 — `적진`
  *
- * 아래 값은 2026-08-20에 Chrome 개발자 도구(getComputedStyle / cssRules)로
- * 3rd.supply 에서 직접 측정한 관찰값이다. 임의로 "더 예쁘게" 바꾸지 않는다.
- * 측정 근거는 docs/DECISIONS.md D-009 에 정리했다.
+ * 3rd.supply 재현을 그만두고 자체 디자인으로 넘어왔다 (2026-08-30 사용자 결정).
+ * 시안 14개 중 `적진` 이 선택됐고, 아래 값이 그 확정 팔레트다.
  *
- * 원본은 루트 폰트 크기가 14px 이라 `1rem = 14px` 이다.
- * Tailwind 의 rem 기반 유틸리티(px-5 = 1.25rem = 17.5px 등)가 원본과 같은 픽셀로
- * 떨어지려면 이 루트 크기를 반드시 함께 맞춰야 한다.
+ * ── 이 파일의 규칙
+ *   1. **토큰 이름을 지우지 않는다.** 값만 다시 칠한다.
+ *      화면 컴포넌트 수십 개가 `bg-card` · `text-meta` 같은 유틸리티로 이 이름들을 부른다.
+ *      이름이 사라지면 그 파일들이 한꺼번에 깨진다. 새 개념이 필요하면 **새 이름을 추가**한다.
+ *   2. **색은 세 갈래뿐이다** — 검정 / 회색 / 진홍 하나(`--color-accent` #d92b2b).
+ *      남색·인디고·노랑·초록 계열은 전부 이 안으로 수렴시켰다. 옛 이름은 남아 있지만
+ *      값은 더 이상 무지개가 아니다.
+ *   3. **빨강은 아껴 쓴다.** 넓은 면에 칠하면 촌스러워진다.
+ *      가는 선 · 작은 점 · 활성 표시 · 링크 · 가장 중요한 숫자 하나에만 쓴다.
+ *      버튼 배경은 채우지 말고 1px 테두리로 만든다.
+ *   4. **그림자를 쓰지 않는다.** 경계는 1px 선이거나 여백이다.
+ *   5. **둥글지 않다.** 반경은 2px 하나 (`--radius`). 원형 배지만 예외다.
  */
 
 @theme {
-  /* ---------------------------------------------------------------- 색 --- */
-  /* 헤더·히어로·푸터 배경 */
-  --color-ink: #000000;
-  /* 본문 배경 */
-  --color-page: #f2f2f2;
-  --color-card: #ffffff;
-
-  /* 상단 GNB */
-  --color-nav-fg: #e5e7eb;
-  /* 대표 리그 항목이 현재 리그일 때의 배경 */
-  --color-nav-active: #292929;
-
-  --color-divider: #e5e7eb;
-  /* 목록의 보조 정보(상대시간 등) */
-  --color-meta: #374151;
-  /* 카드 머리글 강조 */
-  --color-accent: #1e3a8a;
-  /* 게시글 제목 옆 댓글 수 */
-  --color-comment: #ef4444;
-
-  /* 통합검색 좌측 셀렉터 */
-  --color-selector: #334155;
-  --color-selector-fg: #f3f4f6;
-  /* hover 값은 원본 클래스명(indigo-700 / indigo-400)에서 역산했다 — 실측 아님 [미확인] */
-  --color-selector-hover: #4338ca;
-  --color-selector-hover-edge: #818cf8;
-
-  /* 통합검색 입력 */
-  --color-input-fg: #4a4a4a;
-  --color-input-placeholder: #9ca3af;
-
-  /* --- Phase 3 (리그 · 랭킹) 실측값 --- */
-  /* 리그 서브내비 배경 (원본 brownGray-900) */
-  --color-subnav: #292929;
-  /* 랭킹 테이블 행 배경 (원본 gray-light2) */
-  --color-row: #ececec;
-  /* 테이블 테두리 (원본 gray-300) */
-  --color-line: #d1d5db;
-  /* 본문 강조 글자 (원본 textBlack) */
-  --color-text-strong: #363636;
-  /* `더 불러오기` 버튼 (원본 indigo-500) */
-  --color-more: #6366f1;
-  /* 공식 배지 (원본 coolGray-800 + yellow-500 점) */
-  --color-badge: #1f2937;
-  --color-badge-dot: #f59e0b;
-  /* 탭 선택 상태 (원본 item-active: gray-700 배경 + gray-100 글자) */
-  --color-tab-active: #374151;
-  --color-tab-active-fg: #f3f4f6;
-  /*
-   * 흰 배경 위 탭(`.nav-item` / `.nav-active`) — 리그홈 탭 · 프로필 탭 공용.
-   * 2026-08-27 실측: 활성 글자·밑줄 rgb(99,102,241) 4px · 굵기 700,
-   * 비활성 글자 rgb(107,114,128). 우리는 검정 3px 밑줄을 쓰고 있었다.
-   */
-  --color-tab-underline: #6366f1;
-  --color-tab-idle: #6b7280;
-  /*
-   * 리그 서브내비(검은 띠) 활성 — 흰 배경 탭과 색이 다르다.
-   * 2026-08-27 실측: 글자·밑줄 rgb(245,158,11) 4px · 굵기 700, 비활성 글자 #F3F4F6.
-   */
-  --color-subnav-active: #f59e0b;
-  /* 리그 소개 본문 (원본 coolGray-600 / coolGray-900) */
-  --color-lede: #4b5563;
-  /* 리그홈 헤더 배경 (원본 purple-950) */
-  --color-league-header: #1a0533;
-  /* 즐겨찾기 버튼 (원본 amber-400) */
-  --color-favorite: #fbbf24;
-
-  /* --- Phase 2 (플레이어 · 클랜 프로필) 실측값 --- */
-  /* 플레이어 페이지 헤더 (원본 blueGray-default) */
-  --color-player-header: #374151;
-  /* 클랜 페이지 헤더 (원본 warmGray-800) */
-  --color-clan-header: #292524;
-  /* 클랜 헤더 안 구분선 (원본 warmGray-600) */
-  --color-clan-header-line: #57534e;
-  /* 정보갱신 / 전적갱신 버튼 (원본 blue-600 · 테두리 blue-700) */
-  --color-refresh: #2563eb;
-  --color-refresh-border: #1d4ed8;
-  /*
-   * 기록실 헤더의 나머지 버튼 (2026-08-27 실측)
-   * `기본정보`  gray-500 배경 + gray-600 테두리
-   * `즐겨찾기`  클랜 화면은 coolGray-700 + coolGray-800, 선수 화면은 gray-800 + gray-900.
-   *            두 화면의 밝기가 실제로 다르다 — 하나로 합치지 않는다.
-   */
-  --color-btn-neutral: #6b7280;
-  --color-btn-neutral-border: #4b5563;
-  --color-btn-fav: #374151;
-  --color-btn-fav-border: #1f2937;
-  --color-btn-fav-dark: #1f2937;
-  --color-btn-fav-dark-border: #111827;
-  /* 리그 참여 카드 글자 (원본 boardText) */
-  --color-card-text: #464c4c;
-
-  /* 프로필 헤더의 큰 클랜마크 (원본 .mark-max) */
-  --spacing-mark-max: 51px;
-  /* 매치 카드 양팀 클랜 칸 (원본 w-88 = 22rem) */
-  --spacing-88: 22rem;
-  /* 매치 카드 한쪽 클랜 칸 (원본 w-42 = 10.5rem) */
-  --spacing-42: 10.5rem;
-
-  /*
-   * 승률·킬뎃 색 등급 (원본 실측)
-   * 50 미만 = 기본 / 50~55 / 55~60 / 60~65 / 65 이상
-   * `rate-high-4`(노랑)는 어두운 배경용, 밝은 배경에서는 `rate-high-4-light`(빨강)가 쓰인다.
-   */
-  --color-rate-low: #ff3d3d;
-  --color-rate-1: #02ab18;
-  --color-rate-2: #f2711c;
-  --color-rate-3: #2185d0;
-  --color-rate-4: #ffe30b;
-  --color-rate-4-light: #ff3d3d;
-
-  /* --- Phase 4 (기록실 · 매치) 실측값 --- */
-  /* 승리 매치 카드 (원본 sky 계열) */
-  --color-win-bg: #e0f2fe;
-  --color-win-line: #bae6fd;
-  --color-win-bar: #0ea5e9;
-  --color-win: #0284c7;
-  /* 패배 매치 카드 (원본 red 계열) */
-  --color-lose-bg: #fee2e2;
-  --color-lose-line: #fecaca;
-  --color-lose-bar: #f87171;
-  --color-lose: #ef4444;
-
-  /* 기록실 우측 사이드 패널 (원본 blueGray-800 / 구분선 slate-700) */
-  --color-side: #1e293b;
-  --color-side-line: #334155;
-  /*
-   * 어두운 사이드 위의 **보조 글자** (전투력 육각형 · 플레이스타일 바 · D-185).
+  /* ================================================================= 색 ===
    *
-   * `[미확인]` 원본에 이 블록 자체가 없어서 실측할 값이 없다. 밝은 배경용
-   * `--color-meta`(#374151)를 어두운 패널에 쓰면 거의 안 보여서, 이미 쓰고 있는
-   * slate 계열(`side` #1e293b · `side-line` #334155)의 다음 단계를 골랐다.
+   * 확정 팔레트 (`적진`)
+   *   #060505  바닥      #120c0c  카드      #1a1010  한 단 올린 면
+   *   #2a1616  선        #d6c9c9  본문      #f6eded  제목
+   *   #9a8080  보조      #6b5555  더 옅게   #d92b2b  강조(유일한 색)
    */
-  --color-side-meta: #94a3b8;
 
-  /*
-   * 래더 점수 색 등급 (원본 실측 — 클래스명이 곧 하한값이다)
-   * 1600 미만 = 기본 / 1600~1800 / 1800~2000 / 2000~2500 / 2500 이상
-   * 티어 "이름"은 원본에 없다. 색만 있다 (CLAUDE.md 6장).
+  /* ---------------------------------------------------------- 바닥과 면 --- */
+  /** 페이지 바닥 · 헤더 · 푸터 */
+  --color-ink: #060505;
+  /** 본문 배경 */
+  --color-page: #060505;
+  /** 카드 · 표 면 */
+  --color-card: #120c0c;
+  /** 한 단 올린 면 — 표 머리 · 강조 행 · hover 면 [신규] */
+  --color-card-2: #1a1010;
+
+  /* ------------------------------------------------------------------ 선 --- */
+  /** 기본 선 */
+  --color-line: #2a1616;
+  /** 아주 옅은 선 — 표 행 구분 [신규] */
+  --color-line-soft: #1a1010;
+  /** 옛 이름. `--color-line` 과 같은 값으로 수렴시켰다 */
+  --color-divider: #2a1616;
+
+  /* ---------------------------------------------------------------- 글자 --- */
+  /** 본문 글자 [신규] */
+  --color-text: #d6c9c9;
+  /** 제목 */
+  --color-text-strong: #f6eded;
+  /** 보조 글자 */
+  --color-meta: #9a8080;
+  /** 더 옅은 글자 [신규] */
+  --color-faint: #6b5555;
+
+  /* ---------------------------------------------------------------- 강조 --- */
+  /**
+   * 이 사이트의 **유일한 색**이다. 진홍.
+   * 넓은 면을 칠하지 마라 — 선 · 점 · 활성 표시 · 링크 · 숫자 하나.
    */
-  --color-rating-1600: #02ab18;
-  --color-rating-1800: #2185d0;
-  --color-rating-2000: #f2711c;
-  --color-rating-2500: #ff3d3d;
+  --color-accent: #d92b2b;
 
-  /* MVP 표기 색은 아직 실측하지 못했다 [미확인] */
-  --color-mvp: #c9911f;
+  /* ------------------------------------------------------------ 상단 GNB --- */
+  --color-nav-fg: #d6c9c9;
+  /** 대표 리그 항목이 현재 리그일 때의 배경 */
+  --color-nav-active: #1a1010;
 
-  /* --- Phase 5 (게시판) 실측값 --- */
-  /* 게시판 사이드 내비 (원본 coolGray-900 헤더 / coolGray-700 항목) */
-  --color-board-nav: #111827;
-  --color-board-nav-item: #374151;
-  /* 선택된 카테고리 (원본 .board-active) */
-  --color-board-active: #1f2937;
-  --color-board-active-fg: #fb923c;
-  /* 공지 행 · 글 헤더 박스 배경 (원본 boardBlue) */
-  --color-board-blue: #e4f0fb;
-  /* 목록 구분선 (원본 border) */
-  --color-board-line: #dbdbdb;
-  /* 목록 상단 테두리 (원본 mblack) */
-  --color-board-top: #4a4a4a;
-  /* 추천 / 비추천 아이콘 */
-  --color-vote-up: #60a5fa;
-  --color-vote-down: #f87171;
-  /* 로그인 작성자 닉네임 */
-  --color-writer: #3b82f6;
-  /* 추천 버튼 활성 테두리 (원본 .like-active) */
-  --color-like-active: #60a5fa;
+  /* -------------------------------------------------------------- 통합검색 --- */
+  --color-selector: #120c0c;
+  --color-selector-fg: #d6c9c9;
+  /** hover 는 면을 한 단 올리고, 가장자리에만 진홍을 준다 */
+  --color-selector-hover: #1a1010;
+  --color-selector-hover-edge: #d92b2b;
+  --color-input-fg: #d6c9c9;
+  --color-input-placeholder: #6b5555;
+
+  /* ------------------------------------------------------- 리그 · 랭킹 --- */
+  /** 리그 서브내비 띠 */
+  --color-subnav: #120c0c;
+  /** 서브내비 활성 — 진홍 밑줄 */
+  --color-subnav-active: #d92b2b;
+  /**
+   * 랭킹 표 행 배경.
+   * **얼룩무늬(zebra)를 만들지 않는다.** 카드 면과 같은 값이라 행이 줄무늬로 보이지 않고,
+   * 구분은 `--color-line-soft` 1px 선이 한다.
+   */
+  --color-row: #120c0c;
+  /** `더 불러오기` — 채우지 말고 테두리로 쓴다 */
+  --color-more: #d92b2b;
+  /** 배지 (`공식` 등) */
+  --color-badge: #1a1010;
+  --color-badge-dot: #d92b2b;
+  /** 탭 선택 상태 */
+  --color-tab-active: #1a1010;
+  --color-tab-active-fg: #f6eded;
+  --color-tab-underline: #d92b2b;
+  --color-tab-idle: #9a8080;
+  /** 리그 소개 본문 */
+  --color-lede: #9a8080;
+  /** 리그홈 헤더 배경 */
+  --color-league-header: #120c0c;
+  /** 즐겨찾기 (별) */
+  --color-favorite: #d92b2b;
+
+  /* ------------------------------------------------- 프로필 · 기록실 헤더 --- */
+  --color-player-header: #120c0c;
+  --color-clan-header: #120c0c;
+  --color-clan-header-line: #2a1616;
+  /**
+   * 버튼들.
+   * `적진` 의 버튼은 채우지 않는다 — 면은 카드보다 한 단 올린 정도까지만,
+   * 성격은 **테두리 색**이 만든다. 주요 동작(정보갱신/전적갱신)만 진홍 테두리를 갖는다.
+   */
+  --color-refresh: #1a1010;
+  --color-refresh-border: #d92b2b;
+  --color-btn-neutral: #1a1010;
+  --color-btn-neutral-border: #2a1616;
+  --color-btn-fav: #120c0c;
+  --color-btn-fav-border: #2a1616;
+  --color-btn-fav-dark: #120c0c;
+  --color-btn-fav-dark-border: #2a1616;
+  /** 리그 참여 카드 글자 */
+  --color-card-text: #d6c9c9;
+
+  /* ---------------------------------------------------------- 성적 등급 --- */
+  /**
+   * 승률·킬뎃 등급 (50 미만 / 50~55 / 55~60 / 60~65 / 65 이상).
+   *
+   * 옛 값은 초록·주황·파랑·노랑이었다. 색을 하나로 줄였으므로 **밝기 사다리**로 바꿨다 —
+   * 옅은 회색에서 시작해 흰색을 지나 마지막 한 칸만 진홍이다.
+   * 등급 정보는 남고 무지개만 사라진다.
+   */
+  --color-rate-low: #6b5555;
+  --color-rate-1: #9a8080;
+  --color-rate-2: #d6c9c9;
+  --color-rate-3: #f6eded;
+  --color-rate-4: #d92b2b;
+  --color-rate-4-light: #d92b2b;
+
+  /**
+   * 래더 점수 등급 (1600 / 1800 / 2000 / 2500).
+   * 위와 같은 사다리다. 티어 "이름"은 여전히 없다 — 색만 있다 (CLAUDE.md 6장).
+   */
+  --color-rating-1600: #9a8080;
+  --color-rating-1800: #d6c9c9;
+  --color-rating-2000: #f6eded;
+  --color-rating-2500: #d92b2b;
+
+  /* ------------------------------------------------------- 승 · 패 · 매치 --- */
+  /**
+   * 승은 진홍, 패는 회색으로 죽인다.
+   * 카드 배경은 승패가 **같다** — 넓은 면에 색을 칠하지 않기 때문이다.
+   * 구분은 왼쪽 막대와 테두리가 한다.
+   */
+  --color-win-bg: #120c0c;
+  --color-win-line: #2a1616;
+  --color-win-bar: #d92b2b;
+  --color-win: #d92b2b;
+  --color-lose-bg: #120c0c;
+  --color-lose-line: #1a1010;
+  --color-lose-bar: #6b5555;
+  --color-lose: #6b5555;
+
+  /** 기록실 우측 사이드 패널 */
+  --color-side: #120c0c;
+  --color-side-line: #2a1616;
+  --color-side-meta: #9a8080;
+
+  /** MVP */
+  --color-mvp: #d92b2b;
+
+  /* -------------------------------------------------------------- 게시판 --- */
+  --color-board-nav: #120c0c;
+  --color-board-nav-item: #1a1010;
+  --color-board-active: #1a1010;
+  --color-board-active-fg: #d92b2b;
+  /** 공지 행 · 글 헤더 박스 (이름만 `blue` 로 남았다. 파랑이 아니다) */
+  --color-board-blue: #1a1010;
+  --color-board-line: #1a1010;
+  --color-board-top: #2a1616;
+  --color-vote-up: #d92b2b;
+  --color-vote-down: #6b5555;
+  /** 로그인 작성자 닉네임 — 익명(meta)보다 한 단 밝게 */
+  --color-writer: #d6c9c9;
+  --color-like-active: #d92b2b;
+  /** 게시글 제목 옆 댓글 수 */
+  --color-comment: #d92b2b;
+
+  /* ============================================================== 레이아웃 ===
+   *
+   * 한 화면을 꽉 채우지 않는다. 본문은 1120px 에서 멈추고 양옆은 비운다.
+   */
+
+  /** 본문 최대 폭 [신규] */
+  --layout-max: 1120px;
+  /** 본문 좌우 여백 [신규] */
+  --layout-gutter: 24px;
+  /** 섹션 사이 세로 여백 [신규] */
+  --section-gap: 40px;
+  /** 기본 모서리 반경 — 거의 각지게 [신규] */
+  --radius: 2px;
+
+  /* Tailwind `rounded-*` 도 같이 각지게 만든다. `rounded-full` 은 영향을 받지 않는다 */
+  --radius-DEFAULT: 2px;
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 3px;
+  --radius-3xl: 3px;
+  --radius-4xl: 4px;
+
+  /* 위 레이아웃 값을 Tailwind 유틸리티로도 쓸 수 있게 `--spacing-*` 으로 한 번 더 낸다.
+     → `max-w-layout` · `px-gutter` · `mt-section` · `gap-section` [신규] */
+  --spacing-layout: 1120px;
+  --spacing-gutter: 24px;
+  --spacing-section: 40px;
 
   /* -------------------------------------------------------------- 치수 --- */
-  /* 고정 헤더 높이 (원본 4.5rem = 63px) */
+  /** 고정 헤더 높이 */
   --spacing-nav: 4.5rem;
-  /* 데스크톱 고정폭 컨테이너 (원본 80rem = 1120px, min-width) */
-  --spacing-container: 80rem;
-  /* 홈 로고 (44rem = 616px) */
+  /** 데스크톱 본문 폭. `--layout-max` 와 같은 값이다 (px 로 고정해 루트 크기와 무관하다) */
+  --spacing-container: 1120px;
+  /** 홈 로고 */
   --spacing-logo: 44rem;
-  /* 통합검색 입력 (28rem = 392px) */
+  /** 통합검색 입력 */
   --spacing-search: 28rem;
-  /* 통합검색 셀렉터 (11rem = 154px) */
+  /** 통합검색 셀렉터 */
   --spacing-selector: 11rem;
-  /* 홈 인기게시글 카드 (48rem = 672px) */
+  /** 홈 인기게시글 카드 */
   --spacing-board: 48rem;
-  /* 인기게시글 제목 칸 (42rem = 588px) */
   --spacing-board-title: 42rem;
-  /* 인기게시글 상대시간 칸 (6rem = 84px) */
   --spacing-board-time: 6rem;
-  /* 404 일러스트 (24rem = 336px) */
+  /** 404 일러스트 */
   --spacing-notfound: 24rem;
+  /** 프로필 헤더의 큰 클랜마크 */
+  --spacing-mark-max: 51px;
+  /** 매치 카드 양팀 클랜 칸 */
+  --spacing-88: 22rem;
+  /** 매치 카드 한쪽 클랜 칸 */
+  --spacing-42: 10.5rem;
 
   /* ------------------------------------------------------------ 그림자 --- */
-  /* 카드 그림자 실측값. Tailwind v4 기본 shadow-sm 과 두 번째 레이어가 달라 직접 정의한다. */
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
+  /**
+   * `적진` 은 그림자를 쓰지 않는다. 이름은 남기고 값만 **투명**으로 비웠다 —
+   * `shadow-card` 가 아직 붙어 있는 화면이 있어도 아무것도 그리지 않는다.
+   * (`none` 을 넣으면 Tailwind 의 box-shadow 합성 목록이 통째로 무효가 된다. 그래서 투명값이다.)
+   */
+  --shadow-card: 0 0 0 0 rgb(0 0 0 / 0);
 
-  /* -------------------------------------------------------------- 서체 --- */
-  /* 원본 body font-family 실측값 */
+  /* ================================================================ 서체 ===
+   *
+   * 웹폰트를 **실제로 불러오는 일은 `apps/web/app/layout.tsx` 담당**이다.
+   * 여기서는 family 토큰과 폴백 스택만 정의한다. 폰트가 아직 안 실려도 화면은 성립한다.
+   */
+
+  /**
+   * 제목 · 브랜드 · 섹션 제목.
+   * `Black Han Sans` 는 굵기가 400 하나뿐이고 아주 강하다.
+   * **큰 제목에만** 쓴다. 소제목·라벨까지 이걸 쓰면 화면이 소리친다.
+   */
+  --font-display:
+    'Black Han Sans', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', -apple-system,
+    BlinkMacSystemFont, sans-serif;
+
+  /** 본문 · 표 · 라벨 */
+  --font-body:
+    'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Apple SD Gothic Neo',
+    'Malgun Gothic', 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol';
+
+  /** 숫자 — 래더 · 승률 · K/D */
+  --font-num:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, 'Cascadia Mono', Consolas, 'Liberation Mono',
+    monospace;
+
+  /** 옛 이름. 본문 스택과 같다 */
   --font-sans:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
-    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Apple SD Gothic Neo',
+    'Malgun Gothic', 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol';
 }
 
-/* 원본 루트 폰트 크기. 모든 rem 값의 기준이다. */
+/* =========================================================== 전역 기본값 === */
+
+/**
+ * 루트 폰트 크기. 모든 rem 값의 기준이다.
+ * 원본 맞추기용 14px 이었다. 재현을 그만뒀으므로 읽기 편한 **15px** 로 올렸다.
+ */
 html {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 body {
   background-color: var(--color-page);
-  color: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  /* 어두운 바탕이라 글자가 번져 보인다. 렌더링을 얇게 잡는다 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/** 브라우저 기본 UI(스크롤바 · 폼 컨트롤)도 어두운 쪽으로 맞춘다 */
+:root {
+  color-scheme: dark;
 }
 
 /**
- * 데스크톱 고정폭 컨테이너.
+ * 숫자는 자릿수가 흔들리면 안 된다.
+ * 표 안의 숫자가 한 칸씩 밀리는 것이 이 화면에서 가장 먼저 지저분해 보이는 지점이다.
+ */
+table,
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/** 숫자 전용 글꼴을 붙일 때 쓰는 헬퍼. `font-num` 유틸리티와 같이 써도 된다 */
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/**
+ * 큰 제목용 헬퍼.
+ * `Black Han Sans` 는 자간이 넓게 느껴져서 살짝 조인다.
+ */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/**
+ * 링크.
+ * 기본은 본문색 그대로 두고, **가리켰을 때만** 진홍이 켜진다.
+ * 목록 전체가 빨간 링크로 덮이면 이 시안이 무너진다.
+ */
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+/** 포커스 링도 진홍 하나로 통일한다 */
+:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/**
+ * 테두리 버튼.
+ * `적진` 의 기본 버튼이다 — **면을 채우지 않고** 1px 선으로 만든다.
+ * hover 에서 면을 한 단 올리고 테두리에만 진홍을 준다.
+ */
+.btn-line {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  background-color: transparent;
+  color: var(--color-text);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.btn-line:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background-color: var(--color-card-2);
+  color: var(--color-text-strong);
+}
+
+.btn-line:disabled {
+  color: var(--color-faint);
+  cursor: not-allowed;
+}
+
+/**
+ * 데스크톱 본문 컨테이너.
  *
- * 원본 관측 동작 (2026-08-20)
- * - 창이 넓으면 80rem(1120px) 고정폭으로 **가운데 정렬**된다
- *   (뷰포트 1517px에서 좌측 여백 198.5px → GNB 첫 항목 글자가 212.5px에서 시작)
- * - 창이 1120px보다 좁아지면 **줄어들지 않고** 넘쳐서 가로 스크롤이 생긴다
- *   (뷰포트 1014px에서 margin-right 가 -105.6px 로 계산됨)
- *
- * 이 두 동작을 그대로 내려면 `width` + 좌우 auto 마진이면 된다.
+ * 예전에는 원본을 따라 **줄어들지 않는 고정폭**이라 좁은 창에서 가로 스크롤이 생겼다.
+ * 재현을 그만뒀으므로 그 동작도 버린다 — 1120px 에서 멈추고, 그보다 좁으면 같이 줄어든다.
+ * 좌우에는 항상 여백(`--layout-gutter`)을 둔다. 글자가 벽에 붙지 않게.
  */
 .pc-container {
-  width: var(--spacing-container);
+  width: 100%;
+  max-width: var(--layout-max);
   margin-left: auto;
   margin-right: auto;
+  padding-left: var(--layout-gutter);
+  padding-right: var(--layout-gutter);
+}
+
+/** 섹션 사이 세로 여백. 경계선 대신 여백으로 끊는다 */
+.section-stack > * + * {
+  margin-top: var(--section-gap);
 }
 
 /**
  * ---------------------------------------------------------------- 모바일 ---
  *
- * 원본은 **모바일 전용 레이아웃을 따로 가지고 있다** (2026-08-28 원본 화면 관측).
- * 예전 문서에 "원본은 PC 전용" 이라고 적혀 있었는데 그건 틀린 관측이었다.
- *
- * 관측한 것
- * - 상단이 2단이다. 1단은 햄버거(좌) + 로그인 아이콘(우) 뿐이고,
- *   2단에 리그명(좌) + `리그홈`(우, 주황) 이 온다.
- * - 리그 탭 3개가 화면 폭을 균등 분할한 큰 버튼이 된다.
- * - 랭킹 표는 컬럼을 줄인다 — 클랜랭킹 `순위·클랜·래더`, 개인랭킹 `순위·닉네임·점수`.
- * - 글자와 행 높이가 PC 보다 크다.
- *
- * 경계는 768px 로 잡는다. 미디어쿼리의 `rem` 은 루트 폰트 크기가 아니라
- * 초기값(16px)을 기준으로 하므로 `48rem = 768px` 이다. `html` 을 14px 로
- * 두었다고 해서 달라지지 않는다.
- *
- * **넓은 화면 동작은 건드리지 않는다.** 원본도 PC 는 지금 그대로다.
+ * 좁은 화면에서는 고정폭을 풀고 여백을 줄인다. 가로 스크롤이 생기면 안 된다.
+ * 클래스 이름(`mobile-bleed` · `mobile-scroll-x` · `mobile-hide`)은 화면 쪽에서
+ * 그대로 쓰고 있으므로 **바꾸지 않는다.**
  */
 @media (max-width: 767px) {
-  /*
-   * 루트 폰트 크기는 **PC 와 같은 14px 로 둔다.**
-   *
-   * 한때 16px 로 올렸다가 되돌렸다 (2026-08-28). 원본 모바일 화면이 커 보인 것은
-   * 루트가 커서가 아니라 화면이 좁아 같은 글자가 상대적으로 크게 보인 것이었다.
-   * 16px 로 올리니 rem 기반 값이 전부 약 14% 커져서 **원본보다 확실히 큰 화면**이 됐다.
-   * 사용자가 원본 화면과 나란히 비교해 지적했다 — "UI 가 너무 크다".
-   *
-   * 원본은 PC·모바일 모두 루트가 14px 이다 (D-009 실측). 그 값을 그대로 쓴다.
-   */
-
-  /* 고정폭을 풀고 화면을 꽉 채운다. 가로 스크롤이 생기면 안 된다.
-     좌우 여백은 남긴다 — 글자만 있는 블록(랭킹 제목·게시판 등)이 화면 끝에 붙으면
-     읽기 힘들다. **배경색이 있는 블록만** 아래 `.mobile-bleed` 로 끝까지 뺀다. */
   .pc-container {
-    width: 100%;
     max-width: 100%;
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
 
   /**
-   * 컨테이너 여백을 **뚫고 나가** 화면 끝까지 차는 블록.
-   *
-   * 원본 스크린샷 실측 (2026-08-28) — 원본 매치 카드는 x 0 ~ 1124 로 좌우 여백이 0이다.
-   * 우리는 32 ~ 1093 이라 양쪽에 흰 띠가 남았고, 그래서 화면이 좁고 답답해 보였다.
-   * 사용자가 그 원인을 직접 짚었다.
-   *
-   * 컨테이너 padding 을 없애면 글자 블록까지 벽에 붙으므로, 배경색이 있는 블록만
-   * 음수 마진으로 되뺀다. 값은 위 padding 과 **반드시 같아야** 한다.
+   * 컨테이너 여백을 뚫고 나가 화면 끝까지 차는 블록.
+   * 배경색이 있는 블록에만 쓴다 — 글자만 있는 블록이 벽에 붙으면 읽기 힘들다.
+   * 값은 위 padding 과 **반드시 같아야** 한다.
    */
   .mobile-bleed {
     margin-left: -0.75rem;
@@ -299,16 +436,8 @@ body {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-}
 
-/**
- * 좁은 화면에서 숨기는 표 컬럼.
- *
- * 원본 모바일이 실제로 감추는 것만 붙인다 —
- * 클랜랭킹은 승리·패배·승률, 개인랭킹은 승패·승률·킬뎃·평균킬.
- * 데이터를 지우는 것이 아니라 **보이지 않게** 할 뿐이라 PC 는 그대로다.
- */
-@media (max-width: 767px) {
+  /* 좁은 화면에서 감추는 표 컬럼. 데이터를 지우는 것이 아니라 보이지 않게 할 뿐이다 */
   .mobile-hide {
     display: none;
   }
@@ -317,11 +446,9 @@ body {
 /**
  * `전투력 측정중` 육각형의 심장박동 (PLAYER_TRAITS_SPEC 4절 · D-185).
  *
- * 사양이 "심장처럼 조금 커졌다 작아졌다" 라고 정했다. 값을 0으로 그리지 않기 위한
- * 표시이므로 **크게 튀지 않게** 폭을 6%로 뒀다 — 눈에 띄되 데이터처럼 읽히면 안 된다.
- *
+ * 값을 0으로 그리지 않기 위한 표시이므로 **크게 튀지 않게** 폭을 6%로 뒀다 —
+ * 눈에 띄되 데이터처럼 읽히면 안 된다.
  * 움직임을 줄여 달라고 설정한 사용자에게는 멈춘 정육각형을 보여 준다.
- * 그래도 `측정중` 문구가 남아 있어 뜻이 사라지지 않는다.
  */
 @keyframes trait-heartbeat {
   0%,

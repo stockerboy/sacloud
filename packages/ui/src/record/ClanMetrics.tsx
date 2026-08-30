@@ -68,7 +68,7 @@ function TierRows({
       {tiers.map((tier) => (
         <div
           key={tier.division}
-          className="flex items-center border-b border-b-divider py-1 last:border-b-0"
+          className="flex items-center border-b border-b-line-soft py-1 last:border-b-0"
         >
           <div className="w-24 text-sm text-meta">
             vs {tier.division}
@@ -109,7 +109,7 @@ function TrendBars({ trend }: { trend: ClanMetricsData['trend'] }) {
 
   return (
     <>
-      <div className="mt-2 flex h-24 items-end gap-1 border-t border-b border-t-divider border-b-divider py-1">
+      <div className="mt-2 flex h-24 items-end gap-1 border-t border-b border-t-line-soft border-b-line-soft py-1">
         {trend.map((bucket) => (
           <div
             key={bucket.start}
@@ -122,7 +122,7 @@ function TrendBars({ trend }: { trend: ClanMetricsData['trend'] }) {
           >
             {bucket.win_rate === null ? (
               /* 빈 칸. 바닥에 붙은 0% 막대를 그리면 전패로 읽힌다 (D-106) */
-              <div className="h-px w-full bg-divider" aria-hidden />
+              <div className="h-px w-full bg-line-soft" aria-hidden />
             ) : (
               <div
                 className="w-full bg-win-bar"
@@ -217,7 +217,7 @@ function WinStreak({
       ) : null}
 
       {open ? (
-        <div className="mt-2 border-t border-t-divider pt-2">
+        <div className="mt-2 border-t border-t-line-soft pt-2">
           {streak.members.map((member) => (
             <div key={member.player.id} className="flex items-center py-0.5">
               {/* 닉네임을 누르면 그 선수 기록실로 간다 (SITE_SPEC_V2 2절과 같은 규칙) */}
@@ -247,12 +247,11 @@ export function ClanMetrics({
   leagueCategory?: string
 }) {
   return (
-    <div className="mt-2 bg-card px-3 py-3 shadow-card">
+    <div className="mt-2 rounded-[2px] border border-line bg-card px-5 py-4">
       <div className="flex items-baseline justify-between">
         <div className="text-lg">클랜 지표</div>
         <div className="text-xs text-meta">
-          {formatCount(metrics.games)}전 {formatCount(metrics.win)}승{' '}
-          {formatCount(metrics.lose)}패
+          {formatCount(metrics.games)}전 {formatCount(metrics.win)}승 {formatCount(metrics.lose)}패
           {/* 잘렸으면 숨기지 않는다 — 아래 값들이 전 경기를 본 것이 아니다 */}
           {metrics.truncated ? (
             <span className="ml-1">· 최근 {formatCount(metrics.games)}판만 집계</span>

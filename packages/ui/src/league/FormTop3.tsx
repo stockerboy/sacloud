@@ -3,7 +3,7 @@ import type { FormTop } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { formatCount, formatRatingDelta } from '../common/format'
 import { leaguePlayerPath } from '../common/paths'
-import { COL_NAME, COL_RANK, COL_RATING, HEAD, MARK, ROW } from './rankStyles'
+import { COL_NAME, COL_RANK, COL_RATING, HEAD, MARK, NUM, ROW } from './rankStyles'
 
 /**
  * 폼 TOP3 — 각 랭킹 탭(통합/스나/라플) 위에 붙는다 (D-169).
@@ -41,24 +41,26 @@ export function FormTop3({
   return (
     <div className="mb-5">
       <div className="mb-2 flex items-baseline max-md:flex-col max-md:items-start">
-        <div className="text-lg">폼 TOP3</div>
-        <div className="ml-3 text-sm text-meta max-md:ml-0 max-md:mt-1">
+        <div className="font-display text-xl tracking-wide text-text-strong">폼 TOP3</div>
+        <div className="ml-3 text-sm text-faint max-md:ml-0 max-md:mt-1">
           {form.date}
           {form.is_today ? ' (오늘)' : ''} 하루 동안 얻은 래더 증감 합계 · 3경기 이상
         </div>
       </div>
-      <div className="mobile-bleed border border-line">
+      <div className="mobile-bleed rounded-[var(--radius)] border border-line">
         <div className={HEAD}>
           <div className={COL_RANK}>순위</div>
-          <div className={`w-72 ${COL_NAME}`}>닉네임</div>
+          <div className={COL_NAME}>닉네임</div>
           <div className={COL_RATING}>래더증감</div>
         </div>
         {form.rows.map((row) => (
           <div key={row.league_player_id} className={ROW}>
-            <div className={COL_RANK}>{row.rank}</div>
-            <div className={`w-72 ${COL_NAME}`}>
+            <div className={`${COL_RANK} ${NUM} ${row.rank === 1 ? 'text-accent font-bold' : 'text-meta'}`}>
+              {row.rank}
+            </div>
+            <div className={COL_NAME}>
               <Link
-                className="flex min-w-0 items-center"
+                className="flex min-w-0 items-center hover:text-text-strong"
                 href={leaguePlayerPath(leagueSlug, row.player.id)}
               >
                 {/* 무소속이어도 자리를 비우지 않는다 — fallback 마크를 그린다 (D-146) */}
@@ -66,9 +68,9 @@ export function FormTop3({
                 <span className="truncate">{row.player.name}</span>
               </Link>
             </div>
-            <div className={COL_RATING}>
+            <div className={`${COL_RATING} ${NUM} text-text-strong`}>
               {formatRatingDelta(row.rating_delta)}
-              <span className="ml-1 text-sm text-meta">({formatCount(row.games)}경기)</span>
+              <span className="ml-1 text-xs text-faint">({formatCount(row.games)}경기)</span>
             </div>
           </div>
         ))}

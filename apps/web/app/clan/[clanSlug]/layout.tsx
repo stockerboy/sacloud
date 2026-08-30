@@ -3,13 +3,14 @@
 import { use } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { ClanHeader, ProfileTabs, Skeleton } from '@sacloud/ui'
+import { ClanIdentity, ClanProfileNav, ProfileSkeleton } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
 /**
- * 클랜 프로필 공통 — 헤더 + 리그정보/클랜원 탭.
- * 원본 탭: `/clan/{slug}` (리그정보), `/clan/{slug}/player` (클랜원).
+ * 클랜 프로필 공통 — 신원 띠 + 탭(리그정보 / 클랜원).
+ *
+ * 탭이 가는 곳은 그대로다: `/clan/{slug}` · `/clan/{slug}/player`.
  */
 export default function ClanLayout({
   children,
@@ -36,20 +37,19 @@ export default function ClanLayout({
   return (
     <>
       {clan.data ? (
-        <ClanHeader
+        <ClanIdentity
           name={clan.data.data.name}
           mark={clan.data.data.mark}
           master={clan.data.data.master}
           establishedAt={clan.data.data.established_at}
+          memberCount={clan.data.data.member_count}
         />
       ) : (
-        <div className="mt-5 h-52 bg-clan-header py-10 max-md:mt-0 max-md:h-auto max-md:py-5">
-          <div className="pc-container">
-            <Skeleton className="h-[51px] w-96 max-w-full" />
-          </div>
+        <div className="pc-container pt-[40px]">
+          <ProfileSkeleton rows={1} height={120} />
         </div>
       )}
-      <ProfileTabs tabs={tabs} current={pathname} />
+      <ClanProfileNav tabs={tabs} current={pathname} />
       {children}
     </>
   )

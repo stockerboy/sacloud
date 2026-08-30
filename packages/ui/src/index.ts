@@ -8,8 +8,11 @@ export { MainLogo, NavLogo } from './layout/BrandLogo'
 
 export { SearchBar, type SearchBarProps, type SearchType } from './home/SearchBar'
 export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPostList'
-/* 메인 신규 칸 (SITE_SPEC_V2 3절) — 원본 3rd.supply 메인에는 없다 */
-export { LeagueTop3, type LeagueTop3Props } from './home/LeagueTop3'
+/*
+ * `LeagueTop3`(리그별 개인랭킹 TOP3)는 2026-08-30 사용자 지시로 **메인에서 뺐다.**
+ * 다른 화면에서 쓰던 곳이 없어 파일째 지웠다. 리그 화면의 랭킹은 그대로 있다.
+ * 데이터를 주던 `GET /api/home/top` 라우트는 살아 있다 — 화면만 안 부른다.
+ */
 export { SiteIntro } from './home/SiteIntro'
 
 export { RelativeTime } from './common/RelativeTime'
@@ -98,6 +101,30 @@ export {
 } from './profile/LeagueRecordHeader'
 export { ClanMemberList } from './profile/ClanMemberList'
 
+/* --- 프로필 재설계 (`적진` 팔레트) — 최상위 `/player/*` · `/clan/*` 전용 ---
+   리그 안의 기록실(`/league/{slug}/player|clan/*`)은 아직 위의 컴포넌트를 쓴다 */
+export {
+  IdentityBand,
+  MetaDot,
+  OfficialTag,
+  ProfileEmpty,
+  ProfileLoadMore,
+  ProfileNav,
+  ProfileSkeleton,
+  SectionTitle,
+  Stat,
+  WinBar,
+  PANEL as PROFILE_PANEL,
+} from './player/profileKit'
+export { PlayerIdentity, PlayerLeagueList, RenewControl } from './player/PlayerProfile'
+export {
+  ClanIdentity,
+  ClanLeagueList,
+  ClanProfileNav,
+  ClanRosterByPosition,
+  groupByPosition,
+} from './clan/ClanProfile'
+
 /* --- Phase 4: 기록실 · 매치 상세 --- */
 export { MatchCard, formatPlayTime, formatRatingUpdate } from './record/MatchCard'
 export {
@@ -161,13 +188,22 @@ export { CommentList, CommentForm } from './board/CommentList'
 export { BoardSearch, type BoardSearchType } from './board/BoardSearch'
 export {
   boardHeading,
+  boardDisplayName,
   boardAllowsWriteAndSearch,
   DEFAULT_BOARD_SLUG,
 } from './board/boardCopy'
 export { sanitizePostContent } from './board/sanitize'
 
 /* --- Phase 6: 인증 · 마이페이지 · 관리 --- */
-export { AuthCard, AuthField, AuthInput, AuthSubmit } from './auth/AuthCard'
+export {
+  AuthCard,
+  AuthError,
+  AuthField,
+  AuthInput,
+  AuthNotice,
+  AuthSubmit,
+  AuthTitle,
+} from './auth/AuthCard'
 export { SIGNUP_ALLOWED_EMAIL_DOMAINS } from '@sacloud/contract'
 export {
   validateLeagueName,

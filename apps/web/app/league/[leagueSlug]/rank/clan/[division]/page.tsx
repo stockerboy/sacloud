@@ -11,9 +11,8 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
 /**
  * 클랜랭킹 `/league/{slug}/rank/clan/{division}`.
  *
- * 원본 화면 순서: 제목+안내 → 부리그 탭 → 표 → 더 불러오기.
- * 안내 문구는 원본 문장을 그대로 쓰지 않고 같은 뜻으로 새로 썼다 (CLAUDE.md 3장 4번).
- * 갱신 주기(1시간)와 "배치고사 종료 대상만 표시"는 원본 관측 규칙이다.
+ 화면 순서: 제목+안내 → 부리그 탭 → 표 → 더 불러오기.
+ * 갱신 주기(1시간)와 "배치고사 종료 대상만 표시"는 그대로다.
  */
 export default function ClanRankPage({
   params,
@@ -40,9 +39,9 @@ export default function ClanRankPage({
     <div className="pc-container">
       {/* 좁은 화면에서는 좌우 안쪽 여백을 없앤다.
           `.mobile-bleed`(표)는 `.pc-container` 의 0.75rem 만 되빼도록 만들어져 있어서,
-          여기 `p-6`(1.5rem)이 남아 있으면 표가 화면 끝까지 가지 못한다.
-          위아래 여백은 그대로 둔다. */}
-      <div className="p-6 max-md:px-0">
+          여기 좌우 여백이 남아 있으면 표가 화면 끝까지 가지 못한다.
+          위아래 여백은 `--section-gap` 을 쓴다 — 화면을 꽉 채우지 않는다. */}
+      <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
           title="클랜랭킹"
           notice="랭킹은 1시간마다 갱신되며, 배치고사가 종료된 클랜만 표시됩니다."

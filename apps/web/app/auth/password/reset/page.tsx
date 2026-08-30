@@ -4,7 +4,7 @@ import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
-import { AuthCard, AuthField, AuthInput, AuthSubmit } from '@sacloud/ui'
+import { AuthCard, AuthError, AuthField, AuthInput, AuthSubmit, AuthTitle } from '@sacloud/ui'
 import { apiSend } from '@/lib/apiSend'
 
 /**
@@ -27,12 +27,12 @@ function ResetForm() {
   return (
     <AuthCard
       footer={
-        <Link href="/auth/login" className="underline">
+        <Link href="/auth/login" className="text-text-strong underline underline-offset-4">
           로그인으로 돌아가기
         </Link>
       }
     >
-      <div className="mb-4 font-bold">새 비밀번호 설정</div>
+      <AuthTitle>새 비밀번호 설정</AuthTitle>
 
       <AuthField label="새 비밀번호">
         <AuthInput
@@ -52,9 +52,9 @@ function ResetForm() {
       </AuthField>
 
       {confirm && password !== confirm ? (
-        <div className="text-sm text-lose">비밀번호가 서로 다릅니다.</div>
+        <div className="-mt-4 text-sm text-accent">비밀번호가 서로 다릅니다.</div>
       ) : null}
-      {reset.isError ? <div className="text-lose">재설정하지 못했습니다.</div> : null}
+      {reset.isError ? <AuthError>재설정하지 못했습니다.</AuthError> : null}
 
       <AuthSubmit disabled={!ok || reset.isPending} onClick={() => reset.mutate()}>
         비밀번호 변경
