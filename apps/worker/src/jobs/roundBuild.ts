@@ -28,6 +28,7 @@ import {
   clanByTeamNo,
   duelTallyOf,
   killsOf,
+  oneAttackTallyOf,
   weaponByPlayerOf,
   type ZoneCells,
   isRestorable,
@@ -103,6 +104,8 @@ interface Accum {
   snipeDuelWins: number
   workKills: number
   workRifleKills: number
+  oneAttackKills: number
+  oneAttackSameKills: number
 }
 
 const zero = (): Accum => ({
@@ -117,6 +120,8 @@ const zero = (): Accum => ({
   snipeDuelWins: 0,
   workKills: 0,
   workRifleKills: 0,
+  oneAttackKills: 0,
+  oneAttackSameKills: 0,
 })
 
 interface RawShape {
@@ -168,6 +173,8 @@ export interface RoundBuildResult {
   linked: number
   /** 그 경기에서 **스나를 든 것으로 확인된** 선수-경기 수 */
   sniperEntries: number
+  /** 포지션까지 알아 원어택을 잰 선수-경기 수 */
+  oneAttackEntries: number
   written: boolean
 }
 
@@ -209,10 +216,21 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
     profiles: 0,
     linked: 0,
     sniperEntries: 0,
+    oneAttackEntries: 0,
     written: false,
   }
 
   const zone = sniperLane()
+
+  /* 포지션 자동 판정 결과 (D-196). `str_usn` → `2F`/`B`/`SHORT`.
+     없는 선수는 그냥 없다 — 모르는 것을 채우지 않는다 */
+  const positionByPlayer = new Map<string, string>()
+  for (const row of await prisma.playerPositionProfile.findMany({
+    where: { position: { not: null } },
+    select: { userNexonSn: true, position: true },
+  })) {
+    if (row.position) positionByPlayer.set(row.userNexonSn, row.position)
+  }
 
   for (const [matchKey, group] of byMatch) {
     const events: RoundStateEvent[] = []
@@ -300,6 +318,7 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
       if (!tally) continue
 
       const duel = duelTallyOf({ kills, weaponByPlayer, usn, zone })
+      const oneAttack = oneAttackTallyOf({ kills, weaponByPlayer, positionByPlayer, usn })
 
       const accum = totals.get(account) ?? zero()
       accum.matches += 1
@@ -309,6 +328,11 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
         accum.snipeDuelWins += duel.snipeDuelWins
         accum.workKills += duel.workKills
         accum.workRifleKills += duel.workRifleKills
+      }
+      if (oneAttack) {
+        result.oneAttackEntries += 1
+        accum.oneAttackKills += oneAttack.kills
+        accum.oneAttackSameKills += oneAttack.sameKills
       }
       accum.alone += tally.alone
       accum.aloneWon += tally.aloneWon
@@ -355,6 +379,8 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
       snipeDuelWins: accum.snipeDuelWins,
       workKills: accum.workKills,
       workRifleKills: accum.workRifleKills,
+      oneAttackKills: accum.oneAttackKills,
+      oneAttackSameKills: accum.oneAttackSameKills,
       computedAt: new Date(),
     }
     await prisma.playerRoundProfile.upsert({

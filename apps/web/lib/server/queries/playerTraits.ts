@@ -70,6 +70,8 @@ interface RoundValue {
   snipeDuelRate: number | null
   /** 작업 성공률 — 내 킬 중 상대가 라플이었던 비율 (D-195 · **스나수만**) */
   workRate: number | null
+  /** 원어택 성공률 — 내 킬 중 상대가 **나와 같은 포지션**이었던 비율 (D-196 · **라플수만**) */
+  oneAttackRate: number | null
 }
 
 /** 한 선수의 값 — 판당 평균 킬 · 판당 평균 딜량 */
@@ -94,6 +96,8 @@ interface WeaponCohort {
   /** 스나 전용 두 축 (D-195). 라플 무리에서는 늘 비어 있다 */
   snipeDuelSorted: number[]
   workSorted: number[]
+  /** 라플 전용 (D-196) */
+  oneAttackSorted: number[]
 }
 
 interface LeagueDistribution {
@@ -129,6 +133,7 @@ function emptyCohort(): WeaponCohort {
     matchManSorted: [],
     snipeDuelSorted: [],
     workSorted: [],
+    oneAttackSorted: [],
   }
 }
 
@@ -157,6 +162,8 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
       snipeDuelWins: true,
       workKills: true,
       workRifleKills: true,
+      oneAttackKills: true,
+      oneAttackSameKills: true,
     },
   })
 
@@ -174,6 +181,10 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
       snipeDuelRate:
         row.snipeDuels >= TRAIT_MIN_ROUNDS ? row.snipeDuelWins / row.snipeDuels : null,
       workRate: row.workKills >= TRAIT_MIN_ROUNDS ? row.workRifleKills / row.workKills : null,
+      oneAttackRate:
+        row.oneAttackKills >= TRAIT_MIN_ROUNDS
+          ? row.oneAttackSameKills / row.oneAttackKills
+          : null,
     })
   }
   return out
@@ -260,6 +271,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
       if (round.matchManRate !== null) cohort.matchManSorted.push(round.matchManRate)
       if (round.snipeDuelRate !== null) cohort.snipeDuelSorted.push(round.snipeDuelRate)
       if (round.workRate !== null) cohort.workSorted.push(round.workRate)
+      if (round.oneAttackRate !== null) cohort.oneAttackSorted.push(round.oneAttackRate)
     }
   }
 
@@ -271,6 +283,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     cohort.matchManSorted.sort((a, b) => a - b)
     cohort.snipeDuelSorted.sort((a, b) => a - b)
     cohort.workSorted.sort((a, b) => a - b)
+    cohort.oneAttackSorted.sort((a, b) => a - b)
   }
 
   return { rifle, sniper, rounds, belowMin }
@@ -341,6 +354,7 @@ export async function playerTraits(
       /* 스나 전용 두 축 (D-195). 라플수에게는 재료 자체가 없어 항상 `null` 이다 */
       snipeDuelPercentile: percentileIn(cohort.snipeDuelSorted, round?.snipeDuelRate),
       workPercentile: percentileIn(cohort.workSorted, round?.workRate),
+      oneAttackPercentile: percentileIn(cohort.oneAttackSorted, round?.oneAttackRate),
       hasRoundData: round !== undefined,
     }),
     /* 두 줄 다 아직 못 잰다 (8절 · D-184). 화면 자리와 `측정중` 만 먼저 만든다 */

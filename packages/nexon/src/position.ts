@@ -85,6 +85,60 @@ export function positionPointsOf(events: readonly BattleLogPositionEvent[]): Map
   return points
 }
 
+/**
+ * 클랜 단위 로그에서 **사람별로** 좌표를 가른다 (D-196).
+ *
+ * `positionPointsOf` 는 "이 로그의 주인 한 명" 을 전제한다 — 선수 단위 응답용이다.
+ * 클랜 단위 응답(D-184)은 그 전제가 깨지므로 그대로 쓰면 **첫 선수가 10명분 좌표를
+ * 가진 것**이 되어 판정이 통째로 오염된다. 그래서 예전에는 클랜 응답을 아예 안 읽었다.
+ *
+ * ── 그런데 클랜 응답 한 줄에는 **두 사람의 위치가 다 들어 있다**
+ *
+ *     event_type = kill   주체가 죽였다 → 주체는 `kill_*`, 상대는 `death_*`
+ *     event_type = death  주체가 죽었다 → 주체는 `death_*`, 상대는 `kill_*`
+ *
+ *   그래서 사람을 짝지어 읽으면 **한 줄에서 좌표 두 개**를 얻는다.
+ *   선수 단위로 25명분이던 표본이 클랜 단위로는 2,696명분이 된다.
+ *
+ * 폭파·수류탄사 같은 이벤트는 위치의 뜻이 달라 여기서도 쓰지 않는다.
+ */
+export function positionPointsByPlayerOf(
+  events: readonly (BattleLogPositionEvent & {
+    target_event_type?: string | null
+    target_str_usn?: string | null
+  })[],
+): Map<string, MapPoint[]> {
+  const out = new Map<string, MapPoint[]>()
+  const push = (usn: unknown, x: number | null, y: number | null) => {
+    if (typeof usn !== 'string' || usn.trim() === '') return
+    if (x === null || y === null) return
+    const list = out.get(usn) ?? []
+    list.push({ x, y })
+    out.set(usn, list)
+  }
+
+  for (const event of events) {
+    const subjectKilled = event.event_type === 'kill'
+    const subjectDied = event.event_type === 'death'
+    /* 죽이거나 죽은 줄만 본다. 둘 다 아니면 위치의 뜻이 다르다 */
+    if (!subjectKilled && !subjectDied) continue
+
+    const killX = toNumber(event.kill_x)
+    const killY = toNumber(event.kill_y)
+    const deathX = toNumber(event.death_x)
+    const deathY = toNumber(event.death_y)
+
+    if (subjectKilled) {
+      push(event.str_usn, killX, killY)
+      push(event.target_str_usn, deathX, deathY)
+    } else {
+      push(event.str_usn, deathX, deathY)
+      push(event.target_str_usn, killX, killY)
+    }
+  }
+  return out
+}
+
 /** 이 경기에서 그 선수가 **스나를 들었나.** 스나 든 판은 포지션 표본에서 뺀다 (실측 75%→80%) */
 export function hasSniperKill(events: readonly BattleLogPositionEvent[]): boolean {
   return events.some((event) => event.event_type === 'kill' && event.weapon === 'sniper')

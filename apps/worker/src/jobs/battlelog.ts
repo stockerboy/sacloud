@@ -25,6 +25,9 @@ import {
   classifyPosition,
   contentHash,
   hasSniperKill,
+  killsOf,
+  positionPointsByPlayerOf,
+  weaponByPlayerOf,
   histogramOf,
   leaveOneOut,
   positionPointsOf,
@@ -337,27 +340,68 @@ export async function buildPositionProfiles(input: {
     : null
 
   const rows = await prisma.barracksBattleLogRaw.findMany({
-    where: { subjectKind: 'user', status: 'ok' },
-    select: { subject: true, matchKey: true, payload: true },
+    where: { subjectKind: { in: ['user', 'clan'] }, status: 'ok' },
+    select: { subject: true, subjectKind: true, matchKey: true, payload: true },
   })
 
   const bySubject = new Map<string, SubjectSamples>()
+  /** `str_usn` → 병영수첩 계정 번호. 우리 Player 와 잇는 데 쓴다 */
+  const accountOf = new Map<string, string>()
+
+  const entryFor = (subject: string): SubjectSamples => {
+    const found = bySubject.get(subject)
+    if (found) return found
+    const made: SubjectSamples = { subject, points: [], games: 0, sniperGames: 0 }
+    bySubject.set(subject, made)
+    return made
+  }
+
   for (const row of rows) {
     const events = eventsOf(row.payload)
-    const entry = bySubject.get(row.subject) ?? {
-      subject: row.subject,
-      points: [],
-      games: 0,
-      sniperGames: 0,
+
+    if (row.subjectKind === 'user') {
+      const entry = entryFor(row.subject)
+      /* 스나 든 판은 통째로 뺀다 — 스나는 서는 자리가 다르다 (실측 75%→80%) */
+      if (hasSniperKill(events)) {
+        entry.sniperGames += 1
+      } else {
+        entry.games += 1
+        entry.points.push(...positionPointsOf(events))
+      }
+      continue
     }
-    /* 스나 든 판은 통째로 뺀다 — 스나는 서는 자리가 다르다 (실측 75%→80%) */
-    if (hasSniperKill(events)) {
-      entry.sniperGames += 1
-    } else {
+
+    /*
+      클랜 단위 응답 (D-196).
+
+      한 줄에 **두 사람의 위치**가 들어 있으므로 사람별로 갈라 담는다.
+      예전에는 이 응답을 아예 안 읽었다 — 그대로 읽으면 첫 선수가 10명분 좌표를
+      가진 것이 되어 판정이 오염되기 때문이다 (D-184). 이제는 짝지어 읽는다.
+
+      스나 판 제외도 **사람별로** 한다. `hasSniperKill` 은 "이 로그 안에 스나 킬이
+      하나라도 있나" 라서, 열 명이 섞인 클랜 응답에서는 한 명만 스나를 들어도
+      전원이 빠져 버린다.
+    */
+    const kills = killsOf(events as never)
+    const weapons = weaponByPlayerOf(kills)
+    for (const [usn, points] of positionPointsByPlayerOf(events as never)) {
+      const entry = entryFor(usn)
+      if (weapons.get(usn) === 1) {
+        entry.sniperGames += 1
+        continue
+      }
       entry.games += 1
-      entry.points.push(...positionPointsOf(events))
+      entry.points.push(...points)
     }
-    bySubject.set(row.subject, entry)
+    for (const event of events as unknown as Record<string, unknown>[]) {
+      const put = (usn: unknown, sn: unknown) => {
+        if (typeof usn === 'string' && usn !== '' && sn !== null && sn !== undefined && sn !== '') {
+          accountOf.set(usn, String(sn))
+        }
+      }
+      put(event.str_usn, event.user_nexon_sn)
+      put(event.target_str_usn, event.target_user_nexon_sn)
+    }
   }
 
   const result: PositionBuildResult = {
@@ -413,7 +457,9 @@ export async function buildPositionProfiles(input: {
     if (!entry) continue
     /* 중심이 없으면 **포지션을 비운다.** 분포는 남긴다 — 라벨이 생기면 재계산만 하면 된다 */
     const verdict = samples.length > 0 ? classifyPosition(hist, centroids) : null
-    const playerId = await resolvePlayerId(subject)
+    /* 로그의 사람 키는 `str_usn` 인데 우리 `Player.sourcePlayerId` 는 **계정 번호**다.
+       이걸 안 거치면 `playerId` 가 전부 `null` 이 되고, 그러면 이 판정을 화면에서 못 쓴다 */
+    const playerId = await resolvePlayerId(accountOf.get(subject) ?? subject)
 
     const data = {
       playerId,

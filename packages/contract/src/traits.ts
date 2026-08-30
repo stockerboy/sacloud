@@ -200,6 +200,8 @@ export interface TraitInput {
    */
   snipeDuelPercentile?: number | null
   workPercentile?: number | null
+  /** 라플수의 `원어택 성공률` — 같은 포지션 상대를 잡은 비율 (D-196) */
+  oneAttackPercentile?: number | null
   /**
    * 그 선수에게 **라운드 복원 자료 자체가 있는가**.
    *
@@ -260,7 +262,16 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
       case 'finish': {
         /* 스나 `작업 성공률` = 내 킬 중 상대가 **라플**이었던 비율 (D-195).
            라플 `원어택 성공률` = **같은 포지션** 상대를 잡은 비율 → 포지션 판정이 먼저다 */
-        if (!sniper) return { key, label: label(key), percentile: null, pending: 'position' }
+        if (!sniper) {
+          const rifleValue = input.oneAttackPercentile ?? null
+          return {
+            key,
+            label: label(key),
+            percentile: rifleValue,
+            /* 포지션 판정이 안 된 선수는 `position`, 판정은 됐는데 킬이 모자라면 `games` */
+            pending: rifleValue !== null ? null : input.hasRoundData === true ? 'games' : 'position',
+          }
+        }
         const value = input.workPercentile ?? null
         return {
           key,

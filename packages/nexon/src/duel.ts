@@ -238,6 +238,50 @@ export function duelTallyOf(input: {
   return tally
 }
 
+/** 라플수의 `원어택 성공률` 재료 (D-196) */
+export interface OneAttackTally {
+  /** 상대 포지션을 아는 내 킬 (라플 든 경기만) — 분모 */
+  kills: number
+  /** 그중 상대가 **나와 같은 포지션**이었던 것 — 분자 */
+  sameKills: number
+}
+
+/**
+ * **원어택 성공률** — 라플수가 **자기와 같은 포지션**의 상대를 잡는 비율 (사양 4절 5번).
+ *
+ * 2층이 상대 2층을 잡는 식이다. 스나수의 `작업 성공률`(상대 라플을 잡는 비율)과
+ * 자리는 같지만 재는 것이 다르다.
+ *
+ * ── 언제 세지 않는가
+ *   · 그 선수가 그 경기에서 **라플이 아니면** `null` — 스나 든 판의 킬을 섞지 않는다
+ *   · **내 포지션을 모르면** `null` — 비교 대상이 없다
+ *   · 상대 포지션을 모르면 그 킬은 **분모에도 안 넣는다** (D-106)
+ *
+ * 포지션은 경기별이 아니라 그 선수의 **누적 판정**이다 (`PlayerPositionProfile`).
+ * 한 경기 안에서 자리를 바꿔 서는 것은 지금 판정기가 보지 못한다 — `[미확인]`.
+ */
+export function oneAttackTallyOf(input: {
+  kills: readonly KillRecord[]
+  weaponByPlayer: ReadonlyMap<string, Weapon>
+  positionByPlayer: ReadonlyMap<string, string>
+  usn: string
+}): OneAttackTally | null {
+  if (input.weaponByPlayer.get(input.usn) !== 0) return null
+  const mine = input.positionByPlayer.get(input.usn)
+  if (mine === undefined) return null
+
+  let kills = 0
+  let sameKills = 0
+  for (const kill of input.kills) {
+    if (kill.killer !== input.usn) continue
+    const theirs = input.positionByPlayer.get(kill.victim)
+    if (theirs === undefined) continue
+    kills += 1
+    if (theirs === mine) sameKills += 1
+  }
+  return { kills, sameKills }
+}
+
 /**
  * 킬로그로 되짚은 무기가 **우리 DB 의 무기와 같은가** (교차검산).
  *

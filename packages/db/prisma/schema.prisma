@@ -1899,6 +1899,11 @@ model PlayerRoundProfile {
   /// 그중 상대가 **라플**이었던 것. 이 비율이 `작업 성공률` 이다
   workRifleKills Int @default(0)
 
+  /// 원어택 성공률의 분모 — 상대 포지션을 아는 내 킬 (라플 든 경기만 · D-196)
+  oneAttackKills Int @default(0)
+  /// 그중 상대가 **나와 같은 포지션**이었던 것
+  oneAttackSameKills Int @default(0)
+
   /// 집계 규칙 버전. 규칙이 바뀌면 새 줄이 생기고 옛 줄은 남는다
   builderVersion String
   computedAt     DateTime @default(now())

@@ -1938,6 +1938,7 @@ async function main(): Promise<number> {
           '20분 초과': result.longMatches,
           '매치의사나이 확정': result.matchManDecided,
           '스나 확인': result.sniperEntries,
+          '원어택 잼': result.oneAttackEntries,
           '계정 불명': result.unknownAccounts,
           프로필: result.profiles,
           '선수 연결': result.linked,
