@@ -12,7 +12,6 @@ import {
   Skeleton,
   TeammateTable,
   TraitHexagon,
-  WeaponStatPanel,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -121,8 +120,9 @@ export default function LeaguePlayerRecordPage({
           <PlayerStatSidebar
             rating={data.rating}
             placement={data.placement}
-            /* 선수가 직접 설정하는 값이다 (D-161). `null` 이면 사이드바가 줄을 그리지 않는다 */
-            position={data.player.position}
+            /* 포지션 (D-199) — 사람이 정한 값 > 주무기 스나 > 좌표 판정.
+               `null` 이면 사이드바가 줄을 그리지 않는다 */
+            position={data.position_label}
             win={data.win}
             lose={data.lose}
             winRate={data.win_rate}
@@ -137,19 +137,6 @@ export default function LeaguePlayerRecordPage({
             /* 킬뎃 줄을 주무기 중심으로 바꾼다 (2026-08-30 사용자 지시) */
             weaponStats={data.weapon_stats}
           />
-          {/*
-            무기별 기록 (D-115 · 2026-08-30 사용자 지시로 **되살렸다**).
-
-            2026-08-27 에 "원본에 이 칸이 없다" 는 이유로 뺐었다 (UI_PARITY_AUDIT 6-1).
-            그런데 D-188 로 **원본 재현은 임시 껍데기**임이 확정됐고, 사용자가
-            "스나킬뎃 라플킬뎃 나눠져있지도 않아" 라고 두 번 지적했다.
-            통합 킬뎃 하나로는 스나를 섞어 쓰는 선수의 실제 성적이 가려진다 —
-            실측: 호젤은 스나 58.8% / 라플 49.0% 인데 통합은 56.9% 다.
-
-            판정된 경기가 없으면 컴포넌트가 **아무것도 그리지 않는다**.
-            `0판 0킬 0데스` 는 정보가 아니라 소음이다.
-          */}
-          <WeaponStatPanel stats={data.weapon_stats} />
         </div>
       </div>
       <div className="pc-container">

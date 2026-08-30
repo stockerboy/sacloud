@@ -406,40 +406,66 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
           {props.placement ? '배치고사' : `${props.rating}점`}
         </span>
       </Stat>
-      {/*
-        `포지션` 줄은 **헤더로 옮겼다** (2026-08-30 사용자 지시 · D-199).
-        닉네임 위에 `포지션: 스나수` 로 적는다. 여기와 헤더 양쪽에 두면 같은 값이 두 번 나온다.
-        `position` prop 은 남겨 뒀다 — 클랜 기록실 등 다른 호출부가 쓰던 자리다.
-      */}
       <Divider />
       <Stat label="승률">
-        <span className="mr-2 text-base">
+        <span className="mr-2 whitespace-nowrap text-base">
           {formatCount(props.win)}승 {formatCount(props.lose)}패
         </span>
         <span className={rateClass(props.winRate)}>{formatRate(props.winRate)}%</span>
       </Stat>
-      {props.kill === null || props.death === null || props.kdRate === null ? null : (
+      {/*
+        `포지션` — **승률 바로 아래** (2026-08-30 사용자 지시 · D-199).
+        `스나수` · `2F` · `B리베` · `숏포지` 중 하나다.
+        값이 없으면 줄째로 사라진다 — `-` 나 `알수없음` 으로 채우지 않는다 (D-106).
+      */}
+      {props.position == null || props.position === '' ? null : (
         <>
           <Divider />
+          <Stat label="포지션">{props.position}</Stat>
+        </>
+      )}
+      {props.kill === null || props.death === null || props.kdRate === null ? null : (
+        <>
           {/*
-            `킬뎃` 은 **그 사람이 많이 쓴 무기 하나만** 적는다 (2026-08-30 사용자 지시).
-            나머지 무기와 통합은 이 카드 **맨 아래**로 내린다 — 한 줄에 퍼센트를
-            여럿 늘어놓으면 어느 게 그 사람의 값인지 안 읽힌다.
-            주무기를 못 고르면(판수가 같거나 무기별 기록이 없으면) 통합을 그대로 쓴다.
+            킬뎃은 **무기별로만** 적는다 (2026-08-30 사용자 지시).
+            **통합 킬뎃은 넣지 않는다** — 스나를 섞어 쓰는 선수에게 통합은 어느 쪽도
+            설명하지 못하는 중간값이라 오히려 헷갈린다.
+
+            **많이 쓴 무기가 먼저** 온다 — 스나수면 스나가 위, 라플수면 라플이 위다.
+            킬·데스도 그 무기 것만 적는다. 통합 킬·데스를 무기별 퍼센트 옆에 두면
+            분자와 분모가 다른 것이 나란히 놓인다.
+
+            무기를 모르는 선수(판정된 경기가 없다)는 예전대로 통합 하나만 나온다 —
+            그때는 통합이 그 선수가 가진 유일한 값이다.
           */}
-          <Stat label="킬뎃">
-            {/* 좁은 칸이라 `278킬 211데스` 가 접힌다. 이 조각은 줄바꿈하지 않는다 */}
-            <span className="mr-2 whitespace-nowrap text-base">
-              {formatCount(props.kill)}킬 {formatCount(props.death)}데스
-            </span>
-            {mainWeapon === null ? (
-              <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
-            ) : (
-              <span className={`whitespace-nowrap ${rateClass(mainWeapon.kd_rate)}`}>
-                {shortWeaponName(mainWeapon.weapon)} {formatRate(mainWeapon.kd_rate)}%
-              </span>
-            )}
-          </Stat>
+          {mainWeapon === null ? (
+            <>
+              <Divider />
+              <Stat label="킬뎃">
+                <span className="mr-2 whitespace-nowrap text-base">
+                  {formatCount(props.kill)}킬 {formatCount(props.death)}데스
+                </span>
+                <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
+              </Stat>
+            </>
+          ) : (
+            [mainWeapon, otherWeapon].map((row, index) =>
+              row === null ? null : (
+                <div key={row.weapon}>
+                  <Divider />
+                  <Stat label={index === 0 ? '킬뎃' : longWeaponName(row.weapon)}>
+                    <span className="mr-2 whitespace-nowrap text-base">
+                      {formatCount(row.kill)}킬 {formatCount(row.death)}데스
+                    </span>
+                    <span className={`whitespace-nowrap ${rateClass(row.kd_rate)}`}>
+                      {index === 0 ? `${shortWeaponName(row.weapon)} ` : ''}
+                      {formatRate(row.kd_rate)}%
+                    </span>
+                  </Stat>
+                </div>
+              ),
+            )
+          )}
         </>
       )}
       <Divider />
@@ -490,32 +516,6 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
           )}
         </span>
       </Stat>
-      {/*
-        **맨 아래** — 주무기가 아닌 쪽과 통합 킬뎃 (2026-08-30 사용자 지시).
-
-        위 `킬뎃` 줄은 그 사람이 많이 쓴 무기 하나만 말한다. 나머지는 참고값이라
-        같은 줄에 늘어놓지 않고 여기로 내렸다.
-        주무기를 못 고르면(판수가 같거나 무기별 기록이 없으면) 위 줄이 이미 통합이므로
-        여기는 **아무것도 그리지 않는다** — 같은 값을 두 번 적지 않는다.
-      */}
-      {mainWeapon === null || props.kdRate === null ? null : (
-        <>
-          {otherWeapon === null ? null : (
-            <>
-              <Divider />
-              <Stat label={longWeaponName(otherWeapon.weapon)}>
-                <span className={rateClass(otherWeapon.kd_rate)}>
-                  {formatRate(otherWeapon.kd_rate)}%
-                </span>
-              </Stat>
-            </>
-          )}
-          <Divider />
-          <Stat label="통합">
-            <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
-          </Stat>
-        </>
-      )}
     </div>
   )
 }
