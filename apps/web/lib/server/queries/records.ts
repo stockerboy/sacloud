@@ -26,6 +26,7 @@ import { seasonWindowWhere } from './season0Scope'
 import { buildPlayerForm } from './playerForm'
 import { playerTodayTally } from './todayPerformance'
 import { playerRecentDays } from './recentDays'
+import { playerJudgedPosition } from './playerPositionQuery'
 import { playerTraits } from './playerTraits'
 import { toKstIso } from '../format'
 import {
@@ -39,7 +40,7 @@ import {
   type ClanFields,
 } from '../mappers'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
-import { seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
+import { resolvePlayerPositionOf, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { cumulativeKd, cumulativeKdRate, hidesCumulativeKd } from './visibility'
 import { clanRankOf, matchCountByPlayer, playerRankOf, playerWeaponRankOf } from './leagues'
 import { playerLadderTotals } from './playerTotals'
@@ -606,7 +607,19 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, sniperRank, rifleRank, totals, weaponStats, record, form, todayTally, traits, recentDays] =
+  const [
+    rank,
+    sniperRank,
+    rifleRank,
+    totals,
+    weaponStats,
+    record,
+    form,
+    todayTally,
+    traits,
+    recentDays,
+    judgedPosition,
+  ] =
     await Promise.all([
       playerRankOf({
         id: leaguePlayer.id,
@@ -644,6 +657,8 @@ export async function getLeaguePlayerDetail(
       playerTraits(league.id, playerId).catch(() => null),
       /* 최근 3일치 일별 기록 (D-198). 실패해도 카드 전체를 죽이지 않는다 */
       playerRecentDays(league.id, playerId).catch(() => []),
+      /* 좌표로 판정한 자리 (D-199). 없으면 `null` — 화면이 그 줄을 안 그린다 */
+      playerJudgedPosition(playerId).catch(() => null),
     ])
 
   return {
@@ -710,6 +725,18 @@ export async function getLeaguePlayerDetail(
     today: toTodayPerformance(buildTodayPerformance(todayTally, totals.kdRate)),
     /* 최근 3일치 일별 기록 (D-198). 첫 줄은 언제나 오늘이다 */
     recent_days: recentDays,
+    /* 포지션 (D-199) — 사람이 정한 값 > 주무기가 스나 > 좌표 판정.
+       주무기는 이미 읽어 둔 무기별 판수로 정한다. 한 판이라도 많은 쪽이다 */
+    ...(() => {
+      const sniperGames = weaponStats.find((row) => row.weapon === 1)?.games ?? 0
+      const rifleGames = weaponStats.find((row) => row.weapon === 0)?.games ?? 0
+      const resolved = resolvePlayerPositionOf({
+        userSet: leaguePlayer.player.position,
+        mainWeapon: sniperGames === rifleGames ? null : sniperGames > rifleGames ? 1 : 0,
+        judged: judgedPosition,
+      })
+      return { position_label: resolved.label, position_source: resolved.source }
+    })(),
     /* 전투력 육각형 · 플레이스타일 바 (4절 · 8절 · D-185).
        모양을 손보지 않는다 — `buildPlayerTraits()` 가 계약 모양 그대로 만들어 준다.
        계산이 실패했으면 `null` 이고 화면은 카드를 그리지 않는다 */

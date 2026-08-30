@@ -134,6 +134,8 @@ export default function LeaguePlayerRecordPage({
             rank={data.rank}
             rankCount={data.rank_count}
             clan={data.clan ? { ...data.clan, isOfficialClan: data.clan.is_official_clan } : null}
+            /* 킬뎃 줄을 주무기 중심으로 바꾼다 (2026-08-30 사용자 지시) */
+            weaponStats={data.weapon_stats}
           />
           {/*
             무기별 기록 (D-115 · 2026-08-30 사용자 지시로 **되살렸다**).

@@ -42,6 +42,8 @@ export default function LeaguePlayerLayout({
           infoHref={`/player/${playerId}`}
           clan={data.clan}
           rank={data.rank}
+          /* 포지션 (D-199). 판정이 없으면 헤더가 그 줄을 그리지 않는다 */
+          position={data.position_label}
         />
       ) : (
         <div className="mt-5 h-56 bg-player-header py-10 max-md:mt-0 max-md:h-auto max-md:py-5">

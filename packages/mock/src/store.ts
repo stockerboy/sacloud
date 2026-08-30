@@ -56,6 +56,7 @@ import {
   judgeFormTrend,
   dayLabelOf,
   kdRateOrNull,
+  resolvePlayerPositionOf,
   kstDayKey,
   kstDayStart,
   winRateOrNull,
@@ -1389,6 +1390,21 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     /* 오늘 퍼포먼스 (10절 · D-182). 기준은 상세정보와 **같은** 시즌 킬뎃이다 */
     /* 최근 3일치 일별 기록 (D-198). 첫 줄은 언제나 오늘이다 */
     recent_days: buildRecentDays(matches, playerId, new Date()),
+    /* 포지션 (D-199). Mock 에는 좌표 판정이 없으므로 사람이 정한 값과 주무기만 본다 —
+       실제 서버와 **같은 함수**를 쓴다. 다르게 고르면 mock↔live 대조가 어긋난다 */
+    ...(() => {
+      const resolved = resolvePlayerPositionOf({
+        userSet: player.position,
+        mainWeapon:
+          sniperBucket && rifleBucket && sniperBucket.games !== rifleBucket.games
+            ? sniperBucket.games > rifleBucket.games
+              ? 1
+              : 0
+            : null,
+        judged: null,
+      })
+      return { position_label: resolved.label, position_source: resolved.source }
+    })(),
     today: (() => {
       const perf = buildTodayPerf(
         matches,

@@ -76,6 +76,7 @@ export function LeaguePlayerRecordHeader({
   infoHref,
   clan,
   rank,
+  position,
 }: {
   leagueName: string
   name: string
@@ -85,6 +86,13 @@ export function LeaguePlayerRecordHeader({
   clan: { name: string; mark: ClanMarkSource; is_official_clan?: boolean | null } | null
   /** 개인랭킹 순위. 배치고사 중이면 `null` */
   rank: number | null
+  /**
+   * 포지션 — `스나수` · `2F` · `B리베` · `숏포지` 중 하나 (D-199 · 사용자 지시).
+   *
+   * **그 판에 무슨 총을 들었나가 아니다.** 그 선수의 고유 자리이고 경기마다 바뀌지 않는다.
+   * 판정이 없으면 `null` 이고 **줄 자체를 그리지 않는다** — 빈 자리를 만들지 않는다.
+   */
+  position?: string | null
 }) {
   return (
     /*
@@ -100,6 +108,11 @@ export function LeaguePlayerRecordHeader({
               head={leagueName}
               tail={rank === null ? null : `- 개인랭킹 ${rank}위`}
             />
+            {/* 포지션은 **이름 위**다 (사용자 지시). 리그·순위 줄 바로 아래라
+                "이 사람이 어느 자리를 보는 사람인가" 를 이름보다 먼저 읽게 된다 */}
+            {position ? (
+              <div className="text-sm text-white/80 max-md:text-xs">포지션: {position}</div>
+            ) : null}
             <div className="text-4xl max-md:truncate max-md:text-2xl">{name}</div>
           </div>
           <div className="ml-10 flex items-center max-md:ml-0 max-md:mt-3 max-md:w-full">

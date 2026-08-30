@@ -323,8 +323,10 @@ function Divider() {
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex justify-between py-2 text-3xl">
-      <div>{label}</div>
-      <div className="flex items-center">{children}</div>
+      {/* 라벨은 **줄바꿈하지 않는다.** 오른쪽 값이 두 줄이 되면(킬뎃의 무기별 표기)
+          라벨 칸이 눌려 `킬 / 뎃` 으로 쪼개졌다 */}
+      <div className="shrink-0 whitespace-nowrap">{label}</div>
+      <div className="flex min-w-0 items-center">{children}</div>
     </div>
   )
 }
@@ -362,6 +364,84 @@ export interface PlayerStatSidebarProps {
    * 공식 소속처럼 강조하지 않고 `미등록` 을 함께 적는다 (D-146).
    */
   clan: { slug: string; name: string; isOfficialClan?: boolean } | null
+  /**
+   * 무기별 기록. 있으면 `킬뎃` 줄이 **주무기 중심**으로 바뀐다 (2026-08-30 사용자 지시).
+   *
+   * 없으면 예전처럼 통합 킬뎃 하나만 나온다.
+   */
+  weaponStats?: readonly PlayerWeaponStatRow[]
+}
+
+/**
+ * `킬뎃` 줄 — **주무기를 크게, 나머지와 통합을 작게** (2026-08-30 사용자 지시).
+ *
+ * ```
+ * 킬뎃   2,068킬 1,648데스   라플 55.7%
+ *                            스나 60.8% · 통합 56.9%
+ * ```
+ *
+ * ── 왜 통합을 주값에서 뺐나
+ *   스나를 섞어 쓰는 선수는 통합 하나에 실제 성적이 묻힌다.
+ *   실측: 호젤은 스나 58.8% / 라플 49.0% 인데 통합은 56.9% 다 — 10%p 가 가려진다.
+ *
+ * ── 주무기는 **판수가 한 판이라도 많은 쪽**이다
+ *   같으면 어느 쪽도 고르지 않는다 — 그때는 통합만 크게 나온다 (D-106).
+ *   무기별 기록이 아예 없어도 마찬가지다.
+ */
+function KdStat({
+  kill,
+  death,
+  kdRate,
+  weaponStats,
+}: {
+  kill: number
+  death: number
+  kdRate: number
+  weaponStats?: readonly PlayerWeaponStatRow[]
+}) {
+  const sniper = weaponStats?.find((row) => row.weapon === 1 && row.games > 0)
+  const rifle = weaponStats?.find((row) => row.weapon === 0 && row.games > 0)
+  const main =
+    sniper && rifle
+      ? sniper.games === rifle.games
+        ? null
+        : sniper.games > rifle.games
+          ? sniper
+          : rifle
+      : (sniper ?? rifle ?? null)
+  const other = main === null ? null : main.weapon === 1 ? rifle : sniper
+  const nameOf = (weapon: 0 | 1) => (weapon === 1 ? '스나' : '라플')
+
+  return (
+    <Stat label="킬뎃">
+      <div className="text-right">
+        <div>
+          <span className="mr-2 text-base">
+            {formatCount(kill)}킬 {formatCount(death)}데스
+          </span>
+          {main === null ? (
+            <span className={rateClass(kdRate)}>{formatRate(kdRate)}%</span>
+          ) : (
+            <span className={rateClass(main.kd_rate)}>
+              {nameOf(main.weapon)} {formatRate(main.kd_rate)}%
+            </span>
+          )}
+        </div>
+        {main === null ? null : (
+          <div className="text-base text-side-meta">
+            {other ? (
+              <>
+                {nameOf(other.weapon)}{' '}
+                <span className={rateClass(other.kd_rate)}>{formatRate(other.kd_rate)}%</span>
+                {' · '}
+              </>
+            ) : null}
+            통합 <span className={rateClass(kdRate)}>{formatRate(kdRate)}%</span>
+          </div>
+        )}
+      </div>
+    </Stat>
+  )
 }
 
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
@@ -375,19 +455,10 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
         </span>
       </Stat>
       {/*
-        `포지션` — **래더 바로 아래**다 (원본 모바일 실측 2026-08-28).
-        값이 있는 선수에게만 나온다. 없으면 줄째로 사라진다 — 그래서 우리는 예전에
-        이 줄을 "원본에 없다" 고 **잘못 판단해 지웠다** (`docs/UI_PARITY_AUDIT.md` 6-2).
+        `포지션` 줄은 **헤더로 옮겼다** (2026-08-30 사용자 지시 · D-199).
+        닉네임 위에 `포지션: 스나수` 로 적는다. 여기와 헤더 양쪽에 두면 같은 값이 두 번 나온다.
+        `position` prop 은 남겨 뒀다 — 클랜 기록실 등 다른 호출부가 쓰던 자리다.
       */}
-      {props.position == null || props.position === '' ? null : (
-        <>
-          <Divider />
-          {/* 크기는 `Stat` 기본값을 쓴다 — 위아래 `래더 3260점` · `승률 … 58.9%` 와 같은
-              오른쪽 **주값** 자리다. `소속` 처럼 `text-base` 로 줄이지 않는다.
-              (원본 폰트 크기를 픽셀로 재지는 못했다 `[미확인]` — 같은 열의 이웃에 맞췄다) */}
-          <Stat label="포지션">{props.position}</Stat>
-        </>
-      )}
       <Divider />
       <Stat label="승률">
         <span className="mr-2 text-base">
@@ -398,12 +469,12 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       {props.kill === null || props.death === null || props.kdRate === null ? null : (
         <>
           <Divider />
-          <Stat label="킬뎃">
-            <span className="mr-2 text-base">
-              {formatCount(props.kill)}킬 {formatCount(props.death)}데스
-            </span>
-            <span className={rateClass(props.kdRate)}>{formatRate(props.kdRate)}%</span>
-          </Stat>
+          <KdStat
+            kill={props.kill}
+            death={props.death}
+            kdRate={props.kdRate}
+            weaponStats={props.weaponStats}
+          />
         </>
       )}
       <Divider />

@@ -249,6 +249,17 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
    */
   recent_days: z.array(PlayerDayRecord).default([]),
   /**
+   * 화면에 적을 **포지션 한 줄** (D-199). `스나수` · `2F` · `B리베` · `숏포지` 중 하나.
+   *
+   * 사람이 정한 값 > 주무기가 스나 > 좌표 판정 순으로 이긴다.
+   * 아무것도 없으면 `null` 이고 화면은 그 줄을 그리지 않는다 — 지어내지 않는다.
+   *
+   * **그 판에 스나를 들었는지와 다른 값이다.** 그건 참가 기록의 무기 칸이다.
+   */
+  position_label: z.string().nullable().default(null),
+  /** 그 값이 어디서 왔나 — `user` · `weapon` · `coords` */
+  position_source: z.enum(['user', 'weapon', 'coords']).nullable().default(null),
+  /**
    * 전투력 육각형 (4절 · D-185).
    *
    * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
