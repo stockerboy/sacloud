@@ -13,6 +13,28 @@ export const HEX_RADIUS = 62
 export const HEX_LABEL_RADIUS = 80
 
 /**
+ * 눈금 고리를 몇 겹 그릴까 (사용자 지시 — "더 촘촘하게").
+ *
+ * 세 겹이면 한 칸이 33%p 라 "얼마나 잘하는 건지" 가 눈으로 안 잡혔다.
+ * 다섯 겹이면 한 칸이 20%p 다. 바깥에서 두 번째 고리가 상위 20% 선이 된다.
+ *
+ * ── 앞 버전을 남겨 둔다 (사용자 지시)
+ *   `HEX_RING_SCALES_WIDE` 가 예전 세 겹이다. `TraitHexagon` 의 `variant`
+ *   로 되돌릴 수 있다.
+ */
+export const HEX_RING_SCALES = [1, 0.8, 0.6, 0.4, 0.2] as const
+/** 예전(2026-08-30 이전) 눈금 — 세 겹 */
+export const HEX_RING_SCALES_WIDE = [1, 2 / 3, 1 / 3] as const
+
+/**
+ * 잰 축을 찍는 점의 크기 (사용자 지시 — "점을 조금더 작게").
+ * 예전 값은 `3.5` 였다. 점이 커서 도형 꼭지점을 덮어 모서리가 뭉개졌다.
+ */
+export const HEX_DOT_RADIUS = 2.1
+/** 예전 점 크기 */
+export const HEX_DOT_RADIUS_WIDE = 3.5
+
+/**
  * `index` 번째 꼭지점의 좌표.
  *
  * 0번이 **맨 위**이고 시계방향으로 60°씩 돈다. 계약의 `TRAIT_AXIS_KEYS` 순서가

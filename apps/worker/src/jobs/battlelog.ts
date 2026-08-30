@@ -193,14 +193,18 @@ export async function importBattleLogs(input: {
   file: string
   confirm?: boolean
 }): Promise<BattleLogImportResult> {
-  const parsed = JSON.parse(readFileSync(input.file, 'utf8')) as BattleLogImportFile
-  const rows = parsed.rows ?? []
+  const parsed = JSON.parse(readFileSync(input.file, 'utf8')) as
+    | BattleLogImportFile
+    | BattleLogImportRow[]
+  /* 수집기가 `{ rows: [...] }` 로 주기도 하고 배열만 주기도 한다.
+     둘 다 받는다 — 파일 껍데기 때문에 원문 4천 건을 놓치면 안 된다 */
+  const rows = Array.isArray(parsed) ? parsed : (parsed.rows ?? [])
   const result: BattleLogImportResult = {
     rows: rows.length,
     stored: 0,
     duplicate: 0,
     skipped: 0,
-    failures: parsed.failures?.length ?? 0,
+    failures: Array.isArray(parsed) ? 0 : (parsed.failures?.length ?? 0),
     events: 0,
     points: 0,
     labels: {},

@@ -2,7 +2,11 @@ import type { PlayerTraits } from '@sacloud/contract'
 import { formatCount } from '../common/format'
 import {
   HEX_CENTER,
+  HEX_DOT_RADIUS,
+  HEX_DOT_RADIUS_WIDE,
   HEX_RADIUS,
+  HEX_RING_SCALES,
+  HEX_RING_SCALES_WIDE,
   axisLabelAnchor,
   hexPoint,
   hexPolygon,
@@ -46,12 +50,35 @@ function radiusOf(percentile: number): number {
 
 const WEAPON_NAME: Record<0 | 1, string> = { 0: '라플수', 1: '스나수' }
 
-export function TraitHexagon({ traits }: { traits: PlayerTraits }) {
+/**
+ * 그림 밀도 (2026-08-30 · 사용자 지시).
+ *
+ * > "육각형 ui디자인이 너무 구리고 더 촘촘하게 만들고 점을 조금더 작게 만들고싶은데
+ * >  너무 큼직큼직하니까 뭐 얼마나 잘하는거고 그런게 직관적으로 와닿지가 않아.
+ * >  (…) 육각형이 들어간 보드자체가 너무 커서 부담스럽다."
+ *
+ * `dense` 가 기본이다. `wide` 는 **그 지시 이전의 그림**이다 — 사용자가
+ * "바꿀 때는 전 버전도 남긴다" 고 했으므로 지우지 않고 남겨 둔다.
+ */
+export type HexagonVariant = 'dense' | 'wide'
+
+export function TraitHexagon({
+  traits,
+  variant = 'dense',
+}: {
+  traits: PlayerTraits
+  variant?: HexagonVariant
+}) {
   const filled = traits.axes.every((axis) => axis.percentile !== null)
   const summary = pendingSummary(traits.axes)
+  const dense = variant === 'dense'
+  const rings = dense ? HEX_RING_SCALES : HEX_RING_SCALES_WIDE
+  const dotRadius = dense ? HEX_DOT_RADIUS : HEX_DOT_RADIUS_WIDE
+  /* 축 이름 · 값 글자. 촘촘한 그림에서 10px 는 고리를 덮는다 */
+  const labelSize = dense ? 9 : 10
 
   return (
-    <div className="bg-side px-3 py-3 text-line shadow-card">
+    <div className={dense ? 'bg-side px-3 py-2 text-line shadow-card' : 'bg-side px-3 py-3 text-line shadow-card'}>
       <div className="flex items-baseline justify-between">
         <div>전투력</div>
         {traits.measuring ? (
@@ -61,15 +88,24 @@ export function TraitHexagon({ traits }: { traits: PlayerTraits }) {
         ) : null}
       </div>
 
-      <svg viewBox="0 0 260 208" className="mt-1 h-auto w-full" role="img" aria-label="전투력 육각형">
-        {/* 눈금 세 겹. 넓이를 눈으로 어림잡을 수 있어야 한다 */}
-        {[1, 2 / 3, 1 / 3].map((scale) => (
+      {/* 보드가 부담스럽다는 지적에 맞춰 그림 너비에 상한을 두고 가운데로 모은다.
+          예전에는 칸 너비만큼 늘어나 카드가 통째로 커졌다 */}
+      <svg
+        viewBox="0 0 260 208"
+        className={dense ? 'mx-auto mt-0.5 h-auto w-full max-w-[224px]' : 'mt-1 h-auto w-full'}
+        role="img"
+        aria-label="전투력 육각형"
+      >
+        {/* 눈금. 촘촘할수록 한 칸이 좁아져 "얼마나 잘하는가" 가 눈에 잡힌다.
+            바깥에서 두 번째 고리가 상위 20% 선이다 */}
+        {rings.map((scale) => (
           <polygon
             key={scale}
             points={hexRing(HEX_RADIUS * scale)}
             fill="none"
             stroke="var(--color-side-line)"
-            strokeWidth="1"
+            strokeWidth={dense ? '0.6' : '1'}
+            strokeOpacity={dense ? '0.75' : '1'}
           />
         ))}
 
@@ -84,7 +120,8 @@ export function TraitHexagon({ traits }: { traits: PlayerTraits }) {
               x2={end.x}
               y2={end.y}
               stroke="var(--color-side-line)"
-              strokeWidth="1"
+              strokeWidth={dense ? '0.6' : '1'}
+              strokeOpacity={dense ? '0.75' : '1'}
               strokeDasharray={axis.percentile === null ? '3 3' : undefined}
             />
           )
@@ -97,7 +134,7 @@ export function TraitHexagon({ traits }: { traits: PlayerTraits }) {
             fill="var(--color-win-bar)"
             fillOpacity="0.35"
             stroke="var(--color-win-bar)"
-            strokeWidth="2"
+            strokeWidth={dense ? '1.4' : '2'}
           />
         ) : null}
 
@@ -122,7 +159,7 @@ export function TraitHexagon({ traits }: { traits: PlayerTraits }) {
               key={axis.key}
               cx={point.x}
               cy={point.y}
-              r="3.5"
+              r={dotRadius}
               fill="var(--color-win-bar)"
             />
           )
@@ -138,16 +175,16 @@ export function TraitHexagon({ traits }: { traits: PlayerTraits }) {
                 x={at.x}
                 y={at.y}
                 textAnchor={at.anchor}
-                fontSize="10"
+                fontSize={labelSize}
                 fill="var(--color-line)"
               >
                 {axis.label}
               </text>
               <text
                 x={at.x}
-                y={at.y + 12}
+                y={at.y + (dense ? 11 : 12)}
                 textAnchor={at.anchor}
-                fontSize="10"
+                fontSize={labelSize}
                 fill={top === null ? 'var(--color-side-meta)' : 'var(--color-win-bar)'}
               >
                 {top ?? '측정중'}

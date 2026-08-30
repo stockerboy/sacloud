@@ -47,7 +47,9 @@ async function main(): Promise<void> {
   const parts: string[] = []
   for (const match of matches) {
     const key = match.sourceMatchId
+    /* 양 팀이 다 아는 클랜이면 같은 경기가 두 번 나온다. 한 번만 받으면 된다 */
     if (!key || done.has(key)) continue
+    done.add(key)
     const clanId =
       clanOfLeagueClan.get(match.redLeagueClanId) ?? clanOfLeagueClan.get(match.blueLeagueClanId)
     const clanNo = clanId ? noOfClan.get(clanId) : undefined
