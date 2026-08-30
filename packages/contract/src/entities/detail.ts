@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { Count, Percent } from '../common'
 import { PLAYSTYLE_SIDE_KEYS, TRAIT_AXIS_KEYS, TRAIT_PENDING_KEYS } from '../traits'
+import { ClanMetrics } from '../clanMetrics'
 import { LeagueClanDetail, LeaguePlayer } from './league'
 import { LeagueSummary, PlayerSummary } from './summaries'
 import { MatchSummary, TeammateStat } from './match'
@@ -159,6 +160,56 @@ export const PlayerTodayPerformance = z.object({
 export type PlayerTodayPerformance = z.infer<typeof PlayerTodayPerformance>
 
 /* -------------------------------------------------------------------------- */
+/* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절)                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 한 티어의 **천적** 한 곳.
+ *
+ * 조건(50판 · 승률 70%)과 개수 상한은 `packages/contract/src/tierBreakdown.ts`
+ * 한 곳에만 있다. 여기 다시 적지 않는다.
+ *
+ * `slug` 를 함께 내리는 것은 화면이 클랜 기록실로 보내 주기 때문이다 —
+ * 사이트의 다른 클랜명이 전부 그렇게 동작한다(최근매치의 `vs 상대클랜`).
+ */
+export const PlayerTierNemesis = z.object({
+  name: z.string(),
+  slug: z.string(),
+  games: Count,
+  win: Count,
+  lose: Count,
+  /** 천적은 항상 50판 이상이라 승률이 `null` 일 수 없다 */
+  win_rate: Percent,
+})
+export type PlayerTierNemesis = z.infer<typeof PlayerTierNemesis>
+
+/**
+ * 티어 한 줄 — `vs 1티어 381판 승률 52.3% · vuvuzela 의 천적`.
+ *
+ * 티어는 **경기 당시** 상대 클랜의 division 이다 (`opponentDivisionAtMatch`).
+ * 지금의 division 을 쓰면 상대가 승격·강등하는 순간 과거 경기가 오염된다
+ * (`CLAUDE.md` 3-B 4번).
+ *
+ * **판수가 0인 티어도 줄이 온다.** 사양 원문이 `vs4티어 0판` 을 적었다 —
+ * "한 번도 안 붙었다" 는 것도 정보라서 줄을 지우지 않는다.
+ */
+export const PlayerTierRecord = z.object({
+  /** 1부터. 리그의 `division_count` 만큼 온다 */
+  tier: z.number().int().min(1),
+  games: Count,
+  win: Count,
+  lose: Count,
+  /**
+   * 10판 미만이면 `null` 이고 화면은 `—` 를 적는다 (D-106).
+   * **0 이 아니다** — 0%는 "다 졌다", `null` 은 "아직 말하지 않는다" 는 뜻이다.
+   */
+  win_rate: Percent.nullable(),
+  /** 조건을 넘은 클랜만. 없으면 빈 배열이다 */
+  nemeses: z.array(PlayerTierNemesis),
+})
+export type PlayerTierRecord = z.infer<typeof PlayerTierRecord>
+
+/* -------------------------------------------------------------------------- */
 /* 전투력 육각형 · 플레이스타일 바 (D-185)                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -249,6 +300,14 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
    */
   recent_days: z.array(PlayerDayRecord).default([]),
   /**
+   * **티어별 게임빈도 + 천적** (`docs/SITE_SPEC_V2.md` 4절).
+   *
+   * 항상 리그의 `division_count` 개다 — 판수가 0인 티어도 줄이 온다.
+   * 이 필드가 없던 응답과도 맞도록 기본값을 빈 배열로 둔다.
+   * 빈 배열이면 화면은 카드를 **그리지 않는다**.
+   */
+  tier_breakdown: z.array(PlayerTierRecord).default([]),
+  /**
    * 화면에 적을 **포지션 한 줄** (D-199). `스나수` · `2F` · `B리베` · `숏포지` 중 하나.
    *
    * 사람이 정한 값 > 주무기가 스나 > 좌표 판정 순으로 이긴다.
@@ -279,5 +338,13 @@ export const LeagueClanShow = LeagueClanDetail.extend({
   match_summary: MatchSummary,
   /** 최근 클랜전에 참여한 플레이어 승률 */
   teammates: z.array(TeammateStat),
+  /**
+   * 클랜 지표 — 티어별 승률 · 승률 추이 · 화력 · 최다연승
+   * (`docs/SITE_SPEC_V2.md` 5절 · `../clanMetrics`).
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   * `null` 이면 화면은 카드를 **그리지 않는다** — 빈 표를 그리지 않는다 (D-106).
+   */
+  metrics: ClanMetrics.nullable().default(null),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>

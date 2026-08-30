@@ -36,17 +36,25 @@ import {
   type RankWeapon,
   type TeammateStat,
   type TeamSide,
+  type BoardWriter,
   type User,
-  type Writer,
+  ANONYMOUS_LIST_LABEL,
+  POST_WRITER_LABEL,
   FORM_BASELINE_GAMES,
   FORM_MONTHS,
   FORM_RECENT_GAMES,
   FORM_TOP_MIN_GAMES,
   FORM_TOP_SIZE,
+  HOME_LEAGUES,
+  HOME_TOP_SIZE,
+  type HomeLeagueTop,
+  type HomeTop,
   RANK_WEAPON_CODE,
   TRAIT_MIN_GAMES,
+  assignAnonymousLabels,
   buildPlayerPlaystyle,
   buildPlayerTraits,
+  isAnonymousDisclose,
   mainWeaponOf,
   percentileOf,
   buildTodayPerformance,
@@ -60,12 +68,21 @@ import {
   kstDayKey,
   kstDayStart,
   winRateOrNull,
+  buildTierBreakdown,
+  type TierClanTally,
+  type TierTally,
+  type PlayerTierRecord,
   type PlayerDayRecord,
   playerRefsFromBarracksUrl,
   type TodayPerformance,
   type TodayTally,
+  /* 클랜 지표 — 계산 규칙은 계약 한 곳에만 둔다 (SITE_SPEC_V2 5절) */
+  buildClanMetrics as buildClanMetricsOf,
+  clanBestWinStreak,
+  type ClanMatchRow,
+  type ClanMetrics,
 } from '@sacloud/contract'
-import { dataset } from './dataset'
+import { dataset, toKstIso } from './dataset'
 import { getMockRole } from './session'
 import { kdRate, killPerMatch, percentOf, winRate } from './derive'
 import type {
@@ -1153,6 +1170,83 @@ function buildRecentDays(
   return [toRow(todayKey), ...rest.map(toRow)]
 }
 
+/* ------------------------- 티어별 게임빈도 + 천적 -------------------------- */
+
+/**
+ * 티어별 판수·승률 + 천적 (`docs/SITE_SPEC_V2.md` 4절).
+ *
+ * 임계값(10판 · 50판 · 70%)과 줄 만들기는 `@sacloud/contract` 의
+ * `buildTierBreakdown()` 에 있고, 실제 서버
+ * (`apps/web/lib/server/queries/tierBreakdown.ts`)도 **같은 함수**를 쓴다.
+ * 여기서 다르게 판정하면 mock↔live 대조가 어긋난다.
+ *
+ * 티어는 **경기 당시** 상대 진영의 division 이다 — Mock 도 경기마다
+ * `redDivision` / `blueDivision` 스냅샷을 들고 있어 현재 division 을 보지 않는다
+ * (`CLAUDE.md` 3-B 4번).
+ */
+function buildTierBreakdownRows(
+  matches: MockMatch[],
+  playerId: string,
+  divisionCount: number,
+): PlayerTierRecord[] {
+  interface Bucket {
+    games: number
+    win: number
+    lose: number
+    clans: Map<string, { games: number; win: number; lose: number }>
+  }
+  const byTier = new Map<number, Bucket>()
+
+  for (const match of matches) {
+    const stat = match.players.find((row) => row.playerId === playerId)
+    if (!stat) continue
+    const isRed = stat.side === 'red'
+    const tier = isRed ? match.blueDivision : match.redDivision
+    const opponentId = isRed ? match.blueLeagueClanId : match.redLeagueClanId
+    const win = stat.side === match.winnerSide
+
+    const bucket = byTier.get(tier) ?? { games: 0, win: 0, lose: 0, clans: new Map() }
+    bucket.games += 1
+    if (win) bucket.win += 1
+    else bucket.lose += 1
+    const clan = bucket.clans.get(opponentId) ?? { games: 0, win: 0, lose: 0 }
+    clan.games += 1
+    if (win) clan.win += 1
+    else clan.lose += 1
+    bucket.clans.set(opponentId, clan)
+    byTier.set(tier, bucket)
+  }
+
+  const tallies: TierTally[] = [...byTier.entries()].map(([tier, bucket]) => {
+    const clans: TierClanTally[] = []
+    for (const [id, clan] of bucket.clans) {
+      /* 이름을 모르는 상대는 천적 후보에서 뺀다. 판수에는 이미 들어가 있으므로
+         경기가 사라지지는 않는다 — `알수없음 의 천적` 을 만들지 않으려는 것이다 (D-106) */
+      const leagueClan = leagueClanById.get(id)
+      const namedClan = leagueClan ? clanById.get(leagueClan.clanId) : undefined
+      if (!namedClan) continue
+      clans.push({ key: id, name: namedClan.name, slug: namedClan.slug, ...clan })
+    }
+    return { tier, games: bucket.games, win: bucket.win, lose: bucket.lose, clans }
+  })
+
+  return buildTierBreakdown(divisionCount, tallies).map((row) => ({
+    tier: row.tier,
+    games: row.games,
+    win: row.win,
+    lose: row.lose,
+    win_rate: row.winRate,
+    nemeses: row.nemeses.map((nemesis) => ({
+      name: nemesis.name,
+      slug: nemesis.slug,
+      games: nemesis.games,
+      win: nemesis.win,
+      lose: nemesis.lose,
+      win_rate: nemesis.winRate,
+    })),
+  }))
+}
+
 /* --------------------------------- 최근 폼 --------------------------------- */
 
 /**
@@ -1390,6 +1484,8 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     /* 오늘 퍼포먼스 (10절 · D-182). 기준은 상세정보와 **같은** 시즌 킬뎃이다 */
     /* 최근 3일치 일별 기록 (D-198). 첫 줄은 언제나 오늘이다 */
     recent_days: buildRecentDays(matches, playerId, new Date()),
+    /* 티어별 게임빈도 + 천적 (SITE_SPEC_V2 4절). 판수 0인 티어도 줄이 온다 */
+    tier_breakdown: buildTierBreakdownRows(matches, playerId, league.divisionCount),
     /* 포지션 (D-199). Mock 에는 좌표 판정이 없으므로 사람이 정한 값과 주무기만 본다 —
        실제 서버와 **같은 함수**를 쓴다. 다르게 고르면 mock↔live 대조가 어긋난다 */
     ...(() => {
@@ -1435,6 +1531,88 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* 클랜 지표 (SITE_SPEC_V2 5절)                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 세는 규칙은 계약(`@sacloud/contract` 의 `clanMetrics`)에 있고 실제 서버
+ * (`apps/web/lib/server/queries/clanMetrics.ts`)도 **같은 함수**를 부른다.
+ * 여기서는 픽스처를 그 함수가 원하는 모양으로 맞춰 주기만 한다.
+ *
+ * ⚠ **추이 구간의 시작점만 실제 서버와 다르다.**
+ *   실제 서버는 시즌0 창(`SEASON0_FROM` = 2026-04-01 KST · D-175)에서 15일씩 자른다.
+ *   그 상수는 `apps/worker/src/lib/season0Window.ts` 한 곳에만 있고(값을 두 번 적으면
+ *   창이 바뀔 때 한쪽만 고쳐져 갈라진다 — D-176), **Mock 은 브라우저에서도 도는 순수
+ *   패키지라 worker 를 가져올 수 없다.** 그래서 픽스처는 **그 리그의 첫 경기**를 시작점으로
+ *   삼는다. Mock 이 시즌 창 자체를 모델링하지 않는 것은 이 필드만의 문제가 아니라
+ *   `match_summary` 부터 그렇다 — 창을 계약으로 올리기 전까지 남는 알려진 차이다.
+ */
+function buildClanMetrics(leagueClan: MockLeagueClan): ClanMetrics | null {
+  const matches = [...(matchesByLeagueClan.get(leagueClan.id) ?? [])].sort((a, b) =>
+    a.startAt < b.startAt ? -1 : a.startAt > b.startAt ? 1 : a.id < b.id ? -1 : 1,
+  )
+  if (matches.length === 0) return null
+
+  const league = leagueById.get(leagueClan.leagueId)
+  if (!league) return null
+
+  const sideOf = new Map<string, TeamSide>()
+  const rows: ClanMatchRow[] = []
+  for (const match of matches) {
+    const side = sideOfLeagueClan(match, leagueClan.id)
+    if (!side) continue
+    sideOf.set(match.id, side)
+    /* 우리 다섯 명 딜량의 합. 다섯이 아니면 합이 거짓이라 `null` 이다 (D-034 · D-148) */
+    const ours = match.players.filter((stat) => stat.side === side)
+    rows.push({
+      id: match.id,
+      startAt: new Date(match.startAt),
+      won: match.winnerSide === side,
+      /* **경기 당시** 상대 부리그 스냅샷 (CLAUDE.md 3-B 4번) */
+      opponentDivision: side === 'red' ? match.blueDivision : match.redDivision,
+      teamDamage:
+        ours.length === 5 ? ours.reduce((sum, stat) => sum + stat.damage, 0) : null,
+    })
+  }
+  if (rows.length === 0) return null
+
+  /* 리그 전체의 첫·마지막 경기. 클랜이 쉰 구간도 **빈 칸으로 보여야** 하므로
+     이 클랜의 경기로 자르지 않는다 */
+  const leagueMatches = dataset.matches.filter((match) => match.leagueId === league.id)
+  const times = leagueMatches.map((match) => Date.parse(match.startAt))
+  const windowFrom = new Date(Math.min(...times))
+  const windowUntil = new Date(Math.max(...times))
+
+  const streak = clanBestWinStreak(rows)
+  const streakIds = new Set(streak.matchIds)
+  const tally = new Map<string, { name: string; games: number }>()
+  for (const match of matches) {
+    if (!streakIds.has(match.id)) continue
+    for (const stat of match.players) {
+      /* 우리 쪽 라인업만. 상대를 우리 멤버로 세면 안 된다 */
+      if (stat.side !== sideOf.get(match.id)) continue
+      const player = playerById.get(stat.playerId)
+      if (!player) continue
+      const entry = tally.get(player.id) ?? { name: player.name, games: 0 }
+      entry.games += 1
+      tally.set(player.id, entry)
+    }
+  }
+  const streakMembers = [...tally.entries()]
+    .map(([id, entry]) => ({ player: { id, name: entry.name }, games: entry.games }))
+    .sort((a, b) => b.games - a.games || a.player.name.localeCompare(b.player.name))
+
+  return buildClanMetricsOf({
+    rows,
+    divisionCount: league.divisionCount,
+    windowFrom,
+    windowUntil,
+    streakMembers,
+    toIso: (at) => toKstIso(at.getTime()),
+  })
+}
+
 export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueClanShow | null {
   const league = leagueBySlug.get(leagueSlug)
   const clan = clanBySlug.get(clanSlug)
@@ -1455,6 +1633,7 @@ export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueC
     member_count: clan.playerIds.length,
     match_summary: buildMatchSummary(matches, leagueClan.id, null),
     teammates: buildTeammates(matches, leagueClan.id, null),
+    metrics: buildClanMetrics(leagueClan),
   }
 }
 
@@ -1571,26 +1750,106 @@ export function getLeagueClanSeasons(leagueClanId: string): LeagueClanSeason[] |
 /* 게시판                                                                        */
 /* -------------------------------------------------------------------------- */
 
-function toWriter(board: Pick<MockBoard, 'userId' | 'anonAlias'>): Writer {
-  if (board.userId) {
-    const user = userById.get(board.userId)
-    if (user) {
-      return { id: user.id, nickname: user.nickname, avatar_url: user.avatarUrl, role: user.role }
+/**
+ * 게시글·댓글 작성자 (반익명 — SITE_SPEC_V2 2절 · 에브리타임 방식).
+ *
+ * **실제 서버(`apps/web/lib/server/queries/boards.ts`의 `toBoardWriter`)와 같은 규칙이다.**
+ * 한쪽을 고치면 다른 쪽도 함께 고친다.
+ *
+ * - 익명이면 `id`·`avatar_url`·`role`·`player` 를 비우고 표시 이름만 내보낸다.
+ *   아바타와 운영자 배지도 신원이므로 함께 지운다.
+ * - 소속 클랜만은 익명이어도 내보낸다 (에브리타임의 학교 이름에 해당).
+ *
+ * @param anonLabel 익명일 때 쓸 표시 이름 (`글쓴이` · `익명3` · 목록이면 `익명`)
+ */
+function toWriter(
+  board: Pick<MockBoard, 'userId' | 'anonAlias' | 'discloseType'>,
+  anonLabel: string = ANONYMOUS_LIST_LABEL,
+): BoardWriter {
+  const user = board.userId ? userById.get(board.userId) : undefined
+
+  // 비로그인 글 — 원본 3rd.supply 방식의 자동 별칭을 그대로 둔다 (앞 버전 보존)
+  if (!user) {
+    return {
+      id: null,
+      nickname: board.anonAlias ?? ANONYMOUS_LIST_LABEL,
+      avatar_url: null,
+      role: 0,
+      anonymous: true,
+      clan: null,
+      player: null,
     }
   }
-  return { id: null, nickname: board.anonAlias ?? '익명', avatar_url: null, role: 0 }
+
+  const player = user.playerId ? playerById.get(user.playerId) : undefined
+  const clan = player?.clanId ? clanSummaryOf(player.clanId) : null
+
+  if (isAnonymousDisclose(board.discloseType)) {
+    return {
+      id: null,
+      nickname: anonLabel,
+      avatar_url: null,
+      role: 0,
+      anonymous: true,
+      clan,
+      player: null,
+    }
+  }
+
+  return {
+    id: user.id,
+    nickname: user.nickname,
+    avatar_url: user.avatarUrl,
+    role: user.role,
+    anonymous: false,
+    clan,
+    player: player ? { id: player.id, name: player.name } : null,
+  }
+}
+
+/**
+ * 글 하나 안의 익명 번호표. 번호는 **그 글 안에서만** 유효하다.
+ * 화면에 보이는 댓글 순서(`listComments`)와 같은 순서로 매긴다.
+ */
+function commentAnonLabels(boardId: string): Map<string, string> {
+  const board = boardById.get(boardId)
+  return assignAnonymousLabels({
+    postAuthorKey: board?.userId ?? null,
+    subjects: nestedOrder(commentsInOrder(boardId))
+      // 공개 댓글은 번호를 소비하지 않는다
+      .filter((comment) => isAnonymousDisclose(comment.discloseType))
+      .map((comment) => ({ id: comment.id, authorKey: comment.userId })),
+  })
+}
+
+/**
+ * 번호를 매길 차례를 **화면에 그려지는 순서**로 맞춘다 (교차검증 [중간 5]).
+ * 실제 API(`apps/web/lib/server/queries/boards.ts`)의 `nestedOrder` 와 같은 규칙이다.
+ */
+function nestedOrder(all: MockComment[]): MockComment[] {
+  const roots = all.filter((comment) => comment.parentId === null)
+  return roots.flatMap((root) => [root, ...all.filter((child) => child.parentId === root.id)])
+}
+
+/** 댓글을 화면 순서(숫자 id 오름차순)로 (`listComments`와 같은 정렬) */
+function commentsInOrder(boardId: string): MockComment[] {
+  return (commentsByBoard.get(boardId) ?? []).slice().sort((a, b) => Number(a.id) - Number(b.id))
 }
 
 function commentCountOf(boardId: string): number {
   return (commentsByBoard.get(boardId) ?? []).length
 }
 
-function toBoardListItem(board: MockBoard): BoardListItem {
+/**
+ * @param anonLabel 익명 글의 표시 이름.
+ *   목록은 번호 없는 `익명`(번호는 글 안에서만 뜻이 있다), 글 상세는 `글쓴이` 다.
+ */
+function toBoardListItem(board: MockBoard, anonLabel: string = ANONYMOUS_LIST_LABEL): BoardListItem {
   return {
     id: board.id,
     category: board.category,
     title: board.title,
-    writer: toWriter(board),
+    writer: toWriter(board, anonLabel),
     writer_app: board.writerApp === 1 ? 1 : 0,
     disclose_type: board.discloseType,
     comment_count: commentCountOf(board.id),
@@ -1642,19 +1901,26 @@ export function listBoards(query: BoardListQuery): Page<BoardListItem> {
     source = source.filter((board) => {
       const writer = toWriter(board)
       if (type === 'ipname') return board.anonAlias?.includes(keyword) ?? false
-      if (type === 'nickname') return board.userId !== null && writer.nickname.includes(keyword)
+      /* 닉네임 검색은 **공개 글만** 본다 — 익명 글까지 걸리면 닉네임을 넣어 보는 것만으로
+         익명이 풀린다 (실제 서버 `boardFilter`와 같은 규칙). */
+      if (type === 'nickname') {
+        return (
+          board.userId !== null && !isAnonymousDisclose(board.discloseType) && writer.nickname.includes(keyword)
+        )
+      }
       return board.title.includes(keyword) || board.content.includes(keyword)
     })
   }
 
-  return paginate(source.map(toBoardListItem), query.cursor, query.size, (item) => item.id)
+  return paginate(source.map((board) => toBoardListItem(board)), query.cursor, query.size, (item) => item.id)
 }
 
 export function getBoard(boardId: string): Board | null {
   const board = boardById.get(boardId)
   if (!board) return null
   return {
-    ...toBoardListItem(board),
+    // 글 상세에서는 익명 작성자가 `글쓴이` 다 (`익명1` 부터는 댓글 차례)
+    ...toBoardListItem(board, POST_WRITER_LABEL),
     content: board.content,
     login: board.userId !== null,
     me: false,
@@ -1662,13 +1928,13 @@ export function getBoard(boardId: string): Board | null {
   }
 }
 
-function toCommentReply(comment: MockComment): CommentReply {
+function toCommentReply(comment: MockComment, anonLabel: string = ANONYMOUS_LIST_LABEL): CommentReply {
   return {
     id: comment.id,
     board_id: comment.boardId,
     parent_id: comment.parentId ?? comment.id,
     content: comment.deleted ? '' : comment.content,
-    writer: toWriter(comment),
+    writer: toWriter(comment, anonLabel),
     writer_app: comment.writerApp === 1 ? 1 : 0,
     disclose_type: comment.discloseType,
     like_count: comment.likeCount,
@@ -1690,12 +1956,15 @@ function isBoardWriter(comment: MockComment): boolean {
 }
 
 export function listComments(boardId: string): Comment[] {
-  const all = (commentsByBoard.get(boardId) ?? []).slice().sort((a, b) => Number(a.id) - Number(b.id))
+  const all = commentsInOrder(boardId)
+  const labels = commentAnonLabels(boardId)
+  const map = (comment: MockComment) =>
+    toCommentReply(comment, labels.get(comment.id) ?? ANONYMOUS_LIST_LABEL)
   const roots = all.filter((comment) => comment.parentId === null)
   return roots.map((comment) => ({
-    ...toCommentReply(comment),
+    ...map(comment),
     parent_id: null,
-    comments: all.filter((child) => child.parentId === comment.id).map(toCommentReply),
+    comments: all.filter((child) => child.parentId === comment.id).map(map),
   }))
 }
 
@@ -1762,6 +2031,43 @@ export function getLeagueIdBySlug(leagueSlug: string): string | null {
 
 export function isSlugTaken(slug: string): boolean {
   return leagueBySlug.has(slug)
+}
+
+/* ------------------------- 메인 · 리그별 개인랭킹 TOP3 ------------------------- */
+
+/**
+ * 메인 TOP3 (`docs/SITE_SPEC_V2.md` 3절).
+ *
+ * 실제 API(`apps/web/lib/server/queries/homeTop.ts`)와 **같은 형태**를 낸다 —
+ * 순위를 새로 매기지 않고 개인랭킹(`getPlayerRanks`)의 앞 3줄을 옮겨 담는다.
+ *
+ * ── 슬러그가 없으면 자리를 대신 채운다 (**Mock 한정**)
+ *   운영 DB 에는 `supply` · `nolink` · `sanply` 가 있지만 Mock 픽스처의 리그는
+ *   `officialmain` · `secondline` … 이라 슬러그가 겹치지 않는다. 그대로 두면
+ *   Mock 모드에서 세 칸이 전부 비어 화면을 볼 수 없다.
+ *   그래서 **Mock 에서만** 같은 순번의 픽스처 리그로 대신 채운다.
+ *   이 대체는 픽스처 안에서만 일어난다 — 실제 API 는 슬러그가 없으면 빈 배열이다.
+ */
+export function getHomeTop(): HomeTop {
+  return {
+    leagues: HOME_LEAGUES.map((entry, index): HomeLeagueTop => {
+      const league = leagueBySlug.get(entry.slug) ?? dataset.leagues[index]
+      if (!league) return { slug: entry.slug, abbr: entry.abbr, name: entry.name, rows: [] }
+
+      const page = getPlayerRanks(league.id, null, HOME_TOP_SIZE)
+      return {
+        slug: league.slug,
+        abbr: entry.abbr,
+        name: league.name,
+        rows: (page?.items ?? []).map((row) => ({
+          rank: row.rank,
+          player: row.player,
+          clan: row.clan,
+          rating: row.rating,
+        })),
+      }
+    }),
+  }
 }
 
 /** 첫 번째 리그 관리자 (Mock 응답에서 사용자 객체가 필요할 때 사용) */

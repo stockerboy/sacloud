@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Board } from '@sacloud/contract'
 import { sanitizePostContent } from './sanitize'
 import { formatCount } from '../common/format'
+import { WriterName } from './WriterName'
 
 /**
  * 글 상세.
@@ -93,11 +94,9 @@ export function PostView({
         </div>
         <div className="text-3xl">{post.title}</div>
         <div className="mt-2 flex justify-between">
-          <div>
-            작성자:{' '}
-            <span className={post.writer.id ? 'text-writer' : 'text-card-text'}>
-              {post.writer.nickname}
-            </span>
+          <div className="flex min-w-0 items-baseline">
+            <span className="mr-1 shrink-0">작성자:</span>
+            <WriterName writer={post.writer} />
           </div>
           <div>작성일: {formatPostDate(post.created_at)}</div>
         </div>

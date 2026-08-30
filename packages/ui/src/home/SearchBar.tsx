@@ -38,7 +38,19 @@ interface SearchOption {
 }
 
 const OPTIONS: readonly SearchOption[] = [
-  { type: 'player', label: '플레이어 검색', placeholder: '닉네임을 입력하세요.' },
+  /*
+   * 플레이어 placeholder 를 원본 문구(`닉네임을 입력하세요.`)에서 넓혔다.
+   *
+   * 사양이 "플레이어검색(닉네임 또는 병영복붙)" 이다 (`docs/SITE_SPEC_V2.md` 3절).
+   * 주소 붙여넣기는 이미 동작한다 — 서버가 `playerRefsFromBarracksUrl`(D-162)로
+   * 주소에서 식별자를 뽑는다. **되는데 안내가 없어서 아무도 안 쓰는 상태**였다.
+   * 기능을 바꾼 것이 아니라 이미 있는 기능을 적어 준 것이다.
+   */
+  {
+    type: 'player',
+    label: '플레이어 검색',
+    placeholder: '닉네임 또는 병영수첩 주소를 입력하세요.',
+  },
   { type: 'clan', label: '클랜 검색', placeholder: '클랜명을 입력하세요.' },
   // 리그 검색의 placeholder는 원본에서 확인하지 못했다 [미확인] — 위 두 개의 표기 규칙을 따랐다
   { type: 'league', label: '리그 검색', placeholder: '리그명을 입력하세요.' },

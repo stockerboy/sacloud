@@ -4,14 +4,19 @@ import { prisma } from '@sacloud/db'
 import { hidesSeedData, SEED_ORIGIN } from './publicScope'
 import type { Prisma } from '@sacloud/db'
 import {
+  ANONYMOUS_LIST_LABEL,
   BoardWriteInput,
   CommentWriteInput,
   DeleteInput,
+  POST_WRITER_LABEL,
   VoteInput,
+  assignAnonymousLabels,
   decodeCursor,
   encodeCursor,
+  isAnonymousDisclose,
   type Board,
   type BoardListItem,
+  type BoardWriter,
   type Comment,
   type CommentReply,
   type VoteType,
@@ -19,7 +24,7 @@ import {
 import { sanitizePostContent } from '@sacloud/ui/sanitize'
 import type { CursorPage } from '../cursorPage'
 import { toKstIso, toKstIsoOrNull } from '../format'
-import { USER_SUMMARY_SELECT, toWriter } from '../mappers'
+import { toClanSummaryOrNull, toPlayerSummaryOrNull } from '../mappers'
 import { BOARD_WRITE_INTERVAL } from '../configs'
 import { currentUserId, voterKey } from '../session'
 
@@ -41,7 +46,116 @@ import { currentUserId, voterKey } from '../session'
  *    흔들리지 않도록 `id desc`를 마지막 기준으로 붙였다.
  *
  * 쓰기(생성/수정/삭제/추천)는 Mock에 없던 동작이다. 아래 각 함수 주석 참고.
+ *
+ * ---
+ *
+ * **반익명 표시 (SITE_SPEC_V2 2절 · 에브리타임 방식)**
+ *
+ * `disclose_type` 이 0 이 아니면 작성자를 **서버에서** 지우고 표시 이름만 내보낸다.
+ * 번호(`익명1` · `익명2` …)는 `packages/contract/src/anonymity.ts` 의 순수 함수가 매기고,
+ * **그 글 안에서만** 유효하다. 소속 클랜은 익명이어도 나간다(에브리타임의 학교 이름).
+ * Mock(`packages/mock/src/store.ts`)도 같은 규칙으로 맞춰 두었다.
  */
+
+/* -------------------------------------------------------------------------- */
+/* 반익명 표시 (SITE_SPEC_V2 2절)                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 작성자 조회 범위.
+ *
+ * `USER_SUMMARY_SELECT`(mappers) 에 **소속 클랜과 연동 선수**를 더한 것이다.
+ * 소속은 `User → UserPlayerLink → Player → Clan` 으로만 온다. 연동이 없으면 소속도 없다.
+ */
+const BOARD_USER_SELECT = {
+  id: true,
+  nickname: true,
+  avatarUrl: true,
+  role: true,
+  playerLink: {
+    select: {
+      player: {
+        select: {
+          id: true,
+          name: true,
+          clan: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              markBgUrl: true,
+              markFrontUrl: true,
+              sourceClanId: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} as const
+
+type BoardUserRow = Prisma.UserGetPayload<{ select: typeof BOARD_USER_SELECT }>
+
+interface WriterSource {
+  user?: BoardUserRow | null
+  anonAlias: string | null
+  discloseType: number
+}
+
+/**
+ * 게시글·댓글 작성자 (반익명).
+ *
+ * **여기가 익명의 마지막 방어선이다.** 익명이면 `id`·`avatar_url`·`role`·`player` 를
+ * 전부 비우고 표시 이름만 내보낸다. 아바타와 운영자 배지도 신원이므로 함께 지운다.
+ * 소속 클랜만은 익명이어도 내보낸다 — 사양이 요구하는 표시다(에브리타임의 학교 이름).
+ *
+ * `mappers.toWriter` 를 쓰지 않는 이유: 그 함수는 `disclose_type` 을 보지 않아
+ * 익명 글에도 실제 닉네임과 user id 를 그대로 실어 보낸다.
+ *
+ * @param anonLabel 익명일 때 쓸 표시 이름 (`글쓴이` · `익명3` · 목록이면 `익명`)
+ */
+function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
+  const user = source.user ?? null
+
+  // 비로그인 글 — 원본 3rd.supply 방식의 자동 별칭을 그대로 둔다 (앞 버전 보존).
+  // 계정이 없으므로 소속도 개인기록도 없다.
+  if (!user) {
+    return {
+      id: null,
+      nickname: source.anonAlias ?? ANONYMOUS_LIST_LABEL,
+      avatar_url: null,
+      role: 0,
+      anonymous: true,
+      clan: null,
+      player: null,
+    }
+  }
+
+  const player = user.playerLink?.player ?? null
+  const clan = toClanSummaryOrNull(player?.clan)
+
+  if (isAnonymousDisclose(source.discloseType)) {
+    return {
+      id: null,
+      nickname: anonLabel,
+      avatar_url: null,
+      role: 0,
+      anonymous: true,
+      clan,
+      player: null,
+    }
+  }
+
+  return {
+    id: user.id,
+    nickname: user.nickname,
+    avatar_url: user.avatarUrl,
+    role: user.role,
+    anonymous: false,
+    clan,
+    player: toPlayerSummaryOrNull(player),
+  }
+}
 
 /* -------------------------------------------------------------------------- */
 /* 공통                                                                         */
@@ -63,7 +177,7 @@ const BOARD_LIST_SELECT = {
   notice: true,
   createdAt: true,
   lastEdited: true,
-  user: { select: USER_SUMMARY_SELECT },
+  user: { select: BOARD_USER_SELECT },
 } as const
 
 const BOARD_DETAIL_SELECT = {
@@ -75,12 +189,16 @@ const BOARD_DETAIL_SELECT = {
 type BoardListRow = Prisma.BoardGetPayload<{ select: typeof BOARD_LIST_SELECT }>
 type BoardDetailRow = Prisma.BoardGetPayload<{ select: typeof BOARD_DETAIL_SELECT }>
 
-function toBoardListItem(row: BoardListRow): BoardListItem {
+/**
+ * @param anonLabel 익명 글의 표시 이름.
+ *   목록은 번호 없는 `익명`(번호는 글 안에서만 뜻이 있다), 글 상세는 `글쓴이` 다.
+ */
+function toBoardListItem(row: BoardListRow, anonLabel: string = ANONYMOUS_LIST_LABEL): BoardListItem {
   return {
     id: row.id,
     category: row.categorySlug,
     title: row.title,
-    writer: toWriter(row),
+    writer: toBoardWriter(row, anonLabel),
     writer_app: row.writerApp === 1 ? 1 : 0,
     disclose_type: row.discloseType,
     comment_count: row.commentCount,
@@ -96,7 +214,8 @@ function toBoardListItem(row: BoardListRow): BoardListItem {
 
 function toBoard(row: BoardDetailRow, me: boolean, likeType: VoteType): Board {
   return {
-    ...toBoardListItem(row),
+    // 글 상세에서는 익명 작성자가 `글쓴이` 다 (`익명1` 부터는 댓글 차례)
+    ...toBoardListItem(row, POST_WRITER_LABEL),
     content: row.content,
     login: row.userId !== null,
     me,
@@ -260,8 +379,10 @@ function boardFilter(query: BoardListQuery, params: SqlParams): string {
     if (type === 'ipname') {
       parts.push(`"Board"."anonAlias" LIKE ${params.bind(like)}`)
     } else if (type === 'nickname') {
+      /* 닉네임 검색은 **공개 글만** 본다 (SITE_SPEC_V2 2절).
+         익명 글까지 걸리면 닉네임을 넣어 보는 것만으로 익명이 풀린다. */
       parts.push(
-        `EXISTS (SELECT 1 FROM "User" u WHERE u."id" = "Board"."userId" AND u."nickname" LIKE ${params.bind(like)})`,
+        `"Board"."discloseType" = 0 AND EXISTS (SELECT 1 FROM "User" u WHERE u."id" = "Board"."userId" AND u."nickname" LIKE ${params.bind(like)})`,
       )
     } else {
       const pattern = params.bind(like)
@@ -369,7 +490,7 @@ export async function listBoards(query: BoardListQuery): Promise<CursorPage<Boar
     items: page.items
       .map((id) => byId.get(id))
       .filter((row): row is BoardListRow => row !== undefined)
-      .map(toBoardListItem),
+      .map((row) => toBoardListItem(row)),
     cursor: page.cursor,
   }
 }
@@ -679,10 +800,50 @@ const COMMENT_SELECT = {
   deleted: true,
   createdAt: true,
   lastEdited: true,
-  user: { select: USER_SUMMARY_SELECT },
+  user: { select: BOARD_USER_SELECT },
 } as const
 
 type CommentRow = Prisma.CommentGetPayload<{ select: typeof COMMENT_SELECT }>
+
+/** 익명 번호를 매길 때 쓰는 정렬 — 화면에 보이는 순서와 **같아야** 번호가 흔들리지 않는다 */
+const COMMENT_ORDER = [{ createdAt: 'asc' }, { id: 'asc' }] as const
+
+/**
+ * 글 하나 안의 익명 번호표.
+ *
+ * 번호는 **그 글 안에서만** 유효하다 (`packages/contract/src/anonymity.ts`).
+ * 그래서 한 댓글만 응답할 때도 그 글의 댓글 전체를 같은 순서로 읽어 표를 다시 만든다.
+ * 부분만 보고 번호를 매기면 새로고침마다 번호가 바뀐다.
+ */
+async function commentAnonLabels(boardId: string, boardUserId: string | null) {
+  const all = await prisma.comment.findMany({
+    where: { boardId },
+    orderBy: [...COMMENT_ORDER],
+    select: { id: true, userId: true, discloseType: true, parentId: true },
+  })
+  return assignAnonymousLabels({
+    postAuthorKey: boardUserId,
+    subjects: nestedOrder(all)
+      // 공개 댓글은 번호를 소비하지 않는다 — 소비하면 `익명2` 다음이 `익명5` 가 된다
+      .filter((comment) => isAnonymousDisclose(comment.discloseType))
+      .map((comment) => ({ id: comment.id, authorKey: comment.userId })),
+  })
+}
+
+/**
+ * 번호를 매길 **차례**를 화면에 그려지는 순서로 맞춘다 (교차검증 [중간 5]).
+ *
+ * 사양 원문은 "글 안에서 **등장 순서**" 다. 그런데 댓글은 평면이 아니라
+ * `부모 → 그 밑의 대댓글` 로 그려진다(`listComments`). 작성시각만으로 번호를 매기면
+ * 늦게 달린 부모에 붙은 이른 대댓글이 낮은 번호를 가져가, 화면에서
+ * `익명1 · 익명5 · 익명2` 처럼 뒤섞여 보인다.
+ *
+ * 그래서 **그리는 순서 그대로** 늘어놓고 번호를 준다.
+ */
+function nestedOrder<T extends { id: string; parentId: string | null }>(all: T[]): T[] {
+  const roots = all.filter((comment) => comment.parentId === null)
+  return roots.flatMap((root) => [root, ...all.filter((child) => child.parentId === root.id)])
+}
 
 /**
  * 댓글 → 대댓글 응답.
@@ -697,13 +858,14 @@ function toCommentReply(
   boardUserId: string | null,
   userId: string | null,
   likeType: VoteType,
+  anonLabel: string,
 ): CommentReply {
   return {
     id: comment.id,
     board_id: comment.boardId,
     parent_id: comment.parentId ?? comment.id,
     content: comment.deleted ? '' : comment.content,
-    writer: toWriter(comment),
+    writer: toBoardWriter(comment, anonLabel),
     writer_app: comment.writerApp === 1 ? 1 : 0,
     disclose_type: comment.discloseType,
     like_count: comment.likeCount,
@@ -725,7 +887,7 @@ function toCommentReply(
 export async function listComments(boardId: string, request: Request): Promise<Comment[]> {
   const all = await prisma.comment.findMany({
     where: { boardId },
-    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    orderBy: [...COMMENT_ORDER],
     select: COMMENT_SELECT,
   })
   if (all.length === 0) return []
@@ -742,8 +904,15 @@ export async function listComments(boardId: string, request: Request): Promise<C
     all.map((comment) => comment.id),
     key,
   )
+  const anonLabels = await commentAnonLabels(boardId, board.userId)
   const map = (comment: CommentRow) =>
-    toCommentReply(comment, board.userId, userId, likeTypes.get(comment.id) ?? 0)
+    toCommentReply(
+      comment,
+      board.userId,
+      userId,
+      likeTypes.get(comment.id) ?? 0,
+      anonLabels.get(comment.id) ?? ANONYMOUS_LIST_LABEL,
+    )
 
   return all
     .filter((comment) => comment.parentId === null)
@@ -772,14 +941,21 @@ async function commentResponse(commentId: string, request: Request): Promise<Com
     comment.parentId === null
       ? await prisma.comment.findMany({
           where: { parentId: commentId },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          orderBy: [...COMMENT_ORDER],
           select: COMMENT_SELECT,
         })
       : []
 
   const votes = await voteTypesOf('comment', [comment.id, ...children.map((row) => row.id)], key)
+  const anonLabels = await commentAnonLabels(comment.boardId, board?.userId ?? null)
   const map = (row: CommentRow) =>
-    toCommentReply(row, board?.userId ?? null, userId, votes.get(row.id) ?? 0)
+    toCommentReply(
+      row,
+      board?.userId ?? null,
+      userId,
+      votes.get(row.id) ?? 0,
+      anonLabels.get(row.id) ?? ANONYMOUS_LIST_LABEL,
+    )
 
   return {
     ...map(comment),

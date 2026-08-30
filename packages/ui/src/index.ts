@@ -8,6 +8,9 @@ export { MainLogo, NavLogo } from './layout/BrandLogo'
 
 export { SearchBar, type SearchBarProps, type SearchType } from './home/SearchBar'
 export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPostList'
+/* 메인 신규 칸 (SITE_SPEC_V2 3절) — 원본 3rd.supply 메인에는 없다 */
+export { LeagueTop3, type LeagueTop3Props } from './home/LeagueTop3'
+export { SiteIntro } from './home/SiteIntro'
 
 export { RelativeTime } from './common/RelativeTime'
 export { formatRelativeTime, JUST_NOW } from './common/relative-time'
@@ -113,6 +116,8 @@ export {
 } from './record/RecordPanels'
 /* 최근 폼 (D-167) — 원본에 없는 화면이다. 사용자 요구로 승률 도넛 자리를 대신한다 */
 export { PlayerFormPanel } from './record/PlayerFormPanel'
+/* 클랜 지표 (SITE_SPEC_V2 5절) — 이것도 원본에 없는 신규 화면이다 */
+export { ClanMetrics } from './record/ClanMetrics'
 export { FORM_TREND_TEXT, FORM_TREND_CLASS, formMonthLabel } from './record/formCopy'
 export {
   formChartDomain,
@@ -127,6 +132,8 @@ export {
 export { TraitHexagon } from './record/TraitHexagon'
 export { PlaystyleBars } from './record/PlaystyleBars'
 export { TodayPerformance } from './record/TodayPerformance'
+/* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절) — 이것도 원본에 없는 신규 카드다 */
+export { TierBreakdown } from './record/TierBreakdown'
 export {
   HEX_CENTER,
   HEX_LABEL_RADIUS,

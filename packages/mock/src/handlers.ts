@@ -72,6 +72,8 @@ const resolvers: Record<EndpointKey, Resolver> = {
   /* -------------------------------- 공통 -------------------------------- */
   infos: () => ok(store.getInfos()),
   remoteConfigs: () => ok(dataset.configs),
+  /* 메인 TOP3 — 레지스트리에 있어야 MSW 핸들러가 생긴다 (교차검증 [심각 1]) */
+  homeTop: () => ok(store.getHomeTop()),
 
   /* -------------------------------- 인증 -------------------------------- */
   // Phase 0에서는 계약 형태만 반환한다. 실제 검증·세션 전환은 Phase 6에서 구현한다.

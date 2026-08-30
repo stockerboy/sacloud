@@ -34,3 +34,15 @@ export function boardAllowsWriteAndSearch(categorySlug: string): boolean {
 
 /** `/board` 로 들어왔을 때의 기본 게시판 (원본은 `/board/free` 로 랜딩한다) */
 export const DEFAULT_BOARD_SLUG = 'free'
+
+/**
+ * 작성자 소속 표기 — `veritas 소속` (SITE_SPEC_V2 2절).
+ *
+ * 에브리타임에서 글쓴이 옆에 학교 이름이 붙는 자리다. **익명이어도 붙는다.**
+ * 소속이 없으면(계정 연동이 없거나 무소속) 아예 적지 않는다 —
+ * `무소속 소속` 같은 말을 만들지 않는다.
+ */
+export function affiliationLabel(clanName: string | null | undefined): string | null {
+  const name = clanName?.trim()
+  return name ? `${name} 소속` : null
+}

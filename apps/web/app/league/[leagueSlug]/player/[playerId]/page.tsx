@@ -11,6 +11,7 @@ import {
   RecentMatchSummary,
   Skeleton,
   TeammateTable,
+  TierBreakdown,
   TraitHexagon,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
@@ -200,6 +201,14 @@ export default function LeaguePlayerRecordPage({
             (2026-08-27 원본 실측 · UI_PARITY_AUDIT 6-1). 컴포넌트와 계약 필드
             (`weapon_stats` · `sniper_*` · `rifle_*`)는 그대로 두었다.
           */}
+          {/* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절).
+              `상세정보` 와 같은 사이드 카드라 같은 칸에 둔다. 부리그/티어 표기는
+              리그 구분이 정한다 (D-165) — 화면이 임의로 고르지 않는다 */}
+          <TierBreakdown
+            rows={data.tier_breakdown}
+            leagueSlug={leagueSlug}
+            leagueCategory={data.league.category}
+          />
           <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
         </div>
       </div>

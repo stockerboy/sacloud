@@ -26,8 +26,10 @@ import { seasonWindowWhere } from './season0Scope'
 import { buildPlayerForm } from './playerForm'
 import { playerTodayTally } from './todayPerformance'
 import { playerRecentDays } from './recentDays'
+import { playerTierBreakdown } from './tierBreakdown'
 import { playerJudgedPosition } from './playerPositionQuery'
 import { playerTraits } from './playerTraits'
+import { leagueClanMetrics } from './clanMetrics'
 import { toKstIso } from '../format'
 import {
   CLAN_SUMMARY_SELECT,
@@ -397,7 +399,7 @@ export async function getLeagueClanShow(
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
   }
 
-  const [rank, record] = await Promise.all([
+  const [rank, record, metrics] = await Promise.all([
     clanRankOf({
       id: leagueClan.id,
       leagueId: leagueClan.leagueId,
@@ -406,6 +408,8 @@ export async function getLeagueClanShow(
       placement: leagueClan.placement,
     }),
     buildRecordSummary(leagueClan.leagueId, where, leagueClan.id, null),
+    /* 클랜 지표(SITE_SPEC_V2 5절). 요약과 **같은 모집단**을 쓴다 — 규칙은 그 파일에 있다 */
+    leagueClanMetrics(leagueClan.leagueId, leagueClan.id, league.divisionCount),
   ])
 
   return {
@@ -426,6 +430,7 @@ export async function getLeagueClanShow(
     member_count: clan._count.members,
     match_summary: record.summary,
     teammates: record.teammates,
+    metrics,
   }
 }
 
@@ -618,6 +623,7 @@ export async function getLeaguePlayerDetail(
     todayTally,
     traits,
     recentDays,
+    tierBreakdown,
     judgedPosition,
   ] =
     await Promise.all([
@@ -657,6 +663,10 @@ export async function getLeaguePlayerDetail(
       playerTraits(league.id, playerId).catch(() => null),
       /* 최근 3일치 일별 기록 (D-198). 실패해도 카드 전체를 죽이지 않는다 */
       playerRecentDays(league.id, playerId).catch(() => []),
+      /* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절).
+         줄 수는 리그의 부리그 수만큼이다. 실패해도 카드 전체를 죽이지 않는다 —
+         빈 배열이면 화면이 카드를 안 그린다 */
+      playerTierBreakdown(league.id, playerId, league.divisionCount).catch(() => []),
       /* 좌표로 판정한 자리 (D-199). 없으면 `null` — 화면이 그 줄을 안 그린다 */
       playerJudgedPosition(playerId).catch(() => null),
     ])
@@ -725,6 +735,8 @@ export async function getLeaguePlayerDetail(
     today: toTodayPerformance(buildTodayPerformance(todayTally, totals.kdRate)),
     /* 최근 3일치 일별 기록 (D-198). 첫 줄은 언제나 오늘이다 */
     recent_days: recentDays,
+    /* 티어별 게임빈도 + 천적 (SITE_SPEC_V2 4절). 판수 0인 티어도 줄이 온다 */
+    tier_breakdown: tierBreakdown,
     /* 포지션 (D-199) — 사람이 정한 값 > 주무기가 스나 > 좌표 판정.
        주무기는 이미 읽어 둔 무기별 판수로 정한다. 한 판이라도 많은 쪽이다 */
     ...(() => {

@@ -34,3 +34,5 @@ export * from './position'
 export * from './roundSide'
 export * from './roundState'
 export * from './duel'
+/** 클랜 지표 다섯 — 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 (SITE_SPEC_V2 5-5절) */
+export * from './clanRound'

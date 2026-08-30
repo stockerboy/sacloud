@@ -4,6 +4,7 @@ import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
+  ClanMetrics,
   ClanStatSidebar,
   LoadMoreButton,
   MatchCard,
@@ -92,6 +93,15 @@ export default function LeagueClanRecordPage({
             showKdRate={false}
           />
         </div>
+        {/* 클랜 지표 (SITE_SPEC_V2 5절) — 경기 목록보다 위다. 지표가 먼저 읽히고
+            그 근거인 경기가 아래에 이어진다. 재료가 없으면 `null` 이고 그리지 않는다 (D-106) */}
+        {data.metrics ? (
+          <ClanMetrics
+            metrics={data.metrics}
+            leagueSlug={leagueSlug}
+            leagueCategory={data.league.category}
+          />
+        ) : null}
         <div className="mt-2">
           {matches.loading ? (
             <Skeleton className="h-[105px] w-full" />

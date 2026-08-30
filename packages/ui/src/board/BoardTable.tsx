@@ -7,6 +7,7 @@ import { ErrorState } from '../common/ErrorState'
 import { Skeleton } from '../common/Skeleton'
 import { RelativeTime } from '../common/RelativeTime'
 import { formatCount } from '../common/format'
+import { WriterName } from './WriterName'
 
 /**
  * 게시판 목록 표.
@@ -93,10 +94,9 @@ function Row({ item }: { item: BoardListItem }) {
       </div>
       <div className="flex w-1/12 items-center">{formatCount(item.view_count)}</div>
       <div className="flex w-2/12 items-center">
-        {/* 로그인 회원 글은 파란 닉네임, 익명 글은 기본색 별칭 (원본 관측) */}
-        <div className={item.writer.id ? 'text-writer' : 'text-card-text'}>
-          {item.writer.nickname}
-        </div>
+        {/* 반익명 — 소속(`veritas 소속`) + 이름. 익명 글은 목록에서 번호 없이 `익명` 이다
+            (번호는 글 안에서만 뜻이 있다 · SITE_SPEC_V2 2절) */}
+        <WriterName writer={item.writer} />
       </div>
     </div>
   )

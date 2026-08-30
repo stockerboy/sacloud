@@ -13,6 +13,7 @@ import {
   Comment,
   FormTop,
   GameMap,
+  HomeTop,
   Infos,
   League,
   LeagueClan,
@@ -76,6 +77,21 @@ export const endpoints = {
     origin: 'observed',
     description: '원격 설정 (구조 [미확인])',
     response: apiResponse(RemoteConfigs),
+  },
+  /**
+   * 메인페이지 리그별 개인랭킹 TOP3 (`docs/SITE_SPEC_V2.md` 3절).
+   *
+   * 원본에는 없다 — 사용자가 새로 요구한 화면이라 `designed` 다.
+   * **레지스트리에 반드시 있어야 한다.** 여기 없으면 MSW 핸들러가 생기지 않고,
+   * `providers.tsx` 의 `onUnhandledRequest: 'bypass'` 때문에 경고 한 줄 없이
+   * 실제 라우트로 새어 나가 Mock 모드에서 DB 를 부른다 (교차검증 [심각 1]).
+   */
+  homeTop: {
+    method: 'GET',
+    path: '/home/top',
+    origin: 'designed',
+    description: '메인 SPL/IPL/YSL 개인랭킹 TOP3',
+    response: apiResponse(HomeTop),
   },
 
   /* -------------------------------- 인증 -------------------------------- */

@@ -1,7 +1,28 @@
 import { z } from 'zod'
 import { Count, Id, IsoDateTime, Slug } from '../common'
 import { BoardSearchType, DiscloseType, VoteType, WriterApp } from '../codes'
-import { Writer } from './summaries'
+import { ClanSummary, PlayerSummary, Writer } from './summaries'
+
+/**
+ * 게시글·댓글 작성자 (반익명 — SITE_SPEC_V2 2절 · 에브리타임 방식).
+ *
+ * `Writer` 에 세 가지를 더한다. 기존 응답과 호환되도록 전부 기본값이 있다.
+ *
+ * **서버가 지키는 불변식** (`packages/contract/src/anonymity.ts` 참고)
+ * - `anonymous === true` 이면 `id` 와 `player` 는 **반드시 `null`** 이고
+ *   `nickname` 은 `글쓴이` · `익명1` 같은 **표시 이름**이다.
+ *   실제 닉네임·user id·player id 는 응답에 담기지 않는다 — 담기는 순간 익명이 아니다.
+ * - `clan` 은 **익명이어도 나간다.** 에브리타임에서 익명 글에도 학교가 붙는 것과 같다.
+ */
+export const BoardWriter = Writer.extend({
+  /** 익명 표시인가. true 면 `nickname` 은 그 글 안에서만 뜻이 있는 표시 이름이다 */
+  anonymous: z.boolean().default(false),
+  /** 소속 클랜 — `veritas 소속`. 익명이어도 노출한다. 소속이 없으면 null */
+  clan: ClanSummary.nullable().default(null),
+  /** 닉네임을 누르면 갈 개인 기록의 선수. **익명이면 반드시 null** */
+  player: PlayerSummary.nullable().default(null),
+})
+export type BoardWriter = z.infer<typeof BoardWriter>
 
 /** /infos 의 categories[] */
 export const Category = z.object({
@@ -18,7 +39,7 @@ export const BoardListItem = z.object({
   id: Id,
   category: Slug,
   title: z.string(),
-  writer: Writer,
+  writer: BoardWriter,
   /** 0 = 웹, 1 = 앱 */
   writer_app: WriterApp,
   /** 0 = 일반, 그 외 = 익명(목록에 `익명` 표기) */
@@ -54,7 +75,7 @@ export const CommentReply = z.object({
   board_id: Id,
   parent_id: Id,
   content: z.string(),
-  writer: Writer,
+  writer: BoardWriter,
   writer_app: WriterApp,
   disclose_type: DiscloseType,
   like_count: Count,

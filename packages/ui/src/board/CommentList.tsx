@@ -6,6 +6,7 @@ import { RelativeTime } from '../common/RelativeTime'
 import { EmptyState } from '../common/EmptyState'
 import { formatCount } from '../common/format'
 import { sanitizePostContent } from './sanitize'
+import { WriterName } from './WriterName'
 
 /**
  * 댓글 목록.
@@ -34,10 +35,10 @@ function CommentBody({ comment }: { comment: Comment | CommentReply }) {
 function CommentHead({ comment }: { comment: Comment | CommentReply }) {
   return (
     <div className="flex items-center text-sm">
-      <span className={comment.writer.id ? 'text-writer' : 'text-card-text'}>
-        {comment.writer.nickname}
-      </span>
-      {comment.board_writer ? (
+      {/* 반익명 — 소속(`veritas 소속`) + 이름(`글쓴이` · `익명1` …). 번호는 서버가 매긴다 */}
+      <WriterName writer={comment.writer} />
+      {/* 익명 이름이 이미 `글쓴이` 면 배지를 겹쳐 달지 않는다 */}
+      {comment.board_writer && !comment.writer.anonymous ? (
         <span className="ml-1 rounded bg-badge px-1 text-xs text-white">글쓴이</span>
       ) : null}
       <span className="ml-2 text-meta">
@@ -166,17 +167,32 @@ function ReplyForm({ onSubmit }: { onSubmit: (content: string) => void }) {
   )
 }
 
-/** 댓글 작성 폼 (원본: `댓글쓰기` 제목 + 에디터 + 등록 버튼) */
+/**
+ * 댓글 작성 폼 (원본: `댓글쓰기` 제목 + 에디터 + 등록 버튼).
+ *
+ * 반익명 체크박스는 **옵트인**이다 (`showAnonymousToggle`).
+ * 호출부가 체크 값을 `disclose_type` 으로 서버에 보낼 준비가 됐을 때만 켠다 —
+ * 켜 두고 값을 버리면 화면이 거짓말을 한다. 지금
+ * `apps/web/app/board/[category]/[id]/page.tsx` 는 `disclose_type: 0` 을 고정으로 보낸다.
+ */
 export function CommentForm({
   onSubmit,
   requirePassword,
+  showAnonymousToggle = false,
+  defaultAnonymous = true,
 }: {
-  onSubmit: (content: string, password: string | null) => void
+  /** `anonymous` 가 false 면 닉네임과 소속이 모두 공개된다 (SITE_SPEC_V2 2절) */
+  onSubmit: (content: string, password: string | null, anonymous: boolean) => void
   /** 비로그인 작성이면 삭제용 비밀번호를 받는다 (원본 동작) */
   requirePassword: boolean
+  /** 익명 체크박스를 보일지 */
+  showAnonymousToggle?: boolean
+  /** 체크박스 초기값. 에브리타임처럼 익명이 기본이다 */
+  defaultAnonymous?: boolean
 }) {
   const [content, setContent] = useState('')
   const [password, setPassword] = useState('')
+  const [anonymous, setAnonymous] = useState(defaultAnonymous)
 
   const canSubmit = content.trim().length > 0 && (!requirePassword || password.length > 0)
 
@@ -191,6 +207,17 @@ export function CommentForm({
         placeholder="댓글을 입력하세요."
       />
       <div className="mt-4 flex h-14 items-center">
+        {showAnonymousToggle ? (
+          <label className="mr-3 flex cursor-pointer select-none items-center text-sm">
+            <input
+              type="checkbox"
+              checked={anonymous}
+              onChange={(event) => setAnonymous(event.target.checked)}
+              className="mr-1"
+            />
+            익명
+          </label>
+        ) : null}
         {requirePassword ? (
           <input
             type="password"
@@ -204,7 +231,7 @@ export function CommentForm({
           type="button"
           disabled={!canSubmit}
           onClick={() => {
-            onSubmit(content.trim(), requirePassword ? password : null)
+            onSubmit(content.trim(), requirePassword ? password : null, anonymous)
             setContent('')
             setPassword('')
           }}
