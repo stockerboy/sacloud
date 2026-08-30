@@ -41,10 +41,22 @@ function refuse(): NextResponse | null {
   return null
 }
 
+/**
+ * CORS + **Private Network Access**.
+ *
+ * 크롬은 공개 사이트(`https://barracks…`)가 내부 주소(`127.0.0.1`)로 요청하는 것을
+ * 기본으로 막는다. 실측: `TypeError: Failed to fetch` — CORS 오류조차 안 뜨고 그냥 막힌다.
+ *
+ * 열려면 **사전 요청에 `Access-Control-Allow-Private-Network: true` 로 답해야** 한다.
+ * 이건 브라우저가 정한 절차지 우회가 아니다 — 내부 서버가 스스로 "받겠다" 고 밝히는 것이다.
+ * 그리고 이 창구는 애초에 개발 전용이고 로컬 DB 를 볼 때만 열린다.
+ */
 const cors = {
   'Access-Control-Allow-Origin': ORIGIN,
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
   'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Private-Network': 'true',
+  'Access-Control-Max-Age': '600',
 }
 
 export function OPTIONS(): NextResponse {
