@@ -1935,7 +1935,7 @@ async function main(): Promise<number> {
         {
           '클랜응답 경기': result.matches,
           '복원 성공': result.restored,
-          '20분 초과': result.longMatches,
+          '긴 경기': result.longMatches,
           '매치의사나이 확정': result.matchManDecided,
           '스나 확인': result.sniperEntries,
           '원어택 잼': result.oneAttackEntries,

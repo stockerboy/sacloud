@@ -51,10 +51,14 @@ function cardSvg(traits: TraitHexagon, name: string, offsetX: number): string {
 
   g(`<rect x="0" y="0" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" fill="${COLOR.side}"/>`)
   g(`<text x="12" y="24" font-size="13" fill="${COLOR.line}">${escape(name)}</text>`)
-  g(
-    `<text x="${CARD_WIDTH - 12}" y="24" text-anchor="end" font-size="10" fill="${COLOR.sideMeta}">` +
-      `전투력 측정중 ${traits.measured}/6</text>`,
-  )
+  /* **다 쟀으면 `측정중` 이라고 적지 않는다.** 실제 컴포넌트가 `traits.measuring` 으로
+     가르는 것과 같은 규칙이다 — 여기서 조건을 빠뜨려 6/6 인데 "측정중 6/6" 이 찍혔었다 */
+  if (traits.measuring) {
+    g(
+      `<text x="${CARD_WIDTH - 12}" y="24" text-anchor="end" font-size="10" fill="${COLOR.sideMeta}">` +
+        `전투력 측정중 ${traits.measured}/6</text>`,
+    )
+  }
 
   /* 눈금 세 겹 */
   for (const scale of [1, 2 / 3, 1 / 3]) {
