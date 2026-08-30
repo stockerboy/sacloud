@@ -240,6 +240,7 @@ model Clan {
   @@unique([sourceClanId])
   @@index([name])
   @@index([origin])
+  barracksNumbers BarracksClanNumber[]
 }
 
 /// 클랜의 다른 표기 (Phase 10).
@@ -1846,6 +1847,31 @@ model PlayerPositionProfile {
   @@unique([userNexonSn, classifierVersion])
   @@index([playerId])
   @@index([position])
+}
+
+/// 병영수첩 **클랜 번호** ↔ 우리 클랜 (D-200).
+///
+/// 배틀로그를 부르려면 `경기키 + 그 경기에 뛴 클랜의 번호` 가 필요하다.
+/// 클랜 번호는 병영수첩만 아는 값이라 우리 `Clan.slug` 로는 못 부른다.
+///
+/// 이 표는 **이미 받은 응답에서 배운 것**만 담는다 — 응답의 `teamList` 가
+/// 양 팀 번호를 알려 주므로, 받을수록 아는 클랜이 늘고 더 받을 수 있게 된다.
+/// 지어내지 않는다 (D-106).
+model BarracksClanNumber {
+  /// 병영수첩 클랜 번호 (예: `070328039332`)
+  clanNo String @id
+  clanId String
+
+  /// 어떻게 이어졌나 — `roster`(참가 선수 대조) · `teamlist`(응답이 직접 알려 줌)
+  source String @default("roster")
+  /// 그 판단의 근거 수. 낮으면 의심한다
+  votes Int @default(1)
+
+  linkedAt DateTime @default(now())
+
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@index([clanId])
 }
 
 /// 선수의 **라운드 복원 집계** (D-194).
