@@ -37,6 +37,11 @@ const ALLOWED = {
     writes: true,
     what: '클랜마크 주소를 static.3rd.supply -> img.sa.nexon.com 으로 되돌린다 (D-227) 백업 후 실행 · MatchPlayerStat 은 안 건드린다',
   },
+  'perf-covering-index': {
+    file: 'perfCoveringIndex',
+    writes: true,
+    what: '클랜 상세를 살리는 커버링 인덱스 (D-230 후속). CONCURRENTLY · 쓰기를 안 잠근다 · 옛 인덱스는 안 지운다',
+  },
   'perf-probe': {
     file: 'perfProbe',
     writes: false,
@@ -55,6 +60,11 @@ const ALLOWED = {
     file: 'syncFreshness',
     writes: false,
     what: '증분 동기화 신선도 — 최신 경기 시각 vs 마지막 적재 시각 · 미러가 훑을 클랜 수 (D-225)',
+  },
+  'db-snapshot-probe': {
+    file: 'dbSnapshotProbe',
+    writes: false,
+    what: 'CI 가 도는 무결성 검사를 여기서 재서 러너(미국)와의 배수를 본다 (D-229 후속)',
   },
   'ipl-sanply-forensics': {
     file: 'iplSanplyForensics',

@@ -252,7 +252,7 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(detail?.traits?.known_games).toBe(TRAIT_MIN_GAMES)
   })
 
-  it('라플수는 `샷싸움`(딜량)이 재지고 `원어택 성공률` 은 포지션 판정을 기다린다', async () => {
+  it('라플수는 `샷싸움`(딜량)이 재지고 `원어택 성공률` 은 라운드 복원을 기다린다', async () => {
     const { traits } = await playerTraits(leagueId, `${P}r5`)
     const axis = (key: string) => traits.axes.find((row) => row.key === key)
 
@@ -260,7 +260,12 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(axis('duel')?.percentile).toBe(90)
     expect(axis('finish')?.label).toBe('원어택 성공률')
     expect(axis('finish')?.percentile).toBeNull()
-    expect(axis('finish')?.pending).toBe('position')
+    /*
+     * 2026-09-01 정정 — 예전에는 `'position'`(「포지션 판정 필요」)을 기대했다.
+     * 이 픽스처는 라운드 자료가 없는 선수라, 포지션을 못 정한 게 아니라
+     * **배틀로그가 아예 없는** 것이다. `'rounds'` 가 맞는 사유다 (D-231).
+     */
+    expect(axis('finish')?.pending).toBe('rounds')
   })
 
   it('스나수는 `스나싸움` 을 아직 못 잰다 — 킬로그가 있어야 한다', async () => {
