@@ -60,6 +60,10 @@ export const IPL_ROSTER: readonly IplClan[] = [
   { given: 'Asterisk', name: 'Asterisk', barracks: 'clanhanul', tier: 4 },
   { given: 'adererror', name: 'adererror', barracks: 'valentina2', tier: 4 },
   { given: '레트로폭탄', name: '레트로폭탄', barracks: 'wdasdw', tier: 4 },
+  /* 2026-08-31 사용자 추가 (병영수첩 주소를 직접 줬다 — /clan/terry9532).
+     이름이 정확히 `Envy` 인 것은 그 하나이고 최근 20경기 중 18건이 제3보급창고다.
+     비슷한 이름이 12곳 더 있다 — `<Envy>` · `Envy`lady` · `Envy.` · `Envy·` 등 */
+  { given: 'Envy', name: 'Envy', barracks: 'terry9532', tier: 4 },
 
   /* --- 5티어 --- */
   { given: 'whitelie', name: 'whitelie:', barracks: 'tispfgid', tier: 5 },
@@ -77,6 +81,9 @@ export const IPL_ROSTER: readonly IplClan[] = [
      비슷한 이름의 다른 클랜도 있다 — `recentwct-`(skytak, 점 없음) ·
      `recent.wct`(luminouszzang, 뒤 대시 없음). 넷은 서로 다른 클랜이다 */
   { given: 'recent.wct-', name: 'recent.wct-', barracks: 'friendliness1', tier: 5 },
+  /* 2026-08-31 사용자 추가 (병영수첩 주소를 직접 줬다 — /clan/wweqeqtd123).
+     이름은 매치 목록 20건에 20번 다 나온 쪽으로 확정했다. 최근 20경기 중 17건이 제3보급창고 */
+  { given: 'vAN`kA', name: 'vAN`kA', barracks: 'wweqeqtd123', tier: 5 },
 
   /* --- 6티어 --- */
   { given: 'everwhite', name: 'everwhite', barracks: 'kelly123', tier: 6 },

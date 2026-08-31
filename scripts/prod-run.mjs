@@ -49,6 +49,11 @@ const ALLOWED = {
     what: '시즌0 창 + 배치고사 10판 규칙을 운영에 적용한다 (--leagues <slug> 필요) ⚠ 백업 후 --revert 가능',
   },
   /* dev 스크립트에서 **정식 잡으로 승격**됐다 (D-210). `nexon` CLI 를 통해 부른다 */
+  'ipl-mark-fill': {
+    file: 'iplMarkFill',
+    writes: true,
+    what: 'IPL 클랜의 클랜마크 주소를 채운다 (이미 있는 곳은 안 덮는다)',
+  },
   'ipl-sanply-check': { cli: ['nexon', 'ipl-sanply-check'], writes: false, what: '열산에 남은 IPL끼리 경기를 센다 (0 이어야 한다)' },
   'ipl-sanply-purge': { cli: ['nexon', 'ipl-sanply-purge'], writes: true, what: '열산에서 IPL끼리의 경기를 지우고 등록 해제한다 ⚠ 지우기 전에 백업을 뜬다' },
 }
