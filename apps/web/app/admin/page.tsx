@@ -112,7 +112,12 @@ export default function AdminDashboardPage() {
           MOCK 표시는 개발용 시드 리그다. 실운영 판단에 쓰지 않는다.
         </div>
         <div className="mt-4 text-sm text-meta">
-          시즌 전환은 <Link className="text-text-strong underline underline-offset-4" href="/admin/seasons">시즌 화면</Link>에서
+          시즌 전환은{' '}
+          <Link href="/admin/seasons">
+            {/* 색·밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
+            <span className="text-text-strong underline underline-offset-4">시즌 화면</span>
+          </Link>
+          에서
           운영자가 직접 실행할 때만 일어난다. 날짜·배포로 자동 전환되지 않는다.
         </div>
       </AdminCard>

@@ -146,8 +146,9 @@ export default function AdminClansPage() {
               {list.data.map((clan) => (
                 <tr key={clan.slug} className="border-t border-line-soft">
                   <td className="py-1">
-                    <Link className="text-text-strong underline underline-offset-4" href={`/admin/clans/${clan.slug}`}>
-                      {clan.name}
+                    <Link href={`/admin/clans/${clan.slug}`}>
+                      {/* 색·밑줄은 안쪽 span 이 가진다 (styles.css 의 레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
+                      <span className="text-text-strong underline underline-offset-4">{clan.name}</span>
                     </Link>
                     <span className="ml-2 text-xs text-meta">{clan.slug}</span>
                   </td>

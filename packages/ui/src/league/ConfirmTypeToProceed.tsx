@@ -34,7 +34,8 @@ export function ConfirmTypeToProceed({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-page/80">
-      <div className="w-[420px] rounded-[var(--radius)] border border-line bg-card px-6 py-6">
+      {/* 폭을 고정하면 폰(375px)에서 가로 스크롤이 생긴다. 좁은 화면에서는 화면 폭을 따른다 */}
+      <div className="w-[420px] max-w-[calc(100vw-2rem)] rounded-[var(--radius)] border border-line bg-card px-6 py-6">
         <div className="font-display text-xl tracking-wide text-text-strong">{title}</div>
         <div className="mt-2 text-sm leading-relaxed text-meta">{description}</div>
         <div className="mt-5 text-sm text-text">
