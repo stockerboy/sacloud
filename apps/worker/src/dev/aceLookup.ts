@@ -16,43 +16,10 @@
  *   **자동으로 확정하지 않는다.** 후보를 늘어놓고 사람이 고른다 (D-036 과 같은 태도).
  */
 import { prisma } from '@sacloud/db'
+import { ACES, foldNick as fold } from '../lib/aces.js'
 
-interface Ace {
-  name: string
-  weapon: '스나' | '라플'
-  clanHint?: string
-}
-
-const ACES: readonly Ace[] = [
-  { name: 'Xek', weapon: '스나' },
-  { name: 'cut', weapon: '스나', clanHint: '베리타스' },
-  { name: '감젤', weapon: '스나', clanHint: '부부젤라' },
-  { name: '유닠', weapon: '스나' },
-  { name: '호펭', weapon: '스나' },
-  { name: '[h].jerry', weapon: '스나' },
-  { name: 'ㅇ7ㅇ', weapon: '스나' },
-  { name: '멍청이젤', weapon: '스나' },
-
-  { name: '피존', weapon: '라플' },
-  { name: 'KKW', weapon: '라플' },
-  { name: '토껭이', weapon: '라플' },
-  { name: '김장은', weapon: '라플' },
-  { name: '혜진젤', weapon: '라플' },
-  { name: 'starry', weapon: '라플' },
-  { name: 'Nostalgia❤️', weapon: '라플' },
-  { name: '견자히', weapon: '라플' },
-  { name: 'haybe', weapon: '라플' },
-]
-
-/** 기호·공백을 접고 소문자로. 비교 전용이고 저장하지 않는다 */
-function fold(value: string): string {
-  return value
-    .replace(/Р/g, 'P')
-    .replace(/Β/g, 'B')
-    .replace(/Ι/g, 'I')
-    .replace(/[^0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ]/g, '')
-    .toLowerCase()
-}
+/* 명단과 접기 규칙은 `apps/worker/src/lib/aces.ts` 하나에만 둔다 —
+   배틀로그 작업목록(`battlelogWorklist.ts`)이 같은 명단을 쓴다. 두 벌이 되면 갈라진다 */
 
 async function main(): Promise<void> {
   const players = await prisma.player.findMany({

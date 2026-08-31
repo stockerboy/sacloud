@@ -31,6 +31,11 @@ const ALLOWED = {
   'ipl-source': { file: 'iplSource', writes: false, what: 'IPL 기록이 어디까지 있는지 센다' },
   'ipl-match': { file: 'iplMatch', writes: false, what: '명단 39곳이 DB 에 있는지 대조한다' },
   'sanply-check': { file: 'sanplyCheck', writes: false, what: '열산에서 IPL 이 빠졌는지 대조한다' },
+  'ipl-sanply-forensics': {
+    file: 'iplSanplyForensics',
+    writes: false,
+    what: '열산에 남은 IPL끼리 경기를 한 건씩 찍는다 (원인 규명 · 역방향 포함)',
+  },
 
   /* `--confirm` 을 붙여야 쓴다 */
   'league-rename': {
@@ -49,6 +54,26 @@ const ALLOWED = {
     what: '시즌0 창 + 배치고사 10판 규칙을 운영에 적용한다 (--leagues <slug> 필요) ⚠ 백업 후 --revert 가능',
   },
   /* dev 스크립트에서 **정식 잡으로 승격**됐다 (D-210). `nexon` CLI 를 통해 부른다 */
+  'clan-mark-audit': {
+    file: 'clanMarkAudit',
+    writes: false,
+    what: '리그에 등록된 클랜 중 마크가 안 그려지는 곳을 리그별로 찍는다 (판정거짓 / 마크없음)',
+  },
+  'match-first-side-check': {
+    file: 'matchFirstSideCheck',
+    writes: false,
+    what: '전반 공수 백필의 재료(배틀로그 원문·클랜번호)와 채워진 건수를 센다',
+  },
+  'match-first-side-push': {
+    file: 'matchFirstSidePush',
+    writes: true,
+    what: '로컬에서 정한 전반 공수(선레드/선블루)를 운영 Match 에 채운다 (D-207)',
+  },
+  'match-first-side': {
+    file: 'matchFirstSideBuild',
+    writes: true,
+    what: '경기별 전반 공수(선레드/선블루)를 배틀로그 폭탄 근거로 채운다 (D-207)',
+  },
   'ipl-mark-fill': {
     file: 'iplMarkFill',
     writes: true,
