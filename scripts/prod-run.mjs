@@ -27,6 +27,11 @@ import { spawnSync } from 'node:child_process'
  */
 const ALLOWED = {
   /* 읽기만 한다 */
+  'perf-probe': {
+    file: 'perfProbe',
+    writes: false,
+    what: '어느 질의가 느린지 하나씩 잰다 (/api/home/top 이 던지는 질의 + 표 크기 + 인덱스)',
+  },
   'ipl-state': { file: 'iplState', writes: false, what: 'IPL 리그·등록 클랜·경기 수를 읽는다' },
   'ipl-source': { file: 'iplSource', writes: false, what: 'IPL 기록이 어디까지 있는지 센다' },
   'ipl-match': { file: 'iplMatch', writes: false, what: '명단 39곳이 DB 에 있는지 대조한다' },

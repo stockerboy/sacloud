@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
-import { notFound, okPage, guard } from '@/lib/server/respond'
+import { notFound, okPagePublic, guard } from '@/lib/server/respond'
 import { intQuery, pageParams, routeParam } from '@/lib/server/request'
 import { getClanRanks, resolveLeagueId } from '@/lib/server/queries/leagues'
 
@@ -17,6 +17,7 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     const division = intQuery(request, 'division', 1)
     const { cursor, size } = pageParams(request, PAGE_SIZE.RANK)
     const page = await getClanRanks(leagueId, division, cursor, size)
-    return page ? okPage(page) : notFound('리그를 찾을 수 없습니다')
+    /* 랭킹은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
+    return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')
   })
 }

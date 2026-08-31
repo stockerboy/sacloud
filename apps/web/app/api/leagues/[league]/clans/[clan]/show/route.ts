@@ -1,4 +1,4 @@
-import { guard, notFound, ok } from '@/lib/server/respond'
+import { guard, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { getLeagueClanShow } from '@/lib/server/queries/records'
 
@@ -16,6 +16,7 @@ export async function GET(_request: Request, context: { params: Promise<Record<s
     const leagueSlug = await routeParam(context, 'league')
     const clanSlug = await routeParam(context, 'clan')
     const detail = await getLeagueClanShow(leagueSlug, clanSlug)
-    return detail ? ok(detail) : notFound('리그 클랜을 찾을 수 없습니다')
+    /* 가장 무거운 공개 화면이다 (운영 1.2~1.7초). 엣지가 대신 답한다 (D-223) */
+    return detail ? okPublic(detail) : notFound('리그 클랜을 찾을 수 없습니다')
   })
 }

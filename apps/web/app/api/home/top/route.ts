@@ -1,4 +1,4 @@
-import { ok, guard } from '@/lib/server/respond'
+import { guard, okPublic } from '@/lib/server/respond'
 import { getHomeTop } from '@/lib/server/queries/homeTop'
 
 /**
@@ -12,5 +12,6 @@ import { getHomeTop } from '@/lib/server/queries/homeTop'
  * 응답 형태는 `HomeTop` 스키마로 클라이언트에서 파싱한다.
  */
 export async function GET() {
-  return guard(async () => ok(await getHomeTop()))
+  /* 로그인과 무관한 공개 값이라 엣지가 대신 답한다 (D-223) */
+  return guard(async () => okPublic(await getHomeTop()))
 }

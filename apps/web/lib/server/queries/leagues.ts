@@ -455,11 +455,22 @@ export async function getPlayerRanks(
       }),
   })
 
-  const startRank = await rankOfFirstPlayer(leagueId, page.items[0])
-  const counts = await matchCountByPlayer(
-    leagueId,
-    page.items.map((row) => row.player.id),
-  )
+  /* 평균킬 분모는 `knownStatGames` 가 **먼저**다 (D-172). 그것이 있는 선수는
+     `matchCountByPlayer` 를 부를 이유가 없다 — 결과를 쓰지도 않는다.
+     그런데 예전에는 **전원 분을 항상** 물었다. 운영 실측에서 그 `groupBy` 하나가
+     DPL 1.3초 · 열산 0.3초였다 (2026-09-01 · D-223).
+     그래서 **모르는 선수만** 모아서 묻는다. 아무도 없으면 질의 자체가 사라진다.
+
+     두 질의를 `Promise.all` 로 묶은 것도 같은 이유다. 서로 아무 관계가 없는데
+     줄줄이 기다리고 있었다 — 왕복 시간이 그대로 두 번 더해졌다. */
+  const unknownGames = page.items.filter((row) => knownGamesOf(row.weaponStats) === 0)
+  const [startRank, counts] = await Promise.all([
+    rankOfFirstPlayer(leagueId, page.items[0]),
+    matchCountByPlayer(
+      leagueId,
+      unknownGames.map((row) => row.player.id),
+    ),
+  ])
 
   return {
     cursor: page.cursor,

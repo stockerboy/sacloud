@@ -1,5 +1,5 @@
 import { PAGE_SIZE, parseRankWeapon } from '@sacloud/contract'
-import { notFound, okPage, guard } from '@/lib/server/respond'
+import { notFound, okPagePublic, guard } from '@/lib/server/respond'
 import { pageParams, query, routeParam } from '@/lib/server/request'
 import { getPlayerRanks, resolveLeagueId } from '@/lib/server/queries/leagues'
 import { getPlayerRanksByWeapon } from '@/lib/server/queries/rankings'
@@ -24,6 +24,7 @@ export async function GET(request: Request, context: { params: Promise<Record<st
       weapon === 'all'
         ? await getPlayerRanks(leagueId, cursor, size)
         : await getPlayerRanksByWeapon(leagueId, weapon, cursor, size)
-    return page ? okPage(page) : notFound('리그를 찾을 수 없습니다')
+    /* 랭킹은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
+    return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')
   })
 }

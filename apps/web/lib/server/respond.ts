@@ -23,6 +23,54 @@ export function okPage<T>(page: { items: T[]; cursor: CursorMetadata }) {
   })
 }
 
+/**
+ * **공개 읽기 응답 — CDN 이 대신 답하게 한다** (2026-09-01 · D-223).
+ *
+ * ── 왜
+ *   이 응답들은 **로그인과 무관하다.** 같은 주소면 누구에게나 같은 값이다.
+ *   그런데 지금은 방문자마다 함수를 깨우고 DB 를 때린다. 클랜 상세가 운영에서
+ *   1.2~1.7초였고, 함수가 식어 있으면 **첫 요청이 10초**였다.
+ *   엣지가 대신 답하면 둘 다 사라진다 — 함수를 아예 안 깨우기 때문이다.
+ *
+ * ── 무엇을 붙이나
+ *   `s-maxage` 는 **공유 캐시(엣지)만** 본다. `max-age=0` 이라 **사용자 브라우저는
+ *   캐시하지 않는다** — 방금 뭔가 한 사람이 옛 화면을 보는 일이 없어야 한다.
+ *   `stale-while-revalidate` 는 만료된 값을 일단 내주고 뒤에서 새로 받아 온다.
+ *   그래서 만료 직후 한 명이 느린 응답을 뒤집어쓰는 일이 없다.
+ *
+ * ── ⚠ **세션을 읽는 응답에는 절대 쓰지 않는다**
+ *   엣지 캐시는 쿠키를 구분하지 않는다. 남의 로그인 상태가 섞여 나간다.
+ *   `/api/infos`(로그인 사용자를 담는다) · `/api/me/*` · `/api/admin/*` 는 대상이 아니다.
+ *   그리고 **알 목록(`/api/eggs/broken`)도 아니다** — 방금 깬 알이 안 보이면
+ *   사용자는 「안 깨졌다」 로 읽는다 (D-222 ⑤).
+ */
+const PUBLIC_CACHE_SECONDS = 30
+
+function withPublicCache(response: NextResponse, seconds: number): NextResponse {
+  response.headers.set(
+    'Cache-Control',
+    `public, max-age=0, s-maxage=${seconds}, stale-while-revalidate=300`,
+  )
+  return response
+}
+
+/** 공개 단건 응답 (`ok` 과 같고 캐시 머리말만 붙는다) */
+export function okPublic<T>(
+  data: T,
+  metadata?: { cursor: CursorMetadata },
+  seconds = PUBLIC_CACHE_SECONDS,
+) {
+  return withPublicCache(ok(data, metadata), seconds)
+}
+
+/** 공개 목록 응답 (`okPage` 과 같고 캐시 머리말만 붙는다) */
+export function okPagePublic<T>(
+  page: { items: T[]; cursor: CursorMetadata },
+  seconds = PUBLIC_CACHE_SECONDS,
+) {
+  return withPublicCache(okPage(page), seconds)
+}
+
 /** 에러 응답. 원본 에러 포맷은 [미확인] — 계약의 `ErrorResponse` 형태로 확정했다. */
 export function fail(status: number, message: string, errors?: Record<string, string[]>) {
   return NextResponse.json({ message, data: null, ...(errors ? { errors } : {}) }, { status })

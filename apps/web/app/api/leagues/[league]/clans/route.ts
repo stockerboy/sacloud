@@ -1,7 +1,15 @@
 import { prisma } from '@sacloud/db'
 import { registerClanTier } from '@sacloud/db/ops'
 import { LeagueClanRegisterInput, winRate } from '@sacloud/contract'
-import { badRequest, forbidden, guard, notFound, ok, okPage, unauthorized } from '@/lib/server/respond'
+import {
+  badRequest,
+  forbidden,
+  guard,
+  notFound,
+  ok,
+  okPagePublic,
+  unauthorized,
+} from '@/lib/server/respond'
 import { jsonBody, pageParams, routeParam } from '@/lib/server/request'
 import { getLeagueClans } from '@/lib/server/queries/leagues'
 import { audit, requireLeagueAdmin } from '@/lib/server/queries/leagueAdmin'
@@ -14,7 +22,8 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     const leagueSlug = await routeParam(context, 'league')
     const { cursor, size } = pageParams(request)
     const page = await getLeagueClans(leagueSlug, cursor, size)
-    return page ? okPage(page) : notFound('리그를 찾을 수 없습니다')
+    /* 목록은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
+    return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')
   })
 }
 
