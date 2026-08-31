@@ -17,11 +17,11 @@ import {
 } from '../lib/season0Window.js'
 
 describe('시즌0 창 (D-175)', () => {
-  it('2026-04-01 00:00 KST 에서 시작한다', () => {
-    expect(SEASON0_FROM.toISOString()).toBe('2026-03-31T15:00:00.000Z')
+  it('2026-07-01 00:00 KST 에서 시작한다 (2026-08-31 정정 · 옛 값 4/1)', () => {
+    expect(SEASON0_FROM.toISOString()).toBe('2026-06-30T15:00:00.000Z')
     // KST 로 환산하면 4월 1일 0시다
     const kst = new Date(SEASON0_FROM.getTime() + 9 * 60 * 60 * 1000)
-    expect(kst.toISOString()).toBe('2026-04-01T00:00:00.000Z')
+    expect(kst.toISOString()).toBe('2026-07-01T00:00:00.000Z')
   })
 
   it('끝이 없다 — 시즌1 오픈일은 사용자가 정한다', () => {

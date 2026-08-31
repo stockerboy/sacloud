@@ -390,7 +390,7 @@ export async function applySeason0(leagueSlugs: string[], confirm: boolean): Pro
     /* ---- 이번 창에 한 판도 안 뛴 선수·클랜은 **기준점으로 되돌린다** ----
 
        그대로 두면 원본 점수(0~3,432)와 우리 점수(3,000 기준)가 한 표에 섞여
-       랭킹이 다시 엉킨다. 시즌0 창은 **2026-04-01(KST) ~ 현재**이므로 (D-175)
+       랭킹이 다시 엉킨다. 시즌0 창은 **2026-07-01(KST) ~ 현재**이므로 (D-175)
        그 창에 경기가 없으면 시즌0 기록이 없는 것이 맞다. `placement=true` 라 랭킹에서 빠진다.
        무기별 기록도 같이 지운다 — 안 지우면 통합 = 기본 + 스나 + 라플 이 깨진다. */
     const keepIds = new Set(plan.players.map((p) => p.playerId))
