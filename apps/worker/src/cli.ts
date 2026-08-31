@@ -42,6 +42,7 @@ import { AbortCollection, type JobContext } from './jobs/context.js'
 import { runIdentities } from './jobs/identities.js'
 import { runIdentityWatch } from './jobs/identityWatch.js'
 import { runBarracksLink } from './jobs/barracksLink.js'
+import { runIplProject } from './jobs/iplProject.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
@@ -377,6 +378,31 @@ async function main(): Promise<number> {
       const created = await ensurePollStates()
       if (created > 0) log(`폴링 대상 ${created}명 추가`)
       table([result as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'iplmatch-project': {
+      /*
+        IPL 원문을 `Match` 로 투영한다. `--confirm` 없이는 한 줄도 쓰지 않는다.
+        양쪽이 다 IPL 등록 클랜이고 시즌 창 안일 때만 넣는다 (D-210 · D-175).
+        참가자는 원문에 없으므로 `MatchPlayerStat` 은 만들지 않는다.
+      */
+      const result = await runIplProject({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          고유경기: result.uniqueMatches,
+          투영대상: result.planned,
+          신규: result.created,
+          갱신: result.updated,
+        },
+      ])
+      if (result.unknownClanNames.length) {
+        log('못 이은 클랜명 (많이 나온 순)')
+        for (const u of result.unknownClanNames) log(`  ${u.name} — ${u.count.toLocaleString()}건`)
+      }
       return 0
     }
 
