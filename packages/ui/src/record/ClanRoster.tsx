@@ -52,9 +52,15 @@ import { leaguePlayerPath } from '../common/paths'
  *   미접속인 것이 아니다. 접으면 없는 사실을 만든다 (`CLAUDE.md` 3장 7번).
  *   그래서 양쪽 다 꺼진 줄이 나올 수 있고, **그게 맞는 화면이다.**
  *
- * ── 글자도 같이 죽인다
+ * ── 글자도 같이 죽인다 — 다만 **읽히는 선까지만**
  *   불만 끄고 글자를 그대로 두면 세 상태가 한눈에 안 갈린다.
- *   켜진 쪽만 본문색이고 꺼진 쪽은 `--color-faint` 다.
+ *   켜진 쪽은 본문색, 꺼진 쪽은 한 단 죽인다.
+ *
+ *   ⚠ 처음엔 `--color-faint` 를 썼는데 카드 위에서 **대비 2.82:1** 이다 (D팀 실측).
+ *     장식이면 몰라도 **`접속중`/`미접속` 은 뜻을 가진 라벨**이라 읽혀야 한다.
+ *     `--color-meta`(5.35:1)로 올렸다 — 켜진 쪽과는 여전히 갈리고, 읽히기는 한다.
+ *     **꺼진 불(`--color-lamp-off`)은 그대로 둔다.** 그건 장식이고, 안 묻히는 것이
+ *     실측으로 확인됐다.
  */
 function Lamp({ on, tone }: { on: boolean; tone: 'online' | 'offline' }) {
   return (
@@ -72,11 +78,11 @@ function OnlineCell({ online }: { online: boolean | null }) {
     online === null ? '접속 여부를 모릅니다' : online ? '접속중' : '미접속'
   return (
     <span className="flex shrink-0 items-center gap-3 text-xs" title={label}>
-      <span className={`flex items-center gap-1 ${online === true ? 'text-text' : 'text-faint'}`}>
+      <span className={`flex items-center gap-1 ${online === true ? 'text-text' : 'text-meta'}`}>
         <Lamp on={online === true} tone="online" />
         접속중
       </span>
-      <span className={`flex items-center gap-1 ${online === false ? 'text-text' : 'text-faint'}`}>
+      <span className={`flex items-center gap-1 ${online === false ? 'text-text' : 'text-meta'}`}>
         <Lamp on={online === false} tone="offline" />
         미접속
       </span>

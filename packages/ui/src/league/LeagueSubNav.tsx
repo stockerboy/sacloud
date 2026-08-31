@@ -18,8 +18,21 @@ import { BETA_NOTICE, BETA_NOTICE_HEADLINE } from './betaNoticeText'
  * **이동 경로(href)는 하나도 바뀌지 않았다.**
  */
 
+/*
+ * ⚠ `border-b-transparent` 를 여기 두면 **활성 밑줄이 영영 안 그려진다** (2026-09-01 · D-232).
+ *
+ * `ITEM_ACTIVE` 의 `border-b-accent` 와 같은 속성·같은 특정도인데, 빌드된 CSS 에서
+ * `.border-b-transparent`(20573)가 `.border-b-accent`(20234)**보다 뒤에 온다.**
+ * 뒤에 오는 쪽이 이긴다 — 클래스를 붙이는 순서와 무관하다.
+ *
+ * 실측: 활성 탭의 `borderBottomColor` 가 `rgba(0,0,0,0)` 이었고,
+ *       `border-b-transparent` 만 떼면 `rgb(217,43,43)` 이 돌아왔다.
+ *
+ * 그래서 **비활성일 때만** transparent 를 준다. 두 클래스가 만나지 않게 한다.
+ */
 const ITEM =
-  'flex cursor-pointer items-center justify-center border-b-2 border-b-transparent px-4 text-sm tracking-wide text-meta hover:text-text'
+  'flex cursor-pointer items-center justify-center border-b-2 px-4 text-sm tracking-wide text-meta hover:text-text'
+const ITEM_INACTIVE = 'border-b-transparent'
 const ITEM_ACTIVE = 'border-b-accent font-bold text-text-strong'
 
 /**
@@ -79,7 +92,7 @@ export function LeagueSubNav({
             <Link
               key={item.href}
               href={item.href}
-              className={`${ITEM} ${pathname.startsWith(item.href) ? ITEM_ACTIVE : ''}`}
+              className={`${ITEM} ${pathname.startsWith(item.href) ? ITEM_ACTIVE : ITEM_INACTIVE}`}
             >
               <span className="pr-2">{item.icon}</span>
               {item.label}
@@ -110,8 +123,9 @@ export function LeagueSubNav({
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-1 items-center justify-center border-b-2 border-b-transparent text-sm tracking-wide ${
-                pathname.startsWith(item.href) ? ITEM_ACTIVE : 'text-meta'
+              /* 모바일도 같은 이유로 비활성일 때만 transparent 를 준다 (D-232) */
+              className={`flex flex-1 items-center justify-center border-b-2 text-sm tracking-wide ${
+                pathname.startsWith(item.href) ? ITEM_ACTIVE : `${ITEM_INACTIVE} text-meta`
               }`}
             >
               {item.label}
