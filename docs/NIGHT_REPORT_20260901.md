@@ -115,6 +115,48 @@ DB 는 서울(Supabase)인데 함수가 미국에 있어서 **질의 한 번마�
 
 ---
 
+## 1-A. 아침에 열어 볼 때를 위해 — **운영 전 경로 스모크 (04:45 실측)**
+
+**32개 경로 전부 `200` · 전부 1.2초 이하.**
+
+```
+/                            0.22   /auth/login                 0.37
+/leagues                     0.59   /auth/signup                0.62
+/league/supply/home/info     1.20   /auth/password/forget       0.39
+/league/supply/rank/player   0.30   /clause/service · policy    0.37 · 0.89
+/league/supply/rank/clan/1   0.27   /me · /me/link · /me/setting  0.39 · 0.42 · 0.54
+/league/nolink/rank/player   0.14   /leagues/create             0.45
+/league/sanply/rank/player   0.25   /league/supply/clan/lpcrew  0.40
+/board/hot · /board/free     0.32 · 0.15   …/clan/lpcrew/player 0.19
+/board/free/write            0.35   /clan/lpcrew · /player      0.37 · 0.18
+/admin · /admin/eggs         0.46 · 0.42
+/admin/clans · matches · seasons · legacy   0.70 · 0.51 · 0.93 · 0.49
+/notfound                    0.46
+```
+
+**깨진 화면 없음.** 관리자 화면 넷도 전부 1초 아래다 — 어제까지 25초였던 자리다.
+
+### 알 기능 — **운영에서 왕복으로 확인했다** (04:45)
+
+기능이 붙었다고만 하고 끝내지 않았다. 실제로 깨 보고, 보이는지 보고, 되돌렸다.
+
+```
+1  관리자 로그인                                        OK
+2  대상 고르기 (아직 안 깨진 클랜)                        togs4033
+3  POST /api/admin/eggs/clan/togs4033                  broken=true · reason='admin'
+4  GET  /api/eggs/broken  (공개)                        clans: ["togs4033"]   ← 즉시 보인다
+5  GET  /api/admin/eggs   (관리자)                       reason=admin · brokenAt 기록됨
+6  DELETE /api/admin/eggs/clan/togs4033                broken=false
+7  GET  /api/eggs/broken                               clans: []             ← 되돌아갔다
+8  비로그인 GET /api/admin/eggs                          403                   ← 여전히 막힌다
+```
+
+**원상복구했다.** 운영 DB 의 `EggBreak` 는 다시 0건이다 — 시험 흔적을 남기지 않았다.
+`reason='admin'` 이 제대로 박히는 것도 확인했다. 나중에 칭호 인증이 들어오면
+이 사유로 남은 것만 골라 지우면 된다 (D-222).
+
+---
+
 ## 2. 아직 안 되는 것 (정직하게)
 
 | | 무엇 | 왜 |
