@@ -32,10 +32,20 @@ const ALLOWED = {
     writes: false,
     what: '병영 클랜원 명단이 우리 선수와 얼마나 이어져 있나 (접속중 표시가 가능한 인원)',
   },
+  'clan-mark-restore': {
+    file: 'clanMarkRestore',
+    writes: true,
+    what: '클랜마크 주소를 static.3rd.supply -> img.sa.nexon.com 으로 되돌린다 (D-227) 백업 후 실행 · MatchPlayerStat 은 안 건드린다',
+  },
   'perf-probe': {
     file: 'perfProbe',
     writes: false,
     what: '어느 질의가 느린지 하나씩 잰다 (/api/home/top 이 던지는 질의 + 표 크기 + 인덱스)',
+  },
+  'prod-health': {
+    file: 'prodHealthProbe',
+    writes: false,
+    what: '통계(ANALYZE) 갱신 여부 · 플래너가 아는 행 수 vs 실제 · 디스크 여유 · collation · 인덱스 (D-227 후속)',
   },
   'ipl-state': { file: 'iplState', writes: false, what: 'IPL 리그·등록 클랜·경기 수를 읽는다' },
   'ipl-source': { file: 'iplSource', writes: false, what: 'IPL 기록이 어디까지 있는지 센다' },
