@@ -131,3 +131,60 @@ describe('클랜 단위 응답과 선수 단위 응답을 가른다 (D-184)', ()
     expect(result.skipped).toBe(1)
   })
 })
+
+/* ------------------------------------------------- D-218 에서 더한 것 --- */
+
+describe('창구가 한 겹 싸서 넣은 원문 (D-218)', () => {
+  it('payload.raw 아래 있어도 이벤트를 찾는다', () => {
+    /* `/api/dev/barracks-ingest` 가 `{ source, matchKey, clanNo, raw }` 로 넣어 둔 행.
+       이걸 못 펴면 그 행들이 포지션·라운드 집계에서 통째로 빠진다 */
+    const wrapped = {
+      source: 'nexon_barracks',
+      matchKey: 'T216-a',
+      clanNo: '000000000001',
+      raw: { teamList: [{ clan_no: '1' }], battleLog: [{ event_type: 'kill' }] },
+    }
+    expect(eventsOf(wrapped)).toHaveLength(1)
+    expect(isClanResponse(wrapped)).toBe(true)
+  })
+})
+
+describe('폴더째 읽기 (D-218)', () => {
+  it('확장자가 아니라 내용으로 고른다 — GUID .tmp 도 읽고 남의 파일은 건드리지 않는다', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'battlelog-dir-'))
+    /* 크롬이 떨어뜨린 이름 없는 파일 두 개 */
+    writeFileSync(
+      join(dir, '9f1c2b7e-0000-4000-8000-000000000001.tmp'),
+      JSON.stringify({
+        rows: [
+          {
+            matchKey: 'T216-b',
+            clanNo: '000000000002',
+            raw: { teamList: [{ clan_no: '2' }], battleLog: [{ event_type: 'kill', kill_x: 1, kill_y: 2 }] },
+          },
+        ],
+      }),
+      'utf8',
+    )
+    writeFileSync(
+      join(dir, '9f1c2b7e-0000-4000-8000-000000000002.tmp'),
+      JSON.stringify([
+        {
+          matchKey: 'T216-c',
+          clanNo: '000000000003',
+          raw: { teamList: [{ clan_no: '3' }], battleLog: [{ event_type: 'kill', kill_x: 3, kill_y: 4 }] },
+        },
+      ]),
+      'utf8',
+    )
+    /* 우리 것이 아닌 파일들 — 하나는 JSON 도 아니다 */
+    writeFileSync(join(dir, 'notes.txt'), '이건 우리 것이 아니다', 'utf8')
+    writeFileSync(join(dir, 'other.json'), JSON.stringify({ hello: 'world' }), 'utf8')
+
+    const result = await importBattleLogs({ file: dir })
+    expect(result.rows).toBe(2)
+    expect(result.stored).toBe(0) // --confirm 이 없으니 한 줄도 안 쓴다
+    expect(result.events).toBe(2)
+    expect(result.points).toBe(2)
+  })
+})

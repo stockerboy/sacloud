@@ -52,6 +52,7 @@ import { buildRosterFromMatchEvidence, syncRosterFromBarracks } from './jobs/ros
 import { applyWeaponToStats, importWeaponEvidence } from './jobs/weapon.js'
 /** 병영수첩 BattleLog 원문 적재 + 좌표 기반 포지션 판정 (D-174) */
 import { buildPositionProfiles, importBattleLogs } from './jobs/battlelog.js'
+import { checkBattleLogs } from './jobs/battlelogCheck.js'
 /** 병영수첩 클랜전 목록 원문 적재 — IPL 기록 이관 */
 import {
   checkIplMatches,
@@ -197,6 +198,8 @@ function usage(): void {
   ipl-sanply-check [--league <slug>] [--ipl-league <slug>]
               **열산에 남은 IPL끼리의 경기**를 센다 (D-210). 0 이 아니면 exit 1
               막는 규칙은 적재(supply-import)에 들어 있다 — 이건 새는지 보는 대조다
+              **IPL 명단이 마지막 청소 뒤로 바뀌었어도 exit 1** — 새 클랜의 과거 경기가
+              소급해서 「IPL끼리」가 된다. 0건인 것은 통과가 아니다
   ipl-sanply-purge [--league <slug>] [--ipl-league <slug>] [--backup-dir <폴더>] [--confirm]
               이미 들어온 IPL끼리의 경기를 지우고 IPL 클랜을 열산에서 뺀다 (D-210)
               **지우기 전에 백업 JSON 을 뜬다.** 원문(수집 JSONL)은 건드리지 않는다
@@ -1990,6 +1993,8 @@ async function main(): Promise<number> {
           '매치의사나이 확정': result.matchManDecided,
           '스나 확인': result.sniperEntries,
           '원어택 잼': result.oneAttackEntries,
+          '기회창출 라운드': result.openingRounds,
+          '첫킬 불명': result.openingTiedRounds,
           '계정 불명': result.unknownAccounts,
           프로필: result.profiles,
           '선수 연결': result.linked,
@@ -2169,7 +2174,10 @@ async function main(): Promise<number> {
         targetLeagueSlug: stringFlag(args, 'league') ?? undefined,
         iplLeagueSlug: stringFlag(args, 'ipl-league') ?? undefined,
       })
-      return scope.matchIds.length === 0 ? 0 : 1
+      /* 경기 수만 보지 않는다. **명단이 마지막 청소 뒤로 바뀌었으면 그것도 실패다**
+         (D-210 후속) — 새 클랜의 과거 경기가 소급해서 「IPL끼리」가 됐는데
+         아직 안 치웠다는 뜻이라, 지금 0건인 것은 통과가 아니다 */
+      return scope.matchIds.length === 0 && !scope.rosterDrift.drifted ? 0 : 1
     }
 
     /**
@@ -2238,6 +2246,54 @@ async function main(): Promise<number> {
         }
       }
       if (!boolFlag(args, 'confirm')) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    /**
+     * 배틀로그 전수수집 **대조** (D-218).
+     *
+     *   pnpm --filter @sacloud/worker nexon battlelog-check
+     *
+     * **"수집 완료" 로그가 아니라 숫자로 판정한다** (`CLAUDE.md` 3-A 6번).
+     * 읽기 전용이다 — 한 줄도 쓰지 않는다.
+     */
+    case 'battlelog-check': {
+      const r = await checkBattleLogs()
+      table([
+        {
+          '아는 경기': r.matchesKnown,
+          '받음': r.matchesFetched,
+          '안 받음': r.matchesMissing,
+          '클랜응답 행': r.clanRows,
+          '좌표 라운드': r.roundsWithPoints,
+          '좌표 이벤트': r.points,
+          '빈 응답': r.emptyResponses,
+        },
+      ])
+      /* **숫자가 바뀐 이유를 남긴다** — 예전 판에는 `양 팀 / 한 팀만` 칸이 있었다 (D-218) */
+      log(
+        `판정 기준이 바뀌었다 (D-218): 응답 하나에 양 팀 10명이 다 온다 — ` +
+          `옛 '한 팀만 받음 ${r.legacy.oneResponse.toLocaleString()}건' 은 결손이 아니라 ` +
+          `완전한 경기다. 지금은 받음/안 받음으로만 센다 (응답 두 벌 ${r.legacy.twoResponses.toLocaleString()}건)`,
+      )
+      if (r.worklistPairs !== null) {
+        log(`작업목록에 남은 짝 ${r.worklistPairs.toLocaleString()}개`)
+        if (r.worklistByPriority.length > 0) table(r.worklistByPriority)
+      } else {
+        warn('작업목록이 없다 — src/dev/battlelogWorklist.ts 를 먼저 돌려라')
+      }
+      /* **여기가 진짜 성과 지표다.** 경기 수가 아니라 "누구를 볼 수 있게 됐나" 다 */
+      table(
+        r.aces.map((a) => ({
+          '1티어': a.name,
+          클랜: a.clan ?? (a.found ? '소속없음' : 'DB 에 없음'),
+          경기: a.matches,
+        })),
+      )
+      log(`배틀로그가 있는 1티어 ${r.aces.filter((a) => a.matches > 0).length}/${r.aces.length}명`)
+      log(
+        `배틀로그가 있는 개인랭킹 상위 ${r.top30.filter((t) => t.matches > 0).length}/${r.top30.length}명`,
+      )
       return 0
     }
 

@@ -17,7 +17,8 @@
  * ── 재계산
  *   구역 지도나 판정 규칙을 바꿔도 **다시 요청하지 않는다.** 저장된 원문에서 다시 계산한다.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { prisma } from '@sacloud/db'
 import {
   POSITION_CLASSIFIER_VERSION,
@@ -133,7 +134,15 @@ export interface BattleLogImportResult {
   labels: Record<string, string>
 }
 
-/** 응답에서 이벤트 배열을 찾는다. 키 이름이 흔들려도 원문은 버리지 않는다 */
+/**
+ * 응답에서 이벤트 배열을 찾는다. 키 이름이 흔들려도 원문은 버리지 않는다.
+ *
+ * ⚠ **`raw` 로 한 겹 싸인 것도 푼다** (2026-08-31 추가).
+ *   `/api/dev/barracks-ingest` 창구는 원문을 `{ source, matchKey, clanNo, raw }` 로 싸서
+ *   저장했다. 그 모양은 여기서 `battleLog` 를 못 찾아 **포지션·라운드 집계에서 통째로
+ *   빠져 있었다.** 이미 들어간 행을 되살리려면 여기서 한 겹 벗기는 수밖에 없다
+ *   (원문을 다시 받는 것은 원본에 쓸데없는 요청을 보내는 셈이다).
+ */
 export function eventsOf(raw: unknown): BattleLogPositionEvent[] {
   if (Array.isArray(raw)) return raw as BattleLogPositionEvent[]
   if (raw === null || typeof raw !== 'object') return []
@@ -142,6 +151,8 @@ export function eventsOf(raw: unknown): BattleLogPositionEvent[] {
     const value = record[key]
     if (Array.isArray(value)) return value as BattleLogPositionEvent[]
   }
+  const inner = record.raw
+  if (inner !== null && typeof inner === 'object') return eventsOf(inner)
   return []
 }
 
@@ -180,7 +191,37 @@ function subjectOf(row: BattleLogImportRow): string | null {
  */
 export function isClanResponse(raw: unknown): boolean {
   if (raw === null || typeof raw !== 'object') return false
-  return Array.isArray((raw as Record<string, unknown>).teamList)
+  const record = raw as Record<string, unknown>
+  if (Array.isArray(record.teamList)) return true
+  /* 창구가 `raw` 로 한 겹 싸서 넣은 것도 본다 (위 `eventsOf` 와 같은 이유) */
+  const inner = record.raw
+  return inner !== null && typeof inner === 'object' && Array.isArray((inner as Record<string, unknown>).teamList)
+}
+
+/* ------------------------------------------- 폴더째 읽기 (GUID `.tmp`) --- */
+
+/**
+ * 이 파일이 **우리 수집물인가** — 확장자가 아니라 **내용으로** 판별한다.
+ *
+ * 크롬이 떨어뜨린 수집 파일이 `Downloads\<GUID>.tmp` 로 저장돼 있었다(실측 115개).
+ * 이름으로는 어느 것이 무엇인지 알 수 없다. 그래서 열어 보고 판단한다:
+ *   · 배열이고 원소에 `subject`/`clanNo`/`matchKey`(또는 `raw.match_key`)가 있으면 우리 것
+ *   · `{ rows: [...] }` 껍데기여도 같은 기준으로 본다
+ * 아니면 **건드리지 않는다.** 남의 파일을 우리 표에 넣지 않는다.
+ */
+function looksLikeOurs(parsed: unknown): boolean {
+  const rows = Array.isArray(parsed)
+    ? parsed
+    : parsed !== null && typeof parsed === 'object'
+      ? ((parsed as { rows?: unknown[] }).rows ?? null)
+      : null
+  if (!Array.isArray(rows) || rows.length === 0) return false
+  const first = rows[0]
+  if (first === null || typeof first !== 'object') return false
+  const row = first as BattleLogImportRow & { raw?: { match_key?: string } }
+  const hasSubject = Boolean(row.subject ?? row.clanNo ?? row.strUsn ?? row.usn ?? row.userNexonSn)
+  const hasMatch = Boolean(row.matchKey ?? row.match_key ?? row.raw?.match_key)
+  return hasSubject || hasMatch
 }
 
 /**
@@ -190,21 +231,47 @@ export function isClanResponse(raw: unknown): boolean {
  * **`--confirm` 없이는 한 줄도 쓰지 않는다.**
  */
 export async function importBattleLogs(input: {
+  /** 파일 하나 **또는 폴더**. 폴더면 안의 파일을 전부 열어 보고 우리 것만 읽는다 */
   file: string
   confirm?: boolean
 }): Promise<BattleLogImportResult> {
-  const parsed = JSON.parse(readFileSync(input.file, 'utf8')) as
-    | BattleLogImportFile
-    | BattleLogImportRow[]
-  /* 수집기가 `{ rows: [...] }` 로 주기도 하고 배열만 주기도 한다.
-     둘 다 받는다 — 파일 껍데기 때문에 원문 4천 건을 놓치면 안 된다 */
-  const rows = Array.isArray(parsed) ? parsed : (parsed.rows ?? [])
+  const rows: BattleLogImportRow[] = []
+  let failureCount = 0
+  let filesRead = 0
+
+  /* 폴더면 통째로 읽는다 — `Downloads\<GUID>.tmp` 115개를 손으로 열어 볼 수는 없다.
+     **확장자를 보지 않고 내용으로 고른다** (`looksLikeOurs`) */
+  const target = statSync(input.file)
+  const files = target.isDirectory()
+    ? readdirSync(input.file)
+        .map((name) => join(input.file, name))
+        .filter((path) => statSync(path).isFile())
+        .sort()
+    : [input.file]
+
+  for (const path of files) {
+    let parsed: BattleLogImportFile | BattleLogImportRow[]
+    try {
+      parsed = JSON.parse(readFileSync(path, 'utf8')) as BattleLogImportFile | BattleLogImportRow[]
+    } catch {
+      /* JSON 이 아니면 우리 것이 아니다. 조용히 지나간다 */
+      continue
+    }
+    if (target.isDirectory() && !looksLikeOurs(parsed)) continue
+    filesRead += 1
+    /* 수집기가 `{ rows: [...] }` 로 주기도 하고 배열만 주기도 한다.
+       둘 다 받는다 — 파일 껍데기 때문에 원문 4천 건을 놓치면 안 된다 */
+    rows.push(...(Array.isArray(parsed) ? parsed : (parsed.rows ?? [])))
+    failureCount += Array.isArray(parsed) ? 0 : (parsed.failures?.length ?? 0)
+  }
+  if (target.isDirectory()) log(`폴더에서 우리 수집물 ${filesRead}개 / ${files.length}개를 골랐다`)
+
   const result: BattleLogImportResult = {
     rows: rows.length,
     stored: 0,
     duplicate: 0,
     skipped: 0,
-    failures: Array.isArray(parsed) ? 0 : (parsed.failures?.length ?? 0),
+    failures: failureCount,
     events: 0,
     points: 0,
     labels: {},
