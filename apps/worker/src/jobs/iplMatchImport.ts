@@ -207,8 +207,31 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** 몇 묶음마다 체크포인트를 한 번 부를지 */
-const CHECKPOINT_EVERY = 40
+/**
+ * 몇 묶음마다 체크포인트를 한 번 부를지.
+ *
+ * ── 2026-08-31 재조정: **40 → 400** (4,000행마다 → 4만행마다)
+ *
+ * 40 은 `min_wal_size = 80MB` 시절에 나온 값이다. 그때는 WAL 이 불어나면 죽었으니
+ * 자주 비워 주는 것이 살길이었다. **지금은 설정이 정반대다** (D-216) —
+ * 조각을 넉넉히 남겨 두고 재활용하게 해서 "새로 만들기" 를 피한다.
+ * 거기에 4,000행마다 전체 버퍼 플러시를 강제로 때리면 새 설정이 하려는 일을 매번 취소한다.
+ *
+ * 실측이 그것을 그대로 보여 줬다 (`pg_stat_activity`, 2026-08-31):
+ * ```
+ * pid=22036  CHECKPOINT              20.3초째 붙들고 있음
+ * pid=20476  INSERT …RawtRaw         11.0초  wait=LWLock/WALWrite
+ * pid=8128   INSERT "League"          9.0초  wait=LWLock/WALWrite
+ * 대기 중인 락(NOT granted) 0        ← 락 경합이 아니다
+ * ```
+ * 나머지가 `IPC/CheckpointDone` 으로 그 뒤에 줄을 섰다. **100행 INSERT 하나가 11초** 걸렸다.
+ *
+ * ⚠ **0 으로 두지 마라.** 체크포인트를 아예 안 부르면 이번엔 WAL 이 `max_wal_size` 를
+ * 넘기며 자동 체크포인트가 몰아서 돈다. 드물게, 그러나 계속 부르는 것이 맞다.
+ *
+ * 옛 값이 필요하면 `SACLOUD_CHECKPOINT_EVERY=40` 으로 돌릴 수 있다 (`CLAUDE.md` 10-4).
+ */
+const CHECKPOINT_EVERY = Number(process.env.SACLOUD_CHECKPOINT_EVERY ?? 400)
 
 /**
  * 체크포인트를 직접 부른다 — **WAL 이 쌓이다 못해 DB 가 죽는 것을 막는다.**
@@ -246,10 +269,40 @@ async function withRetry<T>(label: string, run: () => Promise<T>): Promise<T> {
   const waits = [2_000, 5_000, 10_000, 20_000, 30_000, 45_000, ...Array(28).fill(60_000)]
   for (let attempt = 0; ; attempt += 1) {
     try {
+      if (attempt > 0) {
+        console.info(`  ${label} — ${attempt}번째 재시도가 성공했다`)
+      }
       return await run()
     } catch (error) {
       const wait = waits[attempt]
       if (wait === undefined) throw error
+      /*
+        ── 조용히 기다리지 않는다 (2026-08-31)
+
+        이 백오프의 합이 30분이다. 그동안 `warn`(stderr) 한 줄씩만 찍었더니
+        **"CPU 는 오르는데 행이 안 는다" 로 보였고 원인 규명이 통째로 빗나갔다.**
+        묶음 크기·락·메모리를 의심하며 시간을 태웠는데 실제로는 DB 가 죽어 있었다.
+
+        3회 연속 실패부터는 **눈에 띄게** 찍는다. 배틀로그 26만 건에서 같은 일이 나면
+        몇 시간을 태운다.
+      */
+      if (attempt + 1 >= 3) {
+        const total = waits.slice(0, attempt + 1).reduce((a, b) => a + b, 0)
+        console.info(
+          [
+            '',
+            '################################################################',
+            `  ${label} — ${attempt + 1}회 연속 실패. 지금까지 ${Math.round(total / 1000)}초 기다렸다`,
+            '  DB 가 죽었을 가능성이 높다. 확인:',
+            '    netstat -ano | findstr :5433',
+            '    ls "C:/Users/LG/AppData/Local/sacloud/pgdata/global/pg_control"  ← 시각이 안 움직이면 얼어붙은 것이다',
+            '  얼어붙었으면 startup 프로세스만 끊고 다시 띄운다 (docs/DECISIONS.md D-216)',
+            `  마지막 오류: ${String(error).slice(0, 200)}`,
+            '################################################################',
+            '',
+          ].join('\n'),
+        )
+      }
       warn(`${label} 실패 — ${wait / 1000}초 쉬고 다시 한다 (${String(error).slice(0, 160)})`)
       await sleep(wait)
     }

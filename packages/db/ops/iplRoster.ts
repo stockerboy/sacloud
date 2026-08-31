@@ -1,5 +1,11 @@
 /**
- * IPL 등록 클랜 39곳 명단 — `docs/IPL_SPEC.md` 2장의 표를 코드로 옮긴 것.
+ * IPL 등록 클랜 명단 — `docs/IPL_SPEC.md` 2장의 표를 코드로 옮긴 것. **정본이다.**
+ *
+ * ── 2026-08-31: `apps/worker/src/dev/iplRoster.ts` 에서 여기로 옮겼다 (D-210 후속)
+ *   가드(`iplSanplyGuard.ts`)가 "지금 nolink 에 등록행이 있는가" 대신 **이 명단**을
+ *   IPL 소속의 근거로 쓰기 때문이다. `packages/db` 는 `apps/worker` 를 import 할 수 없다.
+ *   옛 경로는 **지우지 않았다** — 그대로 두고 여기서 다시 내보낸다 (`CLAUDE.md` 10-4).
+ *
  *
  * ── 티어는 사용자가 정한다 (IPL_SPEC 4-2). 우리가 바꾸지 않는다
  *   2026-08-30 사용자 지시: **1티어는 비운다.** 원래 1티어였던 4곳은 2티어로 합류시킨다.
@@ -93,3 +99,63 @@ export const IPL_ROSTER: readonly IplClan[] = [
   { given: 'Lyrical', name: 'Lyrical:', barracks: 'DooLii', tier: 6 },
   { given: "Raze'", name: "Raze'", barracks: 'tjdwlsqhrdl', tier: 6 },
 ]
+
+/**
+ * 눈으로 같아 보이는 글자를 접어 비교한다. **비교 전용이고 저장하지 않는다.**
+ *
+ * `iplRegister.ts` 가 쓰던 `fold()` 를 그대로 옮겨 온 것이다 — 등록과 가드가
+ * **같은 규칙으로** 클랜을 알아봐야 둘이 어긋나지 않는다.
+ */
+export function foldClanName(value: string): string {
+  return value
+    .replace(/Р/g, 'P')
+    .replace(/Β/g, 'B')
+    .replace(/[^0-9A-Za-z가-힣]/g, '')
+    .toLowerCase()
+}
+
+/** 명단에 적힌 모든 표기(현재 이름 + 사용자가 처음 준 옛 표기). 중복 없이 */
+export const IPL_ROSTER_NAMES: readonly string[] = [
+  ...new Set(IPL_ROSTER.flatMap((entry) => [entry.name, entry.given])),
+]
+
+/** 명단의 병영수첩 slug 전부 */
+export const IPL_ROSTER_BARRACKS: readonly string[] = IPL_ROSTER.map((entry) => entry.barracks)
+
+/* ── 명단이 바뀌면 청소가 필요해진다 — **코드가 기억한다** (D-210 후속) ────────
+ *
+ * 명단에 클랜이 하나 들어오면, 그 클랜의 **과거 열산 경기가 소급해서 「IPL끼리」가 된다.**
+ * 2026-08-31 에 실제로 그렇게 63건이 생겼다 — 08-30 에 청소했는데 08-31 에 명단이
+ * 자랐고, **아무도 청소를 다시 돌리지 않았다.**
+ *
+ * 사람이 기억하는 것에 맡기지 않는다. 명단의 지문을 찍어 두고, 마지막 청소 때의
+ * 지문과 다르면 대조(`ipl-sanply-check`)가 **잡을 실패시킨다.**
+ */
+
+/**
+ * 명단의 **소속 지문**. `barracks`(= 병영수첩 slug) 만 본다.
+ *
+ * 티어는 넣지 않는다 — 티어가 바뀌어도 **누가 IPL 인지는 그대로**라서 청소가 필요 없다.
+ * 지문이 달라지는 것은 클랜이 **들어오거나 빠질 때**뿐이다.
+ */
+export function iplRosterFingerprint(roster: readonly IplClan[] = IPL_ROSTER): string {
+  const barracks = [...roster.map((entry) => entry.barracks)].sort()
+  /* 해시가 아니라 **읽을 수 있는 값**으로 둔다. 어긋났을 때 무엇이 늘었는지
+     사람이 눈으로 바로 비교할 수 있어야 한다 (3-A 6번 — 조용히 넘어가지 않는다) */
+  return `${barracks.length}:${barracks.join(',')}`
+}
+
+/** 두 지문의 차이 — 무엇이 늘고 무엇이 빠졌나 */
+export function diffIplRosterFingerprint(
+  before: string,
+  after: string,
+): { added: string[]; removed: string[] } {
+  const partsOf = (value: string): Set<string> =>
+    new Set((value.split(':')[1] ?? '').split(',').filter(Boolean))
+  const a = partsOf(before)
+  const b = partsOf(after)
+  return {
+    added: [...b].filter((slug) => !a.has(slug)).sort(),
+    removed: [...a].filter((slug) => !b.has(slug)).sort(),
+  }
+}

@@ -30,6 +30,8 @@ import {
   ensureIndependentLeague,
   registerClanTier,
 } from '@sacloud/db/ops'
+import { iplRosterDriftSinceLastPurge } from '@sacloud/db/ops'
+import { runIplSanplyCheck } from '../jobs/iplSanplyPurge.js'
 import { IPL_ROSTER } from './iplRoster'
 
 const confirm = process.argv.includes('--confirm')
@@ -192,6 +194,67 @@ async function main(): Promise<void> {
   console.info(`등록 성공 ${ok} · 실패 ${failed} · 보류 ${skipped.length}`)
   for (const s of skipped) console.info(`  보류 ${s}`)
   if (!confirm) console.info('\n미리보기다. 실제로 넣으려면 --confirm')
+
+  /* --- 등록이 청소를 부른다 (D-210 후속) ------------------------------
+   *
+   * 명단에 클랜이 하나 들어오면 그 클랜의 **과거 열산 경기가 소급해서 「IPL끼리」가 된다.**
+   * 2026-08-31 에 그렇게 63건이 남았다 — 등록은 했고 청소는 안 돌렸다.
+   *
+   * 그래서 이 스크립트가 **직접 대조를 돌린다.** 사람이 기억하지 않아도 되게.
+   * 다만 **여기서 지우지는 않는다** — 운영 `Match` 삭제는 백업을 뜨고 사람이 판단한다.
+   * 대신 **못 지웠다는 사실을 시끄럽게 남긴다.**
+   */
+  await reportCleanupNeeded()
+}
+
+/**
+ * 등록이 끝난 뒤 **청소가 필요한지 스스로 확인하고 시끄럽게 남긴다.**
+ *
+ * 지우지는 않는다. 운영 `Match` 삭제는 백업을 뜨고 사람이 판단하는 일이라
+ * 자동화하지 않았다 — 그 대신 **돌릴 명령을 그대로 찍고 종료 코드를 1 로 만든다.**
+ */
+async function reportCleanupNeeded(): Promise<void> {
+  const drift = iplRosterDriftSinceLastPurge()
+  console.info('')
+  console.info('=== 등록이 끝났다. 열산에 소급 발생한 IPL끼리 경기가 있는지 본다 (D-210) ===')
+
+  let remaining: number
+  try {
+    const scope = await runIplSanplyCheck()
+    remaining = scope.matchIds.length
+  } catch (error) {
+    /* 대조가 못 돌았다는 사실을 삼키지 않는다 (3-A 6번) */
+    console.error(`  ⚠ 대조를 돌리지 못했다 — ${String(error).split('\n')[0]}`)
+    console.error('  ⚠ **청소가 필요한지 확인되지 않았다.** 직접 돌려라:')
+    console.error('       node scripts/prod-run.mjs ipl-sanply-check')
+    process.exitCode = 1
+    return
+  }
+
+  if (remaining === 0 && !drift.drifted) {
+    console.info('  남은 경기 0건 · 명단도 마지막 청소 때 그대로 — 더 할 일이 없다')
+    return
+  }
+
+  console.error('')
+  console.error('  ################################################################')
+  console.error('  #  청소가 필요하다. **이 스크립트는 지우지 않는다**')
+  if (remaining > 0) console.error(`  #  열산에 남은 IPL끼리의 경기 ${remaining}건`)
+  if (drift.added.length > 0) {
+    console.error(`  #  마지막 청소 뒤 들어온 클랜: ${drift.added.join(', ')}`)
+  }
+  if (drift.removed.length > 0) {
+    console.error(`  #  마지막 청소 뒤 빠진 클랜: ${drift.removed.join(', ')}`)
+  }
+  console.error('  #')
+  console.error('  #  지금 이 명령을 돌려라 (백업을 뜨고 지운다):')
+  console.error('  #    node scripts/prod-run.mjs ipl-sanply-purge --confirm')
+  console.error('  #')
+  console.error('  #  그 다음 packages/db/ops/iplSanplyPurgeLog.ts 를 갱신한다.')
+  console.error('  #  갱신하지 않으면 supply-incremental 워크플로가 계속 빨갛다.')
+  console.error('  ################################################################')
+  /* 등록 자체는 성공했지만 **뒤처리가 남았다.** 종료 코드로도 남긴다 */
+  process.exitCode = 1
 }
 
 main()

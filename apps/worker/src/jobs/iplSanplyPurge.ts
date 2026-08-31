@@ -20,6 +20,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
   countIplOnlyMatches,
+  nextPurgeRecordSnippet,
   purgeIplOnlyMatches,
   type IplOnlyMatchScope,
   type PurgeIplOnlyMatchesResult,
@@ -45,11 +46,43 @@ function reportScope(scope: IplOnlyMatchScope): void {
     {
       대상리그: `${scope.targetLeagueSlug}${scope.targetLeagueExists ? '' : '(없음)'}`,
       IPL리그: `${scope.iplLeagueSlug}${scope.iplLeagueExists ? '' : '(없음)'}`,
-      'IPL 등록 클랜': scope.iplClanCount,
+      'IPL 클랜': scope.iplClanCount,
+      '그중 명단으로만 찾은 곳': scope.iplFromRoster,
       '그중 대상리그에도 등록행이 있는 곳': scope.registeredInTarget,
       'IPL끼리의 경기': scope.matchIds.length,
     },
   ])
+  /* 지어내지 않는다 — 후보가 둘 이상인 명단 항목은 **고르지 않고 여기 찍는다** (3-A 8번) */
+  for (const item of scope.iplAmbiguous) {
+    warn(`  명단을 클랜 행으로 잇지 못했다 (사람이 판단한다): ${item}`)
+  }
+  reportRosterDrift(scope)
+}
+
+/**
+ * **명단이 마지막 청소 뒤로 바뀌었는가.** 조용히 넘어가지 않는다 (3-A 6번).
+ *
+ * 경기 수가 0 이어도 여기가 걸리면 통과가 아니다 — 새로 들어온 클랜의 **과거** 경기가
+ * 소급해서 「IPL끼리」가 됐을 수 있는데 아직 안 치웠다는 뜻이다. 2026-08-31 에
+ * 정확히 그 일로 63건이 남았고, 그때는 **사람이 기억해야 하는 절차**뿐이었다.
+ */
+function reportRosterDrift(scope: IplOnlyMatchScope): void {
+  const drift = scope.rosterDrift
+  if (!drift.drifted) return
+  warn('')
+  warn('  ################################################################')
+  warn('  #  IPL 명단이 마지막 청소 뒤로 바뀌었다 — 청소를 다시 돌려야 한다')
+  if (drift.added.length > 0) warn(`  #  들어온 클랜 ${drift.added.length}곳: ${drift.added.join(', ')}`)
+  if (drift.removed.length > 0) warn(`  #  빠진 클랜 ${drift.removed.length}곳: ${drift.removed.join(', ')}`)
+  warn('  #')
+  warn('  #  명단에 클랜이 들어오면 그 클랜의 **과거** 열산 경기가 소급해서')
+  warn('  #  「IPL끼리」가 된다. 지금 0건이어도 통과가 아니다.')
+  warn('  #')
+  warn('  #    node scripts/prod-run.mjs ipl-sanply-purge --confirm')
+  warn('  #')
+  warn('  #  치운 뒤 packages/db/ops/iplSanplyPurgeLog.ts 를 갱신한다')
+  warn('  #  (그 명령이 붙여 넣을 블록을 그대로 찍어 준다)')
+  warn('  ################################################################')
 }
 
 /**
@@ -64,8 +97,10 @@ export async function runIplSanplyCheck(
   log('')
   log('[대조] IPL 클랜끼리의 경기가 열산에 남아 있는가 (D-210)')
   reportScope(scope)
-  if (scope.matchIds.length === 0) {
-    log('  남은 IPL끼리의 경기 0건 — 통과')
+  if (scope.matchIds.length === 0 && !scope.rosterDrift.drifted) {
+    log('  남은 IPL끼리의 경기 0건 · 명단도 마지막 청소 때 그대로 — 통과')
+  } else if (scope.matchIds.length === 0) {
+    warn('  남은 경기는 0건이지만 **명단이 바뀌었다** — 위 안내대로 청소를 돌려라')
   } else {
     warn(`  남은 IPL끼리의 경기 ${scope.matchIds.length}건 (목표 0)`)
     warn(`  예시 id: ${scope.matchIds.slice(0, 5).join(', ')}`)
@@ -119,6 +154,19 @@ export async function runIplSanplyPurge(
     ])
     log('  원문(수집 JSONL)은 그대로다 — 지운 것은 Match 행뿐이다 (3-A 1번)')
     log('  등록행은 지우지 않는다 — 지우면 supply-rollup 이 다시 만들어 등록이 되살아난다')
+
+    /* **사람에게 기억하라고 말하지 않는다.** 고칠 것을 그대로 준다 (D-210 후속) */
+    log('')
+    log('[3] 마지막으로 — 청소 기록을 갱신해라. 안 하면 대조가 계속 빨갛다')
+    log('')
+    log(
+      nextPurgeRecordSnippet({
+        targetLeagueSlug: result.scope.targetLeagueSlug,
+        matchesDeleted: result.written.matchesDeleted,
+        leagueClansExpelled: result.written.leagueClansExpelled,
+        backupPath: result.written.backupPath,
+      }),
+    )
   } else {
     log('')
     log('미리보기다. 실제로 지우려면 --confirm 을 붙인다')

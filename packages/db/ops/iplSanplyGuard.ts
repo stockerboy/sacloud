@@ -19,10 +19,34 @@
  * ```
  *
  * ── 규칙은 하나뿐이다
- *   **양 팀이 모두 IPL(`nolink`) 등록 클랜이면 열산 `Match` 를 만들지 않는다.**
+ *   **양 팀이 모두 IPL 클랜이면 열산 `Match` 를 만들지 않는다.**
  *   · 한쪽만 IPL 이면 **막지 않는다.** 그건 열산 경기가 맞다
- *   · `expelledAt` 이 붙은 등록행은 "그 리그 소속이 아니다" 로 읽는다
  *   · **열산에만 건다.** DPL(`supply`)·대룰(`daerule`)은 그대로다
+ *
+ * ── 2026-08-31 정정 — **"IPL 소속" 과 "열산 등록 상태" 는 다른 것이다** (D-210 후속)
+ *   처음에는 IPL 소속을 "지금 `nolink` 에 `expelledAt` 없는 등록행이 있는가" 로 봤다.
+ *   그러면 두 가지가 샌다.
+ *
+ *   1. `expelledAt` 은 **열산에서 뺐다**는 표시로 쓰고 있다(`purgeIplOnlyMatches`).
+ *      그런데 같은 칸을 IPL 쪽에서도 "소속 아님" 으로 읽으면, 누가 IPL 등록행에
+ *      추방을 찍는 순간 **가드가 조용히 꺼진다.** 추방은 등록 상태이지 소속이 아니다
+ *   2. 등록행은 `iplRegister` 가 만든다. 명단에 새 클랜이 들어와도 그 스크립트를
+ *      돌리기 전까지 가드는 그 클랜을 모른다
+ *
+ *   그래서 소속의 근거를 **명단(`IPL_ROSTER`)** 으로 옮겼다. 등록행은 명단을 보조한다.
+ *   ```
+ *   IPL 클랜 = nolink 등록행이 있는 클랜 (추방 여부를 보지 않는다)
+ *            ∪ IPL_ROSTER 에서 **모호하지 않게** 찾아진 클랜
+ *   ```
+ *
+ * ── 명단을 클랜 행으로 잇는 규칙은 `iplRegister.ts` 와 **같다.** 모호하면 안 잇는다
+ *   ① 병영수첩 slug == `Clan.slug` **이면서** 이름도 같은 행
+ *   ② 이름 완전일치가 **딱 하나**일 때 그 행 (옛 표기 `given` 도 같은 규칙으로 본다)
+ *
+ *   ⚠ **이름이 같다고 같은 클랜이 아니다.** 우리 DB 에 `recent.wct-` 는 두 곳이고
+ *   `recent.wct`(luminouszzang) · `recentwct-`(skytak) 는 **또 다른 클랜**이다
+ *   (`iplRoster.ts` 주석). 이름만 접어서 묶으면 열산 경기 561건이 통째로 잘못 지워진다.
+ *   그래서 후보가 둘 이상이면 **아무것도 고르지 않고 `ambiguous` 로 남긴다** (3-A 8번)
  *
  * ── 원문(mirror JSONL)은 버리지 않는다 (`CLAUDE.md` 3-A 1번)
  *   안 만드는 것은 `Match` **행**이지 원문이 아니다. 수집 파일은 그대로 남으므로
@@ -34,6 +58,8 @@
  */
 import { prisma } from '../src/index'
 import type { Prisma } from '../src/index'
+import { IPL_ROSTER, IPL_ROSTER_BARRACKS, IPL_ROSTER_NAMES, foldClanName } from './iplRoster'
+import { iplRosterDriftSinceLastPurge, type IplRosterDrift } from './iplSanplyPurgeLog'
 
 /** IPL = 무소속리그. `independentLeague.ts` 의 `INDEPENDENT_LEAGUE_SLUG` 와 같은 값이다 */
 export const IPL_LEAGUE_SLUG = 'nolink'
@@ -62,11 +88,13 @@ export interface IplOnlyMatchGuard {
   enabled: boolean
   targetLeagueSlug: string
   iplLeagueSlug: string
-  /** IPL 등록 클랜 수 (추방된 곳은 빼고 센다) */
+  /** IPL 클랜 수 (등록행 ∪ 명단). 추방 여부는 보지 않는다 */
   iplClanCount: number
-  /** 양쪽 다 IPL 등록 클랜인가 */
+  /** 어디서 몇 곳이 왔는지 (로그·진단용) */
+  membership?: IplMembership
+  /** 양쪽 다 IPL 클랜인가 */
   blocks(red: IplClanKey, blue: IplClanKey): boolean
-  /** 한쪽만 봤을 때 IPL 등록 클랜인가 (진단용) */
+  /** 한쪽만 봤을 때 IPL 클랜인가 (진단용) */
   isIplClan(clan: IplClanKey): boolean
 }
 
@@ -79,6 +107,138 @@ export interface LoadIplOnlyMatchGuardOptions {
   guardedLeagueSlugs?: readonly string[]
   /** 읽기에 쓸 클라이언트. 기본은 전역 `prisma` (트랜잭션 테스트용) */
   client?: Prisma.TransactionClient
+  /**
+   * `IPL_ROSTER` 를 함께 볼 것인가. 기본 `true`.
+   *
+   * 임시 리그로 도는 테스트만 `false` 로 끈다 — 실제 명단이 섞이면
+   * 그 테스트가 무엇을 재는지 알 수 없다.
+   */
+  useRoster?: boolean
+}
+
+/* ── 누가 IPL 클랜인가 — 가드 · 대조 · 치우기가 **같은 답**을 쓴다 ─────────── */
+
+/** 명단·등록행에서 모은 IPL 클랜 한 벌 */
+export interface IplMembership {
+  /** `Clan.id` 전부 */
+  clanIds: string[]
+  /** 원본(3rd.supply) 클랜 id — slug 보다 강한 근거다 */
+  sourceClanIds: Set<string>
+  slugs: Set<string>
+  /** nolink 등록행으로 들어온 수 (추방 여부를 보지 않는다) */
+  registered: number
+  /** 등록행 없이 **명단으로만** 찾아진 수 */
+  fromRoster: number
+  /** 후보가 둘 이상이라 **고르지 않은** 명단 항목. 지어내지 않는다 (3-A 8번) */
+  ambiguous: string[]
+  isIplClan(clan: IplClanKey): boolean
+}
+
+interface ClanCandidate {
+  id: string
+  slug: string
+  name: string
+  sourceClanId: string | null
+}
+
+/**
+ * 명단 한 줄을 클랜 행 하나로 잇는다. **규칙은 `iplRegister.ts` 와 같다.**
+ *
+ * 후보가 둘 이상이면 `null` 을 돌려주고 `ambiguous` 에 남긴다 — 이름이 같다고
+ * 같은 클랜이 아니다(`recent.wct-` 가 우리 DB 에 두 곳이다).
+ */
+function resolveRosterEntry(
+  entry: { name: string; given: string; barracks: string },
+  candidates: readonly ClanCandidate[],
+  ambiguous: string[],
+): ClanCandidate | null {
+  /* ① 병영수첩 slug 가 우리 slug 와 같으면서 **이름도 같은** 행.
+        slug 만 같은 것은 근거가 되지 않는다 — 우연히 겹친 사례가 실재한다 */
+  const bySlug = candidates.find((c) => c.slug === entry.barracks)
+  if (bySlug && foldClanName(bySlug.name) === foldClanName(entry.name)) return bySlug
+
+  /* ② 이름 완전일치가 딱 하나일 때 */
+  const byName = candidates.filter((c) => c.name === entry.name)
+  if (byName.length === 1 && byName[0]) return byName[0]
+
+  /* ③ 옛 표기로도 찾아 본다 — 클랜이 이름을 바꾼 경우가 있다 (nightbloom → pIacebo) */
+  if (entry.given !== entry.name) {
+    const byGiven = candidates.filter((c) => c.name === entry.given)
+    if (byGiven.length === 1 && byGiven[0]) return byGiven[0]
+    if (byGiven.length > 1) {
+      ambiguous.push(`${entry.name}(옛 ${entry.given}) 후보 ${byGiven.length}곳`)
+      return null
+    }
+  }
+  if (byName.length > 1) ambiguous.push(`${entry.name} 후보 ${byName.length}곳`)
+  return null
+}
+
+/**
+ * IPL 클랜 한 벌을 만든다. **DB 를 딱 두 번 읽는다.**
+ *
+ * ```
+ *   IPL 클랜 = nolink 등록행이 있는 클랜 (추방 여부를 보지 않는다)
+ *            ∪ IPL_ROSTER 에서 모호하지 않게 찾아진 클랜
+ * ```
+ *
+ * 추방(`expelledAt`)을 IPL 쪽에서 보지 않는 이유는 이 파일 맨 위 「2026-08-31 정정」에 있다.
+ */
+export async function loadIplMembership(
+  db: Prisma.TransactionClient,
+  iplLeagueId: string,
+  options: { useRoster?: boolean } = {},
+): Promise<IplMembership> {
+  const picked = new Map<string, ClanCandidate>()
+
+  const rows = await db.leagueClan.findMany({
+    /* **추방을 보지 않는다.** 추방은 열산 등록 상태이지 IPL 소속이 아니다 */
+    where: { leagueId: iplLeagueId },
+    select: {
+      clanId: true,
+      clan: { select: { id: true, slug: true, name: true, sourceClanId: true } },
+    },
+  })
+  for (const row of rows) picked.set(row.clanId, row.clan)
+  const registered = picked.size
+
+  const ambiguous: string[] = []
+  /* 테스트가 임시 리그로 가드를 만들 때는 명단을 섞지 않는다 —
+     실제 IPL 클랜이 섞이면 그 테스트가 무엇을 재는지 알 수 없게 된다 */
+  if (options.useRoster !== false) {
+    const candidates = await db.clan.findMany({
+      where: {
+        OR: [{ name: { in: [...IPL_ROSTER_NAMES] } }, { slug: { in: [...IPL_ROSTER_BARRACKS] } }],
+      },
+      select: { id: true, slug: true, name: true, sourceClanId: true },
+    })
+    for (const entry of IPL_ROSTER) {
+      const found = resolveRosterEntry(entry, candidates, ambiguous)
+      if (found) picked.set(found.id, found)
+    }
+  }
+
+  const sourceClanIds = new Set<string>()
+  const slugs = new Set<string>()
+  for (const clan of picked.values()) {
+    if (clan.sourceClanId) sourceClanIds.add(clan.sourceClanId)
+    slugs.add(clan.slug)
+  }
+
+  return {
+    clanIds: [...picked.keys()],
+    sourceClanIds,
+    slugs,
+    registered,
+    fromRoster: picked.size - registered,
+    ambiguous,
+    /* 원본 id 가 slug 보다 강한 근거다 — 클랜이 slug 를 바꿔도 같은 클랜이다.
+       둘 다 보는 것은 `supplyMirrorImport.resolveClan` 의 해석 순서와 같게 맞춘 것이다 */
+    isIplClan: (clan: IplClanKey): boolean => {
+      if (clan.sourceClanId && sourceClanIds.has(clan.sourceClanId)) return true
+      return Boolean(clan.slug && slugs.has(clan.slug))
+    },
+  }
 }
 
 /** 아무것도 막지 않는 가드 */
@@ -119,31 +279,15 @@ export async function loadIplOnlyMatchGuard(
   /* IPL 리그가 없으면 막을 근거가 없다. 없는 것을 있는 척하지 않는다 (3-A 8번) */
   if (!league) return disabledGuard(options.targetLeagueSlug, iplLeagueSlug)
 
-  const rows = await db.leagueClan.findMany({
-    /* 추방된 등록행은 **그 리그 소속이 아니다.** IPL 쪽도 같은 규칙으로 읽는다 */
-    where: { leagueId: league.id, expelledAt: null },
-    select: { clan: { select: { slug: true, sourceClanId: true } } },
-  })
-
-  const sourceClanIds = new Set<string>()
-  const slugs = new Set<string>()
-  for (const row of rows) {
-    if (row.clan.sourceClanId) sourceClanIds.add(row.clan.sourceClanId)
-    slugs.add(row.clan.slug)
-  }
-
-  /* 원본 id 가 slug 보다 강한 근거다 — 클랜이 slug 를 바꿔도 같은 클랜이다.
-     둘 다 보는 것은 `supplyMirrorImport.resolveClan` 의 해석 순서와 같게 맞춘 것이다 */
-  const isIplClan = (clan: IplClanKey): boolean => {
-    if (clan.sourceClanId && sourceClanIds.has(clan.sourceClanId)) return true
-    return Boolean(clan.slug && slugs.has(clan.slug))
-  }
+  const membership = await loadIplMembership(db, league.id, { useRoster: options.useRoster })
+  const { isIplClan } = membership
 
   return {
     enabled: true,
     targetLeagueSlug: options.targetLeagueSlug,
     iplLeagueSlug,
-    iplClanCount: rows.length,
+    iplClanCount: membership.clanIds.length,
+    membership,
     isIplClan,
     /* **양쪽 다** 일 때만 막는다. 한쪽만 IPL 인 경기는 열산 경기가 맞다 */
     blocks: (red, blue) => isIplClan(red) && isIplClan(blue),
@@ -157,8 +301,20 @@ export interface IplOnlyMatchScope {
   iplLeagueSlug: string
   targetLeagueExists: boolean
   iplLeagueExists: boolean
-  /** IPL 등록 클랜 수 (추방 제외) */
+  /** IPL 클랜 수 (nolink 등록행 ∪ 명단). 추방 여부는 보지 않는다 */
   iplClanCount: number
+  /** 그중 등록행 없이 **명단으로만** 찾아진 수 */
+  iplFromRoster: number
+  /** 후보가 둘 이상이라 고르지 않은 명단 항목 — 사람이 본다 */
+  iplAmbiguous: string[]
+  /**
+   * **명단이 마지막 청소 뒤로 바뀌었는가** (D-210 후속).
+   *
+   * `drifted` 면 지금 경기 수가 0 이어도 **통과가 아니다** — 명단에 들어온 클랜의
+   * 과거 경기가 소급해서 「IPL끼리」가 됐을 수 있는데 아직 안 치웠다는 뜻이다.
+   * 실제로 그렇게 63건이 남았다.
+   */
+  rosterDrift: IplRosterDrift
   /** 그중 대상 리그에도 등록행이 있는 클랜 수 (추방행 포함 — 경기가 그 행을 가리킨다) */
   registeredInTarget: number
   /** 양쪽 다 IPL 클랜인 경기 id. **0건이 목표다** */
@@ -174,6 +330,8 @@ interface ScopeInternals extends IplOnlyMatchScope {
 export interface IplOnlyScopeOptions {
   targetLeagueSlug?: string
   iplLeagueSlug?: string
+  /** `IPL_ROSTER` 를 함께 볼 것인가. 기본 `true` (테스트만 끈다) */
+  useRoster?: boolean
 }
 
 /**
@@ -199,6 +357,10 @@ async function loadScope(options: IplOnlyScopeOptions = {}): Promise<ScopeIntern
     targetLeagueExists: target !== null,
     iplLeagueExists: ipl !== null,
     iplClanCount: 0,
+    iplFromRoster: 0,
+    iplAmbiguous: [],
+    /* DB 를 안 읽는다 — 리그를 못 찾아도 이 값은 언제나 채운다 */
+    rosterDrift: iplRosterDriftSinceLastPurge(),
     registeredInTarget: 0,
     matchIds: [],
     targetLeagueId: target?.id ?? null,
@@ -206,13 +368,13 @@ async function loadScope(options: IplOnlyScopeOptions = {}): Promise<ScopeIntern
   }
   if (!target || !ipl) return out
 
-  const iplClanIds = (
-    await prisma.leagueClan.findMany({
-      where: { leagueId: ipl.id, expelledAt: null },
-      select: { clanId: true },
-    })
-  ).map((row) => row.clanId)
+  /* **가드와 같은 답을 쓴다.** 대조가 가드보다 좁게 보면 "막았는데 세지 못하는" 구멍이,
+     넓게 보면 "세는데 못 막는" 구멍이 생긴다. 한 함수에서 나오게 묶는다 */
+  const membership = await loadIplMembership(prisma, ipl.id, { useRoster: options.useRoster })
+  const iplClanIds = membership.clanIds
   out.iplClanCount = iplClanIds.length
+  out.iplFromRoster = membership.fromRoster
+  out.iplAmbiguous = membership.ambiguous
   if (iplClanIds.length === 0) return out
 
   /* 대상 리그 쪽은 **추방행도 센다.** 추방해도 행은 남고, 경기는 그 행을 가리킨다 */
@@ -314,6 +476,9 @@ export async function purgeIplOnlyMatches(
       targetLeagueExists: scope.targetLeagueExists,
       iplLeagueExists: scope.iplLeagueExists,
       iplClanCount: scope.iplClanCount,
+      iplFromRoster: scope.iplFromRoster,
+      iplAmbiguous: scope.iplAmbiguous,
+      rosterDrift: scope.rosterDrift,
       registeredInTarget: scope.registeredInTarget,
       matchIds: scope.matchIds,
     },
