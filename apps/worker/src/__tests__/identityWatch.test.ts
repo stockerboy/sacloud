@@ -126,3 +126,80 @@ describe('sweepSeconds — "얼마나 빠른가" 를 숫자로 답한다', () =>
     expect(sweepSeconds(100, 0)).toBe(Number.POSITIVE_INFINITY)
   })
 })
+
+/**
+ * 칭호까지 보는 확장 (2026-09-01 · 칭호 인증 `docs/TITLE_VERIFICATION_SPEC.md`).
+ *
+ * `title_name` 은 `user/basic` 응답에 원래부터 들어 있었는데 **파싱만 되고 버려지고 있었다.**
+ * 같은 응답에서 꺼내 쓰는 것이라 넥슨 호출은 한 건도 늘지 않는다.
+ */
+describe('diffIdentity — 칭호', () => {
+  it('칭호만 바뀌면 `title`', () => {
+    expect(
+      diffIdentity(
+        { userName: '리릭', clanName: '엘리게이터', titleName: '신병' },
+        { userName: '리릭', clanName: '엘리게이터', titleName: '상등병' },
+      ),
+    ).toBe('title')
+  })
+
+  it('셋 다 바뀌면 nickname → clan → title 순서로 이어 붙인다', () => {
+    expect(
+      diffIdentity(
+        { userName: '리릭', clanName: '엘리게이터', titleName: '신병' },
+        { userName: '차코', clanName: '베리타스', titleName: '상등병' },
+      ),
+    ).toBe('nickname+clan+title')
+  })
+
+  it('닉과 칭호만 바뀌면 `nickname+title`', () => {
+    expect(
+      diffIdentity(
+        { userName: '리릭', clanName: '엘리게이터', titleName: '신병' },
+        { userName: '차코', clanName: '엘리게이터', titleName: '상등병' },
+      ),
+    ).toBe('nickname+title')
+  })
+
+  it('칭호를 벗어도(빈 문자열 ↔ null) 바뀐 것으로 보지 않는다', () => {
+    expect(
+      diffIdentity(
+        { userName: '리릭', clanName: '엘리게이터', titleName: '' },
+        { userName: '리릭', clanName: '엘리게이터', titleName: null },
+      ),
+    ).toBeNull()
+  })
+
+  it('⚠ 한쪽만 칭호를 넘기면 칭호를 비교하지 않는다 — 옛 호출자를 깨지 않는다', () => {
+    /* 넘기지 않는 것은 "칭호가 없다"가 아니라 "아직 안 보는 호출자"다.
+       이걸 변경으로 읽으면 이력에 바뀌지 않았는데 바뀐 줄이 계속 쌓인다 */
+    expect(
+      diffIdentity(
+        { userName: '리릭', clanName: '엘리게이터' },
+        { userName: '리릭', clanName: '엘리게이터', titleName: '상등병' },
+      ),
+    ).toBeNull()
+  })
+
+  it('기존 두 칸만 쓰는 호출자는 그대로 동작한다', () => {
+    expect(
+      diffIdentity({ userName: '리릭', clanName: '엘리게이터' }, { userName: '차코', clanName: '엘리게이터' }),
+    ).toBe('nickname')
+  })
+})
+
+describe('nextWatchTier — 칭호 변경도 hot 이다', () => {
+  const now = new Date('2026-09-01T02:00:00.000Z')
+
+  it('칭호가 바뀌면 hot — 인증 도전을 기다리는 계정을 놓치지 않는다', () => {
+    expect(nextWatchTier('title', null, now)).toBe('hot')
+  })
+
+  it('조합 변경도 hot', () => {
+    expect(nextWatchTier('nickname+clan+title', null, now)).toBe('hot')
+  })
+
+  it('`first` 는 변경이 아니다', () => {
+    expect(nextWatchTier('first', null, now)).toBe('cold')
+  })
+})

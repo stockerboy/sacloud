@@ -14,10 +14,27 @@
 export interface IdentitySnapshot {
   userName: string | null
   clanName: string | null
+  /** 관측 당시 칭호. **이 칸을 넘기지 않으면 칭호는 비교 대상이 아니다** — 예전 호출자를 깨지 않는다 */
+  titleName?: string | null
 }
 
-/** 무엇이 달라졌나. `null` 이면 그대로다 (이력에 남기지 않는다) */
-export type IdentityChange = 'first' | 'nickname' | 'clan' | 'nickname+clan' | null
+/**
+ * 무엇이 달라졌나. `null` 이면 그대로다 (이력에 남기지 않는다).
+ *
+ * 둘 이상이 한꺼번에 바뀌면 **항상 `nickname` → `clan` → `title` 순서로** 이어 붙인다.
+ * 순서를 고정해야 저장된 값을 나중에 다시 해석할 수 있다.
+ * 기존 값(`first` · `nickname` · `clan` · `nickname+clan`)은 **그대로 살아 있다.**
+ */
+export type IdentityChange =
+  | 'first'
+  | 'nickname'
+  | 'clan'
+  | 'title'
+  | 'nickname+clan'
+  | 'nickname+title'
+  | 'clan+title'
+  | 'nickname+clan+title'
+  | null
 
 /**
  * 넥슨은 무소속을 빈 문자열로 줄 때가 있다. `null` 과 `''` 를 같은 것으로 본다 —
@@ -38,20 +55,24 @@ export function diffIdentity(
   prev: IdentitySnapshot | null,
   next: IdentitySnapshot,
 ): IdentityChange {
-  const nu = norm(next.userName)
-  const nc = norm(next.clanName)
   if (!prev) return 'first'
 
-  const pu = norm(prev.userName)
-  const pc = norm(prev.clanName)
+  const changed: string[] = []
+  if (norm(prev.userName) !== norm(next.userName)) changed.push('nickname')
+  if (norm(prev.clanName) !== norm(next.clanName)) changed.push('clan')
 
-  const nickChanged = pu !== nu
-  const clanChanged = pc !== nc
+  /*
+    칭호는 **양쪽이 다 넘겨준 때만** 비교한다.
+    한쪽만 있으면 "없던 것이 생겼다"가 아니라 **아직 칭호를 안 넘기는 호출자**일 뿐이고,
+    그걸 변경으로 잍으면 이력에 **바뀌지 않았는데 바뀐 줄**이 계속 쌓인다.
+  */
+  if (prev.titleName !== undefined && next.titleName !== undefined) {
+    if (norm(prev.titleName) !== norm(next.titleName)) changed.push('title')
+  }
 
-  if (nickChanged && clanChanged) return 'nickname+clan'
-  if (nickChanged) return 'nickname'
-  if (clanChanged) return 'clan'
-  return null
+  /* 순서가 고정되어 있으므로 이어 붙인 값은 반드시 위 여덟 8개 중 하나다.
+     유니온을 포기하고 `string` 으로 넣지 않는다 — 그러면 오타가 통과한다 */
+  return changed.length === 0 ? null : (changed.join('+') as IdentityChange)
 }
 
 /**
@@ -83,8 +104,10 @@ export function nextWatchTier(
   lastChangedAt: Date | null,
   now: Date,
 ): WatchTier {
-  // 이번에 바뀌었으면 무조건 hot 이다. 연쇄 변경을 놓치지 않는다
-  if (changed === 'nickname' || changed === 'clan' || changed === 'nickname+clan') return 'hot'
+  /* 이번에 바뀜으면 무조건 hot 이다. 연쇄 변경을 놓치지 않는다.
+     `first` 는 기준점일 뿐 변경이 아니다 — 값을 열거하지 않고 그것만 제외한다.
+     열거했더라면 `title` 이 늘었을 때 이 줄이 조용히 낙았다 */
+  if (changed !== null && changed !== 'first') return 'hot'
 
   if (!lastChangedAt) return 'cold'
   const hours = (now.getTime() - lastChangedAt.getTime()) / 3_600_000
