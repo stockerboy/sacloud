@@ -67,6 +67,53 @@ export function clanMarkView(clan: ClanMarkInput | null | undefined): ClanMarkVi
 }
 
 /**
+ * **레이어가 실제로 안 그려졌을 때** 다시 판정한다 (2026-09-01).
+ *
+ * ── 무엇이 잘못돼 있었나
+ *   `clanMarkView` 는 **URL 문자열이 있는지**만 본다. 그림이 실제로 왔는지는 모른다.
+ *   그래서 마크 주소가 가리키는 서버가 죽으면 화면에 뜨는 것은 구름이 아니라
+ *   **아무것도 없는 빈 사각형**이었다 — `ClanMark` 가 실패한 `<img>` 를
+ *   `visibility: hidden` 으로 감췄기 때문이다.
+ *
+ *   지금 운영 클랜마크의 대부분(로컬 DB 862/892)이 `static.3rd.supply` 를 물고 있다.
+ *   그 사이트가 죽으면 사이트 전체의 마크가 조용히 빈칸이 된다.
+ *
+ * ── 왜 감추고 있었나 (지우지 않고 남긴다 — `CLAUDE.md` 10-4)
+ *   Mock 단계의 마크 주소는 존재하지 않는 자리표시자 호스트(`static.sacloud.local`)라
+ *   **반드시** 로드에 실패했다. 브라우저 기본 깨진 이미지 아이콘이 뜨면 원본과 나란히
+ *   비교할 때 방해가 되므로 조용히 감췄다.
+ *
+ *   **그 전제가 끝났다.** 원본과 나란히 비교하는 절차 자체가 종료됐고(`CLAUDE.md` 3장 8번 ·
+ *   D-204), 이제 실제 주소가 들어온다. 실패는 「비교를 방해하는 잡음」이 아니라
+ *   **「마크를 못 그렸다」는 사실**이다. 못 그렸으면 구름을 그리는 것이 맞다.
+ *
+ * ── 규칙은 바꾸지 않았다
+ *   공식/비공식 판정(D-146)은 `clanMarkView` 가 그대로 한다. 이 함수는 그 결과를 받아
+ *   **그릴 것이 실제로 남았는지만** 다시 본다. 판정을 뒤집어 비공식을 공식으로 올리는 일은 없다.
+ *
+ * @param view `clanMarkView` / `clanMarkViewFromMarkOnly` 의 결과
+ * @param failed 각 레이어가 로드에 실패했는가
+ */
+export function clanMarkViewAfterLoad(
+  view: ClanMarkView,
+  failed: { bg: boolean; front: boolean },
+): ClanMarkView {
+  // 애초에 fallback 이면 그릴 이미지가 없다. 로드 실패라는 개념 자체가 없다
+  if (view.kind !== 'official') return view
+
+  const bg = failed.bg ? null : view.bg
+  const front = failed.front ? null : view.front
+
+  // 그릴 것이 하나도 안 남았다. 빈 사각형 대신 구름을 그린다
+  if (!bg && !front) return FALLBACK
+
+  /* 한 겹만 실패했으면 나머지 한 겹은 그린다.
+     두 레이어 중 하나만 설정한 클랜이 실제로 있고(`clanMarkView` 가 허용한다),
+     한쪽 실패로 둘 다 버리면 그릴 수 있는 마크까지 사라진다 */
+  return { kind: 'official', bg, front }
+}
+
+/**
  * 마크 URL 만 알고 등록 여부는 모르는 예전 호출부용 (`mark` prop).
  *
  * **서버가 비등록 클랜의 마크를 이미 지워서 내려보낸다**는 전제에서만 옳다.

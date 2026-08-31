@@ -8,6 +8,7 @@
  * 파일은 통째로 `JSON.parse` 하지 않는다. 줄마다 필요한 네 칸만 뽑아 들고 있어
  * 응답 본문(`raw`)은 메모리에 남지 않는다. 예전 단일 JSON 이 그렇게 죽었다.
  */
+import { supplyMarkUrlToNexon } from '@sacloud/contract'
 import {
   applySupplyPlayerProfiles,
   createSupplyPlayerProfilesResult,
@@ -74,8 +75,11 @@ export async function runSupplyPlayerProfilesImport(input: {
             sourceClanId: String(clan.id),
             name: clan.name,
             slug: clan.slug,
-            markBgUrl: clan.mark_bg ?? null,
-            markFrontUrl: clan.mark_front ?? null,
+            /* 원본 사이트 주소를 **들어오는 자리에서** 넥슨으로 되돌린다 (D-227).
+               여기를 막지 않으면 다음 동기화 때 `static.3rd.supply` 가 도로 들어온다.
+               못 푸는 주소는 `null` 이다 — 반쯤 바뀐 주소를 넣지 않는다 */
+            markBgUrl: supplyMarkUrlToNexon(clan.mark_bg),
+            markFrontUrl: supplyMarkUrlToNexon(clan.mark_front),
           }
         : null,
     })

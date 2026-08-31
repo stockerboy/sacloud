@@ -41,6 +41,11 @@ const ALLOWED = {
   'ipl-source': { file: 'iplSource', writes: false, what: 'IPL 기록이 어디까지 있는지 센다' },
   'ipl-match': { file: 'iplMatch', writes: false, what: '명단 39곳이 DB 에 있는지 대조한다' },
   'sanply-check': { file: 'sanplyCheck', writes: false, what: '열산에서 IPL 이 빠졌는지 대조한다' },
+  'sync-freshness': {
+    file: 'syncFreshness',
+    writes: false,
+    what: '증분 동기화 신선도 — 최신 경기 시각 vs 마지막 적재 시각 · 미러가 훑을 클랜 수 (D-225)',
+  },
   'ipl-sanply-forensics': {
     file: 'iplSanplyForensics',
     writes: false,

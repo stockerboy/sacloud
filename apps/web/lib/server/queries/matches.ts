@@ -9,6 +9,7 @@ import {
   type MatchPlayerStat,
   type TeamSide,
   type Weapon,
+  restoreClanMark,
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
 import { toKstIso, toKstIsoOrNull } from '../format'
@@ -274,8 +275,13 @@ function matchTimeClanOf(stat: StatRow, clans: LeagueClanContext): MatchTimeClan
     league_clan_id: stat.matchTimeLeagueClanId,
     slug: stat.matchTimeClanSlug,
     name: stat.matchTimeClanName,
+    /* 경기 당시 스냅샷은 **DB 에 원본값 그대로 남겨 둔다** (`CLAUDE.md` 5장 1·2번).
+       바꾸는 것은 내보내는 값뿐이다 — 저장된 과거 기록은 손대지 않고 화면만 넥슨을 본다 (D-227) */
     mark: official
-      ? { bg: stat.matchTimeClanMarkBgUrl, front: stat.matchTimeClanMarkFrontUrl }
+      ? restoreClanMark({
+          bg: stat.matchTimeClanMarkBgUrl,
+          front: stat.matchTimeClanMarkFrontUrl,
+        })
       : { bg: null, front: null },
     is_official_clan: official,
   }

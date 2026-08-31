@@ -6,6 +6,7 @@ import {
   type ClanPlayer,
   type ClanSettingInput,
   type RenewResult,
+  restoreClanMark,
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
 import { toKstDateOrNull, toKstIso, toKstIsoOrNull } from '../format'
@@ -46,7 +47,8 @@ export async function getClan(clanSlug: string): Promise<Clan | null> {
     id: clan.id,
     slug: clan.slug,
     name: clan.name,
-    mark: { bg: clan.markBgUrl, front: clan.markFrontUrl },
+    // 넥슨 원본 주소로 되돌려 내보낸다 (D-227)
+    mark: restoreClanMark({ bg: clan.markBgUrl, front: clan.markFrontUrl }),
     master: toPlayerSummaryOrNull(clan.master),
     // 설립일은 날짜만 노출한다 (계약 `IsoDate`)
     established_at: toKstDateOrNull(clan.establishedAt),

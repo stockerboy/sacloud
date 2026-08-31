@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   clanMarkView,
+  clanMarkViewAfterLoad,
   clanMarkViewFromMarkOnly,
   type ClanMarkInput,
 } from '../common/clanMarkPolicy'
@@ -94,6 +95,60 @@ describe('불확실하면 안전한 쪽으로 실패한다', () => {
     // 문자열 "false" 같은 값이 truthy 로 통과해 외부 클랜이 공식이 되는 것을 막는다
     const suspicious = { is_official_clan: 'false', mark: REAL_MARK } as unknown as ClanMarkInput
     expect(clanMarkView(suspicious)).toEqual({ kind: 'fallback' })
+  })
+})
+
+describe('마크 주소가 살아 있어도 그림이 안 오면 fallback 이다 (2026-09-01)', () => {
+  /*
+    `clanMarkView` 는 URL 문자열이 있는지만 본다. 그림이 실제로 왔는지는 모른다.
+    그래서 마크 서버가 죽으면 화면에 **구름조차 없는 빈 사각형**이 남았다 —
+    `ClanMark` 가 실패한 `<img>` 를 `visibility: hidden` 으로 감췄기 때문이다.
+
+    지금 운영 클랜마크의 대부분(로컬 DB 862/892)이 `static.3rd.supply` 를 물고 있다.
+    그 사이트가 죽으면 사이트 전체의 마크가 조용히 빈칸이 된다. 실제로 일어날 수 있는 일이다.
+  */
+  const OFFICIAL = clanMarkView({ is_official_clan: true, mark: REAL_MARK })
+  const NOTHING_FAILED = { bg: false, front: false }
+
+  it('두 겹 다 못 그리면 구름이 뜬다 — 빈 사각형이 아니다', () => {
+    expect(clanMarkViewAfterLoad(OFFICIAL, { bg: true, front: true })).toEqual({
+      kind: 'fallback',
+    })
+  })
+
+  it('한 겹만 실패하면 나머지 한 겹은 그린다', () => {
+    // 두 레이어 중 하나만 설정한 클랜이 실제로 있다. 한쪽 실패로 둘 다 버릴 이유가 없다
+    expect(clanMarkViewAfterLoad(OFFICIAL, { bg: true, front: false })).toEqual({
+      kind: 'official',
+      bg: null,
+      front: REAL_MARK.front,
+    })
+    expect(clanMarkViewAfterLoad(OFFICIAL, { bg: false, front: true })).toEqual({
+      kind: 'official',
+      bg: REAL_MARK.bg,
+      front: null,
+    })
+  })
+
+  it('한 겹짜리 마크가 그 한 겹을 못 그리면 구름이 뜬다', () => {
+    const frontOnly = clanMarkView({
+      is_official_clan: true,
+      mark: { bg: null, front: REAL_MARK.front },
+    })
+    expect(clanMarkViewAfterLoad(frontOnly, { bg: false, front: true })).toEqual({
+      kind: 'fallback',
+    })
+  })
+
+  it('아무것도 실패하지 않았으면 판정이 그대로다', () => {
+    expect(clanMarkViewAfterLoad(OFFICIAL, NOTHING_FAILED)).toEqual(OFFICIAL)
+  })
+
+  it('판정을 뒤집지 않는다 — fallback 을 official 로 올리지 않는다', () => {
+    // 로드 실패는 **덜 그리는** 방향으로만 움직인다. D-146 의 공식/비공식 판정은 건드리지 않는다
+    const external = clanMarkView({ is_official_clan: false, mark: REAL_MARK })
+    expect(clanMarkViewAfterLoad(external, NOTHING_FAILED)).toEqual({ kind: 'fallback' })
+    expect(clanMarkViewAfterLoad(external, { bg: true, front: true })).toEqual({ kind: 'fallback' })
   })
 })
 

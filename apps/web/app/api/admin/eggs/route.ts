@@ -1,4 +1,5 @@
 import { prisma } from '@sacloud/db'
+import { restoreClanMarkUrl } from '@sacloud/contract'
 import { forbidden, guard, ok } from '@/lib/server/respond'
 import { requireAdmin } from '@/lib/server/session'
 
@@ -56,7 +57,8 @@ export async function GET(request: Request) {
             league: r.league.slug,
             leagueName: r.league.name,
             division: r.division,
-            mark: r.clan.markBgUrl,
+            // 관리자 화면도 같은 규칙을 탄다 (D-227)
+            mark: restoreClanMarkUrl(r.clan.markBgUrl),
             broken: Boolean(b),
             reason: b?.reason ?? null,
             brokenAt: b?.brokenAt?.toISOString() ?? null,

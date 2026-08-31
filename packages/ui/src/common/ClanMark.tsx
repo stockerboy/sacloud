@@ -15,9 +15,12 @@
  * 공식/fallback 판정은 이 파일에서 하지 않는다 — `clanMarkPolicy.ts` 의 순수 함수가 한다.
  */
 
+import { useCallback, useState } from 'react'
+
 import { FallbackClanMark } from './FallbackClanMark'
 import {
   clanMarkView,
+  clanMarkViewAfterLoad,
   clanMarkViewFromMarkOnly,
   type ClanMarkInput,
   type ClanMarkSource,
@@ -61,17 +64,37 @@ export interface ClanMarkProps {
   alt?: string
 }
 
+/** `useState` 초기값을 매 렌더 새로 만들지 않는다 */
+const EMPTY_SET: ReadonlySet<string> = new Set()
+
 export function ClanMark({ clan, mark, size = 'md', className, alt = '' }: ClanMarkProps) {
   /* 등록 클랜 여부를 아는 호출부는 `clan` 으로 판정한다.
      `clan` 을 아예 넘기지 않은(= 아직 고치지 않은) 호출부만 마크 URL 로 판정한다.
      `clan={null}`(무소속)은 "안 넘긴 것"이 아니라 **모름/없음** 이므로 fallback 이다. */
-  const view = clan === undefined ? clanMarkViewFromMarkOnly(mark) : clanMarkView(clan)
+  const base = clan === undefined ? clanMarkViewFromMarkOnly(mark) : clanMarkView(clan)
+
+  /* 로드에 실패한 **주소**를 기억한다 (레이어 위치가 아니라 주소로 기억하는 이유:
+     목록에서 같은 컴포넌트가 다른 클랜으로 재사용될 때, 주소가 바뀌면 실패 기록이
+     자동으로 무효가 된다. 위치로 기억하면 초기화 effect 가 따로 필요하고 그걸 빠뜨리면
+     멀쩡한 클랜이 남의 실패를 물려받는다) */
+  const [brokenSrc, setBrokenSrc] = useState<ReadonlySet<string>>(EMPTY_SET)
+  const markBroken = useCallback((src: string) => {
+    setBrokenSrc((prev) => (prev.has(src) ? prev : new Set(prev).add(src)))
+  }, [])
+
+  /* 주소는 있는데 그림이 안 온 겹은 없는 것으로 친다.
+     전부 안 왔으면 빈 사각형이 아니라 구름이 나온다 */
+  const view = clanMarkViewAfterLoad(base, {
+    bg: base.kind === 'official' && base.bg !== null && brokenSrc.has(base.bg),
+    front: base.kind === 'official' && base.front !== null && brokenSrc.has(base.front),
+  })
 
   const box = `${SIZE[size]} shrink-0 ${className ?? ''}`
 
   /* 공식 등록 클랜이 아니면 **공통 fallback 마크**를 그린다 (D-146).
      외부 클랜의 emblem 을 우리 화면에서 공식 소속처럼 보여 주지 않기 위해서다.
-     마크를 설정하지 않은 등록 클랜도 같은 마크를 쓴다 (깨진 이미지보다 낫다). */
+     마크를 설정하지 않은 등록 클랜도 같은 마크를 쓴다 (깨진 이미지보다 낫다).
+     마크 주소가 죽어서 한 겹도 못 그린 경우도 여기로 온다 (2026-09-01). */
   if (view.kind === 'fallback') {
     return <FallbackClanMark className={box} alt={alt} />
   }
@@ -79,8 +102,8 @@ export function ClanMark({ clan, mark, size = 'md', className, alt = '' }: ClanM
   return (
     <span className={box}>
       <span className="relative block h-full w-full">
-        <Layer src={view.bg} alt="" />
-        <Layer src={view.front} alt={alt} />
+        <Layer src={view.bg} alt="" onBroken={markBroken} />
+        <Layer src={view.front} alt={alt} onBroken={markBroken} />
       </span>
     </span>
   )
@@ -89,11 +112,28 @@ export function ClanMark({ clan, mark, size = 'md', className, alt = '' }: ClanM
 /**
  * 한 겹.
  *
- * Mock 단계의 마크 URL은 존재하지 않는 자리표시자 호스트(`static.sacloud.local`)라 로드에 실패한다.
- * 브라우저 기본 깨진 이미지 아이콘이 뜨면 원본과 비교할 때 방해가 되므로, 실패하면 조용히 감춘다.
- * 실제 URL이 들어오는 Phase 7 이후에는 그대로 표시된다.
+ * ── 로드에 실패하면 **알린다**. 감추지 않는다 (2026-09-01)
+ *   예전에는 `visibility: hidden` 으로 조용히 감췄다. 이유가 있었다 — Mock 단계의 마크
+ *   주소는 존재하지 않는 자리표시자 호스트(`static.sacloud.local`)라 반드시 실패했고,
+ *   브라우저 기본 깨진 이미지 아이콘이 원본과 나란히 비교할 때 방해가 됐다.
+ *
+ *   **그 전제가 끝났다.** 원본 비교 절차 자체가 종료됐고(D-204), 실제 주소가 들어온다.
+ *   감추기만 하면 마크 서버가 죽었을 때 **구름조차 없는 빈 사각형**이 남는다.
+ *   지금 마크의 대부분이 `static.3rd.supply` 를 물고 있어 실제로 일어날 수 있는 일이다.
+ *
+ *   그래서 실패를 부모에게 올리고, 부모가 `clanMarkViewAfterLoad` 로 다시 판정한다.
+ *   판정을 여기서 하지 않는 이유는 `clanMarkPolicy.ts` 의 주석과 같다 — 분기를 순수 함수
+ *   하나에 모아 시험으로 고정한다.
  */
-function Layer({ src, alt }: { src: string | null; alt: string }) {
+function Layer({
+  src,
+  alt,
+  onBroken,
+}: {
+  src: string | null
+  alt: string
+  onBroken: (src: string) => void
+}) {
   if (!src) return null
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -101,9 +141,7 @@ function Layer({ src, alt }: { src: string | null; alt: string }) {
       className="absolute left-0 top-0 h-full w-full"
       src={src}
       alt={alt}
-      onError={(event) => {
-        event.currentTarget.style.visibility = 'hidden'
-      }}
+      onError={() => onBroken(src)}
     />
   )
 }

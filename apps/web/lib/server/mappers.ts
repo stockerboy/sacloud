@@ -1,3 +1,4 @@
+import { restoreClanMark } from '@sacloud/contract'
 import type {
   ClanSummary,
   LeagueSummary,
@@ -77,8 +78,14 @@ export function toClanSummary(clan: ClanFields): ClanSummary {
     slug: clan.slug,
     name: clan.name,
     /* 등록 클랜이 아니면 **실제 마크를 내보내지 않는다.**
-       화면은 마크가 비어 있으면 공통 fallback 마크를 그린다. */
-    mark: official ? { bg: clan.markBgUrl, front: clan.markFrontUrl } : { bg: null, front: null },
+       화면은 마크가 비어 있으면 공통 fallback 마크를 그린다.
+
+       주소는 내보내기 직전에 **넥슨 원본으로 되돌린다** (D-227). DB 를 이미 치환했어도
+       여기서 한 번 더 거른다 — 새 동기화가 원본 사이트 주소를 다시 넣어도 화면에는
+       안 나가고, `static.3rd.supply` 가 죽어도 마크가 살아 있다. */
+    mark: official
+      ? restoreClanMark({ bg: clan.markBgUrl, front: clan.markFrontUrl })
+      : { bg: null, front: null },
     is_official_clan: official,
   }
 }

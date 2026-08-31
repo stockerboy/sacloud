@@ -12,9 +12,22 @@
 import { describe, expect, it } from 'vitest'
 import { isOfficialLeagueClan, toClanSummary } from '../lib/server/mappers'
 
+/**
+ * 저장된 마크 주소. **D-227 이후로 이 값은 「그대로 나가지」 않는다** —
+ * `toClanSummary` 가 넥슨 원본 주소로 되돌려 내보낸다.
+ *
+ * 예전에는 `marks/bg.png` 처럼 지어낸 이름을 썼는데, 그러면 변환 규칙을 통과하지 못해
+ * 이 시험이 무엇을 지키는지 알 수 없게 된다. **로컬 DB 실측값**으로 바꿨다.
+ */
 const REAL_MARK = {
-  markBgUrl: 'https://static.3rd.supply/marks/bg.png',
-  markFrontUrl: 'https://static.3rd.supply/marks/front.png',
+  markBgUrl: 'https://static.3rd.supply/marks/NTEvMF8xMl8wODM.png',
+  markFrontUrl: 'https://static.3rd.supply/marks/NTEvMV8yM18xODc.png',
+}
+
+/** 위 주소를 되돌린 값 (D-227) */
+const NEXON_MARK = {
+  bg: 'https://img.sa.nexon.com/sa/clan/mark/51/0_12_083.png',
+  front: 'https://img.sa.nexon.com/sa/clan/mark/51/1_23_187.png',
 }
 
 describe('공식 등록 클랜 판정', () => {
@@ -34,7 +47,7 @@ describe('공식 등록 클랜 판정', () => {
 })
 
 describe('마크 노출', () => {
-  it('공식 등록 클랜은 실제 마크를 그대로 내보낸다', () => {
+  it('공식 등록 클랜은 마크를 내보낸다 — 주소는 넥슨으로 되돌린다 (D-227)', () => {
     const summary = toClanSummary({
       id: 'c1',
       slug: 'official-clan',
@@ -43,8 +56,11 @@ describe('마크 노출', () => {
       ...REAL_MARK,
     })
     expect(summary.is_official_clan).toBe(true)
-    expect(summary.mark.bg).toBe(REAL_MARK.markBgUrl)
-    expect(summary.mark.front).toBe(REAL_MARK.markFrontUrl)
+    expect(summary.mark.bg).toBe(NEXON_MARK.bg)
+    expect(summary.mark.front).toBe(NEXON_MARK.front)
+    // 원본 사이트 주소가 화면으로 새 나가지 않는다. 그 사이트가 죽어도 마크가 산다
+    expect(summary.mark.bg).not.toContain('3rd.supply')
+    expect(summary.mark.front).not.toContain('3rd.supply')
   })
 
   it('외부/미등록 클랜은 실제 마크를 내보내지 않는다 — 화면이 fallback 을 그린다', () => {

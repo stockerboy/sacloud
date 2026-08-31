@@ -9,6 +9,7 @@
     "playstyle-build": "tsx src/playstyleCli.ts"
   },
   "dependencies": {
+    "@sacloud/contract": "workspace:*",
     "@sacloud/db": "workspace:*",
     "@sacloud/nexon": "workspace:*",
     "@sacloud/rating": "workspace:*",
