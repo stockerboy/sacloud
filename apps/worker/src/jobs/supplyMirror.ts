@@ -535,7 +535,9 @@ export async function runSupplyMirror(
     log(
       `적응형 폴링 — 사이클 #${selection.cycleIndex} · 훑을 클랜 ${selection.scan.length}/` +
         `${Object.keys(state.clans).length} (${tiers})` +
-        (selection.deferred > 0 ? ` · 상한으로 미룸 ${selection.deferred}` : ''),
+        (selection.deferred > 0 ? ` · 상한으로 미룸 ${selection.deferred}` : '') +
+        /* 조용한 리그에서 하한이 실제로 몇 곳을 살렸는지 보이게 한다 (D-225) */
+        (selection.toppedUp > 0 ? ` · 하한으로 채움 ${selection.toppedUp}` : ''),
     )
   }
 

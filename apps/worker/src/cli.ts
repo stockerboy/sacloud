@@ -73,6 +73,7 @@ import { linkClanNumbers } from './jobs/clanNumber.js'
 import { runRate } from './jobs/rate.js'
 import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
 import { formatSnapshot, takeDbSnapshot } from './jobs/dbSnapshot.js'
+import { checkSyncFreshness, formatSyncFreshness } from './jobs/syncFreshness.js'
 import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
 import { readCurrentMembership, runSupplyRosters } from './jobs/supplyRosters.js'
 import { explainMatches } from './dev/explainMatches.js'
@@ -299,6 +300,9 @@ function usage(): void {
               백업 스냅샷으로 되돌린다 (삭제하지 않고 값만 복원)
   db-snapshot [--stamp <문자열>]
               DB 이전 검증용 기준선 — 모델별 행 수 · 기간 · 무결성. 읽기만 한다
+  sync-freshness [--leagues <slug,...>] [--max-age <slug>=<시간>,...] [--warn-only]
+              증분 동기화가 밀렸는지 본다 — 최신 경기 시각 vs 마지막 적재 시각.
+              임계값은 리그마다 다르다(실측 근거는 jobs/syncFreshness.ts). 읽기만 한다
   season      --league <slug> [--close | --start] [--at <ISO>] [--number N] [--no-promotion]
               시즌 운영. 플래그가 없으면 현재 상태만 보여 준다.
               --close 최종 랭킹 스냅샷 + 시즌 종료 / --start 승강 반영 + 전원 같은 점수로 시작
@@ -796,6 +800,63 @@ async function main(): Promise<number> {
       return 0
     }
 
+    /**
+     * 증분 동기화 신선도 (D-225).
+     *
+     *   nexon sync-freshness --leagues supply,daerule,sanply
+     *   nexon sync-freshness --max-age sanply=6 --max-age supply=12
+     *
+     * `--warn-only` 는 판정을 찍되 **잡을 실패시키지 않는다.** 임계값을 새로 재는
+     * 동안 쓰는 값이다 — 평상시에는 붙이지 않는다. 조용히 넘기는 검사는 검사가 아니다.
+     */
+    case 'sync-freshness': {
+      const leagues = (stringFlag(args, 'leagues') ?? 'supply,daerule,sanply')
+        .split(',')
+        .map((slug) => slug.trim())
+        .filter((slug) => slug !== '')
+      if (leagues.length === 0) {
+        fail('--leagues 가 비었다')
+        return 1
+      }
+
+      /* `--max-age sanply=6,supply=12` — 쉼표로 잇는다. 준 리그만 기본값을 덮는다.
+         (플래그는 Map 이라 같은 이름을 두 번 주면 뒤엣것이 앞엣것을 지운다) */
+      const overrides: Record<string, number> = {}
+      const pairs = (stringFlag(args, 'max-age') ?? '')
+        .split(',')
+        .map((pair) => pair.trim())
+        .filter((pair) => pair !== '')
+      for (const pair of pairs) {
+        const [slug, hours] = pair.split('=')
+        const value = Number(hours)
+        if (slug === undefined || slug === '' || !Number.isFinite(value) || value <= 0) {
+          fail(`--max-age 는 <slug>=<시간> 형식이다: ${pair}`)
+          return 1
+        }
+        overrides[slug] = value
+      }
+
+      const rows = await checkSyncFreshness({ leagues, maxAgeHours: overrides })
+      log(formatSyncFreshness(rows))
+
+      const stale = rows.filter((row) => !row.pass)
+      if (stale.length === 0) {
+        log('신선도 이상 없음')
+        return 0
+      }
+      for (const row of stale) {
+        const detail = row.found
+          ? `최신 경기가 ${row.ageHours?.toFixed(1)}시간 전이다 (임계 ${row.maxAgeHours}시간)`
+          : '리그를 찾지 못했다'
+        fail(`[${row.league}] ${detail}`)
+      }
+      if (boolFlag(args, 'warn-only')) {
+        log('--warn-only — 판정만 찍고 잡은 실패시키지 않는다')
+        return 0
+      }
+      return 1
+    }
+
     case 'rating-restore': {
       const path = stringFlag(args, 'file')
       if (!path) {
@@ -1263,6 +1324,7 @@ async function main(): Promise<number> {
             cold: `${result.selection.byTier.cold.due}/${result.selection.byTier.cold.total}`,
             dormant: `${result.selection.byTier.dormant.due}/${result.selection.byTier.dormant.total}`,
             미룸: result.selection.deferred,
+            하한채움: result.selection.toppedUp,
           },
         ])
       }

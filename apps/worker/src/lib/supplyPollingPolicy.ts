@@ -55,6 +55,26 @@ export interface SupplyPollingConfig {
    */
   maxClansPerCycle: number
   /**
+   * 한 사이클에 **적어도** 이만큼은 훑는다 — 하한이다 (2026-09-01 · D-225).
+   *
+   * ── 왜 하한이 필요한가
+   *   티어는 **우리 DB 가 아는 마지막 경기 시각**으로 정해진다. 그런데 그 값은
+   *   우리가 수집을 해야 갱신된다. 그래서 수집이 멈추면 티어가 스스로 내려간다.
+   *
+   *     수집이 뜸해진다 → `lastMatchAt` 이 낡는다 → 티어가 내려간다
+   *       → 더 뜸하게 본다 → 더 낡는다 …
+   *
+   *   **되먹임 고리다.** 조용한 리그일수록 빨리 빠진다.
+   *   실측(2026-09-01 운영): 대룰리그 45곳 중 38곳이 `dormant` 가 되어 사이클당
+   *   **1곳**만 훑었고, 최신 경기가 **49시간** 밀렸다. 같은 시각 supply 는 7.8시간이었다.
+   *
+   *   하한은 그 고리를 끊는다. 볼 차례가 아닌 클랜이라도 `cycleIndex` 로 **돌아가며**
+   *   채워 넣어, 어떤 리그도 「사이클당 1곳」으로 굶지 않게 한다.
+   *
+   * 비용은 리그당 이 값이 상한이다. 0 이면 하한을 끄는 것이고, 예전 동작과 같다.
+   */
+  minClansPerCycle: number
+  /**
    * 경기목록을 몇 페이지까지 확인하고 멈추는가.
    *
    * 목록은 **최신순**이라 이미 아는 경기를 한 건이라도 만나면 그 아래는 전부 과거다.
@@ -77,7 +97,15 @@ export const SUPPLY_POLLING_DEFAULTS: SupplyPollingConfig = {
   coldWithinHours: 504,
   intervalMinutes: { hot: 5, warm: 30, cold: 360, dormant: 1440 },
   maxClansPerCycle: 120,
+  /* 리그당 사이클 6곳 = 30분에 최대 36곳. 대룰(45곳)·열산(111곳)도 굶지 않는다 */
+  minClansPerCycle: 6,
   knownPagesToStop: 1,
+}
+
+function nonNegativeInt(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw.trim() === '') return fallback
+  const value = Number(raw)
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback
 }
 
 function positiveInt(raw: string | undefined, fallback: number): number {
@@ -102,6 +130,8 @@ export function readSupplyPollingConfig(
       dormant: positiveInt(env['SUPPLY_POLL_DORMANT_MINUTES'], base.intervalMinutes.dormant),
     },
     maxClansPerCycle: positiveInt(env['SUPPLY_POLL_MAX_CLANS'], base.maxClansPerCycle),
+    /* 하한만 0 을 허용한다 — 0 은 「하한을 끈다」는 뜻이라 유효한 값이다 */
+    minClansPerCycle: nonNegativeInt(env['SUPPLY_POLL_MIN_CLANS'], base.minClansPerCycle),
     knownPagesToStop: positiveInt(env['SUPPLY_POLL_KNOWN_PAGES'], base.knownPagesToStop),
   }
 }
@@ -182,6 +212,8 @@ export interface SupplyPollSelection {
   byTier: Record<SupplyPollTier, { total: number; due: number }>
   /** 상한에 걸려 다음 차례로 미룬 클랜 수. 평상시 0 */
   deferred: number
+  /** 하한을 채우려고 **차례가 아닌데도** 넣은 클랜 수 (D-225). 바쁜 리그에서는 0 */
+  toppedUp: number
 }
 
 /**
@@ -222,7 +254,33 @@ export function selectSupplyClansToScan(input: {
   })
 
   const scan = due.slice(0, config.maxClansPerCycle).map((row) => row.slug)
-  return { scan, cycleIndex, byTier, deferred: due.length - scan.length }
+
+  /* ── 하한을 채운다 (D-225).
+     차례가 아닌 클랜을 `cycleIndex` 로 **돌아가며** 넣는다. 창을 굴리므로 특정 클랜만
+     계속 뽑히지 않고, 순수 함수라 같은 입력이면 언제나 같은 답이 나온다.
+     상한을 넘기지는 않는다 — 하한이 상한보다 크면 상한이 이긴다. */
+  const floor = Math.min(config.minClansPerCycle, config.maxClansPerCycle)
+  let toppedUp = 0
+  if (scan.length < floor) {
+    const chosen = new Set(scan)
+    const rest = input.clans
+      .filter((clan) => !chosen.has(clan.slug))
+      .map((clan) => clan.slug)
+      .sort((left, right) => left.localeCompare(right))
+    const need = Math.min(floor - scan.length, rest.length)
+    /* 창을 **소비한 만큼** 민다. `cycleIndex` 하나로 밀면 사이클마다 1칸만 움직여
+       6곳 중 5곳이 직전과 겹치고, 한 바퀴 도는 데 클랜 수만큼의 사이클이 걸린다.
+       `floor` 를 곱하면 창이 이어 붙어 `클랜수/floor` 사이클이면 한 바퀴가 돈다.
+       음수 방지 — `cycleIndex` 는 epoch 기준 양수지만 설정이 바뀌면 0 일 수 있다 */
+    const start =
+      rest.length === 0 ? 0 : (((cycleIndex * floor) % rest.length) + rest.length) % rest.length
+    for (let step = 0; step < need; step += 1) {
+      scan.push(rest[(start + step) % rest.length] as string)
+      toppedUp += 1
+    }
+  }
+
+  return { scan, cycleIndex, byTier, deferred: due.length - (scan.length - toppedUp), toppedUp }
 }
 
 /* ------------------------------------------------------------- 요청량 모델 --- */

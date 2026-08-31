@@ -109,18 +109,65 @@ describe('selectSupplyClansToScan — 이번 사이클에 볼 목록', () => {
     expect(a.cycleIndex).toBe(b.cycleIndex)
   })
 
-  it('한산한 클랜만 있으면 대부분의 사이클에서 훑을 것이 없다', () => {
-    const quiet: SupplyClanActivity[] = Array.from({ length: 50 }, (_, index) => ({
-      slug: `quiet-${index}`,
-      lastMatchAt: null,
-    }))
+  const quiet50: SupplyClanActivity[] = Array.from({ length: 50 }, (_, index) => ({
+    slug: `quiet-${index}`,
+    lastMatchAt: null,
+  }))
+
+  it('하한을 끄면(0) 한산한 클랜은 하루 한 번씩만 본다 — 티어 주기 그대로', () => {
+    const noFloor = { ...config, minClansPerCycle: 0 }
     let totalScanned = 0
     for (let step = 0; step < 288; step += 1) {
-      const at = new Date(now.getTime() + step * config.cycleMinutes * 60_000)
-      totalScanned += selectSupplyClansToScan({ clans: quiet, now: at, config }).scan.length
+      const at = new Date(now.getTime() + step * noFloor.cycleMinutes * 60_000)
+      totalScanned += selectSupplyClansToScan({ clans: quiet50, now: at, config: noFloor }).scan
+        .length
     }
     /* 하루 288 사이클에 50개를 정확히 한 번씩 — 전부 훑으면 14,400 이다 */
     expect(totalScanned).toBe(50)
+  })
+
+  /* ── 하한 (D-225).
+     티어는 **우리가 수집해야** 갱신되는 값으로 정해지므로, 수집이 뜸해지면 티어가 스스로
+     내려가 더 뜸해진다. 운영에서 대룰리그가 그 고리에 빠져 사이클당 1곳만 훑었고
+     최신 경기가 49시간 밀렸다. 아래 세 가지가 그 고리를 끊는 성질이다. */
+  it('하한이 있으면 조용한 리그도 사이클마다 최소 그만큼은 훑는다', () => {
+    const floored = { ...config, minClansPerCycle: 6 }
+    for (let step = 0; step < 20; step += 1) {
+      const at = new Date(now.getTime() + step * floored.cycleMinutes * 60_000)
+      const picked = selectSupplyClansToScan({ clans: quiet50, now: at, config: floored })
+      expect(picked.scan.length).toBe(6)
+      expect(new Set(picked.scan).size).toBe(6) // 같은 클랜을 두 번 담지 않는다
+    }
+  })
+
+  it('하한으로 채우는 자리는 **돌아간다** — 특정 클랜만 계속 뽑히지 않는다', () => {
+    const floored = { ...config, minClansPerCycle: 6 }
+    const seen = new Set<string>()
+    /* 50곳 ÷ 사이클당 6곳 → 9사이클이면 한 바퀴가 돈다. 넉넉히 20사이클을 본다 */
+    for (let step = 0; step < 20; step += 1) {
+      const at = new Date(now.getTime() + step * floored.cycleMinutes * 60_000)
+      for (const slug of selectSupplyClansToScan({ clans: quiet50, now: at, config: floored }).scan) {
+        seen.add(slug)
+      }
+    }
+    expect(seen.size).toBe(50)
+  })
+
+  it('바쁜 리그에서는 하한이 아무것도 바꾸지 않는다 (toppedUp 0)', () => {
+    const floored = { ...config, minClansPerCycle: 6 }
+    const busy: SupplyClanActivity[] = Array.from({ length: 30 }, (_, index) => ({
+      slug: `hot-${index}`,
+      lastMatchAt: hoursAgo(1),
+    }))
+    const picked = selectSupplyClansToScan({ clans: busy, now, config: floored })
+    expect(picked.toppedUp).toBe(0)
+    expect(picked.scan.length).toBe(30) // hot 은 매 사이클 전부 본다
+  })
+
+  it('하한은 상한을 넘지 못한다', () => {
+    const clamped = { ...config, minClansPerCycle: 20, maxClansPerCycle: 4 }
+    const picked = selectSupplyClansToScan({ clans: quiet50, now, config: clamped })
+    expect(picked.scan.length).toBe(4)
   })
 
   it('상한에 걸리면 높은 티어부터 채우고 나머지를 미룬다 (빠뜨리지 않는다)', () => {
