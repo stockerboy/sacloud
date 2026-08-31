@@ -348,6 +348,10 @@ pnpm --filter @sacloud/worker nexon independent-league [--confirm]
 > **`pnpm db:start`는 켜 두는 명령이다.** 그 프로세스가 살아 있는 동안만 DB가 뜬다.
 > 창을 닫거나 Ctrl+C를 누르면 PostgreSQL도 함께 내려가고 **API가 전부 500**이 된다.
 > API가 갑자기 500이면 `netstat -ano | findstr :5433` 으로 DB부터 확인한다.
+>
+> **대량 적재 중 DB 가 죽으면 D-216 을 읽어라.** 원인은 공간이 아니라 **WAL 파일 생성**이었다.
+> `min_wal_size` 를 2GB 로 올려 재활용 풀을 키우는 것으로 고쳤다 (2026-08-31).
+> 또 죽으면 `pg_wal` 조각 수부터 센다 — 128개 근처에서 안정적이면 재활용이 도는 것이다.
 > dev 서버와는 **별도 창**에서 띄운다.
 
 `apps/web/.env.local` 의 `NEXT_PUBLIC_API_MODE` 로 모드를 바꾼다 (`live` / `mock`).
