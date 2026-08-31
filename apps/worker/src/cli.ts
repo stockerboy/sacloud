@@ -41,6 +41,7 @@ import { fail, log, registerSecret, table, warn } from './lib/log.js'
 import { AbortCollection, type JobContext } from './jobs/context.js'
 import { runIdentities } from './jobs/identities.js'
 import { runIdentityWatch } from './jobs/identityWatch.js'
+import { runBarracksLink } from './jobs/barracksLink.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
@@ -341,7 +342,9 @@ async function main(): Promise<number> {
   }
 
   const needsNetwork =
-    ['identities', 'collect', 'refresh', 'poll', 'identity-watch'].includes(args.command) &&
+    ['identities', 'collect', 'refresh', 'poll', 'identity-watch', 'barracks-link'].includes(
+      args.command,
+    ) &&
     !dryRun
   const needsNetworkOnConfirm =
     args.command === 'supply-matches' &&
@@ -373,6 +376,17 @@ async function main(): Promise<number> {
       // 새 신원은 곧바로 폴링 대상이 된다
       const created = await ensurePollStates()
       if (created > 0) log(`폴링 대상 ${created}명 추가`)
+      table([result as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'barracks-link': {
+      /*
+        배틀로그 계정 ↔ ouid 를 잇는다 (D-221).
+        `/id` 로 받은 ouid 를 `user/basic` 으로 **되돌려 확인**한 것만 잇는다 —
+        옛 닉으로 부르면 그 닉을 물려받은 남이 붙기 때문이다.
+      */
+      const result = await runBarracksLink(ctx, { limit: numberFlag(args, 'limit') ?? 300 })
       table([result as unknown as Record<string, unknown>])
       return 0
     }
