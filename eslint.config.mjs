@@ -16,6 +16,11 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       '**/public/mockServiceWorker.js',
+      /* 브라우저 콘솔에 붙여 넣는 스니펫. **여기 규칙으로 볼 코드가 아니다** —
+         전역 함수를 정의해 사람이 콘솔에서 부르는 것이 목적이라 «안 쓰는 함수» 로 잡힌다.
+         `ipl-clan-members-snippet.js` 는 생성물이기도 하다
+         (`apps/worker/src/dev/iplMemberSnippetBuild.ts` 가 만든다). */
+      'scripts/*-snippet.js',
       '**/next-env.d.ts',
       // prisma generate 산출물 — 우리가 작성한 코드가 아니다
       'packages/db/generated/**',
