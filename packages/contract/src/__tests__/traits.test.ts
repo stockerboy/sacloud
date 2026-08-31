@@ -295,8 +295,14 @@ describe('buildPlayerTraits — 축별 판정 (라이플)', () => {
     expect(axisOf(hexagon, 'duel')).toMatchObject({ percentile: 64.8, pending: null })
   })
 
-  it('원어택 성공률(finish)은 포지션 판정이 먼저다', () => {
-    expect(axisOf(hexagon, 'finish')).toMatchObject({ percentile: null, pending: 'position' })
+  /*
+   * 2026-09-01 정정 — 예전에는 `pending: 'position'`(「포지션 판정 필요」)을 기대했다.
+   * 그런데 이 입력은 `hasRoundData === false` 다. 포지션을 못 정한 것이 아니라
+   * **배틀로그가 아예 없는** 것이라 `rounds`(「라운드 복원 필요」)가 맞는 사유다.
+   * 옛 문구는 사람에게 「할 수 없는 일」을 시키고 있었다 (D-231).
+   */
+  it('원어택 성공률(finish)은 라운드 자료가 없으면 rounds 로 남는다', () => {
+    expect(axisOf(hexagon, 'finish')).toMatchObject({ percentile: null, pending: 'rounds' })
   })
 
   it('백분위가 없으면 그 축만 pending=games 로 남는다', () => {

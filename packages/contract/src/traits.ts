@@ -411,8 +411,17 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
             key,
             label: label(key),
             percentile: rifleValue,
-            /* 포지션 판정이 안 된 선수는 `position`, 판정은 됐는데 킬이 모자라면 `games` */
-            pending: rifleValue !== null ? null : input.hasRoundData === true ? 'games' : 'position',
+            /*
+             * 판정은 됐는데 킬이 모자라면 `games`, 라운드 자료가 아예 없으면 `rounds`.
+             *
+             * ⚠ 2026-09-01 정정 — 예전에는 라운드 자료가 없을 때 `position`
+             *   (「포지션 판정 필요」)을 붙였다. **틀린 사유였다.**
+             *   그 선수들은 포지션을 못 정한 게 아니라 **배틀로그 자체가 없다**
+             *   (실측 DPL 21명 · 열산 55명 · 대룰 5명). 포지션을 아무리 더 판정해도
+             *   안 켜진다. 화면이 사람에게 「할 수 없는 일」을 시키고 있었다.
+             *   같은 자리의 세이브·기회창출·소수싸움은 전부 `rounds` 를 쓴다 (376행).
+             */
+            pending: rifleValue !== null ? null : input.hasRoundData === true ? 'games' : 'rounds',
           }
         }
         const value = input.workPercentile ?? null
