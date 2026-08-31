@@ -116,6 +116,23 @@ export const ClanRosterMember = z.object({
   position_label: z.string().nullable(),
   /** 판정이 어디서 왔나 — 사람이 정한 값인지 밝힐 수 있게 남긴다 */
   position_source: z.enum(['user', 'weapon', 'coords']).nullable(),
+  /**
+   * 접속 여부 (2026-09-01 사용자 지시).
+   *
+   * `true` 접속중 · `false` 미접속 · **`null` 알수없음**.
+   *
+   * ── `null` 을 `false` 로 접지 않는다
+   *   출처는 병영수첩 클랜원 명단(`BarracksClanMember.connFlag`)이고, 그 명단과
+   *   우리 선수가 이어져 있어야 알 수 있다. 안 이어진 선수는 **모르는 것이지
+   *   미접속인 것이 아니다.** 접으면 없는 사실을 만든다 (`CLAUDE.md` 3장 7번).
+   *   화면은 `null` 이면 **양쪽 불을 다 끈다.**
+   *
+   * ── 실시간이 아니다
+   *   병영수첩은 우리 서버의 호출을 막는다 (403 · D-200). 명단은 **사람이 한 번씩
+   *   긁어 온 스냅샷**이고, 이 값은 **그 관측 시점의** 접속 여부다.
+   *   언제 본 값인지는 `ClanRoster.online_observed_at` 에 있다.
+   */
+  online: z.boolean().nullable(),
 })
 export type ClanRosterMember = z.infer<typeof ClanRosterMember>
 
@@ -143,7 +160,20 @@ export const ClanRosterSquad = z.object({
 export type ClanRosterSquad = z.infer<typeof ClanRosterSquad>
 
 export const ClanRoster = z.object({
-  /** 항상 `[1군, 2군]` 두 칸이다. 2군이 비어도 자리는 남는다 */
+  /**
+   * **클랜원 목록** — 래더 높은 순, 한 줄에 한 명 (2026-09-01 사용자 지시).
+   *
+   * 화면의 기본은 이제 이 목록이다. 아래 `squads`(포지션별 1군/2군)는 **지우지 않고**
+   * 남겨 둔다 — 방식을 바꿀 때 앞 버전도 남긴다는 사용자 지시다 (`CLAUDE.md` 10-4).
+   */
+  members: z.array(ClanRosterMember),
+  /**
+   * 접속 여부를 **언제 본 값인가** (KST ISO). 아무도 모르면 `null`.
+   *
+   * 실시간이 아니다. 이 줄이 없으면 사용자는 지금 이 순간의 접속 상태로 읽는다.
+   */
+  online_observed_at: z.string().nullable(),
+  /** 항상 `[1군, 2군]` 두 칸이다. 2군이 비어도 자리는 남는다 (앞 버전 · 10-4) */
   squads: z.array(ClanRosterSquad),
   /** 전체 클랜원 수 */
   member_count: Count,
@@ -169,6 +199,8 @@ export interface ClanRosterInput {
   position: PositionCode | null
   positionLabel: string | null
   positionSource: PositionSource | null
+  /** 접속중 여부. **모르면 `null`** — `false` 로 접지 않는다 */
+  online?: boolean | null
 }
 
 /**
@@ -199,6 +231,7 @@ function toMember(input: ClanRosterInput): ClanRosterMember {
     position: input.position,
     position_label: input.positionLabel,
     position_source: input.positionSource,
+    online: input.online ?? null,
   }
 }
 
@@ -240,7 +273,11 @@ function toSquad(
  *
  * 클랜원이 하나도 없으면 `null` 이다 — 0 으로 채운 빈 카드를 그리지 않는다 (D-106).
  */
-export function buildClanRoster(rows: readonly ClanRosterInput[]): ClanRoster | null {
+export function buildClanRoster(
+  rows: readonly ClanRosterInput[],
+  /** 접속 여부를 언제 본 값인가 (KST ISO). 모르면 `null` */
+  onlineObservedAt: string | null = null,
+): ClanRoster | null {
   if (rows.length === 0) return null
 
   const sorted = [...rows].sort(sortByRating)
@@ -257,6 +294,10 @@ export function buildClanRoster(rows: readonly ClanRosterInput[]): ClanRoster | 
   const second = sorted.filter((row) => !firstIds.has(row.leaguePlayerId))
 
   return {
+    /* 화면의 기본 — 래더 높은 순 한 줄씩. 정렬은 `squads` 와 **같은 기준**이라
+       두 화면을 오가도 순서가 뒤집히지 않는다 */
+    members: sorted.map(toMember),
+    online_observed_at: onlineObservedAt,
     squads: [toSquad('first', first), toSquad('second', second)],
     member_count: rows.length,
     unknown_position_count: rows.filter((row) => row.position === null).length,

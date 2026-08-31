@@ -21,6 +21,7 @@ import type { PositionCode } from '@sacloud/contract'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
 import { resolvePositionsOf } from './playerPositionQuery'
+import { toKstIso } from '../format'
 
 /**
  * 한 클랜에서 몇 명까지 읽을까.
@@ -74,6 +75,7 @@ export async function leagueClanRoster(
   ])
 
   const gamesOf = new Map(gameCounts.map((row) => [row.playerId, row._count._all]))
+  const online = await resolveOnlineOf(playerIds)
 
   const rows: ClanRosterInput[] = members.map((row) => {
     const position = positions.get(row.player.id)
@@ -89,8 +91,84 @@ export async function leagueClanRoster(
       position: (position?.code ?? null) as PositionCode | null,
       positionLabel: position?.label ?? null,
       positionSource: position?.source ?? null,
+      /* 사슬이 끊겨 있으면 `undefined` → 계약이 `null`(알수없음)로 만든다.
+         **`false` 로 접지 않는다** — 모르는 것과 미접속은 다르다 */
+      online: online.byPlayer.get(row.player.id),
     }
   })
 
-  return buildClanRoster(rows)
+  return buildClanRoster(rows, online.observedAt)
+}
+
+/**
+ * **접속 여부** — 병영수첩 클랜원 명단에서 읽는다 (2026-09-01 사용자 지시).
+ *
+ * ── 사슬
+ *   ```
+ *   Player.id
+ *     → NexonIdentity.playerId          (사람이 판단해 이어 둔 것 · D-036)
+ *     → NexonIdentity.barracksNexonSn   (`nexon barracks-link` 가 채운다 · D-221)
+ *     → BarracksClanMember.userNexonSn
+ *     → connFlag (1 이면 관측 시점에 접속중)
+ *   ```
+ *
+ * ── 클랜으로 찾지 않는다
+ *   병영 클랜 slug 와 우리 클랜 slug 가 같다는 보장이 없다. 계정으로 바로 간다 —
+ *   고리가 하나 줄고, 클랜을 옮긴 선수도 그대로 잡힌다.
+ *
+ * ── **닉네임으로 잇지 않는다**
+ *   닉은 식별자가 아니다 (D-220). 위장닉이 섞이고, 옛 닉은 남이 물려받는다.
+ *   같은 클랜 안이라도 마찬가지다. 못 이으면 **모르는 채로 둔다.**
+ *
+ * ── 실시간이 아니다
+ *   병영수첩은 우리 서버의 호출을 막는다 (403 · D-200). 명단은 사람이 한 번씩 긁어 온
+ *   스냅샷이고, 이 값은 **그 관측 시점**의 접속 여부다. 언제 본 값인지 함께 돌려준다.
+ *
+ * 실패해도 명단 전체를 죽이지 않는다 — 비어 있으면 전원 `알수없음` 이다.
+ */
+async function resolveOnlineOf(playerIds: string[]): Promise<{
+  byPlayer: Map<string, boolean>
+  observedAt: string | null
+}> {
+  const empty = { byPlayer: new Map<string, boolean>(), observedAt: null }
+  if (playerIds.length === 0) return empty
+
+  try {
+    const identities = await prisma.nexonIdentity.findMany({
+      where: { playerId: { in: playerIds }, barracksNexonSn: { not: null } },
+      select: { playerId: true, barracksNexonSn: true },
+    })
+    if (identities.length === 0) return empty
+
+    /* 계정 → 선수. 한 선수에 계정이 여럿 붙을 수 있으므로 계정 쪽을 열쇠로 삼는다 */
+    const playerOf = new Map<string, string>()
+    for (const row of identities) {
+      if (row.playerId && row.barracksNexonSn) playerOf.set(row.barracksNexonSn, row.playerId)
+    }
+
+    /* 최근 관측이 먼저 오게 읽고, 계정마다 **맨 앞 하나만** 쓴다.
+       같은 계정이 여러 번 관측돼 있고 옛 값이 이기면 안 된다 */
+    const observations = await prisma.barracksClanMember.findMany({
+      where: { userNexonSn: { in: [...playerOf.keys()] } },
+      orderBy: { observedAt: 'desc' },
+      select: { userNexonSn: true, connFlag: true, observedAt: true },
+    })
+
+    const byPlayer = new Map<string, boolean>()
+    const seen = new Set<string>()
+    let newest: Date | null = null
+    for (const row of observations) {
+      if (seen.has(row.userNexonSn)) continue
+      seen.add(row.userNexonSn)
+      const playerId = playerOf.get(row.userNexonSn)
+      if (!playerId || byPlayer.has(playerId)) continue
+      byPlayer.set(playerId, row.connFlag === 1)
+      if (!newest || row.observedAt > newest) newest = row.observedAt
+    }
+
+    return { byPlayer, observedAt: newest ? toKstIso(newest) : null }
+  } catch {
+    /* 표가 아직 없거나 질의가 실패해도 명단은 그려야 한다 */
+    return empty
+  }
 }

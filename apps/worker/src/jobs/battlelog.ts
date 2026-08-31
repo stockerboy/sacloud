@@ -410,11 +410,6 @@ export async function buildPositionProfiles(input: {
     ? (JSON.parse(readFileSync(input.labelsFile, 'utf8')) as PositionLabelFile)
     : null
 
-  const rows = await prisma.barracksBattleLogRaw.findMany({
-    where: { subjectKind: { in: ['user', 'clan'] }, status: 'ok' },
-    select: { subject: true, subjectKind: true, matchKey: true, payload: true },
-  })
-
   const bySubject = new Map<string, SubjectSamples>()
   /** `str_usn` → 병영수첩 계정 번호. 우리 Player 와 잇는 데 쓴다 */
   const accountOf = new Map<string, string>()
@@ -427,8 +422,36 @@ export async function buildPositionProfiles(input: {
     return made
   }
 
-  for (const row of rows) {
-    const events = eventsOf(row.payload)
+  /**
+   * 원문을 **배치로 흘려 읽는다** (2026-09-01 · D-225).
+   *
+   * ⚠ 예전에는 `findMany` 한 번으로 **전량을 메모리에 올렸다.** 그것이 두 번 터졌다.
+   *   ```
+   *   행 7,815  →  기본 힙(2GB)에서 OOM. `--max-old-space-size=4096` 으로 겨우 돌았다
+   *   행 8,015  →  그것도 안 된다. Prisma 가 먼저 죽는다
+   *                「Failed to convert rust `String` into napi `string`」
+   *                = 결과를 JS 문자열로 옮기다 V8 한계를 넘은 것이다. 힙을 더 줘도 안 된다
+   *   ```
+   *   경기 하나에 이벤트가 3,000여 개다. 행이 늘면 **반드시 다시 터진다.**
+   *   그래서 상한을 올리는 것으로 넘기지 않고 읽는 방식을 바꿨다.
+   *
+   * 집계 결과(`bySubject` · `accountOf`)만 남기므로 배치 크기와 무관하게 값이 같다.
+   */
+  const BATCH = 200
+  let cursor: string | undefined
+  for (;;) {
+    const rows = await prisma.barracksBattleLogRaw.findMany({
+      where: { subjectKind: { in: ['user', 'clan'] }, status: 'ok' },
+      select: { id: true, subject: true, subjectKind: true, matchKey: true, payload: true },
+      orderBy: { id: 'asc' },
+      take: BATCH,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    })
+    if (rows.length === 0) break
+    cursor = rows[rows.length - 1]?.id
+
+    for (const row of rows) {
+      const events = eventsOf(row.payload)
 
     if (row.subjectKind === 'user') {
       const entry = entryFor(row.subject)
@@ -473,6 +496,9 @@ export async function buildPositionProfiles(input: {
       put(event.str_usn, event.user_nexon_sn)
       put(event.target_str_usn, event.target_user_nexon_sn)
     }
+    }
+
+    if (rows.length < BATCH) break
   }
 
   const result: PositionBuildResult = {

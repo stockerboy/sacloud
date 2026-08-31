@@ -99,7 +99,7 @@ import {
   type PositionCode,
   type ResolvedPosition,
 } from '@sacloud/contract'
-import { dataset, toKstIso } from './dataset'
+import { dataset, FIXTURE_NOW, toKstIso } from './dataset'
 import { Rng } from './rng'
 import { getMockRole } from './session'
 import { kdRate, killPerMatch, percentOf, winRate } from './derive'
@@ -1703,11 +1703,37 @@ function buildClanRoster(leagueClan: MockLeagueClan): ClanRoster | null {
         position: (position.code ?? null) as PositionCode | null,
         positionLabel: position.label,
         positionSource: position.source,
+        online: mockOnlineOf(leaguePlayer.id),
       }
     })
     .filter((entry): entry is ClanRosterInput => Boolean(entry))
 
-  return buildClanRosterOf(rows)
+  /* 픽스처의 「지금」을 관측 시각으로 쓴다. 실제 서버는 병영수첩을 마지막으로 긁은 때다 */
+  return buildClanRosterOf(rows, FIXTURE_NOW)
+}
+
+/**
+ * **접속 여부(Mock)** — 결정적 가짜값이다.
+ *
+ * ⚠ **이 값은 실제 서버와 일치하지 않는다. 일치할 수 없다.**
+ *   운영은 병영수첩 클랜원 명단(`BarracksClanMember.connFlag`)에서 읽는다.
+ *   Mock 픽스처에는 병영수첩이 아예 없다.
+ *   `clanRoundMetrics` 와 같은 성격의 **알려진 차이**다.
+ *
+ * ── 세 상태를 **한 화면에서 다 보이게** 만든다
+ *   화면이 `접속중` · `미접속` · `알수없음`(양쪽 불 꺼짐) 셋을 그리는데,
+ *   전부 같은 값이면 Mock 모드에서 나머지 두 모양을 영영 못 본다.
+ *   그래서 다섯에 하나는 `null` 로 둔다 — 실제로도 이어지지 않은 선수가 나온다.
+ *
+ * id 가 같으면 언제나 같은 값이다 (시드 고정).
+ */
+function mockOnlineOf(leaguePlayerId: string): boolean | null {
+  let hash = 0
+  for (let index = 0; index < leaguePlayerId.length; index += 1) {
+    hash = (hash * 31 + leaguePlayerId.charCodeAt(index)) % 997
+  }
+  if (hash % 5 === 0) return null
+  return hash % 2 === 0
 }
 
 /* ------------------- 클랜 배틀로그 지표 (SITE_SPEC_V2 5-5절) ------------------- */
