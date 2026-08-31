@@ -7,8 +7,17 @@ import type { NextConfig } from 'next'
  * 외부 공개 전에 하나도 없었다. 여기서 붙인다.
  *
  * ── CSP 를 정할 때 실제로 필요한 것만 열었다
- *   `img-src`   클랜마크가 `static.3rd.supply` 에서 온다. 원본 자산을 그대로 링크한다
- *               (복사해 오지 않는다 — CLAUDE.md 3장 4번). data:/blob: 은 아바타 미리보기용
+ *   `img-src`   클랜마크는 **두 곳**에서 온다. 복사해 오지 않고 그대로 링크한다
+ *               (CLAUDE.md 3장 4번). data:/blob: 은 아바타 미리보기용
+ *
+ *               `img.sa.nexon.com`   넥슨 공식 이미지 CDN. 병영수첩에서 받은 마크가 이 꼴이다
+ *               `static.3rd.supply`  같은 이미지의 미러. 경로를 base64 로 감싼 것뿐이다
+ *                                    (`NTEvMF8xMl8xNjE` = `51/0_12_161`, 바이트 수도 같다)
+ *
+ *               ⚠ **2026-08-31 결함 수정** — 넥슨 도메인이 빠져 있어서 IPL 클랜랭킹에서
+ *                 마크가 여러 개 안 보였다. DB 에는 URL 이 멀쩡히 있고 그 URL 도 200 인데
+ *                 **브라우저가 CSP 로 막고 있었다.** `clan-mark-audit` 은 "URL 이 있는가" 만
+ *                 봐서 `마크없음 0` 이라고 답했다 — 그래서 끝난 줄 알고 넘어갔다.
  *   `script-src` Next 는 하이드레이션에 인라인 부트스트랩 스크립트를 쓴다.
  *               nonce 방식으로 바꾸려면 미들웨어가 필요해서 이번 범위 밖이다.
  *               `'unsafe-inline'` 을 남긴 것은 **의도된 타협**이고 아래 숙제로 적어 둔다.
@@ -27,13 +36,21 @@ import type { NextConfig } from 'next'
  */
 const isDev = process.env.NODE_ENV === 'development'
 
+/**
+ * 클랜마크를 가져오는 호스트 — **여기가 단일 진실 원천이다.**
+ *
+ * `img-src` 와 `clan-mark-audit` 이 같은 목록을 봐야 한다. 갈라지면
+ * "DB 에는 URL 이 있는데 화면에는 안 보이는" 상태가 조용히 생긴다 (2026-08-31 실제 발생).
+ */
+export const CLAN_MARK_HOSTS = ['https://img.sa.nexon.com', 'https://static.3rd.supply'] as const
+
 const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "img-src 'self' data: blob: https://static.3rd.supply",
+  `img-src 'self' data: blob: ${CLAN_MARK_HOSTS.join(' ')}`,
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
