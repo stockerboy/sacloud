@@ -46,6 +46,8 @@ concurrency:
 
 permissions:
   contents: read
+  # 끝나면서 **증분 체인을 다시 열어 준다** (D-229). dispatch 에 필요한 최소 권한이다
+  actions: write
 
 jobs:
   # ── 왜 리그마다 잡을 나누는가 (2026-09-01 · D-225)
@@ -240,3 +242,41 @@ jobs:
 
       - name: 검증 — 행 수 · 무결성 (읽기만 한다)
         run: pnpm --filter @sacloud/worker nexon db-snapshot --stamp "full-${{ github.run_id }}"
+
+      # ── 증분 체인을 **다시 열어 준다** (D-229)
+      #
+      #   증분은 자기호출로 도는데, 전수 집계가 자리를 기다리는 동안에는 물러나 있는다
+      #   (대기 자리가 하나뿐이라 밀고 들어가면 전수 집계가 취소된다).
+      #   물러난 체인을 누가 다시 여는가 — **끝낸 쪽이 연다.** 그것이 여기다.
+      #
+      #   이걸 예약(cron)에 맡기면 안 된다. 실측 전달률이 11% 라 몇 시간이 빈다.
+      #   실제로 첫 실전에서 그렇게 끊겼다.
+      #
+      #   `always()` — 집계가 실패해도 증분은 다시 돌아야 한다. 둘은 다른 일이다.
+      #   이미 도는 증분이 있으면 부르지 않는다(중복 방지). 실패해도 잡을 죽이지 않는다 —
+      #   여기서 빨개지면 「집계가 실패했다」로 잘못 읽힌다. 대신 `::warning::` 을 남긴다.
+      - name: 증분 체인을 다시 연다 (self-dispatch · D-229)
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          live=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-incremental.yml/runs?per_page=10" \
+          | jq -r '[.workflow_runs[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="pending")] | length')
+          if [ -n "$live" ] && [ "$live" != 'null' ] && [ "$live" -gt 0 ]; then
+            echo "증분이 이미 ${live}건 돌고 있다 — 부르지 않는다"
+            exit 0
+          fi
+
+          code=$(curl -sS -o /tmp/redispatch.out -w '%{http_code}' -X POST \
+          -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-incremental.yml/dispatches" \
+          -d "{\"ref\":\"${GITHUB_REF_NAME}\",\"inputs\":{\"chain\":\"0\"}}")
+          if [ "$code" = '204' ]; then
+            echo "증분 체인을 다시 열었다 (체인 0 부터)"
+          else
+            echo "::warning::증분 체인 재개 실패 HTTP ${code} — cron(7,37) 후퇴값에 맡긴다. 본문: $(head -c 300 /tmp/redispatch.out)"
+          fi

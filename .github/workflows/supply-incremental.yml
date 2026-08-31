@@ -456,9 +456,28 @@ jobs:
             exit 0
           fi
 
-          hour=$(date -u +%H)
-          if [ "$hour" = '19' ]; then
-            echo "UTC 19시는 전수 집계 자리다 (D-224) — 체인을 잠시 끊는다. 20:07 cron 이 다시 연다"
+          # ── 전수 집계에 자리를 내준다. **시각으로 자르지 않는다** (D-229 후속)
+          #
+          #   처음에는 `UTC 19시면 건너뛴다`로 짰다. 첫 실전에서 그게 바로 물렸다 —
+          #   run #17 이 19:50Z 에 끝나면서 체인을 스스로 끊었고, 다시 여는 것은
+          #   **11% 만 오는 예약**이었다. 시각으로 자르면 **날마다 한 번씩 체인이 죽고
+          #   몇 시간씩 못 돌아온다.** 고치려던 병을 하루 한 번 다시 앓는 셈이다.
+          #
+          #   그래서 「지금 전수 집계가 자리를 기다리는가」를 **실제로 본다.**
+          #   기다리는 것이 없으면 19시든 아니든 체인을 잇는다.
+          #   기다리는 것이 있으면 물러난다 — 대기 자리가 하나뿐이라 우리가 밀고 들어가면
+          #   **대기하던 전수 집계가 취소된다.**
+          #   물러난 체인은 전수 집계 워크플로가 끝나면서 다시 열어 준다 (그쪽 마지막 스텝).
+          full=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-rollup-full.yml/runs?per_page=10" \
+          | jq -r '[.workflow_runs[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="pending")] | length')
+          if [ -z "$full" ] || [ "$full" = 'null' ]; then
+            echo "::warning::전수 집계 상태를 못 읽었다 — 안전한 쪽으로 체인을 끊는다"
+            exit 0
+          fi
+          if [ "$full" -gt 0 ]; then
+            echo "전수 집계가 대기·진행 중이다(${full}건) — 자리를 내주고 물러난다. 그쪽이 끝나면서 체인을 다시 연다"
             exit 0
           fi
 
