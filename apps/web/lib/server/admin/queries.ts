@@ -133,14 +133,50 @@ export async function adminSummary(): Promise<AdminSummary> {
     prisma.importFailure.count({ where: { source: 'nexon', resolvedAt: null } }),
   ])
 
-  const ratedStats = await prisma.matchPlayerStat.count({
-    where: { match: { origin: 'nexon' }, ratingUpdate: { not: null } },
-  })
-  const lastRated = await prisma.matchPlayerStat.findFirst({
-    where: { match: { origin: 'nexon' }, formulaVersion: { not: null } },
-    orderBy: { id: 'desc' },
-    select: { formulaVersion: true },
-  })
+  /**
+   * **이 화면이 25초 걸리던 자리다.** 이 두 질의가 그 중 32.9초였다 (D-227).
+   *
+   * ── 무엇이 문제였나
+   *   `origin='nexon'` 인 경기는 386,146건 중 **136건**뿐이다(나머지는 `3rd.supply`
+   *   361,348 · `nexon_barracks` 24,662). 그런데 `orderBy: { id: 'desc' }` 가
+   *   플래너를 **PK 역방향 스캔**으로 끌고 가서, 136건을 찾겠다고 `MatchPlayerStat`
+   *   **361만 행**을 거꾸로 훑었다. 실측 32,925 ms · 버퍼 173만 블록.
+   *
+   *   `matchId IN (136건)` 으로 좁혀도 5,233 ms 로 똑같이 뒤로 훑는다.
+   *   **`orderBy` 를 DB 에서 떼야** 계획이 바뀐다.
+   *
+   * ── 그래서 두 걸음으로 나눈다
+   *   ① 대상 경기 id 를 먼저 받는다 (136건)
+   *   ② 그 id 로 참가 기록을 받는다 (980행) — 정렬은 **JS 에서** 한다
+   *   실측 32,925 → 482 ms (68배).
+   *
+   *   ⚠ 모집단(`origin='nexon'`)을 넓히지 마라. `nexon_barracks`(24,662건)를
+   *     끌어들이면 **값이 달라진다.** 이 칸은 「넥슨 수집분의 래더 반영 현황」이다.
+   *
+   *   ⚠ `id` 최댓값을 JS 로 고른다. cuid 는 ASCII 라 로컬 DB collation(`C`)에서는
+   *     DB 정렬과 일치한다. 운영 collation 은 **확인하지 않았다** `[미확인]` —
+   *     달라지면 `formulaVersion` 이 뒤바뀔 수 있는데, 지금 값이 한 종류
+   *     (`sacloud-d145`)뿐이라 화면에 보이는 값은 같다.
+   */
+  const nexonMatchIds = (
+    await prisma.match.findMany({ where: { origin: 'nexon' }, select: { id: true } })
+  ).map((row) => row.id)
+
+  const [ratedStats, ratedRows] = await Promise.all([
+    prisma.matchPlayerStat.count({
+      where: { matchId: { in: nexonMatchIds }, ratingUpdate: { not: null } },
+    }),
+    prisma.matchPlayerStat.findMany({
+      where: { matchId: { in: nexonMatchIds }, formulaVersion: { not: null } },
+      select: { id: true, formulaVersion: true },
+    }),
+  ])
+
+  let newestRated: { id: string; formulaVersion: string | null } | null = null
+  for (const row of ratedRows) {
+    if (!newestRated || row.id > newestRated.id) newestRated = row
+  }
+  const lastRated = newestRated ? { formulaVersion: newestRated.formulaVersion } : null
 
   const [pollTargets, pollDue, lastRun] = await Promise.all([
     prisma.nexonPollState.count(),
@@ -391,9 +427,34 @@ export async function adminMatches(input: {
       map: { select: { name: true } },
       redClan: { select: { clan: { select: { name: true } } } },
       blueClan: { select: { clan: { select: { name: true } } } },
-      _count: { select: { stats: true } },
     },
   })
+
+  /**
+   * 참가자 수를 **따로 센다.** 예전에는 위 `select` 에 `_count: { stats: true }` 가 있었다.
+   *
+   * ── 왜 뗐나 (D-227)
+   *   Prisma 의 to-many `_count` 는 이렇게 컴파일된다.
+   *   ```sql
+   *   LEFT JOIN (SELECT "matchId", COUNT(*) FROM "MatchPlayerStat" GROUP BY "matchId")
+   *   ```
+   *   **50건 보려고 361만 행짜리 표를 통째로 GROUP BY 한다.** 실측 8,673 ms.
+   *   뽑힌 50개 id 로만 세면 **28 ms** 다 (웜 5 ms). 왕복 한 번이 늘고 300배 빨라진다.
+   *
+   *   ⚠ `groupBy` 결과에는 **참가자가 0인 경기가 아예 안 나온다.** 그래서 `?? 0` 으로
+   *     메워야 예전과 같은 값이 된다. 이 칸은 「참가자 수」이고 0 도 뜻이 있는 값이다.
+   */
+  const statCounts = new Map<string, number>(
+    matches.length === 0
+      ? []
+      : (
+          await prisma.matchPlayerStat.groupBy({
+            by: ['matchId'],
+            where: { matchId: { in: matches.map((match) => match.id) } },
+            _count: { _all: true },
+          })
+        ).map((row) => [row.matchId, row._count._all]),
+  )
 
   return matches.map((match) => ({
     id: match.id,
@@ -415,7 +476,7 @@ export async function adminMatches(input: {
       rating: match.blueRatingBefore,
       update: match.blueRatingUpdate,
     },
-    stats: match._count.stats,
+    stats: statCounts.get(match.id) ?? 0,
   }))
 }
 
