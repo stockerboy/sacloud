@@ -1,4 +1,4 @@
-import { guard, notFound, ok } from '@/lib/server/respond'
+import { guard, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { getLeaguePlayerDetail } from '@/lib/server/queries/records'
 
@@ -13,6 +13,14 @@ export async function GET(_request: Request, context: { params: Promise<Record<s
     const leagueSlug = await routeParam(context, 'league')
     const playerId = await routeParam(context, 'playerId')
     const detail = await getLeaguePlayerDetail(leagueSlug, playerId)
-    return detail ? ok(detail) : notFound('리그 플레이어를 찾을 수 없습니다')
+    /*
+     * 로그인과 무관한 공개 값이라 엣지가 대신 답한다 (D-223 · D-230 후속).
+     *
+     * ⚠ 이 화면이 **운영에서 500 이었다.** 육각형 백분위가 「그 리그 같은 무기 선수
+     *   전원의 분포」를 요구해서, 열산(20만 경기) 상위 선수가 11~17초 걸려 죽었다.
+     *   인덱스로 대부분 살렸지만 **콜드 첫 요청은 여전히 무겁다** — 그 한 번을
+     *   엣지가 덮는다. 같은 선수를 두 번째 보는 사람은 함수를 안 깨운다.
+     */
+    return detail ? okPublic(detail) : notFound('리그 플레이어를 찾을 수 없습니다')
   })
 }

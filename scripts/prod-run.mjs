@@ -37,6 +37,11 @@ const ALLOWED = {
     writes: true,
     what: '클랜마크 주소를 static.3rd.supply -> img.sa.nexon.com 으로 되돌린다 (D-227) 백업 후 실행 · MatchPlayerStat 은 안 건드린다',
   },
+  'perf-dist-index': {
+    file: 'perfDistIndex',
+    writes: true,
+    what: '선수 상세(육각형)를 살리는 커버링 인덱스 (D-230 후속 2). CONCURRENTLY · 추가만 한다',
+  },
   'perf-covering-index': {
     file: 'perfCoveringIndex',
     writes: true,
