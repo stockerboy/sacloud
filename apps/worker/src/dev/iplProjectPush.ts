@@ -17,7 +17,7 @@
  * 멱등이다 — `(leagueId, origin, sourceMatchId)` 로 upsert 한다. 다시 돌려도 늘지 않는다.
  */
 import { readFileSync } from 'node:fs'
-import { prisma } from '@sacloud/db'
+import { prisma, type Prisma } from '@sacloud/db'
 import { allocateInternalMatchId } from '../lib/internalMatchId.js'
 
 const IPL_SLUG = 'nolink'
@@ -98,6 +98,19 @@ const result = {
 }
 const missing = new Map<string, number>()
 
+/** 한 번에 넣을 개수. 너무 크면 한 덩어리가 실패했을 때 되돌리기 어렵다 */
+const INSERT_CHUNK = 500
+const pending: Prisma.MatchCreateManyInput[] = []
+/** 이번 실행에서 이미 쓴 id — 아직 DB 에 없어서 조회로는 안 걸린다 */
+const usedIds = new Set<string>()
+
+async function flush() {
+  if (!pending.length) return
+  await prisma.match.createMany({ data: pending, skipDuplicates: true })
+  console.info(`  ... ${result.created.toLocaleString()}건 넣었다`)
+  pending.length = 0
+}
+
 for (const row of rows) {
   const red = resolve(row.redClanSlug, row.redClanName)
   const blue = resolve(row.blueClanSlug, row.blueClanName)
@@ -129,9 +142,11 @@ for (const row of rows) {
   const matchId =
     existingId ??
     (await allocateInternalMatchId(startAt, async (candidate) => {
+      if (usedIds.has(candidate)) return true
       const found = await prisma.match.findUnique({ where: { id: candidate }, select: { id: true } })
       return found !== null
     }))
+  usedIds.add(matchId)
 
   const data = {
     leagueId: league.id,
@@ -152,14 +167,21 @@ for (const row of rows) {
     sourceMatchId: row.sourceMatchId,
   }
 
-  await prisma.match.upsert({
-    where: { id: matchId },
-    create: { id: matchId, ...data },
-    update: data,
-  })
-  if (existingId) result.updated += 1
-  else result.created += 1
+  if (existingId) {
+    await prisma.match.update({ where: { id: matchId }, data })
+    result.updated += 1
+  } else {
+    /*
+      **일괄로 모았다가 한 번에 넣는다.**
+      한 건씩 upsert 하니 원격 왕복이 2만 번이라 3시간짜리가 됐다 (2026-08-31 실측:
+      20분에 2,582건). 신규는 묶어 넣고, 이미 있는 것만 한 건씩 고친다.
+    */
+    pending.push({ id: matchId, ...data })
+    result.created += 1
+    if (pending.length >= INSERT_CHUNK) await flush()
+  }
 }
+await flush()
 
 console.info(
   `${confirm ? '반영' : '미리보기'} — 입력 ${result.input.toLocaleString()} · ` +
