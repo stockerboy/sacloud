@@ -68,7 +68,19 @@ on:
     #   실측: 전수 집계 run 3건이 **전부 cancelled**. 한 번도 돈 적이 없다.
     #   증분이 30분마다 밀고 들어와 매번 밀어냈기 때문이다.
     #   그래서 그 한 시간을 비워 전수 집계가 들어갈 자리를 만든다.
-    - cron: '0,30 0-18,20-23 * * *'
+    #
+    # ── `0,30` 이 아니라 `7,37` 이다 — 일부러 어긋냈다 (2026-09-01 · D-225)
+    #   GitHub 은 「매시 정각 부근이 고부하이고, 부하가 높으면 예약이 **버려질 수 있다**」고
+    #   문서에 적어 두었다. 우리가 쓰던 `0,30` 은 그 두 분이다.
+    #   실측(08-28~08-31 · 예약 슬롯 153칸): **발사 17칸 · 드롭 136칸(89%)** ·
+    #   지연 중앙값 21분. 어중간한 분으로 옮겨 부하 봉우리를 피한다.
+    #
+    # ── 그리고 **이제 예약은 후퇴값이다** (아래 self-dispatch 스텝)
+    #   드롭 136칸 중 109칸은 그 순간 아무것도 안 돌고 있었다 — 대기·취소가 아니라
+    #   GitHub 스케줄러가 이벤트를 안 보낸 것이다. 그래서 신선도를 예약에 걸지 않는다.
+    #   잡이 끝나면서 **자기 자신을 `workflow_dispatch` 로 다시 부른다.**
+    #   이 예약은 그 체인이 끊겼을 때 되살리는 용도로만 남긴다.
+    - cron: '7,37 0-18,20-23 * * *'
   workflow_dispatch:
     inputs:
       leagues:
@@ -89,6 +101,10 @@ on:
         type: boolean
         required: false
         default: false
+      chain:
+        description: '자기호출 체인 깊이. **사람은 건드리지 않는다** (폭주 방지용 · D-225)'
+        required: false
+        default: '0'
 
 # 겹치면 **취소가 아니라 대기**한다.
 # 적재·집계가 도는 중에 같은 것을 또 시작하면 같은 행을 두 곳에서 건드린다.
@@ -102,13 +118,20 @@ concurrency:
 
 permissions:
   contents: read
+  # 잡이 끝나면서 **자기 자신을 다시 부른다** (D-225). dispatch 에 필요한 최소 권한이다.
+  # `actions: write` 는 읽기도 포함한다 — 예약 간격 알람이 `actions/runs` 를 읽는다.
+  actions: write
 
 jobs:
   sync:
     name: 5분 사이클 × N — 수집 → 적재 → 증분 집계 → 검증
     runs-on: ubuntu-latest
-    # 사이클 예산(27분)에 준비·검증을 더한 값보다 넉넉하게. 무한정 붙잡지는 않는다
-    timeout-minutes: 40
+    # 사이클 예산(20분)에 준비·검증·자기호출을 더한 값보다 넉넉하게. 무한정 붙잡지는 않는다.
+    #
+    # 40 → 50 (2026-09-01 · D-225). 실측 16건 중 **4건이 40분에 잘렸고**, 잘린 자리는
+    # 언제나 step 8 이었다 — 적재 도중일 수 있고, 뒤의 검증 스텝이 통째로 skip 됐다.
+    # 예산을 20분으로 줄였으니 평상시에는 35분 안에 끝난다. 이 값은 **안전판**이다.
+    timeout-minutes: 50
 
     env:
       # 운영 DB. **값을 로그에 찍지 않는다** (GitHub 이 자동 마스킹하지만 우리도 찍지 않는다)
@@ -130,13 +153,32 @@ jobs:
       LEAGUES: ${{ inputs.leagues || 'supply,daerule,sanply' }}
       DRY_RUN: ${{ inputs.dry_run || 'false' }}
       NO_ADAPTIVE: ${{ inputs.no_adaptive || 'false' }}
-      # 사이클 수와 간격. 6 × 5분 = 25분 + 마지막 사이클 작업시간 ≈ 27분
+      # 사이클 수 상한과 간격. **실제로 도는 수는 아래 예산이 정한다** —
+      # 예산 1200초면 사이클은 0·5·10·15분에 시작하고 20분에서 끊기므로 **4회**다.
+      # 이 값은 상한으로만 남는다 (`--cycles` 로 진단할 때 쓴다)
       CYCLES: ${{ inputs.cycles || '6' }}
       CYCLE_SECONDS: '300'
-      # 이 시간을 넘기면 다음 사이클을 시작하지 않는다 — 다음 예약을 막지 않으려는 것이다
-      BUDGET_SECONDS: '1620'
+      # 이 시간을 넘기면 **다음 사이클을 시작하지 않는다.**
+      #
+      # 1620(27분) → 1200(20분) (2026-09-01 · D-225).
+      # 이 값은 「새 사이클을 **시작**할지」만 본다. 마지막 사이클의 작업시간은 그 위에
+      # 통째로 얹힌다. 그래서 27분 예산인데 실측 step 8 중앙값이 **31.4분**이었고,
+      # run 16건 중 13건이 30분을 넘겼다. 20분으로 내리면 마지막 사이클이 길어져도
+      # step 8 이 30분 안에 들어온다.
+      #
+      # ── 사이클이 6회에서 4회로 줄지만 **하루 총량은 오히려 늘어난다**
+      #   자기호출 체인에서는 **다음 실행 주기 = 이번 실행 길이**다. 실행이 22분이면
+      #   22분마다 새 실행이 뜬다. 실측 기준 하루 5.5회 × 6사이클 = 33사이클이었는데,
+      #   체인이 돌면 하루 약 65회 × 4사이클 이다. 짧게 자주 도는 쪽이 신선하다.
+      #   준비 고정비가 실측 24초라 자주 시작해도 싸다 (그래서 이 설계가 성립한다).
+      BUDGET_SECONDS: '1200'
 
     steps:
+      # 자기호출 폭주 방지 ③ 「최소 생존시간」의 기준점 (D-225).
+      # 잡이 초 단위로 죽고 되살아나는 고리를 막으려면 **언제 시작했는지**를 알아야 한다.
+      - name: 시작 시각을 기록한다
+        run: echo "JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
 
@@ -306,6 +348,25 @@ jobs:
         if: ${{ always() && inputs.dry_run != true }}
         run: pnpm --filter @sacloud/worker nexon ipl-sanply-check
 
+      # 증분이 실제로 밀렸는가 (D-225).
+      #
+      # 임계값은 **리그마다 다르다.** 하나로 묶으면 오경보가 난다 —
+      # 운영 최근 8일 경기 간격 실측: sanply 최대 7.1h · supply 최대 18.0h ·
+      # daerule 최대 116.3h(8일에 12경기). 근거 표는 `apps/worker/src/jobs/syncFreshness.ts`.
+      # sanply 가 가장 예민한 감지기라 여기가 울면 진짜다.
+      #
+      # ⚠ 이 검사는 **원본이 조용한 것**을 잡지 못한다. 예약이 드롭된 것 자체는
+      #   아래 「예약 간격」 스텝이 GitHub `actions/runs` 로 따로 본다.
+      - name: 검증 — 증분이 밀렸는가 (신선도 · D-225)
+        if: ${{ always() && inputs.dry_run != true }}
+        # 잡 CLI 는 stderr 로만 말한다. run 화면에 뜨도록 주석(annotation)을 여기서 붙인다
+        run: |
+          set -uo pipefail
+          if ! pnpm --filter @sacloud/worker nexon sync-freshness --leagues "${LEAGUES}"; then
+            echo "::error::증분이 밀렸다 — 위 표의 「밀렸다」 리그를 본다 (D-225)"
+            exit 1
+          fi
+
       - name: 이번에 받은 원본 보관 (디버깅용 · 7일)
         if: ${{ always() && inputs.dry_run != true }}
         uses: actions/upload-artifact@v4
@@ -317,6 +378,106 @@ jobs:
             packages/db/data/supply-mirror-*.jsonl
           if-no-files-found: ignore
           retention-days: 7
+
+      # ── 다음 실행을 **우리가** 예약한다 (D-225)
+      #
+      # GitHub 예약 스케줄러는 실측 89% 를 버렸다(153칸 중 17칸만 발사). 그중 80% 는
+      # 그 순간 아무것도 안 돌고 있었다 — 대기·취소가 아니라 이벤트가 안 온 것이다.
+      # `workflow_dispatch` 는 그 예약 큐를 타지 않으므로 구조적으로 드롭이 없다.
+      #
+      # ⚠ **아직 실측되지 않았다** `[미확인]`. GitHub 문서는 `GITHUB_TOKEN` 이 만든 이벤트가
+      #   새 run 을 만들지 않는다고 하면서 `workflow_dispatch` · `repository_dispatch` 를
+      #   **예외로 명시**한다. 그래서 되는 것으로 보고 넣는다. 안 되면 이 체인이 조용히
+      #   끊기는데, 그때는 위 `cron`(후퇴값)이 돌고 아래 「예약 간격」 알람이 빨개진다.
+      #   즉 **실패해도 조용하지 않다.** 하루만 run 목록을 보면 판정된다.
+      #
+      # ── 폭주 방지 (세 겹이다. 밤새 도는 것이라 하나로는 부족하다)
+      #   ① 체인 깊이 상한 40 — 예약(cron)으로 들어오면 0 으로 리셋된다
+      #   ② 최근 1시간 run 수 상한 5 — 잡이 빨리 죽어도 시간당 5회를 못 넘는다
+      #   ③ 최소 생존시간 10분 — 초 단위로 죽고 되살아나는 고리를 원천 차단한다
+      #   그리고 UTC 19시에는 부르지 않는다. 전수 집계 자리다 (D-224).
+      - name: 다음 실행을 스스로 예약한다 (self-dispatch · D-225)
+        if: ${{ always() && inputs.dry_run != true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHAIN: ${{ inputs.chain || '0' }}
+          MAX_CHAIN: '40'
+          MAX_RUNS_PER_HOUR: '5'
+          MIN_ALIVE_SECONDS: '600'
+        run: |
+          set -uo pipefail
+          next=$(( CHAIN + 1 ))
+
+          alive=$(( $(date +%s) - JOB_STARTED ))
+          if [ "$alive" -lt "$MIN_ALIVE_SECONDS" ]; then
+            echo "::warning::이 run 이 ${alive}초만에 끝났다 — 체인을 잇지 않는다 (최소 ${MIN_ALIVE_SECONDS}초). cron 후퇴값이 되살린다"
+            exit 0
+          fi
+
+          if [ "$next" -gt "$MAX_CHAIN" ]; then
+            echo "::warning::체인 깊이 ${CHAIN} 이 상한 ${MAX_CHAIN} 에 닿았다 — 여기서 끊는다. cron 이 새 체인을 연다"
+            exit 0
+          fi
+
+          hour=$(date -u +%H)
+          if [ "$hour" = '19' ]; then
+            echo "UTC 19시는 전수 집계 자리다 (D-224) — 체인을 잠시 끊는다. 20:07 cron 이 다시 연다"
+            exit 0
+          fi
+
+          since=$(date -u -d '60 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          recent=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-incremental.yml/runs?per_page=100&created=%3E${since}" \
+          | jq -r '.total_count // 0')
+          if [ -z "$recent" ] || [ "$recent" = 'null' ]; then
+            echo "::warning::최근 run 수를 못 읽었다 — 안전한 쪽으로 체인을 끊는다"
+            exit 0
+          fi
+          if [ "$recent" -ge "$MAX_RUNS_PER_HOUR" ]; then
+            echo "::error::최근 1시간 run 이 ${recent}건이다 (상한 ${MAX_RUNS_PER_HOUR}) — 폭주로 보고 체인을 끊는다"
+            exit 0
+          fi
+
+          echo "체인 ${CHAIN} → ${next} · 최근 1시간 ${recent}건 · 생존 ${alive}초 — 다음 실행을 부른다"
+          code=$(curl -sS -o /tmp/dispatch.out -w '%{http_code}' -X POST \
+          -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-incremental.yml/dispatches" \
+          -d "{\"ref\":\"${GITHUB_REF_NAME}\",\"inputs\":{\"chain\":\"${next}\"}}")
+          if [ "$code" = '204' ]; then
+            echo "다음 실행을 예약했다 (체인 ${next})"
+          else
+            echo "::error::self-dispatch 실패 HTTP ${code} — cron 후퇴값에 맡긴다. 본문: $(head -c 300 /tmp/dispatch.out)"
+          fi
+
+      # 예약이 실제로 오고 있는가 (D-225).
+      #
+      # 위 신선도 검사는 **원본이 조용한 것**과 구별이 안 된다. 이건 우리 파이프라인만 본다 —
+      # 직전 run 과 이번 run 의 시작 간격이다. 목표 주기는 30분이고, 75분을 넘겼으면
+      # 예약이 드롭됐거나 체인이 끊긴 것이다. 실측에서 이 간격은 **중앙값 216분**이었다.
+      - name: 검증 — 예약 간격이 벌어졌는가 (D-225)
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAX_GAP_MINUTES: '75'
+        run: |
+          set -uo pipefail
+          runs=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-incremental.yml/runs?per_page=10")
+          this_at=$(echo "$runs" | jq -r --arg id "${GITHUB_RUN_ID}" '.workflow_runs[] | select((.id|tostring)==$id) | .created_at')
+          prev_at=$(echo "$runs" | jq -r --arg id "${GITHUB_RUN_ID}" '[.workflow_runs[] | select((.id|tostring)!=$id)] | sort_by(.created_at) | reverse | .[0].created_at // empty')
+          if [ -z "$this_at" ] || [ -z "$prev_at" ]; then
+            echo "직전 run 을 찾지 못했다 (첫 실행이거나 목록이 비었다) — 판정하지 않는다"
+            exit 0
+          fi
+          gap=$(( ( $(date -u -d "$this_at" +%s) - $(date -u -d "$prev_at" +%s) ) / 60 ))
+          echo "직전 ${prev_at} → 이번 ${this_at} · 간격 ${gap}분 (임계 ${MAX_GAP_MINUTES}분)"
+          if [ "$gap" -gt "$MAX_GAP_MINUTES" ]; then
+            echo "::error::예약 간격이 ${gap}분이다 — 예약이 드롭됐거나 자기호출 체인이 끊겼다 (D-225)"
+            exit 1
+          fi
 
       - name: 사이클 실패가 있었으면 잡을 실패시킨다
         # 루프는 신선도를 지키려고 실패를 삼키고 계속 돌았다. **결과까지 삼키지는 않는다**

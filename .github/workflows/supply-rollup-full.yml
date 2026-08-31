@@ -48,19 +48,177 @@ permissions:
   contents: read
 
 jobs:
-  rollup:
-    name: 전수 재계산
+  # ── 왜 리그마다 잡을 나누는가 (2026-09-01 · D-225)
+  #
+  #   실측: 이 워크플로의 run 3건이 **전부 90분 타임아웃에 죽었다.**
+  #   `jobs` API 로 스텝을 열어 보면 셋 다 「전수 재계산」에서 84.3 / 87.1 / 88.0분을
+  #   돌다 잘렸다. **밀려서 취소된 것이 아니다** — D-224 는 이것을 concurrency 대기 취소로
+  #   읽었는데 그건 틀렸다. 대기 시간은 2건이 0분, 1건이 7.2분이었다.
+  #
+  #   한 잡 안에서 세 리그를 이어 돌면 **90분을 셋이 나눠 쓴다.** 그래서 마지막 리그는
+  #   시작조차 못 했고, 앞 리그가 끝냈어도 잡이 실패로 끝나니 무엇이 됐는지 알 수 없었다.
+  #   리그마다 잡을 나누면 ① 각자 자기 시간을 온전히 쓰고 ② 하나가 죽어도 나머지는 살고
+  #   ③ 어느 리그가 느린지 run 화면에서 바로 보인다.
+  #
+  #   준비 비용(체크아웃·install·prisma generate)은 **실측 24초**다 (증분 run 16건 평균).
+  #   잡을 셋으로 늘려도 1분 남짓이라 나누는 편이 싸다.
+  #
+  # ── 동시에 돌리지 않는다
+  #   `max-parallel: 1`. 세 리그가 같은 운영 DB 를 때리는 것을 막고, 점유 시간이
+  #   예측 가능해진다. `fail-fast: false` — 하나가 죽어도 나머지를 돌린다.
+  prepare:
+    name: 대상 리그 정하기
     runs-on: ubuntu-latest
-    # 실측 세 리그 합 5분 남짓(로컬). 운영 DB 는 더 느릴 수 있어 넉넉히 잡되 무한정은 아니다
-    timeout-minutes: 90
+    timeout-minutes: 5
+    outputs:
+      leagues: ${{ steps.pick.outputs.leagues }}
+      started: ${{ steps.pick.outputs.started }}
+    steps:
+      - name: 리그 목록을 JSON 배열로 만든다
+        id: pick
+        env:
+          LEAGUES: ${{ inputs.leagues || 'supply,daerule,sanply' }}
+        run: |
+          set -euo pipefail
+          json=$(for slug in $(echo "$LEAGUES" | tr ',' ' '); do echo "$slug"; done | jq -R . | jq -sc .)
+          echo "leagues=${json}" >> "$GITHUB_OUTPUT"
+          # 전체 예산의 기준점. 리그마다 여기서 얼마나 지났는지 재서 폭주를 막는다
+          echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
+          echo "대상 리그 ${json}"
+
+  rollup:
+    name: 전수 재계산 — ${{ matrix.league }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    # 90 → 100 **리그당** (D-225). 셋이 나눠 쓰던 90분을 각자 온전히 쓴다.
+    # 실측으로 88분을 넘긴 적이 있으니 90 은 여유가 없다.
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        league: ${{ fromJson(needs.prepare.outputs.leagues) }}
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       # 점수의 주인은 우리 공식이다 (D-173) — 원본 점수로 되돌려 쓰지 않는다
       SACLOUD_RATING_OWNER: formula
-      LEAGUES: ${{ inputs.leagues || 'supply,daerule,sanply' }}
+      LEAGUE: ${{ matrix.league }}
       DRY_RUN: ${{ inputs.dry_run || 'false' }}
+      # 워크플로 전체 예산(분). 이걸 넘기면 남은 리그를 **건너뛰고 크게 알린다** —
+      # 증분과 같은 `concurrency` 그룹이라 오래 잡고 있으면 신선도가 그만큼 밀린다
+      TOTAL_BUDGET_MINUTES: '210'
+      STARTED_AT: ${{ needs.prepare.outputs.started }}
 
+    steps:
+      - name: 전체 예산이 남았는가
+        id: budget
+        run: |
+          set -euo pipefail
+          elapsed=$(( ( $(date +%s) - STARTED_AT ) / 60 ))
+          echo "워크플로 경과 ${elapsed}분 / 예산 ${TOTAL_BUDGET_MINUTES}분"
+          if [ "$elapsed" -ge "$TOTAL_BUDGET_MINUTES" ]; then
+            # 조용히 줄이지 않는다 — 무엇을 건너뛰었는지 로그에 남긴다
+            echo "::error::[${LEAGUE}] 전체 예산 ${TOTAL_BUDGET_MINUTES}분을 넘겨(${elapsed}분) **집계하지 않고 건너뛴다.** 이 리그의 값은 오늘 보정되지 않았다"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 저장소 체크아웃
+        if: ${{ steps.budget.outputs.skip == 'false' }}
+        uses: actions/checkout@v4
+
+      - name: pnpm 설치
+        if: ${{ steps.budget.outputs.skip == 'false' }}
+        uses: pnpm/action-setup@v4
+
+      - name: Node 24 설치
+        if: ${{ steps.budget.outputs.skip == 'false' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 의존성 설치
+        if: ${{ steps.budget.outputs.skip == 'false' }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma 클라이언트 생성
+        if: ${{ steps.budget.outputs.skip == 'false' }}
+        run: pnpm --filter @sacloud/db exec prisma generate
+
+      - name: 시크릿 확인 (값은 찍지 않는다)
+        if: ${{ steps.budget.outputs.skip == 'false' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL 시크릿이 없다"
+            exit 1
+          fi
+          echo "DATABASE_URL 설정됨 · 리그 ${LEAGUE} · dry-run ${DRY_RUN}"
+
+      - name: 클랜 목록 받아 두기 — 집계가 클랜을 건너뛰지 않게
+        if: ${{ steps.budget.outputs.skip == 'false' && inputs.dry_run != true }}
+        # 클랜 점수·승패·부리그의 출처는 **수집 파일 클랜 목록** 하나뿐이다 (D-157).
+        # 러너는 빈 작업공간이라 그 파일이 없고, 없으면 집계가 클랜을 통째로 건너뛴다
+        # (값을 지어내지 않기 위해서다) — 그 상태로는 이 잡이 exit 1 로 끝난다.
+        #
+        # 그래서 증분 사이클을 **한 번** 돌려 체크포인트를 만든다. 평소 사이클과 같은 명령이라
+        # 새 경기가 있으면 그것도 같이 받아 둔다. 요청은 리그당 수십 건이다.
+        env:
+          SUPPLY_APP_ID: ${{ secrets.SUPPLY_APP_ID }}
+          SUPPLY_APP_VER: ${{ secrets.SUPPLY_APP_VER }}
+          SUPPLY_CONCURRENCY: '3'
+          SUPPLY_DELAY_MS: '250'
+          SUPPLY_POLL_CYCLE_MINUTES: '5'
+        run: |
+          set -uo pipefail
+          if [ -z "${SUPPLY_APP_ID:-}" ]; then unset SUPPLY_APP_ID; fi
+          if [ -z "${SUPPLY_APP_VER:-}" ]; then unset SUPPLY_APP_VER; fi
+          echo "::group::[${LEAGUE}] 클랜 목록 + 새 경기"
+          pnpm --filter @sacloud/worker nexon supply-mirror \
+          --league "$LEAGUE" --incremental --seen-from-db --adaptive || \
+          echo "::warning::[${LEAGUE}] 수집 실패 — 클랜은 건너뛴 채 선수만 집계된다"
+          echo '::endgroup::'
+
+      - name: 새로 받은 경기 적재 (있으면)
+        if: ${{ steps.budget.outputs.skip == 'false' && inputs.dry_run != true }}
+        run: |
+          set -uo pipefail
+          details="packages/db/data/supply-mirror-${LEAGUE}.details.jsonl"
+          if [ ! -s "$details" ]; then
+            echo "[${LEAGUE}] 새 경기 없음 — 적재 건너뜀"
+            exit 0
+          fi
+          pnpm --filter @sacloud/worker nexon supply-import --league "$LEAGUE" --confirm || \
+          echo "::warning::[${LEAGUE}] 적재 실패"
+
+      - name: 전수 재계산
+        if: ${{ steps.budget.outputs.skip == 'false' }}
+        run: |
+          set -uo pipefail
+          confirm='--confirm'
+          if [ "$DRY_RUN" = 'true' ]; then confirm=''; fi
+
+          started=$(date +%s)
+          # `--full` 이 전수다. 붙이지 않으면 기본이 증분이라 보정이 되지 않는다
+          if ! pnpm --filter @sacloud/worker nexon supply-rollup --league "$LEAGUE" --full $confirm; then
+            echo "::error::[${LEAGUE}] 전수 집계 실패 ($(( ( $(date +%s) - started ) / 60 ))분)"
+            exit 1
+          fi
+          # 다음에 timeout 을 정할 근거가 된다. 실측 없이 값을 고르지 않기 위해 남긴다
+          echo "[${LEAGUE}] 전수 집계 완료 — $(( ( $(date +%s) - started ) / 60 ))분"
+
+  verify:
+    name: 검증 — 행 수 · 무결성
+    needs: [prepare, rollup]
+    # 앞이 죽어도 따로 돈다. **검사 스텝은 서로를 가리면 안 된다** (D-224)
+    if: ${{ always() && inputs.dry_run != true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
@@ -80,81 +238,5 @@ jobs:
       - name: Prisma 클라이언트 생성
         run: pnpm --filter @sacloud/db exec prisma generate
 
-      - name: 시크릿 확인 (값은 찍지 않는다)
-        run: |
-          set -euo pipefail
-          if [ -z "${DATABASE_URL:-}" ]; then
-            echo "::error::DATABASE_URL 시크릿이 없다"
-            exit 1
-          fi
-          echo "DATABASE_URL 설정됨 · 리그 ${LEAGUES} · dry-run ${DRY_RUN}"
-
-      - name: 클랜 목록 받아 두기 — 집계가 클랜을 건너뛰지 않게
-        if: ${{ inputs.dry_run != true }}
-        # 클랜 점수·승패·부리그의 출처는 **수집 파일 클랜 목록** 하나뿐이다 (D-157).
-        # 러너는 빈 작업공간이라 그 파일이 없고, 없으면 집계가 클랜을 통째로 건너뛴다
-        # (값을 지어내지 않기 위해서다) — 그 상태로는 이 잡이 exit 1 로 끝난다.
-        #
-        # 그래서 증분 사이클을 **한 번** 돌려 체크포인트를 만든다. 평소 사이클과 같은 명령이라
-        # 새 경기가 있으면 그것도 같이 받아 둔다. 요청은 리그당 수십 건이다.
-        env:
-          SUPPLY_APP_ID: ${{ secrets.SUPPLY_APP_ID }}
-          SUPPLY_APP_VER: ${{ secrets.SUPPLY_APP_VER }}
-          SUPPLY_CONCURRENCY: '3'
-          SUPPLY_DELAY_MS: '250'
-          SUPPLY_POLL_CYCLE_MINUTES: '5'
-        run: |
-          set -uo pipefail
-          if [ -z "${SUPPLY_APP_ID:-}" ]; then unset SUPPLY_APP_ID; fi
-          if [ -z "${SUPPLY_APP_VER:-}" ]; then unset SUPPLY_APP_VER; fi
-          for slug in $(echo "$LEAGUES" | tr ',' ' '); do
-            echo "::group::[$slug] 클랜 목록 + 새 경기"
-            pnpm --filter @sacloud/worker nexon supply-mirror \
-              --league "$slug" --incremental --seen-from-db --adaptive || \
-              echo "::warning::[$slug] 수집 실패 — 클랜은 건너뛴 채 선수만 집계된다"
-            echo '::endgroup::'
-          done
-
-      - name: 새로 받은 경기 적재 (있으면)
-        if: ${{ inputs.dry_run != true }}
-        run: |
-          set -uo pipefail
-          for slug in $(echo "$LEAGUES" | tr ',' ' '); do
-            details="packages/db/data/supply-mirror-${slug}.details.jsonl"
-            if [ ! -s "$details" ]; then
-              echo "[$slug] 새 경기 없음 — 적재 건너뜀"
-              continue
-            fi
-            echo "::group::[$slug] 적재"
-            pnpm --filter @sacloud/worker nexon supply-import --league "$slug" --confirm || \
-              echo "::warning::[$slug] 적재 실패"
-            echo '::endgroup::'
-          done
-
-      - name: 전수 재계산
-        run: |
-          set -uo pipefail
-          worker() { pnpm --filter @sacloud/worker nexon "$@"; }
-
-          confirm='--confirm'
-          if [ "$DRY_RUN" = 'true' ]; then confirm=''; fi
-
-          failed=0
-          for slug in $(echo "$LEAGUES" | tr ',' ' '); do
-            echo "::group::[$slug] 전수 집계 (--full)"
-            # `--full` 이 전수다. 붙이지 않으면 기본이 증분이라 보정이 되지 않는다
-            if ! worker supply-rollup --league "$slug" --full $confirm; then
-              echo "::error::[$slug] 전수 집계 실패"
-              failed=$(( failed + 1 ))
-            fi
-            echo '::endgroup::'
-          done
-
-          if [ "$failed" -ne 0 ]; then
-            echo "::error::${failed}개 리그의 전수 집계가 실패했다"
-            exit 1
-          fi
-
       - name: 검증 — 행 수 · 무결성 (읽기만 한다)
-        if: ${{ inputs.dry_run != true }}
         run: pnpm --filter @sacloud/worker nexon db-snapshot --stamp "full-${{ github.run_id }}"
