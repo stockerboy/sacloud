@@ -79,6 +79,17 @@ const ALLOWED = {
     writes: true,
     what: 'IPL 클랜의 클랜마크 주소를 채운다 (이미 있는 곳은 안 덮는다)',
   },
+  'orphan-check': { file: '__orphanCheck', writes: false, what: '가짜 시드 삭제 뒤 고아 행이 남았는지 센다' },
+  'mock-orphan-purge': {
+    file: 'mockOrphanPurge',
+    writes: true,
+    what: '가짜 시드 삭제 뒤 남은 고아 선수·클랜을 치운다 ⚠ 백업을 뜬다',
+  },
+  'mock-league-purge': {
+    file: 'mockLeaguePurge',
+    writes: true,
+    what: '가짜 시드 리그(공식전·세컨드·친목전·토너먼트)를 지운다 ⚠ 지우기 전에 백업을 뜬다',
+  },
   'ipl-clan-rollup': {
     cli: ['nexon', 'ipl-clan-rollup'],
     writes: true,
