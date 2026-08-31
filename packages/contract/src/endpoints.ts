@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { apiResponse, paginatedResponse } from './response'
+import { EggBrokenList } from './egg'
 import {
   AccountLinkState,
   AuthSession,
@@ -92,6 +93,21 @@ export const endpoints = {
     origin: 'designed',
     description: '메인 SPL/IPL/YSL 개인랭킹 TOP3',
     response: apiResponse(HomeTop),
+  },
+
+  /* --------------------------------- 알 --------------------------------- */
+  /**
+   * 깨진 알 목록 (`docs/EGG_SYSTEM_SPEC.md`).
+   *
+   * 로그인하지 않아도 부른다 — 「누구 알이 깨졌나」는 화면에 이미 보이는 것이다.
+   * 근거(누가·왜)는 여기 담지 않는다. 그건 관리자 전용이다.
+   */
+  eggsBroken: {
+    method: 'GET',
+    path: '/eggs/broken',
+    origin: 'designed',
+    description: '깨진 알 목록 (선수 id · 클랜 slug)',
+    response: apiResponse(EggBrokenList),
   },
 
   /* -------------------------------- 인증 -------------------------------- */

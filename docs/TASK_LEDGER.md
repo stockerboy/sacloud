@@ -522,3 +522,31 @@ git push origin main
 `D-162`(병영수첩 주소 파서) · `D-164`(래더 반영 경기 판정 일원화) 를 감독관이 채웠다.
 **코드 주석에 있던 근거만 옮겼고 새로 정한 사실은 없다** — 두 항목 머리에 그렇게 명시했다.
 
+---
+
+## 2026-09-01 — **관리자 대시보드가 25초 걸린다** (범위 밖 · 기록만)
+
+「알」 작업 중 전체 테스트를 관리자 계정을 넣고 돌리다가 발견했다.
+**그 두 시험은 계정이 없으면 건너뛰던 것**이라 지금까지 한 번도 실행된 적이 없다.
+
+```
+GET /api/admin/summary   22 ~ 28 초   (200 은 나온다. 느릴 뿐이다)
+GET /api/admin/matches    9 ~ 10 초
+```
+
+두 번째·세 번째 호출도 같다 — **Next dev 의 첫 컴파일 탓이 아니다.**
+시험 제한시간이 30초라 `adminApi.test.ts` 두 건이 timeout 으로 실패한다
+(`관리자는 대시보드를 볼 수 있다` · `mock 경기는 origin으로 구분된다`).
+
+원인 후보는 `apps/web/lib/server/admin/queries.ts` 의 `adminSummary()` 다.
+`nexonMatch` · `matchPlayerStat` 같은 큰 표에 `count()` 를 열 몇 개 던지고,
+`leagueRosterMembership` 은 `distinct` 로 전부 가져와 길이를 센다(줄을 다 읽는다).
+
+**고치지 않았다.** 알 작업 범위 밖이고, 손대면 관리자 화면 전체를 다시 검증해야 한다.
+고칠 때 볼 것:
+- `distinct: ['playerId']` + `.length` → `groupBy` 나 `SELECT count(DISTINCT ...)` 로
+- 여러 `count()` 를 한 번의 집계 질의로 묶기
+- 대시보드 숫자는 **실시간이 아니어도 된다** — 캐시 한 겹이 가장 싸다
+
+> 시험이 실패하는 것은 **알 작업의 회귀가 아니다.** 알 관련 8건은 전부 통과했다
+> (`apps/web/tests/eggApi.test.ts`).

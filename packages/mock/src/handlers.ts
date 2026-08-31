@@ -75,6 +75,20 @@ const resolvers: Record<EndpointKey, Resolver> = {
   /* 메인 TOP3 — 레지스트리에 있어야 MSW 핸들러가 생긴다 (교차검증 [심각 1]) */
   homeTop: () => ok(store.getHomeTop()),
 
+  /* --------------------------------- 알 --------------------------------- */
+  /**
+   * 깨진 알 목록 (`docs/EGG_SYSTEM_SPEC.md`).
+   *
+   * Mock 에는 알을 깨는 길이 없다 — 깨짐은 DB(`EggBreak`)에만 있다. 그래서 **고정으로**
+   * 맨 앞 클랜 하나 · 선수 하나를 깨 둔다. **두 상태를 한 화면에서 같이 보기 위해서다.**
+   * 전부 잠가 두면 「빛나는 마크」와 「열린 지표」를 Mock 모드에서 영영 못 본다.
+   */
+  eggsBroken: () =>
+    ok({
+      players: dataset.players[0] ? [dataset.players[0].id] : [],
+      clans: dataset.clans[0] ? [dataset.clans[0].slug] : [],
+    }),
+
   /* -------------------------------- 인증 -------------------------------- */
   // Phase 0에서는 계약 형태만 반환한다. 실제 검증·세션 전환은 Phase 6에서 구현한다.
   // 개발용 세션 스위치를 로그인 상태로 바꾼다 (실제 인증은 Phase 7 이후)

@@ -7,11 +7,18 @@
  *
  * ── 지금 알 수 있는 것 / 아직 없는 것
  * ```
- * 개인 알   로그인한 사람이 연동한 선수 하나        ← 지금 할 수 있는 전부다
- * 클랜 알   그 선수가 그 클랜의 **마스터**일 때만    ← 사양 3장의 "클랜마스터가 직접 깬다"
- * 30% 집계  없다. 누가 인증했는지를 저장하는 곳이 없다
- * 칭호 인증  없다. 사양 4장 — 넥슨 폴링(worker)과 DB 가 있어야 한다
+ * 깨진 목록  `GET /eggs/broken` — DB(`EggBreak`)에 남은 것 전부 ← 관리자가 깬 것도 여기 온다
+ * 개인 알    로그인한 사람이 연동한 선수 하나
+ * 클랜 알    그 선수가 그 클랜의 **마스터**일 때만    ← 사양 3장의 "클랜마스터가 직접 깬다"
+ * 30% 집계   없다. 누가 인증했는지를 저장하는 곳이 없다
+ * 칭호 인증   없다. 사양 4장 — 넥슨 폴링(worker)과 DB 가 있어야 한다
  * ```
+ *
+ * ── 두 갈래를 **합친다**
+ *   ① 서버에 남은 기록(`EggBreak`) — 관리자 강제 · 앞으로 들어올 인증 결과
+ *   ② 지금 로그인한 사람의 임시 배선 — 아래 ①~③
+ *   ②는 서버에 아무것도 남기지 않는다. 칭호 인증이 들어오면 ②를 지우고 ①만 남긴다.
+ *   **그때 화면은 한 줄도 안 고친다.**
  *
  * ── ⚠ 지금의 `연동`은 **소유권 증명이 아니다**
  *   `GET /me/link` 는 닉네임으로 선수를 이어 줄 뿐, 그 계정이 본인 것인지 확인하지 않는다
@@ -33,6 +40,16 @@ const NONE: readonly string[] = []
 
 export function EggBoot({ children }: { children: React.ReactNode }) {
   const ready = useApiReady()
+
+  /* 0) 서버에 남은 깨짐 기록 — 로그인과 무관하다. 비로그인도 빛나는 마크를 본다 */
+  const broken = useQuery({
+    queryKey: ['eggs', 'broken'],
+    queryFn: () => apiGet('eggsBroken'),
+    enabled: ready,
+    retry: false,
+    /* 방금 깬 것이 안 보이면 «안 깨졌다» 로 읽힌다. 오래 들고 있지 않는다 */
+    staleTime: 30_000,
+  })
 
   /* 1) 나는 어느 선수인가 — 비로그인·미연동이면 여기서 끝이다 */
   const link = useQuery({
@@ -65,15 +82,21 @@ export function EggBoot({ children }: { children: React.ReactNode }) {
   const isMaster =
     myPlayerId !== null && clan.data?.data.master?.id === myPlayerId
 
-  const value = useMemo<EggKnowledge>(
-    () => ({
-      brokenPlayerIds: myPlayerId ? [myPlayerId] : NONE,
-      brokenClanSlugs: isMaster && myClanSlug ? [myClanSlug] : NONE,
+  const serverPlayers = broken.data?.data.players
+  const serverClans = broken.data?.data.clans
+
+  const value = useMemo<EggKnowledge>(() => {
+    const players = new Set(serverPlayers ?? NONE)
+    const clans = new Set(serverClans ?? NONE)
+    if (myPlayerId) players.add(myPlayerId)
+    if (isMaster && myClanSlug) clans.add(myClanSlug)
+    return {
+      brokenPlayerIds: [...players],
+      brokenClanSlugs: [...clans],
       /* 아직 물어보는 중이면 화면은 알을 씌운 채로 둔다 */
-      loading: !ready || link.isPending,
-    }),
-    [myPlayerId, myClanSlug, isMaster, ready, link.isPending],
-  )
+      loading: !ready || broken.isPending || link.isPending,
+    }
+  }, [serverPlayers, serverClans, myPlayerId, myClanSlug, isMaster, ready, broken.isPending, link.isPending])
 
   return <EggProvider value={value}>{children}</EggProvider>
 }
