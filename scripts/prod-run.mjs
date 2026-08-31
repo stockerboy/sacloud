@@ -79,7 +79,6 @@ const ALLOWED = {
     writes: true,
     what: 'IPL 클랜의 클랜마크 주소를 채운다 (이미 있는 곳은 안 덮는다)',
   },
-  'orphan-check': { file: '__orphanCheck', writes: false, what: '가짜 시드 삭제 뒤 고아 행이 남았는지 센다' },
   'mock-orphan-purge': {
     file: 'mockOrphanPurge',
     writes: true,
