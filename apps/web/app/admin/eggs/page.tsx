@@ -163,47 +163,84 @@ export default function AdminEggsPage() {
         ) : rows.length === 0 ? (
           <p className="text-sm text-meta">해당하는 대상이 없습니다.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs text-meta">
-                  <th className="py-2 pr-3 font-normal">이름</th>
-                  <th className="py-2 pr-3 font-normal">리그</th>
-                  <th className="py-2 pr-3 font-normal">{kind === 'clan' ? '부' : '클랜'}</th>
-                  <th className="py-2 pr-3 font-normal">상태</th>
-                  <th className="py-2 pr-3 font-normal">깨진 때</th>
-                  <th className="py-2 font-normal" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const badge = reasonLabel(row.broken ? row.reason : null)
-                  const busy = toggle.isPending && toggle.variables?.row.id === row.id
-                  return (
-                    <tr key={`${row.kind}:${row.id}`} className="border-b border-line-soft">
-                      <td className="py-2 pr-3 text-text-strong">{row.name}</td>
-                      <td className="py-2 pr-3 text-meta">{row.leagueName}</td>
-                      <td className="num py-2 pr-3 text-meta">
-                        {kind === 'clan' ? (row.division ?? '—') : (row.clanName ?? '—')}
-                      </td>
-                      <td className="py-2 pr-3">
-                        <span className={`rounded border px-2 py-0.5 text-xs ${badge.className}`}>
+          <>
+            {/*
+              ⚠ 모바일에서는 **표를 쓰지 않는다** (2026-09-01).
+              처음엔 `min-w-[720px]` 표 하나로 만들었는데, 폰(390px)에서는
+              **[깨기] 버튼이 화면 밖**에 있어 가로로 밀어야 닿았다.
+              「관리자가 알을 하나 깨 본다」가 이 화면의 목적인데 그 버튼이 안 보였다.
+              그래서 좁은 화면에서는 **한 줄에 한 명씩 쌓고 버튼을 바로 옆에** 둔다.
+            */}
+            <div className="md:hidden">
+              {rows.map((row) => {
+                const badge = reasonLabel(row.broken ? row.reason : null)
+                const busy = toggle.isPending && toggle.variables?.row.id === row.id
+                return (
+                  <div
+                    key={`m:${row.kind}:${row.id}`}
+                    className="flex items-center gap-3 border-b border-line-soft py-3"
+                  >
+                    <div className="min-w-0 flex-grow">
+                      <div className="truncate text-sm text-text-strong">{row.name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-meta">
+                        <span>{row.leagueName}</span>
+                        <span>{kind === 'clan' ? `${row.division ?? '—'}부` : (row.clanName ?? '—')}</span>
+                        <span className={`rounded border px-1.5 py-0.5 ${badge.className}`}>
                           {badge.text}
                         </span>
-                        {row.note ? <span className="ml-2 text-xs text-faint">{row.note}</span> : null}
-                      </td>
-                      <td className="num py-2 pr-3 text-xs text-faint">{formatDate(row.brokenAt)}</td>
-                      <td className="py-2 text-right">
-                        <AdminButton disabled={busy} onClick={() => toggle.mutate({ row })}>
-                          {busy ? '…' : row.broken ? '되잠금' : '깨기'}
-                        </AdminButton>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+                    <AdminButton disabled={busy} onClick={() => toggle.mutate({ row })}>
+                      {busy ? '…' : row.broken ? '되잠금' : '깨기'}
+                    </AdminButton>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* 넓은 화면에서는 그대로 표를 쓴다 — 한눈에 여럿을 견주기 좋다 */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs text-meta">
+                    <th className="py-2 pr-3 font-normal">이름</th>
+                    <th className="py-2 pr-3 font-normal">리그</th>
+                    <th className="py-2 pr-3 font-normal">{kind === 'clan' ? '부' : '클랜'}</th>
+                    <th className="py-2 pr-3 font-normal">상태</th>
+                    <th className="py-2 pr-3 font-normal">깨진 때</th>
+                    <th className="py-2 font-normal" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const badge = reasonLabel(row.broken ? row.reason : null)
+                    const busy = toggle.isPending && toggle.variables?.row.id === row.id
+                    return (
+                      <tr key={`${row.kind}:${row.id}`} className="border-b border-line-soft">
+                        <td className="py-2 pr-3 text-text-strong">{row.name}</td>
+                        <td className="py-2 pr-3 text-meta">{row.leagueName}</td>
+                        <td className="num py-2 pr-3 text-meta">
+                          {kind === 'clan' ? (row.division ?? '—') : (row.clanName ?? '—')}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <span className={`rounded border px-2 py-0.5 text-xs ${badge.className}`}>
+                            {badge.text}
+                          </span>
+                          {row.note ? <span className="ml-2 text-xs text-faint">{row.note}</span> : null}
+                        </td>
+                        <td className="num py-2 pr-3 text-xs text-faint">{formatDate(row.brokenAt)}</td>
+                        <td className="py-2 text-right">
+                          <AdminButton disabled={busy} onClick={() => toggle.mutate({ row })}>
+                            {busy ? '…' : row.broken ? '되잠금' : '깨기'}
+                          </AdminButton>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </AdminCard>
     </>
