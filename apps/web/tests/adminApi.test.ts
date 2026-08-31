@@ -332,7 +332,9 @@ describe.skipIf(!up || !hasAdmin)('경기 관리', () => {
     const result = await asAdmin<{ origin: string }[]>('/matches', {})
     const origins = new Set(result.data.map((row) => row.origin))
     for (const origin of origins) {
-      expect(['mock', 'nexon', 'sacloud', '3rd.supply']).toContain(origin)
+      /* `nexon_barracks` 는 IPL 투영이 쓰는 정식 origin 이다 (`IPL_PROJECT_ORIGIN`).
+         이 목록이 그것보다 먼저 쓰여 낡아 있었다 — 결함이 아니라 목록 누락이다 */
+      expect(['mock', 'nexon', 'nexon_barracks', 'sacloud', '3rd.supply']).toContain(origin)
     }
   })
 

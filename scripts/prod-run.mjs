@@ -27,6 +27,11 @@ import { spawnSync } from 'node:child_process'
  */
 const ALLOWED = {
   /* 읽기만 한다 */
+  'barracks-state': {
+    file: 'barracksState',
+    writes: false,
+    what: '병영 클랜원 명단이 우리 선수와 얼마나 이어져 있나 (접속중 표시가 가능한 인원)',
+  },
   'perf-probe': {
     file: 'perfProbe',
     writes: false,

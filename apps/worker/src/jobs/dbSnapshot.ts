@@ -14,6 +14,7 @@
  * 데이터를 **읽기만** 한다. 아무것도 쓰지 않는다.
  */
 import { prisma } from '@sacloud/db'
+import { SUPPLY_FORMULA_VERSION } from '@sacloud/db/ops'
 
 export interface DbSnapshot {
   takenAt: string
@@ -74,9 +75,31 @@ export async function takeDbSnapshot(stamp: string): Promise<DbSnapshot> {
     'rating 이 있는데 formulaVersion 이 없음',
     await prisma.matchPlayerStat.count({ where: { ratingUpdate: { not: null }, formulaVersion: null } }),
   )
+  /**
+   * **우리 공식으로 계산했다고 표시된 행에는 rating 이 있어야 한다.**
+   *
+   * ⚠ 2026-09-01 정정 — 예전에는 `formulaVersion` 이 있으면 **무조건** rating 이 있어야 한다고
+   *   단언했다. 그 단언은 **틀렸고, CI 를 3일 동안 빨갛게 만들었다** (D-224).
+   *
+   *   `formulaVersion` 에는 「우리가 계산했다」가 아니라 **「계산하지 않았다」는 표시**로 들어가는
+   *   값이 있다. 미러 적재가 박는 `3rd.supply-imported` 가 그것이다 —
+   *   원본 점수를 추정 공식으로 덮지 않기 위한 표식이고(`CLAUDE.md` 3-A 2번),
+   *   원본값은 `sourceRating` / `sourceRatingDelta` 에 따로 남는다.
+   *   그런 행은 `ratingUpdate` 가 비어 있는 것이 **정상**이다. 로컬 실측 3,614,696건.
+   *
+   *   `mock-fixture`(D-023)도 같은 성격의 표식이라 함께 뺀다.
+   *
+   * 지키려던 성질(우리 공식이 계산했으면 값이 있어야 한다)은 그대로다.
+   */
   await check(
-    'formulaVersion 은 있는데 rating 이 없음',
-    await prisma.matchPlayerStat.count({ where: { ratingUpdate: null, formulaVersion: { not: null } } }),
+    '우리 공식으로 표시됐는데 rating 이 없음',
+    await prisma.matchPlayerStat.count({
+      where: {
+        ratingUpdate: null,
+        formulaVersion: { not: null },
+        NOT: { formulaVersion: { in: [SUPPLY_FORMULA_VERSION, 'mock-fixture'] } },
+      },
+    }),
   )
   await check(
     '승률 48% 미만인데 표시 4000+ (D-145 위반)',
