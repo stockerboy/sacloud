@@ -276,9 +276,10 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(axis('carry')?.percentile).toBe(50)
   })
 
-  it('라운드 복원이 필요한 두 축은 항상 `측정중` 이다', async () => {
+  it('라운드 복원이 필요한 세 축은 항상 `측정중` 이다', async () => {
     const { traits } = await playerTraits(leagueId, `${P}r3`)
-    for (const key of ['save', 'outnumbered']) {
+    /* 기회창출(D-214)도 라운드 복원이 재료다 — 세 축이 함께 기다린다 */
+    for (const key of ['save', 'opening', 'outnumbered']) {
       const axis = traits.axes.find((row) => row.key === key)
       expect(axis?.percentile).toBeNull()
       expect(axis?.pending).toBe('rounds')
@@ -286,16 +287,19 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(traits.measuring).toBe(true)
   })
 
-  it('4번 자리는 비어 있다 — `매치의 사나이` 가 아니라 `미정` 이다 (D-206)', async () => {
+  it('4번 자리는 `기회창출` 이다 — 빈 자리도 `매치의 사나이` 도 아니다 (D-214)', async () => {
     const { traits } = await playerTraits(leagueId, `${P}r3`)
     /* 꼭지점은 그대로 6개다. 오각형이 되지 않는다 */
     expect(traits.axes).toHaveLength(6)
     const axis = traits.axes[3]
-    expect(axis?.key).toBe('undecided')
-    expect(axis?.label).toBe('미정')
+    expect(axis?.key).toBe('opening')
+    expect(axis?.label).toBe('기회창출')
+    /* 이 픽스처에는 라운드 자료가 없다 — 그래서 `라운드 복원 필요` 다.
+       D-206 시절의 `미정` 과는 다른 상태다 */
     expect(axis?.percentile).toBeNull()
-    expect(axis?.pending).toBe('undecided')
+    expect(axis?.pending).toBe('rounds')
     expect(traits.axes.some((row) => row.label === '매치의 사나이')).toBe(false)
+    expect(traits.axes.some((row) => row.label === '미정')).toBe(false)
   })
 
   it('판수가 모자란 선수는 모집단에 안 들어가지만 이유는 `경기 부족` 이다', async () => {
@@ -310,10 +314,8 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     /* 모집단에 못 들었으므로 견줄 무리가 없다 */
     expect(traits.cohort).toBeNull()
     expect(traits.measured).toBe(0)
-    /* 빈 자리(D-206)는 판수와 무관하게 `미정` 이다 — 더 뛴다고 채워지지 않는다 */
-    expect(
-      traits.axes.filter((axis) => axis.key !== 'undecided').every((axis) => axis.pending === 'games'),
-    ).toBe(true)
+    /* 4번도 이제 데이터 축이라 함께 `경기 부족` 이다 (D-214) */
+    expect(traits.axes.every((axis) => axis.pending === 'games')).toBe(true)
   })
 
   it('무기가 반반인 선수는 어느 무리에도 넣지 않는다', async () => {

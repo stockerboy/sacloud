@@ -1993,6 +1993,17 @@ model PlayerRoundProfile {
   /// 그중 상대가 **나와 같은 포지션**이었던 것
   oneAttackSameKills Int @default(0)
 
+  /// **기회창출**(육각형 4번 · D-214) — 라운드의 **첫 킬**을 낸 라운드 수.
+  ///
+  /// 라운드마다 첫 킬은 정확히 한 명이 낸다. 10명이 나눠 가지므로 평균 비율은 0.10 이다.
+  openingKills Int @default(0)
+  /// 그 분모 — 첫 킬을 **가릴 수 있었던** 라운드 수.
+  ///
+  /// 가장 이른 죽음이 같은 초에 둘 이상이면 누가 먼저인지 모른다.
+  /// 그런 라운드는 **분모에서도 뺀다** — 분모에만 남기면 아무도 못 딴 라운드가
+  /// 모두의 비율을 함께 끌어내린다 (D-106).
+  openingRounds Int @default(0)
+
   /// 집계 규칙 버전. 규칙이 바뀌면 새 줄이 생기고 옛 줄은 남는다
   builderVersion String
   computedAt     DateTime @default(now())

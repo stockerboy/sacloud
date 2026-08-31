@@ -236,7 +236,9 @@ describe('pendingText — 못 재는 이유', () => {
     expect(pendingText('position')).toBe('포지션 판정 필요')
     expect(pendingText('games')).toBe('경기 부족')
     expect(pendingText('weapon')).toBe('주무기 미정')
-    // 빈 자리 (D-206) — 나머지 다섯과 뜻이 다르다
+    /* 빈 자리 (D-206) — 나머지 다섯과 뜻이 다르다.
+       4번이 `기회창출` 로 채워져(D-214) 지금 이 사유를 쓰는 축은 없지만, 다음 빈 축을
+       위해 문구는 남아 있다. 그래서 아래 테스트들은 **축 키가 아니라 사유**로 건다 */
     expect(pendingText('undecided')).toBe('미정')
   })
 })
@@ -254,9 +256,7 @@ describe('axisValueText — 꼭지점 밑 한마디', () => {
 
   it('빈 자리는 `미정` 이다 — `측정중` 과 구분한다 (D-206)', () => {
     // `측정중` 은 곧 채워진다는 뜻이고, `미정` 은 사람이 정해야 한다는 뜻이다
-    expect(axisValueText(axis({ key: 'undecided', label: '미정', pending: 'undecided' }))).toBe(
-      '미정',
-    )
+    expect(axisValueText(axis({ label: '미정', pending: 'undecided' }))).toBe('미정')
   })
 
   it('값이 있으면 pending 보다 값이 이긴다', () => {
@@ -276,7 +276,7 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
       axis({ key: 'save', pending: 'rounds' }),
       axis({ key: 'duel', percentile: 64.8, pending: null }),
       axis({ key: 'carry', percentile: 71.2, pending: null }),
-      axis({ key: 'undecided', label: '미정', pending: 'undecided' }),
+      axis({ key: 'opening', label: '미정', pending: 'undecided' }),
       axis({ key: 'finish', pending: 'position' }),
       axis({ key: 'outnumbered', pending: 'rounds' }),
     ]
@@ -306,11 +306,11 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
     // 재료를 기다리는 중이 아니라 **아직 정하지 않은** 축이다. 섞어 세면 "곧 채워진다" 로 읽힌다
     const axes = [
       axis({ key: 'save', pending: 'rounds' }),
-      axis({ key: 'undecided', label: '미정', pending: 'undecided' }),
+      axis({ key: 'opening', label: '미정', pending: 'undecided' }),
     ]
     expect(pendingSummary(axes)).toBe('측정중 1항목 — 라운드 복원 필요')
     // 빈 자리 하나만 남았으면 아무 말도 하지 않는다 — 꼭지점의 `미정` 이 이미 말한다
-    expect(pendingSummary([axis({ key: 'undecided', label: '미정', pending: 'undecided' })])).toBe('')
+    expect(pendingSummary([axis({ label: '미정', pending: 'undecided' })])).toBe('')
   })
 
   it('값이 있어도 pending 이 남아 있으면 항목에 센다', () => {

@@ -346,3 +346,73 @@ export function lastRoundTopKiller(events: readonly RoundStateEvent[]): string |
   }
   return tied ? null : top
 }
+
+/**
+ * **기회창출** — 그 라운드의 *첫 죽음을 만든 사람* (D-214 · 사양 4절 4번).
+ *
+ * ```
+ * 분자 = 라운드의 첫 킬을 내가 낸 라운드 수
+ * 분모 = 첫 킬을 **가릴 수 있었던** 라운드 수
+ * ```
+ *
+ * ── 왜 `killsOf()` 를 쓰지 않는가
+ *   `duel.ts` 의 `KillRecord` 는 **시각을 버린다** — 구역·무기 판정에는 시각이 필요 없었다.
+ *   여기서는 시각이 곧 판정 기준이라(가장 이른 킬), 시각을 살린 채로 다시 센다.
+ *
+ * ── 못 가리는 라운드는 **분모에서도 뺀다** (D-106)
+ *   `event_time` 은 `MM:SS` 라 초 단위다. 가장 이른 시각에 둘 이상이 죽었으면
+ *   누가 먼저인지 알 수 없다. 그 라운드를 아무에게도 주지 않고, 분모에서도 뺀다 —
+ *   분모에만 남기면 "아무도 못 딴 라운드" 가 모두의 비율을 함께 끌어내린다.
+ *   지도는 그런 라운드를 `null` 로 담는다. **키가 아예 없는 것**(그 라운드에 읽을 수 있는
+ *   킬이 없었다)과 구분하지 않는다 — 둘 다 분모에서 빠진다.
+ *
+ * ── 같은 죽음이 두 줄로 온다
+ *   양 클랜의 응답을 합치면 한 죽음이 두 번 실린다. `roundStatesOf()` 와 같은 규칙으로
+ *   **한 라운드에서 한 사람은 한 번만 죽는다** 를 지킨다 — 가장 이른 줄만 남긴다.
+ *   (두 응답의 `event_time` 이 1초 어긋나 들어오는 일이 실제로 있다.)
+ */
+export function openingKillsOf(events: readonly RoundStateEvent[]): Map<number, string | null> {
+  /** round → victim → { at, killer } (가장 이른 것만) */
+  const byRound = new Map<number, Map<string, { at: number; killer: string }>>()
+
+  for (const event of events) {
+    const round = num(event.round)
+    const at = secondsOf(event.event_time)
+    if (round === null || at === null) continue
+
+    /* 죽인 쪽이 주체인가 상대인가. 둘 다이거나 둘 다 아니면 읽을 수 없는 줄이다 */
+    const subjectKilled = str(event.event_type) === 'kill'
+    const targetKilled = str(event.target_event_type) === 'kill'
+    if (subjectKilled === targetKilled) continue
+
+    const killer = subjectKilled ? str(event.str_usn) : str(event.target_str_usn)
+    const victim = subjectKilled ? str(event.target_str_usn) : str(event.str_usn)
+    if (killer === null || victim === null) continue
+
+    let perRound = byRound.get(round)
+    if (perRound === undefined) {
+      perRound = new Map()
+      byRound.set(round, perRound)
+    }
+    const before = perRound.get(victim)
+    if (before === undefined || at < before.at) perRound.set(victim, { at, killer })
+  }
+
+  const out = new Map<number, string | null>()
+  for (const [round, perRound] of byRound) {
+    let best: { at: number; killer: string } | null = null
+    let tied = false
+    for (const entry of perRound.values()) {
+      if (best === null || entry.at < best.at) {
+        best = entry
+        tied = false
+      } else if (entry.at === best.at) {
+        tied = true
+      }
+    }
+    if (best === null) continue
+    /* 같은 초에 둘이 죽었다 — 누가 먼저인지 모른다. 분모에서도 뺀다 */
+    out.set(round, tied ? null : best.killer)
+  }
+  return out
+}

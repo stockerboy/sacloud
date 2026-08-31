@@ -23,15 +23,14 @@
 /**
  * 육각형 꼭지점 6개. **이 순서가 화면의 시계방향 순서**다 (사양 4절 표의 순서).
  *
- * 4번은 **빈 자리**다 — 무엇을 잴지 아직 정하지 않았다 (D-206). 꼭지점을 빼서
- * 오각형으로 만들지 않는다. 사용자가 육각형을 유지하기로 했다
- * (원문: *"육각그래프는 꼭 쓰고싶은데"*).
+ * 4번은 **기회창출**이다 (2026-08-31 사용자 확정 · D-214). D-206 에서 비워 뒀던
+ * 자리를 채웠다. 빈 자리였던 판(`TRAIT_AXIS_KEYS_V2`)도 그대로 남긴다.
  */
 export const TRAIT_AXIS_KEYS = [
   'save',
   'duel',
   'carry',
-  'undecided',
+  'opening',
   'finish',
   'outnumbered',
 ] as const
@@ -65,26 +64,48 @@ export const TRAIT_AXIS_KEYS_V1 = [
 export type TraitAxisKeyV1 = (typeof TRAIT_AXIS_KEYS_V1)[number]
 
 /**
+ * **4번을 비워 뒀던 판** (D-206 → D-214). 지우지 않는다.
+ *
+ * `매치의 사나이`를 내린 뒤(D-206) 무엇을 잴지 정하기 전까지 4번은 `미정` 이었다.
+ * 2026-08-31 에 사용자가 `기회창출` 로 채웠다. 그 사이의 모습이 이것이다.
+ *
+ * `undecided` 라는 상태 자체는 계속 살아 있다 — `TRAIT_PENDING_TEXT.undecided` 를
+ * 참조하라. 다음에 또 빈 축이 생기면 그대로 쓴다.
+ */
+export const TRAIT_AXIS_KEYS_V2 = [
+  'save',
+  'duel',
+  'carry',
+  'undecided',
+  'finish',
+  'outnumbered',
+] as const
+export type TraitAxisKeyV2 = (typeof TRAIT_AXIS_KEYS_V2)[number]
+
+/**
  * 축 이름 — **주무기에 따라 갈린다** (사양 4절).
  *
  * 스나수 화면에는 `스나싸움` · `작업 성공률`, 라플수 화면에는 `샷싸움` · `원어택 성공률`.
  * 나머지 축은 지금 무기와 무관하게 같은 이름이지만 **구조는 무기별로 갈라 둔다** —
  * 새로 정해질 4번 축이 무기별로 갈릴 수 있다.
  *
- * ⚠ 4번(`undecided`)의 이름은 **아직 없다.** 무엇을 잴지 사용자가 정하지 않았다
- * (2026-08-30 · D-206). 축이 정해지면 **이 표 한 줄과 `TRAIT_AXIS_KEYS` 한 칸**만
- * 고치면 된다 — 화면(`TraitHexagon`)은 `axis.label` 만 읽는다.
+ * 4번 `기회창출`(D-214)은 지금 **무기와 무관하게 같은 이름**이다. 라플이든 스나든
+ * "라운드의 첫 킬을 딴다" 는 뜻이 그대로 읽힌다 — 무기 중립임을 실측으로도 확인했다.
+ * 그래도 구조는 무기별로 갈라 둔 채로 남긴다.
  *
- * 옛 4번(`matchman`)의 이름도 남긴다. `TRAIT_AXIS_KEYS_V1` 참조.
+ * 옛 4번(`matchman`)과 빈 자리(`undecided`)의 이름도 남긴다.
+ * `TRAIT_AXIS_KEYS_V1` · `TRAIT_AXIS_KEYS_V2` 참조.
  */
 export const TRAIT_AXIS_LABEL: Record<
-  TraitAxisKey | TraitAxisKeyV1,
+  TraitAxisKey | TraitAxisKeyV1 | TraitAxisKeyV2,
   { sniper: string; rifle: string }
 > = {
   save: { sniper: '세이브', rifle: '세이브' },
   duel: { sniper: '스나싸움', rifle: '샷싸움' },
   carry: { sniper: '캐리력', rifle: '캐리력' },
-  /** 빈 자리 (D-206). 이름이 곧 상태다 — 재료가 없는 게 아니라 **안 정한 것**이다 */
+  /** 4번 축 — **라운드의 첫 킬을 딴 비율** (2026-08-31 사용자 확정 · D-214) */
+  opening: { sniper: '기회창출', rifle: '기회창출' },
+  /** 빈 자리였던 판 (D-206). 이름이 곧 상태다 — 재료가 없는 게 아니라 **안 정한 것** */
   undecided: { sniper: '미정', rifle: '미정' },
   /** 옛 4번 축 (D-206). 육각형에서는 내려왔지만 이름은 남긴다 */
   matchman: { sniper: '매치의 사나이', rifle: '매치의 사나이' },
@@ -101,6 +122,10 @@ export const TRAIT_AXIS_LABEL: Record<
  * 재료가 들어오면 저절로 채워진다. `undecided` 는 *"무엇을 잴지 사람이 아직 안 정했다"*
  * 이고, 기다린다고 채워지지 않는다 (D-206). 그래서 화면도 `측정중` 이 아니라 `미정`
  * 이라고 적고, `측정중 N항목` 집계에서도 뺀다.
+ *
+ * ⚠ **지금 이 사유를 쓰는 축은 하나도 없다** — 4번이 `기회창출` 로 채워졌다 (D-214).
+ * **그래도 지우지 않는다.** 다음에 또 빈 축이 생길 수 있고, 그때 `경기 부족` 으로
+ * 둘러대지 않으려면 이 상태가 있어야 한다.
  */
 export const TRAIT_PENDING_KEYS = [
   'rounds',
@@ -155,6 +180,27 @@ export const TRAIT_MIN_GAMES = 10
  * > **원본과 동일함이 검증되지 않았다** (`CLAUDE.md` 3장 7번).
  */
 export const TRAIT_MIN_ROUNDS = 10
+
+/**
+ * **기회창출**(4번 축)의 최소 표본 — 첫 킬을 가릴 수 있었던 **라운드 수**다 (D-214).
+ *
+ * ── 왜 `TRAIT_MIN_ROUNDS`(10)를 쓰지 않는가
+ *   저 상수가 재는 것들(세이브 · 소수싸움)의 분모는 **드물게 일어나는 상황**이라
+ *   10회면 두세 경기가 아니라 수십 경기의 산물이다. 기회창출의 분모는 반대다 —
+ *   **모든 라운드가 분모**라 한 경기에 20라운드씩 쌓인다. 10을 걸면 사실상
+ *   **반 경기짜리 값**이 백분위 분포에 섞인다.
+ *
+ *   게다가 라운드마다 첫 킬은 열 명이 나눠 가지므로 평균 비율이 **0.10** 이다.
+ *   10라운드에서 나올 수 있는 값은 0.0 · 0.1 · 0.2 뿐이라, 그 눈금으로는
+ *   `매치의 사나이`(D-206)를 내리게 만든 것과 똑같은 동전 던지기가 된다.
+ *
+ * ── 300 을 고른 근거
+ *   `[측정 대기]` 실측 수치를 채워 넣는다.
+ *
+ * > `[미확인]` 사양에 숫자가 없다. 300은 우리가 고른 값이고
+ * > **원본과 동일함이 검증되지 않았다** (`CLAUDE.md` 3장 7번).
+ */
+export const TRAIT_MIN_OPENING_ROUNDS = 300
 
 /**
  * 백분위를 내려면 모집단이 최소 이만큼은 돼야 한다.
@@ -279,6 +325,13 @@ export interface TraitInput {
   /** 라플수의 `원어택 성공률` — 같은 포지션 상대를 잡은 비율 (D-196) */
   oneAttackPercentile?: number | null
   /**
+   * 4번 `기회창출` — 라운드의 **첫 킬**을 딴 비율의 백분위 (D-214).
+   *
+   * 라운드 복원(D-194)이 재료다. **무기와 무관**하다 — 라플이든 스나든 같은 뜻으로
+   * 읽히는 것을 실측으로 확인했고, 그래서 축 이름도 무기에 따라 갈리지 않는다.
+   */
+  openingPercentile?: number | null
+  /**
    * 그 선수에게 **라운드 복원 자료 자체가 있는가**.
    *
    * 백분위가 `null` 인 이유를 가른다 — 자료가 없으면 `라운드 복원 필요`,
@@ -290,11 +343,11 @@ export interface TraitInput {
 /**
  * 여섯 축을 만든다.
  *
- * **지금 잴 수 있는 축은 둘뿐이다** — 3 캐리력(판당 킬)과, 라플수의 2 샷싸움(딜량).
- * 나머지는 라운드 복원(1·6) · 배틀로그(스나의 2·5) · 포지션 판정(라플의 5)이
- * 있어야 계산된다. 그 사실을 축마다 `pending` 으로 남긴다.
+ * 경기 기록만으로 되는 것은 3 캐리력(판당 킬)과 라플수의 2 샷싸움(딜량)이다.
+ * 1·4·6 은 라운드 복원(D-194 · D-214), 스나의 2·5 는 배틀로그의 상대 무기,
+ * 라플의 5 는 포지션 판정이 있어야 계산된다. 그 사실을 축마다 `pending` 으로 남긴다.
  *
- * **4번은 비어 있다** (D-206). 재료가 없어서가 아니라 무엇을 잴지 정하지 않아서다.
+ * **4번은 `기회창출` 이다** (2026-08-31 · D-214). D-206 에서 비워 뒀던 자리를 채웠다.
  */
 export function buildPlayerTraits(input: TraitInput): TraitHexagon {
   const weapon = input.weapon
@@ -308,14 +361,21 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
     weapon === null ? 'weapon' : input.knownGames < TRAIT_MIN_GAMES ? 'games' : null
 
   const axes: TraitAxis[] = TRAIT_AXIS_KEYS.map((key) => {
-    /* 4번 자리는 **선수와 무관하게** 비어 있다 (D-206). 무기를 몰라도 판수가 모자라도
-       이유는 `미정` 이다 — 더 뛴다고 채워지는 축이 아니라서, `경기 부족` 이라고 적으면
-       "조금만 더 뛰면 나온다" 는 거짓말이 된다. 그래서 `blocked` 보다 먼저 본다 */
-    if (key === 'undecided') return { key, label: label(key), percentile: null, pending: 'undecided' }
-
     if (blocked !== null) return { key, label: label(key), percentile: null, pending: blocked }
 
     switch (key) {
+      case 'opening': {
+        /* 4번 `기회창출` — 라운드의 첫 킬을 딴 비율 (D-214). 라운드 복원이 재료라
+           1·6번과 같은 사유 갈래를 쓴다: 자료가 없으면 `라운드 복원 필요`,
+           있는데 표본이 모자라면 `경기 부족` 이다 */
+        const value = input.openingPercentile ?? null
+        return {
+          key,
+          label: label(key),
+          percentile: value,
+          pending: value !== null ? null : input.hasRoundData === true ? 'games' : 'rounds',
+        }
+      }
       case 'carry':
         return {
           key,
@@ -366,7 +426,7 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
       default: {
         /* 1 세이브 · 6 소수싸움 — 그 경기 10명 전원의 로그로 **라운드를 복원**해야
            나온다 (사양 4절 표 · D-194).
-           4번(옛 `매치의 사나이`)도 여기 있었다. 지금은 빈 자리라 위에서 걸러진다 (D-206) */
+           4번(`기회창출`)도 같은 재료를 쓰지만 분모가 달라 위에서 따로 본다 (D-214) */
         const value =
           key === 'save' ? (input.savePercentile ?? null) : (input.outnumberedPercentile ?? null)
         return {

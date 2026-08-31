@@ -12,6 +12,7 @@ import {
   PLAYSTYLE_SIDE_KEYS,
   TRAIT_AXIS_KEYS,
   TRAIT_AXIS_KEYS_V1,
+  TRAIT_AXIS_KEYS_V2,
   TRAIT_AXIS_LABEL,
   TRAIT_MIN_GAMES,
   TRAIT_PENDING_TEXT,
@@ -34,9 +35,14 @@ function axisOf(hexagon: TraitHexagon, key: TraitAxisKey): TraitAxis {
   return axis
 }
 
-/** 빈 자리(`undecided`)를 뺀 축들 — 그 축만 데이터 상태를 따른다 (D-206) */
+/**
+ * 예전에 빈 자리(`undecided`)를 빼던 헬퍼 (D-206). 4번이 `기회창출` 로 채워져
+ * (D-214) 지금은 **여섯 축이 전부** 데이터 상태를 따른다.
+ *
+ * 이름과 자리를 남겨 둔다 — 빈 축이 다시 생기면 여기가 그 자리다.
+ */
 function measurableAxes(hexagon: TraitHexagon): TraitAxis[] {
-  return hexagon.axes.filter((axis) => axis.key !== 'undecided')
+  return hexagon.axes
 }
 
 /** 라이플 주무기 · 판수 충분 — 필요한 것만 덮어쓴다 */
@@ -174,7 +180,7 @@ describe('buildPlayerTraits — 육각형 뼈대', () => {
 })
 
 describe('buildPlayerTraits — 못 재는 경우', () => {
-  it('주무기가 null 이면 빈 자리를 뺀 5축이 pending=weapon 이다', () => {
+  it('주무기가 null 이면 여섯 축 전부 pending=weapon 이다', () => {
     const hexagon = buildPlayerTraits(rifleInput({ weapon: null }))
     expect(hexagon.weapon).toBeNull()
     expect(measurableAxes(hexagon).every((axis) => axis.pending === 'weapon')).toBe(true)
@@ -182,23 +188,22 @@ describe('buildPlayerTraits — 못 재는 경우', () => {
     expect(hexagon.axes.every((axis) => axis.percentile === null)).toBe(true)
     expect(hexagon.measured).toBe(0)
     expect(hexagon.measuring).toBe(true)
-    // 빈 자리는 주무기와 무관하다 — 무기를 알아도 몰라도 `미정` 이다 (D-206)
-    expect(axisOf(hexagon, 'undecided').pending).toBe('undecided')
+    // 4번도 이제 데이터 축이다 — 무기를 모르면 함께 막힌다 (D-214)
+    expect(axisOf(hexagon, 'opening').pending).toBe('weapon')
   })
 
   it('주무기를 모르면 모집단도 null 이다 — 섞어 세지 않는다', () => {
     expect(buildPlayerTraits(rifleInput({ weapon: null, cohort: 120 })).cohort).toBeNull()
   })
 
-  it(`knownGames 가 ${TRAIT_MIN_GAMES}판 미만이면 빈 자리를 뺀 5축이 pending=games 다`, () => {
+  it(`knownGames 가 ${TRAIT_MIN_GAMES}판 미만이면 여섯 축 전부 pending=games 다`, () => {
     const hexagon = buildPlayerTraits(rifleInput({ knownGames: TRAIT_MIN_GAMES - 1 }))
     expect(measurableAxes(hexagon).every((axis) => axis.pending === 'games')).toBe(true)
     expect(hexagon.axes.every((axis) => axis.percentile === null)).toBe(true)
     expect(hexagon.cohort).toBeNull()
     expect(hexagon.measured).toBe(0)
-    /* 빈 자리는 `경기 부족` 이 아니다 — 더 뛴다고 채워지는 축이 아니라서
-       그렇게 적으면 "조금만 더 뛰면 나온다" 는 거짓말이 된다 (D-206) */
-    expect(axisOf(hexagon, 'undecided').pending).toBe('undecided')
+    /* 4번도 같이 막힌다 — `기회창출` 은 더 뛰면 채워지는 축이다 (D-214) */
+    expect(axisOf(hexagon, 'opening').pending).toBe('games')
   })
 
   it(`정확히 ${TRAIT_MIN_GAMES}판이면 재기 시작한다 — 경계는 미만이다`, () => {
@@ -213,19 +218,26 @@ describe('buildPlayerTraits — 못 재는 경우', () => {
   })
 })
 
-describe('buildPlayerTraits — 4번은 빈 자리다 (D-206)', () => {
+describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   it('꼭지점은 그대로 6개다 — 오각형이 되지 않는다', () => {
     // 사용자가 육각형을 유지하기로 했다 ("육각그래프는 꼭 쓰고싶은데")
     expect(TRAIT_AXIS_KEYS).toHaveLength(6)
     expect(buildPlayerTraits(rifleInput()).axes).toHaveLength(6)
   })
 
-  it('4번 자리이고 옛 `매치의 사나이` 자리와 같은 자리다', () => {
-    expect(TRAIT_AXIS_KEYS[3]).toBe('undecided')
+  it('4번 자리이고 옛 두 판과 같은 자리다', () => {
+    expect(TRAIT_AXIS_KEYS[3]).toBe('opening')
+    expect(TRAIT_AXIS_KEYS_V2[3]).toBe('undecided')
     expect(TRAIT_AXIS_KEYS_V1[3]).toBe('matchman')
   })
 
-  it('`매치의 사나이` 는 축 목록에서 빠졌다', () => {
+  it('이름은 무기와 무관하게 `기회창출` 이다', () => {
+    for (const weapon of [0, 1, null] as const) {
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'opening').label).toBe('기회창출')
+    }
+  })
+
+  it('`매치의 사나이` 는 축 목록에서 빠진 채다', () => {
     const hexagon = buildPlayerTraits(rifleInput())
     expect(hexagon.axes.some((axis) => axis.key === 'matchman' as string)).toBe(false)
     expect(hexagon.axes.some((axis) => axis.label === '매치의 사나이')).toBe(false)
@@ -236,32 +248,39 @@ describe('buildPlayerTraits — 4번은 빈 자리다 (D-206)', () => {
     expect(TRAIT_AXIS_KEYS_V1).toHaveLength(6)
   })
 
-  it('값이 없고 이유는 `미정` 이다 — 0 으로 채우지 않는다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput()), 'undecided')
+  it('빈 자리였던 판(`undecided`)도 남아 있다 — 다음 빈 축을 위해 지우지 않는다', () => {
+    expect(TRAIT_AXIS_KEYS_V2).toHaveLength(6)
+    expect(TRAIT_AXIS_LABEL.undecided.rifle).toBe('미정')
+    expect(TRAIT_PENDING_TEXT.undecided).toBe('미정')
+    expect(isMeasurablePending('undecided')).toBe(false)
+    for (const pending of ['rounds', 'battlelog', 'position', 'games', 'weapon'] as const) {
+      expect(isMeasurablePending(pending)).toBe(true)
+    }
+  })
+
+  it('백분위를 주면 그대로 붙는다', () => {
+    const axis = axisOf(buildPlayerTraits(rifleInput({ openingPercentile: 82.5 })), 'opening')
+    expect(axis).toMatchObject({ percentile: 82.5, pending: null })
+  })
+
+  it('재료가 아예 없으면 `라운드 복원 필요` 다 — 0 으로 채우지 않는다', () => {
+    const axis = axisOf(buildPlayerTraits(rifleInput()), 'opening')
     expect(axis.percentile).toBeNull()
     expect(axis.percentile).not.toBe(0) // 0 은 "꼴찌" 라는 실제 값이다 (D-106)
-    expect(axis.pending).toBe('undecided')
-    expect(TRAIT_PENDING_TEXT.undecided).toBe('미정')
+    expect(axis.pending).toBe('rounds')
+  })
+
+  it('자료는 있는데 표본이 모자라면 `경기 부족` 이다 — 둘을 뭉뚱그리지 않는다', () => {
+    const axis = axisOf(
+      buildPlayerTraits(rifleInput({ hasRoundData: true, openingPercentile: null })),
+      'opening',
+    )
+    expect(axis.pending).toBe('games')
   })
 
   it('matchManPercentile 을 넘겨도 무시한다 — 축에 다시 붙지 않는다', () => {
     const hexagon = buildPlayerTraits(rifleInput({ matchManPercentile: 88.8 }))
     expect(hexagon.axes.every((axis) => axis.percentile !== 88.8)).toBe(true)
-    expect(axisOf(hexagon, 'undecided').percentile).toBeNull()
-  })
-
-  it('무기와 무관하게 늘 `미정` 이다', () => {
-    for (const weapon of [0, 1, null] as const) {
-      const axis = axisOf(buildPlayerTraits(rifleInput({ weapon })), 'undecided')
-      expect(axis).toMatchObject({ percentile: null, pending: 'undecided', label: '미정' })
-    }
-  })
-
-  it('`미정` 은 기다려서 채워지는 사유가 아니다 — 나머지 다섯과 갈린다', () => {
-    expect(isMeasurablePending('undecided')).toBe(false)
-    for (const pending of ['rounds', 'battlelog', 'position', 'games', 'weapon'] as const) {
-      expect(isMeasurablePending(pending)).toBe(true)
-    }
   })
 })
 
@@ -347,7 +366,7 @@ describe('buildPlayerTraits — 축 이름은 주무기를 따른다', () => {
   })
 
   it('나머지 네 축은 무기와 무관하게 같은 이름이다', () => {
-    for (const key of ['save', 'carry', 'undecided', 'outnumbered'] as const) {
+    for (const key of ['save', 'carry', 'opening', 'outnumbered'] as const) {
       expect(axisOf(sniper, key).label).toBe(axisOf(rifle, key).label)
       expect(axisOf(sniper, key).label).toBe(TRAIT_AXIS_LABEL[key].sniper)
     }

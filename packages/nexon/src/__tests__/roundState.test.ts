@@ -8,11 +8,13 @@
  *   4. 혼자 남음 · 둘이 남음은 **동료가 본인보다 먼저 죽은 수**로 판정한다
  *   5. **2:1 은 소수싸움이 아니다** (사양 4절 6번)
  *   6. 마지막 라운드 최다 킬은 동률이면 찍지 않는다 (사양 4절 4번)
+ *   7. **기회창출** — 라운드 첫 킬. 못 가리는 라운드는 분모에서도 뺀다 (D-214)
  */
 import { describe, expect, it } from 'vitest'
 import {
   isRestorable,
   lastRoundTopKiller,
+  openingKillsOf,
   rosterOf,
   roundStatesOf,
   roundTallyOf,
@@ -560,5 +562,79 @@ describe('lastRoundTopKiller — 매치의 사나이', () => {
       kill(1, 30, A(2), B(3)),
     ]
     expect(lastRoundTopKiller(events)).toBe('A2')
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+/* 기회창출 — 라운드의 첫 킬 (D-214)                                             */
+/* -------------------------------------------------------------------------- */
+
+describe('openingKillsOf — 라운드의 첫 킬', () => {
+  it('가장 이른 킬을 낸 사람이다 — 이벤트 순서와 무관하다', () => {
+    /* 일부러 늦은 킬을 먼저 넣는다. 시각으로 골라야지 배열 순서로 고르면 안 된다 */
+    const events = [kill(1, 40, B(1), A(2)), kill(1, 12, A(1), B(3)), kill(1, 25, A(3), B(4))]
+    expect(openingKillsOf(events).get(1)).toBe('A1')
+  })
+
+  it('라운드마다 따로 센다', () => {
+    const events = [kill(1, 12, A(1), B(1)), kill(2, 9, B(2), A(4)), kill(2, 30, A(5), B(5))]
+    const opening = openingKillsOf(events)
+    expect(opening.get(1)).toBe('A1')
+    expect(opening.get(2)).toBe('B2')
+  })
+
+  it('같은 초에 둘이 죽으면 `null` 이다 — **분모에서도 뺀다**', () => {
+    // 초 단위라 누가 먼저인지 알 수 없다. 아무에게도 주지 않는다 (D-106)
+    const events = [kill(1, 12, A(1), B(1)), kill(1, 12, B(2), A(2)), kill(1, 30, A(3), B(3))]
+    expect(openingKillsOf(events).get(1)).toBeNull()
+  })
+
+  it('죽은 쪽에서 적은 같은 줄을 두 번 세지 않는다', () => {
+    // 양 클랜 응답을 합치면 한 죽음이 두 줄로 온다. 그래도 첫 킬은 하나다
+    const events = [kill(1, 12, A(1), B(1)), killed(1, 12, B(1), A(1)), kill(1, 30, A(2), B(2))]
+    expect(openingKillsOf(events).get(1)).toBe('A1')
+  })
+
+  it('같은 죽음의 시각이 1초 어긋나 와도 한 사람의 죽음은 한 번이다', () => {
+    /* 두 응답의 `event_time` 이 어긋나 들어오는 일이 실제로 있다 (`roundStatesOf` 주석).
+       늦은 줄을 살려 두면 B1 이 두 번 죽은 것이 되어 없던 동시사망이 만들어진다 */
+    const events = [
+      kill(1, 12, A(1), B(1)),
+      killed(1, 13, B(1), A(1)),
+      kill(1, 13, B(2), A(2)),
+    ]
+    expect(openingKillsOf(events).get(1)).toBe('A1')
+  })
+
+  it('킬이 없는 라운드는 지도에 아예 없다 — 분모에 들어가지 않는다', () => {
+    const opening = openingKillsOf([kill(2, 12, A(1), B(1))])
+    expect(opening.has(1)).toBe(false)
+    expect(opening.get(2)).toBe('A1')
+  })
+
+  it('라운드나 시각을 못 읽는 줄은 버린다 — 0초로 만들지 않는다', () => {
+    const events = [
+      { ...kill(1, 5, B(1), A(1)), event_time: '' },
+      { ...kill(1, 6, B(2), A(2)), round: null },
+      kill(1, 20, A(3), B(3)),
+    ]
+    expect(openingKillsOf(events).get(1)).toBe('A3')
+  })
+
+  it('양쪽 다 kill 인 줄은 읽을 수 없으니 버린다', () => {
+    const row = { ...kill(1, 5, A(1), B(1)), target_event_type: 'kill' }
+    expect(openingKillsOf([row, kill(1, 20, B(2), A(2))]).get(1)).toBe('B2')
+  })
+
+  it('라운드마다 첫 킬은 정확히 한 명이다 — 열 명이 나눠 가지므로 평균은 0.10 이다', () => {
+    const events = [
+      kill(1, 10, A(1), B(1)),
+      kill(2, 10, A(1), B(1)),
+      kill(3, 10, B(1), A(1)),
+    ]
+    const opening = openingKillsOf(events)
+    const counted = [...opening.values()].filter((killer) => killer !== null)
+    expect(counted).toHaveLength(3)
+    expect(counted.filter((killer) => killer === 'A1')).toHaveLength(2)
   })
 })

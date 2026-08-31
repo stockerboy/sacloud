@@ -28,9 +28,10 @@
  *   1 세이브 · 6 소수싸움은 **라운드 복원**(D-194)이 채운다 —
  *   `PlayerRoundProfile` 이 그 재료이고, 배틀로그를 받은 선수에게만 있다.
  *   남은 것은 스나의 2·5(킬로그의 상대 무기)와 라플의 5(포지션 자동 판정)다.
- *   **4번은 빈 자리다** (D-206) — `매치의 사나이` 를 내렸고 무엇을 잴지 아직 안 정했다.
- *   그래도 그 값은 **계속 센다**(`matchManRate` · `matchManSorted`). 재료도 집계 잡도
- *   MVP 규칙(D-182)도 그대로라서, 축이 다시 정해질 때 바로 붙일 수 있어야 한다.
+ *   **4번은 `기회창출` 이다** (2026-08-31 · D-214) — 라운드의 첫 킬을 딴 비율이고,
+ *   역시 라운드 복원이 재료다. D-206 에서 비워 뒀던 자리를 채운 것이다.
+ *   내려간 `매치의 사나이` 값도 **계속 센다**(`matchManRate` · `matchManSorted`) —
+ *   재료도 집계 잡도 MVP 규칙(D-182)도 그대로라서 지우지 않는다.
  *
  *   라운드 축은 리그로 거르지 않고 읽는다 — 병영수첩 배틀로그는 리그를 모른다.
  *   대신 **견주는 무리**는 다른 축과 똑같이 "그 리그의 같은 주무기 선수" 다.
@@ -39,6 +40,7 @@ import { prisma } from '@sacloud/db'
 import {
   PLAYSTYLE_MIN_ROUNDS,
   TRAIT_MIN_GAMES,
+  TRAIT_MIN_OPENING_ROUNDS,
   TRAIT_MIN_ROUNDS,
   TRAIT_MIN_COHORT,
   buildPlayerPlaystyle,
@@ -82,6 +84,14 @@ interface RoundValue {
   workRate: number | null
   /** 원어택 성공률 — 내 킬 중 상대가 **나와 같은 포지션**이었던 비율 (D-196 · **라플수만**) */
   oneAttackRate: number | null
+  /**
+   * 기회창출 — 라운드의 **첫 킬**을 딴 비율 (D-214 · 무기 무관).
+   *
+   * 분모가 `TRAIT_MIN_ROUNDS`(10)가 아니라 `TRAIT_MIN_OPENING_ROUNDS`(300)다.
+   * 모든 라운드가 분모라 10은 반 경기짜리 값이고, 평균 비율이 0.10 이라 그 눈금으로는
+   * 0.0 · 0.1 · 0.2 밖에 안 나온다 — `매치의 사나이`를 내리게 만든 것과 같은 문제다.
+   */
+  openingRate: number | null
 }
 
 /** 한 선수의 값 — 판당 평균 킬 · 판당 평균 딜량 */
@@ -148,6 +158,8 @@ interface WeaponCohort {
   workSorted: number[]
   /** 라플 전용 (D-196) */
   oneAttackSorted: number[]
+  /** 기회창출 (D-214). 무기와 무관한 값이지만 견주는 무리는 같은 무기다 */
+  openingSorted: number[]
 }
 
 interface LeagueDistribution {
@@ -188,6 +200,7 @@ function emptyCohort(): WeaponCohort {
     snipeDuelSorted: [],
     workSorted: [],
     oneAttackSorted: [],
+    openingSorted: [],
   }
 }
 
@@ -218,6 +231,8 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
       workRifleKills: true,
       oneAttackKills: true,
       oneAttackSameKills: true,
+      openingKills: true,
+      openingRounds: true,
     },
   })
 
@@ -238,6 +253,11 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
       oneAttackRate:
         row.oneAttackKills >= TRAIT_MIN_ROUNDS
           ? row.oneAttackSameKills / row.oneAttackKills
+          : null,
+      /* 기회창출만 문턱이 다르다 (D-214). 이유는 `TRAIT_MIN_OPENING_ROUNDS` 에 적었다 */
+      openingRate:
+        row.openingRounds >= TRAIT_MIN_OPENING_ROUNDS
+          ? row.openingKills / row.openingRounds
           : null,
     })
   }
@@ -426,6 +446,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
       if (round.snipeDuelRate !== null) cohort.snipeDuelSorted.push(round.snipeDuelRate)
       if (round.workRate !== null) cohort.workSorted.push(round.workRate)
       if (round.oneAttackRate !== null) cohort.oneAttackSorted.push(round.oneAttackRate)
+      if (round.openingRate !== null) cohort.openingSorted.push(round.openingRate)
     }
   }
 
@@ -440,6 +461,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     cohort.snipeDuelSorted.sort((a, b) => a - b)
     cohort.workSorted.sort((a, b) => a - b)
     cohort.oneAttackSorted.sort((a, b) => a - b)
+    cohort.openingSorted.sort((a, b) => a - b)
   }
 
   return { rifle, sniper, rounds, playstyle, belowMin }
@@ -515,6 +537,9 @@ export async function playerTraits(
       snipeDuelPercentile: percentileIn(cohort.snipeDuelSorted, round?.snipeDuelRate),
       workPercentile: percentileIn(cohort.workSorted, round?.workRate),
       oneAttackPercentile: percentileIn(cohort.oneAttackSorted, round?.oneAttackRate),
+      /* 4번 `기회창출` (D-214) — D-206 에서 비워 뒀던 자리다.
+         라운드 복원이 재료라 1·6번과 같은 곳에서 온다 */
+      openingPercentile: percentileIn(cohort.openingSorted, round?.openingRate),
       hasRoundData: round !== undefined,
     }),
     /* 플레이스타일 바 두 줄 (8절 · D-211).
