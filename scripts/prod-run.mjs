@@ -79,6 +79,11 @@ const ALLOWED = {
     writes: true,
     what: 'IPL 클랜의 클랜마크 주소를 채운다 (이미 있는 곳은 안 덮는다)',
   },
+  'ipl-clan-rollup': {
+    cli: ['nexon', 'ipl-clan-rollup'],
+    writes: true,
+    what: 'IPL 경기 결과로 LeagueClan 의 승패·래더·배치고사를 다시 매긴다 (결정적 replay)',
+  },
   'ipl-project-push': {
     file: 'iplProjectPush',
     writes: true,

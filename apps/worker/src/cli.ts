@@ -43,6 +43,7 @@ import { runIdentities } from './jobs/identities.js'
 import { runIdentityWatch } from './jobs/identityWatch.js'
 import { runBarracksLink } from './jobs/barracksLink.js'
 import { runIplProject } from './jobs/iplProject.js'
+import { runIplClanRollup } from './jobs/iplClanRollup.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
@@ -378,6 +379,30 @@ async function main(): Promise<number> {
       const created = await ensurePollStates()
       if (created > 0) log(`폴링 대상 ${created}명 추가`)
       table([result as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'ipl-clan-rollup': {
+      /*
+        IPL 경기 결과로 `LeagueClan.{win, lose, rating, placement}` 를 채운다.
+        클랜랭킹 화면이 이 네 칸을 직접 읽는다. `--confirm` 없이는 한 줄도 쓰지 않는다.
+      */
+      const result = await runIplClanRollup({ confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          경기: result.matches,
+          등록클랜: result.registered,
+          랭킹진입: result.ranked,
+          배치고사: result.placement,
+          무경기: result.reset,
+        },
+      ])
+      if (result.top.length) {
+        log('래더 상위')
+        for (const t of result.top) {
+          log(`  ${t.division}부  ${t.name}  ${t.rating}  ${t.win}승 ${t.lose}패`)
+        }
+      }
       return 0
     }
 

@@ -27,6 +27,8 @@ const MAP_NAME = '제3보급창고'
 const fileIndex = process.argv.indexOf('--file')
 const file = (fileIndex >= 0 ? process.argv[fileIndex + 1] : undefined) ?? 'ipl-project-export.json'
 const confirm = process.argv.includes('--confirm')
+/** 이미 있는 행까지 덮어쓴다. 기본은 건너뛴다 */
+const forceUpdate = process.argv.includes('--force-update')
 
 interface Row {
   sourceMatchId: string
@@ -93,6 +95,7 @@ const result = {
   input: rows.length,
   created: 0,
   updated: 0,
+  skippedExisting: 0,
   unknownClan: 0,
   sameClan: 0,
 }
@@ -134,7 +137,7 @@ for (const row of rows) {
   const existingId = existingBySource.get(row.sourceMatchId) ?? null
 
   if (!confirm) {
-    if (existingId) result.updated += 1
+    if (existingId) result.skippedExisting += 1
     else result.created += 1
     continue
   }
@@ -168,8 +171,18 @@ for (const row of rows) {
   }
 
   if (existingId) {
-    await prisma.match.update({ where: { id: matchId }, data })
-    result.updated += 1
+    /*
+      이미 있는 행은 **건드리지 않는다.**
+      옮기는 값이 원본에서 바뀌지 않으므로 다시 쓸 이유가 없고, 재실행할 때마다
+      2만 건을 원격으로 UPDATE 하느라 잡이 타임아웃으로 죽었다 (2026-08-31).
+      값을 강제로 덮어야 하면 `--force-update` 를 준다.
+    */
+    if (forceUpdate) {
+      await prisma.match.update({ where: { id: matchId }, data })
+      result.updated += 1
+    } else {
+      result.skippedExisting += 1
+    }
   } else {
     /*
       **일괄로 모았다가 한 번에 넣는다.**
@@ -186,6 +199,7 @@ await flush()
 console.info(
   `${confirm ? '반영' : '미리보기'} — 입력 ${result.input.toLocaleString()} · ` +
     `신규 ${result.created.toLocaleString()} · 갱신 ${result.updated.toLocaleString()} · ` +
+    `이미있음 ${result.skippedExisting.toLocaleString()} · ` +
     `클랜모름 ${result.unknownClan.toLocaleString()} · 같은클랜 ${result.sameClan}`,
 )
 if (missing.size) {
