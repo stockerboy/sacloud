@@ -11,9 +11,11 @@
   "dependencies": {
     "@sacloud/db": "workspace:*",
     "@sacloud/nexon": "workspace:*",
-    "@sacloud/rating": "workspace:*"
+    "@sacloud/rating": "workspace:*",
+    "bcryptjs": "^3.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "tsx": "^4.23.12"
   }
 }

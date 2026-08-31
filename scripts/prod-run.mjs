@@ -79,6 +79,11 @@ const ALLOWED = {
     writes: true,
     what: 'IPL 클랜의 클랜마크 주소를 채운다 (이미 있는 곳은 안 덮는다)',
   },
+  'admin-ensure': {
+    file: 'adminEnsure',
+    writes: true,
+    what: '관리자 계정을 만들거나 비밀번호를 새로 정한다 (--email 필요) ⚠ 비밀번호가 화면에 한 번 찍힌다',
+  },
   'mock-orphan-purge': {
     file: 'mockOrphanPurge',
     writes: true,
