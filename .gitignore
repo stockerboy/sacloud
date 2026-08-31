@@ -98,3 +98,6 @@ first-side-export.json
 
 # 이 PC 전용 설정 (절대경로·권한모드가 박혀 있다). 훅 자체는 올린다
 .claude/settings.local.json
+
+# IPL 투영 내보내기 산출물 — 다시 만들 수 있다 (iplProjectExport)
+ipl-project-export.json

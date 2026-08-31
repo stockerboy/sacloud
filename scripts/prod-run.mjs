@@ -79,6 +79,11 @@ const ALLOWED = {
     writes: true,
     what: 'IPL 클랜의 클랜마크 주소를 채운다 (이미 있는 곳은 안 덮는다)',
   },
+  'ipl-project-push': {
+    file: 'iplProjectPush',
+    writes: true,
+    what: '로컬에서 투영한 IPL 경기를 운영 Match 에 밀어 넣는다 (안정된 키만 옮긴다). 멱등',
+  },
   'ipl-sanply-check': { cli: ['nexon', 'ipl-sanply-check'], writes: false, what: '열산에 남은 IPL끼리 경기를 센다 (0 이어야 한다)' },
   'ipl-sanply-purge': { cli: ['nexon', 'ipl-sanply-purge'], writes: true, what: '열산에서 IPL끼리의 경기를 지우고 등록 해제한다 ⚠ 지우기 전에 백업을 뜬다' },
 }
