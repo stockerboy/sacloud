@@ -479,3 +479,51 @@ a:hover {
     animation: none;
   }
 }
+
+/* ================================================================== 「알」 ===
+ *
+ * 사양은 `docs/EGG_SYSTEM_SPEC.md` 다.
+ *
+ * 껍데기는 **무채색**이다. 진홍은 깨진 알에만 쓴다 — 깨진 것이 드물어야 눈에 띈다.
+ */
+
+/**
+ * 알 껍데기.
+ *
+ * 마크를 덮는 면이다. 넓은 면을 진홍으로 칠하지 않으려고 카드색 두 단으로만 만들고,
+ * 위쪽에 아주 옅은 하이라이트를 하나 둬서 평면이 아니라 껍데기로 읽히게 했다.
+ */
+.egg-shell {
+  background:
+    radial-gradient(60% 42% at 38% 24%, rgb(214 201 201 / 0.1), transparent 70%),
+    linear-gradient(165deg, var(--color-card-2) 0%, var(--color-card) 62%, #0d0808 100%);
+  border: 1px solid var(--color-line);
+}
+
+/**
+ * 깨진 알 — 클랜마크가 **은은하게 계속** 빛난다 (사양 3장).
+ *
+ * "한 번 반짝이고 마는 것이 아니다" 라는 지시라 `infinite` 다. 대신 진폭을 작게 둬서
+ * 목록에 여러 개가 깨져 있어도 화면이 깜빡이지 않는다.
+ * 움직임을 줄여 달라고 설정한 사용자에게는 **멈춘 채로 켜 둔** 빛을 보여 준다.
+ */
+@keyframes egg-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 3px rgb(217 43 43 / 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgb(217 43 43 / 0.7));
+  }
+}
+
+.egg-glow {
+  animation: egg-glow 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .egg-glow {
+    animation: none;
+    filter: drop-shadow(0 0 5px rgb(217 43 43 / 0.5));
+  }
+}

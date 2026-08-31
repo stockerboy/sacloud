@@ -3,6 +3,10 @@
 import Link from 'next/link'
 import type { ClanLeagueEntry, ClanPlayer } from '@sacloud/contract'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
+/* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 클랜마크를 알이 덮고, 승률·승패를 가린다 */
+import { Egg } from '../egg/Egg'
+import { useClanEgg } from '../egg/EggContext'
+import { EggVeil } from '../egg/EggVeil'
 import { formatCount, formatDate, formatRate } from '../common/format'
 import { divisionLabel } from '../league/divisionLabel'
 import { leagueClanPath } from '../common/paths'
@@ -37,20 +41,33 @@ import {
 
 export function ClanIdentity({
   name,
+  slug,
   mark,
   master,
   establishedAt,
   memberCount,
 }: {
   name: string
+  /**
+   * 클랜 slug — **「알」이 깨졌는지 물어보는 데 쓴다** (`docs/EGG_SYSTEM_SPEC.md`).
+   * 넘기지 않으면 안 깨진 것으로 본다.
+   */
+  slug?: string | null
   mark: ClanMarkSource
   master: { id: string; name: string } | null
   establishedAt: string | null
   memberCount?: number | null
 }) {
+  /* 깨진 클랜은 마크가 **계속** 은은하게 빛난다 (사양 3장) */
+  const egg = useClanEgg(slug)
+
   return (
     <IdentityBand
-      mark={<ClanMark mark={mark} size="max" alt={name} />}
+      mark={
+        <Egg state={egg} size="sm" label={name}>
+          <ClanMark mark={mark} size="max" alt={name} />
+        </Egg>
+      }
       name={name}
       meta={
         <>
@@ -108,6 +125,9 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
   const games = entry.win + entry.lose
   /* 한 판도 안 치른 클랜에게 `승률 0%` 를 적지 않는다 — 표본이 없다는 뜻이지 전패가 아니다 */
   const rated = games > 0
+  /* 클랜 알 — 승률 · 승패를 가린다. **전적(판수) · 래더 · 순위는 가리지 않는다** (사양 2장) */
+  const egg = useClanEgg(clanSlug)
+  const sealed = egg === 'sealed'
   return (
     <Link
       href={leagueClanPath(entry.league.slug, clanSlug)}
@@ -137,17 +157,26 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
         </div>
       </div>
 
-      <div className="mt-4">
-        <WinBar win={entry.win} lose={entry.lose} />
-      </div>
+      {sealed ? null : (
+        <div className="mt-4">
+          <WinBar win={entry.win} lose={entry.lose} />
+        </div>
+      )}
 
       <div className="mt-3.5 grid grid-cols-4 gap-4 max-md:grid-cols-2 max-md:gap-y-3">
+        {/* 판수는 가리지 않는다 (사양 2장) */}
         <Stat label="전적" value={`${formatCount(games)}전`} />
-        <Stat
-          label="승 · 패"
-          value={`${formatCount(entry.win)} · ${formatCount(entry.lose)}`}
-        />
-        {rated ? (
+        {sealed ? (
+          <Stat label="승 · 패" value={<EggVeil state={egg}>{null}</EggVeil>} />
+        ) : (
+          <Stat
+            label="승 · 패"
+            value={`${formatCount(entry.win)} · ${formatCount(entry.lose)}`}
+          />
+        )}
+        {sealed ? (
+          <Stat label="승률" value={<EggVeil state={egg}>{null}</EggVeil>} />
+        ) : rated ? (
           <Stat label="승률" value={`${formatRate(entry.win_rate)}%`} strong />
         ) : (
           <Stat label="승률" value="기록 없음" muted />

@@ -4,6 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import type { PlayerLeagueEntry } from '@sacloud/contract'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
+/* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 클랜마크는 클랜 알이, 기록은 개인 알이 덮는다 */
+import { Egg } from '../egg/Egg'
+import { useClanEgg, usePlayerEgg } from '../egg/EggContext'
+import { EggVeil } from '../egg/EggVeil'
 import { RelativeTime } from '../common/RelativeTime'
 import { formatCount, formatRate } from '../common/format'
 import { leaguePlayerPath } from '../common/paths'
@@ -63,9 +67,16 @@ export function PlayerIdentity({
   refreshState: RefreshState
   onRefresh: () => void
 }) {
+  /* 클랜마크는 **클랜 알**이 덮는다. 깨진 클랜은 마크가 은은하게 계속 빛난다 (사양 3장) */
+  const clanEgg = useClanEgg(clan?.slug)
+
   return (
     <IdentityBand
-      mark={<ClanMark clan={clan} size="max" alt={clan?.name ?? ''} />}
+      mark={
+        <Egg state={clanEgg} size="sm" label={clan?.name ?? name}>
+          <ClanMark clan={clan} size="max" alt={clan?.name ?? ''} />
+        </Egg>
+      }
       name={name}
       meta={
         <>
@@ -168,6 +179,9 @@ function PlayerLeagueRow({
    * 0 으로 그리지 않는다는 규칙이 여기에도 그대로 걸린다.
    */
   const rated = games > 0
+  /* 개인 알 — 승률 · 승패 · 킬뎃을 가린다. **전적(판수)과 래더는 가리지 않는다** (사양 2장) */
+  const egg = usePlayerEgg(playerId)
+  const sealed = egg === 'sealed'
 
   return (
     <Link
@@ -208,22 +222,34 @@ function PlayerLeagueRow({
         </div>
       </div>
 
-      <div className="mt-4">
-        <WinBar win={entry.win} lose={entry.lose} />
-      </div>
+      {/* 승/패 비율 막대도 N승N패를 그대로 보여 주는 그림이라 알이 덮는다 */}
+      {sealed ? null : (
+        <div className="mt-4">
+          <WinBar win={entry.win} lose={entry.lose} />
+        </div>
+      )}
 
       <div className="mt-3.5 grid grid-cols-4 gap-4 max-md:grid-cols-2 max-md:gap-y-3">
+        {/* 판수는 **가리지 않는다** — 있다는 것은 보여 주고 얼마나 잘하는지를 가린다 (사양 2장) */}
         <Stat label="전적" value={`${formatCount(games)}전`} />
-        <Stat
-          label="승 · 패"
-          value={`${formatCount(entry.win)} · ${formatCount(entry.lose)}`}
-        />
-        {rated ? (
+        {sealed ? (
+          <Stat label="승 · 패" value={<EggVeil state={egg}>{null}</EggVeil>} />
+        ) : (
+          <Stat
+            label="승 · 패"
+            value={`${formatCount(entry.win)} · ${formatCount(entry.lose)}`}
+          />
+        )}
+        {sealed ? (
+          <Stat label="승률" value={<EggVeil state={egg}>{null}</EggVeil>} />
+        ) : rated ? (
           <Stat label="승률" value={`${formatRate(entry.win_rate)}%`} strong />
         ) : (
           <Stat label="승률" value="기록 없음" muted />
         )}
-        {hasKd ? (
+        {sealed ? (
+          <Stat label="킬뎃" value={<EggVeil state={egg}>{null}</EggVeil>} />
+        ) : hasKd ? (
           <Stat
             label="킬뎃"
             value={

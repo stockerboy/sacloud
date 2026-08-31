@@ -37,8 +37,10 @@ export default function ClanLayout({
   return (
     <>
       {clan.data ? (
+        /* `slug` 는 「알」이 깨졌는지 물어보는 데 쓴다 (`docs/EGG_SYSTEM_SPEC.md`) */
         <ClanIdentity
           name={clan.data.data.name}
+          slug={clan.data.data.slug}
           mark={clan.data.data.mark}
           master={clan.data.data.master}
           establishedAt={clan.data.data.established_at}

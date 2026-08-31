@@ -224,3 +224,29 @@ export {
   type SignupDraft,
 } from './auth/signupRules'
 export * from './common/paths'
+
+/* --- 「알」 시스템 (`docs/EGG_SYSTEM_SPEC.md`) ---
+   기록을 지우는 것이 아니라 가려 두는 장치다. 판수와 경기 상세기록은 가리지 않는다. */
+export {
+  CLAN_EGG_GUIDE,
+  CLAN_EGG_THRESHOLD,
+  EGG_BREAK_GUIDE,
+  EGG_VEIL_MARK,
+  EGG_VEIL_MESSAGE,
+  clanEggState,
+  eggRows,
+  type ClanEggInput,
+  type ClanEggResult,
+  type EggState,
+} from './egg/eggState'
+export {
+  EggProvider,
+  isSealed,
+  useClanEgg,
+  useEggKnowledge,
+  usePlayerEgg,
+  type EggKnowledge,
+} from './egg/EggContext'
+export { Egg, type EggProps, type EggSize } from './egg/Egg'
+export { EggVeil, EggVeilLegend, EggVeilPanel } from './egg/EggVeil'
+export { EggGallery, type EggGalleryItem, type EggGalleryProps } from './egg/EggGallery'

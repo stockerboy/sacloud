@@ -9,6 +9,8 @@ import {
   ClanRoundMetrics,
   ClanRoster,
   ClanStatSidebar,
+  CLAN_EGG_GUIDE,
+  EggVeilPanel,
   MatchCard,
   ProfileEmpty,
   ProfileLoadMore,
@@ -17,6 +19,7 @@ import {
   RecentMatchSummary,
   SectionTitle,
   TeammateTable,
+  useClanEgg,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -41,6 +44,13 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
  *
  * **바뀐 것은 배치와 겉모습뿐이다.** 부르는 API · 넘기는 값 · 링크가 가는 곳은 그대로다.
  * 재료가 없는 블록은 여전히 `null` 이라 그리지 않는다 (D-106) — 0 으로 채우지 않는다.
+ *
+ * ── 「알」 (`docs/EGG_SYSTEM_SPEC.md` 2장)
+ * ```
+ * 가리지 않는다  경기 카드 목록(경기 상세기록) · 포지션별 명단 · 래더 · 부리그 · 순위
+ * 가린다        클랜 육각형 · 라운드 지표 · 클랜 지표 · 최근매치 요약 · 승률 · N승N패
+ * ```
+ * 클랜 알은 클랜원의 30% 가 각자 깨거나, **클랜마스터가 본인 인증에 성공하면** 깨진다.
  */
 export default function LeagueClanRecordPage({
   params,
@@ -49,6 +59,8 @@ export default function LeagueClanRecordPage({
 }) {
   const { leagueSlug, clanSlug } = use(params)
   const ready = useApiReady()
+  /* 이 클랜의 알 (사양 3장) */
+  const egg = useClanEgg(clanSlug)
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState<Record<string, MatchDetail>>({})
   const [moreOpen, setMoreOpen] = useState(false)
@@ -103,9 +115,11 @@ export default function LeagueClanRecordPage({
       {/* ── 1. 클랜 육각형. 배틀로그가 없으면 `null` 이라 통째로 빠진다 */}
       {data.hexagon ? (
         <section className="mt-[40px]">
-          <div className={`${PROFILE_PANEL} px-5 py-4`}>
-            <ClanHexagon hexagon={data.hexagon} />
-          </div>
+          <EggVeilPanel state={egg} note={CLAN_EGG_GUIDE}>
+            <div className={`${PROFILE_PANEL} px-5 py-4`}>
+              <ClanHexagon hexagon={data.hexagon} />
+            </div>
+          </EggVeilPanel>
         </section>
       ) : null}
 
@@ -113,7 +127,9 @@ export default function LeagueClanRecordPage({
              그림으로 형태를 보고 여기서 값을 읽는다 */}
       {data.round_metrics ? (
         <section className="mt-[40px]">
-          <ClanRoundMetrics metrics={data.round_metrics} />
+          <EggVeilPanel state={egg}>
+            <ClanRoundMetrics metrics={data.round_metrics} />
+          </EggVeilPanel>
         </section>
       ) : null}
 
@@ -128,11 +144,13 @@ export default function LeagueClanRecordPage({
       {/* ── 4. 클랜 지표 (SITE_SPEC_V2 5절) */}
       {data.metrics ? (
         <section className="mt-[40px]">
-          <ClanMetrics
-            metrics={data.metrics}
-            leagueSlug={leagueSlug}
-            leagueCategory={data.league.category}
-          />
+          <EggVeilPanel state={egg}>
+            <ClanMetrics
+              metrics={data.metrics}
+              leagueSlug={leagueSlug}
+              leagueCategory={data.league.category}
+            />
+          </EggVeilPanel>
         </section>
       ) : null}
 
@@ -149,6 +167,8 @@ export default function LeagueClanRecordPage({
             winRate={data.win_rate}
             division={data.division}
             rank={data.rank}
+            /* 승률 · N승N패만 가린다. 래더 · 부리그 · 순위는 그대로다 (사양 2장) */
+            egg={egg}
           />
         </div>
       </section>
@@ -158,11 +178,13 @@ export default function LeagueClanRecordPage({
       <section className="mt-[40px]">
         <SectionTitle title="최근 경기" />
         <div className="mobile-scroll-x mt-4">
-          <RecentMatchSummary
-            summary={data.match_summary}
-            leagueSlug={leagueSlug}
-            showKdRate={false}
-          />
+          <EggVeilPanel state={egg}>
+            <RecentMatchSummary
+              summary={data.match_summary}
+              leagueSlug={leagueSlug}
+              showKdRate={false}
+            />
+          </EggVeilPanel>
         </div>
         <div className="mt-3">
           {matches.loading ? (

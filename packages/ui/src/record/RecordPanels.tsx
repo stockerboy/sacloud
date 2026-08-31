@@ -6,6 +6,9 @@ import type {
   TeammateStat,
 } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
+/* 「알」 (`docs/EGG_SYSTEM_SPEC.md` 2장) — 승률 · 킬뎃은 가리고, 판수 · 경기 상세는 그대로 둔다 */
+import { EggVeil } from '../egg/EggVeil'
+import type { EggState } from '../egg/eggState'
 import { formatAverage, formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
@@ -397,6 +400,14 @@ export interface PlayerStatSidebarProps {
    * 없으면 예전처럼 통합 킬뎃 하나만 나온다.
    */
   weaponStats?: readonly PlayerWeaponStatRow[]
+  /**
+   * 「알」 상태 (`docs/EGG_SYSTEM_SPEC.md` 2장).
+   *
+   * `sealed` 면 **승률 · N승N패 · 킬뎃 · 평균킬**을 가린다.
+   * **래더 · 랭킹 · 소속 · 포지션은 가리지 않는다** — 사양의 가림 목록에 없다.
+   * 넘기지 않으면 `sealed` 로 본다. 알을 안 씌우려면 명시적으로 `broken` 을 넘긴다.
+   */
+  egg?: EggState
 }
 
 /**
@@ -426,6 +437,8 @@ const longWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나이퍼'
 
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
   const { main: mainWeapon, other: otherWeapon } = splitWeapons(props.weaponStats)
+  /* 「알」이 안 깨졌으면 승률·킬뎃·평균킬을 가린다 (사양 2장). 래더·랭킹·소속·포지션은 그대로다 */
+  const sealed = (props.egg ?? 'sealed') === 'sealed'
   return (
     <div className="rounded-[2px] border border-line bg-card px-4 py-3 text-text">
       <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-faint">상세정보</div>
@@ -437,10 +450,17 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       </Stat>
       <Divider />
       <Stat label="승률">
-        <StatSub>
-          {formatCount(props.win)}승 {formatCount(props.lose)}패
-        </StatSub>
-        <span className={rateClass(props.winRate)}>{formatRate(props.winRate)}%</span>
+        {sealed ? (
+          /* 승률도 N승N패도 가린다. 자리는 남긴다 — 빈칸으로 두지 않는다 (사양 2장) */
+          <EggVeil state="sealed">{null}</EggVeil>
+        ) : (
+          <>
+            <StatSub>
+              {formatCount(props.win)}승 {formatCount(props.lose)}패
+            </StatSub>
+            <span className={rateClass(props.winRate)}>{formatRate(props.winRate)}%</span>
+          </>
+        )}
       </Stat>
       {/*
         `포지션` — **승률 바로 아래** (2026-08-30 사용자 지시 · D-199).
@@ -453,7 +473,14 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
           <Stat label="포지션">{props.position}</Stat>
         </>
       )}
-      {props.kill === null || props.death === null || props.kdRate === null ? null : (
+      {sealed ? (
+        <>
+          <Divider />
+          <Stat label="킬뎃">
+            <EggVeil state="sealed">{null}</EggVeil>
+          </Stat>
+        </>
+      ) : props.kill === null || props.death === null || props.kdRate === null ? null : (
         <>
           {/*
             킬뎃은 **무기별로만** 적는다 (2026-08-30 사용자 지시).
@@ -499,8 +526,14 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       )}
       <Divider />
       <Stat label="평균킬">
-        <StatSub>판당</StatSub>
-        {formatAverage(props.killPerMatch)}킬
+        {sealed ? (
+          <EggVeil state="sealed">{null}</EggVeil>
+        ) : (
+          <>
+            <StatSub>판당</StatSub>
+            {formatAverage(props.killPerMatch)}킬
+          </>
+        )}
       </Stat>
       <Divider />
       <Stat label="MVP">{formatCount(props.mvpCount)}회</Stat>
@@ -570,6 +603,7 @@ export function ClanStatSidebar({
   winRate,
   division,
   rank,
+  egg,
 }: {
   rating: number
   placement: boolean
@@ -579,7 +613,13 @@ export function ClanStatSidebar({
   division: number
   /** 클랜랭킹 순위. 배치고사 중이면 `null` — 순위 자리에 `배치고사` 를 쓴다 (원본 규칙) */
   rank: number | null
+  /**
+   * 「알」 상태 (`docs/EGG_SYSTEM_SPEC.md` 2장).
+   * `sealed` 면 **승률 · N승N패**만 가린다. 래더 · 부리그 · 순위는 가리지 않는다.
+   */
+  egg?: EggState
 }) {
+  const sealed = (egg ?? 'sealed') === 'sealed'
   return (
     <div className="rounded-[2px] border border-line bg-card px-4 py-3 text-text">
       <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-faint">상세정보</div>
@@ -589,10 +629,16 @@ export function ClanStatSidebar({
       </Stat>
       <Divider />
       <Stat label="승률">
-        <StatSub>
-          {formatCount(win)}승 {formatCount(lose)}패
-        </StatSub>
-        <span className={rateClass(winRate)}>{formatRate(winRate)}%</span>
+        {sealed ? (
+          <EggVeil state="sealed">{null}</EggVeil>
+        ) : (
+          <>
+            <StatSub>
+              {formatCount(win)}승 {formatCount(lose)}패
+            </StatSub>
+            <span className={rateClass(winRate)}>{formatRate(winRate)}%</span>
+          </>
+        )}
       </Stat>
       <Divider />
       <Stat label="랭킹">

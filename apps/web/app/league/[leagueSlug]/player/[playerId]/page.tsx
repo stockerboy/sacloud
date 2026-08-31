@@ -4,6 +4,7 @@ import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
+  EggVeilPanel,
   MatchCard,
   PlaystyleBars,
   PlayerStatSidebar,
@@ -15,6 +16,8 @@ import {
   TeammateTable,
   TierBreakdown,
   TraitHexagon,
+  usePlayerEgg,
+  EGG_BREAK_GUIDE,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -39,6 +42,19 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
  * **바뀐 것은 배치와 겉모습뿐이다.** 부르는 API · 넘기는 값 · 링크가 가는 곳은 그대로다.
  * 육각형 · 바 · 오늘 줄은 원본에 없는 화면이고, 값이 없는 축은 여전히 0 이 아니라
  * `측정중` 으로 남는다 (D-106 · D-185 · D-186).
+ *
+ * ── 「알」 (`docs/EGG_SYSTEM_SPEC.md` 2장)
+ * ```
+ * 가리지 않는다  경기 카드 목록(경기 상세기록) · 최근 같이한 플레이어
+ * 가린다        전투력 육각형 · 플레이스타일 · 최근매치 요약(승률·오늘) · 티어별 게임빈도
+ *               상세정보의 승률 · N승N패 · 킬뎃 · 평균킬
+ * ```
+ * 가려도 **값을 지우지 않는다.** 자리와 크기를 그대로 두고 읽지 못하게만 한다 —
+ * 비어 있으면 없는 줄 알지만, 덮여 있으면 궁금해진다.
+ *
+ * > `[미확인]` 사양 2장의 *"그 밖에 우리가 만든 지표"* 의 정확한 목록은 아직 확정되지
+ * > 않았다. 지금은 **지표성 카드**(육각형 · 플레이스타일 · 오늘 · 티어빈도)까지 가리고,
+ * > **관계 정보**(같이한 플레이어)는 가리지 않는다. 사용자 확인이 필요하다.
  */
 export default function LeaguePlayerRecordPage({
   params,
@@ -47,6 +63,8 @@ export default function LeaguePlayerRecordPage({
 }) {
   const { leagueSlug, playerId } = use(params)
   const ready = useApiReady()
+  /* 이 선수의 알 — 본인이 인증해 깨야 기록이 열린다 (사양 3장) */
+  const egg = usePlayerEgg(playerId)
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState<Record<string, MatchDetail>>({})
   /* 덜 중요한 표는 기본으로 접는다 — 화면을 한 번에 다 쏟지 않기 위해서다 */
@@ -113,14 +131,18 @@ export default function LeaguePlayerRecordPage({
       {data.traits === null ? null : (
         /* 카드가 스스로 `전투력` 제목을 그린다 — 위에 제목을 또 얹지 않는다 */
         <section className="mt-[40px]">
-          <TraitHexagon traits={data.traits} />
+          <EggVeilPanel state={egg} note={EGG_BREAK_GUIDE}>
+            <TraitHexagon traits={data.traits} />
+          </EggVeilPanel>
         </section>
       )}
 
       {/* ── 2. 플레이스타일 */}
       {data.playstyle === null ? null : (
         <section className="mt-[40px]">
-          <PlaystyleBars playstyle={data.playstyle} />
+          <EggVeilPanel state={egg}>
+            <PlaystyleBars playstyle={data.playstyle} />
+          </EggVeilPanel>
         </section>
       )}
 
@@ -148,6 +170,8 @@ export default function LeaguePlayerRecordPage({
             clan={data.clan ? { ...data.clan, isOfficialClan: data.clan.is_official_clan } : null}
             /* 킬뎃 줄을 주무기 중심으로 바꾼다 (2026-08-30 사용자 지시) */
             weaponStats={data.weapon_stats}
+            /* 알이 안 깨졌으면 승률 · 킬뎃 · 평균킬만 가린다. 래더 · 랭킹 · 소속은 그대로다 */
+            egg={egg}
           />
         </div>
       </section>
@@ -157,12 +181,14 @@ export default function LeaguePlayerRecordPage({
       <section className="mt-[40px]">
         <SectionTitle title="최근 경기" />
         <div className="mobile-scroll-x mt-4">
-          <RecentMatchSummary
-            summary={data.match_summary}
-            leagueSlug={leagueSlug}
-            today={data.today}
-            days={data.recent_days}
-          />
+          <EggVeilPanel state={egg}>
+            <RecentMatchSummary
+              summary={data.match_summary}
+              leagueSlug={leagueSlug}
+              today={data.today}
+              days={data.recent_days}
+            />
+          </EggVeilPanel>
         </div>
         <div className="mt-3">
           {matches.loading ? (
@@ -212,11 +238,13 @@ export default function LeaguePlayerRecordPage({
         {moreOpen ? (
           <div className="mt-4 grid grid-cols-2 gap-3 max-md:grid-cols-1">
             {/* 부리그/티어 표기는 리그 구분이 정한다 (D-165) — 화면이 임의로 고르지 않는다 */}
-            <TierBreakdown
-              rows={data.tier_breakdown}
-              leagueSlug={leagueSlug}
-              leagueCategory={data.league.category}
-            />
+            <EggVeilPanel state={egg}>
+              <TierBreakdown
+                rows={data.tier_breakdown}
+                leagueSlug={leagueSlug}
+                leagueCategory={data.league.category}
+              />
+            </EggVeilPanel>
             <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
           </div>
         ) : null}

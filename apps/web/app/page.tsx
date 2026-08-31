@@ -11,6 +11,7 @@ import {
   type SearchType,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
+import { LeagueEggGallery } from './_egg/LeagueEggGallery'
 import { useApiReady } from './providers'
 
 /**
@@ -82,6 +83,14 @@ export default function HomePage() {
           <SearchBar onSubmit={handleSearch} />
         </div>
       </section>
+
+      {/* --- 2-A 알 모음집 — 플레이어 검색 **바로 밑** (`docs/EGG_SYSTEM_SPEC.md` 5-1)
+             DPL 이 먼저, 그 아래 IPL. 두 리그를 따로 한 벌씩 만든다.
+             알 밑에는 반드시 클랜명을 쓴다 — 유저가 자기 클랜을 찾아야 깨러 온다 --- */}
+      <div className="section-stack pt-[var(--section-gap,40px)]">
+        <LeagueEggGallery leagueSlug="supply" title="DPL" />
+        <LeagueEggGallery leagueSlug="nolink" title="IPL" />
+      </div>
 
       {/* --- 3 인기게시글 --- */}
       <div className="pt-[var(--section-gap,40px)]">

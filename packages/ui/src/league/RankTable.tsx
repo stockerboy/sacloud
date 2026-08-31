@@ -1,6 +1,13 @@
+'use client'
+
 import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankWeapon } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
+/* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 랭킹도 알로 덮는다 */
+import { Egg } from '../egg/Egg'
+import { useEggKnowledge } from '../egg/EggContext'
+import { EggVeil, EggVeilLegend } from '../egg/EggVeil'
+import type { EggState } from '../egg/eggState'
 /* 승률·킬뎃 두 칸만 서플라이 등급색을 쓴다 (2026-08-30 사용자 지시) */
 import { rateClass } from '../common/rate'
 import { EmptyState } from '../common/EmptyState'
@@ -49,6 +56,18 @@ import {
  *   *"승률과 킬뎃은 서플라이의 색깔체계를 똑같이 따라해 나머지는 서플을 아무것도 따라하지마"*).
  *   50%↑ 초록 · 55%↑ 주황 · 60%↑ 파랑 · 65%↑ 노랑. 65 이상만 원본의 밝은배경용 빨강 대신
  *   어두운배경용 노랑을 쓴다 — 빨강은 강조색과 겹친다. 그 밖의 칸은 무채색이다.
+ *
+ * ── 「알」 (`docs/EGG_SYSTEM_SPEC.md` 5-2)
+ *   *"개인랭킹이나 개인기록도 마찬가지야. 알로 일단 전부 씌워놓고 닉네임만 띄워놔"*
+ *
+ *   표를 알 모음집으로 바꾸지는 않는다 — 그러면 순위가 사라져 랭킹이 랭킹이 아니게 된다.
+ *   대신 **행의 마크 자리를 알이 덮고**, 사양 2장이 가리라고 한 칸만 가린다.
+ *   ```
+ *   가리지 않는다  순위 · 닉네임/클랜명 · 래더
+ *   가린다        승률 · N승N패 · 킬뎃
+ *   ```
+ *   판수(승+패)는 승률 아래에 접혀 있는 값이라 승률과 같이 덮인다. 판수 자체를 따로
+ *   보여 주는 자리는 **기록실**이고 거기서는 가리지 않는다 (사양 2장).
  *
  * ── 모바일 (2026-08-28 실측 유지)
  *   좁은 화면에서는 `순위 · 이름 · 래더` 세 칸으로 줄인다.
@@ -169,6 +188,7 @@ export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'e
 }
 
 export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: ClanRankTableProps) {
+  const { brokenClanSlugs } = useEggKnowledge()
   return (
     <>
       <div className={HEAD}>
@@ -185,7 +205,9 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
         isEmpty={!rows || rows.length === 0}
         emptyMessage="배치고사가 종료된 클랜이 없습니다."
       >
-        {rows?.map((row) => (
+        {rows?.map((row) => {
+          const egg: EggState = brokenClanSlugs.includes(row.clan.slug) ? 'broken' : 'sealed'
+          return (
           <div key={row.clan.id} className={ROW}>
             <div className={rankClass(row.rank)}>{row.rank}</div>
             <div className={COL_NAME}>
@@ -193,11 +215,19 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
                 className="flex min-w-0 items-center hover:text-text-strong"
                 href={`/league/${leagueSlug}/clan/${row.clan.slug}`}
               >
-                <ClanMark mark={row.clan.mark} className={MARK} alt={row.clan.name} />
+                {/* 알이 마크를 덮는다. 깨졌으면 마크가 그대로 나오고 은은하게 빛난다 */}
+                <Egg state={egg} size="xs" label={row.clan.name} className={MARK}>
+                  <ClanMark mark={row.clan.mark} alt={row.clan.name} />
+                </Egg>
                 <span className="truncate">{row.clan.name}</span>
               </Link>
             </div>
-            {/* 승/패는 없앤 것이 아니라 승률 아래로 접었다 */}
+            {/* 승/패는 없앤 것이 아니라 승률 아래로 접었다. 알이 있으면 둘 다 가린다 */}
+            {egg === 'sealed' ? (
+              <div className={`${COL_STAT} ${COL_HIDDEN}`}>
+                <EggVeil state={egg}>{null}</EggVeil>
+              </div>
+            ) : (
             <Stat
               className={`${COL_STAT} ${COL_HIDDEN}`}
               value={formatRate(row.win_rate)}
@@ -209,12 +239,15 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
                 </>
               }
             />
+            )}
             <div className={`${COL_RATING} ${NUM} text-text-strong`}>
               {formatRating(row.rating)}
             </div>
           </div>
-        ))}
+          )
+        })}
       </TableBody>
+      <EggVeilLegend />
     </>
   )
 }
@@ -243,6 +276,7 @@ export function PlayerRankTable({
   weapon = 'all',
 }: PlayerRankTableProps) {
   const byWeapon = weapon !== 'all'
+  const { brokenPlayerIds } = useEggKnowledge()
 
   return (
     <>
@@ -263,7 +297,10 @@ export function PlayerRankTable({
         isEmpty={!rows || rows.length === 0}
         emptyMessage="배치고사가 종료된 플레이어가 없습니다."
       >
-        {rows?.map((row) => (
+        {rows?.map((row) => {
+          /* 개인 알 — 본인이 인증해 깬 선수만 기록이 열린다 (사양 3장) */
+          const egg: EggState = brokenPlayerIds.includes(row.player.id) ? 'broken' : 'sealed'
+          return (
           <div key={row.player.id} className={ROW}>
             <div className={rankClass(row.rank)}>{row.rank}</div>
             <div className={COL_NAME}>
@@ -272,11 +309,19 @@ export function PlayerRankTable({
                 href={leaguePlayerPath(leagueSlug, row.player.id)}
               >
                 {/* 무소속이어도 **자리를 비우지 않는다** — fallback 마크를 그린다 (D-146).
-                    `clan ? ... : null` 로 감싸면 소속 없는 선수 옆이 통째로 빈다. */}
-                <ClanMark clan={row.clan} className={MARK} alt={row.clan?.name ?? ''} />
+                    `clan ? ... : null` 로 감싸면 소속 없는 선수 옆이 통째로 빈다.
+                    그 위를 알이 덮는다 — 닉네임은 그대로 보인다 (사양 5-2). */}
+                <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
+                  <ClanMark clan={row.clan} alt={row.clan?.name ?? ''} />
+                </Egg>
                 <span className="truncate">{row.player.name}</span>
               </Link>
             </div>
+            {egg === 'sealed' ? (
+              <div className={`${COL_STAT} ${COL_HIDDEN}`}>
+                <EggVeil state={egg}>{null}</EggVeil>
+              </div>
+            ) : (
             <Stat
               className={`${COL_STAT} ${COL_HIDDEN}`}
               value={formatRate(row.win_rate)}
@@ -288,9 +333,15 @@ export function PlayerRankTable({
                 </>
               }
             />
-            {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107) */}
+            )}
+            {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107).
+                IPL 은 원래 킬뎃이 없어 알과 무관하다 (사양 2장) */}
             {row.kd_rate === null ? (
               <div className={`${COL_STAT} ${COL_HIDDEN} text-faint`}>-</div>
+            ) : egg === 'sealed' ? (
+              <div className={`${COL_STAT} ${COL_HIDDEN}`}>
+                <EggVeil state={egg}>{null}</EggVeil>
+              </div>
             ) : (
               /* 평균킬은 킬뎃 아래로 접었다 */
               <Stat
@@ -305,8 +356,10 @@ export function PlayerRankTable({
               {byWeapon ? formatRatingDelta(row.rating_delta ?? 0) : formatRating(row.rating)}
             </div>
           </div>
-        ))}
+          )
+        })}
       </TableBody>
+      <EggVeilLegend />
     </>
   )
 }

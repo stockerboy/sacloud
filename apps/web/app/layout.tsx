@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Black_Han_Sans, JetBrains_Mono, Noto_Sans_KR } from 'next/font/google'
 import { Providers } from './providers'
+import { EggBoot } from './_egg/EggBoot'
 import { AppShell } from '@/components/AppShell'
 import { DevRoleSwitch } from '@/components/DevRoleSwitch'
 import './globals.css'
@@ -59,7 +60,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="antialiased">
         <Providers>
-          <AppShell>{children}</AppShell>
+          {/* 「알」이 깨졌는지를 화면 전체에 하나로 알려 준다 (`docs/EGG_SYSTEM_SPEC.md`) */}
+          <EggBoot>
+            <AppShell>{children}</AppShell>
+          </EggBoot>
           {/* Mock 단계 전용 세션 전환 스위치 — 원본에 없는 개발 장치 */}
           <DevRoleSwitch />
         </Providers>
