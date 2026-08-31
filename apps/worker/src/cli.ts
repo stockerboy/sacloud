@@ -40,6 +40,7 @@ import { loadEnvFiles, REPO_ROOT } from './lib/env.js'
 import { fail, log, registerSecret, table, warn } from './lib/log.js'
 import { AbortCollection, type JobContext } from './jobs/context.js'
 import { runIdentities } from './jobs/identities.js'
+import { runIdentityWatch } from './jobs/identityWatch.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
@@ -340,7 +341,8 @@ async function main(): Promise<number> {
   }
 
   const needsNetwork =
-    ['identities', 'collect', 'refresh', 'poll'].includes(args.command) && !dryRun
+    ['identities', 'collect', 'refresh', 'poll', 'identity-watch'].includes(args.command) &&
+    !dryRun
   const needsNetworkOnConfirm =
     args.command === 'supply-matches' &&
     !dryRun &&
@@ -373,6 +375,25 @@ async function main(): Promise<number> {
       if (created > 0) log(`폴링 대상 ${created}명 추가`)
       table([result as unknown as Record<string, unknown>])
       return 0
+    }
+
+    case 'identity-watch': {
+      /*
+        닉·클랜이 바뀌는 순간을 잡는다 (D-220).
+        `--loop` 를 주면 계속 돈다. `--rps` 로 속도를 올릴 수 있다 (429 가 나면 스스로 감속한다).
+        ⚠ **위장닉은 이 경로로 못 잡는다** — Open API 가 모른다 (D-221).
+      */
+      const limit = numberFlag(args, 'limit') ?? 200
+      const loop = boolFlag(args, 'loop')
+      const everySec = numberFlag(args, 'every') ?? 120
+
+      for (;;) {
+        const result = await runIdentityWatch(ctx, { limit })
+        table([result as unknown as Record<string, unknown>])
+        if (!loop) return 0
+        log(`${everySec}초 뒤 다시 돈다 (--loop)`)
+        await new Promise((resolve) => setTimeout(resolve, everySec * 1000))
+      }
     }
 
     case 'collect': {

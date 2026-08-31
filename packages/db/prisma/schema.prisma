@@ -1638,6 +1638,36 @@ model NexonPollState {
 /// 수집 실행 1회의 호출량 계측 (Phase 8.1 — D 요구사항).
 ///
 /// 5,000명 운영 비용을 **추정이 아니라 숫자로** 계산하기 위한 기록이다.
+/// 신원 관측 이력 — **닉·클랜이 바뀐 순간을 기록한다** (D-220).
+///
+/// 왜 별도 표인가
+///   `NexonIdentity.userName` 은 "지금 값" 하나만 갖는다. 그것만 갱신하면
+///   **언제 바뀌었는지**가 사라진다. 우리가 병영수첩보다 빠르다는 것을 보이려면
+///   바뀐 시각이 남아야 한다. 그래서 바뀔 때마다 한 줄씩 덧붙인다(append-only).
+///
+///   폴링할 때마다 넣지 않는다. **직전 관측과 달라졌을 때만** 넣는다.
+model NexonIdentityObservation {
+  id   String @id @default(cuid())
+  ouid String
+
+  /// 관측 시점의 닉네임 (`user/basic.user_name`)
+  userName String?
+  /// 관측 시점의 클랜명 (`user/basic.clan_name`). 무소속이면 null
+  clanName String?
+
+  /// 무엇이 달라져서 이 줄이 생겼나: "first" | "nickname" | "clan" | "nickname+clan"
+  changed String
+
+  /// 직전 값 — 대조용으로 함께 남긴다
+  prevUserName String?
+  prevClanName String?
+
+  observedAt DateTime @default(now())
+
+  @@index([ouid, observedAt])
+  @@index([observedAt])
+}
+
 model NexonPollRun {
   id         String    @id @default(cuid())
   startedAt  DateTime  @default(now())
