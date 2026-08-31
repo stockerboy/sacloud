@@ -86,6 +86,8 @@ const BOARD_USER_SELECT = {
               markBgUrl: true,
               markFrontUrl: true,
               sourceClanId: true,
+              category: true,
+              tier: true,
             },
           },
         },

@@ -162,7 +162,11 @@ export interface LeagueClanInfo {
     name: string
     markBgUrl: string | null
     markFrontUrl: string | null
+    /* 등록 클랜 판정용 세 칸. `CLAN_SUMMARY_SELECT` 와 같은 모양이어야 한다 —
+       하나라도 빠지면 IPL 클랜이 전부 `미등록` 으로 떨어진다 (D-146 · 2026-08-31) */
     sourceClanId: string | null
+    category: string | null
+    tier: number | null
   }
 }
 

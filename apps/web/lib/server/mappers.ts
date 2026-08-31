@@ -27,20 +27,47 @@ export interface ClanFields {
   markFrontUrl: string | null
   /** 3rd.supply 공식 클랜 레지스트리의 id. 있으면 공식 1/2부 등록 클랜이다 */
   sourceClanId?: string | null
+  /** "official" | "independent". IPL 등록이 이 값을 `independent` 로 바꾼다 (D-165) */
+  category?: string | null
+  /** IPL 티어 1~6. 등록되지 않은 무소속 클랜은 `null` 이다 */
+  tier?: number | null
 }
 
 /**
- * SACLOUD 공식 1/2부 등록 클랜인가 (D-146).
+ * **SACLOUD 리그에 등록된 클랜인가** (D-146 · 2026-08-31 확장).
  *
- * 판정 기준은 **`sourceClanId` 하나**다. 3rd.supply 공식 클랜 레지스트리에서 이관된
- * 44개 클랜만 이 값을 가진다. 이름·slug 문자열로 추측하지 않는다 —
- * 비슷한 이름의 외부 클랜을 공식으로 잘못 올리는 것이 가장 위험하다.
+ * 이 값이 참이면 실제 클랜마크를 그리고 `미등록` 표기를 붙이지 않는다.
  *
- * `sourceClanId` 가 없는 클랜에는 개발용으로 만든 `real-` 접두 클랜 4개도 포함된다.
- * 그것들도 공식이 아니다.
+ * ── 왜 넓혔나
+ *   원래 기준은 `sourceClanId` **하나**였다 — 3rd.supply 공식 클랜 레지스트리에서
+ *   이관된 클랜만 참이었다. 그때는 그것이 "우리 리그에 등록된 클랜" 과 같은 말이었다.
+ *
+ *   **IPL(무소속리그)이 생기면서 그 전제가 깨졌다.** 사용자가 직접 지정해 등록한
+ *   IPL 클랜 43곳 중 대부분은 3rd.supply 레지스트리에 없어서 `sourceClanId` 가 없다.
+ *   그래서 등록된 클랜인데도 화면이 전부 기본 구름 아이콘을 그렸다
+ *   (2026-08-31 사용자 지적: *"클랜마크가 안뜨는데 여러개가"*).
+ *
+ * ── 지금 기준
+ *   ① 3rd.supply 공식 레지스트리에 있다 (`sourceClanId`)            → 공식리그 등록
+ *   ② IPL 티어가 매겨져 있다 (`category='independent'` + `tier`)     → IPL 등록
+ *
+ *   ②는 `registerClanTier()` 가 등록할 때만 채우는 값이다. 사람이 명단에 넣지 않으면
+ *   `tier` 는 `null` 로 남는다. 그래서 **아무 무소속 클랜이나 참이 되지 않는다.**
+ *
+ * ── 여전히 지키는 것
+ *   이름·slug 문자열로 추측하지 않는다. 비슷한 이름의 외부 클랜을 등록된 것처럼
+ *   보여 주는 것이 가장 위험하다 (D-146 의 원래 취지).
+ *   개발용 `real-` 접두 클랜 4개는 둘 다 해당 없어서 그대로 거짓이다.
+ *
+ * > `[미확인]` ②는 `LeagueClan` 행을 직접 보는 대신 `Clan` 행의 값으로 대신 판정한다.
+ * > 등록을 해제(추방)해도 `Clan.tier` 는 남으므로, 추방된 클랜의 마크가 계속 보인다.
+ * > 지금은 추방이 6곳뿐이고 그 6곳은 전부 `sourceClanId` 도 있어 어차피 참이다.
  */
-export function isOfficialLeagueClan(clan: Pick<ClanFields, 'sourceClanId'>): boolean {
-  return Boolean(clan.sourceClanId)
+export function isOfficialLeagueClan(
+  clan: Pick<ClanFields, 'sourceClanId' | 'category' | 'tier'>,
+): boolean {
+  if (clan.sourceClanId) return true
+  return clan.category === 'independent' && clan.tier !== null && clan.tier !== undefined
 }
 
 export function toClanSummary(clan: ClanFields): ClanSummary {
@@ -168,8 +195,12 @@ export const CLAN_SUMMARY_SELECT = {
   name: true,
   markBgUrl: true,
   markFrontUrl: true,
-  // 공식 등록 클랜 판정에 쓴다 (D-146)
+  /* 등록 클랜 판정에 쓴다 (D-146 · 2026-08-31 확장).
+     셋을 다 읽어야 한다 — `sourceClanId` 는 공식리그, `category`+`tier` 는 IPL 등록이다.
+     하나라도 빠지면 그쪽 클랜이 전부 `미등록` 으로 떨어지고 마크가 사라진다 */
   sourceClanId: true,
+  category: true,
+  tier: true,
 } as const
 
 export const LEAGUE_SUMMARY_SELECT = {
