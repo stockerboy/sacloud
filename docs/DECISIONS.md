@@ -13548,3 +13548,76 @@ const part = tally.sniperDuel ?? null
 로컬 요약 189개 중 운영에 넣을 수 있는 것은 45개뿐이었고, 시도했다가
 `ClanHexV2Summary_leagueId_fkey` 위반으로 33행을 덮은 채 죽었다. 백업에서 되돌렸다.
 **운영 데이터는 운영에서 만든다.**
+
+---
+
+## D-261 — 운영 마이그레이션은 **5432(세션 풀러)** 로 돌린다. 6543 은 영원히 멈춘다 (2026-09-02)
+
+### 무슨 일이 있었나
+
+`docs/HANDOFF_2026-09-01_NIGHT.md` 4-1 이 「`prisma migrate status` 는 5분 타임아웃이 났다.
+확인할 때 시간을 넉넉히 줘라」고 적어 뒀다. **시간 문제가 아니었다.**
+
+`packages/db/.env.production.local` 의 `DATABASE_URL` 은 Supabase **트랜잭션 풀러**다.
+
+```
+aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+```
+
+이 주소로 `prisma migrate deploy` 를 걸면 **끝나지 않는다.** 실측 2회:
+
+| 시도 | 옵션 | 결과 |
+|---|---|---|
+| 1 | 그대로 | 10분 타임아웃. **한 건도 적용 안 됨** |
+| 2 | `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=true` | 9분 타임아웃. 역시 0건 |
+
+두 번 다 `_prisma_migrations` 와 `information_schema` 로 확인했다 —
+**운영 DB 는 손대지 않은 상태 그대로였다.** 반쯤 적용되는 사고는 없었다.
+(그러니 이 증상을 만나도 당황해서 손으로 SQL 을 붓지 마라. 먼저 세어 보면 0건이다.)
+
+### 정한 것
+
+같은 호스트의 **세션 풀러(5432)** 를 쓴다. 포트만 바꾸고 `pgbouncer=true` 를 뺀다.
+
+```bash
+cd packages/db
+RAW="$(grep -oP '(?<=^DATABASE_URL=).*' .env.production.local | tr -d '"'"'"'\r')"
+SESS="$(printf '%s' "$RAW" | sed -e 's/:6543\//:5432\//' -e 's/?pgbouncer=true&connection_limit=1/?connection_limit=1/')"
+DATABASE_URL="$SESS" npx prisma migrate deploy
+```
+
+2026-09-02 06:0x KST 에 이 방법으로 **밀려 있던 3개가 한 번에, 몇 초 만에** 올라갔다.
+
+```
+20260901180000_signup_username
+20260901180000_title_challenge
+20260901200000_clan_master_claim
+```
+
+### 반영 결과 (숫자로 확인)
+
+| 확인한 것 | 값 |
+|---|---|
+| `User.username` · `User.email` | 둘 다 nullable 로 존재 |
+| 기존 계정 | **44행 · email NULL 0행** — 데이터 손실 없음 |
+| `username` 이 있는 계정 | 0행 (아직 아무도 새 방식으로 가입하지 않았다) |
+| 새 표 | `TitleChallenge` · `ClanMasterClaim` · `ClanMasterClaimImage` |
+| 손으로 넣은 부분 유니크 인덱스 4개 | `User_username_key` · `TitleChallenge_open_ouid_key` · `TitleChallenge_verified_ouid_key` · `ClanMasterClaim_approved_clan_key` **전부 생성됨** |
+| 운영 API | `/api/leagues` · `ranks/players` · `ranks/clans` 전부 200 |
+
+### 왜 그동안 막혀 있었나 — 그 이유는 이미 사라져 있었다
+
+인수인계 4-1 은 「`signup_username` 을 적용하면 운영이 깨질 수 있다.
+`pnpm typecheck` 에 21건 오류가 그 이유로 떠 있다」고 적었다.
+
+**2026-09-02 기준 `pnpm typecheck` 는 전 패키지 통과다 (오류 0건).**
+그 사이에 `User.email` 이 `string | null` 이 된 것을 앱 코드가 따라잡았다.
+차단 조건이 이미 풀려 있었는데 아무도 다시 확인하지 않아 그대로 막혀 있었다.
+
+### 따라오는 규칙
+
+- **읽기는 6543 그대로 쓴다.** 조회 스크립트는 지금까지처럼 트랜잭션 풀러가 맞다.
+  포트를 바꾸는 것은 **DDL(마이그레이션) 한정**이다
+- 적용 뒤에는 `information_schema.columns` 와 `pg_indexes` 로 **직접 센다.**
+  `migrate deploy` 의 "successfully applied" 를 믿고 끝내지 않는다 —
+  손으로 넣은 부분 유니크 인덱스는 Prisma 스키마에 없어서 drift 검사에도 안 걸린다
