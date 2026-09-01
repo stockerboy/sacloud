@@ -612,13 +612,40 @@ describe('구역 파일 (`data/barracks/style-zones.json`)', () => {
     expect(zoneCellsOfLabels(file, [B_LONG_ZONE_LABEL]).cells.length).toBeGreaterThan(0)
   })
 
-  it('**`녹뒤` · `머리` 는 어느 라벨에도 없다** — 지어내지 않는다 (⑥-1)', () => {
+  /*
+   * ⚠ **뒤집힌 시험 (2026-09-01)** — 원래는 «`녹뒤`·`머리` 는 어느 라벨에도 없다» 였다.
+   *
+   * 그때는 맞았다. 사용자가 넷 중 둘만 칠해 뒀었다 (⑥-1). 그런데 그날 사용자가
+   * **실제 킬 좌표 568,138건 위에 직접 칠했고**(`design/zone-paint.html`) 넷이 다 찼다.
+   *
+   *   머리  x 33~35 · y 26~27   6칸
+   *   녹뒤  x 36~38 · y 26~27   6칸
+   *
+   * 옛 시험을 지우지 않고 뒤집어 둔다 (`CLAUDE.md` 10-4). 이 시험이 빨개지면
+   * **좌표가 사라진 것**이므로 `data/barracks/style-zones.json` 부터 봐라.
+   */
+  it('**`녹뒤` · `머리` 도 이제 라벨에 있다** — 사용자가 직접 칠했다 (⑥-1 해소)', () => {
     const names = Object.values(file.labels)
-    expect(names).not.toContain('녹뒤')
-    expect(names).not.toContain('머리')
+    expect(names).toContain('녹뒤')
+    expect(names).toContain('머리')
+    expect(zoneCellsOfLabels(file, ['NOKDWI']).cells.length).toBeGreaterThan(0)
+    expect(zoneCellsOfLabels(file, ['MERI']).cells.length).toBeGreaterThan(0)
   })
 
-  it('없는 라벨을 주면 **0칸**이다 — 조용히 다른 구역을 집지 않는다', () => {
-    expect(zoneCellsOfLabels(file, ['NOKDWI']).cells).toEqual([])
+  it('**정말 없는** 라벨을 주면 0칸이다 — 조용히 다른 구역을 집지 않는다', () => {
+    expect(zoneCellsOfLabels(file, ['NO_SUCH_ZONE_XYZ']).cells).toEqual([])
+  })
+
+  it('네 구역이 서로 겹치지 않는다 — 한 칸이 두 이름을 갖지 않는다', () => {
+    const four = ['CONDWI', 'SEOLDAE', 'NOKDWI', 'MERI']
+    const seen = new Set<string>()
+    for (const label of four) {
+      /* `cells` 는 `"x,y"` 문자열 배열이다. 객체가 아니다 — 처음에 `cell.x` 로 읽어
+         전부 `undefined,undefined` 가 되는 바람에 이 시험이 거짓으로 빨개졌었다 */
+      for (const key of zoneCellsOfLabels(file, [label]).cells) {
+        expect(seen.has(key)).toBe(false)
+        seen.add(key)
+      }
+    }
   })
 })
