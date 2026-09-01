@@ -156,9 +156,9 @@ export function LeagueInfoPanel({
                   </span>
                 </span>
                 <span className={`w-28 shrink-0 text-right ${NUM} text-text-strong max-md:w-20`}>
-                  {/* 배치고사 중이면 점수 대신 그 표기가 그대로 나온다 */}
+                  {/* 이 창에 0판이면 점수 대신 `기록 없음` (배치고사 폐지 · 2026-09-01) */}
                   {entry.placement ? (
-                    <span className="font-body text-sm text-meta">배치고사</span>
+                    <span className="font-body text-sm text-meta">기록 없음</span>
                   ) : (
                     formatRating(entry.rating)
                   )}

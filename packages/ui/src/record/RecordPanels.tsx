@@ -465,7 +465,8 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       <Divider />
       <Stat label="래더">
         <span className={ratingClass(props.rating)}>
-          {props.placement ? '배치고사' : `${props.rating}점`}
+          {/* 배치고사 폐지 (2026-09-01) — 이 창에 0판이라는 뜻이다 */}
+          {props.placement ? '기록 없음' : `${props.rating}점`}
         </span>
       </Stat>
       <Divider />

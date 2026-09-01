@@ -130,8 +130,8 @@ function Row({
       </Link>
 
       {member.placement ? (
-        /* 배치고사 중이면 래더 자리에 `배치고사` 를 쓴다 (CLAUDE.md 6장) */
-        <span className="shrink-0 text-xs text-meta">배치고사</span>
+        /* 이 창에 0판이면 래더 자리에 `기록 없음` (배치고사 폐지 · 2026-09-01) */
+        <span className="shrink-0 text-xs text-meta">기록 없음</span>
       ) : (
         <span className={`num shrink-0 text-sm ${ratingClass(member.rating)}`}>
           {formatCount(member.rating)}점
@@ -176,7 +176,7 @@ function Member({
       </Link>
       {ownLabel ? <span className="mr-1 text-xs text-meta">{ownLabel}</span> : null}
       {member.placement ? (
-        <span className="text-xs text-meta">배치고사</span>
+        <span className="text-xs text-meta">기록 없음</span>
       ) : (
         <span className={`num text-xs ${ratingClass(member.rating)}`}>
           {formatCount(member.rating)}점

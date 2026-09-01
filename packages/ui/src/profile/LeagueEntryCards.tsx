@@ -93,9 +93,9 @@ function PlayerEntryCard({ entry, playerId }: { entry: PlayerLeagueEntry; player
       <div className="mt-6 flex flex-row-reverse items-center">
         <div className="flex items-center">
           래더
-          {/* 배치고사 중이면 래더 자리에 `배치고사`를 표기한다 (원본 규칙) */}
+          {/* 이 창에 0판이면 래더 자리에 `기록 없음` (배치고사 폐지 · 2026-09-01) */}
           <span className="ml-2 w-20 text-right text-2xl">
-            {entry.placement ? '배치고사' : `${entry.rating}점`}
+            {entry.placement ? '기록 없음' : `${entry.rating}점`}
           </span>
         </div>
       </div>

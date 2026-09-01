@@ -146,8 +146,9 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
         </div>
         <div className="shrink-0 text-right">
           <div className="text-[12px] leading-none text-meta">래더</div>
+          {/* 배치고사 폐지 (2026-09-01) — `placement` 는 이제 「이 창에 0판」이라는 뜻이다 */}
           {entry.placement ? (
-            <div className="mt-1.5 text-[15px] leading-none text-accent">배치고사</div>
+            <div className="mt-1.5 text-[15px] leading-none text-meta">기록 없음</div>
           ) : (
             <div className="mt-1 font-num text-[26px] leading-none tabular-nums text-text-strong">
               {formatCount(entry.rating)}

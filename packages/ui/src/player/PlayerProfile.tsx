@@ -210,9 +210,10 @@ function PlayerLeagueRow({
         </div>
         <div className="shrink-0 text-right">
           <div className="text-[12px] leading-none text-meta">래더</div>
-          {/* 배치고사 중이면 래더 자리에 `배치고사` 를 적는다. 점수를 지어내지 않는다 */}
+          {/* 이 시즌 창에 0판이면 래더 자리에 `기록 없음`. 점수를 지어내지 않는다.
+              배치고사는 폐지됐다 (2026-09-01) — `placement` 플래그의 뜻만 바뀌었다 */}
           {entry.placement ? (
-            <div className="mt-1.5 text-[15px] leading-none text-accent">배치고사</div>
+            <div className="mt-1.5 text-[15px] leading-none text-meta">기록 없음</div>
           ) : (
             <div className="mt-1 font-num text-[26px] leading-none tabular-nums text-text-strong">
               {formatCount(entry.rating)}
