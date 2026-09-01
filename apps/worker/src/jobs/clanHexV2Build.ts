@@ -2,7 +2,7 @@
  * 클랜 육각형 V2 재료를 `MatchClanHexV2` 에 **경기 × 클랜** 단위로 쌓는다 (D-217 · D-235).
  *
  * ```
- * ① 스나싸움  ② 소수싸움  ③ 세이브  ④ 게임템포  ⑤ B어택성공  ⑥ A어택성공
+ * ① 스나싸움  ② 소수싸움  ③ 세이브  ④ 게임템포  ⑤ 선짤  ⑥ 교환   (D-256)
  * ```
  *
  * 판정은 전부 `@sacloud/nexon` 의 순수 함수(`clanHexV2Of`)가 한다. 여기서는 DB 를
@@ -231,14 +231,34 @@ import { axesMeasuredOf } from '../lib/clanHexV2Axes.js'
  * ④ 3명 지운 레드 라운드    ⑤ 이긴 레드 라운드    ⑥ 이긴 레드 라운드
  * ```
  */
+/*
+ * ── ⚠ 2026-09-02 — **이 표가 옛 축을 세고 있었다** (D-256)
+ *
+ *   ①⑤⑥ 이 바뀐 뒤에도 여기는 `sniperFight` · `lastSniper` · `attackZone` 을
+ *   보고 있었다. 그래서 «⑤ B어택성공=39» 같은 줄이 나왔는데, 그 39 는
+ *   **화면이 안 쓰는 축의 분모**였다. 세는 것과 그리는 것이 갈려 있었다.
+ *
+ *   지금 화면이 쓰는 여섯 축으로 맞춘다. 옛 세 축은 tally 에 그대로 남아 있으니
+ *   아래 `LEGACY` 로 따로 센다 — 지우지 않는다 (`CLAUDE.md` 10-4).
+ *   옛 축이 되살아나면 그 줄을 위로 옮기면 된다.
+ */
 export function axisDenominators(tally: ClanHexTally): Record<string, boolean> {
   return {
-    '① 스나싸움': (tally.sniperFight?.redRounds ?? 0) > 0,
+    '① 스나싸움': ((tally.sniperDuel?.won ?? 0) + (tally.sniperDuel?.lost ?? 0)) > 0,
     '② 소수싸움': (tally.outnumbered?.rounds ?? 0) > 0,
     '③ 세이브': (tally.save?.rounds ?? 0) > 0,
     '④ 게임템포': (tally.tempo?.redClearThreeRounds ?? 0) > 0,
-    '⑤ B어택성공': (tally.lastSniper?.redWonRounds ?? 0) > 0,
-    '⑥ A어택성공': (tally.attackZone?.redWonRounds ?? 0) > 0,
+    '⑤ 선짤': (tally.firstBlood?.rounds ?? 0) > 0,
+    '⑥ 교환': (tally.trade?.deaths ?? 0) > 0,
+  }
+}
+
+/** 옛 축(구역을 보던 판)의 분모. 지금 화면은 안 쓴다 — 대조용으로 남긴다 */
+export function legacyAxisDenominators(tally: ClanHexTally): Record<string, boolean> {
+  return {
+    'LEGACY 스나싸움(구역)': (tally.sniperFight?.redRounds ?? 0) > 0,
+    'LEGACY B어택성공': (tally.lastSniper?.redWonRounds ?? 0) > 0,
+    'LEGACY A어택성공': (tally.attackZone?.redWonRounds ?? 0) > 0,
   }
 }
 
@@ -358,8 +378,8 @@ export async function buildClanHexV2(input: {
       '② 소수싸움': 0,
       '③ 세이브': 0,
       '④ 게임템포': 0,
-      '⑤ B어택성공': 0,
-      '⑥ A어택성공': 0,
+      '⑤ 선짤': 0,
+      '⑥ 교환': 0,
     },
     zones,
     written: false,

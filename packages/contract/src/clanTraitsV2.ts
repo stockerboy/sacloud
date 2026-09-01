@@ -319,8 +319,23 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    *     순서를 거꾸로 하면 같은 일이 반복된다.
    *
    *   `apps/worker/src/lib/clanHexV2Version.ts` 도 함께 되돌렸다 — 두 값은 같아야 한다.
+   *
+   * ── ✅ **2026-09-02 · 그 순서대로 했고, v2.3 으로 올렸다**
+   *
+   *   ① 잡 쪽 버전만 먼저 v2.3 으로 올렸다 (계약은 v2.1 로 둔 채)
+   *   ② 원문 7,229줄을 다시 접어 **12,006행**을 만들었다 — 6축이 다 잰 행이 11,833(98.6%)
+   *   ③ 클랜 요약 189개를 접었고 그중 188개가 6축 전부다
+   *   ④ 요약을 운영으로 옮긴 **뒤에** 이 값을 올려 배포했다
+   *
+   *   ⚠ 요약표는 **클랜당 한 행**이다(`leagueClanId` 가 `@unique`). 그래서 옛 판을
+   *     남긴 채 새 판을 넣을 수 없고, 옮기는 그 순간에는 화면이 잠깐 카드를 못 그린다.
+   *     옛 155행은 `packages/db/_backup/clanHexV2Summary-before-v2.3.json` 에 떠 두었다.
+   *
+   *   ⚠ 그리고 v2.1 판이 사라진 진짜 이유는 버전이 아니라 **없는 칸**이었다.
+   *     `buildClanHexV2Raw` 위의 주석을 읽어라 — 그쪽을 안 고치면 버전을 어떻게
+   *     맞춰도 같은 일이 난다.
    */
-  formulaVersion: 'clan-hex-v2.1',
+  formulaVersion: 'clan-hex-v2.3',
 }
 
 /**
