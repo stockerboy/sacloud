@@ -678,11 +678,15 @@ var art = null, dl = null;
 var saveBtn = document.getElementById('bSave'), dlBtn = document.getElementById('bDown');
 saveBtn.style.display = 'none';
 
+function noSave(){ if(!art) msg('이 화면에서는 저장할 수 없습니다. [설정 복사]로 가져가세요.'); }
 if(window.claude && typeof window.claude.use === 'function'){
-  window.claude.use('artifact').then(function(a){ if(a){ art = a; saveBtn.style.display = ''; } })
-    .catch(function(){});
+  window.claude.use('artifact').then(function(a){
+    if(a){ art = a; saveBtn.style.display = ''; msg(''); } else noSave();
+  }).catch(noSave);
   window.claude.use('downloads').then(function(d){ if(d){ dl = d; if(S.bg.img) dlBtn.style.display=''; } })
     .catch(function(){});
+} else {
+  noSave();
 }
 
 saveBtn.addEventListener('click', function(){
