@@ -21,6 +21,7 @@
     "db:reset": "node scripts/db-local.mjs reset",
     "compare": "pnpm --filter @sacloud/web exec tsx scripts/compareMockLive.ts",
     "rating:simulate": "tsx scripts/rating-simulation/main.ts",
+    "clan:aliases": "node scripts/build-clan-aliases.mjs",
     "db:seed": "pnpm --filter @sacloud/db seed",
     "db:check": "pnpm --filter @sacloud/db exec tsx seed/check.ts",
     "db:generate": "pnpm --filter @sacloud/db generate",

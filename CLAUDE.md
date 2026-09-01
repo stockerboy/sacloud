@@ -312,6 +312,8 @@ pnpm db:migrate       # Prisma 마이그레이션
 pnpm db:seed          # Mock과 같은 결정적 픽스처를 DB에 적재
 pnpm db:check         # 시드 결과 숫자 대조 (건수 · 한글 UTF8 왕복 · 래더 정합성 · 스냅샷 누락)
 pnpm compare          # Mock ↔ 실제 API 응답을 **값까지** 대조 ← 두 모드가 같은지 판정하는 기준
+pnpm clan:aliases     # data/clan/clan-aliases.json → packages/contract/src/clanAliasTable.ts
+                      # 클랜 별칭 표를 **상수로 굽는다** (D-244). JSON 을 고쳤으면 이걸 돌린다
 
 # --- Phase 8 이후 (넥슨 수집) ---
 pnpm nexon:status     # 적재 현황 + API 키 설정 여부 (키 값은 찍지 않는다)

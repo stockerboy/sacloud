@@ -50,8 +50,17 @@
  * 검색창 밑에 그대로 띄우는 한 줄. 사용자가 «문구 유저가 볼 수 있게» 라고 지시했다.
  *
  * 문구를 고칠 때는 **예시를 지우지 마라** — 이 기능이 있다는 걸 아는 유일한 단서다.
+ *
+ * ⚠ **2026-09-01 갱신** — 별칭 검색이 붙어서 한 갈래가 늘었다.
+ *   `lpcrew` 를 「미라지」로 읽어 낼 방법은 없다. 그건 발음이 아니라 **호칭**이고,
+ *   사용자가 손으로 적어 준 표(`clanAliases.ts`)가 그걸 잇는다. 안내에도 넣는다.
+ *   옛 문구는 아래 `CLAN_SEARCH_HINT_V1` 에 그대로 남겨 뒀다 (`CLAUDE.md` 10-4).
  */
 export const CLAN_SEARCH_HINT =
+  '클랜명을 한글로 읽어서 쳐도, 평소 부르는 이름으로 쳐도 찾습니다. 예) veritas → 베리타스 · lpcrew → 미라지 · 초성 ㅂㅇㅈ'
+
+/** 별칭 검색이 붙기 전(2026-09-01 이전)의 문구. 지우지 않고 남긴다 */
+export const CLAN_SEARCH_HINT_V1 =
   '클랜명을 한글로 읽어서 쳐도 찾습니다. 예) veritas → 베리타스 · exOnePoinT → 원포 · 초성 ㅂㅇㅈ 도 됩니다'
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -748,6 +757,18 @@ const RANK = {
   NONE: 99,
 } as const
 
+/**
+ * 별칭 일치에 얹는 값. **별칭은 언제나 이름보다 뒤다.**
+ *
+ * 이름 쪽 최악(`CHOSUNG` = 5)보다 크기만 하면 되므로 10 으로 둔다.
+ * 그래서 `미라지` 로 쳤을 때 **이름이 `미라지` 인 클랜(0)** 이
+ * **별칭이 `미라지` 인 클랜(10)** 보다 언제나 먼저다.
+ *
+ * 별칭끼리는 이름과 **같은 잣대**로 줄을 세운다 — 똑같다(10) · 시작한다(11) · 들어 있다(12) …
+ * 별칭도 로마자일 수 있어서(`rz` · `wct`) 한글 읽기·초성이 그대로 쓸모가 있다.
+ */
+const ALIAS_RANK_OFFSET = 10
+
 const literalCache = new Map<string, string[]>()
 
 /**
@@ -825,12 +846,37 @@ function rankOf(name: string, normalizedQuery: string): number {
 }
 
 /**
+ * 이름과 **별칭**을 함께 보고 가장 좋은 등급을 낸다.
+ *
+ * 별칭은 이름과 같은 대조기를 타되 `ALIAS_RANK_OFFSET` 만큼 뒤로 밀린다.
+ * 별칭을 안 주면 예전과 **한 글자도 다르지 않게** 동작한다.
+ */
+function rankOfWithAliases(name: string, aliases: readonly string[] | undefined, q: string): number {
+  const own = rankOf(name, q)
+  if (!aliases || aliases.length === 0) return own
+  /* 이름이 이미 최상위(0)면 별칭을 볼 이유가 없다 — 어차피 못 이긴다 */
+  if (own === RANK.EXACT) return own
+
+  let best = own
+  for (const alias of aliases) {
+    const rank = rankOf(alias, q)
+    if (rank === RANK.NONE) continue
+    const shifted = rank + ALIAS_RANK_OFFSET
+    if (shifted < best) best = shifted
+  }
+  return best
+}
+
+/**
  * 검색어 하나가 클랜명 하나에 걸리는가.
  *
  * 빈 검색어는 **전부 통과**다 (거르지 않는다).
+ *
+ * `aliases` 는 **선택**이다. 주면 «평소 부르는 이름» 으로도 걸린다
+ * (`clanNameMatches('MiraGe.', '미라지', ['미라지'])`). 안 주면 예전 그대로다.
  */
-export function clanNameMatches(name: string, query: string): boolean {
-  return rankOf(name, normalizeClanQuery(query)) !== RANK.NONE
+export function clanNameMatches(name: string, query: string, aliases?: readonly string[]): boolean {
+  return rankOfWithAliases(name, aliases, normalizeClanQuery(query)) !== RANK.NONE
 }
 
 /**
@@ -840,15 +886,23 @@ export function clanNameMatches(name: string, query: string): boolean {
  * 같은 입력이면 언제나 같은 순서가 나온다.
  *
  * 빈 검색어면 원래 목록을 그대로(순서까지) 돌려준다.
+ *
+ * `aliasesOf` 는 **선택**이다. 주면 별칭도 함께 보되 **이름 일치가 언제나 먼저**다.
+ * 안 넘기면 예전과 똑같이 이름만 본다.
  */
-export function searchClanNames<T>(items: T[], query: string, nameOf: (item: T) => string): T[] {
+export function searchClanNames<T>(
+  items: T[],
+  query: string,
+  nameOf: (item: T) => string,
+  aliasesOf?: (item: T) => readonly string[],
+): T[] {
   const q = normalizeClanQuery(query)
   if (q.length === 0) return [...items]
 
   const scored: { item: T; rank: number; name: string; index: number }[] = []
   items.forEach((item, index) => {
     const name = nameOf(item)
-    const rank = rankOf(name, q)
+    const rank = rankOfWithAliases(name, aliasesOf?.(item), q)
     if (rank !== RANK.NONE) scored.push({ item, rank, name, index })
   })
 

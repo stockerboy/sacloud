@@ -3,7 +3,7 @@
 import { use, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClanSummary, LeagueClan } from '@sacloud/contract'
-import { EXPEL_CONFIRM_PHRASE } from '@sacloud/contract'
+import { CLAN_SEARCH_HINT, EXPEL_CONFIRM_PHRASE } from '@sacloud/contract'
 import {
   ClanMark,
   ConfirmTypeToProceed,
@@ -188,6 +188,10 @@ function SettingBody({ leagueSlug }: { leagueSlug: string }) {
               등록
             </button>
           </div>
+
+          {/* 통합검색과 **같은 문구**를 쓴다. 여기도 같은 API(`/api/clans/search`)를 부르므로
+              한글 읽기·초성·별칭이 그대로 통한다 (2026-09-01) */}
+          <p className="mt-2 text-xs text-faint">{CLAN_SEARCH_HINT}</p>
 
           {clanQuery.trim() && clanSearch.data ? (
             <div className="mt-3 rounded-[var(--radius)] border border-line">
