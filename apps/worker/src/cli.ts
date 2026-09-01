@@ -69,6 +69,8 @@ import { runIplSanplyCheck, runIplSanplyPurge } from './jobs/iplSanplyPurge.js'
 import { buildRoundProfiles } from './jobs/roundBuild.js'
 /** 클랜 라운드 지표 (SITE_SPEC_V2 5-5절) — 블루방어율·어택성공률·조직력·폭발력·템포·클린시트 */
 import { buildClanRoundProfiles } from './jobs/clanRoundBuild.js'
+/** 클랜 육각형 V2 (D-217 · D-235) — 스나싸움·소수싸움·세이브·템포·B어택·A어택. 옛 판과 따로 산다 */
+import { buildClanHexV2 } from './jobs/clanHexV2Build.js'
 import { linkClanNumbers } from './jobs/clanNumber.js'
 import { runRate } from './jobs/rate.js'
 import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
@@ -2188,6 +2190,58 @@ async function main(): Promise<number> {
       ])
       if (result.tallied > 0 && result.sided === 0) {
         warn('진영 교대를 확인한 경기가 없다. 다섯 지표는 전부 측정중으로 나간다')
+      }
+      if (!result.written) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    /**
+     * 클랜 육각형 V2 재료 (D-217 · D-235 · `docs/CLAN_HEXAGON_V2_SPEC.md`).
+     *
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-build
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-build --limit 20 --confirm
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-build --league sanply
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-build --rebuild --confirm
+     *
+     * 여섯 축의 **분자/분모**를 경기 × 클랜 단위로 `MatchClanHexV2` 에 쌓는다.
+     * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 멱등이고, 다시 돌리면 이어서 돈다.
+     * **옛 판(`clan-round-build`)과 따로 산다 — 둘을 한 화면에 섞지 않는다.**
+     */
+    case 'clan-hex-v2-build': {
+      const result = await buildClanHexV2({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit'),
+        leagueSlug: stringFlag(args, 'league'),
+        rebuild: boolFlag(args, 'rebuild'),
+      })
+      table([
+        {
+          '원문 줄': result.rows,
+          '집계한 경기': result.matches,
+          '쓴 행': result.planned,
+          '구역 파일': result.zones.file === null ? '(없음 · 자리 축 null)' : '있음',
+        },
+      ])
+      if (result.zones.file !== null) table([result.zones.cells])
+      table([
+        {
+          '클랜번호 미연결': result.skips.unlinkedClanNo,
+          'Match 없음': result.skips.noMatch,
+          '중복 응답': result.skips.duplicateResponse,
+          '이미 만듦': result.skips.alreadyBuilt,
+          '읽기 실패': result.skips.unreadable,
+          '팀번호 불명': result.skips.unknownTeamNo,
+          '상대팀 없음': result.skips.noFoeTeam,
+          '팀↔클랜 불명': result.skips.teamClanUnknown,
+          '진영 불일치': result.skips.clanSideMismatch,
+        },
+      ])
+      table([
+        Object.fromEntries(result.axesHistogram.map((n, axes) => [`${axes}축`, n])),
+      ])
+      table([result.axisRows])
+      if (result.planned > 0 && result.axesHistogram[0] === result.planned) {
+        warn('여섯 축을 하나도 못 잰 행뿐이다. 원문·구역 파일을 확인해라')
       }
       if (!result.written) log('미리보기다. 실제로 넣으려면 --confirm')
       return 0

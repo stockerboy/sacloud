@@ -146,6 +146,16 @@ export { PlayerFormPanel } from './record/PlayerFormPanel'
 /* 클랜 지표 (SITE_SPEC_V2 5절) — 이것도 원본에 없는 신규 화면이다 */
 export { ClanMetrics } from './record/ClanMetrics'
 export { ClanHexagon } from './record/ClanHexagon'
+/* 클랜 육각형 **V2** (D-217 · D-235) — 새 여섯 축.
+   위의 옛 `ClanHexagon` 은 **지우지 않는다**. 옛 축은 줄 표기로 남는다 (D-235 Q9) */
+export {
+  ClanHexagonV2,
+  type ClanHexagonV2Props,
+  type ClanHexV2,
+  type ClanHexV2Axis,
+  type ClanHexV2AxisKey,
+  type ClanHexV2PendingReason,
+} from './record/ClanHexagonV2'
 /* 배틀로그 지표 (SITE_SPEC_V2 5-5절) — 클랜 지표 바로 아래에 붙는다 */
 export { ClanRoundMetrics } from './record/ClanRoundMetrics'
 export { ClanRoster } from './record/ClanRoster'
@@ -167,8 +177,12 @@ export { TodayPerformance } from './record/TodayPerformance'
 export { TierBreakdown } from './record/TierBreakdown'
 export {
   HEX_CENTER,
+  /* 미리보기 스크립트(`apps/web/scripts/clanHexV2Preview.mts`)가 컴포넌트와 **같은**
+     점 크기·눈금으로 그리려고 쓴다. 여기서 값을 흉내내면 그림과 화면이 갈린다 */
+  HEX_DOT_RADIUS,
   HEX_LABEL_RADIUS,
   HEX_RADIUS,
+  HEX_RING_SCALES,
   axisLabelAnchor,
   axisValueText,
   hexPoint,

@@ -24,8 +24,82 @@ import {
  *   비면 그 축은 점선이고 값 자리에 `측정중` 과 **못 재는 이유**를 적는다.
  *   0 으로 채우면 넓이가 "못한다" 는 뜻이 되어 버린다.
  */
-export function ClanHexagon({ hexagon }: { hexagon: ClanHexagonData }) {
+/**
+ * ── ⚠ **정정 (2026-09-01 · D-235 Q9)** — 이 여섯 축은 **육각형 자리에서 내려왔다**
+ *
+ *   사용자가 클랜 육각형을 새로 정의하면서 *"기본거 없애고"* 라고 했다 (D-217).
+ *   그래서 육각형은 `ClanHexagonV2`(스나싸움 · 소수싸움 · 세이브 · 게임템포 ·
+ *   B어택성공 · A어택성공)가 그린다.
+ *
+ *   그러나 **이 컴포넌트도 이 값들도 지우지 않는다.**
+ *   `기본거 없애고` 는 «육각형에서 빼라» 는 말이고, 값을 화면에서 없애는 것은 다른 일이다.
+ *   **데이터가 사라지면 그것은 결함이다** (`CLAUDE.md` 3장 8번 · 10-4).
+ *
+ *   그래서 `variant` 를 뒀다 — `TraitHexagon` 이 옛 `wide` 를 남긴 것과 같은 방식이다.
+ *
+ *   ```
+ *   variant="hexagon"  옛 모습 그대로. 도형을 그린다      ← 기본값. 아무것도 안 바뀐다
+ *   variant="list"     도형 없이 줄 표기만                ← 클랜 페이지가 지금 쓰는 것
+ *   ```
+ *
+ *   ⚠ 이 여섯 중 `게임템포` 는 V2 의 같은 이름과 **다른 지표다** (옛: 라운드 길이 중앙값,
+ *     새: 레드일 때 상대 3명 지우기까지 걸린 초). **두 육각형을 나란히 놓지 않는다.**
+ */
+export function ClanHexagon({
+  hexagon,
+  variant = 'hexagon',
+}: {
+  hexagon: ClanHexagonData
+  variant?: 'hexagon' | 'list'
+}) {
   const filled = hexagon.axes.every((axis) => axis.percentile !== null)
+
+  /* 줄 표기 — 도형을 빼고 값만 남긴다. 축 순서는 도형과 같게 둔다(읽는 순서가 안 바뀌게) */
+  if (variant === 'list') {
+    return (
+      <div className="mt-3">
+        <div className="flex items-baseline justify-between">
+          <div className="text-sm">지표 여섯</div>
+          {hexagon.cohort === null ? null : (
+            <div className="text-xs text-meta">
+              같은 리그 {formatCount(hexagon.cohort)}팀 안에서
+            </div>
+          )}
+        </div>
+
+        <div className="mt-1">
+          {hexagon.axes.map((axis) => (
+            <div
+              key={axis.key}
+              className="flex items-baseline justify-between border-b border-line-soft py-1.5 text-sm last:border-b-0"
+            >
+              <span className="text-text">{axis.label}</span>
+              <span
+                className={axis.percentile === null ? 'text-xs text-meta' : 'num text-text-strong'}
+              >
+                {axis.percentile === null
+                  ? '측정중'
+                  : `상위 ${Math.round((100 - axis.percentile) * 10) / 10}%`}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {hexagon.measuring ? (
+          <div className="mt-1 text-xs text-meta">
+            {[
+              ...new Set(
+                hexagon.axes
+                  .map((axis) => axis.pending)
+                  .filter((pending): pending is NonNullable<typeof pending> => pending !== null)
+                  .map((pending) => CLAN_TRAIT_PENDING_TEXT[pending]),
+              ),
+            ].join(' · ')}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
   /* 0% 도 점이 보이도록 최소 반지름을 준다 — 0 은 "꼴찌" 라는 **실제 값**이다 */
   const radiusOf = (percentile: number): number =>
     Math.max(3, (Math.min(100, Math.max(0, percentile)) / 100) * HEX_RADIUS)
