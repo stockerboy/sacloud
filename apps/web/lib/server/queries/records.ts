@@ -31,8 +31,9 @@ import { playerJudgedPosition } from './playerPositionQuery'
 import { playerTraits } from './playerTraits'
 import { leagueClanMetrics } from './clanMetrics'
 import { leagueClanHexagon, leagueClanRoundMetrics } from './clanRoundMetrics'
-/* `leagueClanHexV2` 는 **일부러 안 부른다** — 아래 `Promise.resolve(null)` 자리의 주석 참조 (D-238).
-   import 를 지우지 않으면 «안 쓰는 것» 으로 잡히므로 뺐다. 함수 자체는 그대로 살아 있다 */
+/* D-238 로 잠시 뺐다가 **다시 들였다** — 재료가 `ClanHexV2Summary` 로 바뀌었다.
+   자세한 것은 아래 호출 자리의 주석 */
+import { leagueClanHexV2 } from './clanHexV2'
 import { leagueClanRoster } from './clanRoster'
 import { toKstIso } from '../format'
 import {
@@ -424,30 +425,45 @@ export async function getLeagueClanShow(
     /* 클랜 육각형 (SITE_SPEC_V2 5-5절). 위 지표와 **같은 캐시**를 읽는다 — 질의가 늘지 않는다 */
     leagueClanHexagon(leagueClan.leagueId, leagueClan.id).catch(() => null),
     /*
-     * 클랜 육각형 **V2** (D-217 · D-235).
+     * 클랜 육각형 **V2** (D-217 · D-235 · **D-238**).
      *
-     * ── ⛔ **2026-09-01 운영에서 껐다. 이 화면을 500 으로 만들었다** (D-238)
+     * ── ⛔ **한 번 껐다. 이 자리가 이 화면을 500 으로 만들었다** (D-238)
      *
      *   올리자마자 사용자가 «사이트 엄청 느리네» 라고 했고, 캐시를 우회해 재 보니
      *   `/api/leagues/supply/clans/lpcrew/show` 가 **10.6초 → 500** 이었다.
      *   함수 제한시간을 넘겨 죽은 것이다. 올리기 전에는 200 이었다.
      *
      *   원인은 **리그 백분위**다 (D-235 Q8). 한 클랜의 등수를 매기려면 **같은 리그 전체**의
-     *   행을 읽어야 하는데, 그게 열산 6,230행 · DPL 3,062행이고 `tally` 가 행마다 1.1KB 라
-     *   **7MB 짜리 JSON 을 풀러 너머로 끌어온다.** 로컬 직결에서는 585ms 였다 —
+     *   값이 필요한데, 그걸 요청마다 `MatchClanHexV2` 를 리그 통째로 읽어 그 자리에서
+     *   접고 있었다 — 열산 6,230행 · DPL 3,062행 · `tally` 가 행마다 1.1KB 라
+     *   **7MB 짜리 JSON 을 풀러 너머로 끌어왔다.** 로컬 직결에서는 585ms 였고,
      *   그 숫자를 운영에 그대로 믿은 것이 잘못이다.
      *
      *   ⚠ **10분 캐시는 여기서 거의 안 듣는다.** Vercel 함수는 요청마다 찬 인스턴스일 수
      *     있어서 «캐시가 있으니 괜찮다» 가 성립하지 않는다. 이것도 로컬에서만 참이었다.
      *
-     * ── 다시 켜는 조건
-     *   리그 분포를 **미리 계산해 작게 저장**한 뒤에 켠다. 행을 다 읽어서 그 자리에서
-     *   백분위를 만드는 방식으로는 못 켠다. 경기 상세(`matchClanHexV2`)는 **두 행만** 읽어
-     *   27ms 라 그대로 둔다 — 문제는 리그 전체를 읽는 이쪽 하나뿐이다.
+     * ── ✅ **다시 켰다 — 재료를 바꿨다** (D-238 「다시 켜는 조건」)
      *
-     *   질의 함수(`clanHexV2.ts`)는 **지우지 않는다.** 분포만 갈아 끼우면 되게 남겨 둔다.
+     *   질의가 읽는 것이 `MatchClanHexV2`(경기 × 클랜) 에서 `ClanHexV2Summary`(클랜 × 1)
+     *   로 바뀌었다. 접는 일은 잡(`nexon clan-hex-v2-summary`)이 미리 해 둔다.
+     *   읽는 양이 **「리그의 경기 행 수」에서 「리그의 클랜 수」**로 바뀐다 —
+     *   열산 기준 6,230행이 103행이다.
+     *
+     *   ⚠ **끈 것은 이 호출이었지 화면도 계약도 아니었다.** 그때도 화면(`ClanHexagonV2`)·
+     *     계약·집계잡·운영 적재 9,388행은 전부 살아 있었다. 여기 한 줄만 되돌린 것이다.
+     *
+     *   ⚠ **요약이 없는 클랜은 그대로 `null` 이다** — 규칙은 안 바뀌었다. 화면은 카드를
+     *     안 그린다 (D-106). 운영에 요약을 적재하기 전까지는 그 상태다.
+     *
+     * ── 경기 상세(`matchClanHexV2`)는 **처음부터 안 껐다**
+     *   그건 두 행만 읽어 27ms 다. 문제는 언제나 «리그 전체를 읽는» 이쪽 하나였다.
+     *
+     * 실패해도 클랜 화면 전체를 죽이지 않는다. `null` 이면 카드를 안 그린다.
      */
-    Promise.resolve(null),
+    leagueClanHexV2({
+      leagueClanId: leagueClan.id,
+      leagueId: leagueClan.leagueId,
+    }).catch(() => null),
   ])
 
   return {
