@@ -3,6 +3,7 @@
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { ClanRankRow } from '@sacloud/contract'
+import { leagueScreen } from '@sacloud/contract'
 import { ClanRankTable, DivisionTabs, LoadMoreButton, RankBox, RankHeader } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -44,7 +45,7 @@ export default function ClanRankPage({
       <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
           title="클랜랭킹"
-          notice="랭킹은 1시간마다 갱신되며, 배치고사가 종료된 클랜만 표시됩니다."
+          notice="랭킹은 1시간마다 갱신되며, 한 경기부터 바로 반영됩니다."
         />
         {/* 무소속리그는 같은 탭을 `1티어 … 5티어` 로 표기한다 (D-165). 값은 division 그대로다 */}
         <DivisionTabs
@@ -60,6 +61,7 @@ export default function ClanRankPage({
             loading={ranks.loading}
             error={ranks.error}
             onRetry={ranks.retry}
+            columns={leagueScreen(leagueSlug).clanColumns}
           />
         </RankBox>
         {ranks.hasMore ? (
