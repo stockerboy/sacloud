@@ -112,7 +112,10 @@ async function playerByName(name: string): Promise<PlayerSearchItem | null> {
  *   적재해야 한다 (지금 운영의 `BarracksBattleLogRaw` · `BarracksClanMember` 는 0행이다).
  */
 async function playerByBarracksUsn(usn: string): Promise<PlayerSearchItem | null> {
-  const playerId = (await identityPlayerId(usn)) ?? (await positionProfilePlayerId(usn))
+  const playerId =
+    (await identityPlayerId(usn)) ??
+    (await positionProfilePlayerId(usn)) ??
+    (await clanMemberPlayerId(usn))
   if (!playerId) return null
 
   const player = await prisma.player.findFirst({
@@ -149,6 +152,58 @@ async function identityPlayerId(usn: string): Promise<string | null> {
 async function positionProfilePlayerId(usn: string): Promise<string | null> {
   const profile = await prisma.playerPositionProfile.findFirst({
     where: { userNexonSn: ciEquals(usn), playerId: { not: null } },
+    orderBy: [{ computedAt: 'desc' }],
+    select: { playerId: true },
+  })
+  return profile?.playerId ?? null
+}
+
+/**
+ * ③ 클랜원 명단을 **두 계정 형식 사이의 다리**로 쓴다 (2026-09-02).
+ *
+ * ── 먼저 알아야 할 것: `userNexonSn` 이라는 이름의 칸이 **두 가지 값을 담고 있다**
+ * ```
+ * PlayerPositionProfile.userNexonSn   D596137C144C183CSA   ← str_usn (주소에 쓰이는 것)
+ * PlayerRoundProfile.userNexonSn      218670718            ← user_nexon_sn (숫자)
+ * ```
+ * 이름이 같아서 **같은 열쇠로 착각하기 쉽다.** 실제로 나도 그렇게 오해해서
+ * 「라운드 집계 표를 보면 계정이 1,280 → 5,656 으로 는다」고 판단했다가
+ * 값의 모양을 재고 **틀렸다는 걸 알았다** — 운영 실측으로 라운드 표의 4,381개는
+ * **전부 숫자 형식**이라 병영수첩 주소에는 한 번도 안 걸린다. 늘어나는 것은 0이었다.
+ *
+ * ── 진짜 다리는 `BarracksClanMember` 다
+ *   그 표만 **두 값을 한 행에** 들고 있다 (`strUsn` · `userNexonSn`). D-221 이
+ *   `str_usn D9EBC75CCBD60C12SA = user_nexon_sn 470379822` 로 실측해 둔 그 대응이다.
+ *
+ * ```
+ * 주소의 str_usn → BarracksClanMember → user_nexon_sn → PlayerRoundProfile → playerId
+ * ```
+ *
+ * ── 늘어나는 양 (2026-09-02 · 운영 실측)
+ * ```
+ * 명단 짝 2,796  →  그중 운영 라운드 표에 선수까지 이어진 것 1,135
+ *                    그중 이미 ②로 되던 것              512
+ *                    ★새로 찾을 수 있게 되는 계정        623
+ * 주소로 찾을 수 있는 계정  1,275 → 1,898  (+49%)
+ * ```
+ *
+ * ⚠ **닉네임으로 잇지 않는다.** 명단에 `userNick` 이 있지만 위장닉이 섞여 있어
+ *   (D-221) 표시에도 조회에도 쓰지 않는다. 계정 번호로만 잇는다 —
+ *   그래야 **틀린 사람이 뜨지 않는다.**
+ *
+ * ⚠ 그래도 «없으면 없는 것»은 그대로다. 1,898 개 밖의 계정은 **찾지 못하는 게 맞다.**
+ *   더 넓히려면 배틀로그 원문을 운영에 적재해야 한다 (지금 `BarracksBattleLogRaw` 는 0행).
+ */
+async function clanMemberPlayerId(usn: string): Promise<string | null> {
+  const member = await prisma.barracksClanMember.findFirst({
+    where: { strUsn: ciEquals(usn) },
+    orderBy: [{ observedAt: 'desc' }],
+    select: { userNexonSn: true },
+  })
+  if (!member) return null
+
+  const profile = await prisma.playerRoundProfile.findFirst({
+    where: { userNexonSn: member.userNexonSn, playerId: { not: null } },
     orderBy: [{ computedAt: 'desc' }],
     select: { playerId: true },
   })
