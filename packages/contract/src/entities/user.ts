@@ -5,17 +5,59 @@ import { Category } from './board'
 import { ClanSummary, PlayerSummary } from './summaries'
 
 /**
- * 회원가입은 네이버 메일만 허용된다(관측). 우리 서비스도 동일 정책을 재현하되,
- * 도메인 목록은 설정값으로 분리한다.
+ * ⚠ **철회 (2026-09-01 · D-252)** — 아래 서술은 역사 기록이다.
+ *
+ * > 회원가입은 네이버 메일만 허용된다(관측). 우리 서비스도 동일 정책을 재현하되,
+ * > 도메인 목록은 설정값으로 분리한다.
+ *
+ * 가입은 이제 **아이디 + 비밀번호**다. 이메일은 **선택 입력**이고 도메인 제한이 없다.
+ * 이 상수는 **지우지 않는다** (CLAUDE.md 10-4) — 도메인을 다시 좁히고 싶어지면
+ * `SACLOUD_SIGNUP_EMAIL_DOMAINS` 환경변수에 이 값을 넣으면 옛 동작이 그대로 돌아온다.
+ * 비어 있으면(기본) **어떤 도메인이든 받는다.**
  */
-export const SIGNUP_ALLOWED_EMAIL_DOMAINS = ['naver.com'] as const
+export const SIGNUP_ALLOWED_EMAIL_DOMAINS = [] as const
+
+/** 옛 네이버 전용 정책을 되살리고 싶을 때 쓰는 값 (기본값 아님) */
+export const LEGACY_NAVER_ONLY_EMAIL_DOMAINS = ['naver.com'] as const
 
 export const Email = z.string().email()
+
+/* -------------------------------------------------------------------------- */
+/* 로그인 아이디 (2026-09-01 · D-252)                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 아이디 규칙 — **원본에 규칙이 없어서 우리가 정했다** [자체 설계].
+ *
+ *  · 4~16자 · 영문/숫자/밑줄(`_`) · 첫 글자는 영문
+ *  · **저장·조회는 항상 소문자**다. `Player` 와 `player` 가 서로 다른 계정이 되면
+ *    사칭이 가능해진다. 그래서 대소문자를 구분하지 않는다
+ *  · 한글·기호를 받지 않는 이유는 **유니코드 정규화 차이로 같은 아이디가 둘이 되는 것**을
+ *    막기 위해서다 (조합형/완성형 한글은 눈에 같아 보여도 바이트가 다르다)
+ */
+export const USERNAME_MIN = 4
+export const USERNAME_MAX = 16
+export const USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{3,15}$/
+
+/** 아이디 정규화 — 앞뒤 공백을 떼고 소문자로 만든다. 저장·조회 양쪽에서 반드시 거친다 */
+export function normalizeUsername(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+export const Username = z
+  .string()
+  .transform((value) => value.trim())
+  .refine((value) => USERNAME_PATTERN.test(value), {
+    message: '아이디는 영문으로 시작하는 4~16자의 영문·숫자·밑줄이어야 합니다',
+  })
 
 /** GET /me */
 export const User = z.object({
   id: Id,
-  email: Email,
+  /** 로그인 아이디. 이메일로 가입한 옛 계정은 `null` (D-252) */
+  username: z.string().nullable(),
+  /** 선택 입력이 됐다. 넣지 않고 가입한 계정은 `null` (D-252) */
+  email: Email.nullable(),
   nickname: z.string(),
   avatar_url: z.string().url().nullable(),
   role: Role,
@@ -50,17 +92,39 @@ export type RemoteConfigs = z.infer<typeof RemoteConfigs>
 /* 인증 — 요청/응답 본문은 원본 관측 범위 밖이라 우리 계약으로 확정한다 [자체 설계]   */
 /* -------------------------------------------------------------------------- */
 
-export const LoginInput = z.object({
-  email: Email,
-  password: z.string().min(1),
-})
+/**
+ * 로그인 (2026-09-01 · D-252).
+ *
+ * **아이디로 로그인한다.** 다만 `email` 도 계속 받는다 — 이메일로 가입한 옛 계정
+ * (검수 계정 D-033 포함)이 그대로 로그인돼야 하기 때문이다 (CLAUDE.md 10-4).
+ * 둘 중 하나는 있어야 한다.
+ */
+export const LoginInput = z
+  .object({
+    username: z.string().min(1).optional(),
+    email: Email.optional(),
+    password: z.string().min(1),
+  })
+  .refine((value) => Boolean(value.username || value.email), {
+    message: '아이디를 입력해주세요',
+    path: ['username'],
+  })
 export type LoginInput = z.infer<typeof LoginInput>
 
+/**
+ * 회원가입 (2026-09-01 · D-252) — **아이디 + 비밀번호 + 닉네임.**
+ *
+ * · `email` 은 **선택**이다. 메일 발송이 아직 없어서 요구할 수 없다.
+ *   칸을 없애지 않고 남긴 이유는 나중에 비밀번호 찾기를 붙일 때 **이어 갈 곳**이 필요해서다
+ * · `captcha_token` 도 선택이다. 캡차는 아직 없고, 있지도 않은 값을 필수로 두면
+ *   클라이언트가 가짜 문자열을 채워 넣는 의미 없는 검증이 된다
+ */
 export const SignupInput = z.object({
-  email: Email,
+  username: Username,
   password: z.string().min(8),
   nickname: z.string().min(2).max(16),
-  captcha_token: z.string().min(1),
+  email: Email.nullish(),
+  captcha_token: z.string().min(1).optional(),
 })
 export type SignupInput = z.infer<typeof SignupInput>
 
