@@ -11,6 +11,17 @@ export {
   MOUNTAIN_LEAGUE_NAME,
   type LeagueLabelProps,
 } from './layout/LeagueLabel'
+/*
+ * 리그 상단 (검정 띠 + 탭 둘 + 버건디 히어로) — D-251.
+ * 옛 판 `LeagueSubNav`(탭 3개 · 리그홈 포함)는 아래 league 묶음에 **그대로 남아 있다**.
+ */
+export {
+  LeagueTopBar,
+  LeagueHeroBand,
+  leagueTabs,
+  type LeagueTopBarProps,
+  type LeagueHeroBandProps,
+} from './layout/LeagueTopBar'
 
 export { SearchBar, type SearchBarProps, type SearchType } from './home/SearchBar'
 export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPostList'
@@ -76,6 +87,8 @@ export {
   type BetaNoticeContent,
 } from './league/betaNoticeText'
 export { DivisionTabs } from './league/DivisionTabs'
+/* SPL(왼쪽) · IPL(오른쪽) 두 칸 랭킹 (2026-09-01). 부리그 탭 화면은 그대로 살아 있다 */
+export { RankSplit, RankSplitColumn, type RankSplitColumnProps } from './league/RankSplit'
 export { divisionLabel, divisionUnit } from './league/divisionLabel'
 export {
   RankHeader,
@@ -211,6 +224,15 @@ export { ratingClass, RATING_THRESHOLDS } from './common/rating'
 export { SeasonTable } from './record/SeasonTable'
 
 /* --- Phase 5: 게시판 --- */
+/* ⚠ 2026-09-01 — 게시판을 **준비중으로 닫았다** (사용자 지시).
+   아래 게시판 컴포넌트 export 는 **하나도 끊지 않았다.** 라우트·API 와 함께 되살릴
+   것이라서다 (`CLAUDE.md` 10-4). 지금은 `app/board/layout.tsx` 가 본문 대신
+   `BoardPreparing` 을 그릴 뿐이다. 옛 레이아웃은 `BoardLayoutLegacy.tsx` 에 있다. */
+export { BoardPreparing } from './board/BoardPreparing'
+export {
+  BOARD_PREPARING_HEADLINE,
+  BOARD_PREPARING_MESSAGE,
+} from './board/boardPreparingText'
 export { BoardNav } from './board/BoardNav'
 export { BoardTable, BoardPager } from './board/BoardTable'
 export { PostView, formatPostDate } from './board/PostView'
@@ -255,11 +277,17 @@ export {
 export * from './common/paths'
 
 /* --- 「알」 시스템 (`docs/EGG_SYSTEM_SPEC.md`) ---
-   기록을 지우는 것이 아니라 가려 두는 장치다. 판수와 경기 상세기록은 가리지 않는다. */
+   기록을 지우는 것이 아니라 가려 두는 장치다. 판수와 경기 상세기록은 가리지 않는다.
+
+   ⚠ **2026-09-01 — 화면에서 껐다** (사용자 지시: *"애초에 알시스템은 걍 버려 필요없어"*).
+      스위치는 `EGG_SYSTEM_ENABLED` 하나다 (`./egg/eggState.ts` 의 주석 참조).
+      **export 는 하나도 끊지 않았다** — 화면들이 여전히 이것들을 부르고, 답이 늘
+      «깨짐» 일 뿐이다. 되돌리려면 그 상수만 `true` 로 바꾼다 (`CLAUDE.md` 10-4). */
 export {
   CLAN_EGG_GUIDE,
   CLAN_EGG_THRESHOLD,
   EGG_BREAK_GUIDE,
+  EGG_SYSTEM_ENABLED,
   EGG_VEIL_MARK,
   EGG_VEIL_MESSAGE,
   clanEggState,
