@@ -176,6 +176,20 @@ const ALLOWED = {
     what: '클랜 육각형 V2 를 배틀로그에서 집계해 MatchClanHexV2 에 쌓는다 (D-235). 멱등 · 재개 가능 · 추가만 한다',
   },
   /*
+   * ⛔ **밀기 전에 이걸 먼저 돌려라.** 이것이 사실상 유일한 되돌리기다 (2026-09-02).
+   *
+   * 두 표의 유니크 키에 `formulaVersion` 이 없다
+   * (`@@unique([matchId, leagueClanId])` · `@@unique(leagueClanId)`).
+   * 그래서 새 판을 밀면 **같은 줄의 옛 판이 덮인다** — 두 판을 나란히 둘 자리가 없다.
+   * 게다가 육각형의 원재료인 배틀로그 원문은 **로컬에만 있어서**(D-236)
+   * 운영에서 다시 접는 길도 없다. **안 뜨면 옛 값을 못 되살린다.**
+   */
+  'clan-hex-v2-backup': {
+    file: 'clanHexV2Backup',
+    writes: false,
+    what: '운영의 MatchClanHexV2 · ClanHexV2Summary 현재값을 JSON 두 개로 뜬다 (읽기 전용 · 밀기 전 되돌림 지점). 뜬 파일이 그대로 push 의 입력이 된다',
+  },
+  /*
    * 위 `clan-hex-v2-build` 는 **로컬용으로 그대로 둔다.** 운영에서는 재료가 없어 0건이다
    * (실측 2026-09-01: 원문 줄=0 · 집계한 경기=0). 그래서 로컬에서 집계한 결과를 옮긴다 —
    * `matchFirstSideExport` / `matchFirstSidePush` 와 같은 관례다.
