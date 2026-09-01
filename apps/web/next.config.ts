@@ -85,10 +85,17 @@ const CSP = [
  *
  *   `s-maxage=300`               엣지가 5분 동안 대신 답한다 → 그 5분간 DB 를 한 번만 때린다
  *   `stale-while-revalidate=600` 만료 뒤 10분까지 **옛 값을 즉시** 내주고 뒤에서 새로 받는다
+ *   `stale-while-revalidate=86400` **(2026-09-01 재조정)**
+ *     600 → 86400(하루). 이유: DB 가 수집에 눌려 답을 못 하는 구간이 실제로 있고,
+ *     그때 창이 짧으면 **캐시가 만료되어 사용자가 500 을 본다.** 창이 하루면
+ *     한 번이라도 성공한 응답이 있는 한 **사용자는 500 을 보지 않는다** —
+ *     조금 낡은 값을 보고, 뒤에서 새 값을 받아 온다.
+ *     ⚠ 값이 하루까지 낡을 수 있다는 뜻이 아니다. DB 가 멀쩡하면 5분마다 갱신된다.
+ *     하루는 **DB 가 죽어 있는 동안 버티는 길이**다.
  *   `max-age=0`                  **브라우저는 캐시하지 않는다** — 방금 뭘 한 사람이 옛 화면을 보면 안 된다
  */
 const PUBLIC_CACHE_HEADERS = [
-  { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=300, stale-while-revalidate=600' },
+  { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400' },
 ]
 
 /**

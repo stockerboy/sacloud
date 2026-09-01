@@ -71,7 +71,7 @@ export function okPage<T>(page: { items: T[]; cursor: CursorMetadata }) {
 const PUBLIC_CACHE_SECONDS = 300
 
 /** 만료된 값을 그대로 내주면서 뒤에서 갱신하는 창 */
-const PUBLIC_STALE_SECONDS = 600
+const PUBLIC_STALE_SECONDS = 86400
 
 function withPublicCache(response: NextResponse, seconds: number): NextResponse {
   response.headers.set(
