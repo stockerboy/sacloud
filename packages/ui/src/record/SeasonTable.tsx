@@ -119,10 +119,15 @@ export function SeasonTable({
             <div className="mt-2 border-t border-line-soft" />
 
             {/* 순위 — 오른쪽에만 온다. `{모수}명중` 은 작은 회색, 순위는 크다.
-                `null`(우리 카드)과 `0`(3rd.supply 카드) 둘 다 배치고사다 */}
+                `null`(우리 카드)과 `0`(3rd.supply 카드) 둘 다 **순위가 없다**는 뜻이다.
+
+                옛 문구는 `배치고사` 였는데 그 모드는 2026-09-01 에 폐지됐다.
+                우리 카드에서는 이제 그냥 「랭킹에 안 올랐다」는 뜻이라 거짓이 되고,
+                3rd.supply 카드에서도 `순위 없음` 은 여전히 참이다 — 한쪽만 참인 말 대신
+                양쪽 다 참인 말을 쓴다 */}
             <div className="mt-2 flex items-baseline justify-end gap-2">
               {season.rank === null || season.rank === 0 ? (
-                <span className="text-xl font-bold">배치고사</span>
+                <span className="text-xl font-bold">순위 없음</span>
               ) : (
                 <>
                   {season.rank_count === null ? null : (

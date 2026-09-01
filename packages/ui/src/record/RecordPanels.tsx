@@ -560,8 +560,10 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
       <Stat label="MVP">{formatCount(props.mvpCount)}회</Stat>
       <Divider />
       <Stat label="랭킹">
+        {/* 배치고사 폐지 (2026-09-01) — 순위가 없다는 뜻이다.
+            프로필 머리의 `순위 없음` 과 같은 말을 쓴다 */}
         {props.rank === null ? (
-          '배치고사'
+          '순위 없음'
         ) : (
           <>
             <StatSub>{formatCount(props.rankCount ?? 0)}명중</StatSub>
@@ -646,7 +648,8 @@ export function ClanStatSidebar({
       <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-faint">상세정보</div>
       <Divider />
       <Stat label="래더">
-        <span className={ratingClass(rating)}>{placement ? '배치고사' : `${rating}점`}</span>
+        {/* 배치고사 폐지 (2026-09-01) — 이 창에 0판이라는 뜻이다 */}
+        <span className={ratingClass(rating)}>{placement ? '기록 없음' : `${rating}점`}</span>
       </Stat>
       <Divider />
       <Stat label="승률">
@@ -664,7 +667,7 @@ export function ClanStatSidebar({
       <Divider />
       <Stat label="랭킹">
         {rank === null ? (
-          '배치고사'
+          '순위 없음'
         ) : (
           <>
             <StatSub>{division}부리그</StatSub>
