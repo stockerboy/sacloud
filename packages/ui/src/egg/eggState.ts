@@ -23,16 +23,23 @@
  * true   알이 기록을 덮는다 (사양 그대로)        ← 되돌리려면 이 한 줄
  * ```
  *
- * 껐을 때 무엇이 달라지는가 — **전부 이 파일 옆의 세 곳에서만** 갈린다.
+ * 껐을 때 무엇이 달라지는가 — **이 스위치를 보는 자리는 아래가 전부**다.
  * ```
- * EggContext.tsx  모든 선수·클랜을 «깨짐» 으로 답한다 → 화면의 `sealed ? 가림 : 값` 이 전부 값으로 간다
- * Egg.tsx         껍데기도 빛도 없이 안에 든 마크만 그린다 (크기 규칙은 그대로 — 표 행 높이가 흔들리면 안 된다)
- * EggVeil.tsx     `EggVeilLegend` 가 아무것도 그리지 않는다 (랭킹 표 밑의 `▨▨ 알이 깨지면…` 한 줄)
+ * EggContext.tsx   모든 선수·클랜을 «깨짐» 으로 답한다 → 화면의 `sealed ? 가림 : 값` 이 전부 값으로 간다
+ * Egg.tsx          껍데기도 빛도 없이 안에 든 마크만 그린다 (크기 규칙은 그대로 — 표 행 높이가 흔들리면 안 된다)
+ * EggVeil.tsx      세 함수 전부 아무것도 안 덮는다 (`EggVeil` · `EggVeilPanel` · `EggVeilLegend`)
+ * RecordPanels.tsx `eggSealed()` 가 늘 `false` — 이 파일만 알 상태를 **prop** 으로 받는다
+ * AdminShell.tsx   관리자 메뉴에서 「알」 탭이 빠진다 (2026-09-02)
  * ```
  *
- * **화면 컴포넌트는 한 줄도 안 고쳤다.** `RankTable` · `RecordPanels` · `PlayerProfile` ·
- * `ClanProfile` 은 여전히 알을 물어보고, 답이 늘 «깨짐» 일 뿐이다.
- * DB(`EggBreak`) · API(`/api/eggs/broken`) · 관리자 화면 · `docs/EGG_SYSTEM_SPEC.md` 는 그대로다.
+ * ⚠ 2026-09-02 — 아래 네 줄은 **처음에 안 막혀 있었다.** 문맥(`EggContext`)만 막아 두면
+ *   문맥을 안 거치고 `state="sealed"` 를 **글자로 넘기는 자리**가 그대로 샌다.
+ *   그래서 «가리는 함수 자신» 이 스위치를 보게 했다. 껐으면 무엇을 넘기든 안 덮는다.
+ *
+ * **화면 컴포넌트의 알 분기는 한 줄도 안 지웠다.** `RankTable` · `RecordPanels` ·
+ * `PlayerProfile` · `ClanProfile` 은 여전히 알을 물어보고, 답이 늘 «깨짐» 일 뿐이다.
+ * DB(`EggBreak`) · API(`/api/eggs/broken`) · 관리자 화면(`/admin/eggs`, 주소로는 열린다) ·
+ * `LeagueEggGallery`(아무도 안 부른다) · `docs/EGG_SYSTEM_SPEC.md` 는 그대로다.
  *
  * 아래 순수 규칙(`clanEggState` · `eggRows`)도 **그대로 둔다.** 지금은 아무도 안 부르지만
  * 되살릴 때 필요하고, 테스트가 그것을 지키고 있다.

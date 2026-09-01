@@ -2,13 +2,25 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { EGG_SYSTEM_ENABLED } from '@sacloud/ui'
 
+/**
+ * ⚠ 2026-09-02 — **「알」 탭을 감췄다** (사용자 지시: *"알 좀 버려 일단"* · D-252).
+ *
+ * 지운 것이 아니라 **스위치를 태웠다** (`CLAUDE.md` 10-4).
+ * `EGG_SYSTEM_ENABLED` 를 `true` 로 되돌리면 탭이 제자리(경기 다음)로 돌아온다.
+ *
+ * `/admin/eggs` 화면과 `/api/admin/eggs` · `EggBreak` 테이블은 **그대로 있다.**
+ * 주소를 직접 치면 열린다 — 데이터를 되돌릴 길을 막지 않기 위해서다.
+ */
 const MENU = [
   { href: '/admin', label: '대시보드' },
   { href: '/admin/clans', label: '클랜' },
   { href: '/admin/seasons', label: '시즌' },
   { href: '/admin/matches', label: '경기' },
-  { href: '/admin/eggs', label: '알' },
+  ...(EGG_SYSTEM_ENABLED ? [{ href: '/admin/eggs', label: '알' }] : []),
+  /* 클랜 마스터 인증 심사 (2026-09-01 · D-253) — 사진을 보고 승인/거부한다 */
+  { href: '/admin/clan-master-claims', label: '마스터인증' },
   { href: '/admin/legacy', label: '과거기록' },
 ]
 

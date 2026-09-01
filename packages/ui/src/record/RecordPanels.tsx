@@ -8,13 +8,29 @@ import type {
 import { ClanMark } from '../common/ClanMark'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md` 2장) — 승률 · 킬뎃은 가리고, 판수 · 경기 상세는 그대로 둔다 */
 import { EggVeil } from '../egg/EggVeil'
-import type { EggState } from '../egg/eggState'
+import { EGG_SYSTEM_ENABLED, type EggState } from '../egg/eggState'
 import { formatAverage, formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
 /* `알수없음` 문구는 한 곳에서만 온다 — 매치 상세와 같은 글자를 써야 한다 (D-159) */
 import { UNKNOWN } from './matchDetailView'
 import { TodayPerformance } from './TodayPerformance'
+
+/**
+ * 이 사이드바가 값을 가려야 하는가.
+ *
+ * ⚠ 2026-09-02 — **스위치를 먼저 본다** (`eggState.ts` 의 `EGG_SYSTEM_ENABLED`).
+ *   이 파일의 두 사이드바만 알 상태를 **문맥이 아니라 prop 으로** 받는데,
+ *   그 기본값이 `sealed` 였다. 그래서 `egg` 를 안 넘기는 호출부가 하나라도 생기면
+ *   알을 껐는데도 승률·킬뎃이 `▨▨` 로 덮인다. 껐으면 무엇을 넘기든 안 덮는다.
+ *
+ *   기본값 `sealed` 는 **그대로 둔다** — 스위치를 `true` 로 되돌리면 옛 동작 그대로다
+ *   (`CLAUDE.md` 10-4).
+ */
+function eggSealed(egg?: EggState): boolean {
+  if (!EGG_SYSTEM_ENABLED) return false
+  return (egg ?? 'sealed') === 'sealed'
+}
 
 /**
  * 오늘 기록을 **따로 한 번 더** 그릴까.
@@ -154,11 +170,15 @@ function streakText(streak: MatchSummary['streak']): string {
 
 /**
  * 연승/연패 문구 색 (2026-08-28 원본 모바일 관측 — `1연패 중` 빨강 · `6연승 중` 파랑).
- * 도넛과 같은 뜻이므로 같은 토큰 계열(`win` / `lose`)을 쓴다.
+ *
+ * ⚠ 2026-09-01 — **숫자 전용 토큰**(`--color-num-win/-lose`)으로 옮겼다.
+ * `N연승 중` 의 `N` 이 숫자라서 사용자 지시(*"모든 숫자는 … 서플라이의 색깔체계"*)에 든다.
+ * 그때는 이랬다: `text-win` / `text-lose` (D-204 의 진홍·회색).
+ * 도넛(면·막대)은 여전히 `win`/`lose` 다 — 그건 숫자가 아니다.
  */
 function streakClass(streak: MatchSummary['streak']): string {
-  if (streak.type === 'win') return 'text-win'
-  if (streak.type === 'lose') return 'text-lose'
+  if (streak.type === 'win') return 'text-num-win'
+  if (streak.type === 'lose') return 'text-num-lose'
   return ''
 }
 
@@ -438,7 +458,7 @@ const longWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나이퍼'
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
   const { main: mainWeapon, other: otherWeapon } = splitWeapons(props.weaponStats)
   /* 「알」이 안 깨졌으면 승률·킬뎃·평균킬을 가린다 (사양 2장). 래더·랭킹·소속·포지션은 그대로다 */
-  const sealed = (props.egg ?? 'sealed') === 'sealed'
+  const sealed = eggSealed(props.egg)
   return (
     <div className="rounded-[2px] border border-line bg-card px-4 py-3 text-text">
       <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-faint">상세정보</div>
@@ -619,7 +639,7 @@ export function ClanStatSidebar({
    */
   egg?: EggState
 }) {
-  const sealed = (egg ?? 'sealed') === 'sealed'
+  const sealed = eggSealed(egg)
   return (
     <div className="rounded-[2px] border border-line bg-card px-4 py-3 text-text">
       <div className="mb-2 text-[11px] uppercase tracking-[0.14em] text-faint">상세정보</div>
