@@ -289,8 +289,13 @@ const nextConfig: NextConfig = {
    *
    * ── 여기 넣으면 안 되는 것
    *   로그인 상태에 따라 답이 달라지는 것과 방금 한 행동이 즉시 보여야 하는 것.
-   *   `/api/infos` · `/api/me/*` · `/api/admin/*` · `/api/auth/*` · **`/api/eggs/broken`**
+   *   `/api/infos` · `/api/me/*` · `/api/admin/*` · `/api/auth/*` · `/api/eggs/broken`
    *   (마지막 것은 D-222 ⑤ — 방금 깬 알이 안 보이면 «안 깨졌다» 로 읽힌다)
+   *
+   *   ⚠ **정정 (같은 날)** — `/api/eggs/broken` 은 **라우트 쪽에서 10초**를 붙였다.
+   *   캐시가 없으니 매 요청이 DB 까지 가서 **500 이 났고**, 그러면 화면이 «깨진 알이 하나도
+   *   없다» 로 그린다 — 걱정하던 오해가 더 크게 난다. 여기 목록에는 넣지 않는다
+   *   (길이가 다르므로 라우트가 직접 정한다).
    *   전체 목록과 하나하나의 근거는 `CACHE_SOURCES_*` 위 주석에 있다.
    */
   async headers() {

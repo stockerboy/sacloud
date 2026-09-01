@@ -1,0 +1,448 @@
+<title>3rd cloud &middot; SACLOUD 히어로</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Black+Han+Sans&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+/* ── 색 토큰 — docs/DECISIONS.md D-204. 여기서 색을 새로 지어내지 않는다 ── */
+:root{
+  --page:#060505; --card:#120c0c; --card2:#1a1010;
+  --line:#2a1616; --line-soft:#1a1010;
+  --text:#d6c9c9; --strong:#f6eded; --meta:#9a8080; --faint:#6b5555;
+  --accent:#d92b2b;
+  --win:#d92b2b; --win-bar:#d92b2b; --lose:#6b5555;
+  --online:#2ea043; --offline:#d92b2b; --lamp-off:#3a2323;
+  --side-line:#2a1616; --side-meta:#9a8080; --mvp:#d92b2b;
+  --dsp:'Black Han Sans','Noto Sans KR',sans-serif;
+  --body:'Noto Sans KR',system-ui,sans-serif;
+  --num:'JetBrains Mono',ui-monospace,monospace;
+  --radius:2px;
+  /* 더미 각도 — 참고 이미지의 아이소메트릭보다 눕히지 않았다. 안이 읽혀야 한다 */
+  --rx:37deg; --rz:-23deg;
+  --card-w:346px; --card-h:258px;
+  --gz:64px; --gx:26px;
+  --stage-w:500px; --stage-h:432px; --s:1;
+  /* 가운데에서 또렷하게 보일 때의 자리 (화면 좌표) */
+  --fx:-96px; --fy:74px; --fs:1.04;
+}
+
+*{box-sizing:border-box;}
+body{margin:0;background:var(--page);color:var(--text);
+  font-family:var(--body);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums;}
+.dsp{font-family:var(--dsp);font-weight:400;}
+a{color:inherit;text-decoration:none;}
+
+/* ── 히어로 껍데기 ─────────────────────────────────────── */
+.hero{position:relative;overflow:hidden;border-top:1px solid var(--line-soft);}
+.hero:first-of-type{border-top:0;}
+/* 아주 옅은 격자 — 아래로 갈수록 사라진다 */
+.grid{position:absolute;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(to right,rgba(214,201,201,.045) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(214,201,201,.045) 1px,transparent 1px);
+  background-size:34px 34px;
+  -webkit-mask-image:radial-gradient(115% 85% at 62% 32%,#000 0%,rgba(0,0,0,.55) 52%,transparent 82%);
+  mask-image:radial-gradient(115% 85% at 62% 32%,#000 0%,rgba(0,0,0,.55) 52%,transparent 82%);}
+.inner{position:relative;max-width:1120px;margin:0 auto;padding:34px 24px 30px;}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:var(--radius);
+  padding:3px 9px;font-size:11px;letter-spacing:.1em;color:var(--meta);margin-bottom:26px;}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,var(--stage-w));
+  gap:32px;align-items:center;}
+
+/* ── 왼쪽 ─────────────────────────────────────────────── */
+.eyebrow{font-size:12px;letter-spacing:.16em;color:var(--faint);}
+.wm{font-family:var(--dsp);font-weight:400;margin:8px 0 0;
+  font-size:clamp(48px,7.4vw,86px);line-height:.98;color:var(--strong);letter-spacing:-.01em;}
+.wm.latin{font-family:'Archivo Black','Black Han Sans',sans-serif;letter-spacing:-.02em;}
+.lead{margin:16px 0 0;max-width:34em;font-size:15px;color:var(--meta);}
+.btns{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;border:1px solid var(--line);
+  border-radius:var(--radius);padding:9px 18px;font-size:14px;}
+.btn>span{color:var(--text);}
+/* 진홍은 아껴 쓴다 — 이 화면에서 강조색 테두리는 이 버튼 하나뿐이다 */
+.btn.primary{border-color:var(--accent);}
+.btn.primary>span{color:var(--accent);}
+.search{display:flex;align-items:center;gap:9px;margin-top:18px;max-width:420px;
+  border:1px solid var(--line);border-radius:var(--radius);padding:10px 13px;
+  background:var(--card);font-size:13px;color:var(--faint);}
+.search svg{width:16px;height:16px;flex:0 0 auto;color:var(--faint);}
+
+/* ── 아래 라벨 ─────────────────────────────────────────── */
+.rail{display:flex;gap:26px;margin-top:30px;padding-top:16px;
+  border-top:1px solid var(--line-soft);
+  font-size:11px;letter-spacing:.62em;color:var(--faint);}
+
+/* ── 무대 ─────────────────────────────────────────────── */
+.stagewrap{position:relative;width:100%;height:calc(var(--stage-h) * var(--s));}
+.stage{position:absolute;top:0;left:50%;width:var(--stage-w);height:var(--stage-h);
+  transform:translateX(-50%) scale(var(--s));transform-origin:top center;
+  perspective:1600px;}
+
+/* 날아가는 껍데기 — 화면 좌표의 2D 이동만 한다 */
+.fly{position:absolute;left:calc(50% - 36px);top:calc(50% + 84px);
+  width:var(--card-w);height:var(--card-h);
+  margin-left:calc(var(--card-w) / -2);margin-top:calc(var(--card-h) / -2);
+  transform-style:preserve-3d;z-index:var(--i);
+  /* 기본값 = 다 쌓인 뒤의 모습. prefers-reduced-motion 이면 이대로 멈춰 있다 */
+  transform:translate(0,0) scale(1);opacity:1;
+  animation:fly-pos 2.1s cubic-bezier(.4,0,.2,1) both;
+  animation-delay:calc(var(--i) * 1.15s);}
+/* 눕히는 껍데기 — 3D 회전만 한다 */
+.tilt{width:100%;height:100%;transform-style:preserve-3d;
+  transform:rotateX(var(--rx)) rotateZ(var(--rz)) translate3d(calc(var(--i) * var(--gx)),0,calc(var(--i) * var(--gz)));
+  animation:fly-tilt 2.1s cubic-bezier(.4,0,.2,1) both;
+  animation-delay:calc(var(--i) * 1.15s);}
+@keyframes fly-pos{
+  0%   {opacity:0;transform:translate(var(--fx),var(--fy)) scale(var(--fs));}
+  7%   {opacity:1;transform:translate(var(--fx),var(--fy)) scale(var(--fs));}
+  52%  {opacity:1;transform:translate(var(--fx),var(--fy)) scale(var(--fs));}
+  100% {opacity:1;transform:translate(0,0) scale(1);}
+}
+@keyframes fly-tilt{
+  0%   {transform:rotateX(0deg) rotateZ(0deg) translate3d(0,0,0);}
+  52%  {transform:rotateX(0deg) rotateZ(0deg) translate3d(0,0,0);}
+  100% {transform:rotateX(var(--rx)) rotateZ(var(--rz)) translate3d(calc(var(--i) * var(--gx)),0,calc(var(--i) * var(--gz)));}
+}
+
+/* ── 카드 껍데기 ──────────────────────────────────────── */
+.cd{position:absolute;inset:0;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius);padding:12px 13px;overflow:hidden;
+  display:flex;flex-direction:column;font-size:13px;}
+
+/* ── ① 경기 상세 — MatchCard.tsx ───────────────────────── */
+.mrow{display:flex;align-items:stretch;border:1px solid var(--line);min-height:70px;}
+.mbar{width:3px;flex:0 0 3px;}
+.mbar.win{background:var(--win);}
+.mbody{flex:1;min-width:0;display:flex;flex-direction:column;}
+.mr1{display:flex;align-items:center;padding:5px 7px 0;font-size:11px;color:var(--meta);}
+.mr1 .map{font-weight:700;}
+.mr1 .up{margin-left:auto;font-weight:700;color:var(--win);}
+.mr2{display:flex;align-items:center;flex:1;padding:0 7px 5px;}
+.res{width:34px;flex:0 0 34px;text-align:center;font-weight:700;letter-spacing:.08em;font-size:12px;}
+.res.win{color:var(--win);}
+.kdabox{width:74px;flex:0 0 74px;text-align:center;}
+.mvp{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--mvp);
+  border-radius:var(--radius);padding:1px 4px;font-size:8px;line-height:1;color:var(--mvp);}
+.kda{font-size:14px;font-weight:700;color:var(--strong);line-height:1.25;}
+.kda .ls{color:var(--lose);}
+.krate{font-size:10px;color:var(--win);line-height:1;}
+.clans{flex:1;min-width:0;text-align:center;font-size:11px;}
+.cl{display:flex;align-items:center;justify-content:center;gap:4px;color:var(--text);}
+.vs{color:var(--meta);font-size:10px;line-height:1.4;}
+.mk{display:inline-block;width:11px;height:11px;border:1px solid var(--line);
+  border-radius:var(--radius);flex:0 0 11px;}
+.mk.a{background:linear-gradient(135deg,#3a2020,#160e0e);}
+.mk.b{background:linear-gradient(135deg,#1e1a2a,#0e0d14);}
+.side{width:52px;flex:0 0 52px;text-align:center;font-size:10px;color:var(--meta);}
+.chev{width:13px;height:13px;flex:0 0 13px;margin-left:4px;color:var(--faint);}
+
+.cmp{margin-top:9px;border:1px solid var(--line);}
+.cmpr{display:flex;align-items:center;gap:6px;padding:6px 8px 6px 0;font-size:11px;}
+.cmpr+.cmpr{border-top:1px solid var(--line-soft);}
+.cbar{width:3px;align-self:stretch;flex:0 0 3px;}
+.cbar.win{background:var(--win);} .cbar.lose{background:var(--lose);}
+.cres{width:28px;flex:0 0 28px;font-weight:700;letter-spacing:.08em;margin-left:5px;}
+.cres.win{color:var(--win);} .cres.lose{color:var(--lose);}
+.cnm{flex:1;min-width:0;color:var(--strong);}
+.cfs{color:var(--faint);}
+.cdiv{width:112px;flex:0 0 112px;text-align:right;color:var(--faint);font-size:10px;}
+.fa{color:var(--faint);}
+
+/* ── ②③ 육각형 두 장 ──────────────────────────────────── */
+.chead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  font-size:12px;color:var(--strong);}
+.chead .dsp{font-size:17px;line-height:1;}
+.chead .meta{font-size:9.5px;color:var(--meta);}
+.hexsvg{display:block;margin:1px auto 0;width:100%;max-width:222px;height:auto;}
+.lg{display:flex;justify-content:center;gap:12px;font-size:10px;color:var(--meta);margin-top:1px;}
+.lgi{display:inline-flex;align-items:center;gap:4px;}
+.sw{width:7px;height:7px;border:1px solid var(--text);display:inline-block;}
+.sw.fill{border-color:var(--accent);background:rgba(217,43,43,.12);}
+.vrows{margin-top:3px;}
+.vr{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  border-bottom:1px solid var(--line-soft);padding:2px 0;font-size:10px;}
+.vr:last-child{border-bottom:0;}
+.vr>span:last-child{display:flex;gap:10px;}
+.ac{color:var(--accent);} .tx{color:var(--text);}
+.foot{margin-top:2px;font-size:10px;color:var(--side-meta);text-align:center;}
+
+/* ── ④ 선수 카드 — PlayerProfile.tsx 의 리그 한 줄 ─────── */
+.prow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.pnm{font-size:15px;color:var(--strong);display:flex;align-items:center;gap:6px;}
+.tag{border:1px solid var(--line);border-radius:var(--radius);padding:1px 5px;
+  font-size:9px;color:var(--meta);}
+.prank{margin-top:5px;font-size:11px;color:var(--meta);}
+.pright{text-align:right;flex:0 0 auto;}
+.plab{font-size:11px;line-height:1;color:var(--meta);}
+.pval{margin-top:5px;font-size:30px;line-height:1;color:var(--strong);}
+.pjeom{margin-left:3px;font-size:11px;color:var(--meta);font-family:var(--body);}
+.wbar{display:flex;height:5px;margin-top:16px;background:var(--card2);overflow:hidden;}
+.wbar i{background:var(--win);} .wbar b{background:var(--lose);}
+.pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;}
+.slab{display:block;font-size:10px;color:var(--meta);}
+.sval{display:block;margin-top:3px;font-size:13px;color:var(--text);}
+.sval.st{color:var(--strong);}
+
+/* ── ⑤ 클랜원 목록 — ClanRoster.tsx (variant="list") ───── */
+.rlist{margin-top:5px;}
+.rr{display:flex;align-items:baseline;gap:8px;padding:3.5px 0;
+  border-bottom:1px solid var(--line-soft);font-size:11px;}
+.rr:last-child{border-bottom:0;}
+.rn{width:13px;flex:0 0 13px;text-align:right;color:var(--faint);font-size:10px;}
+.rnm{flex:1;min-width:0;color:var(--strong);font-size:12px;}
+.rpt{flex:0 0 auto;color:var(--text);}
+.rgm{width:34px;flex:0 0 34px;text-align:right;color:var(--meta);font-size:10px;}
+.rst{display:flex;gap:8px;flex:0 0 auto;font-size:9.5px;}
+.lp{display:inline-flex;align-items:center;gap:3px;color:var(--meta);}
+.lp.lit{color:var(--text);}
+.lamp{width:5px;height:5px;border-radius:50%;background:var(--lamp-off);display:inline-block;}
+.lamp.on{background:var(--online);}
+.lamp.off{background:var(--offline);}
+
+/* ── 좁은 화면 — 더미를 제목 아래로 내린다 ──────────────── */
+@media (max-width:920px){
+  .cols{grid-template-columns:minmax(0,1fr);gap:8px;}
+  .stagewrap{order:2;}
+  :root{--s:.72;--fx:0px;--fy:70px;--fs:1;}
+  .rail{gap:16px;letter-spacing:.4em;}
+}
+@media (max-width:520px){
+  :root{--s:.58;--fx:0px;--fy:52px;}
+  .inner{padding:26px 16px 24px;}
+  .rail{gap:10px;letter-spacing:.24em;font-size:10px;}
+  .lead{font-size:14px;}
+}
+
+/* ── 움직임을 원하지 않으면 처음부터 다 쌓여 있다 ────────── */
+@media (prefers-reduced-motion:reduce){
+  .fly,.tilt{animation:none !important;}
+}
+</style>
+
+<main>
+<section class="hero" id="sa">
+  <div class="grid"></div>
+  <div class="inner">
+    <div class="badge">판 A &middot; 지금 이름 &mdash; SACLOUD</div>
+    <div class="cols">
+      <div class="copy">
+        <div class="eyebrow">클랜전 기록 &middot; 리그 &middot; 래더</div>
+        <h1 class="wm latin">SACLOUD</h1>
+        <p class="lead">서든어택 클랜전의 경기 한 판을 라운드까지 뜯어, 클랜과 선수의 실력으로 쌓아 둡니다.</p>
+        <div class="btns">
+          <a class="btn primary" href="#sa"><span>내 클랜 찾기</span></a>
+          <a class="btn" href="#sa"><span>리그 보기</span></a>
+        </div>
+        <div class="search">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13 13.2 17 17.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>클랜 &middot; 선수 이름으로 통합검색</span>
+        </div>
+      </div>
+
+      <div class="stagewrap">
+        <div class="stage">
+      <div class="fly" style="--i:0" id="sa-f0"><div class="tilt">
+<div class="cd">
+  <!-- 접힌 매치 카드 — MatchCard.tsx -->
+  <div class="mrow">
+    <div class="mbar win"></div>
+    <div class="mbody">
+      <div class="mr1"><span class="map">제3보급창고</span> - 5일 전<span class="up num">+10점</span></div>
+      <div class="mr2">
+        <div class="res win">승리</div>
+        <div class="kdabox">
+          <div class="mvp"><span>&#9733;</span>MVP</div>
+          <div class="kda num">10 / <span class="ls">1</span> / 1</div>
+          <div class="krate num">(90.9%)</div>
+        </div>
+        <div class="clans">
+          <div class="cl r">hilarious-<span class="mk a"></span></div>
+          <div class="vs">vs</div>
+          <div class="cl"><span class="mk b"></span>Celebrity</div>
+        </div>
+        <div class="side">선레드<div class="num">5 vs 5</div></div>
+        <svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  </div>
+  <!-- 펼친 상세의 첫 덩어리 — 양 팀 대비 (TeamCompare) -->
+  <div class="cmp">
+    <div class="cmpr"><span class="cbar win"></span><span class="cres win">승리</span><span class="mk a"></span><span class="cnm">hilarious-</span><span class="cfs">선레드</span><span class="cdiv num">1부리그 1,149점</span></div>
+    <div class="cmpr"><span class="cbar lose"></span><span class="cres lose">패배</span><span class="mk b"></span><span class="cnm">Celebrity</span><span class="cfs">선블루</span><span class="cdiv">2부리그 <span class="fa">알수없음</span></span></div>
+  </div>
+</div></div></div>
+      <div class="fly" style="--i:1" id="sa-f1"><div class="tilt">
+<div class="cd">
+  <div class="prow">
+    <div>
+      <div class="pnm">DPL <span class="tag">공식</span></div>
+      <div class="prank num">5,120명중 12위</div>
+    </div>
+    <div class="pright">
+      <div class="plab">래더</div>
+      <div class="pval num">3,412<span class="pjeom">점</span></div>
+    </div>
+  </div>
+  <div class="wbar"><i style="width:60.9%"></i><b style="width:39.1%"></b></div>
+  <div class="pstats">
+    <div><span class="slab">전적</span><span class="sval num">128전</span></div>
+    <div><span class="slab">승 &middot; 패</span><span class="sval num">78 &middot; 50</span></div>
+    <div><span class="slab">승률</span><span class="sval num st">60.9%</span></div>
+    <div><span class="slab">킬뎃</span><span class="sval num">112.4%</span></div>
+  </div>
+</div></div></div>
+      <div class="fly" style="--i:2" id="sa-f2"><div class="tilt">
+<div class="cd">
+  <div class="chead"><span>클랜원</span><span class="meta"><span class="num">27</span>명 <span class="num">&middot; 접속 20:25 기준</span></span></div>
+  <div class="rlist">
+    <div class="rr"><span class="rn num">1</span><span class="rnm">nudi</span><span class="rpt num">3,412점</span><span class="rgm num">102판</span><span class="rst"><span class="lp lit"><i class="lamp on"></i>접속중</span><span class="lp "><i class="lamp "></i>미접속</span></span></div>
+    <div class="rr"><span class="rn num">2</span><span class="rnm">차값</span><span class="rpt num">3,388점</span><span class="rgm num">88판</span><span class="rst"><span class="lp "><i class="lamp "></i>접속중</span><span class="lp lit"><i class="lamp off"></i>미접속</span></span></div>
+    <div class="rr"><span class="rn num">3</span><span class="rnm">쨔잉나</span><span class="rpt num">3,301점</span><span class="rgm num">12판</span><span class="rst"><span class="lp "><i class="lamp "></i>접속중</span><span class="lp "><i class="lamp "></i>미접속</span></span></div>
+    <div class="rr"><span class="rn num">4</span><span class="rnm">hing</span><span class="rpt num">3,180점</span><span class="rgm num">64판</span><span class="rst"><span class="lp lit"><i class="lamp on"></i>접속중</span><span class="lp "><i class="lamp "></i>미접속</span></span></div>
+    <div class="rr"><span class="rn num">5</span><span class="rnm">spearr</span><span class="rpt num">3,044점</span><span class="rgm num">41판</span><span class="rst"><span class="lp lit"><i class="lamp on"></i>접속중</span><span class="lp "><i class="lamp "></i>미접속</span></span></div>
+  </div>
+</div></div></div>
+      <div class="fly" style="--i:3" id="sa-f3"><div class="tilt">
+<div class="cd">
+  <div class="chead"><span class="dsp">전투력</span></div>
+  <svg viewBox="0 0 260 208" class="hexsvg" role="img" aria-label="전투력 육각형">
+<polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,66.8 162.22,85.4 162.22,122.6 130,141.2 97.78,122.6 97.78,85.4" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,91.6 140.74,97.8 140.74,110.2 130,116.4 119.26,110.2 119.26,97.8" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="130" y2="42" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="183.69" y2="73" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="183.69" y2="135" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="130" y2="166" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="76.31" y2="135" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="76.31" y2="73" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/>
+<polygon points="130,49.44 169.73,81.06 179.4,132.52 130,144.92 91.88,126.01 99.39,86.33" fill="var(--win-bar)" fill-opacity=".16" stroke="var(--win-bar)" stroke-width="1.4"/>
+<circle cx="130" cy="49.44" r="2.1" fill="var(--win-bar)"/><circle cx="169.73" cy="81.06" r="2.1" fill="var(--win-bar)"/><circle cx="179.4" cy="132.52" r="2.1" fill="var(--win-bar)"/><circle cx="130" cy="144.92" r="2.1" fill="var(--win-bar)"/><circle cx="91.88" cy="126.01" r="2.1" fill="var(--win-bar)"/><circle cx="99.39" cy="86.33" r="2.1" fill="var(--win-bar)"/><g><text x="130" y="24" text-anchor="middle" font-size="11" fill="var(--meta)">세이브</text><text x="130" y="36" text-anchor="middle" font-size="11" fill="var(--win-bar)">상위 12%</text></g><g><text x="199.28" y="64" text-anchor="start" font-size="11" fill="var(--meta)">샷싸움</text><text x="199.28" y="76" text-anchor="start" font-size="11" fill="var(--win-bar)">상위 26%</text></g><g><text x="199.28" y="144" text-anchor="start" font-size="11" fill="var(--meta)">캐리력</text><text x="199.28" y="156" text-anchor="start" font-size="11" fill="var(--win-bar)">상위 8%</text></g><g><text x="130" y="184" text-anchor="middle" font-size="11" fill="var(--meta)">기회창출</text><text x="130" y="196" text-anchor="middle" font-size="11" fill="var(--win-bar)">상위 34%</text></g><g><text x="60.72" y="144" text-anchor="end" font-size="11" fill="var(--meta)">원어택 성공률</text><text x="60.72" y="156" text-anchor="end" font-size="11" fill="var(--win-bar)">상위 29%</text></g><g><text x="60.72" y="64" text-anchor="end" font-size="11" fill="var(--meta)">소수싸움</text><text x="60.72" y="76" text-anchor="end" font-size="11" fill="var(--win-bar)">상위 43%</text></g></svg>
+  <div class="foot">같은 라플수 <span class="num">2,006</span>명 안에서 견줬습니다</div>
+</div></div></div>
+      <div class="fly" style="--i:4" id="sa-f4"><div class="tilt">
+<div class="cd">
+  <div class="chead"><span>클랜 육각형</span><span class="meta num">경기 42 &middot; 레드 라운드 118/236</span></div>
+  <svg viewBox="0 0 260 208" class="hexsvg" role="img" aria-label="클랜 육각형 비교">
+<polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,66.8 162.22,85.4 162.22,122.6 130,141.2 97.78,122.6 97.78,85.4" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,91.6 140.74,97.8 140.74,110.2 130,116.4 119.26,110.2 119.26,97.8" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="130" y2="42" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="183.69" y2="73" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="183.69" y2="135" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="130" y2="166" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="76.31" y2="135" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="76.31" y2="73" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/>
+<polygon points="130,72.38 166.51,82.92 151.48,116.4 130,151.74 96.71,123.22 110.67,92.84" fill="none" stroke="var(--text)" stroke-width="1.2"/>
+<polygon points="130,58.12 157.92,87.88 176.18,130.66 130,143.06 105.84,117.95 92.95,82.61" fill="var(--accent)" fill-opacity=".12" stroke="var(--accent)" stroke-width="1.4"/>
+<circle cx="130" cy="72.38" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="166.51" cy="82.92" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="151.48" cy="116.4" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="130" cy="151.74" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="96.71" cy="123.22" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="110.67" cy="92.84" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="130" cy="58.12" r="2.1" fill="var(--accent)"/><circle cx="157.92" cy="87.88" r="2.1" fill="var(--accent)"/><circle cx="176.18" cy="130.66" r="2.1" fill="var(--accent)"/><circle cx="130" cy="143.06" r="2.1" fill="var(--accent)"/><circle cx="105.84" cy="117.95" r="2.1" fill="var(--accent)"/><circle cx="92.95" cy="82.61" r="2.1" fill="var(--accent)"/><text x="130" y="24" text-anchor="middle" font-size="11" fill="var(--strong)">스나싸움</text><text x="199.28" y="64" text-anchor="start" font-size="11" fill="var(--strong)">소수싸움</text><text x="199.28" y="144" text-anchor="start" font-size="11" fill="var(--strong)">세이브</text><text x="130" y="184" text-anchor="middle" font-size="11" fill="var(--strong)">게임템포</text><text x="60.72" y="144" text-anchor="end" font-size="11" fill="var(--strong)">B어택성공</text><text x="60.72" y="64" text-anchor="end" font-size="11" fill="var(--strong)">A어택성공</text></svg>
+  <div class="lg"><span class="lgi"><i class="sw fill"></i>hilarious-</span><span class="lgi"><i class="sw"></i>Celebrity</span></div>
+  <div class="vrows">
+    <div class="vr"><span class="meta">스나싸움</span><span><span class="num ac">61%</span><span class="num tx">47%</span></span></div>
+    <div class="vr"><span class="meta">게임템포</span><span><span class="num ac">18.3초</span><span class="num tx">21.6초</span></span></div>
+  </div>
+</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rail"><span>경기</span><span>라운드</span><span>클랜</span><span>선수</span></div>
+  </div>
+</section>
+
+<section class="hero" id="td">
+  <div class="grid"></div>
+  <div class="inner">
+    <div class="badge">판 B &middot; 바뀔 이름 (D-242) &mdash; 3rd cloud</div>
+    <div class="cols">
+      <div class="copy">
+        <div class="eyebrow">클랜전 기록 &middot; 리그 &middot; 래더</div>
+        <h1 class="wm latin">3rd cloud</h1>
+        <p class="lead">서든어택 클랜전의 경기 한 판을 라운드까지 뜯어, 클랜과 선수의 실력으로 쌓아 둡니다.</p>
+        <div class="btns">
+          <a class="btn primary" href="#td"><span>내 클랜 찾기</span></a>
+          <a class="btn" href="#td"><span>리그 보기</span></a>
+        </div>
+        <div class="search">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13 13.2 17 17.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>클랜 &middot; 선수 이름으로 통합검색</span>
+        </div>
+      </div>
+
+      <div class="stagewrap">
+        <div class="stage">
+      <div class="fly" style="--i:0" id="td-f0"><div class="tilt">
+<div class="cd">
+  <!-- 접힌 매치 카드 — MatchCard.tsx -->
+  <div class="mrow">
+    <div class="mbar win"></div>
+    <div class="mbody">
+      <div class="mr1"><span class="map">제3보급창고</span> - 5일 전<span class="up num">+10점</span></div>
+      <div class="mr2">
+        <div class="res win">승리</div>
+        <div class="kdabox">
+          <div class="mvp"><span>&#9733;</span>MVP</div>
+          <div class="kda num">10 / <span class="ls">1</span> / 1</div>
+          <div class="krate num">(90.9%)</div>
+        </div>
+        <div class="clans">
+          <div class="cl r">hilarious-<span class="mk a"></span></div>
+          <div class="vs">vs</div>
+          <div class="cl"><span class="mk b"></span>Celebrity</div>
+        </div>
+        <div class="side">선레드<div class="num">5 vs 5</div></div>
+        <svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  </div>
+  <!-- 펼친 상세의 첫 덩어리 — 양 팀 대비 (TeamCompare) -->
+  <div class="cmp">
+    <div class="cmpr"><span class="cbar win"></span><span class="cres win">승리</span><span class="mk a"></span><span class="cnm">hilarious-</span><span class="cfs">선레드</span><span class="cdiv num">1부리그 1,149점</span></div>
+    <div class="cmpr"><span class="cbar lose"></span><span class="cres lose">패배</span><span class="mk b"></span><span class="cnm">Celebrity</span><span class="cfs">선블루</span><span class="cdiv">2부리그 <span class="fa">알수없음</span></span></div>
+  </div>
+</div></div></div>
+      <div class="fly" style="--i:1" id="td-f1"><div class="tilt">
+<div class="cd">
+  <div class="prow">
+    <div>
+      <div class="pnm">DPL <span class="tag">공식</span></div>
+      <div class="prank num">5,120명중 12위</div>
+    </div>
+    <div class="pright">
+      <div class="plab">래더</div>
+      <div class="pval num">3,412<span class="pjeom">점</span></div>
+    </div>
+  </div>
+  <div class="wbar"><i style="width:60.9%"></i><b style="width:39.1%"></b></div>
+  <div class="pstats">
+    <div><span class="slab">전적</span><span class="sval num">128전</span></div>
+    <div><span class="slab">승 &middot; 패</span><span class="sval num">78 &middot; 50</span></div>
+    <div><span class="slab">승률</span><span class="sval num st">60.9%</span></div>
+    <div><span class="slab">킬뎃</span><span class="sval num">112.4%</span></div>
+  </div>
+</div></div></div>
+      <div class="fly" style="--i:2" id="td-f2"><div class="tilt">
+<div class="cd">
+  <div class="chead"><span>클랜원</span><span class="meta"><span class="num">27</span>명 <span class="num">&middot; 접속 20:25 기준</span></span></div>
+  <div class="rlist">
+    <div class="rr"><span class="rn num">1</span><span class="rnm">nudi</span><span class="rpt num">3,412점</span><span class="rgm num">102판</span><span class="rst"><span class="lp lit"><i class="lamp on"></i>접속중</span><span class="lp "><i class="lamp "></i>미접속</span></span></div>
+    <div class="rr"><span class="rn num">2</span><span class="rnm">차값</span><span class="rpt num">3,388점</span><span class="rgm num">88판</span><span class="rst"><span class="lp "><i class="lamp "></i>접속중</span><span class="lp lit"><i class="lamp off"></i>미접속</span></span></div>
+    <div class="rr"><span class="rn num">3</span><span class="rnm">쨔잉나</span><span class="rpt num">3,301점</span><span class="rgm num">12판</span><span class="rst"><span class="lp "><i class="lamp "></i>접속중</span><span class="lp "><i class="lamp "></i>미접속</span></span></div>
+    <div class="rr"><span class="rn num">4</span><span class="rnm">hing</span><span class="rpt num">3,180점</span><span class="rgm num">64판</span><span class="rst"><span class="lp lit"><i class="lamp on"></i>접속중</span><span class="lp "><i class="lamp "></i>미접속</span></span></div>
+    <div class="rr"><span class="rn num">5</span><span class="rnm">spearr</span><span class="rpt num">3,044점</span><span class="rgm num">41판</span><span class="rst"><span class="lp lit"><i class="lamp on"></i>접속중</span><span class="lp "><i class="lamp "></i>미접속</span></span></div>
+  </div>
+</div></div></div>
+      <div class="fly" style="--i:3" id="td-f3"><div class="tilt">
+<div class="cd">
+  <div class="chead"><span class="dsp">전투력</span></div>
+  <svg viewBox="0 0 260 208" class="hexsvg" role="img" aria-label="전투력 육각형">
+<polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,66.8 162.22,85.4 162.22,122.6 130,141.2 97.78,122.6 97.78,85.4" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,91.6 140.74,97.8 140.74,110.2 130,116.4 119.26,110.2 119.26,97.8" fill="none" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="130" y2="42" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="183.69" y2="73" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="183.69" y2="135" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="130" y2="166" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="76.31" y2="135" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="76.31" y2="73" stroke="var(--side-line)" stroke-width=".6" stroke-opacity=".75"/>
+<polygon points="130,49.44 169.73,81.06 179.4,132.52 130,144.92 91.88,126.01 99.39,86.33" fill="var(--win-bar)" fill-opacity=".16" stroke="var(--win-bar)" stroke-width="1.4"/>
+<circle cx="130" cy="49.44" r="2.1" fill="var(--win-bar)"/><circle cx="169.73" cy="81.06" r="2.1" fill="var(--win-bar)"/><circle cx="179.4" cy="132.52" r="2.1" fill="var(--win-bar)"/><circle cx="130" cy="144.92" r="2.1" fill="var(--win-bar)"/><circle cx="91.88" cy="126.01" r="2.1" fill="var(--win-bar)"/><circle cx="99.39" cy="86.33" r="2.1" fill="var(--win-bar)"/><g><text x="130" y="24" text-anchor="middle" font-size="11" fill="var(--meta)">세이브</text><text x="130" y="36" text-anchor="middle" font-size="11" fill="var(--win-bar)">상위 12%</text></g><g><text x="199.28" y="64" text-anchor="start" font-size="11" fill="var(--meta)">샷싸움</text><text x="199.28" y="76" text-anchor="start" font-size="11" fill="var(--win-bar)">상위 26%</text></g><g><text x="199.28" y="144" text-anchor="start" font-size="11" fill="var(--meta)">캐리력</text><text x="199.28" y="156" text-anchor="start" font-size="11" fill="var(--win-bar)">상위 8%</text></g><g><text x="130" y="184" text-anchor="middle" font-size="11" fill="var(--meta)">기회창출</text><text x="130" y="196" text-anchor="middle" font-size="11" fill="var(--win-bar)">상위 34%</text></g><g><text x="60.72" y="144" text-anchor="end" font-size="11" fill="var(--meta)">원어택 성공률</text><text x="60.72" y="156" text-anchor="end" font-size="11" fill="var(--win-bar)">상위 29%</text></g><g><text x="60.72" y="64" text-anchor="end" font-size="11" fill="var(--meta)">소수싸움</text><text x="60.72" y="76" text-anchor="end" font-size="11" fill="var(--win-bar)">상위 43%</text></g></svg>
+  <div class="foot">같은 라플수 <span class="num">2,006</span>명 안에서 견줬습니다</div>
+</div></div></div>
+      <div class="fly" style="--i:4" id="td-f4"><div class="tilt">
+<div class="cd">
+  <div class="chead"><span>클랜 육각형</span><span class="meta num">경기 42 &middot; 레드 라운드 118/236</span></div>
+  <svg viewBox="0 0 260 208" class="hexsvg" role="img" aria-label="클랜 육각형 비교">
+<polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,66.8 162.22,85.4 162.22,122.6 130,141.2 97.78,122.6 97.78,85.4" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><polygon points="130,91.6 140.74,97.8 140.74,110.2 130,116.4 119.26,110.2 119.26,97.8" fill="none" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="130" y2="42" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="183.69" y2="73" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="183.69" y2="135" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="130" y2="166" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="76.31" y2="135" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/><line x1="130" y1="104" x2="76.31" y2="73" stroke="var(--line)" stroke-width=".6" stroke-opacity=".75"/>
+<polygon points="130,72.38 166.51,82.92 151.48,116.4 130,151.74 96.71,123.22 110.67,92.84" fill="none" stroke="var(--text)" stroke-width="1.2"/>
+<polygon points="130,58.12 157.92,87.88 176.18,130.66 130,143.06 105.84,117.95 92.95,82.61" fill="var(--accent)" fill-opacity=".12" stroke="var(--accent)" stroke-width="1.4"/>
+<circle cx="130" cy="72.38" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="166.51" cy="82.92" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="151.48" cy="116.4" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="130" cy="151.74" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="96.71" cy="123.22" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="110.67" cy="92.84" r="2.1" fill="none" stroke="var(--text)" stroke-width="1"/><circle cx="130" cy="58.12" r="2.1" fill="var(--accent)"/><circle cx="157.92" cy="87.88" r="2.1" fill="var(--accent)"/><circle cx="176.18" cy="130.66" r="2.1" fill="var(--accent)"/><circle cx="130" cy="143.06" r="2.1" fill="var(--accent)"/><circle cx="105.84" cy="117.95" r="2.1" fill="var(--accent)"/><circle cx="92.95" cy="82.61" r="2.1" fill="var(--accent)"/><text x="130" y="24" text-anchor="middle" font-size="11" fill="var(--strong)">스나싸움</text><text x="199.28" y="64" text-anchor="start" font-size="11" fill="var(--strong)">소수싸움</text><text x="199.28" y="144" text-anchor="start" font-size="11" fill="var(--strong)">세이브</text><text x="130" y="184" text-anchor="middle" font-size="11" fill="var(--strong)">게임템포</text><text x="60.72" y="144" text-anchor="end" font-size="11" fill="var(--strong)">B어택성공</text><text x="60.72" y="64" text-anchor="end" font-size="11" fill="var(--strong)">A어택성공</text></svg>
+  <div class="lg"><span class="lgi"><i class="sw fill"></i>hilarious-</span><span class="lgi"><i class="sw"></i>Celebrity</span></div>
+  <div class="vrows">
+    <div class="vr"><span class="meta">스나싸움</span><span><span class="num ac">61%</span><span class="num tx">47%</span></span></div>
+    <div class="vr"><span class="meta">게임템포</span><span><span class="num ac">18.3초</span><span class="num tx">21.6초</span></span></div>
+  </div>
+</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rail"><span>경기</span><span>라운드</span><span>클랜</span><span>선수</span></div>
+  </div>
+</section>
+</main>
