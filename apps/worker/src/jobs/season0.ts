@@ -220,12 +220,18 @@ export async function runSeason0(
   })
   const clanNameOf = new Map(leagueClans.map((c) => [c.id, c.clan?.name ?? '(이름 없음)']))
 
-  /* ---- 랭킹 만들기 ---- */
-  const PLACEMENT = 10
+  /* ---- 랭킹 만들기 ----
+
+     ⚠ 예전에는 여기 `const PLACEMENT = 10` 이 **박혀 있었다.** 상수를 0 으로 내려도
+     이 줄 때문에 계산만 바뀌고 랭킹 표는 그대로 10판에서 잘렸다. 상수를 참조한다.
+
+     배치고사가 폐지된 지금(`placementMatches = 0`)은 `p.games < 0` 이 항상 거짓이라
+     한 명도 걸러지지 않는다 — 1판만 뛰어도 랭킹에 나온다. */
+  const PLACEMENT = constants.placementMatches
   let placementHeld = 0
   const rows = rated.report.players
     .filter((p) => {
-      /* 배치고사 중이면 랭킹에 넣지 않는다 (원본 규칙) */
+      /* 배치고사 중이면 랭킹에 넣지 않는다. 폐지 후에는 아무도 여기 걸리지 않는다 */
       if (p.games < PLACEMENT) {
         placementHeld += 1
         return false

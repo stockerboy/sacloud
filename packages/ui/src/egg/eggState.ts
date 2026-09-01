@@ -9,6 +9,40 @@
  *   기록을 **지우는 것이 아니라 가려 두는 것**이다.
  */
 
+/**
+ * ⚠ **2026-09-01 — 알 시스템을 화면에서 껐다** (사용자 지시).
+ *
+ * ```
+ * "애초에 알시스템은 걍 버려 필요없어"
+ * ```
+ *
+ * **지우지 않고 껐다** (`CLAUDE.md` 10-4). 이 상수 하나가 스위치다.
+ *
+ * ```
+ * false  알이 없다. 모든 기록이 그대로 보인다   ← 지금
+ * true   알이 기록을 덮는다 (사양 그대로)        ← 되돌리려면 이 한 줄
+ * ```
+ *
+ * 껐을 때 무엇이 달라지는가 — **전부 이 파일 옆의 세 곳에서만** 갈린다.
+ * ```
+ * EggContext.tsx  모든 선수·클랜을 «깨짐» 으로 답한다 → 화면의 `sealed ? 가림 : 값` 이 전부 값으로 간다
+ * Egg.tsx         껍데기도 빛도 없이 안에 든 마크만 그린다 (크기 규칙은 그대로 — 표 행 높이가 흔들리면 안 된다)
+ * EggVeil.tsx     `EggVeilLegend` 가 아무것도 그리지 않는다 (랭킹 표 밑의 `▨▨ 알이 깨지면…` 한 줄)
+ * ```
+ *
+ * **화면 컴포넌트는 한 줄도 안 고쳤다.** `RankTable` · `RecordPanels` · `PlayerProfile` ·
+ * `ClanProfile` 은 여전히 알을 물어보고, 답이 늘 «깨짐» 일 뿐이다.
+ * DB(`EggBreak`) · API(`/api/eggs/broken`) · 관리자 화면 · `docs/EGG_SYSTEM_SPEC.md` 는 그대로다.
+ *
+ * 아래 순수 규칙(`clanEggState` · `eggRows`)도 **그대로 둔다.** 지금은 아무도 안 부르지만
+ * 되살릴 때 필요하고, 테스트가 그것을 지키고 있다.
+ */
+/*
+ * 타입을 `boolean` 으로 **넓혀 둔다.** `false` 리터럴로 좁혀지면 되돌릴 때 쓸
+ * 옛 가지들이 전부 «닿을 수 없는 코드» 가 되어 tsc/lint 가 문다.
+ */
+export const EGG_SYSTEM_ENABLED: boolean = false
+
 /** 알의 두 가지 상태. `sealed` = 안 깨짐, `broken` = 깨짐 */
 export type EggState = 'sealed' | 'broken'
 

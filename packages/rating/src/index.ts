@@ -16,6 +16,9 @@ export {
   CLAN_FORMULA_VERSION,
   FORMULA_VERSION,
   CONFIDENCE_FULL_AT,
+  /* 배치고사 — 지금은 0(폐지)이고, 옛 10경기 값도 함께 내보낸다 (`CLAUDE.md` 10-4) */
+  PLACEMENT_MATCHES,
+  PLACEMENT_MATCHES_V1,
   roundHalfUp,
   constantsForSeason,
   DEFAULT_SEASON_POLICY,

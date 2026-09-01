@@ -1,8 +1,11 @@
 'use client'
 
+import { Fragment } from 'react'
 import Link from 'next/link'
-import type { ClanRankRow, PlayerRankRow, RankWeapon } from '@sacloud/contract'
+import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
+/* 티어 구분선 라벨 — 공식리그면 `1부리그`, 무소속리그면 `1티어` (D-165) */
+import { divisionLabel } from './divisionLabel'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 랭킹도 알로 덮는다 */
 import { Egg } from '../egg/Egg'
 import { useEggKnowledge } from '../egg/EggContext'
@@ -138,7 +141,7 @@ interface TableStateProps {
   loading?: boolean
   error?: boolean
   onRetry?: () => void
-  /** 배치고사가 끝난 대상이 하나도 없을 때 */
+  /** 표시할 대상이 하나도 없을 때 (배치고사는 폐지됐다 — 2026-09-01) */
   emptyMessage: string
   columns: number
 }
@@ -180,36 +183,110 @@ function rankClass(rank: number): string {
   return `${COL_RANK} ${NUM} ${rank === 1 ? RANK_TOP : 'text-meta'}`
 }
 
+/**
+ * 칸을 하나도 감추지 않는 기본값 — **넘기지 않으면 지금까지의 표 그대로다.**
+ *
+ * 리그별로 무엇을 감출지는 화면이 아니라 `@sacloud/contract` 의 `leagueScreen()` 이 정한다
+ * (2026-09-01). D-204 의 «리그별 분기를 흩뿌리지 마라» 를 지키는 방법이다 —
+ * 분기가 없는 게 아니라 **한 곳에 모여 있다.**
+ */
+const ALL_COLUMNS: RankColumns = { rank: true, winRate: true, kd: true, rating: true }
+
+/** 실제로 그리는 칸 수 — 뼈대(skeleton)의 막대 개수를 맞춘다 */
+function visibleCount(columns: RankColumns, withKd: boolean): number {
+  return (
+    1 /* 이름 칸은 항상 있다 */ +
+    (columns.rank ? 1 : 0) +
+    (columns.winRate ? 1 : 0) +
+    (withKd && columns.kd ? 1 : 0) +
+    (columns.rating ? 1 : 0)
+  )
+}
+
 /* ------------------------------------------------------------------ 클랜 --- */
+
+/**
+ * 티어(부리그) 경계에 넣는 가로선 + 작은 라벨 (2026-09-01 사용자 지시).
+ *
+ * > "IPL도 세로로 일열 배열하는데 우리가 정해놨던 티어별로 선을 그어서 나눠줘"
+ *
+ * **배경을 칠하지 않는다.** 선 하나와 글자 하나뿐이다 (D-204 — 진홍은 아껴 쓴다).
+ * 라벨 문자열은 `divisionLabel` 이 만든다 — 공식리그면 `1부리그`, 무소속리그면 `1티어`.
+ */
+function DivisionDivider({ division, leagueCategory }: { division: number; leagueCategory?: string }) {
+  return (
+    <div className="flex items-center gap-2.5 border-b border-b-line-soft px-4 pb-1.5 pt-3.5 max-md:px-3">
+      <span className={`${NUM} text-[0.72rem] tracking-[0.18em] text-accent`}>
+        {divisionLabel(division, leagueCategory)}
+      </span>
+      <span className="h-px flex-1 bg-line" />
+    </div>
+  )
+}
 
 export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'emptyMessage'> {
   leagueSlug: string
   rows?: readonly ClanRankRow[]
+  /**
+   * 티어(부리그)가 바뀌는 자리마다 가로선을 넣는다 (2026-09-01).
+   *
+   * **기본값은 `false` 다 — 넘기지 않으면 예전 표 그대로다.** 부리그 탭 화면은
+   * 한 부리그만 보여 주므로 선을 그을 경계 자체가 없다.
+   * 행은 이미 `division` 오름차순으로 와 있어야 한다 (API `division=0` + 무소속리그).
+   */
+  groupByDivision?: boolean
+  /** `official` | `independent` — 구분선 라벨 표기만 바꾼다 (D-165) */
+  leagueCategory?: string
+  /**
+   * 보여 줄 칸 (2026-09-01). 넘기지 않으면 **지금까지의 표 그대로**다.
+   *
+   * 리그마다 다른 칸을 화면에서 `if (slug === …)` 로 가르지 않는다 —
+   * 규칙은 `@sacloud/contract` 의 `leagueScreen()` 한 곳에 있다.
+   */
+  columns?: RankColumns
 }
 
-export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: ClanRankTableProps) {
+export function ClanRankTable({
+  leagueSlug,
+  rows,
+  loading,
+  error,
+  onRetry,
+  groupByDivision = false,
+  leagueCategory,
+  columns = ALL_COLUMNS,
+}: ClanRankTableProps) {
   const { brokenClanSlugs } = useEggKnowledge()
+  /* 바로 앞 행과 부리그가 다르면 그 위에 선을 긋는다. 첫 행에도 긋는다 —
+     맨 위 묶음이 어느 티어인지 이름이 없으면 아래 묶음들만 이름이 붙어 이상해진다 */
+  let lastDivision: number | null = null
   return (
     <>
       <div className={HEAD}>
-        <div className={COL_RANK}>순위</div>
+        {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>클랜</div>
-        <div className={`${COL_STAT} ${COL_HIDDEN}`}>승률</div>
-        <div className={COL_RATING}>래더</div>
+        {columns.winRate ? <div className={`${COL_STAT} ${COL_HIDDEN}`}>승률</div> : null}
+        {columns.rating ? <div className={COL_RATING}>래더</div> : null}
       </div>
       <TableBody
         loading={loading}
         error={error}
         onRetry={onRetry}
-        columns={4}
+        columns={visibleCount(columns, false)}
         isEmpty={!rows || rows.length === 0}
-        emptyMessage="배치고사가 종료된 클랜이 없습니다."
+        emptyMessage="아직 기록된 클랜이 없습니다."
       >
         {rows?.map((row) => {
           const egg: EggState = brokenClanSlugs.includes(row.clan.slug) ? 'broken' : 'sealed'
+          const divider = groupByDivision && row.division !== lastDivision
+          lastDivision = row.division
           return (
-          <div key={row.clan.id} className={ROW}>
-            <div className={rankClass(row.rank)}>{row.rank}</div>
+          <Fragment key={row.clan.id}>
+          {divider ? (
+            <DivisionDivider division={row.division} leagueCategory={leagueCategory} />
+          ) : null}
+          <div className={ROW}>
+            {columns.rank ? <div className={rankClass(row.rank)}>{row.rank}</div> : null}
             <div className={COL_NAME}>
               <Link
                 className="flex min-w-0 items-center hover:text-text-strong"
@@ -223,7 +300,7 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
               </Link>
             </div>
             {/* 승/패는 없앤 것이 아니라 승률 아래로 접었다. 알이 있으면 둘 다 가린다 */}
-            {egg === 'sealed' ? (
+            {!columns.winRate ? null : egg === 'sealed' ? (
               <div className={`${COL_STAT} ${COL_HIDDEN}`}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
@@ -240,10 +317,13 @@ export function ClanRankTable({ leagueSlug, rows, loading, error, onRetry }: Cla
               }
             />
             )}
-            <div className={`${COL_RATING} ${NUM} text-text-strong`}>
-              {formatRating(row.rating)}
-            </div>
+            {columns.rating ? (
+              <div className={`${COL_RATING} ${NUM} text-text-strong`}>
+                {formatRating(row.rating)}
+              </div>
+            ) : null}
           </div>
+          </Fragment>
           )
         })}
       </TableBody>
@@ -265,6 +345,13 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
    * 무기별 절대 점수를 지어내지 않는다 — 무기 분리는 기록만 나눈다 (`CLAUDE.md` 3-B).
    */
   weapon?: RankWeapon
+  /**
+   * 보여 줄 칸 (2026-09-01). 넘기지 않으면 **지금까지의 표 그대로**다.
+   *
+   * `10🏔️`(`sanply`)는 비공식이라 래더도 순위도 없어 두 칸이 빠진다.
+   * 그 판단은 여기가 아니라 `@sacloud/contract` 의 `leagueScreen()` 이 한다.
+   */
+  columns?: RankColumns
 }
 
 export function PlayerRankTable({
@@ -274,6 +361,7 @@ export function PlayerRankTable({
   error,
   onRetry,
   weapon = 'all',
+  columns = ALL_COLUMNS,
 }: PlayerRankTableProps) {
   const byWeapon = weapon !== 'all'
   const { brokenPlayerIds } = useEggKnowledge()
@@ -281,28 +369,30 @@ export function PlayerRankTable({
   return (
     <>
       <div className={HEAD}>
-        <div className={COL_RANK}>순위</div>
+        {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>닉네임</div>
-        <div className={`${COL_STAT} ${COL_HIDDEN}`}>승률</div>
-        <div className={`${COL_STAT} ${COL_HIDDEN}`}>킬뎃</div>
+        {columns.winRate ? <div className={`${COL_STAT} ${COL_HIDDEN}`}>승률</div> : null}
+        {columns.kd ? <div className={`${COL_STAT} ${COL_HIDDEN}`}>킬뎃</div> : null}
         {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
             머리글을 그대로 `래더` 로 두면 같은 자리에 다른 뜻의 숫자가 들어가 거짓말이 된다. */}
-        <div className={COL_RATING}>{byWeapon ? '래더증감' : '래더'}</div>
+        {columns.rating ? (
+          <div className={COL_RATING}>{byWeapon ? '래더증감' : '래더'}</div>
+        ) : null}
       </div>
       <TableBody
         loading={loading}
         error={error}
         onRetry={onRetry}
-        columns={5}
+        columns={visibleCount(columns, true)}
         isEmpty={!rows || rows.length === 0}
-        emptyMessage="배치고사가 종료된 플레이어가 없습니다."
+        emptyMessage="아직 기록된 플레이어가 없습니다."
       >
         {rows?.map((row) => {
           /* 개인 알 — 본인이 인증해 깬 선수만 기록이 열린다 (사양 3장) */
           const egg: EggState = brokenPlayerIds.includes(row.player.id) ? 'broken' : 'sealed'
           return (
           <div key={row.player.id} className={ROW}>
-            <div className={rankClass(row.rank)}>{row.rank}</div>
+            {columns.rank ? <div className={rankClass(row.rank)}>{row.rank}</div> : null}
             <div className={COL_NAME}>
               <Link
                 className="flex min-w-0 items-center hover:text-text-strong"
@@ -317,7 +407,7 @@ export function PlayerRankTable({
                 <span className="truncate">{row.player.name}</span>
               </Link>
             </div>
-            {egg === 'sealed' ? (
+            {!columns.winRate ? null : egg === 'sealed' ? (
               <div className={`${COL_STAT} ${COL_HIDDEN}`}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
@@ -336,7 +426,7 @@ export function PlayerRankTable({
             )}
             {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107).
                 IPL 은 원래 킬뎃이 없어 알과 무관하다 (사양 2장) */}
-            {row.kd_rate === null ? (
+            {!columns.kd ? null : row.kd_rate === null ? (
               <div className={`${COL_STAT} ${COL_HIDDEN} text-faint`}>-</div>
             ) : egg === 'sealed' ? (
               <div className={`${COL_STAT} ${COL_HIDDEN}`}>
@@ -352,9 +442,11 @@ export function PlayerRankTable({
                 sub={<>{formatAverage(row.kill_per_match)}킬</>}
               />
             )}
-            <div className={`${COL_RATING} ${NUM} text-text-strong`}>
-              {byWeapon ? formatRatingDelta(row.rating_delta ?? 0) : formatRating(row.rating)}
-            </div>
+            {columns.rating ? (
+              <div className={`${COL_RATING} ${NUM} text-text-strong`}>
+                {byWeapon ? formatRatingDelta(row.rating_delta ?? 0) : formatRating(row.rating)}
+              </div>
+            ) : null}
           </div>
           )
         })}

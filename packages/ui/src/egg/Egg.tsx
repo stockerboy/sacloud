@@ -20,7 +20,7 @@
  */
 
 import type { ReactNode } from 'react'
-import type { EggState } from './eggState'
+import { EGG_SYSTEM_ENABLED, type EggState } from './eggState'
 
 export type EggSize = 'xs' | 'sm' | 'md'
 
@@ -53,6 +53,26 @@ export interface EggProps {
 }
 
 export function Egg({ state, size = 'md', children, label, className = '' }: EggProps) {
+  /*
+   * ⚠ 2026-09-01 — 알을 껐다 (`eggState.ts` 의 `EGG_SYSTEM_ENABLED`).
+   *
+   * 껍데기도 빛(`egg-glow`)도 그리지 않고 **안에 든 것만** 내보낸다.
+   * 그러면서도 **치수(`SIZE`)와 `FILL` 은 그대로 쓴다** — 이 자리는 랭킹 표의
+   * 마크 칸이라, 감싸는 것을 통째로 없애면 모바일 행 높이 36px 이 무너진다.
+   *
+   * `title` 도 클랜명·닉네임만 남긴다. 알이 없는데 "알이 깨졌습니다" 가 뜨면 거짓말이다.
+   */
+  if (!EGG_SYSTEM_ENABLED) {
+    return (
+      <span
+        className={`relative inline-flex shrink-0 items-center justify-center ${SIZE[size]} ${FILL} ${className}`}
+        title={label}
+      >
+        {children}
+      </span>
+    )
+  }
+
   if (state === 'broken') {
     /* 깨진 알 — 껍데기가 없다. 마크가 **계속** 은은하게 빛난다 (사양 3장) */
     return (

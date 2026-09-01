@@ -32,13 +32,41 @@
 
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { EggProvider, type EggKnowledge } from '@sacloud/ui'
+import { EGG_SYSTEM_ENABLED, EggProvider, type EggKnowledge } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
 const NONE: readonly string[] = []
 
+/**
+ * ⚠ **2026-09-01 — 알을 껐다** (사용자 지시: *"애초에 알시스템은 걍 버려 필요없어"*).
+ *
+ * 스위치는 `packages/ui/src/egg/eggState.ts` 의 `EGG_SYSTEM_ENABLED` 하나다.
+ *
+ * 여기서 중요한 것은 **요청을 안 보내는 것**이다. 이 컴포넌트는 전역 레이아웃
+ * (`app/layout.tsx`)에 있어서 **모든 화면**이 지나간다. 껐는데도 아래 `EggBootLive`
+ * 를 그대로 두면 화면을 열 때마다 `/eggs/broken` · `/me/link` (+ `/players/{id}` ·
+ * `/clans/{slug}`) 를 헛되이 부른다 — 지금 DB 사정이 넉넉하지 않다.
+ *
+ * 그래서 껐을 때는 **훅을 하나도 부르지 않는 껍데기**로 갈아 끼운다.
+ * `app/layout.tsx` 는 한 줄도 안 고쳤다 — 거기서는 여전히 `<EggBoot>` 하나다.
+ *
+ * `EggProvider` 는 그대로 씌운다. 값을 안 씌우면 `packages/ui` 의 기본 문맥이
+ * «전부 안 깨짐» 이라, 혹시 스위치가 안 먹는 경로가 있으면 기록이 덮인다.
+ * 어차피 `useEggKnowledge` 가 껐을 때 이 값을 무시하지만, **두 겹으로 안전한 쪽**을 둔다.
+ */
+const ALL_OPEN: EggKnowledge = { brokenPlayerIds: [], brokenClanSlugs: [], loading: false }
+
 export function EggBoot({ children }: { children: React.ReactNode }) {
+  if (!EGG_SYSTEM_ENABLED) return <EggProvider value={ALL_OPEN}>{children}</EggProvider>
+  return <EggBootLive>{children}</EggBootLive>
+}
+
+/**
+ * 옛 배선 — **지우지 않았다** (`CLAUDE.md` 10-4).
+ * `EGG_SYSTEM_ENABLED` 를 `true` 로 되돌리면 이것이 다시 돈다.
+ */
+function EggBootLive({ children }: { children: React.ReactNode }) {
   const ready = useApiReady()
 
   /* 0) 서버에 남은 깨짐 기록 — 로그인과 무관하다. 비로그인도 빛나는 마크를 본다 */

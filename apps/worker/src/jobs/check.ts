@@ -144,22 +144,35 @@ export async function runCheck(input: {
     note: 'mock 경기와 nexon 경기가 함께 있는 리그 수',
   })
 
-  /* 6) 배치고사 경기의 래더 증감은 0이다 (`CLAUDE.md` 3-B 7번)
+  /* 6) 배치고사로 표시된 참가 기록은 없다 — **배치고사가 폐지됐다** (2026-09-01)
 
-     예전 이 자리에는 "Phase 8은 래더를 만들지 않는다"가 있었다. Phase 9의 래더 엔진이
-     실제로 값을 넣기 시작한 뒤로는 그 기대 자체가 틀렸다. 지금 지켜야 하는 불변식으로 바꾼다. */
-  const placementRated = await prisma.matchPlayerStat.count({
+     ⚠ 이 검사는 **뒤집혔다.** 지우지 않고 새 정책의 불변식으로 바꿔 둔다 (`CLAUDE.md` 10-4).
+
+       원래(D-145 · 3-B 7번)  "배치고사 경기인데 래더가 움직였으면 실패"
+                              → isPlacement=true AND ratingUpdate != 0 을 셌다
+       지금                   "배치고사로 표시된 참가 기록 자체가 없어야 한다"
+                              → isPlacement=true 를 센다
+
+     사장님 지시로 `placementMatches` 를 0 으로 내렸다. 0판 미만인 사람은 없으므로
+     우리 공식은 어떤 참가행도 `isPlacement` 로 표시하지 않는다. 표시된 행이 있다면
+     옛 공식의 잔재이거나 상수가 되돌아간 것이다 — 둘 다 알아야 한다.
+
+     원래대로 두면 **정상 상태에서 검사가 실패한다.** 폐지 후에는 배치 경기의 증감이
+     0 이 아니라 정상값이기 때문이다.
+
+     범위는 그대로 `origin='nexon'` 이다. 미러(3rd.supply) 행의 `isPlacement` 는
+     **3rd.supply 원본이 준 플래그**라 우리 규칙의 대상이 아니다 (18만 행, ratingUpdate 는 전부 null). */
+  const placementMarked = await prisma.matchPlayerStat.count({
     where: {
       match: { origin: NEXON_SOURCE },
       isPlacement: true,
-      NOT: { ratingUpdate: 0 },
     },
   })
   await push({
-    name: 'placement_rating_update_zero',
+    name: 'placement_disabled_no_marked_rows',
     expected: 0,
-    actual: placementRated,
-    note: '배치고사 경기인데 래더가 움직인 참가 기록',
+    actual: placementMarked,
+    note: '배치고사는 폐지됐다 — 배치고사로 표시된 참가 기록이 남아 있다',
   })
 
   /* 7) 신선도 정책을 넘긴 데이터 */

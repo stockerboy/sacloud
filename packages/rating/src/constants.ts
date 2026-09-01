@@ -23,6 +23,35 @@ export const FORMULA_VERSION = 'sacloud-d145'
 /** 신뢰도가 100% 가 되는 경기 수. 이 뒤로는 판수가 점수를 더 주지 않는다 */
 export const CONFIDENCE_FULL_AT = 150
 
+/* ========================================================================== */
+/* 배치고사 (placement)                                                        */
+/* ========================================================================== */
+
+/**
+ * **옛 방식 — 배치고사 10경기.** 지우지 않는다 (`CLAUDE.md` 10-4).
+ *
+ * `DEFAULT_RATING_CONSTANTS` 는 이 값을 그대로 쓴다. 과거 결과를 다시 재려면 이쪽이다.
+ */
+export const PLACEMENT_MATCHES_V1 = 10
+
+/**
+ * **현재 방식 — 배치고사 폐지** (2026-09-01 사장님 지시).
+ *
+ * > "배치고사 모드 삭제 배치고사 없이 바로 시작점수부터 1판하자마자 바로바로 시작"
+ *
+ * 1판만 뛰면 그 경기부터 증감이 붙고 바로 랭킹에 나온다.
+ * 「배치고사 중이면 랭킹 미표시」 규칙도 함께 사라진다.
+ *
+ * ⚠ `LeaguePlayer.placement` **컬럼과 플래그는 그대로 산다.** 뜻만 바뀐다 —
+ *   예전: "배치고사 진행중(10판 미만)"   지금: "이 창에 경기가 0판"
+ *   `placement` 는 이미 **랭킹 모집단 제외** 용도로도 쓰이고 있어서
+ *   (`db/ops/supplyRollup.ts` 의 `UNRANKED_CLAN_WRITE`,
+ *    `worker/jobs/rate.ts` · `season0Apply.ts` 의 미참여자 되돌리기)
+ *   플래그를 없애면 그쪽이 함께 무너진다. 그래서 **판정 기준값만 0 으로 내린다.**
+ *   조회 계층의 `placement: false` 필터는 전부 그대로 둔다 — 0판을 랭킹에 넣을 이유는 없다.
+ */
+export const PLACEMENT_MATCHES = 0
+
 export interface SuppressionRange {
   /** 이 이하로 예상된 결과는 그대로 반영한다 */
   full: number
@@ -220,7 +249,10 @@ export const DEFAULT_RATING_CONSTANTS: RatingConstants = {
   compositionCap: 50,
   compositionWindow: 20,
 
-  placementMatches: 10,
+  /* 옛 방식(10경기)을 그대로 둔다. 배치고사 폐지는 `V2_RATING_CONSTANTS` 쪽이다 —
+     `DEFAULT` 를 바꾸면 아직 이 상수를 쓰는 IPL 클랜 집계(`lib/iplClanStanding.ts`)까지
+     같이 움직인다. 그건 별건으로 다룬다 */
+  placementMatches: PLACEMENT_MATCHES_V1,
 }
 
 /**
@@ -236,6 +268,9 @@ export const V2_RATING_CONSTANTS: RatingConstants = {
   ...DEFAULT_RATING_CONSTANTS,
   /* 가산점 방식 구성 보정은 끈다 — 곱하는 방식으로 대체한다 */
   compositionCap: 0,
+  /* **배치고사 폐지** (2026-09-01). 1판부터 바로 증감이 붙고 바로 랭킹에 나온다.
+     옛 값은 `PLACEMENT_MATCHES_V1` 에 그대로 있다 (`CLAUDE.md` 10-4) */
+  placementMatches: PLACEMENT_MATCHES,
   v2: {
     teamExpectation: true,
     disableSuppression: true,
