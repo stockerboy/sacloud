@@ -1,0 +1,236 @@
+<title>클랜 별칭 · 정리</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --page:#060505; --card:#120c0c; --card2:#1a1010; --line:#2a1616; --soft:#1a1010;
+    --text:#d6c9c9; --strong:#f6eded; --meta:#9a8080; --faint:#6b5555; --accent:#d92b2b;
+    --ok:#2ea043;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--text);
+    font-family:'Noto Sans KR',system-ui,sans-serif; font-size:15px; -webkit-font-smoothing:antialiased; }
+  .num { font-family:'JetBrains Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  .display { font-family:'Black Han Sans','Noto Sans KR',sans-serif; font-weight:400; }
+  .wrap { max-width:1120px; margin:0 auto; padding:20px 12px 60px; }
+  h1 { font-size:24px; margin:0 0 6px; color:var(--strong); }
+  .sub { font-size:12px; line-height:1.75; color:var(--meta); margin-bottom:14px; }
+  .panel { border:1px solid var(--line); background:var(--card); border-radius:2px; padding:12px; margin-bottom:12px; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  button { font-family:inherit; font-size:13px; color:var(--text); background:var(--card2);
+    border:1px solid var(--line); border-radius:2px; padding:7px 11px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button[aria-pressed="true"] { border-color:var(--accent); color:var(--strong); background:#241010; }
+  input[type=text] { font-family:inherit; font-size:13px; color:var(--text); background:var(--card2);
+    border:1px solid var(--line); border-radius:2px; padding:6px 8px; width:100%; }
+  input[type=text]:focus { outline:none; border-color:var(--accent); }
+  .clan { border-bottom:1px solid var(--soft); padding:9px 0; }
+  .clan.dead { opacity:.45; }
+  .head { display:flex; align-items:baseline; gap:8px; }
+  .nm { font-size:15px; color:var(--strong); word-break:break-all; }
+  .badge { font-size:10px; border:1px solid var(--line); border-radius:2px; padding:1px 5px; color:var(--meta); flex-shrink:0; }
+  .meta { font-size:11px; color:var(--meta); margin-top:3px; display:flex; flex-wrap:wrap; gap:8px; }
+  .cold { color:var(--accent); }
+  .warm { color:var(--ok); }
+  .inputs { display:flex; gap:6px; margin-top:6px; align-items:center; }
+  .del { flex-shrink:0; font-size:12px; padding:6px 10px; }
+  .sect { margin-top:20px; display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .sect h2 { font-size:18px; margin:0; color:var(--strong); }
+  textarea { width:100%; height:120px; margin-top:8px; background:var(--card2); color:var(--text);
+    border:1px solid var(--line); border-radius:2px; padding:8px;
+    font-family:'JetBrains Mono',monospace; font-size:11px; resize:vertical; }
+  .note { border-left:2px solid var(--accent); padding:2px 0 2px 12px; font-size:12px; line-height:1.75; color:var(--meta); }
+  .okmsg { color:var(--ok); } .warnmsg { color:var(--accent); }
+</style>
+
+<div class="wrap">
+  <h1 class="display">클랜 별칭 · 정리</h1>
+  <div class="sub">
+    <b>별칭 칸</b>에 평소 부르는 이름을 적어 주세요. 여러 개면 쉼표로 나눕니다 — <span class="num">베리타스, 베리</span><br>
+    적어 주시면 유저가 그렇게 검색해도 나오게 만듭니다.<br>
+    <b>[지움]</b>을 누르면 «활동 안 함»으로 표시됩니다. 실제로 지우지는 않습니다 — 제가 보고 판단합니다.<br>
+    <b>마지막 경기</b>가 오래된 순으로 정렬해 두면 활동 안 하는 클랜이 위로 올라옵니다.
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <button id="sortCold" aria-pressed="true">오래된 순</button>
+      <button id="sortRating">래더 순</button>
+      <button id="sortName">이름 순</button>
+      <button id="onlyDpl">DPL 만</button>
+      <button id="onlyTodo">별칭 안 적은 것만</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="find" placeholder="클랜명으로 좁히기" style="max-width:260px">
+    </div>
+    <div class="sub" id="counts" style="margin:8px 0 0"></div>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="panel" style="margin-top:16px">
+    <div class="row" style="margin-bottom:6px">
+      <button id="save">저장하기</button>
+      <button id="copy">복사하기</button>
+      <button id="download">파일로 받기</button>
+      <span id="msg" class="sub" style="margin:0 0 0 4px"></span>
+    </div>
+    <textarea id="out" readonly></textarea>
+  </div>
+
+  <div class="panel">
+    <div class="note">
+      클랜마크는 여기 못 띄웁니다 — 이 화면은 바깥에서 그림을 못 불러옵니다.<br>
+      적은 것은 이 브라우저에 자동 저장됩니다. 창을 닫아도 남습니다.<br>
+      숫자는 <span class="num">2026-09-01</span> 기준입니다.
+    </div>
+  </div>
+</div>
+
+<script id="clans" type="application/json">__CLANS__</script>
+<script id="saved" type="application/json">__SAVED__</script>
+
+<script>
+(function () {
+  const CLANS = JSON.parse(document.getElementById('clans').textContent)
+  const KEY = 'sacloud.clannames.v1'
+
+  let state = {}
+  try {
+    const emb = JSON.parse(document.getElementById('saved').textContent || '{}')
+    if (emb && typeof emb === 'object') state = emb
+  } catch (e) {}
+  try {
+    const loc = localStorage.getItem(KEY)
+    if (loc) {
+      const parsed = JSON.parse(loc)
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) state = parsed
+    }
+  } catch (e) {}
+
+  let sort = 'cold'
+  let onlyDpl = false
+  let onlyTodo = false
+  let find = ''
+
+  const of = (c) => state[c.league + '/' + c.slug] || { alias: '', dead: false }
+  const setOf = (c, patch) => {
+    const k = c.league + '/' + c.slug
+    state[k] = Object.assign({ alias: '', dead: false }, state[k], patch)
+    if (!state[k].alias && !state[k].dead) delete state[k]
+    persist()
+  }
+
+  function persist() {
+    document.getElementById('out').value = JSON.stringify({ clanNames: state }, null, 0)
+    try { localStorage.setItem(KEY, JSON.stringify(state)) } catch (e) {}
+    const aliased = Object.values(state).filter((v) => v.alias && v.alias.trim()).length
+    const dead = Object.values(state).filter((v) => v.dead).length
+    document.getElementById('counts').innerHTML =
+      '전체 <b class="num">' + CLANS.length + '</b>곳 · 별칭 적은 곳 <b class="num">' + aliased +
+      '</b> · 활동 안 함 표시 <b class="num">' + dead + '</b>'
+  }
+
+  function ago(days) {
+    if (days === null || days === undefined) return { t: '경기 없음', cls: 'cold' }
+    if (days <= 3) return { t: days + '일 전', cls: 'warm' }
+    if (days <= 30) return { t: days + '일 전', cls: '' }
+    return { t: days + '일 전', cls: 'cold' }
+  }
+
+  function render() {
+    let items = CLANS.slice()
+    if (onlyDpl) items = items.filter((c) => c.league === 'supply')
+    if (onlyTodo) items = items.filter((c) => !(of(c).alias || '').trim())
+    if (find.trim()) {
+      const q = find.trim().toLowerCase()
+      items = items.filter((c) => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q))
+    }
+    if (sort === 'cold') items.sort((a, b) => (b.daysAgo === null ? 1e9 : b.daysAgo) - (a.daysAgo === null ? 1e9 : a.daysAgo))
+    else if (sort === 'rating') items.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    else items.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+
+    const box = document.getElementById('list')
+    box.textContent = ''
+    let lastLeague = null
+    for (const c of items) {
+      if (!onlyDpl && c.league !== lastLeague && sort !== 'cold') {
+        lastLeague = c.league
+        const h = document.createElement('div')
+        h.className = 'sect'
+        h.innerHTML = '<h2 class="display">' + (c.league === 'supply' ? 'DPL' : 'IPL') + '</h2>'
+        box.appendChild(h)
+      }
+      const st = of(c)
+      const el = document.createElement('div')
+      el.className = 'clan' + (st.dead ? ' dead' : '')
+      const a = ago(c.daysAgo)
+      el.innerHTML =
+        '<div class="head"><span class="nm"></span>' +
+        '<span class="badge">' + (c.league === 'supply' ? 'DPL' : 'IPL') + '</span>' +
+        '<span class="badge">' + (c.division ?? '-') + '부</span></div>' +
+        '<div class="meta"><span class="num">' + (c.rating ?? '—') + '점</span>' +
+        '<span class="num">' + c.win + '승 ' + c.lose + '패</span>' +
+        '<span class="num">' + c.matches + '판</span>' +
+        '<span class="num ' + a.cls + '">' + a.t + '</span></div>'
+      el.querySelector('.nm').textContent = c.name
+      const inputs = document.createElement('div')
+      inputs.className = 'inputs'
+      const inp = document.createElement('input')
+      inp.type = 'text'
+      inp.placeholder = '평소 부르는 이름 (쉼표로 여러 개)'
+      inp.value = st.alias || ''
+      inp.oninput = () => setOf(c, { alias: inp.value })
+      const del = document.createElement('button')
+      del.className = 'del'
+      del.textContent = st.dead ? '되살림' : '지움'
+      del.setAttribute('aria-pressed', String(!!st.dead))
+      del.onclick = () => { setOf(c, { dead: !of(c).dead }); render() }
+      inputs.appendChild(inp)
+      inputs.appendChild(del)
+      el.appendChild(inputs)
+      box.appendChild(el)
+    }
+    persist()
+  }
+
+  const btn = (id, fn) => { document.getElementById(id).onclick = fn }
+  const press = (ids, on) => ids.forEach((i) => document.getElementById(i).setAttribute('aria-pressed', String(i === on)))
+  btn('sortCold', () => { sort = 'cold'; press(['sortCold','sortRating','sortName'],'sortCold'); render() })
+  btn('sortRating', () => { sort = 'rating'; press(['sortCold','sortRating','sortName'],'sortRating'); render() })
+  btn('sortName', () => { sort = 'name'; press(['sortCold','sortRating','sortName'],'sortName'); render() })
+  btn('onlyDpl', function () { onlyDpl = !onlyDpl; this.setAttribute('aria-pressed', String(onlyDpl)); render() })
+  btn('onlyTodo', function () { onlyTodo = !onlyTodo; this.setAttribute('aria-pressed', String(onlyTodo)); render() })
+  document.getElementById('find').oninput = (e) => { find = e.target.value; render() }
+
+  const msg = document.getElementById('msg')
+  btn('copy', async () => {
+    const box = document.getElementById('out')
+    try { await navigator.clipboard.writeText(box.value); msg.innerHTML = '<span class="okmsg">복사했습니다</span>' }
+    catch (e) { box.select(); msg.innerHTML = '<span class="warnmsg">직접 복사해 주세요 (선택해 뒀습니다)</span>' }
+  })
+  btn('download', async () => {
+    const d = await window.claude?.use?.('downloads')
+    if (!d) { msg.innerHTML = '<span class="warnmsg">여기서는 파일 받기가 안 됩니다. 복사하기를 쓰세요</span>'; return }
+    try { await d.save({ filename: 'clan-names.json', data: document.getElementById('out').value })
+      msg.innerHTML = '<span class="okmsg">받았습니다</span>' }
+    catch (e) { msg.innerHTML = '<span class="warnmsg">못 받았습니다. 복사하기를 쓰세요</span>' }
+  })
+  btn('save', async () => {
+    msg.textContent = '저장 중…'
+    const art = await window.claude?.use?.('artifact')
+    if (!art) { msg.innerHTML = '<span class="warnmsg">여기서는 저장이 안 됩니다. 복사하기를 쓰세요</span>'; return }
+    try {
+      const doc = '<!doctype html>\n' + document.documentElement.outerHTML
+      const stamped = doc.replace(
+        /(<script id="saved" type="application\/json">)[\s\S]*?(<\/script>)/,
+        (_m, a, b) => a + JSON.stringify(state) + b,
+      )
+      await art.publish(stamped)
+      msg.innerHTML = '<span class="okmsg">저장했습니다</span>'
+    } catch (e) { msg.innerHTML = '<span class="warnmsg">저장 못 했습니다 — 복사하기로 보내 주세요</span>' }
+  })
+
+  render()
+})()
+</script>

@@ -1,0 +1,355 @@
+<title>구역 칠하기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --page: #060505; --card: #120c0c; --card2: #1a1010;
+    --line: #2a1616; --line-soft: #1a1010;
+    --text: #d6c9c9; --text-strong: #f6eded; --meta: #9a8080; --faint: #6b5555;
+    --accent: #d92b2b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--text);
+    font-family: 'Noto Sans KR', system-ui, sans-serif; font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .display { font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-weight: 400; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 20px 14px 60px; }
+  h1 { font-size: 24px; margin: 0 0 6px; color: var(--text-strong); }
+  .sub { font-size: 12px; line-height: 1.7; color: var(--meta); margin-bottom: 16px; }
+  .panel { border: 1px solid var(--line); background: var(--card); border-radius: 2px; padding: 12px 14px; margin-bottom: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .lab { font-size: 11px; color: var(--meta); width: 100%; margin-bottom: 4px; }
+  button {
+    font-family: inherit; font-size: 13px; color: var(--text);
+    background: var(--card2); border: 1px solid var(--line); border-radius: 2px;
+    padding: 7px 12px; cursor: pointer; touch-action: manipulation;
+  }
+  button:hover { border-color: var(--accent); }
+  button[aria-pressed="true"] { border-color: var(--accent); color: var(--text-strong); background: #241010; }
+  button[disabled] { opacity: .4; cursor: default; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  #stage { border: 1px solid var(--line); background: #0a0707; border-radius: 2px; overflow: hidden; touch-action: none; }
+  canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; touch-action: none; }
+  .stat { font-size: 12px; color: var(--meta); margin-top: 8px; }
+  .stat b { color: var(--text-strong); font-weight: 400; }
+  textarea {
+    width: 100%; height: 130px; margin-top: 8px; resize: vertical;
+    background: var(--card2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 2px; padding: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+  .note { border-left: 2px solid var(--accent); padding: 2px 0 2px 12px; font-size: 12px; line-height: 1.75; color: var(--meta); }
+  .ok { color: #2ea043; }
+  .warn { color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <h1 class="display">구역 칠하기</h1>
+  <div class="sub">
+    실제 킬 좌표 <span class="num">568,138</span>건을 격자에 얹었습니다. 밝을수록 그 칸에서 일이 많이 일어났습니다.<br>
+    이미 칠해 둔 <b>여섯 구역</b>이 색으로 보입니다 — 그걸 지형지물 삼아 <b>녹뒤</b>와 <b>머리</b>를 칠해 주세요.<br>
+    <b>손가락이나 마우스로 끌면</b> 칸에 불이 들어옵니다. 같은 칸을 다시 칠하면 지워집니다.
+  </div>
+
+  <div class="panel">
+    <div class="row"><span class="lab">무엇을 칠할까요</span></div>
+    <div class="row" id="brushes"></div>
+  </div>
+
+  <div class="panel">
+    <div class="row"><span class="lab">바탕에 무엇을 비출까요</span></div>
+    <div class="row" id="modes"></div>
+    <div class="row" style="margin-top:8px"><span class="lab">보기</span></div>
+    <div class="row">
+      <button id="toggleZones" aria-pressed="true">기존 구역 보이기</button>
+      <button id="toggleGrid" aria-pressed="true">격자선</button>
+      <button id="undo">되돌리기</button>
+      <button id="clearMine">내가 칠한 것 전부 지우기</button>
+    </div>
+  </div>
+
+  <div id="stage"><canvas id="cv"></canvas></div>
+  <div class="stat" id="stat"></div>
+
+  <div class="panel" style="margin-top:14px">
+    <div class="row"><span class="lab">결과 — 이대로 저에게 보내 주시면 바로 반영합니다</span></div>
+    <div class="row">
+      <button id="save">저장하기</button>
+      <button id="copy">복사하기</button>
+      <button id="download">파일로 받기</button>
+      <span id="saveMsg" class="stat" style="margin:0 0 0 4px"></span>
+    </div>
+    <textarea id="out" readonly></textarea>
+  </div>
+
+  <div class="panel">
+    <div class="note">
+      격자 한 칸은 게임 좌표 <span class="num">10</span>×<span class="num">10</span> 입니다 — 이미 칠해진 여섯 구역과 <b>같은 자</b>입니다.<br>
+      맵 그림 위에 올리지 않은 이유는 <b>맵 정렬이 아직 안 맞기 때문</b>입니다 (좌표의 28.9%만 맵 안에 들어갑니다).
+      실제 좌표 분포가 맵보다 정확합니다.<br>
+      칠한 것은 이 브라우저에 자동 저장됩니다. 창을 닫아도 남습니다.
+    </div>
+  </div>
+</div>
+
+<script id="zonedata" type="application/json">__DATA__</script>
+<script id="painted" type="application/json">__PAINTED__</script>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('zonedata').textContent)
+  const SAVED_KEY = 'sacloud.zonepaint.v1'
+
+  /* 칠할 수 있는 것 — 없는 두 곳이 먼저 온다 */
+  const BRUSHES = [
+    { key: 'NOKDWI', name: '녹뒤', color: '#39d353' },
+    { key: 'MERI', name: '머리', color: '#f2a33c' },
+    { key: '', name: '지우개', color: '#6b5555' },
+  ]
+  /* 이미 칠해진 것 — 참고용. 색은 서로 구분만 되면 된다 */
+  const REF_COLORS = {
+    BIRONG: '#5b8dd9', BUNKER: '#8d68c9', GJA: '#3fb0a0',
+    DALBANG: '#c9a03f', SEOLDAE: '#d92b2b', CONDWI: '#d95fa0',
+  }
+
+  const MODES = [
+    { key: 'vs', name: '스나가 죽은 자리', hint: '⑥ 이 실제로 세는 그림' },
+    { key: 'ks', name: '스나를 잡은 자리', hint: '' },
+    { key: 'v', name: '전체 죽은 자리', hint: '' },
+    { key: 'k', name: '전체 잡은 자리', hint: '' },
+  ]
+
+  let brush = 'NOKDWI'
+  let mode = 'vs'
+  let showZones = true
+  let showGrid = true
+  const history = []
+
+  /* 내가 칠한 것: "x,y" -> 라벨키 */
+  let mine = {}
+  try {
+    const embedded = JSON.parse(document.getElementById('painted').textContent || '{}')
+    if (embedded && typeof embedded === 'object') mine = embedded
+  } catch (e) { /* 비어 있으면 그냥 시작한다 */ }
+  try {
+    const local = localStorage.getItem(SAVED_KEY)
+    if (local) {
+      const parsed = JSON.parse(local)
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) mine = parsed
+    }
+  } catch (e) { /* 저장소를 못 읽어도 화면은 돈다 */ }
+
+  const minX = DATA.bounds.minX, maxX = DATA.bounds.maxX
+  const minY = DATA.bounds.minY, maxY = DATA.bounds.maxY
+  const cols = maxX - minX + 1, rows = maxY - minY + 1
+
+  /* 칸별 값 표 */
+  const val = new Map()
+  for (const c of DATA.cells) val.set(c.x + ',' + c.y, c)
+
+  const cv = document.getElementById('cv')
+  const ctx = cv.getContext('2d')
+  const CELL = 16
+  cv.width = cols * CELL
+  cv.height = rows * CELL
+
+  function maxOf(m) {
+    let mx = 1
+    for (const c of DATA.cells) { const v = c[m] || 0; if (v > mx) mx = v }
+    return mx
+  }
+  let peak = maxOf(mode)
+
+  function draw() {
+    ctx.fillStyle = '#0a0707'
+    ctx.fillRect(0, 0, cv.width, cv.height)
+
+    for (let gy = minY; gy <= maxY; gy++) {
+      for (let gx = minX; gx <= maxX; gx++) {
+        const px = (gx - minX) * CELL, py = (gy - minY) * CELL
+        const key = gx + ',' + gy
+        const c = val.get(key)
+        const raw = c ? (c[mode] || 0) : 0
+        if (raw > 0) {
+          /* 로그로 눌러야 옅은 자리도 보인다 */
+          const t = Math.log(1 + raw) / Math.log(1 + peak)
+          const g = Math.round(30 + t * 200)
+          ctx.fillStyle = 'rgb(' + g + ',' + g + ',' + g + ')'
+          ctx.fillRect(px, py, CELL, CELL)
+        }
+        if (showZones && DATA.zone[key]) {
+          ctx.fillStyle = REF_COLORS[DATA.zone[key]] || '#888'
+          ctx.globalAlpha = 0.45
+          ctx.fillRect(px, py, CELL, CELL)
+          ctx.globalAlpha = 1
+        }
+        if (mine[key]) {
+          const b = BRUSHES.find((x) => x.key === mine[key])
+          ctx.fillStyle = b ? b.color : '#fff'
+          ctx.globalAlpha = 0.85
+          ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2)
+          ctx.globalAlpha = 1
+        }
+        if (showGrid) {
+          ctx.strokeStyle = 'rgba(255,255,255,.055)'
+          ctx.lineWidth = 1
+          ctx.strokeRect(px + 0.5, py + 0.5, CELL - 1, CELL - 1)
+        }
+      }
+    }
+    report()
+  }
+
+  function report() {
+    const counts = {}
+    for (const k in mine) counts[mine[k]] = (counts[mine[k]] || 0) + 1
+    const parts = BRUSHES.filter((b) => b.key).map(
+      (b) => b.name + ' <b class="num">' + (counts[b.key] || 0) + '</b>칸',
+    )
+    document.getElementById('stat').innerHTML =
+      parts.join(' · ') +
+      ' &nbsp;·&nbsp; 격자 <span class="num">' + cols + '×' + rows + '</span>' +
+      ' &nbsp;·&nbsp; 값이 있는 칸 <span class="num">' + DATA.cells.length + '</span>'
+    document.getElementById('out').value = JSON.stringify(
+      { cell: DATA.cell, painted: mine, labels: { NOKDWI: '녹뒤', MERI: '머리' } },
+      null, 0,
+    )
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(mine)) } catch (e) { /* 못 써도 화면은 돈다 */ }
+  }
+
+  /* ── 칠하기 (마우스 · 손가락 둘 다) ─────────────────────── */
+  let painting = false
+  let lastKey = null
+
+  function cellAt(ev) {
+    const r = cv.getBoundingClientRect()
+    const sx = cv.width / r.width, sy = cv.height / r.height
+    const x = (ev.clientX - r.left) * sx, y = (ev.clientY - r.top) * sy
+    const gx = Math.floor(x / CELL) + minX, gy = Math.floor(y / CELL) + minY
+    if (gx < minX || gx > maxX || gy < minY || gy > maxY) return null
+    return gx + ',' + gy
+  }
+
+  function apply(key, toggle) {
+    if (!key || key === lastKey) return
+    lastKey = key
+    history.push(JSON.stringify(mine))
+    if (history.length > 200) history.shift()
+    if (brush === '') delete mine[key]
+    else if (toggle && mine[key] === brush) delete mine[key]
+    else mine[key] = brush
+    draw()
+  }
+
+  cv.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault()
+    painting = true
+    lastKey = null
+    cv.setPointerCapture(ev.pointerId)
+    apply(cellAt(ev), true)
+  })
+  cv.addEventListener('pointermove', (ev) => {
+    if (!painting) return
+    ev.preventDefault()
+    apply(cellAt(ev), false)
+  })
+  const stop = () => { painting = false; lastKey = null }
+  cv.addEventListener('pointerup', stop)
+  cv.addEventListener('pointercancel', stop)
+  cv.addEventListener('pointerleave', stop)
+
+  /* ── 단추들 ─────────────────────────────────────────────── */
+  const brushBox = document.getElementById('brushes')
+  BRUSHES.forEach((b) => {
+    const el = document.createElement('button')
+    el.innerHTML = '<span class="sw" style="background:' + b.color + '"></span>' + b.name
+    el.setAttribute('aria-pressed', String(b.key === brush))
+    el.onclick = () => {
+      brush = b.key
+      ;[...brushBox.children].forEach((c, i) => c.setAttribute('aria-pressed', String(BRUSHES[i].key === brush)))
+    }
+    brushBox.appendChild(el)
+  })
+
+  const modeBox = document.getElementById('modes')
+  MODES.forEach((m) => {
+    const el = document.createElement('button')
+    el.textContent = m.name
+    el.title = m.hint
+    el.setAttribute('aria-pressed', String(m.key === mode))
+    el.onclick = () => {
+      mode = m.key
+      peak = maxOf(mode)
+      ;[...modeBox.children].forEach((c, i) => c.setAttribute('aria-pressed', String(MODES[i].key === mode)))
+      draw()
+    }
+    modeBox.appendChild(el)
+  })
+
+  document.getElementById('toggleZones').onclick = function () {
+    showZones = !showZones
+    this.setAttribute('aria-pressed', String(showZones))
+    draw()
+  }
+  document.getElementById('toggleGrid').onclick = function () {
+    showGrid = !showGrid
+    this.setAttribute('aria-pressed', String(showGrid))
+    draw()
+  }
+  document.getElementById('undo').onclick = () => {
+    const prev = history.pop()
+    if (!prev) return
+    mine = JSON.parse(prev)
+    draw()
+  }
+  document.getElementById('clearMine').onclick = () => {
+    history.push(JSON.stringify(mine))
+    mine = {}
+    draw()
+  }
+
+  const msg = document.getElementById('saveMsg')
+  document.getElementById('copy').onclick = async () => {
+    const box = document.getElementById('out')
+    try {
+      await navigator.clipboard.writeText(box.value)
+      msg.innerHTML = '<span class="ok">복사했습니다</span>'
+    } catch (e) {
+      box.select()
+      msg.innerHTML = '<span class="warn">직접 복사해 주세요 (전체 선택해 뒀습니다)</span>'
+    }
+  }
+
+  document.getElementById('download').onclick = async () => {
+    const downloads = await window.claude?.use?.('downloads')
+    if (!downloads) { msg.innerHTML = '<span class="warn">파일 내려받기가 이 화면에서는 안 됩니다. 복사하기를 써 주세요</span>'; return }
+    try {
+      await downloads.save({ filename: 'zone-painted.json', data: document.getElementById('out').value })
+      msg.innerHTML = '<span class="ok">받았습니다</span>'
+    } catch (e) {
+      msg.innerHTML = '<span class="warn">받지 못했습니다. 복사하기를 써 주세요</span>'
+    }
+  }
+
+  document.getElementById('save').onclick = async () => {
+    msg.textContent = '저장 중…'
+    const artifact = await window.claude?.use?.('artifact')
+    if (!artifact) { msg.innerHTML = '<span class="warn">저장이 이 화면에서는 안 됩니다. 복사하기를 써 주세요</span>'; return }
+    try {
+      /* 칠한 것을 문서 안 `painted` 칸에 박아 넣고 그 문서를 통째로 새 판으로 올린다 */
+      const doc = '<!doctype html>\n' + document.documentElement.outerHTML
+      const stamped = doc.replace(
+        /(<script id="painted" type="application\/json">)[\s\S]*?(<\/script>)/,
+        (_m, a, b) => a + JSON.stringify(mine) + b,
+      )
+      await artifact.publish(stamped)
+      msg.innerHTML = '<span class="ok">저장했습니다</span>'
+    } catch (e) {
+      msg.innerHTML = '<span class="warn">저장하지 못했습니다 — 복사하기로 보내 주세요</span>'
+    }
+  }
+
+  draw()
+})()
+</script>

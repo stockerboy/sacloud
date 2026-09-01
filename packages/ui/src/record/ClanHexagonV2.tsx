@@ -162,11 +162,15 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
               측정중 {hexagon.measured}/{hexagon.axes.length}
             </span>
           ) : null}
-          {zoneAxis === undefined ? null : (
+          {/* 구역 표기는 **모자랄 때만** 적는다.
+              2026-09-01 에 사용자가 `녹뒤`·`머리` 를 직접 칠해 **넷이 다 찼다**.
+              다 찼는데도 `구역 4/4` 를 적으면 «뭔가 모자란가» 로 읽힌다 —
+              위의 `측정중 6/6` 을 안 적는 것과 같은 이유다. 모자라면 다시 나온다 */}
+          {zoneAxis !== undefined && hexagon.zoneLabelsUsed < hexagon.zoneLabelsTotal ? (
             <span className="num">
               구역 {hexagon.zoneLabelsUsed}/{hexagon.zoneLabelsTotal}
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 

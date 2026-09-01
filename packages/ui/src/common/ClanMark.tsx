@@ -28,7 +28,7 @@ import {
 
 export type { ClanMarkInput, ClanMarkSource }
 
-export type ClanMarkSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'max'
+export type ClanMarkSize = 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'max' | 'fluid'
 
 const SIZE: Record<ClanMarkSize, string> = {
   /** 매치 카드 라인업 (원본 w-4) */
@@ -42,6 +42,22 @@ const SIZE: Record<ClanMarkSize, string> = {
   lg: 'w-12 h-12',
   /** 프로필 헤더 (원본 .mark-max = 51px 고정) */
   max: 'w-mark-max h-mark-max',
+  /**
+   * **부모가 폭을 정한다** [신규 2026-09-01 · 신전 히어로].
+   *
+   * 위의 여섯 값은 전부 고정 px 다. 히어로의 1등 마크는 화면 폭에 따라 38px~76px 로
+   * 매끄럽게 커져야 해서 어느 것도 맞지 않았다. 감싼 요소에 `width` 를 주고 이 값을 쓴다.
+   *
+   * `h-*` 대신 `aspect-square` 인 이유 — 안쪽 겹이 `h-full` 이라 부모 높이가
+   * **확정값**이어야 한다. `h-auto` 로 두면 자식이 전부 absolute 라 높이가 0으로 접힌다.
+   *
+   * ── `block` 이 **반드시 있어야 한다** (2026-09-01 실제 렌더에서 잡았다)
+   *   이 컴포넌트의 바깥 요소는 `<span>` 이고, 인라인 요소에는 `width` 도 `aspect-ratio` 도
+   *   먹지 않는다. 위의 고정 크기들(`w-8 h-8` …)은 호출부가 대부분 flex 컨테이너라
+   *   자식이 블록화돼서 우연히 살아 있었다. `fluid` 는 그 우연에 기대면 안 된다 —
+   *   히어로에서 마크가 **크기 0으로 사라졌다.**
+   */
+  fluid: 'block w-full aspect-square',
 }
 
 export interface ClanMarkProps {

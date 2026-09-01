@@ -170,6 +170,31 @@ const ALLOWED = {
     writes: true,
     what: '로컬에서 집계한 클랜 육각형 V2 를 운영 MatchClanHexV2 에 밀어 넣는다 (배틀로그 원문이 운영에 없다). 멱등 · 추가만 한다',
   },
+  /*
+   * 클랜 육각형 V2 **요약** (D-238 후속).
+   *
+   * ⛔ **이 표가 없으면 클랜 페이지 육각형이 안 뜬다.** 질의가 읽는 것은 이제
+   *    `ClanHexV2Summary` 하나뿐이다 — `MatchClanHexV2` 를 아무리 밀어 넣어도
+   *    요약이 없으면 전부 `null` 이다. 경기 행을 넣었으면 **반드시 이어서 접어라.**
+   *
+   * 길이 둘이다. 어느 쪽이든 결과는 같다.
+   *   ① clan-hex-v2-summary        운영에서 직접 접는다 (원재료가 운영에 이미 있다)
+   *   ② clan-hex-v2-summary-push   로컬에서 접어 옮긴다 (운영이 읽는 양이 훨씬 작다)
+   *
+   * 처음 한 번은 ②를 권한다 — 로컬에서 값을 먼저 확인할 수 있고 운영 DB 를 오래 안 붙든다.
+   * **원재료(`MatchClanHexV2`)는 둘 다 안 건드린다.** 요약은 사본이고, 틀리면
+   * `--rebuild` 로 원재료에서 다시 만든다.
+   */
+  'clan-hex-v2-summary': {
+    cli: ['nexon', 'clan-hex-v2-summary'],
+    writes: true,
+    what: '운영의 MatchClanHexV2 를 클랜별로 접어 ClanHexV2Summary 에 넣는다 (D-238). 멱등 · 재개 가능 · 원재료는 안 건드린다',
+  },
+  'clan-hex-v2-summary-push': {
+    file: 'clanHexV2SummaryPush',
+    writes: true,
+    what: '로컬에서 접은 클랜 육각형 V2 요약을 운영 ClanHexV2Summary 에 밀어 넣는다. 멱등 · 추가만 한다',
+  },
 }
 
 const args = process.argv.slice(2)

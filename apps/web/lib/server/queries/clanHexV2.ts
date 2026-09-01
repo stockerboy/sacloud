@@ -5,8 +5,18 @@
  * 배틀로그 원문 ──clanHexV2Of──▶ MatchClanHexV2 (경기 × 클랜, tally 통째 JSON)
  *                                   │
  *                                   ├─▶ 경기 상세 : 두 행을 겹쳐 그린다  → normalizeAgainstFoe (Q7)
- *                                   └─▶ 클랜 페이지: 그 클랜 행을 SUM     → normalizeByPercentile (Q8)
+ *                                   │
+ *                                   └──잡이 미리 접는다──▶ ClanHexV2Summary (클랜 × 1)
+ *                                                             └─▶ 클랜 페이지 → normalizeByPercentile (Q8)
  * ```
+ *
+ * ── ⚠ **클랜 페이지는 `MatchClanHexV2` 를 읽지 않는다** (D-238)
+ *   전에는 여기서 리그 전체 경기 행을 읽어 그 자리에서 접었다. 그게 운영을 죽였다 —
+ *   열산 6,230행 × tally 1.1KB = **한 요청에 7MB**, `/clans/lpcrew/show` 가 10.6초 → 500.
+ *   지금은 잡(`clan-hex-v2-summary`)이 미리 접어 둔 `ClanHexV2Summary` 만 읽는다.
+ *   읽는 양이 「리그의 경기 행 수」에서 **「리그의 클랜 수」**로 바뀐다.
+ *   **이 경로에 `matchClanHexV2` 를 다시 들이지 마라.** 경기 상세(아래)는 두 행만 읽으므로
+ *   상관없다 — 문제는 언제나 «리그 전체를 읽는» 쪽 하나였다.
  *
  * **세는 규칙은 여기 없다.** 분자·분모는 잡(`apps/worker` 의 `clanHexV2Build`)이 배틀로그에서
  * 세어 `MatchClanHexV2.tally` 에 통째로 쌓아 두었고, 합산·비율·정규화는 전부
@@ -36,7 +46,7 @@ import {
   buildClanHexV2Raw,
   normalizeAgainstFoe,
   normalizeByPercentile,
-  sumClanHexTallies,
+  /* `sumClanHexTallies` 는 여기서 안 부른다 — 접는 일은 잡이 미리 해 둔다 (D-238) */
   type ClanHexTallyLike,
   type ClanHexV2,
 } from '@sacloud/contract'
@@ -51,43 +61,35 @@ import {
 const DISTRIBUTION_TTL_MS = 10 * 60 * 1000
 
 /**
- * 한 번에 읽는 행 수.
+ * 한 번에 읽는 **요약** 행 수.
  *
- * ⚠ **리그 전체 행을 한 번에 메모리에 올리지 않는다** (D-225 에서 두 번 터졌다).
- * 실측(2026-09-01 로컬):
+ * 요약은 클랜 하나에 한 행이라 리그 하나가 100행 안팎이다. 그래도 커서로 끊어 읽는
+ * 관례를 지킨다 (D-225) — 클랜 수는 늘 수 있다.
+ *
+ * ⚠ **여기서 `MatchClanHexV2` 를 읽지 않는다.** 아래는 무엇이 달라졌는지의 기록이다
+ * (`CLAUDE.md` 10-4 — 옛 판단을 지우지 않는다).
  *
  * ```
- * 전체 행            9,388
- * 가장 큰 리그        6,230 행 / 클랜 103곳
- * tally 한 줄 평균     1,142 바이트 (최대 1,183)
+ *                        전 (경기 행을 읽어 그 자리에서 접음)   후 (요약만 읽음)
+ * 가장 큰 리그(열산)      6,230행 × 1,142B ≈ 6.8MB              103행 × ?B
+ * 로컬 · 빈 캐시          585ms                                  ↓ 아래 D-238 기록 참조
+ * 운영                    10.6초 → 500                           ← 이것 때문에 바꿨다
  * ```
  *
- * 리그 하나를 통째로 읽으면 JSON 텍스트만 ~7MB 이고, 파싱된 객체는 그 몇 배가 된다.
- * 지금 크기라면 죽지는 않지만 **행 수는 배틀로그 수집이 늘수록 계속 는다** (D-218).
- * 그래서 커서로 1,000행씩 끊어 읽고, 읽는 즉시 클랜별 tally 에 **접어 넣는다** —
- * 최대로 들고 있는 것은 「한 배치 + 클랜 수(103)만큼의 합계 tally」 이고 행 수와 무관하다.
- *
- * ── 끊어 읽어도 **느려지지 않는다** (실측)
- *   ```
- *   1,000행 한 배치         67ms      × 7배치 ≈ 470ms
- *   6,230행 한 번에         493ms
- *   가장 큰 클랜 · 빈 캐시   585ms  ← 접는 시간까지 포함
- *   가장 큰 클랜 · 찬 캐시   0.37ms
- *   ```
- *
- * ── **인덱스로 줄일 수 있는 시간이 아니다**
- *   `EXPLAIN (ANALYZE)` 상 서버 실행은 **2.2ms** 다 (기본키 인덱스 스캔 + `LeagueClan`
- *   memoize 조인). 나머지는 전부 ~7MB 짜리 JSON 을 옮기고 파싱하는 값이다.
- *   그래서 **마이그레이션을 새로 만들지 않았다** — 걸어도 이 숫자가 안 움직인다.
- *   더 줄이려면 합산을 SQL(jsonb)로 내리거나 클랜 프로필 표를 따로 두어야 하는데,
- *   앞은 「세는 규칙은 계약 한 곳」을 깨고 뒤는 **D-235 가 명시적으로 금지**했다
- *   (표를 둘로 나누면 둘이 어긋날 자리가 생긴다).
+ * 옛 서술은 「끊어 읽어도 안 느려진다 · 인덱스로 줄일 수 있는 시간이 아니다」였고
+ * **그 관찰 자체는 맞았다.** 틀린 것은 결론이다 — 옮기는 양이 문제인데 옮기는 양을
+ * 안 줄이고 «괜찮다» 고 판정했다. 로컬 직결에서 585ms 였을 뿐이고, 풀러 너머에서는
+ * 같은 질의가 아니었다 (D-238).
  */
 const BATCH_SIZE = 1000
 
 /** 한 리그의 클랜별 **원값 육각형**(정규화 전). 백분위 모집단이자 그 클랜 자신의 값이다 */
 interface LeagueHexV2Distribution {
-  /** leagueClanId → 그 클랜 경기 행을 전부 합해 **한 번만 나눈** 육각형 */
+  /**
+   * leagueClanId → 그 클랜 경기 행을 전부 합해 **한 번만 나눈** 육각형.
+   *
+   * 합치는 일은 잡이 `ClanHexV2Summary` 에 미리 해 뒀고, 여기서는 나누기만 한다 (D-238).
+   */
   hexagons: Map<string, ClanHexV2>
 }
 
@@ -105,26 +107,34 @@ function tallyOf(value: unknown): ClanHexTallyLike | null {
 }
 
 /**
- * 리그 한 곳의 클랜별 합계를 만든다.
+ * 리그 한 곳의 **클랜별 육각형**을 만든다. 재료는 **미리 접어 둔 요약뿐**이다 (D-238).
  *
- * 배치로 읽으면서 **바로 접는다.** `sumClanHexTallies` 는 여러 개를 한 번에 받지만
- * 둘씩 접어도 결과가 같다 — 하는 일이 분자·분모 덧셈이라 결합법칙이 성립한다.
- * (`foeTeamNo` 만 예외적으로 «전부 같을 때만 남긴다» 인데, 둘씩 접어도 서로 다른 값이
- *  하나라도 섞이면 `null` 이 되어 같은 결과가 된다. 클랜 페이지에서는 어차피 안 쓴다.)
+ * ── 접는 일은 잡이 이미 했다
+ *   `ClanHexV2Summary.tally` 는 그 클랜의 경기 행을 `sumClanHexTallies` 로 접은 결과다
+ *   (`apps/worker/src/jobs/clanHexV2Summary.ts`). **여기서 접든 잡이 접든 값이 같다** —
+ *   하는 일이 분자·분모 덧셈이라 결합법칙이 성립한다. 그래서 옮기는 양만 줄고
+ *   숫자는 안 변한다.
+ *
+ * ── **버전을 반드시 건다** (3-B 5번)
+ *   해석이 바뀌면 잡이 새 버전으로 요약을 다시 만든다. 필터가 없으면 옛 판으로 접힌
+ *   값이 그대로 화면에 나온다. 버전이 안 맞는 요약은 **없는 것으로 친다** — 그러면
+ *   화면이 `측정중` 으로 떨어진다. 틀린 값을 그리는 것보다 낫다.
+ *
+ * ── 요약이 없으면 **그 클랜은 모집단에도 없다**
+ *   잡을 아직 안 돌렸거나 배틀로그가 없는 클랜이다. 백분위 모집단에 넣을 값이 없다.
  */
 async function buildDistribution(leagueId: string): Promise<LeagueHexV2Distribution> {
-  const sums = new Map<string, { tally: ClanHexTallyLike | null; matches: number }>()
+  const hexagons = new Map<string, ClanHexV2>()
 
   let cursor: string | null = null
   for (;;) {
-    const rows: { id: string; leagueClanId: string; tally: unknown }[] =
-      await prisma.matchClanHexV2.findMany({
+    const rows: { id: string; leagueClanId: string; tally: unknown; matches: number }[] =
+      await prisma.clanHexV2Summary.findMany({
         where: {
-          /* **버전을 반드시 건다** — 옛 줄이 남아 있으면 기준이 다른 값이 섞인다 */
+          leagueId,
           formulaVersion: CLAN_HEX_V2_CONFIG.formulaVersion,
-          leagueClan: { leagueId },
         },
-        select: { id: true, leagueClanId: true, tally: true },
+        select: { id: true, leagueClanId: true, tally: true, matches: true },
         orderBy: { id: 'asc' },
         take: BATCH_SIZE,
         ...(cursor === null ? {} : { cursor: { id: cursor }, skip: 1 }),
@@ -132,16 +142,10 @@ async function buildDistribution(leagueId: string): Promise<LeagueHexV2Distribut
     if (rows.length === 0) break
 
     for (const row of rows) {
-      const tally = tallyOf(row.tally)
-      if (tally === null) continue
-      const before = sums.get(row.leagueClanId)
-      if (before === undefined) {
-        sums.set(row.leagueClanId, { tally, matches: 1 })
-        continue
-      }
-      before.tally =
-        before.tally === null ? tally : sumClanHexTallies([before.tally, tally])
-      before.matches += 1
+      hexagons.set(
+        row.leagueClanId,
+        buildClanHexV2Raw({ tally: tallyOf(row.tally), matches: row.matches }),
+      )
     }
 
     if (rows.length < BATCH_SIZE) break
@@ -149,10 +153,6 @@ async function buildDistribution(leagueId: string): Promise<LeagueHexV2Distribut
     if (cursor === null) break
   }
 
-  const hexagons = new Map<string, ClanHexV2>()
-  for (const [leagueClanId, entry] of sums) {
-    hexagons.set(leagueClanId, buildClanHexV2Raw({ tally: entry.tally, matches: entry.matches }))
-  }
   return { hexagons }
 }
 
@@ -172,11 +172,15 @@ function distributionOf(leagueId: string, now: number): Promise<LeagueHexV2Distr
 /**
  * **클랜 페이지용** — 그 클랜 경기 행을 전부 합해 **한 번만** 나눈다 (D-235 Q8).
  *
+ * 합치는 일은 잡(`clan-hex-v2-summary`)이 미리 해 뒀다. 여기가 읽는 것은
+ * `ClanHexV2Summary` 뿐이다 — **경기 행을 읽지 않는다** (D-238).
+ *
  * 정규화는 **같은 리그 클랜들 안에서의 백분위**다. 모집단에 그 클랜 자신도 넣는다 —
  * 빼면 자기가 1등일 때 백분위가 100 이 되어 «모두를 이겼다» 가 «모집단 밖» 으로 읽힌다.
  * (계약의 `normalizeByPercentile` 은 넣고 빼는 것을 부르는 쪽에 맡긴다.)
  *
- * 행이 하나도 없으면 `null` 이다 — 배틀로그를 아직 못 받은 클랜이고, 화면은 카드를
+ * 요약이 없으면 `null` 이다 — 배틀로그를 아직 못 받은 클랜이거나, **접는 잡을 아직 안
+ * 돌렸거나**, 요약이 옛 판으로 접혀 있는 것이다. 셋 다 «아직 모른다» 이고 화면은 카드를
  * **그리지 않는다**. 여섯 축이 전부 `측정중` 인 빈 카드를 그리지 않는다 (D-106).
  * 옛 판(`leagueClanHexagon`)과 같은 규칙이다.
  */

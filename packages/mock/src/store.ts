@@ -656,6 +656,39 @@ export function getClanRanks(
   return paginate(rows, cursor, size, (item) => item.league_clan_id)
 }
 
+/**
+ * 전체 통합 클랜 래더 — 부리그를 **섞어서** rating 순 (D-104).
+ *
+ * 실제 서버의 `getOverallClanLadder` 와 짝이다. 메인 신전 히어로가 «IPL 1등» 을
+ * 그릴 때 부른다. Mock 리그는 전부 부리그 1~N 짜리 공식리그라 `category` 는
+ * `official` 고정이다 — `getClanRanks` 와 같은 이유다.
+ *
+ * @param limit 상위 N건만. 생략하면 전부.
+ */
+export function getOverallClanRanks(leagueId: string, limit?: number): ClanRankRow[] | null {
+  if (!leagueById.has(leagueId)) return null
+  const rows = (leagueClansByLeague.get(leagueId) ?? [])
+    .filter((entry) => !entry.placement)
+    .sort((a, b) => b.rating - a.rating || a.id.localeCompare(b.id))
+    .map((leagueClan, index) => {
+      const clan = clanById.get(leagueClan.clanId)
+      if (!clan) return null
+      return {
+        rank: index + 1,
+        league_clan_id: leagueClan.id,
+        clan: toClanSummary(clan),
+        division: leagueClan.division,
+        win: leagueClan.win,
+        lose: leagueClan.lose,
+        win_rate: winRate(leagueClan.win, leagueClan.lose),
+        rating: leagueClan.rating,
+        category: 'official',
+      }
+    })
+    .filter((entry): entry is ClanRankRow => Boolean(entry))
+  return limit === undefined ? rows : rows.slice(0, limit)
+}
+
 export function getPlayerRanks(leagueId: string, cursor: string | null, size: number): Page<PlayerRankRow> | null {
   if (!leagueById.has(leagueId)) return null
   const rows: PlayerRankRow[] = rankedPlayers(leagueId)

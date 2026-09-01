@@ -87,11 +87,14 @@ function toRow(row: LadderRow, rank: number): ClanRankRow {
  *   여기서 한 번 거르면 전체·부리그·무소속 래더가 전부 따라온다.
  *   **경기 기록은 지우지 않는다** — 순위에서만 빠진다.
  */
-async function ladderRows(where: object): Promise<LadderRow[]> {
+async function ladderRows(where: object, limit?: number): Promise<LadderRow[]> {
   return prisma.leagueClan.findMany({
     where: { ...where, expelledAt: null },
     orderBy: LADDER_ORDER,
     select: LADDER_SELECT,
+    /* `take` 는 **정렬 뒤에** 걸린다. 상위 N건만 필요한 호출자가 전체를 끌어오지 않게 한다.
+       순위(`rank`)는 어차피 정렬된 배열의 위치라 상위 N건에서도 정확하다 */
+    ...(limit === undefined ? {} : { take: limit }),
   }) as Promise<LadderRow[]>
 }
 
@@ -100,9 +103,16 @@ async function ladderRows(where: object): Promise<LadderRow[]> {
  *
  * 부리그도 Tier도 보정값이 아니다. 2부가 1부 위에 오는 것은 정상이다.
  * 배치고사 중인 클랜은 순위를 매기지 않는다(다른 랭킹과 같은 규칙).
+ *
+ * @param limit 상위 N건만. 생략하면 전부 준다(예전 동작 그대로).
+ *   메인 신전 히어로는 **1등 한 곳**만 쓰므로 `limit=1` 로 부른다 —
+ *   43건을 다 받아 화면에서 최대값을 고르지 않기 위해서다 (D-238).
  */
-export async function getOverallClanLadder(leagueId: string): Promise<ClanRankRow[]> {
-  const rows = await ladderRows({ leagueId, placement: false, clan: { active: true } })
+export async function getOverallClanLadder(
+  leagueId: string,
+  limit?: number,
+): Promise<ClanRankRow[]> {
+  const rows = await ladderRows({ leagueId, placement: false, clan: { active: true } }, limit)
   return rows.map((row, index) => toRow(row, index + 1))
 }
 

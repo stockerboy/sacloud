@@ -15,6 +15,13 @@ export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPo
  */
 export { SiteIntro } from './home/SiteIntro'
 
+/* 메인 최상단 신전 히어로 (2026-09-01 사용자 지시) */
+export {
+  TempleHero,
+  type TempleHeroProps,
+  type TempleHeroTop,
+} from './hero/TempleHero'
+
 export { RelativeTime } from './common/RelativeTime'
 export { formatRelativeTime, JUST_NOW } from './common/relative-time'
 export { Skeleton } from './common/Skeleton'
@@ -264,3 +271,27 @@ export {
 export { Egg, type EggProps, type EggSize } from './egg/Egg'
 export { EggVeil, EggVeilLegend, EggVeilPanel } from './egg/EggVeil'
 export { EggGallery, type EggGalleryItem, type EggGalleryProps } from './egg/EggGallery'
+
+/* --- 가챠샵 (2026-09-01 사용자 지시) ---
+   「알」(`./egg/*`)을 **대체하지 않는다.** 같은 뜻(가려 두고 궁금하게 만든다)을 다른
+   연출로 옮긴 새 판이고, 옛 판은 그대로 남아 있다 (`CLAUDE.md` 10-4). */
+export {
+  Capsule,
+  type CapsuleProps,
+  type CapsuleSize,
+  type CapsuleState,
+} from './gacha/Capsule'
+export {
+  CapsulePile,
+  capsuleJitter,
+  capsuleJitterHash,
+  type CapsuleJitter,
+  type CapsulePileItem,
+  type CapsulePileProps,
+} from './gacha/CapsulePile'
+export {
+  BELT_SECONDS_PER_ITEM,
+  GachaShelf,
+  type GachaShelfItem,
+  type GachaShelfProps,
+} from './gacha/GachaShelf'

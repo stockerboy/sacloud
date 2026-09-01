@@ -1,0 +1,236 @@
+<title>클랜 별칭 · 정리</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --page:#060505; --card:#120c0c; --card2:#1a1010; --line:#2a1616; --soft:#1a1010;
+    --text:#d6c9c9; --strong:#f6eded; --meta:#9a8080; --faint:#6b5555; --accent:#d92b2b;
+    --ok:#2ea043;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--text);
+    font-family:'Noto Sans KR',system-ui,sans-serif; font-size:15px; -webkit-font-smoothing:antialiased; }
+  .num { font-family:'JetBrains Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  .display { font-family:'Black Han Sans','Noto Sans KR',sans-serif; font-weight:400; }
+  .wrap { max-width:1120px; margin:0 auto; padding:20px 12px 60px; }
+  h1 { font-size:24px; margin:0 0 6px; color:var(--strong); }
+  .sub { font-size:12px; line-height:1.75; color:var(--meta); margin-bottom:14px; }
+  .panel { border:1px solid var(--line); background:var(--card); border-radius:2px; padding:12px; margin-bottom:12px; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  button { font-family:inherit; font-size:13px; color:var(--text); background:var(--card2);
+    border:1px solid var(--line); border-radius:2px; padding:7px 11px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button[aria-pressed="true"] { border-color:var(--accent); color:var(--strong); background:#241010; }
+  input[type=text] { font-family:inherit; font-size:13px; color:var(--text); background:var(--card2);
+    border:1px solid var(--line); border-radius:2px; padding:6px 8px; width:100%; }
+  input[type=text]:focus { outline:none; border-color:var(--accent); }
+  .clan { border-bottom:1px solid var(--soft); padding:9px 0; }
+  .clan.dead { opacity:.45; }
+  .head { display:flex; align-items:baseline; gap:8px; }
+  .nm { font-size:15px; color:var(--strong); word-break:break-all; }
+  .badge { font-size:10px; border:1px solid var(--line); border-radius:2px; padding:1px 5px; color:var(--meta); flex-shrink:0; }
+  .meta { font-size:11px; color:var(--meta); margin-top:3px; display:flex; flex-wrap:wrap; gap:8px; }
+  .cold { color:var(--accent); }
+  .warm { color:var(--ok); }
+  .inputs { display:flex; gap:6px; margin-top:6px; align-items:center; }
+  .del { flex-shrink:0; font-size:12px; padding:6px 10px; }
+  .sect { margin-top:20px; display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .sect h2 { font-size:18px; margin:0; color:var(--strong); }
+  textarea { width:100%; height:120px; margin-top:8px; background:var(--card2); color:var(--text);
+    border:1px solid var(--line); border-radius:2px; padding:8px;
+    font-family:'JetBrains Mono',monospace; font-size:11px; resize:vertical; }
+  .note { border-left:2px solid var(--accent); padding:2px 0 2px 12px; font-size:12px; line-height:1.75; color:var(--meta); }
+  .okmsg { color:var(--ok); } .warnmsg { color:var(--accent); }
+</style>
+
+<div class="wrap">
+  <h1 class="display">클랜 별칭 · 정리</h1>
+  <div class="sub">
+    <b>별칭 칸</b>에 평소 부르는 이름을 적어 주세요. 여러 개면 쉼표로 나눕니다 — <span class="num">베리타스, 베리</span><br>
+    적어 주시면 유저가 그렇게 검색해도 나오게 만듭니다.<br>
+    <b>[지움]</b>을 누르면 «활동 안 함»으로 표시됩니다. 실제로 지우지는 않습니다 — 제가 보고 판단합니다.<br>
+    <b>마지막 경기</b>가 오래된 순으로 정렬해 두면 활동 안 하는 클랜이 위로 올라옵니다.
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <button id="sortCold" aria-pressed="true">오래된 순</button>
+      <button id="sortRating">래더 순</button>
+      <button id="sortName">이름 순</button>
+      <button id="onlyDpl">DPL 만</button>
+      <button id="onlyTodo">별칭 안 적은 것만</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="find" placeholder="클랜명으로 좁히기" style="max-width:260px">
+    </div>
+    <div class="sub" id="counts" style="margin:8px 0 0"></div>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="panel" style="margin-top:16px">
+    <div class="row" style="margin-bottom:6px">
+      <button id="save">저장하기</button>
+      <button id="copy">복사하기</button>
+      <button id="download">파일로 받기</button>
+      <span id="msg" class="sub" style="margin:0 0 0 4px"></span>
+    </div>
+    <textarea id="out" readonly></textarea>
+  </div>
+
+  <div class="panel">
+    <div class="note">
+      클랜마크는 여기 못 띄웁니다 — 이 화면은 바깥에서 그림을 못 불러옵니다.<br>
+      적은 것은 이 브라우저에 자동 저장됩니다. 창을 닫아도 남습니다.<br>
+      숫자는 <span class="num">2026-09-01</span> 기준입니다.
+    </div>
+  </div>
+</div>
+
+<script id="clans" type="application/json">[{"league":"nolink","slug":"20305722","name":"nightbloom","rating":3266,"win":248,"lose":151,"division":3,"matches":399,"daysAgo":1},{"league":"nolink","slug":"minjihun","name":"sometimes","rating":3241,"win":150,"lose":120,"division":2,"matches":270,"daysAgo":3},{"league":"nolink","slug":"IrenecIan","name":"ceIestial","rating":3225,"win":525,"lose":556,"division":3,"matches":1081,"daysAgo":1},{"league":"nolink","slug":"fdd8","name":"amaryllis","rating":3222,"win":848,"lose":891,"division":2,"matches":1739,"daysAgo":1},{"league":"nolink","slug":"adgeodud20","name":"hingˇ","rating":3221,"win":95,"lose":58,"division":2,"matches":153,"daysAgo":1},{"league":"nolink","slug":"luverduck12","name":"igloo","rating":3154,"win":1218,"lose":802,"division":2,"matches":2020,"daysAgo":1},{"league":"nolink","slug":"asdf123498","name":"idylic","rating":3150,"win":423,"lose":457,"division":2,"matches":880,"daysAgo":1},{"league":"nolink","slug":"Reverse3","name":"dominator:","rating":3147,"win":623,"lose":487,"division":4,"matches":1110,"daysAgo":1},{"league":"nolink","slug":"saffggaaz","name":"grave","rating":3140,"win":186,"lose":133,"division":2,"matches":319,"daysAgo":1},{"league":"nolink","slug":"01025606089","name":"〃veritas","rating":3138,"win":480,"lose":468,"division":2,"matches":948,"daysAgo":1},{"league":"nolink","slug":"OhMyLoVe","name":"imperium:","rating":3090,"win":1085,"lose":1104,"division":4,"matches":2189,"daysAgo":1},{"league":"nolink","slug":"hanbi0302","name":"luvme","rating":3079,"win":535,"lose":525,"division":3,"matches":1060,"daysAgo":1},{"league":"nolink","slug":"Ssnake","name":"Рromise","rating":3056,"win":599,"lose":528,"division":4,"matches":1127,"daysAgo":1},{"league":"nolink","slug":"terry9532","name":"Envy","rating":3051,"win":150,"lose":168,"division":4,"matches":318,"daysAgo":1},{"league":"nolink","slug":"dbghr","name":"supernova^","rating":3049,"win":1468,"lose":1223,"division":5,"matches":2691,"daysAgo":1},{"league":"nolink","slug":"ipl-ckdals2457","name":"hardcores","rating":3039,"win":498,"lose":429,"division":2,"matches":927,"daysAgo":1},{"league":"nolink","slug":"ssdko","name":"methodcrew","rating":3034,"win":560,"lose":588,"division":3,"matches":1148,"daysAgo":1},{"league":"nolink","slug":"wweqeqtd123","name":"vAN`kA","rating":3032,"win":186,"lose":145,"division":5,"matches":331,"daysAgo":1},{"league":"nolink","slug":"uava01","name":"vuvuzela","rating":3028,"win":1036,"lose":1184,"division":2,"matches":2220,"daysAgo":1},{"league":"nolink","slug":"pigforever","name":"QuasaR-","rating":3023,"win":1163,"lose":1062,"division":3,"matches":2225,"daysAgo":1},{"league":"nolink","slug":"adelioz","name":"publicity","rating":3017,"win":857,"lose":812,"division":5,"matches":1669,"daysAgo":1},{"league":"nolink","slug":"ipl-4473","name":"evermore","rating":3015,"win":791,"lose":687,"division":2,"matches":1478,"daysAgo":1},{"league":"nolink","slug":"valentina2","name":"adererror","rating":3007,"win":506,"lose":480,"division":4,"matches":986,"daysAgo":1},{"league":"nolink","slug":"dregonlif","name":"izmir-","rating":2994,"win":402,"lose":439,"division":4,"matches":841,"daysAgo":1},{"league":"nolink","slug":"zzim1","name":"romantico","rating":2993,"win":80,"lose":86,"division":5,"matches":166,"daysAgo":1},{"league":"nolink","slug":"clanhanul","name":"Asterisk","rating":2976,"win":858,"lose":874,"division":4,"matches":1732,"daysAgo":1},{"league":"nolink","slug":"eee07","name":"Atraxia","rating":2974,"win":883,"lose":603,"division":3,"matches":1486,"daysAgo":1},{"league":"nolink","slug":"jjangkangsu","name":"Major-","rating":2968,"win":600,"lose":475,"division":5,"matches":1075,"daysAgo":1},{"league":"nolink","slug":"JJUN","name":"pleniIune","rating":2949,"win":1006,"lose":1063,"division":3,"matches":2069,"daysAgo":1},{"league":"nolink","slug":"ferwfwfwfwf","name":"deluxe","rating":2947,"win":580,"lose":590,"division":2,"matches":1170,"daysAgo":1},{"league":"nolink","slug":"tispfgid","name":"whitelie:","rating":2934,"win":837,"lose":831,"division":5,"matches":1668,"daysAgo":1},{"league":"nolink","slug":"JosenFam","name":"reBelIion","rating":2933,"win":1079,"lose":978,"division":5,"matches":2057,"daysAgo":1},{"league":"nolink","slug":"wdasdw","name":"레트로폭탄","rating":2903,"win":490,"lose":562,"division":4,"matches":1052,"daysAgo":1},{"league":"nolink","slug":"friendliness1","name":"recent.wct-","rating":2898,"win":142,"lose":178,"division":5,"matches":320,"daysAgo":1},{"league":"nolink","slug":"ipl-yoonsh1971","name":"NeedΒackup","rating":2897,"win":316,"lose":493,"division":5,"matches":809,"daysAgo":1},{"league":"nolink","slug":"ircroger","name":"souffler","rating":2873,"win":681,"lose":785,"division":6,"matches":1466,"daysAgo":1},{"league":"nolink","slug":"lee2","name":"FlexibIe","rating":2872,"win":251,"lose":338,"division":6,"matches":589,"daysAgo":2},{"league":"nolink","slug":"rokasa12","name":"overstep","rating":2850,"win":569,"lose":633,"division":5,"matches":1202,"daysAgo":1},{"league":"nolink","slug":"DooLii","name":"Lyrical:","rating":2842,"win":545,"lose":852,"division":6,"matches":1397,"daysAgo":1},{"league":"nolink","slug":"ipl-backspace00","name":"crucialrz","rating":2823,"win":309,"lose":328,"division":4,"matches":637,"daysAgo":1},{"league":"nolink","slug":"tjdwlsqhrdl","name":"Raze'","rating":2787,"win":270,"lose":417,"division":6,"matches":687,"daysAgo":1},{"league":"nolink","slug":"WebClanGood","name":"베이직","rating":2717,"win":84,"lose":257,"division":6,"matches":341,"daysAgo":1},{"league":"nolink","slug":"kelly123","name":"everwhite","rating":2692,"win":450,"lose":822,"division":6,"matches":1272,"daysAgo":1},{"league":"supply","slug":"sorentolove","name":"-tsAr.nTc","rating":3139,"win":330,"lose":164,"division":2,"matches":7026,"daysAgo":5},{"league":"supply","slug":"suddenalexia","name":"afterpray","rating":3093,"win":1316,"lose":1207,"division":2,"matches":15337,"daysAgo":5},{"league":"supply","slug":"ehdrndusgkq","name":"鬼神。","rating":3091,"win":325,"lose":383,"division":2,"matches":6910,"daysAgo":5},{"league":"supply","slug":"lpcrew","name":"MiraGe.","rating":3049,"win":345,"lose":301,"division":1,"matches":8752,"daysAgo":19},{"league":"supply","slug":"LaonJN","name":"PokerFace.","rating":3034,"win":198,"lose":233,"division":1,"matches":6824,"daysAgo":6},{"league":"supply","slug":"friendliness1","name":"recent.wct-","rating":3024,"win":232,"lose":208,"division":2,"matches":5001,"daysAgo":9},{"league":"supply","slug":"ddorr","name":"Iatency-","rating":3019,"win":943,"lose":1078,"division":2,"matches":7469,"daysAgo":5},{"league":"supply","slug":"Gurisi","name":"Castle","rating":3015,"win":316,"lose":226,"division":2,"matches":9599,"daysAgo":5},{"league":"supply","slug":"AimEnvy","name":"saint","rating":3002,"win":279,"lose":221,"division":1,"matches":10115,"daysAgo":6},{"league":"supply","slug":"tqtqtq1234","name":"mercedes-","rating":3002,"win":142,"lose":78,"division":2,"matches":3928,"daysAgo":6},{"league":"supply","slug":"real-전설","name":"전설","rating":3000,"win":0,"lose":0,"division":1,"matches":9,"daysAgo":10},{"league":"supply","slug":"real-xenics-storm","name":"Xenics-Storm","rating":3000,"win":0,"lose":0,"division":1,"matches":0,"daysAgo":null},{"league":"supply","slug":"real-악마","name":"악마","rating":3000,"win":0,"lose":0,"division":1,"matches":0,"daysAgo":null},{"league":"supply","slug":"abc0091","name":"mazot","rating":3000,"win":0,"lose":0,"division":2,"matches":4146,"daysAgo":159},{"league":"supply","slug":"real-해적","name":"해적","rating":3000,"win":0,"lose":0,"division":1,"matches":0,"daysAgo":null},{"league":"supply","slug":"system1","name":"sugarcandy","rating":3000,"win":0,"lose":0,"division":1,"matches":598,"daysAgo":787},{"league":"supply","slug":"artilugiaa","name":"매너","rating":3000,"win":0,"lose":0,"division":1,"matches":493,"daysAgo":794},{"league":"supply","slug":"devilsclanz","name":"어린이","rating":3000,"win":0,"lose":0,"division":1,"matches":1715,"daysAgo":250},{"league":"supply","slug":"rkfwkemf","name":"cloudmax","rating":3000,"win":0,"lose":0,"division":1,"matches":792,"daysAgo":794},{"league":"supply","slug":"sky123pz","name":"flying-","rating":3000,"win":0,"lose":0,"division":1,"matches":958,"daysAgo":552},{"league":"supply","slug":"roma","name":"hing","rating":3000,"win":2,"lose":0,"division":2,"matches":2914,"daysAgo":125},{"league":"supply","slug":"dasd123445","name":"supremacy-","rating":3000,"win":4,"lose":4,"division":1,"matches":415,"daysAgo":152},{"league":"supply","slug":"aami6nn156","name":"블랙","rating":3000,"win":0,"lose":0,"division":2,"matches":2823,"daysAgo":323},{"league":"supply","slug":"wyj5531","name":"sixnine","rating":3000,"win":0,"lose":0,"division":1,"matches":196,"daysAgo":796},{"league":"supply","slug":"01077363650","name":"lunatic`Gaming","rating":3000,"win":8,"lose":4,"division":1,"matches":1896,"daysAgo":10},{"league":"supply","slug":"w2makerule","name":"daytona","rating":3000,"win":0,"lose":0,"division":1,"matches":2237,"daysAgo":497},{"league":"supply","slug":"5882832","name":"smite","rating":3000,"win":10,"lose":7,"division":1,"matches":2157,"daysAgo":124},{"league":"supply","slug":"bikiniline","name":"gaIactico-","rating":3000,"win":39,"lose":34,"division":1,"matches":4069,"daysAgo":74},{"league":"supply","slug":"togs4033","name":"des`per@do.","rating":3000,"win":122,"lose":109,"division":1,"matches":6711,"daysAgo":42},{"league":"supply","slug":"0000000000000","name":"IinecIan:","rating":3000,"win":0,"lose":0,"division":1,"matches":3092,"daysAgo":493},{"league":"supply","slug":"admin-test-clan-div","name":"부리그테스트","rating":3000,"win":0,"lose":0,"division":2,"matches":0,"daysAgo":null},{"league":"supply","slug":"DirTyGhost","name":"Βlackpearl","rating":3000,"win":0,"lose":0,"division":1,"matches":925,"daysAgo":624},{"league":"supply","slug":"ajwjdjwuwuei5","name":"immortals","rating":3000,"win":5,"lose":3,"division":1,"matches":1334,"daysAgo":103},{"league":"supply","slug":"sdsdsz","name":"eternalrz","rating":2992,"win":135,"lose":100,"division":1,"matches":3779,"daysAgo":9},{"league":"supply","slug":"footmania2","name":"stylecIan","rating":2991,"win":339,"lose":269,"division":1,"matches":10255,"daysAgo":6},{"league":"supply","slug":"dsdsd2d2ds","name":"마왕","rating":2988,"win":23,"lose":12,"division":2,"matches":3254,"daysAgo":17},{"league":"supply","slug":"YONSEIHEAD","name":"Grand'rN","rating":2987,"win":76,"lose":61,"division":1,"matches":3542,"daysAgo":12},{"league":"supply","slug":"sachamundara","name":"Chamundara","rating":2981,"win":236,"lose":303,"division":2,"matches":5890,"daysAgo":6},{"league":"supply","slug":"HardBotrio","name":"innatemass","rating":2977,"win":31,"lose":34,"division":1,"matches":2218,"daysAgo":17},{"league":"supply","slug":"luminouszzang","name":"recent.wct","rating":2975,"win":557,"lose":668,"division":2,"matches":8555,"daysAgo":5},{"league":"supply","slug":"adfafasf","name":"＃chaseplay","rating":2974,"win":136,"lose":115,"division":2,"matches":6235,"daysAgo":6},{"league":"supply","slug":"ircutopia","name":"멘토르","rating":2968,"win":183,"lose":186,"division":1,"matches":5182,"daysAgo":6},{"league":"supply","slug":"resun","name":"resun`z","rating":2967,"win":178,"lose":175,"division":1,"matches":8476,"daysAgo":8},{"league":"supply","slug":"ulsanulsan","name":"UlsaN_CIaN","rating":2961,"win":7,"lose":14,"division":1,"matches":2698,"daysAgo":5},{"league":"supply","slug":"42jowoon","name":"AK-47","rating":2960,"win":7,"lose":9,"division":2,"matches":2481,"daysAgo":24},{"league":"supply","slug":"aksrrzi","name":"rNtwo-","rating":2958,"win":111,"lose":104,"division":2,"matches":1745,"daysAgo":46},{"league":"supply","slug":"rebirthpro","name":"［P.ro™］","rating":2946,"win":273,"lose":220,"division":1,"matches":7704,"daysAgo":13},{"league":"supply","slug":"zxcvddr2","name":"CeIebrity","rating":2946,"win":136,"lose":82,"division":2,"matches":4036,"daysAgo":6},{"league":"supply","slug":"re4z","name":"dravelior","rating":2940,"win":399,"lose":411,"division":2,"matches":6552,"daysAgo":5},{"league":"supply","slug":"inpum","name":"respects-","rating":2940,"win":14,"lose":23,"division":1,"matches":615,"daysAgo":10},{"league":"supply","slug":"e2stro2017","name":"e2stro-","rating":2936,"win":835,"lose":892,"division":2,"matches":11674,"daysAgo":5},{"league":"supply","slug":"rinopin","name":"hilarious-","rating":2927,"win":276,"lose":364,"division":1,"matches":11080,"daysAgo":8},{"league":"supply","slug":"weew1557","name":"야부리！","rating":2918,"win":102,"lose":112,"division":2,"matches":1231,"daysAgo":5},{"league":"supply","slug":"DOKKIMAMA","name":"★PURPLE★","rating":2917,"win":396,"lose":441,"division":2,"matches":2770,"daysAgo":5},{"league":"supply","slug":"Akillclass","name":"ThelVub","rating":2908,"win":266,"lose":251,"division":2,"matches":4943,"daysAgo":5},{"league":"supply","slug":"happytogether","name":"Haunted","rating":2888,"win":39,"lose":59,"division":2,"matches":1024,"daysAgo":6},{"league":"supply","slug":"susucom","name":"unfair","rating":2881,"win":27,"lose":56,"division":1,"matches":3586,"daysAgo":12},{"league":"supply","slug":"Ensemble","name":"isyour","rating":2879,"win":43,"lose":63,"division":2,"matches":3631,"daysAgo":32},{"league":"supply","slug":"skytak","name":"recentwct-","rating":2877,"win":59,"lose":84,"division":2,"matches":3009,"daysAgo":8},{"league":"supply","slug":"activitysc","name":"<#ever_wC>","rating":2872,"win":61,"lose":91,"division":1,"matches":1007,"daysAgo":12},{"league":"supply","slug":"Onepoint","name":"One.PoinT","rating":2864,"win":319,"lose":366,"division":1,"matches":10591,"daysAgo":5},{"league":"supply","slug":"namechoo","name":"사신","rating":2862,"win":23,"lose":37,"division":2,"matches":266,"daysAgo":51},{"league":"supply","slug":"warsong","name":"＃chasepIay","rating":2847,"win":96,"lose":137,"division":2,"matches":3846,"daysAgo":23}]</script>
+<script id="saved" type="application/json">{}</script>
+
+<script>
+(function () {
+  const CLANS = JSON.parse(document.getElementById('clans').textContent)
+  const KEY = 'sacloud.clannames.v1'
+
+  let state = {}
+  try {
+    const emb = JSON.parse(document.getElementById('saved').textContent || '{}')
+    if (emb && typeof emb === 'object') state = emb
+  } catch (e) {}
+  try {
+    const loc = localStorage.getItem(KEY)
+    if (loc) {
+      const parsed = JSON.parse(loc)
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) state = parsed
+    }
+  } catch (e) {}
+
+  let sort = 'cold'
+  let onlyDpl = false
+  let onlyTodo = false
+  let find = ''
+
+  const of = (c) => state[c.league + '/' + c.slug] || { alias: '', dead: false }
+  const setOf = (c, patch) => {
+    const k = c.league + '/' + c.slug
+    state[k] = Object.assign({ alias: '', dead: false }, state[k], patch)
+    if (!state[k].alias && !state[k].dead) delete state[k]
+    persist()
+  }
+
+  function persist() {
+    document.getElementById('out').value = JSON.stringify({ clanNames: state }, null, 0)
+    try { localStorage.setItem(KEY, JSON.stringify(state)) } catch (e) {}
+    const aliased = Object.values(state).filter((v) => v.alias && v.alias.trim()).length
+    const dead = Object.values(state).filter((v) => v.dead).length
+    document.getElementById('counts').innerHTML =
+      '전체 <b class="num">' + CLANS.length + '</b>곳 · 별칭 적은 곳 <b class="num">' + aliased +
+      '</b> · 활동 안 함 표시 <b class="num">' + dead + '</b>'
+  }
+
+  function ago(days) {
+    if (days === null || days === undefined) return { t: '경기 없음', cls: 'cold' }
+    if (days <= 3) return { t: days + '일 전', cls: 'warm' }
+    if (days <= 30) return { t: days + '일 전', cls: '' }
+    return { t: days + '일 전', cls: 'cold' }
+  }
+
+  function render() {
+    let items = CLANS.slice()
+    if (onlyDpl) items = items.filter((c) => c.league === 'supply')
+    if (onlyTodo) items = items.filter((c) => !(of(c).alias || '').trim())
+    if (find.trim()) {
+      const q = find.trim().toLowerCase()
+      items = items.filter((c) => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q))
+    }
+    if (sort === 'cold') items.sort((a, b) => (b.daysAgo === null ? 1e9 : b.daysAgo) - (a.daysAgo === null ? 1e9 : a.daysAgo))
+    else if (sort === 'rating') items.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+    else items.sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+
+    const box = document.getElementById('list')
+    box.textContent = ''
+    let lastLeague = null
+    for (const c of items) {
+      if (!onlyDpl && c.league !== lastLeague && sort !== 'cold') {
+        lastLeague = c.league
+        const h = document.createElement('div')
+        h.className = 'sect'
+        h.innerHTML = '<h2 class="display">' + (c.league === 'supply' ? 'DPL' : 'IPL') + '</h2>'
+        box.appendChild(h)
+      }
+      const st = of(c)
+      const el = document.createElement('div')
+      el.className = 'clan' + (st.dead ? ' dead' : '')
+      const a = ago(c.daysAgo)
+      el.innerHTML =
+        '<div class="head"><span class="nm"></span>' +
+        '<span class="badge">' + (c.league === 'supply' ? 'DPL' : 'IPL') + '</span>' +
+        '<span class="badge">' + (c.division ?? '-') + '부</span></div>' +
+        '<div class="meta"><span class="num">' + (c.rating ?? '—') + '점</span>' +
+        '<span class="num">' + c.win + '승 ' + c.lose + '패</span>' +
+        '<span class="num">' + c.matches + '판</span>' +
+        '<span class="num ' + a.cls + '">' + a.t + '</span></div>'
+      el.querySelector('.nm').textContent = c.name
+      const inputs = document.createElement('div')
+      inputs.className = 'inputs'
+      const inp = document.createElement('input')
+      inp.type = 'text'
+      inp.placeholder = '평소 부르는 이름 (쉼표로 여러 개)'
+      inp.value = st.alias || ''
+      inp.oninput = () => setOf(c, { alias: inp.value })
+      const del = document.createElement('button')
+      del.className = 'del'
+      del.textContent = st.dead ? '되살림' : '지움'
+      del.setAttribute('aria-pressed', String(!!st.dead))
+      del.onclick = () => { setOf(c, { dead: !of(c).dead }); render() }
+      inputs.appendChild(inp)
+      inputs.appendChild(del)
+      el.appendChild(inputs)
+      box.appendChild(el)
+    }
+    persist()
+  }
+
+  const btn = (id, fn) => { document.getElementById(id).onclick = fn }
+  const press = (ids, on) => ids.forEach((i) => document.getElementById(i).setAttribute('aria-pressed', String(i === on)))
+  btn('sortCold', () => { sort = 'cold'; press(['sortCold','sortRating','sortName'],'sortCold'); render() })
+  btn('sortRating', () => { sort = 'rating'; press(['sortCold','sortRating','sortName'],'sortRating'); render() })
+  btn('sortName', () => { sort = 'name'; press(['sortCold','sortRating','sortName'],'sortName'); render() })
+  btn('onlyDpl', function () { onlyDpl = !onlyDpl; this.setAttribute('aria-pressed', String(onlyDpl)); render() })
+  btn('onlyTodo', function () { onlyTodo = !onlyTodo; this.setAttribute('aria-pressed', String(onlyTodo)); render() })
+  document.getElementById('find').oninput = (e) => { find = e.target.value; render() }
+
+  const msg = document.getElementById('msg')
+  btn('copy', async () => {
+    const box = document.getElementById('out')
+    try { await navigator.clipboard.writeText(box.value); msg.innerHTML = '<span class="okmsg">복사했습니다</span>' }
+    catch (e) { box.select(); msg.innerHTML = '<span class="warnmsg">직접 복사해 주세요 (선택해 뒀습니다)</span>' }
+  })
+  btn('download', async () => {
+    const d = await window.claude?.use?.('downloads')
+    if (!d) { msg.innerHTML = '<span class="warnmsg">여기서는 파일 받기가 안 됩니다. 복사하기를 쓰세요</span>'; return }
+    try { await d.save({ filename: 'clan-names.json', data: document.getElementById('out').value })
+      msg.innerHTML = '<span class="okmsg">받았습니다</span>' }
+    catch (e) { msg.innerHTML = '<span class="warnmsg">못 받았습니다. 복사하기를 쓰세요</span>' }
+  })
+  btn('save', async () => {
+    msg.textContent = '저장 중…'
+    const art = await window.claude?.use?.('artifact')
+    if (!art) { msg.innerHTML = '<span class="warnmsg">여기서는 저장이 안 됩니다. 복사하기를 쓰세요</span>'; return }
+    try {
+      const doc = '<!doctype html>\n' + document.documentElement.outerHTML
+      const stamped = doc.replace(
+        /(<script id="saved" type="application\/json">)[\s\S]*?(<\/script>)/,
+        (_m, a, b) => a + JSON.stringify(state) + b,
+      )
+      await art.publish(stamped)
+      msg.innerHTML = '<span class="okmsg">저장했습니다</span>'
+    } catch (e) { msg.innerHTML = '<span class="warnmsg">저장 못 했습니다 — 복사하기로 보내 주세요</span>' }
+  })
+
+  render()
+})()
+</script>

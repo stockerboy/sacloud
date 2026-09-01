@@ -1,0 +1,959 @@
+<title>가챠샵 설명서</title>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* ──────────────────────────────────────────────────────────────
+   D-204 「적진」 토큰 그대로. 새 색을 만들지 않았다.
+   이 페이지는 어두운 화면 하나로 확정한다 — 그래서 body 에 바탕색을 명시한다.
+   (뷰어 테마가 밝아도 이 팔레트가 그대로 칠해진다)
+   ────────────────────────────────────────────────────────────── */
+:root {
+  --page:       #060505;
+  --card:       #120c0c;
+  --card2:      #1a1010;
+  --line:       #2a1616;
+  --line-soft:  #1a1010;
+  --text:       #d6c9c9;
+  --strong:     #f6eded;
+  --meta:       #9a8080;
+  --faint:      #6b5555;
+  --accent:     #d92b2b;
+  --online:     #2ea043;
+  --lamp-off:   #3a2323;
+
+  --max: 1000px;
+  --radius: 2px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: 'Noto Sans KR', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.display { font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-weight: 400; letter-spacing: -0.01em; }
+
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 18px 80px; }
+
+/* ── 머리 ─────────────────────────────────────────── */
+.hero { padding: 44px 0 28px; border-bottom: 1px solid var(--line); }
+.kicker { font-size: 12px; letter-spacing: .16em; color: var(--accent); }
+h1.display { font-size: 40px; line-height: 1.15; margin: 10px 0 0; color: var(--strong); }
+.hero p { margin: 12px 0 0; max-width: 46em; color: var(--text); }
+
+/* ── 절 ───────────────────────────────────────────── */
+section { padding-top: 40px; }
+h2.display { font-size: 24px; margin: 0; color: var(--strong); line-height: 1.3; }
+.sub { margin: 6px 0 0; font-size: 13px; color: var(--meta); max-width: 48em; }
+.rule { height: 1px; background: var(--line); border: 0; margin: 14px 0 0; }
+
+h3 { font-size: 15px; margin: 26px 0 0; color: var(--strong); font-weight: 700; }
+h3 .tag { font-size: 11px; color: var(--faint); font-weight: 400; margin-left: 8px; letter-spacing: .06em; }
+
+/* ── 잠김 / 열림 두 장 ─────────────────────────────── */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; align-items: start; }
+@media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+
+.panel { border: 1px solid var(--line); background: var(--card); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11px; letter-spacing: .1em; margin-bottom: 10px; }
+.st-locked { color: var(--faint); }
+.st-open   { color: var(--accent); }
+.panel-head .what { color: var(--meta); letter-spacing: 0; font-size: 11px; }
+
+/* 실제 EggVeilPanel 과 같은 가림 — blur(6px) · saturate(0) · opacity .35 */
+.veil { position: relative; }
+.veil > .veil-in { filter: blur(6px) saturate(0); opacity: .35; pointer-events: none; user-select: none; }
+.veil > .veil-msg {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 5px; text-align: center; padding: 0 10px;
+}
+.veil-msg .m1 { font-size: 13px; color: var(--text); }
+.veil-msg .m2 { font-size: 12px; color: var(--faint); }
+
+/* 표 한 칸을 가리는 대체 표기 (EGG_VEIL_MARK) */
+.mark { letter-spacing: .1em; color: var(--faint); user-select: none; }
+
+/* ── 줄 ───────────────────────────────────────────── */
+.row { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+.row:last-child { border-bottom: 0; }
+.rank { width: 22px; flex-shrink: 0; text-align: right; font-size: 12px; color: var(--faint); }
+.nm { min-width: 0; flex-grow: 1; font-size: 14px; color: var(--strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt { flex-shrink: 0; font-size: 14px; color: var(--accent); }
+.gm { width: 48px; flex-shrink: 0; text-align: right; font-size: 12px; color: var(--meta); }
+.lamps { display: flex; flex-shrink: 0; align-items: center; gap: 10px; font-size: 11px; }
+.lamp-cell { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.dot { display: inline-block; width: 6px; height: 6px; border-radius: 9999px; flex-shrink: 0; }
+
+.kv { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.kv:last-child { border-bottom: 0; }
+.kv .k { color: var(--meta); }
+.kv .v { color: var(--strong); }
+.kv .v.hot { color: var(--accent); }
+
+/* 프로필 머리 */
+.phead .name { font-size: 22px; color: var(--strong); }
+.phead .meta { font-size: 12px; color: var(--meta); margin-top: 2px; }
+.stats { display: flex; gap: 18px; margin-top: 12px; flex-wrap: wrap; }
+.stat .lab { font-size: 11px; color: var(--meta); }
+.stat .val { font-size: 19px; color: var(--strong); }
+.stat .val.hot { color: var(--accent); }
+.bar { height: 4px; background: var(--lamp-off); margin-top: 10px; display: flex; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+
+/* 육각형 */
+svg.hex { display: block; width: 100%; max-width: 232px; height: auto; margin: 2px auto 0; }
+.hexhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--strong); }
+.hexhead .r { font-size: 11px; color: var(--meta); }
+.hexfoot { font-size: 11px; color: var(--meta); margin-top: 6px; }
+.legend { display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 11px; color: var(--meta); margin-top: 6px; }
+.legend span.sw { display: inline-block; width: 8px; height: 8px; margin-right: 5px; vertical-align: -1px; }
+.sw-us  { border: 1px solid var(--accent); background: rgba(217,43,43,.12); }
+.sw-foe { border: 1px solid var(--text); }
+
+/* 매치 카드 (원래 보이는 것) */
+.match { border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--card); border-radius: var(--radius); padding: 11px 13px; }
+.match + .match { margin-top: 8px; }
+.match.lose { border-left-color: var(--faint); }
+.match .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--meta); }
+.match .mid { display: flex; align-items: center; gap: 12px; margin-top: 7px; flex-wrap: wrap; }
+.match .res { font-size: 14px; color: var(--accent); width: 34px; flex-shrink: 0; }
+.match.lose .res { color: var(--faint); }
+.match .kda { font-size: 14px; color: var(--strong); }
+.match .rate { font-size: 11px; color: var(--meta); }
+.match .vs { font-size: 12px; color: var(--text); margin-left: auto; text-align: right; }
+.pill { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--accent); color: var(--accent); border-radius: var(--radius); padding: 1px 5px; font-size: 10px; line-height: 1.4; }
+
+/* 안내 상자 */
+.note { border-left: 2px solid var(--accent); padding: 4px 0 4px 14px; font-size: 13px; color: var(--meta); margin-top: 14px; }
+.note strong { color: var(--text); font-weight: 400; }
+
+.box { border: 1px solid var(--line); background: var(--card); border-radius: var(--radius); padding: 16px 18px; margin-top: 12px; }
+.box.flat { background: var(--card2); }
+
+/* 검색 예시 */
+.search-demo { border: 1px solid var(--line); background: var(--card2); border-radius: var(--radius); padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+.search-demo .caret { color: var(--accent); }
+.search-demo .q { color: var(--strong); font-size: 15px; }
+.hits { margin-top: 8px; }
+.hit { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; flex-wrap: wrap; }
+.hit:last-child { border-bottom: 0; }
+.hit .real { color: var(--strong); }
+.hit .arrow { color: var(--faint); }
+.hit .alias { color: var(--meta); font-size: 12px; }
+
+/* 언제·어디에 */
+.pick { border: 1px solid var(--accent); background: var(--card); border-radius: var(--radius); padding: 16px 18px; margin-top: 12px; }
+.pick .lead { font-size: 12px; letter-spacing: .12em; color: var(--accent); }
+.pick h4 { margin: 6px 0 0; font-size: 18px; color: var(--strong); font-weight: 700; line-height: 1.4; }
+
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+@media (max-width: 760px) { .grid3 { grid-template-columns: 1fr; } }
+
+table.plain { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+table.plain th, table.plain td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+table.plain th { color: var(--meta); font-weight: 400; font-size: 12px; }
+table.plain td { color: var(--text); }
+table.plain td.n { color: var(--strong); white-space: nowrap; }
+.scroll-x { overflow-x: auto; }
+
+ul.tight { margin: 8px 0 0; padding-left: 18px; }
+ul.tight li { margin: 4px 0; }
+ul.tight li::marker { color: var(--faint); }
+
+.foot { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--faint); }
+
+@media (max-width: 420px) {
+  h1.display { font-size: 30px; }
+  h2.display { font-size: 20px; }
+  .wrap { padding: 0 14px 64px; }
+  .gm { width: 42px; }
+  .lamps { gap: 8px; }
+}
+</style>
+
+<div class="wrap">
+
+<!-- ══════════════════════════ 머리 ══════════════════════════ -->
+<div class="hero">
+  <div class="kicker">SACLOUD 가챠샵</div>
+  <h1 class="display">뽑으면<br>이런 걸 보게 됩니다</h1>
+  <p>
+    모든 클랜과 선수의 기록이 <b style="color:var(--strong);font-weight:400">캡슐 안에</b> 들어 있습니다.
+    지운 게 아니라 덮어 둔 겁니다. 캡슐을 열면 가려 둔 숫자가 그대로 나옵니다.
+    아래는 <b style="color:var(--strong);font-weight:400">열기 전</b>과 <b style="color:var(--strong);font-weight:400">연 뒤</b>를 나란히 놓은 것입니다.
+  </p>
+
+  <!-- 캡슐 그림 — 클랜마크는 자리만 그린 도형이다 (원본 마크를 쓰지 않는다) -->
+  <svg viewBox="0 0 520 150" style="display:block;width:100%;max-width:520px;height:auto;margin:22px 0 0" role="img" aria-label="닫힌 캡슐 셋과 열린 캡슐 하나">
+    <defs>
+      <filter id="cap-blur"><feGaussianBlur stdDeviation="3.2"/></filter>
+      <filter id="cap-glow" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="4" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <linearGradient id="cap-skin" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#efe4e4" stop-opacity=".13"/>
+        <stop offset="1" stop-color="#efe4e4" stop-opacity=".04"/>
+      </linearGradient>
+    </defs>
+
+    <!-- 닫힌 캡슐 셋 -->
+    <g>
+      <circle cx="62" cy="66" r="40" fill="url(#cap-skin)" stroke="#2a1616" stroke-width="1"/>
+      <g filter="url(#cap-blur)" opacity=".5">
+        <polygon points="62,44 80,76 44,76" fill="#9a8080"/>
+        <circle cx="62" cy="70" r="8" fill="#6b5555"/>
+      </g>
+      <path d="M22 66 h80" stroke="#2a1616" stroke-width="1"/>
+      <rect x="22" y="116" width="80" height="18" fill="#120c0c" stroke="#2a1616"/>
+      <text x="62" y="129" text-anchor="middle" font-size="10" fill="#9a8080" font-family="'Noto Sans KR',sans-serif">MiraGe.</text>
+    </g>
+    <g>
+      <circle cx="156" cy="66" r="40" fill="url(#cap-skin)" stroke="#2a1616" stroke-width="1"/>
+      <g filter="url(#cap-blur)" opacity=".5">
+        <rect x="140" y="48" width="32" height="32" fill="#9a8080"/>
+        <circle cx="156" cy="64" r="7" fill="#120c0c"/>
+      </g>
+      <path d="M116 66 h80" stroke="#2a1616" stroke-width="1"/>
+      <rect x="116" y="116" width="80" height="18" fill="#120c0c" stroke="#2a1616"/>
+      <text x="156" y="129" text-anchor="middle" font-size="10" fill="#9a8080" font-family="'Noto Sans KR',sans-serif">veritas</text>
+    </g>
+    <g>
+      <circle cx="250" cy="66" r="40" fill="url(#cap-skin)" stroke="#2a1616" stroke-width="1"/>
+      <g filter="url(#cap-blur)" opacity=".5">
+        <circle cx="250" cy="64" r="17" fill="none" stroke="#9a8080" stroke-width="9"/>
+        <rect x="246" y="44" width="8" height="42" fill="#6b5555"/>
+      </g>
+      <path d="M210 66 h80" stroke="#2a1616" stroke-width="1"/>
+      <rect x="210" y="116" width="80" height="18" fill="#120c0c" stroke="#2a1616"/>
+      <text x="250" y="129" text-anchor="middle" font-size="10" fill="#9a8080" font-family="'Noto Sans KR',sans-serif">exOnePoinT</text>
+    </g>
+
+    <text x="316" y="72" font-size="18" fill="#6b5555" font-family="'Noto Sans KR',sans-serif">›</text>
+
+    <!-- 열린 캡슐 — 위아래로 갈라지고 마크가 또렷해진다 -->
+    <g>
+      <path d="M 405 58 a 40 40 0 0 1 80 0 z" fill="url(#cap-skin)" stroke="#2a1616" transform="translate(0,-9)"/>
+      <path d="M 405 74 a 40 40 0 0 0 80 0 z" fill="url(#cap-skin)" stroke="#2a1616" transform="translate(0,9)"/>
+      <g filter="url(#cap-glow)">
+        <polygon points="445,48 463,80 427,80" fill="#d92b2b"/>
+        <circle cx="445" cy="74" r="8" fill="#f6eded"/>
+      </g>
+      <rect x="405" y="116" width="80" height="18" fill="#120c0c" stroke="#d92b2b"/>
+      <text x="445" y="129" text-anchor="middle" font-size="10" fill="#f6eded" font-family="'Noto Sans KR',sans-serif">MiraGe.</text>
+    </g>
+  </svg>
+  <p style="font-size:12px;color:var(--faint);margin-top:8px">
+    캡슐 안은 그 클랜의 마크입니다. 닫혀 있으면 흐릿하고, 열면 또렷해지면서 은은하게 빛납니다.
+  </p>
+</div>
+
+
+<!-- ══════════════════════════ 1. 클랜 ══════════════════════════ -->
+<section>
+  <h2 class="display">클랜을 뽑으면</h2>
+  <p class="sub">왼쪽이 지금, 오른쪽이 연 뒤입니다. 자리와 크기는 그대로고 <b style="color:var(--text);font-weight:400">읽지 못하게 덮어</b> 둔 것뿐입니다.</p>
+  <hr class="rule">
+
+  <!-- 1-1 승률 · 전적 -->
+  <h3>승률 · N승 N패<span class="tag">클랜 프로필 머리</span></h3>
+  <div class="pair">
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-locked">▨ 열기 전</span><span class="what">판수는 보입니다</span></div>
+      <div class="phead">
+        <div class="name display">MiraGe.</div>
+        <div class="meta">DPL · 1부리그 · <span class="num">7</span>위</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="lab">전적</div><div class="val num">418판</div></div>
+        <div class="stat"><div class="lab">승 / 패</div><div class="val"><span class="mark">▨▨</span></div></div>
+        <div class="stat"><div class="lab">승률</div><div class="val"><span class="mark">▨▨</span></div></div>
+        <div class="stat"><div class="lab">래더</div><div class="val num">3,094점</div></div>
+      </div>
+      <div class="bar"><i style="width:0"></i></div>
+      <p style="font-size:12px;color:var(--faint);margin:8px 0 0">
+        <span class="mark" style="margin-right:6px">▨▨</span>캡슐을 열면 기록을 볼 수 있습니다
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">● 연 뒤</span><span class="what">같은 자리에 숫자가 들어옵니다</span></div>
+      <div class="phead">
+        <div class="name display">MiraGe.</div>
+        <div class="meta">DPL · 1부리그 · <span class="num">7</span>위</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="lab">전적</div><div class="val num">418판</div></div>
+        <div class="stat"><div class="lab">승 / 패</div><div class="val num">241 / 177</div></div>
+        <div class="stat"><div class="lab">승률</div><div class="val num hot">57.7%</div></div>
+        <div class="stat"><div class="lab">래더</div><div class="val num">3,094점</div></div>
+      </div>
+      <div class="bar"><i style="width:57.7%"></i></div>
+      <p style="font-size:12px;color:var(--meta);margin:8px 0 0">승패 막대도 함께 살아납니다.</p>
+    </div>
+
+  </div>
+
+  <!-- 1-2 클랜 육각형 -->
+  <h3>클랜 육각형<span class="tag">여섯 축 · D-235</span></h3>
+  <p class="sub">스나싸움 · 소수싸움 · 세이브 · 게임템포 · B어택성공 · A어택성공. 넓이가 곧 그 클랜의 모양입니다.</p>
+  <div class="pair">
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-locked">▨ 열기 전</span><span class="what">자리는 그대로 둡니다</span></div>
+      <div class="veil">
+        <div class="veil-in" aria-hidden="true">
+          <div class="hexhead"><span>클랜 육각형</span><span class="r num">구역 2/4</span></div>
+          <svg class="hex" viewBox="0 0 260 208">
+            <polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,66.8 162.21,85.4 162.21,122.6 130,141.2 97.79,122.6 97.79,85.4" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,91.8 140.74,97.8 140.74,110.2 130,116.2 119.26,110.2 119.26,97.8" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <g stroke="#2a1616" stroke-width=".6">
+              <line x1="130" y1="104" x2="130" y2="42"/>
+              <line x1="130" y1="104" x2="183.69" y2="73"/>
+              <line x1="130" y1="104" x2="183.69" y2="135"/>
+              <line x1="130" y1="104" x2="130" y2="166"/>
+              <line x1="130" y1="104" x2="76.31" y2="135"/>
+              <line x1="130" y1="104" x2="76.31" y2="73"/>
+            </g>
+            <polygon points="130,61.84 159.53,86.95 168.12,126.01 130,142.44 87.05,128.8 106.38,90.36" fill="#d92b2b" fill-opacity=".12" stroke="#d92b2b" stroke-width="1.4"/>
+            <g fill="#d92b2b">
+              <circle cx="130" cy="61.84" r="2.1"/><circle cx="159.53" cy="86.95" r="2.1"/>
+              <circle cx="168.12" cy="126.01" r="2.1"/><circle cx="130" cy="142.44" r="2.1"/>
+              <circle cx="87.05" cy="128.8" r="2.1"/><circle cx="106.38" cy="90.36" r="2.1"/>
+            </g>
+            <g font-size="9" fill="#f6eded" font-family="'Noto Sans KR',sans-serif">
+              <text x="130" y="24" text-anchor="middle">스나싸움</text>
+              <text x="199.28" y="64" text-anchor="start">소수싸움</text>
+              <text x="199.28" y="144" text-anchor="start">세이브</text>
+              <text x="130" y="184" text-anchor="middle">게임템포</text>
+              <text x="60.72" y="144" text-anchor="end">B어택성공</text>
+              <text x="60.72" y="64" text-anchor="end">A어택성공</text>
+            </g>
+          </svg>
+          <div style="margin-top:8px">
+            <div class="kv"><span class="k">스나싸움</span><span class="v hot num">41%</span></div>
+            <div class="kv"><span class="k">소수싸움</span><span class="v hot num">29%</span></div>
+            <div class="kv"><span class="k">세이브</span><span class="v hot num">34%</span></div>
+            <div class="kv"><span class="k">게임템포</span><span class="v hot num">18.3초</span></div>
+            <div class="kv"><span class="k">B어택성공</span><span class="v hot num">52%</span></div>
+            <div class="kv"><span class="k">A어택성공</span><span class="v hot num">47%</span></div>
+          </div>
+          <div class="hexfoot"><span class="num">경기 418</span> · <span class="num">레드 라운드 3,180/6,742</span></div>
+        </div>
+        <div class="veil-msg">
+          <div class="m1">캡슐을 열면 기록을 볼 수 있습니다</div>
+          <div class="m2">가입하고 본인 인증에 성공하면 열 수 있습니다</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">● 연 뒤</span><span class="what">여섯 축과 값</span></div>
+      <div class="hexhead"><span>클랜 육각형</span><span class="r num">구역 2/4</span></div>
+      <svg class="hex" viewBox="0 0 260 208" role="img" aria-label="클랜 육각형">
+        <!-- 눈금 다섯 겹 — 한 칸이 20%p -->
+        <polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,66.8 162.21,85.4 162.21,122.6 130,141.2 97.79,122.6 97.79,85.4" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,91.8 140.74,97.8 140.74,110.2 130,116.2 119.26,110.2 119.26,97.8" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <!-- 축 여섯 줄 -->
+        <g stroke="#2a1616" stroke-width=".6" stroke-opacity=".75">
+          <line x1="130" y1="104" x2="130" y2="42"/>
+          <line x1="130" y1="104" x2="183.69" y2="73"/>
+          <line x1="130" y1="104" x2="183.69" y2="135"/>
+          <line x1="130" y1="104" x2="130" y2="166"/>
+          <line x1="130" y1="104" x2="76.31" y2="135"/>
+          <line x1="130" y1="104" x2="76.31" y2="73"/>
+        </g>
+        <polygon points="130,61.84 159.53,86.95 168.12,126.01 130,142.44 87.05,128.8 106.38,90.36"
+                 fill="#d92b2b" fill-opacity=".12" stroke="#d92b2b" stroke-width="1.4"/>
+        <g fill="#d92b2b">
+          <circle cx="130" cy="61.84" r="2.1"/><circle cx="159.53" cy="86.95" r="2.1"/>
+          <circle cx="168.12" cy="126.01" r="2.1"/><circle cx="130" cy="142.44" r="2.1"/>
+          <circle cx="87.05" cy="128.8" r="2.1"/><circle cx="106.38" cy="90.36" r="2.1"/>
+        </g>
+        <g font-size="9" fill="#f6eded" font-family="'Noto Sans KR',sans-serif">
+          <text x="130" y="24" text-anchor="middle">스나싸움</text>
+          <text x="199.28" y="64" text-anchor="start">소수싸움</text>
+          <text x="199.28" y="144" text-anchor="start">세이브</text>
+          <text x="130" y="184" text-anchor="middle">게임템포</text>
+          <text x="60.72" y="144" text-anchor="end">B어택성공</text>
+          <text x="60.72" y="64" text-anchor="end">A어택성공</text>
+        </g>
+      </svg>
+      <div style="margin-top:8px">
+        <div class="kv"><span class="k">스나싸움</span><span class="v hot num">41%</span></div>
+        <div class="kv"><span class="k">소수싸움</span><span class="v hot num">29%</span></div>
+        <div class="kv"><span class="k">세이브</span><span class="v hot num">34%</span></div>
+        <div class="kv"><span class="k">게임템포</span><span class="v hot num">18.3초</span></div>
+        <div class="kv"><span class="k">B어택성공</span><span class="v hot num">52%</span></div>
+        <div class="kv"><span class="k">A어택성공</span><span class="v hot num">47%</span></div>
+      </div>
+      <div class="hexfoot"><span class="num">경기 418</span> · <span class="num">레드 라운드 3,180/6,742</span></div>
+    </div>
+
+  </div>
+
+  <!-- 1-3 경기별 육각형 -->
+  <h3>경기별 육각형<span class="tag">경기 상세 · 두 클랜을 겹쳐 그립니다</span></h3>
+  <p class="sub">한 경기 안에서 <b style="color:var(--text);font-weight:400">두 클랜을 포개</b> 놓습니다. 그 경기에서 축마다 큰 쪽이 바깥이고, 크기 차이로 누가 뭘 잘했는지 봅니다.</p>
+  <div class="pair">
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-locked">▨ 열기 전</span><span class="what">경기 목록·스코어는 그대로 보입니다</span></div>
+      <div class="veil">
+        <div class="veil-in" aria-hidden="true">
+          <div class="hexhead"><span>경기 육각형</span><span class="r">제3보급창고</span></div>
+          <svg class="hex" viewBox="0 0 260 208">
+            <polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,66.8 162.21,85.4 162.21,122.6 130,141.2 97.79,122.6 97.79,85.4" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,91.8 140.74,97.8 140.74,110.2 130,116.2 119.26,110.2 119.26,97.8" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <g stroke="#2a1616" stroke-width=".6">
+              <line x1="130" y1="104" x2="130" y2="42"/>
+              <line x1="130" y1="104" x2="183.69" y2="73"/>
+              <line x1="130" y1="104" x2="183.69" y2="135"/>
+              <line x1="130" y1="104" x2="130" y2="166"/>
+              <line x1="130" y1="104" x2="76.31" y2="135"/>
+              <line x1="130" y1="104" x2="76.31" y2="73"/>
+            </g>
+            <polygon points="130,64.32 183.69,73 152.01,116.71 130,166 90.81,126.63 76.31,73" fill="none" stroke="#d6c9c9" stroke-width="1.2"/>
+            <polygon points="130,42 163.29,84.78 183.69,135 130,152.36 76.31,135 100.47,86.95" fill="#d92b2b" fill-opacity=".12" stroke="#d92b2b" stroke-width="1.4"/>
+            <g font-size="9" fill="#f6eded" font-family="'Noto Sans KR',sans-serif">
+              <text x="130" y="24" text-anchor="middle">스나싸움</text>
+              <text x="199.28" y="64" text-anchor="start">소수싸움</text>
+              <text x="199.28" y="144" text-anchor="start">세이브</text>
+              <text x="130" y="184" text-anchor="middle">게임템포</text>
+              <text x="60.72" y="144" text-anchor="end">B어택성공</text>
+              <text x="60.72" y="64" text-anchor="end">A어택성공</text>
+            </g>
+          </svg>
+          <div class="legend">
+            <span><span class="sw sw-us"></span>MiraGe.</span>
+            <span><span class="sw sw-foe"></span>Celebrity</span>
+          </div>
+        </div>
+        <div class="veil-msg">
+          <div class="m1">캡슐을 열면 기록을 볼 수 있습니다</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">● 연 뒤</span><span class="what">우리는 채운 도형, 상대는 선만</span></div>
+      <div class="hexhead"><span>경기 육각형</span><span class="r">제3보급창고</span></div>
+      <svg class="hex" viewBox="0 0 260 208" role="img" aria-label="경기 육각형 비교">
+        <polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,66.8 162.21,85.4 162.21,122.6 130,141.2 97.79,122.6 97.79,85.4" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,91.8 140.74,97.8 140.74,110.2 130,116.2 119.26,110.2 119.26,97.8" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <g stroke="#2a1616" stroke-width=".6" stroke-opacity=".75">
+          <line x1="130" y1="104" x2="130" y2="42"/>
+          <line x1="130" y1="104" x2="183.69" y2="73"/>
+          <line x1="130" y1="104" x2="183.69" y2="135"/>
+          <line x1="130" y1="104" x2="130" y2="166"/>
+          <line x1="130" y1="104" x2="76.31" y2="135"/>
+          <line x1="130" y1="104" x2="76.31" y2="73"/>
+        </g>
+        <!-- 상대를 먼저 그린다. 우리가 위로 온다 (D-235 Q10) -->
+        <polygon points="130,64.32 183.69,73 152.01,116.71 130,166 90.81,126.63 76.31,73"
+                 fill="none" stroke="#d6c9c9" stroke-width="1.2"/>
+        <polygon points="130,42 163.29,84.78 183.69,135 130,152.36 76.31,135 100.47,86.95"
+                 fill="#d92b2b" fill-opacity=".12" stroke="#d92b2b" stroke-width="1.4"/>
+        <g fill="none" stroke="#d6c9c9" stroke-width="1">
+          <circle cx="130" cy="64.32" r="2.1"/><circle cx="183.69" cy="73" r="2.1"/>
+          <circle cx="152.01" cy="116.71" r="2.1"/><circle cx="130" cy="166" r="2.1"/>
+          <circle cx="90.81" cy="126.63" r="2.1"/><circle cx="76.31" cy="73" r="2.1"/>
+        </g>
+        <g fill="#d92b2b">
+          <circle cx="130" cy="42" r="2.1"/><circle cx="163.29" cy="84.78" r="2.1"/>
+          <circle cx="183.69" cy="135" r="2.1"/><circle cx="130" cy="152.36" r="2.1"/>
+          <circle cx="76.31" cy="135" r="2.1"/><circle cx="100.47" cy="86.95" r="2.1"/>
+        </g>
+        <g font-size="9" fill="#f6eded" font-family="'Noto Sans KR',sans-serif">
+          <text x="130" y="24" text-anchor="middle">스나싸움</text>
+          <text x="199.28" y="64" text-anchor="start">소수싸움</text>
+          <text x="199.28" y="144" text-anchor="start">세이브</text>
+          <text x="130" y="184" text-anchor="middle">게임템포</text>
+          <text x="60.72" y="144" text-anchor="end">B어택성공</text>
+          <text x="60.72" y="64" text-anchor="end">A어택성공</text>
+        </g>
+      </svg>
+      <div class="legend">
+        <span><span class="sw sw-us"></span>MiraGe.</span>
+        <span><span class="sw sw-foe"></span>Celebrity</span>
+      </div>
+      <div class="hexfoot">색은 하나입니다 — 우리는 <b style="color:var(--text);font-weight:400">채운 도형</b>, 상대는 <b style="color:var(--text);font-weight:400">선만</b>. 채움이 있고 없고로 갈립니다.</div>
+    </div>
+
+  </div>
+
+  <!-- 1-4 킬뎃 -->
+  <h3>킬뎃<span class="tag">DPL 만 · IPL 은 원래 없습니다</span></h3>
+  <div class="pair">
+    <div class="panel">
+      <div class="panel-head"><span class="st-locked">▨ 열기 전</span><span class="what">DPL</span></div>
+      <div class="kv"><span class="k">킬뎃</span><span class="v"><span class="mark">▨▨</span></span></div>
+      <div class="kv"><span class="k">평균 킬</span><span class="v"><span class="mark">▨▨</span></span></div>
+      <div class="kv"><span class="k">판수</span><span class="v num">418판</span></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">● 연 뒤</span><span class="what">DPL</span></div>
+      <div class="kv"><span class="k">킬뎃</span><span class="v hot num">1.14</span></div>
+      <div class="kv"><span class="k">평균 킬</span><span class="v hot num">9.7</span></div>
+      <div class="kv"><span class="k">판수</span><span class="v num">418판</span></div>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:10px">IPL 은 넥슨이 킬뎃을 주지 않아 <b style="color:var(--text);font-weight:400">처음부터 없는 칸</b>입니다. 가려 둔 게 아닙니다.</p>
+
+  <!-- 1-5 클랜원 목록 -->
+  <h3>클랜원 목록<span class="tag">접속중 / 미접속 불</span></h3>
+  <div class="pair">
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-locked">▨ 열기 전</span><span class="what">명단이 덮여 있습니다</span></div>
+      <div class="veil">
+        <div class="veil-in" aria-hidden="true">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <div style="font-size:15px;color:var(--text)">클랜원</div>
+            <div style="font-size:11px;color:var(--meta)"><span class="num">33</span>명</div>
+          </div>
+          <div style="margin-top:6px">
+            <div class="row"><span class="rank num">1</span><span class="nm">nudi</span><span class="rt num">3,412점</span><span class="gm num">102판</span></div>
+            <div class="row"><span class="rank num">2</span><span class="nm">차값</span><span class="rt num">3,388점</span><span class="gm num">88판</span></div>
+            <div class="row"><span class="rank num">3</span><span class="nm">쨔잉나</span><span class="rt num">3,301점</span><span class="gm num">74판</span></div>
+            <div class="row"><span class="rank num">4</span><span class="nm">huwho</span><span class="rt num">2,980점</span><span class="gm num">51판</span></div>
+          </div>
+        </div>
+        <div class="veil-msg">
+          <div class="m1">캡슐을 열면 기록을 볼 수 있습니다</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">● 연 뒤</span><span class="what">누가 지금 붙어 있는지</span></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <div style="font-size:15px;color:var(--text)">클랜원</div>
+        <div style="font-size:11px;color:var(--meta)"><span class="num">33</span>명 <span class="num">· 접속 20:25 기준</span></div>
+      </div>
+      <div style="margin-top:6px">
+        <div class="row">
+          <span class="rank num">1</span><span class="nm">nudi</span>
+          <span class="rt num">3,412점</span><span class="gm num">102판</span>
+          <span class="lamps">
+            <span class="lamp-cell" style="color:var(--text)"><span class="dot" style="background:var(--online)"></span>접속중</span>
+            <span class="lamp-cell" style="color:var(--meta)"><span class="dot" style="background:var(--lamp-off)"></span>미접속</span>
+          </span>
+        </div>
+        <div class="row">
+          <span class="rank num">2</span><span class="nm">차값</span>
+          <span class="rt num">3,388점</span><span class="gm num">88판</span>
+          <span class="lamps">
+            <span class="lamp-cell" style="color:var(--meta)"><span class="dot" style="background:var(--lamp-off)"></span>접속중</span>
+            <span class="lamp-cell" style="color:var(--text)"><span class="dot" style="background:var(--accent)"></span>미접속</span>
+          </span>
+        </div>
+        <div class="row">
+          <span class="rank num">3</span><span class="nm">쨔잉나</span>
+          <span class="rt num">3,301점</span><span class="gm num">74판</span>
+          <span class="lamps">
+            <span class="lamp-cell" style="color:var(--text)"><span class="dot" style="background:var(--online)"></span>접속중</span>
+            <span class="lamp-cell" style="color:var(--meta)"><span class="dot" style="background:var(--lamp-off)"></span>미접속</span>
+          </span>
+        </div>
+        <div class="row">
+          <span class="rank num">4</span><span class="nm">huwho</span>
+          <span class="rt num" style="color:var(--strong)">2,980점</span><span class="gm num">51판</span>
+          <span class="lamps">
+            <span class="lamp-cell" style="color:var(--meta)"><span class="dot" style="background:var(--lamp-off)"></span>접속중</span>
+            <span class="lamp-cell" style="color:var(--meta)"><span class="dot" style="background:var(--lamp-off)"></span>미접속</span>
+          </span>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--meta)">
+        네 번째 줄처럼 <b style="color:var(--text);font-weight:400">양쪽 불이 다 꺼진</b> 사람이 있습니다.
+        미접속이 아니라 <b style="color:var(--text);font-weight:400">모르는 것</b>입니다 — 모르면 지어내지 않습니다.
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ══════════════════════════ 2. 개인 ══════════════════════════ -->
+<section>
+  <h2 class="display">개인(선수)을 뽑으면</h2>
+  <p class="sub">개인 랭킹과 개인 기록실도 같습니다. 순위 · 닉네임 · 래더 · 판수는 원래 보이고, <b style="color:var(--text);font-weight:400">잘하는 정도</b>가 덮여 있습니다.</p>
+  <hr class="rule">
+
+  <!-- 2-1 개인랭킹 표 -->
+  <h3>개인 랭킹 표<span class="tag">좁은 칸은 ▨▨ 로 바꿉니다</span></h3>
+  <div class="pair">
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-locked">▨ 열기 전</span><span class="what">순위·닉네임·래더는 보입니다</span></div>
+      <div class="scroll-x">
+        <table class="plain" style="min-width:280px">
+          <tr><th>#</th><th>선수</th><th>래더</th><th>승률</th><th>킬뎃</th></tr>
+          <tr><td class="n num">1</td><td class="n">nudi</td><td class="num">3,412</td><td><span class="mark">▨▨</span></td><td><span class="mark">▨▨</span></td></tr>
+          <tr><td class="n num">2</td><td class="n">차값</td><td class="num">3,388</td><td><span class="mark">▨▨</span></td><td><span class="mark">▨▨</span></td></tr>
+          <tr><td class="n num">3</td><td class="n">쨔잉나</td><td class="num">3,301</td><td><span class="mark">▨▨</span></td><td><span class="mark">▨▨</span></td></tr>
+          <tr><td class="n num">4</td><td class="n">후후시치</td><td style="color:var(--meta)">배치고사</td><td><span class="mark">▨▨</span></td><td><span class="mark">▨▨</span></td></tr>
+        </table>
+      </div>
+      <p style="font-size:12px;color:var(--faint);margin:8px 0 0">
+        <span class="mark" style="margin-right:6px">▨▨</span>캡슐을 열면 기록을 볼 수 있습니다
+      </p>
+      <p style="font-size:11px;color:var(--faint);margin:6px 0 0">문구는 <b style="color:var(--meta);font-weight:400">표 아래 한 번만</b> 적습니다. 칸마다 한 문장을 넣으면 표가 무너집니다.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">● 연 뒤</span><span class="what">덮였던 두 칸</span></div>
+      <div class="scroll-x">
+        <table class="plain" style="min-width:280px">
+          <tr><th>#</th><th>선수</th><th>래더</th><th>승률</th><th>킬뎃</th></tr>
+          <tr><td class="n num">1</td><td class="n">nudi</td><td class="num">3,412</td><td class="num" style="color:var(--accent)">63.2%</td><td class="num" style="color:var(--accent)">1.41</td></tr>
+          <tr><td class="n num">2</td><td class="n">차값</td><td class="num">3,388</td><td class="num" style="color:var(--accent)">61.0%</td><td class="num" style="color:var(--accent)">1.28</td></tr>
+          <tr><td class="n num">3</td><td class="n">쨔잉나</td><td class="num">3,301</td><td class="num" style="color:var(--accent)">58.4%</td><td class="num" style="color:var(--accent)">1.19</td></tr>
+          <tr><td class="n num">4</td><td class="n">후후시치</td><td style="color:var(--meta)">배치고사</td><td class="num" style="color:var(--accent)">55.0%</td><td class="num" style="color:var(--accent)">1.02</td></tr>
+        </table>
+      </div>
+      <p style="font-size:11px;color:var(--meta);margin:8px 0 0">배치고사 중인 선수는 래더 자리에 <b style="color:var(--text);font-weight:400">배치고사</b>가 그대로 남습니다. 그건 가림이 아닙니다.</p>
+    </div>
+
+  </div>
+
+  <!-- 2-2 전투력 육각형 -->
+  <h3>전투력 육각형<span class="tag">개인은 축이 다릅니다</span></h3>
+  <p class="sub">
+    세이브 · <b style="color:var(--text);font-weight:400">스나싸움 / 샷싸움</b> · 캐리력 · 기회창출 ·
+    <b style="color:var(--text);font-weight:400">작업 성공률 / 원어택 성공률</b> · 소수싸움.
+    두 축은 <b style="color:var(--text);font-weight:400">주무기에 따라 이름이 바뀝니다</b> — 스나와 라플은 애초에 다른 걸 잽니다.
+    값은 <b style="color:var(--text);font-weight:400">같은 무기끼리 견준 등수</b>라 「상위 N%」로 적힙니다.
+  </p>
+  <div class="pair">
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-locked">▨ 열기 전</span><span class="what">덮습니다. 지우지 않습니다</span></div>
+      <div class="veil">
+        <div class="veil-in" aria-hidden="true">
+          <div class="hexhead"><span class="display" style="font-size:18px">전투력</span></div>
+          <svg class="hex" viewBox="0 0 260 208">
+            <polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,66.8 162.21,85.4 162.21,122.6 130,141.2 97.79,122.6 97.79,85.4" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <polygon points="130,91.8 140.74,97.8 140.74,110.2 130,116.2 119.26,110.2 119.26,97.8" fill="none" stroke="#2a1616" stroke-width=".6"/>
+            <g stroke="#2a1616" stroke-width=".6">
+              <line x1="130" y1="104" x2="130" y2="42"/>
+              <line x1="130" y1="104" x2="183.69" y2="73"/>
+              <line x1="130" y1="104" x2="183.69" y2="135"/>
+              <line x1="130" y1="104" x2="130" y2="166"/>
+              <line x1="130" y1="104" x2="76.31" y2="135"/>
+              <line x1="130" y1="104" x2="76.31" y2="73"/>
+            </g>
+            <polygon points="130,49.44 178.86,75.79 170.81,127.56 130,146.78 85.97,129.42 95.64,84.16" fill="#d92b2b" fill-opacity=".16" stroke="#d92b2b" stroke-width="1.4"/>
+            <g fill="#d92b2b">
+              <circle cx="130" cy="49.44" r="2.1"/><circle cx="178.86" cy="75.79" r="2.1"/>
+              <circle cx="170.81" cy="127.56" r="2.1"/><circle cx="130" cy="146.78" r="2.1"/>
+              <circle cx="85.97" cy="129.42" r="2.1"/><circle cx="95.64" cy="84.16" r="2.1"/>
+            </g>
+            <g font-size="9" font-family="'Noto Sans KR',sans-serif">
+              <text x="130" y="24" text-anchor="middle" fill="#9a8080">세이브</text>
+              <text x="130" y="35" text-anchor="middle" fill="#d92b2b">상위 12%</text>
+              <text x="199.28" y="64" text-anchor="start" fill="#9a8080">스나싸움</text>
+              <text x="199.28" y="75" text-anchor="start" fill="#d92b2b">상위 9%</text>
+              <text x="199.28" y="144" text-anchor="start" fill="#9a8080">캐리력</text>
+              <text x="199.28" y="155" text-anchor="start" fill="#d92b2b">상위 24%</text>
+              <text x="130" y="184" text-anchor="middle" fill="#9a8080">기회창출</text>
+              <text x="130" y="195" text-anchor="middle" fill="#d92b2b">상위 31%</text>
+              <text x="60.72" y="144" text-anchor="end" fill="#9a8080">작업 성공률</text>
+              <text x="60.72" y="155" text-anchor="end" fill="#d92b2b">상위 18%</text>
+              <text x="60.72" y="64" text-anchor="end" fill="#9a8080">소수싸움</text>
+              <text x="60.72" y="75" text-anchor="end" fill="#d92b2b">상위 36%</text>
+            </g>
+          </svg>
+          <div class="hexfoot">같은 <b style="font-weight:400">스나수</b> <span class="num">159</span>명 안에서 견줬습니다</div>
+        </div>
+        <div class="veil-msg">
+          <div class="m1">캡슐을 열면 기록을 볼 수 있습니다</div>
+          <div class="m2">가입하고 본인 인증에 성공하면 내 캡슐이 열립니다</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">● 연 뒤</span><span class="what">스나수 화면</span></div>
+      <div class="hexhead"><span class="display" style="font-size:18px">전투력</span></div>
+      <svg class="hex" viewBox="0 0 260 208" role="img" aria-label="전투력 육각형">
+        <polygon points="130,42 183.69,73 183.69,135 130,166 76.31,135 76.31,73" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,54.4 172.95,79.2 172.95,128.8 130,153.6 87.05,128.8 87.05,79.2" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,66.8 162.21,85.4 162.21,122.6 130,141.2 97.79,122.6 97.79,85.4" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,79.2 151.48,91.6 151.48,116.4 130,128.8 108.52,116.4 108.52,91.6" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <polygon points="130,91.8 140.74,97.8 140.74,110.2 130,116.2 119.26,110.2 119.26,97.8" fill="none" stroke="#2a1616" stroke-width=".6" stroke-opacity=".75"/>
+        <g stroke="#2a1616" stroke-width=".6" stroke-opacity=".75">
+          <line x1="130" y1="104" x2="130" y2="42"/>
+          <line x1="130" y1="104" x2="183.69" y2="73"/>
+          <line x1="130" y1="104" x2="183.69" y2="135"/>
+          <line x1="130" y1="104" x2="130" y2="166"/>
+          <line x1="130" y1="104" x2="76.31" y2="135"/>
+          <line x1="130" y1="104" x2="76.31" y2="73"/>
+        </g>
+        <polygon points="130,49.44 178.86,75.79 170.81,127.56 130,146.78 85.97,129.42 95.64,84.16"
+                 fill="#d92b2b" fill-opacity=".16" stroke="#d92b2b" stroke-width="1.4"/>
+        <g fill="#d92b2b">
+          <circle cx="130" cy="49.44" r="2.1"/><circle cx="178.86" cy="75.79" r="2.1"/>
+          <circle cx="170.81" cy="127.56" r="2.1"/><circle cx="130" cy="146.78" r="2.1"/>
+          <circle cx="85.97" cy="129.42" r="2.1"/><circle cx="95.64" cy="84.16" r="2.1"/>
+        </g>
+        <g font-size="9" font-family="'Noto Sans KR',sans-serif">
+          <text x="130" y="24" text-anchor="middle" fill="#9a8080">세이브</text>
+          <text x="130" y="35" text-anchor="middle" fill="#d92b2b">상위 12%</text>
+          <text x="199.28" y="64" text-anchor="start" fill="#9a8080">스나싸움</text>
+          <text x="199.28" y="75" text-anchor="start" fill="#d92b2b">상위 9%</text>
+          <text x="199.28" y="144" text-anchor="start" fill="#9a8080">캐리력</text>
+          <text x="199.28" y="155" text-anchor="start" fill="#d92b2b">상위 24%</text>
+          <text x="130" y="184" text-anchor="middle" fill="#9a8080">기회창출</text>
+          <text x="130" y="195" text-anchor="middle" fill="#d92b2b">상위 31%</text>
+          <text x="60.72" y="144" text-anchor="end" fill="#9a8080">작업 성공률</text>
+          <text x="60.72" y="155" text-anchor="end" fill="#d92b2b">상위 18%</text>
+          <text x="60.72" y="64" text-anchor="end" fill="#9a8080">소수싸움</text>
+          <text x="60.72" y="75" text-anchor="end" fill="#d92b2b">상위 36%</text>
+        </g>
+      </svg>
+      <div class="hexfoot">같은 <b style="color:var(--text);font-weight:400">스나수</b> <span class="num">159</span>명 안에서 견줬습니다</div>
+      <div class="hexfoot" style="margin-top:4px">
+        라플수라면 같은 두 자리가 <b style="color:var(--text);font-weight:400">샷싸움</b> ·
+        <b style="color:var(--text);font-weight:400">원어택 성공률</b> 로 바뀝니다.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 2-3 그 밖에 개인 화면에서 덮이는 것 -->
+  <h3>개인 화면에서 그 밖에 덮이는 것</h3>
+  <div class="box">
+    <div class="scroll-x">
+      <table class="plain" style="min-width:300px">
+        <tr><th style="width:30%">화면</th><th>덮여 있다가 열립니다</th></tr>
+        <tr><td class="n">개인 랭킹</td><td>승률 · N승 N패 · 킬뎃 · 평균킬</td></tr>
+        <tr><td class="n">개인 기록실</td><td>전투력 육각형 · 플레이스타일 · 최근매치 요약(오늘 포함) · 티어별 게임빈도 · 승률 · 킬뎃 · 평균킬</td></tr>
+        <tr><td class="n">플레이어 프로필</td><td>승 / 패 · 승률 · 킬뎃 · 승패 막대</td></tr>
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--meta);margin:10px 0 0">
+      같은 화면에서 <b style="color:var(--text);font-weight:400">래더 · 순위 · 소속 · 포지션 · MVP · 같이한 플레이어 · 경기 카드</b>는 처음부터 보입니다.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════ 3. 원래부터 보이는 것 ══════════════════════════ -->
+<section>
+  <h2 class="display">원래부터 보이던 것</h2>
+  <p class="sub">여기가 제일 중요합니다. <b style="color:var(--text);font-weight:400">판수와 경기 상세기록은 가린 적이 없습니다.</b> 안 가렸던 걸 「이제 보인다」고 말하면 거짓말이 됩니다.</p>
+  <hr class="rule">
+
+  <div class="box">
+    <div style="font-size:12px;color:var(--meta);margin-bottom:10px">경기 카드 — 캡슐이 닫혀 있어도 이 화면은 그대로입니다</div>
+
+    <div class="match">
+      <div class="top"><span>제3보급창고 - 8달 전</span><span class="num" style="color:var(--accent)">+6점</span></div>
+      <div class="mid">
+        <span class="res">승리</span>
+        <span><span class="kda num">10 / 1 / 1</span> <span class="rate num">(90.9%)</span></span>
+        <span class="pill">★ MVP</span>
+        <span class="vs">MiraGe. <span style="color:var(--faint)">vs</span> Celebrity</span>
+      </div>
+    </div>
+
+    <div class="match lose">
+      <div class="top"><span>제2보급창고 - 8달 전</span><span class="num" style="color:var(--faint)">-16점</span></div>
+      <div class="mid">
+        <span class="res">패배</span>
+        <span><span class="kda num">6 / 12 / 3</span> <span class="rate num">(33.3%)</span></span>
+        <span class="vs">MiraGe. <span style="color:var(--faint)">vs</span> hilarious-</span>
+      </div>
+    </div>
+
+    <p style="font-size:12px;color:var(--meta);margin:12px 0 0">
+      펼치면 라인업 10명 · 무기 · 딜량 · 선레드/선블루까지 그대로 나옵니다. 여기에는 캡슐이 없습니다.
+    </p>
+  </div>
+
+  <div class="note">
+    <strong>가리는 기준은 한 줄입니다.</strong> 있다는 것은 보여 주고, <strong>얼마나 잘하는지</strong>를 덮습니다.
+  </div>
+</section>
+
+
+<!-- ══════════════════════════ 4. 한글 검색 ══════════════════════════ -->
+<section>
+  <h2 class="display">클랜명을 한글로 치셔도 나옵니다</h2>
+  <p class="sub">클랜명에 특수문자와 어려운 영어가 많습니다. 들리는 대로 치면 찾아집니다.</p>
+  <hr class="rule">
+
+  <div class="box">
+    <div class="search-demo">
+      <span class="caret">›</span>
+      <span class="q">베리</span>
+      <span style="color:var(--faint);font-size:12px;margin-left:auto">내 클랜 뽑기</span>
+    </div>
+    <div class="hits">
+      <div class="hit"><span class="real">veritas</span><span class="arrow">←</span><span class="alias">베리타스 · 베리 · veri · VERITAS</span></div>
+      <div class="hit"><span class="real">exOnePoinT</span><span class="arrow">←</span><span class="alias">원포 · 원포인트 · 엑스원</span></div>
+      <div class="hit"><span class="real">des`per@do.</span><span class="arrow">←</span><span class="alias">desperado · 데스퍼라도 <b style="color:var(--faint);font-weight:400">(특수문자는 무시합니다)</b></span></div>
+      <div class="hit"><span class="real">베이직</span><span class="arrow">←</span><span class="alias">ㅂㅇㅈ <b style="color:var(--faint);font-weight:400">(초성도 됩니다)</b></span></div>
+    </div>
+    <p style="font-size:12px;color:var(--meta);margin:12px 0 0">
+      <b style="color:var(--text);font-weight:400">돌려도 남의 클랜은 안 나옵니다.</b>
+      찾아서 넣은 그 캡슐이 나옵니다 — 뽑기의 재미는 「뭐가 나올까」가 아니라 「내 클랜을 꺼낸다」에 있습니다.
+    </p>
+    <p style="font-size:12px;color:var(--meta);margin:6px 0 0">
+      캡슐은 <b style="color:var(--text);font-weight:400">DPL <span class="num">62</span>곳 · IPL <span class="num">43</span>곳, 모두 <span class="num">105</span>개</b>입니다.
+      클랜원이 아니어도 열 수 있습니다.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════ 5. 솔직한 한 줄 ══════════════════════════ -->
+<section>
+  <h2 class="display">먼저 밝혀 둘 것</h2>
+  <hr class="rule">
+
+  <div class="box" style="border-color:var(--accent)">
+    <p style="margin:0;color:var(--text)">
+      육각형은 <b style="color:var(--strong);font-weight:400">경기 안의 라운드 기록(배틀로그)</b>이 있어야 그려집니다.
+      그 기록이 아직 적어서 <b style="color:var(--strong);font-weight:400">「측정중」으로 남는 클랜과 선수가 많습니다.</b>
+      캡슐을 열어도 그 자리에는 숫자 대신 <span class="num" style="color:var(--meta)">측정중 3/6</span> 같은 표시가 뜹니다.
+    </p>
+    <ul class="tight" style="color:var(--meta);font-size:13px">
+      <li>못 재는 축은 <b style="color:var(--text);font-weight:400">왜 못 재는지</b>를 같이 적습니다 — 배틀로그 필요 · 진영 판정 필요 · 표본 부족 · 구역 좌표 없음.</li>
+      <li>여섯 축이 <b style="color:var(--text);font-weight:400">다 차야만</b> 도형을 잇습니다. 모르는 축을 0으로 이으면 그 넓이가 「못한다」는 거짓이 되기 때문입니다.</li>
+      <li>승률 · 전적 · 킬뎃 · 클랜원 목록은 <b style="color:var(--text);font-weight:400">지금 바로</b> 나옵니다. 「측정중」은 육각형에만 해당합니다.</li>
+    </ul>
+    <p style="margin:12px 0 0;font-size:13px;color:var(--meta)">
+      열었더니 빈 화면이면 그게 더 나쁩니다. 그래서 미리 적어 둡니다.
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════ 6. 언제 · 어디에 ══════════════════════════ -->
+<section>
+  <h2 class="display">이 설명서를 언제 · 어디에 띄울까</h2>
+  <p class="sub">후보를 늘어놓지 않고 하나를 고릅니다. 근거는 아래에 있습니다.</p>
+  <hr class="rule">
+
+  <div class="pick">
+    <div class="lead">고른 것</div>
+    <h4>가려진 카드에서 올라오는 <b style="color:var(--accent);font-weight:700">바텀시트</b>.<br>자동으로는 딱 한 번, 「처음 가려진 화면을 만났을 때」만.</h4>
+    <p style="margin:12px 0 0;font-size:14px;color:var(--text)">
+      들어오자마자 띄우지 않습니다. <b style="color:var(--strong);font-weight:400">클랜 상세나 개인 기록실에서 덮인 카드를 실제로 마주친 순간</b>,
+      화면 아래에서 시트가 절반 높이로 올라옵니다. 그때가 「뭐가 가려진 거지」가 최고조인 지점이고,
+      뽑고 싶다는 마음은 <b style="color:var(--strong);font-weight:400">잃은 것을 본 다음</b>에만 생깁니다.
+    </p>
+  </div>
+
+  <h3>왜 홈의 첫 방문 팝업이 아닌가</h3>
+  <ul class="tight" style="color:var(--text);font-size:14px">
+    <li>홈에 막 들어온 사람은 <b style="color:var(--strong);font-weight:400">아직 무엇을 못 보고 있는지 모릅니다.</b> 설명해 봐야 읽을 이유가 없습니다.</li>
+    <li>모바일이 주 사용처인데, 첫 화면 전면 팝업은 읽히기 전에 닫힙니다. 닫는 손짓이 곧 「이 사이트는 팝업을 띄운다」로 기억됩니다.</li>
+    <li>가려진 자리마다 <span class="num" style="color:var(--meta)">▨▨</span> 와 「캡슐을 열면 기록을 볼 수 있습니다」가 <b style="color:var(--strong);font-weight:400">이미 떠 있습니다.</b> 같은 말을 팝업으로 또 하면 잔소리가 됩니다. 그래서 시트는 <b style="color:var(--strong);font-weight:400">그 문구가 못 하는 일</b>만 합니다 — 무엇이 나오는지 <b style="color:var(--strong);font-weight:400">그림으로</b> 보여 주는 것.</li>
+    <li>뽑은 직후 결과 화면에도 띄우지 않습니다. 거기엔 이미 「이제 볼 수 있는 것」 목록이 뜹니다. 그게 이 설명서의 짧은 판입니다.</li>
+  </ul>
+
+  <h3>사람에 따라 다르게</h3>
+  <div class="scroll-x">
+    <table class="plain" style="min-width:340px">
+      <tr><th style="width:30%">누구</th><th style="width:34%">자동으로 뜨나</th><th>무엇이 먼저 보이나</th></tr>
+      <tr>
+        <td class="n">처음 온 사람</td>
+        <td>가려진 카드를 만나면 <b style="color:var(--strong);font-weight:400">한 번</b></td>
+        <td>지금 보고 있던 그 클랜의 잠김↔열림 한 쌍</td>
+      </tr>
+      <tr>
+        <td class="n">이미 뽑은 사람</td>
+        <td><b style="color:var(--strong);font-weight:400">안 뜹니다</b></td>
+        <td>가챠샵 머리의 「설명서」 글자 링크만 남습니다</td>
+      </tr>
+      <tr>
+        <td class="n">자기 클랜이 없는 사람</td>
+        <td>같은 조건으로 한 번</td>
+        <td><b style="color:var(--strong);font-weight:400">개인 쪽을 먼저</b> 폅니다 — 클랜 캡슐부터 보이면 남 얘기로 읽힙니다</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>정확히 언제 — 조건 네 개</h3>
+  <div class="box flat">
+    <ul class="tight" style="color:var(--text);font-size:14px;margin-top:0">
+      <li>가려진 카드가 화면 안에 <b style="color:var(--strong);font-weight:400">2초 이상</b> 머물렀을 때. 스크롤로 지나쳐 간 건 세지 않습니다.</li>
+      <li>페이지 진입 직후 <b style="color:var(--strong);font-weight:400">1.5초</b>는 무조건 기다립니다. 뜨자마자 덮이면 화면을 못 봅니다.</li>
+      <li>이미 캡슐을 연 사람에게는 <b style="color:var(--strong);font-weight:400">영영 안 뜹니다.</b></li>
+      <li>가챠 뽑기 연출이 도는 중에는 안 뜹니다.</li>
+    </ul>
+  </div>
+
+  <h3>한 번 닫으면 다시 안 뜨게 — 어디에 기억하나</h3>
+  <div class="box flat">
+    <p style="margin:0;font-size:14px">
+      <b style="color:var(--strong);font-weight:400">브라우저에 기억합니다</b> — <span class="num" style="color:var(--meta)">localStorage: sacloud.gachaGuide.seen = 1</span>.
+    </p>
+    <ul class="tight" style="color:var(--meta);font-size:13px">
+      <li>주 대상이 <b style="color:var(--text);font-weight:400">아직 가입 안 한 사람</b>입니다. 계정에 저장하면 정작 봐야 할 사람에게 기억이 남지 않습니다.</li>
+      <li>기기가 바뀌면 한 번 더 뜹니다. 그건 손해가 아니라 <b style="color:var(--text);font-weight:400">폰에서 처음 온 사람</b>에게 다시 설명하는 것입니다.</li>
+      <li>키에 판 번호를 답니다. 설명서 내용이 크게 바뀌면 <span class="num">seen.v2</span> 로 올려 다시 한 번 보여 줍니다.</li>
+      <li>읽기·쓰기가 막힌 브라우저(시크릿 등)면 <b style="color:var(--text);font-weight:400">안 뜨는 쪽</b>으로 넘어갑니다. 기억을 못 해서 매번 뜨는 것이 제일 나쁩니다.</li>
+    </ul>
+  </div>
+
+  <h3>항상 있는 입구 셋 (자동 노출과 별개)</h3>
+  <div class="grid3">
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">1</span><span class="what">가려진 카드마다</span></div>
+      <div style="font-size:13px;color:var(--text)">「캡슐을 열면 기록을 볼 수 있습니다」 아래에 <b style="color:var(--strong);font-weight:400">무엇이 보이나 ›</b> 한 줄.</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:8px">가장 궁금한 순간에 손이 닿는 자리입니다.</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">2</span><span class="what">홈 · 가챠샵 머리</span></div>
+      <div style="font-size:13px;color:var(--text)">캡슐 더미 제목 오른쪽에 <b style="color:var(--strong);font-weight:400">설명서</b> 글자 링크.</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:8px">뽑기 전에 스스로 찾아보는 사람을 위한 자리입니다. 눈에 띄되 크지 않게.</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><span class="st-open">3</span><span class="what">연 직후 결과</span></div>
+      <div style="font-size:13px;color:var(--text)">「이제 볼 수 있는 것」 목록 맨 아래 <b style="color:var(--strong);font-weight:400">전체 보기 ›</b>.</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:8px">여기서는 <b style="color:var(--meta);font-weight:400">자동으로 띄우지 않습니다.</b> 이미 답을 받은 사람입니다.</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>한 줄로 줄이면</strong> — 홈에서 설명하지 말고, <strong>가려진 자리에서 설명합니다.</strong>
+    자동으로는 한 번, 입구는 셋, 기억은 브라우저에.
+  </div>
+</section>
+
+<div class="foot">
+  숫자는 모양을 보이기 위한 표본입니다. 실제 값은 화면에서 계산돼 나옵니다.<br>
+  캡슐 안의 도형은 클랜마크가 놓일 자리를 그린 것이고, 실제 클랜마크가 아닙니다.
+</div>
+
+</div>

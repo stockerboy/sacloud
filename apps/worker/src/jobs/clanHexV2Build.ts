@@ -77,6 +77,10 @@ import {
   type LabeledZoneFile,
 } from '@sacloud/nexon'
 import { REPO_ROOT } from '../lib/env.js'
+import {
+  buildClanHexV2Summary,
+  type ClanHexV2SummaryResult,
+} from './clanHexV2Summary.js'
 
 /* 버전은 `../lib/clanHexV2Version` 한 곳에만 있다 — 나중에 화면도 그 파일을 읽는다 */
 export { CLAN_HEX_V2_FORMULA_VERSION } from '../lib/clanHexV2Version.js'
@@ -167,18 +171,15 @@ export function loadClanHexZones(file: string | null): ZoneLoad {
 /* 축 세기                                                                      */
 /* -------------------------------------------------------------------------- */
 
-/** 여섯 축 중 **`null` 이 아닌** 개수 (0~6). 화면의 `측정중 N/6` 에 쓴다 */
-export function axesMeasuredOf(tally: ClanHexTally): number {
-  const axes = [
-    tally.sniperFight,
-    tally.outnumbered,
-    tally.save,
-    tally.tempo,
-    tally.lastSniper,
-    tally.attackZone,
-  ]
-  return axes.filter((axis) => axis !== null).length
-}
+/**
+ * 축 개수 세기는 **`../lib/clanHexV2Axes` 한 곳에 있다.**
+ *
+ * 요약 잡(`clanHexV2Summary.ts`)도 같은 규칙으로 `axesMeasured` 를 채우는데, 그 잡을
+ * **이 파일이 부르므로** 여기에 두면 두 파일이 서로를 import 하는 고리가 된다.
+ * 부르던 자리가 안 깨지게 그대로 다시 내보낸다 (`CLAUDE.md` 10-4).
+ */
+export { axesMeasuredOf, type ClanHexAxisHolder } from '../lib/clanHexV2Axes.js'
+import { axesMeasuredOf } from '../lib/clanHexV2Axes.js'
 
 /**
  * 축별로 **분모가 0이 아닌가** — 축이 `null` 이 아니어도 분모가 0이면 값이 안 나온다.
@@ -242,6 +243,13 @@ export interface ClanHexV2BuildResult {
   /** 구역 파일 상태 */
   zones: ZoneLoad
   written: boolean
+  /**
+   * 이어서 만든 **클랜별 요약** (D-238 후속). `--no-summary` 면 `null` 이다.
+   *
+   * 경기 행만 만들고 멈추면 화면은 여전히 옛 요약을 읽는다 — 그래서 여기서 잇는다.
+   * 건드린 클랜만 다시 접는다 (전량이 아니다).
+   */
+  summary: ClanHexV2SummaryResult | null
 }
 
 const zeroSkips = (): ClanHexV2Skips => ({
@@ -278,6 +286,13 @@ export async function buildClanHexV2(input: {
   rebuild?: boolean
   /** 구역 파일. 기본은 `data/barracks/style-zones.json`, `null` 이면 구역을 안 넘긴다 */
   zoneFile?: string | null
+  /**
+   * 요약 접기를 **하지 않는다** (D-238 후속). 기본은 이어서 접는다.
+   *
+   * 경기 행만 여러 번 나눠 넣고 마지막에 한 번만 접고 싶을 때 쓴다.
+   * ⚠ 접지 않으면 **화면은 옛 요약을 계속 읽는다.** 반드시 나중에 한 번 돌려라.
+   */
+  skipSummary?: boolean
 }): Promise<ClanHexV2BuildResult> {
   const zones = loadClanHexZones(input.zoneFile === undefined ? ZONE_FILE : input.zoneFile)
   const limit = input.limit ?? null
@@ -308,7 +323,16 @@ export async function buildClanHexV2(input: {
     },
     zones,
     written: false,
+    summary: null,
   }
+
+  /**
+   * 이번에 행을 만든 클랜 (D-238 후속).
+   *
+   * 마지막에 **이 클랜들만** 다시 접는다. 전량을 접으면 다시 리그를 통째로 읽게 되고,
+   * 그것이 애초에 운영을 500 으로 만든 짓이다.
+   */
+  const touched = new Set<string>()
 
   /** 이미 읽은 경기키 — 같은 경기의 두 번째 응답은 섞지 않는다 (D-184) */
   const done = new Set<string>()
@@ -452,6 +476,7 @@ export async function buildClanHexV2(input: {
       result.matches += 1
       result.planned += planned.length
       for (const entry of planned) {
+        touched.add(entry.leagueClanId)
         const axes = axesMeasuredOf(entry.tally)
         result.axesHistogram[axes] = (result.axesHistogram[axes] ?? 0) + 1
         for (const [axis, live] of Object.entries(axisDenominators(entry.tally))) {
@@ -496,5 +521,26 @@ export async function buildClanHexV2(input: {
   }
 
   result.written = input.confirm
+
+  /*
+   * ── 건드린 클랜을 **바로 접는다** (D-238 후속).
+   *
+   * 경기 행만 만들고 멈추면 화면은 옛 요약을 계속 읽는다. 행과 요약이 갈리는 자리를
+   * 하나라도 줄이려고 같은 명령 안에서 잇는다.
+   *
+   * ⚠ 좁혀서 접는다 — `touched` 에 든 클랜만이다. 여기서 전량을 접으면 리그를 통째로
+   *   다시 읽게 되고, 그것이 애초에 500 을 만든 짓이다.
+   *
+   * `--confirm` 은 그대로 넘어간다. 미리보기면 요약도 미리보기다.
+   * 요약 쪽이 실패해도 **집계 결과는 이미 저장돼 있다** — 그때는 별도 명령
+   * (`clan-hex-v2-summary`)으로 접으면 된다. 그래서 여기서 예외를 삼키지 않는다.
+   */
+  if (input.skipSummary !== true && touched.size > 0) {
+    result.summary = await buildClanHexV2Summary({
+      confirm: input.confirm,
+      leagueClanIds: [...touched],
+    })
+  }
+
   return result
 }

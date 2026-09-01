@@ -371,6 +371,28 @@ export const endpoints = {
     response: paginatedResponse(ClanRankRow),
     query: ['division', 'cursor'],
   },
+  /**
+   * 전체 통합 클랜 래더 — 부리그도 Tier 도 무시하고 rating 순 (D-104).
+   *
+   * ── 라우트는 원래부터 있었다. **레지스트리에 늦게 등록했을 뿐이다** (2026-09-01)
+   *   `app/api/leagues/[league]/ranks/overall/route.ts` 는 Phase 11 부터 살아 있었는데
+   *   화면이 부르지 않아 계약에 없었다. 메인 신전 히어로가 **IPL 1등 한 곳**을 필요로
+   *   하면서 처음으로 화면이 부르게 됐고, 그래서 여기 올렸다 —
+   *   등록해야 MSW 핸들러가 생기고 Mock 모드에서도 같은 값이 나온다.
+   *
+   * ── `limit` 을 새로 받는다
+   *   히어로는 **1건**만 있으면 된다. 43건을 전부 받아 화면에서 최대값을 찾는 방식은
+   *   쓰지 않는다 (D-238 — 그런 «작으니까 괜찮겠지» 가 쌓여서 운영이 500 이 났다).
+   *   `limit` 이 없으면 예전처럼 전부 준다. **기존 호출자를 깨지 않는다.**
+   */
+  leagueRankOverall: {
+    method: 'GET',
+    path: '/leagues/:leagueId/ranks/overall',
+    origin: 'designed',
+    description: '전체 통합 클랜 래더 (부리그·Tier 무시). `limit=N` 이면 상위 N건만',
+    response: apiResponse(z.array(ClanRankRow)),
+    query: ['limit'],
+  },
   leagueRankPlayers: {
     method: 'GET',
     path: '/leagues/:leagueId/ranks/players',

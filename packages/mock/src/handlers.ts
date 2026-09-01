@@ -225,6 +225,15 @@ const resolvers: Record<EndpointKey, Resolver> = {
       : null
     return page ? okPage(page) : notFound()
   },
+  /* 전체 통합 래더 — 부리그를 섞어 rating 순. 메인 신전 히어로가 `limit=1` 로 부른다 */
+  leagueRankOverall: ({ params, request }) => {
+    const leagueId = resolveLeagueId(param(params['leagueId']))
+    if (!leagueId) return notFound()
+    const raw = Number(query(request, 'limit') ?? '')
+    const limit = Number.isFinite(raw) && raw > 0 ? raw : undefined
+    const rows = store.getOverallClanRanks(leagueId, limit)
+    return rows ? ok(rows) : notFound()
+  },
   /**
    * 개인랭킹. `weapon=all|sniper|rifle` 로 무기 축을 고른다 (D-169, 원본에 없는 신규 기능).
    * 파라미터가 없으면 `all` — 기존 동작 그대로다.

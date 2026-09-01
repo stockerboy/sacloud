@@ -71,6 +71,10 @@ import { buildRoundProfiles } from './jobs/roundBuild.js'
 import { buildClanRoundProfiles } from './jobs/clanRoundBuild.js'
 /** 클랜 육각형 V2 (D-217 · D-235) — 스나싸움·소수싸움·세이브·템포·B어택·A어택. 옛 판과 따로 산다 */
 import { buildClanHexV2 } from './jobs/clanHexV2Build.js'
+import {
+  buildClanHexV2Summary,
+  type ClanHexV2SummaryResult,
+} from './jobs/clanHexV2Summary.js'
 import { linkClanNumbers } from './jobs/clanNumber.js'
 import { runRate } from './jobs/rate.js'
 import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
@@ -151,6 +155,39 @@ function numberFlag(args: Args, name: string): number | null {
   if (value === null) return null
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null
+}
+
+/**
+ * 클랜 육각형 V2 **요약** 결과를 찍는다 (D-238 후속).
+ *
+ * `clan-hex-v2-build` 끝과 `clan-hex-v2-summary` 가 **같은 표**를 쓴다 — 둘의 숫자를
+ * 나란히 놓고 봐야 «행은 늘었는데 요약이 안 따라왔다» 를 알아볼 수 있다.
+ *
+ * `한 리그 읽을 양` 이 이 작업의 핵심 지표다. 옛 경로는 리그 하나에 7MB 를 읽었다.
+ */
+function printClanHexV2Summary(result: ClanHexV2SummaryResult): void {
+  table([
+    {
+      '대상 클랜': result.clans,
+      '접은 클랜': result.built,
+      '이미 최신': result.fresh,
+      '등록 없음': result.noLeagueClan,
+      '읽은 경기 행': result.rowsRead,
+      '담긴 경기': result.matches,
+    },
+  ])
+  table([
+    {
+      /* 화면이 한 리그에서 읽게 될 양의 상한이다 (여기는 대상 전체 합) */
+      '요약 tally 합': `${(result.bytes / 1024).toFixed(1)}KB`,
+      '요약 한 줄 평균':
+        result.built === 0 ? '-' : `${Math.round(result.bytes / result.built)}B`,
+      '고아 요약': result.stale,
+      지움: result.pruned,
+      '표 행 수': `${result.targetBefore} → ${result.targetAfter}`,
+    },
+  ])
+  table([Object.fromEntries(result.axesHistogram.map((n, axes) => [`${axes}축`, n]))])
 }
 
 /** 닉네임 목록 — `--nicknames "a,b"` 또는 `--nicknames-file <파일>` (한 줄에 하나 / 첫 열) */
@@ -2213,6 +2250,8 @@ async function main(): Promise<number> {
         limit: numberFlag(args, 'limit'),
         leagueSlug: stringFlag(args, 'league'),
         rebuild: boolFlag(args, 'rebuild'),
+        /* 기본은 이어서 접는다. `--no-summary` 를 줘야 안 접는다 (D-238 후속) */
+        skipSummary: boolFlag(args, 'no-summary'),
       })
       table([
         {
@@ -2242,6 +2281,50 @@ async function main(): Promise<number> {
       table([result.axisRows])
       if (result.planned > 0 && result.axesHistogram[0] === result.planned) {
         warn('여섯 축을 하나도 못 잰 행뿐이다. 원문·구역 파일을 확인해라')
+      }
+      /* 이어서 접은 클랜별 요약 — 화면이 실제로 읽는 것이다 (D-238 후속) */
+      if (result.summary !== null) {
+        log('── 클랜 요약 (화면이 읽는 것)')
+        printClanHexV2Summary(result.summary)
+      } else if (result.planned > 0) {
+        warn('요약을 안 접었다. 화면은 옛 요약을 계속 읽는다 — clan-hex-v2-summary 를 돌려라')
+      }
+      if (!result.written) log('미리보기다. 실제로 넣으려면 --confirm')
+      return 0
+    }
+
+    /**
+     * 클랜 육각형 V2 **요약 접기** (D-238 후속).
+     *
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-summary
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --confirm
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --league sanply --confirm
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --rebuild --confirm
+     *   pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --prune --confirm
+     *
+     * `MatchClanHexV2`(경기 × 클랜)를 **클랜 하나에 한 행**으로 접어 `ClanHexV2Summary`
+     * 에 넣는다. 클랜 페이지 육각형이 읽는 것은 이 표뿐이다 — 리그 전체 경기 행을 읽던
+     * 옛 경로가 운영을 500 으로 만들었다 (D-238).
+     *
+     * **원재료는 안 건드린다.** `--rebuild` 는 원재료에서 다시 접어 대조하는 길이고,
+     * 어긋나면 **언제나 원재료 쪽이 옳다.**
+     * `clan-hex-v2-build` 가 끝에 이걸 자동으로 잇는다 — 이 명령은 **경기 행이 이미
+     * 있을 때 요약만 다시 만드는** 용도다.
+     */
+    case 'clan-hex-v2-summary': {
+      const result = await buildClanHexV2Summary({
+        confirm: boolFlag(args, 'confirm'),
+        leagueSlug: stringFlag(args, 'league'),
+        limit: numberFlag(args, 'limit'),
+        rebuild: boolFlag(args, 'rebuild'),
+        prune: boolFlag(args, 'prune'),
+      })
+      printClanHexV2Summary(result)
+      if (result.noLeagueClan > 0) {
+        warn('LeagueClan 을 못 찾은 원재료가 있다. 그 행들은 화면에 안 나온다')
+      }
+      if (result.stale > 0 && result.pruned === 0) {
+        warn('원재료가 사라진 요약이 남아 있다. 지우려면 --prune --confirm')
       }
       if (!result.written) log('미리보기다. 실제로 넣으려면 --confirm')
       return 0
