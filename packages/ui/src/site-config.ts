@@ -34,11 +34,23 @@ export interface NavLink {
  * `10mountain` 옆의 산 표시는 이름에 넣지 않고 화면에서만 붙인다 — `LeagueLabel` 참고.
  * `daerule` 은 이름 변경 대상이 아니다 (D-178 준비중 그대로).
  */
+/*
+ * ── ⚠ 2026-09-01 (D-251) — **`대룰리그`(daerule)를 GNB 에서 뺐다**
+ *
+ *   사용자 지시: *"우리는 리그 세개뿐이다 SPL IPL 10🏔️"* · *"daerule 은 어디에도 넣지 마라"*.
+ *
+ *   그때는 이랬다 (D-178) — 준비중이어도 링크는 남겨 두고 눌리면 안내를 띄웠다
+ *   ```
+ *   { label: '대룰리그', href: '/league/daerule' },
+ *   ```
+ *   **데이터도 라우트도 그대로다.** `PREPARING_LEAGUE_SLUGS` 에 아직 들어 있고,
+ *   주소를 직접 치면 여전히 「준비중」 안내가 나온다. 없앤 것은 **GNB 링크 한 줄**이다.
+ *   되살리려면 위 한 줄을 배열 끝에 다시 넣으면 된다.
+ */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
   { label: 'SPL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
   { label: '10mountain', href: '/league/sanply' },
-  { label: '대룰리그', href: '/league/daerule' },
 ]
 
 /**
@@ -95,5 +107,24 @@ export const SITE_BRAND = {
   name: '3rd cloud',
   copyright: '© 2026 3rd cloud',
   contactLabel: 'Terms of Service | 문의 :',
-  contactEmail: 'sacloud@local.invalid',
+  /**
+   * 문의 주소.
+   *
+   * ── ⚠ 2026-09-02 — **빈 문자열이다. 푸터에서 링크가 사라진다**
+   *   `sacloud@local.invalid` 이 모든 화면 하단에 `mailto:` 로 걸려 있었다.
+   *   `.invalid` 는 **규격상 절대 존재하지 않는 도메인**(RFC 2606)이라 누르면
+   *   아무 데도 안 간다. 개인정보처리방침이 「하단에 안내된 문의 메일」을
+   *   가리키고 있어서, 죽은 주소가 **문의 경로 전체**를 막고 있었다.
+   *
+   *   살아 있는 주소는 우리가 지어낼 수 없다 — 사용자 결정이 필요하다.
+   *   **없는 주소를 보여 주는 것보다 안 보여 주는 편이 낫다.**
+   *
+   *   ```
+   *   ''            링크를 그리지 않는다        ← 지금
+   *   'a@b.com'     그 주소로 mailto 가 돌아온다 ← 주소가 정해지면 여기 한 줄
+   *   ```
+   *   화면 코드(`SiteFooter`)는 빈 값이면 그리지 않게만 고쳤다. 주소를 넣으면
+   *   옛 모습 그대로 돌아온다 (`CLAUDE.md` 10-4).
+   */
+  contactEmail: '',
 } as const

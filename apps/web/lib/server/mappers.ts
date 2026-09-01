@@ -171,7 +171,9 @@ export function toWriter(source: {
 /** GET /me 등에서 쓰는 사용자 상세 */
 export function toUser(user: {
   id: string
-  email: string
+  /** 아이디 · 이메일 둘 다 `null` 일 수 있다 (D-252) */
+  username?: string | null
+  email: string | null
   nickname: string
   avatarUrl: string | null
   role: number
@@ -184,6 +186,7 @@ export function toUser(user: {
   const player = user.playerLink?.player ?? null
   return {
     id: user.id,
+    username: user.username ?? null,
     email: user.email,
     nickname: user.nickname,
     avatar_url: user.avatarUrl,

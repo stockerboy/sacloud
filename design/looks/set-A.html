@@ -1,0 +1,457 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Nanum+Gothic+Coding:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Noto+Serif+KR:wght@300;400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Gowun+Batang:wght@400;700&family=Orbitron:wght@500;700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+<!-- ═══════════════ 01 · 스포츠 중계 ═══════════════ -->
+<div class="look" data-look="1">
+  <div class="look-meta">
+    <span class="look-no">01</span>
+    <span class="look-name">스포츠 중계</span>
+    <span class="look-desc">경기 중계 스코어보드 — 기울어진 띠, 굵은 콘덴스드, 형광 하늘색 한 점</span>
+  </div>
+  <div class="look-frame" style="background:#08152b;overflow:hidden">
+    <style>
+      [data-look="1"] .rt{height:100%;min-height:0;display:flex;flex-direction:column;font-family:'Archivo','Noto Sans KR',sans-serif;color:#dfe9f7}
+      [data-look="1"] .band{background:linear-gradient(100deg,#00c8ff 0%,#0074d9 42%,#08152b 42.6%);padding:26px 22px 30px;transform:skewY(-1.2deg);transform-origin:0 0;margin-top:-6px}
+      [data-look="1"] .band>div{transform:skewY(1.2deg)}
+      [data-look="1"] .lg{font-family:'Anton',sans-serif;font-size:31px;letter-spacing:.5px;color:#08152b;line-height:1}
+      [data-look="1"] .lg b{color:#fff;font-weight:400}
+      [data-look="1"] .pad{padding:16px 22px 20px;display:flex;flex-direction:column;flex:1;min-height:0}
+      [data-look="1"] .sr{display:flex;height:38px;border:2px solid #1d3f6b;background:#0c1e3b}
+      [data-look="1"] .sel{display:flex;align-items:center;gap:6px;padding:0 10px;background:#12294d;font-size:11.5px;font-weight:600;letter-spacing:.3px;border-right:2px solid #1d3f6b;white-space:nowrap}
+      [data-look="1"] .inp{flex:1;display:flex;align-items:center;padding:0 10px;font-size:11.5px;color:#5f7a9e}
+      [data-look="1"] .sbtn{width:40px;display:flex;align-items:center;justify-content:center;background:#00c8ff;color:#08152b}
+      [data-look="1"] .lgs{display:flex;gap:0;margin-top:12px;border-bottom:2px solid #1d3f6b}
+      [data-look="1"] .lgs span{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.6px;padding:7px 12px;color:#5f7a9e}
+      [data-look="1"] .lgs span.on{color:#08152b;background:#00c8ff}
+      [data-look="1"] .th{display:flex;align-items:baseline;gap:8px;margin:20px 0 10px}
+      [data-look="1"] .th b{font-family:'Anton',sans-serif;font-size:17px;letter-spacing:1px;color:#fff}
+      [data-look="1"] .th i{font-style:normal;font-size:9.5px;letter-spacing:2px;color:#00c8ff;font-weight:700}
+      [data-look="1"] .row{display:grid;grid-template-columns:34px 1fr auto;align-items:center;height:41px;background:#0d2042;margin-bottom:6px;padding-right:12px;position:relative;clip-path:polygon(0 0,100% 0,100% 100%,7px 100%)}
+      [data-look="1"] .row.one{background:linear-gradient(90deg,#123763,#0d2042)}
+      [data-look="1"] .row .n{font-family:'Anton',sans-serif;font-size:14px;text-align:center;color:#5f7a9e}
+      [data-look="1"] .row.one .n{color:#00c8ff}
+      [data-look="1"] .row .nm{font-size:12.5px;font-weight:600;letter-spacing:.2px}
+      [data-look="1"] .row .sc{font-family:'Archivo',sans-serif;font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:#bcd6f2}
+      [data-look="1"] .row.one .sc{color:#00c8ff}
+      [data-look="1"] .sp{flex:1}
+      [data-look="1"] .mb{margin-top:12px;height:36px;display:flex;align-items:center;justify-content:center;gap:8px;background:#00c8ff;color:#08152b;font-family:'Anton',sans-serif;font-size:13px;letter-spacing:2px;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}
+    </style>
+    <div class="rt">
+      <div class="band"><div class="lg">3RD <b>CLOUD</b></div></div>
+      <div class="pad">
+        <div class="sr">
+          <div class="sel">플레이어 <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0h8L4 5z" fill="currentColor"/></svg></div>
+          <div class="inp">닉네임을 입력하세요</div>
+          <div class="sbtn"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="4.6"/><path d="M10.6 10.6 14.5 14.5" stroke-linecap="round"/></svg></div>
+        </div>
+        <div class="lgs"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+        <div class="th"><b>클랜랭킹</b><i>RANKING</i></div>
+        <div class="row one"><div class="n">1</div><div class="nm">sometimes</div><div class="sc">3,241</div></div>
+        <div class="row"><div class="n">2</div><div class="nm">amaryllis</div><div class="sc">3,222</div></div>
+        <div class="row"><div class="n">3</div><div class="nm">hing</div><div class="sc">3,221</div></div>
+        <div class="row"><div class="n">4</div><div class="nm">igloo</div><div class="sc">3,154</div></div>
+        <div class="row"><div class="n">5</div><div class="nm">idylic</div><div class="sc">3,150</div></div>
+        <div class="sp"></div>
+        <div class="mb">더 보기</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 02 · 터미널 ═══════════════ -->
+<div class="look" data-look="2">
+  <div class="look-meta">
+    <span class="look-no">02</span>
+    <span class="look-name">터미널</span>
+    <span class="look-desc">콘솔 그대로 — 등폭 글꼴, 괘선 문자, 깜빡이는 커서. 숫자만 보러 오는 사람용</span>
+  </div>
+  <div class="look-frame" style="background:#05070a;overflow:hidden">
+    <style>
+      [data-look="2"] .rt{height:100%;min-height:0;display:flex;flex-direction:column;padding:20px 20px 18px;box-sizing:border-box;font-family:'JetBrains Mono','Nanum Gothic Coding',monospace;color:#7fe3a4;font-size:12.5px;line-height:1.8}
+      [data-look="2"] .dim{color:#2f6a49}
+      [data-look="2"] .hd{color:#d8ffe8;font-weight:700;letter-spacing:1px;font-size:15px}
+      [data-look="2"] .bar{color:#1e4a34;letter-spacing:-.5px;white-space:pre;overflow:hidden}
+      [data-look="2"] .pr{margin-top:18px;display:flex;align-items:center;gap:7px;border:1px solid #1e4a34;padding:10px 10px}
+      [data-look="2"] .pr .tag{color:#ffd76a}
+      [data-look="2"] .pr .ph{color:#2f6a49;flex:1}
+      [data-look="2"] .cur{display:inline-block;width:7px;height:13px;background:#7fe3a4;animation:sa2blink 1.05s steps(1) infinite;vertical-align:-2px}
+      @keyframes sa2blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+      [data-look="2"] .tabs{margin-top:10px;color:#2f6a49}
+      [data-look="2"] .tabs b{color:#05070a;background:#7fe3a4;font-weight:400;padding:0 4px}
+      [data-look="2"] .tt{margin-top:22px;color:#d8ffe8}
+      [data-look="2"] .tr{display:flex;white-space:pre;margin-top:7px}
+      [data-look="2"] .tr .a{width:34px;color:#2f6a49}
+      [data-look="2"] .tr .b{flex:1;overflow:hidden;color:#7fe3a4}
+      [data-look="2"] .tr .c{color:#d8ffe8;font-weight:700}
+      [data-look="2"] .tr.one .a{color:#ffd76a}
+      [data-look="2"] .tr.one .b,[data-look="2"] .tr.one .c{color:#ffd76a}
+      [data-look="2"] .lead{color:#173a29}
+      [data-look="2"] .sp{flex:1}
+      [data-look="2"] .mb{margin-top:12px;display:inline-block;align-self:flex-start;border:1px solid #7fe3a4;padding:5px 14px;color:#7fe3a4;letter-spacing:1px}
+    </style>
+    <div class="rt">
+      <div class="hd">3RD CLOUD</div>
+      <div class="dim" style="font-size:10.5px;margin-top:2px">v1.0 &nbsp;//&nbsp; clan match records</div>
+      <div class="bar" style="margin-top:8px">════════════════════════════════</div>
+      <div class="pr">
+        <span class="tag">[플레이어 ▾]</span>
+        <span class="ph">닉네임을 입력하세요<span class="cur"></span></span>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#7fe3a4" stroke-width="1.5"><circle cx="7" cy="7" r="4.6"/><path d="M10.6 10.6 14.5 14.5" stroke-linecap="round"/></svg>
+      </div>
+      <div class="tabs">$ league &nbsp;<b>SPL</b>&nbsp; IPL &nbsp; 10mountain</div>
+      <div class="tt">▶ 클랜랭킹</div>
+      <div class="bar">--------------------------------</div>
+      <div class="tr one"><span class="a">  1</span><span class="b">sometimes <span class="lead">.....................</span></span><span class="c">3,241</span></div>
+      <div class="tr"><span class="a">  2</span><span class="b">amaryllis <span class="lead">.....................</span></span><span class="c">3,222</span></div>
+      <div class="tr"><span class="a">  3</span><span class="b">hing <span class="lead">..........................</span></span><span class="c">3,221</span></div>
+      <div class="tr"><span class="a">  4</span><span class="b">igloo <span class="lead">.........................</span></span><span class="c">3,154</span></div>
+      <div class="tr"><span class="a">  5</span><span class="b">idylic <span class="lead">........................</span></span><span class="c">3,150</span></div>
+      <div class="bar">--------------------------------</div>
+      <div class="sp"></div>
+      <div class="mb">[ 더 보기 ]</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 03 · 신문 스포츠면 ═══════════════ -->
+<div class="look" data-look="3">
+  <div class="look-meta">
+    <span class="look-no">03</span>
+    <span class="look-name">신문 스포츠면</span>
+    <span class="look-desc">아침에 펼친 스포츠 지면 — 누런 종이, 세리프 제호, 이중 괘선. 기록은 활자다</span>
+  </div>
+  <div class="look-frame" style="background:#f2ede1;overflow:hidden">
+    <style>
+      [data-look="3"] .rt{height:100%;min-height:0;display:flex;flex-direction:column;padding:22px 24px 20px;box-sizing:border-box;color:#191512;background-image:radial-gradient(rgba(120,100,70,.055) 1px,transparent 1px);background-size:3px 3px;font-family:'Noto Serif KR',serif}
+      [data-look="3"] .kick{display:flex;justify-content:space-between;font-size:8.5px;letter-spacing:2.4px;text-transform:uppercase;color:#7a6a56;font-family:'Playfair Display',serif;font-weight:700}
+      [data-look="3"] .lg{font-family:'Playfair Display',serif;font-weight:900;font-size:33px;letter-spacing:-.5px;text-align:center;margin:5px 0 6px;line-height:1}
+      [data-look="3"] .dbl{border-top:2.5px solid #191512;border-bottom:1px solid #191512;height:4px}
+      [data-look="3"] .sr{margin-top:14px;display:flex;align-items:center;border:1px solid #191512;background:#faf7ef;height:34px}
+      [data-look="3"] .sel{padding:0 9px;font-size:11px;font-weight:700;border-right:1px solid #191512;display:flex;align-items:center;gap:5px;height:100%;white-space:nowrap}
+      [data-look="3"] .inp{flex:1;padding:0 10px;font-size:11px;font-style:italic;color:#8a7a66}
+      [data-look="3"] .sb{width:36px;height:100%;display:flex;align-items:center;justify-content:center;border-left:1px solid #191512;background:#191512;color:#f2ede1}
+      [data-look="3"] .lgs{margin-top:12px;display:flex;justify-content:center;gap:16px;font-family:'Playfair Display',serif;font-size:12.5px;letter-spacing:1.6px;font-weight:700;text-transform:uppercase;border-top:1px solid #c3b6a0;border-bottom:1px solid #c3b6a0;padding:9px 0}
+      [data-look="3"] .lgs s{text-decoration:none;color:#9c8d78}
+      [data-look="3"] .lgs s.on{color:#191512;border-bottom:2px solid #a3231d;padding-bottom:1px}
+      [data-look="3"] .th{margin-top:22px;text-align:center}
+      [data-look="3"] .th b{font-size:15px;font-weight:900;letter-spacing:6px}
+      [data-look="3"] .th p{margin:3px 0 0;font-size:8.5px;letter-spacing:2px;color:#7a6a56;font-family:'Playfair Display',serif;text-transform:uppercase}
+      [data-look="3"] table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+      [data-look="3"] th{font-size:8.5px;letter-spacing:1.6px;text-transform:uppercase;color:#7a6a56;font-weight:700;text-align:left;padding:0 0 8px;border-bottom:1.5px solid #191512;font-family:'Playfair Display',serif}
+      [data-look="3"] th:last-child,[data-look="3"] td:last-child{text-align:right}
+      [data-look="3"] td{padding:11px 0;border-bottom:1px solid #d3c8b4}
+      [data-look="3"] td.r{width:26px;font-family:'Playfair Display',serif;font-weight:700;color:#7a6a56}
+      [data-look="3"] tr.one td{font-weight:700}
+      [data-look="3"] tr.one td.r{color:#a3231d;font-size:15px}
+      [data-look="3"] td.s{font-family:'Playfair Display',serif;font-weight:700;font-variant-numeric:tabular-nums}
+      [data-look="3"] .sp{flex:1}
+      [data-look="3"] .mb{margin-top:12px;text-align:center;font-family:'Playfair Display',serif;font-style:italic;font-size:13px;border-bottom:1px solid #191512;align-self:center;padding-bottom:1px;display:inline-flex;gap:6px;align-items:center}
+    </style>
+    <div class="rt">
+      <div class="kick"><span>SEASON 0</span><span>SUDDEN ATTACK CLAN WAR</span></div>
+      <div class="lg">3RD CLOUD</div>
+      <div class="dbl"></div>
+      <div class="sr">
+        <div class="sel">플레이어 <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0h8L4 5z" fill="currentColor"/></svg></div>
+        <div class="inp">닉네임을 입력하세요</div>
+        <div class="sb"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.6"/><path d="M10.6 10.6 14.5 14.5" stroke-linecap="round"/></svg></div>
+      </div>
+      <div class="lgs"><s class="on">SPL</s><s>IPL</s><s>10mountain</s></div>
+      <div class="th"><b>클랜랭킹</b><p>Clan standings · updated daily</p></div>
+      <table>
+        <tr><th>순위</th><th>클랜</th><th>래더</th></tr>
+        <tr class="one"><td class="r">1</td><td>sometimes</td><td class="s">3,241</td></tr>
+        <tr><td class="r">2</td><td>amaryllis</td><td class="s">3,222</td></tr>
+        <tr><td class="r">3</td><td>hing</td><td class="s">3,221</td></tr>
+        <tr><td class="r">4</td><td>igloo</td><td class="s">3,154</td></tr>
+        <tr><td class="r">5</td><td>idylic</td><td class="s">3,150</td></tr>
+      </table>
+      <div class="sp"></div>
+      <div class="mb">더 보기 <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M0 4h10M7 1l3 3-3 3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 04 · 미니멀 스위스 ═══════════════ -->
+<div class="look" data-look="4">
+  <div class="look-meta">
+    <span class="look-no">04</span>
+    <span class="look-name">미니멀 스위스</span>
+    <span class="look-desc">완전한 흰 바탕과 여백 — 선을 거의 안 쓴다. 빨강은 1위 한 곳에만</span>
+  </div>
+  <div class="look-frame" style="background:#ffffff;overflow:hidden">
+    <style>
+      [data-look="4"] .rt{height:100%;min-height:0;display:flex;flex-direction:column;padding:34px 30px 26px;box-sizing:border-box;font-family:'Inter','Noto Sans KR',sans-serif;color:#111}
+      [data-look="4"] .lg{font-size:19px;font-weight:700;letter-spacing:-.4px}
+      [data-look="4"] .lg em{font-style:normal;color:#9a9a9a;font-weight:400}
+      [data-look="4"] .cap{font-size:9px;letter-spacing:2.6px;text-transform:uppercase;color:#a0a0a0;font-weight:500}
+      [data-look="4"] .sr{margin-top:26px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #111;padding-bottom:8px}
+      [data-look="4"] .sel{font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:5px;color:#111;white-space:nowrap}
+      [data-look="4"] .inp{flex:1;font-size:12px;color:#b3b3b3;font-weight:300}
+      [data-look="4"] .lgs{margin-top:22px;display:flex;gap:20px}
+      [data-look="4"] .lgs s{text-decoration:none;font-size:11.5px;letter-spacing:.4px;color:#b3b3b3;font-weight:500}
+      [data-look="4"] .lgs s.on{color:#111;font-weight:700}
+      [data-look="4"] .th{margin-top:32px;display:flex;justify-content:space-between;align-items:baseline}
+      [data-look="4"] .th b{font-size:13px;font-weight:700;letter-spacing:-.2px}
+      [data-look="4"] .rows{margin-top:14px}
+      [data-look="4"] .row{display:grid;grid-template-columns:20px 1fr auto;align-items:baseline;padding:9px 0;column-gap:14px}
+      [data-look="4"] .row .n{font-size:10px;color:#c2c2c2;font-weight:500;font-variant-numeric:tabular-nums}
+      [data-look="4"] .row .nm{font-size:13.5px;font-weight:400;letter-spacing:-.1px}
+      [data-look="4"] .row .sc{font-size:13.5px;font-weight:500;font-variant-numeric:tabular-nums;color:#111}
+      [data-look="4"] .row.one .n{color:#e8280f;font-weight:700}
+      [data-look="4"] .row.one .nm{font-weight:700}
+      [data-look="4"] .row.one .sc{color:#e8280f;font-weight:700}
+      [data-look="4"] .sp{flex:1}
+      [data-look="4"] .mb{align-self:flex-start;margin-top:14px;display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;border-bottom:1.5px solid #111;padding-bottom:3px}
+    </style>
+    <div class="rt">
+      <div class="cap">Sudden Attack</div>
+      <div class="lg" style="margin-top:4px">3RD <em>CLOUD</em></div>
+      <div class="sr">
+        <div class="sel">플레이어 <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0h8L4 5z" fill="currentColor"/></svg></div>
+        <div class="inp">닉네임을 입력하세요</div>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="1.4"><circle cx="7" cy="7" r="4.6"/><path d="M10.6 10.6 14.5 14.5" stroke-linecap="round"/></svg>
+      </div>
+      <div class="lgs"><s class="on">SPL</s><s>IPL</s><s>10mountain</s></div>
+      <div class="th"><b>클랜랭킹</b><span class="cap">Top 5</span></div>
+      <div class="rows">
+        <div class="row one"><span class="n">01</span><span class="nm">sometimes</span><span class="sc">3,241</span></div>
+        <div class="row"><span class="n">02</span><span class="nm">amaryllis</span><span class="sc">3,222</span></div>
+        <div class="row"><span class="n">03</span><span class="nm">hing</span><span class="sc">3,221</span></div>
+        <div class="row"><span class="n">04</span><span class="nm">igloo</span><span class="sc">3,154</span></div>
+        <div class="row"><span class="n">05</span><span class="nm">idylic</span><span class="sc">3,150</span></div>
+      </div>
+      <div class="sp"></div>
+      <div class="mb">더 보기 <svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M0 4h10M7 1l3 3-3 3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 05 · 네온 게이밍 ═══════════════ -->
+<div class="look" data-look="5">
+  <div class="look-meta">
+    <span class="look-no">05</span>
+    <span class="look-name">네온 게이밍</span>
+    <span class="look-desc">둥근 카드와 빛나는 청록·자홍 — 게이밍 기어 광고 같은 화면. 표를 카드로 띄운다</span>
+  </div>
+  <div class="look-frame" style="background:radial-gradient(120% 80% at 15% 0%,#2a1050 0%,#0c0718 55%,#070410 100%);overflow:hidden">
+    <style>
+      [data-look="5"] .rt{height:100%;min-height:0;display:flex;flex-direction:column;padding:24px 22px 22px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#cdc4e8}
+      [data-look="5"] .lg{font-family:'Orbitron',sans-serif;font-weight:900;font-size:23px;letter-spacing:1.5px;color:#fff;text-shadow:0 0 12px rgba(60,232,255,.55),0 0 30px rgba(255,47,176,.3)}
+      [data-look="5"] .lg em{font-style:normal;color:#3ce8ff}
+      [data-look="5"] .sub{font-size:9px;letter-spacing:3px;color:#6c5b95;margin-top:3px;font-family:'Orbitron',sans-serif}
+      [data-look="5"] .sr{margin-top:18px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.045);border:1px solid rgba(60,232,255,.28);border-radius:999px;padding:6px 6px 6px 12px;box-shadow:0 0 18px rgba(60,232,255,.12) inset}
+      [data-look="5"] .sel{font-size:11px;font-weight:700;color:#3ce8ff;display:flex;align-items:center;gap:5px;white-space:nowrap}
+      [data-look="5"] .div{width:1px;height:14px;background:rgba(205,196,232,.22)}
+      [data-look="5"] .inp{flex:1;font-size:11.5px;color:#6c5b95}
+      [data-look="5"] .sb{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#3ce8ff,#ff2fb0);display:flex;align-items:center;justify-content:center;color:#0c0718;box-shadow:0 0 16px rgba(255,47,176,.5)}
+      [data-look="5"] .lgs{margin-top:14px;display:flex;gap:7px}
+      [data-look="5"] .lgs s{text-decoration:none;font-size:10.5px;font-weight:700;letter-spacing:.6px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.05);color:#8375ad}
+      [data-look="5"] .lgs s.on{background:linear-gradient(135deg,rgba(60,232,255,.25),rgba(255,47,176,.25));color:#fff;box-shadow:0 0 14px rgba(60,232,255,.28)}
+      [data-look="5"] .th{margin-top:18px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:#fff}
+      [data-look="5"] .th i{display:block;width:4px;height:14px;border-radius:2px;background:linear-gradient(#3ce8ff,#ff2fb0)}
+      [data-look="5"] .card{margin-top:9px;display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:9px 13px}
+      [data-look="5"] .card.one{border-color:rgba(60,232,255,.5);background:linear-gradient(90deg,rgba(60,232,255,.14),rgba(255,47,176,.07));box-shadow:0 0 20px rgba(60,232,255,.16)}
+      [data-look="5"] .card .n{font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:#6c5b95;text-align:center}
+      [data-look="5"] .card.one .n{color:#3ce8ff}
+      [data-look="5"] .card .nm{font-size:12.5px;font-weight:500;color:#e6e0f5}
+      [data-look="5"] .card .sc{font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:#fff}
+      [data-look="5"] .card.one .sc{color:#3ce8ff;text-shadow:0 0 10px rgba(60,232,255,.6)}
+      [data-look="5"] .sp{flex:1}
+      [data-look="5"] .mb{margin-top:12px;height:38px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:700;color:#0c0718;background:linear-gradient(90deg,#3ce8ff,#ff2fb0);box-shadow:0 6px 22px rgba(255,47,176,.32)}
+    </style>
+    <div class="rt">
+      <div class="lg">3RD <em>CLOUD</em></div>
+      <div class="sub">CLAN BATTLE NETWORK</div>
+      <div class="sr">
+        <span class="sel">플레이어 <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0h8L4 5z" fill="currentColor"/></svg></span>
+        <span class="div"></span>
+        <span class="inp">닉네임을 입력하세요</span>
+        <span class="sb"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="4.6"/><path d="M10.6 10.6 14.5 14.5" stroke-linecap="round"/></svg></span>
+      </div>
+      <div class="lgs"><s class="on">SPL</s><s>IPL</s><s>10mountain</s></div>
+      <div class="th"><i></i>클랜랭킹</div>
+      <div class="card one"><span class="n">1</span><span class="nm">sometimes</span><span class="sc">3,241</span></div>
+      <div class="card"><span class="n">2</span><span class="nm">amaryllis</span><span class="sc">3,222</span></div>
+      <div class="card"><span class="n">3</span><span class="nm">hing</span><span class="sc">3,221</span></div>
+      <div class="card"><span class="n">4</span><span class="nm">igloo</span><span class="sc">3,154</span></div>
+      <div class="card"><span class="n">5</span><span class="nm">idylic</span><span class="sc">3,150</span></div>
+      <div class="sp"></div>
+      <div class="mb">더 보기</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 06 · 고급 시계 브랜드 ═══════════════ -->
+<div class="look" data-look="6">
+  <div class="look-meta">
+    <span class="look-no">06</span>
+    <span class="look-name">고급 시계 브랜드</span>
+    <span class="look-desc">위는 먹색 아래는 미색으로 가른 이단 구성 — 가는 금색 선, 넓은 자간, 세리프</span>
+  </div>
+  <div class="look-frame" style="background:#efe9dd;overflow:hidden">
+    <style>
+      [data-look="6"] .rt{height:100%;min-height:0;display:flex;flex-direction:column;font-family:'Gowun Batang',serif;color:#201c17}
+      [data-look="6"] .top{background:#15120e;padding:26px 28px 24px;text-align:center}
+      [data-look="6"] .cap{font-family:'Cormorant Garamond',serif;font-size:8.5px;letter-spacing:5px;text-transform:uppercase;color:#a58a5c}
+      [data-look="6"] .lg{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:30px;letter-spacing:5px;color:#f3ece0;margin-top:6px;line-height:1}
+      [data-look="6"] .rule{width:44px;height:1px;background:#b08d57;margin:12px auto 0}
+      [data-look="6"] .sr{margin:16px 28px 0;display:flex;align-items:center;border:1px solid #cdbfa4;background:#f7f2e8;height:36px}
+      [data-look="6"] .sel{padding:0 11px;font-size:11px;letter-spacing:1px;display:flex;align-items:center;gap:6px;border-right:1px solid #cdbfa4;height:100%;white-space:nowrap;color:#5b4c38}
+      [data-look="6"] .inp{flex:1;padding:0 11px;font-size:11px;letter-spacing:.6px;color:#a5977f;font-family:'Cormorant Garamond','Gowun Batang',serif}
+      [data-look="6"] .sb{width:38px;height:100%;display:flex;align-items:center;justify-content:center;color:#8a6d3f;border-left:1px solid #cdbfa4}
+      [data-look="6"] .lgs{margin:18px 28px 0;display:flex;justify-content:space-between;font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:3.4px;text-transform:uppercase;color:#8f8371}
+      [data-look="6"] .lgs s{text-decoration:none}
+      [data-look="6"] .lgs s.on{color:#201c17;border-bottom:1px solid #b08d57;padding-bottom:3px}
+      [data-look="6"] .th{margin:22px 28px 0;text-align:center;font-size:12.5px;letter-spacing:8px;color:#201c17}
+      [data-look="6"] .rows{margin:14px 28px 0;border-top:1px solid #b08d57}
+      [data-look="6"] .row{display:grid;grid-template-columns:26px 1fr auto;align-items:baseline;padding:9px 0;border-bottom:1px solid #ddd2ba;column-gap:12px}
+      [data-look="6"] .row .n{font-family:'Cormorant Garamond',serif;font-size:12px;color:#a5977f;letter-spacing:1px}
+      [data-look="6"] .row .nm{font-size:12.5px;letter-spacing:.8px}
+      [data-look="6"] .row .sc{font-family:'Cormorant Garamond',serif;font-size:15px;letter-spacing:1.2px;font-variant-numeric:tabular-nums}
+      [data-look="6"] .row.one .n{color:#b08d57}
+      [data-look="6"] .row.one .sc{color:#8a6d3f}
+      [data-look="6"] .sp{flex:1}
+      [data-look="6"] .mb{margin:14px 28px 22px;height:36px;border:1px solid #b08d57;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond','Gowun Batang',serif;font-size:11.5px;letter-spacing:5px;color:#5b4c38}
+    </style>
+    <div class="rt">
+      <div class="top">
+        <div class="cap">Sudden Attack Clan League</div>
+        <div class="lg">3RD CLOUD</div>
+        <div class="rule"></div>
+      </div>
+      <div class="sr">
+        <div class="sel">플레이어 <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0h8L4 5z" fill="currentColor"/></svg></div>
+        <div class="inp">닉네임을 입력하세요</div>
+        <div class="sb"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7" cy="7" r="4.6"/><path d="M10.6 10.6 14.5 14.5" stroke-linecap="round"/></svg></div>
+      </div>
+      <div class="lgs"><s class="on">SPL</s><s>IPL</s><s>10mountain</s></div>
+      <div class="th">클랜랭킹</div>
+      <div class="rows">
+        <div class="row one"><span class="n">I</span><span class="nm">sometimes</span><span class="sc">3,241</span></div>
+        <div class="row"><span class="n">II</span><span class="nm">amaryllis</span><span class="sc">3,222</span></div>
+        <div class="row"><span class="n">III</span><span class="nm">hing</span><span class="sc">3,221</span></div>
+        <div class="row"><span class="n">IV</span><span class="nm">igloo</span><span class="sc">3,154</span></div>
+        <div class="row"><span class="n">V</span><span class="nm">idylic</span><span class="sc">3,150</span></div>
+      </div>
+      <div class="sp"></div>
+      <div class="mb">더 보기</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 07 · 레트로 아케이드 ═══════════════ -->
+<div class="look" data-look="7">
+  <div class="look-meta">
+    <span class="look-no">07</span>
+    <span class="look-name">레트로 아케이드</span>
+    <span class="look-desc">오락실 하이스코어 판 — 파란 캐비닛, 픽셀 글꼴, 계단식 그림자 버튼</span>
+  </div>
+  <div class="look-frame" style="background:#1b1fbe;overflow:hidden">
+    <style>
+      [data-look="7"] .rt{height:100%;min-height:0;display:flex;flex-direction:column;padding:22px 20px 20px;box-sizing:border-box;font-family:'Noto Sans KR',sans-serif;color:#fff;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 2px,transparent 2px 4px)}
+      [data-look="7"] .px{font-family:'Press Start 2P','Noto Sans KR',monospace}
+      [data-look="7"] .lg{font-size:17px;line-height:1.35;color:#ffd400;text-shadow:3px 3px 0 #0b0e6b}
+      [data-look="7"] .sub{font-size:7px;color:#8fe3ff;margin-top:7px;letter-spacing:1px}
+      [data-look="7"] .sr{margin-top:16px;display:flex;align-items:center;background:#0b0e6b;border:3px solid #ffd400;box-shadow:4px 4px 0 rgba(0,0,0,.45);height:36px}
+      [data-look="7"] .sel{font-size:7px;color:#ffd400;padding:0 8px;display:flex;align-items:center;gap:4px;border-right:3px solid #ffd400;height:100%;white-space:nowrap}
+      [data-look="7"] .inp{flex:1;padding:0 9px;font-size:10px;color:#7f86ff}
+      [data-look="7"] .sb{width:34px;height:100%;background:#ffd400;color:#0b0e6b;display:flex;align-items:center;justify-content:center}
+      [data-look="7"] .lgs{margin-top:14px;display:flex;gap:6px}
+      [data-look="7"] .lgs s{text-decoration:none;font-size:7px;padding:6px 7px;background:#0b0e6b;color:#7f86ff;border:2px solid #3b41e0}
+      [data-look="7"] .lgs s.on{background:#ff3ea5;color:#fff;border-color:#ffd400}
+      [data-look="7"] .th{margin-top:20px;font-size:9px;color:#8fe3ff;text-align:center;letter-spacing:1px}
+      [data-look="7"] .rows{margin-top:12px;background:#0b0e6b;border:3px solid #3b41e0;padding:13px 12px}
+      [data-look="7"] .row{display:flex;align-items:center;font-size:9px;padding:9px 0;white-space:pre;gap:10px}
+      [data-look="7"] .row .n{width:44px;flex:none;color:#ffd400}
+      [data-look="7"] .row .nm{flex:1;color:#e7e9ff;font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:500;overflow:hidden}
+      [data-look="7"] .row .sc{color:#8fe3ff}
+      [data-look="7"] .row.one .nm{color:#ff3ea5;font-weight:700}
+      [data-look="7"] .row.one .sc{color:#ffd400}
+      [data-look="7"] .sp{flex:1}
+      [data-look="7"] .mb{margin-top:14px;align-self:center;font-size:9px;background:#ff3ea5;color:#fff;padding:11px 20px;box-shadow:5px 5px 0 #0b0e6b;letter-spacing:1px}
+    </style>
+    <div class="rt">
+      <div class="lg px">3RD<br>CLOUD</div>
+      <div class="sub px">INSERT NICKNAME</div>
+      <div class="sr">
+        <div class="sel px">플레이어 <svg width="7" height="5" viewBox="0 0 8 5"><path d="M0 0h8L4 5z" fill="currentColor"/></svg></div>
+        <div class="inp">닉네임을 입력하세요</div>
+        <div class="sb"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="7" cy="7" r="4.6"/><path d="M10.6 10.6 14.5 14.5" stroke-linecap="round"/></svg></div>
+      </div>
+      <div class="lgs"><s class="px on">SPL</s><s class="px">IPL</s><s class="px">10mountain</s></div>
+      <div class="th px">클랜랭킹</div>
+      <div class="rows">
+        <div class="row one px"><span class="n">1ST</span><span class="nm">sometimes</span><span class="sc">3,241</span></div>
+        <div class="row px"><span class="n">2ND</span><span class="nm">amaryllis</span><span class="sc">3,222</span></div>
+        <div class="row px"><span class="n">3RD</span><span class="nm">hing</span><span class="sc">3,221</span></div>
+        <div class="row px"><span class="n">4TH</span><span class="nm">igloo</span><span class="sc">3,154</span></div>
+        <div class="row px"><span class="n">5TH</span><span class="nm">idylic</span><span class="sc">3,150</span></div>
+      </div>
+      <div class="sp"></div>
+      <div class="mb px">더 보기</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ 08 · 잡지 편집 ═══════════════ -->
+<div class="look" data-look="8">
+  <div class="look-meta">
+    <span class="look-no">08</span>
+    <span class="look-name">잡지 편집</span>
+    <span class="look-desc">화보 잡지의 판짜기 — 제호를 화면 밖까지 키우고, 순위 숫자를 주인공으로</span>
+  </div>
+  <div class="look-frame" style="background:#e9e6e0;overflow:hidden">
+    <style>
+      [data-look="8"] .rt{height:100%;min-height:0;display:flex;flex-direction:column;font-family:'Archivo','Noto Sans KR',sans-serif;color:#141414;position:relative}
+      [data-look="8"] .hero{background:#141414;color:#e9e6e0;padding:20px 22px 16px;position:relative;overflow:hidden}
+      [data-look="8"] .lg{font-family:'Archivo Black',sans-serif;font-size:46px;line-height:.86;letter-spacing:-2.5px;margin-left:-3px}
+      [data-look="8"] .lg em{font-style:normal;color:#ff4b12;-webkit-text-stroke:0}
+      [data-look="8"] .issue{position:absolute;right:18px;top:20px;writing-mode:vertical-rl;font-size:8px;letter-spacing:3px;color:#7a7570;text-transform:uppercase}
+      [data-look="8"] .sr{display:flex;align-items:center;background:#e9e6e0;color:#141414;margin-top:14px;height:34px}
+      [data-look="8"] .sel{font-size:10px;font-weight:700;letter-spacing:.4px;padding:0 10px;background:#ff4b12;color:#fff;height:100%;display:flex;align-items:center;gap:5px;white-space:nowrap}
+      [data-look="8"] .inp{flex:1;padding:0 10px;font-size:11px;color:#8c8880}
+      [data-look="8"] .sb{width:34px;height:100%;display:flex;align-items:center;justify-content:center;background:#141414;color:#e9e6e0}
+      [data-look="8"] .lgs{display:flex;gap:0;border-bottom:2px solid #141414}
+      [data-look="8"] .lgs s{text-decoration:none;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1.2px;padding:8px 14px;color:#8c8880}
+      [data-look="8"] .lgs s.on{background:#141414;color:#e9e6e0}
+      [data-look="8"] .body{padding:0 22px;display:flex;flex-direction:column;flex:1;min-height:0}
+      [data-look="8"] .th{display:flex;align-items:flex-end;justify-content:space-between;margin:18px 0 6px}
+      [data-look="8"] .th b{font-family:'Bebas Neue','Noto Sans KR',sans-serif;font-weight:400;font-size:24px;letter-spacing:1px;line-height:1}
+      [data-look="8"] .th s{text-decoration:none;font-size:8px;letter-spacing:2.4px;color:#8c8880;text-transform:uppercase;padding-bottom:3px}
+      [data-look="8"] .row{display:flex;align-items:baseline;gap:11px;padding:11px 0;border-top:1px solid #c9c5bd}
+      [data-look="8"] .row .n{font-family:'Archivo Black',sans-serif;font-size:22px;line-height:1;letter-spacing:-1px;color:#c9c5bd;width:30px}
+      [data-look="8"] .row.one .n{color:#ff4b12}
+      [data-look="8"] .row .nm{flex:1;font-size:13px;font-weight:500;letter-spacing:-.2px}
+      [data-look="8"] .row.one .nm{font-weight:700}
+      [data-look="8"] .row .sc{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+      [data-look="8"] .sp{flex:1}
+      [data-look="8"] .mb{margin:12px 0 20px;background:#141414;color:#e9e6e0;height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-family:'Bebas Neue','Noto Sans KR',sans-serif;font-size:16px;letter-spacing:2px}
+    </style>
+    <div class="rt">
+      <div class="hero">
+        <div class="issue">Season 0 / No.01</div>
+        <div class="lg">3RD<br><em>CLOUD</em></div>
+        <div class="sr">
+          <div class="sel">플레이어 <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0h8L4 5z" fill="currentColor"/></svg></div>
+          <div class="inp">닉네임을 입력하세요</div>
+          <div class="sb"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="4.6"/><path d="M10.6 10.6 14.5 14.5" stroke-linecap="round"/></svg></div>
+        </div>
+      </div>
+      <div class="lgs"><s class="on">SPL</s><s>IPL</s><s>10mountain</s></div>
+      <div class="body">
+        <div class="th"><b>클랜랭킹</b><s>Standings</s></div>
+        <div class="row one"><span class="n">1</span><span class="nm">sometimes</span><span class="sc">3,241</span></div>
+        <div class="row"><span class="n">2</span><span class="nm">amaryllis</span><span class="sc">3,222</span></div>
+        <div class="row"><span class="n">3</span><span class="nm">hing</span><span class="sc">3,221</span></div>
+        <div class="row"><span class="n">4</span><span class="nm">igloo</span><span class="sc">3,154</span></div>
+        <div class="row"><span class="n">5</span><span class="nm">idylic</span><span class="sc">3,150</span></div>
+        <div class="sp"></div>
+        <div class="mb">더 보기 <svg width="16" height="9" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M0 4h10M7 1l3 3-3 3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -373,8 +373,12 @@ export function accumulateClanRollups(
  */
 export interface PlayerWriteData {
   rating?: number
-  win: number
-  lose: number
+  /**
+   * 승패·킬데스는 **주인이 우리 공식이면 아예 없다** (D-258).
+   * 그래서 필수 칸이 아니다 — 스키마 기본값이 0 이고, 그 값은 곧 `season0Apply` 가 채운다.
+   */
+  win?: number
+  lose?: number
   kill?: number
   death?: number
   assist?: number
@@ -391,13 +395,56 @@ export interface PlayerWriteData {
  *   **여기서 클랜을 만들지 않는다** (3-A 8번).
  */
 /**
- * 점수·배치 상태의 **주인이 우리 공식**일 때는 그 두 칸을 쓰지 않는다 (D-173).
+ * 점수·배치 상태의 **주인이 우리 공식**일 때는 그 칸들을 쓰지 않는다 (D-173).
  *
  * 시즌0부터 `LeaguePlayer.rating` 은 우리 공식(v2)이 계산한 값이다.
- * 이 잡은 30분마다 도는데, 그때마다 원본 점수로 되돌려 쓰면
- * **사이트가 30분 만에 원래대로 돌아간다.** 실제로 그 사고가 났다.
+ * 이 잡은 5분마다 도는데, 그때마다 원본 점수로 되돌려 쓰면
+ * **사이트가 5분 만에 원래대로 돌아간다.** 실제로 그 사고가 났다.
  *
- * 승패·킬데스 같은 **기록**은 계속 이 잡이 갱신한다. 점수만 손대지 않는다.
+ * ── ⚠ **범위를 넓혔다 (2026-09-02 · D-258)** — 이제 집계 칸을 **하나도** 쓰지 않는다
+ *
+ * 예전에는 `rating` · `placement` 만 막고 **승패·킬데스는 계속 이 잡이 갱신했다.**
+ * 그런데 그 둘은 **잣대가 서로 달랐다.**
+ *
+ * ```
+ * supplyRollup   승패·킬데스를 **전체 기간**으로 다시 만든다
+ * season0Apply   **2026-07-01(KST) 이후**로 다시 만든다   ← 사용자가 고른 것
+ * ```
+ *
+ * 그래서 5분마다 서로 덮었다 — 실측(2026-09-01): 14:04 에 반영한 supply 1,426명 중
+ * **125명의 승패·킬데스가 12분 만에 「전체기간」 값으로 되돌아갔다.**
+ * 점수는 7/1 기준인데 전적은 전체이력이라 화면에 「래더 4254점인데 1561승 1215패」가 떴다.
+ *
+ * ── 왜 「이 잡이 7/1 창을 존중하게」 고치지 않았나 (실측으로 배제했다)
+ *
+ * 창을 걸고 origin 까지 `season0Apply` 와 맞추고 `sourceMatchId` 중복까지 제거해도
+ * **답이 맞지 않는다.** supply 실측:
+ *
+ * | | |
+ * |---|---|
+ * | 창만 걸었을 때 | 1,426명 중 **333명(23.4%)** 불일치 |
+ * | origin·중복제거까지 맞췄을 때 | 완전일치 1,361 · 승패 다름 **65** · 이 잡에만 있는 선수 **21** |
+ *
+ * 남는 86명은 `rateMatch` 가 버린 경기 때문이다 — 창 안에서 `incomplete_squad_*` 14건 ·
+ * `side_clan_mismatch` 2건. 여기서 그것까지 맞추려면 판정 로직을 복제해야 하는데
+ * 그건 **공식을 두 벌 만드는 짓**이다 (CLAUDE.md 3-B 1번).
+ *
+ * 클랜은 더하다. 승패의 출처가 **원본 클랜목록(전체기간)** 이라 (D-157)
+ * 창을 걸 방법이 아예 없다.
+ *
+ * ── 그래서 칸이 아니라 **역할**로 갈랐다
+ *
+ * ```
+ * 집계 (숫자)   점수 · 승패 · 킬데스 · 무기별      → season0Apply 가 전부 갖는다
+ * 명부          현재 소속 클랜 · 부리그 ·          → 이 잡이 갖는다. season0Apply 는 안 쓴다
+ *               클랜/리그클랜 행 생성 · 원본 id
+ * ```
+ *
+ * 두 잡이 **같은 칸을 쓰지 않는다.** 나누는 선이 같은 성질의 칸 중간이 아니라
+ * 「집계 ↔ 명부」 경계라, 나중에 다시 부딪힐 자리가 없다.
+ *
+ * **환경변수를 지우면 옛 동작이 그대로 살아난다** (CLAUDE.md 10-4). 아래 두 함수의
+ * `if` 아래쪽이 그것이다 — 지우지 않았다.
  */
 export function ratingOwnedByFormula(): boolean {
   return process.env.SACLOUD_RATING_OWNER === 'formula'
@@ -407,10 +454,16 @@ export function toPlayerWriteData(
   rollup: PlayerRollup,
   clanId?: string | null,
 ): PlayerWriteData {
-  /* 점수 주인이 우리 공식이면 `rating` · `placement` 를 쓰지 않는다 (D-173) */
-  const formulaOwns = ratingOwnedByFormula()
+  /* 주인이 우리 공식이면 **집계 칸을 하나도 쓰지 않는다** (D-258).
+     남는 것은 `clanId`(현재 소속) 하나다 — 그 칸의 주인은 여전히 이 잡이다 (D-160).
+     근거가 없으면 빈 객체가 되고, 호출부는 그런 선수에게 질의를 보내지 않는다 */
+  if (ratingOwnedByFormula()) {
+    return { ...(clanId ? { clanId } : {}) }
+  }
+
+  /* ── 옛 동작 (`SACLOUD_RATING_OWNER` 가 없을 때). 지우지 않는다 (CLAUDE.md 10-4) ── */
   return {
-    ...(!formulaOwns && rollup.rating !== null ? { rating: rollup.rating } : {}),
+    ...(rollup.rating !== null ? { rating: rollup.rating } : {}),
     ...(clanId ? { clanId } : {}),
     win: rollup.win,
     lose: rollup.lose,
@@ -420,7 +473,7 @@ export function toPlayerWriteData(
       : {}),
     ...(rollup.knownHeadshotGames > 0 ? { headshot: rollup.headshot } : {}),
     // 미러 경기가 있으면 원본은 이미 랭킹에 올려 두었다 (D-154)
-    ...(formulaOwns ? {} : { placement: false as const }),
+    placement: false as const,
   }
 }
 
@@ -464,16 +517,24 @@ export interface ClanWriteData {
 }
 
 export function toClanWriteData(row: SupplyClanRegistryRow): ClanWriteData {
-  /* 개인과 같은 이유다 — 30분마다 원본 점수로 되돌려 쓰면 안 된다 (D-173).
-     등급(division)과 승패는 계속 갱신한다. 점수와 배치 상태만 손대지 않는다 */
-  const formulaOwns = ratingOwnedByFormula()
+  /* 개인과 같은 이유다 (D-173 · D-258). 남기는 것은 **부리그(division)** 하나다 —
+     승격·강등의 유일한 출처가 이 목록이고, `season0Apply` 는 그 칸을 한 줄도 안 쓴다.
+
+     승패를 여기서 놓는 이유는 개인보다 더 단단하다. 클랜 승패는 경기에서 되짚은 값이
+     아니라 **원본 클랜목록이 준 전체기간 값**이다 (D-157). 즉 7/1 창을 걸 방법이
+     아예 없다 — 고쳐서 맞출 수 있는 종류의 어긋남이 아니다 */
+  if (ratingOwnedByFormula()) {
+    return { division: row.division }
+  }
+
+  /* ── 옛 동작 (`SACLOUD_RATING_OWNER` 가 없을 때). 지우지 않는다 (CLAUDE.md 10-4) ── */
   return {
-    ...(!formulaOwns && row.rating !== null ? { rating: row.rating } : {}),
+    ...(row.rating !== null ? { rating: row.rating } : {}),
     ...(row.win !== null ? { win: row.win } : {}),
     ...(row.lose !== null ? { lose: row.lose } : {}),
     division: row.division,
     // 수집 파일 목록에 있다 = 리그 등록 클랜이다. 원본 클랜랭킹에 올라 있다
-    ...(formulaOwns ? {} : { placement: false as const }),
+    placement: false as const,
   }
 }
 
@@ -992,9 +1053,29 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
   })
   const leaguePlayerOf = new Map(existingPlayers.map((row) => [row.playerId, row.id]))
 
-  for (const playerId of players.keys()) {
-    if (leaguePlayerOf.has(playerId)) result.players.updated += 1
-    else result.players.created += 1
+  /**
+   * 실제로 보낼 갱신 — **쓸 칸이 하나도 없는 선수는 뺀다** (D-258).
+   *
+   * 명부 전용 모드(`SACLOUD_RATING_OWNER=formula`)에서 이 잡이 쓰는 칸은 `clanId` 하나다.
+   * 무소속이거나 그 클랜이 `Clan` 표에 없으면 쓸 것이 없는데, 그래도 `update` 를 보내면
+   * **빈 갱신이 그대로 왕복 비용**이 된다 — 하루 1회 전수에서 supply 만 1만 건이고
+   * 순차 왕복이라 그 자체로 몇 분이다. 그동안 `concurrency` 그룹을 붙잡고 있으므로
+   * 수집이 그만큼 밀린다.
+   *
+   * 옛 동작에서는 승패가 항상 들어 있어 빈 객체가 나오지 않는다 — 그때는 이 필터가
+   * 한 명도 걸러내지 않는다.
+   */
+  const playerUpdates: { id: string; data: PlayerWriteData }[] = []
+  for (const [playerId, rollup] of players) {
+    const id = leaguePlayerOf.get(playerId)
+    if (!id) {
+      result.players.created += 1
+      continue
+    }
+    const data = toPlayerWriteData(rollup, clanIdOf(rollup))
+    if (Object.keys(data).length === 0) continue
+    playerUpdates.push({ id, data })
+    result.players.updated += 1
   }
 
   /* 클랜의 기준 집합은 **수집 파일 클랜 목록**이다 (D-157).
@@ -1133,13 +1214,10 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
     })
   }
 
-  const toUpdate = [...players].flatMap(([playerId, rollup]) => {
-    const id = leaguePlayerOf.get(playerId)
-    if (!id) return []
-    return [
-      prisma.leaguePlayer.update({ where: { id }, data: toPlayerWriteData(rollup, clanIdOf(rollup)) }),
-    ]
-  })
+  /* 위에서 이미 고른 목록을 그대로 쓴다 — 세는 것과 쓰는 것이 갈라지면 안 된다 */
+  const toUpdate = playerUpdates.map((row) =>
+    prisma.leaguePlayer.update({ where: { id: row.id }, data: row.data }),
+  )
   for (let index = 0; index < toUpdate.length; index += WRITE_CHUNK) {
     await prisma.$transaction(toUpdate.slice(index, index + WRITE_CHUNK))
   }

@@ -42,3 +42,19 @@ coverage
 test-results
 playwright-report
 *.log
+
+# ── 조사용 임시 파일 (2026-09-02) ────────────────────────────────
+#
+#   ⚠ 이것 때문에 배포가 죽었다 — `vercel --archive=tgz` 가 파일을 묶는 도중에
+#     에이전트가 임시 스크립트를 지우면 `ENOENT: lstat …_tmp/clanGap.ts` 로 터진다.
+#     실제로 3번째 시도에서 그렇게 죽었다.
+#
+#   빌드에 안 쓰이는 것들이라 빼는 게 맞다. **소스는 하나도 안 뺀다** —
+#   여기 적은 것은 전부 「다시 만들 수 있는 조사용」이다.
+apps/worker/src/dev/_tmp/
+packages/db/_backup/
+packages/db/_probe*.ts
+packages/db/_q.*
+apps/web/scripts/_*.mts
+.tmp-marks/
+.tmp-twotone/

@@ -1,5 +1,9 @@
 import { prisma } from '@sacloud/db'
-import { SIGNUP_ALLOWED_EMAIL_DOMAINS, type AuthSession } from '@sacloud/contract'
+import {
+  normalizeUsername,
+  SIGNUP_ALLOWED_EMAIL_DOMAINS,
+  type AuthSession,
+} from '@sacloud/contract'
 import { randomBytes, createHash } from 'node:crypto'
 import { toKstIso } from '../format'
 import { toUser } from '../mappers'
@@ -17,10 +21,55 @@ export const USER_INCLUDE = {
   playerLink: { include: { player: { include: { clan: true } } } },
 } as const
 
-/** 가입 가능한 이메일 도메인인지 (관측: 네이버 메일만) */
-export function isAllowedSignupEmail(email: string): boolean {
+/**
+ * 가입 가능한 이메일 도메인인지.
+ *
+ * ⚠ **정정 (2026-09-01 · D-252)** — 옛 동작은 「네이버 메일만」이었다.
+ * 그 제약이 살아 있는 한 **대부분의 사람이 가입할 수 없다.** 사용자가 «회원가입 무조건
+ * 가능하게» 라고 못 박아서 제한을 풀었다.
+ *
+ * 옛 동작을 지우지는 않았다 (CLAUDE.md 10-4). `SACLOUD_SIGNUP_EMAIL_DOMAINS` 에
+ * `naver.com` 을 넣으면 그때 동작이 그대로 돌아온다. 비어 있으면(기본) 전부 허용한다.
+ */
+export function allowedSignupEmailDomains(env: NodeJS.ProcessEnv = process.env): string[] {
+  const configured = env.SACLOUD_SIGNUP_EMAIL_DOMAINS?.trim()
+  if (configured) {
+    return configured
+      .split(',')
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean)
+  }
+  return [...(SIGNUP_ALLOWED_EMAIL_DOMAINS as readonly string[])]
+}
+
+export function isAllowedSignupEmail(email: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  const allowed = allowedSignupEmailDomains(env)
+  if (allowed.length === 0) return true // 제한 없음 (기본)
   const domain = email.split('@')[1]?.toLowerCase()
-  return domain !== undefined && SIGNUP_ALLOWED_EMAIL_DOMAINS.includes(domain as 'naver.com')
+  return domain !== undefined && allowed.includes(domain)
+}
+
+/**
+ * 아이디 또는 이메일로 사용자를 찾는다 (로그인).
+ *
+ * 아이디는 **소문자로 정규화**해서 찾는다. 저장할 때도 같은 함수를 거치므로
+ * 대소문자만 다른 아이디로는 절대 다른 계정이 되지 않는다.
+ */
+export async function findUserForLogin(input: { username?: string; email?: string }) {
+  const username = input.username ? normalizeUsername(input.username) : null
+
+  if (username) {
+    const byUsername = await prisma.user.findUnique({ where: { username } })
+    if (byUsername) return byUsername
+    /* 아이디 칸에 이메일을 적은 사람을 막지 않는다 — 옛 계정은 이메일이 곧 로그인 값이었다 */
+    if (username.includes('@')) {
+      return prisma.user.findUnique({ where: { email: username } })
+    }
+    return null
+  }
+
+  if (input.email) return prisma.user.findUnique({ where: { email: input.email } })
+  return null
 }
 
 /** 로그인 성공 후 세션을 발급하고 계약 형태로 돌려준다 */

@@ -1,0 +1,6 @@
+spl-player-rank=/league/supply/rank/player
+spl-clan-rank=/league/supply/rank/clan/1
+sanply-player-rank=/league/sanply/rank/player
+ipl-player-rank=/league/nolink/rank/player
+ipl-clan-rank=/league/nolink/rank/clan/2
+home=/

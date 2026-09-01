@@ -1,0 +1,6 @@
+home=/
+spl-clan=/league/supply/rank/clan
+spl-player=/league/supply/rank/player
+sanply-player=/league/sanply/rank/player
+board=/board
+login=/auth/login

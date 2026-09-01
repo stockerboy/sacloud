@@ -2068,10 +2068,13 @@ function mockHexV2TallyOf(
     sidedRounds: rounds,
     redRounds,
     foeSnipers: 0,
-    sniperFight: null,
+    sniperDuel: null,
+    firstBlood: null,
+    trade: null,
     outnumbered: null,
     save: null,
     tempo: null,
+    sniperFight: null,
     lastSniper: null,
     attackZone: null,
   }
@@ -2138,14 +2141,54 @@ function mockHexV2TallyOf(
     sniperKillsWithPosition: { byKiller: sniperKills, byVictim: sniperKills },
     sniperKillsInNamedZone: { byKiller: aSide + bLong, byVictim: aSide + bLong },
     sniperKillsOutsideNamedZone: { byKiller: unzoned, byVictim: unzoned },
-    /* D-235 Q6 — `녹뒤`·`머리` 좌표가 아직 없어 넷 중 둘뿐이다. 화면은 `구역 2/4` 를 적는다 */
-    zoneLabels: ['CONDWI', 'SEOLDAE'],
+    /* ⚠ 정정 (2026-09-02 · D-256) — 이 줄은 «D-235 Q6 — `녹뒤`·`머리` 좌표가 아직 없어
+       넷 중 둘뿐이다. 화면은 `구역 2/4` 를 적는다» 였다. 좌표는 2026-08-29 에 사용자가
+       직접 칠했다. Mock 도 **넷**으로 맞춘다 — 안 맞추면 `pnpm compare` 에서 mock 과 live 가
+       갈리고, Mock 화면에만 「구역 2/4」가 남는다 */
+    zoneLabels: ['CONDWI', 'SEOLDAE', 'NOKDWI', 'MERI'],
+  }
+
+  /* ────────────────────────────────────────────────────────────────────────
+   * 2026-09-02 · D-256 — 지금 화면이 쓰는 축 셋. **맨 뒤에 붙였다.**
+   *
+   * 위 머리말이 못 박아 둔 규칙이다 — `rng` 호출 순서가 곧 값이라, 가운데에 끼워 넣으면
+   * 그 뒤 픽스처가 통째로 바뀐다. 그래서 옛 축의 난수를 다 뽑은 **다음에** 뽑는다.
+   * ①⑤⑥ 은 실제로도 양 팀 합이 1 에 가까운 지표라 0.5 언저리로 잡는다 (실측 중앙값
+   * ① 0.502 · ⑤ 0.499 · ⑥ 0.176).
+   * ──────────────────────────────────────────────────────────────────────── */
+  const duelWon = Math.max(1, Math.round(redRounds * rng.float(0.2, 0.5, 3)))
+  const duelLost = Math.max(1, Math.round(duelWon * rng.float(0.7, 1.4, 3)))
+  base.sniperDuel = { rounds, won: duelWon, lost: duelLost }
+
+  /* 첫 킬이 없는 라운드가 있으므로 분모는 라운드보다 조금 작다 */
+  const fbRounds = Math.max(1, Math.round(rounds * rng.float(0.9, 0.98, 3)))
+  base.firstBlood = {
+    rounds: fbRounds,
+    won: Math.round(fbRounds * rng.float(0.42, 0.58, 3)),
+    /* 동시각 첫 킬 — 실측 4.48% */
+    tiedRounds: Math.round(rounds * 0.045),
+  }
+
+  /* 창 넷은 **포함 관계**다: 3초 ⊆ 5초 ⊆ 10초 ⊆ 같은 라운드. Mock 도 그 순서를 지킨다 */
+  const deaths = Math.max(1, Math.round(rounds * rng.float(1.6, 2.4, 3)))
+  const within3 = Math.round(deaths * rng.float(0.1, 0.15, 3))
+  const within5 = within3 + Math.round(deaths * rng.float(0.03, 0.07, 3))
+  const within10 = within5 + Math.round(deaths * rng.float(0.06, 0.1, 3))
+  base.trade = {
+    deaths,
+    within3,
+    within5,
+    within10,
+    sameRound: within10 + Math.round(deaths * rng.float(0.18, 0.26, 3)),
   }
 
   if (shape === 'part') {
-    /* 셋만 남긴다 — 재료가 없는 축은 **0 이 아니라 측정중**이다 (D-106) */
+    /* 셋만 남긴다 — 재료가 없는 축은 **0 이 아니라 측정중**이다 (D-106).
+       ⚠ 옛 `lastSniper` 대신 **지금 화면이 쓰는 `trade`** 를 비운다. 옛 축을 비워 봐야
+       화면에는 아무 변화가 없어서 「측정중이 섞인 모습」을 볼 수 없다 */
     base.save = null
     base.tempo = null
+    base.trade = null
     base.lastSniper = null
   }
   return base

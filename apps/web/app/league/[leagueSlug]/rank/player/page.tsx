@@ -70,7 +70,7 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
       <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
           title="플레이어 개인랭킹"
-          notice="랭킹은 1시간마다 갱신되며, 한 경기부터 바로 반영됩니다."
+          notice="랭킹 숫자는 약 1시간마다 다시 계산됩니다. 한 경기부터 바로 반영됩니다."
         />
         <RankWeaponTabs current={weapon} onChange={setWeapon} />
         {/* 폼 TOP3 는 **래더 증감**만 보여 주는 칸이다. 래더가 없는 리그에서는 그리지 않는다 */}

@@ -10,7 +10,9 @@ import type { TeamSide, Weapon } from '@sacloud/contract'
 
 export interface MockUser {
   id: string
-  email: string
+  /** 로그인 아이디 (D-252). 이메일로 가입한 옛 계정은 `null` */
+  username: string | null
+  email: string | null
   nickname: string
   avatarUrl: string | null
   role: number

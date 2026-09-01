@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { color: inherit; }
+  </style>
+</helmet>
+
+<div style="min-height: 900px; background: {{bg}}; font-family: 'Noto Sans KR', -apple-system, 'Segoe UI', sans-serif; color: #d6c9c9; padding: 0 12px;">
+
+  <!-- ════ 윗머리 ════ -->
+  <div style="display: flex; flex-direction: column; align-items: center; padding-top: 64px; padding-bottom: 56px;">
+
+    <div style="font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-size: 26px; letter-spacing: 0.06em; color: #f6eded; line-height: 1;">3RD CLOUD<span style="color: {{accent}};">.</span></div>
+
+    <div style="width: 100%; margin-top: 28px;">
+      <div style="display: flex; align-items: stretch; border: 1px solid #2a1616; border-radius: 2px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 92px; flex-shrink: 0; border-right: 1px solid #2a1616; padding: 0 12px; font-size: 13px; color: #9a8080;">
+          <span>플레이어</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 4l3 3 3-3"/></svg>
+        </div>
+        <div style="flex-grow: 1; min-width: 0; padding: 12px; font-size: 14px; color: #6b5555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">닉네임 또는 병영수첩</div>
+        <div style="display: flex; align-items: center; padding: 0 12px; color: #9a8080;">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="6"/><path d="M13.5 13.5L17 17"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 20px; margin-top: 24px; font-size: 13px; color: #9a8080;">
+      <span>SPL</span>
+      <span>IPL</span>
+      <span>10mountain</span>
+    </div>
+  </div>
+
+  <div style="height: 1px; background: #1a1010;"></div>
+
+  <!-- ════ 알 모음집 ════ -->
+  <div style="padding-top: 40px;">
+    <div style="display: flex; align-items: baseline; gap: 10px; padding-bottom: 14px;">
+      <span style="font-size: 15px; color: #f6eded; font-weight: 700;">SPL</span>
+      <span style="font-size: 12px; color: #6b5555; font-family: 'JetBrains Mono', monospace;">0 / 59</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;">
+      <sc-for list="{{eggs}}" as="egg" hint-placeholder-count="10">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <div style="width: 38px; height: 47px; border: 1px solid #2a1616; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; background: #120c0c;"></div>
+          <div style="font-size: 10px; color: #9a8080; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">{{egg.name}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ════ Hot게시판 ════ -->
+  <div style="padding-top: 40px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 14px;">
+      <span style="font-size: 15px; color: #f6eded; font-weight: 700;">Hot게시판</span>
+      <span style="font-size: 12px; color: #9a8080;">더 보기</span>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+      <sc-for list="{{posts}}" as="post" hint-placeholder-count="4">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid #1a1010;">
+          <span style="flex-grow: 1; min-width: 0; font-size: 13px; color: #d6c9c9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{post.title}}</span>
+          <span style="font-size: 12px; color: {{accent}}; font-family: 'JetBrains Mono', monospace;">{{post.up}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding-top: 56px; padding-bottom: 40px;">
+    <div style="border-top: 1px solid #1a1010; padding-top: 20px; font-size: 12px; color: #6b5555;">© 2026 3rd cloud</div>
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "bg": {"editor": "color", "default": "#060505", "section": "색", "options": ["#060505", "#0a0a0c", "#101014", "#f6f2f2"]},
+  "accent": {"editor": "color", "default": "#d92b2b", "section": "색", "options": ["#d92b2b", "#c9a24e", "#2ea043", "#4a7fd9"]},
+  "$preview": {"width": 390, "height": 900}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    const spl = ['LP크루', 'saint', 'One.PoinT', 'supremacy-', 'hilarious-', 'Castle', 'MiraGe.', 'veritas', 'grave', 'dominator'];
+    return {
+      bg: this.props.bg ?? '#060505',
+      accent: this.props.accent ?? '#d92b2b',
+      eggs: spl.map((name) => ({ name })),
+      posts: [
+        { title: '클랜전 매칭 어떻게 잡으시나요', up: '24' },
+        { title: '스나 라플 비율 어느 정도가 맞을까요', up: '18' },
+        { title: '이번 시즌 승격 기준 정리', up: '15' },
+        { title: '탈주 판정 관련 문의드립니다', up: '9' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -80,8 +80,10 @@ export function SiteHeader({
   const [leagueEntry, ...restNav] = primaryNav
 
   return (
+    /* `bg-ink` — 셸은 본문보다 어둡다 (「투톤」 · D-251).
+       그때는 `bg-page` 였고, 그때는 두 토큰의 값이 **같아서** 층이 없었다. */
     <nav
-      className={`fixed top-0 z-50 w-full border-b border-line bg-page ${NAV_HEIGHT}`}
+      className={`fixed top-0 z-50 w-full border-b border-line bg-ink ${NAV_HEIGHT}`}
     >
       <div className="mx-auto flex h-full w-full max-w-[var(--layout-max,1120px)] items-stretch px-5 max-md:px-3">
         {/* --- 모바일: 햄버거 --- */}
@@ -101,7 +103,12 @@ export function SiteHeader({
           aria-label="홈"
           className={`flex items-center pr-8 ${pathname === '/' ? 'hidden' : ''}`}
         >
-          <NavLogo className="h-[18px] w-auto" />
+          {/*
+            두 줄짜리 확정 로고다. 18px 로 놓으면 글자가 6px 이 되어 안 읽힌다 —
+            32px 로 놓아야 `3RD` 가 10px 쯤 된다. 머리띠가 64px 이라 여유가 있고,
+            그 높이에서도 폭은 92px 로 옛 로고(99px)보다 좁아 GNB 가 밀리지 않는다.
+          */}
+          <NavLogo className="h-[32px] w-auto max-md:h-[26px]" />
         </Link>
 
         <div className="hidden items-stretch md:flex">

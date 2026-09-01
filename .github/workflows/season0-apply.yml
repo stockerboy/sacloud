@@ -1,0 +1,210 @@
+# 시즌0 집계 반영 — **랭킹이 보여 주는 모든 숫자를 다시 만든다** (D-258)
+#
+# ── 무엇을 하는가
+#   2026-07-01(KST) 이후 경기를 우리 공식으로 처음부터 다시 재생해서
+#   `LeaguePlayer` · `LeagueClan` · `LeaguePlayerWeaponStat` 에 받아 적는다.
+#   개인 통합/스나/라플 랭킹과 클랜 랭킹의 **점수 · 승패 · 킬데스**가 전부 여기서 나온다.
+#
+#     season0Apply --leagues <slugs> --confirm
+#
+#   **네트워크(원본·넥슨)를 쓰지 않는다.** DB 안에서만 도는 계산이다.
+#
+# ── 왜 이 워크플로가 생겼는가
+#   예전에는 `supply-rollup` 이 승패·킬데스를 만들었다. 그런데 잣대가 달랐다 —
+#
+#     supply-rollup   **전체 기간**으로 만든다
+#     season0Apply    **7/1 이후**로 만든다        ← 사용자가 고른 것
+#
+#   그래서 5분마다 서로 덮었다. 실측(2026-09-01): 14:04 에 반영한 supply 1,426명 중
+#   **125명의 승패·킬데스가 12분 만에 되돌아갔다.** 화면에 「래더 4254점인데 1561승 1215패」가 떴다.
+#   점수는 7/1 기준인데 전적은 전체이력이라 서로 다른 잣대다.
+#
+#   고친 방향은 「칸이 아니라 **역할**로 가른다」다 (D-258).
+#     집계 (숫자)  → 이 워크플로가 전부 갖는다
+#     명부         → `supply-rollup` 이 갖는다 (클랜마크 · 부리그 · 클랜행 · 원본 id)
+#   두 잡이 같은 칸을 쓰지 않는다.
+#
+# ── 왜 `schedule` 을 주 경로로 쓰지 않는가  ← 이 파일에서 가장 중요한 판단
+#   GitHub 예약 실행은 **실측 전달률 11%** 다 (D-225 · 슬롯 153칸 중 발사 17 · 드롭 136).
+#   1시간 cron 을 걸어도 실제로는 몇 시간에 한 번 온다.
+#
+#   그리고 `concurrency` 그룹에는 **대기 자리가 하나뿐**이다 (D-224).
+#   대기 중인 run 이 있는데 새 run 이 오면 **대기하던 쪽이 취소된다.**
+#   `supply-rollup-full` 이 정확히 그렇게 죽었다 — run 3건이 **전부 cancelled**,
+#   한 번도 돈 적이 없다. 증분 체인(시간당 ~2.7회)이 매번 밀어냈기 때문이다.
+#
+#   그래서 예약에 기대지 않고 **손바꿈(hand-off)** 으로 돈다.
+#
+#     증분이 끝날 때   마지막 season0-apply 가 60분보다 오래됐나?
+#                      → 자기 대신 이 워크플로를 dispatch 하고 물러난다
+#     이것이 끝날 때   증분 체인을 다시 열어 준다 (아래 마지막 스텝)
+#
+#   부르는 쪽은 **이미 끝나가는 run** 이라 대기 자리를 쓰지 않는다. 그래서 취소가 없다.
+#   `workflow_dispatch` 는 예약 큐를 안 타므로 구조적으로 드롭도 없다 (D-229).
+#
+#   아래 `schedule` 은 **후퇴값**이다. 체인이 끊겼을 때 되살리는 용도이지 주 경로가 아니다.
+#
+# ── ⚠ 실제 주기는 「1시간」이 아니라 **60~90분**이다
+#   증분 run 하나가 ~30분이라, 「60분 지났나」를 다음 run 이 **끝날 때** 보기 때문이다.
+#   화면 문구도 그래서 「약 1시간마다」로 적었다 (`rank/player/page.tsx` 등 4곳).
+#   **「1시간마다」라고 적지 마라.** 거짓이 된다.
+#
+# ── 비용 (실측 2026-09-02 · 운영 DB)
+#   계산(dry-run)  supply 18.2s · sanply 39.2s · nolink 16.7s · daerule 6.8s  = 약 81초
+#   쓰기           선수를 한 명씩 upsert 한다. 순차 질의 약 12,600회 × RTT 47.7ms ≈ 10분
+#   합계           약 11~12분. 시간당 ~18% 를 집계에 내주는 셈이다
+#
+#   ⚠ 쓰기가 느린 것은 **순차 upsert** 때문이지 계산 때문이 아니다.
+#     배치화하면 크게 줄지만 그건 별건이다 (`season0Apply.ts` 의 쓰기 루프).
+
+name: 시즌0 집계 반영 (랭킹 숫자)
+
+on:
+  # ── 후퇴값이다. 주 경로는 증분에서 넘어오는 손바꿈이다 (위 머리말)
+  #   전달률이 11% 라 이것만으로는 하루 두세 번 도는 것이 고작이다. 기대하지 않는다.
+  #   `17` 분인 이유는 증분(`7,37`) · 전수(`0 19`)와 겹치지 않게 하려는 것뿐이다.
+  schedule:
+    - cron: '17 * * * *'
+
+  workflow_dispatch:
+    inputs:
+      leagues:
+        description: '반영할 리그 slug (쉼표)'
+        required: false
+        default: 'supply,sanply,nolink,daerule'
+      dry_run:
+        description: '미리보기 — 한 줄도 쓰지 않는다 (계획 파일만 만든다)'
+        type: boolean
+        required: false
+        default: false
+
+# 증분(`supply-incremental.yml`) · 전수(`supply-rollup-full.yml`)와 **같은 그룹**이다.
+# 셋 다 같은 `LeaguePlayer` · `LeagueClan` 행을 건드리므로 절대 동시에 돌면 안 된다.
+# 겹치면 취소가 아니라 대기다 — 진행 중인 쪽을 죽이면 절반만 반영된 상태로 끝난다.
+concurrency:
+  group: supply-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # 끝나면서 **증분 체인을 다시 열어 준다** (D-229). dispatch 에 필요한 최소 권한이다
+  actions: write
+
+jobs:
+  apply:
+    name: 시즌0 재계산 → LeaguePlayer · LeagueClan
+    runs-on: ubuntu-latest
+    # 실측 11~12분. 원본이 늘면 길어지므로 넉넉히 두되 무한정 붙잡지는 않는다 —
+    # 이 그룹을 오래 쥐고 있으면 수집이 그만큼 밀린다
+    timeout-minutes: 45
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # **긴 배치 잡**이라 세션 풀러(5432)를 쓴다. 6543 의 자리는 사이트 몫으로 남긴다
+      # (D-249 후속 · `packages/db/src/index.ts` 의 `sessionPoolerUrl`)
+      SACLOUD_DB_SESSION_POOLER: '1'
+      LEAGUES: ${{ inputs.leagues || 'supply,sanply,nolink,daerule' }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: pnpm 설치
+        uses: pnpm/action-setup@v4
+
+      - name: Node 24 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma 클라이언트 생성
+        run: pnpm --filter @sacloud/db exec prisma generate
+
+      - name: 시크릿 확인 (값은 찍지 않는다)
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL 시크릿이 없다"
+            exit 1
+          fi
+          echo "리그 ${LEAGUES} · dry-run ${DRY_RUN}"
+
+      - name: 시즌0 반영
+        id: apply
+        run: |
+          set -uo pipefail
+          confirm='--confirm'
+          if [ "$DRY_RUN" = 'true' ]; then confirm=''; fi
+
+          started=$(date +%s)
+          # 리그를 한 번에 넘긴다 — `season0Apply` 가 순서대로 돌면서 리그마다 백업을 뜬다.
+          # 하나가 실패하면 거기서 멈춘다. 절반만 반영된 상태를 조용히 넘기지 않기 위해서다
+          if ! pnpm --filter @sacloud/worker exec tsx src/jobs/season0Apply.ts \
+          --leagues "$LEAGUES" $confirm; then
+            echo "::error::시즌0 반영 실패 ($(( ( $(date +%s) - started ) / 60 ))분) — 리그 ${LEAGUES}"
+            exit 1
+          fi
+          echo "시즌0 반영 완료 — $(( ( $(date +%s) - started ) / 60 ))분"
+
+      # 되돌릴 길을 남긴다 (`--revert <파일>`).
+      #
+      # ⚠ 러너는 **빈 작업공간**이라 백업 파일이 여기서만 존재한다. 안 올리면 사라진다.
+      #   다만 이 잡은 **결정적 replay** 라, 되돌리는 것보다 다시 돌리는 쪽이 보통 맞다 —
+      #   같은 DB 에서는 몇 번을 돌려도 같은 값이 나온다.
+      #   백업이 진짜 필요한 경우는 「우리 공식 이전(원본 3rd.supply 점수)으로 되돌린다」인데,
+      #   그 스냅샷은 **2026-09-01 것 하나로 충분하다** (`applied-2026-09-01T14-04-50-958Z.json`).
+      #   그래서 보관을 3일로 짧게 잡는다 — 매시간 40MB 를 7일 쌓을 이유가 없다.
+      - name: 백업 파일 보관 (되돌리기용)
+        if: ${{ always() && inputs.dry_run != true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: season0-backup-${{ github.run_id }}
+          path: apps/worker/backups/season0/applied-*.json
+          if-no-files-found: warn
+          retention-days: 3
+
+      # 반영이 실제로 됐는지 **DB 를 세어** 확인한다. 로그가 아니다.
+      # 앞 스텝이 죽어도 돈다 — 검사 스텝은 서로를 가리면 안 된다 (D-224)
+      - name: 검증 — 행 수 · 무결성 (읽기만 한다)
+        if: ${{ always() && inputs.dry_run != true }}
+        run: pnpm --filter @sacloud/worker nexon db-snapshot --stamp "season0-${{ github.run_id }}"
+
+      # ── 증분 체인을 **다시 열어 준다** (D-229)
+      #
+      #   증분은 자기호출로 도는데, 이 워크플로를 부르면서 물러났다.
+      #   물러난 체인을 누가 다시 여는가 — **끝낸 쪽이 연다.** 그것이 여기다.
+      #   이걸 예약(cron)에 맡기면 안 된다. 전달률이 11% 라 몇 시간이 빈다.
+      #
+      #   `always()` — 반영이 실패해도 수집은 다시 돌아야 한다. 둘은 다른 일이다.
+      #   이미 도는 증분이 있으면 부르지 않는다(중복 방지). 실패해도 잡을 죽이지 않는다 —
+      #   여기서 빨개지면 「반영이 실패했다」로 잘못 읽힌다. 대신 `::warning::` 을 남긴다.
+      - name: 증분 체인을 다시 연다 (self-dispatch · D-229)
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          live=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-incremental.yml/runs?per_page=10" \
+          | jq -r '[.workflow_runs[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="pending")] | length')
+          if [ -n "$live" ] && [ "$live" != 'null' ] && [ "$live" -gt 0 ]; then
+            echo "증분이 이미 ${live}건 돌고 있다 — 부르지 않는다"
+            exit 0
+          fi
+
+          code=$(curl -sS -o /tmp/redispatch.out -w '%{http_code}' -X POST \
+          -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-incremental.yml/dispatches" \
+          -d "{\"ref\":\"${GITHUB_REF_NAME}\",\"inputs\":{\"chain\":\"0\"}}")
+          if [ "$code" = '204' ]; then
+            echo "증분 체인을 다시 열었다 (체인 0 부터)"
+          else
+            echo "::warning::증분 체인 재개 실패 HTTP ${code} — cron(7,37) 후퇴값에 맡긴다. 본문: $(head -c 300 /tmp/redispatch.out)"
+          fi

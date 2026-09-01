@@ -30,7 +30,14 @@ export function AuthCard({
     <div className="flex min-h-screen w-full items-center justify-center bg-page px-4 py-16">
       <div className="w-full max-w-[420px]">
         <Link href="/" className="mb-8 flex items-center justify-center">
-          <NavLogo className="h-7 w-[152px]" tone="dark" />
+          {/*
+            ⚠ 여기에는 `tone="dark"`(= `--color-ink` #060505) 가 붙어 있었다.
+            원본 재현 때 카드가 **흰색**이었을 때의 값인데, `적진`(D-204)으로 갈아 끼우면서
+            바탕이 `--color-page`(#060505) 가 됐다 — 로고가 바탕과 같은 색이 되어 보이지 않았다.
+            `tone` 속성 자체는 남겨 둔다(CLAUDE.md 10-4). 여기서만 기본값(밝게)으로 되돌린다.
+            폭은 못박지 않는다 — 확정 로고는 두 줄이라 비율이 다르다. 높이만 준다.
+          */}
+          <NavLogo className="h-9 w-auto" />
         </Link>
 
         <div className="rounded border border-line bg-card px-7 py-8 text-text">{children}</div>

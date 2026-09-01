@@ -36,71 +36,27 @@ import {
 
 /* ──────────────────────────────────────────────────────────────── 계약 타입
  *
- * ⚠ 임시 선언이다. `packages/contract/src/clanTraitsV2.ts` 를 다른 작업자가 쓰고 있고,
- *   모양은 확정돼 있다. 파일이 생기면 아래 세 선언을 지우고 이 한 줄로 바꾼다:
+ * ✅ **정리했다 (2026-09-02 · D-256).** 여기 있던 임시 선언 셋(`ClanHexV2AxisKey` ·
+ *   `ClanHexV2PendingReason` · `ClanHexV2Axis` · `ClanHexV2`)과 문구 표를 **계약에서 가져오는
+ *   것으로 바꿨다.** 옛 주석이 *"파일이 생기면 아래 세 선언을 지우고 이 한 줄로 바꾼다"* 라고
+ *   적어 둔 그대로다.
  *
- *   import type { ClanHexV2, ClanHexV2Axis } from '@sacloud/contract'
- */
-
-export type ClanHexV2AxisKey =
-  | 'sniperFight'
-  | 'outnumbered'
-  | 'save'
-  | 'tempo'
-  | 'lastSniper'
-  | 'attackZone'
-
-export type ClanHexV2PendingReason =
-  | 'battlelog'
-  | 'side'
-  | 'foeSniper'
-  | 'sample'
-  | 'zone'
-  | 'compare'
-
-export interface ClanHexV2Axis {
-  key: ClanHexV2AxisKey
-  /** `스나싸움` 등. **화면 문구는 계약이 준다** — 여기서 이름을 지어내지 않는다 */
-  label: string
-  numerator: number | null
-  denominator: number | null
-  /** 비율(0~1) 또는 초 */
-  raw: number | null
-  /** 0~1 정규화. `null` 이면 못 잰 축이다 */
-  value: number | null
-  /** `42%` / `18.3초` / `측정중` */
-  text: string
-  pending: ClanHexV2PendingReason | null
-}
-
-export interface ClanHexV2 {
-  /** 항상 6개, 순서 고정 */
-  axes: ClanHexV2Axis[]
-  measured: number
-  matches: number
-  rounds: number
-  redRounds: number
-  /** 지금 2 (D-235 Q6 — `녹뒤`·`머리` 좌표가 아직 없다) */
-  zoneLabelsUsed: number
-  /** 4 */
-  zoneLabelsTotal: number
-  formulaVersion: string
-}
-
-/**
- * 못 재는 이유를 사람 말로.
+ *   ⚠ 왜 지금이냐 — **베껴 둔 축 이름이 실제로 낡아 있었다.** 계약은 축을
+ *   `sniperDuel`·`firstBlood`·`trade` 로 바꿨는데 이 파일은 `sniperFight`·`lastSniper`·
+ *   `attackZone` 을 그대로 들고 있었다. 문구 표(`PENDING_TEXT`)도 계약과 한 글자가 달랐다
+ *   (`구역 좌표 없음` vs `구역 좌표 필요`). **한쪽만 고치면 조용히 갈라지는 자리**였다.
  *
- * ⚠ 계약이 같은 표(`CLAN_HEX_V2_PENDING_TEXT`)를 내보내기 시작하면 그것을 쓰고 여기를 지운다.
- *   문구가 두 군데 있으면 조용히 갈라진다.
+ *   타입을 다시 내보내는 것은 유지한다 — 이 이름들로 import 하던 곳이 안 깨지게 (`CLAUDE.md` 10-4).
  */
-const PENDING_TEXT: Record<ClanHexV2PendingReason, string> = {
-  battlelog: '배틀로그 필요',
-  side: '진영 판정 필요',
-  foeSniper: '상대 스나 미확인',
-  sample: '표본 부족',
-  zone: '구역 좌표 없음',
-  compare: '비교 대상 없음',
-}
+import {
+  CLAN_HEX_V2_PENDING_TEXT as PENDING_TEXT,
+  type ClanHexV2,
+  type ClanHexV2Axis,
+  type ClanHexV2AxisKey,
+  type ClanHexV2PendingReason,
+} from '@sacloud/contract'
+
+export type { ClanHexV2, ClanHexV2Axis, ClanHexV2AxisKey, ClanHexV2PendingReason }
 
 /**
  * 정규화값(0~1) → 반지름.
@@ -110,6 +66,31 @@ const PENDING_TEXT: Record<ClanHexV2PendingReason, string> = {
  */
 function radiusOf(value: number): number {
   return Math.max(3, Math.min(1, Math.max(0, value)) * HEX_RADIUS)
+}
+
+/**
+ * 값 옆에 **분자/분모**를 조용히 붙인다 — `25% (5/20)` (2026-09-02 · D-256).
+ *
+ * ── 왜
+ *   경기 상세 실측에서 **분모가 1인 축이 32.5%** 였고, 그런 값이 `100%` 로 적혀 꼭짓점을
+ *   꽉 채우고 있었다(분모 ≤ 2 이면서 `raw=1.000` 인 경기×클랜 행 **2,805개**).
+ *   문턱을 걸어 축을 지우는 길(㉯)과 표본으로 눌러 그리는 길(㉰)이 있었지만, 앞은
+ *   **육각형이 통째로 안 그려지고** 뒤는 **우리가 상수 `k` 를 지어내야 한다**(3장 7번).
+ *   분자/분모를 그냥 보여 주는 것은 **아무것도 지어내지 않고** 읽는 사람이 스스로 판단하게 한다.
+ *
+ * ── 규칙
+ *   - 글자는 작고 조용하게(`--color-faint`). **진홍을 쓰지 않는다** (D-204)
+ *   - 못 잰 축(`측정중`)에는 안 붙인다 — 붙일 숫자가 없다
+ *   - 게임템포는 `초`라 분자/분모가 «몇 초 / 몇 라운드» 이고 그대로 뜻이 통한다
+ *   - **변별력이 실제보다 커 보이게 만드는 장치가 아니다.** 오히려 그 반대다
+ */
+function Fraction({ axis }: { axis: ClanHexV2Axis }) {
+  if (axis.numerator === null || axis.denominator === null || axis.raw === null) return null
+  return (
+    <span className="ml-1 text-[11px] font-normal text-faint">
+      ({formatCount(Math.round(axis.numerator))}/{formatCount(axis.denominator)})
+    </span>
+  )
 }
 
 /** 같은 축을 키로 짚는다. 순서는 고정이라지만 키로 맞추면 순서가 흔들려도 안 어긋난다 */
@@ -137,9 +118,15 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
   const foeFilled = foeHex !== undefined && isFilled(foeHex)
   const empty = hexagon.measured === 0 && (foeHex === undefined || foeHex.measured === 0)
 
-  /* ⑥ A어택성공이 있으면 «구역 2/4» 를 적는다 (D-235 Q6).
-     좌표가 둘뿐이라는 사실을 **화면이 말해야** 한다 — 값만 보면 다 센 것처럼 읽힌다 */
-  const zoneAxis = axisOf(hexagon, 'attackZone')
+  /* ⚠ **정정 (2026-09-02 · D-256) — «구역 n/4» 표기를 뺐다.**
+     여기 있던 것:
+       const zoneAxis = axisOf(hexagon, 'attackZone')
+     그리고 아래 머리에 «구역 {zoneLabelsUsed}/{zoneLabelsTotal}» 을 적는 블록이 있었다.
+
+     사용자가 ① 을 스나 대 스나로 바꾸고 ⑤⑥ 을 빼면서 **구역을 보는 축이 하나도 안 남았다.**
+     `attackZone` 축 자체가 없어졌으므로 이 표기는 영영 안 나온다. 죽은 조건을 남겨 두면
+     다음 사람이 «왜 안 뜨지» 를 뒤진다. `zoneLabelsUsed`/`zoneLabelsTotal` **칸은 그대로 둔다** —
+     옛 축이 되살아나면 그 값이 다시 뜻을 갖는다 (`CLAUDE.md` 10-4). */
 
   /* 못 재는 이유는 양쪽 것을 함께 모은다. 겹쳐 그릴 때 «누구 때문에 비었나» 보다
      «무엇이 없나» 가 먼저다 */
@@ -160,15 +147,6 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
           {hexagon.measured < 6 ? (
             <span className="num">
               측정중 {hexagon.measured}/{hexagon.axes.length}
-            </span>
-          ) : null}
-          {/* 구역 표기는 **모자랄 때만** 적는다.
-              2026-09-01 에 사용자가 `녹뒤`·`머리` 를 직접 칠해 **넷이 다 찼다**.
-              다 찼는데도 `구역 4/4` 를 적으면 «뭔가 모자란가» 로 읽힌다 —
-              위의 `측정중 6/6` 을 안 적는 것과 같은 이유다. 모자라면 다시 나온다 */}
-          {zoneAxis !== undefined && hexagon.zoneLabelsUsed < hexagon.zoneLabelsTotal ? (
-            <span className="num">
-              구역 {hexagon.zoneLabelsUsed}/{hexagon.zoneLabelsTotal}
             </span>
           ) : null}
         </div>
@@ -335,6 +313,7 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
                   title={compare ? (name ?? '우리') : undefined}
                 >
                   {axis.text}
+                  <Fraction axis={axis} />
                 </span>
                 {compare ? (
                   <span
@@ -342,6 +321,7 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
                     title={foe?.name}
                   >
                     {foeAxis?.text ?? '측정중'}
+                    {foeAxis ? <Fraction axis={foeAxis} /> : null}
                   </span>
                 ) : null}
               </span>

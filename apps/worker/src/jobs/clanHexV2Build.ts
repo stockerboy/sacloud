@@ -57,7 +57,19 @@
  *   (D-235: 클랜 값 = 경기 행의 합). 리그를 골라 보고 싶으면 `--league` 를 쓴다.
  *
  * ── 못 재는 것 (전부 `null` 로 남는다. **0 으로 채우지 않는다** · D-106)
- *   1. `녹뒤` · `머리` 구역의 좌표가 없다 (D-235 Q6). ⑥ 은 `컨뒤` · `A설대` **둘만**으로 센다
+ *   1. ~~`녹뒤` · `머리` 구역의 좌표가 없다 (D-235 Q6). ⑥ 은 `컨뒤` · `A설대` **둘만**으로 센다~~
+ *      ### ⚠ **정정 (2026-09-02 · D-256) — 넷이 다 있다. 이 줄은 사실이 아니다**
+ *      사용자가 2026-08-29 에 `design/zone-paint.html` 로 **직접 칠했다.** 지금
+ *      `data/barracks/style-zones.json` 에는 8구역 208칸이 다 있고
+ *      (`BIRONG 97 · BUNKER 25 · GJA 25 · CONDWI 19 · DALBANG 15 · SEOLDAE 15 ·
+ *       NOKDWI 6 · MERI 6`), ⑥ 은 **넷 전부**(`컨뒤`·`A설대`·`녹뒤`·`머리`)로 센다.
+ *
+ *      ★ **이 낡은 서술이 실제로 사람을 속였다.** 이걸 읽고 사용자에게 「녹뒤·머리가 없다」고
+ *        보고한 일이 있었다. 손으로 칠한 것이라 상심하셨다. 지우지 않고 남기되
+ *        (`CLAUDE.md` 10-4) **여기서 먼저 정정을 만나게** 해 둔다.
+ *
+ *      ⚠ 이건 **재빌드로만** 고쳐진다. 저장된 tally 에는 킬 좌표가 없어서
+ *        (`sniperKillsOutsideNamedZone` 은 개수뿐이다) 그중 몇이 녹뒤·머리인지 가릴 수 없다.
  *   2. 라운드 시작 시각이 관측되지 않는다. ④ 는 **하한값**이다
  *   3. 상대 팀 스나를 한 명도 못 짚은 경기는 ①⑤⑥ 이 통째로 `null` 이다
  *   4. 양 팀 5명이 확인되지 않은 경기는 ②③④⑤ 가 `null` 이다
@@ -101,10 +113,17 @@ const BATCH = 200
 const ZONE_FILE = join(REPO_ROOT, 'data/barracks/style-zones.json')
 
 /**
- * ① 의 `A쪽` 으로 볼 구역 — **`컨뒤` + `A설대` 둘뿐이다** (D-235 Q2).
+ * ① 의 `A쪽` 으로 볼 구역 — ⑥ 이 쓰는 `A_ATTACK_ZONE_LABELS` 와 **같은 집합**이다 (D-235 Q2).
  *
- * ⑥ 이 쓰는 `A_ATTACK_ZONE_LABELS` 와 **같은 집합**이다. 사용자가 말한 이름 넷 중
- * 좌표가 있는 것이 이 둘뿐이라 그렇다. 없는 이름은 지어내지 않는다 (`CLAUDE.md` 3장 7번).
+ * 즉 `컨뒤` · `A설대` · `녹뒤` · `머리` **넷**이다.
+ *
+ * ⚠ **정정 (2026-09-02 · D-256)** — 이 주석은 «**`컨뒤` + `A설대` 둘뿐이다**. 사용자가 말한
+ * 이름 넷 중 좌표가 있는 것이 이 둘뿐이라 그렇다» 였다. **좌표는 넷 다 있다** —
+ * 사용자가 2026-08-29 에 직접 칠했다. 상수 `A_ATTACK_ZONE_LABELS` 는 이미 넷이었고
+ * 이 주석만 낡아 있었다. 지우지 않고 정정을 단다 (`CLAUDE.md` 10-4).
+ *
+ * 없는 이름은 여전히 지어내지 않는다 (`CLAUDE.md` 3장 7번) — 파일에 칸이 없는 라벨은
+ * `loadClanHexZones` 가 `attackLabels` 에서 빼므로 `zoneLabels` 가 **실제로 쓴 것**만 말한다.
  *
  * ⚠ `data/barracks/sniper-lane.json` 은 **폐기 표시가 붙어 있다**(실제 사격 위치의
  * 16.2%만 덮는다). `A쪽`·`B롱` 으로 쓰지 않는다.
@@ -142,6 +161,15 @@ export interface ZoneLoad {
  * **파일이 없으면 아무것도 넘기지 않는다.** 그러면 자리를 나누는 칸이 `null` 로
  * 나오고(①의 `aSideKills`·`bLongKills`, ⑥ 통째), 화면에서 `측정중` 이 된다.
  * 좌표를 지어내서 채우지 않는다.
+ *
+ * ── ⚠ `attackLabels` 는 **파일에 실제로 칸이 있는 라벨만** 넘긴다 (2026-09-02 · D-256)
+ *   전에는 파일에 무엇이 있든 상수 `A_ATTACK_ZONE_LABELS` 를 그대로 넘겼다. 그래서
+ *   파일에 둘밖에 없어도 저장된 `zoneLabels` 는 **「넷 썼다」고 우겼다.**
+ *   ⑥ 의 값은 셀 집합으로 계산되므로 숫자는 옳았지만, «몇 구역으로 잰 값인가» 라는
+ *   **출처 표시가 거짓**이 됐다. 그것 하나로 나중에 어느 행이 옛 규칙인지 가릴 수 없어진다.
+ *
+ *   「어느 구역이 A어택인가」는 **의미 결정**이라 코드(`A_ATTACK_ZONE_LABELS`)가 갖고,
+ *   「그 구역이 실제로 칠해져 있는가」는 **데이터**라 파일이 갖는다. 둘을 섞지 않는다.
  */
 export function loadClanHexZones(file: string | null): ZoneLoad {
   if (file === null || !existsSync(file)) {
@@ -151,18 +179,30 @@ export function loadClanHexZones(file: string | null): ZoneLoad {
   const aSide = zoneCellsOfLabels(parsed, A_SIDE_ZONE_LABELS)
   const bLong = zoneCellsOfLabels(parsed, [B_LONG_ZONE_LABEL])
   const attack = zoneCellsOfLabels(parsed, A_ATTACK_ZONE_LABELS)
+
+  /* 라벨별 칸 수 — 0 이면 그 구역이 파일에 없다. 보고에도 그대로 싣는다 */
+  const attackCellsByLabel: Record<string, number> = {}
+  for (const label of A_ATTACK_ZONE_LABELS) {
+    attackCellsByLabel[label] = zoneCellsOfLabels(parsed, [label]).cells.length
+  }
+  /* **실제로 칠해진 라벨만** 남긴다. 없는 것을 썼다고 하지 않는다 */
+  const attackLabelsPresent = A_ATTACK_ZONE_LABELS.filter(
+    (label) => (attackCellsByLabel[label] ?? 0) > 0,
+  )
+
   return {
     zones: {
       aSide: aSide.cells.length > 0 ? aSide : null,
       bLong: bLong.cells.length > 0 ? bLong : null,
       attack: attack.cells.length > 0 ? attack : null,
-      attackLabels: A_ATTACK_ZONE_LABELS,
+      attackLabels: attackLabelsPresent,
     },
     file,
     cells: {
       [`A쪽(${A_SIDE_ZONE_LABELS.join('+')})`]: aSide.cells.length,
       [`B롱(${B_LONG_ZONE_LABEL})`]: bLong.cells.length,
-      [`⑥구역(${A_ATTACK_ZONE_LABELS.join('+')})`]: attack.cells.length,
+      [`⑥구역(${attackLabelsPresent.join('+')})`]: attack.cells.length,
+      ...attackCellsByLabel,
     },
   }
 }

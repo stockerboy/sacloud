@@ -1,0 +1,467 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Black+Han+Sans&family=DM+Serif+Display:ital@0;1&family=Gothic+A1:wght@300;400;500;700;900&family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Inter+Tight:wght@200;300;400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nanum+Gothic+Coding:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&family=Noto+Serif+KR:wght@400;500;600;700;900&family=Oswald:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   set-B · 시안 09~16 — 「밝은 쪽 · 편집 디자인」 축
+   모든 선택자는 [data-look="N"] 로 시작한다. 전역 선택자 없음.
+   ============================================================ */
+
+/* ---------- 09 신문 스포츠면 ---------- */
+[data-look="9"] .look-frame *{box-sizing:border-box;margin:0;padding:0}
+[data-look="9"] .b9{height:100%;padding:22px 24px;display:flex;flex-direction:column;color:#141210;font-family:'Noto Serif KR',serif}
+[data-look="9"] .b9-rule-t{border-top:3px solid #141210;border-bottom:1px solid #141210;height:4px}
+[data-look="9"] .b9-mast{font-family:'Playfair Display',serif;font-weight:900;font-size:38px;letter-spacing:.02em;text-align:center;padding:9px 0 7px;line-height:1}
+[data-look="9"] .b9-rule-b{border-top:1px solid #141210;border-bottom:3px solid #141210;height:4px;margin-bottom:14px}
+[data-look="9"] .b9-search{display:flex;align-items:stretch;border:1px solid #141210;height:34px;background:#fffdf8}
+[data-look="9"] .b9-sel{font-family:'Noto Serif KR',serif;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:5px;padding:0 10px;border-right:1px solid #141210;white-space:nowrap}
+[data-look="9"] .b9-inp{flex:1;display:flex;align-items:center;padding:0 10px;font-size:11.5px;color:#7d766a;font-family:'Noto Serif KR',serif}
+[data-look="9"] .b9-go{width:34px;display:flex;align-items:center;justify-content:center;border-left:1px solid #141210;color:#141210}
+[data-look="9"] .b9-lg{display:flex;justify-content:center;gap:0;margin:13px 0 15px;border-top:1px solid #cfc7b6;border-bottom:1px solid #cfc7b6;padding:7px 0}
+[data-look="9"] .b9-lg span{font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:500;color:#6d6559;padding:0 13px;border-right:1px solid #d8d0c0}
+[data-look="9"] .b9-lg span:last-child{border-right:0}
+[data-look="9"] .b9-lg .on{color:#a51919;font-weight:700}
+[data-look="9"] .b9-h{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #141210;padding-bottom:5px}
+[data-look="9"] .b9-h b{font-family:'Noto Serif KR',serif;font-weight:900;font-size:20px;letter-spacing:-.01em}
+[data-look="9"] .b9-row{display:flex;align-items:baseline;gap:11px;padding:11px 2px;border-bottom:1px solid #ddd6c7}
+[data-look="9"] .b9-n{font-family:'Oswald',sans-serif;font-weight:600;font-size:15px;width:16px;color:#141210}
+[data-look="9"] .b9-nm{flex:1;font-family:'Libre Baskerville',serif;font-size:14.5px;letter-spacing:-.01em}
+[data-look="9"] .b9-sc{font-family:'Oswald',sans-serif;font-weight:500;font-size:15px;font-variant-numeric:tabular-nums}
+[data-look="9"] .b9-row.one .b9-n,[data-look="9"] .b9-row.one .b9-sc{color:#a51919}
+[data-look="9"] .b9-row.one .b9-nm{font-weight:700}
+[data-look="9"] .b9-more{margin-top:auto;text-align:center;border:1px solid #141210;border-width:1px 0;padding:9px 0;font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.22em;font-weight:500}
+
+/* ---------- 10 스위스 그리드 ---------- */
+[data-look="10"] .look-frame *{box-sizing:border-box;margin:0;padding:0}
+[data-look="10"] .b10{height:100%;padding:34px 32px 28px;display:flex;flex-direction:column;color:#111;font-family:'Inter','IBM Plex Sans KR',sans-serif}
+[data-look="10"] .b10-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:38px}
+[data-look="10"] .b10-sq{width:11px;height:11px;background:#e4002b;margin-top:5px;flex:none}
+[data-look="10"] .b10-logo{font-weight:700;font-size:19px;letter-spacing:-.035em;line-height:1.1}
+[data-look="10"] .b10-search{display:flex;align-items:center;gap:14px;border-bottom:1px solid #111;padding-bottom:8px}
+[data-look="10"] .b10-sel{font-size:11px;font-weight:600;letter-spacing:.02em;color:#111;white-space:nowrap}
+[data-look="10"] .b10-inp{flex:1;font-size:12.5px;color:#a2a2a2;font-weight:400}
+[data-look="10"] .b10-lg{display:flex;gap:22px;margin:20px 0 40px}
+[data-look="10"] .b10-lg span{font-size:11px;letter-spacing:.06em;font-weight:500;color:#a2a2a2;text-transform:uppercase}
+[data-look="10"] .b10-lg .on{color:#111;box-shadow:inset 0 -5px 0 rgba(228,0,43,.22)}
+[data-look="10"] .b10-h{font-size:11px;letter-spacing:.1em;font-weight:600;color:#111;margin-bottom:4px}
+[data-look="10"] .b10-hr{height:1px;background:#e4002b;margin-bottom:14px}
+[data-look="10"] .b10-row{display:grid;grid-template-columns:26px 1fr auto;align-items:baseline;padding:10px 0}
+[data-look="10"] .b10-n{font-size:10px;font-weight:600;color:#b6b6b6;letter-spacing:.04em}
+[data-look="10"] .b10-nm{font-size:14px;font-weight:500;letter-spacing:-.02em}
+[data-look="10"] .b10-sc{font-size:14px;font-weight:400;font-variant-numeric:tabular-nums;color:#4a4a4a}
+[data-look="10"] .b10-row.one .b10-n{color:#e4002b}
+[data-look="10"] .b10-row.one .b10-sc{color:#111;font-weight:600}
+[data-look="10"] .b10-more{margin-top:auto;align-self:flex-start;font-size:11px;font-weight:600;letter-spacing:.08em;border-bottom:2px solid #111;padding-bottom:3px}
+
+/* ---------- 11 브루탈리즘 ---------- */
+[data-look="11"] .look-frame *{box-sizing:border-box;margin:0;padding:0}
+[data-look="11"] .b11{height:100%;padding:24px 18px 18px;display:flex;flex-direction:column;color:#000;font-family:'Archivo','Black Han Sans',sans-serif}
+[data-look="11"] .b11-logo{font-family:'Archivo Black',sans-serif;font-size:40px;line-height:1.02;letter-spacing:-.035em;text-transform:uppercase}
+[data-look="11"] .b11-logo em{font-style:normal;background:#ffe600;padding:0 4px;margin-left:-4px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+[data-look="11"] .b11-search{display:flex;border:3px solid #000;margin-top:16px;background:#fff;box-shadow:5px 5px 0 #000;height:40px}
+[data-look="11"] .b11-sel{display:flex;align-items:center;gap:5px;padding:0 9px;font-family:'Black Han Sans',sans-serif;font-size:12px;background:#ffe600;border-right:3px solid #000;white-space:nowrap}
+[data-look="11"] .b11-inp{flex:1;display:flex;align-items:center;padding:0 9px;font-size:12px;font-weight:600;color:#8f8f8f;font-family:'Archivo','Gothic A1',sans-serif}
+[data-look="11"] .b11-go{width:40px;display:flex;align-items:center;justify-content:center;border-left:3px solid #000}
+[data-look="11"] .b11-lg{display:flex;gap:6px;margin:16px 0 14px}
+[data-look="11"] .b11-lg span{border:2.5px solid #000;padding:4px 8px;font-size:11px;font-weight:700;letter-spacing:-.01em;text-transform:uppercase;background:#fff}
+[data-look="11"] .b11-lg .on{background:#000;color:#ffe600}
+[data-look="11"] .b11-h{font-family:'Black Han Sans',sans-serif;font-size:17px;background:#000;color:#fff;display:inline-block;align-self:flex-start;padding:3px 9px 4px}
+[data-look="11"] .b11-tb{border:3px solid #000;border-bottom:0;margin-top:9px;background:#fff}
+[data-look="11"] .b11-row{display:flex;align-items:center;border-bottom:3px solid #000;height:41px}
+[data-look="11"] .b11-n{width:32px;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black',sans-serif;font-size:13px;border-right:3px solid #000;background:#f0efe9}
+[data-look="11"] .b11-nm{flex:1;padding:0 10px;font-size:13.5px;font-weight:700;letter-spacing:-.02em;text-transform:uppercase}
+[data-look="11"] .b11-sc{padding:0 10px;font-family:'Archivo Black',sans-serif;font-size:13.5px;font-variant-numeric:tabular-nums}
+[data-look="11"] .b11-row.one{background:#ffe600}
+[data-look="11"] .b11-row.one .b11-n{background:#000;color:#ffe600}
+[data-look="11"] .b11-more{margin-top:auto;border:3px solid #000;background:#000;color:#fff;text-align:center;padding:10px 0;font-family:'Black Han Sans',sans-serif;font-size:14px;letter-spacing:.06em;box-shadow:5px 5px 0 #ffe600}
+
+/* ---------- 12 잡지 편집 ---------- */
+[data-look="12"] .look-frame *{box-sizing:border-box;margin:0;padding:0}
+[data-look="12"] .b12{height:100%;padding:30px 30px 26px;display:flex;flex-direction:column;color:#241f1c;font-family:'Gowun Batang',serif}
+[data-look="12"] .b12-logo{font-family:'DM Serif Display',serif;font-size:42px;line-height:1;letter-spacing:-.02em}
+[data-look="12"] .b12-logo i{font-style:italic;color:#8c2b2b}
+[data-look="12"] .b12-hair{height:1px;background:#241f1c;margin:14px 0 16px}
+[data-look="12"] .b12-search{display:flex;align-items:center;gap:12px;border-bottom:1px solid #cdbfb2;padding-bottom:9px}
+[data-look="12"] .b12-sel{font-size:11.5px;letter-spacing:.02em;color:#8c2b2b;white-space:nowrap;font-weight:700}
+[data-look="12"] .b12-inp{flex:1;font-family:'Libre Baskerville',serif;font-style:italic;font-size:12px;color:#a2938a}
+[data-look="12"] .b12-lg{display:flex;gap:18px;margin:16px 0 26px;align-items:baseline}
+[data-look="12"] .b12-lg span{font-family:'Libre Baskerville',serif;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9b8d83}
+[data-look="12"] .b12-lg .on{color:#241f1c;border-bottom:2px solid #8c2b2b;padding-bottom:2px}
+[data-look="12"] .b12-h{font-size:13px;letter-spacing:.32em;color:#8c2b2b;font-weight:700;margin-bottom:10px}
+[data-look="12"] .b12-row{display:flex;align-items:baseline;gap:14px;padding:8px 0;border-bottom:1px dotted #cdbfb2}
+[data-look="12"] .b12-n{font-family:'DM Serif Display',serif;font-size:22px;line-height:1;color:#ded1c4;width:22px}
+[data-look="12"] .b12-nm{flex:1;font-family:'Libre Baskerville',serif;font-size:14px;letter-spacing:-.01em}
+[data-look="12"] .b12-sc{font-family:'Libre Baskerville',serif;font-size:13px;font-variant-numeric:tabular-nums;color:#5c534c}
+[data-look="12"] .b12-row.one .b12-n{color:#8c2b2b}
+[data-look="12"] .b12-row.one .b12-sc{color:#241f1c}
+[data-look="12"] .b12-more{margin-top:auto;align-self:center;font-family:'Libre Baskerville',serif;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#241f1c;border:1px solid #241f1c;padding:8px 26px;border-radius:999px}
+
+/* ---------- 13 연감·기록집 ---------- */
+[data-look="13"] .look-frame *{box-sizing:border-box;margin:0;padding:0}
+[data-look="13"] .b13{height:100%;padding:14px;font-family:'Nanum Gothic Coding',monospace;color:#2b2721}
+[data-look="13"] .b13-box{height:100%;border:1px solid #8c8172;padding:16px 18px;display:flex;flex-direction:column;box-shadow:inset 0 0 0 4px #f3efe3,inset 0 0 0 5px #b8ac99}
+[data-look="13"] .b13-logo{font-family:'Libre Baskerville',serif;font-size:22px;letter-spacing:.22em;text-align:center;font-weight:700}
+[data-look="13"] .b13-sub{height:1px;background:#b8ac99;margin:12px 0 14px}
+[data-look="13"] .b13-search{display:flex;align-items:center;gap:8px}
+[data-look="13"] .b13-sel{font-size:10.5px;font-weight:700;border:1px solid #8c8172;padding:5px 7px;background:#ebe5d5;white-space:nowrap}
+[data-look="13"] .b13-inp{flex:1;font-size:11px;color:#8c8172;border-bottom:1px dotted #8c8172;padding:5px 2px}
+[data-look="13"] .b13-go{border:1px solid #8c8172;padding:5px 7px;display:flex;align-items:center;background:#ebe5d5}
+[data-look="13"] .b13-lg{display:flex;gap:0;margin:14px 0 18px;font-size:10.5px;letter-spacing:.06em}
+[data-look="13"] .b13-lg span{padding:0 10px;border-right:1px solid #b8ac99;color:#7d7264}
+[data-look="13"] .b13-lg span:first-child{padding-left:0}
+[data-look="13"] .b13-lg span:last-child{border-right:0}
+[data-look="13"] .b13-lg .on{color:#2b2721;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+[data-look="13"] .b13-h{font-family:'Libre Baskerville',serif;font-size:12px;letter-spacing:.28em;padding-bottom:6px;border-bottom:1px solid #2b2721;margin-bottom:4px}
+[data-look="13"] .b13-row{display:flex;align-items:baseline;gap:8px;padding:9px 0 8px;font-size:12.5px}
+[data-look="13"] .b13-n{width:14px;font-weight:700}
+[data-look="13"] .b13-nm{white-space:nowrap}
+[data-look="13"] .b13-dot{flex:1;border-bottom:1px dotted #a2977f;transform:translateY(-4px)}
+[data-look="13"] .b13-sc{font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+[data-look="13"] .b13-row.one{background:#ebe5d5;margin:0 -6px;padding-left:6px;padding-right:6px}
+[data-look="13"] .b13-more{margin-top:auto;text-align:center;font-size:11px;letter-spacing:.24em;border:1px solid #8c8172;padding:9px 0;background:#ebe5d5}
+
+/* ---------- 14 서류·양식 ---------- */
+[data-look="14"] .look-frame *{box-sizing:border-box;margin:0;padding:0}
+[data-look="14"] .b14{height:100%;padding:18px;font-family:'IBM Plex Sans KR',sans-serif;color:#1b2a41}
+[data-look="14"] .b14-sheet{height:100%;background:#fff;border:1px solid #b9c2cc;padding:18px 18px 16px;display:flex;flex-direction:column;position:relative}
+[data-look="14"] .b14-top{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #1b2a41;padding-bottom:9px}
+[data-look="14"] .b14-logo{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;letter-spacing:-.03em}
+[data-look="14"] .b14-tick{display:flex;gap:3px}
+[data-look="14"] .b14-tick i{width:9px;height:9px;border:1px solid #1b2a41;display:block}
+[data-look="14"] .b14-tick i:first-child{background:#1b2a41}
+[data-look="14"] .b14-lb{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;color:#7b8896;margin:14px 0 5px;text-transform:uppercase}
+[data-look="14"] .b14-lb.kr{font-family:'IBM Plex Sans KR',sans-serif;font-size:11px;font-weight:600;letter-spacing:.05em;color:#1b2a41;margin-top:16px}
+[data-look="14"] .b14-search{display:flex;border:1px solid #1b2a41;height:32px}
+[data-look="14"] .b14-sel{display:flex;align-items:center;gap:5px;padding:0 9px;font-size:11px;font-weight:600;background:#eef2f6;border-right:1px solid #1b2a41;white-space:nowrap}
+[data-look="14"] .b14-inp{flex:1;display:flex;align-items:center;padding:0 9px;font-size:11px;color:#98a4b0}
+[data-look="14"] .b14-go{width:32px;display:flex;align-items:center;justify-content:center;background:#1b2a41;color:#fff}
+[data-look="14"] .b14-lg{display:flex;gap:5px}
+[data-look="14"] .b14-lg span{border:1px solid #b9c2cc;padding:4px 9px;font-size:10.5px;font-weight:500;color:#5c6a78}
+[data-look="14"] .b14-lg .on{border-color:#1b2a41;background:#1b2a41;color:#fff;font-weight:600}
+[data-look="14"] .b14-tb{border:1px solid #1b2a41;border-collapse:collapse;width:100%;margin-top:5px}
+[data-look="14"] .b14-tb td{border:1px solid #cfd7de;padding:9px 8px;font-size:12px}
+[data-look="14"] .b14-tb tr.hd td{background:#eef2f6;border-color:#1b2a41;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;color:#4a5866;padding:5px 8px;text-transform:uppercase}
+[data-look="14"] .b14-tb td.n{width:30px;text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;color:#5c6a78}
+[data-look="14"] .b14-tb td.s{text-align:right;width:66px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-variant-numeric:tabular-nums}
+[data-look="14"] .b14-tb tr.one td{background:#f4f8fc}
+[data-look="14"] .b14-tb tr.one td.n{color:#c8102e;font-weight:600}
+[data-look="14"] .b14-more{margin-top:auto;border:1px solid #1b2a41;text-align:center;padding:8px 0;font-size:11.5px;font-weight:600;letter-spacing:.1em;background:#eef2f6}
+
+/* ---------- 15 스포츠 브랜드 카탈로그 ---------- */
+[data-look="15"] .look-frame *{box-sizing:border-box;margin:0;padding:0}
+[data-look="15"] .b15{height:100%;padding:24px 22px 20px;display:flex;flex-direction:column;color:#0d0d0d;font-family:'Barlow Condensed',sans-serif}
+[data-look="15"] .b15-logo{font-family:'Anton',sans-serif;font-size:56px;line-height:.82;letter-spacing:-.02em;text-transform:uppercase;transform:skewX(-6deg);transform-origin:left bottom}
+[data-look="15"] .b15-logo u{text-decoration:none;-webkit-text-stroke:1.6px #0d0d0d;color:transparent}
+[data-look="15"] .b15-bar{height:6px;background:#0d0d0d;margin:12px 0 0;position:relative}
+[data-look="15"] .b15-bar i{position:absolute;left:0;top:0;bottom:0;width:34%;background:#ff4d00}
+[data-look="15"] .b15-search{display:flex;align-items:stretch;height:36px;margin-top:14px;background:#fff;border:1.5px solid #0d0d0d}
+[data-look="15"] .b15-sel{display:flex;align-items:center;gap:5px;padding:0 10px;font-family:'Black Han Sans',sans-serif;font-size:12px;background:#0d0d0d;color:#fff;white-space:nowrap}
+[data-look="15"] .b15-inp{flex:1;display:flex;align-items:center;padding:0 10px;font-size:14px;font-weight:500;letter-spacing:.01em;color:#9b9b96;font-family:'Barlow Condensed','Gothic A1',sans-serif}
+[data-look="15"] .b15-go{width:36px;display:flex;align-items:center;justify-content:center;color:#ff4d00}
+[data-look="15"] .b15-lg{display:flex;gap:16px;margin:14px 0 12px;align-items:center}
+[data-look="15"] .b15-lg span{font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8c8c86}
+[data-look="15"] .b15-lg .on{color:#0d0d0d;border-bottom:3px solid #ff4d00;padding-bottom:1px}
+[data-look="15"] .b15-h{font-family:'Black Han Sans',sans-serif;font-size:16px;letter-spacing:.02em;margin-bottom:2px}
+[data-look="15"] .b15-row{display:flex;align-items:center;gap:10px;height:43px;border-bottom:1px solid #d2d2cc}
+[data-look="15"] .b15-n{font-family:'Anton',sans-serif;font-size:22px;width:26px;color:#c2c2bb;line-height:1}
+[data-look="15"] .b15-nm{flex:1;font-size:17px;font-weight:600;letter-spacing:.03em;text-transform:uppercase}
+[data-look="15"] .b15-sc{font-family:'Anton',sans-serif;font-size:18px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+[data-look="15"] .b15-row.one .b15-n{color:#ff4d00}
+[data-look="15"] .b15-row.one{border-bottom-color:#0d0d0d}
+[data-look="15"] .b15-more{margin-top:auto;background:#0d0d0d;color:#fff;text-align:center;padding:11px 0;font-family:'Black Han Sans',sans-serif;font-size:14px;letter-spacing:.16em}
+
+/* ---------- 16 미니멀 화이트 ---------- */
+[data-look="16"] .look-frame *{box-sizing:border-box;margin:0;padding:0}
+[data-look="16"] .b16{height:100%;padding:44px 38px 34px;display:flex;flex-direction:column;color:#1a1a1a;font-family:'Inter Tight','Gothic A1',sans-serif;font-weight:300}
+[data-look="16"] .b16-logo{font-size:13px;font-weight:500;letter-spacing:.42em;color:#1a1a1a;text-transform:uppercase}
+[data-look="16"] .b16-search{display:flex;align-items:center;gap:12px;margin-top:46px;padding-bottom:10px;border-bottom:1px solid #e6e6e6}
+[data-look="16"] .b16-sel{font-size:11px;font-weight:400;color:#1a1a1a;white-space:nowrap;display:flex;align-items:center;gap:4px}
+[data-look="16"] .b16-div{width:1px;height:12px;background:#e6e6e6}
+[data-look="16"] .b16-inp{flex:1;font-size:12.5px;color:#bdbdbd;font-weight:300}
+[data-look="16"] .b16-go{color:#8e8e8e}
+[data-look="16"] .b16-lg{display:flex;gap:20px;margin:18px 0 52px}
+[data-look="16"] .b16-lg span{font-size:10.5px;letter-spacing:.14em;color:#c2c2c2;text-transform:uppercase}
+[data-look="16"] .b16-lg .on{color:#1a1a1a}
+[data-look="16"] .b16-h{font-size:11px;letter-spacing:.2em;color:#9a9a9a;margin-bottom:16px}
+[data-look="16"] .b16-row{display:grid;grid-template-columns:22px 1fr auto;align-items:center;padding:9px 0;border-bottom:1px solid #f1f1f1}
+[data-look="16"] .b16-n{font-size:10.5px;color:#c8c8c8;font-weight:400}
+[data-look="16"] .b16-nm{font-size:13px;font-weight:400;letter-spacing:-.005em}
+[data-look="16"] .b16-sc{font-size:13px;font-weight:300;font-variant-numeric:tabular-nums;color:#6b6b6b}
+[data-look="16"] .b16-row.one .b16-n{color:#2f6fed}
+[data-look="16"] .b16-row.one .b16-nm{font-weight:500}
+[data-look="16"] .b16-row.one .b16-sc{color:#1a1a1a}
+[data-look="16"] .b16-more{margin-top:auto;align-self:center;font-size:11px;letter-spacing:.16em;color:#8e8e8e}
+</style>
+
+<!-- ══════════════════════ 09 ══════════════════════ -->
+<div class="look" data-look="9">
+  <div class="look-meta">
+    <span class="look-no">09</span>
+    <span class="look-name">신문 스포츠면</span>
+    <span class="look-desc">지면 갱지에 인쇄한 전적표 — 명패·괘선·박스스코어로 위계를 만든다</span>
+  </div>
+  <div class="look-frame" style="width:420px;height:560px;overflow:hidden;background:#f5f2ea">
+    <div class="b9">
+      <div class="b9-rule-t"></div>
+      <div class="b9-mast">3RD CLOUD</div>
+      <div class="b9-rule-b"></div>
+
+      <div class="b9-search">
+        <div class="b9-sel">플레이어 ▾</div>
+        <div class="b9-inp">닉네임을 입력하세요</div>
+        <div class="b9-go"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg></div>
+      </div>
+
+      <div class="b9-lg"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+
+      <div class="b9-h"><b>클랜랭킹</b></div>
+      <div class="b9-row one"><div class="b9-n">1</div><div class="b9-nm">sometimes</div><div class="b9-sc">3,241</div></div>
+      <div class="b9-row"><div class="b9-n">2</div><div class="b9-nm">amaryllis</div><div class="b9-sc">3,222</div></div>
+      <div class="b9-row"><div class="b9-n">3</div><div class="b9-nm">hing</div><div class="b9-sc">3,221</div></div>
+      <div class="b9-row"><div class="b9-n">4</div><div class="b9-nm">igloo</div><div class="b9-sc">3,154</div></div>
+      <div class="b9-row"><div class="b9-n">5</div><div class="b9-nm">idylic</div><div class="b9-sc">3,150</div></div>
+
+      <div class="b9-more">더 보기</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 10 ══════════════════════ -->
+<div class="look" data-look="10">
+  <div class="look-meta">
+    <span class="look-no">10</span>
+    <span class="look-name">스위스 그리드</span>
+    <span class="look-desc">흰 여백과 왼쪽 정렬 축 하나 — 선을 거의 지우고 간격으로만 나눈다</span>
+  </div>
+  <div class="look-frame" style="width:420px;height:560px;overflow:hidden;background:#ffffff">
+    <div class="b10">
+      <div class="b10-top">
+        <span class="b10-sq"></span>
+        <div class="b10-logo">3RD<br>CLOUD</div>
+      </div>
+
+      <div class="b10-search">
+        <span class="b10-sel">플레이어 ▾</span>
+        <span class="b10-inp">닉네임을 입력하세요</span>
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#111" stroke-width="1.5"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg>
+      </div>
+
+      <div class="b10-lg"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+
+      <div class="b10-h">클랜랭킹</div>
+      <div class="b10-hr"></div>
+      <div class="b10-row one"><span class="b10-n">1</span><span class="b10-nm">sometimes</span><span class="b10-sc">3,241</span></div>
+      <div class="b10-row"><span class="b10-n">2</span><span class="b10-nm">amaryllis</span><span class="b10-sc">3,222</span></div>
+      <div class="b10-row"><span class="b10-n">3</span><span class="b10-nm">hing</span><span class="b10-sc">3,221</span></div>
+      <div class="b10-row"><span class="b10-n">4</span><span class="b10-nm">igloo</span><span class="b10-sc">3,154</span></div>
+      <div class="b10-row"><span class="b10-n">5</span><span class="b10-nm">idylic</span><span class="b10-sc">3,150</span></div>
+
+      <div class="b10-more">더 보기</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 11 ══════════════════════ -->
+<div class="look" data-look="11">
+  <div class="look-meta">
+    <span class="look-no">11</span>
+    <span class="look-name">브루탈리즘</span>
+    <span class="look-desc">3px 검은 테두리와 하드 그림자 — 크게 때려서 읽히게 한다</span>
+  </div>
+  <div class="look-frame" style="width:420px;height:560px;overflow:hidden;background:#f7f6f1">
+    <div class="b11">
+      <div class="b11-logo">3RD<br><em>CLOUD</em></div>
+
+      <div class="b11-search">
+        <div class="b11-sel">플레이어 ▾</div>
+        <div class="b11-inp">닉네임을 입력하세요</div>
+        <div class="b11-go"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="#000" stroke-width="2.2"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg></div>
+      </div>
+
+      <div class="b11-lg"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+
+      <div class="b11-h">클랜랭킹</div>
+      <div class="b11-tb">
+        <div class="b11-row one"><div class="b11-n">1</div><div class="b11-nm">sometimes</div><div class="b11-sc">3,241</div></div>
+        <div class="b11-row"><div class="b11-n">2</div><div class="b11-nm">amaryllis</div><div class="b11-sc">3,222</div></div>
+        <div class="b11-row"><div class="b11-n">3</div><div class="b11-nm">hing</div><div class="b11-sc">3,221</div></div>
+        <div class="b11-row"><div class="b11-n">4</div><div class="b11-nm">igloo</div><div class="b11-sc">3,154</div></div>
+        <div class="b11-row"><div class="b11-n">5</div><div class="b11-nm">idylic</div><div class="b11-sc">3,150</div></div>
+      </div>
+
+      <div class="b11-more">더 보기</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 12 ══════════════════════ -->
+<div class="look" data-look="12">
+  <div class="look-meta">
+    <span class="look-no">12</span>
+    <span class="look-name">잡지 편집</span>
+    <span class="look-desc">크림 종이 위 세리프 디스플레이 — 순위를 기사처럼 읽히게 한다</span>
+  </div>
+  <div class="look-frame" style="width:420px;height:560px;overflow:hidden;background:#fbf6ef">
+    <div class="b12">
+      <div class="b12-logo">3RD <i>Cloud</i></div>
+      <div class="b12-hair"></div>
+
+      <div class="b12-search">
+        <span class="b12-sel">플레이어 ▾</span>
+        <span class="b12-inp">닉네임을 입력하세요</span>
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#8c2b2b" stroke-width="1.4"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg>
+      </div>
+
+      <div class="b12-lg"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+
+      <div class="b12-h">클랜랭킹</div>
+      <div class="b12-row one"><span class="b12-n">1</span><span class="b12-nm">sometimes</span><span class="b12-sc">3,241</span></div>
+      <div class="b12-row"><span class="b12-n">2</span><span class="b12-nm">amaryllis</span><span class="b12-sc">3,222</span></div>
+      <div class="b12-row"><span class="b12-n">3</span><span class="b12-nm">hing</span><span class="b12-sc">3,221</span></div>
+      <div class="b12-row"><span class="b12-n">4</span><span class="b12-nm">igloo</span><span class="b12-sc">3,154</span></div>
+      <div class="b12-row"><span class="b12-n">5</span><span class="b12-nm">idylic</span><span class="b12-sc">3,150</span></div>
+
+      <div class="b12-more">더 보기</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 13 ══════════════════════ -->
+<div class="look" data-look="13">
+  <div class="look-meta">
+    <span class="look-no">13</span>
+    <span class="look-name">연감·기록집</span>
+    <span class="look-desc">이중 테두리와 점선 리더 — 매년 찍어 내는 기록집의 인덱스 페이지</span>
+  </div>
+  <div class="look-frame" style="width:420px;height:560px;overflow:hidden;background:#f3efe3">
+    <div class="b13">
+      <div class="b13-box">
+        <div class="b13-logo">3RD CLOUD</div>
+        <div class="b13-sub"></div>
+
+        <div class="b13-search">
+          <span class="b13-sel">플레이어 ▾</span>
+          <span class="b13-inp">닉네임을 입력하세요</span>
+          <span class="b13-go"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="#2b2721" stroke-width="1.6"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg></span>
+        </div>
+
+        <div class="b13-lg"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+
+        <div class="b13-h">클랜랭킹</div>
+        <div class="b13-row one"><span class="b13-n">1</span><span class="b13-nm">sometimes</span><span class="b13-dot"></span><span class="b13-sc">3,241</span></div>
+        <div class="b13-row"><span class="b13-n">2</span><span class="b13-nm">amaryllis</span><span class="b13-dot"></span><span class="b13-sc">3,222</span></div>
+        <div class="b13-row"><span class="b13-n">3</span><span class="b13-nm">hing</span><span class="b13-dot"></span><span class="b13-sc">3,221</span></div>
+        <div class="b13-row"><span class="b13-n">4</span><span class="b13-nm">igloo</span><span class="b13-dot"></span><span class="b13-sc">3,154</span></div>
+        <div class="b13-row"><span class="b13-n">5</span><span class="b13-nm">idylic</span><span class="b13-dot"></span><span class="b13-sc">3,150</span></div>
+
+        <div class="b13-more">더 보기</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 14 ══════════════════════ -->
+<div class="look" data-look="14">
+  <div class="look-meta">
+    <span class="look-no">14</span>
+    <span class="look-name">서류·양식</span>
+    <span class="look-desc">회색 바탕에 놓인 흰 서식지 — 칸을 다 그어 데이터를 사무적으로 보여 준다</span>
+  </div>
+  <div class="look-frame" style="width:420px;height:560px;overflow:hidden;background:#e7ebef">
+    <div class="b14">
+      <div class="b14-sheet">
+        <div class="b14-top">
+          <div class="b14-logo">3RD CLOUD</div>
+          <div class="b14-tick"><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="b14-lb">SEARCH</div>
+        <div class="b14-search">
+          <div class="b14-sel">플레이어 ▾</div>
+          <div class="b14-inp">닉네임을 입력하세요</div>
+          <div class="b14-go"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg></div>
+        </div>
+
+        <div class="b14-lb">LEAGUE</div>
+        <div class="b14-lg"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+
+        <div class="b14-lb kr">클랜랭킹</div>
+        <table class="b14-tb">
+          <tr class="hd"><td class="n">NO</td><td>CLAN</td><td class="s">RATING</td></tr>
+          <tr class="one"><td class="n">1</td><td>sometimes</td><td class="s">3,241</td></tr>
+          <tr><td class="n">2</td><td>amaryllis</td><td class="s">3,222</td></tr>
+          <tr><td class="n">3</td><td>hing</td><td class="s">3,221</td></tr>
+          <tr><td class="n">4</td><td>igloo</td><td class="s">3,154</td></tr>
+          <tr><td class="n">5</td><td>idylic</td><td class="s">3,150</td></tr>
+        </table>
+
+        <div class="b14-more">더 보기</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 15 ══════════════════════ -->
+<div class="look" data-look="15">
+  <div class="look-meta">
+    <span class="look-no">15</span>
+    <span class="look-name">스포츠 브랜드 카탈로그</span>
+    <span class="look-desc">기울인 콘덴스드 대문자와 주황 한 줄 — 유니폼 카탈로그의 속표지</span>
+  </div>
+  <div class="look-frame" style="width:420px;height:560px;overflow:hidden;background:#eceae4">
+    <div class="b15">
+      <div class="b15-logo">3RD<br><u>CLOUD</u></div>
+      <div class="b15-bar"><i></i></div>
+
+      <div class="b15-search">
+        <div class="b15-sel">플레이어 ▾</div>
+        <div class="b15-inp">닉네임을 입력하세요</div>
+        <div class="b15-go"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg></div>
+      </div>
+
+      <div class="b15-lg"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+
+      <div class="b15-h">클랜랭킹</div>
+      <div class="b15-row one"><span class="b15-n">1</span><span class="b15-nm">sometimes</span><span class="b15-sc">3,241</span></div>
+      <div class="b15-row"><span class="b15-n">2</span><span class="b15-nm">amaryllis</span><span class="b15-sc">3,222</span></div>
+      <div class="b15-row"><span class="b15-n">3</span><span class="b15-nm">hing</span><span class="b15-sc">3,221</span></div>
+      <div class="b15-row"><span class="b15-n">4</span><span class="b15-nm">igloo</span><span class="b15-sc">3,154</span></div>
+      <div class="b15-row"><span class="b15-n">5</span><span class="b15-nm">idylic</span><span class="b15-sc">3,150</span></div>
+
+      <div class="b15-more">더 보기</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 16 ══════════════════════ -->
+<div class="look" data-look="16">
+  <div class="look-meta">
+    <span class="look-no">16</span>
+    <span class="look-name">미니멀 화이트</span>
+    <span class="look-desc">순백 · 얇은 산세리프 · 머리카락 선 — 아무것도 강조하지 않아 데이터만 남는다</span>
+  </div>
+  <div class="look-frame" style="width:420px;height:560px;overflow:hidden;background:#ffffff">
+    <div class="b16">
+      <div class="b16-logo">3RD CLOUD</div>
+
+      <div class="b16-search">
+        <span class="b16-sel">플레이어 ▾</span>
+        <span class="b16-div"></span>
+        <span class="b16-inp">닉네임을 입력하세요</span>
+        <span class="b16-go"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="7" cy="7" r="4.4"/><path d="M10.4 10.4 14 14"/></svg></span>
+      </div>
+
+      <div class="b16-lg"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+
+      <div class="b16-h">클랜랭킹</div>
+      <div class="b16-row one"><span class="b16-n">1</span><span class="b16-nm">sometimes</span><span class="b16-sc">3,241</span></div>
+      <div class="b16-row"><span class="b16-n">2</span><span class="b16-nm">amaryllis</span><span class="b16-sc">3,222</span></div>
+      <div class="b16-row"><span class="b16-n">3</span><span class="b16-nm">hing</span><span class="b16-sc">3,221</span></div>
+      <div class="b16-row"><span class="b16-n">4</span><span class="b16-nm">igloo</span><span class="b16-sc">3,154</span></div>
+      <div class="b16-row"><span class="b16-n">5</span><span class="b16-nm">idylic</span><span class="b16-sc">3,150</span></div>
+
+      <div class="b16-more">더 보기</div>
+    </div>
+  </div>
+</div>

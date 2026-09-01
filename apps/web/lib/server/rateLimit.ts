@@ -196,15 +196,44 @@ export const LOGIN_IP_QUOTA: Quota = { limit: 20, windowSeconds: 15 * 60 }
  */
 export const LOGIN_UNKNOWN_IP_QUOTA: Quota = { limit: 300, windowSeconds: 15 * 60 }
 
-/** 가입 — IP별. 1시간에 3개 */
-export const SIGNUP_IP_QUOTA: Quota = { limit: 3, windowSeconds: 60 * 60 }
+/**
+ * 가입 — IP별.
+ *
+ * ⚠ **3 → 10 (2026-09-01 · D-252).** 옛 값은 3이었다. 여기에 이유를 남긴다.
+ *
+ * ── 왜 올렸나 — **PC방**
+ *   서든어택 사이트다. **PC방 한 곳이 IP 하나를 공유한다.** 3개면 같은 자리에서
+ *   네 번째 사람이 가입하지 못하고, 그 사람 눈에는 「사이트가 고장났다」로 보인다.
+ *   오픈 첫날에 이게 터지면 되돌릴 기회가 없다.
+ *
+ * ── 왜 그래도 한도를 두나
+ *   캡차가 없다. 봇이 계정을 쓸어 만드는 것은 **실제로 일어난다.**
+ *   시간당 10개면 한 IP로 하루 240개인데, 그건 사람 손으로는 넘지 않는 선이면서
+ *   자동화에는 충분히 성가시다. **없애지 않는 이유가 이것이다.**
+ */
+export const SIGNUP_IP_QUOTA: Quota = { limit: 10, windowSeconds: 60 * 60 }
 
-/** 가입 — IP를 모를 때의 전체 한도 */
-export const SIGNUP_UNKNOWN_IP_QUOTA: Quota = { limit: 60, windowSeconds: 60 * 60 }
+/**
+ * 가입 — IP를 모를 때의 **전체** 한도.
+ *
+ * ⚠ **60 → 400 (2026-09-01 · D-252).**
+ *
+ * `SACLOUD_CLIENT_IP_HEADER` 가 설정돼 있지 않으면 **모든 가입이 이 한 바구니**에 들어간다.
+ * 60이면 오픈 첫날 61번째 사람부터 한 시간 동안 가입이 막힌다 —
+ * 봇이 아니라 **진짜 사용자가 막히는** 값이다.
+ *
+ * 이건 회로차단기지 시도 제한이 아니다. 폭주만 끊으면 된다.
+ * **제대로 된 IP 기반 제한을 원하면 `SACLOUD_CLIENT_IP_HEADER` 를 설정해야 한다** —
+ * 그게 진짜 해결책이고, 이 값은 그때까지의 안전망이다.
+ */
+export const SIGNUP_UNKNOWN_IP_QUOTA: Quota = { limit: 400, windowSeconds: 60 * 60 }
 
-export function loginAccountKey(email: string): string {
-  // 이메일 원문을 키에 넣지 않는다
-  return `login:acct:${hashed(email.trim().toLowerCase())}`
+/**
+ * 계정별 키. 인자는 **아이디 또는 이메일**이다 (2026-09-01 · D-252).
+ * 원문을 키에 넣지 않는다 — 해시만 남긴다.
+ */
+export function loginAccountKey(identifier: string): string {
+  return `login:acct:${hashed(identifier.trim().toLowerCase())}`
 }
 
 export function loginIpKey(identity: ClientIdentity): string {

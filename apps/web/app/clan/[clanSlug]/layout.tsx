@@ -1,6 +1,7 @@
 'use client'
 
 import { use } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { ClanIdentity, ClanProfileNav, ProfileSkeleton } from '@sacloud/ui'
@@ -52,6 +53,14 @@ export default function ClanLayout({
         </div>
       )}
       <ClanProfileNav tabs={tabs} current={pathname} />
+      {/* 마스터 인증 입구 (2026-09-01 · D-253).
+          탭으로 만들지 않았다 — 탭은 **볼 것**이고 이것은 **할 것**이다.
+          비로그인에게도 보인다. 누르면 로그인으로 보내는 것이 「왜 안 보이지」보다 낫다 */}
+      <div className="pc-container mt-3 flex justify-end">
+        <Link href={`/clan/${clanSlug}/master`} className="text-[12px] text-meta hover:text-text">
+          <span>마스터 인증하기</span>
+        </Link>
+      </div>
       {children}
     </>
   )

@@ -1,9 +1,8 @@
-import { prisma } from '@sacloud/db'
 import { compareSync } from 'bcryptjs'
-import { LoginInput } from '@sacloud/contract'
+import { LoginInput, normalizeUsername } from '@sacloud/contract'
 import { badRequest, guard, ok, tooManyRequests, unauthorized } from '@/lib/server/respond'
 import { jsonBody } from '@/lib/server/request'
-import { startSession } from '@/lib/server/queries/auth'
+import { findUserForLogin, startSession } from '@/lib/server/queries/auth'
 import {
   clearQuota,
   clientIdentity,
@@ -20,7 +19,10 @@ import {
  * POST /api/auth/login
  *
  * 실패 메시지는 **아이디가 없는지 비밀번호가 틀린지 구분하지 않는다.**
- * 구분해서 알려주면 어떤 이메일이 가입돼 있는지 확인하는 데 쓰일 수 있다.
+ * 구분해서 알려주면 어떤 계정이 가입돼 있는지 확인하는 데 쓰일 수 있다.
+ *
+ * ⚠ **아이디 로그인 (2026-09-01 · D-252).** `username` 으로 찾는다.
+ * `email` 도 계속 받는다 — 이메일로 가입한 옛 계정이 그대로 로그인돼야 한다.
  *
  * ── 시도 제한 (D-120)
  *   **실패만 센다.** 비밀번호를 제대로 넣는 사람은 몇 번을 로그인해도 걸리지 않는다.
@@ -32,8 +34,12 @@ export async function POST(request: Request) {
     const parsed = LoginInput.safeParse(await jsonBody(request))
     if (!parsed.success) return badRequest('입력값을 확인해주세요')
 
+    /* 시도 제한 키는 「사람이 입력한 그 값」 하나로 센다. 아이디든 이메일이든
+       같은 계정을 두 이름으로 두드려 한도를 두 배로 쓰는 일이 없게 정규화한다 */
+    const identifier = normalizeUsername(parsed.data.username ?? parsed.data.email ?? '')
+
     const identity = clientIdentity(request)
-    const accountKey = loginAccountKey(parsed.data.email)
+    const accountKey = loginAccountKey(identifier)
     const ipKey = loginIpKey(identity)
     const ipQuota = ipQuotaFor(identity, 'login')
 
@@ -69,12 +75,15 @@ export async function POST(request: Request) {
       )
     }
 
-    const user = await prisma.user.findUnique({ where: { email: parsed.data.email } })
+    const user = await findUserForLogin({
+      username: parsed.data.username,
+      email: parsed.data.email,
+    })
     if (!user || !compareSync(parsed.data.password, user.passwordHash)) {
       // 실패한 시도만 카운터를 올린다
       await consumeQuota(accountKey, LOGIN_ACCOUNT_QUOTA)
       await consumeQuota(ipKey, ipQuota)
-      return unauthorized('이메일 또는 비밀번호가 올바르지 않습니다')
+      return unauthorized('아이디 또는 비밀번호가 올바르지 않습니다')
     }
 
     // 성공했으면 그 계정의 실패 기록을 지운다 (정상 사용자가 누적으로 막히지 않게)

@@ -6,6 +6,20 @@
  *   채워 주는 경로가 없었다 — `season0Apply` 는 origin 필터에서 빠지고, `rate.ts` 는
  *   참가자를 요구하고, `supplyRollup` 은 3rd.supply 가 준 값을 옮기는 것이라 IPL 엔 원본이 없다.
  *
+ * ── ⚠ **위 서술은 낡았다. 손으로 돌릴 때 조심해라** (2026-09-02 · D-258)
+ *
+ *   커밋 `cc0be67` 이 `SEASON0_ORIGINS` 에 `nexon_barracks` 를 더하면서
+ *   **`season0Apply` 가 IPL 을 집계하기 시작했다.** 즉 「빠진다」는 이제 거짓이다.
+ *   실측(2026-09-02 · 운영): `season0-apply --leagues nolink` 가 선수 1,456 · 클랜 39 를 만든다.
+ *
+ *   그래서 이 잡과 `season0Apply` 는 **같은 칸을 다툰다** —
+ *   `LeagueClan.{win, lose, rating, placement}` 넷 전부다.
+ *   나중에 돌린 쪽이 이긴다. 이 잡은 **CLI 전용이고 어떤 워크플로도 부르지 않으므로**
+ *   자동으로 부딪히지는 않지만, **손으로 돌리면 시간당 도는 `season0-apply` 결과를 덮는다.**
+ *
+ *   IPL 클랜 점수의 정본은 이제 `season0Apply` 다. 이 잡은 그것이 못 미더울 때
+ *   대조하는 용도로 남긴다 (CLAUDE.md 10-4 — 지우지 않는다).
+ *
  * ── 결정적 replay
  *   판정은 전부 `lib/iplClanStanding.ts`(순수 함수)가 한다. 여기서는 **읽고 받아 적기만** 한다.
  *   `startAt` 오름차순으로 처음부터 다시 계산하므로 몇 번을 돌려도 같은 값이 나온다.
@@ -21,6 +35,7 @@
  * ```
  */
 import { prisma } from '@sacloud/db'
+import { V2_RATING_CONSTANTS } from '@sacloud/rating'
 import { log, warn } from '../lib/log.js'
 import {
   computeClanStandings,
@@ -63,7 +78,19 @@ export async function runIplClanRollup(
     winnerSide: r.winnerSide,
   }))
 
-  const standings = computeClanStandings(matches)
+  /* ── 배치고사 폐지를 IPL 클랜에도 건다 (2026-09-02 · D-258)
+     `computeClanStandings` 는 상수를 안 넘기면 `DEFAULT_RATING_CONSTANTS` 를 쓰는데
+     그쪽 `placementMatches` 는 아직 **10** 이다 (`packages/rating/src/constants.ts` 의
+     주석이 "IPL 클랜 집계까지 같이 움직이니 별건으로 다룬다"고 예고해 둔 것이 이것이다).
+
+     그 결과 **10판 미만 IPL 클랜이 `placement=true` 가 되어 클랜랭킹에서 통째로 빠졌다.**
+     아래 `top` 이 `!r.placement` 로 거르고, 화면도 같은 칸을 본다.
+     표시만의 문제가 아니라 **클랜이 사라지는** 문제였고, 그 상태에서는 화면 문구
+     「한 경기부터 바로 반영됩니다」가 IPL 클랜랭킹에서 거짓이 된다.
+
+     `DEFAULT` 는 건드리지 않는다 — 그 상수를 쓰는 다른 경로까지 같이 움직인다.
+     부르는 쪽에서 v2 를 넘긴다. 이 잡은 결정적 replay 라 다시 돌리면 값이 바로잡힌다 */
+  const standings = computeClanStandings(matches, { constants: V2_RATING_CONSTANTS })
 
   const regs = await prisma.leagueClan.findMany({
     where: { leagueId: league.id },

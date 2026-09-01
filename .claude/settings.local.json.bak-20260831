@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash",
+      "PowerShell",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Agent",
+      "Task",
+      "WebFetch",
+      "WebSearch",
+      "Artifact",
+      "SendUserFile",
+      "NotebookEdit"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\LG\\Desktop",
+      "C:\\Users\\LG\\Desktop\\포트폴리오",
+      "C:\\Users\\LG\\Desktop\\자소서",
+      "C:\\Users\\LG\\AppData\\Local\\Temp\\claude"
+    ]
+  }
+}

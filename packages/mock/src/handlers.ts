@@ -4,6 +4,7 @@ import {
   endpointList,
   PAGE_SIZE,
   parseRankWeapon,
+  REQUIRED_TITLE,
   SUCCESS_MESSAGE,
   type EndpointKey,
 } from '@sacloud/contract'
@@ -119,6 +120,11 @@ const resolvers: Record<EndpointKey, Resolver> = {
   mePasswordUpdate: () => ok({ ok: true }),
   meLinkShow: () => ok(mockLinkState()),
   meLinkUpdate: () => ok(mockLinkState()),
+  /* 칭호 소유권 증명 — Mock 은 **넥슨을 부르지 않는다.** 화면 흐름만 흉내낸다.
+     실제 판정은 `apps/web/lib/server/queries/titleVerification.ts` 가 한다 */
+  meTitleVerificationShow: () => ok(mockTitleVerification('none')),
+  meTitleVerificationCheck: () => ok(mockTitleVerification('pending')),
+  meTitleVerificationCancel: () => ok(mockTitleVerification('none')),
   uploadsCreate: () =>
     ok({
       id: 'upload-0001',
@@ -175,6 +181,13 @@ const resolvers: Record<EndpointKey, Resolver> = {
     const clan = store.getClan(param(params['clanSlug']))
     return clan ? ok(clan) : notFound()
   },
+  /* 클랜 마스터 인증 — Mock 은 **사진을 저장하지 않고 심사도 없다.**
+     `available: false` 로 두어 화면이 「준비 중」을 그리게 한다.
+     인증된 척하는 화면을 보여 주면 그게 더 나쁘다 (칭호 인증 Mock 과 같은 태도).
+     실제 판정은 `apps/web/lib/server/queries/clanMasterClaim.ts` 가 한다 */
+  clanMasterClaimShow: () => ok(mockClanMasterClaim()),
+  clanMasterClaimCreate: () => ok(mockClanMasterClaim()),
+  clanMasterClaimCancel: () => ok(mockClanMasterClaim()),
 
   /* -------------------------------- 리그 -------------------------------- */
   leagueList: ({ request }) => okPage(store.listLeagues(query(request, 'cursor'), PAGE_SIZE.DEFAULT)),
@@ -218,7 +231,9 @@ const resolvers: Record<EndpointKey, Resolver> = {
     const page = leagueId
       ? store.getClanRanks(
           leagueId,
-          Number.isFinite(division) && division > 0 ? division : 1,
+          /* 0 이하는 «부리그를 나누지 않는다» 는 뜻이라 그대로 넘긴다 (2026-09-01).
+             숫자가 아니면 예전처럼 1부리그다 */
+          Number.isFinite(division) ? division : 1,
           query(request, 'cursor'),
           PAGE_SIZE.RANK,
         )
@@ -407,6 +422,49 @@ function mockLinkState() {
     linked: user.player !== null,
     player: user.player,
     linked_at: user.player ? FIXTURE_NOW : null,
+  }
+}
+
+/**
+ * 칭호 소유권 증명 상태 (Mock).
+ *
+ * Mock 모드에서는 넥슨을 부를 수 없으므로 **통과시키지 않는다.**
+ * `available: false` 로 두어 화면이 「준비 중」 문구를 그리게 한다 —
+ * 인증된 척하는 화면을 보여 주면 그게 더 나쁘다.
+ */
+function mockTitleVerification(status: 'none' | 'pending') {
+  return {
+    status,
+    required_title: REQUIRED_TITLE,
+    nickname: status === 'pending' ? store.toUser(store.sampleUser()).nickname : null,
+    last_seen_title: null,
+    outcome: status === 'pending' ? ('unavailable' as const) : null,
+    attempts_left: status === 'pending' ? 10 : null,
+    expires_at: null,
+    verified_at: null,
+    player: null,
+    available: false,
+  }
+}
+
+/**
+ * 클랜 마스터 인증 (D-253).
+ *
+ * Mock 모드에는 **사진 저장소도 관리자 심사도 없다.** 그래서 통과시키지 않는다.
+ * `available: false` 로 두어 화면이 「준비 중」 문구를 그리게 한다.
+ */
+function mockClanMasterClaim() {
+  return {
+    status: 'none' as const,
+    is_master: false,
+    can_submit: false,
+    note: null,
+    image_url: null,
+    submitted_at: null,
+    decided_at: null,
+    decision_note: null,
+    available: false,
+    taken_by_other: false,
   }
 }
 

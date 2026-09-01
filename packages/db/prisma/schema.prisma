@@ -45,7 +45,13 @@ datasource db {
 /// 서비스 회원. 원본은 이메일/비밀번호 단일 방식이며 네이버 메일만 허용한다(관측).
 model User {
   id              String    @id @default(cuid())
-  email           String    @unique
+  /// **로그인 아이디** (2026-09-01 · D-252). 가입은 「아이디 + 비밀번호」다.
+  /// 항상 **소문자로 정규화해** 저장한다 — 대소문자만 다른 아이디가 두 개 생기면 안 된다.
+  /// 기존(이메일로 가입한) 계정은 `null` 이라 nullable 이다.
+  username        String?   @unique
+  /// **선택 입력이 됐다** (2026-09-01 · D-252). 메일 발송이 아직 없어서 가입에 요구하지 않는다.
+  /// 나중에 비밀번호 찾기를 붙일 때 이 칸을 그대로 쓴다.
+  email           String?   @unique
   passwordHash    String
   /// **유일 제약을 걸지 않는다.** 원본이 닉네임 중복을 막는지는 [미확인]이라
   /// 확인되지 않은 제약을 임의로 만들지 않는다 (CLAUDE.md 3장 7번).
@@ -60,6 +66,10 @@ model User {
 
   playerLink    UserPlayerLink?
   linkClaims    PlayerLinkClaim[]
+  /// 칭호 소유권 증명 (2026-09-01) — 게임 칭호를 `[용병]` 으로 바꾸면 승인된다
+  titleChallenges TitleChallenge[]
+  /// 클랜 마스터 인증 신청 (2026-09-01 · D-253) — 스크린샷 1장을 사람이 본다
+  clanMasterClaims ClanMasterClaim[]
   ownedLeagues  League[]
   boards        Board[]
   comments      Comment[]
@@ -80,6 +90,61 @@ model UserPlayerLink {
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+/// 서든어택 계정 **소유권 증명** — 게임 칭호로 한다
+/// (`docs/TITLE_VERIFICATION_SPEC.md` + 2026-09-01 정정).
+///
+/// ── 흐름
+///   ① 회원이 자기 서든 닉네임을 넣는다 → 이 표에 `pending` 한 줄
+///   ② 게임에서 칭호를 `[용병]` 으로 바꾼다
+///   ③ 「확인」 → 넥슨 `user/basic` 1회 → 칭호가 맞으면 `verified`
+///
+/// ── ⚠ SPEC 과 다른 점
+///   SPEC 은 사람마다 **다른 1회용 칭호**를 발급하는 설계였다. 사용자가 **고정
+///   `[용병]`** 으로 바꿨다. 그래서 `expectedTitle` 은 항상 같은 값이고
+///   `baselineTitle` 은 쓰지 않는다(항상 null). **칸은 지우지 않는다** —
+///   1회용 방식으로 되돌릴 때 그대로 쓴다 (CLAUDE.md 10-4).
+///
+/// ── 기준은 `ouid` 다 (D-220)
+///   닉네임으로 잇지 않는다. 닉은 식별자가 아니고 옛 닉은 남이 물려받는다.
+///   `nickname` 은 **신청 당시 무엇을 넣었는지**를 남기는 증거일 뿐 판정 기준이 아니다.
+model TitleChallenge {
+  id String @id @default(cuid())
+
+  /// 도전을 연 사람
+  userId String
+  /// 인증하려는 계정. **판정의 유일한 기준이다**
+  ouid   String
+  /// 신청 당시 넣은 닉네임 (증거. 판정 기준이 아니다)
+  nickname String?
+
+  /// 우리가 요구한 칭호. 지금은 항상 `[용병]` 이다
+  expectedTitle String
+  /// 1회용 방식에서 쓰던 칸 — 발급 시점의 칭호. 고정 칭호 방식에서는 항상 null
+  baselineTitle String?
+
+  /// "pending" | "verified" | "expired" | "exhausted" | "cancelled"
+  /// **읽을 때 시각으로 다시 계산한다** — 만료는 아무도 표를 고쳐 주지 않는다
+  status String @default("pending")
+
+  issuedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  /// 확인 시도 횟수. 넥슨 API 를 무한히 두드리지 않는다
+  attempts      Int       @default(0)
+  lastCheckedAt DateTime?
+  /// 마지막으로 관측한 칭호. 넥슨이 안 주면 null(`알수없음`).
+  /// **인증의 근거로 남는 값이다** — 나중에 다툼이 생기면 이걸 본다
+  lastSeenTitle String?
+
+  verifiedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, expiresAt])
+  @@index([userId])
+  @@index([ouid])
 }
 
 /// 서든어택 계정 연동 **신청** (D-121).
@@ -114,6 +179,84 @@ model PlayerLinkClaim {
   @@unique([userId, playerId])
   @@index([status, createdAt])
   @@index([playerId, status])
+}
+
+/// 클랜 **마스터 인증** 신청 (2026-09-01 · D-253).
+///
+/// ── 사용자 지시
+///   *"클랜설정은 마스터한테 권한을 준다 (…) 인증하기 방법은 그냥 마스터 계정으로 접속한
+///    인게임 사진 하나 첨부하라고 하면 끝이다."*
+///
+/// ── ⚠ 선수 칭호 인증(`TitleChallenge`)과 무엇이 다른가
+///   칭호 인증은 넥슨이 칭호를 그대로 줘서 **기계가 판정한다.**
+///   마스터 인증은 넥슨이 「이 계정이 그 클랜의 마스터인가」를 알려 주지 않는다.
+///   그래서 **사람이 사진을 보고 판정한다** — `PlayerLinkClaim`(D-121)과 같은 태도다.
+///   확인할 수 없는 것을 확인했다고 하지 않는다.
+///
+/// ── 승인된 줄 자체가 권한이다
+///   별도의 `ClanMasterGrant` 표를 만들지 않았다. `status='approved'` 한 줄이 곧 권한이고,
+///   `lib/server/ownership.ts` 의 `requireClanOwner` 가 그것만 본다.
+///   되돌리기는 `status='revoked'` 로 한다 — **행을 지우지 않는다.** 심사 이력이 근거다.
+model ClanMasterClaim {
+  id String @id @default(cuid())
+
+  /// 신청한 회원
+  userId String
+  /// 마스터라고 주장하는 클랜
+  clanId String
+
+  /// "pending" | "approved" | "rejected" | "cancelled" | "revoked"
+  /// `revoked` 는 **승인됐던 흔적**이지 권한이 아니다
+  status String @default("pending")
+
+  /// 신청자가 관리자에게 남긴 한 줄 (선택)
+  note String?
+
+  createdAt DateTime @default(now())
+
+  /// 처리 시각·처리자. 계정이 지워져도 이력은 남기려고 FK를 걸지 않는다 (`PlayerLinkClaim` 과 같다)
+  decidedAt       DateTime?
+  decidedByUserId String?
+  decidedByEmail  String?
+  /// 거부 사유. **화면이 신청자에게 그대로 보여 준다** — 왜 거부됐는지 모르면 다시 낼 수 없다
+  decisionNote    String?
+
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clan  Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  image ClanMasterClaimImage?
+
+  /// 같은 사람이 같은 클랜을 중복 신청하지 않는다. 다시 내면 이 행을 되살린다
+  @@unique([userId, clanId])
+  @@index([status, createdAt])
+  @@index([clanId, status])
+}
+
+/// 마스터 인증 스크린샷 **원본 바이트**.
+///
+/// ── ⚠ 왜 DB 에 넣는가
+///   오브젝트 스토리지가 아직 없다 (CLAUDE.md 8장 「Phase 7에서 남긴 숙제」).
+///   기존 `/api/uploads` 는 `public/uploads/` 에 파일로 쓰는데, **운영에서는 스스로를 막는다**
+///   (D-147 — 서버리스 파일시스템은 읽기 전용이라 503 을 돌려준다).
+///   즉 **지금 운영에서 동작하는 업로드 경로가 없다.** 그래서 가장 작은 해법을 골랐다 —
+///   3MB 상한을 걸고 바이트를 그대로 넣는다 (D-253).
+///
+/// ── ⚠ 왜 `ClanMasterClaim` 과 다른 표인가
+///   같은 표에 두면 `findMany()` 한 번이 수십 MB 를 끌어온다. Prisma 는 **관계를 기본으로
+///   따라가지 않으므로**, 표를 나누는 것만으로 그 실수가 구조적으로 불가능해진다.
+///
+/// 오브젝트 스토리지가 붙으면 이 표를 비우고 URL 만 남기면 된다.
+model ClanMasterClaimImage {
+  claimId String @id
+
+  /// "image/png" | "image/jpeg" | "image/webp" — 계약이 정한 목록만 들어온다
+  mimeType String
+  byteSize Int
+  /// 원본 바이트. **가공하지 않는다** — 사람이 눈으로 볼 유일한 근거다
+  data     Bytes
+
+  createdAt DateTime @default(now())
+
+  claim ClanMasterClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 }
 
 /// 이메일 인증 / 비밀번호 재설정 토큰. 평문을 저장하지 않고 해시만 보관한다.
@@ -237,6 +380,7 @@ model Clan {
   leaguePlayers LeaguePlayer[] @relation("LeaguePlayerClan")
   invitations LeagueInvitation[]
   aliases     ClanAlias[]
+  masterClaims ClanMasterClaim[]
 
   @@unique([sourceClanId])
   @@index([name])
@@ -1677,12 +1821,19 @@ model NexonIdentityObservation {
   /// 관측 시점의 클랜명 (`user/basic.clan_name`). 무소속이면 null
   clanName String?
 
-  /// 무엇이 달라져서 이 줄이 생겼나: "first" | "nickname" | "clan" | "nickname+clan"
+  /// 관측 시점의 칭호 (`user/basic.title_name`). 미착용이면 null.
+  /// **이미 받아 놓고 버리던 값이다** — 남기는 데 넥슨 추가 호출이 0건이다
+  titleName String?
+
+  /// 무엇이 달라져서 이 줄이 생겼나
+  /// "first" | "nickname" | "clan" | "title" | "nickname+clan" | "nickname+title"
+  /// | "clan+title" | "nickname+clan+title"
   changed String
 
   /// 직전 값 — 대조용으로 함께 남긴다
   prevUserName String?
   prevClanName String?
+  prevTitleName String?
 
   observedAt DateTime @default(now())
 

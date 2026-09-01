@@ -37,9 +37,22 @@ on:
   #   되살리려면 — 아래 세 줄의 주석을 풀면 된다. 다만 그 전에
   #   `supplyRollup.ts` 가 7/1 창을 존중하게 고쳐야 한다. 안 그러면 또 덮는다.
   #
-  # schedule:
-  #   # UTC 19:00 = KST 04:00
-  #   - cron: '0 19 * * *'
+  # ── ✅ **2026-09-02 · 다시 켰다** (D-258) ──────────────────────────────
+  #
+  #   위 주석은 지우지 않는다 (CLAUDE.md 10-4). 다만 **전제가 바뀌었다** —
+  #   이 집계는 이제 `LeaguePlayer.win/lose/kill/death` 를 **쓰지 않는다.**
+  #   `SACLOUD_RATING_OWNER=formula`(아래 env 에 이미 있다)가 집계 칸을 전부 막고,
+  #   남는 것은 **명부**뿐이다 — 현재 소속 클랜(D-160) · 부리그 · 클랜/리그클랜 행 생성 ·
+  #   원본 `league_clan` id 채우기 (3-A 3번).
+  #
+  #   그 칸들은 `season0Apply` 가 한 줄도 안 쓴다. 그러니 **덮을 것이 없다.**
+  #   자세한 것은 `packages/db/ops/supplyRollup.ts` 의 `ratingOwnedByFormula` 머리말.
+  #
+  #   ⚠ 「7/1 창을 존중하게 고친다」는 위 주석의 예고는 **실행하지 않았다.**
+  #     고쳐도 답이 맞지 않는다는 것을 실측으로 확인했다 (D-258). 그 길로 가지 마라.
+  schedule:
+    # UTC 19:00 = KST 04:00. 증분 cron 이 이 시간을 비워 두고 있다 (D-224)
+    - cron: '0 19 * * *'
   workflow_dispatch:
     inputs:
       leagues:

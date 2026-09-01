@@ -474,13 +474,15 @@ describe('⑥ A어택성공 — 구역에서 잡고 라운드를 따야 성공�
     expect(lost?.redLostZoneSniperRounds).toEqual({ byKiller: 1, byVictim: 1 })
   })
 
-  it('**이름 없는 자리에서 난 킬을 함께 센다** — `녹뒤`·`머리` 가 거기 섞여 있다 (⑥-1)', () => {
+  /* ⚠ 제목을 고쳤다 (2026-09-01) — `녹뒤`·`머리` 는 이제 **이름 있는 구역**이다.
+     검사 자체는 그대로 유효하다: 이름 없는 자리에서 난 킬을 따로 세는지 본다 */
+  it('**이름 없는 자리에서 난 킬을 함께 센다** (⑥-1)', () => {
     expect(tally?.sniperKillsWithPosition).toEqual({ byKiller: 2, byVictim: 2 })
     expect(tally?.sniperKillsInNamedZone).toEqual({ byKiller: 1, byVictim: 0 })
     expect(tally?.sniperKillsOutsideNamedZone).toEqual({ byKiller: 1, byVictim: 2 })
   })
 
-  it('판정에 쓴 구역 이름을 값과 함께 남긴다 — 넷 중 **둘**뿐이다', () => {
+  it('판정에 쓴 구역 이름을 값과 함께 남긴다 — **넷이 다 있다** (2026-09-01)', () => {
     expect(tally?.zoneLabels).toEqual(A_ATTACK_ZONE_LABELS)
   })
 

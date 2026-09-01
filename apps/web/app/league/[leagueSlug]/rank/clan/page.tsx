@@ -1,9 +1,26 @@
 import { redirect } from 'next/navigation'
 import { prisma } from '@sacloud/db'
+import { isRankSplitLeague, leagueLandingPath, leagueScreen } from '@sacloud/contract'
 import { resolveLeagueId } from '@/lib/server/queries/leagues'
+import { ClanRankSplit } from './ClanRankSplit'
 
 /**
- * `/league/{slug}/rank/clan` → **클랜이 실제로 있는 첫 부리그**.
+ * `/league/{slug}/rank/clan`.
+ *
+ * ── SPL · IPL 은 **두 칸짜리 합친 화면**이다 (2026-09-01 사용자 지시)
+ *   *"클랜랭킹 그냥 SPL이랑 IPL 한공간에 둬 SPL이 왼쪽 IPL이 오른쪽"*
+ *
+ *   그래서 이 두 리그는 부리그로 넘기지 않고 여기서 바로 그린다.
+ *   **어느 쪽으로 들어와도 같은 화면**이다 — `/league/supply/rank/clan` 과
+ *   `/league/nolink/rank/clan` 이 둘 다 SPL+IPL 을 보여 준다. 라우트는 그대로 살아 있다.
+ *
+ *   `10mountain`(`sanply`) 은 여기 없다. 개인기록만 있는 비공식 리그라 아래의
+ *   기존 «첫 부리그로 보낸다» 흐름을 그대로 쓴다 (D-245).
+ *
+ *   ⚠ 옛 화면(부리그 탭)은 **지우지 않았다** — `/rank/clan/{division}` 에 그대로 있다
+ *     (`CLAUDE.md` 10-4). 되돌리려면 아래 분기 한 줄만 빼면 된다.
+ *
+ * ── 아래는 나머지 리그의 흐름이다: **클랜이 실제로 있는 첫 부리그**로 보낸다
  *
  * ── 왜 1부로 고정하면 안 되나 (2026-08-31 실측)
  *   IPL 은 **1티어를 비워 둔다** (`docs/IPL_SPEC.md` · 사용자 지시).
@@ -22,6 +39,13 @@ export default async function ClanRankIndex({
   params: Promise<{ leagueSlug: string }>
 }) {
   const { leagueSlug } = await params
+
+  /* SPL · IPL 은 합친 화면이다. 부리그를 고르러 가지 않는다 */
+  if (isRankSplitLeague(leagueSlug)) return <ClanRankSplit />
+
+  /* 클랜 화면이 없는 리그(`10🏔`)는 개인랭킹으로 보낸다 (D-245).
+     라우트를 지우지 않고 **화면에서만** 빠지게 한다 (`CLAUDE.md` 10-4) */
+  if (!leagueScreen(leagueSlug).clanRank) redirect(leagueLandingPath(leagueSlug))
 
   const leagueId = await resolveLeagueId(leagueSlug)
   let division = 1

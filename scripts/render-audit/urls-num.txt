@@ -1,0 +1,4 @@
+rank-clan=/league/supply/rank/clan
+rank-player=/league/supply/rank/player
+clan-record=/league/supply/clan/lpcrew
+match-open=/league/supply/clan/lpcrew :: document.querySelectorAll('[aria-label="상세보기"]')[0].click()

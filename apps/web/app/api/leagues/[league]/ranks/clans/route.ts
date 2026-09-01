@@ -9,6 +9,11 @@ import { getClanRanks, resolveLeagueId } from '@/lib/server/queries/leagues'
  * 계약은 이 자리를 **리그 ID**로 적지만, 화면은 **슬러그**를 넣어 호출한다.
  * `resolveLeagueId`가 둘 다 받는다 (`queries/leagues.ts` 주석 참조).
  * 랭킹은 20건 단위 (원본 관측값).
+ *
+ * `division` 을 **0(또는 음수)** 으로 주면 부리그를 나누지 않고 전체를 한 줄로 준다
+ * (2026-09-01 사용자 지시 — SPL·IPL 합친 랭킹 화면이 쓴다).
+ * 무소속리그는 그때 티어 오름차순을 유지한다. 자세한 것은 `getClanRanks` 주석.
+ * **파라미터가 없으면 예전 그대로 1부리그다.** 기존 호출자를 깨지 않는다.
  */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
   return guardPublic(request, 600, async () => {

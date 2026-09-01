@@ -8,7 +8,7 @@
  *   ③ 같은 입력이면 언제나 같은 값이다 (결정적 replay)
  */
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_RATING_CONSTANTS } from '@sacloud/rating'
+import { DEFAULT_RATING_CONSTANTS, V2_RATING_CONSTANTS } from '@sacloud/rating'
 import {
   computeClanStandings,
   IPL_START_RATING,
@@ -121,3 +121,38 @@ describe('래더', () => {
 function s5(games: StandingMatch[]) {
   return computeClanStandings(games)
 }
+
+/**
+ * 배치고사 폐지를 IPL 클랜에도 건다 (2026-09-02 · D-258).
+ *
+ * `iplClanRollup` 이 상수를 안 넘기던 탓에 `DEFAULT_RATING_CONSTANTS`(10판)가 쓰였다.
+ * 그러면 **10판 미만 클랜이 `placement=true` 가 되어 클랜랭킹에서 통째로 빠진다** —
+ * `iplClanRollup.top` 이 `!r.placement` 로 거르고 화면도 같은 칸을 본다.
+ *
+ * 위 `describe` 들은 **옛 동작(10판)을 그대로 고정해 둔다.** 지우지 않는다 —
+ * `DEFAULT` 를 쓰는 다른 경로가 남아 있고, 그 경로의 규칙은 바뀌지 않았다 (CLAUDE.md 10-4).
+ */
+describe('배치고사 폐지 — V2 상수를 넘겼을 때 (D-258)', () => {
+  const v2 = { constants: V2_RATING_CONSTANTS }
+
+  it('V2 는 배치고사가 0판이다', () => {
+    expect(V2_RATING_CONSTANTS.placementMatches).toBe(0)
+  })
+
+  it('한 판만 뛰어도 랭킹에 올라간다 — 화면 문구 「한 경기부터 바로 반영」이 참이 된다', () => {
+    expect(computeClanStandings([m('red')], v2).get('A')!.placement).toBe(false)
+    expect(computeClanStandings([m('red')], v2).get('B')!.placement).toBe(false)
+  })
+
+  it('첫 판부터 래더가 움직인다 — 보류 구간이 없다', () => {
+    const s = computeClanStandings([m('red')], v2)
+    expect(s.get('A')!.rating).toBeGreaterThan(IPL_START_RATING)
+    expect(s.get('B')!.rating).toBeLessThan(IPL_START_RATING)
+  })
+
+  it('상수를 안 넘기면 옛 동작(10판)이 그대로다 — 기본값을 바꾸지 않았다', () => {
+    const games = Array.from({ length: PLACEMENT - 1 }, () => m('red'))
+    expect(computeClanStandings(games).get('A')!.placement).toBe(true)
+    expect(computeClanStandings(games, v2).get('A')!.placement).toBe(false)
+  })
+})

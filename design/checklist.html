@@ -1,0 +1,400 @@
+<title>3rd cloud 오픈 점검표</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+
+<style>
+  :root {
+    --bg: #0e0e11;
+    --surface: #16161a;
+    --surface-2: #1d1d22;
+    --line: #26262d;
+    --line-soft: #1c1c22;
+    --text: #e7e4e1;
+    --text-strong: #faf8f6;
+    --muted: #9a938d;
+    --faint: #6d6660;
+    --ok: #57a877;
+    --half: #d19b40;
+    --wip: #5f92da;
+    --dead: #6d6660;
+    --danger: #d9483f;
+    --accent: #d92b2b;
+    --radius: 3px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 90px; }
+  @media (max-width: 560px) { .wrap { padding: 26px 14px 70px; } }
+
+  /* ── 머리말 ───────────────────────────────── */
+  .head h1 {
+    font-family: 'Archivo', 'Noto Sans KR', sans-serif;
+    font-size: 27px; font-weight: 700; letter-spacing: -0.015em;
+    margin: 0 0 6px; color: var(--text-strong); text-wrap: balance;
+  }
+  .head .when { font-size: 12.5px; color: var(--faint); font-family: 'IBM Plex Mono', monospace; }
+  .head .lede { margin: 14px 0 0; color: var(--muted); font-size: 14px; max-width: 62ch; }
+
+  .tally { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .tally div {
+    display: flex; align-items: baseline; gap: 7px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 9px 13px;
+  }
+  .tally b { font-family: 'IBM Plex Mono', monospace; font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .tally span { font-size: 12px; color: var(--muted); }
+  .tally .n-ok b { color: var(--ok); }
+  .tally .n-half b { color: var(--half); }
+  .tally .n-wip b { color: var(--wip); }
+  .tally .n-dead b { color: var(--dead); }
+
+  /* ── 구역 ─────────────────────────────────── */
+  .sec { margin-top: 42px; }
+  .sec > h2 {
+    font-family: 'Archivo', 'Noto Sans KR', sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--faint); margin: 0 0 3px;
+  }
+  .sec > .kr {
+    font-size: 18px; font-weight: 700; color: var(--text-strong);
+    margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+
+  .items { display: flex; flex-direction: column; }
+
+  .item {
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    gap: 4px 12px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .item:last-child { border-bottom: 0; }
+
+  .pill {
+    grid-row: span 3;
+    align-self: start;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+    text-align: center; padding: 4px 0; border-radius: 2px;
+    border: 1px solid currentColor;
+  }
+  .p-ok { color: var(--ok); }
+  .p-half { color: var(--half); }
+  .p-wip { color: var(--wip); }
+  .p-dead { color: var(--dead); }
+
+  .nm { font-size: 15px; font-weight: 700; color: var(--text-strong); line-height: 1.45; }
+  .ds { font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+  .ds em { font-style: normal; color: var(--half); }
+  .ds strong { color: var(--text-strong); font-weight: 500; }
+
+  .go {
+    display: inline-block; margin-top: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+    color: var(--text); text-decoration: none;
+    border: 1px solid var(--line); border-radius: 2px;
+    padding: 7px 11px; word-break: break-all;
+  }
+  .go:hover, .go:focus-visible { border-color: var(--accent); color: var(--text-strong); }
+  .go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .go::before { content: "→ "; color: var(--faint); }
+  .here { font-size: 12.5px; color: var(--faint); margin-top: 6px; }
+
+  /* ── 위험 ─────────────────────────────────── */
+  .risk { display: flex; gap: 13px; padding: 15px 0; border-bottom: 1px solid var(--line-soft); }
+  .risk:last-child { border-bottom: 0; }
+  .risk .rk {
+    flex: 0 0 26px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 19px; font-weight: 500; color: var(--danger); line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+  }
+  .risk .rk.low { color: var(--faint); }
+  .risk .rb { min-width: 0; }
+  .risk .rt { font-size: 15px; font-weight: 700; color: var(--text-strong); }
+  .risk .rd { font-size: 13.5px; color: var(--muted); margin-top: 3px; }
+
+  .note {
+    margin-top: 30px; padding: 15px 17px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    font-size: 13.5px; color: var(--muted);
+  }
+  .note b { color: var(--text-strong); font-weight: 500; }
+
+  .num { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="wrap">
+
+  <div class="head">
+    <h1>3rd cloud 오픈 점검표</h1>
+    <div class="when">2026-09-01 21시 · 운영 사이트에서 31개 주소 전부 눌러 확인</div>
+    <p class="lede">
+      화면에 보이는 기능만 담았습니다. 주소를 누르면 바로 그 화면이 열립니다.
+      알 시스템 · 게시판 · 개인 육각형 · 부하시험은 오늘 빼기로 하셨으니 목록에 없습니다.
+    </p>
+    <div class="tally">
+      <div class="n-ok"><b>22</b><span>됨</span></div>
+      <div class="n-half"><b>4</b><span>반만</span></div>
+      <div class="n-wip"><b>4</b><span>만드는 중</span></div>
+      <div class="n-dead"><b>2</b><span>닫음</span></div>
+    </div>
+    <div class="note" style="margin-top:18px">
+      운영 데이터 실측 — 리그 <b class="num">4</b>개 · 클랜 <b class="num">464</b>곳 ·
+      선수 <b class="num">22,140</b>명 · 경기 <b class="num">387,150</b>건. 전부 진짜 기록입니다.
+    </div>
+  </div>
+
+  <!-- 검색 -->
+  <section class="sec">
+    <h2>Search</h2>
+    <div class="kr">검색</div>
+    <div class="items">
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">선수 검색</div>
+        <div class="ds">닉네임으로 선수를 찾습니다. 대소문자 구분 없습니다.</div>
+        <div class="here">메인 검색창에 <strong>이지카</strong> 입력</div>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">클랜 검색 — 한글 별칭</div>
+        <div class="ds">사장님이 적어주신 별칭 <strong>120개</strong>가 붙어 있습니다.</div>
+        <div class="here">검색창에 <strong>베리타스</strong> / <strong>원포</strong> / <strong>미라지</strong></div>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">리그 검색</div>
+        <div class="ds">리그 이름으로 찾습니다.</div>
+        <div class="here">검색창에 <strong>SPL</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 랭킹 -->
+  <section class="sec">
+    <h2>Ranking</h2>
+    <div class="kr">랭킹</div>
+    <div class="items">
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">SPL 클랜랭킹</div>
+        <div class="ds">1위 MiraGe. · 4230승 4525패 · 래더 3094</div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/supply/rank/clan/1" target="_blank" rel="noopener">/league/supply/rank/clan/1</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">SPL 개인랭킹</div>
+        <div class="ds">1위 이지카 · 4619점</div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/supply/rank/player" target="_blank" rel="noopener">/league/supply/rank/player</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">IPL 클랜랭킹</div>
+        <div class="ds">2티어 11곳 · 3티어 7곳. <em>1티어는 클랜이 0곳이라 비어 있습니다.</em></div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/nolink/rank/clan/2" target="_blank" rel="noopener">/league/nolink/rank/clan/2</a>
+      </div>
+      <div class="item">
+        <span class="pill p-half">반만</span>
+        <div class="nm">IPL 개인랭킹</div>
+        <div class="ds"><em>완전히 빈 화면입니다.</em> 클랜은 43곳 있는데 선수가 0명으로 보입니다.
+          IPL 선수가 <strong>전원 배치고사 상태</strong>라 랭킹 조건을 아무도 못 넘습니다. 화면 버그가 아니라 데이터 상태입니다.</div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/nolink/rank/player" target="_blank" rel="noopener">/league/nolink/rank/player</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">10mountain 개인랭킹</div>
+        <div class="ds">20명 정상. 클랜 화면은 지시대로 감춰져 있습니다.</div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/sanply/rank/player" target="_blank" rel="noopener">/league/sanply/rank/player</a>
+      </div>
+      <div class="item">
+        <span class="pill p-dead">닫음</span>
+        <div class="nm">대룰리그</div>
+        <div class="ds">「서비스 준비중」으로 막아 뒀습니다. 등록 클랜 62곳 데이터는 <strong>지우지 않고</strong> 보관 중입니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 기록실 -->
+  <section class="sec">
+    <h2>Records</h2>
+    <div class="kr">기록실</div>
+    <div class="items">
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">클랜 기록실</div>
+        <div class="ds">성적 · 순위 · 최근 경기</div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/supply/clan/lpcrew" target="_blank" rel="noopener">/league/supply/clan/lpcrew</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">클랜 육각형 — 6개 축</div>
+        <div class="ds"><strong>실제 값이 들어 있습니다.</strong> 실측: 스나싸움 27/446 · 소수싸움 27% · 세이브 15% · 게임템포 23.2</div>
+        <div class="here">위 클랜 기록실 화면 안에 그려집니다</div>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">클랜원 명단</div>
+        <div class="ds">소속 선수 목록 + 접속 표시</div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/supply/clan/lpcrew/player" target="_blank" rel="noopener">/league/supply/clan/lpcrew/player</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">클랜 지난시즌</div>
+        <div class="ds">시즌별 기록</div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/supply/clan/lpcrew/season" target="_blank" rel="noopener">/league/supply/clan/lpcrew/season</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">선수 기록실</div>
+        <div class="ds">무기별(스나·라플) 분리 기록 · 티어별 상대 성적 · 오늘 기록 · MVP</div>
+        <a class="go" href="https://sacloud-web.vercel.app/league/supply/player/SUP-1929601804" target="_blank" rel="noopener">/league/supply/player/SUP-1929601804</a>
+      </div>
+      <div class="item">
+        <span class="pill p-half">반만</span>
+        <div class="nm">경기 상세 — 기록카드</div>
+        <div class="ds">라인업 10명 · 킬/데스 · <strong>이 경기 래더 ±점</strong> · 레드/블루 육각형 겹쳐보기.
+          딜량·포지션은 지시대로 뺐습니다.
+          <em>홀로그램 재질은 코드에 들어갔는데 아직 배포 전이라 지금은 안 보입니다.</em></div>
+        <div class="here">기록실에서 경기 한 줄을 <strong>눌러 펼치면</strong> 나옵니다</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 계정 -->
+  <section class="sec">
+    <h2>Account</h2>
+    <div class="kr">계정</div>
+    <div class="items">
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">회원가입</div>
+        <div class="ds">인증 없이 무조건 가입됩니다.
+          <em>지금은 이메일을 받고 있는데, 아이디+비번만 받도록 고치는 중입니다.</em></div>
+        <a class="go" href="https://sacloud-web.vercel.app/auth/signup" target="_blank" rel="noopener">/auth/signup</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">로그인 / 로그아웃</div>
+        <div class="ds">비밀번호 암호화 · 자동 재로그인 · 실패 횟수 제한</div>
+        <a class="go" href="https://sacloud-web.vercel.app/auth/login" target="_blank" rel="noopener">/auth/login</a>
+      </div>
+      <div class="item">
+        <span class="pill p-half">반만</span>
+        <div class="nm">비밀번호 찾기</div>
+        <div class="ds">화면은 있는데 <em>메일이 안 나갑니다.</em> 잊으면 사장님이 직접 고쳐 주셔야 합니다.</div>
+        <a class="go" href="https://sacloud-web.vercel.app/auth/password/forget" target="_blank" rel="noopener">/auth/password/forget</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">마이페이지</div>
+        <div class="ds">내 정보 · 닉네임 · 비밀번호 변경</div>
+        <a class="go" href="https://sacloud-web.vercel.app/me" target="_blank" rel="noopener">/me</a>
+      </div>
+      <div class="item">
+        <span class="pill p-wip">만드는중</span>
+        <div class="nm">칭호 인증 — 소유권 증명</div>
+        <div class="ds">게임에서 칭호를 <strong>[용병]</strong>으로 바꾸면 바로 승인.
+          승인되면 <strong>한 줄 소개 · 포지션 선택</strong>이 열립니다.
+          <em>지금 자리에 있는 연동은 닉네임만 적으면 그냥 통과합니다 — 이게 이걸로 대체됩니다.</em></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 관리자 -->
+  <section class="sec">
+    <h2>Admin</h2>
+    <div class="kr">관리자 <span style="font-size:13px;font-weight:400;color:var(--faint)">— 로그인해야 보입니다 (무인증 차단 확인함)</span></div>
+    <div class="items">
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">대시보드 · 클랜 · 시즌 · 경기 · 과거기록</div>
+        <div class="ds">클랜 등록/부리그 이동/별칭 · 시즌 시작·종료·스냅샷 · 경기 조회·수정 · 3rd.supply 이관 기록</div>
+        <a class="go" href="https://sacloud-web.vercel.app/admin" target="_blank" rel="noopener">/admin</a>
+      </div>
+      <div class="item">
+        <span class="pill p-half">없음</span>
+        <div class="nm">계정 연동 승인 화면</div>
+        <div class="ds"><em>뒤쪽 기능은 있는데 사장님이 눌러 볼 화면이 없습니다.</em> 칭호 인증이 들어오면 여기도 필요합니다.</div>
+      </div>
+      <div class="item">
+        <span class="pill p-dead">폐기</span>
+        <div class="nm">알 관리</div>
+        <div class="ds">오늘 버리기로 하셨습니다. 화면만 제거하고 <strong>데이터는 보존</strong>합니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 그 외 -->
+  <section class="sec">
+    <h2>Etc</h2>
+    <div class="kr">그 외</div>
+    <div class="items">
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">메인</div>
+        <div class="ds">로고 · 검색창 · 리그 바로가기</div>
+        <a class="go" href="https://sacloud-web.vercel.app/" target="_blank" rel="noopener">/</a>
+      </div>
+      <div class="item">
+        <span class="pill p-ok">됨</span>
+        <div class="nm">리그 목록 · 이용약관 · 개인정보처리방침</div>
+        <div class="ds"></div>
+        <a class="go" href="https://sacloud-web.vercel.app/leagues" target="_blank" rel="noopener">/leagues</a>
+      </div>
+      <div class="item">
+        <span class="pill p-dead">닫음</span>
+        <div class="nm">게시판</div>
+        <div class="ds">「준비중」으로 닫는 중입니다. 라우트와 데이터는 <strong>보존</strong>합니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 요구사항 -->
+  <section class="sec">
+    <h2>Requests</h2>
+    <div class="kr">사장님이 요구하신 것 — 반영 현황</div>
+    <div class="items">
+      <div class="item"><span class="pill p-wip">만드는중</span><div class="nm">랭킹 두 칸 — SPL 왼쪽 · IPL 오른쪽</div><div class="ds">IPL 은 티어별 가로선. 새 파일이 만들어져 있습니다. 배포 전</div></div>
+      <div class="item"><span class="pill p-wip">만드는중</span><div class="nm">리그홈 없애고 랭킹으로 바로</div><div class="ds">지금 운영은 아직 리그홈을 거칩니다. 배포 전</div></div>
+      <div class="item"><span class="pill p-wip">만드는중</span><div class="nm">투톤 배경</div><div class="ds">검정 셸 + 진한 버건디 히어로. 색은 <strong>한 줄만 고치면 바뀌게</strong> 빼뒀습니다</div></div>
+      <div class="item"><span class="pill p-wip">만드는중</span><div class="nm">로고 · 숫자 글씨체</div><div class="ds">받으신 그림 그대로 · 숫자는 서플라이 체계로</div></div>
+      <div class="item"><span class="pill p-half">배포전</span><div class="nm">경기상세 홀로그램 · 사이트 이름 3rd cloud</div><div class="ds">코드는 들어갔습니다. 배포하면 보입니다</div></div>
+      <div class="item"><span class="pill p-half">반만</span><div class="nm">10mountain — 개인기록만 · 킬뎃/승률만</div><div class="ds">클랜 화면 감추기는 <strong>됐습니다.</strong> <em>칸 제한은 확인 못 했습니다</em></div></div>
+      <div class="item"><span class="pill p-dead">나중에</span><div class="nm">리그 신청만 남기고 리그페이지 제거</div><div class="ds">「이건 나중에」라고 하셔서 손대지 않았습니다</div></div>
+    </div>
+  </section>
+
+  <!-- 위험 -->
+  <section class="sec">
+    <h2>Before launch</h2>
+    <div class="kr">오픈 전에 봐야 할 것 — 위험한 순서</div>
+    <div class="items">
+      <div class="risk"><div class="rk">1</div><div class="rb"><div class="rt">아무나 남의 클랜·선수 정보를 덮어쓸 수 있다</div><div class="rd">계정 하나만 만들면 됩니다. 지금 막는 작업이 돌고 있습니다.</div></div></div>
+      <div class="risk"><div class="rk">2</div><div class="rb"><div class="rt">IPL 개인랭킹이 빈 화면</div><div class="rd">클랜 43곳이 있는 리그인데 선수가 0명으로 보입니다. 배치고사를 IPL 에 어떻게 적용할지 결정이 필요합니다.</div></div></div>
+      <div class="risk"><div class="rk">3</div><div class="rb"><div class="rt">비밀번호를 되찾을 수 없다</div><div class="rd">메일 발송이 없습니다. 잊은 사람은 사장님이 손으로 고쳐 주셔야 합니다.</div></div></div>
+      <div class="risk"><div class="rk">4</div><div class="rb"><div class="rt">가입에 캡차가 없다</div><div class="rd">자동 가입 봇을 막을 수단이 전혀 없습니다.</div></div></div>
+      <div class="risk"><div class="rk low">5</div><div class="rb"><div class="rt">데이터가 실시간이 아닐 수 있다</div><div class="rd">표본으로 본 가장 최근 경기가 8/31 23:04 입니다. 정확한 지연은 <em>확인 못 했습니다</em> — 오픈 전에 한 번 재야 합니다.</div></div></div>
+      <div class="risk"><div class="rk low">6</div><div class="rb"><div class="rt">버티는 힘이 캐시뿐이다</div><div class="rd">지금 빠른 건 캐시가 답하고 있어서입니다. 캐시가 비면 동시 5명에서 무너진 기록이 있습니다. 부하시험은 오픈 후로 미루기로 하셨습니다.</div></div></div>
+    </div>
+  </section>
+
+  <div class="note">
+    <b>래더 점수에 대해</b> — 화면의 점수는 전부 원본 3rd.supply 에서 가져온 값입니다.
+    우리 공식이 계산한 경기는 <b class="num">0</b>건입니다. 일부러 그렇게 막아 뒀고(원본 점수 보존),
+    새 시즌부터 우리 공식이 돕니다. <b>다만 그게 실제로 도는 걸 아직 아무도 못 봤습니다.</b>
+  </div>
+
+</div>

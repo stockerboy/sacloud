@@ -40,7 +40,19 @@
  *      하한**이다. 필드 이름에 그 사실을 박아 뒀다 (`redClearThreeSecondsLowerBound`).
  *      `clanRound.ts` 의 옛 `tempoOf`/`roundSpans`(라운드 길이 중앙값)와는 **정의가 다른
  *      지표다. 섞지 않는다** (사양 6장).
- *   2. **`녹뒤` · `머리` 구역의 좌표가 없다** (⑥-1). 사용자가 말한 넷 중 `컨뒤` · `에이설대`
+ *   2. ~~**`녹뒤` · `머리` 구역의 좌표가 없다**~~ (⑥-1) →
+ *      ### ⚠ **정정 (2026-09-01) — 넷이 다 있다. 이 줄은 더 이상 사실이 아니다**
+ *      사용자가 `design/zone-paint.html` 로 **직접 칠했다.** 지금
+ *      `data/barracks/style-zones.json` 에는 **8곳이 다 있고**
+ *      (`BIRONG · BUNKER · GJA · DALBANG · SEOLDAE · CONDWI · NOKDWI · MERI`),
+ *      `A_ATTACK_ZONE_LABELS_MISSING` 이 **빈 배열**이다. 자세한 것은 그 상수의 주석.
+ *
+ *      **이 낡은 서술이 실제로 사람을 속였다** (2026-09-01) — 이 머리말만 읽고
+ *      「녹뒤·머리 좌표가 없다」고 사용자에게 보고한 일이 있었다. 지우지 않고 남기되
+ *      (`CLAUDE.md` 10-4), **여기서 먼저 정정을 만나게** 해 둔다.
+ *
+ *      <아래는 그때의 서술이다>
+ *      사용자가 말한 넷 중 `컨뒤` · `에이설대`
  *      둘만 `data/barracks/style-zones.json` 에 있다. 없는 지명을 지어내지 않는다.
  *      그래서 ⑥ 은 **둘만으로** 세고, 이름 없는 자리에서 난 킬이 몇인지를 함께 돌려준다
  *      (실측 57.8%). 나중에 사용자가 두 곳을 칠하면 무엇이 달라지는지 그 숫자로 안다.
@@ -112,9 +124,13 @@ export const CLAN_HEX_TEAM_SIZE = 5
 export const TEMPO_CLEAR_KILLS = 3
 
 /**
- * ⑥ 이 쓸 수 있는 구역 이름 — 사용자가 말한 **넷 중 둘**뿐이다 (⑥-1 · D-183).
+ * ⑥ 이 쓸 수 있는 구역 이름 — **넷이 다 있다** (⑥-1 · D-183).
  *
  * `data/barracks/style-zones.json` 의 라벨 키다.
+ *
+ * ⚠ 정정 (2026-09-01) — 이 주석은 «넷 중 **둘**뿐이다» 였다. **값은 늘 넷이었는데
+ * 주석만 낡아 있었다.** 좌표가 없던 `녹뒤`·`머리` 를 사용자가 칠해서 지금은 넷이 다 돈다
+ * (`A_ATTACK_ZONE_LABELS_MISSING` 주석). 낡은 서술이 실제로 사람을 속인 적이 있다.
  */
 export const A_ATTACK_ZONE_LABELS = ['CONDWI', 'SEOLDAE', 'NOKDWI', 'MERI'] as const
 
@@ -166,7 +182,12 @@ export interface ClanHexZones {
   aSide?: ZoneCells | null
   /** ① `B롱`(비롱) */
   bLong?: ZoneCells | null
-  /** ⑥ 어택 성공으로 인정하는 구역. 지금은 `컨뒤` + `A설대` 둘뿐이다 */
+  /**
+   * ⑥ 어택 성공으로 인정하는 구역.
+   *
+   * ⚠ 정정 (2026-09-01) — «지금은 `컨뒤` + `A설대` 둘뿐이다» 였다. **이제 넷이 다 있다**
+   * (`컨뒤`·`A설대`·`녹뒤`·`머리`). 무엇을 넣을지는 여전히 부르는 쪽이 정한다.
+   */
   attack?: ZoneCells | null
   /** ⑥ 에 실제로 쓴 구역 이름 — 값의 출처를 함께 남기려는 것뿐이다 */
   attackLabels?: readonly string[]
@@ -331,10 +352,137 @@ export interface AttackZoneTally {
   sniperKillsWithPosition: ZoneCount
   /** 그중 이름 있는 구역 안 */
   sniperKillsInNamedZone: ZoneCount
-  /** 그중 **어느 이름도 없는 자리** — `녹뒤`·`머리` 가 여기 섞여 있다 (⑥-1) */
+  /**
+   * 그중 **어느 이름도 없는 자리**.
+   *
+   * ⚠ 정정 (2026-09-01) — 예전에는 «`녹뒤`·`머리` 가 여기 섞여 있다» 였다.
+   * **이제 아니다.** 그 둘은 칠해져서 이름 있는 구역이 됐다
+   * (`A_ATTACK_ZONE_LABELS_MISSING` 주석). 지금 여기 남는 것은 **정말 이름 없는 자리**다.
+   */
   sniperKillsOutsideNamedZone: ZoneCount
-  /** 판정에 쓴 구역 이름. 넷 중 **둘**뿐이라는 사실을 값과 함께 남긴다 */
+  /**
+   * 판정에 쓴 구역 이름을 값과 함께 남긴다.
+   *
+   * ⚠ 정정 (2026-09-01) — 예전 주석은 «넷 중 **둘**뿐» 이었다. **지금은 넷이 다 있다.**
+   */
   zoneLabels: readonly string[]
+}
+
+/* ==========================================================================
+ * 2026-09-02 — 사용자가 축 셋을 다시 정했다 (D-256).
+ *
+ * ```
+ * ① 스나싸움  구역으로 나누던 것을 그만둔다 → **스나 대 스나**
+ * ⑤ B어택성공 → **선짤**
+ * ⑥ A어택성공 → **교환**
+ * ```
+ *
+ * ── 옛 칸(`SniperFightTally` · `LastSniperTally` · `AttackZoneTally`)을 **지우지 않는다**
+ *   (`CLAUDE.md` 10-4). 계산도 계속 돈다. **읽는 쪽이 안 볼 뿐이다.**
+ *   사용자가 *"포지션 판정이 미덥잖다"* 는 이유로 ⑤⑥ 을 뺐으므로, 포지션이 좋아지면
+ *   되살릴 수 있다. 그때 재수집이 필요하지 않아야 한다.
+ *
+ * ── **분자·분모만 저장한다. 비율은 읽을 때 만든다** (D-235)
+ *   ①의 분모와 ⑥의 「직후」 창은 사용자가 골랐지만, 고르지 않은 후보의 재료도 **함께 저장**한다.
+ *   오늘 `byKiller`/`byVictim` 에서 겪었다 — 둘 다 저장돼 있어서 재수집 없이 바꿀 수 있었다.
+ * ========================================================================== */
+
+/**
+ * ① **스나싸움** — 스나 대 스나 (2026-09-02 · 사용자 재정의).
+ *
+ * 사용자 원문:
+ * > "걍 에롱 비롱 필요없고(에이롱에서 잡았네 비롱에서 잡았네 이런거 걍 하지말자 힘들다)
+ * >  **A팀스나가 B팀스나를 잡은횟수랑 그 반대횟수를 비교하는거야**"
+ *
+ * **구역을 안 쓴다.** 그래서 이 축에는 `byKiller`/`byVictim` 문제가 아예 없다.
+ *
+ * ── 「비교」를 어떻게 숫자 하나로 만드나 — **사용자가 골랐다**
+ *   후보 셋을 실측해 보였고(로컬 6,844경기 · 클랜 139곳) 사용자가 **(a)** 를 골랐다.
+ *
+ *   ```
+ *   (a) won / (won + lost)      중앙 0.502 · 0~1 로 갇힌다 · 0.5 가 대등   ← 확정
+ *   (b) won / lost              중앙 1.009 · 상한이 없다
+ *   (c) (won - lost) / rounds   중앙 0.003 · 음수가 나온다
+ *   ```
+ *
+ *   ⚠ **셋이 클랜을 똑같이 가른다.** 순위상관 (a)↔(b) 1.000 · (a)↔(c) 0.999 —
+ *   셋 다 `won/lost` 의 단조 변환이라 수학적으로 그럴 수밖에 없다. 고른 것은
+ *   **변별력이 아니라 읽기 좋은 눈금**이다. 그래서 `rounds` 도 함께 저장해 (c) 를 남겨 둔다.
+ *
+ * ── ⚠ 못 세는 것
+ *   무기를 모르는 킬이 **13.8%** 다 (수류탄·근접 등, 실측 565,449건 중 78,220건).
+ *   그건 어느 쪽으로도 안 센다. 값을 **낮추는 쪽으로만** 틀린다.
+ */
+export interface SniperDuelTally {
+  /** 이벤트로 확인된 라운드 수 — (c) 후보를 나중에 만들 수 있게 남긴다 */
+  rounds: number
+  /** 우리 스나가 상대 스나를 잡은 수 */
+  won: number
+  /** 상대 스나가 우리 스나를 잡은 수 */
+  lost: number
+}
+
+/**
+ * ⑤ **선짤** — 라운드의 첫 킬을 우리가 냈나 (2026-09-02 · 신설).
+ *
+ * ★ 이름은 **「선짤」** 이다. 사용자가 직접 고른 말이다 (「선취점」이 아니다). 바꾸지 마라.
+ *
+ * ── 동시각 첫 킬 — **양 팀 모두 분모에서 뺀다** (사용자 확정)
+ *   `event_time` 이 `MM:SS` 라 **1초 해상도**다. 같은 초에 양 팀이 하나씩 죽으면 누가 먼저인지
+ *   알 수 없다. 실측 **6,698 / 149,456 라운드 = 4.48%**. 후보 둘을 보였고
+ *   사용자가 **(가) 양 팀 모두 분모에서 뺀다** 를 골랐다.
+ *   그 수를 `tiedRounds` 로 **남긴다** — 나중에 «양쪽 다 성공» 으로 바꿀 수 있게.
+ *
+ * ── ⚠ 못 세는 것
+ *   킬 이벤트가 하나라도 빠지면 **첫 킬이 뒤바뀔 수 있다.** ①⑥ 처럼 «값이 낮아지는 쪽으로만»
+ *   틀리지 않는다. 다만 복원율이 99.7% 라(`isRestorable` 실측) 영향은 작다고 본다 `[미확인]`.
+ */
+export interface FirstBloodTally {
+  /** 첫 킬이 있고 **동시각이 아닌** 라운드 수 = 분모 */
+  rounds: number
+  /** 그중 우리가 첫 킬을 낸 라운드 = 분자 */
+  won: number
+  /** 동시각이라 분모에서 뺀 라운드. **버리지 않고 센다** */
+  tiedRounds: number
+}
+
+/**
+ * ⑥ **교환** — 팀원이 죽은 직후 그 킬러를 되잡았나 (2026-09-02 · 신설).
+ *
+ * ★ 이름은 **「교환」** 이다. 사용자가 직접 고른 말이다 (「되잡기」·「트레이드」가 아니다).
+ *
+ * ── 「직후」 — **5초** (사용자 확정)
+ *   후보 다섯을 실측해 보였다 (클랜 151곳 · 우리 사망 ≥ 20):
+ *
+ *   ```
+ *   (a) 같은 라운드 안        중앙 0.483   느슨하다 — 「그 라운드에 걔가 죽었다」에 가깝다
+ *   (b) 3초 안               중앙 0.127   1초 해상도 잡음과 크기가 비슷하다
+ *   (c) 5초 안               중앙 0.176   ← 확정
+ *   (d) 10초 안              중앙 0.262
+ *   (e) 그 킬러의 다음 죽음    중앙 0.921   **못 쓴다** — 거의 항상 참이라 클랜을 안 가른다
+ *   ```
+ *
+ *   (a)와의 순위상관이 0.469 / 0.590 / 0.654 / 0.705 로 낮다 =
+ *   **창을 좁힐수록 진짜 다른 지표가 된다.** 그래서 창은 지어낼 수 없는 선택이었다.
+ *
+ * ── **창 넷을 다 저장한다**
+ *   지금 쓰는 것은 `within5` 하나뿐이다. 그래도 넷을 다 넣는다 —
+ *   창을 바꿀 때 **재빌드 없이** 바뀌게 하려는 것이다. 한 줄에 정수 넷이 느는 것뿐이다.
+ *
+ * ── 되잡기는 **같은 라운드 안에서만** 센다
+ *   `event_time` 이 경기 누적이라 라운드를 안 보면 다음 라운드의 킬이 5초 안에 들어올 수 있다.
+ */
+export interface TradeTally {
+  /** 우리 팀원이 **상대에게** 죽은 수 = 분모 */
+  deaths: number
+  /** 그 킬러를 3초 안에 되잡은 수 */
+  within3: number
+  /** 5초 안 — **지금 화면이 쓰는 값** */
+  within5: number
+  /** 10초 안 */
+  within10: number
+  /** 같은 라운드 안이면 시간을 안 보고 다 센 것 (가장 느슨한 후보) */
+  sameRound: number
 }
 
 /** 한 경기에서 **한 클랜**의 여섯 축 재료 */
@@ -352,12 +500,20 @@ export interface ClanHexTally {
   /** 상대 팀에서 **스나로 확정된** 선수 수. 0 이면 ①⑤⑥ 이 `null` 이다 */
   foeSnipers: number
 
-  /** ① */ sniperFight: SniperFightTally | null
+  /** ① **지금 쓰는 것** — 스나 대 스나 (D-256) */ sniperDuel: SniperDuelTally | null
+  /** ⑤ **지금 쓰는 것** — 선짤 (D-256) */ firstBlood: FirstBloodTally | null
+  /** ⑥ **지금 쓰는 것** — 교환 (D-256) */ trade: TradeTally | null
+
   /** ② */ outnumbered: OutnumberedTally | null
   /** ③ */ save: SaveTally | null
   /** ④ */ tempo: TempoTally | null
-  /** ⑤ */ lastSniper: LastSniperTally | null
-  /** ⑥ */ attackZone: AttackZoneTally | null
+
+  /* ── 아래 셋은 **옛 축이다. 화면이 안 본다.** 지우지 않는다 (`CLAUDE.md` 10-4) ──
+     계산은 계속 돈다. 사용자가 포지션 판정을 이유로 ⑤⑥ 을 뺐으므로, 그게 좋아지면
+     되살릴 수 있어야 하고 그때 재수집이 필요하지 않아야 한다 */
+  /** 옛 ① 구역 기반 스나싸움 */ sniperFight: SniperFightTally | null
+  /** 옛 ⑤ B어택성공 */ lastSniper: LastSniperTally | null
+  /** 옛 ⑥ A어택성공 */ attackZone: AttackZoneTally | null
 }
 
 /** 한 경기 — 양쪽 클랜이 함께 담긴다 */
@@ -395,10 +551,13 @@ const emptyTally = (teamNo: string, foeTeamNo: string | null): ClanHexTally => (
   sidedRounds: 0,
   redRounds: 0,
   foeSnipers: 0,
-  sniperFight: null,
+  sniperDuel: null,
+  firstBlood: null,
+  trade: null,
   outnumbered: null,
   save: null,
   tempo: null,
+  sniperFight: null,
   lastSniper: null,
   attackZone: null,
 })
@@ -718,11 +877,95 @@ function tallyFor(input: {
     }
   }
 
+  /* ========================================================================
+   * 지금 쓰는 축 셋 — ① 스나 대 스나 · ⑤ 선짤 · ⑥ 교환 (2026-09-02 · D-256)
+   *
+   * 위 루프와 **따로 돈다.** 위는 진영(레드/블루)을 보는 축들이고 이 셋은 진영을 안 본다.
+   * 섞어 넣으면 위 루프의 진영 조건이 이쪽에도 걸려 표본이 조용히 반토막 난다.
+   * ======================================================================== */
+
+  /** 우리 팀에서 스나로 확정된 선수들 — ① 은 **양쪽** 스나가 있어야 성립한다 */
+  const ourSnipers = new Set<string>()
+  for (const [usn, weapon] of input.weaponByPlayer) {
+    if (weapon !== 1) continue
+    if (input.roster.teamOf.get(usn) !== input.teamNo) continue
+    ourSnipers.add(usn)
+  }
+
+  const sniperDuel: SniperDuelTally = { rounds: input.roundNumbers.length, won: 0, lost: 0 }
+  const firstBlood: FirstBloodTally = { rounds: 0, won: 0, tiedRounds: 0 }
+  const trade: TradeTally = { deaths: 0, within3: 0, within5: 0, within10: 0, sameRound: 0 }
+
+  const isOurs = (usn: string): boolean => input.roster.teamOf.get(usn) === input.teamNo
+
+  for (const round of input.roundNumbers) {
+    const kills = input.killsByRound.get(round) ?? []
+    if (kills.length === 0) continue
+
+    /* ── ① 스나 대 스나. 구역을 안 본다 ── */
+    for (const kill of kills) {
+      if (input.weaponByPlayer.get(kill.killer) !== 1) continue
+      if (input.weaponByPlayer.get(kill.victim) !== 1) continue
+      if (isOurs(kill.killer) && !isOurs(kill.victim)) sniperDuel.won += 1
+      else if (!isOurs(kill.killer) && isOurs(kill.victim)) sniperDuel.lost += 1
+    }
+
+    /* ── ⑤ 선짤. 같은 초에 양 팀이 하나씩이면 **양 팀 다 분모에서 뺀다** (사용자 (가)) ── */
+    let earliest = Infinity
+    for (const kill of kills) if (kill.at < earliest) earliest = kill.at
+    let oursFirst = false
+    let foeFirst = false
+    for (const kill of kills) {
+      if (kill.at !== earliest) continue
+      if (isOurs(kill.killer)) oursFirst = true
+      else foeFirst = true
+    }
+    if (oursFirst && foeFirst) {
+      firstBlood.tiedRounds += 1
+    } else {
+      firstBlood.rounds += 1
+      if (oursFirst) firstBlood.won += 1
+    }
+
+    /* ── ⑥ 교환. 우리 팀원이 상대에게 죽은 뒤 **그 킬러**를 되잡았나 ── */
+    for (const death of kills) {
+      if (!isOurs(death.victim) || isOurs(death.killer)) continue
+      trade.deaths += 1
+
+      /* 그 킬러가 **같은 라운드 안에서 우리 손에** 죽은 가장 이른 시각.
+         라운드를 안 보면 `event_time` 이 경기 누적이라 다음 라운드 킬이 딸려 온다 */
+      let revengeAt: number | null = null
+      for (const back of kills) {
+        if (back.victim !== death.killer) continue
+        if (!isOurs(back.killer)) continue
+        if (back.at < death.at) continue
+        if (revengeAt === null || back.at < revengeAt) revengeAt = back.at
+      }
+      if (revengeAt === null) continue
+
+      const gap = revengeAt - death.at
+      trade.sameRound += 1
+      if (gap <= 3) trade.within3 += 1
+      if (gap <= 5) trade.within5 += 1
+      if (gap <= 10) trade.within10 += 1
+    }
+  }
+
   tally.rounds = input.roundNumbers.length
-  tally.sniperFight = sniperKnown ? sniperFight : null
+
+  /* ① 은 **양쪽에 스나가 있어야** 성립한다. 한쪽만 있으면 0 이 「한 번도 못 잡았다」가 되고,
+     그건 못 잰 것을 최악의 성적으로 만드는 짓이다 (D-106) */
+  tally.sniperDuel = sniperKnown && ourSnipers.size > 0 ? sniperDuel : null
+  /* ⑤⑥ 은 스나도 진영도 안 본다. 킬 이벤트만 있으면 센다 */
+  tally.firstBlood = firstBlood.rounds > 0 || firstBlood.tiedRounds > 0 ? firstBlood : null
+  tally.trade = trade.deaths > 0 ? trade : null
+
   tally.outnumbered = input.restorable ? outnumbered : null
   tally.save = input.restorable ? save : null
   tally.tempo = input.restorable ? tempo : null
+
+  /* 아래 셋은 **옛 축**이다. 화면이 안 보지만 계속 센다 (`CLAUDE.md` 10-4) */
+  tally.sniperFight = sniperKnown ? sniperFight : null
   tally.lastSniper = input.restorable && sniperKnown ? lastSniper : null
   tally.attackZone = sniperKnown && input.zones.attack ? attackZone : null
   return tally

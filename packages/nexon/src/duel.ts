@@ -125,6 +125,128 @@ export function killsOf(events: readonly DuelEvent[]): KillRecord[] {
   return out
 }
 
+/* ======================================================== 죽음 세기 === */
+
+/**
+ * 죽음을 **죽음 줄에서 직접** 센다 — `killsOf` 로 역산하지 않는다 (2026-09-01).
+ *
+ * ── 왜 따로 필요한가
+ *   `killsOf` 는 **죽인 사람이 있는 죽음**만 본다 (`event_type` 중 정확히 한쪽이 `kill`).
+ *   그래서 죽인 사람이 없는 죽음은 한 줄도 안 세어졌다. 3rd.supply 원본과 맞대 보니
+ *   참가 기록 43,682건 중 237건에서 **데스만 우리가 1 적었다**(킬은 100% 일치).
+ *
+ * ── 죽음의 종류는 **넷**이다 (로컬 원문 전수 실측)
+ * ```
+ *   kill  / death     304,482 + 291,486   상대가 죽였다
+ *   g_death           1,172 + 1,270       event_text "자살"
+ *   f_death             181 +   180       event_text "낙사"
+ *   bomb  / mission   10,688 + 12,223     C4 설치·해체 — 죽음이 아니다
+ * ```
+ *
+ * ── ★ 자살은 데스가 아니고 낙사는 데스다 ★ (실측으로 정했다. 추측이 아니다)
+ *   3rd.supply 원본 43,682건과 네 가지 정의를 각각 맞대 봤다:
+ * ```
+ *   킬로만            99.46%   (낙사 236건만큼 모자랐다)
+ *   킬 + 낙사        100.00%   ← 43,680 / 43,682. **이것을 쓴다**
+ *   킬 + 자살         96.25%
+ *   킬 + 자살 + 낙사  96.78%
+ * ```
+ *   자살을 세면 1,361건이 **오히려 넘친다.** 원본이 자살을 데스로 치지 않는다.
+ *
+ * ── 죽은 사람을 어떻게 알아보나 — **`str_usn` 만 믿으면 안 된다**
+ *   상대 팀의 자살·낙사 줄은 `target_str_usn` 이 **빈 문자열**이고
+ *   `target_user_nexon_sn` 에만 사람이 들어 있다 (실측). 그래서 둘 다 돌려주고
+ *   **부르는 쪽이 아는 값으로 잇는다.**
+ *
+ * ── 중복 제거는 `event_key` + 죽은 사람이다
+ *   한 죽음이 두 줄로 올 수 있다(죽인 쪽과 죽은 쪽이 둘 다 조회 클랜일 때).
+ *   `event_key` 만으로 끊으면 안 된다 — **같은 `event_key` 인데 죽은 사람이 다른 짝이
+ *   155건 있다**(실측). 죽은 사람을 키에 넣어야 그 155건이 살아남는다.
+ */
+export type DeathKind =
+  /** 상대가 죽였다 */
+  | 'kill'
+  /** 낙사 (`f_death`). **데스로 센다** */
+  | 'fall'
+  /** 자살 (`g_death`). **데스로 세지 않는다** */
+  | 'self'
+
+/** 데스로 **세는** 종류. 위 실측이 정한 값이다 — 여기서만 바꾼다 */
+export const COUNTED_DEATH_KINDS: readonly DeathKind[] = ['kill', 'fall']
+
+const DEATH_KIND_OF: Record<string, DeathKind> = {
+  death: 'kill',
+  f_death: 'fall',
+  g_death: 'self',
+}
+
+/** 죽음 한 건 */
+export interface DeathRecord {
+  round: number | null
+  /** 죽은 사람의 `str_usn`. 상대 팀 자살·낙사 줄에서는 **비어 있다** */
+  victimUsn: string | null
+  /** 죽은 사람의 숫자 계정값. 이쪽이 더 잘 채워져 있다 */
+  victimNexonSn: string | null
+  kind: DeathKind
+}
+
+/** 죽음을 읽는 데 필요한 칸 */
+export interface DeathEvent extends DuelEvent {
+  event_key?: number | string | null
+  user_nexon_sn?: number | string | null
+  target_user_nexon_sn?: number | string | null
+}
+
+/**
+ * 이벤트에서 죽음을 뽑는다. **종류를 가리지 않고 전부 돌려준다** —
+ * 무엇을 셀지는 부르는 쪽이 `COUNTED_DEATH_KINDS` 로 정한다.
+ */
+export function deathsOf(events: readonly DeathEvent[]): DeathRecord[] {
+  const out: DeathRecord[] = []
+  const seen = new Set<string>()
+
+  for (const event of events) {
+    const subject = str(event.event_type)
+    const target = str(event.target_event_type)
+
+    /* 주체가 죽었나, 상대가 죽었나. 둘 다 아니면 죽음이 아닌 줄이다(C4 설치 등) */
+    let kind: DeathKind | undefined
+    let victimUsn: string | null = null
+    let victimNexonSn: string | null = null
+    if (subject !== null && DEATH_KIND_OF[subject] !== undefined) {
+      kind = DEATH_KIND_OF[subject]
+      victimUsn = str(event.str_usn)
+      victimNexonSn = str(event.user_nexon_sn)
+    } else if (target !== null && DEATH_KIND_OF[target] !== undefined) {
+      kind = DEATH_KIND_OF[target]
+      victimUsn = str(event.target_str_usn)
+      victimNexonSn = str(event.target_user_nexon_sn)
+    }
+    if (kind === undefined) continue
+
+    /* `0` 은 "없다" 는 뜻으로 오는 값이다. 사람으로 세지 않는다 */
+    if (victimNexonSn === '0') victimNexonSn = null
+    if (victimUsn === null && victimNexonSn === null) continue
+
+    const round = numOrNull(event.round)
+    const who = victimUsn ?? `sn:${victimNexonSn ?? ''}`
+    const key =
+      event.event_key !== null && event.event_key !== undefined
+        ? `k:${String(event.event_key)}:${who}:${kind}`
+        : `t:${round}:${str(event.event_time) ?? ''}:${who}:${kind}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    out.push({
+      round: round !== null && Number.isInteger(round) && round >= 1 ? round : null,
+      victimUsn,
+      victimNexonSn,
+      kind,
+    })
+  }
+  return out
+}
+
 /**
  * 그 경기에서 **각자 무슨 무기를 들었나** — 자기 킬로 되짚는다.
  *

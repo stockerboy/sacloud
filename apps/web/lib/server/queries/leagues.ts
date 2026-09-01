@@ -256,18 +256,48 @@ function playerRankWhere(leagueId: string): { leagueId: string; placement: boole
 }
 
 /**
+ * 클랜랭킹에서 **부리그를 나누지 않는 축**의 정렬 (2026-09-01 사용자 지시).
+ *
+ * ```
+ * 공식리그(SPL)   부리그를 섞어 래더 순으로 한 줄     RANK_ORDER 그대로
+ * 무소속리그(IPL) 티어를 유지한 채 한 줄 + 티어 경계선 TIER_ORDER
+ * ```
+ *
+ * 티어는 운영자가 정하는 값이라 래더로 자동 정렬되지 않는다 (D-104).
+ * 그래서 IPL 은 **티어 오름차순 → 그 안에서 래더 내림차순**이다.
+ * `id` 는 언제나 마지막 타이브레이커다 — 없으면 커서 페이지네이션이 흔들린다.
+ */
+const TIER_ORDER = [{ division: 'asc' }, { rating: 'desc' }, { id: 'asc' }] as const
+const TIER_ORDER_REVERSED = [{ division: 'desc' }, { rating: 'asc' }, { id: 'desc' }] as const
+
+/** 부리그를 나누지 않고 한 줄로 세울 때 쓰는 표시값 (API `division=0`) */
+export const ALL_DIVISIONS = 0
+
+/**
  * 페이지 첫 행의 순위를 구한다.
  *
  * 커서 페이지네이션은 offset을 모르기 때문에, 정렬 기준상 **앞에 오는 행의 개수**를 세서
  * 순위를 만든다. 정렬이 `rating desc, id asc`이므로
  * "래더가 더 높거나 / 같은데 id가 앞선" 행의 수 + 1이 순위다.
+ *
+ * `division <= 0`(전체)이면 부리그 조건을 빼고 센다. 이때 정렬이 티어 축이면
+ * "앞에 오는 행" 의 뜻도 함께 바뀐다 — **목록과 같은 정렬로 세지 않으면 순위가 어긋난다.**
  */
 async function rankOfFirstClan(
   leagueId: string,
   division: number,
-  first: { rating: number; id: string } | undefined,
+  first: { rating: number; id: string; division: number } | undefined,
+  byTier: boolean,
 ): Promise<number> {
   if (!first) return 1
+  const ahead = byTier
+    ? [
+        { division: { lt: first.division } },
+        { division: first.division, rating: { gt: first.rating } },
+        { division: first.division, rating: first.rating, id: { lt: first.id } },
+      ]
+    : [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }]
+
   const before = await prisma.leagueClan.count({
     /* **목록과 같은 조건으로 센다** (D-147 과 같은 이유).
        `getClanRanks` 는 `ACTIVE_CLAN` 으로 비활성 클랜을 빼고 보여 주는데
@@ -275,10 +305,10 @@ async function rankOfFirstClan(
        "1위인데 rank=2" 처럼 목록에 없는 자리가 생긴다. */
     where: {
       leagueId,
-      division,
+      ...(division > 0 ? { division } : {}),
       placement: false,
       ...ACTIVE_CLAN,
-      OR: [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }],
+      OR: ahead,
     },
   })
   return before + 1
@@ -301,16 +331,44 @@ async function rankOfFirstPlayer(
   return before + 1
 }
 
+/**
+ * 클랜랭킹.
+ *
+ * `division >= 1` 이면 예전 그대로 **그 부리그만** 준다 (부리그 탭 화면이 쓴다).
+ *
+ * ── `division <= 0` = 부리그를 나누지 않는다 (2026-09-01 사용자 지시)
+ *   *"SPL은 1,2부 나누지 말고 그냥 순위대로 배열하고, IPL도 세로로 일열 배열하는데
+ *     우리가 정해놨던 티어별로 선을 그어서 나눠줘"*
+ *
+ *   같은 「전체」인데 정렬이 둘로 갈린다 —
+ *   공식리그는 부리그를 **섞어** 래더 순, 무소속리그는 티어를 **유지**한 채 래더 순이다.
+ *   화면이 티어 경계선을 그릴 수 있도록 `division` 값은 행마다 그대로 나간다.
+ *
+ *   **없던 데이터를 만들지 않는다.** 걸러 내는 조건(배치고사 · `ACTIVE_CLAN`)은 그대로다.
+ */
 export async function getClanRanks(
   leagueId: string,
   division: number,
   cursor: string | null,
   size: number,
 ): Promise<CursorPage<ClanRankRow> | null> {
-  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { id: true } })
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { id: true, category: true },
+  })
   if (!league) return null
 
-  const where = { leagueId, division, placement: false, ...ACTIVE_CLAN }
+  /* 전체 보기에서만 티어 축을 쓴다. 부리그 탭(division >= 1)은 예전 정렬 그대로다 */
+  const byTier = division <= 0 && league.category === 'independent'
+  const order = byTier ? TIER_ORDER : RANK_ORDER
+  const orderReversed = byTier ? TIER_ORDER_REVERSED : RANK_ORDER_REVERSED
+
+  const where = {
+    leagueId,
+    ...(division > 0 ? { division } : {}),
+    placement: false,
+    ...ACTIVE_CLAN,
+  }
 
   const page = await cursorPage<{
     id: string
@@ -329,8 +387,8 @@ export async function getClanRanks(
   }>({
     cursor,
     size,
-    orderBy: [...RANK_ORDER],
-    reversedOrderBy: [...RANK_ORDER_REVERSED],
+    orderBy: [...order],
+    reversedOrderBy: [...orderReversed],
     idOf: (row) => row.id,
     fetch: (args) =>
       prisma.leagueClan.findMany({
@@ -353,7 +411,8 @@ export async function getClanRanks(
      목록과 순위 계산이 같은 조건·같은 정렬을 쓰므로, 커서가 없을 때 첫 줄보다
      앞에 오는 행은 **정의상 0개**다. 세러 가는 왕복 한 번이 통째로 사라진다.
      커서가 있을 때만 예전처럼 센다 */
-  const startRank = cursor === null ? 1 : await rankOfFirstClan(leagueId, division, page.items[0])
+  const startRank =
+    cursor === null ? 1 : await rankOfFirstClan(leagueId, division, page.items[0], byTier)
 
   return {
     cursor: page.cursor,

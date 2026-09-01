@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { LeaguePreparing, LeagueSubNav, isLeaguePreparing } from '@sacloud/ui'
+import { LeagueHeroBand, LeaguePreparing, LeagueTopBar, isLeaguePreparing } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -42,11 +42,31 @@ export default function LeagueLayout({
 
   if (preparing) return <LeaguePreparing />
 
+  const data = league.data?.data
+
   return (
     <>
-      {/* 시즌 배지는 넘기지 않는다 — 원본 서브내비에 그런 표시가 없다 (UI_PARITY_AUDIT 2-2) */}
-      <LeagueSubNav leagueSlug={leagueSlug} leagueName={league.data?.data.name ?? ''} />
-      <div className="pt-24 md:pt-12">{children}</div>
+      {/*
+        ── 2026-09-01 (D-251) — `LeagueSubNav` → `LeagueTopBar` 로 갈아 끼웠다
+          탭에서 **리그홈을 뺐다** (사용자 지시). 옛 컴포넌트는 지우지 않았다 —
+          `packages/ui/src/league/LeagueSubNav.tsx` 에 그대로 있고, 되돌리려면
+          이 import 한 줄만 되돌리면 된다 (`CLAUDE.md` 10-4).
+
+        띠 높이(PC 3rem · 모바일 6rem)와 본문 밀림(`pt-24 md:pt-12`)은 그대로다.
+      */}
+      <LeagueTopBar leagueSlug={leagueSlug} leagueName={data?.name ?? ''} />
+      <div className="pt-24 md:pt-12">
+        {/*
+          버건디 히어로 띠. 리그 이름이 아직 안 왔으면 **빈 문자열**로 띠만 먼저 깔린다 —
+          띠가 나중에 «생겨나면» 본문이 통째로 밀려 내려가 깜빡이는 것처럼 보인다.
+        */}
+        <LeagueHeroBand
+          leagueName={data?.name ?? ''}
+          official={data?.official}
+          clanCount={data?.clan_count}
+        />
+        {children}
+      </div>
     </>
   )
 }

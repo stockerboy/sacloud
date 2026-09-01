@@ -93,6 +93,16 @@ const ALLOWED = {
     writes: true,
     what: 'IPL 39곳을 티어별로 등록한다 (1티어는 비운다). 없는 클랜은 만든다',
   },
+  'ipl-lineup-state': {
+    file: 'iplState2',
+    writes: false,
+    what: 'IPL 참가 기록 적재 상태 — MatchPlayerStat · BRK 선수 · LeaguePlayer 수를 센다 (읽기만)',
+  },
+  'ipl-lineup-push': {
+    file: 'iplLineupPush',
+    writes: true,
+    what: 'IPL 참가 기록(선수·MatchPlayerStat)을 운영에 넣는다 (D-255). 계정(user_nexon_sn)으로 기존 선수를 먼저 찾아 붙여 중복을 막는다 · 계획 파일로 --revert 가능 · 집계는 season0-apply 가 따로 한다',
+  },
   'season0-apply': {
     file: 'season0ApplyProd',
     writes: true,

@@ -26,6 +26,7 @@
  *   4. 승인·거부는 전부 `AdminAuditLog`에 남는다
  */
 import { prisma } from '@sacloud/db'
+import { auditActor } from '../admin/audit'
 
 export type ClaimStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 
@@ -140,7 +141,7 @@ export interface DecisionResult {
 export async function approvePlayerLinkClaim(input: {
   claimId: string
   adminUserId: string
-  adminEmail: string
+  adminEmail: string | null
   note?: string | null
 }): Promise<DecisionResult> {
   const claim = await prisma.playerLinkClaim.findUnique({
@@ -178,7 +179,7 @@ export async function approvePlayerLinkClaim(input: {
       await tx.adminAuditLog.create({
         data: {
           userId: input.adminUserId,
-          userEmail: input.adminEmail,
+          userEmail: auditActor({ id: input.adminUserId, email: input.adminEmail }),
           action: 'player_link.approve',
           targetType: 'PlayerLinkClaim',
           targetId: claim.id,
@@ -202,7 +203,7 @@ export async function approvePlayerLinkClaim(input: {
 export async function rejectPlayerLinkClaim(input: {
   claimId: string
   adminUserId: string
-  adminEmail: string
+  adminEmail: string | null
   note?: string | null
 }): Promise<DecisionResult> {
   const claim = await prisma.playerLinkClaim.findUnique({
@@ -226,7 +227,7 @@ export async function rejectPlayerLinkClaim(input: {
     await tx.adminAuditLog.create({
       data: {
         userId: input.adminUserId,
-        userEmail: input.adminEmail,
+        userEmail: auditActor({ id: input.adminUserId, email: input.adminEmail }),
         action: 'player_link.reject',
         targetType: 'PlayerLinkClaim',
         targetId: claim.id,
@@ -244,7 +245,8 @@ export interface PendingClaimRow {
   status: string
   created_at: string
   evidence: string | null
-  user: { id: string; email: string; nickname: string }
+  /* 이메일은 선택 입력이 됐다 (D-252 · 아이디 가입). 없는 사람은 `null` 이다 */
+  user: { id: string; email: string | null; nickname: string }
   player: { id: string; name: string }
 }
 

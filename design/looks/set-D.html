@@ -1,0 +1,386 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;700&family=Black+Han+Sans&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<!-- ============================================================
+     25 — 좌우 2단 · 세로 사이드바
+     ============================================================ -->
+<div class="look" data-look="25">
+  <div class="look-meta">
+    <span class="look-no">25</span>
+    <span class="look-name">세로 사이드바 2단</span>
+    <span class="look-desc">왼쪽 기둥에 로고와 리그를 세워두고, 오른쪽 한 칸이 전부 기록이다</span>
+  </div>
+  <style>
+    [data-look="25"] .look-frame{width:420px;height:560px;box-sizing:border-box;display:flex;
+      background:#0e0e11;color:#dcd9d4;font-family:"Archivo","Noto Sans KR",sans-serif;overflow:hidden}
+    [data-look="25"] *{box-sizing:border-box}
+    [data-look="25"] .side{width:118px;flex:0 0 118px;background:#17171c;border-right:1px solid #26262e;
+      padding:20px 0 16px;display:flex;flex-direction:column}
+    [data-look="25"] .mark{font-family:"Anton",sans-serif;font-size:23px;line-height:.94;letter-spacing:.02em;
+      color:#f3f1ee;padding:0 14px;margin-bottom:22px}
+    [data-look="25"] .mark em{display:block;font-style:normal;color:#e0533f}
+    [data-look="25"] .sidelabel{font-size:9px;letter-spacing:.22em;color:#5d5d68;padding:0 14px;margin-bottom:8px}
+    [data-look="25"] .lg{display:block;padding:9px 14px;font-size:13px;color:#8e8e99;border-left:2px solid transparent}
+    [data-look="25"] .lg.on{color:#f3f1ee;border-left-color:#e0533f;background:#1e1e25}
+    [data-look="25"] .foot{margin-top:auto;padding:0 14px;font-size:9px;letter-spacing:.16em;color:#55555f}
+    [data-look="25"] .main{flex:1;min-width:0;padding:20px 18px 18px;display:flex;flex-direction:column}
+    [data-look="25"] .search{display:flex;height:34px;border:1px solid #2f2f39;border-radius:2px;overflow:hidden;background:#141419}
+    [data-look="25"] .sel{display:flex;align-items:center;gap:5px;padding:0 9px;font-size:11px;color:#a9a9b3;
+      border-right:1px solid #2f2f39;white-space:nowrap}
+    [data-look="25"] .inp{flex:1;min-width:0;display:flex;align-items:center;padding:0 10px;font-size:11.5px;color:#61616c}
+    [data-look="25"] .go{width:36px;display:flex;align-items:center;justify-content:center;color:#0e0e11;background:#e0533f}
+    [data-look="25"] .h{display:flex;align-items:baseline;gap:8px;margin:20px 0 6px}
+    [data-look="25"] .h b{font-size:14px;font-weight:600;color:#f3f1ee;letter-spacing:-.01em}
+    [data-look="25"] .h i{flex:1;height:1px;background:#26262e}
+    [data-look="25"] .row{display:flex;align-items:center;gap:10px;padding:21px 2px;border-bottom:1px solid #1e1e25}
+    [data-look="25"] .rk{width:16px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:#5d5d68}
+    [data-look="25"] .row.top .rk{color:#e0533f}
+    [data-look="25"] .nm{flex:1;min-width:0;font-size:13px;color:#dcd9d4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    [data-look="25"] .sc{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:#f3f1ee}
+    [data-look="25"] .more{margin-top:auto;height:34px;border:1px solid #2f2f39;background:transparent;color:#a9a9b3;
+      font-family:inherit;font-size:11.5px;letter-spacing:.06em;border-radius:2px}
+  </style>
+  <div class="look-frame">
+    <div class="side">
+      <div class="mark">3RD<em>CLOUD</em></div>
+      <div class="sidelabel">LEAGUE</div>
+      <span class="lg on">SPL</span>
+      <span class="lg">IPL</span>
+      <span class="lg">10mountain</span>
+      <div class="foot">SEASON 0</div>
+    </div>
+    <div class="main">
+      <div class="search">
+        <span class="sel">플레이어 ▾</span>
+        <span class="inp">닉네임을 입력하세요</span>
+        <span class="go"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="1.7"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
+      </div>
+      <div class="h"><b>클랜랭킹</b><i></i></div>
+      <div class="row top"><span class="rk">1</span><span class="nm">sometimes</span><span class="sc">3,241</span></div>
+      <div class="row"><span class="rk">2</span><span class="nm">amaryllis</span><span class="sc">3,222</span></div>
+      <div class="row"><span class="rk">3</span><span class="nm">hing</span><span class="sc">3,221</span></div>
+      <div class="row"><span class="rk">4</span><span class="nm">igloo</span><span class="sc">3,154</span></div>
+      <div class="row"><span class="rk">5</span><span class="nm">idylic</span><span class="sc">3,150</span></div>
+      <button class="more">더 보기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     26 — 표가 주인공
+     ============================================================ -->
+<div class="look" data-look="26">
+  <div class="look-meta">
+    <span class="look-no">26</span>
+    <span class="look-name">표가 전부인 화면</span>
+    <span class="look-desc">머리띠는 얇게 한 줄, 나머지 전부를 랭킹표가 먹는다</span>
+  </div>
+  <style>
+    [data-look="26"] .look-frame{width:420px;height:560px;box-sizing:border-box;
+      background:#f5f3ee;color:#191713;font-family:"Archivo","Noto Sans KR",sans-serif;
+      display:flex;flex-direction:column;overflow:hidden}
+    [data-look="26"] *{box-sizing:border-box}
+    [data-look="26"] .bar{height:34px;flex:0 0 34px;display:flex;align-items:center;gap:10px;
+      padding:0 14px;border-bottom:1px solid #191713;background:#f5f3ee}
+    [data-look="26"] .mark{font-family:"Archivo",sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em}
+    [data-look="26"] .lgs{display:flex;gap:9px;margin-left:auto;font-size:10px;letter-spacing:.1em;color:#8a8478}
+    [data-look="26"] .lgs .on{color:#191713;border-bottom:2px solid #b4331f;padding-bottom:1px}
+    [data-look="26"] .srch{height:36px;flex:0 0 36px;display:flex;align-items:center;gap:0;
+      border-bottom:1px solid #d9d4c8;padding:0 14px;background:#efece4}
+    [data-look="26"] .sel{font-size:10.5px;color:#6d675c;padding-right:10px;margin-right:10px;border-right:1px solid #d0cabc;white-space:nowrap}
+    [data-look="26"] .inp{flex:1;min-width:0;font-size:11px;color:#9a9488}
+    [data-look="26"] .go{color:#191713;display:flex;align-items:center}
+    [data-look="26"] .cap{display:flex;align-items:baseline;justify-content:space-between;padding:14px 14px 6px}
+    [data-look="26"] .cap b{font-family:"Black Han Sans","Archivo",sans-serif;font-weight:400;font-size:19px;letter-spacing:-.01em}
+    [data-look="26"] .cap span{font-size:9px;letter-spacing:.16em;color:#8a8478}
+    [data-look="26"] table{width:100%;border-collapse:collapse;table-layout:fixed}
+    [data-look="26"] thead th{font-size:9px;letter-spacing:.16em;color:#8a8478;font-weight:500;text-align:left;
+      padding:0 14px 7px;border-bottom:1px solid #191713}
+    [data-look="26"] thead th.r{text-align:right}
+    [data-look="26"] tbody td{padding:0 14px;height:70px;border-bottom:1px solid #ddd8cb;vertical-align:middle}
+    [data-look="26"] .c-rk{width:52px;font-family:"IBM Plex Mono",monospace;font-size:22px;color:#a09983}
+    [data-look="26"] tr.top .c-rk{color:#b4331f}
+    [data-look="26"] .c-nm{font-size:17px;letter-spacing:-.01em}
+    [data-look="26"] .c-nm small{display:block;font-size:9.5px;letter-spacing:.12em;color:#8a8478;margin-top:3px}
+    [data-look="26"] .c-sc{width:96px;text-align:right;font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:500}
+    [data-look="26"] .more{margin-top:auto;height:42px;flex:0 0 42px;width:100%;border:0;border-top:1px solid #191713;
+      background:#191713;color:#f5f3ee;font-family:inherit;font-size:11px;letter-spacing:.2em}
+  </style>
+  <div class="look-frame">
+    <div class="bar">
+      <span class="mark">3RD CLOUD</span>
+      <span class="lgs"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></span>
+    </div>
+    <div class="srch">
+      <span class="sel">플레이어 ▾</span>
+      <span class="inp">닉네임을 입력하세요</span>
+      <span class="go"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="1.7"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
+    </div>
+    <div class="cap"><b>클랜랭킹</b><span>SEASON 0</span></div>
+    <table>
+      <thead><tr><th>순위</th><th>클랜</th><th class="r">래더</th></tr></thead>
+      <tbody>
+        <tr class="top"><td class="c-rk">1</td><td class="c-nm">sometimes<small>SPL</small></td><td class="c-sc">3,241</td></tr>
+        <tr><td class="c-rk">2</td><td class="c-nm">amaryllis<small>SPL</small></td><td class="c-sc">3,222</td></tr>
+        <tr><td class="c-rk">3</td><td class="c-nm">hing<small>SPL</small></td><td class="c-sc">3,221</td></tr>
+        <tr><td class="c-rk">4</td><td class="c-nm">igloo<small>SPL</small></td><td class="c-sc">3,154</td></tr>
+        <tr><td class="c-rk">5</td><td class="c-nm">idylic<small>SPL</small></td><td class="c-sc">3,150</td></tr>
+      </tbody>
+    </table>
+    <button class="more">더 보기</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     27 — 카드 격자
+     ============================================================ -->
+<div class="look" data-look="27">
+  <div class="look-meta">
+    <span class="look-no">27</span>
+    <span class="look-name">클랜 한 장씩 카드 격자</span>
+    <span class="look-desc">표를 버리고 클랜 하나를 카드 한 장으로 — 1위만 넓게 눕힌다</span>
+  </div>
+  <style>
+    [data-look="27"] .look-frame{width:420px;height:560px;box-sizing:border-box;padding:18px 16px 16px;
+      background:#0d1116;color:#c9d1d9;font-family:"Space Grotesk","Noto Sans KR",sans-serif;
+      display:flex;flex-direction:column;overflow:hidden}
+    [data-look="27"] *{box-sizing:border-box}
+    [data-look="27"] .mark{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:15px;letter-spacing:.08em;color:#e6edf3}
+    [data-look="27"] .mark span{color:#3fb0e0}
+    [data-look="27"] .search{display:flex;align-items:center;gap:8px;height:36px;margin-top:14px;
+      background:#151b22;border:1px solid #232c36;border-radius:18px;padding:0 6px 0 12px}
+    [data-look="27"] .sel{font-size:11px;color:#8b98a5;white-space:nowrap}
+    [data-look="27"] .div{width:1px;height:14px;background:#2b3540}
+    [data-look="27"] .inp{flex:1;min-width:0;font-size:11.5px;color:#5b6774}
+    [data-look="27"] .go{width:24px;height:24px;border-radius:50%;background:#3fb0e0;color:#0d1116;
+      display:flex;align-items:center;justify-content:center;flex:0 0 24px}
+    [data-look="27"] .chips{display:flex;gap:6px;margin-top:12px}
+    [data-look="27"] .chip{font-size:10.5px;padding:4px 11px;border-radius:12px;border:1px solid #232c36;color:#8b98a5}
+    [data-look="27"] .chip.on{background:#e6edf3;color:#0d1116;border-color:#e6edf3;font-weight:500}
+    [data-look="27"] .cap{font-size:10px;letter-spacing:.2em;color:#5b6774;margin:16px 0 9px}
+    [data-look="27"] .hero{background:#141b22;border:1px solid #232c36;border-left:3px solid #3fb0e0;border-radius:6px;
+      padding:12px 14px;display:flex;align-items:center;gap:12px}
+    [data-look="27"] .hero .n{font-family:"Bebas Neue",sans-serif;font-size:32px;line-height:1;color:#3fb0e0}
+    [data-look="27"] .hero .t{flex:1;min-width:0}
+    [data-look="27"] .hero .t b{display:block;font-size:16px;color:#e6edf3;font-weight:500}
+    [data-look="27"] .hero .t small{font-size:9.5px;letter-spacing:.14em;color:#5b6774}
+    [data-look="27"] .hero .s{font-family:"Space Grotesk",monospace;font-size:20px;font-weight:500;color:#e6edf3}
+    [data-look="27"] .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
+    [data-look="27"] .card{background:#12181e;border:1px solid #1e262f;border-radius:6px;padding:11px 12px}
+    [data-look="27"] .card .n{font-family:"Bebas Neue",sans-serif;font-size:17px;color:#5f6d7a;line-height:1}
+    [data-look="27"] .card b{display:block;font-size:14px;font-weight:500;color:#c9d1d9;margin-top:6px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    [data-look="27"] .card .s{font-size:15px;color:#8b98a5;margin-top:4px}
+    [data-look="27"] .more{margin-top:auto;height:34px;border:1px solid #232c36;border-radius:17px;background:transparent;
+      color:#8b98a5;font-family:inherit;font-size:11.5px}
+  </style>
+  <div class="look-frame">
+    <div class="mark">3RD <span>CLOUD</span></div>
+    <div class="search">
+      <span class="sel">플레이어 ▾</span><span class="div"></span>
+      <span class="inp">닉네임을 입력하세요</span>
+      <span class="go"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="2"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+    </div>
+    <div class="chips"><span class="chip on">SPL</span><span class="chip">IPL</span><span class="chip">10mountain</span></div>
+    <div class="cap">클랜랭킹</div>
+    <div class="hero">
+      <span class="n">1</span>
+      <span class="t"><b>sometimes</b><small>RANK 1</small></span>
+      <span class="s">3,241</span>
+    </div>
+    <div class="grid">
+      <div class="card"><span class="n">2</span><b>amaryllis</b><div class="s">3,222</div></div>
+      <div class="card"><span class="n">3</span><b>hing</b><div class="s">3,221</div></div>
+      <div class="card"><span class="n">4</span><b>igloo</b><div class="s">3,154</div></div>
+      <div class="card"><span class="n">5</span><b>idylic</b><div class="s">3,150</div></div>
+    </div>
+    <button class="more">더 보기</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     28 — 전체화면 검색
+     ============================================================ -->
+<div class="look" data-look="28">
+  <div class="look-meta">
+    <span class="look-no">28</span>
+    <span class="look-name">검색이 첫 화면 전부</span>
+    <span class="look-desc">첫 눈에는 검색창 하나뿐 — 랭킹은 아래로 밀려 스크롤해야 나온다</span>
+  </div>
+  <style>
+    [data-look="28"] .look-frame{width:420px;height:560px;box-sizing:border-box;overflow:hidden;
+      background:#07080a;color:#e8e6e1;font-family:"Noto Sans KR","Archivo",sans-serif}
+    [data-look="28"] *{box-sizing:border-box}
+    [data-look="28"] .scroll{height:100%;overflow-y:auto;overflow-x:hidden}
+    [data-look="28"] .hero{min-height:470px;padding:0 34px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;text-align:center;
+      background:radial-gradient(120% 78% at 50% 22%,#151920 0%,#07080a 68%)}
+    [data-look="28"] .mark{font-family:"Anton",sans-serif;font-size:34px;letter-spacing:.06em;color:#f2f0ec;line-height:1}
+    [data-look="28"] .tag{font-size:9.5px;letter-spacing:.34em;color:#5a5f68;margin-top:10px}
+    [data-look="28"] .search{width:100%;margin-top:34px;display:flex;align-items:center;height:52px;
+      background:#11141a;border:1px solid #262c36;border-radius:3px;padding:0 6px 0 14px}
+    [data-look="28"] .sel{font-size:11.5px;color:#9aa0aa;white-space:nowrap;padding-right:12px;margin-right:12px;border-right:1px solid #262c36}
+    [data-look="28"] .inp{flex:1;min-width:0;text-align:left;font-size:13px;color:#565c66}
+    [data-look="28"] .go{width:40px;height:40px;flex:0 0 40px;background:#e8e6e1;color:#07080a;border-radius:2px;
+      display:flex;align-items:center;justify-content:center}
+    [data-look="28"] .lgs{display:flex;gap:22px;margin-top:22px;font-size:11.5px;letter-spacing:.1em;color:#5a5f68}
+    [data-look="28"] .lgs .on{color:#e8e6e1;position:relative}
+    [data-look="28"] .lgs .on::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:1px;background:#e8e6e1}
+    [data-look="28"] .cue{margin-top:44px;font-size:9px;letter-spacing:.3em;color:#575d67}
+    [data-look="28"] .rank{border-top:1px solid #1a1e25;padding:22px 34px 30px;background:#0a0c0f}
+    [data-look="28"] .cap{font-size:10px;letter-spacing:.26em;color:#5a5f68;margin-bottom:12px}
+    [data-look="28"] .row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #16191f}
+    [data-look="28"] .rk{width:14px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:#4a4f58}
+    [data-look="28"] .row.top .rk{color:#e8e6e1}
+    [data-look="28"] .nm{flex:1;min-width:0;font-size:13.5px}
+    [data-look="28"] .sc{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:#9aa0aa}
+    [data-look="28"] .more{margin-top:18px;width:100%;height:38px;background:transparent;border:1px solid #262c36;
+      color:#9aa0aa;font-family:inherit;font-size:11.5px;letter-spacing:.1em;border-radius:2px}
+  </style>
+  <div class="look-frame">
+    <div class="scroll">
+      <div class="hero">
+        <div class="mark">3RD CLOUD</div>
+        <div class="tag">CLAN MATCH RECORD</div>
+        <div class="search">
+          <span class="sel">플레이어 ▾</span>
+          <span class="inp">닉네임을 입력하세요</span>
+          <span class="go"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="1.7"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
+        </div>
+        <div class="lgs"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+        <div class="cue">SCROLL</div>
+      </div>
+      <div class="rank">
+        <div class="cap">클랜랭킹</div>
+        <div class="row top"><span class="rk">1</span><span class="nm">sometimes</span><span class="sc">3,241</span></div>
+        <div class="row"><span class="rk">2</span><span class="nm">amaryllis</span><span class="sc">3,222</span></div>
+        <div class="row"><span class="rk">3</span><span class="nm">hing</span><span class="sc">3,221</span></div>
+        <div class="row"><span class="rk">4</span><span class="nm">igloo</span><span class="sc">3,154</span></div>
+        <div class="row"><span class="rk">5</span><span class="nm">idylic</span><span class="sc">3,150</span></div>
+        <button class="more">더 보기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     29 — 가로 스크롤 띠
+     ============================================================ -->
+<div class="look" data-look="29">
+  <div class="look-meta">
+    <span class="look-no">29</span>
+    <span class="look-name">가로로 흐르는 랭킹 띠</span>
+    <span class="look-desc">순위가 세로로 쌓이지 않고 옆으로 흘러간다 — 밀어서 본다</span>
+  </div>
+  <style>
+    [data-look="29"] .look-frame{width:420px;height:560px;box-sizing:border-box;padding:20px 0 18px;
+      background:#131313;color:#e4e1db;font-family:"Archivo","Noto Sans KR",sans-serif;
+      display:flex;flex-direction:column;overflow:hidden}
+    [data-look="29"] *{box-sizing:border-box}
+    [data-look="29"] .pad{padding:0 20px}
+    [data-look="29"] .mark{font-family:"Anton",sans-serif;font-size:20px;letter-spacing:.05em;color:#f4f2ee}
+    [data-look="29"] .search{display:flex;align-items:center;height:38px;margin-top:14px;
+      border-bottom:1px solid #333;padding-bottom:0}
+    [data-look="29"] .sel{font-size:11px;color:#8d8880;white-space:nowrap;padding-right:10px;margin-right:10px;border-right:1px solid #333}
+    [data-look="29"] .inp{flex:1;min-width:0;font-size:12px;color:#5d5952}
+    [data-look="29"] .go{color:#c9a227;display:flex;align-items:center}
+    [data-look="29"] .lgs{display:flex;gap:16px;margin-top:16px;font-size:11px;letter-spacing:.1em;color:#6e6a63}
+    [data-look="29"] .lgs .on{color:#c9a227}
+    [data-look="29"] .cap{display:flex;align-items:center;gap:10px;margin:24px 0 12px}
+    [data-look="29"] .cap b{font-size:13px;font-weight:600;letter-spacing:.02em}
+    [data-look="29"] .cap i{font-size:9px;letter-spacing:.2em;color:#5d5952;font-style:normal;margin-left:auto}
+    [data-look="29"] .band{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:0 20px 14px;
+      scrollbar-width:thin}
+    [data-look="29"] .band::-webkit-scrollbar{height:5px}
+    [data-look="29"] .band::-webkit-scrollbar-track{background:#1d1d1d}
+    [data-look="29"] .band::-webkit-scrollbar-thumb{background:#3a3a3a}
+    [data-look="29"] .cell{flex:0 0 152px;width:152px;height:296px;background:#1b1b1b;border:1px solid #2b2b2b;
+      padding:14px 14px 12px;display:flex;flex-direction:column}
+    [data-look="29"] .cell.top{background:#1f1c14;border-color:#4a3f1c}
+    [data-look="29"] .cell .n{font-family:"Bebas Neue",sans-serif;font-size:40px;line-height:.9;color:#575757}
+    [data-look="29"] .cell.top .n{color:#c9a227}
+    [data-look="29"] .cell b{margin-top:auto;font-size:15px;font-weight:500;color:#f4f2ee;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    [data-look="29"] .cell .s{font-family:"IBM Plex Mono",monospace;font-size:17px;color:#b9b3aa;margin-top:6px}
+    [data-look="29"] .cell .u{margin-top:9px;height:2px;background:#2f2f2f}
+    [data-look="29"] .cell .u span{display:block;height:2px;background:#6b6b6b}
+    [data-look="29"] .cell.top .u span{background:#c9a227}
+    [data-look="29"] .more{margin:auto 20px 0;height:36px;background:transparent;border:1px solid #333;
+      color:#a8a29a;font-family:inherit;font-size:11.5px;letter-spacing:.08em}
+  </style>
+  <div class="look-frame">
+    <div class="pad">
+      <div class="mark">3RD CLOUD</div>
+      <div class="search">
+        <span class="sel">플레이어 ▾</span>
+        <span class="inp">닉네임을 입력하세요</span>
+        <span class="go"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="1.7"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
+      </div>
+      <div class="lgs"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></div>
+      <div class="cap"><b>클랜랭킹</b><i>밀어서 보기</i></div>
+    </div>
+    <div class="band">
+      <div class="cell top"><span class="n">1</span><b>sometimes</b><div class="s">3,241</div><div class="u"><span style="width:100%"></span></div></div>
+      <div class="cell"><span class="n">2</span><b>amaryllis</b><div class="s">3,222</div><div class="u"><span style="width:94%"></span></div></div>
+      <div class="cell"><span class="n">3</span><b>hing</b><div class="s">3,221</div><div class="u"><span style="width:93%"></span></div></div>
+      <div class="cell"><span class="n">4</span><b>igloo</b><div class="s">3,154</div><div class="u"><span style="width:78%"></span></div></div>
+      <div class="cell"><span class="n">5</span><b>idylic</b><div class="s">3,150</div><div class="u"><span style="width:77%"></span></div></div>
+    </div>
+    <button class="more">더 보기</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     30 — 숫자를 크게
+     ============================================================ -->
+<div class="look" data-look="30">
+  <div class="look-meta">
+    <span class="look-no">30</span>
+    <span class="look-name">숫자만 크게 키운 판</span>
+    <span class="look-desc">순위와 점수를 크게 세우고 나머지 글자는 전부 작게 눌렀다</span>
+  </div>
+  <style>
+    [data-look="30"] .look-frame{width:420px;height:560px;box-sizing:border-box;padding:16px 18px 14px;
+      background:#08080a;color:#efefef;font-family:"Archivo","Noto Sans KR",sans-serif;
+      display:flex;flex-direction:column;overflow:hidden}
+    [data-look="30"] *{box-sizing:border-box}
+    [data-look="30"] .top{display:flex;align-items:center}
+    [data-look="30"] .mark{font-size:10px;font-weight:700;letter-spacing:.3em;color:#efefef}
+    [data-look="30"] .lgs{margin-left:auto;display:flex;gap:12px;font-size:8.5px;letter-spacing:.18em;color:#71717a}
+    [data-look="30"] .lgs .on{color:#efefef}
+    [data-look="30"] .search{display:flex;align-items:center;height:28px;margin-top:12px;border-bottom:1px solid #232327}
+    [data-look="30"] .sel{font-size:9.5px;letter-spacing:.06em;color:#77777f;padding-right:9px;margin-right:9px;border-right:1px solid #232327;white-space:nowrap}
+    [data-look="30"] .inp{flex:1;min-width:0;font-size:10px;color:#6b6b74}
+    [data-look="30"] .go{color:#77777f;display:flex;align-items:center}
+    [data-look="30"] .cap{font-size:8.5px;letter-spacing:.28em;color:#71717a;margin:16px 0 4px}
+    [data-look="30"] .row{display:flex;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid #15151a}
+    [data-look="30"] .rk{font-family:"Bebas Neue",sans-serif;font-size:52px;line-height:.82;width:46px;
+      color:#4a4a53;text-align:left}
+    [data-look="30"] .row.top .rk{color:#efefef}
+    [data-look="30"] .nm{flex:1;min-width:0;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8b8b93;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    [data-look="30"] .sc{font-family:"Bebas Neue",sans-serif;font-size:40px;line-height:.82;color:#efefef;letter-spacing:.01em}
+    [data-look="30"] .row.top .sc{color:#ff4d2e}
+    [data-look="30"] .more{margin-top:auto;height:30px;background:transparent;border:1px solid #232327;color:#77777f;
+      font-family:inherit;font-size:10px;letter-spacing:.24em}
+  </style>
+  <div class="look-frame">
+    <div class="top">
+      <span class="mark">3RD CLOUD</span>
+      <span class="lgs"><span class="on">SPL</span><span>IPL</span><span>10mountain</span></span>
+    </div>
+    <div class="search">
+      <span class="sel">플레이어 ▾</span>
+      <span class="inp">닉네임을 입력하세요</span>
+      <span class="go"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.4" stroke="currentColor" stroke-width="1.8"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+    </div>
+    <div class="cap">클랜랭킹</div>
+    <div class="row top"><span class="rk">1</span><span class="nm">sometimes</span><span class="sc">3,241</span></div>
+    <div class="row"><span class="rk">2</span><span class="nm">amaryllis</span><span class="sc">3,222</span></div>
+    <div class="row"><span class="rk">3</span><span class="nm">hing</span><span class="sc">3,221</span></div>
+    <div class="row"><span class="rk">4</span><span class="nm">igloo</span><span class="sc">3,154</span></div>
+    <div class="row"><span class="rk">5</span><span class="nm">idylic</span><span class="sc">3,150</span></div>
+    <button class="more">더 보기</button>
+  </div>
+</div>

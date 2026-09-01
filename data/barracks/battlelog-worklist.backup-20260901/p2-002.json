@@ -1,0 +1,1 @@
+{"version":1,"generated_at":"2026-08-31T18:33:40.743Z","priority":2,"label":"개인랭킹 1~30등의 클랜이 낀 경기","part":2,"parts":2,"plimit":null,"both_sides":false,"note":"pairs = [matchKey, clans 색인, discover]. **경기당 한 번만** 부른다 (D-218) — 응답 하나에 양 팀 10명이 다 들어 있다. discover 는 늘 0 이다","clans":["100919001380"],"pairs":[["260416233251124002",0,0],["260412002534124003",0,0]]}

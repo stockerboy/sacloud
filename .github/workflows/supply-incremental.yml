@@ -460,7 +460,32 @@ jobs:
               #   echo "::warning::[$slug] 집계 실패"
               #   failed=$(( failed + 1 ))
               # fi
-              echo "[$slug] 증분 집계는 꺼져 있다 (2026-09-01 · 7/1 전수 재계산과 충돌)"
+              #
+              # ── ✅ 2026-09-02 · **다시 켰다. 단 「명부 전용」이다** (D-258) ─────
+              #
+              #   위 주석은 지우지 않는다 (CLAUDE.md 10-4). 껐던 이유는 정당했고,
+              #   지금 켜는 것은 **같은 잡이 아니다** — 하는 일이 줄었다.
+              #
+              #   위 주석이 예고한 「7/1 창을 존중하게 고친다」는 길은 **실측으로 배제했다.**
+              #   창을 걸고 origin 까지 맞추고 중복까지 제거해도 supply 1,426명 중
+              #   **65명의 승패가 안 맞고 21명은 이 잡에만 있다.** `rateMatch` 가 버린 경기
+              #   (`incomplete_squad_*` 14 · `side_clan_mismatch` 2) 때문인데, 그것까지
+              #   맞추려면 판정 로직을 복제해야 한다 — 공식을 두 벌 만드는 짓이다 (3-B 1번).
+              #   클랜 승패는 더 나쁘다. 출처가 **원본 클랜목록(전체기간)** 이라 (D-157)
+              #   창을 걸 방법이 아예 없다.
+              #
+              #   그래서 칸이 아니라 **역할**로 갈랐다.
+              #     집계 (점수·승패·킬데스·무기별)  → `season0-apply.yml` 이 전부 갖는다
+              #     명부 (클랜마크·부리그·클랜행·원본 id) → 이 잡이 갖는다
+              #   `SACLOUD_RATING_OWNER=formula`(위 env 에 이미 있다)가 그 스위치다.
+              #   스위치를 새로 만들지 않고 **있던 것을 넓혔다** — 지우면 옛 동작이 살아난다.
+              #
+              #   이 칸들은 **다른 출처가 없다.** 끄면 새로 들어온 선수에게 영영 클랜마크가
+              #   안 붙고(D-160) 승격·강등이 반영되지 않는다. 그래서 5분마다 계속 돈다.
+              if ! worker supply-rollup --league "$slug" --confirm; then
+                echo "::warning::[$slug] 집계 실패"
+                failed=$(( failed + 1 ))
+              fi
             done
 
             echo '::endgroup::'
@@ -624,6 +649,10 @@ jobs:
           MAX_CHAIN: '40'
           MAX_RUNS_PER_HOUR: '5'
           MIN_ALIVE_SECONDS: '600'
+          # 시즌0 반영을 얼마 만에 한 번 부를 것인가 (D-258).
+          # **화면 문구와 맞춰라** — 지금은 「약 1시간마다」다 (`rank/player/page.tsx` 등 4곳).
+          # 이 값을 바꾸면 그 문구도 같이 바꿔야 한다
+          APPLY_EVERY_MINUTES: '60'
         run: |
           set -uo pipefail
           next=$(( CHAIN + 1 ))
@@ -652,16 +681,32 @@ jobs:
           #   기다리는 것이 있으면 물러난다 — 대기 자리가 하나뿐이라 우리가 밀고 들어가면
           #   **대기하던 전수 집계가 취소된다.**
           #   물러난 체인은 전수 집계 워크플로가 끝나면서 다시 열어 준다 (그쪽 마지막 스텝).
-          full=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
-          -H 'Accept: application/vnd.github+json' \
-          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/supply-rollup-full.yml/runs?per_page=10" \
-          | jq -r '[.workflow_runs[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="pending")] | length')
+          # 같은 그룹을 쓰는 워크플로가 지금 자리를 기다리는가. **둘 다** 본다 (D-258)
+          live_runs() {
+            curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/$1/runs?per_page=10" \
+            | jq -r '[.workflow_runs[] | select(.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="pending")] | length'
+          }
+
+          full=$(live_runs supply-rollup-full.yml)
           if [ -z "$full" ] || [ "$full" = 'null' ]; then
             echo "::warning::전수 집계 상태를 못 읽었다 — 안전한 쪽으로 체인을 끊는다"
             exit 0
           fi
           if [ "$full" -gt 0 ]; then
             echo "전수 집계가 대기·진행 중이다(${full}건) — 자리를 내주고 물러난다. 그쪽이 끝나면서 체인을 다시 연다"
+            exit 0
+          fi
+
+          # 시즌0 반영도 **같은 그룹**이다 (D-258). 밀고 들어가면 대기하던 쪽이 취소된다
+          apply_live=$(live_runs season0-apply.yml)
+          if [ -z "$apply_live" ] || [ "$apply_live" = 'null' ]; then
+            echo "::warning::시즌0 반영 상태를 못 읽었다 — 안전한 쪽으로 체인을 끊는다"
+            exit 0
+          fi
+          if [ "$apply_live" -gt 0 ]; then
+            echo "시즌0 반영이 대기·진행 중이다(${apply_live}건) — 자리를 내주고 물러난다. 그쪽이 끝나면서 체인을 다시 연다"
             exit 0
           fi
 
@@ -677,6 +722,50 @@ jobs:
           if [ "$recent" -ge "$MAX_RUNS_PER_HOUR" ]; then
             echo "::error::최근 1시간 run 이 ${recent}건이다 (상한 ${MAX_RUNS_PER_HOUR}) — 폭주로 보고 체인을 끊는다"
             exit 0
+          fi
+
+          # ── 한 시간에 한 번은 **시즌0 반영에 자리를 넘긴다** (2026-09-02 · D-258)
+          #
+          #   랭킹이 보여 주는 숫자(점수·승패·킬데스)는 `season0-apply.yml` 만 만든다.
+          #   그런데 그것을 `schedule` 에 걸 수는 없다 — 예약 전달률이 **11%** 다 (D-225).
+          #   같은 `concurrency` 그룹에 넣고 예약으로 부르면 대기 자리가 하나뿐이라
+          #   이 체인이 매번 밀어내 **취소된다.** `supply-rollup-full` 이 그렇게 죽었다 (D-224).
+          #
+          #   그래서 **끝나는 쪽이 다음 차례를 부른다.** 부르는 시점에 이 run 은 이미
+          #   끝나가는 중이라 대기 자리를 쓰지 않는다 → 취소가 일어날 수 없다.
+          #   그쪽이 끝나면서 이 체인을 다시 열어 준다 (`season0-apply.yml` 마지막 스텝).
+          #
+          #   ⚠ 마지막 run 을 **성패와 무관하게** 센다. 성공만 세면 반영이 계속 실패할 때
+          #     매 회차 그쪽만 부르다가 **수집이 통째로 멈춘다.** 실패는 Actions 가 빨갛게
+          #     보여 주면 된다 — 「빨간 것」과 「데이터가 새는 것」은 다르다.
+          #
+          #   그래서 실제 주기는 60분이 아니라 **60~90분**이다 (이 run 이 끝날 때 보므로).
+          #   화면 문구도 「약 1시간마다」로 적혀 있다. 「1시간마다」로 되돌리지 마라.
+          last_apply=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/season0-apply.yml/runs?per_page=1" \
+          | jq -r '.workflow_runs[0].created_at // empty')
+          if [ -z "$last_apply" ]; then
+            apply_age=999999
+            echo "시즌0 반영 이력이 없다 — 이번에 부른다"
+          else
+            apply_age=$(( ( $(date +%s) - $(date -u -d "$last_apply" +%s) ) / 60 ))
+            echo "마지막 시즌0 반영 ${last_apply} (${apply_age}분 전 · 기준 ${APPLY_EVERY_MINUTES}분)"
+          fi
+
+          if [ "$apply_age" -ge "$APPLY_EVERY_MINUTES" ]; then
+            code=$(curl -sS -o /tmp/apply.out -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/season0-apply.yml/dispatches" \
+            -d "{\"ref\":\"${GITHUB_REF_NAME}\"}")
+            if [ "$code" = '204' ]; then
+              echo "시즌0 반영을 불렀다 — 이 체인은 여기서 물러난다. 그쪽이 끝나면서 다시 열어 준다"
+              exit 0
+            fi
+            # 못 불렀으면 **그냥 체인을 잇는다.** 수집을 멈추는 것보다 낫다 —
+            # 반영이 한 시간 늦는 것과 새 경기가 안 들어오는 것은 무게가 다르다
+            echo "::warning::시즌0 반영 호출 실패 HTTP ${code} — 이번엔 건너뛰고 수집 체인을 잇는다. 본문: $(head -c 300 /tmp/apply.out)"
           fi
 
           echo "체인 ${CHAIN} → ${next} · 최근 1시간 ${recent}건 · 생존 ${alive}초 — 다음 실행을 부른다"

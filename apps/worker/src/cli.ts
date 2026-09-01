@@ -44,6 +44,8 @@ import { runIdentityWatch } from './jobs/identityWatch.js'
 import { runBarracksLink } from './jobs/barracksLink.js'
 import { runIplProject } from './jobs/iplProject.js'
 import { runIplClanRollup } from './jobs/iplClanRollup.js'
+import { runIplClanNumber } from './jobs/iplClanNumber.js'
+import { runBattlelogLineup } from './jobs/battlelogLineup.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
@@ -239,6 +241,16 @@ function usage(): void {
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
   iplmatch-check [--dir <폴더>] [--since <YYYY-MM-DD>]
               적재 숫자 대조 — 파일↔DB · 맵 · 기간 · 양쪽 다 등록클랜인 경기 수
+  ipl-clan-number [--confirm]
+              IPL **클랜번호 ↔ 우리 클랜**을 잇는다. **요청을 한 건도 보내지 않는다**
+              매치목록 원문의 (subject, clan_no) 가 1:1 이라 그것으로 끊는다 —
+              clan-number 는 MatchPlayerStat 을 요구해 IPL 에서 순환이 된다
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
+  battlelog-lineup [--league <slug>] [--limit N] [--confirm]
+              클랜 배틀로그 원문 → **MatchPlayerStat**(참가 기록). 라인업의 유일한 출처다
+              **10명이 다 확인된 경기만** 넣는다. assist·damage·headshot·dropout·mvp 는 전부 null
+              먼저 ipl-clan-number 를 돌려 클랜번호 표를 채워야 한다
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
   ipl-sanply-check [--league <slug>] [--ipl-league <slug>]
               **열산에 남은 IPL끼리의 경기**를 센다 (D-210). 0 이 아니면 exit 1
               막는 규칙은 적재(supply-import)에 들어 있다 — 이건 새는지 보는 대조다
@@ -332,7 +344,11 @@ function usage(): void {
               참가자를 만들지 않고 경기 당시 소속으로도 쓰지 않는다.
               넥슨 승패와 어긋나면 그 경기는 보조 증거를 버린다
   rate        --league <slug> [--season N] [--allow-mock-league] [--dry-run]
+              [--origins <o1,o2>] [--from <ISO>] [--to <ISO>]
               재구성된 경기로 래더를 **처음부터 다시** 계산한다 (결정적 replay)
+              --origins 는 계산 범위를 바꾼다. 기본은 origin='nexon' 이라
+              IPL(nexon_barracks)이 통째로 빠진다. **--dry-run 에서만 쓸 수 있다** —
+              원본 점수를 덮지 않기 위한 가드다 (3-A 2번). 받아 적는 경로는 season0Apply
   rating-backup  --league <slug> [--stamp <문자열>]
               replay 전 래더 스냅샷을 JSON 으로 백업한다. **replay 전에 반드시 돌린다**
   rating-restore --file <경로> [--dry-run]
@@ -446,6 +462,54 @@ async function main(): Promise<number> {
           log(`  ${t.division}부  ${t.name}  ${t.rating}  ${t.win}승 ${t.lose}패`)
         }
       }
+      return 0
+    }
+
+    case 'ipl-clan-number': {
+      /*
+        IPL 클랜번호를 잇는다. **요청을 한 건도 보내지 않는다** — 이미 저장된
+        매치목록 원문의 `(subject, clan_no)` 가 1:1 이라 그것으로 푼다.
+        옛 `clan-number`(참가 선수 대조)는 그대로 살아 있다 (`CLAUDE.md` 10-4).
+      */
+      const result = await runIplClanNumber({ confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          짝: result.pairs,
+          주체: result.subjects,
+          등록클랜: result.registered,
+          이음: result.linked,
+          신규: result.created,
+          기존: result.updated,
+          충돌: result.conflicts,
+          클랜모름: result.skipped.unresolved_subject,
+        },
+      ])
+      return 0
+    }
+
+    case 'battlelog-lineup': {
+      /*
+        클랜 배틀로그 → `MatchPlayerStat`. IPL 참가 기록의 유일한 경로다.
+        10명이 다 확인된 경기만 넣고, 배틀로그에 없는 칸은 전부 null 이다.
+        `--confirm` 없이는 한 줄도 쓰지 않는다.
+      */
+      const result = await runBattlelogLineup({
+        confirm: boolFlag(args, 'confirm'),
+        leagueSlug: stringFlag(args, 'league') ?? undefined,
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          배틀로그경기: result.matchKeys,
+          우리경기: result.matched,
+          라인업가능: result.planned,
+          참가신규: result.statsCreated,
+          참가갱신: result.statsUpdated,
+          선수신규: result.playersCreated,
+          신원이음: result.playersFromIdentity,
+        },
+      ])
+      table([result.skipped as unknown as Record<string, unknown>])
       return 0
     }
 
@@ -783,10 +847,35 @@ async function main(): Promise<number> {
         fail('--league <slug> 가 필요하다')
         return 1
       }
+      /*
+        `--origins` 는 계산 범위를 바꾼다 (`rate.ts` 의 `matchScope`).
+
+        기본은 `origin='nexon'` 이라 **IPL(`nexon_barracks`)이 통째로 빠진다.**
+        그래서 창을 열어 두되, `rate.ts` 의 가드는 **풀지 않는다** —
+        `matchScope` 는 `--dry-run` 에서만 쓸 수 있고, 아니면 그쪽이 거부한다.
+        원본 점수를 덮어쓰는 일이 있어서는 안 되기 때문이다 (`CLAUDE.md` 3-A 2번).
+
+        받아 적는 경로는 따로 있다: `season0` 이 dry-run 으로 계산하고
+        `season0Apply` 가 백업을 뜬 뒤 받아 적는다 (D-172).
+      */
+      const originsFlag = stringFlag(args, 'origins')
+      const origins = originsFlag
+        ?.split(',')
+        .map((value) => value.trim())
+        .filter((value) => value !== '')
       const result = await runRate(ctx, {
         leagueSlug,
         seasonNumber: numberFlag(args, 'season'),
         allowMockLeague: boolFlag(args, 'allow-mock-league'),
+        ...(origins?.length
+          ? {
+              matchScope: {
+                origins,
+                ...(stringFlag(args, 'from') ? { from: new Date(stringFlag(args, 'from') as string) } : {}),
+                ...(stringFlag(args, 'to') ? { to: new Date(stringFlag(args, 'to') as string) } : {}),
+              },
+            }
+          : {}),
       })
       table([
         {
@@ -849,7 +938,9 @@ async function main(): Promise<number> {
      * 동안 쓰는 값이다 — 평상시에는 붙이지 않는다. 조용히 넘기는 검사는 검사가 아니다.
      */
     case 'sync-freshness': {
-      const leagues = (stringFlag(args, 'leagues') ?? 'supply,daerule,sanply')
+      /* `nolink`(IPL)은 **판정하지 않고 보여 주기만** 한다 — 자동 수집이 없어서
+         낡아 있는 것이 정상이다 (`jobs/syncFreshness.ts` 의 `SYNC_FRESHNESS_REPORT_ONLY`) */
+      const leagues = (stringFlag(args, 'leagues') ?? 'supply,daerule,sanply,nolink')
         .split(',')
         .map((slug) => slug.trim())
         .filter((slug) => slug !== '')

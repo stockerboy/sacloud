@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "generated_at": "2026-08-31T18:35:02.264Z",
+  "plimit": null,
+  "both_sides": false,
+  "chunk": 4000,
+  "totals": {
+    "matchesTotal": 147546,
+    "matchesDone": 3127,
+    "matchesEmitted": 5153,
+    "pairsEmitted": 5153,
+    "halfDone": 0,
+    "unresolvable": 0
+  },
+  "byPriority": [
+    {
+      "priority": 1,
+      "label": "1티어 선수의 클랜이 낀 경기",
+      "pairs": 1151
+    },
+    {
+      "priority": 2,
+      "label": "개인랭킹 1~30등의 클랜이 낀 경기",
+      "pairs": 4002
+    }
+  ],
+  "parts": [
+    {
+      "priority": 1,
+      "label": "1티어 선수의 클랜이 낀 경기",
+      "part": 1,
+      "pairs": 1151,
+      "file": "p1-001.json"
+    },
+    {
+      "priority": 2,
+      "label": "개인랭킹 1~30등의 클랜이 낀 경기",
+      "part": 1,
+      "pairs": 4000,
+      "file": "p2-001.json"
+    },
+    {
+      "priority": 2,
+      "label": "개인랭킹 1~30등의 클랜이 낀 경기",
+      "part": 2,
+      "pairs": 2,
+      "file": "p2-002.json"
+    }
+  ],
+  "note": "1순위·2순위만 합쳐 둔 목록이다. 3·4순위는 일부러 뺐다 — 야간 무인 수집을 하지 않기로 했고, 사람이 깨어 있을 때 상한 안에서 돌리기 위해서다. 전체 목록이 필요하면 battlelogWorklist.ts 를 다시 돌려라."
+}

@@ -2,11 +2,18 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import {
+  SEARCH_FAILED,
+  SEARCH_MISS_BARRACKS,
+  barracksUsnOf,
+  clanSlugFromBarracksUrl,
+  isBarracksUrl,
+  normalizePastedQuery,
+  searchMissMessage,
+} from '@sacloud/contract'
 import {
   FEATURED_LEAGUES,
-  HOT_POST_COUNT,
-  HotPostList,
   LeagueLabel,
   MainLogo,
   SearchBar,
@@ -14,12 +21,47 @@ import {
   isLeaguePreparing,
   type SearchType,
 } from '@sacloud/ui'
-import { apiGet } from '@/lib/api'
-import { LeagueEggGallery } from './_egg/LeagueEggGallery'
-import { useApiReady } from './providers'
+import { ApiError, apiGet } from '@/lib/api'
 
 /**
  * 홈.
+ *
+ * ── 2026-09-01 (밤): **알 모음집과 인기게시글을 뺐다** (사용자 지시)
+ *   ```
+ *   "애초에 알시스템은 걍 버려 필요없어 게시판 준비중으로 냅두고 마이페이지는 해야돼"
+ *   ```
+ *   남은 구성은 이렇게 짧아졌다.
+ *   ```
+ *   0 로고        ← 작게. 워드마크 하나 (MainLogo)
+ *   1 통합검색     ← 화면의 주인공. 크고 가운데
+ *   2 리그 바로가기 ← 누르면 **바로 랭킹**
+ *   ─────────────
+ *   3 사이트 소개 (꼬리말)
+ *   ```
+ *
+ *   **알 모음집(`LeagueEggGallery` 두 벌 · SPL · IPL)** — 알 시스템을 버렸다.
+ *   컴포넌트(`app/_egg/**` · `packages/ui/src/egg/**`)는 **지우지 않았다.**
+ *   이 화면이 안 쓸 뿐이고, 스위치는 `EGG_SYSTEM_ENABLED` 하나다 (`CLAUDE.md` 10-4).
+ *
+ *   **인기게시글(`HotPostList`)** — 게시판을 준비중으로 닫았기 때문이다.
+ *   목록은 `/board/hot/{id}` 로 들어가는데 그 문이 잠겼다. 눌러도 「준비중」만 뜨는
+ *   제목 목록을 메인에 세워 두면 **막다른 길**이 된다. 목록만 있고 못 여는 것이
+ *   없는 것보다 나쁘다. `HotPostList` 도 `packages/ui` 에 그대로 있다.
+ *
+ *   빈자리를 남기지 않았다 — 「윗머리」 아래 가르던 `<hr>` 까지 같이 뺐다.
+ *   가를 것이 없는데 선만 남으면 아래가 잘려 보인다 (`CLAUDE.md` 4장의 광고 처리와 같다).
+ *   그만큼 **메인에서 나가는 요청도 줄었다** — 아래 「나가는 요청」 참조.
+ *
+ * ── 메인에서 나가는 요청 (2026-09-01 밤 기준)
+ *   ```
+ *   없앰  GET /eggs/broken                    ← 알 (전역 EggBoot)
+ *   없앰  GET /me/link                        ← 알 (전역 EggBoot)
+ *   없앰  GET /players/{id} · /clans/{slug}   ← 알 (로그인·연동돼 있을 때만 나가던 것)
+ *   없앰  GET /leagues/supply/clans (커서를 끝까지 따라감 · 최대 15장)
+ *   없앰  GET /leagues/nolink/clans (〃)
+ *   없앰  GET /boards?category=hot            ← 인기게시글
+ *   남음  검색은 **누를 때만** 나간다. 가만히 있으면 한 건도 안 나간다
+ *   ```
  *
  * ── 2026-09-01: **신전 히어로를 뺐다.** op.gg 식으로 정리 (사용자 지시)
  *   ```
@@ -83,22 +125,23 @@ const LEAGUE_SHORTCUTS = FEATURED_LEAGUES.filter(
 
 export default function HomePage() {
   const router = useRouter()
-  const ready = useApiReady()
-
-  const hot = useQuery({
-    queryKey: ['boards', 'hot'],
-    queryFn: () => apiGet('boardList', { search: { category: 'hot' } }),
-    enabled: ready,
-  })
+  /** 못 찾았을 때 검색창 밑에 띄우는 한 줄. 성공하면 즉시 지운다 (D-254) */
+  const [notice, setNotice] = useState<string | null>(null)
 
   /**
    * 검색 제출.
-   * 정확일치 조회에 성공하면 해당 상세로 이동하고, 결과가 없으면 화면 전환 없이 머문다.
+   * 정확일치 조회에 성공하면 해당 상세로 이동하고, 결과가 없으면 **왜 없는지 말한다.**
    *
-   * 플레이어는 닉네임뿐 아니라 **병영수첩 주소**도 받는다 — 서버의 `playersByName`이
-   * 주소에서 식별자를 뽑아 조회한다 (D-162). 화면에서 따로 파싱하지 않는다.
+   * 플레이어는 닉네임뿐 아니라 **병영수첩 주소·계정 번호**도 받는다 — 서버의
+   * `playersByName` 이 거기서 식별자를 뽑아 조회한다 (D-162 · D-254).
+   * 화면에서 따로 파싱하지 않는다. 여기서 `isBarracksUrl` 을 보는 것은 **문구를
+   * 고르기 위해서**일 뿐이고, 조회 결과를 바꾸지 않는다.
+   *
+   * ── 2026-09-01 이전에는 실패가 **아무 표시도 남기지 않았다.**
+   *   엔터를 쳐도 화면이 그대로라 사용자는 「없음」과 「멈춤」을 구별할 수 없었다.
    */
   const handleSearch = async (type: SearchType, query: string) => {
+    setNotice(null)
     try {
       if (type === 'player') {
         const found = await apiGet('playersByName', { params: { name: query } })
@@ -112,8 +155,8 @@ export default function HomePage() {
       }
       const found = await apiGet('leaguesByName', { params: { name: query } })
       router.push(`/league/${found.data.slug}`)
-    } catch {
-      // 결과 없음 / 요청 실패 — 아무 것도 하지 않는다
+    } catch (error) {
+      setNotice(missMessageFor(type, query, error))
     }
   }
 
@@ -129,7 +172,7 @@ export default function HomePage() {
 
         {/* --- 1 통합검색 — 크고 가운데. 동작은 하나도 바뀌지 않았다 --- */}
         <div className="mt-9 w-full max-md:mt-7">
-          <SearchBar onSubmit={handleSearch} />
+          <SearchBar onSubmit={handleSearch} notice={notice} />
         </div>
 
         {/* --- 2 리그 바로가기 — 누르면 **바로 랭킹** ---
@@ -150,30 +193,41 @@ export default function HomePage() {
         </nav>
       </section>
 
-      {/* 검색 덩어리와 아래 목록을 가르는 선 하나. 여기까지가 «윗머리» 다 */}
-      <hr className="border-0 border-t border-line-soft" />
-
-      {/* --- 3 알 모음집 — 검색 **바로 밑** (`docs/EGG_SYSTEM_SPEC.md` 5-1)
-             SPL 이 먼저, 그 아래 IPL. 알 밑에는 반드시 클랜명을 쓴다 --- */}
-      <div className="section-stack pt-[var(--section-gap,40px)]">
-        <LeagueEggGallery leagueSlug="supply" title="SPL" />
-        <LeagueEggGallery leagueSlug="nolink" title="IPL" />
-      </div>
-
-      {/* --- 4 인기게시글 --- */}
-      <div className="pt-[var(--section-gap,40px)]">
-        <HotPostList
-          items={hot.data?.data.slice(0, HOT_POST_COUNT)}
-          loading={!ready || hot.isPending}
-          error={hot.isError}
-          onRetry={() => void hot.refetch()}
-        />
-      </div>
-
-      {/* --- 꼬리말: 사이트 소개 + 관리자 서약서 --- */}
+      {/* --- 3 꼬리말: 사이트 소개 + 관리자 서약서 ---
+             윗머리와 이것 사이의 `<hr>` 은 뺐다. 알 모음집·인기게시글이 있을 때는
+             «윗머리와 목록» 을 갈랐는데, 목록이 사라져 가를 것이 없어졌다.
+             선만 남기면 아래가 잘려 보인다. 여백으로만 띄운다. */}
       <div className="pb-[var(--section-gap,40px)] pt-[80px] max-md:pt-[56px]">
         <SiteIntro />
       </div>
     </div>
   )
+}
+
+/**
+ * 못 찾았을 때 무슨 말을 할 것인가 (D-254).
+ *
+ * 세 갈래다. **셋을 뭉치면 사용자가 자기 입력을 의심한다.**
+ * ```
+ * 404 아님   서버가 답을 못 줬다        → 「없다」고 말하면 거짓말이다
+ * 404 + 알아본 주소   그 선수가 아직 없다
+ * 404 + 못 알아봄     오타이거나 다른 사이트 주소다
+ * ```
+ */
+function missMessageFor(type: SearchType, query: string, error: unknown): string {
+  /* 404 가 아니면 「없음」이 아니다 — 못 물어본 것이다 */
+  if (!(error instanceof ApiError) || error.status !== 404) return SEARCH_FAILED
+
+  const keyword = normalizePastedQuery(query)
+  if (!keyword) return SEARCH_FAILED
+
+  /* 붙여넣은 것이 병영수첩에서 온 것임을 알아봤다면, 그 사실을 말해 준다 —
+     사용자가 오타를 의심하며 같은 주소를 다시 붙여 넣지 않게 한다 */
+  const recognized =
+    type === 'player'
+      ? isBarracksUrl(keyword) || barracksUsnOf(keyword) !== null
+      : type === 'clan'
+        ? clanSlugFromBarracksUrl(keyword) !== null
+        : false
+  return recognized ? SEARCH_MISS_BARRACKS : searchMissMessage(keyword)
 }

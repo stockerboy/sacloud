@@ -123,6 +123,7 @@ export function buildDataset(seed: number = FIXTURE_SEED): MockDataset {
   /* ------------------------------ 사용자 ----------------------------- */
   const users: MockUser[] = Array.from({ length: FIXTURE_SIZE.USERS }, (_, index) => ({
     id: String(1000 + index),
+    username: `user${pad(index + 1, 3)}`,
     email: `user${pad(index + 1, 3)}@naver.com`,
     nickname: `${rng.pick(NICK_PREFIX)}${rng.pick(NICK_BODY)}`,
     avatarUrl: null,

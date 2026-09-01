@@ -358,7 +358,9 @@ export function MatchCard({
               {match.placement ? (
                 '배치고사'
               ) : match.rating_update !== null ? (
-                <span className={`num ${win ? 'text-win' : 'text-lose'}`}>
+                /* 숫자 색은 **원본(3rd.supply) 것**이다 — 파랑/빨강 (2026-09-01 사용자 지시).
+                   면·막대·「승리/패배」 글자는 `적진` 그대로다. 숫자만 갈아 끼웠다 */
+                <span className={`num ${win ? 'text-num-win' : 'text-num-lose'}`}>
                   {formatRatingUpdate(match.rating_update)}
                 </span>
               ) : (
@@ -448,7 +450,7 @@ export function MatchCard({
                           같은 사진에서 `제3보급창고 - 5일 전` 줄은 우리 33px · 원본 32px 로
                           이미 일치했다 — 루트 폰트와 `text-sm` 은 맞다는 뜻이다. */}
                       <div className="num text-xl font-semibold text-text-strong max-md:text-base">
-                        {stat.kill ?? '-'} / <span className="text-lose">{stat.death ?? '-'}</span>{' '}
+                        {stat.kill ?? '-'} / <span className="text-num-lose">{stat.death ?? '-'}</span>{' '}
                         / {stat.assist ?? '-'}
                       </div>
                       {stat.kd_rate === null ? null : (
@@ -858,7 +860,7 @@ function StatRow({
         ) : (
           <>
             <div className="num text-text-strong">
-              {kda.kill ?? '-'} / <span className="text-lose">{kda.death ?? '-'}</span> /{' '}
+              {kda.kill ?? '-'} / <span className="text-num-lose">{kda.death ?? '-'}</span> /{' '}
               {kda.assist ?? '-'}
             </div>
             {kda.rate === null ? null : (

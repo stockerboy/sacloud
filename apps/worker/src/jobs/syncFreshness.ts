@@ -48,6 +48,47 @@ export const SYNC_FRESHNESS_DEFAULT_MAX_AGE_HOURS: Record<string, number> = {
 /** 표에 없는 리그의 기본값. 모르는 리그를 조용히 통과시키지 않되 무는 값은 아니다 */
 export const SYNC_FRESHNESS_FALLBACK_MAX_AGE_HOURS = 48
 
+/**
+ * 리그마다 **어느 경로로 들어오는가** — `Match.origin` 이 그것을 말해 준다.
+ *
+ * 예전에는 `origin: '3rd.supply'` 가 코드에 박혀 있었다. 그 전제는 「모든 리그가
+ * 3rd.supply 미러로 들어온다」였는데 **IPL 은 아니다** — 병영수첩에서 오고
+ * `origin='nexon_barracks'` 다 (`jobs/iplProject.ts`). 박아 둔 값 때문에
+ * IPL 을 목록에 넣어도 경기가 **0건으로** 보였다.
+ */
+export const SYNC_FRESHNESS_ORIGINS: Record<string, readonly string[]> = {
+  supply: ['3rd.supply'],
+  sanply: ['3rd.supply'],
+  daerule: ['3rd.supply'],
+  nolink: ['nexon_barracks'],
+}
+/** 표에 없는 리그. 지금까지의 전제를 그대로 둔다 */
+export const SYNC_FRESHNESS_FALLBACK_ORIGINS: readonly string[] = ['3rd.supply']
+
+/**
+ * **판정하지 않고 보여 주기만** 하는 리그.
+ *
+ * ── 왜 IPL 을 여기에 두나 (2026-09-01)
+ *
+ * 이 검사가 잡으려는 것은 **「우리 쪽 자동 수집이 멈춘 것」**이다. 그런데 IPL 에는
+ * 자동 수집이 **없다.** 병영수첩은 Node 에서 부르면 403 이라 사람이 로그인한
+ * 브라우저로만 받을 수 있고, 수집 워크플로의 `LEAGUES`(`supply,daerule,sanply`)에도
+ * `nolink` 이 없다. 즉 IPL 은 **평소에도 며칠씩 낡아 있는 것이 정상**이다.
+ *
+ * 경기 간격은 쟀다 (2026-09-01 · 로컬 · 2026-06-30~08-30 · 구간 24,661개):
+ * ```
+ * 중앙 0.02h · p90 0.11h · 최대 9.93h · 6h 초과 37건 · 12h 초과 0건
+ * 최근 8일만 보면  중앙 0.02h · p90 0.11h · p99 0.33h · 최대 7.13h
+ * ```
+ * 숫자만 보면 `sanply` 와 같은 **12h** 가 나온다. **그런데 그 값을 걸면 안 된다** —
+ * 원본이 조용해서가 아니라 **사람이 아직 안 받아서** 빨개지고, 그러면 알람이 무뎌진다.
+ * 그것은 D-224 에서 이미 한 번 겪은 실패다.
+ *
+ * 그래서 **아무 판정도 하지 않고 마지막 경기·마지막 적재 시각만 보여 준다.**
+ * IPL 에 자동 경로가 생기는 날 이 집합에서 빼고 위 실측값으로 임계값을 걸면 된다.
+ */
+export const SYNC_FRESHNESS_REPORT_ONLY: ReadonlySet<string> = new Set(['nolink'])
+
 export interface SyncFreshnessRow {
   league: string
   found: boolean
@@ -56,6 +97,10 @@ export interface SyncFreshnessRow {
   ageHours: number | null
   maxAgeHours: number
   pass: boolean
+  /** 판정하지 않고 보여 주기만 하는 리그인가 (`SYNC_FRESHNESS_REPORT_ONLY`) */
+  reportOnly: boolean
+  /** 이 리그를 어느 origin 으로 봤는가 — 0건일 때 원인을 가릴 수 있게 남긴다 */
+  origins: readonly string[]
 }
 
 export async function checkSyncFreshness(input: {
@@ -71,10 +116,13 @@ export async function checkSyncFreshness(input: {
       input.maxAgeHours?.[slug] ??
       SYNC_FRESHNESS_DEFAULT_MAX_AGE_HOURS[slug] ??
       SYNC_FRESHNESS_FALLBACK_MAX_AGE_HOURS
+    const origins = SYNC_FRESHNESS_ORIGINS[slug] ?? SYNC_FRESHNESS_FALLBACK_ORIGINS
+    const reportOnly = SYNC_FRESHNESS_REPORT_ONLY.has(slug)
 
     const league = await prisma.league.findUnique({ where: { slug }, select: { id: true } })
     if (league === null) {
-      /* 리그가 없으면 **통과시키지 않는다.** 오타 하나로 알람이 조용해지면 안 된다 */
+      /* 리그가 없으면 **통과시키지 않는다.** 오타 하나로 알람이 조용해지면 안 된다.
+         보여 주기만 하는 리그라도 마찬가지다 — 이름이 틀린 것은 표시의 문제가 아니다 */
       rows.push({
         league: slug,
         found: false,
@@ -83,11 +131,13 @@ export async function checkSyncFreshness(input: {
         ageHours: null,
         maxAgeHours,
         pass: false,
+        reportOnly,
+        origins,
       })
       continue
     }
 
-    const where = { leagueId: league.id, origin: '3rd.supply' }
+    const where = { leagueId: league.id, origin: { in: [...origins] } }
     const [byStart, byIngest] = await Promise.all([
       prisma.match.findFirst({ where, orderBy: { startAt: 'desc' }, select: { startAt: true } }),
       prisma.match.findFirst({
@@ -106,9 +156,13 @@ export async function checkSyncFreshness(input: {
       newestStartAt,
       newestIngestedAt: byIngest?.ingestedAt ?? null,
       ageHours,
-      /* 경기가 한 건도 없으면 판정하지 않는다 — 아직 안 받은 리그가 있다 (nolink) */
       maxAgeHours,
-      pass: ageHours === null ? true : ageHours <= maxAgeHours,
+      /* 경기가 한 건도 없으면 판정하지 않는다 — 아직 안 받은 리그가 있다.
+         `reportOnly` 리그는 값이 있어도 판정하지 않는다 — 자동 수집이 없어서 낡아 있는 것이
+         정상이다. **무뎌진 알람보다 판정 없는 표시가 낫다** (D-224 의 교훈) */
+      pass: reportOnly || ageHours === null ? true : ageHours <= maxAgeHours,
+      reportOnly,
+      origins,
     })
   }
 
@@ -128,10 +182,12 @@ export function formatSyncFreshness(rows: readonly SyncFreshnessRow[]): string {
       continue
     }
     const age = row.ageHours === null ? '—' : `${row.ageHours.toFixed(1)}h`
+    /* 판정하지 않는 리그는 임계값 자리도 비운다 — 안 쓰는 숫자를 보여 주면 쓰는 줄 안다 */
+    const limit = row.reportOnly ? '—' : String(row.maxAgeHours) + 'h'
     lines.push(
       `${row.league.padEnd(10)} ${KST(row.newestStartAt).padEnd(27)} ${KST(row.newestIngestedAt).padEnd(27)} ` +
-        `${age.padStart(7)}  ${String(row.maxAgeHours) + 'h'}`.padEnd(8) +
-        `  ${row.pass ? 'ok' : '밀렸다'}`,
+        `${age.padStart(7)}  ${limit}`.padEnd(8) +
+        `  ${row.reportOnly ? '표시만' : row.pass ? 'ok' : '밀렸다'}`,
     )
   }
   return lines.join('\n')

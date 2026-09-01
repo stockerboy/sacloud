@@ -535,3 +535,78 @@ describe('우리 공식값(D-145)은 집계 대상이 아니다', () => {
     }
   })
 })
+
+/**
+ * 점수 주인이 우리 공식일 때 — **명부 전용** (D-258).
+ *
+ * `SACLOUD_RATING_OWNER=formula` 면 이 잡은 집계 칸을 하나도 쓰지 않는다.
+ * 승패·킬데스를 **전체 기간**으로 만드는데 `season0Apply` 는 **7/1 이후**로 만들어서,
+ * 5분마다 서로 덮었다 (실측: supply 1,426명 중 125명이 12분 만에 되돌아갔다).
+ *
+ * 여기서 고정하는 것은 두 가지다 —
+ *   1. 집계 칸(win·lose·kill·death·assist·headshot·rating·placement)이 **없다**
+ *   2. 명부 칸(clanId·division)은 **남는다** — 다른 출처가 없는 값이다
+ */
+describe('명부 전용 모드 — SACLOUD_RATING_OWNER=formula (D-258)', () => {
+  /** env 를 세운 채 함수를 부르고 **반드시 되돌린다** — 다른 테스트로 새면 안 된다 */
+  function asFormulaOwner<T>(run: () => T): T {
+    const before = process.env.SACLOUD_RATING_OWNER
+    process.env.SACLOUD_RATING_OWNER = 'formula'
+    try {
+      return run()
+    } finally {
+      if (before === undefined) delete process.env.SACLOUD_RATING_OWNER
+      else process.env.SACLOUD_RATING_OWNER = before
+    }
+  }
+
+  const registered = (over: Partial<SupplyClanRegistryRow> = {}): SupplyClanRegistryRow => ({
+    slug: 'lpcrew',
+    name: 'MiraGe.',
+    division: 2,
+    rating: 1840,
+    win: 4229,
+    lose: 4523,
+    rank: 1,
+    sourceClanId: '1290',
+    sourceLeagueClanId: '1',
+    ...over,
+  })
+
+  it('선수 — 집계 칸을 하나도 쓰지 않는다', () => {
+    const rollup = accumulatePlayerRollups([stat()]).get('P1')!
+    const data = asFormulaOwner(() => toPlayerWriteData(rollup))
+    for (const owned of ['win', 'lose', 'kill', 'death', 'assist', 'headshot', 'rating', 'placement']) {
+      expect(Object.keys(data), `${owned} 는 season0Apply 의 칸이다`).not.toContain(owned)
+    }
+  })
+
+  it('선수 — 근거가 없으면 **빈 객체**다. 호출부가 질의를 안 보내는 근거다', () => {
+    const rollup = accumulatePlayerRollups([stat()]).get('P1')!
+    expect(asFormulaOwner(() => toPlayerWriteData(rollup))).toEqual({})
+  })
+
+  it('선수 — 현재 소속(clanId)은 남는다. 다른 출처가 없다 (D-160)', () => {
+    const rollup = accumulatePlayerRollups([stat({ clanSlug: 'lpcrew' })]).get('P1')!
+    expect(asFormulaOwner(() => toPlayerWriteData(rollup, 'clan-1'))).toEqual({ clanId: 'clan-1' })
+  })
+
+  it('클랜 — 부리그만 남는다. 승패는 원본 목록의 전체기간 값이라 창을 걸 수 없다 (D-157)', () => {
+    expect(asFormulaOwner(() => toClanWriteData(registered()))).toEqual({ division: 2 })
+  })
+
+  it('env 가 없으면 옛 동작 그대로다 — 지우지 않았다 (CLAUDE.md 10-4)', () => {
+    const rollup = accumulatePlayerRollups([stat()]).get('P1')!
+    const player = toPlayerWriteData(rollup)
+    expect(player.win).toBe(1)
+    expect(player.kill).toBe(10)
+    expect(player.placement).toBe(false)
+    expect(toClanWriteData(registered())).toEqual({
+      rating: 1840,
+      win: 4229,
+      lose: 4523,
+      division: 2,
+      placement: false,
+    })
+  })
+})

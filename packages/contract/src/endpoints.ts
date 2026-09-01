@@ -8,6 +8,7 @@ import {
   BoardListItem,
   Clan,
   ClanLeagueEntry,
+  ClanMasterClaimState,
   ClanPlayer,
   ClanRankRow,
   ClanSummary,
@@ -36,6 +37,7 @@ import {
   RemoteConfigs,
   RenewResult,
   SlugAvailability,
+  TitleVerificationState,
   Upload,
   User,
 } from './entities'
@@ -122,7 +124,7 @@ export const endpoints = {
     method: 'POST',
     path: '/auth/signup',
     origin: 'observed',
-    description: '회원가입 (네이버 메일만 허용)',
+    description: '회원가입 (아이디 + 비밀번호 · D-252)',
     response: apiResponse(AuthSession),
   },
   authToken: {
@@ -198,6 +200,29 @@ export const endpoints = {
     origin: 'observed',
     description: '서든어택 계정 연동/해제',
     response: apiResponse(AccountLinkState),
+  },
+  /* --- 서든어택 계정 소유권 증명 (칭호 `[용병]`, 2026-09-01) ---------------
+     전부 **로그인 필요**하고 개인 정보다. 공개 캐시(`okPublic`)를 붙이지 않는다. */
+  meTitleVerificationShow: {
+    method: 'GET',
+    path: '/me/title-verification',
+    origin: 'designed',
+    description: '칭호 소유권 증명 상태',
+    response: apiResponse(TitleVerificationState),
+  },
+  meTitleVerificationCheck: {
+    method: 'POST',
+    path: '/me/title-verification',
+    origin: 'designed',
+    description: '칭호 소유권 증명 — 닉네임을 넣고 지금 칭호를 확인한다',
+    response: apiResponse(TitleVerificationState),
+  },
+  meTitleVerificationCancel: {
+    method: 'DELETE',
+    path: '/me/title-verification',
+    origin: 'designed',
+    description: '진행 중인 칭호 증명 접기',
+    response: apiResponse(TitleVerificationState),
   },
   uploadsCreate: {
     method: 'POST',
@@ -315,6 +340,33 @@ export const endpoints = {
     origin: 'designed',
     description: '클랜 설정 (화면 상세 [미확인])',
     response: apiResponse(Clan),
+  },
+  /* --- 클랜 마스터 인증 (스크린샷 1장 · 사람이 심사, 2026-09-01 · D-253) -----
+     전부 **로그인 필요**하고 개인 정보다. 공개 캐시(`okPublic`)를 붙이지 않는다.
+
+     ⚠ 사진 자체를 내려 주는 경로(`/clans/:clanSlug/master-claim/image`)는 여기에 없다.
+     응답이 JSON 이 아니라 **바이트**라 `apiResponse(...)` 로 감쌀 수 없다.
+     화면은 `image_url` 을 `<img src>` 에 그대로 물린다. */
+  clanMasterClaimShow: {
+    method: 'GET',
+    path: '/clans/:clanSlug/master-claim',
+    origin: 'designed',
+    description: '클랜 마스터 인증 — 내 신청 상태',
+    response: apiResponse(ClanMasterClaimState),
+  },
+  clanMasterClaimCreate: {
+    method: 'POST',
+    path: '/clans/:clanSlug/master-claim',
+    origin: 'designed',
+    description: '클랜 마스터 인증 — 인게임 스크린샷 1장 제출',
+    response: apiResponse(ClanMasterClaimState),
+  },
+  clanMasterClaimCancel: {
+    method: 'DELETE',
+    path: '/clans/:clanSlug/master-claim',
+    origin: 'designed',
+    description: '클랜 마스터 인증 — 심사중인 신청 접기',
+    response: apiResponse(ClanMasterClaimState),
   },
 
   /* -------------------------------- 리그 -------------------------------- */

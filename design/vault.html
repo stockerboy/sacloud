@@ -1,0 +1,282 @@
+<title>저장소 시안 — SACLOUD</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────────────────────────────────────
+   저장소(버튼) 시안 6가지 — 모양만 본다. 연출은 없다.
+   내용은 고정: SPL / IPL / 10mountain. 눌리는 것은 진짜로 눌린다.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --page:#060505;
+  --text:#d6c9c9;--strong:#f6eded;--meta:#9a8080;--faint:#6b5555;
+  --line:#2a1616;--accent:#d92b2b;
+
+  /* 홀로그램 — 새하얀 빛이 주다. 회색으로 죽지 않게 면을 밝게 깐다 */
+  --hi:rgba(255,255,255,.95);
+  --edge:rgba(226,252,255,.50);
+  --edge2:rgba(226,252,255,.26);
+  --g1:rgba(232,255,255,.22);
+  --g2:rgba(198,240,245,.10);
+  --g3:rgba(150,205,215,.018);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);
+     font-family:'Noto Sans KR',system-ui,sans-serif;font-size:15px;line-height:1.6;
+     -webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 16px 80px}
+h1{font-family:'Black Han Sans',sans-serif;font-weight:400;
+   font-size:clamp(24px,6vw,38px);color:var(--strong);margin:0 0 6px}
+.lead{color:var(--strong);font-size:14px;margin:0 0 4px;
+      border-left:2px solid var(--accent);padding-left:10px}
+.sub{color:var(--meta);font-size:13px;margin:0 0 26px}
+
+.grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:820px){.grid{grid-template-columns:1fr 1fr}}
+.card{border:1px solid var(--line);background:#0b0808;border-radius:2px;
+      padding:14px 12px 16px;overflow:hidden}
+.hd{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.no{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--accent);
+    border:1px solid var(--line);border-radius:2px;padding:1px 6px;flex:none}
+.ttl{color:var(--strong);font-weight:700;font-size:15px}
+.dsc{color:var(--meta);font-size:12.5px;margin:0 0 12px;line-height:1.45}
+
+/* 저장소 하나가 서 있는 자리. 발광은 여기 한 장뿐 */
+.stage{position:relative;padding:14px 8px 8px}
+.stage::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(62% 48% at 50% 44%,
+    rgba(198,244,255,.17),rgba(150,220,235,.06) 48%,transparent 76%)}
+.stage>*{position:relative}
+
+/* ── 공통: 아코디언은 <details>. JS 없이 진짜로 열린다 ── */
+details{border-radius:2px}
+summary{list-style:none;cursor:pointer;user-select:none}
+summary::-webkit-details-marker{display:none}
+
+.row{display:flex;align-items:center;gap:9px;min-width:0}
+.nm{font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:.02em;
+    color:#f2fdff;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm b{font-family:'Noto Sans KR',sans-serif;font-weight:700;color:#eafcff}
+.badge{flex:none;font-size:10px;letter-spacing:.04em;padding:1px 5px;border-radius:2px;
+       border:1px solid var(--edge2);color:#cfeff5;background:rgba(200,245,255,.07)}
+.badge.un{border-color:rgba(217,43,43,.55);color:#ffc9c9;background:rgba(217,43,43,.10)}
+.mtn{flex:none;width:15px;height:12px;stroke:#eafcff;stroke-width:1.3;fill:none;
+     stroke-linejoin:round;vertical-align:-1px}
+.chev{flex:none;margin-left:auto;width:11px;height:11px;stroke:rgba(226,252,255,.75);
+      stroke-width:1.6;fill:none;transition:transform .18s ease}
+details[open] .chev{transform:rotate(90deg)}
+
+/* 펼쳐진 안쪽 항목 — 누르면 랭킹으로 간다 */
+.items{padding:2px 0 2px 0;margin:0;display:flex;flex-direction:column;gap:1px}
+.it{display:flex;align-items:center;gap:8px;width:100%;text-align:left;cursor:pointer;
+    background:none;border:0;border-top:1px solid rgba(200,245,255,.12);
+    padding:8px 10px 8px 14px;color:#dff6fa;font:inherit;font-size:13px}
+.it:hover,.it:focus-visible{background:rgba(200,245,255,.07);color:#fff;outline:none}
+.it .go{margin-left:auto;font-size:11px;color:var(--meta);white-space:nowrap}
+.it:hover .go,.it:focus-visible .go{color:var(--accent)}
+.it .dot{width:4px;height:4px;border-radius:50%;background:rgba(226,252,255,.6);flex:none}
+.it:hover .dot{background:var(--accent)}
+.it.hit{background:rgba(217,43,43,.13);color:#ffe3e3}
+.it.hit .go{color:var(--accent)}
+.hint{margin:8px 2px 0;font-size:11.5px;color:var(--faint)}
+
+/* ══ 1. 서버랙 ═══════════════════════════════════════════════ */
+.rack{border:1px solid var(--edge);border-radius:2px;padding:7px;
+      background:linear-gradient(180deg,var(--g1),var(--g2) 45%,var(--g3))}
+.rack details{border:1px solid var(--edge2);margin-bottom:6px;background:rgba(200,245,255,.045)}
+.rack details:last-child{margin-bottom:0}
+.rack summary{padding:9px 10px 9px 8px;border-left:2px solid rgba(226,252,255,.55)}
+.rack details[open] summary{border-left-color:var(--accent);background:rgba(200,245,255,.06)}
+.led{flex:none;width:5px;height:5px;border-radius:50%;background:#9ef2ff}
+.rack details[open] .led{background:var(--accent)}
+.vent{flex:none;width:22px;height:11px;
+      background:repeating-linear-gradient(180deg,rgba(226,252,255,.45) 0 1px,transparent 1px 3px)}
+
+/* ══ 2. 캐비닛 서랍 ══════════════════════════════════════════ */
+.cab{border:1px solid var(--edge);border-radius:2px;padding:8px 8px 9px;
+     background:linear-gradient(180deg,var(--g1),var(--g2) 40%,var(--g3))}
+.cab details{margin-bottom:7px;border:1px solid var(--edge2);
+             background:linear-gradient(180deg,rgba(226,252,255,.13),rgba(180,225,235,.03))}
+.cab details:last-child{margin-bottom:0}
+.cab summary{padding:11px 12px;transition:transform .16s ease}
+.cab details[open] summary{transform:translateY(-1px) scale(1.012);
+                           background:rgba(200,245,255,.09)}
+.hand{flex:none;width:26px;height:6px;border:1px solid var(--edge);border-radius:3px;
+      background:rgba(226,252,255,.18)}
+.lbl{flex:none;width:34px;height:13px;border:1px solid var(--edge2);border-radius:1px;
+     background:repeating-linear-gradient(180deg,transparent 0 3px,rgba(226,252,255,.35) 3px 4px)}
+
+/* ══ 3. 드라이브 베이 ════════════════════════════════════════ */
+.bay{border:1px solid var(--edge);border-radius:2px;padding:6px;
+     background:linear-gradient(180deg,rgba(232,255,255,.14),var(--g3))}
+.bay details{border:1px solid var(--edge2);border-left:3px solid rgba(226,252,255,.5);
+             margin-bottom:5px;background:rgba(160,220,235,.05)}
+.bay details:last-child{margin-bottom:0}
+.bay details[open]{border-left-color:var(--accent)}
+.bay summary{padding:10px 10px 10px 9px;font-family:'JetBrains Mono',monospace}
+.slotn{flex:none;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);
+       border:1px solid var(--edge2);border-radius:1px;padding:0 4px}
+.act{flex:none;width:16px;height:4px;border-radius:1px;
+     background:linear-gradient(90deg,#9ef2ff 0 40%,rgba(226,252,255,.18) 40%)}
+.bay details[open] .act{background:linear-gradient(90deg,var(--accent) 0 75%,rgba(226,252,255,.18) 75%)}
+
+/* ══ 4. 금고 ═════════════════════════════════════════════════ */
+.safe{border:2px solid var(--edge);border-radius:3px;padding:10px;
+      background:radial-gradient(120% 90% at 50% 0%,rgba(232,255,255,.17),var(--g3))}
+.safe details{border:1px solid var(--edge2);border-radius:2px;margin-bottom:8px;
+              background:rgba(200,245,255,.05)}
+.safe details:last-child{margin-bottom:0}
+.safe summary{padding:10px 11px}
+.dial{flex:none;width:19px;height:19px;border-radius:50%;border:1px solid var(--edge);
+      background:conic-gradient(from 0deg,rgba(230,253,255,.75) 0 8deg,rgba(226,252,255,.10) 8deg 45deg);
+      transition:transform .25s ease}
+.safe details[open] .dial{transform:rotate(72deg);border-color:var(--accent)}
+.pins{flex:none;width:9px;height:16px;
+      background:repeating-linear-gradient(180deg,rgba(226,252,255,.5) 0 2px,transparent 2px 5px)}
+
+/* ══ 5. 아카이브 상자 ════════════════════════════════════════ */
+.arc details{border:1px solid var(--edge);border-radius:1px 1px 2px 2px;margin-bottom:9px;
+     background:linear-gradient(180deg,var(--g1),var(--g2) 45%,var(--g3))}
+.arc details:last-child{margin-bottom:0}
+.arc summary{padding:12px 12px 11px;position:relative;
+     border-top:3px solid rgba(226,252,255,.4)}      /* 뚜껑 */
+.arc details[open] summary{border-top-color:var(--accent)}
+.hole{flex:none;width:26px;height:8px;border:1px solid var(--edge);border-radius:4px;
+      background:rgba(6,5,5,.55)}                      /* 손잡이 구멍 */
+.tag{flex:none;font-size:10px;font-family:'JetBrains Mono',monospace;color:#d6f4fa;
+     border:1px solid var(--edge2);padding:1px 4px;background:rgba(226,252,255,.09)}
+
+/* ══ 6. 데이터 실린더 ════════════════════════════════════════ */
+.cyl details{border:1px solid var(--edge2);border-radius:999px;margin-bottom:8px;
+     background:linear-gradient(90deg,rgba(150,205,215,.03),rgba(232,255,255,.19) 22%,
+                rgba(232,255,255,.19) 78%,rgba(150,205,215,.03))}
+.cyl details:last-child{margin-bottom:0}
+.cyl summary{padding:11px 16px}
+.cyl details[open]{border-color:rgba(226,252,255,.55)}
+.cyl .items{padding:0 8px 8px}
+.cyl .it{border-top:1px solid rgba(200,245,255,.14);border-radius:999px;padding-left:22px}
+.ring{flex:none;width:14px;height:14px;border-radius:50%;
+      border:1px solid var(--edge);border-top-color:transparent;border-bottom-color:transparent}
+.cyl details[open] .ring{border-color:var(--accent);border-top-color:transparent;
+                         border-bottom-color:transparent}
+.core{flex:none;width:3px;height:16px;border-radius:2px;
+      background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(226,252,255,.15))}
+
+/* 폰 — 장식이 이름을 잘라먹지 않게 뺀다 (가로 스크롤 없음) */
+@media(max-width:430px){
+  .vent,.hand,.lbl,.act,.pins,.core,.hole{display:none}
+  .nm{font-size:13px}
+  .row{gap:7px}
+}
+
+.foot{margin-top:26px;color:var(--faint);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+.foot code{font-family:'JetBrains Mono',monospace;color:var(--meta)}
+.foot b{color:var(--meta);font-weight:500}
+</style>
+
+<div class="wrap">
+  <p class="lead">번호를 말씀해 주시면 그걸로 만듭니다. 섞어도 됩니다.</p>
+  <h1>저장소 시안</h1>
+  <p class="sub">
+    내용은 고정이다 — <b style="color:var(--text)">SPL CLOUD</b>(공식) ·
+    <b style="color:var(--text)">IPL CLOUD</b>(공식) ·
+    <b style="color:var(--text)">10mountain CLOUD</b>(비공식, 플레이어만).
+    <b style="color:var(--text)">눌러 보세요.</b> 닫힌 게 기본이고 누르면 펼쳐진다.
+    안쪽 항목을 누르면 어디로 가는지 표시된다.
+  </p>
+
+  <div class="grid" id="grid"></div>
+
+  <p class="foot">
+    산 표시는 <b>인라인 SVG</b>(가는 흰 선)를 기본으로 썼다 — 이모지는 기기마다 모양이 달라
+    ⛰(윈도우) / 🏔(맥) 이 서로 다른 그림으로 나오고, 대부분 색이 들어가 있어 이 톤에서 튄다.
+    비교하려고 <b>6번 시안만 이모지 ⛰</b> 로 두었다. 나란히 보고 고르면 된다.<br>
+    <code>blur</code>·<code>backdrop-filter</code>·라이브러리 없음. 발광은 시안마다
+    <code>radial-gradient</code> 한 장. 아코디언은 <code>&lt;details&gt;</code> — JS 없이 열린다.
+  </p>
+</div>
+
+<script>
+/* ─── 고정 내용 ──────────────────────────────────────────── */
+const MTN = '<svg class="mtn" viewBox="0 0 16 13" aria-hidden="true">'
+          + '<path d="M1 12 L6 3 L9 7.5 L10.7 5 L15 12 Z"/>'
+          + '<path d="M4.2 6.6 L6 5.4 L7.6 6.6"/></svg>';
+
+const VAULTS = [
+  {key:'spl',  label:'SPL',        official:true,  clan:true },
+  {key:'ipl',  label:'IPL',        official:true,  clan:true },
+  {key:'mtn',  label:'10mountain', official:false, clan:false},
+];
+
+/* ─── 시안 정의 ──────────────────────────────────────────── */
+const V = [
+ {no:1,cls:'rack',wrap:true,name:'서버랙 — 1U 슬롯',
+  dsc:'랙에 꽂힌 장비 한 대가 리그 하나다. 통풍구와 표시등이 있고, 열리면 왼쪽 띠가 진홍으로 켜진다.',
+  pre:'<span class="led"></span>', post:'<span class="vent"></span>'},
+
+ {no:2,cls:'cab',wrap:true,name:'캐비닛 서랍',
+  dsc:'문서 캐비닛의 서랍. 손잡이와 라벨 홀더가 붙어 있고, 열리면 서랍이 앞으로 조금 나온다.',
+  pre:'<span class="lbl"></span>', post:'<span class="hand"></span>'},
+
+ {no:3,cls:'bay',wrap:true,name:'드라이브 베이',
+  dsc:'디스크가 꽂히는 베이. 슬롯 번호와 활동 표시등이 있고 이름을 고정폭 글꼴로 읽는다.',
+  pre:'<span class="slotn">00</span>', post:'<span class="act"></span>'},
+
+ {no:4,cls:'safe',wrap:true,name:'금고',
+  dsc:'두꺼운 테두리와 잠금 핀. 다이얼이 있고, 열리면 다이얼이 돌아간다. 가장 무겁게 읽힌다.',
+  pre:'<span class="dial"></span>', post:'<span class="pins"></span>'},
+
+ {no:5,cls:'arc',wrap:false,name:'아카이브 상자',
+  dsc:'뚜껑선과 손잡이 구멍이 있는 보관 상자. 라벨 태그로 공식/비공식을 읽는다. 가장 가볍다.',
+  pre:'', post:'<span class="hole"></span>'},
+
+ {no:6,cls:'cyl',wrap:false,name:'데이터 실린더 (산은 이모지 ⛰)',
+  dsc:'원통형 코어. 가로로 누운 캡슐이고 링이 감싼다. 산 표시만 이모지라 다른 시안과 비교된다.',
+  pre:'<span class="core"></span>', post:'<span class="ring"></span>', emoji:true},
+];
+
+const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true">'
+           + '<path d="M4 2 L8 6 L4 10"/></svg>';
+
+function vaultRow(cfg,v,idx){
+  const mark = v.key==='mtn' ? (cfg.emoji ? '<span style="flex:none">⛰</span>' : MTN) : '';
+  const pre  = (cfg.pre||'').replace('>00<', '>'+String(idx).padStart(2,'0')+'<');
+  const badge = v.official
+      ? '<span class="badge">공식</span>'
+      : '<span class="badge un">비공식</span>';
+  const items = (v.clan
+      ? '<button class="it" data-go="클랜"><span class="dot"></span>클랜'
+        + '<span class="go">→ 클랜 랭킹</span></button>' : '')
+    + '<button class="it" data-go="플레이어"><span class="dot"></span>플레이어'
+      + '<span class="go">→ 플레이어 랭킹</span></button>';
+
+  return '<details><summary><span class="row">'
+       + pre + mark
+       + '<span class="nm"><b>'+v.label+'</b> CLOUD</span>'
+       + badge + (cfg.post||'') + CHEV
+       + '</span></summary><div class="items">' + items + '</div></details>';
+}
+
+const grid=document.getElementById('grid');
+V.forEach(cfg=>{
+  const inner = VAULTS.map((v,i)=>vaultRow(cfg,v,i+1)).join('');
+  const body  = cfg.wrap ? '<div class="'+cfg.cls+'">'+inner+'</div>'
+                         : '<div class="'+cfg.cls+'">'+inner+'</div>';
+  grid.insertAdjacentHTML('beforeend',
+    '<div class="card"><div class="hd"><span class="no">'+cfg.no+'</span>'
+    + '<span class="ttl">'+cfg.name+'</span></div>'
+    + '<p class="dsc">'+cfg.dsc+'</p>'
+    + '<div class="stage">'+body+'</div>'
+    + '<p class="hint">닫힌 게 기본 · 머리를 누르면 펼쳐진다 · 안쪽 항목은 랭킹으로 간다</p>'
+    + '</div>');
+});
+
+/* 안쪽 항목을 누르면 「간다」는 것만 표시한다. 실제 이동은 없다 */
+grid.addEventListener('click',e=>{
+  const b=e.target.closest('.it'); if(!b) return;
+  grid.querySelectorAll('.it.hit').forEach(x=>x.classList.remove('hit'));
+  b.classList.add('hit');
+});
+</script>

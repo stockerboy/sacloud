@@ -51,17 +51,36 @@ export interface LeagueLabelProps {
   /** 리그 표시 이름 (`SPL` · `IPL` · `10mountain` …) */
   name: string
   className?: string
+  /**
+   * `short`(기본) — `10` + 산 표시. 2026-09-01 사용자가 정한 표기다
+   * `full`        — `10mountain` + 산 표시. 그 이전 표기이며 지우지 않고 남겨 둔다
+   */
+  variant?: 'short' | 'full'
 }
 
 /**
- * 리그 이름을 찍는다. `10mountain` 이면 뒤에 산 표시가 따라붙고, 나머지는 글자만 나온다.
- * 이름을 화면에 쓰는 자리라면 어디서든 이걸 쓰면 된다 — 분기가 여기 한 곳에만 있다.
+ * `10mountain` 을 화면에 찍을 때 글자로 남기는 부분 (2026-09-01 사용자 지시).
+ *
+ * > "우리는 리그 세개뿐이다 SPL IPL **10🏔️**"
+ *
+ * 사용자가 짧은 표기를 원한다. `mountain` 글자를 산 표시가 대신한다 —
+ * **이름(`League.name`)은 여전히 `10mountain`** 이고 바뀐 것은 화면 표기뿐이다.
+ * 산은 이모지가 아니라 인라인 SVG 다 (위 주석의 세 가지 이유 그대로).
  */
-export function LeagueLabel({ name, className = '' }: LeagueLabelProps) {
+const MOUNTAIN_SHORT_TEXT = '10'
+
+/**
+ * 리그 이름을 찍는다. `10mountain` 이면 `10` + 산 표시, 나머지는 글자만 나온다.
+ * 이름을 화면에 쓰는 자리라면 어디서든 이걸 쓰면 된다 — 분기가 여기 한 곳에만 있다.
+ *
+ * `full` 을 주면 **2026-09-01 이전 표기**(`10mountain` + 산)가 그대로 나온다.
+ * 지우지 않고 남겨 둔다 (`CLAUDE.md` 10-4).
+ */
+export function LeagueLabel({ name, className = '', variant = 'short' }: LeagueLabelProps) {
   if (name !== MOUNTAIN_LEAGUE_NAME) return <>{name}</>
   return (
     <span className={`inline-flex items-center gap-1 ${className}`}>
-      {name}
+      {variant === 'full' ? name : MOUNTAIN_SHORT_TEXT}
       <MountainMark />
     </span>
   )

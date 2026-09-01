@@ -77,3 +77,25 @@ export const HOME_LEAGUES: readonly { slug: string; abbr: string; name: string }
   { slug: 'nolink', abbr: 'IPL', name: 'IPL' },
   { slug: 'sanply', abbr: '10mountain', name: '10mountain' },
 ]
+
+/**
+ * 랭킹 화면을 **한 공간에 나란히** 두는 두 리그 (2026-09-01 사용자 지시).
+ *
+ * > "클랜랭킹 그냥 SPL이랑 IPL 한공간에 둬 SPL이 왼쪽 IPL이 오른쪽"
+ * > "개인랭킹도 SPL은 왼쪽 IPL은 오른쪽"
+ *
+ * **`10mountain`(`sanply`)은 여기 없다.** 개인기록만 있는 비공식 리그라서
+ * 지금 있는 자리를 그대로 둔다 (D-245).
+ *
+ * 순서가 곧 화면의 좌우다 — 0번이 왼쪽, 1번이 오른쪽.
+ * slug 는 라우트 그대로다. 이름만 D-246 표기를 따른다.
+ */
+export const RANK_SPLIT_LEAGUES: readonly { slug: string; name: string }[] = [
+  { slug: 'supply', name: 'SPL' },
+  { slug: 'nolink', name: 'IPL' },
+]
+
+/** 이 리그가 좌우 합친 랭킹 화면을 쓰는가 */
+export function isRankSplitLeague(slug: string): boolean {
+  return RANK_SPLIT_LEAGUES.some((league) => league.slug === slug)
+}
