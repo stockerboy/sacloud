@@ -44,12 +44,39 @@ export function okPage<T>(page: { items: T[]; cursor: CursorMetadata }) {
  *   그리고 **알 목록(`/api/eggs/broken`)도 아니다** — 방금 깬 알이 안 보이면
  *   사용자는 「안 깨졌다」 로 읽는다 (D-222 ⑤).
  */
-const PUBLIC_CACHE_SECONDS = 30
+/**
+ * ⚠ **30 → 300 (2026-09-01 · D-240).** 위 서술은 그대로 두고 여기에 이유를 단다.
+ *
+ * ── 왜 열 배로 늘렸나
+ *   사이트와 **수집 잡이 같은 DB 한 대**를 쓴다. 수집 체인이 거의 쉬지 않아서
+ *   그동안 사이트가 DB 를 못 쓰고 500 이 났다 (D-239 · D-240).
+ *   접속 통로를 늘리는 길은 막혔다 — 늘렸더니 Supabase 풀러가 먼저 무너졌다.
+ *
+ *   **그러면 DB 를 덜 때리는 수밖에 없다.** 이 응답들은 로그인과 무관하고 같은 주소면
+ *   누구에게나 같다. 엣지가 5분 동안 대신 답하면 그 5분간 DB 를 **한 번만** 때린다.
+ *   30초일 때보다 DB 접근이 열 배 준다.
+ *
+ * ── 무엇을 잃나 — **최대 5분의 지연**
+ *   방금 끝난 경기가 랭킹에 5분 늦게 반영될 수 있다. 전적 사이트에서 이건
+ *   견딜 만한 값이라고 판단했다. **실시간이 필요한 것에는 이 헬퍼를 쓰지 않는다** —
+ *   알 목록(`/api/eggs/broken`)이 이미 그렇게 빠져 있다.
+ *
+ * ── `stale-while-revalidate` 도 300 → 600
+ *   만료 뒤에도 10분까지는 **옛 값을 즉시 내주고** 뒤에서 새로 받는다.
+ *   DB 가 수집에 눌려 느린 순간에도 사용자는 빈 화면 대신 조금 낡은 값을 본다.
+ *   **이게 「흔들리지 않는다」의 실체다.**
+ *
+ * ⚠ 이 값은 실측으로 다시 정해야 한다. 지금은 「30초는 너무 짧다」까지만 안다.
+ */
+const PUBLIC_CACHE_SECONDS = 300
+
+/** 만료된 값을 그대로 내주면서 뒤에서 갱신하는 창 */
+const PUBLIC_STALE_SECONDS = 600
 
 function withPublicCache(response: NextResponse, seconds: number): NextResponse {
   response.headers.set(
     'Cache-Control',
-    `public, max-age=0, s-maxage=${seconds}, stale-while-revalidate=300`,
+    `public, max-age=0, s-maxage=${seconds}, stale-while-revalidate=${PUBLIC_STALE_SECONDS}`,
   )
   return response
 }
