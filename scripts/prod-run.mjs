@@ -146,6 +146,30 @@ const ALLOWED = {
   },
   'ipl-sanply-check': { cli: ['nexon', 'ipl-sanply-check'], writes: false, what: '열산에 남은 IPL끼리 경기를 센다 (0 이어야 한다)' },
   'ipl-sanply-purge': { cli: ['nexon', 'ipl-sanply-purge'], writes: true, what: '열산에서 IPL끼리의 경기를 지우고 등록 해제한다 ⚠ 지우기 전에 백업을 뜬다' },
+  /*
+   * 클랜 육각형 V2 집계 (D-217 사양 · D-235 결정).
+   *
+   * **추가만 한다.** `MatchClanHexV2` 에만 쓰고 다른 표는 읽기만 한다. DROP 도 UPDATE 도 없다.
+   * 같은 경기를 다시 만나면 `upsert` 로 덮으므로 몇 번을 돌려도 행이 안 늘어난다.
+   * 중간에 죽어도 같은 명령을 다시 돌리면 이어서 간다 (같은 formulaVersion 은 건너뛴다).
+   *
+   * ⚠ 처음 돌릴 때는 `--limit 20` 으로 소량부터 대 보고 숫자를 대조해라 (3-A 6번).
+   */
+  'clan-hex-v2-build': {
+    cli: ['nexon', 'clan-hex-v2-build'],
+    writes: true,
+    what: '클랜 육각형 V2 를 배틀로그에서 집계해 MatchClanHexV2 에 쌓는다 (D-235). 멱등 · 재개 가능 · 추가만 한다',
+  },
+  /*
+   * 위 `clan-hex-v2-build` 는 **로컬용으로 그대로 둔다.** 운영에서는 재료가 없어 0건이다
+   * (실측 2026-09-01: 원문 줄=0 · 집계한 경기=0). 그래서 로컬에서 집계한 결과를 옮긴다 —
+   * `matchFirstSideExport` / `matchFirstSidePush` 와 같은 관례다.
+   */
+  'clan-hex-v2-push': {
+    file: 'clanHexV2Push',
+    writes: true,
+    what: '로컬에서 집계한 클랜 육각형 V2 를 운영 MatchClanHexV2 에 밀어 넣는다 (배틀로그 원문이 운영에 없다). 멱등 · 추가만 한다',
+  },
 }
 
 const args = process.argv.slice(2)

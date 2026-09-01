@@ -102,3 +102,6 @@ first-side-export.json
 # IPL 투영 내보내기 산출물 — 다시 만들 수 있다 (iplProjectExport)
 ipl-project-export.json
 .tmp-scripts/
+
+# 클랜 육각형 V2 내보내기 산출물 — 다시 만들 수 있다 (clanHexV2Export)
+clan-hex-v2-export.json
