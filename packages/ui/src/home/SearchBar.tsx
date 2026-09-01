@@ -47,9 +47,17 @@ const OPTIONS: readonly SearchOption[] = [
 export interface SearchBarProps {
   /** 제출(엔터 또는 돋보기 클릭) 시 호출된다. 조회·이동은 호출한 쪽이 담당한다. */
   onSubmit: (type: SearchType, query: string) => void
+  /**
+   * 못 찾았을 때 입력창 밑에 띄울 한 줄 (D-254).
+   *
+   * **문구를 여기서 만들지 않는다.** 어떤 실패인지 아는 것은 조회한 쪽이라
+   * 호출한 쪽이 `@sacloud/contract` 의 문구를 골라 넘긴다.
+   * 비어 있으면 아무것도 그리지 않는다 — 자리를 비워 두지도 않는다.
+   */
+  notice?: string | null
 }
 
-export function SearchBar({ onSubmit }: SearchBarProps) {
+export function SearchBar({ onSubmit, notice = null }: SearchBarProps) {
   const [type, setType] = useState<SearchType>('player')
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
@@ -154,6 +162,19 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
       {type === 'clan' ? (
         <p className="mt-2 px-1 text-[12px] leading-relaxed text-[var(--color-faint,#6b5555)]">
           {CLAN_SEARCH_HINT}
+        </p>
+      ) : null}
+
+      {/* --- 못 찾았을 때 (2026-09-01 · D-254) ---
+             예전에는 **아무 일도 일어나지 않았다.** 엔터를 쳐도 화면이 그대로라
+             사용자는 사이트가 멈춘 것인지 없는 것인지 구별할 수 없었다.
+             진홍은 쓰지 않는다 — 「없음」은 오류가 아니다. 흐린 글자 한 줄이면 된다. */}
+      {notice ? (
+        <p
+          role="status"
+          className="mt-2 px-1 text-[12px] leading-relaxed text-[var(--color-meta,#9a8080)]"
+        >
+          {notice}
         </p>
       ) : null}
     </div>

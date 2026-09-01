@@ -4001,6 +4001,13 @@ GET /leagues/{supply|sanply|daerule}/players/1896093983   ← .data.player 가 �
 
 ### 경로 형식은 `[미확인]` 이다 — 그래서 단정하지 않는다
 
+> ⚠ **정정 (2026-09-01 · D-254)** — 이 `[미확인]` 은 **풀렸다.**
+> 선수 프로필 주소는 `barracks.sa.nexon.com/{str_usn}/match` 이고,
+> 실물 24개가 저장소 안에 이미 있었다 (`docs/session-ledger/04c10ca2.md` ·
+> `data/barracks/position-labels.json` · D-221).
+> 아래 서술은 **그때의 판단 그대로** 남긴다 — 「한 형식만 받지 않는다」는 태도는
+> 지금도 유효하고, D-254 는 거기에 `str_usn` 갈래를 **더했을 뿐** 뺀 것이 없다.
+
 클랜 주소(`/clan/{slug}/clanMatch`)는 관측됐지만 **선수 주소의 정확한 경로는 관측하지 못했다.**
 그래서 한 가지 형식을 정해 놓고 그것만 받지 않는다.
 
@@ -11848,3 +11855,781 @@ Supabase 대시보드 `Settings → Database → Connection pooling → Pool Siz
 
 세션 풀러(5432)로 우회 진단도 시도했으나 `Can't reach database server` 로 막혔다 —
 그 포트가 이 프로젝트에서 열려 있지 않거나 사용자명 형식이 다르다 `[미확인]`.
+
+---
+
+## D-252
+
+> ⚠ **번호 주의** — 이 항목을 쓸 때 `DECISIONS.md` 의 마지막 번호는 **D-250** 이었다.
+> 그런데 `app/league/[leagueSlug]/layout.tsx` 의 주석이 이미 **D-251**(`LeagueTopBar` 교체)을
+> 가리키고 있었다. 같은 시각 다른 작업이 D-251 을 쓰는 중으로 보여 **D-252 로 비켜 적었다.**
+> D-251 이 비어 있으면 그 작업이 아직 안 적은 것이다. 지우지 말고 그대로 두어라.
+
+# 「알」 시스템을 화면에서 껐다 · 게시판을 준비중으로 닫았다 (2026-09-01 밤)
+
+사용자 지시 원문.
+
+```
+"애초에 알시스템은 걍 버려 필요없어 게시판 준비중으로 냅두고 마이페이지는 해야돼"
+```
+
+오늘 밤 사이트를 여는 것이 목표였다. 그래서 **덜 된 것을 지우는 대신 닫았다.**
+
+## 정한 것 ① — 알은 **지우지 않고 껐다.** 스위치는 상수 하나다
+
+`packages/ui/src/egg/eggState.ts`
+
+```ts
+export const EGG_SYSTEM_ENABLED: boolean = false   // true 로 되돌리면 전부 살아난다
+```
+
+알 시스템은 **화면 여기저기에 박혀 있지 않다.** 전부 `sealed ? 가림 : 진짜값` 이라는
+같은 모양이고, 그 `sealed` 판정이 **문맥 한 곳**에서 나온다. 그래서 판정만 뒤집으면
+모든 화면이 저절로 진짜값 쪽으로 간다.
+
+껐을 때 갈라지는 곳은 **딱 세 군데**다.
+
+```
+EggContext.tsx  모든 선수·클랜을 «깨짐» 으로 답한다
+                `useEggKnowledge` 는 `.includes()` 가 항상 참인 빈 목록을 준다
+                 ← `RankTable` 이 `brokenClanSlugs.includes(slug)` 로 직접 고르기 때문
+Egg.tsx         껍데기·빛(`egg-glow`) 없이 안에 든 마크만 그린다
+                **치수(`SIZE`·`FILL`)는 그대로 쓴다** — 랭킹 표의 모바일 행 높이 36px 이 여기 걸려 있다
+EggVeil.tsx     `EggVeilLegend` 가 `null` 을 낸다
+                 ← `RankTable` 이 이것을 **조건 없이** 표 밑에 붙인다. 안 막으면
+                   가린 것이 없는데 «▨▨ 알이 깨지면…» 한 줄만 남는다
+```
+
+**화면 컴포넌트는 한 줄도 안 고쳤다.** `RankTable` · `RecordPanels` · `PlayerProfile` ·
+`ClanProfile` · 리그 선수/클랜 상세는 여전히 알을 물어보고, 답이 늘 «깨짐» 일 뿐이다.
+(마침 `packages/ui/src/league/**` 와 `record/**` 는 다른 작업이 물고 있어 **손댈 수도 없었다.**
+문맥 한 곳을 뒤집는 방식이 그래서 더 맞았다.)
+
+## 정한 것 ② — 없앤 것은 **화면과 요청**이지 데이터가 아니다
+
+```
+없앴다  메인의 알 모음집 두 벌 (SPL · IPL)
+없앴다  알 때문에 나가던 요청 전부 (아래)
+남겼다  DB(`EggBreak`) · 마이그레이션 · 스키마          ← 손도 안 댐
+남겼다  API 라우트 (`/api/eggs/broken` · `/api/admin/eggs/**`)  ← 화면이 안 부를 뿐
+남겼다  `docs/EGG_SYSTEM_SPEC.md`
+남겼다  컴포넌트 파일 전부 · `packages/ui` export 전부  ← **export 를 하나도 안 끊었다**
+남겼다  `app/_egg/LeagueEggGallery.tsx` · `useLeagueEggs.ts`  ← 아무도 안 부르지만 그대로
+남겼다  순수 규칙 `clanEggState` · `eggRows` 와 그 테스트
+```
+
+`EggBoot` 은 **전역 레이아웃**(`app/layout.tsx`)에 있다. 모든 화면이 지나간다.
+그래서 껐을 때는 **훅을 하나도 부르지 않는 껍데기**로 갈아 끼웠다 — 옛 배선은
+같은 파일 안 `EggBootLive` 로 살아 있다. `app/layout.tsx` 는 **한 줄도 안 고쳤다.**
+
+## 정한 것 ③ — 게시판은 **레이아웃 한 곳**에서 닫는다
+
+`/board/**` 하위 경로(목록 · 글 상세 · 글쓰기 · 수정 · 삭제)가 **전부**
+`app/board/layout.tsx` 를 지난다. 거기서 `children` 을 안 그리면 어느 경로로도
+글 목록이 안 나가고 **글쓰기·댓글·추천 폼이 화면에 뜨지 않는다.**
+페이지마다 조건을 뿌리면 새 경로가 생길 때 빠진다 — 리그의 준비중 처리(D-178)와 같은 방식이다.
+
+하위 페이지가 전부 `'use client'` 라, 렌더에 안 들어가면 그 안의 `useQuery` 도 안 돈다.
+
+```
+남는다  `/board/**` 라우트 파일 5개 · `/api/boards/**` · `/api/comments/**`
+남는다  `packages/ui` 게시판 컴포넌트와 export 전부
+남는다  옛 레이아웃 → `app/board/BoardLayoutLegacy.tsx` (파일명이 `layout.tsx` 가 아니라 라우팅 안 됨)
+바뀜    `/board/page.tsx` 가 `redirect('/board/free')` 를 멈췄다
+        `redirect()` 가 레이아웃보다 먼저 터져서, 두면 준비중이 뜨기 전에 튕겨 나간다
+```
+
+**GNB 는 안 고쳤다.** `PRIMARY_NAV` 의 `게시판`(`/board`)은 그대로 눌리고, 누르면
+준비중 화면이 뜬다. 링크를 빼면 「사라졌다」로 읽히는데 **없어진 게 아니라 아직 안 연 것**이다.
+
+**날짜를 적지 않았다.** 언제 열리는지 정해진 것이 없다 (`CLAUDE.md` 3장 7번).
+
+## 정한 것 ④ — 메인의 인기게시글도 뺐다
+
+목록이 `/board/hot/{id}` 로 들어가는데 그 문이 잠겼다. 눌러도 「준비중」만 뜨는
+제목 목록은 **막다른 길**이다. 목록만 있고 못 여는 것이 없는 것보다 나쁘다.
+`HotPostList` 컴포넌트와 export 는 그대로 있다.
+
+윗머리 아래를 가르던 `<hr>` 도 같이 뺐다 — 가를 것이 없는데 선만 남으면 아래가
+잘려 보인다 (`CLAUDE.md` 4장의 광고 처리와 같은 원칙: **빈자리를 남기지 않는다**).
+
+## 메인에서 없앤 요청
+
+```
+GET /eggs/broken                    알 (전역 EggBoot)
+GET /me/link                        알 (전역 EggBoot)
+GET /players/{id} · /clans/{slug}   알 (로그인 + 연동돼 있을 때만 나가던 것)
+GET /leagues/supply/clans           알 모음집 — **커서를 끝까지 따라간다 (최대 15장)**
+GET /leagues/nolink/clans           〃
+GET /boards?category=hot            인기게시글
+```
+
+`leagueClans` 두 개가 특히 컸다. 모음집은 «클랜 전부» 를 그리는 화면이라
+`useLeagueEggs` 가 다음 장이 없을 때까지 스스로 따라갔다 — **메인을 열 때마다**.
+
+## 아직 안 한 것 `[미확인]`
+
+- **글쓰기·댓글·추천 API 를 서버에서 막지는 않았다.** 화면에서는 어느 경로로도
+  폼에 닿을 수 없지만, `POST /api/boards` 등을 **직접 부르면 여전히 글이 써진다.**
+  UI 만 막은 상태다. 운영에 열기 전에 라우트 쪽 차단을 넣는 편이 안전하다.
+- 관리자 알 화면(`/admin/eggs`)은 **남겼다.** 사유는 아래.
+
+## 관리자 알 화면을 남긴 이유
+
+사용자의 「버려」는 **유저에게 보이는 것**을 두고 한 말이다. `/admin/eggs` 는
+관리자만 열 수 있고(비로그인 403), **보존한 `EggBreak` 데이터에 닿는 유일한 창구**다.
+이것까지 빼면 「데이터는 남겼다」가 말뿐이 된다 (`CLAUDE.md` 10-4).
+지금은 알이 꺼져 있어 거기서 깨도 화면에 아무 변화가 없다 — **무해하다.**
+`AdminShell` 의 `알` 탭도 그대로 뒀다.
+
+---
+
+## D-253
+
+# 클랜 설정은 **마스터**가 고친다 — 증명은 **인게임 스크린샷 1장 + 사람의 심사** (2026-09-01)
+
+사용자 지시 원문.
+
+```
+"클랜설정은 마스터한테 권한을 준다 마스터 인증하기 를 누르면 관리자 페이지에서
+ 내가 직접 심사하고 승인 거부 결정한다 인증하기 방법은 그냥 마스터 계정으로 접속한
+ 인게임 사진 하나 첨부하라고 하면 끝이다."
+```
+
+## 무엇이 열렸나 — `[미확인]` 하나가 닫혔다
+
+`lib/server/ownership.ts` 의 `requireClanOwner` 는 **운영자만** 통과시키고 있었다.
+그 자리의 옛 주석은 이렇게 적고 있었다.
+
+> 이것은 확정된 규칙이 아니라 **잠금**이다 `[미확인]`.
+> 클랜 설정을 누가 고쳐야 하는지는 사용자가 아직 말하지 않았다.
+> 후보는 셋이다 — 클랜 마스터만 / 인증된 클랜원 아무나 / 운영자만.
+
+사용자가 답했다. **클랜 마스터만**이다. 잠금이 규칙이 됐다.
+
+## 정한 것 ① — 자동 판정을 만들지 않는다. **사람이 사진을 본다**
+
+넥슨 Open API 는 「이 계정이 그 클랜의 마스터인가」를 알려 주지 않는다.
+`user/basic` 이 주는 것은 클랜 **이름**뿐이고, 마스터인지 클랜원인지 구분하지 않는다.
+
+그래서 선수 「칭호 인증」(D-228 계열)과 **결이 다르다.**
+
+```
+칭호 인증    넥슨이 칭호를 그대로 준다        → 기계가 판정한다
+마스터 인증   넥슨이 마스터 여부를 안 준다      → 사람이 사진을 보고 판정한다
+```
+
+`PlayerLinkClaim`(D-121)과 같은 태도다 — **확인할 수 없는 것을 확인했다고 하지 않는다.**
+그럴듯한 자동 절차를 만들어 「인증됨」이라고 표시하면 없는 보증을 파는 셈이다.
+
+## 정한 것 ② — 사진은 **DB 에 바이트로 넣는다**
+
+오브젝트 스토리지가 아직 없다 (`CLAUDE.md` 8장 「Phase 7에서 남긴 숙제」).
+그리고 **기존 업로드 경로는 운영에서 동작하지 않는다** — `/api/uploads` 는
+`public/uploads/` 에 파일로 쓰는데, 서버리스 파일시스템이 읽기 전용이라
+스스로 503 을 돌려주도록 막아 두었다 (D-147).
+
+즉 **지금 운영에서 쓸 수 있는 업로드 경로가 없다.** 그래서 가장 작은 해법을 골랐다.
+
+```
+ClanMasterClaimImage  claimId(PK) · mimeType · byteSize · data(BYTEA) · createdAt
+상한 3MB · PNG · JPG · WEBP 만
+```
+
+- **왜 표를 나눴나** — 같은 표에 두면 `findMany()` 한 번이 수십 MB 를 끌어온다.
+  Prisma 는 관계를 기본으로 따라가지 않으므로, **표를 나누는 것만으로 그 실수가
+  구조적으로 불가능해진다.** 목록 응답에는 경로(`image_url`)와 크기만 실린다
+- **왜 3MB 인가** `[미확인]` — 원본에 기준이 없다. 1080p 스크린샷 한 장이 넉넉히 들어가고,
+  DB 한 줄이 감당할 만한 크기다. 기존 업로드(5MB)보다 작게 잡았다
+- 스토리지가 붙으면 **이 표를 비우고 URL 만 남기면 된다**
+
+## 정한 것 ③ — 계약 안에 둔다. 사진은 **data URL** 로 받는다
+
+`apiSend` 는 JSON 만 보낸다. 멀티파트로 가면 계약(`packages/contract`) 밖으로 나가고
+화면 · MSW · `pnpm compare` 가 전부 예외를 하나씩 갖게 된다.
+base64 는 33% 부풀지만 3MB 상한이면 문제되지 않는다. **계약 안에 두는 쪽을 골랐다.**
+
+형식 · 크기 판정은 계약의 순수함수 `parseImageDataUrl` 하나가 한다.
+**화면과 서버가 같은 규칙, 같은 문구를 쓴다** — 3MB 를 보내고 나서 거절당하지 않는다.
+
+## 정한 것 ④ — 승인된 줄이 곧 권한이다. **되돌릴 때도 지우지 않는다**
+
+별도의 `ClanMasterGrant` 표를 만들지 않았다. `ClanMasterClaim.status = 'approved'`
+한 줄이 권한이고, `requireClanOwner` 가 그것만 본다.
+
+되돌리기는 `status = 'revoked'` 다. **행을 지우지 않는다** — 지우면 나중에
+«왜 이 사람에게 권한이 있었지» 를 설명할 수 없다. `revoked` 는 승인됐던 **흔적**이지
+권한이 아니다 (`grantsClanMaster` 가 `approved` 하나만 참이다).
+
+## 정한 것 ⑤ — **클랜 하나에 마스터는 하나.** 최종 보증은 DB 다
+
+```sql
+CREATE UNIQUE INDEX "ClanMasterClaim_approved_clan_key"
+  ON "ClanMasterClaim" ("clanId") WHERE "status" = 'approved';
+```
+
+승인은 사람이 누르는 판정이라 실수할 수 있다. 두 관리자가 동시에 서로 다른 신청을
+승인하면 **애플리케이션 검사만으로는 둘 다 통과한다.** 부분 유니크 인덱스가 한쪽을
+떨어뜨리고, 그 실패를 삼키지 않고 그대로 사유로 돌려준다
+(*"그 사이 다른 회원이 이 클랜의 마스터로 승인됐습니다"*).
+
+`TitleChallenge` 가 `ouid` 에 같은 장치를 쓴다. 같은 이유다.
+
+## 정한 것 ⑥ — 옛 경로를 남긴다 (`CLAUDE.md` 10-4)
+
+새 규칙이 **기본값**이다. 그래도 2026-09-01 이전 동작(운영자만)을 지우지 않았다.
+
+```
+SACLOUD_CLAN_OWNER_ADMIN_ONLY=1   →  운영자만 통과. 배포 없이 한 칸으로 잠근다
+```
+
+심사가 잘못 나가거나 인증 표에 문제가 생겼을 때 **되돌릴 자리**가 있어야 한다.
+
+## 켜지 않은 다른 후보 `[미확인]`
+
+`Clan.masterPlayerId` 와 `UserPlayerLink.playerId` 가 같으면 자동으로 통과시키는 길이 있다.
+**켜지 않았다.**
+
+- `masterPlayerId` 는 수집으로 채워진 값이라 **출처가 우리 판정이 아니다**
+- 사용자가 정한 절차는 「사진을 내고 사람이 심사」다. 그 옆에 다른 문을 몰래 내지 않는다
+
+필요해지면 `requireClanOwner` 한 곳에 블록 하나를 더하면 된다. 자리는 열어 두었다.
+
+## 클랜 알과의 관계
+
+승인하면 `EggBreak(targetKind='clan', targetId=slug, reason='master')` 를 만든다 —
+클랜 알은 「클랜마스터 인증」으로 깨진다는 알 사양 3장 그대로다.
+**이미 깨져 있으면 건드리지 않는다** (D-222) — `reason='admin'`(시험) 흔적을 덮으면
+나중에 «이건 왜 깨져 있지» 를 알 수 없게 된다.
+
+> 지금 알 시스템은 화면에서 꺼져 있다 (D-252 · `EGG_SYSTEM_ENABLED = false`).
+> 그래도 **기록은 남긴다.** 다시 켜질 때 근거가 그대로 있어야 한다.
+
+## 만든 것
+
+| 무엇 | 어디 |
+|---|---|
+| 계약 · 순수 규칙 | `packages/contract/src/entities/clanMasterClaim.ts` |
+| 엔드포인트 3개 | `packages/contract/src/endpoints.ts` (`clanMasterClaim*`) |
+| Mock 핸들러 | `packages/mock/src/handlers.ts` — **통과시키지 않는다.** `available: false` |
+| 스키마 | `packages/db/prisma/schema.prisma` — `ClanMasterClaim` · `ClanMasterClaimImage` |
+| 마이그레이션 (**미적용**) | `packages/db/prisma/migrations/20260901200000_clan_master_claim/` |
+| 판정 · 저장 · 심사 | `apps/web/lib/server/queries/clanMasterClaim.ts` |
+| 소유 관문 | `apps/web/lib/server/ownership.ts` — `requireClanOwner` |
+| 신청 API | `apps/web/app/api/clans/[clanSlug]/master-claim/{route.ts,image/route.ts}` |
+| 심사 API | `apps/web/app/api/admin/clan-master-claims/**` |
+| 화면 (신청) | `apps/web/app/clan/[clanSlug]/master/page.tsx` |
+| 화면 (심사) | `apps/web/app/admin/clan-master-claims/page.tsx` |
+
+사진을 내려 주는 두 경로는 **계약에 없다.** 응답이 JSON 이 아니라 바이트라
+`apiResponse(...)` 로 감쌀 수 없다. 화면은 `image_url` 을 `<img src>` 에 그대로 물린다.
+
+## 남은 `[미확인]`
+
+1. **심사에 얼마나 걸리는가.** 사람이 하는 일이라 우리가 정할 수 없다.
+   그래서 화면에 **「보통 N일 걸립니다」 를 쓰지 않았다** — 재보지 않은 것을 적지 않는다
+2. **한 사람이 여러 클랜의 마스터가 될 수 있는가.** 지금은 막지 않았다.
+   현실에서는 한 명이 한 클랜이지만, 우리가 확인할 수 없으므로 제약을 지어내지 않았다
+3. **어떤 화면을 찍어야 마스터인 것이 보이는가.** 게임 안 화면을 우리가 못 봤다.
+   그래서 화면 안내를 *"마스터인 것이 보이는 화면"* 이라고만 적었다.
+   실제 심사를 몇 건 해 보고 나면 더 정확히 적을 수 있다
+4. **사진 보관 기간.** 지금은 지우지 않는다. 개인정보 보관 정책이 정해지면 함께 정한다
+
+---
+
+## D-254 — **병영수첩을 붙여 넣으면 선수가 뜬다.** 주소 형식이 관측됐다 (2026-09-01)
+
+### 사용자 지시
+
+> "병영수첩 붙여넣었을때도 선수정보가 뜨게해줘."
+
+근거: `packages/contract/src/barracksUrl.ts` · `packages/contract/src/searchInput.ts` ·
+`apps/web/lib/server/queries/search.ts` · `packages/mock/src/store.ts` ·
+`packages/ui/src/home/SearchBar.tsx` · `apps/web/app/page.tsx` ·
+`apps/web/tests/barracksUrl.test.ts` · `apps/worker/src/dev/barracksUsnProbe.ts`
+
+### 1. 선수 프로필 주소 형식 — **`[미확인]` 이 풀렸다**
+
+D-162 는 "선수 주소의 정확한 경로는 관측하지 못했다" 로 남아 있었다.
+**실물이 저장소 안에 있었다.** 새로 조사한 게 아니라 우리가 이미 받아 둔 것이다.
+
+```
+https://barracks.sa.nexon.com/D9EBC75CCBD60C12SA/match
+                              └──── str_usn ────┘ └ 화면 이름
+```
+
+| 근거 | 무엇이 적혀 있나 |
+|---|---|
+| `docs/session-ledger/04c10ca2.md` (08-29 02:23) | 사용자가 포지션 정답 라벨로 이 주소 **23개**를 그대로 붙여 줬다 |
+| `docs/DECISIONS.md` D-221 | `str_usn D9EBC75CCBD60C12SA = user_nexon_sn 470379822` 실측 |
+| `data/barracks/position-labels.json` | *"barracksId 는 주소 조각(16진+SA)이고 BattleLog·경기목록 API 가 그대로 이 값을 키로 받는다(실측)"* |
+
+실물 24개가 **전부** `16진 16자리 + SA` 였다. 그래서 그 모양만 계정 번호로 본다.
+`SA` 꼬리표의 뜻은 여전히 **[미확인]** 이다 — 모양만 쓰고 의미를 지어내지 않는다.
+
+### 2. 무엇이 안 되고 있었나 (운영 실측 2026-09-01)
+
+| 붙여넣은 것 | 전 | 후 |
+|---|---|---|
+| `https://barracks.sa.nexon.com/{str_usn}/match` | ✗ 404 | ✓ (다리가 있으면) |
+| `barracks.sa.nexon.com/{str_usn}/match` (스킴 없음) | ✗ 404 | ✓ |
+| `{str_usn}` 만 (`D596137C144C183CSA`) | ✗ 404 | ✓ |
+| 소문자 `d596137c144c183csa` | ✗ 404 | ✓ |
+| `https://barracks.sa.nexon.com/record/{닉}` | ✓ (D-162) | ✓ |
+| ` 닉네임 ` (앞뒤 공백) | **✗ 404** | ✓ |
+| `https://barracks.sa.nexon.com/clan/{slug}` (클랜 검색) | **✗ 404** | ✓ |
+
+**앞뒤 공백 404 는 붙여넣기에서만 터지는 종류의 결함이다.** 손으로 치면 안 붙고
+복사하면 붙는다. `findPlayerByName` 이 받은 글자를 그대로 `equals` 에 넣고 있었다.
+
+클랜 쪽은 규칙이 **`leagueAdmin.ts` 안에만** 있었다 — 리그 관리 화면에서는 되고
+통합검색에서는 안 됐다. 규칙을 `@sacloud/contract` 로 옮겨 한 곳에서 쓴다.
+
+### 3. `str_usn` → 우리 선수 — **계산으로 갈 수 없다. 저장된 짝을 쓴다**
+
+`str_usn` 은 암호화된 8바이트로 보인다. 짝 11개로 확인했다 —
+상·하위 32비트, XOR, 어떤 선형 관계도 `user_nexon_sn` 을 만들지 않는다.
+**그래서 표를 거친다.** 순서는 둘이다.
+
+```
+① NexonIdentity.barracksUsn → playerId    제자리다 (D-221 이 이 칸을 만들었다)
+                                          되돌려확인까지 끝난 값만 들어간다
+                                          ⚠ 운영 실측 0행. 지금은 아무것도 못 준다
+② PlayerPositionProfile.userNexonSn → playerId
+                                          부산물이다. 배틀로그 적재가 str_usn 을 키로 쓰면서
+                                          그때 playerId 를 이어 두었다
+                                          ⚠ 운영에서 **지금 답을 주는 유일한 다리**
+```
+
+①을 먼저 보는 이유는 나중에 채워졌을 때 **코드를 다시 고치지 않기 위해서**다.
+
+### 4. 덮는 범위가 좁다 — **숨기지 않는다**
+
+```
+운영 실측 2026-09-01
+  PlayerPositionProfile              517행 (str_usn 꼴 512 · playerId 있는 고유 473)
+  NexonIdentity.barracksUsn 채워진 행  0
+  BarracksClanMember                   0
+  BarracksBattleLogRaw                 0     ← 원문이 운영에 아예 없다
+  공개 선수                        22,141명
+
+  → 병영수첩 주소로 찾아지는 비율  473 / 22,141 = 2.1%
+```
+
+사용자가 준 표본 24개 중 **20개**가 찾아진다. `pom`(D-221 의 그 계정)은 **안 찾아진다** —
+그 계정에 포지션 분포가 없다. 이건 결함이 아니라 **다리가 없는 것**이고,
+없는 선수를 닉네임 추측으로 만들어 내지 않는다 (CLAUDE.md 3-A 8번 · 3장 7번).
+
+**범위를 넓히는 길은 하나다** — 배틀로그 원문(`BarracksBattleLogRaw`)이나
+클랜원 명단(`BarracksClanMember`)을 운영에 적재하면 `str_usn ↔ user_nexon_sn` 짝이
+수만 개 생기고, `Player.sourcePlayerId` 가 곧 `user_nexon_sn` 이므로 바로 이어진다.
+그것은 **쓰기 작업이라 이 작업 범위 밖**이다. 여기서는 길만 적어 둔다.
+
+### 5. 못 찾았을 때 화면이 하는 말 — **예전에는 아무 말도 안 했다**
+
+홈 검색은 실패하면 `catch {}` 로 삼키고 **아무 일도 일어나지 않았다.**
+엔터를 쳐도 화면이 그대로라 사용자는 「없음」과 「사이트가 멈춤」을 구별할 수 없었다.
+세 갈래로 나눠 한 줄을 띄운다 (문구는 `@sacloud/contract` 한 곳에서 온다).
+
+```
+404 아님          지금은 찾을 수 없습니다. 잠시 후 다시 시도해 주세요.
+404 + 주소를 알아봄  병영수첩 주소는 알아봤지만, 그 선수의 기록이 아직 없습니다.
+404 + 못 알아봄     ‘{검색어}’ 로 찾은 결과가 없습니다.
+```
+
+가운데 문구가 중요하다. **2.1% 때문에 이게 흔한 경우**라서다.
+"없다" 가 아니라 **"아직 없다"** 라고 말한다 — 사실이 그렇고, 사용자가 자기 주소를
+의심하며 같은 것을 다시 붙여 넣지 않게 한다.
+
+색은 새로 만들지 않았다. `--color-meta` 한 줄이고 **진홍을 쓰지 않는다** —
+「없음」은 오류가 아니다 (D-204).
+
+### 6. 다듬기 규칙 — 무엇을 지우고 무엇을 남기나
+
+```
+지운다    앞뒤 공백(유니코드 공백 전부) · 폭 없는 문자(U+200B~200D · U+FEFF)
+안 지운다 가운데 공백 · 대소문자 · 전각/반각 · 특수문자
+```
+
+- **가운데 공백을 줄이지 않는다.** 닉네임의 일부일 수 있고, 줄이면 없는 사람을 만든다
+- **전각→반각을 접지 않는다.** 전각 닉이 실제로 있는지 **[미확인]** 이고,
+  접었다가 남이 걸리면 조용히 틀린 결과가 된다
+- 폭 없는 문자만은 지운다. **화면에 안 보여서** 사용자가 원인을 영영 알 수 없다.
+  이건 관측이 아니라 **우리 결정**이다
+
+### 7. 하지 않은 것 — `[미확인]` 이라서
+
+- **숫자 계정 번호(`user_nexon_sn`)를 주소나 검색어로 받는 것.**
+  `Player.sourcePlayerId` 가 곧 그 값이라 이으면 바로 되지만,
+  **그 숫자가 주소에 들어간 모양을 본 적이 없다.** 받으면 숫자 닉네임과 충돌한다
+- **클랜태그가 붙은 문자열(`[클랜]닉네임`)을 떼는 것.** 병영수첩이 그렇게 뱉는 것을
+  관측하지 못했다. 떼는 규칙을 지어내면 `[` 로 시작하는 닉을 못 찾게 된다
+- **`sa.nexon.com` 계열의 다른 경로.** `isBarracksUrl` 은 예전처럼 넓게 받고
+  조각을 전부 시도한다 — 한 형식만 받지 않는다는 D-162 의 태도는 그대로다
+
+### 8. 대조표를 채우는 길 — **로컬에는 재료가 있다** (2026-09-01 후속 조사)
+
+운영에 없을 뿐, **로컬에는 4,350명 분의 다리가 이미 있다.**
+근거: `apps/worker/src/dev/barracksBridgeLocal.ts` (읽기 전용).
+
+```
+로컬 표
+  BarracksClanMember      2,796행   (운영 0)
+  BarracksBattleLogRaw    8,015행   (운영 0)
+  BarracksClanMatchRaw  208,067행   (운영 0)
+
+거기서 나오는 str_usn
+  클랜원 명단에서        2,796
+  배틀로그가 더하는 것   3,285
+  합계 고유             6,081  →  Player 로 이어지는 것 **4,350**
+```
+
+**짝짓기는 숫자로만 한다. 닉네임을 쓰지 않는다.**
+배틀로그 이벤트가 `str_usn` 과 `user_nexon_sn` 을 **한 줄에 같이** 주고
+(`apps/worker/src/jobs/battlelog.ts` 의 `accountOf`), 우리 `Player.sourcePlayerId` 가
+곧 `user_nexon_sn` 이다. 추측할 자리가 없다.
+
+닉네임으로 이었다면 얼마나 위험했는지도 쟀다 — **하지 않기로 한 판단의 근거다.**
+
+```
+관측된 닉 6,054  ·  우리에게 없는 닉 3,459  ·  동명이인이 있는 닉 464
+```
+
+표본 8개 중 4개에서 **관측 닉과 그 계정 주인의 현재 이름이 달랐다**
+(`dugiwg`↔`cutezz` · `햄찟`↔`구루기` · `katarinablu`↔`mlzz` · `페로나`↔`현인S2`).
+닉으로 이었으면 **남에게 붙었을 것이다.** 개인정보 오연결이다 (D-036 의 정신).
+
+#### 운영에 무엇을 밀 것인가 — 셋 중에 고른다
+
+```
+① PlayerPositionProfile 다시 밀기   473 → 약 1,236명   도구가 **이미 있다**
+   scripts/prod-push-profiles.mjs (D-194·D-196·D-199). 로컬 1,280행 중 1,236행에
+   playerId 가 있는데 운영은 473 뿐이다 — **밀기가 밀린 것이다.** 새 코드 0줄
+
+② BarracksClanMember 밀기            +1,786명       작은 push 잡 하나가 필요하다
+   2,796행뿐이라 가볍다
+
+③ 전용 다리 표 (str_usn ↔ playerId)  4,350명        모델 + 마이그레이션 + push 잡
+   배틀로그 원문(180MB)은 운영에 올리지 않고 **집계만** 옮긴다 (①과 같은 방침)
+```
+
+#### ①을 실제로 돌렸다 (2026-09-01 · 팀 승인)
+
+```
+node scripts/prod-push-profiles.mjs            미리보기
+  라운드 집계 8,710줄 · 운영 선수와 이어짐 7,228
+  포지션 판정 1,280줄 · 운영 선수와 이어짐 1,241     ← 예측 1,236 과 일치
+node scripts/prod-push-profiles.mjs --confirm   반영. 실패·연결끊김 없음
+```
+
+**로그가 아니라 운영 DB 를 세어 대조했다** (CLAUDE.md 3-A 6번).
+
+```
+                                    전      후
+PlayerPositionProfile 총 행         517  → 1,280
+  그중 str_usn 형태                 512  → 1,275
+  그중 playerId 이어진 고유         473  → 1,236
+PlayerRoundProfile                2,696  → 8,710
+찾아지는 비율 (공개 선수 22,141)   2.1%  →  5.6%
+```
+
+사용자가 준 그 주소가 살아났다.
+
+```
+https://barracks.sa.nexon.com/D9EBC75CCBD60C12SA/match → SUP-470379822 (pom)
+```
+
+전에 못 찾던 둘도 함께 살아났다 (`BE670A90968922B5SA` → 알렉 ·
+`5680A2E6F8308820SA` → sting~~~). 아직 못 찾는 표본은 `C348189581244C65SA` 하나다.
+
+> ⚠ **DB 까지다. 사이트는 아직이다.** 다리를 건너는 코드(`barracksUrl.ts` · `search.ts`)가
+> 배포되기 전까지 운영 사이트는 그대로 404 다 (반영 직후 실측으로 확인했다).
+> **DB 를 채우는 것과 코드를 내보내는 것은 다른 일이다.**
+
+**`NexonIdentity` 는 이 다리를 담을 수 없다.** `ouid String @unique` 가 **not null** 이라
+ouid 없는 병영수첩 계정을 넣으려면 ouid 를 지어내야 한다. 지어내지 않는다.
+스키마에 `barracksUsn` 칸이 있는 것은 *ouid 를 아는 계정에 병영 정보를 덧붙이는* 용도다.
+
+> **사용자가 보낸 그 주소(`D9EBC75CCBD60C12SA` · `pom`)는 ①만으로 살아난다.**
+> 로컬 `PlayerPositionProfile` 에 `playerId = SUP-470379822` 로 이미 이어져 있다.
+> 즉 **가장 싸고 가장 안전한 ①이 사용자의 시험을 통과시킨다.**
+
+셋 다 **운영 쓰기**라 이 작업 범위 밖이다. 여기서는 숫자와 순서만 남긴다.
+
+### 검증
+
+```
+단위 테스트   apps/web/tests/barracksUrl.test.ts  24/24 통과
+운영 대조     node scripts/prod-run.mjs barracks-usn-search  (읽기 전용)
+              선수 11개 입력 중 10개 · 클랜 4개 입력 전부 통과
+              (못 찾은 하나가 `pom` — 4장의 다리 없음)
+```
+
+> ⚠ **실브라우저 렌더 검수는 하지 못했다** (CLAUDE.md 3장 10번).
+> 이 환경에서 개발 서버가 포트를 못 연다 (`listen EFAULT` — 주소를 바꿔도 같다).
+> 새 문구 한 줄은 이미 쓰이던 `CLAN_SEARCH_HINT` 줄과 **같은 마크업·같은 토큰**이라
+> 새로 지어낸 색·간격·서체는 없지만, **눈으로 본 것은 아니다.**
+
+---
+
+## D-255 — IPL 라인업의 유일한 출처는 **배틀로그**다. 그리고 3rd.supply 도 거기서 가져간다 (2026-09-01)
+
+> 제목이 처음에는 *"그리고 60일 뒤 사라진다"* 였다. **그 절반은 틀렸고 같은 날 철회했다**
+> (2장의 철회 박스). 지운 대신 제목을 고치고 옛 제목을 여기 남긴다 (`CLAUDE.md` 10-4).
+
+사용자 지시: *"IPL제발 좀 채워라 언제채우냐 도대체 / IPL 개인랭킹 왜 안만드는거야
+내가 7/1부터 오늘까지의 데이터 가져오라고 했잖아 클랜 기록도 그렇고 db있다더니 거짓말이었어..?"*
+
+**DB 는 거짓말이 아니었다.** IPL 경기 24,662건은 실제로 있었다. 없는 것은 **누가 뛰었는지**였다.
+
+### 1. 매치목록 원문에는 선수 칸이 **0개**다 (전수 확인)
+
+`BarracksClanMatchRaw.payload` 의 키를 전수로 뽑았다 — **44개, 선수 관련 칸 0개.**
+
+```
+map_no plimit clan_no is_clan map_name match_key team_name clan_mark1 clan_mark2
+match_name match_time match_type result_wdl match_title red_map_ban red_win_cnt
+result_rank blue_map_ban blue_win_cnt clan_mark1_1..3 clan_mark2_1..3 round_result
+red_clan_name result_rank_t blue_clan_name red_clan_mark1/2 red_weapon_ban(list)
+blue_clan_mark1/2 blue_weapon_ban(list) is_broken_table match_time_date
+team_last_round(_text) match_detail_type match_table_first_round match_table_last_round
+```
+
+`jobs/iplProject.ts` 가 `MatchPlayerStat` 을 안 만든 것은 게을러서가 아니라 **재료가 없어서**다.
+
+### 2. 라인업은 `GetBattleLogClan` 에만 있다
+
+> ### ⚠ 철회 (2026-09-01 저녁) — 아래 「60일 보관」과 거기서 나온 시급성 판단은 **틀렸다**
+>
+> 사용자가 병영수첩 화면을 직접 찍어 보냈다.
+> ```
+> https://barracks.sa.nexon.com/D9EBC75CCBD60C12SA/match
+> 경기 2026.05.28 16:44 — 화면에 「96일 전」이라고 적혀 있다
+> 배틀로그 정상 표시 (킬맵 · 라운드별 무기 · 킬 12 / 데스 13 / 데미지 2192 / 헤드샷 2 / 어시 6)
+> ```
+> **96일 전 배틀로그가 멀쩡히 열린다.** 근거였던 `jjangkangsu` 06-30 의 406 은
+> 보관 만료가 아니라 그 경기만의 사정이었을 것이다(클랜전이 아니었거나 등).
+>
+> 따라서 아래 두 줄을 **철회한다**:
+> - ~~「7/1~7/3분 1,064경기는 이미 사라졌다」~~ → **근거 없음**
+> - ~~「하루 미룰 때마다 약 4,000개의 개인 기록이 영구히 사라진다」~~ → **근거 없음**
+>
+> **확인된 것은 「최소 96일은 남아 있다」뿐이다.** 「무기한」으로 바꿔 적지 마라 —
+> 그 근거도 없다. 상한을 모르는 것이지 없는 것이 아니다. `[미확인]`
+>
+> 시급성 판단이 바뀐다. **서두를 이유가 사라졌다. 품질을 우선한다.**
+> 아래 표의 「60일 창 안/밖」 구분도 같은 이유로 의미가 없다 — 22,977건 전부가 대상이다.
+> 옛 서술은 지우지 않고 그대로 둔다 (`CLAUDE.md` 10-4).
+
+<details><summary>철회된 원문 (2026-09-01 낮)</summary>
+
+#### 라인업은 `GetBattleLogClan` 에만 있다 — 그리고 **약 60일 뒤 사라진다**
+
+```
+POST /api/BattleLog/GetBattleLogClan/{matchKey}/{clanNo}     경기당 1회 (D-218)
+채운다   참가자 10명(str_usn · user_nexon_sn · user_nick) · kill · death · weapon · side
+못 채운다 assist · damage · headshot · dropout · mvp   → 전부 null (D-034 와 같은 원칙)
+```
+
+보관 기간이 **매치목록과 다르다** (`docs/MIGRATION_GAPS.md` 8-1):
+
+```
+매치목록 GetClanMatchList   6개월 이상   급하지 않다
+배틀로그 GetBattleLogClan   약 60일      매일 하루치씩 영구히 사라진다
+```
+
+**이것이 수집 우선순위를 정한다.** 2026-09-01 로컬 실측:
+
+| | |
+|---|---:|
+| nolink Match | 24,662 |
+| 배틀로그를 이미 가진 경기 | 1,685 |
+| 아직 안 받은 경기 | 22,977 |
+| ├ 60일 창 안 (지금 받을 수 있다) | 21,913 |
+| └ 60일 창 밖 (이미 사라졌다) | 1,064 |
+
+IPL 하루치가 330~515경기다. **하루 미룰 때마다 약 4,000개의 개인 기록이 영구히 사라진다.**
+
+</details>
+
+**지금 유효한 것만 다시 적는다.**
+
+```
+POST /api/BattleLog/GetBattleLogClan/{matchKey}/{clanNo}     경기당 1회 (D-218)
+채운다   참가자 10명(str_usn · user_nexon_sn · user_nick) · kill · death · weapon · side
+못 채운다 assist · damage · headshot · dropout · mvp
+보관     **최소 96일**은 남아 있다 (2026-05-28 경기 실측). 상한은 모른다 `[미확인]`
+대상     아직 안 받은 IPL 경기 22,977건 전부 (24,662 − 이미 받은 1,685)
+```
+
+`teamList` 를 통째로 열어 확인했다 — 선수별 집계가 **없다**. 칸이 네 개뿐이다.
+```json
+[{"clan_no":"090404000661","team_no":"0","clan_name":null,"team_name":null},
+ {"clan_no":"091224000022","team_no":"1","clan_name":null,"team_name":null}]
+```
+`battleLog` 이벤트 32칸에도 `damage`·`headshot`·`assist` 는 없다.
+**이 엔드포인트에 없는 것이 맞다.** 다만 병영수첩 **어딘가에는 있다** — 아래 5장을 보라.
+
+### 3. IPL 은 자동 수집 파이프라인 **밖**이다 — 그래서 아무도 못 알아챘다
+
+2026-08-30 이후 IPL 이 한 건도 안 들어왔는데 알람이 울리지 않았다. 이유는 **잡이 고장 난 것이
+아니라 잡이 없다는 것**이다.
+
+```
+.github/workflows/supply-incremental.yml:216   LEAGUES: 'supply,daerule,sanply'   ← nolink 없음
+jobs/syncFreshness.ts (옛 코드)                where = { origin: '3rd.supply' }   ← IPL 은 nexon_barracks
+ImportJob / ImportFailure / NexonPollRun / NexonPollState   IPL 흔적 0건
+BarracksClanMatchRaw 최대 matchKey  260831051800 = nolink Match 최대 startAt
+```
+
+마지막 줄이 결정적이다 — **천장이 사람이 브라우저로 받은 마지막 경기와 초 단위로 같다.**
+병영수첩은 Node 에서 부르면 403 이라 GitHub Actions 에서 돌릴 수 없다. UA 를 위조해 뚫지
+않는다 (`CLAUDE.md` 3-A 5번). **수집은 앞으로도 사람의 로그인된 브라우저가 한다.**
+
+### 4. **3rd.supply 도 병영수첩을 쓴다** — 이 경로가 정답인 결정적 근거 (2026-09-01 저녁)
+
+3rd.supply 스냅샷에는 양 팀 10명 라인업이 통째로 있다 (D-129). 넥슨 Open API 로는
+**불가능한 일**이다 (D-044). 그러면 셋 중 하나다 — ⓐ 병영수첩을 쓴다 ⓑ 제휴 키가 있다
+ⓒ 제3의 경로. 우리가 이미 받아 둔 원본(`packages/db/data/supply-mirror-*.details.jsonl`)의
+필드를 열어 **ⓐ로 확정했다.** 서로 독립된 증거 넷이 같은 곳을 가리킨다.
+
+**① `player.id` 가 병영수첩 `user_nexon_sn` 바로 그 값이다**
+
+```
+3rd.supply                              병영수첩 GetClanUserList (우리가 받아 둔 명단)
+player.id 1275642145 · name "mizz"   →  user_nexon_sn 1275642145 · user_nick "mizz"  (fdd8·amaryllis)
+player.id 1493768849                 →  user_nexon_sn 1493768849                      (uava01·vuvuzela)
+player.id  621363637 · name "pilbok" →  user_nexon_sn  621363637                      (EVOA·idylic)
+```
+숫자가 같고 닉이 같다.
+
+**② `clan.slug` 가 병영수첩 클랜 slug 다**
+
+`"clan":{"id":1984,"name":"melody","slug":"EVOA"}` — `EVOA` 는 `docs/IPL_SPEC.md` 7-A 표의
+병영수첩 slug 그대로이고, 이름이 `melody` 인 것까지 위 6번(개명 전 이름)과 맞는다.
+`zxcvddr2` · `footmania2` · `sorentolove` · `iramorszz` 도 같은 꼴이다.
+
+**③ `_matchId` 가 병영수첩 `match_key` 다**
+
+```
+3rd.supply  "_matchId":"260825222247125001"   "start_at":"2026-08-25 22:22:47"
+우리 IPL    "match_key":"260831000120124001"
+```
+같은 18자리 형식(`YYMMDDHHMMSS`+3+3)이고, 앞 12자리가 `start_at` 과 **초 단위로 일치**한다.
+「앞 12자리가 경기 시각」은 우리가 병영수첩에서 실측한 규칙이다 (D-181).
+**그 규칙으로 3rd.supply 의 id 가 디코드된다는 것 자체가 증명이다.**
+
+**④ 넥슨이 절대 주지 않는 칸들이 들어 있다**
+
+`weapon`(0/1) · `dropout` · `mvp_player_id` · `play_time` · `end_at` — **D-034 가
+「넥슨은 주지 않는다」고 못 박은 바로 그 목록**이다. 그리고 `red` 5명 · `blue` 5명 =
+**10명이 다 있다** — D-044 가 불가능하다고 확정한 것이다.
+
+> 필드 **이름**만 보면 넥슨(`kill`/`death`/`headshot`/`damage`/`assist`)과 겹쳐 헷갈릴 수 있다.
+> 겹치는 이름은 **게임 용어라 어디서 오든 같다.** 갈라내는 것은 이름이 아니라
+> ① 식별자 **값** ② 넥슨이 안 주는 칸의 존재 ③ 10명이다. 셋 다 병영수첩을 가리킨다.
+
+**따라서 ⓑ 제휴 키 · ⓒ 제3의 경로는 기각한다.**
+
+```
+3rd.supply = 병영수첩 원문 + 자체 래더(rating · rating_update)
+우리보다 특별한 권한을 가진 게 아니다. 같은 문으로 들어가서 방을 하나 더 열었을 뿐이다
+```
+
+이것이 이 D 의 결론을 받친다 — **병영수첩 경로는 우회가 아니라 정공법이다.**
+원본과 같은 출처이고, 3rd.supply 미러를 나중에 끊어도 **정보가 줄지 않는다**
+(빠지는 것은 `rating` 뿐인데 그건 3rd.supply 의 값이지 우리 값이 아니다 · 3-A 2번).
+
+### 5. 우리가 아직 안 연 방 — **경기 상세 엔드포인트** `[미확인]`
+
+3rd.supply 는 `assist` · `damage` · `headshot` 을 갖고 있고, 사용자가 찍어 보낸 병영수첩
+화면에도 그 값이 있다(데미지 2192 · 헤드샷 2 · 어시 6). 그런데 `GetBattleLogClan` 에는 없다.
+**같은 출처인데 우리만 없다는 뜻이다 — 우리가 그 엔드포인트를 아직 안 부른다.**
+
+우리가 지금 부르는 병영수첩 엔드포인트는 다섯 개다.
+```
+/api/BattleLog/GetBattleLog        선수 단위 로그
+/api/BattleLog/GetBattleLogClan    클랜 단위 로그   ← 지금 쓰는 것. 좌표·킬·데스·무기
+/api/ClanHome/GetClanMatchList     클랜전 목록
+/api/ClanHome/GetClanUserList      클랜원 명단
+/api/Match/GetMatchList            선수 경기 목록 (POST {user_nexon_sn:"<16진>SA", mode_flag:"ALL"})
+```
+「경기 상세(선수별 집계)」는 이 목록에 **없다.** 이름은 **모른다 — 지어내지 않는다.**
+`barracks.sa.nexon.com/<str_usn>/match` 에서 경기를 펼칠 때 브라우저 Network 탭을 보면
+1분에 확정된다. 그것을 받으면 지금 `null` 인 다섯 칸(`assist`·`damage`·`headshot`·`dropout`·`mvp`)
+이 메워지고 **3rd.supply 와 완전히 같은 값**을 갖게 된다.
+
+관찰 하나 — 3rd.supply 원본에서 `dropout:true` 인 선수는 `damage`·`headshot`·`assist` 가
+**전부 0** 이다(실측 한 경기 10명 중 4명). 그 0 이 「실제 0」인지 「모름」인지는 `[미확인]` 이고,
+그 엔드포인트를 받아 보면 갈린다.
+
+### 정한 것
+
+1. **배틀로그 → `MatchPlayerStat` 잡을 새로 만든다** — `jobs/battlelogLineup.ts`.
+   판정은 `lib/battlelogLineup.ts`(순수 함수)가 하고 잡은 DB 입출력만 한다.
+   **10명이 다 확인된 경기만 넣는다** (`roundState.ts` 의 `isRestorable` 과 같은 기준).
+   9명으로 넣으면 그 경기의 승률·평균킬 분모가 조용히 틀어진다.
+2. **선수의 키는 계정(`str_usn`)이다.** 닉으로 합치지 않는다 (위장닉 · D-221).
+   `NexonIdentity.barracksUsn` → `Player.sourcePlayerId='BRK-<str_usn>'` → 새로 만들기 순이다.
+   접두어 `BRK-` 는 그 칸이 원래 3rd.supply 숫자 ID 를 담기 때문에 붙였다 (3-A 3번).
+3. **`participantRole` 은 정하지 않는다.** `BarracksClanMember` 는 2026-08-31 관측 한 번뿐이라
+   7월 경기에 적용하면 이적한 선수가 틀린다. 용병 판정은 아직 못 한다 `[미확인]`.
+4. **경기 당시 클랜은 「뛴 팀」으로 채운다** — `matchTimeClanSource='barracks-battlelog'` ·
+   `confidence='medium'`. 용병이면 원소속과 다를 수 있다는 뜻을 그 값이 담고 있다.
+5. **클랜번호는 매치목록 원문으로 푼다** — `jobs/iplClanNumber.ts`. 요청을 한 건도 안 보낸다.
+   옛 `clan-number`(참가 선수 대조)는 IPL 에서 **순환**이다 — 자기가 만들려는 `MatchPlayerStat`
+   을 자기가 요구한다. `(subject, payload.clan_no)` 가 39곳 전부 1:1 이라 그것으로 끊는다.
+   **옛 잡은 지우지 않았다** (`CLAUDE.md` 10-4).
+6. **클랜번호 표는 리그 범위로 읽는다.** 같은 병영수첩 클랜이 우리 DB 에 두 행일 수 있다 —
+   `EVOA` 가 열산의 `melody` 와 IPL 의 `idylic` 로 갈라져 있다(그 사이에 개명했다).
+   `BarracksClanNumber.clanNo` 는 기본키라 한 번호에 한 클랜만 담긴다. 그 표만 믿으면
+   IPL 배틀로그의 팀번호가 열산 클랜으로 풀려 경기가 통째로 버려진다.
+7. **`SEASON0_ORIGINS` 에 `nexon_barracks` 를 더한다.** 없어서 IPL 이 시즌0 집계에서
+   통째로 빠져 있었다 (`season0 --leagues nolink` 가 선수 0명·클랜 0개를 돌려줬다).
+   화면의 래더 판정(`apps/web/.../ladderScope.ts`)이 **같은 상수를 읽으므로** 한쪽만
+   고쳐질 수 없다. 옛 목록은 `SEASON0_ORIGINS_V1` 에 남겼다.
+8. **`rate` 에 `--origins` 를 뚫되 가드는 풀지 않는다.** `matchScope` 는 여전히 `--dry-run`
+   에서만 쓸 수 있다 (`rate.ts:267`). 받아 적는 경로는 `season0` → `season0Apply` 다 —
+   백업을 뜨고 불변식(통합 = 기본 + 스나 + 라플)을 확인한 뒤 쓴다.
+9. **`sync-freshness` 는 IPL 을 「보여 주기만」 한다.** 경기 간격은 쟀다
+   (2026-06-30~08-30 · 구간 24,661개 · 중앙 0.02h · p90 0.11h · 최대 9.93h · 12h 초과 **0건**).
+   숫자만 보면 `sanply` 와 같은 12h 가 나오지만 **그 값을 걸면 안 된다** — IPL 은 자동 수집이
+   없어서 원본이 조용해서가 아니라 **사람이 아직 안 받아서** 빨개진다. 그러면 알람이 무뎌지고
+   그것은 D-224 에서 이미 겪은 실패다. IPL 에 자동 경로가 생기는 날 이 집합에서 빼면 된다.
+   `origin: '3rd.supply'` 하드코딩은 풀었다 — 리그마다 들어오는 경로가 다르다.
+
+### 로컬 실측 (2026-09-01 · 운영에는 쓰지 않았다)
+
+```
+ipl-clan-number --confirm    짝 39 · 주체 39 · 이음 39 · 클랜모름 0 · 충돌 1(EVOA · 위 6번)
+battlelog-lineup --confirm   배틀로그 경기 6,844 · 우리 경기 1,685 · 라인업 가능 1,562 (92.7%)
+                             참가 15,620행 · 선수 1,456명 · 3분 7초
+                             건너뜀 — 우리경기없음 5,159 · 클랜번호모름 121 · 명단미달 2 · 나머지 0
+재실행                       신규 0 · 갱신 15,620 · 선수 신규 0     ← 멱등
+숫자 대조                    경기당 인원 10명 = 1,562경기 (다른 값 0건)
+                             red 7,810 = blue 7,810 · 킬합 124,160 = 데스합 124,160
+                             경기별 킬합≠데스합 위반 0건
+                             라플 12,251 · 스나 3,104 · 무기모름 265
+                             assist/damage/headshot/dropout/mvp 전부 NULL
+season0Apply --leagues nolink --confirm   선수 1,456 · 클랜 39 · 불변식 어긋난 선수 0
+```
+
+`clan_unmapped` 121건의 원인은 **매치목록이 로컬 DB 에 없는 4개 클랜**이다
+(`ckdals2457` · `friendliness1` · `terry9532` · `wweqeqtd123` — `BarracksClanMatchRaw` 의
+distinct subject 가 39곳인데 `docs/IPL_SPEC.md` 7-A 정답표는 43곳이다).
+그 클랜의 매치목록을 다시 받으면 `subject ↔ clan_no` 가 생겨 자동으로 풀린다. **우회하지 않았다.**
+
+### `[미확인]`
+
+- ~~배틀로그 60일 경계의 정확한 날짜~~ → **60일설은 반증됐다** (2026-09-01 저녁 · 위 2장의
+  철회 박스). 2026-05-28 경기(96일 전)가 열린다. 지금 남은 물음은 **보관 상한이 얼마인가** 이고,
+  아는 것은 **「최소 96일」** 뿐이다. **「무기한」으로 바꿔 적지 마라** — 그 근거도 없다
+- **경기 상세 엔드포인트의 이름** (위 5장). `assist`·`damage`·`headshot`·`dropout`·`mvp`
+  다섯 칸이 여기에 달려 있다. 브라우저 Network 탭 한 번이면 끝난다
+- `dropout` 인 선수의 `damage`/`headshot`/`assist` 가 **실제 0 인지 모름인지** (위 5장)
+- 배틀로그가 없는 경기의 응답 모양 — payload 에 `isMatchEmpty` 칸이 있는데 406 인지
+  `isMatchEmpty:true` 인지 갈리지 않았다
+- IPL 개인랭킹에서 **킬뎃을 감출 것인가.** `docs/IPL_SPEC.md` 4장은 IPL 도 「킬데스를 절대
+  노출하지 않는다」로 적혀 있는데 사용자 지시는 "IPL 개인랭킹 왜 안 만드는거야" 다
+- `plimit != 5` 경기(고유 4.02%)의 `MatchPlayerStat` 을 어떻게 다룰지
+- 용병(`participantRole`) 판정 — 위 「정한 것」 3번

@@ -57,6 +57,11 @@ const ALLOWED = {
     writes: false,
     what: '통계(ANALYZE) 갱신 여부 · 플래너가 아는 행 수 vs 실제 · 디스크 여유 · collation · 인덱스 (D-227 후속)',
   },
+  'barracks-usn-search': {
+    file: 'barracksUsnProbe',
+    writes: false,
+    what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
+  },
   'ipl-state': { file: 'iplState', writes: false, what: 'IPL 리그·등록 클랜·경기 수를 읽는다' },
   'ipl-source': { file: 'iplSource', writes: false, what: 'IPL 기록이 어디까지 있는지 센다' },
   'ipl-match': { file: 'iplMatch', writes: false, what: '명단 39곳이 DB 에 있는지 대조한다' },

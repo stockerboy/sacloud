@@ -60,7 +60,9 @@ import {
   buildTodayPerformance,
   formMonthKey,
   formMonthKeys,
+  clanSlugFromBarracksUrl,
   isBarracksUrl,
+  normalizePastedQuery,
   judgeFormTrend,
   dayLabelOf,
   kdRateOrNull,
@@ -359,6 +361,8 @@ const hasPart = (haystack: string, needle: string): boolean => fold(haystack).in
 function findPlayerByBarracksUrl(input: string): PlayerSearchItem | null {
   if (!isBarracksUrl(input)) return null
   for (const ref of playerRefsFromBarracksUrl(input)) {
+    /* Mock 에는 `nexonOuid` 도 `PlayerPositionProfile` 도 없다. 계정 번호(D-254)는
+       여기서 풀 수 없고, **못 찾는 게 맞다** — 가짜로 아무나 붙이지 않는다 */
     if (ref.kind !== 'nickname') continue
     const player = dataset.players.find((entry) => sameName(entry.name, ref.value))
     if (player) return { id: player.id, name: player.name, clan: playerClanSummary(player) }
@@ -367,16 +371,20 @@ function findPlayerByBarracksUrl(input: string): PlayerSearchItem | null {
 }
 
 export function findPlayerByName(name: string): PlayerSearchItem | null {
-  const fromUrl = findPlayerByBarracksUrl(name)
+  /* 붙여넣기에 딸려 온 공백·폭없는문자를 턴다. 실제 API 와 같은 규칙이다 (D-254) */
+  const keyword = normalizePastedQuery(name)
+  if (!keyword) return null
+
+  const fromUrl = findPlayerByBarracksUrl(keyword)
   if (fromUrl) return fromUrl
 
-  const player = dataset.players.find((entry) => sameName(entry.name, name))
+  const player = dataset.players.find((entry) => sameName(entry.name, keyword))
   if (!player) return null
   return { id: player.id, name: player.name, clan: playerClanSummary(player) }
 }
 
 export function searchPlayers(query: string, limit = 10): PlayerSearchItem[] {
-  const keyword = query.trim()
+  const keyword = normalizePastedQuery(query)
   if (!keyword) return []
   /* 주소를 붙여 넣는 중에 부분일치가 끼어들면 방해가 되므로 그 결과만 준다 (D-162) */
   if (isBarracksUrl(keyword)) {
@@ -390,13 +398,31 @@ export function searchPlayers(query: string, limit = 10): PlayerSearchItem[] {
 }
 
 export function findClanByName(name: string): ClanSummary | null {
-  const clan = dataset.clans.find((entry) => sameName(entry.name, name))
+  const keyword = normalizePastedQuery(name)
+  if (!keyword) return null
+
+  /* 병영수첩 클랜 주소를 붙여 넣으면 그 클랜으로 간다 — 실제 API 와 같은 규칙 (D-254) */
+  const slug = clanSlugFromBarracksUrl(keyword)
+  if (slug) {
+    const bySlug = dataset.clans.find((entry) => sameName(entry.slug, slug))
+    return bySlug ? toClanSummary(bySlug) : null
+  }
+
+  const clan = dataset.clans.find((entry) => sameName(entry.name, keyword))
   return clan ? toClanSummary(clan) : null
 }
 
 export function searchClans(query: string, limit = 10): ClanSummary[] {
-  const keyword = query.trim()
+  const keyword = normalizePastedQuery(query)
   if (!keyword) return []
+
+  /* 주소면 그 결과만 준다 (D-254) */
+  const slug = clanSlugFromBarracksUrl(keyword)
+  if (slug) {
+    const bySlug = dataset.clans.find((entry) => sameName(entry.slug, slug))
+    return bySlug ? [toClanSummary(bySlug)] : []
+  }
+
   return dataset.clans
     .filter((entry) => hasPart(entry.name, keyword) || hasPart(entry.slug, keyword))
     .slice(0, limit)
@@ -404,12 +430,14 @@ export function searchClans(query: string, limit = 10): ClanSummary[] {
 }
 
 export function findLeagueByName(name: string): LeagueSummary | null {
-  const league = dataset.leagues.find((entry) => sameName(entry.name, name))
+  const keyword = normalizePastedQuery(name)
+  if (!keyword) return null
+  const league = dataset.leagues.find((entry) => sameName(entry.name, keyword))
   return league ? toLeagueSummary(league) : null
 }
 
 export function searchLeagues(query: string, limit = 10): LeagueSummary[] {
-  const keyword = query.trim()
+  const keyword = normalizePastedQuery(query)
   if (!keyword) return []
   return dataset.leagues
     .filter((entry) => hasPart(entry.name, keyword) || hasPart(entry.slug, keyword))
@@ -602,9 +630,16 @@ export function getLeagueClans(leagueSlug: string, cursor: string | null, size: 
  * 원본은 1시간 주기 배치로 만들지만, Mock은 요청 시 정렬한다.
  * 갱신 주기 재현은 Phase 9의 랭킹 배치에서 다룬다.
  */
+/**
+ * `division <= 0` 이면 **부리그를 나누지 않는다** (2026-09-01 · 실제 API 와 짝).
+ *
+ * 픽스처 리그는 전부 공식리그라 이때 정렬은 래더 순 한 가지다.
+ * 실제 API 는 무소속리그에서 티어 오름차순을 유지하는데, Mock 에는 무소속리그가 없어
+ * 그 갈래를 재현할 대상 자체가 없다 — **없는 데이터를 지어내지 않는다.**
+ */
 function rankedClans(leagueId: string, division: number): MockLeagueClan[] {
   return (leagueClansByLeague.get(leagueId) ?? [])
-    .filter((entry) => entry.division === division && !entry.placement)
+    .filter((entry) => (division <= 0 || entry.division === division) && !entry.placement)
     .sort((a, b) => b.rating - a.rating || a.id.localeCompare(b.id))
 }
 
@@ -2547,6 +2582,7 @@ export function toUser(user: MockUser): User {
   const player = user.playerId ? playerById.get(user.playerId) : undefined
   return {
     id: user.id,
+    username: user.username,
     email: user.email,
     nickname: user.nickname,
     avatar_url: user.avatarUrl,

@@ -55,10 +55,9 @@ export async function audit(
  * 넥슨 병영수첩 클랜 주소에서 슬러그를 뽑는다.
  * 예: `https://barracks.sa.nexon.com/clan/{clanSlug}/clanMatch`
  *
- * 원본이 허용하는 주소 형태의 전체 목록은 `[미확인]`이다.
- * 관측된 형태만 받아들이고, 아니면 실패로 답한다 (추측해서 넓히지 않는다).
+ * ── 2026-09-01 (D-254): **규칙 자체는 `@sacloud/contract` 로 옮겼다.**
+ *   통합검색(`search.ts`)도 같은 주소를 받아야 하는데, 규칙이 이 파일 안에만 있어서
+ *   리그 관리 화면에서는 되고 검색창에서는 안 되는 상태였다.
+ *   여기서는 **이름만 다시 내보낸다** — 이 파일을 부르던 곳(`clan_lookup`)은 그대로다.
  */
-export function clanSlugFromBarracksUrl(input: string): string | null {
-  const match = /barracks\.sa\.nexon\.com\/clan\/([^/?#]+)/i.exec(input.trim())
-  return match?.[1] ?? null
-}
+export { clanSlugFromBarracksUrl } from '@sacloud/contract'
