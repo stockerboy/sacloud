@@ -44,6 +44,7 @@ import { runIdentityWatch } from './jobs/identityWatch.js'
 import { runBarracksLink } from './jobs/barracksLink.js'
 import { runIplProject } from './jobs/iplProject.js'
 import { runIplClanRollup } from './jobs/iplClanRollup.js'
+import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runBattlelogLineup } from './jobs/battlelogLineup.js'
 import { runCollect } from './jobs/collect.js'
@@ -246,6 +247,12 @@ function usage(): void {
               매치목록 원문의 (subject, clan_no) 가 1:1 이라 그것으로 끊는다 —
               clan-number 는 MatchPlayerStat 을 요구해 IPL 에서 순환이 된다
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
+  player-current-clan [--league <slug>] [--confirm]
+              선수의 **현재 소속 클랜**(LeaguePlayer.clanId)을 경기 기록에서 채운다 (D-161).
+              가장 늦은 경기의 matchTimeLeagueClanId 를 그대로 옮긴다 — 새로 판정하지 않는다.
+              기본 대상은 IPL(nolink) 이다. 미러 리그는 supplyRollup 이 이미 채운다.
+              Player.clanId 는 건드리지 않는다 (D-161 은 3rd.supply 선수만 허용한다).
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
   battlelog-lineup [--league <slug>] [--limit N] [--confirm]
               클랜 배틀로그 원문 → **MatchPlayerStat**(참가 기록). 라인업의 유일한 출처다
               **10명이 다 확인된 경기만** 넣는다. assist·damage·headshot·dropout·mvp 는 전부 null
@@ -441,6 +448,33 @@ async function main(): Promise<number> {
       return 0
     }
 
+    case 'player-current-clan': {
+      /*
+        개인랭킹 행의 클랜 칸을 채운다. `season0Apply` 는 이 칸을 읽어서 그대로 되쓰므로
+        (`clanOf`) 한 번 채워 두면 시간당 도는 반영 잡이 유지해 준다.
+        `--confirm` 없이는 한 줄도 쓰지 않는다.
+      */
+      const result = await runPlayerCurrentClan({
+        league: stringFlag(args, 'league') ?? undefined,
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table([
+        {
+          리그: result.league,
+          선수: result.players,
+          이미있음: result.before,
+          찾음: result.resolved,
+          바꿀대상: result.changed,
+          모름: result.unknown,
+          반영: result.confirmed ? '했다' : '안했다',
+        },
+      ])
+      if (result.top.length) {
+        log('인원 상위')
+        for (const t of result.top) log(`  ${t.name}  ${t.members}명`)
+      }
+      return 0
+    }
     case 'ipl-clan-rollup': {
       /*
         IPL 경기 결과로 `LeagueClan.{win, lose, rating, placement}` 를 채운다.
