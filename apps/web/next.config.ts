@@ -141,6 +141,10 @@ const PUBLIC_CACHE_HEADERS = cacheHeaders(CACHE_RECORD_SECONDS)
  *
  * ⚠ **한 요청이 두 줄에 걸리지 않게 한다.** Next 는 매칭되는 규칙의 머리말을 **전부 붙인다** —
  *   등급이 다른 두 줄에 걸리면 `Cache-Control` 이 두 개 나간다.
+ *   알고도 남겨 둔 겹침이 하나 있다: 검색어가 **하필 `clans` · `players` · `matches` · `ranks`**
+ *   이면 `/api/leagues/search/:q`(1시간) 와 `/api/leagues/:league/clans`(5분) 가 함께 걸린다.
+ *   **세션이 섞이는 문제는 아니고**(양쪽 다 로그인과 무관하다) 그 네 단어를 리그 검색창에
+ *   그대로 치는 경우뿐이라, 설정을 비틀기보다 여기 적어 두는 쪽을 골랐다.
  *
  * ── 여기 **넣지 않은** 것과 그 이유 (2026-09-01 검토)
  *   `/api/boards/:boardId`   **세션에 따라 답이 다르다.** `getBoard()` 가 `currentUserId` 와
