@@ -103,6 +103,9 @@ jobs:
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # 전수 집계도 **긴 배치 잡**이다. 증분과 같은 이유로 세션 풀러(5432)를 쓴다 —
+      # 6543 의 자리는 사이트 몫으로 남긴다 (D-249 후속 · `packages/db` 의 `sessionPoolerUrl`)
+      SACLOUD_DB_SESSION_POOLER: '1'
       # 점수의 주인은 우리 공식이다 (D-173) — 원본 점수로 되돌려 쓰지 않는다
       SACLOUD_RATING_OWNER: formula
       LEAGUE: ${{ matrix.league }}
@@ -221,6 +224,9 @@ jobs:
     timeout-minutes: 30
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # 전수 집계도 **긴 배치 잡**이다. 증분과 같은 이유로 세션 풀러(5432)를 쓴다 —
+      # 6543 의 자리는 사이트 몫으로 남긴다 (D-249 후속 · `packages/db` 의 `sessionPoolerUrl`)
+      SACLOUD_DB_SESSION_POOLER: '1'
     steps:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4

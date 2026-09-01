@@ -103,7 +103,77 @@ function localDatasourceUrl(url: string | undefined): string | undefined {
   return parsed.toString()
 }
 
+/**
+ * **긴 배치 잡을 세션 풀러(5432)로 보낸다** (2026-09-01 · D-249 후속).
+ *
+ * ── 무엇을 봤나
+ *   운영 DB 에 직접 붙어 재 봤다.
+ *
+ *   ```
+ *   max_connections   60      ← 최대 60
+ *   현재 총 접속       17      ← 43자리가 놀고 있다
+ *   그중 Supavisor    5개     ← 중계기가 Postgres 로 여는 것은 겨우 5개
+ *   ```
+ *
+ *   **Postgres 는 한가한데 중계기가 문을 5개만 열어 두고 손님을 돌려보내고 있었다.**
+ *   그래서 사이트가 `ECHECKOUTTIMEOUT` 으로 20초 뒤 500 을 냈다 (D-249 후속 ③).
+ *
+ * ── 왜 수집만 옮기는가
+ *   두 통로는 **풀이 서로 다르다.**
+ *
+ *   ```
+ *   6543 transaction pooler   요청마다 붙었다 떨어진다. **서버리스(사이트)에 맞다**
+ *   5432 session pooler       붙어 있는 동안 Postgres 커넥션을 하나 쥔다
+ *                             → 람다 수백 개에는 못 쓴다. **긴 프로세스 하나에는 맞다**
+ *   ```
+ *
+ *   수집 잡(`apps/worker`)은 **한 번에 하나만 도는 긴 프로세스**다. 세션 풀러가
+ *   정확히 그런 것을 위한 통로이고, 옮기면 **6543 의 자리 하나가 사이트에게 돌아간다.**
+ *   자리가 5개뿐인 상황에서 하나는 20% 다.
+ *
+ * ── ⚠ 사이트(`apps/web`)에는 절대 켜지 마라
+ *   서버리스는 람다가 수십 개 뜬다. 그것들이 세션 모드로 붙으면 **Postgres 커넥션
+ *   60개를 그대로 먹어치우고** DB 자체가 멎는다. 지금 6543 을 쓰는 것이 옳다.
+ *   그래서 기본값이 «끔» 이고, 켜는 것은 **환경변수를 명시적으로 준 곳뿐**이다.
+ *
+ * ── 왜 새 시크릿을 만들지 않는가
+ *   비밀번호를 한 번 더 복사해 두면 샐 자리가 하나 더 생긴다. 기존 `DATABASE_URL` 의
+ *   **포트만 바꿔** 쓴다. 호스트·사용자·비밀번호는 그대로다.
+ *
+ * ── `pgbouncer=true` 를 떼는 이유
+ *   그 옵션은 **트랜잭션 모드에서 prepared statement 가 못 사는 것**을 피하려고 붙인다.
+ *   세션 모드에서는 문장이 살아 있으므로 붙일 이유가 없고, 붙이면 오히려 손해다.
+ */
+function sessionPoolerUrl(url: string | undefined): string | undefined {
+  if (process.env.SACLOUD_DB_SESSION_POOLER !== '1') return undefined
+  if (!url) return undefined
+
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return undefined
+  }
+
+  /* 트랜잭션 풀러(6543)일 때만 옮긴다. 직결이나 로컬은 건드리지 않는다 */
+  if (parsed.port !== '6543') return undefined
+
+  parsed.port = '5432'
+  parsed.searchParams.delete('pgbouncer')
+  /* 세션 모드는 **붙어 있는 내내 Postgres 커넥션을 쥔다.** 넉넉히 잡으면 안 된다 */
+  parsed.searchParams.set('connection_limit', '2')
+  parsed.searchParams.set('connect_timeout', '30')
+  parsed.searchParams.set('pool_timeout', '30')
+
+  /* URL 은 절대 찍지 않는다 (비밀번호가 들어 있다). 옮겼다는 사실만 남긴다 */
+  console.info('[db] 세션 풀러(5432)로 붙는다 — 긴 배치 잡용. 사이트는 6543 을 쓴다 (D-249)')
+  return parsed.toString()
+}
+
 const localUrl = localDatasourceUrl(process.env.DATABASE_URL)
+const sessionUrl = sessionPoolerUrl(process.env.DATABASE_URL)
+/** 실제로 쓸 접속 주소. 둘 다 없으면 `DATABASE_URL` 을 그대로 쓴다 */
+const overrideUrl = localUrl ?? sessionUrl
 
 /**
  * **로컬에서만** 커넥션 실패(`P1001`)를 다시 시도한다 (D-187).
@@ -139,7 +209,7 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 
 function createClient(): PrismaClient {
   const base = new PrismaClient({
-    ...(localUrl ? { datasources: { db: { url: localUrl } } } : {}),
+    ...(overrideUrl ? { datasources: { db: { url: overrideUrl } } } : {}),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
     /**
      * 기본 `errorFormat`은 오류마다 **소스 발췌를 붙이는데**, 번들된 Prisma 런타임에서는
