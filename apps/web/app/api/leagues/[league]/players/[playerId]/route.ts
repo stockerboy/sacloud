@@ -1,4 +1,4 @@
-import { guard, notFound, okPublic } from '@/lib/server/respond'
+import { guardPublic, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { getLeaguePlayerDetail } from '@/lib/server/queries/records'
 
@@ -9,7 +9,7 @@ import { getLeaguePlayerDetail } from '@/lib/server/queries/records'
  * (바로 아래 `matches`는 계약상 `:leagueId`라 해석이 다르다 — 핸들러마다 계약대로 읽는다.)
  */
 export async function GET(_request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic('/api/leagues/[league]/players/[playerId]', 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
     const playerId = await routeParam(context, 'playerId')
     const detail = await getLeaguePlayerDetail(leagueSlug, playerId)

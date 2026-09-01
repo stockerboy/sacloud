@@ -1,4 +1,4 @@
-import { notFound, okPublic, guard } from '@/lib/server/respond'
+import { guardPublic, notFound, okPublic } from '@/lib/server/respond'
 import { intQuery, routeParam } from '@/lib/server/request'
 import { resolveLeagueId } from '@/lib/server/queries/leagues'
 import { getOverallClanLadder } from '@/lib/server/queries/ladders'
@@ -29,7 +29,7 @@ const MAX_LIMIT = 100
  *   이제 메인이 부르므로 붙인다.
  */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const leagueId = await resolveLeagueId(await routeParam(context, 'league'))
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
 

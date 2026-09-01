@@ -1,4 +1,4 @@
-import { notFound, okPublic, guard } from '@/lib/server/respond'
+import { guardPublic, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { getLeague } from '@/lib/server/queries/leagues'
 
@@ -11,7 +11,7 @@ import { getLeague } from '@/lib/server/queries/leagues'
  *   **핸들러마다 슬러그인지 ID인지 계약대로 해석한다.**
  */
 export async function GET(_request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic('/api/leagues/[league]', 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
     const league = await getLeague(leagueSlug)
     /* 길게(3600초) — 리그 이름·맵·부리그 수는 운영자가 손대야 바뀐다 (D-240) */

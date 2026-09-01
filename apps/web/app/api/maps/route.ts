@@ -1,4 +1,4 @@
-import { guard, okPublic } from '@/lib/server/respond'
+import { guardPublic, okPublic } from '@/lib/server/respond'
 import { listMaps } from '@/lib/server/queries/search'
 
 /**
@@ -8,5 +8,5 @@ import { listMaps } from '@/lib/server/queries/search'
  */
 export async function GET() {
   /* 길게(3600초) — 맵 목록은 게임 패치급 사건이 있어야 바뀐다 (D-240) */
-  return guard(async () => okPublic(await listMaps(), undefined, 3600))
+  return guardPublic('/api/maps', 600, async () => okPublic(await listMaps(), undefined, 3600))
 }

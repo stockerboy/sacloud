@@ -1,4 +1,4 @@
-import { okPublic, guard } from '@/lib/server/respond'
+import { guardPublic, okPublic } from '@/lib/server/respond'
 import { buildConfigs } from '@/lib/server/configs'
 
 /**
@@ -10,5 +10,5 @@ import { buildConfigs } from '@/lib/server/configs'
  */
 export async function GET() {
   /* 길게(3600초) — 원격 설정은 운영자가 손대야 바뀐다 (D-240) */
-  return guard(async () => okPublic(await buildConfigs(), undefined, 3600))
+  return guardPublic('/api/remote_configs', 600, async () => okPublic(await buildConfigs(), undefined, 3600))
 }

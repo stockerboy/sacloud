@@ -1,4 +1,4 @@
-import { guard, okPublic } from '@/lib/server/respond'
+import { guardPublic, okPublic } from '@/lib/server/respond'
 import { getHomeTop } from '@/lib/server/queries/homeTop'
 
 /**
@@ -13,5 +13,5 @@ import { getHomeTop } from '@/lib/server/queries/homeTop'
  */
 export async function GET() {
   /* 로그인과 무관한 공개 값이라 엣지가 대신 답한다 (D-223) */
-  return guard(async () => okPublic(await getHomeTop()))
+  return guardPublic('/api/home/top', 600, async () => okPublic(await getHomeTop()))
 }

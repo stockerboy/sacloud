@@ -1,4 +1,4 @@
-import { guard, notFound, okPublic } from '@/lib/server/respond'
+import { guardPublic, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { getLeagueClanShow } from '@/lib/server/queries/records'
 
@@ -12,7 +12,7 @@ import { getLeagueClanShow } from '@/lib/server/queries/records'
  *   그래서 이름을 하나로 통일하고 **핸들러마다 계약대로 해석한다.**
  */
 export async function GET(_request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic('/api/leagues/[league]/clans/[clan]/show', 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
     const clanSlug = await routeParam(context, 'clan')
     const detail = await getLeagueClanShow(leagueSlug, clanSlug)

@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
-import { guard, notFound, okPagePublic } from '@/lib/server/respond'
+import { guardPublic, notFound, okPagePublic } from '@/lib/server/respond'
 import { pageParams, routeParam } from '@/lib/server/request'
 import { getLeaguePlayerMatches, resolveLeagueId } from '@/lib/server/queries/matches'
 
@@ -10,7 +10,7 @@ import { getLeaguePlayerMatches, resolveLeagueId } from '@/lib/server/queries/ma
  * Mock 핸들러도 둘 다 받으므로(`resolveLeagueId`) 실제 API도 같게 맞춘다.
  */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const leagueId = await resolveLeagueId(await routeParam(context, 'league'))
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
     const playerId = await routeParam(context, 'playerId')

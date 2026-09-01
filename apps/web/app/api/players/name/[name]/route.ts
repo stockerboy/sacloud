@@ -1,4 +1,4 @@
-import { guard, notFound, okPublic } from '@/lib/server/respond'
+import { guardPublic, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { findPlayerByName } from '@/lib/server/queries/search'
 
@@ -9,7 +9,7 @@ import { findPlayerByName } from '@/lib/server/queries/search'
  * 정적 세그먼트 `name`이 형제 동적 세그먼트 `[playerId]`보다 먼저 매칭된다.
  */
 export async function GET(_request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic('/api/players/name/[name]', 600, async () => {
     const name = await routeParam(context, 'name')
     const player = await findPlayerByName(name)
     /* 기록 등급(기본 300초) — 통합검색이 제출할 때마다 때리는 경로다 (D-240) */

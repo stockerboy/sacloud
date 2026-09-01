@@ -1,4 +1,4 @@
-import { guard, okPublic } from '@/lib/server/respond'
+import { guardPublic, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { getPlayerLeagues } from '@/lib/server/queries/players'
 
@@ -9,7 +9,7 @@ import { getPlayerLeagues } from '@/lib/server/queries/players'
  * (Mock과 동일 — 프로필 화면이 기본정보 쪽 404로 이미 분기한다).
  */
 export async function GET(_request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic('/api/players/[playerId]/leagues', 600, async () => {
     const playerId = await routeParam(context, 'playerId')
     /* 기록 등급(기본 300초) — 리그별 요약은 경기가 들어와야 바뀐다 (D-240) */
     return okPublic(await getPlayerLeagues(playerId))

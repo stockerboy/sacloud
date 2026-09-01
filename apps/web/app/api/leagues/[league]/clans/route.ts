@@ -1,15 +1,7 @@
 import { prisma } from '@sacloud/db'
 import { registerClanTier } from '@sacloud/db/ops'
 import { LeagueClanRegisterInput, winRate } from '@sacloud/contract'
-import {
-  badRequest,
-  forbidden,
-  guard,
-  notFound,
-  ok,
-  okPagePublic,
-  unauthorized,
-} from '@/lib/server/respond'
+import { badRequest, forbidden, guard, guardPublic, notFound, ok, okPagePublic, unauthorized } from '@/lib/server/respond'
 import { jsonBody, pageParams, routeParam } from '@/lib/server/request'
 import { getLeagueClans } from '@/lib/server/queries/leagues'
 import { audit, requireLeagueAdmin } from '@/lib/server/queries/leagueAdmin'
@@ -18,7 +10,7 @@ import { toKstIso } from '@/lib/server/format'
 
 /** GET /api/leagues/{leagueSlug}/clans — 리그 참여 클랜 (커서) */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
     const { cursor, size } = pageParams(request)
     const page = await getLeagueClans(leagueSlug, cursor, size)

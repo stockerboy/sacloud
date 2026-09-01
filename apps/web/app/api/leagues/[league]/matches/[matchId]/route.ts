@@ -1,4 +1,4 @@
-import { guard, notFound, okPublic } from '@/lib/server/respond'
+import { guardPublic, notFound, okPublic } from '@/lib/server/respond'
 import { query, routeParam } from '@/lib/server/request'
 import { getMatch, resolveLeagueId } from '@/lib/server/queries/matches'
 
@@ -13,7 +13,7 @@ import { getMatch, resolveLeagueId } from '@/lib/server/queries/matches'
  * 계약상 `[league]`는 리그 ID지만, 화면은 리그 슬러그로 부른다(Mock도 둘 다 받는다).
  */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const leagueId = await resolveLeagueId(await routeParam(context, 'league'))
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
     const matchId = await routeParam(context, 'matchId')

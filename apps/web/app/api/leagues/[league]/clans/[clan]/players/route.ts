@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
-import { guard, notFound, okPagePublic } from '@/lib/server/respond'
+import { guardPublic, notFound, okPagePublic } from '@/lib/server/respond'
 import { pageParams, routeParam } from '@/lib/server/request'
 import { getLeagueClanPlayers } from '@/lib/server/queries/records'
 
@@ -10,7 +10,7 @@ import { getLeagueClanPlayers } from '@/lib/server/queries/records'
  * (같은 세그먼트를 리그 관리 API가 `:leagueClanId`로도 쓰므로 이름을 `[clan]`으로 통일했다.)
  */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
     const clanSlug = await routeParam(context, 'clan')
     const { cursor, size } = pageParams(request, PAGE_SIZE.DEFAULT)

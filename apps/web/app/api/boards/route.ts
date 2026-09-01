@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
-import { fail, guard, ok, okPagePublic } from '@/lib/server/respond'
+import { fail, guard, guardPublic, ok, okPagePublic } from '@/lib/server/respond'
 import { jsonBody, pageParams, query } from '@/lib/server/request'
 import { createBoard, listBoards } from '@/lib/server/queries/boards'
 
@@ -13,7 +13,7 @@ import { createBoard, listBoards } from '@/lib/server/queries/boards'
  * - 검색은 `type`(board/ipname/nickname) + `q`
  */
 export async function GET(request: Request) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const { cursor, size } = pageParams(request, PAGE_SIZE.BOARD)
     const page = await listBoards({
       // Mock 핸들러와 같은 기본값

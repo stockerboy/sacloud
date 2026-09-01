@@ -1,5 +1,5 @@
 import { PAGE_SIZE, parseRankWeapon } from '@sacloud/contract'
-import { notFound, okPagePublic, guard } from '@/lib/server/respond'
+import { guardPublic, notFound, okPagePublic } from '@/lib/server/respond'
 import { pageParams, query, routeParam } from '@/lib/server/request'
 import { getPlayerRanks, resolveLeagueId } from '@/lib/server/queries/leagues'
 import { getPlayerRanksByWeapon } from '@/lib/server/queries/rankings'
@@ -15,7 +15,7 @@ import { getPlayerRanksByWeapon } from '@/lib/server/queries/rankings'
  * 통합은 기존 `getPlayerRanks`를 그대로 부른다. 무기 축을 더해도 통합 래더는 바뀌지 않는다.
  */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const leagueId = await resolveLeagueId(await routeParam(context, 'league'))
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
     const { cursor, size } = pageParams(request, PAGE_SIZE.RANK)

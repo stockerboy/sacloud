@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
-import { notFound, okPagePublic, guard } from '@/lib/server/respond'
+import { guardPublic, notFound, okPagePublic } from '@/lib/server/respond'
 import { intQuery, pageParams, routeParam } from '@/lib/server/request'
 import { getClanRanks, resolveLeagueId } from '@/lib/server/queries/leagues'
 
@@ -11,7 +11,7 @@ import { getClanRanks, resolveLeagueId } from '@/lib/server/queries/leagues'
  * 랭킹은 20건 단위 (원본 관측값).
  */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const leagueId = await resolveLeagueId(await routeParam(context, 'league'))
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
     const division = intQuery(request, 'division', 1)

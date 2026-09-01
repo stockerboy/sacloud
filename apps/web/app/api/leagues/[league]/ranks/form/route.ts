@@ -1,5 +1,5 @@
 import { parseRankWeapon } from '@sacloud/contract'
-import { notFound, okPublic, guard } from '@/lib/server/respond'
+import { guardPublic, notFound, okPublic } from '@/lib/server/respond'
 import { query, routeParam } from '@/lib/server/request'
 import { resolveLeagueId } from '@/lib/server/queries/leagues'
 import { getFormTop } from '@/lib/server/queries/rankings'
@@ -12,7 +12,7 @@ import { getFormTop } from '@/lib/server/queries/rankings'
  * `weapon=all|sniper|rifle` 로 랭킹 탭과 같은 무기 축을 따라간다.
  */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guard(async () => {
+  return guardPublic(request, 600, async () => {
     const leagueId = await resolveLeagueId(await routeParam(context, 'league'))
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
     const form = await getFormTop(leagueId, parseRankWeapon(query(request, 'weapon')))

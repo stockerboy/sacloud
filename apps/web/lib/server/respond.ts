@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { SUCCESS_MESSAGE, type CursorMetadata } from '@sacloud/contract'
+import { lastKnownGood } from './lastKnownGood'
 
 /**
  * 실제 API의 공통 응답 래퍼.
@@ -135,5 +136,63 @@ export async function guard(handler: () => Promise<Response>): Promise<Response>
   } catch (error) {
     console.error('[api]', error)
     return fail(500, '서버 오류가 발생했습니다')
+  }
+}
+
+/**
+ * **공개 읽기 전용 `guard`** — DB 가 안 되면 마지막으로 성공한 응답을 대신 내준다
+ * (2026-09-01 · D-249).
+ *
+ * ── 왜 `guard` 를 따로 두나
+ *   `guard` 는 실패를 **500 으로 정직하게** 바꾼다. 그건 쓰기·로그인 경로에서 옳다 —
+ *   저장이 안 됐는데 됐다고 하면 안 된다. 그런데 **공개 읽기**는 사정이 다르다.
+ *   화면이 통째로 비는 것보다 **몇 분 낡은 값**이 사용자에게 훨씬 낫다.
+ *
+ * ── 언제 쓰나
+ *   `okPublic` / `okPagePublic` 을 내보내는 경로에만 쓴다.
+ *   `/api/me/*` · `/api/admin/*` · 쓰기 경로에는 **쓰지 않는다** — 남의 값이 섞여 나간다.
+ *
+ * ── 실패했는데 기억도 없으면
+ *   원래대로 **500** 이다. 없는 값을 지어내지 않는다 (CLAUDE.md 3장 7번).
+ *
+ * @param key             기억 칸 이름. **요청마다 달라지는 것을 전부 담아야 한다**
+ *                        (리그 slug · 커서 · 정렬). 안 담으면 다른 요청의 답이 나간다.
+ *                        `Request` 를 그대로 주면 **경로+질의문자열**을 키로 쓴다 —
+ *                        그게 「이 요청이 무엇을 물었나」의 완전한 표현이라 가장 안전하다.
+ *                        `request` 를 안 받는 경로만 문자열을 직접 준다
+ * @param maxStaleSeconds 이 초를 넘게 낡았으면 내주지 않고 500 으로 간다
+ */
+export async function guardPublic(
+  key: string | Request,
+  maxStaleSeconds: number,
+  handler: () => Promise<Response>,
+): Promise<Response> {
+  const cacheKey = typeof key === 'string' ? key : new URL(key.url).pathname + new URL(key.url).search
+  try {
+    const res = await handler()
+    // 2xx 만 기억한다. 404 를 기억하면 새로 생긴 클랜이 계속 «없음» 이 된다
+    if (res.ok) lastKnownGood.remember(cacheKey, await res.clone().text())
+    return res
+  } catch (error) {
+    const remembered = lastKnownGood.recall(cacheKey, maxStaleSeconds)
+    if (!remembered) {
+      console.error('[api]', error)
+      return fail(500, '서버 오류가 발생했습니다')
+    }
+
+    // 삼키면 「조용히 낡은 값을 내주는」 상태가 눈에 안 띈다. 반드시 남긴다
+    console.error(`[api] last-known-good ${cacheKey} (${Math.round(remembered.ageSeconds)}초 낡음)`, error)
+
+    return new NextResponse(remembered.body, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        // **짧게 캐시한다.** 낡은 값을 엣지가 오래 붙들면 회복이 늦어진다.
+        // 다음 요청이 곧 DB 를 다시 두드려 보게 한다
+        'Cache-Control': 'public, max-age=0, s-maxage=15, stale-while-revalidate=300',
+        // 운영에서 「지금 보험으로 버티는 중인가」를 밖에서 볼 수 있어야 한다
+        'X-Sacloud-Stale': String(Math.round(remembered.ageSeconds)),
+      },
+    })
   }
 }

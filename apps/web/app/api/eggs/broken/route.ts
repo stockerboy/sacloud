@@ -1,5 +1,5 @@
 import { prisma } from '@sacloud/db'
-import { guard, okPublic } from '@/lib/server/respond'
+import { guardPublic, okPublic } from '@/lib/server/respond'
 
 /**
  * `GET /api/eggs/broken` — **깨진 알 목록** (`docs/EGG_SYSTEM_SPEC.md`).
@@ -43,7 +43,7 @@ export const dynamic = 'force-dynamic'
 const EGG_CACHE_SECONDS = 10
 
 export async function GET() {
-  return guard(async () => {
+  return guardPublic('/api/eggs/broken', 600, async () => {
     const rows = await prisma.eggBreak.findMany({
       select: { targetKind: true, targetId: true },
     })
