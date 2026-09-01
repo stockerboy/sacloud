@@ -111,3 +111,4 @@ clan-hex-v2-summary-export.json
 
 # 성능 측정 임시 폴더
 .tmp-perf/
+design/__tmp-*
