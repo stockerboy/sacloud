@@ -25,9 +25,21 @@
 name: 3rd.supply 전수 집계 (정합성 보정)
 
 on:
-  schedule:
-    # UTC 19:00 = KST 04:00
-    - cron: '0 19 * * *'
+  # ── ⛔ 2026-09-01 밤 · 자동 실행을 껐다 ────────────────────────────────
+  #
+  #   왜 — 이 전수 집계는 `LeaguePlayer.win/lose/kill/death` 를 **전체기간** 값으로
+  #   다시 만든다. 그런데 사용자가 래더를 **7/1 이후 기준**으로 전수 재계산하라고
+  #   정했다(`season0Apply`). 새벽 4시에 이게 돌면 그 결과가 통째로 덮인다.
+  #   같은 이유로 `supply-incremental.yml` 의 증분 집계도 껐다.
+  #
+  #   **수동 실행(`workflow_dispatch`)은 남겨 뒀다.** 필요하면 손으로 돌릴 수 있다.
+  #
+  #   되살리려면 — 아래 세 줄의 주석을 풀면 된다. 다만 그 전에
+  #   `supplyRollup.ts` 가 7/1 창을 존중하게 고쳐야 한다. 안 그러면 또 덮는다.
+  #
+  # schedule:
+  #   # UTC 19:00 = KST 04:00
+  #   - cron: '0 19 * * *'
   workflow_dispatch:
     inputs:
       leagues:

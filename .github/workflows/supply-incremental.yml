@@ -437,13 +437,30 @@ jobs:
                 continue
               fi
 
-              # **증분** 집계다 (기본값). 방금 적재된 경기가 건드린 선수만 다시 만든다.
-              # 전수와 값이 같다는 것은 `apps/worker/src/dev/rollupParity.ts` 로 대조했다 (D-168).
-              # 클랜 점수·승패·부리그는 수집 파일 클랜 목록 값을 그대로 쓴다 (D-157).
-              if ! worker supply-rollup --league "$slug" --confirm; then
-                echo "::warning::[$slug] 집계 실패"
-                failed=$(( failed + 1 ))
-              fi
+              # ── ⛔ 2026-09-01 밤 · 증분 집계를 껐다 ─────────────────────────
+              #
+              #   왜 — 사용자가 래더를 **7/1 이후 기준으로 전수 재계산**하라고 정했고
+              #   (`season0Apply`), 그 결과를 이 단계가 **5분마다 덮어쓰고 있었다.**
+              #   실측: 14:04 에 반영한 supply 1,426명 중 125명의 승패·킬데스가
+              #   14:16 에 「전체기간」 값으로 되돌아갔다. 래더 점수와 판수는 살아남고
+              #   win/lose/kill/death 만 덮인다 — `supplyRollup.ts` 는 그 넷만 쓰고
+              #   `:410` 의 `formulaOwns` 때문에 rating 은 안 건드리기 때문이다.
+              #   그래서 화면에 「래더 4254점인데 1561승 1215패」 같은 상태가 만들어졌다.
+              #   점수는 7/1 기준인데 전적은 전체이력이라 서로 다른 잣대다.
+              #
+              #   수집(`supply-mirror`)과 적재(`supply-import`)는 **그대로 둔다.**
+              #   사용자가 「실시간 기록은 늦어도 15분 내로 찍혀야 한다」고 했고
+              #   그건 여전히 유효하다. 새 경기는 계속 들어온다.
+              #
+              #   되살리려면 — 아래 두 줄의 주석을 풀면 된다. 다만 그 전에
+              #   `supplyRollup.ts` 가 7/1 창을 존중하게 고쳐야 한다. 안 그러면 또 덮는다.
+              #   (`docs/DECISIONS.md` 의 래더 전수 재계산 항목 · E-3 참조)
+              #
+              # if ! worker supply-rollup --league "$slug" --confirm; then
+              #   echo "::warning::[$slug] 집계 실패"
+              #   failed=$(( failed + 1 ))
+              # fi
+              echo "[$slug] 증분 집계는 꺼져 있다 (2026-09-01 · 7/1 전수 재계산과 충돌)"
             done
 
             echo '::endgroup::'
@@ -520,12 +537,19 @@ jobs:
       #
       # ⚠ 이 검사는 **원본이 조용한 것**을 잡지 못한다. 예약이 드롭된 것 자체는
       #   아래 「예약 간격」 스텝이 GitHub `actions/runs` 로 따로 본다.
+      #
+      # ⚠ 목록이 `LEAGUES` 와 **다르다** (2026-09-01). `LEAGUES` 는 위에서
+      #   `supply-mirror --league <slug>` 를 도는 데도 쓰이므로, 3rd.supply 미러로
+      #   들어오지 않는 리그를 거기 넣으면 **없는 원본을 긁으러 간다.**
+      #   IPL(`nolink`)은 병영수첩에서 사람 손으로 들어오고 자동 수집이 없다 —
+      #   그래서 여기서는 **판정하지 않고 마지막 적재 시각만 보여 준다**
+      #   (`syncFreshness.ts` 의 `SYNC_FRESHNESS_REPORT_ONLY`). 표시는 되고 잡을 깨지 않는다.
       - name: 검증 — 증분이 밀렸는가 (신선도 · D-225)
         if: ${{ always() && inputs.dry_run != true }}
         # 잡 CLI 는 stderr 로만 말한다. run 화면에 뜨도록 주석(annotation)을 여기서 붙인다
         run: |
           set -uo pipefail
-          if ! pnpm --filter @sacloud/worker nexon sync-freshness --leagues "${LEAGUES}"; then
+          if ! pnpm --filter @sacloud/worker nexon sync-freshness --leagues "${LEAGUES},nolink"; then
             echo "::error::증분이 밀렸다 — 위 표의 「밀렸다」 리그를 본다 (D-225)"
             exit 1
           fi
