@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { color: #d92b2b; }
+    .num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .display { font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-weight: 400; letter-spacing: -0.01em; }
+    .body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
+    .row { display: flex; align-items: baseline; gap: 12px; padding: 7px 0; }
+    .rank { width: 24px; flex-shrink: 0; text-align: right; font-size: 12px; }
+    .name { min-width: 0; flex-grow: 1; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rating { flex-shrink: 0; font-size: 15px; }
+    .games { width: 56px; flex-shrink: 0; text-align: right; font-size: 12px; }
+    .lamps { display: flex; flex-shrink: 0; align-items: center; gap: 12px; font-size: 12px; }
+    .lamp-cell { display: flex; align-items: center; gap: 5px; }
+    .dot { display: inline-block; width: 6px; height: 6px; border-radius: 9999px; }
+  </style>
+</helmet>
+
+<div class="body" style="padding: 40px; background: {{bg}}; min-height: 100%; font-size: 15px; color: {{text}}">
+
+  <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 22px">
+    <div class="display" style="font-size: 28px; color: {{textStrong}}">MiraGe.</div>
+    <div style="font-size: 13px; color: {{meta}}">DPL · 1부 · <span class="num">3,094</span>점</div>
+  </div>
+
+  <!-- ── 클랜원 카드 ───────────────────────────────────────── -->
+  <div style="border: 1px solid {{line}}; background: {{card}}; border-radius: 2px; padding: 16px 20px">
+
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <div style="font-size: 17px; color: {{text}}">클랜원</div>
+      <div style="font-size: 12px; color: {{meta}}"><span class="num">33</span>명 <span class="num">· 접속 20:25 기준</span></div>
+    </div>
+
+    <div style="margin-top: 8px">
+
+      <!-- 접속중 -->
+      <div class="row" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num rank" style="color: {{faint}}">1</span>
+        <a href="#" class="name"><span style="color: {{textStrong}}">nudi</span></a>
+        <span class="num rating" style="color: {{accent}}">3,412점</span>
+        <span class="num games" style="color: {{meta}}">102판</span>
+        <span class="lamps">
+          <span class="lamp-cell" style="color: {{text}}"><span class="dot" style="background: {{online}}"></span>접속중</span>
+          <span class="lamp-cell" style="color: {{meta}}"><span class="dot" style="background: {{lampOff}}"></span>미접속</span>
+        </span>
+      </div>
+
+      <!-- 미접속 -->
+      <div class="row" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num rank" style="color: {{faint}}">2</span>
+        <a href="#" class="name"><span style="color: {{textStrong}}">차값</span></a>
+        <span class="num rating" style="color: {{accent}}">3,388점</span>
+        <span class="num games" style="color: {{meta}}">88판</span>
+        <span class="lamps">
+          <span class="lamp-cell" style="color: {{meta}}"><span class="dot" style="background: {{lampOff}}"></span>접속중</span>
+          <span class="lamp-cell" style="color: {{text}}"><span class="dot" style="background: {{accent}}"></span>미접속</span>
+        </span>
+      </div>
+
+      <!-- 접속중 -->
+      <div class="row" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num rank" style="color: {{faint}}">3</span>
+        <a href="#" class="name"><span style="color: {{textStrong}}">쨔잉나</span></a>
+        <span class="num rating" style="color: {{accent}}">3,301점</span>
+        <span class="num games" style="color: {{meta}}">74판</span>
+        <span class="lamps">
+          <span class="lamp-cell" style="color: {{text}}"><span class="dot" style="background: {{online}}"></span>접속중</span>
+          <span class="lamp-cell" style="color: {{meta}}"><span class="dot" style="background: {{lampOff}}"></span>미접속</span>
+        </span>
+      </div>
+
+      <!-- 알수없음 -->
+      <div class="row" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num rank" style="color: {{faint}}">4</span>
+        <a href="#" class="name"><span style="color: {{textStrong}}">huwho</span></a>
+        <span class="num rating" style="color: {{textStrong}}">2,980점</span>
+        <span class="num games" style="color: {{meta}}">51판</span>
+        <span class="lamps">
+          <span class="lamp-cell" style="color: {{meta}}"><span class="dot" style="background: {{lampOff}}"></span>접속중</span>
+          <span class="lamp-cell" style="color: {{meta}}"><span class="dot" style="background: {{lampOff}}"></span>미접속</span>
+        </span>
+      </div>
+
+      <!-- 미접속 -->
+      <div class="row" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num rank" style="color: {{faint}}">5</span>
+        <a href="#" class="name"><span style="color: {{textStrong}}">yuhwan</span></a>
+        <span class="num rating" style="color: {{textStrong}}">2,610점</span>
+        <span class="num games" style="color: {{meta}}">33판</span>
+        <span class="lamps">
+          <span class="lamp-cell" style="color: {{meta}}"><span class="dot" style="background: {{lampOff}}"></span>접속중</span>
+          <span class="lamp-cell" style="color: {{text}}"><span class="dot" style="background: {{accent}}"></span>미접속</span>
+        </span>
+      </div>
+
+      <!-- 배치고사 + 알수없음 -->
+      <div class="row">
+        <span class="num rank" style="color: {{faint}}">6</span>
+        <a href="#" class="name"><span style="color: {{textStrong}}">후후시치</span></a>
+        <span class="rating" style="font-size: 12px; color: {{meta}}">배치고사</span>
+        <span class="num games" style="color: {{meta}}">12판</span>
+        <span class="lamps">
+          <span class="lamp-cell" style="color: {{meta}}"><span class="dot" style="background: {{lampOff}}"></span>접속중</span>
+          <span class="lamp-cell" style="color: {{meta}}"><span class="dot" style="background: {{lampOff}}"></span>미접속</span>
+        </span>
+      </div>
+
+    </div>
+
+    <div style="margin-top: 12px; border-top: 1px solid {{lineSoft}}; padding-top: 8px; font-size: 12px; color: {{meta}}">
+      접속 여부는 아직 모릅니다 — 클랜원 명단과 선수가 아직 이어지지 않았습니다.
+    </div>
+  </div>
+
+  <div style="margin-top: 20px; border-left: 2px solid {{accent}}; padding: 4px 0 4px 16px; font-size: 12px; line-height: 1.75; color: {{meta}}">
+    세 상태를 한 화면에 같이 뒀습니다. 실제 운영에서는 지금 전원 «알수없음» 입니다 —
+    병영수첩 명단과 선수가 아직 이어지지 않아서입니다.<br>
+    «모르는 것» 과 «미접속» 은 다르므로, 모를 때는 양쪽 불을 다 끕니다.
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "bg":         {"editor":"color","default":"#060505","options":["#060505","#0a0808","#000000","#101010"],"section":"바탕"},
+  "card":       {"editor":"color","default":"#120c0c","options":["#120c0c","#1a1010","#0d0909","#161010"],"section":"바탕"},
+  "line":       {"editor":"color","default":"#2a1616","options":["#2a1616","#3a1c1c","#241616","#1f1414"],"section":"선"},
+  "lineSoft":   {"editor":"color","default":"#1a1010","options":["#1a1010","#221414","#141010"],"section":"선"},
+  "textStrong": {"editor":"color","default":"#f6eded","options":["#f6eded","#ffffff","#ece0e0"],"section":"글자"},
+  "text":       {"editor":"color","default":"#d6c9c9","options":["#d6c9c9","#c9bcbc","#e2d6d6"],"section":"글자"},
+  "meta":       {"editor":"color","default":"#9a8080","options":["#9a8080","#8a7272","#a89090"],"section":"글자"},
+  "faint":      {"editor":"color","default":"#6b5555","options":["#6b5555","#7a6161","#5a4747"],"section":"글자"},
+  "accent":     {"editor":"color","default":"#d92b2b","options":["#d92b2b","#ff3d3d","#f2711c","#2185d0"],"section":"강조"},
+  "online":     {"editor":"color","default":"#2ea043","options":["#2ea043","#3fb950","#02ab18"],"section":"강조"},
+  "lampOff":    {"editor":"color","default":"#3a2323","options":["#3a2323","#2a1616","#4a2c2c"],"section":"강조"}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props
+    return {
+      bg:         p.bg         ?? '#060505',
+      card:       p.card       ?? '#120c0c',
+      line:       p.line       ?? '#2a1616',
+      lineSoft:   p.lineSoft   ?? '#1a1010',
+      textStrong: p.textStrong ?? '#f6eded',
+      text:       p.text       ?? '#d6c9c9',
+      meta:       p.meta       ?? '#9a8080',
+      faint:      p.faint      ?? '#6b5555',
+      accent:     p.accent     ?? '#d92b2b',
+      online:     p.online     ?? '#2ea043',
+      lampOff:    p.lampOff    ?? '#3a2323',
+    }
+  }
+}
+</script>
+</body>
+</html>

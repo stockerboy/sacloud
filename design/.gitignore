@@ -1,0 +1,4 @@
+# 조립 결과물은 저장소에 넣지 않는다 — 편집기 코드가 통째로 들어 있어 2.2MB 다.
+# 원본은 이 폴더의 *.dc.html + canvas.json 이고, 결과물은 언제든 다시 만들 수 있다.
+sacloud-screens.html
+*.seeded.html

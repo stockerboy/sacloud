@@ -1,0 +1,224 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; -webkit-font-smoothing: antialiased; }
+    a { text-decoration: none; }
+    .num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+    .display { font-family: 'Black Han Sans', 'Noto Sans KR', sans-serif; font-weight: 400; letter-spacing: -0.01em; }
+    .body { font-family: 'Noto Sans KR', system-ui, sans-serif; }
+    .eggrow { display: flex; justify-content: center; gap: 18px; margin-bottom: 14px; }
+    .egg { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 68px; }
+    .shell { width: 44px; height: 54px; border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%; }
+    .eggname { font-size: 11px; max-width: 68px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .post { display: flex; align-items: baseline; gap: 12px; padding: 9px 0; }
+    .postno { width: 20px; flex-shrink: 0; text-align: right; font-size: 12px; }
+    .posttitle { min-width: 0; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+    .postauthor { flex-shrink: 0; font-size: 12px; }
+    .postvote { width: 36px; flex-shrink: 0; text-align: right; font-size: 12px; }
+  </style>
+</helmet>
+
+<div class="body" style="background: {{bg}}; min-height: 100%; font-size: 15px; color: {{text}}">
+
+  <!-- ── 상단 GNB ─────────────────────────────────────────── -->
+  <div style="border-bottom: 1px solid {{line}}">
+    <div style="margin: 0 auto; display: flex; max-width: 1120px; align-items: center; gap: 28px; padding: 0 24px; height: 52px">
+      <span class="display" style="font-size: 19px; color: {{textStrong}}">SACLOUD</span>
+      <span style="font-size: 14px; font-weight: 700; color: {{textStrong}}">리그</span>
+      <span style="font-size: 14px; color: {{meta}}">게시판</span>
+      <span style="flex-grow: 1"></span>
+      <span style="font-size: 13px; color: {{meta}}">로그인</span>
+    </div>
+  </div>
+
+  <div style="margin: 0 auto; width: 100%; max-width: 1120px; padding: 0 20px; box-sizing: border-box">
+
+    <!-- ── 로고 + 통합검색 ─────────────────────────────────── -->
+    <section style="padding-top: 120px; padding-bottom: 40px">
+      <div class="display" style="margin: 0 auto; width: 320px; max-width: 100%; text-align: center; font-size: 56px; line-height: 1; color: {{textStrong}}">SACLOUD</div>
+
+      <div style="margin: 40px auto 0; width: 100%; max-width: 560px">
+        <div style="display: flex; align-items: stretch; border: 1px solid {{accent}}; border-radius: 2px">
+          <div style="display: flex; width: 112px; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; border-right: 1px solid {{line}}; padding: 0 16px; font-size: 13px; color: {{meta}}">
+            <span>플레이어</span>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4l3 3 3-3"/></svg>
+          </div>
+          <div style="flex-grow: 1; display: flex; align-items: center; padding: 0 16px; height: 46px; font-size: 15px; color: {{faint}}">닉네임 또는 병영수첩 주소</div>
+          <div style="display: flex; width: 52px; flex-shrink: 0; align-items: center; justify-content: center; border-left: 1px solid {{line}}; color: {{meta}}">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 알 모음집 · DPL ────────────────────────────────── -->
+    <div style="padding-top: 40px">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px">
+        <span class="display" style="font-size: 20px; color: {{textStrong}}">DPL</span>
+        <span style="font-size: 12px; color: {{meta}}">알을 깨면 기록이 보입니다</span>
+      </div>
+
+      <div class="eggrow">
+        <div class="egg"><div class="shell" style="border: 1px solid {{accent}}; background: {{card2}}"></div><div class="eggname" style="color: {{text}}">MiraGe.</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{accent}}; background: {{card2}}"></div><div class="eggname" style="color: {{text}}">One.PoinT</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{accent}}; background: {{card2}}"></div><div class="eggname" style="color: {{text}}">dravelior</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">FootMania</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">AimEnvy</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">resun</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">TOGS</div></div>
+      </div>
+
+      <div class="eggrow">
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">전설</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">ircutopia</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">비키니라인</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">5882832</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">sdsdsz</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">kym</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">ehdrn</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">zxcv</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">rinopin</div></div>
+      </div>
+
+      <div class="eggrow">
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">oguri</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">sorento</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">PhoneSex</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">Ehakxh</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">cantclan</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">junhyuk</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">suddnwc</div></div>
+      </div>
+    </div>
+
+    <!-- ── 알 모음집 · IPL ────────────────────────────────── -->
+    <div style="padding-top: 40px">
+      <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px">
+        <span class="display" style="font-size: 20px; color: {{textStrong}}">IPL</span>
+        <span style="font-size: 12px; color: {{meta}}">알을 깨면 기록이 보입니다</span>
+      </div>
+
+      <div class="eggrow">
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">pigforever</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">uava01</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">OhMyLoVe</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">JJUN</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">luverduck</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">fdd8</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">minjihun</div></div>
+      </div>
+
+      <div class="eggrow">
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">adgeodud</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">asdf1234</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">saffggaaz</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">01025606</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">ckdals</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">4473</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">한밤중</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">둥가둥가</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">nolink9</div></div>
+      </div>
+
+      <div class="eggrow">
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">키작은형</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">헤이즐넛</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">서리꽃</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">달빛사냥</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">노랑풍선</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">고요한밤</div></div>
+        <div class="egg"><div class="shell" style="border: 1px solid {{line}}; background: {{card}}"></div><div class="eggname" style="color: {{meta}}">첫눈</div></div>
+      </div>
+    </div>
+
+    <!-- ── 실시간 인기게시글 ──────────────────────────────── -->
+    <div style="padding-top: 40px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid {{line}}; padding-bottom: 8px">
+        <span style="font-size: 17px; color: {{textStrong}}">실시간 인기게시글</span>
+        <span style="font-size: 12px; color: {{meta}}">Hot게시판</span>
+      </div>
+
+      <div class="post" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num postno" style="color: {{faint}}">1</span>
+        <a href="#" class="posttitle"><span style="color: {{text}}">이번 시즌 래더 계산 바뀐 거 아시는 분</span></a>
+        <span class="postauthor" style="color: {{meta}}">근면</span>
+        <span class="num postvote" style="color: {{accent}}">42</span>
+      </div>
+      <div class="post" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num postno" style="color: {{faint}}">2</span>
+        <a href="#" class="posttitle"><span style="color: {{text}}">알 깨는 법 정리해봤습니다</span></a>
+        <span class="postauthor" style="color: {{meta}}">chococake</span>
+        <span class="num postvote" style="color: {{accent}}">31</span>
+      </div>
+      <div class="post" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num postno" style="color: {{faint}}">3</span>
+        <a href="#" class="posttitle"><span style="color: {{text}}">열산 클랜 모집합니다 (스나 1명)</span></a>
+        <span class="postauthor" style="color: {{meta}}">으어어어</span>
+        <span class="num postvote" style="color: {{meta}}">18</span>
+      </div>
+      <div class="post" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num postno" style="color: {{faint}}">4</span>
+        <a href="#" class="posttitle"><span style="color: {{text}}">2층 자리 잡는 법 질문</span></a>
+        <span class="postauthor" style="color: {{meta}}">kinder</span>
+        <span class="num postvote" style="color: {{meta}}">9</span>
+      </div>
+      <div class="post" style="border-bottom: 1px solid {{lineSoft}}">
+        <span class="num postno" style="color: {{faint}}">5</span>
+        <a href="#" class="posttitle"><span style="color: {{text}}">클랜마크 안 보이는 분 계신가요</span></a>
+        <span class="postauthor" style="color: {{meta}}">mozz'a'</span>
+        <span class="num postvote" style="color: {{meta}}">4</span>
+      </div>
+    </div>
+
+    <!-- ── 꼬리말 ─────────────────────────────────────────── -->
+    <div style="padding-top: 80px; padding-bottom: 40px">
+      <div style="border-top: 1px solid {{lineSoft}}; padding-top: 20px; font-size: 12px; line-height: 1.8; color: {{faint}}">
+        SACLOUD 는 서든어택 클랜전 기록을 모아 보여 줍니다.<br>
+        기록은 지우지 않습니다. 알로 덮어 둘 뿐입니다.
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{
+  "bg":         {"editor":"color","default":"#060505","options":["#060505","#0a0808","#000000","#101010"],"section":"바탕"},
+  "card":       {"editor":"color","default":"#120c0c","options":["#120c0c","#1a1010","#0d0909","#161010"],"section":"바탕"},
+  "card2":      {"editor":"color","default":"#1a1010","options":["#1a1010","#221414","#120c0c"],"section":"바탕"},
+  "line":       {"editor":"color","default":"#2a1616","options":["#2a1616","#3a1c1c","#241616","#1f1414"],"section":"선"},
+  "lineSoft":   {"editor":"color","default":"#1a1010","options":["#1a1010","#221414","#141010"],"section":"선"},
+  "textStrong": {"editor":"color","default":"#f6eded","options":["#f6eded","#ffffff","#ece0e0"],"section":"글자"},
+  "text":       {"editor":"color","default":"#d6c9c9","options":["#d6c9c9","#c9bcbc","#e2d6d6"],"section":"글자"},
+  "meta":       {"editor":"color","default":"#9a8080","options":["#9a8080","#8a7272","#a89090"],"section":"글자"},
+  "faint":      {"editor":"color","default":"#6b5555","options":["#6b5555","#7a6161","#5a4747"],"section":"글자"},
+  "accent":     {"editor":"color","default":"#d92b2b","options":["#d92b2b","#ff3d3d","#f2711c","#2185d0"],"section":"강조"}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props
+    return {
+      bg:         p.bg         ?? '#060505',
+      card:       p.card       ?? '#120c0c',
+      card2:      p.card2      ?? '#1a1010',
+      line:       p.line       ?? '#2a1616',
+      lineSoft:   p.lineSoft   ?? '#1a1010',
+      textStrong: p.textStrong ?? '#f6eded',
+      text:       p.text       ?? '#d6c9c9',
+      meta:       p.meta       ?? '#9a8080',
+      faint:      p.faint      ?? '#6b5555',
+      accent:     p.accent     ?? '#d92b2b',
+    }
+  }
+}
+</script>
+</body>
+</html>
