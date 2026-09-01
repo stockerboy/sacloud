@@ -257,6 +257,89 @@ jobs:
           echo "dry-run: ${DRY_RUN} · 적응형 끔: ${NO_ADAPTIVE}"
           echo "원본 속도: 동시 ${SUPPLY_CONCURRENCY} · 간격 ${SUPPLY_DELAY_MS}ms"
 
+      # ── **DB 를 갈기 전에 엣지 캐시를 채운다** (2026-09-01 · D-249)
+      #
+      # ── 왜 여기인가 — 「채워지질 못하는 캐시」
+      #   운영에서 이런 일이 있었다.
+      #
+      #     /api/maps      MISS → HIT → HIT        ← 정상. 한 번 채워지면 30분 안 때린다
+      #     /api/leagues   MISS(500) → MISS(500)   ← 영원히 안 채워진다
+      #
+      #   엣지 캐시는 **첫 요청 한 번이 DB 까지 성공해야** 채워진다. 그런데 수집이 DB 를
+      #   물고 있는 동안에는 그 첫 요청이 500 으로 죽는다. 죽으면 캐시가 안 채워지고,
+      #   다음 사람도 «첫 요청» 이 되어 또 죽는다. **악순환이다.**
+      #   한 번만 성공시켜 주면 그 뒤 30분은 아무도 DB 를 안 건드린다.
+      #
+      #   그래서 **수집을 시작하기 직전**에 채운다. 이 시점은 직전 run 의 쿨다운(300초)이
+      #   막 끝난 자리라 **DB 가 가장 한가하다.** 여기서 채운 값이 다음 사이클 내내
+      #   사람들에게 나간다.
+      #
+      # ── 왜 `cache-warm.yml` 에 맡기지 않는가
+      #   그 워크플로는 `*/5` 예약인데 **GitHub 이 한 번도 발사하지 않았다.**
+      #   예약 드롭률이 실측 89% 다 (D-225). 반면 이 워크플로는 자기호출 체인이라
+      #   **구조적으로 드롭이 없다.** 신뢰할 수 있는 시계에 얹는다.
+      #   `cache-warm.yml` 은 지우지 않는다 — 되살아나면 덤이다 (CLAUDE.md 10-4).
+      #
+      # ── 실패해도 넘어간다
+      #   데우기가 안 됐다고 수집을 멈출 이유가 없다. 데우기는 **덤**이지 전제가 아니다.
+      - name: 엣지 캐시를 미리 채운다 (D-249)
+        if: ${{ inputs.dry_run != true }}
+        continue-on-error: true
+        env:
+          SITE_URL: ${{ vars.SITE_URL || 'https://sacloud-web-softgw01-8957s-projects.vercel.app' }}
+        run: |
+          set -u
+
+          # 쿼리스트링까지 **화면이 실제로 보내는 것과 똑같이** 적는다.
+          # 엣지 캐시의 키는 전체 URL 이라, `?weapon=all` 을 빼고 데우면
+          # 화면이 쓰는 것과 **다른 칸**을 데우게 되어 아무 효과가 없다.
+          PATHS="
+          /api/remote_configs
+          /api/leagues
+          /api/home/top
+          /api/maps
+          /api/boards?category=hot
+          /api/eggs/broken
+          /api/leagues/supply
+          /api/leagues/supply/clans
+          /api/leagues/supply/ranks/clans?division=1
+          /api/leagues/supply/ranks/players?weapon=all
+          /api/leagues/supply/ranks/form?weapon=all
+          /api/leagues/nolink
+          /api/leagues/nolink/clans
+          /api/leagues/nolink/ranks/clans?division=1
+          /api/leagues/nolink/ranks/players?weapon=all
+          /api/leagues/nolink/ranks/overall?limit=1
+          /api/leagues/sanply
+          /api/leagues/sanply/ranks/players?weapon=all
+          "
+
+          echo "대상: ${SITE_URL}"
+          ok=0; bad=0
+          for path in $PATHS; do
+            # **두 번까지 시도한다.** 한 번 실패하면 그 칸은 30분 내내 비어 있게 되고,
+            # 그 사이 들어온 사람이 전부 DB 로 내려간다. 재시도 한 번의 값이 그만큼 크다.
+            for attempt in 1 2; do
+              code=$(curl -s -o /dev/null                 --max-time 45                 -w '%{http_code}'                 -H 'Accept: application/json'                 -H 'User-Agent: sacloud-cache-warm'                 "${SITE_URL}${path}" || echo 000)
+              if [ "$code" = '200' ]; then break; fi
+              [ "$attempt" = '1' ] && sleep 5
+            done
+
+            if [ "$code" = '200' ]; then
+              ok=$(( ok + 1 ))
+            else
+              bad=$(( bad + 1 ))
+              echo "  ${code}  ${path}"
+            fi
+
+            # 한꺼번에 때리면 그게 곧 부하다. 접속 통로가 1개라 서로 줄을 선다 (D-239)
+            sleep 1
+          done
+
+          echo "데움 ${ok}칸 · 실패 ${bad}칸"
+          # 실패해도 수집은 계속한다
+          exit 0
+
       - name: 5분 사이클 반복 — 수집 → 적재 → 증분 집계
         id: sync
         run: |

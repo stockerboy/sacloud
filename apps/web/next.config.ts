@@ -231,6 +231,26 @@ const CACHE_SOURCES_RECORD = [
   '/api/players/search/:q',
 ]
 
+/**
+ * **알 목록 등급 — 15초** (2026-09-01 · D-249).
+ *
+ * ── 왜 따로 두나
+ *   `app/api/eggs/broken/route.ts` 가 `okPublic(..., 10)` 으로 10초를 붙이는데,
+ *   **Next 가 그 머리말을 덮어쓴다** (아래 `headers()` 주석의 D-240). 즉 이 경로는
+ *   지금까지 **엣지 캐시가 한 칸도 없었다.** 그래서 매 요청이 DB 까지 내려갔고,
+ *   운영에서 가장 자주 죽는 경로였다 —
+ *     16:28 · 16:48 · 16:52 · 17:03 전부 `/api/eggs/broken` 이다.
+ *
+ * ── 왜 60초(FRESH)가 아니라 15초인가
+ *   알을 깬 직후에 화면이 그대로면 사용자는 **「안 깨졌다」로 읽는다** (D-222 ⑤).
+ *   그 오해가 이 시스템의 목적을 깎는다. 라우트가 고른 10초의 취지를 지키되,
+ *   엣지가 실제로 붙잡을 수 있는 최소치로 15초를 준다.
+ *   `stale-while-revalidate` 가 있어 만료 뒤에도 옛 값을 즉시 내주고 뒤에서 갱신하므로,
+ *   **DB 가 죽어 있어도 목록이 비지 않는다** — 이것이 이 등급의 진짜 목적이다.
+ */
+const CACHE_EGG_SECONDS = 15
+const CACHE_SOURCES_EGG = ['/api/eggs/broken']
+
 const CACHE_SOURCES_FRESH = [
   /*
    * 글 목록. `listBoards()` 를 따라 들어가 확인했다 — `Request` 를 받지 않고,
@@ -249,6 +269,7 @@ const CACHE_RULES = [
   { sources: CACHE_SOURCES_LONG, headers: cacheHeaders(CACHE_LONG_SECONDS) },
   { sources: CACHE_SOURCES_RECORD, headers: PUBLIC_CACHE_HEADERS },
   { sources: CACHE_SOURCES_FRESH, headers: cacheHeaders(CACHE_FRESH_SECONDS) },
+  { sources: CACHE_SOURCES_EGG, headers: cacheHeaders(CACHE_EGG_SECONDS) },
 ]
 
 const SECURITY_HEADERS = [
