@@ -30,6 +30,7 @@ import {
 } from '@sacloud/contract'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
+import { playerLadderRows, type PlayerLadderRow } from './playerLadderRows'
 
 /** 오늘 말고 몇 날을 더 보여주나 */
 const EXTRA_DAYS = 2
@@ -89,6 +90,48 @@ export async function playerRecentDays(
   playerId: string,
   now: Date = new Date(),
 ): Promise<PlayerDayRecord[]> {
+  return playerRecentDaysFrom(await playerLadderRows(leagueId, playerId), now)
+}
+
+/**
+ * 위와 **같은 값**을, 이미 읽어 둔 참가 기록에서 만든다 (2026-09-01 · D-239 후속).
+ *
+ * 모집단이 누적·폼·티어별과 같아서 같은 행을 다섯 번 읽고 있었다.
+ * 왜 합쳤는지는 `playerLadderRows.ts` 머리말에 있다.
+ *
+ * ── 자르는 자리는 그대로 `SCAN_LIMIT` 이다
+ *   전량을 쓰면 **값이 바뀐다** — 400건보다 더 거슬러 올라간 날이 목록에 들어온다.
+ *   줄이는 작업이지 넓히는 작업이 아니다.
+ *
+ * > `[미확인]` 옛 질의의 정렬은 `startAt DESC` 하나뿐이라 같은 시각의 경기가 있으면
+ * > 400번째 경계에서 어느 행이 들어올지가 실행마다 달라질 수 있었다.
+ * > `playerLadderRows()` 는 `matchId DESC` 를 타이브레이커로 두어 **결정적**이다.
+ * > 이 차이는 「같은 시각에 시작한 경기가 정확히 그 경계에 걸릴 때」만 드러난다.
+ */
+export function playerRecentDaysFrom(
+  rows: readonly PlayerLadderRow[],
+  now: Date = new Date(),
+): PlayerDayRecord[] {
+  return daysOf(
+    rows.slice(0, SCAN_LIMIT).map((row) => ({
+      kill: row.kill,
+      death: row.death,
+      side: row.side,
+      match: { startAt: row.startAt, winnerSide: row.winnerSide },
+    })),
+    now,
+  )
+}
+
+/**
+ * **옛 방식** — 질의 한 번(+중첩 한 번)으로 같은 값을 만든다
+ * (`CLAUDE.md` 10-4: 옛 버전을 남긴다). 대조용 기준이다.
+ */
+export async function playerRecentDaysByQuery(
+  leagueId: string,
+  playerId: string,
+  now: Date = new Date(),
+): Promise<PlayerDayRecord[]> {
   const rows = await prisma.matchPlayerStat.findMany({
     where: { playerId, match: withLadderMatch({ leagueId, ...seasonWindowWhere() }) },
     select: {
@@ -101,6 +144,22 @@ export async function playerRecentDays(
     take: SCAN_LIMIT,
   })
 
+  return daysOf(rows, now)
+}
+
+/**
+ * **날짜로 접는 규칙은 여기 하나뿐이다.**
+ * 새 경로와 옛 경로가 재료를 다르게 구해 올 뿐, 세는 일은 둘 다 이 함수가 한다.
+ */
+function daysOf(
+  rows: readonly {
+    kill: number | null
+    death: number | null
+    side: string
+    match: { startAt: Date; winnerSide: string }
+  }[],
+  now: Date,
+): PlayerDayRecord[] {
   const byDay = new Map<string, DayBucket>()
   for (const row of rows) {
     const key = kstDayKey(row.match.startAt)

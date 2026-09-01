@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
-import { fail, guard, ok, okPage } from '@/lib/server/respond'
+import { fail, guard, ok, okPagePublic } from '@/lib/server/respond'
 import { jsonBody, pageParams, query } from '@/lib/server/request'
 import { createBoard, listBoards } from '@/lib/server/queries/boards'
 
@@ -23,7 +23,8 @@ export async function GET(request: Request) {
       type: query(request, 'type'),
       q: query(request, 'q'),
     })
-    return okPage(page)
+    /* 짧게(30초) — 목록은 세션과 무관하지만 사람이 방금 쓴 글이 곧 보여야 한다 (D-240) */
+    return okPagePublic(page, 30)
   })
 }
 

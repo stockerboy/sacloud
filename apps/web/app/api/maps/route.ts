@@ -1,4 +1,4 @@
-import { guard, ok } from '@/lib/server/respond'
+import { guard, okPublic } from '@/lib/server/respond'
 import { listMaps } from '@/lib/server/queries/search'
 
 /**
@@ -7,5 +7,6 @@ import { listMaps } from '@/lib/server/queries/search'
  * 목록이 소수라 페이지네이션 없이 전량을 준다 (Mock과 동일).
  */
 export async function GET() {
-  return guard(async () => ok(await listMaps()))
+  /* 길게(3600초) — 맵 목록은 게임 패치급 사건이 있어야 바뀐다 (D-240) */
+  return guard(async () => okPublic(await listMaps(), undefined, 3600))
 }

@@ -114,6 +114,19 @@ describe.skipIf(!up)('실제 API 계약 준수 (개발 서버 필요)', { timeou
     await checkGet('leagueClans', { params: { leagueSlug } })
     await checkGet('leagueRankClans', { params: { leagueId }, search: { division: '1' } })
     await checkGet('leagueRankPlayers', { params: { leagueId } })
+
+    /* 전체 통합 래더 — 메인 신전 히어로가 `limit=1` 로 부른다 (2026-09-01).
+       `limit` 을 지키는지까지 본다. 안 지키면 히어로가 43건을 끌어오게 된다 */
+    const overall = await checkGet('leagueRankOverall', {
+      params: { leagueId },
+      search: { limit: '1' },
+    })
+    expect(overall.data.length, 'limit=1 인데 1건이 아니다').toBeLessThanOrEqual(1)
+    if (overall.data[0]) expect(overall.data[0].rank).toBe(1)
+
+    /* `limit` 없이 부르면 예전처럼 전부 준다 — 기존 호출자를 깨지 않았다는 확인 */
+    const all = await checkGet('leagueRankOverall', { params: { leagueId } })
+    expect(all.data.length).toBeGreaterThanOrEqual(overall.data.length)
   })
 
   it('플레이어 · 클랜', async () => {

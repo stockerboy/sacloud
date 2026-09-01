@@ -31,6 +31,7 @@ import {
 } from '@sacloud/contract'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
+import { playerLadderRows, type PlayerLadderRow } from './playerLadderRows'
 
 /** 티어 합계 + 그 티어에서 만난 클랜별 전적을 모으는 중간 그릇 */
 interface TierBucket {
@@ -44,6 +45,44 @@ interface TierBucket {
 const emptyBucket = (): TierBucket => ({ games: 0, win: 0, lose: 0, clans: new Map() })
 
 export async function playerTierBreakdown(
+  leagueId: string,
+  playerId: string,
+  divisionCount: number,
+): Promise<PlayerTierRecord[]> {
+  return playerTierBreakdownFrom(await playerLadderRows(leagueId, playerId), divisionCount)
+}
+
+/**
+ * 위와 **같은 값**을, 이미 읽어 둔 참가 기록에서 만든다 (2026-09-01 · D-239 후속).
+ *
+ * 이 카드는 원래부터 **전량**을 읽었다(`take` 없음). 그래서 합치면서 읽는 양이 늘지 않는다 —
+ * 오히려 나머지 다섯 조회가 이 한 번에 얹혔다. 자세한 것은 `playerLadderRows.ts` 머리말.
+ *
+ * 클랜명 조회 한 번은 그대로 남는다. 이름은 표기용이라 **판수를 다 센 뒤에** 읽는다.
+ */
+export async function playerTierBreakdownFrom(
+  rows: readonly PlayerLadderRow[],
+  divisionCount: number,
+): Promise<PlayerTierRecord[]> {
+  return tiersOf(
+    rows.map((row) => ({
+      side: row.side,
+      opponentDivisionAtMatch: row.opponentDivisionAtMatch,
+      match: {
+        winnerSide: row.winnerSide,
+        redLeagueClanId: row.redLeagueClanId,
+        blueLeagueClanId: row.blueLeagueClanId,
+      },
+    })),
+    divisionCount,
+  )
+}
+
+/**
+ * **옛 방식** — 질의 한 번(+중첩 한 번)으로 재료를 읽는다
+ * (`CLAUDE.md` 10-4: 옛 버전을 남긴다). 대조용 기준이다.
+ */
+export async function playerTierBreakdownByQuery(
   leagueId: string,
   playerId: string,
   divisionCount: number,
@@ -63,6 +102,21 @@ export async function playerTierBreakdown(
     },
   })
 
+  return tiersOf(rows, divisionCount)
+}
+
+/**
+ * **티어로 접는 규칙은 여기 하나뿐이다.**
+ * 새 경로와 옛 경로가 재료를 다르게 구해 올 뿐, 세는 일은 둘 다 이 함수가 한다.
+ */
+async function tiersOf(
+  rows: readonly {
+    side: string
+    opponentDivisionAtMatch: number
+    match: { winnerSide: string; redLeagueClanId: string; blueLeagueClanId: string }
+  }[],
+  divisionCount: number,
+): Promise<PlayerTierRecord[]> {
   const byTier = new Map<number, TierBucket>()
   /* 이름을 붙여야 할 상대 클랜. 판수와 무관하게 모아 두고 **한 번에** 조회한다 —
      천적 조건(50판)으로 미리 걸러 두면 그 임계값이 계약과 이 파일 두 곳에 생긴다 */

@@ -1,4 +1,4 @@
-import { notFound, ok, guard } from '@/lib/server/respond'
+import { notFound, okPublic, guard } from '@/lib/server/respond'
 import { intQuery, routeParam } from '@/lib/server/request'
 import { resolveLeagueId } from '@/lib/server/queries/leagues'
 import { getIndependentLadder, getIndependentTiers, getTierLadder } from '@/lib/server/queries/ladders'
@@ -18,6 +18,7 @@ export async function GET(request: Request, context: { params: Promise<Record<st
 
     const tier = intQuery(request, 'tier', 0)
     const rows = tier > 0 ? await getTierLadder(leagueId, tier) : await getIndependentLadder(leagueId)
-    return ok({ tiers: await getIndependentTiers(leagueId), tier: tier > 0 ? tier : null, rows })
+    /* 기록 등급(기본 300초) — 랭킹이다. 다른 랭킹 라우트와 같은 등급으로 맞춘다 (D-240) */
+    return okPublic({ tiers: await getIndependentTiers(leagueId), tier: tier > 0 ? tier : null, rows })
   })
 }

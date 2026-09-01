@@ -56,9 +56,23 @@ export async function playerJudgedPosition(playerId: string): Promise<JudgedPosi
  * 판정할 재료가 하나도 없는 선수는 **맵에 들어가되 전부 `null`** 이다.
  * 호출부는 그 선수의 이름만 적는다 — `-` 로 채우지 않는다 (D-106).
  */
+/**
+ * **이미 손에 있는 재료**는 다시 읽지 않는다 (2026-09-01 · D-239 후속).
+ *
+ * 부르는 쪽이 같은 값을 이미 읽어 왔으면 넘긴다. 넘긴 만큼 왕복이 사라진다.
+ * 넘기지 않으면 예전처럼 여기서 읽는다 — **기본 동작은 그대로**다.
+ */
+export interface PositionMaterials {
+  /** playerId → 선수가 직접 등록한 포지션 글자 (D-161) */
+  userSet?: ReadonlyMap<string, string | null>
+  /** playerId → `[라플 판수, 스나 판수]` */
+  weaponGames?: ReadonlyMap<string, [number, number]>
+}
+
 export async function resolvePositionsOf(
   leagueId: string,
   playerIds: readonly string[],
+  preloaded: PositionMaterials = {},
 ): Promise<Map<string, ResolvedPosition>> {
   const ids = [...new Set(playerIds)].filter((id) => id.length > 0)
   const resolved = new Map<string, ResolvedPosition>()
@@ -66,7 +80,9 @@ export async function resolvePositionsOf(
 
   const [players, profiles, weaponGames] = await Promise.all([
     /* 선수가 직접 등록/수정한 값. 리그별이 아니라 **전역 선수 값**이다 (D-161) */
-    prisma.player.findMany({ where: { id: { in: ids } }, select: { id: true, position: true } }),
+    preloaded.userSet
+      ? Promise.resolve(null)
+      : prisma.player.findMany({ where: { id: { in: ids } }, select: { id: true, position: true } }),
     prisma.playerPositionProfile.findMany({
       /* 규칙 버전을 반드시 건다 — 단건 조회와 같은 이유다 */
       where: { playerId: { in: ids }, classifierVersion: POSITION_CLASSIFIER_VERSION },
@@ -74,27 +90,23 @@ export async function resolvePositionsOf(
     }),
     /* 주무기. 무기를 모르는 참가 기록(`null`)은 세지 않는다 —
        0 으로 떨어뜨리면 "라플을 들었다" 는 없는 사실이 된다 (D-034 · D-106) */
-    prisma.matchPlayerStat.groupBy({
-      by: ['playerId', 'weapon'],
-      where: {
-        playerId: { in: ids },
-        weapon: { not: null },
-        match: withLadderMatch({ leagueId, ...seasonWindowWhere() }),
-      },
-      _count: { _all: true },
-    }),
+    preloaded.weaponGames
+      ? Promise.resolve(null)
+      : prisma.matchPlayerStat.groupBy({
+          by: ['playerId', 'weapon'],
+          where: {
+            playerId: { in: ids },
+            weapon: { not: null },
+            match: withLadderMatch({ leagueId, ...seasonWindowWhere() }),
+          },
+          _count: { _all: true },
+        }),
   ])
 
-  const userSetOf = new Map(players.map((row) => [row.id, row.position]))
+  const userSetOf = preloaded.userSet ?? new Map((players ?? []).map((row) => [row.id, row.position]))
   const judgedOf = new Map(profiles.map((row) => [row.playerId, row]))
   /* playerId → [라플 판수, 스나 판수] */
-  const gamesOf = new Map<string, [number, number]>()
-  for (const row of weaponGames) {
-    const bucket = gamesOf.get(row.playerId) ?? [0, 0]
-    if (row.weapon === WEAPON.SNIPER) bucket[1] += row._count._all
-    else if (row.weapon === WEAPON.RIFLE) bucket[0] += row._count._all
-    gamesOf.set(row.playerId, bucket)
-  }
+  const gamesOf = preloaded.weaponGames ?? countWeaponGames(weaponGames ?? [])
 
   for (const id of ids) {
     const judged = judgedOf.get(id)
@@ -110,4 +122,25 @@ export async function resolvePositionsOf(
     )
   }
   return resolved
+}
+
+/**
+ * `groupBy(playerId, weapon)` 결과를 `playerId → [라플 판수, 스나 판수]` 로 접는다.
+ *
+ * 무기를 모르는 버킷(`weapon = null`)은 어느 쪽에도 넣지 않는다 (D-034 · D-106).
+ * 그래서 **무기 조건이 없는 `groupBy` 결과를 그대로 넘겨도 결과가 같다** —
+ * `clanRoster.ts` 가 그 성질을 이용해 판수 집계와 이 집계를 한 질의로 합친다.
+ */
+export function countWeaponGames(
+  rows: readonly { playerId: string; weapon: number | null; _count: { _all: number } }[],
+): Map<string, [number, number]> {
+  const gamesOf = new Map<string, [number, number]>()
+  for (const row of rows) {
+    if (row.weapon !== WEAPON.SNIPER && row.weapon !== WEAPON.RIFLE) continue
+    const bucket = gamesOf.get(row.playerId) ?? [0, 0]
+    if (row.weapon === WEAPON.SNIPER) bucket[1] += row._count._all
+    else bucket[0] += row._count._all
+    gamesOf.set(row.playerId, bucket)
+  }
+  return gamesOf
 }

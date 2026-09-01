@@ -1,16 +1,21 @@
 import { prisma } from '@sacloud/db'
 import { HOME_LEAGUES, HOME_TOP_SIZE, type HomeLeagueTop, type HomeTop } from '@sacloud/contract'
-import { getPlayerRanks } from './leagues'
+import { getTopPlayerRows } from './leagues'
 import { publicOriginWhere } from './publicScope'
 
 /**
  * 메인페이지 · 리그별 개인랭킹 TOP3 (`docs/SITE_SPEC_V2.md` 3절).
  *
  * ── 순위를 여기서 다시 계산하지 않는다
- *   `getPlayerRanks`(개인랭킹 화면이 쓰는 바로 그 질의)를 크기 3으로 부르고
- *   필요한 칸만 옮겨 담는다. 정렬(`rating desc, id asc`) · 배치고사 제외 ·
- *   모집단 규칙이 랭킹 화면과 **한 곳에서** 나오게 하기 위해서다.
+ *   `getTopPlayerRows`(`leagues.ts`)를 크기 3으로 부른다. 그 함수는 개인랭킹 화면과
+ *   **같은 상수**(`RANK_ORDER` · `playerRankWhere`)를 쓴다 — 정렬(`rating desc, id asc`) ·
+ *   배치고사 제외 · 모집단 규칙이 한 곳에서 나온다.
  *   여기에 따로 `orderBy` 를 적으면 두 화면이 조용히 갈라진다.
+ *
+ *   ⚠ 예전에는 `getPlayerRanks` 를 그대로 불렀다 (2026-09-01 이전).
+ *     그러면 메인이 버리는 킬뎃·평균킬을 만드느라 리그마다 왕복이 두 번씩 더 났다 —
+ *     `/api/home/top` 이 13번이었다. 지금은 8번이다 (D-239 후속).
+ *     순위 규칙은 그대로다.
  *
  * ── 리그가 없거나 비어 있으면 빈 배열이다
  *   무소속리그(`nolink`)는 2026-08-30 현재 등록 클랜이 0이라 개인랭킹도 0건이다.
@@ -36,17 +41,12 @@ export async function getHomeTop(): Promise<HomeTop> {
          메인에 세 리그가 나란히 있다는 것 자체가 사양이다 */
       if (!league) return { slug: entry.slug, abbr: entry.abbr, name: entry.name, rows: [] }
 
-      const page = await getPlayerRanks(league.id, null, HOME_TOP_SIZE)
+      const rows = await getTopPlayerRows(league.id, HOME_TOP_SIZE)
       return {
         slug: league.slug,
         abbr: entry.abbr,
         name: league.name,
-        rows: (page?.items ?? []).map((row) => ({
-          rank: row.rank,
-          player: row.player,
-          clan: row.clan,
-          rating: row.rating,
-        })),
+        rows,
       }
     }),
   )

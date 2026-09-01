@@ -13,6 +13,7 @@ import {
 } from '@sacloud/contract'
 import { ladderMatchWhere } from './ladderScope'
 import { SEASON0_FROM, seasonWindowWhere } from './season0Scope'
+import { playerLadderRows, type PlayerLadderRow } from './playerLadderRows'
 
 /**
  * 선수 프로필 `최근 폼` (D-167).
@@ -74,7 +75,48 @@ export async function buildPlayerForm(
   playerId: string,
   now: Date = new Date(),
 ): Promise<PlayerForm> {
-  const keys = formMonthKeys(now, FORM_MONTHS)
+  return buildPlayerFormFrom(await playerLadderRows(leagueId, playerId), now)
+}
+
+/**
+ * 위와 **같은 값**을, 이미 읽어 둔 참가 기록에서 만든다 (2026-09-01 · D-239 후속).
+ *
+ * 폼이 보는 모집단은 누적·오늘·티어별과 **같다**(`formMatchWhere` 가 그렇게 적혀 있다).
+ * 다른 것은 「K/D 를 둘 다 아는 행만」이라는 행 조건과 자르는 범위뿐이라,
+ * `playerLadderRows()` 가 한 번 읽어 온 것에서 걸러 내면 된다.
+ *
+ * ── 정렬이 같아야 한다
+ *   최근 40경기는 `startAt DESC, matchId DESC` 로 잘랐다.
+ *   `playerLadderRows()` 가 **그 정렬 그대로** 준다 — 다시 정렬하지 않는다.
+ */
+export function buildPlayerFormFrom(
+  rows: readonly PlayerLadderRow[],
+  now: Date = new Date(),
+): PlayerForm {
+  /* K/D 가 **둘 다 있는** 기록만 (D-148). `kill ?? 0` 으로 더하면 판수만 늘고
+     킬뎃이 0 쪽으로 끌려 내려간다 */
+  const known = rows.filter((row) => row.kill !== null && row.death !== null)
+  const rangeStart = formRangeStart(now, FORM_MONTHS)
+  /* 6개월 범위와 시즌 창 중 **늦은 쪽**이 시작이다.
+     `playerLadderRows()` 가 이미 창 시작을 걸어 두므로 여기서는 더 늦은 값만 덮는다 */
+  const from = rangeStart > SEASON0_FROM ? rangeStart : SEASON0_FROM
+
+  return buildFormOf(
+    known.filter((row) => row.startAt >= from).map((row) => ({ ...row, match: { startAt: row.startAt } })),
+    known.slice(0, FORM_RECENT_GAMES + FORM_BASELINE_GAMES),
+    now,
+  )
+}
+
+/**
+ * **옛 방식** — 질의 두 번(+중첩 한 번)으로 같은 값을 만든다
+ * (`CLAUDE.md` 10-4: 옛 버전을 남긴다). 대조용 기준이다.
+ */
+export async function buildPlayerFormByQuery(
+  leagueId: string,
+  playerId: string,
+  now: Date = new Date(),
+): Promise<PlayerForm> {
   const rangeStart = formRangeStart(now, FORM_MONTHS)
 
   const [monthRows, windowRows] = await Promise.all([
@@ -101,6 +143,24 @@ export async function buildPlayerForm(
     }),
   ])
 
+  return buildFormOf(monthRows, windowRows, now)
+}
+
+/**
+ * **폼을 만드는 규칙은 여기 하나뿐이다.**
+ *
+ * 새 경로(`buildPlayerFormFrom`)와 옛 경로(`buildPlayerFormByQuery`)가 재료를 다르게
+ * 구해 올 뿐, 세는 일은 둘 다 이 함수가 한다. 규칙이 두 곳에 생기면 조용히 갈라진다.
+ *
+ * @param monthRows  그래프용 — 최근 6개월(시즌 창과 늦은 쪽 기준) 안의 K/D 를 아는 기록
+ * @param windowRows 판정용 — 최근순으로 자른 40경기
+ */
+function buildFormOf(
+  monthRows: readonly { kill: number | null; death: number | null; match: { startAt: Date } }[],
+  windowRows: readonly { kill: number | null; death: number | null }[],
+  now: Date,
+): PlayerForm {
+  const keys = formMonthKeys(now, FORM_MONTHS)
   const buckets = new Map<string, Tally>(keys.map((key) => [key, { games: 0, kill: 0, death: 0 }]))
   for (const row of monthRows) {
     const bucket = buckets.get(formMonthKey(row.match.startAt))

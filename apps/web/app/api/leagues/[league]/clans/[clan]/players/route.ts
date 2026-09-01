@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
-import { guard, notFound, okPage } from '@/lib/server/respond'
+import { guard, notFound, okPagePublic } from '@/lib/server/respond'
 import { pageParams, routeParam } from '@/lib/server/request'
 import { getLeagueClanPlayers } from '@/lib/server/queries/records'
 
@@ -15,6 +15,7 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     const clanSlug = await routeParam(context, 'clan')
     const { cursor, size } = pageParams(request, PAGE_SIZE.DEFAULT)
     const page = await getLeagueClanPlayers(leagueSlug, clanSlug, cursor, size)
-    return page ? okPage(page) : notFound('리그 클랜을 찾을 수 없습니다')
+    /* 기록 등급(기본 300초) — 참여 클랜원 명단은 공개 값이다 (D-240) */
+    return page ? okPagePublic(page) : notFound('리그 클랜을 찾을 수 없습니다')
   })
 }

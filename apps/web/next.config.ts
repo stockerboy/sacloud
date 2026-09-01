@@ -83,30 +83,97 @@ const CSP = [
 /**
  * 공개 읽기 응답의 엣지 캐시 (D-240). 값의 근거는 `respond.ts` 의 `PUBLIC_CACHE_SECONDS` 주석에 있다.
  *
- *   `s-maxage=300`               엣지가 5분 동안 대신 답한다 → 그 5분간 DB 를 한 번만 때린다
+ *   `s-maxage=N`                 엣지가 N초 동안 대신 답한다 → 그 N초간 DB 를 한 번만 때린다
  *   `stale-while-revalidate=600` 만료 뒤 10분까지 **옛 값을 즉시** 내주고 뒤에서 새로 받는다
  *   `stale-while-revalidate=86400` **(2026-09-01 재조정)**
  *     600 → 86400(하루). 이유: DB 가 수집에 눌려 답을 못 하는 구간이 실제로 있고,
  *     그때 창이 짧으면 **캐시가 만료되어 사용자가 500 을 본다.** 창이 하루면
  *     한 번이라도 성공한 응답이 있는 한 **사용자는 500 을 보지 않는다** —
  *     조금 낡은 값을 보고, 뒤에서 새 값을 받아 온다.
- *     ⚠ 값이 하루까지 낡을 수 있다는 뜻이 아니다. DB 가 멀쩡하면 5분마다 갱신된다.
+ *     ⚠ 값이 하루까지 낡을 수 있다는 뜻이 아니다. DB 가 멀쩡하면 `s-maxage` 마다 갱신된다.
  *     하루는 **DB 가 죽어 있는 동안 버티는 길이**다.
+ *     ⚠ **등급을 나눠도 이 값은 전 등급 86400 으로 고정한다.** 이게 「DB 가 죽어도
+ *       500 을 안 본다」의 근거이고, 등급마다 다르게 하면 그 보장이 등급마다 갈라진다.
  *   `max-age=0`                  **브라우저는 캐시하지 않는다** — 방금 뭘 한 사람이 옛 화면을 보면 안 된다
  */
-const PUBLIC_CACHE_HEADERS = [
-  { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400' },
+const STALE_WHILE_REVALIDATE_SECONDS = 86400
+
+/**
+ * ── 등급 ① **오래 (1시간)** — 사람이 손대야 바뀌는 것
+ *   리그 목록 · 리그 상세 · 맵 · 원격설정 · 시즌 목록.
+ *   리그는 셋(DPL · IPL · 열산)뿐이고 새 리그는 관리자가 만들 때만 생긴다.
+ *   시즌 목록은 시즌이 열리고 닫힐 때만 바뀐다 — 하루에 한 번도 안 바뀌는 값이다.
+ *   1시간 늦게 반영돼도 «틀린 화면» 이 되지 않는 것들만 여기 둔다.
+ */
+const CACHE_LONG_SECONDS = 3600
+
+/**
+ * ── 등급 ② **기록/랭킹 (5분)** — D-240 이 정한 기존 값. 그대로 둔다
+ *   경기가 들어오면 바뀌지만, 전적 사이트에서 5분 지연은 견딜 만하다고 이미 판정했다
+ *   (`respond.ts` 의 `PUBLIC_CACHE_SECONDS` 주석). 새로 나누면서도 **이 등급은 안 건드린다** —
+ *   실측으로 다시 정해야 하는 임시값이라 지금 흔들면 무엇 때문에 달라졌는지 알 수 없다.
+ */
+const CACHE_RECORD_SECONDS = 300
+
+/**
+ * ── 등급 ③ **방금 쓴 것 (30초)** — 사람이 글을 올리고 목록을 다시 보는 것
+ *   글을 쓰고 목록으로 돌아왔는데 자기 글이 없으면 «안 올라갔다» 로 읽는다.
+ *   그래도 0 은 아니다 — 목록은 Hot 집계 때문에 무거운 질의고, 30초만 막아도
+ *   연타(새로고침 · 탭 전환)를 전부 엣지가 받는다.
+ *   ⚠ 30초는 **버티는 값이 아니라 참는 값**이다. 더 늘리면 사용자가 눈치챈다.
+ */
+const CACHE_FRESH_SECONDS = 30
+
+const cacheHeaders = (seconds: number) => [
+  {
+    key: 'Cache-Control',
+    value: `public, max-age=0, s-maxage=${seconds}, stale-while-revalidate=${STALE_WHILE_REVALIDATE_SECONDS}`,
+  },
 ]
+
+/** 옛 이름을 남겨 둔다 (`CLAUDE.md` 10-4) — 등급을 나누기 전에는 이것 하나뿐이었다 */
+const PUBLIC_CACHE_HEADERS = cacheHeaders(CACHE_RECORD_SECONDS)
 
 /**
  * 캐시를 거는 경로. **로그인과 무관하고 같은 주소면 누구에게나 같은 값**인 것만 넣는다.
- * 하나 넣을 때마다 «이 응답이 사람마다 다른가» 를 먼저 확인한다.
+ * 하나 넣을 때마다 «이 응답이 사람마다 다른가» 를 먼저 확인한다 —
+ * 라우트 파일만 보지 말고 **그 밑의 쿼리 함수까지** 따라 들어가서 본다.
+ *
+ * ⚠ **한 요청이 두 줄에 걸리지 않게 한다.** Next 는 매칭되는 규칙의 머리말을 **전부 붙인다** —
+ *   등급이 다른 두 줄에 걸리면 `Cache-Control` 이 두 개 나간다.
+ *
+ * ── 여기 **넣지 않은** 것과 그 이유 (2026-09-01 검토)
+ *   `/api/boards/:boardId`   **세션에 따라 답이 다르다.** `getBoard()` 가 `currentUserId` 와
+ *                            `voterKey` 를 읽어 `me`(내 글인가) · `like_type`(내가 추천했는가)를
+ *                            담는다. 게다가 조회수를 올린다 — 캐시되면 조회수가 멈춘다
+ *   `/api/comments`          **세션에 따라 답이 다르다.** `listComments()` 가 같은 두 값을 읽고
+ *                            `me` · `like_type` · 익명 라벨을 사람마다 다르게 만든다
+ *   `/api/leagues/slug/:slug/availability`
+ *                            리그 만들기 폼의 중복 확인이다. 캐시하면 **남이 방금 가져간 이름을
+ *                            «비어 있다» 로 답한다.** 호출량도 미미해 얻을 게 없다
+ *   `/api/health`            상태를 보는 것이 목적인데 캐시하면 **옛 상태**를 본다
+ *   `/api/infos` · `/api/me/*` · `/api/admin/*` · `/api/auth/*` · `/api/eggs/broken`
+ *                            기존 판단 그대로 (머리말 주석 참조)
+ *
+ * ── 이미 덮여 있어 **따로 넣지 않은** 것
+ *   `/api/leagues/:league/ranks/form` · `/ranks/independent` 는 둘 다 세션과 무관함을 확인했다
+ *   (쿼리 함수가 `Request` 를 아예 받지 않는다). 다만 `/ranks/:kind*` 가 이미 덮고 있고
+ *   등급도 같으므로 **줄을 늘리지 않는다** — 늘리면 위의 «두 줄에 걸림» 이 된다
  */
-const PUBLIC_CACHE_SOURCES = [
-  '/api/home/top',
+const CACHE_SOURCES_LONG = [
+  '/api/remote_configs',
   '/api/maps',
   '/api/leagues',
   '/api/leagues/:league',
+  /* 검색창이 반복해서 때리는데 리그는 셋뿐이라 결과가 사실상 고정이다 */
+  '/api/leagues/name/:name',
+  '/api/leagues/search/:q',
+  '/api/leagueclans/:leagueClanId/seasons',
+  '/api/leagueplayers/:leaguePlayerId/seasons',
+]
+
+const CACHE_SOURCES_RECORD = [
+  '/api/home/top',
   '/api/leagues/:league/clans',
   '/api/leagues/:league/clans/:clan/show',
   '/api/leagues/:league/clans/:clan/players',
@@ -115,13 +182,44 @@ const PUBLIC_CACHE_SOURCES = [
   '/api/leagues/:league/matches/:matchId',
   '/api/leagues/:league/ranks/:kind*',
   '/api/leagueclans/:leagueClanId/matches',
-  '/api/leagueclans/:leagueClanId/seasons',
-  '/api/leagueplayers/:leaguePlayerId/seasons',
   '/api/clans/:clanSlug',
   '/api/clans/:clanSlug/leagues',
   '/api/clans/:clanSlug/players',
   '/api/players/:playerId',
   '/api/players/:playerId/leagues',
+  /*
+   * 통합검색 · 자동완성. 넣는 근거는 **세션이 아니라 적중률**이었다.
+   *   ① 세션과 무관하다 — `queries/search.ts` 의 함수들은 `Request` 를 받지 않는다.
+   *      로그인해도 안 해도 같은 값이다
+   *   ② 검색어가 제각각이라 적중률이 낮아 보이지만, 실제로 몰리는 검색어는
+   *      **자기 닉네임 · 유명 클랜 이름** 몇 개다. 그리고 자동완성은 **타자 한 번마다**
+   *      호출된다 — 같은 사람이 `ㅅ`→`서`→`서플` 을 지웠다 다시 치는 것만으로도 재방문한다
+   *   ③ 적중하지 않아도 **손해가 없다.** 캐시 미스는 지금과 똑같이 DB 로 간다
+   */
+  '/api/clans/name/:name',
+  '/api/clans/search/:q',
+  '/api/players/name/:name',
+  '/api/players/search/:q',
+]
+
+const CACHE_SOURCES_FRESH = [
+  /*
+   * 글 목록. `listBoards()` 를 따라 들어가 확인했다 — `Request` 를 받지 않고,
+   * `toBoardListItem()` 에는 `me` 도 `like_type` 도 없다 (그 둘은 **상세**에만 있다).
+   * 즉 로그인 상태가 섞일 칸이 응답에 아예 없다.
+   */
+  '/api/boards',
+]
+
+/**
+ * 등급을 나누기 전에는 목록(`PUBLIC_CACHE_SOURCES`)과 머리말이 각각 하나였다.
+ * 머리말 쪽 이름(`PUBLIC_CACHE_HEADERS`)은 위에 그대로 살아 있고, 목록은 세 갈래로 나뉘었다
+ * (`CLAUDE.md` 10-4 — 서술을 지우지 않고 여기 남긴다).
+ */
+const CACHE_RULES = [
+  { sources: CACHE_SOURCES_LONG, headers: cacheHeaders(CACHE_LONG_SECONDS) },
+  { sources: CACHE_SOURCES_RECORD, headers: PUBLIC_CACHE_HEADERS },
+  { sources: CACHE_SOURCES_FRESH, headers: cacheHeaders(CACHE_FRESH_SECONDS) },
 ]
 
 const SECURITY_HEADERS = [
@@ -189,11 +287,12 @@ const nextConfig: NextConfig = {
    *   로그인 상태에 따라 답이 달라지는 것과 방금 한 행동이 즉시 보여야 하는 것.
    *   `/api/infos` · `/api/me/*` · `/api/admin/*` · `/api/auth/*` · **`/api/eggs/broken`**
    *   (마지막 것은 D-222 ⑤ — 방금 깬 알이 안 보이면 «안 깨졌다» 로 읽힌다)
+   *   전체 목록과 하나하나의 근거는 `CACHE_SOURCES_*` 위 주석에 있다.
    */
   async headers() {
     return [
       { source: '/:path*', headers: SECURITY_HEADERS },
-      ...PUBLIC_CACHE_SOURCES.map((source) => ({ source, headers: PUBLIC_CACHE_HEADERS })),
+      ...CACHE_RULES.flatMap(({ sources, headers }) => sources.map((source) => ({ source, headers }))),
     ]
   },
 }

@@ -1,4 +1,4 @@
-import { guard, notFound, ok } from '@/lib/server/respond'
+import { guard, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { findClanByName } from '@/lib/server/queries/search'
 
@@ -11,6 +11,7 @@ export async function GET(_request: Request, context: { params: Promise<Record<s
   return guard(async () => {
     const name = await routeParam(context, 'name')
     const clan = await findClanByName(name)
-    return clan ? ok(clan) : notFound('클랜을 찾을 수 없습니다')
+    /* 기록 등급(기본 300초) — 이름 조회는 검색창이 반복해서 때린다 (D-240) */
+    return clan ? okPublic(clan) : notFound('클랜을 찾을 수 없습니다')
   })
 }

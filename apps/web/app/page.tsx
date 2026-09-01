@@ -5,9 +5,9 @@ import { useQuery } from '@tanstack/react-query'
 import {
   HOT_POST_COUNT,
   HotPostList,
-  MainLogo,
   SearchBar,
   SiteIntro,
+  TempleHero,
   type SearchType,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
@@ -21,7 +21,24 @@ import { useApiReady } from './providers'
  *   예전 홈은 원본 실측 구조(검은 히어로 + 44rem 로고 + 흰 카드들)를 그대로 옮긴
  *   것이었다. 이제 원본을 따라가지 않는다.
  *
- * ── 메인은 세 덩어리다
+ * ── 2026-09-01: 최상단이 **신전 히어로**로 바뀌었다 (사용자 지시)
+ *   ```
+ *   0 신전 히어로   ← 먹구름 · 번개 · 대리석 조각상 · SA CLOUD 로고 · IPL 1등 클랜
+ *   1 통합검색      ← 히어로가 품는다. 여전히 메인의 주인공이다
+ *   2 알 모음집
+ *   3 인기게시글
+ *   ```
+ *
+ *   **`MainLogo`(SVG 워드마크)를 이 화면에서 뺐다.** 지운 것은 아니다 —
+ *   컴포넌트는 그대로 있고 GNB(`NavLogo`)와 인증 카드가 계속 쓴다 (CLAUDE.md 10-4).
+ *   히어로가 `SA CLOUD` 워드마크를 직접 그리기 때문에, 둘을 같이 두면 **같은 로고가
+ *   200px 간격으로 두 번** 나온다. 그건 디자인이 아니라 버그로 읽힌다.
+ *   히어로의 워드마크가 옛 로고보다 하는 일이 더 많다 — 약자(`CLOUD`)를 보여 준다.
+ *
+ *   **통합검색은 지우지 않고 히어로 안으로 넣었다.** 히어로 바로 아래에 붙어서
+ *   구름이 바닥으로 녹는 자리에 놓인다. 순서·동작·제출 흐름은 하나도 바뀌지 않았다.
+ *
+ * ── 옛 서술 (2026-08-30)
  *   ```
  *   1 로고
  *   2 통합검색      ← 메인의 주인공이다. 화면 한가운데를 이것에 내준다
@@ -47,6 +64,31 @@ export default function HomePage() {
     queryFn: () => apiGet('boardList', { search: { category: 'hot' } }),
     enabled: ready,
   })
+
+  /**
+   * 신전 히어로가 그릴 **IPL 1등 클랜**.
+   *
+   * ── 왜 `ranks/overall` 인가
+   *   IPL(`nolink`)은 **1티어를 비워 둔다.** 부리그별 랭킹(`leagueRankClans`)으로는
+   *   어느 부리그가 1등을 갖고 있는지 알 수 없다 — 실측으로 지금 1등(래더 3266)은
+   *   **3부**에 있고 2부 1등은 그보다 낮다. 부리그를 섞어 rating 순으로 세우는 래더는
+   *   `ranks/overall` 뿐이다 (D-104).
+   *
+   * ── **1건만 받는다**
+   *   `limit=1` 이다. 43건을 전부 받아 화면에서 최대값을 고르지 않는다 (D-238).
+   *   서버가 `take: 1` 로 끊어서 준다.
+   *
+   * ── 실패해도 화면은 선다
+   *   `top` 이 `undefined` 면 히어로가 가운데 빛만 그린다. 메인이 500 을 띄우거나
+   *   빈 칸을 남기지 않는다.
+   */
+  const iplTop = useQuery({
+    queryKey: ['leagues', 'nolink', 'ranks', 'overall', 1],
+    queryFn: () => apiGet('leagueRankOverall', { params: { leagueId: 'nolink' }, search: { limit: 1 } }),
+    enabled: ready,
+    staleTime: 5 * 60_000,
+  })
+  const top = iplTop.data?.data[0]
 
   /**
    * 검색 제출.
@@ -75,15 +117,29 @@ export default function HomePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
-      {/* --- 1·2 로고 + 통합검색 --- */}
-      <section className="pb-[var(--section-gap,40px)] pt-[120px] max-md:pt-[64px]">
-        <MainLogo className="mx-auto block w-[320px] max-w-full text-[var(--color-text-strong,#f6eded)] max-md:w-[240px]" />
-        <div className="mt-10 max-md:mt-8">
+    <>
+      {/* --- 0 신전 히어로 + 1 통합검색 ---
+             히어로는 **화면 폭을 통째로** 쓴다. 먹구름이 본문 폭(1120px)에서 잘리면
+             구름이 아니라 «네모난 회색 판» 으로 보인다. 안쪽 내용은 그대로 1120px 이다. */}
+      <TempleHero
+        top={
+          top
+            ? {
+                name: top.clan.name,
+                slug: top.clan.slug,
+                mark: top.clan.mark,
+                is_official_clan: top.clan.is_official_clan,
+                rating: top.rating,
+              }
+            : null
+        }
+      >
+        <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 pb-[var(--section-gap,40px)] pt-8 max-md:px-3 max-md:pt-6">
           <SearchBar onSubmit={handleSearch} />
         </div>
-      </section>
+      </TempleHero>
 
+      <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
       {/* --- 2-A 알 모음집 — 플레이어 검색 **바로 밑** (`docs/EGG_SYSTEM_SPEC.md` 5-1)
              DPL 이 먼저, 그 아래 IPL. 두 리그를 따로 한 벌씩 만든다.
              알 밑에는 반드시 클랜명을 쓴다 — 유저가 자기 클랜을 찾아야 깨러 온다 --- */}
@@ -106,6 +162,7 @@ export default function HomePage() {
       <div className="pb-[var(--section-gap,40px)] pt-[80px] max-md:pt-[56px]">
         <SiteIntro />
       </div>
-    </div>
+      </div>
+    </>
   )
 }

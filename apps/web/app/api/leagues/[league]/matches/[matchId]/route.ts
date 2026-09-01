@@ -1,4 +1,4 @@
-import { guard, notFound, ok } from '@/lib/server/respond'
+import { guard, notFound, okPublic } from '@/lib/server/respond'
 import { query, routeParam } from '@/lib/server/request'
 import { getMatch, resolveLeagueId } from '@/lib/server/queries/matches'
 
@@ -18,6 +18,7 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
     const matchId = await routeParam(context, 'matchId')
     const match = await getMatch(leagueId, matchId, query(request, 'league_clan_id'))
-    return match ? ok(match) : notFound('경기를 찾을 수 없습니다')
+    /* 기록 등급(기본 300초) — 끝난 경기다. 다만 수집이 라인업을 뒤에 채우므로 길게 잡지 않는다 (D-240) */
+    return match ? okPublic(match) : notFound('경기를 찾을 수 없습니다')
   })
 }

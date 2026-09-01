@@ -1,4 +1,4 @@
-import { guard, notFound, okPage } from '@/lib/server/respond'
+import { guard, notFound, okPagePublic } from '@/lib/server/respond'
 import { pageParams, routeParam } from '@/lib/server/request'
 import { getClanPlayers } from '@/lib/server/queries/clans'
 
@@ -8,6 +8,7 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     const clanSlug = await routeParam(context, 'clanSlug')
     const { cursor, size } = pageParams(request)
     const page = await getClanPlayers(clanSlug, cursor, size)
-    return page ? okPage(page) : notFound('클랜을 찾을 수 없습니다')
+    /* 기록 등급(기본 300초) — 클랜원 명단은 공개 값이고 자주 바뀌지 않는다 (D-240) */
+    return page ? okPagePublic(page) : notFound('클랜을 찾을 수 없습니다')
   })
 }

@@ -1,6 +1,6 @@
 import { prisma } from '@sacloud/db'
 import { LeagueCreateInput } from '@sacloud/contract'
-import { badRequest, forbidden, guard, ok, okPage, unauthorized } from '@/lib/server/respond'
+import { badRequest, forbidden, guard, ok, okPagePublic, unauthorized } from '@/lib/server/respond'
 import { jsonBody, pageParams } from '@/lib/server/request'
 import { getLeague, listLeagues } from '@/lib/server/queries/leagues'
 import { currentUserId } from '@/lib/server/session'
@@ -11,7 +11,8 @@ import { audit } from '@/lib/server/queries/leagueAdmin'
 export async function GET(request: Request) {
   return guard(async () => {
     const { cursor, size } = pageParams(request)
-    return okPage(await listLeagues(cursor, size))
+    /* 길게(3600초) — 리그는 세 개(DPL·IPL·열산)뿐이고 거의 안 늘어난다. GET 만 붙인다 (D-240) */
+    return okPagePublic(await listLeagues(cursor, size), 3600)
   })
 }
 

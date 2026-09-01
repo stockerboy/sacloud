@@ -67,19 +67,25 @@ function templeSection(css: string): string {
 const GEO = {
   ratio: '1254 / 700',
   focus: '50% 45.2%',
-  gapX: '44%',
-  gapY: '46.8%',
-  mark: 'clamp(38px, 6.6%, 76px)',
-  halo: 'clamp(130px, 24%, 300px)',
-  offset: 'clamp(1.5rem, 4.4%, 3rem)',
+  gapX: '45%',
+  gapY: '46.4%',
+  mark: 'clamp(38px, 5.6vw, 76px)',
+  halo: 'clamp(130px, 19vw, 300px)',
+  offset: 'clamp(2.2rem, 5.2vw, 4.4rem)',
 } as const
 
 /** 가짜 1등. 마크는 없는 셈 치고 fallback(구름 윤곽) 을 그린다 */
 const FAKE = { name: 'nightbloom', rating: '3,266점' }
 
+/**
+ * 약자 한 낱말.
+ *
+ * 낱말 사이는 `&nbsp;`(글자) + `margin`(간격) 이다 — `TempleHero.tsx` 와 같다.
+ * 폭만 가진 빈 `<span>` 으로 벌리면 `innerText` 가 한 덩어리가 된다.
+ */
 function acronym(head: string, rest: string, last = false): string {
-  return `<span style="white-space:nowrap">
-    <span style="font-size:1.32em;font-weight:700;letter-spacing:.06em;color:var(--color-marble)">${head}</span><span style="letter-spacing:.1em;color:var(--color-stone)">${rest}</span>${last ? '' : '<span style="display:inline-block;width:.7em"></span>'}
+  return `<span style="white-space:nowrap${last ? '' : ';margin-right:.5em'}">
+    <span style="font-size:1.32em;font-weight:700;letter-spacing:.06em;color:var(--color-marble)">${head}</span><span style="letter-spacing:.1em;color:var(--color-stone)">${rest}${last ? '' : '&nbsp;'}</span>
   </span>`
 }
 
@@ -130,14 +136,15 @@ body { background: var(--color-page); color: var(--color-text); font-family: 'No
 .anchor { position: absolute; left: ${GEO.gapX}; top: ${GEO.gapY}; }
 .halo { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
         width: ${GEO.halo}; aspect-ratio: 1; border-radius: 999px; pointer-events: none; }
-.label { position: absolute; left: 50%; transform: translateX(-50%); bottom: ${GEO.offset};
-         white-space: nowrap; font-size: clamp(.62rem,1.3vw,.86rem); font-weight: 700;
-         letter-spacing: .42em; color: var(--color-gold); }
-.mark { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: ${GEO.mark}; }
-.mark svg { width: 100%; aspect-ratio: 1; }
-.below { position: absolute; left: 50%; transform: translateX(-50%); top: ${GEO.offset};
+/* 글자는 **전부 틈 위쪽**이다 — 아래에 두면 누운 조각상의 허벅지에 얹힌다 */
+.above { position: absolute; left: 50%; transform: translateX(-50%); bottom: ${GEO.offset};
          display: flex; flex-direction: column; align-items: center; gap: 4px; white-space: nowrap; }
-.clan { font-size: clamp(.95rem,2.4vw,1.7rem); font-weight: 700; letter-spacing: .06em; color: var(--color-marble); }
+.label { font-size: clamp(.6rem,1.2vw,.8rem); font-weight: 700;
+         letter-spacing: .42em; color: var(--color-gold); }
+.mark { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+        display: block; width: ${GEO.mark}; }
+.mark svg { display: block; width: 100%; aspect-ratio: 1; }
+.clan { font-size: clamp(.95rem,2.4vw,1.7rem); font-weight: 700; letter-spacing: .06em; line-height: 1.2; color: var(--color-marble); }
 .rating { font-family: var(--font-num); font-size: clamp(.68rem,1.4vw,.92rem); color: var(--color-accent); }
 .after { margin: 0 auto; max-width: var(--layout-max); padding: 32px 20px 40px; text-align: center; color: var(--color-faint); }
 @media (max-width: 767px) { .wordmark { padding-top: 64px; } .plate { margin-top: 24px; } .hero-inner { padding: 0 12px; } }
@@ -160,10 +167,14 @@ body { background: var(--color-page); color: var(--color-text); font-family: 'No
     </div>
 
     <div class="plate">
-      <img src="${IMAGE}" alt="">
+      <img class="temple-statue" src="${IMAGE}" alt="">
       <div class="anchor">
         <div class="halo temple-halo"></div>
-        <span class="temple-type label">현재 1등</span>
+        <span class="above">
+          <span class="temple-type label">현재 1등</span>
+          <span class="temple-type clan">${FAKE.name}</span>
+          <span class="rating">${FAKE.rating}</span>
+        </span>
         <span class="mark">
           <!-- FallbackClanMark 와 같은 그림 (가짜 데이터라 실제 마크를 안 그린다) -->
           <svg viewBox="0 0 32 32" class="temple-mark-glow">
@@ -171,10 +182,6 @@ body { background: var(--color-page); color: var(--color-text); font-family: 'No
             <path d="M9.4 21.6 a4.4 4.4 0 0 1 .5 -8.7 a5.9 5.9 0 0 1 11.1 -1.4 a4.1 4.1 0 0 1 1.6 10.1 Z"
                   fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
           </svg>
-        </span>
-        <span class="below">
-          <span class="temple-type clan">${FAKE.name}</span>
-          <span class="rating">${FAKE.rating}</span>
         </span>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { ok, guard } from '@/lib/server/respond'
+import { okPublic, guard } from '@/lib/server/respond'
 import { buildConfigs } from '@/lib/server/configs'
 
 /**
@@ -9,5 +9,6 @@ import { buildConfigs } from '@/lib/server/configs'
  * 원본과 동일함이 검증되지 않았다.
  */
 export async function GET() {
-  return guard(async () => ok(await buildConfigs()))
+  /* 길게(3600초) — 원격 설정은 운영자가 손대야 바뀐다 (D-240) */
+  return guard(async () => okPublic(await buildConfigs(), undefined, 3600))
 }

@@ -27,7 +27,6 @@ import { DROPOUT_DAMAGE_ZERO } from './dropoutScope'
 import { withLadderMatch } from './ladderScope'
 import { SEASON0_FROM, seasonWindowWhere } from './season0Scope'
 import { toKstIso } from '../format'
-import { PLAYER_SUMMARY_SELECT } from '../mappers'
 
 /**
  * 한 클랜의 시즌 경기를 몇 건까지 훑을까.
@@ -201,18 +200,29 @@ async function streakMembersOf(
 ): Promise<ClanStreakMember[]> {
   if (matchIds.length === 0) return []
 
-  const stats = await prisma.matchPlayerStat.findMany({
-    where: { matchId: { in: [...matchIds] } },
-    select: { matchId: true, side: true, player: { select: PLAYER_SUMMARY_SELECT } },
-  })
+  /* 이름을 `player: { select }` 로 읽지 않는다 — Prisma 는 중첩 관계마다 질의를
+     따로 던지므로 그것만으로 왕복이 한 번 더 난다 (2026-09-01 · D-239 후속).
+     조인 한 번이면 끝나는 일이라 여기만 raw SQL 이다. 거르는 규칙(우리 쪽 진영)은
+     아래 그대로 남아 있다 — SQL 로 옮기지 않았다 */
+  const stats = await prisma.$queryRaw<
+    { matchId: string; side: string; playerId: string; playerName: string }[]
+  >`
+    SELECT s."matchId"  AS "matchId",
+           s."side"     AS "side",
+           p."id"       AS "playerId",
+           p."name"     AS "playerName"
+      FROM "MatchPlayerStat" s
+      JOIN "Player" p ON p."id" = s."playerId"
+     WHERE s."matchId" = ANY(${[...matchIds]}::text[])
+  `
 
   const tally = new Map<string, { name: string; games: number }>()
   for (const stat of stats) {
     /* 우리 쪽에서 뛴 선수만. 상대 라인업을 우리 멤버로 세면 안 된다 */
     if (stat.side !== sideOf.get(stat.matchId)) continue
-    const entry = tally.get(stat.player.id) ?? { name: stat.player.name, games: 0 }
+    const entry = tally.get(stat.playerId) ?? { name: stat.playerName, games: 0 }
     entry.games += 1
-    tally.set(stat.player.id, entry)
+    tally.set(stat.playerId, entry)
   }
 
   return [...tally.entries()]

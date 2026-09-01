@@ -30,15 +30,25 @@ import { formatRating } from '../common/format'
  *   여기서 세어 둘 것은 **합성 레이어를 만드는 노드 수**다.
  *
  *   ```
- *   구름          3   (transform 애니메이션)
- *   번개          2   (opacity 애니메이션)
- *   1등 마크      1   (filter 애니메이션 — 화면에 하나뿐일 때만 허용)
- *   ─────────────────
- *   합계          6   will-change 는 **한 곳도 주지 않았다**
+ *   ── 매 프레임 도는 것 (애니메이션 → 합성 레이어)
+ *   구름          3   transform 만 움직인다
+ *   번개          2   opacity 만 움직인다
+ *   1등 마크      1   filter 가 움직인다 — 화면에 하나뿐일 때만 허용 (「알」과 같은 규칙)
+ *   ────────────────
+ *   소계          6   will-change 는 **한 곳도 주지 않았다**
+ *
+ *   ── 한 번 칠하고 끝나는 것 (정적. 매 프레임 비용 없음)
+ *   조각상 그림   1   filter: contrast(1.115) + mix-blend-mode: screen
+ *   가운데 빛     1   radial-gradient 두 겹
+ *   아래 페이드   1   linear-gradient 한 겹
  *   ```
  *
  *   조각상 그림은 `next/image` 가 webp/avif 로 변환해 내려보낸다. 원본 PNG(1.6MB)를
  *   `<img>` 로 직접 걸지 않는다.
+ *
+ *   **포기한 것** — 구름에 `filter: blur()` 를 쓰면 훨씬 폭신해 보이지만 안 썼다.
+ *   블러는 레이어마다 매 프레임 다시 칠한다. `radial-gradient` 의 부드러운 끝으로 대신했다.
+ *   빛도 「숨쉬는」 애니메이션을 넣지 않았다 — 그러려면 `filter` 를 움직여야 한다.
  */
 
 /** 1등 클랜. 데이터가 없으면 `null` 을 넘긴다 — 가운데 빛만 남고 마크·이름은 안 그린다 */
@@ -170,8 +180,9 @@ export function TempleHero({ top, href, children }: TempleHeroProps) {
 
           {/*
             크기 0 짜리 **기준점**. 손가락 틈 정확히 그 자리다.
-            아래 세 덩어리가 여기서 위 / 가운데 / 아래로 뻗는다.
-            (칼럼 하나로 세우면 «칼럼의 중심» 이 틈에 놓여서 마크가 위로 밀린다)
+            빛과 마크는 여기를 중심으로, 글자 덩어리는 여기서 위로 뻗는다.
+            ⚠ **크기가 0이므로 자식에게 백분율을 주지 마라** — 0을 기준으로 풀린다.
+              길이는 전부 `clamp(px, vw, px)` 로 쓴다 (위 상수들 참조).
           */}
           <div className="absolute" style={{ left: GAP_X, top: GAP_Y }}>
             {/* 가운데 빛. 1등이 없어도 이것만은 남는다 */}
@@ -239,7 +250,9 @@ function Wordmark() {
         />
       </h1>
 
-      <p className="temple-type mt-4 text-[clamp(0.62rem,1.7vw,0.92rem)] max-md:mt-3">
+      {/* 폰(390px)에서 `1.7vw` 는 6.6px 까지 내려간다. 약자가 보이는 것이 이 줄의 목적이라
+          최소값으로 받쳐 뒀다 — 0.68rem(10.2px), 첫 글자는 1.32배라 13.5px 다 */}
+      <p className="temple-type mt-4 text-[clamp(0.68rem,1.7vw,0.92rem)] max-md:mt-3">
         <Acronym head="C" rest="onnected" />
         <Acronym head="L" rest="eague" />
         <Acronym head="O" rest="perations" />
@@ -250,10 +263,22 @@ function Wordmark() {
   )
 }
 
-/** 약자 한 낱말. 첫 글자만 밝고 한 단 크다 */
+/**
+ * 약자 한 낱말. 첫 글자만 밝고 한 단 크다.
+ *
+ * ── 낱말 사이는 **띄어쓰기 없는 빈 칸이면 안 된다** (2026-09-01 실제 렌더에서 잡았다)
+ *   처음엔 폭만 가진 빈 `<span>` 으로 벌렸다. 화면은 멀쩡했는데 `innerText` 가
+ *   `ConnectedLeagueOperationsUserData` **한 덩어리**였다 — 스크린리더가 그렇게 읽고
+ *   복사해도 그렇게 붙는다. 약자를 **읽히게** 하려고 만든 줄인데 앞뒤가 안 맞는다.
+ *
+ *   그렇다고 보통 공백 한 칸을 넣으면 CSS 가 접어 버려서(`white-space` 기본값)
+ *   글자로 남지 않는다. 그래서 **줄바꿈 없는 공백(`U+00A0`)** 을 글자로 넣고,
+ *   보이는 간격은 `margin` 이 만든다. 둘의 역할을 나눈 것이다.
+ *   (소스에 눈에 안 보이는 문자를 박아 두지 않으려고 `'U+00A0'` 이스케이프로 쓴다)
+ */
 function Acronym({ head, rest, last }: { head: string; rest: string; last?: boolean }) {
   return (
-    <span className="whitespace-nowrap">
+    <span className={`whitespace-nowrap${last ? '' : ' mr-[0.5em]'}`}>
       <span
         className="text-[1.32em] font-bold tracking-[0.06em]"
         style={{ color: 'var(--color-marble, #cfcac4)' }}
@@ -262,8 +287,8 @@ function Acronym({ head, rest, last }: { head: string; rest: string; last?: bool
       </span>
       <span className="tracking-[0.1em]" style={{ color: 'var(--color-stone, #6e6862)' }}>
         {rest}
+        {last ? null : '\u00a0'}
       </span>
-      {last ? null : <span className="inline-block w-[0.7em]" />}
     </span>
   )
 }

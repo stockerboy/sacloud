@@ -1,4 +1,4 @@
-import { guard, notFound, ok } from '@/lib/server/respond'
+import { guard, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { findPlayerByName } from '@/lib/server/queries/search'
 
@@ -12,6 +12,7 @@ export async function GET(_request: Request, context: { params: Promise<Record<s
   return guard(async () => {
     const name = await routeParam(context, 'name')
     const player = await findPlayerByName(name)
-    return player ? ok(player) : notFound('플레이어를 찾을 수 없습니다')
+    /* 기록 등급(기본 300초) — 통합검색이 제출할 때마다 때리는 경로다 (D-240) */
+    return player ? okPublic(player) : notFound('플레이어를 찾을 수 없습니다')
   })
 }

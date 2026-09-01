@@ -20,7 +20,7 @@ import { buildClanRoster, type ClanRoster, type ClanRosterInput } from '@sacloud
 import type { PositionCode } from '@sacloud/contract'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
-import { resolvePositionsOf } from './playerPositionQuery'
+import { countWeaponGames, resolvePositionsOf } from './playerPositionQuery'
 import { toKstIso } from '../format'
 
 /**
@@ -53,28 +53,45 @@ export async function leagueClanRoster(
       id: true,
       rating: true,
       placement: true,
-      player: { select: { id: true, name: true } },
+      /* `position` 을 여기서 같이 읽는다 (2026-09-01 · D-239 후속).
+         `resolvePositionsOf` 가 이 값을 얻으려고 `Player` 를 한 번 더 읽고 있었는데,
+         **이미 그 행을 읽고 있었다.** 칸 하나를 더할 뿐이라 왕복이 늘지 않는다 */
+      player: { select: { id: true, name: true, position: true } },
     },
   })
   if (members.length === 0) return null
 
   const playerIds = members.map((row) => row.player.id)
 
-  const [positions, gameCounts] = await Promise.all([
-    resolvePositionsOf(leagueId, playerIds),
-    /* 시즌 창 안에서 래더에 반영된 판수. 1군 후보 최소 판수의 근거다 —
-       한 판 뛰고 래더가 높은 선수가 1군에 올라오는 것을 막는다 */
-    prisma.matchPlayerStat.groupBy({
-      by: ['playerId'],
-      where: {
-        playerId: { in: playerIds },
-        match: withLadderMatch({ leagueId, ...seasonWindowWhere() }),
-      },
-      _count: { _all: true },
-    }),
-  ])
+  /* ── **판수 집계와 주무기 집계를 한 질의로 합쳤다** (2026-09-01 · D-239 후속)
+   *   예전에는 `groupBy(playerId)`(판수)와 `groupBy(playerId, weapon)`(주무기)을 따로
+   *   던졌다. 뒤엣것이 실측에서 1.4초로 이 화면에서 가장 무거운 질의인데, 앞엣것과
+   *   **모집단이 똑같다** — 다른 것은 「무기를 모르는 행을 빼는가」뿐이다.
+   *   그래서 무기 조건 없이 한 번만 그룹으로 세고,
+   *     · 판수    = 그 선수의 모든 버킷 합 (무기를 모르는 행 포함 — 예전과 같다)
+   *     · 주무기  = `weapon` 이 0/1 인 버킷만 (`countWeaponGames` 가 그렇게 접는다)
+   *   으로 나눠 쓴다. 값은 한 글자도 달라지지 않는다.
+   *
+   *   판수는 1군 후보 최소 판수의 근거다 — 한 판 뛰고 래더가 높은 선수가 1군에
+   *   올라오는 것을 막는다. 시즌 창 안에서 래더에 반영된 판수다 */
+  const weaponBuckets = await prisma.matchPlayerStat.groupBy({
+    by: ['playerId', 'weapon'],
+    where: {
+      playerId: { in: playerIds },
+      match: withLadderMatch({ leagueId, ...seasonWindowWhere() }),
+    },
+    _count: { _all: true },
+  })
 
-  const gamesOf = new Map(gameCounts.map((row) => [row.playerId, row._count._all]))
+  const gamesOf = new Map<string, number>()
+  for (const row of weaponBuckets) {
+    gamesOf.set(row.playerId, (gamesOf.get(row.playerId) ?? 0) + row._count._all)
+  }
+
+  const positions = await resolvePositionsOf(leagueId, playerIds, {
+    userSet: new Map(members.map((row) => [row.player.id, row.player.position])),
+    weaponGames: countWeaponGames(weaponBuckets),
+  })
   const online = await resolveOnlineOf(playerIds)
 
   const rows: ClanRosterInput[] = members.map((row) => {

@@ -48,6 +48,13 @@ import { prisma, type Prisma } from '@sacloud/db'
 import { withNotZeroed } from './dropoutScope'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
+import {
+  isNotZeroed,
+  isWin,
+  playerLadderRows,
+  sumOrNull,
+  type PlayerLadderRow,
+} from './playerLadderRows'
 
 /** 무기 하나의 누적. 무기를 모르는 경기(`weapon = null`)는 어느 쪽에도 들어가지 않는다 */
 export interface WeaponTotals {
@@ -122,6 +129,88 @@ function weaponTotals(
  * 다른 점은 최근 20건으로 자르지 않는다는 것뿐이다.
  */
 export async function playerLadderTotals(
+  leagueId: string,
+  playerId: string,
+): Promise<PlayerLadderTotals> {
+  return playerLadderTotalsFrom(await playerLadderRows(leagueId, playerId))
+}
+
+/**
+ * 위와 **같은 값**을, 이미 읽어 둔 참가 기록에서 센다 (2026-09-01 · D-239 후속).
+ *
+ * 질의를 여섯 번 던지는 대신 `playerLadderRows()` 가 한 번에 읽어 온 행을 받는다.
+ * 기록실 한 화면이 이 모집단을 여섯 군데서 따로 읽고 있었다 —
+ * 왜 합쳤는지는 `playerLadderRows.ts` 머리말에 있다.
+ *
+ * **세는 규칙은 아래 옛 함수와 한 글자도 다르지 않다.** Prisma 집계의 뜻을 그대로 옮겼다.
+ *   · `_count._all`  → 행 수
+ *   · `_count.kill`  → `kill` 이 `null` 이 아닌 행 수 (= `knownGames`)
+ *   · `_sum.x`       → `null` 을 건너뛴 합. 더할 것이 하나도 없으면 `null` (`sumOrNull`)
+ */
+export function playerLadderTotalsFrom(rows: readonly PlayerLadderRow[]): PlayerLadderTotals {
+  /* 어시·헤드샷만 모집단이 다르다 — 탈주판을 뺀다 (`dropoutScope.ts` · D-209).
+     킬·데스는 결측이 없어 그대로 센다 */
+  const played = rows.filter(isNotZeroed)
+
+  const tallyOf = (source: readonly PlayerLadderRow[], assistSource: readonly PlayerLadderRow[]) => {
+    const kill = sumOrNull(source.map((row) => row.kill))
+    const death = sumOrNull(source.map((row) => row.death))
+    return {
+      games: source.length,
+      knownGames: source.filter((row) => row.kill !== null).length,
+      killSum: kill ?? 0,
+      deathSum: death ?? 0,
+      assist: sumOrNull(assistSource.map((row) => row.assist)),
+    }
+  }
+
+  const weaponOf = (weapon: 0 | 1): WeaponTotals => {
+    const source = rows.filter((row) => row.weapon === weapon)
+    /* 그 무기 행이 하나도 없으면 `groupBy` 에 줄이 안 생겼던 것과 같다 */
+    if (source.length === 0) return EMPTY_WEAPON
+    const bucket = tallyOf(
+      source,
+      played.filter((row) => row.weapon === weapon),
+    )
+    return {
+      games: bucket.games,
+      knownGames: bucket.knownGames,
+      kill: bucket.knownGames === 0 ? null : bucket.killSum,
+      death: bucket.knownGames === 0 ? null : bucket.deathSum,
+      assist: bucket.assist,
+      kdRate: rate(bucket.killSum, bucket.deathSum, bucket.knownGames),
+    }
+  }
+
+  const total = tallyOf(rows, played)
+  const win = rows.filter(isWin).length
+  /* MVP 는 `null` 일 수 있다 (모름). `true` 만 센다 — `null` 을 「아니다」로 읽지 않는다 */
+  const mvpCount = rows.filter((row) => row.mvp === true).length
+
+  return {
+    games: total.games,
+    knownGames: total.knownGames,
+    win,
+    /* `Match.winnerSide` 는 red 아니면 blue 다 (무승부가 없다). 남는 경기는 전부 패배다 */
+    lose: total.games - win,
+    kill: total.knownGames === 0 ? null : total.killSum,
+    death: total.knownGames === 0 ? null : total.deathSum,
+    assist: total.assist,
+    headshot: sumOrNull(played.map((row) => row.headshot)),
+    kdRate: rate(total.killSum, total.deathSum, total.knownGames),
+    mvpCount,
+    rifle: weaponOf(0),
+    sniper: weaponOf(1),
+  }
+}
+
+/**
+ * **옛 방식** — 질의 여섯 번으로 같은 값을 만든다 (`CLAUDE.md` 10-4: 옛 버전을 남긴다).
+ *
+ * 지금 화면은 위의 `playerLadderTotalsFrom` 을 쓴다. 이 함수는 지우지 않는다 —
+ * 새 계산이 의심스러울 때 **같은 DB 에서 나란히 돌려 대조하는 기준**이다.
+ */
+export async function playerLadderTotalsByQuery(
   leagueId: string,
   playerId: string,
 ): Promise<PlayerLadderTotals> {

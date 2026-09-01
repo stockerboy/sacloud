@@ -1,5 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
-import { guard, notFound, okPage } from '@/lib/server/respond'
+import { guard, notFound, okPagePublic } from '@/lib/server/respond'
 import { pageParams, routeParam } from '@/lib/server/request'
 import { getLeaguePlayerMatches, resolveLeagueId } from '@/lib/server/queries/matches'
 
@@ -16,6 +16,7 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     const playerId = await routeParam(context, 'playerId')
     const { cursor, size } = pageParams(request, PAGE_SIZE.DEFAULT)
     const page = await getLeaguePlayerMatches(leagueId, playerId, cursor, size)
-    return page ? okPage(page) : notFound('리그 플레이어를 찾을 수 없습니다')
+    /* 기록 등급(기본 300초) — 끝난 경기 목록이다 (D-240) */
+    return page ? okPagePublic(page) : notFound('리그 플레이어를 찾을 수 없습니다')
   })
 }

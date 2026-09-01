@@ -22,6 +22,7 @@ import { prisma, type Prisma } from '@sacloud/db'
 import { kstDayStart, type TodayTally } from '@sacloud/contract'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
+import { isWin, playerLadderRows, sumOrNull, type PlayerLadderRow } from './playerLadderRows'
 
 /**
  * 그 리그에서 이 선수가 **오늘** 뛴 것을 센다.
@@ -30,6 +31,46 @@ import { seasonWindowWhere } from './season0Scope'
  * 그래야 이 조회가 시즌 누적 조회를 **기다리지 않고 같이** 나갈 수 있다.
  */
 export async function playerTodayTally(
+  leagueId: string,
+  playerId: string,
+  now: Date = new Date(),
+): Promise<TodayTally> {
+  return playerTodayTallyFrom(await playerLadderRows(leagueId, playerId), now)
+}
+
+/**
+ * 위와 **같은 값**을, 이미 읽어 둔 참가 기록에서 센다 (2026-09-01 · D-239 후속).
+ *
+ * 오늘치는 누적(`playerLadderTotals`)과 **모집단이 같고 기간만 더 좁다.**
+ * 그래서 같은 행을 다시 읽을 이유가 없다 — `playerLadderRows()` 가 한 번 읽어 온 것을
+ * 여기서 오늘로 자르기만 한다. 왜 합쳤는지는 `playerLadderRows.ts` 머리말에 있다.
+ */
+export function playerTodayTallyFrom(
+  rows: readonly PlayerLadderRow[],
+  now: Date = new Date(),
+): TodayTally {
+  const from = kstDayStart(now)
+  const today = rows.filter((row) => row.startAt >= from)
+
+  const games = today.length
+  return {
+    games,
+    /* `_count.kill` 은 **`null` 이 아닌 행**만 센다 — 그게 `knownGames` 다 (D-148) */
+    knownGames: today.filter((row) => row.kill !== null).length,
+    win: today.filter(isWin).length,
+    /* `Match.winnerSide` 는 red 아니면 blue 다 (무승부가 없다).
+       그래서 남는 경기는 전부 패배다 — `playerTotals.ts` 와 같은 근거다 */
+    lose: games - today.filter(isWin).length,
+    kill: sumOrNull(today.map((row) => row.kill)) ?? 0,
+    death: sumOrNull(today.map((row) => row.death)) ?? 0,
+  }
+}
+
+/**
+ * **옛 방식** — 질의 두 번으로 같은 값을 만든다 (`CLAUDE.md` 10-4: 옛 버전을 남긴다).
+ * 새 계산이 의심스러울 때 나란히 돌려 대조하는 기준이다.
+ */
+export async function playerTodayTallyByQuery(
   leagueId: string,
   playerId: string,
   now: Date = new Date(),

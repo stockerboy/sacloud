@@ -1,4 +1,4 @@
-import { guard, notFound, ok } from '@/lib/server/respond'
+import { guard, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { getLeagueClanSeasons } from '@/lib/server/queries/records'
 
@@ -7,6 +7,7 @@ export async function GET(_request: Request, context: { params: Promise<Record<s
   return guard(async () => {
     const leagueClanId = await routeParam(context, 'leagueClanId')
     const seasons = await getLeagueClanSeasons(leagueClanId)
-    return seasons ? ok(seasons) : notFound('리그 클랜을 찾을 수 없습니다')
+    /* 길게(3600초) — 지난시즌은 시즌 마감 때 찍은 스냅샷이라 사실상 안 변한다 (D-240) */
+    return seasons ? okPublic(seasons, undefined, 3600) : notFound('리그 클랜을 찾을 수 없습니다')
   })
 }

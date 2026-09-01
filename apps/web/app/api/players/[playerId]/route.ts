@@ -1,4 +1,4 @@
-import { guard, notFound, ok } from '@/lib/server/respond'
+import { guard, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { getPlayer } from '@/lib/server/queries/players'
 
@@ -7,6 +7,7 @@ export async function GET(_request: Request, context: { params: Promise<Record<s
   return guard(async () => {
     const playerId = await routeParam(context, 'playerId')
     const player = await getPlayer(playerId)
-    return player ? ok(player) : notFound('플레이어를 찾을 수 없습니다')
+    /* 기록 등급(기본 300초) — 로그인과 무관한 공개 프로필이다 (D-240) */
+    return player ? okPublic(player) : notFound('플레이어를 찾을 수 없습니다')
   })
 }

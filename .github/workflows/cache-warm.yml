@@ -1,0 +1,113 @@
+# 엣지 캐시 워밍 (D-240)
+#
+# ── 무엇을 하는가
+#   주요 공개 GET 경로를 **5분마다 한 번씩 그냥 부른다.** 그게 전부다.
+#   응답을 검사하지도, 저장하지도 않는다. 부르는 행위 자체가 목적이다.
+#
+# ── 왜 필요한가
+#   2026-09-01 에 엣지 캐시가 처음으로 실제로 걸렸다 (`apps/web/next.config.ts` 의 `headers()`).
+#   실측으로 500(20초) 이던 것이 200(0.08초) 가 됐다. **다만 그건 캐시가 차 있을 때 얘기다.**
+#
+#   캐시가 비어 있으면 **그때 처음 들어온 사람**이 대신 값을 치른다 — 사이트와 수집 잡이
+#   Supabase 한 대를 나눠 쓰는 지금(D-240 ②), 그 한 사람은 20초를 기다리거나 500 을 본다.
+#   미리 누가 한 번 불러 두면 **그 한 사람이 없어진다.** 여기서 하는 일이 그것이다.
+#
+#   부수 효과로 서버리스 함수도 따뜻하게 유지된다. 식은 함수의 첫 요청이 10초였다.
+#
+# ── 왜 5분인가
+#   캐시의 기본 등급이 `s-maxage=300`(5분) 이다. 주기가 그보다 길면 **중간에 반드시 비는
+#   구간**이 생기고, 그 구간에 들어온 사람이 위의 «그 한 사람» 이 된다.
+#   주기를 더 짧게 할 이유도 없다 — 캐시가 아직 살아 있는데 부르면 엣지가 답하고 끝이라
+#   DB 에 닿지 않지만, 러너 시간만 쓴다.
+#   1시간 등급(`/api/leagues` 등)은 5분마다 불러도 12번 중 11번은 엣지가 받는다. 손해가 없다.
+#
+#   ⚠ GitHub 의 예약 실행은 **정시성이 나쁘다.** `*/5` 로 적어도 실제 간격은 5분이 아니고,
+#     부하가 몰리면 회차가 통째로 버려진다 (`supply-incremental.yml` 머리말과 같은 사정).
+#     그래도 괜찮다 — 이건 **보장이 아니라 확률을 올리는 장치**다. 워밍이 밀려서 캐시가
+#     비면 사이트는 워밍이 없던 때와 똑같이 동작할 뿐, 더 나빠지지 않는다.
+#     그리고 `stale-while-revalidate=86400` 이 그 아래를 받친다.
+#
+# ── 왜 실패해도 초록인가
+#   이건 **감시가 아니라 데우는 일**이다. 사이트가 잠깐 500 이든 배포 중이든, 다음 회차가
+#   5분 뒤에 다시 온다. 여기서 빨간 X 를 쌓으면 **진짜 경보(수집 실패)가 그 속에 묻힌다.**
+#   상태를 보는 것은 `/api/health` 의 몫이고, 이 워크플로의 몫이 아니다.
+#
+# ── 건드리지 않는 것
+#   수집 워크플로(`supply-incremental.yml` · `supply-rollup-full.yml`)와는 아무 관계가 없다.
+#   이 워크플로는 **읽기만** 한다. DB 에 쓰지 않고, 저장소에 쓰지 않고, 비밀값을 쓰지 않는다.
+
+name: 엣지 캐시 워밍
+
+on:
+  schedule:
+    # 5분마다. 위 「왜 5분인가」 참조
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+# 앞 회차가 아직 돌고 있으면 이번 회차는 버린다.
+# 워밍이 겹쳐서 좋을 일이 없고, 겹치면 그게 곧 부하다.
+concurrency:
+  group: cache-warm
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    # 경로 15개 × (요청 + 1초 쉼) 이면 넉넉해도 1분이다. 그보다 오래 걸리면 뭔가 잘못된 것이니 끊는다
+    timeout-minutes: 5
+    steps:
+      - name: 공개 경로를 하나씩 부른다
+        continue-on-error: true
+        env:
+          # 저장소 변수(Settings → Variables)로 덮을 수 있다. 없으면 현재 운영 주소를 쓴다
+          SITE_URL: ${{ vars.SITE_URL || 'https://sacloud-web-softgw01-8957s-projects.vercel.app' }}
+        run: |
+          set -u
+
+          # 쿼리스트링까지 **화면이 실제로 보내는 것과 똑같이** 적는다.
+          # 엣지 캐시의 키는 전체 URL 이다 — `?weapon=all` 을 빼고 데우면
+          # 화면이 쓰는 것과 **다른 칸**을 데우게 되어 아무 효과가 없다.
+          # (`app/league/[leagueSlug]/rank/player/page.tsx` 는 `search: { weapon }` 을 항상 붙인다)
+          PATHS="
+          /api/remote_configs
+          /api/leagues
+          /api/home/top
+          /api/boards?category=hot
+          /api/leagues/nolink/ranks/overall?limit=1
+          /api/leagues/supply
+          /api/leagues/supply/ranks/clans?division=1
+          /api/leagues/supply/ranks/players?weapon=all
+          /api/leagues/supply/ranks/form?weapon=all
+          /api/leagues/nolink
+          /api/leagues/nolink/ranks/clans?division=1
+          /api/leagues/nolink/ranks/players?weapon=all
+          /api/leagues/sanply
+          /api/leagues/sanply/ranks/clans?division=1
+          /api/leagues/sanply/ranks/players?weapon=all
+          "
+
+          echo "대상: ${SITE_URL}"
+          for p in $PATHS; do
+            # `-o /dev/null` 응답 본문은 버린다. 우리는 값을 보러 온 게 아니다
+            # `--max-time 45` 캐시가 비어 있으면 실제로 20초씩 걸린다. 그걸 기다려 주는 게 이 잡의 일이다
+            # `|| true`      실패해도 다음 경로로 넘어간다 (위 「왜 실패해도 초록인가」)
+            result=$(curl -s -o /dev/null \
+              --max-time 45 \
+              -w '%{http_code} %{time_total}s' \
+              -H 'Accept: application/json' \
+              -H 'User-Agent: sacloud-cache-warm' \
+              "${SITE_URL}${p}" || echo 'FAIL -')
+            # X-Vercel-Cache 를 같이 찍지 않는 이유: 그걸 보려면 헤더를 받아야 하고,
+            # 그러면 이 잡이 «데우기» 가 아니라 «검사» 가 된다. 검사는 사람이 할 때 한다
+            echo "  ${result}  ${p}"
+
+            # 한꺼번에 때리면 그게 곧 부하다. 특히 캐시가 비어 있는 회차에는
+            # 15개가 동시에 DB 로 내려가고, 접속 통로가 1개라 서로 줄을 선다 (D-240 ③)
+            sleep 1
+          done
+
+          # 어떤 경로가 실패했든 이 스텝은 항상 성공으로 끝난다
+          exit 0

@@ -23,10 +23,10 @@ import {
 import { cursorPage, type CursorPage } from '../cursorPage'
 import { withLadderMatch } from './ladderScope'
 import { seasonWindowWhere } from './season0Scope'
-import { buildPlayerForm } from './playerForm'
-import { playerTodayTally } from './todayPerformance'
-import { playerRecentDays } from './recentDays'
-import { playerTierBreakdown } from './tierBreakdown'
+import { buildPlayerFormFrom } from './playerForm'
+import { playerTodayTallyFrom } from './todayPerformance'
+import { playerRecentDaysFrom } from './recentDays'
+import { playerTierBreakdownFrom } from './tierBreakdown'
 import { playerJudgedPosition } from './playerPositionQuery'
 import { playerTraits } from './playerTraits'
 import { leagueClanMetrics } from './clanMetrics'
@@ -49,8 +49,16 @@ import {
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
 import { resolvePlayerPositionOf, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { cumulativeKd, cumulativeKdRate, hidesCumulativeKd } from './visibility'
-import { clanRankOf, matchCountByPlayer, playerRankOf, playerWeaponRankOf } from './leagues'
-import { playerLadderTotals } from './playerTotals'
+import {
+  clanRankOf,
+  matchCountByPlayer,
+  playerRankOf,
+  playerWeaponRanksOf,
+  type WeaponRankResult,
+  type WeaponStatRow,
+} from './leagues'
+import { playerLadderTotalsFrom } from './playerTotals'
+import { playerLadderRows } from './playerLadderRows'
 import {
   leagueClanIdOfPlayer,
   loadLeagueClanContext,
@@ -374,31 +382,34 @@ export async function getLeagueClanShow(
   leagueSlug: string,
   clanSlug: string,
 ): Promise<LeagueClanShow | null> {
-  const [league, clan] = await Promise.all([
+  /* ── **왕복 넷을 셋으로 줄였다** (2026-09-01 · D-239 후속)
+   *   예전에는 `Clan` 을 두 번 읽었다 — 한 번은 slug 로 id 를 얻으려고, 한 번은
+   *   `LeagueClan` 의 중첩 관계로. 그런데 `LeagueClan` 을 **관계 조건**(리그 slug ·
+   *   클랜 slug)으로 바로 찾으면 첫 번째가 통째로 필요 없다.
+   *   클랜원 수(`_count.members`)도 중첩 `Clan` 에 얹으면 왕복이 늘지 않는다.
+   *
+   *   `null` 이 되는 경우는 그대로다 — 리그가 없거나 · 클랜이 없거나 · 그 리그에 그 클랜이
+   *   등록돼 있지 않으면 `null` 이고 라우트가 404 를 낸다. */
+  const [league, leagueClan] = await Promise.all([
     prisma.league.findUnique({ where: { slug: leagueSlug }, select: LEAGUE_SUMMARY_SELECT }),
-    prisma.clan.findUnique({
-      where: { slug: clanSlug },
-      select: { id: true, _count: { select: { members: true } } },
+    prisma.leagueClan.findFirst({
+      where: { league: { slug: leagueSlug }, clan: { slug: clanSlug } },
+      select: {
+        id: true,
+        leagueId: true,
+        rating: true,
+        division: true,
+        win: true,
+        lose: true,
+        placement: true,
+        status: true,
+        joinedAt: true,
+        clan: { select: { ...CLAN_SUMMARY_SELECT, _count: { select: { members: true } } } },
+      },
     }),
   ])
-  if (!league || !clan) return null
-
-  const leagueClan = await prisma.leagueClan.findUnique({
-    where: { leagueId_clanId: { leagueId: league.id, clanId: clan.id } },
-    select: {
-      id: true,
-      leagueId: true,
-      rating: true,
-      division: true,
-      win: true,
-      lose: true,
-      placement: true,
-      status: true,
-      joinedAt: true,
-      clan: { select: CLAN_SUMMARY_SELECT },
-    },
-  })
-  if (!leagueClan) return null
+  if (!league || !leagueClan) return null
+  const clan = leagueClan.clan
 
   const where: Prisma.MatchWhereInput = {
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
@@ -561,7 +572,10 @@ export async function getLeagueClanPlayers(
 
   const first = page.items[0]
   const [before, counts] = await Promise.all([
-    first
+    /* **첫 쪽이면 세지 않는다** (2026-09-01 · D-239 후속).
+       목록과 이 계산이 같은 조건·같은 정렬을 쓰므로, 커서가 없을 때 첫 줄보다 앞에 오는
+       행은 정의상 0개다. `leagues.ts` 의 랭킹 두 곳과 같은 판단이다 */
+    first && cursor !== null
       ? prisma.leaguePlayer.count({
           where: {
             ...where,
@@ -670,64 +684,62 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [
-    rank,
-    sniperRank,
-    rifleRank,
-    totals,
-    weaponStats,
-    record,
-    form,
-    todayTally,
-    traits,
-    recentDays,
-    tierBreakdown,
-    judgedPosition,
-  ] =
-    await Promise.all([
-      playerRankOf({
-        id: leaguePlayer.id,
-        leagueId: leaguePlayer.leagueId,
-        rating: leaguePlayer.rating,
-        placement: leaguePlayer.placement,
-      }),
-      // 무기별 랭킹 — 무기가 확인된 경기가 없으면 null 이다 (D-146)
-      playerWeaponRankOf(leaguePlayer.id, league.id, 1),
-      playerWeaponRankOf(leaguePlayer.id, league.id, 0),
-      /* 누적 전적을 **경기에서 직접 센다** (D-176).
-         예전에는 `LeaguePlayer` 의 누적 칸을 읽었는데, 그 칸은 배치 집계가 채우는 값이라
-         집계가 훑는 기간(시즌 창) 밖의 경기가 한 판도 들어가지 않았다. 그래서 같은 화면에서
-         `최근매치` 는 `20전 11승 9패` 인데 `상세정보` 는 `0승 0패 · 0킬 0데스 · MVP 0회` 가 됐다.
-         기준은 `최근매치` 와 **똑같이** "래더에 반영된 경기" 하나뿐이다 (D-164). */
-      playerLadderTotals(league.id, playerId),
-      // 무기별 누적도 나머지와 같이 나간다. 예전에는 응답을 만들며 마지막에 홀로 기다렸다
-      weaponStatsOf(leaguePlayer.id),
-      leagueClanIdPromise.then((leagueClanId) =>
-        buildRecordSummary(league.id, where, leagueClanId ?? '', playerId),
-      ),
-      /* 최근 폼 — 6개월 월별 킬뎃 + 최근 10경기 판정 (D-167).
-         소속 클랜을 보지 않으므로 `leagueClanIdPromise` 를 기다릴 이유가 없다 */
-      buildPlayerForm(league.id, playerId),
-      /* 오늘 퍼포먼스 — 재료만 센다 (10절 · D-182).
-         시즌 평균과 견주는 일은 `buildTodayPerformance()` 가 아래에서 한다.
-         그래야 `totals` 를 기다리지 않고 **같이** 나갈 수 있다 */
-      playerTodayTally(league.id, playerId),
-      /* 전투력 육각형 + 플레이스타일 바 (4절 · 8절 · D-185).
-         리그 분포는 캐시돼 있어 보통은 즉시 돌아온다 (`playerTraits.ts`).
+  const [rank, weaponBuckets, ladderRows, record, traits, judgedPosition] = await Promise.all([
+    playerRankOf({
+      id: leaguePlayer.id,
+      leagueId: leaguePlayer.leagueId,
+      rating: leaguePlayer.rating,
+      placement: leaguePlayer.placement,
+    }),
+    /* 무기별 버킷 — **한 번만 읽는다.** `weapon_stats`(기록)와 무기별 순위가 같은 줄을 쓴다.
+       예전에는 둘이 따로 읽어 왕복이 세 번이었다 (2026-09-01 · D-239 후속) */
+    weaponStatRowsOf(leaguePlayer.id),
+    /* ⬇ **여섯 수치가 같은 행을 여섯 번 읽고 있었다** (2026-09-01 · D-239 후속).
+       누적 전적 · 최근 폼 · 오늘 퍼포먼스 · 최근 3일 · 티어별 게임빈도가 전부
+       「시즌0 창 안의 래더 경기」라는 **같은 모집단**을 본다 (각 파일 주석이 그렇게 적혀 있다).
+       그래서 한 번 읽어 아래에서 나눠 쓴다 — 왕복 15번이 1번이 됐다.
+       왜 이것이 D-238 의 함정이 아닌지는 `playerLadderRows.ts` 머리말에 있다.
 
-         **여기서 실패해도 프로필 전체를 죽이지 않는다.** 육각형은 없어도 되는 카드이고
-         계약도 `nullable` 이다. 분포 계산은 리그 전체를 훑으므로 다른 조회보다 깨질 여지가
-         크다 — 그 하나 때문에 기록실이 통째로 안 열리면 안 된다 */
-      playerTraits(league.id, playerId).catch(() => null),
-      /* 최근 3일치 일별 기록 (D-198). 실패해도 카드 전체를 죽이지 않는다 */
-      playerRecentDays(league.id, playerId).catch(() => []),
-      /* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절).
-         줄 수는 리그의 부리그 수만큼이다. 실패해도 카드 전체를 죽이지 않는다 —
-         빈 배열이면 화면이 카드를 안 그린다 */
-      playerTierBreakdown(league.id, playerId, league.divisionCount).catch(() => []),
-      /* 좌표로 판정한 자리 (D-199). 없으면 `null` — 화면이 그 줄을 안 그린다 */
-      playerJudgedPosition(playerId).catch(() => null),
-    ])
+       누적을 **경기에서 직접 세는** 이유는 그대로다 (D-176) — `LeaguePlayer` 의 누적 칸은
+       배치 집계가 채우는 값이라 창 밖 경기가 한 판도 들어가지 않는다. 그래서 같은 화면에서
+       `최근매치` 는 `20전 11승 9패` 인데 `상세정보` 는 `0승 0패` 가 됐다 */
+    playerLadderRows(league.id, playerId),
+    leagueClanIdPromise.then((leagueClanId) =>
+      buildRecordSummary(league.id, where, leagueClanId ?? '', playerId),
+    ),
+    /* 전투력 육각형 + 플레이스타일 바 (4절 · 8절 · D-185).
+       리그 분포는 캐시돼 있어 보통은 즉시 돌아온다 (`playerTraits.ts`).
+
+       **여기서 실패해도 프로필 전체를 죽이지 않는다.** 육각형은 없어도 되는 카드이고
+       계약도 `nullable` 이다. 분포 계산은 리그 전체를 훑으므로 다른 조회보다 깨질 여지가
+       크다 — 그 하나 때문에 기록실이 통째로 안 열리면 안 된다 */
+    playerTraits(league.id, playerId).catch(() => null),
+    /* 좌표로 판정한 자리 (D-199). 없으면 `null` — 화면이 그 줄을 안 그린다 */
+    playerJudgedPosition(playerId).catch(() => null),
+  ])
+
+  /* 아래 넷은 **질의를 하지 않는다.** 위에서 읽어 온 행을 세기만 한다 —
+     세는 규칙은 각 파일에 그대로 남아 있고 재료를 받는 입구만 새로 생겼다 */
+  const totals = playerLadderTotalsFrom(ladderRows)
+  const form = buildPlayerFormFrom(ladderRows)
+  /* 오늘 퍼포먼스 — 재료만 센다 (10절 · D-182).
+     시즌 평균과 견주는 일은 `buildTodayPerformance()` 가 아래에서 한다 */
+  const todayTally = playerTodayTallyFrom(ladderRows)
+  /* 최근 3일치 일별 기록 (D-198) */
+  const recentDays = playerRecentDaysFrom(ladderRows)
+  const weaponStats = toWeaponStats(weaponBuckets)
+
+  const [weaponRanks, tierBreakdown] = await Promise.all([
+    /* 무기별 랭킹 — 무기가 확인된 경기가 없으면 null 이다 (D-146).
+       스나·라플을 **한 질의로** 센다 (D-239 후속) */
+    playerWeaponRanksOf(league.id, leaguePlayer.placement, weaponBuckets),
+    /* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절).
+       줄 수는 리그의 부리그 수만큼이다. 실패해도 카드 전체를 죽이지 않는다 —
+       빈 배열이면 화면이 카드를 안 그린다. 클랜 이름 조회 한 번이 여기 남아 있다 */
+    playerTierBreakdownFrom(ladderRows, league.divisionCount).catch(() => []),
+  ])
+  const sniperRank = weaponRanks.get(1) as WeaponRankResult
+  const rifleRank = weaponRanks.get(0) as WeaponRankResult
 
   return {
     id: leaguePlayer.id,
@@ -823,18 +835,39 @@ export async function getLeaguePlayerDetail(
 /* -------------------------------------------------------------------------- */
 
 /**
- * 무기별 누적 (D-115).
+ * 무기별 누적 (D-115) — 그 재료가 되는 버킷 줄.
  *
  * 판정된 경기만 들어 있다. `unknown`은 여기 오지 않고 통합 기록에만 남는다.
  * 버킷이 없으면 **빈 배열**이다 — 0으로 채운 가짜 줄을 만들지 않는다.
+ *
+ * ── **기록과 순위가 같은 줄을 쓴다** (2026-09-01 · D-239 후속)
+ *   예전에는 `weaponStatsOf`(기록)와 `playerWeaponRankOf`(순위)가 같은 표를 따로 읽었다.
+ *   순위 쪽은 `leaguePlayer.placement` 까지 중첩으로 읽어 왕복이 한 번 더 났는데,
+ *   그 값은 이 화면이 이미 손에 들고 있다.
  */
-async function weaponStatsOf(leaguePlayerId: string) {
-  const rows = await prisma.leaguePlayerWeaponStat.findMany({
+async function weaponStatRowsOf(
+  leaguePlayerId: string,
+): Promise<(WeaponStatRow & { win: number; lose: number })[]> {
+  return prisma.leaguePlayerWeaponStat.findMany({
     where: { leaguePlayerId },
     orderBy: { weapon: 'asc' },
-    select: { weapon: true, win: true, lose: true, kill: true, death: true },
+    select: {
+      weapon: true,
+      ratingDelta: true,
+      games: true,
+      knownStatGames: true,
+      win: true,
+      lose: true,
+      kill: true,
+      death: true,
+      assist: true,
+      isMain: true,
+    },
   })
+}
 
+/** 무기별 누적을 계약 모양으로 옮긴다. **판수는 `win + lose` 다** — 원래 그랬다 */
+function toWeaponStats(rows: readonly (WeaponStatRow & { win: number; lose: number })[]) {
   return rows.map((row) => {
     const games = row.win + row.lose
     return {

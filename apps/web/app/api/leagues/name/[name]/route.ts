@@ -1,4 +1,4 @@
-import { guard, notFound, ok } from '@/lib/server/respond'
+import { guard, notFound, okPublic } from '@/lib/server/respond'
 import { routeParam } from '@/lib/server/request'
 import { findLeagueByName } from '@/lib/server/queries/search'
 
@@ -11,6 +11,7 @@ export async function GET(_request: Request, context: { params: Promise<Record<s
   return guard(async () => {
     const name = await routeParam(context, 'name')
     const league = await findLeagueByName(name)
-    return league ? ok(league) : notFound('리그를 찾을 수 없습니다')
+    /* 길게(3600초) — 리그 목록이 거의 안 변한다 (D-240) */
+    return league ? okPublic(league, undefined, 3600) : notFound('리그를 찾을 수 없습니다')
   })
 }

@@ -3,6 +3,8 @@ import {
   killPerMatch,
   kdRate,
   winRate,
+  type ClanSummary,
+  type PlayerSummary,
   type ClanRankRow,
   type League,
   type LeagueClan,
@@ -244,6 +246,16 @@ const RANK_ORDER = [{ rating: 'desc' }, { id: 'asc' }] as const
 const RANK_ORDER_REVERSED = [{ rating: 'asc' }, { id: 'desc' }] as const
 
 /**
+ * 개인랭킹 **모집단** — 목록 · 순위 계산 · 메인 TOP3 가 같은 조건을 써야 한다.
+ *
+ * 리그 안의 선수는 **전원** 들어간다 (D-107). 클랜으로 거르지 않는다 —
+ * 무소속 선수는 `clanId` 가 null 이라 클랜 조건을 걸면 통째로 빠진다.
+ */
+function playerRankWhere(leagueId: string): { leagueId: string; placement: boolean } {
+  return { leagueId, placement: false }
+}
+
+/**
  * 페이지 첫 행의 순위를 구한다.
  *
  * 커서 페이지네이션은 offset을 모르기 때문에, 정렬 기준상 **앞에 오는 행의 개수**를 세서
@@ -282,8 +294,7 @@ async function rankOfFirstPlayer(
        클랜으로 거르지 않기 때문이다 — 리그 안의 선수는 **전원** 들어간다 (D-107).
        무소속 선수는 `clanId` 가 null 이라 클랜 조건을 걸면 통째로 빠진다. */
     where: {
-      leagueId,
-      placement: false,
+      ...playerRankWhere(leagueId),
       OR: [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }],
     },
   })
@@ -338,7 +349,11 @@ export async function getClanRanks(
       }),
   })
 
-  const startRank = await rankOfFirstClan(leagueId, division, page.items[0])
+  /* **첫 쪽이면 세지 않는다** (2026-09-01 · D-239 후속).
+     목록과 순위 계산이 같은 조건·같은 정렬을 쓰므로, 커서가 없을 때 첫 줄보다
+     앞에 오는 행은 **정의상 0개**다. 세러 가는 왕복 한 번이 통째로 사라진다.
+     커서가 있을 때만 예전처럼 센다 */
+  const startRank = cursor === null ? 1 : await rankOfFirstClan(leagueId, division, page.items[0])
 
   return {
     cursor: page.cursor,
@@ -436,7 +451,7 @@ export async function getPlayerRanks(
         /* 리그 안의 선수는 **전원** 랭킹에 들어간다 (D-107).
            무소속리그에도 개인 랭킹이 있다. 리그가 다르면 애초에 다른 목록이라
            여기서 걸러 낼 것이 없다. 무소속리그에서 감추는 것은 누적 킬뎃 컬럼뿐이다. */
-        where: { leagueId, placement: false },
+        where: playerRankWhere(leagueId),
         take: args.take,
         orderBy: args.orderBy as never,
         ...(args.cursor ? { cursor: args.cursor, skip: args.skip } : {}),
@@ -465,7 +480,10 @@ export async function getPlayerRanks(
      줄줄이 기다리고 있었다 — 왕복 시간이 그대로 두 번 더해졌다. */
   const unknownGames = page.items.filter((row) => knownGamesOf(row.weaponStats) === 0)
   const [startRank, counts] = await Promise.all([
-    rankOfFirstPlayer(leagueId, page.items[0]),
+    /* **첫 쪽이면 세지 않는다** (2026-09-01 · D-239 후속).
+       목록과 순위 계산이 같은 조건·같은 정렬이라, 커서가 없을 때 첫 줄보다 앞에 오는 행은
+       **정의상 0개**다. 메인 TOP3·랭킹 첫 화면에서 왕복 한 번이 사라진다 */
+    cursor === null ? Promise.resolve(1) : rankOfFirstPlayer(leagueId, page.items[0]),
     matchCountByPlayer(
       leagueId,
       unknownGames.map((row) => row.player.id),
@@ -493,6 +511,45 @@ export async function getPlayerRanks(
   }
 }
 
+/**
+ * 메인페이지 TOP3 가 쓰는 **가벼운 개인랭킹 첫 줄** (2026-09-01 · D-239 후속).
+ *
+ * ── 왜 `getPlayerRanks` 를 그대로 부르지 않는가
+ *   메인은 `rank · player · clan · rating` **네 칸만** 그린다 (`HomeLeagueTop`).
+ *   그런데 `getPlayerRanks` 는 킬뎃과 평균킬을 만드느라 선수마다 `weaponStats` 를
+ *   더 읽고, 필요하면 `matchCountByPlayer` 까지 부른다. **메인은 그 값을 버린다.**
+ *   리그 세 개니까 버릴 값을 만드느라 왕복이 리그마다 두 번씩 더 났다.
+ *   실측: `/api/home/top` 이 왕복 13번 → 8번.
+ *
+ * ── 규칙은 여전히 한 곳에서 나온다
+ *   모집단(`playerRankWhere`)과 정렬(`RANK_ORDER`)을 **랭킹 화면과 같은 상수**로 쓴다.
+ *   여기에 조건이나 정렬을 새로 적으면 두 화면이 조용히 갈라진다.
+ *
+ * ── 순위는 세지 않는다
+ *   첫 쪽이라 첫 줄이 1위다 (`getPlayerRanks` 의 같은 판단과 근거가 같다).
+ */
+export async function getTopPlayerRows(
+  leagueId: string,
+  size: number,
+): Promise<{ rank: number; player: PlayerSummary; clan: ClanSummary | null; rating: number }[]> {
+  const rows = await prisma.leaguePlayer.findMany({
+    where: playerRankWhere(leagueId),
+    take: size,
+    orderBy: [...RANK_ORDER],
+    select: {
+      rating: true,
+      player: { select: PLAYER_SUMMARY_SELECT },
+      clan: { select: CLAN_SUMMARY_SELECT },
+    },
+  })
+  return rows.map((row, index) => ({
+    rank: index + 1,
+    player: toPlayerSummary(row.player),
+    clan: toClanSummaryOrNull(row.clan),
+    rating: row.rating,
+  }))
+}
+
 /* ------------------------- 순위 (개별 대상 조회용) ------------------------- */
 
 export async function clanRankOf(leagueClan: {
@@ -504,17 +561,36 @@ export async function clanRankOf(leagueClan: {
 }): Promise<{ rank: number | null; rankCount: number | null }> {
   /* `rankCount` 는 클랜랭킹의 **모집단 크기**다. 랭킹 목록(`getClanRanks`)이
      비활성 클랜을 빼고 내보내므로 분모도 같은 집합이어야 한다.
-     아니면 "3 / 7 위" 처럼 목록에 7번째가 없는 분모가 나온다 (D-147 과 같은 이유). */
-  const where = {
-    leagueId: leagueClan.leagueId,
-    division: leagueClan.division,
-    placement: false,
-    ...ACTIVE_CLAN,
-  }
-  const rankCount = await prisma.leagueClan.count({ where })
+     아니면 "3 / 7 위" 처럼 목록에 7번째가 없는 분모가 나온다 (D-147 과 같은 이유).
+   *
+   * ── **왕복 두 번을 한 번으로 줄였다** (2026-09-01 · D-239 후속)
+   *   예전에는 `count(모집단)` 과 `count(앞에 오는 행)` 을 **줄줄이** 던졌다.
+   *   운영은 `connection_limit=1` 이라 그 둘이 병렬로 돌지도 않는다 — 왕복 두 번이
+   *   그대로 더해진다. 같은 표를 두 번 훑을 이유가 없어 `FILTER` 로 한 번에 센다.
+   *
+   *   ⚠ 조건은 위의 Prisma 판(`ACTIVE_CLAN` · `placement: false`)과 **한 글자도 다르면 안
+   *     된다.** `getClanRanks` 목록과 모집단이 갈리는 순간 "목록에 없는 분모" 가 생긴다.
+   *     `Clan.active` 와 `LeagueClan.expelledAt` 이 그 조건이다.
+   *
+   *   ⚠ 배치고사면 예전에도 `rankCount` 를 **읽고 나서** 버렸다. 지금도 읽고 버린다 —
+   *     한 질의라 버리는 값이 공짜다. 밖으로 나가는 값은 그대로 `null` 이다. */
+  const [row] = await prisma.$queryRaw<{ rankCount: number; above: number }[]>`
+    SELECT COUNT(*)::int AS "rankCount",
+           COUNT(*) FILTER (
+             WHERE lc."rating" > ${leagueClan.rating}
+                OR (lc."rating" = ${leagueClan.rating} AND lc."id" < ${leagueClan.id})
+           )::int AS "above"
+      FROM "LeagueClan" lc
+      JOIN "Clan" c ON c."id" = lc."clanId"
+     WHERE lc."leagueId" = ${leagueClan.leagueId}
+       AND lc."division" = ${leagueClan.division}
+       AND lc."placement" = false
+       AND lc."expelledAt" IS NULL
+       AND c."active" = true
+  `
+  const rankCount = row?.rankCount ?? 0
   if (leagueClan.placement) return { rank: null, rankCount: null }
-  const rank = await rankOfFirstClan(leagueClan.leagueId, leagueClan.division, leagueClan)
-  return { rank, rankCount }
+  return { rank: (row?.above ?? 0) + 1, rankCount }
 }
 
 /**
@@ -543,11 +619,7 @@ export async function clanRankOf(leagueClan: {
  *   무기만 알고 기록을 모르는 선수를 순위에 넣으면 비교할 실적이 없는 사람이 등수를 받는다.
  *   배치고사 중인 선수는 기존 규칙 그대로 순위를 받지 않는다.
  */
-export async function playerWeaponRankOf(
-  leaguePlayerId: string,
-  leagueId: string,
-  weapon: 0 | 1,
-): Promise<{
+export interface WeaponRankResult {
   rank: number | null
   rankCount: number | null
   games: number
@@ -556,34 +628,44 @@ export async function playerWeaponRankOf(
   death: number
   assist: number
   kdRate: number | null
-}> {
-  const empty = {
-    rank: null,
-    rankCount: null,
-    games: 0,
-    knownGames: 0,
-    kill: 0,
-    death: 0,
-    assist: 0,
-    kdRate: null,
-  }
-  const mine = await prisma.leaguePlayerWeaponStat.findUnique({
-    where: { leaguePlayerId_weapon: { leaguePlayerId, weapon } },
-    select: {
-      ratingDelta: true,
-      games: true,
-      knownStatGames: true,
-      kill: true,
-      death: true,
-      assist: true,
-      isMain: true,
-      leaguePlayer: { select: { placement: true } },
-    },
-  })
-  // 그 무기로 뛴 기록이 아예 없으면 만들어 내지 않는다
-  if (!mine || mine.games === 0) return empty
+}
 
-  const stat = {
+const EMPTY_WEAPON_RANK: WeaponRankResult = {
+  rank: null,
+  rankCount: null,
+  games: 0,
+  knownGames: 0,
+  kill: 0,
+  death: 0,
+  assist: 0,
+  kdRate: null,
+}
+
+/** 순위를 매기는 데 필요한 무기 버킷 한 줄 */
+export interface WeaponStatRow {
+  weapon: number
+  ratingDelta: number
+  games: number
+  knownStatGames: number
+  kill: number
+  death: number
+  assist: number
+  isMain: boolean
+}
+
+/**
+ * 무기 버킷 한 줄에서 **기록**과 「순위를 받을 자격이 있는가」를 정한다.
+ * 순위 숫자는 여기서 만들지 않는다 — 그건 모집단을 세야 나온다.
+ */
+function weaponStatOf(
+  mine: WeaponStatRow | undefined,
+  placement: boolean,
+): { stat: WeaponRankResult; ranked: boolean } {
+  // 그 무기로 뛴 기록이 아예 없으면 만들어 내지 않는다
+  if (!mine || mine.games === 0) return { stat: EMPTY_WEAPON_RANK, ranked: false }
+
+  const stat: WeaponRankResult = {
+    ...EMPTY_WEAPON_RANK,
     games: mine.games,
     knownGames: mine.knownStatGames,
     kill: mine.kill,
@@ -599,23 +681,122 @@ export async function playerWeaponRankOf(
      배치고사 중인 선수를 세지 않으면서 그 선수에게만 순위를 주면
      "0명중 1위" 같은 값이 나온다. 실제로 그렇게 나왔다. */
   /* 주무기가 아니면 그 무기 랭킹의 모집단이 아니다 (D-173).
-     기록은 위에서 그대로 돌려주고 **순위만** 주지 않는다 —
+     기록은 그대로 돌려주고 **순위만** 주지 않는다 —
      목록(`rankings.ts`)과 모집단이 같아야 "N위 / M명" 이 어긋나지 않는다 */
-  if (mine.leaguePlayer.placement || mine.knownStatGames === 0 || !mine.isMain) {
-    return { ...empty, ...stat, rank: null, rankCount: null }
+  const ranked = !placement && mine.knownStatGames > 0 && mine.isMain
+  return { stat, ranked }
+}
+
+/**
+ * 무기 축의 **모집단 크기와 앞선 인원**을 한 질의로 센다 (2026-09-01 · D-239 후속).
+ *
+ * 예전에는 무기마다 `count(모집단)` · `count(앞선 사람)` 을 **줄줄이** 던졌다.
+ * 스나·라플 둘 다 순위를 받는 선수면 왕복이 네 번이다. 운영은 `connection_limit=1` 이라
+ * 그 넷이 병렬로 돌지도 않는다 (D-239). 같은 표를 네 번 훑는 대신 `FILTER` 로 한 번에 센다.
+ *
+ * ⚠ 조건은 `rankings.ts` 의 `weaponRankWhere()` 와 **한 글자도 다르면 안 된다.**
+ *   한쪽만 달라지면 프로필의 "N위 / M명" 과 목록의 줄 수가 어긋난다.
+ */
+async function weaponRankCounts(
+  leagueId: string,
+  targets: readonly { weapon: 0 | 1; ratingDelta: number }[],
+): Promise<Map<number, { rankCount: number; above: number }>> {
+  const out = new Map<number, { rankCount: number; above: number }>()
+  if (targets.length === 0) return out
+
+  const weapons = targets.map((target) => target.weapon)
+  /* `CASE` 는 두 무기를 모두 받는다. 목록에 없는 무기의 값은 어차피 세지 않는다 */
+  const rifleDelta = targets.find((target) => target.weapon === 0)?.ratingDelta ?? 0
+  const sniperDelta = targets.find((target) => target.weapon === 1)?.ratingDelta ?? 0
+
+  const rows = await prisma.$queryRaw<{ weapon: number; rankCount: number; above: number }[]>`
+    SELECT w."weapon" AS "weapon",
+           COUNT(*)::int AS "rankCount",
+           COUNT(*) FILTER (
+             WHERE w."ratingDelta" > (CASE w."weapon" WHEN 0 THEN ${rifleDelta} ELSE ${sniperDelta} END)
+           )::int AS "above"
+      FROM "LeaguePlayerWeaponStat" w
+      JOIN "LeaguePlayer" p ON p."id" = w."leaguePlayerId"
+     WHERE p."leagueId" = ${leagueId}
+       AND p."placement" = false
+       AND w."knownStatGames" > 0
+       AND w."isMain" = true
+       AND w."weapon" = ANY(${weapons}::int[])
+     GROUP BY w."weapon"
+  `
+  for (const row of rows) out.set(row.weapon, { rankCount: row.rankCount, above: row.above })
+  return out
+}
+
+/**
+ * 스나·라플 **두 축을 한꺼번에** 만든다 (2026-09-01 · D-239 후속).
+ *
+ * 기록실이 `playerWeaponRankOf` 를 두 번 부르면 왕복이 최대 여섯 번이었다.
+ * 무기 버킷은 이미 `weapon_stats` 를 만들며 읽어 두므로 그것을 넘겨받고,
+ * 모집단은 위의 한 질의로 센다 — **왕복 한 번**으로 끝난다.
+ * 순위를 받을 사람이 아무도 없으면 질의 자체가 사라진다.
+ */
+export async function playerWeaponRanksOf(
+  leagueId: string,
+  placement: boolean,
+  rows: readonly WeaponStatRow[],
+): Promise<Map<0 | 1, WeaponRankResult>> {
+  const resolved = new Map<0 | 1, { stat: WeaponRankResult; ranked: boolean; delta: number }>()
+  for (const weapon of [0, 1] as const) {
+    const mine = rows.find((row) => row.weapon === weapon)
+    const { stat, ranked } = weaponStatOf(mine, placement)
+    resolved.set(weapon, { stat, ranked, delta: mine?.ratingDelta ?? 0 })
   }
 
-  const where = {
-    weapon,
-    leaguePlayer: { leagueId, placement: false },
-    knownStatGames: { gt: 0 },
-    isMain: true,
+  const targets = [...resolved.entries()]
+    .filter(([, value]) => value.ranked)
+    .map(([weapon, value]) => ({ weapon, ratingDelta: value.delta }))
+  const counts = await weaponRankCounts(leagueId, targets)
+
+  const out = new Map<0 | 1, WeaponRankResult>()
+  for (const [weapon, value] of resolved) {
+    const count = value.ranked ? counts.get(weapon) : undefined
+    out.set(
+      weapon,
+      count ? { ...value.stat, rank: count.above + 1, rankCount: count.rankCount } : value.stat,
+    )
   }
-  const rankCount = await prisma.leaguePlayerWeaponStat.count({ where })
-  const above = await prisma.leaguePlayerWeaponStat.count({
-    where: { ...where, ratingDelta: { gt: mine.ratingDelta } },
+  return out
+}
+
+/**
+ * **옛 진입점** — 무기 하나만 따로 묻는다 (`CLAUDE.md` 10-4: 옛 버전을 남긴다).
+ *
+ * 화면은 이제 `playerWeaponRanksOf` 로 둘을 한꺼번에 받는다.
+ * 이쪽도 왕복은 두 번으로 줄었다(버킷 한 줄 + 모집단 한 번).
+ */
+export async function playerWeaponRankOf(
+  leaguePlayerId: string,
+  leagueId: string,
+  weapon: 0 | 1,
+): Promise<WeaponRankResult> {
+  const mine = await prisma.leaguePlayerWeaponStat.findUnique({
+    where: { leaguePlayerId_weapon: { leaguePlayerId, weapon } },
+    select: {
+      weapon: true,
+      ratingDelta: true,
+      games: true,
+      knownStatGames: true,
+      kill: true,
+      death: true,
+      assist: true,
+      isMain: true,
+      leaguePlayer: { select: { placement: true } },
+    },
   })
-  return { ...stat, rank: above + 1, rankCount }
+  if (!mine) return EMPTY_WEAPON_RANK
+
+  const { stat, ranked } = weaponStatOf(mine, mine.leaguePlayer.placement)
+  if (!ranked) return stat
+
+  const counts = await weaponRankCounts(leagueId, [{ weapon, ratingDelta: mine.ratingDelta }])
+  const count = counts.get(weapon)
+  return count ? { ...stat, rank: count.above + 1, rankCount: count.rankCount } : stat
 }
 
 export async function playerRankOf(leaguePlayer: {
@@ -624,11 +805,22 @@ export async function playerRankOf(leaguePlayer: {
   rating: number
   placement: boolean
 }): Promise<{ rank: number | null; rankCount: number | null }> {
-  const rankCount = await prisma.leaguePlayer.count({
-    where: { leagueId: leaguePlayer.leagueId, placement: false },
-  })
+  /* **왕복 두 번을 한 번으로 줄였다** (2026-09-01 · D-239 후속) — `clanRankOf` 와 같은 이유다.
+     모집단(`placement: false`)도 `rankOfFirstPlayer` 의 조건도 그대로다.
+     여기에 `ACTIVE_CLAN` 을 넣지 않는 이유는 위 `rankOfFirstPlayer` 주석에 있다 —
+     개인 랭킹 목록은 클랜으로 거르지 않는다 (D-107). 무소속 선수가 통째로 빠진다 */
+  const [row] = await prisma.$queryRaw<{ rankCount: number; above: number }[]>`
+    SELECT COUNT(*)::int AS "rankCount",
+           COUNT(*) FILTER (
+             WHERE lp."rating" > ${leaguePlayer.rating}
+                OR (lp."rating" = ${leaguePlayer.rating} AND lp."id" < ${leaguePlayer.id})
+           )::int AS "above"
+      FROM "LeaguePlayer" lp
+     WHERE lp."leagueId" = ${leaguePlayer.leagueId}
+       AND lp."placement" = false
+  `
+  const rankCount = row?.rankCount ?? 0
   if (leaguePlayer.placement) return { rank: null, rankCount: null }
   // 무소속리그 선수도 자기 리그 안에서 정상으로 순위를 받는다 (D-107)
-  const rank = await rankOfFirstPlayer(leaguePlayer.leagueId, leaguePlayer)
-  return { rank, rankCount }
+  return { rank: (row?.above ?? 0) + 1, rankCount }
 }

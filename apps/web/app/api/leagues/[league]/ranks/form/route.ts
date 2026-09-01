@@ -1,5 +1,5 @@
 import { parseRankWeapon } from '@sacloud/contract'
-import { notFound, ok, guard } from '@/lib/server/respond'
+import { notFound, okPublic, guard } from '@/lib/server/respond'
 import { query, routeParam } from '@/lib/server/request'
 import { resolveLeagueId } from '@/lib/server/queries/leagues'
 import { getFormTop } from '@/lib/server/queries/rankings'
@@ -16,6 +16,7 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     const leagueId = await resolveLeagueId(await routeParam(context, 'league'))
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
     const form = await getFormTop(leagueId, parseRankWeapon(query(request, 'weapon')))
-    return form ? ok(form) : notFound('리그를 찾을 수 없습니다')
+    /* 기록 등급(기본 300초) — 오늘자 폼이라 자주 변하지만 로그인과는 무관하다 (D-240) */
+    return form ? okPublic(form) : notFound('리그를 찾을 수 없습니다')
   })
 }
