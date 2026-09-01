@@ -116,10 +116,29 @@ export const TEMPO_CLEAR_KILLS = 3
  *
  * `data/barracks/style-zones.json` 의 라벨 키다.
  */
-export const A_ATTACK_ZONE_LABELS = ['CONDWI', 'SEOLDAE'] as const
+export const A_ATTACK_ZONE_LABELS = ['CONDWI', 'SEOLDAE', 'NOKDWI', 'MERI'] as const
 
-/** 사용자가 말했지만 **좌표가 없는** 구역. 지어내지 않는다 (⑥-1) */
-export const A_ATTACK_ZONE_LABELS_MISSING = ['녹뒤', '머리'] as const
+/**
+ * ⚠ **정정 (2026-09-01) — `녹뒤`·`머리` 의 좌표가 생겼다. 이제 넷이 다 있다.**
+ *
+ * 위 머리말의 «넷 중 둘뿐이다» 는 서술은 **그때는 맞았다.** 지우지 않고 여기 정정을 단다
+ * (`CLAUDE.md` 10-4).
+ *
+ * 어떻게 생겼나 — 사용자가 **직접 칠했다.**
+ * 실제 킬 좌표 568,138건을 같은 격자에 얹은 도구를 만들어 드렸고(`design/zone-paint.html`),
+ * 이미 칠해진 여섯 구역을 지형지물로 놓고 그 위에 손으로 칠했다.
+ *
+ * ```
+ * 머리  x 33~35 · y 26~27   6칸
+ * 녹뒤  x 36~38 · y 26~27   6칸
+ * ```
+ *
+ * 둘은 **가로로 맞붙은 띠**다. 기존 칸과 겹친 것은 **한 칸도 없다.**
+ *
+ * 그래서 이 상수는 이제 **비어 있다.** 지우지 않는 이유는 «한때 없었다» 는 기록이기 때문이고,
+ * 나중에 또 이름만 있고 좌표가 없는 구역이 생기면 여기에 넣는다.
+ */
+export const A_ATTACK_ZONE_LABELS_MISSING = [] as const
 
 /** ① 의 `B롱` — 구역 파일의 `비롱` 이다 */
 export const B_LONG_ZONE_LABEL = 'BIRONG'

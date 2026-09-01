@@ -8,7 +8,9 @@
     "GJA": "ㄱ자",
     "DALBANG": "달방",
     "SEOLDAE": "A설대",
-    "CONDWI": "컨뒤"
+    "CONDWI": "컨뒤",
+    "NOKDWI": "녹뒤",
+    "MERI": "머리"
   },
   "zone": {
     "14,16": "BIRONG",
@@ -206,6 +208,18 @@
     "18,43": "BUNKER",
     "18,42": "BUNKER",
     "18,41": "BUNKER",
-    "18,40": "BUNKER"
+    "18,40": "BUNKER",
+    "36,26": "NOKDWI",
+    "36,27": "NOKDWI",
+    "37,26": "NOKDWI",
+    "37,27": "NOKDWI",
+    "33,26": "MERI",
+    "33,27": "MERI",
+    "34,26": "MERI",
+    "34,27": "MERI",
+    "35,26": "MERI",
+    "35,27": "MERI",
+    "38,26": "NOKDWI",
+    "38,27": "NOKDWI"
   }
 }
