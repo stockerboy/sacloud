@@ -105,3 +105,9 @@ ipl-project-export.json
 
 # 클랜 육각형 V2 내보내기 산출물 — 다시 만들 수 있다 (clanHexV2Export)
 clan-hex-v2-export.json
+
+# 육각형 요약 내보내기 산출물 — 다시 만들 수 있다 (clanHexV2SummaryExport)
+clan-hex-v2-summary-export.json
+
+# 성능 측정 임시 폴더
+.tmp-perf/

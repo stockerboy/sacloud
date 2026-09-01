@@ -1,0 +1,748 @@
+<title>SACLOUD 홈 편집기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   SACLOUD 홈 편집기
+
+   지금 실제로 돌아가는 홈 화면을 그대로 그려 놓고, 그 위에서
+   옮기고 · 색 바꾸고 · 배경을 갈아 끼우는 도구다. 새 디자인이 아니다.
+
+   기준으로 삼은 실제 값 (packages/ui/src/styles.css · 각 컴포넌트)
+     루트 15px · --layout-max 1120px · --section-gap 40px · --radius 2px
+     --spacing-nav 4.5rem · 통합검색 max-w 560px · 알 60px · 인기게시글 max-w 720px
+     그림자 없음 · 색은 검정/회색/진홍(#d92b2b) 하나
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 편집기 껍데기 (적진 토큰 고정) ─────────────────────────────── */
+:root{
+  --k-page:#060505; --k-card:#120c0c; --k-card2:#1a1010;
+  --k-line:#2a1616; --k-line-soft:#1a1010;
+  --k-text:#d6c9c9; --k-strong:#f6eded; --k-meta:#9a8080; --k-faint:#6b5555;
+  --k-accent:#d92b2b;
+  --k-display:'Black Han Sans','Noto Sans KR',sans-serif;
+  --k-body:'Noto Sans KR',-apple-system,'Segoe UI',sans-serif;
+  --k-num:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--k-page);color:var(--k-text);font-family:var(--k-body);
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--k-accent);outline-offset:2px}
+
+.wrap{max-width:1360px;margin:0 auto;padding:14px 14px 56px}
+
+.lead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  border:1px solid var(--k-line);border-left:3px solid var(--k-accent);background:var(--k-card);
+  padding:11px 14px;margin:0 0 14px;border-radius:2px;color:var(--k-strong);font-size:14px}
+.lead b{color:#fff}
+
+.app{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+@media (max-width:1000px){ .app{grid-template-columns:minmax(0,1fr)} }
+
+/* ── 미리보기 ──────────────────────────────────────────────────── */
+.views{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;align-items:start;min-width:0}
+@media (max-width:700px){ .views{grid-template-columns:minmax(0,1fr)} }
+.vw{min-width:0}
+.vw h3{margin:0 0 6px;font-size:11px;letter-spacing:.18em;color:var(--k-faint);font-weight:500;
+  display:flex;justify-content:space-between}
+.vw h3 span{font-family:var(--k-num);color:var(--k-faint)}
+.shot{position:relative;width:100%;height:640px;overflow:auto;overscroll-behavior:contain;
+  border:1px solid var(--k-line);border-radius:2px;background:#000}
+@media (max-width:700px){ .shot{height:460px} }
+.sizer{position:relative;width:100%}
+.screen{position:absolute;left:0;top:0;transform-origin:0 0;font-size:15px}
+
+/* ── 조절판 ────────────────────────────────────────────────────── */
+.panel{display:flex;flex-direction:column;gap:8px;min-width:0}
+@media (min-width:1001px){ .panel{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;padding-right:2px} }
+.grp{border:1px solid var(--k-line);border-radius:2px;background:var(--k-card);overflow:hidden}
+.grp>summary{list-style:none;cursor:pointer;padding:10px 13px;font-size:13px;font-weight:700;
+  color:var(--k-strong);display:flex;align-items:center;gap:8px;background:var(--k-card2)}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary::before{content:'';width:5px;height:5px;background:var(--k-accent);flex:none;border-radius:50%}
+.grp[open]>summary{border-bottom:1px solid var(--k-line)}
+.body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:10px}
+
+.row{display:flex;flex-direction:column;gap:4px;min-width:0}
+.row>label{font-size:12px;color:var(--k-meta);display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.row>label .v{font-family:var(--k-num);font-size:11px;color:#e2b5b5;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--k-accent);background:transparent;margin:0}
+input[type=text]{width:100%;background:#0d0a0a;border:1px solid var(--k-line);border-radius:2px;
+  padding:6px 9px;font-size:13px;color:var(--k-strong)}
+
+.seg{display:flex;gap:5px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;min-width:50px;padding:6px;font-size:12.5px;border-radius:2px;cursor:pointer;
+  border:1px solid var(--k-line);background:#0d0a0a;color:var(--k-meta)}
+.seg button[aria-pressed=true]{border-color:var(--k-accent);background:#241111;color:#fff}
+
+.tgl{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  border:1px solid var(--k-line-soft);border-radius:2px;padding:8px 10px;background:#0d0a0a;cursor:pointer}
+.tgl>span{font-size:13px;color:var(--k-strong)}
+.tgl>b{font-size:11px;letter-spacing:.1em;color:var(--k-faint)}
+.tgl[aria-pressed=true]{border-color:#4a2020}
+.tgl[aria-pressed=true]>b{color:var(--k-accent)}
+
+/* 색 고르기 */
+.colors{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.col{display:flex;align-items:center;gap:8px;border:1px solid var(--k-line-soft);border-radius:2px;
+  padding:5px 7px;background:#0d0a0a;min-width:0}
+.col input[type=color]{width:26px;height:26px;flex:none;padding:0;border:1px solid var(--k-line);
+  border-radius:2px;background:none;cursor:pointer}
+.col span{font-size:11.5px;color:var(--k-meta);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.file{display:block;position:relative;border:1px dashed #4a2828;border-radius:2px;background:#100b0b;
+  padding:14px 12px;text-align:center;cursor:pointer;color:var(--k-strong);font-size:13.5px}
+.file:hover{border-color:var(--k-accent)}
+.file input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.size{font-family:var(--k-num);font-size:12px;color:#e2b5b5;font-variant-numeric:tabular-nums;min-height:18px}
+.size .a{color:var(--k-faint)}
+
+.btns{display:flex;flex-direction:column;gap:6px}
+.btn{padding:10px 12px;border-radius:2px;border:1px solid var(--k-line);background:#0d0a0a;
+  color:var(--k-strong);font-size:13.5px;cursor:pointer;text-align:center}
+.btn:hover{border-color:#4a2828}
+.btn.primary{border-color:var(--k-accent);background:#2a1010;color:#fff;font-weight:700}
+.btn.primary:hover{background:#3a1414}
+.btn:disabled{opacity:.5;cursor:default}
+.note{font-size:12px;color:var(--k-meta);margin:0}
+.note.warn{color:#e2b5b5}
+.hint{font-size:11px;color:var(--k-faint);margin:0}
+
+/* ═══ 미리보기 안쪽 — 지금 사이트 화면 ══════════════════════════ */
+.screen{
+  --page:#060505; --card:#120c0c; --card2:#1a1010;
+  --line:#2a1616; --lineSoft:#1a1010;
+  --text:#d6c9c9; --strong:#f6eded; --meta:#9a8080; --faint:#6b5555; --accent:#d92b2b;
+  --max:1120px; --gut:20px; --gap:40px; --nav:68px;
+  font-family:var(--k-body);color:var(--text);background:var(--page);line-height:1.6;
+  position:relative;isolation:isolate}
+.screen .bgimg{position:absolute;inset:var(--bginset,0);z-index:0;background-repeat:no-repeat;
+  background-image:var(--ubg,none);background-size:var(--bgfit,cover);background-position:var(--bgpos,center);
+  background-attachment:local;filter:blur(calc(var(--bgblur,0) * 1px))}
+.screen .bgdim{position:absolute;inset:0;z-index:0;background:var(--page);opacity:var(--bgop,1)}
+.screen .layer{position:relative;z-index:1}
+
+/* GNB */
+.screen .gnb{border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--page) 88%,transparent)}
+.screen .gnbIn{margin:0 auto;display:flex;align-items:stretch;width:100%;max-width:var(--max);
+  padding:0 var(--gut);height:var(--nav)}
+.screen .gnbLogo{display:flex;align-items:center;padding-right:32px}
+.screen .gnbLogo svg{height:var(--navlogo,18px);width:auto;display:block}
+.screen .navlink{display:flex;align-items:center;padding:0 var(--navgap,12px);font-size:13px;
+  letter-spacing:.02em;color:var(--meta);position:relative}
+.screen .navlink.on{color:var(--strong)}
+.screen .navlink.on::after{content:'';position:absolute;left:var(--navgap,12px);right:var(--navgap,12px);
+  bottom:-1px;height:1px;background:var(--accent)}
+.screen .grow{flex-grow:1}
+
+/* 본문 폭 */
+.screen .main{margin:0 auto;width:100%;max-width:var(--max);padding:0 var(--gut)}
+
+/* 로고 블록 */
+.screen .logoBox{padding-top:var(--logotop,120px)}
+.screen .logoBox svg{display:block;margin:0 auto;width:var(--logow,320px);max-width:100%;height:auto;
+  color:var(--strong)}
+
+/* 통합검색 */
+.screen .srWrap{margin:var(--srgap,40px) auto 0;width:100%;max-width:var(--srw,560px)}
+.screen .sr{display:flex;align-items:stretch;height:var(--srh,54px);
+  border:1px solid var(--line);border-radius:2px}
+.screen .srSel{display:flex;width:112px;flex:none;align-items:center;justify-content:space-between;gap:8px;
+  border-right:1px solid var(--line);padding:0 16px;font-size:13px;color:var(--meta)}
+.screen .srIn{flex:1;display:flex;align-items:center;min-width:0;padding:0 16px;font-size:15px;color:var(--faint)}
+.screen .srGo{display:flex;width:52px;flex:none;align-items:center;justify-content:center;color:var(--meta)}
+
+/* 알 모음집 */
+.screen .sec{padding-top:var(--gap)}
+.screen .eggHead{display:flex;align-items:flex-end;justify-content:space-between;
+  border-bottom:1px solid var(--lineSoft);padding-bottom:12px}
+.screen .eggHead .ttl{display:flex;align-items:baseline;gap:12px}
+.screen .eggHead h2{margin:0;font-family:var(--k-display);font-weight:400;font-size:20px;line-height:1;color:var(--strong)}
+.screen .eggHead .note{font-size:12px;color:var(--meta)}
+.screen .eggHead .cnt{font-family:var(--k-num);font-size:12px;color:var(--meta);font-variant-numeric:tabular-nums}
+.screen .eggHead .cnt b{color:var(--accent);font-weight:400}
+/* 칸 폭은 알보다 작아지지 않는다. `auto-fill` + max-width 라서 좁은 화면에서는
+   저절로 줄이 접힌다 — 고정 개수로 못박으면 폰에서 첫 알이 잘린다 */
+.screen .eggGrid{--cell:max(64px, var(--eggsz,60px));
+  display:grid;justify-content:center;margin:24px auto 0;
+  grid-template-columns:repeat(auto-fill, var(--cell));
+  max-width:calc(var(--eggper,7) * var(--cell) + (var(--eggper,7) - 1) * 12px);
+  column-gap:12px;row-gap:var(--eggrow,28px)}
+.screen .eggCell{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;
+  width:max(64px, var(--eggsz,60px))}
+.screen .shell{width:var(--eggsz,60px);height:var(--eggsz,60px);
+  border-radius:50% 50% 50% 50% / 62% 62% 38% 38%;border:1px solid var(--line);
+  background:radial-gradient(60% 42% at 38% 24%, rgb(214 201 201 / .1), transparent 70%),
+    linear-gradient(165deg, var(--card2) 0%, var(--card) 62%, #0d0808 100%)}
+.screen .eggCell.hit .shell{border-color:var(--accent)}
+.screen .eggName{width:100%;font-size:11px;line-height:1.3;text-align:center;color:var(--meta);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.screen .eggCell.hit .eggName{color:var(--text)}
+
+/* 인기게시글 */
+.screen .hot{margin:0 auto;width:100%;max-width:720px}
+.screen .hot h2{margin:0 0 16px;font-family:var(--k-display);font-weight:400;font-size:20px;
+  line-height:1;color:var(--strong)}
+.screen .hotList{border-top:1px solid var(--line)}
+.screen .post{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--lineSoft);padding:14px 0}
+.screen .post .t{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:15px;color:var(--text)}
+.screen .post .c{flex:none;font-family:var(--k-num);font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
+.screen .post .d{width:64px;flex:none;text-align:right;font-family:var(--k-num);font-size:12px;
+  color:var(--faint);font-variant-numeric:tabular-nums}
+
+/* 꼬리말 */
+.screen .foot{padding:80px 0 var(--gap)}
+.screen .foot .in{border-top:1px solid var(--lineSoft);padding-top:20px;font-size:12px;
+  line-height:1.8;color:var(--faint)}
+
+/* 폰 폭에서의 실제 규칙 (max-md) */
+.screen.ph{--gut:12px}
+.screen.ph .gnbLogo{padding-right:12px}
+.screen.ph .srSel{width:92px;padding:0 12px}
+.screen.ph .srIn{padding:0 12px}
+.screen.ph .srGo{width:44px}
+.screen.ph .foot{padding-top:56px}
+
+.off{display:none !important}
+</style>
+
+<div class="wrap">
+  <p class="lead"><b>배경 그림을 올리고 슬라이더로 옮기세요.</b> 다 되면 <b>[저장하기]</b></p>
+
+  <div class="app">
+    <!-- 미리보기 -->
+    <div class="views">
+      <div class="vw">
+        <h3>PC <span id="kD"></span></h3>
+        <div class="shot"><div class="sizer" id="zD"><div class="screen" id="sD"></div></div></div>
+      </div>
+      <div class="vw">
+        <h3>폰 <span>390px</span></h3>
+        <div class="shot"><div class="sizer" id="zP"><div class="screen ph" id="sP"></div></div></div>
+      </div>
+    </div>
+
+    <!-- 조절판 -->
+    <div class="panel">
+
+      <details class="grp" open>
+        <summary>배경</summary>
+        <div class="body">
+          <label class="file">그림 고르기<input type="file" accept="image/*" id="pick"></label>
+          <div class="size" id="sz"><span class="a">배경 없음 (바탕색만)</span></div>
+          <button class="btn" id="bgClear" style="display:none">배경 지우기</button>
+          <div class="row"><label>어둡게 덮기 <span class="v" data-v="bg.dim"></span></label>
+            <input type="range" min="0" max="100" step="1" data-p="bg.dim"></div>
+          <div class="row"><label>위치</label>
+            <div class="seg" data-p="bg.pos" data-seg="center:가운데|top:위|bottom:아래"></div></div>
+          <div class="row"><label>채우기</label>
+            <div class="seg" data-p="bg.fit" data-seg="cover:꽉 채움|contain:전체 보임"></div></div>
+          <div class="row"><label>흐림 <span class="v" data-v="bg.blur"></span></label>
+            <input type="range" min="0" max="20" step="1" data-p="bg.blur"></div>
+        </div>
+      </details>
+
+      <details class="grp" open>
+        <summary>레이아웃</summary>
+        <div class="body">
+          <div class="row"><label>본문 폭 <span class="v" data-v="lay.max"></span></label>
+            <input type="range" min="880" max="1440" step="10" data-p="lay.max"></div>
+          <div class="row"><label>섹션 간격 <span class="v" data-v="lay.gap"></span></label>
+            <input type="range" min="16" max="120" step="2" data-p="lay.gap"></div>
+
+          <div class="row"><label>GNB 높이 <span class="v" data-v="gnb.h"></span></label>
+            <input type="range" min="44" max="110" step="1" data-p="gnb.h"></div>
+          <div class="row"><label>GNB 로고 크기 <span class="v" data-v="gnb.logo"></span></label>
+            <input type="range" min="12" max="40" step="1" data-p="gnb.logo"></div>
+          <div class="row"><label>GNB 메뉴 간격 <span class="v" data-v="gnb.gap"></span></label>
+            <input type="range" min="4" max="40" step="1" data-p="gnb.gap"></div>
+
+          <div class="row"><label>로고 크기 <span class="v" data-v="logo.w"></span></label>
+            <input type="range" min="140" max="620" step="4" data-p="logo.w"></div>
+          <div class="row"><label>로고 위쪽 여백 <span class="v" data-v="logo.top"></span></label>
+            <input type="range" min="0" max="260" step="4" data-p="logo.top"></div>
+
+          <div class="row"><label>검색줄 폭 <span class="v" data-v="sr.w"></span></label>
+            <input type="range" min="320" max="900" step="10" data-p="sr.w"></div>
+          <div class="row"><label>검색줄 높이 <span class="v" data-v="sr.h"></span></label>
+            <input type="range" min="38" max="80" step="1" data-p="sr.h"></div>
+          <div class="row"><label>로고와의 간격 <span class="v" data-v="sr.gap"></span></label>
+            <input type="range" min="0" max="140" step="2" data-p="sr.gap"></div>
+        </div>
+      </details>
+
+      <details class="grp">
+        <summary>알 모음집</summary>
+        <div class="body">
+          <div class="row"><label>한 줄에 <span class="v" data-v="egg.per"></span></label>
+            <input type="range" min="3" max="12" step="1" data-p="egg.per"></div>
+          <div class="row"><label>줄 간격 <span class="v" data-v="egg.rowgap"></span></label>
+            <input type="range" min="8" max="72" step="2" data-p="egg.rowgap"></div>
+          <div class="row"><label>알 크기 <span class="v" data-v="egg.size"></span></label>
+            <input type="range" min="28" max="110" step="2" data-p="egg.size"></div>
+          <button class="tgl" data-t="egg.name"><span>알 이름</span><b></b></button>
+        </div>
+      </details>
+
+      <details class="grp">
+        <summary>인기게시글</summary>
+        <div class="body">
+          <button class="tgl" data-t="hot.on"><span>인기게시글</span><b></b></button>
+          <div class="row"><label>몇 줄 <span class="v" data-v="hot.rows"></span></label>
+            <input type="range" min="3" max="20" step="1" data-p="hot.rows"></div>
+          <div class="row"><label>위쪽 간격 <span class="v" data-v="hot.top"></span></label>
+            <input type="range" min="0" max="160" step="4" data-p="hot.top"></div>
+        </div>
+      </details>
+
+      <details class="grp">
+        <summary>색</summary>
+        <div class="body">
+          <div class="colors" id="colors"></div>
+          <button class="btn" id="cReset">색만 원래대로</button>
+        </div>
+      </details>
+
+      <details class="grp">
+        <summary>글자</summary>
+        <div class="body">
+          <div class="row"><label>브랜드</label><input type="text" data-x="t.brand" maxlength="16"></div>
+          <div class="row"><label>메뉴 1</label><input type="text" data-x="t.nav0" maxlength="12"></div>
+          <div class="row"><label>메뉴 2</label><input type="text" data-x="t.nav1" maxlength="12"></div>
+          <div class="row"><label>오른쪽 위</label><input type="text" data-x="t.auth" maxlength="12"></div>
+          <div class="row"><label>검색 종류</label><input type="text" data-x="t.sel" maxlength="10"></div>
+          <div class="row"><label>검색 안내문구</label><input type="text" data-x="t.ph" maxlength="40"></div>
+          <div class="row"><label>알 묶음 1</label><input type="text" data-x="t.eggA" maxlength="12"></div>
+          <div class="row"><label>알 묶음 2</label><input type="text" data-x="t.eggB" maxlength="12"></div>
+          <div class="row"><label>알 안내문구</label><input type="text" data-x="t.eggNote" maxlength="30"></div>
+          <div class="row"><label>게시글 제목</label><input type="text" data-x="t.hotTitle" maxlength="20"></div>
+        </div>
+      </details>
+
+      <details class="grp" open>
+        <summary>내보내기</summary>
+        <div class="body btns">
+          <button class="btn primary" id="bSave">저장하기</button>
+          <button class="btn" id="bCopy">설정 복사</button>
+          <button class="btn" id="bDown" style="display:none">배경 파일로 받기</button>
+          <button class="btn" id="bReset">처음으로 되돌리기</button>
+          <p class="note" id="msg"></p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</div>
+
+<script id="saved" type="application/json">null</script>
+<script>
+(function(){
+'use strict';
+
+/* ── 기본값 = 지금 사이트의 실제 값 ────────────────────────────── */
+var COLORS = [
+  ['page','바탕','#060505'], ['card','카드','#120c0c'], ['card2','카드 위','#1a1010'],
+  ['line','선','#2a1616'],   ['lineSoft','옅은 선','#1a1010'],
+  ['strong','제목','#f6eded'],['text','본문','#d6c9c9'],
+  ['meta','보조','#9a8080'], ['faint','더 옅게','#6b5555'], ['accent','진홍','#d92b2b']
+];
+
+function defaults(){
+  var c = {}; COLORS.forEach(function(x){ c[x[0]] = x[2]; });
+  return {
+    bg:{img:null, dim:0, pos:'center', fit:'cover', blur:0, orig:0, now:0, w:0, h:0},
+    c:c,
+    lay:{max:1120, gap:40},                 /* --layout-max · --section-gap */
+    gnb:{h:68, logo:18, gap:12},            /* --spacing-nav 4.5rem · NavLogo h-[18px] · px-3 */
+    logo:{w:320, top:120},                  /* MainLogo · padding-top 120px */
+    sr:{w:560, h:54, gap:40},               /* max-w-[560px] · py-4 · 로고와 40px */
+    egg:{per:7, rowgap:28, size:60, name:1},/* gap-7 · 60px · CELL 64px */
+    hot:{on:1, rows:10, top:40},            /* HOT_POST_COUNT 10 */
+    t:{brand:'SACLOUD', nav0:'리그', nav1:'게시판', auth:'로그인',
+       sel:'플레이어', ph:'닉네임 또는 병영수첩 주소',
+       eggA:'DPL', eggB:'IPL', eggNote:'알을 깨면 기록이 보입니다',
+       hotTitle:'실시간 인기게시글'}
+  };
+}
+
+/* 화면을 채울 예시 값 (실제 목록 자리를 그대로 차지한다) */
+var EGGS_A = ['MiraGe.','One.PoinT','dravelior','FootMania','AimEnvy','resun','TOGS',
+  '전설','ircutopia','비키니라인','5882832','sdsdsz','kym','ehdrn'];
+var EGGS_B = ['pigforever','uava01','OhMyLoVe','JJUN','luverduck','fdd8','minjihun',
+  'adgeodud','asdf1234','saffggaaz','01025606','ckdals','4473','한밤중'];
+var HITS_A = 3;   /* 앞 3개만 깨진 알 */
+var POSTS = [
+  ['이번 시즌 래더 계산 바뀐 거 아시는 분',42,'3시간'],
+  ['알 깨는 법 정리해봤습니다',31,'5시간'],
+  ['열산 클랜 모집합니다 (스나 1명)',0,'7시간'],
+  ['2층 자리 잡는 법 질문',18,'9시간'],
+  ['클랜마크 안 보이는 분 계신가요',4,'11시간'],
+  ['IPL 3부 승격 조건이 뭔가요',0,'13시간'],
+  ['어제 경기 기록이 안 올라왔습니다',7,'16시간'],
+  ['배치고사 몇 판 해야 끝나나요',2,'19시간'],
+  ['클랜전 시간대 어디가 제일 많나요',0,'22시간'],
+  ['헤드샷률 계산 기준 질문드립니다',5,'1일'],
+  ['시즌 스냅샷은 언제 찍히나요',0,'1일'],
+  ['닉네임 바꾸면 기록 따라오나요',11,'2일'],
+  ['라이플 래더만 따로 볼 수 있나요',0,'2일'],
+  ['탈주 처리 기준이 궁금합니다',3,'2일'],
+  ['클랜 이름에 특수문자 되나요',0,'3일'],
+  ['MVP 집계가 이상한 것 같습니다',9,'3일'],
+  ['부리그 이동 주기가 어떻게 되죠',0,'4일'],
+  ['전적갱신 눌러도 그대로입니다',6,'4일'],
+  ['모바일에서 표가 잘려 보여요',0,'5일'],
+  ['지난시즌 기록 어디서 보나요',14,'5일']
+];
+
+var S = defaults();
+var LS = 'sacloud.home-editor.v1';
+
+/* ── 잔손질 ───────────────────────────────────────────────────── */
+function get(o,p){ var a=p.split('.'); for(var i=0;i<a.length;i++){ if(o==null) return undefined; o=o[a[i]]; } return o; }
+function set(o,p,v){ var a=p.split('.'); for(var i=0;i<a.length-1;i++) o=o[a[i]]; o[a[a.length-1]]=v; }
+function merge(dst,src){                       /* 저장된 설정을 기본값 위에 덮는다 */
+  if(!src || typeof src!=='object') return dst;
+  Object.keys(dst).forEach(function(k){
+    if(!(k in src)) return;
+    if(dst[k] && typeof dst[k]==='object' && !Array.isArray(dst[k])) merge(dst[k], src[k]);
+    else dst[k] = src[k];
+  });
+  return dst;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(ch){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]; }); }
+function bytes(n){ return !n ? '0B' : n<1024 ? n+'B'
+  : n<1048576 ? (n/1024).toFixed(0)+'KB' : (n/1048576).toFixed(1)+'MB'; }
+
+/* ── 화면 markup — 지금 홈 그대로 ─────────────────────────────── */
+var ICON_CARET = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4l3 3 3-3"/></svg>';
+var ICON_SEARCH = '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>';
+
+/* MainLogo / NavLogo — packages/ui/src/layout/BrandLogo.tsx 와 같은 도형 */
+function mainLogo(txt){
+  return '<svg viewBox="0 0 560 100" role="img" aria-label="'+esc(txt)+'">'
+    + '<text x="0" y="76" textLength="512" lengthAdjust="spacingAndGlyphs" fill="currentColor"'
+    + ' font-size="80" style="font-family:var(--k-display)">'+esc(txt)+'</text>'
+    + '<rect x="528" y="62" width="14" height="14" fill="var(--accent)"/></svg>';
+}
+function navLogo(txt){
+  return '<svg viewBox="0 0 132 24" role="img" aria-label="'+esc(txt)+'">'
+    + '<text x="0" y="19" textLength="112" lengthAdjust="spacingAndGlyphs" font-size="19"'
+    + ' fill="var(--strong)" style="font-family:var(--k-display)">'+esc(txt)+'</text>'
+    + '<rect x="120" y="12" width="6" height="6" fill="var(--accent)"/></svg>';
+}
+function eggBlock(title, names, hits){
+  var per = S.egg.per, cells = '';
+  for(var i=0;i<names.length;i++){
+    cells += '<div class="eggCell'+(i<hits?' hit':'')+'"><div class="shell"></div>'
+      + (S.egg.name ? '<div class="eggName">'+esc(names[i])+'</div>' : '') + '</div>';
+  }
+  return '<div class="sec"><div class="eggHead">'
+    + '<div class="ttl"><h2>'+esc(title)+'</h2><span class="note">'+esc(S.t.eggNote)+'</span></div>'
+    + '<span class="cnt"><b>'+hits+'</b> / '+names.length+' 깨짐</span>'
+    + '</div><div class="eggGrid">'+cells+'</div></div>';
+}
+function screenHTML(){
+  var t = S.t, posts = '';
+  for(var i=0;i<Math.min(S.hot.rows, POSTS.length);i++){
+    var p = POSTS[i];
+    posts += '<div class="post"><span class="t">'+esc(p[0])+'</span>'
+      + (p[1] ? '<span class="c">'+p[1]+'</span>' : '')
+      + '<span class="d">'+esc(p[2])+' 전</span></div>';
+  }
+  return ''
+  + '<div class="bgimg"></div><div class="bgdim"></div>'
+  + '<div class="layer">'
+  +   '<div class="gnb"><div class="gnbIn">'
+  +     '<span class="gnbLogo">'+navLogo(t.brand)+'</span>'
+  +     '<span class="navlink on">'+esc(t.nav0)+'</span>'
+  +     '<span class="navlink">'+esc(t.nav1)+'</span>'
+  +     '<span class="grow"></span>'
+  +     '<span class="navlink">'+esc(t.auth)+'</span>'
+  +   '</div></div>'
+  +   '<div class="main">'
+  +     '<div class="logoBox">'+mainLogo(t.brand)+'</div>'
+  +     '<div class="srWrap"><div class="sr">'
+  +       '<span class="srSel"><span>'+esc(t.sel)+'</span>'+ICON_CARET+'</span>'
+  +       '<span class="srIn">'+esc(t.ph)+'</span>'
+  +       '<span class="srGo">'+ICON_SEARCH+'</span>'
+  +     '</div></div>'
+  +     eggBlock(t.eggA, EGGS_A, HITS_A)
+  +     eggBlock(t.eggB, EGGS_B, 0)
+  +     '<div class="hot-wrap'+(S.hot.on?'':' off')+'" style="padding-top:'+S.hot.top+'px">'
+  +       '<section class="hot"><h2>'+esc(t.hotTitle)+'</h2>'
+  +       '<div class="hotList">'+posts+'</div></section>'
+  +     '</div>'
+  +     '<div class="foot"><div class="in">'
+  +       'SACLOUD 는 서든어택 클랜전 기록을 모아 보여 줍니다.<br>'
+  +       '기록은 지우지 않습니다. 알로 덮어 둘 뿐입니다.'
+  +     '</div></div>'
+  +   '</div>'
+  + '</div>';
+}
+
+/* ── 상태 → 화면 ──────────────────────────────────────────────── */
+var sD = document.getElementById('sD'), sP = document.getElementById('sP');
+var zD = document.getElementById('zD'), zP = document.getElementById('zP');
+var kD = document.getElementById('kD');
+var PC_W = 1280, PH_W = 390;
+
+function vars(el){
+  var st = el.style, b = S.bg;
+  COLORS.forEach(function(x){ st.setProperty('--'+x[0], S.c[x[0]]); });
+  st.setProperty('--max', S.lay.max + 'px');
+  st.setProperty('--gap', S.lay.gap + 'px');
+  st.setProperty('--nav', S.gnb.h + 'px');
+  st.setProperty('--navlogo', S.gnb.logo + 'px');
+  st.setProperty('--navgap', S.gnb.gap + 'px');
+  st.setProperty('--logow', S.logo.w + 'px');
+  st.setProperty('--logotop', S.logo.top + 'px');
+  st.setProperty('--srw', S.sr.w + 'px');
+  st.setProperty('--srh', S.sr.h + 'px');
+  st.setProperty('--srgap', S.sr.gap + 'px');
+  st.setProperty('--eggper', S.egg.per);
+  st.setProperty('--eggrow', S.egg.rowgap + 'px');
+  st.setProperty('--eggsz', S.egg.size + 'px');
+  st.setProperty('--ubg', b.img ? 'url("'+b.img+'")' : 'none');
+  st.setProperty('--bgfit', b.fit);
+  st.setProperty('--bgpos', b.pos);
+  st.setProperty('--bgblur', b.blur);
+  st.setProperty('--bginset', b.blur>0 ? '-4%' : '0');
+  /* 배경이 없으면 바탕색을 100% 덮는다. 있으면 「어둡게 덮기」 만큼만 */
+  st.setProperty('--bgop', b.img ? (b.dim/100) : 1);
+}
+
+function render(){
+  var html = screenHTML();
+  sD.innerHTML = html; sP.innerHTML = html;
+  vars(sD); vars(sP);
+  sD.style.width = PC_W + 'px';
+  sP.style.width = PH_W + 'px';
+  fit();
+  save();
+}
+/* 미리보기 칸 폭에 맞춰 축소한다. 안쪽 픽셀 값은 진짜 그대로다 */
+function fit(){
+  [[sD,zD,PC_W],[sP,zP,PH_W]].forEach(function(a){
+    var el=a[0], box=a[1], w=a[2];
+    var avail = box.clientWidth || box.parentNode.clientWidth || w;
+    var k = Math.min(1, avail / w);
+    el.style.transform = 'scale(' + k + ')';
+    box.style.height = Math.ceil(el.offsetHeight * k) + 'px';
+  });
+  if(kD) kD.textContent = PC_W + 'px';
+}
+window.addEventListener('resize', fit);
+if(window.ResizeObserver){ try{ new ResizeObserver(fit).observe(document.body); }catch(e){} }
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(fit).catch(function(){});
+
+/* ── 조절판 ↔ 상태 ────────────────────────────────────────────── */
+var panel = document.querySelector('.panel');
+var ranges = panel.querySelectorAll('input[type=range][data-p]');
+var texts  = panel.querySelectorAll('input[type=text][data-x]');
+
+Array.prototype.forEach.call(ranges, function(r){
+  r.addEventListener('input', function(){ set(S, r.dataset.p, +r.value); readouts(); render(); });
+});
+Array.prototype.forEach.call(texts, function(t){
+  t.addEventListener('input', function(){ set(S, t.dataset.x, t.value); render(); });
+});
+Array.prototype.forEach.call(panel.querySelectorAll('.seg[data-seg]'), function(seg){
+  seg.dataset.seg.split('|').forEach(function(pair){
+    var i = pair.indexOf(':');
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = pair.slice(i+1); b.dataset.val = pair.slice(0,i);
+    b.addEventListener('click', function(){ set(S, seg.dataset.p, b.dataset.val); syncPanel(); render(); });
+    seg.appendChild(b);
+  });
+});
+Array.prototype.forEach.call(panel.querySelectorAll('.tgl[data-t]'), function(t){
+  t.addEventListener('click', function(){ set(S, t.dataset.t, get(S,t.dataset.t)?0:1); syncPanel(); render(); });
+});
+
+/* 색 고르기 칸을 만든다 */
+var colorsBox = document.getElementById('colors');
+COLORS.forEach(function(x){
+  var lab = document.createElement('label');
+  lab.className = 'col';
+  var inp = document.createElement('input');
+  inp.type = 'color'; inp.dataset.c = x[0];
+  inp.addEventListener('input', function(){ S.c[x[0]] = inp.value; render(); });
+  var nm = document.createElement('span'); nm.textContent = x[1];
+  lab.appendChild(inp); lab.appendChild(nm); colorsBox.appendChild(lab);
+});
+document.getElementById('cReset').addEventListener('click', function(){
+  COLORS.forEach(function(x){ S.c[x[0]] = x[2]; });
+  syncPanel(); render(); msg('색을 원래대로 돌렸습니다.');
+});
+
+function readouts(){
+  Array.prototype.forEach.call(panel.querySelectorAll('.v[data-v]'), function(v){
+    v.textContent = get(S, v.dataset.v);
+  });
+}
+function syncPanel(){
+  Array.prototype.forEach.call(ranges, function(r){ r.value = get(S, r.dataset.p); });
+  Array.prototype.forEach.call(texts, function(t){ t.value = get(S, t.dataset.x) || ''; });
+  Array.prototype.forEach.call(panel.querySelectorAll('input[type=color][data-c]'), function(i){
+    i.value = S.c[i.dataset.c];
+  });
+  Array.prototype.forEach.call(panel.querySelectorAll('.seg[data-seg]'), function(seg){
+    var cur = String(get(S, seg.dataset.p));
+    Array.prototype.forEach.call(seg.children, function(b){
+      b.setAttribute('aria-pressed', b.dataset.val === cur ? 'true' : 'false');
+    });
+  });
+  Array.prototype.forEach.call(panel.querySelectorAll('.tgl[data-t]'), function(t){
+    var on = !!get(S, t.dataset.t);
+    t.setAttribute('aria-pressed', on ? 'true' : 'false');
+    t.querySelector('b').textContent = on ? '보임' : '숨김';
+  });
+  readouts(); showSize();
+}
+
+/* ── 배경 그림 ────────────────────────────────────────────────── */
+var pick = document.getElementById('pick'), szEl = document.getElementById('sz'),
+    bgClear = document.getElementById('bgClear');
+
+pick.addEventListener('change', function(){
+  var f = pick.files && pick.files[0];
+  if(!f) return;
+  msg('그림을 줄이는 중…');
+  shrink(f, function(err, dataURL, w, h, now){
+    pick.value = '';
+    if(err){ msg('그림을 읽지 못했습니다. 다른 파일로 해보세요.', 1); return; }
+    S.bg.img = dataURL; S.bg.orig = f.size; S.bg.now = now; S.bg.w = w; S.bg.h = h;
+    if(S.bg.dim === 0) S.bg.dim = 55;      /* 처음 올렸을 때 글자가 묻히지 않게 */
+    syncPanel(); render(); msg('');
+  });
+});
+bgClear.addEventListener('click', function(){
+  S.bg.img = null; S.bg.orig = 0; S.bg.now = 0; S.bg.w = 0; S.bg.h = 0;
+  syncPanel(); render();
+});
+
+/* 브라우저에서 줄인다 — 가로 최대 1920px + JPEG 품질 0.82.
+   이걸 하지 않으면 5MB 원본이 그대로 들어가 저장(16MB 한도)이 막힌다 */
+function shrink(file, done){
+  var url;
+  try{ url = URL.createObjectURL(file); }catch(e){ done(e); return; }
+  var im = new Image();
+  im.onload = function(){
+    try{
+      var MAX = 1920, w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+      if(!w || !h) throw new Error('no size');
+      if(w > MAX){ h = Math.round(h * MAX / w); w = MAX; }
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      var g = c.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0,0,w,h);
+      g.drawImage(im, 0, 0, w, h);
+      var d = c.toDataURL('image/jpeg', 0.82);
+      var now = Math.round((d.length - (d.indexOf(',')+1)) * 3 / 4);
+      URL.revokeObjectURL(url);
+      done(null, d, w, h, now);
+    }catch(e){ try{ URL.revokeObjectURL(url); }catch(_){} done(e); }
+  };
+  im.onerror = function(){ try{ URL.revokeObjectURL(url); }catch(_){} done(new Error('load')); };
+  im.src = url;
+}
+
+function showSize(){
+  var b = S.bg;
+  if(!b.img){
+    szEl.innerHTML = '<span class="a">배경 없음 (바탕색만)</span>';
+    bgClear.style.display = 'none';
+    dlBtn.style.display = 'none';
+    return;
+  }
+  szEl.textContent = bytes(b.orig) + ' → ' + bytes(b.now) + '  ·  ' + b.w + '×' + b.h;
+  bgClear.style.display = '';
+  if(dl) dlBtn.style.display = '';
+}
+
+/* ── 저장 · 불러오기 ──────────────────────────────────────────── */
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
+function load(){
+  var el = document.getElementById('saved'), from = null;
+  try{ from = JSON.parse(el.textContent); }catch(e){}
+  if(!from){ try{ from = JSON.parse(localStorage.getItem(LS)); }catch(e){} }
+  if(from) merge(S, from);
+}
+
+var msgEl = document.getElementById('msg');
+function msg(s, warn){ msgEl.textContent = s || ''; msgEl.className = 'note' + (warn ? ' warn' : ''); }
+
+/* 능력(artifact / downloads)은 늦게 온다. 없으면 그 버튼을 감춘다 */
+var art = null, dl = null;
+var saveBtn = document.getElementById('bSave'), dlBtn = document.getElementById('bDown');
+saveBtn.style.display = 'none';
+
+if(window.claude && typeof window.claude.use === 'function'){
+  window.claude.use('artifact').then(function(a){ if(a){ art = a; saveBtn.style.display = ''; } })
+    .catch(function(){});
+  window.claude.use('downloads').then(function(d){ if(d){ dl = d; if(S.bg.img) dlBtn.style.display=''; } })
+    .catch(function(){});
+}
+
+saveBtn.addEventListener('click', function(){
+  if(!art){ msg('여기서는 저장할 수 없습니다. [설정 복사]를 쓰세요.', 1); return; }
+  saveBtn.disabled = true; msg('저장하는 중…');
+  /* 미리보기 DOM 은 빼고 찍는다 — 다시 열 때 설정으로부터 새로 그린다 */
+  sD.innerHTML = ''; sP.innerHTML = '';
+  var json = JSON.stringify(S).replace(/</g, '\\u003c');
+  var doc = document.documentElement.outerHTML.replace(
+    /<script id="saved"[^>]*>[\s\S]*?<\/script>/,
+    '<script id="saved" type="application/json">' + json + '<\/script>');
+  render();
+  art.publish('<!doctype html>\n' + doc).then(function(){
+    saveBtn.disabled = false; msg('저장했습니다.');
+  }).catch(function(e){
+    saveBtn.disabled = false;
+    var code = e && e.code;
+    msg(code === 'conflict' ? '다른 곳에서 먼저 저장됐습니다. 새로고침 후 다시 하세요.'
+      : (code === 'not_writer' || code === 'not_granted') ? '이 페이지를 저장할 권한이 없습니다.'
+      : '저장하지 못했습니다.', 1);
+  });
+});
+
+document.getElementById('bCopy').addEventListener('click', function(){
+  var copy = JSON.parse(JSON.stringify(S));
+  copy.bg.img = null;                      /* 배경 그림은 뺀다 — 너무 크다 */
+  var txt = JSON.stringify(copy, null, 2);
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false; try{ ok = document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+    msg(ok ? '설정을 복사했습니다. (배경 그림 제외)' : '복사하지 못했습니다.', ok ? 0 : 1);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt)
+      .then(function(){ msg('설정을 복사했습니다. (배경 그림 제외)'); })
+      .catch(fallback);
+  } else fallback();
+});
+
+dlBtn.addEventListener('click', function(){
+  if(!dl || !S.bg.img) return;
+  var d = S.bg.img, bin = atob(d.slice(d.indexOf(',')+1));
+  var arr = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  dl.save({ filename:'home-bg.jpg', data:new Blob([arr], {type:'image/jpeg'}) })
+    .then(function(){ msg('배경 그림을 내려받았습니다.'); })
+    .catch(function(){ msg('내려받지 못했습니다.', 1); });
+});
+
+document.getElementById('bReset').addEventListener('click', function(){
+  S = defaults(); syncPanel(); render(); msg('처음 설정으로 되돌렸습니다.');
+});
+
+/* ── 시작 ─────────────────────────────────────────────────────── */
+load();
+syncPanel();
+render();
+setTimeout(fit, 200);   /* 글꼴이 늦게 오면 높이가 바뀐다 */
+})();
+</script>
