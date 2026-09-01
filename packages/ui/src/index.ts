@@ -5,6 +5,12 @@ export { SiteShell } from './layout/SiteShell'
 export { SiteHeader, type SiteHeaderProps } from './layout/SiteHeader'
 export { SiteFooter } from './layout/SiteFooter'
 export { MainLogo, NavLogo } from './layout/BrandLogo'
+export {
+  LeagueLabel,
+  MountainMark,
+  MOUNTAIN_LEAGUE_NAME,
+  type LeagueLabelProps,
+} from './layout/LeagueLabel'
 
 export { SearchBar, type SearchBarProps, type SearchType } from './home/SearchBar'
 export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPostList'

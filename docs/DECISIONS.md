@@ -7510,6 +7510,26 @@ D-200 의 흐름(브라우저가 받아 파일로 내려받기)에는 한계가 
 
 ## D-204 — UI 전면 교체: 원본 재현을 끝내고 **`적진`** 으로 간다 (2026-08-30)
 
+> ### ⚠ 되돌림 (2026-09-01) — **리그 이름만** 되돌렸다
+>
+> 아래 「함께 확정된 것」의 **리그 이름 두 줄은 더 이상 유효하지 않다.**
+> 사용자가 하루 만에 다시 지시했다 — *"SPL로 가 열산도 10mountain으로 해
+> 뒤에 귀여운 산 이모티콘 붙여도 되고"*.
+>
+> ```
+> D-204 (2026-08-30)      →   D-246 (2026-09-01) · 지금
+> supply  SPL → DPL       →   supply  DPL → **SPL**        (원래 이름으로 돌아왔다)
+> nolink  IPL             →   nolink  IPL                  (그대로다)
+> sanply  열산리그 → 열산   →   sanply  열산 → **10mountain**
+> 게시판 `spl`  SPL → DPL  →   게시판 `spl`  DPL → **SPL**
+> ```
+>
+> **되돌린 것은 이름뿐이다.** D-204 의 나머지 — `적진` 토큰 · 진홍을 아껴 쓰는 규칙 ·
+> `Hot게시판` · 원본 재현 종료 · **slug 와 라우트는 건드리지 않는다는 규칙** — 은 전부 그대로다.
+> 특히 마지막 규칙은 이번에도 똑같이 지켰다. 아래 원문은 기록이므로 **지우지 않는다**
+> (`CLAUDE.md` 10-4). 자세한 것은 **D-246**.
+
+
 D-188 이 "언젠가 껍데기를 통째로 갈아 끼운다" 고 적어 둔 그 시점이 **왔다.**
 사용자가 직접 지시했다.
 
@@ -9963,23 +9983,30 @@ https://img.sa.nexon.com/sa/clan/mark/51/0_12_083.png
 **그런데 넥슨은 아무것도 막지 않았다. 우리 버그였다.**
 
 URL 목록 파일을 Windows 에서 파이썬 텍스트 모드로 썼더니 `
-` 이 `
+` 이 `
+
 ` 이 됐고,
-bash `read` 가 `` 을 물고 curl 에 넘겼다.
+bash `read` 가 `
+` 을 물고 curl 에 넘겼다.
 
 ```
-curl "https://img.sa.nexon.com/sa/clan/mark/51/0_11_008.png"
+curl "https://img.sa.nexon.com/sa/clan/mark/51/0_11_008.png
+"
 → 호스트/경로가 깨져 연결이 안 됨 → code=000
 ```
 
-`` 은 눈에 안 보이고 `basename` 출력도 멀쩡해 보인다. `od -c` 로 뜯어 `png  
+`
+` 은 눈에 안 보이고 `basename` 출력도 멀쩡해 보인다. `od -c` 로 뜯어 `png 
+ 
 ` 을
-확인했고, `tr -d ''` 만 하고 **같은 주소 8개를 같은 간격으로 다시 쏘니 8/8 이 200** 이었다.
+확인했고, `tr -d '
+'` 만 하고 **같은 주소 8개를 같은 간격으로 다시 쏘니 8/8 이 200** 이었다.
 앞뒤도 맞는다 — 성공한 검증들은 전부 LF 파일이나 인라인 목록이었고, 실패한 두 번은
 전부 파이썬이 쓴 CRLF 파일이었다.
 
 > **규칙**: 목록 파일을 만들 때 `newline='
-'` 을 명시하거나 `tr -d ''` 을 거친다.
+'` 을 명시하거나 `tr -d '
+'` 을 거친다.
 > 그리고 **원격이 막았다고 판단하기 전에 우리가 실제로 보낸 바이트를 먼저 본다.**
 > 없는 위험을 보고하면 다음 사람이 그것 때문에 잘못된 결정을 한다.
 
@@ -11194,3 +11221,118 @@ TTL 5분)을 뒀다. SQL `LIKE` 로는 이름을 «읽어» 볼 수 없기 때�
 - 화면 구현 (시안 확정 뒤)
 - 열산 클랜 화면 감추기 (같은 시점에)
 - 「리그 홈」 제거 — 지금 라우트가 있다. **지우기 전에 들어오는 링크가 있는지 세야 한다**
+
+---
+
+## D-246 — 리그 이름을 **`SPL` · `IPL` · `10mountain`** 으로 되돌린다 (2026-09-01)
+
+### 사용자 지시 원문
+
+> "SPL로 가 열산도 10mountain으로 해 뒤에 귀여운 산 이모티콘 붙여도 되고"
+
+D-245 가 남겨 둔 `[미확인]` — *"`SPL` 인가 `DPL` 인가, 되돌리는 것인지 옛 이름이
+손에 익어 나온 것인지 모른다"* — 이 **해소됐다.** 되돌리는 것이 맞았다.
+
+### 정한 것
+
+```
+지금까지        →  지금
+DPL             →  SPL            slug `supply`
+IPL             →  IPL            slug `nolink`   (그대로)
+열산            →  10mountain     slug `sanply`
+게시판 `spl` DPL →  게시판 `spl` SPL
+```
+
+D-204 가 2026-08-30 에 `SPL`→`DPL` 로 바꾼 것을 **하루 만에 되돌린 것**이다.
+D-204 항목은 지우지 않고 「⚠ 되돌림」 박스를 달았다 (`CLAUDE.md` 10-4).
+
+### 바꾼 것과 **안 바꾼 것**의 경계
+
+D-204 가 정한 규칙(*"slug 와 라우트는 그대로다"*)을 그대로 따랐다.
+
+| | 바꿨다 | 안 바꿨다 |
+|---|---|---|
+| DB | `League.name` · `BoardCategory.name` | `slug` · 그 밖의 모든 컬럼 |
+| 라우트 | — | `/league/supply` · `/league/nolink` · `/league/sanply` · `/board/spl` |
+| 코드 | 화면에 찍히는 문자열 | 변수명 · 파일명 (`sanplyCheck` · `iplSanplyGuard` · `supplyImport` …) |
+| 패키지 | — | `@sacloud/*` |
+| 문서 | **「지금 사실」을 말하는 서술** | **과거를 기록한 서술** · 실측 수치 · 지시 원문 인용 · 세션 원장 |
+
+문서를 전부 고치지 않은 이유: `열산` 은 주석·문서에 303곳 나오는데 대부분이
+«그때 그렇게 불렀다 / 그때 몇 건이었다» 는 **기록**이다. 기록을 소급해 고치면
+그때 무슨 일이 있었는지 읽을 수 없게 된다. 그래서 판단 기준을 이렇게 잡았다.
+
+```
+바꾼다   화면 문구 · 「리그는 셋(…)이다」 처럼 지금을 서술하는 문장 · 도구의 목표값
+안 바꾼다 성능 실측 기록(「열산 6,230행」) · 사건 기록(D-204/D-245 원문) ·
+         커밋 메시지 인용 · 세션 원장(docs/session-ledger/**)
+```
+
+### 산 표시는 **이름이 아니다** — 화면에서만 붙인다
+
+사용자가 «귀여운 산 이모티콘 붙여도 되고» 라고 했지만 **이모지를 `League.name` 에
+넣지 않았다.** 이유 셋:
+
+1. **모양이 기기마다 다르다** — 윈도우 · 안드로이드 · iOS 가 전부 다르게 그린다.
+   `적진` 토큰은 색이 진홍 하나뿐인데 이모지는 제 색을 들고 온다 (D-204 와 충돌한다)
+2. **정렬·검색에 걸린다** — `League.name` 은 `ORDER BY` 키이자 `LIKE` 대상이다
+3. **데이터에 장식이 섞인다** — API 응답 · CSV · 로그에 그대로 실려 나간다
+
+대신 `packages/ui/src/layout/LeagueLabel.tsx` 를 새로 만들었다.
+`currentColor` 로만 그린 인라인 SVG 산이고, 이름이 `10mountain` 일 때만 붙는다.
+GNB 리그 드롭다운과 모바일 서랍에서 쓴다. **`<option>` 안에는 SVG 를 못 넣으므로**
+관리자 알 화면의 선택 상자만 글자로 뒀다 (주석에 적어 뒀다).
+
+### 고친 곳 — 코드 12파일 · 문자열 8곳
+
+| 파일 | 무엇 |
+|---|---|
+| `packages/ui/src/site-config.ts` | GNB 대표 리그 라벨 2곳 (`DPL`→`SPL` · `열산`→`10mountain`) |
+| `packages/ui/src/layout/LeagueLabel.tsx` | **새 파일** — 산 표시 SVG + 라벨 |
+| `packages/ui/src/layout/SiteHeader.tsx` | 드롭다운·서랍이 `LeagueLabel` 을 쓴다 |
+| `packages/ui/src/index.ts` | `LeagueLabel` · `MountainMark` 내보내기 |
+| `packages/contract/src/entities/home.ts` | `HOME_LEAGUES` 의 `abbr`/`name` 2줄 |
+| `packages/contract/src/entities/board.ts` | `BOARD_CATEGORIES` 의 `spl` 표시 이름 |
+| `apps/web/app/page.tsx` | 알 모음집 제목 `DPL`→`SPL` |
+| `apps/web/app/admin/eggs/page.tsx` | 리그 선택 상자 2개 |
+| `apps/worker/src/dev/leagueRename.ts` | **DB 이름 변경 도구의 목표값** (아래) |
+| `apps/worker/src/dev/e2eSetup.ts` | e2e 픽스처 리그 이름 |
+| `scripts/prod-run.mjs` | `league-rename` 설명문 |
+| `CLAUDE.md` 9장 | 「리그 이름은 …」 줄 |
+
+주석만 고친 곳(지금 사실 서술): `apps/web/next.config.ts` · `apps/web/app/api/leagues/route.ts` ·
+`apps/web/app/_egg/LeagueEggGallery.tsx` · `packages/ui/src/egg/EggGallery.tsx` ·
+`packages/ui/src/egg/EggVeil.tsx` · `packages/ui/src/__tests__/preparing-league.test.ts`(시험 이름).
+
+### DB 는 **아직 안 바꿨다**
+
+`leagueRename.ts` 를 이번 이름으로 고쳤다. **도구를 새로 만들지 않고 목표값만 갈았다** —
+멱등이라 어느 이름에서 출발하든(`서플라이공식리그` · `SPL` · `DPL`) 한 번에 맞춰진다.
+
+**운영 DB 에는 `--confirm` 을 돌리지 않았다.** 미리보기까지만 했다.
+운영 반영은 `node scripts/prod-run.mjs league-rename --confirm` 으로 따로 한다.
+
+로컬(5433)에는 돌렸다. 미리보기 숫자와 결과는 이랬다.
+
+```
+* League supply:      "DPL"  → "SPL"
+= League nolink:      이미 "IPL"
+* League sanply:      "열산" → "10mountain"
+* BoardCategory spl:  "DPL"  → "SPL"
+바꿀 것 3 · 이미 맞음 1 · 없음 0      (다시 돌리면 「바꿀 것 0 · 이미 맞음 4」 — 멱등 확인)
+```
+
+### ⚠ 곁다리로 찾은 결함 — 이 도구는 **옵션 없이 돌리면 바로 썼다**
+
+`leagueRename.ts` 는 `--dry-run` 을 붙여야 미리보기였다. 즉 **기본이 쓰기**였다.
+그런데 이 도구를 부르는 `scripts/prod-run.mjs` 는 화면에
+
+> ``--confirm`` 없이 돌리면 미리보기다. 먼저 미리보기로 확인해라.
+
+라고 찍어 놓고 인자를 그대로 자식에게 넘긴다. `prod-run.mjs league-rename` 을
+옵션 없이 돌리면 **미리보기라고 믿은 채 운영 DB 의 리그 이름이 바뀐다.**
+이번에 방향을 뒤집었다 — **`--confirm` 이 있어야 쓴다.**
+옛 `--dry-run` 도 계속 받는다 (붙이면 무조건 미리보기 · `CLAUDE.md` 10-4).
+
+> `[미확인]` 다른 `dev/*.ts` 도구에도 같은 함정이 있는지 세지 않았다.
+> `prod-run.mjs` 의 `writes: true` 항목 전부를 한 번 훑어야 한다.

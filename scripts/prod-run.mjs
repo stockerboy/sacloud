@@ -81,7 +81,7 @@ const ALLOWED = {
   'league-rename': {
     file: 'leagueRename',
     writes: true,
-    what: '리그 이름 DPL / IPL / 열산 + 게시판 카테고리 SPL→DPL',
+    what: '리그 이름 SPL / IPL / 10mountain + 게시판 카테고리 → SPL',
   },
   'ipl-register': {
     file: 'iplRegister',

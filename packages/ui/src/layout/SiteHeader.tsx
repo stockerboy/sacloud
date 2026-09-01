@@ -11,6 +11,7 @@ import {
   type NavLink,
 } from '../site-config'
 import { NavLogo } from './BrandLogo'
+import { LeagueLabel } from './LeagueLabel'
 
 /**
  * 전역 상단 GNB.
@@ -127,7 +128,8 @@ export function SiteHeader({
                         : ''
                     }`}
                   >
-                    {item.label}
+                    {/* 리그 이름은 `LeagueLabel` 로 찍는다 — `10mountain` 에만 산 표시가 붙는다 */}
+                    <LeagueLabel name={item.label} />
                   </Link>
                 ))}
               </div>
@@ -192,7 +194,8 @@ export function SiteHeader({
                       : ''
                   }`}
                 >
-                  {item.label}
+                  {/* 서랍의 리그 묶음에도 같은 라벨을 쓴다 (리그가 아닌 항목은 글자만 나온다) */}
+                  <LeagueLabel name={item.label} />
                 </Link>
               ))}
             </div>

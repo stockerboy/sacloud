@@ -135,9 +135,10 @@ export default function AdminEggsPage() {
               className="w-36"
             >
               <option value="">전체</option>
-              <option value="supply">DPL</option>
+              <option value="supply">SPL</option>
               <option value="nolink">IPL</option>
-              <option value="sanply">열산</option>
+              {/* `<option>` 안에는 SVG 를 못 넣는다. 산 표시 없이 글자만 (D-246) */}
+              <option value="sanply">10mountain</option>
             </AdminSelect>
           </label>
           <label className="text-sm">

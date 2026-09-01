@@ -3,7 +3,7 @@
 /**
  * 알 모음집 (사양 5-1).
  *
- * 메인의 플레이어 검색 **바로 밑**에 리그별로 한 벌씩 놓는다. DPL 이 먼저, 그 아래 IPL.
+ * 메인의 플레이어 검색 **바로 밑**에 리그별로 한 벌씩 놓는다. SPL 이 먼저, 그 아래 IPL.
  *
  * ```
  *         ○ ○ ○ ○ ○ ○ ○        ← 윗칸
@@ -37,7 +37,7 @@ export interface EggGalleryItem {
 }
 
 export interface EggGalleryProps {
-  /** 리그 이름 — `DPL` · `IPL` */
+  /** 리그 이름 — `SPL` · `IPL` */
   title: string
   /** 제목 옆 한 줄 */
   note?: string

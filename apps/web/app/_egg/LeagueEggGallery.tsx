@@ -14,7 +14,7 @@ export function LeagueEggGallery({
   leagueSlug,
   title,
 }: {
-  /** 리그 slug — DPL 은 `supply`, IPL 은 `nolink` */
+  /** 리그 slug — SPL 은 `supply`, IPL 은 `nolink` */
   leagueSlug: string
   /** 화면에 쓰는 리그 이름 */
   title: string

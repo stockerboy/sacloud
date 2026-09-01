@@ -426,7 +426,9 @@ pnpm --filter @sacloud/worker nexon independent-league [--confirm]
 - 헬퍼 클래스: `.btn-line`(테두리 버튼) · `.num`(숫자) · `.display`(큰 제목) · `.section-stack`
 - 표는 얼룩무늬 없이 `--color-line-soft` 1px 로 행을 나눈다. 그림자(`shadow-*`)는 쓰지 않는다
 - **`a { color: inherit }` 함정** — `<a>` 에 직접 준 색 유틸리티는 눌린다. 안쪽 `<span>` 으로 옮긴다
-- 리그 이름은 **DPL · IPL · 열산**. slug(`supply`/`nolink`/`sanply`)와 라우트는 그대로다
+- 리그 이름은 **SPL · IPL · 10mountain**. slug(`supply`/`nolink`/`sanply`)와 라우트는 그대로다
+  (2026-09-01 · D-246. D-204 의 `DPL`·`열산` 은 하루 만에 되돌아왔다).
+  `10mountain` 옆의 **산 표시는 이름이 아니다** — 화면에서만 붙인다 (`LeagueLabel`)
 - `인기게시판` 은 화면에서 **`Hot게시판`**. slug `hot` 은 그대로다
 - **리그별로 칸을 감추는 분기를 만들지 않는다.** 모든 리그가 같은 화면을 쓴다
 

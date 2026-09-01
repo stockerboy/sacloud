@@ -27,15 +27,17 @@ export interface NavLink {
  * 우리 DB에도 같은 slug 의 리그가 셋 다 있는데 GNB 에는 하나만 걸려 있어서,
  * 나머지 두 리그로 가는 링크가 사이트 어디에도 없었다 (UI_PARITY_AUDIT 2-1).
  *
- * **표시 이름은 2026-08-30 사용자 지시로 다시 바뀌었다.** slug 는 하나도 건드리지 않았다.
- * `supply` 공식리그 → **DPL** · `nolink` 무소속리그 → **IPL** · `sanply` 열산리그 → **열산**.
- * 운영 DB `League.name` 도 같은 값으로 맞춰 두었으므로 화면 전체가 일치한다.
+ * **표시 이름은 2026-09-01 사용자 지시로 다시 바뀌었다** (D-246). slug 는 하나도 건드리지 않았다.
+ * `supply` → **SPL** · `nolink` → **IPL** · `sanply` → **10mountain**.
+ * `DPL` 은 2026-08-30 에 잠깐 쓴 이름이고 (D-204) 하루 만에 `SPL` 로 되돌아왔다.
+ * 운영 DB `League.name` 도 같은 값으로 맞춘다 (`nexon league-rename`).
+ * `10mountain` 옆의 산 표시는 이름에 넣지 않고 화면에서만 붙인다 — `LeagueLabel` 참고.
  * `daerule` 은 이름 변경 대상이 아니다 (D-178 준비중 그대로).
  */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
-  { label: 'DPL', href: '/league/supply' },
+  { label: 'SPL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
-  { label: '열산', href: '/league/sanply' },
+  { label: '10mountain', href: '/league/sanply' },
   { label: '대룰리그', href: '/league/daerule' },
 ]
 

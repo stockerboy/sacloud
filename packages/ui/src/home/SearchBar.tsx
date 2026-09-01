@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { CLAN_SEARCH_HINT } from '@sacloud/contract'
 
 /**
  * 통합검색 — 메인의 주인공.
@@ -143,6 +144,18 @@ export function SearchBar({ onSubmit }: SearchBarProps) {
           <SearchIcon />
         </button>
       </div>
+
+      {/* --- 클랜 검색 안내 (2026-09-01) ---
+             사용자가 «문구 유저가 볼 수 있게» 라고 지시한 한 줄이다.
+             **클랜을 고른 사람에게만** 보인다 — 플레이어·리그에는 해당 없는 규칙이라
+             늘 띄우면 헛말이 된다. 문구 자체는 `@sacloud/contract` 의
+             `CLAN_SEARCH_HINT` 하나에서 온다(화면과 계약이 갈리지 않게).
+             면을 칠하지 않고 흐린 글자 한 줄로만 둔다 — 검색창이 주인공이다. */}
+      {type === 'clan' ? (
+        <p className="mt-2 px-1 text-[12px] leading-relaxed text-[var(--color-faint,#6b5555)]">
+          {CLAN_SEARCH_HINT}
+        </p>
+      ) : null}
     </div>
   )
 }

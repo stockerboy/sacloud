@@ -22,7 +22,7 @@ describe('준비중 리그', () => {
     expect([...PREPARING_LEAGUE_SLUGS]).toContain('daerule')
   })
 
-  it('공식·무소속·열산 리그는 그대로 열려 있다', () => {
+  it('SPL · IPL · 10mountain 리그는 그대로 열려 있다', () => {
     for (const slug of ['supply', 'nolink', 'sanply']) {
       expect(isLeaguePreparing(slug)).toBe(false)
     }
