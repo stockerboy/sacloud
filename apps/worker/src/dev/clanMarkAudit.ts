@@ -26,7 +26,11 @@ import { prisma } from '@sacloud/db'
  * 한쪽만 고치면 다시 "DB 엔 있는데 화면엔 없는" 상태가 된다 — **둘을 같이 고친다.**
  * `apps/web/tests/clanMarkCsp.test.ts` 가 web 쪽 목록을 지킨다.
  */
-const ALLOWED_MARK_HOSTS = ['https://img.sa.nexon.com', 'https://static.3rd.supply']
+/**
+ * ⚠ **정정 (2026-09-01)** — `static.3rd.supply` 를 뺐다. `next.config.ts` 와 **같이** 고쳤다.
+ * 근거는 그쪽 주석에 있다 (운영 402곳 치환 완료 · 새 적재도 넥슨 주소 · 읽기 때 한 번 더 거름).
+ */
+const ALLOWED_MARK_HOSTS = ['https://img.sa.nexon.com']
 
 /** 주소에서 오리진만 꺼낸다. 주소가 깨졌으면 그렇다고 알린다 */
 const hostOf = (url: string | null): string | null => {

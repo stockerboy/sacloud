@@ -42,7 +42,30 @@ const isDev = process.env.NODE_ENV === 'development'
  * `img-src` 와 `clan-mark-audit` 이 같은 목록을 봐야 한다. 갈라지면
  * "DB 에는 URL 이 있는데 화면에는 안 보이는" 상태가 조용히 생긴다 (2026-08-31 실제 발생).
  */
-export const CLAN_MARK_HOSTS = ['https://img.sa.nexon.com', 'https://static.3rd.supply'] as const
+export const CLAN_MARK_HOSTS = ['https://img.sa.nexon.com'] as const
+
+/**
+ * ⚠ **정정 (2026-09-01) — `static.3rd.supply` 를 목록에서 뺐다.**
+ *
+ * 위 머리말의 «클랜마크는 **두 곳**에서 온다» 는 서술은 **그때는 맞았다.** 지금은 한 곳이다.
+ * 서술을 지우지 않고 여기에 정정을 단다 (`CLAUDE.md` 10-4).
+ *
+ * 뺄 수 있게 된 근거 셋 — **셋이 다 참이라서** 뺐다. 하나만 참이면 뺄 수 없었다.
+ *
+ *   ① DB 에 원본 주소가 남아 있지 않다
+ *      `clan-mark-restore --confirm` 을 운영에 돌렸다 — 402곳 · 804칸을 넥슨 주소로
+ *      되돌렸고 **남은 원본 사이트 주소 0곳**. 백업은 `backups/clan-mark-restore-402건.json`
+ *   ② 새로 들어오는 것도 원본 주소가 아니다
+ *      `supplyPlayerProfilesImport.ts` 는 `supplyMarkUrlToNexon()` 을 거쳐 넣고,
+ *      `iplMarkFill.ts` 는 `https://img.sa.nexon.com/...` 을 직접 만든다
+ *   ③ 설령 남아 있어도 화면에는 안 나간다
+ *      `mappers.ts` 가 내보내기 직전에 `restoreClanMark()` 로 한 번 더 거른다
+ *
+ *   그리고 운영 실측: `clan-mark-audit` 이 세 리그 모두 **CSP차단 0** 이다.
+ *
+ * 왜 굳이 빼나 — **원본 사이트 자산에 링크를 걸지 않는다** (`CLAUDE.md` 3장 4번).
+ * 열어 두면 «안 쓰는데 열려 있는 문» 이고, 그 문이 열려 있으면 실수로 다시 들어온다.
+ */
 
 const CSP = [
   "default-src 'self'",
