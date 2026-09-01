@@ -80,6 +80,43 @@ const CSP = [
   "connect-src 'self'",
 ].join('; ')
 
+/**
+ * 공개 읽기 응답의 엣지 캐시 (D-240). 값의 근거는 `respond.ts` 의 `PUBLIC_CACHE_SECONDS` 주석에 있다.
+ *
+ *   `s-maxage=300`               엣지가 5분 동안 대신 답한다 → 그 5분간 DB 를 한 번만 때린다
+ *   `stale-while-revalidate=600` 만료 뒤 10분까지 **옛 값을 즉시** 내주고 뒤에서 새로 받는다
+ *   `max-age=0`                  **브라우저는 캐시하지 않는다** — 방금 뭘 한 사람이 옛 화면을 보면 안 된다
+ */
+const PUBLIC_CACHE_HEADERS = [
+  { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=300, stale-while-revalidate=600' },
+]
+
+/**
+ * 캐시를 거는 경로. **로그인과 무관하고 같은 주소면 누구에게나 같은 값**인 것만 넣는다.
+ * 하나 넣을 때마다 «이 응답이 사람마다 다른가» 를 먼저 확인한다.
+ */
+const PUBLIC_CACHE_SOURCES = [
+  '/api/home/top',
+  '/api/maps',
+  '/api/leagues',
+  '/api/leagues/:league',
+  '/api/leagues/:league/clans',
+  '/api/leagues/:league/clans/:clan/show',
+  '/api/leagues/:league/clans/:clan/players',
+  '/api/leagues/:league/players/:playerId',
+  '/api/leagues/:league/players/:playerId/matches',
+  '/api/leagues/:league/matches/:matchId',
+  '/api/leagues/:league/ranks/:kind*',
+  '/api/leagueclans/:leagueClanId/matches',
+  '/api/leagueclans/:leagueClanId/seasons',
+  '/api/leagueplayers/:leaguePlayerId/seasons',
+  '/api/clans/:clanSlug',
+  '/api/clans/:clanSlug/leagues',
+  '/api/clans/:clanSlug/players',
+  '/api/players/:playerId',
+  '/api/players/:playerId/leagues',
+]
+
 const SECURITY_HEADERS = [
   { key: 'Content-Security-Policy', value: CSP },
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -120,8 +157,37 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/**': ['./generated/client/**'],
   },
+  /*
+   * ⚠ **2026-09-01 (D-240) — 엣지 캐시가 한 번도 걸린 적이 없었다.**
+   *
+   * `apps/web/lib/server/respond.ts` 의 `okPublic` 이 `s-maxage` 를 붙이는데,
+   * **운영 응답에는 그게 없다.** 실측(캐시 우회 없이 GET):
+   *
+   * ```
+   * Cache-Control: public, max-age=0, must-revalidate     ← Next 의 기본값
+   * X-Vercel-Cache: MISS                                   ← 언제나 MISS
+   * ```
+   *
+   * 캐시를 안 붙인 `/api/eggs/broken` 까지 **똑같은 머리말**이 나온다. 즉 우리 머리말이
+   * 나가는 게 아니라 **Next 가 동적 라우트 핸들러 응답을 자기 기본값으로 덮어쓰고 있다.**
+   * 그래서 D-223 이후로 «엣지가 받아 준다» 고 믿었던 것이 **전부 DB 까지 갔다.**
+   *
+   * ── 그래서 설정 쪽에서 건다
+   *   `headers()` 는 빌드 산출물의 라우팅 표에 박혀 **엣지가 직접 적용한다.**
+   *   런타임 핸들러가 무엇을 덮어쓰든 이쪽이 남는다.
+   *   `respond.ts` 의 `okPublic` 도 **지우지 않는다** — 로컬·다른 배포판에서는 그게 답이고,
+   *   두 곳이 같은 값을 말하면 어긋날 일이 없다 (값은 아래 상수 하나에서 온다).
+   *
+   * ── 여기 넣으면 안 되는 것
+   *   로그인 상태에 따라 답이 달라지는 것과 방금 한 행동이 즉시 보여야 하는 것.
+   *   `/api/infos` · `/api/me/*` · `/api/admin/*` · `/api/auth/*` · **`/api/eggs/broken`**
+   *   (마지막 것은 D-222 ⑤ — 방금 깬 알이 안 보이면 «안 깨졌다» 로 읽힌다)
+   */
   async headers() {
-    return [{ source: '/:path*', headers: SECURITY_HEADERS }]
+    return [
+      { source: '/:path*', headers: SECURITY_HEADERS },
+      ...PUBLIC_CACHE_SOURCES.map((source) => ({ source, headers: PUBLIC_CACHE_HEADERS })),
+    ]
   },
 }
 
