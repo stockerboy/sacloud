@@ -140,6 +140,8 @@ export {
 
 /* --- Phase 4: 기록실 · 매치 상세 --- */
 export { MatchCard, formatPlayTime, formatRatingUpdate } from './record/MatchCard'
+/** 기록카드 재질 (D-250). 기본 `holo` · 옛 검정 카드는 `legacy` */
+export type { MatchCardLook } from './record/MatchCard'
 export {
   NOT_RATED_BADGE,
   NOT_RATED_BADGE_TITLE,
@@ -278,26 +280,19 @@ export { Egg, type EggProps, type EggSize } from './egg/Egg'
 export { EggVeil, EggVeilLegend, EggVeilPanel } from './egg/EggVeil'
 export { EggGallery, type EggGalleryItem, type EggGalleryProps } from './egg/EggGallery'
 
-/* --- 가챠샵 (2026-09-01 사용자 지시) ---
-   「알」(`./egg/*`)을 **대체하지 않는다.** 같은 뜻(가려 두고 궁금하게 만든다)을 다른
-   연출로 옮긴 새 판이고, 옛 판은 그대로 남아 있다 (`CLAUDE.md` 10-4). */
-export {
-  Capsule,
-  type CapsuleProps,
-  type CapsuleSize,
-  type CapsuleState,
-} from './gacha/Capsule'
-export {
-  CapsulePile,
-  capsuleJitter,
-  capsuleJitterHash,
-  type CapsuleJitter,
-  type CapsulePileItem,
-  type CapsulePileProps,
-} from './gacha/CapsulePile'
-export {
-  BELT_SECONDS_PER_ITEM,
-  GachaShelf,
-  type GachaShelfItem,
-  type GachaShelfProps,
-} from './gacha/GachaShelf'
+/* --- 가챠샵 — **2026-09-01 사용자 지시로 통째로 삭제했다** ---
+ *
+ *   ```
+ *   "파일 찾기 가챠샵 전부 삭제하고 심플이즈 더 베스트다 op.gg 스타일 Ui로 걍 깔끔하게 간다"
+ *   ```
+ *
+ *   아침에 만들었다가 저녁에 지운 판이다. 어느 화면에도 붙지 않은 채였다 —
+ *   지운 시점에 `Capsule` · `CapsulePile` · `GachaShelf` 를 부르는 곳은 하나도 없었다.
+ *   지운 것: `./gacha/*` 3개 · `apps/web/scripts/gachaPreview.mts` · `styles.css` 의 가챠 절.
+ *
+ *   「알」(`./egg/*`)은 **그대로 살아 있다.** 지우라는 지시가 없었고, 가챠샵은 알을
+ *   대체하러 온 것이지 알이 가챠샵에 얹힌 것이 아니었다.
+ *
+ *   ⚠ `CLAUDE.md` 10-4(옛 버전을 남긴다)의 예외다. 「전부 삭제」가 명시 지시였다.
+ *      모양은 `design/gacha-guide.html` 에 남아 있다 (design/ 은 손대지 않는다).
+ */

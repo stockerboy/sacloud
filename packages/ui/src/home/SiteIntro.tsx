@@ -25,7 +25,7 @@ const NAME_MEANING = 'CLOUD — Connected League Operations & User Data'
 
 /** 사이트가 지금 실제로 하는 일 */
 const INTRO: readonly string[] = [
-  'SACLOUD 는 서든어택 클랜전 기록을 모아 두는 곳입니다. 리그별 클랜·개인 랭킹, 선수와 클랜의 기록실, 경기 상세, 게시판이 있습니다.',
+  '3rd cloud 는 서든어택 클랜전 기록을 모아 두는 곳입니다. 리그별 클랜·개인 랭킹, 선수와 클랜의 기록실, 경기 상세, 게시판이 있습니다.',
   '기록은 넥슨이 공개한 API 와 공개된 전적 페이지에서 가져옵니다. 아직 채워지지 않은 값은 지어내지 않고 비워 둡니다.',
 ]
 

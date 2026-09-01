@@ -42,15 +42,54 @@ import {
   UNKNOWN,
   teamFirstSideLabel,
   formatMatchStartAt,
+  formatRatingDelta,
   headshotView,
   kdaView,
   matchFirstSideLabel,
   matchWeaponLabel,
   mvpBadgeVisible,
   ratingCellView,
+  ratingDeltaCellView,
   teamIsViewerClan,
   teamWon,
 } from './matchDetailView'
+
+/* ------------------------------------------------------------------ 재질 --- */
+
+/**
+ * 기록카드의 **재질** (D-250).
+ *
+ * - `holo`   홀로그램 유리판. **기본값이다.**
+ * - `legacy` 2026-09-01 이전의 검정 카드(`bg-card` + `border-line`) 그대로.
+ *
+ * 옛 모습을 지우지 않고 남겨 둔다 (CLAUDE.md 10-4). `legacy` 는 재질뿐 아니라
+ * 라인업 표의 **포지션 칸**도 함께 되살린다 — 그때 화면이 통째로 그것이었기 때문이다.
+ * 새 화면(`holo`)에서는 그 자리가 **이 경기 래더 변동**이다.
+ */
+export type MatchCardLook = 'holo' | 'legacy'
+
+interface LookClasses {
+  /** 카드·상세 패널 바깥 (테두리 + 면) */
+  panel: string
+  /** 패널 안쪽 표 상자의 테두리 */
+  box: string
+  /** 행 구분선 (`border-t` 와 같이 쓴다) */
+  divider: string
+}
+
+const LOOK: Record<MatchCardLook, LookClasses> = {
+  /* 면은 `.holo-panel` 한 클래스가 만든다 — 그라데이션 한 겹, 추가 DOM 없음 */
+  holo: {
+    panel: 'holo-panel border-holo-edge',
+    box: 'border-holo-edge-soft',
+    divider: 'border-t-holo-line',
+  },
+  legacy: {
+    panel: 'bg-card border-line',
+    box: 'border-line',
+    divider: 'border-t-line-soft',
+  },
+}
 
 /**
  * 매치 카드 (기록실 목록의 한 줄, 아코디언).
@@ -84,8 +123,8 @@ import {
  *         게임시작 - 2026년 6월 7일 오후 10시 41분
  * ─────────────────────────────────────────────────
  *  패배 [마크] hilarious-                            선레드
- *  플레이어              kda        무기      딜량
- *  [마크] spearr      7 / 9 / 5     라플   ▇▇▇ 1,504
+ *  플레이어              kda        무기      래더
+ *  [마크] spearr      7 / 9 / 5     라플         -4
  *         1,696점      (43.8%)
  * ```
  * 팀 블록은 **레드 먼저, 블루 나중**이고 컬럼 헤더는 블록마다 반복된다.
@@ -253,6 +292,7 @@ export function MatchCard({
   detail,
   onExpand,
   variant = 'player',
+  look = 'holo',
 }: {
   match: MatchListItem
   leagueSlug: string
@@ -268,7 +308,10 @@ export function MatchCard({
    * 클랜 화면은 그 반대다 — K/D/A 칸이 없고 `선레드/선블루` + `5 vs 5` 가 있다.
    */
   variant?: 'player' | 'clan'
+  /** 카드 재질 (D-250). 기본은 홀로그램, `legacy` 는 옛 검정 카드 */
+  look?: MatchCardLook
 }) {
+  const skin = LOOK[look]
   const [open, setOpen] = useState(false)
   const win = match.win
   const stat = match.player_stat
@@ -295,7 +338,8 @@ export function MatchCard({
          * 기기 배율 3x 이므로 273/3 = 91 CSS px ≈ 6.5rem, 28/3 ≈ 9.3 CSS px ≈ 0.66rem.
          * 좌우 여백은 `.pc-container` 에서 0 으로 뺐다 — 원본은 벽 끝까지 찬다.
          */
-        className="mobile-bleed mt-2 flex min-h-24 items-stretch border border-line bg-card max-md:mt-[0.66rem] max-md:min-h-[6.5rem]"
+        /* 재질만 갈아 끼운다 (D-250). 높이·여백·배치는 위 실측값 그대로다 */
+        className={`mobile-bleed mt-2 flex min-h-24 items-stretch border ${skin.panel} max-md:mt-[0.66rem] max-md:min-h-[6.5rem]`}
       >
         {/* 승패는 **면이 아니라 좌측 막대와 테두리**로 구분한다 (`적진`).
             면을 칠하면 목록 전체가 색으로 덮인다. 패배는 회색(`--color-lose`)으로 죽인다. */}
@@ -462,7 +506,9 @@ export function MatchCard({
         </div>
       </div>
 
-      {open ? <MatchDetailPanel match={match} detail={detail} leagueSlug={leagueSlug} /> : null}
+      {open ? (
+        <MatchDetailPanel match={match} detail={detail} leagueSlug={leagueSlug} look={look} />
+      ) : null}
     </div>
   )
 }
@@ -490,7 +536,10 @@ export function MatchCard({
 function TeamCompare({
   rows,
   leagueSlug,
+  skin,
 }: {
+  /** 재질 (D-250). 안쪽 상자는 **면을 겹치지 않는다** — 테두리·구분선만 받는다 */
+  skin: LookClasses
   rows: readonly {
     key: 'red' | 'blue'
     won: boolean | null
@@ -501,11 +550,11 @@ function TeamCompare({
   leagueSlug: string
 }) {
   return (
-    <div className="mt-3 border border-line">
+    <div className={`mt-3 border ${skin.box}`}>
       {rows.map((row, index) => (
         <div
           key={row.key}
-          className={`flex items-stretch ${index === 0 ? '' : 'border-t border-t-line-soft'}`}
+          className={`flex items-stretch ${index === 0 ? '' : `border-t ${skin.divider}`}`}
         >
           <div
             className={`w-[3px] shrink-0 ${
@@ -568,11 +617,10 @@ function TeamCompare({
  * 바깥 테두리로만 구분하고, 행 구분은 `--color-line-soft` 1px 하나다. 얼룩무늬는 없다.
  *
  * 접히는 것 (`showExtra`)
- * - **포지션 줄** (D-199) — 자리 이름은 이 표의 숫자와 다른 축의 정보다
  * - **헤드샷 컬럼**
  *
  * 접혀 있어도 사라지지 않는 것
- * - `[S]` 는 닉네임 옆에 그대로 붙는다. 포지션 줄이 접혀도 **이 판에 스나를 들었다**는
+ * - `[S]` 는 닉네임 옆에 그대로 붙는다. **이 판에 스나를 들었다**는
  *   사실은 남아야 한다 (CLAUDE.md 6장 · `lineupCopy` 의 `usedSniper`)
  * - `무기` 컬럼(라이플/스나이퍼/알수없음) · `MVP` · `배치고사` · `알수없음`
  */
@@ -584,7 +632,12 @@ function TeamBlock({
   leagueSlug,
   viewerPlayerId,
   showExtra,
+  look,
+  skin,
 }: {
+  /** 재질 + 마지막 칸이 무엇인가 (D-250) */
+  look: MatchCardLook
+  skin: LookClasses
   /** 이 블록의 전반 진영 표기 (`선레드`/`선블루`). 근거가 없으면 `null` — 비워 둔다 (D-207) */
   first: string | null
   stats: readonly MatchPlayerStat[]
@@ -600,7 +653,7 @@ function TeamBlock({
   const won = teamWon(stats)
 
   return (
-    <div className="mt-3 flex items-stretch border border-line">
+    <div className={`mt-3 flex items-stretch border ${skin.box}`}>
       <div
         className={`w-[3px] shrink-0 ${won === null ? 'bg-line' : won ? 'bg-win' : 'bg-lose'}`}
       />
@@ -633,19 +686,24 @@ function TeamBlock({
         </div>
 
         {/* 예전에 여기 있던 **포지션 줄**은 없앴다 (2026-08-30 사용자 지시).
-            포지션이 참가자 표의 정식 칸이 되었으므로 같은 값을 두 번 그리지 않는다.
-            한 줄로 늘어놓던 `차값 B리베 / 누검 숏 (S) / …` 형태는 사라졌고,
             `lineupPositionText` 는 다른 화면이 쓰고 있어 남겨 둔다 */}
 
         {/* 컬럼 머리 — 표마다 반복한다. 헤드샷은 `자세히` 에 달려 있다 */}
-        <div className="flex items-center border-t border-t-line-soft py-1.5 text-xs tracking-[0.12em] text-faint">
+        <div
+          className={`flex items-center border-t ${skin.divider} py-1.5 text-xs tracking-[0.12em] text-faint`}
+        >
           <div className="w-52 px-3 max-md:w-auto max-md:min-w-0 max-md:flex-1">플레이어</div>
           <div className="w-28 text-center max-md:w-20">kda</div>
           <div className="w-20 text-center max-md:w-12">무기</div>
-          {/* 딜량 자리에 **포지션**을 넣었다 (2026-08-30 사용자 지시).
-              딜량은 상대 클랜 소속이면 결측이라 `알수없음` 이 절반이었고,
-              포지션은 매 행에 있는 값이라 표가 훨씬 잘 읽힌다 */}
-          <div className="w-24 text-center max-md:w-16">포지션</div>
+          {/* 마지막 칸의 역사 (D-250)
+                딜량 → 포지션 (2026-08-30) → **래더** (2026-09-01)
+              사용자 지시: "포지션도 사치야 딜량도 사치고 걍 둘다 지워버려".
+              그 자리에 넣은 것은 **이 경기의 래더 변동**이다 — 열 명 모두에게 있고,
+              카드 머리의 팀 단위 증감이 누구 때문에 갈렸는지를 여기서 말한다.
+              옛 화면은 `look="legacy"` 로 그대로 살아 있다 (CLAUDE.md 10-4) */}
+          <div className="w-24 text-center max-md:w-16">
+            {look === 'legacy' ? '포지션' : '래더'}
+          </div>
           {showExtra ? <div className="mobile-hide w-24 text-center">헤드샷</div> : null}
         </div>
 
@@ -657,6 +715,8 @@ function TeamBlock({
             leagueSlug={leagueSlug}
             viewerPlayerId={viewerPlayerId}
             showExtra={showExtra}
+            look={look}
+            skin={skin}
           />
         ))}
       </div>
@@ -685,18 +745,25 @@ function StatRow({
   leagueSlug,
   viewerPlayerId,
   showExtra,
+  look,
+  skin,
 }: {
   stat: MatchPlayerStat
   mvpPlayerId: string | null
   leagueSlug: string
   viewerPlayerId: string | null
   showExtra: boolean
+  look: MatchCardLook
+  skin: LookClasses
 }) {
   const kda = kdaView(stat)
   const rating = ratingCellView(stat)
+  /** 이 경기의 래더 변동 — 딜량·포지션이 있던 자리다 (D-250) */
+  const delta = ratingDeltaCellView(stat)
   const weapon = matchWeaponLabel(stat.weapon)
-  /* 딜량 칸을 없앴으므로 막대도 더 이상 그리지 않는다 (2026-08-30 사용자 지시).
-     `damage` 값 자체는 계약·DB 에 그대로 남는다 — 화면에서만 뺐다 */
+  /* 딜량 칸(막대 포함)과 포지션 칸은 화면에서 뺐다 (2026-08-30 · 2026-09-01 · D-250).
+     `damage` · `position_label` 값 자체는 계약·DB·수집 파이프라인에 그대로 남는다 —
+     **감추는 것과 지우는 것은 다르다** (D-245 와 같은 원칙) */
   const headshot = headshotView(stat.headshot, stat.kill)
   /* 보고 있는 선수의 행. `적진` 에서는 색을 얹지 않고 **바탕을 한 단 올린다**
      (`--color-card-2`). 얼룩무늬가 아니라 한 행에만 붙는 표시다 */
@@ -708,7 +775,7 @@ function StatRow({
 
   return (
     <div
-      className={`relative flex items-center border-t border-t-line-soft py-1.5 text-sm ${
+      className={`relative flex items-center border-t ${skin.divider} py-1.5 text-sm ${
         isMvp
           ? 'bg-card-2 shadow-[inset_3px_0_0_0_var(--color-accent),0_0_18px_-8px_var(--color-accent)]'
           : isViewer
@@ -805,16 +872,41 @@ function StatRow({
         {weapon === null ? <span className="text-faint">{UNKNOWN}</span> : weapon}
       </div>
 
-      {/* 포지션 — 그 선수의 **고유 자리**다 (`스나수` · `2F` · `B리베` · `숏`).
-          바로 왼쪽 `무기` 칸과 다른 것이다: 무기는 **이 판 한 판의 사실**이고
-          포지션은 경기마다 바뀌지 않는다. 사용자가 못 박았다 —
-          **"스나수가 무조건 스나를 드는것만은 아니야"**.
-          판정이 없으면 비운다. `-` 나 `알수없음` 으로 채우지 않는다 (D-106) */}
-      <div className="w-24 text-center text-meta max-md:w-16">
-        {stat.position_label?.trim() ? (
-          stat.position_label
+      {/* 마지막 칸 (D-250)
+          기본(`holo`)은 **이 경기 래더 변동**이다. 부호를 반드시 보이고, 배치고사 중이면
+          숫자 대신 `배치고사` 를 쓴다 (0 으로 쓰면 "0점 움직였다" 가 된다).
+          값이 없으면 `알수없음` — 지어내지 않는다.
+
+          색은 새로 만들지 않았다. 표 안의 다른 숫자(kda)와 같은 `text-text-strong` 이다.
+          카드 머리의 팀 증감처럼 승패색(진홍/회색)을 얹으면 펼친 표 한 장에 진홍 숫자가
+          열 개 생겨 「진홍은 아껴 쓴다」(D-204)가 무너진다.
+
+          `legacy` 에서는 이 자리가 예전처럼 **포지션**이다 (`스나수` · `2F` · `숏`).
+          판정이 없으면 비운다 — `-` 나 `알수없음` 으로 채우지 않는다 (D-106) */}
+      {/* 색·글꼴은 **칸에 직접** 준다. 값마다 `<span>` 을 하나씩 씌우면 한 경기에 열 개가
+          늘어난다 (실측: 264 → 273 노드). 칸이 값 하나만 갖는 자리라 감쌀 이유가 없다 */}
+      <div
+        className={`w-24 text-center max-md:w-16 ${
+          look === 'legacy'
+            ? 'text-meta'
+            : delta.kind === 'delta'
+              ? 'num text-text-strong'
+              : 'text-faint'
+        }`}
+        title={look !== 'legacy' && delta.kind === 'unknown' ? NOT_RATED_INLINE_TITLE : undefined}
+      >
+        {look === 'legacy' ? (
+          stat.position_label?.trim() ? (
+            stat.position_label
+          ) : (
+            <span className="text-faint">·</span>
+          )
+        ) : delta.kind === 'placement' ? (
+          '배치고사'
+        ) : delta.kind === 'delta' ? (
+          formatRatingDelta(delta.value)
         ) : (
-          <span className="text-faint">·</span>
+          UNKNOWN
         )}
       </div>
 
@@ -850,7 +942,7 @@ function StatRow({
  * ```
  *
  * 이 화면은 사이트에서 정보가 제일 많다. 그래서 **먼저 읽혀야 하는 것**(누가 이겼나)을
- * 맨 위에 한 덩어리로 놓고, 그 다음이 참가자 표, 나머지(포지션 줄 · 헤드샷)는 `자세히` 로 접는다.
+ * 맨 위에 한 덩어리로 놓고, 그 다음이 참가자 표, 나머지(헤드샷)는 `자세히` 로 접는다.
  *
  * 구성 보정·래더 반영 같은 **설명·안내 문구는 그리지 않는다.** 규칙 설명은 화면이 아니라
  * `docs/` 가 한다 (2026-08-28 사용자 지시).
@@ -859,18 +951,19 @@ function MatchDetailPanel({
   match,
   detail,
   leagueSlug,
+  look,
 }: {
   match: MatchListItem
   detail?: MatchDetail
   /** 참가자 표의 닉네임을 **어느 리그의** 기록실로 보낼지 (경로에 리그 slug 가 들어간다) */
   leagueSlug: string
+  /** 재질 + 마지막 칸 (D-250). 접힌 카드와 같은 값을 그대로 물려받는다 */
+  look: MatchCardLook
 }) {
-  /* 접힌 것이 기본이다. 이 화면에서 제일 자주 쓰이는 것은 kda·딜량이고,
-     포지션·헤드샷은 그것을 다 본 다음에 찾는 값이다 */
+  const skin = LOOK[look]
+  /* 접힌 것이 기본이다. 이 화면에서 제일 자주 쓰이는 것은 kda·래더이고,
+     헤드샷은 그것을 다 본 다음에 찾는 값이다 */
   const [showExtra, setShowExtra] = useState(false)
-
-  /* 딜량 막대의 기준은 **경기 전체**의 최대 딜량이다. 팀별로 따로 잡으면
-     같은 딜량이 팀에 따라 다른 길이로 보인다 */
 
   /* 응답은 팀을 `league_clan` / `opponent`(보는 쪽 기준)로 주고 참가자는 진영으로 준다.
      둘을 이어야 팀 헤더에 클랜명을 적을 수 있다 (`teamIsViewerClan` 주석 참조) */
@@ -907,7 +1000,7 @@ function MatchDetailPanel({
       : (hexSides.find((side) => side !== null && side !== ourHexagon) ?? null)
 
   return (
-    <div className="border border-t-0 border-line bg-card px-4 py-3 max-md:px-2">
+    <div className={`border border-t-0 ${skin.panel} px-4 py-3 max-md:px-2`}>
       {/* 1행 — 맵 · 인원 (왼쪽) / 플레이시간 (오른쪽 끝) */}
       <div className="flex items-center text-sm text-faint">
         <div className="display text-base text-text-strong">{match.map.name}</div>
@@ -947,6 +1040,7 @@ function MatchDetailPanel({
           {/* 양 팀 대비 — 이 화면에서 제일 먼저 읽혀야 하는 줄 */}
           <TeamCompare
             leagueSlug={leagueSlug}
+            skin={skin}
             rows={[
               {
                 key: 'red',
@@ -972,6 +1066,8 @@ function MatchDetailPanel({
             leagueSlug={leagueSlug}
             viewerPlayerId={viewerPlayerId}
             showExtra={showExtra}
+            look={look}
+            skin={skin}
           />
           <TeamBlock
             first={blueFirstLabel}
@@ -981,6 +1077,8 @@ function MatchDetailPanel({
             leagueSlug={leagueSlug}
             viewerPlayerId={viewerPlayerId}
             showExtra={showExtra}
+            look={look}
+            skin={skin}
           />
 
           {/*

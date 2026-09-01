@@ -10,8 +10,8 @@ import { getLeague } from '@/lib/server/queries/leagues'
  *   Next는 한 세그먼트에 서로 다른 이름의 동적 라우트를 둘 수 없으므로 이름을 하나로 통일하고,
  *   **핸들러마다 슬러그인지 ID인지 계약대로 해석한다.**
  */
-export async function GET(_request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guardPublic('/api/leagues/[league]', 600, async () => {
+export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
+  return guardPublic(request, 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
     const league = await getLeague(leagueSlug)
     /* 길게(3600초) — 리그 이름·맵·부리그 수는 운영자가 손대야 바뀐다 (D-240) */

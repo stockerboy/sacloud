@@ -7,13 +7,13 @@ import type { Metadata } from 'next'
  * 법적 검토를 받지 않았다. 서비스 오픈 전 검토·교체가 필요하다 (docs/DECISIONS.md D-011).
  * 화면 구조(탭 → 본문, 14px/21px 단문 나열)만 원본과 맞췄다.
  */
-export const metadata: Metadata = { title: '이용약관 - SACLOUD' }
+export const metadata: Metadata = { title: '이용약관 - 3rd cloud' }
 
 const ARTICLES: ReadonlyArray<{ title: string; body: readonly string[] }> = [
   {
     title: '제1조 (목적)',
     body: [
-      '이 약관은 SACLOUD(이하 "서비스")가 제공하는 서든어택 클랜전 기록 조회 및 커뮤니티 서비스의 이용 조건과 절차, 회원과 서비스의 권리·의무·책임 사항을 정하는 것을 목적으로 합니다.',
+      '이 약관은 3rd cloud(이하 "서비스")가 제공하는 서든어택 클랜전 기록 조회 및 커뮤니티 서비스의 이용 조건과 절차, 회원과 서비스의 권리·의무·책임 사항을 정하는 것을 목적으로 합니다.',
     ],
   },
   {

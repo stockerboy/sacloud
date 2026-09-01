@@ -27,6 +27,8 @@ import {
   maxDamage,
   mvpBadgeVisible,
   ratingCellView,
+  ratingDeltaCellView,
+  formatRatingDelta,
   teamIsViewerClan,
   teamWon,
 } from '../record/matchDetailView'
@@ -155,6 +157,54 @@ describe('래더 칸', () => {
 
   it('배치도 아닌데 값이 없으면 알수없음이다 — 0점으로 채우지 않는다', () => {
     expect(ratingCellView({ placement: false, rating: null })).toEqual({ kind: 'unknown' })
+  })
+})
+
+/* ------------------------------------------------------- 경기 래더 변동 --- */
+
+/**
+ * 라인업 표의 마지막 칸 (D-250) — 딜량 → 포지션 → **래더 변동**.
+ *
+ * 여기서 고정하는 것은 **0 과 「없음」을 섞지 않는다**는 것 하나다.
+ * 배치고사 경기의 변동은 실제로 0 이지만 그것을 `0` 으로 찍으면 「래더에 안 들어간다」가
+ * 「0점 움직였다」로 바뀐다. 값이 아예 없는 것도 마찬가지다.
+ */
+describe('경기 래더 변동 칸', () => {
+  it('배치고사면 숫자 대신 배치고사다 — 0 을 쓰지 않는다', () => {
+    expect(ratingDeltaCellView({ placement: true, rating_update: null })).toEqual({
+      kind: 'placement',
+    })
+    // 배치 경기의 변동은 0 이지만, 그래도 숫자가 아니라 `배치고사` 다
+    expect(ratingDeltaCellView({ placement: true, rating_update: 0 })).toEqual({
+      kind: 'placement',
+    })
+  })
+
+  it('값이 있으면 그 값이다 — 0 도 사실이다', () => {
+    expect(ratingDeltaCellView({ placement: false, rating_update: 7 })).toEqual({
+      kind: 'delta',
+      value: 7,
+    })
+    expect(ratingDeltaCellView({ placement: false, rating_update: -4 })).toEqual({
+      kind: 'delta',
+      value: -4,
+    })
+    expect(ratingDeltaCellView({ placement: false, rating_update: 0 })).toEqual({
+      kind: 'delta',
+      value: 0,
+    })
+  })
+
+  it('배치도 아닌데 값이 없으면 알수없음이다 — 0 으로 채우지 않는다', () => {
+    expect(ratingDeltaCellView({ placement: false, rating_update: null })).toEqual({
+      kind: 'unknown',
+    })
+  })
+
+  it('부호를 반드시 보인다. 단위(`점`)는 붙이지 않는다', () => {
+    expect(formatRatingDelta(7)).toBe('+7')
+    expect(formatRatingDelta(-4)).toBe('-4')
+    expect(formatRatingDelta(0)).toBe('0')
   })
 })
 

@@ -140,6 +140,95 @@ export async function guard(handler: () => Promise<Response>): Promise<Response>
 }
 
 /**
+ * **기억해 둔 값이 있으면 오래 기다리지 않는다** (2026-09-01 · D-249).
+ *
+ * ── 왜
+ *   DB 가 눌려 있을 때 요청은 `pool_timeout` 을 다 쓰고 죽는다. 실측 **20초**다.
+ *   그동안 사용자는 빈 화면에 동그라미만 본다. 20초를 기다린 끝에 오류를 보는 것은
+ *   **6초 만에 조금 낡은 값을 보는 것보다 훨씬 나쁘다.**
+ *
+ * ── ⚠ 기억이 없으면 **끝까지 기다린다**
+ *   짧게 끊는 것이 항상 옳지는 않다. 실측에서 30~38초 걸려 **결국 성공한** 요청들이 있었다.
+ *   내줄 것이 없는데 일찍 끊으면 그 성공을 실패로 바꾸는 셈이고, **엣지 캐시도 못 채운다**
+ *   (그러면 다음 사람도 똑같이 당한다 — D-249 ②의 악순환).
+ *   그래서 «내줄 것이 있을 때만» 빨리 포기한다.
+ *
+ * ── ⚠ 이것은 질의를 취소하지 않는다
+ *   먼저 응답할 뿐, 뒤에서 도는 질의는 계속 커넥션을 쥐고 있다.
+ *   즉 **DB 부하를 줄이지는 못한다.** 줄이는 것은 엣지 캐시의 몫이고, 이것은
+ *   **사용자가 기다리는 시간**만 줄인다. 둘을 섞어서 판단하지 마라.
+ */
+const STALE_RACE_SECONDS = 6
+
+type Raced = { response: Response; stale: boolean }
+
+async function raceAgainstStale(
+  cacheKey: string,
+  maxStaleSeconds: number,
+  handler: () => Promise<Response>,
+): Promise<Raced> {
+  const remembered = lastKnownGood.recall(cacheKey, maxStaleSeconds)
+  const live = handler()
+
+  /* 내줄 것이 없으면 경주하지 않는다 — 끝까지 기다리는 편이 낫다 (위 주석) */
+  if (!remembered) return { response: await live, stale: false }
+
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const giveUp = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), STALE_RACE_SECONDS * 1000)
+  })
+
+  try {
+    const won = await Promise.race([live, giveUp])
+    if (won) return { response: won, stale: false }
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+
+  /*
+   * ── 진 뒤에도 **결과는 주워 담는다** (2026-09-01)
+   *
+   *   처음에는 `live.catch(() => {})` 로 실패만 삼키고 끝냈다. 그런데 그러면
+   *   **늦게 성공한 값을 기억하지 않는다.** DB 가 계속 6초보다 느리면 기억값이
+   *   한 번도 갱신되지 않은 채 낡아 가고, `maxStaleSeconds` 를 넘는 순간부터
+   *   **다시 500 이 난다.** 보험이 스스로 만료되는 셈이다.
+   *
+   *   이 요청의 응답은 이미 정해졌지만, 그 결과를 버릴 이유는 없다.
+   *   늦게라도 성공하면 기억을 갱신해 **다음 사람**이 그 값을 받게 한다.
+   *
+   *   실패는 계속 삼킨다 — 삼키지 않으면 unhandled rejection 이 되고,
+   *   실패 자체는 아래 로그와 `guard` 가 이미 남긴다.
+   */
+  void live
+    .then(async (late) => {
+      if (late.ok) lastKnownGood.remember(cacheKey, await late.clone().text())
+    })
+    .catch(() => {})
+
+  console.error(
+    `[api] slow-db ${cacheKey} — ${STALE_RACE_SECONDS}초를 넘겨 ` +
+      `${Math.round(remembered.ageSeconds)}초 낡은 값을 대신 내준다`,
+  )
+
+  return { response: staleResponse(remembered), stale: true }
+}
+
+/** 기억해 둔 본문으로 200 을 만든다. 위 경주와 아래 `catch` 가 같은 모양을 쓰게 한다 */
+function staleResponse(remembered: { body: string; ageSeconds: number }): Response {
+  return new NextResponse(remembered.body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      /* **짧게 캐시한다.** 낡은 값을 엣지가 오래 붙들면 회복이 늦어진다.
+         다음 요청이 곧 DB 를 다시 두드려 보게 한다 */
+      'Cache-Control': 'public, max-age=0, s-maxage=15, stale-while-revalidate=300',
+      /* 운영에서 「지금 보험으로 버티는 중인가」를 밖에서 볼 수 있어야 한다 */
+      'X-Sacloud-Stale': String(Math.round(remembered.ageSeconds)),
+    },
+  })
+}
+
+/**
  * **공개 읽기 전용 `guard`** — DB 가 안 되면 마지막으로 성공한 응답을 대신 내준다
  * (2026-09-01 · D-249).
  *
@@ -169,10 +258,11 @@ export async function guardPublic(
 ): Promise<Response> {
   const cacheKey = typeof key === 'string' ? key : new URL(key.url).pathname + new URL(key.url).search
   try {
-    const res = await handler()
+    const raced = await raceAgainstStale(cacheKey, maxStaleSeconds, handler)
+    if (raced.stale) return raced.response
     // 2xx 만 기억한다. 404 를 기억하면 새로 생긴 클랜이 계속 «없음» 이 된다
-    if (res.ok) lastKnownGood.remember(cacheKey, await res.clone().text())
-    return res
+    if (raced.response.ok) lastKnownGood.remember(cacheKey, await raced.response.clone().text())
+    return raced.response
   } catch (error) {
     const remembered = lastKnownGood.recall(cacheKey, maxStaleSeconds)
     if (!remembered) {
@@ -183,16 +273,6 @@ export async function guardPublic(
     // 삼키면 「조용히 낡은 값을 내주는」 상태가 눈에 안 띈다. 반드시 남긴다
     console.error(`[api] last-known-good ${cacheKey} (${Math.round(remembered.ageSeconds)}초 낡음)`, error)
 
-    return new NextResponse(remembered.body, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        // **짧게 캐시한다.** 낡은 값을 엣지가 오래 붙들면 회복이 늦어진다.
-        // 다음 요청이 곧 DB 를 다시 두드려 보게 한다
-        'Cache-Control': 'public, max-age=0, s-maxage=15, stale-while-revalidate=300',
-        // 운영에서 「지금 보험으로 버티는 중인가」를 밖에서 볼 수 있어야 한다
-        'X-Sacloud-Stale': String(Math.round(remembered.ageSeconds)),
-      },
-    })
+    return staleResponse(remembered)
   }
 }

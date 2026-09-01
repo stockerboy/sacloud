@@ -21,7 +21,7 @@ import { BETA_SEASON_LABEL } from '@sacloud/contract'
 export const BETA_NOTICE_HEADLINE = BETA_SEASON_LABEL
 
 /** 이 시즌이 무엇인지 */
-export const BETA_NOTICE_PURPOSE = '현재 SACLOUD 래더 시스템을 검증하는 공개 테스트 시즌입니다.'
+export const BETA_NOTICE_PURPOSE = '현재 3rd cloud 래더 시스템을 검증하는 공개 테스트 시즌입니다.'
 
 /**
  * 승계되지 않는다는 사실.

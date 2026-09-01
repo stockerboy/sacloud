@@ -42,7 +42,7 @@
  *   **똑같고**, `playerRecentDays` 가 쓰던 정렬(`startAt DESC` 만)보다 **결정적**이다.
  *   그쪽은 동시각 경기가 있으면 실행마다 순서가 흔들릴 수 있었다.
  */
-import { Prisma, prisma } from '@sacloud/db'
+import { prisma } from '@sacloud/db'
 import { SEASON0_FROM, SEASON0_ORIGINS, SEASON0_TO } from './season0Scope'
 
 /**
@@ -101,8 +101,33 @@ export interface PlayerLadderRow {
  * ⚠ 같은 함정이 `rankings.ts` 의 `getFormTop` 에도 있다 (`$queryRaw` 에 `Date` 를 그대로
  *   바인드한다). 그쪽은 이 작업의 범위가 아니라 손대지 않았다 — **고칠 때 값이 바뀐다.**
  */
-function pgTimestamp(value: Date) {
-  return Prisma.sql`${value.toISOString().replace('Z', '')}::timestamp`
+/**
+ * ⚠ **정정 (2026-09-01 저녁) — `Prisma.sql` 을 돌려주지 않는다**
+ *
+ * 원래 이 함수는 ``Prisma.sql`${…}::timestamp` `` 를 돌려주고, 아래 큰 질의의
+ * `${}` 안에 그것을 **끼워 넣었다**. `tsx` 로 직접 부르면 잘 돌았다. 그런데
+ * **Next 개발/빌드 번들 안에서는 운영이 500 이었다.**
+ *
+ * ```
+ * Raw query failed. Code: 42601. Message: ERROR: syntax error at or near "$4"
+ *   at getLeaguePlayerDetail (lib/server/queries/records.ts:687)
+ * ```
+ *
+ * ── 왜 번들에서만 깨지나
+ *   Prisma 는 끼워 넣은 값이 `Sql` 인지 **`instanceof` 로** 판별해, 맞으면 문장으로 펴고
+ *   아니면 **바인딩 파라미터로** 넘긴다. 번들러가 Prisma 런타임 사본을 두 벌 만들면
+ *   `instanceof` 가 어긋나고, 그 순간 `…::timestamp` 조각이 통째로 **값 하나**가 되어
+ *   SQL 이 부서진다. 그래서 뒤에 오는 `$4` 자리에서 문법 오류가 난다.
+ *   `tsx` 는 사본이 한 벌이라 이 함정을 못 본다 — **로컬에서 재현이 안 되던 이유다.**
+ *
+ * ── 그래서 이제 **문자열만** 돌려준다
+ *   `::timestamp` 캐스트는 질의문 쪽에 리터럴로 적는다. 끼워 넣는 것은 늘 «값 하나»뿐이라
+ *   런타임이 몇 벌이든 결과가 같다.
+ *
+ * 시간대를 떼는 이유는 아래 원래 주석 그대로다.
+ */
+function pgTimestampText(value: Date): string {
+  return value.toISOString().replace('Z', '')
 }
 
 export async function playerLadderRows(
@@ -111,9 +136,10 @@ export async function playerLadderRows(
 ): Promise<PlayerLadderRow[]> {
   /* 창의 끝은 열려 있을 수 있다 (`SEASON0_TO === null`). 그때는 조건을 아예 붙이지 않는다 —
      `new Date()` 로 메우면 요청마다 값이 달라진다 (`season0Scope.ts` 와 같은 이유) */
-  const upperBound = SEASON0_TO
-    ? Prisma.sql`AND m."startAt" < ${pgTimestamp(SEASON0_TO)}`
-    : Prisma.empty
+  /* ⚠ `Prisma.sql` 조각을 만들어 끼워 넣지 않는다 (위 `pgTimestampText` 주석).
+     상한이 없으면 `null` 을 넣고 질의문에서 `IS NULL` 로 걸러 낸다 —
+     조건 한 줄을 통째로 끼워 넣던 것을 **값 하나**로 바꾼 것이다. */
+  const upperBound = SEASON0_TO ? pgTimestampText(SEASON0_TO) : null
 
   return prisma.$queryRaw<PlayerLadderRow[]>`
     SELECT s."matchId"                  AS "matchId",
@@ -134,8 +160,8 @@ export async function playerLadderRows(
       JOIN "Match" m ON m."id" = s."matchId"
      WHERE s."playerId" = ${playerId}
        AND m."leagueId" = ${leagueId}
-       AND m."startAt" >= ${pgTimestamp(SEASON0_FROM)}
-       ${upperBound}
+       AND m."startAt" >= ${pgTimestampText(SEASON0_FROM)}::timestamp
+       AND (${upperBound}::timestamp IS NULL OR m."startAt" < ${upperBound}::timestamp)
        AND (m."redRatingUpdate" IS NOT NULL OR m."origin" = ANY(${[...SEASON0_ORIGINS]}::text[]))
      ORDER BY m."startAt" DESC, s."matchId" DESC
   `

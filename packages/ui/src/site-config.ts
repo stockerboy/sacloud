@@ -92,8 +92,8 @@ export const PRIMARY_NAV: readonly NavLink[] = [
  * 레이아웃(약관 링크 2개 → 저작권 → 문의 메일)만 동일하게 재현하고 값은 우리 것으로 채운다.
  */
 export const SITE_BRAND = {
-  name: 'SACLOUD',
-  copyright: '© 2026 SACLOUD',
+  name: '3rd cloud',
+  copyright: '© 2026 3rd cloud',
   contactLabel: 'Terms of Service | 문의 :',
   contactEmail: 'sacloud@local.invalid',
 } as const

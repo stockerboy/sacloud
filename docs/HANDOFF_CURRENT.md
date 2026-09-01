@@ -71,10 +71,30 @@
 > 구역 좌표       사용자가 직접 칠했다 — 녹뒤 6칸 · 머리 6칸. A어택성공이 4곳 다 센다
 > 클랜 별칭       사용자가 직접 적었다 — 85곳 120개 (data/clan/clan-aliases.json)
 > 한글 클랜검색   veritas ← 베리타스 · exOnePoinT ← 원포 (packages/contract/src/clanSearch.ts)
-> 가챠샵 부품     캡슐 · 105개 더미 · 회전초밥 진열대 (packages/ui/src/gacha/) ← 화면엔 아직 안 붙음
-> 신전 히어로     packages/ui/src/hero/TempleHero.tsx ← 시안 확정 전이라 보류
+> 가챠샵 부품     ⛔ 2026-09-01 폐기 — 사용자 지시로 통째로 삭제했다 (아래 참고)
+> 신전 히어로     packages/ui/src/hero/TempleHero.tsx ← 2026-09-01 **메인에서 뺐다**(파일은 살아 있다)
 > 클랜마크        운영 402곳 넥슨 주소로 복원 + CSP 에서 원본 사이트 문 닫음
 > ```
+>
+> ### ⛔ 2026-09-01 저녁 — **가챠샵 폐기 · 메인을 op.gg 식으로 정리**
+>
+> 사용자 원문: *"파일 찾기 가챠샵 전부 삭제하고 심플이즈 더 베스트다 op.gg 스타일 Ui로
+> 걍 깔끔하게 간다 진짜 깔끔이 젤 중요하다 그리고 경기상세 홀로그램 모드로 바꾸는건 유지한다"*
+>
+> ```
+> 지운 것   packages/ui/src/gacha/{Capsule,CapsulePile,GachaShelf}.tsx
+>           packages/ui/src/index.ts 의 가챠 export 블록
+>           packages/ui/src/styles.css 의 «가챠샵» 절 (.capsule-* · .gacha-belt-*)
+>           apps/web/scripts/gachaPreview.mts
+> 남긴 것   design/gacha-guide.html (design/ 은 손대지 않는다 — 모양은 여기 남아 있다)
+>           packages/ui/src/hero/TempleHero.tsx + export + styles.css 의 «신전 히어로» 절
+>           packages/ui/src/egg/** (「알」은 지우라는 지시가 없었다)
+>           packages/ui/src/record/** (경기상세 홀로그램은 **유지**가 지시다)
+> ```
+>
+> 메인(`apps/web/app/page.tsx`)은 **로고 · 검색창 · 리그 랭킹 바로가기** 로 시작한다.
+> 히어로가 빠지면서 **`leagueRankOverall`(IPL 1등) 조회 1건을 화면에서 없앴다** —
+> 라우트는 살아 있고 화면만 안 부른다. 이제 메인이 켜질 때 도는 API 는 알 2건 + 인기글 1건이다.
 >
 > ### ⚠ 이름이 바뀐다 — **아직 바꾸지 마라**
 >

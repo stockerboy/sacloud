@@ -41,7 +41,7 @@ describe('베타 안내 문구', () => {
   })
 
   it('무엇을 검증하는 시즌인지 알려 준다', () => {
-    expect(BETA_NOTICE_PURPOSE).toBe('현재 SACLOUD 래더 시스템을 검증하는 공개 테스트 시즌입니다.')
+    expect(BETA_NOTICE_PURPOSE).toBe('현재 3rd cloud 래더 시스템을 검증하는 공개 테스트 시즌입니다.')
   })
 
   it('다음 정식 시즌에 승계되지 않는다는 사실을 명시한다', () => {

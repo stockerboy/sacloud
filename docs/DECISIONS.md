@@ -10973,6 +10973,102 @@ Connected League Operations  →  (그대로 쓸지 미정 · 사용자 확인 �
 - 로고 파일 (`MainLogo` 의 SVG 워드마크) — 새 로고가 나오면 교체한다.
   옛 것은 지우지 않는다 (10-4)
 
+### ⚠ 실행함 (2026-09-01) — 「시안 확정 뒤에 한 번에」의 그 「뒤」가 왔다
+
+위에서 미뤄 둔 조건이 충족됐다. 디자인이 op.gg 식 정리로 확정됐고, 사용자가 오늘
+도메인 **`3rd.cloud`** 로 사이트를 연다. 도메인이 `3rd.cloud` 인데 화면에 `SACLOUD` 라고
+쓰여 있을 수는 없다. **한 번에 바꿨다.**
+
+#### 표기 규칙 (여기서 확정한다)
+
+```
+로고 · 큰 제목      3RD CLOUD   (대문자)
+문장 속            3rd cloud   (소문자 c)
+브라우저 탭 제목    3rd cloud
+```
+
+#### 바꾼 자리 — 14곳
+
+| 파일 | 무엇 → 무엇 |
+|---|---|
+| `apps/web/app/layout.tsx` | 탭 제목 `SACLOUD - 서든어택…` → `3rd cloud - 서든어택…` |
+| `apps/web/app/admin/layout.tsx` | `SACLOUD 운영 관리` → `3rd cloud 운영 관리` |
+| `apps/web/app/clause/service/page.tsx` | 탭 제목 `이용약관 - SACLOUD` → `- 3rd cloud` |
+| `apps/web/app/clause/service/page.tsx` | 제1조 본문 `이 약관은 SACLOUD(이하…` → `3rd cloud(이하…` |
+| `apps/web/app/clause/policy/page.tsx` | 탭 제목 `개인정보 취급방침 - SACLOUD` → `- 3rd cloud` |
+| `apps/web/app/leagues/page.tsx` | `SACLOUD 리그란?` · `SACLOUD 리그에` · `SACLOUD 대표리그` (3곳) |
+| `packages/ui/src/home/SiteIntro.tsx` | 소개 첫 줄 `SACLOUD 는 …` → `3rd cloud 는 …` |
+| `packages/ui/src/league/betaNoticeText.ts` | `현재 SACLOUD 래더 시스템을…` → `현재 3rd cloud 래더…` |
+| `packages/ui/src/__tests__/beta-notice.test.ts` | 위 문구를 못 박는 단언을 같이 고쳤다 |
+| `packages/ui/src/site-config.ts` | `SITE_BRAND.name` · `copyright`(`© 2026 3rd cloud`) |
+| `packages/ui/src/layout/BrandLogo.tsx` | `MainLogo` · `NavLogo` 워드마크 `SACLOUD` → `3RD CLOUD` |
+
+#### 로고 — 글자만 바꿨다. **구름 그림은 안 지어냈다**
+
+위 본문은 로고를 「`3RD` + 구름 그림 + `CLOUD`」라고 적어 뒀지만 **그 그림이 아직 없다.**
+없는 것을 지어내지 않는다(CLAUDE.md 3장 7번). 지금은 **글자만** `3RD CLOUD` 이고
+두 낱말 사이는 그냥 띄어 뒀다. 그림이 나오면 그 자리에 넣는다. 같은 말을
+`BrandLogo.tsx` 주석에도 박아 뒀다.
+
+**옛 워드마크는 지우지 않았다** (CLAUDE.md 10-4). `MainLogo` · `NavLogo` 에
+`wordmark?: '3rdcloud' | 'sacloud'` 를 냈고 **기본값만** 새 것으로 바꿨다.
+`wordmark="sacloud"` 를 넘기면 예전 그대로 그린다.
+
+박스 크기(`viewBox` · `textLength`)는 **한 픽셀도 안 건드렸다.** 글자 수가 7 → 9 로 늘었는데
+`lengthAdjust="spacingAndGlyphs"` 가 같은 폭에 맞춰 주므로 GNB 가 밀리지 않는다.
+실제 렌더로 확인했다 — GNB · 홈 큰 로고 둘 다 자리가 그대로다.
+
+#### 태그라인은 **손대지 않았다**
+
+위 「아직 안 정한 것」이 그대로 열려 있다 — `CLOUD` 약자 풀이
+(`Connected League Operations & User Data`, `SiteIntro` 의 `NAME_MEANING`)를 계속 쓸지,
+시안의 `CONNECTING DATA, ELEVATING PERFORMANCE` 와 겹치는 것을 어떻게 할지.
+**둘 중 어느 것도 고르지 않았다.** 이름만 바꾸는 작업이었다. `[미확인]`
+
+#### 안 바꾼 `sacloud` — 실측 489 파일
+
+| 무엇 | 건수 | 왜 남겼나 |
+|---|---:|---|
+| `@sacloud/*` 패키지 이름 · import 경로 | **412 파일** | 바꾸면 빌드가 통째로 깨진다. 위 본문의 원칙 그대로다 |
+| `docs/**` 의 과거 서술 | **32 파일** | 옛 기록을 고쳐 쓰지 않는다 (CLAUDE.md 10-4) |
+| 환경변수 `SACLOUD_*` | 15종 | 배포 환경이 이 이름으로 값을 들고 있다. 이름 바꾸기는 별건이다 |
+| 코드 주석 · 마이그레이션 SQL 주석 | 다수 | 사람이 읽지만 **화면에 안 뜬다.** D-242 의 범위가 아니다 |
+
+**남은 「화면 근처」 세 곳** — 판단이 갈려 손대지 않았다.
+
+- `apps/web/app/page.tsx:126` `aria-label="SACLOUD 홈"` — **스크린리더가 읽는 진짜 화면 글자다.**
+  그런데 이 파일을 그때 다른 작업이 물고 있어 손대지 못했다. **남은 일이다.**
+- `packages/ui/src/site-config.ts` `contactEmail: 'sacloud@local.invalid'` — 푸터에 **뜬다.**
+  그러나 `local.invalid` 는 애초에 자리표시자고, 새 주소를 지어내는 것은 이 작업이 아니다.
+  **도메인을 열 때 실주소로 함께 정해야 한다** `[미확인]`
+- `packages/db/legacy/collect.ts` `USER_AGENT = 'SACLOUD-legacy-migration/1.0'` — 화면이 아니라
+  **우리가 원본 서버에 대고 밝힌 신원**이다. 지난 수집의 기록이라 고치지 않았다
+
+`packages/ui/src/hero/TempleHero.tsx` 의 `SA CLOUD` 워드마크도 그대로 뒀다.
+그 컴포넌트는 **지금 어느 화면에도 안 붙어 있고**(10-4 로 보존만 해 둔 옛 히어로다),
+보존해 둔 옛 버전을 고쳐 쓰는 것은 10-4 가 막는 쪽에 가깝다. 다시 쓸 일이 생기면 그때 바꾼다.
+
+#### 확인한 것
+
+```
+pnpm typecheck                       통과 (8개 패키지 전부)
+pnpm lint                            0 errors · 323 warnings  ← 기존값 그대로
+npx vitest run --no-file-parallelism packages/ui   23파일 251건 전부 통과
+헤드리스 렌더 (scripts/render-audit/shoot.mjs, 1440px)
+   /                홈 큰 로고 `3RD CLOUD ·` · 푸터 `© 2026 3rd cloud` · 소개 `3rd cloud 는 …`
+   /leagues         GNB `3RD CLOUD` · `3rd cloud 리그에` · `3rd cloud 대표리그`
+   /clause/service  제1조 `이 약관은 3rd cloud(이하 "서비스")…`
+   /auth/login      인증 카드
+   넷 다 가로 스크롤 없음 · 진홍 면 0(리그 만들기 버튼 1개는 원래 그렇다)
+```
+
+⚠ **인증 카드의 로고가 안 보인다 — 이름 때문이 아니라 색 때문이다.**
+`AuthCard` 가 `NavLogo` 를 `tone="dark"` 로 부르는데 그 톤은 글자를
+`--color-ink(#060505)` 로 칠하고, 카드 바깥 바탕이 `bg-page(#060505)` 다. **같은 색이다.**
+`SACLOUD` 였을 때도 똑같이 안 보였을 것이다 — 이름 교체가 만든 결함이 아니다.
+색을 고치는 것은 이 작업의 범위가 아니라 **건드리지 않았다.** 따로 판단해서 고쳐라.
+
+
 ---
 
 ## D-243 — **요청당 왕복 횟수를 줄였다.** 통로를 못 늘리니 오가는 횟수를 줄였다 (2026-09-01)

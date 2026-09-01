@@ -1,13 +1,17 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
+  FEATURED_LEAGUES,
   HOT_POST_COUNT,
   HotPostList,
+  LeagueLabel,
+  MainLogo,
   SearchBar,
   SiteIntro,
-  TempleHero,
+  isLeaguePreparing,
   type SearchType,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
@@ -17,44 +21,66 @@ import { useApiReady } from './providers'
 /**
  * 홈.
  *
- * ── 2026-08-30: 3rd.supply 재현을 그만두고 자체 디자인(`적진`)으로 다시 짰다
- *   예전 홈은 원본 실측 구조(검은 히어로 + 44rem 로고 + 흰 카드들)를 그대로 옮긴
- *   것이었다. 이제 원본을 따라가지 않는다.
- *
- * ── 2026-09-01: 최상단이 **신전 히어로**로 바뀌었다 (사용자 지시)
+ * ── 2026-09-01: **신전 히어로를 뺐다.** op.gg 식으로 정리 (사용자 지시)
  *   ```
- *   0 신전 히어로   ← 먹구름 · 번개 · 대리석 조각상 · SA CLOUD 로고 · IPL 1등 클랜
- *   1 통합검색      ← 히어로가 품는다. 여전히 메인의 주인공이다
+ *   "파일 찾기 가챠샵 전부 삭제하고 심플이즈 더 베스트다 op.gg 스타일 Ui로
+ *    걍 깔끔하게 간다 진짜 깔끔이 젤 중요하다"
+ *   ```
+ *   op.gg 메인은 **로고 하나 · 큰 검색창 하나 · 그 아래 조용한 목록**이 전부다.
+ *   장식이 없다. 그게 «깔끔» 이다. 그래서 이렇게 됐다.
+ *   ```
+ *   0 로고        ← 작게. 워드마크 하나 (MainLogo)
+ *   1 통합검색     ← 화면의 주인공. 크고 가운데
+ *   2 리그 바로가기 ← 누르면 **바로 랭킹**. 리그홈 같은 중간 화면을 거치지 않는다
+ *   ─────────────
+ *   3 알 모음집
+ *   4 인기게시글
+ *   5 사이트 소개 (꼬리말)
+ *   ```
+ *
+ *   **`TempleHero` 컴포넌트를 지우지 않았다** (CLAUDE.md 10-4). `packages/ui` 에
+ *   그대로 있고 export 도 남아 있다. **이 화면이 안 쓸 뿐이다.**
+ *
+ *   히어로가 빠지면서 **IPL 1등 클랜 조회(`leagueRankOverall`)도 같이 없앴다.**
+ *   히어로 말고는 그 값을 쓰는 곳이 없었다. 안 쓰는 조회를 남겨 두면 메인이 켜질
+ *   때마다 DB 를 헛되이 때린다 — 지금 DB 사정이 넉넉하지 않다.
+ *   **라우트(`/api/leagues/[id]/ranks/overall`)는 그대로 둔다.** 화면만 안 부른다.
+ *
+ *   `SearchBar` 는 손대지 않았다. 검색 종류 셋(플레이어/클랜/리그)·제출 흐름 전부 그대로다.
+ *
+ * ── 옛 서술 (2026-09-01 오전 · 지금은 위 구성이 대신한다)
+ *   ```
+ *   0 신전 히어로   ← 먹구름 · 번개 · 대리석 조각상 · SA CLOUD 워드마크 · IPL 1등 클랜
+ *   1 통합검색      ← 히어로가 품었다
  *   2 알 모음집
  *   3 인기게시글
  *   ```
- *
- *   **`MainLogo`(SVG 워드마크)를 이 화면에서 뺐다.** 지운 것은 아니다 —
- *   컴포넌트는 그대로 있고 GNB(`NavLogo`)와 인증 카드가 계속 쓴다 (CLAUDE.md 10-4).
- *   히어로가 `SA CLOUD` 워드마크를 직접 그리기 때문에, 둘을 같이 두면 **같은 로고가
- *   200px 간격으로 두 번** 나온다. 그건 디자인이 아니라 버그로 읽힌다.
- *   히어로의 워드마크가 옛 로고보다 하는 일이 더 많다 — 약자(`CLOUD`)를 보여 준다.
- *
- *   **통합검색은 지우지 않고 히어로 안으로 넣었다.** 히어로 바로 아래에 붙어서
- *   구름이 바닥으로 녹는 자리에 놓인다. 순서·동작·제출 흐름은 하나도 바뀌지 않았다.
+ *   그때는 히어로가 워드마크를 직접 그렸기 때문에 `MainLogo` 를 화면에서 뺐었다.
+ *   히어로가 사라졌으므로 `MainLogo` 가 제자리로 돌아왔다.
  *
  * ── 옛 서술 (2026-08-30)
- *   ```
- *   1 로고
- *   2 통합검색      ← 메인의 주인공이다. 화면 한가운데를 이것에 내준다
- *   3 인기게시글
- *   ```
- *   `리그별 개인랭킹 TOP3` 는 **사용자 지시로 뺐다** (2026-08-30). 컴포넌트도 지웠다.
- *   TOP3 만 부르던 `GET /api/home/top` 호출도 함께 없앴다 —
- *   **라우트 파일은 그대로 둔다.** 화면이 안 부를 뿐이다.
- *
- *   `사이트 소개 + 관리자 서약서`(SITE_SPEC_V2 3절)는 남겼다. 사용자가 항목을 직접
- *   지정한 내용이라 임의로 지우지 않고, 위 세 덩어리 아래에 **조용한 꼬리말**로 둔다.
+ *   `리그별 개인랭킹 TOP3` 는 사용자 지시로 뺐다. `GET /api/home/top` 호출도 함께 없앴다 —
+ *   **라우트 파일은 그대로 둔다.**
  *
  * ── 한 화면을 꽉 채우지 않는다
- *   위아래 여백을 넉넉히 두고 본문 폭을 제한한다. 히어로에 배경색을 따로 깔지 않는다 —
- *   페이지 전체가 이미 검정이라 색을 나눌 이유가 없다.
+ *   배경 장식을 깔지 않는다. 바탕은 `--color-page` 하나다.
+ *   위아래 여백을 넉넉히 두고 본문 폭을 제한한다.
  */
+
+/**
+ * 메인의 리그 바로가기.
+ *
+ * GNB 와 같은 목록(`FEATURED_LEAGUES`)에서 온다 — 여기에 리그명을 다시 적지 않는다.
+ * **준비중 리그(`daerule`)는 뺀다.** 눌러도 랭킹이 없는 리그를 랭킹 바로가기에
+ * 세워 두면 거짓말이 된다. GNB 링크는 그대로 살아 있다 (거기서는 안내가 뜬다).
+ *
+ * 대상은 `/league/{slug}/rank/player` — **개인랭킹**이다. `/league/{slug}` 로 보내면
+ * 리그홈(`/home/info`)으로 한 번 더 튕긴다.
+ */
+const LEAGUE_SHORTCUTS = FEATURED_LEAGUES.filter(
+  (league) => !isLeaguePreparing(league.href.split('/')[2] ?? ''),
+).map((league) => ({ label: league.label, href: `${league.href}/rank/player` }))
+
 export default function HomePage() {
   const router = useRouter()
   const ready = useApiReady()
@@ -64,31 +90,6 @@ export default function HomePage() {
     queryFn: () => apiGet('boardList', { search: { category: 'hot' } }),
     enabled: ready,
   })
-
-  /**
-   * 신전 히어로가 그릴 **IPL 1등 클랜**.
-   *
-   * ── 왜 `ranks/overall` 인가
-   *   IPL(`nolink`)은 **1티어를 비워 둔다.** 부리그별 랭킹(`leagueRankClans`)으로는
-   *   어느 부리그가 1등을 갖고 있는지 알 수 없다 — 실측으로 지금 1등(래더 3266)은
-   *   **3부**에 있고 2부 1등은 그보다 낮다. 부리그를 섞어 rating 순으로 세우는 래더는
-   *   `ranks/overall` 뿐이다 (D-104).
-   *
-   * ── **1건만 받는다**
-   *   `limit=1` 이다. 43건을 전부 받아 화면에서 최대값을 고르지 않는다 (D-238).
-   *   서버가 `take: 1` 로 끊어서 준다.
-   *
-   * ── 실패해도 화면은 선다
-   *   `top` 이 `undefined` 면 히어로가 가운데 빛만 그린다. 메인이 500 을 띄우거나
-   *   빈 칸을 남기지 않는다.
-   */
-  const iplTop = useQuery({
-    queryKey: ['leagues', 'nolink', 'ranks', 'overall', 1],
-    queryFn: () => apiGet('leagueRankOverall', { params: { leagueId: 'nolink' }, search: { limit: 1 } }),
-    enabled: ready,
-    staleTime: 5 * 60_000,
-  })
-  const top = iplTop.data?.data[0]
 
   /**
    * 검색 제출.
@@ -117,38 +118,49 @@ export default function HomePage() {
   }
 
   return (
-    <>
-      {/* --- 0 신전 히어로 + 1 통합검색 ---
-             히어로는 **화면 폭을 통째로** 쓴다. 먹구름이 본문 폭(1120px)에서 잘리면
-             구름이 아니라 «네모난 회색 판» 으로 보인다. 안쪽 내용은 그대로 1120px 이다. */}
-      <TempleHero
-        top={
-          top
-            ? {
-                name: top.clan.name,
-                slug: top.clan.slug,
-                mark: top.clan.mark,
-                is_official_clan: top.clan.is_official_clan,
-                rating: top.rating,
-              }
-            : null
-        }
-      >
-        <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 pb-[var(--section-gap,40px)] pt-8 max-md:px-3 max-md:pt-6">
+    <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
+      {/* ================= 0 로고 · 1 검색 · 2 리그 바로가기 =================
+             배경을 칠하지 않는다. 페이지 바탕(`--color-page`) 위에 글자와 선만 있다. */}
+      <section className="flex flex-col items-center pb-[72px] pt-[104px] max-md:pb-[56px] max-md:pt-[64px]">
+        {/* --- 0 로고 — 작게. 화면의 주인공은 아래 검색창이다 --- */}
+        <Link href="/" aria-label="3rd cloud 홈" className="block">
+          <MainLogo className="h-[42px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[32px]" />
+        </Link>
+
+        {/* --- 1 통합검색 — 크고 가운데. 동작은 하나도 바뀌지 않았다 --- */}
+        <div className="mt-9 w-full max-md:mt-7">
           <SearchBar onSubmit={handleSearch} />
         </div>
-      </TempleHero>
 
-      <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
-      {/* --- 2-A 알 모음집 — 플레이어 검색 **바로 밑** (`docs/EGG_SYSTEM_SPEC.md` 5-1)
-             SPL 이 먼저, 그 아래 IPL. 두 리그를 따로 한 벌씩 만든다.
-             알 밑에는 반드시 클랜명을 쓴다 — 유저가 자기 클랜을 찾아야 깨러 온다 --- */}
+        {/* --- 2 리그 바로가기 — 누르면 **바로 랭킹** ---
+               면을 칠하지 않는다. 글자 한 줄이고 진홍은 hover 에만 닿는다. */}
+        <nav aria-label="리그 랭킹 바로가기" className="mt-7 max-md:mt-6">
+          <ul className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2 max-md:gap-x-5">
+            {LEAGUE_SHORTCUTS.map((league) => (
+              <li key={league.href}>
+                <Link href={league.href} className="block">
+                  {/* `a { color: inherit }` 때문에 색은 안쪽 span 에 준다 (D-204) */}
+                  <span className="text-[13px] text-meta transition-colors duration-100 hover:text-accent">
+                    <LeagueLabel name={league.label} />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </section>
+
+      {/* 검색 덩어리와 아래 목록을 가르는 선 하나. 여기까지가 «윗머리» 다 */}
+      <hr className="border-0 border-t border-line-soft" />
+
+      {/* --- 3 알 모음집 — 검색 **바로 밑** (`docs/EGG_SYSTEM_SPEC.md` 5-1)
+             SPL 이 먼저, 그 아래 IPL. 알 밑에는 반드시 클랜명을 쓴다 --- */}
       <div className="section-stack pt-[var(--section-gap,40px)]">
         <LeagueEggGallery leagueSlug="supply" title="SPL" />
         <LeagueEggGallery leagueSlug="nolink" title="IPL" />
       </div>
 
-      {/* --- 3 인기게시글 --- */}
+      {/* --- 4 인기게시글 --- */}
       <div className="pt-[var(--section-gap,40px)]">
         <HotPostList
           items={hot.data?.data.slice(0, HOT_POST_COUNT)}
@@ -162,7 +174,6 @@ export default function HomePage() {
       <div className="pb-[var(--section-gap,40px)] pt-[80px] max-md:pt-[56px]">
         <SiteIntro />
       </div>
-      </div>
-    </>
+    </div>
   )
 }

@@ -127,6 +127,48 @@ export function ratingCellView(stat: {
   return { kind: 'rating', value: stat.rating }
 }
 
+/* ------------------------------------------------------- 경기 래더 변동 --- */
+
+export type RatingDeltaView =
+  | { kind: 'placement' }
+  | { kind: 'delta'; value: number }
+  | { kind: 'unknown' }
+
+/**
+ * 라인업 표의 **이 경기 래더 변동** 칸 (D-250).
+ *
+ * 예전에 여기 있던 것은 `딜량` → `포지션` 이었고 둘 다 사용자 지시로 빠졌다
+ * ("포지션도 사치야 딜량도 사치고 걍 둘다 지워버려"). 그 자리에 넣은 값이 이것이다.
+ *
+ * ── 왜 래더 변동인가
+ *   딜량은 상대 클랜 소속이면 응답에서 지워져(`알수없음`) 절반이 비었고, 포지션은
+ *   여러 경기를 센 결과라 **이 경기의 사실이 아니다.** 래더 변동은 열 명 모두에게 있고,
+ *   카드 머리의 팀 단위 `-17점` 이 **누구 때문에** 갈렸는지를 그 자리에서 말해 준다.
+ *
+ * ── 규칙
+ *   - 배치고사 중이면 `배치고사` 다. **0 을 쓰지 않는다** — 배치 경기의 변동은 0 이지만
+ *     "0점 움직였다" 와 "래더에 안 들어간다" 는 다른 말이다 (CLAUDE.md 3-B 7번)
+ *   - 값이 없으면 `알수없음` 이다. 0 으로 메우지 않는다 (CLAUDE.md 3장 7번)
+ */
+export function ratingDeltaCellView(stat: {
+  placement: boolean
+  rating_update: number | null
+}): RatingDeltaView {
+  if (stat.placement) return { kind: 'placement' }
+  if (stat.rating_update === null) return { kind: 'unknown' }
+  return { kind: 'delta', value: stat.rating_update }
+}
+
+/**
+ * `+7` / `-4` / `0` — **부호를 반드시 보인다** (D-250).
+ *
+ * 카드 머리의 팀 단위 표기(`formatRatingUpdate`)는 `+7점` 이라 `점` 이 붙는다.
+ * 여기는 열 줄이 세로로 쌓이는 좁은 숫자 칸이라 단위를 빼고 숫자만 세운다.
+ */
+export function formatRatingDelta(value: number): string {
+  return value > 0 ? `+${value}` : String(value)
+}
+
 /* ------------------------------------------------------------------ 무기 --- */
 
 /**

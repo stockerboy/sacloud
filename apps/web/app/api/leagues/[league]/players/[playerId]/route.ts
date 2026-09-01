@@ -8,8 +8,8 @@ import { getLeaguePlayerDetail } from '@/lib/server/queries/records'
  * 여기서 `[league]`는 계약상 **리그 슬러그**다.
  * (바로 아래 `matches`는 계약상 `:leagueId`라 해석이 다르다 — 핸들러마다 계약대로 읽는다.)
  */
-export async function GET(_request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guardPublic('/api/leagues/[league]/players/[playerId]', 600, async () => {
+export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
+  return guardPublic(request, 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
     const playerId = await routeParam(context, 'playerId')
     const detail = await getLeaguePlayerDetail(leagueSlug, playerId)

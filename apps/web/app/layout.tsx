@@ -73,7 +73,7 @@ const fontCinzel = Cinzel({
 })
 
 export const metadata: Metadata = {
-  title: 'SACLOUD - 서든어택 클랜전 전적검색',
+  title: '3rd cloud - 서든어택 클랜전 전적검색',
   description: '서든어택 클랜전 기록 · 리그 · 래더',
 }
 

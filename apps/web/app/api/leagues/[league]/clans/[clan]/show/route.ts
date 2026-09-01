@@ -11,8 +11,8 @@ import { getLeagueClanShow } from '@/lib/server/queries/records'
  *   Next는 한 세그먼트에 서로 다른 이름의 동적 라우트를 둘 수 없다.
  *   그래서 이름을 하나로 통일하고 **핸들러마다 계약대로 해석한다.**
  */
-export async function GET(_request: Request, context: { params: Promise<Record<string, string>> }) {
-  return guardPublic('/api/leagues/[league]/clans/[clan]/show', 600, async () => {
+export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
+  return guardPublic(request, 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
     const clanSlug = await routeParam(context, 'clan')
     const detail = await getLeagueClanShow(leagueSlug, clanSlug)

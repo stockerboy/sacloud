@@ -233,6 +233,40 @@
   /** MVP */
   --color-mvp: #d92b2b;
 
+  /* ------------------------------------------------------------ 홀로그램 --- */
+  /**
+   * 기록카드(매치 카드 + 라인업 표)의 **재질** (D-250).
+   *
+   * 값의 출처는 `design/hero-vault.html` 의 **단일 요소용** 값이다 (D-248).
+   *   --sedge  rgba(226,252,255,.50)   --sedge2 rgba(226,252,255,.26)
+   *   --g1 .22 / --g2 .10 / --g3 .018
+   *
+   * ⚠ **테두리(`edge`)는 hero-vault 값 그대로다. 면(`face`)만 우리가 다시 잡았다.**
+   *
+   * ① 왜 알파를 낮췄나 — hero-vault 의 금고에는 본문 글자가 없지만 기록카드에는 열 줄짜리
+   *    표가 얹힌다. `--g1`(.22)을 그대로 쓰면 면이 rgb(65,65,65) 까지 밝아져
+   *    `--color-meta`(#9a8080) 대비가 5.33:1 → **2.81:1** 로 무너진다.
+   *    사용자 지시가 **글자색 고정**이므로 맞추는 쪽은 면이다 (D-250).
+   *
+   * ② 왜 색까지 바꿨나 — hero-vault 의 면은 거의 흰색(232,255,255)이다. 그것을 대비에
+   *    맞는 알파(.05)까지 낮추면 rgb(29,24,24) 이 되는데, 이건 **유리가 아니라 그냥
+   *    한 단 밝은 회색**이다 (실제로 그렇게 찍어 보고 되돌렸다).
+   *    파랑은 휘도에 7.2% 만 기여한다(WCAG 상대휘도 계수). 그래서 **파랑 쪽으로 기울인
+   *    같은 계열 색**은 같은 휘도로 훨씬 진한 유리색을 낸다 — rgb(27,28,33).
+   *    meta 대비는 위 4.67 · 가운데 5.02 · 아래 5.21 로 전부 4.5 를 넘는다.
+   *
+   * 성능: `filter` · `backdrop-filter` · `box-shadow` 를 쓰지 않는다.
+   * 카드 한 장은 **그라데이션 한 겹**(`.holo-panel` 의 background-image)뿐이다.
+   */
+  --color-holo-edge: rgba(226, 252, 255, 0.5);
+  --color-holo-edge-soft: rgba(226, 252, 255, 0.26);
+  /** 유리판 안쪽 행 구분선 — `--color-line-soft` 자리를 대신한다 */
+  --color-holo-line: rgba(226, 252, 255, 0.12);
+  /** 면 (위 → 가운데 → 아래). 값을 바꾸면 위 ①② 의 대비 측정을 다시 해야 한다 */
+  --color-holo-face-1: rgba(120, 205, 255, 0.085);
+  --color-holo-face-2: rgba(100, 180, 235, 0.05);
+  --color-holo-face-3: rgba(80, 150, 200, 0.025);
+
   /* -------------------------------------------------------------- 게시판 --- */
   --color-board-nav: #120c0c;
   --color-board-nav-item: #1a1010;
@@ -514,6 +548,36 @@ a:hover {
 }
 
 /**
+ * 홀로그램 유리판 (D-250).
+ *
+ * 기록카드의 **바탕과 테두리만** 바꾼다. 글자색 · 배치 · 칸 순서는 건드리지 않는다.
+ * 테두리 색은 붙이는 쪽이 `border-holo-edge` 유틸리티로 준다 — 이 클래스는 면만 만든다.
+ *
+ * ── 왜 그라데이션 **한 겹**인가
+ *   기록실 목록에는 카드가 수십 장 깔린다. 카드마다 `filter` · `backdrop-filter` ·
+ *   `box-shadow` 를 주면 목록을 스크롤할 때마다 그만큼 합성이 늘어난다.
+ *   그래서 **`background-image` 한 줄**로 끝낸다 — DOM 노드도 늘리지 않는다.
+ *
+ * ── 맨 위 1px
+ *   유리판의 윗날이다. 카드 본문은 `padding-top` 아래에서 시작하므로 이 선 위에는
+ *   글자가 없다. 대비를 깎지 않으면서 「판」으로 읽히게 하는 유일한 밝은 조각이다.
+ *
+ * ── 면이 왜 이렇게 어두운가
+ *   `--color-holo-face-*` 주석 참조. 글자색을 못 바꾸므로 면을 낮춰서 맞췄다.
+ */
+.holo-panel {
+  background-color: var(--color-card);
+  background-image: linear-gradient(
+    180deg,
+    var(--color-holo-edge-soft) 0,
+    var(--color-holo-edge-soft) 1px,
+    var(--color-holo-face-1) 1px,
+    var(--color-holo-face-2) 46%,
+    var(--color-holo-face-3) 100%
+  );
+}
+
+/**
  * ---------------------------------------------------------------- 모바일 ---
  *
  * 좁은 화면에서는 고정폭을 풀고 여백을 줄인다. 가로 스크롤이 생기면 안 된다.
@@ -626,267 +690,8 @@ a:hover {
   }
 }
 
-/* ============================================================== 가챠샵 ===
- *
- * 「알」(위)을 **대체하지 않는다.** 같은 뜻을 다른 연출로 옮긴 새 판이고, 옛 판은
- * 그대로 살아 있다 (`CLAUDE.md` 10-4). 컴포넌트는 `packages/ui/src/gacha/` 에 있다.
- *
- * ── 색은 D-204 토큰과 흰색 투명도뿐이다. 새 색을 만들지 않았다
- * ── 그림자 유틸리티(`shadow-*`)를 쓰지 않는다
- * ── 성능 규칙 (더미에 캡슐이 105개 깔린다)
- * ```
- * filter: blur()      캡슐마다 주면 **칸마다 합성 레이어**가 생긴다 → 더미에서는 금지.
- *                     `.capsule-veiled-frosted` · `.capsule-picked` 는 화면에 하나뿐일 때만
- * will-change         **도는 줄 하나(.gacha-belt)** 에만 준다
- * 애니메이션 속성      transform 하나. left · margin · background-position 을 움직이지 않는다
- * ```
- */
-
-/**
- * 캡슐 몸통.
- * 위가 밝고 아래로 갈수록 어두워지는 공. 하이라이트는 흰색 투명도 하나뿐이다.
- */
-.capsule-body {
-  background:
-    radial-gradient(54% 36% at 33% 20%, rgb(246 237 237 / 0.13), transparent 70%),
-    linear-gradient(170deg, var(--color-card-2) 0%, var(--color-card) 55%, var(--color-page) 100%);
-}
-
-/**
- * 가벼운 판(`flat`).
- * 유리막 한 겹을 빼는 대신 몸통 배경이 그 역할을 조금 대신한다.
- * 옛 판을 지우지 않고 둘 다 남긴다 (`CLAUDE.md` 10-4).
- */
-.capsule-body-flat {
-  background: linear-gradient(
-    170deg,
-    var(--color-card-2) 0%,
-    var(--color-card) 62%,
-    var(--color-page) 100%
-  );
-}
-
-/**
- * 유리막. 위쪽 절반은 살짝 밝고 아래쪽은 어둡다.
- * `backdrop-filter` 를 쓰지 않는다 — 그것 하나로 합성 레이어가 생긴다.
- */
-.capsule-glass {
-  background:
-    radial-gradient(44% 30% at 32% 18%, rgb(246 237 237 / 0.16), transparent 68%),
-    linear-gradient(
-      180deg,
-      rgb(246 237 237 / 0.07) 0%,
-      rgb(246 237 237 / 0.015) 44%,
-      rgb(6 5 5 / 0.34) 100%
-    );
-  border-top: 1px solid rgb(246 237 237 / 0.1);
-}
-
-/**
- * 「안이 잘 안 보인다」 — **blur 없이** 만든다 (2026-09-01 정정).
- *
- * ```
- * opacity 0.42   흐리게
- * scale 1.32     원 밖으로 넘겨 잘라낸다 → 형태가 뭉개진다
- * ```
- * 둘 다 합성만 쓰고 레이어를 만들지 않는다. 105개가 깔려도 안전하다.
- */
-.capsule-veiled {
-  opacity: 0.42;
-}
-
-.capsule-veiled > * {
-  transform: scale(1.32);
-}
-
-/**
- * 진짜 흐리게(`filter: blur`).
- *
- * ⚠ **한 화면에 하나만.** 뽑혀서 크게 나온 캡슐 한 개 전용이다.
- * 하나면 레이어도 하나라 괜찮다. 더미에서는 켜지 않는다.
- */
-.capsule-veiled-frosted {
-  filter: blur(3px);
-}
-
-/** 여는 중 — 마크가 또렷해진다. 라이브러리 없이 keyframes 둘 */
-@keyframes capsule-reveal {
-  from {
-    opacity: 0.42;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes capsule-reveal-mark {
-  from {
-    transform: scale(1.32);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-
-.capsule-reveal {
-  animation: capsule-reveal 620ms ease-out forwards;
-}
-
-.capsule-reveal > * {
-  animation: capsule-reveal-mark 620ms ease-out forwards;
-}
-
-/**
- * 뚜껑 — 위쪽 반구.
- * 열리면 위로 젖혀진다. 캡슐 몸통에 `overflow: hidden` 을 걸지 않은 이유가 이것이다.
- */
-.capsule-lid {
-  position: absolute;
-  top: -1px;
-  left: -1px;
-  right: -1px;
-  height: 50%;
-  /* 테두리를 `--color-line`(#2a1616)으로 두면 바닥에 묻혀 **뚜껑이 안 보인다.**
-     흰색 투명도로 얇은 유리 테를 준다 — 새 색이 아니다 (D-204 허용 범위) */
-  border: 1px solid rgb(246 237 237 / 0.16);
-  border-bottom: none;
-  border-radius: 999px 999px 0 0;
-  background: linear-gradient(180deg, rgb(246 237 237 / 0.12), rgb(26 16 16 / 0.92));
-  transform-origin: 50% 100%;
-}
-
-/**
- * 열린 뚜껑.
- *
- * 처음엔 `-34% · -16deg` 였는데 렌더로 보니 **그림자처럼** 보였다 (2026-09-01).
- * 캡슐 위에 확실히 떠 있어야 「열렸다」로 읽힌다.
- */
-.capsule-lid-open {
-  transform: translateY(-44%) rotate(-20deg);
-  opacity: 0.8;
-}
-
-@keyframes capsule-open {
-  0% {
-    transform: none;
-    opacity: 1;
-  }
-  30% {
-    transform: translateY(3%);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-44%) rotate(-20deg);
-    opacity: 0.8;
-  }
-}
-
-.capsule-lid-opening {
-  animation: capsule-open 620ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-/**
- * 뽑힌 캡슐 하나.
- *
- * ⚠ `filter` 다. **화면에 하나뿐**일 때만 쓴다 (`highlightKey` 는 하나다).
- * `transform` 은 건드리지 않는다 — 더미가 어긋남을 인라인 `transform` 으로 주기 때문이다.
- */
-@keyframes capsule-picked {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 3px rgb(217 43 43 / 0.35));
-  }
-  50% {
-    filter: drop-shadow(0 0 9px rgb(217 43 43 / 0.7));
-  }
-}
-
-.capsule-picked {
-  animation: capsule-picked 2.4s ease-in-out infinite;
-}
-
-/* ------------------------------------------------------- 도는 진열대 --- */
-
-/** 벨트가 보이는 창. 넘치는 부분을 자른다 */
-.gacha-belt-viewport {
-  overflow: hidden;
-}
-
-/**
- * 회전초밥 벨트.
- *
- * 목록을 두 벌 이어 놓고 정확히 **한 벌만큼**(=50%) 민 뒤 처음으로 돌아간다.
- * 두 벌이 같으므로 되돌아간 순간이 보이지 않는다.
- * 지속시간(`--belt-dur`)은 항목 수에 비례한다 → **픽셀 속도가 일정**하다.
- */
-@keyframes gacha-belt {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.gacha-belt {
-  animation: gacha-belt var(--belt-dur, 30s) linear infinite;
-  /* 합성 레이어를 **여기 하나에만** 만든다. 항목마다 주면 레이어가 폭발한다 */
-  will-change: transform;
-}
-
-/** 읽을 시간을 준다 — 마우스를 올리거나 포커스가 들어오거나 밖에서 멈추면 선다 */
-.gacha-belt-viewport:hover .gacha-belt,
-.gacha-belt-viewport:focus-within .gacha-belt,
-.gacha-belt-paused {
-  animation-play-state: paused;
-}
-
-/**
- * 움직임을 줄여 달라고 설정한 사용자.
- *
- * 돌리지 않고 **직접 밀어 보게** 한다. 그때 두 번째 벌은 감춘다 —
- * 같은 클랜이 두 번 보이면 목록으로 읽을 때 틀린 정보가 된다.
- */
-@media (prefers-reduced-motion: reduce) {
-  .gacha-belt {
-    animation: none;
-    will-change: auto;
-  }
-
-  .gacha-belt-clone {
-    display: none;
-  }
-
-  .gacha-belt-viewport {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .capsule-reveal,
-  .capsule-reveal > *,
-  .capsule-lid-opening,
-  .capsule-picked {
-    animation: none;
-  }
-
-  /* 애니메이션을 끄면 «끝난 모습» 으로 세워 둔다. 중간에 멈춘 화면을 남기지 않는다 */
-  .capsule-reveal {
-    opacity: 1;
-  }
-
-  .capsule-reveal > * {
-    transform: scale(1);
-  }
-
-  .capsule-lid-opening {
-    transform: translateY(-44%) rotate(-20deg);
-    opacity: 0.8;
-  }
-
-  .capsule-picked {
-    filter: drop-shadow(0 0 6px rgb(217 43 43 / 0.5));
-  }
-}
+/* 가챠샵 CSS(캡슐 · 회전 진열대)는 2026-09-01 사용자 지시로 통째로 지웠다.
+ * 컴포넌트도 함께 지웠다 — packages/ui/src/index.ts 의 같은 자리 주석 참고. */
 
 /* ============================================================ 신전 히어로 ===
  *

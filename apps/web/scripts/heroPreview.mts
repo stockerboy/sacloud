@@ -3,7 +3,8 @@
  *
  * 운영 코드가 아니다. 3000번 포트를 다른 작업이 쓰고 있어 dev 서버를 띄울 수 없을 때
  * 「구름이 어떻게 흐르는지 · 번개가 얼마나 자주 치는지 · 손가락 틈에 마크가 맞는지」를
- * 눈으로 보려고 만들었다. `gachaPreview.mts` 를 본떴다.
+ * 눈으로 보려고 만들었다. `gachaPreview.mts` 를 본떴다 —
+ * **그 파일은 2026-09-01 가챠샵과 함께 지웠다.** 이 파일만 남았다.
  *
  * ```
  * npx tsx apps/web/scripts/heroPreview.mts --out hero.html

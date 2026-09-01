@@ -6,7 +6,7 @@ import type { Metadata } from 'next'
  * 원본 문구는 가져오지 않는다(CLAUDE.md 3장 4번). 아래 본문은 **우리가 새로 작성한 초안**이며
  * 법적 검토를 받지 않았다. 서비스 오픈 전 검토·교체가 필요하다 (docs/DECISIONS.md D-011).
  */
-export const metadata: Metadata = { title: '개인정보 취급방침 - SACLOUD' }
+export const metadata: Metadata = { title: '개인정보 취급방침 - 3rd cloud' }
 
 const SECTIONS: ReadonlyArray<{ title: string; body: readonly string[] }> = [
   {
