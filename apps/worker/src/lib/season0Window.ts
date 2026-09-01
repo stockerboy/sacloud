@@ -70,10 +70,29 @@ export const SEASON0_FROM = new Date('2026-06-30T15:00:00.000Z')
 export const SEASON0_TO: Date | null = null
 
 /**
+ * **옛 대상 origin (미러 + 넥슨).** 지우지 않는다 (`CLAUDE.md` 10-4).
+ *
+ * 2026-09-01 에 `nexon_barracks` 를 더했다. 그 전의 집계 결과를 대조할 일이 생기면 이 값을 쓴다.
+ */
+export const SEASON0_ORIGINS_V1 = ['3rd.supply', 'nexon'] as const
+
+/**
  * 계산·집계 대상 origin. **앞에 있는 것이 우선한다** —
  * 같은 `sourceMatchId` 가 둘 다 있으면 앞쪽을 남기고 뒤쪽을 버린다.
+ *
+ * ── ⚠ `nexon_barracks` 를 더했다 (2026-09-01)
+ *
+ * IPL(`nolink`)의 경기는 병영수첩에서 왔고 `origin='nexon_barracks'` 다
+ * (`jobs/iplProject.ts`). 그런데 이 목록에 없어서 **시즌0 집계에서 통째로 빠져 있었다** —
+ * `season0 --leagues nolink` 가 선수 0명 · 클랜 0개를 돌려줬다 (2026-09-01 실측).
+ * `jobs/iplClanRollup.ts` 머리말이 *"`season0Apply` 는 origin 필터에서 빠지고"* 라고
+ * 적어 둔 것이 바로 이것이다.
+ *
+ * 다른 리그에는 영향이 없다. `nexon_barracks` 경기가 있는 리그는 `nolink` 뿐이다
+ * (2026-09-01 로컬 실측: sanply·supply·daerule 은 전부 `3rd.supply`).
+ * 맨 뒤에 둔 것은 중복 제거에서 **미러와 넥슨이 먼저 이기게** 하기 위해서다.
  */
-export const SEASON0_ORIGINS = ['3rd.supply', 'nexon'] as const
+export const SEASON0_ORIGINS = ['3rd.supply', 'nexon', 'nexon_barracks'] as const
 
 /** 시즌0 은 리그 `Season` 표에서 번호 0 · `beta` 다 (D-098 · D-175) */
 export const SEASON0_NUMBER = 0

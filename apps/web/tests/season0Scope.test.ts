@@ -175,12 +175,19 @@ describe('시즌0 창은 한 곳에서만 정의된다 (D-175 · D-178)', () => 
     expect(where.startAt).toEqual({ gte: SEASON0_FROM })
   })
 
+  /**
+   * ⚠ 2026-09-01 — 목록에 `nexon_barracks` 가 늘었다.
+   *
+   * IPL 경기는 병영수첩에서 오고 `origin='nexon_barracks'` 다. 목록에 없던 동안
+   * 엔진 집계에서 빠져 있었고, 화면 래더 판정에서도 같이 빠졌다.
+   * **두 쪽이 같은 상수를 읽는다** — 그래서 한쪽만 고쳐질 수 없다. 그것이 이 단언의 목적이다.
+   */
   it('래더 판정 origin 이 엔진 집계 대상과 같다', () => {
-    expect([...SEASON0_ORIGINS]).toEqual(['3rd.supply', 'nexon'])
+    expect([...SEASON0_ORIGINS]).toEqual(['3rd.supply', 'nexon', 'nexon_barracks'])
     const or = ladderMatchWhere().OR
     expect(or).toEqual([
       { redRatingUpdate: { not: null } },
-      { origin: { in: ['3rd.supply', 'nexon'] } },
+      { origin: { in: ['3rd.supply', 'nexon', 'nexon_barracks'] } },
     ])
   })
 })

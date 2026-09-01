@@ -60,10 +60,23 @@ interface Target {
   detail: LeaguePlayerDetail
 }
 
-/** 래더 경기를 충분히 뛴 선수 — 최근 경기 참가자 중에서 찾는다 */
+/**
+ * 래더 경기를 충분히 뛴 선수 — 최근 경기 참가자 중에서 찾는다.
+ *
+ * ⚠ **참가자가 있는 경기만 본다** (2026-09-01).
+ *   `SEASON0_ORIGINS` 에 `nexon_barracks` 가 들어오면서 IPL 경기가 래더 경기가 됐는데,
+ *   IPL 은 **경기는 있고 라인업이 없는 구간이 크다** — 매치목록 원문에 선수 칸이 없어
+ *   배틀로그를 받은 경기에만 `MatchPlayerStat` 이 있다 (`jobs/battlelogLineup.ts`).
+ *   그래서 "가장 최근 12경기" 를 그냥 집으면 참가자 0명인 경기만 잡혀 후보가 비었고,
+ *   아래 「대상을 찾는다」 검사가 배선이 끊긴 것처럼 빨개졌다.
+ *
+ *   이 테스트가 보려는 것은 **선수 누적이 본문과 같은 모집단인가** 이므로,
+ *   애초에 선수가 없는 경기는 표본이 될 수 없다. 조건을 좁히는 것이 맞다 —
+ *   문턱을 낮추거나 검사를 지우는 것이 아니다.
+ */
 async function findTargets(limit: number): Promise<Target[]> {
   const matches = await prisma.match.findMany({
-    where: scoped(),
+    where: scoped({ stats: { some: {} } }),
     orderBy: [{ startAt: 'desc' }, { id: 'desc' }],
     take: 12,
     select: {

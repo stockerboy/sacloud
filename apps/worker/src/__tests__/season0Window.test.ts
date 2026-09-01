@@ -10,6 +10,7 @@ import {
   SEASON0_FROM,
   SEASON0_NUMBER,
   SEASON0_ORIGINS,
+  SEASON0_ORIGINS_V1,
   SEASON0_TO,
   SEASON0_TYPE,
   season0MatchWhere,
@@ -35,9 +36,21 @@ describe('시즌0 창 (D-175)', () => {
     expect(where.startAt.lt).toBeUndefined()
   })
 
-  it('미러와 넥슨을 **둘 다** 본다. 미러가 앞이다(중복이면 미러가 남는다)', () => {
-    expect([...SEASON0_ORIGINS]).toEqual(['3rd.supply', 'nexon'])
-    expect(season0MatchWhere().origin.in).toEqual(['3rd.supply', 'nexon'])
+  /**
+   * ⚠ 2026-09-01 — `nexon_barracks` 를 더했다. 이 단언이 그 자물쇠다.
+   *
+   * IPL(`nolink`)의 경기는 병영수첩에서 왔고 `origin='nexon_barracks'` 다.
+   * 이 목록에 없어서 **시즌0 집계에서 통째로 빠져 있었다** — `season0 --leagues nolink`
+   * 가 선수 0명·클랜 0개를 돌려줬다. 맨 뒤에 둔 것은 중복 제거에서 미러·넥슨이
+   * 먼저 이기게 하기 위해서다. 옛 값은 `SEASON0_ORIGINS_V1` 에 남아 있다.
+   */
+  it('미러 · 넥슨 · 병영수첩을 **셋 다** 본다. 미러가 앞이다(중복이면 미러가 남는다)', () => {
+    expect([...SEASON0_ORIGINS]).toEqual(['3rd.supply', 'nexon', 'nexon_barracks'])
+    expect(season0MatchWhere().origin.in).toEqual(['3rd.supply', 'nexon', 'nexon_barracks'])
+  })
+
+  it('옛 목록을 지우지 않았다 (CLAUDE.md 10-4)', () => {
+    expect([...SEASON0_ORIGINS_V1]).toEqual(['3rd.supply', 'nexon'])
   })
 
   it('replay 범위와 조회 범위가 같은 값에서 나온다', () => {
