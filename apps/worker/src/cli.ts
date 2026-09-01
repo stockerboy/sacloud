@@ -80,7 +80,11 @@ import {
 } from './jobs/clanHexV2Summary.js'
 import { linkClanNumbers } from './jobs/clanNumber.js'
 import { runRate } from './jobs/rate.js'
-import { createRatingSnapshot, restoreRatingSnapshot } from './jobs/ratingBackup.js'
+import {
+  createRatingSnapshot,
+  createRatingSnapshotStream,
+  restoreRatingSnapshotAuto,
+} from './jobs/ratingBackup.js'
 import { formatSnapshot, takeDbSnapshot } from './jobs/dbSnapshot.js'
 import { checkSyncFreshness, formatSyncFreshness } from './jobs/syncFreshness.js'
 import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
@@ -356,9 +360,11 @@ function usage(): void {
               --origins 는 계산 범위를 바꾼다. 기본은 origin='nexon' 이라
               IPL(nexon_barracks)이 통째로 빠진다. **--dry-run 에서만 쓸 수 있다** —
               원본 점수를 덮지 않기 위한 가드다 (3-A 2번). 받아 적는 경로는 season0Apply
-  rating-backup  --league <slug> [--stamp <문자열>]
-              replay 전 래더 스냅샷을 JSON 으로 백업한다. **replay 전에 반드시 돌린다**
-  rating-restore --file <경로> [--dry-run]
+  rating-backup  --league <slug> [--stamp <문자열>] [--legacy-json]
+              replay 전 래더 스냅샷을 백업한다. **replay 전에 반드시 돌린다**
+              기본은 줄 단위(.jsonl) 스트리밍이다 — 202만 행짜리 리그도 통과한다.
+              --legacy-json 은 옛 통짜 JSON 방식이다. 작은 리그에서만 쓴다
+  rating-restore --file <경로> [--dry-run]      (.json · .jsonl 둘 다 받는다)
               백업 스냅샷으로 되돌린다 (삭제하지 않고 값만 복원)
   db-snapshot [--stamp <문자열>]
               DB 이전 검증용 기준선 — 모델별 행 수 · 기간 · 무결성. 읽기만 한다
@@ -935,16 +941,34 @@ async function main(): Promise<number> {
         return 1
       }
       const stamp = stringFlag(args, 'stamp') ?? new Date().toISOString().replace(/[:.]/g, '-')
-      const made = await createRatingSnapshot({ leagueSlug, stamp })
+      /* 기본은 v2(줄 단위 스트리밍)다. v1 은 sanply(202만 행)에서 죽는다 —
+         findMany 가 한 번에 다 읽고 JSON.stringify 가 통짜 문자열을 만든다.
+         `--legacy-json` 으로 옛 방식을 그대로 부를 수 있다 (CLAUDE.md 10-4) */
+      if (boolFlag(args, 'legacy-json')) {
+        const made = await createRatingSnapshot({ leagueSlug, stamp })
+        if (!made) return 1
+        table([
+          {
+            파일: made.path,
+            선수: made.snapshot.counts.leaguePlayers,
+            클랜: made.snapshot.counts.leagueClans,
+            경기스탯: made.snapshot.counts.matchPlayerStats,
+            경기: made.snapshot.counts.matches,
+            checksum: made.snapshot.checksum,
+          },
+        ])
+        return 0
+      }
+      const made = await createRatingSnapshotStream({ leagueSlug, stamp })
       if (!made) return 1
       table([
         {
           파일: made.path,
-          선수: made.snapshot.counts.leaguePlayers,
-          클랜: made.snapshot.counts.leagueClans,
-          경기스탯: made.snapshot.counts.matchPlayerStats,
-          경기: made.snapshot.counts.matches,
-          checksum: made.snapshot.checksum,
+          선수: made.header.counts.leaguePlayers,
+          클랜: made.header.counts.leagueClans,
+          경기스탯: made.header.counts.matchPlayerStats,
+          경기: made.header.counts.matches,
+          checksum: made.checksum,
         },
       ])
       return 0
@@ -1027,7 +1051,8 @@ async function main(): Promise<number> {
         fail('--file <경로> 가 필요하다')
         return 1
       }
-      const result = await restoreRatingSnapshot({ path, dryRun: ctx.dryRun })
+      /* v1(통짜 JSON) · v2(JSONL) 를 파일 첫 줄로 스스로 가른다 */
+      const result = await restoreRatingSnapshotAuto({ path, dryRun: ctx.dryRun })
       table([result.restored])
       return 0
     }
