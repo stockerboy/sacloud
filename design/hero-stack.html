@@ -110,7 +110,7 @@ a{color:inherit;text-decoration:none;}
   display:flex;flex-direction:column;font-size:13px;}
 
 /* ── ① 경기 상세 — MatchCard.tsx ───────────────────────── */
-.mrow{display:flex;align-items:stretch;border:1px solid var(--line);min-height:70px;}
+.mrow{display:flex;align-items:stretch;border:1px solid var(--line);min-height:64px;}
 .mbar{width:3px;flex:0 0 3px;}
 .mbar.win{background:var(--win);}
 .mbody{flex:1;min-width:0;display:flex;flex-direction:column;}
@@ -120,10 +120,10 @@ a{color:inherit;text-decoration:none;}
 .mr2{display:flex;align-items:center;flex:1;padding:0 7px 5px;}
 .res{width:34px;flex:0 0 34px;text-align:center;font-weight:700;letter-spacing:.08em;font-size:12px;}
 .res.win{color:var(--win);}
-.kdabox{width:74px;flex:0 0 74px;text-align:center;}
+.kdabox{width:92px;flex:0 0 92px;text-align:center;}
 .mvp{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--mvp);
   border-radius:var(--radius);padding:1px 4px;font-size:8px;line-height:1;color:var(--mvp);}
-.kda{font-size:14px;font-weight:700;color:var(--strong);line-height:1.25;}
+.kda{font-size:13px;font-weight:700;color:var(--strong);line-height:1.25;white-space:nowrap;}
 .kda .ls{color:var(--lose);}
 .krate{font-size:10px;color:var(--win);line-height:1;}
 .clans{flex:1;min-width:0;text-align:center;font-size:11px;}
@@ -137,7 +137,7 @@ a{color:inherit;text-decoration:none;}
 .chev{width:13px;height:13px;flex:0 0 13px;margin-left:4px;color:var(--faint);}
 
 .cmp{margin-top:9px;border:1px solid var(--line);}
-.cmpr{display:flex;align-items:center;gap:6px;padding:6px 8px 6px 0;font-size:11px;}
+.cmpr{display:flex;align-items:center;gap:6px;padding:4px 8px 4px 0;font-size:11px;}
 .cmpr+.cmpr{border-top:1px solid var(--line-soft);}
 .cbar{width:3px;align-self:stretch;flex:0 0 3px;}
 .cbar.win{background:var(--win);} .cbar.lose{background:var(--lose);}
@@ -148,12 +148,30 @@ a{color:inherit;text-decoration:none;}
 .cdiv{width:112px;flex:0 0 112px;text-align:right;color:var(--faint);font-size:10px;}
 .fa{color:var(--faint);}
 
+/* 참가자 표 */
+.tb{display:flex;align-items:stretch;border:1px solid var(--line);margin-top:7px;}
+.tbar{width:3px;flex:0 0 3px;}
+.tbar.win{background:var(--win);}
+.tbody{flex:1;min-width:0;}
+.th{display:flex;align-items:center;padding:3px 0;font-size:8.5px;letter-spacing:.1em;color:var(--faint);}
+.tr{display:flex;align-items:center;border-top:1px solid var(--line-soft);padding:3px 0;font-size:10px;}
+.tr.mvprow{background:var(--card2);box-shadow:inset 3px 0 0 0 var(--accent);}
+.c1{flex:1;min-width:0;padding-left:8px;display:flex;align-items:center;gap:4px;}
+.c2{width:74px;flex:0 0 74px;text-align:center;}
+.c3{width:52px;flex:0 0 52px;text-align:center;color:var(--meta);}
+.c4{width:52px;flex:0 0 52px;text-align:center;color:var(--meta);}
+.nk{color:var(--text);}
+.sg{color:var(--strong);}
+.sm{font-size:9px;color:var(--meta);}
+.mvpb{display:inline-flex;align-items:center;gap:2px;background:var(--mvp);color:#0b0707;
+  border-radius:var(--radius);padding:1px 4px;font-size:8px;font-weight:700;line-height:1;}
+
 /* ── ②③ 육각형 두 장 ──────────────────────────────────── */
 .chead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
   font-size:12px;color:var(--strong);}
 .chead .dsp{font-size:17px;line-height:1;}
 .chead .meta{font-size:9.5px;color:var(--meta);}
-.hexsvg{display:block;margin:1px auto 0;width:100%;max-width:222px;height:auto;}
+.hexsvg{display:block;margin:1px auto 0;width:100%;max-width:212px;height:auto;}
 .lg{display:flex;justify-content:center;gap:12px;font-size:10px;color:var(--meta);margin-top:1px;}
 .lgi{display:inline-flex;align-items:center;gap:4px;}
 .sw{width:7px;height:7px;border:1px solid var(--text);display:inline-block;}
@@ -182,6 +200,11 @@ a{color:inherit;text-decoration:none;}
 .slab{display:block;font-size:10px;color:var(--meta);}
 .sval{display:block;margin-top:3px;font-size:13px;color:var(--text);}
 .sval.st{color:var(--strong);}
+.pmore{display:flex;align-items:baseline;gap:8px;margin-top:8px;padding-top:6px;
+  border-top:1px solid var(--line-soft);font-size:11px;}
+.pl2{color:var(--strong);width:36px;flex:0 0 36px;}
+.pm{flex:1;min-width:0;color:var(--meta);font-size:10px;}
+.pr2{color:var(--text);font-size:13px;}
 
 /* ── ⑤ 클랜원 목록 — ClanRoster.tsx (variant="list") ───── */
 .rlist{margin-top:5px;}
@@ -270,6 +293,23 @@ a{color:inherit;text-decoration:none;}
     <div class="cmpr"><span class="cbar win"></span><span class="cres win">승리</span><span class="mk a"></span><span class="cnm">hilarious-</span><span class="cfs">선레드</span><span class="cdiv num">1부리그 1,149점</span></div>
     <div class="cmpr"><span class="cbar lose"></span><span class="cres lose">패배</span><span class="mk b"></span><span class="cnm">Celebrity</span><span class="cfs">선블루</span><span class="cdiv">2부리그 <span class="fa">알수없음</span></span></div>
   </div>
+  <!-- 참가자 표 (TeamBlock) — MVP 행은 좌측 진홍 막대 + 한 단 올린 바탕 -->
+  <div class="tb">
+    <div class="tbar win"></div>
+    <div class="tbody">
+      <div class="th"><span class="c1">플레이어</span><span class="c2">kda</span><span class="c3">무기</span><span class="c4">포지션</span></div>
+      <div class="tr mvprow">
+        <span class="c1"><span class="mk a"></span><span class="nk">nudi</span><span class="mvpb"><span>&#9733;</span>MVP</span></span>
+        <span class="c2"><span class="num sg">10 / <span class="ls">1</span> / 1</span></span>
+        <span class="c3">라이플</span><span class="c4">B리베</span>
+      </div>
+      <div class="tr">
+        <span class="c1"><span class="mk a"></span><span class="nk">spearr</span><span class="num sm">[S]</span></span>
+        <span class="c2"><span class="num sg">7 / <span class="ls">9</span> / 5</span></span>
+        <span class="c3">스나이퍼</span><span class="c4">스나수</span>
+      </div>
+    </div>
+  </div>
 </div></div></div>
       <div class="fly" style="--i:1" id="sa-f1"><div class="tilt">
 <div class="cd">
@@ -289,6 +329,16 @@ a{color:inherit;text-decoration:none;}
     <div><span class="slab">승 &middot; 패</span><span class="sval num">78 &middot; 50</span></div>
     <div><span class="slab">승률</span><span class="sval num st">60.9%</span></div>
     <div><span class="slab">킬뎃</span><span class="sval num">112.4%</span></div>
+  </div>
+  <div class="pmore">
+    <span class="pl2">IPL</span>
+    <span class="num pm">64전 &middot; 승률 51.6%</span>
+    <span class="num pr2">2,880<span class="pjeom">점</span></span>
+  </div>
+  <div class="pmore">
+    <span class="pl2">열산</span>
+    <span class="num pm">12전 &middot; 승 8 &middot; 패 4</span>
+    <span class="pr2 fa">배치고사</span>
   </div>
 </div></div></div>
       <div class="fly" style="--i:2" id="sa-f2"><div class="tilt">
@@ -383,6 +433,23 @@ a{color:inherit;text-decoration:none;}
     <div class="cmpr"><span class="cbar win"></span><span class="cres win">승리</span><span class="mk a"></span><span class="cnm">hilarious-</span><span class="cfs">선레드</span><span class="cdiv num">1부리그 1,149점</span></div>
     <div class="cmpr"><span class="cbar lose"></span><span class="cres lose">패배</span><span class="mk b"></span><span class="cnm">Celebrity</span><span class="cfs">선블루</span><span class="cdiv">2부리그 <span class="fa">알수없음</span></span></div>
   </div>
+  <!-- 참가자 표 (TeamBlock) — MVP 행은 좌측 진홍 막대 + 한 단 올린 바탕 -->
+  <div class="tb">
+    <div class="tbar win"></div>
+    <div class="tbody">
+      <div class="th"><span class="c1">플레이어</span><span class="c2">kda</span><span class="c3">무기</span><span class="c4">포지션</span></div>
+      <div class="tr mvprow">
+        <span class="c1"><span class="mk a"></span><span class="nk">nudi</span><span class="mvpb"><span>&#9733;</span>MVP</span></span>
+        <span class="c2"><span class="num sg">10 / <span class="ls">1</span> / 1</span></span>
+        <span class="c3">라이플</span><span class="c4">B리베</span>
+      </div>
+      <div class="tr">
+        <span class="c1"><span class="mk a"></span><span class="nk">spearr</span><span class="num sm">[S]</span></span>
+        <span class="c2"><span class="num sg">7 / <span class="ls">9</span> / 5</span></span>
+        <span class="c3">스나이퍼</span><span class="c4">스나수</span>
+      </div>
+    </div>
+  </div>
 </div></div></div>
       <div class="fly" style="--i:1" id="td-f1"><div class="tilt">
 <div class="cd">
@@ -402,6 +469,16 @@ a{color:inherit;text-decoration:none;}
     <div><span class="slab">승 &middot; 패</span><span class="sval num">78 &middot; 50</span></div>
     <div><span class="slab">승률</span><span class="sval num st">60.9%</span></div>
     <div><span class="slab">킬뎃</span><span class="sval num">112.4%</span></div>
+  </div>
+  <div class="pmore">
+    <span class="pl2">IPL</span>
+    <span class="num pm">64전 &middot; 승률 51.6%</span>
+    <span class="num pr2">2,880<span class="pjeom">점</span></span>
+  </div>
+  <div class="pmore">
+    <span class="pl2">열산</span>
+    <span class="num pm">12전 &middot; 승 8 &middot; 패 4</span>
+    <span class="pr2 fa">배치고사</span>
   </div>
 </div></div></div>
       <div class="fly" style="--i:2" id="td-f2"><div class="tilt">
