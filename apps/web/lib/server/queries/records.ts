@@ -31,6 +31,7 @@ import { playerJudgedPosition } from './playerPositionQuery'
 import { playerTraits } from './playerTraits'
 import { leagueClanMetrics } from './clanMetrics'
 import { leagueClanHexagon, leagueClanRoundMetrics } from './clanRoundMetrics'
+import { leagueClanHexV2 } from './clanHexV2'
 import { leagueClanRoster } from './clanRoster'
 import { toKstIso } from '../format'
 import {
@@ -401,7 +402,7 @@ export async function getLeagueClanShow(
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
   }
 
-  const [rank, record, metrics, roster, roundMetrics, hexagon] = await Promise.all([
+  const [rank, record, metrics, roster, roundMetrics, hexagon, hexagonV2] = await Promise.all([
     clanRankOf({
       id: leagueClan.id,
       leagueId: leagueClan.leagueId,
@@ -421,6 +422,13 @@ export async function getLeagueClanShow(
     leagueClanRoundMetrics(leagueClan.leagueId, leagueClan.id).catch(() => null),
     /* 클랜 육각형 (SITE_SPEC_V2 5-5절). 위 지표와 **같은 캐시**를 읽는다 — 질의가 늘지 않는다 */
     leagueClanHexagon(leagueClan.leagueId, leagueClan.id).catch(() => null),
+    /* 클랜 육각형 **V2** (D-217 · D-235). 옛 육각형과 **다른 재료·다른 표**를 읽는다 —
+       이쪽은 `MatchClanHexV2`(배틀로그만)이고 리그 분포를 따로 10분 캐시한다.
+       옛 판을 지우지 않으므로 둘 다 내려보낸다 (D-235 Q9 · `CLAUDE.md` 10-4).
+       배틀로그 행이 없는 클랜은 `null` 이고 화면은 카드를 안 그린다 (D-106) */
+    leagueClanHexV2({ leagueClanId: leagueClan.id, leagueId: leagueClan.leagueId }).catch(
+      () => null,
+    ),
   ])
 
   return {
@@ -445,6 +453,7 @@ export async function getLeagueClanShow(
     roster,
     round_metrics: roundMetrics,
     hexagon,
+    hexagon_v2: hexagonV2,
   }
 }
 

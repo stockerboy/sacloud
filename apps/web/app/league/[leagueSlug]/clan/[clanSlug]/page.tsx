@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
   ClanHexagon,
+  ClanHexagonV2,
   ClanMetrics,
   ClanRoundMetrics,
   ClanRoster,
@@ -112,12 +113,22 @@ export default function LeagueClanRecordPage({
 
   return (
     <div className="pc-container pb-[40px]">
-      {/* ── 1. 클랜 육각형. 배틀로그가 없으면 `null` 이라 통째로 빠진다 */}
-      {data.hexagon ? (
+      {/* ── 1. 클랜 육각형. 배틀로그가 없으면 `null` 이라 통째로 빠진다
+             2026-09-01 (D-217 · D-235 Q9): 육각형은 **새 6축**이 그린다
+               스나싸움 · 소수싸움 · 세이브 · 게임템포 · B어택성공 · A어택성공
+             옛 6축은 **지우지 않고** 바로 아래에 줄 표기로 남긴다.
+             `기본거 없애고` 는 육각형에서 빼라는 말이지 값을 없애라는 말이 아니다
+             (`CLAUDE.md` 3장 8번 — 데이터가 사라지면 그것은 결함이다). */}
+      {data.hexagon_v2 || data.hexagon ? (
         <section className="mt-[40px]">
           <EggVeilPanel state={egg} note={CLAN_EGG_GUIDE}>
             <div className={`${PROFILE_PANEL} px-5 py-4`}>
-              <ClanHexagon hexagon={data.hexagon} />
+              {data.hexagon_v2 ? <ClanHexagonV2 hexagon={data.hexagon_v2} /> : null}
+              {data.hexagon ? (
+                <div className={data.hexagon_v2 ? 'mt-5 border-t border-line-soft pt-1' : ''}>
+                  <ClanHexagon hexagon={data.hexagon} variant="list" />
+                </div>
+              ) : null}
             </div>
           </EggVeilPanel>
         </section>

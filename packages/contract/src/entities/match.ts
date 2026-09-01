@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { ClanMark, Count, Id, IsoDateTime, Percent, Rating, RatingUpdate, Slug } from '../common'
 import { Division, TeamSide, Weapon } from '../codes'
+import { ClanHexagonV2 } from '../clanTraitsV2'
 import { ClanSummary, PlayerSummary } from './summaries'
 import { GameMap } from './league'
 
@@ -224,10 +225,47 @@ export const MatchListItem = z.object({
 })
 export type MatchListItem = z.infer<typeof MatchListItem>
 
+/**
+ * 경기 상세에 딸린 **클랜 육각형 V2** 한쪽 (D-217 · D-235 Q7).
+ *
+ * `league_clan_id` 를 함께 싣는 이유: 화면이 **어느 쪽이 우리인지** 를 스스로 정해야 한다.
+ * 응답의 `league_clan.league_clan_id` 와 같으면 우리(진홍 채움), 아니면 상대(선만)다
+ * (D-235 Q10). 값만 내려보내면 화면이 슬롯 이름으로 짐작하게 되고, 그 짐작은
+ * 예전에 `선레드` 표기를 뒤집었던 바로 그 실수다 (D-207).
+ */
+export const MatchClanHexagonV2 = z.object({
+  league_clan_id: Id,
+  hexagon: ClanHexagonV2,
+})
+export type MatchClanHexagonV2 = z.infer<typeof MatchClanHexagonV2>
+
 /** GET /leagues/{leagueId}/matches/{matchId} — 아코디언 펼침 시 지연 로드 */
 export const MatchDetail = MatchListItem.extend({
   red_stats: z.array(MatchPlayerStat),
   blue_stats: z.array(MatchPlayerStat),
+  /**
+   * 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 준다 (D-235 Q7).
+   *
+   * ── 왜 `ours` / `foe` 가 아니라 `red_*` / `blue_*` 인가
+   *   이 응답에서 우리/상대는 이미 `league_clan` · `opponent` 가 말하고 있다.
+   *   같은 뜻을 두 곳에 두면 언젠가 갈라진다. 대신 **`red_stats` / `blue_stats` 와
+   *   같은 기준**(우리 슬롯 이름 = `Match.redLeagueClanId` / `blueLeagueClanId`)으로
+   *   맞춰 화면이 짝지어 읽게 한다. 각 칸이 `league_clan_id` 를 들고 있어 어느 쪽이
+   *   우리인지는 짐작이 아니라 **대조**로 정해진다.
+   *
+   *   ⚠ `red` / `blue` 는 **슬롯 이름이지 진영이 아니다** (D-184 · D-207).
+   *   실제 선공 진영은 `first_side` 가 따로 말한다.
+   *
+   * ── 값은 **그 경기 두 클랜의 상대 비교**다 (Q7)
+   *   큰 쪽이 1.0 이고 게임템포만 작은 쪽이 1.0 이다. 클랜 페이지의 `hexagon_v2`
+   *   (리그 백분위 · Q8)와 **기준이 다르다** — 두 숫자를 같은 잣대로 읽으면 안 된다.
+   *   한쪽만 잰 축은 **양쪽 다 `value=null`** 이고 `pending='compare'` 다.
+   *
+   * 그 클랜의 배틀로그 행이 아예 없으면 `null` 이고 화면은 그 도형을 **그리지 않는다**
+   * (D-106). 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   */
+  red_hexagon_v2: MatchClanHexagonV2.nullable().default(null),
+  blue_hexagon_v2: MatchClanHexagonV2.nullable().default(null),
 })
 export type MatchDetail = z.infer<typeof MatchDetail>
 

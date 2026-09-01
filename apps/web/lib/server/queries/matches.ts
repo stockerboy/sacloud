@@ -21,6 +21,7 @@ import {
 } from '../mappers'
 import { publicOriginWhere } from './publicScope'
 import { resolvePositionsOf } from './playerPositionQuery'
+import { matchClanHexV2 } from './clanHexV2'
 
 /**
  * 매치 조회 (기록실 목록 · 매치 상세).
@@ -658,5 +659,25 @@ export async function getMatch(
       .filter((stat) => stat.side === side)
       .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide, clans, positions))
 
-  return { ...base, red_stats: statsOf('red'), blue_stats: statsOf('blue') }
+  /* 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 읽는다 (D-235 Q7).
+     경기 하나라 표본이 1이고, 그래서 리그 백분위가 아니라 **두 클랜의 상대 비교**다.
+     슬롯(`red`/`blue`)은 이미 알고 있으니 넘겨 준다 — 왕복 한 번을 아낀다.
+     배틀로그 행이 없으면 `null` 이고 화면은 도형을 안 그린다 (D-106).
+     실패해도 경기 상세를 죽이지 않는다 — 그때는 육각형 없이 그린다 */
+  const hexV2 = await matchClanHexV2(match.id, {
+    redLeagueClanId: match.redLeagueClanId,
+    blueLeagueClanId: match.blueLeagueClanId,
+  }).catch(() => null)
+
+  return {
+    ...base,
+    red_stats: statsOf('red'),
+    blue_stats: statsOf('blue'),
+    red_hexagon_v2: hexV2?.red
+      ? { league_clan_id: hexV2.red.leagueClanId, hexagon: hexV2.red.hexagon }
+      : null,
+    blue_hexagon_v2: hexV2?.blue
+      ? { league_clan_id: hexV2.blue.leagueClanId, hexagon: hexV2.blue.hexagon }
+      : null,
+  }
 }

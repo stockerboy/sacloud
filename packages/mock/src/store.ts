@@ -92,6 +92,12 @@ import {
   type ClanTraitAxisKey,
   type ClanRoundMetrics,
   type ClanRoundTallyInput,
+  /* 클랜 육각형 V2 — 합산·정규화 규칙도 계약 한 곳에만 둔다 (D-217 · D-235) */
+  buildClanHexV2Raw,
+  normalizeAgainstFoe,
+  normalizeByPercentile,
+  type ClanHexTallyLike,
+  type ClanHexV2,
   /* 클랜원 정리 — 나누는 규칙도 계약 한 곳에만 둔다 (SITE_SPEC_V2 5-2 · D-199) */
   buildClanRoster as buildClanRosterOf,
   type ClanRoster,
@@ -1014,7 +1020,21 @@ export function getMatch(
       .filter((stat) => stat.side === side)
       .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide, positions))
 
-  return { ...base, red_stats: statsOf('red'), blue_stats: statsOf('blue') }
+  /* 두 클랜의 육각형 V2 — 겹쳐 그리라고 양쪽 다 준다 (D-235 Q7). 각 칸이
+     `league_clan_id` 를 들고 있어 어느 쪽이 우리인지는 짐작이 아니라 대조로 정해진다 */
+  const hexV2 = buildMatchHexV2OfMock(match)
+
+  return {
+    ...base,
+    red_stats: statsOf('red'),
+    blue_stats: statsOf('blue'),
+    red_hexagon_v2: hexV2.red
+      ? { league_clan_id: match.redLeagueClanId, hexagon: hexV2.red }
+      : null,
+    blue_hexagon_v2: hexV2.blue
+      ? { league_clan_id: match.blueLeagueClanId, hexagon: hexV2.blue }
+      : null,
+  }
 }
 
 /* ------------------------- 기록실 상단 요약 / 사이드 ------------------------ */
@@ -1912,6 +1932,219 @@ function buildClanHexagonOfMock(leagueClan: MockLeagueClan): ClanHexagon | null 
   return buildClanHexagonOf(inputs)
 }
 
+/* ------------------- 클랜 육각형 V2 (D-217 · D-235) ------------------- */
+
+/**
+ * 스나싸움 · 소수싸움 · 세이브 · 게임템포 · B어택성공 · A어택성공.
+ *
+ * 합산(`sumClanHexTallies`)·비율(`buildClanHexV2Raw`)·정규화(`normalizeAgainstFoe` ·
+ * `normalizeByPercentile`)는 전부 `@sacloud/contract` 가 한다. 실제 서버
+ * (`apps/web/lib/server/queries/clanHexV2.ts`)도 **같은 함수**를 부른다.
+ *
+ * ⚠ **이 값은 실제 서버와 일치하지 않는다. 일치할 수 없다.**
+ *   운영은 병영수첩 **배틀로그 원문**에서 라운드를 복원해 센다 (D-184 · D-194).
+ *   Mock 픽스처에는 배틀로그가 아예 없다 — 경기 한 건이 라인업과 합계 스탯뿐이라
+ *   "몇 라운드째에 누가 어디서 죽었나" 가 없다. 그래서 여기서는 **화면을 보기 위한
+ *   결정적 가짜값**을 만든다. 시드가 같으면 언제나 같은 값이 나온다.
+ *   `round_metrics` · `hexagon`(옛 판) · `online` 과 같은 성격의 **알려진 차이**다.
+ *
+ * ── **네 모양을 Mock 에서 다 보이게 만든다**
+ *   배틀로그가 전체의 1.4% 뿐이라(D-205 · D-218) 운영에서는 「측정중」이 흔한 값이다.
+ *   Mock 이 전부 「다 쟀다」로 나오면 화면은 나머지 모양을 **영영 못 본다**.
+ *   `mockOnlineOf` 가 같은 이유로 다섯에 하나를 `null` 로 두는 것과 같은 관례다.
+ *
+ *   ```
+ *   none  카드 자체가 없다 (배틀로그 행이 0건) → 화면은 카드를 안 그린다
+ *   blank 행은 있는데 여섯 축이 전부 측정중     → 빈 육각형 + 못 잰 이유
+ *   part  셋만 쟀다                              → 도형을 잇지 않는다 (D-106)
+ *   full  여섯을 다 쟀다
+ *   ```
+ */
+type MockHexV2Shape = 'none' | 'blank' | 'part' | 'full'
+
+function mockHexV2ShapeOf(seedText: string): MockHexV2Shape {
+  const bucket = mockSeedOf(seedText) % 7
+  if (bucket === 0) return 'none'
+  if (bucket === 1) return 'blank'
+  if (bucket === 2) return 'part'
+  return 'full'
+}
+
+/** 한 경기의 라운드 수. 실측(13~18)의 가운데를 잡았다 */
+const MOCK_HEX_V2_ROUNDS_PER_MATCH = 16
+
+/**
+ * 가짜 tally 한 벌.
+ *
+ * ⚠ 아래 `rng` 호출 **순서가 곧 값**이다. 새 축은 반드시 **맨 뒤**에 붙인다 —
+ * 가운데에 끼워 넣으면 그 뒤의 모든 픽스처 값이 통째로 바뀐다.
+ *
+ * `blank` 는 여섯 축을 전부 `null` 로 두고 `foeSnipers` 도 0 으로 만든다. 그러면
+ * 계약이 못 잰 이유를 두 가지(`battlelog` · `foeSniper`)로 갈라 붙여, 화면이 그 문구가
+ * 섞여 나오는 모습을 볼 수 있다.
+ */
+function mockHexV2TallyOf(
+  seedText: string,
+  matches: number,
+  shape: MockHexV2Shape,
+): ClanHexTallyLike | null {
+  if (shape === 'none') return null
+
+  const rounds = matches * MOCK_HEX_V2_ROUNDS_PER_MATCH
+  const redRounds = Math.round(rounds / 2)
+  const base: ClanHexTallyLike = {
+    teamNo: '0',
+    /* 시즌 전체를 합치면 상대가 여럿이라 운영에서도 `null` 이다 */
+    foeTeamNo: null,
+    rounds,
+    sidedRounds: rounds,
+    redRounds,
+    foeSnipers: 0,
+    sniperFight: null,
+    outnumbered: null,
+    save: null,
+    tempo: null,
+    lastSniper: null,
+    attackZone: null,
+  }
+  if (shape === 'blank') return base
+
+  const rng = new Rng(mockSeedOf(`${seedText}:hexv2`))
+  base.foeSnipers = matches
+
+  const aSide = Math.round(redRounds * rng.float(0.1, 0.3, 3))
+  const bLong = Math.round(redRounds * rng.float(0.05, 0.2, 3))
+  const unzoned = Math.round(redRounds * rng.float(0.1, 0.35, 3))
+  const sniperKills = aSide + bLong + unzoned
+  base.sniperFight = {
+    redRounds,
+    foeSniperKills: sniperKills,
+    killsWithPosition: { byKiller: sniperKills, byVictim: sniperKills },
+    aSideKills: { byKiller: aSide, byVictim: Math.round(aSide * 0.9) },
+    bLongKills: { byKiller: bLong, byVictim: Math.round(bLong * 1.1) },
+    unzonedKills: { byKiller: unzoned, byVictim: unzoned },
+  }
+
+  /* ② 는 진영을 보지 않는 축이라 분모가 전체 라운드 기준이다 (D-202) */
+  const outnumberedRounds = Math.round(rounds * rng.float(0.3, 0.5, 3))
+  base.outnumbered = {
+    rounds: outnumberedRounds,
+    won: Math.round(outnumberedRounds * rng.float(0.42, 0.58, 3)),
+  }
+
+  /* ③ 우리 생존자가 1명이 된 적이 있는 라운드 — ② 보다 훨씬 드물다 (D-235 Q3) */
+  const saveRounds = Math.round(rounds * rng.float(0.12, 0.24, 3))
+  base.save = { rounds: saveRounds, won: Math.round(saveRounds * rng.float(0.2, 0.45, 3)) }
+
+  const clearThree = Math.max(1, Math.round(redRounds * rng.float(0.4, 0.7, 3)))
+  const seconds = rng.float(14, 32, 1)
+  base.tempo = {
+    redRounds,
+    redClearThreeRounds: clearThree,
+    /* 라운드별 초는 운영에서 라운드마다 한 칸씩 쌓인다. Mock 은 합만 맞춰 둔다 */
+    redClearThreeSecondsLowerBound: [],
+    redClearThreeSecondsLowerBoundSum: Math.round(clearThree * seconds),
+    redRoundsWithoutThreeClears: redRounds - clearThree,
+  }
+
+  const redWon = Math.max(1, Math.round(redRounds * rng.float(0.38, 0.58, 3)))
+  const wonRounds = Math.round(rounds * rng.float(0.4, 0.6, 3))
+  base.lastSniper = {
+    redWonRounds: redWon,
+    redWonSniperLast: Math.round(redWon * rng.float(0.2, 0.55, 3)),
+    wonRounds,
+    wonSniperLast: Math.round(wonRounds * rng.float(0.2, 0.55, 3)),
+    noFoeDeathRounds: 0,
+    unknownLastWeaponRounds: 0,
+    ambiguousLastRounds: 0,
+  }
+
+  base.attackZone = {
+    redRounds,
+    redWonRounds: redWon,
+    redWonZoneSniperRounds: {
+      byKiller: Math.round(redWon * rng.float(0.1, 0.4, 3)),
+      byVictim: Math.round(redWon * rng.float(0.1, 0.4, 3)),
+    },
+    redLostZoneSniperRounds: { byKiller: 0, byVictim: 0 },
+    sniperKillsWithPosition: { byKiller: sniperKills, byVictim: sniperKills },
+    sniperKillsInNamedZone: { byKiller: aSide + bLong, byVictim: aSide + bLong },
+    sniperKillsOutsideNamedZone: { byKiller: unzoned, byVictim: unzoned },
+    /* D-235 Q6 — `녹뒤`·`머리` 좌표가 아직 없어 넷 중 둘뿐이다. 화면은 `구역 2/4` 를 적는다 */
+    zoneLabels: ['CONDWI', 'SEOLDAE'],
+  }
+
+  if (shape === 'part') {
+    /* 셋만 남긴다 — 재료가 없는 축은 **0 이 아니라 측정중**이다 (D-106) */
+    base.save = null
+    base.tempo = null
+    base.lastSniper = null
+  }
+  return base
+}
+
+/** 그 클랜의 합계 육각형(정규화 전). 행이 아예 없으면 `null` — 실제 서버와 같은 규칙 */
+function mockHexV2RawOf(leagueClan: MockLeagueClan): ClanHexV2 | null {
+  const matches = (matchesByLeagueClan.get(leagueClan.id) ?? []).length
+  if (matches === 0) return null
+  const shape = mockHexV2ShapeOf(leagueClan.id)
+  if (shape === 'none') return null
+  return buildClanHexV2Raw({ tally: mockHexV2TallyOf(leagueClan.id, matches, shape), matches })
+}
+
+/** 같은 리그 클랜들의 원값. 픽스처는 변하지 않으므로 한 번 세서 들고 있는다 */
+const mockHexV2CohortCache = new Map<string, ClanHexV2[]>()
+
+function mockHexV2CohortOf(leagueId: string): ClanHexV2[] {
+  const hit = mockHexV2CohortCache.get(leagueId)
+  if (hit) return hit
+  const cohort: ClanHexV2[] = []
+  for (const entry of leagueClansByLeague.get(leagueId) ?? []) {
+    const raw = mockHexV2RawOf(entry)
+    if (raw !== null) cohort.push(raw)
+  }
+  mockHexV2CohortCache.set(leagueId, cohort)
+  return cohort
+}
+
+/**
+ * 클랜 페이지 육각형 V2 — 같은 리그 안에서의 **백분위** (D-235 Q8).
+ *
+ * 모집단에 그 클랜 자신도 넣는다. 실제 서버와 **같은 규칙**이다.
+ */
+function buildClanHexV2OfMock(leagueClan: MockLeagueClan): ClanHexV2 | null {
+  const raw = mockHexV2RawOf(leagueClan)
+  if (raw === null) return null
+  return normalizeByPercentile(raw, mockHexV2CohortOf(leagueClan.leagueId))
+}
+
+/**
+ * 경기 상세 육각형 V2 — 그 경기 **두 클랜의 상대 비교** (D-235 Q7).
+ *
+ * 한 경기는 표본이 1이라 리그 백분위를 못 쓴다. 큰 쪽이 1.0 이고 게임템포만 반대다.
+ * 한쪽만 잰 축은 **양쪽 다** 측정중(`pending='compare'`)이다 — 혼자만 꽉 찬 육각형은
+ * 「잘한다」가 아니라 「상대를 못 쟀다」이기 때문이다.
+ */
+function buildMatchHexV2OfMock(match: MockMatch): {
+  red: ClanHexV2 | null
+  blue: ClanHexV2 | null
+} {
+  const rawOf = (leagueClanId: string): ClanHexV2 | null => {
+    const seed = `${match.id}:${leagueClanId}`
+    const shape = mockHexV2ShapeOf(seed)
+    if (shape === 'none') return null
+    return buildClanHexV2Raw({ tally: mockHexV2TallyOf(seed, 1, shape), matches: 1 })
+  }
+  const redRaw = rawOf(match.redLeagueClanId)
+  const blueRaw = rawOf(match.blueLeagueClanId)
+  if (redRaw === null && blueRaw === null) return { red: null, blue: null }
+
+  /* 빈 육각형 = 「재료가 아예 없다」. 상대 자리에 세우면 우리 축이 `compare` 로 내려간다 */
+  const empty = (): ClanHexV2 => buildClanHexV2Raw({ tally: null, matches: 0 })
+  const [red, blue] = normalizeAgainstFoe(redRaw ?? empty(), blueRaw ?? empty())
+  return { red: redRaw === null ? null : red, blue: blueRaw === null ? null : blue }
+}
+
 export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueClanShow | null {
   const league = leagueBySlug.get(leagueSlug)
   const clan = clanBySlug.get(clanSlug)
@@ -1935,6 +2168,8 @@ export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueC
     metrics: buildClanMetrics(leagueClan),
     round_metrics: buildClanRoundMetrics(leagueClan),
     hexagon: buildClanHexagonOfMock(leagueClan),
+    /* 클랜 육각형 **V2** (D-217 · D-235). 옛 `hexagon` 은 그대로 둔다 (Q9 · 10-4) */
+    hexagon_v2: buildClanHexV2OfMock(leagueClan),
     /* 클랜원 정리 (SITE_SPEC_V2 5-2 · D-199). 기존 클랜원 목록은 그대로 둔다 */
     roster: buildClanRoster(leagueClan),
   }

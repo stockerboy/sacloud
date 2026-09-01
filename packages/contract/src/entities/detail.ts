@@ -4,6 +4,7 @@ import { PLAYSTYLE_SIDE_KEYS, TRAIT_AXIS_KEYS, TRAIT_PENDING_KEYS } from '../tra
 import { ClanMetrics } from '../clanMetrics'
 import { ClanRoundMetrics } from '../clanRoundMetrics'
 import { ClanHexagon } from '../clanTraits'
+import { ClanHexagonV2 } from '../clanTraitsV2'
 import { ClanRoster } from '../clanRoster'
 import { LeagueClanDetail, LeaguePlayer } from './league'
 import { LeagueSummary, PlayerSummary } from './summaries'
@@ -381,5 +382,23 @@ export const LeagueClanShow = LeagueClanDetail.extend({
    * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
    */
   hexagon: ClanHexagon.nullable().default(null),
+  /**
+   * 클랜 육각형 **V2** — 스나싸움 · 소수싸움 · 세이브 · 게임템포 · B어택성공 · A어택성공
+   * (`docs/CLAN_HEXAGON_V2_SPEC.md` · D-217 · **D-235** · `../clanTraitsV2`).
+   *
+   * ── **옛 `hexagon` 을 지우지 않는다** (D-235 Q9 · `CLAUDE.md` 10-4)
+   *   축 여섯이 통째로 다르고 재료도 다르다 — 옛 판은 `ClanRoundProfile`(경기 요약 +
+   *   배틀로그), 이쪽은 `MatchClanHexV2`(배틀로그만)다. 방식을 바꿀 때 앞 버전도 남긴다.
+   *   ⚠ `게임템포` 는 **이름만 같고 다른 지표**다 (옛: 라운드 길이 중앙값 / 새: 레드일 때
+   *   상대 3명 지우기까지 걸린 초의 하한). **한 화면에 나란히 놓지 않는다.**
+   *
+   * 값은 같은 리그 클랜들 안에서의 **백분위**(0~1)다 (D-235 Q8). 경기 상세의 육각형과
+   * 정규화 기준이 다르다 — 그쪽은 그 경기 두 클랜의 **상대 비교**다 (Q7).
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   * `null` 이면 화면은 카드를 **그리지 않는다** — 배틀로그를 아직 못 받은 클랜이다.
+   * 여섯 축이 전부 `측정중` 인 것과 **다르다**: 그때는 값이 있고 `measured` 가 0 이다.
+   */
+  hexagon_v2: ClanHexagonV2.nullable().default(null),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>

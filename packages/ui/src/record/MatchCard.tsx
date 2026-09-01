@@ -9,6 +9,7 @@ import type {
   MatchPlayerStat,
 } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
+import { ClanHexagonV2 } from './ClanHexagonV2'
 
 /**
  * 경기 당시 소속 클랜 (D-131).
@@ -892,6 +893,19 @@ function MatchDetailPanel({
      클랜 기록실에서는 `null` 이라 아무 행도 강조하지 않는다. */
   const viewerPlayerId = match.player_stat?.player_id ?? null
 
+  /* 경기 육각형 — 두 쪽 중 **어느 쪽이 이 기록실의 주인인지**를 `league_clan_id` 로 고른다.
+     슬롯 이름으로 고르지 않는 이유는 아래 렌더 자리 주석에 있다 (D-207 의 재발 방지). */
+  const ourLeagueClanId = match.league_clan?.league_clan_id ?? null
+  const hexSides = [detail?.red_hexagon_v2 ?? null, detail?.blue_hexagon_v2 ?? null]
+  const ourHexagon =
+    ourLeagueClanId === null
+      ? null
+      : (hexSides.find((side) => side?.league_clan_id === ourLeagueClanId) ?? null)
+  const foeHexagon =
+    ourHexagon === null
+      ? null
+      : (hexSides.find((side) => side !== null && side !== ourHexagon) ?? null)
+
   return (
     <div className="border border-t-0 border-line bg-card px-4 py-3 max-md:px-2">
       {/* 1행 — 맵 · 인원 (왼쪽) / 플레이시간 (오른쪽 끝) */}
@@ -968,6 +982,39 @@ function MatchDetailPanel({
             viewerPlayerId={viewerPlayerId}
             showExtra={showExtra}
           />
+
+          {/*
+            경기 육각형 — **양 클랜을 한 도형에 겹쳐 그린다** (D-217 원문 · D-235 Q7).
+
+              > "이거를 매 판마다 비교해서 경기상세에 넣어주고싶어 양쪽 클랜의 그래프 색을
+              >  다르게해서 그린다음에 크기차이로 비교하기 편하게끔"
+
+            ── 「우리」를 슬롯 이름으로 고르지 않는다
+              응답이 각 쪽에 `league_clan_id` 를 함께 준다. 그것을 **이 기록실의 주인**
+              (`match.league_clan`)과 맞춰 고른다. 슬롯 이름(red/blue)으로 고르면
+              보는 쪽이 블루일 때 상대가 「우리」로 그려진다 — **선레드 표기가 뒤집혀 있던
+              것과 똑같은 실수다** (D-207). 그래서 여기서는 슬롯을 안 믿는다.
+
+            ── 배틀로그가 없으면 통째로 빠진다
+              전체 경기의 1.4%에만 원문이 있다 (D-205). 대부분의 경기에서 이 칸은 없다.
+              **그건 결함이 아니다.**
+          */}
+          {ourHexagon ? (
+            <div className="mt-4 border-t border-line-soft pt-3">
+              <ClanHexagonV2
+                hexagon={ourHexagon.hexagon}
+                name={match.league_clan?.clan?.name ?? '우리'}
+                foe={
+                  foeHexagon
+                    ? {
+                        hexagon: foeHexagon.hexagon,
+                        name: match.opponent?.clan?.name ?? '상대',
+                      }
+                    : null
+                }
+              />
+            </div>
+          ) : null}
         </>
       ) : (
         <div className="py-4 text-center text-sm text-faint">불러오는 중…</div>
