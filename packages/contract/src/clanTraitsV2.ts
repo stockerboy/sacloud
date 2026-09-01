@@ -660,7 +660,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
 
   /* ── 지금 화면이 쓰는 축 셋 (D-256). **비율을 평균 내지 않는다** — 분자·분모를 쌓는다 ── */
   sum.sniperDuel = sumParts(
-    tallies.map((tally) => tally.sniperDuel),
+    tallies.map((tally) => tally.sniperDuel ?? null),
     (): SniperDuelTallyLike => ({ rounds: 0, won: 0, lost: 0 }),
     (into, from) => {
       into.rounds += from.rounds
@@ -670,7 +670,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   )
 
   sum.firstBlood = sumParts(
-    tallies.map((tally) => tally.firstBlood),
+    tallies.map((tally) => tally.firstBlood ?? null),
     (): FirstBloodTallyLike => ({ rounds: 0, won: 0, tiedRounds: 0 }),
     (into, from) => {
       into.rounds += from.rounds
@@ -680,7 +680,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   )
 
   sum.trade = sumParts(
-    tallies.map((tally) => tally.trade),
+    tallies.map((tally) => tally.trade ?? null),
     (): TradeTallyLike => ({ deaths: 0, within3: 0, within5: 0, within10: 0, sameRound: 0 }),
     (into, from) => {
       into.deaths += from.deaths
@@ -693,7 +693,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   )
 
   sum.sniperFight = sumParts(
-    tallies.map((tally) => tally.sniperFight),
+    tallies.map((tally) => tally.sniperFight ?? null),
     (): SniperFightTallyLike => ({
       redRounds: 0,
       foeSniperKills: 0,
@@ -708,7 +708,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
       addZone(into.killsWithPosition, from.killsWithPosition)
       /* 구역을 준 경기만 그 칸을 만든다 — 안 준 경기를 0 으로 섞으면 값이 낮아진다 */
       for (const key of ['aSideKills', 'bLongKills', 'unzonedKills'] as const) {
-        const part = from[key]
+        const part = from[key] ?? null
         if (part === null) continue
         into[key] ??= zeroZone()
         addZone(into[key] as ZoneCountLike, part)
@@ -717,7 +717,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   )
 
   sum.outnumbered = sumParts(
-    tallies.map((tally) => tally.outnumbered),
+    tallies.map((tally) => tally.outnumbered ?? null),
     (): OutnumberedTallyLike => ({ rounds: 0, won: 0 }),
     (into, from) => {
       into.rounds += from.rounds
@@ -726,7 +726,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   )
 
   sum.save = sumParts(
-    tallies.map((tally) => tally.save),
+    tallies.map((tally) => tally.save ?? null),
     (): SaveTallyLike => ({ rounds: 0, won: 0 }),
     (into, from) => {
       into.rounds += from.rounds
@@ -735,7 +735,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   )
 
   sum.tempo = sumParts(
-    tallies.map((tally) => tally.tempo),
+    tallies.map((tally) => tally.tempo ?? null),
     (): TempoTallyLike => ({
       redRounds: 0,
       redClearThreeRounds: 0,
@@ -754,7 +754,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   )
 
   sum.lastSniper = sumParts(
-    tallies.map((tally) => tally.lastSniper),
+    tallies.map((tally) => tally.lastSniper ?? null),
     (): LastSniperTallyLike => ({
       redWonRounds: 0,
       redWonSniperLast: 0,
@@ -776,7 +776,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   )
 
   sum.attackZone = sumParts(
-    tallies.map((tally) => tally.attackZone),
+    tallies.map((tally) => tally.attackZone ?? null),
     (): AttackZoneTallyLike => ({
       redRounds: 0,
       redWonRounds: 0,
@@ -894,6 +894,27 @@ function tallyMissingReason(tally: ClanHexTallyLike, needsSniper: boolean): Clan
  * 분모가 0이면 **`0` 이 아니라 `pending='sample'`** 이다. 나눌 수 없는 것과
  * 「겪었는데 한 번도 못 했다」(=0)는 다른 말이다 (D-106).
  */
+/*
+ * ── ⚠ 2026-09-02 — **없는 칸(`undefined`)이 육각형을 통째로 지웠다**
+ *
+ *   운영에 쌓여 있는 `ClanHexV2Summary.tally` 는 v2.1 때 만든 것이라
+ *   새 축의 칸(`sniperDuel` · `firstBlood` · `trade`)이 **아예 없다.**
+ *   그런데 아래 축 분기가 `if (part === null)` 로만 막고 있어서
+ *   `undefined` 는 그 문을 그냥 지나갔고, 다음 줄 `part.won` 에서 터졌다.
+ *
+ *   터진 자리는 화면 질의의 `.catch(() => null)`(`records.ts`) 이었다.
+ *   그래서 **오류 한 줄 없이 클랜 육각형 카드가 통째로 사라졌다.**
+ *   버전을 v2.1 로 되돌려도 안 나온 진짜 이유가 이것이다 — 버전은 맞았고,
+ *   맞는 행을 읽어 온 다음에 죽고 있었다.
+ *
+ *   고친 방식은 **읽는 자리에서 `?? null`** 이다. `=== null` 을 `== null` 로
+ *   바꾸는 것보다 낫다고 봤다 — 문을 넓히는 게 아니라 **들어오는 값의 모양을
+ *   하나로 만드는** 쪽이라, 뒤에 오는 분기를 다시 안 읽어도 된다.
+ *   덕분에 없는 축은 `pending`(측정중)으로 떨어지고 **나머지 축은 그대로 나온다.**
+ *
+ *   교훈: 여기 `tally` 는 DB 의 `Json` 칸에서 온다. 타입이 붙어 있어도
+ *   **그 타입은 옛 행에 대한 약속이 아니다.** 칸을 늘릴 때마다 이 자리를 본다.
+ */
 export function buildClanHexV2Raw(input: {
   tally: ClanHexTallyLike | null
   matches: number
@@ -915,27 +936,27 @@ export function buildClanHexV2Raw(input: {
        * 뜻이지 «못 했다» 가 아니다. 그래서 0 이 아니라 `sample` 이다 (D-106).
        */
       case 'sniperDuel': {
-        const part = tally.sniperDuel
+        const part = tally.sniperDuel ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, true))
         const duels = part.won + part.lost
         if (duels === 0) return pendingAxis(key, 'sample', { numerator: part.won })
         return measuredAxis(key, part.won, duels)
       }
       case 'outnumbered': {
-        const part = tally.outnumbered
+        const part = tally.outnumbered ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
         /* ②③ 은 진영을 보지 않는다 (D-202) — 그래서 `side` 가 아니라 `sample` 이다 */
         if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
         return measuredAxis(key, part.won, part.rounds)
       }
       case 'save': {
-        const part = tally.save
+        const part = tally.save ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
         if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
         return measuredAxis(key, part.won, part.rounds)
       }
       case 'tempo': {
-        const part = tally.tempo
+        const part = tally.tempo ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
         if (part.redRounds === 0) return pendingAxis(key, 'side')
         /* 3명을 못 지운 라운드는 **분모에서 뺐다** (D-235 Q4). 하나도 없으면 못 잰다 */
@@ -953,7 +974,7 @@ export function buildClanHexV2Raw(input: {
        * (사용자 (가) · 실측 4.48%). 그 수는 `tiedRounds` 에 남아 있다.
        */
       case 'firstBlood': {
-        const part = tally.firstBlood
+        const part = tally.firstBlood ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
         if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
         return measuredAxis(key, part.won, part.rounds)
@@ -965,7 +986,7 @@ export function buildClanHexV2Raw(input: {
        * tally 가 창 넷을 다 들고 있어서 창을 바꿔도 **재빌드가 필요 없다.**
        */
       case 'trade': {
-        const part = tally.trade
+        const part = tally.trade ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
         const back = tradeCountOf(part, config.tradeWindow)
         if (part.deaths === 0) return pendingAxis(key, 'sample', { numerator: back })
