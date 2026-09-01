@@ -36,5 +36,14 @@ export * from './roundState'
 export * from './duel'
 /** 클랜 지표 다섯 — 블루방어율 · 어택성공률 · 조직력 · 폭발력 · 게임템포 (SITE_SPEC_V2 5-5절) */
 export * from './clanRound'
+/**
+ * 클랜 육각형 **V2** — 스나싸움 · 소수싸움 · 세이브 · 게임템포 · B어택성공 · A어택성공
+ * (`docs/CLAN_HEXAGON_V2_SPEC.md` · D-217 · D-235).
+ *
+ * ⚠ 위 `clanRound` 와 **이름이 겹치는 축이 있는데 재는 것이 다르다.** 특히 `게임템포` 는
+ * 옛 판이 라운드 길이 중앙값이고 새 판은 «레드일 때 상대 3명 지우기까지 걸린 초의 하한» 이다.
+ * 둘을 한 화면에 나란히 놓지 않는다.
+ */
+export * from './clanHexV2'
 /** 플레이스타일 바의 재료 — 진영별 오프닝 관여 · 첫 교전 지연 · 자리 흩어짐 (사양 8절 · D-211) */
 export * from './playstyle'

@@ -465,6 +465,8 @@ model LeagueClan {
   blueMatches  Match[]            @relation("MatchBlueClan")
   rosterMemberships LeagueRosterMembership[]
   roundProfiles ClanRoundProfile[]
+  /// 클랜 육각형 V2 — 경기 단위 원재료. 클랜 값은 이 행들의 **합**이다 (D-235)
+  clanHexV2 MatchClanHexV2[]
 
   @@unique([leagueId, clanId])
   @@unique([sourceLeagueClanId])
@@ -769,6 +771,8 @@ model Match {
   blueClan  LeagueClan  @relation("MatchBlueClan", fields: [blueLeagueClanId], references: [id], onDelete: Cascade)
   mvpPlayer Player?     @relation("MatchMvp", fields: [mvpPlayerId], references: [id], onDelete: SetNull)
   stats     MatchPlayerStat[]
+  /// 클랜 육각형 V2 — 경기 한 건에 **양쪽 클랜 두 행**이 붙는다 (D-235)
+  clanHexV2 MatchClanHexV2[]
 
   /**
    * 같은 경기가 **여러 리그에 기록될 수 있다** (D-155).
@@ -2332,4 +2336,68 @@ model PlayerPlaystyleProfile {
 
   @@unique([userNexonSn, builderVersion])
   @@index([playerId])
+}
+
+/// **클랜 육각형 V2 — 경기 한 건 × 클랜 한 곳의 원재료** (D-217 사양 · D-235 결정).
+///
+/// ── 왜 «경기 단위» 인가
+///   사용자 원문이 두 가지를 함께 시켰다 — *"매 판마다 비교해서 경기상세에"* 와
+///   *"전부모아서 평균 낸 후 해당클랜 페이지에"*. 경기 단위로 두면 **둘 다 여기서 나온다.**
+///   클랜 값은 이 행들의 **합**이다. 클랜용 표를 따로 만들지 않는다 — 표가 둘이면
+///   둘이 어긋날 자리가 생기고, 합은 언제나 맞다.
+///
+/// ── 왜 `LeagueClan` 이 키인가
+///   같은 클랜이 여러 리그를 겸하고 같은 물리 경기가 리그마다 다른 `Match` 가 된다 (D-155).
+///   클랜으로 묶으면 리그가 섞여 클랜페이지(리그별 화면)와 모집단이 어긋난다.
+///   `ClanRoundProfile` 이 같은 이유로 같은 키를 쓴다.
+///
+/// ── 왜 `tally` 가 **JSON** 인가
+///   축의 해석이 아직 흔들린다 (D-235 의 Q1·Q5·Q7·Q8 은 **우리가 정한 값**이지
+///   사용자가 확인해 준 값이 아니다). 35칸짜리 표로 펴면 해석 하나 바뀔 때마다
+///   마이그레이션이 따라온다. 행은 1만 개 남짓이라 합산은 JS 로 충분하다.
+///
+///   담기는 것은 `packages/nexon/src/clanHexV2.ts` 의 `ClanHexTally` **통째**다.
+///   **비율은 저장하지 않는다** — 분자/분모만 둔다 (D-106). 비율을 미리 넣으면
+///   5라운드 경기가 18라운드 경기와 같은 무게를 갖는다.
+///
+/// ── 옛 판을 지우지 않는다
+///   `ClanRoundProfile`(D-201)은 그대로 산다. 육각형만 이쪽으로 갈아탄다 (D-235 Q9).
+///   ⚠ 두 표의 `게임템포` 는 **이름만 같고 다른 지표다. 한 화면에 나란히 놓지 않는다.**
+model MatchClanHexV2 {
+  id           String @id @default(cuid())
+  matchId      String
+  leagueClanId String
+
+  /// 병영수첩 클랜 번호. 어느 응답에서 나온 값인지 되짚는 근거다 (D-200)
+  clanNo String?
+  /// 이 집계의 주인 (`team_no` — **진영이 아니다** · D-184)
+  teamNo String
+  /// 상대 `team_no`. 못 찾으면 null 이고 그때는 여섯 축이 전부 null 이다
+  foeTeamNo String?
+
+  /// 이벤트로 확인된 라운드 수 (진영을 몰라도 센다)
+  rounds Int @default(0)
+  /// 그중 진영을 **아는** 라운드 수
+  sidedRounds Int @default(0)
+  /// 그중 진영=레드(공격)인 라운드 수. 여섯 중 넷이 이 값에 매달린다
+  redRounds Int @default(0)
+  /// 상대 팀에서 **스나로 확정된** 선수 수. 0 이면 ①⑤⑥ 이 null 이다
+  foeSnipers Int @default(0)
+
+  /// 이 경기에서 실제로 재진 축 수 (0~6). 화면의 `측정중 N/6` 과 목록 거르기에 쓴다
+  axesMeasured Int @default(0)
+
+  /// `ClanHexTally` 통째. **분자/분모만 있고 비율은 없다**
+  tally Json
+
+  /// 어느 판의 계산기가 만들었나 (3-B 5번). 판이 바뀌면 이 값으로 골라 다시 만든다
+  formulaVersion String
+  builtAt        DateTime @default(now())
+
+  match      Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  leagueClan LeagueClan @relation(fields: [leagueClanId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, leagueClanId])
+  @@index([leagueClanId, formulaVersion])
+  @@index([formulaVersion, builtAt])
 }
