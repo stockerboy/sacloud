@@ -32,6 +32,7 @@ import {
   Ok,
   Player,
   PlayerLeagueEntry,
+  PlayerProfile,
   PlayerRankRow,
   PlayerSearchItem,
   RemoteConfigs,
@@ -290,6 +291,19 @@ export const endpoints = {
     origin: 'observed',
     description: '참여중인 리그별 요약',
     response: apiResponse(z.array(PlayerLeagueEntry)),
+  },
+  /**
+   * **기본정보 + 참여중인 리그를 한 번에** (2026-09-03 · O-034).
+   *
+   * `playerShow` 와 `playerLeagues` 를 대체하지 **않는다** — 둘 다 그대로 산다.
+   * 화면만 이쪽으로 옮긴다. 이유는 `PlayerProfile` 주석에 있다.
+   */
+  playerProfile: {
+    method: 'GET',
+    path: '/players/:playerId/profile',
+    origin: 'designed',
+    description: '선수 기본정보 + 참여중인 리그 (한 번에)',
+    response: apiResponse(PlayerProfile),
   },
   playerRenew: {
     method: 'POST',

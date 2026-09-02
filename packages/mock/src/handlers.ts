@@ -155,6 +155,12 @@ const resolvers: Record<EndpointKey, Resolver> = {
     return player ? ok(player) : notFound()
   },
   playerLeagues: ({ params }) => ok(store.getPlayerLeagues(param(params['playerId']))),
+  /* 위 둘을 한 번에 (O-034). **같은 픽스처를 그대로 담는다** — 값이 달라지면 안 된다 */
+  playerProfile: ({ params }) => {
+    const playerId = param(params['playerId'])
+    const player = store.getPlayer(playerId)
+    return player ? ok({ player, leagues: store.getPlayerLeagues(playerId) }) : notFound()
+  },
   playerRenew: () => ok({ accepted: true, renewed_at: FIXTURE_NOW, retry_after: null }),
   playerSettingUpdate: ({ params }) => {
     const player = store.getPlayer(param(params['playerId']))

@@ -132,6 +132,8 @@ describe.skipIf(!up)('실제 API 계약 준수 (개발 서버 필요)', { timeou
   it('플레이어 · 클랜', async () => {
     await checkGet('playerShow', { params: { playerId } })
     await checkGet('playerLeagues', { params: { playerId } })
+    /* 합친 경로도 계약을 만족해야 한다 (O-034). 옛 둘은 그대로 산다 */
+    await checkGet('playerProfile', { params: { playerId } })
     await checkGet('clanShow', { params: { clanSlug } })
     await checkGet('clanPlayers', { params: { clanSlug } })
     await checkGet('clanLeagues', { params: { clanSlug } })

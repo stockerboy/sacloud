@@ -68,6 +68,10 @@ on:
         description: '이 실행에서 데울 횟수 (기본 6 · 5분 간격 = 약 30분)'
         required: false
         default: '6'
+      top_players:
+        description: '리그당 데울 랭킹 상위 선수 수 (기본 20 — 랭킹 한 쪽이 20명이다)'
+        required: false
+        default: '20'
       chain:
         description: '자기호출 체인 깊이. **사람은 건드리지 않는다** (폭주 방지용)'
         required: false
@@ -90,8 +94,9 @@ jobs:
     runs-on: ubuntu-latest
     # 5 → 40 (2026-09-03 · O-031). **한 run 이 6번 데우고 끝난다** (5분 간격 = 약 30분).
     # 한 번 데우는 데는 1분이면 되지만, 예약이 안 오니 run 하나가 그 시간을 버텨야 한다.
-    # 사이클 6 × 5분 = 30분 + 자기호출 여유. 무한정 붙잡지는 않는다
-    timeout-minutes: 40
+    # 사이클 6 × 5분 = 30분 + 자기호출 여유. 무한정 붙잡지는 않는다.
+    # 40 → 50 (O-034). 개인 경로가 목록에 붙어 한 바퀴가 길어졌다 — 안전판만 늘린다
+    timeout-minutes: 50
     steps:
       - name: 잡 시작 시각을 기록한다
         run: echo "JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
@@ -112,6 +117,16 @@ jobs:
           #   `supply-incremental.yml` 의 「5분 사이클 × N」과 같은 모양이다.
           #   6 × 5분 = 약 30분. 그 뒤 자기호출이 다음 30분을 잇는다
           CYCLES: ${{ inputs.cycles || '6' }}
+          # 리그당 상위 몇 명까지 데울 것인가 (O-034).
+          #
+          # ── 왜 20인가
+          #   랭킹 API 가 **한 쪽에 20명**을 준다. `limit` 을 붙여도 20이다 (실측).
+          #   그리고 그 20명이 **사람이 스크롤 없이 보는 그 20명**이다 — 임의로 고른 수가 아니다.
+          #   더 데우려면 다음 쪽까지 긁어야 하고, 그건 「한 바퀴 시간」을 두 배로 만든다.
+          #
+          # **예산은 「한 바퀴 도는 시간」이다** — 아래에서 사이클이 실제 걸린 초를 찍는다.
+          # 5분(300초) 안에 한 바퀴가 안 끝나면 이 값을 내려라
+          TOP_PLAYERS: ${{ inputs.top_players || '20' }}
         run: |
           set -u
 
@@ -137,10 +152,41 @@ jobs:
           /api/leagues/sanply/ranks/players?weapon=all
           "
 
+          # ── ★랭킹 상위 선수를 목록에 태운다★ (2026-09-03 · O-034)
+          #
+          #   개인 경로(`/api/players/{id}`)는 캐시 키가 사람마다 다르다. 그래서
+          #   「미리 데운다」가 통하지 않는 것처럼 보이는데, **절반은 통한다** —
+          #   사람이 오는 이유 넷 중 「누가 잘하는지」·「어느 클랜이 1티어인지」는
+          #   **랭킹에 있는 사람들**을 본다. 그건 **미리 알 수 있는 유한한 집합**이다.
+          #
+          #   ⚠ **「내 기록」은 못 덮는다.** 그건 여전히 첫 방문이다. 이건 죽는 걸 막는 게
+          #     아니라 **죽는 규모를 줄이는 것**이다.
+          #
+          #   ⚠ **별도 목록표를 만들지 않는다.** 랭킹 응답에서 id 를 그대로 뽑아 쓴다 —
+          #     표를 따로 두면 랭킹이 바뀔 때마다 그 표가 낡는다.
+          #
+          #   ⚠ 부르는 것은 **`/profile`** 이다 (O-034). 화면이 이제 그 하나만 부른다.
+          #     옛 두 경로는 살아 있지만 아무도 안 부르는 것을 데울 이유가 없다.
+          PLAYER_PATHS=""
+          for lg in supply nolink sanply; do
+            ids=$(curl -s --max-time 30 -H 'Accept: application/json' \
+              "${SITE_URL}/api/leagues/${lg}/ranks/players?weapon=all" \
+              | tr ',' '\n' | grep -o '"id":"[A-Za-z0-9-]*"' | cut -d'"' -f4 \
+              | grep -E '^(OBS|SUP|NX)-' | head -n "${TOP_PLAYERS}" || true)
+            for id in $ids; do
+              PLAYER_PATHS="${PLAYER_PATHS}
+          /api/players/${id}/profile"
+            done
+          done
+          player_count=$(echo "$PLAYER_PATHS" | grep -c '/api/players/' || true)
+          echo "상위 선수 ${player_count}명을 목록에 더한다 (리그당 ${TOP_PLAYERS}명 목표)"
+          PATHS="${PATHS}${PLAYER_PATHS}"
+
           echo "대상: ${SITE_URL} · 사이클 ${CYCLES}회"
 
           cycle=1
           while [ "$cycle" -le "$CYCLES" ]; do
+          cycle_started=$(date +%s)
           echo "── 사이클 ${cycle}/${CYCLES}  $(date -u +%H:%M:%SZ)"
           for p in $PATHS; do
             # `-o /dev/null` 응답 본문은 버린다. 우리는 값을 보러 온 게 아니다
@@ -161,11 +207,20 @@ jobs:
             sleep 1
           done
 
+          # ★한 바퀴가 실제로 몇 초 걸렸나★ — 이게 `TOP_PLAYERS` 의 예산 근거다 (O-034)
+          spent=$(( $(date +%s) - cycle_started ))
+          echo "── 사이클 ${cycle} 끝 · ${spent}초 걸렸다"
+
           # 마지막 사이클 뒤에는 안 쉰다 — 쉬어 봐야 자기호출만 늦어진다
           if [ "$cycle" -lt "$CYCLES" ]; then
             # 캐시 기본 등급이 `s-maxage=300`(5분) 이다. 그보다 길면 반드시 비는 구간이 생긴다.
-            # 경로를 도는 데 이미 15초쯤 썼으니 그만큼 뺀다
-            sleep 285
+            # **도는 데 쓴 시간을 빼고** 남은 만큼만 쉰다 — 목록이 길어져도 5분 박자를 지킨다
+            rest=$(( 300 - spent ))
+            if [ "$rest" -lt 30 ]; then
+              echo "::warning::한 바퀴가 ${spent}초 걸렸다 — 5분 박자를 못 지킨다. TOP_PLAYERS 를 내려라"
+              rest=30
+            fi
+            sleep "$rest"
           fi
           cycle=$(( cycle + 1 ))
           done
