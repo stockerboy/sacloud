@@ -76,6 +76,8 @@ function Column({ slug, name, weapon }: { slug: string; name: string; weapon: Ra
           error={ranks.error}
           onRetry={ranks.retry}
           columns={columns}
+          /* 소속 클랜명 — 닉네임 아래 줄 (2026-09-02 사장님 지시 #10-2 "전체랭킹에도 넣어라") */
+          clanName="line"
         />
       </RankBox>
       {ranks.hasMore ? (
