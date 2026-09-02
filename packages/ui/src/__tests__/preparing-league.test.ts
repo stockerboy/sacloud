@@ -17,6 +17,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   FEATURED_LEAGUES,
+  GNB_LEAGUES,
   PREPARING_LEAGUE_SLUGS,
   isLeaguePreparing,
 } from '../site-config'
@@ -42,14 +43,21 @@ describe('준비중 리그', () => {
    * 여전히 「준비중」 안내가 나온다 — 없앤 것은 링크 한 줄이다.
    */
   /**
-   * ⚠ 정정 (2026-09-02 · 지시 #14 ①) — **순서가 IPL · SPL · 10mountain 이 됐다.**
-   *   사장님: *"첫번째로 IPL 두번째로 SPL 을 넣어라"*. 그전(D-246)에는 SPL 이 먼저였다.
-   *   셋뿐이라는 것과 `daerule` 이 없다는 것은 그대로다.
+   * ⚠ 정정 (2026-09-02) — **자리마다 순서가 다르다.**
+   *   홈은 SPL · IPL · 10mountain (지시 #18), 상단바는 IPL · SPL · 10mountain (지시 #14).
+   *   목록(`FEATURED_LEAGUES`)은 홈 순서(D-246 그대로)이고 상단바는 `GNB_LEAGUES` 다.
+   *   셋뿐이라는 것과 `daerule` 이 없다는 것은 둘 다 그대로다.
    */
-  it('GNB 에는 IPL · SPL · 10mountain 셋뿐이다 (daerule 은 빠졌다 · 지시 #14 ① 순서)', () => {
+  it('리그 목록(홈 순서)은 SPL · IPL · 10mountain 셋뿐이다 (daerule 은 빠졌다)', () => {
     const hrefs = FEATURED_LEAGUES.map((item) => item.href)
-    expect(hrefs).toEqual(['/league/nolink', '/league/supply', '/league/sanply'])
+    expect(hrefs).toEqual(['/league/supply', '/league/nolink', '/league/sanply'])
     expect(hrefs).not.toContain('/league/daerule')
+  })
+
+  it('상단바는 IPL · SPL · 10mountain 순서다 (지시 #14 ①) — 같은 셋, 순서만 다르다', () => {
+    const hrefs = GNB_LEAGUES.map((item) => item.href)
+    expect(hrefs).toEqual(['/league/nolink', '/league/supply', '/league/sanply'])
+    expect([...hrefs].sort()).toEqual([...FEATURED_LEAGUES.map((item) => item.href)].sort())
   })
 
   it('안내 문구가 `서비스 준비중` 이다', () => {

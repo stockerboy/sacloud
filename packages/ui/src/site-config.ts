@@ -48,17 +48,35 @@ export interface NavLink {
  *   되살리려면 위 한 줄을 배열 끝에 다시 넣으면 된다.
  */
 /*
- * ── 2026-09-02 (지시 #14 ①) — **순서가 IPL · SPL · 10mountain 이 됐다**
+ * ── 2026-09-02 — **자리마다 순서가 다르다.** 목록은 하나, 순서는 둘 (총괄 정정)
  *
- *   사장님: *"첫번째로 IPL 두번째로 SPL 을 넣어라"*. 총괄 확정: 상단바는 이 셋뿐이다.
- *   그때까지는 `SPL · IPL · 10mountain` 이었다 (D-246). 되돌리려면 두 줄을 바꾸면 된다.
- *   홈의 리그 버튼(`HomeSearch`)도 이 배열을 그대로 쓰므로 함께 IPL 이 먼저가 된다.
+ *   ```
+ *   홈(리그 버튼 · 랭킹 미리보기 · 최근 경기)   SPL · IPL · 10mountain   ← 지시 #18 "spl,ipl,열산 순서로"
+ *   상단바(GNB) · 모바일 서랍                  IPL · SPL · 10mountain   ← 지시 #14 "첫번째로 IPL 두번째로 SPL"
+ *   ```
+ *   한 배열을 둘이 같이 쓰면 한쪽이 뒤집힌다 (f3d06c2 에서 실제로 홈이 IPL 먼저가 됐다).
+ *   그래서 `FEATURED_LEAGUES` 는 **리그 목록이자 홈 순서**(D-246 그대로)로 두고,
+ *   상단바는 아래 `GNB_LEAGUES` 를 쓴다. 리그를 더하거나 빼는 것은 여기 한 곳에서만 한다.
  */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
-  { label: 'IPL', href: '/league/nolink' },
   { label: 'SPL', href: '/league/supply' },
+  { label: 'IPL', href: '/league/nolink' },
   { label: '10mountain', href: '/league/sanply' },
 ]
+
+/** 상단바의 순서 — href 로 적는다. 목록(`FEATURED_LEAGUES`)에 없는 것은 그려지지 않는다 */
+export const GNB_LEAGUE_ORDER: readonly string[] = ['/league/nolink', '/league/supply', '/league/sanply']
+
+/** 목록에서 주어진 순서대로 골라낸다. 순서표에 없는 리그는 빠진다 — 지어내지 않는다 */
+export function orderLeagues(order: readonly string[]): readonly NavLink[] {
+  return order.flatMap((href) => {
+    const found = FEATURED_LEAGUES.find((league) => league.href === href)
+    return found ? [found] : []
+  })
+}
+
+/** 상단바 · 모바일 서랍이 쓰는 대표 리그 — **IPL · SPL · 10mountain** (지시 #14 ①) */
+export const GNB_LEAGUES: readonly NavLink[] = orderLeagues(GNB_LEAGUE_ORDER)
 
 /**
  * **서비스 준비중**인 리그 (D-178 · 2026-08-29 사용자 지시).
@@ -115,7 +133,8 @@ export interface NavGroup {
  */
 export const MOBILE_NAV_GROUPS: readonly NavGroup[] = [
   { label: '홈', items: [{ label: 'Home', href: '/' }] },
-  { label: '리그', items: [...FEATURED_LEAGUES] },
+  /* 서랍은 상단바와 같은 순서(IPL 먼저) */
+  { label: '리그', items: [...GNB_LEAGUES] },
 ]
 
 /** 지시 #14 ① 이전의 서랍 — 지우지 않았다 (`CLAUDE.md` 10-4). 되돌리려면 위 이름을 이것으로 */

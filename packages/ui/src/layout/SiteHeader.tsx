@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  FEATURED_LEAGUES,
+  GNB_LEAGUES,
   MOBILE_NAV_GROUPS,
   PRIMARY_NAV,
   type NavGroup,
@@ -61,7 +61,8 @@ export interface SiteHeaderProps {
 }
 
 export function SiteHeader({
-  featuredLeagues = FEATURED_LEAGUES,
+  /* 상단바 순서는 홈과 다르다 (IPL 먼저 · 지시 #14). 목록은 `FEATURED_LEAGUES` 하나, 순서만 여기서 */
+  featuredLeagues = GNB_LEAGUES,
   primaryNav = PRIMARY_NAV,
   navGroups = MOBILE_NAV_GROUPS,
   user = null,
