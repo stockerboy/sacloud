@@ -47,3 +47,5 @@ export * from './clanRound'
 export * from './clanHexV2'
 /** 플레이스타일 바의 재료 — 진영별 오프닝 관여 · 첫 교전 지연 · 자리 흩어짐 (사양 8절 · D-211) */
 export * from './playstyle'
+/** 선수 육각형 5번 `연속킬` 의 재료 — 직전 킬과의 간격 (D-260) */
+export * from './playerBurst'

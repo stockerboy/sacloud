@@ -24,6 +24,31 @@ async function main() {
   console.info(`nolink MatchPlayerStat  ${stats}행 · 경기 ${matches} · 선수 ${players}`)
   console.info(`Player sourcePlayerId LIKE 'BRK-%'  ${brk}명 · origin='nexon_barracks'  ${brkOrigin}명`)
   console.info(`LeaguePlayer(nolink)  ${lp}명`)
+
+  /* 4단계(season0-apply) 뒤 대조용 — 래더가 실제로 매겨졌는지 본다 */
+  if (lp > 0) {
+    const agg = await prisma.leaguePlayer.aggregate({
+      where: { leagueId: league.id },
+      _min: { rating: true },
+      _max: { rating: true },
+      _avg: { rating: true },
+      _sum: { win: true, lose: true, kill: true, death: true },
+    })
+    const placement = await prisma.leaguePlayer.count({
+      where: { leagueId: league.id, placement: true },
+    })
+    const weapon = await prisma.leaguePlayerWeaponStat.count({
+      where: { leaguePlayer: { leagueId: league.id } },
+    })
+    console.info(
+      `  래더 ${agg._min.rating} ~ ${agg._max.rating} · 평균 ${Math.round(agg._avg.rating ?? 0)}`,
+    )
+    console.info(`  배치고사(placement=true)  ${placement}명 / ${lp}`)
+    console.info(
+      `  승 ${agg._sum.win} · 패 ${agg._sum.lose} · 킬 ${agg._sum.kill} · 데스 ${agg._sum.death}`,
+    )
+    console.info(`  LeaguePlayerWeaponStat  ${weapon}행`)
+  }
   await prisma.$disconnect()
 }
 void main()

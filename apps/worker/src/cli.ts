@@ -2332,6 +2332,7 @@ async function main(): Promise<number> {
           '원어택 잼': result.oneAttackEntries,
           '기회창출 라운드': result.openingRounds,
           '첫킬 불명': result.openingTiedRounds,
+          '연속킬 잼': result.burstEntries,
           '계정 불명': result.unknownAccounts,
           프로필: result.profiles,
           '선수 연결': result.linked,

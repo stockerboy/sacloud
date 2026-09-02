@@ -25,6 +25,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { prisma } from '@sacloud/db'
 import {
+  burstTalliesOf,
   clanByTeamNo,
   duelTallyOf,
   killsOf,
@@ -135,6 +136,19 @@ interface Accum {
   oneAttackSameKills: number
   openingKills: number
   openingRounds: number
+  /* 연속킬 (D-260) — `burstTalliesOf` 가 주는 다섯 값을 그대로 쌓는다.
+     `chainedWide` · `killRounds` · `multiKillRounds` 는 **지금 화면이 쓰지 않는다.**
+     정의를 바꿀 때 재집계를 다시 돌리지 않으려고 함께 담아 둔다 */
+  /** ★지금 축이 쓰는 분자 — 연쇄가 한 번이라도 있었던 라운드 수★ */
+  burstRounds: number
+  burstRoundsWide: number
+  /* 아래 넷은 옛 해석 (a)·(b) 의 재료다. 지우지 않는다 (`CLAUDE.md` 10-4) */
+  burstChained: number
+  burstKills: number
+  burstChainedWide: number
+  /** ★지금 축이 쓰는 분모★ */
+  burstKillRounds: number
+  burstMultiKillRounds: number
 }
 
 const zero = (): Accum => ({
@@ -153,6 +167,13 @@ const zero = (): Accum => ({
   oneAttackSameKills: 0,
   openingKills: 0,
   openingRounds: 0,
+  burstRounds: 0,
+  burstRoundsWide: 0,
+  burstChained: 0,
+  burstKills: 0,
+  burstChainedWide: 0,
+  burstKillRounds: 0,
+  burstMultiKillRounds: 0,
 })
 
 interface RawShape {
@@ -210,6 +231,8 @@ export interface RoundBuildResult {
   openingRounds: number
   /** 같은 초에 둘이 죽어 첫 킬을 못 가린 라운드 — **분모에서도 뺐다** */
   openingTiedRounds: number
+  /** 연속킬을 잰 선수-경기 수 — 그 경기에서 **시각을 아는 킬이 한 건이라도** 있었다 (D-260) */
+  burstEntries: number
   written: boolean
 }
 
@@ -255,6 +278,7 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
     oneAttackEntries: 0,
     openingRounds: 0,
     openingTiedRounds: 0,
+    burstEntries: 0,
     written: false,
   }
 
@@ -378,6 +402,12 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
       }
       result.openingRounds += openingRounds
 
+      /* 연속킬 (D-260) — 직전 킬과의 간격이 2초 이하인 킬. **라운드 안에서만** 이어진다.
+         `event_time` 이 경기 누적이라(D-174) 라운드를 안 보면 다음 라운드 첫 킬이
+         2초 안에 들어와 연속킬로 둔갑한다. `killsOf` 를 쓰지 않는 이유는
+         `playerBurst.ts` 주석에 있다 — `KillRecord` 가 **시각을 버린다** */
+      const bursts = burstTalliesOf(events)
+
       for (const [usn, team] of roster.teamOf) {
         const account = accounts.get(usn)
         if (account === undefined) {
@@ -416,6 +446,20 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
         }
         accum.openingRounds += openingRounds
         accum.openingKills += openingBy.get(usn) ?? 0
+        /* 킬이 한 건도 없으면 `burstTalliesOf` 에 아예 안 들어 있다. 그때는 더할 것이
+           없으므로 **분모도 안 늘린다** — 0 을 더해도 같지만 `burstEntries` 가
+           "잰 선수-경기" 를 세는 값이라 비는 쪽을 세면 뜻이 흐려진다 (D-106) */
+        const burst = bursts.get(usn)
+        if (burst) {
+          result.burstEntries += 1
+          accum.burstRounds += burst.burstRounds
+          accum.burstRoundsWide += burst.burstRoundsWide
+          accum.burstChained += burst.chained
+          accum.burstKills += burst.kills
+          accum.burstChainedWide += burst.chainedWide
+          accum.burstKillRounds += burst.killRounds
+          accum.burstMultiKillRounds += burst.multiKillRounds
+        }
         accum.alone += tally.alone
         accum.aloneWon += tally.aloneWon
         accum.outnumbered += tally.outnumbered
@@ -466,6 +510,13 @@ export async function buildRoundProfiles(input: { confirm: boolean }): Promise<R
       oneAttackSameKills: accum.oneAttackSameKills,
       openingKills: accum.openingKills,
       openingRounds: accum.openingRounds,
+      burstRounds: accum.burstRounds,
+      burstRoundsWide: accum.burstRoundsWide,
+      burstChained: accum.burstChained,
+      burstKills: accum.burstKills,
+      burstChainedWide: accum.burstChainedWide,
+      burstKillRounds: accum.burstKillRounds,
+      burstMultiKillRounds: accum.burstMultiKillRounds,
       computedAt: new Date(),
     }
     await prisma.playerRoundProfile.upsert({
