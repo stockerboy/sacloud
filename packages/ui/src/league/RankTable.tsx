@@ -224,9 +224,22 @@ function DivisionDivider({ division, leagueCategory }: { division: number; leagu
   )
 }
 
+/**
+ * 이 표가 **실제로 읽는 값**만 추린 것 (2026-09-02 · D-260).
+ *
+ * `ClanRankRow` 는 그대로 들어맞는다 — 넓힌 것이지 바꾼 것이 아니다.
+ * 「고용가능 클랜」 화면은 랭킹 API 가 아니라 참가 클랜 API(`leagueClans`)에서 오는데,
+ * 그쪽 응답에는 `category`(클랜 구분)가 없다. 표는 그 값을 **한 번도 쓰지 않으므로**
+ * 없는 값을 빈 문자열로 지어내 채우는 대신 타입에서 요구하지 않게 했다.
+ */
+export type ClanRankTableRow = Pick<
+  ClanRankRow,
+  'rank' | 'league_clan_id' | 'clan' | 'division' | 'win' | 'lose' | 'win_rate' | 'rating'
+>
+
 export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'emptyMessage'> {
   leagueSlug: string
-  rows?: readonly ClanRankRow[]
+  rows?: readonly ClanRankTableRow[]
   /**
    * 티어(부리그)가 바뀌는 자리마다 가로선을 넣는다 (2026-09-01).
    *
