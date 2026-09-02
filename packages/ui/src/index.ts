@@ -41,6 +41,9 @@ export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPo
  * 데이터를 주던 `GET /api/home/top` 라우트는 살아 있다 — 화면만 안 부른다.
  */
 export { SiteIntro } from './home/SiteIntro'
+/* 소개 글이 게시판을 「있다」고 말해도 되는가 (O-004 · 2026-09-02).
+   길이 열리면 이 한 줄을 true 로 (`./board/boardOpen.ts`) */
+export { BOARD_OPEN } from './board/boardOpen'
 /* 메인 · 사용법 (O-001 · 2026-09-02). 검색창을 어떻게 쓰는지 다섯 줄 */
 export { HomeGuide } from './home/HomeGuide'
 
