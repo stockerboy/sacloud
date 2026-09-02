@@ -112,3 +112,20 @@ clan-hex-v2-summary-export.json
 # 성능 측정 임시 폴더
 .tmp-perf/
 design/__tmp-*
+
+# ── 일회용 조회·점검 스크립트 (2026-09-02 · 0단계 정리)
+#    지우지 않는다. git 밖으로만 뺀다 — 파일은 디스크에 그대로 있다.
+#    이 규칙이 없어서 미커밋 69개가 쌓였다.
+.tmp-*/
+_tmp/
+**/_tmp/
+shots-*/
+packages/db/_q*.ts
+packages/db/_hexq*.ts
+packages/db/_hexbackup.ts
+packages/db/_hexverify.ts
+packages/db/_tmp_check.ts
+packages/db/.tmp_count*.ts
+packages/db/_backup/
+apps/worker/_bulkimport.ts
+apps/web/scripts/_eggGateProbe.mts
