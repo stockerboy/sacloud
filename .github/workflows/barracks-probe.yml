@@ -61,12 +61,16 @@ jobs:
 
     env:
       PUPPETEER_VERSION: ${{ inputs.puppeteer_version || '25.9.0' }}
-      # puppeteer 를 여기에만 설치한다. 저장소 작업공간이 아니다
-      PROBE_HOME: ${{ runner.temp }}/barracks-probe
 
     steps:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
+
+      # puppeteer 를 여기에만 설치한다. 저장소 작업공간이 아니다.
+      # ⚠ job 수준 `env:` 에서는 `${{ runner.temp }}` 를 못 쓴다 (GitHub 가 워크플로 자체를 못 읽는다 —
+      #   2026-09-02 실측 «Unrecognized named-value: 'runner'»). 그래서 스텝 안에서 셸 변수로 정한다
+      - name: 설치 위치를 정한다 (실행기 임시 폴더)
+        run: echo "PROBE_HOME=${RUNNER_TEMP}/barracks-probe" >> "$GITHUB_ENV"
 
       - name: Node 24 설치
         uses: actions/setup-node@v4
