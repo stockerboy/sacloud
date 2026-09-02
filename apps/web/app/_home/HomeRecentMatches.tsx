@@ -7,42 +7,50 @@ import { leagueLandingPath } from '@sacloud/contract'
 import { MatchCard } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { HomeEmpty, HomeLeagueHead, HomeLoadFailed, HomeSectionHead } from './homeKit'
-import type { HomeRecentLeague } from './homeTypes'
+import { HomeRecentList } from './HomeRecentList'
+import { HOME_RECENT_LOOK, type HomeRecentLeague } from './homeTypes'
 
 /**
- * ② 최근 경기 — **SPL 왼쪽 · IPL 오른쪽**, 각 5경기 (2026-09-02 사장님 지시).
+ * ② 최근 경기 — **SPL 왼쪽 · IPL 오른쪽**, 각 6경기, **한 경기 한 줄** (2026-09-02 사장님 지시 #11).
  *
- * ⚠ 지시 #10 으로 좌우가 바뀌었다 — 오전(#3)에는 IPL 왼쪽 / SPL 오른쪽이었다.
- *   *"spl,ipl,열산 순서로 배치해라"*. 순서는 `homeData.ts` 의 `HOME_RECENT_LEAGUES` 한 줄이 정한다.
+ * > "최근 경기는 승리 카드로 하지말고 그냥 간략하게 왼쪽(이긴팀)vs오른쪽(진팀) 이런 정보만 줘라
+ * >  몇분전에 한 경기인지는 꼭 알려줘라 그리고 가장최신경기 6건씩을 붙이면 된다 iplspl 둘다 마찬가지이다"
  *
  * ```
- * SPL                         IPL
- * ┃ 맵 - 3분 전        +6점   ┃ 맵 - 10분 전       알수없음
- * ┃ 승리  [A] vs [B]      ⌄   ┃ 승리  [C] vs [D]      ⌄
- * ⋮ (5장)                    ⋮
+ * SPL                                   IPL
+ * [마크] 이긴 클랜  vs  [마크] 진 클랜   12분 전    [마크] A  vs  [마크] B   3시간 전
+ * ⋮ (6줄)                               ⋮
  * ```
  *
- * ── 카드는 기록실 것 그대로다
- *   `MatchCard` 를 재사용한다. **접힌 것이 기본**이고 꺾쇠를 누르면 펼쳐진다 — 기록실과
- *   같은 동작이다 (버튼이 하는 일을 바꾸지 않는다). 펼칠 때 상세를 지연 로드하는 것도
- *   기록실(`league/[leagueSlug]/player/[playerId]/page.tsx` 의 `loadDetail`)과 같은 코드다.
- *   경기 목록 자체는 서버가 읽어 넘긴다 — 홈이 열릴 때 나가는 요청은 없고,
- *   꺾쇠를 누를 때만 `GET /leagues/{slug}/matches/{id}` 하나가 나간다.
+ * 줄 하나의 규칙(왼쪽 = 이긴 팀 · 상대시간 · `결과 알수없음` · 클랜명 → 클랜 기록실)은
+ * `HomeRecentList` 주석에 있다. 홈이 열릴 때 나가는 요청은 없다 — 목록은 서버가 읽어 넘긴다.
  *
- *   `variant` 는 기본(`player`)이다. 홈 카드에는 주인 선수가 없어 `player_stat` 이 `null` 이고
- *   K/D/A 칸이 그려지지 않는다 — 남는 것은 `맵 · 시간 · 승패 · 두 클랜 · 증감` 이다.
- *   `clan` 변형(선레드 · 5 vs 5 칸)을 쓰면 반 폭 칸에서 카드가 넘친다.
+ * ── 옛 모습(카드)은 지우지 않았다 (`CLAUDE.md` 10-4)
+ *   `homeTypes.ts` 의 `HOME_RECENT_LOOK` 을 `'card'` 로 바꾸면 #3 때의 기록실 카드(`MatchCard` ·
+ *   접힘 기본 · 꺾쇠로 펼침 · 펼칠 때 `matchShow` 지연 로드)가 그대로 돌아온다. 그때 카드는
+ *   `variant` 기본(`player`)이고 주인 선수가 없어 K/D/A 칸이 없다 — `맵 · 시간 · 승패 · 두 클랜 · 증감`.
  *
- * ── 왼쪽 클랜은 이긴 쪽이다
- *   서버가 이긴 쪽을 «보는 쪽» 으로 두고 카드를 만든다 (`homeRecent.ts`). 그래서 `승리` 가
- *   왼쪽에 서고 그 옆이 이긴 클랜이다. 승자를 모르는 경기만 레드 슬롯 기준이다.
- *
- * ── 좁은 화면
- *   1024px 아래에서는 두 칸을 위아래로 쌓는다 (SPL 먼저). 카드는 기록실과 같이
- *   `.mobile-bleed` 로 화면 끝까지 찬다.
+ * ── 좌우
+ *   순서는 `homeData.ts` 의 `HOME_RECENT_LEAGUES` 한 줄이 정한다 (지시 #10 으로 SPL 왼쪽).
+ *   1024px 아래에서는 두 칸을 위아래로 쌓는다 (SPL 먼저).
  */
 
-function Sector({ league }: { league: HomeRecentLeague }) {
+/** 한 줄 모양 (지금) */
+function ListSector({ league }: { league: HomeRecentLeague }) {
+  return (
+    <section className="min-w-0">
+      <HomeLeagueHead name={league.name} href={leagueLandingPath(league.slug)} action="리그 보기 →" />
+      {league.rows.length === 0 ? (
+        <HomeEmpty>아직 기록된 경기가 없습니다.</HomeEmpty>
+      ) : (
+        <HomeRecentList rows={league.rows} leagueSlug={league.slug} />
+      )}
+    </section>
+  )
+}
+
+/** 카드 모양 (옛 방식 · `HOME_RECENT_LOOK === 'card'`) */
+function CardSector({ league }: { league: HomeRecentLeague }) {
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState<Record<string, MatchDetail>>({})
 
@@ -89,9 +97,10 @@ function Sector({ league }: { league: HomeRecentLeague }) {
 }
 
 export function HomeRecentMatches({ leagues }: { leagues: HomeRecentLeague[] | null }) {
+  const Sector = HOME_RECENT_LOOK === 'card' ? CardSector : ListSector
   return (
     <section aria-labelledby="home-recent-title">
-      <HomeSectionHead id="home-recent-title" title="최근 경기" note="리그마다 최근 5경기" />
+      <HomeSectionHead id="home-recent-title" title="최근 경기" note="리그마다 최신 6경기" />
       {leagues === null ? (
         <HomeLoadFailed />
       ) : (
