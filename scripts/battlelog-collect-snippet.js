@@ -408,9 +408,175 @@ window.__blReset = function __blReset() {
   console.info('지웠다. 다음 실행은 처음부터다')
 }
 
+/* ================================================= 클랜전 목록 전수 (2026-09-02) === */
+
+/**
+ * 클랜전 목록 **페이지 넘기기** — `GetClanMatchList` 의 커서는 `seq_no` 다.
+ *
+ * ── 실측 (2026-09-02 · 진짜 크롬 · `sorentolove`)
+ *   ```
+ *   POST /api/ClanHome/GetClanMatchList/
+ *   { "clan_id": "<slug>", "seq_no": 0,               "mode_flag": "ALL", "min_seq_no": 0 }  → 1페이지 20건
+ *   { "clan_id": "<slug>", "seq_no": <마지막 match_key>, "mode_flag": "ALL", "min_seq_no": 0 }  → 2페이지 20건 · 겹침 0
+ *   ```
+ *   · 응답의 `message` 칸이 **곧 마지막 match_key** = 다음 커서다. `rtnCode` 는 20 이 정상
+ *   · `seq_no` 는 **숫자**로 보낸다 (`Number(match_key)`). 문자열도 받지만 옛 수집기가 숫자로 보내 214,224줄을 받았다
+ *   · 끝은 「20건 미만」 또는 「빈 페이지」. 커서가 제자리면 즉시 멈춘다
+ *   · 번들(`chunk-common.*.js`)의 호출부 주변 식별자도 `{ seq_no, min_seq_no, mode_flag }` 셋뿐이다.
+ *     `page`·`page_no`·`offset`·`start`·`last_match_key` 는 **이 API 의 키가 아니다** — 무시돼 늘 1페이지가 온다
+ *   · 웹 화면 자체는 20건만 그리고 더보기·스크롤 로딩이 **없다.** 페이지 넘기기는 API 로만 된다
+ *
+ * ── 왜 여기 있나
+ *   같은 방법이 `packages/db/legacy/barracks-clan-battlelog-snippet.js` 의 `clanMatchList()` 에
+ *   이미 있었는데 인계서에서 잊혀 「페이지 넘기기를 모른다」로 되돌아갔다. 그래서 **운영 수집기
+ *   옆에** 다시 둔다. 옛 함수는 그대로 남아 있다 (`CLAUDE.md` 10-4).
+ *
+ * ── 쓰는 법
+ *   ```
+ *   const r = await collectClanMatchList('sorentolove', { from: '2026-07-01' })
+ *   r.rows.length · r.dup · r.oldest · r.pages
+ *
+ *   // 운영 창구로 바로 보내려면 (토큰은 Vercel 환경변수. 파일에 적지 마라)
+ *   await collectClanMatchList('sorentolove', { from: '2026-07-01',
+ *     ingest: 'https://3rdcloud.my/api/ingest/barracks', token: '<BARRACKS_INGEST_TOKEN>' })
+ *   ```
+ *   · `from`   이 날짜(KST) 이전 경기가 나오는 페이지에서 멈춘다. 없으면 끝까지
+ *   · `delay`  요청 간격(ms). 기본 1000. **500 밑으로 내리지 마라**
+ *   · `ingest` 주면 페이지마다 `{ kind:'matchlist', subject: slug, raw: <응답 그대로> }` 로 보낸다
+ *              — 창구가 `raw.result` 를 경기별 행으로 편다 (`apps/web/app/api/ingest/barracks/route.ts`)
+ *   · `keep`   `false` 면 보낸 뒤 메모리에 안 남긴다 (43곳 전부 돌 때)
+ *   · 진행은 `__cmlStatus()` · 멈춤은 `__cmlStop()`
+ */
+var CML_DELAY_MS = 1000
+var cmlState = { running: false, stop: false, slug: null, pages: 0, fetched: 0, dup: 0, sent: 0, inserted: 0, errors: 0, oldest: null, stoppedBecause: null }
+
+/** `YYYY-MM-DD` → `match_key` 앞 12자리와 비교할 `YYMMDD000000` */
+function cmlFloor(from) {
+  if (!from) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(from))
+  if (!m) throw new Error(`from 은 YYYY-MM-DD 여야 한다: ${from}`)
+  return `${m[1].slice(2)}${m[2]}${m[3]}000000`
+}
+
+async function cmlPost(body) {
+  let wait = BL_BACKOFF_MS
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch('/api/ClanHome/GetClanMatchList/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      return await response.json()
+    } catch (error) {
+      if (attempt === 2) throw error
+      await blSleep(wait)
+      wait *= 2
+    }
+  }
+  return null
+}
+
+async function cmlSend(ingest, token, slug, json) {
+  const response = await fetch(ingest, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      rows: [{ kind: 'matchlist', subject: slug, endpoint: '/api/ClanHome/GetClanMatchList/', raw: json }],
+    }),
+  })
+  if (!response.ok) throw new Error(`창구 HTTP ${response.status}`)
+  return await response.json()
+}
+
+window.collectClanMatchList = async function collectClanMatchList(slug, options = {}) {
+  if (!slug) throw new Error('slug 가 필요하다 (클랜 URL 조각)')
+  const delay = Math.max(500, options.delay ?? CML_DELAY_MS)
+  const floor = cmlFloor(options.from)
+  const keep = options.keep !== false
+  const ingest = options.ingest ?? null
+  if (ingest && !options.token) throw new Error('ingest 를 주면 token 도 줘야 한다')
+
+  Object.assign(cmlState, { running: true, stop: false, slug, pages: 0, fetched: 0, dup: 0, sent: 0, inserted: 0, errors: 0, oldest: null, stoppedBecause: null })
+  const seen = new Set()
+  const rows = []
+  let cursor = 0
+
+  while (!cmlState.stop) {
+    let json
+    try {
+      json = await cmlPost({ clan_id: slug, seq_no: cursor, mode_flag: 'ALL', min_seq_no: 0 })
+    } catch (error) {
+      cmlState.errors += 1
+      cmlState.stoppedBecause = `요청 실패: ${error}`
+      break
+    }
+    /* 전적이 없는 클랜은 `result` 가 배열이 아니라 빈 문자열이다 */
+    const page = Array.isArray(json?.result) ? json.result : []
+    cmlState.pages += 1
+    if (page.length === 0) {
+      cmlState.stoppedBecause = '빈 페이지'
+      break
+    }
+    for (const row of page) {
+      const key = String(row?.match_key ?? '')
+      if (!key) continue
+      if (seen.has(key)) cmlState.dup += 1
+      else {
+        seen.add(key)
+        cmlState.fetched += 1
+        if (keep) rows.push(row)
+      }
+    }
+    if (ingest) {
+      try {
+        const r = await cmlSend(ingest, options.token, slug, json)
+        cmlState.sent += page.length
+        cmlState.inserted += r.inserted ?? 0
+      } catch (error) {
+        cmlState.errors += 1
+        console.warn(`[목록] 창구로 못 보냈다 (${error}) — 이 페이지는 메모리에만 있다`)
+        if (!keep) rows.push(...page)
+      }
+    }
+    const last = String(page[page.length - 1].match_key)
+    cmlState.oldest = last
+    if (floor && last.slice(0, 12) < floor) {
+      cmlState.stoppedBecause = `from(${options.from}) 이전에 닿음`
+      break
+    }
+    if (page.length < 20) {
+      cmlState.stoppedBecause = '20건 미만 페이지'
+      break
+    }
+    if (Number(last) === cursor) {
+      cmlState.stoppedBecause = '커서가 제자리'
+      break
+    }
+    cursor = Number(last)
+    await blSleep(delay)
+  }
+  if (cmlState.stop) cmlState.stoppedBecause = '멈추라고 해서'
+  cmlState.running = false
+  console.info(
+    `[목록] ${slug} 끝 — 페이지 ${cmlState.pages} · 고유 ${cmlState.fetched} · 중복 ${cmlState.dup} · 가장 오래된 ${cmlState.oldest} (${cmlState.stoppedBecause})`,
+  )
+  return { ...cmlState, rows }
+}
+
+window.__cmlStatus = function __cmlStatus() {
+  return { ...cmlState }
+}
+window.__cmlStop = function __cmlStop() {
+  cmlState.stop = true
+}
+
 console.info(
   '준비됐다.\n' +
     '  await collectBattleLogs({ priority: 1 })   1티어부터\n' +
     '  await collectBattleLogs()                  1 → 4 순서로 전부\n' +
-    '  __blStatus() / __blStop() / __blExport()',
+    '  __blStatus() / __blStop() / __blExport()\n' +
+    "  await collectClanMatchList('<slug>', { from: '2026-07-01' })   클랜전 목록 전수 (seq_no 커서)",
 )
