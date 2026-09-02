@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>SACLOUD 병영수첩 자동수집 — 설정</title>
+  <style>
+    body { font: 14px/1.6 system-ui, sans-serif; margin: 24px; max-width: 640px; color: #222; }
+    h1 { font-size: 18px; margin: 0 0 16px; }
+    label { display: block; margin: 12px 0 4px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 8px; font: inherit; }
+    button { margin: 12px 8px 0 0; padding: 8px 14px; font: inherit; cursor: pointer; }
+    pre { background: #f4f4f4; padding: 12px; overflow: auto; font-size: 12px; }
+    .hint { color: #666; font-size: 12px; }
+    .ok { color: #2e7d32; } .err { color: #c62828; }
+  </style>
+</head>
+<body>
+  <h1>SACLOUD 병영수첩 자동수집</h1>
+
+  <label for="token">수집 토큰 (총괄이 준 값)</label>
+  <input id="token" type="password" autocomplete="off" placeholder="붙여 넣기">
+  <div class="hint">이 컴퓨터의 크롬 안에만 저장된다. 파일로 남지 않는다.</div>
+
+  <label for="ingest">창구 주소</label>
+  <input id="ingest" type="url" placeholder="https://3rdcloud.my/api/ingest/barracks">
+
+  <label for="interval">주기 (분 · 최소 5)</label>
+  <input id="interval" type="number" min="5" step="1" value="15">
+
+  <div>
+    <button id="save">저장</button>
+    <button id="run">지금 한 바퀴</button>
+    <button id="open">수집 탭 열기</button>
+    <button id="clans">클랜 명단 새로 받기</button>
+  </div>
+  <div id="msg" class="hint"></div>
+
+  <h2 style="font-size:15px;margin-top:24px">마지막 상태</h2>
+  <pre id="status">(아직 없음)</pre>
+  <div class="hint">클랜 명단: <span id="clanInfo">-</span></div>
+
+  <script src="options.js"></script>
+</body>
+</html>
