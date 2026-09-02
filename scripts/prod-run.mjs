@@ -93,6 +93,11 @@ const ALLOWED = {
     writes: true,
     what: 'IPL 39곳을 티어별로 등록한다 (1티어는 비운다). 없는 클랜은 만든다',
   },
+  'league-clan-count': {
+    file: 'leagueClanCount',
+    writes: false,
+    what: '리그별 클랜 수 — 등록 · 활성 · 랭킹표시 · 경기한곳 (고용가능 클랜 설계용 · 읽기만)',
+  },
   'ipl-lineup-state': {
     file: 'iplState2',
     writes: false,
