@@ -434,7 +434,11 @@ async function clanNameIndex(): Promise<ClanIndexRow[]> {
       clanIndex = { rows, expiresAt: Date.now() + CLAN_INDEX_TTL_MS }
       return rows
     })
-    .catch(() => cached?.rows ?? [])
+    .catch((error: unknown) => {
+      /* 이 자리는 `.then` 뒤라 `softFail` 로 감싸기 어렵다. 로그 모양만 맞춘다 (O-028) */
+      console.error('[soft-fail] clan-index', error)
+      return cached?.rows ?? []
+    })
     .finally(() => {
       clanIndexInFlight = null
     })

@@ -1,4 +1,5 @@
 import { prisma, type Prisma } from '@sacloud/db'
+import { softFail } from '../softFail'
 import {
   kdRateOrNull,
   percentOf,
@@ -664,10 +665,11 @@ export async function getMatch(
   /* 참가자 포지션 — **여기서만** 읽는다 (D-199). 목록에서는 읽지 않는다.
      한 경기 열 명이라 왕복 세 번으로 끝난다 (`resolvePositionsOf`).
      실패해도 경기 상세를 죽이지 않는다 — 그때는 포지션 없이 그린다 */
-  const positionsResolved = await resolvePositionsOf(
-    leagueId,
-    match.stats.map((stat) => stat.playerId),
-  ).catch(() => new Map())
+  const positionsResolved = await softFail(
+    'match-positions',
+    new Map<string, { label: string | null }>(),
+    { leagueId, matchId: match.id },
+  )(resolvePositionsOf(leagueId, match.stats.map((stat) => stat.playerId)))
   const positions = new Map<string, string | null>(
     [...positionsResolved].map(([id, value]) => [id, value.label]),
   )
@@ -682,10 +684,12 @@ export async function getMatch(
      슬롯(`red`/`blue`)은 이미 알고 있으니 넘겨 준다 — 왕복 한 번을 아낀다.
      배틀로그 행이 없으면 `null` 이고 화면은 도형을 안 그린다 (D-106).
      실패해도 경기 상세를 죽이지 않는다 — 그때는 육각형 없이 그린다 */
-  const hexV2 = await matchClanHexV2(match.id, {
-    redLeagueClanId: match.redLeagueClanId,
-    blueLeagueClanId: match.blueLeagueClanId,
-  }).catch(() => null)
+  const hexV2 = await softFail('match-hexagon-v2', null, { matchId: match.id })(
+    matchClanHexV2(match.id, {
+      redLeagueClanId: match.redLeagueClanId,
+      blueLeagueClanId: match.blueLeagueClanId,
+    }),
+  )
 
   return {
     ...base,

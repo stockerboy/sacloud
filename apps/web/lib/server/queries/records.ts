@@ -1,4 +1,5 @@
 import { prisma, type Prisma } from '@sacloud/db'
+import { softFail } from '../softFail'
 import {
   buildTodayPerformance,
   kdRate,
@@ -430,12 +431,18 @@ export async function getLeagueClanShow(
     /* 클랜원 정리 — 포지션별 · 1군/2군 (SITE_SPEC_V2 5-2 · D-199).
        기존 클랜원 목록(`/clan/{slug}/player`)을 **대체하지 않는다** — 그쪽은 그대로 둔다.
        실패해도 클랜 화면 전체를 죽이지 않는다. `null` 이면 카드를 안 그린다 */
-    leagueClanRoster(leagueClan.leagueId, clan.id).catch(() => null),
+    softFail('clan-roster', null, { leagueId: leagueClan.leagueId, clanId: clan.id })(
+      leagueClanRoster(leagueClan.leagueId, clan.id),
+    ),
     /* 배틀로그 지표 (SITE_SPEC_V2 5-5절). 집계는 `nexon clan-round-build` 가 미리 해 둔다.
        배틀로그가 없는 클랜은 `null` 이고 화면은 카드를 안 그린다 (D-106) */
-    leagueClanRoundMetrics(leagueClan.leagueId, leagueClan.id).catch(() => null),
+    softFail('clan-round-metrics', null, { leagueId: leagueClan.leagueId, leagueClanId: leagueClan.id })(
+      leagueClanRoundMetrics(leagueClan.leagueId, leagueClan.id),
+    ),
     /* 클랜 육각형 (SITE_SPEC_V2 5-5절). 위 지표와 **같은 캐시**를 읽는다 — 질의가 늘지 않는다 */
-    leagueClanHexagon(leagueClan.leagueId, leagueClan.id).catch(() => null),
+    softFail('clan-hexagon', null, { leagueId: leagueClan.leagueId, leagueClanId: leagueClan.id })(
+      leagueClanHexagon(leagueClan.leagueId, leagueClan.id),
+    ),
     /*
      * 클랜 육각형 **V2** (D-217 · D-235 · **D-238**).
      *
@@ -472,10 +479,15 @@ export async function getLeagueClanShow(
      *
      * 실패해도 클랜 화면 전체를 죽이지 않는다. `null` 이면 카드를 안 그린다.
      */
-    leagueClanHexV2({
-      leagueClanId: leagueClan.id,
+    softFail('clan-hexagon-v2', null, {
       leagueId: leagueClan.leagueId,
-    }).catch(() => null),
+      leagueClanId: leagueClan.id,
+    })(
+      leagueClanHexV2({
+        leagueClanId: leagueClan.id,
+        leagueId: leagueClan.leagueId,
+      }),
+    ),
   ])
 
   return {
@@ -720,9 +732,11 @@ export async function getLeaguePlayerDetail(
        **여기서 실패해도 프로필 전체를 죽이지 않는다.** 육각형은 없어도 되는 카드이고
        계약도 `nullable` 이다. 분포 계산은 리그 전체를 훑으므로 다른 조회보다 깨질 여지가
        크다 — 그 하나 때문에 기록실이 통째로 안 열리면 안 된다 */
-    playerTraits(league.id, playerId).catch(() => null),
+    softFail('player-traits', null, { leagueId: league.id, playerId })(
+      playerTraits(league.id, playerId),
+    ),
     /* 좌표로 판정한 자리 (D-199). 없으면 `null` — 화면이 그 줄을 안 그린다 */
-    playerJudgedPosition(playerId).catch(() => null),
+    softFail('player-position', null, { playerId })(playerJudgedPosition(playerId)),
   ])
 
   /* 아래 넷은 **질의를 하지 않는다.** 위에서 읽어 온 행을 세기만 한다 —
@@ -746,7 +760,10 @@ export async function getLeaguePlayerDetail(
     /* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절).
        줄 수는 리그의 부리그 수만큼이다. 실패해도 카드 전체를 죽이지 않는다 —
        빈 배열이면 화면이 카드를 안 그린다. 클랜 이름 조회 한 번이 여기 남아 있다 */
-    playerTierBreakdownFrom(ladderRows, league.divisionCount).catch(() => []),
+    softFail('player-tier-breakdown', [] as Awaited<ReturnType<typeof playerTierBreakdownFrom>>, {
+      leagueId: league.id,
+      playerId,
+    })(playerTierBreakdownFrom(ladderRows, league.divisionCount)),
   ])
   const sniperRank = weaponRanks.get(1) as WeaponRankResult
   const rifleRank = weaponRanks.get(0) as WeaponRankResult

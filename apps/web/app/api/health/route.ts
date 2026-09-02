@@ -1,4 +1,5 @@
 import { getHealth } from '@/lib/server/queries/health'
+import { softFail } from '@/lib/server/softFail'
 
 /**
  * GET /api/health — 운영 상태 (D-137).
@@ -14,7 +15,10 @@ import { getHealth } from '@/lib/server/queries/health'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const report = await getHealth().catch(() => null)
+  /* ★상태를 못 본 이유까지 삼키면 안 된다★ (O-028).
+     이 경로가 `down` 을 내면 사람이 제일 먼저 보러 오는데, 그때 「왜」가
+     아무 데도 없으면 감시 장치가 감시당하지 않는 것과 같다. 답은 그대로 503 이다 */
+  const report = await softFail('health', null)(getHealth())
   if (!report) {
     return Response.json(
       { status: 'down', detail: '상태를 확인할 수 없다' },
