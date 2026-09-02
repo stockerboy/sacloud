@@ -18,9 +18,32 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /**
+     * ★서버가 사람 말로 써 준 문장★ (2026-09-02 · O-023).
+     *
+     * 그전에는 이걸 **버렸다.** `message` 에는 `POST /auth/signup → 400` 같은
+     * 기계어만 담겼고, 서버가 `signupFieldMessage()` 로 칸마다 만들어 준 문장은
+     * 중간에서 사라졌다. 그래서 화면은 「가입하지 못했습니다」밖에 못 그렸다.
+     * **가입이 왜 막혔는지 아무도 알 수 없었다.**
+     *
+     * `apiSend` 를 쓰는 **모든 화면**이 같은 문제를 갖고 있었다.
+     */
+    readonly serverMessage?: string,
+    /** 칸별 오류 — `{ username: ['이미 사용 중인 아이디입니다'] }` */
+    readonly fieldErrors?: Record<string, string[]>,
   ) {
     super(message)
     this.name = 'ApiError'
+  }
+
+  /**
+   * 사람에게 보여 줄 한 줄.
+   *
+   * 서버가 준 말이 있으면 그것을, 없으면 부르는 쪽이 준 기본 문구를 쓴다.
+   * **기계어(`POST /… → 400`)는 절대 화면에 내보내지 않는다.**
+   */
+  humanMessage(fallback: string): string {
+    return this.serverMessage?.trim() || fallback
   }
 }
 

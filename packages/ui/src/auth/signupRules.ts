@@ -1,4 +1,4 @@
-import { SIGNUP_ALLOWED_EMAIL_DOMAINS } from '@sacloud/contract'
+import { SIGNUP_ALLOWED_EMAIL_DOMAINS, Username } from '@sacloud/contract'
 
 /**
  * 회원가입 폼 제약.
@@ -33,6 +33,23 @@ export function isAllowedSignupEmail(email: string): boolean {
   return allowed.includes(domain)
 }
 
+/**
+ * 아이디 검증 — **규칙을 여기에 새로 적지 않는다** (O-023 · 2026-09-02).
+ *
+ * 계약의 `Username` 을 그대로 돌려서 그 문구까지 받아 쓴다. 화면이 규칙을 따로
+ * 적으면 서버와 갈리고, 그러면 「버튼은 눌리는데 서버가 거부」하거나 그 반대가 된다 —
+ * 이메일 도메인에서 실제로 그 일이 났다(위 주석의 2026-09-02 정정).
+ *
+ * ⚠ 이 함수가 없어서 **가입이 통째로 막혀 있었다.** 2026-09-01(D-252)에 가입을
+ *   「이메일」에서 「아이디」로 바꿨는데 화면이 안 따라왔다 — 아이디 칸도 없었고
+ *   `username` 을 보내지도 않았다. 서버는 그 값을 필수로 받으므로 **누가 무엇을
+ *   넣어도 400 이었다.** 운영에서 확인했다 (2026-09-02).
+ */
+export function validateSignupUsername(username: string): string | null {
+  const result = Username.safeParse(username)
+  return result.success ? null : (result.error.issues[0]?.message ?? '아이디를 확인해주세요')
+}
+
 export function validateSignupPassword(password: string): string | null {
   return password.length >= 8 ? null : '비밀번호는 8자 이상이어야 합니다.'
 }
@@ -43,18 +60,24 @@ export function validateSignupNickname(nickname: string): string | null {
 }
 
 export interface SignupDraft {
-  email: string
+  /** 로그인 아이디 — **필수다** (D-252). 이메일이 아니라 이게 아이디다 */
+  username: string
   password: string
   nickname: string
+  /** ⚠ **선택 입력이다** (D-252). 비워도 가입된다 */
+  email: string
   agreed: boolean
 }
 
 /** 폼 전체가 제출 가능한지 */
 export function canSubmitSignup(draft: SignupDraft): boolean {
   return (
-    isAllowedSignupEmail(draft.email) &&
+    validateSignupUsername(draft.username) === null &&
     validateSignupPassword(draft.password) === null &&
     validateSignupNickname(draft.nickname) === null &&
+    /* 이메일은 **선택**이다 — 비었으면 검사하지 않는다. 넣었을 때만 도메인을 본다.
+       그전에는 빈 이메일이 `isAllowedSignupEmail('')` 로 들어가 버튼을 막을 수 있었다 */
+    (draft.email.trim() === '' || isAllowedSignupEmail(draft.email)) &&
     draft.agreed
   )
 }

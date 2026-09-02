@@ -13,10 +13,12 @@ import {
   AuthTitle,
   canSubmitSignup,
   isAllowedSignupEmail,
+  validateSignupUsername,
   validateSignupNickname,
   validateSignupPassword,
 } from '@sacloud/ui'
 import { apiSend } from '@/lib/apiSend'
+import { ApiError } from '@/lib/api'
 
 /**
  * 회원가입 `/auth/signup`.
@@ -37,21 +39,32 @@ export default function SignupPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
 
+  /* ★아이디가 로그인 키다★ 이메일이 아니다 (D-252). 이 칸이 없어서 가입이 통째로 막혔었다 */
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
   const [agreed, setAgreed] = useState(false)
 
   // 검증 규칙은 `packages/ui/src/auth/signupRules.ts` 한 곳에 있다 (단위 테스트로 고정)
+  const usernameError = validateSignupUsername(username)
   const domainOk = isAllowedSignupEmail(email)
   const passwordError = validateSignupPassword(password)
   const nicknameError = validateSignupNickname(nickname)
-  const canSubmit = canSubmitSignup({ email, password, nickname, agreed })
+  const canSubmit = canSubmitSignup({ username, email, password, nickname, agreed })
 
   const signup = useMutation({
     mutationFn: () =>
       apiSend('authSignup', {
-        body: { email, password, nickname: nickname.trim(), captcha_token: 'mock' },
+        body: {
+          username,
+          password,
+          nickname: nickname.trim(),
+          /* 이메일은 **선택**이다 (D-252). 비었으면 아예 안 보낸다 —
+             빈 문자열을 보내면 서버의 이메일 형식 검사에 걸린다 */
+          ...(email.trim() ? { email: email.trim() } : {}),
+          captcha_token: 'mock',
+        },
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries()
@@ -83,11 +96,25 @@ export default function SignupPage() {
       */}
       <AuthTitle hint="약관과 개인정보 처리방침에 동의하면 가입할 수 있습니다.">회원가입</AuthTitle>
 
-      <AuthField label="이메일">
+      {/* ★아이디 — 로그인 키다★ (D-252). 규칙은 계약(`Username`)에서 그대로 온다 */}
+      <AuthField label="아이디">
+        <AuthInput
+          type="text"
+          value={username}
+          placeholder="영문으로 시작하는 4~16자"
+          onChange={(event) => setUsername(event.target.value)}
+        />
+      </AuthField>
+      {username && usernameError ? (
+        <div className="-mt-4 mb-5 text-sm text-accent">{usernameError}</div>
+      ) : null}
+
+      {/* 이메일은 **선택**이다 (D-252). 비워도 가입된다 — 필수처럼 보이면 안 된다 */}
+      <AuthField label="이메일 (선택)">
         <AuthInput
           type="text"
           value={email}
-          placeholder="you@example.com"
+          placeholder="비워 두어도 됩니다"
           onChange={(event) => setEmail(event.target.value)}
         />
       </AuthField>
@@ -150,7 +177,20 @@ export default function SignupPage() {
         </span>
       </label>
 
-      {signup.isError ? <AuthError>가입하지 못했습니다.</AuthError> : null}
+      {/*
+        ★서버가 준 이유를 그대로 그린다★ (2026-09-02 · O-023).
+        그전에는 무슨 일이 있어도 「가입하지 못했습니다」 한 줄이었다. 서버는 칸마다
+        사람 말을 만들어 주고 있었는데(`signupFieldMessage()`) 화면이 안 썼고,
+        `apiSend` 도 본문을 버렸다. **가입이 왜 막혔는지 알 길이 없었다.**
+        「가입하지 못했습니다」는 이제 **이유를 못 받았을 때의 마지막 문구**다.
+      */}
+      {signup.isError ? (
+        <AuthError>
+          {signup.error instanceof ApiError
+            ? signup.error.humanMessage('가입하지 못했습니다.')
+            : '가입하지 못했습니다.'}
+        </AuthError>
+      ) : null}
 
       <AuthSubmit disabled={!canSubmit || signup.isPending} onClick={() => signup.mutate()}>
         회원가입

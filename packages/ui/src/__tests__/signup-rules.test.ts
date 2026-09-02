@@ -4,6 +4,7 @@ import {
   isAllowedSignupEmail,
   validateSignupNickname,
   validateSignupPassword,
+  validateSignupUsername,
 } from '../auth/signupRules'
 
 /*
@@ -64,6 +65,11 @@ describe('비밀번호 · 닉네임 경계값', () => {
 
 describe('canSubmitSignup', () => {
   const base = {
+    /* ★2026-09-02 (O-023) — `username` 을 넣었다★
+       D-252 로 가입 키가 이메일에서 아이디로 바뀌었는데 이 `base` 가 안 따라왔다.
+       그래서 **화면이 `username` 을 안 보내는 것을 테스트가 못 잡았고**,
+       운영에서 가입이 통째로 막혀 있었다 (누가 무엇을 넣어도 400). */
+    username: 'tester01',
     email: 'tester@naver.com',
     password: 'password1234',
     nickname: '테스터',
@@ -72,6 +78,21 @@ describe('canSubmitSignup', () => {
 
   it('모두 채우면 제출 가능', () => {
     expect(canSubmitSignup(base)).toBe(true)
+  })
+
+  it('★아이디가 비면 제출 불가★ — 이게 없어서 가입이 통째로 막혔었다', () => {
+    expect(canSubmitSignup({ ...base, username: '' })).toBe(false)
+  })
+
+  it('아이디가 규칙에 안 맞으면 제출 불가', () => {
+    expect(canSubmitSignup({ ...base, username: 'ab' })).toBe(false) // 4자 미만
+    expect(canSubmitSignup({ ...base, username: '1abc' })).toBe(false) // 영문으로 시작해야 한다
+    expect(canSubmitSignup({ ...base, username: '한글아이디' })).toBe(false)
+  })
+
+  it('★이메일은 선택이다 — 비워도 제출 가능★ (D-252)', () => {
+    expect(canSubmitSignup({ ...base, email: '' })).toBe(true)
+    expect(canSubmitSignup({ ...base, email: '   ' })).toBe(true)
   })
 
   it('동의하지 않으면 제출 불가 (원본: 동의 필수)', () => {
@@ -97,5 +118,37 @@ describe('canSubmitSignup', () => {
   it('[미확인] 형식이 아닌 값도 지금은 버튼을 켠다 — 서버·브라우저가 막는다', () => {
     expect(canSubmitSignup({ ...base, email: 'tester' })).toBe(true)
     expect(canSubmitSignup({ ...base, email: '' })).toBe(true)
+  })
+})
+
+/**
+ * 아이디 규칙 — **계약(`Username`)에서 그대로 온다** (O-023 · 2026-09-02).
+ *
+ * 화면이 규칙을 따로 적으면 서버와 갈린다. 이메일 도메인에서 실제로 그 일이 났다
+ * (목록이 비었을 때의 뜻이 서버와 반대라 버튼이 영영 안 켜졌다).
+ * 그래서 이 함수는 계약을 돌리기만 하고, 이 테스트는 **그 문구까지** 고정한다.
+ */
+describe('validateSignupUsername', () => {
+  it('영문으로 시작하는 4~16자 영문·숫자·밑줄이면 통과', () => {
+    expect(validateSignupUsername('tester01')).toBeNull()
+    expect(validateSignupUsername('a_b_c1')).toBeNull()
+    expect(validateSignupUsername('abcd')).toBeNull()
+    expect(validateSignupUsername('a'.repeat(16))).toBeNull()
+  })
+
+  it('짧거나 길거나 영문으로 시작하지 않으면 막는다', () => {
+    expect(validateSignupUsername('abc')).not.toBeNull()
+    expect(validateSignupUsername('a'.repeat(17))).not.toBeNull()
+    expect(validateSignupUsername('1abcd')).not.toBeNull()
+    expect(validateSignupUsername('_abcd')).not.toBeNull()
+    expect(validateSignupUsername('한글아이디')).not.toBeNull()
+    expect(validateSignupUsername('has space')).not.toBeNull()
+    expect(validateSignupUsername('')).not.toBeNull()
+  })
+
+  it('문구가 서버와 같다 — 화면이 규칙을 새로 적지 않는다', () => {
+    expect(validateSignupUsername('ab')).toBe(
+      '아이디는 영문으로 시작하는 4~16자의 영문·숫자·밑줄이어야 합니다',
+    )
   })
 })
