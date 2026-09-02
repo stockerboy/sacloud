@@ -53,6 +53,16 @@ export interface LeagueScreenSpec {
    *   그것은 API 의 판단이라 이 표가 손대지 않는다 (`queries/leagues.ts` `getClanRanks`).
    */
   showsDivision: boolean
+  /**
+   * **공식 리그 표기** (2026-09-02 사장님 정정 · 지시 #17).
+   *
+   * > "공식리그는 SPL과 IPL이다 열산만 비공식표시해라 잘못표기돼있다"
+   *
+   * 배지(`공식` · `비공식`)를 그리는 화면 전부가 이 값 하나를 본다.
+   * DB 의 `League.official` 열(API 응답의 `official`)이나 계산용 `category`(티어 정렬 · 킬뎃 감춤)와는
+   * **별개의 표기용 값**이다 — 둘을 섞지 않는다. 데이터 쪽이 맞춰지면 표와 같아진다.
+   */
+  official: boolean
 }
 
 /** 공식 래더가 있는 리그의 기본값 — 지금까지의 화면 그대로다 */
@@ -62,6 +72,7 @@ const WITH_LADDER: LeagueScreenSpec = {
   /* 클랜랭킹에는 킬뎃 칸이 원래 없다 */
   clanColumns: { rank: true, winRate: true, kd: false, rating: true },
   showsDivision: true,
+  official: true,
 }
 
 /**
@@ -89,6 +100,8 @@ const NO_LADDER: LeagueScreenSpec = {
   playerColumns: { rank: false, winRate: true, kd: true, rating: false },
   clanColumns: { rank: false, winRate: true, kd: false, rating: false },
   showsDivision: true,
+  /* 비공식이라 래더가 없다 — 세 리그 중 유일하게 「비공식」 을 단다 (#17) */
+  official: false,
 }
 
 const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
@@ -109,6 +122,14 @@ export function leagueScreen(slug: string): LeagueScreenSpec {
  */
 export function showsDivision(slug: string): boolean {
   return leagueScreen(slug).showsDivision
+}
+
+/**
+ * 이 리그에 「공식」 배지를 다는가 (지시 #17). 배지 자리는 전부 이것만 부른다 —
+ * API 의 `official` 을 직접 읽지 않는다 (그건 DB 열이고, 표기는 이 표가 정한다).
+ */
+export function isOfficialLeague(slug: string): boolean {
+  return leagueScreen(slug).official
 }
 
 /**

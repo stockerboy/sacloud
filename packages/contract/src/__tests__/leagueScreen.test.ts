@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { leagueLandingPath, leagueScreen, showsDivision } from '../leagueScreen'
+import { isOfficialLeague, leagueLandingPath, leagueScreen, showsDivision } from '../leagueScreen'
+
+/**
+ * 공식/비공식 **표기** (2026-09-02 사장님 정정 · 지시 #17).
+ *
+ * > "공식리그는 SPL과 IPL이다 열산만 비공식표시해라 잘못표기돼있다"
+ *
+ * 배지를 그리는 화면 전부가 이 값 하나를 본다. DB 의 `League.official` 열이나 계산용
+ * `category` 와는 별개의 **표기용** 값이다 — 여기서 못 박아 둔다.
+ */
+describe('leagueScreen — 공식/비공식 표기 (#17)', () => {
+  it('SPL · IPL 은 공식이다', () => {
+    expect(isOfficialLeague('supply')).toBe(true)
+    expect(isOfficialLeague('nolink')).toBe(true)
+  })
+
+  it('10mountain 만 비공식이다', () => {
+    expect(isOfficialLeague('sanply')).toBe(false)
+  })
+
+  it('모르는 slug 는 기본값(공식)이다', () => {
+    expect(isOfficialLeague('some-new-league')).toBe(true)
+  })
+})
 
 /**
  * 리그별 화면 규칙 (`leagueScreen.ts`).

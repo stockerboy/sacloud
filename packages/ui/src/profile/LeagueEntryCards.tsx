@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ClanLeagueEntry, PlayerLeagueEntry } from '@sacloud/contract'
-import { showsDivision } from '@sacloud/contract'
+import { isOfficialLeague, showsDivision } from '@sacloud/contract'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
 import { Skeleton } from '../common/Skeleton'
@@ -90,7 +90,8 @@ function PlayerEntryCard({ entry, playerId }: { entry: PlayerLeagueEntry; player
       href={leaguePlayerPath(entry.league.slug, playerId)}
       className={`${CARD_BASE} mt-4`}
     >
-      <CardTitle name={entry.league.name} official={entry.league.official} />
+      {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
+      <CardTitle name={entry.league.name} official={isOfficialLeague(entry.league.slug)} />
       <div className="mt-6 flex flex-row-reverse items-center">
         <div className="flex items-center">
           래더
@@ -159,7 +160,8 @@ export function PlayerLeagueCards({
 function ClanEntryCard({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: string }) {
   return (
     <Link href={leagueClanPath(entry.league.slug, clanSlug)} className={CARD_BASE}>
-      <CardTitle name={entry.league.name} official={entry.league.official} />
+      {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
+      <CardTitle name={entry.league.name} official={isOfficialLeague(entry.league.slug)} />
       <div className="mt-2">
         {/* 부리그를 화면에 내지 않는 리그(지시 #9)는 «참여중» 만 적는다 */}
         <div>{showsDivision(entry.league.slug) ? `${entry.division}부리그로 참여중` : '참여중'}</div>

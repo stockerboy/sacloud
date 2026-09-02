@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { LeagueListItem } from '@sacloud/contract'
+import { isOfficialLeague } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
@@ -59,7 +60,8 @@ export function LeagueListTable({
           >
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span className="truncate font-semibold text-text-strong">{league.name}</span>
-              {league.official ? <Label name="공식" /> : null}
+              {/* 표기는 계약의 표가 정한다 (#17). 옛 줄: `league.official ? …` */}
+              {isOfficialLeague(league.slug) ? <Label name="공식" /> : null}
               <span className="flex items-center gap-1 max-md:hidden">
                 {league.clans.map((clan) => (
                   <ClanMark key={clan.id} mark={clan.mark} alt={clan.name} />
