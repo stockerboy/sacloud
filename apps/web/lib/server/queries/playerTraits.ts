@@ -40,6 +40,8 @@ import { prisma } from '@sacloud/db'
 import {
   PLAYSTYLE_MIN_ROUNDS,
   TRAIT_MIN_GAMES,
+  TRAIT_MIN_BURST_KILLS,
+  TRAIT_MIN_BURST_ROUNDS,
   TRAIT_MIN_OPENING_ROUNDS,
   TRAIT_MIN_ROUNDS,
   TRAIT_MIN_COHORT,
@@ -92,6 +94,25 @@ interface RoundValue {
    * 0.0 · 0.1 · 0.2 밖에 안 나온다 — `매치의 사나이`를 내리게 만든 것과 같은 문제다.
    */
   openingRate: number | null
+  /**
+   * 연속킬 — 직전 킬과의 간격이 **2초 이하**인 킬의 비율 (D-260 · 무기 무관).
+   *
+   * ⚠ **정정 (2026-09-02)** — 이 주석은 «분모는 라운드가 아니라 **총 킬**이라
+   * 문턱도 킬 단위다» 였다. 사용자가 **(c) 「연속킬을 한 번이라도 난 라운드
+   * 비율」**을 골라 분모가 **킬을 낸 라운드 수**가 됐고, 문턱도 `TRAIT_MIN_BURST_ROUNDS`
+   * 로 바뀜다. 읽는 법은 **「킬을 낸 라운드 중 몇 %에서 몰아쯤나」** 다.
+   *
+   * 견주는 무리는 무기별로 갈린다 — 사용자가 «스나는 스나끼리 라플은 라플끼리» 라고
+   * 못박았고, 아래 `WeaponCohort` 가 이미 그렇게 갈려 있다.
+   */
+  burstRate: number | null
+  /**
+   * 옛 해석 (a) — `chained / kills`. **화면이 안 쓴다.**
+   *
+   * 사용자가 (c) 를 골랐지만 계산과 재료를 남겨 둔다 — 되돌아갈 때
+   * 재집계가 필요 없어야 한다 (`CLAUDE.md` 10-4). 분포 대조에도 쓴다.
+   */
+  burstRateByKills: number | null
 }
 
 /** 한 선수의 값 — 판당 평균 킬 · 판당 평균 딜량 */
@@ -160,6 +181,8 @@ interface WeaponCohort {
   oneAttackSorted: number[]
   /** 기회창출 (D-214). 무기와 무관한 값이지만 견주는 무리는 같은 무기다 */
   openingSorted: number[]
+  /** 연속킬 (D-260). 마찬가지로 값은 무기 무관, **모집단은 같은 무기**다 */
+  burstSorted: number[]
 }
 
 interface LeagueDistribution {
@@ -201,6 +224,7 @@ function emptyCohort(): WeaponCohort {
     workSorted: [],
     oneAttackSorted: [],
     openingSorted: [],
+    burstSorted: [],
   }
 }
 
@@ -233,6 +257,13 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
       oneAttackSameKills: true,
       openingKills: true,
       openingRounds: true,
+      /* ⚠ 이 `select` 는 **명시적**이다. 새 칸을 여기 안 적으면 값이 아예 안 온다 */
+      /* ★지금 축이 쓰는 둘 — (c) 「연속킬을 한 번이라도 난 라운드 비율」★ */
+      burstRounds: true,
+      burstKillRounds: true,
+      /* 옛 해석 (a) 의 재료. 읽기만 하고 안 쓴다 — 지우지 않는다 (`CLAUDE.md` 10-4) */
+      burstChained: true,
+      burstKills: true,
     },
   })
 
@@ -258,6 +289,32 @@ async function roundValues(): Promise<Map<string, RoundValue>> {
       openingRate:
         row.openingRounds >= TRAIT_MIN_OPENING_ROUNDS
           ? row.openingKills / row.openingRounds
+          : null,
+      /*
+       * 연속킬 — ★**분모가 라운드다**★ (2026-09-02 · 사용자 확정 (c)).
+       *
+       * ⚠ **정정** — 이 자리는 `burstChained / burstKills` 였고 주석은
+       *   «연속킬만 분모가 **킬**이라 문턱도 킬 단위다» 였다.
+       *   사용자가 **(c) 「연속킬을 한 번이라도 난 라운드 비율」**을 골랐다.
+       *   그래서 분모가 `burstKillRounds` 가 됐고 문턱도 **라운드 단위**로 바뀌었다.
+       *   옛 식은 지우지 않고 바로 아래에 남겨 둔다 (`CLAUDE.md` 10-4).
+       *
+       * ⚠ **`?? 0` 을 지우지 마라.** `round-v3` 이전에 만들어진 행에는 이 칸이 없다.
+       *   Prisma 클라이언트가 스키마보다 오래된 상태로 도는 순간(배포 순서가 어긋나면
+       *   실제로 그렇게 된다) 그 칸은 `undefined` 가 되고,
+       *   `undefined >= N` 은 `false` 라 조용히 `null` 이 된다 — 여기까지는 안전하다.
+       *   그러나 `undefined / undefined` 는 `NaN` 이고, `NaN` 이 분포에 섞이면
+       *   `sort` 가 깨져 **백분위가 통째로 틀어진다.** 그 사고가 클랜 육각형에서 났다
+       *   (D-259). 모양을 `?? 0` 으로 통일해 `NaN` 이 태어나지 못하게 막는다.
+       */
+      burstRate:
+        (row.burstKillRounds ?? 0) >= TRAIT_MIN_BURST_ROUNDS
+          ? (row.burstRounds ?? 0) / (row.burstKillRounds ?? 0)
+          : null,
+      /* 옛 해석 (a) — **화면이 안 쓴다.** 되돌아갈 때 재집계가 없게 계산만 남겨 둔다 */
+      burstRateByKills:
+        (row.burstKills ?? 0) >= TRAIT_MIN_BURST_KILLS
+          ? (row.burstChained ?? 0) / (row.burstKills ?? 0)
           : null,
     })
   }
@@ -447,6 +504,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
       if (round.workRate !== null) cohort.workSorted.push(round.workRate)
       if (round.oneAttackRate !== null) cohort.oneAttackSorted.push(round.oneAttackRate)
       if (round.openingRate !== null) cohort.openingSorted.push(round.openingRate)
+      if (round.burstRate !== null) cohort.burstSorted.push(round.burstRate)
     }
   }
 
@@ -462,6 +520,7 @@ async function buildDistribution(leagueId: string): Promise<LeagueDistribution> 
     cohort.workSorted.sort((a, b) => a - b)
     cohort.oneAttackSorted.sort((a, b) => a - b)
     cohort.openingSorted.sort((a, b) => a - b)
+    cohort.burstSorted.sort((a, b) => a - b)
   }
 
   return { rifle, sniper, rounds, playstyle, belowMin }
@@ -533,13 +592,20 @@ export async function playerTraits(
          사용자 상시 지시("방식을 바꾸면 전의 방식 버전도 남겨라")이고, 축이 다시
          정해질 때 재료가 이미 있어야 한다. `buildPlayerTraits` 가 지금은 무시한다 */
       matchManPercentile: percentileIn(cohort.matchManSorted, round?.matchManRate),
-      /* 스나 전용 두 축 (D-195). 라플수에게는 재료 자체가 없어 항상 `null` 이다 */
+      /* 2번 `스나싸움` — 스나 전용 (D-195). 라플수에게는 재료 자체가 없어 항상 `null` 이다 */
       snipeDuelPercentile: percentileIn(cohort.snipeDuelSorted, round?.snipeDuelRate),
+      /* 옛 5번 `작업/원어택 성공률` (D-195 · D-196 → D-260). 육각형은 더 이상 그리지
+         않지만 `matchManPercentile` 과 **같은 취급으로 계산을 살려 둔다** —
+         사용자 상시 지시("방식을 바꾸면 전의 방식 버전도 남겨라")이고, 축이 다시
+         정해질 때 재료가 이미 있어야 한다. `buildPlayerTraits` 가 지금은 무시한다 */
       workPercentile: percentileIn(cohort.workSorted, round?.workRate),
       oneAttackPercentile: percentileIn(cohort.oneAttackSorted, round?.oneAttackRate),
       /* 4번 `기회창출` (D-214) — D-206 에서 비워 뒀던 자리다.
          라운드 복원이 재료라 1·6번과 같은 곳에서 온다 */
       openingPercentile: percentileIn(cohort.openingSorted, round?.openingRate),
+      /* 5번 `연속킬` (D-260) — 옛 5번(`작업/원어택 성공률`)을 내리고 올린 자리다.
+         `cohort` 가 무기별로 갈려 있으므로 **스나는 스나끼리, 라플은 라플끼리** 견준다 */
+      burstPercentile: percentileIn(cohort.burstSorted, round?.burstRate),
       hasRoundData: round !== undefined,
     }),
     /* 플레이스타일 바 두 줄 (8절 · D-211).

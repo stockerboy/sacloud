@@ -13,6 +13,7 @@ import {
   TRAIT_AXIS_KEYS,
   TRAIT_AXIS_KEYS_V1,
   TRAIT_AXIS_KEYS_V2,
+  TRAIT_AXIS_KEYS_V3,
   TRAIT_AXIS_LABEL,
   TRAIT_MIN_GAMES,
   TRAIT_PENDING_TEXT,
@@ -284,6 +285,80 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 })
 
+describe('buildPlayerTraits — 5번은 연속킬이다 (D-260)', () => {
+  it('5번 자리이고 옛 판(`V3`)은 그 자리에 `finish` 를 두고 있었다', () => {
+    expect(TRAIT_AXIS_KEYS[4]).toBe('burst')
+    expect(TRAIT_AXIS_KEYS_V3[4]).toBe('finish')
+    expect(TRAIT_AXIS_KEYS).toHaveLength(6)
+  })
+
+  it('꼭지점은 그대로 6개다 — 축을 갈아 끼웠지 빼지 않았다', () => {
+    expect(buildPlayerTraits(rifleInput()).axes).toHaveLength(6)
+  })
+
+  it('이름은 무기와 무관하게 `연속킬` 이다', () => {
+    for (const weapon of [0, 1, null] as const) {
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'burst').label).toBe('연속킬')
+    }
+  })
+
+  it('`작업/원어택 성공률` 은 축 목록에서 빠진 채다', () => {
+    const hexagon = buildPlayerTraits(rifleInput())
+    expect(hexagon.axes.some((axis) => axis.key === ('finish' as string))).toBe(false)
+    expect(hexagon.axes.some((axis) => axis.label === '작업 성공률')).toBe(false)
+    expect(hexagon.axes.some((axis) => axis.label === '원어택 성공률')).toBe(false)
+  })
+
+  it('옛 판(`V3`)과 옛 축 이름은 지우지 않았다 — 재료도 집계도 그대로 산다', () => {
+    expect(TRAIT_AXIS_KEYS_V3).toHaveLength(6)
+    expect(TRAIT_AXIS_LABEL.finish.sniper).toBe('작업 성공률')
+    expect(TRAIT_AXIS_LABEL.finish.rifle).toBe('원어택 성공률')
+  })
+
+  it('옛 5번 값을 넘겨도 무시된다 — `matchManPercentile` 과 같은 취급이다', () => {
+    const hexagon = buildPlayerTraits(
+      rifleInput({ workPercentile: 91.1, oneAttackPercentile: 88.8 }),
+    )
+    expect(hexagon.axes.every((axis) => axis.percentile !== 91.1)).toBe(true)
+    expect(hexagon.axes.every((axis) => axis.percentile !== 88.8)).toBe(true)
+  })
+
+  it('백분위가 오면 그대로 실린다', () => {
+    const axis = axisOf(buildPlayerTraits(rifleInput({ burstPercentile: 73.4 })), 'burst')
+    expect(axis).toMatchObject({ percentile: 73.4, pending: null })
+  })
+
+  it('라운드 자료는 있는데 킬이 모자라면 `games` 다', () => {
+    const axis = axisOf(
+      buildPlayerTraits(rifleInput({ hasRoundData: true, burstPercentile: null })),
+      'burst',
+    )
+    expect(axis).toMatchObject({ percentile: null, pending: 'games' })
+  })
+
+  /*
+   * ★ D-259 회귀 ★ — 새 축을 읽는 코드는 **없는 값을 견뎌야 한다**.
+   *
+   * 이 축이 붙기 전에 만들어진 호출부는 `burstPercentile` 을 아예 넘기지 않는다.
+   * `=== null` 로만 막으면 `undefined` 가 그대로 `percentile` 에 실려
+   * 계약(`number | null`)이 깨진다. 클랜 육각형에서 그 실수가 카드를 통째로 지웠고
+   * **오류 한 줄 없이 조용했다.**
+   */
+  it('`burstPercentile` 을 아예 안 넘겨도 터지지 않고 `pending` 이 붙는다', () => {
+    const input = rifleInput()
+    delete (input as { burstPercentile?: unknown }).burstPercentile
+    const axis = axisOf(buildPlayerTraits(input), 'burst')
+    expect(axis.percentile).toBeNull()
+    expect(axis.percentile).not.toBeUndefined()
+    expect(axis.pending).toBe('rounds')
+  })
+
+  it('`undefined` 를 명시적으로 넘겨도 `null` 로 정리된다', () => {
+    const axis = axisOf(buildPlayerTraits(rifleInput({ burstPercentile: undefined })), 'burst')
+    expect(axis.percentile).toBeNull()
+  })
+})
+
 describe('buildPlayerTraits — 축별 판정 (라이플)', () => {
   const hexagon = buildPlayerTraits(rifleInput())
 
@@ -296,13 +371,17 @@ describe('buildPlayerTraits — 축별 판정 (라이플)', () => {
   })
 
   /*
-   * 2026-09-01 정정 — 예전에는 `pending: 'position'`(「포지션 판정 필요」)을 기대했다.
-   * 그런데 이 입력은 `hasRoundData === false` 다. 포지션을 못 정한 것이 아니라
-   * **배틀로그가 아예 없는** 것이라 `rounds`(「라운드 복원 필요」)가 맞는 사유다.
-   * 옛 문구는 사람에게 「할 수 없는 일」을 시키고 있었다 (D-231).
+   * ⚠ 2026-09-02 (D-260) — 이 자리에 있던 것은 `원어택 성공률`(`finish`)이었다.
+   *   5번 축이 `연속킬`(`burst`)로 바뀌면서 기대값도 옮겼다. 사유 갈래는 그대로다 —
+   *   라운드 자료가 없으면 `rounds` 다.
+   *
+   *   2026-09-01 정정(D-231)도 그대로 유효하다: 예전에는 `pending: 'position'`
+   *   (「포지션 판정 필요」)을 기대했는데, 이 입력은 `hasRoundData === false` 라
+   *   포지션을 못 정한 게 아니라 **배틀로그가 아예 없는** 것이었다.
+   *   화면이 사람에게 「할 수 없는 일」을 시키고 있었다.
    */
-  it('원어택 성공률(finish)은 라운드 자료가 없으면 rounds 로 남는다', () => {
-    expect(axisOf(hexagon, 'finish')).toMatchObject({ percentile: null, pending: 'rounds' })
+  it('연속킬(burst)은 라운드 자료가 없으면 rounds 로 남는다', () => {
+    expect(axisOf(hexagon, 'burst')).toMatchObject({ percentile: null, pending: 'rounds' })
   })
 
   it('백분위가 없으면 그 축만 pending=games 로 남는다', () => {
@@ -333,8 +412,10 @@ describe('buildPlayerTraits — 축별 판정 (스나이퍼)', () => {
     expect(axisOf(hexagon, 'duel')).toMatchObject({ percentile: null, pending: 'battlelog' })
   })
 
-  it('작업 성공률(finish)도 배틀로그가 필요하다', () => {
-    expect(axisOf(hexagon, 'finish')).toMatchObject({ percentile: null, pending: 'battlelog' })
+  it('연속킬(burst)은 스나에게도 `rounds` 다 — 배틀로그가 아니라 라운드 복원이 재료다', () => {
+    // 옛 5번(`작업 성공률`)은 상대 무기를 알아야 해서 `battlelog` 였다.
+    // 연속킬은 **킬 시각만** 있으면 되므로 세이브·소수싸움과 같은 갈래를 쓴다 (D-260)
+    expect(axisOf(hexagon, 'burst')).toMatchObject({ percentile: null, pending: 'rounds' })
   })
 
   it('캐리력은 무기와 무관하게 채워진다', () => {
@@ -361,18 +442,21 @@ describe('buildPlayerTraits — 축 이름은 주무기를 따른다', () => {
   const sniper = buildPlayerTraits(rifleInput({ weapon: 1 }))
   const rifle = buildPlayerTraits(rifleInput({ weapon: 0 }))
 
-  it('스나 화면은 스나싸움 · 작업 성공률', () => {
+  it('스나 화면은 스나싸움', () => {
     expect(axisOf(sniper, 'duel').label).toBe('스나싸움')
-    expect(axisOf(sniper, 'finish').label).toBe('작업 성공률')
   })
 
-  it('라플 화면은 샷싸움 · 원어택 성공률', () => {
+  it('라플 화면은 샷싸움', () => {
     expect(axisOf(rifle, 'duel').label).toBe('샷싸움')
-    expect(axisOf(rifle, 'finish').label).toBe('원어택 성공률')
   })
 
-  it('나머지 네 축은 무기와 무관하게 같은 이름이다', () => {
-    for (const key of ['save', 'carry', 'opening', 'outnumbered'] as const) {
+  it('내려온 5번(`finish`)의 무기별 이름은 그대로 남아 있다 (D-260)', () => {
+    expect(TRAIT_AXIS_LABEL.finish.sniper).toBe('작업 성공률')
+    expect(TRAIT_AXIS_LABEL.finish.rifle).toBe('원어택 성공률')
+  })
+
+  it('나머지 다섯 축은 무기와 무관하게 같은 이름이다', () => {
+    for (const key of ['save', 'carry', 'opening', 'burst', 'outnumbered'] as const) {
       expect(axisOf(sniper, key).label).toBe(axisOf(rifle, key).label)
       expect(axisOf(sniper, key).label).toBe(TRAIT_AXIS_LABEL[key].sniper)
     }

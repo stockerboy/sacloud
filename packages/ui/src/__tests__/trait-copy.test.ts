@@ -277,7 +277,10 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
       axis({ key: 'duel', percentile: 64.8, pending: null }),
       axis({ key: 'carry', percentile: 71.2, pending: null }),
       axis({ key: 'opening', label: '미정', pending: 'undecided' }),
-      axis({ key: 'finish', pending: 'position' }),
+      // 5번 축은 2026-09-02 에 `finish` → `burst` 로 바뀌었다 (D-260).
+      // 이 테스트가 보는 것은 `pendingSummary` 의 중복 제거이지 축 자체가 아니라,
+      // 키만 옮기고 사유(`position`)는 그대로 둔다 — 그 사유도 지우지 않았다
+      axis({ key: 'burst', pending: 'position' }),
       axis({ key: 'outnumbered', pending: 'rounds' }),
     ]
     // `라운드 복원 필요` 가 두 축이지만 문구는 한 번만 나온다.
@@ -292,7 +295,7 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
 
   it('처음 나온 순서대로 이유를 잇는다', () => {
     const axes = [
-      axis({ key: 'finish', pending: 'position' }),
+      axis({ key: 'burst', pending: 'position' }),
       axis({ key: 'save', pending: 'rounds' }),
       axis({ key: 'duel', pending: 'battlelog' }),
       axis({ key: 'save', pending: 'rounds' }),

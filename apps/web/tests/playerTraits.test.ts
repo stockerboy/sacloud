@@ -252,20 +252,23 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(detail?.traits?.known_games).toBe(TRAIT_MIN_GAMES)
   })
 
-  it('라플수는 `샷싸움`(딜량)이 재지고 `원어택 성공률` 은 라운드 복원을 기다린다', async () => {
+  it('라플수는 `샷싸움`(딜량)이 재지고 `연속킬` 은 라운드 복원을 기다린다', async () => {
     const { traits } = await playerTraits(leagueId, `${P}r5`)
     const axis = (key: string) => traits.axes.find((row) => row.key === key)
 
     expect(axis('duel')?.label).toBe('샷싸움')
     expect(axis('duel')?.percentile).toBe(90)
-    expect(axis('finish')?.label).toBe('원어택 성공률')
-    expect(axis('finish')?.percentile).toBeNull()
-    /*
-     * 2026-09-01 정정 — 예전에는 `'position'`(「포지션 판정 필요」)을 기대했다.
-     * 이 픽스처는 라운드 자료가 없는 선수라, 포지션을 못 정한 게 아니라
-     * **배틀로그가 아예 없는** 것이다. `'rounds'` 가 맞는 사유다 (D-231).
-     */
-    expect(axis('finish')?.pending).toBe('rounds')
+    /* ⚠ 2026-09-02 (D-260) — 5번 축이 `원어택 성공률`(`finish`)에서 `연속킬`(`burst`)로
+       바뀌었다. 사유 갈래는 그대로다: 라운드 자료가 없으면 `rounds` 다.
+       2026-09-01 정정(D-231)도 그대로 유효하다 — 예전에는 `'position'`
+       (「포지션 판정 필요」)을 기대했는데, 이 픽스처는 포지션을 못 정한 게 아니라
+       **배틀로그가 아예 없는** 선수였다 */
+    expect(axis('burst')?.label).toBe('연속킬')
+    expect(axis('burst')?.percentile).toBeNull()
+    expect(axis('burst')?.pending).toBe('rounds')
+
+    /* 내려온 옛 5번은 축 목록에 아예 없다 — 재료와 집계는 그대로 살아 있다 */
+    expect(axis('finish')).toBeUndefined()
   })
 
   it('스나수는 `스나싸움` 을 아직 못 잰다 — 킬로그가 있어야 한다', async () => {
@@ -275,16 +278,18 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(traits.weapon).toBe(1)
     expect(axis('duel')?.label).toBe('스나싸움')
     expect(axis('duel')?.pending).toBe('battlelog')
-    expect(axis('finish')?.label).toBe('작업 성공률')
-    expect(axis('finish')?.pending).toBe('battlelog')
+    /* 연속킬은 스나에게도 `rounds` 다 (D-260) — 옛 5번(`작업 성공률`)은 상대 무기를
+       알아야 해서 `battlelog` 였지만, 연속킬은 **킬 시각만** 있으면 된다 */
+    expect(axis('burst')?.label).toBe('연속킬')
+    expect(axis('burst')?.pending).toBe('rounds')
     /* 캐리력은 스나 무리(1명) 안에서 재진다 — 라플 무리에 섞이지 않았다 */
     expect(axis('carry')?.percentile).toBe(50)
   })
 
-  it('라운드 복원이 필요한 세 축은 항상 `측정중` 이다', async () => {
+  it('라운드 복원이 필요한 네 축은 항상 `측정중` 이다', async () => {
     const { traits } = await playerTraits(leagueId, `${P}r3`)
-    /* 기회창출(D-214)도 라운드 복원이 재료다 — 세 축이 함께 기다린다 */
-    for (const key of ['save', 'opening', 'outnumbered']) {
+    /* 기회창출(D-214)·연속킬(D-260)도 라운드 복원이 재료다 — 네 축이 함께 기다린다 */
+    for (const key of ['save', 'opening', 'burst', 'outnumbered']) {
       const axis = traits.axes.find((row) => row.key === key)
       expect(axis?.percentile).toBeNull()
       expect(axis?.pending).toBe('rounds')
