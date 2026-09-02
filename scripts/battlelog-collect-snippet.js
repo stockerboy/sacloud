@@ -502,6 +502,8 @@ window.collectClanMatchList = async function collectClanMatchList(slug, options 
   Object.assign(cmlState, { running: true, stop: false, slug, pages: 0, fetched: 0, dup: 0, sent: 0, inserted: 0, errors: 0, oldest: null, stoppedBecause: null })
   const seen = new Set()
   const rows = []
+  /** 페이지 응답 **원문** — `keep` 일 때만 쌓는다. 창구는 이걸 그대로 받는다 */
+  const pages = []
   let cursor = 0
 
   while (!cmlState.stop) {
@@ -516,6 +518,7 @@ window.collectClanMatchList = async function collectClanMatchList(slug, options 
     /* 전적이 없는 클랜은 `result` 가 배열이 아니라 빈 문자열이다 */
     const page = Array.isArray(json?.result) ? json.result : []
     cmlState.pages += 1
+    if (keep && page.length > 0) pages.push(json)
     if (page.length === 0) {
       cmlState.stoppedBecause = '빈 페이지'
       break
@@ -563,7 +566,7 @@ window.collectClanMatchList = async function collectClanMatchList(slug, options 
   console.info(
     `[목록] ${slug} 끝 — 페이지 ${cmlState.pages} · 고유 ${cmlState.fetched} · 중복 ${cmlState.dup} · 가장 오래된 ${cmlState.oldest} (${cmlState.stoppedBecause})`,
   )
-  return { ...cmlState, rows }
+  return { ...cmlState, rows, pages }
 }
 
 window.__cmlStatus = function __cmlStatus() {
@@ -571,6 +574,65 @@ window.__cmlStatus = function __cmlStatus() {
 }
 window.__cmlStop = function __cmlStop() {
   cmlState.stop = true
+}
+
+/**
+ * 클랜 여러 곳을 **차례로** 돈다 (지시 #6 · 2026-09-02). 클랜 사이 3초.
+ *
+ * 토큰을 페이지에 넣지 않는 길을 기본으로 한다 — 받은 **페이지 응답 원문**을 그대로 모아
+ * 파일 하나로 내리고(`download`), 전송은 밖(Node)에서 한다. 토큰이 브라우저·도구 로그에
+ * 남지 않는다. `ingest`+`token` 을 주면 옛길(페이지마다 창구로 바로 보냄)도 그대로 쓸 수 있다.
+ *
+ *   await collectClanMatchListAll(['adgeodud20', 'saffggaaz'], { from: '2026-07-01' })
+ *   → { clans: [{ slug, pages:[원문…], fetched, dup, oldest, stoppedBecause }], … } 를
+ *     `ipl-matchlist-<날짜>.json` 으로 내린다. `window.__cmlAll` 에도 남는다 (다시 내리려면 `__cmlAllDownload()`)
+ *
+ * ⚠ 이 함수는 `collectClanMatchList` 의 페이지 원문이 필요해서, 그쪽이 `pages` 를 함께 돌려주게 했다
+ *   (`options.keep` 이 true 일 때 `rows` 와 함께). 옛 반환 모양(`rows`)은 그대로다.
+ */
+window.__cmlAll = null
+window.collectClanMatchListAll = async function collectClanMatchListAll(slugs, options = {}) {
+  const list = Array.isArray(slugs) ? slugs : []
+  const gap = Math.max(1000, options.clanGap ?? 3000)
+  const run = { startedAt: new Date().toISOString(), from: options.from ?? null, clans: [] }
+  window.__cmlAll = run
+  for (let i = 0; i < list.length; i += 1) {
+    const slug = typeof list[i] === 'string' ? list[i] : list[i]?.slug
+    if (!slug) continue
+    let r
+    try {
+      r = await window.collectClanMatchList(slug, { ...options, keep: true })
+    } catch (error) {
+      r = { slug, pages: [], fetched: 0, dup: 0, oldest: null, stoppedBecause: `예외: ${error}`, errors: 1 }
+    }
+    run.clans.push({
+      slug,
+      name: typeof list[i] === 'object' ? list[i]?.name ?? null : null,
+      division: typeof list[i] === 'object' ? list[i]?.division ?? null : null,
+      pages: r.pages ?? [],
+      pageCount: (r.pages ?? []).length,
+      fetched: r.fetched,
+      dup: r.dup,
+      oldest: r.oldest,
+      newest: r.rows?.[0]?.match_key ?? null,
+      stoppedBecause: r.stoppedBecause,
+      errors: r.errors,
+    })
+    console.info(`[목록] ${i + 1}/${list.length} ${slug} — 고유 ${r.fetched} · 중복 ${r.dup} · 가장 오래된 ${r.oldest} (${r.stoppedBecause})`)
+    if (cmlState.stop) break
+    if (i < list.length - 1) await blSleep(gap)
+  }
+  run.finishedAt = new Date().toISOString()
+  if (options.download !== false) window.__cmlAllDownload()
+  return run
+}
+
+/** 모아 둔 페이지 원문을 파일 하나로 내린다 */
+window.__cmlAllDownload = function __cmlAllDownload() {
+  if (!window.__cmlAll) return console.info('내릴 것이 없다')
+  const day = new Date().toISOString().slice(0, 10)
+  blDownload(`ipl-matchlist-${day}.json`, window.__cmlAll)
+  console.info(`[목록] ipl-matchlist-${day}.json 내림 — 클랜 ${window.__cmlAll.clans.length}곳`)
 }
 
 console.info(
