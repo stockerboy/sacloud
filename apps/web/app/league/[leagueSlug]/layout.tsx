@@ -2,6 +2,7 @@
 
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { isOfficialLeague } from '@sacloud/contract'
 import { LeagueHeroBand, LeaguePreparing, LeagueTopBar, isLeaguePreparing } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -62,7 +63,9 @@ export default function LeagueLayout({
         */}
         <LeagueHeroBand
           leagueName={data?.name ?? ''}
-          official={data?.official}
+          /* 공식/비공식 **표기**는 계약의 표(`leagueScreen`)가 정한다 (#17). `data.official`(DB 열)은
+             안 읽는다 — 운영 행이 틀려 IPL 에 「비공식」 이 떴었다. 옛 줄: `official={data?.official}` */
+          official={isOfficialLeague(leagueSlug)}
           clanCount={data?.clan_count}
         />
         {children}

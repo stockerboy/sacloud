@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { League, LeagueClan } from '@sacloud/contract'
-import { showsDivision } from '@sacloud/contract'
+import { isOfficialLeague, showsDivision } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
@@ -35,7 +35,8 @@ export function LeagueHeader({ league }: { league: League }) {
         <h1 className="font-display text-4xl tracking-wide text-text-strong max-md:text-3xl">
           {league.name}
         </h1>
-        {league.official ? <Label name="공식" /> : null}
+        {/* 표기는 계약의 표가 정한다 (#17). 옛 줄: `league.official ? …` */}
+        {isOfficialLeague(league.slug) ? <Label name="공식" /> : null}
         <div className="text-sm text-meta">
           <span className={NUM}>{formatCount(league.clan_count)}</span>개의 클랜 참여중
         </div>

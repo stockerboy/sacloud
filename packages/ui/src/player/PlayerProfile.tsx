@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { PlayerLeagueEntry } from '@sacloud/contract'
+import { isOfficialLeague } from '@sacloud/contract'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 클랜마크는 클랜 알이, 기록은 개인 알이 덮는다 */
 import { Egg } from '../egg/Egg'
@@ -196,7 +197,8 @@ function PlayerLeagueRow({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="truncate text-[15px] text-text-strong">{entry.league.name}</span>
-            {entry.league.official ? <OfficialTag /> : null}
+            {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
+            {isOfficialLeague(entry.league.slug) ? <OfficialTag /> : null}
           </div>
           <div className="mt-1.5 text-[12px] text-meta">
             {entry.rank !== null && entry.rank_count !== null ? (

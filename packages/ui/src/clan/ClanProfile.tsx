@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { ClanLeagueEntry, ClanPlayer } from '@sacloud/contract'
-import { showsDivision } from '@sacloud/contract'
+import { isOfficialLeague, showsDivision } from '@sacloud/contract'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 클랜마크를 알이 덮고, 승률·승패를 가린다 */
 import { Egg } from '../egg/Egg'
@@ -138,7 +138,8 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="truncate text-[15px] text-text-strong">{entry.league.name}</span>
-            {entry.league.official ? <OfficialTag /> : null}
+            {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
+            {isOfficialLeague(entry.league.slug) ? <OfficialTag /> : null}
           </div>
           <div className="mt-1.5 text-[12px] text-meta">
             {/* 무소속리그는 `1부리그` 가 아니라 `1티어` 로 적는다 (D-165).
