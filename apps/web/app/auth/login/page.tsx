@@ -73,6 +73,13 @@ function LoginForm() {
             {/* 색·밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
             <span className="text-text-strong underline underline-offset-4">회원가입</span>
           </Link>
+          {/* ⑥ 나갈 길 (O-032). 인증 화면에는 전역 GNB 가 없어서 **사이트로 돌아갈 길이
+              로고 하나뿐**이었다. 로고가 링크인 줄 모르는 사람이 더 많다 */}
+          <div className="mt-2">
+            <Link href="/">
+              <span className="underline underline-offset-4">둘러보기로 돌아가기</span>
+            </Link>
+          </div>
         </>
       }
     >
@@ -125,6 +132,11 @@ function LoginForm() {
       <AuthSubmit
         disabled={!identifier || !password || login.isPending}
         onClick={() => login.mutate()}
+        /* ★누르는 동안 상태를 보여 준다★ (2026-09-03 · O-032 ①).
+           강민재가 **12초를 아무 표시 없이** 기다렸다. 버튼이 흐려지기만 하면
+           사람은 「눌리지 않았다」로 읽고, 폰에서는 두세 번 누른다 */
+        pending={login.isPending}
+        pendingLabel="로그인하는 중…"
       >
         로그인
       </AuthSubmit>
