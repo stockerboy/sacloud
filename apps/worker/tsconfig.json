@@ -3,5 +3,9 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  // 한 번 쓰고 버리는 조회 스크립트는 타입 검사에서 뺀다 (2026-09-02 · 0단계 정리).
+  // .gitignore 로 git 밖에 뒀는데 디스크에는 남아 있어서 typecheck 만 깨고 있었다.
+  // 파일은 지우지 않는다 — 필요하면 그대로 열어 쓴다 (CLAUDE.md 10-4).
+  "exclude": ["src/dev/_tmp/**", "**/_tmp/**"]
 }

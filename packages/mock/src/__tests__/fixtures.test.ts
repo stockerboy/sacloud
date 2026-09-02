@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ADMIN_PIN_LIMIT, isAdminWriter } from '@sacloud/ui/adminPost'
 import {
   Board,
   BoardListItem,
@@ -210,11 +211,34 @@ describe('픽스처가 계약 스키마를 만족한다', () => {
       )
     }
 
+    /*
+     * 목록 자체는 **두 덩어리**다 (D-261 · 2026-09-02 「관리자 글 상단 고정」).
+     * 관리자가 공개로 쓴 글은 **작성시각과 상관없이** 맨 위로 올라간다. 그래서
+     * 목록 전체를 최신순으로 검사하면 기능이 맞는데도 깨진다 — 실제로 깨져 있었고
+     * 아무도 안 봤다 (2026-09-02 확인).
+     *
+     * 「최신순」이라는 원래 뜻은 살아 있다: **각 덩어리 안에서** 지켜져야 한다.
+     * 판정 규칙은 `store.ts` 와 같은 곳(`@sacloud/ui/adminPost`)에서 가져온다 —
+     * 규칙이 두 벌이 되면 다음에 또 어긋난다.
+     */
     const listed = store.listBoards({ category: 'free', cursor: null, size: 500 }).items
-    for (let index = 1; index < listed.length; index += 1) {
-      expect(Date.parse(listed[index]!.created_at)).toBeLessThanOrEqual(
-        Date.parse(listed[index - 1]!.created_at),
-      )
+
+    let pinnedCount = 0
+    while (
+      pinnedCount < listed.length &&
+      pinnedCount < ADMIN_PIN_LIMIT &&
+      isAdminWriter(listed[pinnedCount]!.writer)
+    ) {
+      pinnedCount += 1
+    }
+
+    for (const group of [listed.slice(0, pinnedCount), listed.slice(pinnedCount)]) {
+      for (let index = 1; index < group.length; index += 1) {
+        expect(
+          Date.parse(group[index]!.created_at),
+          `같은 덩어리 안에서는 최신순이어야 한다 (고정 ${pinnedCount}줄, index ${index})`,
+        ).toBeLessThanOrEqual(Date.parse(group[index - 1]!.created_at))
+      }
     }
   })
 
