@@ -12,6 +12,7 @@ import {
   weeklyRankDomain,
   weeklyRankY,
   weeklySegments,
+  weeklyTicks,
   weeklyShowsLabel,
   weeklyTail,
   weeklyX,
@@ -165,59 +166,60 @@ export function WeeklyTrendCard({
             ))}
           </div>
 
-          <div className="mobile-scroll-x mt-2">
+          {/*
+            ★그림은 SVG, **점과 글자는 HTML** 이다★ (2026-09-02)
+
+            처음엔 점도 SVG `<circle>` 로 그렸는데 사장님이 «점이 왤케 큰거야» 라고 했다.
+            원인은 `preserveAspectRatio="none"` 이다 — 세로·가로 배율이 달라서
+            원이 **타원으로 늘어난다.** 390×190 화면에서 반지름 1.5 가
+            가로 5.9px · 세로 4.6px 짜리 덩어리가 됐다.
+
+            선은 늘어나도 상관없다(`vector-effect` 가 굵기를 지킨다). 그래서
+            **선만 SVG 에 두고 점·글자는 위에 겹친 HTML 층**으로 옮겼다.
+            그래야 점이 어느 화면에서나 정확히 같은 크기의 동그라미다.
+          */}
+          <div className="relative mt-2 h-[190px] w-full">
+            {/* 눈금 — 10 단위. «저게 몇퍼대인지 보이지» */}
+            {percentDomain === null
+              ? null
+              : weeklyTicks(percentDomain).map((tick) => {
+                  const top = weeklyY(tick, percentDomain)
+                  return (
+                    <div
+                      key={tick}
+                      className="pointer-events-none absolute inset-x-0 flex items-center gap-2"
+                      style={{ top: `${top}%`, transform: 'translateY(-50%)' }}
+                    >
+                      <span className="num w-6 shrink-0 text-right text-[10px] leading-none text-faint">
+                        {tick}
+                      </span>
+                      <span className="h-px flex-1 bg-line-soft" />
+                    </div>
+                  )
+                })}
+
             <svg
-              viewBox="0 0 100 62"
+              viewBox="0 0 100 100"
               preserveAspectRatio="none"
-              className="h-[190px] w-full"
+              className="absolute inset-0 h-full w-full"
               role="img"
               aria-label={`${title} — ${series.map((s) => s.label).join(' · ')} 최근 ${count}주`}
             >
-              {/* 가로 안내선 넷. 눈금 숫자는 안 쓴다 (날짜·눈금을 적지 말라는 지시) */}
-              {[0, 1, 2, 3].map((i) => {
-                const y = 14 + (i / 3) * (62 - 14 - 12)
-                return (
-                  <line
-                    key={i}
-                    x1={0}
-                    x2={100}
-                    y1={(y * 62) / 100}
-                    y2={(y * 62) / 100}
-                    stroke="var(--color-line-soft)"
-                    strokeWidth={0.3}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                )
-              })}
-
               {series.map((s) => {
                 const toY = (value: number) =>
-                  s.key === 'rank'
-                    ? ((weeklyRankY(value, rankDomain!) * 62) / 100)
-                    : ((weeklyY(value, percentDomain!) * 62) / 100)
-                const segments = weeklySegments(s.values, toY)
+                  s.key === 'rank' ? weeklyRankY(value, rankDomain!) : weeklyY(value, percentDomain!)
                 return (
                   <g key={s.key}>
-                    {segments.map((seg, i) => (
+                    {weeklySegments(s.values, toY).map((seg, i) => (
                       <polyline
                         key={i}
                         points={seg.map((p) => `${p.x},${p.y}`).join(' ')}
                         fill="none"
                         stroke={s.color}
-                        strokeWidth={1.6}
+                        strokeWidth={1.5}
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeDasharray={s.dashed ? '3 2.5' : undefined}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ))}
-                    {segments.flat().map((p) => (
-                      <circle
-                        key={`${s.key}-${p.index}`}
-                        cx={p.x}
-                        cy={p.y}
-                        r={1.5}
-                        fill={s.color}
+                        strokeDasharray={s.dashed ? '4 3' : undefined}
                         vectorEffect="non-scaling-stroke"
                       />
                     ))}
@@ -225,27 +227,40 @@ export function WeeklyTrendCard({
                 )
               })}
             </svg>
-          </div>
 
-          {/*
-            점 옆 글자는 SVG 밖에 겹쳐 놓는다.
-            `preserveAspectRatio="none"` 으로 늘린 SVG 안에 텍스트를 넣으면 글자까지 늘어난다.
-          */}
-          <div className="relative -mt-[190px] h-[190px] w-full">
+            {/* 점 + 값 — 늘어나지 않는 층 */}
             {series.map((s) =>
               s.values.map((value, index) => {
-                if (value === null || !weeklyShowsLabel(index, count)) return null
+                if (value === null) return null
                 const x = weeklyX(index, count)
                 const y =
                   s.key === 'rank' ? weeklyRankY(value, rankDomain!) : weeklyY(value, percentDomain!)
                 return (
-                  <span
-                    key={`${s.key}-${index}`}
-                    className="num pointer-events-none absolute -translate-x-1/2 -translate-y-full whitespace-nowrap text-[10px] leading-none"
-                    style={{ left: `${x}%`, top: `${y}%`, color: s.color, marginTop: '-4px' }}
-                  >
-                    {s.key === 'rank' ? Math.round(value) : Math.round(value)}
-                    {s.suffix}
+                  <span key={`${s.key}-${index}`}>
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute block h-[5px] w-[5px] rounded-full"
+                      style={{
+                        left: `${x}%`,
+                        top: `${y}%`,
+                        background: s.color,
+                        transform: 'translate(-50%, -50%)',
+                      }}
+                    />
+                    {weeklyShowsLabel(index, count) ? (
+                      <span
+                        className="num pointer-events-none absolute whitespace-nowrap text-[9px] leading-none"
+                        style={{
+                          left: `${x}%`,
+                          top: `${y}%`,
+                          color: s.color,
+                          transform: 'translate(-50%, -140%)',
+                        }}
+                      >
+                        {Math.round(value)}
+                        {s.suffix}
+                      </span>
+                    ) : null}
                   </span>
                 )
               }),

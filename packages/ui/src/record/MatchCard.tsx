@@ -66,11 +66,16 @@ import {
  * 라인업 표의 **포지션 칸**도 함께 되살린다 — 그때 화면이 통째로 그것이었기 때문이다.
  * 새 화면(`holo`)에서는 그 자리가 **이 경기 래더 변동**이다.
  */
-export type MatchCardLook = 'holo' | 'legacy'
+export type MatchCardLook = 'supply' | 'holo' | 'legacy'
 
 interface LookClasses {
-  /** 카드·상세 패널 바깥 (테두리 + 면) */
-  panel: string
+  /**
+   * 카드·상세 패널 바깥 (테두리 + 면).
+   *
+   * `supply` 재질에서는 **승패에 따라 달라진다** — 그래서 문자열이 아니라 함수다.
+   * 나머지 재질은 승패와 무관하므로 인자를 무시한다.
+   */
+  panel: (win: boolean) => string
   /** 패널 안쪽 표 상자의 테두리 */
   box: string
   /** 행 구분선 (`border-t` 와 같이 쓴다) */
@@ -78,14 +83,32 @@ interface LookClasses {
 }
 
 const LOOK: Record<MatchCardLook, LookClasses> = {
-  /* 면은 `.holo-panel` 한 클래스가 만든다 — 그라데이션 한 겹, 추가 DOM 없음 */
+  /*
+    ★기본 재질 (2026-09-02 사장님 지시)★
+
+    > "그냥 홀로그램 없애고 아예 서플라이랑 똑같이 카드 복제"
+    > "경기상세카드도 전체색을 이긴건 파랑 진건 빨강으로 해야지"
+
+    원본 3rd.supply 는 카드 **면 전체**를 칠한다 — 승리 연파랑 · 패배 연분홍.
+    `적진` 때는 반대로 «면을 칠하지 않고 좌측 막대와 테두리로만» 갈랐다.
+    그 판단을 되돌린다. 색값과 근거는 `styles.css` 의 `--color-win-bg` 주석에 있다.
+
+    ⚠ 원본의 CSS 를 가져온 것이 아니다. **보고 새로 썼다** (`CLAUDE.md` 3장 4번).
+  */
+  supply: {
+    panel: (win) => (win ? 'bg-win-bg border-win-line' : 'bg-lose-bg border-lose-line'),
+    box: 'border-line',
+    divider: 'border-t-line-soft',
+  },
+  /* 면은 `.holo-panel` 한 클래스가 만든다 — 그라데이션 한 겹, 추가 DOM 없음.
+     **지우지 않는다** (`CLAUDE.md` 10-4) — `look="holo"` 로 그대로 돌아온다 */
   holo: {
-    panel: 'holo-panel border-holo-edge',
+    panel: () => 'holo-panel border-holo-edge',
     box: 'border-holo-edge-soft',
     divider: 'border-t-holo-line',
   },
   legacy: {
-    panel: 'bg-card border-line',
+    panel: () => 'bg-card border-line',
     box: 'border-line',
     divider: 'border-t-line-soft',
   },
@@ -292,7 +315,7 @@ export function MatchCard({
   detail,
   onExpand,
   variant = 'player',
-  look = 'holo',
+  look = 'supply',
 }: {
   match: MatchListItem
   leagueSlug: string
@@ -308,7 +331,7 @@ export function MatchCard({
    * 클랜 화면은 그 반대다 — K/D/A 칸이 없고 `선레드/선블루` + `5 vs 5` 가 있다.
    */
   variant?: 'player' | 'clan'
-  /** 카드 재질 (D-250). 기본은 홀로그램, `legacy` 는 옛 검정 카드 */
+  /** 카드 재질. 기본은 `supply`(면을 칠한다). `holo` · `legacy` 는 옛 재질 — 지우지 않았다 */
   look?: MatchCardLook
 }) {
   const skin = LOOK[look]
@@ -339,10 +362,10 @@ export function MatchCard({
          * 좌우 여백은 `.pc-container` 에서 0 으로 뺐다 — 원본은 벽 끝까지 찬다.
          */
         /* 재질만 갈아 끼운다 (D-250). 높이·여백·배치는 위 실측값 그대로다 */
-        className={`mobile-bleed mt-2 flex min-h-24 items-stretch border ${skin.panel} max-md:mt-[0.66rem] max-md:min-h-[6.5rem]`}
+        className={`mobile-bleed mt-2 flex min-h-24 items-stretch border ${skin.panel(win)} max-md:mt-[0.66rem] max-md:min-h-[6.5rem]`}
       >
-        {/* 승패는 **면이 아니라 좌측 막대와 테두리**로 구분한다 (`적진`).
-            면을 칠하면 목록 전체가 색으로 덮인다. 패배는 회색(`--color-lose`)으로 죽인다. */}
+        {/* 좌측 막대. `supply` 재질에서는 **면도 함께** 칠해진다 (위 `LOOK` 주석).
+            `적진` 때는 이 막대와 테두리가 승패를 가르는 유일한 표시였다 */}
         <div className={`w-[3px] shrink-0 ${win ? 'bg-win' : 'bg-lose'}`} />
 
         <div className="flex min-w-0 flex-grow flex-col">
@@ -1002,7 +1025,9 @@ function MatchDetailPanel({
       : (hexSides.find((side) => side !== null && side !== ourHexagon) ?? null)
 
   return (
-    <div className={`border border-t-0 ${skin.panel} px-4 py-3 max-md:px-2`}>
+    /* 펼친 상세도 **접힌 카드와 같은 색**이어야 한다 — 승리 파랑 · 패배 빨강.
+       (여기서 `skin.panel` 을 함수 그대로 문자열에 넣고 있었다. 클래스가 통째로 깨진다) */
+    <div className={`border border-t-0 ${skin.panel(match.win)} px-4 py-3 max-md:px-2`}>
       {/* 1행 — 맵 · 인원 (왼쪽) / 플레이시간 (오른쪽 끝) */}
       <div className="flex items-center text-sm text-faint">
         <div className="display text-base text-text-strong">{match.map.name}</div>

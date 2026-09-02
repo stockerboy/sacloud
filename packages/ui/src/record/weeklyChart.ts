@@ -12,10 +12,12 @@ import type { WeeklyPoint } from '@sacloud/contract'
  *   퍼센트 축   스나 킬뎃 · 라플 킬뎃 · 승률      0~100 %, 클수록 위
  *   순위 축     개인랭킹 순위                     1위가 제일 위 (뒤집힌다)
  * ```
- *   사용자가 «순위 변동그래프도 그래프 표안에 넣어» 라고 했다. 두 축을 한 그림에
- *   겹치는 것은 원래 조심할 일이지만, 여기서는 **눈금 숫자를 안 쓰기 때문에**
- *   («날짜는 굳이 안보여줘도 되고») 오해가 생기는 자리가 «어느 선이 더 높나» 하나뿐이다.
- *   그래서 순위 선은 **점선**으로 그려 성질이 다르다는 것을 보이게 한다.
+ *   사용자가 «순위 변동그래프도 그래프 표안에 넣어» 라고 했다.
+ *   **눈금 숫자는 퍼센트 축에만 붙인다** — «10 20 30 40 50 이렇게 구간 나눠야지».
+ *   순위는 그 눈금과 뜻이 다르므로 **점선**으로 그려 성질이 다름을 보이고,
+ *   값은 점 옆에 `12위` 처럼 직접 적는다. 왼쪽 눈금을 순위로 읽지 않게 하려는 것이다.
+ *
+ * ── 가로축에는 **날짜를 안 쓴다** (사용자 지시). 왼→오른쪽이 오래된→최근이다.
  *
  * ── 안 뛴 주는 **점을 빼지 않는다**
  *   값이 누적이라 그대로 수평선이 된다. 그게 사실이다 — 그 주에 아무 일도 없었다.
@@ -28,18 +30,30 @@ import type { WeeklyPoint } from '@sacloud/contract'
 
 /** 점이 칸 가장자리에서 잘리지 않도록 두는 여백 (%) */
 const PAD_X = 7
-const PAD_TOP = 14
-const PAD_BOTTOM = 12
+const PAD_TOP = 12
+const PAD_BOTTOM = 10
 
 /**
- * 퍼센트 축이 최소한 이만큼(%p)은 담는다.
+ * 세로축 **눈금 간격** (%p) — 2026-09-02 사장님 지시.
  *
- * `formChart.ts` 와 같은 이유다 — 다섯 주가 `50.1 · 50.3 · 50.2` 처럼 붙어 있을 때
- * 축을 값에 딱 맞추면 0.2%p 가 화면 절반을 오르내려 급등락처럼 읽힌다.
+ * > "구간을 나눠서 10 20 30 40 50 이렇게 구간 나눠야지 저게 몇퍼대인지 보이지"
+ *
+ * ── 그전에는 축을 **값에 맞춰 늘렸다**. 그게 잘못이었다.
+ *   최소·최대에 여백만 주는 방식이라 눈금이 `47.3 ~ 63.8` 같은 어중간한 수가 됐고,
+ *   눈금 글자도 없어서 **점이 몇 %대인지 알 수가 없었다.**
+ *   지금은 축을 **10 의 배수에 붙인다.** 눈금마다 숫자를 적는다.
  */
-const MIN_SPAN = 12
+const TICK = 10
 
-/** 축 위아래 여유 비율 (값 폭이 `MIN_SPAN` 보다 넓을 때) */
+/**
+ * 축이 최소한 담는 폭 (%p).
+ *
+ * 값이 `50.1 · 50.3` 처럼 붙어 있을 때 한 칸(10%p)만 잡으면 0.2%p 가 칸을 꽉 채워
+ * 급등락처럼 보인다. **세 칸**을 최소로 둔다 — 눈금이 넷은 보여야 「구간」으로 읽힌다.
+ */
+const MIN_TICKS = 3
+
+/** 순위 축 위아래 여유 비율 — 순위는 10 단위로 자를 수 없어 옛 방식 그대로다 */
 const HEADROOM = 0.18
 
 export interface ChartDomain {
@@ -62,30 +76,39 @@ export interface ChartSeries {
 }
 
 /**
- * 퍼센트 축 범위. 값이 하나도 없으면 `null` —
- * 그때는 그래프를 그리지 않는다. **0 으로 채운 축을 만들지 않는다** (D-106).
+ * 퍼센트 축 범위. **10 의 배수에 붙인다.**
+ *
+ * 값이 하나도 없으면 `null` — 그때는 그래프를 그리지 않는다.
+ * **0 으로 채운 축을 만들지 않는다** (D-106).
  */
 export function weeklyPercentDomain(values: readonly (number | null)[]): ChartDomain | null {
   const known = values.filter((v): v is number => v !== null)
   if (known.length === 0) return null
 
-  let lo = Math.min(...known)
-  let hi = Math.max(...known)
-  const span = hi - lo
-  const pad = span < MIN_SPAN ? (MIN_SPAN - span) / 2 : span * HEADROOM
-  lo -= pad
-  hi += pad
+  let lo = Math.floor(Math.min(...known) / TICK) * TICK
+  let hi = Math.ceil(Math.max(...known) / TICK) * TICK
 
-  /* 킬뎃·승률은 0~100 밖으로 나갈 수 없다. 한쪽이 잘리면 반대쪽으로 넓혀 폭을 지킨다 */
-  if (lo < 0) {
-    hi = Math.min(100, hi - lo)
-    lo = 0
+  /* 값이 딱 눈금 위에 있으면 폭이 0 이 된다 (예: 50 하나뿐). 한 칸 벌린다 */
+  if (hi === lo) hi = lo + TICK
+
+  /* 최소 칸 수를 채운다. 위아래로 번갈아 넓혀 값이 가운데에 오게 한다 */
+  while ((hi - lo) / TICK < MIN_TICKS) {
+    if (hi < 100) hi += TICK
+    else if (lo > 0) lo -= TICK
+    else break
   }
-  if (hi > 100) {
-    lo = Math.max(0, lo - (hi - 100))
-    hi = 100
-  }
+
+  /* 킬뎃·승률은 0~100 밖으로 나갈 수 없다 */
+  lo = Math.max(0, lo)
+  hi = Math.min(100, hi)
   return { lo, hi }
+}
+
+/** 축에 적을 눈금 값들 — `10 · 20 · 30 …` (아래에서 위로) */
+export function weeklyTicks(domain: ChartDomain): number[] {
+  const out: number[] = []
+  for (let v = domain.lo; v <= domain.hi + 0.001; v += TICK) out.push(Math.round(v))
+  return out
 }
 
 /**
