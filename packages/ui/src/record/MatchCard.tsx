@@ -1138,6 +1138,11 @@ function MatchDetailPanel({
             <div className="mt-4 border-t border-line-soft pt-3">
               <ClanHexagonV2
                 hexagon={ourHexagon.hexagon}
+                /* 지시 #31 — 이름 「경기 분석」, #27 과 같은 두 쪽 배치(TOP3 없음), 끝난 경기라
+                   「측정중」 대신 「기록 없음」 + 무엇이 없는지 사실 그대로 */
+                title="경기 분석"
+                layout="split"
+                pendingWording="final"
                 name={match.league_clan?.clan?.name ?? '우리'}
                 foe={
                   foeHexagon

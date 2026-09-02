@@ -10,6 +10,7 @@ import {
   resolveLeagueId,
   toMatchListItem,
 } from './matches'
+import { withSeasonWindow } from './season0Scope'
 
 /**
  * 홈 · 리그의 **최근 경기 N건** (2026-09-02 사장님 지시 — 홈 「사이트 소개」 자리에 넣는다).
@@ -76,7 +77,9 @@ async function fetchRecent(
   if (!leagueId) return null
 
   const rows = await prisma.match.findMany({
-    where: { leagueId },
+    /* 시즌 창(7/1 KST~) 안의 경기만 — 기록실 목록과 같은 함수 (결함 #32). 최신 N건이라 사실상
+       늘 창 안이지만, 창이 바뀌면 여기도 같이 따라가야 한다 */
+    where: withSeasonWindow({ leagueId }),
     orderBy: [...MATCH_ORDER],
     take: size,
     select: MATCH_SELECT,
