@@ -1,6 +1,11 @@
 import Link from 'next/link'
 import type { LeagueListItem } from '@sacloud/contract'
-import { isLeagueListed, isOfficialLeague } from '@sacloud/contract'
+import {
+  isLeagueListed,
+  isOfficialLeague,
+  leagueLandingPath,
+  LEAGUE_HOME_DOORS_OPEN,
+} from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
@@ -57,7 +62,15 @@ export function LeagueListTable({
         listed.map((league) => (
           <Link
             key={league.id}
-            href={`/league/${league.slug}/home/info`}
+            /* ★2026-09-03 (O-024) — 리그홈 대신 그 리그의 첫 화면으로★
+               `/home/info` 는 2026-09-01 지시(D-245)로 이미 랭킹으로 리다이렉트된다.
+               **누르면 딴 데로 튕기는 링크**를 남겨 둘 이유가 없다.
+               `LEAGUE_HOME_DOORS_OPEN` 을 `true` 로 되돌리면 옛 주소로 돌아간다 */
+            href={
+              LEAGUE_HOME_DOORS_OPEN
+                ? `/league/${league.slug}/home/info`
+                : leagueLandingPath(league.slug)
+            }
             className={`${ROW} hover:text-text-strong`}
           >
             <div className="flex min-w-0 flex-1 items-center gap-2">

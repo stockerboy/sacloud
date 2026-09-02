@@ -1,5 +1,6 @@
 'use client'
 
+import { CLAIM_DOORS_OPEN } from '@sacloud/contract'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton, formatDate } from '@sacloud/ui'
@@ -38,11 +39,17 @@ export default function MePage() {
             >
               {user.player.name}
             </Link>
-          ) : (
+          ) : CLAIM_DOORS_OPEN ? (
             <Link href="/me/link">
               {/* 색·밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
               <span className="text-text-strong underline underline-offset-4">연동하기</span>
             </Link>
+          ) : (
+            /* ★2026-09-03 (O-024) — 링크를 내렸다★
+               **승인할 사람이 자리에 없다** (`O-008` ⑥). 누르면 기다리게만 된다.
+               ⚠ 값은 그대로 보여 준다 — 「연동 안 됨」은 사실이다. 사실을 감추는 게 아니라
+                 **없는 창구로 보내지 않는 것**이다. `CLAIM_DOORS_OPEN` 이 되돌린다 */
+            <span className="text-meta">준비중</span>
           )
         }
       />

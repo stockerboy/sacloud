@@ -21,6 +21,8 @@ export * from './barracksUrl'
 export * from './searchInput'
 export * from './anonymity'
 export * from './boardOpen'
+/* 화면 6개 밖으로 나가는 문 (O-024) */
+export * from './featureDoors'
 export * from './passwordReset'
 export * from './egg'
 /* 리그가 무엇을 보여 주는가 — 리그별 화면·칸 설정 한 곳 (2026-09-01) */

@@ -1,5 +1,6 @@
 'use client'
 
+import { SETTING_DOORS_OPEN } from '@sacloud/contract'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { LeagueListItem } from '@sacloud/contract'
@@ -64,12 +65,18 @@ export default function LeaguesPage() {
             <br />
             직접 운영해보세요.
           </p>
-          <Link
-            href="/leagues/create"
-            className="mt-10 inline-flex h-12 items-center rounded-[var(--radius)] bg-accent px-8 font-semibold tracking-wide text-text-strong"
-          >
-            리그만들기
-          </Link>
+          {/* ★2026-09-03 (O-024) — 링크를 내렸다★
+              공개일에 여는 화면은 여섯이고 리그 만들기는 그 밖이다.
+              ⚠ `/leagues/create` 라우트는 그대로 산다. 주소를 치면 열린다.
+                `SETTING_DOORS_OPEN` 을 `true` 로 되돌리면 이 버튼이 그대로 돌아온다 */}
+          {SETTING_DOORS_OPEN ? (
+            <Link
+              href="/leagues/create"
+              className="mt-10 inline-flex h-12 items-center rounded-[var(--radius)] bg-accent px-8 font-semibold tracking-wide text-text-strong"
+            >
+              리그만들기
+            </Link>
+          ) : null}
         </div>
 
         <div className="min-w-0 flex-1">

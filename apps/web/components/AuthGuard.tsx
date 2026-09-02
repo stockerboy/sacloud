@@ -1,5 +1,6 @@
 'use client'
 
+import { CLAIM_DOORS_OPEN } from '@sacloud/contract'
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -64,12 +65,18 @@ export function AuthGuard({
         <div className="mt-2 text-meta">
           리그를 만들려면 먼저 마이페이지에서 서든어택 계정을 연동해 주세요.
         </div>
-        <a
-          href="/me/link"
-          className="mt-5 inline-flex h-10 items-center rounded bg-more px-4 text-white"
-        >
-          계정 연동하러 가기
-        </a>
+        {/* ★2026-09-03 (O-024) — 링크를 내렸다★
+            **승인할 사람이 자리에 없다** (`O-008` ⑥). 「가서 하세요」라고 보내 놓고
+            아무도 안 받으면 그게 더 나쁘다. 위 안내 문구는 그대로 둔다 — 사실이다.
+            `CLAIM_DOORS_OPEN` 이 되돌린다 */}
+        {CLAIM_DOORS_OPEN ? (
+          <a
+            href="/me/link"
+            className="mt-5 inline-flex h-10 items-center rounded bg-more px-4 text-white"
+          >
+            계정 연동하러 가기
+          </a>
+        ) : null}
       </div>
     )
   }

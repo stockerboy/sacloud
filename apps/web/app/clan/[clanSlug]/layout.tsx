@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { ClanIdentity, ClanProfileNav, ProfileEmpty, ProfileSkeleton } from '@sacloud/ui'
+import { CLAIM_DOORS_OPEN } from '@sacloud/contract'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -85,12 +86,20 @@ export default function ClanLayout({
       <ClanProfileNav tabs={tabs} current={pathname} />
       {/* 마스터 인증 입구 (2026-09-01 · D-253).
           탭으로 만들지 않았다 — 탭은 **볼 것**이고 이것은 **할 것**이다.
-          비로그인에게도 보인다. 누르면 로그인으로 보내는 것이 「왜 안 보이지」보다 낫다 */}
-      <div className="pc-container mt-3 flex justify-end">
-        <Link href={`/clan/${clanSlug}/master`} className="text-[12px] text-meta hover:text-text">
-          <span>마스터 인증하기</span>
-        </Link>
-      </div>
+          비로그인에게도 보인다. 누르면 로그인으로 보내는 것이 「왜 안 보이지」보다 낫다.
+
+          ── ★2026-09-03 (O-024) — 링크를 내렸다★
+            **승인할 사람이 자리에 없다** (`O-008` ⑥). 신청 버튼만 보이면 사람은 누르고
+            기다리는데 아무도 안 온다. 그건 「기능이 없는 것」보다 나쁘다.
+            ⚠ **화면·라우트는 그대로 산다.** 주소를 직접 치면 열린다.
+              `CLAIM_DOORS_OPEN` 을 `true` 로 되돌리면 이 줄이 그대로 돌아온다 */}
+      {CLAIM_DOORS_OPEN ? (
+        <div className="pc-container mt-3 flex justify-end">
+          <Link href={`/clan/${clanSlug}/master`} className="text-[12px] text-meta hover:text-text">
+            <span>마스터 인증하기</span>
+          </Link>
+        </div>
+      ) : null}
       {children}
     </>
   )
