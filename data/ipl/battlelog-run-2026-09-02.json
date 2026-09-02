@@ -33,7 +33,21 @@
     "lastPart": null,
     "lastKey": null,
     "haltReason": null,
-    "parts": []
+    "parts": [],
+    "progress": [
+      {
+        "reportedAt": "2026-09-02 04:27 (총괄 보고)",
+        "list": "p-001",
+        "pairIndex": 125,
+        "fetched": 123,
+        "sent": 110,
+        "inserted": 110,
+        "failed": 2,
+        "skipped": 110,
+        "haltReason": null,
+        "note": "skipped 110 은 재개 시 localStorage 완료 표시로 건너뛴 것. 창구 inserted 가 40건 단위로 오르는 것 확인. delay 200 에서도 0.65건/초 — 요청 자체가 1초 넘게 걸려 delay 가 병목이 아니다 → 지시 #7-2 concurrency 옵션"
+      }
+    ]
   },
   "note": "run 은 총괄이 전해 주는 __blStatus().all 로 갱신한다. skipped 1 은 worklist 에서 뺀 clanNos=null 경기. 끝난 기준: ok+empty+error+skipped = 22977, 창구 누계 증가분 ≈ ok."
 }
