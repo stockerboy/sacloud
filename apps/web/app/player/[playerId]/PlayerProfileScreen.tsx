@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { PlayerIdentity, PlayerLeagueList, ProfileSkeleton } from '@sacloud/ui'
+import { PlayerIdentity, PlayerLeagueList, ProfileEmpty, ProfileSkeleton } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useRefresh } from '@/lib/useRefresh'
@@ -42,10 +42,29 @@ export default function PlayerPage({ params }: { params: Promise<{ playerId: str
 
   const refresh = useRefresh('playerRenew', { playerId })
 
-  if (!profile.data) {
+  /*
+   * ★로딩과 「없음」을 구분한다★ (2026-09-03 · O-008 ④ · O-033 ② 와 같은 처방).
+   *
+   * 없는 선수 주소로 들어가면 **푸터만 있는 빈 화면**이었다 (운영 실측).
+   * 「없습니다」도 없고, 사람은 기다리다 나간다.
+   *
+   * ⚠ `isPending` 하나로는 모자란다 — **멈춰 있는 것도 참**이다.
+   *   조회가 실패해 재시도를 기다리는데 그때 연결이 끊기면 react-query 가
+   *   `fetchStatus: 'paused'` 로 세워 두고, 그러면 `isPending` 이 영영 참이다.
+   *   그래서 **「지금 실제로 받아오는 중」일 때만** 스켈레톤을 그린다.
+   */
+  if (profile.isPending && profile.fetchStatus === 'fetching') {
     return (
       <div className="pc-container pt-[40px]">
         <ProfileSkeleton rows={1} height={120} />
+      </div>
+    )
+  }
+
+  if (!profile.data) {
+    return (
+      <div className="pc-container pb-[40px] pt-[40px]">
+        <ProfileEmpty message="선수를 찾을 수 없습니다." />
       </div>
     )
   }

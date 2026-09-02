@@ -109,7 +109,8 @@ export default function LeaguePlayerRecordPage({
   /* 로딩과 "없음"을 구분한다.
      예전에는 둘 다 스켈레톤이라, 조회가 404를 내면 화면이 **영원히 로딩 중**으로 보였다.
      실제로 이 리그 선수 전원이 그 상태였다 (D-117). */
-  if (detail.isPending) {
+  /* ⚠ `isPending` 은 **멈춰 있는 것도 참**이다 (O-033 ②). 「지금 받아오는 중」만 로딩으로 친다 */
+  if (detail.isPending && detail.fetchStatus === 'fetching') {
     return (
       <div className="pc-container pt-[40px]">
         <ProfileSkeleton rows={2} height={180} />

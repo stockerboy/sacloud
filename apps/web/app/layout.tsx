@@ -83,9 +83,45 @@ const fontCinzel = Cinzel({
   variable: '--font-cinzel',
 })
 
+/**
+ * ★링크 미리보기★ (2026-09-03 · O-008 ⑤).
+ *
+ * ══ 왜 필요한가 ══
+ *
+ * **공개 방식이 「링크를 뿌리는 것」이다** — 단톡방 · 디스코드에 주소를 던진다.
+ * 그런데 운영에서 재 보니 **`og:` 태그가 0개**였다. 링크를 붙여도 **그냥 파란 글자**만
+ * 뜨고 무엇인지 아무도 모른다. 천 명에게 뿌리는 그 한 줄이 가장 값싼 홍보인데
+ * **그 자리가 비어 있었다.**
+ *
+ * ══ 이미지가 없다 ══
+ *
+ * ⚠ **`og:image` 를 안 넣었다.** 저장소에 쓸 만한 그림이 없다
+ * (`public/hero/creation-source.png` 는 히어로 원본이라 미리보기용이 아니다).
+ * **그림은 사장님이 주셔야 한다** — 없는 그림을 CSS 로 만들어 내지 않는다.
+ * 이미지가 없어도 **제목 · 설명 · 사이트 이름은 뜬다.**
+ *
+ * ⚠ `metadataBase` 가 있어야 상대 주소가 절대 주소로 풀린다. 없으면 Next 가 경고만
+ *   찍고 넘어가고, **미리보기에서 이미지가 조용히 빠진다.**
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL('https://3rdcloud.my'),
   title: '3rd cloud - 서든어택 클랜전 전적검색',
   description: '서든어택 클랜전 기록 · 리그 · 래더',
+  openGraph: {
+    type: 'website',
+    locale: 'ko_KR',
+    siteName: '3rd cloud',
+    title: '3rd cloud - 서든어택 클랜전 전적검색',
+    /* 링크를 받은 사람이 **무엇을 볼 수 있는지**를 한 줄로. 기능 나열이 아니다 */
+    description: '닉네임이나 클랜명으로 클랜전 기록을 찾아보세요. 래더 · 랭킹 · 경기 기록.',
+    url: 'https://3rdcloud.my',
+  },
+  twitter: {
+    /* 이미지가 없으니 `summary` 다. `summary_large_image` 는 그림이 있을 때 쓴다 */
+    card: 'summary',
+    title: '3rd cloud - 서든어택 클랜전 전적검색',
+    description: '닉네임이나 클랜명으로 클랜전 기록을 찾아보세요. 래더 · 랭킹 · 경기 기록.',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
