@@ -28,6 +28,7 @@ import {
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
+import { ClanTop3 } from '@/components/clan/ClanTop3'
 
 /**
  * 클랜 기록실 `/league/{slug}/clan/{slug}` — `적진` 팔레트.
@@ -167,7 +168,23 @@ export default function LeagueClanRecordPage({
         <section className="mt-[40px]">
           <EggVeilPanel state={egg} note={CLAN_EGG_GUIDE}>
             <div className={`${PROFILE_PANEL} px-5 py-4`}>
-              {data.hexagon_v2 ? <ClanHexagonV2 hexagon={data.hexagon_v2} /> : null}
+              {/* 두 쪽 배치 + 왼쪽 위 클랜 TOP3 (지시 #27). TOP3 는 이미 읽은 명단에서 뽑는다 — 왕복 추가 없음.
+                  명단이 없으면 자리를 비운다 */}
+              {data.hexagon_v2 ? (
+                <ClanHexagonV2
+                  hexagon={data.hexagon_v2}
+                  layout="split"
+                  aside={
+                    data.roster ? (
+                      <ClanTop3
+                        clanName={data.clan.name}
+                        members={data.roster.members}
+                        leagueSlug={leagueSlug}
+                      />
+                    ) : null
+                  }
+                />
+              ) : null}
               {data.hexagon ? (
                 <div className={data.hexagon_v2 ? 'mt-5 border-t border-line-soft pt-1' : ''}>
                   <ClanHexagon hexagon={data.hexagon} variant="list" />
