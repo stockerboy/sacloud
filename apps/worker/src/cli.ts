@@ -11,6 +11,7 @@
  * 큐 인프라(Redis/BullMQ)를 쓰지 않는다. 체크포인트는 DB(`ImportJob`)에 남는다 (C 결정).
  * `--dry-run`은 **요청을 한 건도 보내지 않는다.** API 키 없이 파이프라인을 점검할 때 쓴다.
  */
+import { V2_RATING_CONSTANTS } from '@sacloud/rating'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
@@ -925,6 +926,39 @@ async function main(): Promise<number> {
         .filter((value) => value !== '')
       const result = await runRate(ctx, {
         leagueSlug,
+        /*
+         * ★배치고사 지뢰를 밟지 않는다★ (2026-09-03 · O-036).
+         *
+         * ══ 무엇이 문제였나 ══
+         *
+         * `runRate` 는 상수를 안 주면 `DEFAULT_RATING_CONSTANTS` 를 쓴다 (`rate.ts` 196행).
+         * 거기 `placementMatches` 는 **옛 방식 10경기**다. 그리고 `rate.ts` 는 그 값으로
+         * `placement: played < 10` 을 **DB 에 그대로 쓴다** (930·962행).
+         *
+         * 그런데 **배치고사는 2026-09-01 에 폐지됐다** (사장님 지시 · `CLAUDE.md` 5장).
+         * 운영에서 실제로 도는 `season0Apply` 는 `V2_RATING_CONSTANTS`(0경기)를 쓴다.
+         * **두 경로가 서로 다른 규칙으로 같은 칸을 쓰고 있었다.**
+         *
+         * ══ 왜 지금 고치나 — 지금 아무도 안 부르는 게 아니다 ══
+         *
+         * 워크플로에서 부르는 곳은 **0곳**이다. 그런데 **사람이 부르는 길이 열려 있다** —
+         * ```
+         * package.json                     "nexon:rate": "… worker nexon rate"
+         * docs/PRODUCTION_READINESS.md 315  6. 래더  pnpm nexon:rate --league supply
+         * docs/GO_LIVE_CHECKLIST.md    422  … `nexon rate --league supply` 로 재replay
+         * ```
+         * **공개 전 절차서 둘이 이 명령을 시킨다.** 그대로 따르면 9판 이하 선수가
+         * 전부 `placement=true` 로 되돌아가 **랭킹에서 사라진다.**
+         *
+         * ══ 무엇을 바꿨나 ══
+         *
+         * **`DEFAULT_RATING_CONSTANTS` 는 안 건드렸다.** 상수 파일이
+         * *「옛 방식(10경기)을 그대로 둔다 … `DEFAULT` 를 바꾸면 IPL 클랜 집계까지
+         * 같이 움직인다」*고 일부러 적어 두었다. 그 뜻을 지킨다.
+         *
+         * 바꾼 것은 **이 명령이 무엇을 고르는가** 하나다 — 운영이 쓰는 것과 같은 것을 고른다.
+         */
+        constants: V2_RATING_CONSTANTS,
         seasonNumber: numberFlag(args, 'season'),
         allowMockLeague: boolFlag(args, 'allow-mock-league'),
         ...(origins?.length

@@ -421,3 +421,8 @@ production web 은 **managed DB 하나만** 본다. 로컬은 개발 전용(5433
 - incomplete 88건은 rating 제외 유지. 원본·기록은 보존
 - 할당량이 회복되면: backfill → `nexon rate --league supply` 로 재replay
 - 재replay 는 결정적·idempotent 임이 검증돼 있다
+> ⚠ **`nexon:rate` 는 DB 의 `placement` 칸을 쓴다** (2026-09-03 · O-036).
+> 배치고사는 2026-09-01 에 폐지됐는데 이 명령은 `DEFAULT_RATING_CONSTANTS`(**옛 10경기**)를
+> 쓰고 있었다. 그대로 돌리면 **9판 이하 선수가 전부 랭킹에서 사라진다.**
+> 지금은 이 명령이 운영과 같은 `V2_RATING_CONSTANTS`(0경기)를 쓰도록 고쳤다 (`cli.ts` `case 'rate'`).
+> **돌린 뒤에는 랭킹 인원수를 전/후로 세어 보라** — 줄었으면 그 자리를 다시 봐야 한다.

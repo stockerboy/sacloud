@@ -315,6 +315,12 @@ metrics           위 값들의 원시 숫자 + pendingDetail / pendingProjectio
 6. 래더      pnpm nexon:rate --league supply    ← 결정적 replay. 몇 번을 돌려도 같다
 ```
 
+> ⚠ **`nexon:rate` 는 DB 의 `placement` 칸을 쓴다** (2026-09-03 · O-036).
+> 배치고사는 2026-09-01 에 폐지됐는데 이 명령은 `DEFAULT_RATING_CONSTANTS`(**옛 10경기**)를
+> 쓰고 있었다. 그대로 돌리면 **9판 이하 선수가 전부 랭킹에서 사라진다.**
+> 지금은 이 명령이 운영과 같은 `V2_RATING_CONSTANTS`(0경기)를 쓰도록 고쳤다 (`cli.ts` `case 'rate'`).
+> **돌린 뒤에는 랭킹 인원수를 전/후로 세어 보라** — 줄었으면 그 자리를 다시 봐야 한다.
+
 **핵심은 4번이다.** 원본을 버리지 않았기 때문에 파서를 고친 뒤 호출 없이 되돌릴 수 있다.
 
 ---
