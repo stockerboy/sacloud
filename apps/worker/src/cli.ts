@@ -87,6 +87,20 @@ import {
 } from './jobs/ratingBackup.js'
 import { formatSnapshot, takeDbSnapshot } from './jobs/dbSnapshot.js'
 import { checkSyncFreshness, formatSyncFreshness } from './jobs/syncFreshness.js'
+import {
+  WATCHDOG_DEFAULT_THRESHOLDS,
+  evaluateWatch,
+  formatWatchMessage,
+  formatWatchReport,
+  loadWatchState,
+  parseStaleMin,
+  readWatchNumbers,
+  saveWatchState,
+  sendDiscord,
+  transitionWatch,
+  type WatchNumbers,
+  type WatchThresholds,
+} from './jobs/collectWatchdog.js'
 import { runSupplyMatches, supplyMatchesStatus } from './jobs/supplyMatches.js'
 import { readCurrentMembership, runSupplyRosters } from './jobs/supplyRosters.js'
 import { explainMatches } from './dev/explainMatches.js'
@@ -371,6 +385,12 @@ function usage(): void {
   sync-freshness [--leagues <slug,...>] [--max-age <slug>=<시간>,...] [--warn-only]
               증분 동기화가 밀렸는지 본다 — 최신 경기 시각 vs 마지막 적재 시각.
               임계값은 리그마다 다르다(실측 근거는 jobs/syncFreshness.ts). 읽기만 한다
+  collect-watchdog [--dry-run] [--state <경로>] [--fixture <숫자.json>] [--force-notify]
+                   [--leagues <slug,...>] [--stale-min <slug>=<분>,...] [--ingest-stale-min N]
+                   [--ingest-alert] [--apply-max-hours N] [--fail-streak N]
+              수집 감시 (지시 #18) — 마지막 경기 지연 · 창구 정체 · 시즌0 반영 · 워크플로 연속 실패를
+              숫자로 판정하고, **바뀔 때만** 디스코드 웹훅(DISCORD_WEBHOOK_URL)으로 알린다.
+              --fixture 는 DB·GitHub 대신 그 파일의 숫자로 판정한다 (접속 없이 문구 시험). 읽기만 한다
   season      --league <slug> [--close | --start] [--at <ISO>] [--number N] [--no-promotion]
               시즌 운영. 플래그가 없으면 현재 상태만 보여 준다.
               --close 최종 랭킹 스냅샷 + 시즌 종료 / --start 승강 반영 + 전원 같은 점수로 시작
@@ -971,6 +991,89 @@ async function main(): Promise<number> {
           checksum: made.checksum,
         },
       ])
+      return 0
+    }
+
+    /**
+     * 수집 감시 (2026-09-02 · 지시 #18). 판정·문구·전이는 `jobs/collectWatchdog.ts`.
+     *
+     *   nexon collect-watchdog --dry-run                         운영 숫자를 읽어 지금 상태만 찍는다
+     *   nexon collect-watchdog --fixture 숫자.json --stale-min supply=1,sanply=1
+     *                                                            접속 없이 「일부러 실패」 문구를 본다
+     *   nexon collect-watchdog --state .watchdog/state.json      실제 (바뀐 것만 웹훅으로)
+     *
+     * 웹훅 주소는 `DISCORD_WEBHOOK_URL` 환경변수로만 받고 마스킹한다. 전송에 실패하면 상태를 남기지 않는다 —
+     * 다음 실행이 같은 전이를 다시 시도하게 하려는 것이다.
+     */
+    case 'collect-watchdog': {
+      const dryRun = boolFlag(args, 'dry-run')
+      const statePath = stringFlag(args, 'state') ?? join(REPO_ROOT, '.watchdog', 'state.json')
+      const fixturePath = stringFlag(args, 'fixture')
+      const leagues = (stringFlag(args, 'leagues') ?? 'supply,sanply,nolink')
+        .split(',')
+        .map((slug) => slug.trim())
+        .filter((slug) => slug !== '')
+
+      let staleMin: Record<string, number>
+      try {
+        staleMin = parseStaleMin(stringFlag(args, 'stale-min'))
+      } catch (error) {
+        fail(String((error as Error).message))
+        return 1
+      }
+      const thresholds: WatchThresholds = {
+        ...WATCHDOG_DEFAULT_THRESHOLDS,
+        leagueStaleMin: { ...WATCHDOG_DEFAULT_THRESHOLDS.leagueStaleMin, ...staleMin },
+        ingestStaleMin: numberFlag(args, 'ingest-stale-min') ?? WATCHDOG_DEFAULT_THRESHOLDS.ingestStaleMin,
+        ingestAlert: boolFlag(args, 'ingest-alert'),
+        applyMaxHours: numberFlag(args, 'apply-max-hours') ?? WATCHDOG_DEFAULT_THRESHOLDS.applyMaxHours,
+        failStreak: numberFlag(args, 'fail-streak') ?? WATCHDOG_DEFAULT_THRESHOLDS.failStreak,
+      }
+
+      const webhook = process.env.DISCORD_WEBHOOK_URL?.trim() || null
+      registerSecret(webhook)
+
+      let numbers: WatchNumbers
+      if (fixturePath !== null) {
+        numbers = JSON.parse(readFileSync(fixturePath, 'utf8')) as WatchNumbers
+        log(`fixture ${fixturePath} 의 숫자로 판정한다 — DB·GitHub 를 읽지 않는다`)
+      } else {
+        const repo = stringFlag(args, 'repo') ?? process.env.GITHUB_REPOSITORY ?? null
+        const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? null
+        registerSecret(token)
+        numbers = await readWatchNumbers({ leagues, repo, token })
+      }
+      /* fixture 면 그 파일의 「지금」으로 판정한다 — 그래야 문구가 결정적이다 */
+      const at = new Date(numbers.now)
+      const checks = evaluateWatch(numbers, thresholds)
+      log(formatWatchReport(checks, at))
+
+      const prev = await loadWatchState(statePath)
+      const { next, events } = transitionWatch(prev, checks, at)
+      const message = formatWatchMessage(events, checks, at, boolFlag(args, 'force-notify'))
+      if (message === null) {
+        log(`바뀐 것 없음 — 보내지 않는다 (지난 판정 ${prev === null ? '없음' : `있음 · ${prev.updatedAt}`})`)
+      } else {
+        log('--- 보낼 문구 ---')
+        log(message)
+        log('---')
+        if (dryRun) {
+          log('--dry-run — 보내지 않고 상태도 남기지 않는다')
+        } else if (webhook === null) {
+          warn('DISCORD_WEBHOOK_URL 이 없다 — 문구만 찍었다')
+        } else {
+          const sent = await sendDiscord(webhook, message)
+          if (!sent.ok) {
+            fail(`디스코드 전송 실패 HTTP ${sent.status} — 상태를 남기지 않는다. 다음 실행이 다시 보낸다`)
+            return 1
+          }
+          log(`디스코드로 보냈다 (HTTP ${sent.status})`)
+        }
+      }
+      if (!dryRun) {
+        await saveWatchState(statePath, next)
+        log(`판정을 남겼다 → ${statePath}`)
+      }
       return 0
     }
 

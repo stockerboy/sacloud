@@ -112,3 +112,6 @@ clan-hex-v2-summary-export.json
 # 성능 측정 임시 폴더
 .tmp-perf/
 design/__tmp-*
+
+# 수집 감시 상태 (지시 #18) — 러너 캐시로만 넘긴다. 저장소에 넣지 않는다
+.watchdog/

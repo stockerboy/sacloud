@@ -1,0 +1,228 @@
+# 수집 감시 — 수집이 이상해진 순간 사람에게 닿는 알림 (2026-09-02 · 지시 #18)
+#
+# ── 무엇을 하는가
+#   10분마다 `nexon collect-watchdog` 를 돌린다. 그 잡이 운영 DB 와 GitHub 실행 기록을 **읽어**
+#   숫자로 판정하고, **상태가 바뀔 때만** 디스코드 웹훅으로 한 줄씩 보낸다 (정상→경보 · 경보→복구).
+#     ① 리그별 마지막 경기 시각 지연 (SPL·10mountain 60분 · IPL 표시만)
+#     ② 병영수첩 창구 배틀로그가 30분 넘게 안 늚 (자동 수집이 살기 전까지는 표시만)
+#     ③ season0-apply 성공이 3시간 넘게 없음
+#     ④ 워크플로 연속 실패 3회
+#   판정 기준·문구는 `apps/worker/src/jobs/collectWatchdog.ts` 머리말.
+#
+# ── 왜
+#   2026-08-31 05:18 이후 사흘 동안 IPL 수집이 0건이었는데 아무도 몰랐다. 「조용히 멈춤」을 끝내려는 것이다.
+#
+# ── 왜 cron 만 믿지 않는가
+#   이 저장소 실측으로 GitHub 예약은 89% 가 안 뜬다 (D-225). 그래서 `supply-incremental.yml` 과 같은
+#   **자기호출 체인**을 쓴다 — 잡이 끝나면서 자기 자신을 `workflow_dispatch` 로 다시 부른다.
+#   한 실행이 약 10분이 되도록 안에서 기다린 뒤 다음을 부르므로, 주기는 GitHub 이 아니라 우리 시계다.
+#   cron 은 체인이 끊겼을 때 되살리는 후퇴값이고, 이 파일을 고쳐 푸시하면 한 번 돌아 체인에 시동이 걸린다.
+#
+# ── 「같은 경보를 반복하지 않는다」를 어떻게 지키나
+#   지난 판정을 `.watchdog/state.json` 에 남기고 다음 실행이 그것을 읽어야 한다. 러너는 매번 새 VM 이라
+#   **actions/cache** 로 넘긴다 — 저장 키는 실행마다 새로 만들고(`…-<run_id>`), 읽을 때는 접두어로
+#   가장 최근 것을 받는다. 캐시가 비면(7일 미사용·삭제) 첫 실행처럼 「나쁜 것만」 한 번 알린다.
+#
+# ── 비밀값
+#   DISCORD_WEBHOOK_URL — 저장소 Secrets 에만 둔다. 코드·로그·커밋 어디에도 넣지 않는다. 잡은 값을 마스킹한다.
+#   없으면 문구만 로그에 찍고 끝난다 — 웹훅 없이도 판정은 돈다.
+#
+# ── 건드리지 않는 것
+#   운영 DB 에 쓰지 않는다. 다른 워크플로와 `concurrency` 그룹을 공유하지 않는다 (수집을 밀어내면 안 된다).
+
+name: 수집 감시
+
+on:
+  schedule:
+    # 10분마다. 정각 부근(고부하)을 피해 4분 어긋냈다 (D-225). 어차피 후퇴값이다
+    - cron: '4-59/10 * * * *'
+  # 이 파일을 고쳐 푸시하면 한 번 돈다 = 체인 시동 (supply-incremental.yml 과 같은 이유)
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/collect-watchdog.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '판정만 찍는다 — 보내지도, 상태를 남기지도, 체인을 잇지도 않는다'
+        type: boolean
+        required: false
+        default: false
+      force_notify:
+        description: '바뀐 것이 없어도 지금 상태 전체를 웹훅으로 보낸다 (웹훅이 사는지 시험)'
+        type: boolean
+        required: false
+        default: false
+      stale_min:
+        description: '리그별 임계(분) 덮어쓰기. 예: supply=1,sanply=1 (일부러 실패시키는 시험)'
+        required: false
+        default: ''
+      ingest_alert:
+        description: '창구 정체를 표시만이 아니라 경보로 올린다 (IPL 자동 수집이 살면 켠다)'
+        type: boolean
+        required: false
+        default: false
+      chain:
+        description: '자기호출 체인 깊이. 사람은 건드리지 않는다'
+        required: false
+        default: '0'
+
+concurrency:
+  group: collect-watchdog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # 자기호출(dispatch) + 다른 워크플로의 실행 기록 읽기
+  actions: write
+
+jobs:
+  watch:
+    name: 숫자 읽기 → 판정 → 바뀐 것만 알림
+    runs-on: ubuntu-latest
+    # 준비 1~2분 + 판정 1분 + 체인 간격 채우기(최대 9분). 그보다 오래면 끊는다
+    timeout-minutes: 20
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # 짧은 읽기지만 사이트가 쓰는 6543 자리를 빼앗지 않으려고 수집과 같은 세션 풀러로 붙는다 (D-249)
+      SACLOUD_DB_SESSION_POOLER: '1'
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+      FORCE_NOTIFY: ${{ inputs.force_notify || 'false' }}
+      STALE_MIN: ${{ inputs.stale_min || '' }}
+      INGEST_ALERT: ${{ inputs.ingest_alert || 'false' }}
+      STATE_FILE: .watchdog/state.json
+      # 한 실행을 이 길이로 맞춘다 (초). 체인 주기가 곧 이 값이다
+      PERIOD_SECONDS: '600'
+
+    steps:
+      - name: 시작 시각을 기록한다
+        run: echo "JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: pnpm 설치
+        uses: pnpm/action-setup@v4
+
+      - name: Node 24 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma 클라이언트 생성
+        run: pnpm --filter @sacloud/db exec prisma generate
+
+      - name: 시크릿 확인 (값은 찍지 않는다)
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL 시크릿이 없다"
+            exit 1
+          fi
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "::warning::DISCORD_WEBHOOK_URL 시크릿이 없다 — 판정만 찍고 보내지 않는다. Settings → Secrets 에 넣어라"
+          else
+            echo "DISCORD_WEBHOOK_URL 설정됨"
+          fi
+          echo "dry-run=${DRY_RUN} · force-notify=${FORCE_NOTIFY} · stale-min='${STALE_MIN}' · ingest-alert=${INGEST_ALERT}"
+
+      # 지난 실행의 판정. 접두어로 가장 최근 캐시를 받는다. 없으면 첫 실행처럼 돈다
+      - name: 지난 판정을 받는다 (actions/cache)
+        id: restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .watchdog
+          key: collect-watchdog-state-${{ github.run_id }}
+          restore-keys: |
+            collect-watchdog-state-
+
+      - name: 숫자 읽기 → 판정 → 바뀐 것만 알림
+        id: watch
+        run: |
+          set -uo pipefail
+          flags=(--state "$STATE_FILE")
+          if [ "$DRY_RUN" = 'true' ]; then flags+=(--dry-run); fi
+          if [ "$FORCE_NOTIFY" = 'true' ]; then flags+=(--force-notify); fi
+          if [ -n "$STALE_MIN" ]; then flags+=(--stale-min "$STALE_MIN"); fi
+          if [ "$INGEST_ALERT" = 'true' ]; then flags+=(--ingest-alert); fi
+          echo "지난 판정: $([ -f "$STATE_FILE" ] && echo "있다 ($(stat -c %y "$STATE_FILE" | cut -c1-19))" || echo '없다 — 첫 실행처럼 돈다')"
+          pnpm --filter @sacloud/worker nexon collect-watchdog "${flags[@]}"
+
+      # 이번 판정을 다음 실행에 넘긴다. dry-run 은 남기지 않는다 (시험이 상태를 오염시키면 안 된다)
+      - name: 이번 판정을 남긴다 (actions/cache)
+        if: ${{ always() && inputs.dry_run != true }}
+        uses: actions/cache/save@v4
+        with:
+          path: .watchdog
+          key: collect-watchdog-state-${{ github.run_id }}
+
+      # ── 체인 주기를 채운다. 준비·판정에 쓴 시간을 빼고 나머지를 기다려 한 실행 ≈ 10분이 되게 한다
+      - name: 다음 실행까지 기다린다
+        if: ${{ always() && inputs.dry_run != true }}
+        run: |
+          elapsed=$(( $(date +%s) - JOB_STARTED ))
+          wait=$(( PERIOD_SECONDS - elapsed ))
+          if [ "$wait" -gt 0 ]; then
+            echo "이번 실행 ${elapsed}초 — ${wait}초 기다린 뒤 다음을 부른다"
+            sleep "$wait"
+          else
+            echo "이번 실행이 ${elapsed}초 걸렸다 — 바로 다음을 부른다"
+          fi
+
+      # ── 자기호출 (D-225 · supply-incremental.yml 과 같은 방식). 폭주 방지 세 겹:
+      #   ① 체인 깊이 상한 · ② 최근 1시간 run 수 상한 · ③ 최소 생존시간
+      - name: 다음 실행을 스스로 예약한다 (self-dispatch)
+        if: ${{ always() && inputs.dry_run != true }}
+        env:
+          CHAIN: ${{ inputs.chain || '0' }}
+          # 10분 주기 × 500 ≈ 3.5일. 닿으면 끊고 cron(후퇴값)이 새 체인을 연다
+          MAX_CHAIN: '500'
+          # 정상은 시간당 6회. cron 이 겹쳐 두 체인이 되면 12회 → 여기서 하나가 끊긴다
+          MAX_RUNS_PER_HOUR: '9'
+          MIN_ALIVE_SECONDS: '420'
+        run: |
+          set -uo pipefail
+          next=$(( CHAIN + 1 ))
+          alive=$(( $(date +%s) - JOB_STARTED ))
+          if [ "$alive" -lt "$MIN_ALIVE_SECONDS" ]; then
+            echo "::warning::이 run 이 ${alive}초만에 끝났다 — 체인을 잇지 않는다 (최소 ${MIN_ALIVE_SECONDS}초). cron 이 되살린다"
+            exit 0
+          fi
+          if [ "$next" -gt "$MAX_CHAIN" ]; then
+            echo "체인 깊이 ${CHAIN} 이 상한 ${MAX_CHAIN} 에 닿았다 — 여기서 끊는다. cron 이 새 체인을 연다"
+            exit 0
+          fi
+          since=$(date -u -d '60 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          recent=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/collect-watchdog.yml/runs?per_page=100&created=%3E${since}" \
+            | jq -r '.total_count // 0')
+          if [ -z "$recent" ] || [ "$recent" = 'null' ]; then
+            echo "::warning::최근 run 수를 못 읽었다 — 안전한 쪽으로 체인을 끊는다"
+            exit 0
+          fi
+          if [ "$recent" -ge "$MAX_RUNS_PER_HOUR" ]; then
+            echo "::warning::최근 1시간 run 이 ${recent}건이다 (상한 ${MAX_RUNS_PER_HOUR}) — 폭주로 보고 체인을 끊는다"
+            exit 0
+          fi
+          echo "체인 ${CHAIN} → ${next} · 최근 1시간 ${recent}건 · 생존 ${alive}초 — 다음 실행을 부른다"
+          code=$(curl -sS -o /tmp/dispatch.out -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/collect-watchdog.yml/dispatches" \
+            -d "{\"ref\":\"${GITHUB_REF_NAME}\",\"inputs\":{\"chain\":\"${next}\"}}")
+          if [ "$code" = '204' ]; then
+            echo "다음 실행을 예약했다 (체인 ${next})"
+            exit 0
+          fi
+          # 조용히 끊기면 안 된다 — 감시가 죽은 것을 감시가 알려야 한다. 빨갛게 끝낸다
+          echo "::error::self-dispatch 실패 HTTP ${code} — 감시 체인이 끊겼다. cron 후퇴값에 맡긴다. 403 이면 PAT 가 필요하다 (D-229)"
+          echo "본문: $(head -c 300 /tmp/dispatch.out)"
+          exit 1
