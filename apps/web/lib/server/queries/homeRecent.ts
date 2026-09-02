@@ -1,5 +1,5 @@
 import { prisma } from '@sacloud/db'
-import type { ClanSummary, MatchListItem } from '@sacloud/contract'
+import type { ClanSummary, MatchListItem, MatchTimeClan } from '@sacloud/contract'
 import {
   MATCH_ORDER,
   MATCH_SELECT,
@@ -53,6 +53,19 @@ export interface LeagueRecentRow {
   winner: ClanSummary
   loser: ClanSummary
   decided: boolean
+  /**
+   * MVP (지시 #13-g). `Match.mvpPlayerId` 를 라인업에서 찾아 이름과 **경기 당시 소속**(D-131)을 붙인다.
+   * 라인업에 그 선수가 없거나 MVP 가 기록돼 있지 않으면 `null` — 지어내지 않는다.
+   * 추가 왕복은 없다. `MATCH_SELECT` 가 이미 읽는 값이다.
+   */
+  mvp: { player_id: string; name: string; clan: MatchTimeClan | null } | null
+}
+
+function mvpOf(item: MatchListItem): LeagueRecentRow['mvp'] {
+  if (!item.mvp_player_id) return null
+  const entry = [...item.red, ...item.blue].find((row) => row.player_id === item.mvp_player_id)
+  if (!entry) return null
+  return { player_id: entry.player_id, name: entry.name, clan: entry.match_time_clan }
 }
 
 async function fetchRecent(
@@ -103,6 +116,7 @@ export async function getLeagueRecentRows(
         winner: item.league_clan.clan,
         loser: item.opponent.clan,
         decided: viewer.decided,
+        mvp: mvpOf(item),
       },
     ]
   })

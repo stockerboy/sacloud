@@ -1,4 +1,4 @@
-import type { ClanSummary, MatchListItem, PlayerRankRow } from '@sacloud/contract'
+import type { ClanSummary, MatchListItem, MatchTimeClan, PlayerRankRow } from '@sacloud/contract'
 
 /**
  * 홈 조각들이 서버에서 받는 값의 모양.
@@ -36,6 +36,14 @@ export interface HomeRecentRow {
   loser: ClanSummary
   /** 승자를 아는가 — `Match.winnerSide` 가 red/blue 중 하나였는가 */
   decided: boolean
+  /**
+   * 그 경기의 MVP (2026-09-02 사장님 지시 #13-g).
+   *
+   * `Match.mvpPlayerId`(D-159 ★)와 참가자의 **경기 당시 소속** 스냅샷(D-131)에서만 뽑는다 —
+   * 계산해 만들지 않는다. 값이 없으면 `null` 이고 화면은 `알수없음` 을 적는다
+   * (IPL 병영수첩 출처는 대부분 없다 · D-034). `clan` 은 경기 당시 소속이고 모르면 `null`.
+   */
+  mvp: { player_id: string; name: string; clan: MatchTimeClan | null } | null
 }
 
 /**
