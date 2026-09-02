@@ -18,6 +18,7 @@ import {
   HomeTop,
   Infos,
   League,
+  LeagueCreateInput,
   LeagueClan,
   LeagueClanDeleteState,
   LeagueClanSeason,
@@ -33,6 +34,8 @@ import {
   Player,
   PlayerLeagueEntry,
   PlayerProfile,
+  SignupInput,
+  LoginInput,
   PlayerRankRow,
   PlayerSearchItem,
   RemoteConfigs,
@@ -60,6 +63,31 @@ export interface EndpointDef {
   description: string
   /** 응답 스키마 (공통 래퍼 포함) */
   response: z.ZodTypeAny
+  /**
+   * ★받는 몸통★ (2026-09-03 · O-037).
+   *
+   * ══ 왜 생겼나 — 같은 사고를 세 번 냈다 ══
+   *
+   * 여기에는 **응답만 있었다.** 「이 엔드포인트가 무슨 몸통을 받는가」를
+   * **기계가 알 방법이 없었다.** 서버는 `XxxInput.safeParse()` 로 검사하지만
+   * 그 스키마가 **엔드포인트와 연결돼 있지 않았다.**
+   * 그래서 화면이 엉뚱한 모양을 보내도 **빌드도 테스트도 아무 말을 안 했다.**
+   * ```
+   * 가입       D-252 로 계약이 바뀌었는데 화면이 안 따라옴  → 100% 실패  (O-027)
+   * 로그인     같은 병                                    → 100% 실패  (O-029)
+   * 리그만들기  agreements 를 배열로 보냄                    → 100% 실패  (O-030)
+   * ```
+   * **세 번 다 「테스트는 초록인데 화면은 100% 실패」였다.**
+   *
+   * ══ 규칙 ══
+   *
+   * · **새 스키마를 만들지 않는다.** 서버가 `safeParse` 에 쓰는 그것을 **연결만** 한다.
+   *   둘이 갈라지면 그게 다음 사고다
+   * · 몸통이 없는 엔드포인트(GET · 몸통 안 보는 DELETE)에는 **안 단다.** `undefined` 다
+   * · 게시판·댓글은 **서버에 스키마가 아예 없다** — 만들지 않는다.
+   *   게시판을 열 때 그때 만든다 (`docs/SCREEN_CONTRACT_AUDIT.md` 마지막 절)
+   */
+  request?: z.ZodTypeAny
   /** 쿼리 파라미터 이름 목록 */
   query?: readonly string[]
 }
@@ -119,6 +147,8 @@ export const endpoints = {
     path: '/auth/login',
     origin: 'observed',
     description: '로그인',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: LoginInput,
     response: apiResponse(AuthSession),
   },
   authSignup: {
@@ -126,6 +156,8 @@ export const endpoints = {
     path: '/auth/signup',
     origin: 'observed',
     description: '회원가입 (아이디 + 비밀번호 · D-252)',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: SignupInput,
     response: apiResponse(AuthSession),
   },
   authToken: {
@@ -542,6 +574,8 @@ export const endpoints = {
     path: '/leagues',
     origin: 'designed',
     description: '리그 만들기 (계정 연동 필요 + 캡차)',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: LeagueCreateInput,
     response: apiResponse(League),
   },
   leagueSlugAvailability: {
