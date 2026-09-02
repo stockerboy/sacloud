@@ -23,8 +23,9 @@ import {
   formatRating,
   formatRatingDelta,
 } from '../common/format'
-import { leaguePlayerPath } from '../common/paths'
+import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 import {
+  COL_CLAN,
   COL_HIDDEN,
   COL_NAME,
   COL_RANK,
@@ -365,6 +366,17 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
    * 그 판단은 여기가 아니라 `@sacloud/contract` 의 `leagueScreen()` 이 한다.
    */
   columns?: RankColumns
+  /**
+   * 닉네임 옆에 **소속 클랜명 칸**을 넣는다 (2026-09-02 사장님 지시 #10).
+   *
+   * > "순위닉네임, 래더 사이에 소속클랜명을 적어라"
+   *
+   * **기본값은 `false` 다 — 넘기지 않으면 지금까지의 표 그대로다.** 홈 미리보기가 켠다.
+   * 클랜명은 그 리그의 클랜 기록실로 가는 링크다. 소속이 없으면(`clan === null`) `무소속`
+   * 이라고 적는다 — 계약이 `null` 을 그 뜻으로 정해 두었다 (`PlayerRankRow.clan` 주석).
+   * 값이 없는 것을 `-` 로 감추지 않는다.
+   */
+  clanColumn?: boolean
 }
 
 export function PlayerRankTable({
@@ -375,6 +387,7 @@ export function PlayerRankTable({
   onRetry,
   weapon = 'all',
   columns = ALL_COLUMNS,
+  clanColumn = false,
 }: PlayerRankTableProps) {
   const byWeapon = weapon !== 'all'
   const { brokenPlayerIds } = useEggKnowledge()
@@ -400,6 +413,7 @@ export function PlayerRankTable({
       <div className={HEAD}>
         {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>닉네임</div>
+        {clanColumn ? <div className={COL_CLAN}>클랜</div> : null}
         {columns.winRate ? <div className={`${COL_STAT} ${winRateHidden}`}>승률</div> : null}
         {columns.kd ? <div className={`${COL_STAT} ${kdHidden}`}>킬뎃</div> : null}
         {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
@@ -412,7 +426,7 @@ export function PlayerRankTable({
         loading={loading}
         error={error}
         onRetry={onRetry}
-        columns={visibleCount(columns, true)}
+        columns={visibleCount(columns, true) + (clanColumn ? 1 : 0)}
         isEmpty={!rows || rows.length === 0}
         emptyMessage="아직 기록된 플레이어가 없습니다."
       >
@@ -436,6 +450,22 @@ export function PlayerRankTable({
                 <span className="truncate">{row.player.name}</span>
               </Link>
             </div>
+            {/* 소속 클랜명 — 사장님 지시 #10. 색은 안쪽 `span` 에 준다 (`a { color: inherit }`) */}
+            {clanColumn ? (
+              <div className={COL_CLAN}>
+                {row.clan ? (
+                  <Link
+                    className="block truncate hover:text-text-strong"
+                    href={leagueClanPath(leagueSlug, row.clan.slug)}
+                    title={row.clan.name}
+                  >
+                    <span className="text-sm text-meta">{row.clan.name}</span>
+                  </Link>
+                ) : (
+                  <span className="block truncate text-sm text-faint">무소속</span>
+                )}
+              </div>
+            ) : null}
             {!columns.winRate ? null : egg === 'sealed' ? (
               <div className={`${COL_STAT} ${winRateHidden}`}>
                 <EggVeil state={egg}>{null}</EggVeil>

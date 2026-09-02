@@ -10,10 +10,13 @@ import { HomeEmpty, HomeLeagueHead, HomeLoadFailed, HomeSectionHead } from './ho
 import type { HomeRecentLeague } from './homeTypes'
 
 /**
- * ② 최근 경기 — **IPL 왼쪽 · SPL 오른쪽**, 각 5경기 (2026-09-02 사장님 지시).
+ * ② 최근 경기 — **SPL 왼쪽 · IPL 오른쪽**, 각 5경기 (2026-09-02 사장님 지시).
+ *
+ * ⚠ 지시 #10 으로 좌우가 바뀌었다 — 오전(#3)에는 IPL 왼쪽 / SPL 오른쪽이었다.
+ *   *"spl,ipl,열산 순서로 배치해라"*. 순서는 `homeData.ts` 의 `HOME_RECENT_LEAGUES` 한 줄이 정한다.
  *
  * ```
- * IPL                         SPL
+ * SPL                         IPL
  * ┃ 맵 - 3분 전        +6점   ┃ 맵 - 10분 전       알수없음
  * ┃ 승리  [A] vs [B]      ⌄   ┃ 승리  [C] vs [D]      ⌄
  * ⋮ (5장)                    ⋮
@@ -35,7 +38,7 @@ import type { HomeRecentLeague } from './homeTypes'
  *   왼쪽에 서고 그 옆이 이긴 클랜이다. 승자를 모르는 경기만 레드 슬롯 기준이다.
  *
  * ── 좁은 화면
- *   1024px 아래에서는 두 칸을 위아래로 쌓는다 (IPL 먼저). 카드는 기록실과 같이
+ *   1024px 아래에서는 두 칸을 위아래로 쌓는다 (SPL 먼저). 카드는 기록실과 같이
  *   `.mobile-bleed` 로 화면 끝까지 찬다.
  */
 
@@ -92,7 +95,7 @@ export function HomeRecentMatches({ leagues }: { leagues: HomeRecentLeague[] | n
       {leagues === null ? (
         <HomeLoadFailed />
       ) : (
-        /* 순서가 곧 좌우다 — `HOME_RECENT_LEAGUES` 가 IPL · SPL 순으로 들고 있다 */
+        /* 순서가 곧 좌우다 — `HOME_RECENT_LEAGUES` 가 SPL · IPL 순으로 들고 있다 */
         <div className="grid grid-cols-2 gap-8 max-lg:grid-cols-1 max-lg:gap-10">
           {leagues.map((league) => (
             <Sector key={league.slug} league={league} />

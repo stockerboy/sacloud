@@ -43,12 +43,16 @@ export const HOME_RECENT_SIZE = 5
 const HOME_CACHE_SECONDS = 600
 
 /**
- * 최근 경기의 좌우 — **IPL 왼쪽 · SPL 오른쪽** (사장님 지시).
- * 랭킹 화면(`RANK_SPLIT_LEAGUES` · SPL 왼쪽)과 **반대**다. 이름은 그 표에서 가져오고 순서만 뒤집는다.
+ * 최근 경기의 좌우 — **SPL 왼쪽 · IPL 오른쪽** (2026-09-02 사장님 지시 #10).
+ *
+ * > "spl,ipl,열산 순서로 배치해라"
+ *
+ * 랭킹 화면(`RANK_SPLIT_LEAGUES`)과 **같은 순서**다. 표를 그대로 쓴다.
+ *
+ * ⚠ 옛 서술 (같은 날 오전 · 지시 #3) — 그때는 «IPL 왼쪽 / SPL 오른쪽» 이었고
+ *   `[...RANK_SPLIT_LEAGUES].reverse()` 였다. 되돌리려면 그 한 줄이다 (`CLAUDE.md` 10-4).
  */
-export const HOME_RECENT_LEAGUES: readonly { slug: string; name: string }[] = [
-  ...RANK_SPLIT_LEAGUES,
-].reverse()
+export const HOME_RECENT_LEAGUES: readonly { slug: string; name: string }[] = RANK_SPLIT_LEAGUES
 
 async function loadRankPreview(): Promise<HomeRankPreviewLeague[]> {
   const leagues: HomeRankPreviewLeague[] = []
