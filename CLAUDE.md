@@ -41,7 +41,7 @@
 
 멈춰 서서 다음 지시를 기다리지 않는다. 할 일이 없어 보이면 **찾는다** —
 `docs/ORDERS.md` 대기 칸 · `[미확인]` 으로 남은 것 · 검증 안 된 숫자.
-다만 **범위 밖으로 나가지 않는다.** 화면 5개 밖의 일은 하지 말고 `ORDERS.md` 에 적는다.
+다만 **범위 밖으로 나가지 않는다.** 화면 6개(홈·선수·클랜·경기목록·경기상세·랭킹) 밖의 일은 하지 말고 `ORDERS.md` 에 적는다.
 
 ### 1-4. 방식을 바꾸면 **이전 방식 버전도 남긴다**
 
@@ -91,19 +91,25 @@ B (실행)   지시서를 읽고 만든다 → 검증한다 → 커밋한다 →
 
 ---
 
-## 4. 화면 (D-204 「적진」)
+## 4. 화면 (D-204 → D-264 「3톤」)
 
 **`3rd.supply` 재현은 끝났다.** 색을 새로 지어내지 말고 아래 토큰을 쓴다.
 
 ```
---color-page #060505   --color-card #120c0c   --color-card-2 #1a1010
---color-line #2a1616   --color-line-soft #1a1010
---color-text #d6c9c9   --color-text-strong #f6eded
---color-meta #9a8080   --color-faint #6b5555
---color-accent #d92b2b  ← 색은 이것 하나뿐. 넓은 면에 칠하지 않는다
---font-display Black Han Sans (큰 제목만) · --font-body Noto Sans KR · --font-num JetBrains Mono
---layout-max 1120px · --section-gap 40px · --radius 2px · 루트 15px
+--color-page #303038   --color-card #2c304c   --color-card-2 #3a4067
+--color-line #454b73   --color-line-soft #3a4067
+--color-text #d9dbe4   --color-text-strong #f2f4f8
+--color-meta #a8aec2   --color-faint #8f95af
+--color-accent #5c80e0  ← 색은 이것 하나뿐. 넓은 면에 칠하지 않는다
+--layout-max 1120px · --section-gap 40px · --radius 2px
 ```
+
+> ⚠ **2026-09-02 정정.** 이 절에 D-204 「적진」 값(`#060505` 바탕 + `#d92b2b` 진홍)이
+> 적혀 있었는데 **화면은 이미 그 색이 아니었다.** D-264(`b0c57f9` 「색을 3톤으로」)에서
+> 바뀌었고 문서만 안 따라왔다. 로컬 화면을 열어서 파란 강조를 보고 찾았다.
+>
+> **값의 진실은 `packages/ui/src/styles.css` 다.** 이 표와 어긋나면 그쪽이 맞다.
+> `styles.css` 안의 주석에도 아직 «진홍 #d92b2b» 라는 말이 남아 있다 — 값이 아니라 말이다.
 
 - 헬퍼: `.btn-line` · `.num` · `.display` · `.section-stack`
 - 표는 얼룩무늬 없이 `--color-line-soft` 1px 로 행을 나눈다. `shadow-*` 는 쓰지 않는다

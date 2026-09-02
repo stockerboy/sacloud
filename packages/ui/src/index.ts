@@ -31,6 +31,8 @@ export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPo
  * 데이터를 주던 `GET /api/home/top` 라우트는 살아 있다 — 화면만 안 부른다.
  */
 export { SiteIntro } from './home/SiteIntro'
+/* 메인 · 사용법 (O-001 · 2026-09-02). 검색창을 어떻게 쓰는지 다섯 줄 */
+export { HomeGuide } from './home/HomeGuide'
 
 /* 메인 최상단 신전 히어로 (2026-09-01 사용자 지시) */
 export {

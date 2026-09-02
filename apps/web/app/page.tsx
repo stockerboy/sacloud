@@ -1,12 +1,48 @@
+import { HomeGuide, SiteIntro } from '@sacloud/ui'
 import { HomeSearch } from './_home/HomeSearch'
-import { HomeRankPreview } from './_home/HomeRankPreview'
-import { HomeRecentMatches } from './_home/HomeRecentMatches'
-import { getHomeRankPreview, getHomeRecentMatches } from './_home/homeData'
 
 /**
  * 홈.
  *
- * ── 2026-09-02: **「사이트 소개」를 빼고 그 자리에 실제 데이터를 넣었다** (사장님 지시)
+ * ══ 2026-09-02 저녁 · O-001 — **랭킹 미리보기와 최근 경기를 화면에서 뺐다** ══
+ *
+ *   ```
+ *   0 로고        ← 그대로
+ *   1 통합검색     ← 그대로. 화면의 주인공         ┐ `_home/HomeSearch.tsx`
+ *   2 리그 바로가기 ← 그대로                       ┘ (한 글자도 안 건드렸다)
+ *   ─────────────
+ *   3 사이트 소개  `SiteIntro`  ← 되살렸다
+ *   4 사용법      `HomeGuide`  ← 새로 썼다
+ *   ```
+ *
+ *   **왜** — 공개일에 **천 명 이상**이 이 화면을 처음 본다. 그런데 홈이 열릴 때마다
+ *   DB 를 읽고 있었다. 얼마나 읽었는지는 **운영 화면을 직접 열어서 셌다** (2026-09-02):
+ *   ```
+ *   개인랭킹  SPL 30명 + IPL 30명 + 10mountain 5명 = 65명
+ *   최근경기  SPL 6건 + IPL 6건 = 12경기
+ *   ```
+ *   ⚠ 아래 옛 서술의 «각 상위 5명» 은 **틀린 주석이었다.** 화면은 30명씩 그리고 있었다.
+ *   2026-09-01 실측으로
+ *   **전부 DB 까지 가면 동시 5명이 한계**이고 동시 10명이면 12.3% 가 실패한다.
+ *   홈이 가벼워지는 것이 곧 안 터지는 것이다. 이제 **홈은 DB 를 한 번도 읽지 않는다.**
+ *
+ *   ── 되돌리는 법 (한 줄이 아니라 네 줄이다. 아무것도 안 지웠다)
+ *   ```
+ *   import { HomeRankPreview } from './_home/HomeRankPreview'
+ *   import { HomeRecentMatches } from './_home/HomeRecentMatches'
+ *   import { getHomeRankPreview, getHomeRecentMatches } from './_home/homeData'
+ *   그리고 아래 본문에 <HomeRankPreview leagues={await getHomeRankPreview()} /> ·
+ *                      <HomeRecentMatches leagues={await getHomeRecentMatches()} />
+ *   ```
+ *   `HomeRankPreview.tsx` · `HomeRecentMatches.tsx` · `homeData.ts` 는 그대로 있고
+ *   export 도 살아 있다. **이 화면이 안 부를 뿐이다** (`CLAUDE.md` 1-4).
+ *
+ *   ── `SiteIntro` 의 첫 문장도 고쳤다
+ *   «경기 상세, 게시판이 있습니다» 라고 적혀 있었는데 게시판은 닫혀 있고 경기 상세는
+ *   전용 화면이 없다. 없는 것을 안내에 쓰지 않는다 (`CLAUDE.md` 2-1).
+ *
+ * ── 옛 서술 (2026-09-02 낮 · 지금은 위 구성이 대신한다)
+ *   **「사이트 소개」를 빼고 그 자리에 실제 데이터를 넣었다** (사장님 지시)
  *   ```
  *   0 로고        ← 작게. 워드마크 하나 (MainLogo)
  *   1 통합검색     ← 화면의 주인공. 크고 가운데          ┐ `_home/HomeSearch.tsx`
@@ -124,14 +160,15 @@ import { getHomeRankPreview, getHomeRecentMatches } from './_home/homeData'
  *   위아래 여백을 넉넉히 두고 본문 폭을 제한한다.
  */
 
-/* 빌드 때 굳지 않는다 — 위 주석 「`force-dynamic`」 */
-export const dynamic = 'force-dynamic'
+/*
+ * 이제 홈은 DB 를 안 읽는다 (O-001). 그래서 매 요청 렌더로 둘 이유가 없어졌다 —
+ * 굳어도 낡을 값이 없다. 정적으로 굳히면 천 명이 와도 엣지가 다 받아 낸다.
+ * ⚠ 랭킹·최근경기를 되살리면 **이 줄을 `export const dynamic = 'force-dynamic'` 으로
+ *   되돌려야 한다.** 안 그러면 랭킹이 배포 시점에 멈춘다.
+ */
+export const dynamic = 'force-static'
 
-export default async function HomePage() {
-  /* 순서대로 읽는다. 운영 DB 통로가 하나라 `Promise.all` 로 묶지 않는다 (`homeData.ts`) */
-  const rankPreview = await getHomeRankPreview()
-  const recentMatches = await getHomeRecentMatches()
-
+export default function HomePage() {
   return (
     <>
       <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
@@ -139,17 +176,16 @@ export default async function HomePage() {
         <HomeSearch />
       </div>
 
-      {/* 3 · 4 — 「사이트 소개」가 있던 자리. 구역 사이는 `.section-stack` 이 `--section-gap` 으로 띄운다.
-          윗머리와 여기 사이에 선을 긋지 않는다 — 구역 제목 밑줄이 그 역할을 한다.
+      {/* 3 사이트 소개 · 4 사용법 — 랭킹 미리보기와 최근 경기가 있던 자리.
+          구역 사이는 `.section-stack` 이 `--section-gap` 으로 띄운다.
+          윗머리와 여기 사이에 선을 긋지 않는다 — 각 구역의 `border-t` 가 그 역할을 한다.
 
-          ── 폭 1280 (2026-09-02 사장님 지시 #13-e «들어갈 칸이 협소하면 가로길이를 좀 늘려라» · 검수 #13-2)
-            승률·킬뎃 열이 들어오자 1280 화면에서 닉네임 칸이 67px 로 줄어 60명 중 10명이 잘렸다.
-            **이 두 구역만** `--layout-max`(1120) 대신 1280 을 쓴다. GNB·푸터·윗머리는 1120 그대로라
-            표의 좌우 끝이 그 글자 끝보다 80px 씩 바깥에 놓인다 — 띠는 전체 폭이라 어긋나 보이지 않는다
-            (총괄 확인). 옛 값으로 되돌리려면 아래 `max-w-[1280px]` 를 `max-w-[var(--layout-max,1120px)]` 로. */}
-      <div className="section-stack mx-auto w-full max-w-[1280px] px-5 pb-[var(--section-gap,40px)] max-md:px-3">
-        <HomeRankPreview leagues={rankPreview} />
-        <HomeRecentMatches leagues={recentMatches} />
+          폭은 `--layout-max`(1120) 로 돌아왔다. 1280 은 랭킹 표의 닉네임 칸이 잘려서 넓혔던
+          값이라(#13-e) 표가 빠진 지금은 쓸 이유가 없다. GNB·푸터와 같은 폭이 맞다.
+          두 구역 자체는 안에서 720px 로 더 좁힌다 — 읽는 글이라 줄이 길면 눈이 미끄러진다. */}
+      <div className="section-stack mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 pb-[var(--section-gap,40px)] max-md:px-3">
+        <SiteIntro />
+        <HomeGuide />
       </div>
     </>
   )
