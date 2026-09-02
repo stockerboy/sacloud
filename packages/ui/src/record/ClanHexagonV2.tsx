@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { formatCount } from '../common/format'
 import {
   HEX_CENTER,
@@ -109,9 +110,22 @@ export interface ClanHexagonV2Props {
   foe?: { hexagon: ClanHexV2; name: string } | null
   /** 우리 이름 (겹쳐 그릴 때 범례에 쓴다) */
   name?: string
+  /**
+   * 배치 (2026-09-02 사장님 그림 지시 #27).
+   *
+   * ```
+   * 'stack'  (기본) 그래프 가운데 위 · 그 아래 축 목록 — 지금까지의 모습. 경기 상세도 이것
+   * 'split'  세로 중심선으로 두 쪽: 왼쪽 위 `aside`(클랜 TOP3) · 왼쪽 아래 축 목록 · 오른쪽 절반을
+   *          그래프가 꽉 채운다. 폰(390)은 세로로 TOP3 → 그래프 → 목록
+   * ```
+   * 옛 배치를 지우지 않았다 (`CLAUDE.md` 10-4) — 클랜 기록실이 `'split'` 을 고른다.
+   */
+  layout?: 'stack' | 'split'
+  /** `'split'` 의 왼쪽 윗공간에 들어갈 것 (클랜 TOP3). 없으면 자리를 비운다 — 지어내지 않는다 */
+  aside?: ReactNode
 }
 
-export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
+export function ClanHexagonV2({ hexagon, foe, name, layout = 'stack', aside }: ClanHexagonV2Props) {
   const foeHex = foe?.hexagon
   const compare = foeHex !== undefined
   const filled = isFilled(hexagon)
@@ -137,8 +151,7 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
     if (!reasons.includes(text)) reasons.push(text)
   }
 
-  return (
-    <div className="mt-3">
+  const header = (
       <div className="flex items-baseline justify-between gap-2">
         <div className="text-sm text-text-strong">클랜 육각형</div>
         <div className="flex items-baseline gap-2 text-xs text-meta">
@@ -151,10 +164,18 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
           ) : null}
         </div>
       </div>
+  )
 
+  /* 그래프 — `split` 이면 오른쪽 절반을 꽉 채운다(최대 폭 해제), `stack` 이면 옛 224px 그대로 */
+  const chart = (
+    <>
       <svg
         viewBox="0 0 260 208"
-        className="mx-auto mt-0.5 h-auto w-full max-w-[224px]"
+        className={
+          layout === 'split'
+            ? 'mx-auto mt-0.5 h-auto w-full max-w-none'
+            : 'mx-auto mt-0.5 h-auto w-full max-w-[224px]'
+        }
         role="img"
         aria-label={compare ? '클랜 육각형 비교' : '클랜 육각형'}
       >
@@ -295,7 +316,12 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
           </span>
         </div>
       ) : null}
+    </>
+  )
 
+  /* 축 목록 + 표본 줄 + 못 잰 이유 — `split` 이면 왼쪽 아래로 간다 */
+  const list = (
+    <>
       {/* 값 목록 — 여섯 줄. 겹쳐 그릴 때는 양쪽 값을 나란히 놓는다.
           얼룩무늬 없이 `--color-line-soft` 1px 로만 행을 나눈다 (D-204) */}
       <div className="mt-2">
@@ -343,6 +369,30 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
       {reasons.length === 0 ? null : (
         <div className="mt-0.5 text-xs text-meta">{reasons.join(' · ')}</div>
       )}
+    </>
+  )
+
+  if (layout === 'split') {
+    return (
+      <div className="mt-3">
+        {header}
+        {/* 두 쪽. PC: 왼쪽 열 = [aside 위 · 목록 아래], 오른쪽 열 = 그래프(두 줄을 다 차지).
+            폰: 한 열로 TOP3 → 그래프 → 목록 (DOM 순서가 곧 폰 순서다) */}
+        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3 max-md:grid-cols-1">
+          <div className="min-w-0 md:col-start-1 md:row-start-1">{aside ?? null}</div>
+          <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-1">{chart}</div>
+          <div className="min-w-0 md:col-start-1 md:row-start-2">{list}</div>
+        </div>
+      </div>
+    )
+  }
+
+  /* 옛 배치 (`stack`) — 그래프 가운데 위, 그 아래 목록. 지우지 않았다 (`CLAUDE.md` 10-4) */
+  return (
+    <div className="mt-3">
+      {header}
+      {chart}
+      {list}
     </div>
   )
 }
