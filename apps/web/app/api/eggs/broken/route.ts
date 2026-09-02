@@ -1,4 +1,5 @@
 import { prisma } from '@sacloud/db'
+import { EGG_SYSTEM_ENABLED } from '@sacloud/contract'
 import { guardPublic, okPublic } from '@/lib/server/respond'
 
 /**
@@ -44,6 +45,23 @@ const EGG_CACHE_SECONDS = 10
 
 export async function GET() {
   return guardPublic('/api/eggs/broken', 600, async () => {
+    /*
+     * ── ★2026-09-03 (O-026) — 알 시스템이 꺼져 있으면 **DB 를 안 본다**★
+     *
+     *   알은 2026-09-01 에 껐는데(사용자 지시) **화면만 껐고 여기는 그대로 답하고
+     *   있었다.** 운영에서 확인했다 — 선수 4명 · 클랜 10곳의 식별자를 내주고 있었다.
+     *   부르는 화면은 이제 없다(`EggBoot` 이 먼저 돌아간다). 그래도 열어 두면
+     *   **아무도 안 쓰는 경로가 DB 를 때린다** — 2026-09-01 에 실제로 500 을 냈다
+     *   (위 「⚠ 정정」).
+     *
+     *   ⚠ **404 나 500 이 아니라 「빈 목록」으로 답한다.** 이 응답의 뜻은
+     *   「깨진 알이 없다」이고, 알이 꺼진 세상에서는 그게 **참**이다.
+     *   화면(`EggBoot`)이 이 모양을 이미 알고 있어서 되살릴 때 아무것도 안 고쳐도 된다.
+     */
+    if (!EGG_SYSTEM_ENABLED) {
+      return okPublic({ players: [], clans: [] }, undefined, EGG_CACHE_SECONDS)
+    }
+
     const rows = await prisma.eggBreak.findMany({
       select: { targetKind: true, targetId: true },
     })

@@ -45,10 +45,15 @@
  * 되살릴 때 필요하고, 테스트가 그것을 지키고 있다.
  */
 /*
- * 타입을 `boolean` 으로 **넓혀 둔다.** `false` 리터럴로 좁혀지면 되돌릴 때 쓸
- * 옛 가지들이 전부 «닿을 수 없는 코드» 가 되어 tsc/lint 가 문다.
+ * ── 2026-09-03 (O-026) — **값은 계약(`@sacloud/contract`)에 있다.** 여기서는 다시 내보낸다
+ *   이 파일이 값을 들고 있어서 **화면만 껐고 `GET /api/eggs/broken` 은 열려 있었다.**
+ *   서버가 이 패키지를 가져오면 React 가 딸려 오므로 값을 계약으로 올렸다.
+ *   경위는 `packages/contract/src/egg.ts` 의 `EGG_SYSTEM_ENABLED` 주석에 있다.
+ *
+ *   타입을 `boolean` 으로 **넓혀 둔 것**도 그대로다 — `false` 리터럴로 좁혀지면
+ *   되돌릴 때 쓸 옛 가지들이 «닿을 수 없는 코드» 가 되어 tsc/lint 가 문다.
  */
-export const EGG_SYSTEM_ENABLED: boolean = false
+export { EGG_SYSTEM_ENABLED } from '@sacloud/contract'
 
 /** 알의 두 가지 상태. `sealed` = 안 깨짐, `broken` = 깨짐 */
 export type EggState = 'sealed' | 'broken'
