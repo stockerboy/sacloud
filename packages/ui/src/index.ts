@@ -90,12 +90,15 @@ export { DivisionTabs } from './league/DivisionTabs'
 /* SPL(왼쪽) · IPL(오른쪽) 두 칸 랭킹 (2026-09-01). 부리그 탭 화면은 그대로 살아 있다 */
 export { RankSplit, RankSplitColumn, type RankSplitColumnProps } from './league/RankSplit'
 export { divisionLabel, divisionUnit } from './league/divisionLabel'
+/* 「고용가능 클랜」 검색창 (2026-09-02 · D-260). 이 화면에만 붙는다 */
+export { ClanSearchBox, type ClanSearchBoxProps } from './league/ClanSearchBox'
 export {
   RankHeader,
   RankBox,
   ClanRankTable,
   PlayerRankTable,
   type ClanRankTableProps,
+  type ClanRankTableRow,
   type PlayerRankTableProps,
 } from './league/RankTable'
 /* 개인랭킹 무기 축 · 폼 TOP3 (D-169 — 원본에 없는 신규 기능) */
@@ -171,6 +174,21 @@ export {
 } from './record/RecordPanels'
 /* 최근 폼 (D-167) — 원본에 없는 화면이다. 사용자 요구로 승률 도넛 자리를 대신한다 */
 export { PlayerFormPanel } from './record/PlayerFormPanel'
+export { WeeklyTrendCard, type WeeklyTrendCardProps } from './record/WeeklyTrendCard'
+export { PlayerHeadCard, type PlayerHeadCardProps } from './record/PlayerHeadCard'
+export { positionLine, rankColor, mainWeaponFromStats } from './record/playerHeadCopy'
+export {
+  weeklyPercentDomain,
+  weeklyRankDomain,
+  weeklyRankY,
+  weeklySegments,
+  weeklyShowsLabel,
+  weeklyTail,
+  weeklyX,
+  weeklyY,
+  type ChartDomain,
+  type ChartSeries,
+} from './record/weeklyChart'
 /* 클랜 지표 (SITE_SPEC_V2 5절) — 이것도 원본에 없는 신규 화면이다 */
 export { ClanMetrics } from './record/ClanMetrics'
 export { ClanHexagon } from './record/ClanHexagon'
@@ -224,10 +242,10 @@ export { ratingClass, RATING_THRESHOLDS } from './common/rating'
 export { SeasonTable } from './record/SeasonTable'
 
 /* --- Phase 5: 게시판 --- */
-/* ⚠ 2026-09-01 — 게시판을 **준비중으로 닫았다** (사용자 지시).
-   아래 게시판 컴포넌트 export 는 **하나도 끊지 않았다.** 라우트·API 와 함께 되살릴
-   것이라서다 (`CLAUDE.md` 10-4). 지금은 `app/board/layout.tsx` 가 본문 대신
-   `BoardPreparing` 을 그릴 뿐이다. 옛 레이아웃은 `BoardLayoutLegacy.tsx` 에 있다. */
+/* ⚠ 2026-09-02 — 게시판을 **다시 열었다** (사용자 지시 · D-260).
+   닫혀 있는 동안에도 아래 export 를 하나도 끊지 않았기 때문에 여기서 고칠 것이 없었다.
+   `BoardPreparing` · `BOARD_PREPARING_*` 도 **그대로 둔다** — 다시 닫을 때 쓴다
+   (`CLAUDE.md` 10-4). 지금 `app/board/layout.tsx` 는 `BoardLayoutLegacy` 를 그린다. */
 export { BoardPreparing } from './board/BoardPreparing'
 export {
   BOARD_PREPARING_HEADLINE,
@@ -245,6 +263,13 @@ export {
   DEFAULT_BOARD_SLUG,
 } from './board/boardCopy'
 export { sanitizePostContent } from './board/sanitize'
+/* 관리자 글 상단 고정 (2026-09-02 · D-261). 서버는 `@sacloud/ui/adminPost` 로 따로 가져간다 */
+export {
+  ADMIN_BADGE_LABEL,
+  ADMIN_PIN_LIMIT,
+  isAdminPost,
+  isAdminWriter,
+} from './board/adminPost'
 
 /* --- Phase 6: 인증 · 마이페이지 · 관리 --- */
 export {

@@ -7,7 +7,9 @@ import {
   EggVeilPanel,
   MatchCard,
   PlaystyleBars,
-  PlayerStatSidebar,
+  PlayerHeadCard,
+  WeeklyTrendCard,
+  mainWeaponFromStats,
   ProfileEmpty,
   ProfileLoadMore,
   ProfileSkeleton,
@@ -146,34 +148,59 @@ export default function LeaguePlayerRecordPage({
         </section>
       )}
 
-      {/* ── 3. 기록 — 예전 우측 사이드의 `상세정보` 를 본문 폭으로 내렸다.
-             항목·순서·표기는 하나도 바뀌지 않았다 (사양 9절 "자리만 옮긴다") */}
-      {/* 카드가 스스로 `상세정보` 제목을 그린다 — 위에 제목을 또 얹지 않는다 */}
-      <section className="mt-[40px]">
-        <div>
-          <PlayerStatSidebar
-            rating={data.rating}
-            placement={data.placement}
-            /* 포지션 (D-199) — 사람이 정한 값 > 주무기 스나 > 좌표 판정.
-               `null` 이면 사이드바가 줄을 그리지 않는다 */
-            position={data.position_label}
-            win={data.win}
-            lose={data.lose}
-            winRate={data.win_rate}
-            kill={data.kill}
-            death={data.death}
-            kdRate={data.kd_rate}
-            killPerMatch={data.kill_per_match}
-            mvpCount={data.mvp_count}
-            rank={data.rank}
-            rankCount={data.rank_count}
-            clan={data.clan ? { ...data.clan, isOfficialClan: data.clan.is_official_clan } : null}
-            /* 킬뎃 줄을 주무기 중심으로 바꾼다 (2026-08-30 사용자 지시) */
-            weaponStats={data.weapon_stats}
-            /* 알이 안 깨졌으면 승률 · 킬뎃 · 평균킬만 가린다. 래더 · 랭킹 · 소속은 그대로다 */
-            egg={egg}
-          />
-        </div>
+      {/*
+        ── 3. 주간 추이 그래프 + 정보줄 (2026-09-02 사용자 지시)
+
+        > "기존선수카드 삭제 및 그래프카드 추가
+        >  (개인기록SPL,IPL,열산 모두 전부 적용-열산 차별x)"
+
+        **세 리그가 같은 화면을 쓴다.** 리그별로 칸을 감추는 분기를 여기 만들지 않는다
+        (`CLAUDE.md` 9장). 무소속리그의 킬뎃 제한은 화면이 아니라 **서버가 순위로** 갈라
+        `null` 을 주고, 정보줄이 그 사실을 문구로만 옮긴다.
+
+        옛 `PlayerStatSidebar` 는 **지우지 않았다** — 컴포넌트도 계약도 그대로 살아 있고
+        이 화면이 부르지 않을 뿐이다 (`CLAUDE.md` 10-4).
+      */}
+      {data.weekly === null ? null : (
+        <section className="mt-[40px]">
+          <EggVeilPanel state={egg} note={EGG_BREAK_GUIDE}>
+            <WeeklyTrendCard
+              weekly={data.weekly}
+              rankNote="순위 변동은 주간 기록이 쌓이면 함께 그려집니다."
+            />
+          </EggVeilPanel>
+        </section>
+      )}
+
+      <section className="mt-4">
+        <PlayerHeadCard
+          playerName={data.player.name}
+          rating={data.rating}
+          placement={data.placement}
+          win={data.win}
+          lose={data.lose}
+          winRate={data.win_rate}
+          /* 포지션 (D-199) — 본인이 넣은 값이면 `라플(숏포지)`, 아니면 주무기 한 단어 */
+          mainWeapon={mainWeaponFromStats(data.weapon_stats)}
+          positionLabel={data.position_label}
+          positionSource={data.position_source}
+          sniper={{
+            games: data.sniper_games,
+            knownGames: data.sniper_known_games,
+            kill: data.sniper_kill,
+            kdRate: data.sniper_kd_rate,
+          }}
+          rifle={{
+            games: data.rifle_games,
+            knownGames: data.rifle_known_games,
+            kill: data.rifle_kill,
+            kdRate: data.rifle_kd_rate,
+          }}
+          rank={data.rank}
+          rankCount={data.rank_count}
+          clan={data.clan}
+          restrictsKd={data.league.hides_cumulative_kd}
+        />
       </section>
 
       {/* ── 4. 최근 경기 — 요약(오늘 기록 포함) 다음에 그 근거인 경기가 이어진다.
