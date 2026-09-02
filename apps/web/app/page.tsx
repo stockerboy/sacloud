@@ -133,16 +133,24 @@ export default async function HomePage() {
   const recentMatches = await getHomeRecentMatches()
 
   return (
-    <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
-      {/* 0 로고 · 1 검색 · 2 리그 바로가기 — 클라이언트. 동작은 그대로다 */}
-      <HomeSearch />
+    <>
+      <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
+        {/* 0 로고 · 1 검색 · 2 리그 바로가기 — 클라이언트. 동작은 그대로다 */}
+        <HomeSearch />
+      </div>
 
       {/* 3 · 4 — 「사이트 소개」가 있던 자리. 구역 사이는 `.section-stack` 이 `--section-gap` 으로 띄운다.
-          윗머리와 여기 사이에 선을 긋지 않는다 — 구역 제목 밑줄이 그 역할을 한다. */}
-      <div className="section-stack pb-[var(--section-gap,40px)]">
+          윗머리와 여기 사이에 선을 긋지 않는다 — 구역 제목 밑줄이 그 역할을 한다.
+
+          ── 폭 1280 (2026-09-02 사장님 지시 #13-e «들어갈 칸이 협소하면 가로길이를 좀 늘려라» · 검수 #13-2)
+            승률·킬뎃 열이 들어오자 1280 화면에서 닉네임 칸이 67px 로 줄어 60명 중 10명이 잘렸다.
+            **이 두 구역만** `--layout-max`(1120) 대신 1280 을 쓴다. GNB·푸터·윗머리는 1120 그대로라
+            표의 좌우 끝이 그 글자 끝보다 80px 씩 바깥에 놓인다 — 띠는 전체 폭이라 어긋나 보이지 않는다
+            (총괄 확인). 옛 값으로 되돌리려면 아래 `max-w-[1280px]` 를 `max-w-[var(--layout-max,1120px)]` 로. */}
+      <div className="section-stack mx-auto w-full max-w-[1280px] px-5 pb-[var(--section-gap,40px)] max-md:px-3">
         <HomeRankPreview leagues={rankPreview} />
         <HomeRecentMatches leagues={recentMatches} />
       </div>
-    </div>
+    </>
   )
 }
