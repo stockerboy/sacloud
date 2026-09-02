@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css",
-    "./sanitize": "./src/sanitize.ts"
+    "./sanitize": "./src/sanitize.ts",
+    "./adminPost": "./src/board/adminPost.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"

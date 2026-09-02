@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@sacloud/contract": "workspace:*",
+    "@sacloud/ui": "workspace:*",
     "msw": "^2.7.0",
     "zod": "^3.24.1"
   }
