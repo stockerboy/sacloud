@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Black_Han_Sans, Cinzel, JetBrains_Mono, Noto_Sans_KR } from 'next/font/google'
+import { Cinzel, Noto_Sans_KR } from 'next/font/google'
 import { Providers } from './providers'
 import { EggBoot } from './_egg/EggBoot'
 import { AppShell } from '@/components/AppShell'
@@ -40,25 +40,36 @@ import './globals.css'
  *   `현재 1등` 넉 자뿐인데, 한글 웹폰트 한 벌은 유니코드 범위 분할본이 수십 개 딸려 온다.
  *   그만큼의 값을 낼 자리가 아니다 — 시스템 명조(Windows 바탕 · macOS 명조)로 충분하다.
  */
-const fontDisplay = Black_Han_Sans({
-  weight: '400',
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-display',
-})
+/**
+ * ⚠ 2026-09-02 — **제목 전용 글꼴과 숫자 고정폭을 뺐다** (사용자 지시 · D-264)
+ *
+ *   *"폰트 글자색 체계 전부 서플라이 따라감"*
+ *
+ *   원본 3rd.supply 에는 제목 전용 글꼴도, 숫자 전용 글꼴도 **없다** (D-009 실측).
+ *   둘 다 시스템 산세리프로 찍혔다. 그래서 여기서 싣지 않는다.
+ *
+ * ── ★여기 있던 것이 진짜 버그였다★
+ *   `styles.css` 의 `--font-num` 은 이미 2026-09-01 에 원본 스택으로 되돌려져 있었는데,
+ *   이 파일이 `JetBrains_Mono` 를 **같은 변수 이름에 덮어쓰고** 있었다.
+ *   `<html>` 에 걸린 변수가 `@theme` 값을 이기므로, 문서에는 「되돌렸다」고 적혀 있고
+ *   화면에서는 계속 고정폭 숫자가 나오고 있었다. 이제 토큰 값이 실제로 먹는다.
+ *
+ * ── 되돌리려면
+ *   ```ts
+ *   const fontDisplay = Black_Han_Sans({ weight: '400', subsets: ['latin'],
+ *     display: 'swap', variable: '--font-display' })
+ *   const fontNum = JetBrains_Mono({ weight: ['400','700'], subsets: ['latin'],
+ *     display: 'swap', variable: '--font-num' })
+ *   ```
+ *   그리고 아래 `<html className>` 에 `.variable` 두 개를 다시 끼운다.
+ *   `styles.css` 의 `--font-num-mono` 에 옛 고정폭 스택이 그대로 남아 있다.
+ */
 
 const fontBody = Noto_Sans_KR({
   weight: ['300', '400', '500', '700'],
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-body',
-})
-
-const fontNum = JetBrains_Mono({
-  weight: ['400', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-num',
 })
 
 /**
@@ -81,7 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ko"
-      className={`${fontDisplay.variable} ${fontBody.variable} ${fontNum.variable} ${fontCinzel.variable}`}
+      className={`${fontBody.variable} ${fontCinzel.variable}`}
     >
       <body className="antialiased">
         <Providers>

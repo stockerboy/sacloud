@@ -25,6 +25,7 @@
  *   DB에는 누적 킬·데스가 계속 쌓인다. 계산에도 쓴다. 여기서 정하는 것은 **응답에 넣는가**다.
  */
 import { prisma } from '@sacloud/db'
+import { independentKdVisible } from '@sacloud/contract'
 
 /** 무소속리그의 `League.category` 값 */
 export const INDEPENDENT_LEAGUE = 'independent'
@@ -33,14 +34,39 @@ export const INDEPENDENT_LEAGUE = 'independent'
 export const INDEPENDENT_CATEGORY = 'independent'
 
 /**
- * 이 리그에서 **누적** kill/death/킬뎃을 감추는가.
+ * ⚠ **옛 규칙 (D-107 · 2026-08-23)** — 무소속리그는 누적 킬뎃을 **전원** 감췄다.
+ *   2026-09-02 에 「top100 까지는 보인다」로 바뀌었다. 아래 `hidesCumulativeKd` 가
+ *   지금 규칙이다. 이 함수는 되돌릴 길로 남겨 둔다 (`CLAUDE.md` 10-4).
  *
  * 판단 기준은 리그다. 선수의 소속 클랜이 아니다 —
  * 무소속 클랜 선수가 공식리그에 용병으로 뛰면 그 경기는 **공식리그 기록**이고,
  * 공식리그 카드에는 누적 킬뎃이 정상으로 나온다 (D-107 11장).
  */
-export function hidesCumulativeKd(league: { category: string } | null | undefined): boolean {
+export function hidesCumulativeKdAll(league: { category: string } | null | undefined): boolean {
   return league?.category === INDEPENDENT_LEAGUE
+}
+
+/**
+ * ★지금 규칙 — 무소속리그는 **개인랭킹 top100 까지만** 누적 킬뎃을 보여 준다★
+ * (2026-09-02 사용자 지시).
+ *
+ * > "무소속은 킬뎃을 개인랭킹 1-100위까지만 보여주고 문구를 남겨
+ * >  IPL은 top100만 킬뎃이 보인다고"
+ *
+ * 위 `hidesCumulativeKdAll` 이 **옛 규칙**이다 (D-107 · 전원 감춤). 지우지 않는다
+ * (`CLAUDE.md` 10-4) — 되돌리려면 이 함수 본문을 그것 하나로 바꾸면 된다.
+ *
+ * ── `rank` 를 **반드시 넘긴다**
+ *   기본값을 두지 않는다. 안 넘기면 타입 오류가 나야 한다 — 넘기는 것을 잊으면
+ *   전원에게 보이거나 전원에게 안 보이거나 둘 중 하나로 조용히 어긋난다.
+ *   순위를 모르는 자리(예: 클랜 명단)는 `null` 을 **명시적으로** 넘겨 감춘다.
+ */
+export function hidesCumulativeKd(
+  league: { category: string } | null | undefined,
+  rank: number | null,
+): boolean {
+  if (league?.category !== INDEPENDENT_LEAGUE) return false
+  return !independentKdVisible(rank)
 }
 
 /**
@@ -63,8 +89,9 @@ export interface CumulativeKd {
 export function cumulativeKd(
   league: { category: string } | null | undefined,
   values: { kill: number | null; death: number | null; kdRate: number | null },
+  rank: number | null,
 ): CumulativeKd {
-  if (hidesCumulativeKd(league)) return { kill: null, death: null, kd_rate: null }
+  if (hidesCumulativeKd(league, rank)) return { kill: null, death: null, kd_rate: null }
   return { kill: values.kill, death: values.death, kd_rate: values.kdRate }
 }
 
@@ -72,8 +99,9 @@ export function cumulativeKd(
 export function cumulativeKdRate(
   league: { category: string } | null | undefined,
   kdRateValue: number,
+  rank: number | null,
 ): number | null {
-  return hidesCumulativeKd(league) ? null : kdRateValue
+  return hidesCumulativeKd(league, rank) ? null : kdRateValue
 }
 
 /** 이 리그 참가 기록이 누적 킬뎃을 감추는가 (`LeaguePlayer.id` 기준) */
@@ -82,5 +110,6 @@ export async function leagueHidesCumulativeKd(leaguePlayerId: string): Promise<b
     where: { id: leaguePlayerId },
     select: { league: { select: { category: true } } },
   })
-  return hidesCumulativeKd(entry?.league)
+  /* 순위를 모르는 자리다 — 감추는 쪽으로 판정한다 (없는 값을 보여 주지 않는다) */
+  return hidesCumulativeKd(entry?.league, null)
 }

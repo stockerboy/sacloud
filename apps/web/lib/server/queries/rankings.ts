@@ -207,8 +207,9 @@ export async function getPlayerRanksByWeapon(
       win: row.win,
       lose: row.lose,
       win_rate: winRate(row.win, row.lose),
-      // 무소속리그면 누적 킬뎃만 비운다 (D-107). 무기 축과는 다른 규칙이다
-      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death)),
+      /* 무소속리그면 top100 밖만 비운다 (2026-09-02). 무기 축과는 다른 규칙이다.
+         여기서 견주는 순위는 **이 목록의 순위**(무기 랭킹)다 — 그 목록의 위 100명이다 */
+      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death), startRank + index),
       kill_per_match: killPerMatch(row.kill, row.knownStatGames),
       /* 통합 래더는 무기 탭에서도 통합 래더 그대로다 (3-B 2번) */
       rating: row.leaguePlayer.rating,

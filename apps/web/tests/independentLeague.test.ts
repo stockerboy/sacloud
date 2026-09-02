@@ -18,7 +18,12 @@ import { getPlayerLeagues } from '../lib/server/queries/players'
 import { getPlayerRanks } from '../lib/server/queries/leagues'
 import { getLeaguePlayerDetail, getLeaguePlayerSeasons } from '../lib/server/queries/records'
 import { getLeaguePlayerMatches, getMatch } from '../lib/server/queries/matches'
-import { cumulativeKd, cumulativeKdRate, hidesCumulativeKd } from '../lib/server/queries/visibility'
+import {
+  cumulativeKd,
+  cumulativeKdRate,
+  hidesCumulativeKd,
+  hidesCumulativeKdAll,
+} from '../lib/server/queries/visibility'
 
 const P = 'T107-'
 const OFFICIAL_SLUG = 't107official'
@@ -288,20 +293,53 @@ afterAll(async () => {
 })
 
 describe('공개 범위 규칙 (순수)', () => {
-  it('무소속리그만 누적 킬뎃을 감춘다', () => {
-    expect(hidesCumulativeKd({ category: 'independent' })).toBe(true)
-    expect(hidesCumulativeKd({ category: 'official' })).toBe(false)
-    expect(hidesCumulativeKd(null)).toBe(false)
+  /* 2026-09-02 — 규칙이 바뀌었다 (사용자 지시).
+     옛 규칙(D-107): 무소속리그는 누적 킬뎃을 **전원** 감춘다.
+     지금 규칙: **개인랭킹 top100 까지는 보인다.** 그 밖만 감춘다.
+     옛 규칙 함수는 hidesCumulativeKdAll 로 남아 있고 아래에서 같이 고정한다 */
+
+  it('무소속리그라도 top100 안이면 감추지 않는다', () => {
+    expect(hidesCumulativeKd({ category: 'independent' }, 1)).toBe(false)
+    expect(hidesCumulativeKd({ category: 'independent' }, 100)).toBe(false)
+    expect(hidesCumulativeKd({ category: 'independent' }, 101)).toBe(true)
+  })
+
+  it('순위를 모르면 감춘다 — 없는 값을 보여 주지 않는다', () => {
+    expect(hidesCumulativeKd({ category: 'independent' }, null)).toBe(true)
+  })
+
+  it('공식리그는 순위와 무관하게 안 감춘다', () => {
+    expect(hidesCumulativeKd({ category: 'official' }, null)).toBe(false)
+    expect(hidesCumulativeKd({ category: 'official' }, 9999)).toBe(false)
+    expect(hidesCumulativeKd(null, null)).toBe(false)
+  })
+
+  it('옛 규칙(전원 감춤)은 지우지 않았다 — 되돌릴 길이다', () => {
+    expect(hidesCumulativeKdAll({ category: 'independent' })).toBe(true)
+    expect(hidesCumulativeKdAll({ category: 'official' })).toBe(false)
   })
 
   it('감출 때는 0이 아니라 null이다 (0킬은 사실이 아니다)', () => {
-    const hidden = cumulativeKd({ category: 'independent' }, { kill: 900, death: 400, kdRate: 69.2 })
+    const hidden = cumulativeKd(
+      { category: 'independent' },
+      { kill: 900, death: 400, kdRate: 69.2 },
+      101,
+    )
     expect(hidden).toEqual({ kill: null, death: null, kd_rate: null })
-    expect(cumulativeKdRate({ category: 'independent' }, 69.2)).toBeNull()
+    expect(cumulativeKdRate({ category: 'independent' }, 69.2, 101)).toBeNull()
+  })
+
+  it('top100 안의 무소속 선수는 값이 그대로 나간다', () => {
+    expect(
+      cumulativeKd({ category: 'independent' }, { kill: 900, death: 400, kdRate: 69.2 }, 7),
+    ).toEqual({ kill: 900, death: 400, kd_rate: 69.2 })
+    expect(cumulativeKdRate({ category: 'independent' }, 69.2, 7)).toBe(69.2)
   })
 
   it('공식리그는 그대로 내보낸다', () => {
-    expect(cumulativeKd({ category: 'official' }, { kill: 1420, death: 1160, kdRate: 55 })).toEqual({
+    expect(
+      cumulativeKd({ category: 'official' }, { kill: 1420, death: 1160, kdRate: 55 }, null),
+    ).toEqual({
       kill: 1420,
       death: 1160,
       kd_rate: 55,
@@ -329,17 +367,23 @@ describe.runIf(up)('리그별 개인 기록 분리', () => {
     expect(slugs).toContain(OFFICIAL_SLUG)
   })
 
-  it('무소속 카드는 누적 킬·데스·킬뎃만 비고 나머지는 그대로다', async () => {
+  it('무소속 카드라도 top100 안이면 누적 킬뎃이 보인다 (2026-09-02 규칙)', async () => {
+    /* 픽스처의 이 선수는 무소속리그에서 **1~2위**다. 옛 규칙이라면 감췄을 자리인데
+       지금 규칙은 top100 까지 보여 준다. 100위 밖 동작은 순수 함수 쪽에서 고정한다 —
+       DB 픽스처에 선수 101명을 만들 이유가 없다 */
     const cards = await getPlayerLeagues(ids!.playerId)
     const indep = cards.find((card) => card.league.slug === INDEPENDENT_SLUG)!
 
-    expect(indep.kill).toBeNull()
-    expect(indep.death).toBeNull()
-    expect(indep.kd_rate).toBeNull()
-    // 감추지 않는 것들
+    expect(indep.rank).not.toBeNull()
+    expect(indep.rank!).toBeLessThanOrEqual(100)
+    expect(indep.kill).not.toBeNull()
+    expect(indep.death).not.toBeNull()
+    expect(indep.kd_rate).not.toBeNull()
+    // 감추지 않는 것들은 그대로다
     expect(indep.rating).toBe(INDEP.rating)
     expect(indep.win_rate).toBeCloseTo(89, 0)
-    expect(indep.rank).not.toBeNull()
+    /* 리그 깃발은 그대로 켜져 있다 — 「이 리그는 누적 킬뎃에 제한이 있다」는 뜻이고,
+       화면은 이 값을 보고 「top100만 보인다」 문구를 적는다 */
     expect(indep.league.hides_cumulative_kd).toBe(true)
   })
 
@@ -383,13 +427,14 @@ describe.runIf(up)('무소속 개인 기록 페이지', () => {
     expect(detail!.mvp_count).toBe(1)
   })
 
-  it('상세정보에서 누적 킬·데스·킬뎃만 빠진다', async () => {
+  it('상세정보 — top100 안이면 누적 킬뎃이 나온다 (2026-09-02 규칙)', async () => {
     const detail = await getLeaguePlayerDetail(INDEPENDENT_SLUG, ids!.playerId)
 
-    expect(detail!.kill).toBeNull()
-    expect(detail!.death).toBeNull()
-    expect(detail!.kd_rate).toBeNull()
-    // 평균킬·MVP·어시스트는 감추지 않는다
+    expect(detail!.rank).not.toBeNull()
+    expect(detail!.rank!).toBeLessThanOrEqual(100)
+    expect(detail!.kill).not.toBeNull()
+    expect(detail!.kd_rate).not.toBeNull()
+    // 평균킬·MVP·어시스트는 예전부터 감추지 않았다
     expect(detail!.mvp_count).toBe(1)
     expect(detail!.assist).toBe(3)
     expect(detail!.kill_per_match).toBeGreaterThan(0)
@@ -414,10 +459,14 @@ describe.runIf(up)('무소속 개인랭킹', () => {
     expect(page!.items[0]?.rank).toBe(1)
   })
 
-  it('무소속 개인랭킹에는 누적 킬뎃이 없다', async () => {
+  it('무소속 개인랭킹 — top100 줄에는 누적 킬뎃이 나온다 (2026-09-02 규칙)', async () => {
     const page = await getPlayerRanks(ids!.indepLeagueId, null, 20)
 
-    for (const row of page!.items) expect(row.kd_rate).toBeNull()
+    /* 이 픽스처의 목록은 전부 100위 안이다 */
+    for (const row of page!.items) {
+      expect(row.rank).toBeLessThanOrEqual(100)
+      expect(row.kd_rate).not.toBeNull()
+    }
     // 순위·승패·평균킬은 그대로 나온다
     expect(page!.items[0]?.win).toBeGreaterThan(0)
     expect(page!.items[0]?.kill_per_match).toBeGreaterThanOrEqual(0)

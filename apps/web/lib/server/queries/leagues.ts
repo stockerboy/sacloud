@@ -559,8 +559,9 @@ export async function getPlayerRanks(
       win: row.win,
       lose: row.lose,
       win_rate: winRate(row.win, row.lose),
-      // 무소속리그면 누적 킬뎃만 비운다. 순위·승패·평균킬은 그대로 나간다 (D-107)
-      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death)),
+      /* 무소속리그면 **top100 밖만** 누적 킬뎃을 비운다 (2026-09-02).
+         순위·승패·평균킬은 언제나 그대로 나간다. 옛 규칙(전원 감춤)은 D-107 */
+      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death), startRank + index),
       kill_per_match: killPerMatch(
         row.kill,
         knownGamesOf(row.weaponStats) || (counts.get(row.player.id) ?? 0),

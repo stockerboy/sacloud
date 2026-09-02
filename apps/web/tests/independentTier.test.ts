@@ -384,6 +384,11 @@ describe.runIf(up)('무소속리그 표기·공개 범위 (D-107 · D-165)', () 
     expect(row, '무소속리그에도 개인 랭킹이 있다').toBeDefined()
     expect(row?.win).toBe(9)
     expect(row?.rating).toBe(3100)
-    expect(row?.kd_rate, '누적 킬뎃만 감춘다 — 0이 아니라 null 이다').toBeNull()
+    /* 2026-09-02 규칙 변경 — 무소속리그도 **개인랭킹 top100 까지는** 누적 킬뎃이 보인다.
+       이 픽스처의 선수는 목록 위쪽이라 보이는 쪽이다.
+       100위 밖에서 감추는 것은 `independentLeague.test.ts` 의 순수 함수 검사가 고정한다 */
+    expect(row?.rank, '순위가 있어야 top100 판정을 할 수 있다').not.toBeNull()
+    expect(row!.rank!).toBeLessThanOrEqual(100)
+    expect(row?.kd_rate, 'top100 안이면 감추지 않는다').not.toBeNull()
   })
 })

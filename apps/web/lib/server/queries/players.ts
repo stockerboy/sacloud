@@ -99,11 +99,11 @@ export async function getPlayerLeagues(playerId: string): Promise<PlayerLeagueEn
         win_rate: winRate(row.win, row.lose),
         /* 카드 하나가 리그 하나다. 무소속리그 카드에서는 누적 킬·데스·킬뎃만 비고,
            래더·승패·승률·순위는 공식리그 카드와 똑같이 나온다 (D-107) */
-        ...cumulativeKd(row.league, {
-          kill: row.kill,
-          death: row.death,
-          kdRate: kdRate(row.kill, row.death),
-        }),
+        ...cumulativeKd(
+          row.league,
+          { kill: row.kill, death: row.death, kdRate: kdRate(row.kill, row.death) },
+          rank.rank,
+        ),
         placement: row.placement,
         rank: rank.rank,
         rank_count: rank.rankCount,

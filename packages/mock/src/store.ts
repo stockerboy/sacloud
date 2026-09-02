@@ -1,3 +1,4 @@
+import { ADMIN_PIN_LIMIT, isAdminWriter } from '@sacloud/ui/adminPost'
 import {
   decodeCursor,
   encodeCursor,
@@ -106,6 +107,10 @@ import {
   type ClanRosterInput,
   type PositionCode,
   type ResolvedPosition,
+  foldWeekly,
+  WEEKLY_MAX_WEEKS,
+  type WeeklyRow,
+  type WeeklyTrend,
 } from '@sacloud/contract'
 import { dataset, FIXTURE_NOW, toKstIso } from './dataset'
 import { Rng } from './rng'
@@ -1397,6 +1402,35 @@ function buildTierBreakdownRows(
   }))
 }
 
+/* -------------------------------- 주간 추이 -------------------------------- */
+
+/**
+ * 선수 프로필 **주간 추이 그래프** (2026-09-02 사용자 지시).
+ *
+ * 접는 규칙은 `@sacloud/contract` 의 `foldWeekly()` 하나에 있고, 실제 서버
+ * (`apps/web/lib/server/queries/playerWeekly.ts`)도 **같은 함수**를 부른다.
+ * 여기서 다르게 계산하면 mock↔live 대조가 어긋난다 (최근 폼과 같은 태도).
+ *
+ * `now` 를 밖에서 받는다 — 안 그러면 돌릴 때마다 주 경계가 움직여 픽스처가 흔들린다.
+ */
+function buildMockWeekly(matches: MockMatch[], playerId: string, now: Date): WeeklyTrend {
+  const rows: WeeklyRow[] = []
+  for (const match of matches) {
+    const stat = match.players.find((row) => row.playerId === playerId)
+    if (!stat) continue
+    rows.push({
+      matchId: match.id,
+      startAt: new Date(match.startAt),
+      side: stat.side,
+      winnerSide: match.winnerSide,
+      weapon: stat.weapon,
+      kill: stat.kill,
+      death: stat.death,
+    })
+  }
+  return foldWeekly(rows, now, WEEKLY_MAX_WEEKS, kstDayStart, kdRateOrNull, winRateOrNull)
+}
+
 /* --------------------------------- 최근 폼 --------------------------------- */
 
 /**
@@ -1636,6 +1670,11 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     recent_days: buildRecentDays(matches, playerId, new Date()),
     /* 티어별 게임빈도 + 천적 (SITE_SPEC_V2 4절). 판수 0인 티어도 줄이 온다 */
     tier_breakdown: buildTierBreakdownRows(matches, playerId, league.divisionCount),
+    /* 주간 추이 그래프 (2026-09-02).
+       Mock 은 **결정적**이어야 하므로 실제 서버와 **같은 함수**를 쓴다 —
+       접는 규칙이 두 곳에 생기면 mock↔live 값 대조가 어긋난다 (D-023 의 태도).
+       `now` 를 넘기지 않으면 돌릴 때마다 주 경계가 움직여 픽스처가 흔들린다 */
+    weekly: buildMockWeekly(matches, playerId, new Date()),
     /* 포지션 (D-199). Mock 에는 좌표 판정이 없으므로 사람이 정한 값과 주무기만 본다 —
        실제 서버와 **같은 함수**를 쓴다. 다르게 고르면 mock↔live 대조가 어긋난다 */
     ...(() => {
@@ -2530,24 +2569,38 @@ export interface BoardListQuery {
   q?: string | null
 }
 
+/**
+ * 이 목록에 관리자 글을 고정하는가 — 실제 서버(`queries/boards.ts` 의 `pinsAdminPosts`)와 같은 규칙.
+ *
+ * 검색 중에는 고정하지 않고(그래서 목록에서 빼지도 않는다), `notice` 목록에도 고정하지 않는다
+ * (거기가 이미 고정의 출처다).
+ */
+function pinsAdminPosts(query: BoardListQuery): boolean {
+  return !query.q?.trim() && query.category !== 'notice'
+}
+
+/** 관리자가 **공개로** 쓴 글인가 (D-261). 판정 규칙은 `@sacloud/ui/adminPost` 한 곳에 있다 */
+function isAdminBoard(board: MockBoard): boolean {
+  return isAdminWriter(toWriter(board))
+}
+
 export function listBoards(query: BoardListQuery): Page<BoardListItem> {
-  let source: MockBoard[]
+  /* 먼저 **최신순**으로 범위를 잡는다. `hot` 의 점수 정렬은 고정 줄을 뽑은 뒤에 한다 —
+     고정 줄은 점수가 아니라 최신순이기 때문이다 (실제 서버 `pinnedAdminIds` 와 같다). */
+  let scope: MockBoard[]
 
   if (query.category === 'hot') {
-    source = dataset.boards
-      .filter((board) => !board.notice)
-      .slice()
-      .sort((a, b) => hotScore(b) - hotScore(a))
+    scope = boardsNewestFirst.filter((board) => !board.notice)
   } else if (query.category === 'notice') {
-    source = boardsNewestFirst.filter((board) => board.notice)
+    scope = boardsNewestFirst.filter((board) => board.notice)
   } else {
-    source = boardsNewestFirst.filter((board) => board.category === query.category && !board.notice)
+    scope = boardsNewestFirst.filter((board) => board.category === query.category && !board.notice)
   }
 
   const keyword = query.q?.trim()
   if (keyword) {
     const type = query.type ?? 'board'
-    source = source.filter((board) => {
+    scope = scope.filter((board) => {
       const writer = toWriter(board)
       if (type === 'ipname') return board.anonAlias?.includes(keyword) ?? false
       /* 닉네임 검색은 **공개 글만** 본다 — 익명 글까지 걸리면 닉네임을 넣어 보는 것만으로
@@ -2561,7 +2614,31 @@ export function listBoards(query: BoardListQuery): Page<BoardListItem> {
     })
   }
 
-  return paginate(source.map((board) => toBoardListItem(board)), query.cursor, query.size, (item) => item.id)
+  /*
+   * 관리자 글 상단 고정 (D-261) — 고정한 글은 **모든 쪽의 평소 목록에서 뺀다.**
+   * 1쪽 위에 한 번, 2쪽 본문에 또 한 번 나오면 같은 글을 두 번 읽게 된다.
+   * 상한을 넘긴 관리자 글은 평소 목록에 그대로 남는다 — 사라지지 않는다.
+   */
+  const pinned = pinsAdminPosts(query) ? scope.filter(isAdminBoard).slice(0, ADMIN_PIN_LIMIT) : []
+  if (pinned.length > 0) {
+    const pinnedIds = new Set(pinned.map((board) => board.id))
+    scope = scope.filter((board) => !pinnedIds.has(board.id))
+  }
+
+  /* `hot` 만 여기서 점수순으로 다시 세운다. **산정식(`hotScore`)은 건드리지 않았다** */
+  const source =
+    query.category === 'hot' ? scope.slice().sort((a, b) => hotScore(b) - hotScore(a)) : scope
+
+  const page = paginate(
+    source.map((board) => toBoardListItem(board)),
+    query.cursor,
+    query.size,
+    (item) => item.id,
+  )
+
+  /* 고정 줄은 **첫 쪽에만** 얹는다. 커서는 평소 목록만 가리키므로 페이지가 밀리지 않는다 */
+  if (query.cursor) return page
+  return { ...page, items: [...pinned.map((board) => toBoardListItem(board)), ...page.items] }
 }
 
 export function getBoard(boardId: string): Board | null {

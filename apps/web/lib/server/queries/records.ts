@@ -59,6 +59,7 @@ import {
 } from './leagues'
 import { playerLadderTotalsFrom } from './playerTotals'
 import { playerLadderRows } from './playerLadderRows'
+import { buildPlayerWeekly } from './playerWeekly'
 import {
   leagueClanIdOfPlayer,
   loadLeagueClanContext,
@@ -601,7 +602,10 @@ export async function getLeagueClanPlayers(
       win: row.win,
       lose: row.lose,
       win_rate: winRate(row.win, row.lose),
-      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death)),
+      /* ⚠ 여기 `rank` 는 **클랜 안에서의 순번**이지 개인랭킹 순위가 아니다.
+         개인랭킹 순위를 이 목록은 모른다 → 무소속리그에서는 `null` 로 **감춘다.**
+         클랜 안 순번을 넘기면 전원이 top100 으로 판정돼 규칙이 무너진다 */
+      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death), null),
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
     })),
@@ -727,6 +731,9 @@ export async function getLeaguePlayerDetail(
   const todayTally = playerTodayTallyFrom(ladderRows)
   /* 최근 3일치 일별 기록 (D-198) */
   const recentDays = playerRecentDaysFrom(ladderRows)
+  /* 주간 추이 그래프 (2026-09-02) — 이것도 **질의를 하지 않는다.**
+     같은 행을 주 단위로 접기만 한다 (`playerWeekly.ts`) */
+  const weekly = buildPlayerWeekly(ladderRows)
   const weaponStats = toWeaponStats(weaponBuckets)
 
   const [weaponRanks, tierBreakdown] = await Promise.all([
@@ -757,13 +764,14 @@ export async function getLeaguePlayerDetail(
     win: totals.win,
     lose: totals.lose,
     win_rate: winRate(totals.win, totals.lose),
-    /* 무소속리그면 누적 킬·데스·킬뎃만 비운다 (D-107).
-       래더·승패·승률·평균킬·MVP·순위·최근 경기·경기별 K/D/A는 그대로다 */
-    ...cumulativeKd(league, {
-      kill: totals.kill,
-      death: totals.death,
-      kdRate: totals.kdRate,
-    }),
+    /* 무소속리그면 **개인랭킹 top100 밖만** 누적 킬·데스·킬뎃을 비운다 (2026-09-02).
+       래더·승패·승률·평균킬·MVP·순위·최근 경기·경기별 K/D/A는 언제나 그대로다.
+       옛 규칙(전원 감춤)은 D-107 이고 `hidesCumulativeKdAll` 로 남아 있다 */
+    ...cumulativeKd(
+      league,
+      { kill: totals.kill, death: totals.death, kdRate: totals.kdRate },
+      rank.rank,
+    ),
     /* 어시·헤드샷은 계약이 숫자만 받는다. 아는 경기가 하나도 없으면 `null` 이 오는데
        그때만 0으로 내린다 — 그 이상은 채우지 않는다 ([미확인] 계약을 nullable 로
        넓힐지는 화면 작업과 함께 판단한다) */
@@ -797,6 +805,7 @@ export async function getLeaguePlayerDetail(
     rifle_death: totals.rifle.death,
     rifle_assist: totals.rifle.assist,
     rifle_kd_rate: totals.rifle.kdRate,
+    weekly,
     match_summary: record.summary,
     /* 최근 폼 (D-167). 원본에 없는 화면이다 — 사용자 요구로 추가했다 */
     form,
@@ -892,8 +901,11 @@ export async function getLeaguePlayerSeasons(
     select: { id: true, league: { select: { category: true } } },
   })
   if (!leaguePlayer) return null
-  // 무소속리그 시즌 카드에서도 누적 킬·데스·킬뎃만 가린다 (D-107 13장)
-  const hideKd = hidesCumulativeKd(leaguePlayer.league)
+  /* 무소속리그 **지난시즌 카드**의 누적 킬·데스·킬뎃.
+     ⚠ 여기서는 **그 시즌의 개인랭킹 순위를 모른다** — 시즌 카드 행에 담겨 있지 않다.
+     그래서 top100 규칙을 적용할 수 없고, 옛 규칙대로 **감춘다.**
+     보이지 않는 것이 틀린 값을 보여 주는 것보다 낫다 (D-107 13장) */
+  const hideKd = hidesCumulativeKd(leaguePlayer.league, null)
 
   /* 정렬은 번호가 아니라 **시작 시각** 내림차순이다.
      베타의 내부 번호는 0이라 번호로 정렬하면 Season 1보다 아래로 내려간다.

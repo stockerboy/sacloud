@@ -40,11 +40,23 @@ export const LeagueSummary = z.object({
   official: z.boolean(),
   division_count: Count,
   /**
-   * 무소속리그인가 (D-107).
+   * 이 리그가 **누적 킬뎃에 제한을 두는가** (D-107 · 2026-09-02 갱신).
    *
    * 개인 기록 자체는 공식리그와 **똑같이 존재한다** — 래더·승패·승률·랭킹·시즌 카드·최근 경기.
-   * 이 값이 `true`면 화면에서 **누적 kill/death/킬뎃만** 내보내지 않는다.
-   * 경기 한 판의 K/D/A는 숨기지 않는다.
+   * 경기 한 판의 K/D/A 도 숨기지 않는다. 제한은 **누적** kill/death/킬뎃에만 걸린다.
+   *
+   * ── ⚠ 뜻이 바뀌었다 (2026-09-02 사용자 지시)
+   *   그전: `true` 면 **전원** 감춘다.
+   *   지금: `true` 면 **개인랭킹 top100 까지만 보인다.** 그 밖만 감춘다.
+   *
+   *   그래서 이 깃발은 이제 **「감춘다」가 아니라 「제한이 있다」**는 뜻이다.
+   *   화면은 이 값을 보고 «IPL은 top100만 킬뎃이 보입니다» 한 줄을 적는다
+   *   (문구는 `weekly.ts` 의 `INDEPENDENT_KD_NOTE` 하나에서만 온다).
+   *   실제로 감출지 말지는 **줄마다 순위로** 판정한다 —
+   *   `apps/web/lib/server/queries/visibility.ts` 의 `hidesCumulativeKd(league, rank)`.
+   *
+   *   이름을 안 바꾼 이유: 화면 여러 곳이 이 이름을 부르고 있고, 되돌릴 때
+   *   (`hidesCumulativeKdAll`) 뜻이 정확히 옛것으로 돌아간다.
    */
   hides_cumulative_kd: z.boolean(),
   /**

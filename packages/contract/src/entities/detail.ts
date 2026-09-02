@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { Count, Percent } from '../common'
 import { PLAYSTYLE_SIDE_KEYS, TRAIT_AXIS_KEYS, TRAIT_PENDING_KEYS } from '../traits'
+import { WeeklyTrend } from '../weekly'
 import { ClanMetrics } from '../clanMetrics'
 import { ClanRoundMetrics } from '../clanRoundMetrics'
 import { ClanHexagon } from '../clanTraits'
@@ -332,6 +333,16 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
   traits: PlayerTraits.nullable().default(null),
   /** 플레이스타일 바 2줄 (8절 · D-185). 위와 같은 규칙이다 */
   playstyle: PlayerPlaystyle.nullable().default(null),
+  /**
+   * **주간 추이 그래프** (2026-09-02 사용자 지시).
+   *
+   * 규칙(누적 · 월요일 07:00 KST 경계 · 안 뛴 주는 수평선 · 순위)은 전부
+   * `packages/contract/src/weekly.ts` 에 있다. 여기는 담기만 한다.
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   * `null` 이면 화면은 그래프 카드를 **그리지 않는다** — 빈 그래프를 그리지 않는다.
+   */
+  weekly: WeeklyTrend.nullable().default(null),
   /** 최근 같이한 플레이어 승률 */
   teammates: z.array(TeammateStat),
 })
