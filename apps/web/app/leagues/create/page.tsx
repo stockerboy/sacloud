@@ -54,7 +54,25 @@ function CreateForm() {
           division_count: divisionCount,
           map_ids: mapIds,
           player_limits: playerLimits,
-          agreements: agreements.map(() => true),
+          /*
+           * ★계약은 **객체**를 받는데 화면이 **배열**을 보내고 있었다★ (2026-09-03 · O-030).
+           *
+           * ```
+           * 계약   agreements: z.object({ no_paid_invitation, responsible_operation,
+           *                              accept_deletion_policy })   ← 셋 다 literal(true)
+           * 화면   agreements: agreements.map(() => true)            ← ★[true,true,true]★
+           * ```
+           * `z.object()` 는 배열을 안 받는다. **누가 무엇을 넣어도 400 이다. 100% 다.**
+           * 가입(O-027) · 로그인(O-029) 과 **똑같은 사고이고 이번이 세 번째**다.
+           *
+           * ⚠ 화면의 체크박스 상태(`agreements[]`)는 **그대로 둔다** — 화면은 순서대로
+           *   셋을 그리고 셋 다 켜져야 제출된다. 바꾼 것은 **보내는 모양**뿐이다.
+           */
+          agreements: {
+            no_paid_invitation: true,
+            responsible_operation: true,
+            accept_deletion_policy: true,
+          },
           captcha_token: 'mock',
         },
       }),
