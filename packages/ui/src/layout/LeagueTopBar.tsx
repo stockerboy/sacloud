@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { leagueBoardCategory, leagueBoardPath, leagueLandingPath, leagueScreen } from '@sacloud/contract'
+import { leagueMatchListPath } from '../common/paths'
 import { LeagueLabel } from './LeagueLabel'
 
 /**
@@ -91,6 +92,14 @@ export function leagueTabs(leagueSlug: string) {
   if (leagueScreen(leagueSlug).clanRank) {
     tabs.unshift({ label: '고용가능 클랜', href: `${base}/rank/clan` })
   }
+  /*
+   * ★경기 (2026-09-03 · O-015)★
+   *
+   * **닉네임도 클랜명도 모르는 사람이 사이트에서 처음으로 볼 것**이다.
+   * 리그마다 다 있으므로 분기를 걸지 않는다 — 경기가 없는 리그는 화면이
+   * 「아직 경기가 없습니다」로 말한다. 탭을 감춰서 없는 것처럼 만들지 않는다.
+   */
+  tabs.push({ label: '경기', href: leagueMatchListPath(leagueSlug) })
   /* 리그 안 게시판 (2026-09-02 지시 #14-2 — "게시판은 SPL메뉴 안에 있는거다").
      카테고리가 있는 리그에만 셋째 탭이 붙는다. 10mountain 은 없다 (`leagueScreen` 표가 정한다) */
   if (leagueBoardCategory(leagueSlug) !== null) {

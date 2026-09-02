@@ -277,6 +277,14 @@ const resolvers: Record<EndpointKey, Resolver> = {
       : null
     return form ? ok(form) : notFound()
   },
+  /* 리그 전체 경기 목록 (O-015). 선수별·클랜별과 **같은 모양**으로 답한다 */
+  leagueMatches: ({ params, request }) => {
+    const leagueId = resolveLeagueId(param(params['leagueId']))
+    const page = leagueId
+      ? store.getLeagueMatches(leagueId, query(request, 'cursor'), PAGE_SIZE.DEFAULT)
+      : null
+    return page ? okPage(page) : notFound()
+  },
   leaguePlayerMatches: ({ params, request }) => {
     const leagueId = resolveLeagueId(param(params['leagueId']))
     const page = leagueId

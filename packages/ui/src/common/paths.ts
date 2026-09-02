@@ -51,3 +51,8 @@ export function leagueClanPath(leagueSlug: string, clanSlug: string): string {
 export function leagueMatchPath(leagueSlug: string, matchId: string): string {
   return `/league/${leagueSlug}/match/${matchId}`
 }
+
+/** 리그 경기 목록 `/league/{slug}/match` (2026-09-03 · O-015) — 경기 한 판의 **위층**이다 */
+export function leagueMatchListPath(leagueSlug: string): string {
+  return `/league/${leagueSlug}/match`
+}

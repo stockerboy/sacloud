@@ -476,6 +476,21 @@ export const endpoints = {
     response: apiResponse(FormTop),
     query: ['weapon'],
   },
+  /**
+   * **리그 전체 경기 목록** (2026-09-03 · O-015).
+   *
+   * 닉네임도 클랜명도 모르는 사람이 **사이트에서 처음으로 볼 것**이다.
+   * 선수별(`leaguePlayerMatches`) · 클랜별(`leagueClanMatches`) · 단건(`matchShow`) 은
+   * 있었는데 **리그 전체가 없었다.**
+   */
+  leagueMatches: {
+    method: 'GET',
+    path: '/leagues/:leagueId/matches',
+    origin: 'designed',
+    description: '리그 전체 매치 목록 (커서)',
+    response: paginatedResponse(MatchListItem),
+    query: CURSOR,
+  },
   leaguePlayerMatches: {
     method: 'GET',
     path: '/leagues/:leagueId/players/:playerId/matches',

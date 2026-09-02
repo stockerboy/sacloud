@@ -600,6 +600,47 @@ export async function getLeaguePlayerMatches(
   )
 }
 
+/**
+ * **리그 전체 경기 목록** (2026-09-03 · O-015).
+ *
+ * ══ 왜 생겼나 ══
+ *
+ * **닉네임도 클랜명도 모르는 사람은 이 사이트에서 볼 게 하나도 없었다.**
+ * 홈의 최근경기는 O-001 로 뺐고(사장님 지시), 경기 목록 화면은 원래 없었다.
+ * > 강민재 — *"검색어를 모르는 사람이 사이트에서 처음으로 볼 게 생긴다."*
+ *
+ * ══ 옛 함수를 고쳐 쓰지 않았다 ══
+ *
+ * `homeRecent.ts` 의 `getLeagueRecentMatches()` 가 같은 모양을 돌려주지만
+ * **최신 N건**만 준다 — 커서가 없다. 그것을 고치면 홈(옛 화면)의 동작이 같이 바뀐다.
+ * 그래서 **옆에 새로 만들었다.** 옛 함수는 그대로 산다 (`CLAUDE.md` 10-4).
+ *
+ * ══ 보는 쪽을 누구로 두나 ══
+ *
+ * 선수 기록실은 **그 선수가 뛴 팀**, 클랜 기록실은 **그 클랜**을 기준으로 본다.
+ * 이 목록은 **아무 편도 아니다** — 리그 전체를 늘어놓는 자리다.
+ * `homeRecent.ts` 가 같은 자리에서 쓰는 규칙을 그대로 가져온다 —
+ * **이긴 팀**을 기준으로 보고, 승자를 모르면 red 슬롯을 본다.
+ * ⚠ 편을 지어내지 않는다. 규칙을 새로 만들지도 않는다.
+ */
+export async function getLeagueMatches(
+  leagueId: string,
+  cursor: string | null,
+  size: number,
+): Promise<CursorPage<MatchListItem>> {
+  return matchPage(
+    { leagueId },
+    cursor,
+    size,
+    (match) => ({
+      leagueClanId:
+        match.winnerSide === 'blue' ? match.blueLeagueClanId : match.redLeagueClanId,
+      playerId: null,
+    }),
+    leagueId,
+  )
+}
+
 /** 그 경기에서 이 선수가 뛴 팀의 리그클랜. 참가 기록이 없으면 red 쪽을 기본으로 본다 */
 function leagueClanOfPlayerInMatch(match: MatchRow, playerId: string): string {
   const stat = match.stats.find((row) => row.playerId === playerId)
