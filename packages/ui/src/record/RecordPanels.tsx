@@ -625,6 +625,7 @@ export function ClanStatSidebar({
   lose,
   winRate,
   division,
+  showDivision = true,
   rank,
   egg,
 }: {
@@ -634,6 +635,11 @@ export function ClanStatSidebar({
   lose: number
   winRate: number
   division: number
+  /**
+   * 부리그(티어)를 적는가 (지시 #9 · D-265 ③). **기본 `true` — 넘기지 않으면 예전 그대로다.**
+   * 호출부가 `showsDivision(leagueSlug)`(`@sacloud/contract`)를 넘긴다.
+   */
+  showDivision?: boolean
   /** 클랜랭킹 순위. 배치고사 중이면 `null` — 순위 자리에 `배치고사` 를 쓴다 (원본 규칙) */
   rank: number | null
   /**
@@ -670,7 +676,7 @@ export function ClanStatSidebar({
           '순위 없음'
         ) : (
           <>
-            <StatSub>{division}부리그</StatSub>
+            {showDivision ? <StatSub>{division}부리그</StatSub> : null}
             {formatCount(rank)}위
           </>
         )}

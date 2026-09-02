@@ -8,6 +8,7 @@ import type {
   MatchListItem,
   MatchPlayerStat,
 } from '@sacloud/contract'
+import { showsDivision } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { ClanHexagonV2 } from './ClanHexagonV2'
 
@@ -289,7 +290,12 @@ function ClanSide({
           PC 는 예전 관측(`- 2부리그 1,149점`)이 있어 그대로 두고 모바일에서만 감춘다.
         */}
         <div className="text-sm text-faint max-md:hidden">
-          <span className="num">{snapshot.division}</span>부리그{' '}
+          {/* 부리그를 화면에 내지 않는 리그(지시 #9)는 점수만 남긴다. 값은 응답에 그대로 있다 */}
+          {showsDivision(leagueSlug) ? (
+            <>
+              <span className="num">{snapshot.division}</span>부리그{' '}
+            </>
+          ) : null}
           {snapshot.placement ? (
             '배치고사'
           ) : snapshot.rating === null ? (
@@ -621,7 +627,11 @@ function TeamCompare({
             <div className="w-40 shrink-0 text-right text-faint max-md:hidden">
               {row.snapshot ? (
                 <>
-                  <span className="num">{row.snapshot.division}</span>부리그{' '}
+                  {showsDivision(leagueSlug) ? (
+                    <>
+                      <span className="num">{row.snapshot.division}</span>부리그{' '}
+                    </>
+                  ) : null}
                   <SnapshotRating snapshot={row.snapshot} />
                 </>
               ) : null}

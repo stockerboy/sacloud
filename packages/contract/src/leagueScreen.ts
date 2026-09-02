@@ -40,6 +40,19 @@ export interface LeagueScreenSpec {
   playerColumns: RankColumns
   /** 클랜랭킹 표의 칸 */
   clanColumns: RankColumns
+  /**
+   * 부리그(티어)를 **화면에** 표시하는가 (2026-09-02 사장님 결정 D-265 ③ · 지시 #9).
+   *
+   * `false` 면 부리그 탭 · 티어 경계선 · `N부리그`/`N티어` 표기 · 티어별 승률/전적 ·
+   * 브레드크럼의 부리그가 전부 화면에서 빠진다. **데이터는 그대로다** —
+   * `LeagueClan.division` · API 응답의 `division` · `/rank/clan/{division}` 라우트는
+   * 하나도 건드리지 않는다. 화면은 `showsDivision(slug)` 하나만 본다.
+   *
+   * ⚠ 정렬은 바꾸지 않는다. IPL 클랜랭킹은 API(`division=0`)가 **티어 우선**으로 정렬하므로
+   *   경계선이 사라져도 순서는 그대로다 — 래더 숫자가 위아래로 섞여 보일 수 있다.
+   *   그것은 API 의 판단이라 이 표가 손대지 않는다 (`queries/leagues.ts` `getClanRanks`).
+   */
+  showsDivision: boolean
 }
 
 /** 공식 래더가 있는 리그의 기본값 — 지금까지의 화면 그대로다 */
@@ -48,7 +61,18 @@ const WITH_LADDER: LeagueScreenSpec = {
   playerColumns: { rank: true, winRate: true, kd: true, rating: true },
   /* 클랜랭킹에는 킬뎃 칸이 원래 없다 */
   clanColumns: { rank: true, winRate: true, kd: false, rating: true },
+  showsDivision: true,
 }
+
+/**
+ * IPL(`nolink`) — 래더는 있되 **부리그(티어)를 화면에 내지 않는다** (D-265 ③).
+ *
+ * > 사장님: IPL 「1부·2부」 구분을 화면에서만 없앤다. 데이터는 그대로.
+ *
+ * 티어 편성(리그 설정 · 관리자)은 데이터를 다루는 자리라 그대로다.
+ * 되돌리려면 이 한 줄을 `WITH_LADDER` 로 바꾸면 된다 (`CLAUDE.md` 10-4).
+ */
+const WITH_LADDER_NO_DIVISION: LeagueScreenSpec = { ...WITH_LADDER, showsDivision: false }
 
 /**
  * `10🏔️`(`sanply`) — **킬뎃과 승률만** 보여 준다 (2026-09-01 사용자 지시).
@@ -64,17 +88,27 @@ const NO_LADDER: LeagueScreenSpec = {
   clanRank: false,
   playerColumns: { rank: false, winRate: true, kd: true, rating: false },
   clanColumns: { rank: false, winRate: true, kd: false, rating: false },
+  showsDivision: true,
 }
 
 const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
   supply: WITH_LADDER,
-  nolink: WITH_LADDER,
+  /* 2026-09-02 이전에는 `WITH_LADDER` 였다 (지시 #9 · D-265 ③) */
+  nolink: WITH_LADDER_NO_DIVISION,
   sanply: NO_LADDER,
 }
 
 /** 이 리그가 보여 줄 화면과 칸. 모르는 slug 는 «래더 있는 리그» 로 본다 */
 export function leagueScreen(slug: string): LeagueScreenSpec {
   return BY_SLUG[slug] ?? WITH_LADDER
+}
+
+/**
+ * 이 리그가 부리그(티어)를 **화면에** 표시하는가 (지시 #9).
+ * 화면 코드는 slug 를 비교하지 말고 이것만 부른다 — 규칙은 위 표 한 곳에 있다.
+ */
+export function showsDivision(slug: string): boolean {
+  return leagueScreen(slug).showsDivision
 }
 
 /**

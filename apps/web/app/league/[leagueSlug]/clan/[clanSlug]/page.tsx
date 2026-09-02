@@ -3,6 +3,7 @@
 import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
+import { showsDivision } from '@sacloud/contract'
 import {
   ClanHexagon,
   ClanHexagonV2,
@@ -151,6 +152,8 @@ export default function LeagueClanRecordPage({
           leagueName={data.league.name}
           leagueCategory={data.league.category}
           division={data.division}
+          /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③). 규칙은 `leagueScreen` 한 곳 */
+          showDivision={showsDivision(leagueSlug)}
           rating={data.rating}
           placement={data.placement}
           win={data.win}
@@ -222,6 +225,7 @@ export default function LeagueClanRecordPage({
             lose={data.lose}
             winRate={data.win_rate}
             division={data.division}
+            showDivision={showsDivision(leagueSlug)}
             rank={data.rank}
             /* 승률 · N승N패만 가린다. 래더 · 부리그 · 순위는 그대로다 (사양 2장) */
             egg={egg}

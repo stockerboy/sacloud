@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import type { ClanRankRow } from '@sacloud/contract'
-import { RANK_SPLIT_LEAGUES, leagueScreen } from '@sacloud/contract'
+import { RANK_SPLIT_LEAGUES, leagueScreen, showsDivision } from '@sacloud/contract'
 import {
   ClanRankTable,
   LoadMoreButton,
@@ -59,6 +59,9 @@ function Column({ slug, name }: { slug: string; name: string }) {
 
   const category = league.data?.data.category
   const independent = category === 'independent'
+  /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 「티어별」 메모도 없다.
+     경계선은 표(`ClanRankTable`)가 같은 규칙으로 스스로 뺀다 */
+  const divisionShown = showsDivision(slug)
 
   return (
     <RankSplitColumn
@@ -66,7 +69,13 @@ function Column({ slug, name }: { slug: string; name: string }) {
       /* 리그를 아직 못 받았으면 **아무 말도 하지 않는다.** 기본값을 써 두면
          IPL 자리에 잠깐 「부리그 통합 순위」가 떴다가 「티어별」로 바뀐다 —
          한 번이라도 틀린 글자를 보여 주느니 늦게 나오는 편이 낫다 */
-      note={category === undefined ? undefined : independent ? '티어별' : '부리그 통합 순위'}
+      note={
+        category === undefined || !divisionShown
+          ? undefined
+          : independent
+            ? '티어별'
+            : '부리그 통합 순위'
+      }
     >
       <RankBox>
         <ClanRankTable
