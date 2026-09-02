@@ -119,8 +119,15 @@ var blState = {
   finishedAt: null,
 }
 
-/** 연속 403/429 가 이만큼이면 멈춘다 (총괄 지시 · 2026-09-02) */
-var BL_HALT_BLOCKED = 5
+/**
+ * 403/429 가 **한 번**이라도 오면 멈춘다 (RUNBOOK 3장 · 지시 #7-3).
+ *
+ * ⚠ 2026-09-02 사고: 처음 값은 `5` 였다(총괄 지시). delay 200ms(약 1건/초)로 돌리다
+ *   p-001 296건째에서 연속 403 5건 → 그 뒤 **첫 페이지 GET 까지 403** (넥슨 차단 화면, 집 IP 차단).
+ *   5건을 기다리는 동안 이미 늦었다. 첫 403 이 곧 신호다 — 그 자리에서 선다.
+ *   옛 값: `var BL_HALT_BLOCKED = 5`
+ */
+var BL_HALT_BLOCKED = 1
 /** 종류 불문 연속 실패가 이만큼이면 멈춘다 (지시 #7) */
 var BL_HALT_FAILS = 50
 
@@ -319,7 +326,8 @@ async function blLoadList(name) {
  *   · `restEvery` / `restMs`  요청 N건마다 M ms 쉰다 (기본 0 = 안 쉼). 예: `restEvery: 200, restMs: 10000`
  *   · `concurrency` 한 조각 안에서 동시에 받을 건수. **기본 1 = 옛 동작 그대로** (한 건씩 차례로).
  *                   지시 #7-2 (2026-09-02): 요청 하나가 1초 넘게 걸려 `delay` 가 병목이 아니었다.
- *                   3 이면 세 건을 동시에 받는다. 최대 5 — 원본에 대한 예의다.
+ *                   3 이면 세 건을 동시에 받는다. 최대 5.
+ *                   ⚠ **2026-09-02 사고: 1건/초에서 296건 만에 차단됨 — 근거 없이 올리지 마라.**
  *                   전송 버퍼·카운터·완료 표시·403 연속 정지는 동시 실행에서도 그대로 맞는다
  *                   (`blFlush` 가 묶음을 그 순간 떼어 내고, 멈춤 표시가 서면 새 짝을 집지 않는다)
  */
@@ -542,9 +550,11 @@ window.__blStatus = function __blStatus() {
  *
  *   window.__blIngest = { url: BL_INGEST_PROD, token: '<BARRACKS_INGEST_TOKEN>' }
  *   collectBattleLogsFromRaw('https://raw.githubusercontent.com/stockerboy/sacloud/main/data/ipl/worklist',
- *     { delay: 400, restEvery: 200, restMs: 10000 })
- *   collectBattleLogsFromRaw(<같은 주소>, { concurrency: 3, delay: 200 })   ← 지시 #7-2. 세 건 동시
+ *     { delay: 1500, restEvery: 200, restMs: 10000 })
  *   __blStatus().all   ← 누적
+ *
+ *   ⚠ 2026-09-02 사고: `{ delay: 200 }`(약 1건/초)로 296건 만에 집 IP 가 차단됐다. 지금은 바닥 1000ms ·
+ *     기본 1500ms · **첫 403 에서 즉시 정지**다. `{ concurrency: 3, delay: 200 }` 은 **쓰지 않는다** (옵션은 남아 있다)
  *
  * · `from` / `to`   조각 범위 (1부터 세는 번호 또는 'p-003' 같은 이름). 재개할 때 쓴다
  * · `concurrency`   한 조각 안에서 동시에 받을 건수. 기본 1(옛 동작) · 최대 5
@@ -569,9 +579,13 @@ window.collectBattleLogsFromRaw = async function collectBattleLogsFromRaw(baseUr
   }
   const from = Math.max(1, pos(options.from, 1))
   const to = Math.min(names.length, pos(options.to, names.length))
-  /* 바닥은 collectBattleLogs 와 같은 150. 처음엔 400 이었는데(지시 #7) 요청 자체가 1초 넘게
-     걸려 delay 가 병목이 아니었고, 지시 #7-2 가 `concurrency: 3, delay: 200` 을 정했다 */
-  const delay = Math.max(150, options.delay ?? 400)
+  /* ⚠ 2026-09-02 사고 (지시 #7-3): delay 200ms · 약 1건/초로 돌리다 **296건 만에 집 IP 가 차단**됐다
+     (연속 403 → 첫 페이지까지 403). 바닥 **1000ms** · 기본 **1500ms**. 근거 없이 내리지 마라.
+     옛 값 이력: 지시 #7 = Math.max(400, delay ?? 400) → 지시 #7-2 = Math.max(150, delay ?? 400) */
+  const delay = Math.max(1000, options.delay ?? 1500)
+  /* concurrency 기본 1. **2026-09-02 사고: 1건/초에서 296건 만에 차단됨 — 근거 없이 올리지 마라.**
+     동시 3 이면 3건/초가 된다. 옵션 자체는 남아 있다(`CLAUDE.md` 10-4) — 쓰려면 원본이 허용하는
+     속도를 먼저 실측해 문서에 적고 나서다 */
   const concurrency = Math.max(1, Math.min(5, Math.floor(Number(options.concurrency ?? 1)) || 1))
 
   const all = {
