@@ -119,8 +119,15 @@ var blState = {
   finishedAt: null,
 }
 
-/** 연속 403/429 가 이만큼이면 멈춘다 (총괄 지시 · 2026-09-02) */
-var BL_HALT_BLOCKED = 5
+/**
+ * 403/429 가 **한 번**이라도 오면 멈춘다 (RUNBOOK 3장 · 지시 #7-3).
+ *
+ * ⚠ 2026-09-02 사고: 처음 값은 `5` 였다(총괄 지시). delay 200ms(약 1건/초)로 돌리다
+ *   p-001 296건째에서 연속 403 5건 → 그 뒤 **첫 페이지 GET 까지 403** (넥슨 차단 화면, 집 IP 차단).
+ *   5건을 기다리는 동안 이미 늦었다. 첫 403 이 곧 신호다 — 그 자리에서 선다.
+ *   옛 값: `var BL_HALT_BLOCKED = 5`
+ */
+var BL_HALT_BLOCKED = 1
 /** 종류 불문 연속 실패가 이만큼이면 멈춘다 (지시 #7) */
 var BL_HALT_FAILS = 50
 
@@ -171,15 +178,39 @@ function blDownload(name, payload) {
  * `post` 모드에서 창구가 안 열리면 **한 번만 알리고 `download` 로 떨어진다.**
  * 조용히 파일로 떨어뜨리면 "보낸 줄 알았는데 없더라" 가 된다.
  */
-async function blFlush(done, pending) {
+async function blFlush(done, pending, options = {}) {
   if (blBuffer.rows.length === 0 && blBuffer.failures.length === 0) return false
+  /* 창구가 죽어 멈춘 뒤에는 자동 전송을 다시 시도하지 않는다 — 같은 곳을 또 두들기는 것이다.
+     `__blExport()` 는 `force` 로 부른다 (창구를 고친 뒤 손으로 다시 보낼 때) */
+  if (blState.ingestDown && !options.force) return false
+
+  /* 동시 실행(`concurrency` > 1)에서도 안전하게 — 보낼 묶음을 **지금 이 순간** 떼어 낸다.
+     보내는 동안 다른 요청이 버퍼에 더 넣어도 그것은 다음 묶음이다. 배열을 `= []` 로
+     통째로 갈아 끼우지 않으므로 그 사이 들어온 행이 사라지지 않는다.
+     `pending` 도 같은 순간에 떼어 낸다 — 행과 완료 표시는 같은 동기 블록에서 함께 들어오므로
+     이 시점의 `pending` 이 곧 이 묶음의 열쇠다 */
+  const batchRows = blBuffer.rows.splice(0)
+  const batchFailures = blBuffer.failures.splice(0)
+  const batchPending = [...pending]
+  pending.clear()
+  /** 못 보냈으면 되돌린다 — 그래야 `__blExport()` 로 내릴 수 있고, 재개 때 다시 받는다 */
+  const restore = () => {
+    blBuffer.rows.unshift(...batchRows)
+    blBuffer.failures.unshift(...batchFailures)
+    for (const key of batchPending) pending.add(key)
+  }
+  /** 보냈으면 그제야 완료 표시를 남긴다 */
+  const commit = () => {
+    for (const key of batchPending) done.add(key)
+    blSaveDone(done)
+  }
 
   if (blState.mode === 'post') {
     const target = blIngestTarget()
     const headers = { 'Content-Type': 'application/json' }
     if (target.token) headers.Authorization = `Bearer ${target.token}`
     /* 운영 창구는 `kind` 를 본다 (기본이 battlelog 이지만 명시한다). 옛 dev 창구는 이 칸을 무시한다 */
-    const rows = blBuffer.rows.map((r) => (r.kind ? r : { kind: 'battlelog', ...r }))
+    const rows = batchRows.map((r) => (r.kind ? r : { kind: 'battlelog', ...r }))
     /* 운영 창구(strict)면 **파일로 떨어지지 않는다** — 2만 건이 파일 2만 개가 된다.
        세 번까지 다시 보내고, 그래도 안 되면 멈추고 버퍼를 메모리에 남긴다 (`__blExport()`) */
     const attempts = target.strict ? 3 : 1
@@ -189,7 +220,7 @@ async function blFlush(done, pending) {
         const response = await fetch(target.url, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ rows, failures: blBuffer.failures }),
+          body: JSON.stringify({ rows, failures: batchFailures }),
         })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const json = await response.json()
@@ -199,11 +230,7 @@ async function blFlush(done, pending) {
         console.info(
           `[수집] 보냄 ${json.received}건 — 새로 ${json.inserted} · 이미있음 ${json.duplicated} · 건너뜀 ${json.skipped}`,
         )
-        blBuffer.rows = []
-        blBuffer.failures = []
-        for (const key of pending) done.add(key)
-        pending.clear()
-        blSaveDone(done)
+        commit()
         return true
       } catch (error) {
         if (target.strict) {
@@ -213,7 +240,9 @@ async function blFlush(done, pending) {
             wait *= 2
             continue
           }
+          restore()
           blState.stop = true
+          blState.ingestDown = true
           blState.haltReason = `창구 전송 실패 ${attempts}회: ${error}`
           console.error(`[수집] ⛔ ${blState.haltReason} — 멈춘다. 버퍼 ${blBuffer.rows.length}건은 __blExport() 로 내릴 수 있다`)
           return false
@@ -235,16 +264,12 @@ async function blFlush(done, pending) {
     collected_at: new Date().toISOString(),
     part: blBuffer.part,
     note: '클랜 단위 배틀로그 원문 (D-218). nexon battlelog-import --file <이 파일 또는 폴더>',
-    rows: blBuffer.rows,
-    failures: blBuffer.failures,
+    rows: batchRows,
+    failures: batchFailures,
   })
-  console.info(`[수집] ${name} 내림 — ${blBuffer.rows.length}건`)
-  blState.sent += blBuffer.rows.length
-  blBuffer.rows = []
-  blBuffer.failures = []
-  for (const key of pending) done.add(key)
-  pending.clear()
-  blSaveDone(done)
+  console.info(`[수집] ${name} 내림 — ${batchRows.length}건`)
+  blState.sent += batchRows.length
+  commit()
   return true
 }
 
@@ -299,16 +324,27 @@ async function blLoadList(name) {
  *   · `worklist` 작업목록 객체를 직접 넘긴다 (dev 서버 없이 손으로 붙여 넣을 때)
  *   · `label`    직접 넘긴 목록의 이름 (로그·상태 표시용)
  *   · `restEvery` / `restMs`  요청 N건마다 M ms 쉰다 (기본 0 = 안 쉼). 예: `restEvery: 200, restMs: 10000`
+ *   · `concurrency` 한 조각 안에서 동시에 받을 건수. **기본 1 = 옛 동작 그대로** (한 건씩 차례로).
+ *                   지시 #7-2 (2026-09-02): 요청 하나가 1초 넘게 걸려 `delay` 가 병목이 아니었다.
+ *                   3 이면 세 건을 동시에 받는다. 최대 5.
+ *                   ⚠ **2026-09-02 사고: 1건/초에서 296건 만에 차단됨 — 근거 없이 올리지 마라.**
+ *                   전송 버퍼·카운터·완료 표시·403 연속 정지는 동시 실행에서도 그대로 맞는다
+ *                   (`blFlush` 가 묶음을 그 순간 떼어 내고, 멈춤 표시가 서면 새 짝을 집지 않는다)
  */
 window.collectBattleLogs = async function collectBattleLogs(options = {}) {
   const delay = Math.max(150, options.delay ?? BL_DELAY_MS)
   const restEvery = Math.max(0, Number(options.restEvery ?? 0))
   const restMs = Math.max(0, Number(options.restMs ?? 0))
+  const concurrency = Math.max(1, Math.min(5, Math.floor(Number(options.concurrency ?? 1)) || 1))
   let sinceRest = 0
+  /** 쉬는 중이면 그 약속 — 동시 실행에서 모두가 같은 쉼을 기다린다 */
+  let restPromise = null
+  blState.concurrency = concurrency
   blState.mode = options.mode === 'download' ? 'download' : 'post'
   blState.running = true
   blState.stop = false
   blState.haltReason = null
+  blState.ingestDown = false
   /* 조각을 이어 돌릴 때(`keepStreak`)는 연속 실패 수를 조각 경계에서 끊지 않는다 —
      끊으면 3건 + 4건처럼 경계에 걸친 연속 403 이 한도(5)에 닿지 않는다 */
   if (!options.keepStreak) {
@@ -378,10 +414,8 @@ window.collectBattleLogs = async function collectBattleLogs(options = {}) {
     blState.pairIndex = 0
     console.info(`[수집] ${blState.list ?? '직접넘김'} — ${list.label ?? ''} 짝 ${pairs.length}개`)
 
-    for (const [matchKey, clanIdx, discover] of pairs) {
-      if (blState.stop) break
-      blState.pairIndex += 1
-
+    /** 짝 하나를 처리한다 — 순차(옛 길)와 동시(새 길)가 이 함수를 같이 쓴다 */
+    const processPair = async ([matchKey, clanIdx, discover]) => {
       /* 씨앗 한 쪽 + (discover 면) 상대 한 쪽. 상대는 응답이 알려 준다 */
       const queue = [String(clans[clanIdx])]
       const seen = new Set(queue)
@@ -452,11 +486,39 @@ window.collectBattleLogs = async function collectBattleLogs(options = {}) {
         if (blBuffer.rows.length >= BL_BATCH) await blFlush(done, pending)
         await blSleep(delay)
         sinceRest += 1
-        if (restEvery > 0 && sinceRest >= restEvery && !blState.stop) {
-          sinceRest = 0
-          await blSleep(restMs)
+        if (restEvery > 0 && !blState.stop) {
+          if (restPromise) await restPromise
+          else if (sinceRest >= restEvery) {
+            sinceRest = 0
+            restPromise = blSleep(restMs).then(() => {
+              restPromise = null
+            })
+            await restPromise
+          }
         }
       }
+    }
+
+    if (concurrency <= 1) {
+      /* ── 옛 길: 한 건씩 차례로 (`CLAUDE.md` 10-4 — 그대로 남긴다) */
+      for (const pair of pairs) {
+        if (blState.stop) break
+        blState.pairIndex += 1
+        await processPair(pair)
+      }
+    } else {
+      /* ── 새 길 (지시 #7-2): 일꾼 N 이 **공유 커서**에서 다음 짝을 하나씩 집어 간다.
+         멈춤 표시가 서면 새 짝을 집지 않는다 — 받던 것(최대 N-1건)만 마저 끝난다 */
+      let cursor = 0
+      const worker = async () => {
+        while (!blState.stop && cursor < pairs.length) {
+          const pair = pairs[cursor]
+          cursor += 1
+          blState.pairIndex += 1
+          await processPair(pair)
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(concurrency, pairs.length) }, worker))
     }
     await blFlush(done, pending)
     blState.listIndex += 1
@@ -488,10 +550,14 @@ window.__blStatus = function __blStatus() {
  *
  *   window.__blIngest = { url: BL_INGEST_PROD, token: '<BARRACKS_INGEST_TOKEN>' }
  *   collectBattleLogsFromRaw('https://raw.githubusercontent.com/stockerboy/sacloud/main/data/ipl/worklist',
- *     { delay: 400, restEvery: 200, restMs: 10000 })
+ *     { delay: 1500, restEvery: 200, restMs: 10000 })
  *   __blStatus().all   ← 누적
  *
+ *   ⚠ 2026-09-02 사고: `{ delay: 200 }`(약 1건/초)로 296건 만에 집 IP 가 차단됐다. 지금은 바닥 1000ms ·
+ *     기본 1500ms · **첫 403 에서 즉시 정지**다. `{ concurrency: 3, delay: 200 }` 은 **쓰지 않는다** (옵션은 남아 있다)
+ *
  * · `from` / `to`   조각 범위 (1부터 세는 번호 또는 'p-003' 같은 이름). 재개할 때 쓴다
+ * · `concurrency`   한 조각 안에서 동시에 받을 건수. 기본 1(옛 동작) · 최대 5
  * · index.json 모양: `{ parts: ['p-001', …], total }` (`data/ipl/worklist/index.json`)
  * · 조각 하나가 끝날 때마다 `window.__blAll.parts` 에 그 조각의 숫자를 남긴다
  * · 403/429 연속 · 창구 실패로 멈추면 `haltReason` 을 적고 다음 조각으로 가지 않는다
@@ -513,7 +579,14 @@ window.collectBattleLogsFromRaw = async function collectBattleLogsFromRaw(baseUr
   }
   const from = Math.max(1, pos(options.from, 1))
   const to = Math.min(names.length, pos(options.to, names.length))
-  const delay = Math.max(400, options.delay ?? 400)
+  /* ⚠ 2026-09-02 사고 (지시 #7-3): delay 200ms · 약 1건/초로 돌리다 **296건 만에 집 IP 가 차단**됐다
+     (연속 403 → 첫 페이지까지 403). 바닥 **1000ms** · 기본 **1500ms**. 근거 없이 내리지 마라.
+     옛 값 이력: 지시 #7 = Math.max(400, delay ?? 400) → 지시 #7-2 = Math.max(150, delay ?? 400) */
+  const delay = Math.max(1000, options.delay ?? 1500)
+  /* concurrency 기본 1. **2026-09-02 사고: 1건/초에서 296건 만에 차단됨 — 근거 없이 올리지 마라.**
+     동시 3 이면 3건/초가 된다. 옵션 자체는 남아 있다(`CLAUDE.md` 10-4) — 쓰려면 원본이 허용하는
+     속도를 먼저 실측해 문서에 적고 나서다 */
+  const concurrency = Math.max(1, Math.min(5, Math.floor(Number(options.concurrency ?? 1)) || 1))
 
   const all = {
     baseUrl: base,
@@ -521,6 +594,8 @@ window.collectBattleLogsFromRaw = async function collectBattleLogsFromRaw(baseUr
     partsTotal: names.length,
     from,
     to,
+    delay,
+    concurrency,
     part: null,
     done: 0,
     ok: 0,
@@ -561,6 +636,7 @@ window.collectBattleLogsFromRaw = async function collectBattleLogsFromRaw(baseUr
       delay,
       restEvery: options.restEvery ?? 0,
       restMs: options.restMs ?? 0,
+      concurrency,
       keepStreak: true,
     })
     const part = {
@@ -604,7 +680,8 @@ window.__blMode = function __blMode(mode) {
 window.__blExport = async function __blExport() {
   const done = blLoadDone()
   const pending = new Set()
-  if (!(await blFlush(done, pending))) console.info('내보낼 것이 없다')
+  blState.ingestDown = false
+  if (!(await blFlush(done, pending, { force: true }))) console.info('내보낼 것이 없다')
   return window.__blStatus()
 }
 

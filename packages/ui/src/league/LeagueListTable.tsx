@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { LeagueListItem } from '@sacloud/contract'
+import { isLeagueListed, isOfficialLeague } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
@@ -29,6 +30,8 @@ export function LeagueListTable({
   error?: boolean
   onRetry?: () => void
 }) {
+  /* 닫힌 리그(대룰리그 · 지시 #22)는 목록에서 뺀다. 데이터는 그대로다 — 화면에서만 거른다 */
+  const listed = items?.filter((league) => isLeagueListed(league.slug))
   return (
     <div className="mt-6 rounded-[var(--radius)] border border-line">
       <div className={HEAD}>
@@ -48,10 +51,10 @@ export function LeagueListTable({
             </div>
           ))}
         </>
-      ) : !items || items.length === 0 ? (
+      ) : !listed || listed.length === 0 ? (
         <EmptyState message="리그가 없습니다." />
       ) : (
-        items.map((league) => (
+        listed.map((league) => (
           <Link
             key={league.id}
             href={`/league/${league.slug}/home/info`}
@@ -59,7 +62,9 @@ export function LeagueListTable({
           >
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span className="truncate font-semibold text-text-strong">{league.name}</span>
-              {league.official ? <Label name="공식" /> : null}
+              {/* 표기는 계약의 표가 정한다 (#17). **항상** 그린다 — 공식이면 「공식」, 아니면 「비공식」 (#17-2).
+                  옛 줄(공식일 때만): `league.official ? <Label name="공식" /> : null` */}
+              <Label name={isOfficialLeague(league.slug) ? '공식' : '비공식'} />
               <span className="flex items-center gap-1 max-md:hidden">
                 {league.clans.map((clan) => (
                   <ClanMark key={clan.id} mark={clan.mark} alt={clan.name} />

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { PlayerTierRecord } from '@sacloud/contract'
-import { TIER_WIN_RATE_MIN_GAMES } from '@sacloud/contract'
+import { TIER_WIN_RATE_MIN_GAMES, showsTier } from '@sacloud/contract'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { divisionLabel, divisionUnit } from '../league/divisionLabel'
@@ -48,6 +48,9 @@ export function TierBreakdown({
 }) {
   /* 줄이 하나도 없으면 카드를 그리지 않는다. 빈 껍데기는 정보가 아니다 */
   if (rows.length === 0) return null
+  /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 «티어별» 축 자체가 감춘 개념이라 카드를 안 그린다.
+     값(`rows`)은 응답에 그대로 있다 */
+  if (!showsTier(leagueSlug)) return null
 
   return (
     <div className="rounded-[2px] border border-line bg-card px-5 py-4 text-text">

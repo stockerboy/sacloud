@@ -85,26 +85,38 @@ export function HomeSearch() {
   return (
     /* ================= 0 로고 · 1 검색 · 2 리그 바로가기 =================
        배경을 칠하지 않는다. 페이지 바탕(`--color-page`) 위에 글자와 선만 있다. */
-    <section className="flex flex-col items-center pb-[72px] pt-[104px] max-md:pb-[56px] max-md:pt-[64px]">
-      {/* --- 0 로고 — 작게. 화면의 주인공은 아래 검색창이다 --- */}
+    /* 여백 (#13-c · 검수 #13-2)
+         #3     pt 104 · 로고 42 · pb 72             → 윗머리 높이 ≈ 282 + 검색·링크
+         #13-c  pt 72 · 로고 126 · pb 36            → 로고가 84px 커져 랭킹 제목이 **37px 내려갔다** (검수 실측)
+         지금   pt 40 · 로고 126 · pb 12 · 안쪽 여백도 줄임 → ≈ 258 + … — 원래보다 확실히 위 */
+    <section className="flex flex-col items-center pb-[12px] pt-[40px] max-md:pb-[10px] max-md:pt-[28px]">
+      {/* --- 0 로고 — **3배** (2026-09-02 사장님 지시 #13-a). 42 → 126px · 폰 32 → 96px.
+             그 전(#3)에는 «작게. 화면의 주인공은 검색창» 이었다 — 옛 값은 이 줄에 남긴다 --- */}
       <Link href="/" aria-label="3rd cloud 홈" className="block">
-        <MainLogo className="h-[42px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[32px]" />
+        <MainLogo className="h-[126px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[96px]" />
       </Link>
 
       {/* --- 1 통합검색 — 크고 가운데. 동작은 하나도 바뀌지 않았다 --- */}
-      <div className="mt-9 w-full max-md:mt-7">
+      {/* 로고와 검색창 사이 — #3 때 mt-9 · 검수 #13-2 로 mt-6 */}
+      <div className="mt-6 w-full max-md:mt-5">
         <SearchBar onSubmit={handleSearch} notice={notice} />
       </div>
 
       {/* --- 2 리그 바로가기 — 누르면 **바로 랭킹** ---
-             면을 칠하지 않는다. 글자 한 줄이고 진홍은 hover 에만 닿는다. */}
-      <nav aria-label="리그 랭킹 바로가기" className="mt-7 max-md:mt-6">
-        <ul className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2 max-md:gap-x-5">
+             2026-09-02 사장님 지시 #13-b: «누르고 싶게» — 글자 링크 셋을 **버튼 셋**으로.
+             `.btn-line`(테두리 · 투명 바탕) 위에 크기만 얹었다. 색은 `--color-accent` 토큰뿐이고
+             hover 에서 테두리·글자에 닿는다. 면을 칠하지 않는다. 폰에서는 셋이 한 줄에 나란히.
+             옛 모습(#3 · 13px 글자 링크 `text-meta` + hover 강조)은 지웠지만 동작은 같다 — 가는 곳 그대로. */}
+      <nav aria-label="리그 랭킹 바로가기" className="mt-5 w-full max-md:mt-4">
+        <ul className="flex flex-wrap items-center justify-center gap-3 max-md:flex-nowrap max-md:gap-2">
           {LEAGUE_SHORTCUTS.map((league) => (
-            <li key={league.href}>
-              <Link href={league.href} className="block">
+            <li key={league.href} className="max-md:min-w-0 max-md:flex-1">
+              <Link
+                href={league.href}
+                className="btn-line group h-12 min-w-[132px] px-6 text-[15px] font-bold tracking-wide hover:border-accent max-md:h-11 max-md:w-full max-md:min-w-0 max-md:px-2"
+              >
                 {/* `a { color: inherit }` 때문에 색은 안쪽 span 에 준다 (D-204) */}
-                <span className="text-[13px] text-meta transition-colors duration-100 hover:text-accent">
+                <span className="text-text-strong transition-colors duration-100 group-hover:text-accent">
                   <LeagueLabel name={league.label} />
                 </span>
               </Link>

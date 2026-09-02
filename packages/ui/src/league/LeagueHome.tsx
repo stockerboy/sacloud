@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { League, LeagueClan } from '@sacloud/contract'
+import { isOfficialLeague, showsTier } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
@@ -34,7 +35,8 @@ export function LeagueHeader({ league }: { league: League }) {
         <h1 className="font-display text-4xl tracking-wide text-text-strong max-md:text-3xl">
           {league.name}
         </h1>
-        {league.official ? <Label name="공식" /> : null}
+        {/* 표기는 계약의 표가 정한다 (#17). 옛 줄: `league.official ? …` */}
+        {isOfficialLeague(league.slug) ? <Label name="공식" /> : null}
         <div className="text-sm text-meta">
           <span className={NUM}>{formatCount(league.clan_count)}</span>개의 클랜 참여중
         </div>
@@ -144,9 +146,12 @@ export function LeagueInfoPanel({
               >
                 <ClanMark mark={entry.clan.mark} className="mr-2" alt={entry.clan.name} />
                 <span className="min-w-0 flex-1 truncate">{entry.clan.name}</span>
-                <span className="w-24 shrink-0 text-right text-sm text-meta max-md:hidden">
-                  {entry.division}부리그
-                </span>
+                {/* 부리그를 화면에 내지 않는 리그(지시 #9)는 이 칸이 없다 */}
+                {showsTier(league.slug) ? (
+                  <span className="w-24 shrink-0 text-right text-sm text-meta max-md:hidden">
+                    {entry.division}티어
+                  </span>
+                ) : null}
                 {/* 승/패는 승률 아래로 접었다 (랭킹 표와 같은 규칙) */}
                 <span className={COL_STAT}>
                   <span className={`${NUM} text-text-strong`}>{formatRate(entry.win_rate)}</span>

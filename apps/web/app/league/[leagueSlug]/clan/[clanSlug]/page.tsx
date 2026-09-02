@@ -3,6 +3,7 @@
 import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import {
   ClanHexagon,
   ClanHexagonV2,
@@ -27,6 +28,7 @@ import {
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
+import { ClanTop3 } from '@/components/clan/ClanTop3'
 
 /**
  * 클랜 기록실 `/league/{slug}/clan/{slug}` — `적진` 팔레트.
@@ -151,6 +153,8 @@ export default function LeagueClanRecordPage({
           leagueName={data.league.name}
           leagueCategory={data.league.category}
           division={data.division}
+          /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③). 규칙은 `leagueScreen` 한 곳 */
+          showDivision={showsTier(leagueSlug)}
           rating={data.rating}
           placement={data.placement}
           win={data.win}
@@ -164,7 +168,23 @@ export default function LeagueClanRecordPage({
         <section className="mt-[40px]">
           <EggVeilPanel state={egg} note={CLAN_EGG_GUIDE}>
             <div className={`${PROFILE_PANEL} px-5 py-4`}>
-              {data.hexagon_v2 ? <ClanHexagonV2 hexagon={data.hexagon_v2} /> : null}
+              {/* 두 쪽 배치 + 왼쪽 위 클랜 TOP3 (지시 #27). TOP3 는 이미 읽은 명단에서 뽑는다 — 왕복 추가 없음.
+                  명단이 없으면 자리를 비운다 */}
+              {data.hexagon_v2 ? (
+                <ClanHexagonV2
+                  hexagon={data.hexagon_v2}
+                  layout="split"
+                  aside={
+                    data.roster ? (
+                      <ClanTop3
+                        clanName={data.clan.name}
+                        members={data.roster.members}
+                        leagueSlug={leagueSlug}
+                      />
+                    ) : null
+                  }
+                />
+              ) : null}
               {data.hexagon ? (
                 <div className={data.hexagon_v2 ? 'mt-5 border-t border-line-soft pt-1' : ''}>
                   <ClanHexagon hexagon={data.hexagon} variant="list" />
@@ -222,6 +242,7 @@ export default function LeagueClanRecordPage({
             lose={data.lose}
             winRate={data.win_rate}
             division={data.division}
+            showDivision={showsTier(leagueSlug)}
             rank={data.rank}
             /* 승률 · N승N패만 가린다. 래더 · 부리그 · 순위는 그대로다 (사양 2장) */
             egg={egg}

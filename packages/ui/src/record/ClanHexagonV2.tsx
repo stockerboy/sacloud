@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { formatCount } from '../common/format'
 import {
   HEX_CENTER,
@@ -109,9 +110,68 @@ export interface ClanHexagonV2Props {
   foe?: { hexagon: ClanHexV2; name: string } | null
   /** 우리 이름 (겹쳐 그릴 때 범례에 쓴다) */
   name?: string
+  /**
+   * 배치 (2026-09-02 사장님 그림 지시 #27).
+   *
+   * ```
+   * 'stack'  (기본) 그래프 가운데 위 · 그 아래 축 목록 — 지금까지의 모습. 경기 상세도 이것
+   * 'split'  세로 중심선으로 두 쪽: 왼쪽 위 `aside`(클랜 TOP3) · 왼쪽 아래 축 목록 · 오른쪽 절반을
+   *          그래프가 꽉 채운다. 폰(390)은 세로로 TOP3 → 그래프 → 목록
+   * ```
+   * 옛 배치를 지우지 않았다 (`CLAUDE.md` 10-4) — 클랜 기록실이 `'split'` 을 고른다.
+   */
+  layout?: 'stack' | 'split'
+  /** `'split'` 의 왼쪽 윗공간에 들어갈 것 (클랜 TOP3). 없으면 자리를 비운다 — 지어내지 않는다 */
+  aside?: ReactNode
+  /** 카드 제목. 클랜 기록실은 기본 「클랜 육각형」, 경기 상세는 「경기 분석」 (지시 #31) */
+  title?: string
+  /**
+   * 못 잰 축을 **어떻게 부르나** (2026-09-02 사장님 지시 #31 — "경기가 끝났는데 뭔 측정중이냐").
+   *
+   * ```
+   * 'measuring'  (기본) 「측정중」 + 「배틀로그 필요」 — 통산(클랜 기록실). 배틀로그가 더 오면 채워진다
+   * 'final'      경기 상세. 끝난 경기라 더 올 것이 없다 — 「기록 없음」 + 사실 그대로
+   *              (배틀로그 없음 · 진영 미판정 · 상대 스나 미확인 · 표본 없음 · 구역 좌표 없음 · 비교 대상 없음)
+   *              표본 줄도 사람 말로 적는다 (숫자는 그대로)
+   * ```
+   */
+  pendingWording?: 'measuring' | 'final'
 }
 
-export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
+/** 경기 상세(끝난 경기)에서 쓰는 이유 문구 — 계약의 「~ 필요」 를 「~ 없음」 으로 (지시 #31) */
+const FINAL_REASON_TEXT: Record<ClanHexV2PendingReason, string> = {
+  battlelog: '배틀로그 없음',
+  side: '진영 미판정',
+  foeSniper: '상대 스나 미확인',
+  sample: '표본 없음',
+  zone: '구역 좌표 없음',
+  compare: '비교 대상 없음',
+}
+
+/** 경기 상세에서 값 자리에 적는 말 */
+const FINAL_PENDING_LABEL = '기록 없음'
+
+export function ClanHexagonV2({
+  hexagon,
+  foe,
+  name,
+  layout = 'stack',
+  aside,
+  title = '클랜 육각형',
+  pendingWording = 'measuring',
+}: ClanHexagonV2Props) {
+  const isFinal = pendingWording === 'final'
+  const reasonText = (reason: ClanHexV2PendingReason) =>
+    isFinal ? FINAL_REASON_TEXT[reason] : PENDING_TEXT[reason]
+  /* 값 자리 글자 — 못 잰 축은 통산이면 계약의 「측정중」, 끝난 경기면 「기록 없음」 */
+  const valueText = (axis: ClanHexV2Axis | undefined) =>
+    axis === undefined
+      ? isFinal
+        ? FINAL_PENDING_LABEL
+        : '측정중'
+      : axis.value === null && isFinal
+        ? FINAL_PENDING_LABEL
+        : axis.text
   const foeHex = foe?.hexagon
   const compare = foeHex !== undefined
   const filled = isFilled(hexagon)
@@ -133,28 +193,62 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
   const reasons: string[] = []
   for (const axis of [...hexagon.axes, ...(foeHex?.axes ?? [])]) {
     if (axis.pending === null) continue
-    const text = PENDING_TEXT[axis.pending]
+    const text = reasonText(axis.pending)
     if (!reasons.includes(text)) reasons.push(text)
   }
 
-  return (
-    <div className="mt-3">
+  /* 끝난 경기(지시 #31)에서는 **이유별로 축 이름을 묶어** 사람 말로 적는다 —
+     「스나싸움·선짤·교환: 배틀로그 없음 · 게임템포: 진영 미판정」. 우리 축 기준이고 상대만 못 잰
+     이유는 뒤에 「상대: …」 로 붙인다. 숫자(경기 · 라운드 · 레드 라운드)는 그대로 둔다 */
+  const groupedReasons = (axes: readonly ClanHexV2Axis[]): string[] => {
+    const byReason = new Map<ClanHexV2PendingReason, string[]>()
+    for (const axis of axes) {
+      if (axis.pending === null) continue
+      const list = byReason.get(axis.pending) ?? []
+      list.push(axis.label)
+      byReason.set(axis.pending, list)
+    }
+    return [...byReason.entries()].map(([reason, labels]) => `${labels.join('·')}: ${reasonText(reason)}`)
+  }
+  const ourMissing = hexagon.axes.filter((axis) => axis.value === null).length
+  const finalSentence = isFinal
+    ? [
+        `${formatCount(hexagon.rounds)}라운드 중 진영을 아는 레드 라운드 ${formatCount(hexagon.redRounds)}`,
+        ourMissing === 0 ? null : `못 그린 축 ${ourMissing} — ${groupedReasons(hexagon.axes).join(' · ')}`,
+        foeHex && groupedReasons(foeHex.axes).length > 0
+          ? `상대 — ${groupedReasons(foeHex.axes).join(' · ')}`
+          : null,
+      ]
+        .filter((part): part is string => part !== null)
+        .join(' · ')
+    : null
+
+  const header = (
       <div className="flex items-baseline justify-between gap-2">
-        <div className="text-sm text-text-strong">클랜 육각형</div>
+        <div className="text-sm text-text-strong">{title}</div>
         <div className="flex items-baseline gap-2 text-xs text-meta">
           {/* 다 쟀으면 `측정중` 이라고 적지 않는다. 예전 미리보기에서 `측정중 6/6` 이
-              찍힌 적이 있다 (`apps/web/scripts/hexagonPreview.mts` 머리말) */}
-          {hexagon.measured < 6 ? (
+              찍힌 적이 있다 (`apps/web/scripts/hexagonPreview.mts` 머리말).
+              끝난 경기(지시 #31)에는 「측정중」 을 안 쓴다 — 아래 문장이 무엇이 없는지 말한다 */}
+          {hexagon.measured < 6 && !isFinal ? (
             <span className="num">
               측정중 {hexagon.measured}/{hexagon.axes.length}
             </span>
           ) : null}
         </div>
       </div>
+  )
 
+  /* 그래프 — `split` 이면 오른쪽 절반을 꽉 채운다(최대 폭 해제), `stack` 이면 옛 224px 그대로 */
+  const chart = (
+    <>
       <svg
         viewBox="0 0 260 208"
-        className="mx-auto mt-0.5 h-auto w-full max-w-[224px]"
+        className={
+          layout === 'split'
+            ? 'mx-auto mt-0.5 h-auto w-full max-w-none'
+            : 'mx-auto mt-0.5 h-auto w-full max-w-[224px]'
+        }
         role="img"
         aria-label={compare ? '클랜 육각형 비교' : '클랜 육각형'}
       >
@@ -278,7 +372,9 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
       </svg>
 
       {empty ? (
-        <div className="mt-1 text-center text-xs text-meta">배틀로그가 아직 없습니다</div>
+        <div className="mt-1 text-center text-xs text-meta">
+          {isFinal ? '이 경기의 배틀로그가 없습니다' : '배틀로그가 아직 없습니다'}
+        </div>
       ) : null}
 
       {/* 범례 — 도형 아래 한 줄. 이름 옆에 채운 네모 / 빈 네모 */}
@@ -295,7 +391,12 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
           </span>
         </div>
       ) : null}
+    </>
+  )
 
+  /* 축 목록 + 표본 줄 + 못 잰 이유 — `split` 이면 왼쪽 아래로 간다 */
+  const list = (
+    <>
       {/* 값 목록 — 여섯 줄. 겹쳐 그릴 때는 양쪽 값을 나란히 놓는다.
           얼룩무늬 없이 `--color-line-soft` 1px 로만 행을 나눈다 (D-204) */}
       <div className="mt-2">
@@ -312,7 +413,7 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
                   className={`num ${axis.value === null ? 'text-meta' : 'text-accent'}`}
                   title={compare ? (name ?? '우리') : undefined}
                 >
-                  {axis.text}
+                  {valueText(axis)}
                   <Fraction axis={axis} />
                 </span>
                 {compare ? (
@@ -320,7 +421,7 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
                     className={`num ${(foeAxis?.value ?? null) === null ? 'text-meta' : 'text-text'}`}
                     title={foe?.name}
                   >
-                    {foeAxis?.text ?? '측정중'}
+                    {valueText(foeAxis)}
                     {foeAxis ? <Fraction axis={foeAxis} /> : null}
                   </span>
                 ) : null}
@@ -331,18 +432,50 @@ export function ClanHexagonV2({ hexagon, foe, name }: ClanHexagonV2Props) {
       </div>
 
       {/* 표본을 밝힌다. 비율은 분모를 모르면 읽을 수 없는 값이다.
-          넷(①④⑤⑥)이 레드 라운드 한정이라 레드 라운드 수를 따로 적는다 */}
-      <div className="mt-1 text-xs text-meta">
-        <span className="num">경기 {formatCount(hexagon.matches)}</span>
-        {' · '}
-        <span className="num">
-          레드 라운드 {formatCount(hexagon.redRounds)}/{formatCount(hexagon.rounds)}
-        </span>
-      </div>
+          넷(①④⑤⑥)이 레드 라운드 한정이라 레드 라운드 수를 따로 적는다.
+          끝난 경기(지시 #31)는 같은 숫자를 **사람 말**로 — 「9라운드 중 진영을 아는 레드 라운드 0 ·
+          못 그린 축 4 — 스나싸움·선짤·교환: 배틀로그 없음 · 게임템포: 진영 미판정」 */}
+      {finalSentence !== null ? (
+        <div className="num mt-1 text-xs text-meta">{finalSentence}</div>
+      ) : (
+        <>
+          <div className="mt-1 text-xs text-meta">
+            <span className="num">경기 {formatCount(hexagon.matches)}</span>
+            {' · '}
+            <span className="num">
+              레드 라운드 {formatCount(hexagon.redRounds)}/{formatCount(hexagon.rounds)}
+            </span>
+          </div>
 
-      {reasons.length === 0 ? null : (
-        <div className="mt-0.5 text-xs text-meta">{reasons.join(' · ')}</div>
+          {reasons.length === 0 ? null : (
+            <div className="mt-0.5 text-xs text-meta">{reasons.join(' · ')}</div>
+          )}
+        </>
       )}
+    </>
+  )
+
+  if (layout === 'split') {
+    return (
+      <div className="mt-3">
+        {header}
+        {/* 두 쪽. PC: 왼쪽 열 = [aside 위 · 목록 아래], 오른쪽 열 = 그래프(두 줄을 다 차지).
+            폰: 한 열로 TOP3 → 그래프 → 목록 (DOM 순서가 곧 폰 순서다) */}
+        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3 max-md:grid-cols-1">
+          <div className="min-w-0 md:col-start-1 md:row-start-1">{aside ?? null}</div>
+          <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-1">{chart}</div>
+          <div className="min-w-0 md:col-start-1 md:row-start-2">{list}</div>
+        </div>
+      </div>
+    )
+  }
+
+  /* 옛 배치 (`stack`) — 그래프 가운데 위, 그 아래 목록. 지우지 않았다 (`CLAUDE.md` 10-4) */
+  return (
+    <div className="mt-3">
+      {header}
+      {chart}
+      {list}
     </div>
   )
 }

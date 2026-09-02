@@ -3,6 +3,7 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 /* 티어 구분선 라벨 — 공식리그면 `1부리그`, 무소속리그면 `1티어` (D-165) */
 import { divisionLabel } from './divisionLabel'
@@ -252,6 +253,14 @@ export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'e
   /** `official` | `independent` — 구분선 라벨 표기만 바꾼다 (D-165) */
   leagueCategory?: string
   /**
+   * 행마다 클랜 이름 옆에 **티어 라벨**(`3티어`)을 붙인다 (2026-09-02 지시 #23).
+   *
+   * IPL 클랜랭킹은 래더 순으로 세우되(총괄 판단 — 티어 우선 정렬은 점수가 섞여 보였다)
+   * 티어는 보여야 한다. 순서가 티어별이 아니면 경계선(`groupByDivision`)은 뜻이 없으므로
+   * 라벨로 보인다. **기본값 `false` — 넘기지 않으면 예전 표 그대로다.**
+   */
+  showTierLabel?: boolean
+  /**
    * 보여 줄 칸 (2026-09-01). 넘기지 않으면 **지금까지의 표 그대로**다.
    *
    * 리그마다 다른 칸을 화면에서 `if (slug === …)` 로 가르지 않는다 —
@@ -269,8 +278,12 @@ export function ClanRankTable({
   groupByDivision = false,
   leagueCategory,
   columns = ALL_COLUMNS,
+  showTierLabel = false,
 }: ClanRankTableProps) {
   const { brokenClanSlugs } = useEggKnowledge()
+  /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 호출부가 뭐라 하든 선을 긋지 않는다.
+     규칙은 `@sacloud/contract` 의 `leagueScreen` 한 곳이다. 행의 `division` 값 자체는 그대로 온다 */
+  const divideByDivision = groupByDivision && showsTier(leagueSlug)
   /* 바로 앞 행과 부리그가 다르면 그 위에 선을 긋는다. 첫 행에도 긋는다 —
      맨 위 묶음이 어느 티어인지 이름이 없으면 아래 묶음들만 이름이 붙어 이상해진다 */
   let lastDivision: number | null = null
@@ -292,7 +305,7 @@ export function ClanRankTable({
       >
         {rows?.map((row) => {
           const egg: EggState = brokenClanSlugs.includes(row.clan.slug) ? 'broken' : 'sealed'
-          const divider = groupByDivision && row.division !== lastDivision
+          const divider = divideByDivision && row.division !== lastDivision
           lastDivision = row.division
           return (
           <Fragment key={row.clan.id}>
@@ -311,6 +324,12 @@ export function ClanRankTable({
                   <ClanMark mark={row.clan.mark} alt={row.clan.name} />
                 </Egg>
                 <span className="truncate">{row.clan.name}</span>
+                {/* 티어 라벨 — IPL 만 (지시 #23). 순서는 래더 순이라 경계선 대신 행마다 적는다 */}
+                {showTierLabel ? (
+                  <span className="ml-2 shrink-0 text-xs text-faint">
+                    {divisionLabel(row.division, leagueCategory)}
+                  </span>
+                ) : null}
               </Link>
             </div>
             {/* 승/패는 없앤 것이 아니라 승률 아래로 접었다. 알이 있으면 둘 다 가린다 */}
@@ -367,16 +386,28 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
    */
   columns?: RankColumns
   /**
-   * 닉네임 옆에 **소속 클랜명 칸**을 넣는다 (2026-09-02 사장님 지시 #10).
+   * **소속 클랜명**을 어떻게 적을 것인가 (2026-09-02 사장님 지시 #10 · #10-2).
    *
-   * > "순위닉네임, 래더 사이에 소속클랜명을 적어라"
+   * > "순위닉네임, 래더 사이에 소속클랜명을 적어라" · "전체랭킹에도 넣어라 깔끔하게 넣어라"
    *
-   * **기본값은 `false` 다 — 넘기지 않으면 지금까지의 표 그대로다.** 홈 미리보기가 켠다.
+   * ```
+   * 'none'    안 적는다 — **기본값. 넘기지 않으면 지금까지의 표 그대로다**
+   * 'line'    닉네임 **아래 작은 줄**로 적는다 — 전체 랭킹 · 홈이 쓴다 (#10-2)
+   * 'column'  닉네임 옆 **별도 칸**으로 적는다 — #10 때 홈에 먼저 넣었던 방식. 지우지 않았다
+   * ```
+   *
+   * ── 왜 칸이 아니라 줄인가 (#10-2)
+   *   전체 랭킹의 SPL | IPL 반폭 칸은 고정폭(순위·승률·킬뎃·래더·여백)만 392px 이라
+   *   닉네임 글자에 남는 폭이 이미 ~106px 이다. 여기에 칸을 하나 더 세우면 PC 에서도
+   *   승률이나 킬뎃을 접어야 한다. 닉네임 아래 줄로 두면 **어느 폭에서도 값을 접지 않고**
+   *   닉네임·클랜명이 둘 다 읽힌다 — 폰(390px)도 같다.
+   *   옛 칸 방식(`'column'`)은 그대로 살아 있다 (`CLAUDE.md` 10-4).
+   *
    * 클랜명은 그 리그의 클랜 기록실로 가는 링크다. 소속이 없으면(`clan === null`) `무소속`
    * 이라고 적는다 — 계약이 `null` 을 그 뜻으로 정해 두었다 (`PlayerRankRow.clan` 주석).
    * 값이 없는 것을 `-` 로 감추지 않는다.
    */
-  clanColumn?: boolean
+  clanName?: 'none' | 'line' | 'column'
 }
 
 export function PlayerRankTable({
@@ -387,8 +418,10 @@ export function PlayerRankTable({
   onRetry,
   weapon = 'all',
   columns = ALL_COLUMNS,
-  clanColumn = false,
+  clanName = 'none',
 }: PlayerRankTableProps) {
+  const clanColumn = clanName === 'column'
+  const clanLine = clanName === 'line'
   const byWeapon = weapon !== 'all'
   const { brokenPlayerIds } = useEggKnowledge()
 
@@ -436,6 +469,43 @@ export function PlayerRankTable({
           return (
           <div key={row.player.id} className={ROW}>
             {columns.rank ? <div className={rankClass(row.rank)}>{row.rank}</div> : null}
+            {clanLine ? (
+              /* 닉네임 + 그 아래 클랜명 줄 (#10-2). 링크가 둘이라 한 `<Link>` 로 감싸지 못한다 —
+                 마크·닉네임은 선수 기록실로, 클랜명 줄은 클랜 기록실로 간다 */
+              <div className={COL_NAME}>
+                <Link
+                  className="flex shrink-0 items-center"
+                  href={leaguePlayerPath(leagueSlug, row.player.id)}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                >
+                  <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
+                    <ClanMark clan={row.clan} alt={row.clan?.name ?? ''} />
+                  </Egg>
+                </Link>
+                <div className="min-w-0">
+                  <Link
+                    className="block truncate hover:text-text-strong"
+                    href={leaguePlayerPath(leagueSlug, row.player.id)}
+                  >
+                    {row.player.name}
+                  </Link>
+                  {row.clan ? (
+                    <Link
+                      className="mt-0.5 block truncate text-[0.72rem] leading-none text-meta hover:text-text-strong"
+                      href={leagueClanPath(leagueSlug, row.clan.slug)}
+                      title={row.clan.name}
+                    >
+                      {row.clan.name}
+                    </Link>
+                  ) : (
+                    <span className="mt-0.5 block truncate text-[0.72rem] leading-none text-faint">
+                      무소속
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
             <div className={COL_NAME}>
               <Link
                 className="flex min-w-0 items-center hover:text-text-strong"
@@ -450,6 +520,7 @@ export function PlayerRankTable({
                 <span className="truncate">{row.player.name}</span>
               </Link>
             </div>
+            )}
             {/* 소속 클랜명 — 사장님 지시 #10. 색은 안쪽 `span` 에 준다 (`a { color: inherit }`) */}
             {clanColumn ? (
               <div className={COL_CLAN}>

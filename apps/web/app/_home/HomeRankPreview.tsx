@@ -47,16 +47,27 @@ import type { HomeRankPreviewLeague } from './homeTypes'
  *   `.mobile-bleed` 로 화면 끝까지 찬다 — 홈 컨테이너의 좌우 여백(0.75rem)과 값이 같다.
  */
 
-/** 홈 미리보기에서 보여 줄 칸 — 위 주석의 규칙 */
+/**
+ * 홈 미리보기에서 보여 줄 칸 — **전체 랭킹과 같다** (2026-09-02 사장님 지시 #13-e).
+ *
+ * > "래더만 적지 말고 승률 · 킬데스 열도"
+ *
+ * `leagueScreen(slug).playerColumns` 그대로다. 폰에서 무엇을 접는지는 표 자신의 규칙이다
+ * (래더 있는 표는 승률·킬뎃 접힘 · 래더 없는 표는 승률 유지 — #3-1).
+ *
+ * ⚠ 옛 규칙 (지시 #3 · 같은 날 오전): 래더가 있으면 승률·킬뎃을 접어 «순위·닉네임·래더» 만 —
+ *   세 칸 나란히 배치에 맞추려던 것이다. 되돌리려면 아래 한 줄을
+ *   `columns.rating ? { ...columns, winRate: false, kd: false } : columns` 로 (`CLAUDE.md` 10-4).
+ */
 function previewColumns(slug: string): RankColumns {
-  const columns = leagueScreen(slug).playerColumns
-  return columns.rating ? { ...columns, winRate: false, kd: false } : columns
+  return leagueScreen(slug).playerColumns
 }
 
 export function HomeRankPreview({ leagues }: { leagues: HomeRankPreviewLeague[] | null }) {
   return (
     <section aria-labelledby="home-rank-title">
-      <HomeSectionHead id="home-rank-title" title="리그별 개인랭킹" note="리그마다 상위 5명" />
+      {/* 부제(«리그마다 상위 5명»)는 지시 #13-f 로 뺐다 — 리그마다 수가 달라져 한 줄로 맞지도 않는다 */}
+      <HomeSectionHead id="home-rank-title" title="리그별 개인랭킹" />
       {leagues === null ? (
         <HomeLoadFailed />
       ) : (
@@ -74,7 +85,8 @@ export function HomeRankPreview({ leagues }: { leagues: HomeRankPreviewLeague[] 
                     leagueSlug={league.slug}
                     rows={league.rows}
                     columns={previewColumns(league.slug)}
-                    clanColumn
+                    /* 전체 랭킹과 같은 방식 — 닉네임 아래 줄 (#10-2). 칸 방식은 `'column'` 으로 남아 있다 */
+                    clanName="line"
                   />
                 </RankBox>
               </div>

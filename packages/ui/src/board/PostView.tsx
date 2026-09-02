@@ -69,11 +69,15 @@ function VoteButton({
 export function PostView({
   post,
   onVote,
+  basePath,
 }: {
   post: Board
   /** 1 = 추천, -1 = 비추천 (계약의 `VoteType`) */
   onVote: (type: number) => void
+  /** 수정·삭제 링크의 뿌리 (지시 #14-2 — 리그 안 게시판). 없으면 예전 그대로 `/board/{category}` */
+  basePath?: string
 }) {
+  const base = basePath ?? `/board/${post.category}`
   return (
     <article className="rounded-[var(--radius)] border border-line bg-card px-6 py-6 text-text max-md:px-4">
       <header className="flex flex-col gap-3">
@@ -120,16 +124,10 @@ export function PostView({
       {/* 본인 글일 때만 수정/삭제가 보인다. 비로그인 글은 비밀번호로 삭제한다. */}
       {post.me || !post.login ? (
         <div className="mt-6 flex select-none flex-row-reverse gap-2">
-          <Link
-            href={`/board/${post.category}/${post.id}/delete`}
-            className="btn-line px-3 py-1.5 text-sm"
-          >
+          <Link href={`${base}/${post.id}/delete`} className="btn-line px-3 py-1.5 text-sm">
             삭제
           </Link>
-          <Link
-            href={`/board/${post.category}/${post.id}/update`}
-            className="btn-line px-3 py-1.5 text-sm"
-          >
+          <Link href={`${base}/${post.id}/update`} className="btn-line px-3 py-1.5 text-sm">
             수정
           </Link>
         </div>

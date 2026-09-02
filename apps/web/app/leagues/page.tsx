@@ -1,9 +1,23 @@
 'use client'
 
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import type { LeagueListItem } from '@sacloud/contract'
+import { leagueLandingPath } from '@sacloud/contract'
 import { LeagueListTable, LoadMoreButton } from '@sacloud/ui'
 import { useCursorQuery } from '@/lib/useCursorQuery'
+
+/**
+ * 리그 목록 화면을 **여는가** (2026-09-02 사장님 지시 #14 ①).
+ *
+ * > "이 페이지(리그 소개/리그만들기/대표리그 표) 필요없다 버려라. 첫번째로 IPL …"
+ *
+ * `false` 면 이 주소로 들어온 사람을 **IPL 의 첫 화면**으로 보낸다. 화면 코드는 그대로 남아 있고
+ * (`CLAUDE.md` 10-4), `/leagues/create` 는 주소로는 여전히 열린다 — GNB 링크만 사라졌다.
+ * 되돌리려면 이 값을 `true` 로. 타입을 `boolean` 으로 넓혀 둔 이유는 리터럴로 좁히면
+ * 아래 화면 코드가 «닿을 수 없는 코드» 가 되어 tsc/lint 가 물기 때문이다 (즐겨찾기 스위치와 같다).
+ */
+const LEAGUES_INDEX_ENABLED: boolean = false
 
 /**
  * 리그 목록 `/leagues`.
@@ -22,7 +36,7 @@ const GUIDE = [
   },
   {
     title: '어떻게 만드나요?',
-    body: '서든어택 계정 연동을 마친 회원이면 누구나 리그를 만들 수 있습니다. 리그 이름과 주소, 부리그 수, 사용할 맵과 대전인원을 정하면 바로 개설됩니다.',
+    body: '서든어택 계정 연동을 마친 회원이면 누구나 리그를 만들 수 있습니다. 리그 이름과 주소, 티어 수, 사용할 맵과 대전인원을 정하면 바로 개설됩니다.',
   },
   {
     title: '어떻게 참여하나요?',
@@ -31,6 +45,9 @@ const GUIDE = [
 ]
 
 export default function LeaguesPage() {
+  /* 감춘 상태면 IPL 첫 화면으로 — 죽지 않고 안내한다 (지시 #14 ①). 사장님이 «첫번째로 IPL» 이라 했다 */
+  if (!LEAGUES_INDEX_ENABLED) redirect(leagueLandingPath('nolink'))
+
   const leagues = useCursorQuery<LeagueListItem>('leagueList', ['leagues'])
 
   return (

@@ -120,15 +120,27 @@ function WinRateDonut({ rate }: { rate: number }) {
  * 8/16    6전 4승 2패 · 승률 67% · 킬뎃 54% · 판킬 9.2
  * ```
  *
- * 첫 줄은 언제나 오늘이다 — 경기가 없으면 `미접속` 이다. **`0전 0승 0패` 로 적지 않는다**
+ * 오늘 줄은 언제나 있다 — 경기가 없으면 `미접속` 이다. **`0전 0승 0패` 로 적지 않는다**
  * (D-186 과 같은 이유: 0승 0패는 결과처럼 읽힌다).
- * 아래 두 줄은 **실제로 뛴 날**이라 날짜가 건너뛴다.
+ * 나머지 두 줄은 **실제로 뛴 날**이라 날짜가 건너뛴다.
+ * 순서는 `RECENT_DAYS_NEWEST_LAST` — 지금은 **오늘이 맨 아래** (지시 #28 ①). 옛 순서는 오늘이 첫 줄이었다.
  */
+/**
+ * 일별 기록의 순서 — **맨 아래가 가장 최근(오늘)** (2026-09-02 사장님 지시 #28 ①).
+ *
+ * > "날짜 순을 바꿔라 맨 아래가 가장 최근 경기가 오도록 바꿔라"
+ *
+ * 서버는 최신이 먼저(오늘 → 어제 → …)로 준다. 화면에서만 뒤집는다 — 값은 그대로다.
+ * `false` 로 하면 옛 순서(오늘이 첫 줄)로 돌아온다 (`CLAUDE.md` 10-4).
+ */
+const RECENT_DAYS_NEWEST_LAST: boolean = true
+
 function RecentDays({ days }: { days: PlayerDayRecord[] }) {
   if (days.length === 0) return null
+  const ordered = RECENT_DAYS_NEWEST_LAST ? [...days].reverse() : days
   return (
     <div className="w-full">
-      {days.map((day) => (
+      {ordered.map((day) => (
         <div key={day.date} className="flex items-baseline py-1">
           <div className="w-12 shrink-0 text-meta">{day.label}</div>
           {day.played ? (
@@ -181,6 +193,18 @@ function streakClass(streak: MatchSummary['streak']): string {
   if (streak.type === 'lose') return 'text-num-lose'
   return ''
 }
+
+/**
+ * 「최근매치」 카드 오른쪽의 **상대 클랜별 전적 요약**(`vs 야부리 4전 2승 2패 (50%) - 킬뎃: 47.7%` …)을
+ * 그리는가 (2026-09-02 사장님 그림 지시 #28 ①).
+ *
+ * > "이걸 지우라는거다 왼쪽은 지우지마라"
+ *
+ * **끈다.** 세로 구분선도 같이 빠진다. 왼쪽(도넛 · 전적 · 일별 기록)은 그대로다.
+ * 값(`summary.opponents`)은 응답에 그대로 있고 아래 코드도 그대로다 — `true` 면 돌아온다 (`CLAUDE.md` 10-4).
+ * 타입을 `boolean` 으로 넓혀 둔 이유는 리터럴로 좁히면 아래 가지가 «닿을 수 없는 코드» 가 되기 때문이다.
+ */
+const RECENT_OPPONENT_SUMMARY: boolean = false
 
 export function RecentMatchSummary({
   summary,
@@ -277,6 +301,8 @@ export function RecentMatchSummary({
             모바일에서는 그 15rem(≈240px)이 화면을 통째로 밀어내므로 여백을 없애고,
             세로 구분선(`border-l-2`)을 위쪽 구분선으로 바꾼다 — 쌓인 배치에서 왼쪽 선은 뜻이 없다.
             상대가 많거나 클랜명이 길면 줄 하나가 여전히 넘칠 수 있어 **이 블록 안에서만** 스크롤한다. */}
+        {/* 상대별 요약 — 지시 #28 ① 로 껐다 (`RECENT_OPPONENT_SUMMARY`). 아래는 그대로 남긴 옛 블록이다 */}
+        {RECENT_OPPONENT_SUMMARY ? (
         <div className="mobile-scroll-x ml-20 flex min-h-40 items-center border-l-2 border-l-divider px-20 max-md:ml-0 max-md:min-h-0 max-md:border-l-0 max-md:border-t-2 max-md:border-t-line-soft max-md:px-0 max-md:pt-2">
           <div className="max-md:w-full">
             {summary.opponents.length === 0 ? (
@@ -323,6 +349,7 @@ export function RecentMatchSummary({
             )}
           </div>
         </div>
+        ) : null}
       </div>
       {/*
         **오늘 기록** (D-186) — 예전 승률 도넛(원본) → `최근 폼`(D-167) → 이 자리였다.
@@ -625,6 +652,7 @@ export function ClanStatSidebar({
   lose,
   winRate,
   division,
+  showDivision = true,
   rank,
   egg,
 }: {
@@ -634,6 +662,11 @@ export function ClanStatSidebar({
   lose: number
   winRate: number
   division: number
+  /**
+   * 부리그(티어)를 적는가 (지시 #9 · D-265 ③). **기본 `true` — 넘기지 않으면 예전 그대로다.**
+   * 호출부가 `showsDivision(leagueSlug)`(`@sacloud/contract`)를 넘긴다.
+   */
+  showDivision?: boolean
   /** 클랜랭킹 순위. 배치고사 중이면 `null` — 순위 자리에 `배치고사` 를 쓴다 (원본 규칙) */
   rank: number | null
   /**
@@ -670,7 +703,8 @@ export function ClanStatSidebar({
           '순위 없음'
         ) : (
           <>
-            <StatSub>{division}부리그</StatSub>
+            {/* 「부리그」 는 안 쓴다 — 티어 (지시 #23). IPL 에서만 보인다 */}
+            {showDivision ? <StatSub>{division}티어</StatSub> : null}
             {formatCount(rank)}위
           </>
         )}

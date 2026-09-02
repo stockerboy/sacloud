@@ -45,7 +45,7 @@ function VoteIcon({ up }: { up: boolean }) {
   )
 }
 
-function Row({ item }: { item: BoardListItem }) {
+function Row({ item, basePath }: { item: BoardListItem; basePath?: string }) {
   return (
     <div className={ROW}>
       <div className={`flex items-center ${COL_VOTE}`}>
@@ -69,7 +69,11 @@ function Row({ item }: { item: BoardListItem }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <Link href={`/board/${item.category}/${item.id}`} className="group flex items-center gap-1">
+        {/* 리그 안 게시판(지시 #14-2)은 `basePath` 아래로 간다. 없으면 예전 주소 그대로 */}
+        <Link
+          href={basePath ? `${basePath}/${item.id}` : `/board/${item.category}/${item.id}`}
+          className="group flex items-center gap-1"
+        >
           {/* 색은 안쪽 `span` 이 가진다 — `a { color: inherit }` 가 유틸리티를 누른다 */}
           <span
             className={`truncate transition-colors duration-100 group-hover:text-text-strong ${
@@ -120,6 +124,7 @@ export function BoardTable({
   loading,
   error,
   onRetry,
+  basePath,
 }: {
   /** 공지는 `category=notice` 로 따로 받아 목록 위에 고정한다 */
   notices?: readonly BoardListItem[]
@@ -127,6 +132,12 @@ export function BoardTable({
   loading?: boolean
   error?: boolean
   onRetry?: () => void
+  /**
+   * 글 링크의 뿌리 (2026-09-02 지시 #14-2 — 리그 안 게시판).
+   * `/league/{slug}/board` 처럼 넘기면 행이 `{basePath}/{id}` 로 간다.
+   * **넘기지 않으면 예전 그대로** `/board/{category}/{id}` 다.
+   */
+  basePath?: string
 }) {
   return (
     /*
@@ -158,12 +169,12 @@ export function BoardTable({
         ) : (
           <>
             {notices?.map((item) => (
-              <Row key={`notice-${item.id}`} item={{ ...item, notice: true }} />
+              <Row key={`notice-${item.id}`} item={{ ...item, notice: true }} basePath={basePath} />
             ))}
             {!items || items.length === 0 ? (
               <EmptyState message="글이 없습니다." />
             ) : (
-              items.map((item) => <Row key={item.id} item={item} />)
+              items.map((item) => <Row key={item.id} item={item} basePath={basePath} />)
             )}
           </>
         )}
@@ -181,23 +192,27 @@ export function BoardPager({
   category,
   prev,
   next,
+  basePath,
 }: {
   category: string
   prev: string | null
   next: string | null
+  /** 목록 주소의 뿌리 (지시 #14-2). 없으면 예전 그대로 `/board/{category}` */
+  basePath?: string
 }) {
   /* 공용 헬퍼 `.btn-line` — 테두리만 있는 버튼. hover 에서만 진홍이 켜진다 */
   const button = 'btn-line px-4 py-2 text-sm'
+  const list = basePath ?? `/board/${category}`
 
   return (
     <div className="flex items-center justify-center gap-2 py-10">
       {prev ? (
-        <Link href={`/board/${category}?cursor=${encodeURIComponent(prev)}`} className={button}>
+        <Link href={`${list}?cursor=${encodeURIComponent(prev)}`} className={button}>
           <span aria-hidden>‹</span> 이전
         </Link>
       ) : null}
       {next ? (
-        <Link href={`/board/${category}?cursor=${encodeURIComponent(next)}`} className={button}>
+        <Link href={`${list}?cursor=${encodeURIComponent(next)}`} className={button}>
           다음 <span aria-hidden>›</span>
         </Link>
       ) : null}

@@ -1,4 +1,4 @@
-import type { MatchListItem, PlayerRankRow } from '@sacloud/contract'
+import type { ClanSummary, MatchListItem, MatchTimeClan, PlayerRankRow } from '@sacloud/contract'
 
 /**
  * 홈 조각들이 서버에서 받는 값의 모양.
@@ -20,10 +20,49 @@ export interface HomeRankPreviewLeague {
   rows: PlayerRankRow[]
 }
 
+/**
+ * 최근 경기 **한 줄** (2026-09-02 사장님 지시 #11).
+ *
+ * 카드(`MatchListItem`)가 아니라 «이긴 팀 vs 진 팀 · 언제» 만 담는다.
+ * `winner` 가 왼쪽이다. 승자를 모르는 경기는 `decided === false` 이고 그때 `winner` 는
+ * **레드 슬롯일 뿐 승자가 아니다** — 화면이 `결과 알수없음` 을 적는다.
+ */
+export interface HomeRecentRow {
+  /** 원본 경기 번호 (`MatchListItem.id` 와 같다) */
+  id: string
+  /** 경기 시작 (KST ISO). 화면은 상대시간으로 바꿔 적는다 */
+  start_at: string
+  winner: ClanSummary
+  loser: ClanSummary
+  /** 승자를 아는가 — `Match.winnerSide` 가 red/blue 중 하나였는가 */
+  decided: boolean
+  /**
+   * 그 경기의 MVP (2026-09-02 사장님 지시 #13-g).
+   *
+   * `Match.mvpPlayerId`(D-159 ★)와 참가자의 **경기 당시 소속** 스냅샷(D-131)에서만 뽑는다 —
+   * 계산해 만들지 않는다. 값이 없으면 `null` 이고 화면은 `알수없음` 을 적는다
+   * (IPL 병영수첩 출처는 대부분 없다 · D-034). `clan` 은 경기 당시 소속이고 모르면 `null`.
+   */
+  mvp: { player_id: string; name: string; clan: MatchTimeClan | null } | null
+}
+
+/**
+ * 최근 경기를 어떻게 그리는가.
+ *
+ * ```
+ * 'list'   한 경기 한 줄 — 이긴 팀 vs 진 팀 · 상대시간 (사장님 지시 #11 · **지금**)
+ * 'card'   기록실 경기 카드(`MatchCard`) — #3 때의 모습. 지우지 않았다 (`CLAUDE.md` 10-4)
+ * ```
+ * 서버(`homeData.ts`)는 이 값을 보고 **필요한 쪽만** 읽는다. 화면(`HomeRecentMatches`)도 같은 값을 본다.
+ */
+export const HOME_RECENT_LOOK: 'list' | 'card' = 'list'
+
 /** 리그 하나의 최근 경기 묶음 */
 export interface HomeRecentLeague {
   slug: string
   name: string
-  /** 최근 N경기. 리그가 없거나 경기가 없으면 빈 배열이다 */
+  /** `'list'` 일 때 채워진다. 리그가 없거나 경기가 없으면 빈 배열 */
+  rows: HomeRecentRow[]
+  /** `'card'` 일 때 채워진다 (옛 방식). `'list'` 에서는 언제나 빈 배열 */
   matches: MatchListItem[]
 }

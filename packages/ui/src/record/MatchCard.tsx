@@ -8,6 +8,7 @@ import type {
   MatchListItem,
   MatchPlayerStat,
 } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { ClanHexagonV2 } from './ClanHexagonV2'
 
@@ -289,7 +290,12 @@ function ClanSide({
           PC 는 예전 관측(`- 2부리그 1,149점`)이 있어 그대로 두고 모바일에서만 감춘다.
         */}
         <div className="text-sm text-faint max-md:hidden">
-          <span className="num">{snapshot.division}</span>부리그{' '}
+          {/* 부리그를 화면에 내지 않는 리그(지시 #9)는 점수만 남긴다. 값은 응답에 그대로 있다 */}
+          {showsTier(leagueSlug) ? (
+            <>
+              <span className="num">{snapshot.division}</span>티어{' '}
+            </>
+          ) : null}
           {snapshot.placement ? (
             '배치고사'
           ) : snapshot.rating === null ? (
@@ -621,7 +627,11 @@ function TeamCompare({
             <div className="w-40 shrink-0 text-right text-faint max-md:hidden">
               {row.snapshot ? (
                 <>
-                  <span className="num">{row.snapshot.division}</span>부리그{' '}
+                  {showsTier(leagueSlug) ? (
+                    <>
+                      <span className="num">{row.snapshot.division}</span>티어{' '}
+                    </>
+                  ) : null}
                   <SnapshotRating snapshot={row.snapshot} />
                 </>
               ) : null}
@@ -1128,6 +1138,11 @@ function MatchDetailPanel({
             <div className="mt-4 border-t border-line-soft pt-3">
               <ClanHexagonV2
                 hexagon={ourHexagon.hexagon}
+                /* 지시 #31 — 이름 「경기 분석」, #27 과 같은 두 쪽 배치(TOP3 없음), 끝난 경기라
+                   「측정중」 대신 「기록 없음」 + 무엇이 없는지 사실 그대로 */
+                title="경기 분석"
+                layout="split"
+                pendingWording="final"
                 name={match.league_clan?.clan?.name ?? '우리'}
                 foe={
                   foeHexagon

@@ -47,11 +47,36 @@ export interface NavLink {
  *   주소를 직접 치면 여전히 「준비중」 안내가 나온다. 없앤 것은 **GNB 링크 한 줄**이다.
  *   되살리려면 위 한 줄을 배열 끝에 다시 넣으면 된다.
  */
+/*
+ * ── 2026-09-02 — **자리마다 순서가 다르다.** 목록은 하나, 순서는 둘 (총괄 정정)
+ *
+ *   ```
+ *   홈(리그 버튼 · 랭킹 미리보기 · 최근 경기)   SPL · IPL · 10mountain   ← 지시 #18 "spl,ipl,열산 순서로"
+ *   상단바(GNB) · 모바일 서랍                  IPL · SPL · 10mountain   ← 지시 #14 "첫번째로 IPL 두번째로 SPL"
+ *   ```
+ *   한 배열을 둘이 같이 쓰면 한쪽이 뒤집힌다 (f3d06c2 에서 실제로 홈이 IPL 먼저가 됐다).
+ *   그래서 `FEATURED_LEAGUES` 는 **리그 목록이자 홈 순서**(D-246 그대로)로 두고,
+ *   상단바는 아래 `GNB_LEAGUES` 를 쓴다. 리그를 더하거나 빼는 것은 여기 한 곳에서만 한다.
+ */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
   { label: 'SPL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
   { label: '10mountain', href: '/league/sanply' },
 ]
+
+/** 상단바의 순서 — href 로 적는다. 목록(`FEATURED_LEAGUES`)에 없는 것은 그려지지 않는다 */
+export const GNB_LEAGUE_ORDER: readonly string[] = ['/league/nolink', '/league/supply', '/league/sanply']
+
+/** 목록에서 주어진 순서대로 골라낸다. 순서표에 없는 리그는 빠진다 — 지어내지 않는다 */
+export function orderLeagues(order: readonly string[]): readonly NavLink[] {
+  return order.flatMap((href) => {
+    const found = FEATURED_LEAGUES.find((league) => league.href === href)
+    return found ? [found] : []
+  })
+}
+
+/** 상단바 · 모바일 서랍이 쓰는 대표 리그 — **IPL · SPL · 10mountain** (지시 #14 ①) */
+export const GNB_LEAGUES: readonly NavLink[] = orderLeagues(GNB_LEAGUE_ORDER)
 
 /**
  * **서비스 준비중**인 리그 (D-178 · 2026-08-29 사용자 지시).
@@ -72,6 +97,22 @@ export function isLeaguePreparing(leagueSlug: string): boolean {
 }
 
 /**
+ * **부리그(티어)를 화면에 표시하지 않는 리그** (2026-09-02 사장님 결정 · D-265 ③ — 지시 #9)
+ *
+ * ⚠ 스위치는 여기가 아니라 **`@sacloud/contract` 의 `leagueScreen.ts`** 에 있다
+ *   (`LeagueScreenSpec.showsTier` · `showsTier(slug)`).
+ *
+ *   잠깐(ee21a88) 여기 `DIVISION_HIDDEN_LEAGUE_SLUGS` 배열로 뒀었는데 옮겼다. 이유 둘 —
+ *   ① `leagueScreen()` 이 이미 「리그가 무엇을 보여 주는가」를 모아 둔 **한 자리**다
+ *      (클랜랭킹 유무 · 표의 칸). 부리그 표시 여부도 같은 성격이라 거기 붙는 게 맞다.
+ *   ② 이 파일은 ui 배럴(`index.ts`)이 이름을 골라 내보내서 `apps/web` 이 새 이름을 보려면
+ *      길목 파일을 건드려야 한다. contract 배럴은 `export *` 라 그럴 필요가 없다.
+ *
+ *   어디가 그 스위치를 보는지는 `leagueScreen.ts` 주석과 `docs/` 에 있다. 이 파일에는 아무 값도 없다 —
+ *   두 곳에 같은 목록을 두면 조용히 갈라진다.
+ */
+
+/**
  * 모바일 서랍의 묶음 구성.
  *
  * 원본 모바일 서랍은 **제목이 붙은 묶음**으로 나뉜다 (2026-08-28 원본 관측) —
@@ -86,14 +127,36 @@ export interface NavGroup {
   items: readonly NavLink[]
 }
 
+/*
+ * ── 2026-09-02 (지시 #14 ①) — 서랍도 **리그 셋뿐**이다
+ *   `리그`(/leagues) 항목과 `게시판` 묶음을 뺐다. 그때의 모습은 아래 `MOBILE_NAV_GROUPS_LEGACY` 다.
+ */
 export const MOBILE_NAV_GROUPS: readonly NavGroup[] = [
+  { label: '홈', items: [{ label: 'Home', href: '/' }] },
+  /* 서랍은 상단바와 같은 순서(IPL 먼저) */
+  { label: '리그', items: [...GNB_LEAGUES] },
+]
+
+/** 지시 #14 ① 이전의 서랍 — 지우지 않았다 (`CLAUDE.md` 10-4). 되돌리려면 위 이름을 이것으로 */
+export const MOBILE_NAV_GROUPS_LEGACY: readonly NavGroup[] = [
   { label: '홈', items: [{ label: 'Home', href: '/' }] },
   { label: '리그', items: [...FEATURED_LEAGUES, { label: '리그', href: '/leagues' }] },
   { label: '게시판', items: [{ label: '게시판', href: '/board' }] },
 ]
 
-/** 대표 리그 뒤에 오는 고정 메뉴 — 원본 `nav-active`(굵게 + 흰 밑줄) */
-export const PRIMARY_NAV: readonly NavLink[] = [
+/**
+ * 대표 리그 뒤에 오는 고정 메뉴.
+ *
+ * ── 2026-09-02 (지시 #14 ①) — **비었다.** 사장님이 리그 소개/리그 만들기 페이지와
+ *   전역 게시판 메뉴를 버렸다 (*"이 페이지 필요없다 버려라"* · *"게시판을 SPL 과 IPL 카테고리에 넣어버린다"*).
+ *   `SiteHeader` 는 머리 항목이 없으면 대표 리그를 1차 메뉴로 바로 그린다.
+ *   옛 값은 `PRIMARY_NAV_LEGACY` — 되돌리려면 그것을 여기 넣으면 드롭다운 모습 그대로 돌아온다.
+ *   `/leagues` · `/board` 라우트는 살아 있다 (주소로는 열린다).
+ */
+export const PRIMARY_NAV: readonly NavLink[] = []
+
+/** 지시 #14 ① 이전 — 원본 `nav-active`(굵게 + 흰 밑줄) 시절부터의 두 항목 */
+export const PRIMARY_NAV_LEGACY: readonly NavLink[] = [
   { label: '리그', href: '/leagues' },
   { label: '게시판', href: '/board' },
 ]

@@ -129,3 +129,5 @@ packages/db/.tmp_count*.ts
 packages/db/_backup/
 apps/worker/_bulkimport.ts
 apps/web/scripts/_eggGateProbe.mts
+# 수집 감시 상태 (지시 #18) — 러너 캐시로만 넘긴다. 저장소에 넣지 않는다
+.watchdog/

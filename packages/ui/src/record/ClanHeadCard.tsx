@@ -36,6 +36,11 @@ export interface ClanHeadCardProps {
   /** `independent` 면 부리그를 `티어` 라고 쓴다 (D-165) */
   leagueCategory?: string
   division: number
+  /**
+   * 부리그(티어)를 적는가 (지시 #9 · D-265 ③). **기본 `true` — 넘기지 않으면 예전 그대로다.**
+   * 호출부가 `showsDivision(leagueSlug)`(`@sacloud/contract`)를 넘긴다. `division` 값은 그대로 받는다.
+   */
+  showDivision?: boolean
   rating: number
   /** 이 시즌 창에 0판이면 참 — 래더 자리에 `기록 없음` */
   placement: boolean
@@ -70,8 +75,12 @@ export function ClanHeadCard(props: ClanHeadCardProps) {
           <div className="truncate text-[17px] text-text-strong">{props.clan.name}</div>
           <div className="text-[12px] text-meta">
             {props.leagueName}
-            <span className="mx-1.5 text-faint">·</span>
-            {divisionLabel(props.division, props.leagueCategory)}
+            {props.showDivision === false ? null : (
+              <>
+                <span className="mx-1.5 text-faint">·</span>
+                {divisionLabel(props.division, props.leagueCategory)}
+              </>
+            )}
           </div>
         </div>
       </div>
