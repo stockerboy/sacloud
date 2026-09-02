@@ -6,12 +6,29 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AuthCard, AuthError, AuthField, AuthInput, AuthSubmit, AuthTitle } from '@sacloud/ui'
 import { apiSend } from '@/lib/apiSend'
+import { ApiError } from '@/lib/api'
 
 /**
  * 로그인 `/auth/login?returnUrl=...`
  *
  * 원본 구성: 이메일 / 비밀번호 / (비밀번호를 잊으셨나요?) / 로그인 / 회원가입 안내.
  * 로그인 후에는 `returnUrl` 로 돌아간다 (원본 관측 — GNB 로그인 링크가 이 값을 붙인다).
+ *
+ * ══ ★2026-09-03 (O-029) — 로그인이 막혀 있었다★ ══
+ *
+ * 2026-09-01(D-252)에 로그인 키를 **이메일 → 아이디**로 바꿨다. 서버와 계약은 바뀌었는데
+ * **이 화면이 안 따라왔다.** 가입 화면과 **똑같은 사고**다 (O-027).
+ * ```
+ * 계약이 받음   username 또는 email 중 하나 + password
+ * 화면이 보냄   email 하나                       ← 아이디로 가입한 사람은 못 들어온다
+ * 화면이 그림   「로그인하지 못했습니다」          ← ★서버가 준 이유를 덮어썼다★
+ * ```
+ * 서버는 이유를 정확히 주고 있었다 — 401 「아이디 또는 비밀번호가 올바르지 않습니다」,
+ * 429 「로그인 시도가 너무 많습니다…」. 그게 여기서 한 문장으로 뭉개져서
+ * **막힌 사람도 우리도 원인을 볼 수 없었다.** 특히 429 는 두드릴수록 길어지는데
+ * 화면이 「못했습니다」만 보여 주니 사람은 계속 두드린다.
+ *
+ * ⚠ **계약을 화면에 맞추지 않는다. 화면을 계약에 맞춘다.**
  */
 function LoginForm() {
   const router = useRouter()
@@ -19,11 +36,16 @@ function LoginForm() {
   const queryClient = useQueryClient()
   const returnUrl = searchParams.get('returnUrl') || '/'
 
-  const [email, setEmail] = useState('')
+  /* 아이디 칸 하나로 받는다. 서버(`findUserForLogin`)가 아이디로 먼저 찾고,
+     `@` 가 들어 있으면 이메일로도 찾는다 — 옛 계정이 그대로 들어온다 */
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
 
   const login = useMutation({
-    mutationFn: () => apiSend('authLogin', { body: { email, password } }),
+    mutationFn: () =>
+      /* `email` 이 아니라 `username` 으로 보낸다. 이메일을 적어도 서버가 알아서 찾는다 —
+         화면이 `@` 를 보고 갈래를 나누면 규칙이 두 군데로 갈라진다 */
+      apiSend('authLogin', { body: { username: identifier.trim(), password } }),
     /**
      * **갱신을 기다린 뒤에 이동한다.**
      *
@@ -51,12 +73,13 @@ function LoginForm() {
     >
       <AuthTitle>로그인</AuthTitle>
 
-      <AuthField label="이메일">
+      {/* 라벨이 「이메일」이면 아이디로 가입한 사람이 **여기서 되돌아간다.** 둘 다 된다고 쓴다 */}
+      <AuthField label="아이디 또는 이메일">
         <AuthInput
           type="text"
-          value={email}
-          placeholder="you@example.com"
-          onChange={(event) => setEmail(event.target.value)}
+          value={identifier}
+          placeholder="아이디 또는 이메일"
+          onChange={(event) => setIdentifier(event.target.value)}
         />
       </AuthField>
 
@@ -69,7 +92,7 @@ function LoginForm() {
             placeholder="비밀번호"
             onChange={(event) => setPassword(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && email && password) login.mutate()
+              if (event.key === 'Enter' && identifier && password) login.mutate()
             }}
           />
         </div>
@@ -84,9 +107,20 @@ function LoginForm() {
         </Link>
       </div>
 
-      {login.isError ? <AuthError>로그인하지 못했습니다.</AuthError> : null}
+      {/* ★서버가 준 이유를 그대로 그린다★ — 「로그인하지 못했습니다」는 **이유를 못 받았을 때만** 쓴다.
+          401 · 429 · 400 이 각각 다른 문장으로 나온다 (429 는 남은 시간까지) */}
+      {login.isError ? (
+        <AuthError>
+          {login.error instanceof ApiError
+            ? login.error.humanMessage('로그인하지 못했습니다.')
+            : '로그인하지 못했습니다.'}
+        </AuthError>
+      ) : null}
 
-      <AuthSubmit disabled={!email || !password || login.isPending} onClick={() => login.mutate()}>
+      <AuthSubmit
+        disabled={!identifier || !password || login.isPending}
+        onClick={() => login.mutate()}
+      >
         로그인
       </AuthSubmit>
     </AuthCard>

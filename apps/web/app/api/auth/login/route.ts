@@ -54,10 +54,10 @@ export async function POST(request: Request) {
         retryAfterSeconds: accountState.retryAfterSeconds,
         trust: identity.trust,
       })
-      return tooManyRequests(
-        '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요',
-        accountState.retryAfterSeconds,
-      )
+      /* 「잠시 후」라고 쓰지 않는다 — **얼마나 잠시인지는 `Retry-After` 가 정확히 안다.**
+         화면이 그 값을 읽어 「약 15분 뒤에 다시 시도할 수 있습니다」로 붙인다 (O-029).
+         여기서 「잠시 후」까지 쓰면 두 문장이 같은 말을 두 번 하게 된다 */
+      return tooManyRequests('로그인 시도가 너무 많습니다.', accountState.retryAfterSeconds)
     }
 
     const ipState = await peekQuota(ipKey, ipQuota)
@@ -69,10 +69,7 @@ export async function POST(request: Request) {
         retryAfterSeconds: ipState.retryAfterSeconds,
         trust: identity.trust,
       })
-      return tooManyRequests(
-        '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요',
-        ipState.retryAfterSeconds,
-      )
+      return tooManyRequests('로그인 시도가 너무 많습니다.', ipState.retryAfterSeconds)
     }
 
     const user = await findUserForLogin({

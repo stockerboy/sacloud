@@ -56,11 +56,17 @@ export async function apiSend<K extends EndpointKey>(
     } catch {
       /* 본문이 JSON 이 아니거나 비었다. 아래에서 기계어만 남는다 */
     }
+    /* 429 는 「언제 다시 되나」가 헤더에 있다. 이것도 버리면 화면이 「잠시 후」밖에 못 쓴다 */
+    const retryAfterRaw = response.headers.get('retry-after')
+    const retryAfterSeconds =
+      retryAfterRaw && Number.isFinite(Number(retryAfterRaw)) ? Number(retryAfterRaw) : undefined
+
     throw new ApiError(
       response.status,
       `${endpoint.method} ${path} → ${response.status}`,
       serverMessage,
       fieldErrors,
+      retryAfterSeconds,
     )
   }
 

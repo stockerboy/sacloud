@@ -14,6 +14,12 @@ const BASE_URL = resolveApiBaseUrl({
 
 export type ResponseOf<K extends EndpointKey> = z.infer<(typeof endpoints)[K]['response']>
 
+/** 남은 시간을 사람 말로 — 60초가 넘으면 분으로 (올림: 「곧 된다」고 오해시키지 않는다) */
+function formatRetryAfter(seconds: number): string {
+  if (seconds < 60) return `${Math.ceil(seconds)}초`
+  return `${Math.ceil(seconds / 60)}분`
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -31,6 +37,14 @@ export class ApiError extends Error {
     readonly serverMessage?: string,
     /** 칸별 오류 — `{ username: ['이미 사용 중인 아이디입니다'] }` */
     readonly fieldErrors?: Record<string, string[]>,
+    /**
+     * `Retry-After` 초 (2026-09-03 · O-029).
+     *
+     * 429 는 **언제 다시 되는지**를 같이 말해 주지 않으면 사용자가 계속 두드린다.
+     * 두드릴수록 한도가 길어지니 정확히 반대로 행동하게 만든다. 서버는 이미
+     * 헤더로 주고 있었는데(`respond.tooManyRequests`) 여기서 버렸다.
+     */
+    readonly retryAfterSeconds?: number,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -43,7 +57,12 @@ export class ApiError extends Error {
    * **기계어(`POST /… → 400`)는 절대 화면에 내보내지 않는다.**
    */
   humanMessage(fallback: string): string {
-    return this.serverMessage?.trim() || fallback
+    const base = this.serverMessage?.trim() || fallback
+    /* 남은 시간을 아는 429 면 뒤에 붙인다 — 「잠시」보다 「40초」가 사람을 기다리게 한다 */
+    if (this.status === 429 && this.retryAfterSeconds && this.retryAfterSeconds > 0) {
+      return `${base} 약 ${formatRetryAfter(this.retryAfterSeconds)} 뒤에 다시 시도할 수 있습니다.`
+    }
+    return base
   }
 }
 
