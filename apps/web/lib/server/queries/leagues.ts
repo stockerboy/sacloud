@@ -2,6 +2,7 @@ import { prisma } from '@sacloud/db'
 import {
   killPerMatch,
   kdRate,
+  showsDivision,
   winRate,
   type ClanSummary,
   type PlayerSummary,
@@ -354,12 +355,20 @@ export async function getClanRanks(
 ): Promise<CursorPage<ClanRankRow> | null> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
-    select: { id: true, category: true },
+    select: { id: true, slug: true, category: true },
   })
   if (!league) return null
 
-  /* 전체 보기에서만 티어 축을 쓴다. 부리그 탭(division >= 1)은 예전 정렬 그대로다 */
-  const byTier = division <= 0 && league.category === 'independent'
+  /* 전체 보기에서만 티어 축을 쓴다. 부리그 탭(division >= 1)은 예전 정렬 그대로다.
+
+     ⚠ 2026-09-02 (지시 #9 후속 · D-265 ③) — **부리그를 화면에 내지 않는 리그는 티어 축도 쓰지 않는다.**
+       사장님 뜻이 «1·2부 구분을 없앤다» 라서, 경계선만 지우고 티어 우선 정렬을 남기면
+       순위는 그대로인데 래더 숫자가 위아래로 섞여 보인다(2티어 1,100점 위에 1티어 900점).
+       스위치는 계약(`leagueScreen`)의 것과 같다 — 화면과 서버가 한 표를 본다.
+       스위치를 끄면(`nolink: WITH_LADDER`) 아래가 예전처럼 티어 우선으로 돌아온다.
+       `division` 값·API 모양·`rankOfFirstClan` 은 그대로다 — 후자는 같은 `byTier` 를 받는다. */
+  const byTier =
+    division <= 0 && league.category === 'independent' && showsDivision(league.slug)
   const order = byTier ? TIER_ORDER : RANK_ORDER
   const orderReversed = byTier ? TIER_ORDER_REVERSED : RANK_ORDER_REVERSED
 
