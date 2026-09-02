@@ -22,6 +22,7 @@ import {
 import { publicOriginWhere } from './publicScope'
 import { resolvePositionsOf } from './playerPositionQuery'
 import { matchClanHexV2 } from './clanHexV2'
+import { withSeasonWindow } from './season0Scope'
 
 /**
  * 매치 조회 (기록실 목록 · 매치 상세).
@@ -491,7 +492,22 @@ export function toMatchListItem(
 /* 기록실 매치 목록                                                              */
 /* -------------------------------------------------------------------------- */
 
-/** 커서 한 페이지를 매치 카드로 만든다. 페이지 전체를 **한 번의 쿼리**로 읽는다. */
+/**
+ * 커서 한 페이지를 매치 카드로 만든다. 페이지 전체를 **한 번의 쿼리**로 읽는다.
+ *
+ * ── ★ 2026-09-02 결함 #32 — **기록실 경기 목록에도 시즌 창을 건다**
+ *   사장님: *"시즌이 7/1부터인데 기록이 … 내가 짜르라고 했잖아"*. 선수 기록실에 6월 3일 경기가
+ *   「3달 전」 카드로 그대로 나왔다.
+ *
+ *   ⚠ 옛 규칙 (D-175 정한 것 ② · `season0Scope.ts` 머리말) — «기록실(경기 목록)·매치 상세에는 창을
+ *     **안 건다**. 옛 기록은 거기서 계속 보인다». 그 판단을 사장님 지시로 뒤집는다.
+ *     성적 수치(요약 · 일별 · 오늘 · 티어별 · 클랜 지표 · 명단)는 이미 다 걸려 있었고
+ *     **목록만** 전 기간이라 숫자와 카드가 어긋나 보였다.
+ *
+ *   데이터는 지우지 않는다 — 화면이 거를 뿐이다. 과거 시즌 조회는 별도 기능이다 (`CLAUDE.md` 3-A 7).
+ *   매치 상세(`getMatch` · 주소로 직접 여는 것)는 그대로 둔다. 같은 함수(`withSeasonWindow`)라
+ *   창이 바뀌면 여기도 같이 바뀐다 — 새 기준을 만들지 않았다.
+ */
 async function matchPage(
   where: Prisma.MatchWhereInput,
   cursor: string | null,
@@ -507,7 +523,7 @@ async function matchPage(
     idOf: (row) => row.id,
     fetch: (args) =>
       prisma.match.findMany({
-        where,
+        where: withSeasonWindow(where),
         take: args.take,
         orderBy: args.orderBy as never,
         ...(args.cursor ? { cursor: args.cursor, skip: args.skip } : {}),
