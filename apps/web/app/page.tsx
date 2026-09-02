@@ -13,8 +13,9 @@ import { getHomeRankPreview, getHomeRecentMatches } from './_home/homeData'
  *   2 리그 바로가기 ← 누르면 **바로 랭킹**                ┘ (클라이언트 · 동작 그대로)
  *   ─────────────
  *   3 리그별 개인랭킹   SPL · IPL · 10mountain 각 상위 5명 · 누르면 그 리그 랭킹
- *   4 최근 경기        IPL 왼쪽 / SPL 오른쪽 · 각 5경기 · 꺾쇠를 누르면 펼쳐진다
+ *   4 최근 경기        SPL 왼쪽 / IPL 오른쪽 · 각 6경기 · 한 경기 한 줄 (이긴 팀 vs 진 팀 · n분 전)
  *   ```
+ *   (지시 #10 · #11 로 4 의 좌우·개수·모양이 바뀌었다. 옛 카드 모양은 `HOME_RECENT_LOOK` 로 남아 있다.)
  *
  *   **`SiteIntro` 는 지우지 않았다.** `packages/ui/src/home/SiteIntro.tsx` 에 그대로 있고
  *   export 도 남아 있다. **이 화면이 안 부를 뿐이다** (`CLAUDE.md` 10-4).
@@ -34,7 +35,7 @@ import { getHomeRankPreview, getHomeRecentMatches } from './_home/homeData'
  *   ── 메인에서 나가는 요청 (2026-09-02 기준)
  *     ```
  *     없음   홈이 열릴 때 클라이언트가 보내는 요청은 없다 (검색은 누를 때만)
- *     펼침   경기 카드 꺾쇠를 누를 때만 GET /leagues/{slug}/matches/{id} 하나
+ *     (옛 카드 모양에서만) 꺾쇠를 누를 때 GET /leagues/{slug}/matches/{id} 하나
  *     ```
  *
  * ── 옛 서술 (2026-09-01 밤 · 지금은 위 구성이 대신한다)
