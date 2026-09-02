@@ -1,5 +1,7 @@
 'use client'
 
+import { showsDivision } from '@sacloud/contract'
+
 import { use } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -53,7 +55,9 @@ export default function LeagueClanLayout({
           infoHref={`/clan/${clanSlug}`}
           clan={data.clan}
           division={data.division}
-          divisionCount={data.league.division_count}
+          /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 단일리그처럼 넘긴다 —
+             헤더의 «divisionCount 가 1 이면 N부리그를 안 붙인다» 규칙을 그대로 탄다 */
+          divisionCount={showsDivision(leagueSlug) ? data.league.division_count : 1}
           rank={data.rank}
           renewedAt={refresh.renewedAt ?? clan.data?.data.renewed_at ?? null}
           refreshState={refresh.state}

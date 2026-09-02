@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import type { ClanLeagueEntry, ClanPlayer } from '@sacloud/contract'
+import { showsDivision } from '@sacloud/contract'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 클랜마크를 알이 덮고, 승률·승패를 가린다 */
 import { Egg } from '../egg/Egg'
@@ -140,8 +141,11 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
             {entry.league.official ? <OfficialTag /> : null}
           </div>
           <div className="mt-1.5 text-[12px] text-meta">
-            {/* 무소속리그는 `1부리그` 가 아니라 `1티어` 로 적는다 (D-165) */}
-            {divisionLabel(entry.division, entry.league.category)}로 참여중
+            {/* 무소속리그는 `1부리그` 가 아니라 `1티어` 로 적는다 (D-165).
+                부리그를 화면에 내지 않는 리그(지시 #9)는 «참여중» 만 적는다 */}
+            {showsDivision(entry.league.slug)
+              ? `${divisionLabel(entry.division, entry.league.category)}로 참여중`
+              : '참여중'}
           </div>
         </div>
         <div className="shrink-0 text-right">

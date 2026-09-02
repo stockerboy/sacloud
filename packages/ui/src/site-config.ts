@@ -72,35 +72,20 @@ export function isLeaguePreparing(leagueSlug: string): boolean {
 }
 
 /**
- * **부리그(티어)를 화면에 표시하지 않는 리그** (2026-09-02 사장님 결정 · D-265 ③ — 지시 #9).
+ * **부리그(티어)를 화면에 표시하지 않는 리그** (2026-09-02 사장님 결정 · D-265 ③ — 지시 #9)
  *
- * IPL 의 「1부·2부」(티어) 구분을 **화면에서만** 없앤다.
+ * ⚠ 스위치는 여기가 아니라 **`@sacloud/contract` 의 `leagueScreen.ts`** 에 있다
+ *   (`LeagueScreenSpec.showsDivision` · `showsDivision(slug)`).
  *
- * - **데이터는 그대로다.** `LeagueClan.division` · API 응답의 `division` ·
- *   `/rank/clan/{division}` 라우트는 하나도 건드리지 않는다. 여기서 정하는 것은
- *   "화면에 그리는가" 하나다 (`PREPARING_LEAGUE_SLUGS` 와 같은 성격).
- * - **리그별 분기를 화면에 흩뿌리지 않는다** (`CLAUDE.md` 9장). 화면은 `showsDivision(slug)`
- *   하나만 본다 — `if (slug === 'nolink')` 를 어디에도 적지 않는다.
- * - 되돌리려면 이 배열에서 slug 를 빼면 된다. 탭 · 티어 경계선 · `N티어` 표기 ·
- *   티어별 승률/전적 · 브레드크럼이 전부 옛 모습으로 돌아온다 (`CLAUDE.md` 10-4).
+ *   잠깐(ee21a88) 여기 `DIVISION_HIDDEN_LEAGUE_SLUGS` 배열로 뒀었는데 옮겼다. 이유 둘 —
+ *   ① `leagueScreen()` 이 이미 「리그가 무엇을 보여 주는가」를 모아 둔 **한 자리**다
+ *      (클랜랭킹 유무 · 표의 칸). 부리그 표시 여부도 같은 성격이라 거기 붙는 게 맞다.
+ *   ② 이 파일은 ui 배럴(`index.ts`)이 이름을 골라 내보내서 `apps/web` 이 새 이름을 보려면
+ *      길목 파일을 건드려야 한다. contract 배럴은 `export *` 라 그럴 필요가 없다.
  *
- * ── 어디가 이 스위치를 보는가
- *   `DivisionTabs`(탭) · `ClanRankSplit`(티어 경계선 · 「티어별」 메모) ·
- *   `/rank/clan/[division]`(직접 진입 → `/rank/clan` 으로 보낸다) · `MatchCard`(`N부리그` 두 곳) ·
- *   `ClanHeadCard` · `ClanStatSidebar` · `LeagueClanRecordHeader`(브레드크럼) ·
- *   `ClanMetrics`(티어별 승률) · `TierBreakdown`(티어별 전적) · `LeagueEntryCards` ·
- *   `ClanProfile` · `LeagueHome`.
- *
- * ⚠ **정렬은 바꾸지 않는다.** IPL 클랜랭킹은 API(`division=0`)가 **티어 우선**으로 정렬한다
- *   (`apps/web/lib/server/queries/leagues.ts` 의 `getClanRanks`). 경계선이 사라져도 순서는
- *   그대로라 래더 숫자가 위아래로 섞여 보일 수 있다. 정렬은 API 의 판단이라 여기서 손대지 않는다.
+ *   어디가 그 스위치를 보는지는 `leagueScreen.ts` 주석과 `docs/` 에 있다. 이 파일에는 아무 값도 없다 —
+ *   두 곳에 같은 목록을 두면 조용히 갈라진다.
  */
-export const DIVISION_HIDDEN_LEAGUE_SLUGS: readonly string[] = ['nolink']
-
-/** 이 리그가 부리그(티어)를 화면에 표시하는가 */
-export function showsDivision(leagueSlug: string): boolean {
-  return !DIVISION_HIDDEN_LEAGUE_SLUGS.includes(leagueSlug)
-}
 
 /**
  * 모바일 서랍의 묶음 구성.

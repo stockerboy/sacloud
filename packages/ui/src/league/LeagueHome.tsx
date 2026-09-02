@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { League, LeagueClan } from '@sacloud/contract'
+import { showsDivision } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
@@ -144,9 +145,12 @@ export function LeagueInfoPanel({
               >
                 <ClanMark mark={entry.clan.mark} className="mr-2" alt={entry.clan.name} />
                 <span className="min-w-0 flex-1 truncate">{entry.clan.name}</span>
-                <span className="w-24 shrink-0 text-right text-sm text-meta max-md:hidden">
-                  {entry.division}부리그
-                </span>
+                {/* 부리그를 화면에 내지 않는 리그(지시 #9)는 이 칸이 없다 */}
+                {showsDivision(league.slug) ? (
+                  <span className="w-24 shrink-0 text-right text-sm text-meta max-md:hidden">
+                    {entry.division}부리그
+                  </span>
+                ) : null}
                 {/* 승/패는 승률 아래로 접었다 (랭킹 표와 같은 규칙) */}
                 <span className={COL_STAT}>
                   <span className={`${NUM} text-text-strong`}>{formatRate(entry.win_rate)}</span>

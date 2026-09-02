@@ -3,6 +3,7 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
+import { showsDivision } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 /* 티어 구분선 라벨 — 공식리그면 `1부리그`, 무소속리그면 `1티어` (D-165) */
 import { divisionLabel } from './divisionLabel'
@@ -271,6 +272,9 @@ export function ClanRankTable({
   columns = ALL_COLUMNS,
 }: ClanRankTableProps) {
   const { brokenClanSlugs } = useEggKnowledge()
+  /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 호출부가 뭐라 하든 선을 긋지 않는다.
+     규칙은 `@sacloud/contract` 의 `leagueScreen` 한 곳이다. 행의 `division` 값 자체는 그대로 온다 */
+  const divideByDivision = groupByDivision && showsDivision(leagueSlug)
   /* 바로 앞 행과 부리그가 다르면 그 위에 선을 긋는다. 첫 행에도 긋는다 —
      맨 위 묶음이 어느 티어인지 이름이 없으면 아래 묶음들만 이름이 붙어 이상해진다 */
   let lastDivision: number | null = null
@@ -292,7 +296,7 @@ export function ClanRankTable({
       >
         {rows?.map((row) => {
           const egg: EggState = brokenClanSlugs.includes(row.clan.slug) ? 'broken' : 'sealed'
-          const divider = groupByDivision && row.division !== lastDivision
+          const divider = divideByDivision && row.division !== lastDivision
           lastDivision = row.division
           return (
           <Fragment key={row.clan.id}>
