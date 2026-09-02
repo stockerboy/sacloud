@@ -40,9 +40,38 @@ name: 엣지 캐시 워밍
 
 on:
   schedule:
-    # 5분마다. 위 「왜 5분인가」 참조
+    # ── ⚠ **이제 예약은 후퇴값이다** (2026-09-03 · O-031)
+    #
+    #   `*/5` 로 적어 두면 하루 288회여야 한다. 실제로 온 것은 **9회**였다
+    #   (09-02 하루 · 간격 4~5시간 · 마지막 성공 15:08). 나머지는 GitHub 이 버렸다.
+    #   `supply-incremental.yml` 이 겪은 것과 같은 일이고(D-225 · 드롭 89%),
+    #   **저쪽은 자기호출 체인으로 이미 해결했는데 여기만 안 붙어 있었다.**
+    #   파일 머리말에 「예약은 정시성이 나쁘다」고 적어만 두고 장치를 안 달았다.
+    #
+    #   그래서 이제 신선도를 예약에 걸지 않는다. 잡이 끝나면서 자기를 다시 부른다.
+    #   이 예약은 **체인이 끊겼을 때 되살리는 용도로만** 남긴다.
+    #   `*/5` 는 그대로 둔다 — 어차피 대부분 버려지고, 체인이 살아 있으면
+    #   아래 「최근 1시간 상한」이 겹치는 회차를 걸러 낸다.
     - cron: '*/5 * * * *'
+
+  # 체인에 **시동**을 건다 (D-229 와 같은 이유).
+  # 자기호출은 첫 한 번을 누가 시작해야 하는데, 그 첫 한 번이 바로 버려지는 예약이다.
+  # 이 파일을 고쳐 밀면 한 번 돈다 — 그게 시동이고, 동시에 연기 시험이다.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cache-warm.yml'
+
   workflow_dispatch:
+    inputs:
+      cycles:
+        description: '이 실행에서 데울 횟수 (기본 6 · 5분 간격 = 약 30분)'
+        required: false
+        default: '6'
+      chain:
+        description: '자기호출 체인 깊이. **사람은 건드리지 않는다** (폭주 방지용)'
+        required: false
+        default: '0'
 
 # 앞 회차가 아직 돌고 있으면 이번 회차는 버린다.
 # 워밍이 겹쳐서 좋을 일이 없고, 겹치면 그게 곧 부하다.
@@ -52,18 +81,37 @@ concurrency:
 
 permissions:
   contents: read
+  # 잡이 끝나면서 자기 자신을 다시 부른다. dispatch 에 필요한 최소 권한이다.
+  # `actions: write` 는 읽기도 포함한다 — 폭주 방지 검사가 `actions/runs` 를 읽는다
+  actions: write
 
 jobs:
   warm:
     runs-on: ubuntu-latest
-    # 경로 15개 × (요청 + 1초 쉼) 이면 넉넉해도 1분이다. 그보다 오래 걸리면 뭔가 잘못된 것이니 끊는다
-    timeout-minutes: 5
+    # 5 → 40 (2026-09-03 · O-031). **한 run 이 6번 데우고 끝난다** (5분 간격 = 약 30분).
+    # 한 번 데우는 데는 1분이면 되지만, 예약이 안 오니 run 하나가 그 시간을 버텨야 한다.
+    # 사이클 6 × 5분 = 30분 + 자기호출 여유. 무한정 붙잡지는 않는다
+    timeout-minutes: 40
     steps:
-      - name: 공개 경로를 하나씩 부른다
+      - name: 잡 시작 시각을 기록한다
+        run: echo "JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: 공개 경로를 하나씩 부른다 (5분 간격 × N 사이클)
         continue-on-error: true
         env:
-          # 저장소 변수(Settings → Variables)로 덮을 수 있다. 없으면 현재 운영 주소를 쓴다
-          SITE_URL: ${{ vars.SITE_URL || 'https://sacloud-web-softgw01-8957s-projects.vercel.app' }}
+          # 저장소 변수(Settings → Variables)로 덮을 수 있다. 없으면 운영 주소를 쓴다.
+          #
+          # ── ★2026-09-03 (O-031) — 폴백이 vercel 주소였다★
+          #   `https://sacloud-web-….vercel.app` 이었다. 저장소 변수가 안 잡혀 있으면
+          #   **엉뚱한 호스트를 데우고 `3rdcloud.my` 는 계속 찬 채로 남는다.**
+          #   엣지 캐시의 칸은 호스트마다 다르다 — 저쪽을 아무리 데워도 이쪽은 안 데워진다.
+          #   사람이 실제로 오는 주소를 폴백으로 둔다.
+          SITE_URL: ${{ vars.SITE_URL || 'https://3rdcloud.my' }}
+          # ── 왜 한 run 안에서 반복하는가 (O-031)
+          #   예약이 하루 288회 중 9회만 왔다. 그러면 run 하나가 **시간을 버텨야** 한다.
+          #   `supply-incremental.yml` 의 「5분 사이클 × N」과 같은 모양이다.
+          #   6 × 5분 = 약 30분. 그 뒤 자기호출이 다음 30분을 잇는다
+          CYCLES: ${{ inputs.cycles || '6' }}
         run: |
           set -u
 
@@ -89,7 +137,11 @@ jobs:
           /api/leagues/sanply/ranks/players?weapon=all
           "
 
-          echo "대상: ${SITE_URL}"
+          echo "대상: ${SITE_URL} · 사이클 ${CYCLES}회"
+
+          cycle=1
+          while [ "$cycle" -le "$CYCLES" ]; do
+          echo "── 사이클 ${cycle}/${CYCLES}  $(date -u +%H:%M:%SZ)"
           for p in $PATHS; do
             # `-o /dev/null` 응답 본문은 버린다. 우리는 값을 보러 온 게 아니다
             # `--max-time 45` 캐시가 비어 있으면 실제로 20초씩 걸린다. 그걸 기다려 주는 게 이 잡의 일이다
@@ -109,5 +161,87 @@ jobs:
             sleep 1
           done
 
+          # 마지막 사이클 뒤에는 안 쉰다 — 쉬어 봐야 자기호출만 늦어진다
+          if [ "$cycle" -lt "$CYCLES" ]; then
+            # 캐시 기본 등급이 `s-maxage=300`(5분) 이다. 그보다 길면 반드시 비는 구간이 생긴다.
+            # 경로를 도는 데 이미 15초쯤 썼으니 그만큼 뺀다
+            sleep 285
+          fi
+          cycle=$(( cycle + 1 ))
+          done
+
           # 어떤 경로가 실패했든 이 스텝은 항상 성공으로 끝난다
+          exit 0
+
+      # ── ★자기호출 체인★ (2026-09-03 · O-031)
+      #
+      #   `supply-incremental.yml` 의 것을 그대로 가져왔다. 새로 발명하지 않았다 —
+      #   저쪽은 이미 실전에서 이 문제를 겪고 고쳤고, 우리는 같은 병을 앓고 있었다.
+      #
+      #   다른 점 둘
+      #     · 같은 그룹을 쓰는 워크플로에 자리를 내주는 검사가 없다.
+      #       이 잡은 **읽기만** 한다 — DB 에 쓰지 않으니 수집과 다툴 행이 없다
+      #     · `MIN_ALIVE_SECONDS` 가 훨씬 짧다. 이 잡은 30분이 정상이고,
+      #       수집처럼 한 시간을 도는 것이 아니다
+      #
+      #   ⚠ 실패해도 `exit 0` 이다. **이 잡은 감시가 아니라 데우는 일이다** —
+      #     여기서 빨간 X 를 쌓으면 진짜 경보(수집 실패)가 그 속에 묻힌다.
+      #     체인이 끊기면 `*/5` 예약 후퇴값이 되살린다.
+      - name: 다음 실행을 스스로 예약한다 (self-dispatch)
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHAIN: ${{ inputs.chain || '0' }}
+          # 30분짜리 run 이니 40회면 20시간이다. 하루에 한 번쯤 새 체인이 열린다
+          MAX_CHAIN: '40'
+          # 정상은 시간당 2회(30분짜리)다. 예약 후퇴값이 몇 개 겹쳐도 4회를 넘지 않는다.
+          # 5회부터는 폭주로 본다
+          MAX_RUNS_PER_HOUR: '5'
+          # 사이클 6회면 25분(1500초)은 산다. 그보다 훨씬 일찍 끝났으면
+          # 뭔가 잘못된 것이고, 그 상태로 체인을 이으면 1분마다 도는 폭주가 된다
+          MIN_ALIVE_SECONDS: '900'
+        run: |
+          set -uo pipefail
+          next=$(( CHAIN + 1 ))
+
+          alive=$(( $(date +%s) - JOB_STARTED ))
+          if [ "$alive" -lt "$MIN_ALIVE_SECONDS" ]; then
+            echo "::warning::이 run 이 ${alive}초만에 끝났다 — 체인을 잇지 않는다 (최소 ${MIN_ALIVE_SECONDS}초). 예약 후퇴값이 되살린다"
+            exit 0
+          fi
+
+          if [ "$next" -gt "$MAX_CHAIN" ]; then
+            echo "::warning::체인 깊이 ${CHAIN} 이 상한 ${MAX_CHAIN} 에 닿았다 — 여기서 끊는다. 예약이 새 체인을 연다"
+            exit 0
+          fi
+
+          since=$(date -u -d '60 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          recent=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/cache-warm.yml/runs?per_page=100&created=%3E${since}" \
+          | jq -r '.total_count // 0')
+          if [ -z "$recent" ] || [ "$recent" = 'null' ]; then
+            echo "::warning::최근 run 수를 못 읽었다 — 안전한 쪽으로 체인을 끊는다"
+            exit 0
+          fi
+          if [ "$recent" -ge "$MAX_RUNS_PER_HOUR" ]; then
+            echo "::warning::최근 1시간 run 이 ${recent}건이다 (상한 ${MAX_RUNS_PER_HOUR}) — 겹쳤거나 폭주다. 체인을 끊는다"
+            exit 0
+          fi
+
+          echo "체인 ${CHAIN} → ${next} · 최근 1시간 ${recent}건 · 생존 ${alive}초 — 다음 실행을 부른다"
+          code=$(curl -sS -o /tmp/dispatch.out -w '%{http_code}' -X POST \
+          -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H 'Accept: application/vnd.github+json' \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/cache-warm.yml/dispatches" \
+          -d "{\"ref\":\"${GITHUB_REF_NAME}\",\"inputs\":{\"chain\":\"${next}\"}}")
+          if [ "$code" = '204' ]; then
+            echo "다음 실행을 예약했다 (체인 ${next})"
+            exit 0
+          fi
+
+          # 여기서도 잡을 실패시키지 않는다 — 위 「왜 실패해도 초록인가」 그대로다.
+          # 다만 **조용히 넘기지는 않는다.** 403 이면 토큰 권한이 모자란 것이다
+          echo "::warning::self-dispatch 실패 HTTP ${code} — 체인이 끊겼다. 예약 후퇴값에 맡긴다. 403 이면 권한 문제다"
+          echo "본문: $(head -c 300 /tmp/dispatch.out)"
           exit 0
