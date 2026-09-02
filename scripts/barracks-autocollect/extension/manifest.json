@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "SACLOUD 병영수첩 자동수집",
+  "version": "0.1.0",
+  "description": "병영수첩 탭 하나를 고정해 두면 15분마다 IPL 클랜의 새 경기와 배틀로그를 받아 SACLOUD 창구로 보낸다. 요청은 전부 그 탭의 페이지가 보낸다.",
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": ["https://barracks.sa.nexon.com/*", "https://3rdcloud.my/*"],
+  "background": { "service_worker": "sw.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://barracks.sa.nexon.com/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://barracks.sa.nexon.com/*"],
+      "js": ["clans.js", "snippet.js", "autocollect.js"],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "action": { "default_title": "SACLOUD 병영수첩 자동수집 — 클릭하면 상태" }
+}
