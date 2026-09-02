@@ -47,6 +47,34 @@ const SEARCH_LIMIT = 10
 
 /** 대소문자를 구분하지 않는 부분일치 조건 */
 const ci = (value: string) => ({ contains: value, mode: 'insensitive' as const })
+/**
+ * 대소문자를 구분하지 않는 **접두어** 조건 (O-009 · 2026-09-02).
+ *
+ * `%q%` 는 두 글자에서 인덱스를 못 타는데(pg_trgm 은 세 글자로 조각을 만든다)
+ * `q%` 는 앞을 공백으로 메워 조각이 생기므로 **몇 글자든 인덱스를 탄다.**
+ */
+const ciStarts = (value: string) => ({ startsWith: value, mode: 'insensitive' as const })
+
+/**
+ * 자동완성 여덟 칸 중 **부분일치에게 떼어 두는 자리** (O-009 · 2026-09-02).
+ *
+ * 접두어를 그냥 앞세우면 여덟 칸을 접두어가 다 먹는다 (`ts` 접두어 10건 · `xe` 11건).
+ * 그러면 이름 뒤쪽으로 찾는 사람(23,562명 중 981명)이 한 줄도 안 나온다.
+ * 화면 상한(`SUGGEST_MAX_ITEMS` = 8)과 짝이지만 **여기 값은 서버 몫**이라 따로 둔다.
+ */
+const RESERVED_FOR_CONTAINS = 3
+
+/**
+ * **화면이 실제로 그리는 줄 수** (`@sacloud/ui` 의 `SUGGEST_MAX_ITEMS` 와 같은 값).
+ *
+ * 서버는 10건을 주고 화면은 앞 8줄만 그린다. 이걸 모르고 10건 기준으로 자리를 떼면
+ * **뗀 자리가 9·10번째에 놓여 아무에게도 안 보인다.** 실제로 그렇게 만들었다가
+ * 로컬에서 재고 알았다 — `ts` 의 부분일치 전용이 3칸이 아니라 1칸이었다.
+ *
+ * ⚠ 두 곳에 같은 숫자가 있다. 화면 값을 바꾸면 여기도 바꾼다.
+ *   서버가 `@sacloud/ui` 를 가져오지 않는 것이 이 저장소의 규칙이라 상수를 나눠 뒀다.
+ */
+const SUGGEST_VISIBLE = 8
 /** 대소문자를 구분하지 않는 정확일치 조건 */
 const ciEquals = (value: string) => ({ equals: value, mode: 'insensitive' as const })
 
@@ -261,17 +289,101 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
     return found ? [found] : []
   }
 
-  const players = await prisma.player.findMany({
-    where: { name: ci(keyword), ...publicOriginWhere() },
-    orderBy: [{ id: 'asc' }],
-    take: SEARCH_LIMIT,
-    select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
-  })
+  /*
+   * ══ 2026-09-02 (O-009) — **접두어 먼저 보고, 자리를 남겨 부분일치로 채운다** ══
+   *
+   * ── 왜 둘로 나눴나 (로컬 실측 · 선수 23,562명 · `Player_name_trgm_idx` 있음)
+   *   ```
+   *   부분일치 `%q%`   2글자  6.7ms  Seq Scan   ← pg_trgm 은 3글자로 조각을 만든다.
+   *                    3글자  0.41ms Index         2글자 이하는 조각이 안 나와 인덱스를 못 쓴다
+   *                    4글자  0.05ms Index
+   *   접두어  `q%`     2글자  0.07ms Index      ← 앞쪽은 공백으로 메워 조각이 생긴다
+   *   ```
+   *   접두어는 **몇 글자든 인덱스를 탄다.** 그래서 접두어를 먼저 던지고, 부분일치는
+   *   그 뒤를 채우게 한다. 결과 집합은 예전과 같고 **순서만** 접두어가 앞선다.
+   *
+   * ── ★자리를 반드시 남긴다★ (강민재 실측 · 2026-09-02)
+   *   접두어를 그냥 앞세우면 **접두어가 여덟 칸을 다 먹는다.** 로컬에서 세어 봤다.
+   *   ```
+   *   ts   접두어 10건 · 부분일치 50건      xe   접두어 11건 · 부분일치 20건
+   *   ```
+   *   그러면 `SC1..안현수` 같은 사람이 **한 줄도 안 나온다.** 친구는 「안현수」로 찾는데
+   *   그 이름은 접두어로 0건이다. 이름 23,562개 중 **1,729명(7.3%)이 이 모양**이다 —
+   *   특수문자로 시작하거나(748명) 부르는 이름이 뒤에 있다(981명).
+   *   그래서 **부분일치 전용 자리 `RESERVED_FOR_CONTAINS` 칸을 떼어 둔다.**
+   *   부분일치 전용이 없으면 그 자리는 다시 접두어로 채운다 — 빈 줄을 남기지 않는다.
+   *
+   * ── 두 번 던지는 값이 있나
+   *   3글자 이상이면 둘 다 인덱스라 합쳐도 0.1ms 다. 2글자면 부분일치가 6.7ms 인데
+   *   **그건 고치기 전과 같은 값**이다 — 느려지지 않는다.
+   */
+  const select = { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } }
+  const [prefixRows, containsOnlyRows] = await Promise.all([
+    prisma.player.findMany({
+      where: { name: ciStarts(keyword), ...publicOriginWhere() },
+      orderBy: [{ id: 'asc' }],
+      take: SEARCH_LIMIT,
+      select,
+    }),
+    /*
+     * ★두 번째 질의는 **접두어가 아닌 것만** 뽑는다.★
+     *
+     * 그냥 `%q%` 로 열 줄을 받으면 그 열 줄이 접두어와 거의 겹친다. 실측 —
+     * `ts` 로 받은 열 줄 중 아홉이 접두어였고 **부분일치 전용은 한 줄뿐**이었다.
+     * 그러면 자리를 세 칸 떼어 둬도 채울 것이 없어 규칙이 헛돈다.
+     * 처음부터 접두어를 빼고 뽑으면 `SC1..안현수` 같은 사람이 확실히 자리를 얻는다.
+     */
+    prisma.player.findMany({
+      where: {
+        name: ci(keyword),
+        NOT: { name: ciStarts(keyword) },
+        ...publicOriginWhere(),
+      },
+      orderBy: [{ id: 'asc' }],
+      take: SEARCH_LIMIT,
+      select,
+    }),
+  ])
+
+  const players = mixPrefixFirst(prefixRows, containsOnlyRows, SEARCH_LIMIT)
   return players.map((player) => ({
     id: player.id,
     name: player.name,
     clan: toClanSummaryOrNull(player.clan),
   }))
+}
+
+/**
+ * 접두어로 찾은 것을 앞세우되 **부분일치 전용 자리를 남겨** 합친다 (O-009).
+ *
+ * 위 `searchPlayers` 주석의 「자리를 반드시 남긴다」가 여기 규칙이다.
+ * 순수 함수라 DB 없이 테스트한다 (`apps/web/tests/searchMix.test.ts`).
+ */
+export function mixPrefixFirst<T extends { id: string }>(
+  prefix: readonly T[],
+  contains: readonly T[],
+  limit: number,
+  visible: number = SUGGEST_VISIBLE,
+): T[] {
+  const inPrefix = new Set(prefix.map((row) => row.id))
+  const onlyContains = contains.filter((row) => !inPrefix.has(row.id))
+
+  /* 부분일치 전용이 없으면 자리를 뗄 이유가 없다 — 접두어로 끝까지 채운다 */
+  const reserve = Math.min(RESERVED_FOR_CONTAINS, onlyContains.length)
+  /* ★자리는 **화면이 그리는 줄 수** 안에서 뗀다.★ limit(10) 기준으로 떼면
+     그 자리가 9·10번째에 놓여 화면(8줄)에 아예 안 나온다 */
+  const head = prefix.slice(0, Math.max(0, Math.min(limit, visible) - reserve))
+  const out = [...head, ...onlyContains.slice(0, limit - head.length)]
+
+  /* 부분일치가 자리를 다 못 채웠으면 남은 접두어로 메운다. 빈 줄을 남기지 않는다 */
+  if (out.length < limit) {
+    const taken = new Set(out.map((row) => row.id))
+    for (const row of prefix) {
+      if (out.length >= limit) break
+      if (!taken.has(row.id)) out.push(row)
+    }
+  }
+  return out.slice(0, limit)
 }
 
 /* ---------------------------------- 클랜 ---------------------------------- */

@@ -404,6 +404,14 @@ const sameName = (a: string, b: string): boolean => fold(a) === fold(b)
 const hasPart = (haystack: string, needle: string): boolean => fold(haystack).includes(fold(needle))
 
 /**
+ * 자동완성 자리 배분 — **실제 API 와 같은 값** (O-009 · 2026-09-02).
+ * 근거와 실측 숫자는 `apps/web/lib/server/queries/search.ts` 주석에 있다.
+ * ⚠ 세 곳에 같은 숫자가 있다 (여기 · 실제 API · `@sacloud/ui` 의 `SUGGEST_MAX_ITEMS`).
+ */
+const SUGGEST_RESERVED_FOR_CONTAINS = 3
+const SUGGEST_VISIBLE = 8
+
+/**
  * 병영수첩 주소를 붙여 넣으면 그 선수를 찾는다 (D-162).
  *
  * 파서는 `@sacloud/contract` 에 있다 — 실제 API 와 **같은 규칙**을 써야
@@ -442,8 +450,29 @@ export function searchPlayers(query: string, limit = 10): PlayerSearchItem[] {
     const found = findPlayerByBarracksUrl(keyword)
     return found ? [found] : []
   }
-  return dataset.players
-    .filter((entry) => hasPart(entry.name, keyword))
+  /*
+   * ── 2026-09-02 (O-009) — **접두어를 앞세우고 부분일치 자리를 남긴다**
+   *   실제 API(`apps/web/lib/server/queries/search.ts` 의 `mixPrefixFirst`)와 **같은 규칙**이다.
+   *   Mock 에는 성능 문제가 없지만 **두 모드의 순서가 갈리면** `pnpm compare` 가 어긋나고,
+   *   무엇보다 로컬에서 본 화면이 운영을 대신하지 못한다.
+   *   규칙의 근거와 숫자는 실제 API 쪽 주석에 있다.
+   */
+  const all = dataset.players.filter((entry) => hasPart(entry.name, keyword))
+  const isPrefix = (name: string) => fold(name).startsWith(fold(keyword))
+  const prefix = all.filter((entry) => isPrefix(entry.name)).slice(0, limit)
+  const onlyContains = all.filter((entry) => !isPrefix(entry.name)).slice(0, limit)
+
+  const reserve = Math.min(SUGGEST_RESERVED_FOR_CONTAINS, onlyContains.length)
+  const head = prefix.slice(0, Math.max(0, Math.min(limit, SUGGEST_VISIBLE) - reserve))
+  const out = [...head, ...onlyContains.slice(0, limit - head.length)]
+  if (out.length < limit) {
+    const taken = new Set(out.map((entry) => entry.id))
+    for (const entry of prefix) {
+      if (out.length >= limit) break
+      if (!taken.has(entry.id)) out.push(entry)
+    }
+  }
+  return out
     .slice(0, limit)
     .map((entry) => ({ id: entry.id, name: entry.name, clan: playerClanSummary(entry) }))
 }
