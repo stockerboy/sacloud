@@ -1,32 +1,44 @@
-'use client'
-
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import {
-  SEARCH_FAILED,
-  SEARCH_MISS_BARRACKS,
-  barracksUsnOf,
-  clanSlugFromBarracksUrl,
-  isBarracksUrl,
-  normalizePastedQuery,
-  searchMissMessage,
-} from '@sacloud/contract'
-import {
-  FEATURED_LEAGUES,
-  LeagueLabel,
-  MainLogo,
-  SearchBar,
-  SiteIntro,
-  isLeaguePreparing,
-  type SearchType,
-} from '@sacloud/ui'
-import { ApiError, apiGet } from '@/lib/api'
+import { HomeSearch } from './_home/HomeSearch'
+import { HomeRankPreview } from './_home/HomeRankPreview'
+import { HomeRecentMatches } from './_home/HomeRecentMatches'
+import { getHomeRankPreview, getHomeRecentMatches } from './_home/homeData'
 
 /**
  * 홈.
  *
- * ── 2026-09-01 (밤): **알 모음집과 인기게시글을 뺐다** (사용자 지시)
+ * ── 2026-09-02: **「사이트 소개」를 빼고 그 자리에 실제 데이터를 넣었다** (사장님 지시)
+ *   ```
+ *   0 로고        ← 작게. 워드마크 하나 (MainLogo)
+ *   1 통합검색     ← 화면의 주인공. 크고 가운데          ┐ `_home/HomeSearch.tsx`
+ *   2 리그 바로가기 ← 누르면 **바로 랭킹**                ┘ (클라이언트 · 동작 그대로)
+ *   ─────────────
+ *   3 리그별 개인랭킹   SPL · IPL · 10mountain 각 상위 5명 · 누르면 그 리그 랭킹
+ *   4 최근 경기        IPL 왼쪽 / SPL 오른쪽 · 각 5경기 · 꺾쇠를 누르면 펼쳐진다
+ *   ```
+ *
+ *   **`SiteIntro` 는 지우지 않았다.** `packages/ui/src/home/SiteIntro.tsx` 에 그대로 있고
+ *   export 도 남아 있다. **이 화면이 안 부를 뿐이다** (`CLAUDE.md` 10-4).
+ *   되돌리려면 이 파일 맨 아래에 `<SiteIntro />` 한 줄이면 된다.
+ *
+ *   ── 이 파일은 이제 **서버 컴포넌트**다
+ *     3 · 4 는 DB 를 읽어야 한다. 홈이 열릴 때 API 를 여러 번 부르는 대신 서버에서
+ *     한 번에 읽어 넘긴다 (`_home/homeData.ts` — 순서대로 읽고 10분 데이터 캐시).
+ *     그래서 `useState` 를 가진 검색 부분을 `_home/HomeSearch.tsx` 로 떼어냈다.
+ *     화면 조각(`HomeRankPreview` · `HomeRecentMatches`)은 랭킹 표·경기 카드를
+ *     **재사용**하므로 클라이언트 컴포넌트이고, 서버는 JSON 값만 넘긴다.
+ *
+ *   ── `force-dynamic`
+ *     동적 API 를 안 쓰는 페이지는 빌드 때 정적으로 굳는다 — 그러면 랭킹이 배포 시점에
+ *     멈춘다. 매 요청 렌더로 두되 DB 는 데이터 캐시가 막는다 (`homeData.ts` 주석).
+ *
+ *   ── 메인에서 나가는 요청 (2026-09-02 기준)
+ *     ```
+ *     없음   홈이 열릴 때 클라이언트가 보내는 요청은 없다 (검색은 누를 때만)
+ *     펼침   경기 카드 꺾쇠를 누를 때만 GET /leagues/{slug}/matches/{id} 하나
+ *     ```
+ *
+ * ── 옛 서술 (2026-09-01 밤 · 지금은 위 구성이 대신한다)
+ *   **알 모음집과 인기게시글을 뺐다** (사용자 지시)
  *   ```
  *   "애초에 알시스템은 걍 버려 필요없어 게시판 준비중으로 냅두고 마이페이지는 해야돼"
  *   ```
@@ -52,7 +64,7 @@ import { ApiError, apiGet } from '@/lib/api'
  *   가를 것이 없는데 선만 남으면 아래가 잘려 보인다 (`CLAUDE.md` 4장의 광고 처리와 같다).
  *   그만큼 **메인에서 나가는 요청도 줄었다** — 아래 「나가는 요청」 참조.
  *
- * ── 메인에서 나가는 요청 (2026-09-01 밤 기준)
+ *   메인에서 나가는 요청 (2026-09-01 밤 기준)
  *   ```
  *   없앰  GET /eggs/broken                    ← 알 (전역 EggBoot)
  *   없앰  GET /me/link                        ← 알 (전역 EggBoot)
@@ -63,7 +75,7 @@ import { ApiError, apiGet } from '@/lib/api'
  *   남음  검색은 **누를 때만** 나간다. 가만히 있으면 한 건도 안 나간다
  *   ```
  *
- * ── 2026-09-01: **신전 히어로를 뺐다.** op.gg 식으로 정리 (사용자 지시)
+ * ── 옛 서술 (2026-09-01): **신전 히어로를 뺐다.** op.gg 식으로 정리 (사용자 지시)
  *   ```
  *   "파일 찾기 가챠샵 전부 삭제하고 심플이즈 더 베스트다 op.gg 스타일 Ui로
  *    걍 깔끔하게 간다 진짜 깔끔이 젤 중요하다"
@@ -103,131 +115,33 @@ import { ApiError, apiGet } from '@/lib/api'
  * ── 옛 서술 (2026-08-30)
  *   `리그별 개인랭킹 TOP3` 는 사용자 지시로 뺐다. `GET /api/home/top` 호출도 함께 없앴다 —
  *   **라우트 파일은 그대로 둔다.**
+ *   (2026-09-02 — 리그별 랭킹이 **다시 돌아왔다.** 다만 API 가 아니라 서버에서 읽고,
+ *    3명이 아니라 5명이며, 표는 랭킹 화면 것을 그대로 쓴다. `/api/home/top` 은 여전히 안 부른다.)
  *
  * ── 한 화면을 꽉 채우지 않는다
  *   배경 장식을 깔지 않는다. 바탕은 `--color-page` 하나다.
  *   위아래 여백을 넉넉히 두고 본문 폭을 제한한다.
  */
 
-/**
- * 메인의 리그 바로가기.
- *
- * GNB 와 같은 목록(`FEATURED_LEAGUES`)에서 온다 — 여기에 리그명을 다시 적지 않는다.
- * **준비중 리그(`daerule`)는 뺀다.** 눌러도 랭킹이 없는 리그를 랭킹 바로가기에
- * 세워 두면 거짓말이 된다. GNB 링크는 그대로 살아 있다 (거기서는 안내가 뜬다).
- *
- * 대상은 `/league/{slug}/rank/player` — **개인랭킹**이다. `/league/{slug}` 로 보내면
- * 리그홈(`/home/info`)으로 한 번 더 튕긴다.
- */
-const LEAGUE_SHORTCUTS = FEATURED_LEAGUES.filter(
-  (league) => !isLeaguePreparing(league.href.split('/')[2] ?? ''),
-).map((league) => ({ label: league.label, href: `${league.href}/rank/player` }))
+/* 빌드 때 굳지 않는다 — 위 주석 「`force-dynamic`」 */
+export const dynamic = 'force-dynamic'
 
-export default function HomePage() {
-  const router = useRouter()
-  /** 못 찾았을 때 검색창 밑에 띄우는 한 줄. 성공하면 즉시 지운다 (D-254) */
-  const [notice, setNotice] = useState<string | null>(null)
-
-  /**
-   * 검색 제출.
-   * 정확일치 조회에 성공하면 해당 상세로 이동하고, 결과가 없으면 **왜 없는지 말한다.**
-   *
-   * 플레이어는 닉네임뿐 아니라 **병영수첩 주소·계정 번호**도 받는다 — 서버의
-   * `playersByName` 이 거기서 식별자를 뽑아 조회한다 (D-162 · D-254).
-   * 화면에서 따로 파싱하지 않는다. 여기서 `isBarracksUrl` 을 보는 것은 **문구를
-   * 고르기 위해서**일 뿐이고, 조회 결과를 바꾸지 않는다.
-   *
-   * ── 2026-09-01 이전에는 실패가 **아무 표시도 남기지 않았다.**
-   *   엔터를 쳐도 화면이 그대로라 사용자는 「없음」과 「멈춤」을 구별할 수 없었다.
-   */
-  const handleSearch = async (type: SearchType, query: string) => {
-    setNotice(null)
-    try {
-      if (type === 'player') {
-        const found = await apiGet('playersByName', { params: { name: query } })
-        router.push(`/player/${found.data.id}`)
-        return
-      }
-      if (type === 'clan') {
-        const found = await apiGet('clansByName', { params: { name: query } })
-        router.push(`/clan/${found.data.slug}`)
-        return
-      }
-      const found = await apiGet('leaguesByName', { params: { name: query } })
-      router.push(`/league/${found.data.slug}`)
-    } catch (error) {
-      setNotice(missMessageFor(type, query, error))
-    }
-  }
+export default async function HomePage() {
+  /* 순서대로 읽는다. 운영 DB 통로가 하나라 `Promise.all` 로 묶지 않는다 (`homeData.ts`) */
+  const rankPreview = await getHomeRankPreview()
+  const recentMatches = await getHomeRecentMatches()
 
   return (
     <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
-      {/* ================= 0 로고 · 1 검색 · 2 리그 바로가기 =================
-             배경을 칠하지 않는다. 페이지 바탕(`--color-page`) 위에 글자와 선만 있다. */}
-      <section className="flex flex-col items-center pb-[72px] pt-[104px] max-md:pb-[56px] max-md:pt-[64px]">
-        {/* --- 0 로고 — 작게. 화면의 주인공은 아래 검색창이다 --- */}
-        <Link href="/" aria-label="3rd cloud 홈" className="block">
-          <MainLogo className="h-[42px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[32px]" />
-        </Link>
+      {/* 0 로고 · 1 검색 · 2 리그 바로가기 — 클라이언트. 동작은 그대로다 */}
+      <HomeSearch />
 
-        {/* --- 1 통합검색 — 크고 가운데. 동작은 하나도 바뀌지 않았다 --- */}
-        <div className="mt-9 w-full max-md:mt-7">
-          <SearchBar onSubmit={handleSearch} notice={notice} />
-        </div>
-
-        {/* --- 2 리그 바로가기 — 누르면 **바로 랭킹** ---
-               면을 칠하지 않는다. 글자 한 줄이고 진홍은 hover 에만 닿는다. */}
-        <nav aria-label="리그 랭킹 바로가기" className="mt-7 max-md:mt-6">
-          <ul className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2 max-md:gap-x-5">
-            {LEAGUE_SHORTCUTS.map((league) => (
-              <li key={league.href}>
-                <Link href={league.href} className="block">
-                  {/* `a { color: inherit }` 때문에 색은 안쪽 span 에 준다 (D-204) */}
-                  <span className="text-[13px] text-meta transition-colors duration-100 hover:text-accent">
-                    <LeagueLabel name={league.label} />
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </section>
-
-      {/* --- 3 꼬리말: 사이트 소개 + 관리자 서약서 ---
-             윗머리와 이것 사이의 `<hr>` 은 뺐다. 알 모음집·인기게시글이 있을 때는
-             «윗머리와 목록» 을 갈랐는데, 목록이 사라져 가를 것이 없어졌다.
-             선만 남기면 아래가 잘려 보인다. 여백으로만 띄운다. */}
-      <div className="pb-[var(--section-gap,40px)] pt-[80px] max-md:pt-[56px]">
-        <SiteIntro />
+      {/* 3 · 4 — 「사이트 소개」가 있던 자리. 구역 사이는 `.section-stack` 이 `--section-gap` 으로 띄운다.
+          윗머리와 여기 사이에 선을 긋지 않는다 — 구역 제목 밑줄이 그 역할을 한다. */}
+      <div className="section-stack pb-[var(--section-gap,40px)]">
+        <HomeRankPreview leagues={rankPreview} />
+        <HomeRecentMatches leagues={recentMatches} />
       </div>
     </div>
   )
-}
-
-/**
- * 못 찾았을 때 무슨 말을 할 것인가 (D-254).
- *
- * 세 갈래다. **셋을 뭉치면 사용자가 자기 입력을 의심한다.**
- * ```
- * 404 아님   서버가 답을 못 줬다        → 「없다」고 말하면 거짓말이다
- * 404 + 알아본 주소   그 선수가 아직 없다
- * 404 + 못 알아봄     오타이거나 다른 사이트 주소다
- * ```
- */
-function missMessageFor(type: SearchType, query: string, error: unknown): string {
-  /* 404 가 아니면 「없음」이 아니다 — 못 물어본 것이다 */
-  if (!(error instanceof ApiError) || error.status !== 404) return SEARCH_FAILED
-
-  const keyword = normalizePastedQuery(query)
-  if (!keyword) return SEARCH_FAILED
-
-  /* 붙여넣은 것이 병영수첩에서 온 것임을 알아봤다면, 그 사실을 말해 준다 —
-     사용자가 오타를 의심하며 같은 주소를 다시 붙여 넣지 않게 한다 */
-  const recognized =
-    type === 'player'
-      ? isBarracksUrl(keyword) || barracksUsnOf(keyword) !== null
-      : type === 'clan'
-        ? clanSlugFromBarracksUrl(keyword) !== null
-        : false
-  return recognized ? SEARCH_MISS_BARRACKS : searchMissMessage(keyword)
 }

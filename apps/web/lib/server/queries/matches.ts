@@ -53,7 +53,9 @@ import { matchClanHexV2 } from './clanHexV2'
  * 참가자 정렬은 `id asc`다. 시드가 red 로스터 → blue 로스터 순으로 넣으므로
  * 삽입 순서가 그대로 유지된다. 원본의 라인업 정렬 기준은 [미확인].
  */
-const MATCH_SELECT = {
+/* `export` 는 홈의 최근 경기(`homeRecent.ts`)가 같은 칸·같은 정렬로 읽기 위해서다 (2026-09-02).
+   여기 적힌 것 말고 다른 select 를 새로 만들면 카드가 조용히 갈라진다 */
+export const MATCH_SELECT = {
   id: true,
   /* 밖으로 나가는 경기 번호는 이 값이다 — `id` 가 아니다 (D-155).
      DB 는 같은 경기를 리그마다 다른 행으로 갖느라 기본키에 리그 slug 를 붙인다
@@ -126,7 +128,7 @@ const MATCH_SELECT = {
 export type MatchRow = Prisma.MatchGetPayload<{ select: typeof MATCH_SELECT }>
 type StatRow = MatchRow['stats'][number]
 
-const MATCH_ORDER = [{ startAt: 'desc' }, { id: 'desc' }] as const
+export const MATCH_ORDER = [{ startAt: 'desc' }, { id: 'desc' }] as const
 const MATCH_ORDER_REVERSED = [{ startAt: 'asc' }, { id: 'asc' }] as const
 
 /* -------------------------------------------------------------------------- */
@@ -206,7 +208,7 @@ export async function loadLeagueClanContext(
 }
 
 /** 매치 목록/상세가 참조하는 모든 리그클랜 id (양 진영 + 참가자의 경기 당시 소속) */
-function leagueClanIdsOf(matches: readonly MatchRow[]): string[] {
+export function leagueClanIdsOf(matches: readonly MatchRow[]): string[] {
   const ids: string[] = []
   for (const match of matches) {
     ids.push(match.redLeagueClanId, match.blueLeagueClanId)
