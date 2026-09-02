@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "instruction": "#7 IPL 배틀로그 전수 수집 → 운영 창구",
+  "worklist": {
+    "dir": "data/ipl/worklist",
+    "parts": 46,
+    "chunk": 500,
+    "order": "startAt 오름차순 (오래된 것부터)",
+    "targets": 22977,
+    "usable": 22976,
+    "skipped": [
+      { "reason": "clanNos 없음 — 부를 클랜번호를 모른다", "count": 1 }
+    ]
+  },
+  "ingest": {
+    "url": "https://3rdcloud.my/api/ingest/barracks",
+    "battlelogRowsBefore": 7229,
+    "battlelogRowsBeforeAt": "2026-09-02T04:15:01.357Z",
+    "battlelogRowsAfter": null,
+    "battlelogRowsAfterAt": null
+  },
+  "run": {
+    "startedAt": null,
+    "finishedAt": null,
+    "delayMs": 400,
+    "restEvery": 200,
+    "restMs": 10000,
+    "ok": 0,
+    "empty": 0,
+    "error": 0,
+    "skipped": 1,
+    "done": 0,
+    "lastPart": null,
+    "lastKey": null,
+    "haltReason": null,
+    "parts": []
+  },
+  "note": "run 은 총괄이 전해 주는 __blStatus().all 로 갱신한다. skipped 1 은 worklist 에서 뺀 clanNos=null 경기. 끝난 기준: ok+empty+error+skipped = 22977, 창구 누계 증가분 ≈ ok."
+}
