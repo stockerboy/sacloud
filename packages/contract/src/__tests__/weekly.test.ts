@@ -38,7 +38,7 @@ const kstWeekday = (d: Date): number => new Date(d.getTime() + 9 * HOUR).getUTCD
 const kstHour = (d: Date): number => new Date(d.getTime() + 9 * HOUR).getUTCHours()
 
 describe('주 경계 상수', () => {
-  it('지금 경계는 목요일 00:00 KST 다 — 사장님 원문의 괄호 「목요일로 넘어가는 경계」를 따랐다', () => {
+  it('지금 경계는 목요일 00:00 KST 다 — 사장님 확인 완료 (2026-09-02): 수요일 23:59 → 목요일 00:00', () => {
     expect(WEEK_BOUNDARY.current).toBe('thu00')
   })
 
