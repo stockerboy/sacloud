@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { ClanMetrics as ClanMetricsData } from '@sacloud/contract'
-import { showsDivision } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { divisionUnit } from '../league/divisionLabel'
@@ -286,9 +286,9 @@ export function ClanMetrics({
 
       {/* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)에서는 «티어별» 표를 통째로 안 그린다 —
           축 자체가 감춘 개념이다. 값(`metrics.tiers`)은 응답에 그대로 있다 */}
-      {showsDivision(leagueSlug) ? (
+      {showsTier(leagueSlug) ? (
         <div className="mt-3">
-          <SectionTitle title="티어별 승률" note="상대의 경기 당시 부리그 기준" />
+          <SectionTitle title="티어별 승률" note="상대의 경기 당시 티어 기준" />
           <TierRows tiers={metrics.tiers} leagueCategory={leagueCategory} />
         </div>
       ) : null}

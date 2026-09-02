@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  FEATURED_LEAGUES,
+  GNB_LEAGUES,
   MOBILE_NAV_GROUPS,
   PRIMARY_NAV,
   type NavGroup,
@@ -61,7 +61,8 @@ export interface SiteHeaderProps {
 }
 
 export function SiteHeader({
-  featuredLeagues = FEATURED_LEAGUES,
+  /* 상단바 순서는 홈과 다르다 (IPL 먼저 · 지시 #14). 목록은 `FEATURED_LEAGUES` 하나, 순서만 여기서 */
+  featuredLeagues = GNB_LEAGUES,
   primaryNav = PRIMARY_NAV,
   navGroups = MOBILE_NAV_GROUPS,
   user = null,
@@ -76,7 +77,9 @@ export function SiteHeader({
     setOpen(false)
   }, [pathname])
 
-  /* 첫 항목(`/leagues`)만 리그 묶음의 머리로 쓰고 나머지는 그대로 이어 붙인다 */
+  /* 첫 항목(`/leagues`)만 리그 묶음의 머리로 쓰고 나머지는 그대로 이어 붙인다.
+     머리 항목이 **없으면**(지시 #14 ① — `PRIMARY_NAV` 가 비었다) 대표 리그를 1차 메뉴로 바로 그린다.
+     드롭다운 가지는 지우지 않았다 — `PRIMARY_NAV` 를 되돌리면 그대로 돌아온다 */
   const [leagueEntry, ...restNav] = primaryNav
 
   return (
@@ -141,7 +144,18 @@ export function SiteHeader({
                 ))}
               </div>
             </div>
-          ) : null}
+          ) : (
+            /* 지시 #14 ① — 상단바는 IPL · SPL · 10🏔 셋뿐. 각각이 1차 메뉴이고 현재 리그에 밑줄 */
+            featuredLeagues.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`${NAV_LINK} ${isActive(pathname, item.href) ? NAV_ACTIVE : ''}`}
+              >
+                <LeagueLabel name={item.label} />
+              </Link>
+            ))
+          )}
 
           {restNav.map((item) => (
             <Link

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { showsDivision } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import { divisionLabel } from './divisionLabel'
 import { TAB, TAB_ACTIVE, TAB_IDLE, TAB_ROW } from './rankStyles'
 
@@ -33,7 +33,7 @@ export function DivisionTabs({
 }) {
   /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)도 단일리그와 같이 탭이 없다.
      규칙은 `@sacloud/contract` 의 `leagueScreen` 한 곳에 있다 — 여기서 slug 를 비교하지 않는다 */
-  if (divisionCount <= 1 || !showsDivision(leagueSlug)) return null
+  if (divisionCount <= 1 || !showsTier(leagueSlug)) return null
 
   return (
     <div className={TAB_ROW}>

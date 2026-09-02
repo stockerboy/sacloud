@@ -2,7 +2,7 @@ import { prisma } from '@sacloud/db'
 import {
   killPerMatch,
   kdRate,
-  showsDivision,
+  showsTier,
   winRate,
   type ClanSummary,
   type PlayerSummary,
@@ -271,8 +271,24 @@ function playerRankWhere(leagueId: string): { leagueId: string; placement: boole
 const TIER_ORDER = [{ division: 'asc' }, { rating: 'desc' }, { id: 'asc' }] as const
 const TIER_ORDER_REVERSED = [{ division: 'desc' }, { rating: 'asc' }, { id: 'desc' }] as const
 
-/** 부리그를 나누지 않고 한 줄로 세울 때 쓰는 표시값 (API `division=0`) */
+/** 티어를 나누지 않고 한 줄로 세울 때 쓰는 표시값 (API `division=0`) */
 export const ALL_DIVISIONS = 0
+
+/**
+ * 전체 보기(`division=0`)에서 **티어 우선**으로 정렬할 것인가 (2026-09-02 지시 #24 ⑤).
+ *
+ * > 사장님: "IPL 클랜 순위는 점수를 많이 받는다고 해도 **티어표를 넘나들 수는 없다.**
+ * >  1티어 순위가 먼저 보이고 경계 긋고 2티어 순위가 보이고 … 티어별로 1,2,3,4… 등이 있는 것이다."
+ *
+ * 그래서 **켜 둔다.** 티어 우선 → 티어 안에서 래더 순 → 티어마다 순위가 1 부터 (⑤ 커밋).
+ *
+ * ⚠ 옛 서술 (같은 날 · 지시 #9 후속 · #23 총괄 판단) — 검수 #8 의 «점수가 섞여 보인다» 때문에
+ *   래더 순(`false`)으로 뒀었다. 사장님이 티어를 넘나들지 않는 순위가 맞다고 정했다.
+ *   `false` 로 하면 그 래더 순(경계선 없음 · 행마다 티어 라벨)이 돌아온다 —
+ *   화면의 `ClanRankSplit` 에 같은 이름 스위치가 있어 함께 바꿔야 한다.
+ * 타입을 `boolean` 으로 넓혀 둔 이유는 리터럴로 좁히면 `&&` 뒤가 «닿을 수 없는 코드» 가 되기 때문이다.
+ */
+export const TIER_FIRST_SORT: boolean = true
 
 /**
  * 페이지 첫 행의 순위를 구한다.
@@ -368,7 +384,7 @@ export async function getClanRanks(
        스위치를 끄면(`nolink: WITH_LADDER`) 아래가 예전처럼 티어 우선으로 돌아온다.
        `division` 값·API 모양·`rankOfFirstClan` 은 그대로다 — 후자는 같은 `byTier` 를 받는다. */
   const byTier =
-    division <= 0 && league.category === 'independent' && showsDivision(league.slug)
+    division <= 0 && league.category === 'independent' && showsTier(league.slug) && TIER_FIRST_SORT
   const order = byTier ? TIER_ORDER : RANK_ORDER
   const orderReversed = byTier ? TIER_ORDER_REVERSED : RANK_ORDER_REVERSED
 

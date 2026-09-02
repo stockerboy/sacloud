@@ -3,7 +3,7 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
-import { showsDivision } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 /* 티어 구분선 라벨 — 공식리그면 `1부리그`, 무소속리그면 `1티어` (D-165) */
 import { divisionLabel } from './divisionLabel'
@@ -253,6 +253,14 @@ export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'e
   /** `official` | `independent` — 구분선 라벨 표기만 바꾼다 (D-165) */
   leagueCategory?: string
   /**
+   * 행마다 클랜 이름 옆에 **티어 라벨**(`3티어`)을 붙인다 (2026-09-02 지시 #23).
+   *
+   * IPL 클랜랭킹은 래더 순으로 세우되(총괄 판단 — 티어 우선 정렬은 점수가 섞여 보였다)
+   * 티어는 보여야 한다. 순서가 티어별이 아니면 경계선(`groupByDivision`)은 뜻이 없으므로
+   * 라벨로 보인다. **기본값 `false` — 넘기지 않으면 예전 표 그대로다.**
+   */
+  showTierLabel?: boolean
+  /**
    * 보여 줄 칸 (2026-09-01). 넘기지 않으면 **지금까지의 표 그대로**다.
    *
    * 리그마다 다른 칸을 화면에서 `if (slug === …)` 로 가르지 않는다 —
@@ -270,11 +278,12 @@ export function ClanRankTable({
   groupByDivision = false,
   leagueCategory,
   columns = ALL_COLUMNS,
+  showTierLabel = false,
 }: ClanRankTableProps) {
   const { brokenClanSlugs } = useEggKnowledge()
   /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 호출부가 뭐라 하든 선을 긋지 않는다.
      규칙은 `@sacloud/contract` 의 `leagueScreen` 한 곳이다. 행의 `division` 값 자체는 그대로 온다 */
-  const divideByDivision = groupByDivision && showsDivision(leagueSlug)
+  const divideByDivision = groupByDivision && showsTier(leagueSlug)
   /* 바로 앞 행과 부리그가 다르면 그 위에 선을 긋는다. 첫 행에도 긋는다 —
      맨 위 묶음이 어느 티어인지 이름이 없으면 아래 묶음들만 이름이 붙어 이상해진다 */
   let lastDivision: number | null = null
@@ -315,6 +324,12 @@ export function ClanRankTable({
                   <ClanMark mark={row.clan.mark} alt={row.clan.name} />
                 </Egg>
                 <span className="truncate">{row.clan.name}</span>
+                {/* 티어 라벨 — IPL 만 (지시 #23). 순서는 래더 순이라 경계선 대신 행마다 적는다 */}
+                {showTierLabel ? (
+                  <span className="ml-2 shrink-0 text-xs text-faint">
+                    {divisionLabel(row.division, leagueCategory)}
+                  </span>
+                ) : null}
               </Link>
             </div>
             {/* 승/패는 없앤 것이 아니라 승률 아래로 접었다. 알이 있으면 둘 다 가린다 */}

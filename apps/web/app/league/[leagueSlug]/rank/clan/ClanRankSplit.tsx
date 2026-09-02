@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import type { ClanRankRow } from '@sacloud/contract'
-import { RANK_SPLIT_LEAGUES, leagueScreen, showsDivision } from '@sacloud/contract'
+import { RANK_SPLIT_LEAGUES, leagueScreen, showsTier } from '@sacloud/contract'
 import {
   ClanRankTable,
   LoadMoreButton,
@@ -14,6 +14,13 @@ import {
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
+
+/**
+ * 티어 우선 정렬인가 — 서버(`queries/leagues.ts` 의 `TIER_FIRST_SORT`)와 **같은 값**이어야 한다.
+ * 서버 모듈은 클라이언트에서 import 할 수 없어 여기 한 번 더 적는다. 둘이 다르면 경계선이 엉뚱한 자리에 선다.
+ * 사장님 지시 #24 ⑤ — 티어를 넘나들지 않는 순위 · 티어 사이 경계선. 그래서 `true`.
+ */
+const TIER_FIRST_SORT: boolean = true
 
 /**
  * 클랜랭킹 — **SPL(왼쪽) · IPL(오른쪽) 한 화면** (2026-09-01 사용자 지시).
@@ -59,23 +66,14 @@ function Column({ slug, name }: { slug: string; name: string }) {
 
   const category = league.data?.data.category
   const independent = category === 'independent'
-  /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 「티어별」 메모도 없다.
-     경계선은 표(`ClanRankTable`)가 같은 규칙으로 스스로 뺀다 */
-  const divisionShown = showsDivision(slug)
+  /* 티어를 쓰는 리그(IPL · 지시 #23)에만 티어가 보인다. SPL 은 등급 개념이 없다 */
+  const tierShown = showsTier(slug)
 
   return (
     <RankSplitColumn
       leagueName={name}
-      /* 리그를 아직 못 받았으면 **아무 말도 하지 않는다.** 기본값을 써 두면
-         IPL 자리에 잠깐 「부리그 통합 순위」가 떴다가 「티어별」로 바뀐다 —
-         한 번이라도 틀린 글자를 보여 주느니 늦게 나오는 편이 낫다 */
-      note={
-        category === undefined || !divisionShown
-          ? undefined
-          : independent
-            ? '티어별'
-            : '부리그 통합 순위'
-      }
+      /* 제목 옆 메모는 뺐다 (지시 #23). 옛 메모 — 무소속 「티어별」 · 공식 「부리그 통합 순위」 —
+         는 티어 우선 정렬이던 때의 것이고, 「부리그」 라는 말은 이제 안 쓴다 */
     >
       <RankBox>
         <ClanRankTable
@@ -84,9 +82,11 @@ function Column({ slug, name }: { slug: string; name: string }) {
           loading={ranks.loading}
           error={ranks.error}
           onRetry={ranks.retry}
-          /* 티어를 유지하는 리그에서만 경계선을 긋는다.
-             SPL 은 «1,2부 나누지 말고» 라는 지시라 선을 긋지 않는다 */
-          groupByDivision={independent}
+          /* 경계선은 **티어 우선 정렬일 때만** 뜻이 있다 (지시 #24 ⑤ — 티어를 넘나들지 않는 순위).
+             래더 순으로 두면(`TIER_FIRST_SORT=false`) 경계선 대신 행마다 티어 라벨을 붙인다.
+             서버의 `TIER_FIRST_SORT` 와 짝이다 */
+          groupByDivision={independent && tierShown && TIER_FIRST_SORT}
+          showTierLabel={independent && tierShown && !TIER_FIRST_SORT}
           leagueCategory={category}
           /* 어떤 칸을 보여 줄지는 화면이 아니라 `leagueScreen()` 한 곳이 정한다 (2026-09-01) */
           columns={leagueScreen(slug).clanColumns}

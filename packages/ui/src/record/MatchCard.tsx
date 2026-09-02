@@ -8,7 +8,7 @@ import type {
   MatchListItem,
   MatchPlayerStat,
 } from '@sacloud/contract'
-import { showsDivision } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { ClanHexagonV2 } from './ClanHexagonV2'
 
@@ -291,9 +291,9 @@ function ClanSide({
         */}
         <div className="text-sm text-faint max-md:hidden">
           {/* 부리그를 화면에 내지 않는 리그(지시 #9)는 점수만 남긴다. 값은 응답에 그대로 있다 */}
-          {showsDivision(leagueSlug) ? (
+          {showsTier(leagueSlug) ? (
             <>
-              <span className="num">{snapshot.division}</span>부리그{' '}
+              <span className="num">{snapshot.division}</span>티어{' '}
             </>
           ) : null}
           {snapshot.placement ? (
@@ -627,9 +627,9 @@ function TeamCompare({
             <div className="w-40 shrink-0 text-right text-faint max-md:hidden">
               {row.snapshot ? (
                 <>
-                  {showsDivision(leagueSlug) ? (
+                  {showsTier(leagueSlug) ? (
                     <>
-                      <span className="num">{row.snapshot.division}</span>부리그{' '}
+                      <span className="num">{row.snapshot.division}</span>티어{' '}
                     </>
                   ) : null}
                   <SnapshotRating snapshot={row.snapshot} />
