@@ -1,0 +1,201 @@
+# 병영수첩 탐침 — GitHub 실행기의 「진짜 크롬」이 병영수첩을 여는가 (2026-09-02)
+#
+# ── 무엇을 하는가
+#   ubuntu-latest 에서 크롬을 **두 번** 띄운다 — 한 번은 xvfb 아래 헤드풀, 한 번은 헤드리스.
+#   각각 병영수첩(`barracks.sa.nexon.com`)에 아래 셋을 2초 간격으로 보내고
+#   HTTP 상태 · 응답 크기 · 앞 200자를 로그에 찍는다. 실행기의 공인 IP 도 찍는다.
+#
+#     1. GET  /                                          첫 페이지
+#     2. POST /api/ClanHome/GetClanMatchList/            { clan_id: "sorentolove" }
+#     3. POST /api/BattleLog/GetBattleLogClan/260805205259124001/170430000194
+#
+#   결과는 `probe-result.json` 으로 artifact 에 올린다. 절차는 `scripts/barracks-probe.mjs`.
+#
+# ── 왜
+#   IPL 기록은 병영수첩에서만 나오는데 Node 로 부르면 403, 진짜 크롬에서만 200 이다
+#   (`docs/HANDOFF_2026-09-02_EVENING.md` 5장). 앞 세션이 **헤드리스는 403** 을 확인했다.
+#   사장님 결정은 「돈 안 드는 방법만」. 후보 ① 이 실행기(무료) ② 사장님 PC.
+#   ①이 되면 사람 손이 완전히 빠진다. 그런데 데이터센터 IP 라 막힐 수도 있다 —
+#   **그건 돌려 봐야 안다. 추측하지 않는다.** 이 워크플로가 그 한 번의 시험이다.
+#
+# ── 읽는 법
+#   로그의 `요약 [headful] home=… · clan-match-list=… · battle-log=…` 와
+#   `요약 [headless] …` 두 줄이 답이다.
+#     headful 200 / headless 403  → 화면이 있는 크롬이면 실행기에서도 된다 (VPS 없이 간다)
+#     둘 다 403                   → IP 또는 자동화 자체가 막힌다 (② 사장님 PC 로)
+#     둘 다 200                   → 헤드리스로도 된다 (더 싸게 간다)
+#   **200 은 「길이 열려 있다」까지다.** 수집이 된다는 뜻은 아니다 — 그건 다음 시험이다.
+#
+# ── 하지 않는 것
+#   · 저장하지 않는다. 창구(`/api/ingest/barracks`)로 보내지 않는다. 시크릿을 쓰지 않는다
+#   · 예약(schedule)이 없다. **사람이 누를 때만** 돈다 — 원본에 반복해서 두드리지 않는다
+#   · 저장소 의존성에 puppeteer 를 넣지 않는다 (`pnpm-lock.yaml` 을 건드리지 않는다).
+#     실행기 임시 폴더에만 설치하고 `NODE_PATH` 로 알려 준다
+#   · UA·쿠키 위조 · 탐지 회피 플래그를 넣지 않는다 (`CLAUDE.md` 3-A 5번).
+#     `--no-sandbox` 하나는 실행기 사정이다 (Ubuntu 24.04 가 비특권 user namespace 를 막는다)
+
+name: 병영수첩 탐침 (헤드풀 vs 헤드리스)
+
+on:
+  workflow_dispatch:
+    inputs:
+      puppeteer_version:
+        description: 'puppeteer 고정 버전 (실행기에서만 설치한다)'
+        required: false
+        default: '25.9.0'
+
+# 두 번 눌러도 한 번에 하나만 — 원본에 겹쳐서 두드리지 않는다
+concurrency:
+  group: barracks-probe
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 진짜 크롬으로 병영수첩 3건 · 헤드풀 → 헤드리스
+    runs-on: ubuntu-latest
+    # 크롬 내려받기(~1분) + 요청 6건(상한 30초씩) 이면 넉넉하다. 더 걸리면 뭔가 잘못된 것이다
+    timeout-minutes: 15
+
+    env:
+      PUPPETEER_VERSION: ${{ inputs.puppeteer_version || '25.9.0' }}
+      # puppeteer 를 여기에만 설치한다. 저장소 작업공간이 아니다
+      PROBE_HOME: ${{ runner.temp }}/barracks-probe
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node 24 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # 데이터센터 IP 로 막히는지 판정하려면 **어느 IP 로 나갔는지**가 결과와 함께 있어야 한다
+      - name: 실행기 공인 IP
+        id: ip
+        run: |
+          set -u
+          ip=$(curl -s --max-time 15 https://api.ipify.org || echo 'unknown')
+          echo "공인 IP: ${ip}"
+          echo "public_ip=${ip}" >> "$GITHUB_OUTPUT"
+
+      # 헤드풀 크롬은 화면이 있어야 뜬다. 실행기에는 화면이 없으니 가상 화면을 깐다
+      - name: xvfb 설치 (가상 화면)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb > /dev/null
+          command -v xvfb-run
+          echo "xvfb 준비됨"
+
+      - name: puppeteer 를 임시 폴더에만 설치한다 (저장소 의존성 아님)
+        run: |
+          set -euo pipefail
+          mkdir -p "${PROBE_HOME}"
+          cd "${PROBE_HOME}"
+          # 빈 package.json 위에 설치한다. 저장소의 lockfile 은 건드리지 않는다
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund --silent "puppeteer@${PUPPETEER_VERSION}"
+          echo "puppeteer ${PUPPETEER_VERSION} → ${PROBE_HOME}/node_modules"
+          # postinstall 이 Chrome for Testing 을 받아 둔다 (~/.cache/puppeteer). 그것이 예비다
+          ls "${PROBE_HOME}/node_modules/puppeteer/package.json" > /dev/null
+
+      # 실행기에 이미 있는 크롬을 먼저 쓴다 — puppeteer 가 받는 「Chrome for Testing」보다
+      # 사람이 쓰는 크롬에 가깝다. 못 띄우면 스크립트가 내장 크롬으로 알아서 넘어간다
+      - name: 실행기의 크롬 위치
+        id: chrome
+        run: |
+          set -u
+          path=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser || true)
+          if [ -n "$path" ]; then
+            echo "크롬: ${path} — $("$path" --version 2>/dev/null || echo '버전 확인 실패')"
+          else
+            echo "실행기에 크롬이 없다 — puppeteer 가 받은 것을 쓴다"
+          fi
+          echo "path=${path}" >> "$GITHUB_OUTPUT"
+
+      - name: 절차 확인 (dry-run · 요청을 보내지 않는다)
+        env:
+          NODE_PATH: ${{ env.PROBE_HOME }}/node_modules
+          PROBE_CHROME_PATH: ${{ steps.chrome.outputs.path }}
+          PROBE_PUBLIC_IP: ${{ steps.ip.outputs.public_ip }}
+        run: node scripts/barracks-probe.mjs --dry-run
+
+      # ── ① 헤드풀. 가상 화면 위에 진짜 창을 띄운다. 이것이 본 시험이다
+      - name: 헤드풀 크롬 (xvfb) — 3건
+        id: headful
+        # 403 은 결과이지 실패가 아니다. 스크립트는 요청을 아예 못 보냈을 때만 exit 1 이다.
+        # 그래도 헤드리스 비교까지는 돌려야 하므로 여기서 멈추지 않는다
+        continue-on-error: true
+        env:
+          NODE_PATH: ${{ env.PROBE_HOME }}/node_modules
+          PROBE_CHROME_PATH: ${{ steps.chrome.outputs.path }}
+          PROBE_PUBLIC_IP: ${{ steps.ip.outputs.public_ip }}
+        run: |
+          set -u
+          xvfb-run -a --server-args='-screen 0 1280x900x24' \
+            node scripts/barracks-probe.mjs --mode headful --out "${RUNNER_TEMP}/probe-headful.json"
+
+      # 두 번 띄우는 사이에도 원본에 숨 돌릴 틈을 준다
+      - name: 2초 쉰다
+        run: sleep 2
+
+      # ── ② 헤드리스. 같은 실행기 · 같은 IP · 같은 세 요청. 둘의 차이가 답이다
+      - name: 헤드리스 크롬 — 3건 (비교용)
+        id: headless
+        continue-on-error: true
+        env:
+          NODE_PATH: ${{ env.PROBE_HOME }}/node_modules
+          PROBE_CHROME_PATH: ${{ steps.chrome.outputs.path }}
+          PROBE_PUBLIC_IP: ${{ steps.ip.outputs.public_ip }}
+        run: node scripts/barracks-probe.mjs --mode headless --out "${RUNNER_TEMP}/probe-headless.json"
+
+      - name: 결과를 하나로 묶고 요약을 찍는다
+        if: ${{ always() }}
+        env:
+          PUBLIC_IP: ${{ steps.ip.outputs.public_ip }}
+        run: |
+          set -u
+          hf="${RUNNER_TEMP}/probe-headful.json"
+          hl="${RUNNER_TEMP}/probe-headless.json"
+          [ -f "$hf" ] || echo '{"fatal":"헤드풀 결과 파일이 없다 — 스크립트가 시작조차 못 했다","requests":[]}' > "$hf"
+          [ -f "$hl" ] || echo '{"fatal":"헤드리스 결과 파일이 없다 — 스크립트가 시작조차 못 했다","requests":[]}' > "$hl"
+
+          jq -n \
+            --arg ip "$PUBLIC_IP" \
+            --arg run "${GITHUB_RUN_ID}" \
+            --slurpfile hf "$hf" \
+            --slurpfile hl "$hl" \
+            '{ publicIp: $ip, runId: $run, generatedAt: (now | todate), headful: $hf[0], headless: $hl[0] }' \
+            > probe-result.json
+
+          line() {
+            jq -r --arg m "$1" '.[$m].requests | map("\(.id)=\(.status // "ERR")") | join(" · ")' probe-result.json
+          }
+          {
+            echo "## 병영수첩 탐침"
+            echo
+            echo "- 공인 IP: \`${PUBLIC_IP}\`"
+            echo "- 헤드풀:   \`$(line headful)\`"
+            echo "- 헤드리스: \`$(line headless)\`"
+            echo
+            echo "| 모드 | 요청 | HTTP | bytes | ms | 앞 200자 |"
+            echo "|---|---|---|---|---|---|"
+            jq -r '
+              ["headful","headless"][] as $m
+              | .[$m].requests[]
+              | "| \($m) | \(.id) | \(.status // "ERR") | \(.bytes // "-") | \(.ms // "-") | \((.head // .error // "") | gsub("\\|"; "\\|") | .[0:120]) |"
+            ' probe-result.json
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 결과 artifact (probe-result.json · 14일)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: barracks-probe-${{ github.run_id }}
+          path: probe-result.json
+          if-no-files-found: warn
+          retention-days: 14
