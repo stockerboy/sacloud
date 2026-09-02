@@ -108,6 +108,44 @@ function shortTime(iso: string): string {
   return sameDay ? clock : `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${clock}`
 }
 
+/**
+ * **래더 자리에 무엇을 적나** (2026-09-03 · O-033 ③).
+ *
+ * ══ 무엇이 잘못돼 있었나 ══
+ *
+ * 표가 한 줄에 이렇게 그리고 있었다.
+ * ```
+ * 울상진리      기록 없음      8판
+ * ```
+ * **한 줄 안에서 자기 말을 뒤집는다.** 8판을 뛴 사람에게 「기록 없음」이라고 한다.
+ * 강민재가 SPL 클랜원 표에서 이걸 봤고, 운영 응답을 직접 떠서 확인했다 —
+ * ```
+ * /api/leagues/supply/players/NX-5136f97b…   win 6 · lose 2 · rating 3000 · placement true · rank null
+ * ```
+ * **응답에 값이 있다.** 6승 2패를 뛰었는데 래더가 계산되지 않아
+ * `rating` 이 시작값 3000 에 멈춰 있고 `placement` 플래그가 안 꺼졌다.
+ *
+ * ⚠ **이건 화면 결함이 아니라 그 아래 틈이다.** 화면이 할 수 있는 건
+ * **거짓말을 안 하는 것**뿐이다. 3리그를 다 훑어 SPL 에서 7명 나왔다 (다른 두 리그는 0명).
+ *
+ * ══ 그래서 셋으로 가른다 — 셋 다 참인 말만 한다 ══
+ *
+ * ```
+ * 0판이다                    「기록 없음」    말 그대로 기록이 없다
+ * 뛰었는데 래더가 아직 없다     ★「측정중」★    「아직 모른다. 더 오면 채워진다」 —
+ *                                            이 저장소가 이미 쓰는 말이다
+ *                                            (clanTraits · clanRoundMetrics · 육각형)
+ * 래더가 있다                 「N점」         예전 그대로
+ * ```
+ *
+ * ⚠ **3,000점을 그냥 찍지 않는다.** 그건 시작값이지 「이 사람의 래더」가 아니다 —
+ *   8판 뛰고 3,000점이면 「본전 쳤다」로 읽힌다. 실제로는 **아직 안 재어졌다.**
+ */
+function ratingLabel(placement: boolean, games: number): string | null {
+  if (!placement) return null
+  return games > 0 ? '측정중' : '기록 없음'
+}
+
 function Row({
   member,
   rank,
@@ -129,9 +167,11 @@ function Row({
         <span className="text-text-strong hover:underline">{member.player.name}</span>
       </Link>
 
-      {member.placement ? (
-        /* 이 창에 0판이면 래더 자리에 `기록 없음` (배치고사 폐지 · 2026-09-01) */
-        <span className="shrink-0 text-xs text-meta">기록 없음</span>
+      {ratingLabel(member.placement, member.games) ? (
+        /* 0판이면 `기록 없음`, 뛰었는데 래더가 아직 없으면 `측정중` (위 ratingLabel) */
+        <span className="shrink-0 text-xs text-meta">
+          {ratingLabel(member.placement, member.games)}
+        </span>
       ) : (
         <span className={`num shrink-0 text-sm ${ratingClass(member.rating)}`}>
           {formatCount(member.rating)}점
@@ -175,8 +215,9 @@ function Member({
         {member.player.name}
       </Link>
       {ownLabel ? <span className="mr-1 text-xs text-meta">{ownLabel}</span> : null}
-      {member.placement ? (
-        <span className="text-xs text-meta">기록 없음</span>
+      {ratingLabel(member.placement, member.games) ? (
+        /* 표와 같은 규칙이다 (위 ratingLabel) */
+        <span className="text-xs text-meta">{ratingLabel(member.placement, member.games)}</span>
       ) : (
         <span className={`num text-xs ${ratingClass(member.rating)}`}>
           {formatCount(member.rating)}점

@@ -114,6 +114,33 @@ function Stat({
 }
 
 /**
+ * **한 판도 안 뛴 줄의 승률 칸** (2026-09-03 · O-033).
+ *
+ * ══ 왜 필요한가 — 첫 20곳 중 9곳(45%)이 「0%  0승 0패」였다 ══
+ *
+ * 계약이 `win_rate: 0` 을 주는데 그건 **「0% 로 졌다」가 아니라 「표본이 없다」**는 뜻이다.
+ * 0 으로 그리면 한 판도 안 뛴 클랜이 **꼴찌로 진 것처럼** 보인다. 색까지 붙어서 더 그렇다.
+ *
+ * ══ 새로 만든 판단이 아니다 ══
+ *
+ * 선수 화면이 이미 같은 규칙을 갖고 있다 — `PlayerProfile.tsx` 의
+ * ```ts
+ * const rated = games > 0     // 한 판도 안 뛴 참가자에게 `승률 0%` 를 적지 않는다
+ * ```
+ * **표에는 그 분기가 없었다.** 같은 말(`기록 없음`)을 쓴다.
+ *
+ * ⚠ **래더는 안 건드린다.** 3,000점은 **시작값**이지 없는 값이 아니다.
+ * ⚠ 승/패가 하나라도 있으면 예전 그대로 그린다 — 승률이 사라지면 안 된다.
+ */
+function NoRecordStat({ className = '' }: { className?: string }) {
+  return (
+    <div className={className}>
+      <span className="text-sm text-meta">기록 없음</span>
+    </div>
+  )
+}
+
+/**
  * 제목 + 안내문구 줄.
  * 화면 순서: 제목줄 → (클랜랭킹만) 부리그 탭 → 표. 그래서 제목과 표를 분리해 둔다.
  */
@@ -337,6 +364,9 @@ export function ClanRankTable({
               <div className={`${COL_STAT} ${COL_HIDDEN}`}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
+            ) : row.win + row.lose === 0 ? (
+              /* 한 판도 안 뛰었다 — `0%  0승 0패` 로 그리지 않는다 (O-033 · 위 NoRecordStat) */
+              <NoRecordStat className={`${COL_STAT} ${COL_HIDDEN}`} />
             ) : (
             <Stat
               className={`${COL_STAT} ${COL_HIDDEN}`}
@@ -541,6 +571,9 @@ export function PlayerRankTable({
               <div className={`${COL_STAT} ${winRateHidden}`}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
+            ) : row.win + row.lose === 0 ? (
+              /* 한 판도 안 뛰었다 — 클랜 표와 같은 규칙이다 (O-033) */
+              <NoRecordStat className={`${COL_STAT} ${winRateHidden}`} />
             ) : (
             <Stat
               className={`${COL_STAT} ${winRateHidden}`}
