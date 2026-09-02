@@ -244,6 +244,48 @@ POST /api/ClanHome/GetClanMatchList/          ← 끝 슬래시가 필요하다
 > 넥슨 Open API 는 한 경기 응답에 양 팀을 주지 않아(D-044) 팀 판정이 계속 문제였다.
 > 병영수첩 클랜전 목록에는 그 제약이 없다.
 
+#### 페이지 넘기기 재실측 (2026-09-02 · 수집팀)
+
+> `HANDOFF_2026-09-02_EVENING.md` 5-2 가 「페이지 넘기는 법을 아직 안 알아냈다」고 적고
+> `page · page_no · offset · start · last_match_key · match_key` 를 시도했다고 했다.
+> **위 표의 `seq_no` 가 빠져 있었다.** 답은 이미 이 문서와
+> `packages/db/legacy/barracks-clan-battlelog-snippet.js` 의 `clanMatchList()` 에 있었고,
+> 7-A 의 214,224줄이 그 방법으로 받은 것이다. 잊히지 않게 진짜 크롬에서 다시 재서 적는다.
+
+```
+POST /api/ClanHome/GetClanMatchList/                 (진짜 크롬 · 로그인 없음 · 보안검사 없음 · 200)
+1p  { clan_id:"sorentolove", seq_no:0,                  mode_flag:"ALL", min_seq_no:0 }
+    → rtnCode 20 · message "260901161445124001" · result 20건 (260902015212… ~ 260901161445…)
+2p  { clan_id:"sorentolove", seq_no:260901161445124001, mode_flag:"ALL", min_seq_no:0 }
+    → rtnCode 20 · message "260831211023124001" · result 20건 (260901160946… ~ 260831211023…) · 1p 와 겹침 0
+```
+
+- **커서는 `seq_no`** 이고, 값은 직전 페이지 **마지막 `match_key`** 다. 응답의 `message` 칸이 곧 그 값이다
+- 응답 최상위 칸은 `rtnCode · message · result · resultClanInfo · resultClanUserList` 다. 총건수·토큰 칸은 없다
+- 번들 `chunk-common.*.js` 에 `seq_no` 27회 · `min_seq_no` 14회. `GetClanMatchList` 호출부 주변 식별자는
+  `{ seq_no, min_seq_no, mode_flag }` 셋뿐이다. `ClanHome/` 형제 엔드포인트는
+  `GetClanInfo · GetClanAgitInfo · GetClanRankInfo · GetClanUserList · GetClanPrList · GetMyClanInfo ·
+  SetClanApply · GetAgitMapList · GetMapCreateCheck` — **「더 보기」용 별도 엔드포인트는 없다**
+- 웹 화면(`/clan/<slug>/clanMatch`)은 20건만 그리고 **더보기·스크롤 로딩이 없다.** 그래서 화면 관찰로는
+  넘기는 요청이 안 보였던 것이다. 페이지 넘기기는 API 로만 된다
+
+**전수 실측 — `sorentolove`(-tsAr.nTc), 2026-07-01 까지, 요청 간격 1초**
+
+| 항목 | 값 |
+|---|---|
+| 페이지 | 31 (59초) |
+| 받은 경기 | 620 · `match_key` **중복 0** · 620건 전부 내림차순 (역전 0) |
+| 가장 새 것 / 가장 오래된 것 | `260902015212…` / `260629222038…` (**7/1 이전에 닿음** → 전수) |
+| 7/1 이후 | **606건** — 제3보급창고 313(전부 plimit 5) · A보급창고 188 · 듀오 84 · 그 밖의 맵 21 |
+
+- 오류 0 · 차단 없음. `TypeError: Failed to fetch` 도 이번엔 안 났다
+- 수집기: `scripts/battlelog-collect-snippet.js` 의 **`collectClanMatchList(slug, { from, delay, ingest, token })`**.
+  `ingest` 를 주면 페이지마다 운영 창구(`/api/ingest/barracks`, `kind:'matchlist'`)로 보낸다.
+  옛 `clanMatchList()`(legacy 스니펫)는 그대로 남아 있다
+- 그 함수를 같은 페이지에서 `from:'2026-08-25'` 로 따로 돌려 대조했다 — 7페이지 · 140건 · 중복 0 ·
+  위 전수 결과의 같은 구간과 **집합이 완전히 일치**한다
+- 남은 일: 43곳 전부 이 함수로 받아 창구로 보내기(`ingest` + 토큰) → 「배틀로그 없는 경기」 목록 → 배틀로그 전수
+
 ### 선수 → 소속 클랜
 
 ```
