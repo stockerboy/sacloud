@@ -1,18 +1,37 @@
 import { prisma } from '@sacloud/db'
 import { registerClanTier } from '@sacloud/db/ops'
-import { LeagueClanRegisterInput, winRate } from '@sacloud/contract'
+import { LeagueClanRegisterInput, PAGE_SIZE, winRate } from '@sacloud/contract'
 import { badRequest, forbidden, guard, guardPublic, notFound, ok, okPagePublic, unauthorized } from '@/lib/server/respond'
-import { jsonBody, pageParams, routeParam } from '@/lib/server/request'
+import { intQuery, jsonBody, pageParams, routeParam } from '@/lib/server/request'
 import { getLeagueClans } from '@/lib/server/queries/leagues'
 import { audit, requireLeagueAdmin } from '@/lib/server/queries/leagueAdmin'
 import { CLAN_SUMMARY_SELECT, toClanSummary } from '@/lib/server/mappers'
 import { toKstIso } from '@/lib/server/format'
 
-/** GET /api/leagues/{leagueSlug}/clans — 리그 참여 클랜 (커서) */
+/**
+ * 한 번에 받아 갈 수 있는 최대 건수 (2026-09-02 · D-260).
+ *
+ * 「고용가능 클랜」 화면은 **검색을 브라우저에서 한다.** 그러려면 목록이 전부 손에 있어야
+ * 하는데 20건씩 끊어 받으면 아직 안 받은 클랜은 검색에 걸리지 않는다.
+ * 그래서 `?size=` 를 받는다 — **상한을 두고** 받는다. 무제한이면 이 라우트 하나로
+ * 리그 전체를 몇 번이고 긁을 수 있다.
+ *
+ * 실측(2026-09-02): SPL 63곳 · IPL 43곳 · 10mountain 356곳. 400이면 지금은 한 번에 들어온다.
+ * 넘치면 커서가 그대로 살아 있으므로 화면이 이어서 받는다 — **없는 데이터가 되지 않는다.**
+ */
+const MAX_SIZE = 400
+
+/**
+ * GET /api/leagues/{leagueSlug}/clans — 리그 참여 클랜 (커서)
+ *
+ * `?size=N` 을 주면 한 쪽에 N건까지 담는다 (1 ~ `MAX_SIZE`).
+ * **없으면 예전 그대로 20건**이다 — 기존 호출자를 깨지 않는다.
+ */
 export async function GET(request: Request, context: { params: Promise<Record<string, string>> }) {
   return guardPublic(request, 600, async () => {
     const leagueSlug = await routeParam(context, 'league')
-    const { cursor, size } = pageParams(request)
+    const { cursor } = pageParams(request)
+    const size = Math.min(Math.max(intQuery(request, 'size', PAGE_SIZE.DEFAULT), 1), MAX_SIZE)
     const page = await getLeagueClans(leagueSlug, cursor, size)
     /* 목록은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
     return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')

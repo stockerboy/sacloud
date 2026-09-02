@@ -1,72 +1,40 @@
 import { redirect } from 'next/navigation'
-import { prisma } from '@sacloud/db'
-import { isRankSplitLeague, leagueLandingPath, leagueScreen } from '@sacloud/contract'
-import { resolveLeagueId } from '@/lib/server/queries/leagues'
-import { ClanRankSplit } from './ClanRankSplit'
+import { leagueLandingPath, leagueScreen } from '@sacloud/contract'
+import { ClanDirectory } from './ClanDirectory'
 
 /**
- * `/league/{slug}/rank/clan`.
+ * `/league/{slug}/rank/clan` — **「고용가능 클랜」** (2026-09-02 사용자 지시 · D-260).
  *
- * ── SPL · IPL 은 **두 칸짜리 합친 화면**이다 (2026-09-01 사용자 지시)
- *   *"클랜랭킹 그냥 SPL이랑 IPL 한공간에 둬 SPL이 왼쪽 IPL이 오른쪽"*
+ * > "SPL 리그 누르면 두가지 메뉴 첫번째가 클랜 -1부2부 분류 체계 아예 없애기 1,2부라는 개념x"
+ * > "클랜순위는 없애고 고용가능 클랜 이라는 항목으로 소속된 클랜 전부 보여주기"
+ * > (두 칸 분할 랭킹에 대해) "이건 폐지"
  *
- *   그래서 이 두 리그는 부리그로 넘기지 않고 여기서 바로 그린다.
- *   **어느 쪽으로 들어와도 같은 화면**이다 — `/league/supply/rank/clan` 과
- *   `/league/nolink/rank/clan` 이 둘 다 SPL+IPL 을 보여 준다. 라우트는 그대로 살아 있다.
+ * ── 여기서 없어진 것 셋
+ *   ```
+ *   ① 부리그로 넘기던 흐름   «클랜이 있는 첫 부리그» 를 찾아 `/rank/clan/{division}` 으로
+ *                            보내던 DB 질의가 통째로 없다. 1,2부 개념이 없으니 고를 것도 없다
+ *   ② SPL·IPL 두 칸 분할     `ClanRankSplit` 을 부르지 않는다 (사용자: "이건 폐지").
+ *                            **파일은 지우지 않았다** — `./ClanRankSplit.tsx` 에 그대로 있고
+ *                            되돌리려면 이 파일에서 그걸 부르면 된다 (`CLAUDE.md` 10-4)
+ *   ③ 클랜순위               순위 숫자 칸을 내렸다. 값(승률·승패·래더)은 그대로다
+ *   ```
  *
- *   `10mountain`(`sanply`) 은 여기 없다. 개인기록만 있는 비공식 리그라 아래의
- *   기존 «첫 부리그로 보낸다» 흐름을 그대로 쓴다 (D-245).
+ * ── 옛 부리그 탭 화면
+ *   `/rank/clan/{division}` 라우트는 **살아 있다.** 들어오면 여기로 보낸다.
+ *   화면 코드도 `[division]/ClanRankDivisionLegacy.tsx` 에 그대로 남겨 뒀다.
  *
- *   ⚠ 옛 화면(부리그 탭)은 **지우지 않았다** — `/rank/clan/{division}` 에 그대로 있다
- *     (`CLAUDE.md` 10-4). 되돌리려면 아래 분기 한 줄만 빼면 된다.
- *
- * ── 아래는 나머지 리그의 흐름이다: **클랜이 실제로 있는 첫 부리그**로 보낸다
- *
- * ── 왜 1부로 고정하면 안 되나 (2026-08-31 실측)
- *   IPL 은 **1티어를 비워 둔다** (`docs/IPL_SPEC.md` · 사용자 지시).
- *   그래서 1부에는 클랜이 한 곳도 없다 — 실측 분포는 2부 11 · 3부 7 · 4부 9 · 5부 10 · 6부 6 이다.
- *   그런데 이 페이지가 무조건 `/1` 로 보내서 **클랜랭킹을 누르면 빈 화면**이 떴다.
- *
- *   "1부가 비어 있을 수 있다" 는 IPL 만의 사정이 아니다. 리그마다 부리그 구성이 다르므로
- *   **화면이 데이터를 보고 정한다.** 부리그 번호를 코드에 박지 않는다.
- *
- * ── 아무 데도 클랜이 없으면
- *   그때는 1부로 보낸다. 빈 화면이 뜨지만 그건 **정말로 비어 있다는 뜻**이라 맞는 표시다.
+ * ── `10mountain`(`sanply`)
+ *   클랜 화면이 없는 리그는 개인순위로 보낸다 (D-245). 그 판단은 화면이 아니라
+ *   `leagueScreen()` 한 곳이 한다 — 리그별 분기를 화면에 뿌리지 않는다 (D-204).
  */
-export default async function ClanRankIndex({
+export default async function ClanIndex({
   params,
 }: {
   params: Promise<{ leagueSlug: string }>
 }) {
   const { leagueSlug } = await params
 
-  /* SPL · IPL 은 합친 화면이다. 부리그를 고르러 가지 않는다 */
-  if (isRankSplitLeague(leagueSlug)) return <ClanRankSplit />
-
-  /* 클랜 화면이 없는 리그(`10🏔`)는 개인랭킹으로 보낸다 (D-245).
-     라우트를 지우지 않고 **화면에서만** 빠지게 한다 (`CLAUDE.md` 10-4) */
   if (!leagueScreen(leagueSlug).clanRank) redirect(leagueLandingPath(leagueSlug))
 
-  const leagueId = await resolveLeagueId(leagueSlug)
-  let division = 1
-
-  if (leagueId) {
-    /* 랭킹 화면은 배치고사 중인 클랜을 빼고 보여 준다. 그 조건을 그대로 써서 고른다 */
-    const first = await prisma.leagueClan.findFirst({
-      where: { leagueId, placement: false },
-      orderBy: { division: 'asc' },
-      select: { division: true },
-    })
-    /* 전부 배치고사면 «클랜이 있는» 부리그로라도 보낸다 — 배치고사 안내가 보이는 편이 낫다 */
-    const fallback = first
-      ? null
-      : await prisma.leagueClan.findFirst({
-          where: { leagueId },
-          orderBy: { division: 'asc' },
-          select: { division: true },
-        })
-    division = first?.division ?? fallback?.division ?? 1
-  }
-
-  redirect(`/league/${leagueSlug}/rank/clan/${division}`)
+  return <ClanDirectory leagueSlug={leagueSlug} />
 }

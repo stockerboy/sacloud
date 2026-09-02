@@ -3,7 +3,7 @@
 import { use, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { PlayerRankRow, RankWeapon } from '@sacloud/contract'
-import { isRankSplitLeague, leagueScreen } from '@sacloud/contract'
+import { leagueScreen } from '@sacloud/contract'
 import {
   FormTop3,
   LoadMoreButton,
@@ -15,32 +15,34 @@ import {
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 import { useApiReady } from '@/app/providers'
-import { PlayerRankSplit } from './PlayerRankSplit'
 
 /**
- * 개인랭킹 `/league/{slug}/rank/player`. 부리그 탭은 없다.
+ * 「개인순위」 `/league/{slug}/rank/player`. 부리그 탭은 없다.
  *
  * 기능 두 가지가 여기 붙는다 (D-169, 사용자 지시).
  *   ① 무기 탭 `통합 / 스나 / 라플` — 탭을 바꾸면 목록과 폼 TOP3 가 함께 그 축으로 바뀐다
  *   ② 폼 TOP3 — 랭킹 표 위, 탭 아래
  *
  * 탭 상태를 URL 이 아니라 컴포넌트 상태로 둔다 — 부리그 탭과 달리 라우트가 나뉘지 않는다.
+ *
+ * ── 2026-09-02 (D-260) — **두 칸 분할을 폐지했다**
+ *   > (SPL 왼쪽 · IPL 오른쪽 분할에 대해) "이건 폐지 서플라이 형식을 따르기로 했다고 위에서 얘기함"
+ *
+ *   어느 리그로 들어오든 **그 리그 하나만** 보여 준다. 분할 화면(`PlayerRankSplit.tsx`)은
+ *   **지우지 않았다** (`CLAUDE.md` 10-4) — 되돌리려면 그것을 다시 부르면 된다.
+ *   화면 이름도 `플레이어 개인랭킹` → `개인순위` 로 바꿨다. 사용자가 고른 말이다.
  */
 export default function PlayerRankPage({ params }: { params: Promise<{ leagueSlug: string }> }) {
   const { leagueSlug } = use(params)
-
-  /* SPL · IPL 은 **한 화면 두 칸**이다 (2026-09-01 사용자 지시 — "개인랭킹도 SPL은 왼쪽 IPL은 오른쪽").
-     어느 쪽으로 들어와도 같은 화면이다. 라우트는 그대로 살아 있다.
-     `10mountain` 은 아래의 한 리그짜리 화면을 그대로 쓴다 (D-245). */
-  if (isRankSplitLeague(leagueSlug)) return <PlayerRankSplit />
-
   return <SingleLeaguePlayerRank leagueSlug={leagueSlug} />
 }
 
 /**
- * 리그 하나짜리 개인랭킹 — **옛 화면 그대로다** (`CLAUDE.md` 10-4).
+ * 리그 하나짜리 개인순위 — **모든 리그가 이것을 쓴다** (2026-09-02 · D-260).
  *
- * 지금은 `10mountain` 만 쓴다. 지우지 않았고, 되돌리려면 위 분기 한 줄만 빼면 된다.
+ * 예전에는 `10mountain` 만 이 화면이었고 SPL·IPL 은 두 칸 분할이었다. 분할이 폐지되면서
+ * 셋 다 같은 화면으로 돌아왔다. **리그별 분기는 없다** (D-204) — 칸 구성만
+ * `leagueScreen()` 이 정한다.
  */
 function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
   const [weapon, setWeapon] = useState<RankWeapon>('all')
@@ -69,7 +71,7 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           자세한 근거는 클랜랭킹 페이지 주석 참조. */}
       <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
-          title="플레이어 개인랭킹"
+          title="개인순위"
           notice="랭킹 숫자는 약 1시간마다 다시 계산됩니다. 한 경기부터 바로 반영됩니다."
         />
         <RankWeaponTabs current={weapon} onChange={setWeapon} />

@@ -1,5 +1,15 @@
 'use client'
 
+/**
+ * ⚠ **이 화면은 폐지됐다. 지금은 아무도 부르지 않는다** (2026-09-02 · D-260).
+ *
+ * > "이건 폐지 서플라이 형식을 따르기로 했다고 위에서 얘기함" — 사용자, 2026-09-02
+ *
+ * SPL(왼쪽) · IPL(오른쪽) 두 칸 분할 개인랭킹이다. 지금은 모든 리그가 `page.tsx` 의
+ * 한 리그짜리 「개인순위」 화면을 쓴다.
+ * **지우지 않았다** (`CLAUDE.md` 10-4) — 되돌리려면 `page.tsx` 가 이것을 부르면 된다.
+ */
+
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { PlayerRankRow, RankWeapon } from '@sacloud/contract'
