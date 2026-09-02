@@ -47,9 +47,16 @@ export interface NavLink {
  *   주소를 직접 치면 여전히 「준비중」 안내가 나온다. 없앤 것은 **GNB 링크 한 줄**이다.
  *   되살리려면 위 한 줄을 배열 끝에 다시 넣으면 된다.
  */
+/*
+ * ── 2026-09-02 (지시 #14 ①) — **순서가 IPL · SPL · 10mountain 이 됐다**
+ *
+ *   사장님: *"첫번째로 IPL 두번째로 SPL 을 넣어라"*. 총괄 확정: 상단바는 이 셋뿐이다.
+ *   그때까지는 `SPL · IPL · 10mountain` 이었다 (D-246). 되돌리려면 두 줄을 바꾸면 된다.
+ *   홈의 리그 버튼(`HomeSearch`)도 이 배열을 그대로 쓰므로 함께 IPL 이 먼저가 된다.
+ */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
-  { label: 'SPL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
+  { label: 'SPL', href: '/league/supply' },
   { label: '10mountain', href: '/league/sanply' },
 ]
 
@@ -102,14 +109,35 @@ export interface NavGroup {
   items: readonly NavLink[]
 }
 
+/*
+ * ── 2026-09-02 (지시 #14 ①) — 서랍도 **리그 셋뿐**이다
+ *   `리그`(/leagues) 항목과 `게시판` 묶음을 뺐다. 그때의 모습은 아래 `MOBILE_NAV_GROUPS_LEGACY` 다.
+ */
 export const MOBILE_NAV_GROUPS: readonly NavGroup[] = [
+  { label: '홈', items: [{ label: 'Home', href: '/' }] },
+  { label: '리그', items: [...FEATURED_LEAGUES] },
+]
+
+/** 지시 #14 ① 이전의 서랍 — 지우지 않았다 (`CLAUDE.md` 10-4). 되돌리려면 위 이름을 이것으로 */
+export const MOBILE_NAV_GROUPS_LEGACY: readonly NavGroup[] = [
   { label: '홈', items: [{ label: 'Home', href: '/' }] },
   { label: '리그', items: [...FEATURED_LEAGUES, { label: '리그', href: '/leagues' }] },
   { label: '게시판', items: [{ label: '게시판', href: '/board' }] },
 ]
 
-/** 대표 리그 뒤에 오는 고정 메뉴 — 원본 `nav-active`(굵게 + 흰 밑줄) */
-export const PRIMARY_NAV: readonly NavLink[] = [
+/**
+ * 대표 리그 뒤에 오는 고정 메뉴.
+ *
+ * ── 2026-09-02 (지시 #14 ①) — **비었다.** 사장님이 리그 소개/리그 만들기 페이지와
+ *   전역 게시판 메뉴를 버렸다 (*"이 페이지 필요없다 버려라"* · *"게시판을 SPL 과 IPL 카테고리에 넣어버린다"*).
+ *   `SiteHeader` 는 머리 항목이 없으면 대표 리그를 1차 메뉴로 바로 그린다.
+ *   옛 값은 `PRIMARY_NAV_LEGACY` — 되돌리려면 그것을 여기 넣으면 드롭다운 모습 그대로 돌아온다.
+ *   `/leagues` · `/board` 라우트는 살아 있다 (주소로는 열린다).
+ */
+export const PRIMARY_NAV: readonly NavLink[] = []
+
+/** 지시 #14 ① 이전 — 원본 `nav-active`(굵게 + 흰 밑줄) 시절부터의 두 항목 */
+export const PRIMARY_NAV_LEGACY: readonly NavLink[] = [
   { label: '리그', href: '/leagues' },
   { label: '게시판', href: '/board' },
 ]
