@@ -163,10 +163,27 @@ const leagueById = new Map(dataset.leagues.map((entry) => [entry.id, entry]))
  */
 const leagueBySlug = new Map(dataset.leagues.map((entry) => [entry.slug, entry]))
 
-/* 운영 slug → 같은 순번의 픽스처 리그. 픽스처가 모자라면 그 칸은 비운다 */
+/*
+ * 운영 slug → 같은 순번의 픽스처 리그. 픽스처가 모자라면 그 칸은 비운다.
+ *
+ * ── **slug 와 이름을 운영 것으로 덮어쓴 사본을 넣는다** (2026-09-02 · 지호 판정)
+ *   원본 픽스처(`dataset.leagues`)는 **한 글자도 안 건드린다.** 여기 넣는 것은 사본이다.
+ *   그래서 `mockLeaguePurge` 가 보는 `dataset` 쪽 slug 는 그대로 `officialmain` … 이고,
+ *   화면이 보는 쪽만 `supply` · `SPL` 이 된다.
+ *
+ *   이름까지 덮는 이유가 둘 있다.
+ *   ```
+ *   ① 스크린샷이 우리 검증 수단이 됐다. 화면에 「공식전」이 뜨면 운영을 대신 못 한다
+ *   ② 10mountain 의 산 표시는 **이름**을 보고 붙는다 (`@sacloud/ui` 의 LeagueLabel).
+ *      이름이 픽스처면 그 코드가 아예 안 돌아 mock 으로 확인할 수 없다
+ *   ```
+ *   지우는 도구가 보는 것은 slug 지 이름이 아니라 이름 쪽은 안전하다.
+ */
 for (const [index, entry] of HOME_LEAGUES.entries()) {
   const stand = dataset.leagues[index]
-  if (stand && !leagueBySlug.has(entry.slug)) leagueBySlug.set(entry.slug, stand)
+  if (stand && !leagueBySlug.has(entry.slug)) {
+    leagueBySlug.set(entry.slug, { ...stand, slug: entry.slug, name: entry.name })
+  }
 }
 const mapById = new Map(dataset.maps.map((entry) => [entry.id, entry]))
 const leagueClanById = new Map(dataset.leagueClans.map((entry) => [entry.id, entry]))
