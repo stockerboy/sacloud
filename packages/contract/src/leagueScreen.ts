@@ -72,6 +72,15 @@ export interface LeagueScreenSpec {
    * `null` 이면 그 리그에는 게시판 탭이 없고, 주소로 들어와도 리그 첫 화면으로 보낸다.
    */
   boardCategory: string | null
+  /**
+   * **리그가 나열되는 화면에 보이는가** (2026-09-02 사장님 지시 #22 — "대룰리그 뺴라").
+   *
+   * `false` 면 리그 목록 · 프로필의 리그 참가 카드 · 검색 결과 어디에도 안 나온다.
+   * **데이터는 지우지 않는다** — 리그 행·경기·기록은 그대로이고 `/league/{slug}/…` 를 직접 치면
+   * 여전히 열린다 (과거 기록 조회는 살아 있어야 한다 · `CLAUDE.md` 3-A 7 · 10-4).
+   * 되돌리려면 그 리그 줄의 이 값을 `true` 로.
+   */
+  listed: boolean
 }
 
 /** 공식 래더가 있는 리그의 기본값 — 지금까지의 화면 그대로다 */
@@ -84,7 +93,14 @@ const WITH_LADDER: LeagueScreenSpec = {
   official: true,
   /* 모르는 리그에는 게시판이 없다 — 카테고리 행을 지어내지 않는다 */
   boardCategory: null,
+  listed: true,
 }
+
+/**
+ * 대룰리그(`daerule`) — **닫힌 리그** (D-178 준비중 · 지시 #22 «대룰리그 뺴라»).
+ * 나열되는 화면에서 빠진다. 데이터·라우트는 그대로다. `PREPARING_LEAGUE_SLUGS`(ui)와 짝이다.
+ */
+const CLOSED: LeagueScreenSpec = { ...WITH_LADDER, listed: false }
 
 /**
  * IPL(`nolink`) — 래더는 있되 **부리그(티어)를 화면에 내지 않는다** (D-265 ③).
@@ -115,6 +131,7 @@ const NO_LADDER: LeagueScreenSpec = {
   official: false,
   /* 10mountain 에는 게시판 탭이 없다 (지시 #14 · #16) */
   boardCategory: null,
+  listed: true,
 }
 
 const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
@@ -123,6 +140,8 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
   /* 2026-09-02 이전에는 `WITH_LADDER` 였다 (지시 #9 · D-265 ③) */
   nolink: { ...WITH_LADDER_NO_DIVISION, boardCategory: 'ipl' },
   sanply: NO_LADDER,
+  /* 2026-09-02 지시 #22 — 목록에서 뺀다. 그전에는 표에 없었다(= 기본값 · 목록에 보였다) */
+  daerule: CLOSED,
 }
 
 /** 이 리그가 보여 줄 화면과 칸. 모르는 slug 는 «래더 있는 리그» 로 본다 */
@@ -144,6 +163,14 @@ export function showsDivision(slug: string): boolean {
  */
 export function isOfficialLeague(slug: string): boolean {
   return leagueScreen(slug).official
+}
+
+/**
+ * 이 리그가 **나열되는 화면**(리그 목록 · 참가 카드 · 검색 결과)에 보이는가 (지시 #22).
+ * 목록을 그리는 자리는 전부 이것으로 거른다 — 데이터는 그대로, 직접 주소는 열린다.
+ */
+export function isLeagueListed(slug: string): boolean {
+  return leagueScreen(slug).listed
 }
 
 /** 이 리그 안 게시판의 카테고리 slug. 없으면 `null` (지시 #14-2) */

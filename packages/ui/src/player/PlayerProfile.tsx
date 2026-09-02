@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { PlayerLeagueEntry } from '@sacloud/contract'
-import { isOfficialLeague } from '@sacloud/contract'
+import { isLeagueListed, isOfficialLeague } from '@sacloud/contract'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 클랜마크는 클랜 알이, 기록은 개인 알이 덮는다 */
 import { Egg } from '../egg/Egg'
@@ -298,7 +298,9 @@ export function PlayerLeagueList({
     )
   }
 
-  if (!entries || entries.length === 0) {
+  /* 닫힌 리그(대룰리그 · 지시 #22)는 목록에서 뺀다. 데이터는 그대로다 — 화면에서만 거른다 */
+  const listed = entries?.filter((entry) => isLeagueListed(entry.league.slug))
+  if (!listed || listed.length === 0) {
     return (
       <section className="mt-[40px]">
         <SectionTitle title="참여중인 리그" />
@@ -309,14 +311,14 @@ export function PlayerLeagueList({
     )
   }
 
-  const hidden = entries.length - VISIBLE_LEAGUES
-  const shown = expanded ? entries : entries.slice(0, VISIBLE_LEAGUES)
+  const hidden = listed.length - VISIBLE_LEAGUES
+  const shown = expanded ? listed : listed.slice(0, VISIBLE_LEAGUES)
 
   return (
     <section className="mt-[40px]">
       <SectionTitle
         title="참여중인 리그"
-        note={`${formatCount(entries.length)}개`}
+        note={`${formatCount(listed.length)}개`}
         action={
           hidden > 0 ? (
             <button

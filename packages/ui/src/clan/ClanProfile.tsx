@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { ClanLeagueEntry, ClanPlayer } from '@sacloud/contract'
-import { isOfficialLeague, showsDivision } from '@sacloud/contract'
+import { isLeagueListed, isOfficialLeague, showsDivision } from '@sacloud/contract'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 클랜마크를 알이 덮고, 승률·승패를 가린다 */
 import { Egg } from '../egg/Egg'
@@ -221,7 +221,9 @@ export function ClanLeagueList({
     )
   }
 
-  if (!entries || entries.length === 0) {
+  /* 닫힌 리그(대룰리그 · 지시 #22)는 목록에서 뺀다. 데이터는 그대로다 — 화면에서만 거른다 */
+  const listed = entries?.filter((entry) => isLeagueListed(entry.league.slug))
+  if (!listed || listed.length === 0) {
     return (
       <section className="mt-[40px]">
         <SectionTitle title="참여중인 리그" />
@@ -234,9 +236,9 @@ export function ClanLeagueList({
 
   return (
     <section className="mt-[40px]">
-      <SectionTitle title="참여중인 리그" note={`${formatCount(entries.length)}개`} />
+      <SectionTitle title="참여중인 리그" note={`${formatCount(listed.length)}개`} />
       <div className="mt-4 flex flex-col gap-3">
-        {entries.map((entry) => (
+        {listed.map((entry) => (
           <ClanLeagueRow key={entry.league.id} entry={entry} clanSlug={clanSlug} />
         ))}
       </div>

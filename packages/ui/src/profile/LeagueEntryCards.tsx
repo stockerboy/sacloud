@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ClanLeagueEntry, PlayerLeagueEntry } from '@sacloud/contract'
-import { isOfficialLeague, showsDivision } from '@sacloud/contract'
+import { isLeagueListed, isOfficialLeague, showsDivision } from '@sacloud/contract'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
 import { Skeleton } from '../common/Skeleton'
@@ -145,12 +145,14 @@ export function PlayerLeagueCards({
   loading?: boolean
 }) {
   if (loading) return <CardSkeleton />
-  if (!entries || entries.length === 0) {
+  /* 닫힌 리그(대룰리그 · 지시 #22)는 카드에서 뺀다. 데이터는 그대로다 — 화면에서만 거른다 */
+  const listed = entries?.filter((entry) => isLeagueListed(entry.league.slug))
+  if (!listed || listed.length === 0) {
     return <EmptyState message="참여중인 리그가 없습니다." />
   }
   return (
     <div className="flex flex-wrap">
-      {entries.map((entry) => (
+      {listed.map((entry) => (
         <PlayerEntryCard key={entry.league.id} entry={entry} playerId={playerId} />
       ))}
     </div>
@@ -199,12 +201,14 @@ export function ClanLeagueCards({
   loading?: boolean
 }) {
   if (loading) return <CardSkeleton />
-  if (!entries || entries.length === 0) {
+  /* 닫힌 리그(대룰리그 · 지시 #22)는 카드에서 뺀다. 데이터는 그대로다 — 화면에서만 거른다 */
+  const listed = entries?.filter((entry) => isLeagueListed(entry.league.slug))
+  if (!listed || listed.length === 0) {
     return <EmptyState message="참여중인 리그가 없습니다." />
   }
   return (
     <div className="flex flex-wrap">
-      {entries.map((entry) => (
+      {listed.map((entry) => (
         <ClanEntryCard key={entry.league.id} entry={entry} clanSlug={clanSlug} />
       ))}
     </div>

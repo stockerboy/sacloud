@@ -1,5 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { isOfficialLeague, leagueLandingPath, leagueScreen, showsDivision } from '../leagueScreen'
+import {
+  isLeagueListed,
+  isOfficialLeague,
+  leagueLandingPath,
+  leagueScreen,
+  showsDivision,
+} from '../leagueScreen'
+
+/**
+ * 닫힌 리그는 나열되는 화면에서 빠진다 (2026-09-02 사장님 지시 #22 · "대룰리그 뺴라").
+ * 데이터·라우트는 그대로다 — 여기서 못 박는 것은 «목록에 보이는가» 하나다.
+ */
+describe('leagueScreen — 목록 노출 (#22)', () => {
+  it('대룰리그(daerule)는 목록에 안 보인다', () => {
+    expect(isLeagueListed('daerule')).toBe(false)
+  })
+
+  it('세 리그와 모르는 slug 는 보인다', () => {
+    for (const slug of ['supply', 'nolink', 'sanply', 'some-new-league']) {
+      expect(isLeagueListed(slug)).toBe(true)
+    }
+  })
+
+  it('닫힌 리그도 직접 주소로는 열린다 — 랜딩 경로가 있다', () => {
+    expect(leagueLandingPath('daerule')).toBe('/league/daerule/rank/clan')
+  })
+})
 
 /**
  * 공식/비공식 **표기** (2026-09-02 사장님 정정 · 지시 #17).

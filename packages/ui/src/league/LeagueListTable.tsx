@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { LeagueListItem } from '@sacloud/contract'
-import { isOfficialLeague } from '@sacloud/contract'
+import { isLeagueListed, isOfficialLeague } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
@@ -30,6 +30,8 @@ export function LeagueListTable({
   error?: boolean
   onRetry?: () => void
 }) {
+  /* 닫힌 리그(대룰리그 · 지시 #22)는 목록에서 뺀다. 데이터는 그대로다 — 화면에서만 거른다 */
+  const listed = items?.filter((league) => isLeagueListed(league.slug))
   return (
     <div className="mt-6 rounded-[var(--radius)] border border-line">
       <div className={HEAD}>
@@ -49,10 +51,10 @@ export function LeagueListTable({
             </div>
           ))}
         </>
-      ) : !items || items.length === 0 ? (
+      ) : !listed || listed.length === 0 ? (
         <EmptyState message="리그가 없습니다." />
       ) : (
-        items.map((league) => (
+        listed.map((league) => (
           <Link
             key={league.id}
             href={`/league/${league.slug}/home/info`}
