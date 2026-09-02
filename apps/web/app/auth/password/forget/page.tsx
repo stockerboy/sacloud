@@ -11,7 +11,12 @@ import {
   AuthNotice,
   AuthSubmit,
   AuthTitle,
+  SITE_BRAND,
 } from '@sacloud/ui'
+import {
+  PASSWORD_RESET_MAIL_ENABLED,
+  PASSWORD_RESET_UNAVAILABLE_MESSAGE,
+} from '@sacloud/contract'
 import { apiSend } from '@/lib/apiSend'
 
 /**
@@ -33,8 +38,17 @@ import { apiSend } from '@/lib/apiSend'
  *   **API 라우트 · 토큰 발급 · `/auth/password/reset`(토큰으로 실제 재설정하는 화면)은
  *   하나도 안 건드렸다** (`CLAUDE.md` 10-4). 토큰을 손에 넣을 수 있는 사람은
  *   지금도 그 화면으로 비밀번호를 바꿀 수 있다.
+ *
+ * ── ★2026-09-02 (O-010) — 스위치를 계약으로 옮겼다. 반쪽만 닫혀 있었다★
+ *
+ *   위 상수가 **이 파일 안에만** 있어서 서버는 그 값을 몰랐다. 화면은 닫혔는데
+ *   `POST /api/auth/password/forget` 은 **그대로 `200 {"ok":true}`** 를 돌려주고
+ *   토큰까지 만들고 있었다 (운영에서 직접 찔러 확인). 게시판이 똑같았다(O-011).
+ *   값을 `@sacloud/contract` 로 올려 **한 줄이 화면과 API 를 같이 움직이게** 했다.
+ *
+ *   그리고 안내에 **무엇을 하면 되는지**를 넣었다. 「준비중」만 적으면 비밀번호를
+ *   잊은 사람은 갈 곳이 없다. 문의 메일은 푸터가 쓰는 그 주소 하나에서 온다.
  */
-const PASSWORD_RESET_MAIL_ENABLED: boolean = false
 
 export default function PasswordForgetPage() {
   if (!PASSWORD_RESET_MAIL_ENABLED) return <PasswordForgetPreparing />
@@ -57,11 +71,18 @@ function PasswordForgetPreparing() {
       }
     >
       <AuthTitle>비밀번호 재설정</AuthTitle>
-      <p className="text-sm leading-relaxed text-meta">
-        비밀번호 재설정은 아직 준비중입니다.
-        <br />
-        메일 발송 기능이 아직 없어 재설정 링크를 보내 드릴 수 없습니다.
-      </p>
+      <p className="text-sm leading-relaxed text-meta">{PASSWORD_RESET_UNAVAILABLE_MESSAGE}</p>
+      {/* 갈 곳을 준다. 주소가 정해지지 않았으면 링크를 그리지 않는다 —
+          없는 주소를 보여 주는 것보다 안 보여 주는 편이 낫다 (`site-config.ts` 규칙) */}
+      {SITE_BRAND.contactEmail ? (
+        <p className="mt-3 text-sm leading-relaxed text-meta">
+          <a href={`mailto:${SITE_BRAND.contactEmail}`}>
+            <span className="text-text-strong underline underline-offset-4">
+              {SITE_BRAND.contactEmail}
+            </span>
+          </a>
+        </p>
+      ) : null}
     </AuthCard>
   )
 }

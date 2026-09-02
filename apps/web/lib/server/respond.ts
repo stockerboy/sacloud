@@ -110,6 +110,14 @@ export const badRequest = (message = '잘못된 요청입니다', errors?: Recor
 export const unauthorized = (message = '로그인이 필요합니다') => fail(401, message)
 export const forbidden = (message = '권한이 없습니다') => fail(403, message)
 /**
+ * 503 — **기능이 아직 없다.**
+ *
+ * 403(«권한이 없다»)도 404(«그런 주소가 없다»)도 아니다. 주소는 있고 권한 문제도
+ * 아니며, **그 기능이 아직 만들어지지 않았다.** 비밀번호 재설정 메일이 그렇다 (O-010).
+ * 검색엔진과 클라이언트가 「나중에 다시 오라」로 읽는 것도 이 뜻에 맞다.
+ */
+export const serviceUnavailable = (message = '아직 준비되지 않았습니다') => fail(503, message)
+/**
  * 429 — 시도 제한.
  *
  * `Retry-After`(초)를 함께 내려 준다. 클라이언트가 언제 다시 시도할지 알 수 있어야
