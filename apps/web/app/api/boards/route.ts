@@ -1,4 +1,5 @@
 import { PAGE_SIZE } from '@sacloud/contract'
+import { boardClosed } from '@/lib/server/boardGate'
 import { fail, guard, guardPublic, ok, okPagePublic } from '@/lib/server/respond'
 import { jsonBody, pageParams, query } from '@/lib/server/request'
 import { createBoard, listBoards } from '@/lib/server/queries/boards'
@@ -30,6 +31,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   return guard(async () => {
+    /* 게시판이 닫혀 있으면 여기서 막는다 (O-011) — 쓰기 일곱 곳 전부에 있어야 한다 */
+    const closed = boardClosed()
+    if (closed) return closed
     const result = await createBoard(request, await jsonBody(request))
     return result.ok ? ok(result.value) : fail(result.status, result.message)
   })

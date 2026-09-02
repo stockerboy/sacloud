@@ -1,4 +1,5 @@
 import { fail, guard, notFound, ok } from '@/lib/server/respond'
+import { boardClosed } from '@/lib/server/boardGate'
 import { jsonBody, routeParam } from '@/lib/server/request'
 import { deleteBoard, getBoard, updateBoard } from '@/lib/server/queries/boards'
 
@@ -20,6 +21,9 @@ export async function GET(request: Request, context: Context) {
 
 export async function PUT(request: Request, context: Context) {
   return guard(async () => {
+    /* 게시판이 닫혀 있으면 여기서 막는다 (O-011) — 쓰기 일곱 곳 전부에 있어야 한다 */
+    const closed = boardClosed()
+    if (closed) return closed
     const boardId = await routeParam(context, 'boardId')
     const result = await updateBoard(boardId, request, await jsonBody(request))
     return result.ok ? ok(result.value) : fail(result.status, result.message)
@@ -28,6 +32,9 @@ export async function PUT(request: Request, context: Context) {
 
 export async function DELETE(request: Request, context: Context) {
   return guard(async () => {
+    /* 게시판이 닫혀 있으면 여기서 막는다 (O-011) — 쓰기 일곱 곳 전부에 있어야 한다 */
+    const closed = boardClosed()
+    if (closed) return closed
     const boardId = await routeParam(context, 'boardId')
     const result = await deleteBoard(boardId, request, await jsonBody(request))
     return result.ok ? ok(result.value) : fail(result.status, result.message)

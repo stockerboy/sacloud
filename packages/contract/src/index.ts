@@ -20,6 +20,7 @@ export * from './barracksUrl'
 /* 붙여 넣은 검색어 다듬기 (D-254) */
 export * from './searchInput'
 export * from './anonymity'
+export * from './boardOpen'
 export * from './egg'
 /* 리그가 무엇을 보여 주는가 — 리그별 화면·칸 설정 한 곳 (2026-09-01) */
 export * from './leagueScreen'
