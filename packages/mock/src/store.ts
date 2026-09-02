@@ -439,7 +439,16 @@ export function findLeagueByName(name: string): LeagueSummary | null {
   const keyword = normalizePastedQuery(name)
   if (!keyword) return null
   const league = dataset.leagues.find((entry) => sameName(entry.name, keyword))
-  return league ? toLeagueSummary(league) : null
+  if (league) return toLeagueSummary(league)
+  /*
+   * 두 번째 시도 — **slug 로도 본다** (O-003 · 2026-09-02).
+   * 주소창에 보이는 것은 slug(`supply`)인데 화면 이름은 `SPL` 이라, 주소를 복사해
+   * 치면 지금까지 못 찾았다. **이름이 먼저고 slug 는 그 다음이다.**
+   * 실제 서버(`apps/web/lib/server/queries/search.ts`)와 같은 순서를 지킨다 —
+   * Mock 과 서버가 다르게 굴면 화면이 어느 쪽에서 맞는지 알 수 없다.
+   */
+  const bySlug = dataset.leagues.find((entry) => sameName(entry.slug, keyword))
+  return bySlug ? toLeagueSummary(bySlug) : null
 }
 
 export function searchLeagues(query: string, limit = 10): LeagueSummary[] {

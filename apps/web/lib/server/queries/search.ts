@@ -462,7 +462,25 @@ export async function findLeagueByName(name: string): Promise<LeagueSummary | nu
     orderBy: [{ id: 'asc' }],
     select: LEAGUE_SUMMARY_SELECT,
   })
-  return league ? toLeagueSummary(league) : null
+  if (league) return toLeagueSummary(league)
+
+  /*
+   * ── 두 번째 시도: **slug 로도 한 번 더 본다** (O-003 · 2026-09-02)
+   *
+   * 화면 이름과 slug 가 다르다 — `SPL`/`supply` · `IPL`/`nolink` · `10mountain`/`sanply`.
+   * 그런데 **주소창에는 slug 가 보인다.** 그것을 복사해 검색창에 치면 지금까지 404 였다
+   * (B 운영 실측 2026-09-02 — `SPL` 200 · `supply` **404**).
+   *
+   * **이름이 먼저다.** slug 는 이름으로 못 찾았을 때만 본다 — 어떤 리그의 slug 가
+   * 다른 리그의 이름과 같아지는 날이 와도 이름 쪽이 이긴다.
+   * 자동완성(`searchLeagues`)은 이미 둘 다 보고 있었다. 여기만 안 보고 있었다.
+   */
+  const bySlug = await prisma.league.findFirst({
+    where: { slug: ciEquals(keyword), ...publicOriginWhere() },
+    orderBy: [{ id: 'asc' }],
+    select: LEAGUE_SUMMARY_SELECT,
+  })
+  return bySlug ? toLeagueSummary(bySlug) : null
 }
 
 export async function searchLeagues(query: string): Promise<LeagueSummary[]> {
