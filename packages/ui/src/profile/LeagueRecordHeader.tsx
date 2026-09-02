@@ -106,7 +106,10 @@ export function LeaguePlayerRecordHeader({
             <>
               <MetaDot />
               <span className="flex items-center gap-2">
-                <span className="text-faint">포지션</span>
+                {/* ⚠ `text-faint` 를 쓰지 않는다 — 뜻이 있는 라벨이다.
+                    카드-2 면 위에서 2.58:1 로 나왔다 (2026-09-02 운영 실측).
+                    `--color-faint` 는 구분자·단위 같은 **장식 전용**이다 (D-233) */}
+                <span className="text-meta">포지션</span>
                 <span className="text-text">{position}</span>
               </span>
             </>

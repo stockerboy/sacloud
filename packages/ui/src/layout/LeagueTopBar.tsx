@@ -72,16 +72,24 @@ export interface LeagueTopBarProps {
  * 리그 탭. **리그홈은 없다.**
  * 경로(href)는 예전과 하나도 안 바뀌었다 — 없앤 것은 「리그홈」 항목 하나뿐이다.
  *
- * ⚠ 클랜랭킹 유무는 **여기서 판단하지 않는다.** `leagueScreen(slug).clanRank` 가 정한다
+ * ── 2026-09-02 (D-260) — **이름이 둘 다 바뀌었다.** 가는 곳은 그대로다
+ *   ```
+ *   클랜랭킹  →  고용가능 클랜    사용자: *"클랜순위는 없애고 고용가능 클랜 이라는 항목으로"*
+ *   개인랭킹  →  개인순위        사용자: *"두번째가 개인순위"*
+ *   ```
+ *   `/rank/clan` · `/rank/player` 라우트는 **한 글자도 바뀌지 않았다** (D-246 —
+ *   slug 와 라우트는 건드리지 않는다). 바뀐 것은 사람에게 보이는 글자뿐이다.
+ *
+ * ⚠ 클랜 화면 유무는 **여기서 판단하지 않는다.** `leagueScreen(slug).clanRank` 가 정한다
  *   (`packages/contract/src/leagueScreen.ts`). 화면마다 `slug === 'sanply'` 를 뿌리지
  *   않는다는 규칙(D-204)을 지키려고 표를 그 한 곳에 모아 뒀다.
- *   `10mountain`(`sanply`)은 클랜랭킹이 없어서 탭이 **개인랭킹 하나**다.
+ *   `10mountain`(`sanply`)은 클랜 화면이 없어서 탭이 **개인순위 하나**다.
  */
 export function leagueTabs(leagueSlug: string) {
   const base = `/league/${leagueSlug}`
-  const tabs = [{ label: '개인랭킹', href: `${base}/rank/player` }]
+  const tabs = [{ label: '개인순위', href: `${base}/rank/player` }]
   if (leagueScreen(leagueSlug).clanRank) {
-    tabs.unshift({ label: '클랜랭킹', href: `${base}/rank/clan` })
+    tabs.unshift({ label: '고용가능 클랜', href: `${base}/rank/clan` })
   }
   return tabs
 }
@@ -167,28 +175,30 @@ export function LeagueHeroBand({ leagueName, official, clanCount }: LeagueHeroBa
   return (
     <div className="border-b border-hero-line bg-hero">
       <div className="pc-container flex flex-wrap items-center gap-x-5 gap-y-3 py-11 max-md:py-8">
-        <h1 className="font-display text-[2.75rem] leading-none tracking-wide text-text-strong max-md:text-[2rem]">
+        <h1 className="font-display text-[2.75rem] leading-none tracking-wide text-hero-fg max-md:text-[2rem]">
           <LeagueLabel name={leagueName} />
         </h1>
 
         {/* 공식/비공식 — 면을 칠하지 않고 1px 테두리로 만든다 */}
-        <span className="flex items-center gap-1.5 rounded-[var(--radius)] border border-hero-line px-2.5 py-1 text-xs tracking-wide text-text">
+        <span className="flex items-center gap-1.5 rounded-[var(--radius)] border border-hero-line px-2.5 py-1 text-xs tracking-wide text-hero-fg">
           <span
             className={`inline-block h-1.5 w-1.5 rounded-full ${
-              official ? 'bg-accent' : 'bg-meta'
+              official ? 'bg-hero-fg' : 'bg-hero-meta'
             }`}
             aria-hidden
           />
           {official ? '공식' : '비공식'}
         </span>
 
-        {/* 아직 안 온 값은 숫자 자리를 비워 둔다. 0 을 찍지 않는다 */}
-        <span className="text-sm text-meta">
+        {/* 아직 안 온 값은 숫자 자리를 비워 둔다. 0 을 찍지 않는다.
+            ⚠ 띠 위에서는 `text-meta` 를 쓰지 않는다 — 파란 면 위에서 **1.69:1** 이 된다
+               (2026-09-02 운영 실측). 띠 전용 색은 `--color-hero-meta` (4.77:1) */}
+        <span className="text-sm text-hero-meta">
           {clanCount === undefined ? (
             '클랜 참여중'
           ) : (
             <>
-              <span className="num text-text">{clanCount.toLocaleString('ko-KR')}</span>
+              <span className="num text-hero-fg">{clanCount.toLocaleString('ko-KR')}</span>
               개의 클랜 참여중
             </>
           )}
