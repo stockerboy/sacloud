@@ -35,3 +35,19 @@ export function leaguePlayerSeasonPath(leagueSlug: string, playerId: string): st
 export function leagueClanPath(leagueSlug: string, clanSlug: string): string {
   return `/league/${leagueSlug}/clan/${clanSlug}`
 }
+
+/**
+ * 경기 한 판 `/league/{slug}/match/{matchId}` (2026-09-03 · O-014).
+ *
+ * ══ 왜 생겼나 ══
+ *
+ * 경기 상세는 이미 다 있었는데 **자기 주소가 없었다.** 카드를 눌러야만 보이고
+ * **친구에게 링크를 못 보냈다.**
+ * > 강민재 — *"링크를 보낼 수 있어야 사이트가 밖으로 퍼진다."*
+ *
+ * 경로는 **여기 한 곳에서만** 만든다. 화면마다 문자열을 다시 적으면 언젠가 갈라진다
+ * (`leaguePlayerPath` 가 같은 이유로 여기 있다).
+ */
+export function leagueMatchPath(leagueSlug: string, matchId: string): string {
+  return `/league/${leagueSlug}/match/${matchId}`
+}

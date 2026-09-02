@@ -26,7 +26,7 @@ import { RelativeTime } from '../common/RelativeTime'
 import { formatCount, formatRate, formatTeamCounts } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
-import { leagueClanPath } from '../common/paths'
+import { leagueClanPath, leagueMatchPath } from '../common/paths'
 import {
   NOT_RATED_BADGE,
   NOT_RATED_BADGE_TITLE,
@@ -322,6 +322,7 @@ export function MatchCard({
   onExpand,
   variant = 'player',
   look = 'supply',
+  defaultExpanded = false,
 }: {
   match: MatchListItem
   leagueSlug: string
@@ -339,9 +340,25 @@ export function MatchCard({
   variant?: 'player' | 'clan'
   /** 카드 재질. 기본은 `supply`(면을 칠한다). `holo` · `legacy` 는 옛 재질 — 지우지 않았다 */
   look?: MatchCardLook
+  /**
+   * ★처음부터 펼친 채로 세운다★ (2026-09-03 · O-014).
+   *
+   * ══ 왜 필요한가 ══
+   *
+   * 경기 상세는 **이미 다 만들어져 있다. 자기 주소가 없을 뿐이었다.**
+   * 이 카드가 펼치면 라인업 10명 표 전체를 그리는데, **카드를 눌러야만 보이고
+   * 친구에게 링크를 못 보냈다.** 강민재 — *"링크를 보낼 수 있어야 사이트가 밖으로 퍼진다."*
+   *
+   * 그래서 `/league/{slug}/match/{matchId}` 를 만들었고, 그 화면은 이 카드를
+   * **펼친 상태로** 세워야 한다.
+   *
+   * ⚠ **기본값은 `false` 다 — 지금과 똑같다.** 선수·클랜 화면은 한 글자도 안 바뀐다.
+   *   접힘/펼침을 누르는 동작도 그대로다. 이 값은 **시작 모양**만 정한다.
+   */
+  defaultExpanded?: boolean
 }) {
   const skin = LOOK[look]
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultExpanded)
   const win = match.win
   const stat = match.player_stat
   /* 보는 쪽(`league_clan`)이 전반에 선 진영. 근거가 없으면 `null` 이고 칸을 비운다 (D-207) */
@@ -377,10 +394,28 @@ export function MatchCard({
         <div className="flex min-w-0 flex-grow flex-col">
           {/* 1행 — 왼쪽 `맵이름 - 상대시간`, 오른쪽 래더 증감 (원본 구조) */}
           <div className="flex items-center px-2 pt-1.5 text-sm text-meta">
+            {/*
+              ★이 줄이 경기 한 판의 주소다★ (2026-09-03 · O-014).
+
+              전에는 그냥 글자였다. 경기 상세는 이미 다 있었는데 **자기 주소가 없어서**
+              카드를 눌러야만 보이고 친구에게 링크를 못 보냈다.
+
+              ⚠ **새 버튼을 만들지 않았다.** 이미 있던 「맵이름 - 시간」 줄에 문패를 단 것뿐이다.
+                아이콘도 안 붙였다 — 카드 한 줄에 누를 것이 둘이면 어느 쪽이 무엇인지 흐려진다.
+              ⚠ 이 줄을 눌러도 **아코디언은 안 펼쳐진다.** 펼침은 카드의 다른 자리가 맡는다 —
+                `stopPropagation` 으로 그 둘을 갈라 놓는다. 안 그러면 링크를 누를 때
+                카드가 같이 펼쳐졌다 접힌다.
+            */}
             <div className="min-w-0 truncate">
-              <span className="font-semibold">{match.map.name}</span>
-              {' - '}
-              <RelativeTime value={match.start_at} />
+              <Link
+                href={leagueMatchPath(leagueSlug, match.id)}
+                onClick={(event) => event.stopPropagation()}
+                className="hover:underline"
+              >
+                <span className="font-semibold">{match.map.name}</span>
+                {' - '}
+                <RelativeTime value={match.start_at} />
+              </Link>
             </div>
             <div className="ml-auto shrink-0 pl-2 font-semibold">
               {/* 배치고사 중이면 래더 증감 대신 `배치고사` (원본 규칙) */}
