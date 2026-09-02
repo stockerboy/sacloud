@@ -49,6 +49,11 @@ export const COL_RANK = 'w-16 shrink-0 text-center max-md:w-9'
 export const COL_NAME = 'flex min-w-0 flex-1 items-center'
 /** 지표 칸 (승률 · 킬뎃) */
 export const COL_STAT = 'w-28 shrink-0 text-right max-md:w-20'
+/**
+ * 소속 클랜명 칸 (2026-09-02 사장님 지시 #10 — "순위닉네임, 래더 사이에 소속클랜명을 적어라").
+ * 홈 미리보기가 켜서 쓴다 (`PlayerRankTable` 의 `clanColumn`). 폰에서도 남긴다 — 길면 말줄임.
+ */
+export const COL_CLAN = 'w-36 shrink-0 pr-3 max-md:w-24 max-md:pr-2'
 /** 래더 칸 — 표에서 가장 무거운 숫자 */
 export const COL_RATING = 'w-32 shrink-0 text-right max-md:w-24'
 /** 좁은 화면에서 감추는 칸 */
