@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   SEARCH_FAILED,
   SEARCH_MISS_BARRACKS,
@@ -16,8 +16,14 @@ import {
   FEATURED_LEAGUES,
   LeagueLabel,
   MainLogo,
+  SEARCH_SUGGEST_ENABLED,
+  SUGGEST_CACHE_MAX,
+  SUGGEST_DEBOUNCE_MS,
+  SUGGEST_MAX_ITEMS,
+  SUGGEST_MIN_CHARS,
   SearchBar,
   isLeaguePreparing,
+  type SearchSuggestion,
   type SearchType,
 } from '@sacloud/ui'
 import { ApiError, apiGet } from '@/lib/api'
@@ -45,10 +51,113 @@ const LEAGUE_SHORTCUTS = FEATURED_LEAGUES.filter(
   (league) => !isLeaguePreparing(league.href.split('/')[2] ?? ''),
 ).map((league) => ({ label: league.label, href: `${league.href}/rank/player` }))
 
+/**
+ * 자동완성이 부를 곳 — 검색 종류별로 하나씩 (O-002 · 2026-09-02).
+ *
+ * ★셋 다 이미 있던 것이다.★ 계약서(`endpoints.ts` 243·257·271행)에 「자동완성」이라고
+ * 적힌 채로 운영에서 잘 돌고 있었는데, 화면에서 쓰는 곳이 리그 설정 한 군데뿐이었다.
+ * 새로 만든 API 가 없다.
+ *
+ * 응답을 화면이 쓸 모양(`SearchSuggestion`)으로 바꾸는 것도 여기서 한다 —
+ * `packages/ui` 는 API 를 모른다.
+ */
+const SUGGEST_SOURCE = {
+  player: {
+    endpoint: 'playersSearch',
+    /** 누르면 `/player/{id}` 로 간다 — 제출로 찾았을 때 가던 곳과 **같다** */
+    href: (key: string) => `/player/${key}`,
+  },
+  clan: {
+    endpoint: 'clansSearch',
+    href: (key: string) => `/clan/${key}`,
+  },
+  league: {
+    endpoint: 'leaguesSearch',
+    href: (key: string) => `/league/${key}`,
+  },
+} as const
+
 export function HomeSearch() {
   const router = useRouter()
   /** 못 찾았을 때 검색창 밑에 띄우는 한 줄. 성공하면 즉시 지운다 (D-254) */
   const [notice, setNotice] = useState<string | null>(null)
+
+  /* ==================== 자동완성 (O-002 · 2026-09-02) ====================
+     홈은 엣지 캐시라 서버에 안 닿는데 **자동완성만은 글자마다 DB 로 간다.**
+     그래서 규칙 넷을 여기서 전부 건다 — 2글자 · 300ms · 이전 요청 취소 · 캐시.
+     값은 `packages/ui/src/home/searchSuggest.ts` 한 곳에서 온다. */
+  const [suggestions, setSuggestions] = useState<readonly SearchSuggestion[]>([])
+  /** 방금 받아 둔 결과. `Jaehyu → Jaehy → Jaehyu` 처럼 되돌아올 때 요청을 아예 안 낸다 */
+  const cacheRef = useRef(new Map<string, readonly SearchSuggestion[]>())
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  /* 홈을 떠날 때 도는 타이머와 나간 요청을 정리한다 */
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      abortRef.current?.abort()
+    },
+    [],
+  )
+
+  const handleQueryChange = useCallback((type: SearchType, query: string) => {
+    if (!SEARCH_SUGGEST_ENABLED) return
+
+    /* 앞서 예약된 조회와 이미 나간 요청을 먼저 접는다.
+       이게 없으면 늦게 온 옛 응답이 새 응답을 덮어쓴다 */
+    if (timerRef.current) clearTimeout(timerRef.current)
+    abortRef.current?.abort()
+
+    if (query.length < SUGGEST_MIN_CHARS) {
+      setSuggestions([])
+      return
+    }
+
+    /* 받아 둔 게 있으면 요청을 아예 안 낸다 */
+    const cacheKey = `${type}:${query}`
+    const cached = cacheRef.current.get(cacheKey)
+    if (cached) {
+      setSuggestions(cached)
+      return
+    }
+
+    timerRef.current = setTimeout(() => {
+      const controller = new AbortController()
+      abortRef.current = controller
+      const source = SUGGEST_SOURCE[type]
+
+      void apiGet(source.endpoint, { params: { q: query }, signal: controller.signal })
+        .then((found) => {
+          const rows = found.data.slice(0, SUGGEST_MAX_ITEMS).map((row) => ({
+            /* 선수는 id 로, 클랜·리그는 slug 로 간다 (제출로 찾았을 때와 같은 곳) */
+            key: 'slug' in row ? row.slug : row.id,
+            name: row.name,
+            /* 선수 후보에만 소속 클랜을 붙인다 — 같은 이름이 여럿일 때 그것으로 가른다 */
+            sub: 'clan' in row && row.clan ? row.clan.name : null,
+          }))
+          if (cacheRef.current.size >= SUGGEST_CACHE_MAX) cacheRef.current.clear()
+          cacheRef.current.set(cacheKey, rows)
+          setSuggestions(rows)
+        })
+        .catch(() => {
+          /* 취소된 요청도 여기로 온다. **후보가 없는 것과 조회 실패를 구별하지 않는다** —
+             자동완성은 거들 뿐이라 실패해도 아무 말도 하지 않는다.
+             「없다」고 말해야 하는 것은 엔터를 눌렀을 때뿐이다 (D-254) */
+          setSuggestions([])
+        })
+    }, SUGGEST_DEBOUNCE_MS)
+  }, [])
+
+  /** 후보를 골랐다. 제출로 찾았을 때 가던 곳과 **같은 곳**으로 보낸다 */
+  const handlePick = useCallback(
+    (type: SearchType, suggestion: SearchSuggestion) => {
+      setNotice(null)
+      setSuggestions([])
+      router.push(SUGGEST_SOURCE[type].href(suggestion.key))
+    },
+    [router],
+  )
 
   /**
    * 검색 제출.
@@ -64,6 +173,7 @@ export function HomeSearch() {
    */
   const handleSearch = async (type: SearchType, query: string) => {
     setNotice(null)
+    setSuggestions([])
     try {
       if (type === 'player') {
         const found = await apiGet('playersByName', { params: { name: query } })
@@ -99,7 +209,13 @@ export function HomeSearch() {
       {/* --- 1 통합검색 — 크고 가운데. 동작은 하나도 바뀌지 않았다 --- */}
       {/* 로고와 검색창 사이 — #3 때 mt-9 · 검수 #13-2 로 mt-6 */}
       <div className="mt-6 w-full max-md:mt-5">
-        <SearchBar onSubmit={handleSearch} notice={notice} />
+        <SearchBar
+          onSubmit={handleSearch}
+          notice={notice}
+          suggestions={suggestions}
+          onQueryChange={handleQueryChange}
+          onPick={handlePick}
+        />
       </div>
 
       {/* --- 2 리그 바로가기 — 누르면 **바로 랭킹** ---

@@ -29,6 +29,17 @@ export interface ApiGetOptions {
   params?: Record<string, string | number>
   /** 쿼리스트링. `undefined`인 값은 붙이지 않는다. */
   search?: Record<string, string | number | undefined>
+  /**
+   * 요청 취소 신호 (2026-09-02 · O-002).
+   *
+   * 자동완성처럼 **글자를 칠 때마다 나가는** 조회는 앞선 요청을 취소해야 한다.
+   * 안 그러면 늦게 온 옛 응답이 새 응답을 덮어써서 엉뚱한 후보가 남고,
+   * 취소되지 않은 요청만큼 DB 를 헛되이 때린다.
+   *
+   * 넘기지 않으면 지금까지와 **똑같이** 동작한다 — 기존 호출은 하나도 안 고쳤다.
+   * 취소되면 `fetch` 가 `AbortError` 로 거절하므로 부르는 쪽에서 걸러 낸다.
+   */
+  signal?: AbortSignal
 }
 
 export async function apiGet<K extends EndpointKey>(
@@ -44,7 +55,9 @@ export async function apiGet<K extends EndpointKey>(
   }
   const queryString = search.toString()
 
-  const response = await fetch(`${BASE_URL}${path}${queryString ? `?${queryString}` : ''}`)
+  const response = await fetch(`${BASE_URL}${path}${queryString ? `?${queryString}` : ''}`, {
+    signal: options.signal,
+  })
   if (!response.ok) {
     throw new ApiError(response.status, `${endpoint.method} ${path} → ${response.status}`)
   }

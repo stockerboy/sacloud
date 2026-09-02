@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CLAN_SEARCH_HINT } from '@sacloud/contract'
+import {
+  SEARCH_SUGGEST_ENABLED,
+  SUGGEST_MAX_ITEMS,
+  type SearchSuggestion,
+} from './searchSuggest'
 
 /**
  * 통합검색 — 메인의 주인공.
@@ -55,16 +60,44 @@ export interface SearchBarProps {
    * 비어 있으면 아무것도 그리지 않는다 — 자리를 비워 두지도 않는다.
    */
   notice?: string | null
+  /**
+   * 자동완성 후보 (O-002 · 2026-09-02). **넘기지 않으면 지금까지와 똑같이 동작한다.**
+   *
+   * 부르고 고르는 것은 화면 쪽이다 — `onSubmit` 을 그렇게 나눠 둔 것과 같은 규칙이다.
+   * 여기는 받은 것을 그리기만 한다.
+   */
+  suggestions?: readonly SearchSuggestion[]
+  /** 입력이 바뀔 때마다 알린다. 디바운스·취소·캐시는 **받는 쪽**이 한다 */
+  onQueryChange?: (type: SearchType, query: string) => void
+  /** 후보를 골랐을 때. `key` 는 선수면 id, 클랜·리그면 slug */
+  onPick?: (type: SearchType, suggestion: SearchSuggestion) => void
 }
 
-export function SearchBar({ onSubmit, notice = null }: SearchBarProps) {
+export function SearchBar({
+  onSubmit,
+  notice = null,
+  suggestions,
+  onQueryChange,
+  onPick,
+}: SearchBarProps) {
   const [type, setType] = useState<SearchType>('player')
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(false)
+  /** 화살표로 짚고 있는 후보. -1 이면 아무것도 안 짚은 상태 = 엔터는 지금까지대로 제출 */
+  const [active, setActive] = useState(-1)
+  /** 후보를 골라 나간 직후·`Esc` 를 누른 뒤에는 다시 칠 때까지 목록을 닫아 둔다 */
+  const [dismissed, setDismissed] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
   const selected = OPTIONS.find((option) => option.type === type) ?? OPTIONS[0]!
+
+  /* 그릴 후보. 서버가 더 줘도 여기서 자른다 (`SUGGEST_MAX_ITEMS`) */
+  const items =
+    SEARCH_SUGGEST_ENABLED && !dismissed && focused
+      ? (suggestions ?? []).slice(0, SUGGEST_MAX_ITEMS)
+      : []
+  const suggestOpen = items.length > 0
 
   useEffect(() => {
     if (!open) return
@@ -75,10 +108,30 @@ export function SearchBar({ onSubmit, notice = null }: SearchBarProps) {
     return () => document.removeEventListener('mousedown', close)
   }, [open])
 
+  /* 후보 목록이 바뀌면 짚고 있던 자리를 놓는다 — 엉뚱한 줄이 선택된 채로 남지 않게 */
+  useEffect(() => {
+    setActive(-1)
+  }, [suggestions])
+
   const submit = () => {
     const query = text.trim()
     if (!query) return
+    setDismissed(true)
     onSubmit(type, query)
+  }
+
+  const pick = (suggestion: SearchSuggestion) => {
+    setDismissed(true)
+    setActive(-1)
+    onPick?.(type, suggestion)
+  }
+
+  /** 입력이 바뀌었다. 목록을 다시 열고 바깥에 알린다 */
+  const changeText = (value: string) => {
+    setText(value)
+    setDismissed(false)
+    setActive(-1)
+    onQueryChange?.(type, value.trim())
   }
 
   return (
@@ -115,6 +168,10 @@ export function SearchBar({ onSubmit, notice = null }: SearchBarProps) {
                   onClick={() => {
                     setType(option.type)
                     setOpen(false)
+                    /* 종류가 바뀌면 후보도 바뀐다 — 옛 종류의 후보가 남지 않게 다시 묻는다 */
+                    setActive(-1)
+                    setDismissed(false)
+                    onQueryChange?.(option.type, text.trim())
                   }}
                   className={`block w-full cursor-pointer border-l border-transparent px-4 py-2.5 text-left text-[13px] transition-colors duration-100 hover:border-l-accent hover:text-[var(--color-text-strong,#f6eded)] ${
                     option.type === type
@@ -134,11 +191,45 @@ export function SearchBar({ onSubmit, notice = null }: SearchBarProps) {
           type="text"
           value={text}
           placeholder={selected.placeholder}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => changeText(event.target.value)}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          /* 후보를 누르는 동안 blur 가 먼저 터져 목록이 사라지면 클릭이 안 먹는다.
+             한 박자 늦춰 닫는다 (`onMouseDown` 으로 고르는 방법도 있으나 키보드와 갈린다) */
+          onBlur={() => setTimeout(() => setFocused(false), 120)}
+          role="combobox"
+          aria-expanded={suggestOpen}
+          aria-autocomplete="list"
+          aria-controls="search-suggest"
+          aria-activedescendant={active >= 0 ? `search-suggest-${active}` : undefined}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') submit()
+            /* 후보가 떠 있을 때만 화살표가 목록을 짚는다. 안 떠 있으면 지금까지와 같다 */
+            if (suggestOpen && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+              event.preventDefault()
+              const step = event.key === 'ArrowDown' ? 1 : -1
+              setActive((index) => {
+                const next = index + step
+                if (next < 0) return items.length - 1
+                if (next >= items.length) return 0
+                return next
+              })
+              return
+            }
+            if (event.key === 'Escape') {
+              setDismissed(true)
+              setActive(-1)
+              return
+            }
+            if (event.key === 'Enter') {
+              /* ★짚은 후보가 있으면 그리로, 없으면 지금까지대로 정확일치 제출★
+                 정확일치 경로는 손대지 않는다 (O-002 · `CLAUDE.md` 1-4) */
+              const chosen = active >= 0 ? items[active] : undefined
+              if (chosen) {
+                event.preventDefault()
+                pick(chosen)
+                return
+              }
+              submit()
+            }
           }}
           className="min-w-0 flex-1 appearance-none bg-transparent px-4 py-4 text-[15px] text-[var(--color-text-strong,#f6eded)] placeholder:text-[var(--color-faint,#6b5555)] focus:outline-none max-md:px-3 max-md:py-3"
         />
@@ -152,6 +243,54 @@ export function SearchBar({ onSubmit, notice = null }: SearchBarProps) {
           <SearchIcon />
         </button>
       </div>
+
+      {/* --- 후보 목록 (2026-09-02 · O-002) ---
+             ★새로 만든 화면이 아니다★ — 이미 있던 `players/search` · `clans/search` ·
+             `leagues/search` 를 홈이 부르게 한 것뿐이다. 지금까지 이 셋을 쓰는 곳은
+             리그 설정 한 군데뿐이었다.
+
+             모양은 위 「검색 종류」 드롭다운과 같은 규칙이다 — 면을 칠하지 않고
+             1px 선과 왼쪽 강조선 하나로만 그린다. 짚은 줄에만 강조색이 닿는다.
+
+             자리 — 검색창 바로 아래에 겹쳐 띄운다(`absolute`). 아래 문구들을
+             밀어내면 누를 때마다 화면이 출렁인다. 부모(`relative`)는 바깥 div 다. */}
+      {suggestOpen ? (
+        <div className="relative">
+          <ul
+            id="search-suggest"
+            role="listbox"
+            className="absolute left-0 right-0 top-1 z-20 max-h-[336px] overflow-y-auto border border-line bg-card py-1"
+          >
+            {items.map((item, index) => (
+              <li key={item.key} id={`search-suggest-${index}`} role="option" aria-selected={index === active}>
+                <button
+                  type="button"
+                  onClick={() => pick(item)}
+                  onMouseEnter={() => setActive(index)}
+                  className={`block w-full cursor-pointer border-l-2 px-4 py-2.5 text-left transition-colors duration-100 max-md:px-3 ${
+                    index === active ? 'border-l-accent bg-card-2' : 'border-l-transparent'
+                  }`}
+                >
+                  <span
+                    className={`block truncate text-[14px] leading-5 ${
+                      index === active
+                        ? 'text-[var(--color-text-strong,#f6eded)]'
+                        : 'text-[var(--color-text,#d6c9c9)]'
+                    }`}
+                  >
+                    {item.name}
+                  </span>
+                  {item.sub ? (
+                    <span className="mt-0.5 block truncate text-[12px] leading-4 text-meta">
+                      {item.sub}
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {/* --- 클랜 검색 안내 (2026-09-01) ---
              사용자가 «문구 유저가 볼 수 있게» 라고 지시한 한 줄이다.

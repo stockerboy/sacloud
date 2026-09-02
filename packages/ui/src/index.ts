@@ -24,6 +24,16 @@ export {
 } from './layout/LeagueTopBar'
 
 export { SearchBar, type SearchBarProps, type SearchType } from './home/SearchBar'
+/* 홈 검색 자동완성 — 스위치와 부하 규칙 한 곳 (O-002 · 2026-09-02).
+   끄려면 `SEARCH_SUGGEST_ENABLED` 한 줄만 false 로 (`./home/searchSuggest.ts`) */
+export {
+  SEARCH_SUGGEST_ENABLED,
+  SUGGEST_MIN_CHARS,
+  SUGGEST_DEBOUNCE_MS,
+  SUGGEST_MAX_ITEMS,
+  SUGGEST_CACHE_MAX,
+  type SearchSuggestion,
+} from './home/searchSuggest'
 export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPostList'
 /*
  * `LeagueTop3`(리그별 개인랭킹 TOP3)는 2026-08-30 사용자 지시로 **메인에서 뺐다.**
