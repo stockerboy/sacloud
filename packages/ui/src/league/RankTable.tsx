@@ -379,13 +379,29 @@ export function PlayerRankTable({
   const byWeapon = weapon !== 'all'
   const { brokenPlayerIds } = useEggKnowledge()
 
+  /**
+   * 좁은 화면에서 지표 칸을 숨기는 규칙 (2026-09-02 검수 결함 수정).
+   *
+   * 옛 규칙은 승률·킬뎃에 **무조건** `COL_HIDDEN` 이었다 — 「폰은 순위·이름·래더 세 칸」.
+   * 그런데 래더가 없는 표(`10mountain` · `leagueScreen` 이 순위·래더를 뺀다)에서는
+   * 그 규칙이 값을 **0개**로 만든다. 390px 실측: 닉네임만 남았다. 데이터가 사라지면
+   * 결함이다 (`CLAUDE.md` 3장 8번).
+   *
+   * 그래서 **래더 칸이 없을 때만** 첫 지표(승률, 없으면 킬뎃)를 폰에서도 남긴다.
+   * 래더가 있는 표는 옛 규칙 그대로다. 리그 이름을 보지 않는다 — 칸 구성만 본다.
+   * 옛 동작으로 되돌리려면 아래 두 값을 `COL_HIDDEN` 상수로 바꾸면 된다 (`CLAUDE.md` 10-4).
+   */
+  const keptStat = columns.rating ? null : columns.winRate ? 'winRate' : columns.kd ? 'kd' : null
+  const winRateHidden = keptStat === 'winRate' ? '' : COL_HIDDEN
+  const kdHidden = keptStat === 'kd' ? '' : COL_HIDDEN
+
   return (
     <>
       <div className={HEAD}>
         {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>닉네임</div>
-        {columns.winRate ? <div className={`${COL_STAT} ${COL_HIDDEN}`}>승률</div> : null}
-        {columns.kd ? <div className={`${COL_STAT} ${COL_HIDDEN}`}>킬뎃</div> : null}
+        {columns.winRate ? <div className={`${COL_STAT} ${winRateHidden}`}>승률</div> : null}
+        {columns.kd ? <div className={`${COL_STAT} ${kdHidden}`}>킬뎃</div> : null}
         {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
             머리글을 그대로 `래더` 로 두면 같은 자리에 다른 뜻의 숫자가 들어가 거짓말이 된다. */}
         {columns.rating ? (
@@ -421,12 +437,12 @@ export function PlayerRankTable({
               </Link>
             </div>
             {!columns.winRate ? null : egg === 'sealed' ? (
-              <div className={`${COL_STAT} ${COL_HIDDEN}`}>
+              <div className={`${COL_STAT} ${winRateHidden}`}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
             ) : (
             <Stat
-              className={`${COL_STAT} ${COL_HIDDEN}`}
+              className={`${COL_STAT} ${winRateHidden}`}
               value={formatRate(row.win_rate)}
               tone={rateClass(row.win_rate)}
               unit="%"
@@ -440,15 +456,15 @@ export function PlayerRankTable({
             {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107).
                 IPL 은 원래 킬뎃이 없어 알과 무관하다 (사양 2장) */}
             {!columns.kd ? null : row.kd_rate === null ? (
-              <div className={`${COL_STAT} ${COL_HIDDEN} text-faint`}>-</div>
+              <div className={`${COL_STAT} ${kdHidden} text-faint`}>-</div>
             ) : egg === 'sealed' ? (
-              <div className={`${COL_STAT} ${COL_HIDDEN}`}>
+              <div className={`${COL_STAT} ${kdHidden}`}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
             ) : (
               /* 평균킬은 킬뎃 아래로 접었다 */
               <Stat
-                className={`${COL_STAT} ${COL_HIDDEN}`}
+                className={`${COL_STAT} ${kdHidden}`}
                 value={formatRate(row.kd_rate)}
                 tone={rateClass(row.kd_rate)}
                 unit="%"
