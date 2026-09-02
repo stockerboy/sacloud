@@ -97,10 +97,14 @@ function TierRows({
 /**
  * 승률 추이 — 보름 칸마다 막대 하나.
  *
+ * ⚠ **지금 화면은 이것을 부르지 않는다** (2026-09-02). 주간 꺾은선으로 갈아탔다 —
+ *   이유는 `ClanMetrics` 안의 주석에 있다. 되돌릴 수 있게 **지우지 않고 남긴다**
+ *   (`CLAUDE.md` 10-4).
+ *
  * 막대 높이는 승률 그대로(0~100%)다. 표본을 늘려 보이게 만들지 않는다.
  * 눈금은 칸이 많아지면 글자가 겹치므로 **양 끝과 중간만** 적는다.
  */
-function TrendBars({ trend }: { trend: ClanMetricsData['trend'] }) {
+export function TrendBars({ trend }: { trend: ClanMetricsData['trend'] }) {
   const played = trend.filter((bucket) => bucket.win_rate !== null)
   if (played.length === 0) {
     return <div className="py-6 text-center text-meta">이 기간에 기록된 경기가 없습니다.</div>
@@ -240,11 +244,25 @@ export function ClanMetrics({
   metrics,
   leagueSlug,
   leagueCategory,
+  ladderGames,
 }: {
   metrics: ClanMetricsData
   leagueSlug: string
   /** `independent` 면 부리그를 `티어` 라고 쓴다 (D-165) */
   leagueCategory?: string
+  /**
+   * **래더에 반영된 판수** — 이 카드가 세는 판수와 다를 수 있다 (2026-09-02).
+   *
+   * ── 왜 두 숫자가 생기나
+   *   이 카드는 «이겼나 졌나» 만 알면 센다. 래더·순위·킬뎃은 **누가 뛰었는지**를
+   *   알아야 센다. IPL 은 경기 24,662건 중 라인업을 아는 것이 1,562건(6.3%)뿐이라
+   *   같은 클랜이 여기서는 2,691전, 래더에서는 48전이 된다 (2026-09-02 운영 실측).
+   *
+   *   사장님이 «판수도 다르고 근거가 뭐야» 라고 물었던 자리다.
+   *   **둘 다 사실이므로 둘 다 적는다.** 하나를 감추면 다른 화면과 어긋나 보인다.
+   *   SPL·10mountain 은 모든 경기에 라인업이 있어 두 값이 같고, 그때는 안 적는다.
+   */
+  ladderGames?: number
 }) {
   return (
     <div className="mt-2 rounded-[2px] border border-line bg-card px-5 py-4">
@@ -256,6 +274,12 @@ export function ClanMetrics({
           {metrics.truncated ? (
             <span className="ml-1">· 최근 {formatCount(metrics.games)}판만 집계</span>
           ) : null}
+          {/* 래더 판수가 다르면 **그 사실을 적는다.** 감추면 다른 화면과 어긋나 보인다 */}
+          {ladderGames !== undefined && ladderGames !== metrics.games ? (
+            <div className="mt-0.5 text-[11px] text-faint">
+              래더 반영은 {formatCount(ladderGames)}전 — 라인업을 아는 경기만 셉니다
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -264,10 +288,23 @@ export function ClanMetrics({
         <TierRows tiers={metrics.tiers} leagueCategory={leagueCategory} />
       </div>
 
-      <div className="mt-4">
+      {/*
+        ⚠ 2026-09-02 — **승률 추이(보름 막대)를 이 카드에서 뺐다.**
+
+        > "승률 추이 그래프는 선수 카드와 같은 주간 그래프로 교체"
+
+        막대가 전부 같아 보였다. 50~57% 를 0~100 축에 그리니 96px 중 7px 차이라
+        **눈으로 구분이 안 됐다.** 판수도 안 적혀 있어 대조할 수도 없었다.
+        지금은 클랜 화면이 `WeeklyTrendCard`(10 단위 눈금 · 점에 % · 5/10/15/25주 필터)를
+        위에 따로 그린다 — 선수 카드와 **같은 컴포넌트**다.
+
+        `TrendBars` 와 `metrics.trend` 는 **지우지 않았다** (`CLAUDE.md` 10-4).
+        되돌리려면 이 자리에 아래 두 줄을 다시 넣으면 된다.
+        ```tsx
         <SectionTitle title="승률 추이" note="보름 단위" />
         <TrendBars trend={metrics.trend} />
-      </div>
+        ```
+      */}
 
       <div className="mt-4">
         <SectionTitle title="화력" note="이긴 판의 팀 전체 딜량 평균" />

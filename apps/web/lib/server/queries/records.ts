@@ -416,7 +416,7 @@ export async function getLeagueClanShow(
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
   }
 
-  const [rank, record, metrics, roster, roundMetrics, hexagon, hexagonV2] = await Promise.all([
+  const [rank, record, clanMetrics, roster, roundMetrics, hexagon, hexagonV2] = await Promise.all([
     clanRankOf({
       id: leagueClan.id,
       leagueId: leagueClan.leagueId,
@@ -496,7 +496,10 @@ export async function getLeagueClanShow(
     member_count: clan._count.members,
     match_summary: record.summary,
     teammates: record.teammates,
-    metrics,
+    /* 지표와 주간 승률은 **같은 경기 배열**에서 나온다 (`clanMetrics.ts`).
+       따로 부르면 같은 4,000건을 두 번 읽는다 */
+    metrics: clanMetrics.metrics,
+    weekly: clanMetrics.weekly,
     roster,
     round_metrics: roundMetrics,
     hexagon,

@@ -287,3 +287,66 @@ export function foldWeekly(
 
   return { points, has_rank: points.some((p) => p.rank !== null) }
 }
+
+/**
+ * 클랜 주간 추이 — **승률 한 줄**만 만든다 (2026-09-02 사용자 지시).
+ *
+ * > "클랜정보카드도 수정 / 그래프카드에 일주일 단위 승률기록(개인기록과 동일)"
+ *
+ * 선수와 **같은 규칙**이다 — 누적 · 월요일 07:00 KST 경계 · 안 뛴 주는 수평선.
+ * 다른 것은 재료뿐이다: 클랜은 참가 기록이 아니라 **경기 승패**만 있으면 된다.
+ *
+ * ── 왜 `foldWeekly` 를 그대로 못 쓰나
+ *   그쪽은 무기·킬·데스를 요구한다. 클랜 경기 행에는 그게 없다 —
+ *   IPL 은 경기 24,662건 중 라인업을 아는 것이 1,562건뿐이라
+ *   억지로 맞추면 **없는 값을 0 으로 채우게 된다** (D-148 이 금지한 그것).
+ *   그래서 승률만 세는 짧은 함수를 따로 둔다. 주 경계와 누적 규칙은 **같은 함수**를 쓴다.
+ */
+export function foldWeeklyClan(
+  rows: readonly { matchId: string; startAt: Date; won: boolean }[],
+  now: Date,
+  weeks: number,
+  dayStart: (d: Date) => Date,
+  winRateOf: (win: number, lose: number) => number | null,
+): WeeklyTrend {
+  const ends = weekEnds(now, weeks, dayStart)
+  const starts = weekStartsOf(now, weeks, dayStart)
+
+  const ordered = [...rows].sort((a, b) => {
+    const d = a.startAt.getTime() - b.startAt.getTime()
+    if (d !== 0) return d
+    return a.matchId < b.matchId ? -1 : a.matchId > b.matchId ? 1 : 0
+  })
+
+  let win = 0
+  let lose = 0
+  const points: WeeklyPoint[] = []
+  let cursor = 0
+
+  for (let w = 0; w < ends.length; w += 1) {
+    const endAt = ends[w]!.getTime()
+    const startAt = starts[w]!.getTime()
+    let gamesThisWeek = 0
+
+    while (cursor < ordered.length && ordered[cursor]!.startAt.getTime() < endAt) {
+      const row = ordered[cursor]!
+      cursor += 1
+      if (row.won) win += 1
+      else lose += 1
+      if (row.startAt.getTime() >= startAt) gamesThisWeek += 1
+    }
+
+    points.push({
+      start: starts[w]!.toISOString(),
+      played: gamesThisWeek > 0,
+      games: gamesThisWeek,
+      /* 클랜 카드는 킬뎃 선을 그리지 않는다 — 재료가 없다. 0 으로 채우지 않는다 */
+      sniper_kd: null,
+      rifle_kd: null,
+      win_rate: win + lose === 0 ? null : winRateOf(win, lose),
+      rank: null,
+    })
+  }
+
+  return { points, has_rank: false }
+}

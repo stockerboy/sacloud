@@ -6,6 +6,8 @@ import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
   ClanHexagon,
   ClanHexagonV2,
+  ClanHeadCard,
+  WeeklyTrendCard,
   ClanMetrics,
   ClanRoundMetrics,
   ClanRoster,
@@ -119,6 +121,45 @@ export default function LeagueClanRecordPage({
              옛 6축은 **지우지 않고** 바로 아래에 줄 표기로 남긴다.
              `기본거 없애고` 는 육각형에서 빼라는 말이지 값을 없애라는 말이 아니다
              (`CLAUDE.md` 3장 8번 — 데이터가 사라지면 그것은 결함이다). */}
+      {/*
+        ── 0. 주간 승률 그래프 + 클랜 정보줄 (2026-09-02 사용자 지시)
+
+        > "클랜정보카드도 수정 / 그래프카드에 일주일 단위 승률기록(개인기록과 동일)
+        >  클랜마크/클랜명/소속 / 래더 / 승률-통합 / 순위-색깔체계 선수카드와 동일
+        >  이거 보여주고 밑에 육각 그래프"
+
+        선수 카드와 **같은 컴포넌트**를 쓴다 — 선만 승률 하나로 줄인다.
+        옛 `ClanStatSidebar` 는 아래에 그대로 살아 있다 (`CLAUDE.md` 10-4).
+      */}
+      {data.weekly === null ? null : (
+        <section className="mt-[40px]">
+          <EggVeilPanel state={egg} note={CLAN_EGG_GUIDE}>
+            <WeeklyTrendCard weekly={data.weekly} show={['win_rate']} title="주간 승률" />
+          </EggVeilPanel>
+        </section>
+      )}
+
+      <section className="mt-4">
+        <ClanHeadCard
+          clan={{
+            id: data.clan.id,
+            slug: data.clan.slug,
+            name: data.clan.name,
+            mark: data.clan.mark,
+            is_official_clan: data.clan.is_official_clan,
+          }}
+          leagueName={data.league.name}
+          leagueCategory={data.league.category}
+          division={data.division}
+          rating={data.rating}
+          placement={data.placement}
+          win={data.win}
+          lose={data.lose}
+          winRate={data.win_rate}
+          rank={data.rank}
+        />
+      </section>
+
       {data.hexagon_v2 || data.hexagon ? (
         <section className="mt-[40px]">
           <EggVeilPanel state={egg} note={CLAN_EGG_GUIDE}>
@@ -152,7 +193,8 @@ export default function LeagueClanRecordPage({
         </section>
       ) : null}
 
-      {/* ── 4. 클랜 지표 (SITE_SPEC_V2 5절) */}
+      {/* ── 4. 클랜 지표 (SITE_SPEC_V2 5절).
+             승률 추이(보름 막대)는 여기서 빠지고 **위의 주간 그래프**가 대신한다 */}
       {data.metrics ? (
         <section className="mt-[40px]">
           <EggVeilPanel state={egg}>
@@ -160,6 +202,9 @@ export default function LeagueClanRecordPage({
               metrics={data.metrics}
               leagueSlug={leagueSlug}
               leagueCategory={data.league.category}
+              /* 래더가 세는 판수. 이 카드가 세는 판수와 다를 수 있어 나란히 적는다
+                 (2026-09-02 사용자 지적 — IPL 은 라인업이 6.3%뿐이라 크게 갈린다) */
+              ladderGames={data.win + data.lose}
             />
           </EggVeilPanel>
         </section>

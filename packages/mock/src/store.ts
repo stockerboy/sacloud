@@ -108,6 +108,7 @@ import {
   type PositionCode,
   type ResolvedPosition,
   foldWeekly,
+  foldWeeklyClan,
   WEEKLY_MAX_WEEKS,
   type WeeklyRow,
   type WeeklyTrend,
@@ -2315,6 +2316,19 @@ export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueC
     member_count: clan.playerIds.length,
     match_summary: buildMatchSummary(matches, leagueClan.id, null),
     teammates: buildTeammates(matches, leagueClan.id, null),
+    /* 주간 승률 — 선수와 **같은 규칙**을 쓴다 (`contract/weekly.ts` 의 `foldWeeklyClan`).
+       `now` 를 밖에서 주지 않으면 돌릴 때마다 주 경계가 움직여 픽스처가 흔들린다 */
+    weekly: foldWeeklyClan(
+      matches.map((m) => ({
+        matchId: m.id,
+        startAt: new Date(m.startAt),
+        won: m.winnerSide === (m.redLeagueClanId === leagueClan.id ? 'red' : 'blue'),
+      })),
+      new Date(),
+      WEEKLY_MAX_WEEKS,
+      kstDayStart,
+      winRateOrNull,
+    ),
     metrics: buildClanMetrics(leagueClan),
     round_metrics: buildClanRoundMetrics(leagueClan),
     hexagon: buildClanHexagonOfMock(leagueClan),

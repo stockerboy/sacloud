@@ -176,6 +176,7 @@ export {
 export { PlayerFormPanel } from './record/PlayerFormPanel'
 export { WeeklyTrendCard, type WeeklyTrendCardProps } from './record/WeeklyTrendCard'
 export { PlayerHeadCard, type PlayerHeadCardProps } from './record/PlayerHeadCard'
+export { ClanHeadCard, type ClanHeadCardProps } from './record/ClanHeadCard'
 export { positionLine, rankColor, mainWeaponFromStats } from './record/playerHeadCopy'
 export {
   weeklyPercentDomain,

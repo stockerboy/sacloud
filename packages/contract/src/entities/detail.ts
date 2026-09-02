@@ -350,6 +350,17 @@ export type LeaguePlayerDetail = z.infer<typeof LeaguePlayerDetail>
 
 /** GET /leagues/{leagueSlug}/clans/{clanSlug}/show */
 export const LeagueClanShow = LeagueClanDetail.extend({
+  /**
+   * **주간 승률 그래프** (2026-09-02 사용자 지시).
+   *
+   * > "클랜정보카드도 수정 / 그래프카드에 일주일 단위 승률기록(개인기록과 동일)"
+   *
+   * 선수 카드와 **같은 규칙·같은 컴포넌트**를 쓴다. 다른 것은 그리는 선의 수뿐이다 —
+   * 클랜은 승률 한 줄이다. 킬뎃 선은 재료가 없어 그리지 않는다(0 으로 채우지 않는다).
+   *
+   * 이 필드가 없던 응답과도 맞도록 기본값을 `null` 로 둔다.
+   */
+  weekly: WeeklyTrend.nullable().default(null),
   match_summary: MatchSummary,
   /** 최근 클랜전에 참여한 플레이어 승률 */
   teammates: z.array(TeammateStat),

@@ -19,9 +19,14 @@ import { prisma, type Prisma } from '@sacloud/db'
 import {
   buildClanMetrics,
   clanBestWinStreak,
+  foldWeeklyClan,
+  kstDayStart,
+  winRateOrNull,
+  WEEKLY_MAX_WEEKS,
   type ClanMatchRow,
   type ClanMetrics,
   type ClanStreakMember,
+  type WeeklyTrend,
 } from '@sacloud/contract'
 import { DROPOUT_DAMAGE_ZERO } from './dropoutScope'
 import { withLadderMatch } from './ladderScope'
@@ -53,11 +58,22 @@ const METRIC_MATCH_SELECT = {
  *
  * 재료가 될 경기가 하나도 없으면 `null` 이다 — 0 으로 채운 빈 카드를 그리지 않는다 (D-106).
  */
+/**
+ * 지표 + **주간 승률 추이** (2026-09-02).
+ *
+ * 둘을 한 번에 돌려주는 이유는 **같은 경기 배열에서 나오기 때문**이다.
+ * 따로 부르면 같은 4,000건을 두 번 읽는다 — 운영은 통로가 하나다 (D-239).
+ */
+export interface ClanMetricsResult {
+  metrics: ClanMetrics | null
+  weekly: WeeklyTrend | null
+}
+
 export async function leagueClanMetrics(
   leagueId: string,
   leagueClanId: string,
   divisionCount: number,
-): Promise<ClanMetrics | null> {
+): Promise<ClanMetricsResult> {
   const where = withLadderMatch({
     AND: [
       { OR: [{ redLeagueClanId: leagueClanId }, { blueLeagueClanId: leagueClanId }] },
@@ -86,7 +102,7 @@ export async function leagueClanMetrics(
       select: { startAt: true },
     }),
   ])
-  if (matches.length === 0) return null
+  if (matches.length === 0) return { metrics: null, weekly: null }
 
   /* 상한보다 한 건 더 요청했다. 그 한 건이 왔다면 잘린 것이다 */
   const truncated = matches.length > SCAN_LIMIT
@@ -121,7 +137,17 @@ export async function leagueClanMetrics(
   const streak = clanBestWinStreak(rows)
   const streakMembers = await streakMembersOf(streak.matchIds, sideOf)
 
-  return buildClanMetrics({
+  /* 주간 승률 — **질의를 하지 않는다.** 위에서 읽은 같은 `rows` 를 주 단위로 접는다.
+     접는 규칙은 선수와 한 곳(`contract/weekly.ts`)에 있다 */
+  const weekly = foldWeeklyClan(
+    rows.map((row) => ({ matchId: row.id, startAt: row.startAt, won: row.won })),
+    new Date(),
+    WEEKLY_MAX_WEEKS,
+    kstDayStart,
+    winRateOrNull,
+  )
+
+  const metrics = buildClanMetrics({
     rows,
     divisionCount,
     windowFrom: SEASON0_FROM,
@@ -131,6 +157,8 @@ export async function leagueClanMetrics(
     toIso: toKstIso,
     truncated,
   })
+
+  return { metrics, weekly }
 }
 
 /**
