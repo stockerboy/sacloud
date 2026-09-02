@@ -74,7 +74,8 @@ export function HomeRankPreview({ leagues }: { leagues: HomeRankPreviewLeague[] 
                     leagueSlug={league.slug}
                     rows={league.rows}
                     columns={previewColumns(league.slug)}
-                    clanColumn
+                    /* 전체 랭킹과 같은 방식 — 닉네임 아래 줄 (#10-2). 칸 방식은 `'column'` 으로 남아 있다 */
+                    clanName="line"
                   />
                 </RankBox>
               </div>

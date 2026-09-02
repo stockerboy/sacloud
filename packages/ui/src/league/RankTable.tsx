@@ -367,16 +367,28 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
    */
   columns?: RankColumns
   /**
-   * 닉네임 옆에 **소속 클랜명 칸**을 넣는다 (2026-09-02 사장님 지시 #10).
+   * **소속 클랜명**을 어떻게 적을 것인가 (2026-09-02 사장님 지시 #10 · #10-2).
    *
-   * > "순위닉네임, 래더 사이에 소속클랜명을 적어라"
+   * > "순위닉네임, 래더 사이에 소속클랜명을 적어라" · "전체랭킹에도 넣어라 깔끔하게 넣어라"
    *
-   * **기본값은 `false` 다 — 넘기지 않으면 지금까지의 표 그대로다.** 홈 미리보기가 켠다.
+   * ```
+   * 'none'    안 적는다 — **기본값. 넘기지 않으면 지금까지의 표 그대로다**
+   * 'line'    닉네임 **아래 작은 줄**로 적는다 — 전체 랭킹 · 홈이 쓴다 (#10-2)
+   * 'column'  닉네임 옆 **별도 칸**으로 적는다 — #10 때 홈에 먼저 넣었던 방식. 지우지 않았다
+   * ```
+   *
+   * ── 왜 칸이 아니라 줄인가 (#10-2)
+   *   전체 랭킹의 SPL | IPL 반폭 칸은 고정폭(순위·승률·킬뎃·래더·여백)만 392px 이라
+   *   닉네임 글자에 남는 폭이 이미 ~106px 이다. 여기에 칸을 하나 더 세우면 PC 에서도
+   *   승률이나 킬뎃을 접어야 한다. 닉네임 아래 줄로 두면 **어느 폭에서도 값을 접지 않고**
+   *   닉네임·클랜명이 둘 다 읽힌다 — 폰(390px)도 같다.
+   *   옛 칸 방식(`'column'`)은 그대로 살아 있다 (`CLAUDE.md` 10-4).
+   *
    * 클랜명은 그 리그의 클랜 기록실로 가는 링크다. 소속이 없으면(`clan === null`) `무소속`
    * 이라고 적는다 — 계약이 `null` 을 그 뜻으로 정해 두었다 (`PlayerRankRow.clan` 주석).
    * 값이 없는 것을 `-` 로 감추지 않는다.
    */
-  clanColumn?: boolean
+  clanName?: 'none' | 'line' | 'column'
 }
 
 export function PlayerRankTable({
@@ -387,8 +399,10 @@ export function PlayerRankTable({
   onRetry,
   weapon = 'all',
   columns = ALL_COLUMNS,
-  clanColumn = false,
+  clanName = 'none',
 }: PlayerRankTableProps) {
+  const clanColumn = clanName === 'column'
+  const clanLine = clanName === 'line'
   const byWeapon = weapon !== 'all'
   const { brokenPlayerIds } = useEggKnowledge()
 
@@ -436,6 +450,43 @@ export function PlayerRankTable({
           return (
           <div key={row.player.id} className={ROW}>
             {columns.rank ? <div className={rankClass(row.rank)}>{row.rank}</div> : null}
+            {clanLine ? (
+              /* 닉네임 + 그 아래 클랜명 줄 (#10-2). 링크가 둘이라 한 `<Link>` 로 감싸지 못한다 —
+                 마크·닉네임은 선수 기록실로, 클랜명 줄은 클랜 기록실로 간다 */
+              <div className={COL_NAME}>
+                <Link
+                  className="flex shrink-0 items-center"
+                  href={leaguePlayerPath(leagueSlug, row.player.id)}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                >
+                  <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
+                    <ClanMark clan={row.clan} alt={row.clan?.name ?? ''} />
+                  </Egg>
+                </Link>
+                <div className="min-w-0">
+                  <Link
+                    className="block truncate hover:text-text-strong"
+                    href={leaguePlayerPath(leagueSlug, row.player.id)}
+                  >
+                    {row.player.name}
+                  </Link>
+                  {row.clan ? (
+                    <Link
+                      className="mt-0.5 block truncate text-[0.72rem] leading-none text-meta hover:text-text-strong"
+                      href={leagueClanPath(leagueSlug, row.clan.slug)}
+                      title={row.clan.name}
+                    >
+                      {row.clan.name}
+                    </Link>
+                  ) : (
+                    <span className="mt-0.5 block truncate text-[0.72rem] leading-none text-faint">
+                      무소속
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
             <div className={COL_NAME}>
               <Link
                 className="flex min-w-0 items-center hover:text-text-strong"
@@ -450,6 +501,7 @@ export function PlayerRankTable({
                 <span className="truncate">{row.player.name}</span>
               </Link>
             </div>
+            )}
             {/* 소속 클랜명 — 사장님 지시 #10. 색은 안쪽 `span` 에 준다 (`a { color: inherit }`) */}
             {clanColumn ? (
               <div className={COL_CLAN}>
