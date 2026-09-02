@@ -14,10 +14,21 @@
  *   덤으로 순위와도 뜻이 맞는다 — 순위는 원래 누적으로만 정의된다.
  *   그래서 네 선이 전부 같은 뜻의 축 위에 놓인다: **「그 시점까지의 나」**.
  *
- * ── 주의 경계는 **월요일 오전 7시 KST**
- *   하루의 경계가 오전 7시라는 것은 이미 정해져 있다 (D-186 · `kstDayStart`).
- *   주를 자정으로 자르면 일요일 새벽 경기가 다음 주로 넘어가 버린다.
- *   그래서 **하루 경계를 그대로 쓰고, 그중 월요일**을 주의 시작으로 삼는다.
+ * ── 주의 경계는 **목요일 00:00 KST** (2026-09-02 저녁 · 지시 #19)
+ *
+ *   > "모든 킬데스와 승률 그래프의 찍는 날은 수요일 00시(목요일로넘어가는 경계)로 한다"
+ *
+ *   ★사장님 확인 완료 (2026-09-02)★ — **수요일 23:59 → 목요일 00:00 경계**가 맞다.
+ *   > "수욜 오후 11시59분에서 목요일로 넘어갈때를 말한것이다."
+ *   처음 원문은 두 가지로 읽혔고(「수요일 00시」= 화→수 / 괄호 「목요일로 넘어가는 경계」= 수→목)
+ *   괄호 쪽을 골라 잡아 두었는데, 그 값이 맞다고 확인됐다. 값은 `WEEK_BOUNDARY.current`
+ *   **한 곳**에만 있다. 다른 해석(`wed00`)은 표에 남겨 둔다 — 쓰지 않는다.
+ *
+ *   ⚠ 정정 — 그 전(2026-09-02 아침)에는 **월요일 오전 7시 KST** 였다.
+ *     하루의 경계가 오전 7시라는 것(D-186 · `kstDayStart`)을 그대로 쓰고 그중 월요일을
+ *     주의 시작으로 삼았다. 그 규칙은 `WEEK_BOUNDARY.legacy = 'mon07'` 과 옛 `weekStart()`
+ *     로 **그대로 남아 있다** (`CLAUDE.md` 10-4). 지우지 않는다.
+ *     경계를 바꾸면 화면의 주간 그래프 칸이 전부 달라진다 — 그것이 의도다.
  *
  * ── 안 뛴 주도 **점을 찍는다**
  *   빼면 선이 끊기거나 두 점이 멀리 이어져 「그 사이에 뭔가 있었다」로 읽힌다.
@@ -94,10 +105,90 @@ export const WeeklyTrend = z.object({
 })
 export type WeeklyTrend = z.infer<typeof WeeklyTrend>
 
+/* ========================================================================== */
+/* 주 경계 — **여기 하나뿐이다** (지시 #19)                                      */
+/* ========================================================================== */
+
+const DAY_MS = 24 * 60 * 60 * 1000
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+
 /**
- * 그 시각이 속한 **주의 시작** (월요일 오전 7시 KST).
+ * 주를 어디서 자르나.
+ *
+ *   `mon07`  월요일 07:00 KST — 옛 규칙 (2026-09-02 아침까지). 하루 경계(D-186) 위에 얹은 것
+ *   `wed00`  수요일 00:00 KST — 원문 「수요일 00시」를 글자대로 읽은 해석. **쓰지 않는다** (아래 확인)
+ *   `thu00`  목요일 00:00 KST — ★확정★ 수요일 23:59 → 목요일 00:00 경계
+ */
+export type WeekBoundaryKind = 'mon07' | 'wed00' | 'thu00'
+
+/**
+ * ★주 경계 상수 — 바꿀 곳은 `current` 한 줄이다★
+ *
+ * **사장님 확인 완료 (2026-09-02): 수요일 23:59 → 목요일 00:00 경계.** `current` 는 `thu00` 이다.
+ * `legacy` 는 지우지 않는다 — 옛 그래프 칸을 다시 만들어 대조할 때 쓴다 (`CLAUDE.md` 10-4).
+ */
+export const WEEK_BOUNDARY = {
+  legacy: 'mon07',
+  current: 'thu00',
+} as const satisfies Record<'legacy' | 'current', WeekBoundaryKind>
+
+/** 요일(0=일 … 6=토)과 KST 시각. 표가 하나라 세 규칙이 같은 함수를 탄다 */
+const WEEK_BOUNDARY_RULE: Record<WeekBoundaryKind, { weekday: number; hourKst: number }> = {
+  mon07: { weekday: 1, hourKst: 7 },
+  wed00: { weekday: 3, hourKst: 0 },
+  thu00: { weekday: 4, hourKst: 0 },
+}
+
+/**
+ * 그 시각이 속한 **주의 시작** (UTC `Date`). 기본은 `WEEK_BOUNDARY.current`.
+ *
+ * 한국은 서머타임이 없으므로 KST = UTC+9 고정으로 계산한다 — 그래서 주 간격이 항상 정확히
+ * 7일이고, 연말을 넘어가도 `Date.UTC` 의 날짜 산술이 알아서 처리한다.
+ *
+ * `mon07` 을 주면 옛 `weekStart(at, kstDayStart)` 와 **같은 값**이 나온다 (테스트로 고정).
+ */
+export function weekStartOf(at: Date, boundary: WeekBoundaryKind = WEEK_BOUNDARY.current): Date {
+  const { weekday, hourKst } = WEEK_BOUNDARY_RULE[boundary]
+  /* KST 벽시계를 UTC 자리에 놓고 계산한 뒤 마지막에 9시간을 되돌린다 */
+  const wall = new Date(at.getTime() + KST_OFFSET_MS)
+  /* 경계 시각 전이면 아직 전날 안이다 (하루 경계와 같은 태도) */
+  const dayOffset = wall.getUTCHours() < hourKst ? -1 : 0
+  const dayWall = Date.UTC(
+    wall.getUTCFullYear(),
+    wall.getUTCMonth(),
+    wall.getUTCDate() + dayOffset,
+    hourKst,
+  )
+  const backDays = (new Date(dayWall).getUTCDay() - weekday + 7) % 7
+  return new Date(dayWall - backDays * DAY_MS - KST_OFFSET_MS)
+}
+
+/**
+ * `from` **뒤**부터 `to` **까지** 지나는 주 경계 시각을 오래된 것부터 (from < t ≤ to).
+ *
+ * 주간 순위 스냅샷이 「어느 시점의 순위를 찍어야 하나」를 이것으로 안다 —
+ * 시즌 시작(`from`)부터 지금(`to`)까지 지난 경계마다 한 번씩이다.
+ */
+export function weekBoundariesBetween(
+  from: Date,
+  to: Date,
+  boundary: WeekBoundaryKind = WEEK_BOUNDARY.current,
+): Date[] {
+  const out: Date[] = []
+  let t = weekStartOf(from, boundary).getTime()
+  if (t <= from.getTime()) t += WEEK_MS
+  while (t <= to.getTime()) {
+    out.push(new Date(t))
+    t += WEEK_MS
+  }
+  return out
+}
+
+/**
+ * **옛 규칙** — 그 시각이 속한 주의 시작 (월요일 오전 7시 KST). 지우지 않는다 (`CLAUDE.md` 10-4).
  *
  * `kstDayStart` 와 같은 규칙 위에 얹는다 — 오전 7시 전이면 전날로 친다.
+ * 새 코드는 `weekStartOf(at)` 을 쓴다. 이 함수는 `WEEK_BOUNDARY.legacy` 경로에서만 불린다.
  */
 export function weekStart(at: Date, dayStart: (d: Date) => Date): Date {
   const start = dayStart(at)
@@ -109,14 +200,26 @@ export function weekStart(at: Date, dayStart: (d: Date) => Date): Date {
   return new Date(start.getTime() - backDays * 24 * 60 * 60 * 1000)
 }
 
+/** 이번 주의 시작 — `mon07` 이면 옛 함수를 그대로 탄다, 나머지는 새 규칙 */
+function thisWeekStart(now: Date, dayStart: (d: Date) => Date, boundary: WeekBoundaryKind): Date {
+  return boundary === 'mon07' ? weekStart(now, dayStart) : weekStartOf(now, boundary)
+}
+
 /**
  * 최근 `weeks` 주의 **끝 시각**을 오래된 것부터 만든다.
  *
  * 마지막 원소는 `now` 다 — 이번 주는 아직 안 끝났고, 그 시점까지의 누적이 맞다.
  * 「이번 주가 끝나야 점을 찍는다」로 하면 오늘 뛴 판이 일주일 동안 안 보인다.
+ *
+ * `dayStart` 는 옛 경계(`mon07`)에서만 쓴다. 인자를 남겨 둔 것은 호출부를 안 바꾸기 위해서다.
  */
-export function weekEnds(now: Date, weeks: number, dayStart: (d: Date) => Date): Date[] {
-  const thisWeek = weekStart(now, dayStart)
+export function weekEnds(
+  now: Date,
+  weeks: number,
+  dayStart: (d: Date) => Date,
+  boundary: WeekBoundaryKind = WEEK_BOUNDARY.current,
+): Date[] {
+  const thisWeek = thisWeekStart(now, dayStart, boundary)
   const out: Date[] = []
   for (let i = weeks - 1; i >= 1; i -= 1) {
     /* i 주 전 주의 **끝** = (i-1) 주 전 주의 시작 */
@@ -127,8 +230,13 @@ export function weekEnds(now: Date, weeks: number, dayStart: (d: Date) => Date):
 }
 
 /** 그 주가 시작한 시각 — `weekEnds` 와 짝이다 */
-export function weekStartsOf(now: Date, weeks: number, dayStart: (d: Date) => Date): Date[] {
-  const thisWeek = weekStart(now, dayStart)
+export function weekStartsOf(
+  now: Date,
+  weeks: number,
+  dayStart: (d: Date) => Date,
+  boundary: WeekBoundaryKind = WEEK_BOUNDARY.current,
+): Date[] {
+  const thisWeek = thisWeekStart(now, dayStart, boundary)
   const out: Date[] = []
   for (let i = weeks - 1; i >= 0; i -= 1) {
     out.push(new Date(thisWeek.getTime() - i * WEEK_MS))
@@ -226,9 +334,11 @@ export function foldWeekly(
   dayStart: (d: Date) => Date,
   kdOf: (kill: number, death: number) => number | null,
   winRateOf: (win: number, lose: number) => number | null,
+  /* 주 경계. 호출부는 안 넘긴다 — 기본값이 `WEEK_BOUNDARY.current` 라 한 곳만 바꾸면 전부 따라온다 */
+  boundary: WeekBoundaryKind = WEEK_BOUNDARY.current,
 ): WeeklyTrend {
-  const ends = weekEnds(now, weeks, dayStart)
-  const starts = weekStartsOf(now, weeks, dayStart)
+  const ends = weekEnds(now, weeks, dayStart, boundary)
+  const starts = weekStartsOf(now, weeks, dayStart, boundary)
 
   const ordered = [...rows].sort((a, b) => {
     const d = a.startAt.getTime() - b.startAt.getTime()
@@ -293,7 +403,7 @@ export function foldWeekly(
  *
  * > "클랜정보카드도 수정 / 그래프카드에 일주일 단위 승률기록(개인기록과 동일)"
  *
- * 선수와 **같은 규칙**이다 — 누적 · 월요일 07:00 KST 경계 · 안 뛴 주는 수평선.
+ * 선수와 **같은 규칙**이다 — 누적 · 같은 주 경계(`WEEK_BOUNDARY.current`) · 안 뛴 주는 수평선.
  * 다른 것은 재료뿐이다: 클랜은 참가 기록이 아니라 **경기 승패**만 있으면 된다.
  *
  * ── 왜 `foldWeekly` 를 그대로 못 쓰나
@@ -308,9 +418,10 @@ export function foldWeeklyClan(
   weeks: number,
   dayStart: (d: Date) => Date,
   winRateOf: (win: number, lose: number) => number | null,
+  boundary: WeekBoundaryKind = WEEK_BOUNDARY.current,
 ): WeeklyTrend {
-  const ends = weekEnds(now, weeks, dayStart)
-  const starts = weekStartsOf(now, weeks, dayStart)
+  const ends = weekEnds(now, weeks, dayStart, boundary)
+  const starts = weekStartsOf(now, weeks, dayStart, boundary)
 
   const ordered = [...rows].sort((a, b) => {
     const d = a.startAt.getTime() - b.startAt.getTime()
@@ -349,4 +460,49 @@ export function foldWeeklyClan(
   }
 
   return { points, has_rank: false }
+}
+
+/* ========================================================================== */
+/* 순위 얹기 — 주간 순위 스냅샷이 생기면 여기서 `rank` 를 채운다 (지시 #19)       */
+/* ========================================================================== */
+
+/**
+ * 스냅샷 한 줄의 최소 모양. 서버는 `WeeklyRankSnapshot` 행을, Mock 은 픽스처를 이 모양으로 넘긴다.
+ *
+ * `weekStartAt` 은 **스냅샷을 찍은 경계 시각**이다 — 그 시각에 시작하는 주의 첫 순간이고,
+ * 곧 **직전 주가 끝난 시점의 순위**다.
+ */
+export interface WeeklyRankRow {
+  weekStartAt: Date
+  rank: number
+}
+
+/**
+ * 주간 점들에 순위를 얹는다.
+ *
+ * ── 점 `i` 의 순위 = 그 주가 **끝난** 시점의 순위 = 다음 주 시작 경계의 스냅샷
+ *   점의 값이 전부 「그 주 끝 시점의 누적」이므로 순위도 같은 시각이어야 선이 한 축에 놓인다.
+ *
+ * ── 마지막 점은 `now` 라 스냅샷이 없다 — **지금 순위**(`liveRank`)를 그대로 쓴다
+ *   화면이 이미 `playerRankOf` 로 들고 있는 값이다. 다시 세지 않는다.
+ *
+ * ── 스냅샷이 없는 주는 `null` 이다. **0 으로 채우지 않는다.** 화면이 「기록 없음」을 적는다.
+ *   시즌 초 · 그 주에 아직 랭킹 모집단에 없던 선수 · 배치고사 중이던 주가 여기 해당한다.
+ */
+export function attachWeeklyRank(
+  trend: WeeklyTrend,
+  snapshots: readonly WeeklyRankRow[],
+  liveRank: number | null,
+): WeeklyTrend {
+  const rankAt = new Map<number, number>()
+  for (const s of snapshots) rankAt.set(s.weekStartAt.getTime(), s.rank)
+
+  const last = trend.points.length - 1
+  const points = trend.points.map((point, index) => {
+    if (index === last) return { ...point, rank: liveRank != null && liveRank > 0 ? liveRank : null }
+    /* 이 주의 끝 = 다음 주의 시작. 서머타임이 없어 정확히 7일 뒤다 */
+    const endAt = new Date(point.start).getTime() + WEEK_MS
+    return { ...point, rank: rankAt.get(endAt) ?? null }
+  })
+  return { points, has_rank: points.some((p) => p.rank !== null) }
 }
