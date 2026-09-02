@@ -139,7 +139,35 @@ const clanById = new Map(dataset.clans.map((entry) => [entry.id, entry]))
 const clanBySlug = new Map(dataset.clans.map((entry) => [entry.slug, entry]))
 const userById = new Map(dataset.users.map((entry) => [entry.id, entry]))
 const leagueById = new Map(dataset.leagues.map((entry) => [entry.id, entry]))
+/**
+ * 픽스처 리그를 slug 로 찾는 표.
+ *
+ * ══ 2026-09-02 (O-005) — **운영 slug 도 여기서 받는다** ══
+ *
+ * 픽스처 리그는 `officialmain` · `secondline` · `friendly01` · `tourney2026` 이고
+ * 운영은 `supply`(SPL) · `nolink`(IPL) · `sanply`(10mountain) 다. **이름이 겹치지 않는
+ * 것은 일부러 그렇게 둔 것이다** — `apps/worker/src/dev/mockLeaguePurge.ts` 가 운영 DB 에서
+ * **slug 로 가짜 시드를 지운다.** 픽스처 slug 를 운영과 같게 만들면 그 도구가 진짜
+ * 리그를 겨누게 된다. 그래서 **픽스처 이름은 건드리지 않는다.**
+ *
+ * 대신 여기서 **별칭만 얹는다.** 그러면 mock 모드에서 `/league/supply/...` 같은
+ * 진짜 주소로 들어와도 화면이 돈다. 이게 없어서 mock 으로 띄우면 홈·랭킹·선수·클랜이
+ * 전부 0건이었고, 그 탓에 판마다 운영에 배포해서 눈으로 확인해야 했다.
+ *
+ * ── 같은 방식이 이미 한 곳에 있었다
+ *   `getHomeTop()` 이 «슬러그가 없으면 같은 순번의 픽스처 리그로 대신 채운다» 를
+ *   메인 TOP 에만 하고 있었다. 그 아이디어를 **한 곳으로 올려** 모든 조회가 쓰게 했다.
+ *
+ * ⚠ **Mock 안에서만 일어난다.** 실제 API 는 없는 slug 면 그대로 404 다 —
+ *   `pnpm compare` 의 mock↔live 대조는 픽스처 slug 로 하므로 영향이 없다.
+ */
 const leagueBySlug = new Map(dataset.leagues.map((entry) => [entry.slug, entry]))
+
+/* 운영 slug → 같은 순번의 픽스처 리그. 픽스처가 모자라면 그 칸은 비운다 */
+for (const [index, entry] of HOME_LEAGUES.entries()) {
+  const stand = dataset.leagues[index]
+  if (stand && !leagueBySlug.has(entry.slug)) leagueBySlug.set(entry.slug, stand)
+}
 const mapById = new Map(dataset.maps.map((entry) => [entry.id, entry]))
 const leagueClanById = new Map(dataset.leagueClans.map((entry) => [entry.id, entry]))
 const leaguePlayerById = new Map(dataset.leaguePlayers.map((entry) => [entry.id, entry]))
