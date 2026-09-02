@@ -59,7 +59,24 @@ if (!url) {
  * 풀러(6543)는 세션을 돌려쓰기 때문에 `CONCURRENTLY` 처럼 세션에 걸치는 작업이 깨진다.
  * 직결(5432)로 바꾼다.
  */
-const direct = url.replace(':6543/', ':5432/').replace(/[?&]pgbouncer=true/, '')
+/*
+ * ⚠ 문자열 치환으로 하면 안 된다. `?pgbouncer=true&connection_limit=1` 에서
+ *   `?pgbouncer=true` 만 떼면 **물음표가 같이 사라져** DB 이름이
+ *   `postgres&connection_limit=1` 이 된다 (2026-09-02 에 이걸로 P1003 을 봤다).
+ *   `prod-migrate.mjs` 의 `migrationUrlOf` 와 같은 방식으로 URL 파서를 쓴다.
+ */
+function directUrlOf(runtimeUrl) {
+  const parsed = new URL(runtimeUrl)
+  if (parsed.port === '6543') parsed.port = '5432'
+  parsed.searchParams.delete('pgbouncer')
+  parsed.searchParams.delete('connection_limit')
+  parsed.searchParams.delete('pool_timeout')
+  return parsed.toString()
+}
+const direct = directUrlOf(url)
+
+/** 주소는 **호스트만** 찍는다. 전체 URL 은 절대 찍지 않는다 */
+console.info(`대상 ${new URL(direct).host}\n`)
 
 const STEPS = drop
   ? [
@@ -88,14 +105,34 @@ if (!confirm) {
   process.exit(0)
 }
 
-/** psql 대신 prisma 로 한 문장씩 돈다 — 이 저장소에 psql 이 없다 */
+/**
+ * psql 대신 prisma 로 한 문장씩 돈다 — 이 저장소에 psql 이 없다.
+ *
+ * ⚠ **저장소 루트에서는 `prisma db execute` 가 없다** (`CLI.UNKNOWN_COMMAND`).
+ *   `packages/db` 안의 prisma 를 써야 한다. 그래서 `cwd` 를 거기로 옮긴다.
+ *   (2026-09-02 에 루트에서 돌렸다가 이걸로 실패했다 — npm 경고에 가려져 원인이 안 보였다)
+ */
 function run(sql) {
   const result = spawnSync(
     'npx',
-    ['prisma', 'db', 'execute', '--schema', 'packages/db/prisma/schema.prisma', '--stdin'],
-    { input: sql, env: { ...process.env, DATABASE_URL: direct }, encoding: 'utf8', shell: true },
+    ['prisma', 'db', 'execute', '--schema', 'prisma/schema.prisma', '--stdin'],
+    {
+      cwd: 'packages/db',
+      input: sql,
+      env: { ...process.env, DATABASE_URL: direct },
+      encoding: 'utf8',
+      shell: true,
+    },
   )
-  return result.status === 0 ? null : (result.stderr || result.stdout || '').trim()
+  const out = `${result.stdout ?? ''}\n${result.stderr ?? ''}`
+  /* prisma 는 실패해도 status 0 을 줄 때가 있다 — 본문의 `"ok":false` 로도 판정한다 */
+  const failed = result.status !== 0 || /"ok"\s*:\s*false/.test(out)
+  if (!failed) return null
+  return out
+    .split('\n')
+    .filter((line) => line.trim() && !/npm warn|DeprecationWarning|--trace-deprecation/.test(line))
+    .join('\n')
+    .trim()
 }
 
 for (const [label, sql] of STEPS) {
