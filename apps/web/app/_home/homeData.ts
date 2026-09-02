@@ -8,7 +8,7 @@ import { HOME_RECENT_LOOK, type HomeRankPreviewLeague, type HomeRecentLeague } f
  * 홈이 서버에서 읽는 값 두 묶음 (2026-09-02 사장님 지시).
  *
  * ```
- * ① 리그별 개인랭킹 미리보기   SPL · IPL · 10mountain 각 상위 5명
+ * ① 리그별 개인랭킹 미리보기   SPL · IPL 각 상위 30명 · 10mountain 5명 (지시 #13-d)
  * ② 최근 경기                 SPL(왼쪽) · IPL(오른쪽) 각 6경기 — 한 줄 모양 (지시 #11)
  * ```
  *
@@ -47,8 +47,19 @@ import { HOME_RECENT_LOOK, type HomeRankPreviewLeague, type HomeRecentLeague } f
  *   안 쓰는 쪽은 읽지 않는다 — 빈 배열이다.
  */
 
-/** 리그마다 몇 명 — 사장님 권장값 5 */
-export const HOME_RANK_PREVIEW_SIZE = 5
+/**
+ * 리그마다 몇 명 (2026-09-02 사장님 지시 #13-d).
+ *
+ * > SPL · IPL 각 **상위 30명**. 10mountain 은 **5명** (사장님 답).
+ *
+ * 리그별 값은 **표**에 둔다 — 화면에 `if (slug === …)` 를 두지 않는다 (`leagueScreen` 과 같은 방식).
+ * 표에 없는 리그는 기본값이다. ⚠ 옛 값은 전 리그 5 였다 (지시 #3 «5명 권장»).
+ */
+export const HOME_RANK_PREVIEW_SIZE_DEFAULT = 30
+export const HOME_RANK_PREVIEW_SIZES: Readonly<Record<string, number>> = { sanply: 5 }
+function rankPreviewSizeOf(slug: string): number {
+  return HOME_RANK_PREVIEW_SIZES[slug] ?? HOME_RANK_PREVIEW_SIZE_DEFAULT
+}
 /**
  * 리그마다 몇 경기 — 사장님 지시 #11 «가장최신경기 6건씩».
  * ⚠ 옛 값은 5 였다 (지시 #3). 되돌리려면 이 숫자 하나다.
@@ -59,8 +70,9 @@ const HOME_CACHE_SECONDS = 600
 /**
  * 캐시 키 버전. 캐시에 든 값의 **모양**(행 타입 · 칸)이 바뀔 때 올린다 — 순서·개수는 여기와 무관하다
  * (그건 캐시 밖에서 조립한다). `v2` = 지시 #11 (한 줄 모양 도입 · 리그 단위 캐시).
+ * `v3` = 지시 #13-g (최근 경기 행에 MVP 가 붙었다).
  */
-const HOME_CACHE_VERSION = 'v2'
+const HOME_CACHE_VERSION = 'v3'
 
 /**
  * 최근 경기의 좌우 — **SPL 왼쪽 · IPL 오른쪽** (2026-09-02 사장님 지시 #10 · #11 «iplspl 둘다 마찬가지»).
@@ -107,7 +119,7 @@ export async function getHomeRankPreview(): Promise<HomeRankPreviewLeague[] | nu
   try {
     const leagues: HomeRankPreviewLeague[] = []
     for (const league of HOME_LEAGUES) {
-      const rows = await cachedRankPreviewOf(league.slug, HOME_RANK_PREVIEW_SIZE)
+      const rows = await cachedRankPreviewOf(league.slug, rankPreviewSizeOf(league.slug))
       leagues.push({ slug: league.slug, name: league.name, rows })
     }
     return leagues
