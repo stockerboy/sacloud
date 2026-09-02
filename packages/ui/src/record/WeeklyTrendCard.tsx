@@ -35,8 +35,20 @@ import {
  *   승률 선 하나만 켜면 된다. 그래서 어느 선을 그릴지는 **부르는 쪽이 고른다**(`show`).
  *   화면마다 다른 그래프를 새로 만들지 않는다.
  *
- * ── 날짜를 **적지 않는다** (사용자 지시)
- *   가로축에 눈금 글자가 없다. 대신 「몇 주 전」이 왼→오른쪽이라는 것만 한 줄로 적는다.
+ * ── 날짜를 **적는다** (2026-09-02 사장님 지시 #26 — 앞 지시를 뒤집었다)
+ *   > "찍힌 날자를 적어라 (매주 수요일 아까 말한 시간이니까 목요일 날짜로 기록하면 된다)"
+ *   점마다 그 주의 **목요일 날짜**(`8/7`)를 아래에 적는다. 값은 계산팀의 주 경계(`weekly.ts` ·
+ *   목요일 00:00 KST)가 준 `WeeklyPoint.start` 의 월/일을 **그대로 잘라** 쓴다 — 화면에서
+ *   날짜를 새로 계산하지 않는다. 값 글자와 같은 솎아내기(`weeklyShowsLabel`)라 폰에서 안 겹친다.
+ *   「N주 전 · 이번 주」 줄은 그대로 두었다 (더한 것이지 뺀 것이 아니다).
+ *   ⚠ 옛 서술: «날짜를 적지 않는다 — 「몇 주 전」만 한 줄로». 그때는 그랬다.
+ *
+ * ── 범례를 눌러 선을 **켜고 끈다** (2026-09-02 사장님 지시 #29)
+ *   > "이거 누르면 해당하는 그래프만 볼 수 있게 기능 추가해라"
+ *   토글이다 — 누른 선을 끄고 다시 누르면 켠다. 「하나만 보기」로 하면 셋을 다시 켜기 번거롭다.
+ *   **마지막 하나는 안 꺼진다.** 꺼진 범례는 흐리고, 세로축은 남은 선의 범위로 다시 잡힌다.
+ *   상태는 이 화면 안에서만 산다(저장하지 않는다). 범례가 하나뿐이면(클랜 카드) 버튼이 아니다.
+ *   옛 동작(항상 다 보임)은 `LEGEND_TOGGLE` 스위치로 남아 있다 (`CLAUDE.md` 10-4).
  *
  * ── 값이 없는 선은 **범례에서도 뺀다**
  *   스나를 한 번도 안 든 선수에게 「스나 킬뎃」 범례만 덩그러니 있으면
@@ -57,6 +69,24 @@ const LABEL: Record<ChartSeries['key'], string> = {
   rifle_kd: '라플 킬뎃',
   win_rate: '승률',
   rank: '순위',
+}
+
+/**
+ * 범례 토글 (지시 #29). `false` 면 옛 동작 — 범례는 글자이고 선은 항상 다 보인다.
+ * 타입을 `boolean` 으로 넓혀 둔 이유는 리터럴로 좁히면 옛 가지가 «닿을 수 없는 코드» 가 되기 때문이다.
+ */
+const LEGEND_TOGGLE: boolean = true
+
+/**
+ * 점 아래 날짜 (지시 #26) — `WeeklyPoint.start`(KST ISO `YYYY-MM-DDT…+09:00`)의 월/일을 그대로 잘라 `8/7`.
+ * `Date` 로 되돌리지 않는다 — 브라우저 시간대에 따라 하루가 밀릴 수 있고, 무엇보다 **날짜를 화면에서
+ * 다시 계산하지 말라**는 지시다. 계산팀이 목요일로 맞춘 문자열이 그대로 답이다.
+ */
+function weekDateLabel(start: string): string {
+  const month = Number(start.slice(5, 7))
+  const day = Number(start.slice(8, 10))
+  if (!Number.isFinite(month) || !Number.isFinite(day) || month === 0 || day === 0) return ''
+  return `${month}/${day}`
 }
 
 export interface WeeklyTrendCardProps {
@@ -81,24 +111,23 @@ export function WeeklyTrendCard({
   rankNote,
 }: WeeklyTrendCardProps) {
   const [weeks, setWeeks] = useState<WeeklyRangeWeeks>(WEEKLY_DEFAULT_WEEKS)
+  /* 범례로 끈 선 (지시 #29). 이 화면 안에서만 산다 — 저장하지 않는다 */
+  const [hiddenKeys, setHiddenKeys] = useState<ChartSeries['key'][]>([])
   const points = weeklyTail(weekly.points, weeks)
   const count = points.length
 
-  /* 퍼센트 세 선은 **축을 함께 쓴다** — 따로 쓰면 「스나가 승률보다 높다」가 거짓이 된다 */
-  const percentKeys = show.filter((key) => key !== 'rank')
-  const percentValues = percentKeys.flatMap((key) =>
-    points.map((p) => (key === 'sniper_kd' ? p.sniper_kd : key === 'rifle_kd' ? p.rifle_kd : p.win_rate)),
-  )
-  const percentDomain = weeklyPercentDomain(percentValues)
-
   const rankValues = points.map((p) => p.rank)
-  const rankDomain = show.includes('rank') ? weeklyRankDomain(rankValues) : null
+  const percentOf = (key: ChartSeries['key']) =>
+    points.map((p) =>
+      key === 'sniper_kd' ? p.sniper_kd : key === 'rifle_kd' ? p.rifle_kd : p.win_rate,
+    )
 
-  const series: ChartSeries[] = []
+  /* 범례에 오를 수 있는 선 전부 — 한 점도 없는 선은 그리지도, 범례에 적지도 않는다 (D-106) */
+  const available: ChartSeries[] = []
   for (const key of show) {
     if (key === 'rank') {
-      if (!rankDomain) continue
-      series.push({
+      if (weeklyRankDomain(rankValues) === null) continue
+      available.push({
         key,
         label: LABEL[key],
         color: COLOR[key],
@@ -108,13 +137,33 @@ export function WeeklyTrendCard({
       })
       continue
     }
-    const values = points.map((p) =>
-      key === 'sniper_kd' ? p.sniper_kd : key === 'rifle_kd' ? p.rifle_kd : p.win_rate,
-    )
-    /* 한 점도 없는 선은 그리지도, 범례에 적지도 않는다 */
+    const values = percentOf(key)
     if (values.every((v) => v === null)) continue
-    series.push({ key, label: LABEL[key], color: COLOR[key], dashed: false, values, suffix: '%' })
+    available.push({ key, label: LABEL[key], color: COLOR[key], dashed: false, values, suffix: '%' })
   }
+
+  /* 실제로 그리는 선 = 범례로 끄지 않은 선. 스위치가 꺼져 있으면 전부다 */
+  const series = LEGEND_TOGGLE
+    ? available.filter((s) => !hiddenKeys.includes(s.key))
+    : available
+  /* 범례를 누를 수 있나 — 선이 둘 이상일 때만. 하나뿐이면 끌 수 없으니 글자로 둔다 */
+  const legendClickable = LEGEND_TOGGLE && available.length > 1
+
+  const toggleSeries = (key: ChartSeries['key']) => {
+    setHiddenKeys((prev) => {
+      if (prev.includes(key)) return prev.filter((k) => k !== key)
+      /* **마지막 하나는 안 꺼진다** — 빈 그래프를 만들지 않는다 */
+      const visible = available.filter((s) => !prev.includes(s.key))
+      if (visible.length <= 1) return prev
+      return [...prev, key]
+    })
+  }
+
+  /* 퍼센트 선들은 **축을 함께 쓴다** — 따로 쓰면 「스나가 승률보다 높다」가 거짓이 된다.
+     축은 **보이는 선**으로만 잡는다 (지시 #29) — 선 하나만 남기면 그 선의 범위로 늘어난다 */
+  const percentValues = series.filter((s) => s.key !== 'rank').flatMap((s) => s.values)
+  const percentDomain = weeklyPercentDomain(percentValues)
+  const rankDomain = series.some((s) => s.key === 'rank') ? weeklyRankDomain(rankValues) : null
 
   const hasAnything = series.length > 0 && (percentDomain !== null || rankDomain !== null)
 
@@ -147,9 +196,12 @@ export function WeeklyTrendCard({
         <p className="mt-4 text-[13px] text-meta">아직 그릴 기록이 없습니다.</p>
       ) : (
         <>
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-            {series.map((s) => (
-              <span key={s.key} className="flex items-center gap-1.5 text-[12px] text-meta">
+          {/* 범례 — 누를 수 있으면 버튼(지시 #29 · 키보드 포커스 포함), 아니면 글자.
+              꺼진 선은 흐리게. 범례는 **끈 선도** 보여 준다 — 다시 켜야 하니까 */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1" role={legendClickable ? 'group' : undefined} aria-label={legendClickable ? '선 켜기·끄기' : undefined}>
+            {available.map((s) => {
+              const hidden = LEGEND_TOGGLE && hiddenKeys.includes(s.key)
+              const swatch = (
                 <span
                   aria-hidden
                   className="inline-block h-[2px] w-4"
@@ -161,9 +213,31 @@ export function WeeklyTrendCard({
                       : { background: s.color }
                   }
                 />
-                {s.label}
-              </span>
-            ))}
+              )
+              if (!legendClickable) {
+                return (
+                  <span key={s.key} className="flex items-center gap-1.5 text-[12px] text-meta">
+                    {swatch}
+                    {s.label}
+                  </span>
+                )
+              }
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => toggleSeries(s.key)}
+                  aria-pressed={!hidden}
+                  title={hidden ? `${s.label} 켜기` : `${s.label} 끄기`}
+                  className={`flex items-center gap-1.5 rounded-[2px] px-1 py-0.5 text-[12px] transition-opacity focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${
+                    hidden ? 'opacity-40 hover:opacity-70' : 'text-meta hover:text-text'
+                  }`}
+                >
+                  {swatch}
+                  {s.label}
+                </button>
+              )
+            })}
           </div>
 
           {/*
@@ -267,7 +341,26 @@ export function WeeklyTrendCard({
             )}
           </div>
 
-          <div className="mt-1 flex items-center justify-between text-[11px] text-faint">
+          {/* 점 아래 날짜 (지시 #26) — 각 점의 x 에 그 주의 목요일 날짜. 값 글자와 같은 솎아내기라
+              25주 화면에서도 3주마다 하나만 적혀 폰(390px)에서 안 겹친다 */}
+          <div className="relative mt-1 h-[14px] w-full">
+            {points.map((p, index) => {
+              if (!weeklyShowsLabel(index, count)) return null
+              const label = weekDateLabel(p.start)
+              if (label === '') return null
+              return (
+                <span
+                  key={p.start}
+                  className="num pointer-events-none absolute top-0 whitespace-nowrap text-[10px] leading-none text-faint"
+                  style={{ left: `${weeklyX(index, count)}%`, transform: 'translateX(-50%)' }}
+                >
+                  {label}
+                </span>
+              )
+            })}
+          </div>
+
+          <div className="mt-0.5 flex items-center justify-between text-[11px] text-faint">
             <span>{count}주 전</span>
             <span>이번 주</span>
           </div>
