@@ -63,6 +63,15 @@ export interface LeagueScreenSpec {
    * **별개의 표기용 값**이다 — 둘을 섞지 않는다. 데이터 쪽이 맞춰지면 표와 같아진다.
    */
   official: boolean
+  /**
+   * **리그 안 게시판**의 카테고리 slug (2026-09-02 사장님 지시 #14-2).
+   *
+   * > "게시판은 SPL메뉴 안에 있는거다 따로 있는것이 아니다 IPL도 마찬가지"
+   *
+   * `/league/{slug}/board/**` 가 이 카테고리의 글을 그린다 (DB `BoardCategory.slug` · 운영에 행 있음).
+   * `null` 이면 그 리그에는 게시판 탭이 없고, 주소로 들어와도 리그 첫 화면으로 보낸다.
+   */
+  boardCategory: string | null
 }
 
 /** 공식 래더가 있는 리그의 기본값 — 지금까지의 화면 그대로다 */
@@ -73,6 +82,8 @@ const WITH_LADDER: LeagueScreenSpec = {
   clanColumns: { rank: true, winRate: true, kd: false, rating: true },
   showsDivision: true,
   official: true,
+  /* 모르는 리그에는 게시판이 없다 — 카테고리 행을 지어내지 않는다 */
+  boardCategory: null,
 }
 
 /**
@@ -102,12 +113,15 @@ const NO_LADDER: LeagueScreenSpec = {
   showsDivision: true,
   /* 비공식이라 래더가 없다 — 세 리그 중 유일하게 「비공식」 을 단다 (#17) */
   official: false,
+  /* 10mountain 에는 게시판 탭이 없다 (지시 #14 · #16) */
+  boardCategory: null,
 }
 
 const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
-  supply: WITH_LADDER,
+  /* 리그 안 게시판 = 계약 `BOARD_CATEGORIES` 의 `spl` · `ipl` (지시 #14-2) */
+  supply: { ...WITH_LADDER, boardCategory: 'spl' },
   /* 2026-09-02 이전에는 `WITH_LADDER` 였다 (지시 #9 · D-265 ③) */
-  nolink: WITH_LADDER_NO_DIVISION,
+  nolink: { ...WITH_LADDER_NO_DIVISION, boardCategory: 'ipl' },
   sanply: NO_LADDER,
 }
 
@@ -130,6 +144,16 @@ export function showsDivision(slug: string): boolean {
  */
 export function isOfficialLeague(slug: string): boolean {
   return leagueScreen(slug).official
+}
+
+/** 이 리그 안 게시판의 카테고리 slug. 없으면 `null` (지시 #14-2) */
+export function leagueBoardCategory(slug: string): string | null {
+  return leagueScreen(slug).boardCategory
+}
+
+/** 리그 안 게시판의 주소 뿌리 — 목록 `…/board`, 글 `…/board/{id}`, 글쓰기 `…/board/write` */
+export function leagueBoardPath(slug: string): string {
+  return `/league/${slug}/board`
 }
 
 /**
