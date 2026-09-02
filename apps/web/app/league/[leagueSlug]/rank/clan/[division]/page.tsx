@@ -4,7 +4,7 @@ import { use } from 'react'
 import { redirect } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import type { ClanRankRow } from '@sacloud/contract'
-import { leagueScreen, showsDivision } from '@sacloud/contract'
+import { leagueScreen, showsTier } from '@sacloud/contract'
 import { ClanRankTable, DivisionTabs, LoadMoreButton, RankBox, RankHeader } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -23,11 +23,11 @@ export default function ClanRankPage({
 }) {
   const { leagueSlug, division } = use(params)
 
-  /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)로 이 주소를 직접 치고 들어오면
-     **합친 화면(`/rank/clan`)으로 보낸다.** 그 리그의 클랜랭킹은 그것 하나뿐이고,
-     한 부리그만 보여 주는 이 화면은 감춘 개념을 다시 꺼내게 된다. 라우트는 지우지 않았다 —
-     스위치를 끄면 이 화면이 그대로 돌아온다 (`CLAUDE.md` 10-4). 죽지 않고 안내한다 */
-  if (!showsDivision(leagueSlug)) redirect(`/league/${leagueSlug}/rank/clan`)
+  /* 티어가 없는 리그(SPL · 10mountain · 지시 #23)로 이 주소를 직접 치고 들어오면
+     **합친 화면(`/rank/clan`)으로 보낸다.** 등급 개념이 없는 리그에 한 티어만 보여 주는 화면은
+     없는 개념을 꺼내는 셈이다. IPL 은 이 화면이 살아 있다 — 탭 이름은 「1티어 … 6티어」.
+     라우트는 지우지 않았다 (`CLAUDE.md` 10-4). 죽지 않고 안내한다 */
+  if (!showsTier(leagueSlug)) redirect(`/league/${leagueSlug}/rank/clan`)
 
   const ready = useApiReady()
   const current = Number(division) || 1

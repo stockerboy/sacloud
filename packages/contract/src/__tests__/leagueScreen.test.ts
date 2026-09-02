@@ -5,6 +5,7 @@ import {
   leagueLandingPath,
   leagueScreen,
   showsDivision,
+  showsTier,
 } from '../leagueScreen'
 
 /**
@@ -54,22 +55,35 @@ describe('leagueScreen — 공식/비공식 표기 (#17)', () => {
  * 리그별 화면 규칙 (`leagueScreen.ts`).
  *
  * 2026-09-02 지시 #9 — IPL 의 부리그(티어) 구분을 **화면에서만** 없앤다 (D-265 ③).
- * 규칙은 이 표 한 곳에 있고 화면은 `showsDivision(slug)` 만 본다.
+ * 규칙은 이 표 한 곳에 있고 화면은 `showsTier(slug)` 만 본다.
  * 여기서 값이 바뀌면 탭 · 티어 경계선 · `N티어` 표기 · 티어별 승률이 한꺼번에 바뀐다 —
  * 그래서 값 자체를 못 박아 둔다.
  */
-describe('leagueScreen — 부리그 표시', () => {
-  it('IPL(nolink) 은 부리그를 화면에 표시하지 않는다 (D-265 ③)', () => {
-    expect(showsDivision('nolink')).toBe(false)
-    expect(leagueScreen('nolink').showsDivision).toBe(false)
+/**
+ * ⚠ 정정 (2026-09-02 · 지시 #23) — 같은 날 오전(#9 · D-265 ③)의 기대값은 정반대였다
+ *   (nolink false · supply true). 사장님이 «티어는 IPL 만, SPL 은 등급 자체가 없다» 고 명확히 했다.
+ */
+describe('leagueScreen — 티어 표시 (#23)', () => {
+  it('IPL(nolink) 만 티어를 화면에 표시한다', () => {
+    expect(showsTier('nolink')).toBe(true)
+    expect(leagueScreen('nolink').showsTier).toBe(true)
   })
 
-  it('SPL(supply) 은 그대로 표시한다', () => {
-    expect(showsDivision('supply')).toBe(true)
+  it('SPL(supply) 은 등급 개념이 없다 — 표시하지 않는다', () => {
+    expect(showsTier('supply')).toBe(false)
   })
 
-  it('모르는 slug 는 «래더 있는 리그» 기본값 — 표시한다', () => {
-    expect(showsDivision('some-new-league')).toBe(true)
+  it('10mountain(sanply) 도 단일리그 — 표시하지 않는다', () => {
+    expect(showsTier('sanply')).toBe(false)
+  })
+
+  it('모르는 slug 는 기본값 — 티어 없이 그린다', () => {
+    expect(showsTier('some-new-league')).toBe(false)
+  })
+
+  it('옛 이름 showsDivision 은 같은 값을 준다 (별칭)', () => {
+    expect(showsDivision('nolink')).toBe(true)
+    expect(showsDivision('supply')).toBe(false)
   })
 
   it('IPL 은 데이터·라우트가 그대로다 — 클랜랭킹 화면 자체는 남는다', () => {

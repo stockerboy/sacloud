@@ -100,7 +100,7 @@ export function isLeaguePreparing(leagueSlug: string): boolean {
  * **부리그(티어)를 화면에 표시하지 않는 리그** (2026-09-02 사장님 결정 · D-265 ③ — 지시 #9)
  *
  * ⚠ 스위치는 여기가 아니라 **`@sacloud/contract` 의 `leagueScreen.ts`** 에 있다
- *   (`LeagueScreenSpec.showsDivision` · `showsDivision(slug)`).
+ *   (`LeagueScreenSpec.showsTier` · `showsTier(slug)`).
  *
  *   잠깐(ee21a88) 여기 `DIVISION_HIDDEN_LEAGUE_SLUGS` 배열로 뒀었는데 옮겼다. 이유 둘 —
  *   ① `leagueScreen()` 이 이미 「리그가 무엇을 보여 주는가」를 모아 둔 **한 자리**다

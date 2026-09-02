@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ClanLeagueEntry, PlayerLeagueEntry } from '@sacloud/contract'
-import { isLeagueListed, isOfficialLeague, showsDivision } from '@sacloud/contract'
+import { isLeagueListed, isOfficialLeague, showsTier } from '@sacloud/contract'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
 import { Skeleton } from '../common/Skeleton'
@@ -170,8 +170,8 @@ function ClanEntryCard({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
         {/* 부리그를 화면에 내지 않는 리그(지시 #9)와 **단일리그**(부리그 1개 · 10mountain)는 «참여중» 만 적는다.
             단일리그에 「1부리그로 참여중」 이 떴었다 (#17-2 검수) — 헤더의 `divisionCount <= 1` 규칙과 같다 */}
         <div>
-          {showsDivision(entry.league.slug) && entry.league.division_count > 1
-            ? `${entry.division}부리그로 참여중`
+          {showsTier(entry.league.slug) && entry.league.division_count > 1
+            ? `${entry.division}티어로 참여중`
             : '참여중'}
         </div>
       </div>

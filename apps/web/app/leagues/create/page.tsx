@@ -102,7 +102,8 @@ function CreateForm() {
                     : 'border-line text-meta'
                 }`}
               >
-                {count === 1 ? '단일리그' : `${count}부리그`}
+                {/* 「부리그」 는 안 쓴다 (지시 #23) */}
+                {count === 1 ? '단일리그' : `${count}티어`}
               </button>
             ))}
           </div>

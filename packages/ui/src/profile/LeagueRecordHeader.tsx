@@ -157,8 +157,9 @@ export function LeagueClanRecordHeader({
   refreshState: RefreshState
   onRefresh: () => void
 }) {
-  /* 리그 이름은 손대지 않는다. 부리그 표기만 뒤에 붙인다 */
-  const head = divisionCount > 1 ? `${leagueName} - ${division}부리그` : leagueName
+  /* 리그 이름은 손대지 않는다. 티어 표기만 뒤에 붙인다 — 「부리그」 는 안 쓴다 (지시 #23).
+     호출부가 티어 없는 리그(SPL · 10mountain)에는 `divisionCount = 1` 을 넘겨 이 줄이 안 붙는다 */
+  const head = divisionCount > 1 ? `${leagueName} - ${division}티어` : leagueName
 
   return (
     <IdentityBand

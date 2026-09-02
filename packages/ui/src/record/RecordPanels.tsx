@@ -676,7 +676,8 @@ export function ClanStatSidebar({
           '순위 없음'
         ) : (
           <>
-            {showDivision ? <StatSub>{division}부리그</StatSub> : null}
+            {/* 「부리그」 는 안 쓴다 — 티어 (지시 #23). IPL 에서만 보인다 */}
+            {showDivision ? <StatSub>{division}티어</StatSub> : null}
             {formatCount(rank)}위
           </>
         )}
