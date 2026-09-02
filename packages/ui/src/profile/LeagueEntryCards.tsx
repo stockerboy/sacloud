@@ -73,7 +73,9 @@ function CardTitle({ name, official }: { name: string; official: boolean }) {
   return (
     <div className="flex items-center">
       <div className="text-2xl font-semibold text-ink">{name}</div>
-      {official ? <Label name="공식" className="ml-2" /> : null}
+      {/* **항상** 그린다 — 공식이면 「공식」, 아니면 「비공식」 (#17-2). 옛 줄(공식일 때만):
+          `official ? <Label name="공식" className="ml-2" /> : null` */}
+      <Label name={official ? '공식' : '비공식'} className="ml-2" />
     </div>
   )
 }
@@ -163,8 +165,13 @@ function ClanEntryCard({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
       {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
       <CardTitle name={entry.league.name} official={isOfficialLeague(entry.league.slug)} />
       <div className="mt-2">
-        {/* 부리그를 화면에 내지 않는 리그(지시 #9)는 «참여중» 만 적는다 */}
-        <div>{showsDivision(entry.league.slug) ? `${entry.division}부리그로 참여중` : '참여중'}</div>
+        {/* 부리그를 화면에 내지 않는 리그(지시 #9)와 **단일리그**(부리그 1개 · 10mountain)는 «참여중» 만 적는다.
+            단일리그에 「1부리그로 참여중」 이 떴었다 (#17-2 검수) — 헤더의 `divisionCount <= 1` 규칙과 같다 */}
+        <div>
+          {showsDivision(entry.league.slug) && entry.league.division_count > 1
+            ? `${entry.division}부리그로 참여중`
+            : '참여중'}
+        </div>
       </div>
       <div className="mt-6 flex items-center justify-between">
         <div>

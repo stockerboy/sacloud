@@ -144,9 +144,10 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
           <div className="mt-1.5 text-[12px] text-meta">
             {/* 무소속리그는 `1부리그` 가 아니라 `1티어` 로 적는다 (D-165).
                 부리그를 화면에 내지 않는 리그(지시 #9)는 «참여중» 만 적는다 */}
-            {showsDivision(entry.league.slug)
+            {showsDivision(entry.league.slug) && entry.league.division_count > 1
               ? `${divisionLabel(entry.division, entry.league.category)}로 참여중`
-              : '참여중'}
+              : /* 단일리그(부리그 1개)도 «참여중» 만 — 헤더의 `divisionCount <= 1` 규칙과 같다 (#17-2) */
+                '참여중'}
           </div>
         </div>
         <div className="shrink-0 text-right">

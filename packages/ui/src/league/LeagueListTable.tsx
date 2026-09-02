@@ -60,8 +60,9 @@ export function LeagueListTable({
           >
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span className="truncate font-semibold text-text-strong">{league.name}</span>
-              {/* 표기는 계약의 표가 정한다 (#17). 옛 줄: `league.official ? …` */}
-              {isOfficialLeague(league.slug) ? <Label name="공식" /> : null}
+              {/* 표기는 계약의 표가 정한다 (#17). **항상** 그린다 — 공식이면 「공식」, 아니면 「비공식」 (#17-2).
+                  옛 줄(공식일 때만): `league.official ? <Label name="공식" /> : null` */}
+              <Label name={isOfficialLeague(league.slug) ? '공식' : '비공식'} />
               <span className="flex items-center gap-1 max-md:hidden">
                 {league.clans.map((clan) => (
                   <ClanMark key={clan.id} mark={clan.mark} alt={clan.name} />
