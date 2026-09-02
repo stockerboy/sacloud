@@ -13,6 +13,7 @@
  *   신청까지만 한다. 클랜 설정 권한은 **관리자가 승인해야** 열린다
  *   (`/api/admin/clan-master-claims/{claimId}`).
  */
+import { claimClosed } from '@/lib/server/claimGate'
 import { ClanMasterClaimInput } from '@sacloud/contract'
 import { badRequest, guard, notFound, ok, tooManyRequests, unauthorized } from '@/lib/server/respond'
 import { jsonBody, routeParam } from '@/lib/server/request'
@@ -49,6 +50,10 @@ export async function GET(request: Request, context: { params: Promise<Record<st
 /** POST /api/clans/{clanSlug}/master-claim — 스크린샷 1장 제출 */
 export async function POST(request: Request, context: { params: Promise<Record<string, string>> }) {
   return guard(async () => {
+    /* ★신청 창구가 닫혀 있으면 여기서 막는다★ (O-008 ⑥) */
+    const closed = claimClosed()
+    if (closed) return closed
+
     const userId = await currentUserId(request)
     if (!userId) return unauthorized()
 

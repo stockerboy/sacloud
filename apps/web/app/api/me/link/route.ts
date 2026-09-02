@@ -1,3 +1,4 @@
+import { claimClosed } from '@/lib/server/claimGate'
 import { prisma } from '@sacloud/db'
 import { AccountLinkInput, type AccountLinkState } from '@sacloud/contract'
 import { badRequest, guard, ok, unauthorized } from '@/lib/server/respond'
@@ -48,6 +49,11 @@ export async function GET(request: Request) {
  */
 export async function PUT(request: Request) {
   return guard(async () => {
+    /* ★신청 창구가 닫혀 있으면 여기서 막는다★ (O-008 ⑥).
+       화면 링크만 껐던 것을 서버까지 닫는다 — 이 저장소가 네 번째로 앓은 병이다 */
+    const closed = claimClosed()
+    if (closed) return closed
+
     const userId = await currentUserId(request)
     if (!userId) return unauthorized()
 
