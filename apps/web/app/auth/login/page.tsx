@@ -54,7 +54,12 @@ function LoginForm() {
      * 로그인은 성공했는데 로그인 화면에 그대로 남는 것처럼 보인다 (실제로 그랬다).
      */
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['infos'] })
+      /* 셸은 `['me']` 를 본다 (O-018). `['infos']` 도 같이 지운다 —
+         게시판·리그설정 화면이 아직 그 키를 쓴다. 하나만 지우면 셸이 안 바뀐다 */
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['me'] }),
+        queryClient.invalidateQueries({ queryKey: ['infos'] }),
+      ])
       router.push(returnUrl)
     },
   })
