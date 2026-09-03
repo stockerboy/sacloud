@@ -2,9 +2,12 @@
  * 메인 · 사용법 (O-001 · 2026-09-02).
  *
  * ── 왜 생겼나
- *   홈에서 랭킹 미리보기와 최근 경기를 뺐다. 공개일에 천 명이 한꺼번에 들어오는데
- *   홈이 열릴 때마다 DB 를 읽으면 버티지 못한다 (2026-09-01 실측 — 전부 DB 로 가면
- *   동시 5명이 한계). 그 자리에 **검색창을 어떻게 쓰는지**를 넣는다.
+ *   홈에서 랭킹 미리보기와 최근 경기를 뺐다. 그 자리에 **검색창을 어떻게 쓰는지**를 넣는다.
+ *
+ *   ⚠ ★여기 적혀 있던 「동시 5명이 한계」는 사실이 아니었다★ (2026-09-03 정정 · 규칙 15).
+ *     그건 `vercel.app` preview 를 잰 숫자다. **운영에서는 동시 30명까지 오류 0%** 였다
+ *     (`docs/STATE.md` 「부하 실측」 · `app/page.tsx` 머리주석에 자세히 적었다).
+ *     ★O-001 을 한 것 자체는 맞다. 급한 정도를 부풀렸을 뿐이다.★
  *   처음 온 사람은 큰 검색창 하나만 보면 무엇을 쳐야 할지 모른다.
  *
  * ── 여기 적힌 다섯 줄은 전부 **지금 실제로 되는 동작**이다
@@ -17,6 +20,8 @@
  *   주인공은 검색창이다. 제목만 `--font-display` 이고 본문은 작고 흐린 글씨다.
  *   진홍(`--color-accent`)은 줄머리 번호에만 닿는다 — 넓은 면에 칠하지 않는다 (D-204).
  */
+
+import { FoldCard } from './FoldCard'
 
 /** 한 줄에 「무엇을 하면」 · 「무엇이 되는지」 */
 interface Step {
@@ -47,13 +52,13 @@ const STEPS: readonly Step[] = [
   },
 ]
 
+/** 접혀 있을 때 보이는 한 줄. **우리가 쓴 줄**이다 (O-041 ②) */
+const SUMMARY = '닉네임으로 찾기, 클랜으로 찾기, 리그 순위 보기 — 다섯 단계.'
+
 export function HomeGuide() {
   return (
-    <section className="mx-auto w-full max-w-[720px] border-t border-line pt-8">
-      <h2 className="mb-4 text-[20px] font-normal leading-none text-[var(--color-text-strong,#f6eded)] font-[family-name:var(--font-display)]">
-        사용법
-      </h2>
-
+    /* 2026-09-03 (O-041 ②) — 소개와 같이 접는다. 5단계 글은 그대로다 */
+    <FoldCard title="사용법" summary={SUMMARY}>
       <ol>
         {STEPS.map((step, index) => (
           <li
@@ -72,6 +77,6 @@ export function HomeGuide() {
           </li>
         ))}
       </ol>
-    </section>
+    </FoldCard>
   )
 }

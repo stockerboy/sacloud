@@ -32,17 +32,29 @@ async function get<K extends EndpointKey>(key: K, params: Record<string, string>
   return (parsed as { data: { data: unknown } }).data.data
 }
 
-/** 로컬 개발 서버가 없으면 이 파일은 통째로 건너뛴다 (다른 서버 의존 테스트와 같은 방식) */
+/**
+ * 로컬 개발 서버가 없으면 이 파일은 통째로 건너뛴다 (다른 서버 의존 테스트와 같은 방식).
+ *
+ * ⚠ 2026-09-03 — **건너뛰지 못하고 빨간 줄이 났다.** 서버가 없을 때
+ *   `fetch` 가 **바로 실패하지 않고 매달려서** `beforeAll` 이 시간 초과로 터졌다.
+ *   `catch` 는 멀쩡했는데 `catch` 까지 못 간 것이다.
+ *   → **2초를 넘기면 스스로 끊는다.** 그래야 `catch` 가 제 일을 한다.
+ */
+const REACH_TIMEOUT_MS = 2_000
 let alive = false
 let playerId = ''
 
 beforeAll(async () => {
   try {
-    const health = await fetch(`${BASE}/health`)
+    const health = await fetch(`${BASE}/health`, {
+      signal: AbortSignal.timeout(REACH_TIMEOUT_MS),
+    })
     alive = health.ok
     if (!alive) return
     /* 어느 선수든 상관없다 — **랭킹 1위**를 쓰면 언제나 존재한다 */
-    const rank = await fetch(`${BASE}/leagues/supply/ranks/players?weapon=all`)
+    const rank = await fetch(`${BASE}/leagues/supply/ranks/players?weapon=all`, {
+      signal: AbortSignal.timeout(REACH_TIMEOUT_MS),
+    })
     const body = (await rank.json()) as { data?: { player?: { id?: string } }[] }
     playerId = body.data?.[0]?.player?.id ?? ''
     if (!playerId) alive = false

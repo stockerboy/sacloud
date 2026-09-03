@@ -1,4 +1,5 @@
 import { BOARD_OPEN } from '../board/boardOpen'
+import { FoldCard } from './FoldCard'
 
 /**
  * 메인 · 사이트 소개 + 관리자 서약서 (`docs/SITE_SPEC_V2.md` 3절).
@@ -47,6 +48,14 @@ const NAME_MEANING = 'CLOUD — Connected League Operations & User Data'
  *  O-001 에서 걷어냈다.)
  * </details>
  */
+
+/**
+ * **접혀 있을 때 보이는 한 줄** (O-041 ② · 2026-09-03).
+ *
+ * ⚠ 이 줄은 **우리가 쓴 줄**이다 — 사장님 14줄에 들어가지 않는다.
+ *   안에 뭐가 있는지 알아야 사람이 누른다. 「자세히 보기」 같은 빈 말을 쓰지 않는다.
+ */
+const SUMMARY = '왜 만들었는지, 시즌이 어떻게 돌아가는지, 관리자가 지키기로 한 다섯 가지.'
 
 /** 첫 줄 — 왜 만들었나 */
 const OPENING = '졸업과제 겸, 내 기록이 보고 싶어서 만들었다.'
@@ -163,11 +172,9 @@ const PLEDGES: readonly Pledge[] = [
  */
 export function SiteIntro() {
   return (
-    <section className="mx-auto w-full max-w-[720px] border-t border-line pt-8">
-      <h2 className="mb-4 text-[20px] font-normal leading-none text-[var(--color-text-strong,#f6eded)] font-[family-name:var(--font-display)]">
-        사이트 소개
-      </h2>
-
+    /* 2026-09-03 (O-041 ②) — ★접힌다.★ 제목과 아래 한 줄만 보이고 누르면 펼쳐진다.
+       접기 껍데기는 `FoldCard.tsx` 에 있다. **안의 글은 한 글자도 안 바꿨다** */
+    <FoldCard title="사이트 소개" summary={SUMMARY}>
       {/* 이름의 뜻. 소개 첫 줄보다 앞에 둔다 — 사이트 이름부터 설명하는 것이 순서다 */}
       <p className="mb-4 text-[12px] tracking-wider text-[var(--color-faint,#6b5555)]">
         {NAME_MEANING}
@@ -250,6 +257,6 @@ export function SiteIntro() {
           ))}
         </ol>
       </div>
-    </section>
+    </FoldCard>
   )
 }

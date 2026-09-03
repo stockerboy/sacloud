@@ -137,7 +137,19 @@ export function SearchBar({
   return (
     <div ref={rootRef} className="mx-auto w-full max-w-[560px] text-left">
       <div
-        className={`flex items-stretch rounded-[var(--radius,2px)] border transition-colors duration-100 ${
+        /*
+         * `bg-page` — ★사진 위에서도 검색창 안이 페이지와 같은 색이다★ (O-041 ① · 2026-09-03).
+         *
+         * 홈에 밤하늘 사진을 깔면서 나온 것이다. 이 상자는 **테두리만 있고 바탕이 없었다.**
+         * 사진 위에 놓이면 상자 안이 ★달빛 구름★ 이 되고, 안내 글자(`--color-faint`)는
+         * 어두운 색이라 **막을 아무리 두껍게 깔아도 더 나빠지기만 한다** (1.26:1).
+         * 막은 밝은 글자를 살리는 도구지 어두운 글자를 살리는 도구가 아니다.
+         *
+         * 그래서 상자에 **불투명한 판**을 깐다 — 윤서의 규칙 그대로다:
+         * *「글자와 사진 사이에 값을 아는 층을 한 겹 깐다」*.
+         * 색은 페이지와 같은 `--color-page` 라 **사진이 없는 화면에서는 아무 변화가 없다.**
+         */
+        className={`flex items-stretch rounded-[var(--radius,2px)] border bg-page transition-colors duration-100 ${
           focused || open ? 'border-accent' : 'border-line'
         }`}
       >
