@@ -46,9 +46,10 @@
  */
 import { NextResponse } from 'next/server'
 import { prisma } from '@sacloud/db'
-import { contentHash } from '@sacloud/nexon'
+/* ★적재 로직은 여기 없다★ — 창구와 CLI 가 **같은 함수**를 쓴다 (O-051 · 2026-09-03).
+   복사하면 저장 모양이 갈리고, 갈리면 같은 응답이 두 행이 되거나 집계에서 통째로 빠진다 */
+import { storeBarracksRows, type BarracksRow } from '@sacloud/db/ops'
 
-const SOURCE = 'nexon_barracks'
 const ORIGIN = 'https://barracks.sa.nexon.com'
 /** 경기 하나가 90KB 안팎. 200건이 넘어도 안 걸린다 */
 const MAX_BODY_BYTES = 24 * 1024 * 1024
@@ -98,21 +99,8 @@ export async function GET(request: Request): Promise<NextResponse> {
 
 /* ============================================================== 적재 === */
 
-interface IngestRow {
-  /** `battlelog` (기본) · `matchlist` */
-  kind?: 'battlelog' | 'matchlist'
-  matchKey?: string
-  /** 배틀로그면 클랜번호, 매치목록이면 클랜 slug */
-  subject?: string
-  endpoint?: string
-  /** 넥슨이 준 응답 **그대로** */
-  raw?: unknown
-}
-
-/** 응답이 클랜 단위인가 — 응답 자신이 가진 `teamList` 로 가른다 (D-184) */
-function isClanResponse(raw: unknown): boolean {
-  return raw !== null && typeof raw === 'object' && Array.isArray((raw as { teamList?: unknown }).teamList)
-}
+/** 창구가 받는 줄 — 모양은 `@sacloud/db/ops/barracksStore` 가 정한다 */
+type IngestRow = BarracksRow
 
 export async function POST(request: Request): Promise<NextResponse> {
   const denied = deny(request)
@@ -137,101 +125,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ message: 'rows 가 배열이 아니다' }, { status: 400, headers: cors })
   }
 
-  let inserted = 0
-  let duplicated = 0
-  let skipped = 0
-  /** 응답의 `teamList` 에서 배운 클랜번호 — 상대를 이어 받을 때 쓴다 */
-  const learned: Record<string, string[]> = {}
-
-  for (const row of rows) {
-    const raw = row.raw
-    if (raw === null || typeof raw !== 'object') {
-      skipped += 1
-      continue
-    }
-    const kind = row.kind ?? 'battlelog'
-
-    if (kind === 'matchlist') {
-      /* 매치목록은 **한 응답에 여러 경기**가 들어 있다. 경기마다 한 행으로 편다 —
-         `BarracksClanMatchRaw` 가 경기 단위 표이기 때문이다 */
-      const result = (raw as { result?: unknown }).result
-      if (!Array.isArray(result)) {
-        skipped += 1
-        continue
-      }
-      for (const item of result) {
-        const key = (item as { match_key?: string })?.match_key
-        if (!key) {
-          skipped += 1
-          continue
-        }
-        const payloadHash = contentHash(item as object)
-        const unique = { matchKey: String(key), subject: String(row.subject ?? ''), payloadHash }
-        const existing = await prisma.barracksClanMatchRaw.findUnique({
-          where: { matchKey_subject_payloadHash: unique },
-          select: { id: true },
-        })
-        if (existing) {
-          await prisma.barracksClanMatchRaw.update({
-            where: { id: existing.id },
-            data: { fetchCount: { increment: 1 } },
-          })
-          duplicated += 1
-          continue
-        }
-        await prisma.barracksClanMatchRaw.create({
-          data: {
-            source: SOURCE,
-            endpoint: row.endpoint ?? '/api/ClanHome/GetClanMatchList/',
-            ...unique,
-            payload: item as object,
-            status: 'ok',
-          },
-        })
-        inserted += 1
-      }
-      continue
-    }
-
-    /* ── 배틀로그 */
-    const matchKey = row.matchKey
-    const subject = row.subject
-    if (!matchKey || !subject) {
-      /* 주인이나 경기를 모르는 원문은 넣지 않는다. 키를 추측해서 만들지 않는다 */
-      skipped += 1
-      continue
-    }
-    const teamList = (raw as { teamList?: { clan_no?: string }[] }).teamList ?? []
-    const nos = teamList.map((t) => t?.clan_no).filter((v): v is string => Boolean(v))
-    if (nos.length > 0) learned[String(matchKey)] = nos
-
-    const payloadHash = contentHash(raw)
-    const unique = { matchKey: String(matchKey), subject: String(subject), payloadHash }
-    const existing = await prisma.barracksBattleLogRaw.findUnique({
-      where: { matchKey_subject_payloadHash: unique },
-      select: { id: true },
-    })
-    if (existing) {
-      await prisma.barracksBattleLogRaw.update({
-        where: { id: existing.id },
-        data: { fetchCount: { increment: 1 } },
-      })
-      duplicated += 1
-      continue
-    }
-    await prisma.barracksBattleLogRaw.create({
-      data: {
-        source: SOURCE,
-        endpoint:
-          row.endpoint ?? `/api/BattleLog/GetBattleLogClan/${String(matchKey)}/${String(subject)}`,
-        ...unique,
-        subjectKind: isClanResponse(raw) ? 'clan' : 'user',
-        payload: raw as object,
-        status: 'ok',
-      },
-    })
-    inserted += 1
-  }
+  /* ★여기서 세지 않는다★ — 저장 모양(payload 그대로 · contentHash · 멱등)은
+     `storeBarracksRows()` 한 곳에만 있다. CLI 도 같은 함수를 부른다 */
+  const { inserted, duplicated, skipped, learned } = await storeBarracksRows(rows)
 
   return NextResponse.json(
     { received: rows.length, inserted, duplicated, skipped, learned },

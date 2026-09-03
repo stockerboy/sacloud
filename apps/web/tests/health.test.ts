@@ -113,7 +113,17 @@ describe.runIf(up)('상태 점검', () => {
     /* 다른 테스트 파일이 같은 DB 에 `origin='sacloud'|'nexon'` 픽스처를 만들었다 지운다.
        한 시점의 수치와 정확히 비교하면 그 사이에 값이 움직여 실패한다 (실제로 그랬다).
        그래서 **앞뒤로 재고 그 범위 안에 있는지** 본다. 이 테스트가 보려는 것은
-       "getHealth 가 공개 범위(origin != mock)를 센다" 이지 정확한 절대값이 아니다. */
+       "getHealth 가 공개 범위(origin != mock)를 센다" 이지 정확한 절대값이 아니다.
+
+       ⚠ ★앞뒤로 재는 것만으로는 부족했다★ (2026-09-03).
+         `getHealth()` 가 3.3초 걸리는데 그 **도중에만** 존재하는 픽스처가 있으면
+         `before` 와 `after` 에는 안 잡히고 `report` 에만 잡힌다 —
+         실제로 `386147 <= 386146` 으로 깨졌다. **줄어들 수도 있다는 뜻이다.**
+         그리고 ★O-051 이 15분마다 수집을 돌리기 시작하면 이 창이 계속 흔들린다.★
+         → **작은 여유를 둔다.** 38만 건에 ±10 이면 「엉뚱한 origin 을 센다」는
+           여전히 잡히고, 옆에서 몇 줄 움직이는 것에는 안 깨진다. */
+    /** 옆 테스트·수집이 같은 창에서 만들었다 지우는 몫 */
+    const TOLERANCE = 10
     const before = {
       leagues: await prisma.league.count({ where: { origin: { not: 'mock' } } }),
       matches: await prisma.match.count({ where: { origin: { not: 'mock' } } }),
@@ -123,10 +133,18 @@ describe.runIf(up)('상태 점검', () => {
       leagues: await prisma.league.count({ where: { origin: { not: 'mock' } } }),
       matches: await prisma.match.count({ where: { origin: { not: 'mock' } } }),
     }
-    expect(report.metrics.publicLeagues).toBeGreaterThanOrEqual(Math.min(before.leagues, after.leagues))
-    expect(report.metrics.publicLeagues).toBeLessThanOrEqual(Math.max(before.leagues, after.leagues))
-    expect(report.metrics.publicMatches).toBeGreaterThanOrEqual(Math.min(before.matches, after.matches))
-    expect(report.metrics.publicMatches).toBeLessThanOrEqual(Math.max(before.matches, after.matches))
+    expect(report.metrics.publicLeagues).toBeGreaterThanOrEqual(
+      Math.min(before.leagues, after.leagues) - TOLERANCE,
+    )
+    expect(report.metrics.publicLeagues).toBeLessThanOrEqual(
+      Math.max(before.leagues, after.leagues) + TOLERANCE,
+    )
+    expect(report.metrics.publicMatches).toBeGreaterThanOrEqual(
+      Math.min(before.matches, after.matches) - TOLERANCE,
+    )
+    expect(report.metrics.publicMatches).toBeLessThanOrEqual(
+      Math.max(before.matches, after.matches) + TOLERANCE,
+    )
   })
 
   it('전체 상태는 가장 나쁜 항목을 따른다', async () => {

@@ -137,6 +137,9 @@ importers:
       '@sacloud/mock':
         specifier: workspace:*
         version: link:../mock
+      '@sacloud/nexon':
+        specifier: workspace:*
+        version: link:../nexon
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.3

@@ -23,4 +23,6 @@ export * from './iplRoster'
 export * from './iplSanplyPurgeLog'
 export * from './iplSanplyGuard'
 export * from './supplyRollup'
+/* 병영수첩 원문 적재 — ★창구와 CLI 가 같은 함수를 쓴다★ (O-051) */
+export * from './barracksStore'
 export * from './independentLeague'

@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@sacloud/contract": "workspace:*",
+    "@sacloud/nexon": "workspace:*",
     "@sacloud/mock": "workspace:*",
     "bcryptjs": "^3.0.2",
     "prisma": "^6.3.0",

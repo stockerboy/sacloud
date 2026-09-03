@@ -45,6 +45,8 @@ import { AbortCollection, type JobContext } from './jobs/context.js'
 import { runIdentities } from './jobs/identities.js'
 import { runIdentityWatch } from './jobs/identityWatch.js'
 import { runBarracksLink } from './jobs/barracksLink.js'
+import { collectBarracks, DEFAULT_DELAY_MS, MIN_DELAY_MS } from './jobs/barracksCollect.js'
+import { checkLoad, guardLine, newGuardState } from './jobs/loadGuard.js'
 import { runIplProject } from './jobs/iplProject.js'
 import { runIplClanRollup } from './jobs/iplClanRollup.js'
 import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
@@ -599,6 +601,69 @@ async function main(): Promise<number> {
         for (const u of result.unknownClanNames) log(`  ${u.name} — ${u.count.toLocaleString()}건`)
       }
       return 0
+    }
+
+    case 'barracks-collect': {
+      /*
+       * ★병영수첩을 사람 손 없이 긁는다★ (O-051 · D-268).
+       *
+       *   nexon barracks-collect --dry-run              ★요청 0건★ · 무엇을 받을지만 본다
+       *   nexon barracks-collect --limit 10             10건 받아 본다 (안 넣는다)
+       *   nexon barracks-collect --limit 10 --confirm   10건 받아 ★넣는다★
+       *   nexon barracks-collect --limit 100 --confirm --health <주소>
+       *
+       * ⚠ ★`curl` 을 쓴다. Node fetch 는 403 이다★ (D-268 실측 · 같은 IP·같은 순간).
+       * ⚠ ★첫 403 에서 즉시 멈춘다★ (D-266). 우회를 만들지 않는다.
+       * ⚠ ★--health 를 주면 `checks.db` 만 본다★ — 최상위 status 는 지금도 degraded 라
+       *   그걸 보면 ★수집이 시작하자마자 자기 때문에 물러난다★.
+       */
+      const dryRun = boolFlag(args, 'dry-run')
+      const confirm = boolFlag(args, 'confirm')
+      const limit = numberFlag(args, 'limit') ?? 10
+      /* ★목록을 안 받으면 배틀로그는 언제나 0건이다★ — 운영의 BarracksClanMatchRaw 는 0행이었다 */
+      const clans = numberFlag(args, 'clans') ?? 0
+      const delayMs = numberFlag(args, 'delay') ?? DEFAULT_DELAY_MS
+      const healthUrl = stringFlag(args, 'health')
+      const state = newGuardState()
+
+      if (delayMs < MIN_DELAY_MS) {
+        log(`★간격이 ${MIN_DELAY_MS}ms 아래다 (${delayMs}ms) — 그 아래로는 안 내린다★ (D-266)`)
+        return 1
+      }
+
+      /* ★시작 전에 한 번 잰다★ — 확인 칸 ⑦ 이 「괜찮았다」가 아니라 ★숫자★ 를 요구한다.
+         그리고 시작부터 무거우면 ★아예 시작하지 않는 것★ 이 맞다 */
+      if (healthUrl) {
+        const before = await checkLoad(healthUrl, state)
+        log(`★부하(시작 전)★ ${guardLine(state)}`)
+        if (before === 'stop') {
+          log('★시작 전부터 무겁다 — 이번 판은 돌지 않는다★')
+          return 1
+        }
+      }
+
+      const result = await collectBarracks({
+        limit,
+        clans,
+        delayMs,
+        dryRun,
+        confirm,
+        log,
+        guard: healthUrl
+          ? async () => {
+              const verdict = await checkLoad(healthUrl, state)
+              log(`  ${guardLine(state)}`)
+              return verdict
+            }
+          : undefined,
+      })
+
+      if (healthUrl) {
+        await checkLoad(healthUrl, state)
+        log(`\n★부하(끝난 뒤)★ ${guardLine(state)}`)
+      }
+      /* ★멈춘 이유가 정상이 아니면 exit 1★ — 체인이 그걸 보고 판단한다 */
+      return result.stop === 'done' || result.stop === 'limit' ? 0 : 1
     }
 
     case 'barracks-link': {

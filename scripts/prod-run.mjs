@@ -132,6 +132,11 @@ const ALLOWED = {
     writes: false,
     what: 'O-050 - 사장님께 보일 선수 두 명(기록 꽉 참 / 적음)의 주소를 뽑는다 (읽기 전용)',
   },
+  'barracks-pending': {
+    file: 'barracksPendingProbe',
+    writes: false,
+    what: 'O-051 - 아직 배틀로그를 안 받은 경기가 몇 건인가 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
