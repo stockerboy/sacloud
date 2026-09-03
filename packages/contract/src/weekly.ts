@@ -90,17 +90,42 @@ export const SOLID_LINE_MIN_MATCHES = 25
 export type LineStyle = 'solid' | 'dashed'
 
 /**
- * **선 모양** — ★두 조건이 `AND` 다.★
+ * **선 모양** — ★조건은 하나다.★
  *
  * ```
- * ★실선★  시즌 통산 25판 이상  ★그리고★  그 주에 한 판이라도 했다
- * ★점선★  그 밖에 전부
+ * ★실선★  시즌 통산 25판 이상
+ * ★점선★  그 밖에
  * ```
- * ⚠ ★25판을 넘겨도 그 주에 안 뛰면 점선★ 이다 — «일주일간 한판도 하지 않은 유저도 점선».
- * ⚠ ★그 주에 뛰어도 25판이 안 되면 점선★ 이다 — «25판이 넘을때까지 쭉 점선».
- *   둘 중 하나만 보면 사장님 말씀의 절반이 사라진다.
+ *
+ * ── ★★2026-09-03 · 사장님이 조건을 하나로 줄이셨다★★
+ *
+ * > «그래프는 그냥 ★전부 다 실선으로 그어 25판이상만 하면 실선으로 그어줘★»
+ *
+ * 그전에는 ★두 조건이 `AND`★ 였다 — «25판 이상 ★그리고★ 그 주에 한 판이라도».
+ * ★「그 주에」 조건을 뺐다.★ 그 조건이 만든 것이 —
+ * ```
+ * ★목요일 아침에 마지막 점이 전원 점선★ 이 된다
+ *   (막 찍은 주에는 아직 아무도 안 뛰었으니 ★전부 「그 주 0판」★ 이다)
+ * ★실선이 3%뿐★ 이었다 (supply 1,447명 중 44명)
+ * ```
+ * ★두 번째가 사장님이 보시고 버린 이유다.★
+ *
+ * ⚠ ★옛 조건을 지우지 않는다★ (`CLAUDE.md` 1-4) — `lineStyleWithWeek()` 로 남겼다.
+ *   되돌리라 하시면 그것을 부르면 된다.
+ * ⚠ ★25판 기준은 그대로다★ — «적은판수로 그래프를 찍어놓고 유지하는 경우를 방지».
+ *   그 뜻은 ★「판수가 모자란 선」★ 을 막는 것이고, ★그건 이 조건이 지킨다★.
  */
-export function lineStyle(seasonGames: number, weekGames: number): LineStyle {
+export function lineStyle(seasonGames: number): LineStyle {
+  return seasonGames >= SOLID_LINE_MIN_MATCHES ? 'solid' : 'dashed'
+}
+
+/**
+ * ★옛 규칙★ (2026-09-03 오전까지) — 두 조건이 `AND` 였다.
+ *
+ * ★쓰지 않는다.★ 사장님이 «그 주에» 조건을 버리셨다 (위 설명).
+ * ★지우지 않고 남긴다★ — 되돌리라 하시면 이것을 부른다 (`CLAUDE.md` 1-4).
+ */
+export function lineStyleWithWeek(seasonGames: number, weekGames: number): LineStyle {
   return seasonGames >= SOLID_LINE_MIN_MATCHES && weekGames >= 1 ? 'solid' : 'dashed'
 }
 
@@ -449,7 +474,7 @@ export function foldWeekly(
       win_rate: win + lose === 0 ? null : winRateOf(win, lose),
       rank: null,
       season_games: win + lose,
-      line: lineStyle(win + lose, gamesThisWeek),
+      line: lineStyle(win + lose),
     })
   }
 
@@ -515,7 +540,7 @@ export function foldWeeklyClan(
       win_rate: win + lose === 0 ? null : winRateOf(win, lose),
       rank: null,
       season_games: win + lose,
-      line: lineStyle(win + lose, gamesThisWeek),
+      line: lineStyle(win + lose),
     })
   }
 

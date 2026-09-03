@@ -19,6 +19,7 @@ import {
   foldWeeklyClan,
   graphedLeague,
   lineStyle,
+  lineStyleWithWeek,
   SOLID_LINE_MIN_MATCHES,
   WEEK_BOUNDARY,
   weekBoundariesBetween,
@@ -258,25 +259,40 @@ describe('attachWeeklyRank — 스냅샷이 있는 주만 채운다', () => {
 /* 선 규칙 (O-045 · 2026-09-03 사장님 회의)                                     */
 /* ========================================================================== */
 
-describe('O-045 선 규칙', () => {
-  it('★25판 이상이고 그 주에 뛰었으면 실선★', () => {
-    expect(lineStyle(25, 1)).toBe('solid')
+describe('O-045 선 규칙 — ★조건은 하나다★ (2026-09-03 사장님)', () => {
+  /*
+   * > «그래프는 그냥 ★전부 다 실선으로 그어 25판이상만 하면 실선으로 그어줘★»
+   *
+   * ★「그 주에 한 판이라도」 조건이 빠졌다.★ 그 조건이 만든 것이 —
+   *   ★목요일 아침에 마지막 점이 전원 점선★ (막 찍은 주엔 아직 아무도 안 뛰었다)
+   *   ★실선이 3%뿐★ (supply 1,447명 중 44명)
+   */
+  it('★25판 이상이면 실선★', () => {
+    expect(lineStyle(25)).toBe('solid')
   })
 
-  it('★24판이면 그 주에 열 판을 뛰어도 점선★ — «25판이 넘을때까지 쭉 점선이다»', () => {
-    expect(lineStyle(24, 10)).toBe('dashed')
+  it('★24판이면 점선★ — «25판이 넘을때까지 쭉 점선이다»', () => {
+    expect(lineStyle(24)).toBe('dashed')
   })
 
-  it('★★25판을 훨씬 넘겨도 그 주 0판이면 점선★★ — 두 조건은 AND 다', () => {
-    expect(lineStyle(999, 0)).toBe('dashed')
+  it('★★그 주에 안 뛰어도 25판이 넘으면 실선★★ — 사장님이 바꾸신 자리', () => {
+    /* 옛 규칙에서는 이게 점선이었다. ★그게 목요일 아침마다 전원 점선을 만들었다★ */
+    expect(lineStyle(999)).toBe('solid')
+  })
+
+  it('★옛 규칙은 지우지 않았다★ — 되돌리라 하시면 이것을 부른다', () => {
+    /* `CLAUDE.md` 1-4 — 방식을 바꿔도 옛 방식을 남긴다 */
+    expect(lineStyleWithWeek(999, 0)).toBe('dashed')
+    expect(lineStyleWithWeek(25, 1)).toBe('solid')
+    /* ★새 규칙과 옛 규칙이 갈리는 자리★ */
+    expect(lineStyle(999)).not.toBe(lineStyleWithWeek(999, 0))
   })
 
   it('★일부러 깨뜨려★ — 기준을 24로 낮추면 24판이 실선이 되어 위 검사가 깨진다', () => {
     /* ORDERS 확인 6번을 검사로 굳힌다. 기준값이 바뀌면 여기서 먼저 걸린다 */
-    const broken = (season: number, week: number): string =>
-      season >= 24 && week >= 1 ? 'solid' : 'dashed'
-    expect(broken(24, 10)).toBe('solid')
-    expect(lineStyle(24, 10)).toBe('dashed')
+    const broken = (season: number): string => (season >= 24 ? 'solid' : 'dashed')
+    expect(broken(24)).toBe('solid')
+    expect(lineStyle(24)).toBe('dashed')
     expect(SOLID_LINE_MIN_MATCHES).toBe(25)
   })
 
@@ -317,13 +333,16 @@ describe('O-045 접기가 선 규칙을 채운다', () => {
     expect(last.line).toBe('solid')
   })
 
-  it('★한 판도 안 한 주는 25판을 넘겨도 점선★ — 안 뛴 게 눈에 보여야 한다', () => {
+  it('★★한 판도 안 한 주도 25판을 넘으면 실선★★ (2026-09-03 사장님이 바꾸신 자리)', () => {
     const now = new Date('2026-07-22T12:00:00+09:00')
     const rows = Array.from({ length: 30 }, (_, i) => row(`a${i}`, '2026-07-03T12:00:00', true))
     const trend = foldWeekly(rows, now, 3, kstDayStart, kd, wr)
     const last = trend.points[trend.points.length - 1]!
     expect(last.games).toBe(0)
     expect(last.season_games).toBe(30)
-    expect(last.line).toBe('dashed')
+    /* ★옛 규칙에서는 'dashed' 였다★ — «전부 다 실선으로 그어 25판이상만 하면» */
+    expect(last.line).toBe('solid')
+    /* ★그 주에 안 뛴 것은 `played`·`games` 로 여전히 알 수 있다★ — 정보를 잃지 않았다 */
+    expect(last.played).toBe(false)
   })
 })
