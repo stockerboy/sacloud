@@ -55,7 +55,14 @@ function radiusOf(percentile: number): number {
   return Math.max(3, (Math.min(100, Math.max(0, percentile)) / 100) * HEX_RADIUS)
 }
 
-const WEAPON_NAME: Record<0 | 1, string> = { 0: '라플수', 1: '스나수' }
+/*
+ * ★사람을 셀 때는 「스나 유저」·「라플 유저」★ (O-040 ① · 2026-09-03).
+ *
+ * 「같은 ○○ 62명 안에서」처럼 **사람 수**를 말하는 자리다.
+ * 옛 값은 `'라플수'` · `'스나수'` 였는데 **「스나수」는 경기 데이터의 포지션 이름**
+ * (`스나수` · `2F` · `B리베` · `숏`)과 **같은 낱말**이라 두 뜻이 겹쳤다.
+ */
+const WEAPON_NAME: Record<0 | 1, string> = { 0: '라플 유저', 1: '스나 유저' }
 
 /**
  * 그림 밀도 (2026-08-30 · 사용자 지시).

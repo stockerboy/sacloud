@@ -195,7 +195,7 @@ function Outnumbered({ outnumbered }: { outnumbered: ClanRoundMetricsData['outnu
   )
 }
 
-/** 클린시트(반코트) — 원문: `800판중 120회 n%` */
+/** 반코트 — 원문: `800판중 120회 n%` (옛 제목 「클린시트」 · O-040 ⑦) */
 function CleanSheet({ sheet }: { sheet: ClanRoundMetricsData['clean_sheet'] }) {
   return (
     <MetricRow
@@ -271,7 +271,9 @@ export function ClanRoundMetrics({ metrics }: { metrics: ClanRoundMetricsData })
       </div>
 
       <div className="mt-4">
-        <SectionTitle title="클린시트" note="한 진영에서 5라운드 전승 (반코트)" />
+        {/* O-040 ⑦ — 옛 제목 「클린시트」. ★답이 괄호 안에 있는데 제목이 축구 말이었다★
+            (강민재). 설명에서 괄호를 떼고 제목을 「반코트」로 올렸다 */}
+        <SectionTitle title="반코트" note="한 진영에서 5라운드 전승" />
         <div className="mt-2">
           <CleanSheet sheet={metrics.clean_sheet} />
         </div>

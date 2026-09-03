@@ -90,13 +90,28 @@ export function resolvePlayerPosition(sniperGames: number, rifleGames: number): 
   return 'multi'
 }
 
-/** 화면에 그대로 쓰는 한글 표기. 원본 용어를 바꾸지 않는다 (CLAUDE.md 6장) */
+/**
+ * 화면에 그대로 쓰는 한글 표기.
+ *
+ * ── 2026-09-03 (O-040 ①) — **「스나이퍼·라이플」에서 「스나·라플」로 바꿨다**
+ *   같은 것을 화면마다 넷으로 부르고 있었다. 강민재가 세었다 —
+ *   `matchDetailView` 는 「스나」, 여기는 「스나이퍼」, `TraitHexagon` 은 「스나수」,
+ *   `PlayerHeadCard` 는 **한 줄 안에서** 라벨 「스나 킬뎃」 · 값 「스나이퍼」였다.
+ *   **뛰는 사람이 쓰는 말**로 맞춘다.
+ *
+ *   ⚠ 옛 표기 — `'스나이퍼'` · `'라이플'`. 되돌릴 일이 생기면 이 두 낱말이다.
+ *   ⚠ **코드의 값 이름은 안 건드린다** — `WEAPON.SNIPER` · `sniper_rating_delta` 그대로다.
+ *     바꾼 것은 **사람 눈에 뜨는 글자**뿐이다.
+ *
+ * ⚠ 원래 여기 「원본 용어를 바꾸지 않는다 (CLAUDE.md 6장)」이라고 적혀 있었는데
+ *   **6장은 래더 공식 이야기라 이 줄과 상관이 없다.** 잘못 붙은 출처였다.
+ */
 export function positionLabel(position: PlayerPosition): string {
   switch (position) {
     case 'sniper':
-      return '스나이퍼'
+      return '스나'
     case 'rifle':
-      return '라이플'
+      return '라플'
     case 'multi':
       return '멀티'
     case 'none':

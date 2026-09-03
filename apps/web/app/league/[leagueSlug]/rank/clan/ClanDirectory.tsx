@@ -99,7 +99,7 @@ export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
       {/* 좁은 화면에서는 좌우 안쪽 여백을 없앤다 — `.mobile-bleed`(표)가 화면 끝까지 가도록 */}
       <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
-          title="고용가능 클랜"
+          title="클랜랭킹"
           notice="이 리그에 소속된 클랜입니다. 순위가 아니라 이름순입니다."
         />
         <ClanSearchBox

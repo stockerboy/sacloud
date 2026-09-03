@@ -479,8 +479,14 @@ function splitWeapons(weaponStats?: readonly PlayerWeaponStatRow[]): {
 
 /** 짧은 무기 이름 — 값 옆에 붙어서 좁다 */
 const shortWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나' : '라플')
-/** 긴 무기 이름 — 줄 라벨 자리다 */
-const longWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나이퍼' : '라이플')
+/**
+  * 긴 무기 이름 — 줄 라벨 자리다.
+  *
+  * ⚠ 2026-09-03 (O-040 ①) — **짧은 이름과 같아졌다.** 「스나이퍼·라이플」을 안 쓴다.
+  *   지금은 `shortWeaponName` 과 값이 같지만 **함수는 남긴다** — 자리의 뜻이 다르다
+  *   (하나는 값 옆, 하나는 줄 라벨). 나중에 라벨만 길게 하고 싶어질 수 있다.
+  */
+const longWeaponName = (weapon: 0 | 1): string => (weapon === 1 ? '스나' : '라플')
 
 export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
   const { main: mainWeapon, other: otherWeapon } = splitWeapons(props.weaponStats)
@@ -783,7 +789,8 @@ export function WeaponStatPanel({ stats }: { stats?: readonly PlayerWeaponStatRo
       {rows.map((row) => (
         <div key={row.weapon}>
           <Divider />
-          <Stat label={row.weapon === 1 ? '스나이퍼' : '라이플'}>
+          {/* O-040 ① — 「스나이퍼·라이플」에서 바꿨다 */}
+          <Stat label={row.weapon === 1 ? '스나' : '라플'}>
             <StatSub>
               {formatCount(row.games)}판 {formatCount(row.win)}승 {formatCount(row.lose)}패
             </StatSub>

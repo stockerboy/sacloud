@@ -74,24 +74,33 @@ export interface LeagueTopBarProps {
  * 리그 탭. **리그홈은 없다.**
  * 경로(href)는 예전과 하나도 안 바뀌었다 — 없앤 것은 「리그홈」 항목 하나뿐이다.
  *
- * ── 2026-09-02 (D-260) — **이름이 둘 다 바뀌었다.** 가는 곳은 그대로다
+ * ── ★2026-09-03 (O-040 ③) — **되돌아왔다.** 가는 곳은 여전히 그대로다★
  *   ```
- *   클랜랭킹  →  고용가능 클랜    사용자: *"클랜순위는 없애고 고용가능 클랜 이라는 항목으로"*
- *   개인랭킹  →  개인순위        사용자: *"두번째가 개인순위"*
+ *   고용가능 클랜  →  ★클랜랭킹★     사장님: «고용가능클랜>클랜랭킹»
+ *   개인순위       →  ★개인랭킹★     사장님: «개인순위>개인랭킹»
  *   ```
+ *   ⚠ **D-260 을 되돌리는 것이다.** 하루 만에 두 번 바뀐 자리라 옛 말을 남겨 둔다 —
+ *   ```
+ *   처음      클랜랭킹 · 개인랭킹
+ *   D-260     고용가능 클랜 · 개인순위
+ *             사용자: *"클랜순위는 없애고 고용가능 클랜 이라는 항목으로"* · *"두번째가 개인순위"*
+ *   ★지금★    클랜랭킹 · 개인랭킹   (O-040 ③)
+ *   ```
+ *   **되돌린 것은 글자뿐이다.** D-260 이 같이 한 일 — 클랜 화면을 순위표가 아니라
+ *   **이름순 목록 + 검색창**으로 바꾼 것 — 은 **그대로 살아 있다** (`ClanDirectory.tsx`).
  *   `/rank/clan` · `/rank/player` 라우트는 **한 글자도 바뀌지 않았다** (D-246 —
  *   slug 와 라우트는 건드리지 않는다). 바뀐 것은 사람에게 보이는 글자뿐이다.
  *
  * ⚠ 클랜 화면 유무는 **여기서 판단하지 않는다.** `leagueScreen(slug).clanRank` 가 정한다
  *   (`packages/contract/src/leagueScreen.ts`). 화면마다 `slug === 'sanply'` 를 뿌리지
  *   않는다는 규칙(D-204)을 지키려고 표를 그 한 곳에 모아 뒀다.
- *   `10mountain`(`sanply`)은 클랜 화면이 없어서 탭이 **개인순위 하나**다.
+ *   `10mountain`(`sanply`)은 클랜 화면이 없어서 탭이 **개인랭킹 하나**다.
  */
 export function leagueTabs(leagueSlug: string) {
   const base = `/league/${leagueSlug}`
-  const tabs = [{ label: '개인순위', href: `${base}/rank/player` }]
+  const tabs = [{ label: '개인랭킹', href: `${base}/rank/player` }]
   if (leagueScreen(leagueSlug).clanRank) {
-    tabs.unshift({ label: '고용가능 클랜', href: `${base}/rank/clan` })
+    tabs.unshift({ label: '클랜랭킹', href: `${base}/rank/clan` })
   }
   /*
    * ★경기 (2026-09-03 · O-015)★

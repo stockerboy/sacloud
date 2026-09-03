@@ -144,11 +144,12 @@ export function PlayerHeadCard(props: PlayerHeadCardProps) {
       <Divider />
 
       {/* ★킬데스는 언제나 두 줄이다 — 위가 스나, 아래가 라플★ */}
+      {/* O-040 ① — 라벨은 「스나」인데 값이 「스나이퍼」였다. ★한 줄 안에서 갈렸다★ */}
       <Row label="스나 킬뎃">
-        <WeaponLine name="스나이퍼" stat={props.sniper} hidden={kdHidden} />
+        <WeaponLine name="스나" stat={props.sniper} hidden={kdHidden} />
       </Row>
       <Row label="라플 킬뎃">
-        <WeaponLine name="라이플" stat={props.rifle} hidden={kdHidden} />
+        <WeaponLine name="라플" stat={props.rifle} hidden={kdHidden} />
       </Row>
       <Divider />
 

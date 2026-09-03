@@ -287,7 +287,8 @@ export default function LeagueClanRecordPage({
           {matches.loading ? (
             <ProfileSkeleton rows={3} height={104} />
           ) : matches.items.length === 0 ? (
-            <ProfileEmpty message="기록된 경기가 없습니다." />
+            /* O-040 ⑤ — 옛 글자 「기록된 경기가 없습니다」. 경기 목록과 말이 갈렸었다 */
+            <ProfileEmpty message="아직 경기가 없습니다." />
           ) : (
             matches.items.map((match) => (
               <MatchCard

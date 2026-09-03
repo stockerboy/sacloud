@@ -208,7 +208,10 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
                           division: Number(event.target.value),
                         },
                       }),
-                    '부리그 변경됨',
+                    /* O-040 ④ — 옛 글자 「부리그 변경됨」. 사장님이 «1부 2부 라는 표현을
+                       이제 아예 안 쓴다» 고 하셨다 (`CLAUDE.md` 5장 · 지시 #23).
+                       바로 위 108행이 이미 「티어 변경됨」이라 한 화면에서 둘로 갈렸었다 */
+                    '티어 변경됨',
                   )
                 }
               >

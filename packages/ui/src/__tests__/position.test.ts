@@ -33,9 +33,14 @@ describe('resolvePlayerPosition', () => {
     expect(resolvePlayerPosition(Number.NaN, Number.NaN)).toBe('none')
   })
 
-  it('표기는 원본 용어 그대로', () => {
-    expect(positionLabel('sniper')).toBe('스나이퍼')
-    expect(positionLabel('rifle')).toBe('라이플')
+  /*
+   * 2026-09-03 (O-040 ①) — **「스나이퍼·라이플」에서 「스나·라플」로 바꿨다.**
+   * 같은 것을 화면마다 넷으로 부르고 있었다. 뛰는 사람이 쓰는 말로 맞췄다.
+   * ⚠ 「멀티」·「집계 없음」은 그대로다 — 줄일 말이 없다.
+   */
+  it('표기는 뛰는 사람이 쓰는 말로', () => {
+    expect(positionLabel('sniper')).toBe('스나')
+    expect(positionLabel('rifle')).toBe('라플')
     expect(positionLabel('multi')).toBe('멀티')
     expect(positionLabel('none')).toBe('집계 없음')
   })

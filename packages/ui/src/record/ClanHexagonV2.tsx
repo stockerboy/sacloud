@@ -157,7 +157,8 @@ export function ClanHexagonV2({
   name,
   layout = 'stack',
   aside,
-  title = '클랜 육각형',
+  /* O-040 ② — 옛 기본값 「클랜 육각형」. 선수 화면과 같은 「전투력」으로 맞췄다 */
+  title = '전투력',
   pendingWording = 'measuring',
 }: ClanHexagonV2Props) {
   const isFinal = pendingWording === 'final'
@@ -250,7 +251,7 @@ export function ClanHexagonV2({
             : 'mx-auto mt-0.5 h-auto w-full max-w-[224px]'
         }
         role="img"
-        aria-label={compare ? '클랜 육각형 비교' : '클랜 육각형'}
+        aria-label={compare ? '전투력 육각형 비교' : '전투력 육각형'}
       >
         {/* 눈금 다섯 겹. 한 칸이 20%p 다 */}
         {HEX_RING_SCALES.map((scale) => (

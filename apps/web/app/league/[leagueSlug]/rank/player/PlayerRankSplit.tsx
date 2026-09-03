@@ -104,8 +104,9 @@ export function PlayerRankSplit() {
     <div className="pc-container">
       {/* 좁은 화면에서는 좌우 안쪽 여백을 없앤다 — `.mobile-bleed`(표)가 화면 끝까지 가도록 */}
       <div className="py-[var(--section-gap)] max-md:py-8">
+        {/* O-040 ③ — 옛 제목 「플레이어 개인랭킹」. 상단 탭·한리그 화면과 셋이 갈렸었다 */}
         <RankHeader
-          title="플레이어 개인랭킹"
+          title="개인랭킹"
           notice="랭킹 숫자는 약 1시간마다 다시 계산됩니다. 한 경기부터 바로 반영됩니다."
         />
         <RankWeaponTabs current={weapon} onChange={setWeapon} />

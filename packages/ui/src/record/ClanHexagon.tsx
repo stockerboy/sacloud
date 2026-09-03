@@ -59,7 +59,8 @@ export function ClanHexagon({
     return (
       <div className="mt-3">
         <div className="flex items-baseline justify-between">
-          <div className="text-sm">지표 여섯</div>
+          {/* O-040 ② — 옛 이름 「지표 여섯」. 선수 화면(`TraitHexagon`)의 「전투력」으로 맞췄다 */}
+          <div className="text-sm">전투력</div>
           {hexagon.cohort === null ? null : (
             <div className="text-xs text-meta">
               같은 리그 {formatCount(hexagon.cohort)}팀 안에서
@@ -107,7 +108,8 @@ export function ClanHexagon({
   return (
     <div className="mt-3">
       <div className="flex items-baseline justify-between">
-        <div className="text-sm">클랜 육각형</div>
+        {/* O-040 ② — 옛 이름 「클랜 육각형」. 같은 그림을 위에서는 「지표 여섯」이라 불렀다 */}
+        <div className="text-sm">전투력</div>
         {hexagon.measuring ? (
           <div className="text-xs text-meta">
             측정중 {formatCount(hexagon.measured)}/{hexagon.axes.length}
@@ -119,7 +121,7 @@ export function ClanHexagon({
         viewBox="0 0 260 208"
         className="mx-auto mt-0.5 h-auto w-full max-w-[224px]"
         role="img"
-        aria-label="클랜 육각형"
+        aria-label="전투력 육각형"
       >
         {HEX_RING_SCALES.map((scale) => (
           <polygon

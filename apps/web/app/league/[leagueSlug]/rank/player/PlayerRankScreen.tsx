@@ -31,6 +31,8 @@ import { useApiReady } from '@/app/providers'
  *   어느 리그로 들어오든 **그 리그 하나만** 보여 준다. 분할 화면(`PlayerRankSplit.tsx`)은
  *   **지우지 않았다** (`CLAUDE.md` 10-4) — 되돌리려면 그것을 다시 부르면 된다.
  *   화면 이름도 `플레이어 개인랭킹` → `개인순위` 로 바꿨다. 사용자가 고른 말이다.
+ *   ⚠ ★2026-09-03 (O-040 ③) — 다시 「개인랭킹」이다.★ 사장님: «개인순위>개인랭킹».
+ *     하루 만에 두 번 바뀐 자리다. 옛 말 둘(`플레이어 개인랭킹` · `개인순위`)을 여기 남긴다.
  */
 export default function PlayerRankPage({ params }: { params: Promise<{ leagueSlug: string }> }) {
   const { leagueSlug } = use(params)
@@ -71,7 +73,7 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           자세한 근거는 클랜랭킹 페이지 주석 참조. */}
       <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
-          title="개인순위"
+          title="개인랭킹"
           notice="랭킹 숫자는 약 1시간마다 다시 계산됩니다. 한 경기부터 바로 반영됩니다."
         />
         <RankWeaponTabs current={weapon} onChange={setWeapon} />

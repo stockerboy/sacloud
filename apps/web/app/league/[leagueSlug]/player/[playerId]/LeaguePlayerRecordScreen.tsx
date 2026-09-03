@@ -222,7 +222,8 @@ export default function LeaguePlayerRecordPage({
           {matches.loading ? (
             <ProfileSkeleton rows={3} height={104} />
           ) : matches.items.length === 0 ? (
-            <ProfileEmpty message="기록된 경기가 없습니다." />
+            /* O-040 ⑤ — 옛 글자 「기록된 경기가 없습니다」 */
+            <ProfileEmpty message="아직 경기가 없습니다." />
           ) : (
             matches.items.map((match) => (
               <MatchCard
