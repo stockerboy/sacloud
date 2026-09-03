@@ -67,6 +67,11 @@ const ALLOWED = {
     writes: false,
     what: '라운드 단위로 설박튀를 가린다 (설치했는데 그 라운드를 졌는가) — 읽기만 한다',
   },
+  'clan-overlap-plan': {
+    file: 'clanOverlapPlanProbe',
+    writes: false,
+    what: 'O-044 — 감추기 전 숫자. 사장님 43곳 분류가 DB 와 맞는지 · 몇 건이 안 보이게 되는지',
+  },
   'battlelog-vocab': {
     file: 'battlelogVocabProbe',
     writes: false,
