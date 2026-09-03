@@ -162,6 +162,11 @@ const ALLOWED = {
     writes: false,
     what: 'O-051 - 배틀로그는 있는데 우리 경기가 없는 5,255건이 결손인가 규칙대로인가 (읽기 전용)',
   },
+  'ipl-gap-hour': {
+    file: 'iplGapByHourProbe',
+    writes: false,
+    what: 'O-051 - PC 를 끄면 몇 %가 늦어지나 (IPL 경기 시간대 · 읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
