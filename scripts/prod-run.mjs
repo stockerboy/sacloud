@@ -62,6 +62,11 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'barracks-406': {
+    file: 'barracks406Probe',
+    writes: false,
+    what: '406 이 「로그 없음」인지 DB 로만 가른다 (넥슨을 안 부른다 · 읽기만 한다)',
+  },
   'lineup-gap': {
     file: 'lineupGapProbe',
     writes: false,
