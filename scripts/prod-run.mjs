@@ -147,6 +147,16 @@ const ALLOWED = {
     writes: false,
     what: 'IPL 참가 기록이 지금 몇 건인가 (읽기 전용)',
   },
+  'ipl-demo-player': {
+    file: 'iplDemoPlayerPick',
+    writes: false,
+    what: '사장님께 보일 IPL 선수 주소 - 스나·라플이 갈리는 사람 (읽기 전용)',
+  },
+  'ipl-mvp': {
+    file: 'iplMvpProbe',
+    writes: false,
+    what: 'IPL 에 MVP 가 하나도 없나 - 원본이 안 준 것인가 우리가 안 넣은 것인가 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
