@@ -88,7 +88,8 @@ async function main(): Promise<void> {
   console.info(`  그중 탈주 표시가 있는 사람 ${Number(d.zero3_drop).toLocaleString()}명`)
   console.info(`  탈주 표시 전체           ${Number(d.drop).toLocaleString()}명`)
   console.info(
-    '\n  ⚠ `dropout` 은 넥슨이 안 주는 값이다 (`NEXON_INGEST_SPEC` 1-3) — 0 이면 「탈주가 없다」가 아니라 ★「모른다」★ 다',
+    '\n  ⚠ ★`dropout` 은 3rd.supply 가 주는 값이다★ (`supplyMirrorParse.ts:510` — 그대로 넣는다).
+    ⚠ 여기 「넥슨이 안 주는 값」이라고 적었는데 ★그건 넥슨 이야기였다.★ 이 칸은 미러에서 온다 (2026-09-03 정정)',
   )
 }
 

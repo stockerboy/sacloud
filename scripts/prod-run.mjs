@@ -62,6 +62,21 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'c4-probe': {
+    file: 'c4Probe',
+    writes: false,
+    what: '배틀로그 원문에 C4 설치·해체가 어떻게 찍혀 있나 (읽기만 한다)',
+  },
+  'dropout-trust': {
+    file: 'dropoutTrustProbe',
+    writes: false,
+    what: 'dropout 칸을 믿을 수 있나 — 한 팀 통째 탈주 · 나간 쪽 승패 · 경기 길이 (읽기만 한다)',
+  },
+  'bomb-quit': {
+    file: 'bombQuitProbe',
+    writes: false,
+    what: '설박튀 흔적이 우리 DB 에 있나 (승자 없음 · 5명뿐 · 배틀로그 원문) — 읽기만 한다',
+  },
   'killdeath-null': {
     file: 'killDeathNullProbe',
     writes: false,
