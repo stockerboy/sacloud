@@ -159,6 +159,9 @@ jobs:
       # ── ①② 긁기. 403 이면 CLI 가 스스로 멈추고 exit 1 을 낸다
       - name: 긁기 (목록 + 배틀로그)
         id: collect
+        # ⚠ ★여기서 그 자리에 죽으면 `code=` 를 못 쓰고★, 판정이 그걸 '0' 으로 읽어
+        #   ★「정상」을 찍는다.★ 실제로 그랬다 (run 2). 실패를 안고 판정까지 간다
+        continue-on-error: true
         run: |
           set -uo pipefail
           flags=(--clans "$CLANS" --limit "$LIMIT" --health "$HEALTH_URL")
@@ -189,6 +192,8 @@ jobs:
           # ★투영 결과를 판정에 넣는다★ — 이게 없으면 투영이 통째로 실패해도
           #   긁기만 보고 「정상」을 찍는다. ★원문만 쌓이고 화면은 그대로인데 아무도 모른다★
           PROJECT_RESULT: ${{ steps.project.outcome }}
+          # ★스텝이 죽으면 outputs 가 안 남는다★ — outcome 은 남는다. 이쪽을 믿는다
+          COLLECT_RESULT: ${{ steps.collect.outcome }}
         run: |
           set -uo pipefail
           line=$(grep -E '^계획 ' /tmp/collect.log | tail -1 || echo '(수집 요약을 못 읽었다)')
@@ -200,13 +205,30 @@ jobs:
           echo "- ${stop}" >> "$GITHUB_STEP_SUMMARY"
           [ -n "$load" ] && echo "- ${load}" >> "$GITHUB_STEP_SUMMARY"
 
+          # ★로그는 관리자 권한이 있어야 받는다.★ `::error::`/`::notice::` 로 찍은 것만
+          #   주석(annotation)으로 밖에서 읽힌다 — ★원인을 그쪽에 남긴다★
+          echo "::notice::수집요약 ${line}"
+          echo "::notice::${stop} · 긁기=${COLLECT_RESULT:-?} · 투영=${PROJECT_RESULT:-건너뜀} · 코드=${CODE:-없음}"
+          [ -n "$load" ] && echo "::notice::${load}"
+          if [ "${COLLECT_RESULT:-}" = 'failure' ]; then
+            # ★실패한 판의 로그 꼬리를 주석으로 올린다★ — 다음 판에서 원인을 추측하지 않게
+            tail -n 12 /tmp/collect.log 2>/dev/null | while IFS= read -r l; do
+              [ -n "$l" ] && echo "::error::긁기로그 ${l}"
+            done
+          fi
+
           bad=''
           case "$stop" in
             *blocked*) bad='병영수첩이 403/429 를 줬다 — 즉시 멈췄다. 우회하지 않는다' ;;
             *error*)   bad='요청은 나갔는데 한 건도 못 받았다 (「새 경기 없음」이 아니다)' ;;
             *health*)  bad='사이트가 무거워 수집이 스스로 물러났다' ;;
           esac
-          if [ -z "$bad" ] && [ "${CODE:-0}" != '0' ]; then bad='수집이 0 이 아닌 코드로 끝났다'; fi
+          if [ -z "$bad" ] && [ "${COLLECT_RESULT:-}" = 'failure' ]; then
+            bad='★긁기가 실패했다★'
+          fi
+          if [ -z "$bad" ] && [ -n "${CODE:-}" ] && [ "$CODE" != '0' ]; then
+            bad="수집이 코드 ${CODE} 로 끝났다"
+          fi
           # ★투영이 실패하면 화면이 안 바뀐다★ — 긁기가 멀쩡해도 그건 고장이다
           if [ -z "$bad" ] && [ "${PROJECT_RESULT:-}" = 'failure' ]; then
             bad='긁기는 됐는데 ★투영이 실패했다★ — 원문만 쌓이고 화면은 그대로다'
