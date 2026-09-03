@@ -113,17 +113,34 @@ async function main(): Promise<void> {
   const lid = Object.fromEntries(leagues.map((l) => [l.slug, l.id]))
 
   /* 옮길 대상 — 양쪽 다 같은 무리이고, 지금 그 리그가 아닌 경기 */
-  const plans: { to: 'supply' | 'sanply'; from: string; clanIds: string[] }[] = [
-    { to: 'supply', from: lid.sanply!, clanIds: toSpl },
-    { to: 'sanply', from: lid.supply!, clanIds: toSan },
+  const plans: { to: 'supply' | 'sanply'; from: string; toId: string; clanIds: string[] }[] = [
+    { to: 'supply', from: lid.sanply!, toId: lid.supply!, clanIds: toSpl },
+    { to: 'sanply', from: lid.supply!, toId: lid.sanply!, clanIds: toSan },
   ]
 
   const before = await counts()
   console.info(confirm ? '★쓰기 모드★\n' : '미리보기 — 아무것도 쓰지 않는다\n')
 
+  /*
+   * ★★되돌릴 값을 「쓰기 전에」 저장한다★★
+   *
+   * 앞서 이 스크립트는 백업을 **루프가 끝난 뒤** 저장했다. 그런데 루프가 중간에 터지자
+   * ★백업 파일이 아예 안 만들어졌다.★ 그때는 우연히 `seasonId` 를 null 로 둔 덕에
+   * 건드린 행을 찾아 되돌릴 수 있었다 — ★운이었다.★
+   * 그래서 이제 **모으기 → 파일 쓰기 → 파일 확인 → 그다음 옮기기** 순서로 한다.
+   */
   const backups: Backup[] = []
   let moved = 0
+  const targets: { p: (typeof plans)[number]; rows: Backup[] }[] = []
   for (const p of plans) {
+    /*
+     * ★목적지에 같은 경기가 이미 있으면 옮기지 않는다★
+     *
+     * `@@unique([leagueId, origin, sourceMatchId])` 라 옮기면 충돌한다.
+     * 그리고 ★옮길 이유도 없다★ — SPL 사본이 이미 있으니 열산 사본을 감추면
+     * 「반드시 SPL 에만 존재한다」가 그대로 성립한다.
+     * 실측: 열산→SPL 의 ★99.5%★ · SPL→열산 의 ★38.3%★ 가 이미 쌍둥이가 있다
+     */
     const rows = await prisma.$queryRaw<Backup[]>`
       SELECT m."id", m."leagueId", m."redLeagueClanId", m."blueLeagueClanId"
         FROM "Match" m
@@ -132,44 +149,60 @@ async function main(): Promise<void> {
        WHERE m."leagueId" = ${p.from}
          AND rlc."clanId" = ANY(${p.clanIds})
          AND blc."clanId" = ANY(${p.clanIds})
+         AND NOT EXISTS (
+           SELECT 1 FROM "Match" t
+            WHERE t."leagueId" = ${p.toId}
+              AND t."origin" = m."origin"
+              AND t."sourceMatchId" = m."sourceMatchId"
+         )
     `
     console.info(`  → ${p.to} 로 옮길 것 ★${rows.length.toLocaleString()}건★`)
-    if (!confirm) {
-      moved += rows.length
-      continue
-    }
+    targets.push({ p, rows })
     backups.push(...rows)
-
-    /* 그 클랜의 ★목적지 리그★ 등록행을 찾아 둔다 */
-    const targetLc = await prisma.leagueClan.findMany({
-      where: { leagueId: lid[p.to]!, clanId: { in: p.clanIds } },
-      select: { id: true, clanId: true },
-    })
-    const lcOf = new Map(targetLc.map((x) => [x.clanId, x.id]))
-
-    const srcLc = await prisma.leagueClan.findMany({
-      where: { id: { in: [...new Set(rows.flatMap((r) => [r.redLeagueClanId, r.blueLeagueClanId])) ] } },
-      select: { id: true, clanId: true },
-    })
-    const clanOfLc = new Map(srcLc.map((x) => [x.id, x.clanId]))
-
-    for (const r of rows) {
-      const red = lcOf.get(clanOfLc.get(r.redLeagueClanId)!)
-      const blue = lcOf.get(clanOfLc.get(r.blueLeagueClanId)!)
-      if (!red || !blue) throw new Error(`목적지 등록행이 없다: ${r.id}`)
-      await prisma.match.update({
-        where: { id: r.id },
-        data: { leagueId: lid[p.to]!, redLeagueClanId: red, blueLeagueClanId: blue, seasonId: null },
-      })
-      moved += 1
-      if (moved % 2000 === 0) console.info(`    ${moved.toLocaleString()}건…`)
-    }
   }
 
-  if (confirm) {
+  if (!confirm) {
+    moved = backups.length
+  } else {
+    /* ── ★1단계 · 백업을 먼저 쓴다★ ─────────────────────────────── */
     mkdirSync(dirname(BACKUP), { recursive: true })
     writeFileSync(BACKUP, backups.map((b) => JSON.stringify(b)).join('\n') + '\n', 'utf8')
-    console.info(`\n★되돌릴 파일★ ${BACKUP} · ${backups.length.toLocaleString()}줄`)
+
+    /* ── ★2단계 · 진짜 만들어졌는지 확인한다★ ────────────────────── */
+    if (!existsSync(BACKUP)) throw new Error('백업 파일이 안 만들어졌다 — 옮기지 않는다')
+    const wrote = readFileSync(BACKUP, 'utf8').trim().split('\n').filter(Boolean).length
+    if (wrote !== backups.length) {
+      throw new Error(`백업 줄 수가 안 맞는다 ${wrote} ≠ ${backups.length} — 옮기지 않는다`)
+    }
+    console.info(`\n★되돌릴 파일 먼저 썼다★ ${BACKUP} · ${wrote.toLocaleString()}줄 (확인함)\n`)
+
+    /* ── ★3단계 · 이제 옮긴다★ ──────────────────────────────────── */
+    for (const { p, rows } of targets) {
+      const targetLc = await prisma.leagueClan.findMany({
+        where: { leagueId: p.toId, clanId: { in: p.clanIds } },
+        select: { id: true, clanId: true },
+      })
+      const lcOf = new Map(targetLc.map((x) => [x.clanId, x.id]))
+      const srcLc = await prisma.leagueClan.findMany({
+        where: {
+          id: { in: [...new Set(rows.flatMap((r) => [r.redLeagueClanId, r.blueLeagueClanId]))] },
+        },
+        select: { id: true, clanId: true },
+      })
+      const clanOfLc = new Map(srcLc.map((x) => [x.id, x.clanId]))
+
+      for (const r of rows) {
+        const red = lcOf.get(clanOfLc.get(r.redLeagueClanId)!)
+        const blue = lcOf.get(clanOfLc.get(r.blueLeagueClanId)!)
+        if (!red || !blue) throw new Error(`목적지 등록행이 없다: ${r.id}`)
+        await prisma.match.update({
+          where: { id: r.id },
+          data: { leagueId: p.toId, redLeagueClanId: red, blueLeagueClanId: blue, seasonId: null },
+        })
+        moved += 1
+        if (moved % 500 === 0) console.info(`    ${moved.toLocaleString()}건…`)
+      }
+    }
   }
 
   const after = await counts()
