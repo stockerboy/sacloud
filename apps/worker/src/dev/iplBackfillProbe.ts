@@ -92,6 +92,46 @@ async function main(): Promise<void> {
        AND (m."redLeagueClanId" = ${pick.lcid} OR m."blueLeagueClanId" = ${pick.lcid})
      GROUP BY 1 ORDER BY 2 DESC LIMIT 12
   `
+
+  /*
+   * ★표본을 넓힌다★ — 한 클랜 12명은 너무 작다 (A 지적). IPL 전체에서 60명을 뽑는다.
+   * `TAB` 로 구분해 찍는다 — 밖에서 그대로 잘라 쓰기 위해서다.
+   */
+  const wide = await prisma.$queryRaw<{ name: string; games: bigint }[]>`
+    SELECT p."name" AS name, count(*) AS games
+      FROM "MatchPlayerStat" s
+      JOIN "Match" m ON m."id" = s."matchId"
+      JOIN "Player" p ON p."id" = s."playerId"
+     WHERE m."leagueId" = ${league.id}
+     GROUP BY 1 ORDER BY 2 DESC LIMIT 60
+  `
+  console.info('\n══ 3 · ★넓은 표본 60명★ (NAME 로 시작하는 줄) ══\n')
+  for (const w of wide) console.info(`NAME\t${w.name}`)
+
+  /*
+   * ★닉네임을 안 거치는 길이 있는가★
+   *
+   * `/id` 해석률이 45%(n=60)다. 그런데 ★ouid 를 이미 들고 있으면 `/id` 를 안 불러도 된다.★
+   * 저장소에 두 곳이 있다 —
+   *   `Player.nexonOuid`   비권위 캐시 (D-036)
+   *   `NexonIdentity`      권위 있는 매핑
+   * ★여기 이미 차 있으면 45% 는 벽이 아니다.★
+   */
+  const cov = await prisma.$queryRaw<{ total: bigint; cached: bigint; identity: bigint }[]>`
+    SELECT count(DISTINCT p."id") AS total,
+           count(DISTINCT p."id") FILTER (WHERE p."nexonOuid" IS NOT NULL) AS cached,
+           count(DISTINCT p."id") FILTER (WHERE ni."ouid" IS NOT NULL) AS identity
+      FROM "Player" p
+      JOIN "MatchPlayerStat" s ON s."playerId" = p."id"
+      JOIN "Match" m ON m."id" = s."matchId"
+      LEFT JOIN "NexonIdentity" ni ON ni."playerId" = p."id"
+     WHERE m."leagueId" = ${league.id}
+  `
+  const c = cov[0]!
+  console.info('\n══ 4 · ★IPL 선수가 ouid 를 이미 들고 있나★ ══\n')
+  console.info(`  IPL 선수 ${Number(c.total).toLocaleString()}명`)
+  console.info(`    Player.nexonOuid 있음   ${Number(c.cached).toLocaleString()}명`)
+  console.info(`    NexonIdentity 연결됨    ${Number(c.identity).toLocaleString()}명`)
   console.info(`\n  그 클랜에서 뛴 선수 (라인업 붙은 경기 기준 · 상위 ${names.length}명)`)
   for (const n of names) console.info(`    ${n.name}\t${Number(n.games)}경기`)
   console.info('\n  ★이 닉네임들로 넥슨 /id → /match 를 몇 개만 부른다★')
