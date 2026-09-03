@@ -222,8 +222,15 @@ export default function AdminClanDetailPage({ params }: { params: Promise<{ slug
                 ))}
               </select>
             </label>
+            {/*
+              O-038 ③ 의 마지막 한 곳 (2026-09-03 · A 가 grep 으로 찾았다).
+              ★배치고사는 2026-09-01 에 폐지됐다.★ `placement` 는 이제 「이 창에 0판」이라는 뜻이고
+              「배치고사 중」이라는 뜻이 아니다. 사이트 화면 다섯 곳은 이미 「기록 없음」으로 바꿨는데
+              ★관리자 화면만 남아 있었다★ — 사이트가 아니라고 넘겼던 자리다.
+              ★사장님이 쓰시는 화면이다.★ 폐지된 개념이라 관리자에게도 뜻이 없다.
+            */}
             <div className="text-sm text-meta">
-              래더 {entry.rating}점 {entry.placement ? '(배치고사)' : ''}
+              래더 {entry.rating}점 {entry.placement ? '(기록 없음)' : ''}
             </div>
           </div>
 
