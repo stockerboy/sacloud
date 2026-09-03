@@ -277,6 +277,11 @@ const ALLOWED = {
     writes: false,
     what: '3~6월 배틀로그가 어디서 막혔나 (읽기 전용)',
   },
+  'pending-dup': {
+    file: 'pendingDupProbe',
+    writes: false,
+    what: '같은 경기를 두 번 부르고 있나 — 낭비를 센다 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,
