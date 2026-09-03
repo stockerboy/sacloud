@@ -267,6 +267,11 @@ const ALLOWED = {
     writes: false,
     what: '불변식(통합 = 기본 + 스나 + 라플)이 어긋난 선수가 누구인가 (읽기 전용)',
   },
+  'ladder-miss': {
+    file: 'ladderMissProbe',
+    writes: false,
+    what: 'IPL 경기가 왜 전부 래더 미반영인가 — 리그별로 센다 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,
