@@ -62,6 +62,16 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'bomb-quit-round': {
+    file: 'bombQuitRoundProbe',
+    writes: false,
+    what: '라운드 단위로 설박튀를 가린다 (설치했는데 그 라운드를 졌는가) — 읽기만 한다',
+  },
+  'battlelog-vocab': {
+    file: 'battlelogVocabProbe',
+    writes: false,
+    what: '배틀로그에 어떤 이벤트 낱말이 있나 (C4 폭발이 찍히는지) — 읽기만 한다',
+  },
   'bomb-quit-cross': {
     file: 'bombQuitCrossProbe',
     writes: false,
