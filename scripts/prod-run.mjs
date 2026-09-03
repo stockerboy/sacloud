@@ -62,6 +62,11 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'lineup-gap': {
+    file: 'lineupGapProbe',
+    writes: false,
+    what: '참가자 10명이 다 오나 · 0/0/0 이 몇 명인가 · 킬데스 없는 사람이 몇 명인가 (읽기만 한다)',
+  },
   'ipl-backfill': {
     file: 'iplBackfillProbe',
     writes: false,

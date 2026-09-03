@@ -109,6 +109,32 @@ async function main(): Promise<void> {
   for (const w of wide) console.info(`NAME\t${w.name}`)
 
   /*
+   * ★우리가 아는 IPL 경기를 넥슨에서 찾을 수 있는가★ — 그 대조표를 만든다.
+   * 병영수첩으로 받은 IPL 경기(라인업 붙은 1,562건)에서
+   * **선수 이름 · 경기 날짜 · 양쪽 클랜**을 뽑는다. 밖에서 넥슨 목록과 맞춰 본다.
+   */
+  const cross = await prisma.$queryRaw<
+    { name: string; at: Date; red: string | null; blue: string | null }[]
+  >`
+    SELECT p."name" AS name, m."startAt" AS at,
+           rc."name" AS red, bc."name" AS blue
+      FROM "MatchPlayerStat" s
+      JOIN "Match" m ON m."id" = s."matchId"
+      JOIN "Player" p ON p."id" = s."playerId"
+      LEFT JOIN "LeagueClan" rlc ON rlc."id" = m."redLeagueClanId"
+      LEFT JOIN "Clan" rc ON rc."id" = rlc."clanId"
+      LEFT JOIN "LeagueClan" blc ON blc."id" = m."blueLeagueClanId"
+      LEFT JOIN "Clan" bc ON bc."id" = blc."clanId"
+     WHERE m."leagueId" = ${league.id}
+     ORDER BY m."startAt" DESC
+     LIMIT 400
+  `
+  console.info('\n══ 5 · ★우리가 아는 IPL 경기 (CROSS 로 시작하는 줄)★ ══" + BS + "n')
+  for (const x of cross) {
+    console.info(`CROSS\t${x.name}\t${x.at.toISOString()}\t${x.red ?? '?'} vs ${x.blue ?? '?'}`)
+  }
+
+  /*
    * ★닉네임을 안 거치는 길이 있는가★
    *
    * `/id` 해석률이 45%(n=60)다. 그런데 ★ouid 를 이미 들고 있으면 `/id` 를 안 불러도 된다.★
