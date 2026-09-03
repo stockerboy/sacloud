@@ -51,6 +51,7 @@ import { runIplProject } from './jobs/iplProject.js'
 import { runIplClanRollup } from './jobs/iplClanRollup.js'
 import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
+import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runBattlelogLineup } from './jobs/battlelogLineup.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
@@ -547,6 +548,30 @@ async function main(): Promise<number> {
           기존: result.updated,
           충돌: result.conflicts,
           클랜모름: result.skipped.unresolved_subject,
+        },
+      ])
+      return 0
+    }
+
+    case 'lineup-dedupe': {
+      /*
+        ★한 경기에 두 번 들어간 라인업을 걷어낸다★ (D-273).
+        ★미러 것을 남기고 병영수첩 것을 지운다★ — 미러가 무기·어시스트·헤드샷까지 갖고 있다.
+        ⚠ ★`--confirm` 없이는 한 줄도 안 지운다.★ ★양쪽이 다 있는 경기에서만 지운다★
+      */
+      const result = await runLineupDedupe({
+        confirm: boolFlag(args, 'confirm'),
+        leagueSlug: stringFlag(args, 'league') ?? undefined,
+      })
+      table([
+        {
+          겹친경기: result.matches,
+          병영수첩버림: result.dropBarracks,
+          미러버림: result.dropMirror,
+          안건드림: result.leaveAlone,
+          지울행: result.rows,
+          열명됨: result.becomeTen,
+          실제로지웠나: result.written,
         },
       ])
       return 0

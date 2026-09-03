@@ -86,6 +86,12 @@ export interface BattlelogLineupResult {
   playersReused: number
   /** `NexonIdentity` 가 이어 준 선수 */
   playersFromIdentity: number
+  /**
+   * ★미러 라인업이 이미 있어서 건너뛴 경기★ (2026-09-04 · D-273).
+   *
+   * ⚠ ★이 수가 크다고 나쁜 게 아니다.★ ★덧대지 않고 비켜 준 것★ 이다.
+   */
+  skippedMirrorLineup: number
   skipped: Record<LineupJobSkipReason, number>
   written: boolean
 }
@@ -203,6 +209,7 @@ export async function runBattlelogLineup(
     playersCreated: 0,
     playersReused: 0,
     playersFromIdentity: 0,
+    skippedMirrorLineup: 0,
     skipped: emptySkips(),
     written: options.confirm === true,
   }
@@ -269,6 +276,45 @@ export async function runBattlelogLineup(
         red: side(match.redClan, match.redDivisionAtMatch),
         blue: side(match.blueClan, match.blueDivisionAtMatch),
       })
+    }
+
+    /*
+     * ── ★★이미 미러 라인업이 있는 경기는 건너뛴다★★ (2026-09-04 · D-273)
+     *
+     * ⚠ ★한 경기에 20명이 들어간 경기가 1,184건 있었다.★ 펼쳐 보니 —
+     * ```
+     * blue 고지슈    ★3rd.supply★      16킬 8데스
+     * blue 슈한      ★nexon_barracks★  16킬 8데스   ← ★같은 사람이다★
+     * red  mane☆    3rd.supply         9킬 10데스
+     * red  mane☆    nexon_barracks     9킬 10데스   ← ★이름까지 같은데 둘로 갈렸다★
+     * ```
+     * ★미러가 이미 넣어 둔 라인업 위에 병영수첩 라인업을 또 넣고 있었다.★
+     * 두 출처의 `Player` 가 서로 다른 행이라 ★겹치는 걸 아무도 못 막았다.★
+     * ★그래서 킬·데스가 두 배로 잡혔다.★
+     *
+     * ★미러가 있으면 미러가 낫다★ — 미러는 ★무기·어시스트·헤드샷★ 까지 갖고 있고
+     * 병영수첩 것은 킬·데스·무기뿐이다 (D-034). ★그 위에 덧대면 좋아지는 게 아니라 더러워진다.★
+     *
+     * ★없는 경기에만 넣는다.★ 그게 이 잡이 원래 하려던 일이다.
+     */
+    const mirrorFilled = new Set<string>()
+    if (infoOf.size > 0) {
+      const ids = [...infoOf.values()].map((i) => i.matchId)
+      for (const row of await prisma.$queryRaw<Array<{ matchId: string }>>`
+        SELECT DISTINCT s."matchId"
+          FROM "MatchPlayerStat" s
+          JOIN "Player" p ON p."id" = s."playerId"
+         WHERE s."matchId" = ANY(${ids}::text[])
+           AND p."origin" <> ${BARRACKS_PLAYER_ORIGIN}
+      `) {
+        mirrorFilled.add(row.matchId)
+      }
+      for (const [key, info] of [...infoOf]) {
+        if (mirrorFilled.has(info.matchId)) {
+          infoOf.delete(key)
+          result.skippedMirrorLineup += 1
+        }
+      }
     }
 
     /* ── 2. 원문 — 경기당 한 줄만 (양쪽 응답이 같은 것을 담는다 · D-218) ------- */
@@ -436,7 +482,8 @@ export async function runBattlelogLineup(
     `배틀로그 라인업 ${options.confirm ? '적재' : '미리보기'} — ` +
       `배틀로그 있는 경기 ${result.matchKeys.toLocaleString()} · ` +
       `우리 경기와 이어짐 ${result.matched.toLocaleString()} · ` +
-      `라인업 가능 ${result.planned.toLocaleString()}`,
+      `라인업 가능 ${result.planned.toLocaleString()} · ` +
+      `★미러 라인업이 있어 비켜 준 경기 ${result.skippedMirrorLineup.toLocaleString()}★`,
   )
   log(
     `참가 기록 신규 ${result.statsCreated.toLocaleString()} · 갱신 ${result.statsUpdated.toLocaleString()} · ` +

@@ -232,6 +232,26 @@ const ALLOWED = {
     writes: false,
     what: 'IPL 경기가 다른 리그로 들어갔나 — 양쪽 다 IPL 인 경기를 센다 (읽기 전용)',
   },
+  'lineup-ten': {
+    file: 'lineupTenProbe',
+    writes: false,
+    what: '경기 상세에 10명이 다 보이나 — 인원수별로 센다 (읽기 전용)',
+  },
+  'lineup-twenty': {
+    file: 'lineupTwentyProbe',
+    writes: false,
+    what: '20명짜리 경기 안에 무엇이 들었나 (읽기 전용)',
+  },
+  'lineup-side': {
+    file: 'lineupSideProbe',
+    writes: false,
+    what: '한 팀에 몇 명이 정상인가 · 겹친 표시가 어디에 몰려 있나 (읽기 전용)',
+  },
+  'lineup-origin': {
+    file: 'lineupOriginProbe',
+    writes: false,
+    what: '라인업이 미러에서 왔나 병영수첩에서 왔나 · 헛수고가 몇 건인가 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,
