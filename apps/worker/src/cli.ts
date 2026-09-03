@@ -52,6 +52,7 @@ import { runIplClanRollup } from './jobs/iplClanRollup.js'
 import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
+import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
 import { runBattlelogLineup } from './jobs/battlelogLineup.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
@@ -548,6 +549,34 @@ async function main(): Promise<number> {
           기존: result.updated,
           충돌: result.conflicts,
           클랜모름: result.skipped.unresolved_subject,
+        },
+      ])
+      return 0
+    }
+
+    case 'player-twin-link': {
+      /*
+        ★두 선수로 갈린 같은 사람을 찾아 계획을 낸다★ (D-275).
+        ⚠ ★DB 에는 한 줄도 안 쓴다★ — 이을 자리가 스키마에 없다 (`NexonIdentity.ouid` 가 필수인데
+          병영수첩 선수는 ouid 를 모른다. ★지어낸 값을 넣지 않는다★).
+          ★찾은 것을 파일로 남긴다.★ 자리가 생기면 그 파일을 먹이면 된다
+      */
+      const backupPath = stringFlag(args, 'backup')
+      if (!backupPath) {
+        log('★--backup <lineup-dedupe 백업 파일 경로>★ 가 필요하다')
+        return 1
+      }
+      const result = await runPlayerTwinLink({
+        backupPath,
+        confirm: boolFlag(args, 'confirm'),
+        minMatches: numberFlag(args, 'min-matches') ?? undefined,
+      })
+      table([
+        {
+          자리맞은짝: result.pairs,
+          기준넘은짝: result.strong,
+          애매해서제외: result.ambiguous,
+          파일로냄: result.written,
         },
       ])
       return 0

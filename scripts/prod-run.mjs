@@ -252,6 +252,11 @@ const ALLOWED = {
     writes: false,
     what: '라인업이 미러에서 왔나 병영수첩에서 왔나 · 헛수고가 몇 건인가 (읽기 전용)',
   },
+  'player-twin': {
+    file: 'playerTwinProbe',
+    writes: false,
+    what: '같은 사람이 두 선수로 갈려 있는 것이 몇 쌍인가 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,

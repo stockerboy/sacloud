@@ -134,3 +134,4 @@ apps/web/scripts/_eggGateProbe.mts
 
 # ★라인업 겹침 정리 백업★ — 되돌릴 때 쓴다. git 에 올리지 않는다 (10MB 넘는다)
 lineup-dedupe-backup-*.json
+player-twin-plan-*.json
