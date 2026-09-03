@@ -6,8 +6,14 @@
 #   ★한 판(4,000건)이 끝날 때마다 한 줄을 남기고★ 다음 판을 건다.
 #   ★적재는 25건마다 하니★ 판 중간에 죽어도 받은 것은 남는다.
 #
+# ── ★한 판을 얼마로 잡나★
+#   ⚠ ★4,000건이었다. 그러면 한 판이 세 시간이고 그동안 화면이 안 바뀐다★ —
+#     투영(경기 → 라인업)은 ★판이 끝나야★ 돌기 때문이다.
+#   ★1,500건(약 70분)으로 줄였다.★ 밤새 투영이 세 번 돌아 ★아침에 더 채워져 있다.★
+#   ★받는 총량은 같다.★ 나누는 단위만 바꾼 것이다. `ROUND_LIMIT` 로 바꿀 수 있다.
+#
 # ── 판마다 하는 일
-#   ① 배틀로그 4,000건 (간격 1500ms · 약 100분)
+#   ① 배틀로그 한 판치 (간격 1500ms)
 #   ② ★투영★ — 경기 → 라인업. ★받는 도중에는 안 한다★ (DB 를 두 번 두드린다)
 #   ③ 한 줄 남기기
 #
@@ -21,6 +27,9 @@ LOG="${1:-C:/Users/LG/AppData/Local/Temp/claude/overnight-collect.log}"
 DB=$(grep -m1 '^DATABASE_URL' packages/db/.env.production.local | cut -d= -f2- | tr -d '"')
 export DATABASE_URL="$DB"
 export SACLOUD_DB_SESSION_POOLER=1
+# ★한 판에 받을 배틀로그 수★ — 작을수록 투영이 자주 돌아 화면이 자주 바뀐다
+ROUND_LIMIT="${ROUND_LIMIT:-1500}"
+ROUNDS="${ROUNDS:-20}"
 
 say() { printf '%s | %s\n' "$(date '+%m-%d %H:%M')" "$1" | tee -a "$LOG"; }
 
@@ -49,7 +58,7 @@ echo $$ > "$LOCK"
 # ★어떻게 끝나든 잠금을 푼다★ — 정상 종료도, 끊겨도
 trap 'rm -f "$LOCK"' EXIT INT TERM
 
-say "★밤샘 수집 시작★ — 4,000건씩 · 간격 1500ms · 첫 403 에서 멈춘다"
+say "★밤샘 수집 시작★ — ${ROUND_LIMIT}건씩 · 최대 ${ROUNDS}판 · 간격 1500ms · 첫 403 에서 멈춘다"
 # ★잠금만 시험하고 싶을 때★ — `COLLECT_LOCK_TEST=1` 을 주면 여기서 끝낸다.
 #
 # ⚠ ★이 문이 없어서 잠금을 시험하다 실제 수집을 12초 띄웠다★ (2026-09-04).
@@ -94,7 +103,7 @@ if [ "${SKIP_DISCOVER:-0}" != "1" ]; then
 fi
 
 round=0
-while [ "$round" -lt 8 ]; do
+while [ "$round" -lt "$ROUNDS" ]; do
   round=$((round + 1))
   say "── ${round}판 시작"
 
@@ -106,7 +115,7 @@ while [ "$round" -lt 8 ]; do
   while [ "$try" -lt 3 ]; do
     try=$((try + 1))
     pnpm --filter @sacloud/worker nexon barracks-collect \
-      --league nolink --clans 43 --limit 4000 --confirm \
+      --league nolink --clans 43 --limit "$ROUND_LIMIT" --confirm \
       --health https://3rdcloud.my/api/health >> "$LOG" 2>&1
     code=$?
     [ "$code" = "0" ] && break
