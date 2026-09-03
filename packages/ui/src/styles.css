@@ -1895,3 +1895,129 @@ a:hover {
   min-width: 34px;
   font-weight: 400;
 }
+
+/* ============================================ 시안 톤 껍데기 (O-050 · 2단계) ===
+ *
+ * ★선수 화면 하나에만 씌우는 껍데기다.★ 이 클래스가 붙은 나무 안에서만
+ * `적진` 토큰이 시안 값으로 다시 칠해진다 — ★바깥은 한 픽셀도 안 바뀐다.★
+ *
+ * ── ★왜 컴포넌트를 안 고치고 토큰만 다시 칠하나★
+ *   `bg-card` · `text-meta` 같은 유틸리티는 ★쓰는 자리에서 `var(--color-…)` 를 읽는다.★
+ *   그래서 조상에서 그 변수를 다시 정하면 ★안쪽이 통째로 다시 칠해지고 바깥은 그대로다.★
+ *   ★공용 컴포넌트를 한 줄도 안 건드린다★ — 다른 다섯 화면에 ★0 영향★ 이고,
+ *   「이 톤 아니다」가 나오면 ★이 블록과 클래스 한 개만 지우면 원래대로다.★
+ *   (CLAUDE.md 1-4 «옛 버전을 지우지 않는다» 와 같은 모양이다)
+ *   ★3단계는 이 블록을 「옮겨」 간다 — 복사하면 코드가 여섯 벌이 된다★
+ *
+ * ── ★★한 단 「올린」 면을 쓸 수 없다★★
+ *   시안 색은 `--color-sa-in`(#131515) 위에서 ★4.5 를 겨우 넘게★ 잡혀 있다
+ *   (라벨 4.63 · 승률 4.62 · 킬뎃 4.65). ★면을 한 단만 밝혀도 바로 미달★ 이다 — 실측:
+ *   ```
+ *   #191d1e 위 faint 4.23  ·  #1c2020 위 4.09  ·  #232829 위 3.71  ·  #282d30 위 3.46
+ *   ```
+ *   ★그래서 층을 「면의 밝기」로 만들지 않는다.★ 시안이 원래 그 구조다 —
+ *   ★밝은 것은 테두리(베벨)이지 면이 아니다.★ 무광 금속이 그렇게 생겼고,
+ *   사장님 «싹다 어두운무광» 과도 맞는다. 한 단 올린 면은 ★오히려 내린다★.
+ */
+.sa-skin {
+  /* ---- 바닥과 면 ---- */
+  --color-page: var(--color-sa-void);
+  --color-card: var(--color-sa-in);
+  /* ★올리지 않고 내린다★ — 위 설명. 층은 아래 선이 만든다 */
+  --color-card-2: var(--color-sa-edge-lo);
+  --color-row: var(--color-sa-in);
+  --color-side: var(--color-sa-in);
+  --color-league-header: var(--color-sa-in);
+  --color-player-header: var(--color-sa-in);
+  --color-clan-header: var(--color-sa-in);
+
+  /* ---- 선 ---- */
+  --color-line: var(--color-sa-edge-hi);
+  --color-line-soft: var(--color-sa-rule);
+  --color-divider: var(--color-sa-rule);
+  --color-side-line: var(--color-sa-rule);
+  --color-clan-header-line: var(--color-sa-rule);
+
+  /* ---- 글자 ---- */
+  --color-text: var(--color-sa-val); /* 5.57:1 */
+  --color-text-strong: #adada8; /* 8.13:1 — 시안 그래프 꼭지점의 흰색 */
+  --color-meta: var(--color-sa-dim); /* 4.62:1 */
+  --color-faint: var(--color-sa-faint); /* 4.56:1 */
+  --color-side-meta: var(--color-sa-dim);
+  --color-lede: var(--color-sa-dim);
+  --color-card-text: var(--color-sa-val);
+
+  /* ---- 강조 ---- *
+   * `적진` 의 강조는 파랑/진홍이었다. 시안의 강조는 ★라벨 금색★ 하나다 —
+   * 사장님이 고르신 화면에서 눈이 가는 곳이 전부 그 색이다 */
+  --color-accent: var(--color-sa-label);
+  --color-favorite: var(--color-sa-label);
+  --color-more: var(--color-sa-label);
+  --color-tab-underline: var(--color-sa-sub-mark);
+  --color-tab-active-fg: var(--color-sa-tab-on);
+  --color-tab-idle: var(--color-sa-tab-idle);
+  --color-subnav-active: var(--color-sa-sub-mark);
+  --color-mvp: var(--color-sa-label);
+
+  /* ---- 숫자 ---- *
+   * ⚠ ★시안은 승패 「글자」만 고치고 래더 증감 인라인 색을 옛 값으로 두었다★
+   *   (시안 403줄 · 승 4.18:1 · 패 3.17:1). ★시안의 실수까지 옮기지 않는다★ */
+  --color-num-win: var(--color-sa-win); /* 4.73:1 */
+  --color-num-lose: var(--color-sa-lose); /* 4.67:1 */
+  --color-win: var(--color-sa-win);
+  --color-lose: var(--color-sa-lose);
+  --color-win-bar: var(--color-sa-win);
+  --color-lose-bar: var(--color-sa-lose);
+  --color-win-line: var(--color-sa-edge-hi);
+  --color-lose-line: var(--color-sa-edge-hi);
+  --color-win-bg: var(--color-sa-in);
+  --color-lose-bg: var(--color-sa-in);
+
+  /* ---- 글씨 ---- *
+   * ⚠ ★크기는 여기서 다 못 잡는다.★ 컴포넌트가 `text-sm` 같은 rem 유틸리티를 쓰고
+   *   rem 은 `html` 의 15px 을 본다 — ★그건 전역이라 이 화면만 바꿀 수 없다.★
+   *   여기서 정하는 12.5px 은 ★크기를 따로 안 정한 글자★ 에만 닿는다.
+   *   ★크기까지 시안대로 맞추는 것은 3단계(전 화면) 몫이다★ */
+  font-family: var(--font-sa);
+  font-size: 12.5px;
+  letter-spacing: -0.02em;
+  background-color: var(--color-sa-void);
+  /* 원본은 비트맵 고딕이라 안티앨리어싱이 없다. `적진` 본문의 antialiased 를 되돌린다 */
+  -webkit-font-smoothing: none;
+  text-rendering: optimizeSpeed;
+}
+
+/**
+ * ★굵기 400 고정★ — 시안의 규칙이다. 굵게 쓰면 원본 인상이 바로 깨진다.
+ *
+ * ⚠ 공용 컴포넌트가 `font-semibold` · `font-bold` 를 쓰고 있어서 ★여기서 되돌린다.★
+ *   컴포넌트를 고치면 다른 화면이 같이 바뀐다 — ★그러면 「선수 화면만」이 깨진다.★
+ */
+.sa-skin :is(.font-semibold, .font-bold, b, strong, th) {
+  font-weight: 400;
+}
+
+/** 카드 면에 무광 금속 질감을 얹는다. ★z-index 0★ — 글자 위를 덮으면 안 된다 */
+.sa-skin :is(.bg-card, .bg-card-2) {
+  position: relative;
+}
+
+/**
+ * ★화면 바깥까지 어둡게 칠한다.★
+ *
+ * 껍데기는 가운데 칸(`pc-container`)에만 붙는데, 그 칸은 폭이 정해져 있어서
+ * ★좌우에 `적진` 바닥이 그대로 드러난다.★ 그러면 한 화면에 두 톤이 보인다.
+ *
+ * `body` 배경을 바꾸면 ★다른 다섯 화면까지 같이 바뀐다★ — 그건 3단계 몫이다.
+ * 그래서 ★이 화면이 떠 있는 동안에만★ 화면 전체 뒤에 한 겹을 깐다.
+ * `z-index:-1` 이라 ★내용 아래 · 바탕 위★ 다 (히어로 띠가 쓰는 것과 같은 수).
+ * ⚠ 셸(GNB·푸터)은 `적진` 그대로다 — ★거기까지는 2단계가 아니다.★
+ */
+.sa-skin::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--color-sa-void);
+}

@@ -153,3 +153,63 @@ describe('★왜 이 값들을 안 쓰는지 — 숫자로 남긴다★', () => 
     expect(contrast('#4a4f4c', PANEL)).toBeLessThan(4.5)
   })
 })
+
+/* ========================================================================== */
+/* 껍데기(.sa-skin)가 다시 칠한 짝 (O-050 2단계)                                */
+/* ========================================================================== */
+
+describe('껍데기가 다시 칠한 짝 — 두 면 위에서 다 재본다', () => {
+  /** 껍데기 안의 두 면 — ★한 단 「올린」 면이 없다★ (아래 검사가 그 이유를 지킨다) */
+  const PAGE = '#0a0b0b' /* --color-page  ← --color-sa-void */
+  const CARD = '#131515' /* --color-card  ← --color-sa-in   */
+  const CARD2 = '#0d0f0f' /* --color-card-2 ← --color-sa-edge-lo — ★올린 게 아니라 내린 것★ */
+
+  const TEXTS = [
+    ['본문', 'color-sa-val'],
+    ['보조', 'color-sa-dim'],
+    ['옅게', 'color-sa-faint'],
+    ['강조(라벨)', 'color-sa-label'],
+    ['승 숫자', 'color-sa-win'],
+    ['패 숫자', 'color-sa-lose'],
+  ] as const
+
+  for (const [what, name] of TEXTS) {
+    for (const [sn, surf] of [
+      ['본문 바닥', PAGE],
+      ['카드', CARD],
+      ['한 단 내린 면', CARD2],
+    ] as const) {
+      it(`${what} — ${sn} 위 4.5:1 이상`, () => {
+        const c = contrast(token(name), surf)
+        expect(c, `${token(name)} 이 ${surf} 위에서 ${c.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
+
+  it('★★한 단 「올린」 면을 쓰면 깨진다 — 그래서 안 쓴다★★', () => {
+    /* 시안 색은 #131515 위에서 ★4.5 를 겨우 넘게★ 잡혀 있다.
+       면을 한 단만 밝혀도 바로 미달이다 — 층은 ★테두리★ 가 만든다 */
+    for (const raised of ['#191d1e', '#1c2020', '#232829', '#282d30']) {
+      expect(contrast(token('color-sa-faint'), raised)).toBeLessThan(4.5)
+    }
+    /* 내린 면은 오히려 좋아진다 */
+    expect(contrast(token('color-sa-faint'), CARD2)).toBeGreaterThan(
+      contrast(token('color-sa-faint'), CARD),
+    )
+  })
+
+  it('★강조는 라벨 금색 하나다★ — `적진` 의 파랑이 안 남아 있다', () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'styles.css'),
+      'utf8',
+    )
+    /* ⚠ 정규식을 쓰지 않는다 — 이 파일을 heredoc 으로 쓰다가 이스케이프가 깨진 적이 있다 */
+    const start = css.indexOf('.sa-skin {')
+    expect(start, '.sa-skin 블록이 없다').toBeGreaterThan(-1)
+    const end = css.indexOf('\n}', start)
+    const body = css.slice(start, end)
+    expect(body).toContain('--color-accent: var(--color-sa-label)')
+    /* 껍데기 안에서 옛 파랑/진홍이 그대로 새어 나오면 안 된다 */
+    expect(body).not.toMatch(/#5c80e0|#d92b2b/)
+  })
+})
