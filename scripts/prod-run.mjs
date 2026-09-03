@@ -127,6 +127,11 @@ const ALLOWED = {
     writes: false,
     what: 'O-051 - 같은 경기가 병영수첩과 미러에 겹쳐 들어와 있나 (자동화 켜기 전 바탕값 · 읽기 전용)',
   },
+  'demo-player': {
+    file: 'demoPlayerPick',
+    writes: false,
+    what: 'O-050 - 사장님께 보일 선수 두 명(기록 꽉 참 / 적음)의 주소를 뽑는다 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
