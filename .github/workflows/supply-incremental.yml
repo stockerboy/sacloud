@@ -308,7 +308,10 @@ jobs:
         if: ${{ inputs.dry_run != true }}
         continue-on-error: true
         env:
-          SITE_URL: ${{ vars.SITE_URL || 'https://sacloud-web-softgw01-8957s-projects.vercel.app' }}
+          # ⚠ ★2026-09-03 — 되돌아갈 주소가 preview 였다 (O-031 이 cache-warm 에서 잡은 그 결함).★
+          #   `vars.SITE_URL` 이 비면 ★운영이 아니라 preview 를 데운다★ — 데워도 소용이 없다.
+          #   옛값 'https://sacloud-web-softgw01-8957s-projects.vercel.app'
+          SITE_URL: ${{ vars.SITE_URL || 'https://3rdcloud.my' }}
         run: |
           set -u
 
