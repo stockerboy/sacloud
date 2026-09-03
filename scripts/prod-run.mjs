@@ -62,6 +62,11 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'killdeath-null': {
+    file: 'killDeathNullProbe',
+    writes: false,
+    what: '킬·데스가 없는 224명이 원본 탓인지 우리 병합 탓인지 가른다 (읽기만 한다)',
+  },
   'barracks-406': {
     file: 'barracks406Probe',
     writes: false,
