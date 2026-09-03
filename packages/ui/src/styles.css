@@ -2060,3 +2060,174 @@ a:hover {
   pointer-events: none;
   background-color: var(--color-sa-void);
 }
+
+/* ══════════════════════ 시안 톤 — ★모양★ (O-050 2단계 · 2026-09-03) ══════════════════════
+ *
+ * ★★색만 바꾸면 「어두운 웹사이트」가 된다★★
+ *
+ * 사장님이 폰으로 여시고 하신 말 — «★검정색배경이 됐는데? 아까 만든건 어디갔니?★»
+ * 토큰만 갈아서 ★바탕만 검어지고 나머지는 원래 화면 그대로★ 였다.
+ *
+ * ★시안의 금속 느낌은 색이 아니라 구조다★ —
+ * ```
+ * ★여섯 정지점 그라디언트★ + 1px 베벨 테두리   ← 토큰으로는 절대 안 온다
+ * ★inset 그림자★ 로 안쪽이 파인 느낌
+ * ★스크래치 여섯 겹★
+ * ★각진 모서리★ · ★좁은 여백★ · ★금색 라벨★
+ * ```
+ * 사장님 판정 기준이 «★웹사이트로 보이면 실패, 게임 클라이언트로 보여야 성공★» 이다.
+ *
+ * ── ★왜 컴포넌트를 안 고치고 CSS 로만 하나★
+ *   화면 여섯이 카드를 전부 ★같은 한 모양★ 으로 그린다 —
+ *   `rounded-[2px] border border-line bg-card`. 그래서 ★껍데기 안에서만★ 그 조합을
+ *   다시 그리면 ★컴포넌트를 한 줄도 안 건드리고★ 선수 화면만 바뀐다.
+ *   ★「아니다」가 나오면 이 블록만 지우면 원래대로다★ — 되돌릴 곳이 여전히 ★한 곳★ 이다.
+ */
+
+/**
+ * 카드 = 시안의 프레임.
+ *
+ * 원본 프레임 띠를 세로로 훑으면 밝기가 13 → 72 → 38 → 85 → 14 로 ★봉우리가 둘★ 이다.
+ * ★한 겹으로는 평평한 띠★ 가 되어 원본과 달라진다. 그래서 정지점을 여섯 개 둔다.
+ */
+.sa-skin :is(section, div).bg-card {
+  /* ★모서리를 각지게★ — 둥글면 그 자리에서 「현대식 웹 카드」가 된다 */
+  border-radius: 0;
+  padding: 9px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgb(255 255 255 / 0.05) 0 1px,
+      transparent 1px 2px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgb(0 0 0 / 0.07) 0 1px,
+      transparent 1px 3px
+    ),
+    linear-gradient(
+      180deg,
+      #060708 0%,
+      #3d4243 14%,
+      #191d1e 32%,
+      #494e4f 58%,
+      #23282a 78%,
+      #060708 100%
+    );
+  /* ★1px 베벨★ — 위·왼쪽은 밝고 아래·오른쪽은 어둡다. 그게 「튀어나온 금속」이다 */
+  border-top: 1px solid #4a5052;
+  border-left: 1px solid #383e40;
+  border-right: 1px solid #14181a;
+  border-bottom: 1px solid #101314;
+  position: relative;
+}
+
+/**
+ * 프레임 ★안쪽★ 판. 카드의 내용은 여기 얹힌다.
+ *
+ * 시안은 `<div class="fr"><div class="body">…` 두 겹인데 우리 카드는 한 겹이다.
+ * ★가짜 안쪽 판을 `::before` 로 깐다★ — 컴포넌트를 안 건드리려는 것이다.
+ */
+.sa-skin :is(section, div).bg-card::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--color-sa-in);
+  border-top: 1px solid var(--color-sa-edge-lo);
+  border-left: 1px solid var(--color-sa-edge-lo);
+  border-right: 1px solid var(--color-sa-edge-hi);
+  border-bottom: 1px solid var(--color-sa-edge-hi);
+  /* ★안쪽이 파인 느낌★ — 이 그림자가 없으면 그냥 색 다른 네모다 */
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.85);
+}
+
+/**
+ * 무광 건메탈 스크래치.
+ *
+ * ⚠ ★한 겹만 쓰면 줄무늬로 보인다.★ 각도와 위치가 다른 얇은 선 ★여섯 겹★ 을 깐다.
+ * ⚠ ★`z-index` 는 0 이다★ — 1 이면 글자 위를 덮는다. 시안 검수에서 실제로 그 일이 났다.
+ */
+.sa-skin :is(section, div).bg-card::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      101deg,
+      transparent 17.2%,
+      rgb(255 255 255 / 0.03) 17.3%,
+      transparent 17.5%
+    ),
+    linear-gradient(
+      97deg,
+      transparent 41.6%,
+      rgb(255 255 255 / 0.02) 41.7%,
+      transparent 41.8%
+    ),
+    linear-gradient(
+      104deg,
+      transparent 63.1%,
+      rgb(255 255 255 / 0.026) 63.2%,
+      transparent 63.4%
+    ),
+    linear-gradient(
+      94deg,
+      transparent 82.4%,
+      rgb(255 255 255 / 0.016) 82.5%,
+      transparent 82.6%
+    ),
+    linear-gradient(
+      88deg,
+      transparent 29.8%,
+      rgb(0 0 0 / 0.055) 29.9%,
+      transparent 30.1%
+    ),
+    linear-gradient(
+      92deg,
+      transparent 71.3%,
+      rgb(0 0 0 / 0.045) 71.4%,
+      transparent 71.6%
+    );
+}
+
+/** 카드 ★내용★ 은 가짜 판과 스크래치 ★위★ 에 온다 */
+.sa-skin :is(section, div).bg-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/**
+ * ★제목 앞의 세 막대★ — 원본은 세로 범위가 같고 ★밝기만★ 127 / 115 / 93 으로 다르다.
+ * 카드 제목은 화면마다 `SectionTitle` 또는 `h2`·`h3` 다.
+ */
+.sa-skin :is(h2, h3, .sa-title)::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 11px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  background:
+    linear-gradient(#7f7f7f, #7f7f7f) 0 0 / 2px 11px no-repeat,
+    linear-gradient(#737373, #737373) 3.5px 0 / 2px 11px no-repeat,
+    linear-gradient(#5d5d5d, #5d5d5d) 7px 0 / 2px 11px no-repeat;
+}
+
+/**
+ * ★라벨을 금색으로★ — 시안의 눈에 제일 먼저 들어오는 것이 이 색이다.
+ *
+ * 우리 화면은 라벨을 `text-meta`(보조 회색)로 그린다. ★껍데기 안에서만★ 금색으로 돌린다.
+ * ⚠ ★값(숫자)까지 금색으로 만들지 않는다★ — 시안은 ★라벨만 금색★ 이고 값은 색 숫자다.
+ */
+.sa-skin :is(h2, h3, .sa-title, dt, th, label) {
+  color: var(--color-sa-label);
+}
+
+/** ★모든 모서리를 각지게★ — 껍데기 안에서만. 원형 배지만 남긴다 */
+.sa-skin :not(.rounded-full):not([class*="rounded-full"]) {
+  border-radius: 0;
+}
