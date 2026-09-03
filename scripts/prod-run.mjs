@@ -87,6 +87,11 @@ const ALLOWED = {
     writes: true,
     what: 'O-044 (나) — 경기를 제 리그로 옮긴다. ★--confirm 없으면 미리보기 · --revert 로 되돌린다★',
   },
+  'weekly-graph-probe': {
+    file: 'weeklyGraphProbe',
+    writes: false,
+    what: 'O-045 주간 그래프를 되짚을 수 있나 — 리그별 킬뎃 유무 · 목요일 칸 · 선 규칙 세 경우 · Beta 창이 평평한가 (읽기 전용)',
+  },
   'clan-move-plan': {
     file: 'clanMovePlanProbe',
     writes: false,

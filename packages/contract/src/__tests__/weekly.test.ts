@@ -17,6 +17,9 @@ import {
   attachWeeklyRank,
   foldWeekly,
   foldWeeklyClan,
+  graphedLeague,
+  lineStyle,
+  SOLID_LINE_MIN_MATCHES,
   WEEK_BOUNDARY,
   weekBoundariesBetween,
   weekEnds,
@@ -211,6 +214,8 @@ describe('attachWeeklyRank — 스냅샷이 있는 주만 채운다', () => {
     sniper_kd: null,
     rifle_kd: null,
     win_rate: 50,
+    season_games: 1,
+    line: 'dashed',
     rank: null,
   })
   const trend: WeeklyTrend = {
@@ -246,5 +251,79 @@ describe('attachWeeklyRank — 스냅샷이 있는 주만 채운다', () => {
   it('입력을 바꾸지 않는다', () => {
     attachWeeklyRank(trend, [{ weekStartAt: new Date(s0.getTime() + WEEK), rank: 1 }], 1)
     expect(trend.points.every((p) => p.rank === null)).toBe(true)
+  })
+})
+
+/* ========================================================================== */
+/* 선 규칙 (O-045 · 2026-09-03 사장님 회의)                                     */
+/* ========================================================================== */
+
+describe('O-045 선 규칙', () => {
+  it('★25판 이상이고 그 주에 뛰었으면 실선★', () => {
+    expect(lineStyle(25, 1)).toBe('solid')
+  })
+
+  it('★24판이면 그 주에 열 판을 뛰어도 점선★ — «25판이 넘을때까지 쭉 점선이다»', () => {
+    expect(lineStyle(24, 10)).toBe('dashed')
+  })
+
+  it('★★25판을 훨씬 넘겨도 그 주 0판이면 점선★★ — 두 조건은 AND 다', () => {
+    expect(lineStyle(999, 0)).toBe('dashed')
+  })
+
+  it('★일부러 깨뜨려★ — 기준을 24로 낮추면 24판이 실선이 되어 위 검사가 깨진다', () => {
+    /* ORDERS 확인 6번을 검사로 굳힌다. 기준값이 바뀌면 여기서 먼저 걸린다 */
+    const broken = (season: number, week: number): string =>
+      season >= 24 && week >= 1 ? 'solid' : 'dashed'
+    expect(broken(24, 10)).toBe('solid')
+    expect(lineStyle(24, 10)).toBe('dashed')
+    expect(SOLID_LINE_MIN_MATCHES).toBe(25)
+  })
+
+  it('★열산은 그래프를 안 찍는다★ — «열산은 찍지도 말아라»', () => {
+    expect(graphedLeague('sanply')).toBe(false)
+    expect(graphedLeague('nolink')).toBe(true)
+    expect(graphedLeague('supply')).toBe(true)
+    /* ★대룰도 안 찍는다★ — 「없는 리그」다 (O-042) */
+    expect(graphedLeague('daerule')).toBe(false)
+  })
+})
+
+describe('O-045 접기가 선 규칙을 채운다', () => {
+  /* 위 describe 안의 것과 같은 helper — 블록 밖에서는 안 보인다 */
+  const kd = (k: number, d: number): number =>
+    d === 0 ? k * 100 : Math.round((k / d) * 1000) / 10
+  const wr = (w: number, l: number): number => Math.round((w / (w + l)) * 1000) / 10
+  const row = (matchId: string, at: string, won: boolean) => ({
+    matchId,
+    startAt: new Date(`${at}+09:00`),
+    side: 'red',
+    winnerSide: won ? 'red' : 'blue',
+    weapon: 0,
+    kill: 10,
+    death: 5,
+  })
+
+  it('★season_games 는 시즌 누적이고 games 는 그 주만이다★', () => {
+    const now = new Date('2026-07-22T12:00:00+09:00')
+    const rows = [
+      ...Array.from({ length: 30 }, (_, i) => row(`a${i}`, '2026-07-03T12:00:00', true)),
+      row('b0', '2026-07-17T12:00:00', true), /* 마지막 칸(7/16~7/23) 안 */
+    ]
+    const trend = foldWeekly(rows, now, 3, kstDayStart, kd, wr)
+    const last = trend.points[trend.points.length - 1]!
+    expect(last.season_games).toBe(31)
+    expect(last.games).toBe(1)
+    expect(last.line).toBe('solid')
+  })
+
+  it('★한 판도 안 한 주는 25판을 넘겨도 점선★ — 안 뛴 게 눈에 보여야 한다', () => {
+    const now = new Date('2026-07-22T12:00:00+09:00')
+    const rows = Array.from({ length: 30 }, (_, i) => row(`a${i}`, '2026-07-03T12:00:00', true))
+    const trend = foldWeekly(rows, now, 3, kstDayStart, kd, wr)
+    const last = trend.points[trend.points.length - 1]!
+    expect(last.games).toBe(0)
+    expect(last.season_games).toBe(30)
+    expect(last.line).toBe('dashed')
   })
 })

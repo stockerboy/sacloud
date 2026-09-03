@@ -68,6 +68,47 @@ export const WEEKLY_DEFAULT_WEEKS: WeeklyRangeWeeks = 5
 /** 가장 긴 구간. 서버는 여기까지만 만든다 */
 export const WEEKLY_MAX_WEEKS: WeeklyRangeWeeks = 25
 
+/* ========================================================================== */
+/* 선 규칙과 그래프 리그 (O-045 · 2026-09-03 사장님 회의 · 규칙 13)              */
+/* ========================================================================== */
+
+/**
+ * ★그래프를 찍는 리그★ — 열산은 **없다.**
+ *
+ * > «IPL 킬뎃은 IPL킬뎃판에 SPL은 SPL판에 **열산은 찍지도 말아라 필요없다 가치없는 리그다**»
+ * > (A 가 되짚어 확인하자) «**열산은 그래프만 안찍는다**»
+ *
+ * ⚠ ★「안 찍는다」지 「안 센다」가 아니다.★ 열산 기록은 그대로 남고
+ *   통합 순위(`leagueAuthority.ts`)에도 그대로 들어간다. 안 그리는 것뿐이다.
+ */
+export const GRAPH_LEAGUE_SLUGS = ['nolink', 'supply'] as const
+
+/** 실선이 되려면 ★시즌 통산★ 이만큼은 뛰어야 한다 («**가)이다**» = 그 주 25판이 아니다) */
+export const SOLID_LINE_MIN_MATCHES = 25
+
+/** 선 모양 */
+export type LineStyle = 'solid' | 'dashed'
+
+/**
+ * **선 모양** — ★두 조건이 `AND` 다.★
+ *
+ * ```
+ * ★실선★  시즌 통산 25판 이상  ★그리고★  그 주에 한 판이라도 했다
+ * ★점선★  그 밖에 전부
+ * ```
+ * ⚠ ★25판을 넘겨도 그 주에 안 뛰면 점선★ 이다 — «일주일간 한판도 하지 않은 유저도 점선».
+ * ⚠ ★그 주에 뛰어도 25판이 안 되면 점선★ 이다 — «25판이 넘을때까지 쭉 점선».
+ *   둘 중 하나만 보면 사장님 말씀의 절반이 사라진다.
+ */
+export function lineStyle(seasonGames: number, weekGames: number): LineStyle {
+  return seasonGames >= SOLID_LINE_MIN_MATCHES && weekGames >= 1 ? 'solid' : 'dashed'
+}
+
+/** 그 리그에 그래프를 찍나 */
+export function graphedLeague(slug: string): boolean {
+  return (GRAPH_LEAGUE_SLUGS as readonly string[]).includes(slug)
+}
+
 /**
  * 한 주의 값. **전부 그 주가 끝난 시점의 누적치**다.
  *
@@ -93,6 +134,21 @@ export const WeeklyPoint = z.object({
    * 지금 저장돼 있는 것은 현재 점수뿐이다.
    */
   rank: z.number().int().min(1).nullable(),
+  /**
+   * 그 점까지의 **시즌 통산** 판수. `games` 와 다르다 — 저쪽은 그 주만의 값이다.
+   *
+   * ★선 규칙이 이 값을 본다★ (O-045). 25판을 넘겼는지가 실선/점선을 가른다.
+   */
+  season_games: z.number().int().min(0),
+  /**
+   * ★이 점으로 들어오는 선의 모양★ (O-045 · 2026-09-03 사장님).
+   *
+   * > «25판을 하지 못한 선수는 **그래프를 점선으로 이어라** 25판이 넘을때까지 쭉 점선이다.
+   * >  **적은판수로 그래프를 찍어놓고 유지하는 경우를 방지하기 위함이다.**
+   * >  일주일간 한판도 하지 않은 유저도 점선으로 이어라
+   * >  25판이상이고 그 주동안 한판이라도 했으면 실선으로 이어줘라»
+   */
+  line: z.enum(['solid', 'dashed']),
 })
 export type WeeklyPoint = z.infer<typeof WeeklyPoint>
 
@@ -392,6 +448,8 @@ export function foldWeekly(
       rifle_kd: rifleGames === 0 ? null : kdOf(rifleKill, rifleDeath),
       win_rate: win + lose === 0 ? null : winRateOf(win, lose),
       rank: null,
+      season_games: win + lose,
+      line: lineStyle(win + lose, gamesThisWeek),
     })
   }
 
@@ -456,6 +514,8 @@ export function foldWeeklyClan(
       rifle_kd: null,
       win_rate: win + lose === 0 ? null : winRateOf(win, lose),
       rank: null,
+      season_games: win + lose,
+      line: lineStyle(win + lose, gamesThisWeek),
     })
   }
 

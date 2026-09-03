@@ -134,6 +134,8 @@ describe('구간 자르기', () => {
     rifle_kd: null,
     win_rate: i,
     rank: null,
+    season_games: i + 1,
+    line: 'dashed' as const,
   }))
 
   it('최근 쪽을 남긴다', () => {
