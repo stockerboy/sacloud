@@ -157,6 +157,23 @@ jobs:
       - name: Prisma 클라이언트 생성
         run: pnpm --filter @sacloud/db exec prisma generate
 
+      # ── ★실행기가 어느 나라인가★ — 403 의 원인을 좁히는 데 이게 없어서 못 좁혔다
+      #   ⚠ ★넥슨에 요청을 한 건도 더 보내지 않는다.★ 우리 IP 를 우리가 알아보는 것뿐이다
+      - name: 실행기 공인 IP 와 나라
+        id: geo
+        continue-on-error: true
+        run: |
+          set -u
+          ip=$(curl -sS --max-time 15 https://api.ipify.org || echo 'unknown')
+          # ⚠ `ipapi.co` 는 한도가 빨리 찬다 (실측: RateLimited). `ip-api.com` 을 쓴다
+          geo=$(curl -sS --max-time 15 "http://ip-api.com/json/${ip}?fields=status,countryCode,isp,org,as" 2>/dev/null || echo '{}')
+          cc=$(echo "$geo" | jq -r '.countryCode // "?"' 2>/dev/null || echo '?')
+          org=$(echo "$geo" | jq -r '(.isp // "?") + " / " + (.as // "?")' 2>/dev/null || echo '?')
+          echo "공인 IP ${ip} · 나라 ${cc} · 망 ${org}"
+          # ★주석으로 남긴다★ — 잡 로그는 관리자만 본다 (D-269)
+          echo "::notice::실행기 ★나라 ${cc}★ · 망 ${org} · IP ${ip}"
+          echo "RUNNER_GEO=${cc}" >> "$GITHUB_ENV"
+
       - name: 시크릿 확인 (값은 찍지 않는다)
         run: |
           set -euo pipefail
@@ -164,7 +181,7 @@ jobs:
             echo "::error::DATABASE_URL 시크릿이 없다"
             exit 1
           fi
-          echo "dry-run=${DRY_RUN} · clans=${CLANS} · limit=${LIMIT} · project=${PROJECT}"
+          echo "dry-run=${DRY_RUN} · clans=${CLANS} · limit=${LIMIT} · project=${PROJECT} · 나라=${RUNNER_GEO:-?}"
           curl --version | head -1
 
       # ── ①② 긁기. 403 이면 CLI 가 스스로 멈추고 exit 1 을 낸다
@@ -219,7 +236,7 @@ jobs:
           # ★로그는 관리자 권한이 있어야 받는다.★ `::error::`/`::notice::` 로 찍은 것만
           #   주석(annotation)으로 밖에서 읽힌다 — ★원인을 그쪽에 남긴다★
           echo "::notice::수집요약 ${line}"
-          echo "::notice::${stop} · 긁기=${COLLECT_RESULT:-?} · 투영=${PROJECT_RESULT:-건너뜀} · 코드=${CODE:-없음}"
+          echo "::notice::${stop} · 긁기=${COLLECT_RESULT:-?} · 투영=${PROJECT_RESULT:-건너뜀} · 코드=${CODE:-없음} · ★나라=${RUNNER_GEO:-?}★"
           [ -n "$load" ] && echo "::notice::${load}"
           if [ "${COLLECT_RESULT:-}" = 'failure' ]; then
             # ★실패한 판의 로그 꼬리를 주석으로 올린다★ — 다음 판에서 원인을 추측하지 않게
