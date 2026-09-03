@@ -192,6 +192,21 @@ const ALLOWED = {
     writes: false,
     what: '선수를 이어도 넥슨 공식 길이 열리는가 - 경기 상세가 10명을 주는가 (읽기 전용)',
   },
+  'ipl-range': {
+    file: 'iplRangeProbe',
+    writes: false,
+    what: 'IPL 기록이 언제부터 언제까지 있나 - 월별·시즌별·라인업 유무 (읽기 전용)',
+  },
+  'ipl-daily': {
+    file: 'iplDailyProbe',
+    writes: false,
+    what: 'IPL 경기가 날짜별로 몇 건인가 - 언제 멈췄나 (읽기 전용)',
+  },
+  'tier2-kd': {
+    file: 'tier2KdProbe',
+    writes: false,
+    what: '2티어끼리 한 경기의 선수별 킬뎃 (6월~8월 · 읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
