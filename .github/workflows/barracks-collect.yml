@@ -54,15 +54,26 @@
 name: 병영수첩 수집
 
 on:
-  schedule:
-    # 후퇴값이다. 체인이 끊겼을 때만 쓸모가 있다.
-    # 이미 도는 것과 안 겹치는 분: cache-warm */5 · watchdog 4-59/10 · season0 17분 · supply 7,37분
-    - cron: '2,32 * * * *'
-  # 이 파일을 고쳐 푸시하면 한 번 돈다 = 체인 시동
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/barracks-collect.yml'
+  # ⚠ ★★2026-09-03 · 예약을 껐다 — 실행기에서 403 이 나온다★★
+  #   run 7 이 주석으로 답했다 — «★403 — 즉시 멈춘다. 우회하지 않는다★ (ferwfwfwfwf)».
+  #   ```
+  #   집 IP + curl   ★200★  (120건 요청 · 403 0건)
+  #   실행기 + curl  ★403★
+  #   ```
+  #   ★클라이언트가 갈리는 위에 IP 도 갈린다.★ 이 워크플로는 ★지금 여기서는 못 돈다.★
+  #
+  #   ★그런데도 15분마다 두드리면 그건 우회 시도다★ (`CLAUDE.md` 3-A 5번 ·
+  #   «차단은 우회 대상이 아니라 멈춤 신호다» D-266). ★그래서 예약을 껐다.★
+  #
+  #   ★지운 게 아니라 주석으로 남긴다★ (CLAUDE.md 10-4) — 돌 곳이 정해지면 되살린다.
+  #   ★사람이 누르면(workflow_dispatch) 여전히 돈다★ — 시험은 할 수 있어야 한다.
+  # schedule:
+  #   - cron: '2,32 * * * *'
+  # ⚠ ★푸시 시동도 껐다★ — 같은 이유다. 파일을 고칠 때마다 403 을 한 번씩 받는다
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - '.github/workflows/barracks-collect.yml'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -266,8 +277,12 @@ jobs:
           echo "정상 — ${line}"
 
       # ── 체인 주기를 채운다. ★잡이 3분에 끝나도 15분을 채운다★ — 그래야 「15분마다」가 지켜진다
+      #
+      # ⚠ ★실패했으면 안 기다린다.★ run 7 이 ★25분 제한을 넘겨 취소★ 됐다 —
+      #   긁기가 403 으로 죽었는데도 ★판정 → 15분 대기 → self-dispatch★ 를 다 하느라 넘겼다.
+      #   ★취소되면 self-dispatch 도 못 해서 체인이 끊긴다.★ 실패는 빨리 끝내고 다음 판에 맡긴다
       - name: 다음 실행까지 기다린다
-        if: ${{ always() && env.DRY_RUN != 'true' }}
+        if: ${{ always() && env.DRY_RUN != 'true' && steps.collect.outcome != 'failure' }}
         run: |
           elapsed=$(( $(date +%s) - JOB_STARTED ))
           wait=$(( PERIOD_SECONDS - elapsed ))
@@ -289,6 +304,9 @@ jobs:
           # 정상은 시간당 4회. cron 이 겹쳐 두 체인이 되면 8회 → 여기서 하나가 끊긴다
           MAX_RUNS_PER_HOUR: '7'
           # 15분 주기의 절반. 이보다 빨리 끝났으면 뭔가 잘못된 것이라 잇지 않는다
+          # ⚠ ★실패한 판은 빨리 끝난다★ — 그러면 이 조건에 걸려 체인이 끊긴다.
+          #   ★그건 의도한 것이다★ — 403 을 받고도 15분마다 계속 두드리면 안 된다.
+          #   cron(2,32) 이 후퇴값으로 새 체인을 연다. ★사람이 원인을 볼 시간을 준다★
           MIN_ALIVE_SECONDS: '450'
         run: |
           set -uo pipefail
