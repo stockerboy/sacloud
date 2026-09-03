@@ -38,3 +38,5 @@ export * from './collectFreshness'
 export * from './seasonWindow'
 /* 리그마다 감출 클랜 — 한 곳에서만 정한다 (O-044 · 2026-09-03) */
 export * from './clanLeagueHidden'
+/* 리그 권위·통합 순위 (O-043 · 2026-09-03) */
+export * from './leagueAuthority'
