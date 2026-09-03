@@ -721,6 +721,20 @@
 
   /* 3rd.supply 숫자 색 네 개 — ★4.5:1 을 맞춘 값★
      라벨 4.63 · 승률(orange) 4.62 · 래더(red) 4.63 · 킬뎃(blue) 4.65 */
+  /**
+   * ★초록만 시안에 없어서 같은 규칙으로 유도했다★ (지어낸 색이 아니다).
+   *
+   * 시안의 넷은 ★원본 3rd.supply 색을 대비에 맞춰 낮춘 값★ 이다 —
+   * ```
+   * 노랑 #ffe30b 14.18 → #a28a31 5.43   빨강 #ff3d3d 5.23 → #d45757 4.63
+   * 주황 #f2711c  6.24 → #cc6119 4.62   파랑 #2185d0 4.65 → #3285c8 4.65
+   * ```
+   * 그런데 ★승률 사다리에는 초록(#02ab18 · 50~55%)이 하나 더 있다.★ 시안 화면에는
+   * 그 구간 선수가 없어서 안 나왔을 뿐이다. ★같은 규칙(색상 유지 · 밝기만)★ 을 적용해
+   * 원색의 89% 밝기로 내렸다 — ★R:G:B 비율이 원색과 같다★ (2·151·21 ← 2·171·24).
+   * 결과 4.75:1 로 ★다섯이 4.62~5.43 한 무리★ 가 된다.
+   */
+  --color-sa-green: #029715;
   --color-sa-yellow: #a28a31;
   --color-sa-red: #d45757;
   --color-sa-orange: #cc6119;
@@ -1973,6 +1987,29 @@ a:hover {
   --color-win-bg: var(--color-sa-in);
   --color-lose-bg: var(--color-sa-in);
 
+  /* ---- 등급색 (승률·킬뎃 사다리 · 래더 색) ---- *
+   * ⚠ ★이게 빠져 있으면 적진 원색이 그대로 튄다.★ 형광노랑 #ffe30b 은
+   *   이 바탕에서 ★14.18:1★ 이다 — ★안 읽히는 게 아니라 혼자 튄다.★
+   *   ★무광 화면에 형광 원색이면 «싹다 어두운무광» 과 정면으로 부딪힌다.★
+   *   `rateClass()` 를 쓰는 `PlayerHeadCard`·`RecordPanels`·`TierBreakdown` 에 다 뜬다 */
+  --color-rate-1: var(--color-sa-green); /* 50~55% */
+  --color-rate-2: var(--color-sa-orange); /* 55~60% */
+  --color-rate-3: var(--color-sa-blue); /* 60~65% */
+  --color-rate-4: var(--color-sa-yellow); /* 65%~ */
+  --color-rate-low: var(--color-sa-red);
+  --color-rate-4-light: var(--color-sa-red);
+  /* 래더 사다리 — 같은 네 색이다 (원본이 그렇게 썼다) */
+  --color-rating-1600: var(--color-sa-green);
+  --color-rating-1800: var(--color-sa-blue);
+  --color-rating-2000: var(--color-sa-orange);
+  --color-rating-2500: var(--color-sa-red);
+  /* 순위 색 — 시안은 「100위 안이면 노랑, 아니면 값 색」 하나뿐이다 */
+  --color-rank-gold: var(--color-sa-yellow);
+  --color-rank-blue: var(--color-sa-blue);
+  --color-rank-brown: var(--color-sa-label);
+  --color-rank-green: var(--color-sa-green);
+  --color-rank-plain: var(--color-sa-val);
+
   /* ---- 글씨 ---- *
    * ⚠ ★크기는 여기서 다 못 잡는다.★ 컴포넌트가 `text-sm` 같은 rem 유틸리티를 쓰고
    *   rem 은 `html` 의 15px 을 본다 — ★그건 전역이라 이 화면만 바꿀 수 없다.★
@@ -1990,10 +2027,12 @@ a:hover {
 /**
  * ★굵기 400 고정★ — 시안의 규칙이다. 굵게 쓰면 원본 인상이 바로 깨진다.
  *
- * ⚠ 공용 컴포넌트가 `font-semibold` · `font-bold` 를 쓰고 있어서 ★여기서 되돌린다.★
+ * ⚠ 공용 컴포넌트가 `font-medium`(500) · `font-semibold`(600) · `font-bold`(700) 를
+ *   쓰고 있어서 ★여기서 되돌린다.★ ★500 을 빠뜨리면 세 곳이 그대로 굵게 남는다★
+ *   (`PlayerHeadCard` · `WeeklyTrendCard` · `ClanHeadCard`).
  *   컴포넌트를 고치면 다른 화면이 같이 바뀐다 — ★그러면 「선수 화면만」이 깨진다.★
  */
-.sa-skin :is(.font-semibold, .font-bold, b, strong, th) {
+.sa-skin :is(.font-medium, .font-semibold, .font-bold, b, strong, th) {
   font-weight: 400;
 }
 

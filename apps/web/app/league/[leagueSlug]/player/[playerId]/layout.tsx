@@ -45,7 +45,19 @@ export default function LeaguePlayerLayout({
   const data = detail.data?.data
 
   return (
-    <>
+    /*
+     * ★`sa-skin` — 시안 톤 껍데기★ (O-050 2단계 · 2026-09-03).
+     *
+     * ⚠ ★처음에는 본문(`page` 쪽)에만 씌웠다. 그게 틀렸다★ —
+     *   ★머리띠와 탭이 껍데기 밖★ 이라 자기 배경(`--color-player-header` #2c304c)을
+     *   그대로 칠했다. 화면이 ★위에서부터 파란 띠 → 파란 탭 → 갑자기 검정 무광 본문★ 이었다.
+     *   ★사장님이 제일 먼저 보실 자리다.★ 그래서 ★layout 째로 감싼다.★
+     *
+     * ⚠ ★이 클래스 하나가 경계다.★ 안쪽만 시안 값으로 다시 칠해지고 ★바깥은 그대로다.★
+     *   「이 톤 아니다」가 나오면 ★이 클래스만 지우면 원래 화면이다★ (CLAUDE.md 1-4).
+     *   자세한 것은 `packages/ui/src/styles.css` 의 `.sa-skin` 주석.
+     */
+    <div className="sa-skin">
       {data ? (
         <LeaguePlayerRecordHeader
           leagueName={data.league.name}
@@ -67,6 +79,6 @@ export default function LeaguePlayerLayout({
       )}
       <ProfileNav tabs={leaguePlayerTabs(leagueSlug, playerId)} current={pathname} />
       {children}
-    </>
+    </div>
   )
 }

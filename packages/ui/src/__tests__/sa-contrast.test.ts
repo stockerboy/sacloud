@@ -213,3 +213,58 @@ describe('껍데기가 다시 칠한 짝 — 두 면 위에서 다 재본다', (
     expect(body).not.toMatch(/#5c80e0|#d92b2b/)
   })
 })
+
+/* ========================================================================== */
+/* 등급색 — 승률·킬뎃 사다리 (O-050 2단계)                                      */
+/* ========================================================================== */
+
+describe('등급색 다섯 — ★적진 원색이 튀지 않는가★', () => {
+  const PANEL = '#131515'
+  const LADDER = [
+    ['초록 50~55%', 'color-sa-green'],
+    ['주황 55~60%', 'color-sa-orange'],
+    ['파랑 60~65%', 'color-sa-blue'],
+    ['노랑 65%~', 'color-sa-yellow'],
+    ['빨강(낮음)', 'color-sa-red'],
+  ] as const
+
+  for (const [what, name] of LADDER) {
+    it(`${what} — 4.5:1 이상`, () => {
+      expect(contrast(token(name), PANEL)).toBeGreaterThanOrEqual(4.5)
+    })
+  }
+
+  it('★다섯이 한 무리다★ — 하나만 튀면 무광 화면이 깨진다', () => {
+    const rs = LADDER.map(([, n]) => contrast(token(n), PANEL))
+    /* 제일 밝은 것과 제일 어두운 것의 차가 크면 그 하나만 눈에 꽂힌다 */
+    expect(Math.max(...rs) - Math.min(...rs)).toBeLessThan(1.5)
+  })
+
+  it('★★적진 원색은 안 쓴다 — 형광노랑은 14.18:1 이다★★', () => {
+    /* 안 읽히는 게 아니라 ★혼자 튄다.★ «싹다 어두운무광» 과 정면으로 부딪힌다 */
+    expect(contrast('#ffe30b', PANEL)).toBeGreaterThan(10)
+    expect(contrast(token('color-sa-yellow'), PANEL)).toBeLessThan(7)
+  })
+
+  it('★초록은 원색과 같은 색상이다★ — 밝기만 내렸지 색을 바꾸지 않았다', () => {
+    const n = Number.parseInt(token('color-sa-green').slice(1), 16)
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+    /* 원색 #02ab18 = 2 · 171 · 24 와 같은 비율이어야 한다 */
+    expect(Math.abs(g / b - 171 / 24)).toBeLessThan(0.5)
+    expect(r).toBeLessThan(10)
+  })
+
+  it('★껍데기가 사다리를 다시 칠한다★ — 안 하면 원색이 그대로 뜬다', () => {
+    const css = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'styles.css'),
+      'utf8',
+    )
+    const start = css.indexOf('.sa-skin {')
+    const body = css.slice(start, css.indexOf('\n}', start))
+    for (const t of ['--color-rate-1', '--color-rate-2', '--color-rate-3', '--color-rate-4']) {
+      expect(body, `${t} 가 껍데기에 없다`).toContain(t)
+    }
+    /* ★굵기 500 도 되돌려야 한다★ — 빠뜨리면 세 곳이 굵게 남는다 */
+    expect(css).toContain('.font-medium')
+  })
+})
