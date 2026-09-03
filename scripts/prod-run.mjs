@@ -62,6 +62,16 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'bomb-quit-cross': {
+    file: 'bombQuitCrossProbe',
+    writes: false,
+    what: 'C4 설치·해체 x 전원탈주 x 경기길이를 겹쳐 센다 (읽기만 한다)',
+  },
+  'bomb-quit-count': {
+    file: 'bombQuitCountProbe',
+    writes: false,
+    what: '설박튀 후보를 조건 셋으로 겹쳐 센다 (사장님 기준 10판에 1판) — 읽기만 한다',
+  },
   'c4-probe': {
     file: 'c4Probe',
     writes: false,
