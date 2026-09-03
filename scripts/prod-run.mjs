@@ -87,6 +87,11 @@ const ALLOWED = {
     writes: true,
     what: 'O-044 (나) — 경기를 제 리그로 옮긴다. ★--confirm 없으면 미리보기 · --revert 로 되돌린다★',
   },
+  'dropout-meaning': {
+    file: 'dropoutMeaningProbe',
+    writes: false,
+    what: 'dropout 이 무슨 뜻인가 — 이긴 팀 vs 진 팀 · 나간 사람 킬데스 · 경기당 인원 · 한 팀 전원 탈주 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
