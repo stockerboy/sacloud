@@ -71,7 +71,8 @@ on:
       leagues:
         description: '반영할 리그 slug (쉼표)'
         required: false
-        default: 'supply,sanply,nolink,daerule'
+        # 2026-09-03 (O-042) — daerule 을 뺐다. 옛값 'supply,sanply,nolink,daerule'
+        default: 'supply,sanply,nolink'
       dry_run:
         description: '미리보기 — 한 줄도 쓰지 않는다 (계획 파일만 만든다)'
         type: boolean
@@ -103,7 +104,13 @@ jobs:
       # **긴 배치 잡**이라 세션 풀러(5432)를 쓴다. 6543 의 자리는 사이트 몫으로 남긴다
       # (D-249 후속 · `packages/db/src/index.ts` 의 `sessionPoolerUrl`)
       SACLOUD_DB_SESSION_POOLER: '1'
-      LEAGUES: ${{ inputs.leagues || 'supply,sanply,nolink,daerule' }}
+      # ── 2026-09-03 (O-042) — ★daerule 을 뺐다★
+      #   이 워크플로는 ★수집이 아니라 집계★ 다 (위 머리말대로 네트워크를 안 쓴다. 확인했다).
+      #   그래서 사장님의 «수집하지마라» 에 직접 걸리지는 않는다.
+      #   그런데 그 앞에 «대룰리그는 없애 ★생각하지마★» 가 있다 —
+      #   ★없는 리그의 랭킹을 5분마다 계산할 이유가 없다.★
+      #   옛값 'supply,sanply,nolink,daerule' · 되살리려면 이 줄과 위 default 를 되돌린다
+      LEAGUES: ${{ inputs.leagues || 'supply,sanply,nolink' }}
       DRY_RUN: ${{ inputs.dry_run || 'false' }}
 
     steps:

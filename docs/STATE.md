@@ -222,8 +222,11 @@ O-008 ⑧             ★롤백 리허설★ (promote 한 줄만 빼고 다 해 
    > «대룰리그는 없애 생각하지마 이거 못박아놔 ★저번에도 말해줬었는데 까먹네 자꾸★»
    > (「화면만인가 수집도인가」를 여쭙자) → «수집하지마라»
    ⚠ ★경기 29,714건(2024-05-24~)은 지우지 않았다.★ 멈춘 것이지 없앤 것이 아니다 (위 3번)
-   ⚠ 되살리려거든 세 곳이다 — `collectFreshness.ts` 의 `COLLECTED_LEAGUE_SLUGS` ·
-     `supply-incremental.yml` · ★`supply-rollup-full.yml`★ (이것도 원본을 긁는다)
+   ⚠ 되살리려거든 ★네 곳★ 이다
+     `collectFreshness.ts` 의 `COLLECTED_LEAGUE_SLUGS` (판정에서 뺀 `REPORT_ONLY` 도 같이)
+     `supply-incremental.yml`          증분 수집
+     ★`supply-rollup-full.yml`★        ★이것도 원본을 긁는다★ — 머리말은 안 긁는다고 적혀 있었다
+     `season0-apply.yml`               집계(수집 아님) — 「생각하지마」라서 같이 뺐다
 ```
 
 ---

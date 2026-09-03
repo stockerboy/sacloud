@@ -62,6 +62,11 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'cross-league-clans': {
+    file: 'crossLeagueClanProbe',
+    writes: false,
+    what: '한 클랜이 두 리그에 동시에 있는가 · 남의 리그 클랜을 문 경기가 있는가 (읽기만 한다)',
+  },
   'season-window': {
     file: 'seasonWindowProbe',
     writes: false,
