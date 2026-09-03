@@ -255,12 +255,29 @@ node scripts/prod-run.mjs season0-apply --leagues nolink --confirm  # 순위 다
 
 ## 확인용 (전부 **읽기 전용**, 요청 0건)
 
+| 이름 | 무엇을 보나 |
+|---|---|
+| `month-coverage` | **달마다** 경기 · 라인업 · 원문 (제일 먼저 본다) |
+| `lineup-ten` | **경기 상세에 10명**이 다 있나 (인원수별) |
+| `lineup-twenty` | 10명을 넘는 경기 안에 무엇이 들었나 |
+| `lineup-side` | 한 팀에 몇 명이 정상인가 · 겹친 표시가 어디 몰렸나 |
+| `lineup-origin` | 라인업이 미러에서 왔나 병영수첩에서 왔나 |
+| `spring-gap` | **3~6월이 어디서 막혔나** (원문 → Match → IPL → 라인업) |
+| `spring-match` | 3~6월 경기 하나를 골라 **화면 주소**를 만든다 |
+| `battlelog-yield` | 받은 배틀로그가 라인업까지 가나 |
+| `league-mix` | IPL 경기가 다른 리그로 갔나 |
+| `clan-slug-probe` | 클랜 슬러그가 병영수첩에서 통하나 |
+| `pending-dup` | 같은 경기를 두 번 부르나 (D-280) |
+| `recent-raw` | **방금 받은 것이 어느 달인가** (기간 필터가 먹었나) |
+| `player-twin` | 같은 사람이 두 선수로 갈린 것 (D-275) |
+| `stat-richness` | 어느 출처가 정말 더 많이 아나 (D-276) |
+| `ladder-miss` | 경기마다의 래더 ±점이 채워졌나 (D-278) |
+| `invariant-break` | 통합 = 기본 + 스나 + 라플 이 어긋난 선수 (D-277) |
+| `season-table` | 확정된 시즌 구분이 코드·DB 와 맞나 |
+
 ```sh
-node scripts/prod-run.mjs month-coverage    # 달마다 경기·라인업
-node scripts/prod-run.mjs lineup-ten        # 경기 상세에 10명이 다 있나
-node scripts/prod-run.mjs spring-gap        # 3~6월이 어디서 막혔나
-node scripts/prod-run.mjs clan-slug-probe   # 클랜 슬러그가 병영수첩에서 통하나
-node scripts/prod-run.mjs pending-dup       # 같은 경기를 두 번 부르나
+node scripts/prod-run.mjs month-coverage
+node scripts/prod-run.mjs player-twin <lineup-dedupe 백업 파일>
 ```
 
 ## 화면을 **폰 크기로 직접 보기**
