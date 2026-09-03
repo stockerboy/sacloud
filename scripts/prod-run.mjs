@@ -97,6 +97,31 @@ const ALLOWED = {
     writes: false,
     what: 'IPL 에 딜량·어시·헤드샷·무기가 있는가 — dropoutScope 의 damage>0 조건이 IPL 을 통째로 지우지 않는지 (읽기 전용)',
   },
+  'bomb-quit-winner': {
+    file: 'bombQuitCrossJoinProbe',
+    writes: false,
+    what: '설박튀 — C4 상태별로 ★나간 팀이 이긴 팀인가★ (평소 이긴 팀 탈주는 0.3~1% 뿐이라는 잣대로 가른다 · 읽기 전용)',
+  },
+  'battlelog-shape': {
+    file: 'battleLogShapeProbe',
+    writes: false,
+    what: '배틀로그 이벤트 한 건의 칸 이름과 종류 (라운드 단위로 셀 수 있는지 · 읽기 전용)',
+  },
+  'bomb-round': {
+    file: 'bombRoundProbe',
+    writes: false,
+    what: '라운드 단위로 C4 를 센다 — 설치/해체 라운드 수와 설치 뒤에 일어난 일 (읽기 전용)',
+  },
+  'bomb-round-sanity': {
+    file: 'bombRoundSanity',
+    writes: false,
+    what: 'C4 라운드 칸을 믿을 수 있나 — 해체는 있는데 설치가 없는 라운드가 왜 나오나 (읽기 전용)',
+  },
+  'bomb-event-type': {
+    file: 'bombEventTypeProbe',
+    writes: false,
+    what: '폭탄 사건이 event_type 에 있는가 — C4 설치를 event_text 로만 세면 놓치는지 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
