@@ -207,6 +207,9 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
  */
 export async function pendingPairs(limit: number): Promise<{ matchKey: string; clanNo: string }[]> {
   return prisma.$queryRaw<{ matchKey: string; clanNo: string }[]>`
+    /*
+     * ── ① 매치목록에서 알게 된 경기 (새로 들어오는 것)
+     */
     SELECT DISTINCT c."matchKey"                        AS "matchKey",
            c."payload"->>'clan_no'                      AS "clanNo"
       FROM "BarracksClanMatchRaw" c
@@ -216,7 +219,46 @@ export async function pendingPairs(limit: number): Promise<{ matchKey: string; c
          SELECT 1 FROM "BarracksBattleLogRaw" b
           WHERE b."matchKey" = c."matchKey" AND b."status" = 'ok'
        )
-     ORDER BY c."matchKey" DESC
+
+     UNION
+
+    /*
+     * ── ② ★이미 아는 IPL 경기★ (밀린 것)
+     *
+     * ⚠ ★①만 보면 밤새 1,093건에서 끝난다.★ 우리가 아는 IPL 경기는 24,952건이고
+     *   그중 ★배틀로그가 없는 것이 21,807건(87.4%)★ 이다 (2026-09-04 실측).
+     *
+     * ★매치목록은 「최근 것」만 준다★ — 2608 30건 · 2609 1,283건이 전부다.
+     *   ★그래서 7월치는 목록으로 영영 안 온다.★ 그런데 ★그 경기의 키는 우리가 안다★
+     *   (Match.sourceMatchId). ★클랜번호만 있으면 배틀로그를 받을 수 있다★ —
+     *   실측 ★20,674건(94.8%)★ 이 번호를 안다.
+     *
+     * 클랜번호는 매치목록 원문에서 ★그 클랜이 주인이었던 행★ 으로 찾는다.
+     */
+    SELECT DISTINCT m."sourceMatchId"                   AS "matchKey",
+           (SELECT c2."payload"->>'clan_no'
+              FROM "BarracksClanMatchRaw" c2
+              JOIN "LeagueClan" lc2 ON lc2."id" = m."redLeagueClanId"
+              JOIN "Clan" cl2 ON cl2."id" = lc2."clanId"
+             WHERE c2."subject" = cl2."slug"
+               AND c2."payload"->>'clan_no' IS NOT NULL
+             LIMIT 1)                                   AS "clanNo"
+      FROM "Match" m
+      JOIN "League" l ON l."id" = m."leagueId" AND l."slug" = 'nolink'
+     WHERE m."sourceMatchId" IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM "BarracksBattleLogRaw" b
+          WHERE b."matchKey" = m."sourceMatchId" AND b."status" = 'ok'
+       )
+       AND EXISTS (
+         SELECT 1 FROM "BarracksClanMatchRaw" c3
+          JOIN "LeagueClan" lc3 ON lc3."id" = m."redLeagueClanId"
+          JOIN "Clan" cl3 ON cl3."id" = lc3."clanId"
+         WHERE c3."subject" = cl3."slug" AND c3."payload"->>'clan_no' IS NOT NULL
+       )
+
+     /* ★최근 것부터★ — 밤새 돌다 멈춰도 새 기록이 먼저 채워진다 */
+     ORDER BY 1 DESC
      LIMIT ${limit}
   `
 }

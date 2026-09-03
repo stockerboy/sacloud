@@ -217,6 +217,11 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 매치목록이 과거를 얼마나 주나 (읽기 전용)',
   },
+  'backlog': {
+    file: 'backlogProbe',
+    writes: false,
+    what: '밤새 받을 수 있는 것이 실제로 몇 건인가 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
