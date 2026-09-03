@@ -61,6 +61,13 @@ const MAX_BYTES = 8 * 1024 * 1024
 const REQUEST_TIMEOUT_S = 30
 /** ★몇 건마다 부하를 보나★ — 매 건마다 보면 감시자 자신이 부하가 된다 */
 export const GUARD_EVERY = 10
+/**
+ * ★몇 건마다 DB 에 넣나★.
+ *
+ * ⚠ 전에는 ★루프가 다 끝난 뒤에 한 번에★ 넣었고, 130건을 받고 멈추자 ★적재 0건★ 이었다.
+ *   ★긴 판을 돌리려면 나눠 넣어야 한다.★ 너무 잘게 나누면 DB 왕복이 늘어난다
+ */
+export const FLUSH_EVERY = 25
 
 /** 이 잡이 멈춘 이유 */
 export type StopReason = 'done' | 'blocked' | 'limit' | 'health' | 'error'
@@ -325,6 +332,19 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
   }
 
   const rows: BarracksRow[] = []
+  /**
+   * ★모인 것을 넣고 비운다.★ 멱등하니 겹쳐도 행이 안 는다 (fetchCount 만 오른다).
+   * ★적재는 창구와 같은 함수다★ — 저장 모양이 갈리면 같은 응답이 두 행이 된다
+   */
+  const flush = async (): Promise<void> => {
+    if (rows.length === 0) return
+    const stored = await storeBarracksRows(rows)
+    result.stored.inserted += stored.inserted
+    result.stored.duplicated += stored.duplicated
+    result.stored.skipped += stored.skipped
+    log(`    넣음 ${result.stored.inserted.toLocaleString()}건 (누적)`)
+    rows.length = 0
+  }
   let i = 0
   for (const p of pairs) {
     /*
@@ -391,18 +411,24 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
     result.ok += 1
     rows.push({ kind: 'battlelog', matchKey: p.matchKey, subject: p.clanNo, raw })
     if (result.ok % 10 === 0) log(`  ${result.ok}건 받음…`)
+
+    /*
+     * ── ★★묶음마다 넣는다★★
+     *
+     * ⚠ 전에는 ★루프가 다 끝난 뒤에 한 번에★ 넣었다. 그래서 —
+     *   ① ★중간에 죽으면 받은 것을 전부 잃는다★ — 실제로 그랬다.
+     *      130건을 받고 멈췄는데 ★적재 0건★ 이었다 (2026-09-04 실측)
+     *   ② 4,000건이면 응답 4,000개(각 60KB 안팎)를 ★메모리에 들고 있는다★ = 240MB
+     * ★긴 판을 돌리려면 나눠 넣어야 한다.★ 멱등하니 겹쳐도 행이 안 는다
+     */
+    if (opts.confirm && rows.length >= FLUSH_EVERY) {
+      await flush()
+    }
     await sleep(delay)
   }
 
-  if (opts.confirm && rows.length > 0) {
-    /* ★적재는 창구와 같은 함수다★ — 저장 모양이 갈리면 같은 응답이 두 행이 된다 */
-    const stored = await storeBarracksRows(rows)
-    result.stored = {
-      inserted: stored.inserted,
-      duplicated: stored.duplicated,
-      skipped: stored.skipped,
-    }
-  }
+  /* 남은 것 */
+  if (opts.confirm && rows.length > 0) await flush()
 
   log(
     `\n계획 ${result.planned} · 요청 ★${result.requested}★ · 받음 ★${result.ok}★ · 실패 ${result.failed}` +
