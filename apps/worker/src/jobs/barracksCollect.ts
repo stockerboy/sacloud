@@ -76,6 +76,14 @@ export interface CollectOptions {
    *   런북에 적힌 20만 행은 ★로컬 미러 DB★ 였다 — 운영과 다르다.
    */
   clans?: number
+  /**
+   * ★목록을 받을 리그★. 기본 `nolink`.
+   *
+   * ⚠ ★병영수첩에서 온 것은 그 리그 것이다.★ 여기를 바꾸면 ★그 리그의 클랜을 부른다★ —
+   *   ★부른 클랜의 리그와 저장되는 리그가 어긋나면 O-044 가 무너진다.★
+   *   그래서 부르는 쪽이 ★명시★ 한다. 기본값에 기대지 않는다
+   */
+  leagueSlug?: string
   /** 요청 사이 간격(ms). `MIN_DELAY_MS` 아래로는 못 내린다 */
   delayMs?: number
   /** ★참이면 요청을 한 건도 보내지 않는다★ — 무엇을 받을지만 찍는다 */
@@ -215,13 +223,16 @@ export async function pendingPairs(limit: number): Promise<{ matchKey: string; c
  *
  * 오래 안 받은 것부터 고른다 — 한 번도 안 받은 클랜이 먼저 온다.
  */
-export async function pendingClans(limit: number): Promise<{ slug: string; name: string }[]> {
+export async function pendingClans(
+  limit: number,
+  leagueSlug = 'nolink',
+): Promise<{ slug: string; name: string }[]> {
   return prisma.$queryRaw<{ slug: string; name: string }[]>`
     SELECT c."slug", c."name"
       FROM "LeagueClan" lc
       JOIN "League" l ON l."id" = lc."leagueId"
       JOIN "Clan" c   ON c."id" = lc."clanId"
-     WHERE l."slug" = 'nolink'
+     WHERE l."slug" = ${leagueSlug}
      ORDER BY (
        SELECT max(m."fetchedAt") FROM "BarracksClanMatchRaw" m WHERE m."subject" = c."slug"
      ) ASC NULLS FIRST, c."slug"
@@ -246,9 +257,9 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
   /* ── ★①단계 · 목록★ — 무엇을 받아야 하는지의 재료를 먼저 만든다 */
   const clanBudget = opts.clans ?? 0
   if (clanBudget > 0) {
-    const clans = await pendingClans(clanBudget)
+    const clans = await pendingClans(clanBudget, opts.leagueSlug ?? 'nolink')
     result.matchList.clans = clans.length
-    log(`\n① 목록 — IPL 클랜 ★${clans.length}곳★`)
+    log(`\n① 목록 — ★${opts.leagueSlug ?? 'nolink'}★ 클랜 ★${clans.length}곳★`)
     if (opts.dryRun) {
       for (const c of clans.slice(0, 5)) log(`   ${c.slug}  (${c.name})`)
       if (clans.length > 5) log(`   … ${clans.length - 5}곳 더`)

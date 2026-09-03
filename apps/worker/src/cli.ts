@@ -622,6 +622,8 @@ async function main(): Promise<number> {
       const limit = numberFlag(args, 'limit') ?? 10
       /* ★목록을 안 받으면 배틀로그는 언제나 0건이다★ — 운영의 BarracksClanMatchRaw 는 0행이었다 */
       const clans = numberFlag(args, 'clans') ?? 0
+      /* ★어느 리그의 클랜 목록을 받나★ — 기본은 IPL. ★기본값에 기대지 말고 명시한다★ */
+      const leagueSlug = stringFlag(args, 'league') ?? 'nolink'
       const delayMs = numberFlag(args, 'delay') ?? DEFAULT_DELAY_MS
       const healthUrl = stringFlag(args, 'health')
       const state = newGuardState()
@@ -645,6 +647,7 @@ async function main(): Promise<number> {
       const result = await collectBarracks({
         limit,
         clans,
+        leagueSlug,
         delayMs,
         dryRun,
         confirm,
