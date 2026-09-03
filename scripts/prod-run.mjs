@@ -62,6 +62,16 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'ipl-backfill': {
+    file: 'iplBackfillProbe',
+    writes: false,
+    what: 'IPL 1~6월 규모와 넥슨에 물어볼 닉네임을 고른다 (읽기만 한다 · 넥슨을 안 부른다)',
+  },
+  'clan-league-move': {
+    file: 'clanLeagueMoveProbe',
+    writes: false,
+    what: '겹친 클랜마다 어느 리그가 나중인가 (joinedAt 은 못 믿는다 · 경기 날짜로 본다 · 읽기만 한다)',
+  },
   'cross-league-clans': {
     file: 'crossLeagueClanProbe',
     writes: false,
