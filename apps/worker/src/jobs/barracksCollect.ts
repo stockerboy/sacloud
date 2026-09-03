@@ -240,6 +240,26 @@ export function fetchClanMatchList(clanSlug: string, seqNo?: string): Promise<Cu
   return curl('POST', '/api/ClanHome/GetClanMatchList/', JSON.stringify(body))
 }
 
+/**
+ * ★그 클랜을 여기서 끝낼까★ — 날짜에 닿았는지 본다.
+ *
+ * 경기키는 ★`YYMMDD…`★ 로 시작하고, 커서(`message`)는 ★그 쪽의 가장 오래된 경기키★ 다.
+ * 그러니 ★커서의 앞 여섯 자리★ 를 목표 날짜와 견주면 된다.
+ *
+ * ⚠ ★쪽 수로 끊으면 클랜마다 결과가 다르다★ (2026-09-04 실측) —
+ * ```
+ * zzim1  68쪽에 3월 1일    ← 한산한 클랜
+ * lee2   81쪽에 7월 18일   ← 바쁜 클랜. 같은 80쪽인데 넉 달이 차이 난다
+ * ```
+ * ★목표는 쪽 수가 아니라 날짜다.★
+ *
+ * ⚠ 목표가 없거나 커서가 없으면 ★끊지 않는다★ — 모르면 멈추지 않고 한도(`listPages`)에 맡긴다.
+ */
+export function reachedListTarget(cursor: string | null, until?: string): boolean {
+  if (!until || !cursor) return false
+  return cursor.slice(0, 6) <= until
+}
+
 /** 목록 응답에서 ★다음 커서★ 를 꺼낸다. 없거나 그대로면 `null` = 끝 */
 export function nextListCursor(body: string, current?: string): string | null {
   let msg: unknown
@@ -434,8 +454,8 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
            * ★날짜에 닿으면 그만 넘긴다★ — 경기키는 `YYMMDD…` 로 시작한다.
            * ★커서(`message`)가 그 쪽의 가장 오래된 경기키다★ 이므로 그것과 견준다.
            */
-          if (opts.listUntil && next && next.slice(0, 6) <= opts.listUntil) {
-            log(`  ${c.slug} — ★${opts.listUntil} 에 닿았다 (${next.slice(0, 6)}) — 여기서 끝낸다★`)
+          if (reachedListTarget(next, opts.listUntil)) {
+            log(`  ${c.slug} — ★${opts.listUntil} 에 닿았다 (${oldest.slice(0, 6)}) — 여기서 끝낸다★`)
             await sleep(delay)
             break
           }
