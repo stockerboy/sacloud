@@ -207,6 +207,16 @@ const ALLOWED = {
     writes: false,
     what: '2티어끼리 한 경기의 선수별 킬뎃 (6월~8월 · 읽기 전용)',
   },
+  'tier2-verify': {
+    file: 'tier2VerifyProbe',
+    writes: false,
+    what: '「2티어끼리」가 정말 맞나 - 경기 5건을 펼쳐 본다 (읽기 전용)',
+  },
+  'matchlist-range': {
+    file: 'matchListRangeProbe',
+    writes: false,
+    what: '병영수첩 매치목록이 과거를 얼마나 주나 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
