@@ -32,12 +32,18 @@ say "★밤샘 수집 시작★ — 4,000건씩 · 간격 1500ms · 첫 403 에�
 #   ★따로 띄우면 병영수첩을 동시에 두 배로 두드린다★ — 간격 1500ms 가 750ms 가 된다.
 #   ★그건 D-266 을 어기는 것이다.★
 #
-#   43클랜 × 80쪽 = 약 3,400 요청 × 1.5초 ≒ ★85분★.
+#   ⚠ ★쪽 수로 끊으면 안 된다★ (2026-09-04 실측) —
+#   ```
+#   zzim1   68쪽에 ★3월 1일★    ← 한산한 클랜. 80쪽이면 남는다
+#   lee2    81쪽에 ★7월 18일★   ← 바쁜 클랜. 80쪽으로는 한참 모자라다
+#   ```
+#   ★같은 80쪽인데 하나는 넘치고 하나는 모자란다.★ 그래서 ★날짜로 끊는다★ —
+#   `--list-until 260305` (시즌 구분의 시작). `--list-pages 400` 은 ★끝없이 도는 것을 막는 한도★ 다.
 #   ★배틀로그는 안 받는다★ (`--limit 0`) — 이 판은 「무엇이 있는지 알아내는」 판이다.
 if [ "${SKIP_DISCOVER:-0}" != "1" ]; then
-  say "── ★0판 · 발견★ (3~6월 목록 · 클랜당 80쪽까지 · 배틀로그 안 받음)"
+  say "── ★0판 · 발견★ (3~6월 목록 · ★260305 에 닿을 때까지★ · 배틀로그 안 받음)"
   pnpm --filter @sacloud/worker nexon barracks-collect \
-    --league nolink --clans 43 --list-pages 80 --limit 0 --confirm \
+    --league nolink --clans 43 --list-pages 400 --list-until 260305 --limit 0 --confirm \
     --health https://3rdcloud.my/api/health >> "$LOG" 2>&1
   dcode=$?
   found=$(grep -E '^  ① 목록 요청 ' "$LOG" | tail -1)

@@ -92,6 +92,19 @@ export interface CollectOptions {
    */
   listPages?: number
   /**
+   * ★어느 날짜에 닿으면 그만 넘기나★ — `YYMMDD` 여섯 자리 (예: `260305`).
+   *
+   * ⚠ ★쪽 수로 끊으면 클랜마다 결과가 다르다.★ 실측(2026-09-04) —
+   * ```
+   * zzim1       68쪽에 ★3월 1일★    ← 한산한 클랜. 80쪽이면 남는다
+   * lee2        81쪽에 ★7월 18일★   ← 바쁜 클랜. 80쪽으로는 한참 모자라다
+   * ```
+   * ★같은 80쪽인데 하나는 넘치고 하나는 모자란다.★ ★목표는 쪽 수가 아니라 날짜다.★
+   * 이 값을 주면 ★그 날짜보다 오래된 경기가 나오는 순간 그 클랜을 끝낸다.★
+   * `listPages` 는 그때도 ★최대 한도★ 로 남는다 — 끝없이 도는 것을 막는다.
+   */
+  listUntil?: string
+  /**
    * ★목록을 받을 리그★. 기본 `nolink`.
    *
    * ⚠ ★병영수첩에서 온 것은 그 리그 것이다.★ 여기를 바꾸면 ★그 리그의 클랜을 부른다★ —
@@ -417,6 +430,15 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
 
           const next = nextListCursor(r.body, cursor)
           if (next) oldest = next
+          /*
+           * ★날짜에 닿으면 그만 넘긴다★ — 경기키는 `YYMMDD…` 로 시작한다.
+           * ★커서(`message`)가 그 쪽의 가장 오래된 경기키다★ 이므로 그것과 견준다.
+           */
+          if (opts.listUntil && next && next.slice(0, 6) <= opts.listUntil) {
+            log(`  ${c.slug} — ★${opts.listUntil} 에 닿았다 (${next.slice(0, 6)}) — 여기서 끝낸다★`)
+            await sleep(delay)
+            break
+          }
           /* ★목록도 부하를 본다★ — 뒤로 넘기면 요청 수가 클랜 수만큼이 아니라 그 곱이다 */
           if (opts.guard && listCalls % GUARD_EVERY === 0) {
             const verdict = await opts.guard()
