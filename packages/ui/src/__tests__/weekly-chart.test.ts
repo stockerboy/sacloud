@@ -132,6 +132,7 @@ describe('구간 자르기', () => {
     games: 1,
     sniper_kd: null,
     rifle_kd: null,
+      kd: null,
     win_rate: i,
     rank: null,
     season_games: i + 1,

@@ -217,6 +217,26 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 매치목록이 과거를 얼마나 주나 (읽기 전용)',
   },
+  'battlelog-yield': {
+    file: 'battlelogYieldProbe',
+    writes: false,
+    what: '받은 배틀로그가 라인업까지 가나 — 어디서 새는지 (읽기 전용)',
+  },
+  'clan-slug-probe': {
+    file: 'clanSlugProbe',
+    writes: false,
+    what: 'IPL 클랜 슬러그가 병영수첩에서 통하나 (읽기 전용)',
+  },
+  'league-mix': {
+    file: 'leagueMixProbe',
+    writes: false,
+    what: 'IPL 경기가 다른 리그로 들어갔나 — 양쪽 다 IPL 인 경기를 센다 (읽기 전용)',
+  },
+  'month-coverage': {
+    file: 'monthCoverageProbe',
+    writes: false,
+    what: '3~9월 중 어느 달이 비었나 — 경기·라인업·병영수첩원문을 달마다 (읽기 전용)',
+  },
   'backlog': {
     file: 'backlogProbe',
     writes: false,

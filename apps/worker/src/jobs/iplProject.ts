@@ -16,13 +16,15 @@
  *   · `--confirm` 없이는 한 줄도 쓰지 않는다. 기본은 미리보기다
  *   · 멱등하다 — `(origin, sourceMatchId)` 로 upsert 한다. 다시 돌려도 늘지 않는다
  *   · **양쪽이 다 IPL 등록 클랜일 때만** 넣는다. 한쪽만이면 IPL 경기가 아니다 (D-210 의 거울)
- *   · 시즌 창(`SEASON0_FROM`) 보다 앞선 경기는 넣지 않는다
+ *   · ★적재 창(`IPL_PROJECT_FROM` = 3/5)★ 보다 앞선 경기는 넣지 않는다
+ *     ⚠ ★집계 창(`SEASON0_FROM` = 7/1)과 다른 값이다★ (2026-09-04 에 갈랐다).
+ *       옛날엔 둘이 같아서 ★4~6월 경기가 통째로 안 들어왔다★ — 배틀로그는 받아 놓고도 화면에 없었다
  *   · 건너뛴 것은 **사유별로 세어 보고한다.** 조용히 버리지 않는다
  */
 import { prisma } from '@sacloud/db'
 import { log, warn } from '../lib/log.js'
 import { allocateInternalMatchId } from '../lib/internalMatchId.js'
-import { SEASON0_FROM } from '../lib/season0Window.js'
+import { IPL_PROJECT_FROM, IPL_PROJECT_FROM_V1, SEASON0_FROM } from '../lib/season0Window.js'
 import { deriveClanNames, type SideRow } from '../lib/iplClanNames.js'
 import { IPL_ROSTER } from '@sacloud/db/ops'
 import {
@@ -151,7 +153,13 @@ export async function runIplProject(
   if (!map) throw new Error(`맵 "${IPL_LEAGUE_MAP_NAME}" 이 없다. 먼저 만들어야 한다`)
 
   const clanIndex = await buildClanIndex(league.id)
-  log(`찾을 수 있는 클랜 이름 ${clanIndex.size}개 · 시즌 창 시작 ${SEASON0_FROM.toISOString()}`)
+  log(
+    `찾을 수 있는 클랜 이름 ${clanIndex.size}개 · ★적재 창 시작 ${IPL_PROJECT_FROM.toISOString()}★` +
+      ` (집계 창은 ${SEASON0_FROM.toISOString()} — 다른 값이다)`,
+  )
+
+  /* ★옛 적재 창은 지우지 않는다★ (`CLAUDE.md` 1-4) — 되돌리려면 `seasonFrom` 에 이걸 넣는다 */
+  void IPL_PROJECT_FROM_V1
 
   const result: IplProjectResult = {
     uniqueMatches: 0,
@@ -195,7 +203,8 @@ export async function runIplProject(
         redWinCount: p.red_win_cnt,
         blueWinCount: p.blue_win_cnt,
         resolveClan,
-        seasonFrom: SEASON0_FROM,
+        /* ★적재 창은 3/5★ — 집계 창(7/1)과 다르다 (season0Window.ts 의 IPL_PROJECT_FROM) */
+        seasonFrom: IPL_PROJECT_FROM,
       })
 
       if (!planned.ok) {

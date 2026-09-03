@@ -26,15 +26,58 @@ say() { printf '%s | %s\n' "$(date '+%m-%d %H:%M')" "$1" | tee -a "$LOG"; }
 
 say "★밤샘 수집 시작★ — 4,000건씩 · 간격 1500ms · 첫 403 에서 멈춘다"
 
+# ── ★★0판 · 발견 — 3~6월 목록을 뒤로 넘겨 받는다★★ (2026-09-04 · D-270)
+#
+#   ★한 프로세스 안에서 순서대로 한다.★ 목록 받기와 배틀로그 받기를
+#   ★따로 띄우면 병영수첩을 동시에 두 배로 두드린다★ — 간격 1500ms 가 750ms 가 된다.
+#   ★그건 D-266 을 어기는 것이다.★
+#
+#   43클랜 × 80쪽 = 약 3,400 요청 × 1.5초 ≒ ★85분★.
+#   ★배틀로그는 안 받는다★ (`--limit 0`) — 이 판은 「무엇이 있는지 알아내는」 판이다.
+if [ "${SKIP_DISCOVER:-0}" != "1" ]; then
+  say "── ★0판 · 발견★ (3~6월 목록 · 클랜당 80쪽까지 · 배틀로그 안 받음)"
+  pnpm --filter @sacloud/worker nexon barracks-collect \
+    --league nolink --clans 43 --list-pages 80 --limit 0 --confirm \
+    --health https://3rdcloud.my/api/health >> "$LOG" 2>&1
+  dcode=$?
+  found=$(grep -E '^  ① 목록 요청 ' "$LOG" | tail -1)
+  say "  0판 발견 끝 (코드 ${dcode}) — ${found:-(요약을 못 읽었다)}"
+  # ★받은 목록을 경기로 만든다★ — 이걸 해야 3~6월이 화면에 생긴다 (적재 창 3/5 · D-271)
+  pnpm --filter @sacloud/worker nexon iplmatch-project --confirm >> "$LOG" 2>&1
+  proj=$(grep -E '^고유경기=' "$LOG" | tail -1)
+  say "  0판 투영 — ${proj:-(요약을 못 읽었다)}"
+  if [ "$dcode" = "2" ]; then
+    say "★★발견 중에 차단됐다 (403·429) — 밤을 끝낸다. 우회하지 않는다★★"
+    exit 1
+  fi
+fi
+
 round=0
 while [ "$round" -lt 8 ]; do
   round=$((round + 1))
   say "── ${round}판 시작"
 
-  if ! pnpm --filter @sacloud/worker nexon barracks-collect \
-        --league nolink --clans 43 --limit 4000 --confirm \
-        --health https://3rdcloud.my/api/health >> "$LOG" 2>&1; then
-    say "★★${round}판이 0 이 아닌 코드로 끝났다 — 멈춘다★★ (403 이거나 사이트가 무겁다)"
+  # ── ★한 번 튄 것으로 밤을 끝내지 않는다★ (2026-09-04)
+  #   1판을 190건에서 끝냈던 이유가 ★14ms 짜리 순간 끊김 하나★ 였다.
+  #   ★차단(코드 2)은 즉시 끝낸다. 무거움·끊김(코드 3)은 5분 쉬고 세 번까지 다시 건다.★
+  try=0
+  code=0
+  while [ "$try" -lt 3 ]; do
+    try=$((try + 1))
+    pnpm --filter @sacloud/worker nexon barracks-collect \
+      --league nolink --clans 43 --limit 4000 --confirm \
+      --health https://3rdcloud.my/api/health >> "$LOG" 2>&1
+    code=$?
+    [ "$code" = "0" ] && break
+    if [ "$code" = "2" ]; then
+      say "★★차단됐다 (403·429) — 밤을 끝낸다. 우회하지 않는다★★"
+      break
+    fi
+    say "  ${round}판 ${try}번째가 코드 ${code} 로 끝났다 (무겁거나 끊겼다) — ★5분 쉬고 다시 건다★"
+    sleep 300
+  done
+  if [ "$code" != "0" ]; then
+    say "★★${round}판을 못 끝냈다 (코드 ${code}) — 멈춘다★★"
     break
   fi
 

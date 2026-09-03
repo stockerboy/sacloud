@@ -84,6 +84,14 @@ export interface CollectOptions {
    */
   clans?: number
   /**
+   * ★클랜마다 목록을 몇 쪽까지 뒤로 넘기나★ (한 쪽 20건). 기본 ★1★.
+   *
+   * ⚠ ★기본값을 늘리지 마라.★ 15분마다 도는 판은 ★새 것만★ 보면 된다 —
+   *   기본을 늘리면 ★매번 4월까지 다시 훑는다★.
+   *   ★과거를 채우는 판에서만 크게 준다★ (`--list-pages 200`).
+   */
+  listPages?: number
+  /**
    * ★목록을 받을 리그★. 기본 `nolink`.
    *
    * ⚠ ★병영수첩에서 온 것은 그 리그 것이다.★ 여기를 바꾸면 ★그 리그의 클랜을 부른다★ —
@@ -181,9 +189,54 @@ function curl(method: 'GET' | 'POST', path: string, body: string | null): Promis
   })
 }
 
-/** 클랜의 최근 경기 목록 */
-export function fetchClanMatchList(clanSlug: string): Promise<CurlResult> {
-  return curl('POST', '/api/ClanHome/GetClanMatchList/', JSON.stringify({ clan_id: clanSlug }))
+/**
+ * 클랜의 경기 목록 ★한 페이지(20건)★.
+ *
+ * ══ ★★뒤로 넘길 수 있다★★ (2026-09-04 · ★내 이전 보고를 뒤집는다★) ══
+ *
+ * 나는 ★「병영수첩은 최근 20건만 준다」고 보고했다. 틀렸다.★
+ * 사장님이 ★「8월은 거짓말이야」★ 라고 하신 게 맞았다.
+ *
+ * ★커서 이름이 `seq_no` 다.★ 응답의 `message` 를 다음 요청의 `seq_no` 로 넣으면
+ * ★그 앞 20건★ 이 온다. 화면의 자바스크립트가 그대로 그렇게 말한다 —
+ * ```js
+ * a = { user_nexon_sn:…, ★seq_no★:0, mode_flag:…, min_seq_no:0, clan_id:e }
+ * UPDATE: t.lastSeq==e.message || ""===e.message ? t.endPage=!0
+ *                                                : (t.lastSeq=e.message, t.endPage=!1)
+ * ```
+ * ★`message` 가 다음 커서고, 같아지거나 비면 끝★ 이라는 뜻이다.
+ *
+ * ⚠ ★`mode_flag` 를 같이 보내면 안 된다★ — `"A"` 를 넣으면 ★0건★ 이 온다 (실측).
+ *   그건 ★사람 매치목록★(`/api/Match/GetMatchList/`)의 파라미터다. 클랜 것과 다르다.
+ *
+ * ⚠ ★못 찾았던 이유★ — 내가 시험한 이름이 전부 틀렸다 (`match_key` · `last_match_key` · `page`).
+ *   셋 다 ★조용히 무시★ 당해서 ★1페이지가 그대로 다시 왔고★, 나는 그걸 「페이징이 없다」로 읽었다.
+ *   ★모르는 파라미터를 무시하는 API 에서는 「같은 답」이 「없다」의 근거가 못 된다.★
+ *   ★답이 아니라 화면의 코드에서 찾아야 했다.★
+ *
+ * ★한 클랜으로 60페이지까지 넘겨 본 결과★ (sorentolove · 2026-09-04)
+ * ```
+ * 1페이지 → 9/2   10페이지 → 8/19   30페이지 → 7/4   50페이지 → 5/2   ★60페이지 → 4/12★
+ * 1,200경기를 받고도 ★아직 끝이 아니었다★
+ * ```
+ */
+export function fetchClanMatchList(clanSlug: string, seqNo?: string): Promise<CurlResult> {
+  const body: Record<string, string> = { clan_id: clanSlug }
+  /* ★첫 페이지는 `seq_no` 를 아예 안 보낸다★ — 화면도 그렇게 시작한다 */
+  if (seqNo) body.seq_no = seqNo
+  return curl('POST', '/api/ClanHome/GetClanMatchList/', JSON.stringify(body))
+}
+
+/** 목록 응답에서 ★다음 커서★ 를 꺼낸다. 없거나 그대로면 `null` = 끝 */
+export function nextListCursor(body: string, current?: string): string | null {
+  let msg: unknown
+  try {
+    msg = (JSON.parse(body) as { message?: unknown }).message
+  } catch {
+    return null
+  }
+  if (typeof msg !== 'string' || msg === '' || msg === current) return null
+  return msg
 }
 
 /**
@@ -313,47 +366,91 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
       for (const c of clans.slice(0, 5)) log(`   ${c.slug}  (${c.name})`)
       if (clans.length > 5) log(`   … ${clans.length - 5}곳 더`)
     } else {
+      /*
+       * ── ★★클랜마다 뒤로 넘긴다★★ (2026-09-04)
+       *
+       * 전에는 ★클랜당 한 페이지(20건)★ 만 받았다. 그래서 ★최근 것밖에 없었고★,
+       * 나는 그걸 ★「병영수첩이 최근 것만 준다」★ 로 잘못 보고했다.
+       * ★기본값은 그대로 1★ 이다 — 15분마다 도는 판은 새 것만 보면 된다.
+       * ★`--list-pages` 를 크게 주면 그만큼 과거로 간다.★
+       */
       const listRows: BarracksRow[] = []
+      const pageBudget = Math.max(1, opts.listPages ?? 1)
+      let listCalls = 0
       for (const c of clans) {
-        let r: CurlResult
-        try {
-          r = await fetchClanMatchList(c.slug)
-        } catch (e) {
-          result.matchList.failed += 1
-          log(`  ★못 받았다★ ${c.slug} — ${(e as Error).message}`)
-          await sleep(delay)
-          continue
-        }
-        result.statuses[String(r.status)] = (result.statuses[String(r.status)] ?? 0) + 1
-        if (r.status === 403 || r.status === 429) {
-          result.stop = 'blocked'
-          log(`★★${r.status} — 즉시 멈춘다. 우회하지 않는다★★ (${c.slug})`)
-          break
-        }
-        if (r.status !== 200) {
-          result.matchList.failed += 1
-          log(`  HTTP ${r.status} — 넘어간다 (${c.slug})`)
-          await sleep(delay)
-          continue
-        }
-        try {
-          listRows.push({
-            kind: 'matchlist',
-            subject: c.slug,
-            raw: JSON.parse(r.body),
-          })
+        let cursor: string | undefined
+        let pages = 0
+        let oldest = ''
+        for (; pages < pageBudget; pages += 1) {
+          let r: CurlResult
+          try {
+            r = await fetchClanMatchList(c.slug, cursor)
+          } catch (e) {
+            result.matchList.failed += 1
+            log(`  ★못 받았다★ ${c.slug} ${pages + 1}쪽 — ${(e as Error).message}`)
+            await sleep(delay)
+            break
+          }
+          listCalls += 1
+          result.statuses[String(r.status)] = (result.statuses[String(r.status)] ?? 0) + 1
+          if (r.status === 403 || r.status === 429) {
+            result.stop = 'blocked'
+            log(`★★${r.status} — 즉시 멈춘다. 우회하지 않는다★★ (${c.slug} ${pages + 1}쪽)`)
+            break
+          }
+          if (r.status !== 200) {
+            result.matchList.failed += 1
+            log(`  HTTP ${r.status} — 넘어간다 (${c.slug} ${pages + 1}쪽)`)
+            await sleep(delay)
+            break
+          }
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(r.body)
+          } catch {
+            result.matchList.failed += 1
+            log(`  ★JSON 이 아니다★ ${c.slug} ${pages + 1}쪽`)
+            break
+          }
+          listRows.push({ kind: 'matchlist', subject: c.slug, raw: parsed })
           result.matchList.ok += 1
-        } catch {
-          result.matchList.failed += 1
-          log(`  ★JSON 이 아니다★ ${c.slug}`)
+
+          const next = nextListCursor(r.body, cursor)
+          if (next) oldest = next
+          /* ★목록도 부하를 본다★ — 뒤로 넘기면 요청 수가 클랜 수만큼이 아니라 그 곱이다 */
+          if (opts.guard && listCalls % GUARD_EVERY === 0) {
+            const verdict = await opts.guard()
+            if (verdict === 'stop') {
+              result.stop = 'health'
+              log('★사이트가 무겁다 — 목록을 여기서 끊는다★')
+              break
+            }
+            if (verdict === 'pause') await sleep(delay * 4)
+          }
+          /* ★적재는 나눠서★ — 길게 넘기다 죽으면 받은 것을 통째로 잃는다 */
+          if (opts.confirm && listRows.length >= FLUSH_EVERY) {
+            const st = await storeBarracksRows(listRows.splice(0, listRows.length))
+            result.matchList.inserted += st.inserted
+          }
+          await sleep(delay)
+          if (!next) break
+          cursor = next
         }
-        await sleep(delay)
+        if (pageBudget > 1) {
+          log(
+            `  ${c.slug} — ${pages + 1}쪽` +
+              (oldest ? ` · ★가장 오래된 것 ${oldest.slice(0, 6)}★` : ' · ★끝까지★'),
+          )
+        }
+        if (result.stop !== 'done') break
       }
       if (opts.confirm && listRows.length > 0) {
         const stored = await storeBarracksRows(listRows)
-        result.matchList.inserted = stored.inserted
+        /* ⚠ ★`=` 가 아니라 `+=` 다★ — 중간중간 넣은 것을 덮어쓰면 안 된다 */
+        result.matchList.inserted += stored.inserted
         log(`  목록 넣음 ★${stored.inserted}★ · 중복 ${stored.duplicated}`)
       }
+      log(`  ① 목록 요청 ★${listCalls}회★ · 새 경기 ★${result.matchList.inserted}건★`)
     }
     if (result.stop === 'blocked') return result
   }

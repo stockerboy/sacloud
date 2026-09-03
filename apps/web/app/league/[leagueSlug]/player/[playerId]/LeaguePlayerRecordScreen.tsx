@@ -58,6 +58,29 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
  * > 않았다. 지금은 **지표성 카드**(육각형 · 플레이스타일 · 오늘 · 티어빈도)까지 가리고,
  * > **관계 정보**(같이한 플레이어)는 가리지 않는다. 사용자 확인이 필요하다.
  */
+/*
+ * ── ★★화면에서 뺀 둘★★ (2026-09-04 · 사장님 지시)
+ *
+ * > ★「육각형 그래프(전투력)」 — 사장님이 여러 번 지우라고 하셨다★
+ * > ★「플레이스타일(안전함↔변칙적 막대)」 — 구현이 안 된 것을 화면에 두지 않는다★
+ *
+ * ★코드는 지우지 않는다★ (`CLAUDE.md` 1-4). `TraitHexagon` · `PlaystyleBars` 도,
+ * 그것을 만드는 서버 질의(`playerTraits.ts`)도, 계약도 ★그대로 살아 있다.★
+ * ★여기 두 값을 `true` 로 되돌리면 그 자리에 다시 나온다.★
+ *
+ * ⚠ ★★같은 날 한 번 더 확인받았다★★ —
+ *   나는 ★클랜 육각형은 「사장님이 6축을 직접 고르신 것」이라 남겨 뒀는데★
+ *
+ * > ★사장님: «육각형 다 빼 이제 질린다 ★채워지지도 않는거★ 선 걍 하나로 해 킬데스만 보이게»★
+ *
+ *   ★클랜 것도 뺐다★ (`LeagueClanRecordScreen.tsx` 의 `SHOW_CLAN_HEXAGON`).
+ *   ★고르신 것과 「지금 보고 싶은 것」은 다르다.★ 빼신 이유는 ★«채워지지도 않는거»★ 다.
+ */
+/** 2026-09-04 사장님: ★「육각형 다 빼. 채워지지도 않는거」★ */
+const SHOW_TRAIT_HEXAGON: boolean = false
+/** 2026-09-04 사장님: ★「구현이 안 된 것을 화면에 두지 않는다」★ — 「측정중 — 라운드 복원 필요」만 뜬다 */
+const SHOW_PLAYSTYLE: boolean = false
+
 export default function LeaguePlayerRecordPage({
   params,
 }: {
@@ -133,7 +156,7 @@ export default function LeaguePlayerRecordPage({
        여기만 씌웠더니 ★위는 적진 파랑, 아래는 검정 무광★ 으로 갈렸다 */
     <div className="pc-container pb-[40px]">
       {/* ── 1. 전투력 — 이 화면에서 제일 먼저 보여 주고 싶은 것 */}
-      {data.traits === null ? null : (
+      {!SHOW_TRAIT_HEXAGON || data.traits === null ? null : (
         /* 카드가 스스로 `전투력` 제목을 그린다 — 위에 제목을 또 얹지 않는다 */
         <section className="mt-[40px]">
           <EggVeilPanel state={egg} note={EGG_BREAK_GUIDE}>
@@ -143,7 +166,7 @@ export default function LeaguePlayerRecordPage({
       )}
 
       {/* ── 2. 플레이스타일 */}
-      {data.playstyle === null ? null : (
+      {!SHOW_PLAYSTYLE || data.playstyle === null ? null : (
         <section className="mt-[40px]">
           <EggVeilPanel state={egg}>
             <PlaystyleBars playstyle={data.playstyle} />

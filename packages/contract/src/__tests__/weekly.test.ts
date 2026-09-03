@@ -214,6 +214,7 @@ describe('attachWeeklyRank — 스냅샷이 있는 주만 채운다', () => {
     games: 1,
     sniper_kd: null,
     rifle_kd: null,
+      kd: null,
     win_rate: 50,
     season_games: 1,
     line: 'dashed',

@@ -622,6 +622,8 @@ async function main(): Promise<number> {
       const limit = numberFlag(args, 'limit') ?? 10
       /* ★목록을 안 받으면 배틀로그는 언제나 0건이다★ — 운영의 BarracksClanMatchRaw 는 0행이었다 */
       const clans = numberFlag(args, 'clans') ?? 0
+      /* ★클랜마다 목록을 몇 쪽 뒤로 넘기나★ — 기본 1 (새 것만). 과거를 채울 때만 크게 준다 */
+      const listPages = numberFlag(args, 'list-pages') ?? 1
       /* ★어느 리그의 클랜 목록을 받나★ — 기본은 IPL. ★기본값에 기대지 말고 명시한다★ */
       const leagueSlug = stringFlag(args, 'league') ?? 'nolink'
       const delayMs = numberFlag(args, 'delay') ?? DEFAULT_DELAY_MS
@@ -640,13 +642,15 @@ async function main(): Promise<number> {
         log(`★부하(시작 전)★ ${guardLine(state)}`)
         if (before === 'stop') {
           log('★시작 전부터 무겁다 — 이번 판은 돌지 않는다★')
-          return 1
+          /* ★차단이 아니라 무거운 것이다★ — 쉬었다 다시 걸어도 된다 (코드 3) */
+          return 3
         }
       }
 
       const result = await collectBarracks({
         limit,
         clans,
+        listPages,
         leagueSlug,
         delayMs,
         dryRun,
@@ -665,8 +669,21 @@ async function main(): Promise<number> {
         await checkLoad(healthUrl, state)
         log(`\n★부하(끝난 뒤)★ ${guardLine(state)}`)
       }
-      /* ★멈춘 이유가 정상이 아니면 exit 1★ — 체인이 그걸 보고 판단한다 */
-      return result.stop === 'done' || result.stop === 'limit' ? 0 : 1
+      /*
+       * ── ★★멈춘 이유마다 다른 코드를 낸다★★ (2026-09-04)
+       *
+       * 전에는 ★정상이 아니면 전부 1★ 이었다. 그래서 밤샘 판이 —
+       * ★순간 끊김 한 번(health)★ 을 ★차단(403)★ 과 똑같이 보고 ★밤 전체를 끝냈다.★
+       * ★그 둘은 정반대로 다뤄야 한다.★
+       * ```
+       * 0  done · limit    다 했다 → 다음 판
+       * 2  ★blocked★      403·429 다 → ★절대 다시 걸지 않는다★ (D-266)
+       * 3  health · error  사이트가 무겁거나 끊겼다 → ★쉬었다 다시 걸어도 된다★
+       * ```
+       */
+      if (result.stop === 'done' || result.stop === 'limit') return 0
+      if (result.stop === 'blocked') return 2
+      return 3
     }
 
     case 'barracks-link': {

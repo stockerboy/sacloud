@@ -57,6 +57,21 @@ import { ClanTop3 } from '@/components/clan/ClanTop3'
  * ```
  * 클랜 알은 클랜원의 30% 가 각자 깨거나, **클랜마스터가 본인 인증에 성공하면** 깨진다.
  */
+/*
+ * ── ★★클랜 육각형을 화면에서 뺐다★★ (2026-09-04)
+ *
+ * > ★사장님: «육각형 다 빼 이제 질린다 ★채워지지도 않는거★»★
+ *
+ * ⚠ ★한 번 남겼다가 다시 뺐다.★ 나는 ★「6축을 사장님이 직접 고르신 것」이라 남겼는데★
+ *   사장님이 ★«다 빼»★ 라고 하셨다. ★고르신 것과 「지금 보고 싶은 것」은 다르다.★
+ *   이유가 ★«채워지지도 않는거»★ 다 — 6축 중 채워지는 게 적고 「측정중」이 계속 뜬다.
+ *
+ * ★코드는 지우지 않는다★ (`CLAUDE.md` 1-4). `ClanHexagon` · `ClanHexagonV2` ·
+ * 서버 질의(`clanHexV2.ts`) · 계약 전부 그대로다. ★이 값을 `true` 로 되돌리면 다시 난다.★
+ * ★되살리려면 「축이 채워지는지」부터 확인해야 한다★ — 그게 빼신 이유다.
+ */
+const SHOW_CLAN_HEXAGON: boolean = false
+
 export default function LeagueClanRecordPage({
   params,
 }: {
@@ -184,7 +199,12 @@ export default function LeagueClanRecordPage({
         />
       </section>
 
-      {data.hexagon_v2 || data.hexagon ? (
+      {/*
+        ⚠ ★★육각형을 껐다★★ — ★TOP3 는 살려 뒀다★
+          육각형이 TOP3 를 `aside` 로 품고 있어서 ★같이 끄면 TOP3 까지 사라진다.★
+          TOP3 는 따로 주신 것(지시 #27)이라 ★남긴다.★
+      */}
+      {SHOW_CLAN_HEXAGON && (data.hexagon_v2 || data.hexagon) ? (
         <section className="mt-[40px]">
           <EggVeilPanel state={egg} note={CLAN_EGG_GUIDE}>
             <div className={`${PROFILE_PANEL} px-5 py-4`}>
@@ -210,6 +230,18 @@ export default function LeagueClanRecordPage({
                   <ClanHexagon hexagon={data.hexagon} variant="list" />
                 </div>
               ) : null}
+            </div>
+          </EggVeilPanel>
+        </section>
+      ) : data.roster ? (
+        <section className="mt-[40px]">
+          <EggVeilPanel state={egg} note={CLAN_EGG_GUIDE}>
+            <div className={`${PROFILE_PANEL} px-5 py-4`}>
+              <ClanTop3
+                clanName={data.clan.name}
+                members={data.roster.members}
+                leagueSlug={leagueSlug}
+              />
             </div>
           </EggVeilPanel>
         </section>

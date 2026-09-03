@@ -63,7 +63,7 @@ export interface ChartDomain {
 
 /** 한 선 */
 export interface ChartSeries {
-  key: 'sniper_kd' | 'rifle_kd' | 'win_rate' | 'rank'
+  key: 'kd' | 'sniper_kd' | 'rifle_kd' | 'win_rate' | 'rank'
   label: string
   /** CSS 색 — 컴포넌트가 토큰에서 꺼내 넘긴다 */
   color: string
@@ -104,11 +104,39 @@ export function weeklyPercentDomain(values: readonly (number | null)[]): ChartDo
   return { lo, hi }
 }
 
-/** 축에 적을 눈금 값들 — `10 · 20 · 30 …` (아래에서 위로) */
+/**
+ * ★옛 눈금★ — 값에 맞춰 축을 좁혔다 (2026-09-04 이전). ★지우지 않는다★ (`CLAUDE.md` 1-4).
+ *
+ * ⚠ ★이걸 쓰면 주마다 축이 달라진다.★ 그래서 ★같은 사람의 지난주와 이번주를 눈으로 못 비교했다.★
+ */
 export function weeklyTicks(domain: ChartDomain): number[] {
   const out: number[] = []
   for (let v = domain.lo; v <= domain.hi + 0.001; v += TICK) out.push(Math.round(v))
   return out
+}
+
+/**
+ * ★★축을 고정한다 — 사장님이 아홉 값을 직접 주셨다★★ (2026-09-04).
+ *
+ * > ★「Y축을 0 20 30 40 50 60 70 80 100 ← 이 아홉 값 그대로」★
+ *
+ * ⚠ ★고르지 않다.★ 0 다음이 20 이고, 80 다음이 100 이다.
+ *   ★계산해서 만든 값이 아니라 주신 값이다.★ ★「10 이 빠졌네」 하고 채워 넣지 마라.★
+ *
+ * ★왜 고정이 나은가★ — 값에 맞춰 축을 좁히면 ★주마다 축이 달라져서★
+ * 지난주 그래프와 이번주 그래프를 ★눈으로 겹쳐 볼 수 없다.★ 축이 고정이면 위치가 곧 값이다.
+ */
+export const WEEKLY_FIXED_TICKS = [0, 20, 30, 40, 50, 60, 70, 80, 100] as const
+
+/** 고정 축의 범위 — 눈금의 처음과 끝 */
+export const WEEKLY_FIXED_DOMAIN: ChartDomain = {
+  lo: WEEKLY_FIXED_TICKS[0],
+  hi: WEEKLY_FIXED_TICKS[WEEKLY_FIXED_TICKS.length - 1] as number,
+}
+
+/** 고정 축 눈금 — 배열 그대로 돌려준다 */
+export function weeklyFixedTicks(): number[] {
+  return [...WEEKLY_FIXED_TICKS]
 }
 
 /**
@@ -176,6 +204,45 @@ export function weeklySegments(
     current.push({ x: weeklyX(index, values.length), y: toY(value), index, value })
   })
   if (current.length > 0) out.push(current)
+  return out
+}
+
+/**
+ * ★★한 선 안에서 실선과 점선을 가른다★★ (O-045 · 2026-09-03 사장님 · 2026-09-04 화면에 붙임).
+ *
+ * > «★25판을 하지 못한 선수는 그래프를 점선으로 이어라★ 25판이 넘을때까지 쭉 점선이다.
+ * >  ★적은판수로 그래프를 찍어놓고 유지하는 경우를 방지하기 위함이다.★»
+ *
+ * ⚠ ★선 하나가 통째로 실선이거나 점선인 게 아니다.★ 25판을 넘기는 ★그 주부터★ 실선이 된다.
+ *   그러니 한 선을 ★모양이 바뀌는 자리에서 잘라★ 여러 조각으로 그린다.
+ *
+ * ⚠ ★조각은 한 점을 겹쳐서 이어야 한다.★ 안 겹치면 ★바뀌는 자리에 틈이 생긴다.★
+ *   선의 모양은 ★들어오는 쪽 점★ 을 따른다 (계약의 `line` 이 그 점의 값이다).
+ */
+export function weeklyDashRuns<T extends { index: number }>(
+  points: readonly T[],
+  lineOf: (index: number) => 'solid' | 'dashed',
+): Array<{ dashed: boolean; points: T[] }> {
+  const out: Array<{ dashed: boolean; points: T[] }> = []
+  if (points.length === 0) return out
+  if (points.length === 1) {
+    return [{ dashed: lineOf(points[0]!.index) === 'dashed', points: [points[0]!] }]
+  }
+  /*
+   * ★모양은 「점」이 아니라 「점과 점 사이」의 성질이다.★
+   *   i-1 → i 구간의 모양 = ★들어오는 쪽 점 i★ 의 `line`.
+   * 같은 모양이 이어지는 구간들을 한 조각으로 묶고, 조각의 선은
+   * ★그 구간들의 시작점부터 끝점까지★ 다. 그래서 조각끼리 한 점을 나눠 갖는다 — 틈이 없다.
+   */
+  let from = 0
+  let dashed = lineOf(points[1]!.index) === 'dashed'
+  for (let i = 2; i <= points.length; i += 1) {
+    const d = i < points.length ? lineOf(points[i]!.index) === 'dashed' : !dashed
+    if (d === dashed) continue
+    out.push({ dashed, points: points.slice(from, i) })
+    from = i - 1
+    dashed = d
+  }
   return out
 }
 

@@ -150,6 +150,16 @@ export const WeeklyPoint = z.object({
   sniper_kd: z.number().nullable(),
   /** 누적 라이플 킬데스 %. 라플로 뛴 판이 아직 없으면 `null` */
   rifle_kd: z.number().nullable(),
+  /**
+   * ★★통합 킬데스 %★★ — 무기를 안 가린다 (2026-09-04 사장님).
+   *
+   * > ★«선 걍 하나로 해 킬데스만 보이게» ★«다 필요없어»★
+   *
+   * ⚠ ★스나/라플을 더한 값이 아니다.★ ★무기를 모르는 판까지 포함★ 한다 —
+   *   그 판들도 킬과 데스는 분명히 있었다. 나누는 순간에만 무기가 필요했을 뿐이다.
+   *   ★그래서 `sniper_kd` 와 `rifle_kd` 사이 어딘가라는 보장이 없다.★
+   */
+  kd: z.number().nullable(),
   /** 누적 승률 %. 아직 한 판도 없으면 `null` */
   win_rate: z.number().nullable(),
   /**
@@ -435,6 +445,10 @@ export function foldWeekly(
   let rifleKill = 0
   let rifleDeath = 0
   let rifleGames = 0
+  /* ★통합 킬뎃★ — 무기를 안 가린다. 킬·데스를 아는 판이면 전부 넣는다 */
+  let totalKill = 0
+  let totalDeath = 0
+  let totalGames = 0
 
   const points: WeeklyPoint[] = []
   let cursor = 0
@@ -452,6 +466,11 @@ export function foldWeekly(
       else lose += 1
 
       const known = row.kill !== null && row.death !== null
+      if (known) {
+        totalGames += 1
+        totalKill += row.kill ?? 0
+        totalDeath += row.death ?? 0
+      }
       if (known && row.weapon === WEAPON_SNIPER) {
         sniperGames += 1
         sniperKill += row.kill ?? 0
@@ -471,6 +490,7 @@ export function foldWeekly(
       games: gamesThisWeek,
       sniper_kd: sniperGames === 0 ? null : kdOf(sniperKill, sniperDeath),
       rifle_kd: rifleGames === 0 ? null : kdOf(rifleKill, rifleDeath),
+      kd: totalGames === 0 ? null : kdOf(totalKill, totalDeath),
       win_rate: win + lose === 0 ? null : winRateOf(win, lose),
       rank: null,
       season_games: win + lose,
@@ -537,6 +557,7 @@ export function foldWeeklyClan(
       /* 클랜 카드는 킬뎃 선을 그리지 않는다 — 재료가 없다. 0 으로 채우지 않는다 */
       sniper_kd: null,
       rifle_kd: null,
+      kd: null,
       win_rate: win + lose === 0 ? null : winRateOf(win, lose),
       rank: null,
       season_games: win + lose,
