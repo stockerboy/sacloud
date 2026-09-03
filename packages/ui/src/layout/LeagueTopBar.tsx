@@ -15,7 +15,8 @@ import { LeagueLabel } from './LeagueLabel'
  * 타입을 `boolean` 으로 넓혀 둔다. `false` 리터럴로 좁혀지면 되살릴 때 쓸 가지가
  * «닿을 수 없는 코드» 가 되어 tsc/lint 가 문다 (알 스위치와 같은 이유).
  */
-const FAVORITE_ENABLED: boolean = false
+/** 즐겨찾기가 동작하는가. **두 화면이 같은 값을 본다** (O-038 ⑤) — 여기 한 줄이 둘을 함께 여닫는다 */
+export const FAVORITE_ENABLED: boolean = false
 
 /**
  * 리그 화면 상단 — **검정 띠 + 탭 줄**, 그리고 그 아래 **버건디 히어로 띠** (D-251).

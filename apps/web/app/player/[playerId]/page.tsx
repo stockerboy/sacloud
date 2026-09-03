@@ -1,3 +1,5 @@
+import type { Metadata } from 'next'
+import { fetchForMetadata, pageMetadata } from '@/lib/server/pageMetadata'
 import PlayerPage from './PlayerProfileScreen'
 
 /**
@@ -36,6 +38,32 @@ import PlayerPage from './PlayerProfileScreen'
  * · **로그인 표시는 안 굳는다.** GNB 는 `AppShell` 이 그리고, 그건 클라이언트에서
  *   `GET /me` 를 부른다 (O-018). 껍데기가 굳어도 사람마다 다르게 나온다
  */
+
+/**
+ * ★이 선수의 이름표★ (2026-09-03 · O-038 ①).
+ * 못 가져오면 사이트 이름으로 떨어진다 — 이름을 지어내지 않는다.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ playerId: string }>
+}): Promise<Metadata> {
+  const { playerId } = await params
+  const path = `/player/${playerId}`
+  const profile = await fetchForMetadata<{
+    player?: { name?: string; clan?: { name?: string } | null }
+  }>(`/players/${playerId}/profile`)
+
+  const name = profile?.player?.name
+  if (!name) return pageMetadata({ title: null, path })
+
+  const clan = profile.player?.clan?.name
+  return pageMetadata({
+    title: clan ? `${name} · ${clan}` : name,
+    description: `${name} 님의 클랜전 기록입니다.`,
+    path,
+  })
+}
 
 /**
  * **빈 배열이다.** 선수가 23,562명이라 미리 다 만들 수 없고, 만들 이유도 없다.

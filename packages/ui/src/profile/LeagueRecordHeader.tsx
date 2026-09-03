@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 import { RelativeTime } from '../common/RelativeTime'
 import { StarIcon } from '../league/LeagueHome'
+import { FAVORITE_ENABLED } from '../layout/LeagueTopBar'
 import type { RefreshState } from './ProfileHeader'
 import { IdentityBand, MetaDot } from '../player/profileKit'
 
@@ -40,6 +41,29 @@ const HEADER_BTN_LABEL = 'text-text transition-colors group-hover:text-accent'
  * 표시만 두고 동작은 붙이지 않는다 (`LeagueHeader` 의 즐겨찾기와 같은 상태다).
  */
 function FavoriteButton() {
+  /*
+   * ★안 그린다★ (2026-09-03 · O-038 ⑤).
+   *
+   * ══ 내가 틀렸던 것 ══
+   *
+   * `O-033` 에서 나는 **「즐겨찾기를 그리는 살아 있는 자리가 없다」**고 적었다.
+   * `LeagueRecordHeader` 를 grep 했는데 아무도 안 쓰길래 죽은 파일로 봤다.
+   * **틀렸다** — 이 파일이 내보내는 것은 `LeagueRecordHeader` 가 아니라
+   * **`LeagueClanRecordHeader` · `LeaguePlayerRecordHeader`** 이고, 둘 다 쓰인다.
+   * **파일 이름으로 찾고 함수 이름으로 안 찾았다.**
+   *
+   * 강민재가 운영 화면에서 실제로 봤고 그 말이 맞았다 — 「즐겨찾기」 1회.
+   *
+   * ══ 왜 감추나 ══
+   *
+   * **동작하지 않는다.** 원본에서도 표시만 있었고 우리도 붙인 적이 없다.
+   * `LeagueTopBar` 는 2026-09-02 에 같은 이유로 이미 감췄다(`FAVORITE_ENABLED`).
+   * **같은 것이 한 화면에서는 감춰지고 다른 화면에서는 보이면 안 된다.**
+   *
+   * ⚠ **지우지 않았다.** 즐겨찾기가 붙으면 `false` 를 `true` 로 되돌리면 그대로 돌아온다
+   *   (`CLAUDE.md` 10-4). `LeagueTopBar` 와 **같은 이름**을 쓴다.
+   */
+  if (!FAVORITE_ENABLED) return null
   return (
     <div className={`${HEADER_BTN} cursor-pointer`}>
       <StarIcon className="mr-1.5 h-[13px] w-3.5" />

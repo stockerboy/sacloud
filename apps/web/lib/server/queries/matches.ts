@@ -615,13 +615,26 @@ export async function getLeaguePlayerMatches(
  * **최신 N건**만 준다 — 커서가 없다. 그것을 고치면 홈(옛 화면)의 동작이 같이 바뀐다.
  * 그래서 **옆에 새로 만들었다.** 옛 함수는 그대로 산다 (`CLAUDE.md` 10-4).
  *
- * ══ 보는 쪽을 누구로 두나 ══
+ * ══ 보는 쪽을 누구로 두나 — ★한 번 틀렸다★ ══
  *
  * 선수 기록실은 **그 선수가 뛴 팀**, 클랜 기록실은 **그 클랜**을 기준으로 본다.
  * 이 목록은 **아무 편도 아니다** — 리그 전체를 늘어놓는 자리다.
- * `homeRecent.ts` 가 같은 자리에서 쓰는 규칙을 그대로 가져온다 —
- * **이긴 팀**을 기준으로 보고, 승자를 모르면 red 슬롯을 본다.
- * ⚠ 편을 지어내지 않는다. 규칙을 새로 만들지도 않는다.
+ *
+ * 처음에는 `homeRecent.ts` 를 따라 **이긴 팀**을 기준으로 삼았다. 그런데 그 파일은
+ * 「이긴 팀 · 진 팀」을 나란히 적는 **한 줄짜리** 화면용이고, 이 목록이 쓰는 `MatchCard` 는
+ * **보는 쪽 기준으로 「승리 / 패배」를 크게 적는다.**
+ * ```
+ * 결과   ★스무 줄이 전부 「승리」★   (2026-09-03 운영 실측 · 강민재)
+ *        경기상세를 열면 승패가 멀쩡히 나온다 — 목록만 거짓말을 했다
+ * ```
+ * **이긴 팀을 「우리」로 세우면 언제나 우리가 이긴다.** 당연한데 못 봤다.
+ *
+ * 그래서 **`red` 슬롯**을 기준으로 본다. `red`/`blue` 는 **슬롯 이름이지 진영이 아니고**
+ * (D-184 · D-207) 누구 편도 아니다. 그러면 카드가 「red 클랜 승리/패배 vs blue 클랜」이 되어
+ * **양쪽이 다 보인다.**
+ *
+ * ⚠ **선수·클랜 기록실은 안 건드렸다.** 거기서는 「내 편」이 있고 지금이 맞다.
+ * ⚠ 편을 지어내지 않는다 — `red` 는 경기 자신이 들고 있는 값이다.
  */
 export async function getLeagueMatches(
   leagueId: string,
@@ -632,11 +645,8 @@ export async function getLeagueMatches(
     { leagueId },
     cursor,
     size,
-    (match) => ({
-      leagueClanId:
-        match.winnerSide === 'blue' ? match.blueLeagueClanId : match.redLeagueClanId,
-      playerId: null,
-    }),
+    /* `red` 슬롯 고정. 승자를 보지 않는다 — 위 「한 번 틀렸다」 참조 */
+    (match) => ({ leagueClanId: match.redLeagueClanId, playerId: null }),
     leagueId,
   )
 }

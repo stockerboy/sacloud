@@ -1138,8 +1138,10 @@ export function getLeaguePlayerMatches(
 /**
  * **리그 전체 경기 목록** (2026-09-03 · O-015).
  *
- * 보는 쪽은 **이긴 팀**이다. 승자를 모르면 red 슬롯 — 서버(`getLeagueMatches`)와
- * **같은 규칙**이다. 여기서 규칙이 갈라지면 mock↔live 대조가 조용히 깨진다.
+ * 보는 쪽은 **`red` 슬롯**이다 — 서버(`getLeagueMatches`)와 **같은 규칙**이다.
+ * 여기서 규칙이 갈라지면 mock↔live 대조가 조용히 깨진다.
+ *
+ * ⚠ 처음에는 「이긴 팀」이었는데 그러면 **목록이 전부 「승리」로 보인다** (O-038 ②).
  */
 export function getLeagueMatches(
   leagueId: string,
@@ -1149,11 +1151,7 @@ export function getLeagueMatches(
   const ordered = matchesDesc
     .filter((match) => match.leagueId === leagueId)
     .map((match) =>
-      toMatchListItem(
-        match,
-        match.winnerSide === 'blue' ? match.blueLeagueClanId : match.redLeagueClanId,
-        null,
-      ),
+      toMatchListItem(match, match.redLeagueClanId, null),
     )
     .filter((entry): entry is MatchListItem => Boolean(entry))
   return paginate(ordered, cursor, size, (item) => item.id)

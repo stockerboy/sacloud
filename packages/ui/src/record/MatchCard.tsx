@@ -156,6 +156,25 @@ const LOOK: Record<MatchCardLook, LookClasses> = {
  * 픽셀 단위 간격·폰트 크기는 원본과 동일함이 검증되지 않았다 `[미확인]`.
  */
 
+/**
+ * ★「배치고사」를 「기록 없음」으로 맞춘다★ (2026-09-03 · O-038 ③).
+ *
+ * **배치고사는 2026-09-01 에 폐지됐다** (사장님 지시 · `CLAUDE.md` 5장).
+ * 선수 · 클랜 · 랭킹 화면은 전부 「기록 없음」으로 바꿨는데 **경기 화면만 옛말이 남았다.**
+ * ```
+ * PlayerHeadCard 125행   placement ? '기록 없음' : `N점`
+ * ClanHeadCard    92행   placement ? '기록 없음' : `N점`
+ * ClanRoster            0판이면 '기록 없음' · 뛰었는데 래더가 없으면 '측정중'  (O-033 ③)
+ * ★MatchCard★           '배치고사'  ← 다섯 자리에 남아 있었다
+ * ```
+ * **같은 상태를 화면마다 다른 이름으로 부르고 있었다.** 강민재가 잡았다.
+ *
+ * ⚠ **새 말을 만들지 않았다.** 다른 화면이 이미 쓰는 그 말을 그대로 쓴다.
+ * ⚠ 계약의 `placement` 필드 이름은 **안 건드렸다.** 화면에 나가는 글자만 바꾼다 —
+ *   그 플래그는 랭킹 모집단 판정에도 쓰인다 (`rating/constants.ts`).
+ */
+const PLACEMENT_LABEL = '기록 없음'
+
 /** 초 → `10분 36초` (원본 표기) */
 export function formatPlayTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -297,7 +316,7 @@ function ClanSide({
             </>
           ) : null}
           {snapshot.placement ? (
-            '배치고사'
+            PLACEMENT_LABEL
           ) : snapshot.rating === null ? (
             /* 래더에 반영되지 않은 경기는 그 시점 클랜 점수 자체가 없다 (D-146).
                `0점` 으로 그리면 클랜 점수가 0이었던 것처럼 읽힌다.
@@ -414,13 +433,15 @@ export function MatchCard({
               >
                 <span className="font-semibold">{match.map.name}</span>
                 {' - '}
-                <RelativeTime value={match.start_at} />
+                {/* 시각까지 적는다 — 같은 맵에서 같은 날 여러 판을 하면
+                    「7일 전」만으로는 어느 판인지 알 수 없다 (O-038 ④) */}
+                <RelativeTime value={match.start_at} withClock />
               </Link>
             </div>
             <div className="ml-auto shrink-0 pl-2 font-semibold">
               {/* 배치고사 중이면 래더 증감 대신 `배치고사` (원본 규칙) */}
               {match.placement ? (
-                '배치고사'
+                PLACEMENT_LABEL
               ) : match.rating_update !== null ? (
                 /* 숫자 색은 **원본(3rd.supply) 것**이다 — 파랑/빨강 (2026-09-01 사용자 지시).
                    면·막대·「승리/패배」 글자는 `적진` 그대로다. 숫자만 갈아 끼웠다 */
@@ -796,7 +817,7 @@ function TeamBlock({
 
 /** 팀 헤더의 클랜 점수. 배치고사·래더 미반영을 숫자로 위장하지 않는다 */
 function SnapshotRating({ snapshot }: { snapshot: MatchClanSnapshot }) {
-  if (snapshot.placement) return <>배치고사</>
+  if (snapshot.placement) return <>{PLACEMENT_LABEL}</>
   if (snapshot.rating === null) {
     /* 래더에 반영되지 않은 경기라 그 시점 클랜 점수가 없다.
        표기는 `알수없음` 하나로 통일한다 (2026-08-28 사용자 지시 — 예전 `미반영`) */
@@ -906,7 +927,7 @@ function StatRow({
           {/* 그 시점 래더 점수. 색 등급은 랭킹·프로필과 같은 `ratingClass` 를 쓴다 */}
           <div className="text-xs">
             {rating.kind === 'placement' ? (
-              <span className="text-faint">배치고사</span>
+              <span className="text-faint">{PLACEMENT_LABEL}</span>
             ) : rating.kind === 'rating' ? (
               <span className={`num ${ratingClass(rating.value)}`}>
                 {formatCount(rating.value)}점
@@ -972,7 +993,7 @@ function StatRow({
             <span className="text-faint">·</span>
           )
         ) : delta.kind === 'placement' ? (
-          '배치고사'
+          PLACEMENT_LABEL
         ) : delta.kind === 'delta' ? (
           formatRatingDelta(delta.value)
         ) : (

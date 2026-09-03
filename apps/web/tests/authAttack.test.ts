@@ -171,7 +171,21 @@ describe.skipIf(!up)('계정 연동 — 소유권 없는 선점', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ player_name: '씨야' }),
     })
-    expect(response.status, '비로그인 신청은 401이어야 한다').toBe(401)
+    /*
+     * ★막는다는 것을 지킨다. 막는 **방법**을 지키지 않는다★ (2026-09-03 · O-008 ⑥).
+     *
+     * 옛 줄 — `expect(response.status).toBe(401)`.
+     * 그때는 막는 길이 **로그인 검사 하나**였다. 지금은 하나 더 앞에 섰다 —
+     * 신청 창구 자체가 닫혀 있으면 **누구에게든 403** 이다 (`claimGate.ts`).
+     * 승인해 줄 사람이 자리에 없기 때문이다.
+     *
+     * 이 테스트가 지키려던 것은 **「소유권 없는 사람이 선점하지 못한다」**이지
+     * 「401 이 나온다」가 아니다. 그래서 **보장**을 재고 **기제**는 안 잰다.
+     * ⚠ 200 이 나오면 그때는 진짜로 뚫린 것이다.
+     */
+    expect([401, 403], `비로그인 신청이 막혀야 한다 (받은 값 ${response.status})`).toContain(
+      response.status,
+    )
   })
 
   it('관리자 승인 경로는 비인증으로 열리지 않는다', async () => {
