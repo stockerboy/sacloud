@@ -188,3 +188,89 @@ pnpm --filter @sacloud/worker nexon clan-round-build --confirm
   아니라 **안전 쪽으로 잡은 값**이다. 1·2순위를 돌려 보고 응답 시간이 흔들리지 않으면
   그때 3·4순위 규모를 다시 논의한다
 - 병영수첩 로그인 세션이 얼마나 오래 유지되는지 `[미확인]`
+
+---
+
+# 2026-09-04 밤에 바뀐 것 — **여기부터가 지금 쓰는 방법이다**
+
+위 절차는 **2026-09-01 의 것**이다. 그 뒤에 바뀐 것을 아래에 적는다.
+**위 내용은 지우지 않는다** (`CLAUDE.md` 1-4) — 그때의 판단 근거가 거기 있다.
+
+## 지금 돌리는 법
+
+```sh
+# 밤새 받기 — ★한 번에 하나만 돈다★ (잠금이 막는다)
+sh scripts/overnight-collect.sh
+
+# 기간을 정해 받기 (3~6월만)
+COLLECT_FROM=260301 COLLECT_TO=260701 SKIP_DISCOVER=1 sh scripts/overnight-collect.sh
+
+# 15분마다 (컴퓨터가 켜져 있는 동안)
+sh scripts/autocollect.sh
+```
+
+| 환경변수 | 뜻 | 기본 |
+|---|---|---|
+| `ROUND_LIMIT` | 한 판에 받을 배틀로그 수 | 1500 |
+| `ROUNDS` | 최대 몇 판 | 20 |
+| `COLLECT_FROM` / `COLLECT_TO` | 어느 기간(`YYMMDD`) | 전 기간 |
+| `SKIP_DISCOVER` | `1` 이면 목록 발견을 건너뛴다 | 0 |
+| `COLLECT_LOCK_TEST` | `1` 이면 **잠금만 시험하고 끝낸다** (요청 0건) | 0 |
+
+## ⚠ 반드시 지킬 것 — **한 번에 하나만**
+
+**`TaskStop` 은 셸만 죽이고 그 아래 프로세스는 남긴다** (D-279).
+한 번 당해서 **두 시간 반 동안 원본을 두 배로 두드렸다.**
+
+```powershell
+# 멈춘 뒤에는 ★반드시 세어 본다★
+Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*barracks-collect*' } |
+  Select-Object ProcessId, CreationDate
+# 남아 있으면
+… | ForEach-Object { taskkill /F /T /PID $_.ProcessId }
+```
+
+**이제는 잠금이 막는다.** 그래도 **세어 보는 습관은 남긴다** — 잠금은 스크립트를 통할 때만 듣는다.
+
+## 목록을 과거로 넘기기 (D-270)
+
+**커서 이름은 `seq_no` 다.** 응답의 `message` 를 다음 `seq_no` 로 넣으면 그 앞 20건이 온다.
+
+```sh
+pnpm --filter @sacloud/worker nexon barracks-collect \
+  --league nolink --clans 43 --list-pages 400 --list-until 260305 --limit 0 --confirm
+```
+
+- `--list-until 260305` — **그 날짜에 닿으면 그 클랜을 끝낸다.** **쪽 수로 끊으면 클랜마다 다르다**
+  (`zzim1` 은 68쪽에 3월, `lee2` 는 81쪽에 겨우 7월)
+- ⚠ **`mode_flag` 를 같이 보내면 0건이 온다.** 그건 사람 매치목록의 파라미터다
+
+## 받은 뒤
+
+```sh
+pnpm --filter @sacloud/worker nexon iplmatch-project --confirm      # 목록 → 경기
+pnpm --filter @sacloud/worker nexon battlelog-lineup --league nolink --confirm  # 배틀로그 → 라인업
+node scripts/prod-run.mjs season0-apply --leagues nolink --confirm  # 순위 다시 계산
+```
+
+## 확인용 (전부 **읽기 전용**, 요청 0건)
+
+```sh
+node scripts/prod-run.mjs month-coverage    # 달마다 경기·라인업
+node scripts/prod-run.mjs lineup-ten        # 경기 상세에 10명이 다 있나
+node scripts/prod-run.mjs spring-gap        # 3~6월이 어디서 막혔나
+node scripts/prod-run.mjs clan-slug-probe   # 클랜 슬러그가 병영수첩에서 통하나
+node scripts/prod-run.mjs pending-dup       # 같은 경기를 두 번 부르나
+```
+
+## 화면을 **폰 크기로 직접 보기**
+
+```sh
+node scripts/shot.mjs https://3rdcloud.my/ /tmp/home.png 390 900
+node scripts/shot.mjs <주소> <파일> 390 900 clip:470,330   # 그 자리만 잘라서
+```
+
+⚠ **`chrome --headless --window-size=390 --screenshot` 은 거짓말을 한다** —
+사진은 390px 인데 **레이아웃은 기본 창 크기로 계산된다.** 그 사진을 보고
+**「폰에서 글이 잘린다」고 잘못 판단할 뻔했다.** 위 도구는 **CDP 로 뷰포트를 직접 주고,
+문서 폭도 숫자로 같이 잰다.**
