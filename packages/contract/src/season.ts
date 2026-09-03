@@ -14,8 +14,23 @@
  *   사용자가 지시한 표기(`시즌0`)를 그대로 쓴 결과다.
  */
 
-/** 베타(시즌0)의 화면 표기 */
-export const BETA_SEASON_LABEL = '시즌0'
+/**
+ * `seasonType='beta'` 인 시즌의 화면 표기.
+ *
+ * ── ★2026-09-03 (O-046) — '시즌0' 에서 'Beta' 로 바꿨다★
+ *   사장님이 ★Beta 와 시즌0 을 서로 다른 두 시즌★ 으로 정하셨다.
+ *   > «1월첫째주부터 7월첫째주 까지가 Beta, 7월첫째주부터 현재까지가 시즌0»
+ *
+ *   그전까지 이 저장소는 **beta = 시즌0** 이었다 (D-178). 그래서 이 상수가 '시즌0' 이었다.
+ *   이제 둘이 갈라졌으므로 ★이 상수는 Beta 만 가리킨다.★
+ *   시즌0 은 `seasonType='official'` · `number=0` 이라 `officialSeasonLabel(0)` 이 맡는다.
+ *
+ *   ⚠ 옛 값은 `'시즌0'` 이었다. 되돌릴 일이 생기면 이 한 줄이다.
+ *   ⚠ ★지금 화면에 안 뜬다★ — `BetaNotice` 는 어느 화면에서도 안 그려지고 있다
+ *     (`LeagueHomeLayoutLegacy.tsx:52` — 「관리자 화면 등에서 쓸 수 있어 남겨 둔다」).
+ *     그래서 이 변경은 ★사람 눈에 보이는 것을 지금 당장 바꾸지 않는다.★
+ */
+export const BETA_SEASON_LABEL = 'Beta'
 
 /** 정식·과거 시즌의 화면 표기 — 원본 지난시즌 카드 관측(`시즌 6`)에 맞춘다 (D-166) */
 export function officialSeasonLabel(number: number): string {

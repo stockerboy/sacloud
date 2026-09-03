@@ -33,11 +33,23 @@ describe('베타 안내 노출 조건', () => {
 })
 
 describe('베타 안내 문구', () => {
-  it('제목은 시즌0 이다 (D-178 — 예전 `Beta Season`)', () => {
+  /**
+   * ── ★2026-09-03 (O-046) — 제목이 '시즌0' → 'Beta' 로 바뀌었다★
+   *
+   * 그전까지 이 저장소에서 **beta = 시즌0** 이었다 (D-178). 사장님이 그 이름으로 부르셨다.
+   * ★그런데 사장님이 Beta 와 시즌0 을 서로 다른 두 시즌으로 정하셨다.★
+   * > «1월첫째주부터 7월첫째주 까지가 Beta, 7월첫째주부터 현재까지가 시즌0»
+   *
+   * 그래서 이 상수는 이제 ★Beta 만★ 가리킨다. 시즌0 은
+   * `seasonType='official'` · `number=0` 이라 `officialSeasonLabel(0)` 이 맡는다.
+   *
+   * ⚠ 옛 값은 `'시즌0'` 이었다. 되돌릴 일이 생기면 `BETA_SEASON_LABEL` 한 줄이다.
+   */
+  it('제목은 Beta 다 (2026-09-03 · 예전 `시즌0` · 그전 `Beta Season`)', () => {
     /* 예전에는 내부 번호 0 을 감추려고 `Beta Season` 이라고 썼다 (D-098).
        사용자가 `시즌0` 이라고 부르기로 정해서 **번호를 그대로 드러낸다** (D-178) */
-    expect(BETA_NOTICE_HEADLINE).toBe('시즌0')
-    expect(betaNoticeFor('beta')?.headline).toBe('시즌0')
+    expect(BETA_NOTICE_HEADLINE).toBe('Beta')
+    expect(betaNoticeFor('beta')?.headline).toBe('Beta')
   })
 
   it('무엇을 검증하는 시즌인지 알려 준다', () => {
@@ -48,7 +60,7 @@ describe('베타 안내 문구', () => {
     /* 시즌1 의 **번호가 `[미확인]`** 이라 문구에 숫자를 넣지 않는다 (D-175 · D-178).
        예전 문구는 `정식 Season 8` 이라고 못 박고 있었다 */
     expect(BETA_NOTICE_CARRYOVER).toBe(
-      '시즌0의 랭킹과 점수는 다음 정식 시즌에 승계되지 않습니다.',
+      'Beta의 랭킹과 점수는 다음 정식 시즌에 승계되지 않습니다.',
     )
     expect(BETA_NOTICE_CARRYOVER).not.toContain('Season')
     expect(betaNoticeFor('beta')?.lines).toContain(BETA_NOTICE_CARRYOVER)

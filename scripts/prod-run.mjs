@@ -67,6 +67,16 @@ const ALLOWED = {
     writes: false,
     what: '라운드 단위로 설박튀를 가린다 (설치했는데 그 라운드를 졌는가) — 읽기만 한다',
   },
+  'season-verify': {
+    file: 'seasonVerify',
+    writes: false,
+    what: 'O-046 확인 칸 다섯 (읽기만 한다)',
+  },
+  'season-assign': {
+    file: 'seasonAssign',
+    writes: true,
+    what: 'O-046 — 시즌 넷을 만들고 경기의 seasonId 를 채운다. ★--confirm 없으면 미리보기★',
+  },
   'season-plan': {
     file: 'seasonPlanProbe',
     writes: false,

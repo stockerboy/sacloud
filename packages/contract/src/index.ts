@@ -34,3 +34,5 @@ export * from './clanSearch'
 export * from './clanAliases'
 /* 수집 신선도 임계값 — 웹(`/api/health`)과 워커가 ★같은 자★ 를 쓴다 (2026-09-03) */
 export * from './collectFreshness'
+/* 시즌 경계 — ★진실은 한 곳★ (O-046 · 2026-09-03) */
+export * from './seasonWindow'
