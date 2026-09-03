@@ -114,8 +114,11 @@ jobs:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       DRY_RUN: ${{ inputs.dry_run || 'false' }}
-      CLANS: ${{ inputs.clans || '10' }}
-      LIMIT: ${{ inputs.limit || '120' }}
+      # ⚠ ★`||` 는 '0' 도 뒤집는다★ — GitHub 식에서 '0' 은 거짓이라
+      #   `clans=0` 을 넣어도 '10' 이 된다. 설명에 «0 이면 건너뛴다» 라고 적어 놓고
+      #   ★그 0 을 넣을 수가 없다.★ 빈 문자열일 때만 기본값을 쓰게 한다
+      CLANS: ${{ inputs.clans == '' && '10' || inputs.clans }}
+      LIMIT: ${{ inputs.limit == '' && '120' || inputs.limit }}
       PROJECT: ${{ inputs.project || 'true' }}
       HEALTH_URL: 'https://3rdcloud.my/api/health'
       # 한 실행을 이 길이로 맞춘다 (초). ★체인 주기가 곧 이 값이다★ — 사장님의 「15분마다」다
@@ -166,6 +169,10 @@ jobs:
       # ── ③④ 투영. ★여기까지 와야 화면이 바뀐다★
       #   ⚠ `--league nolink` 를 명시한다. 기본값에 기대지 않는다
       - name: 투영 (경기 → 라인업)
+        id: project
+        # ⚠ ★여기서 멈추면 판정 스텝이 안 돈다★ — 그러면 ★디스코드가 안 운다.★
+        #   실패를 「기록하고」 판정까지 간다. 판정이 그 결과를 보고 운다
+        continue-on-error: true
         if: ${{ env.DRY_RUN != 'true' && env.PROJECT == 'true' }}
         run: |
           set -uo pipefail
@@ -179,6 +186,9 @@ jobs:
         if: ${{ always() && env.DRY_RUN != 'true' }}
         env:
           CODE: ${{ steps.collect.outputs.code }}
+          # ★투영 결과를 판정에 넣는다★ — 이게 없으면 투영이 통째로 실패해도
+          #   긁기만 보고 「정상」을 찍는다. ★원문만 쌓이고 화면은 그대로인데 아무도 모른다★
+          PROJECT_RESULT: ${{ steps.project.outcome }}
         run: |
           set -uo pipefail
           line=$(grep -E '^계획 ' /tmp/collect.log | tail -1 || echo '(수집 요약을 못 읽었다)')
@@ -197,17 +207,37 @@ jobs:
             *health*)  bad='사이트가 무거워 수집이 스스로 물러났다' ;;
           esac
           if [ -z "$bad" ] && [ "${CODE:-0}" != '0' ]; then bad='수집이 0 이 아닌 코드로 끝났다'; fi
+          # ★투영이 실패하면 화면이 안 바뀐다★ — 긁기가 멀쩡해도 그건 고장이다
+          if [ -z "$bad" ] && [ "${PROJECT_RESULT:-}" = 'failure' ]; then
+            bad='긁기는 됐는데 ★투영이 실패했다★ — 원문만 쌓이고 화면은 그대로다'
+          fi
+
+          # ★부분 실패는 위 조건들이 안 잡는다★ — 200건 중 190건이 실패해도 `ok>0` 이라 「정상」이다
+          if [ -z "$bad" ]; then
+            req=$(echo "$line" | grep -oE '요청 ★[0-9]+★' | grep -oE '[0-9]+' || echo 0)
+            okc=$(echo "$line" | grep -oE '받음 ★[0-9]+★' | grep -oE '[0-9]+' || echo 0)
+            if [ "${req:-0}" -ge 10 ] && [ $(( okc * 2 )) -lt "${req:-0}" ]; then
+              bad="요청 ${req}건 중 ${okc}건만 받았다 — ★절반을 넘게 실패했다★"
+            fi
+          fi
 
           if [ -n "$bad" ]; then
             echo "::error::${bad}"
-            if [ -n "${DISCORD_WEBHOOK_URL:-}" ]; then
+            if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+              # ★비어 있으면 그 사실을 남긴다★ — 옛 파일(collect-watchdog)은 그렇게 한다.
+              #   아무 말도 안 하면 ★「알림이 갔다」와 「보낼 데가 없다」를 구별할 수 없다★
+              echo "::warning::DISCORD_WEBHOOK_URL 이 없다 — ★경보를 보낼 곳이 없다.★ Settings → Secrets 에 넣어라"
+            else
               # ⚠ ★여러 줄을 그대로 쓰지 않는다★ — 이어지는 줄이 열 0 에서 시작하면
               #   YAML 블록 스칼라가 거기서 끝나고 ★GitHub 이 파일 전체를 못 읽는다.★
               #   실제로 그래서 첫 실행이 잡 0개로 실패했다 (2026-09-03). jq 가 줄을 잇게 한다
               body=$(jq -nc --arg b "$bad" --arg l "$line" --arg s "$stop" \
                 '{content: ("**병영수첩 수집이 멈췄습니다** — " + $b + "\n" + $l + "\n" + $s)}')
-              curl -sS -o /dev/null -X POST -H 'Content-Type: application/json' \
-                --data "$body" "$DISCORD_WEBHOOK_URL" || echo '::warning::웹훅을 못 보냈다'
+              # ⚠ ★`-f` 가 있어야 한다★ — 없으면 curl 은 404·401 을 받아도 ★exit 0★ 이다.
+              #   웹훅이 지워졌거나 주소가 틀려도 ★「보냈다」로 끝나고 아래 `||` 가 영원히 안 돈다
+              curl -fsS -o /dev/null -X POST -H 'Content-Type: application/json' \
+                --data "$body" "$DISCORD_WEBHOOK_URL" \
+                || echo '::warning::★웹훅을 못 보냈다★ — 경보가 사람에게 안 닿았다'
             fi
             exit 1
           fi
