@@ -38,6 +38,27 @@ export function FormTop3({
   if (loading) return null
   if (!form || form.rows.length === 0) return null
 
+  /*
+   * ── ★★증감이 전부 0 이면 그리지 않는다★★ (2026-09-04 · D-278)
+   *
+   * 폰으로 IPL 랭킹을 찍어 보니 ★이렇게 나와 있었다★ —
+   * ```
+   * 1  김나기   ★0점★ (7경기)
+   * 2  +-'-+   ★0점★ (7경기)
+   * 3  love    ★0점★ (7경기)
+   * ```
+   * ★7경기를 뛰고 0점일 수는 있어도, 1·2·3등이 나란히 0점일 수는 없다.★
+   * 진짜 이유는 ★경기 단위 래더 스냅샷(`MatchPlayerStat.ratingUpdate`)이 거의 안 채워져 있어서★ 다
+   * (D-278 실측: nolink 0% · sanply 0% · supply 3% · daerule 0%).
+   *
+   * ★없는 것을 `0점` 으로 그리면 거짓말이다★ (`CLAUDE.md` 3장 7번 · D-106).
+   * 바로 아래 경기 카드는 같은 상황에서 ★「알수없음」★ 이라고 정직하게 적는다 —
+   * ★같은 화면에서 한쪽만 0 으로 그리면 안 된다.★
+   *
+   * ★래더 증감이 채워지면 이 카드는 저절로 다시 나온다.★ 기능을 지운 것이 아니다.
+   */
+  if (form.rows.every((row) => row.rating_delta === 0)) return null
+
   return (
     <div className="mb-5">
       <div className="mb-2 flex items-baseline max-md:flex-col max-md:items-start">
