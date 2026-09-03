@@ -1,0 +1,275 @@
+# 병영수첩 수집 — IPL 기록을 **사람 손 없이** 15분마다 가져온다 (O-051 · 2026-09-03)
+#
+# ── 왜 만들었나
+#   사장님: «★나는 크롬 못켜놓는다★ ★무조건 자동화 방안 알아봐 15분에 한번 갱신되는★»
+#   지금까지 IPL 을 긁는 길은 **브라우저 콘솔 스니펫** 하나뿐이었다 —
+#   병영수첩을 로그인한 채 열고 F12 에 붙여 넣는 방식(`BATTLELOG_COLLECT_RUNBOOK` 2장).
+#   **그 방식이 통째로 빠졌다.**
+#
+# ── 무엇이 이걸 가능하게 했나 (D-268)
+#   병영수첩은 **`curl` 이면 200 이다.** Node 의 fetch 는 403 이다 —
+#   같은 IP · 같은 순간 · 같은 요청으로 갈렸고, 403 뒤에 curl 을 다시 보내 200 을 확인했다.
+#   **차단이 아니라 클라이언트가 갈린다.** 그래서 크롬도 puppeteer 도 사장님 PC 도 필요 없다.
+#   ⚠ **UA·쿠키를 위조하지 않는다.** 그 200 은 curl 이 평소 보내는 그대로다 (`CLAUDE.md` 3-A 5번).
+#
+# ── 왜 cron 만 믿지 않는가
+#   이 저장소 실측으로 GitHub 예약은 **89% 가 안 뜬다** (D-229 · 슬롯 153칸 중 발사 17 · 지연 중앙값 21분).
+#   `cron: */15` 로 쓰면 **사장님께 「15분마다 됩니다」라고 하고 실제로는 몇 시간에 한 번** 돈다.
+#   그래서 `collect-watchdog.yml` 과 같은 **자기호출 체인**을 쓴다 — 한 실행이 15분이 되도록
+#   안에서 기다린 뒤 자기 자신을 부른다. **주기는 GitHub 이 아니라 우리 시계다.**
+#   cron 은 체인이 끊겼을 때 되살리는 후퇴값이다.
+#
+# ── 한 사이클은 **긁기 + 투영** 둘 다다
+#   ```
+#   ① 목록    IPL 클랜의 최근 경기 목록      → BarracksClanMatchRaw
+#   ② 배틀로그 아직 안 받은 경기의 킬·데스    → BarracksBattleLogRaw
+#   ③ 경기    원문 → Match                  (iplmatch-project)
+#   ④ 라인업  원문 → MatchPlayerStat        (battlelog-lineup)
+#   ```
+#   ⚠ **①~②만 하면 화면이 안 바뀐다.** 원문만 쌓이고 워치독은 초록불인데 사장님이 보시는 것은 그대로다.
+#   ⚠ **①이 없으면 ②가 언제나 0건이다.** 운영의 `BarracksClanMatchRaw` 가 실제로 0행이었다 —
+#     런북에 적힌 «208,067행» 은 **로컬 미러 DB** 값이었다 (2026-09-03 실측).
+#
+# ── 사이트를 굶기지 않는다 (O-017 조건 그대로)
+#   `/api/health` 의 **`checks.db` 만** 본다. 최상위 `status` 를 보면 안 된다 —
+#   그건 넥슨 수집을 세워 둔 탓에 낡아 있을 수 있고, 그걸 보면 **수집이 자기 때문에 물러난다.**
+#   ```
+#   기준선 0.39초 · 1.5초 연속 2회 → 한 사이클 쉼 · 3초 초과 → 이 판 종료
+#   ```
+#   ⚠ **첫 요청은 언제나 느리다** — 실측 3.66초(첫바이트 3.659). 서버가 깨는 시간이지 부하가 아니다.
+#     `loadGuard` 가 느리면 한 번 더 재고 **두 번째 값으로 판정한다.** 안 그러면 매번 스스로 물러나
+#     **한 건도 못 가져오면서 로그에는 「부하 때문에 쉰다」로 남는다.**
+#
+# ── 원본에 대한 예의 (D-266)
+#   간격 하한 1000ms · 기본 1500ms · **첫 403·429 에서 즉시 정지** · 동시 1.
+#   2026-09-02 에 200ms 간격 296건에서 집 IP 가 막힌 적이 있다. **차단은 우회 대상이 아니라 멈춤 신호다.**
+#
+# ── 리그가 섞이면 안 된다
+#   **병영수첩에서 온 것은 IPL 이다.** CLI 는 `nolink` 리그에 등록된 클랜만 부르고,
+#   투영도 `--league nolink` 를 **명시한다** — 기본값에 기대면 기본값이 바뀌는 날 조용히 새 리그로 들어간다.
+#
+# ── 비밀값
+#   DATABASE_URL · DISCORD_WEBHOOK_URL — 저장소 Secrets. 로그·커밋 어디에도 값을 찍지 않는다.
+
+name: 병영수첩 수집
+
+on:
+  schedule:
+    # 후퇴값이다. 체인이 끊겼을 때만 쓸모가 있다.
+    # 이미 도는 것과 안 겹치는 분: cache-warm */5 · watchdog 4-59/10 · season0 17분 · supply 7,37분
+    - cron: '2,32 * * * *'
+  # 이 파일을 고쳐 푸시하면 한 번 돈다 = 체인 시동
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/barracks-collect.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '요청을 한 건도 보내지 않는다 — 무엇을 받을지만 찍는다'
+        type: boolean
+        required: false
+        default: false
+      clans:
+        description: '목록을 받을 IPL 클랜 수 (0 이면 목록 단계를 건너뛴다)'
+        required: false
+        default: '10'
+      limit:
+        description: '배틀로그를 몇 건까지 받나'
+        required: false
+        default: '120'
+      project:
+        description: '투영(경기·라인업)까지 돌린다. 끄면 원문만 쌓인다'
+        type: boolean
+        required: false
+        default: true
+      chain:
+        description: '자기호출 체인 깊이. 사람은 건드리지 않는다'
+        required: false
+        default: '0'
+
+# 두 판이 겹치면 원본을 두 배로 두드린다. 절대 겹치지 않는다
+concurrency:
+  group: barracks-collect
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # 자기호출(dispatch)
+  actions: write
+
+jobs:
+  collect:
+    name: 목록 → 배틀로그 → 경기 → 라인업
+    runs-on: ubuntu-latest
+    # 준비 2분 + 수집 5분 + 투영 5분 + 체인 간격 채우기. 그보다 오래면 끊는다
+    timeout-minutes: 25
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # 사이트가 쓰는 6543 자리를 빼앗지 않는다 (D-249)
+      SACLOUD_DB_SESSION_POOLER: '1'
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+      CLANS: ${{ inputs.clans || '10' }}
+      LIMIT: ${{ inputs.limit || '120' }}
+      PROJECT: ${{ inputs.project == false && 'false' || 'true' }}
+      HEALTH_URL: 'https://3rdcloud.my/api/health'
+      # 한 실행을 이 길이로 맞춘다 (초). ★체인 주기가 곧 이 값이다★ — 사장님의 「15분마다」다
+      PERIOD_SECONDS: '900'
+
+    steps:
+      - name: 시작 시각을 기록한다
+        run: echo "JOB_STARTED=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: pnpm 설치
+        uses: pnpm/action-setup@v4
+
+      - name: Node 24 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma 클라이언트 생성
+        run: pnpm --filter @sacloud/db exec prisma generate
+
+      - name: 시크릿 확인 (값은 찍지 않는다)
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::DATABASE_URL 시크릿이 없다"
+            exit 1
+          fi
+          echo "dry-run=${DRY_RUN} · clans=${CLANS} · limit=${LIMIT} · project=${PROJECT}"
+          curl --version | head -1
+
+      # ── ①② 긁기. 403 이면 CLI 가 스스로 멈추고 exit 1 을 낸다
+      - name: 긁기 (목록 + 배틀로그)
+        id: collect
+        run: |
+          set -uo pipefail
+          flags=(--clans "$CLANS" --limit "$LIMIT" --health "$HEALTH_URL")
+          if [ "$DRY_RUN" = 'true' ]; then flags+=(--dry-run); else flags+=(--confirm); fi
+          pnpm --filter @sacloud/worker nexon barracks-collect "${flags[@]}" | tee /tmp/collect.log
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      # ── ③④ 투영. ★여기까지 와야 화면이 바뀐다★
+      #   ⚠ `--league nolink` 를 명시한다. 기본값에 기대지 않는다
+      - name: 투영 (경기 → 라인업)
+        if: ${{ env.DRY_RUN != 'true' && env.PROJECT == 'true' }}
+        run: |
+          set -uo pipefail
+          pnpm --filter @sacloud/worker nexon iplmatch-project --confirm | tail -5
+          pnpm --filter @sacloud/worker nexon battlelog-lineup --league nolink --confirm | tail -4
+
+      # ── 「0건 들어옴」과 「못 가져옴」을 갈라 놓는다
+      #   ⚠ 15분 사이에 새 경기가 없을 수 있다. ★안 갈라 놓으면 멈춘 걸 조용히 넘어간다★ —
+      #     실제로 사흘 멈춰 있던 적이 있다
+      - name: 판정과 알림
+        if: ${{ always() && env.DRY_RUN != 'true' }}
+        env:
+          CODE: ${{ steps.collect.outputs.code }}
+        run: |
+          set -uo pipefail
+          line=$(grep -E '^계획 ' /tmp/collect.log | tail -1 || echo '(수집 요약을 못 읽었다)')
+          stop=$(grep -oE '멈춘 이유 ★[a-z]+★' /tmp/collect.log | tail -1 || echo '멈춘 이유 ★모름★')
+          load=$(grep -E '^★부하\(끝난 뒤\)★' /tmp/collect.log | tail -1 || echo '')
+          echo "## 병영수첩 수집" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ${line}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ${stop}" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$load" ] && echo "- ${load}" >> "$GITHUB_STEP_SUMMARY"
+
+          bad=''
+          case "$stop" in
+            *blocked*) bad='병영수첩이 403/429 를 줬다 — 즉시 멈췄다. 우회하지 않는다' ;;
+            *error*)   bad='요청은 나갔는데 한 건도 못 받았다 (「새 경기 없음」이 아니다)' ;;
+            *health*)  bad='사이트가 무거워 수집이 스스로 물러났다' ;;
+          esac
+          if [ -z "$bad" ] && [ "${CODE:-0}" != '0' ]; then bad='수집이 0 이 아닌 코드로 끝났다'; fi
+
+          if [ -n "$bad" ]; then
+            echo "::error::${bad}"
+            if [ -n "${DISCORD_WEBHOOK_URL:-}" ]; then
+              body=$(jq -nc --arg c "**병영수첩 수집이 멈췄습니다** — ${bad}
+${line}
+${stop}" '{content:$c}')
+              curl -sS -o /dev/null -X POST -H 'Content-Type: application/json' \
+                --data "$body" "$DISCORD_WEBHOOK_URL" || echo '::warning::웹훅을 못 보냈다'
+            fi
+            exit 1
+          fi
+          echo "정상 — ${line}"
+
+      # ── 체인 주기를 채운다. ★잡이 3분에 끝나도 15분을 채운다★ — 그래야 「15분마다」가 지켜진다
+      - name: 다음 실행까지 기다린다
+        if: ${{ always() && env.DRY_RUN != 'true' }}
+        run: |
+          elapsed=$(( $(date +%s) - JOB_STARTED ))
+          wait=$(( PERIOD_SECONDS - elapsed ))
+          if [ "$wait" -gt 0 ]; then
+            echo "이번 실행 ${elapsed}초 — ${wait}초 기다린 뒤 다음을 부른다"
+            sleep "$wait"
+          else
+            echo "이번 실행이 ${elapsed}초 걸렸다 — 바로 다음을 부른다"
+          fi
+
+      # ── 자기호출 (D-229 · collect-watchdog.yml 과 같은 방식). 폭주 방지 세 겹:
+      #   ① 체인 깊이 상한 · ② 최근 1시간 run 수 상한 · ③ 최소 생존시간
+      - name: 다음 실행을 스스로 예약한다 (self-dispatch)
+        if: ${{ always() && env.DRY_RUN != 'true' }}
+        env:
+          CHAIN: ${{ inputs.chain || '0' }}
+          # 15분 주기 × 400 ≈ 4.2일. 닿으면 끊고 cron(후퇴값)이 새 체인을 연다
+          MAX_CHAIN: '400'
+          # 정상은 시간당 4회. cron 이 겹쳐 두 체인이 되면 8회 → 여기서 하나가 끊긴다
+          MAX_RUNS_PER_HOUR: '7'
+          # 15분 주기의 절반. 이보다 빨리 끝났으면 뭔가 잘못된 것이라 잇지 않는다
+          MIN_ALIVE_SECONDS: '450'
+        run: |
+          set -uo pipefail
+          next=$(( CHAIN + 1 ))
+          alive=$(( $(date +%s) - JOB_STARTED ))
+          if [ "$alive" -lt "$MIN_ALIVE_SECONDS" ]; then
+            echo "::warning::이 run 이 ${alive}초만에 끝났다 — 체인을 잇지 않는다 (최소 ${MIN_ALIVE_SECONDS}초). cron 이 되살린다"
+            exit 0
+          fi
+          if [ "$next" -gt "$MAX_CHAIN" ]; then
+            echo "체인 깊이 ${CHAIN} 이 상한 ${MAX_CHAIN} 에 닿았다 — 여기서 끊는다. cron 이 새 체인을 연다"
+            exit 0
+          fi
+          since=$(date -u -d '60 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          recent=$(curl -sS -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/barracks-collect.yml/runs?per_page=100&created=%3E${since}" \
+            | jq -r '.total_count // 0')
+          if [ -z "$recent" ] || [ "$recent" = 'null' ]; then
+            echo "::warning::최근 run 수를 못 읽었다 — 안전한 쪽으로 체인을 끊는다"
+            exit 0
+          fi
+          if [ "$recent" -ge "$MAX_RUNS_PER_HOUR" ]; then
+            echo "::warning::최근 1시간 run 이 ${recent}건이다 (상한 ${MAX_RUNS_PER_HOUR}) — 폭주로 보고 체인을 끊는다"
+            exit 0
+          fi
+          echo "체인 ${CHAIN} → ${next} · 최근 1시간 ${recent}건 · 생존 ${alive}초 — 다음 실행을 부른다"
+          code=$(curl -sS -o /tmp/dispatch.out -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/barracks-collect.yml/dispatches" \
+            -d "{\"ref\":\"${GITHUB_REF_NAME}\",\"inputs\":{\"chain\":\"${next}\"}}")
+          if [ "$code" = '204' ]; then
+            echo "다음 실행을 예약했다 (체인 ${next})"
+            exit 0
+          fi
+          # 조용히 끊기면 안 된다 — 수집이 죽은 것을 알려야 한다. 빨갛게 끝낸다
+          echo "::error::self-dispatch 실패 HTTP ${code} — 수집 체인이 끊겼다. cron 후퇴값에 맡긴다. 403 이면 PAT 가 필요하다 (D-229)"
+          echo "본문: $(head -c 300 /tmp/dispatch.out)"
+          exit 1

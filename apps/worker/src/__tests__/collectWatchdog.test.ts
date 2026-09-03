@@ -20,7 +20,14 @@ function numbers(over: Partial<WatchNumbers> = {}): WatchNumbers {
       { slug: 'sanply', found: true, newestStartAt: minutesAgo(25), newestIngestedAt: minutesAgo(20) },
       { slug: 'nolink', found: true, newestStartAt: minutesAgo(3 * 24 * 60), newestIngestedAt: minutesAgo(3 * 24 * 60) },
     ],
-    ingest: { rows: 7229, newestFetchedAt: minutesAgo(3 * 24 * 60) },
+    /*
+     * ★2026-09-03 · 창구가 도는 세상으로 바꿨다★
+     *
+     * 그전에는 3일 전 값이었다 — ★자동 수집이 없어서 그게 「정상」이었기 때문이다.★
+     * O-051 이 15분마다 도는 수집을 만들었고 (`barracks-collect.yml`),
+     * ★이제 3일 전은 정상이 아니라 고장이다.★ 그래서 픽스처가 먼저 바뀐다.
+     */
+    ingest: { rows: 7229, newestFetchedAt: minutesAgo(5) },
     workflows: [
       { file: 'supply-incremental.yml', runs: [{ conclusion: 'success', createdAt: minutesAgo(15), updatedAt: minutesAgo(5) }] },
       { file: 'season0-apply.yml', runs: [{ conclusion: 'success', createdAt: minutesAgo(70), updatedAt: minutesAgo(50) }] },
@@ -31,16 +38,42 @@ function numbers(over: Partial<WatchNumbers> = {}): WatchNumbers {
 }
 
 describe('collect-watchdog 판정', () => {
-  it('기본 임계(60분)에서 정상 · IPL 과 창구는 표시만', () => {
+  it('기본 임계(60분)에서 정상 · IPL 은 표시만 · ★창구는 이제 판정한다★', () => {
     const checks = evaluateWatch(numbers(), WATCHDOG_DEFAULT_THRESHOLDS)
     const by = Object.fromEntries(checks.map((c) => [c.id, c]))
     expect(by['league:supply']?.level).toBe('ok')
     expect(by['league:sanply']?.level).toBe('ok')
     expect(by['league:nolink']?.level).toBe('watch')
-    expect(by['ingest:barracks']?.level).toBe('watch')
+    /* ★「표시만(watch)」이 아니라 「정상(ok)」이다★ — 판정하지 않으면 멈춰도 조용하다 */
+    expect(by['ingest:barracks']?.level).toBe('ok')
     expect(by['apply:success']?.level).toBe('ok')
     expect(by['workflow:supply-rollup-full']?.level).toBe('watch') // 취소만 있으면 셀 것이 없다
     expect(checks.filter((c) => c.level === 'alert')).toHaveLength(0)
+  })
+
+  it('★★창구가 30분 넘게 안 늘면 경보다★★ — 「조용히 멈춤」을 끝내려는 것이다', () => {
+    /*
+     * ★자동 수집이 생겼다★ (O-051 · `barracks-collect.yml` 15분 체인).
+     * 그전에는 `ingestAlert: false` 라 낡아도 ★표시만★ 했다 —
+     * ★사람이 손으로 긁던 시절에는 낡은 게 정상이었기 때문이다.★
+     *
+     * ⚠ ★알림을 먼저 켜고 체인을 켰다.★ 반대로 하면 ★안전장치 없이 밤을 넘긴다.★
+     */
+    const checks = evaluateWatch(
+      numbers({ ingest: { rows: 7229, newestFetchedAt: minutesAgo(45) } }),
+      WATCHDOG_DEFAULT_THRESHOLDS,
+    )
+    const ingest = checks.find((c) => c.id === 'ingest:barracks')
+    expect(ingest?.level).toBe('alert')
+    /* ★문구에 숫자가 있어야 한다★ — 「이상함」은 보고가 아니다 */
+    expect(ingest?.line).toContain('45분 전')
+    expect(ingest?.line).toContain('임계 30분')
+    /* ★「표시만」이라는 말이 더 이상 붙지 않는다★ */
+    expect(ingest?.line).not.toContain('표시만')
+  })
+
+  it('★기본값이 켜져 있다★ — 이걸 끄면 멈춰도 조용해진다', () => {
+    expect(WATCHDOG_DEFAULT_THRESHOLDS.ingestAlert).toBe(true)
   })
 
   it('일부러 실패 — 임계를 1분으로 내리면 SPL·10mountain 이 경보가 되고 문구에 숫자가 있다', () => {

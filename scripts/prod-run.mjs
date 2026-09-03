@@ -137,6 +137,16 @@ const ALLOWED = {
     writes: false,
     what: 'O-051 - 아직 배틀로그를 안 받은 경기가 몇 건인가 (읽기 전용)',
   },
+  'clan-number-gap': {
+    file: 'clanNumberGapProbe',
+    writes: false,
+    what: 'O-051 - 못 이은 배틀로그가 버려지나 이을 수 있나 (읽기 전용)',
+  },
+  'ipl-stat-count': {
+    file: 'iplStatCount',
+    writes: false,
+    what: 'IPL 참가 기록이 지금 몇 건인가 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,

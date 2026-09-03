@@ -60,7 +60,14 @@ export interface WatchThresholds {
   /** 판정하지 않고 표시만 하는 리그 (자동 수집이 없는 IPL) */
   watchLeagues: readonly string[]
   ingestStaleMin: number
-  /** 창구 정체를 경보로 올릴 것인가. 자동 수집이 없는 동안은 false(표시만) */
+  /**
+   * 창구 정체를 경보로 올릴 것인가.
+   *
+   * ★2026-09-03 에 켰다★ — 그전까지는 «자동 수집이 살면 켠다» 로 꺼 두었고,
+   * ★O-051 이 그 자동 수집을 만들었다★ (`barracks-collect.yml` · 15분 체인).
+   * ⚠ ★알림을 먼저 켜고 체인을 켠다.★ 반대로 하면 ★안전장치 없이 밤을 넘긴다.★
+   *   그래서 이 값과 체인 워크플로는 ★같은 배포로 나간다★ — 사이에 빈 시간이 없어야 한다.
+   */
   ingestAlert: boolean
   applyMaxHours: number
   failStreak: number
@@ -71,7 +78,8 @@ export const WATCHDOG_DEFAULT_THRESHOLDS: WatchThresholds = {
   fallbackStaleMin: 60,
   watchLeagues: ['nolink'],
   ingestStaleMin: 30,
-  ingestAlert: false,
+  /* ★켰다★ — 15분마다 도는 수집이 생겼으니 30분 정체는 진짜 고장이다 (O-051) */
+  ingestAlert: true,
   applyMaxHours: 3,
   failStreak: 3,
 }
