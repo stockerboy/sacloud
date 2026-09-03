@@ -282,6 +282,11 @@ const ALLOWED = {
     writes: false,
     what: '같은 경기를 두 번 부르고 있나 — 낭비를 센다 (읽기 전용)',
   },
+  'season-table': {
+    file: 'seasonTableProbe',
+    writes: false,
+    what: '확정된 시즌 구분이 코드·DB 와 맞나 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,
