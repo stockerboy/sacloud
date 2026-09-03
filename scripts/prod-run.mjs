@@ -177,6 +177,16 @@ const ALLOWED = {
     writes: false,
     what: 'IPL 선수 중 넥슨 ouid 를 아는 사람이 몇 % 인가 (읽기 전용)',
   },
+  'independence': {
+    file: 'independenceProbe',
+    writes: false,
+    what: '서플라이 없이 SPL·열산을 가져올 수 있나 - 클랜 수 · 병영수첩 번호 · 명부 출처 (읽기 전용)',
+  },
+  'roster-growth': {
+    file: 'rosterGrowthProbe',
+    writes: false,
+    what: '명부가 정말 늘고 있나 아니면 이관한 날짜인가 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
