@@ -82,6 +82,11 @@ const ALLOWED = {
     writes: false,
     what: 'O-046 — 시즌 경계로 나누면 어디에 몇 건이 떨어지나 (읽기만 한다)',
   },
+  'clan-move-plan': {
+    file: 'clanMovePlanProbe',
+    writes: false,
+    what: 'O-044 (나) — 옮길 경기·감출 경기가 몇 건인가 (읽기만 한다)',
+  },
   'clan-overlap-plan': {
     file: 'clanOverlapPlanProbe',
     writes: false,
