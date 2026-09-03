@@ -144,7 +144,8 @@ jobs:
           }
           hit home GET '/' ''
           hit clan-match-list POST '/api/ClanHome/GetClanMatchList/' '{"clan_id":"sorentolove"}'
-          hit battle-log POST '/api/BattleLog/GetBattleLogClan/260805205259124001/170430000194' ''
+          # ⚠ ★본문이 없으면 405 다★ — 빈 JSON 이라도 있어야 200 이 온다 (2026-09-03 실측)
+          hit battle-log POST '/api/BattleLog/GetBattleLogClan/260805205259124001/170430000194' '{}'
           jq -s '{mode:"curl",requests:.}' "${RUNNER_TEMP}/curl-rows.ndjson" > "$out"
           jq -r '.requests | map("\(.id)=\(.status // "ERR")") | join(" · ")' "$out"
 

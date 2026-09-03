@@ -90,6 +90,10 @@ const STEPS = [
     method: 'POST',
     // 문서의 실측 예시 키 (200 · 63,429 바이트였다)
     path: '/api/BattleLog/GetBattleLogClan/260805205259124001/170430000194',
+    // ⚠ ★본문이 없으면 405 다★ — 경로가 다 맞아도 405 가 온다. 빈 JSON 이라도 있어야 200 이다
+    //   (2026-09-03 실측: 본문 없이 GET 405 · 본문 없이 POST 405 · POST + {} → ★200 · 63,875 바이트★)
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
   },
 ]
 
