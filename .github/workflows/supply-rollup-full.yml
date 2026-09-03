@@ -16,7 +16,12 @@
 #
 # ── 언제 도는가
 #   19:00 UTC = 04:00 KST. 원본 활동이 가장 적은 시간대다.
-#   **네트워크를 쓰지 않는다** — DB 안에서만 도는 계산이라 원본에 요청이 0건이다.
+#   ⚠ ★여기 「네트워크를 쓰지 않는다 — 원본에 요청이 0건이다」라고 적혀 있었다. 틀렸다★
+#     (2026-09-03 · O-042 중 발견). 이 파일은 아래에서 `supply-mirror` 를 **실제로 부른다**
+#     (「클랜 목록 + 새 경기」 스텝). 그 스텝 주석은 «요청은 리그당 수십 건이다» 라고
+#     제대로 적고 있다 — ★머리말과 본문이 서로 반대말을 하고 있었다.★
+#     **전수 재계산 자체는** DB 안에서만 돈다. 그러나 이 워크플로는 그 앞에 수집을 한 번 한다.
+#     ★그래서 이 파일도 「수집하는 곳」이다.★ O-042 로 여기서도 daerule 을 뺐다.
 #
 # ── 증분과 절대 겹치면 안 된다
 #   둘 다 같은 `LeaguePlayer` · `LeagueClan` 행을 쓴다. 그래서 `concurrency` 그룹을
@@ -58,7 +63,8 @@ on:
       leagues:
         description: '집계할 리그 slug (쉼표)'
         required: false
-        default: 'supply,daerule,sanply'
+        # 2026-09-03 (O-042) — daerule 을 뺐다. 옛값 'supply,daerule,sanply'
+        default: 'supply,sanply'
       dry_run:
         description: '미리보기 — 한 줄도 쓰지 않는다'
         type: boolean
@@ -104,7 +110,8 @@ jobs:
       - name: 리그 목록을 JSON 배열로 만든다
         id: pick
         env:
-          LEAGUES: ${{ inputs.leagues || 'supply,daerule,sanply' }}
+          # 2026-09-03 (O-042) — daerule 을 뺐다. 옛값 'supply,daerule,sanply'
+          LEAGUES: ${{ inputs.leagues || 'supply,sanply' }}
         run: |
           set -euo pipefail
           json=$(for slug in $(echo "$LEAGUES" | tr ',' ' '); do echo "$slug"; done | jq -R . | jq -sc .)

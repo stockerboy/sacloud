@@ -43,11 +43,28 @@ describe('판정하지 않는 리그', () => {
     expect(SYNC_FRESHNESS_REPORT_ONLY.has('nolink')).toBe(true)
   })
 
-  it('미러 리그는 계속 판정한다', () => {
-    for (const slug of ['supply', 'sanply', 'daerule']) {
+  it('수집이 도는 리그는 계속 판정한다', () => {
+    /* 2026-09-03 (O-042) — 여기 `daerule` 이 있었다. 수집을 멈춰서 뺐다 (아래 검사 참조) */
+    for (const slug of ['supply', 'sanply']) {
       expect(SYNC_FRESHNESS_REPORT_ONLY.has(slug)).toBe(false)
       expect(SYNC_FRESHNESS_DEFAULT_MAX_AGE_HOURS[slug]).toBeGreaterThan(0)
     }
+  })
+
+  /**
+   * ★대룰리그는 판정하지 않는다★ (O-042 · 2026-09-03 · 사장님 지시 2회).
+   *
+   * > «대룰리그는 없애 생각하지마 이거 못박아놔 저번에도 말해줬었는데 까먹네 자꾸»
+   * > → «수집하지마라»
+   *
+   * ⚠ ★임계값(168)은 지우지 않는다.★ 지우면 기본값 48시간으로 떨어져 **더 자주 운다** —
+   *   수집을 멈춘 리그는 반드시 낡으므로, 판정에서 빼는 것과 임계값을 지우는 것은 다르다.
+   *   ★이 둘을 헷갈리면 `/api/health` 가 다시 노랑에 고정된다★ (오늘 아침에 고친 그 증상이다).
+   */
+  it('대룰리그는 보여 주기만 한다 — 수집을 멈췄으니 낡은 것이 정상이다', () => {
+    expect(SYNC_FRESHNESS_REPORT_ONLY.has('daerule')).toBe(true)
+    /* 값은 살아 있어야 한다 — 표시에 쓴다 */
+    expect(SYNC_FRESHNESS_DEFAULT_MAX_AGE_HOURS.daerule).toBe(168)
   })
 
   it('임계값을 추측해서 넣지 않았다 — IPL 은 기본 임계값 표에도 없다', () => {

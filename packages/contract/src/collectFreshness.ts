@@ -50,19 +50,35 @@ export const SYNC_FRESHNESS_FALLBACK_MAX_AGE_HOURS = 48
 /**
  * **판정하지 않고 보여 주기만 하는 리그.**
  *
- * IPL(`nolink`)은 병영수첩에서 **사람 손으로** 들어온다. 자동 수집이 없다.
- * 그래서 낡았다고 알람을 울리면 **매번 운다** — 그건 알람을 무디게 만든다.
+ * ```
+ * nolink   IPL — 병영수첩에서 ★사람 손으로★ 들어온다. 자동 수집이 없다
+ * daerule  대룰리그 — ★수집을 멈췄다★ (2026-09-03 · 사장님 지시 · O-042)
+ * ```
+ * 낡았다고 알람을 울리면 **매번 운다** — 그건 알람을 무디게 만든다.
  * 표시는 하되 판정에 넣지 않는다.
+ *
+ * ⚠ `daerule` 의 임계값(168시간)은 **지우지 않았다.** 지우면 기본값 48시간으로 떨어져
+ *   **더 자주 운다.** 값은 두고 **판정에서만 뺀다** — 그게 O-042 확인 칸 2번이 보는 것이다.
  */
-export const SYNC_FRESHNESS_REPORT_ONLY: ReadonlySet<string> = new Set(['nolink'])
+export const SYNC_FRESHNESS_REPORT_ONLY: ReadonlySet<string> = new Set(['nolink', 'daerule'])
 
 /**
  * **자동 수집이 도는 리그** — `/api/health` 의 「수집기」 칸이 이것으로 판정한다.
  *
- * `supply-incremental.yml` 의 `LEAGUES` 와 같아야 한다. 거기서 `nolink` 를 뺀 이유가
- * 위 `SYNC_FRESHNESS_REPORT_ONLY` 와 같다.
+ * `supply-incremental.yml` · `supply-rollup-full.yml` 의 `LEAGUES` 와 같아야 한다.
+ *
+ * ── ★2026-09-03 · `daerule` 을 뺐다★ (O-042 · 사장님 지시)
+ *   > «대룰리그는 없애 생각하지마 이거 못박아놔 저번에도 말해줬었는데 까먹네 자꾸»
+ *   > (「화면만인가 수집도인가」를 여쭙자) → «수집하지마라»
+ *
+ *   ★**사장님이 두 번째로 말씀하신 것이다.** 한 번 듣고 흘렸다는 뜻이다.★
+ *   화면에서는 이미 빠져 있었는데(`PREPARING_LEAGUE_SLUGS`) **수집만 계속 돌고 있었다.**
+ *
+ *   ⚠ **경기 29,714건(2024-05-24~)은 지우지 않는다.** 멈추는 것이지 없애는 것이 아니다
+ *     (`CLAUDE.md` 1-4). 옛 값을 여기 남겨 둔다 — 되살릴 때 한 줄이면 된다:
+ *     `['supply', 'daerule', 'sanply']`
  */
-export const COLLECTED_LEAGUE_SLUGS: readonly string[] = ['supply', 'daerule', 'sanply']
+export const COLLECTED_LEAGUE_SLUGS: readonly string[] = ['supply', 'sanply']
 
 /** 그 리그의 임계값. 표에 없으면 기본값 */
 export function freshnessMaxAgeHours(slug: string): number {

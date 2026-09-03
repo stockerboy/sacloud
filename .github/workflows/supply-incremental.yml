@@ -118,7 +118,8 @@ on:
       leagues:
         description: '동기화할 리그 slug (쉼표)'
         required: false
-        default: 'supply,daerule,sanply'
+        # 2026-09-03 (O-042) — daerule 을 뺐다. 사장님 «수집하지마라». 옛값 'supply,daerule,sanply'
+        default: 'supply,sanply'
       dry_run:
         description: '요청도 쓰기도 하지 않고 현황만 본다'
         type: boolean
@@ -213,7 +214,8 @@ jobs:
       # 적응형 폴링의 사이클 길이. **아래 CYCLE_SECONDS 와 같은 값이어야 한다** —
       # 티어별 주기를 사이클 수로 환산하는 기준이라 어긋나면 조회 빈도가 통째로 틀어진다
       SUPPLY_POLL_CYCLE_MINUTES: '5'
-      LEAGUES: ${{ inputs.leagues || 'supply,daerule,sanply' }}
+      # 2026-09-03 (O-042) — daerule 을 뺐다. 옛값 'supply,daerule,sanply'
+      LEAGUES: ${{ inputs.leagues || 'supply,sanply' }}
       DRY_RUN: ${{ inputs.dry_run || 'false' }}
       NO_ADAPTIVE: ${{ inputs.no_adaptive || 'false' }}
       # 사이클 수 상한과 간격. **실제로 도는 수는 아래 예산이 정한다** —
