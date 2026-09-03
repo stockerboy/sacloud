@@ -262,6 +262,11 @@ const ALLOWED = {
     writes: false,
     what: '어느 출처가 정말 더 많이 아나 — 칸이 채워진 비율 (읽기 전용)',
   },
+  'invariant-break': {
+    file: 'invariantBreakProbe',
+    writes: false,
+    what: '불변식(통합 = 기본 + 스나 + 라플)이 어긋난 선수가 누구인가 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,
