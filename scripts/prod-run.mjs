@@ -167,6 +167,16 @@ const ALLOWED = {
     writes: false,
     what: 'O-051 - PC 를 끄면 몇 %가 늦어지나 (IPL 경기 시간대 · 읽기 전용)',
   },
+  'nexon-ipl-viability': {
+    file: 'nexonIplViabilityProbe',
+    writes: false,
+    what: '넥슨 공식 API 로 IPL 을 재구성할 수 있나 - 10명이 다 오는가 (읽기 전용)',
+  },
+  'ipl-ouid': {
+    file: 'iplOuidCoverageProbe',
+    writes: false,
+    what: 'IPL 선수 중 넥슨 ouid 를 아는 사람이 몇 % 인가 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
