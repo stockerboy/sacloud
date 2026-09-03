@@ -36,6 +36,13 @@ import { prisma } from '@sacloud/db'
 
 const FROM = new Date('2026-06-01T00:00:00+09:00')
 const TO = new Date('2026-09-01T00:00:00+09:00')
+/**
+ * ★그 무기로 이만큼은 뛰어야 표에 올린다★ — 사장님 «★최소 50경기★».
+ *
+ * ⚠ ★기준을 임의로 낮추지 않는다.★ 0명이면 ★0명이라고 적고★ 판수 상위만 재료로 붙인다 —
+ *   ★사장님이 기준을 낮출지 정하실 수 있게★ 하는 것이지 우리가 정할 일이 아니다.
+ */
+const MIN_GAMES = 50
 
 /** 사장님이 정하신 형식 — ★킬 ÷ (킬+데스) × 100★ */
 const kd = (k: number, d: number): string => (k + d === 0 ? '—' : `${((100 * k) / (k + d)).toFixed(1)}%`)
@@ -168,29 +175,57 @@ async function main(): Promise<void> {
   console.info('  ★무기는 경기 단위다★ — 그 경기의 킬·데스 전부가 그 무기 몫이다')
   console.info('  ★킬뎃 = 킬 ÷ (킬+데스) × 100★')
 
-  const show = (title: string, list: [string, Agg][], pick: (a: Agg) => Agg['rifle']): void => {
-    console.info(`\n══ ★${title}★ ══\n`)
-    console.info('   순  닉네임              클랜             경기    킬   데스   킬뎃')
-    const sorted = [...list].sort((a, b) => {
+  /* ★맨 위에 한 줄★ — 50경기 이상이 몇 명인지 */
+  const over = (list: [string, Agg][], pick: (a: Agg) => Agg['rifle']): [string, Agg][] =>
+    list.filter(([, a]) => pick(a).g >= MIN_GAMES)
+  const s50 = over(snipers, (a) => a.sniper)
+  const r50 = over(rifles, (a) => a.rifle)
+  console.info(`\n  ★★${MIN_GAMES}경기 이상 — 스나수 ${s50.length}명 · 라플수 ${r50.length}명★★`)
+
+  const line = (i: number, name: string, a: Agg, v: Agg['rifle']): string =>
+    `  ${String(i).padStart(3)}  ${name.padEnd(18)} ${a.clan.padEnd(14)}` +
+    ` ${String(v.g).padStart(4)} ${String(v.k).padStart(5)} ${String(v.d).padStart(5)}` +
+    `  ${kd(v.k, v.d).padStart(6)}`
+
+  const byKd =
+    (pick: (a: Agg) => Agg['rifle']) =>
+    (a: [string, Agg], b: [string, Agg]): number => {
       const x = pick(a[1])
       const y = pick(b[1])
       const xv = x.k + x.d === 0 ? -1 : x.k / (x.k + x.d)
       const yv = y.k + y.d === 0 ? -1 : y.k / (y.k + y.d)
       return yv - xv
-    })
+    }
+
+  const show = (
+    title: string,
+    all: [string, Agg][],
+    kept: [string, Agg][],
+    pick: (a: Agg) => Agg['rifle'],
+  ): void => {
+    console.info(`\n══ ★${title} · ${MIN_GAMES}경기 이상★ ══\n`)
+    const head = '   순  닉네임              클랜             경기    킬   데스   킬뎃'
+    if (kept.length === 0) {
+      /* ★기준을 임의로 낮추지 않는다.★ 0명이면 0명이라 하고 ★재료만★ 준다 */
+      console.info(`  ★★0명입니다★★ — ${MIN_GAMES}경기를 채운 사람이 없다`)
+      console.info('  ★기준을 임의로 낮추지 않는다.★ 아래는 ★판수 상위 10명★ 이다 (재료)\n')
+      console.info(head)
+      let j = 0
+      for (const [name, a] of [...all].sort((x, y) => pick(y[1]).g - pick(x[1]).g).slice(0, 10)) {
+        j += 1
+        console.info(line(j, name, a, pick(a)))
+      }
+      return
+    }
+    console.info(head)
     let i = 0
-    for (const [name, a] of sorted) {
-      const v = pick(a)
+    for (const [name, a] of [...kept].sort(byKd(pick))) {
       i += 1
-      console.info(
-        `  ${String(i).padStart(3)}  ${name.padEnd(18)} ${a.clan.padEnd(14)}` +
-          ` ${String(v.g).padStart(4)} ${String(v.k).padStart(5)} ${String(v.d).padStart(5)}` +
-          `  ${kd(v.k, v.d).padStart(6)}`,
-      )
+      console.info(line(i, name, a, pick(a)))
     }
   }
-  show('스나수 — 스나로 뛴 경기만', snipers, (a) => a.sniper)
-  show('라플수 — 라플로 뛴 경기만', rifles, (a) => a.rifle)
+  show('스나수 — 스나로 뛴 경기만', snipers, s50, (a) => a.sniper)
+  show('라플수 — 라플로 뛴 경기만', rifles, r50, (a) => a.rifle)
 }
 
 main()
