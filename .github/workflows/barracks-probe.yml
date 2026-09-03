@@ -28,6 +28,23 @@
 #
 # ── 하지 않는 것
 #   · 저장하지 않는다. 창구(`/api/ingest/barracks`)로 보내지 않는다. 시크릿을 쓰지 않는다
+#
+# ── ★2026-09-03 · curl 갈래를 앞에 붙였다 (O-051)★
+#   사장님: «★나는 크롬 못켜놓는다★ ★무조건 자동화 방안 알아봐 15분에 한번 갱신되는★»
+#   → 「사장님 PC 에서 크롬을 띄운다」가 후보에서 빠졌다. ★기계가 알아서 도는 것만 남았다.★
+#
+#   ★싼 것부터 시험한다. 되는 순간 멈춘다★
+#     1단계  ★curl★          크롬도 puppeteer 도 필요 없다
+#     2단계  헤드리스 크롬
+#     3단계  헤드풀(xvfb)
+#
+#   curl 은 ★자기 UA(curl/8.x) 그대로★ 보낸다. ★브라우저인 척하지 않는다★ —
+#   403 이 나오면 그건 답이지 고칠 거리가 아니다 (CLAUDE.md 3-A 5번).
+#
+#   ⚠ ★예약은 결과를 한 번 받기 위한 임시다. 결과가 나오면 반드시 뺀다.★
+#     저장소가 ★공개★ 라 Actions 분(minute)은 ★무료 무제한★ 이다
+#     (실측 — GitHub API 가 visibility=public 을 준다).
+#     그래서 한도가 아니라 ★원본을 두드리는 횟수★ 가 제약이다 → ★한 시간에 한 번★
 #   · 예약(schedule)이 없다. **사람이 누를 때만** 돈다 — 원본에 반복해서 두드리지 않는다
 #   · 저장소 의존성에 puppeteer 를 넣지 않는다 (`pnpm-lock.yaml` 을 건드리지 않는다).
 #     실행기 임시 폴더에만 설치하고 `NODE_PATH` 로 알려 준다
@@ -37,6 +54,11 @@
 name: 병영수첩 탐침 (헤드풀 vs 헤드리스)
 
 on:
+  # ⚠ ★임시다.★ 한 번도 안 돌아서 결과가 없는데 이 세션은 버튼을 누를 수 없다.
+  #   ★결과를 받으면 이 세 줄을 뺀다.★ 지금 도는 것과 안 겹치는 분을 골랐다
+  #   (cache-warm */5 · watchdog 4-59/10 · season0 17분 · supply 7,37분)
+  schedule:
+    - cron: '21 * * * *'
   workflow_dispatch:
     inputs:
       puppeteer_version:
@@ -85,6 +107,46 @@ jobs:
           ip=$(curl -s --max-time 15 https://api.ipify.org || echo 'unknown')
           echo "공인 IP: ${ip}"
           echo "public_ip=${ip}" >> "$GITHUB_OUTPUT"
+
+      # ── ★① curl. 제일 싼 갈래다★
+      #   ★브라우저인 척하지 않는다★ — curl 자기 UA 그대로, 쿠키 없이, 회피 플래그 없이.
+      #   200 이 나오면 ★크롬도 puppeteer 도 필요 없다.★
+      - name: curl — 3건 (제일 싼 갈래)
+        id: curl
+        continue-on-error: true
+        run: |
+          set -u
+          O=https://barracks.sa.nexon.com
+          out="${RUNNER_TEMP}/probe-curl.json"
+          : > "${RUNNER_TEMP}/curl-rows.ndjson"
+          # $1 이름 · $2 방법 · $3 경로 · $4 본문(없으면 빈 문자열)
+          hit() {
+            f="${RUNNER_TEMP}/curl-$1.out"
+            if [ -n "$4" ]; then
+              m=$(curl -sS -o "$f" -w '%{http_code} %{size_download} %{time_total}' \
+                    --max-time 30 -X "$2" -H 'Content-Type: application/json' \
+                    --data "$4" "${O}$3" || echo 'ERR 0 0')
+            else
+              m=$(curl -sS -o "$f" -w '%{http_code} %{size_download} %{time_total}' \
+                    --max-time 30 "${O}$3" || echo 'ERR 0 0')
+            fi
+            code=$(echo "$m" | cut -d' ' -f1)
+            size=$(echo "$m" | cut -d' ' -f2)
+            secs=$(echo "$m" | cut -d' ' -f3)
+            head=$(head -c 200 "$f" 2>/dev/null | tr -d '\000' | tr '\n' ' ')
+            echo "  [curl] $1 -> HTTP ${code} · ${size} bytes · ${secs}s"
+            echo "         ${head}"
+            jq -nc --arg id "$1" --arg mm "$2" --arg u "${O}$3" \
+              --arg s "$code" --arg b "$size" --arg t "$secs" --arg h "$head" \
+              '{id:$id,method:$mm,url:$u,status:($s|tonumber? // null),bytes:($b|tonumber? // null),ms:(($t|tonumber? // 0)*1000|floor),head:$h}' \
+              >> "${RUNNER_TEMP}/curl-rows.ndjson"
+            sleep 2
+          }
+          hit home GET '/' ''
+          hit clan-match-list POST '/api/ClanHome/GetClanMatchList/' '{"clan_id":"sorentolove"}'
+          hit battle-log POST '/api/BattleLog/GetBattleLogClan/260805205259124001/170430000194' ''
+          jq -s '{mode:"curl",requests:.}' "${RUNNER_TEMP}/curl-rows.ndjson" > "$out"
+          jq -r '.requests | map("\(.id)=\(.status // "ERR")") | join(" · ")' "$out"
 
       # 헤드풀 크롬은 화면이 있어야 뜬다. 실행기에는 화면이 없으니 가상 화면을 깐다
       - name: xvfb 설치 (가상 화면)
@@ -165,15 +227,18 @@ jobs:
           set -u
           hf="${RUNNER_TEMP}/probe-headful.json"
           hl="${RUNNER_TEMP}/probe-headless.json"
+          cu="${RUNNER_TEMP}/probe-curl.json"
+          [ -f "$cu" ] || echo '{"fatal":"curl 결과 파일이 없다 — 스텝이 시작조차 못 했다","requests":[]}' > "$cu"
           [ -f "$hf" ] || echo '{"fatal":"헤드풀 결과 파일이 없다 — 스크립트가 시작조차 못 했다","requests":[]}' > "$hf"
           [ -f "$hl" ] || echo '{"fatal":"헤드리스 결과 파일이 없다 — 스크립트가 시작조차 못 했다","requests":[]}' > "$hl"
 
           jq -n \
             --arg ip "$PUBLIC_IP" \
             --arg run "${GITHUB_RUN_ID}" \
+            --slurpfile cu "$cu" \
             --slurpfile hf "$hf" \
             --slurpfile hl "$hl" \
-            '{ publicIp: $ip, runId: $run, generatedAt: (now | todate), headful: $hf[0], headless: $hl[0] }' \
+            '{ publicIp: $ip, runId: $run, generatedAt: (now | todate), curl: $cu[0], headful: $hf[0], headless: $hl[0] }' \
             > probe-result.json
 
           line() {
@@ -183,13 +248,14 @@ jobs:
             echo "## 병영수첩 탐침"
             echo
             echo "- 공인 IP: \`${PUBLIC_IP}\`"
+            echo "- ★curl:   \`$(line curl)\`★  <- 200 이면 여기서 끝난다"
             echo "- 헤드풀:   \`$(line headful)\`"
             echo "- 헤드리스: \`$(line headless)\`"
             echo
             echo "| 모드 | 요청 | HTTP | bytes | ms | 앞 200자 |"
             echo "|---|---|---|---|---|---|"
             jq -r '
-              ["headful","headless"][] as $m
+              ["curl","headful","headless"][] as $m
               | .[$m].requests[]
               | "| \($m) | \(.id) | \(.status // "ERR") | \(.bytes // "-") | \(.ms // "-") | \((.head // .error // "") | gsub("\\|"; "\\|") | .[0:120]) |"
             ' probe-result.json

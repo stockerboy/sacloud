@@ -122,6 +122,11 @@ const ALLOWED = {
     writes: false,
     what: '폭탄 사건이 event_type 에 있는가 — C4 설치를 event_text 로만 세면 놓치는지 (읽기 전용)',
   },
+  'barracks-overlap': {
+    file: 'barracksOverlapProbe',
+    writes: false,
+    what: 'O-051 - 같은 경기가 병영수첩과 미러에 겹쳐 들어와 있나 (자동화 켜기 전 바탕값 · 읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
