@@ -799,6 +799,21 @@ function TeamBlock({
           {showExtra ? <div className="mobile-hide w-24 text-center">헤드샷</div> : null}
         </div>
 
+        {/*
+          ── ★★한 명도 없으면 왜 없는지 말한다★★ (2026-09-04)
+
+          폰으로 3~6월 경기를 열어 보니 ★머리글만 있는 빈 표 두 개★ 가 나왔다.
+          ★「0 vs 0」 말고는 아무 설명이 없어서 「고장났나」로 읽힌다.★
+
+          ★비어 있는 것은 사실이다. 그 사실을 말해 주는 것이 화면의 일이다★
+          (`CLAUDE.md` 3장 7번 · D-106 — 없는 것을 0 으로 그리지 않는 것과 같은 결).
+        */}
+        {stats.length === 0 ? (
+          <div className="px-3 py-4 text-center text-xs text-faint">
+            이 경기의 참가 기록을 아직 못 받았습니다.
+          </div>
+        ) : null}
+
         {stats.map((stat) => (
           <StatRow
             key={stat.player_id}
