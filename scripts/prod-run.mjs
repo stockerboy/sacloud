@@ -257,6 +257,11 @@ const ALLOWED = {
     writes: false,
     what: '같은 사람이 두 선수로 갈려 있는 것이 몇 쌍인가 (읽기 전용)',
   },
+  'stat-richness': {
+    file: 'statRichnessProbe',
+    writes: false,
+    what: '어느 출처가 정말 더 많이 아나 — 칸이 채워진 비율 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,
