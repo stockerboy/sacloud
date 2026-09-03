@@ -157,6 +157,11 @@ const ALLOWED = {
     writes: false,
     what: 'IPL 에 MVP 가 하나도 없나 - 원본이 안 준 것인가 우리가 안 넣은 것인가 (읽기 전용)',
   },
+  'battlelog-no-match': {
+    file: 'battlelogNoMatchProbe',
+    writes: false,
+    what: 'O-051 - 배틀로그는 있는데 우리 경기가 없는 5,255건이 결손인가 규칙대로인가 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
