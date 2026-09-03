@@ -79,10 +79,12 @@ on:
         required: false
         default: '120'
       project:
-        description: '투영(경기·라인업)까지 돌린다. 끄면 원문만 쌓인다'
-        type: boolean
+        # ⚠ ★boolean 이 아니라 문자열로 받는다★ — boolean 이면 push 때 `inputs.project` 가
+        #   null 이고 `null == false` 가 ★참★ 이라 ★투영이 조용히 꺼진다.★
+        #   그러면 원문만 쌓이고 ★화면은 그대로인데 워치독은 초록불★ 이다
+        description: "투영(경기·라인업)까지 돌린다. 'false' 면 원문만 쌓인다"
         required: false
-        default: true
+        default: 'true'
       chain:
         description: '자기호출 체인 깊이. 사람은 건드리지 않는다'
         required: false
@@ -114,7 +116,7 @@ jobs:
       DRY_RUN: ${{ inputs.dry_run || 'false' }}
       CLANS: ${{ inputs.clans || '10' }}
       LIMIT: ${{ inputs.limit || '120' }}
-      PROJECT: ${{ inputs.project == false && 'false' || 'true' }}
+      PROJECT: ${{ inputs.project || 'true' }}
       HEALTH_URL: 'https://3rdcloud.my/api/health'
       # 한 실행을 이 길이로 맞춘다 (초). ★체인 주기가 곧 이 값이다★ — 사장님의 「15분마다」다
       PERIOD_SECONDS: '900'
@@ -199,9 +201,11 @@ jobs:
           if [ -n "$bad" ]; then
             echo "::error::${bad}"
             if [ -n "${DISCORD_WEBHOOK_URL:-}" ]; then
-              body=$(jq -nc --arg c "**병영수첩 수집이 멈췄습니다** — ${bad}
-${line}
-${stop}" '{content:$c}')
+              # ⚠ ★여러 줄을 그대로 쓰지 않는다★ — 이어지는 줄이 열 0 에서 시작하면
+              #   YAML 블록 스칼라가 거기서 끝나고 ★GitHub 이 파일 전체를 못 읽는다.★
+              #   실제로 그래서 첫 실행이 잡 0개로 실패했다 (2026-09-03). jq 가 줄을 잇게 한다
+              body=$(jq -nc --arg b "$bad" --arg l "$line" --arg s "$stop" \
+                '{content: ("**병영수첩 수집이 멈췄습니다** — " + $b + "\n" + $l + "\n" + $s)}')
               curl -sS -o /dev/null -X POST -H 'Content-Type: application/json' \
                 --data "$body" "$DISCORD_WEBHOOK_URL" || echo '::warning::웹훅을 못 보냈다'
             fi
