@@ -92,6 +92,11 @@ const ALLOWED = {
     writes: false,
     what: 'dropout 이 무슨 뜻인가 — 이긴 팀 vs 진 팀 · 나간 사람 킬데스 · 경기당 인원 · 한 팀 전원 탈주 (읽기 전용)',
   },
+  'ipl-stat-coverage': {
+    file: 'iplStatCoverageProbe',
+    writes: false,
+    what: 'IPL 에 딜량·어시·헤드샷·무기가 있는가 — dropoutScope 의 damage>0 조건이 IPL 을 통째로 지우지 않는지 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
