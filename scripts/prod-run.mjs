@@ -292,6 +292,11 @@ const ALLOWED = {
     writes: false,
     what: '방금 받은 배틀로그가 어느 달인가 — 기간 필터가 먹었나 (읽기 전용)',
   },
+  'spring-match': {
+    file: 'springMatchPick',
+    writes: false,
+    what: '3~6월 IPL 경기 하나를 골라 화면 주소를 만든다 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,
