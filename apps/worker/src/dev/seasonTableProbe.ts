@@ -48,8 +48,23 @@ async function main(): Promise<void> {
     )
   }
   console.info('')
-  console.info('  ★읽는 법★ — ★Beta(3/5~7/1)에 해당하는 줄이 없으면 「지난시즌」에 아무것도 안 나온다.★')
-  console.info('  만들지 말지는 ★사람이 정할 일★ 이다. ★여기서는 보기만 한다.★')
+  /* ★「지난시즌」 탭은 이 표를 읽는다★ — 경기를 채운다고 저절로 생기지 않는다 */
+  const snaps = await prisma.leaguePlayerSeason.groupBy({
+    by: ['seasonId'],
+    _count: { _all: true },
+  })
+  console.info('')
+  console.info('══ ★「지난시즌」 탭이 읽는 표 (`LeaguePlayerSeason`)★ ══')
+  console.info('')
+  if (snaps.length === 0) {
+    console.info('  ★한 줄도 없다★ — 그래서 어느 리그에서도 「지난시즌 기록이 없습니다」 가 뜬다')
+    console.info('  ⚠ ★경기를 채운다고 저절로 생기지 않는다.★ ★시즌을 마감하는 잡이 스냅샷을 만든다★')
+  } else {
+    for (const x of snaps) console.info(`  시즌 ${x.seasonId} — ${x._count._all}행`)
+  }
+  console.info('')
+  console.info('  ★읽는 법★ — ★Beta 시즌 줄은 DB 에 있다.★ 그래도 위 스냅샷이 없으면 「지난시즌」은 비어 있다.')
+  console.info('  ★스냅샷을 만들지 말지는 사람이 정할 일★ 이다. ★여기서는 보기만 한다.★')
 }
 
 main()
