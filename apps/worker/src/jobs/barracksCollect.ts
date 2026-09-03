@@ -105,6 +105,16 @@ export interface CollectOptions {
    */
   listUntil?: string
   /**
+   * ★어느 기간의 배틀로그를 받을까★ — `YYMMDD` (이 날짜 ★이상★). 안 주면 전 기간.
+   *
+   * 기본은 ★최근 것부터★ 받는다. ★그러면 봄철(3~6월)이 맨 뒤로 밀린다★ —
+   * 대기열이 2만 건인데 4·5월은 그 끝이라 ★밤새 돌려도 안 닿는다.★
+   * ★그 달만 먼저 채우고 싶을 때 쓴다★ (`--from 260301 --to 260701`).
+   */
+  from?: string
+  /** ★이 날짜 미만★ — `YYMMDD` */
+  to?: string
+  /**
    * ★목록을 받을 리그★. 기본 `nolink`.
    *
    * ⚠ ★병영수첩에서 온 것은 그 리그 것이다.★ 여기를 바꾸면 ★그 리그의 클랜을 부른다★ —
@@ -291,7 +301,38 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
  * 재료는 `BarracksClanMatchRaw`(무엇이 있는지)이고,
  * 이미 받은 것은 `BarracksBattleLogRaw` 에 있다. 그 차집합이 할 일이다.
  */
-export async function pendingPairs(limit: number): Promise<{ matchKey: string; clanNo: string }[]> {
+/**
+ * ★어느 기간을 먼저 받을까★ (2026-09-04).
+ *
+ * ⚠ 기본은 ★최근 것부터★ 다 — 밤새 돌다 멈춰도 새 기록이 먼저 채워진다.
+ *   ★그런데 그러면 봄철(3~6월)은 맨 뒤로 밀린다.★ 실제로 —
+ * ```
+ * 4월 IPL 경기 100건 · 라인업 ★0★
+ * 5월 IPL 경기 420건 · 라인업 ★0★
+ * ```
+ *   대기열이 2만 건인데 봄철은 그 끝에 있어 ★밤새 돌려도 안 닿는다.★
+ *
+ * ⚠ ★「4·5월 배틀로그 607건은 이미 받아 뒀다」고 보고했는데 틀렸다★ —
+ *   그 607건은 ★전부 다른 리그(sanply·supply) 경기★ 였다 (4월 431건 중 IPL 은 ★1건★).
+ *   ★같은 달의 원문이 있다고 그 리그 것은 아니다.★
+ *
+ * ★그래서 기간을 좁혀 받을 수 있게 한다★ — `--from 260301 --to 260701`.
+ * 그러면 ★그 기간만 먼저 채울 수 있다.★
+ */
+export interface PendingRange {
+  /** `YYMMDD` — 이 날짜 이상 */
+  from?: string
+  /** `YYMMDD` — 이 날짜 미만 */
+  to?: string
+}
+
+export async function pendingPairs(
+  limit: number,
+  range: PendingRange = {},
+): Promise<{ matchKey: string; clanNo: string }[]> {
+  /* 안 주면 전 기간이다. 경기키가 `YYMMDD…` 로 시작하므로 앞 여섯 자리로 자른다 */
+  const from = range.from ?? '000000'
+  const to = range.to ?? '999999'
   return prisma.$queryRaw<{ matchKey: string; clanNo: string }[]>`
     /*
      * ── ① 매치목록에서 알게 된 경기 (새로 들어오는 것)
@@ -301,6 +342,8 @@ export async function pendingPairs(limit: number): Promise<{ matchKey: string; c
       FROM "BarracksClanMatchRaw" c
      WHERE c."status" = 'ok'
        AND c."payload"->>'clan_no' IS NOT NULL
+       AND substr(c."matchKey", 1, 6) >= ${from}
+       AND substr(c."matchKey", 1, 6) < ${to}
        AND NOT EXISTS (
          SELECT 1 FROM "BarracksBattleLogRaw" b
           WHERE b."matchKey" = c."matchKey" AND b."status" = 'ok'
@@ -332,6 +375,8 @@ export async function pendingPairs(limit: number): Promise<{ matchKey: string; c
       FROM "Match" m
       JOIN "League" l ON l."id" = m."leagueId" AND l."slug" = 'nolink'
      WHERE m."sourceMatchId" IS NOT NULL
+       AND substr(m."sourceMatchId", 1, 6) >= ${from}
+       AND substr(m."sourceMatchId", 1, 6) < ${to}
        AND NOT EXISTS (
          SELECT 1 FROM "BarracksBattleLogRaw" b
           WHERE b."matchKey" = m."sourceMatchId" AND b."status" = 'ok'
@@ -498,7 +543,7 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
   }
 
   /* ── ★②단계 · 배틀로그★ */
-  const pairs = await pendingPairs(opts.limit)
+  const pairs = await pendingPairs(opts.limit, { from: opts.from, to: opts.to })
   result.planned = pairs.length
   log(`받을 것 ★${pairs.length}건★ · 간격 ${delay}ms · ${opts.dryRun ? '★미리보기(요청 0건)★' : opts.confirm ? '★쓰기★' : '받기만(안 넣는다)'}`)
 

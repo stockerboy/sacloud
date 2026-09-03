@@ -680,6 +680,9 @@ async function main(): Promise<number> {
       const listPages = numberFlag(args, 'list-pages') ?? 1
       /* ★어느 날짜에 닿으면 그만 넘기나★ (YYMMDD) — 쪽 수보다 이쪽이 맞다 */
       const listUntil = stringFlag(args, 'list-until') ?? undefined
+      /* ★어느 기간의 배틀로그를 받을까★ — 안 주면 전 기간(최근 것부터) */
+      const from = stringFlag(args, 'from') ?? undefined
+      const to = stringFlag(args, 'to') ?? undefined
       /* ★어느 리그의 클랜 목록을 받나★ — 기본은 IPL. ★기본값에 기대지 말고 명시한다★ */
       const leagueSlug = stringFlag(args, 'league') ?? 'nolink'
       const delayMs = numberFlag(args, 'delay') ?? DEFAULT_DELAY_MS
@@ -708,6 +711,8 @@ async function main(): Promise<number> {
         clans,
         listPages,
         listUntil,
+        from,
+        to,
         leagueSlug,
         delayMs,
         dryRun,

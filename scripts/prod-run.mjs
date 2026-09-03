@@ -272,6 +272,11 @@ const ALLOWED = {
     writes: false,
     what: 'IPL 경기가 왜 전부 래더 미반영인가 — 리그별로 센다 (읽기 전용)',
   },
+  'spring-gap': {
+    file: 'springGapProbe',
+    writes: false,
+    what: '3~6월 배틀로그가 어디서 막혔나 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,

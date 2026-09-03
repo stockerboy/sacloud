@@ -30,6 +30,20 @@ export SACLOUD_DB_SESSION_POOLER=1
 # ★한 판에 받을 배틀로그 수★ — 작을수록 투영이 자주 돌아 화면이 자주 바뀐다
 ROUND_LIMIT="${ROUND_LIMIT:-1500}"
 ROUNDS="${ROUNDS:-20}"
+# ★어느 기간을 받을까★ — 안 주면 전 기간(최근 것부터).
+#
+#   ⚠ ★기본은 최근 것부터라 봄철(3~6월)이 맨 뒤로 밀린다.★ 대기열이 3만 건이 넘어서
+#     ★밤새 돌려도 3~6월에는 안 닿는다.★ 실측(2026-09-04) —
+#   ```
+#   3~6월  ★4,400건★  ≒ 110분   ← ★한 번에 끝낼 수 있다★
+#   7~9월  30,000건+   ≒ 14시간  ← 어차피 밤 안에 못 끝낸다
+#   ```
+#   ★그래서 봄철을 먼저 받으면 「3~6월이 채워졌다」를 아침에 보여 드릴 수 있다.★
+COLLECT_FROM="${COLLECT_FROM:-}"
+COLLECT_TO="${COLLECT_TO:-}"
+range_args=""
+[ -n "$COLLECT_FROM" ] && range_args="$range_args --from $COLLECT_FROM"
+[ -n "$COLLECT_TO" ] && range_args="$range_args --to $COLLECT_TO"
 
 say() { printf '%s | %s\n' "$(date '+%m-%d %H:%M')" "$1" | tee -a "$LOG"; }
 
@@ -58,7 +72,7 @@ echo $$ > "$LOCK"
 # ★어떻게 끝나든 잠금을 푼다★ — 정상 종료도, 끊겨도
 trap 'rm -f "$LOCK"' EXIT INT TERM
 
-say "★밤샘 수집 시작★ — ${ROUND_LIMIT}건씩 · 최대 ${ROUNDS}판 · 간격 1500ms · 첫 403 에서 멈춘다"
+say "★밤샘 수집 시작★ — ${ROUND_LIMIT}건씩 · 최대 ${ROUNDS}판 · 간격 1500ms · 첫 403 에서 멈춘다${range_args:+ ·★기간${range_args}★}"
 # ★잠금만 시험하고 싶을 때★ — `COLLECT_LOCK_TEST=1` 을 주면 여기서 끝낸다.
 #
 # ⚠ ★이 문이 없어서 잠금을 시험하다 실제 수집을 12초 띄웠다★ (2026-09-04).
@@ -115,7 +129,7 @@ while [ "$round" -lt "$ROUNDS" ]; do
   while [ "$try" -lt 3 ]; do
     try=$((try + 1))
     pnpm --filter @sacloud/worker nexon barracks-collect \
-      --league nolink --clans 43 --limit "$ROUND_LIMIT" --confirm \
+      --league nolink --clans 43 --limit "$ROUND_LIMIT" $range_args --confirm \
       --health https://3rdcloud.my/api/health >> "$LOG" 2>&1
     code=$?
     [ "$code" = "0" ] && break
@@ -141,7 +155,7 @@ while [ "$round" -lt "$ROUNDS" ]; do
   say "  ${round}판 투영: ${line:-(요약을 못 읽었다)}"
 
   # 남은 것이 없으면 끝
-  left=$(pnpm --filter @sacloud/worker nexon barracks-collect --league nolink --clans 0 \
+  left=$(pnpm --filter @sacloud/worker nexon barracks-collect --league nolink --clans 0 $range_args \
            --limit 30000 --dry-run 2>/dev/null | grep -oE '받을 것 ★[0-9]+건★' | grep -oE '[0-9]+')
   say "  ${round}판 끝 — ★남은 것 ${left:-?}건★"
   if [ "${left:-1}" = "0" ]; then
