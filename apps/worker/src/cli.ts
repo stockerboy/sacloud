@@ -16,6 +16,8 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { prisma } from '@sacloud/db'
+/* 「일부러 안 넣은 경기」의 이름표 — `supply-import` 의 끝 처리에서 쓴다 (D-210) */
+import { IPL_ONLY_SKIP_REASON } from '@sacloud/db/ops'
 import {
   countSharedPasswordAccounts,
   freezeSeason,
@@ -1879,9 +1881,27 @@ async function main(): Promise<number> {
         limit: numberFlag(args, 'limit'),
       })
       log(`  파일 ${file}`)
-      return output.imported.written.matches === 0 && confirm && output.reconciliation.supplyOnly > 0
-        ? 1
-        : 0
+      /*
+       * ★언제 실패로 끝내나★ (2026-09-03 정정).
+       *
+       * ── 무엇이 잘못돼 있었나
+       *   여기서 **날것의 `supplyOnly`** 를 봤다. 그런데 그 숫자에는
+       *   **일부러 안 넣은 경기**가 섞여 있다 — IPL 클랜끼리의 경기는 열산 기록이 아니다 (D-210).
+       *   `supplyImport.ts` 397~404행이 바로 그 몫을 갈라 내면서 이렇게 적어 뒀다:
+       *   *「일부러 안 넣은 경기는 "빠진 경기" 가 아니다. 이 숫자를 그대로 두면
+       *     ★다음 사람이 결함으로 알고 쫓는다★」*
+       *   ★그 일이 실제로 일어났다.★ `sanply` 적재가 열흘 동안 매 사이클 빨간 줄을 냈고
+       *   (`supply-incremental` run#101~113), 그걸 「수집이 죽었다」로 쫓았다.
+       *   ★수집은 죽지 않았다.★ 그 시간에도 경기는 정상으로 들어오고 있었다.
+       *
+       * ── 그래서 같은 갈래를 여기서도 쓴다
+       *   설명되는 몫(D-210)을 뺀 **`unexplained` 가 남을 때만** 실패로 끝낸다.
+       *   ⚠ 0 을 만들려고 기준을 낮춘 것이 아니다 — `unexplained > 0` 은 **여전히 실패다.**
+       *     ★거짓 경보를 지운 것이지 경보를 끈 것이 아니다.★
+       */
+      const blockedByIplRule = output.imported.skipped[IPL_ONLY_SKIP_REASON] ?? 0
+      const unexplainedSupplyOnly = output.reconciliation.supplyOnly - blockedByIplRule
+      return output.imported.written.matches === 0 && confirm && unexplainedSupplyOnly > 0 ? 1 : 0
     }
 
     case 'supply-rollup': {

@@ -36,8 +36,21 @@ const defOf = (key: keyof typeof endpoints): EndpointDef => endpoints[key] as En
  * ⚠ 몸통은 **손으로 적는다.** 화면 파일에서 긁어오지 않는다 —
  *   긁어오면 화면이 틀렸을 때 테스트도 같이 틀린다. **틀린 둘이 서로 맞다고 한다.**
  *
- * ⚠ 지금은 **셋만** 달려 있다. 한 번에 다 달지 않았다 (O-037 ④) —
- *   먼저 이 셋으로 **테스트가 실제로 잡는지** 확인한 뒤 나머지를 단다.
+ * ⚠ 처음에는 **셋만** 달았다 (O-037 ④). 먼저 그 셋으로 **테스트가 실제로 잡는지**
+ *   확인한 뒤 나머지를 달기로 했고, **2026-09-03 에 스무 개로 늘렸다.**
+ *
+ * ══ 무엇이 아직 안 달렸나 ══
+ *
+ * ```
+ * ★몸통을 안 받는다★     authLogout · uploadsCreate · playerRenew · clanRenew
+ *                       leagueClanDelete
+ *                       → 라우트에 `safeParse` 가 아예 없다. 달면 거짓말이 된다
+ * ★서버에 스키마가 없다★  게시판 4 · 댓글 4
+ *                       → 라우트가 몸통을 **검사하지 않는다.** 스키마를 여기서
+ *                         지어내면 「계약은 있는데 서버는 안 지키는」 더 나쁜 상태가 된다.
+ *                         게시판·댓글은 지금 문이 닫혀 있다 (`featureDoors.ts`).
+ *                         ★여는 판에서 서버에 먼저 스키마를 만들고 그때 단다★
+ * ```
  */
 
 /** 화면이 실제로 보내는 몸통 — 각 `page.tsx` 를 **읽고 손으로 옮긴 것** */
@@ -133,6 +146,37 @@ describe('엔드포인트의 `request` — 화면이 보내는 몸통이 통과�
       { key: 'authLogin', route: 'apps/web/app/api/auth/login/route.ts' },
       { key: 'authSignup', route: 'apps/web/app/api/auth/signup/route.ts' },
       { key: 'leagueCreate', route: 'apps/web/app/api/leagues/route.ts' },
+      /* ── 2026-09-03 에 더 단 열일곱 (O-037) */
+      { key: 'authToken', route: 'apps/web/app/api/auth/token/route.ts' },
+      { key: 'authPasswordForget', route: 'apps/web/app/api/auth/password/forget/route.ts' },
+      { key: 'authPasswordReset', route: 'apps/web/app/api/auth/password/reset/route.ts' },
+      { key: 'authEmailVerify', route: 'apps/web/app/api/auth/email/verify/route.ts' },
+      { key: 'meSettingUpdate', route: 'apps/web/app/api/me/setting/route.ts' },
+      { key: 'mePasswordUpdate', route: 'apps/web/app/api/me/password/route.ts' },
+      { key: 'meLinkUpdate', route: 'apps/web/app/api/me/link/route.ts' },
+      {
+        key: 'meTitleVerificationCheck',
+        route: 'apps/web/app/api/me/title-verification/route.ts',
+      },
+      { key: 'playerSettingUpdate', route: 'apps/web/app/api/players/[playerId]/setting/route.ts' },
+      { key: 'clanSettingUpdate', route: 'apps/web/app/api/clans/[clanSlug]/setting/route.ts' },
+      {
+        key: 'clanMasterClaimCreate',
+        route: 'apps/web/app/api/clans/[clanSlug]/master-claim/route.ts',
+      },
+      { key: 'leagueClanLookup', route: 'apps/web/app/api/leagues/[league]/clan_lookup/route.ts' },
+      { key: 'leagueInvite', route: 'apps/web/app/api/leagues/[league]/invitations/route.ts' },
+      { key: 'leagueClanRegister', route: 'apps/web/app/api/leagues/[league]/clans/route.ts' },
+      {
+        key: 'leagueClanDivisionUpdate',
+        route: 'apps/web/app/api/leagues/[league]/clans/[clan]/division/route.ts',
+      },
+      {
+        key: 'leagueClanSuccession',
+        route: 'apps/web/app/api/leagues/[league]/clans/[clan]/succession/route.ts',
+      },
+      { key: 'leagueClanExpel', route: 'apps/web/app/api/leagues/[league]/clans/[clan]/expel/route.ts' },
+      { key: 'leagueContentUpdate', route: 'apps/web/app/api/leagues/[league]/content/route.ts' },
     ]
 
     for (const { key, route } of ROUTES) {
@@ -154,5 +198,29 @@ describe('엔드포인트의 `request` — 화면이 보내는 몸통이 통과�
     /* GET 은 몸통이 없다. 달아 두면 「받는다」는 거짓말이 된다 */
     expect(defOf('playerProfile').request).toBeUndefined()
     expect(defOf('leagueMatches').request).toBeUndefined()
+
+    /* 쓰기인데도 몸통을 안 받는 것들 — 라우트에 `safeParse` 가 없다 */
+    for (const key of ['authLogout', 'uploadsCreate', 'playerRenew', 'clanRenew'] as const) {
+      expect(defOf(key).request, `${key} 는 몸통을 안 받는다`).toBeUndefined()
+    }
+  })
+
+  /**
+   * ★게시판·댓글에는 아직 못 단다 — 그 사실을 여기에 못박는다★
+   *
+   * 서버 라우트가 몸통을 **검사하지 않는다.** 계약에만 스키마를 지어 붙이면
+   * 「계약은 있는데 서버는 안 지킨다」가 되어 **지금보다 나쁘다.**
+   * 이 검사는 **문을 열 때 빨간 줄로 알려 주려고** 있다 —
+   * 서버에 스키마가 생기면 이 검사가 깨지고, 그때 `request` 를 단다.
+   */
+  it('게시판·댓글 라우트에는 아직 서버 스키마가 없다', () => {
+    const routes = ['apps/web/app/api/boards/route.ts', 'apps/web/app/api/comments/route.ts']
+    for (const route of routes) {
+      const src = readFileSync(join(REPO, route), 'utf8')
+      expect(
+        /([A-Z][A-Za-z0-9]*Input)\.safeParse/.test(src),
+        `${route} 에 스키마가 생겼다 — 이제 계약의 request 를 달 때다`,
+      ).toBe(false)
+    }
   })
 })

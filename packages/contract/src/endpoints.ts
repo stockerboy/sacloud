@@ -2,6 +2,31 @@ import { z } from 'zod'
 import { apiResponse, paginatedResponse } from './response'
 import { EggBrokenList } from './egg'
 import {
+  /*
+   * ── ★서버가 `safeParse` 에 쓰는 스키마들★ (O-037 · 2026-09-03)
+   *   계약의 `request` 칸이 **이 물건들을 그대로 가리킨다.**
+   *   비슷한 걸 하나 더 만들면 계약과 서버가 조용히 갈라진다 —
+   *   `__tests__/endpoint-request.test.ts` 가 **같은 물건인지**를 본다 (모양이 아니라 물건).
+   */
+  AccountLinkInput,
+  ClanInviteInput,
+  ClanLookupInput,
+  ClanMasterClaimInput,
+  ClanSettingInput,
+  ClanSuccessionInput,
+  DivisionChangeInput,
+  EmailVerifyInput,
+  ExpelInput,
+  LeagueClanRegisterInput,
+  LeagueContentInput,
+  MePasswordInput,
+  MeSettingInput,
+  PasswordForgetInput,
+  PasswordResetInput,
+  PlayerSettingInput,
+  RefreshInput,
+  TitleVerificationInput,
+
   AccountLinkState,
   AuthSession,
   Board,
@@ -165,6 +190,8 @@ export const endpoints = {
     path: '/auth/token',
     origin: 'observed',
     description: '토큰 갱신',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: RefreshInput,
     response: apiResponse(AuthSession),
   },
   authPasswordForget: {
@@ -172,6 +199,8 @@ export const endpoints = {
     path: '/auth/password/forget',
     origin: 'observed',
     description: '비밀번호 재설정 메일 발송',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: PasswordForgetInput,
     response: apiResponse(Ok),
   },
   authPasswordReset: {
@@ -179,6 +208,8 @@ export const endpoints = {
     path: '/auth/password/reset',
     origin: 'designed',
     description: '비밀번호 재설정 (화면은 관측, 경로는 자체 설계)',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: PasswordResetInput,
     response: apiResponse(Ok),
   },
   authEmailVerify: {
@@ -186,6 +217,8 @@ export const endpoints = {
     path: '/auth/email/verify',
     origin: 'designed',
     description: '이메일 인증 (화면은 관측, 경로는 자체 설계)',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: EmailVerifyInput,
     response: apiResponse(Ok),
   },
   authLogout: {
@@ -211,6 +244,8 @@ export const endpoints = {
     path: '/me/setting',
     origin: 'observed',
     description: '내 정보 수정',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: MeSettingInput,
     response: apiResponse(User),
   },
   mePasswordUpdate: {
@@ -218,6 +253,8 @@ export const endpoints = {
     path: '/me/password',
     origin: 'observed',
     description: '비밀번호 변경',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: MePasswordInput,
     response: apiResponse(Ok),
   },
   meLinkShow: {
@@ -232,6 +269,8 @@ export const endpoints = {
     path: '/me/link',
     origin: 'observed',
     description: '서든어택 계정 연동/해제',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: AccountLinkInput,
     response: apiResponse(AccountLinkState),
   },
   /* --- 서든어택 계정 소유권 증명 (칭호 `[용병]`, 2026-09-01) ---------------
@@ -248,6 +287,8 @@ export const endpoints = {
     path: '/me/title-verification',
     origin: 'designed',
     description: '칭호 소유권 증명 — 닉네임을 넣고 지금 칭호를 확인한다',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: TitleVerificationInput,
     response: apiResponse(TitleVerificationState),
   },
   meTitleVerificationCancel: {
@@ -255,6 +296,8 @@ export const endpoints = {
     path: '/me/title-verification',
     origin: 'designed',
     description: '진행 중인 칭호 증명 접기',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: TitleVerificationInput,
     response: apiResponse(TitleVerificationState),
   },
   uploadsCreate: {
@@ -349,6 +392,8 @@ export const endpoints = {
     path: '/players/:playerId/setting',
     origin: 'designed',
     description: '플레이어 설정 (화면 상세 [미확인])',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: PlayerSettingInput,
     response: apiResponse(Player),
   },
   clanShow: {
@@ -385,6 +430,8 @@ export const endpoints = {
     path: '/clans/:clanSlug/setting',
     origin: 'designed',
     description: '클랜 설정 (화면 상세 [미확인])',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: ClanSettingInput,
     response: apiResponse(Clan),
   },
   /* --- 클랜 마스터 인증 (스크린샷 1장 · 사람이 심사, 2026-09-01 · D-253) -----
@@ -405,6 +452,8 @@ export const endpoints = {
     path: '/clans/:clanSlug/master-claim',
     origin: 'designed',
     description: '클랜 마스터 인증 — 인게임 스크린샷 1장 제출',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: ClanMasterClaimInput,
     response: apiResponse(ClanMasterClaimState),
   },
   clanMasterClaimCancel: {
@@ -412,6 +461,8 @@ export const endpoints = {
     path: '/clans/:clanSlug/master-claim',
     origin: 'designed',
     description: '클랜 마스터 인증 — 심사중인 신청 접기',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: ClanMasterClaimInput,
     response: apiResponse(ClanMasterClaimState),
   },
 
@@ -590,6 +641,8 @@ export const endpoints = {
     path: '/leagues/:leagueSlug/clan_lookup',
     origin: 'designed',
     description: '넥슨 병영수첩 클랜 주소로 클랜 조회 (초대 전 미리보기)',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: ClanLookupInput,
     response: apiResponse(ClanSummary),
   },
   leagueInvite: {
@@ -597,6 +650,8 @@ export const endpoints = {
     path: '/leagues/:leagueSlug/invitations',
     origin: 'designed',
     description: '클랜 초대 + 초대링크 발급',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: ClanInviteInput,
     response: apiResponse(LeagueInvitation),
   },
   leagueClanRegister: {
@@ -604,6 +659,8 @@ export const endpoints = {
     path: '/leagues/:leagueSlug/clans',
     origin: 'designed',
     description: '리그 관리자가 클랜을 부리그/티어에 직접 등록 (무소속리그 티어 편성 · D-165)',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: LeagueClanRegisterInput,
     response: apiResponse(LeagueClan),
   },
   leagueClanDivisionUpdate: {
@@ -611,6 +668,8 @@ export const endpoints = {
     path: '/leagues/:leagueSlug/clans/:leagueClanId/division',
     origin: 'designed',
     description: '부리그 변경',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: DivisionChangeInput,
     response: apiResponse(LeagueClan),
   },
   leagueClanSuccession: {
@@ -618,6 +677,8 @@ export const endpoints = {
     path: '/leagues/:leagueSlug/clans/:leagueClanId/succession',
     origin: 'designed',
     description: '클랜변경(승계) 요청 — 새 클랜 마스터의 수락 필요',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: ClanSuccessionInput,
     response: apiResponse(Ok),
   },
   leagueClanDelete: {
@@ -632,6 +693,8 @@ export const endpoints = {
     path: '/leagues/:leagueSlug/clans/:leagueClanId/expel',
     origin: 'designed',
     description: '추방 (`추방합니다` 입력 확인 필요, 되돌릴 수 없음)',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: ExpelInput,
     response: apiResponse(Ok),
   },
   leagueContentUpdate: {
@@ -639,6 +702,8 @@ export const endpoints = {
     path: '/leagues/:leagueSlug/content',
     origin: 'designed',
     description: '리그정보·리그소개 편집',
+    /* 서버가 `safeParse` 에 쓰는 그것을 그대로 연결한다 (O-037) */
+    request: LeagueContentInput,
     response: apiResponse(League),
   },
 

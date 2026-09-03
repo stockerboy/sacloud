@@ -136,6 +136,20 @@ export const AuthSession = z.object({
 })
 export type AuthSession = z.infer<typeof AuthSession>
 
+/**
+ * 토큰 갱신 (O-037 · 2026-09-03).
+ *
+ * ⚠ **원래 `apps/web/app/api/auth/token/route.ts` 안에 있었다.** 계약으로 옮겼다 —
+ *   계약이 「이 주소는 이런 몸을 받는다」고 말할 수 있으려면 **같은 물건**을 가리켜야 한다.
+ *   라우트에 따로 두면 계약과 서버가 **조용히 갈라진다.**
+ *
+ * ⚠ 이 몸은 **없어도 된다.** 브라우저는 토큰을 안 들고 있고 httpOnly 쿠키로 보낸다.
+ *   그래서 라우트는 `safeParse` 가 실패해도 쿠키를 본다 — `request` 가 붙었다고
+ *   「이게 없으면 400」이라는 뜻이 아니다.
+ */
+export const RefreshInput = z.object({ refresh_token: z.string().min(1) })
+export type RefreshInput = z.infer<typeof RefreshInput>
+
 export const PasswordForgetInput = z.object({ email: Email })
 export type PasswordForgetInput = z.infer<typeof PasswordForgetInput>
 
