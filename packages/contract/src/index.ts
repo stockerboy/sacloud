@@ -36,3 +36,5 @@ export * from './clanAliases'
 export * from './collectFreshness'
 /* 시즌 경계 — ★진실은 한 곳★ (O-046 · 2026-09-03) */
 export * from './seasonWindow'
+/* 리그마다 감출 클랜 — 한 곳에서만 정한다 (O-044 · 2026-09-03) */
+export * from './clanLeagueHidden'

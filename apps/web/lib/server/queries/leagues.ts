@@ -31,7 +31,7 @@ import { cumulativeKdRate } from './visibility'
 import { publicOriginWhere } from './publicScope'
 import { ladderMatchWhere } from './ladderScope'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
-import { seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
+import { hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { seasonWindowWhere } from './season0Scope'
 
 /**
@@ -59,6 +59,26 @@ import { seasonWindowWhere } from './season0Scope'
  *   **경기 기록은 지우지 않는다.** 순위와 명단에서만 빠진다.
  */
 const ACTIVE_CLAN = { clan: { active: true }, expelledAt: null } as const
+
+/**
+ * **그 리그에서 볼 수 있는 클랜만** — 감춘 43곳을 뺀다 (O-044 · 2026-09-03).
+ *
+ * > 사장님: «열산클랜이 SPL에 합류하면 그 열산클랜은 **더 이상 열산클랜이 아니고**
+ * >  그 반대도 마찬가지이다»
+ *
+ * ★감추는 것이지 지우는 것이 아니다.★ 등록행도 경기도 그대로 있고,
+ * ★상대 클랜의 킬뎃·승률에는 그 경기가 그대로 들어간다★ (사장님 말씀).
+ * 여기서 빠지는 것은 **그 리그의 목록·랭킹에 보이는 자리**뿐이다.
+ *
+ * 표는 `@sacloud/contract` 의 `CLAN_HIDDEN_IN_LEAGUE` 한 곳에 있다.
+ * ⚠ ★이름이 아니라 slug 로 짝짓는다★ — `＃chasepIay`/`＃chaseplay` 처럼 눈으로 못 가리는 이름이 있다.
+ */
+function activeClanIn(leagueSlug: string) {
+  const hidden = hiddenClanSlugsIn(leagueSlug)
+  return hidden.length === 0
+    ? ACTIVE_CLAN
+    : { clan: { active: true, slug: { notIn: [...hidden] } }, expelledAt: null }
+}
 
 /* -------------------------------- 리그 목록 ------------------------------- */
 
@@ -202,7 +222,7 @@ export async function getLeagueClans(
     idOf: (row) => row.id,
     fetch: async (args) => {
       const rows = await prisma.leagueClan.findMany({
-        where: { leagueId, ...ACTIVE_CLAN },
+        where: { leagueId, ...activeClanIn(leagueSlug) },
         take: args.take,
         orderBy: args.orderBy as never,
         ...(args.cursor ? { cursor: args.cursor, skip: args.skip } : {}),
@@ -392,7 +412,8 @@ export async function getClanRanks(
     leagueId,
     ...(division > 0 ? { division } : {}),
     placement: false,
-    ...ACTIVE_CLAN,
+    /* 감춘 클랜은 랭킹에도 안 나온다 (O-044). `league.slug` 는 위에서 이미 읽었다 */
+    ...activeClanIn(league.slug),
   }
 
   const page = await cursorPage<{
