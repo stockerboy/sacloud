@@ -82,6 +82,11 @@ const ALLOWED = {
     writes: false,
     what: 'O-046 — 시즌 경계로 나누면 어디에 몇 건이 떨어지나 (읽기만 한다)',
   },
+  'clan-move': {
+    file: 'clanMoveApply',
+    writes: true,
+    what: 'O-044 (나) — 경기를 제 리그로 옮긴다. ★--confirm 없으면 미리보기 · --revert 로 되돌린다★',
+  },
   'clan-move-plan': {
     file: 'clanMovePlanProbe',
     writes: false,
