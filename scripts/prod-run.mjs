@@ -67,6 +67,11 @@ const ALLOWED = {
     writes: false,
     what: '라운드 단위로 설박튀를 가린다 (설치했는데 그 라운드를 졌는가) — 읽기만 한다',
   },
+  'season-plan': {
+    file: 'seasonPlanProbe',
+    writes: false,
+    what: 'O-046 — 시즌 경계로 나누면 어디에 몇 건이 떨어지나 (읽기만 한다)',
+  },
   'clan-overlap-plan': {
     file: 'clanOverlapPlanProbe',
     writes: false,
