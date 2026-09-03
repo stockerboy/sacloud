@@ -62,6 +62,11 @@ const ALLOWED = {
     writes: false,
     what: '병영수첩 주소를 붙여 넣으면 그 선수·클랜이 나오는지 대조한다 (D-254 · 읽기만 한다)',
   },
+  'season-window': {
+    file: 'seasonWindowProbe',
+    writes: false,
+    what: '기록이 언제까지 거슬러 올라가나 · 월별 경기 수 · 래더 증감 보존율 · Season 행 (읽기만 한다)',
+  },
   'ipl-state': { file: 'iplState', writes: false, what: 'IPL 리그·등록 클랜·경기 수를 읽는다' },
   'ipl-source': { file: 'iplSource', writes: false, what: 'IPL 기록이 어디까지 있는지 센다' },
   'ipl-match': { file: 'iplMatch', writes: false, what: '명단 39곳이 DB 에 있는지 대조한다' },
