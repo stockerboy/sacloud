@@ -34,19 +34,27 @@
  *
  * ── **읽기만 한다.** 한 줄도 쓰지 않는다.
  */
-import { prisma } from '@sacloud/db'
+/*
+ * ★임계값은 이제 계약에 있다★ (2026-09-03 · `packages/contract/src/collectFreshness.ts`).
+ *
+ * 옮긴 이유 — `/api/health` 의 「수집기」 칸이 **넥슨 파이프라인**을 보고 있었다.
+ * 지금 도는 것은 **3rd.supply 미러**다. 자를 잘못 대는 바람에 health 가 240시간째
+ * 노랑에 고정이었고, ★이미 노랑이라 진짜 빨간 줄(`sanply` 적재 실패)이 열흘 동안 가려졌다.★
+ * 웹과 워커가 **같은 자**를 써야 이 일이 다시 안 난다.
+ *
+ * ⚠ 여기서 **다시 내보낸다.** 옛 이름으로 부르던 자리를 하나도 안 깨려는 것이다.
+ */
+export {
+  SYNC_FRESHNESS_DEFAULT_MAX_AGE_HOURS,
+  SYNC_FRESHNESS_FALLBACK_MAX_AGE_HOURS,
+} from '@sacloud/contract'
 
-/** 리그별 기본 임계값(시간). 위 실측 표에서 최대 공백에 여유를 얹은 값이다 */
-export const SYNC_FRESHNESS_DEFAULT_MAX_AGE_HOURS: Record<string, number> = {
-  /* 최대 공백 7.1h → 12h 면 오경보 0, 실패는 확실히 잡는다 */
-  sanply: 12,
-  /* 최대 공백 18.0h → 24h. 더 조이면 새벽마다 운다 */
-  supply: 24,
-  /* 8일에 12경기 · 최대 공백 4.8일. 신선도로 판정하지 않는다 (사실상 끔) */
-  daerule: 168,
-}
-/** 표에 없는 리그의 기본값. 모르는 리그를 조용히 통과시키지 않되 무는 값은 아니다 */
-export const SYNC_FRESHNESS_FALLBACK_MAX_AGE_HOURS = 48
+import {
+  SYNC_FRESHNESS_DEFAULT_MAX_AGE_HOURS,
+  SYNC_FRESHNESS_FALLBACK_MAX_AGE_HOURS,
+  SYNC_FRESHNESS_REPORT_ONLY,
+} from '@sacloud/contract'
+import { prisma } from '@sacloud/db'
 
 /**
  * 리그마다 **어느 경로로 들어오는가** — `Match.origin` 이 그것을 말해 준다.
@@ -87,7 +95,7 @@ export const SYNC_FRESHNESS_FALLBACK_ORIGINS: readonly string[] = ['3rd.supply']
  * 그래서 **아무 판정도 하지 않고 마지막 경기·마지막 적재 시각만 보여 준다.**
  * IPL 에 자동 경로가 생기는 날 이 집합에서 빼고 위 실측값으로 임계값을 걸면 된다.
  */
-export const SYNC_FRESHNESS_REPORT_ONLY: ReadonlySet<string> = new Set(['nolink'])
+export { SYNC_FRESHNESS_REPORT_ONLY } from '@sacloud/contract'
 
 export interface SyncFreshnessRow {
   league: string

@@ -32,3 +32,5 @@ export * from './endpoints'
 export * from './clanMarkUrl'
 export * from './clanSearch'
 export * from './clanAliases'
+/* 수집 신선도 임계값 — 웹(`/api/health`)과 워커가 ★같은 자★ 를 쓴다 (2026-09-03) */
+export * from './collectFreshness'

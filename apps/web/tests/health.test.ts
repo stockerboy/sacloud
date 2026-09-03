@@ -8,6 +8,7 @@
  *   4. 공개 데이터가 비면 상태가 나빠진다
  *   5. 전체 상태는 **가장 나쁜 항목**을 따른다
  */
+import { COLLECTED_LEAGUE_SLUGS } from '@sacloud/contract'
 import { describe, expect, it } from 'vitest'
 import { prisma } from '@sacloud/db'
 import { getHealth } from '../lib/server/queries/health'
@@ -61,18 +62,51 @@ describe.runIf(up)('상태 점검', () => {
     expect(report.status).not.toBe('down')
   })
 
-  it('수집 성공이 오래됐으면 degraded 로 본다', async () => {
-    // 실제 마지막 성공 시각을 기준으로 **미래 시점**에서 물어본다 — 데이터를 건드리지 않는다
+  it('수집이 밀리면 degraded 로 본다', async () => {
+    /* 아주 먼 미래에서 물어보면 어떤 리그든 임계값을 넘는다. 데이터는 안 건드린다 */
     const report = await getHealth()
-    const last = report.metrics.collectorLastSuccessAt
-    if (!last) {
+    const newest = report.metrics.leagueFreshness
+      .map((row) => row.newestStartAt)
+      .filter((value): value is string => value !== null)
+    if (newest.length === 0) {
       expect(report.checks.collector.status).toBe('degraded')
       return
     }
-    const wayLater = new Date(new Date(last).getTime() + 100 * 60 * 60 * 1000)
+    const wayLater = new Date(
+      Math.max(...newest.map((value) => new Date(value).getTime())) + 400 * 60 * 60 * 1000,
+    )
     const stale = await getHealth(wayLater)
     expect(stale.checks.collector.status).toBe('degraded')
-    expect(stale.checks.collector.detail).toContain('시간 전')
+    /* ★어느 리그가 밀렸는지 이름을 댄다★ — 「수집이 이상함」만으로는 손을 못 쓴다 */
+    expect(stale.checks.collector.detail).toMatch(/supply|sanply|daerule/)
+  })
+
+  /**
+   * ★넥슨이 낡았다는 것만으로는 degraded 가 되면 안 된다★ (2026-09-03).
+   *
+   * ══ 이 검사가 막는 사고 ══
+   *
+   * 옛 판정은 `ImportJob`(넥슨)의 마지막 성공 시각을 48시간 기준으로 봤다.
+   * 그런데 넥슨은 할당량 때문에 **일부러 세워 둔** 것이라 언제나 그 기준을 넘는다.
+   * ```
+   * 결과   `/api/health` 가 ★240시간째 노랑에 고정★
+   *        이미 노랑이라 ★진짜 문제가 나도 안 바뀐다★
+   *        그 뒤에서 `sanply` 적재가 ★열흘 동안★ 실패 중이었는데 아무도 몰랐다
+   * ```
+   * ★세워 둔 것을 고장이라 부르면 알람이 무뎌지고, 무딘 알람은 없는 알람보다 나쁘다.★
+   */
+  it('넥슨이 낡은 것만으로는 판정이 바뀌지 않는다', async () => {
+    const report = await getHealth()
+    /* 넥슨 숫자는 **보이게 남긴다** — 다시 켤 때 여기를 본다 */
+    expect(report.metrics).toHaveProperty('collectorLastSuccessAt')
+
+    /* 판정 문구가 넥슨 마지막 성공 시각을 근거로 대면 안 된다 (옛 문구를 못박는다) */
+    expect(report.checks.collector.detail).not.toContain('마지막 수집 성공이')
+
+    /* 판정에 쓰는 리그는 자동 수집이 도는 것들뿐이다 — IPL(`nolink`)은 사람 손이라 뺀다 */
+    const slugs = report.metrics.leagueFreshness.map((row) => row.league).sort()
+    expect(slugs).toEqual([...COLLECTED_LEAGUE_SLUGS].sort())
+    expect(slugs).not.toContain('nolink')
   })
 
   it('공개 데이터 수치가 실제 DB와 맞는다', async () => {
