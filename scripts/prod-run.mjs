@@ -187,6 +187,11 @@ const ALLOWED = {
     writes: false,
     what: '명부가 정말 늘고 있나 아니면 이관한 날짜인가 (읽기 전용)',
   },
+  'nexon-detail-shape': {
+    file: 'nexonDetailShapeProbe',
+    writes: false,
+    what: '선수를 이어도 넥슨 공식 길이 열리는가 - 경기 상세가 10명을 주는가 (읽기 전용)',
+  },
   'weekly-graph-probe': {
     file: 'weeklyGraphProbe',
     writes: false,
