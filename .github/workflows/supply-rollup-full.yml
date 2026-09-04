@@ -291,9 +291,12 @@ jobs:
 
   verify:
     name: 검증 — 행 수 · 무결성
-    needs: [prepare, rollup]
+    # ★gate 를 needs 에 넣어야 outputs 를 읽을 수 있다★ (GitHub 규칙)
+    needs: [gate, prepare, rollup]
     # 앞이 죽어도 따로 돈다. **검사 스텝은 서로를 가리면 안 된다** (D-224)
-    if: ${{ always() && inputs.dry_run != true }}
+    # ★동결됐으면 이 검증도 안 돈다★ (2026-09-04) — always() 는 앞 잡이 건너뛰어도 도는데,
+    #   그러면 ★대상이 0개인 채로 빨간 줄★ 이 나서 진짜 경보가 묻힌다
+    if: "${{ always() && needs.gate.outputs.go == 'true' && inputs.dry_run != true }}"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
