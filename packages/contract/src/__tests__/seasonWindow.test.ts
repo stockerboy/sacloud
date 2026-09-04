@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SEASON_WINDOWS, seasonWindowAt } from '../seasonWindow'
+import { SEASON_WINDOWS_V1, SEASON_WINDOWS, seasonWindowAt } from '../seasonWindow'
 
 /**
  * **시즌 경계를 지킨다** (O-046 · 2026-09-03).
@@ -26,10 +26,20 @@ function kst(d: Date): string {
 }
 
 describe('시즌 경계', () => {
-  it('★시즌0 은 2026-07-02 에 시작한다 (7/1 이 아니다)★', () => {
+  /*
+   * ⚠ ★2026-09-04 · 사장님이 시작을 다시 정하셨다★
+   *   > «IPL은 전 기록 다 버리고 ★9월3일 오전 7시★ 를 기준으로 그 이후의 기록만 기록한다»
+   *   ★옛 값 7/2 자정은 `SEASON_WINDOWS_V1` 에 남아 있다★ (지운 것이 아니다).
+   */
+  it('★시즌0 은 2026-09-03 07:00 에 시작한다 (7/2 가 아니다)★', () => {
     const s0 = SEASON_WINDOWS.find((w) => w.number === 0)
     expect(s0, '시즌0 창이 없다').toBeDefined()
-    expect(kst(s0!.startedAt)).toBe('2026-07-02 00:00')
+    expect(kst(s0!.startedAt)).toBe('2026-09-03 07:00')
+  })
+
+  it('★옛 경계를 지우지 않았다★ — 되돌릴 값이 남아 있다 (`CLAUDE.md` 10-4)', () => {
+    expect(kst(SEASON_WINDOWS_V1.season0StartedAt)).toBe('2026-07-02 00:00')
+    expect(kst(SEASON_WINDOWS_V1.betaEndedAt)).toBe('2026-07-02 00:00')
   })
 
   it('★Beta 는 2026-03-05 에 시작한다 (1월이 아니다)★', () => {
@@ -72,8 +82,9 @@ describe('시즌 경계', () => {
   })
 
   it('경계의 그 순간이 어느 쪽에 드는가', () => {
-    /* 7/2 00:00 KST 는 ★시즌0★ 이다. Beta 의 끝이 아니다 */
-    const boundary = new Date('2026-07-02T00:00:00+09:00')
+    /* ★시즌0 이 시작하는 그 순간★ 은 시즌0 이다. Beta 의 끝이 아니다.
+       날짜를 다시 적지 않는다 — 창에서 꺼내 쓰면 경계가 또 옮겨져도 이 검사는 살아 있다 */
+    const boundary = SEASON_WINDOWS.find((w) => w.number === 0)!.startedAt
     expect(seasonWindowAt(boundary)?.number).toBe(0)
     /* 그 1분 전은 Beta */
     const before = new Date(boundary.getTime() - 60_000)

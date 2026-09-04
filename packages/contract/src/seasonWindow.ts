@@ -19,6 +19,22 @@
  * 나중에 박혀 있는 계산이 나오면 **그것이 이 상수를 가리키게 고친다.**
  *
  * ⚠ 시각은 전부 **KST 자정**이다. 사장님이 «무조건 목요일» 이라고 하셨고 셋 다 목요일이다.
+ *
+ * ══ ★2026-09-04 — 사장님이 시작을 다시 정하셨다★ ══
+ *
+ * > «SPL은 시즌7인 서플라이에서 **9/3일 오전 7시를 기준으로** 그 시즌7의 기록카드를 전부 가지고 온다»
+ * > «IPL은 전 기록 다 버리고 **9월3일 오전 7시**를 기준으로 그 이후의 기록만 전부 기록한다»
+ * > «열산은 **9/3일 오전 7시** 전 기록은 전부 다 버린다» · «시즌0이다»
+ *
+ * ★그래서 Beta 의 끝과 시즌0 의 시작이 7/2 자정 → 9/3 07:00 으로 옮겨졌다.★
+ * ★옛 값은 지우지 않고 아래 `_V1` 에 남긴다★ (`CLAUDE.md` 10-4).
+ *
+ * ⚠ ★이 값은 `apps/worker/src/lib/season0Window.ts` 의 `SEASON0_FROM`·`SEASON0_TO` 와
+ *   반드시 같아야 한다.★ 두 파일이 갈라지면 ★래더는 9/3 부터 세는데 시즌 딱지는 7/2 부터★
+ *   가 되어 같은 경기가 시즌0 인지 아닌지 코드마다 달라진다.
+ *   패키지 의존 방향 때문에 여기서 worker 를 가져올 수 없어 값을 **두 번 적는다.**
+ *   대신 ★`apps/worker/src/__tests__/seasonWindowAgrees.test.ts` 가 둘이 같은지 검사한다.★
+ *   ★한쪽만 고치면 그 검사가 빨개진다.★ 값을 고칠 때는 **두 파일을 같이** 고쳐라.
  */
 
 /** 시즌 하나의 창 */
@@ -56,13 +72,15 @@ export const SEASON_WINDOWS: readonly SeasonWindow[] = [
     seasonType: 'beta',
     label: 'Beta',
     startedAt: new Date('2026-03-05T00:00:00+09:00'),
-    endedAt: new Date('2026-07-02T00:00:00+09:00'),
+    /* ★2026-09-04 — 7/2 자정에서 옮겼다.★ 옛 값은 `SEASON_WINDOWS_V1` 에 있다 */
+    endedAt: new Date('2026-09-03T07:00:00+09:00'),
   },
   {
     number: 0,
     seasonType: 'official',
     label: '시즌 0',
-    startedAt: new Date('2026-07-02T00:00:00+09:00'),
+    /* ★사장님: «9월3일 오전 7시를 기준으로 그 이후의 기록만»★ */
+    startedAt: new Date('2026-09-03T07:00:00+09:00'),
     endedAt: new Date('2026-10-01T00:00:00+09:00'),
   },
   {
@@ -73,6 +91,17 @@ export const SEASON_WINDOWS: readonly SeasonWindow[] = [
     endedAt: null,
   },
 ]
+
+/**
+ * ★옛 경계 (2026-09-04 전)★ — 지우지 않고 남긴다 (`CLAUDE.md` 10-4).
+ *
+ * 이 값으로 돌리려면 위 `SEASON_WINDOWS` 의 두 줄과
+ * `apps/worker/src/lib/season0Window.ts` 를 **같이** 되돌려야 한다.
+ */
+export const SEASON_WINDOWS_V1 = {
+  betaEndedAt: new Date('2026-07-02T00:00:00+09:00'),
+  season0StartedAt: new Date('2026-07-02T00:00:00+09:00'),
+} as const
 
 /**
  * ★「작년건 버려라」를 어떻게 읽었나★ — 되돌릴 수 있게 적어 둔다.
