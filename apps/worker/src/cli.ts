@@ -301,6 +301,17 @@ function usage(): void {
               기본 대상은 IPL(nolink) 이다. 미러 리그는 supplyRollup 이 이미 채운다.
               Player.clanId 는 건드리지 않는다 (D-161 은 3rd.supply 선수만 허용한다).
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
+  collect-lease <acquire|renew|release|status> [--ttl 초] [--owner <id>]
+              ★수집기 단일 실행 보장 — DB 임대★ (2026-09-04 · Pre-Part 0).
+              프로세스를 세는 방식이 ★세 번 뚫려서★ 바꾼 것이다. 한 문장짜리 SQL 이라
+              동시에 여러 판이 달려들어도 ★정확히 하나만★ 이긴다
+              status 는 ★DB 장부와 이 컴퓨터의 실제 프로세스 수를 나란히★ 찍는다 —
+              「임대는 살아있는데 프로세스 0개」면 죽은 판이 쥔 것이다 (20분 뒤 자동 해제)
+              못 잡으면 ★코드 9★ (1=오류 · 2=차단 · 3=무거움 과 구별한다)
+  barracks-collect --league <slug> [--limit N] [--clans N] [--from YYMMDD] [--confirm]
+              병영수첩을 curl 로 긁는다 (O-051 · D-268). ★첫 403·429 에서 즉시 멈춘다★
+              ★임대 없이는 시작하지 않는다★ — 셸은 --lease-owner <id>,
+              사람이 한 번 돌릴 때는 ★--no-lease 를 의도해서★ 붙인다 (코드 9 로 거부)
   battlelog-lineup [--league <slug>] [--limit N] [--confirm]
               클랜 배틀로그 원문 → **MatchPlayerStat**(참가 기록). 라인업의 유일한 출처다
               **10명이 다 확인된 경기만** 넣는다. assist·damage·headshot·dropout·mvp 는 전부 null
