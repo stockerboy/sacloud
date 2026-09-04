@@ -7,6 +7,11 @@ export default tseslint.config(
   {
     ignores: [
       '**/node_modules/**',
+      /* ★서브에이전트 작업방(worktree)★ — 같은 저장소의 **사본**이다 (2026-09-04).
+         사본마다 `tsconfig.json` 이 들어 있어 파서가
+         «tsconfigRootDir 후보가 여럿» 이라며 ★저장소 전체를 못 읽었다★ (오류 2,848건).
+         ★우리가 쓴 코드가 아니라 복사본이다.★ 원본만 검사한다. */
+      '.claude/worktrees/**',
       /* `.next` 뿐 아니라 **다른 이름으로 뽑은 Next 빌드 산출물**도 뺀다.
          검증용으로 `--distDir .next-verify` 같은 자리에 빌드하면 그 안의 생성 타입
          파일이 그대로 검사돼 오류가 만 단위로 쏟아졌다 (실측 17,846건).

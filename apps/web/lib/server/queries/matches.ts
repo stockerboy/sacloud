@@ -506,8 +506,8 @@ export function toMatchListItem(
  *     **목록만** 전 기간이라 숫자와 카드가 어긋나 보였다.
  *
  *   데이터는 지우지 않는다 — 화면이 거를 뿐이다. 과거 시즌 조회는 별도 기능이다 (`CLAUDE.md` 3-A 7).
- *   매치 상세(`getMatch` · 주소로 직접 여는 것)는 그대로 둔다. 같은 함수(`withSeasonWindow`)라
- *   창이 바뀌면 여기도 같이 바뀐다 — 새 기준을 만들지 않았다.
+ *   매치 상세(`getMatch` · 주소로 직접 여는 것)도 2026-09-04 부터 같이 걸린다 — 아래 `getMatch` 참조.
+ *   같은 함수(`withSeasonWindow`)라 창이 바뀌면 여기도 같이 바뀐다 — 새 기준을 만들지 않았다.
  */
 async function matchPage(
   where: Prisma.MatchWhereInput,
@@ -700,8 +700,21 @@ export async function getMatch(
    * `sourceMatchId` 를 먼저 보고 `id` 도 함께 본다 — 이 파이프라인이 예전에 넣은 행은
    * `id === sourceMatchId` 이고(12,567행), mock 시드는 `sourceMatchId` 가 없다.
    */
+  /**
+   * **창 밖 경기는 열리지 않는다** (2026-09-04 · 사장님 지시).
+   *
+   * 사장님: *"9/3일 오전 7시 전 기록은 전부 다 버린다"* · *"못 열게"* ·
+   * *"SPL 경기 굳이 경기상세 이전꺼 띄우지말고 걍 카드로 만들어서"*.
+   *
+   * ⚠ 옛 규칙 — «매치 상세는 그대로 둔다». 그 판단을 뒤집는다.
+   *   목록은 이미 창에 걸려 있었는데(`matchPage`) 상세만 안 걸려서,
+   *   **목록엔 없는데 주소로는 열리는** 상태였다. 한쪽만 막는 건 막은 게 아니다.
+   *
+   * **지우지 않는다 — 화면이 거를 뿐이다** (사장님이 「B」로 고르셨다).
+   * 행은 DB 에 그대로 있고, 나중에 지난시즌 조회를 붙이면 다시 보인다.
+   */
   const match = await prisma.match.findFirst({
-    where: { leagueId, OR: [{ sourceMatchId: matchId }, { id: matchId }] },
+    where: withSeasonWindow({ leagueId, OR: [{ sourceMatchId: matchId }, { id: matchId }] }),
     select: MATCH_SELECT,
   })
   if (!match) return null

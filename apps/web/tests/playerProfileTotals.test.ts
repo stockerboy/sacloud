@@ -134,11 +134,26 @@ describe.runIf(up)('선수 상세정보 누적 (D-176)', () => {
      * 시즌0 창이 ★9/3 07:00 ~ 10/1★ 로 좁아지자 ★적재는 18만 건인데 창 안 대상은 0★ 이 됐다.
      * 옛 단언은 「적재됐으면 대상이 있다」였는데 ★그 전제가 창에 달려 있었다.★
      *
-     * ★창 안에 자료가 없는 것은 결함이 아니다★ — 새 시즌이 막 시작했을 뿐이다.
-     * ★그때는 건너뛴다.★ ★없는 것을 있다고 우기지 않는다.★
+     * ★한 번 더 틀렸다★ (같은 날, 두 번째) — 「창 안 경기가 0건인가」로 걸렀더니
+     * ★창 안에 경기는 있는데 `${ENOUGH_GAMES}`경기를 뛴 선수는 아직 없는★ 상태에서 또 빨개졌다.
+     * ★시즌이 하루밖에 안 됐으면 그게 정상이다.★
+     *
+     * 그래서 ★전제를 그대로 재 본다★ — 창 안에서 `${ENOUGH_GAMES}`경기 이상 뛴 선수가
+     * ★한 명이라도 있는가.★ 없으면 검사할 것이 없으니 건너뛴다.
+     * (`findTargets` 와 다른 길로 센다 — 그쪽은 「최근 12경기 참가자」 표본이라
+     *  이 값을 그대로 되쓰면 검사가 자기 자신을 확인하게 된다.)
+     *
+     * ★없는 것을 있다고 우기지 않는다.★ ★문턱을 낮춰 통과시키지도 않는다.★
      */
-    const inWindow = await prisma.match.count({ where: withLadderMatch(seasonWindowWhere()) })
-    if (inWindow === 0) return
+    const perPlayer = await prisma.matchPlayerStat.groupBy({
+      by: ['playerId'],
+      where: { match: scoped() },
+      _count: { _all: true },
+      orderBy: { _count: { playerId: 'desc' } },
+      take: 1,
+    })
+    const mostGames = perPlayer[0]?._count._all ?? 0
+    if (mostGames < ENOUGH_GAMES) return
 
     expect(targets.length).toBeGreaterThan(0)
   })

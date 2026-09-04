@@ -18,7 +18,6 @@ import { prisma } from '@sacloud/db'
 import { TRAIT_MIN_GAMES } from '@sacloud/contract'
 import { getLeaguePlayerDetail } from '../lib/server/queries/records'
 import { clearTraitDistributionCache, playerTraits } from '../lib/server/queries/playerTraits'
-import { SEASON0_FROM } from '../lib/server/queries/season0Scope'
 
 const P = 'T185-'
 const SLUG = 't185league'
@@ -51,7 +50,6 @@ const HOOK_TIMEOUT_MS = 60_000
  */
 import { IN_WINDOW } from './seasonWindowFixture'
 
-const DAY = 24 * 60 * 60 * 1000
 const HOUR = 60 * 60 * 1000
 
 /**

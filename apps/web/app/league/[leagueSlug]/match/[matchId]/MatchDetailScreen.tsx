@@ -69,7 +69,10 @@ export default function MatchDetailPage({
   if (!match.data) {
     return (
       <div className="pc-container pb-[40px] pt-[40px]">
-        <ProfileEmpty message="경기를 찾을 수 없습니다." />
+        {/* ★시즌0 이전 경기는 못 연다★ (2026-09-04 · 사장님 지시).
+            서버가 창 밖 경기를 404 로 돌려주므로 여기로 온다. 「없다」고만 하면
+            ★기록이 지워진 줄 안다★ — 왜 안 보이는지를 적는다. 행은 DB 에 그대로 있다 */}
+        <ProfileEmpty message="시즌0(9/3 07:00 이후) 경기만 볼 수 있습니다." />
         <div className="mt-6 text-center text-sm text-meta">
           <Link href={`/league/${leagueSlug}`}>
             <span className="underline underline-offset-4">리그로 돌아가기</span>
