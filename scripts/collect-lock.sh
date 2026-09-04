@@ -57,6 +57,9 @@ COLLECT_LEASE_TTL="${COLLECT_LEASE_TTL:-1200}"   # ★20분★ — 한 사이클
 COLLECT_LEASE_OWNER=""
 # 심장박동 백그라운드의 셸 번호. 반납할 때 같이 멈춘다
 COLLECT_HEARTBEAT_PID=""
+# ★임대를 마지막으로 「확인」한 시각★ (epoch 초) — 갱신에 성공한 순간이다.
+#   DB 가 안 닿는 동안 이 값이 안 움직이고, ★TTL 을 넘기면 안전하게 멈춘다★
+COLLECT_LEASE_LAST_OK=""
 
 # ★임대를 잡는다.★ 못 잡으면 여기서 판이 끝난다
 collect_lock_acquire() {
@@ -85,6 +88,7 @@ collect_lock_acquire() {
     exit 1
   fi
 
+  COLLECT_LEASE_LAST_OK=$(date +%s)
   say "★임대를 잡았다★ (${COLLECT_LEASE_TTL}초 · 주인 ${COLLECT_LEASE_OWNER})"
 
   # ══ ★★심장박동 — 도는 내내 따로 갱신한다★★ (2026-09-04 후속) ══
@@ -105,7 +109,26 @@ collect_lock_acquire() {
   (
     while :; do
       sleep "$COLLECT_HEARTBEAT_EVERY"
-      $WORKER_RUN collect-lease renew --owner "$COLLECT_LEASE_OWNER" --ttl "$COLLECT_LEASE_TTL" >/dev/null 2>&1 || exit 0
+      $WORKER_RUN collect-lease renew --owner "$COLLECT_LEASE_OWNER" --ttl "$COLLECT_LEASE_TTL" >/dev/null 2>&1
+      hb=$?
+      if [ "$hb" = "0" ]; then
+        COLLECT_LEASE_LAST_OK=$(date +%s)
+        continue
+      fi
+      if [ "$hb" = "9" ]; then
+        # ★진짜로 잃었다★ — 남이 가져갔다. ★부모까지 끝낸다★
+        say "★★임대 상실 — 남이 가져갔다. 이 판을 끝낸다★★"
+        kill -TERM $$ 2>/dev/null
+        exit 0
+      fi
+      # ★3 (또는 그 밖) = DB 를 못 물어봤다. 잃은 것이 아니다★
+      blind=$(( $(date +%s) - COLLECT_LEASE_LAST_OK ))
+      say "★DB 연결 실패 — 임대 상태 확인 불가★ (${blind}초째 · ★잃은 것이 아니다★)"
+      if [ "$blind" -ge "$COLLECT_LEASE_TTL" ]; then
+        say "★만료(${COLLECT_LEASE_TTL}초)를 넘겨서도 확인이 안 된다 — 안전하게 끝낸다★"
+        kill -TERM $$ 2>/dev/null
+        exit 0
+      fi
     done
   ) &
   COLLECT_HEARTBEAT_PID=$!
@@ -138,9 +161,36 @@ collect_lock_renew() {
   $WORKER_RUN collect-lease renew --owner "$COLLECT_LEASE_OWNER" --ttl "$COLLECT_LEASE_TTL" \
     >/dev/null 2>&1
   code=$?
-  if [ "$code" != "0" ]; then
-    say "★★임대를 잃었다 — 이 판을 끝낸다. 남이 이미 수집 중이다★★"
+
+  # ══ ★★셋을 가른다★★ (2026-09-04 · O-055-1 · 사장님 지시) ══
+  #
+  #   ★전★  0 이 아니면 전부 「임대를 잃었다」
+  #          → ★DB 가 잠깐 끊기자 멀쩡한 판이 죽었다★ (2026-09-04 20:30)
+  #          → ★4시간 43분 동안 IPL 이 한 건도 안 들어왔다★
+  #          → 게다가 로그가 «남이 이미 수집 중이다» 라고 ★거짓말을 했다★
+  #   ★후★  0 갱신됨 · ★9 임대 상실★ · ★3 DB 연결 실패★
+  #
+  #   ★「모른다」는 「잃었다」가 아니다.★ 만료 전까지는 계속 돈다 —
+  #   그 사이에 DB 가 살아나면 그대로 이어 간다.
+  if [ "$code" = "0" ]; then
+    COLLECT_LEASE_LAST_OK=$(date +%s)
+    return 0
+  fi
+
+  if [ "$code" = "9" ]; then
+    say "★★임대 상실 — 이 판을 끝낸다. 남이 이미 수집 중이다★★"
     return 1
   fi
+
+  # ★3 (또는 그 밖) = 물어보지도 못했다★
+  blind=$(( $(date +%s) - COLLECT_LEASE_LAST_OK ))
+  say "★DB 연결 실패 — 임대 상태 확인 불가★ (${blind}초째 · ★잃은 것이 아니다★)"
+  if [ "$blind" -ge "$COLLECT_LEASE_TTL" ]; then
+    # ⚠ ★영원히 버티면 안 된다.★ 만료를 넘기면 남이 진짜로 가져갈 수 있고,
+    #   그때부터 계속 도는 것은 ★두 판★ 이다
+    say "★만료(${COLLECT_LEASE_TTL}초)를 넘겨서도 확인이 안 된다 — 안전하게 끝낸다★"
+    return 1
+  fi
+  say "  만료까지 $((COLLECT_LEASE_TTL - blind))초 남았다 — 계속 돈다"
   return 0
 }

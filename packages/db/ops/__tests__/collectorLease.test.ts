@@ -123,7 +123,8 @@ describe.skipIf(!dbUp)('임대 (DB)', () => {
     const name = lease('renew-other')
     await acquireCollectorLease({ name, pid: 111 })
     const out = await renewCollectorLease({ name, ownerId: 'ID가-아닌-값' })
-    expect(out.ok).toBe(false)
+    /* ★DB 는 답했고 0행이다 → 진짜 상실★ (연결 실패와 구별된다 · O-055-1) */
+    expect(out.outcome).toBe('lost')
   })
 
   it('남의 임대는 반납할 수 없다', async () => {
@@ -142,7 +143,7 @@ describe.skipIf(!dbUp)('임대 (DB)', () => {
 
     const before = (await readLease(name))?.expiresAt.getTime() ?? 0
     const out = await renewCollectorLease({ name, ownerId: got.ownerId, leaseMs: 600_000 })
-    expect(out.ok).toBe(true)
+    expect(out.outcome).toBe('renewed')
     const after = (await readLease(name))?.expiresAt.getTime() ?? 0
     expect(after).toBeGreaterThan(before)
     expect((await readLease(name))?.renewCount).toBe(1)
@@ -189,7 +190,7 @@ describe.skipIf(!dbUp)('임대 (DB)', () => {
 
     /* ★죽은 줄 모르고 계속 돌던 판이 갱신을 시도한다★ */
     const out = await renewCollectorLease({ name, ownerId: dying.ownerId })
-    expect(out.ok).toBe(false)
+    expect(out.outcome).toBe('lost')
   })
 
   it('같은 주인이 다시 잡는 것은 허용한다 (멱등)', async () => {

@@ -180,10 +180,37 @@ export async function acquireCollectorLease(input: AcquireInput = {}): Promise<A
 }
 
 /**
+ * 갱신의 결과. ★셋을 반드시 갈라야 한다★ (2026-09-04 · O-055-1 · 사장님 지시).
+ *
+ * ```
+ * renewed      갱신됐다
+ * ★lost★      UPDATE 는 ★돌았는데 0행★ 이다 → 남이 가져갔다 → ★즉시 멈춘다★
+ * ★unreachable★ UPDATE 가 ★돌지도 못했다★ (DB 단절·타임아웃) → ★모르는 상태다★
+ * ```
+ *
+ * ── ★왜 이걸 가르는 데 하루를 썼나★
+ *   2026-09-04 20:25 에 세션 풀러가 잠깐 끊겼다. 갱신이 실패했고,
+ *   그때 코드는 ★실패를 전부 「잃음」으로 읽어★ 수집기를 끝냈다.
+ *   ★4시간 43분 동안 IPL 이 한 건도 안 들어왔다.★
+ *   게다가 로그가 «남이 이미 수집 중이다» 라고 ★거짓말을 했다★ — 아무도 안 돌았다.
+ *
+ *   ★「모른다」를 「잃었다」로 바꾸면, 멀쩡한 판이 죽는다.★
+ *   반대로 ★「잃었다」를 「모른다」로 바꾸면, 두 판이 된다.★ 둘 다 사고다.
+ *   그래서 ★섞지 않고 셋으로 돌려준다.★ 어느 쪽으로 굴릴지는 부르는 쪽이 정한다.
+ */
+export type RenewOutcome = 'renewed' | 'lost' | 'unreachable'
+
+export interface RenewResult {
+  outcome: RenewOutcome
+  expiresAt: Date | null
+  /** `unreachable` 일 때만. 사람이 읽는 사유 — 로그에 그대로 남긴다 */
+  error?: string
+}
+
+/**
  * 임대를 갱신한다 — ★도는 동안 계속 불러야 한다.★
  *
- * ★거짓을 돌려주면 임대를 잃은 것이다.★ 그때는 ★즉시 멈춰야 한다★ —
- * 임대 없이 계속 돌면 그게 바로 두 판이다.
+ * ⚠ ★`lost` 와 `unreachable` 을 같이 다루지 마라.★ 위 머리말이 그 이유다.
  */
 export async function renewCollectorLease(input: {
   ownerId: string
@@ -191,25 +218,33 @@ export async function renewCollectorLease(input: {
   leaseMs?: number
   client?: Client
   now?: Date
-}): Promise<{ ok: boolean; expiresAt: Date | null }> {
+}): Promise<RenewResult> {
   const client = input.client ?? defaultPrisma
   const name = input.name ?? COLLECTOR_LEASE_NAME
   const now = input.now ?? new Date()
   const expiresAt = new Date(now.getTime() + (input.leaseMs ?? DEFAULT_LEASE_MS))
 
-  const rows = await client.$queryRaw<Array<{ expiresAt: Date }>>`
-    UPDATE "CollectorLease"
-    SET "heartbeatAt" = ${now},
-        "expiresAt"   = ${expiresAt},
-        "renewCount"  = "renewCount" + 1,
-        "updatedAt"   = ${now}
-    WHERE "name" = ${name}
-      AND "ownerId" = ${input.ownerId}
-      AND "releasedAt" IS NULL
-    RETURNING "expiresAt"`
+  let rows: Array<{ expiresAt: Date }>
+  try {
+    rows = await client.$queryRaw<Array<{ expiresAt: Date }>>`
+      UPDATE "CollectorLease"
+      SET "heartbeatAt" = ${now},
+          "expiresAt"   = ${expiresAt},
+          "renewCount"  = "renewCount" + 1,
+          "updatedAt"   = ${now}
+      WHERE "name" = ${name}
+        AND "ownerId" = ${input.ownerId}
+        AND "releasedAt" IS NULL
+      RETURNING "expiresAt"`
+  } catch (e) {
+    /* ★질문을 못 했다. 답을 들은 것이 아니다.★
+       여기서 「잃었다」고 말하면 그건 ★우리가 지어낸 답★ 이다 */
+    return { outcome: 'unreachable', expiresAt: null, error: (e as Error).message }
+  }
 
   const row = rows[0]
-  return row ? { ok: true, expiresAt: row.expiresAt } : { ok: false, expiresAt: null }
+  /* ★여기까지 왔다는 것은 DB 가 답을 했다는 뜻이다.★ 0행이면 진짜로 잃은 것이다 */
+  return row ? { outcome: 'renewed', expiresAt: row.expiresAt } : { outcome: 'lost', expiresAt: null }
 }
 
 /**

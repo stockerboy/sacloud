@@ -744,9 +744,21 @@ async function main(): Promise<number> {
           return 1
         }
         const out = await renewCollectorLease({ name, ownerId: owner, leaseMs })
-        if (!out.ok) {
-          log('★임대를 잃었다 — 즉시 멈춘다★ (남이 가져갔거나 만료됐다)')
+        /* ══ ★★셋을 다른 말·다른 코드로 낸다★★ (2026-09-04 · O-055-1) ══
+         *   ★9 = 임대 상실★        DB 가 답했고 0행이다 → 남이 가져갔다 → 즉시 멈춘다
+         *   ★3 = DB 연결 실패★     묻지도 못했다 → ★모르는 상태다★ → 부르는 쪽이 재시도
+         *   0 = 갱신됨
+         *
+         *   ⚠ ★3 을 9 로 뭉개면 멀쩡한 판이 죽는다★ (2026-09-04 · 4시간 43분 공백).
+         *     반대로 ★9 를 3 으로 뭉개면 두 판이 된다.★ 둘 다 사고다 */
+        if (out.outcome === 'lost') {
+          log('★임대 상실 — 즉시 멈춘다★ (남이 가져갔거나 만료됐다)')
           return 9
+        }
+        if (out.outcome === 'unreachable') {
+          log('★DB 연결 실패 — 임대 상태 확인 불가★ (잃은 것이 아니다. 다시 물어봐야 한다)')
+          log(`  ${out.error ?? '(사유 없음)'}`)
+          return 3
         }
         log(`임대 갱신 — ${out.expiresAt?.toISOString()} 까지`)
         return 0
@@ -845,6 +857,11 @@ async function main(): Promise<number> {
        */
       const leaseOwner = stringFlag(args, 'lease-owner')
       const noLease = boolFlag(args, 'no-lease')
+      /* ★임대를 마지막으로 「확인」한 시각★ — 갱신된 순간이다.
+         DB 가 안 닿는 동안 이 값이 안 움직이고, TTL 을 넘기면 안전하게 멈춘다 */
+      const leaseTtlMs = (numberFlag(args, 'lease-ttl') ?? 1200) * 1000
+      let leaseLastOkAt = Date.now()
+      let leaseUnreachableSince: number | null = null
       if (!leaseOwner && !noLease) {
         log('★임대 없이는 수집을 시작하지 않는다★ (2026-09-04 · Pre-Part 0)')
         log('  셸이 부르는 경우: `collect-lease acquire` 로 잡고 --lease-owner <id> 를 넘겨라')
@@ -858,10 +875,17 @@ async function main(): Promise<number> {
         /* ★시작 전에 한 번 갱신해 본다★ — 「가지고 있다고 믿는 것」과
            「실제로 쥐고 있는 것」은 다르다. 여기서 갈라야 요청이 한 건도 안 나간다 */
         const alive = await renewCollectorLease({ ownerId: leaseOwner })
-        if (!alive.ok) {
-          log('★★임대를 쥐고 있지 않다 — 시작하지 않는다★★')
+        if (alive.outcome === 'lost') {
+          log('★★임대 상실 — 시작하지 않는다★★')
           log(`  ${describeLease(await readLease())}`)
           return 9
+        }
+        if (alive.outcome === 'unreachable') {
+          /* ★시작도 못 한 판이다.★ 여기서 9(상실)로 내면 셸이 판을 끝낸다 —
+             단순히 DB 가 잠깐 안 닿은 것뿐인데. ★3(일시적)으로 낸다★ */
+          log('★DB 연결 실패 — 임대 상태 확인 불가★ 이번 판은 시작하지 않는다 (다음 바퀴에 다시)')
+          log(`  ${alive.error ?? '(사유 없음)'}`)
+          return 3
         }
         log(`★임대 확인★ ${alive.expiresAt?.toISOString()} 까지`)
       }
@@ -903,9 +927,44 @@ async function main(): Promise<number> {
             }
           : undefined,
         /* ★도는 동안 임대를 계속 갱신한다★ — 갱신이 곧 「나 아직 살아 있다」다.
-           갱신이 실패하면 임대를 잃은 것이고, 그때는 잡이 스스로 멈춘다 */
+         *
+         * ══ ★DB 가 안 닿으면 어떻게 하나★ (2026-09-04 · O-055-1) ══
+         *   ★바로 멈추지 않는다.★ 「모른다」는 「잃었다」가 아니다.
+         *   다만 ★영원히 버티면 안 된다★ — 만료(TTL)를 넘기면 남이 진짜로 가져갈 수 있고,
+         *   그때부터 계속 도는 것은 ★두 판★ 이다.
+         *
+         *   그래서 ★마지막으로 확인된 시각★ 을 들고 있다가, 그로부터 TTL 이 지나면
+         *   ★안전한 쪽으로 멈춘다.★ 그 사이에 DB 가 살아나면 그대로 이어 간다.
+         */
         keepLease: leaseOwner
-          ? async () => (await renewCollectorLease({ ownerId: leaseOwner })).ok
+          ? async () => {
+              const out = await renewCollectorLease({ ownerId: leaseOwner, leaseMs: leaseTtlMs })
+              if (out.outcome === 'renewed') {
+                leaseLastOkAt = Date.now()
+                if (leaseUnreachableSince !== null) {
+                  log('★DB 가 돌아왔다 — 임대를 다시 확인했다★')
+                  leaseUnreachableSince = null
+                }
+                return 'held'
+              }
+              if (out.outcome === 'lost') return 'lost'
+
+              /* unreachable */
+              if (leaseUnreachableSince === null) {
+                leaseUnreachableSince = Date.now()
+                log('★DB 연결 실패 — 임대 상태 확인 불가★ (잃은 것이 아니다. 계속 돌면서 다시 물어본다)')
+                log(`  ${out.error ?? '(사유 없음)'}`)
+              }
+              const blind = Date.now() - leaseLastOkAt
+              if (blind >= leaseTtlMs) {
+                log(
+                  `★${Math.round(blind / 1000)}초째 임대를 확인하지 못했다 — 만료(${Math.round(leaseTtlMs / 1000)}초)를 넘겼다.` +
+                    ' 안전하게 멈춘다★',
+                )
+                return 'lost'
+              }
+              return 'unknown'
+            }
           : undefined,
       })
 
