@@ -20,6 +20,8 @@
  *   덮어쓰지 않는다. **삭제하지 않는다.** FK 순서대로 넣는다.
  */
 import { PrismaClient } from '@sacloud/db'
+/* ★동결 기준시각★ (2026-09-04 · Pre-Part 0) */
+import { MIRROR_FREEZE_FROM } from '@sacloud/db/ops'
 import { log, warn } from '../lib/log.js'
 import type { JobContext } from './context.js'
 
@@ -307,7 +309,15 @@ export async function runSupplyPush(
         'Match',
         (cursor, take) =>
           local.match.findMany({
-            where: { leagueId: { in: leagueIds }, origin: MIRROR_ORIGIN },
+            /* ★3rd.supply 신규 경기 동결★ (2026-09-04 · Pre-Part 0).
+               미러 적재 쪽만 막으면 ★이 대량 전송이 뒷문이 된다★ —
+               로컬 DB 에 이미 들어 있는 신규 경기를 운영으로 밀 수 있기 때문이다.
+               그래서 여기서도 ★기준시각 이전만★ 고른다. 과거 자료는 그대로 옮겨진다 */
+            where: {
+              leagueId: { in: leagueIds },
+              origin: MIRROR_ORIGIN,
+              startAt: { lt: MIRROR_FREEZE_FROM },
+            },
             orderBy: { id: 'asc' },
             take,
             ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

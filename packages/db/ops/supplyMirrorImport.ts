@@ -43,6 +43,8 @@ import {
   loadIplOnlyMatchGuard,
   type IplOnlyMatchGuard,
 } from './iplSanplyGuard'
+/* ★3rd.supply 신규 경기 동결★ (2026-09-04 · Pre-Part 0) */
+import { blocksNewMirrorMatch, MIRROR_FREEZE_SKIP_REASON } from './mirrorFreeze'
 import type { ParsedSupplyClan, ParsedSupplyMatch, ParsedSupplySource } from './supplyMirrorParse'
 
 /**
@@ -539,6 +541,20 @@ export async function importSupplyMirror(
       bump(result.skipped, reason)
       return
     }
+    /* ══ ★★3rd.supply 신규 경기 동결★★ (2026-09-04 · Pre-Part 0) ══════════════
+       기준시각(2026-09-03 07:00 KST) ★이후★ 경기는 `Match` 로 만들지 않는다.
+       ★과거 경기는 그대로 들어온다★ — 지난시즌 카드용 자료가 목적이기 때문이다.
+
+       ★`already_in_db` 보다 먼저 본다★ — 이 사유의 건수가 곧 «원본이 밀어넣으려 한
+       신규 경기» 의 수라서, 그 숫자 자체가 ★동결이 실제로 일하고 있다는 증거★ 다.
+       0 이면 「원본에 새 경기가 없었다」이고, 양수면 「막았다」이다. 둘은 다르다.
+
+       원문 JSONL 은 그대로 남는다. 안 만드는 것은 `Match` 행뿐이다 (3-A 1번) */
+    if (blocksNewMirrorMatch(match.startAt)) {
+      bump(result.skipped, MIRROR_FREEZE_SKIP_REASON)
+      return
+    }
+
     /* validate 를 통과했으므로 아래 값들은 전부 있다 */
     const redClan = match.redClan as ParsedSupplyClan
     const blueClan = match.blueClan as ParsedSupplyClan

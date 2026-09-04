@@ -73,11 +73,25 @@ lap=0
 while :; do
   lap=$((lap + 1))
   began=$(date +%s)
+  # ★긴 구간에 들어가기 전에 임대를 이어 쥔다★ (2026-09-04 · Pre-Part 0)
+  collect_lock_renew || exit 0
 
   pnpm --filter @sacloud/worker nexon barracks-collect \
     --league nolink --clans 43 --limit "$BATCH" --confirm \
+    --lease-owner "$COLLECT_LEASE_OWNER" \
     --health https://3rdcloud.my/api/health >> "$LOG" 2>&1
   code=$?
+
+  # ★9 = 임대를 잃었다★ — 남이 이미 돌고 있다. 다투지 않고 물러난다
+  if [ "$code" = "9" ]; then
+    say "★★임대를 잃었다 — 물러난다. 남이 이미 수집 중이다★★"
+    exit 0
+  fi
+  # ★127 은 「명령을 못 찾았다」다. 성공이 아니다★
+  if [ "$code" = "127" ]; then
+    say "★★코드 127 — 명령을 못 찾았다. 이번 바퀴는 한 건도 못 받았다★★"
+    exit 1
+  fi
 
   if [ "$code" = "2" ]; then
     say "★★차단됐다 (403·429) — 자동수집을 끝낸다. 우회하지 않는다★★"
@@ -86,6 +100,8 @@ while :; do
 
   pnpm --filter @sacloud/worker nexon iplmatch-project --confirm >> "$LOG" 2>&1
   pnpm --filter @sacloud/worker nexon battlelog-lineup --league nolink --confirm >> "$LOG" 2>&1
+  # ★쉬기 전에 다시 이어 쥔다★ — 쉬는 구간이 제일 길다
+  collect_lock_renew || exit 0
 
   got=$(grep -E '^계획 ' "$LOG" | tail -1)
   say "  ${lap}바퀴 (코드 ${code}) — ${got:-(요약을 못 읽었다)}"

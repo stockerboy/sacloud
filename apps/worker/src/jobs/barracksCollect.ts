@@ -70,7 +70,7 @@ export const GUARD_EVERY = 10
 export const FLUSH_EVERY = 25
 
 /** 이 잡이 멈춘 이유 */
-export type StopReason = 'done' | 'blocked' | 'limit' | 'health' | 'error'
+export type StopReason = 'done' | 'blocked' | 'limit' | 'health' | 'error' | 'lease_lost'
 
 export interface CollectOptions {
   /** 배틀로그를 몇 건까지 받나 */
@@ -130,6 +130,17 @@ export interface CollectOptions {
   confirm?: boolean
   /** 한 사이클 전후로 부하를 볼 때 부르는 함수. 「쉬어라/멈춰라」를 돌려준다 */
   guard?: () => Promise<'go' | 'pause' | 'stop'>
+  /**
+   * ★임대를 아직 쥐고 있나★ (2026-09-04 · Pre-Part 0).
+   *
+   * 참이면 계속 돈다. ★거짓이면 그 자리에서 멈춘다★ —
+   * 임대를 잃었다는 것은 ★남이 이미 수집을 시작했다★ 는 뜻이고,
+   * 그대로 계속 돌면 그게 곧 ★두 판★ 이다 (D-266 의 1500ms 약속이 750ms 가 된다).
+   *
+   * ⚠ ★부하 감시(`guard`)와 같은 주기로 부른다.★ 매 건마다 DB 를 때리면
+   *   감시자 자신이 부하가 된다 — `guard` 가 이미 배운 교훈이다.
+   */
+  keepLease?: () => Promise<boolean>
   log?: (line: string) => void
 }
 
@@ -514,6 +525,12 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
             }
             if (verdict === 'pause') await sleep(delay * 4)
           }
+          /* ★임대를 아직 쥐고 있나★ — 잃었으면 남이 이미 돌고 있다. 즉시 끊는다 */
+          if (opts.keepLease && listCalls % GUARD_EVERY === 0 && !(await opts.keepLease())) {
+            result.stop = 'lease_lost'
+            log('★★임대를 잃었다 — 목록을 여기서 끊는다. 남이 이미 수집 중이다★★')
+            break
+          }
           /* ★적재는 나눠서★ — 길게 넘기다 죽으면 받은 것을 통째로 잃는다 */
           if (opts.confirm && listRows.length >= FLUSH_EVERY) {
             const st = await storeBarracksRows(listRows.splice(0, listRows.length))
@@ -592,6 +609,13 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
         log('  사이트가 조금 무겁다 — 한 사이클 쉰다')
         await sleep(delay * 4)
       }
+    }
+    /* ★임대를 아직 쥐고 있나★ (2026-09-04 · Pre-Part 0).
+       ★부하 감시와 같은 주기★ 로 본다 — 매 건마다 보면 DB 를 100번 때린다 */
+    if (opts.keepLease && i % GUARD_EVERY === 0 && !(await opts.keepLease())) {
+      result.stop = 'lease_lost'
+      log('★★임대를 잃었다 — 이 판을 끝낸다. 남이 이미 수집 중이다★★')
+      break
     }
 
     let r: CurlResult

@@ -18,6 +18,16 @@ import { isAbsolute, join } from 'node:path'
 import { prisma } from '@sacloud/db'
 /* 「일부러 안 넣은 경기」의 이름표 — `supply-import` 의 끝 처리에서 쓴다 (D-210) */
 import { IPL_ONLY_SKIP_REASON } from '@sacloud/db/ops'
+/* ★수집기 임대 — 두 판이 못 돌게 막는 자물쇠★ (2026-09-04 · Pre-Part 0) */
+import {
+  COLLECTOR_LEASE_NAME,
+  acquireCollectorLease,
+  describeLease,
+  readLease,
+  releaseCollectorLease,
+  renewCollectorLease,
+} from '@sacloud/db/ops'
+import { countLocalCollectors } from './lib/localCollectors.js'
 import {
   countSharedPasswordAccounts,
   freezeSeason,
@@ -149,14 +159,27 @@ import { runSupplyPlayerProfilesImport } from './jobs/supplyPlayerProfilesImport
 interface Args {
   command: string
   flags: Map<string, string | boolean>
+  /**
+   * ★깃발이 아닌 말들★ (2026-09-04 · Pre-Part 0).
+   *
+   * `collect-lease acquire` 처럼 ★하위 명령★ 이 있는 명령을 위해 더했다.
+   * 그 전까지는 깃발만 읽고 나머지는 ★조용히 버렸다.★
+   * ⚠ 깃발의 ★값★ 은 여기 들어오지 않는다 — `--ttl 1200` 의 `1200` 은 깃발 값이다.
+   */
+  positional: string[]
 }
 
 function parseArgs(argv: readonly string[]): Args {
   const [command = 'help', ...rest] = argv
   const flags = new Map<string, string | boolean>()
+  const positional: string[] = []
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index]
-    if (!token || !token.startsWith('--')) continue
+    if (!token) continue
+    if (!token.startsWith('--')) {
+      positional.push(token)
+      continue
+    }
     const key = token.slice(2)
     const next = rest[index + 1]
     if (next && !next.startsWith('--')) {
@@ -166,7 +189,7 @@ function parseArgs(argv: readonly string[]): Args {
       flags.set(key, true)
     }
   }
-  return { command, flags }
+  return { command, flags, positional }
 }
 
 function stringFlag(args: Args, name: string): string | null {
@@ -657,6 +680,91 @@ async function main(): Promise<number> {
       return 0
     }
 
+    /*
+     * ══════════════════════════════════════════════════════════════════════
+     * ★★수집기 임대 — 두 판이 못 돌게 막는 자물쇠★★ (2026-09-04 · Pre-Part 0)
+     *
+     *   nexon collect-lease acquire [--ttl 초] [--pid N] [--command "..."]
+     *              잡는다. ★잡으면 ownerId 를 한 줄로 찍고 코드 0★
+     *              ★못 잡으면 코드 ★9★ 와 쥔 사람 정보★
+     *   nexon collect-lease renew   --owner <id> [--ttl 초]
+     *              갱신. ★잃었으면 코드 9★ — 그때는 즉시 멈춰야 한다
+     *   nexon collect-lease release --owner <id>
+     *              반납. 못 해도 만료가 받아 준다
+     *   nexon collect-lease status
+     *              누가 쥐고 있나 + ★이 컴퓨터에 실제로 남은 수집 프로세스 수★
+     *
+     * ⚠ ★코드 9 를 쓴다★ — 0(성공)·1(오류)·2(차단)·3(무거움)과 겹치지 않게.
+     *   「자물쇠에 막혔다」는 ★실패가 아니라 정상 동작★ 이라 따로 세운다.
+     * ══════════════════════════════════════════════════════════════════════
+     */
+    case 'collect-lease': {
+      const sub = args.positional[0] ?? 'status'
+      const name = stringFlag(args, 'name') ?? COLLECTOR_LEASE_NAME
+      const ttlSeconds = numberFlag(args, 'ttl')
+      const leaseMs = ttlSeconds === null ? undefined : ttlSeconds * 1000
+
+      if (sub === 'acquire') {
+        const got = await acquireCollectorLease({
+          name,
+          leaseMs,
+          pid: numberFlag(args, 'pid') ?? process.pid,
+          command: stringFlag(args, 'command') ?? null,
+        })
+        if (!got.ok) {
+          log(`★수집 임대를 이미 남이 쥐고 있다 — 이번 판은 돌지 않는다★`)
+          log(`  ${describeLease(got.heldBy)}`)
+          return 9
+        }
+        if (got.tookOverFrom) {
+          /* ★조용히 뺏지 않는다★ — 낡은 임대를 치웠다는 것은 사람이 알아야 한다 */
+          log(`  ⚠ 낡은 임대를 치웠다 — ${describeLease(got.tookOverFrom)}`)
+        }
+        log(`★임대를 잡았다★ ${got.expiresAt.toISOString()} 까지`)
+        /* ★셸이 읽어 갈 줄. 형식을 바꾸지 마라★ (`collect-lock.sh` 가 이 앞부분을 자른다) */
+        log(`OWNER=${got.ownerId}`)
+        return 0
+      }
+
+      if (sub === 'renew') {
+        const owner = stringFlag(args, 'owner')
+        if (!owner) {
+          log('--owner 가 필요하다')
+          return 1
+        }
+        const out = await renewCollectorLease({ name, ownerId: owner, leaseMs })
+        if (!out.ok) {
+          log('★임대를 잃었다 — 즉시 멈춘다★ (남이 가져갔거나 만료됐다)')
+          return 9
+        }
+        log(`임대 갱신 — ${out.expiresAt?.toISOString()} 까지`)
+        return 0
+      }
+
+      if (sub === 'release') {
+        const owner = stringFlag(args, 'owner')
+        if (!owner) {
+          log('--owner 가 필요하다')
+          return 1
+        }
+        const out = await releaseCollectorLease({ name, ownerId: owner })
+        log(out.ok ? '임대를 반납했다' : '반납할 임대가 없다 (이미 남의 것이거나 만료됐다)')
+        return 0
+      }
+
+      /* status — ★DB 장부와 이 컴퓨터의 실제 프로세스를 나란히 찍는다★.
+         둘이 어긋나는 것 자체가 정보다 (임대는 살아 있는데 프로세스가 0개 = 죽은 판) */
+      const holder = await readLease(name)
+      log(`★DB 장부★  ${describeLease(holder)}`)
+      const live = countLocalCollectors()
+      log(
+        live < 0
+          ? '★이 컴퓨터★  못 셌다 (그건 「없다」가 아니다)'
+          : `★이 컴퓨터★  실제로 도는 수집 프로세스 ★${live}개★`,
+      )
+      return 0
+    }
+
     case 'barracks-collect': {
       /*
        * ★병영수첩을 사람 손 없이 긁는다★ (O-051 · D-268).
@@ -688,6 +796,43 @@ async function main(): Promise<number> {
       const delayMs = numberFlag(args, 'delay') ?? DEFAULT_DELAY_MS
       const healthUrl = stringFlag(args, 'health')
       const state = newGuardState()
+
+      /* ══ ★★임대 없이는 돌지 않는다★★ (2026-09-04 · Pre-Part 0) ═══════════
+       *
+       *   자물쇠를 셸에만 두면 ★셸을 안 거치고 이 명령을 직접 치는 순간 뚫린다.★
+       *   실제로 이 저장소에서 사람이 손으로 돌린 판과 예약 판이 겹친 적이 있다.
+       *   그래서 ★일꾼 자신이 임대를 확인한다.★
+       *
+       *   ```
+       *   --lease-owner <id>   셸이 잡아 준 임대를 쓴다 (평상시)
+       *   --no-lease           ★자물쇠 없이 돈다★ — 사람이 그 순간 의도해야 한다
+       *   둘 다 없으면          ★시작하지 않는다★ (코드 9)
+       *   ```
+       *
+       *   ⚠ ★기본값을 「없으면 그냥 돈다」로 두지 마라.★ 그러면 자물쇠가 장식이 된다.
+       */
+      const leaseOwner = stringFlag(args, 'lease-owner')
+      const noLease = boolFlag(args, 'no-lease')
+      if (!leaseOwner && !noLease) {
+        log('★임대 없이는 수집을 시작하지 않는다★ (2026-09-04 · Pre-Part 0)')
+        log('  셸이 부르는 경우: `collect-lease acquire` 로 잡고 --lease-owner <id> 를 넘겨라')
+        log('  사람이 한 번 돌리는 경우: --no-lease 를 ★의도해서★ 붙여라')
+        return 9
+      }
+      if (noLease) {
+        log('⚠ ★자물쇠 없이 돈다 (--no-lease).★ 다른 판이 돌고 있지 않은지 사람이 책임진다')
+      }
+      if (leaseOwner) {
+        /* ★시작 전에 한 번 갱신해 본다★ — 「가지고 있다고 믿는 것」과
+           「실제로 쥐고 있는 것」은 다르다. 여기서 갈라야 요청이 한 건도 안 나간다 */
+        const alive = await renewCollectorLease({ ownerId: leaseOwner })
+        if (!alive.ok) {
+          log('★★임대를 쥐고 있지 않다 — 시작하지 않는다★★')
+          log(`  ${describeLease(await readLease())}`)
+          return 9
+        }
+        log(`★임대 확인★ ${alive.expiresAt?.toISOString()} 까지`)
+      }
 
       if (delayMs < MIN_DELAY_MS) {
         log(`★간격이 ${MIN_DELAY_MS}ms 아래다 (${delayMs}ms) — 그 아래로는 안 내린다★ (D-266)`)
@@ -725,6 +870,11 @@ async function main(): Promise<number> {
               return verdict
             }
           : undefined,
+        /* ★도는 동안 임대를 계속 갱신한다★ — 갱신이 곧 「나 아직 살아 있다」다.
+           갱신이 실패하면 임대를 잃은 것이고, 그때는 잡이 스스로 멈춘다 */
+        keepLease: leaseOwner
+          ? async () => (await renewCollectorLease({ ownerId: leaseOwner })).ok
+          : undefined,
       })
 
       if (healthUrl) {
@@ -745,6 +895,9 @@ async function main(): Promise<number> {
        */
       if (result.stop === 'done' || result.stop === 'limit') return 0
       if (result.stop === 'blocked') return 2
+      /* ★임대를 잃은 것은 실패가 아니다★ — 「남이 돌고 있어서 물러났다」는 정상 동작이다.
+         3(무거움)으로 돌려주면 셸이 ★다음 바퀴에 다시 걸어★ 두 판이 계속 다툰다 */
+      if (result.stop === 'lease_lost') return 9
       return 3
     }
 
