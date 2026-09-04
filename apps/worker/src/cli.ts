@@ -765,6 +765,27 @@ async function main(): Promise<number> {
 
       /* status — ★DB 장부와 이 컴퓨터의 실제 프로세스를 나란히 찍는다★.
          둘이 어긋나는 것 자체가 정보다 (임대는 살아 있는데 프로세스가 0개 = 죽은 판) */
+
+      /* ⚠ ★어느 DB 를 봤는지 먼저 찍는다★ (2026-09-04).
+       *
+       *   ★이 저장소는 「자를 잘못 댄」 사고를 여러 번 냈다★ —
+       *   공개 API 를 보고 「겹침 0건」이라 보고했는데 DB 에는 43곳이 있었고,
+       *   주석에서 색을 읽었는데 화면은 다른 색이었다.
+       *
+       *   임대도 똑같다. ★`DATABASE_URL` 없이 이 명령을 치면 로컬 DB 를 본다.★
+       *   그런데 수집기는 ★운영 DB★ 의 임대를 쥔다. 그걸 모르고 로컬 장부를 보면
+       *   ★「아무도 안 쥐고 있다」는 틀린 답★ 을 얻는다.
+       *   ★그래서 어디를 봤는지 먼저 말한다.★ 비밀번호는 찍지 않는다 — 호스트만. */
+      const rawUrl = process.env['DATABASE_URL'] ?? ''
+      const host = /@([^/:]+)(?::(\d+))?/.exec(rawUrl)
+      const where =
+        rawUrl === ''
+          ? '★DATABASE_URL 이 없다 — 기본값(로컬)을 본다★'
+          : /(127\.0\.0\.1|localhost)/.test(rawUrl)
+            ? `로컬 (${host?.[1] ?? '?'}:${host?.[2] ?? '?'})`
+            : `★운영★ (${host?.[1] ?? '?'}:${host?.[2] ?? '?'})`
+      log(`★어느 DB★  ${where}`)
+
       const holder = await readLease(name)
       log(`★DB 장부★  ${describeLease(holder)}`)
       const live = countLocalCollectors()

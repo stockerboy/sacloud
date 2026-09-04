@@ -55,6 +55,8 @@
 WORKER_RUN="pnpm --filter @sacloud/worker nexon"
 COLLECT_LEASE_TTL="${COLLECT_LEASE_TTL:-1200}"   # ★20분★ — 한 사이클(15분)보다 넉넉해야 한다
 COLLECT_LEASE_OWNER=""
+# 심장박동 백그라운드의 셸 번호. 반납할 때 같이 멈춘다
+COLLECT_HEARTBEAT_PID=""
 
 # ★임대를 잡는다.★ 못 잡으면 여기서 판이 끝난다
 collect_lock_acquire() {
@@ -85,6 +87,30 @@ collect_lock_acquire() {
 
   say "★임대를 잡았다★ (${COLLECT_LEASE_TTL}초 · 주인 ${COLLECT_LEASE_OWNER})"
 
+  # ══ ★★심장박동 — 도는 내내 따로 갱신한다★★ (2026-09-04 후속) ══
+  #
+  #   ⚠ ★이것 없이는 구멍이 남는다.★ 실측(16:45) —
+  #     갱신이 11분째 멈춰 있는데 수집은 돌고 있었다.
+  #     `barracks-collect` 는 요청 10건마다 갱신하고, 셸은 바퀴 끝에만 갱신한다.
+  #     그 사이의 ★투영·라인업·쉰은 갱신이 없는 구간★ 이다.
+  #     그 구간이 TTL(20분)을 넘기면 ★살아 있는 판의 임대가 남에게 넘어간다.★
+  #     ★그게 곧 두 판이다.★
+  #
+  #   ★그래서 단계에 기대지 않고 시계에 기대는 갱신을 따로 둔다.★
+  #   TTL의 1/4 마다 둔다 — 한 번 놓쳐도 만료 전에 세 번 더 기회가 있다.
+  #
+  #   ⚠ ★심장박동은 「살아 있다」가 아니라 「셸이 살아 있다」만 말한다.★
+  #     셸이 죽으면 이 백그라운드도 같이 죽고(trap), 임대는 만료로 풀린다.
+  COLLECT_HEARTBEAT_EVERY=$((COLLECT_LEASE_TTL / 4))
+  (
+    while :; do
+      sleep "$COLLECT_HEARTBEAT_EVERY"
+      $WORKER_RUN collect-lease renew --owner "$COLLECT_LEASE_OWNER" --ttl "$COLLECT_LEASE_TTL" >/dev/null 2>&1 || exit 0
+    done
+  ) &
+  COLLECT_HEARTBEAT_PID=$!
+  say "  심장박동 ${COLLECT_HEARTBEAT_EVERY}초마다 (셸 ${COLLECT_HEARTBEAT_PID})"
+
   # ★어떻게 끝나든 반납한다★ — 정상 종료도, 끊겨도.
   #   ⚠ 반납은 ★빨리 풀리게 하는 것★ 이지 안전의 근거가 아니다.
   #     반납을 못 하고 죽어도 ★만료가 받아 준다.★
@@ -92,6 +118,11 @@ collect_lock_acquire() {
 }
 
 collect_lock_release() {
+  # ★심장박동을 먼저 멈춘다★ — 안 그러면 반납한 임대를 다시 살린다
+  if [ -n "${COLLECT_HEARTBEAT_PID:-}" ]; then
+    kill "$COLLECT_HEARTBEAT_PID" 2>/dev/null
+    COLLECT_HEARTBEAT_PID=""
+  fi
   [ -n "$COLLECT_LEASE_OWNER" ] || return 0
   $WORKER_RUN collect-lease release --owner "$COLLECT_LEASE_OWNER" >/dev/null 2>&1
   COLLECT_LEASE_OWNER=""
