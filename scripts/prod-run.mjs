@@ -297,6 +297,11 @@ const ALLOWED = {
     writes: false,
     what: '3~6월 IPL 경기 하나를 골라 화면 주소를 만든다 (읽기 전용)',
   },
+  'battlelog-age': {
+    file: 'battlelogAgeProbe',
+    writes: false,
+    what: '병영수첩이 얼마나 오래된 배틀로그까지 주나 (읽기 전용)',
+  },
   'month-coverage': {
     file: 'monthCoverageProbe',
     writes: false,

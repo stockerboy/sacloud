@@ -13,6 +13,16 @@
  * 만든 데이터는 전부 `T107-` 접두사이고 끝나면 지운다.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+/*
+ * ⚠ ★픽스처 경기 시각을 창 안으로 옮겼다★ (2026-09-04).
+ *   전에는 `2026-08-…` 이 박혀 있었다. ★시즌0 창이 9/3 07:00 ~ 10/1 로 바뀌자
+ *   그 경기들이 창 밖으로 나가 검사가 깨졌다.★
+ *   ★창을 따라가게 `IN_WINDOW` 를 쓴다★ — 창이 또 바뀌어도 안 깨진다.
+ */
+import { IN_WINDOW } from './seasonWindowFixture'
+
+const HOUR = 60 * 60 * 1000
+
 import { prisma } from '@sacloud/db'
 import { getPlayerLeagues } from '../lib/server/queries/players'
 import { getPlayerRanks } from '../lib/server/queries/leagues'
@@ -196,7 +206,7 @@ beforeAll(async () => {
       seasonId: indepSeason.id,
       mapId: map.id,
       playerCount: 5,
-      startAt: new Date('2026-08-20T12:00:00Z'),
+      startAt: new Date(IN_WINDOW.getTime() + 0 * HOUR),
       winnerSide: 'red',
       redLeagueClanId: lcIndepA.id,
       blueLeagueClanId: lcIndepB.id,
@@ -250,7 +260,7 @@ beforeAll(async () => {
       seasonId: officialSeason.id,
       mapId: map.id,
       playerCount: 5,
-      startAt: new Date('2026-08-21T12:00:00Z'),
+      startAt: new Date(IN_WINDOW.getTime() + 1 * HOUR),
       winnerSide: 'red',
       redLeagueClanId: lcOfficial.id,
       blueLeagueClanId: lcOfficialB.id,

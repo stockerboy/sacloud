@@ -17,6 +17,8 @@
  * 만든 데이터는 전부 `T166-` 접두사이고 끝나면 지운다.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { IN_WINDOW } from './seasonWindowFixture'
+
 import { prisma } from '@sacloud/db'
 import { getPlayerRanks } from '../lib/server/queries/leagues'
 import { getFormTop, getPlayerRanksByWeapon, kstDayRange } from '../lib/server/queries/rankings'
@@ -43,7 +45,15 @@ const up = await dbUp()
  * **2026-08-31 에 또 같은 일이 났다** — 창이 4/1 에서 7/1 로 옮겨지자 `2026-05-10` 이
  * 창 밖이 됐다. 창을 옮길 때 이 날짜도 같이 옮겨야 한다.
  */
-const FORM_DAY = '2026-08-10'
+/**
+ * 폼 TOP3 가 볼 날짜 — ★창 안이어야 한다★ (D-178).
+ *
+ * ⚠ ★이 값이 박혀 있어서 두 번 깨졌다.★
+ *   `2026-03-10` → 창 시작보다 앞이라 비었다 → `2026-08-10` 으로 고쳤다
+ *   → ★2026-09-04 에 창이 9/3~10/1 로 바뀌자 또 창 밖이 됐다★
+ *   ★같은 실수를 세 번째 하지 않으려고 창을 따라가게 만든다.★
+ */
+const FORM_DAY = IN_WINDOW.toISOString().slice(0, 10)
 
 let leagueId = ''
 let mapId = ''

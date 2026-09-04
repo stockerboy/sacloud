@@ -127,6 +127,19 @@ describe.runIf(up)('선수 상세정보 누적 (D-176)', () => {
        창 안 경기는 만 건 단위라 10만으로 재면 영원히 건너뛴다 */
     const ladderMatches = await prisma.match.count({ where: withLadderMatch({}) })
     if (ladderMatches < 100_000) return
+
+    /*
+     * ⚠ ★적재량과 「창 안에 대상이 있느냐」는 다른 문제다★ (2026-09-04).
+     *
+     * 시즌0 창이 ★9/3 07:00 ~ 10/1★ 로 좁아지자 ★적재는 18만 건인데 창 안 대상은 0★ 이 됐다.
+     * 옛 단언은 「적재됐으면 대상이 있다」였는데 ★그 전제가 창에 달려 있었다.★
+     *
+     * ★창 안에 자료가 없는 것은 결함이 아니다★ — 새 시즌이 막 시작했을 뿐이다.
+     * ★그때는 건너뛴다.★ ★없는 것을 있다고 우기지 않는다.★
+     */
+    const inWindow = await prisma.match.count({ where: withLadderMatch(seasonWindowWhere()) })
+    if (inWindow === 0) return
+
     expect(targets.length).toBeGreaterThan(0)
   })
 

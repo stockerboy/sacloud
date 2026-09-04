@@ -20,6 +20,16 @@
  * 실제 DB에 임시 데이터를 만들고 끝나면 지운다. 전부 `T155-` 접두사다.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+/*
+ * ⚠ ★픽스처 경기 시각을 창 안으로 옮겼다★ (2026-09-04).
+ *   전에는 `2026-08-…` 이 박혀 있었다. ★시즌0 창이 9/3 07:00 ~ 10/1 로 바뀌자
+ *   그 경기들이 창 밖으로 나가 검사가 깨졌다.★
+ *   ★창을 따라가게 `IN_WINDOW` 를 쓴다★ — 창이 또 바뀌어도 안 깨진다.
+ */
+import { IN_WINDOW } from './seasonWindowFixture'
+
+const HOUR = 60 * 60 * 1000
+
 import { prisma } from '@sacloud/db'
 import { MatchId } from '@sacloud/contract'
 import { getLeagueClanMatches, getMatch } from '../lib/server/queries/matches'
@@ -114,7 +124,7 @@ beforeAll(async () => {
       leagueId: leagueA.id,
       mapId: map.id,
       playerCount: 10,
-      startAt: new Date('2026-08-27T12:00:00Z'),
+      startAt: new Date(IN_WINDOW.getTime() + 0 * HOUR),
       playTime: 111,
       winnerSide: 'red',
       redLeagueClanId: redA.id,
@@ -144,7 +154,7 @@ beforeAll(async () => {
       leagueId: leagueB.id,
       mapId: map.id,
       playerCount: 10,
-      startAt: new Date('2026-08-27T12:00:00Z'),
+      startAt: new Date(IN_WINDOW.getTime() + 0 * HOUR),
       /* 리그 A 와 **다른 값**을 넣는다. 섞이면 이 숫자로 들통난다 */
       playTime: 222,
       winnerSide: 'blue',
@@ -177,7 +187,7 @@ beforeAll(async () => {
       leagueId: leagueA.id,
       mapId: map.id,
       playerCount: 10,
-      startAt: new Date('2026-08-27T13:00:00Z'),
+      startAt: new Date(IN_WINDOW.getTime() + 1 * HOUR),
       playTime: 333,
       winnerSide: 'red',
       redLeagueClanId: redA.id,

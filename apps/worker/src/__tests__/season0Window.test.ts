@@ -18,22 +18,28 @@ import {
 } from '../lib/season0Window.js'
 
 describe('시즌0 창 (D-175)', () => {
-  it('2026-07-01 00:00 KST 에서 시작한다 (2026-08-31 정정 · 옛 값 4/1)', () => {
-    expect(SEASON0_FROM.toISOString()).toBe('2026-06-30T15:00:00.000Z')
-    // KST 로 환산하면 4월 1일 0시다
+  /*
+   * ⚠ ★2026-09-04 · 창을 옮겼다★ (사장님)
+   *   > «IPL은 전 기록 다 버리고 ★9월3일 오전 7시를 기준으로 그 이후의 기록만★ 기록한다»
+   *   > «시즌0 ★10월 첫째 목★ 까지 가자»
+   *   옛 값(7/1 시작 · 끝 없음)은 `SEASON0_FROM_V2` · `SEASON0_TO_V2` 로 남겼다 (1-4).
+   */
+  it('★2026-09-03 07:00 KST★ 에서 시작한다', () => {
+    expect(SEASON0_FROM.toISOString()).toBe('2026-09-02T22:00:00.000Z')
     const kst = new Date(SEASON0_FROM.getTime() + 9 * 60 * 60 * 1000)
-    expect(kst.toISOString()).toBe('2026-07-01T00:00:00.000Z')
+    expect(kst.toISOString()).toBe('2026-09-03T07:00:00.000Z')
   })
 
-  it('끝이 없다 — 시즌1 오픈일은 사용자가 정한다', () => {
-    expect(SEASON0_TO).toBeNull()
+  it('★2026-10-01 00:00 KST 에 끝난다★ — 10월 첫째 목요일', () => {
+    expect(SEASON0_TO?.toISOString()).toBe('2026-09-30T15:00:00.000Z')
+    const kst = new Date((SEASON0_TO as Date).getTime() + 9 * 60 * 60 * 1000)
+    expect(kst.toISOString()).toBe('2026-10-01T00:00:00.000Z')
   })
 
-  it('창 밖(2026-03-31 이전) 경기는 창에 들어오지 않는다', () => {
+  it('★창 밖은 앞뒤 양쪽으로 잘린다★ — 끝이 생겼으므로 상한도 붙는다', () => {
     const where = season0MatchWhere()
     expect(where.startAt.gte.getTime()).toBe(SEASON0_FROM.getTime())
-    // 상한이 붙으면 그 뒤 경기가 조용히 빠진다
-    expect(where.startAt.lt).toBeUndefined()
+    expect(where.startAt.lt?.getTime()).toBe((SEASON0_TO as Date).getTime())
   })
 
   /**
@@ -58,7 +64,7 @@ describe('시즌0 창 (D-175)', () => {
     const where = season0MatchWhere()
     expect(scope.origins).toEqual(where.origin.in)
     expect(scope.from.getTime()).toBe(where.startAt.gte.getTime())
-    expect(scope.to).toBeNull()
+    expect(scope.to?.getTime()).toBe((SEASON0_TO as Date).getTime())
   })
 
   it('시즌0 은 Season 표에서 번호 0 · beta 다', () => {

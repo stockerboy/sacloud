@@ -53,8 +53,18 @@ let playerId = ''
 
 const DAY = 24 * 60 * 60 * 1000
 
-/** 창 **안** — 시작 시각보다 확실히 뒤 */
-const IN_WINDOW = new Date(SEASON0_FROM.getTime() + 30 * DAY)
+/**
+ * 창 **안** — 시작 시각보다 확실히 뒤.
+ *
+ * ⚠ ★30일이었는데 창이 4주(9/3~10/1)로 좁아져 넘쳤다★ (2026-09-04).
+ *   ★창 길이를 모르는 채 「+30일」을 쓰면 창이 바뀔 때마다 조용히 깨진다.★
+ *   ★창의 절반 지점★ 을 쓴다 — 창이 어떻게 바뀌어도 안쪽이다.
+ */
+const IN_WINDOW = new Date(
+  SEASON0_TO === null
+    ? SEASON0_FROM.getTime() + 30 * DAY
+    : (SEASON0_FROM.getTime() + SEASON0_TO.getTime()) / 2,
+)
 /** 창 **밖** — 시작 시각보다 앞 (2026-03 이전 기록에 해당한다) */
 const BEFORE_WINDOW = new Date(SEASON0_FROM.getTime() - 30 * DAY)
 
@@ -167,14 +177,16 @@ describe('시즌0 창은 한 곳에서만 정의된다 (D-175 · D-178)', () => 
        ⚠ 2026-08-31 정정 — 4/1 에서 7/1 로 고쳤다. 사용자가 4/1 로 말한 뒤 7/1 로
          수정했는데 그 수정이 문서·코드에 반영되지 않아 세션마다 4/1 로 되돌아갔다.
          **이 단언이 창을 지키는 자물쇠다.** 값을 바꾸려면 여기도 같이 고쳐야 한다 */
-    expect(SEASON0_FROM.toISOString()).toBe('2026-06-30T15:00:00.000Z')
-    /* 끝은 열린 구간이다 — 시즌1 오픈일은 사용자가 정한다 */
-    expect(SEASON0_TO).toBeNull()
+    /* ⚠ ★2026-09-04 정정 — 7/1 에서 9/3 07:00 으로 옮겼다★ (사장님)
+         > «IPL은 전 기록 다 버리고 ★9월3일 오전 7시를 기준으로 그 이후의 기록만★ 기록한다»
+       ★그리고 끝이 생겼다★ — 시즌1 오픈일이 ★10월 첫째 목요일(10/1)★ 로 정해졌다 */
+    expect(SEASON0_FROM.toISOString()).toBe('2026-09-02T22:00:00.000Z')
+    expect(SEASON0_TO?.toISOString()).toBe('2026-09-30T15:00:00.000Z')
   })
 
-  it('창이 열려 있으면 `where` 에 상한을 붙이지 않는다', () => {
+  it('★창이 닫혔으므로 `where` 에 상한도 붙는다★ (2026-09-04)', () => {
     const where = seasonWindowWhere()
-    expect(where.startAt).toEqual({ gte: SEASON0_FROM })
+    expect(where.startAt).toEqual({ gte: SEASON0_FROM, lt: SEASON0_TO })
   })
 
   /**

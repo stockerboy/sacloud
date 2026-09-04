@@ -42,9 +42,17 @@ let blueClanId = ''
 /** 픽스처 만들기·지우기에 주는 시간. 기본 10초는 로컬 DB 가 붐빌 때 모자란다 */
 const HOOK_TIMEOUT_MS = 60_000
 
+/**
+ * 창 **안** 시각.
+ *
+ * ⚠ ★전에는 여기서 `SEASON0_FROM + 30일` 을 직접 만들었다★ —
+ *   2026-09-04 에 창이 4주로 좁아지자 ★그 30일이 창 밖으로 나가 검사가 깨졌다.★
+ *   ★이제 한 곳(`seasonWindowFixture.ts`)에서만 만든다.★
+ */
+import { IN_WINDOW } from './seasonWindowFixture'
+
 const DAY = 24 * 60 * 60 * 1000
-/** 창 **안** — 시작 시각보다 확실히 뒤 */
-const IN_WINDOW = new Date(SEASON0_FROM.getTime() + 30 * DAY)
+const HOUR = 60 * 60 * 1000
 
 /**
  * 이 리그의 선수들.
@@ -138,7 +146,9 @@ beforeAll(async () => {
         mapId,
         redLeagueClanId: redClanId,
         blueLeagueClanId: blueClanId,
-        startAt: new Date(IN_WINDOW.getTime() + index * DAY),
+        /* ⚠ ★하루씩 벌리면 창(4주)을 넘는다★ — 2026-09-04 에 실제로 넘쳤다.
+             ★한 시간씩★ 벌린다. 순서만 필요하지 간격은 필요 없다 */
+        startAt: new Date(IN_WINDOW.getTime() + index * HOUR),
         winnerSide: 'red',
         official: true,
         /* 미러 origin 이라 래더 경기로 잡힌다 (D-164 · D-175) */
@@ -175,7 +185,8 @@ beforeAll(async () => {
       mapId,
       redLeagueClanId: redClanId,
       blueLeagueClanId: blueClanId,
-      startAt: new Date(IN_WINDOW.getTime() + (100 + index) * DAY),
+      /* ⚠ ★+100일은 창 밖이다★ (창이 4주다). ★뒤쪽이면 되므로 시간으로 민다★ */
+      startAt: new Date(IN_WINDOW.getTime() + (100 + index) * HOUR),
       winnerSide: 'red',
       official: true,
       origin: '3rd.supply',
