@@ -52,20 +52,10 @@ say() { printf '%s | %s\n' "$(date '+%m-%d %H:%M')" "$1" | tee -a "$LOG"; }
 #
 #   ⚠ ★낡은 잠금은 스스로 푼다★ — 프로세스가 죽으면서 잠금만 남으면
 #     그 뒤로 영영 못 돌게 된다. ★그건 더 나쁘다.★
-LOCK="${COLLECT_LOCK:-C:/Users/LG/AppData/Local/Temp/claude/barracks-collect.lock}"
-if [ -f "$LOCK" ]; then
-  old=$(cat "$LOCK" 2>/dev/null)
-  if [ -n "$old" ] && kill -0 "$old" 2>/dev/null; then
-    say "★★이미 돌고 있다 (프로세스 ${old}) — 시작하지 않는다★★"
-    say "  ★두 개가 돌면 원본을 두 배로 두드린다★ (D-266 · D-279)"
-    exit 1
-  fi
-  say "  ⚠ 낡은 잠금을 지운다 (프로세스 ${old:-?} 는 없다)"
-  rm -f "$LOCK"
-fi
-echo $$ > "$LOCK"
-# ★어떻게 끝나든 잠금을 푼다★ — 정상 종료도, 끊겨도
-trap 'rm -f "$LOCK"' EXIT INT TERM
+#   ★2026-09-04 · 두 번째로 뚫렸다★ — 자물쇠를 `scripts/collect-lock.sh` 로 옮겼다.
+#     셸 번호만 보던 것을 ★도는 수집 프로세스를 직접 세는★ 것으로 바꿨다.
+. "$(dirname "$0")/collect-lock.sh"
+collect_lock_acquire
 
 say "★자동수집 시작★ — ${PERIOD}초마다 · 한 바퀴 ${BATCH}건 · 차단이면 끝낸다"
 # ★잠금만 시험하고 싶을 때★ — `COLLECT_LOCK_TEST=1` 을 주면 여기서 끝낸다.

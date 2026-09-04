@@ -28,18 +28,9 @@ export SACLOUD_DB_SESSION_POOLER=1
 say() { printf '%s | %s\n' "$(date '+%m-%d %H:%M')" "$1" | tee -a "$LOG"; }
 
 # ★두 개가 동시에 못 돌게 잠근다★ (D-279)
-LOCK="${COLLECT_LOCK:-C:/Users/LG/AppData/Local/Temp/claude/barracks-collect.lock}"
-if [ -f "$LOCK" ]; then
-  old=$(cat "$LOCK" 2>/dev/null)
-  if [ -n "$old" ] && kill -0 "$old" 2>/dev/null; then
-    say "★이미 돌고 있다 (${old}) — 시작하지 않는다★"
-    exit 1
-  fi
-  say "  ⚠ 낡은 잠금을 지운다 (${old:-?} 는 없다)"
-  rm -f "$LOCK"
-fi
-echo $$ > "$LOCK"
-trap 'rm -f "$LOCK"' EXIT INT TERM
+# ★자물쇠는 한 곳에서 만든다★ — `autocollect.sh` 와 같은 것을 쥔다 (2026-09-04)
+. "$(dirname "$0")/collect-lock.sh"
+collect_lock_acquire
 
 say "★3리그 수집 시작★ — ${FROM} 이후 · 리그당 ${BATCH}건 · ${PERIOD}초 주기 · 첫 403 에서 멈춘다"
 
