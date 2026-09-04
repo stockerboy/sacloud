@@ -34,15 +34,46 @@ const confirm = process.argv.includes('--confirm')
 const revert = process.argv.includes('--revert')
 const BACKUP = 'data/o044/clan-move-backup.jsonl'
 
-const KEEP_SPL = [
+/* ══ ★2026-09-05 · 사장님이 43곳을 다시 정하셨다★ ══════════════════════
+ *
+ *   > «어린이 매너 사신 야부리 이모탈 플라잉 ★만★ 열산클랜»
+ *
+ *   ★9/3 분류와 14곳이 다르다.★ 사장님께 확인했고 «방금한게 최종» 이라 하셨다.
+ *     SPL → 열산 (3곳)  immortals(이모탈) · 사신 · 야부리！
+ *     열산 → SPL (11곳) CeIebrity · eternalrz · Grand'rN · hilarious- · IinecIan: ·
+ *                        MiraGe. · recentwct- · respects- · resun`z · sugarcandy · 鬼神。
+ *
+ *   ⚠ ★옛 목록은 지우지 않는다★ (`CLAUDE.md` 1-4) — 아래 `_V1` 에 그대로 있다.
+ *   ⚠ 새로 옮기기 전에 ★9/3 이동 3,351건을 먼저 되돌렸다.★
+ *     옛 되돌리기 파일은 `clan-move-backup-2026-09-03.jsonl` 로 남겼다.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/** ★옛 분류 (2026-09-03)★ — 지우지 않는다. 계산에 쓰지 않는다 */
+const KEEP_SPL_V1 = [
   '-tsAr.nTc', '［P.ro™］', '＃chasepIay', '＃chaseplay', 'AK-47', 'Castle', 'Chamundara',
   'des`per@do.', 'dravelior', 'e2stro-', 'hing', 'Iatency-', 'immortals', 'isyour',
   'mercedes-', 'rNtwo-', 'ThelVub', 'unfair', 'Βlackpearl', '마왕', '사신', '야부리！',
   '★PURPLE★', 'afterpray', 'gaIactico-', 'innatemass', 'recent.wct', 'saint', 'stylecIan',
 ]
-const KEEP_SANPLY = [
+/** ★옛 분류 (2026-09-03)★ — 지우지 않는다 */
+const KEEP_SANPLY_V1 = [
   'CeIebrity', 'eternalrz', 'flying-', "Grand'rN", 'hilarious-', 'IinecIan:', 'MiraGe.',
   'recentwct-', 'respects-', 'resun`z', 'sugarcandy', '매너', '어린이', '鬼神。',
+]
+void KEEP_SPL_V1
+void KEEP_SANPLY_V1
+
+/** ★열산은 이 6곳뿐이다★ (2026-09-05 사장님) */
+const KEEP_SANPLY = ['flying-', 'immortals', '매너', '사신', '야부리！', '어린이']
+
+/** 나머지 37곳은 전부 SPL */
+const KEEP_SPL = [
+  '-tsAr.nTc', '［P.ro™］', '＃chasepIay', '＃chaseplay', 'AK-47', 'Castle', 'Chamundara',
+  'des`per@do.', 'dravelior', 'e2stro-', 'hing', 'Iatency-', 'isyour',
+  'mercedes-', 'rNtwo-', 'ThelVub', 'unfair', 'Βlackpearl', '마왕',
+  '★PURPLE★', 'afterpray', 'gaIactico-', 'innatemass', 'recent.wct', 'saint', 'stylecIan',
+  'CeIebrity', 'eternalrz', "Grand'rN", 'hilarious-', 'IinecIan:', 'MiraGe.',
+  'recentwct-', 'respects-', 'resun`z', 'sugarcandy', '鬼神。',
 ]
 
 interface Backup {
