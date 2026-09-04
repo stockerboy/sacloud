@@ -37,6 +37,52 @@ export function officialSeasonLabel(number: number): string {
   return `시즌 ${number}`
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * ★★근본 시즌★★ (2026-09-04 · Part 1 · 사장님 지시)
+ *
+ *   > «선수 상세의 과거 3rd.supply 서플라이공식리그 카드 영역 이름은
+ *   >  ★근본 시즌★ 으로 통일한다»
+ *   > «근본 시즌 = 3rd.supply 서플라이공식리그에서 가져온 과거 공식 기록.
+ *   >  현재 SACLOUD 시즌0 / 시즌1과는 ★별도 개념★»
+ *
+ * ── ★왜 내부 번호를 따로 쓰나★
+ *   원본의 시즌 번호는 `1 … 6` 이고, ★우리 시즌 번호도 1 을 쓴다★ (10/1 시즌1).
+ *   그대로 넣으면 —
+ *   ```
+ *   ① 원본 시즌1 카드 294장이 ★우리 10/1 시즌1 기록으로 보인다★
+ *   ② unique(leaguePlayerId, seasonId) 때문에
+ *      ★나중에 진짜 시즌1 카드를 못 만든다★ — 자리를 과거 기록이 차지한다
+ *   ```
+ *   그래서 원본 시즌 N 을 ★`-100 - N`★ 으로 저장한다. 겹칠 수 없는 자리다.
+ *
+ * ── ⚠ ★내부 번호는 화면에 절대 노출하지 않는다★ (사장님 지시)
+ *   `-101` 같은 값이 화면에 보이면 그건 사고다. 표기는 언제나 ★근본 시즌★ 이고,
+ *   원본 시즌 번호가 필요하면 `LeaguePlayerSeason.season`(=1~6)을 쓴다 —
+ *   ★그 칸은 원본이 준 값 그대로다.★
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** 근본 시즌의 내부 번호 기준점. 원본 시즌 N → `ROOT_SEASON_BASE - N` */
+export const ROOT_SEASON_BASE = -100
+
+/** 근본 시즌의 화면 표기. ★번호를 붙이지 않는다★ — 내부 번호가 새어 나가면 안 된다 */
+export const ROOT_SEASON_LABEL = '근본 시즌'
+
+/** 원본 시즌 번호(1~6) → 우리 내부 번호(-101~-106) */
+export function rootSeasonNumber(sourceSeason: number): number {
+  return ROOT_SEASON_BASE - sourceSeason
+}
+
+/** 우리 내부 번호 → 원본 시즌 번호. 근본 시즌이 아니면 `null` */
+export function sourceSeasonNumber(internal: number): number | null {
+  if (internal >= ROOT_SEASON_BASE) return null
+  return ROOT_SEASON_BASE - internal
+}
+
+/** 이 시즌이 근본 시즌인가 — ★번호 하나로 판정된다★ */
+export function isRootSeason(number: number): boolean {
+  return number < ROOT_SEASON_BASE
+}
+
 /**
  * 화면에 쓸 시즌 이름.
  *
@@ -44,5 +90,7 @@ export function officialSeasonLabel(number: number): string {
  * DB 쪽은 CLI 로그가 쓰므로 건드리지 않는다.
  */
 export function seasonDisplayLabel(season: { number: number; seasonType: string }): string {
+  /* ★근본 시즌이 제일 먼저다★ — 번호를 붙이면 내부 번호(-101…)가 화면에 샌다 */
+  if (isRootSeason(season.number)) return ROOT_SEASON_LABEL
   return season.seasonType === 'beta' ? BETA_SEASON_LABEL : officialSeasonLabel(season.number)
 }

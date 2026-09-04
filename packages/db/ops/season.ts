@@ -41,6 +41,13 @@ export const BETA_SEASON_NUMBER = 0
  * 베타는 원본에 없는 우리 시즌이라 이름도 우리 것(`Beta Season`)을 그대로 둔다.
  */
 export function seasonLabel(season: { number: number; seasonType: string }): string {
+  /* ★근본 시즌은 번호를 안 붙인다★ (2026-09-04 · Part 1).
+     내부 번호가 -101 … -106 이라 그대로 찍으면 ★「시즌 -101」★ 이 된다.
+     화면 표기는 `@sacloud/contract` 의 `seasonDisplayLabel` 이 정하고,
+     여기(CLI·로그)도 ★같은 판단★ 을 해야 로그를 보고 헷갈리지 않는다.
+     ⚠ 이 패키지는 contract 에 의존하지 않는다 — 그래서 기준점만 여기 다시 적는다.
+       두 곳이 어긋나지 않게 `apps/worker/src/__tests__/rootSeason.test.ts` 가 묶어 둔다 */
+  if (season.number < -100) return '근본 시즌'
   return season.seasonType === 'beta' ? 'Beta Season' : `시즌 ${season.number}`
 }
 

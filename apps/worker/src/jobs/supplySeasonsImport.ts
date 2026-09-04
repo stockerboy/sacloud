@@ -21,6 +21,8 @@
  *   순서(1 → 6 → 현재)만 맞으면 화면은 정확하고, 날짜는 어디에도 표시되지 않는다.
  */
 import { prisma } from '@sacloud/db'
+/* ★근본 시즌★ — 원본 시즌 번호를 우리 내부 번호로 옮긴다 (2026-09-04 · Part 1) */
+import { ROOT_SEASON_LABEL, rootSeasonNumber, sourceSeasonNumber } from '@sacloud/contract'
 import { readJsonl } from '../lib/jsonlStore.js'
 import { log, warn } from '../lib/log.js'
 import type { SupplySeasonRecord, SupplySeasonRow } from './supplySeasons.js'
@@ -56,6 +58,16 @@ export interface SupplySeasonsImportResult {
   matchedPlayers: number
   /** 원본에는 있는데 우리 DB 에 없는 선수 (추측해 만들지 않는다) */
   unknownPlayers: number
+  /**
+   * ★다른 리그의 카드가 파일에 섞여 있던 줄 수★ (2026-09-04 · Part 1).
+   *
+   * 전에는 그런 줄을 ★조용히 건너뛰었다.★ 건너뛰는 것 자체는 맞지만,
+   * ★몇 줄을 건너뛰었는지 아무도 몰랐다★ — 0건인지 5,000건인지 구별할 수 없었다.
+   * 사장님 완료 조건이 「★서플라이공식리그가 아닌 카드 0건★」이라 ★세어야 답할 수 있다.★
+   */
+  foreignLeagueRows: number
+  /** 파일에서 본 리그 slug 들 — 하나여야 한다 */
+  seenLeagueSlugs: string[]
   seasonsCreated: number
   rowsCreated: number
   rowsUpdated: number
@@ -109,12 +121,31 @@ export async function runSupplySeasonsImport(input: {
   })
   if (!league) throw new Error(`리그를 찾을 수 없다: ${leagueSlug}`)
 
-  /* ── 1. 파일을 흘려 읽는다. 마지막 줄이 이긴다 (재수집분이 우선) */
+  /* ── 1. 파일을 흘려 읽는다. 마지막 줄이 이긴다 (재수집분이 우선)
+     ⚠ ★다른 리그 줄은 세고 나서 버린다★ (2026-09-04 · Part 1).
+       조용히 버리면 「0건이라 안 섞였다」와 「많이 버려서 안 섞였다」를 구별할 수 없다 */
   const byPlayer = new Map<string, SupplySeasonRecord>()
+  let foreignLeagueRows = 0
+  const seenLeagueSlugs = new Set<string>()
   await readJsonl<SupplySeasonRecord>(file, (record) => {
-    if (record.league_slug !== leagueSlug) return
+    seenLeagueSlugs.add(record.league_slug)
+    if (record.league_slug !== leagueSlug) {
+      foreignLeagueRows += 1
+      return
+    }
     byPlayer.set(record.player_id, record)
   })
+
+  /* ★섞인 파일이면 아예 시작하지 않는다★ — 골라내는 것이 아니라 멈춘다.
+     이 파일은 리그마다 따로 만들어지므로, 섞였다면 ★잘못된 파일을 넘긴 것★ 이다.
+     그때 「알아서 골라 넣었다」고 하면 다음 사람이 그 사실을 모른 채 믿는다 */
+  if (foreignLeagueRows > 0) {
+    throw new Error(
+      `파일에 다른 리그 카드가 ${foreignLeagueRows}줄 섞여 있다 ` +
+        `(본 slug: ${[...seenLeagueSlugs].join(', ')} · 목표: ${leagueSlug}). ` +
+        '파일을 잘못 넘긴 것이다 — 골라 넣지 않고 멈춘다',
+    )
+  }
 
   const bySeason: Record<number, number> = {}
   let readRows = 0
@@ -142,7 +173,9 @@ export async function runSupplySeasonsImport(input: {
   for (const [playerId, record] of byPlayer) {
     if (leaguePlayerOf.has(playerId)) matchedPlayers += 1
     else unknownPlayers += 1
-    for (const row of record.raw) seasonNumbers.add(row.season)
+    /* ★원본 시즌 번호를 그대로 쓰지 않는다★ — 우리 시즌1(10/1)과 부딪힌다.
+       `-100 - N` 로 옮겨 담는다. 화면에는 `근본 시즌` 으로만 보인다 */
+    for (const row of record.raw) seasonNumbers.add(rootSeasonNumber(row.season))
   }
 
   const result: SupplySeasonsImportResult = {
@@ -154,6 +187,8 @@ export async function runSupplySeasonsImport(input: {
     bySeason,
     matchedPlayers,
     unknownPlayers,
+    foreignLeagueRows,
+    seenLeagueSlugs: [...seenLeagueSlugs],
     seasonsCreated: 0,
     rowsCreated: 0,
     rowsUpdated: 0,
@@ -175,7 +210,10 @@ export async function runSupplySeasonsImport(input: {
 
   if (!confirm) {
     log('미리보기다 — 한 줄도 쓰지 않았다. 반영하려면 --confirm 을 붙인다')
-    if (missing.length > 0) log(`  새로 만들 시즌: ${missing.join(', ')} (seasonType=legacy)`)
+    if (missing.length > 0) {
+      const shown = missing.map((n) => `${ROOT_SEASON_LABEL}(원본 시즌 ${sourceSeasonNumber(n)} → 내부 ${n})`)
+      log(`  새로 만들 시즌: ${shown.join(' · ')} (seasonType=legacy · frozen)`)
+    }
     await reconcile(league.id, result)
     return result
   }
@@ -185,7 +223,9 @@ export async function runSupplySeasonsImport(input: {
       data: {
         leagueId: league.id,
         number,
-        startedAt: legacySeasonStartedAt(number),
+        /* 정렬용 합성 시각. ★원본 시즌 번호★ 로 만들어야 1→6 순서가 맞다 —
+           내부 번호(-101…-106)로 만들면 순서가 뒤집힌다 */
+        startedAt: legacySeasonStartedAt(sourceSeasonNumber(number) ?? number),
         endedAt: null,
         status: 'closed',
         seasonType: 'legacy',
@@ -222,7 +262,7 @@ export async function runSupplySeasonsImport(input: {
     }
 
     for (const row of record.raw) {
-      const seasonId = seasonIdOf.get(row.season)
+      const seasonId = seasonIdOf.get(rootSeasonNumber(row.season))
       if (!seasonId) continue
       const values = toRow(row)
 
@@ -252,6 +292,11 @@ export async function runSupplySeasonsImport(input: {
         legacyPlayerId: playerId,
         legacyLeaguePlayerId: String(record.league_player_id),
         source: '3rd.supply',
+        /* ★어느 리그 카드인가 — 한 칸으로 남긴다★ (2026-09-04 · Part 1).
+           `record.league_slug` 를 그대로 쓴다. 위에서 이미 목표 리그와 같은 것만 남았다 */
+        sourceLeagueSlug: record.league_slug,
+        /* 「언제 받은 자료인가」 — 적재 시각(createdAt)과 다른 질문이다 */
+        sourceFetchedAt: record.fetched_at ? new Date(record.fetched_at) : null,
         imported: true,
       }
 
