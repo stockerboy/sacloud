@@ -28,6 +28,8 @@ import {
   renewCollectorLease,
 } from '@sacloud/db/ops'
 import { countLocalCollectors } from './lib/localCollectors.js'
+/* ★통합 투영★ (Part 3 · 2026-09-05) */
+import { runUnifiedProject } from './jobs/unifiedProject.js'
 import {
   countSharedPasswordAccounts,
   freezeSeason,
@@ -663,6 +665,54 @@ async function main(): Promise<number> {
         },
       ])
       table([result.skipped as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'unified-project': {
+      /*
+       * ★통합 투영★ (Part 3 ④단계 · 2026-09-05) — IPL / SPL / 열산 중 정확히 하나로.
+       *
+       *   nexon unified-project             미리보기 (★한 줄도 안 쓴다★)
+       *   nexon unified-project --confirm   적재
+       *   nexon unified-project --limit 200 앞 200경기만 (시험용)
+       *
+       * ⚠ ★`iplmatch-project` 를 대체하는 것이지 같이 돌리는 것이 아니다.★
+       *   둘 다 `origin='nexon_barracks'` 로 만든다 — 자물쇠가 막지만 헛수고다.
+       */
+      const out = await runUnifiedProject({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          본경기: out.seen,
+          '만듦(IPL)': out.createdByLeague.nolink,
+          '만듦(SPL)': out.createdByLeague.supply,
+          '만듦(열산)': out.createdByLeague.sanply,
+          만듦합: out.created,
+          '이미있음': out.skipped.already_exists,
+          '기준시각이전': out.skipped.before_cutoff,
+        },
+      ])
+      log('\n넘어간 사유')
+      for (const [k, v] of Object.entries(out.skipped)) {
+        if (v > 0) log(`  ${k.padEnd(20)} ${v.toLocaleString()}`)
+      }
+      if (out.ambiguousNames.length > 0) {
+        log(`
+★같은 이름 다른 클랜이라 뺀 이름★ ${out.ambiguousNames.join(' · ')}`)
+      }
+      if (out.unknownClanNames.length > 0) {
+        log('\n못 이은 클랜명 (많이 나온 순)')
+        for (const u of out.unknownClanNames) log(`  ${u.name} — ${u.count.toLocaleString()}건`)
+      }
+      if (out.unclassified.length > 0) {
+        log('\n★unclassified 표본★ (버리지 않고 남긴다)')
+        for (const u of out.unclassified.slice(0, 12)) {
+          log(`  ${u.matchKey} · ${u.reason} · ${u.detail}`)
+        }
+      }
+      if (!out.confirm) log('\n미리보기다. 적재하려면 --confirm')
       return 0
     }
 
