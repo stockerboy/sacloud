@@ -20,7 +20,7 @@
 # ── 한 바퀴에 하는 일
 #   ```
 #   ① 배틀로그 ★600건★ (간격 1500ms ≒ 15분 · ★한 바퀴가 주기를 넘지 않게★)
-#   ② 투영 — 경기 → 라인업
+#   ② 투영 — 경기(세 리그 한 번에) → 라인업(★세 리그 한 번에★ · Part 4)
 #   ③ 다음 바퀴까지 남은 시간만큼 쉰다
 #   ```
 #   ⚠ ★①이 15분을 넘으면 바퀴가 밀린다.★ 그래서 ★받은 뒤 남은 시간만 쉰다★ —
@@ -114,7 +114,13 @@ while :; do
   #   옛값: pnpm … nexon iplmatch-project --confirm  ← ★지우지 않는다★
   #   둘 다 origin='nexon_barracks' 라 같이 돌리면 헛수고다. 하나만 돈다
   pnpm --filter @sacloud/worker nexon unified-project --confirm >> "$LOG" 2>&1
-  pnpm --filter @sacloud/worker nexon battlelog-lineup --league nolink --confirm >> "$LOG" 2>&1
+  # ★라인업도 세 리그를 한 번에★ (2026-09-05 · Part 4 · 사장님 지시)
+  #   «리그별 라인업 수집기를 세 개 따로 만들지 마라»
+  #   ⚠ ★열산·SPL 은 라인업이 아예 안 들어오고 있었다★ — 이 줄이 nolink 로 고정이어서다
+  #   옛값:  --league nolink   ← ★지우지 않는다★ (CLAUDE.md 1-4)
+  #   ⚠ 창은 ★좁히지 않는다★ — IPL 과거 배틀로그 메꾸기는 Part 4 이전부터 돌던 일이다.
+  #     여기서 --from-cutoff 를 붙이면 ★말 안 한 변경★ 이 된다
+  pnpm --filter @sacloud/worker nexon battlelog-lineup --all-leagues --confirm >> "$LOG" 2>&1
   # ★쉬기 전에 다시 이어 쥔다★ — 쉬는 구간이 제일 길다
   collect_lock_renew || exit 0
 

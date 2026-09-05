@@ -41,6 +41,7 @@
  *     7천 건이면 600MB 다. 실제로 서버가 `out of memory (printtup)` 로 죽은 적이 있다
  */
 import { prisma, type Prisma } from '@sacloud/db'
+import { MIRROR_FREEZE_FROM } from '@sacloud/db/ops'
 import { log, warn } from '../lib/log.js'
 import {
   LINEUP_TEAM_SIZE,
@@ -51,8 +52,19 @@ import {
   type LineupTeamEntry,
 } from '../lib/battlelogLineup.js'
 import { iplClanNumberMap } from './iplClanNumber.js'
+import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from '../lib/leagueVerdict.js'
 
 const DEFAULT_LEAGUE_SLUG = 'nolink'
+/**
+ * ★★세 리그를 한 번에 도는 기본값★★ (2026-09-05 · Part 4 · 사장님 지시).
+ *
+ * > «리그별 라인업 수집기를 ★세 개 따로 만들지 마라★»
+ * > «Part 3과 같은 방식으로 세 리그를 ★하나의 공통 처리 구조★ 로»
+ *
+ * ⚠ ★옛 방식(리그 하나)도 그대로 남는다★ — `--league <slug>` 를 주면 옛 길이다
+ *   (`CLAUDE.md` 1-4). 새 기본은 `--all-leagues` 로 켠다.
+ */
+export const ALL_LEAGUE_SLUGS = LIVE_LEAGUE_SLUGS
 /** IPL 경기를 만든 잡이 남긴 값 (`jobs/iplProject.ts`) */
 const MATCH_ORIGIN = 'nexon_barracks'
 /** 이 잡이 만든 선수의 표식. `Player.origin` 에 그대로 들어간다 */
@@ -93,7 +105,28 @@ export interface BattlelogLineupResult {
    */
   skippedMirrorLineup: number
   skipped: Record<LineupJobSkipReason, number>
+  /**
+   * ★리그마다 따로 센다★ (2026-09-05 · Part 4).
+   *
+   * 합계만 내면 «SPL 라인업이 정말 들어왔나» 에 답할 수 없다. ★리그별로 답한다.★
+   */
+  byLeague: Record<string, LineupLeagueCount>
   written: boolean
+}
+
+export interface LineupLeagueCount {
+  matched: number
+  planned: number
+  statsCreated: number
+  statsUpdated: number
+  skippedMirrorLineup: number
+  /**
+   * ★왜 못 넣었는지를 리그별로 센다★ (2026-09-05 · Part 4).
+   *
+   * 합계만 있으면 «SPL 이 23건 중 7건만 들어갔다» 에서 ★멈춘다.★
+   * ★사유가 붙어야 다음에 무엇을 고칠지 알 수 있다.★
+   */
+  skipped: Record<LineupJobSkipReason, number>
 }
 
 const emptySkips = (): Record<LineupJobSkipReason, number> => ({
@@ -107,6 +140,17 @@ const emptySkips = (): Record<LineupJobSkipReason, number> => ({
   clan_unmapped: 0,
   side_mismatch: 0,
 })
+
+const emptyLeagueCount = (): LineupLeagueCount => ({
+  matched: 0,
+  planned: 0,
+  statsCreated: 0,
+  statsUpdated: 0,
+  skippedMirrorLineup: 0,
+  skipped: emptySkips(),
+})
+
+
 
 /** 원문에서 우리가 보는 두 칸. `raw` 로 한 겹 싸여 있는 옛 형식도 받는다 */
 interface BattleLogPayload {
@@ -138,6 +182,9 @@ interface MatchSide {
 
 interface MatchInfo {
   matchId: string
+  /** ★이 경기의 리그. Canonical 단계에서 이미 확정된 값이다 — 여기서 다시 추측하지 않는다★ */
+  leagueId: string
+  leagueSlug: string
   startAt: Date
   red: MatchSide
   blue: MatchSide
@@ -150,14 +197,39 @@ function chunked<T>(items: readonly T[], size: number): T[][] {
 }
 
 export async function runBattlelogLineup(
-  options: { confirm?: boolean; leagueSlug?: string; limit?: number } = {},
+  options: {
+    confirm?: boolean
+    /** 옛 방식 — 리그 하나만 (`CLAUDE.md` 1-4 로 남겨 둔다) */
+    leagueSlug?: string
+    /** ★새 방식 — 세 리그를 한 번에★ (2026-09-05 · Part 4) */
+    leagueSlugs?: readonly string[]
+    /**
+     * ★기준시각 이후 경기만 손댄다★ (2026-09-05 · Part 4 원칙 7).
+     *
+     * > «기준시각 이전 과거 Match 는 ★이번 작업에서 건드리지 마라★» — 사장님
+     *
+     * ⚠ ★기본값은 켜지 않는다.★ IPL 과거 배틀로그 메꾸기는 ★Part 4 이전부터 매 바퀴 돌던 일★
+     *   이고, 여기서 조용히 끄면 그게 오히려 ★말 안 한 변경★ 이다 (`CLAUDE.md` 1-4).
+     *   ★Part 4 의 「과거 영향 0」을 증명할 때 이 문을 연다.★
+     */
+    fromCutoff?: boolean
+    limit?: number
+  } = {},
 ): Promise<BattlelogLineupResult> {
-  const leagueSlug = options.leagueSlug ?? DEFAULT_LEAGUE_SLUG
-  const league = await prisma.league.findUnique({
-    where: { slug: leagueSlug },
-    select: { id: true, name: true },
+  const wanted =
+    options.leagueSlugs && options.leagueSlugs.length > 0
+      ? [...options.leagueSlugs]
+      : [options.leagueSlug ?? DEFAULT_LEAGUE_SLUG]
+
+  const leagues = await prisma.league.findMany({
+    where: { slug: { in: wanted } },
+    select: { id: true, slug: true, name: true },
   })
-  if (!league) throw new Error(`리그 ${leagueSlug} 이 없다`)
+  for (const slug of wanted) {
+    if (!leagues.some((l) => l.slug === slug)) throw new Error(`리그 ${slug} 이 없다`)
+  }
+  const leagueIds = leagues.map((l) => l.id)
+  const slugOfLeague = new Map(leagues.map((l) => [l.id, l.slug]))
 
   /*
     클랜번호 → 우리 클랜. **그 리그에 등록된 클랜만** 담는다.
@@ -167,26 +239,38 @@ export async function runBattlelogLineup(
     `BarracksClanNumber.clanNo` 는 기본키라 한 번호에 한 클랜만 담기므로, 그 표만
     믿으면 IPL 배틀로그의 팀번호가 **열산 클랜**으로 풀리고 경기가 통째로 버려진다.
     ① 저장된 표를 리그로 거르고 ② 매치목록 원문으로 다시 푼 리그 전용 표를 덮어씌운다.
+
+    ── ★★세 리그를 돌아도 표는 절대 합치지 않는다★★ (2026-09-05 · Part 4)
+      합치면 위의 `EVOA` 문제가 그대로 터진다 — ★한 번호는 한 클랜만 담을 수 있어서★
+      IPL 경기의 팀번호가 열산 클랜으로 풀리고 그 경기가 통째로 버려진다.
+      ★리그마다 표를 따로 들고, 경기의 `leagueId` 로 표를 고른다.★
+      리그는 Canonical 단계에서 이미 정해졌다 — ★여기서 다시 추측하지 않는다★ (사장님 원칙 3).
   */
-  const registered = new Set(
-    (await prisma.leagueClan.findMany({ where: { leagueId: league.id }, select: { clanId: true } })).map(
-      (row) => row.clanId,
-    ),
-  )
-  const clanOfNumber = new Map<string, string>()
-  for (const row of await prisma.barracksClanNumber.findMany({
-    select: { clanNo: true, clanId: true },
-  })) {
-    if (registered.has(row.clanId)) clanOfNumber.set(row.clanNo, row.clanId)
-  }
-  /* ② 리그 전용 표가 이긴다 — 저장된 표는 리그를 모른다 */
-  for (const [clanNo, clanId] of await iplClanNumberMap(league.id)) {
-    clanOfNumber.set(clanNo, clanId)
-  }
-  if (clanOfNumber.size === 0) {
-    warn(`${leagueSlug} 에 이어진 클랜번호가 하나도 없다 — 라인업을 만들 수 없다`)
-  } else {
-    log(`클랜번호 표 ${clanOfNumber.size}개 (리그 ${leagueSlug} 범위)`)
+  const stored = await prisma.barracksClanNumber.findMany({ select: { clanNo: true, clanId: true } })
+  const numberOfLeague = new Map<string, Map<string, string>>()
+  for (const league of leagues) {
+    const registered = new Set(
+      (
+        await prisma.leagueClan.findMany({
+          where: { leagueId: league.id },
+          select: { clanId: true },
+        })
+      ).map((row) => row.clanId),
+    )
+    const clanOfNumber = new Map<string, string>()
+    for (const row of stored) {
+      if (registered.has(row.clanId)) clanOfNumber.set(row.clanNo, row.clanId)
+    }
+    /* ② 리그 전용 표가 이긴다 — 저장된 표는 리그를 모른다 */
+    for (const [clanNo, clanId] of await iplClanNumberMap(league.id)) {
+      clanOfNumber.set(clanNo, clanId)
+    }
+    numberOfLeague.set(league.id, clanOfNumber)
+    if (clanOfNumber.size === 0) {
+      warn(`${league.slug} 에 이어진 클랜번호가 하나도 없다 — 이 리그는 라인업을 만들 수 없다`)
+    } else {
+      log(`클랜번호 표 ${clanOfNumber.size}개 (리그 ${league.slug} 범위)`)
+    }
   }
 
   /* 배틀로그가 있는 고유 경기. **payload 는 여기서 안 읽는다** */
@@ -211,7 +295,21 @@ export async function runBattlelogLineup(
     playersFromIdentity: 0,
     skippedMirrorLineup: 0,
     skipped: emptySkips(),
+    byLeague: Object.fromEntries(leagues.map((l) => [l.slug, emptyLeagueCount()])),
     written: options.confirm === true,
+  }
+  const bump = (
+    slug: string,
+    key: 'matched' | 'planned' | 'statsCreated' | 'statsUpdated' | 'skippedMirrorLineup',
+    by = 1,
+  ): void => {
+    const row = result.byLeague[slug]
+    if (row) row[key] += by
+  }
+  /** ★사유는 리그별로도 센다★ — 합계만으로는 어느 리그가 왜 빠졌는지 모른다 */
+  const bumpSkip = (slug: string, reason: LineupJobSkipReason): void => {
+    const row = result.byLeague[slug]
+    if (row) row.skipped[reason] += 1
   }
 
   /* 계정 → 우리 선수. 실행 내내 재사용한다 (같은 사람이 수백 경기에 나온다) */
@@ -228,10 +326,19 @@ export async function runBattlelogLineup(
   for (const batch of chunked(keys, CHUNK)) {
     /* ── 1. 우리 경기 ------------------------------------------------------- */
     const matches = await prisma.match.findMany({
-      where: { leagueId: league.id, origin: MATCH_ORIGIN, sourceMatchId: { in: batch } },
+      /* ★리그를 셋까지 받는다★ — 그래도 «우리가 만든 경기»(origin) 조건은 그대로다 */
+      where: {
+        leagueId: { in: leagueIds },
+        origin: MATCH_ORIGIN,
+        sourceMatchId: { in: batch },
+        /* ★숨긴 사본에는 라인업을 넣지 않는다★ (2026-09-05 · O-056 의 39줄) */
+        supersededAt: null,
+        ...(options.fromCutoff === true ? { startAt: { gte: MIRROR_FREEZE_FROM } } : {}),
+      },
       select: {
         id: true,
         sourceMatchId: true,
+        leagueId: true,
         startAt: true,
         redDivisionAtMatch: true,
         blueDivisionAtMatch: true,
@@ -272,6 +379,8 @@ export async function runBattlelogLineup(
       })
       infoOf.set(match.sourceMatchId, {
         matchId: match.id,
+        leagueId: match.leagueId,
+        leagueSlug: slugOfLeague.get(match.leagueId) ?? '(모름)',
         startAt: match.startAt,
         red: side(match.redClan, match.redDivisionAtMatch),
         blue: side(match.blueClan, match.blueDivisionAtMatch),
@@ -317,6 +426,7 @@ export async function runBattlelogLineup(
         if (mirrorFilled.has(info.matchId)) {
           infoOf.delete(key)
           result.skippedMirrorLineup += 1
+          bump(info.leagueSlug, 'skippedMirrorLineup')
         }
       }
     }
@@ -339,11 +449,15 @@ export async function runBattlelogLineup(
         continue
       }
       result.matched += 1
+      bump(info.leagueSlug, 'matched')
       const payload = payloadOfKey.get(key)
       if (!payload) {
         result.skipped.no_payload += 1
+        bumpSkip(info.leagueSlug, 'no_payload')
         continue
       }
+      /* ★이 경기의 리그 표로만 푼다★ — 표를 합치면 EVOA 문제가 그대로 터진다 */
+      const clanOfNumber = numberOfLeague.get(info.leagueId) ?? new Map<string, string>()
       const planned = planLineup({
         events: asArray<LineupEvent>(payload.battleLog),
         teamList: asArray<LineupTeamEntry>(payload.teamList),
@@ -354,9 +468,11 @@ export async function runBattlelogLineup(
       })
       if (!planned.ok) {
         result.skipped[planned.reason] += 1
+        bumpSkip(info.leagueSlug, planned.reason)
         continue
       }
       result.planned += 1
+      bump(info.leagueSlug, 'planned')
       plans.push({ info, players: planned.players })
     }
     if (plans.length === 0) continue
@@ -423,6 +539,7 @@ export async function runBattlelogLineup(
               result.playersCreated += 1
             }
             result.statsCreated += 1
+            bump(plan.info.leagueSlug, 'statsCreated')
             continue
           }
           /* 3순위 — 새로 만든다. 닉을 모르면 계정값을 이름으로 둔다(지어내지 않는다) */
@@ -469,6 +586,7 @@ export async function runBattlelogLineup(
 
         if (!options.confirm) {
           result.statsCreated += 1
+          bump(plan.info.leagueSlug, 'statsCreated')
           continue
         }
         await prisma.matchPlayerStat.upsert({
@@ -476,8 +594,13 @@ export async function runBattlelogLineup(
           create: { matchId: plan.info.matchId, playerId, ...data },
           update: data,
         })
-        if (existingStats.has(`${plan.info.matchId} ${playerId}`)) result.statsUpdated += 1
-        else result.statsCreated += 1
+        if (existingStats.has(`${plan.info.matchId} ${playerId}`)) {
+          result.statsUpdated += 1
+          bump(plan.info.leagueSlug, 'statsUpdated')
+        } else {
+          result.statsCreated += 1
+          bump(plan.info.leagueSlug, 'statsCreated')
+        }
       }
     }
   }
@@ -501,6 +624,22 @@ export async function runBattlelogLineup(
       `팀목록없음 ${result.skipped.no_team_list} · 팀번호불일치 ${result.skipped.team_no_mismatch} · ` +
       `클랜번호모름 ${result.skipped.clan_unmapped.toLocaleString()} · 진영불일치 ${result.skipped.side_mismatch}`,
   )
+  /* ★리그마다 답한다★ — 합계만 내면 «SPL 이 정말 들어왔나» 를 알 수 없다 */
+  for (const league of leagues) {
+    const row = result.byLeague[league.slug]
+    if (!row) continue
+    const label = LEAGUE_LABEL[league.slug as keyof typeof LEAGUE_LABEL] ?? league.slug
+    log(
+      `  ${label.padEnd(11)} 우리경기 ${String(row.matched).padStart(6)} · ` +
+        `라인업가능 ${String(row.planned).padStart(6)} · ` +
+        `참가신규 ${String(row.statsCreated).padStart(6)} · 갱신 ${String(row.statsUpdated).padStart(6)} · ` +
+        `미러라인업이 있어 비켜줌 ${row.skippedMirrorLineup}`,
+    )
+    const why = Object.entries(row.skipped)
+      .filter(([, n]) => n > 0)
+      .map(([reason, n]) => `${reason} ${n}`)
+    if (why.length) log(`  ${' '.repeat(11)} └ 못 넣은 사유 — ${why.join(' · ')}`)
+  }
   if (!options.confirm) log('--confirm 없이는 한 줄도 쓰지 않았다')
 
   return result

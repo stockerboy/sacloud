@@ -30,7 +30,7 @@ import {
 import { countLocalCollectors } from './lib/localCollectors.js'
 /* ★통합 투영★ (Part 3 · 2026-09-05) */
 import { runUnifiedProject } from './jobs/unifiedProject.js'
-import { LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
+import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
 import {
   countSharedPasswordAccounts,
   freezeSeason,
@@ -66,7 +66,7 @@ import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
-import { runBattlelogLineup } from './jobs/battlelogLineup.js'
+import { ALL_LEAGUE_SLUGS, runBattlelogLineup } from './jobs/battlelogLineup.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
@@ -315,8 +315,11 @@ function usage(): void {
               병영수첩을 curl 로 긁는다 (O-051 · D-268). ★첫 403·429 에서 즉시 멈춘다★
               ★임대 없이는 시작하지 않는다★ — 셸은 --lease-owner <id>,
               사람이 한 번 돌릴 때는 ★--no-lease 를 의도해서★ 붙인다 (코드 9 로 거부)
-  battlelog-lineup [--league <slug>] [--limit N] [--confirm]
+  battlelog-lineup [--all-leagues | --league <slug>] [--limit N] [--confirm]
               클랜 배틀로그 원문 → **MatchPlayerStat**(참가 기록). 라인업의 유일한 출처다
+              ★--all-leagues 면 IPL·SPL·열산을 한 번에 돈다★ (Part 4). 클랜번호 표는
+              ★리그마다 따로★ 든다 — 합치면 IPL 팀번호가 열산 클랜으로 풀린다
+              --from-cutoff 를 주면 ★기준시각 이후 경기만★ 손댄다 (과거 영향 0 을 증명할 때)
               **10명이 다 확인된 경기만** 넣는다. assist·damage·headshot·dropout·mvp 는 전부 null
               먼저 ipl-clan-number 를 돌려 클랜번호 표를 채워야 한다
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
@@ -649,9 +652,16 @@ async function main(): Promise<number> {
         10명이 다 확인된 경기만 넣고, 배틀로그에 없는 칸은 전부 null 이다.
         `--confirm` 없이는 한 줄도 쓰지 않는다.
       */
+      /*
+        ★--all-leagues 면 세 리그를 한 대기열로★ (2026-09-05 · Part 4 · 사장님 지시)
+        «리그별 라인업 수집기를 세 개 따로 만들지 마라»
+        옛 방식(`--league <slug>`)은 ★그대로 남는다★ (`CLAUDE.md` 1-4)
+      */
       const result = await runBattlelogLineup({
         confirm: boolFlag(args, 'confirm'),
         leagueSlug: stringFlag(args, 'league') ?? undefined,
+        leagueSlugs: boolFlag(args, 'all-leagues') ? ALL_LEAGUE_SLUGS : undefined,
+        fromCutoff: boolFlag(args, 'from-cutoff'),
         limit: numberFlag(args, 'limit') ?? undefined,
       })
       table([
@@ -665,6 +675,16 @@ async function main(): Promise<number> {
           신원이음: result.playersFromIdentity,
         },
       ])
+      table(
+        Object.entries(result.byLeague).map(([slug, row]) => ({
+          리그: LEAGUE_LABEL[slug as keyof typeof LEAGUE_LABEL] ?? slug,
+          우리경기: row.matched,
+          라인업가능: row.planned,
+          참가신규: row.statsCreated,
+          참가갱신: row.statsUpdated,
+          미러비켜줌: row.skippedMirrorLineup,
+        })),
+      )
       table([result.skipped as unknown as Record<string, unknown>])
       return 0
     }
