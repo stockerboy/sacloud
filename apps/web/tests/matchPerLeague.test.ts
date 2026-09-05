@@ -42,6 +42,8 @@ const SLUG_B = 't155b'
 const SHARED = '990827000000000001'
 /** 리그 A 에만 있는 **예전 형식** 행 — id 가 곧 경기 번호다 */
 const LEGACY = '990827000000000002'
+/** ★창 안(기준시각 이후) 경기★ — 신규 규칙을 재는 데 쓴다 (2026-09-05) */
+const NEWKEY = '990827000000000003'
 
 /** 행의 기본키. 리그마다 다르다 (`packages/db/ops/supplyMirrorImport.ts` 의 규칙과 같다) */
 const rowId = (sourceMatchId: string, leagueSlug: string) => `${sourceMatchId}@${leagueSlug}`
@@ -63,10 +65,15 @@ let ids: {
   blueA: string
   redB: string
   blueB: string
+  mapId: string
 } | null = null
 
 async function cleanup() {
-  const rows = [rowId(SHARED, SLUG_A), rowId(SHARED, SLUG_B), LEGACY]
+  const rows = [
+    rowId(SHARED, SLUG_A), rowId(SHARED, SLUG_B), LEGACY,
+    rowId(NEWKEY, SLUG_A), rowId(NEWKEY, SLUG_B),
+    `${P}DUP-A`, `${P}DUP-B`,
+  ]
   await prisma.matchPlayerStat.deleteMany({ where: { matchId: { in: rows } } })
   await prisma.match.deleteMany({ where: { id: { in: rows } } })
   await prisma.leagueClan.deleteMany({ where: { league: { slug: { in: [SLUG_A, SLUG_B] } } } })
@@ -197,6 +204,38 @@ beforeAll(async () => {
     },
   })
 
+  /* ★창 안(기준시각 이후) 경기★ — 리그 A 에만. 신규 규칙에서는 이것이 정상이다 */
+  await prisma.match.create({
+    data: {
+      id: rowId(NEWKEY, SLUG_A),
+      sourceMatchId: NEWKEY,
+      origin: '3rd.supply',
+      leagueId: leagueA.id,
+      mapId: map.id,
+      playerCount: 10,
+      startAt: new Date(IN_WINDOW.getTime() + 2 * HOUR),
+      playTime: 444,
+      winnerSide: 'red',
+      redLeagueClanId: redA.id,
+      blueLeagueClanId: blueA.id,
+      redDivisionAtMatch: 1,
+      blueDivisionAtMatch: 1,
+      stats: {
+        create: [
+          {
+            playerId: player.id,
+            side: 'red',
+            kill: 44,
+            death: 4,
+            assist: 4,
+            playerDivisionAtMatch: 1,
+            opponentDivisionAtMatch: 1,
+          },
+        ],
+      },
+    },
+  })
+
   ids = {
     leagueA: leagueA.id,
     leagueB: leagueB.id,
@@ -204,6 +243,7 @@ beforeAll(async () => {
     blueA: blueA.id,
     redB: redB.id,
     blueB: blueB.id,
+    mapId: map.id,
   }
 })
 
@@ -222,65 +262,143 @@ describe.runIf(up)('같은 경기가 여러 리그에 있을 때 (D-155)', () =>
     expect(rows.map((row) => row.id)).toEqual([rowId(SHARED, SLUG_A), rowId(SHARED, SLUG_B)])
   })
 
-  /* ══ ★★2026-09-05 · 여기 다섯은 멈춰 뒀다 (지우지 않았다)★★ ══════════════
+  /* ══════════════════════════════════════════════════════════════════════
+   * ★★2026-09-05 · 여기 다섯을 새 규칙 검사로 갈아끼웠다★★ (사장님 지시)
    *
-   *   사장님이 ★「2026-09-03 07:00 이후 · 한 실제 경기 = Match 정확히 1개」★ 를 정하셨고
-   *   DB 자물쇠(`Match_new_sourceMatchId_key`)로 강제된다.
-   *   ★그래서 「같은 경기 번호가 창 안에 두 줄」은 이제 만들 수 없다.★
+   *   옛 다섯은 ★「같은 경기가 창 안에 두 줄」★ 을 전제로 했다.
+   *   사장님이 «2026-09-03 07:00 이후 · ★한 실제 경기 = 활성 Match 정확히 1개★» 를
+   *   정하셨고 DB 자물쇠(`Match_new_sourceMatchId_key`)가 그것을 강제한다.
+   *   ★그 전제가 사라졌으므로 옛 검사를 되살리는 것이 아니라 지금 규칙을 검사한다.★
    *
-   *   픽스처를 창 밖(과거)으로 옮겼더니 이번엔 ★화면 질의가 창으로 걸러서 안 보인다.★
-   *   → 이 다섯은 ★갈 곳이 없다.★ 버그가 아니라 ★전제가 사라진 것★ 이다.
-   *
-   *   ⚠ ★지우지 않았다★ (`CLAUDE.md` 1-4). 사장님 판단을 기다린다 —
-   *     가) 그대로 접는다 (창 안에서는 구조적으로 못 일어나므로)
-   *     나) 과거 구간을 보는 질의로 다시 쓴다
-   *
-   *   ★남은 셋은 그대로 돈다★ — 「행이 둘이고 기본키만 다르다」 · 「없는 경기는 없다고 답한다」
-   *   · 「예전 형식 행도 열린다」
+   *   ⚠ ★과거 구간은 그대로다★ — 위 「전제」 검사가 창 밖 두 줄을 그대로 확인한다.
+   *     그것이 8번(과거 중복이 신규 제약 때문에 깨지지 않는다)의 증거다.
    * ══════════════════════════════════════════════════════════════════════ */
-  it.skip('밖으로 나가는 id 는 원본 18자리다 — `@슬러그`가 새지 않는다', async () => {
-    const detail = await getMatch(ids!.leagueA, SHARED, null)
-    expect(detail?.id).toBe(SHARED)
-    // 계약이 그대로 통과해야 한다 (사용자 URL 도 18자리뿐이다)
-    expect(MatchId.safeParse(detail?.id).success).toBe(true)
+
+  it('★같은 경기번호를 신규 구간에 두 번 활성 저장할 수 없다★', async () => {
+    await expect(
+      prisma.match.create({
+        data: {
+          id: `${P}DUP-A`,
+          sourceMatchId: NEWKEY,
+          origin: '3rd.supply',
+          leagueId: ids!.leagueA,
+          mapId: ids!.mapId,
+          playerCount: 10,
+          startAt: new Date(IN_WINDOW.getTime() + 3 * HOUR),
+          winnerSide: 'red',
+          redLeagueClanId: ids!.redA,
+          blueLeagueClanId: ids!.blueA,
+          redDivisionAtMatch: 1,
+          blueDivisionAtMatch: 1,
+        },
+      }),
+    ).rejects.toThrow()
   })
 
-  it.skip('리그 A 에서 열면 A 의 기록이 나온다', async () => {
-    const detail = await getMatch(ids!.leagueA, SHARED, ids!.redA)
-    expect(detail?.league_id).toBe(ids!.leagueA)
-    expect(detail?.play_time).toBe(111)
-    expect(detail?.win).toBe(true) // A 는 red 승, viewer 가 red
-    expect(detail?.red_stats.map((stat) => stat.kill)).toEqual([11])
-    expect(detail?.league_clan.division).toBe(1)
+  it('★리그를 달리해도 막힌다★ — 한 경기는 세 리그 중 하나에만 들어간다', async () => {
+    await expect(
+      prisma.match.create({
+        data: {
+          id: rowId(NEWKEY, SLUG_B),
+          sourceMatchId: NEWKEY,
+          origin: '3rd.supply',
+          /* ★다른 리그다.★ 옛 구조에서는 이것이 정상이었다 (D-155) */
+          leagueId: ids!.leagueB,
+          mapId: ids!.mapId,
+          playerCount: 10,
+          startAt: new Date(IN_WINDOW.getTime() + 2 * HOUR),
+          winnerSide: 'blue',
+          redLeagueClanId: ids!.redB,
+          blueLeagueClanId: ids!.blueB,
+          redDivisionAtMatch: 2,
+          blueDivisionAtMatch: 2,
+        },
+      }),
+    ).rejects.toThrow()
   })
 
-  it.skip('리그 B 에서 열면 B 의 기록이 나온다 — A 의 값이 섞이지 않는다', async () => {
-    const detail = await getMatch(ids!.leagueB, SHARED, ids!.redB)
-    expect(detail?.league_id).toBe(ids!.leagueB)
-    expect(detail?.play_time).toBe(222)
-    expect(detail?.win).toBe(false) // B 는 blue 승, viewer 가 red
-    expect(detail?.blue_stats.map((stat) => stat.kill)).toEqual([22])
-    expect(detail?.league_clan.division).toBe(2)
+  it('★origin 이 달라도 막힌다★ — 같은 실제 경기는 하나다', async () => {
+    await expect(
+      prisma.match.create({
+        data: {
+          id: `${P}DUP-B`,
+          sourceMatchId: NEWKEY,
+          /* 우리 자체 수집이 같은 경기를 또 만들려는 상황이다 */
+          origin: 'nexon_barracks',
+          leagueId: ids!.leagueA,
+          mapId: ids!.mapId,
+          playerCount: 10,
+          startAt: new Date(IN_WINDOW.getTime() + 2 * HOUR),
+          winnerSide: 'red',
+          redLeagueClanId: ids!.redA,
+          blueLeagueClanId: ids!.blueA,
+          redDivisionAtMatch: 1,
+          blueDivisionAtMatch: 1,
+        },
+      }),
+    ).rejects.toThrow()
   })
 
-  it.skip('**핵심** — 리그를 안 걸면 틀린 리그가 나올 수 있다. 조회는 리그를 반드시 건다', async () => {
-    /* 리그 없이 경기 번호로만 찾으면 무엇이 나올지 우리가 정하지 못한다 */
-    const anyLeague = await prisma.match.findFirst({
-      where: { OR: [{ sourceMatchId: SHARED }, { id: SHARED }] },
-      select: { leagueId: true },
+  it('★숨긴 줄은 자리를 안 막는다★ — 잘못 분류한 경기를 다시 넣을 수 있어야 한다', async () => {
+    /*
+     * ★이것이 「지우지 않고 숨긴다」가 성립하는 이유다.★
+     *
+     * 경기를 엉뚱한 리그에 넣었다는 것을 나중에 알았다고 하자. 옛 줄을 ★숨기고★
+     * 맞는 리그에 새로 넣어야 한다. 자물쇠가 ★`supersededAt IS NULL` 만 보기★ 때문에
+     * 그것이 된다 — 숨긴 줄은 「경기당 하나」를 세는 데서 빠진다.
+     *
+     * ⚠ ★새 줄은 다른 리그에 만든다.★ 같은 리그에 만들면 옛 제약
+     *   `unique(leagueId, origin, sourceMatchId)` 에 걸린다 — 그건 이 검사의 주제가 아니다
+     *   (2026-09-05 · 처음에 같은 리그로 썼다가 그 제약에 걸렸다).
+     */
+    await prisma.match.update({
+      where: { id: rowId(NEWKEY, SLUG_A) },
+      data: { supersededAt: new Date(), supersededBy: 'TEST', supersededReason: '검사' },
     })
-    expect([ids!.leagueA, ids!.leagueB]).toContain(anyLeague?.leagueId)
+    try {
+      const made = await prisma.match.create({
+        data: {
+          id: `${P}DUP-A`,
+          sourceMatchId: NEWKEY,
+          origin: '3rd.supply',
+          /* ★맞는 리그로 옮겨 다시 넣는 상황★ */
+          leagueId: ids!.leagueB,
+          mapId: ids!.mapId,
+          playerCount: 10,
+          startAt: new Date(IN_WINDOW.getTime() + 2 * HOUR),
+          winnerSide: 'blue',
+          redLeagueClanId: ids!.redB,
+          blueLeagueClanId: ids!.blueB,
+          redDivisionAtMatch: 2,
+          blueDivisionAtMatch: 2,
+        },
+        select: { id: true },
+      })
+      expect(made.id).toBe(`${P}DUP-A`)
+      await prisma.match.delete({ where: { id: made.id } })
+    } finally {
+      await prisma.match.update({
+        where: { id: rowId(NEWKEY, SLUG_A) },
+        data: { supersededAt: null, supersededBy: null, supersededReason: null },
+      })
+    }
+  })
 
-    /* 반면 조회 함수는 **건 리그의 것만** 준다. 두 결과가 서로 다르다 */
-    const [a, b] = await Promise.all([
-      getMatch(ids!.leagueA, SHARED, null),
-      getMatch(ids!.leagueB, SHARED, null),
-    ])
-    expect(a?.league_id).toBe(ids!.leagueA)
-    expect(b?.league_id).toBe(ids!.leagueB)
-    expect(a?.play_time).not.toBe(b?.play_time)
-    // 같은 경기 번호를 내보내지만 속은 각 리그의 것이다
-    expect(a?.id).toBe(b?.id)
+  it('밖으로 나가는 id 는 원본 18자리다 — `@슬러그`가 새지 않는다', async () => {
+    const detail = await getMatch(ids!.leagueA, NEWKEY, null)
+    expect(detail?.id).toBe(NEWKEY)
+    expect(MatchId.safeParse(detail?.id).success).toBe(true)
+    expect(detail?.play_time).toBe(444)
+  })
+
+  it('기록실 목록도 원본 18자리를 내보낸다', async () => {
+    const page = await getLeagueClanMatches(ids!.redA, null, 20)
+    const found = page?.items.find((item) => item.id === NEWKEY)
+    expect(found).toBeTruthy()
+    expect(found?.play_time).toBe(444)
+    for (const item of page?.items ?? []) {
+      expect(MatchId.safeParse(item.id).success).toBe(true)
+    }
   })
 
   it('그 리그에 없는 경기는 없다고 답한다 (다른 리그 것을 빌려오지 않는다)', async () => {
@@ -295,13 +413,4 @@ describe.runIf(up)('같은 경기가 여러 리그에 있을 때 (D-155)', () =>
     expect(detail?.play_time).toBe(333)
   })
 
-  it.skip('기록실 목록도 원본 18자리를 내보낸다', async () => {
-    const page = await getLeagueClanMatches(ids!.redA, null, 20)
-    const shared = page?.items.find((item) => item.id === SHARED)
-    expect(shared).toBeTruthy()
-    expect(shared?.play_time).toBe(111)
-    for (const item of page?.items ?? []) {
-      expect(MatchId.safeParse(item.id).success).toBe(true)
-    }
-  })
 })
