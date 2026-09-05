@@ -82,6 +82,16 @@ const ALLOWED = {
     writes: false,
     what: 'O-046 — 시즌 경계로 나누면 어디에 몇 건이 떨어지나 (읽기만 한다)',
   },
+  'clan-one-league': {
+    file: 'clanOneLeagueApply',
+    writes: true,
+    what: '★클랜 하나 = 리그 하나★ — 운영 3리그에서 겹친 등록의 진 쪽을 숨긴다 (지우지 않는다). --revert 로 되돌린다',
+  },
+  'dedupe-new': {
+    file: 'dedupeNewMatches',
+    writes: true,
+    what: '★기준시각 이후 같은 경기가 두 줄인 것을 하나만 남긴다★ — 지우지 않고 숨김 표시만. --revert 로 되돌린다',
+  },
   'clan-move': {
     file: 'clanMoveApply',
     writes: true,

@@ -928,6 +928,27 @@ model Match {
   participantCompleteness String?
   /// "high" | "medium" | "low"
   evidenceConfidence      String?
+
+  /* ══ ★★같은 경기가 두 줄일 때 하나만 남긴다★★ (2026-09-05 · 사장님 지시) ══
+   *
+   *   > «한 실제 경기 = Match 정확히 1개»
+   *   > «다른 Match 는 ★삭제하지 말고★ 되돌릴 수 있게 비활성/숨김 처리»
+   *
+   *   ★지우지 않는다. 표시만 붙인다.★ 줄은 그대로 있고 —
+   *   화면·집계·DB 자물쇠가 ★표시 붙은 줄을 안 본다.★
+   *
+   *   ⚠ ★과거(기준시각 2026-09-03 07:00 KST 이전)에는 안 쓴다.★
+   *     그때는 ★한 경기가 여러 리그에 있는 것이 정상★ 이었다 (D-155).
+   *     34,880건이 그렇게 들어 있고 사장님이 「동결」이라 하셨다.
+   */
+
+  /// 숨긴 시각. `null` 이면 살아 있는 줄이다
+  supersededAt     DateTime? @db.Timestamptz(3)
+  /// ★대신 남긴 줄★ 의 `Match.id`. 「그럼 진짜는 어디 있나」에 바로 답한다
+  supersededBy     String?
+  /// ★왜 숨겼나★ — 사람이 읽는 한 줄. 이게 없으면 나중에 아무도 이유를 모른다
+  supersededReason String?
+
   ingestedAt   DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

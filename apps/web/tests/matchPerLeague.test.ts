@@ -26,7 +26,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
  *   그 경기들이 창 밖으로 나가 검사가 깨졌다.★
  *   ★창을 따라가게 `IN_WINDOW` 를 쓴다★ — 창이 또 바뀌어도 안 깨진다.
  */
-import { IN_WINDOW } from './seasonWindowFixture'
+import { BEFORE_WINDOW, IN_WINDOW } from './seasonWindowFixture'
 
 const HOUR = 60 * 60 * 1000
 
@@ -124,7 +124,7 @@ beforeAll(async () => {
       leagueId: leagueA.id,
       mapId: map.id,
       playerCount: 10,
-      startAt: new Date(IN_WINDOW.getTime() + 0 * HOUR),
+      startAt: new Date(BEFORE_WINDOW.getTime() + 0 * HOUR),
       playTime: 111,
       winnerSide: 'red',
       redLeagueClanId: redA.id,
@@ -154,7 +154,7 @@ beforeAll(async () => {
       leagueId: leagueB.id,
       mapId: map.id,
       playerCount: 10,
-      startAt: new Date(IN_WINDOW.getTime() + 0 * HOUR),
+      startAt: new Date(BEFORE_WINDOW.getTime() + 0 * HOUR),
       /* 리그 A 와 **다른 값**을 넣는다. 섞이면 이 숫자로 들통난다 */
       playTime: 222,
       winnerSide: 'blue',
@@ -222,14 +222,30 @@ describe.runIf(up)('같은 경기가 여러 리그에 있을 때 (D-155)', () =>
     expect(rows.map((row) => row.id)).toEqual([rowId(SHARED, SLUG_A), rowId(SHARED, SLUG_B)])
   })
 
-  it('밖으로 나가는 id 는 원본 18자리다 — `@슬러그`가 새지 않는다', async () => {
+  /* ══ ★★2026-09-05 · 여기 다섯은 멈춰 뒀다 (지우지 않았다)★★ ══════════════
+   *
+   *   사장님이 ★「2026-09-03 07:00 이후 · 한 실제 경기 = Match 정확히 1개」★ 를 정하셨고
+   *   DB 자물쇠(`Match_new_sourceMatchId_key`)로 강제된다.
+   *   ★그래서 「같은 경기 번호가 창 안에 두 줄」은 이제 만들 수 없다.★
+   *
+   *   픽스처를 창 밖(과거)으로 옮겼더니 이번엔 ★화면 질의가 창으로 걸러서 안 보인다.★
+   *   → 이 다섯은 ★갈 곳이 없다.★ 버그가 아니라 ★전제가 사라진 것★ 이다.
+   *
+   *   ⚠ ★지우지 않았다★ (`CLAUDE.md` 1-4). 사장님 판단을 기다린다 —
+   *     가) 그대로 접는다 (창 안에서는 구조적으로 못 일어나므로)
+   *     나) 과거 구간을 보는 질의로 다시 쓴다
+   *
+   *   ★남은 셋은 그대로 돈다★ — 「행이 둘이고 기본키만 다르다」 · 「없는 경기는 없다고 답한다」
+   *   · 「예전 형식 행도 열린다」
+   * ══════════════════════════════════════════════════════════════════════ */
+  it.skip('밖으로 나가는 id 는 원본 18자리다 — `@슬러그`가 새지 않는다', async () => {
     const detail = await getMatch(ids!.leagueA, SHARED, null)
     expect(detail?.id).toBe(SHARED)
     // 계약이 그대로 통과해야 한다 (사용자 URL 도 18자리뿐이다)
     expect(MatchId.safeParse(detail?.id).success).toBe(true)
   })
 
-  it('리그 A 에서 열면 A 의 기록이 나온다', async () => {
+  it.skip('리그 A 에서 열면 A 의 기록이 나온다', async () => {
     const detail = await getMatch(ids!.leagueA, SHARED, ids!.redA)
     expect(detail?.league_id).toBe(ids!.leagueA)
     expect(detail?.play_time).toBe(111)
@@ -238,7 +254,7 @@ describe.runIf(up)('같은 경기가 여러 리그에 있을 때 (D-155)', () =>
     expect(detail?.league_clan.division).toBe(1)
   })
 
-  it('리그 B 에서 열면 B 의 기록이 나온다 — A 의 값이 섞이지 않는다', async () => {
+  it.skip('리그 B 에서 열면 B 의 기록이 나온다 — A 의 값이 섞이지 않는다', async () => {
     const detail = await getMatch(ids!.leagueB, SHARED, ids!.redB)
     expect(detail?.league_id).toBe(ids!.leagueB)
     expect(detail?.play_time).toBe(222)
@@ -247,7 +263,7 @@ describe.runIf(up)('같은 경기가 여러 리그에 있을 때 (D-155)', () =>
     expect(detail?.league_clan.division).toBe(2)
   })
 
-  it('**핵심** — 리그를 안 걸면 틀린 리그가 나올 수 있다. 조회는 리그를 반드시 건다', async () => {
+  it.skip('**핵심** — 리그를 안 걸면 틀린 리그가 나올 수 있다. 조회는 리그를 반드시 건다', async () => {
     /* 리그 없이 경기 번호로만 찾으면 무엇이 나올지 우리가 정하지 못한다 */
     const anyLeague = await prisma.match.findFirst({
       where: { OR: [{ sourceMatchId: SHARED }, { id: SHARED }] },
@@ -279,7 +295,7 @@ describe.runIf(up)('같은 경기가 여러 리그에 있을 때 (D-155)', () =>
     expect(detail?.play_time).toBe(333)
   })
 
-  it('기록실 목록도 원본 18자리를 내보낸다', async () => {
+  it.skip('기록실 목록도 원본 18자리를 내보낸다', async () => {
     const page = await getLeagueClanMatches(ids!.redA, null, 20)
     const shared = page?.items.find((item) => item.id === SHARED)
     expect(shared).toBeTruthy()
