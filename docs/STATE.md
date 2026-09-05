@@ -124,6 +124,47 @@ IPL 과거 킬데스 채우기(6.3%→60%) · 병영수첩으로 과거 긁기
 「서로 다른 캐시 키의 개수」**다 — 개인 기록은 사람마다 주소가 달라 전부 첫 방문이다
 (위 「공개일에 무슨 일이 나는가」).
 
+### ★★한 경기 = 한 리그 · 한 클랜 = 한 리그 (2026-09-05)★★
+
+**기준시각(2026-09-03 07:00 KST) 이후부터** 이 규칙이 DB 로 강제된다.
+
+```
+클랜   운영 3리그(IPL·SPL·열산)에 ★동시 활성 0곳★
+경기   기준시각 이후 같은 sourceMatchId ★0개★
+자물쇠 Match_new_sourceMatchId_key (partial unique)
+       WHERE startAt >= 기준시각 AND sourceMatchId IS NOT NULL AND supersededAt IS NULL
+```
+
+> ⚠ **과거는 동결이다.** 기준시각 이전에는 **한 경기가 여러 리그에 있는 것이 정상**이었다
+> (D-155). 그렇게 들어간 것이 **34,862건**이고 **손대지 않는다.**
+> 자물쇠의 `WHERE` 가 그 구간을 아예 안 본다 — 운영에서 넣어 보고 확인했다.
+
+#### 43곳 겹침 — 사장님이 정하셨다 (2026-09-05)
+```
+열산 6곳   flying- · immortals · 매너 · 사신 · 야부리！ · 어린이
+SPL 37곳   나머지 전부
+```
+- ⚠ **9/3 분류와 14곳이 달랐다.** 9/3 이동 3,351건을 **먼저 되돌린 뒤** 새 기준으로 305건 옮겼다
+- 옛 되돌리기 파일은 `data/o044/clan-move-backup-2026-09-03.jsonl` 로 **남겼다**
+- 겹친 등록 **44개**(43곳 + `recent.wct-`)의 진 쪽을 **숨겼다** (`expelledAt` · 지우지 않았다)
+
+#### 지우지 않는다 — 숨긴다
+```
+경기   Match.supersededAt / supersededBy / supersededReason  ← ★왜 숨겼는지 행마다 남는다★
+등록   LeagueClan.expelledAt
+```
+되돌리기
+```
+node scripts/prod-run.mjs dedupe-new      --revert   숨긴 경기 39줄
+node scripts/prod-run.mjs clan-one-league --revert   숨긴 등록 44개
+node scripts/prod-run.mjs clan-move       --revert   옮긴 경기 305건
+```
+
+> ⚠ **`matchPerLeague.test.ts` 의 검사 5개가 멈춰 있다** (`it.skip`).
+> 「같은 경기가 두 리그에」를 재는데 **창 안에서는 이제 못 일어난다.**
+> 창 밖으로 옮기면 화면 질의가 걸러서 안 보인다 — **갈 곳이 없다.**
+> 버그가 아니라 전제가 사라진 것이다. **지우지 않았다.**
+
 ### ★★근본 시즌 — 과거 카드가 들어왔다 (2026-09-04 · Part 1)★★
 
 `3rd.supply` **서플라이공식리그** 카드를 선수 상세의 **근본 시즌**으로 고정했다.
