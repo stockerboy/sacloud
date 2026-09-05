@@ -76,8 +76,13 @@ while :; do
   # ★긴 구간에 들어가기 전에 임대를 이어 쥔다★ (2026-09-04 · Pre-Part 0)
   collect_lock_renew || exit 0
 
+  # ★세 리그를 한 대기열로 돈다★ (2026-09-05 · Part 3 ⑤단계 · 사장님 지시)
+  #   «수집 단계에서 IPL/SPL/열산을 따로 세 번 처리하는 구조로 만들지 마라»
+  #   ⚠ ★따로 세 번 돌면 간격 1500ms 약속이 500ms 가 된다★
+  #   ⚠ ★열산이 311곳 중 8곳만 수집되고 있었다★ — 그래서 열산 신규가 0건이었다
+  #   옛값:  --league nolink --clans 43   ← ★지우지 않는다★ (CLAUDE.md 1-4)
   pnpm --filter @sacloud/worker nexon barracks-collect \
-    --league nolink --clans 43 --limit "$BATCH" --confirm \
+    --all-leagues --clans 999 --limit "$BATCH" --confirm \
     --lease-owner "$COLLECT_LEASE_OWNER" \
     --health https://3rdcloud.my/api/health >> "$LOG" 2>&1
   code=$?
@@ -105,7 +110,10 @@ while :; do
     exit 1
   fi
 
-  pnpm --filter @sacloud/worker nexon iplmatch-project --confirm >> "$LOG" 2>&1
+  # ★통합 투영★ — IPL/SPL/열산 중 정확히 하나로 (2026-09-05 · Part 3)
+  #   옛값: pnpm … nexon iplmatch-project --confirm  ← ★지우지 않는다★
+  #   둘 다 origin='nexon_barracks' 라 같이 돌리면 헛수고다. 하나만 돈다
+  pnpm --filter @sacloud/worker nexon unified-project --confirm >> "$LOG" 2>&1
   pnpm --filter @sacloud/worker nexon battlelog-lineup --league nolink --confirm >> "$LOG" 2>&1
   # ★쉬기 전에 다시 이어 쥔다★ — 쉬는 구간이 제일 길다
   collect_lock_renew || exit 0

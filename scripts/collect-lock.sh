@@ -137,7 +137,15 @@ collect_lock_acquire() {
   # ★어떻게 끝나든 반납한다★ — 정상 종료도, 끊겨도.
   #   ⚠ 반납은 ★빨리 풀리게 하는 것★ 이지 안전의 근거가 아니다.
   #     반납을 못 하고 죽어도 ★만료가 받아 준다.★
-  trap 'collect_lock_release' EXIT INT TERM
+  # ★EXIT 와 INT/TERM 을 갈라야 한다★ (2026-09-05 실측)
+  #
+  #   ⚠ 셋을 한 줄로 묶었더니 ★TERM 을 받고도 셸이 안 끝났다.★
+  #     POSIX sh 는 신호 처리기를 돌린 뒤 ★하던 자리로 돌아온다★ —
+  #     그래서 임대만 반납되고(주인 번호가 빈 채로) 루프가 계속 돌았다.
+  #     그 뒤 `barracks-collect` 가 매번 ★「임대 미획득」★ 으로 거절했다.
+  #     ★반납했으면 끝내야 한다.★ 안 그러면 주인 없는 판이 남는다
+  trap 'collect_lock_release' EXIT
+  trap 'collect_lock_release; exit 0' INT TERM
 }
 
 collect_lock_release() {
