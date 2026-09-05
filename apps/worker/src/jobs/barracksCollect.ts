@@ -121,7 +121,7 @@ export interface CollectOptions {
    *   ★부른 클랜의 리그와 저장되는 리그가 어긋나면 O-044 가 무너진다.★
    *   그래서 부르는 쪽이 ★명시★ 한다. 기본값에 기대지 않는다
    */
-  leagueSlug?: string
+  leagueSlug?: string | readonly string[]
   /** 요청 사이 간격(ms). `MIN_DELAY_MS` 아래로는 못 내린다 */
   delayMs?: number
   /** ★참이면 요청을 한 건도 보내지 않는다★ — 무엇을 받을지만 찍는다 */
@@ -428,17 +428,38 @@ export async function pendingPairs(
  */
 export async function pendingClans(
   limit: number,
-  leagueSlug = 'nolink',
+  leagueSlug: string | readonly string[] = 'nolink',
 ): Promise<{ slug: string; name: string }[]> {
+  /*
+   * ══ ★리그를 여러 개 받을 수 있다★ (2026-09-05 · Part 3 ⑤단계) ══
+   *
+   *   사장님: «수집 단계에서 IPL/SPL/열산을 ★따로 세 번 처리하는 구조로 만들지 마라.★
+   *          ★등록 클랜 전체★ 를 대상으로 수집하고 경기 단위로 분류한다»
+   *
+   *   ★왜 한 번에 도는 것이 중요한가★ — 세 번 돌면 ★간격 1500ms 약속이 500ms 가 된다.★
+   *   한 대기열로 모아 ★오래 안 받은 클랜부터★ 돌면 원본에 대한 예의도 지켜진다.
+   *
+   *   ⚠ ★활성 등록만 본다★ (`expelledAt IS NULL`). 2026-09-05 에 겹친 등록을 숨겼으므로
+   *     한 클랜은 한 리그에만 활성이고, ★같은 클랜을 두 번 받지 않는다.★
+   *
+   *   ★옛 호출 방식(문자열 하나)은 그대로 된다★ — 기존 셸을 안 건드린다 (`CLAUDE.md` 1-4)
+   */
+  const slugs = typeof leagueSlug === 'string' ? [leagueSlug] : [...leagueSlug]
+  /* ⚠ ★DISTINCT 와 ORDER BY 를 같은 줄에 못 쓴다★ (Postgres 42P10 · 2026-09-05 실측).
+     정렬 기준(마지막으로 받은 시각)이 SELECT 목록에 없기 때문이다.
+     ★안쪽에서 골라 놓고 바깥에서 정렬한다★ */
   return prisma.$queryRaw<{ slug: string; name: string }[]>`
-    SELECT c."slug", c."name"
-      FROM "LeagueClan" lc
-      JOIN "League" l ON l."id" = lc."leagueId"
-      JOIN "Clan" c   ON c."id" = lc."clanId"
-     WHERE l."slug" = ${leagueSlug}
-     ORDER BY (
-       SELECT max(m."fetchedAt") FROM "BarracksClanMatchRaw" m WHERE m."subject" = c."slug"
-     ) ASC NULLS FIRST, c."slug"
+    SELECT t."slug", t."name"
+      FROM (
+        SELECT DISTINCT c."slug", c."name",
+               (SELECT max(m."fetchedAt") FROM "BarracksClanMatchRaw" m
+                 WHERE m."subject" = c."slug") AS "lastFetched"
+          FROM "LeagueClan" lc
+          JOIN "League" l ON l."id" = lc."leagueId"
+          JOIN "Clan" c   ON c."id" = lc."clanId"
+         WHERE l."slug" = ANY(${slugs}) AND lc."expelledAt" IS NULL
+      ) t
+     ORDER BY t."lastFetched" ASC NULLS FIRST, t."slug"
      LIMIT ${limit}
   `
 }

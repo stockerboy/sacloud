@@ -30,6 +30,7 @@ import {
 import { countLocalCollectors } from './lib/localCollectors.js'
 /* ★통합 투영★ (Part 3 · 2026-09-05) */
 import { runUnifiedProject } from './jobs/unifiedProject.js'
+import { LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
 import {
   countSharedPasswordAccounts,
   freezeSeason,
@@ -886,7 +887,18 @@ async function main(): Promise<number> {
       const from = stringFlag(args, 'from') ?? undefined
       const to = stringFlag(args, 'to') ?? undefined
       /* ★어느 리그의 클랜 목록을 받나★ — 기본은 IPL. ★기본값에 기대지 말고 명시한다★ */
-      const leagueSlug = stringFlag(args, 'league') ?? 'nolink'
+      /*
+       * ★한 번에 세 리그를 다 돈다★ (2026-09-05 · Part 3 ⑤단계 · 사장님 지시)
+       *
+       *   `--all-leagues`  IPL + SPL + 열산 등록 클랜을 ★한 대기열★ 로 돈다
+       *   `--league <slug>` 옛 방식 — 한 리그만 (그대로 둔다)
+       *
+       *   ⚠ ★세 번 따로 돌면 간격 1500ms 약속이 500ms 가 된다.★ 그래서 한 번에 돈다.
+       *   ⚠ ★대룰은 없다★ — 사장님이 두 번 말씀하셨다 (O-042)
+       */
+      const leagueSlug: string | readonly string[] = boolFlag(args, 'all-leagues')
+        ? LIVE_LEAGUE_SLUGS
+        : (stringFlag(args, 'league') ?? 'nolink')
       const delayMs = numberFlag(args, 'delay') ?? DEFAULT_DELAY_MS
       const healthUrl = stringFlag(args, 'health')
       const state = newGuardState()

@@ -47,7 +47,8 @@ import {
   LEAGUE_LABEL,
   LIVE_LEAGUE_SLUGS,
   buildClanIndex,
-  decideLeague,
+  resolveSides,
+  verdictFromSides,
   type ClanLeague,
   type LiveLeagueSlug,
   type UnclassifiedReason,
@@ -203,8 +204,18 @@ async function buildNameIndex(liveClans: Map<string, LiveClan>) {
     }
   }
 
+  /* ★클랜별로 「이 클랜이 써 온 이름들」을 따로 모은다★ (2026-09-05 · ⑤단계).
+     이름표(`index`)는 모호한 이름을 빼지만, ★slug 로 앉힐 때는 그 이름도 써야 한다★ —
+     「그 클랜이 나왔다」는 것을 원본이 말해 줬으니 이름이 겹쳐도 자리가 정해진다 */
+  const namesByClanId = new Map<string, Set<string>>()
+  for (const e of entries) {
+    const set = namesByClanId.get(e.clanId) ?? new Set<string>()
+    set.add(e.name)
+    namesByClanId.set(e.clanId, set)
+  }
+
   const built = buildClanIndex(entries)
-  return { ...built, recovered }
+  return { ...built, recovered, namesByClanId, clanBySlug: bySlug }
 }
 
 export async function runUnifiedProject(
@@ -214,7 +225,8 @@ export async function runUnifiedProject(
 
   const liveClans = await loadLiveClans()
   const leagueMaps = await loadLeagueMaps()
-  const { index, ambiguous, recovered } = await buildNameIndex(liveClans)
+  const { index, ambiguous, recovered, namesByClanId, clanBySlug } =
+    await buildNameIndex(liveClans)
 
   const leagueRows = await prisma.league.findMany({
     where: { slug: { in: [...LIVE_LEAGUE_SLUGS] } },
@@ -265,13 +277,18 @@ export async function runUnifiedProject(
   const limit = options.limit ?? Number.POSITIVE_INFINITY
 
   outer: for (;;) {
+    /* ★subject 를 같이 가져온다★ — 이름이 아니라 이것으로 자리를 정한다.
+       한 경기를 여러 클랜이 봤으면 그만큼 증거가 늘어난다 (실측: 880경기가 2개) */
     const rows = await prisma.$queryRaw<
-      Array<{ matchKey: string; payload: Record<string, unknown> }>
+      Array<{ matchKey: string; payload: Record<string, unknown>; subjects: string[] }>
     >`
-      SELECT DISTINCT ON ("matchKey") "matchKey", "payload"
+      SELECT "matchKey",
+             (ARRAY_AGG("payload" ORDER BY "id"))[1] AS "payload",
+             ARRAY_AGG(DISTINCT "subject") AS "subjects"
       FROM "BarracksClanMatchRaw"
       WHERE "matchKey" > ${after} AND "status" = 'ok'
-      ORDER BY "matchKey" ASC, "id" ASC
+      GROUP BY "matchKey"
+      ORDER BY "matchKey" ASC
       LIMIT ${BATCH}
     `
     if (rows.length === 0) break
@@ -300,8 +317,18 @@ export async function runUnifiedProject(
         continue
       }
 
-      /* ── ③ 리그 판정 ──────────────────────────────────────────── */
-      const verdict = decideLeague(m.redClanName, m.blueClanName, index)
+      /* ── ③ 리그 판정 ──────────────────────────────────────────────
+             ★이름으로 합치지 않는다★ — subject(slug) 로 증명되는 것만 앉힌다.
+             남은 자리만 ★모호하지 않은 이름★ 으로 채운다 (사장님 2026-09-05) */
+      const sides = resolveSides({
+        redClanName: m.redClanName,
+        blueClanName: m.blueClanName,
+        subjects: row.subjects,
+        clanBySlug,
+        namesByClanId,
+        nameIndex: index,
+      })
+      const verdict = verdictFromSides(m.redClanName, m.blueClanName, sides)
       if (!verdict.ok) {
         noteUnclassified(m.matchKey, verdict.reason, verdict.detail)
         if (verdict.reason === 'unknown_clan') {

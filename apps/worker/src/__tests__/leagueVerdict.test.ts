@@ -143,3 +143,121 @@ describe('★같은 이름 다른 클랜은 표에서 뺀다★', () => {
     expect(built.index.get('같은클랜')?.clanId).toBe('c-x')
   })
 })
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ★★slug 로 증명되는 것만 잇는다★★ (2026-09-05 · Part 3 ⑤단계 · 사장님 지시)
+ *
+ * > «같은 이름의 다른 클랜 9곳은 ★이름만으로 절대 합치지 마라★»
+ * > «지금 목표는 unclassified 0개가 아니다. ★잘못 분류된 경기 0개★ 가 목표다»
+ * ═══════════════════════════════════════════════════════════════════════════ */
+import { resolveSides, verdictFromSides, type ClanLeague } from '../lib/leagueVerdict.js'
+
+/* 실측을 본뜬 판 — `recent.wct-` 가 IPL(friendliness1)과 열산(recent15) 둘에 있다 */
+const IPL = { clanId: 'c-ipl', league: 'nolink' as const }
+const SAN = { clanId: 'c-san', league: 'sanply' as const }
+const SPL = { clanId: 'c-spl', league: 'supply' as const }
+
+const clanBySlug = new Map<string, ClanLeague>([
+  ['friendliness1', IPL],
+  ['recent15', SAN],
+  ['someSpl', SPL],
+])
+const namesByClanId = new Map<string, ReadonlySet<string>>([
+  ['c-ipl', new Set(['recent.wct-', 'pIacebo'])],
+  ['c-san', new Set(['recent.wct-'])],
+  ['c-spl', new Set(['saint'])],
+])
+/* ★모호한 이름은 표에서 빠져 있다★ — `recent.wct-` 가 없다 */
+const nameIndex = new Map<string, ClanLeague>([['saint', SPL]])
+
+describe('slug 로 앉히기', () => {
+  it('★모호한 이름도 subject 가 있으면 앉는다★ — 원본이 「이 클랜이 나왔다」고 말했다', () => {
+    const r = resolveSides({
+      redClanName: 'recent.wct-',
+      blueClanName: 'saint',
+      subjects: ['friendliness1'],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+    })
+    expect(r.red?.clanId).toBe('c-ipl')
+    expect(r.redBy).toBe('subject_slug')
+    expect(r.blue?.clanId).toBe('c-spl')
+    expect(r.blueBy).toBe('clan_name')
+  })
+
+  it('★subject 가 없으면 모호한 이름은 안 앉는다★ — 이름만으로 합치지 않는다', () => {
+    const r = resolveSides({
+      redClanName: 'recent.wct-',
+      blueClanName: 'saint',
+      subjects: [],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+    })
+    expect(r.red).toBeNull()
+    expect(r.redBy).toBe('none')
+
+    const v = verdictFromSides('recent.wct-', 'saint', r)
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.reason).toBe('unknown_clan')
+  })
+
+  it('★같은 이름이라도 subject 가 가리키는 클랜이 앉는다★ (IPL 쪽 slug)', () => {
+    const ipl = resolveSides({
+      redClanName: 'recent.wct-', blueClanName: 'saint',
+      subjects: ['friendliness1'], clanBySlug, namesByClanId, nameIndex,
+    })
+    expect(ipl.red?.league).toBe('nolink')
+
+    const san = resolveSides({
+      redClanName: 'recent.wct-', blueClanName: 'saint',
+      subjects: ['recent15'], clanBySlug, namesByClanId, nameIndex,
+    })
+    /* ★열산 쪽 slug 면 열산 클랜이 앉는다★ — 이름이 같아도 다른 클랜이다 */
+    expect(san.red?.league).toBe('sanply')
+  })
+
+  it('★양쪽 이름에 다 맞는 subject 는 안 앉힌다★ — 어느 자리인지 모른다', () => {
+    const r = resolveSides({
+      redClanName: 'recent.wct-',
+      blueClanName: 'recent.wct-',
+      subjects: ['friendliness1'],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+    })
+    expect(r.red).toBeNull()
+    expect(r.blue).toBeNull()
+  })
+
+  it('★같은 클랜이 양쪽에 앉으면 둘 다 물린다★', () => {
+    const r = resolveSides({
+      redClanName: 'saint',
+      blueClanName: 'saint',
+      subjects: ['someSpl'],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+    })
+    expect(r.red).toBeNull()
+    expect(r.blue).toBeNull()
+  })
+
+  it('두 subject 가 양쪽을 각각 증명하면 둘 다 앉는다', () => {
+    const r = resolveSides({
+      redClanName: 'recent.wct-',
+      blueClanName: 'saint',
+      subjects: ['friendliness1', 'someSpl'],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+    })
+    expect(r.redBy).toBe('subject_slug')
+    expect(r.blueBy).toBe('subject_slug')
+    const v = verdictFromSides('recent.wct-', 'saint', r)
+    /* ★서로 다른 리그다 — 넣지 않는다★ */
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.reason).toBe('cross_league')
+  })
+})

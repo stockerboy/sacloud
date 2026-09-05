@@ -56,7 +56,10 @@ const read = (p: string) => readFileSync(join(ROOT, p), 'utf8')
 const KNOWN_MATCH_WRITERS: Record<string, string> = {
   'packages/db/ops/supplyMirrorImport.ts': '3rd.supply ★동결 대상★',
   'apps/worker/src/jobs/supplyPush.ts': '3rd.supply 를 로컬→운영으로 옮긴다 ★동결 대상★',
-  'apps/worker/src/jobs/iplProject.ts': 'nexon_barracks (우리 자체 수집)',
+  'apps/worker/src/jobs/iplProject.ts': 'nexon_barracks (우리 자체 수집 · 옛 것 · 보존)',
+  /* ★2026-09-05 · Part 3 ④단계에서 새로 생긴 길★ — 이 검사가 잡아냈다 (의도대로다).
+     기준시각 이후만 만들고, 코드 1차 + DB 2차 방어를 둘 다 지난다 */
+  'apps/worker/src/jobs/unifiedProject.ts': 'nexon_barracks (통합 투영 · 새 것)',
   'apps/worker/src/jobs/reconstruct.ts': 'nexon (넥슨 Open API · 세워 둔 것)',
   'apps/worker/src/jobs/project.ts': 'nexon (넥슨 Open API · 세워 둔 것)',
   'apps/worker/src/dev/iplProjectPush.ts': 'nexon_barracks (dev 도구)',
