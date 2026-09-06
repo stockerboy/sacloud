@@ -318,6 +318,10 @@ export {
 } from './auth/signupRules'
 export * from './common/paths'
 
+/* ══ ★v2 — Claude Design 이식용 조각★ (2026-09-06 · Part 10) ══
+ *   ★아직 어느 화면에도 안 붙었다.★ 쓰려면 바깥을 `.sac-v2 .sac-<리그>` 로 감싼다 */
+export * from './v2'
+
 /* --- 「알」 시스템 (`docs/EGG_SYSTEM_SPEC.md`) ---
    기록을 지우는 것이 아니라 가려 두는 장치다. 판수와 경기 상세기록은 가리지 않는다.
 

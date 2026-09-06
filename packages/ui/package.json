@@ -8,6 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css",
+    "./v2": "./src/v2/index.ts",
+    "./v2/tokens.css": "./src/v2/tokens.css",
     "./sanitize": "./src/sanitize.ts",
     "./adminPost": "./src/board/adminPost.ts"
   },
@@ -24,8 +26,10 @@
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/sanitize-html": "^2.16.1",
     "next": "^15.1.0",
-    "react": "^19.0.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

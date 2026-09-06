@@ -2,7 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "jsx": "preserve",
+    /*
+      2026-09-06 (Part 10) — `preserve` 에서 바꿨다.
+      `preserve` 는 JSX 를 그대로 남긴다. Next 빌드는 자기 설정으로 다시 변환하니 상관없지만
+      ★vitest 는 이 파일을 보고 변환한다★ — 그래서 `.tsx` 를 테스트에서 못 읽었다.
+      운영 빌드(`apps/web/tsconfig.json`)는 ★건드리지 않았다★.
+    */
+    "jsx": "react-jsx",
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]

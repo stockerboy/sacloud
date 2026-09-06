@@ -125,7 +125,13 @@
    * 순위 숫자는 작게도 나오므로 3.44 로는 모자란다.
    * 노랑·흰색은 서플라이 원본 팔레트에 있던 값 그대로다.
    */
-  /** 1~10위 */
+  /**
+   * ★1~3위 빨강★ (2026-09-06 · Part 10 · 사장님 지시 — 시안 값).
+   * ⚠ 아래 주석의 「1~10위」 같은 옛 구간 설명은 ★그때 규칙★ 이다. 지금 경계는
+   *   `rankTone` 이 정한다 — 3 / 20 / 40 / 100.
+   */
+  --color-rank-red: #ff4d4d;
+  /** 1~10위 (옛 규칙) → 지금은 4~20위 */
   --color-rank-gold: #ffe30b;
   /** 11~50위 */
   --color-rank-blue: #8aa5ec;
@@ -2022,6 +2028,7 @@ a:hover {
   --color-rating-2000: var(--color-sa-orange);
   --color-rating-2500: var(--color-sa-red);
   /* 순위 색 — 시안은 「100위 안이면 노랑, 아니면 값 색」 하나뿐이다 */
+  --color-rank-red: var(--color-sa-red);
   --color-rank-gold: var(--color-sa-yellow);
   --color-rank-blue: var(--color-sa-blue);
   --color-rank-brown: var(--color-sa-label);

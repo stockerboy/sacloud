@@ -9,8 +9,11 @@ import { rankTone, type RankTone } from '@sacloud/contract'
 
 /** 순위 색 → CSS 변수. 토큰 이름은 `styles.css` 에 있다 */
 const RANK_COLOR: Record<RankTone, string> = {
+  /* ★2026-09-06 (Part 10) 추가★ — 1~3위 빨강 (시안 값) */
+  red: 'var(--color-rank-red)',
   gold: 'var(--color-rank-gold)',
   blue: 'var(--color-rank-blue)',
+  /* ★지금 규칙에서는 안 나온다★ — 옛 판(`rankToneV1`)이 쓴다 */
   brown: 'var(--color-rank-brown)',
   green: 'var(--color-rank-green)',
   plain: 'var(--color-rank-plain)',

@@ -18,10 +18,28 @@
  * 밝은 배경의 랭킹 표에서는 관측되지 않았다. `rate-high-4`는 어두운 배경용으로 보인다 `[미확인]`.
  */
 
-export type RateTone = 'base' | 'r1' | 'r2' | 'r3' | 'r4'
+export type RateTone = 'low' | 'base' | 'r1' | 'r2' | 'r3' | 'r4'
 
-/** 등급 경계 (원본 미확인 — 표본에서 유도) */
-export const RATE_THRESHOLDS = [50, 55, 60, 65] as const
+/**
+ * ★★2026-09-06 (Part 10) — 40 미만 빨강을 더했다★★ (사장님 지시).
+ *
+ * ```
+ *      ~ 39.9   ★빨강★   ← 이번에 새로 생긴 칸
+ *  40 ~ 49.9   하양(기본)
+ *  50 ~ 54.9   초록
+ *  55 ~ 59.9   갈색
+ *  60 ~ 64.9   파랑
+ *  65 ~        노랑
+ * ```
+ *
+ * ⚠ ★옛 경계는 `RATE_THRESHOLDS_V1` 에 남아 있다★ (`CLAUDE.md` 1-4).
+ * ⚠ ★화면마다 새 함수를 만들지 않는다.★ 시안 코드의 `statColor` 는 파일마다 복사돼
+ *   있지만 ★우리는 이 한 곳만 고친다★ (사장님 지시).
+ */
+export const RATE_THRESHOLDS = [40, 50, 55, 60, 65] as const
+
+/** ★옛 방식★ — 40 미만 칸이 없던 판. 지우지 않는다 */
+export const RATE_THRESHOLDS_V1 = [50, 55, 60, 65] as const
 
 export function rateTone(value: number | null | undefined): RateTone {
   if (value === null || value === undefined || Number.isNaN(value)) return 'base'
@@ -29,10 +47,14 @@ export function rateTone(value: number | null | undefined): RateTone {
   if (value >= 60) return 'r3'
   if (value >= 55) return 'r2'
   if (value >= 50) return 'r1'
+  /* ★40 미만은 빨강★ — 그 위(40~49.9)는 기본색(하양) 그대로다 */
+  if (value < 40) return 'low'
   return 'base'
 }
 
 const TONE_CLASS: Record<RateTone, string> = {
+  /* ★2026-09-06 (Part 10) 추가★ — 40 미만 빨강 */
+  low: 'text-rate-low',
   base: '',
   r1: 'text-rate-1',
   r2: 'text-rate-2',

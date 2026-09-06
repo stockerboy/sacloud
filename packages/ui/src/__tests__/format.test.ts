@@ -71,10 +71,18 @@ describe('formatDate — 0 패딩 없는 한국어 날짜', () => {
 })
 
 describe('rateTone — 승률·킬뎃 색 등급 (원본 실측 표본으로 고정)', () => {
-  it('50 미만은 기본색', () => {
+  it('40~50 은 기본색', () => {
     expect(rateTone(41.7)).toBe('base')
     expect(rateTone(49.7)).toBe('base')
     expect(rateClass(49.9)).toBe('')
+  })
+
+  /* 2026-09-06 Part 10 — 사장님이 «40 미만 빨강» 을 추가하셨다 */
+  it('40 미만은 빨강', () => {
+    expect(rateTone(39.9)).toBe('low')
+    expect(rateTone(0)).toBe('low')
+    expect(rateClass(39.9)).toBe('text-rate-low')
+    expect(rateTone(40)).toBe('base')
   })
 
   it('50~55 / 55~60 / 60~65 / 65 이상', () => {

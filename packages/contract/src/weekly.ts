@@ -344,9 +344,41 @@ export function weekStartsOf(
  * **경계값은 사용자가 준 그대로다.** 선수 카드와 클랜 카드가 같은 함수를 쓴다 —
  * 「클랜은 순위-색깔체계 선수카드와 동일」이라고 못박아 주셨다.
  */
-export type RankTone = 'gold' | 'blue' | 'brown' | 'green' | 'plain'
+export type RankTone = 'red' | 'gold' | 'blue' | 'green' | 'plain' | 'brown'
 
+/**
+ * ★★2026-09-06 (Part 10) — 경계를 시안 값으로 바꿨다★★ (사장님 지시).
+ *
+ * ```
+ *   1 ~   3위   ★빨강★
+ *   4 ~  20위   노랑
+ *  21 ~  40위   파랑
+ *  41 ~ 100위   초록
+ * 101위 ~       하양
+ * ```
+ *
+ * ⚠ ★옛 경계(10 / 50 / 100 / 200)는 `rankToneV1` 에 그대로 살아 있다★ (`CLAUDE.md` 1-4).
+ *   되돌리려면 이 함수의 본문만 그쪽으로 바꾸면 된다.
+ * ⚠ ★화면마다 새 함수를 만들지 않는다.★ 시안 코드에는 `rankColor` 가 파일마다 복사돼
+ *   있지만 ★우리는 이 한 곳만 고친다★ (사장님 지시).
+ * ⚠ `brown` 은 ★지금 규칙에서 안 나온다.★ 타입에 남겨 둔 것은 옛 판이 쓰기 때문이다.
+ */
 export function rankTone(rank: number | null | undefined): RankTone | null {
+  if (rank == null || rank <= 0) return null
+  if (rank <= 3) return 'red'
+  if (rank <= 20) return 'gold'
+  if (rank <= 40) return 'blue'
+  if (rank <= 100) return 'green'
+  return 'plain'
+}
+
+/**
+ * ★옛 방식★ — 2026-09-02 사용자가 준 경계 (10 / 50 / 100 / 200). ★지우지 않는다★.
+ *
+ * > "1위부터-10위 밝은 노란색 / 11위부터 50위 파란색 / 51위부터 100위 갈색
+ * >  / 101위부터 200위 초록색 / 201위부터는 전부 하얀색"
+ */
+export function rankToneV1(rank: number | null | undefined): RankTone | null {
   if (rank == null || rank <= 0) return null
   if (rank <= 10) return 'gold'
   if (rank <= 50) return 'blue'
