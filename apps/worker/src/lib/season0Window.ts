@@ -144,10 +144,29 @@ export function season0Scope(): { origins: string[]; from: Date; to: Date | null
 export function season0MatchWhere(): {
   origin: { in: string[] }
   startAt: { gte: Date; lt?: Date }
+  supersededAt: null
 } {
   return {
     origin: { in: [...SEASON0_ORIGINS] },
     startAt: { gte: SEASON0_FROM, ...(SEASON0_TO ? { lt: SEASON0_TO } : {}) },
+    /*
+     * ── ★★숨긴 사본은 세지 않는다★★ (2026-09-06 · Part 7 에서 찾았다)
+     *
+     *   O-056 에서 «한 실제 경기 = Match 정확히 1개» 를 지키려고 중복 39건에
+     *   `supersededAt` 을 붙여 숨겼다. 스키마 주석도 ★«화면·집계·DB 자물쇠가
+     *   표시 붙은 줄을 안 본다»★ 라고 적어 뒀다.
+     *   ★그런데 집계가 그 조건을 안 걸고 있었다.★ 실측(2026-09-06 · 열산) —
+     *   ```
+     *   숨긴 사본까지 세면   선수 445명
+     *   숨긴 사본을 빼면     선수 389명   ← 이쪽이 맞다
+     *   창 안 숨긴 사본      39건 · 참가기록 390줄
+     *   ```
+     *   그래서 ★랭킹의 승패·킬데스가 34명에서 부풀려져 있었고★,
+     *   ★숨긴 사본에서만 뛴 56명이 랭킹에 올라와 있었다.★
+     *
+     *   ⚠ ★공식은 한 글자도 안 바꿨다.★ ★모집단에서 빠져야 할 줄을 뺐을 뿐이다.★
+     */
+    supersededAt: null,
   }
 }
 
