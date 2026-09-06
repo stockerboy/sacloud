@@ -28,3 +28,5 @@ export * from './barracksStore'
 export * from './independentLeague'
 export * from './mirrorFreeze'
 export * from './collectorLease'
+/* ★집계 임대★ (Part 9) */
+export * from './season0Lease'

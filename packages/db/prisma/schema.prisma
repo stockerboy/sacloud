@@ -2830,6 +2830,23 @@ model CollectorLease {
   /// 임대를 잡으려다 거절당한 횟수. ★막은 횟수가 곧 이 장치의 성과다★
   blockedCount Int @default(0)
 
+  /**
+   * ★★마지막으로 실제로 쓴 판이 언제 시작했나★★ (2026-09-06 · Part 9 · 사장님 승인).
+   *
+   * ── 왜 필요한가
+   *   Part 8 에서 실제로 났다 — ★내 커밋보다 먼저 시작한 GitHub Actions 회차가★
+   *   ★나중에 끝나면서 옛 코드의 결과로 새 결과를 덮었다★ (열산 389 → 445).
+   *   임대만으로는 못 막는다. 임대는 «지금 둘이 동시에 도나» 를 막지
+   *   «누가 더 새 판인가» 를 모른다.
+   *
+   * ── 어떻게 막나
+   *   쓰기 직전에 본다 — ★이 값이 내 시작시각보다 뒤면 나는 안 쓴다.★
+   *   ★완료 순서가 뒤집혀도 옛 결과가 새 결과를 못 덮는다.★
+   *
+   * ⚠ ★수집기 임대는 이 칸을 쓰지 않는다.★ null 로 남는다 — 동작이 안 바뀐다.
+   */
+  lastAppliedStartedAt DateTime? @db.Timestamptz(3)
+
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([expiresAt])

@@ -36,6 +36,15 @@ import { REPO_ROOT } from '../lib/env.js'
 import { log } from '../lib/log.js'
 import { runSeason0 } from './season0.js'
 import { season0MatchWhere } from '../lib/season0Window.js'
+/* ★집계 임대★ — 한 판만 돌고, 옛 판이 새 결과를 못 덮게 한다 (2026-09-06 · Part 9) */
+import {
+  acquireSeason0Lease,
+  canWriteSeason0,
+  describeVerdict,
+  markSeason0Applied,
+  releaseSeason0Lease,
+  SEASON0_LEASE_NAME,
+} from '@sacloud/db/ops'
 
 const BACKUP_DIR = path.join(REPO_ROOT, 'apps', 'worker', 'backups', 'season0')
 const SCALE = V2_RATING_CONSTANTS.displayScale
@@ -99,6 +108,34 @@ export async function applySeason0(leagueSlugs: string[], confirm: boolean): Pro
       placement: boolean
       placementPlayed: number
     }[]
+  }
+
+  /*
+   * ── ★★임대를 잡는다★★ (2026-09-06 · Part 9 · 사장님 승인)
+   *
+   *   ★로컬 예약작업과 GitHub Actions 가 서로를 모른 채 같은 표를 쓰던 것★ 을 막는다.
+   *   미리보기(`--confirm` 없음)는 한 줄도 안 쓰므로 ★임대를 잡지 않는다.★
+   *
+   *   ⚠ ★못 잡으면 계산도 하지 않는다.★ 남이 돌고 있는데 12분을 계산해 봐야
+   *     쓰지도 못하고 DB 만 두드린다.
+   */
+  const startedAt = new Date()
+  let ownerId: string | null = null
+  if (confirm) {
+    const got = await acquireSeason0Lease({
+      command: `season0Apply ${leagueSlugs.join(',')}`,
+    })
+    if (!got.ok) {
+      console.log(
+        `★집계 임대를 남이 쥐고 있다 — 이번 판은 시작하지 않는다★ (${SEASON0_LEASE_NAME})
+` +
+          `  주인 ${got.heldBy.ownerId} · ${got.heldBy.host} · ` +
+          `만료 ${got.heldBy.expiresAt.toISOString()}`,
+      )
+      return
+    }
+    ownerId = got.ownerId
+    log(`★집계 임대를 잡았다★ — 주인 ${ownerId} · 시작 ${startedAt.toISOString()}`)
   }
 
   const plans: Plan[] = []
@@ -253,6 +290,26 @@ export async function applySeason0(leagueSlugs: string[], confirm: boolean): Pro
     console.log(`미리보기다. 아무것도 쓰지 않았다. 계획 파일: ${file}`)
     console.log('적용하려면 --confirm')
     return
+  }
+
+  /*
+   * ── ★★쓰기 직전에 다시 묻는다★★ (2026-09-06 · Part 9)
+   *
+   *   계산에 11~12분이 걸린다. ★그 사이에 세상이 바뀔 수 있다.★
+   *   ```
+   *   임대를 잃었다            → 안 쓴다
+   *   나보다 새 판이 이미 썼다   → 안 쓴다 (★Part 8 에서 실제로 난 사고★)
+   *   DB 에 못 닿았다          → 안 쓴다 — ★모르면 안 쓴다★
+   *   ```
+   */
+  if (ownerId) {
+    const verdict = await canWriteSeason0({ ownerId, startedAt })
+    if (!verdict.ok) {
+      console.log(`★쓰지 않고 끝낸다★ — ${describeVerdict(verdict)}`)
+      await releaseSeason0Lease({ ownerId })
+      return
+    }
+    log(`쓰기 전 확인 — ${describeVerdict(verdict)}`)
   }
 
   /* ---- 지우기 전에 통째로 적는다 ---- */
@@ -460,6 +517,23 @@ export async function applySeason0(leagueSlugs: string[], confirm: boolean): Pro
        WHERE t.rating <> t."baseRating" + t.d`
     const n = Number(broken[0]?.n ?? 0)
     console.log(`  불변식(통합 = 기본 + 스나 + 라플) 어긋난 선수: ${n}${n === 0 ? ' ✓' : ' ✗'}`)
+  }
+
+  /*
+   * ── ★★썼다고 적고 임대를 반납한다★★ (2026-09-06 · Part 9)
+   *
+   *   ★쓰기가 끝난 뒤★ 에 적는다. 시작할 때 적으면 계산하다 죽은 판이
+   *   ★쓰지도 않고 다음 판을 막는다.★
+   */
+  if (ownerId) {
+    const marked = await markSeason0Applied({ ownerId, startedAt })
+    log(
+      marked
+        ? `★썼다고 적었다★ — 이 판의 시작시각 ${startedAt.toISOString()}`
+        : `★안 적었다★ — 더 새 판이 이미 적어 뒀다 (내 시작 ${startedAt.toISOString()})`,
+    )
+    await releaseSeason0Lease({ ownerId })
+    log('집계 임대를 반납했다')
   }
 
   console.log(`\n되돌리려면: --revert ${backupFile}`)
