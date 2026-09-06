@@ -296,6 +296,9 @@ export async function getFormTop(leagueId: string, weapon: RankWeapon): Promise<
        AND m."startAt" >= ${from}
        AND m."startAt" < ${to}
        AND (m."redRatingUpdate" IS NOT NULL OR m."origin" = ANY(${ladderOrigins}::text[]))
+       -- 숨긴 사본은 세지 않는다 (2026-09-06 · Part 8). seasonWindowWhere() 와 같은 조건.
+       -- raw SQL 이라 그 함수를 못 써서 조건이 여기 한 벌 더 적혀 있다
+       AND m."supersededAt" IS NULL
        AND (${weaponCode}::int IS NULL OR s."weapon" = ${weaponCode}::int)
      GROUP BY s."playerId"
     HAVING COUNT(*) >= ${FORM_TOP_MIN_GAMES}

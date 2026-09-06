@@ -163,6 +163,10 @@ export async function playerLadderRows(
        AND m."startAt" >= ${pgTimestampText(SEASON0_FROM)}::timestamp
        AND (${upperBound}::timestamp IS NULL OR m."startAt" < ${upperBound}::timestamp)
        AND (m."redRatingUpdate" IS NOT NULL OR m."origin" = ANY(${[...SEASON0_ORIGINS]}::text[]))
+       -- 숨긴 사본은 세지 않는다 (2026-09-06 · Part 8).
+       -- seasonWindowWhere() 와 같은 조건이다. 이 파일은 raw SQL 이라
+       -- 그 함수를 못 써서 조건이 한 벌 더 적혀 있다 — 두 곳을 같이 고쳐야 한다.
+       AND m."supersededAt" IS NULL
      ORDER BY m."startAt" DESC, s."matchId" DESC
   `
 }
