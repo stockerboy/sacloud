@@ -54,6 +54,8 @@ import {
   type UnclassifiedReason,
 } from '../lib/leagueVerdict.js'
 import { CANONICAL_FROM, decideCanonical, isDuplicateMatchError } from '../lib/canonicalMatch.js'
+/* ★시즌 판정의 단일 규칙★ — 화면이 쓰는 창과 같은 함수다 (Part 5 · 사장님 지시) */
+import { seasonWindowAt } from '@sacloud/contract'
 import { deriveClanNames, type SideRow } from '../lib/iplClanNames.js'
 
 /** 이 잡이 만든 경기의 출처. `iplProject` 와 ★같은 값★ 이다 — 같은 원문에서 왔기 때문이다 */
@@ -79,6 +81,8 @@ export interface UnifiedProjectResult {
   skipped: Record<SkipReason, number>
   /** 리그별 만든 수 */
   createdByLeague: Record<LiveLeagueSlug, number>
+  /** ★시즌을 못 붙인 경기★ — 창 밖이거나 그 리그에 시즌 행이 없다 */
+  seasonUnresolved: number
   /** ★unclassified 표본★ — 경기키와 사유 (앞에서부터 몇 개만 들고 온다) */
   unclassified: Array<{ matchKey: string; reason: SkipReason; detail: string }>
   /** 이름을 못 이은 클랜 (많이 나온 순) */
@@ -234,6 +238,27 @@ export async function runUnifiedProject(
   })
   const leagueIdOf = new Map(leagueRows.map((l) => [l.slug as LiveLeagueSlug, l.id]))
 
+  /*
+   * ── ★★시즌 표 — 리그마다 (시즌번호 → Season.id)★★ (2026-09-06 · Part 5)
+   *
+   *   경기마다 DB 를 찌르지 않으려고 ★한 번만 읽어 둔다.★
+   *   판정은 `seasonWindowAt(startAt)` ★하나만★ 쓴다 — 화면이 쓰는 그 창이다.
+   */
+  const seasonOf = new Map<string, Map<number, string>>()
+  for (const row of await prisma.season.findMany({
+    where: { leagueId: { in: [...leagueIdOf.values()] } },
+    select: { id: true, leagueId: true, number: true },
+  })) {
+    if (!seasonOf.has(row.leagueId)) seasonOf.set(row.leagueId, new Map())
+    seasonOf.get(row.leagueId)?.set(row.number, row.id)
+  }
+  /** 그 리그·그 시각의 시즌. ★못 찾으면 null★ — 엉뚱한 곳에 넣지 않는다 */
+  const seasonIdFor = (leagueId: string, at: Date): string | null => {
+    const w = seasonWindowAt(at)
+    if (w === null) return null
+    return seasonOf.get(leagueId)?.get(w.number) ?? null
+  }
+
   log(`활성 등록 클랜 ${liveClans.size}곳 · 이름 색인 ${index.size}개 (옛 이름 ${recovered}개 되찾음)`)
   if (ambiguous.length > 0) {
     log(`  ⚠ ★같은 이름 다른 클랜이라 뺀 이름 ${ambiguous.length}개★ — ${ambiguous.join(' · ')}`)
@@ -261,6 +286,7 @@ export async function runUnifiedProject(
     created: 0,
     skipped: emptySkips(),
     createdByLeague: { nolink: 0, supply: 0, sanply: 0 },
+    seasonUnresolved: 0,
     unclassified: [],
     unknownClanNames: [],
     ambiguousNames: ambiguous,
@@ -369,6 +395,10 @@ export async function runUnifiedProject(
       const red = liveClans.get(verdict.redClanId)!
       const blue = liveClans.get(verdict.blueClanId)!
       const leagueId = leagueIdOf.get(verdict.league)!
+      if (confirm && seasonIdFor(leagueId, m.startAt) === null) {
+        /* ★조용히 넘어가지 않는다★ — 시즌을 못 찾으면 그 수를 센다 */
+        result.seasonUnresolved += 1
+      }
 
       if (!confirm) {
         result.created += 1
@@ -398,6 +428,17 @@ export async function runUnifiedProject(
             blueDivisionAtMatch: blue.division,
             origin: UNIFIED_ORIGIN,
             sourceMatchId: m.matchKey,
+            /*
+             * ★★시즌을 처음부터 붙인다★★ (2026-09-06 · Part 5 · 사장님 지시).
+             *
+             * > «새 Collector 가 Match 를 만들 때 ★seasonId 를 비워 두지 않게 한다★»
+             * > «시즌 판정 로직을 ★여러 군데 하드코딩하지 말고 하나의 공통 규칙★ 으로»
+             *
+             * ★규칙은 `seasonWindowAt` 하나뿐이다★ — 화면이 쓰는 그 창과 같은 값이라
+             * DB 와 화면이 서로 다른 기준을 가질 수 없다.
+             * ★못 찾으면 null 이다.★ 엉뚱한 시즌에 넣느니 비워 두는 게 낫다.
+             */
+            seasonId: seasonIdFor(leagueId, m.startAt),
           },
         })
         result.created += 1

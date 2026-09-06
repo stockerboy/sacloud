@@ -32,9 +32,34 @@
  */
 export const BETA_SEASON_LABEL = 'Beta'
 
-/** 정식·과거 시즌의 화면 표기 — 원본 지난시즌 카드 관측(`시즌 6`)에 맞춘다 (D-166) */
+/**
+ * ★옛 표기★ — 정식 시즌을 `시즌 N` 으로 부르던 것 (D-166).
+ *
+ * ⚠ ★2026-09-06 (Part 5) 부터 우리 시즌은 `Cloud N` 이다.★ 이 함수는
+ *   ★지우지 않고 남긴다★ (`CLAUDE.md` 1-4) — 과거 시즌 카드(시즌1~7)가 아직 이 모양을 쓴다.
+ */
 export function officialSeasonLabel(number: number): string {
   return `시즌 ${number}`
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * ★★Cloud — SACLOUD 독자 시즌의 이름★★ (2026-09-06 · Part 5 · 사장님 지시)
+ *
+ *   > «SACLOUD 자체 기록은 앞으로 「시즌0 / 시즌1」이라는 이름 대신 ★Cloud★ 이름을 사용한다»
+ *   > «3rd.supply 과거 시즌과 SACLOUD Cloud 시즌은 ★서로 다른 체계★ 다»
+ *
+ *   ```
+ *   3rd.supply 과거   시즌1 … 시즌6 · 시즌7      ← 원본 공식 기록
+ *   SACLOUD 독자      Cloud 0 · Cloud 1 · …     ← 우리 기록
+ *   ```
+ *
+ *   ⚠ ★내부 번호는 그대로다.★ 0 · 1 · 2 … 이름만 바뀐다.
+ *     번호를 건드리면 `@@unique(leagueId, number)` 와 과거 행이 전부 흔들린다.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** SACLOUD 독자 시즌의 화면 표기 — `Cloud 0` · `Cloud 1` … */
+export function cloudSeasonLabel(number: number): string {
+  return `Cloud ${number}`
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -90,7 +115,19 @@ export function isRootSeason(number: number): boolean {
  * DB 쪽은 CLI 로그가 쓰므로 건드리지 않는다.
  */
 export function seasonDisplayLabel(season: { number: number; seasonType: string }): string {
-  /* ★근본 시즌이 제일 먼저다★ — 번호를 붙이면 내부 번호(-101…)가 화면에 샌다 */
-  if (isRootSeason(season.number)) return ROOT_SEASON_LABEL
-  return season.seasonType === 'beta' ? BETA_SEASON_LABEL : officialSeasonLabel(season.number)
+  /*
+   * ── ★근본 시즌이 제일 먼저다★
+   *   내부 번호(-101 …)를 그대로 붙이면 ★「시즌 -101」★ 이 화면에 샌다.
+   *   ★2026-09-06 (Part 5) 정정★ — 예전에는 전부 `근본 시즌` 한 이름이었는데
+   *   사장님이 ★시즌1 … 시즌7 로 구분해서 보이게★ 하라고 정하셨다.
+   *   그래서 ★원본 시즌 번호★ 로 되돌려 붙인다. 내부 번호는 여전히 안 나간다.
+   *   («근본 시즌» 은 이제 ★그 카드들이 모인 영역의 이름★ 이다 — `ROOT_SEASON_LABEL`)
+   */
+  if (isRootSeason(season.number)) {
+    const source = sourceSeasonNumber(season.number)
+    return source === null ? ROOT_SEASON_LABEL : officialSeasonLabel(source)
+  }
+  if (season.seasonType === 'beta') return BETA_SEASON_LABEL
+  /* ★우리 시즌은 Cloud 다★ (2026-09-06 · Part 5). 옛 표기는 `officialSeasonLabel` 에 남아 있다 */
+  return cloudSeasonLabel(season.number)
 }

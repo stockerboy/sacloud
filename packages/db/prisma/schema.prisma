@@ -748,6 +748,29 @@ model LeaguePlayerSeason {
   killPerMatch Float?
   mvpCount     Int?
   /// 그 시즌 시점의 소속·부리그·닉네임. 지금 값이 아니라 **그때의 값**이다
+  /* ══ ★★시즌7 마감 카드가 쓰는 칸★★ (2026-09-06 · Part 5 · 사장님 지시) ══
+   *
+   *   > «시즌7 → 우리가 이미 보유한 3rd.supply 경기/참가기록을 기준으로
+   *   >  ★SACLOUD 가 직접 계산해서 만든 마감 카드★»
+   *   > «★최종 순위는 저장하지 않는다★ — 원본 rating/rank 가 그 기간에 없다»
+   *
+   *   ⚠ ★전부 nullable 이다.★ 원본 카드(시즌1~6)는 이 값을 주지 않으므로 ★null 로 남는다★.
+   *     0 을 넣으면 «0킬 0데스» 라는 거짓말이 된다 (D-099 · D-106 과 같은 결).
+   */
+
+  /// 그 시즌에 뛴 경기 수. 원본 카드는 안 준다 → null
+  games        Int?
+  /// 탈주 횟수. 원본 카드는 안 준다 → null
+  dropoutCount Int?
+  /// 라이플로 뛴 경기·킬·데스 (무기 `0`)
+  rifleGames Int?
+  rifleKill  Int?
+  rifleDeath Int?
+  /// 스나이퍼로 뛴 경기·킬·데스 (무기 `1`)
+  sniperGames Int?
+  sniperKill  Int?
+  sniperDeath Int?
+
   clanNameAtSeason String?
   divisionAtSeason Int?
   nicknameAtSeason String?

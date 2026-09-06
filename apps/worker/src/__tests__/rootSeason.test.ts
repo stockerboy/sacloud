@@ -38,6 +38,8 @@ const 사장님표: ReadonlyArray<[number, number]> = [
   [4, -104],
   [5, -105],
   [6, -106],
+  /* ★2026-09-06 (Part 5) 추가★ — 시즌7 은 우리가 기간 고정 후 집계한 마감 카드다 */
+  [7, -107],
 ]
 
 describe('원본 시즌 → 내부 번호', () => {
@@ -84,29 +86,52 @@ describe('우리 시즌 번호와 안 겹친다', () => {
 })
 
 describe('★내부 번호가 화면에 새지 않는다★', () => {
-  it('화면 표기는 언제나 「근본 시즌」 이다', () => {
-    for (const [, internal] of 사장님표) {
+  /*
+   * ── ★2026-09-06 (Part 5) 정정★
+   *   예전에는 근본 시즌이 전부 ★한 이름 「근본 시즌」★ 이었다 (Part 1).
+   *   사장님이 ★시즌1 … 시즌7 로 구분해서 보이게★ 하라고 정하셨다 —
+   *   > «기존 -101~-106 역시 ★내부번호가 아니라 원본 시즌 번호를 사용하여★
+   *   >  시즌1~시즌6으로 구분할 수 있는 구조를 유지한다»
+   *   > «화면에는 내부 번호 -107을 절대 노출하지 않고 ★「시즌7」★ 로 표시한다»
+   *
+   *   ★변하지 않은 것★ — 내부 번호(-101 …)는 여전히 ★한 글자도 안 나간다.★
+   *   `근본 시즌` 은 이제 ★그 카드들이 모인 영역의 이름★ 이다 (`ROOT_SEASON_LABEL`).
+   */
+  it('★원본 시즌 번호로 보인다 — 내부 번호는 안 나간다★', () => {
+    for (const [source, internal] of 사장님표) {
       const label = seasonDisplayLabel({ number: internal, seasonType: 'legacy' })
-      expect(label).toBe(ROOT_SEASON_LABEL)
-      expect(label).toBe('근본 시즌')
-      /* ★숫자가 한 글자도 없어야 한다★ */
-      expect(label).not.toMatch(/\d/)
+      expect(label).toBe(`시즌 ${source}`)
+      /* ★내부 번호가 한 글자도 없어야 한다★ */
+      expect(label).not.toContain(String(internal))
       expect(label).not.toContain('-')
     }
   })
 
+  it('★영역 이름은 그대로 「근본 시즌」 이다★', () => {
+    expect(ROOT_SEASON_LABEL).toBe('근본 시즌')
+    expect(ROOT_SEASON_LABEL).not.toMatch(/\d/)
+  })
+
   it('★CLI 표기도 같은 판단을 한다★ — 두 곳이 갈라지면 여기가 빨개진다', () => {
-    for (const [, internal] of 사장님표) {
-      expect(seasonLabel({ number: internal, seasonType: 'legacy' })).toBe(ROOT_SEASON_LABEL)
+    for (const [source, internal] of 사장님표) {
+      expect(seasonLabel({ number: internal, seasonType: 'legacy' })).toBe(`시즌 ${source}`)
     }
   })
 
-  it('우리 시즌 표기는 그대로다 — 근본 시즌 규칙이 남을 건드리지 않는다', () => {
-    expect(seasonDisplayLabel({ number: 0, seasonType: 'official' })).toBe('시즌 0')
-    expect(seasonDisplayLabel({ number: 1, seasonType: 'official' })).toBe('시즌 1')
-    expect(seasonDisplayLabel({ number: 7, seasonType: 'official' })).toBe('시즌 7')
+  it('★우리 시즌은 Cloud 다★ (2026-09-06 · Part 5 · 사장님 지시)', () => {
+    expect(seasonDisplayLabel({ number: 0, seasonType: 'official' })).toBe('Cloud 0')
+    expect(seasonDisplayLabel({ number: 1, seasonType: 'official' })).toBe('Cloud 1')
+    expect(seasonDisplayLabel({ number: 2, seasonType: 'official' })).toBe('Cloud 2')
     expect(seasonDisplayLabel({ number: -1, seasonType: 'beta' })).toBe('Beta')
-    /* 우리 legacy 시즌(-2)은 근본 시즌이 아니다 — 그것도 번호가 보여야 한다 */
-    expect(seasonDisplayLabel({ number: -2, seasonType: 'legacy' })).toBe('시즌 -2')
+  })
+
+  it('★과거 카드와 우리 시즌이 절대 같은 이름이 될 수 없다★', () => {
+    /* 이게 갈라져 있어야 「시즌7」과 「Cloud 7」이 헷갈리지 않는다 */
+    const past = 사장님표.map(([source]) => `시즌 ${source}`)
+    const ours = [0, 1, 2, 3, 7].map((n) =>
+      seasonDisplayLabel({ number: n, seasonType: 'official' }),
+    )
+    for (const o of ours) expect(past).not.toContain(o)
+    for (const o of ours) expect(o.startsWith('Cloud ')).toBe(true)
   })
 })

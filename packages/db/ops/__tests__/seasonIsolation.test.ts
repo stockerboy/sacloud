@@ -23,9 +23,21 @@ describe('베타 시즌 번호 (D-098)', () => {
   })
 
   /* 원본 지난시즌 카드 관측(2026-08-28)이 `시즌 6` 이었다. `Season N` 은 관측 전 추정이었다 (D-166) */
-  it('정식·과거 시즌은 원본 표기 `시즌 N` 을 쓴다', () => {
-    expect(seasonLabel({ number: 7, seasonType: 'legacy' })).toBe('시즌 7')
-    expect(seasonLabel({ number: 8, seasonType: 'official' })).toBe('시즌 8')
+  /*
+   * ── ★2026-09-06 (Part 5) 정정★
+   *   우리 시즌 이름이 `시즌 N` → ★`Cloud N`★ 으로 바뀌었다 (사장님 지시).
+   *   과거 카드(3rd.supply 시즌1~7)는 ★`시즌 N` 그대로★ 다 — 두 체계가 다르다.
+   */
+  it('★우리 시즌은 Cloud N 이다★', () => {
+    expect(seasonLabel({ number: 0, seasonType: 'official' })).toBe('Cloud 0')
+    expect(seasonLabel({ number: 1, seasonType: 'official' })).toBe('Cloud 1')
+    expect(seasonLabel({ number: 8, seasonType: 'official' })).toBe('Cloud 8')
+  })
+
+  it('★과거 카드는 원본 시즌 번호로 「시즌 N」 이다★ — 내부 번호는 안 나간다', () => {
+    expect(seasonLabel({ number: -101, seasonType: 'legacy' })).toBe('시즌 1')
+    expect(seasonLabel({ number: -107, seasonType: 'legacy' })).toBe('시즌 7')
+    expect(seasonLabel({ number: -107, seasonType: 'legacy' })).not.toContain('-107')
   })
 })
 

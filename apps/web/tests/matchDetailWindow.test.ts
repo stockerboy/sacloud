@@ -235,7 +235,14 @@ describe('경기 상세 화면 · 안 열릴 때의 말', () => {
   )
 
   it('★「없다」가 아니라 왜 안 보이는지를 말한다★', () => {
-    expect(SRC).toContain('시즌0(9/3 07:00 이후) 경기만 볼 수 있습니다.')
+    /* ★2026-09-06 (Part 5)★ — 우리 시즌 이름이 `시즌0` → ★`Cloud 0`★ 이 됐다 (사장님 지시) */
+    expect(SRC).toContain('Cloud 0(9/3 07:00 이후) 경기만 볼 수 있습니다.')
+  })
+
+  it('★옛 이름이 화면 문구에 남아 있지 않다★', () => {
+    /* 주석에는 남아도 된다. ★사용자에게 보이는 문자열★ 에 없어야 한다 */
+    const shown = [...SRC.matchAll(/message="([^"]*)"/g)].map((m) => m[1] ?? '')
+    for (const text of shown) expect(text).not.toContain('시즌0')
   })
 
   it('왜 이렇게 했는지가 파일에 적혀 있다', () => {

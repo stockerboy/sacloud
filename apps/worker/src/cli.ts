@@ -67,6 +67,8 @@ import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
 import { ALL_LEAGUE_SLUGS, runBattlelogLineup } from './jobs/battlelogLineup.js'
+import { runSeason7Build } from './jobs/season7Build.js'
+import { runMatchSeasonFix, runMatchSeasonRestore, type MatchSeasonBackupRow } from './jobs/matchSeasonFix.js'
 import { runCollect } from './jobs/collect.js'
 import { runProject, runReresolve } from './jobs/project.js'
 import { runRefresh } from './jobs/refresh.js'
@@ -315,6 +317,17 @@ function usage(): void {
               병영수첩을 curl 로 긁는다 (O-051 · D-268). ★첫 403·429 에서 즉시 멈춘다★
               ★임대 없이는 시작하지 않는다★ — 셸은 --lease-owner <id>,
               사람이 한 번 돌릴 때는 ★--no-lease 를 의도해서★ 붙인다 (코드 9 로 거부)
+  match-season-fix [--backup <파일>] [--limit N] [--confirm]
+              ★Match.seasonId 를 경기 시각(seasonWindowAt) 기준으로 바로잡는다★
+              리그·경기내용·선수기록·시각은 ★건드리지 않는다★. 시즌 딱지 한 칸만이다
+              ★--backup 없이 --confirm 을 주면 거부한다★
+  match-season-restore --file <되돌리기.jsonl> [--confirm]
+              위가 만든 파일로 ★그대로 되돌린다★
+  season7-build [--limit N] [--confirm]
+              ★시즌7 마감 카드★ — 보유한 3rd.supply(supply 리그) 경기를
+              2024-04-01 ~ 2026-09-03 07:00 KST 로 ★기간 고정★ 해 집계한다
+              ★최종 순위는 저장하지 않는다★ (그 기간의 원본 rating/rank 가 없다)
+              **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
   battlelog-lineup [--all-leagues | --league <slug>] [--limit N] [--confirm]
               클랜 배틀로그 원문 → **MatchPlayerStat**(참가 기록). 라인업의 유일한 출처다
               ★--all-leagues 면 IPL·SPL·열산을 한 번에 돈다★ (Part 4). 클랜번호 표는
@@ -641,6 +654,70 @@ async function main(): Promise<number> {
           지울행: result.rows,
           열명됨: result.becomeTen,
           실제로지웠나: result.written,
+        },
+      ])
+      return 0
+    }
+
+    case 'match-season-fix': {
+      /*
+        ★Match.seasonId 를 경기 시각 기준으로 바로잡는다★ (2026-09-06 · Part 5 · 사장님 승인).
+        ★리그·경기내용·선수기록·시각은 안 건드린다.★ 시즌 딱지 한 칸만 고친다.
+        ★--backup 없이는 --confirm 을 받지 않는다.★
+      */
+      const result = await runMatchSeasonFix({
+        confirm: boolFlag(args, 'confirm'),
+        backup: stringFlag(args, 'backup') ?? undefined,
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          훑음: result.scanned,
+          그대로: result.kept,
+          고침: result.changed,
+          못고침: result.stuck,
+          되돌리기줄: result.backupRows,
+          실제로썼나: result.written,
+        },
+      ])
+      table([result.byMove as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'match-season-restore': {
+      /* ★되돌린다★ — `match-season-fix --backup` 이 만든 파일을 되감는다 */
+      const path = stringFlag(args, 'file')
+      if (!path) {
+        console.error('★--file <되돌리기.jsonl> 이 필요하다★')
+        return 1
+      }
+      const rows = readFileSync(path, 'utf8')
+        .split(/\r?\n/)
+        .filter((l) => l.trim())
+        .map((l) => JSON.parse(l) as MatchSeasonBackupRow)
+      const result = await runMatchSeasonRestore(rows, { confirm: boolFlag(args, 'confirm') })
+      table([{ 줄: result.rows, 되돌림: result.restored, 실제로썼나: result.written }])
+      return 0
+    }
+
+    case 'season7-build': {
+      /*
+        ★시즌7 마감 카드★ (2026-09-06 · Part 5 · 사장님 지시).
+        원본이 시즌7을 「지난 시즌」으로 안 줘서 ★우리가 기간 고정 후 직접 집계★ 한다.
+        ★최종 순위는 넣지 않는다★ — 그 기간의 원본 rating/rank 가 없다.
+      */
+      const result = await runSeason7Build({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          집계선수: result.players,
+          붙일수있음: result.attachable,
+          붙일자리없음: result.orphan,
+          카드신규: result.created,
+          카드갱신: result.updated,
+          실제로썼나: result.written,
         },
       ])
       return 0
