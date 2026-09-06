@@ -942,6 +942,36 @@ model Match {
    *     34,880건이 그렇게 들어 있고 사장님이 「동결」이라 하셨다.
    */
 
+  /* ══ ★★라인업이 왜 없는지를 말한다★★ (2026-09-06 · 사장님 지시 · Part 4) ══
+   *
+   *   > «원본에 선수 12명 전체 명단이 없으므로 ★추측해서 MatchPlayerStat 을 만들지 않는다★»
+   *   > «라인업이 완전하지 않으면 lineup_status = incomplete ★로 남김★»
+   *   > «보이는 일부 인원만 가지고 4대4/5대5/6대6으로 ★임의 판단 금지★»
+   *
+   *   ── ★왜 완전한 명단을 만들 수 없나★ (2026-09-06 원문 표본으로 확인)
+   *     ```
+   *     매치목록 원문   칸 44개 · ★배열로 된 칸이 하나도 없다★ — 명단을 담을 자리가 없다
+   *                     plimit 은 ★방 인원 상한★ 이지 실제 명단이 아니다
+   *     배틀로그 원문   칸 셋뿐 — teamList · battleLog · isMatchEmpty
+   *                     teamList 는 ★2줄★ (클랜 둘의 번호·이름). ★사람 명단이 아니다★
+   *     battleLog      ★죽이거나 죽은 사람만★ 나온다. 아무 일도 안 한 사람은 안 보인다
+   *     ```
+   *     ★그래서 「보인 사람 = 참가자」가 아니다.★ 6명씩 보였다고 6대6이라 단정할 수 없고,
+   *     5명씩 보였다고 5대5라 단정할 수도 없다. ★모르는 것은 모른다고 적는다.★
+   *
+   *   ⚠ ★Match 는 그대로 살아 있다.★ 경기 자체는 정상이다 — 라인업만 없는 것이다.
+   *   ⚠ 불완전한 라인업이 개인 통계로 새지 않는다 — ★애초에 한 줄도 안 넣기 때문★ 이다.
+   */
+
+  /// `"complete"` = 라인업을 다 만들었다 · `"incomplete"` = ★못 만들었다★ · `null` = 아직 안 봤다
+  lineupStatus     String?
+  /// 왜 못 만들었나 — `roster_incomplete` · `clan_unmapped` · `no_events` 등 (`LineupSkipReason`)
+  lineupSkipReason String?
+  /// ★원문에서 실제로 보인 사람 수★. 「참가자 수」가 아니다 — 증거로만 남긴다
+  lineupSeen       Int?
+  /// 마지막으로 판정해 본 시각
+  lineupCheckedAt  DateTime? @db.Timestamptz(3)
+
   /// 숨긴 시각. `null` 이면 살아 있는 줄이다
   supersededAt     DateTime? @db.Timestamptz(3)
   /// ★대신 남긴 줄★ 의 `Match.id`. 「그럼 진짜는 어디 있나」에 바로 답한다

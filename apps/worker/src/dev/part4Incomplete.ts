@@ -15,7 +15,7 @@ const rows = await prisma.$queryRawUnsafe<Array<{ key: string; slug: string }>>(
   JOIN (SELECT DISTINCT "matchKey" FROM "BarracksBattleLogRaw"
         WHERE "subjectKind"='clan' AND "status"='ok') r ON r."matchKey" = m."sourceMatchId"
   WHERE m."startAt" >= ${CUT} AND m."supersededAt" IS NULL AND m.origin='nexon_barracks'
-    AND x."matchId" IS NULL AND l.slug='supply' ORDER BY m."startAt" DESC`)
+    AND x."matchId" IS NULL AND l.slug='supply' AND m."lineupSkipReason"='roster_incomplete' ORDER BY m."startAt" DESC`)
 console.info(`  SPL 에서 라인업이 없는 ${rows.length}건 — 팀마다 몇 명이 보이나\n`)
 const tally: Record<string, number> = {}
 for (const r of rows) {
@@ -37,7 +37,7 @@ for (const r of rows) {
     }
   const shape = [...byTeam.values()].map((v) => v.size).sort((a, b) => b - a).join('대')
   tally[shape] = (tally[shape] ?? 0) + 1
-  console.info(`  ${r.key} · 팀 ${byTeam.size}개 · ★${shape}★`)
+  /* 한 줄씩 안 찍는다 — 모양별 개수만 본다 */
 }
 console.info('\n  모양별 개수:')
 for (const [k, n] of Object.entries(tally).sort()) console.info(`    ${k} → ${n}건`)

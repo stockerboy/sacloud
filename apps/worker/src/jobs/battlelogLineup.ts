@@ -51,6 +51,7 @@ import {
   type LineupSkipReason,
   type LineupTeamEntry,
 } from '../lib/battlelogLineup.js'
+import { rosterOf } from '@sacloud/nexon'
 import { iplClanNumberMap } from './iplClanNumber.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from '../lib/leagueVerdict.js'
 
@@ -111,6 +112,8 @@ export interface BattlelogLineupResult {
    * 합계만 내면 «SPL 라인업이 정말 들어왔나» 에 답할 수 없다. ★리그별로 답한다.★
    */
   byLeague: Record<string, LineupLeagueCount>
+  /** ★「라인업이 왜 없나」를 Match 에 적은 줄 수★ (2026-09-06 · Part 4) */
+  statusWritten: { complete: number; incomplete: number }
   written: boolean
 }
 
@@ -182,6 +185,8 @@ interface MatchSide {
 
 interface MatchInfo {
   matchId: string
+  /** 지금 적혀 있는 라인업 상태 — 같은 값을 다시 쓰지 않으려고 들고 다닌다 */
+  mark: { status: string | null; reason: string | null; seen: number | null }
   /** ★이 경기의 리그. Canonical 단계에서 이미 확정된 값이다 — 여기서 다시 추측하지 않는다★ */
   leagueId: string
   leagueSlug: string
@@ -296,6 +301,7 @@ export async function runBattlelogLineup(
     skippedMirrorLineup: 0,
     skipped: emptySkips(),
     byLeague: Object.fromEntries(leagues.map((l) => [l.slug, emptyLeagueCount()])),
+    statusWritten: { complete: 0, incomplete: 0 },
     written: options.confirm === true,
   }
   const bump = (
@@ -340,6 +346,10 @@ export async function runBattlelogLineup(
         sourceMatchId: true,
         leagueId: true,
         startAt: true,
+        /* ★이미 적힌 상태★ — 같으면 다시 안 쓴다 (아래 「바뀔 때만」) */
+        lineupStatus: true,
+        lineupSkipReason: true,
+        lineupSeen: true,
         redDivisionAtMatch: true,
         blueDivisionAtMatch: true,
         redClan: {
@@ -379,6 +389,11 @@ export async function runBattlelogLineup(
       })
       infoOf.set(match.sourceMatchId, {
         matchId: match.id,
+        mark: {
+          status: match.lineupStatus,
+          reason: match.lineupSkipReason,
+          seen: match.lineupSeen,
+        },
         leagueId: match.leagueId,
         leagueSlug: slugOfLeague.get(match.leagueId) ?? '(모름)',
         startAt: match.startAt,
@@ -442,6 +457,15 @@ export async function runBattlelogLineup(
 
     /* ── 3. 판정 ------------------------------------------------------------ */
     const plans: Array<{ info: MatchInfo; players: LineupPlayer[] }> = []
+    /** ★이번 묶음에서 「라인업이 왜 없나」를 적을 경기들★ */
+    const marks: Array<{
+      matchId: string
+      status: string
+      reason: string | null
+      seen: number | null
+      startAt: Date
+      was: { status: string | null; reason: string | null; seen: number | null }
+    }> = []
     for (const key of batch) {
       const info = infoOf.get(key)
       if (!info) {
@@ -454,6 +478,14 @@ export async function runBattlelogLineup(
       if (!payload) {
         result.skipped.no_payload += 1
         bumpSkip(info.leagueSlug, 'no_payload')
+        marks.push({
+          matchId: info.matchId,
+          status: 'incomplete',
+          reason: 'no_payload',
+          seen: null,
+          startAt: info.startAt,
+          was: info.mark,
+        })
         continue
       }
       /* ★이 경기의 리그 표로만 푼다★ — 표를 합치면 EVOA 문제가 그대로 터진다 */
@@ -469,12 +501,84 @@ export async function runBattlelogLineup(
       if (!planned.ok) {
         result.skipped[planned.reason] += 1
         bumpSkip(info.leagueSlug, planned.reason)
+        /*
+         * ★왜 못 만들었는지를 경기에 적어 둔다★ (2026-09-06 · 사장님 지시).
+         *
+         * ★참가 기록은 한 줄도 만들지 않는다.★ 보인 사람 수는 ★증거★ 로만 남긴다 —
+         * 「6명씩 보였으니 6대6」 같은 판단을 ★하지 않는다★.
+         */
+        const roster = rosterOf(asArray<LineupEvent>(payload.battleLog))
+        marks.push({
+          matchId: info.matchId,
+          status: 'incomplete',
+          reason: planned.reason,
+          seen: roster.teamOf.size,
+          startAt: info.startAt,
+          was: info.mark,
+        })
         continue
       }
       result.planned += 1
       bump(info.leagueSlug, 'planned')
+      marks.push({
+        matchId: info.matchId,
+        status: 'complete',
+        reason: null,
+        seen: planned.players.length,
+        startAt: info.startAt,
+        was: info.mark,
+      })
       plans.push({ info, players: planned.players })
     }
+    /*
+     * ── ★상태를 먼저 적는다★ — `plans` 가 비어도 적어야 한다.
+     *   ★「라인업이 없다」는 사실 자체가 기록할 값★ 이다. 조용히 비워 두지 않는다.
+     */
+    if (options.confirm && marks.length > 0) {
+      for (const mark of marks) {
+        /*
+         * ── ★★과거 경기에는 상태를 적지 않는다★★ (2026-09-06 · 사장님 지시)
+         *
+         *   > «기준시각 이전 과거 Match 는 ★이번 작업에서 건드리지 마라★»
+         *
+         *   ⚠ IPL 과거 배틀로그 메꾸기는 ★Part 4 이전부터 돌던 일★ 이라 그대로 둔다.
+         *     그러나 ★새로 만든 칸을 과거 줄에 쓰는 것은 이번 작업의 변경★ 이다.
+         *     ★참가 기록은 예전처럼 채우고, 새 칸만 안 건드린다.★
+         */
+        if (mark.startAt.getTime() < MIRROR_FREEZE_FROM.getTime()) continue
+        /*
+         * ★바뀔 때만 쓴다★ (2026-09-06).
+         *
+         * ⚠ 이 잡은 ★매 바퀴★ 돈다. 안 바뀐 값을 다시 쓰면 IPL 만 해도
+         *   ★한 바퀴에 7천 줄★ 을 헛되이 두드린다. 첫 판 뒤로는 거의 안 쓴다.
+         */
+        if (
+          mark.was.status === mark.status &&
+          mark.was.reason === mark.reason &&
+          mark.was.seen === mark.seen
+        ) {
+          continue
+        }
+        await prisma.match.update({
+          where: { id: mark.matchId },
+          data: {
+            lineupStatus: mark.status,
+            lineupSkipReason: mark.reason,
+            lineupSeen: mark.seen,
+            lineupCheckedAt: new Date(),
+          },
+        })
+        if (mark.status === 'complete') result.statusWritten.complete += 1
+        else result.statusWritten.incomplete += 1
+      }
+    } else if (!options.confirm) {
+      for (const mark of marks) {
+        if (mark.startAt.getTime() < MIRROR_FREEZE_FROM.getTime()) continue
+        if (mark.status === 'complete') result.statusWritten.complete += 1
+        else result.statusWritten.incomplete += 1
+      }
+    }
+
     if (plans.length === 0) continue
 
     /* ── 4. 사람 알아보기 — 계정으로만 잇는다 -------------------------------- */
@@ -640,6 +744,11 @@ export async function runBattlelogLineup(
       .map(([reason, n]) => `${reason} ${n}`)
     if (why.length) log(`  ${' '.repeat(11)} └ 못 넣은 사유 — ${why.join(' · ')}`)
   }
+  log(
+    `라인업 상태 표시 — 만듦 ${result.statusWritten.complete.toLocaleString()} · ` +
+      `★못 만듦 ${result.statusWritten.incomplete.toLocaleString()}★ ` +
+      `(★못 만든 경기에는 참가 기록을 한 줄도 넣지 않았다★)`,
+  )
   if (!options.confirm) log('--confirm 없이는 한 줄도 쓰지 않았다')
 
   return result
