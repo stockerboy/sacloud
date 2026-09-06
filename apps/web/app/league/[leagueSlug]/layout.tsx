@@ -3,7 +3,14 @@
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { isOfficialLeague } from '@sacloud/contract'
-import { LeagueHeroBand, LeaguePreparing, LeagueTopBar, isLeaguePreparing } from '@sacloud/ui'
+/* ★2026-09-07 (Part 10 ③) — 탭바를 v2 로 갈아끼웠다★
+   옛 판(`LeagueTopBar`)은 ★그대로★ 있다. 되돌리려면 아래에서 이름만 되돌린다 */
+import {
+  LeagueHeroBand,
+  LeaguePreparing,
+  LeagueTopBarV2 as LeagueTopBar,
+  isLeaguePreparing,
+} from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -53,10 +60,13 @@ export default function LeagueLayout({
           `packages/ui/src/league/LeagueSubNav.tsx` 에 그대로 있고, 되돌리려면
           이 import 한 줄만 되돌리면 된다 (`CLAUDE.md` 10-4).
 
-        띠 높이(PC 3rem · 모바일 6rem)와 본문 밀림(`pt-24 md:pt-12`)은 그대로다.
+        ⚠ 2026-09-07 (Part 10 ③) — 띠 높이가 바뀌었다: PC 48 → ★54★ · 모바일 96 → ★102★.
+        본문 밀림도 같이 바뀌었다. 두 값은 `styles.css` 의 `--spacing-leaguebar*` 한 곳에 있다.
       */}
       <LeagueTopBar leagueSlug={leagueSlug} leagueName={data?.name ?? ''} />
-      <div className="pt-24 md:pt-12">
+      {/* ⚠ 띠 높이와 ★반드시 같은 값★ — `styles.css` 의 두 토큰이 정한다.
+             옛 값은 `pt-24 md:pt-12` (모바일 96 · PC 48) 였다 */}
+      <div className="pt-[var(--spacing-leaguebar-m,102px)] md:pt-[var(--spacing-leaguebar,54px)]">
         {/*
           버건디 히어로 띠. 리그 이름이 아직 안 왔으면 **빈 문자열**로 띠만 먼저 깔린다 —
           띠가 나중에 «생겨나면» 본문이 통째로 밀려 내려가 깜빡이는 것처럼 보인다.

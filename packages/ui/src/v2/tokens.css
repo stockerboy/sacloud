@@ -64,6 +64,15 @@
 
   /* ── 치수 ──────────────────────────────────────────────── */
   --v2-max: 1180px;
+  /**
+   * 머리띠 68 · 탭바 54 — ★시안 실측★.
+   * ⚠ ★값을 여기 적지 않는다.★ 본문을 그만큼 내리는 쪽(`SiteShell` · 리그 레이아웃)은
+   *   `.sac-v2` ★바깥★ 이라 이 블록의 변수를 못 본다. 그래서 진짜 값은
+   *   `styles.css` 의 `--spacing-nav` · `--spacing-leaguebar` 에 두고 여기서 빌려 온다.
+   *   두 곳에 숫자를 적으면 조용히 갈라진다.
+   */
+  --v2-nav-h: var(--spacing-nav, 68px);
+  --v2-tab-h: var(--spacing-leaguebar, 54px);
   --v2-pad: 24px;
   /** 시안은 ★모서리를 굴리지 않는다★ */
   --v2-radius: 0;
@@ -163,4 +172,115 @@
   letter-spacing: -0.02em;
   color: #ffffff;
   opacity: 0.045;
+}
+
+/* ══ ③단계 — 머리띠 · 탭바 ═════════════════════════════
+ *
+ * 시안 실측값 (`ranking` · `player` · `pastseasons` 세 파일이 ★똑같다★):
+ * ```
+ *   topBar    background bar · border-bottom 1px barBorder
+ *   topInner  maxWidth 1180 · height ★68★ · gap 36 · padding 0 24
+ *   nav       gap 28 · fontSize 22 · 현재 리그만 흰색 500
+ *   login     13.5px · textMuted
+ *   tabBar    background tabBar(#000) · border-bottom 1px barBorder
+ *   tabInner  maxWidth 1180 · height ★54★ · padding 0 24
+ *   tab       padding 0 24 · 14px · textDim
+ *   tabActive 흰색 700 · ★inset 0 -2px 0 <리그색>★
+ * ```
+ * 시안은 파일마다 그 자리에 `C.blue`(IPL) / `C.red`(SPL)를 ★손으로 적어★ 뒀다.
+ * 우리는 `--v2-accent` 하나만 본다 — 리그 클래스가 갈아끼운다.
+ */
+
+.sac-v2.v2-topbar,
+.sac-v2 .v2-topbar {
+  background: var(--v2-bar);
+  border-bottom: 1px solid var(--v2-bar-border);
+}
+.sac-v2 .v2-topbar__inner {
+  height: var(--v2-nav-h);
+  display: flex;
+  align-items: center;
+  gap: 36px;
+}
+
+/** 상단 리그 메뉴 — 글자가 크다 (22px). 시안이 그렇다 */
+.sac-v2 .v2-gnb {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 22px;
+  line-height: 1;
+}
+.sac-v2 .v2-gnb__item {
+  color: var(--v2-text-dim);
+  transition: color 0.1s;
+}
+.sac-v2 .v2-gnb__item:hover {
+  color: var(--v2-text-muted);
+}
+/** ★현재 리그★ — 면을 칠하지 않는다. 밝기와 굵기로만 말한다 */
+.sac-v2 .v2-gnb__item.is-on {
+  color: var(--v2-text-strong);
+  font-weight: 500;
+}
+
+.sac-v2 .v2-login {
+  font-size: 13.5px;
+  color: var(--v2-text-muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sac-v2 .v2-login:hover {
+  color: var(--v2-text-strong);
+}
+
+/** 탭바는 머리띠보다 ★더 검다★ (#000) — 두 띠가 붙어 있어도 층이 보인다 */
+.sac-v2.v2-tabbar,
+.sac-v2 .v2-tabbar {
+  background: var(--v2-tabbar);
+  border-bottom: 1px solid var(--v2-bar-border);
+}
+.sac-v2 .v2-tabbar__inner {
+  height: var(--v2-tab-h);
+  display: flex;
+  align-items: stretch;
+}
+.sac-v2 .v2-tab {
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  font-size: 14px;
+  color: var(--v2-text-dim);
+  white-space: nowrap;
+  transition: color 0.1s;
+}
+.sac-v2 .v2-tab:hover {
+  color: var(--v2-text-muted);
+}
+/**
+ * ★현재 탭★ — 밑줄은 `box-shadow: inset` 이다. `border-bottom` 이 아니다.
+ *
+ * ⚠ 이 저장소에는 `border-b-transparent` 가 `border-b-accent` 를 눌러 밑줄이
+ *   통째로 사라진 사고가 있다 (D-232). `inset` 그림자는 그 싸움 자체가 없다 —
+ *   비활성 쪽에 아무 값도 주지 않기 때문이다. 시안도 같은 방식이었다.
+ */
+.sac-v2 .v2-tab.is-on {
+  color: var(--v2-text-strong);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--v2-accent);
+}
+
+/** 리그 이름 — 탭 왼쪽. 시안에는 없지만 ★우리 화면에는 있던 것이라 지우지 않는다★ */
+.sac-v2 .v2-tabbar__league {
+  display: flex;
+  align-items: center;
+  flex: none;
+  margin-right: 40px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--v2-text-strong);
+  letter-spacing: -0.01em;
 }

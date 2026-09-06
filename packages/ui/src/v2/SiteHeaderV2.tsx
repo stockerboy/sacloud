@@ -1,0 +1,219 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { GNB_LEAGUES, MOBILE_NAV_GROUPS, PRIMARY_NAV, type NavGroup, type NavLink } from '../site-config'
+import { NavLogo } from '../layout/BrandLogo'
+import { LeagueLabel } from '../layout/LeagueLabel'
+import { v2Class } from './leagueAccent'
+
+/**
+ * ★★v2 전역 머리띠★★ — 68px (2026-09-07 · Part 10 ③ · 사장님 승인)
+ *
+ * ── 시안 실측 (`ranking` · `player` · `pastseasons` 세 파일이 똑같다)
+ *   ```
+ *   ┌────────────────────────────────────────────────── 68px ──┐
+ *   │ [로고]   IPL  SPL  10⛰                          로그인 │
+ *   └──────────────────────────────────────────────────────────┘
+ *     gap 36        gap 28 · 22px                      13.5px
+ *   ```
+ *   배경 `--v2-bar` · 아래 1px `--v2-bar-border` · 본문과 같은 1180px 폭.
+ *
+ * ── ★옛 판을 지우지 않았다★ (`CLAUDE.md` 1-4)
+ *   `packages/ui/src/layout/SiteHeader.tsx` 가 그대로 있다. 되돌리려면
+ *   `SiteShell` 의 import 한 줄만 되돌린다 — 다른 파일은 안 건드려도 된다.
+ *
+ * ── ★갈 수 있는 곳은 하나도 줄지 않았다★
+ *   리그 링크 · 로그인 · 내 정보 · 로그아웃 · 모바일 서랍 전부 그대로다.
+ *   href 는 한 글자도 바뀌지 않았다.
+ *
+ * ── ★로고는 우리 것을 쓴다★
+ *   시안은 `/assets/<화면>/cloud-mark.png` 를 부르는데 **우리에게 없는 그림**이다.
+ *   없는 파일을 지어내지 않고 확정 로고(`NavLogo`)를 그 자리에 놓았다.
+ *
+ * ── ★홈에서는 로고를 감춘다★ — 옛 판과 같은 규칙이다.
+ *   홈 본문 한가운데에 큰 로고가 있어서 둘이 겹친다.
+ *   (시안의 홈은 아예 56px 짜리 다른 머리띠다 — 그건 ④ 홈에서 정한다)
+ */
+
+export interface SiteHeaderV2Props {
+  featuredLeagues?: readonly NavLink[]
+  primaryNav?: readonly NavLink[]
+  navGroups?: readonly NavGroup[]
+  /** 로그인한 사용자. null 이면 `로그인` */
+  user?: { nickname: string } | null
+  onLogout?: () => void
+}
+
+export function SiteHeaderV2({
+  /* 상단바 순서는 홈과 다르다 (IPL 먼저 · 지시 #14). 목록은 한 곳(`FEATURED_LEAGUES`) */
+  featuredLeagues = GNB_LEAGUES,
+  primaryNav = PRIMARY_NAV,
+  navGroups = MOBILE_NAV_GROUPS,
+  user = null,
+  onLogout,
+}: SiteHeaderV2Props) {
+  const pathname = usePathname() ?? '/'
+  const loginHref = `/auth/login?returnUrl=${encodeURIComponent(pathname)}`
+  const [open, setOpen] = useState(false)
+
+  /* 화면을 옮기면 서랍을 닫는다. 열어 둔 채 넘어가면 새 화면을 가린다 */
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
+  return (
+    <header
+      /* 강조색은 ★지금 보고 있는 리그★ 를 따른다 — 주소에서 읽는다 */
+      className={`${v2Class(leagueSlugOf(pathname), 'v2-topbar')} fixed top-0 z-50 w-full`}
+    >
+      <div className="v2-container v2-topbar__inner max-md:gap-0">
+        {/* --- 모바일: 햄버거 --- */}
+        <button
+          type="button"
+          aria-label="메뉴"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center pr-3 text-[var(--v2-text-dim)] md:hidden"
+        >
+          <MenuIcon />
+        </button>
+
+        <Link
+          href="/"
+          aria-label="홈"
+          className={`flex items-center ${pathname === '/' ? 'hidden' : ''}`}
+        >
+          <NavLogo className="h-[34px] w-auto max-md:h-[26px]" />
+        </Link>
+
+        <nav className="v2-gnb max-md:hidden">
+          {featuredLeagues.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`v2-gnb__item ${isActive(pathname, item.href) ? 'is-on' : ''}`}
+            >
+              {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
+              <LeagueLabel name={item.label} />
+            </Link>
+          ))}
+          {/* `PRIMARY_NAV` 는 지금 비어 있다. 되살리면 리그 뒤에 그대로 붙는다 */}
+          {primaryNav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`v2-gnb__item ${isActive(pathname, item.href) ? 'is-on' : ''}`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex-1" />
+
+        <div className="flex items-center gap-5">
+          {user ? (
+            <>
+              <Link href="/me" className="v2-login">
+                <span className="max-md:hidden">{user.nickname}</span>
+                <span className="md:hidden">
+                  <AccountIcon />
+                </span>
+              </Link>
+              <button type="button" onClick={onLogout} className="v2-login max-md:hidden">
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <Link href={loginHref} aria-label="로그인" className="v2-login">
+              <span className="max-md:hidden">로그인</span>
+              <span className="md:hidden">
+                <LoginIcon />
+              </span>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* --- 모바일 서랍 — 옛 판과 같은 구성이다 --- */}
+      {open ? (
+        <div className="border-b border-[var(--v2-bar-border)] bg-[var(--v2-panel)] pb-2 md:hidden">
+          {navGroups.map((group) => (
+            <div key={group.label} className="border-b border-[var(--v2-row-divider)]">
+              <div className="px-6 pb-1 pt-4 text-[11px] tracking-widest text-[var(--v2-text-ghost)]">
+                {group.label}
+              </div>
+              {group.items.map((item) => (
+                <Link
+                  key={`${group.label}:${item.href}`}
+                  href={item.href}
+                  className={`block px-6 py-3 text-[14px] ${
+                    isActive(pathname, item.href)
+                      ? 'font-bold text-[var(--v2-text-strong)]'
+                      : 'text-[var(--v2-text-dim)]'
+                  }`}
+                >
+                  <LeagueLabel name={item.label} />
+                </Link>
+              ))}
+            </div>
+          ))}
+          {user ? (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="block w-full px-6 py-3 text-left text-[14px] text-[var(--v2-text-dim)]"
+            >
+              로그아웃
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </header>
+  )
+}
+
+/* 아이콘은 원본 자산을 가져오지 않고 새로 그렸다 (`CLAUDE.md` 2장 4번) */
+
+function MenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+      <rect x="2" y="5" width="20" height="1.6" />
+      <rect x="2" y="11" width="20" height="1.6" />
+      <rect x="2" y="17" width="20" height="1.6" />
+    </svg>
+  )
+}
+
+function LoginIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+      <path d="M12 3.2h7.2c.9 0 1.6.7 1.6 1.6v14.4c0 .9-.7 1.6-1.6 1.6H12v-2h6.8V5.2H12z" />
+      <path d="M9.9 7.6 8.5 9l2 2H3.2v2h7.3l-2 2 1.4 1.4L14.3 12z" />
+    </svg>
+  )
+}
+
+function AccountIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20.5c0-3.6 3.6-5.5 8-5.5s8 1.9 8 5.5z" />
+    </svg>
+  )
+}
+
+function isActive(pathname: string, href: string): boolean {
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+/**
+ * 주소에서 리그 slug 를 읽는다. `/league/<slug>/...` 뿐이다.
+ * ★없으면 없는 것이다★ — 아무 리그나 골라 색을 칠하지 않는다.
+ */
+export function leagueSlugOf(pathname: string): string | null {
+  const m = /^\/league\/([^/]+)/.exec(pathname)
+  return m?.[1] ?? null
+}
