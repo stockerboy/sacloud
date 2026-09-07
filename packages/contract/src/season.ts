@@ -128,6 +128,17 @@ export function seasonDisplayLabel(season: { number: number; seasonType: string 
     return source === null ? ROOT_SEASON_LABEL : officialSeasonLabel(source)
   }
   if (season.seasonType === 'beta') return BETA_SEASON_LABEL
+  /*
+   * ★2026-09-07 (Part 10 ⑥) — `legacy` 를 `Cloud` 라고 부르고 있었다★
+   *
+   *   지난시즌 카드가 ★「Cloud 6」★ 으로 떴다. 그 카드의 `Season.number` 는
+   *   ★양수 3~6★ 이고 `seasonType` 이 `legacy` 다 — 근본 시즌(-101 …) 분기에 안 걸린다.
+   *   사장님 확정 표기: ★과거는 「시즌 N」, 우리 것만 「Cloud N」★.
+   *   ⚠ 양수일 때만 붙인다. `이전 기록`(-2) 이 「시즌 -2」로 새면 안 된다.
+   */
+  if (season.seasonType === 'legacy') {
+    return season.number > 0 ? officialSeasonLabel(season.number) : '이전 기록'
+  }
   /* ★우리 시즌은 Cloud 다★ (2026-09-06 · Part 5). 옛 표기는 `officialSeasonLabel` 에 남아 있다 */
   return cloudSeasonLabel(season.number)
 }

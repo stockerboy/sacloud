@@ -49,7 +49,22 @@ export function seasonLabel(season: { number: number; seasonType: string }): str
        두 곳이 어긋나지 않게 `apps/worker/src/__tests__/rootSeason.test.ts` 가 묶어 둔다 */
   /* ★2026-09-06 (Part 5)★ — 근본 시즌은 ★원본 시즌 번호★ 로, 우리 시즌은 ★Cloud★ 로 */
   if (season.number < -100) return `시즌 ${-100 - season.number}`
-  return season.seasonType === 'beta' ? 'Beta Season' : `Cloud ${season.number}`
+  if (season.seasonType === 'beta') return 'Beta Season'
+  /*
+   * ★2026-09-07 (Part 10 ⑥) — `legacy` 를 `Cloud` 라고 부르고 있었다★
+   *
+   *   선수 지난시즌 카드가 화면에 ★「Cloud 6」「Cloud 5」★ 로 떴다 (실측).
+   *   그 카드들의 `Season.number` 는 ★양수 3~6★ 이고 `seasonType` 이 `legacy` 라
+   *   아래 `Cloud` 분기로 떨어졌다. 근본 시즌(-101 …)만 걸러서는 못 잡는다.
+   *
+   *   사장님 확정 표기 — ★과거는 「시즌 N」, 우리 것만 「Cloud N」★.
+   *   ⚠ 번호가 양수일 때만 붙인다. `이전 기록`(number = -2) 같은 창이
+   *     ★「시즌 -2」★ 로 새어 나가면 안 된다 (내부 번호 노출 금지).
+   */
+  if (season.seasonType === 'legacy') {
+    return season.number > 0 ? `시즌 ${season.number}` : '이전 기록'
+  }
+  return `Cloud ${season.number}`
 }
 
 export interface SeasonOverview {

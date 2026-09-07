@@ -29,6 +29,8 @@ const EXACT: readonly string[] = [
 const PATTERNS: readonly RegExp[] = [
   /* ⑤ 개인 랭킹 (2026-09-07) */
   /^\/league\/[^/]+\/rank\/player$/,
+  /* ⑥ 선수 상세 — 기록실과 지난시즌 둘 다 (2026-09-07) */
+  /^\/league\/[^/]+\/player\/[^/]+(\/season)?$/,
 ]
 
 /** 이 주소가 v2 로 옮겨진 화면인가 */

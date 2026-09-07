@@ -3,10 +3,24 @@
 import { use } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { LeaguePlayerRecordHeader, ProfileEmpty, ProfileNav, ProfileSkeleton } from '@sacloud/ui'
+import { leagueScreen } from '@sacloud/contract'
+/* ★2026-09-07 (Part 10 ⑥)★ — 머리띠를 v2 선수 카드로 갈아끼웠다.
+   옛 판(`LeaguePlayerRecordHeader`)은 ★그대로 있다★ — 되돌리려면 아래 두 줄을 맞바꾼다 */
+import {
+  PlayerIdentityCard,
+  ProfileEmpty,
+  ProfileNav,
+  ProfileSkeleton,
+  mainWeaponFromStats,
+  playerKpis,
+  useSeasonLabel,
+} from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { leaguePlayerTabs } from '@/lib/profileTabs'
+
+/** 주무기 코드 → 화면 글자 (`CLAUDE.md` 6장: 0 = 라이플, 1 = 스나이퍼) */
+const WEAPON_LABEL: Readonly<Record<number, string>> = { 0: '라플', 1: '스나' }
 
 /**
  * 리그 선수 화면 공통 — 헤더 + 탭.
@@ -43,6 +57,11 @@ export default function LeaguePlayerLayout({
   })
 
   const data = detail.data?.data
+  /* 카드 안 워터마크 — 지금 시즌 (`Cloud 0`). 모르면 안 그린다 */
+  const season = useSeasonLabel()
+  /* 래더를 쓰는 리그인가 — 화면이 slug 를 보지 않는다 (`leagueScreen` 이 정한다) */
+  const showsRating = leagueScreen(leagueSlug).playerColumns.rating
+  const weaponCode = data ? mainWeaponFromStats(data.weapon_stats) : null
 
   return (
     /*
@@ -66,15 +85,40 @@ export default function LeaguePlayerLayout({
      */
     <div>
       {data ? (
-        <LeaguePlayerRecordHeader
-          leagueName={data.league.name}
-          name={data.player.name}
-          infoHref={`/player/${playerId}`}
-          clan={data.clan}
-          rank={data.rank}
-          /* 포지션 (D-199). 판정이 없으면 헤더가 그 줄을 그리지 않는다 */
-          position={data.position_label}
-        />
+        <div className="pc-container">
+          <PlayerIdentityCard
+            leagueName={data.league.name}
+            name={data.player.name}
+            infoHref={`/player/${playerId}`}
+            clan={data.clan}
+            rank={data.rank}
+            rankCount={data.rank_count}
+            /* 포지션 (D-199). 판정이 없으면 그 조각을 안 그린다 */
+            position={data.position_label}
+            mainWeapon={weaponCode === null ? null : (WEAPON_LABEL[weaponCode] ?? null)}
+            watermark={season}
+            /*
+             * ★이번 시즌 경기가 없으면 그렇게 말한다★ (2026-09-07 실측으로 알았다).
+             *
+             *   선수 상세의 누적 칸은 ★Cloud 0 창 안의 래더 경기★ 를 직접 센다 (D-176).
+             *   랭킹 표는 `LeaguePlayer` 의 배치 누적(전체 기간)을 보여 준다.
+             *   ★둘은 다른 질문의 답이다★ — 같은 선수가 랭킹에선 320승, 상세에선 0승일 수 있다.
+             *   0 을 찍으면 「0승 0패인 선수」로 읽히므로 ★칸을 만들지 않고 한 줄로 말한다.★
+             */
+            kpiNote={
+              data.win + data.lose === 0 ? `${season ?? '이번 시즌'} 경기 없음` : null
+            }
+            kpis={playerKpis({
+              rating: data.rating,
+              win: data.win,
+              lose: data.lose,
+              winRate: data.win_rate,
+              kdRate: data.kd_rate,
+              killPerMatch: data.kill_per_match,
+              showsRating,
+            })}
+          />
+        </div>
       ) : detail.isPending && detail.fetchStatus === 'fetching' ? (
         <div className="pc-container pt-[40px]">
           <ProfileSkeleton rows={1} height={120} />

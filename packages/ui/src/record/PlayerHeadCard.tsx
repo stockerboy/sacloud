@@ -135,11 +135,23 @@ export function PlayerHeadCard(props: PlayerHeadCardProps) {
       </Row>
       <Divider />
 
+      {/*
+        ★한 판도 안 뛰었으면 「0승 0패 0%」 라고 쓰지 않는다★ (2026-09-07 · Part 10 ⑥).
+        이 카드의 누적은 ★이번 시즌 창 안의 래더 경기★ 를 센다 (D-176). 창 안에
+        경기가 없으면 0 이 되는데, 그것을 그대로 찍으면 ★「승률 0% 인 선수」★ 로 읽힌다.
+        같은 카드의 스나·라플 칸이 이미 「집계 없음」 이라고 말하고 있다 — 그 규칙을 맞춘다.
+      */}
       <Row label="승률">
-        <span className="num mr-2 text-[13px] text-meta">
-          {formatCount(props.win)}승 {formatCount(props.lose)}패
-        </span>
-        <span className={`num ${rateClass(props.winRate)}`}>{formatRate(props.winRate)}%</span>
+        {props.win + props.lose === 0 ? (
+          <span className="text-faint">집계 없음</span>
+        ) : (
+          <>
+            <span className="num mr-2 text-[13px] text-meta">
+              {formatCount(props.win)}승 {formatCount(props.lose)}패
+            </span>
+            <span className={`num ${rateClass(props.winRate)}`}>{formatRate(props.winRate)}%</span>
+          </>
+        )}
       </Row>
       <Divider />
 

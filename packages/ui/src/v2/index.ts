@@ -12,6 +12,12 @@ export { StatRow, type StatRowProps } from './StatRow'
 export { FilterChip, type FilterChipProps } from './FilterChip'
 export { PageHead, type PageHeadProps } from './PageHead'
 export { useSeasonLabel } from './useSeasonLabel'
+export {
+  PlayerIdentityCard,
+  playerKpis,
+  type PlayerIdentityCardProps,
+  type PlayerKpi,
+} from './PlayerIdentityCard'
 
 /* ── ③단계 껍데기 (2026-09-07) — ★붙었다★. 옛 판은 지우지 않았다 */
 export { leagueAccentClass, v2Class } from './leagueAccent'
