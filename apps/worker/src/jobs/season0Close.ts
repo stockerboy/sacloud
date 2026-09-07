@@ -37,7 +37,14 @@
  * ```
  */
 import { prisma } from '@sacloud/db'
-import { closeSeason, previewSeasonClose, seasonLabel, startSeason } from '@sacloud/db/ops'
+import {
+  CURRENT_SEASON_ORDER,
+  closeSeason,
+  currentSeasonWhere,
+  previewSeasonClose,
+  seasonLabel,
+  startSeason,
+} from '@sacloud/db/ops'
 import { log, warn } from '../lib/log.js'
 import { SEASON0_FROM, SEASON0_NUMBER, SEASON0_TYPE } from '../lib/season0Window.js'
 import type { JobContext } from './context.js'
@@ -87,12 +94,15 @@ export async function runSeason0Close(
   })
   if (!league) return { ...EMPTY, reason: `리그를 찾을 수 없다: ${input.leagueSlug}` }
 
+  /* ★닫을 대상은 「지금 시즌」이다★ (2026-09-07). 옛 조건(`status='active'` + `number desc`)은
+     아직 시작도 안 한 Cloud 1 을 집었고, 바로 아래 「시즌0 이 아니다」 검사에 걸려
+     ★시즌0 마감 명령 자체가 막혀 있었다★ */
   const active = await prisma.season.findFirst({
-    where: { leagueId: league.id, status: 'active' },
-    orderBy: { number: 'desc' },
+    where: { leagueId: league.id, ...currentSeasonWhere() },
+    orderBy: CURRENT_SEASON_ORDER,
     select: { id: true, number: true, seasonType: true, startedAt: true },
   })
-  if (!active) return { ...EMPTY, reason: '활성 시즌이 없다. 닫을 것이 없다' }
+  if (!active) return { ...EMPTY, reason: '진행 중인 시즌이 없다. 닫을 것이 없다' }
 
   /* 시즌0 이 아닌 시즌을 이 명령으로 닫지 않는다 — 실수로 정식 시즌을 굳히면 되돌리기 어렵다.
      정식 시즌 마감은 기존 `nexon season --close` 를 쓴다 */

@@ -3,7 +3,7 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-07 13:40** · 갱신한 사람 B(실행 세션)
+> 마지막 갱신 **2026-09-08 00:05** · 갱신한 사람 B(실행 세션)
 
 ---
 
@@ -379,7 +379,45 @@ O-063  ★집계 자동화★     `sacloud-season0` 예약작업 ★30분★ + �
 10mountain 에 1·2·3위 포디움         → 순위를 안 쓰는 리그면 ★포디움을 안 그린다★
 ```
 
-★지금 다음 것은 사장님 승인 대기다★ — ⑧ 경기 상세는 **경기 데이터가 생긴 뒤**에 한다.
+### ★09-07 — 「지금 시즌」 판정을 하나로 맞췄다★ (사장님 승인)
+
+```
+문제   `Season.status` 는 ★「아직 종료되지 않았다」★ 는 뜻인데
+       («active | closed» 둘뿐이라 ★「예정」 상태가 없다★)
+       화면·API·관리자가 그것을 ★「지금 시즌」★ 으로 쓰고 있었다.
+       운영에서 Cloud 0 · Cloud 1 이 ★둘 다 active★ 라
+       `status='active' + number DESC` 가 ★아직 오지 않은 Cloud 1★ 을 골랐다.
+
+규칙   ★지금 시각이 그 시즌의 창 안인가★ — `startedAt <= now < endedAt`
+       (`@sacloud/contract` 의 `seasonWindowAt` 과 ★같은 규칙★, DB 컬럼으로)
+       한 곳에만 있다 → `packages/db/ops/season.ts` 의 `currentSeasonWhere()`
+       고르는 정렬은 ★번호가 아니라 시작 시각★ (`CURRENT_SEASON_ORDER`)
+
+고친 곳
+  1단계 표시  apps/web/lib/server/queries/leagues.ts   리그 상세 season / season_type
+             apps/web/lib/server/configs.ts           /infos CURRENT_SEASON
+  2단계 관리자 packages/db/ops/season.ts                previewSeasonClose · closeSeason
+                                                      previewSeasonStart
+             apps/worker/src/jobs/season0Close.ts     시즌0 마감
+
+운영 실측 (읽기 전용)
+  지금(9/7)            IPL·SPL·열산 전부 → ★number 0 / official★ · CURRENT_SEASON = 0
+  2026-09-30 23:59 KST  → Cloud 0
+  2026-10-01 00:00 KST  → Cloud 1   (저절로 넘어간다)
+
+★DB 는 한 줄도 안 건드렸다★ — Season 행 · status 그대로. Cloud 1 미리 만드는 구조도 그대로.
+```
+
+⚠ **예외 하나 — 래더 계산은 일부러 옛 방식을 쓴다** (사장님 결정 · 2026-09-07)
+
+```
+apps/worker/src/jobs/rate.ts 의 `resolveSeason` 은 ★계속 `status` 를 본다.★
+D-077 이 «날짜가 바뀌었다고 다음 시즌으로 넘어가지 않는다. 운영자가 직접 전환한다»
+를 못박아 뒀기 때문이다. 시간창 규칙을 넣으면 10/1 에 ★래더 대상이 저절로 바뀐다.★
+★바꾸려면 D-077 부터 다시 정해야 한다.★ 이번 수정에서 ★일부러 제외했다.★
+```
+
+★지금 다음 것은 사장님 승인 대기다★ — ⑧ 경기 상세는 ✔ 끝났다 (2026-09-07 · 운영 경기 3건).
 
 ### 09-03 오전에 끝난 것 (09:20 ~ 12:10)
 

@@ -1,4 +1,6 @@
 import { prisma } from '@sacloud/db'
+/* 「현재 시즌」 판정은 ★한 곳★ 에만 있다 (`packages/db/ops/season.ts`) */
+import { CURRENT_SEASON_ORDER, currentSeasonWhere } from '@sacloud/db/ops'
 import {
   killPerMatch,
   kdRate,
@@ -133,9 +135,19 @@ export async function getLeague(leagueSlug: string): Promise<League | null> {
       maps: { select: { map: { select: { id: true, name: true } } } },
       playerLimits: { select: { playerCount: true } },
       _count: { select: { clans: { where: ACTIVE_CLAN } } },
+      /*
+       * ★「지금 시즌」은 `status` 가 아니다★ (2026-09-07 · 사장님 결정).
+       *
+       *   옛 조건 — `status: 'active'` + `number: 'desc'`
+       *   `status` 는 ★「아직 종료되지 않았다」★ 라 ★아직 시작도 안 한 다음 시즌★ 도
+       *   `active` 다. 그래서 9/7 에 ★Cloud 1★ 이 골라졌다 (운영 실측).
+       *
+       *   지금 — ★시각이 창 안인 시즌★ (`currentSeasonWhere`). 규칙은 한 곳에만 있다.
+       *   10/1 00:00 KST 가 지나면 저절로 Cloud 1 이 된다.
+       */
       seasons: {
-        where: { status: 'active' },
-        orderBy: { number: 'desc' },
+        where: currentSeasonWhere(),
+        orderBy: CURRENT_SEASON_ORDER,
         take: 1,
         select: { number: true, seasonType: true },
       },

@@ -1,4 +1,5 @@
 import { prisma } from '@sacloud/db'
+import { CURRENT_SEASON_ORDER, currentSeasonWhere } from '@sacloud/db/ops'
 import { publicOriginWhere } from './queries/publicScope'
 
 /**
@@ -30,9 +31,14 @@ export async function currentSeasonNumber(): Promise<number> {
   /* 시드 리그의 시즌은 세지 않는다 (D-116).
      예전에는 픽스처 리그 4개의 `Season 8 active`가 이겨서, 실제로는 베타 중인데
      `CURRENT_SEASON=8`이 내려갔고 새로 만든 리그가 시즌 8로 시작했다. */
+  /*
+   * ★「지금 시즌」은 `status` 가 아니다★ (2026-09-07 · 사장님 결정).
+   *   옛 조건 — `status: 'active'` + `number: 'desc'` → 아직 시작도 안 한 Cloud 1 이 이겼다.
+   *   지금 — ★시각이 창 안인 시즌★. 규칙은 `@sacloud/db/ops` 한 곳에 있다.
+   */
   const season = await prisma.season.findFirst({
-    where: { status: 'active', league: { ...publicOriginWhere() } },
-    orderBy: { number: 'desc' },
+    where: { ...currentSeasonWhere(), league: { ...publicOriginWhere() } },
+    orderBy: CURRENT_SEASON_ORDER,
     select: { number: true },
   })
   return season?.number ?? 0

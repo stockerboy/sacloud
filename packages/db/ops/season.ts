@@ -12,6 +12,79 @@
  */
 import { prisma } from '../src/index'
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * ★★「지금 시즌」은 `status` 가 아니다★★ (2026-09-07 · 사장님 결정)
+ *
+ * ── 무엇이 틀렸었나
+ *   `Season.status` 는 ★「아직 종료되지 않았다」★ 는 뜻이다 — `"active" | "closed"` 둘뿐이라
+ *   ★「예정」 상태가 없다.★ 그래서 아직 시작도 안 한 다음 시즌도 `active` 로 남는다.
+ *
+ *   운영 실측 (2026-09-07 · 세 리그 모두):
+ *   ```
+ *   Cloud 0  number 0  active  2026-09-03 07:00 ~ 2026-10-01 00:00   ← 지금 이것이다
+ *   Cloud 1  number 1  active  2026-10-01 00:00 ~ (열림)             ← 아직 미래다
+ *   ```
+ *   여기에 `status='active'` + `number DESC` 를 걸면 ★Cloud 1 이 이긴다.★
+ *   화면·API·관리자 종료 대상이 전부 ★아직 오지 않은 시즌★ 을 가리켰다.
+ *
+ * ── 그래서 뜻을 둘로 가른다
+ *   ```
+ *   status = 'active'   ★아직 종료되지 않은 시즌★ (미래 시즌도 포함한다)
+ *   현재 시즌            ★지금 시각이 그 시즌의 창 안에 있는 시즌★  ← 아래 규칙
+ *   ```
+ *   ★두 개를 다시 같은 뜻으로 쓰지 않는다.★
+ *
+ * ── 규칙은 `@sacloud/contract` 의 `seasonWindowAt` 과 ★같다★
+ *   시작 시각 ★이상★ · 종료 시각 ★미만★ (종료가 없으면 열린 구간).
+ *   다만 이 패키지는 contract 에 의존하지 않으므로 ★DB 컬럼으로 같은 판정★ 을 한다.
+ *   두 곳의 값이 같다는 것은 운영 DB 실측으로 확인했다 (2026-09-07).
+ *
+ * ── ⚠ ★예외가 하나 있다 — 래더 계산(`apps/worker/src/jobs/rate.ts`)★
+ *   그쪽 `resolveSeason` 은 ★일부러 `status` 를 계속 쓴다.★ D-077 이
+ *   *「날짜가 바뀌었다고 다음 시즌으로 넘어가지 않는다. 운영자가 직접 전환한다」*
+ *   를 못박아 뒀기 때문이다. 시간창 규칙을 넣으면 10/1 에 ★래더 대상이 저절로 바뀐다.★
+ *   ★사장님 결정으로 이번 수정에서 제외했다★ (2026-09-07). 바꾸려면 D-077 부터 정해야 한다.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * 「지금 시각이 창 안인 시즌」을 고르는 조건.
+ *
+ * `startedAt <= now < endedAt` (종료가 `null` 이면 위쪽이 열려 있다).
+ * ★`status` 를 보지 않는다.★ 종료 여부는 `endedAt` 이 이미 말한다.
+ */
+export function currentSeasonWhere(now: Date = new Date()) {
+  return {
+    startedAt: { lte: now },
+    OR: [{ endedAt: null }, { endedAt: { gt: now } }],
+  }
+}
+
+/**
+ * 현재 시즌을 고르는 정렬. ★번호가 아니라 시작 시각★ 이다.
+ *
+ * 번호로 정렬하면 베타(0)와 근본 시즌(-101 …)이 뒤섞인다. 창이 겹치는 일은 없어야 하지만,
+ * 혹시 겹치면 ★더 늦게 시작한 쪽★ 이 지금 시즌이다.
+ */
+export const CURRENT_SEASON_ORDER = [{ startedAt: 'desc' as const }]
+
+/** 그 리그의 현재 시즌. 창 안에 아무것도 없으면 `null` — ★지어내지 않는다★ */
+export async function findCurrentSeason(
+  leagueId: string,
+  now: Date = new Date(),
+): Promise<{
+  id: string
+  number: number
+  seasonType: string
+  startedAt: Date
+  endedAt: Date | null
+} | null> {
+  return prisma.season.findFirst({
+    where: { leagueId, ...currentSeasonWhere(now) },
+    orderBy: CURRENT_SEASON_ORDER,
+    select: { id: true, number: true, seasonType: true, startedAt: true, endedAt: true },
+  })
+}
+
 /**
  * 새 시즌의 공통 출발점. `@sacloud/rating` 의 `seasonBaseline` 과 **같은 값이어야 한다** (D-064).
  *
@@ -195,12 +268,14 @@ export async function previewSeasonClose(leagueSlug: string): Promise<SeasonClos
   })
   if (!league) return { ...empty, reason: '리그를 찾을 수 없습니다' }
 
+  /* ★닫을 대상은 「지금 시즌」이다★ (2026-09-07). 옛 조건(`status='active'` + `number desc`)은
+     아직 시작도 안 한 다음 시즌을 집었다 — 운영에서 Cloud 1 이 종료 대상이 될 뻔했다 */
   const active = await prisma.season.findFirst({
-    where: { leagueId: league.id, status: 'active' },
-    orderBy: { number: 'desc' },
+    where: { leagueId: league.id, ...currentSeasonWhere() },
+    orderBy: CURRENT_SEASON_ORDER,
     select: { number: true },
   })
-  if (!active) return { ...empty, reason: '활성 시즌이 없습니다' }
+  if (!active) return { ...empty, reason: '진행 중인 시즌이 없습니다' }
 
   const clans = await prisma.leagueClan.findMany({
     where: { leagueId: league.id, placement: false },
@@ -270,12 +345,14 @@ export async function closeSeason(input: {
   })
   if (!league) return { ...empty, reason: '리그를 찾을 수 없습니다' }
 
+  /* ★닫을 대상은 「지금 시즌」이다★ — `previewSeasonClose` 와 ★같은 조건★ 이어야 한다.
+     둘이 갈라지면 미리보기에서 본 시즌과 실제로 닫히는 시즌이 달라진다 */
   const active = await prisma.season.findFirst({
-    where: { leagueId: league.id, status: 'active' },
-    orderBy: { number: 'desc' },
+    where: { leagueId: league.id, ...currentSeasonWhere() },
+    orderBy: CURRENT_SEASON_ORDER,
     select: { id: true, number: true },
   })
-  if (!active) return { ...empty, reason: '활성 시즌이 없습니다' }
+  if (!active) return { ...empty, reason: '진행 중인 시즌이 없습니다' }
 
   const endedAt = input.endedAt ?? new Date()
 
@@ -489,8 +566,17 @@ export async function previewSeasonStart(leagueSlug: string): Promise<SeasonStar
   })
   if (!league) return { ...empty, reason: '리그를 찾을 수 없습니다' }
 
+  /*
+   * ★「아직 열려 있다」는 미래 시즌을 뜻하지 않는다★ (2026-09-07).
+   *
+   *   옛 조건은 `status='active'` 하나였다. 그런데 Cloud 1 을 ★미리 만들어 두는 구조★ 라
+   *   (10/1 이후 경기의 `Match.seasonId` 를 자동으로 찍으려면 행이 미리 있어야 한다)
+   *   ★아직 시작도 안 한 시즌 때문에 새 시즌 시작이 막혔다.★
+   *   막아야 하는 것은 ★지금 돌고 있는 시즌★ 하나뿐이다.
+   */
   const stillActive = await prisma.season.findFirst({
-    where: { leagueId: league.id, status: 'active' },
+    where: { leagueId: league.id, ...currentSeasonWhere() },
+    orderBy: CURRENT_SEASON_ORDER,
     select: { number: true },
   })
   if (stillActive) {
