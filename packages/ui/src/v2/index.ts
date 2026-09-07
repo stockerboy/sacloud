@@ -10,6 +10,8 @@ export { Panel, type PanelProps } from './Panel'
 export { SectionHead, type SectionHeadProps } from './SectionHead'
 export { StatRow, type StatRowProps } from './StatRow'
 export { FilterChip, type FilterChipProps } from './FilterChip'
+export { PageHead, type PageHeadProps } from './PageHead'
+export { useSeasonLabel } from './useSeasonLabel'
 
 /* ── ③단계 껍데기 (2026-09-07) — ★붙었다★. 옛 판은 지우지 않았다 */
 export { leagueAccentClass, v2Class } from './leagueAccent'

@@ -26,7 +26,10 @@ const EXACT: readonly string[] = [
  * ⚠ ★검증을 통과한 화면만 여기 올린다.★ 미리 적어 두면 아직 안 본 화면이
  *   색만 바뀐 채로 나간다 — 그게 「검증 안 된 화면을 민다」는 뜻이다.
  */
-const PATTERNS: readonly RegExp[] = []
+const PATTERNS: readonly RegExp[] = [
+  /* ⑤ 개인 랭킹 (2026-09-07) */
+  /^\/league\/[^/]+\/rank\/player$/,
+]
 
 /** 이 주소가 v2 로 옮겨진 화면인가 */
 export function isV2Route(pathname: string): boolean {

@@ -19,9 +19,10 @@ describe('옮긴 화면에만 v2 를 두른다', () => {
     expect(isV2Route('/')).toBe(true)
   })
 
+  /* ⚠ 화면을 하나 옮길 때마다 이 목록에서 한 줄이 빠진다.
+        개인 랭킹은 ⑤(2026-09-07)에서 빠졌다 — `v2-rank.test.ts` 가 대신 지킨다 */
   it('★아직 안 옮긴 화면은 그대로다★', () => {
     for (const path of [
-      '/league/supply/rank/player',
       '/league/supply/rank/clan',
       '/league/supply/player/abc',
       '/league/supply/clan/abc',

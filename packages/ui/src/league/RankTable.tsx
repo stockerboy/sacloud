@@ -14,6 +14,7 @@ import { EggVeil, EggVeilLegend } from '../egg/EggVeil'
 import type { EggState } from '../egg/eggState'
 /* 승률·킬뎃 두 칸만 서플라이 등급색을 쓴다 (2026-08-30 사용자 지시) */
 import { rateClass } from '../common/rate'
+import { rankColor } from '../record/playerHeadCopy'
 import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
 import { Skeleton } from '../common/Skeleton'
@@ -210,6 +211,19 @@ function RankSkeleton({ columns }: { columns: number }) {
 /** 1위만 강조한다 — 표에서 빨강을 쓰는 자리는 여기 하나다 */
 function rankClass(rank: number): string {
   return `${COL_RANK} ${NUM} ${rank === 1 ? RANK_TOP : 'text-meta'}`
+}
+
+/**
+ * ★순위 칸에 등급 색을 입힌다★ (2026-09-07 · Part 10 ⑤ · 시안).
+ *
+ * 시안은 ★순위 숫자와 닉네임을 같은 등급 색★ 으로 칠한다 (`rankColor` · `nameColor`).
+ * 경계값은 ★공통 함수 `rankTone` 한 곳★ 이 정한다 — 여기서 다시 적지 않는다.
+ *
+ * ⚠ ★옛 방식(`rankClass`)은 지우지 않았다★ — 1위만 강조색, 나머지는 흐림.
+ *   `rankTone` prop 을 안 넘기면 지금까지의 표 그대로다 (`CLAUDE.md` 1-4).
+ */
+function rankToneClass(rank: number): string {
+  return `${COL_RANK} ${NUM} ${rank <= 3 ? 'font-bold' : ''}`
 }
 
 /**
@@ -438,6 +452,15 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
    * 값이 없는 것을 `-` 로 감추지 않는다.
    */
   clanName?: 'none' | 'line' | 'column'
+  /**
+   * ★순위·닉네임에 등급 색을 입힐 것인가★ (2026-09-07 · Part 10 ⑤ · 시안).
+   *
+   * `false`(기본) — 1위만 강조색, 나머지는 흐림. ★넘기지 않으면 지금까지의 표 그대로다.★
+   * `true`        — 순위와 닉네임을 `rankTone` 등급 색으로 (3 / 20 / 40 / 100).
+   *
+   * 경계값은 ★공통 함수 한 곳★ 이 정한다 — 화면마다 복제하지 않는다 (사장님 지시).
+   */
+  rankTone?: boolean
 }
 
 export function PlayerRankTable({
@@ -449,6 +472,7 @@ export function PlayerRankTable({
   weapon = 'all',
   columns = ALL_COLUMNS,
   clanName = 'none',
+  rankTone = false,
 }: PlayerRankTableProps) {
   const clanColumn = clanName === 'column'
   const clanLine = clanName === 'line'
@@ -498,7 +522,14 @@ export function PlayerRankTable({
           const egg: EggState = brokenPlayerIds.includes(row.player.id) ? 'broken' : 'sealed'
           return (
           <div key={row.player.id} className={ROW}>
-            {columns.rank ? <div className={rankClass(row.rank)}>{row.rank}</div> : null}
+            {columns.rank ? (
+              <div
+                className={rankTone ? rankToneClass(row.rank) : rankClass(row.rank)}
+                style={rankTone ? { color: rankColor(row.rank) ?? undefined } : undefined}
+              >
+                {row.rank}
+              </div>
+            ) : null}
             {clanLine ? (
               /* 닉네임 + 그 아래 클랜명 줄 (#10-2). 링크가 둘이라 한 `<Link>` 로 감싸지 못한다 —
                  마크·닉네임은 선수 기록실로, 클랜명 줄은 클랜 기록실로 간다 */
@@ -518,7 +549,10 @@ export function PlayerRankTable({
                     className="block truncate hover:text-text-strong"
                     href={leaguePlayerPath(leagueSlug, row.player.id)}
                   >
-                    {row.player.name}
+                    {/* `a { color: inherit }` — 색은 안쪽 span 에 준다 (D-231) */}
+                    <span style={rankTone ? { color: rankColor(row.rank) ?? undefined } : undefined}>
+                      {row.player.name}
+                    </span>
                   </Link>
                   {row.clan ? (
                     <Link

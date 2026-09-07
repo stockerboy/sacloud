@@ -344,12 +344,35 @@
   --color-hero-meta: var(--v2-text-muted);
 
   /* ── 표의 수치 색 ──
-     승률·킬뎃 사다리는 ★공통 함수가 정한다★ (`rateTone`). 여기서는 값만 시안 쪽으로 */
+   *
+   * ★경계값은 공통 함수가 정한다★ (`rateTone` — 40/50/55/60/65). 여기서 바꾸는 것은
+   * ★색값뿐★ 이고, 시안의 `statColor` 여섯 색을 그대로 옮긴다.
+   *
+   * ```
+   *          우리(적진)      시안        구간
+   *   low    #ff3d3d        #e01b24     ~39.9   빨강
+   *   1      #02ab18        #22c55e     40~49.9 → ⚠ 시안은 이 구간이 ★흰색★ 이다
+   *   1      (50~55)        #22c55e     50~54.9 초록
+   *   2      #f2711c        #a06a35     55~59.9 ★주황 → 갈색★
+   *   3      #2185d0        #5b8dff     60~64.9 파랑
+   *   4      #ffe30b        #f5c518     65~     노랑
+   * ```
+   * ⚠ 40~50 구간을 시안은 흰색으로 두는데 ★우리는 그 구간에 색을 안 준다★
+   *   (`rateTone` 이 `base` 를 돌려주고 클래스가 안 붙는다) — 결과가 같다.
+   */
   --color-rate-low: var(--v2-red);
   --color-rate-1: var(--v2-green);
+  --color-rate-2: #a06a35;
+  --color-rate-3: var(--v2-blue);
+  --color-rate-4: #f5c518;
   --color-rate-4-light: var(--v2-red);
-  --color-rank-red: var(--v2-red);
-  --color-rank-green: var(--v2-green);
+
+  /* ── 순위 등급 색 — 시안 `RANK_COLORS` 그대로 (경계는 `rankTone` 이 정한다) ── */
+  --color-rank-red: #ff4d4d;
+  --color-rank-gold: #ffd83d;
+  --color-rank-blue: #5b9dff;
+  --color-rank-green: #22c55e;
+  --color-rank-plain: #ffffff;
 }
 
 /**
