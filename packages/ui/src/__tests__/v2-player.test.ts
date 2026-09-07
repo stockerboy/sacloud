@@ -24,7 +24,8 @@ describe('선수 상세가 v2 로 옮겨졌다', () => {
   it('이웃 화면을 잘못 물지 않는다', () => {
     expect(isV2Route('/league/supply/player/abc/setting')).toBe(false)
     expect(isV2Route('/player/abc')).toBe(false)
-    expect(isV2Route('/league/supply/clan/abc')).toBe(false)
+    /* ⚠ `/league/.../clan/...` 은 ⑦ 에서 옮겨졌다 — `v2-clan.test.ts` 가 지킨다 */
+    expect(isV2Route('/league/supply/rank/clan')).toBe(false)
   })
 })
 

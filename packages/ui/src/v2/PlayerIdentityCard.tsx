@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
+import type { ClanMarkSource } from '../common/ClanMark'
 import { formatAverage, formatCount, formatRate, formatRating } from '../common/format'
 import { rateClass } from '../common/rate'
 import { rankColor } from '../record/playerHeadCopy'
-import { Panel } from './Panel'
+import { MetaDotV2, RecordIdentityCard, type RecordKpi } from './RecordIdentityCard'
 
 /**
  * ★★v2 선수 카드★★ (2026-09-07 · Part 10 ⑥ · 시안)
@@ -35,15 +35,11 @@ import { Panel } from './Panel'
  *   가 그대로 있다. 되돌리려면 선수 layout 의 import 한 줄만 되돌린다.
  */
 
-/** KPI 한 칸. `value` 가 `null` 이면 ★칸 자체를 안 만든다★ */
-export interface PlayerKpi {
-  label: string
-  value: string
-  /** 숫자 뒤 작은 글자 */
-  sub?: string
-  /** 숫자에 줄 색 클래스 (`rateClass()` 결과) */
-  toneClass?: string
-}
+/**
+ * KPI 한 칸.
+ * ⚠ ★뼈대는 `RecordIdentityCard` 와 공유한다★ — 두 곳에 같은 모양을 적지 않는다.
+ */
+export type PlayerKpi = RecordKpi
 
 export interface PlayerIdentityCardProps {
   name: string
@@ -91,122 +87,65 @@ export function PlayerIdentityCard({
   const ink = rankColor(rank) ?? 'var(--v2-text-strong)'
 
   return (
-    <Panel
-      noEdge
-      watermark={watermark ?? null}
-      watermarkStyle={{ right: 210, top: '26%', bottom: 'auto', fontSize: 56 }}
-      className="mt-[30px]"
-    >
-      <div className="relative flex items-center gap-5 p-[24px_24px_22px] max-md:flex-wrap">
-        <span className="flex h-[78px] w-[78px] shrink-0 items-center justify-center border border-[var(--v2-emblem-border)]">
-          <ClanMark clan={clan} size="max" alt={clan?.name ?? ''} />
-        </span>
-
-        <div className="flex min-w-0 flex-col gap-[9px]">
-          <div className="flex flex-wrap items-center gap-[11px]">
-            <span
-              className="truncate text-[30px] font-bold tracking-[-.01em]"
-              style={{ color: ink }}
-              title={name}
-            >
-              {name}
+    <RecordIdentityCard
+      mark={clan}
+      name={name}
+      nameColor={ink}
+      watermark={watermark}
+      kpis={kpis}
+      kpiNote={kpiNote}
+      badges={
+        <>
+          {/* 주무기를 모르면 ★칩 자체를 안 만든다★ */}
+          {mainWeapon ? (
+            <span className="border border-[var(--v2-chip-border)] bg-[var(--v2-chip)] px-[9px] py-[4px] text-[11px] text-[var(--v2-text-muted)]">
+              {mainWeapon}
             </span>
-            {/* 주무기를 모르면 ★칩 자체를 안 만든다★ */}
-            {mainWeapon ? (
-              <span className="border border-[var(--v2-chip-border)] bg-[var(--v2-chip)] px-[9px] py-[4px] text-[11px] text-[var(--v2-text-muted)]">
-                {mainWeapon}
+          ) : null}
+          {badges ?? null}
+        </>
+      }
+      meta={
+        <>
+          {/* 계약이 `null` 을 「무소속」으로 정해 뒀다 — `-` 로 감추지 않는다 */}
+          <span className="text-[var(--v2-text)]">{clan ? clan.name : '무소속'}</span>
+          <MetaDotV2 />
+          <span>{leagueName} 개인랭킹</span>
+          {rank === null ? (
+            /* ★순위가 없으면 숫자를 지어내지 않는다★ — 0위를 만들지 않는다 */
+            <span className="text-[var(--v2-text-ghost)]">순위 없음</span>
+          ) : (
+            <>
+              <span className="flex items-baseline gap-[2px]" style={{ color: ink }}>
+                <span className="num text-[22px] font-black leading-none tracking-[-.02em]">
+                  {rank}
+                </span>
+                <span className="text-[12px] font-bold">위</span>
               </span>
-            ) : null}
-            {badges ?? null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-[9px] text-[12.5px] text-[var(--v2-text-faint)]">
-            {/* 계약이 `null` 을 「무소속」으로 정해 뒀다 — `-` 로 감추지 않는다 */}
-            <span className="text-[var(--v2-text)]">{clan ? clan.name : '무소속'}</span>
-            <Dot />
-            <span>{leagueName} 개인랭킹</span>
-            {rank === null ? (
-              /* ★순위가 없으면 숫자를 지어내지 않는다★ — 0위를 만들지 않는다 */
-              <span className="text-[var(--v2-text-ghost)]">순위 없음</span>
-            ) : (
-              <>
-                <span className="flex items-baseline gap-[2px]" style={{ color: ink }}>
-                  <span className="num text-[22px] font-black leading-none tracking-[-.02em]">
-                    {rank}
-                  </span>
-                  <span className="text-[12px] font-bold">위</span>
-                </span>
-                {rankCount === null ? null : (
-                  <span className="text-[var(--v2-text-ghost2)]">
-                    / {formatCount(rankCount)}명
-                  </span>
-                )}
-              </>
-            )}
-            {position ? (
-              <>
-                <Dot />
-                <span>
-                  포지션 <span className="text-[var(--v2-text)]">{position}</span>
-                </span>
-              </>
-            ) : null}
-          </div>
-        </div>
-
-        <span className="flex-1" />
-
+              {rankCount === null ? null : (
+                <span className="text-[var(--v2-text-ghost2)]">/ {formatCount(rankCount)}명</span>
+              )}
+            </>
+          )}
+          {position ? (
+            <>
+              <MetaDotV2 />
+              <span>
+                포지션 <span className="text-[var(--v2-text)]">{position}</span>
+              </span>
+            </>
+          ) : null}
+        </>
+      }
+      action={
         <Link
           href={infoHref}
           className="shrink-0 border border-[var(--v2-chip-border)] bg-[var(--v2-chip)] px-[18px] py-[9px] text-[12.5px]"
         >
           <span className="text-[var(--v2-text-muted)]">기본정보</span>
         </Link>
-      </div>
-
-      {/* ★칸도 없고 할 말도 없으면 줄 자체를 안 만든다★ */}
-      {kpis.length === 0 && !kpiNote ? null : (
-        <div
-          className="relative grid border-t border-[var(--v2-card-divider)] max-md:grid-cols-2"
-          style={{
-            gridTemplateColumns: `repeat(${kpis.length + (kpiNote ? 1 : 0)}, minmax(0,1fr))`,
-          }}
-        >
-          {kpis.map((kpi) => (
-            <div
-              key={kpi.label}
-              className="flex flex-col gap-[6px] border-r border-[var(--v2-row-divider)] px-[24px] py-[15px] last:border-r-0"
-            >
-              <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">
-                {kpi.label}
-              </span>
-              <span className="flex items-baseline gap-[7px]">
-                <span className={`num text-[26px] font-extralight leading-none ${kpi.toneClass ?? ''}`}>
-                  {kpi.value}
-                </span>
-                {kpi.sub ? (
-                  <span className="text-[11px] text-[var(--v2-text-ghost)]">{kpi.sub}</span>
-                ) : null}
-              </span>
-            </div>
-          ))}
-          {/* 왜 칸이 비었는지 한 줄. ★0 을 찍는 대신 말로 한다★ */}
-          {kpiNote ? (
-            <div className="flex items-center px-[24px] py-[15px] text-[12.5px] text-[var(--v2-text-ghost)]">
-              {kpiNote}
-            </div>
-          ) : null}
-        </div>
-      )}
-    </Panel>
-  )
-}
-
-function Dot() {
-  return (
-    <span className="text-[var(--v2-text-ghost2)]" aria-hidden>
-      ·
-    </span>
+      }
+    />
   )
 }
 

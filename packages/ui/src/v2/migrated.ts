@@ -31,6 +31,8 @@ const PATTERNS: readonly RegExp[] = [
   /^\/league\/[^/]+\/rank\/player$/,
   /* ⑥ 선수 상세 — 기록실과 지난시즌 둘 다 (2026-09-07) */
   /^\/league\/[^/]+\/player\/[^/]+(\/season)?$/,
+  /* ⑦ 클랜 상세 — 기록실 · 클랜원 · 지난시즌 (2026-09-07) */
+  /^\/league\/[^/]+\/clan\/[^/]+(\/player|\/season)?$/,
 ]
 
 /** 이 주소가 v2 로 옮겨진 화면인가 */

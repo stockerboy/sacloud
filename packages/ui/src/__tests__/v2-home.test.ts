@@ -20,12 +20,11 @@ describe('옮긴 화면에만 v2 를 두른다', () => {
   })
 
   /* ⚠ 화면을 하나 옮길 때마다 이 목록에서 한 줄이 빠진다.
-        개인 랭킹은 ⑤, 선수 상세는 ⑥ 에서 빠졌다 (2026-09-07)
-        — `v2-rank.test.ts` · `v2-player.test.ts` 가 대신 지킨다 */
+        개인 랭킹 ⑤ · 선수 상세 ⑥ · 클랜 상세 ⑦ 가 차례로 빠졌다 (2026-09-07)
+        — `v2-rank` · `v2-player` · `v2-clan` 테스트가 대신 지킨다 */
   it('★아직 안 옮긴 화면은 그대로다★', () => {
     for (const path of [
       '/league/supply/rank/clan',
-      '/league/supply/clan/abc',
       '/league/supply/match',
       '/rank',
       '/me',

@@ -13,11 +13,22 @@ export { FilterChip, type FilterChipProps } from './FilterChip'
 export { PageHead, type PageHeadProps } from './PageHead'
 export { useSeasonLabel } from './useSeasonLabel'
 export {
+  RecordIdentityCard,
+  MetaDotV2,
+  type RecordIdentityCardProps,
+  type RecordKpi,
+} from './RecordIdentityCard'
+export {
   PlayerIdentityCard,
   playerKpis,
   type PlayerIdentityCardProps,
   type PlayerKpi,
 } from './PlayerIdentityCard'
+export {
+  ClanIdentityCard,
+  clanKpis,
+  type ClanIdentityCardProps,
+} from './ClanIdentityCard'
 
 /* ── ③단계 껍데기 (2026-09-07) — ★붙었다★. 옛 판은 지우지 않았다 */
 export { leagueAccentClass, v2Class } from './leagueAccent'
