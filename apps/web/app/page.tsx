@@ -1,5 +1,7 @@
 import { HomeGuide, SiteIntro } from '@sacloud/ui'
 import { HomeSearch } from './_home/HomeSearch'
+import { HomeSeasonLine } from './_home/HomeSeasonLine'
+import { HomeSitemap } from './_home/HomeSitemap'
 
 /**
  * 홈.
@@ -189,9 +191,17 @@ export default function HomePage() {
     /* `home-night` — 밤하늘 배경. 규칙과 이유는 `packages/ui/src/styles.css` 맨 아래에 있다.
        ★사진이 안 와도 이 자리는 우리 검정이다★ (`background-color` 를 먼저 칠한다) */
     <div className="home-night">
-      <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 max-md:px-3">
-        {/* 0 로고 · 1 검색 · 2 리그 바로가기 — 클라이언트. 동작은 그대로다 */}
+      <div className="mx-auto flex w-full max-w-[var(--layout-max,1180px)] flex-col items-center px-6 max-md:px-3">
+        {/* ★시즌 한 줄★ (2026-09-07 · Part 10 ④) — 시안 맨 위. 날짜는 계약에서 온다 */}
+        <div className="pt-[74px] max-md:pt-[36px]">
+          <HomeSeasonLine />
+        </div>
+
+        {/* 0 로고 · 1 검색 · 2 리그 타일 — 클라이언트. 동작은 그대로다 */}
         <HomeSearch />
+
+        {/* ★사이트맵 다섯 칸★ (2026-09-07 · Part 10 ④) — 실제로 있는 곳만 건다 */}
+        <HomeSitemap />
       </div>
 
       {/* 3 사이트 소개 · 4 사용법 — 랭킹 미리보기와 최근 경기가 있던 자리.
@@ -201,7 +211,12 @@ export default function HomePage() {
           폭은 `--layout-max`(1120) 로 돌아왔다. 1280 은 랭킹 표의 닉네임 칸이 잘려서 넓혔던
           값이라(#13-e) 표가 빠진 지금은 쓸 이유가 없다. GNB·푸터와 같은 폭이 맞다.
           두 구역 자체는 안에서 720px 로 더 좁힌다 — 읽는 글이라 줄이 길면 눈이 미끄러진다. */}
-      <div className="section-stack mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 pb-[var(--section-gap,40px)] max-md:px-3">
+      {/*
+        ★사장님이 직접 쓰신 글이다★ (`SiteIntro`) — 시안에는 없지만 ★지우지 않는다★.
+        `owner-copy.test.ts` 가 sha256 으로 잠가 두고 있고, 문구는 사장님만 바꾸신다.
+        시안의 사이트맵 아래에 그대로 둔다 (`CLAUDE.md` 1-4 · «기능을 디자인에 맞춘다고 삭제하지 않는다»).
+      */}
+      <div className="section-stack mx-auto w-full max-w-[var(--layout-max,1180px)] px-6 pb-[var(--section-gap,40px)] max-md:px-3">
         <SiteIntro />
         <HomeGuide />
       </div>

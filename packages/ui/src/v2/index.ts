@@ -15,3 +15,6 @@ export { FilterChip, type FilterChipProps } from './FilterChip'
 export { leagueAccentClass, v2Class } from './leagueAccent'
 export { SiteHeaderV2, leagueSlugOf, type SiteHeaderV2Props } from './SiteHeaderV2'
 export { LeagueTopBarV2, type LeagueTopBarV2Props } from './LeagueTopBarV2'
+
+/* ── ④단계 (2026-09-07) — 어느 화면이 v2 로 옮겨졌는지 한 곳에서 판단한다 */
+export { isV2Route } from './migrated'

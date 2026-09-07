@@ -27,6 +27,7 @@ import {
   type SearchType,
 } from '@sacloud/ui'
 import { ApiError, apiGet } from '@/lib/api'
+import { HomeLeagueTiles } from './HomeLeagueTiles'
 
 /**
  * 홈 윗머리 — `0 로고 · 1 통합검색 · 2 리그 바로가기`.
@@ -199,17 +200,24 @@ export function HomeSearch() {
          #3     pt 104 · 로고 42 · pb 72             → 윗머리 높이 ≈ 282 + 검색·링크
          #13-c  pt 72 · 로고 126 · pb 36            → 로고가 84px 커져 랭킹 제목이 **37px 내려갔다** (검수 실측)
          지금   pt 40 · 로고 126 · pb 12 · 안쪽 여백도 줄임 → ≈ 258 + … — 원래보다 확실히 위 */
-    <section className="flex flex-col items-center pb-[12px] pt-[40px] max-md:pb-[10px] max-md:pt-[28px]">
+    /* ★2026-09-07 (Part 10 ④)★ — 시안의 세로 리듬. 위 74 · 로고 아래 38 · 타일 위 16.
+       옛 값은 `pt-[40px] pb-[12px]` 였다 */
+    <section className="flex w-full flex-col items-center pb-[12px]">
       {/* --- 0 로고 — **3배** (2026-09-02 사장님 지시 #13-a). 42 → 126px · 폰 32 → 96px.
              그 전(#3)에는 «작게. 화면의 주인공은 검색창» 이었다 — 옛 값은 이 줄에 남긴다 --- */}
-      <Link href="/" aria-label="3rd cloud 홈" className="block">
-        <MainLogo className="h-[126px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[96px]" />
+      {/* `v2-brand` — 로고의 `.my` 만 언제나 빨강 (리그색을 안 따라간다) */}
+      <Link href="/" aria-label="3rd cloud 홈" className="v2-brand mb-[38px] block max-md:mb-[24px]">
+        <MainLogo className="h-[110px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[84px]" />
       </Link>
 
       {/* --- 1 통합검색 — 크고 가운데. 동작은 하나도 바뀌지 않았다 --- */}
-      {/* 로고와 검색창 사이 — #3 때 mt-9 · 검수 #13-2 로 mt-6 */}
-      <div className="mt-6 w-full max-md:mt-5">
+      {/* ★시안 검색창은 720px 다★ (`width: 720, maxWidth: '100%'`).
+             옛 값은 `mt-6 w-full` — 본문 폭을 다 썼다 */}
+      <div className="w-full max-w-[720px]">
         <SearchBar
+          /* ★시안 홈 검색창은 720px★ (`width: 720`). 기본값 560 은 그대로 살아 있다 */
+          maxWidth={720}
+          sweep
           onSubmit={handleSearch}
           notice={notice}
           suggestions={suggestions}
@@ -218,28 +226,12 @@ export function HomeSearch() {
         />
       </div>
 
-      {/* --- 2 리그 바로가기 — 누르면 **바로 랭킹** ---
-             2026-09-02 사장님 지시 #13-b: «누르고 싶게» — 글자 링크 셋을 **버튼 셋**으로.
-             `.btn-line`(테두리 · 투명 바탕) 위에 크기만 얹었다. 색은 `--color-accent` 토큰뿐이고
-             hover 에서 테두리·글자에 닿는다. 면을 칠하지 않는다. 폰에서는 셋이 한 줄에 나란히.
-             옛 모습(#3 · 13px 글자 링크 `text-meta` + hover 강조)은 지웠지만 동작은 같다 — 가는 곳 그대로. */}
-      <nav aria-label="리그 랭킹 바로가기" className="mt-5 w-full max-md:mt-4">
-        <ul className="flex flex-wrap items-center justify-center gap-3 max-md:flex-nowrap max-md:gap-2">
-          {LEAGUE_SHORTCUTS.map((league) => (
-            <li key={league.href} className="max-md:min-w-0 max-md:flex-1">
-              <Link
-                href={league.href}
-                className="btn-line group h-12 min-w-[132px] px-6 text-[15px] font-bold tracking-wide hover:border-accent max-md:h-11 max-md:w-full max-md:min-w-0 max-md:px-2"
-              >
-                {/* `a { color: inherit }` 때문에 색은 안쪽 span 에 준다 (D-204) */}
-                <span className="text-text-strong transition-colors duration-100 group-hover:text-accent">
-                  <LeagueLabel name={league.label} />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {/* --- 2 리그 바로가기 ---
+             ★2026-09-07 (Part 10 ④)★ — 버튼 셋을 ★시안의 타일 셋★ 으로 바꿨다.
+             ★가는 곳은 그대로다★ (`/league/{slug}/rank/player`).
+             옛 버튼 모습은 아래 `LeagueShortcutButtons` 에 ★그대로 남겼다★ (`CLAUDE.md` 1-4) —
+             되돌리려면 이 한 줄을 `<LeagueShortcutButtons />` 로 바꾸면 된다. */}
+      <HomeLeagueTiles />
     </section>
   )
 }
@@ -270,4 +262,32 @@ function missMessageFor(type: SearchType, query: string, error: unknown): string
         ? clanSlugFromBarracksUrl(keyword) !== null
         : false
   return recognized ? SEARCH_MISS_BARRACKS : searchMissMessage(keyword)
+}
+
+/**
+ * ★옛 리그 바로가기 버튼 셋★ (2026-09-02 지시 #13-b ~ 2026-09-07).
+ *
+ * Part 10 ④ 에서 시안의 타일로 바뀌었다. ★지우지 않는다★ (`CLAUDE.md` 1-4).
+ * 되돌리려면 위 `<HomeLeagueTiles />` 를 `<LeagueShortcutButtons />` 로.
+ */
+export function LeagueShortcutButtons() {
+  return (
+    <nav aria-label="리그 랭킹 바로가기" className="mt-5 w-full max-md:mt-4">
+      <ul className="flex flex-wrap items-center justify-center gap-3 max-md:flex-nowrap max-md:gap-2">
+        {LEAGUE_SHORTCUTS.map((league) => (
+          <li key={league.href} className="max-md:min-w-0 max-md:flex-1">
+            <Link
+              href={league.href}
+              className="btn-line group h-12 min-w-[132px] px-6 text-[15px] font-bold tracking-wide hover:border-accent max-md:h-11 max-md:w-full max-md:min-w-0 max-md:px-2"
+            >
+              {/* `a { color: inherit }` 때문에 색은 안쪽 span 에 준다 (D-204) */}
+              <span className="text-text-strong transition-colors duration-100 group-hover:text-accent">
+                <LeagueLabel name={league.label} />
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
 }

@@ -59,6 +59,8 @@
   --v2-red: #e01b24;
   --v2-green: #22c55e;
   --v2-gold: #ffd83d;
+  /** 시안 홈의 시즌 리본 둘째 조각 */
+  --v2-sky: #38bdf8;
   /** 진행중 시즌(Cloud 0) 강조 */
   --v2-live: #22c55e;
 
@@ -72,6 +74,7 @@
    *   두 곳에 숫자를 적으면 조용히 갈라진다.
    */
   --v2-nav-h: var(--spacing-nav, 68px);
+  --v2-nav-home-h: var(--spacing-nav-home, 56px);
   --v2-tab-h: var(--spacing-leaguebar, 54px);
   --v2-pad: 24px;
   /** 시안은 ★모서리를 굴리지 않는다★ */
@@ -202,6 +205,11 @@
   align-items: center;
   gap: 36px;
 }
+/** ★홈만 56px★ — 시안의 홈 머리띠. 다른 화면의 68 은 안 건드린다 */
+.sac-v2 .v2-topbar__inner--home {
+  height: var(--v2-nav-home-h);
+  gap: 0;
+}
 
 /** 상단 리그 메뉴 — 글자가 크다 (22px). 시안이 그렇다 */
 .sac-v2 .v2-gnb {
@@ -283,4 +291,73 @@
   font-weight: 700;
   color: var(--v2-text-strong);
   letter-spacing: -0.01em;
+}
+
+/* ══ ④단계 — ★다리(bridge)★ ═══════════════════════════
+ *
+ * ── 왜 필요한가
+ *   화면 한 장에는 우리가 이미 만든 조각이 수십 개 붙어 있다 (검색창 · 랭킹표 ·
+ *   기록카드 · 푸터…). 그것들은 전부 옛 토큰(`--color-page` · `--color-line` …)을 본다.
+ *   ★조각마다 v2 판을 새로 만들면 기능이 갈라진다.★ 그게 제일 위험하다.
+ *
+ *   그래서 반대로 한다 — ★`.sac-v2` 안에서만 옛 토큰의 값을 v2 값으로 바꾼다.★
+ *   조각은 한 줄도 안 고치는데 색만 시안이 된다. 동작·구조·접근성은 그대로다.
+ *
+ * ── ★밖은 한 픽셀도 안 바뀐다★
+ *   `.sac-v2` 를 안 두른 화면의 토큰은 `styles.css` 값 그대로다.
+ *   되돌리려면 이 블록만 지우면 된다.
+ *
+ * ── ★색만 바꾼다★
+ *   여백 · 크기 · 글꼴 토큰은 건드리지 않는다. 그것까지 여기서 바꾸면
+ *   「무엇이 왜 움직였는지」를 아무도 못 따라온다.
+ */
+.sac-v2 {
+  /* ── 면 ── */
+  --color-page: var(--v2-bg);
+  --color-ink: var(--v2-bar);
+  /* 카드는 시안에서 그라디언트지만 토큰은 색 하나만 담는다 — 윗색을 쓴다.
+     그라디언트가 필요한 자리는 `.v2-panel` 을 직접 쓴다 */
+  --color-card: #14151c;
+  --color-card-2: #1a1c24;
+
+  /* ── 선 ── */
+  --color-line: var(--v2-card-border);
+  --color-line-soft: var(--v2-row-divider);
+
+  /* ── 글자 ── */
+  --color-text: var(--v2-text);
+  --color-text-strong: var(--v2-text-strong);
+  --color-meta: var(--v2-text-muted);
+  --color-faint: var(--v2-text-faint);
+
+  /* ── 강조 ──
+     ★리그를 따라간다.★ SPL 이면 빨강 · IPL 이면 파랑 · 열산이면 초록.
+     시안도 그렇다 (`ribbon` · `subTabOn` · `tabActive` 가 전부 리그색이다) */
+  --color-accent: var(--v2-accent);
+
+  /* ── 히어로 띠 ──
+     시안에는 이 띠가 없다. ★지우지 않는다★ (리그명 · 공식 배지 · 클랜 수가 여기 있다).
+     대신 파란 면을 카드 톤으로 낮춰 시안의 검정을 안 깨뜨리게 한다 */
+  --color-hero: #101119;
+  --color-hero-line: var(--v2-card-border);
+  --color-hero-fg: var(--v2-text-strong);
+  --color-hero-meta: var(--v2-text-muted);
+
+  /* ── 표의 수치 색 ──
+     승률·킬뎃 사다리는 ★공통 함수가 정한다★ (`rateTone`). 여기서는 값만 시안 쪽으로 */
+  --color-rate-low: var(--v2-red);
+  --color-rate-1: var(--v2-green);
+  --color-rate-4-light: var(--v2-red);
+  --color-rank-red: var(--v2-red);
+  --color-rank-green: var(--v2-green);
+}
+
+/**
+ * ★로고의 `.my` 는 언제나 빨강이다★ — 리그를 안 따라간다.
+ *
+ * 시안 세 파일이 전부 그렇다: 밑줄은 리그색인데 `tld`(`.my`)는 늘 `C.red` 다.
+ * 위에서 `--color-accent` 를 리그색으로 바꿔 놨으니 로고 자리에서만 되돌린다.
+ */
+.sac-v2 .v2-brand {
+  --color-accent: var(--v2-red);
 }

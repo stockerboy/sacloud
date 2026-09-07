@@ -71,6 +71,20 @@ export interface SearchBarProps {
   onQueryChange?: (type: SearchType, query: string) => void
   /** 후보를 골랐을 때. `key` 는 선수면 id, 클랜·리그면 slug */
   onPick?: (type: SearchType, suggestion: SearchSuggestion) => void
+  /**
+   * 검색창 최대 폭.
+   *
+   * ★기본값은 옛 값(560px) 그대로다★ — 안 넘기면 지금까지와 똑같이 그려진다
+   * (`CLAUDE.md` 1-4). 시안 홈은 ★720★ 이라 홈만 그 값을 넘긴다.
+   */
+  maxWidth?: number
+  /**
+   * 검색창 위를 지나가는 빛 (시안 홈의 `sacSweep`).
+   *
+   * ★기본은 끄기다★ — 안 넘기면 지금까지와 똑같다. 움직임을 싫어하는 사람의
+   * 설정(`prefers-reduced-motion`)은 `.v2-sweep` 이 이미 존중한다.
+   */
+  sweep?: boolean
 }
 
 export function SearchBar({
@@ -79,6 +93,9 @@ export function SearchBar({
   suggestions,
   onQueryChange,
   onPick,
+  /* 560 — 2026-08-30 「적진」부터의 값. 시안 홈만 720 을 넘긴다 */
+  maxWidth = 560,
+  sweep = false,
 }: SearchBarProps) {
   const [type, setType] = useState<SearchType>('player')
   const [text, setText] = useState('')
@@ -135,7 +152,7 @@ export function SearchBar({
   }
 
   return (
-    <div ref={rootRef} className="mx-auto w-full max-w-[560px] text-left">
+    <div ref={rootRef} className="mx-auto w-full text-left" style={{ maxWidth }}>
       <div
         /*
          * `bg-page` — ★사진 위에서도 검색창 안이 페이지와 같은 색이다★ (O-041 ① · 2026-09-03).
@@ -156,10 +173,21 @@ export function SearchBar({
          * *「글자와 사진 사이에 값을 아는 층을 한 겹 깐다」*.
          * 색은 페이지와 같은 `--color-page` 라 **사진이 없는 화면에서는 아무 변화가 없다.**
          */
-        className={`flex items-stretch rounded-[var(--radius,2px)] border bg-page transition-colors duration-100 ${
-          focused || open ? 'border-accent' : 'border-line'
-        }`}
+        className={`relative flex items-stretch rounded-[var(--radius,2px)] border bg-page transition-colors duration-100 ${
+          sweep ? 'overflow-hidden' : ''
+        } ${focused || open ? 'border-accent' : 'border-line'}`}
       >
+        {/* 시안의 빛 — 없으면 ★요소 자체를 안 만든다★ */}
+        {sweep ? (
+          <span
+            aria-hidden
+            className="v2-sweep"
+            style={{
+              background:
+                'linear-gradient(90deg,rgba(255,255,255,0),rgba(91,141,255,.10),rgba(255,255,255,0))',
+            }}
+          />
+        ) : null}
         {/* --- 검색 종류 --- */}
         <div className="relative shrink-0">
           <button

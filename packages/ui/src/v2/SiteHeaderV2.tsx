@@ -32,12 +32,21 @@ import { v2Class } from './leagueAccent'
  *   시안은 `/assets/<화면>/cloud-mark.png` 를 부르는데 **우리에게 없는 그림**이다.
  *   없는 파일을 지어내지 않고 확정 로고(`NavLogo`)를 그 자리에 놓았다.
  *
- * ── ★홈에서는 로고를 감춘다★ — 옛 판과 같은 규칙이다.
- *   홈 본문 한가운데에 큰 로고가 있어서 둘이 겹친다.
- *   (시안의 홈은 아예 56px 짜리 다른 머리띠다 — 그건 ④ 홈에서 정한다)
+ * ── ★홈은 다른 띠다★ (2026-09-07 · ④단계)
+ *   시안의 홈 머리띠는 ★56px★ 이고 로고도 리그 메뉴도 없다 — 오른쪽 `로그인` 하나뿐이다.
+ *   홈 본문 한가운데에 큰 로고가 있어서 위에 또 두면 겹치기 때문이다.
+ *   ★다른 화면의 68px 구조는 안 건드린다★ — `variant="home"` 한 갈래만 다르다.
+ *
+ *   ⚠ 시안 홈 띠 왼쪽에는 학교·학번 한 줄이 있는데 ★넣지 않았다★.
+ *     이 저장소는 공개(public)이고 학번은 개인정보다 (`CLAUDE.md` 2장 6번의 뜻).
+ *     넣으실 거면 사장님이 직접 넣으시는 게 맞다. 자리는 비워 뒀다.
  */
 
+export type SiteHeaderVariant = 'default' | 'home'
+
 export interface SiteHeaderV2Props {
+  /** `home` 이면 56px · 로고와 리그 메뉴 없음 (시안 홈) */
+  variant?: SiteHeaderVariant
   featuredLeagues?: readonly NavLink[]
   primaryNav?: readonly NavLink[]
   navGroups?: readonly NavGroup[]
@@ -47,6 +56,7 @@ export interface SiteHeaderV2Props {
 }
 
 export function SiteHeaderV2({
+  variant = 'default',
   /* 상단바 순서는 홈과 다르다 (IPL 먼저 · 지시 #14). 목록은 한 곳(`FEATURED_LEAGUES`) */
   featuredLeagues = GNB_LEAGUES,
   primaryNav = PRIMARY_NAV,
@@ -62,6 +72,32 @@ export function SiteHeaderV2({
   useEffect(() => {
     setOpen(false)
   }, [pathname])
+
+  /* ── 홈: 56px · 오른쪽 `로그인` 하나 (시안) ── */
+  if (variant === 'home') {
+    return (
+      <header className={`${v2Class(null, 'v2-topbar')} fixed top-0 z-50 w-full`}>
+        <div className="v2-container v2-topbar__inner v2-topbar__inner--home">
+          {/* 시안의 학교·학번 줄이 있던 자리. ★공개 저장소라 비워 둔다★ */}
+          <div className="flex-1" />
+          {user ? (
+            <div className="flex items-center gap-5">
+              <Link href="/me" className="v2-login">
+                {user.nickname}
+              </Link>
+              <button type="button" onClick={onLogout} className="v2-login">
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <Link href={loginHref} className="v2-login">
+              로그인
+            </Link>
+          )}
+        </div>
+      </header>
+    )
+  }
 
   return (
     <header
@@ -80,11 +116,8 @@ export function SiteHeaderV2({
           <MenuIcon />
         </button>
 
-        <Link
-          href="/"
-          aria-label="홈"
-          className={`flex items-center ${pathname === '/' ? 'hidden' : ''}`}
-        >
+        {/* `v2-brand` — 로고의 `.my` 만 언제나 빨강으로 되돌린다 (리그색을 안 따라간다) */}
+        <Link href="/" aria-label="홈" className="v2-brand flex items-center">
           <NavLogo className="h-[34px] w-auto max-md:h-[26px]" />
         </Link>
 
