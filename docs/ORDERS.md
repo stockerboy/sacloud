@@ -1418,6 +1418,70 @@ A 가 이 표를 고치고 사장님께 알린다. 몰래 순서를 바꾸지 �
 # 지시 목록
 
 <!-- 새 지시는 이 줄 바로 아래에 쌓는다 -->
+### O-066 · 새로 clone 하면 `scripts/*.sh` 가 안 돈다 (2026-09-08 · B 가 자율로 적음)
+- 상태: **대기** — 지금 이 컴퓨터에서는 ★안 터진다★. 급하지 않다
+- 적은 날: 2026-09-08
+- 무엇이 있나
+
+  ```
+  git config core.autocrlf  →  true
+  .gitattributes            →  ★없다★
+  저장소 안의 scripts/*.sh  →  줄끝이 LF
+  ```
+
+  `autocrlf=true` 는 받아올 때 LF 를 ★CRLF 로 바꾼다.★ 그러면 `sh` 가
+  줄 끝의 `` 을 명령의 일부로 읽어 ★`$'': command not found'`★ 로 죽는다.
+
+  ★지금 이 컴퓨터는 멀쩡하다★ — 파일을 직접 써서 LF 그대로다.
+  ★새로 clone 하거나 파일을 되돌리면 그때 터진다.★ 예약작업 넷이 전부 `sh` 를 쓴다.
+
+- 고치는 법 (한 파일 · 두 줄)
+
+  ```
+  # .gitattributes
+  *.sh text eol=lf
+  ```
+
+  넣은 뒤 `git add --renormalize .` 한 번.
+
+- 어떻게 확인하나
+  1. 새 폴더에 clone → `head -1 scripts/project.sh | od -c` 에 ★`` 이 없다★
+  2. `sh -n scripts/project.sh` · `sh -n scripts/lineup.sh` · `sh -n scripts/autocollect.sh` 가 통과
+  3. 지금 작업트리의 네 스크립트가 ★한 글자도 안 바뀐다★ (`git diff` 비어 있음)
+
+### O-065 · 라인업이 매번 33,446개 키를 훑는다 — 열쇠가 시각순이다 (2026-09-08 · B 가 자율로 적음)
+- 상태: **대기** — ★지금 손대지 마라.★ `battlelogLineup.ts` 를 ★다른 세션이 고치는 중★ 이다
+- 적은 날: 2026-09-08 (운영 안정화 작업 중 발견)
+- 왜 적나 (`CLAUDE.md` 1-3 — 새 아이디어는 그 자리에서 만들지 않고 여기로 보낸다)
+
+  `battlelog-lineup` 은 매 판 이렇게 시작한다:
+
+  ```sql
+  SELECT DISTINCT "matchKey" FROM "BarracksBattleLogRaw"
+  WHERE "subjectKind"='clan' AND "status"='ok' ORDER BY "matchKey" ASC
+  ```
+
+  ★33,446개★ 를 다 가져와 40개씩 836번 Match 를 조회한다.
+  `--from-cutoff` 를 줘도 ★키는 그대로 다 훑고★ Match 쪽만 걸러진다.
+
+- ★열쇠가 곧 시각이다★ — `matchKey` 앞 12자리가 `YYMMDDHHmmss` (KST) 다.
+  그래서 창을 키에서 바로 자를 수 있다:
+
+  ```sql
+  AND "matchKey" >= '260903070000'
+  ```
+
+  이러면 훑는 키가 ★33,446 → 약 1,600★ 으로 준다. 조회 836번이 40번이 된다.
+
+- 어떻게 확인하나 (이 칸이 비면 시작하지 않는다 · `CLAUDE.md` 3)
+  1. 같은 시각에 옛 방식과 새 방식을 각각 `--confirm` 없이 돌려 ★「라인업가능」 수가 같다★
+  2. 창 안 경기의 `lineupStatus` 분포가 ★한 건도 안 바뀐다★
+  3. 한 판 걸린 시간이 ★줄었다★ (지금 실측치와 나란히 적는다)
+  4. 기준시각 이전 경기의 `MatchPlayerStat` 이 ★한 줄도 안 바뀐다★
+
+- ⚠ 지금은 ★셸에서 `--from-cutoff` 로만★ 좁혀 뒀다 (`scripts/lineup.sh`).
+  코드는 한 글자도 안 고쳤다. 이 칸은 ★그 다음 단계★ 다.
+
 ### O-063 · ★★랭킹이 30분 안에 따라온다 — 집계 자동화★★ (2026-09-06 사장님 · Part 9)
 - 상태: **끝** (2026-09-06) — ★사장님 승인 대기. UI 이식은 시작 안 함★
 - 적은 날: 2026-09-06
