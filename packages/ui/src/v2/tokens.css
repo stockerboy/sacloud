@@ -367,6 +367,29 @@
   --color-rate-4: #f5c518;
   --color-rate-4-light: var(--v2-red);
 
+  /* ── 승패 면 ──
+   *
+   * ★2026-09-07 (Part 10 ⑧) — 경기 카드가 자주색으로 남아 있었다★
+   *   경기 카드는 `--color-card` 가 아니라 ★승패 전용 면★ 을 쓴다
+   *   (`bg-win-bg` / `bg-lose-bg`). 그래서 다리에서 카드만 바꿔서는 안 바뀌었다.
+   *
+   *   시안의 경기판은 ★팀 색을 면에 칠하지 않는다★ — 왼쪽 2px 선과 글자색으로만
+   *   가른다. 그래서 면은 카드색으로 낮추고, 선·글자만 파랑/빨강을 남긴다.
+   *   ⚠ ★뜻은 그대로다★ — 이긴 쪽 파랑 · 진 쪽 빨강. 진하기만 낮춘다.
+   */
+  /* ★면은 중립이다★ — 시안의 경기판은 팀 색을 넓은 면에 칠하지 않는다.
+     둘을 가르는 것은 ★왼쪽 3px 막대 · 테두리 · 「승리/패배」 글자★ 뿐이다.
+     (전에는 면이 파랑/자주여서 펼친 라인업 전체가 한 팀 색으로 물들었다) */
+  --color-win-bg: #0f1015;
+  --color-lose-bg: #0f1015;
+  --color-win-line: #24304a;
+  --color-lose-line: #3a2430;
+  --color-win: var(--v2-blue);
+  --color-win-bar: var(--v2-blue);
+  --color-lose: #f26a6a;
+  --color-lose-bar: var(--v2-red);
+  --color-mvp: var(--v2-gold);
+
   /* ── 순위 등급 색 — 시안 `RANK_COLORS` 그대로 (경계는 `rankTone` 이 정한다) ── */
   --color-rank-red: #ff4d4d;
   --color-rank-gold: #ffd83d;

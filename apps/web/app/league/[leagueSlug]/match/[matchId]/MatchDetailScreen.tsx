@@ -3,7 +3,7 @@
 import { use } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { MatchCard, ProfileEmpty, ProfileSkeleton } from '@sacloud/ui'
+import { MatchCard, PageHead, ProfileEmpty, ProfileSkeleton, useSeasonLabel } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -47,6 +47,9 @@ export default function MatchDetailPage({
 }) {
   const { leagueSlug, matchId } = use(params)
   const ready = useApiReady()
+  /* ★어느 시즌 경기인가★ — 이 화면은 Cloud 0 창 안 경기만 연다 (542a6f7).
+     이름은 `SEASON_WINDOWS` 한 곳에서 온다. 모르면 리본 줄을 안 그린다 */
+  const season = useSeasonLabel()
 
   const match = useQuery({
     queryKey: ['match', leagueSlug, matchId, 'page'],
@@ -87,7 +90,15 @@ export default function MatchDetailPage({
   const detail = match.data.data
 
   return (
-    <div className="pc-container pb-[40px] pt-[40px]">
+    <div className="pc-container pb-[40px]">
+      {/* ★2026-09-07 (Part 10 ⑧)★ — 시안의 화면 머리. ★Cloud 표기가 여기 붙는다★ */}
+      <PageHead
+        kicker={season?.toUpperCase() ?? null}
+        title="경기"
+        /* 맵 이름 — 계약상 `GameMap` 객체다. 없으면 ★그 조각을 안 그린다★ */
+        subtitle={detail.map?.name ?? undefined}
+      />
+      <div className="mt-[26px]" />
       <MatchCard
         match={detail}
         detail={detail}
