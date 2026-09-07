@@ -113,7 +113,26 @@ while :; do
   # ★통합 투영★ — IPL/SPL/열산 중 정확히 하나로 (2026-09-05 · Part 3)
   #   옛값: pnpm … nexon iplmatch-project --confirm  ← ★지우지 않는다★
   #   둘 다 origin='nexon_barracks' 라 같이 돌리면 헛수고다. 하나만 돈다
-  pnpm --filter @sacloud/worker nexon unified-project --confirm >> "$LOG" 2>&1
+  #
+  # ══ ★2026-09-08 — 여기서 안 부른다★ (사장님 승인) ══
+  #
+  #   ★2026-09-07 에 화면이 18시간 낡았다.★ 수집기가 죽어서가 아니었다 —
+  #   한 바퀴가 ★11.6시간★ 걸렸고, 정규화는 수집이 끝나야 시작하므로
+  #   ★그동안 한 번도 안 돌았다.★ RAW 는 계속 쌓이는데 Match 가 안 생겼다.
+  #   ★정규화가 수집의 인질이었다.★
+  #
+  #   그래서 ★별도 예약작업 `sacloud-project` (5분)★ 으로 뺐다.
+  #   짝은 `scripts/project.sh` 이고 거기서 `--lease` 로 겹침을 막는다.
+  #
+  #   ⚠ ★줄을 지우지 않았다★ (`CLAUDE.md` 1-4). 되돌리려면 ★아래 한 줄★ 을
+  #     `RUN_PROJECT_IN_LAP=1` 로 바꾸면 예전처럼 이 바퀴 안에서 돈다.
+  #   ⚠ ★라인업(③)은 아직 여기 그대로 있다.★ 이번에 안 뺐다 (사장님 지시).
+  RUN_PROJECT_IN_LAP="${RUN_PROJECT_IN_LAP:-0}"
+  if [ "$RUN_PROJECT_IN_LAP" = "1" ]; then
+    pnpm --filter @sacloud/worker nexon unified-project --confirm >> "$LOG" 2>&1
+  else
+    say "  ②정규화는 ★sacloud-project 예약작업★ 이 따로 돈다 — 이 바퀴에서는 건너뛴다"
+  fi
   # ★라인업도 세 리그를 한 번에★ (2026-09-05 · Part 4 · 사장님 지시)
   #   «리그별 라인업 수집기를 세 개 따로 만들지 마라»
   #   ⚠ ★열산·SPL 은 라인업이 아예 안 들어오고 있었다★ — 이 줄이 nolink 로 고정이어서다
