@@ -658,9 +658,17 @@ export async function pendingClans(
     )
     SELECT r."slug", r."name"
       FROM ranked r
-      /* ★0등급은 상한까지만★ — 나머지 자리는 최근 활동 클랜이 가져간다 */
-     WHERE r.band > 0 OR r.rn <= ${STALE_BAND_CAP}
      ORDER BY
+       /*
+        * ★0등급 상한★ — 상한을 넘은 0등급은 ★맨 뒤로 미룰 뿐 빼지 않는다.★
+        *
+        * ⚠ ★2026-09-08 19:20 — 여기서 WHERE 로 「빼」 버렸다가 한 판에 30곳만 돌았다.★
+        *   배포 직후에는 ★전원이 0등급★ 이라(요청 이력이 아직 없다) 상한 밖 클랜이
+        *   통째로 사라져 ★150 자리 중 30 자리만 채워졌다.★ 실측 로그 —
+        *   「큐 분포 IPL 2 · SPL 3 · 열산 25 … 오늘 경기한 47곳 중 3곳(6%)」
+        *   ★밀어내는 것과 빼는 것은 다르다.★ 뒤로 밀면 남는 자리는 다시 채운다.
+        */
+       CASE WHEN r.band = 0 AND r.rn > ${STALE_BAND_CAP} THEN 1 ELSE 0 END,
        r.band,
        r."requestedAt" ASC NULLS FIRST,
        r."slug"
