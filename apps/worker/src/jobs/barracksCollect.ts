@@ -455,6 +455,92 @@ export async function pendingPairs(
  *
  * 오래 안 받은 것부터 고른다 — 한 번도 안 받은 클랜이 먼저 온다.
  */
+/**
+ * ★이번 회차 큐가 제대로 골랐는지 재는 자★ (2026-09-08 · P0).
+ *
+ * 「요청 150회」만으로는 ★죽은 클랜 150곳을 물어본 것★ 과 구별이 안 된다.
+ * 그래서 ★오늘 경기한 클랜 중 몇 곳이 큐에 들어왔는지★ 를 매 회차 남긴다.
+ */
+export async function queueMix(slugs: readonly string[]): Promise<{
+  byLeague: { nolink: number; supply: number; sanply: number }
+  active24: number
+  activeTotal: number
+  activeIncluded: number
+  coverage: number
+  dead7: number
+}> {
+  const rows = await prisma.$queryRaw<{ lg: string; slug: string; lastMatch: Date | null }[]>`
+    WITH act AS (
+      SELECT z."lcid", MAX(z."startAt") AS "lastMatch"
+        FROM (
+          SELECT m."redLeagueClanId"  AS "lcid", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
+          UNION ALL
+          SELECT m."blueLeagueClanId" AS "lcid", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
+        ) z GROUP BY z."lcid"
+    )
+    SELECT DISTINCT l."slug" AS lg, c."slug" AS slug, a."lastMatch"
+      FROM "LeagueClan" lc
+      JOIN "League" l ON l."id" = lc."leagueId"
+      JOIN "Clan" c   ON c."id" = lc."clanId"
+      LEFT JOIN act a ON a."lcid" = lc."id"
+     WHERE lc."expelledAt" IS NULL
+  `
+  const now = Date.now()
+  const H = (n: number) => n * 3600000
+  const byLeague = { nolink: 0, supply: 0, sanply: 0 }
+  const inQueue = new Set(slugs)
+  let active24 = 0
+  let dead7 = 0
+  let activeTotal = 0
+  let activeIncluded = 0
+  for (const r of rows) {
+    const lm = r.lastMatch ? new Date(r.lastMatch).getTime() : null
+    if (lm !== null && now - lm <= H(18)) {
+      activeTotal += 1
+      if (inQueue.has(r.slug)) activeIncluded += 1
+    }
+    if (!inQueue.has(r.slug)) continue
+    if (r.lg in byLeague) byLeague[r.lg as keyof typeof byLeague] += 1
+    if (lm !== null && now - lm <= H(24)) active24 += 1
+    if (lm === null || now - lm > H(24 * 7)) dead7 += 1
+  }
+  return {
+    byLeague,
+    active24,
+    activeTotal,
+    activeIncluded,
+    coverage: activeTotal ? Math.round((activeIncluded / activeTotal) * 100) : 100,
+    dead7,
+  }
+}
+
+/**
+ * ★물어봤다는 사실을 남긴다★ (2026-09-08 · P0).
+ *
+ * ⚠ ★새 경기가 없어도 남긴다.★ 그게 이 표를 만든 이유다 —
+ *   「물어본 것」과 「받은 것」을 갈라야 죽은 클랜이 큐를 독점하지 않는다.
+ */
+export async function markListRequested(
+  subject: string,
+  outcome: { ok: boolean },
+  at: Date = new Date(),
+): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO "BarracksListRequest"
+      ("subject", "requestedAt", "okAt", "requests", "failures", "updatedAt")
+    VALUES (
+      ${subject}, ${at}, ${outcome.ok ? at : null},
+      1, ${outcome.ok ? 0 : 1}, ${at}
+    )
+    ON CONFLICT ("subject") DO UPDATE SET
+      "requestedAt" = EXCLUDED."requestedAt",
+      "okAt"        = COALESCE(EXCLUDED."okAt", "BarracksListRequest"."okAt"),
+      "requests"    = "BarracksListRequest"."requests" + 1,
+      "failures"    = "BarracksListRequest"."failures" + ${outcome.ok ? 0 : 1},
+      "updatedAt"   = EXCLUDED."updatedAt"
+  `
+}
+
 export async function pendingClans(
   limit: number,
   leagueSlug: string | readonly string[] = 'nolink',
@@ -503,17 +589,29 @@ export async function pendingClans(
     왜 (2026-09-08 · 운영 실측):
     ```
     등록 클랜 461곳 · 한 바퀴에 도는 곳 409곳
-    최근 24시간에 실제로 경기한 곳   IPL 34/43 · SPL 24/62 · ★열산 27/356★
     ★7일 이상 조용한 클랜 303곳 = 65.7%★
     ```
-    ★한 바퀴 40분의 3분의 2를 「경기가 없는 클랜」에 쓰고 있었다.★
-    열산 356곳이 IPL·SPL 을 뒤로 밀었다.
+    ★한 바퀴의 3분의 2를 「경기가 없는 클랜」에 쓰고 있었다.★
 
-    ⚠ ★클랜을 영구 제외하지 않는다★ (사장님). 두 가지로 지킨다:
-      · `lastFetched` 가 ★6시간을 넘으면 무조건 맨 앞(0등급)★ 으로 올린다
-      · 같은 등급 안에서는 ★오래 안 받은 곳부터★ — 옛 방식과 같은 공정성이다
-    즉 ★조용한 클랜도 최대 6시간 안에는 반드시 다시 본다.★
+    ══ ★★2026-09-08 P0 — 이 판이 수집을 8시간 세웠다. 두 곳을 고쳤다★★ ══
 
+    ① ★「물어본 시각」으로 판단한다★ (`BarracksListRequest.requestedAt`)
+       옛 판은 `BarracksClanMatchRaw.fetchedAt` 을 봤는데 ★그건 새 경기가 들어와야 생긴다.★
+       죽은 클랜은 아무리 물어봐도 안 생기니 ★영원히 「한 번도 못 받음」★ 이 되어 맨 앞을 독점했다.
+       실측 — 오늘 경기한 66곳 중 큐에 든 곳 ★3곳(5%)★.
+
+    ② ★0등급에 상한을 둔다★ (`STALE_BAND_CAP`)
+       한 번 전체가 방치 상태가 되면 0등급이 150 을 통째로 먹는다.
+       상한을 두면 나머지 자리는 ★최근에 경기한 클랜★ 이 가져간다.
+       실측(24시간 시뮬 · 한 바퀴 21분) —
+       ```
+       옛 방식      오늘 경기한 클랜 재방문 ★57분★
+       상한 20/30/40/60  모두 ★35분★ · 굶는 클랜 0곳
+       ```
+       20~60 이 결과가 같아 ★가운데인 30★ 을 골랐다. 근거는 위 시뮬이다.
+
+    ⚠ ★클랜을 영구 제외하지 않는다★ (사장님). 0등급 몫을 항상 남겨 두므로
+      조용한 클랜도 반드시 다시 온다 — 실측 최대 공백 1.8시간.
     ⚠ ★요청 간격(1500ms)은 건드리지 않는다.★ 순서만 바꾼다.
   */
   return prisma.$queryRaw<{ slug: string; name: string }[]>`
@@ -527,37 +625,64 @@ export async function pendingClans(
         ) z
        GROUP BY z."lcid"
     ),
-    got AS (
-      SELECT r."subject" AS "slug", MAX(r."fetchedAt") AS "lastFetched"
-        FROM "BarracksClanMatchRaw" r
-       GROUP BY r."subject"
+    pool AS (
+      SELECT DISTINCT c."slug", c."name", q."requestedAt", a."lastMatch"
+        FROM "LeagueClan" lc
+        JOIN "League" l ON l."id" = lc."leagueId"
+        JOIN "Clan" c   ON c."id" = lc."clanId"
+        /* ★물어본 시각★ — 새 경기 유무와 무관하다 (P0 수정의 핵심) */
+        LEFT JOIN "BarracksListRequest" q ON q."subject" = c."slug"
+        LEFT JOIN act a ON a."lcid" = lc."id"
+       WHERE l."slug" = ANY(${slugs}) AND lc."expelledAt" IS NULL
+    ),
+    graded AS (
+      SELECT p.*,
+             CASE
+               /* 0등급 — 한 번도 안 물어봤거나 6시간 넘게 방치. ★상한이 걸린다★ */
+               WHEN p."requestedAt" IS NULL                      THEN 0
+               WHEN p."requestedAt" < NOW() - INTERVAL '6 hours' THEN 0
+               WHEN p."lastMatch"  >= NOW() - INTERVAL '1 hour'  THEN 1
+               WHEN p."lastMatch"  >= NOW() - INTERVAL '6 hours'  THEN 2
+               WHEN p."lastMatch"  >= NOW() - INTERVAL '24 hours' THEN 3
+               ELSE 4
+             END AS band
+        FROM pool p
+    ),
+    ranked AS (
+      SELECT g.*,
+             ROW_NUMBER() OVER (
+               PARTITION BY g.band
+               ORDER BY g."requestedAt" ASC NULLS FIRST, g."slug"
+             ) AS rn
+        FROM graded g
     )
-    SELECT t."slug", t."name"
-      FROM (
-        SELECT DISTINCT c."slug", c."name", g."lastFetched", a."lastMatch"
-          FROM "LeagueClan" lc
-          JOIN "League" l ON l."id" = lc."leagueId"
-          JOIN "Clan" c   ON c."id" = lc."clanId"
-          LEFT JOIN got  g ON g."slug" = c."slug"
-          LEFT JOIN act  a ON a."lcid" = lc."id"
-         WHERE l."slug" = ANY(${slugs}) AND lc."expelledAt" IS NULL
-      ) t
+    SELECT r."slug", r."name"
+      FROM ranked r
+      /* ★0등급은 상한까지만★ — 나머지 자리는 최근 활동 클랜이 가져간다 */
+     WHERE r.band > 0 OR r.rn <= ${STALE_BAND_CAP}
      ORDER BY
-       CASE
-         /* ★굶기지 않는다★ — 한 번도 못 받았거나 6시간 넘게 방치됐으면 무조건 먼저 */
-         WHEN t."lastFetched" IS NULL                      THEN 0
-         WHEN t."lastFetched" < NOW() - INTERVAL '6 hours' THEN 0
-         /* 티어 1~4 — 최근에 경기한 곳일수록 먼저 */
-         WHEN t."lastMatch" >= NOW() - INTERVAL '1 hour'   THEN 1
-         WHEN t."lastMatch" >= NOW() - INTERVAL '6 hours'  THEN 2
-         WHEN t."lastMatch" >= NOW() - INTERVAL '24 hours' THEN 3
-         ELSE 4
-       END,
-       t."lastFetched" ASC NULLS FIRST,
-       t."slug"
+       r.band,
+       r."requestedAt" ASC NULLS FIRST,
+       r."slug"
      LIMIT ${limit}
   `
 }
+
+/**
+ * ★한 판에서 「오래 방치된 클랜」에 쓸 최대 자리 수★ (2026-09-08 · P0).
+ *
+ * 이 상한이 없으면 전체가 방치 상태가 된 순간 ★0등급이 150 자리를 다 먹는다.★
+ * 실제로 그렇게 돼서 8시간 동안 신규 경기를 못 찾았다.
+ *
+ * 값의 근거 — 24시간 시뮬(한 바퀴 21분 · 69회차 · 클랜 409곳):
+ * ```
+ * 상한        오늘 경기한 클랜 재방문   굶는 클랜   냉시동 전수 커버
+ * 옛 방식              57분              0곳        1.1시간
+ * 20 / 30 / 40 / 60    35분              0곳        1.8시간   ← 넷이 같다
+ * ```
+ * ★20~60 이 결과가 같다.★ 가운데인 30 을 골랐다 — 늘어날 여지도 남는다.
+ */
+export const STALE_BAND_CAP = 30
 
 export async function collectBarracks(opts: CollectOptions): Promise<CollectResult> {
   const log = opts.log ?? ((l: string) => console.info(l))
@@ -579,6 +704,28 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
     const clans = await pendingClans(clanBudget, opts.leagueSlug ?? 'nolink', opts.clanPriority)
     result.matchList.clans = clans.length
     log(`\n① 목록 — ★${opts.leagueSlug ?? 'nolink'}★ 클랜 ★${clans.length}곳★`)
+    /*
+     * ★★이번 회차에 무엇을 골랐는지 매번 남긴다★★ (2026-09-08 · P0 · 사장님 지시)
+     *
+     * 사장님: «매 회차마다 선택된 클랜의 분포와 최근 활동 클랜 포함 비율을 기록해서
+     *        priority queue 가 ★시간이 지나도 다시 망가지지 않는지★ 확인해라»
+     *
+     * ⚠ 이 줄이 없어서 ★8시간 동안 죽은 클랜만 훑는 것을 아무도 못 봤다.★
+     *   「요청 150회」만 찍혀 있어서 정상으로 보였다.
+     */
+    try {
+      const mix = await queueMix(clans.map((c) => c.slug))
+      log(
+        `  ★큐 분포★ IPL ${mix.byLeague.nolink} · SPL ${mix.byLeague.supply} · 열산 ${mix.byLeague.sanply}` +
+          ` | 24시간내 경기 ${mix.active24}곳 | 7일+ 조용 ${mix.dead7}곳` +
+          ` | ★오늘 경기한 ${mix.activeTotal}곳 중 ${mix.activeIncluded}곳 (${mix.coverage}%)★`,
+      )
+      if (mix.activeTotal > 0 && mix.coverage < 50) {
+        log(`  ★★큐가 이상하다 — 오늘 경기한 클랜이 절반도 안 들어왔다 (${mix.coverage}%)★★`)
+      }
+    } catch (e) {
+      log(`  큐 분포를 못 쟀다 — ${(e as Error).message}`)
+    }
     if (opts.dryRun) {
       for (const c of clans.slice(0, 5)) log(`   ${c.slug}  (${c.name})`)
       if (clans.length > 5) log(`   … ${clans.length - 5}곳 더`)
@@ -598,6 +745,8 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
         let cursor: string | undefined
         let pages = 0
         let oldest = ''
+        /* 이 클랜에서 200 을 한 번이라도 받았나 — 요청 기록에 쓴다 (P0) */
+        let askedOk = false
         for (; pages < pageBudget; pages += 1) {
           let r: CurlResult
           try {
@@ -631,6 +780,7 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
           }
           listRows.push({ kind: 'matchlist', subject: c.slug, raw: parsed })
           result.matchList.ok += 1
+          askedOk = true
 
           const next = nextListCursor(r.body, cursor)
           if (next) oldest = next
@@ -670,6 +820,15 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
           await sleep(delay)
           if (!next) break
           cursor = next
+        }
+        /* ★물어봤다는 사실을 남긴다★ — 새 경기가 없어도 남긴다 (P0) */
+        if (opts.confirm) {
+          try {
+            await markListRequested(c.slug, { ok: askedOk })
+          } catch (e) {
+            /* 이 기록이 실패해도 수집은 계속한다 — 다만 조용히 넘기지 않는다 */
+            log(`  ★요청 기록 실패★ ${c.slug} — ${(e as Error).message}`)
+          }
         }
         if (pageBudget > 1) {
           log(
