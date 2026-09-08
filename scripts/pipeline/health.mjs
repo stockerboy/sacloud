@@ -7,6 +7,8 @@
  *    경기가 없는 시간대(낮 2~6시)를 장애로 부르면 안 된다.
  */
 import { prisma } from './q.mjs'
+/* ★규칙은 한 곳에서만 온다★ — `queueRule.mjs` 가 잡과 같은 규칙을 들고 있다 */
+import { coverage } from './queueRule.mjs'
 
 const now = new Date()
 const hhmm = (d) => (d ? new Date(d).toLocaleString('ko-KR', { hour12: false }).slice(5) : '없음')
@@ -31,46 +33,10 @@ const q2 = await prisma.$queryRaw`
 const perHour = q2[0].n / 7
 
 /* 큐 포함률 — 지금 뽑으면 오늘 경기한 클랜이 몇 % 들어오나 (수정판 규칙 그대로) */
-const q3 = await prisma.$queryRaw`
-  WITH act AS (
-    SELECT z."lcid", MAX(z."startAt") AS "lastMatch" FROM (
-      SELECT m."redLeagueClanId" AS "lcid", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
-      UNION ALL SELECT m."blueLeagueClanId", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
-    ) z GROUP BY z."lcid"
-  ), pool AS (
-    SELECT DISTINCT c."slug", q."requestedAt", a."lastMatch"
-      FROM "LeagueClan" lc
-      JOIN "League" l ON l."id"=lc."leagueId"
-      JOIN "Clan" c ON c."id"=lc."clanId"
-      LEFT JOIN "BarracksListRequest" q ON q."subject"=c."slug"
-      LEFT JOIN act a ON a."lcid"=lc."id"
-     WHERE l."slug" = ANY(ARRAY['nolink','supply','sanply']) AND lc."expelledAt" IS NULL
-  ), graded AS (
-    SELECT p.*, CASE
-      WHEN p."requestedAt" IS NULL                      THEN 0
-      WHEN p."requestedAt" < NOW() - INTERVAL '6 hours' THEN 0
-      WHEN p."lastMatch"  >= NOW() - INTERVAL '1 hour'  THEN 1
-      WHEN p."lastMatch"  >= NOW() - INTERVAL '6 hours'  THEN 2
-      WHEN p."lastMatch"  >= NOW() - INTERVAL '24 hours' THEN 3
-      ELSE 4 END AS band FROM pool p
-  ), ranked AS (
-    SELECT g.*, ROW_NUMBER() OVER (PARTITION BY g.band ORDER BY g."requestedAt" ASC NULLS FIRST, g."slug") rn
-      FROM graded g
-  ), picked AS (
-    SELECT r."slug", r."lastMatch" FROM ranked r
-     ORDER BY CASE WHEN r.band = 0 AND r.rn > 30 THEN 1 ELSE 0 END, r.band,
-              r."requestedAt" ASC NULLS FIRST, r."slug"
-     LIMIT 150
-  )
-  SELECT
-    (SELECT COUNT(*)::int FROM picked p WHERE p."lastMatch" >= NOW() - INTERVAL '18 hours') AS inq,
-    (SELECT COUNT(DISTINCT c."slug")::int FROM "Match" m
-       JOIN "LeagueClan" lc ON lc."id" IN (m."redLeagueClanId", m."blueLeagueClanId")
-       JOIN "Clan" c ON c."id"=lc."clanId"
-      WHERE m."supersededAt" IS NULL AND m."startAt" >= NOW() - INTERVAL '18 hours') AS total,
-    (SELECT COUNT(*)::int FROM "BarracksListRequest") AS reqRows`
-const cov = q3[0]
-const covPct = cov.total ? Math.round((cov.inq / cov.total) * 100) : 100
+const cov = await coverage(prisma)
+const reqRows = (await prisma.$queryRaw`SELECT COUNT(*)::int n FROM "BarracksListRequest"`)[0].n
+
+const covPct = cov.pct
 
 const leases = await prisma.$queryRaw`
   SELECT "name","host","releasedAt","heartbeatAt" FROM "CollectorLease" ORDER BY "name"`
@@ -82,9 +48,9 @@ const line = (no, label, val, mark, extra) =>
   console.log(`  ${no} ${pad(label, 22)} ${pad(val, 22)} ${mark}${extra ? '  ' + extra : ''}`)
 
 line('①', '큐 포함률',
-  `${cov.inq}/${cov.total}곳 (${covPct}%)`,
+  `${cov.inQueue}/${cov.total}곳 (${covPct}%)`,
   covPct >= 80 ? OK : covPct >= 50 ? WARN : BAD,
-  `요청기록 ${cov.reqrows}행`)
+  `요청기록 ${reqRows}행`)
 line('②', '마지막 clan list RAW', `${hhmm(x.listraw)} (${mins(x.listraw)}분 전)`,
   mins(x.listraw) === null ? BAD : mins(x.listraw) <= 90 ? OK : WARN)
 line('  ', '마지막 battlelog RAW', `${hhmm(x.lograw)} (${mins(x.lograw)}분 전)`,

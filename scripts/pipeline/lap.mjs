@@ -4,6 +4,8 @@
  */
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { prisma } from './q.mjs'
+/* ★규칙은 한 곳에서만 온다★ — 옛 사본을 들고 있다가 거짓 100% 를 냈다 (2026-09-08) */
+import { coverage } from './queueRule.mjs'
 
 const dir = new URL('./', import.meta.url)
 const STATE = new URL('lap.state.json', dir)
@@ -31,43 +33,8 @@ const q = await prisma.$queryRaw`
 const x = q[0]
 
 /* 큐 포함률 — 실제 선택 규칙 그대로 */
-const cov = (await prisma.$queryRaw`
-  WITH act AS (
-    SELECT z."lcid", MAX(z."startAt") AS "lastMatch" FROM (
-      SELECT m."redLeagueClanId" AS "lcid", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
-      UNION ALL SELECT m."blueLeagueClanId", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
-    ) z GROUP BY z."lcid"
-  ), pool AS (
-    SELECT DISTINCT c."slug", q."requestedAt", a."lastMatch"
-      FROM "LeagueClan" lc JOIN "League" l ON l."id"=lc."leagueId" JOIN "Clan" c ON c."id"=lc."clanId"
-      LEFT JOIN "BarracksListRequest" q ON q."subject"=c."slug"
-      LEFT JOIN act a ON a."lcid"=lc."id"
-     WHERE l."slug" = ANY(ARRAY['nolink','supply','sanply']) AND lc."expelledAt" IS NULL
-  ), graded AS (
-    SELECT p.*, CASE
-      WHEN p."requestedAt" IS NULL THEN 0
-      WHEN p."requestedAt" < NOW() - INTERVAL '6 hours' THEN 0
-      WHEN p."lastMatch" >= NOW() - INTERVAL '1 hour' THEN 1
-      WHEN p."lastMatch" >= NOW() - INTERVAL '6 hours' THEN 2
-      WHEN p."lastMatch" >= NOW() - INTERVAL '24 hours' THEN 3
-      ELSE 4 END AS band FROM pool p
-  ), ranked AS (
-    SELECT g.*, ROW_NUMBER() OVER (PARTITION BY g.band ORDER BY g."requestedAt" ASC NULLS FIRST, g."slug") rn FROM graded g
-  ), picked AS (
-    SELECT r."slug", r."lastMatch" FROM ranked r
-     ORDER BY CASE WHEN r.band=0 AND r.rn>30 THEN 1 ELSE 0 END, r.band, r."requestedAt" ASC NULLS FIRST, r."slug"
-     LIMIT 150
-  )
-  SELECT (SELECT COUNT(*)::int FROM picked p WHERE p."lastMatch" >= NOW() - INTERVAL '18 hours') inq,
-         (SELECT COUNT(DISTINCT c."slug")::int FROM "Match" m
-            JOIN "LeagueClan" lc ON lc."id" IN (m."redLeagueClanId", m."blueLeagueClanId")
-            JOIN "Clan" c ON c."id"=lc."clanId"
-           WHERE m."supersededAt" IS NULL AND m."startAt" >= NOW() - INTERVAL '18 hours') tot,
-         (SELECT COUNT(*)::int FROM "LeagueClan" lc JOIN "League" l ON l."id"=lc."leagueId"
-            JOIN "Clan" c ON c."id"=lc."clanId"
-            LEFT JOIN "BarracksListRequest" q ON q."subject"=c."slug"
-           WHERE l."slug"=ANY(ARRAY['nolink','supply','sanply']) AND lc."expelledAt" IS NULL AND q."subject" IS NULL) never`)[0]
-const pct = cov.tot ? Math.round((cov.inq / cov.tot) * 100) : 100
+const cov = await coverage(prisma)
+const pct = cov.pct
 
 const leases = await prisma.$queryRaw`
   SELECT COUNT(*)::int stuck FROM "CollectorLease"
@@ -80,14 +47,14 @@ const row = {
   dList: d(x.listrows, prev?.listRows ?? 0), dLog: d(x.logrows, prev?.logRows ?? 0),
   dMatch: d(x.matchrows, prev?.matchRows ?? 0), dLineup: d(x.lineuprows, prev?.lineupRows ?? 0),
   reqRows: x.reqrows, reqTotal: x.reqtotal, failTotal: x.failtotal, never: cov.never,
-  cov: pct, inq: cov.inq, tot: cov.tot,
+  cov: pct, inq: cov.inQueue, tot: cov.total,
   listAt: iso(x.listat), matchAt: iso(x.matchat), lineupAt: iso(x.lineupat), gameAt: iso(x.gameat),
   stuckLease: leases[0].stuck,
 }
 writeFileSync(STATE, JSON.stringify(row))
 const line = [
   now.toLocaleString('ko-KR', { hour12: false }).slice(5),
-  `포함률 ${String(pct).padStart(3)}%(${cov.inq}/${cov.tot})`,
+  `포함률 ${String(pct).padStart(3)}%(${cov.inQueue}/${cov.total})`,
   `미요청 ${String(cov.never).padStart(3)}곳`,
   `+목록RAW ${String(row.dList).padStart(4)}`,
   `+로그RAW ${String(row.dLog).padStart(4)}`,
