@@ -46,6 +46,7 @@
  * ```
  * ⚠ ★D-266 의 집 IP 차단이 풀렸다고 빨리 돌리지 않는다.★ 상한은 그대로다.
  */
+import { barracksBrowser, closeBarracksBrowser, useChromeFetch } from '../nexon/browserFetch'
 import { spawn } from 'node:child_process'
 import { storeBarracksRows, type BarracksRow } from '@sacloud/db/ops'
 import { prisma } from '@sacloud/db'
@@ -189,6 +190,28 @@ interface CurlResult {
  * ⚠ ★헤더를 만들지 않는다★ — `Content-Type` 하나뿐이고 그건 본문의 모양을 알리는 것이지
  *   신원을 꾸미는 것이 아니다. UA·Referer·쿠키는 ★한 개도 넣지 않는다★.
  */
+/**
+ * ★부르는 길이 두 개다★ (2026-09-08 · 사장님 지시 「노트북 없이도 돌아야 해」)
+ *
+ *   기본        `curl`   — ★노트북(집 IP)에서는 이게 200 이고 더 빠르다★
+ *   SACLOUD_FETCH=chrome  진짜 크롬 안에서 부른다
+ *
+ *   왜 두 개냐 — 국내 VPS 에서 재 보니 (2026-09-08 · 49.247.203.71):
+ *     크롬으로 부르면 200 (진짜 데이터까지) · ★curl 로 부르면 403★
+ *   ★서버 IP 가 막힌 게 아니라 「브라우저가 아닌 요청」을 막는다.★
+ *
+ *   ⚠ ★옛 길을 지우지 않았다★ (`CLAUDE.md` 1-4). 아래 `curl()` 은 그대로다.
+ */
+async function callBarracks(
+  method: 'GET' | 'POST',
+  path: string,
+  body: string | null,
+): Promise<CurlResult> {
+  if (!useChromeFetch()) return curl(method, path, body)
+  const r = await barracksBrowser().call(method, path, body)
+  return { status: r.status, body: r.body, ms: r.ms }
+}
+
 function curl(method: 'GET' | 'POST', path: string, body: string | null): Promise<CurlResult> {
   const args = [
     '-sS',
@@ -276,7 +299,7 @@ export function fetchClanMatchList(clanSlug: string, seqNo?: string): Promise<Cu
   const body: Record<string, string> = { clan_id: clanSlug }
   /* ★첫 페이지는 `seq_no` 를 아예 안 보낸다★ — 화면도 그렇게 시작한다 */
   if (seqNo) body.seq_no = seqNo
-  return curl('POST', '/api/ClanHome/GetClanMatchList/', JSON.stringify(body))
+  return callBarracks('POST', '/api/ClanHome/GetClanMatchList/', JSON.stringify(body))
 }
 
 /**
@@ -317,7 +340,7 @@ export function nextListCursor(body: string, current?: string): string | null {
  * ⚠ ★본문 `{}` 가 반드시 있어야 한다★ — 없으면 405 다 (D-268).
  */
 export function fetchBattleLog(matchKey: string, clanNo: string): Promise<CurlResult> {
-  return curl('POST', `/api/BattleLog/GetBattleLogClan/${matchKey}/${clanNo}`, '{}')
+  return callBarracks('POST', `/api/BattleLog/GetBattleLogClan/${matchKey}/${clanNo}`, '{}')
 }
 
 /* --------------------------------------------------------------- 본체 --- */
@@ -789,6 +812,9 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
 
   /* 남은 것 */
   if (opts.confirm && rows.length > 0) await flush()
+
+  /* ★크롬을 띄웠으면 닫는다★ — 안 닫으면 판이 끝나도 프로세스가 남는다 */
+  if (useChromeFetch()) closeBarracksBrowser()
 
   log(
     `\n계획 ${result.planned} · 요청 ★${result.requested}★ · 받음 ★${result.ok}★ · 실패 ${result.failed}` +
