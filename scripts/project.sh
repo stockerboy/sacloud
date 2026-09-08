@@ -72,9 +72,16 @@ if command -v powershell >/dev/null 2>&1; then
   n=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'node.exe' -and \$_.CommandLine -match 'unified-project' -and \$_.CommandLine -notmatch 'collect-lease' -and \$_.CommandLine -notmatch 'Get-CimInstance' }).Count" 2>/dev/null | tr -d '\r' | tr -d ' ')
 else
   # `-f` 는 명령줄 전체를 본다. 임대를 부르는 프로세스는 빼고 센다
-  cnt_all=$(pgrep -fc -- 'unified-project' 2>/dev/null || echo 0)
-  cnt_lease=$(pgrep -fc -- 'collect-lease' 2>/dev/null || echo 0)
-  n=$(( cnt_all > cnt_lease ? cnt_all - cnt_lease : 0 ))
+  cnt_all=$(pgrep -fc -- 'unified-project' 2>/dev/null)
+  cnt_lease=$(pgrep -fc -- 'collect-lease' 2>/dev/null)
+  # ⚠ pgrep 은 못 찾으면 ★아무것도 안 찍는다.★ 빈 값을 계산에 넣으면 「Illegal number」 로 죽는다
+  case "$cnt_all"   in ''|*[!0-9]*) cnt_all=0 ;;   esac
+  case "$cnt_lease" in ''|*[!0-9]*) cnt_lease=0 ;; esac
+  if [ "$cnt_all" -gt "$cnt_lease" ]; then
+    n=$(( cnt_all - cnt_lease ))
+  else
+    n=0
+  fi
 fi
 case "$n" in
   ''|*[!0-9]*)
