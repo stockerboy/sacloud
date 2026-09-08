@@ -183,6 +183,27 @@ export class BarracksBrowser {
     return this.opening
   }
 
+  private xvfb: ChildProcess | null = null
+
+  /**
+   * ★가상 화면을 하나 띄워 둔다.★ 화면이 이미 있으면 (`DISPLAY`) 그걸 쓴다.
+   * 리눅스가 아니면 아무것도 안 한다.
+   */
+  private async ensureDisplay(): Promise<string | null> {
+    if (process.platform !== 'linux') return null
+    if (process.env.DISPLAY) return process.env.DISPLAY
+    if (this.xvfb && this.xvfb.exitCode === null) return ':99'
+    this.xvfb = spawn('Xvfb', [':99', '-screen', '0', '1280x900x24', '-nolisten', 'tcp'], {
+      stdio: 'ignore',
+    })
+    this.xvfb.on('error', () => {
+      this.xvfb = null
+    })
+    /* 화면이 올라올 때까지 잠깐 기다린다 */
+    await new Promise((r) => setTimeout(r, 1500))
+    return ':99'
+  }
+
   private async open(): Promise<void> {
     this.dispose()
     const chrome = findChrome()
@@ -205,15 +226,19 @@ export class BarracksBrowser {
     /*
       ★서버에는 화면이 없다.★ 크롬은 화면 없이 뜨자마자 닫힌다 —
       2026-09-08 첫 시험에서 그대로 당했다 (「크롬이 먼저 닫혔다」).
-      그래서 ★가상 화면(xvfb) 안에서 띄운다.★ 탐침이 200 을 받은 방식과 같다.
-      ⚠ `--headless` 를 쓰지 않는다 — 진짜 화면에 뜬 크롬 그대로여야 한다.
-    */
-    const headless = process.platform === 'linux' && !process.env.DISPLAY
-    const cmd = headless ? 'xvfb-run' : chrome
-    const cmdArgs = headless ? ['-a', '--server-args=-screen 0 1280x900x24', chrome, ...args] : args
 
-    const child = spawn(cmd, cmdArgs, {
+      ⚠ ★`xvfb-run` 으로 감싸면 안 된다★ (두 번째 시험에서 걸렸다).
+        그건 셸 스크립트라서 ★fd 3·4 파이프가 크롬까지 안 넘어간다.★
+        그래서 ★Xvfb 를 따로 띄워 두고 `DISPLAY` 만 넘긴다.★ 크롬은 우리가 직접 띄운다.
+
+      ⚠ `--headless` 를 쓰지 않는다 — ★진짜 화면에 뜬 크롬 그대로여야 한다.★
+        (탐침이 200 을 받은 것이 그 방식이다)
+    */
+    const display = await this.ensureDisplay()
+
+    const child = spawn(chrome, args, {
       stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'],
+      env: display ? { ...process.env, DISPLAY: display } : process.env,
     })
     this.child = child
     const cdp = new CdpPipe(child)
@@ -281,6 +306,7 @@ export class BarracksBrowser {
   dispose(): void {
     try {
       this.child?.kill()
+      this.xvfb?.kill()
     } catch {
       /* 이미 죽었으면 그만 */
     }
@@ -292,6 +318,7 @@ export class BarracksBrowser {
       }
     }
     this.child = null
+    this.xvfb = null
     this.cdp = null
     this.sessionId = null
     this.userDataDir = null
