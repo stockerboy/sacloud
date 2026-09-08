@@ -637,38 +637,42 @@ export async function pendingClans(
     ),
     graded AS (
       SELECT p.*,
+             /* ★활동 등급★ — 최근에 경기한 곳일수록 앞. ★모두에게 매긴다★ */
              CASE
-               /* 0등급 — 한 번도 안 물어봤거나 6시간 넘게 방치. ★상한이 걸린다★ */
-               WHEN p."requestedAt" IS NULL                      THEN 0
-               WHEN p."requestedAt" < NOW() - INTERVAL '6 hours' THEN 0
-               WHEN p."lastMatch"  >= NOW() - INTERVAL '1 hour'  THEN 1
-               WHEN p."lastMatch"  >= NOW() - INTERVAL '6 hours'  THEN 2
-               WHEN p."lastMatch"  >= NOW() - INTERVAL '24 hours' THEN 3
+               WHEN p."lastMatch" >= NOW() - INTERVAL '1 hour'   THEN 1
+               WHEN p."lastMatch" >= NOW() - INTERVAL '6 hours'  THEN 2
+               WHEN p."lastMatch" >= NOW() - INTERVAL '24 hours' THEN 3
                ELSE 4
-             END AS band
+             END AS band,
+             /* ★굶주림★ — 한 번도 안 물어봤거나 6시간 넘게 방치됐나 */
+             (p."requestedAt" IS NULL OR p."requestedAt" < NOW() - INTERVAL '6 hours') AS starving
         FROM pool p
     ),
     ranked AS (
       SELECT g.*,
-             ROW_NUMBER() OVER (
-               PARTITION BY g.band
-               ORDER BY g."requestedAt" ASC NULLS FIRST, g."slug"
-             ) AS rn
+             CASE WHEN g.starving
+                  THEN ROW_NUMBER() OVER (
+                         PARTITION BY g.starving
+                         ORDER BY g."requestedAt" ASC NULLS FIRST, g."slug")
+                  ELSE NULL END AS starveRn
         FROM graded g
     )
     SELECT r."slug", r."name"
       FROM ranked r
      ORDER BY
        /*
-        * ★0등급 상한★ — 상한을 넘은 0등급은 ★맨 뒤로 미룰 뿐 빼지 않는다.★
+        * ★상한은 「자리를 예약」하는 것이지 「뒤로 미는 것」이 아니다★
         *
-        * ⚠ ★2026-09-08 19:20 — 여기서 WHERE 로 「빼」 버렸다가 한 판에 30곳만 돌았다.★
-        *   배포 직후에는 ★전원이 0등급★ 이라(요청 이력이 아직 없다) 상한 밖 클랜이
-        *   통째로 사라져 ★150 자리 중 30 자리만 채워졌다.★ 실측 로그 —
-        *   「큐 분포 IPL 2 · SPL 3 · 열산 25 … 오늘 경기한 47곳 중 3곳(6%)」
-        *   ★밀어내는 것과 빼는 것은 다르다.★ 뒤로 밀면 남는 자리는 다시 채운다.
+        * ⚠ 2026-09-08 20:20 — 여기를 잘못 짰다가 ★활동 중인 클랜이 맨 뒤로 밀렸다.★
+        *   방치 등급을 0 으로 두고 상한 밖을 꼴찌로 보냈더니,
+        *   ★아직 한 번도 안 물어본 활동 클랜★ 이 「죽었지만 최근에 물어본 클랜」보다
+        *   뒤로 갔다. 실측 — 오늘 경기한 42곳 중 23곳(55%)만 큐에 들어왔다.
+        *
+        * ★고친 규칙★ — 굶주린 곳에 앞자리 30개만 ★예약★ 해 주고,
+        *   그 밖에는 굶주렸든 아니든 ★똑같이 활동 등급으로★ 겨룬다.
+        *   그래야 「활동 중인데 아직 안 물어본 곳」이 제일 먼저 온다.
         */
-       CASE WHEN r.band = 0 AND r.rn > ${STALE_BAND_CAP} THEN 1 ELSE 0 END,
+       CASE WHEN r.starving AND r.starveRn <= ${STALE_BAND_CAP} THEN 0 ELSE 1 END,
        r.band,
        r."requestedAt" ASC NULLS FIRST,
        r."slug"

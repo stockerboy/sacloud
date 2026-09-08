@@ -218,6 +218,26 @@ describe('수집 큐 — 활동 클랜을 굶기지 않는다', () => {
     expect(rows.filter((r) => r.alive).every((r) => got.has(r.id))).toBe(true)
   })
 
+  it('★활동 중인데 아직 한 번도 안 물어본 클랜★ 이 맨 앞에 온다', () => {
+    /*
+     * ⚠ 2026-09-08 20:20 실측 — SQL 에서 이걸 반대로 짰다가
+     *   「죽었지만 최근에 물어본 클랜」이 「활동 중인데 안 물어본 클랜」보다 앞에 왔다.
+     *   오늘 경기한 42곳 중 23곳(55%)만 큐에 들어왔다.
+     *   ★상한은 자리를 예약하는 것이지 나머지를 뒤로 미는 것이 아니다.★
+     */
+    const now = Date.now()
+    const rows = [
+      /* 죽었지만 방금 물어본 곳 — 굶주리지 않았다 */
+      ...many(300, (i) => clan(`dead${i}`, { lastMatch: now - H(24 * 30), requestedAt: now - H(1) })),
+      /* ★활동 중인데 한 번도 안 물어본 곳★ */
+      ...many(40, (i) => clan(`live${i}`, { lastMatch: now - H(1), requestedAt: null, alive: true })),
+    ]
+    const sel = pick(rows, now, STALE_BAND_CAP)
+    const got = new Set(sel.map((r) => r.id))
+    const missing = rows.filter((r) => r.alive && !got.has(r.id))
+    expect(missing).toEqual([])
+  })
+
   it('상한 값이 사라지거나 0 이 되면 안 된다', () => {
     expect(STALE_BAND_CAP).toBeGreaterThan(0)
     expect(STALE_BAND_CAP).toBeLessThan(LIMIT)
