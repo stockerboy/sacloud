@@ -84,6 +84,12 @@ export interface CollectOptions {
    */
   clans?: number
   /**
+   * ★최근에 경기한 클랜을 먼저 본다★ (2026-09-08 · Part C · 사장님 지시).
+   * ⚠ 기본값은 꺼져 있다 — 안 주면 ★예전과 한 글자도 다르지 않다★ (`CLAUDE.md` 1-4).
+   * ★영구 제외는 없다★ — 6시간 넘게 방치된 클랜은 무조건 맨 앞으로 올라온다.
+   */
+  clanPriority?: boolean
+  /**
    * ★클랜마다 목록을 몇 쪽까지 뒤로 넘기나★ (한 쪽 20건). 기본 ★1★.
    *
    * ⚠ ★기본값을 늘리지 마라.★ 15분마다 도는 판은 ★새 것만★ 보면 된다 —
@@ -429,6 +435,9 @@ export async function pendingPairs(
 export async function pendingClans(
   limit: number,
   leagueSlug: string | readonly string[] = 'nolink',
+
+  /** ★최근에 경기한 클랜을 먼저 본다★ (Part C). 기본값은 꺼져 있다 — 안 주면 예전 그대로다 */
+  priority?: boolean,
 ): Promise<{ slug: string; name: string }[]> {
   /*
    * ══ ★리그를 여러 개 받을 수 있다★ (2026-09-05 · Part 3 ⑤단계) ══
@@ -448,18 +457,81 @@ export async function pendingClans(
   /* ⚠ ★DISTINCT 와 ORDER BY 를 같은 줄에 못 쓴다★ (Postgres 42P10 · 2026-09-05 실측).
      정렬 기준(마지막으로 받은 시각)이 SELECT 목록에 없기 때문이다.
      ★안쪽에서 골라 놓고 바깥에서 정렬한다★ */
+  if (priority !== true) {
+    return prisma.$queryRaw<{ slug: string; name: string }[]>`
+      SELECT t."slug", t."name"
+        FROM (
+          SELECT DISTINCT c."slug", c."name",
+                 (SELECT max(m."fetchedAt") FROM "BarracksClanMatchRaw" m
+                   WHERE m."subject" = c."slug") AS "lastFetched"
+            FROM "LeagueClan" lc
+            JOIN "League" l ON l."id" = lc."leagueId"
+            JOIN "Clan" c   ON c."id" = lc."clanId"
+           WHERE l."slug" = ANY(${slugs}) AND lc."expelledAt" IS NULL
+        ) t
+       ORDER BY t."lastFetched" ASC NULLS FIRST, t."slug"
+       LIMIT ${limit}
+    `
+  }
+
+  /*
+    ── ★최근에 경기한 클랜을 먼저 본다★ (2026-09-08 · Part C · 사장님 지시)
+
+    왜 (2026-09-08 · 운영 실측):
+    ```
+    등록 클랜 461곳 · 한 바퀴에 도는 곳 409곳
+    최근 24시간에 실제로 경기한 곳   IPL 34/43 · SPL 24/62 · ★열산 27/356★
+    ★7일 이상 조용한 클랜 303곳 = 65.7%★
+    ```
+    ★한 바퀴 40분의 3분의 2를 「경기가 없는 클랜」에 쓰고 있었다.★
+    열산 356곳이 IPL·SPL 을 뒤로 밀었다.
+
+    ⚠ ★클랜을 영구 제외하지 않는다★ (사장님). 두 가지로 지킨다:
+      · `lastFetched` 가 ★6시간을 넘으면 무조건 맨 앞(0등급)★ 으로 올린다
+      · 같은 등급 안에서는 ★오래 안 받은 곳부터★ — 옛 방식과 같은 공정성이다
+    즉 ★조용한 클랜도 최대 6시간 안에는 반드시 다시 본다.★
+
+    ⚠ ★요청 간격(1500ms)은 건드리지 않는다.★ 순서만 바꾼다.
+  */
   return prisma.$queryRaw<{ slug: string; name: string }[]>`
+    WITH act AS (
+      /* ★한 번만 훑는다★ — 클랜마다 따로 세면 질의가 시간 초과로 죽는다 (2026-09-08 실측) */
+      SELECT z."lcid", MAX(z."startAt") AS "lastMatch"
+        FROM (
+          SELECT m."redLeagueClanId"  AS "lcid", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
+          UNION ALL
+          SELECT m."blueLeagueClanId" AS "lcid", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
+        ) z
+       GROUP BY z."lcid"
+    ),
+    got AS (
+      SELECT r."subject" AS "slug", MAX(r."fetchedAt") AS "lastFetched"
+        FROM "BarracksClanMatchRaw" r
+       GROUP BY r."subject"
+    )
     SELECT t."slug", t."name"
       FROM (
-        SELECT DISTINCT c."slug", c."name",
-               (SELECT max(m."fetchedAt") FROM "BarracksClanMatchRaw" m
-                 WHERE m."subject" = c."slug") AS "lastFetched"
+        SELECT DISTINCT c."slug", c."name", g."lastFetched", a."lastMatch"
           FROM "LeagueClan" lc
           JOIN "League" l ON l."id" = lc."leagueId"
           JOIN "Clan" c   ON c."id" = lc."clanId"
+          LEFT JOIN got  g ON g."slug" = c."slug"
+          LEFT JOIN act  a ON a."lcid" = lc."id"
          WHERE l."slug" = ANY(${slugs}) AND lc."expelledAt" IS NULL
       ) t
-     ORDER BY t."lastFetched" ASC NULLS FIRST, t."slug"
+     ORDER BY
+       CASE
+         /* ★굶기지 않는다★ — 한 번도 못 받았거나 6시간 넘게 방치됐으면 무조건 먼저 */
+         WHEN t."lastFetched" IS NULL                      THEN 0
+         WHEN t."lastFetched" < NOW() - INTERVAL '6 hours' THEN 0
+         /* 티어 1~4 — 최근에 경기한 곳일수록 먼저 */
+         WHEN t."lastMatch" >= NOW() - INTERVAL '1 hour'   THEN 1
+         WHEN t."lastMatch" >= NOW() - INTERVAL '6 hours'  THEN 2
+         WHEN t."lastMatch" >= NOW() - INTERVAL '24 hours' THEN 3
+         ELSE 4
+       END,
+       t."lastFetched" ASC NULLS FIRST,
+       t."slug"
      LIMIT ${limit}
   `
 }
@@ -481,7 +553,7 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
   /* ── ★①단계 · 목록★ — 무엇을 받아야 하는지의 재료를 먼저 만든다 */
   const clanBudget = opts.clans ?? 0
   if (clanBudget > 0) {
-    const clans = await pendingClans(clanBudget, opts.leagueSlug ?? 'nolink')
+    const clans = await pendingClans(clanBudget, opts.leagueSlug ?? 'nolink', opts.clanPriority)
     result.matchList.clans = clans.length
     log(`\n① 목록 — ★${opts.leagueSlug ?? 'nolink'}★ 클랜 ★${clans.length}곳★`)
     if (opts.dryRun) {

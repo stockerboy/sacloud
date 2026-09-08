@@ -313,7 +313,11 @@ function usage(): void {
               status 는 ★DB 장부와 이 컴퓨터의 실제 프로세스 수를 나란히★ 찍는다 —
               「임대는 살아있는데 프로세스 0개」면 죽은 판이 쥔 것이다 (20분 뒤 자동 해제)
               못 잡으면 ★코드 9★ (1=오류 · 2=차단 · 3=무거움 과 구별한다)
-  barracks-collect --league <slug> [--limit N] [--clans N] [--from YYMMDD] [--confirm]
+  barracks-collect --league <slug> [--limit N] [--clans N] [--clan-priority] [--from YYMMDD] [--confirm]
+              --clan-priority 는 ★최근에 경기한 클랜을 먼저 본다★ (Part C · 2026-09-08).
+              실측: 등록 461곳 중 ★7일 이상 조용한 곳이 303곳(65.7%)★ 이었다.
+              ★영구 제외는 없다★ — 6시간 넘게 방치되면 무조건 맨 앞으로 온다.
+              ★요청 간격(1500ms)은 안 건드린다.★ 순서만 바꾼다
               병영수첩을 curl 로 긁는다 (O-051 · D-268). ★첫 403·429 에서 즉시 멈춘다★
               ★임대 없이는 시작하지 않는다★ — 셸은 --lease-owner <id>,
               사람이 한 번 돌릴 때는 ★--no-lease 를 의도해서★ 붙인다 (코드 9 로 거부)
@@ -1085,6 +1089,8 @@ async function main(): Promise<number> {
       const result = await collectBarracks({
         limit,
         clans,
+        /* ★최근에 경기한 클랜을 먼저★ (Part C · 2026-09-08). 안 주면 예전 그대로 */
+        clanPriority: boolFlag(args, 'clan-priority'),
         listPages,
         listUntil,
         from,

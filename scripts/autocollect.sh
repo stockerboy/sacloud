@@ -36,6 +36,30 @@ LOG="${AUTOCOLLECT_LOG:-C:/Users/LG/AppData/Local/Temp/claude/autocollect.log}"
 PERIOD="${AUTOCOLLECT_PERIOD:-900}"   # 15분
 BATCH="${AUTOCOLLECT_BATCH:-600}"
 
+# ── ★최근에 경기한 클랜을 먼저 본다★ (2026-09-08 · Part C · 사장님 지시)
+#
+#   왜 (운영 실측 · 2026-09-08):
+#   ```
+#   한 바퀴에 도는 클랜        409곳 × 1.5s = 10.2분
+#   그 중 24시간 안에 경기한 곳   ★85곳★
+#   ★7일 이상 조용한 곳 303곳 = 65.7%★
+#   ```
+#   ★한 바퀴 40분의 4분의 1을 「경기가 없는 클랜」에 쓰고 있었다.★
+#   열산 356곳이 IPL(43)·SPL(62) 을 뒤로 밀었다.
+#
+#   ★영구 제외가 아니다.★ 순서만 바꾸고, ★6시간 넘게 방치된 클랜은 무조건 맨 앞★ 으로 온다.
+#   그래서 조용한 클랜도 ★최대 6시간 안에는 반드시 다시 본다.★
+#   ⚠ ★요청 간격(1500ms)은 안 건드린다.★ ★403 이 나오면 그 자리에서 멈추는 규칙도 그대로다.★
+#
+#   ⚠ 되돌리려면 아래 두 줄 —
+#     `AUTOCOLLECT_CLANS=999` (예전처럼 전부) · `AUTOCOLLECT_CLAN_PRIORITY=0` (예전 순서)
+CLANS="${AUTOCOLLECT_CLANS:-150}"
+if [ "${AUTOCOLLECT_CLAN_PRIORITY:-1}" = "1" ]; then
+  CLAN_PRIORITY="--clan-priority"
+else
+  CLAN_PRIORITY=""
+fi
+
 DB=$(grep -m1 '^DATABASE_URL' packages/db/.env.production.local | cut -d= -f2- | tr -d '"')
 export DATABASE_URL="$DB"
 export SACLOUD_DB_SESSION_POOLER=1
@@ -82,7 +106,7 @@ while :; do
   #   ⚠ ★열산이 311곳 중 8곳만 수집되고 있었다★ — 그래서 열산 신규가 0건이었다
   #   옛값:  --league nolink --clans 43   ← ★지우지 않는다★ (CLAUDE.md 1-4)
   pnpm --filter @sacloud/worker nexon barracks-collect \
-    --all-leagues --clans 999 --limit "$BATCH" --confirm \
+    --all-leagues --clans "$CLANS" $CLAN_PRIORITY --limit "$BATCH" --confirm \
     --lease-owner "$COLLECT_LEASE_OWNER" \
     --health https://3rdcloud.my/api/health >> "$LOG" 2>&1
   code=$?
