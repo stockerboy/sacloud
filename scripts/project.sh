@@ -64,7 +64,18 @@ began=$(date +%s)
 #
 #   `collect-lease` 를 부르는 프로세스는 명령줄에 `unified-project` 가 들어가므로
 #   ★반드시 빼고 센다.★ 안 그러면 자기 자신을 세서 영영 못 돈다 (2026-09-04 의 함정 ①)
-n=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'node.exe' -and \$_.CommandLine -match 'unified-project' -and \$_.CommandLine -notmatch 'collect-lease' -and \$_.CommandLine -notmatch 'Get-CimInstance' }).Count" 2>/dev/null | tr -d '\r' | tr -d ' ')
+# ── ★윈도와 리눅스 둘 다 센다★ (2026-09-08)
+#   윈도(노트북)는 PowerShell 로, 리눅스(서버)는 `pgrep` 으로 센다.
+#   ⚠ 서버 첫 시험에서 걸렸다 — 리눅스에는 PowerShell 이 없으니 「못 셌다」가 되어
+#     ★안전하게 시작을 안 했다.★ 멈춘 것은 옳았고, ★셀 줄을 몰랐던 것★ 이 문제였다.
+if command -v powershell >/dev/null 2>&1; then
+  n=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { \$_.Name -eq 'node.exe' -and \$_.CommandLine -match 'unified-project' -and \$_.CommandLine -notmatch 'collect-lease' -and \$_.CommandLine -notmatch 'Get-CimInstance' }).Count" 2>/dev/null | tr -d '\r' | tr -d ' ')
+else
+  # `-f` 는 명령줄 전체를 본다. 임대를 부르는 프로세스는 빼고 센다
+  cnt_all=$(pgrep -fc -- 'unified-project' 2>/dev/null || echo 0)
+  cnt_lease=$(pgrep -fc -- 'collect-lease' 2>/dev/null || echo 0)
+  n=$(( cnt_all > cnt_lease ? cnt_all - cnt_lease : 0 ))
+fi
 case "$n" in
   ''|*[!0-9]*)
     # ★모르면 시작하지 않는다★

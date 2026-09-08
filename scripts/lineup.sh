@@ -73,7 +73,18 @@ began=$(date +%s)
 # ── ① ★도는 놈을 직접 센다★ ──────────────────────────────────────
 #   `node.exe` / `cmd.exe` 만 본다 — 셸은 명령줄에 스크립트가 통째로 들어가서
 #   글자만 보면 자기 자신이 걸린다. 세러 띄운 PowerShell 도 빼고 센다.
-n=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { (\$_.Name -eq 'node.exe' -or \$_.Name -eq 'cmd.exe') -and \$_.CommandLine -match 'battlelog-lineup' -and \$_.CommandLine -notmatch 'collect-lease' -and \$_.CommandLine -notmatch 'Get-CimInstance' }).Count" 2>/dev/null | tr -d '\r' | tr -d ' ')
+# ── ★윈도와 리눅스 둘 다 센다★ (2026-09-08)
+#   윈도(노트북)는 PowerShell 로, 리눅스(서버)는 `pgrep` 으로 센다.
+#   ⚠ 서버 첫 시험에서 걸렸다 — 리눅스에는 PowerShell 이 없으니 「못 셌다」가 되어
+#     ★안전하게 시작을 안 했다.★ 멈춘 것은 옳았고, ★셀 줄을 몰랐던 것★ 이 문제였다.
+if command -v powershell >/dev/null 2>&1; then
+  n=$(powershell -NoProfile -Command "@(Get-CimInstance Win32_Process | Where-Object { (\$_.Name -eq 'node.exe' -or \$_.Name -eq 'cmd.exe') -and \$_.CommandLine -match 'battlelog-lineup' -and \$_.CommandLine -notmatch 'collect-lease' -and \$_.CommandLine -notmatch 'Get-CimInstance' }).Count" 2>/dev/null | tr -d '\r' | tr -d ' ')
+else
+  # `-f` 는 명령줄 전체를 본다. 임대를 부르는 프로세스는 빼고 센다
+  cnt_all=$(pgrep -fc -- 'battlelog-lineup' 2>/dev/null || echo 0)
+  cnt_lease=$(pgrep -fc -- 'collect-lease' 2>/dev/null || echo 0)
+  n=$(( cnt_all > cnt_lease ? cnt_all - cnt_lease : 0 ))
+fi
 case "$n" in
   ''|*[!0-9]*)
     # ★모르면 시작하지 않는다.★ 확인 못 한 채 시작하는 것이 지금까지 사고의 원인이었다
