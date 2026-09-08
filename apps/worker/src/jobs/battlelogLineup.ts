@@ -218,6 +218,32 @@ export async function runBattlelogLineup(
      *   ★Part 4 의 「과거 영향 0」을 증명할 때 이 문을 연다.★
      */
     fromCutoff?: boolean
+    /**
+     * ★손볼 필요가 있는 경기만 훑는다★ (2026-09-08 · O-065 · 사장님 지시).
+     *
+     * ⚠ ★기본값은 꺼져 있다.★ 켜지 않으면 예전과 한 글자도 다르지 않다 (`CLAUDE.md` 1-4).
+     *   `--from-cutoff` 와 ★같이★ 써야 한다 — 창을 정하는 것은 그쪽이다.
+     *
+     * 왜 필요했나 (2026-09-08 · 운영 실측):
+     * ```
+     * 매 판 훑는 배틀로그 열쇠            37,789
+     * --from-cutoff 로 실제 손대는 경기    2,191
+     * 그 중 ★이미 끝난(complete) 경기★    2,127   ← 참가기록 20,070줄을 같은 값으로 다시 썼다
+     * ```
+     * ★한 판 17~25분의 대부분이 「이미 끝난 일」을 다시 하는 시간이었다.★
+     *
+     * ★무엇을 남기나★ — 셋 다 「아직 결론이 안 난 것」이다:
+     *   ① `lineupStatus` 가 아직 없다 (한 번도 안 봤다)
+     *   ② incomplete 인데 사유가 `roster_incomplete` 가 ★아니다★
+     *      (`clan_unmapped` — ★우리가 클랜을 등록하면 살아난다★. 영구 실패가 아니다)
+     *   ③ `roster_incomplete` 라도 ★마지막으로 본 뒤에 새 배틀로그가 왔다★
+     *      (반대편 클랜의 원문이 늦게 오면 10명이 채워진다)
+     *
+     * ⚠ ★영구 제외는 없다.★ 새 근거(배틀로그·클랜 등록)가 생기면 ★저절로 다시 대상★ 이 된다.
+     * ⚠ ★이미 complete 인 경기는 다시 손대지 않는다★ — 사장님 지시. 그래서
+     *   ★기존 `MatchPlayerStat` 을 지우거나 덮어쓰지 않는다.★
+     */
+    onlyPending?: boolean
     limit?: number
   } = {},
 ): Promise<BattlelogLineupResult> {
@@ -278,13 +304,47 @@ export async function runBattlelogLineup(
     }
   }
 
-  /* 배틀로그가 있는 고유 경기. **payload 는 여기서 안 읽는다** */
-  const keyRows = await prisma.$queryRaw<Array<{ matchKey: string }>>`
-    SELECT DISTINCT "matchKey"
-    FROM "BarracksBattleLogRaw"
-    WHERE "subjectKind" = 'clan' AND "status" = 'ok'
-    ORDER BY "matchKey" ASC
-  `
+  /*
+    배틀로그가 있는 고유 경기. **payload 는 여기서 안 읽는다**
+
+    ── ★두 갈래다★ (2026-09-08 · O-065)
+      `onlyPending` 이 꺼져 있으면 ★옛 질의 그대로★ 다 — 한 글자도 안 바뀐다.
+      켜져 있으면 ★손볼 필요가 있는 경기만★ 고른다 (실측 2,191 → 64건).
+  */
+  const keyRows =
+    options.onlyPending === true
+      ? await prisma.$queryRaw<Array<{ matchKey: string }>>`
+          SELECT DISTINCT b."matchKey"
+          FROM "BarracksBattleLogRaw" b
+          JOIN "Match" m
+            ON  m."sourceMatchId" = b."matchKey"
+            AND m."origin"        = ${MATCH_ORIGIN}
+            AND m."supersededAt"  IS NULL
+            AND m."leagueId"      = ANY(${leagueIds})
+            AND m."startAt"      >= ${MIRROR_FREEZE_FROM}
+          WHERE b."subjectKind" = 'clan' AND b."status" = 'ok'
+            AND (
+                  /* ① 한 번도 안 봤다 */
+                  m."lineupStatus" IS NULL
+                  /* ②③ 결론이 아직 안 난 incomplete */
+               OR ( m."lineupStatus" = 'incomplete'
+                    AND (
+                          /* ② 우리가 고칠 수 있는 사유 — 클랜을 등록하면 살아난다 */
+                          m."lineupSkipReason" IS DISTINCT FROM 'roster_incomplete'
+                          /* ③ 마지막으로 본 뒤에 새 배틀로그가 왔다 */
+                       OR m."lineupCheckedAt" IS NULL
+                       OR b."fetchedAt" > m."lineupCheckedAt"
+                    )
+                  )
+            )
+          ORDER BY 1 ASC
+        `
+      : await prisma.$queryRaw<Array<{ matchKey: string }>>`
+          SELECT DISTINCT "matchKey"
+          FROM "BarracksBattleLogRaw"
+          WHERE "subjectKind" = 'clan' AND "status" = 'ok'
+          ORDER BY "matchKey" ASC
+        `
   const allKeys = keyRows.map((row) => row.matchKey)
   const keys =
     options.limit !== undefined && options.limit > 0 ? allKeys.slice(0, options.limit) : allKeys

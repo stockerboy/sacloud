@@ -112,6 +112,28 @@ else
   WINDOW="--from-cutoff"
 fi
 
+# ── ★손볼 필요가 있는 경기만★ (2026-09-08 · O-065 · 사장님 지시)
+#   실측 (운영 · 쓰기 없이 잰 값):
+#   ```
+#                        훑는 열쇠   손대는 경기    한 판
+#     옛 방식 (창만)      37,789      2,191       ★271초★
+#     새 방식 (+좁힘)         64         64        ★28초★
+#   ```
+#   ★매 판 헛되이 다시 쓰던 참가기록 20,070줄 → 0.★
+#
+#   ★잃는 것이 없다는 증명★ — 안 보게 되는 2,127건의 정체:
+#     complete 2,007건        전부 ★참가기록이 이미 있다.★ 다시 볼 이유가 없다
+#     roster_incomplete 120건 ★마지막으로 본 뒤 새 배틀로그가 안 왔다.★ 봐도 결과가 같다
+#   새 원문이 오거나 클랜이 등록되면 ★저절로 다시 대상★ 이 된다. ★영구 제외는 없다.★
+#
+#   ⚠ 되돌리려면 `LINEUP_ALL=1` — 창 안 전부를 다시 훑는다 (`CLAUDE.md` 1-4)
+LINEUP_ALL="${LINEUP_ALL:-0}"
+if [ "$LINEUP_ALL" = "1" ] || [ "$LINEUP_FULL" = "1" ]; then
+  PENDING=""
+else
+  PENDING="--only-pending"
+fi
+
 # ★끊기면 짧게 세 번까지만 다시 해 본다★
 #   `project.sh` 와 같은 이유다 — 2026-09-07 23:44 에 이 잡이 바로 이 오류로 죽었다:
 #     code 10054 ConnectionReset   「원격 호스트에 의해 강제로 끊겼습니다」
@@ -125,7 +147,7 @@ try=1
 while : ; do
   # shellcheck disable=SC2086
   pnpm --filter @sacloud/worker nexon battlelog-lineup \
-       --all-leagues $WINDOW --confirm >> "$LOG" 2>&1
+       --all-leagues $WINDOW $PENDING --confirm >> "$LOG" 2>&1
   code=$?
   [ "$code" = "0" ] && break
   if [ "$try" -ge "$TRIES" ]; then

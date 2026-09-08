@@ -328,11 +328,15 @@ function usage(): void {
               2024-04-01 ~ 2026-09-03 07:00 KST 로 ★기간 고정★ 해 집계한다
               ★최종 순위는 저장하지 않는다★ (그 기간의 원본 rating/rank 가 없다)
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
-  battlelog-lineup [--all-leagues | --league <slug>] [--limit N] [--confirm]
+  battlelog-lineup [--all-leagues | --league <slug>] [--limit N] [--from-cutoff] [--only-pending] [--confirm]
               클랜 배틀로그 원문 → **MatchPlayerStat**(참가 기록). 라인업의 유일한 출처다
               ★--all-leagues 면 IPL·SPL·열산을 한 번에 돈다★ (Part 4). 클랜번호 표는
               ★리그마다 따로★ 든다 — 합치면 IPL 팀번호가 열산 클랜으로 풀린다
               --from-cutoff 를 주면 ★기준시각 이후 경기만★ 손댄다 (과거 영향 0 을 증명할 때)
+              --only-pending 은 ★손볼 필요가 있는 경기만★ 훑는다 (O-065 · 2026-09-08).
+              ★--from-cutoff 와 같이 써야 한다.★ 이미 complete 인 경기는 다시 안 본다 —
+              실측 2,191 → ★64건★ · 헛되이 다시 쓰던 참가기록 20,070줄 → ★0★.
+              ★영구 제외는 없다★ — 새 배틀로그가 오거나 클랜이 등록되면 저절로 다시 대상이 된다
               **10명이 다 확인된 경기만** 넣는다. assist·damage·headshot·dropout·mvp 는 전부 null
               먼저 ipl-clan-number 를 돌려 클랜번호 표를 채워야 한다
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
@@ -739,6 +743,7 @@ async function main(): Promise<number> {
         leagueSlug: stringFlag(args, 'league') ?? undefined,
         leagueSlugs: boolFlag(args, 'all-leagues') ? ALL_LEAGUE_SLUGS : undefined,
         fromCutoff: boolFlag(args, 'from-cutoff'),
+        onlyPending: boolFlag(args, 'only-pending'),
         limit: numberFlag(args, 'limit') ?? undefined,
       })
       table([
