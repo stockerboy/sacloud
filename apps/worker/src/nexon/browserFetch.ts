@@ -118,6 +118,11 @@ class CdpPipe {
       for (const { reject } of this.pending.values()) reject(new Error('크롬이 먼저 닫혔다'))
       this.pending.clear()
     }
+    /* ★끊김을 받아 넘긴다★ — 2026-09-08 서버 첫 시험에서 `read ECONNRESET` 하나로
+       프로세스가 통째로 죽었다. 크롬이 죽는 것은 다음 요청 때 다시 띄우면 되는 일이지
+       판을 끝낼 일이 아니다 */
+    this.rx.on('error', onGone)
+    this.tx.on('error', onGone)
     this.rx.on('close', onGone)
     child.on('exit', onGone)
   }
@@ -197,7 +202,17 @@ export class BarracksBrowser {
     /* 서버는 root 로 돈다. root 크롬은 샌드박스를 못 쓴다 — VPS 사정이지 회피가 아니다 */
     if (process.env.SACLOUD_CHROME_NO_SANDBOX === '1') args.unshift('--no-sandbox')
 
-    const child = spawn(chrome, args, {
+    /*
+      ★서버에는 화면이 없다.★ 크롬은 화면 없이 뜨자마자 닫힌다 —
+      2026-09-08 첫 시험에서 그대로 당했다 (「크롬이 먼저 닫혔다」).
+      그래서 ★가상 화면(xvfb) 안에서 띄운다.★ 탐침이 200 을 받은 방식과 같다.
+      ⚠ `--headless` 를 쓰지 않는다 — 진짜 화면에 뜬 크롬 그대로여야 한다.
+    */
+    const headless = process.platform === 'linux' && !process.env.DISPLAY
+    const cmd = headless ? 'xvfb-run' : chrome
+    const cmdArgs = headless ? ['-a', '--server-args=-screen 0 1280x900x24', chrome, ...args] : args
+
+    const child = spawn(cmd, cmdArgs, {
       stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'],
     })
     this.child = child
