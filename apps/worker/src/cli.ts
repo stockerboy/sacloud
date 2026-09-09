@@ -615,6 +615,8 @@ async function main(): Promise<number> {
           선수: result.players,
           쓴클랜: result.clanWrites,
           쓴선수: result.playerWrites,
+          티어별: result.tierStatWrites,
+          불변식어긋남: result.invariantBroken,
           반영: result.confirmed ? '했다' : '안했다',
         },
       ])

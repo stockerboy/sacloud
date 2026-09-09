@@ -42,14 +42,38 @@ export async function getPlayer(playerId: string): Promise<Player | null> {
       note: true,
       renewedAt: true,
       clan: { select: CLAN_SUMMARY_SELECT },
+      /*
+       * ★소속을 리그 명부에서도 본다★ (2026-09-10 · 사장님 지적).
+       *
+       * > «개인기본정보 들어가면 다 무소속이라고 떠 클랜이있는데도»
+       *
+       * `Player.clanId` 는 ★`3rd.supply` 에서 온 선수만★ 채워지는 칸이다 (D-161).
+       * 지금 들어오는 선수는 전부 병영수첩 출신이라 ★그 칸이 언제나 비어 있다.★
+       * 실측: IPL 선수 3,812명 중 이 칸이 있는 사람은 극소수고,
+       * ★소속을 실제로 관리하는 칸은 `LeaguePlayer.clanId`★ 다
+       * (`clan-affiliation` 잡이 병영수첩 명부로 맞춘다 — IPL 87%).
+       *
+       * 그래서 ★명부 쪽도 같이 읽고, 있으면 그것을 쓴다.★
+       * ⚠ `Player.clanId` 를 지우지 않는다 — 3rd.supply 출신은 그 값이 맞다.
+       * ⚠ 리그가 여럿이면 ★가장 최근에 손댄 줄★ 하나만 본다. 둘을 합치지 않는다.
+       */
+      leaguePlayers: {
+        where: { clanId: { not: null } },
+        orderBy: { updatedAt: 'desc' },
+        take: 1,
+        select: { clan: { select: CLAN_SUMMARY_SELECT } },
+      },
     },
   })
   if (!player) return null
 
+  /* ★계정 칸이 있으면 그것이 먼저다★ — 3rd.supply 출신의 값이 거기 있다 */
+  const clan = player.clan ?? player.leaguePlayers[0]?.clan ?? null
+
   return {
     id: player.id,
     name: player.name,
-    clan: toClanSummaryOrNull(player.clan),
+    clan: toClanSummaryOrNull(clan),
     position: player.position,
     note: player.note,
     renewed_at: toKstIsoOrNull(player.renewedAt),

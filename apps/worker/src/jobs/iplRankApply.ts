@@ -68,6 +68,8 @@ export interface IplRankApplyResult {
   playerWrites: number
   /** 티어별 성적 줄 (보여 주기 전용) */
   tierStatWrites: number
+  /** ★통합 = 기본 + 스나 + 라플★ 이 어긋난 선수 수. 0 이어야 한다 */
+  invariantBroken: number
   confirmed: boolean
   backupFile: string | null
   topClans: Array<{ tier: string; name: string; score: number; games: number; rate: number | null }>
@@ -278,6 +280,7 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     clanWrites: 0,
     playerWrites: 0,
     tierStatWrites: 0,
+    invariantBroken: 0,
     confirmed: input.confirm,
     backupFile: null,
     topClans: clanPlan
@@ -347,22 +350,61 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
       })
       result.clanWrites += 1
     }
-    /* 같은 점수끼리 묶어서 한 번에 쓴다 — 3,800명을 한 줄씩 쓰면 왕복이 3,800번이다 */
-    const byRating = new Map<number, string[]>()
+    /*
+     * ★불변식을 지킨다 — 통합 = 기본 + 스나 + 라플★ (`CLAUDE.md` 6장 2번).
+     *
+     * ⚠ ★2026-09-10 실측 — 이걸 안 지켜서 화면 두 곳의 숫자가 갈라졌다.★
+     *   랭킹표는 `rating`(3,127)을 그대로 쓰는데, 선수 기본정보 화면은
+     *   ★기본 + 무기증감★ 으로 다시 더해서 3,831 을 보여 줬다. 같은 사람 같은 시각인데
+     *   ★두 숫자가 704점 달랐다.★ (사장님이 화면으로 찾아 주셨다)
+     *
+     * 새 공식은 무기를 나누지 않는다. 그렇다고 무기별 증감을 지우면
+     * ★무기 랭킹이 통째로 사라진다★ — 그건 다른 기능이다.
+     * 그래서 ★기본값이 나머지를 받는다★ — `기본 = 통합 − 무기증감합`.
+     * 무기별 증감은 한 줄도 안 건드리고, 두 화면의 숫자가 같아진다.
+     */
+    const deltaRows = await prisma.$queryRaw<Array<{ playerId: string; d: number }>>`
+      SELECT lp."playerId" AS "playerId",
+             COALESCE(SUM(ws."ratingDelta"), 0)::int AS d
+        FROM "LeaguePlayer" lp
+        LEFT JOIN "LeaguePlayerWeaponStat" ws ON ws."leaguePlayerId" = lp."id"
+       WHERE lp."leagueId" = ${league.id}
+       GROUP BY lp."playerId"`
+    const deltaOf = new Map(deltaRows.map((r) => [r.playerId, r.d]))
+
+    /* 같은 (점수 · 기본값) 짝끼리 묶어서 한 번에 쓴다 — 한 줄씩 쓰면 왕복이 수천 번이다 */
+    const byPair = new Map<string, string[]>()
     for (const p of playerPlan) {
-      const got = byRating.get(p.rating)
+      const base = p.rating - (deltaOf.get(p.playerId) ?? 0)
+      const key = `${p.rating}|${base}`
+      const got = byPair.get(key)
       if (got) got.push(p.playerId)
-      else byRating.set(p.rating, [p.playerId])
+      else byPair.set(key, [p.playerId])
     }
-    for (const [rating, ids] of byRating) {
+    for (const [key, ids] of byPair) {
+      const [ratingText, baseText] = key.split('|')
+      const rating = Number(ratingText)
+      const baseRating = Number(baseText)
       for (let i = 0; i < ids.length; i += 500) {
         const r = await prisma.leaguePlayer.updateMany({
           where: { leagueId: league.id, playerId: { in: ids.slice(i, i + 500) } },
-          data: { rating },
+          data: { rating, baseRating },
         })
         result.playerWrites += r.count
       }
     }
+
+    /* ★쓰고 나서 확인한다★ — 「했다」가 아니라 숫자를 낸다 (`CLAUDE.md` 2장 1번) */
+    const broken = await prisma.$queryRaw<Array<{ n: bigint }>>`
+      SELECT COUNT(*) AS n FROM (
+        SELECT lp."rating", lp."baseRating",
+               COALESCE(SUM(ws."ratingDelta"), 0) AS d
+          FROM "LeaguePlayer" lp
+          LEFT JOIN "LeaguePlayerWeaponStat" ws ON ws."leaguePlayerId" = lp."id"
+         WHERE lp."leagueId" = ${league.id}
+         GROUP BY lp."id", lp."rating", lp."baseRating") t
+       WHERE t."rating" <> t."baseRating" + t.d`
+    result.invariantBroken = Number(broken[0]?.n ?? 0)
 
     /*
      * ── ★티어별 성적★ (2026-09-10 · 사장님 «미리준비해두면 좋다»)
@@ -414,7 +456,8 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
   log(
     `경기 ${result.matches.toLocaleString()}건 · 클랜 ${result.clans} · 선수 ${result.players.toLocaleString()} · ` +
       `쓴 클랜 ${result.clanWrites} · 쓴 선수 ${result.playerWrites.toLocaleString()} · ` +
-      `티어별 ${result.tierStatWrites.toLocaleString()}줄` +
+      `티어별 ${result.tierStatWrites.toLocaleString()}줄 · ` +
+      `불변식 어긋남 ${result.invariantBroken}${result.invariantBroken === 0 ? ' ✓' : ' ★✗★'}` +
       `${result.confirmed ? '' : ' (미리보기)'} · 뺀 클랜 ${REMOVED.join(',') || '없음'}`,
   )
   return result
