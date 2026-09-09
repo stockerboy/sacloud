@@ -122,6 +122,8 @@ export const MATCH_SELECT = {
       matchTimeClanSlug: true,
       matchTimeClanMarkBgUrl: true,
       matchTimeClanMarkFrontUrl: true,
+      /* ★이 값이 「뛴 팀」인지 「본인 태그」인지를 가른다★ (2026-09-10) */
+      matchTimeClanSource: true,
       /* ★그 선수 본인의 소속 도장★ (2026-09-09 · 사장님 «나(㈩)로 하고»).
          위의 `matchTime*` 은 `barracks-battlelog` 에서 ★그 경기에서 뛴 팀★ 이라
          한 진영 5명이 전부 같은 값이다 — 용병이 남의 마크를 달고 나왔다.
@@ -307,6 +309,28 @@ function matchTimeClanOf(stat: StatRow, clans: LeagueClanContext): MatchTimeClan
     }
   }
   if (!stat.matchTimeClanName) return null
+
+  /*
+   * ★도장이 없는데 출처가 「뛴 팀」이면 그 팀을 이 사람 소속인 척하지 않는다★
+   * (2026-09-10 · 사장님 지적).
+   *
+   * > «얘네는 전부 같은 클랜 소속으로 나오는데 막상 눌러서 개인정보 들어가보면
+   * >  구름표시로돼있어 가입된 클랜이 없다고 뜨는데 이건 왜이런 현상이 나는지 조사해»
+   *
+   * `barracks-battlelog` 은 ★선수 개인의 소속을 아예 안 준다.★ 팀까지만 안다.
+   * 그래서 그 값을 그대로 쓰면 ★경기 명단에는 팀 마크, 개인정보에는 무소속★ 이 되어
+   * 같은 사람이 두 화면에서 다르게 보였다.
+   *
+   * ★모르면 모른다고 한다.★ 이름을 비우면 화면이 ★공통 구름 마크★ 를 그린다 —
+   * 사장님 상시 지시(«이름 앞에 반드시 마크»)는 구름으로 지켜진다.
+   *
+   * ⚠ 다른 출처(`supply-mirror` · `nexon-detail` · `supply-lineup`)는 ★그 선수 본인의
+   *   클랜 태그★ 라 그대로 쓴다. 지운 것이 아니라 ★출처를 가려 쓰는 것★ 이다.
+   * ⚠ 되돌리려면 아래 상수를 `false` 로 둔다 (`CLAUDE.md` 1-4).
+   */
+  const HIDE_TEAM_AS_AFFILIATION: boolean = true
+  if (HIDE_TEAM_AS_AFFILIATION && stat.matchTimeClanSource === 'barracks-battlelog') return null
+
   /* **경기 당시** 공식 1/2부 등록 클랜이었는가 (D-146).
      우리 리그 클랜으로 연결됐고, 그 클랜이 공식 레지스트리에서 온 것이어야 한다.
      외부 클랜은 이름만 남기고 마크는 내보내지 않는다 — 화면이 fallback 마크를 그린다. */
