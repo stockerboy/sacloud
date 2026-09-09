@@ -1,48 +1,71 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { LeagueClan } from '@sacloud/contract'
-import { leagueScreen } from '@sacloud/contract'
+import { leagueScreen, showsTier } from '@sacloud/contract'
 import type { ClanRankTableRow } from '@sacloud/ui'
 import { ClanRankTable, ClanSearchBox, EmptyState, RankBox, RankHeader } from '@sacloud/ui'
+import { apiGet } from '@/lib/api'
+import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
+import { rankClans } from '@/lib/clanRanking'
+import { ClanDirectoryV1 } from './ClanDirectoryV1'
 
 /**
- * 「고용가능 클랜」 — `/league/{slug}/rank/clan` (2026-09-02 사용자 지시 · D-260).
+ * ★클랜랭킹★ — `/league/{slug}/rank/clan` (2026-09-10 사장님 지시).
  *
- * > "SPL 리그 누르면 두가지 메뉴 첫번째가 클랜 -1부2부 분류 체계 아예 없애기 1,2부라는 개념x"
- * > "클랜순위는 없애고 고용가능 클랜 이라는 항목으로 소속된 클랜 전부 보여주기
- * >  검색기능 만들기(얘만 , 클랜수가 많기 때문에 검색기능 만들어주기)"
+ * > «여유되면 클랜랭킹까지 매기고 ★지금 클랜랭킹페이지에 클랜들이 그냥 나열만 돼있음★»
  *
  * ── 무엇이 바뀌었나
  *   ```
- *   전     클랜랭킹 — SPL(왼쪽)·IPL(오른쪽) 두 칸 · 순위 1,2,3… · 부리그/티어 구분선
- *   지금   고용가능 클랜 — **그 리그 하나** · 순위 없음 · 이름순 · 검색창
+ *   전(D-260)  「고용가능 클랜」 — 순위 없음 · 이름 가나다순 · 안내문 «순위가 아니라 이름순입니다»
+ *   지금       ★클랜랭킹★ — 순위 1,2,3… · 래더 내림차순 · 티어 구분선 · 검색창은 그대로
  *   ```
+ *   2026-09-02 지시로 순위를 뺐던 것을 ★사장님이 오늘 뒤집으셨다.★
  *
- * ── **값을 없애지 않았다** (`CLAUDE.md` 3장 8번)
- *   승률 · N승N패 · 래더 · 클랜마크는 예전 표 그대로다. 표도 같은 `ClanRankTable` 이다.
- *   빠진 것은 **순위 숫자 한 칸**뿐이고, 그건 사용자가 없애라고 한 「클랜순위」다.
+ * ── ★값을 없애지 않았다★ (`CLAUDE.md` 2장 1·2번)
+ *   승률 · N승N패 · 래더 · 클랜마크 전부 예전 그대로다. ★순위 칸이 도로 붙었을 뿐이다.★
+ *   클랜 이름 앞 마크는 `ClanRankTable` 이 언제나 그린다 (사장님 상시 지시, 2026-09-10).
  *
- * ── 왜 랭킹 API(`leagueRankClans`)가 아니라 참가 클랜 API(`leagueClans`) 인가
- *   랭킹 질의는 `placement: false` 로 거른다. 실측(2026-09-02)으로 SPL 63곳 중 19곳,
- *   IPL 43곳 중 4곳이 그 조건에 걸려 **랭킹에 아예 나오지 않는다.**
- *   사용자가 요구한 것은 「소속된 클랜 **전부**」라서 그 필터가 있으면 안 된다.
- *   `leagueClans` 는 추방·비활성만 빼고(`ACTIVE_CLAN`) 전부 준다 — 그래서 이쪽을 쓴다.
- *   **랭킹 질의는 한 줄도 건드리지 않았다.**
+ * ── 데이터 출처는 ★안 바꿨다★
+ *   랭킹 API(`leagueRankClans`)가 아니라 참가 클랜 API(`leagueClans`)를 그대로 쓴다.
+ *   랭킹 질의는 `placement: false` 로 걸러서 실측(2026-09-02) SPL 63곳 중 19곳,
+ *   IPL 43곳 중 4곳이 ★통째로 빠진다.★ 목록은 다 받고 ★순위는 화면에서 세운다★ —
+ *   규칙은 `@/lib/clanRanking` 한 곳에 있고 서버(`queries/leagues.ts`)의 정렬과 같은 것이다.
+ *   계약(`packages/contract`)도 API 도 한 줄 안 건드렸다.
  *
- * ── 검색은 브라우저가 한다
- *   목록을 한 번에 다 받아 두고(`size`) 거기서 거른다. 서버에 검색을 새로 만들지 않았다 —
- *   리그당 수십~수백 곳이라 그럴 필요가 없고, 계약(`packages/contract`)도 안 건드린다.
- *   상한(400)에 걸려 남은 쪽이 있으면 **자동으로 이어 받는다.** 다 받기 전에 검색하면
- *   덜 받은 클랜이 안 걸리므로, 다 받을 때까지 개수를 「불러오는 중」으로 둔다.
+ * ── 검색은 ★그대로 둔다★ (사장님이 2026-09-02 에 요구한 기능이다)
+ *   목록이 이미 브라우저에 다 들어와 있어 치는 대로 걸러진다. 서버에 묻지 않는다.
+ *   ★거른 뒤에 번호를 다시 매기지 않는다★ — 검색해도 그 클랜의 진짜 순위가 보인다.
  *
- * ── 정렬은 **이름 가나다순**이다
- *   래더순으로 두면 순위 숫자만 지운 랭킹표가 된다 — 사용자가 없애라고 한 그것이다.
- *   찾으러 오는 화면이니 이름순이 맞다. 래더 값은 칸에 그대로 있다.
+ * ── 되돌리는 법
+ *   아래 `RANKED` 를 `false` 로 두면 옛 이름순 화면(`ClanDirectoryV1.tsx`)이 그대로 돌아온다.
  */
+
+/**
+ * ★새 화면(순위표)을 쓸 것인가.★ `false` 면 D-260 의 이름순 목록으로 돌아간다 (`CLAUDE.md` 1-4).
+ * 타입을 `boolean` 으로 넓혀 둔 이유는 리터럴로 좁히면 옛 가지가 «닿을 수 없는 코드» 가 되기 때문이다.
+ */
+const RANKED: boolean = true
+
 export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
+  if (!RANKED) return <ClanDirectoryV1 leagueSlug={leagueSlug} />
+  return <ClanRankDirectory leagueSlug={leagueSlug} />
+}
+
+function ClanRankDirectory({ leagueSlug }: { leagueSlug: string }) {
   const [query, setQuery] = useState('')
+  const ready = useApiReady()
+
+  /* 티어 이름(`ASTRA` · `CHALLENGER1` · `CHALLENGER2`)은 리그 구분(`independent`)을 봐야 나온다.
+     이름은 `divisionLabel` 이 만든다 — ★여기서 티어 이름을 지어내지 않는다★ */
+  const league = useQuery({
+    queryKey: ['league', leagueSlug],
+    queryFn: () => apiGet('leagueShow', { params: { leagueSlug } }),
+    enabled: ready,
+  })
+  const category = league.data?.data.category
 
   /* 한 번에 다 받는다. 400 은 라우트의 상한과 같은 값이다 —
      넘치면 아래 `useEffect` 가 커서를 따라 이어 받는다 */
@@ -52,7 +75,8 @@ export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
     { params: { leagueSlug }, search: { size: 400 } },
   )
 
-  /* 남은 쪽을 자동으로 이어 받는다. **검색이 전체를 보려면 전체가 손에 있어야 한다** */
+  /* 남은 쪽을 자동으로 이어 받는다.
+     ★순위를 세우려면 전체가 손에 있어야 한다★ — 반쯤 받은 목록의 1위는 1위가 아니다 */
   const { hasMore, loadingMore, loadMore } = clans
   useEffect(() => {
     if (hasMore && !loadingMore) loadMore()
@@ -60,23 +84,20 @@ export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
 
   const complete = !clans.loading && !hasMore
 
-  /* 이름 가나다순. 한글·영문·기호가 섞여 있어 `localeCompare('ko')` 로 맞춘다 */
-  const sorted = useMemo(
-    () => [...clans.items].sort((a, b) => a.clan.name.localeCompare(b.clan.name, 'ko')),
-    [clans.items],
-  )
+  /* 티어를 쓰는 리그(IPL)만 티어 축으로 세운다. ★리그 slug 를 여기서 비교하지 않는다★ —
+     규칙은 계약의 `showsTier` 한 곳이다 (D-204) */
+  const byTier = showsTier(leagueSlug)
 
-  const filtered = useMemo(() => sorted.filter(matches(query)), [sorted, query])
+  /* 줄 세우기 + 번호 붙이기. 규칙은 `@/lib/clanRanking` 한 곳에 있다 */
+  const ranked = useMemo(() => rankClans(clans.items, { byTier }), [clans.items, byTier])
 
-  /**
-   * 표는 랭킹표를 그대로 쓴다. 모양만 맞춘다.
-   * `rank` 는 화면에서 감추지만(`rank: false`) 타입이 요구하는 값이라 자리(1부터)를 넣는다 —
-   * **지어낸 순위가 화면에 나가지 않는다.**
-   */
+  /* ★검색은 순위를 매긴 뒤에 거른다.★ 걸러 놓고 번호를 매기면 3위가 1위로 보인다 */
+  const filtered = useMemo(() => ranked.filter(matches(query)), [ranked, query])
+
   const rows: ClanRankTableRow[] = useMemo(
     () =>
-      filtered.map((row, index) => ({
-        rank: index + 1,
+      filtered.map((row) => ({
+        rank: row.rank,
         league_clan_id: row.id,
         clan: row.clan,
         division: row.division,
@@ -88,9 +109,9 @@ export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
     [filtered],
   )
 
-  /* 칸 구성은 `leagueScreen()` 이 정한다. 여기서 **순위 칸만** 내린다 (D-204 —
-     리그별 분기를 화면에 뿌리지 않는다. 이건 리그 분기가 아니라 이 화면의 성격이다) */
-  const columns = { ...leagueScreen(leagueSlug).clanColumns, rank: false }
+  /* 어떤 칸을 보여 줄지는 화면이 아니라 `leagueScreen()` 한 곳이 정한다.
+     ★순위 칸을 내리던 `rank: false` 를 걷어냈다★ — 그게 이번 지시의 알맹이다 */
+  const columns = leagueScreen(leagueSlug).clanColumns
 
   const searching = query.trim().length > 0
 
@@ -100,14 +121,18 @@ export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
       <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
           title="클랜랭킹"
-          notice="이 리그에 소속된 클랜입니다. 순위가 아니라 이름순입니다."
+          notice={
+            byTier
+              ? '티어 안에서 래더가 높은 순입니다. 이 리그에 소속된 클랜 전부를 보여 줍니다.'
+              : '래더가 높은 순입니다. 이 리그에 소속된 클랜 전부를 보여 줍니다.'
+          }
         />
         <ClanSearchBox
           value={query}
           onChange={setQuery}
           shown={rows.length}
           /* 다 받기 전에는 개수를 말하지 않는다 — 받다 만 수를 「전부」라고 쓰면 거짓말이다 */
-          total={complete ? sorted.length : undefined}
+          total={complete ? ranked.length : undefined}
         />
         {searching && complete && rows.length === 0 ? (
           <RankBox>
@@ -118,12 +143,14 @@ export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
             <ClanRankTable
               leagueSlug={leagueSlug}
               rows={rows}
-              /* 다 받을 때까지 뼈대를 보여 준다 — 반쯤 받은 목록을 검색하면 «없다» 가 거짓이 된다 */
+              /* 다 받을 때까지 뼈대를 보여 준다 — ★반쯤 받은 목록에 붙인 순위는 거짓이다★ */
               loading={clans.loading || hasMore || loadingMore}
               error={clans.error}
               onRetry={clans.retry}
-              /* 부리그/티어 구분선을 긋지 않는다. **1,2부라는 개념이 없다** (사용자 지시) */
-              groupByDivision={false}
+              /* ★티어 구분선★ (사장님 지시). 티어를 안 쓰는 리그에서는 표가 스스로 무시한다
+                 (`ClanRankTable` 안의 `showsTier` 확인) — 리그별 분기를 화면에 뿌리지 않는다 */
+              groupByDivision
+              leagueCategory={category}
               columns={columns}
             />
           </RankBox>
@@ -134,15 +161,12 @@ export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
 }
 
 /**
- * 검색 규칙 — **이름에 들어 있으면 걸린다.**
+ * 검색 규칙 — **이름에 들어 있으면 걸린다.** (D-260 에서 그대로 가져왔다)
  *
- * 대소문자와 공백을 무시한다. `블랙 펄` 로 쳐도 `Βlackpearl` 이 아니라 `블랙펄` 이 걸리게
- * 하려는 것이고, 영문 클랜명은 대소문자가 제각각이라 낮춰서 본다.
- * 슬러그도 같이 본다 — 주소에 쓰이는 이름으로 찾는 사람이 있다.
- *
+ * 대소문자와 공백을 무시한다. 슬러그도 같이 본다 — 주소에 쓰이는 이름으로 찾는 사람이 있다.
  * 초성 검색은 **넣지 않았다.** 원본에도 없고, 규칙을 지어내는 일이 된다.
  */
-function matches(query: string): (row: LeagueClan) => boolean {
+function matches(query: string): (row: { clan: { name: string; slug: string } }) => boolean {
   const needle = normalize(query)
   if (needle === '') return () => true
   return (row) => normalize(row.clan.name).includes(needle) || normalize(row.clan.slug).includes(needle)
