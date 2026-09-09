@@ -24,6 +24,14 @@ export interface HealthCheck {
   status: HealthStatus
   /** 사람이 읽는 한 줄. 값 자체는 담지 않는다 */
   detail: string
+  /**
+   * ★서버가 잰 시간(ms)★ — 있으면 이것이 왕복 시간보다 정확하다 (2026-09-10).
+   *
+   * 왕복 시간에는 ★함수를 깨우는 시간★ 이 섞인다. 새벽에는 그게 3~5초라
+   * 수집기가 「사이트가 무겁다」로 오판하고 스스로 멈췄다.
+   * 여기 담는 것은 ★질의에 걸린 시간만★ 이다.
+   */
+  ms?: number
 }
 
 export interface HealthReport {
@@ -220,15 +228,28 @@ export async function getHealth(now: Date = new Date()): Promise<HealthReport> {
 
   /* --- DB ---
      따로 `SELECT 1` 을 던지지 않는다. 아래 집계 쿼리가 돌면 그것이 곧 DB 정상 확인이다 */
-  const db: HealthCheck = { status: 'ok', detail: '쿼리 정상' }
   let counts: HealthCounts
   let leagueFreshness: LeagueFreshness[]
+  /*
+   * ★서버가 잰 자기 DB 시간★ (2026-09-10).
+   *
+   * 수집기는 이 경로의 ★왕복 시간★ 으로 「사이트가 무거운가」를 판정했다.
+   * 그런데 새벽에는 아무도 안 들어와서 ★함수가 잠들고, 깨우는 데 3~5초★ 가 걸린다.
+   * 그 값이 「쉼」 기준(1.5초)을 넘어 ★수집기가 스스로 멈췄다★ —
+   * 실측으로 목록을 120곳 중 0~10곳만 물어보고 끊었다.
+   *
+   * ★깨우는 시간은 부하가 아니다.★ 그래서 여기서 ★질의에 걸린 시간만★ 재서 알려 준다.
+   * 수집기는 이 값이 있으면 그것으로 판정하고, 없으면 예전처럼 왕복 시간을 쓴다.
+   */
+  const dbStartedAt = Date.now()
   try {
     /* 둘 다 읽기다. 하나라도 못 읽으면 DB 가 문제인 것이므로 통째로 down 이다 */
     ;[counts, leagueFreshness] = await Promise.all([readCounts(since), readLeagueFreshness(now)])
   } catch {
     return downReport(now)
   }
+  const dbMs = Date.now() - dbStartedAt
+  const db: HealthCheck = { status: 'ok', detail: '쿼리 정상', ms: dbMs }
 
   /* --- 수집기 --- */
   const detailFailureRate24h =

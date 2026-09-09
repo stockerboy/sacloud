@@ -119,6 +119,10 @@ export interface GuardState {
   lastDbStatus: string | null
   /** ★첫 번째가 느렸는데 두 번째가 빨랐을 때 그 첫 값★ — 콜드스타트였다는 증거 */
   coldFirstMs?: number
+  /** ★왕복 시간★ — 판정에는 안 쓰지만 로그에 같이 적는다 (2026-09-10) */
+  lastRoundTripMs?: number | null
+  /** 서버가 준 시간으로 판정했나 */
+  usedServerMs?: boolean
 }
 
 export function newGuardState(): GuardState {
@@ -126,7 +130,8 @@ export function newGuardState(): GuardState {
 }
 
 interface HealthShape {
-  checks?: { db?: { status?: string; detail?: string } }
+  /** `ms` 는 ★서버가 잰 자기 질의 시간★ 이다 (2026-09-10). 옛 서버는 안 준다 */
+  checks?: { db?: { status?: string; detail?: string; ms?: number } }
 }
 
 /**
@@ -181,8 +186,7 @@ async function measureOnce(healthUrl: string, state: GuardState): Promise<Verdic
   }
 
   /** ★curl 자신이 잰 시간(ms)★ — 프로세스 기동 시간이 안 섞인다 */
-  const { status, body, ms } = measured
-  state.lastMs = ms
+  const { status, body, ms: roundTripMs } = measured
 
   if (status !== 200) {
     state.retreatStreak += 1
@@ -190,15 +194,34 @@ async function measureOnce(healthUrl: string, state: GuardState): Promise<Verdic
     return 'stop'
   }
 
-  const dbStatus = ((): string | null => {
+  const parsed = ((): HealthShape | null => {
     try {
-      return (JSON.parse(body) as HealthShape).checks?.db?.status ?? null
+      return JSON.parse(body) as HealthShape
     } catch {
       /* ★JSON 이 아니면 「모른다」다★ — 「나쁘다」가 아니다. 부르는 쪽이 한 번 더 잰다 */
       return null
     }
   })()
+  const dbStatus = parsed?.checks?.db?.status ?? null
   state.lastDbStatus = dbStatus
+
+  /*
+   * ★서버가 잰 자기 시간이 있으면 그것으로 판정한다★ (2026-09-10).
+   *
+   * 왕복 시간에는 ★함수를 깨우는 시간★ 이 섞인다. 새벽에는 그게 3~5초라
+   * ★수집기가 「사이트가 무겁다」로 오판하고 스스로 멈췄다★ —
+   * 실측: 목록을 120곳 중 ★0~10곳★ 만 물어보고 끊었다.
+   *
+   * ★깨우는 시간은 부하가 아니다.★ 서버가 「질의에 300ms 걸렸다」고 말해 주면
+   * 그 말을 믿는다. 안 주는 옛 서버면 예전처럼 왕복 시간을 쓴다.
+   *
+   * ⚠ ★기준값(`PAUSE_MS` · `STOP_MS`)은 안 건드렸다.★ ★재는 대상만 바꿨다.★
+   */
+  const serverMs = parsed?.checks?.db?.ms
+  const ms = typeof serverMs === 'number' && serverMs >= 0 ? serverMs : roundTripMs
+  state.lastMs = ms
+  state.lastRoundTripMs = roundTripMs
+  state.usedServerMs = typeof serverMs === 'number'
 
   /* ★`checks.db` 만 본다★ — 최상위 status 는 지금도 degraded 다 */
   if (dbStatus !== 'ok') {
