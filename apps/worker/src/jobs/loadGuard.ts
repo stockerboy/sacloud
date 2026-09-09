@@ -84,6 +84,27 @@ export const STOP_MS_V1 = 3000
 export const RETREAT_STREAK_LIMIT = 3
 /** ★느리게 나오면 이만큼 쉬고 한 번 더 잰다★ — 콜드스타트를 부하로 오판하지 않는다 */
 export const COLD_RETRY_WAIT_MS = 1200
+/**
+ * ★health 를 재는 데 주는 시간★ (2026-09-10).
+ *
+ * ── 왜 10초로는 모자랐나
+ *   ★10초는 「못 쟀다」로 떨어졌다.★ `measureOnce` 는 못 재면 ★모르는 것★ 으로 보고
+ *   바로 물러난다 — 그 규칙 자체는 맞다. 문제는 ★깨우는 데 10초가 걸릴 때가 있다★ 는 것이다.
+ *
+ *   운영 실측 (2026-09-10 새벽):
+ *   ```
+ *   checks.db 10002ms — db=모름   → 「사이트가 무겁다」 · ★목록을 10곳에서 끊었다★
+ *   ```
+ *   그 바퀴는 클랜 120곳을 물어보려다 ★10곳만★ 물어봤다. 새 경기를 그만큼 못 찾는다.
+ *   같은 시각 두 번째 요청은 0.3~0.5초였다 — ★사이트는 멀쩡했다.★
+ *
+ * ── 20초로 올린 이유
+ *   ★깨우는 시간(최대 4초)의 다섯 배★ 다. 진짜로 20초를 넘기면 그건 장애가 맞다.
+ *   ⚠ ★판정 기준(`STOP_MS` 6초)은 안 건드렸다.★ 재는 시간만 늘렸다 —
+ *     8초가 걸리면 이제 「못 쟀다」가 아니라 ★「8초다」로 재고 그 값으로 물러난다.★
+ *     ★모르고 물러나는 것과 알고 물러나는 것은 다르다.★
+ */
+export const MEASURE_TIMEOUT_S = 20
 
 export type Verdict = 'go' | 'pause' | 'stop'
 
@@ -122,7 +143,14 @@ async function measureOnce(healthUrl: string, state: GuardState): Promise<Verdic
     measured = await new Promise<{ status: number; body: string; ms: number }>((resolve, reject) => {
       const child = spawn(
         'curl',
-        ['-sS', '--max-time', '10', '-w', '\\n__M__%{http_code} %{time_total}', healthUrl],
+        [
+          '-sS',
+          '--max-time',
+          String(MEASURE_TIMEOUT_S),
+          '-w',
+          '\\n__M__%{http_code} %{time_total}',
+          healthUrl,
+        ],
         { windowsHide: true },
       )
       let out = ''
