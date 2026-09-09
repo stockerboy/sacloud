@@ -40,9 +40,15 @@ describe('큐 규칙 — 잡과 관측 도구가 같은가', () => {
   })
 
   it('★상한은 앞자리 예약이다 — 넘친 곳을 꼴찌로 밀지 않는다★', () => {
-    const order = `CASE WHEN r.starving AND r.starveRn <=`
-    expect(j).toContain(order)
-    expect(c).toContain(order)
+    /*
+     * ⚠ 2026-09-10 — 리그 몫이 생기면서 예약이 ★두 층★ 이 됐다.
+     *   리그 몫 안에서는 리그별 순번(`leagueStarveRn`)으로, 남은 자리에서는
+     *   예전처럼 전역 순번(`starveRn`)으로 예약한다. ★어느 쪽도 「빼기」가 아니다.★
+     */
+    expect(j).toContain(`CASE WHEN r.starving AND r.leagueStarveRn <=`)
+    expect(c).toContain(`CASE WHEN r.starving AND r.leagueStarveRn <=`)
+    expect(j).toContain(`CASE WHEN s.starving AND s.starveRn <=`)
+    expect(c).toContain(`CASE WHEN s.starving AND s.starveRn <=`)
   })
 
   it('★옛 판(band=0 에 상한)이 어느 쪽에도 남아 있지 않다★', () => {
@@ -67,5 +73,36 @@ describe('큐 규칙 — 잡과 관측 도구가 같은가', () => {
 
   it('★같은 리그를 본다★', () => {
     expect(copy).toContain(`['nolink', 'supply', 'sanply']`)
+  })
+
+  /*
+   * ── ★리그별 최소 자리★ (2026-09-10)
+   *
+   * 옛 판은 409곳을 한 줄로 세워 ★클랜이 311곳인 10mountain 이 순번을 다 먹었다.★
+   * 실측 — 30분에 물어본 곳 IPL 13 · 10mountain 6 · ★SPL 1★ (그 시간 SPL 경기 0건).
+   * 관측 도구가 이 규칙을 안 갖고 있으면 ★리그가 다시 굶어도 100% 라고 말한다.★
+   */
+  it('★리그마다 앞자리를 예약한다 — 두 곳 다★', () => {
+    for (const [name, src] of [['잡', j], ['관측 도구', c]] as const) {
+      expect(src, `${name} 에 리그별 예약이 없다`).toContain('PARTITION BY r.lg')
+      expect(src, `${name} 에 리그 몫 예약석이 없다`).toContain(
+        'CASE WHEN s.leagueRn <= ${LEAGUE_MIN_SLOTS} THEN 0 ELSE 1 END',
+      )
+    }
+  })
+
+  it('★예약석은 라운드로빈이다 — 뭉쳐 두면 뒤 리그가 굶는다★', () => {
+    /* 몫만 주고 섞지 않으면 한 바퀴의 앞부분(30분에 20곳)에 뒤 리그가 안 들어온다 */
+    const rr = 'CASE WHEN s.leagueRn <= ${LEAGUE_MIN_SLOTS} THEN s.leagueRn ELSE NULL END'
+    expect(j).toContain(rr)
+    expect(c).toContain(rr)
+  })
+
+  it.each(['LEAGUE_MIN_SLOTS', 'LEAGUE_STALE_CAP'])('★리그 몫 값이 같다★ (%s)', (name) => {
+    const re = new RegExp(`export const ${name} = (\\d+)`)
+    const fromJob = re.exec(job)?.[1]
+    const fromCopy = re.exec(copy)?.[1]
+    expect(fromJob).toBeDefined()
+    expect(fromCopy).toBe(fromJob)
   })
 })

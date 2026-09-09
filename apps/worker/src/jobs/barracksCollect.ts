@@ -557,6 +557,16 @@ export async function markListRequested(
   `
 }
 
+/**
+ * ★리그 몫을 끄고 옛 순서로 되돌리나★ (2026-09-10).
+ *
+ * ★되돌리는 법 — 환경변수 `BARRACKS_LEAGUE_QUOTA=0` 하나면 된다.★
+ * 그러면 `pendingClansPriorityV1`(2026-09-08 P0 판) 이 그대로 돈다 (`CLAUDE.md` 1-4).
+ */
+export function leagueQuotaEnabled(): boolean {
+  return process.env.BARRACKS_LEAGUE_QUOTA !== '0'
+}
+
 export async function pendingClans(
   limit: number,
   leagueSlug: string | readonly string[] = 'nolink',
@@ -599,6 +609,27 @@ export async function pendingClans(
     `
   }
 
+  /*
+   * ★리그 몫을 먼저 떼고 나머지를 옛 규칙대로 준다★ (2026-09-10 · 아래 V2).
+   * ★옛 판은 지우지 않았다★ — `BARRACKS_LEAGUE_QUOTA=0` 이면 V1 이 그대로 돈다.
+   */
+  if (!leagueQuotaEnabled()) return pendingClansPriorityV1(limit, slugs)
+  return pendingClansPriorityV2(limit, slugs)
+}
+
+/**
+ * ★옛 순서판★ (2026-09-08 · P0) — ★리그를 구분하지 않는다.★
+ *
+ * 409곳을 활동 등급 → 굶주림 순으로 ★한 줄로★ 세우고 앞에서 자른다.
+ * 그래서 등록 클랜이 많은 리그(10mountain 311곳)가 앞자리를 다 먹었다 —
+ * 그 문제와 고친 방법은 아래 `pendingClansPriorityV2` 주석에 적었다.
+ *
+ * ★지우지 않는다★ (`CLAUDE.md` 1-4). ★되돌리는 법 — `BARRACKS_LEAGUE_QUOTA=0`.★
+ */
+async function pendingClansPriorityV1(
+  limit: number,
+  slugs: string[],
+): Promise<{ slug: string; name: string }[]> {
   /*
     ── ★최근에 경기한 클랜을 먼저 본다★ (2026-09-08 · Part C · 사장님 지시)
 
@@ -692,6 +723,183 @@ export async function pendingClans(
        r.band,
        r."requestedAt" ASC NULLS FIRST,
        r."slug"
+     LIMIT ${limit}
+  `
+}
+
+/**
+ * ★리그마다 앞자리를 예약해 준다★ (2026-09-10 · ★SPL 경기 누락 실측★).
+ *
+ * ══ ★★무엇이 잘못됐나 — 자리가 모자란 게 아니라 순서가 문제였다★★ ══
+ *
+ * 옛 판(V1)은 리그를 구분하지 않고 409곳을 ★한 줄로★ 세웠다.
+ * 그런데 등록 클랜 수가 리그마다 크게 다르다 (2026-09-10 운영 실측) —
+ * ```
+ * IPL(nolink) 43곳 · SPL(supply) 55곳 · ★10mountain(sanply) 311곳★
+ *                                        ← ★혼자 전체의 76%★
+ * ```
+ * 한 줄로 세우면 ★클랜 수가 많은 리그가 순번을 다 먹는다.★
+ *
+ * 실측 (2026-09-10 01:30 · 운영):
+ * ```
+ * 최근 30분에 목록을 물어본 곳   IPL 13곳 · 10mountain 6곳 · ★SPL 1곳★
+ * SPL 이 이 시간대에 보통 뛰는 경기  시간당 7건 (지난 7일 평균)
+ * 오늘 들어온 SPL 경기            00시대 2건 · 01시대 ★0건★
+ * ```
+ * ★SPL 경기가 실제로 누락됐다.★
+ *
+ * ⚠ ★그리고 이 숫자가 말해 주는 것이 하나 더 있다★ — 30분에 물어본 곳이
+ *   13+6+1 = ★20곳★ 이다. 한 바퀴가 150자리여도 ★30분 안에 닿는 것은 앞 20곳뿐★ 이다.
+ *   ★뒤쪽 자리는 그 시간대에 없는 것과 같다.★
+ *
+ * ══ ★★그래서 두 가지를 같이 한다. 하나만 하면 안 고쳐진다★★ ══
+ *
+ * ① ★리그마다 앞자리 `LEAGUE_MIN_SLOTS` 개를 예약한다★ (`leagueRn`)
+ * ② ★예약분을 라운드로빈으로 섞는다★ — 각 리그 1등끼리, 2등끼리, 3등끼리…
+ *
+ *   ★①만 하면 소용없다.★ 몫을 줘도 리그별로 뭉쳐 있으면 뒤 리그는 여전히
+ *   앞 20곳에 못 들어온다. ★섞어야 「어디서 잘라도」 세 리그가 고루 들어온다.★
+ *
+ * ══ ★값의 근거★ (2026-09-10 · 운영 DB 실측 · 최근 7일) ══
+ *
+ * ```
+ * 리그              등록   7일간 뛴 곳   경기수    ★한 시간에 뛰는 서로 다른 클랜★
+ *                                                 평균   90%   ★최대★
+ * IPL(nolink)        43       42       2,332       14    28     35
+ * SPL(supply)        55       38         603        5    10     14
+ * 10mountain(sanply)311       54         534        5     8     13
+ * ```
+ * ★한 시간에 실제로 뛰는 곳은 리그마다 최대 35 · 14 · 13 곳이다.★
+ * 그러니 리그당 ★25자리★ 면 SPL·10mountain 은 ★가장 바쁜 시간대도 두 배로 덮는다.★
+ * IPL 만 최대 35 로 25를 넘지만, IPL 은 ★등록이 43곳뿐이고 그중 15곳이 1등급★ 이라
+ * ★남은 자리 경쟁에서 밴드로 먼저 이긴다★ — 예약분이 모자라도 굶지 않는다.
+ *
+ * 3 × 25 = ★75자리★ 로 운영 기본값 150의 ★절반★ 이다.
+ * ★남은 75자리는 지금 규칙 그대로★ 준다 — 그래야 조용한 클랜도 계속 돌아온다
+ * (0등급 예약 `STALE_BAND_CAP` 이 거기서 그대로 산다).
+ *
+ * ⚠ ★리그별로 다른 숫자를 주지 않았다.★ 슬러그를 SQL 에 박으면 리그가 늘 때마다
+ *   질의를 고쳐야 한다. ★한 값을 모든 리그에 똑같이 준다.★
+ * ⚠ ★「최근에 뛴 곳 수」로 몫을 자동 계산하지 않는다.★ 그건 되먹임 고리다 —
+ *   ★수집이 막힌 리그는 경기가 안 들어오고, 그래서 몫이 더 줄어든다.★
+ *   SPL 이 01시대에 0건이었던 것이 바로 그 모양이다.
+ *
+ * ★되돌리는 법 — `BARRACKS_LEAGUE_QUOTA=0` 이면 `pendingClansPriorityV1` 이 돈다.★
+ */
+export const LEAGUE_MIN_SLOTS = 25
+
+/**
+ * ★리그 몫 안에서 「오래 방치된 클랜」에 쓸 자리 수★ (2026-09-10).
+ *
+ * ══ ★왜 따로 두나 — 안 두면 몫을 줘도 소용이 없다★ ══
+ *
+ * 전역 상한 `STALE_BAND_CAP` 은 ★150자리 중 30자리(20%)★ 로 잡은 값이다.
+ * 그런데 그 30자리를 ★25자리짜리 리그 몫★ 안에 그대로 넣으면 ★몫을 통째로 먹는다.★
+ *
+ * 시뮬로 실제로 그렇게 됐다 (`queueLeagueQuota.test.ts` · 24시간 · 한 시간에 40곳):
+ * ```
+ * 전역 상한을 그대로 쓴 판   10mountain 의 활동 클랜이 ★22시간★ 동안 한 번도 안 뽑힘
+ * ```
+ * 10mountain 은 311곳 중 289곳이 조용하다. 그 조용한 곳들이 ★전부 굶주림 상태★ 라
+ * ★리그 몫의 앞자리를 자기들끼리 다 차지했다.★ 활동 중인 22곳은 몫 밖으로 밀렸다.
+ *
+ * ══ ★값의 근거 — 비율을 그대로 옮긴다★ ══
+ * ```
+ * 전역   30 / 150 = ★20%★
+ * 리그 몫  ? /  25 → 25 × 20% = ★5★
+ * ```
+ * ★새 규칙을 지어낸 것이 아니라 옛 비율을 그대로 옮긴 것이다.★
+ * 조용한 클랜은 리그마다 매 바퀴 5곳씩 반드시 돌아온다 — ★영구 제외는 없다★ (사장님).
+ */
+export const LEAGUE_STALE_CAP = 5
+
+/**
+ * ★리그 몫을 먼저 떼고 나머지를 옛 규칙대로 채운다★ (2026-09-10).
+ * 근거와 숫자는 바로 위 `LEAGUE_MIN_SLOTS` 주석에 있다.
+ */
+async function pendingClansPriorityV2(
+  limit: number,
+  slugs: string[],
+): Promise<{ slug: string; name: string }[]> {
+  return prisma.$queryRaw<{ slug: string; name: string }[]>`
+    WITH act AS (
+      /* ★한 번만 훑는다★ — 클랜마다 따로 세면 질의가 시간 초과로 죽는다 (2026-09-08 실측) */
+      SELECT z."lcid", MAX(z."startAt") AS "lastMatch"
+        FROM (
+          SELECT m."redLeagueClanId"  AS "lcid", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
+          UNION ALL
+          SELECT m."blueLeagueClanId" AS "lcid", m."startAt" FROM "Match" m WHERE m."supersededAt" IS NULL
+        ) z
+       GROUP BY z."lcid"
+    ),
+    pool AS (
+      /* ★리그를 같이 들고 나온다★ — 몫을 떼려면 어느 리그인지 알아야 한다 (2026-09-10).
+         ⚠ 한 클랜은 한 리그에만 활성이다 (expelledAt IS NULL) — 두 번 세지 않는다 */
+      SELECT DISTINCT l."slug" AS lg, c."slug", c."name", q."requestedAt", a."lastMatch"
+        FROM "LeagueClan" lc
+        JOIN "League" l ON l."id" = lc."leagueId"
+        JOIN "Clan" c   ON c."id" = lc."clanId"
+        /* ★물어본 시각★ — 새 경기 유무와 무관하다 (P0 수정의 핵심) */
+        LEFT JOIN "BarracksListRequest" q ON q."subject" = c."slug"
+        LEFT JOIN act a ON a."lcid" = lc."id"
+       WHERE l."slug" = ANY(${slugs}) AND lc."expelledAt" IS NULL
+    ),
+    graded AS (
+      SELECT p.*,
+             /* ★활동 등급★ — 최근에 경기한 곳일수록 앞. ★모두에게 매긴다★ */
+             CASE
+               WHEN p."lastMatch" >= NOW() - INTERVAL '1 hour'   THEN 1
+               WHEN p."lastMatch" >= NOW() - INTERVAL '6 hours'  THEN 2
+               WHEN p."lastMatch" >= NOW() - INTERVAL '24 hours' THEN 3
+               ELSE 4
+             END AS band,
+             /* ★굶주림★ — 한 번도 안 물어봤거나 6시간 넘게 방치됐나 */
+             (p."requestedAt" IS NULL OR p."requestedAt" < NOW() - INTERVAL '6 hours') AS starving
+        FROM pool p
+    ),
+    ranked AS (
+      SELECT g.*,
+             CASE WHEN g.starving
+                  THEN ROW_NUMBER() OVER (
+                         PARTITION BY g.starving
+                         ORDER BY g."requestedAt" ASC NULLS FIRST, g."slug")
+                  ELSE NULL END AS starveRn,
+             /* ★리그 안에서의 굶주림 순번★ — 몫 안에 전역 상한을 그대로 넣으면
+                조용한 클랜이 그 리그의 몫을 통째로 먹는다 (LEAGUE_STALE_CAP 주석) */
+             CASE WHEN g.starving
+                  THEN ROW_NUMBER() OVER (
+                         PARTITION BY g.lg, g.starving
+                         ORDER BY g."requestedAt" ASC NULLS FIRST, g."slug")
+                  ELSE NULL END AS leagueStarveRn
+        FROM graded g
+    ),
+    seated AS (
+      /*
+       * ★리그 안에서 몇 번째인가★ — ★고르는 기준은 V1 과 같다.★
+       * 다른 것은 상한을 ★리그 크기에 맞춰 줄인 것 하나뿐이다★ (30/150 = 5/25 · 같은 20%).
+       */
+      SELECT r.*,
+             ROW_NUMBER() OVER (
+               PARTITION BY r.lg
+               ORDER BY
+                 CASE WHEN r.starving AND r.leagueStarveRn <= ${LEAGUE_STALE_CAP} THEN 0 ELSE 1 END,
+                 r.band,
+                 r."requestedAt" ASC NULLS FIRST,
+                 r."slug") AS leagueRn
+        FROM ranked r
+    )
+    SELECT s."slug", s."name"
+      FROM seated s
+     ORDER BY
+       /* ① ★리그마다 앞자리 ${LEAGUE_MIN_SLOTS}개는 예약석이다★ */
+       CASE WHEN s.leagueRn <= ${LEAGUE_MIN_SLOTS} THEN 0 ELSE 1 END,
+       /* ② ★예약석은 라운드로빈★ — 각 리그 1등끼리, 2등끼리… ★뭉쳐 두면 뒤 리그가 굶는다★ */
+       CASE WHEN s.leagueRn <= ${LEAGUE_MIN_SLOTS} THEN s.leagueRn ELSE NULL END,
+       /* ③ 그 뒤는 ★V1 과 같은 규칙★ — 예약석 안에서 리그끼리 겨룰 때도 이 순서다 */
+       CASE WHEN s.starving AND s.starveRn <= ${STALE_BAND_CAP} THEN 0 ELSE 1 END,
+       s.band,
+       s."requestedAt" ASC NULLS FIRST,
+       s."slug"
      LIMIT ${limit}
   `
 }
