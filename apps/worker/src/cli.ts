@@ -67,6 +67,7 @@ import { runBarracksRoster } from './jobs/barracksRoster.js'
 import { runClanAffiliation } from './jobs/clanAffiliation.js'
 import { runPlayerProfileClan } from './jobs/playerProfileClan.js'
 import { runStampPlayerClan } from './jobs/stampPlayerClan.js'
+import { runAccountMerge } from './jobs/accountMerge.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
@@ -309,6 +310,7 @@ function usage(): void {
   clan-affiliation [--league <slug>] [--no-clear] [--confirm]
   player-profile-clan [--league <slug,slug>] [--limit <n>] [--max-min <분>] [--all] [--confirm]
   stamp-player-clan [--league <slug,slug>] [--all] [--confirm]
+  account-merge [--all] [--confirm] [--revert <파일>]
               선수의 **현재 소속 클랜**(LeaguePlayer.clanId)을 경기 기록에서 채운다 (D-161).
               가장 늦은 경기의 matchTimeLeagueClanId 를 그대로 옮긴다 — 새로 판정하지 않는다.
               기본 대상은 IPL(nolink) 이다. 미러 리그는 supplyRollup 이 이미 채운다.
@@ -595,6 +597,37 @@ async function main(): Promise<number> {
       }
       /* 막힌 채로 끝나면 실패로 알린다 — 조용히 넘어가면 다음 사람이 모른다 */
       return result.blocked ? 1 : 0
+    }
+
+    case 'account-merge': {
+      /*
+        ★같은 계정이 두 선수로 갈라진 것을 합친다★ (2026-09-10).
+        닉네임이 아니라 ★넘슨 계정번호★ 로 잇는다 — 그 사이 개명한 사람이 절반이다.
+        `--confirm` 없이는 한 줄도 쓰지 않는다. 되돌리기 파일을 먼저 남긴다.
+      */
+      const result = await runAccountMerge({
+        all: boolFlag(args, 'all'),
+        confirm: boolFlag(args, 'confirm'),
+        revert: stringFlag(args, 'revert') ?? undefined,
+      })
+      table([
+        {
+          계정으로이어진짝: result.pairs,
+          그사이개명: result.renamed,
+          옮길사람: result.active,
+          옮길줄: result.rows,
+          옮김: result.moved,
+          충돌: result.conflicts,
+          범위: result.windowOnly ? '시즌0만' : '전기간',
+          반영: result.confirmed ? '했다' : '안했다',
+        },
+      ])
+      if (result.samples.length > 0) {
+        log('합쳐지는 예시 (올리는 줄 많은 순)')
+        table(result.samples as unknown as Record<string, unknown>[])
+      }
+      if (result.backupFile) log(`되돌리기 파일 — ${result.backupFile}`)
+      return 0
     }
 
     case 'stamp-player-clan': {

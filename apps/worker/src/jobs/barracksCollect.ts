@@ -378,6 +378,20 @@ export interface PendingRange {
   to?: string
 }
 
+/**
+ * ★몇 번까지 물어보고 포기하나★ (2026-09-10 · 「406 포기 규칙」).
+ *
+ * 넘슨이 ★영원히 안 주는 경기★ 가 있다 (406). 전에는 실패를 안 적어서
+ * 한 바퀴마다 같은 경기를 다시 물었다 — 요청 149건 중 ★129건이 그것★ 이었다.
+ * 그만큼 ★새 경기 명단이 뒤로 밀렸다.★
+ *
+ * ⚠ ★한 번 실패했다고 바로 포기하지 않는다.★ 잠긐 그럴 수 있다.
+ *   세 번은 물어본다. 그 뒤에도 안 주면 ★그 경기는 줄을 비워 둔다.★
+ * ⚠ ★지우는 것이 아니다.★ 기록은 남고, 다시 물어보고 싶으면
+ *   그 줄의 `fetchCount` 를 낮추면 된다.
+ */
+export const GIVE_UP_TRIES = 3
+
 export async function pendingPairs(
   limit: number,
   range: PendingRange = {},
@@ -398,7 +412,8 @@ export async function pendingPairs(
        AND substr(c."matchKey", 1, 6) < ${to}
        AND NOT EXISTS (
          SELECT 1 FROM "BarracksBattleLogRaw" b
-          WHERE b."matchKey" = c."matchKey" AND b."status" = 'ok'
+          WHERE b."matchKey" = c."matchKey"
+            AND (b."status" = 'ok' OR b."fetchCount" >= ${GIVE_UP_TRIES})
        )
 
      UNION
@@ -431,7 +446,8 @@ export async function pendingPairs(
        AND substr(m."sourceMatchId", 1, 6) < ${to}
        AND NOT EXISTS (
          SELECT 1 FROM "BarracksBattleLogRaw" b
-          WHERE b."matchKey" = m."sourceMatchId" AND b."status" = 'ok'
+          WHERE b."matchKey" = m."sourceMatchId"
+            AND (b."status" = 'ok' OR b."fetchCount" >= ${GIVE_UP_TRIES})
        )
        AND EXISTS (
          SELECT 1 FROM "BarracksClanMatchRaw" c3
@@ -948,6 +964,31 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
     }
     if (r.status !== 200) {
       result.failed += 1
+      /*
+       * ★못 준 경기를 적어 둔다★ (2026-09-10 · 사장님 «명단도 동시에 같이 들어와야해»).
+       *
+       * 전에는 실패를 ★아무 데도 안 적었다.★ 그래서 `pendingPairs` 가
+       * 「`ok` 가 없는 경기」를 고를 때 ★같은 경기를 영원히 다시 물어봤다.★
+       * 실측 (2026-09-10 · 운영 한 바퀴): 요청 149건 중 ★406 이 129건★.
+       * ★새 경기 자리를 죽은 경기가 다 먹고 있었다.★
+       *
+       * 한 줄만 남긴다 (`payloadHash` 를 고정값으로 두어 한 경기에 한 줄).
+       * ★지우지 않고 세기만 한다★ — 몇 번 물어봤는지가 포기 기준이 된다.
+       */
+      try {
+        await prisma.$executeRaw`
+          INSERT INTO "BarracksBattleLogRaw"
+            ("id","source","endpoint","matchKey","subject","subjectKind","payload",
+             "payloadHash","status","errorCode","fetchedAt","fetchCount")
+          VALUES (gen_random_uuid()::text, 'barracks', 'GetBattleLogClan',
+                  ${p.matchKey}, ${p.clanNo}, 'clan', '{}'::jsonb,
+                  ${'ERR-' + String(r.status)}, 'failed', ${String(r.status)}, NOW(), 1)
+          ON CONFLICT ("matchKey","subject","payloadHash")
+          DO UPDATE SET "fetchCount" = "BarracksBattleLogRaw"."fetchCount" + 1,
+                        "fetchedAt" = NOW()`
+      } catch {
+        /* 기록에 실패해도 수집은 계속한다 */
+      }
       log(`  HTTP ${r.status} — 넘어간다 (${p.matchKey})`)
       await sleep(delay)
       continue
