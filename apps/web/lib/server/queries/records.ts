@@ -1,5 +1,6 @@
 import { prisma, type Prisma } from '@sacloud/db'
 import { softFail } from '../softFail'
+import { absentLeaguePlayer } from './absentLeaguePlayer'
 import {
   buildTodayPerformance,
   kdRate,
@@ -691,28 +692,45 @@ export async function getLeaguePlayerDetail(
       clan: { select: CLAN_SUMMARY_SELECT },
     },
   })
-  if (!leaguePlayer) return null
+  /*
+   * ★명부에 없어도 「뛴 사람」이면 화면을 띄운다★ (2026-09-09 · 사장님 지적).
+   *
+   * 사장님: «한사람이 여러리그에 참가할 수 있는데 SPL사람도 IPL게임하면
+   *          랭크에 오를 수 있어 (…) 무조건 해결해야돼»
+   *
+   * 실측 (2026-09-09) — IPL 경기를 뛰었는데 IPL 명부에 없는 사람 ★502명★.
+   * 그중 SPL 28명 · 10mountain 59명 은 지금도 다른 리그에서 뛰다.
+   * 전부 ★9/3(시즌0) 이전에만 뛴 사람★ 이라 집계가 명부를 안 만들었다.
+   * 그러다 보니 경기 상세에는 이름이 뜼는데 누르면 404 였다.
+   *
+   * ⚠ ★명부(`LeaguePlayer`)에 줄을 만들지 않는다.★ 만들면 ★0판짜리 502명이
+   *   개인랭킹에 기본점 3000 으로 ★한가운데 끼어든다.★
+   *   랭킹은 그대로 두고 ★화면만 열어 준다.★ 순위는 `null` 이다 —
+   *   없는 순위를 지어내지 않는다.
+   */
+  /* 만들어 낸 줄은 `const` 로 둔다 — `let` 이면 아래 클로저에서 타입이 풀린다 */
+  const fallback = leaguePlayer ? null : await absentLeaguePlayer(league.id, playerId)
+  const effective = leaguePlayer ?? fallback
+  if (!effective) return null
+  const ranked = leaguePlayer !== null
 
-  /* 소속 클랜이 없어도 선수는 존재한다 (D-135).
-     D-134로 무소속·용병도 정상적인 선수가 됐다. 클랜이 없다는 이유로 404를 내면
-     개인 랭킹에는 보이는 사람의 프로필이 열리지 않는다. 계약도 `clan`을 nullable로 둔다.
-
-     **기다리지 않고 시작만 해 둔다.** 순위·무기별 집계는 이 값을 쓰지 않으므로
-     여기서 `await` 하면 뒤의 모든 조회가 왕복 한 번만큼 뒤로 밀린다. */
-  const leagueClanIdPromise = leagueClanIdOfPlayer(league.id, leaguePlayer.clanId)
+  const leagueClanIdPromise = leagueClanIdOfPlayer(league.id, effective.clanId)
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
   const [rank, weaponBuckets, ladderRows, record, traits, judgedPosition] = await Promise.all([
-    playerRankOf({
-      id: leaguePlayer.id,
-      leagueId: leaguePlayer.leagueId,
-      rating: leaguePlayer.rating,
-      placement: leaguePlayer.placement,
-    }),
+    /* 명부에 없는 사람은 ★순위가 없다★ — 지어내지 않는다 */
+    ranked
+      ? playerRankOf({
+          id: effective.id,
+          leagueId: effective.leagueId,
+          rating: effective.rating,
+          placement: effective.placement,
+        })
+      : Promise.resolve({ rank: null, rankCount: null }),
     /* 무기별 버킷 — **한 번만 읽는다.** `weapon_stats`(기록)와 무기별 순위가 같은 줄을 쓴다.
        예전에는 둘이 따로 읽어 왕복이 세 번이었다 (2026-09-01 · D-239 후속) */
-    weaponStatRowsOf(leaguePlayer.id),
+    weaponStatRowsOf(effective.id),
     /* ⬇ **여섯 수치가 같은 행을 여섯 번 읽고 있었다** (2026-09-01 · D-239 후속).
        누적 전적 · 최근 폼 · 오늘 퍼포먼스 · 최근 3일 · 티어별 게임빈도가 전부
        「시즌0 창 안의 래더 경기」라는 **같은 모집단**을 본다 (각 파일 주석이 그렇게 적혀 있다).
@@ -756,7 +774,7 @@ export async function getLeaguePlayerDetail(
   const [weaponRanks, tierBreakdown] = await Promise.all([
     /* 무기별 랭킹 — 무기가 확인된 경기가 없으면 null 이다 (D-146).
        스나·라플을 **한 질의로** 센다 (D-239 후속) */
-    playerWeaponRanksOf(league.id, leaguePlayer.placement, weaponBuckets),
+    playerWeaponRanksOf(league.id, effective.placement, weaponBuckets),
     /* 티어별 게임빈도 + 천적 (`docs/SITE_SPEC_V2.md` 4절).
        줄 수는 리그의 부리그 수만큼이다. 실패해도 카드 전체를 죽이지 않는다 —
        빈 배열이면 화면이 카드를 안 그린다. 클랜 이름 조회 한 번이 여기 남아 있다 */
@@ -769,18 +787,18 @@ export async function getLeaguePlayerDetail(
   const rifleRank = weaponRanks.get(0) as WeaponRankResult
 
   return {
-    id: leaguePlayer.id,
+    id: effective.id,
     league_id: league.id,
     league: toLeagueSummary(league),
     player: {
-      ...toPlayerSummary(leaguePlayer.player),
+      ...toPlayerSummary(effective.player),
       /* 선수가 직접 설정하는 값이다 (D-161). 없으면 `null` 이고 화면은 줄을 그리지 않는다.
          `-` 나 `알수없음` 으로 채우지 않는다 (D-099 · D-106) */
-      position: leaguePlayer.player.position,
-      note: leaguePlayer.player.note,
+      position: effective.player.position,
+      note: effective.player.note,
     },
-    clan: toClanSummaryOrNull(leaguePlayer.clan),
-    rating: leaguePlayer.rating,
+    clan: toClanSummaryOrNull(effective.clan),
+    rating: effective.rating,
     win: totals.win,
     lose: totals.lose,
     win_rate: winRate(totals.win, totals.lose),
@@ -801,7 +819,7 @@ export async function getLeaguePlayerDetail(
        분자는 K/D 를 아는 경기의 킬 합이므로 분모도 그 판수다 (D-149) */
     kill_per_match: killPerMatch(totals.kill ?? 0, totals.knownGames),
     mvp_count: totals.mvpCount,
-    placement: leaguePlayer.placement,
+    placement: effective.placement,
     rank: rank.rank,
     rank_count: rank.rankCount,
     /* 무기별 전적 (D-149 · D-176).
@@ -842,7 +860,7 @@ export async function getLeaguePlayerDetail(
       const sniperGames = weaponStats.find((row) => row.weapon === 1)?.games ?? 0
       const rifleGames = weaponStats.find((row) => row.weapon === 0)?.games ?? 0
       const resolved = resolvePlayerPositionOf({
-        userSet: leaguePlayer.player.position,
+        userSet: effective.player.position,
         mainWeapon: sniperGames === rifleGames ? null : sniperGames > rifleGames ? 1 : 0,
         judged: judgedPosition?.position ?? null,
         judgedMargin: judgedPosition?.margin ?? null,
@@ -871,7 +889,7 @@ export async function getLeaguePlayerDetail(
  *
  * ── **기록과 순위가 같은 줄을 쓴다** (2026-09-01 · D-239 후속)
  *   예전에는 `weaponStatsOf`(기록)와 `playerWeaponRankOf`(순위)가 같은 표를 따로 읽었다.
- *   순위 쪽은 `leaguePlayer.placement` 까지 중첩으로 읽어 왕복이 한 번 더 났는데,
+ *   순위 쪽은 `effective.placement` 까지 중첩으로 읽어 왕복이 한 번 더 났는데,
  *   그 값은 이 화면이 이미 손에 들고 있다.
  */
 async function weaponStatRowsOf(
