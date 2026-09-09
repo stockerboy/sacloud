@@ -68,6 +68,7 @@ import { runClanAffiliation } from './jobs/clanAffiliation.js'
 import { runPlayerProfileClan } from './jobs/playerProfileClan.js'
 import { runStampPlayerClan } from './jobs/stampPlayerClan.js'
 import { runAccountMerge } from './jobs/accountMerge.js'
+import { runIplRankApply } from './jobs/iplRankApply.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
@@ -311,6 +312,7 @@ function usage(): void {
   player-profile-clan [--league <slug,slug>] [--limit <n>] [--max-min <분>] [--all] [--confirm]
   stamp-player-clan [--league <slug,slug>] [--all] [--confirm]
   account-merge [--all] [--confirm] [--revert <파일>]
+  ipl-rank-apply [--confirm]
               선수의 **현재 소속 클랜**(LeaguePlayer.clanId)을 경기 기록에서 채운다 (D-161).
               가장 늦은 경기의 matchTimeLeagueClanId 를 그대로 옮긴다 — 새로 판정하지 않는다.
               기본 대상은 IPL(nolink) 이다. 미러 리그는 supplyRollup 이 이미 채운다.
@@ -597,6 +599,35 @@ async function main(): Promise<number> {
       }
       /* 막힌 채로 끝나면 실패로 알린다 — 조용히 넘어가면 다음 사람이 모른다 */
       return result.blocked ? 1 : 0
+    }
+
+    case 'ipl-rank-apply': {
+      /*
+        ★IPL 랭킹을 새 공식으로 다시 쓴다★ (2026-09-10 · 사장님 확정).
+        `season0Apply` 바로 뒤에 붙인다 — 그쪽은 한 글자도 안 고쳤다.
+        `--confirm` 없이는 한 줄도 쓰지 않고, 쓸 때는 먼저 되돌리기 파일을 남긴다.
+      */
+      const result = await runIplRankApply({ confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          경기: result.matches,
+          클랜: result.clans,
+          선수: result.players,
+          쓴클랜: result.clanWrites,
+          쓴선수: result.playerWrites,
+          반영: result.confirmed ? '했다' : '안했다',
+        },
+      ])
+      if (result.topClans.length > 0) {
+        log('클랜 상위')
+        table(result.topClans as unknown as Record<string, unknown>[])
+      }
+      if (result.topPlayers.length > 0) {
+        log('개인 상위')
+        table(result.topPlayers as unknown as Record<string, unknown>[])
+      }
+      if (result.backupFile) log(`되돌리기 파일 — ${result.backupFile}`)
+      return 0
     }
 
     case 'account-merge': {

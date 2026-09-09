@@ -104,7 +104,8 @@ export {
 export { DivisionTabs } from './league/DivisionTabs'
 /* SPL(왼쪽) · IPL(오른쪽) 두 칸 랭킹 (2026-09-01). 부리그 탭 화면은 그대로 살아 있다 */
 export { RankSplit, RankSplitColumn, type RankSplitColumnProps } from './league/RankSplit'
-export { divisionLabel, divisionUnit } from './league/divisionLabel'
+export { divisionLabel,
+  divisionShort, divisionUnit } from './league/divisionLabel'
 /* 「고용가능 클랜」 검색창 (2026-09-02 · D-260). 이 화면에만 붙는다 */
 export { ClanSearchBox, type ClanSearchBoxProps } from './league/ClanSearchBox'
 export {

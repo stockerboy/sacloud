@@ -46,6 +46,16 @@ pnpm --filter @sacloud/worker exec tsx src/jobs/season0Apply.ts \
   --leagues "$LEAGUES" --confirm >> "$LOG" 2>&1
 code=$?
 
+# ── ★IPL 랭킹을 새 공식으로 다시 쓴다★ (2026-09-10 · 사장님 확정) ─────
+#   위 집계는 ★쉘 공식★ 로 점수를 쓴다. 그쪽은 한 글자도 안 고쳤다 (`CLAUDE.md` 1-4).
+#   IPL 만 ★티어 셋짜리 새 공식★ 으로 덮는다 — 바로 뒤에 붙어서 틈이 안 생긴다.
+#   ★되돌리려면 이 줄만 지우면 된다.★ 다음 회차에 쉘 점수로 돌아간다.
+if [ "$code" = "0" ]; then
+  pnpm --filter @sacloud/worker nexon ipl-rank-apply --confirm >> "$LOG" 2>&1 || true
+  rank_line=$(grep -E '^경기 [0-9,]+건 · 클랜 ' "$LOG" | tail -1)
+  [ -n "$rank_line" ] && say "  IPL 랭킹 — ${rank_line}"
+fi
+
 if [ "$code" = "0" ]; then
   # 마지막 결과 줄을 요약으로 남긴다
   done_line=$(grep -E '반영 완료' "$LOG" | tail -1)

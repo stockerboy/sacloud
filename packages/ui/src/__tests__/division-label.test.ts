@@ -8,7 +8,7 @@
  *   여기서 못 박는 것: **어떤 구분값을 주어도 「부리그」 라는 글자는 나오지 않는다.**
  */
 import { describe, expect, it } from 'vitest'
-import { divisionLabel, divisionUnit } from '../league/divisionLabel'
+import { divisionLabel, divisionShort, divisionUnit } from '../league/divisionLabel'
 
 describe('등급 표기 — 티어 하나뿐 (#23)', () => {
   it('공식리그 구분을 줘도 `N티어` 다', () => {
@@ -23,17 +23,28 @@ describe('등급 표기 — 티어 하나뿐 (#23)', () => {
     expect(divisionUnit(undefined)).toBe('티어')
   })
 
-  it('무소속리그는 그대로 `N티어` 다', () => {
-    expect(divisionLabel(1, 'independent')).toBe('1티어')
-    expect(divisionLabel(6, 'independent')).toBe('6티어')
+  /*
+   * ⚠ 2026-09-10 — 사장님이 IPL 티어를 ★셋으로 줄이고 이름을 주셨다.★
+   *   «티어는 네개 Spectra Astra challenger1 challenger2» → SPECTRA 를 빼고 셋으로 확정.
+   *   그래서 무소속리그만 ★이름★ 이 나온다. 공식리그는 그대로 `N티어` 다.
+   *   쉘 표기로 돌아가려면 `IPL_TIER_NAMES_ON` 을 `false` 로 둔다.
+   */
+  it('무소속리그는 티어 이름이 나온다', () => {
+    expect(divisionLabel(1, 'independent')).toBe('ASTRA')
+    expect(divisionLabel(2, 'independent')).toBe('CHALLENGER1')
+    expect(divisionLabel(3, 'independent')).toBe('CHALLENGER2')
     expect(divisionUnit('independent')).toBe('티어')
   })
 
-  /* IPL 이 6단이다 (D-181). 표기 함수는 상한을 모르는 것이 정상이라
-     6티어까지 나오는지만 본다 — 숫자를 아는 곳은 `INDEPENDENT_TIER_COUNT` 하나다 */
-  it('1~6티어가 전부 만들어진다', () => {
-    const labels = [1, 2, 3, 4, 5, 6].map((tier) => divisionLabel(tier, 'independent'))
-    expect(labels).toEqual(['1티어', '2티어', '3티어', '4티어', '5티어', '6티어'])
+  it('이름을 모르는 번호는 지어내지 않고 쉘 표기로 떨어진다', () => {
+    expect(divisionLabel(4, 'independent')).toBe('4티어')
+  })
+
+  it('짧은 표기도 세 개다', () => {
+    expect(divisionShort(1, 'independent')).toBe('AST')
+    expect(divisionShort(2, 'independent')).toBe('CH1')
+    expect(divisionShort(3, 'independent')).toBe('CH2')
+    expect(divisionShort(1, 'official')).toBe('1T')
   })
 
   it('어떤 값을 줘도 「부리그」 라는 글자는 나오지 않는다', () => {
