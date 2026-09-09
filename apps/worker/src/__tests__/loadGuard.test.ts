@@ -9,16 +9,24 @@
  * ```
  */
 import { describe, expect, it } from 'vitest'
-import { BASELINE_MS, PAUSE_MS, STOP_MS, guardLine, newGuardState } from '../jobs/loadGuard'
+import { BASELINE_MS, PAUSE_MS, STOP_MS, guardLine, newGuardState,
+  STOP_MS_V1,
+} from '../jobs/loadGuard'
 
 describe('기준값', () => {
   it('★O-017 이 잰 기준선 0.39초★ 를 그대로 쓴다', () => {
     expect(BASELINE_MS).toBe(390)
   })
 
-  it('쉼(1.5초) 과 정지(3초) 는 O-017 조건 그대로다', () => {
+  /*
+   * 2026-09-10 — 정지값을 3초 → 6초 로 올렸다.
+   * 3초는 Vercel 이 깨어나는 시간과 겹쳤고, 새벽에 수집이 1시간 10분 멈췄다.
+   * 쉘 값은 `STOP_MS_V1` 에 남아 있다.
+   */
+  it('쉬(1.5초) 과 정지(6초) — 쉘 정지값도 남겨 둔다', () => {
     expect(PAUSE_MS).toBe(1500)
-    expect(STOP_MS).toBe(3000)
+    expect(STOP_MS).toBe(6000)
+    expect(STOP_MS_V1).toBe(3000)
     expect(PAUSE_MS).toBeLessThan(STOP_MS)
   })
 })
@@ -69,6 +77,6 @@ describe('사람에게 보이는 한 줄', () => {
     }
     expect(mk(300).startsWith('★')).toBe(false)
     expect(mk(2000).startsWith('★')).toBe(true)
-    expect(mk(4000).startsWith('★★')).toBe(true)
+    expect(mk(7000).startsWith('★★')).toBe(true)
   })
 })
