@@ -17,6 +17,8 @@ import {
   LEAGUE_SUMMARY_SELECT,
   toClanSummary,
   toClanSummaryOrNull,
+  PLAYER_CLAN_FALLBACK_SELECT,
+  playerClanOf,
   toLeagueSummary,
 } from '../mappers'
 import { publicOriginWhere } from './publicScope'
@@ -118,10 +120,15 @@ async function playerByName(name: string): Promise<PlayerSearchItem | null> {
   const player = await prisma.player.findFirst({
     where: { name: ciEquals(name), ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
-    select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
+    select: {
+      id: true,
+      name: true,
+      clan: { select: CLAN_SUMMARY_SELECT },
+      ...PLAYER_CLAN_FALLBACK_SELECT,
+    },
   })
   if (!player) return null
-  return { id: player.id, name: player.name, clan: toClanSummaryOrNull(player.clan) }
+  return { id: player.id, name: player.name, clan: toClanSummaryOrNull(playerClanOf(player)) }
 }
 
 /**
@@ -148,10 +155,15 @@ async function playerByBarracksUsn(usn: string): Promise<PlayerSearchItem | null
 
   const player = await prisma.player.findFirst({
     where: { id: playerId, ...publicOriginWhere() },
-    select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
+    select: {
+      id: true,
+      name: true,
+      clan: { select: CLAN_SUMMARY_SELECT },
+      ...PLAYER_CLAN_FALLBACK_SELECT,
+    },
   })
   if (!player) return null
-  return { id: player.id, name: player.name, clan: toClanSummaryOrNull(player.clan) }
+  return { id: player.id, name: player.name, clan: toClanSummaryOrNull(playerClanOf(player)) }
 }
 
 /**
@@ -262,10 +274,15 @@ async function findPlayerByBarracksUrl(input: string): Promise<PlayerSearchItem 
     const player = await prisma.player.findFirst({
       where,
       orderBy: [{ id: 'asc' }],
-      select: { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } },
+      select: {
+      id: true,
+      name: true,
+      clan: { select: CLAN_SUMMARY_SELECT },
+      ...PLAYER_CLAN_FALLBACK_SELECT,
+    },
     })
     if (player) {
-      return { id: player.id, name: player.name, clan: toClanSummaryOrNull(player.clan) }
+      return { id: player.id, name: player.name, clan: toClanSummaryOrNull(playerClanOf(player)) }
     }
   }
   return null
@@ -317,7 +334,12 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
    *   3글자 이상이면 둘 다 인덱스라 합쳐도 0.1ms 다. 2글자면 부분일치가 6.7ms 인데
    *   **그건 고치기 전과 같은 값**이다 — 느려지지 않는다.
    */
-  const select = { id: true, name: true, clan: { select: CLAN_SUMMARY_SELECT } }
+  const select = {
+    id: true,
+    name: true,
+    clan: { select: CLAN_SUMMARY_SELECT },
+    ...PLAYER_CLAN_FALLBACK_SELECT,
+  }
   const [prefixRows, containsOnlyRows] = await Promise.all([
     prisma.player.findMany({
       where: { name: ciStarts(keyword), ...publicOriginWhere() },
@@ -349,7 +371,7 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
   return players.map((player) => ({
     id: player.id,
     name: player.name,
-    clan: toClanSummaryOrNull(player.clan),
+    clan: toClanSummaryOrNull(playerClanOf(player)),
   }))
 }
 

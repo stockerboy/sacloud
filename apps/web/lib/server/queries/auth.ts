@@ -18,7 +18,24 @@ import { issueAccessToken, issueRefreshToken, setSessionCookie } from '../sessio
 
 /** 사용자 조회 시 항상 같은 관계를 함께 읽어 `toUser`에 넘긴다 */
 export const USER_INCLUDE = {
-  playerLink: { include: { player: { include: { clan: true } } } },
+  /* 소속은 `Player.clan` 만으로 안 된다 — ★리그 명부도 같이 읽는다★ (2026-09-10).
+     까닭은 `mappers.ts` 의 `PLAYER_CLAN_FALLBACK_SELECT` 주석에 적어 뒀다.
+     여기만 `select` 가 아니라 `include` 라 같은 칸을 손으로 한 번 더 쓴다 */
+  playerLink: {
+    include: {
+      player: {
+        include: {
+          clan: true,
+          leaguePlayers: {
+            where: { clanId: { not: null } },
+            orderBy: { updatedAt: 'desc' },
+            take: 1,
+            include: { clan: true },
+          },
+        },
+      },
+    },
+  },
 } as const
 
 /**

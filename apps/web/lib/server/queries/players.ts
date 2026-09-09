@@ -10,6 +10,8 @@ import {
 import { toKstIso, toKstIsoOrNull } from '../format'
 import {
   CLAN_SUMMARY_SELECT,
+  PLAYER_CLAN_FALLBACK_SELECT,
+  playerClanOf,
   LEAGUE_SUMMARY_SELECT,
   toClanSummaryOrNull,
   toLeagueSummary,
@@ -56,24 +58,19 @@ export async function getPlayer(playerId: string): Promise<Player | null> {
        * 그래서 ★명부 쪽도 같이 읽고, 있으면 그것을 쓴다.★
        * ⚠ `Player.clanId` 를 지우지 않는다 — 3rd.supply 출신은 그 값이 맞다.
        * ⚠ 리그가 여럿이면 ★가장 최근에 손댄 줄★ 하나만 본다. 둘을 합치지 않는다.
+       *
+       * 같은 규칙을 검색 화면도 쓴다 — 칸과 고르는 법을 ★`mappers.ts` 한 곳★ 에 뒀다.
        */
-      leaguePlayers: {
-        where: { clanId: { not: null } },
-        orderBy: { updatedAt: 'desc' },
-        take: 1,
-        select: { clan: { select: CLAN_SUMMARY_SELECT } },
-      },
+      ...PLAYER_CLAN_FALLBACK_SELECT,
     },
   })
   if (!player) return null
 
-  /* ★계정 칸이 있으면 그것이 먼저다★ — 3rd.supply 출신의 값이 거기 있다 */
-  const clan = player.clan ?? player.leaguePlayers[0]?.clan ?? null
-
   return {
     id: player.id,
     name: player.name,
-    clan: toClanSummaryOrNull(clan),
+    /* ★계정 칸이 있으면 그것이 먼저다★ — 3rd.supply 출신의 값이 거기 있다 */
+    clan: toClanSummaryOrNull(playerClanOf(player)),
     position: player.position,
     note: player.note,
     renewed_at: toKstIsoOrNull(player.renewedAt),

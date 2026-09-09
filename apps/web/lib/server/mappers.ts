@@ -193,7 +193,7 @@ export function toUser(user: {
     role: user.role,
     email_verified_at: toKstIsoOrNull(user.emailVerifiedAt),
     player: toPlayerSummaryOrNull(player),
-    clan: toClanSummaryOrNull(player?.clan ?? null),
+    clan: toClanSummaryOrNull(player ? playerClanOf(player) : null),
     created_at: toKstIso(user.createdAt),
   }
 }
@@ -212,6 +212,38 @@ export const CLAN_SUMMARY_SELECT = {
   category: true,
   tier: true,
 } as const
+
+/**
+ * ★선수의 지금 소속을 찾을 때 함께 읽는 칸★ (2026-09-10 · 사장님 지적 «다 무고속이라고 떠»).
+ *
+ * `Player.clanId` 만 보면 ★거의 모두가 무소속(구름)으로 떨어진다.★
+ * 그 칸은 `3rd.supply` 에서 온 선수만 채워지고 (D-161), 지금 들어오는 선수는
+ * 전부 병영수첩 출신이라 ★언제나 비어 있다★ (실측 25,727명 중 4,715명만 차 있었다).
+ *
+ * ★소속을 실제로 관리하는 칸은 `LeaguePlayer.clanId`★ 다 — 병영수첩 클랜원 명부가
+ * `clan-affiliation` 잡으로 들어오는 곳이다. 그래서 ★뒤로 그 칸을 본다.★
+ * 이 둘을 합치면 소속이 뜨는 사람이 ★4,715 → 8,105명★ 이 된다.
+ *
+ * ⚠ `Player.clanId` 를 지우지 않는다 — 3rd.supply 출신은 그 값이 맞다. ★앞에 둔다.★
+ * ⚠ 여러 리그에 있으면 ★가장 최근에 손댄 명부★ 한 줄만 본다. 리그마다 다른 답을 내지 않는다.
+ * ⚠ 이건 ★지금 소속★ 이다. ★경기 당시 소속(`MatchPlayerStat.playerClanId`)과 섞지 않는다.★
+ */
+export const PLAYER_CLAN_FALLBACK_SELECT = {
+  leaguePlayers: {
+    where: { clanId: { not: null } },
+    orderBy: { updatedAt: 'desc' },
+    take: 1,
+    select: { clan: { select: CLAN_SUMMARY_SELECT } },
+  },
+} as const
+
+/** 위 칸을 함께 읽은 선수에서 소속을 고른다 — `Player.clan` 이 먼저, 없으면 리그 명부 */
+export function playerClanOf(player: {
+  clan?: ClanFields | null
+  leaguePlayers?: Array<{ clan: ClanFields | null }>
+}): ClanFields | null {
+  return player.clan ?? player.leaguePlayers?.[0]?.clan ?? null
+}
 
 export const LEAGUE_SUMMARY_SELECT = {
   id: true,
