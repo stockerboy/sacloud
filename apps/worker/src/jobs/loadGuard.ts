@@ -211,8 +211,35 @@ export async function checkLoad(healthUrl: string, state: GuardState): Promise<V
   if (second === 'go' && cold !== null && state.lastMs !== null) {
     /* ★깨우는 시간이었다는 것을 남긴다★ — 「그냥 괜찮았다」로 넘기지 않는다 */
     state.coldFirstMs = cold
+    return second
   }
-  return second
+
+  /*
+   * ★한 번 더 재 본다★ (2026-09-10 · 새벽에 수집이 통째로 안 돌아서 찾았다).
+   *
+   * Vercel 함수는 사람이 안 들어오면 잠든다. 새벽에는 ★두 번 연속으로 깨우는 시간이
+   * 나올 수 있다★ — 기다리는 1.2초 사이에 다시 잠들기도 한다.
+   *
+   * 실측 (2026-09-10 00:30 · 운영 VPS):
+   * ```
+   * 첫 번째 3475ms · 두 번째도 느림  →  「시작 전부터 무겁다」로 ★한 바퀴를 통째로 건너뜀★
+   * 같은 시각 노트북에서: 첫 번째 3.5초 → 두 번째 ★0.31초★  →  사이트는 멀쩡했다
+   * ```
+   * ★깨우는 시간은 부하가 아니다.★ 그래서 세 번째까지 본다.
+   *
+   * ⚠ ★무한히 다시 재지 않는다.★ 세 번이면 끝이다 — 그래도 느리면 진짜로 무거운 것이다.
+   * ⚠ `db` 가 ok 가 아니거나 200 이 아니면 위에서 이미 돌아갔다 —
+   *   여기까지 오는 것은 ★느린 것뿐★ 이다.
+   * ⚠ 옛 방식(두 번만 재기)은 `checkLoadSlowOnly` 에 그대로 있다 (`CLAUDE.md` 1-4).
+   */
+  if (state.lastDbStatus !== 'ok') return second
+  const secondMs = state.lastMs
+  await new Promise((r) => setTimeout(r, COLD_RETRY_WAIT_MS))
+  const third = await measureOnce(healthUrl, state)
+  if (third === 'go' && state.lastMs !== null) {
+    state.coldFirstMs = cold ?? secondMs ?? undefined
+  }
+  return third
 }
 
 /**
