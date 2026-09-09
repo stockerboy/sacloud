@@ -293,9 +293,33 @@ export class BarracksBrowser {
         /* 물어보다 실패하면 다시 물어본다 */
       }
       if (origin === ORIGIN) break
-      if (Date.now() > readyDeadline) break
+      if (Date.now() > readyDeadline) {
+        /*
+         * ★다른 곳으로 튕겼으면 그렇게 말한다★ (2026-09-10).
+         *
+         * 실측: 넥슨이 `gamebulletin.nexon.com/sa/inspection.aspx` 로 돌려보냈다.
+         * 그 페이지는 «접속을 위해 보안 검사를 진행해 주세요» 라고 적혀 있다.
+         * ★그 상태에서 `fetch` 를 부르면 `Failed to fetch` 만 나온다★ —
+         * 그 말만 보면 우리 코드가 깨진 줄 안다. 실제로 새벽 내내 그렇게 헤맸다.
+         *
+         * ⚠ ★우회하지 않는다.★ 보안 검사를 푸는 코드를 만들지 않는다.
+         *   ★무엇이 막았는지 적고 그대로 멈춘다.★ 그게 우리가 할 수 있는 전부다.
+         */
+        if (origin && origin !== ORIGIN) {
+          this.blockedOrigin = origin
+        }
+        break
+      }
       await new Promise((r) => setTimeout(r, 300))
     }
+  }
+
+  /** ★넥슨이 다른 곳으로 돌려보냈으면 그 주소★ — 없으면 `null` */
+  private blockedOrigin: string | null = null
+
+  /** 밖에서 «지금 막혀 있나» 를 물어볼 수 있게 한다 */
+  get blockedAt(): string | null {
+    return this.blockedOrigin
   }
 
   /** ★페이지 안에서 부른다.★ 헤더는 `Content-Type` 하나만 우리가 정한다 */
@@ -305,6 +329,13 @@ export class BarracksBrowser {
     body: string | null,
   ): Promise<BrowserFetchResult> {
     await this.ensure()
+    /* ★막혔으면 그 사실을 말한다★ — `Failed to fetch` 로 뭉뚱그리지 않는다 (2026-09-10) */
+    if (this.blockedOrigin !== null) {
+      throw new Error(
+        `★넥슨이 다른 곳으로 돌려보냈다★ — ${this.blockedOrigin} ` +
+          `(보안 검사 또는 점검 페이지다. 우리 코드 문제가 아니고, 우회하지 않는다)`,
+      )
+    }
     const started = Date.now()
     const spec = JSON.stringify({
       path,
