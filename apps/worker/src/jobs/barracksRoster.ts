@@ -77,6 +77,12 @@ export interface BarracksRosterResult {
   observedAt: Date
   /** 실패한 클랜 목록 (앞부분만) */
   failures: Array<{ slug: string; reason: string }>
+  /** 새로 채운 클랜번호 수 — 라인업이 붙으려면 이게 있어야 한다 */
+  clanNoSaved: number
+  /** 우리 slug 로 안 돼서 병영수첩 slug 를 찾아낸 클랜 수 */
+  slugFixed: number
+  /** 그 예시 */
+  fixes: Array<{ ours: string; barracks: string }>
   /** 시간이 다 되어 스스로 멈췄나 — 남은 곳은 다음 판이 이어받는다 */
   timeUp: boolean
   /** 아직 안 받은 클랜 수 */
@@ -147,6 +153,106 @@ async function callBarracks(path: string, body: string): Promise<CurlResult> {
   return { status: r.status, body: r.body }
 }
 
+/**
+ * ★우리 slug 로 안 될 때 병영수첩 slug 를 찾아낸다★ (2026-09-09 실측).
+ *
+ * `Clan.slug` 는 ★우리 사이트의 주소★ 지 병영수첩의 `clan_id` 가 아니다.
+ * 실제로 어긋난 곳이 있다:
+ * ```
+ *   deluxe        우리 ferwfwfwfwf      병영수첩 042222741
+ *   crucialrz     우리 ipl-backspace00  병영수첩 ?
+ *   NeedΒackup    우리 ipl-yoonsh1971   병영수첩 ?
+ * ```
+ * `ipl-` 로 시작하는 것은 ★우리가 지어낸 주소★ 다. 병영수첩에는 그런 클랜이 없다.
+ *
+ * ★그래서 그 클랜으로 뛴 사람의 프로필을 본다.★ 프로필에 `clan_id` 가 들어 있다.
+ * 요청 한 번으로 주소를 알아내고, 그 주소로 명부를 다시 물어본다.
+ *
+ * ⚠ ★닉네임으로 찾지 않는다★ — 계정(`str_usn`)만 쓴다 (D-221 위장닉).
+ * ⚠ 못 찾으면 ★지어내지 않는다.★ `null` 을 주고 그 클랜은 실패로 남긴다.
+ */
+async function findBarracksSlug(clanId: string): Promise<string | null> {
+  const rows = await prisma.$queryRaw<Array<{ usn: string }>>`
+    SELECT substring(p."sourcePlayerId" from 5) AS usn
+      FROM "MatchPlayerStat" s
+      JOIN "Match" m ON m."id" = s."matchId"
+      JOIN "LeagueClan" lc ON lc."id" = s."matchTimeLeagueClanId"
+      JOIN "Player" p ON p."id" = s."playerId"
+     WHERE lc."clanId" = ${clanId}
+       AND p."sourcePlayerId" LIKE 'BRK-%'
+       AND m."supersededAt" IS NULL
+     ORDER BY m."startAt" DESC
+     LIMIT 3`
+  for (const row of rows) {
+    let res: CurlResult
+    try {
+      res = await callBarracks(`/api/Profile/GetProfileMain/${encodeURIComponent(row.usn)}`, '{}')
+    } catch {
+      continue
+    }
+    if (res.status !== 200) continue
+    try {
+      const doc = JSON.parse(res.body) as {
+        result?: { characterInfo?: { clan_id?: string | null } }
+      }
+      const slug = doc.result?.characterInfo?.clan_id
+      if (slug) return slug
+    } catch {
+      /* 답이 JSON 이 아니면 다음 사람으로 */
+    }
+  }
+  return null
+}
+
+/** 명단이 실제로 들어 있는 답인가 */
+function looksOk(body: string): boolean {
+  try {
+    const doc = JSON.parse(body) as { rtnCode?: number; resultClanUserList?: unknown[] | null }
+    return doc.rtnCode === 0 && (doc.resultClanUserList?.length ?? 0) > 0
+  } catch {
+    return false
+  }
+}
+
+/**
+ * ★클랜번호(`clan_no`)를 채운다★ (2026-09-09 · 라인업이 안 붙던 진짜 원인).
+ *
+ * 배틀로그는 팀을 ★클랜번호★ 로 부른다. 그 번호를 우리 클랜으로 못 풀면
+ * ★10명 명단을 다 받아 놓고도 경기에 못 붙인다★ — 로그의 `clan_unmapped` 다.
+ * 2026-09-09 21:50 실측: 한 판에서 ★92경기★ 가 그 이유로 버려졌다.
+ *
+ * `BarracksClanNumber` 표가 ★0행★ 이었다. 그동안은 매치목록 원문으로 그때그때
+ * 푸는 길(`iplClanNumberMap`)에만 기댔고, 그 원문에 안 나오는 클랜은 영영 못 풀었다.
+ *
+ * ```
+ * POST /api/ClanHome/GetClanInfo/{barracks_slug}   {}  →  { clan_no }
+ * ```
+ * 요청 한 번이면 된다. ★이미 아는 클랜은 다시 묻지 않는다.★
+ */
+async function fillClanNumber(clanId: string, slug: string): Promise<'saved' | 'skip' | 'fail'> {
+  let res: CurlResult
+  try {
+    res = await callBarracks(`/api/ClanHome/GetClanInfo/${encodeURIComponent(slug)}`, '{}')
+  } catch {
+    return 'fail'
+  }
+  if (res.status !== 200) return 'fail'
+  let clanNo: string | null = null
+  try {
+    clanNo = (JSON.parse(res.body) as { clan_no?: string | null }).clan_no ?? null
+  } catch {
+    return 'fail'
+  }
+  if (!clanNo) return 'fail'
+  /* ★한 번호에 한 클랜★ 이다 (기본키). 이미 남의 것이면 덮지 않는다 —
+     같은 병영수첩 클랜이 우리 DB 에 두 행인 경우가 있다 (EVOA → melody / idylic) */
+  await prisma.$executeRaw`
+    INSERT INTO "BarracksClanNumber" ("clanNo","clanId","source","votes","linkedAt")
+    VALUES (${clanNo}, ${clanId}, 'clanhome', 1, NOW())
+    ON CONFLICT ("clanNo") DO NOTHING`
+  return 'saved'
+}
+
 interface RawMember {
   str_usn?: string
   user_nexon_sn?: number | string
@@ -214,6 +320,11 @@ export async function runBarracksRoster(input: {
      ORDER BY c."slug"`
   const targets = input.limit ? rows.slice(0, input.limit) : rows
 
+  /* ★이미 번호를 아는 클랜은 다시 묻지 않는다★ */
+  const knownNo = new Set(
+    (await prisma.barracksClanNumber.findMany({ select: { clanId: true } })).map((r) => r.clanId),
+  )
+
   const result: BarracksRosterResult = {
     leagues,
     asked: 0,
@@ -226,14 +337,40 @@ export async function runBarracksRoster(input: {
     confirmed: input.confirm,
     observedAt,
     failures: [],
+    clanNoSaved: 0,
+    slugFixed: 0,
+    fixes: [],
     timeUp: false,
     remaining: 0,
   }
   const deadline = input.maxMinutes ? Date.now() + input.maxMinutes * 60_000 : null
 
   for (const clan of targets) {
-    /* 이어받는 판이면 이미 받은 곳은 건드리지 않는다 */
-    if (done.has(clan.slug)) continue
+    /*
+     * 이어받는 판이면 명부는 다시 안 받는다.
+     * ★그래도 클랜번호가 없으면 그건 채운다★ — 명부와 번호는 따로다.
+     */
+    if (done.has(clan.slug)) {
+      if (input.confirm && !knownNo.has(clan.clanId)) {
+        const out = await fillClanNumber(clan.clanId, clan.slug)
+        if (out === 'saved') {
+          result.clanNoSaved += 1
+          knownNo.add(clan.clanId)
+        } else {
+          /* 우리 주소로 안 되면 병영수첩 주소를 찾아 한 번 더 */
+          const real = await findBarracksSlug(clan.clanId)
+          if (real && real !== clan.slug) {
+            await sleep(delay)
+            if ((await fillClanNumber(clan.clanId, real)) === 'saved') {
+              result.clanNoSaved += 1
+              knownNo.add(clan.clanId)
+            }
+          }
+        }
+        await sleep(delay)
+      }
+      continue
+    }
     /* ★시간이 다 됐으면 클랜 사이에서 깔끔하게 멈춘다★ */
     if (deadline && Date.now() > deadline) {
       result.timeUp = true
@@ -241,8 +378,23 @@ export async function runBarracksRoster(input: {
     }
     result.asked += 1
     let res: CurlResult
+    let usedSlug = clan.slug
     try {
       res = await callBarracks(PATH, JSON.stringify({ clan_id: clan.slug }))
+      /*
+       * ★우리 주소로 안 되면 병영수첩 주소를 찾아 한 번만 더 물어본다★ (2026-09-09).
+       * `rtnCode` 가 0 이 아니면 그런 클랜이 없다는 뜻이다 — 우리 slug 가 우리 것이라서다.
+       */
+      if (res.status === 200 && !looksOk(res.body)) {
+        const real = await findBarracksSlug(clan.clanId)
+        if (real && real !== clan.slug) {
+          result.slugFixed += 1
+          if (result.fixes.length < 20) result.fixes.push({ ours: clan.slug, barracks: real })
+          await sleep(delay)
+          usedSlug = real
+          res = await callBarracks(PATH, JSON.stringify({ clan_id: real }))
+        }
+      }
     } catch (error) {
       result.failed += 1
       if (result.failures.length < 20)
@@ -295,6 +447,17 @@ export async function runBarracksRoster(input: {
     }
     result.ok += 1
     result.members += list.length
+
+    /* ★번호가 없으면 지금 채운다★ — 라인업이 붙으려면 이게 있어야 한다.
+       `usedSlug` 는 실제로 명단을 준 주소다 (우리 것일 수도, 찾아낸 것일 수도 있다) */
+    if (input.confirm && !knownNo.has(clan.clanId)) {
+      const out = await fillClanNumber(clan.clanId, usedSlug)
+      if (out === 'saved') {
+        result.clanNoSaved += 1
+        knownNo.add(clan.clanId)
+      }
+      await sleep(delay)
+    }
 
     if (input.confirm) {
       /* 같은 관측 시각에 같은 사람이 두 번 들어오지 않게 계정으로 한 번 접는다 */

@@ -88,6 +88,9 @@ if [ "$n" != "0" ]; then
 fi
 
 # ── ① 임대 ────────────────────────────────────────────────────────
+#   ⚠ ★반납할 때도 `--name` 을 반드시 준다.★ 안 주면 기본값이 `barracks-collect` 라
+#     ★수집기의 임대를 반납하려 든다★ (2026-09-09 실측 — 주인이 달라 실패했지만
+#     실패했기에 우리 임대가 30분 동안 안 풀렸다).
 #   한 판 ★약 12분★ 이라 TTL 은 ★30분★ 이다. 죽은 판이 그보다 오래 막지 않게 짧게 둔다.
 acq=$(pnpm --filter @sacloud/worker nexon collect-lease acquire --name barracks-roster --ttl 1800 2>&1)
 acode=$?
@@ -113,7 +116,7 @@ code=$?
 if [ "$code" != "0" ]; then
   # 잡은 403/429 로 막히면 코드 1 을 준다. ★막힌 명부로 소속을 고치지 않는다★
   say "★★명부 받기 실패/막힘 (코드 ${code}) — 소속 반영은 하지 않는다★★"
-  pnpm --filter @sacloud/worker nexon collect-lease release --owner "$OWNER" >> "$LOG" 2>&1
+  pnpm --filter @sacloud/worker nexon collect-lease release --name barracks-roster --owner "$OWNER" >> "$LOG" 2>&1
   exit 0
 fi
 say "  명부 받음 — $(grep -E '^명부 ' "$LOG" | tail -1)"
@@ -129,5 +132,5 @@ else
   say "★★소속 반영 실패 (코드 ${code})★★ — 다음 회차에 다시 해 본다"
 fi
 
-pnpm --filter @sacloud/worker nexon collect-lease release --owner "$OWNER" >> "$LOG" 2>&1
+pnpm --filter @sacloud/worker nexon collect-lease release --name barracks-roster --owner "$OWNER" >> "$LOG" 2>&1
 exit 0

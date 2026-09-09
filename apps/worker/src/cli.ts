@@ -65,6 +65,7 @@ import { runIplClanRollup } from './jobs/iplClanRollup.js'
 import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
 import { runBarracksRoster } from './jobs/barracksRoster.js'
 import { runClanAffiliation } from './jobs/clanAffiliation.js'
+import { runPlayerProfileClan } from './jobs/playerProfileClan.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
@@ -305,6 +306,7 @@ function usage(): void {
   player-current-clan [--league <slug>] [--confirm]
   barracks-roster [--league <slug,slug>] [--limit <n>] [--delay <ms>] [--resume <분>] [--max-min <분>] [--confirm]
   clan-affiliation [--league <slug>] [--no-clear] [--confirm]
+  player-profile-clan [--league <slug,slug>] [--limit <n>] [--max-min <분>] [--all] [--confirm]
               선수의 **현재 소속 클랜**(LeaguePlayer.clanId)을 경기 기록에서 채운다 (D-161).
               가장 늦은 경기의 matchTimeLeagueClanId 를 그대로 옮긴다 — 새로 판정하지 않는다.
               기본 대상은 IPL(nolink) 이다. 미러 리그는 supplyRollup 이 이미 채운다.
@@ -574,16 +576,62 @@ async function main(): Promise<number> {
           사람: result.members,
           넣은줄: result.written,
           막힘: result.blocked ? '★막혔다★' : '아니오',
+          클랜번호채움: result.clanNoSaved,
+          주소고침: result.slugFixed,
           시간종료: result.timeUp ? '★멈춤★' : '아니오',
           남은곳: result.remaining,
           반영: result.confirmed ? '했다' : '안했다',
         },
       ])
+      if (result.fixes.length > 0) {
+        log('우리 주소 → 병영수첩 주소 (찾아낸 것)')
+        table(result.fixes as unknown as Record<string, unknown>[])
+      }
       if (result.failures.length > 0) {
         warn('실패한 클랜 (앞 20곳)')
         table(result.failures as unknown as Record<string, unknown>[])
       }
       /* 막힌 채로 끝나면 실패로 알린다 — 조용히 넘어가면 다음 사람이 모른다 */
+      return result.blocked ? 1 : 0
+    }
+
+    case 'player-profile-clan': {
+      /*
+        ★명부에 빠진 사람을 프로필로 확인한다★ (2026-09-09).
+        명부는 전원을 다 내려 주지 않는다 — 실측 30명 중 19명이 클랜이 있는데 안 떴다.
+        `--confirm` 없이는 한 줄도 쓰지 않는다.
+      */
+      const league = stringFlag(args, 'league')
+      const result = await runPlayerProfileClan({
+        leagues: league ? league.split(',').map((x) => x.trim()).filter(Boolean) : undefined,
+        limit: numberFlag(args, 'limit') ?? undefined,
+        maxMinutes: numberFlag(args, 'max-min') ?? undefined,
+        all: boolFlag(args, 'all'),
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table([
+        {
+          리그: result.leagues.join('·'),
+          물어봄: result.asked,
+          클랜있음: result.hasClan,
+          채움: result.filled,
+          리그밖클랜: result.outsideClan,
+          진짜무소속: result.reallyNone,
+          실패: result.failed,
+          막힘: result.blocked ? '★막혔다★' : '아니오',
+          시간종료: result.timeUp ? '★멈춤★' : '아니오',
+          남은사람: result.remaining,
+          반영: result.confirmed ? '했다' : '안했다',
+        },
+      ])
+      if (result.samples.length > 0) {
+        log('채워지는 예시')
+        table(result.samples as unknown as Record<string, unknown>[])
+      }
+      if (result.outsideTop.length > 0) {
+        log('우리 리그 밖 클랜 — 클랜 행이 없어 못 채운다')
+        table(result.outsideTop as unknown as Record<string, unknown>[])
+      }
       return result.blocked ? 1 : 0
     }
 
