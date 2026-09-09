@@ -227,7 +227,9 @@ export async function getHealth(now: Date = new Date()): Promise<HealthReport> {
   const since = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
   /* --- DB ---
-     따로 `SELECT 1` 을 던지지 않는다. 아래 집계 쿼리가 돌면 그것이 곧 DB 정상 확인이다 */
+     ⚠ 옛 서술: «따로 `SELECT 1` 을 던지지 않는다. 아래 집계 쿼리가 돌면 그것이 곧
+        DB 정상 확인이다» — 2026-09-10 에 ★한 줄 던지게 바꿨다.★ 판정용이 아니라
+        ★접속을 깨우는 용도★ 다. 이유는 아래 주석에 있다 */
   let counts: HealthCounts
   let leagueFreshness: LeagueFreshness[]
   /*
@@ -241,6 +243,20 @@ export async function getHealth(now: Date = new Date()): Promise<HealthReport> {
    * ★깨우는 시간은 부하가 아니다.★ 그래서 여기서 ★질의에 걸린 시간만★ 재서 알려 준다.
    * 수집기는 이 값이 있으면 그것으로 판정하고, 없으면 예전처럼 왕복 시간을 쓴다.
    */
+  /*
+   * ★먼저 접속을 깨우고, 그 다음부터 잰다★ (2026-09-10 실측).
+   *
+   * 그냥 재면 ★3,900ms★ 가 나온다. 두 번째부터는 ★220ms★ 다.
+   * 그 차이는 질의가 무거워서가 아니라 ★Prisma 가 DB 에 처음 붙는 시간★ 이다.
+   * 그것까지 「부하」로 세면 수집기가 새벽마다 스스로 멈춘다 — 실제로 그랬다.
+   *
+   * ⚠ ★이 한 줄은 재지 않는다.★ 실패해도 아래 진짜 질의가 다시 판정한다.
+   */
+  try {
+    await prisma.$queryRaw`SELECT 1`
+  } catch {
+    /* 여기서 실패해도 아래에서 제대로 판정한다 */
+  }
   const dbStartedAt = Date.now()
   try {
     /* 둘 다 읽기다. 하나라도 못 읽으면 DB 가 문제인 것이므로 통째로 down 이다 */
