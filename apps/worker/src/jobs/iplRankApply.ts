@@ -66,6 +66,8 @@ export interface IplRankApplyResult {
   players: number
   clanWrites: number
   playerWrites: number
+  /** 티어별 성적 줄 (보여 주기 전용) */
+  tierStatWrites: number
   confirmed: boolean
   backupFile: string | null
   topClans: Array<{ tier: string; name: string; score: number; games: number; rate: number | null }>
@@ -130,10 +132,20 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
 
   /* ── 개인 점수 ─────────────────────────────────────────── */
   const stats = await prisma.$queryRaw<
-    Array<{ playerId: string; side: string; win: string; red: string; blue: string }>
+    Array<{
+      playerId: string
+      side: string
+      win: string
+      red: string
+      blue: string
+      weapon: number | null
+      kill: number | null
+      death: number | null
+    }>
   >`
     SELECT s."playerId" AS "playerId", s."side" AS side, m."winnerSide" AS win,
-           rc."name" AS red, bc."name" AS blue
+           rc."name" AS red, bc."name" AS blue,
+           s."weapon" AS weapon, s."kill" AS kill, s."death" AS death
       FROM "MatchPlayerStat" s
       JOIN "Match" m ON m."id" = s."matchId"
       JOIN "LeagueClan" rl ON rl."id" = m."redLeagueClanId"
@@ -149,8 +161,36 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     games: number
     win: number
   }
+  /** ★보여 주기용 티어별 성적★ — 순위 계산에는 안 쓴다 (사장님 «미리준비해두면 좋다») */
+  interface TierStat {
+    games: number
+    win: number
+    knownGames: number
+    kill: number
+    death: number
+    rifleGames: number
+    rifleKill: number
+    rifleDeath: number
+    sniperGames: number
+    sniperKill: number
+    sniperDeath: number
+  }
+  const emptyStat = (): TierStat => ({
+    games: 0,
+    win: 0,
+    knownGames: 0,
+    kill: 0,
+    death: 0,
+    rifleGames: 0,
+    rifleKill: 0,
+    rifleDeath: 0,
+    sniperGames: 0,
+    sniperKill: 0,
+    sniperDeath: 0,
+  })
   const byPlayer = new Map<string, Partial<Record<TierNo, Cell>>>()
   const totalOf = new Map<string, Cell>()
+  const tierStatOf = new Map<string, Partial<Record<TierNo, TierStat>>>()
 
   for (const r of stats) {
     const opponent = r.side === 'red' ? r.blue : r.red
@@ -168,6 +208,29 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     t.games += 1
     t.win += won
     totalOf.set(r.playerId, t)
+
+    /* ── 보여 주기용 누적 ── */
+    const stats = tierStatOf.get(r.playerId) ?? {}
+    const st = stats[tier] ?? emptyStat()
+    st.games += 1
+    st.win += won
+    /* ★K/D 를 모르는 경기는 분모에서 뺀다★ (D-149) */
+    if (r.kill !== null && r.death !== null) {
+      st.knownGames += 1
+      st.kill += r.kill
+      st.death += r.death
+      if (r.weapon === 0) {
+        st.rifleGames += 1
+        st.rifleKill += r.kill
+        st.rifleDeath += r.death
+      } else if (r.weapon === 1) {
+        st.sniperGames += 1
+        st.sniperKill += r.kill
+        st.sniperDeath += r.death
+      }
+    }
+    stats[tier] = st
+    tierStatOf.set(r.playerId, stats)
   }
 
   /* ── 쓸 값 ────────────────────────────────────────────── */
@@ -214,6 +277,7 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     players: playerPlan.length,
     clanWrites: 0,
     playerWrites: 0,
+    tierStatWrites: 0,
     confirmed: input.confirm,
     backupFile: null,
     topClans: clanPlan
@@ -299,12 +363,58 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
         result.playerWrites += r.count
       }
     }
+
+    /*
+     * ── ★티어별 성적★ (2026-09-10 · 사장님 «미리준비해두면 좋다»)
+     *
+     * 순위에는 안 쓴다. ★보여 주기 전용★ 이다.
+     * 매번 통째로 다시 쓴다 — 위에서 경기를 다시 셌으니 이 표도 그 값으로 맞춘다.
+     * ★지우고 넣지 않는다★ — `upsert` 라 중간에 죽어도 남은 값이 헛것이 되지 않는다.
+     */
+    const idOf = new Map(
+      (
+        await prisma.leaguePlayer.findMany({
+          where: { leagueId: league.id },
+          select: { id: true, playerId: true },
+        })
+      ).map((r) => [r.playerId, r.id]),
+    )
+    for (const [playerId, tiers] of tierStatOf) {
+      const leaguePlayerId = idOf.get(playerId)
+      /* 명부에 줄이 없으면 붙일 곳이 없다. ★만들지 않는다★ — 0판짜리가 랭킹에 끼어든다 */
+      if (!leaguePlayerId) continue
+      for (const key of [1, 2, 3] as const) {
+        const v = tiers[key]
+        if (!v) continue
+        const data = {
+          games: v.games,
+          win: v.win,
+          lose: v.games - v.win,
+          knownGames: v.knownGames,
+          kill: v.kill,
+          death: v.death,
+          rifleGames: v.rifleGames,
+          rifleKill: v.rifleKill,
+          rifleDeath: v.rifleDeath,
+          sniperGames: v.sniperGames,
+          sniperKill: v.sniperKill,
+          sniperDeath: v.sniperDeath,
+        }
+        await prisma.leaguePlayerTierStat.upsert({
+          where: { leaguePlayerId_tier: { leaguePlayerId, tier: key } },
+          create: { leaguePlayerId, tier: key, ...data },
+          update: data,
+        })
+        result.tierStatWrites += 1
+      }
+    }
   }
 
   if (unknownClans.length > 0) warn(`리그에서 못 찾은 클랜: ${unknownClans.join(', ')}`)
   log(
     `경기 ${result.matches.toLocaleString()}건 · 클랜 ${result.clans} · 선수 ${result.players.toLocaleString()} · ` +
-      `쓴 클랜 ${result.clanWrites} · 쓴 선수 ${result.playerWrites.toLocaleString()}` +
+      `쓴 클랜 ${result.clanWrites} · 쓴 선수 ${result.playerWrites.toLocaleString()} · ` +
+      `티어별 ${result.tierStatWrites.toLocaleString()}줄` +
       `${result.confirmed ? '' : ' (미리보기)'} · 뺀 클랜 ${REMOVED.join(',') || '없음'}`,
   )
   return result

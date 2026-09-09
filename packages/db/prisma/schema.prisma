@@ -670,6 +670,8 @@ model LeaguePlayer {
   clan        Clan?                    @relation("LeaguePlayerClan", fields: [clanId], references: [id], onDelete: SetNull)
   weaponStats LeaguePlayerWeaponStat[]
   seasonStats LeaguePlayerSeason[]
+  /* 티어별 성적 (2026-09-10) — 보여 주기 전용 */
+  tierStats   LeaguePlayerTierStat[]
 
   @@unique([leagueId, playerId])
   @@unique([sourceLeaguePlayerId])
@@ -2922,4 +2924,43 @@ model BarracksListRequest {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([requestedAt])
+}
+
+/// ★티어별 성적★ — 선수 한 명이 그 티어를 상대했을 때의 기록 (2026-09-10).
+///
+/// 사장님: «티어를 3개로 확정했으니 티어별 승률과 킬뎃을 따로 기록해서
+/// ui에 나타낼거니까 미리준비해두면 좋다»
+///
+/// ⚠ 순위 계산에는 안 쓴다. ★보여 주기 전용★ 이다.
+/// ⚠ 매번 통째로 다시 쓴다 (`ipl-rank-apply` 가 경기에서 다시 센다).
+///   그래서 이 표를 ★근거로 삼지 않는다★ — 근거는 언제나 `MatchPlayerStat` 이다.
+model LeaguePlayerTierStat {
+  leaguePlayerId String
+  /// 1 = ASTRA · 2 = CHALLENGER1 · 3 = CHALLENGER2 (`LeagueClan.division` 과 같은 번호)
+  tier           Int
+
+  games Int @default(0)
+  win   Int @default(0)
+  lose  Int @default(0)
+
+  /// K/D 를 아는 경기만 센다 (D-149). 모르는 경기는 분모에서 뺀다
+  knownGames Int @default(0)
+  kill       Int @default(0)
+  death      Int @default(0)
+
+  /// 무기별 — 라플(weapon 0)
+  rifleGames Int @default(0)
+  rifleKill  Int @default(0)
+  rifleDeath Int @default(0)
+  /// 무기별 — 스나(weapon 1)
+  sniperGames Int @default(0)
+  sniperKill  Int @default(0)
+  sniperDeath Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  leaguePlayer LeaguePlayer @relation(fields: [leaguePlayerId], references: [id], onDelete: Cascade)
+
+  @@id([leaguePlayerId, tier])
+  @@index([tier])
 }
