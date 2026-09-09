@@ -376,6 +376,8 @@ model Clan {
 
   master        Player?        @relation("ClanMaster", fields: [masterPlayerId], references: [id], onDelete: SetNull)
   members       Player[]       @relation("ClanMembers")
+  /* 도장 찍힌 참가 기록 (2026-09-09) */
+  stampedStats  MatchPlayerStat[] @relation("StampedPlayerClan")
   leagueClans   LeagueClan[]
   leaguePlayers LeaguePlayer[] @relation("LeaguePlayerClan")
   invitations LeagueInvitation[]
@@ -1100,6 +1102,26 @@ model MatchPlayerStat {
   /// "high" | "medium" | "low"
   matchTimeClanConfidence   String?
 
+  /* --- ★그 선수 본인의 소속 (도장)★ (2026-09-09 · 사장님 지시 「나(㈩)로 하고」) ---
+
+     ⚠ 위의 `matchTimeLeagueClanId` 와 ★다른 것★ 이다.
+       `barracks-battlelog` 에서는 그 칸이 ★그 경기에서 뛴 팀★ 이라
+       용병을 표현하지 못한다 (한 진영 5명이 전부 같은 값 — 실측 100%).
+       그래서 용병이 남의 클랜 마크를 달고 나왔다
+       («베리타스 3명 아마릴리스 2명인데 5명 다 아마릴리스로 뜼다» — 사장님).
+
+     이 칸은 ★수집 시점에 병영수에 기준 본인 소속을 도장 찍어 둔 값★ 이다.
+     한 번 찍힐으면 ★다시 안 바꿈.★ 그 선수가 이적해도 과거 경기는 그대로다.
+
+     ⚠ ★9/3~2026-09-09 경기는 「그때 소속」을 알 길이 없다.★ 병영수착은 지금만 알려 준다.
+       그래서 그 구간은 ★2026-09-09 값으로 한 번 찍고 굳혔다.★ 그 뒤로는 정확하다.
+
+     비어 있으면 ★모른다★ 는 뜻이다. 화면은 그때 옛 방식(팀 마크)으로 되돌아간다. */
+  /// 도장 찍은 본인 소속 클랜. null = 아직 안 찍었다
+  playerClanId        String?
+  /// 언제 찍었나
+  playerClanStampedAt DateTime?
+
   /* --- 래더 재현 정보 (LADDER_IMPLEMENTATION_SPEC 5장) --- */
   /// 배치고사 중이면 null (래더 자리에 `배치고사` 표기)
   ratingBefore Int?
@@ -1142,6 +1164,8 @@ model MatchPlayerStat {
 
   match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  /* 클랜 행이 사라져도 기록을 지우지 않는다 — 도장만 비운다 */
+  playerClan Clan? @relation("StampedPlayerClan", fields: [playerClanId], references: [id], onDelete: SetNull)
 
   @@unique([matchId, playerId])
   @@index([playerId, matchId])

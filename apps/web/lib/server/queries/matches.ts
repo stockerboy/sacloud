@@ -122,6 +122,13 @@ export const MATCH_SELECT = {
       matchTimeClanSlug: true,
       matchTimeClanMarkBgUrl: true,
       matchTimeClanMarkFrontUrl: true,
+      /* ★그 선수 본인의 소속 도장★ (2026-09-09 · 사장님 «나(㈩)로 하고»).
+         위의 `matchTime*` 은 `barracks-battlelog` 에서 ★그 경기에서 뛴 팀★ 이라
+         한 진영 5명이 전부 같은 값이다 — 용병이 남의 마크를 달고 나왔다.
+         이 칸은 수집 시점에 박아 둔 본인 소속이다. ★현재 소속을 join 하는 것이 아니다★ —
+         도장이라 이적해도 과거 화면이 안 바뀐다 */
+      playerClanId: true,
+      playerClan: { select: CLAN_SUMMARY_SELECT },
       player: { select: PLAYER_SUMMARY_SELECT },
     },
   },
@@ -269,6 +276,36 @@ export function firstSideOf(
  * 근거가 없으면 `null`이다. 현재 소속으로 메우지 않는다.
  */
 function matchTimeClanOf(stat: StatRow, clans: LeagueClanContext): MatchTimeClan | null {
+  /*
+   * ★도장이 있으면 도장이 이긴다★ (2026-09-09).
+   *
+   * `matchTime*` 은 `barracks-battlelog` 에서 「그 경기에서 뛴 팀」 이라
+   * 용병을 표현하지 못한다. 실측 — 시즌0 IPL 참가 21,736줄 중
+   * ★1,774줄(8.4%)이 남의 클랜 마크를 달고 있었다.★
+   * («베리타스 3명 아마릴리스 2명인데 5명 다 아마릴리스로 뜼다» — 사장님)
+   *
+   * ★도장도 스냅샷이다.★ 수집 시점에 박았고 다시 안 바꿈다 —
+   * 그 선수가 이적해도 과거 경기는 그대로다 (D-131 의 정신 그대로).
+   *
+   * ⚠ 도장이 없으면 ★옛 방식(팀 값)으로 되돌아간다.★ 지우지 않았다.
+   */
+  if (stat.playerClan) {
+    const official = isOfficialLeagueClan(stat.playerClan)
+    return {
+      /* 도장은 `Clan` 을 가리킨다. 리그클랜 id 는 이 길로 알 수 없으니
+         ★지어내지 않고 비운다★ — 화면은 slug 로 클랜 기록실로 간다 */
+      league_clan_id: null,
+      slug: stat.playerClan.slug,
+      name: stat.playerClan.name,
+      mark: official
+        ? restoreClanMark({
+            bg: stat.playerClan.markBgUrl,
+            front: stat.playerClan.markFrontUrl,
+          })
+        : { bg: null, front: null },
+      is_official_clan: official,
+    }
+  }
   if (!stat.matchTimeClanName) return null
   /* **경기 당시** 공식 1/2부 등록 클랜이었는가 (D-146).
      우리 리그 클랜으로 연결됐고, 그 클랜이 공식 레지스트리에서 온 것이어야 한다.

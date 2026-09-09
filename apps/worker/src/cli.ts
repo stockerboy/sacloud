@@ -66,6 +66,7 @@ import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
 import { runBarracksRoster } from './jobs/barracksRoster.js'
 import { runClanAffiliation } from './jobs/clanAffiliation.js'
 import { runPlayerProfileClan } from './jobs/playerProfileClan.js'
+import { runStampPlayerClan } from './jobs/stampPlayerClan.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
@@ -307,6 +308,7 @@ function usage(): void {
   barracks-roster [--league <slug,slug>] [--limit <n>] [--delay <ms>] [--resume <분>] [--max-min <분>] [--confirm]
   clan-affiliation [--league <slug>] [--no-clear] [--confirm]
   player-profile-clan [--league <slug,slug>] [--limit <n>] [--max-min <분>] [--all] [--confirm]
+  stamp-player-clan [--league <slug,slug>] [--all] [--confirm]
               선수의 **현재 소속 클랜**(LeaguePlayer.clanId)을 경기 기록에서 채운다 (D-161).
               가장 늦은 경기의 matchTimeLeagueClanId 를 그대로 옮긴다 — 새로 판정하지 않는다.
               기본 대상은 IPL(nolink) 이다. 미러 리그는 supplyRollup 이 이미 채운다.
@@ -593,6 +595,31 @@ async function main(): Promise<number> {
       }
       /* 막힌 채로 끝나면 실패로 알린다 — 조용히 넘어가면 다음 사람이 모른다 */
       return result.blocked ? 1 : 0
+    }
+
+    case 'stamp-player-clan': {
+      /*
+        ★참가 기록에 「그 선수 본인의 소속」을 도장 찍는다★ (2026-09-09).
+        이미 찍힌 줄은 안 건드린다 — 이적해도 과거 경기는 그대로다.
+      */
+      const league = stringFlag(args, 'league')
+      const result = await runStampPlayerClan({
+        leagues: league ? league.split(',').map((x) => x.trim()).filter(Boolean) : undefined,
+        all: boolFlag(args, 'all'),
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table([
+        {
+          리그: result.leagues.join('·'),
+          도장없는줄: result.pending,
+          찍을수있음: result.stampable,
+          찍음: result.stamped,
+          용병: result.mercenary,
+          소속모름: result.unknown,
+          반영: result.confirmed ? '했다' : '안했다',
+        },
+      ])
+      return 0
     }
 
     case 'player-profile-clan': {
