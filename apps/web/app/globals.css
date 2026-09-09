@@ -3,8 +3,6 @@
 @import '../../../packages/ui/src/styles.css';
 /* ★v2 토큰★ — `.sac-v2` 안에서만 산다. 안 붙인 화면은 한 픽셀도 안 바뀐다 (Part 10) */
 @import '../../../packages/ui/src/v2/tokens.css';
-/* ★v3 토큰★ — `.sac-v3` 안에서만 산다. Sleeper 톤 (2026-09-09) */
-@import '../../../packages/ui/src/v3/tokens.css';
 
 /* 워크스페이스 UI 패키지의 클래스도 스캔 대상에 넣는다 */
 @source "../../../packages/ui/src";

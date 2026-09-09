@@ -9,9 +9,8 @@ import {
   FormTop3,
   LoadMoreButton,
   PageHead,
-  PlayerRankListV3,
+  PlayerRankTable,
   useSeasonLabel,
-  v3Class,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
@@ -160,19 +159,9 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           />
         ) : null}
 
-        {/*
-          ★목록 — Sleeper 톤★ (2026-09-09 · 사장님 «한장만 해봐»)
-
-          ⚠ ★`.sac-v3` 안에서만 산다.★ 이 `<div>` 밖은 한 픽셀도 안 바뀐다 —
-            위의 머리띠·칩·포디움·폼TOP3 는 전부 v2 그대로다.
-            되돌리려면 이 블록을 `PlayerRankScreenV2.tsx` 의 것으로 바꾸면 된다.
-
-          ★폭을 900px → 720px 로 좁혔다.★ 표가 아니라 카드 목록이라
-          한 줄에 담기는 것이 「순위·이름·큰 수」 셋뿐이다. 900px 에서는 카드가
-          가로로 늘어져 오른쪽 큰 수가 눈에서 멀어진다 (`--v3-max` 와 같은 값).
-        */}
-        <div className={`${v3Class(leagueSlug)} mx-auto mt-[26px] w-full max-w-[var(--v3-max)]`}>
-          <PlayerRankListV3
+        {/* ★표는 900px★ (시안 `TABLE_W`). 표 자체는 옛 컴포넌트 그대로다 */}
+        <div className="mx-auto mt-[30px] w-full max-w-[900px]">
+          <PlayerRankTable
             leagueSlug={leagueSlug}
             weapon={weapon}
             rows={ranks.items}
@@ -180,6 +169,10 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
             error={ranks.error}
             onRetry={ranks.retry}
             columns={columns}
+            /* 소속 클랜명 — 닉네임 아래 줄 (2026-09-02 사장님 지시 #10-2) */
+            clanName="line"
+            /* ★시안: 순위·닉네임을 등급 색으로★ (3 / 20 / 40 / 100). 옛 표는 1위만 강조색 */
+            rankTone
           />
           {ranks.hasMore ? (
             <LoadMoreButton onClick={ranks.loadMore} loading={ranks.loadingMore} />
