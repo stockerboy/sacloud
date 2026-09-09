@@ -640,7 +640,9 @@ export function PlayerRankTable({
               />
             )}
             {columns.rating ? (
-              <div className={`${COL_RATING} ${NUM} text-text-strong`}>
+              /* ★점수는 강조색(청록)으로 쓴다★ (2026-09-10 · 사장님이 고른 화면이 그렇다).
+                 옛 모양은 `text-text-strong` 이었다 — 색만 바뀌고 자리·크기는 그대로다 */
+              <div className={`${COL_RATING} ${NUM} text-accent`}>
                 {byWeapon ? formatRatingDelta(row.rating_delta ?? 0) : formatRating(row.rating)}
               </div>
             ) : null}

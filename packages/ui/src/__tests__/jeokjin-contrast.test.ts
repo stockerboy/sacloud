@@ -46,31 +46,34 @@ function contrast(fg: string, bg: string): number {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
 }
 
-describe('적진 — 히어로 띠 위 (★실제로 쓰이는 색만★)', () => {
-  /*
-   * ⚠ ★가능한 조합을 다 세면 과장이 된다.★ `LeagueTopBar.tsx:200` 의 `bg-hero` 안에서
-   *   실제로 쓰는 글자색은 ★셋뿐★ 이다 — `text-hero-fg` · `text-hero-meta` · `text-meta`.
-   */
-  const HERO = '#4162c0'
+/*
+ * ⚠ ★2026-09-10 — 팔레트를 남색으로 갈아탔다★ (사장님 지시).
+ *   그래서 아래 숫자들이 통째로 달라졌다. ★색을 여기 적지 않고 토큰에서 읽는다★ —
+ *   다음에 팔레트가 또 바뀌어도 이 파일을 고칠 필요가 없다.
+ *
+ *   옛 값(적진/3톤): 카드 #2c304c · card-2 #3a4067 · 히어로 #4162c0
+ *   그때는 카드 위에서 12곳이 4.5 미만이었고 `text-meta` 가 히어로 위 2.54:1 이었다.
+ *   ★새 팔레트는 그 문제를 대부분 없앴다★ — 아래가 그 증거다.
+ */
+describe('남색 팔레트 — 히어로 띠 위', () => {
+  const HERO = token('color-hero')
 
   it('hero-fg 와 hero-meta 는 통과한다', () => {
-    expect(contrast(token('color-hero-fg'), HERO)).toBeGreaterThanOrEqual(4.5) /* 5.63 */
-    expect(contrast(token('color-hero-meta'), HERO)).toBeGreaterThanOrEqual(4.5) /* 4.77 */
+    expect(contrast(token('color-hero-fg'), HERO)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(token('color-hero-meta'), HERO)).toBeGreaterThanOrEqual(4.5)
   })
 
-  it('★★그런데 `text-meta` 가 히어로 위에서 2.54:1 이다★★ — 실제로 그 안에서 쓰인다', () => {
-    const c = contrast(token('color-meta'), HERO)
-    expect(c).toBeLessThan(4.5)
-    /* ★이 줄이 「지금 이렇다」를 굳힌다.★ 3단계에서 고치면 이 검사가 먼저 깨진다 */
-    expect(c).toBeGreaterThan(2.4)
-    expect(c).toBeLessThan(2.7)
+  it('★옛 팔레트의 「히어로 위 text-meta 2.54:1」 문제가 사라졌다★', () => {
+    /* 옛 값에서는 2.54 였다. 지금은 6 을 넘는다 — 남색 띠가 어두워서다 */
+    expect(contrast(token('color-meta'), HERO)).toBeGreaterThanOrEqual(4.5)
   })
 })
 
-describe('적진 — 카드(#2c304c) 위 · ★제일 흔한 바탕★', () => {
-  const CARD = '#2c304c'
-  /** 카드 위에서 4.5 미만인 것들 — ★지금 값이다★ */
-  const FAILING = [
+describe('남색 팔레트 — 카드 위 · ★제일 흔한 바탕★', () => {
+  const CARD = token('color-card')
+
+  /** 옛 팔레트에서 카드 위 4.5 미만이던 것들 — 지금은 대부분 통과한다 */
+  const WATCHED = [
     ['승률 3', 'color-rate-3'],
     ['입력 안내글', 'color-input-placeholder'],
     ['패 숫자', 'color-num-lose'],
@@ -85,35 +88,38 @@ describe('적진 — 카드(#2c304c) 위 · ★제일 흔한 바탕★', () => {
     ['승률 2', 'color-rate-2'],
   ] as const
 
-  it('★카드 위에서 미달인 것이 12곳이다★ — 「다섯 곳」이 아니다', () => {
-    const bad = FAILING.filter(([, n]) => contrast(token(n), CARD) < 4.5)
-    expect(bad).toHaveLength(12)
+  it('★카드 위에서 미달인 것이 하나뿐이다★ — 옛 팔레트에서는 열두 곳이었다', () => {
+    const bad = WATCHED.filter(([, n]) => contrast(token(n), CARD) < 4.5)
+    expect(bad.map(([, n]) => n)).toEqual(['color-faint'])
   })
 
-  it('★제일 자주 보이는 숫자가 제일 나쁘다★ — 승리 글자 3.44:1', () => {
-    /* `MatchCard` 의 승/패 글자와 래더 증감이 이 색이다 — 경기 목록에 줄마다 뜬다 */
-    expect(contrast(token('color-win'), CARD)).toBeLessThan(3.5)
+  it('★`color-faint` 는 여전히 미달이다★ — 뜻을 가진 라벨에 쓰지 마라 (D-233)', () => {
+    expect(contrast(token('color-faint'), CARD)).toBeLessThan(4.5)
   })
 
-  it('본문·제목·보조는 카드 위에서 통과한다 — ★글자 대부분은 멀쩡하다★', () => {
+  it('본문·제목·보조는 카드 위에서 통과한다', () => {
     for (const n of ['color-text', 'color-text-strong', 'color-meta']) {
       expect(contrast(token(n), CARD), n).toBeGreaterThanOrEqual(4.5)
     }
   })
+
+  it('★점수에 쓰는 강조색(청록)이 잘 읽힌다★ — 옛 파랑은 카드 위에서 미달이었다', () => {
+    expect(contrast(token('color-accent'), CARD)).toBeGreaterThanOrEqual(4.5)
+  })
 })
 
-describe('★한 단 올린 면(card-2)이 제일 나쁘다★ — 시안이 그 면을 안 쓰는 이유', () => {
-  const CARD2 = '#3a4067'
-
-  it('card-2 위에서는 승 숫자까지 무너진다 (3.59:1)', () => {
-    expect(contrast(token('color-num-win'), CARD2)).toBeLessThan(4.5)
-  })
+describe('★한 단 올린 면(card-2)★', () => {
+  const CARD = token('color-card')
+  const CARD2 = token('color-card-2')
 
   it('★같은 색이 카드보다 card-2 에서 더 나쁘다★ — 면을 올릴수록 나빠진다', () => {
     for (const n of ['color-win', 'color-faint', 'color-rate-1']) {
-      expect(contrast(token(n), CARD2), n).toBeLessThan(contrast(token(n), '#2c304c'))
+      expect(contrast(token(n), CARD2), n).toBeLessThan(contrast(token(n), CARD))
     }
-    /* ★시안 껍데기가 card-2 를 「올리지 않고 내린」 이유가 이것이다★ (`.sa-skin` 주석) */
+  })
+
+  it('★그래도 card-2 위에서 승 숫자는 통과한다★ — 옛 팔레트에서는 3.59:1 이었다', () => {
+    expect(contrast(token('color-num-win'), CARD2)).toBeGreaterThanOrEqual(4.5)
   })
 })
 
