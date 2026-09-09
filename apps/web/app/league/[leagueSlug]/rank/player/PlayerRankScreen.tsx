@@ -138,12 +138,23 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
         />
 
         {/* ★1~3위 포디움★ — 1·2·3위가 다 있을 때만 그린다 */}
+        {/*
+          ★폰에서는 포디움을 접는다★ (2026-09-10 · 사장님).
+
+          > «카드 한장한장이 너무 크지 않은것도 맘에 듦» · «순위가 모바일에서 한눈에 안보여서»
+
+          390px 실측: 포디움 3장이 ★위에서 1,093px★ 을 먹어
+          첫 화면에 1위가 한 명도 안 보였다. 목록 첫 줄이 이미 1위라 같은 것을 두 번 보여 준다.
+          ★PC 에서는 그대로 둔다★ — 지우지 않았다 (`CLAUDE.md` 1-4).
+        */}
+        <div className="max-md:hidden">
         <PodiumCards
           leagueSlug={leagueSlug}
           rows={ranks.items ?? []}
           columns={columns}
           weapon={weapon}
         />
+        </div>
 
         {/* 폼 TOP3 는 **래더 증감**만 보여 주는 칸이다. 래더가 없는 리그에서는 그리지 않는다.
             ⚠ 시안에는 없다. ★우리 기능이라 지우지 않는다★ (`CLAUDE.md` 1-4) */}
