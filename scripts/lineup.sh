@@ -184,6 +184,17 @@ spent=$(( $(date +%s) - began ))
 pnpm --filter @sacloud/worker nexon collect-lease release \
      --name battlelog-lineup --owner "$OWNER" >> "$LOG" 2>&1 || true
 
+# ── ⑤ ★본인 소속 도장★ ─────────────────────────────
+#   방금 만든 참가 줄에 ★그 선수 본인의 소속★ 을 박아 둔다 (2026-09-09).
+#   배틀로그에는 개인 소속이 없어서 그냥 두면 ★용병이 남의 클랜 마크를 단다.★
+#   ★이미 찍힌 줄은 안 건드린다★ — 이적해도 과거 경기는 그대로다.
+#   네트워크를 한 건도 안 쓴다 — DB 만 만진다.
+if [ "$code" = "0" ]; then
+  pnpm --filter @sacloud/worker nexon stamp-player-clan --confirm >> "$LOG" 2>&1 || true
+  stamp=$(grep -E '^도장 없는 줄 ' "$LOG" | tail -1)
+  [ -n "$stamp" ] && say "        도장 — ${stamp}"
+fi
+
 if [ "$code" = "0" ]; then
   made=$(grep -E '^참가 기록 ' "$LOG" | tail -1)
   mark=$(grep -E '^라인업 상태 표시' "$LOG" | tail -1)
