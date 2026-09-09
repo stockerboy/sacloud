@@ -43,6 +43,8 @@ import { join } from 'node:path'
 
 /** 우리가 부르는 곳. `barracksCollect.ts` 의 `ORIGIN` 과 같아야 한다 */
 const ORIGIN = 'https://barracks.sa.nexon.com'
+/** ★출처가 열릴 때까지 기다리는 최대 시간★ — 옛 값은 「무조건 1.2초」였다 (2026-09-10) */
+const NAVIGATE_READY_MS = 15_000
 const REQUEST_TIMEOUT_MS = 20_000
 /** 응답이 터무니없이 크면 끊는다 — 메모리를 통째로 먹게 두지 않는다 */
 const MAX_BYTES = 8 * 1024 * 1024
@@ -253,7 +255,47 @@ export class BarracksBrowser {
     /* ★출처를 한 번 연다★ — 그 뒤로는 이 페이지 안에서 부른다.
        같은 출처라서 쿠키·리퍼러가 브라우저가 만드는 그대로 붙는다 */
     await cdp.send('Page.navigate', { url: `${ORIGIN}/` }, sessionId, REQUEST_TIMEOUT_MS)
-    await new Promise((r) => setTimeout(r, 1200))
+
+    /*
+     * ★진짜로 그 출처가 열렸는지 확인하고 넘어간다★ (2026-09-10).
+     *
+     * ── 왜 고쳤나
+     *   전에는 ★1.2초를 그냥 기다렸다.★ 그 사이에 페이지가 안 열리면 아직 `about:blank` 인데,
+     *   거기서 `fetch` 를 부르면 ★다른 출처가 되어 브라우저가 막는다★ —
+     *   그때 나오는 말이 ★`Failed to fetch`★ 다.
+     *
+     *   운영 실측 (2026-09-10 새벽): 크롬을 새로 띄운 뒤 ★모든 요청이 그 말로 실패★ 했다.
+     *   ```
+     *   ① 목록 요청 ★0회★ · 새 경기 0건      ← 클랜 120곳을 고르고도 한 곳도 못 물어봤다
+     *   ★못 받았다★ … — 크롬 안에서 부르다 실패: Failed to fetch
+     *   ```
+     *   ★네트워크는 멀쩡했다★ (같은 서버에서 curl 은 403 을 정상적으로 받았다).
+     *   ★페이지가 아직 안 열렸을 뿐이다.★
+     *
+     * ── 어떻게 고쳤나
+     *   ★시간을 재는 대신 「열렸나」를 묻는다.★ 0.3초마다 `location.origin` 을 보고
+     *   우리 출처가 되면 바로 넘어간다. 안 되면 최대 15초까지 기다린다.
+     *   ⚠ 15초를 넘겨도 ★거짓말하지 않는다★ — 그대로 진행하고, 그 판이 실패하면
+     *     위의 `Failed to fetch` 가 그대로 찍힌다. 조용히 성공한 척하지 않는다.
+     */
+    const readyDeadline = Date.now() + NAVIGATE_READY_MS
+    for (;;) {
+      let origin: string | null = null
+      try {
+        const res = (await cdp.send(
+          'Runtime.evaluate',
+          { expression: 'location.origin', returnByValue: true },
+          sessionId,
+          REQUEST_TIMEOUT_MS,
+        )) as { result?: { value?: unknown } }
+        origin = typeof res.result?.value === 'string' ? res.result.value : null
+      } catch {
+        /* 물어보다 실패하면 다시 물어본다 */
+      }
+      if (origin === ORIGIN) break
+      if (Date.now() > readyDeadline) break
+      await new Promise((r) => setTimeout(r, 300))
+    }
   }
 
   /** ★페이지 안에서 부른다.★ 헤더는 `Content-Type` 하나만 우리가 정한다 */
