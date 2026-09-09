@@ -63,6 +63,8 @@ import { checkLoad, guardLine, newGuardState } from './jobs/loadGuard.js'
 import { runIplProject } from './jobs/iplProject.js'
 import { runIplClanRollup } from './jobs/iplClanRollup.js'
 import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
+import { runBarracksRoster } from './jobs/barracksRoster.js'
+import { runClanAffiliation } from './jobs/clanAffiliation.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
@@ -301,6 +303,8 @@ function usage(): void {
               clan-number 는 MatchPlayerStat 을 요구해 IPL 에서 순환이 된다
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
   player-current-clan [--league <slug>] [--confirm]
+  barracks-roster [--league <slug,slug>] [--limit <n>] [--delay <ms>] [--resume <분>] [--max-min <분>] [--confirm]
+  clan-affiliation [--league <slug>] [--no-clear] [--confirm]
               선수의 **현재 소속 클랜**(LeaguePlayer.clanId)을 경기 기록에서 채운다 (D-161).
               가장 늦은 경기의 matchTimeLeagueClanId 를 그대로 옮긴다 — 새로 판정하지 않는다.
               기본 대상은 IPL(nolink) 이다. 미러 리그는 supplyRollup 이 이미 채운다.
@@ -542,6 +546,83 @@ async function main(): Promise<number> {
       return 0
     }
 
+    case 'barracks-roster': {
+      /*
+        ★병영수첩 클랜원 명부를 받아 온다★ (2026-09-09).
+        8/31 에 사람이 브라우저 콘솔로 한 번 받은 뒤 끊긴 절차를 대신한다.
+        `--confirm` 없이는 한 줄도 쓰지 않는다. 403/429 를 보면 그 자리에서 멈춘다.
+      */
+      /* `--league nolink` · `--league nolink,supply` 둘 다 받는다 */
+      const league = stringFlag(args, 'league')
+      const result = await runBarracksRoster({
+        leagues: league ? league.split(',').map((x) => x.trim()).filter(Boolean) : undefined,
+        limit: numberFlag(args, 'limit') ?? undefined,
+        delayMs: numberFlag(args, 'delay') ?? undefined,
+        /* 끊긴 판 이어받기 — 기본 90분 안의 관측이면 그것을 이어 쓴다 */
+        resumeWithinMin: numberFlag(args, 'resume') ?? 90,
+        /* 스스로 재고 멈춘다 — 밖에서 끊기면 끊긴 자리를 알 수 없다 */
+        maxMinutes: numberFlag(args, 'max-min') ?? undefined,
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table([
+        {
+          리그: result.leagues.join('·'),
+          물어봄: result.asked,
+          받음: result.ok,
+          빈곳: result.empty,
+          실패: result.failed,
+          사람: result.members,
+          넣은줄: result.written,
+          막힘: result.blocked ? '★막혔다★' : '아니오',
+          시간종료: result.timeUp ? '★멈춤★' : '아니오',
+          남은곳: result.remaining,
+          반영: result.confirmed ? '했다' : '안했다',
+        },
+      ])
+      if (result.failures.length > 0) {
+        warn('실패한 클랜 (앞 20곳)')
+        table(result.failures as unknown as Record<string, unknown>[])
+      }
+      /* 막힌 채로 끝나면 실패로 알린다 — 조용히 넘어가면 다음 사람이 모른다 */
+      return result.blocked ? 1 : 0
+    }
+
+    case 'clan-affiliation': {
+      /*
+        ★명부 → 선수의 현재 소속★ (2026-09-09). 경기 당시 소속(`matchTime*`)은 안 건드린다.
+        명부에 없으면 무소속(구름)으로 둔다 — 사장님 지시.
+        `--no-clear` 를 주면 비우기는 하지 않고 채우기·교정만 한다.
+      */
+      const league = stringFlag(args, 'league')
+      const result = await runClanAffiliation({
+        leagues: league ? league.split(',').map((x) => x.trim()).filter(Boolean) : undefined,
+        clear: !boolFlag(args, 'no-clear'),
+        confirm: boolFlag(args, 'confirm'),
+      })
+      table([
+        {
+          리그: result.leagues.join('·'),
+          명부시각: result.observedAt?.toISOString() ?? '(없음)',
+          명부클랜: result.rosterClans,
+          명부인원: result.rosterPeople,
+          선수: result.players,
+          계정앎: result.linkable,
+          채움: result.filled,
+          교정: result.corrected,
+          비움: result.cleared,
+          그대로: result.unchanged,
+          무소속: result.noClan,
+          비우기: result.clearEnabled ? '켬' : '끔',
+          반영: result.confirmed ? '했다' : '안했다',
+        },
+      ])
+      if (result.samples.length > 0) {
+        log('바뀌는 예시')
+        table(result.samples as unknown as Record<string, unknown>[])
+      }
+      return 0
+    }
+
     case 'player-current-clan': {
       /*
         개인랭킹 행의 클랜 칸을 채운다. `season0Apply` 는 이 칸을 읽어서 그대로 되쓰므로
@@ -560,6 +641,12 @@ async function main(): Promise<number> {
           찾음: result.resolved,
           바꿀대상: result.changed,
           모름: result.unknown,
+          /* 소속 신뢰 판정 진단 (2026-09-07 · affiliationTrust.ts) */
+          뛴팀행제외: result.skippedTeamOnly,
+          제외된선수: result.teamOnlyExcluded,
+          신뢰행으로되돌림: result.fallbackToTrustedClan,
+          신뢰근거없음: result.noTrustedClan,
+          신뢰판정: result.trustEnabled ? '켜짐' : '꺼짐(off)',
           반영: result.confirmed ? '했다' : '안했다',
         },
       ])
@@ -2503,6 +2590,10 @@ async function main(): Promise<number> {
           '소속 있음': row.players.withClan,
           무소속: row.players.clanless,
           'Clan 행 없음': row.players.clanNotInDb,
+          /* 소속 신뢰 판정 진단 (2026-09-07 · affiliationTrust.ts) */
+          '뛴팀 제외': row.players.teamOnlyExcluded,
+          '신뢰행 되돌림': row.players.fallbackToTrustedClan,
+          '신뢰근거 없음': row.players.noTrustedClan,
         })),
       )
       table([
