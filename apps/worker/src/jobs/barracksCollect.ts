@@ -1029,8 +1029,16 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
             await sleep(delay)
             break
           }
-          /* ★목록도 부하를 본다★ — 뒤로 넘기면 요청 수가 클랜 수만큼이 아니라 그 곱이다 */
-          if (opts.guard && listCalls % GUARD_EVERY === 0) {
+          /*
+           * ★목록도 부하를 본다★ — 뒤로 넘기면 요청 수가 클랜 수만큼이 아니라 그 곱이다.
+           *
+           * ⚠ ★`listCalls > 0` 이 꼭 있어야 한다★ (2026-09-10).
+           *   없으면 ★한 건도 안 보낸 상태(0 % 10 === 0)에서 먼저 잰다.★ 그런데 그 직전에
+           *   `cli.ts` 가 이미 「시작 전」으로 한 번 쟀다 — ★같은 것을 두 번 재는 것★ 이고,
+           *   두 번째가 깨우는 시간(실측 ★7,602ms★)에 걸리면 ★한 곳도 안 물어보고 끝난다.★
+           *   실제로 그 모양이었다: `① 목록 요청 ★0회★ · 새 경기 0건`.
+           */
+          if (opts.guard && listCalls > 0 && listCalls % GUARD_EVERY === 0) {
             const verdict = await opts.guard()
             if (verdict === 'stop') {
               result.stop = 'health'
@@ -1041,7 +1049,7 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
           }
           /* ★임대를 아직 쥐고 있나★ — ★`lost` 일 때만★ 끊는다.
              `unknown`(DB 를 못 물어봤다)은 ★끊을 이유가 아니다★ */
-          if (opts.keepLease && listCalls % GUARD_EVERY === 0) {
+          if (opts.keepLease && listCalls > 0 && listCalls % GUARD_EVERY === 0) {
             if ((await opts.keepLease()) === 'lost') {
               result.stop = 'lease_lost'
               log('★★임대 상실 — 목록을 여기서 끊는다. 남이 이미 수집 중이다★★')
