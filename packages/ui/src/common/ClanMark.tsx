@@ -141,6 +141,22 @@ export function ClanMark({ clan, mark, size = 'md', className, alt = '' }: ClanM
  *   판정을 여기서 하지 않는 이유는 `clanMarkPolicy.ts` 의 주석과 같다 — 분기를 순수 함수
  *   하나에 모아 시험으로 고정한다.
  */
+/**
+ * ★넘슨 마크를 우리 주소로 감싼다★ (2026-09-09 · 속도).
+ *
+ * ★넘슨은 캐시 헤더를 안 준다.★ 그래서 화면을 옮길 때마다
+ * 마크 40개를 다시 받는다 (개인랭킹 한 화면 실측).
+ * `/api/mark` 를 거치면 ★같은 주소 · 1년 캐시★ 로 바뀐다.
+ *
+ * ⚠ ★이미지를 복사해 오지 않는다★ (`CLAUDE.md` 3장 4번) — 그때그때 흘려보낼 뿐이다.
+ * ⚠ 넘슨 주소가 아니면 ★그대로 둔다★ — data:/blob: 아바타 미리보기가 여기로 온다.
+ */
+const NEXON_MARK = 'https://img.sa.nexon.com/'
+function proxied(src: string): string {
+  if (!src.startsWith(NEXON_MARK)) return src
+  return `/api/mark?u=${encodeURIComponent(src)}`
+}
+
 function Layer({
   src,
   alt,
@@ -155,9 +171,13 @@ function Layer({
     // eslint-disable-next-line @next/next/no-img-element
     <img
       className="absolute left-0 top-0 h-full w-full"
-      src={src}
+      src={proxied(src)}
       alt={alt}
+      /* ★깨진 것을 알릴 때는 원래 주소를 준다★ — 판정은 `clanMarkPolicy` 가 원본 주소로 한다 */
       onError={() => onBroken(src)}
+      /* 화면 밖의 마크는 나중에 받는다 — 한 화면에 40개라 첫 그림이 당겨진다 */
+      loading="lazy"
+      decoding="async"
     />
   )
 }
