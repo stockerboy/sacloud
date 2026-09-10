@@ -178,7 +178,7 @@ function Scoreboard({ detail, leagueCategory }: { detail: MatchDetail; leagueCat
   const ourSide = ourSideOf(detail)
   const showSaves = [...detail.red_stats, ...detail.blue_stats].some((s) => s.saves !== null)
   const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
-  const teams = (['red', 'blue'] as const).map((side) => {
+  const teams = ([ourSide, ourSide === 'red' ? 'blue' : 'red'] as const).map((side) => {
     const stats = side === 'red' ? detail.red_stats : detail.blue_stats
     const ours = side === ourSide
     const snap = ours ? detail.league_clan : detail.opponent
@@ -217,7 +217,9 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
   const share = total > 0 ? (opp.win / total) * 100 : 50
   const [open, setOpen] = useState<string | null>(null)
   const [folded, setFolded] = useState(false)
-  const vs = vsMatches ?? []
+  const [showAll, setShowAll] = useState(false)
+  const vsAll = vsMatches ?? []
+  const vs = showAll ? vsAll : vsAll.slice(0, 10)
   const oppClan = { id: opp.clan.id, slug: opp.clan.slug, name: opp.clan.name, mark: { bg: opp.clan.mark_bg_url, front: opp.clan.mark_front_url } }
   return (
     <Card style={{ marginTop: 14 }} edge={V3.blue}>
@@ -328,6 +330,9 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
             </div>
           )
         })}
+        {!showAll && vsAll.length > 10 ? (
+          <div onClick={() => setShowAll(true)} style={{ padding: '11px 0', textAlign: 'center', fontSize: 12, color: '#a9c3ff', cursor: 'pointer' }}>맞대결 {vsAll.length}판 전부 보기</div>
+        ) : null}
       </div>
       </>}
     </Card>

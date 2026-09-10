@@ -3,9 +3,26 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-10 23:30** · 갱신한 사람 B(실행 세션)
+> 마지막 갱신 **2026-09-11 00:40** · 갱신한 사람 B(실행 세션)
 
 ---
+
+## 0-B. ★2026-09-11 새벽 — QA 회의 반영 (커밋 `aad9b8a`)★
+
+사장님 결정: IPL 래더 칸 → 상대 티어 · 명단 없는 경기 → «킬데스 수집중» 잠금 · 통합 개인랭킹 → 점수 순 한 줄.
+
+```
+뼈대·폰   둥근 로고 바 + 필 탭(목업) · 히어로 띠 안 그림(SHOW_HERO_BAND=false) ·
+          폰에서 탭 두 번 보이던 버그 = Tailwind max-md 가 무계층 .v2-tabbar__inner 에 짐 → CSS 클래스(v2-tabbar__pc/__m)로
+          v3 카드 폰 규칙은 tokens.css 끝 (.v3-band .v3-kpi .v3-match-row .v3-setscore)
+자료      라운드 점수: nexon tally.roundsWon (win_flag) → MatchClanHexV2.tally → 경기 상세 red_rounds/blue_rounds
+          세이브: MatchPlayerHex.aloneWon → 경기 상세 stats[].saves
+          상대 티어는 지금 명부(LeagueClanInfo.division) · viewer_side · max_win_streak · 무기별 킬/데스·판킬
+          클랜 경기 목록 ?opponent= 로 상대별
+추이      apps/web/lib/server/queries/playerTrend.ts (순수 · 테스트 5) → LeaguePlayerDetail.trend (29칸)
+          화면 packages/ui/src/v3/TrendChartV3.tsx (sleeper 방식 · 드래그 탐색)
+MVP       IPL 원본(병영 로그·수집 raw)에 MVP 가 없다 — 화면은 «이 리그 자료에 MVP 가 없습니다». 규칙으로 정할지 사장님 결정 필요
+```
 
 ## 0-A. ★2026-09-10 저녁 — 선수·클랜 상세 v3 · 실력 점수 · 스나싸움 롱 규칙★ (사장님 자율 진행 지시)
 

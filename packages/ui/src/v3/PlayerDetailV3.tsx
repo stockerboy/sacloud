@@ -390,7 +390,7 @@ function TrendCard({ data }: { data: LeaguePlayerDetail }) {
       }>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}><span style={{ width: 15, height: 2, background: '#ff5a63' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>킬뎃</span></span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 15, height: 2, background: '#7fa9ff' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>승률</span></span>
-        <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>매일 새벽 6시에 찍힙니다 · 2판 미만인 날은 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
+        <span style={{ fontSize: 10.5, color: V3.textGhost2, minWidth: 0 }}>매일 새벽 6시에 찍힙니다 · 2판 미만인 날은 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
       </CardHead>
       <TrendChartV3
         days={data.trend}
@@ -469,7 +469,7 @@ function Scoreboard({ detail, me, leagueCategory }: { detail: MatchDetail; me: s
   const mySide = viewerSideOf(detail)
   const showSaves = [...detail.red_stats, ...detail.blue_stats].some((s) => s.saves !== null)
   const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
-  const teams = (['red', 'blue'] as const).map((side) => {
+  const teams = ([mySide, mySide === 'red' ? 'blue' : 'red'] as const).map((side) => {
     const stats = side === 'red' ? detail.red_stats : detail.blue_stats
     const ours = side === mySide
     const snap = ours ? detail.league_clan : detail.opponent
