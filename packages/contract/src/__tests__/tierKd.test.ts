@@ -38,24 +38,24 @@ describe('tierKdOrNull', () => {
 
 describe('buildTierBreakdown — 킬뎃 칸', () => {
   it('킬뎃을 모르는 판은 분모에서 뺀다', () => {
-    const [row] = buildTierBreakdown(1, [
+    const row = buildTierBreakdown(1, [
       { tier: 1, games: 40, win: 20, lose: 20, knownGames: 12, kill: 60, death: 40, clans: [] },
-    ])
+    ])[0]!
     expect(row.knownGames).toBe(12)
     expect(row.kd).toBe(kdRate(60, 40))
   })
 
   it('한 판도 안 붙은 티어는 킬뎃도 null 이다', () => {
-    const [row] = buildTierBreakdown(1, [])
+    const row = buildTierBreakdown(1, [])[0]!
     expect(row.games).toBe(0)
     expect(row.knownGames).toBe(0)
     expect(row.kd).toBeNull()
   })
 
   it('킬뎃을 아는 판이 모자라면 승률은 나와도 킬뎃은 안 나온다', () => {
-    const [row] = buildTierBreakdown(1, [
+    const row = buildTierBreakdown(1, [
       { tier: 1, games: 30, win: 20, lose: 10, knownGames: 3, kill: 10, death: 5, clans: [] },
-    ])
+    ])[0]!
     expect(row.winRate).not.toBeNull()
     expect(row.kd).toBeNull()
   })

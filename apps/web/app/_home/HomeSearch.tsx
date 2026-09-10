@@ -11,6 +11,7 @@ import {
   isBarracksUrl,
   normalizePastedQuery,
   searchMissMessage,
+  type ClanSummary,
 } from '@sacloud/contract'
 import {
   FEATURED_LEAGUES,
@@ -78,6 +79,23 @@ const SUGGEST_SOURCE = {
   },
 } as const
 
+/**
+ * 자동완성 한 줄에 붙일 클랜을 고른다 (2026-09-10).
+ *
+ * ★세 종류를 여기 한 곳에서 가른다★ — 화면(`SearchBar`)은 종류를 모른다.
+ * 리그는 `{}` 를 돌려주므로 `clan` 칸 자체가 생기지 않고, 그래서 마크 자리도 안 생긴다.
+ * ★없는 마크를 지어내지 않는다★ — 모르면 `null` 이고 그 자리에 구름이 그려진다 (D-146).
+ */
+function clanOf(row: unknown): { clan?: ClanSummary | null } {
+  if (typeof row !== 'object' || row === null) return {}
+  /* 선수 후보 — 소속 클랜이 붙어 온다 (무소속이면 `null`) */
+  if ('clan' in row) return { clan: (row as { clan: ClanSummary | null }).clan }
+  /* 클랜 후보 — 자기 자신이 클랜이다. `slug` 를 가진 줄이 클랜·리그인데,
+     리그에는 `mark` 가 없으므로 그것으로 가른다 */
+  if ('slug' in row && 'mark' in row) return { clan: row as ClanSummary }
+  return {}
+}
+
 export function HomeSearch() {
   const router = useRouter()
   /** 못 찾았을 때 검색창 밑에 띄우는 한 줄. 성공하면 즉시 지운다 (D-254) */
@@ -136,6 +154,16 @@ export function HomeSearch() {
             name: row.name,
             /* 선수 후보에만 소속 클랜을 붙인다 — 같은 이름이 여럿일 때 그것으로 가른다 */
             sub: 'clan' in row && row.clan ? row.clan.name : null,
+            /*
+             * ★이름 앞에 그릴 클랜마크★ (2026-09-10 · 사장님 상시 지시).
+             *
+             * > «클랜명 혹은 선수닉네임 앞에는 언제나 반드시 (…) 클랜마크를 앞에 반드시 달아야한다»
+             *
+             *   선수 후보  그 선수의 ★소속 클랜★. 무소속이면 `null` → 구름
+             *   클랜 후보  ★그 클랜 자신★ — 클랜을 찾는데 마크가 없으면 고르기가 어렵다
+             *   리그 후보  클랜이라는 개념이 없다 → ★아예 안 넘긴다★(`undefined`) → 마크 칸이 안 생긴다
+             */
+            ...clanOf(row),
           }))
           if (cacheRef.current.size >= SUGGEST_CACHE_MAX) cacheRef.current.clear()
           cacheRef.current.set(cacheKey, rows)

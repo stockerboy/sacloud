@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CLAN_SEARCH_HINT } from '@sacloud/contract'
+import { ClanMark } from '../common/ClanMark'
 import {
   SEARCH_SUGGEST_ENABLED,
   SUGGEST_MAX_ITEMS,
@@ -318,20 +319,33 @@ export function SearchBar({
                     index === active ? 'border-l-accent bg-card-2' : 'border-l-transparent'
                   }`}
                 >
-                  <span
-                    className={`block truncate text-[14px] leading-5 ${
-                      index === active
-                        ? 'text-[var(--color-text-strong,#f6eded)]'
-                        : 'text-[var(--color-text,#d6c9c9)]'
-                    }`}
-                  >
-                    {item.name}
-                  </span>
-                  {item.sub ? (
-                    <span className="mt-0.5 block truncate text-[12px] leading-4 text-meta">
-                      {item.sub}
+                  {/*
+                    ★이름 앞에 클랜마크★ (2026-09-10 · 사장님 상시 지시).
+                    선수면 소속 클랜, 클랜이면 그 클랜 자신이다.
+                    ★무소속이어도 자리를 비우지 않는다★ — 구름을 그린다 (D-146).
+                    리그 줄은 `clan` 을 아예 안 넘겨서 마크 칸이 생기지 않는다.
+                  */}
+                  <span className="flex items-center gap-2">
+                    {item.clan === undefined ? null : (
+                      <ClanMark clan={item.clan} size="xs" alt={item.clan?.name ?? ''} />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`block truncate text-[14px] leading-5 ${
+                          index === active
+                            ? 'text-[var(--color-text-strong,#f6eded)]'
+                            : 'text-[var(--color-text,#d6c9c9)]'
+                        }`}
+                      >
+                        {item.name}
+                      </span>
+                      {item.sub ? (
+                        <span className="mt-0.5 block truncate text-[12px] leading-4 text-meta">
+                          {item.sub}
+                        </span>
+                      ) : null}
                     </span>
-                  ) : null}
+                  </span>
                 </button>
               </li>
             ))}
