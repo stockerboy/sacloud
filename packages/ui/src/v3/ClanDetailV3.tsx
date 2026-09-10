@@ -51,7 +51,7 @@ function TierStrip({ data, h2h, division, selected, onSelect, tierClans }: { dat
   const rate = win + lose > 0 ? (win / (win + lose)) * 100 : null
   return (
     <Card style={{ marginTop: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', flexWrap: 'nowrap' }}>
+      <div className="v3-tier-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', flexWrap: 'nowrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
           <MarkCircle clan={data.clan} size={30} />
           <span style={{ fontSize: 14, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap' }}>{data.clan.name}</span>
