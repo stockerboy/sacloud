@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import type { PlayerTierRecord } from '@sacloud/contract'
 import { TIER_WIN_RATE_MIN_GAMES, showsTier } from '@sacloud/contract'
@@ -31,10 +34,51 @@ import { divisionLabel, divisionUnit } from '../league/divisionLabel'
  *   공식리그 화면에서 여기만 `1티어` 라고 쓰면 바로 옆 랭킹 탭의 `1부리그` 와
  *   어긋난다. 값은 하나(`division`)고 부르는 이름만 갈린다.
  *
+ * ══ 2026-09-10 회의 — ★무기 칩 하나 + 티어 세 줄★ ══
+ *
+ *   > «티어가 세개고 라플, 스나킬뎃을 분리했잖아 그럼 보여줄 수 있는 킬뎃 승률이 벌써
+ *   >  6개잖아 (…) 어떻게 하면 어지럽지 않게 아스트라구간에서 몇퍼인지 챌린저구간에서
+ *   >  몇퍼인지 보여줄 수 있을까» — 사장님
+ *
+ *   ── ★숫자를 먼저 줄였다★
+ *     ★승률은 무기로 안 갈린다.★ 경기는 팀이 이기는 것이라 ★무기별 승패라는 값이 없다.★
+ *     그래서 실제로 보여줄 것은 ★승률 3개 + 킬뎃 3개(무기축 하나)★ 로 끝난다.
+ *     남은 무기축 둘은 ★칩으로 갈아 끼운다★ — 화면에 한 번에 뜨는 숫자는 언제나 여섯이다.
+ *
+ *   ── ★비교하는 축은 티어다★
+ *     사장님이 알고 싶은 것은 «아스트라에서 몇 퍼, 챌린저에서 몇 퍼» 다.
+ *     그래서 ★티어 셋은 언제나 함께 보인다.★ 티어를 탭으로 나누면 비교가 막힌다.
+ *     무기는 ★비교축이 아니라 고르는 값★ 이라 칩이 맞다 (개인랭킹과 같은 조작이다).
+ *
+ *   ── ★판수를 늘 같이 적는다★ (사장님이 고르신 값)
+ *     무기별 판수는 승률의 판수와 ★다르다.★ 스나 21판 · 라플 31판 · 전체 52판 처럼
+ *     갈리는데 그걸 감추면 ★왜 숫자가 다른지 알 수가 없다.★
+ *
  * 사이드 카드 모양(`bg-side` · 구분선 · `flex justify-between`)은
  * `RecordPanels` 의 `상세정보` 패널과 같다. 그쪽 `Stat`/`Divider` 는 모듈 바깥으로
  * 나오지 않아 같은 마크업을 여기에 다시 적었다.
  */
+/**
+ * 칩에 걸리는 무기축 셋. ★값과 글자를 여기 한 곳에만 적는다.★
+ *
+ * `통합` 은 무기를 안 가린 전체다 — 라플+스나가 아니다.
+ * (무기를 모르는 판이 섞여 있어 둘의 합보다 클 수 있다 · D-149)
+ */
+const AXES = [
+  { key: 'all', label: '통합' },
+  { key: 'sniper', label: '스나' },
+  { key: 'rifle', label: '라플' },
+] as const
+
+type Axis = (typeof AXES)[number]['key']
+
+/** 고른 축의 킬뎃과 ★그 축의 판수★ 를 꺼낸다. 판수는 축마다 다르다 */
+function kdOf(row: PlayerTierRecord, axis: Axis): { kd: number | null; games: number } {
+  if (axis === 'sniper') return { kd: row.sniper_kd, games: row.sniper_games }
+  if (axis === 'rifle') return { kd: row.rifle_kd, games: row.rifle_games }
+  return { kd: row.kd, games: row.known_games }
+}
+
 export function TierBreakdown({
   rows,
   leagueSlug,
@@ -46,6 +90,10 @@ export function TierBreakdown({
   /** `official` | `independent` — 부리그/티어 표기를 고른다 (D-165) */
   leagueCategory?: string
 }) {
+  /* ★칩은 카드 안에서만 산다★ — 주소에 안 넣는다. 부리그 탭과 달리 라우트가 안 나뉜다
+     (개인랭킹의 무기 칩과 같은 판단이다) */
+  const [axis, setAxis] = useState<Axis>('all')
+
   /* 줄이 하나도 없으면 카드를 그리지 않는다. 빈 껍데기는 정보가 아니다 */
   if (rows.length === 0) return null
   /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 «티어별» 축 자체가 감춘 개념이라 카드를 안 그린다.
@@ -61,54 +109,71 @@ export function TierBreakdown({
           {TIER_WIN_RATE_MIN_GAMES}판부터 승률·킬뎃을 봅니다
         </div>
       </div>
-      {rows.map((row) => (
+      {/*
+        ★무기 칩★ — 고르는 값이지 비교축이 아니다. 누르면 ★킬뎃 줄만★ 바뀐다.
+        승률은 무기로 안 갈리므로 ★한 글자도 안 움직인다.★
+      */}
+      <div className="mt-3 flex gap-1">
+        {AXES.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setAxis(item.key)}
+            aria-pressed={axis === item.key}
+            className={`num cursor-pointer rounded-[2px] border px-2.5 py-1 text-xs transition-colors duration-100 ${
+              axis === item.key
+                ? 'border-accent text-accent'
+                : 'border-line-soft text-side-meta hover:text-text'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      {rows.map((row) => {
+        const picked = kdOf(row, axis)
+        return (
         <div key={row.tier}>
           <div className="my-2 border-t border-t-line-soft" />
-          <div className="flex justify-between py-2 text-3xl">
-            <div className="shrink-0 whitespace-nowrap">
-              vs {divisionLabel(row.tier, leagueCategory)}
-            </div>
-            <div className="flex min-w-0 items-center">
-              <span className="num mr-2 whitespace-nowrap text-base">
-                {formatCount(row.games)}판
-              </span>
+          {/* 티어 이름 — 이름은 `divisionLabel` 이 만든다. 여기서 지어내지 않는다 */}
+          <div className="pt-1 text-3xl">vs {divisionLabel(row.tier, leagueCategory)}</div>
+          {/*
+            ★두 줄로 끝낸다★ — 승률 한 줄, 킬뎃 한 줄 (2026-09-10 회의).
+            ★판수를 늘 같이 적는다★ (사장님이 고르신 값) — 무기별 판수는 승률의 판수와
+            다르다. 스나 21판 · 라플 31판 · 전체 52판 처럼 갈리는데 감추면 왜 숫자가
+            다른지 알 수가 없다.
+          */}
+          <div className="flex items-baseline justify-between py-0.5 text-base">
+            <span className="text-side-meta">승률</span>
+            <span className="flex items-baseline gap-2">
               {row.win_rate === null ? (
                 /* 판수가 모자란다. **0% 로 채우지 않는다** (D-106) */
                 <span className="text-side-meta">—</span>
               ) : (
-                <span className={`num ${rateClass(row.win_rate)}`}>
+                <span className={`num text-xl ${rateClass(row.win_rate)}`}>
                   {formatRate(row.win_rate)}%
                 </span>
               )}
-            </div>
-          </div>
-          {/*
-            ★티어별 킬뎃★ (2026-09-10 · 사장님 «티어별 승률과 킬뎃을 따로 기록해서 ui에 나타낼거니까»).
-
-            승률 아래 작은 줄로 붙인다 — ★승률 자리를 뺏지 않는다.★
-            분모는 판수가 아니라 ★킬뎃을 아는 판수★ 다 (D-149). 서플라이에서 온 옛 경기에는
-            킬/데스가 없는 줄이 있어서, 그 판을 0킬로 세면 킬뎃이 조용히 낮아진다.
-            그래서 ★센 판수를 옆에 같이 적는다★ — 판수와 다르면 사장님이 바로 보신다.
-            줄이 통째로 없을 때(잰 판이 0판)는 ★아무것도 안 그린다.★ `0.0%` 를 찍지 않는다.
-          */}
-          {row.known_games === 0 ? null : (
-            <div className="flex justify-between px-1 pb-1 text-base">
-              <span className="text-side-meta">킬뎃</span>
-              <span>
-                {row.kd === null ? (
-                  <span className="text-side-meta">—</span>
-                ) : (
-                  <span className={`num ${rateClass(row.kd)}`}>{formatRate(row.kd)}%</span>
-                )}
-                {/* 판수와 다를 때만 «몇 판을 재서 나온 값인가» 를 밝힌다 */}
-                {row.known_games === row.games ? null : (
-                  <span className="num ml-2 text-xs text-side-meta">
-                    {formatCount(row.known_games)}판 기준
-                  </span>
-                )}
+              <span className="num w-14 text-right text-xs text-side-meta">
+                {formatCount(row.games)}판
               </span>
-            </div>
-          )}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between py-0.5 pb-1 text-base">
+            <span className="text-side-meta">킬뎃</span>
+            <span className="flex items-baseline gap-2">
+              {picked.kd === null ? (
+                <span className="text-side-meta">—</span>
+              ) : (
+                <span className={`num text-xl ${rateClass(picked.kd)}`}>
+                  {formatRate(picked.kd)}%
+                </span>
+              )}
+              <span className="num w-14 text-right text-xs text-side-meta">
+                {formatCount(picked.games)}판
+              </span>
+            </span>
+          </div>
           {row.nemeses.length === 0 ? null : (
             /* 천적. 여럿이면 승률 높은 순으로 온다 — 화면은 순서를 다시 만지지 않는다 */
             <div className="px-1 pb-1 text-right text-base">
@@ -126,7 +191,8 @@ export function TierBreakdown({
             </div>
           )}
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -51,6 +51,13 @@ interface TierBucket {
   knownGames: number
   kill: number
   death: number
+  /** 무기축별 (2026-09-10 회의). `0 = 라이플` · `1 = 스나이퍼` */
+  rifleGames: number
+  rifleKill: number
+  rifleDeath: number
+  sniperGames: number
+  sniperKill: number
+  sniperDeath: number
   /** 키는 상대 `LeagueClan.id`. 이름은 나중에 한 번에 붙인다 */
   clans: Map<string, { games: number; win: number; lose: number }>
 }
@@ -62,6 +69,12 @@ const emptyBucket = (): TierBucket => ({
   knownGames: 0,
   kill: 0,
   death: 0,
+  rifleGames: 0,
+  rifleKill: 0,
+  rifleDeath: 0,
+  sniperGames: 0,
+  sniperKill: 0,
+  sniperDeath: 0,
   clans: new Map(),
 })
 
@@ -91,6 +104,7 @@ export async function playerTierBreakdownFrom(
       opponentDivisionAtMatch: row.opponentDivisionAtMatch,
       kill: row.kill,
       death: row.death,
+      weapon: row.weapon,
       match: {
         winnerSide: row.winnerSide,
         redLeagueClanId: row.redLeagueClanId,
@@ -122,6 +136,8 @@ export async function playerTierBreakdownByQuery(
       /* 킬뎃 (2026-09-10). ★모르는 판이 있다★ — `null` 이면 분모에서 뺀다 (D-149) */
       kill: true,
       death: true,
+      /* 무기축 — `0 = 라이플` · `1 = 스나이퍼`. 모르면 어느 무기에도 안 넣는다 */
+      weapon: true,
       match: {
         select: { winnerSide: true, redLeagueClanId: true, blueLeagueClanId: true },
       },
@@ -141,6 +157,7 @@ async function tiersOf(
     opponentDivisionAtMatch: number
     kill: number | null
     death: number | null
+    weapon: number | null
     match: { winnerSide: string; redLeagueClanId: string; blueLeagueClanId: string }
   }[],
   divisionCount: number,
@@ -204,6 +221,16 @@ async function tiersOf(
       bucket.knownGames += 1
       bucket.kill += row.kill
       bucket.death += row.death
+      /* ★무기를 모르는 판은 어느 축에도 안 넣는다★ — 라플로 찍어 두면 라플 킬뎃이 오염된다 */
+      if (row.weapon === 0) {
+        bucket.rifleGames += 1
+        bucket.rifleKill += row.kill
+        bucket.rifleDeath += row.death
+      } else if (row.weapon === 1) {
+        bucket.sniperGames += 1
+        bucket.sniperKill += row.kill
+        bucket.sniperDeath += row.death
+      }
     }
 
     const opponentId =
@@ -235,6 +262,12 @@ async function tiersOf(
       knownGames: bucket.knownGames,
       kill: bucket.kill,
       death: bucket.death,
+      rifleGames: bucket.rifleGames,
+      rifleKill: bucket.rifleKill,
+      rifleDeath: bucket.rifleDeath,
+      sniperGames: bucket.sniperGames,
+      sniperKill: bucket.sniperKill,
+      sniperDeath: bucket.sniperDeath,
       clans,
     }
   })
@@ -247,6 +280,10 @@ async function tiersOf(
     win_rate: row.winRate,
     known_games: row.knownGames,
     kd: row.kd,
+    rifle_games: row.rifleGames,
+    rifle_kd: row.rifleKd,
+    sniper_games: row.sniperGames,
+    sniper_kd: row.sniperKd,
     nemeses: row.nemeses.map((nemesis) => ({
       name: nemesis.name,
       slug: nemesis.slug,

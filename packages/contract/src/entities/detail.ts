@@ -220,6 +220,15 @@ export const PlayerTierRecord = z.object({
    * 못 재면 `null` 이고 화면은 `—` 를 적는다 — ★0 이 아니다★ (D-106).
    */
   kd: Percent.nullable().default(null),
+  /**
+   * ★무기축별 킬뎃★ (2026-09-10 회의). ★승률은 무기로 안 갈린다★ —
+   * 경기는 팀이 이기는 것이라 무기별 승패라는 값이 없다.
+   * 판수를 늘 같이 낸다 (사장님 «판수를 늘 같이 적는다») — 승률의 판수와 다르기 때문이다.
+   */
+  rifle_games: Count.default(0),
+  rifle_kd: Percent.nullable().default(null),
+  sniper_games: Count.default(0),
+  sniper_kd: Percent.nullable().default(null),
   /** 조건을 넘은 클랜만. 없으면 빈 배열이다 */
   nemeses: z.array(PlayerTierNemesis),
 })

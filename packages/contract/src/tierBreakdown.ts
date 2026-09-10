@@ -104,6 +104,14 @@ export interface TierTally {
   knownGames?: number
   kill?: number
   death?: number
+  /** 라이플로 뛴 판만 (`weapon === 0`) */
+  rifleGames?: number
+  rifleKill?: number
+  rifleDeath?: number
+  /** 스나이퍼로 뛴 판만 (`weapon === 1`) */
+  sniperGames?: number
+  sniperKill?: number
+  sniperDeath?: number
   clans: readonly TierClanTally[]
 }
 
@@ -135,6 +143,21 @@ export interface TierBreakdownRow {
    * `TIER_KD_MIN_GAMES` 판 미만이면 `null` — 화면이 `—` 를 적는다.
    */
   kd: number | null
+  /**
+   * ★무기축별 킬뎃★ (2026-09-10 · 사장님 회의에서 정했다).
+   *
+   * > «티어가 세개고 라플, 스나킬뎃을 분리했잖아 (…) 어떻게 하면 어지럽지 않게»
+   *
+   * ★승률은 여기 없다.★ 경기는 팀이 이기는 것이라 ★무기별 승패라는 값이 아예 없다.★
+   * 그래서 화면에 한 번에 뜨는 숫자는 ★승률 3 + 킬뎃 3 = 여섯 개★ 로 끝난다.
+   *
+   * 판수를 늘 같이 낸다 — 사장님이 «판수를 늘 같이 적는다» 를 고르셨다.
+   * 무기별 판수는 승률의 판수와 ★다르다.★ 그걸 감추면 왜 숫자가 다른지 알 수 없다.
+   */
+  rifleGames: number
+  rifleKd: number | null
+  sniperGames: number
+  sniperKd: number | null
   /** 조건을 넘은 클랜만. 없으면 **빈 배열**이다 */
   nemeses: TierNemesis[]
 }
@@ -230,11 +253,17 @@ export function buildTierBreakdown(
         winRate: null,
         knownGames: 0,
         kd: null,
+        rifleGames: 0,
+        rifleKd: null,
+        sniperGames: 0,
+        sniperKd: null,
         nemeses: [],
       })
       continue
     }
     const knownGames = tally.knownGames ?? 0
+    const rifleGames = tally.rifleGames ?? 0
+    const sniperGames = tally.sniperGames ?? 0
     rows.push({
       tier,
       games: tally.games,
@@ -243,6 +272,10 @@ export function buildTierBreakdown(
       winRate: tierWinRateOrNull(tally.games, tally.win, tally.lose),
       knownGames,
       kd: tierKdOrNull(knownGames, tally.kill ?? 0, tally.death ?? 0),
+      rifleGames,
+      rifleKd: tierKdOrNull(rifleGames, tally.rifleKill ?? 0, tally.rifleDeath ?? 0),
+      sniperGames,
+      sniperKd: tierKdOrNull(sniperGames, tally.sniperKill ?? 0, tally.sniperDeath ?? 0),
       nemeses: nemesesOf(tally.clans),
     })
   }

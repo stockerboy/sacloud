@@ -1458,6 +1458,12 @@ function buildTierBreakdownRows(
     knownGames: number
     kill: number
     death: number
+    rifleGames: number
+    rifleKill: number
+    rifleDeath: number
+    sniperGames: number
+    sniperKill: number
+    sniperDeath: number
     clans: Map<string, { games: number; win: number; lose: number }>
   }
   const byTier = new Map<number, Bucket>()
@@ -1477,6 +1483,12 @@ function buildTierBreakdownRows(
       knownGames: 0,
       kill: 0,
       death: 0,
+      rifleGames: 0,
+      rifleKill: 0,
+      rifleDeath: 0,
+      sniperGames: 0,
+      sniperKill: 0,
+      sniperDeath: 0,
       clans: new Map(),
     }
     bucket.games += 1
@@ -1485,6 +1497,15 @@ function buildTierBreakdownRows(
     bucket.knownGames += 1
     bucket.kill += stat.kill
     bucket.death += stat.death
+    if (stat.weapon === 0) {
+      bucket.rifleGames += 1
+      bucket.rifleKill += stat.kill
+      bucket.rifleDeath += stat.death
+    } else if (stat.weapon === 1) {
+      bucket.sniperGames += 1
+      bucket.sniperKill += stat.kill
+      bucket.sniperDeath += stat.death
+    }
     const clan = bucket.clans.get(opponentId) ?? { games: 0, win: 0, lose: 0 }
     clan.games += 1
     if (win) clan.win += 1
@@ -1511,6 +1532,12 @@ function buildTierBreakdownRows(
       knownGames: bucket.knownGames,
       kill: bucket.kill,
       death: bucket.death,
+      rifleGames: bucket.rifleGames,
+      rifleKill: bucket.rifleKill,
+      rifleDeath: bucket.rifleDeath,
+      sniperGames: bucket.sniperGames,
+      sniperKill: bucket.sniperKill,
+      sniperDeath: bucket.sniperDeath,
       clans,
     }
   })
@@ -1523,6 +1550,10 @@ function buildTierBreakdownRows(
     win_rate: row.winRate,
     known_games: row.knownGames,
     kd: row.kd,
+    rifle_games: row.rifleGames,
+    rifle_kd: row.rifleKd,
+    sniper_games: row.sniperGames,
+    sniper_kd: row.sniperKd,
     nemeses: row.nemeses.map((nemesis) => ({
       name: nemesis.name,
       slug: nemesis.slug,

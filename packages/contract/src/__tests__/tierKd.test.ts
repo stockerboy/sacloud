@@ -60,3 +60,55 @@ describe('buildTierBreakdown — 킬뎃 칸', () => {
     expect(row.kd).toBeNull()
   })
 })
+
+describe('buildTierBreakdown — 무기축 (2026-09-10 회의)', () => {
+  const tally = {
+    tier: 1,
+    games: 52,
+    win: 34,
+    lose: 18,
+    knownGames: 52,
+    kill: 700,
+    death: 500,
+    rifleGames: 34,
+    rifleKill: 400,
+    rifleDeath: 305,
+    sniperGames: 18,
+    sniperKill: 300,
+    sniperDeath: 195,
+    clans: [],
+  }
+
+  it('무기축마다 판수가 따로 나온다 — 승률의 판수와 다르다', () => {
+    const row = buildTierBreakdown(1, [tally])[0]!
+    expect(row.games).toBe(52)
+    expect(row.rifleGames).toBe(34)
+    expect(row.sniperGames).toBe(18)
+  })
+
+  it('무기축 킬뎃도 같은 셈법(kdRate)을 쓴다', () => {
+    const row = buildTierBreakdown(1, [tally])[0]!
+    expect(row.rifleKd).toBe(kdRate(400, 305))
+    expect(row.sniperKd).toBe(kdRate(300, 195))
+  })
+
+  it('그 무기로 뛴 판이 모자라면 그 축만 null 이다 — 승률·통합은 그대로 나온다', () => {
+    const row = buildTierBreakdown(1, [
+      { ...tally, rifleGames: 6, sniperGames: 4 },
+    ])[0]!
+    expect(row.winRate).not.toBeNull()
+    expect(row.kd).not.toBeNull()
+    expect(row.rifleKd).toBeNull()
+    expect(row.sniperKd).toBeNull()
+  })
+
+  it('무기 값이 아예 없으면 0판 · null 이다 — 지어내지 않는다', () => {
+    const row = buildTierBreakdown(1, [
+      { tier: 1, games: 20, win: 10, lose: 10, knownGames: 20, kill: 100, death: 80, clans: [] },
+    ])[0]!
+    expect(row.rifleGames).toBe(0)
+    expect(row.rifleKd).toBeNull()
+    expect(row.sniperGames).toBe(0)
+    expect(row.sniperKd).toBeNull()
+  })
+})
