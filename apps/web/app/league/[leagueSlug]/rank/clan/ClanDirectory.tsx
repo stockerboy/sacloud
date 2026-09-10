@@ -49,12 +49,29 @@ import { ClanDirectoryV1 } from './ClanDirectoryV1'
  */
 const RANKED: boolean = true
 
-export function ClanDirectory({ leagueSlug }: { leagueSlug: string }) {
+export function ClanDirectory({
+  leagueSlug,
+  /**
+   * ★서버가 미리 알려 준 리그 구분★ (2026-09-10). 없으면 예전 그대로 브라우저가 물어본다.
+   * 이게 없으면 첫 그림에서 티어 이름이 `1티어` 로 잠깐 나왔다가 `ASTRA` 로 바뀐다 —
+   * 까닭은 `prefetchClanRank.ts` 끝의 주석에 적어 뒀다.
+   */
+  leagueCategory,
+}: {
+  leagueSlug: string
+  leagueCategory?: string | null
+}) {
   if (!RANKED) return <ClanDirectoryV1 leagueSlug={leagueSlug} />
-  return <ClanRankDirectory leagueSlug={leagueSlug} />
+  return <ClanRankDirectory leagueSlug={leagueSlug} leagueCategory={leagueCategory} />
 }
 
-function ClanRankDirectory({ leagueSlug }: { leagueSlug: string }) {
+function ClanRankDirectory({
+  leagueSlug,
+  leagueCategory,
+}: {
+  leagueSlug: string
+  leagueCategory?: string | null
+}) {
   const [query, setQuery] = useState('')
   const ready = useApiReady()
 
@@ -65,7 +82,8 @@ function ClanRankDirectory({ leagueSlug }: { leagueSlug: string }) {
     queryFn: () => apiGet('leagueShow', { params: { leagueSlug } }),
     enabled: ready,
   })
-  const category = league.data?.data.category
+  /* 브라우저가 받은 답이 먼저다. 아직 없으면 ★서버가 건네준 값★ 을 쓴다 */
+  const category = league.data?.data.category ?? leagueCategory ?? undefined
 
   /* 한 번에 다 받는다. 400 은 라우트의 상한과 같은 값이다 —
      넘치면 아래 `useEffect` 가 커서를 따라 이어 받는다 */

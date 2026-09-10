@@ -1,6 +1,8 @@
+import { HydrationBoundary } from '@tanstack/react-query'
 import { redirect } from 'next/navigation'
 import { leagueLandingPath, leagueScreen } from '@sacloud/contract'
 import { ClanDirectory } from './ClanDirectory'
+import { prefetchClanRank } from './prefetchClanRank'
 
 /**
  * `/league/{slug}/rank/clan` — ★클랜랭킹★ (2026-09-10 사장님 지시로 순위가 돌아왔다).
@@ -51,6 +53,15 @@ export function generateStaticParams(): { leagueSlug: string }[] {
 /** 목록에 없는 리그도 열린다. 첫 요청 때 만들어져 캐시된다 */
 export const dynamicParams = true
 
+/**
+ * ★알맹이까지 담아서 굳힌다★ (2026-09-10 · 폰 첫 화면이 2~4초 비어 있던 것).
+ *
+ * 60초마다 뒤에서 다시 만든다. ★람다는 리그당 60초에 한 번만 깬다★ —
+ * 방문 수와 무관하다는 O-016 의 알맹이는 그대로다. 까닭은 `prefetchClanRank.ts` 에 적었다.
+ * 되돌리려면 이 줄만 지운다. 그러면 예전처럼 빈 껍데기가 캐시된다 (`CLAUDE.md` 1-4).
+ */
+export const revalidate = 60
+
 export default async function ClanIndex({
   params,
 }: {
@@ -60,5 +71,12 @@ export default async function ClanIndex({
 
   if (!leagueScreen(leagueSlug).clanRank) redirect(leagueLandingPath(leagueSlug))
 
-  return <ClanDirectory leagueSlug={leagueSlug} />
+  /* 목록을 서버에서 미리 받아 화면에 실어 보낸다 — 첫 그림에 클랜이 들어 있게 된다 */
+  const { state, category } = await prefetchClanRank(leagueSlug)
+
+  return (
+    <HydrationBoundary state={state}>
+      <ClanDirectory leagueSlug={leagueSlug} leagueCategory={category} />
+    </HydrationBoundary>
+  )
 }
