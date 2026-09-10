@@ -1,4 +1,6 @@
+import { HydrationBoundary } from '@tanstack/react-query'
 import PlayerRankPage from './PlayerRankScreen'
+import { prefetchPlayerRank } from './prefetchPlayerRank'
 
 /**
  * `/league/{leagueSlug}/rank/player` **껍데기를 굳힌다** (2026-09-03 · O-016).
@@ -25,6 +27,20 @@ export function generateStaticParams(): { leagueSlug: string }[] {
 /** 목록에 없는 값도 열린다. 첫 요청 때 만들어져 캐시된다 */
 export const dynamicParams = true
 
-export default function Page({ params }: { params: Promise<{ leagueSlug: string }> }) {
-  return <PlayerRankPage params={params} />
+/**
+ * ★알맹이까지 담아서 굳힌다★ (2026-09-10 · 첫 화면이 2~4초 비어 있던 것).
+ * 60초마다 뒤에서 다시 만든다 — 람다는 리그당 60초에 한 번만 깬다.
+ * 되돌리려면 이 줄만 지운다 (`CLAUDE.md` 1-4).
+ */
+export const revalidate = 60
+
+export default async function Page({ params }: { params: Promise<{ leagueSlug: string }> }) {
+  const { leagueSlug } = await params
+
+  /* 첫 화면 몫(통합 축 20명 + 폼 TOP3)을 서버에서 받아 실어 보낸다 */
+  return (
+    <HydrationBoundary state={await prefetchPlayerRank(leagueSlug)}>
+      <PlayerRankPage params={params} />
+    </HydrationBoundary>
+  )
 }
