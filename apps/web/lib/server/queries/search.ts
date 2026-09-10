@@ -22,6 +22,7 @@ import {
   toLeagueSummary,
 } from '../mappers'
 import { publicOriginWhere } from './publicScope'
+import { SEASON0_FROM } from './season0Scope'
 
 /**
  * 통합검색 (플레이어 · 클랜 · 리그).
@@ -339,12 +340,14 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
     name: true,
     clan: { select: CLAN_SUMMARY_SELECT },
     ...PLAYER_CLAN_FALLBACK_SELECT,
+    /* ★지금 시즌에 뛴 사람인가★ — 0 이면 9/3 이전 기록만 있는 사람이다. 아래 `season0First` 가 쓴다 */
+    _count: { select: { leaguePlayers: { where: SEASON0_RATED } } },
   }
   const [prefixRows, containsOnlyRows] = await Promise.all([
     prisma.player.findMany({
-      where: { name: ciStarts(keyword), ...publicOriginWhere() },
+      where: { name: ciStarts(keyword), ...publicOriginWhere(), ...season0OnlyWhere() },
       orderBy: [{ id: 'asc' }],
-      take: SEARCH_LIMIT,
+      take: SEARCH_LIMIT * OVERFETCH,
       select,
     }),
     /*
@@ -360,19 +363,73 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
         name: ci(keyword),
         NOT: { name: ciStarts(keyword) },
         ...publicOriginWhere(),
+        ...season0OnlyWhere(),
       },
       orderBy: [{ id: 'asc' }],
-      take: SEARCH_LIMIT,
+      take: SEARCH_LIMIT * OVERFETCH,
       select,
     }),
   ])
 
-  const players = mixPrefixFirst(prefixRows, containsOnlyRows, SEARCH_LIMIT)
+  /* ★지금 시즌에 뛴 사람을 앞으로★ — 자리 규칙(`mixPrefixFirst`)은 한 글자도 안 건드린다 */
+  const players = mixPrefixFirst(
+    season0First(prefixRows).slice(0, SEARCH_LIMIT),
+    season0First(containsOnlyRows).slice(0, SEARCH_LIMIT),
+    SEARCH_LIMIT,
+  )
   return players.map((player) => ({
     id: player.id,
     name: player.name,
     clan: toClanSummaryOrNull(playerClanOf(player)),
   }))
+}
+
+/**
+ * ★지금 시즌(시즌0)에 뛴 사람인가★ 를 세는 조건 (2026-09-10 · `ORDERS.md` 「검색에 시즌0 창」).
+ *
+ * `LeaguePlayer.lastRatedAt` 하나만 본다. ★경기 표를 안 뒤진다.★
+ * 실측(2026-09-10 운영) — 이 조건으로 센 사람 ★2,374명★ 이고,
+ * 경기 표를 실제로 뒤져 센 값도 ★2,374명★ 이다. ★한 명도 안 어긋난다.★
+ */
+const SEASON0_RATED = { lastRatedAt: { gte: SEASON0_FROM } } as const
+
+/**
+ * ★창을 걸어 감출 것인가★ — 지금은 ★아니다★ (`false`).
+ *
+ * 실측: 검색 대상 25,727명 중 지금 시즌에 뛴 사람은 ★2,374명뿐★ 이다.
+ * 켜면 나머지 ★23,353명(91%)이 검색에서 통째로 사라진다.★
+ * 그 사람들의 화면은 지금도 열리고 값도 남아 있다 — ★없는 사람이 아니다.★
+ * 그래서 ★감추지 않고 뒤로 미는 것★ 을 기본값으로 둔다 (`season0First`).
+ *
+ * 사장님이 «9/3 이전은 검색에도 안 나오게» 라고 하시면 이 한 줄만 `true` 로 바꾼다.
+ * 타입을 `boolean` 으로 넓힌 이유는 리터럴로 좁히면 아래 가지가 «닿을 수 없는 코드» 가 되기 때문이다.
+ */
+const SEASON0_ONLY: boolean = false
+
+function season0OnlyWhere() {
+  return SEASON0_ONLY ? { leaguePlayers: { some: SEASON0_RATED } } : {}
+}
+
+/**
+ * 몇 배로 넉넉히 받아 오나. 뒤로 미는 규칙이 ★받아 온 줄 안에서만★ 도므로
+ * 딱 열 줄만 받으면 열한 번째에 있던 «지금 뛰는 사람» 이 영영 안 올라온다.
+ * 접두어 질의는 인덱스를 타서 50줄도 0.1ms 다 (위 실측표).
+ */
+const OVERFETCH = 5
+
+/**
+ * ★지금 시즌에 뛴 사람을 앞으로 민다★ — ★아무도 안 지운다.★
+ *
+ * 안정 정렬이라 같은 무리 안의 순서는 원래대로다 (`id` 오름차순).
+ * 순수 함수라 DB 없이 시험한다 (`apps/web/tests/searchSeason0.test.ts`).
+ */
+export function season0First<T extends { _count: { leaguePlayers: number } }>(
+  rows: readonly T[],
+): T[] {
+  const played: T[] = []
+  const rest: T[] = []
+  for (const row of rows) (row._count.leaguePlayers > 0 ? played : rest).push(row)
+  return [...played, ...rest]
 }
 
 /**
