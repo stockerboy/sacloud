@@ -164,7 +164,7 @@ export function Kda({
       <span style={{ color: '#3a4560' }}>/</span>
       <span style={{ color: V3.redSoft }}>{show(death)}</span>
       <span style={{ color: '#3a4560' }}>/</span>
-      <span style={{ color: '#eef4ff' }}>{assist === null || assist === 0 ? '-' : assist}</span>
+      <span style={{ color: '#eef4ff' }}>{assist ?? 0}</span>
     </span>
   )
 }

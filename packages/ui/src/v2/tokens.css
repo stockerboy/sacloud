@@ -542,3 +542,12 @@
   .v3-setscore > span { font-size: 26px !important; }
   .v3-setscore > span > span > span:first-child { font-size: 20px !important; }
 }
+
+/* ── 스코어보드 폰 폭 (2026-09-11) — 닉네임 칸이 0 으로 눌리던 것 ── */
+@media (max-width: 767px) {
+  .v3-score-row { grid-template-columns: minmax(0, 1fr) 82px 58px !important; gap: 6px !important; padding: 8px 10px !important; }
+  .v3-score-row--saves { grid-template-columns: minmax(0, 1fr) 82px 40px 52px !important; }
+  .v3-score-row > span:first-child { min-width: 0; }
+  .v3-score-row > span:first-child > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; }
+  .v3-tier-strip { flex-basis: 100% !important; order: 3; }
+}

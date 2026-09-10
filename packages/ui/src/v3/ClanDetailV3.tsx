@@ -11,7 +11,7 @@
  * 옛 화면(`LeagueClanRecordScreen`)의 부품들은 지우지 않았다 (`CLAUDE.md` 1-4).
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import type { ClanHeadToHead, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
+import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { Card, CardHead, Kda, MarkCircle, SectionBar, TierText, clanThemeOf, fitMarkUrl, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
@@ -32,15 +32,22 @@ export interface ClanDetailV3Props {
   /** 고른 상대와의 경기 — 페이지가 `?opponent=` 로 따로 불러온다 (2026-09-10). 없으면 로딩 중 */
   vsMatches: readonly MatchListItem[] | null
   onSelectOpponent: (leagueClanId: string | null) => void
+  /** 티어별 클랜 전부 (클랜랭킹) — 마크 줄에 ★내 클랜 빼고 전부★ 나열한다 (2026-09-11 사장님). 아직 안 왔으면 null */
+  tierClansOf: (division: number) => readonly ClanRankRow[] | null
 }
 
 /* ── vs 티어 스트립 ────────────────────────────────────────────── */
 
-function TierStrip({ data, h2h, division, selected, onSelect }: { data: LeagueClanShow; h2h: ClanHeadToHead[]; division: number; selected: string | null; onSelect: (id: string) => void }) {
+function TierStrip({ data, h2h, division, selected, onSelect, tierClans }: { data: LeagueClanShow; h2h: ClanHeadToHead[]; division: number; selected: string | null; onSelect: (id: string) => void; tierClans: readonly ClanRankRow[] | null }) {
   const theme = clanThemeOf(data.clan.slug)
-  const rows = h2h.filter((r) => r.division === division)
-  const win = rows.reduce((a, r) => a + r.win, 0)
-  const lose = rows.reduce((a, r) => a + r.lose, 0)
+  const played = h2h.filter((r) => r.division === division)
+  const win = played.reduce((a, r) => a + r.win, 0)
+  const lose = played.reduce((a, r) => a + r.lose, 0)
+  /* 마크 줄 — 클랜랭킹의 그 티어 클랜 전부(내 클랜 빼고). 랭킹이 아직 안 왔으면 붙어 본 상대만 */
+  const h2hOf = new Map(h2h.map((r) => [r.league_clan_id, r]))
+  const rows = (tierClans ?? played.map((r) => ({ league_clan_id: r.league_clan_id, clan: { id: r.clan.id, slug: r.clan.slug, name: r.clan.name, mark: { bg: r.clan.mark_bg_url, front: r.clan.mark_front_url }, is_official_clan: false } })))
+    .filter((r) => r.league_clan_id !== data.id)
+    .map((r) => ({ id: r.league_clan_id, clan: r.clan, record: h2hOf.get(r.league_clan_id) ?? null }))
   const rate = win + lose > 0 ? (win / (win + lose)) * 100 : null
   return (
     <Card style={{ marginTop: 20 }}>
@@ -53,16 +60,17 @@ function TierStrip({ data, h2h, division, selected, onSelect }: { data: LeagueCl
           <span style={{ fontSize: 12, color: V3.textFaint }}>vs</span>
           <TierText division={division} leagueCategory={data.league.category} size={14} />
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'nowrap', flex: '0 1 auto', minWidth: 0, overflow: 'hidden' }}>
+        <span className="v3-tier-strip" style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', flex: '1 1 auto', minWidth: 0 }}>
           {rows.map((r) => {
-            const on = r.league_clan_id === selected
+            const on = r.id === selected
+            const rec = r.record
             return (
-              <span key={r.league_clan_id} onClick={() => onSelect(r.league_clan_id)} title={`${r.clan.name} · ${r.win}승 ${r.lose}패`} style={{ cursor: 'pointer', borderRadius: '50%', boxShadow: on ? '0 0 14px rgba(91,141,255,.75), 0 0 30px rgba(91,141,255,.35)' : 'none', outline: on ? '2px solid #7fa9ff' : '1px solid transparent', outlineOffset: 2, opacity: on ? 1 : 0.55, display: 'inline-flex' }}>
-                <MarkCircle clan={{ slug: r.clan.slug, mark: { bg: r.clan.mark_bg_url, front: r.clan.mark_front_url } }} size={26} />
+              <span key={r.id} onClick={() => onSelect(r.id)} title={rec ? `${r.clan.name} · ${rec.win}승 ${rec.lose}패` : `${r.clan.name} · 아직 안 붙었습니다`} style={{ cursor: 'pointer', borderRadius: '50%', boxShadow: on ? '0 0 14px rgba(91,141,255,.75), 0 0 30px rgba(91,141,255,.35)' : 'none', outline: on ? '2px solid #7fa9ff' : '1px solid transparent', outlineOffset: 2, opacity: on ? 1 : rec ? 0.7 : 0.35, display: 'inline-flex' }}>
+                <MarkCircle clan={r.clan} size={26} />
               </span>
             )
           })}
-          {rows.length === 0 ? <span style={{ fontSize: 11, color: V3.textGhost }}>이 티어와 붙은 경기가 없습니다</span> : null}
+          {rows.length === 0 ? <span style={{ fontSize: 11, color: V3.textGhost }}>이 티어에 다른 클랜이 없습니다</span> : null}
         </span>
         <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'baseline', gap: 8, flex: 'none' }}>
           <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{win}승 {lose}패</span>
@@ -151,7 +159,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves }: { row: MatchP
   const kd = row.kd_rate
   const clan = row.match_time_clan
   return (
-    <div style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 108px 64px 78px' } : {}), background: mvp ? 'linear-gradient(100deg,rgba(255,216,61,.10),rgba(255,216,61,.02) 55%,transparent)' : 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 108px 64px 78px' } : {}), background: mvp ? 'linear-gradient(100deg,rgba(255,216,61,.10),rgba(255,216,61,.02) 55%,transparent)' : 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
       {sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
       {mvp ? <span aria-hidden style={{ position: 'absolute', left: '64%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: V3.gold, opacity: 0.15, WebkitTextStroke: `2.4px ${V3.gold}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>MVP</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -199,7 +207,7 @@ function Scoreboard({ detail, leagueCategory }: { detail: MatchDetail; leagueCat
               {roundsOf(t.side) !== null && roundsOf(t.side === 'red' ? 'blue' : 'red') !== null ? `${roundsOf(t.side)}:${roundsOf(t.side === 'red' ? 'blue' : 'red')}` : t.side.toUpperCase()}
             </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 108px 64px 78px' : 'minmax(0,1fr) 108px 78px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em' }}>
+          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 108px 64px 78px' : 'minmax(0,1fr) 108px 78px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>킬뎃</span>
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
@@ -392,28 +400,37 @@ export function ClanDetailV3(props: ClanDetailV3Props) {
   const h2h = data.head_to_head
   const tiers = useMemo(() => {
     const set = new Set<number>()
+    for (let d = 1; d <= Math.max(1, data.league.division_count); d += 1) set.add(d)
     for (const r of h2h) if (r.division !== null) set.add(r.division)
-    const list = [...set].sort((a, b) => a - b)
-    return list.length > 0 ? list : [data.division]
-  }, [h2h, data.division])
+    return [...set].sort((a, b) => a - b)
+  }, [h2h, data.league.division_count])
   const [tier, setTier] = useState<number>(() => (tiers.includes(data.division) ? data.division : tiers[0] ?? data.division))
   const [selected, setSelectedState] = useState<string | null>(() => h2h.find((r) => r.division === tier)?.league_clan_id ?? h2h[0]?.league_clan_id ?? null)
   const setSelected = (id: string | null) => { setSelectedState(id); props.onSelectOpponent(id) }
   useEffect(() => { props.onSelectOpponent(selected) }, [])  // 첫 상대를 페이지에 알린다
-  const opp = h2h.find((r) => r.league_clan_id === selected) ?? null
+  const tierClans = props.tierClansOf(tier)
+  const opp: ClanHeadToHead | null = (() => {
+    if (selected === null) return null
+    const known = h2h.find((r) => r.league_clan_id === selected)
+    if (known) return known
+    const row = tierClans?.find((r) => r.league_clan_id === selected)
+    if (!row) return null
+    /* 아직 안 붙어 본 클랜 — 0전 (지어내지 않는다 · 경기 없음이 사실이다) */
+    return { league_clan_id: row.league_clan_id, clan: { id: row.clan.id, slug: row.clan.slug, name: row.clan.name, mark_bg_url: row.clan.mark.bg, mark_front_url: row.clan.mark.front }, division: row.division, win: 0, lose: 0, last_played_at: null, recent: [] }
+  })()
   const tiered = data.league.division_count >= 2
   return (
     <div>
       {tiered && tiers.length > 1 ? (
         <div style={{ marginTop: 20, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {tiers.map((t) => (
-            <span key={t} onClick={() => { setTier(t); const first = h2h.find((r) => r.division === t); if (first) setSelected(first.league_clan_id) }} style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: V3.radiusCtl, cursor: 'pointer', background: t === tier ? '#1a1c24' : '#111218', border: `1px solid ${t === tier ? '#3a3d4a' : '#24262f'}`, opacity: t === tier ? 1 : 0.6 }}>
+            <span key={t} onClick={() => { setTier(t); const first = h2h.find((r) => r.division === t) ?? null; const firstAny = props.tierClansOf(t)?.find((r) => r.league_clan_id !== data.id) ?? null; setSelected(first?.league_clan_id ?? firstAny?.league_clan_id ?? null) }} style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: V3.radiusCtl, cursor: 'pointer', background: t === tier ? '#1a1c24' : '#111218', border: `1px solid ${t === tier ? '#3a3d4a' : '#24262f'}`, opacity: t === tier ? 1 : 0.6 }}>
               <TierText division={t} leagueCategory={data.league.category} size={11} />
             </span>
           ))}
         </div>
       ) : null}
-      <TierStrip data={data} h2h={h2h} division={tier} selected={selected} onSelect={setSelected} />
+      <TierStrip data={data} h2h={h2h} division={tier} selected={selected} onSelect={setSelected} tierClans={tierClans} />
       {opp ? (
         <HeadToHeadCard data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
       ) : (

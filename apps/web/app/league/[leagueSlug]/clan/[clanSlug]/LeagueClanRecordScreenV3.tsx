@@ -10,8 +10,8 @@
  * 여기는 그 아래: vs 티어 스트립 · 상대전적 · 최근 경기.
  */
 import { use, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { MatchDetail, MatchListItem } from '@sacloud/contract'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { ClanRankRow, MatchDetail, MatchListItem } from '@sacloud/contract'
 import { ClanDetailV3, ProfileEmpty, ProfileSkeleton } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -45,6 +45,20 @@ export default function LeagueClanRecordPageV3({
     { params: { leagueClanId: detail.data?.data.id ?? '' }, search: { opponent: opponent ?? '' } },
     !!detail.data && opponent !== null,
   )
+  /* 티어별 클랜 전부 — «vs 티어» 마크 줄에 내 클랜 빼고 전부 나열한다 (2026-09-11 사장님) */
+  const divisionCount = detail.data?.data.league.division_count ?? 0
+  const tierQueries = useQueries({
+    queries: Array.from({ length: divisionCount }, (_, i) => i + 1).map((division) => ({
+      queryKey: ['ranks', 'clans', leagueSlug, division, 'all'],
+      queryFn: () => apiGet('leagueRankClans', { params: { leagueId: leagueSlug }, search: { division, size: 60 } }),
+      enabled: ready && divisionCount > 0,
+      staleTime: 10 * 60 * 1000,
+    })),
+  })
+  const tierClansOf = (division: number): readonly ClanRankRow[] | null => {
+    const q = tierQueries[division - 1]
+    return q?.data ? q.data.data : null
+  }
   const loadDetail = (match: MatchListItem) => {
     const matchId = match.id
     if (expanded[matchId]) return
@@ -88,6 +102,7 @@ export default function LeagueClanRecordPageV3({
         onExpand={loadDetail}
         vsMatches={opponent === null || vs.loading ? null : vs.items}
         onSelectOpponent={setOpponent}
+        tierClansOf={tierClansOf}
       />
     </div>
   )

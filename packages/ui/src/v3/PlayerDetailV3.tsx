@@ -438,7 +438,7 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves }: { row: MatchPlayerSt
   const kd = row.kd_rate
   const clan = row.match_time_clan
   return (
-    <div style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #8ff0ff, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #8ff0ff, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
       {sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
       {me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#8ff0ff', opacity: 0.14, WebkitTextStroke: '2.2px #8ff0ff', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -491,7 +491,7 @@ function Scoreboard({ detail, me, leagueCategory }: { detail: MatchDetail; me: s
               {roundsOf(t.side) !== null && roundsOf(t.side === 'red' ? 'blue' : 'red') !== null ? `${roundsOf(t.side)}:${roundsOf(t.side === 'red' ? 'blue' : 'red')}` : t.side.toUpperCase()}
             </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 104px 60px 74px' : 'minmax(0,1fr) 104px 74px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em' }}>
+          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 104px 60px 74px' : 'minmax(0,1fr) 104px 74px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>킬뎃</span>
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
