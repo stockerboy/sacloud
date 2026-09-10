@@ -1,13 +1,16 @@
 /**
- * ★v3 육각형★ — 선수 STRENGTH POINT 와 클랜 성향이 같이 쓴다 (2026-09-10 시안)
+ * ★v3 육각형★ — 선수 STRENGTH POINT 와 클랜 성향이 같이 쓴다 (2026-09-10 시안 · 2026-09-11 손질)
  *
  * viewBox 300×262 를 표시 300px 와 1:1 로 둔다. 축소하면 안의 글자가 8px 아래로 내려간다
  * (시안 함정). 폭이 모자라면 부모가 `flex-wrap` 으로 아래에 쌓는다.
  *
  * `value` 는 면적만 정한다 (0~100). 화면에 보이는 글자는 `note`(등수·설명) 다.
  * 값이 없는 축(`null`)은 중심(0)에 둔다 — 지어내지 않는다.
+ *
+ * 2026-09-11 사장님: 채움은 보라 → 파랑 → 분홍 «영롱한» 그라데이션 + 글로우.
+ * 눈금은 10 단위 열 줄 (값이 0~100 백분위) — 위쪽 축 옆에 숫자.
  */
-import { HEX, HEX_LABELS, HEX_RINGS, HEX_SPOKES, V3, hexPoint } from './tokens'
+import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
 
 export interface HexAxisView {
   label: string
@@ -17,19 +20,30 @@ export interface HexAxisView {
   noteColor: string
 }
 
+const RING_STEP = 10
+const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_STEP)
+
 export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id?: string }) {
   const six = axes.slice(0, 6)
-  const area = six.map((a, i) => hexPoint(i, Math.max(0, Math.min(100, a.value ?? 0)) / 100).join(',')).join(' ')
+  const vertices = six.map((a, i) => hexPoint(i, Math.max(0, Math.min(100, a.value ?? 0)) / 100))
+  const area = vertices.map((v) => v.join(',')).join(' ')
   return (
     <svg viewBox={`0 0 ${HEX.w} ${HEX.h}`} style={{ width: HEX.w, height: HEX.h, flex: `0 0 ${HEX.w}px`, display: 'block' }}>
       <defs>
-        <radialGradient id={`${id}Fill`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ff6a6a" stopOpacity=".22" />
-          <stop offset="100%" stopColor="#e01b24" stopOpacity=".04" />
-        </radialGradient>
+        {/* 보라 → 파랑 → 분홍 (사장님 참고 «Dual Tone») */}
+        <linearGradient id={`${id}Fill`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#5b8dff" stopOpacity="0.55" />
+          <stop offset="50%" stopColor="#8b5cf6" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#ff5fb0" stopOpacity="0.55" />
+        </linearGradient>
+        <linearGradient id={`${id}Line`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#7fa9ff" />
+          <stop offset="50%" stopColor="#b48cff" />
+          <stop offset="100%" stopColor="#ff7ac8" />
+        </linearGradient>
         <filter id={`${id}Glow`} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="5" result="b1" />
-          <feGaussianBlur stdDeviation="13" result="b2" />
+          <feGaussianBlur stdDeviation="4" result="b1" />
+          <feGaussianBlur stdDeviation="10" result="b2" />
           <feMerge>
             <feMergeNode in="b2" />
             <feMergeNode in="b1" />
@@ -37,21 +51,39 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
           </feMerge>
         </filter>
       </defs>
-      {HEX_RINGS.map((p, i) => (
-        <polygon key={i} points={p} fill="none" stroke="#41527a" strokeWidth={1.1} />
+      {RINGS.map((v) => (
+        <polygon
+          key={v}
+          points={Array.from({ length: 6 }, (_, i) => hexPoint(i, v / 100).join(',')).join(' ')}
+          fill="none"
+          stroke={v % 50 === 0 ? '#4a5c88' : '#2c3a5c'}
+          strokeWidth={v % 50 === 0 ? 1.2 : 0.9}
+        />
       ))}
       {HEX_SPOKES.map(([x, y], i) => (
-        <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#41527a" strokeWidth={1.1} />
+        <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#2c3a5c" strokeWidth={0.9} />
       ))}
+      {/* 눈금 숫자 — 위쪽 축을 따라 10 단위 (짝수 눈금만 글자, 홀수는 선만 — 겹침 방지) */}
+      {RINGS.filter((v) => v % 20 === 0).map((v) => {
+        const [x, y] = hexPoint(0, v / 100)
+        return (
+          <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="600" fill="#6f7fa6" textAnchor="start">
+            {v}
+          </text>
+        )
+      })}
       <polygon
         points={area}
         fill={`url(#${id}Fill)`}
-        stroke="#ff5c5c"
-        strokeWidth={1.8}
-        strokeOpacity={0.85}
+        stroke={`url(#${id}Line)`}
+        strokeWidth={2}
+        strokeOpacity={0.95}
         strokeLinejoin="round"
         filter={`url(#${id}Glow)`}
       />
+      {vertices.map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={3.2} fill={i < 3 ? '#ff7ac8' : '#7fa9ff'} stroke="#ffffff" strokeWidth={0.8} filter={`url(#${id}Glow)`} />
+      ))}
       {six.map((a, i) => {
         const [x, y, anchor] = HEX_LABELS[i] as (typeof HEX_LABELS)[number]
         return (

@@ -389,6 +389,7 @@ function TrendCard({ data }: { data: LeaguePlayerDetail }) {
       <TrendChartV3
         days={data.trend}
         mode={mode}
+        seed={data.player.id}
         markSlug={data.clan?.slug ?? null}
         winLabel={mode === 'day' && today ? `오늘 ${today.win}승 ${today.lose}패` : `${data.win}승 ${data.lose}패`}
         kdLabel={mode === 'day' && today ? `오늘 ${today.kill}킬 ${today.death}데스` : data.kill !== null && data.death !== null ? `${fmt(data.kill)}킬 ${fmt(data.death)}데스` : ''}

@@ -65,6 +65,8 @@ export interface PlayerHexBuildResult {
   events: number
   matchRows: number
   playerRows: number
+  /** 규칙으로 MVP 를 정한 경기 수 (원본에 MVP 가 없던 경기) */
+  mvpAssigned: number
   /** 리그별 · 무기별 모집단 크기 */
   pools: Record<string, { sniper: number; rifle: number; unmeasured: number }>
   zones: { file: string | null; aLong: number; bLong: number }
@@ -166,6 +168,7 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
     events: 0,
     matchRows: 0,
     playerRows: 0,
+    mvpAssigned: 0,
     pools: {},
     zones: { file: zones.file, aLong: zones.aLong?.cells.length ?? 0, bLong: zones.bLong?.cells.length ?? 0 },
   }
@@ -373,6 +376,17 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       }
     })
     result.matches += part.length
+    const mvpPicks = await pickMvps(ids, rows)
+    result.mvpAssigned += mvpPicks.length
+    if (options.confirm && mvpPicks.length > 0) {
+      for (const pick of mvpPicks) {
+        await prisma.$transaction([
+          prisma.matchPlayerStat.updateMany({ where: { matchId: pick.matchId, mvp: true }, data: { mvp: false } }),
+          prisma.matchPlayerStat.updateMany({ where: { matchId: pick.matchId, playerId: pick.playerId }, data: { mvp: true } }),
+          prisma.match.update({ where: { id: pick.matchId }, data: { mvpPlayerId: pick.playerId } }),
+        ])
+      }
+    }
     if (options.confirm && rows.length > 0) {
       await prisma.$transaction([
         prisma.matchPlayerHex.deleteMany({ where: { matchId: { in: ids } } }),
@@ -535,3 +549,87 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
   }
   return result
 }
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* ★MVP 규칙★ (2026-09-11 · 사장님 확정)                                          */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * 원본 자료에 MVP 가 없는 경기(IPL 병영 로그 전부 · SPL 일부)에서 규칙으로 MVP 를 정한다.
+ *
+ *   후보   = ★이긴 팀★ 선수 (목업: 진 팀에는 MVP 없음)
+ *   1순위  = 세이브(혼자 남아 이긴 라운드) 2회 이상 → 무조건. 여럿이면 세이브 많은 쪽
+ *   2순위  = 킬 많은 순 → 같으면 데스 적은 순
+ *   그래도 같으면 무작위 — 단 «경기마다 고정된 무작위» (경기·선수 id 해시) 라 새로고침해도 안 바뀐다
+ *
+ * 원본 MVP 가 있는 경기(`MatchPlayerStat.mvp = true` 가 하나라도 있으면)는 손대지 않는다.
+ * 세이브가 이 규칙에 들어가므로 `MatchPlayerHex` 를 센 뒤에 정한다.
+ */
+export const MVP_SAVE_THRESHOLD = 2
+
+function stableHash(text: string): number {
+  let h = 2166136261
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return h
+}
+
+export interface MvpCandidate {
+  playerId: string
+  saves: number
+  kill: number | null
+  death: number | null
+}
+
+/** 순수 규칙 — 테스트가 이 함수를 본다 */
+export function pickMvp(matchId: string, candidates: readonly MvpCandidate[]): string | null {
+  if (candidates.length === 0) return null
+  const sorted = [...candidates].sort((a, b) => {
+    const aSave = a.saves >= MVP_SAVE_THRESHOLD ? a.saves : 0
+    const bSave = b.saves >= MVP_SAVE_THRESHOLD ? b.saves : 0
+    if (aSave !== bSave) return bSave - aSave
+    const ak = a.kill ?? -1
+    const bk = b.kill ?? -1
+    if (ak !== bk) return bk - ak
+    const ad = a.death ?? Number.MAX_SAFE_INTEGER
+    const bd = b.death ?? Number.MAX_SAFE_INTEGER
+    if (ad !== bd) return ad - bd
+    return stableHash(`${matchId}|${a.playerId}`) - stableHash(`${matchId}|${b.playerId}`)
+  })
+  return (sorted[0] as MvpCandidate).playerId
+}
+
+async function pickMvps(
+  matchIds: readonly string[],
+  hexRows: readonly { matchId: string; playerId: string; aloneWon: number }[],
+): Promise<{ matchId: string; playerId: string }[]> {
+  if (matchIds.length === 0) return []
+  const matches = await prisma.match.findMany({
+    where: { id: { in: [...matchIds] } },
+    select: {
+      id: true,
+      winnerSide: true,
+      stats: { select: { playerId: true, side: true, kill: true, death: true, mvp: true } },
+    },
+  })
+  const savesOf = new Map(hexRows.map((r) => [`${r.matchId}|${r.playerId}`, r.aloneWon]))
+  const out: { matchId: string; playerId: string }[] = []
+  for (const m of matches) {
+    if (m.winnerSide !== 'red' && m.winnerSide !== 'blue') continue
+    /* 원본 MVP 가 있으면 그대로 둔다 — 단, 규칙으로 정한 것은 다시 정해도 된다 (같은 규칙이면 같은 답) */
+    const hasSourceMvp = m.stats.some((s) => s.mvp === true) && !RULE_MVP_LEAGUES_REPICK
+    if (hasSourceMvp) continue
+    const winners = m.stats.filter((s) => s.side === m.winnerSide)
+    const pick = pickMvp(m.id, winners.map((s) => ({ playerId: s.playerId, saves: savesOf.get(`${m.id}|${s.playerId}`) ?? 0, kill: s.kill, death: s.death })))
+    if (pick) out.push({ matchId: m.id, playerId: pick })
+  }
+  return out
+}
+
+/**
+ * true 면 이미 MVP 가 찍힌 경기도 규칙으로 다시 정한다. SPL 원본 MVP(102건)를 지키려면 false.
+ * 처음 소급(2026-09-11)은 false — 원본이 있는 경기는 원본을 믿는다.
+ */
+const RULE_MVP_LEAGUES_REPICK: boolean = false
