@@ -93,6 +93,8 @@ export const MATCH_SELECT = {
   blueSourceRatingUpdate: true,
   origin: true,
   participantCompleteness: true,
+  /* ★명단이 다 찼는지 이미 잡이 판정해 둔 칸★ — 아래 `completenessOf` 가 쓴다 */
+  lineupStatus: true,
   evidenceConfidence: true,
   map: { select: { id: true, name: true } },
   stats: {
@@ -277,6 +279,36 @@ export function firstSideOf(
  * 선수가 이적하면 과거 기록실이 통째로 바뀌기 때문이다.
  * 근거가 없으면 `null`이다. 현재 소속으로 메우지 않는다.
  */
+/**
+ * ★「래더 미반영」 배지가 멀쩡한 경기에 다 붙던 것을 고친다★ (2026-09-10 · 사장님 지적).
+ *
+ * ── 무엇이 잘못됐나
+ *   그 배지는 `participant_completeness` 가 `5v5` 가 아닐 때 뜬다. 그런데 ★병영수첩으로
+ *   들어온 경기는 그 칸을 아무도 안 쓴다.★ 실측 —
+ *   ```
+ *   IPL 시즌0 경기 2,344건 중 `participantCompleteness` 가 채워진 것   ★0건★
+ *   그런데 실제로 명단이 10명 다 있는 경기                          2,325건
+ *   ```
+ *   서플라이에서 온 옛 경기(재구성 · D-068)에만 값이 있다. 그래서 ★멀쩡한 경기 전부에
+ *   「래더 미반영」이 붙었다.★ 래더 계산은 이 칸을 보지도 않는다 — ★화면 표시만 틀렸다.★
+ *
+ * ── 어떻게 고치나 — ★새로 세지 않는다★
+ *   명단이 다 찼는지는 ★`battlelog-lineup` 잡이 이미 판정해서 `lineupStatus` 에 적어 뒀다.★
+ *   그 값을 쓴다. 실측으로 맞춰 봤다 —
+ *   ```
+ *   lineupStatus='complete' 인 IPL 경기   2,326건
+ *   그중 실제로 정확히 5대5               ★2,326건 (전부)★
+ *   ```
+ *   ★한 건도 안 어긋난다.★ DB 를 고치지 않아도 옛 경기까지 한 번에 바로잡힌다.
+ *
+ * ⚠ 저장된 값이 있으면 ★그 값이 먼저다.★ 재구성 경기의 `5v3` 같은 값을 덮지 않는다.
+ * ⚠ 모르면 ★지어내지 않고 `null`★ 이다. 화면은 그때만 배지를 그린다.
+ */
+function completenessOf(match: { participantCompleteness: string | null; lineupStatus: string | null }) {
+  if (match.participantCompleteness) return match.participantCompleteness
+  return match.lineupStatus === 'complete' ? '5v5' : null
+}
+
 function matchTimeClanOf(stat: StatRow, clans: LeagueClanContext): MatchTimeClan | null {
   /*
    * ★도장이 있으면 도장이 이긴다★ (2026-09-09).
@@ -544,7 +576,7 @@ export function toMatchListItem(
     blue: lineupOf(match, 'blue', clans),
     player_stat: viewerStat ? toMatchPlayerStat(match, viewerStat, true, clans) : null,
     // 재구성 경기만 값이 있다 (D-068). 우리가 몇 명을 확인했는지 숨기지 않는다
-    participant_completeness: match.participantCompleteness,
+    participant_completeness: completenessOf(match),
     evidence_confidence: toConfidence(match.evidenceConfidence),
 
   }
