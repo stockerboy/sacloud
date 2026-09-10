@@ -387,6 +387,21 @@ export const endpoints = {
     description: '`정보갱신` 요청 (버튼은 관측, 경로는 자체 설계)',
     response: apiResponse(RenewResult),
   },
+  /* ★핵의심 신고★ (2026-09-10) — 로그인한 회원만 · 회원당 선수당 하루 한 번 */
+  playerReport: {
+    method: 'POST',
+    path: '/players/:playerId/report',
+    origin: 'designed',
+    description: '핵의심 신고 — 로그인한 회원만 · 회원당 선수당 하루(KST) 한 번 · 응답은 현재 신고 수',
+    response: apiResponse(z.object({ count: z.number().int().min(0) })),
+  },
+  playerReportCount: {
+    method: 'GET',
+    path: '/players/:playerId/report',
+    origin: 'designed',
+    description: '핵의심 신고 수 (공개)',
+    response: apiResponse(z.object({ count: z.number().int().min(0) })),
+  },
   playerSettingUpdate: {
     method: 'PUT',
     path: '/players/:playerId/setting',

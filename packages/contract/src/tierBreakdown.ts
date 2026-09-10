@@ -112,6 +112,8 @@ export interface TierTally {
   sniperGames?: number
   sniperKill?: number
   sniperDeath?: number
+  /** 그 구간에서 MVP 를 받은 판 수 (2026-09-10) */
+  mvp?: number
   clans: readonly TierClanTally[]
 }
 
@@ -158,6 +160,8 @@ export interface TierBreakdownRow {
   rifleKd: number | null
   sniperGames: number
   sniperKd: number | null
+  /** MVP 판 수 (2026-09-10 · 선수 상세 v3) */
+  mvp: number
   /** 조건을 넘은 클랜만. 없으면 **빈 배열**이다 */
   nemeses: TierNemesis[]
 }
@@ -257,6 +261,7 @@ export function buildTierBreakdown(
         rifleKd: null,
         sniperGames: 0,
         sniperKd: null,
+        mvp: 0,
         nemeses: [],
       })
       continue
@@ -276,6 +281,7 @@ export function buildTierBreakdown(
       rifleKd: tierKdOrNull(rifleGames, tally.rifleKill ?? 0, tally.rifleDeath ?? 0),
       sniperGames,
       sniperKd: tierKdOrNull(sniperGames, tally.sniperKill ?? 0, tally.sniperDeath ?? 0),
+      mvp: tally.mvp ?? 0,
       nemeses: nemesesOf(tally.clans),
     })
   }

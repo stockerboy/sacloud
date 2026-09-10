@@ -18,6 +18,60 @@
  *   5. **둥글지 않다.** 반경은 2px 하나 (`--radius`). 원형 배지만 예외다.
  */
 
+/* ══ ⚠ 정정 2026-09-10 — ★v3 팔레트★ (사장님 시안 선수·클랜 상세 v3 · "사이트 전체로 통일") ══
+   위 @theme 의 값들을 시안 `C` 객체의 색으로 다시 칠했다. 이름은 하나도 안 지웠다 (규칙 1).
+   둥글기도 2px → 카드 10px · 버튼 7px · 칩 5px 로 바뀌었다 (시안 라운딩 규칙). 옛 값:
+     --color-ink: #070b16
+     --color-page: #050810
+     --color-card: #0b1225
+     --color-card-2: #0e1731
+     --color-line: #1b2542
+     --color-line-soft: #121a30
+     --color-divider: #1b2542
+     --color-text: #e9eefc
+     --color-meta: #8b97ba
+     --color-faint: #6b7ba0
+     --color-rank-red: #ff4d4d
+     --color-rank-gold: #ffe30b
+     --color-rank-blue: #8aa5ec
+     --color-rank-brown: #c08a5a
+     --color-rank-green: #3ecf6b
+     --color-accent: #22e0ff
+     --color-hero: #0e1731
+     --color-hero-line: #8aa5ec
+     --color-nav-active: #3a4067
+     --color-selector: #2c304c
+     --color-selector-hover: #3a4067
+     --color-selector-hover-edge: #5c80e0
+     --color-subnav: #2c304c
+     --color-subnav-active: #5c80e0
+     --color-row: #2c304c
+     --color-more: #5c80e0
+     --color-badge: #3a4067
+     --color-badge-dot: #5c80e0
+     --color-tab-active: #3a4067
+     --color-tab-underline: #5c80e0
+     --color-favorite: #5c80e0
+     --color-league-header: #2c304c
+     --color-player-header: #2c304c
+     --color-clan-header: #2c304c
+     --color-clan-header-line: #454b73
+     --color-refresh: #3a4067
+     --color-refresh-border: #5c80e0
+     --color-btn-neutral: #3a4067
+     --color-btn-neutral-border: #454b73
+     --color-btn-fav: #2c304c
+     --color-btn-fav-border: #454b73
+     --color-btn-fav-dark: #2c304c
+     --color-btn-fav-dark-border: #454b73
+     --color-card-text: #d9dbe4
+     --color-tier-1: #22e0ff
+     --radius: 2px
+     --radius-DEFAULT: 2px
+     --radius-xs: 2px
+     --radius-sm: 2px
+   되돌리려면 위 값을 그대로 돌려놓으면 된다. */
+
 @theme {
   /* ================================================================= 색 ===
    *
@@ -56,7 +110,7 @@
    * D-204 때는 이 값이 `--color-page` 와 **똑같은 #060505** 라 층이 없었다.
    */
   /* ⚠ 쉘 값: #24242c */
-  --color-ink: #070b16;
+  --color-ink: #080d18;
   /**
    * 본문 배경. 셸보다 한 층 밝다 — 이 두 값의 차이가 「투톤」의 아래쪽 절반이다.
    *
@@ -66,35 +120,35 @@
   /* ★2026-09-10 — 남색으로 갈아탔다★ (사장님: «기존 검정색 배경 아예 지워버리고»).
      값은 사장님이 사진으로 지목한 아티팩트(`시즌0 랭킹`)에서 그대로 가져왔다.
      ⚠ 옛 값: #303038 (그 앞은 #060505 «적진») */
-  --color-page: #050810;
+  --color-page: #0c1526;
   /** 카드 · 표 면 */
   /* ⚠ 옛 값: #2c304c */
-  --color-card: #0b1225;
+  --color-card: #121c2f;
   /** 한 단 올린 면 — 표 머리 · 강조 행 · hover 면 [신규] */
   /* ⚠ 옛 값: #3a4067 */
-  --color-card-2: #0e1731;
+  --color-card-2: #152036;
 
   /* ------------------------------------------------------------------ 선 --- */
   /** 기본 선 */
   /* ⚠ 옛 값: #454b73 */
-  --color-line: #1b2542;
+  --color-line: #1e2a42;
   /** 아주 옅은 선 — 표 행 구분 [신규] */
   /* ⚠ 옛 값: #3a4067 */
-  --color-line-soft: #121a30;
+  --color-line-soft: #18233a;
   /** 옛 이름. `--color-line` 과 같은 값으로 수렴시켰다 */
   /* ⚠ 옛 값: #454b73 */
-  --color-divider: #1b2542;
+  --color-divider: #1b2537;
 
   /* ---------------------------------------------------------------- 글자 --- */
   /** 본문 글자 [신규] */
   /* ⚠ 옛 값: #d9dbe4 */
-  --color-text: #e9eefc;
+  --color-text: #e8eaf2;
   /** 제목 */
   /* ⚠ 옛 값: #f2f4f8 */
   --color-text-strong: #ffffff;
   /** 보조 글자 */
   /* ⚠ 옛 값: #a8aec2 */
-  --color-meta: #8b97ba;
+  --color-meta: #a4b0c8;
   /**
    * 더 옅은 글자 [신규]
    *
@@ -117,7 +171,7 @@
    *   구분자 · 단위 · 장식용 글자 전용이다.
    */
   /* ⚠ 옛 값: #8f95af */
-  --color-faint: #6b7ba0;
+  --color-faint: #7c88a4;
 
   /* ------------------------------------------------- 순위 색 (2026-09-02) ---
    *
@@ -145,13 +199,13 @@
    */
   --color-rank-red: #ff4d4d;
   /** 1~10위 (옛 규칙) → 지금은 4~20위 */
-  --color-rank-gold: #ffe30b;
+  --color-rank-gold: #ffd83d;
   /** 11~50위 */
-  --color-rank-blue: #8aa5ec;
+  --color-rank-blue: #5b9dff;
   /** 51~100위 */
-  --color-rank-brown: #c08a5a;
+  --color-rank-brown: #a06a35;
   /** 101~200위 */
-  --color-rank-green: #3ecf6b;
+  --color-rank-green: #22c55e;
   /** 201위부터 */
   --color-rank-plain: #f2f4f8;
 
@@ -161,7 +215,7 @@
    * 넓은 면을 칠하지 마라 — 선 · 점 · 활성 표시 · 링크 · 숫자 하나.
    */
   /* ⚠ 옛 값: #5c80e0. 사장님이 고른 화면은 숫자가 청록이다 */
-  --color-accent: #22e0ff;
+  --color-accent: #5b8dff;
 
   /* --------------------------------------------------- 히어로 띠 (D-251) ---
    *
@@ -199,7 +253,7 @@
    */
   /** 히어로 띠의 면 */
   /* ⚠ 쉘 값: #4162c0 — 남색 바탕에서는 파란 띄가 너무 튀다 */
-  --color-hero: #0e1731;
+  --color-hero: #101a2c;
   /**
    * 띠 **위**의 글자 — 흰색 계열. (2026-09-02 · D-264)
    *
@@ -222,7 +276,7 @@
   /** 띠 위의 보조 글자. `--color-meta` 를 띠 위에 쓰면 1.69:1 이 된다 */
   --color-hero-meta: #e8ecfb;
   /** 히어로 띠의 아래 경계선 — 띠보다 한 단 밝은 같은 계열 */
-  --color-hero-line: #8aa5ec;
+  --color-hero-line: #5b8dff;
 
   /* ------------------------------------------------------- 신전 (2026-09-01) ---
    *
@@ -257,64 +311,64 @@
   /* ------------------------------------------------------------ 상단 GNB --- */
   --color-nav-fg: #d9dbe4;
   /** 대표 리그 항목이 현재 리그일 때의 배경 */
-  --color-nav-active: #3a4067;
+  --color-nav-active: #1a2438;
 
   /* -------------------------------------------------------------- 통합검색 --- */
-  --color-selector: #2c304c;
+  --color-selector: #0e1728;
   --color-selector-fg: #d9dbe4;
   /** hover 는 면을 한 단 올리고, 가장자리에만 진홍을 준다 */
-  --color-selector-hover: #3a4067;
-  --color-selector-hover-edge: #5c80e0;
+  --color-selector-hover: #16203a;
+  --color-selector-hover-edge: #5b8dff;
   --color-input-fg: #d9dbe4;
   --color-input-placeholder: #7b8199;
 
   /* ------------------------------------------------------- 리그 · 랭킹 --- */
   /** 리그 서브내비 띠 */
-  --color-subnav: #2c304c;
+  --color-subnav: #0e1728;
   /** 서브내비 활성 — 진홍 밑줄 */
-  --color-subnav-active: #5c80e0;
+  --color-subnav-active: #5b8dff;
   /**
    * 랭킹 표 행 배경.
    * **얼룩무늬(zebra)를 만들지 않는다.** 카드 면과 같은 값이라 행이 줄무늬로 보이지 않고,
    * 구분은 `--color-line-soft` 1px 선이 한다.
    */
-  --color-row: #2c304c;
+  --color-row: #121c2f;
   /** `더 불러오기` — 채우지 말고 테두리로 쓴다 */
-  --color-more: #5c80e0;
+  --color-more: #5b8dff;
   /** 배지 (`공식` 등) */
-  --color-badge: #3a4067;
-  --color-badge-dot: #5c80e0;
+  --color-badge: #16203a;
+  --color-badge-dot: #5b8dff;
   /** 탭 선택 상태 */
-  --color-tab-active: #3a4067;
+  --color-tab-active: #16203a;
   --color-tab-active-fg: #f2f4f8;
-  --color-tab-underline: #5c80e0;
+  --color-tab-underline: #5b8dff;
   --color-tab-idle: #a8aec2;
   /** 리그 소개 본문 */
   --color-lede: #a8aec2;
   /** 리그홈 헤더 배경 */
-  --color-league-header: #2c304c;
+  --color-league-header: #121c2f;
   /** 즐겨찾기 (별) */
-  --color-favorite: #5c80e0;
+  --color-favorite: #5b8dff;
 
   /* ------------------------------------------------- 프로필 · 기록실 헤더 --- */
-  --color-player-header: #2c304c;
-  --color-clan-header: #2c304c;
-  --color-clan-header-line: #454b73;
+  --color-player-header: #121c2f;
+  --color-clan-header: #121c2f;
+  --color-clan-header-line: #1e2a42;
   /**
    * 버튼들.
    * `적진` 의 버튼은 채우지 않는다 — 면은 카드보다 한 단 올린 정도까지만,
    * 성격은 **테두리 색**이 만든다. 주요 동작(정보갱신/전적갱신)만 진홍 테두리를 갖는다.
    */
-  --color-refresh: #3a4067;
-  --color-refresh-border: #5c80e0;
-  --color-btn-neutral: #3a4067;
-  --color-btn-neutral-border: #454b73;
-  --color-btn-fav: #2c304c;
-  --color-btn-fav-border: #454b73;
-  --color-btn-fav-dark: #2c304c;
-  --color-btn-fav-dark-border: #454b73;
+  --color-refresh: #0e1a28;
+  --color-refresh-border: #5b8dff;
+  --color-btn-neutral: #0e1a28;
+  --color-btn-neutral-border: #24384c;
+  --color-btn-fav: #0e1728;
+  --color-btn-fav-border: #24314c;
+  --color-btn-fav-dark: #0e1728;
+  --color-btn-fav-dark-border: #24314c;
   /** 리그 참여 카드 글자 */
-  --color-card-text: #d9dbe4;
+  --color-card-text: #e8eaf2;
 
   /* ---------------------------------------------------------- 성적 등급 --- */
   /**
@@ -341,7 +395,7 @@
    * 셋을 다 칠하지 않는다 — ★맨 위 한 칸만 색이고 아래로 흐려진다.★
    * 무지개로 칠하면 셋 다 강조라 아무것도 강조가 아니게 된다 (4장).
    */
-  --color-tier-1: #22e0ff;
+  --color-tier-1: #8ff0ff;
   --color-tier-2: #a8aec2;
   --color-tier-3: #8f95af;
 
@@ -558,12 +612,12 @@
   /** 섹션 사이 세로 여백 [신규] */
   --section-gap: 40px;
   /** 기본 모서리 반경 — 거의 각지게 [신규] */
-  --radius: 2px;
+  --radius: 10px;
 
   /* Tailwind `rounded-*` 도 같이 각지게 만든다. `rounded-full` 은 영향을 받지 않는다 */
-  --radius-DEFAULT: 2px;
-  --radius-xs: 2px;
-  --radius-sm: 2px;
+  --radius-DEFAULT: 10px;
+  --radius-xs: 5px;
+  --radius-sm: 7px;
   --radius-md: 2px;
   --radius-lg: 2px;
   --radius-xl: 2px;
@@ -2339,4 +2393,15 @@ a:hover {
 /** ★모든 모서리를 각지게★ — 껍데기 안에서만. 원형 배지만 남긴다 */
 .sa-skin :not(.rounded-full):not([class*="rounded-full"]) {
   border-radius: 0;
+}
+
+/* ══ ★v3 (2026-09-10 · 선수·클랜 상세 v3 시안)★ ══════════════════════════════
+   ASTRA 홀로그램 시머 · 스윕. 시안 파일의 <style> 을 전역으로 옮겼다. */
+@keyframes sacAstra {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes sacSweep {
+  0% { transform: translateX(-120%); }
+  55%, 100% { transform: translateX(320%); }
 }

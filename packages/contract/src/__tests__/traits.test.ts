@@ -232,9 +232,10 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
     expect(TRAIT_AXIS_KEYS_V1[3]).toBe('matchman')
   })
 
-  it('이름은 무기와 무관하게 `기회창출` 이다', () => {
+  /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름 `기회창출` 은 주석에만 남는다 */
+  it('이름은 무기와 무관하게 `선짤` 이다', () => {
     for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'opening').label).toBe('기회창출')
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'opening').label).toBe('선짤')
     }
   })
 

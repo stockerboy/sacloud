@@ -651,3 +651,43 @@ describe('구역 파일 (`data/barracks/style-zones.json`)', () => {
     }
   })
 })
+
+/* -------------------------------------------------------------------------- */
+/* ① 스나싸움 — 롱에서만 (2026-09-10 · clan-hex-v2.4)                           */
+/* -------------------------------------------------------------------------- */
+
+describe('① 스나싸움은 롱에서만 센다 (`SNIPER_DUEL_ZONE_RULE` = long-only)', () => {
+  const A_LONG = zone(['50,50'])
+  const LONG_ZONES: ClanHexZones = { ...ZONES, aLong: A_LONG }
+  const inA = { x: 505, y: 505 }
+  const inB = { x: 155, y: 205 }
+  const outside = { x: 900, y: 900 }
+  /* 기본 경기의 A1·B1 은 라플수다 (무기는 다수결 · 자기가 낸 킬로만 안다) — 스나끼리의 킬은
+     새 사람 A6·B6 로 만든다. 둘 다 스나 킬이 있어야 스나로 판정된다. 기본 경기는 4라운드다.
+     마지막 줄은 «상대 스나(B6)가 A롱에서 우리 스나(A6)를 비롱에서 잡음» — 건너 싸움이라 센다 */
+  const sniperGame = (spots: [Spot | undefined, Spot | undefined][]): ClanHexEvent[] => [
+    ...baseMatch(),
+    ...spots.map(([k, v], i) => kill(1, 20 + i, A(6), B(6), 'sniper', k, v)),
+    kill(1, 28, B(6), A(6), 'sniper', inA, inB),
+  ]
+
+  it('잡은 쪽·죽은 쪽이 둘 다 롱 안이면 센다 — A롱끼리 · 비롱끼리 · 건너', () => {
+    const match = run(sniperGame([[inA, inA], [inB, inB], [inA, inB]]), US, ourWins, LONG_ZONES)
+    expect(match.byTeam.get(US)?.sniperDuel).toEqual({ rounds: 4, won: 3, lost: 1 })
+  })
+
+  it('한쪽이라도 롱 밖이면 스나싸움이 아니다', () => {
+    const match = run(sniperGame([[inA, outside], [outside, inB], [outside, outside]]), US, ourWins, LONG_ZONES)
+    expect(match.byTeam.get(US)?.sniperDuel).toEqual({ rounds: 4, won: 0, lost: 1 })
+  })
+
+  it('좌표가 없는 킬은 세지 않는다', () => {
+    const match = run(sniperGame([[undefined, undefined], [inA, undefined]]), US, ourWins, LONG_ZONES)
+    expect(match.byTeam.get(US)?.sniperDuel).toEqual({ rounds: 4, won: 0, lost: 1 })
+  })
+
+  it('롱 구역이 하나도 없으면 못 잰 것(null)이다 — 맵 전체를 세어 놓고 스나싸움이라 부르지 않는다', () => {
+    const match = run(sniperGame([[inA, inA]]), US, ourWins, { attack: ATTACK })
+    expect(match.byTeam.get(US)?.sniperDuel).toBeNull()
+  })
+})

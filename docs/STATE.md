@@ -3,7 +3,58 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-10 18:40** · 갱신한 사람 B(실행 세션)
+> 마지막 갱신 **2026-09-10 23:30** · 갱신한 사람 B(실행 세션)
+
+---
+
+## 0-A. ★2026-09-10 저녁 — 선수·클랜 상세 v3 · 실력 점수 · 스나싸움 롱 규칙★ (사장님 자율 진행 지시)
+
+사장님: «이제부터 자율로 진행해 (…) 선수상세 클랜상세에 있는 ui들의 분위기를 사이트 전체로 통일시켜»
+
+### 1단계 · 재료 (끝)
+
+```
+스나싸움 롱 규칙        A롱(컨뒤·녹뒤·머리·홀정면·ㄱ자) + 비롱 · ★잡은 쪽·죽은 쪽 둘 다 롱 안★
+                        구역 파일 208칸 → 268칸 (홀정면 42칸 추가 · 옛 판은 docs/archive/)
+                        clan-hex-v2.3 → ★clan-hex-v2.4★ · 운영 전량 재집계
+                          경기 16,391 · 행 33,844 · 스나싸움 잰 행 32,724 · 클랜 요약 203
+                        옛 규칙(맵 전체)은 SNIPER_DUEL_ZONE_RULE = 'anywhere' 로 남아 있다
+선수 여섯 축 · 점수     새 표 MatchPlayerHex(경기·선수 원시 횟수 27,820행) · LeaguePlayerHex(2,100줄)
+                        잡 player-hex-build (30분 집계 season0-apply.sh 에 clan-hex-v2-build 와 같이 붙였다)
+                        IPL 스나 135 · 라플 655 · 미측정 884 / SPL 스나 15 · 라플 92 · 미측정 319
+                        열산은 안 센다 (사장님: 열산은 육각형 제공 x)
+                        공식은 apps/worker/src/lib/playerHexScore.ts 한 곳 (사장님 확정값 그대로)
+클랜 색 · 마크          403개 자동 추출 (packages/ui/src/v3/clanThemes.ts) · 원 크롭 마크 /assets/clans/<slug>.png
+```
+
+### 2단계 · API (끝)
+
+```
+선수 상세   hex(여섯 축 · 백분위 · 등수 · 배지 · 점수) · report_count · 구간별 mvp
+클랜 상세   hexagon_v2 축마다 rank/total · head_to_head(상대별 승패 · 최근 10판)
+개인랭킹    weapon=all 은 ★실력 점수 순★ (LeaguePlayerHex.scoreRank). 표가 비면 옛 래더 순으로 돌아간다
+신고        POST /api/players/:id/report — 로그인 회원만 · 회원당 선수당 하루 한 번 (PlayerReport 표)
+```
+
+### 3단계 · 화면 (끝 — "바로덮기")
+
+```
+packages/ui/src/v3/     tokens · primitives(MarkCircle · TierText · Card…) · Hexagon · PlayerBandV3 · ClanCardV3
+                        PlayerDetailV3 · ClanDetailV3 · PillTabs
+선수 기록실             LeaguePlayerRecordScreenV3 (옛 화면 · 옛 layout 은 LayoutLegacy.tsx 로 그대로)
+클랜 기록실             LeagueClanRecordScreenV3
+사이트 전체             styles.css @theme 토큰을 v3 팔레트로 다시 칠했다 (이름은 그대로 · 옛 값은 파일 위 정정 메모)
+                        둥글기 2px → 10/7/5px · Chakra Petch(--font-chakra) · body 방사형 바닥
+개인랭킹 표             «실력 점수» 열 (점수가 오면) · 포디움 SCORE
+```
+
+### 아직 안 한 것 / 알아 둘 것
+
+- 라운드 점수(«6:2») · 경기별 세이브 횟수는 경기 API 에 없어 화면에 없다 — 지어내지 않았다
+- 로그인 기능이 아직이라 신고 버튼은 누르면 «로그인한 회원만» 이 뜬다
+- 클랜 상세의 «vs 티어» 구간 승률은 head_to_head 를 상대 티어로 접은 값이다 (지금 명부 기준)
+- 로컬 DB(5433)가 꺼져 있어 로컬 화면 검수는 ★운영 DB 를 읽는 dev 서버(3100)★ 로 했다
+- packages/db/ops/supplyRollup.ts · affiliationTrust.ts 는 ★다른 세션의 미완 작업★ 이다 (테스트 3개 빨강) — 이 커밋에 안 넣었다
 
 ---
 

@@ -162,6 +162,9 @@ const resolvers: Record<EndpointKey, Resolver> = {
     return player ? ok({ player, leagues: store.getPlayerLeagues(playerId) }) : notFound()
   },
   playerRenew: () => ok({ accepted: true, renewed_at: FIXTURE_NOW, retry_after: null }),
+  /* 핵의심 신고 (2026-09-10) — 목업은 세지 않는다 */
+  playerReport: () => ok({ count: 1 }),
+  playerReportCount: () => ok({ count: 0 }),
   playerSettingUpdate: ({ params }) => {
     const player = store.getPlayer(param(params['playerId']))
     return player ? ok(player) : notFound()

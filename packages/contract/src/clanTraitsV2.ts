@@ -289,6 +289,11 @@ export function tradeCountOf(trade: TradeTallyLike, window: ClanHexV2TradeWindow
  * (계약이 `apps/*` 를 import 할 수 없어 값이 두 곳에 있다. 반대 방향은 가능하므로
  *  나중에 잡이 이 값을 가져다 쓰는 쪽으로 합칠 수 있다.)
  */
+/* ⚠ 정정 2026-09-10 — 아래 서술의 «clan-hex-v2.3 으로 올린다» 는 실제로 일어나지 않았다.
+   운영은 2026-09-10 저녁까지 `clan-hex-v2.1`(9/1 재료 · 요약 155) 을 읽고 있었다.
+   이날 스나싸움을 ★롱 규칙★ (A롱 5구역 + 비롱 · 둘 다 롱 안 · 사장님 확정) 으로 바꾸고
+   운영을 `clan-hex-v2.4` 로 전량 재빌드했다 (경기 12,557행). 그래서 여기도 v2.4 다.
+   옛 값은 `CLAN_HEX_V2_CONFIG_KILLER` 에 그대로 남아 있다. */
 export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
   minDenominator: 20,
   /* 「죽은 사람이 에이쪽에 있는거지」 — 사용자 확정 (2026-09-01 · D-256).
@@ -338,7 +343,7 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    *     `buildClanHexV2Raw` 위의 주석을 읽어라 — 그쪽을 안 고치면 버전을 어떻게
    *     맞춰도 같은 일이 난다.
    */
-  formulaVersion: 'clan-hex-v2.1',
+  formulaVersion: 'clan-hex-v2.4',
 }
 
 /**
@@ -541,6 +546,9 @@ export interface ClanHexV2Axis {
   text: string
   /** 못 잰 이유. 잴 수 있었으면 `null` */
   pending: ClanHexV2PendingReason | null
+  /** 리그 안 등수 (1 = 최고) · 모집단 — 백분위와 같은 무리에서 센다. 못 재면 null (2026-09-10) */
+  rank: number | null
+  total: number | null
 }
 
 export interface ClanHexV2 {
@@ -590,6 +598,9 @@ export const ClanHexagonV2Axis = z.object({
   value: Unit.nullable(),
   text: z.string(),
   pending: z.enum(CLAN_HEX_V2_PENDING_KEYS).nullable(),
+  /** 리그 안 등수 · 모집단 (2026-09-10 · 클랜 상세 v3 가 등수를 보여 준다) */
+  rank: Count.nullable().default(null),
+  total: Count.nullable().default(null),
 })
 export type ClanHexagonV2Axis = z.infer<typeof ClanHexagonV2Axis>
 
@@ -856,6 +867,8 @@ function pendingAxis(
     value: null,
     text: CLAN_HEX_V2_PENDING_LABEL,
     pending,
+    rank: null,
+    total: null,
   }
 }
 
@@ -875,6 +888,8 @@ function measuredAxis(
     value: null,
     text: clanHexV2Text(key, raw),
     pending: null,
+    rank: null,
+    total: null,
   }
 }
 
@@ -1166,6 +1181,12 @@ export function normalizeByPercentile(
     /* `percentileOf` 는 0~100 이다. 육각형은 0~1 을 쓴다 */
     next.value = percentile / 100
     next.pending = null
+    /* 등수 — 나보다 나은 값의 수 + 1 (같으면 공동). 모집단은 백분위와 같은 무리다 */
+    const mine = raw * sign
+    let better = 0
+    for (const v of sorted) if (v > mine) better += 1
+    next.rank = better + 1
+    next.total = sorted.length
     return next
   })
 

@@ -7,6 +7,7 @@ import { ClanRoundMetrics } from '../clanRoundMetrics'
 import { ClanHexagon } from '../clanTraits'
 import { ClanHexagonV2 } from '../clanTraitsV2'
 import { ClanRoster } from '../clanRoster'
+import { ClanHeadToHead, PlayerHex } from '../playerHex'
 import { LeagueClanDetail, LeaguePlayer } from './league'
 import { LeagueSummary, PlayerSummary } from './summaries'
 import { MatchSummary, TeammateStat } from './match'
@@ -229,6 +230,8 @@ export const PlayerTierRecord = z.object({
   rifle_kd: Percent.nullable().default(null),
   sniper_games: Count.default(0),
   sniper_kd: Percent.nullable().default(null),
+  /** 그 구간에서 MVP 를 받은 판 수 (2026-09-10 · 선수 상세 v3 «MVP» 칸) */
+  mvp: Count.default(0),
   /** 조건을 넘은 클랜만. 없으면 빈 배열이다 */
   nemeses: z.array(PlayerTierNemesis),
 })
@@ -353,6 +356,10 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
   traits: PlayerTraits.nullable().default(null),
   /** 플레이스타일 바 2줄 (8절 · D-185). 위와 같은 규칙이다 */
   playstyle: PlayerPlaystyle.nullable().default(null),
+  /** ★여섯 축 · 실력 점수★ — 미리 접어 둔 한 줄 (2026-09-10 · 사장님 확정). 없으면 null */
+  hex: PlayerHex.nullable().default(null),
+  /** 핵의심 신고 수 (2026-09-10 · 로그인한 회원만 누른다) */
+  report_count: Count.default(0),
   /**
    * **주간 추이 그래프** (2026-09-02 사용자 지시).
    *
@@ -442,5 +449,7 @@ export const LeagueClanShow = LeagueClanDetail.extend({
    * 여섯 축이 전부 `측정중` 인 것과 **다르다**: 그때는 값이 있고 `measured` 가 0 이다.
    */
   hexagon_v2: ClanHexagonV2.nullable().default(null),
+  /** 상대전적 — 시즌 0 안에서 붙은 상대들 (2026-09-10 · 클랜 상세 v3) */
+  head_to_head: z.array(ClanHeadToHead).default([]),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>

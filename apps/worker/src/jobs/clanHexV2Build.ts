@@ -79,6 +79,7 @@ import { join } from 'node:path'
 import { prisma } from '@sacloud/db'
 import {
   A_ATTACK_ZONE_LABELS,
+  A_LONG_ZONE_LABELS,
   B_LONG_ZONE_LABEL,
   clanByTeamNo,
   clanHexV2Of,
@@ -178,6 +179,8 @@ export function loadClanHexZones(file: string | null): ZoneLoad {
   const parsed = JSON.parse(readFileSync(file, 'utf8')) as LabeledZoneFile
   const aSide = zoneCellsOfLabels(parsed, A_SIDE_ZONE_LABELS)
   const bLong = zoneCellsOfLabels(parsed, [B_LONG_ZONE_LABEL])
+  /* ★A롱 5구역★ — 스나싸움(①) 이 여기서만 센다 (2026-09-10 · clan-hex-v2.4) */
+  const aLong = zoneCellsOfLabels(parsed, A_LONG_ZONE_LABELS)
   const attack = zoneCellsOfLabels(parsed, A_ATTACK_ZONE_LABELS)
 
   /* 라벨별 칸 수 — 0 이면 그 구역이 파일에 없다. 보고에도 그대로 싣는다 */
@@ -194,6 +197,7 @@ export function loadClanHexZones(file: string | null): ZoneLoad {
     zones: {
       aSide: aSide.cells.length > 0 ? aSide : null,
       bLong: bLong.cells.length > 0 ? bLong : null,
+      aLong: aLong.cells.length > 0 ? aLong : null,
       attack: attack.cells.length > 0 ? attack : null,
       attackLabels: attackLabelsPresent,
     },
@@ -201,6 +205,7 @@ export function loadClanHexZones(file: string | null): ZoneLoad {
     cells: {
       [`A쪽(${A_SIDE_ZONE_LABELS.join('+')})`]: aSide.cells.length,
       [`B롱(${B_LONG_ZONE_LABEL})`]: bLong.cells.length,
+      [`A롱(${A_LONG_ZONE_LABELS.join('+')})`]: aLong.cells.length,
       [`⑥구역(${attackLabelsPresent.join('+')})`]: attack.cells.length,
       ...attackCellsByLabel,
     },

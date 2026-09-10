@@ -69,10 +69,13 @@
  *     MatchClanHexV2   에 clan-hex-v2.3 행이 있는가
  *     ClanHexV2Summary 에 clan-hex-v2.3 행이 있는가
  *
+ *   `clan-hex-v2.4`  2026-09-10 · **스나싸움(①)을 롱에서만 센다.** 잡은 쪽·죽은 쪽 좌표가
+ *                    둘 다 A롱(컨뒤·녹뒤·머리·홀정면·ㄱ자) 또는 비롱 안일 때만이다 (사장님 확정).
+ *                    구역 파일은 268칸 판(홀정면 추가). 옛 규칙은 `SNIPER_DUEL_ZONE_RULE`.
  *   `clan-hex-v2.3`  2026-09-02 · **D-256 이 실제로 계산되는 첫 판.**
  *                    ① 스나싸움을 **스나 대 스나**로 (구역·진영 안 본다)
  *                    ⑤ 선짤(먼저 짤랐나) · ⑥ 교환(팀원 죽은 직후 되잡기 · 5초)
  *                    v2.2 는 «byVictim + 네 구역» 을 뜻하는 번호로 이미 이력에
  *                    적혀 있어서 건너뛴다. 번호를 재활용하면 뜻이 겹친다
  */
-export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v2.3'
+export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v2.4'

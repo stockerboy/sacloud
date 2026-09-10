@@ -625,6 +625,10 @@ export async function getPlayerRanks(
         knownGamesOf(row.weaponStats) || (counts.get(row.player.id) ?? 0),
       ),
       rating: row.rating,
+      /* 옛 래더 순 목록에는 실력 점수가 없다 (2026-09-10) */
+      hex: null,
+      score: null,
+      score_weapon: null,
     })),
   }
 }

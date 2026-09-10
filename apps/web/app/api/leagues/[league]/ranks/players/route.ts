@@ -2,7 +2,7 @@ import { PAGE_SIZE, parseRankWeapon } from '@sacloud/contract'
 import { guardPublic, notFound, okPagePublic } from '@/lib/server/respond'
 import { pageParams, query, routeParam } from '@/lib/server/request'
 import { getPlayerRanks, resolveLeagueId } from '@/lib/server/queries/leagues'
-import { getPlayerRanksByWeapon } from '@/lib/server/queries/rankings'
+import { getPlayerRanksByScore, getPlayerRanksByWeapon } from '@/lib/server/queries/rankings'
 
 /**
  * GET /api/leagues/{leagueId}/ranks/players — 개인랭킹
@@ -20,11 +20,19 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     if (!leagueId) return notFound('리그를 찾을 수 없습니다')
     const { cursor, size } = pageParams(request, PAGE_SIZE.RANK)
     const weapon = parseRankWeapon(query(request, 'weapon'))
+    /* ★통합 개인랭킹은 실력 점수 순★ (2026-09-10 · 사장님 확정). 점수 표가 비어 있으면
+       (잡이 아직 안 돌았으면) 옛 래더 순으로 돌아간다 — 빈 화면을 내지 않는다 */
     const page =
       weapon === 'all'
-        ? await getPlayerRanks(leagueId, cursor, size)
+        ? await scoreOrLadder(leagueId, cursor, size)
         : await getPlayerRanksByWeapon(leagueId, weapon, cursor, size)
     /* 랭킹은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
     return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')
   })
+}
+
+async function scoreOrLadder(leagueId: string, cursor: string | null, size: number) {
+  const scored = await getPlayerRanksByScore(leagueId, cursor, size)
+  if (scored && (scored.items.length > 0 || cursor !== null)) return scored
+  return getPlayerRanks(leagueId, cursor, size)
 }

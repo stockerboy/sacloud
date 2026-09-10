@@ -215,6 +215,9 @@ export async function getPlayerRanksByWeapon(
       rating: row.leaguePlayer.rating,
       weapon,
       rating_delta: row.ratingDelta,
+      hex: null,
+      score: null,
+      score_weapon: null,
     })),
   }
 }
@@ -340,5 +343,120 @@ export async function getFormTop(leagueId: string, weapon: RankWeapon): Promise<
         },
       ]
     }),
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* ★실력 점수 순 개인랭킹★ (2026-09-10 · 사장님 확정)                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * > "개인랭킹 이걸로 확정이다 (…) 클랜은 그냥 원래하던대로 가고" — 사용자, 2026-09-10
+ *
+ * `weapon=all` 개인랭킹이 이제 이 목록이다. 점수·등수는 워커 잡(`player-hex-build`)이
+ * `LeaguePlayerHex` 에 미리 접어 둔 값이라 여기서는 **읽어서 줄만 세운다.** 첫 줄의 등수도
+ * 저장된 `scoreRank` 그대로다 — 세는 질의가 없다.
+ *
+ * 옛 래더 순 목록(`leagues.ts` 의 `getPlayerRanks`)은 지우지 않았다 (`CLAUDE.md` 1-4).
+ * 표가 비어 있으면(잡이 아직 안 돌았으면) 라우트가 그쪽으로 돌아간다.
+ */
+export async function getPlayerRanksByScore(
+  leagueId: string,
+  cursor: string | null,
+  size: number,
+): Promise<CursorPage<PlayerRankRow> | null> {
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { id: true, category: true },
+  })
+  if (!league) return null
+  const where = {
+    weapon: { not: null },
+    scoreRank: { not: null },
+    leaguePlayer: { leagueId, placement: false },
+  }
+  const page = await cursorPage<ScoreRankRow>({
+    cursor,
+    size,
+    orderBy: [...SCORE_ORDER],
+    reversedOrderBy: [...SCORE_ORDER_REVERSED],
+    idOf: (row) => row.leaguePlayerId,
+    fetch: (args) =>
+      prisma.leaguePlayerHex.findMany({
+        where,
+        take: args.take,
+        orderBy: args.orderBy as never,
+        ...(args.cursor ? { cursor: { leaguePlayerId: args.cursor.id }, skip: args.skip } : {}),
+        select: {
+          leaguePlayerId: true,
+          weapon: true,
+          score: true,
+          scoreRank: true,
+          hex: true,
+          games: true,
+          leaguePlayer: {
+            select: {
+              rating: true,
+              win: true,
+              lose: true,
+              kill: true,
+              death: true,
+              player: { select: PLAYER_SUMMARY_SELECT },
+              clan: { select: CLAN_SUMMARY_SELECT },
+            },
+          },
+        },
+      }) as Promise<ScoreRankRow[]>,
+  })
+  return {
+    cursor: page.cursor,
+    items: page.items.map((row) => {
+      const rank = row.scoreRank ?? 0
+      const lp = row.leaguePlayer
+      return {
+        rank,
+        league_player_id: row.leaguePlayerId,
+        player: toPlayerSummary(lp.player),
+        clan: toClanSummaryOrNull(lp.clan),
+        win: lp.win,
+        lose: lp.lose,
+        win_rate: winRate(lp.win, lp.lose),
+        kd_rate: cumulativeKdRate(league, kdRate(lp.kill, lp.death), rank),
+        kill_per_match: killPerMatch(lp.kill, row.games),
+        rating: lp.rating,
+        weapon: 'all' as const,
+        score: row.score,
+        score_weapon: row.weapon === 0 || row.weapon === 1 ? row.weapon : null,
+        hex: row.hex,
+      }
+    }),
+  }
+}
+
+const SCORE_ORDER = [{ scoreRank: 'asc' as const }, { leaguePlayerId: 'asc' as const }]
+const SCORE_ORDER_REVERSED = [{ scoreRank: 'desc' as const }, { leaguePlayerId: 'desc' as const }]
+
+interface ScoreRankRow {
+  leaguePlayerId: string
+  weapon: number | null
+  score: number | null
+  scoreRank: number | null
+  hex: number | null
+  games: number
+  leaguePlayer: {
+    rating: number
+    win: number
+    lose: number
+    kill: number
+    death: number
+    player: { id: string; name: string }
+    clan: {
+      id: string
+      slug: string
+      name: string
+      markBgUrl: string | null
+      markFrontUrl: string | null
+      sourceClanId: string | null
+    } | null
   }
 }

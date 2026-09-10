@@ -1,0 +1,395 @@
+'use client'
+
+/**
+ * ★클랜 상세 v3 본문★ (2026-09-10 · 사장님 시안 `ClanDetailV3.tsx` 를 실데이터로)
+ *
+ *   ├ vs <티어> 스트립 — 같은 티어 상대 마크 나열 + 그 티어 상대 전적
+ *   ├ 상대전적 — 상대를 고르면 (C) 두 테마로 갈린 SET SCORE · (D) 세트 승률 막대 · 추이 · 맞대결 기록
+ *   └ 최근 경기 — 승패 · 맵 · 시각 · 상대 · 래더 ±
+ *
+ * 라운드 점수는 경기 원본에 없다 — «ROUND SCORE» 칸은 그리지 않는다. 지어내지 않는다.
+ * 옛 화면(`LeagueClanRecordScreen`)의 부품들은 지우지 않았다 (`CLAUDE.md` 1-4).
+ */
+import { useMemo, useState, type CSSProperties } from 'react'
+import type { ClanHeadToHead, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
+import { rankColor, statColor } from './rankColors'
+import { Card, CardHead, Kda, MarkCircle, SectionBar, TierText, clanThemeOf, fitMarkUrl, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
+import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
+
+const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
+const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 108px 78px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
+
+export interface ClanDetailV3Props {
+  data: LeagueClanShow
+  leagueSlug: string
+  matches: readonly MatchListItem[]
+  matchesLoading: boolean
+  hasMore: boolean
+  loadingMore: boolean
+  onLoadMore: () => void
+  expanded: Readonly<Record<string, MatchDetail>>
+  onExpand: (match: MatchListItem) => void
+  /** 상대 하나를 골랐을 때 그 상대와의 경기를 뽑아 온다 — 현재 목록에서 거른다 */
+}
+
+/* ── vs 티어 스트립 ────────────────────────────────────────────── */
+
+function TierStrip({ data, h2h, division, selected, onSelect }: { data: LeagueClanShow; h2h: ClanHeadToHead[]; division: number; selected: string | null; onSelect: (id: string) => void }) {
+  const theme = clanThemeOf(data.clan.slug)
+  const rows = h2h.filter((r) => r.division === division)
+  const win = rows.reduce((a, r) => a + r.win, 0)
+  const lose = rows.reduce((a, r) => a + r.lose, 0)
+  const rate = win + lose > 0 ? (win / (win + lose)) * 100 : null
+  return (
+    <Card style={{ marginTop: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', flexWrap: 'nowrap' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
+          <MarkCircle clan={data.clan} size={30} />
+          <span style={{ fontSize: 14, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap' }}>{data.clan.name}</span>
+        </span>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, flex: 'none', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 12, color: V3.textFaint }}>vs</span>
+          <TierText division={division} leagueCategory={data.league.category} size={14} />
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'nowrap', flex: '0 1 auto', minWidth: 0, overflow: 'hidden' }}>
+          {rows.map((r) => {
+            const on = r.league_clan_id === selected
+            return (
+              <span key={r.league_clan_id} onClick={() => onSelect(r.league_clan_id)} title={`${r.clan.name} · ${r.win}승 ${r.lose}패`} style={{ cursor: 'pointer', borderRadius: '50%', boxShadow: on ? '0 0 14px rgba(91,141,255,.75), 0 0 30px rgba(91,141,255,.35)' : 'none', outline: on ? '2px solid #7fa9ff' : '1px solid transparent', outlineOffset: 2, opacity: on ? 1 : 0.55, display: 'inline-flex' }}>
+                <MarkCircle clan={{ slug: r.clan.slug, mark: { bg: r.clan.mark_bg_url, front: r.clan.mark_front_url } }} size={26} />
+              </span>
+            )
+          })}
+          {rows.length === 0 ? <span style={{ fontSize: 11, color: V3.textGhost }}>이 티어와 붙은 경기가 없습니다</span> : null}
+        </span>
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'baseline', gap: 8, flex: 'none' }}>
+          <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{win}승 {lose}패</span>
+          <span style={{ fontSize: 16, fontWeight: 600, whiteSpace: 'nowrap', color: rate === null ? V3.textGhost : statColor(rate) }}>{pct1(rate)}</span>
+        </span>
+      </div>
+    </Card>
+  )
+}
+
+/* ── 상대전적 ─────────────────────────────────────────────────── */
+
+const H2H_X0 = 34.3
+const H2H_X1 = 549.7
+const h2hY = (share: number) => 262 - ((Math.max(30, Math.min(70, share)) - 30) / 40) * 236
+
+/** 누적 세트 승률 추이 — 붙은 경기를 시간순으로 더해 간다 (지어내지 않는다 · 경기 수만큼 점) */
+function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead; theme: ClanTheme; oppTheme: ClanTheme; mine: LeagueClanShow['clan']; oppSlug: string }) {
+  const games = [...opp.recent].filter((g) => g.won !== null).reverse()
+  let w = 0
+  const shares = games.map((g, i) => {
+    if (g.won) w += 1
+    return { x: games.length <= 1 ? H2H_X1 : H2H_X0 + ((H2H_X1 - H2H_X0) * i) / (games.length - 1), share: (w / (i + 1)) * 100, label: monthDay(g.start_at) }
+  })
+  const blue = shares.map((p) => `${p.x.toFixed(1)},${h2hY(p.share).toFixed(1)}`).join(' ')
+  const red = shares.map((p) => `${p.x.toFixed(1)},${h2hY(100 - p.share).toFixed(1)}`).join(' ')
+  const end = shares[shares.length - 1]
+  const finalShare = opp.win + opp.lose > 0 ? (opp.win / (opp.win + opp.lose)) * 100 : null
+  return (
+    <div style={{ padding: '6px 12px 10px', background: V3.plot }}>
+      <svg viewBox="0 0 640 330" style={{ width: '100%', height: 330, display: 'block' }}>
+        <defs>
+          <filter id="h2hGlowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b1" /><feGaussianBlur stdDeviation="16" result="b2" /><feMerge><feMergeNode in="b2" /><feMergeNode in="b1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+          <filter id="h2hGlowR" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="r1" /><feGaussianBlur stdDeviation="16" result="r2" /><feMerge><feMergeNode in="r2" /><feMergeNode in="r1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+        </defs>
+        <rect x="0" y="0" width="640" height="330" fill={V3.plot} />
+        {[30, 40, 50, 60, 70].map((g) => (
+          <g key={g}>
+            <line x1={H2H_X0} y1={h2hY(g)} x2={H2H_X1} y2={h2hY(g)} stroke="#111826" />
+            <text x={H2H_X0 - 8} y={h2hY(g) + 4} textAnchor="end" fill="#7c88a4" fontSize="11">{g}%</text>
+          </g>
+        ))}
+        {shares.map((p, i) => (
+          <text key={i} x={p.x} y={292} textAnchor={i === 0 ? 'start' : i === shares.length - 1 ? 'end' : 'middle'} fill="#7c88a4" fontSize="11">{shares.length > 8 && i % 2 === 1 ? '' : p.label}</text>
+        ))}
+        <line x1={H2H_X1} y1={20} x2={H2H_X1} y2={268} stroke="#2b3a58" />
+        <text x={H2H_X1} y={16} textAnchor="middle" fill="#8f9bb5" fontSize="14" fontWeight="700">now</text>
+        {shares.length === 0 ? <text x="300" y="150" textAnchor="middle" fill={V3.textGhost} fontSize="13">승패를 아는 맞대결이 없습니다</text> : null}
+        {shares.length > 1 ? (
+          <>
+            <polyline points={red} fill="none" stroke={oppTheme.deep} strokeWidth={13} strokeLinejoin="round" strokeLinecap="round" filter="url(#h2hGlowR)" opacity={0.5} />
+            <polyline points={blue} fill="none" stroke={V3.blue} strokeWidth={13} strokeLinejoin="round" strokeLinecap="round" filter="url(#h2hGlowB)" opacity={0.55} />
+            <polyline points={red} fill="none" stroke={oppTheme.deep} strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} />
+            <polyline points={blue} fill="none" stroke="#7fa9ff" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
+            <polyline points={red} fill="none" stroke={oppTheme.main} strokeWidth={3.4} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
+            <polyline points={blue} fill="none" stroke="#dbe8ff" strokeWidth={3.4} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
+          </>
+        ) : null}
+        {end && finalShare !== null ? (
+          <>
+            <circle cx={H2H_X1} cy={h2hY(end.share)} r={26} fill="none" stroke={V3.blue} strokeWidth={7} filter="url(#h2hGlowB)" opacity={0.55} />
+            <circle cx={H2H_X1} cy={h2hY(end.share)} r={22} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
+            {hasFitMark(mine.slug) ? <image href={fitMarkUrl(mine.slug)} x={H2H_X1 - 18} y={h2hY(end.share) - 18} width="36" height="36" clipPath="circle(18px at 18px 18px)" /> : null}
+            <text x={H2H_X1 + 30} y={h2hY(end.share) + 10} fill="#ffffff" fontSize="20" fontWeight="700">{finalShare.toFixed(1)}%</text>
+            <circle cx={H2H_X1} cy={h2hY(100 - end.share)} r={26} fill="none" stroke={oppTheme.deep} strokeWidth={7} filter="url(#h2hGlowR)" opacity={0.5} />
+            <circle cx={H2H_X1} cy={h2hY(100 - end.share)} r={22} fill={V3.chip} stroke={oppTheme.main} strokeWidth={2} />
+            {hasFitMark(oppSlug) ? <image href={fitMarkUrl(oppSlug)} x={H2H_X1 - 18} y={h2hY(100 - end.share) - 18} width="36" height="36" clipPath="circle(18px at 18px 18px)" /> : null}
+            <text x={H2H_X1 + 30} y={h2hY(100 - end.share) + 10} fill="#ffffff" fontSize="20" fontWeight="700">{(100 - finalShare).toFixed(1)}%</text>
+          </>
+        ) : null}
+        <g>
+          <line x1={H2H_X0} y1={312} x2={H2H_X0 + 16} y2={312} stroke="#7fa9ff" strokeWidth={3} filter="url(#h2hGlowB)" />
+          <line x1={H2H_X0} y1={312} x2={H2H_X0 + 16} y2={312} stroke="#dbe8ff" strokeWidth={1.6} />
+          <text x={H2H_X0 + 22} y={319} fill={theme.ink} fontSize="14">{mine.name}</text>
+          <line x1={H2H_X0 + 150} y1={312} x2={H2H_X0 + 166} y2={312} stroke={oppTheme.deep} strokeWidth={3} filter="url(#h2hGlowR)" />
+          <line x1={H2H_X0 + 150} y1={312} x2={H2H_X0 + 166} y2={312} stroke={oppTheme.main} strokeWidth={1.6} />
+          <text x={H2H_X0 + 172} y={319} fill={oppTheme.ink} fontSize="14">{opp.clan.name}</text>
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+function PlayerRow({ row, mvp, weaponKnown, clanSlug }: { row: MatchPlayerStat; mvp: boolean; weaponKnown: boolean; clanSlug: string | null }) {
+  const sniper = weaponKnown && row.weapon === 1
+  const kd = row.kd_rate
+  const clan = row.match_time_clan
+  return (
+    <div style={{ ...playerRowStyle, background: mvp ? 'linear-gradient(100deg,rgba(255,216,61,.10),rgba(255,216,61,.02) 55%,transparent)' : 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
+      {sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
+      {mvp ? <span aria-hidden style={{ position: 'absolute', left: '64%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: V3.gold, opacity: 0.15, WebkitTextStroke: `2.4px ${V3.gold}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>MVP</span> : null}
+      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <MarkCircle clan={clan ? { slug: clan.slug ?? clanSlug, mark: clan.mark } : clanSlug ? { slug: clanSlug } : null} size={20} />
+        <span style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: 'nowrap', color: mvp ? '#ffe89a' : '#c3cbdb', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
+      </span>
+      <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
+      <span style={{ position: 'relative', textAlign: 'right', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', color: kd === null ? V3.textGhost : statColor(kd) }}>{pct1(kd)}</span>
+    </div>
+  )
+}
+
+function Scoreboard({ detail, leagueCategory }: { detail: MatchDetail; leagueCategory: string }) {
+  const mySide = detail.league_clan.league_clan_id === detail.opponent.league_clan_id ? 'red' : detail.red.some((p) => detail.player_stat?.player_id === p.player_id) ? 'red' : null
+  const ourSide = mySide ?? (detail.win ? (detail.first_side ?? 'red') : (detail.first_side === 'red' ? 'blue' : 'red'))
+  const teams = (['red', 'blue'] as const).map((side) => {
+    const stats = side === 'red' ? detail.red_stats : detail.blue_stats
+    const ours = side === ourSide
+    const snap = ours ? detail.league_clan : detail.opponent
+    const won = ours ? detail.win : !detail.win
+    return { side, stats, snap, won, theme: clanThemeOf(snap.clan.slug) }
+  })
+  return (
+    <div style={{ background: '#0a0f1a', borderTop: `1px solid ${V3.rowDivider}`, padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {teams.map((t) => (
+        <div key={t.side} style={{ border: `1px solid ${V3.divider}`, borderRadius: V3.radiusBlock, background: 'linear-gradient(160deg,#111b2c,#0c1420)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
+            <MarkCircle clan={t.snap.clan} size={22} />
+            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: t.theme.ink }}>{t.snap.clan.name}</span>
+            <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} />
+            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
+            <div style={spacerStyle} />
+            <span style={{ fontSize: 11, color: '#4e5b76', whiteSpace: 'nowrap' }}>{t.side.toUpperCase()}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 108px 78px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em' }}>
+            <span>플레이어</span><span>K / D / A</span><span style={{ textAlign: 'right' }}>킬뎃</span>
+          </div>
+          {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
+          {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} />)}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function HeadToHeadCard({ data, opp, matches, expanded, onExpand }: { data: LeagueClanShow; opp: ClanHeadToHead; matches: readonly MatchListItem[]; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
+  const theme = clanThemeOf(data.clan.slug)
+  const oppTheme = clanThemeOf(opp.clan.slug)
+  const total = opp.win + opp.lose
+  const share = total > 0 ? (opp.win / total) * 100 : 50
+  const [open, setOpen] = useState<string | null>(null)
+  const vs = matches.filter((m) => m.opponent.league_clan_id === opp.league_clan_id)
+  const oppClan = { id: opp.clan.id, slug: opp.clan.slug, name: opp.clan.name, mark: { bg: opp.clan.mark_bg_url, front: opp.clan.mark_front_url } }
+  return (
+    <Card style={{ marginTop: 14 }} edge={V3.blue}>
+      <CardHead title="상대전적" right={<span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(total)}전</span>}>
+        <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap' }}>{data.clan.name} vs {opp.clan.name}</span>
+      </CardHead>
+      <div style={{ position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 26, padding: '26px 18px 22px', flexWrap: 'wrap' }}>
+        <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${share}%`, background: `linear-gradient(100deg, ${theme.light}42, ${theme.main}29 40%, ${theme.deep}0f 78%, transparent)`, pointerEvents: 'none' }} />
+        <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: `${100 - share}%`, background: `linear-gradient(260deg, ${oppTheme.light}3d, ${oppTheme.main}29 40%, ${oppTheme.deep}0f 78%, transparent)`, pointerEvents: 'none' }} />
+        {hasFitMark(data.clan.slug) ? <span aria-hidden style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 150, height: 150, backgroundImage: `url(${fitMarkUrl(data.clan.slug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', opacity: 0.15, pointerEvents: 'none' }} /> : null}
+        {hasFitMark(opp.clan.slug) ? <span aria-hidden style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 150, height: 150, backgroundImage: `url(${fitMarkUrl(opp.clan.slug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', opacity: 0.15, pointerEvents: 'none' }} /> : null}
+        <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, width: `${share}%`, height: 2, background: `linear-gradient(90deg,${theme.light},${theme.main} 55%,${theme.main}40)`, pointerEvents: 'none' }} />
+        <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, width: `${100 - share}%`, height: 2, background: `linear-gradient(270deg,${oppTheme.main},${oppTheme.main}33)`, pointerEvents: 'none' }} />
+        <span aria-hidden style={{ position: 'absolute', left: `${share}%`, top: 0, bottom: 0, width: 1, background: 'linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.04))', pointerEvents: 'none' }} />
+        <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+            <span style={{ fontSize: 28, fontWeight: 900, color: theme.ink, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{data.clan.name}</span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}><TierText division={data.division} leagueCategory={data.league.category} size={11} />{data.rank !== null ? <span style={{ fontSize: 11, color: rankColor(data.rank) }}>{data.rank}위</span> : null}</span>
+          </span>
+          <MarkCircle clan={data.clan} size={52} />
+        </span>
+        <span style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: theme.ink, letterSpacing: '-.02em' }}>{opp.win}</span>
+        <span style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 88 }}>
+          <span style={{ fontSize: 10.5, color: V3.textFaint, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>SET SCORE</span>
+          <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>Cloud0 시즌</span>
+        </span>
+        <span style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: oppTheme.ink, letterSpacing: '-.02em' }}>{opp.lose}</span>
+        <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <MarkCircle clan={oppClan} size={52} />
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ fontSize: 28, fontWeight: 900, color: oppTheme.ink, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{opp.clan.name}</span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}><TierText division={opp.division} leagueCategory={data.league.category} size={11} /></span>
+          </span>
+        </span>
+      </div>
+      <div style={{ padding: '0 18px 14px' }}>
+        <div style={{ display: 'flex', height: 8, gap: 4, borderRadius: 999, overflow: 'hidden' }}>
+          <div style={{ width: `${share}%`, borderTop: `2px solid ${theme.edge}`, background: `linear-gradient(100deg, ${theme.light}6b, ${theme.main}3d 46%, ${theme.deep}1a)` }} />
+          <div style={{ width: `${100 - share}%`, borderTop: `2px solid ${oppTheme.edge}`, background: `linear-gradient(260deg, ${oppTheme.light}6b, ${oppTheme.main}3d 46%, ${oppTheme.deep}1a)` }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 7 }}>
+          <span style={{ fontSize: 11.5, color: '#8f9bb5', whiteSpace: 'nowrap' }}>SET WIN RATE <span style={{ fontWeight: 700, color: theme.ink }}>{total > 0 ? `${share.toFixed(1)}%` : '-'}</span></span>
+          <span style={{ fontSize: 11.5, color: '#8f9bb5', whiteSpace: 'nowrap' }}><span style={{ fontWeight: 700, color: oppTheme.ink }}>{total > 0 ? `${(100 - share).toFixed(1)}%` : '-'}</span> · {fmt(total)}전 기준</span>
+        </div>
+      </div>
+      <H2HChart opp={opp} theme={theme} oppTheme={oppTheme} mine={data.clan} oppSlug={opp.clan.slug} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderTop: `1px solid ${V3.rowDivider}` }}>
+        <div style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>맞대결 기록</span>
+        <div style={spacerStyle} />
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.1em' }}>시즌 CLOUD0 상대전적</span>
+          <span style={{ fontSize: 11.5, color: V3.textFaint }}>{opp.win}승 {opp.lose}패</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: total > 0 ? statColor(share) : V3.textGhost }}>{total > 0 ? `${share.toFixed(1)}%` : '-'}</span>
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {vs.length === 0 ? <div style={{ padding: '12px 18px 16px', fontSize: 11.5, color: V3.textGhost }}>불러온 최근 경기 안에는 이 상대와의 경기가 없습니다 · 아래 «더 불러오기» 로 더 볼 수 있습니다</div> : null}
+        {vs.map((m) => {
+          const isOpen = open === m.id
+          const edge = m.win ? V3.blue : V3.red
+          const mvpName = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id)?.name ?? null
+          const detail = expanded[m.id]
+          return (
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: `1px solid ${V3.rowDivider}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : 'transparent' }}>
+              <div onClick={() => { setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ display: 'grid', gridTemplateColumns: '46px 110px minmax(0,1fr) minmax(0,196px) 70px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
+                  <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                  <MarkCircle clan={data.clan} size={20} />
+                  <span style={{ fontSize: 12.5, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap' }}>{data.clan.name}</span>
+                  <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 500, color: oppTheme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opp.clan.name}</span>
+                  <MarkCircle clan={oppClan} size={20} />
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', minWidth: 0, overflow: 'hidden' }}>
+                  {m.win && mvpName ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, flex: '0 1 140px', minWidth: 0, overflow: 'hidden' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none', padding: '3px 7px', whiteSpace: 'nowrap', background: 'rgba(255,216,61,.10)', border: '1px solid rgba(255,216,61,.55)', borderRadius: V3.radiusChip, boxShadow: '0 0 12px rgba(255,216,61,.22)' }}>
+                        <span style={{ fontSize: 10.5, color: V3.gold }}>★</span>
+                        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', color: V3.gold }}>MVP</span>
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvpName}</span>
+                    </span>
+                  ) : null}
+                  {m.rating_update !== null ? (
+                    <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', color: m.rating_update > 0 ? V3.green : m.rating_update < 0 ? V3.redSoft : V3.textMuted }}>{m.rating_update > 0 ? '+' : ''}{m.rating_update}점</span>
+                  ) : null}
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: isOpen ? '#a9c3ff' : V3.textGhost }}>경기상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></span>
+              </div>
+              {isOpen ? (detail ? <Scoreboard detail={detail} leagueCategory={data.league.category} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.rowDivider}` }}>불러오는 중…</div>) : null}
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
+/* ── 최근 경기 ─────────────────────────────────────────────────── */
+
+function RecentRows({ data, matches }: { data: LeagueClanShow; matches: readonly MatchListItem[] }) {
+  const theme = clanThemeOf(data.clan.slug)
+  return (
+    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {matches.map((m) => {
+        const edge = m.win ? V3.blue : V3.red
+        const delta = m.rating_update
+        return (
+          <div key={m.id} style={{ ...matchRowStyle, borderLeft: `2px solid ${edge}` }}>
+            <span style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
+              <span style={{ fontSize: 10.5, color: '#4e515d', whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
+              <MarkCircle clan={data.clan} size={22} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap', flex: 'none' }}>{data.clan.name}</span>
+              <TierText division={m.league_clan.division} leagueCategory={data.league.category} size={10} />
+              <span style={{ fontSize: 11, color: '#3a3d47' }}>VS</span>
+              <MarkCircle clan={m.opponent.clan} size={22} />
+              <span style={{ fontSize: 13, color: '#9a9eb0', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
+              <TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} />
+            </span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: 10.5, color: '#4e515d', whiteSpace: 'nowrap' }}>래더</span>
+              {delta === null ? (
+                <span style={{ fontSize: 12, color: V3.textGhost, whiteSpace: 'nowrap' }}>미반영</span>
+              ) : (
+                <span style={{ fontSize: 16, fontWeight: 500, whiteSpace: 'nowrap', color: delta > 0 ? V3.green : delta < 0 ? V3.red : V3.textMuted }}>{delta > 0 ? '+' : ''}{delta}점</span>
+              )}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── 페이지 본문 ──────────────────────────────────────────────── */
+
+export function ClanDetailV3(props: ClanDetailV3Props) {
+  const { data, matches, matchesLoading, hasMore, loadingMore, onLoadMore } = props
+  const h2h = data.head_to_head
+  const tiers = useMemo(() => {
+    const set = new Set<number>()
+    for (const r of h2h) if (r.division !== null) set.add(r.division)
+    const list = [...set].sort((a, b) => a - b)
+    return list.length > 0 ? list : [data.division]
+  }, [h2h, data.division])
+  const [tier, setTier] = useState<number>(() => (tiers.includes(data.division) ? data.division : tiers[0] ?? data.division))
+  const [selected, setSelected] = useState<string | null>(() => h2h.find((r) => r.division === tier)?.league_clan_id ?? h2h[0]?.league_clan_id ?? null)
+  const opp = h2h.find((r) => r.league_clan_id === selected) ?? null
+  const tiered = data.league.division_count >= 2
+  return (
+    <div>
+      {tiered && tiers.length > 1 ? (
+        <div style={{ marginTop: 20, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {tiers.map((t) => (
+            <span key={t} onClick={() => { setTier(t); const first = h2h.find((r) => r.division === t); if (first) setSelected(first.league_clan_id) }} style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: V3.radiusCtl, cursor: 'pointer', background: t === tier ? '#1a1c24' : '#111218', border: `1px solid ${t === tier ? '#3a3d4a' : '#24262f'}`, opacity: t === tier ? 1 : 0.6 }}>
+              <TierText division={t} leagueCategory={data.league.category} size={11} />
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <TierStrip data={data} h2h={h2h} division={tier} selected={selected} onSelect={setSelected} />
+      {opp ? (
+        <HeadToHeadCard data={data} opp={opp} matches={matches} expanded={props.expanded} onExpand={props.onExpand} />
+      ) : (
+        <Card style={{ marginTop: 14, padding: 18 }}><span style={{ fontSize: 12, color: V3.textGhost }}>시즌 Cloud 0 에 붙은 상대가 아직 없습니다</span></Card>
+      )}
+      <SectionBar title="최근 경기" />
+      {matchesLoading ? (
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
+      ) : matches.length === 0 ? (
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>아직 경기가 없습니다.</div>
+      ) : (
+        <RecentRows data={data} matches={matches} />
+      )}
+      {hasMore ? (
+        <button type="button" onClick={onLoadMore} disabled={loadingMore} style={{ marginTop: 10, width: '100%', padding: '11px 0', fontFamily: 'inherit', fontSize: 12.5, color: '#a9c3ff', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.35)', borderRadius: V3.radiusCard, cursor: 'pointer' }}>
+          {loadingMore ? '불러오는 중…' : '더 불러오기'}
+        </button>
+      ) : null}
+    </div>
+  )
+}

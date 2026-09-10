@@ -36,6 +36,9 @@ import { leagueClanHexagon, leagueClanRoundMetrics } from './clanRoundMetrics'
 /* D-238 로 잠시 뺐다가 **다시 들였다** — 재료가 `ClanHexV2Summary` 로 바뀌었다.
    자세한 것은 아래 호출 자리의 주석 */
 import { leagueClanHexV2 } from './clanHexV2'
+import { clanHeadToHead } from './clanHeadToHead'
+import { playerHexOf } from './playerHex'
+import { playerReportCount } from './playerReports'
 import { leagueClanRoster } from './clanRoster'
 import { toKstIso } from '../format'
 import {
@@ -429,7 +432,7 @@ export async function getLeagueClanShow(
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
   }
 
-  const [rank, record, clanMetrics, roster, roundMetrics, hexagon, hexagonV2] = await Promise.all([
+  const [rank, record, clanMetrics, roster, roundMetrics, hexagon, hexagonV2, headToHead] = await Promise.all([
     clanRankOf({
       id: leagueClan.id,
       leagueId: leagueClan.leagueId,
@@ -500,6 +503,10 @@ export async function getLeagueClanShow(
         leagueId: leagueClan.leagueId,
       }),
     ),
+    /* 상대전적 (2026-09-10 · 클랜 상세 v3). 실패해도 화면 전체를 죽이지 않는다 */
+    softFail('clan-head-to-head', [] as Awaited<ReturnType<typeof clanHeadToHead>>, {
+      leagueClanId: leagueClan.id,
+    })(clanHeadToHead(leagueClan.leagueId, leagueClan.id)),
   ])
 
   return {
@@ -528,6 +535,7 @@ export async function getLeagueClanShow(
     round_metrics: roundMetrics,
     hexagon,
     hexagon_v2: hexagonV2,
+    head_to_head: headToHead,
   }
 }
 
@@ -635,6 +643,9 @@ export async function getLeagueClanPlayers(
       kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death), null),
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
+      hex: null,
+      score: null,
+      score_weapon: null,
     })),
   }
 }
@@ -729,7 +740,7 @@ export async function getLeaguePlayerDetail(
 
   const where: Prisma.MatchWhereInput = { leagueId: league.id, stats: { some: { playerId } } }
 
-  const [rank, weaponBuckets, ladderRows, record, traits, judgedPosition] = await Promise.all([
+  const [rank, weaponBuckets, ladderRows, record, traits, judgedPosition, hex, reportCount] = await Promise.all([
     /* 명부에 없는 사람은 ★순위가 없다★ — 지어내지 않는다 */
     ranked
       ? playerRankOf({
@@ -789,6 +800,12 @@ export async function getLeaguePlayerDetail(
       : Promise.resolve(null),
     /* 좌표로 판정한 자리 (D-199). 없으면 `null` — 화면이 그 줄을 안 그린다 */
     softFail('player-position', null, { playerId })(playerJudgedPosition(playerId)),
+    /* ★여섯 축 · 실력 점수★ — 미리 접어 둔 한 줄만 읽는다 (2026-09-10). 없으면 null */
+    ranked
+      ? softFail('player-hex', null, { leaguePlayerId: effective.id })(playerHexOf(effective.id))
+      : Promise.resolve(null),
+    /* 핵의심 신고 수 (2026-09-10) */
+    softFail('player-report-count', 0, { playerId })(playerReportCount(playerId)),
   ])
 
   /* 아래 넷은 **질의를 하지 않는다.** 위에서 읽어 온 행을 세기만 한다 —
@@ -905,6 +922,8 @@ export async function getLeaguePlayerDetail(
        모양을 손보지 않는다 — `buildPlayerTraits()` 가 계약 모양 그대로 만들어 준다.
        계산이 실패했으면 `null` 이고 화면은 카드를 그리지 않는다 */
     traits: traits?.traits ?? null,
+    hex,
+    report_count: reportCount,
     playstyle: traits?.playstyle ?? null,
     teammates: record.teammates,
     weapon_stats: weaponStats,

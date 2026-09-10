@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Bebas_Neue, Cinzel, Noto_Sans_KR } from 'next/font/google'
+import { Bebas_Neue, Chakra_Petch, Cinzel, Noto_Sans_KR } from 'next/font/google'
 import { Providers } from './providers'
 import { EggBoot } from './_egg/EggBoot'
 import { AppShell } from '@/components/AppShell'
@@ -99,6 +99,13 @@ const fontCinzel = Cinzel({
  *   스택 뒤에 한글 글꼴을 받쳐 둔다 (`styles.css` 의 `--font-tier`) — 모르는 티어가
  *   `4티어` 로 떨어져도 글자가 깨지지 않는다.
  */
+/* ★v3 숫자·영문 글꼴★ — Chakra Petch (2026-09-10 · 선수·클랜 상세 v3 시안). 한글은 Noto Sans KR 이 받는다 */
+const fontChakra = Chakra_Petch({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-chakra',
+})
 const fontTier = Bebas_Neue({
   weight: '400',
   subsets: ['latin'],
@@ -151,7 +158,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ko"
-      className={`${fontBody.variable} ${fontCinzel.variable} ${fontTier.variable}`}
+      className={`${fontBody.variable} ${fontCinzel.variable} ${fontTier.variable} ${fontChakra.variable}`}
     >
       <body className="antialiased">
         <Providers>

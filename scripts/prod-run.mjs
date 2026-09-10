@@ -529,6 +529,11 @@ const ALLOWED = {
    * 게다가 육각형의 원재료인 배틀로그 원문은 **로컬에만 있어서**(D-236)
    * 운영에서 다시 접는 길도 없다. **안 뜨면 옛 값을 못 되살린다.**
    */
+  'player-hex-build': {
+    cli: ['nexon', 'player-hex-build'],
+    writes: true,
+    what: '선수 여섯 축 · 실력 점수를 배틀로그에서 세어 MatchPlayerHex 에 쌓고 LeaguePlayerHex 로 접는다 (2026-09-10 사장님 확정). 멱등 · 재개 가능',
+  },
   'clan-hex-v2-backup': {
     file: 'clanHexV2Backup',
     writes: false,

@@ -58,6 +58,8 @@ interface TierBucket {
   sniperGames: number
   sniperKill: number
   sniperDeath: number
+  /** MVP 판 수 (2026-09-10) */
+  mvp: number
   /** 키는 상대 `LeagueClan.id`. 이름은 나중에 한 번에 붙인다 */
   clans: Map<string, { games: number; win: number; lose: number }>
 }
@@ -75,6 +77,7 @@ const emptyBucket = (): TierBucket => ({
   sniperGames: 0,
   sniperKill: 0,
   sniperDeath: 0,
+  mvp: 0,
   clans: new Map(),
 })
 
@@ -158,6 +161,8 @@ async function tiersOf(
     kill: number | null
     death: number | null
     weapon: number | null
+    /** MVP 판 (2026-09-10) — 옛 경로는 안 넘길 수 있다 */
+    mvp?: boolean | null
     match: { winnerSide: string; redLeagueClanId: string; blueLeagueClanId: string }
   }[],
   divisionCount: number,
@@ -215,6 +220,7 @@ async function tiersOf(
     bucket.games += 1
     if (win) bucket.win += 1
     else bucket.lose += 1
+    if (row.mvp === true) bucket.mvp += 1
 
     /* ★킬뎃을 모르는 판은 분모에서 뺀다★ (D-149). 0킬 0데스로 세지 않는다 */
     if (row.kill !== null && row.death !== null) {
@@ -268,6 +274,7 @@ async function tiersOf(
       sniperGames: bucket.sniperGames,
       sniperKill: bucket.sniperKill,
       sniperDeath: bucket.sniperDeath,
+      mvp: bucket.mvp,
       clans,
     }
   })
@@ -284,6 +291,7 @@ async function tiersOf(
     rifle_kd: row.rifleKd,
     sniper_games: row.sniperGames,
     sniper_kd: row.sniperKd,
+    mvp: row.mvp,
     nemeses: row.nemeses.map((nemesis) => ({
       name: nemesis.name,
       slug: nemesis.slug,

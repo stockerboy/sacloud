@@ -270,6 +270,15 @@ export const PlayerRankRow = z.object({
    */
   weapon: RankWeapon.optional(),
   /**
+   * ★실력 점수★ (2026-09-10 · 사장님 확정) — `weapon=all` 개인랭킹은 이제 이 점수 순이다.
+   * 옛 래더 순 목록은 `getPlayerRanksByLadder` 로 남아 있다. 무기 탭·옛 소비자에는 없다(null).
+   */
+  score: Count.nullable().default(null),
+  /** 점수를 잰 무기 — 0 라플 · 1 스나 */
+  score_weapon: z.union([z.literal(0), z.literal(1)]).nullable().default(null),
+  /** 여섯 축 가중 백분위 */
+  hex: Percent.nullable().default(null),
+  /**
    * 그 무기로 뛴 경기에서 얻은 **래더 증감의 합** (`LeaguePlayerWeaponStat.ratingDelta`).
    * 무기 탭의 정렬 기준이자 표시값이다. 통합 랭킹에서는 `null`.
    */

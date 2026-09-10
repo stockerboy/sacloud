@@ -160,6 +160,29 @@ export const A_ATTACK_ZONE_LABELS_MISSING = [] as const
 export const B_LONG_ZONE_LABEL = 'BIRONG'
 
 /**
+ * ★A롱★ — 스나싸움(①)의 **A쪽 롱**. 사장님이 2026-09-10 에 정의했다.
+ *
+ * > "에이롱에서 죽었다 라고 하면 컨뒤 녹뒤 머리 홀정면과 ㄱ자 에서 죽은걸 에이롱에서
+ * >  죽었다고 하는건데" — 사용자, 2026-09-10
+ *
+ * 위 `A_ATTACK_ZONE_LABELS`(자리 축 ⑥ 의 A어택 4구역)과 **다르다** — 설대가 빠지고
+ * 홀정면·ㄱ자가 들어간다. 홀정면(`HOLJEONG`)은 같은 날 사장님이 새로 칠했다 (268칸 판).
+ */
+export const A_LONG_ZONE_LABELS = ['CONDWI', 'NOKDWI', 'MERI', 'HOLJEONG', 'GJA'] as const
+
+/**
+ * ★스나싸움을 어디서 세나★ (2026-09-10 · 사장님 확정)
+ *
+ * - `'long-only'` — **지금 쓰는 것.** A롱(5구역) 또는 비롱 안에서 **잡은 쪽과 죽은 쪽이
+ *   둘 다** 롱 안에 있을 때만 스나싸움이다. "둘다 그 구역 안에 있어야함" — 사용자.
+ *   구역 파일이 없으면 `sniperDuel` 은 `null`(못 잼)이다 — 맵 전체를 세어 놓고
+ *   스나싸움이라 부르지 않는다.
+ * - `'anywhere'` — 옛 판(clan-hex-v2.3 까지). 스나 대 스나 킬을 맵 어디서든 셌다.
+ *   지우지 않는다 (`CLAUDE.md` 1-4). 값만 바꾸면 옛 판으로 돌아간다.
+ */
+export const SNIPER_DUEL_ZONE_RULE: 'long-only' | 'anywhere' = 'long-only'
+
+/**
  * 이 모듈이 보는 칸 — 라운드 복원 · 진영 판정 · 킬 좌표 · 라운드 승패를 합친 것이다.
  *
  * `win_flag` 가 들어 있는 이유는 `wonRound` 를 안 넘겼을 때 `roundResultsOf()` 로
@@ -182,6 +205,8 @@ export interface ClanHexZones {
   aSide?: ZoneCells | null
   /** ① `B롱`(비롱) */
   bLong?: ZoneCells | null
+  /** ★A롱 5구역★ (`A_LONG_ZONE_LABELS`) — 스나싸움(①) 전용. 자리 축의 `aSide` 와 다르다 */
+  aLong?: ZoneCells | null
   /**
    * ⑥ 어택 성공으로 인정하는 구역.
    *
@@ -893,6 +918,18 @@ function tallyFor(input: {
   }
 
   const sniperDuel: SniperDuelTally = { rounds: input.roundNumbers.length, won: 0, lost: 0 }
+  /* ★스나싸움은 롱에서만★ — 잡은 쪽·죽은 쪽 좌표가 **둘 다** A롱 5구역 또는 비롱 안일 때만
+     센다 (2026-09-10 사장님 확정 · `SNIPER_DUEL_ZONE_RULE`). 옛 판은 맵 전체를 셌다 */
+  const longZones = [input.zones.aLong, input.zones.bLong].filter(
+    (zone): zone is ZoneCells => !!zone,
+  )
+  const duelZonesKnown = SNIPER_DUEL_ZONE_RULE === 'anywhere' || longZones.length > 0
+  const inLong = (x: number | null, y: number | null): boolean => {
+    if (SNIPER_DUEL_ZONE_RULE === 'anywhere') return true
+    if (x === null || y === null) return false
+    const spot = { x, y }
+    return longZones.some((zone) => inZone(zone, spot))
+  }
   const firstBlood: FirstBloodTally = { rounds: 0, won: 0, tiedRounds: 0 }
   const trade: TradeTally = { deaths: 0, within3: 0, within5: 0, within10: 0, sameRound: 0 }
 
@@ -906,6 +943,7 @@ function tallyFor(input: {
     for (const kill of kills) {
       if (input.weaponByPlayer.get(kill.killer) !== 1) continue
       if (input.weaponByPlayer.get(kill.victim) !== 1) continue
+      if (!inLong(kill.killerX, kill.killerY) || !inLong(kill.victimX, kill.victimY)) continue
       if (isOurs(kill.killer) && !isOurs(kill.victim)) sniperDuel.won += 1
       else if (!isOurs(kill.killer) && isOurs(kill.victim)) sniperDuel.lost += 1
     }
@@ -955,7 +993,7 @@ function tallyFor(input: {
 
   /* ① 은 **양쪽에 스나가 있어야** 성립한다. 한쪽만 있으면 0 이 「한 번도 못 잡았다」가 되고,
      그건 못 잰 것을 최악의 성적으로 만드는 짓이다 (D-106) */
-  tally.sniperDuel = sniperKnown && ourSnipers.size > 0 ? sniperDuel : null
+  tally.sniperDuel = sniperKnown && ourSnipers.size > 0 && duelZonesKnown ? sniperDuel : null
   /* ⑤⑥ 은 스나도 진영도 안 본다. 킬 이벤트만 있으면 센다 */
   tally.firstBlood = firstBlood.rounds > 0 || firstBlood.tiedRounds > 0 ? firstBlood : null
   tally.trade = trade.deaths > 0 ? trade : null

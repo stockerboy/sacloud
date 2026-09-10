@@ -54,6 +54,14 @@ if [ "$code" = "0" ]; then
   pnpm --filter @sacloud/worker nexon ipl-rank-apply --confirm >> "$LOG" 2>&1 || true
   rank_line=$(grep -E '^경기 [0-9,]+건 · 클랜 ' "$LOG" | tail -1)
   [ -n "$rank_line" ] && say "  IPL 랭킹 — ${rank_line}"
+
+  # ── ★육각형★ (2026-09-10 · 사장님 확정) — 새 경기의 배틀로그만 더 센다 (같은 판은 건너뜀)
+  #   클랜 육각(스나싸움 롱 규칙 · clan-hex-v2.4) → 선수 여섯 축 · 실력 점수 (player-hex-v1.0)
+  #   "한 판 하고 나면 세이브 순위가 오른다" 가 이 두 줄로 30분 안에 반영된다.
+  pnpm --filter @sacloud/worker nexon clan-hex-v2-build --confirm >> "$LOG" 2>&1 || true
+  pnpm --filter @sacloud/worker nexon player-hex-build --confirm >> "$LOG" 2>&1 || true
+  hex_line=$(grep -E '스나 [0-9]+ · 라플 [0-9]+ · 미측정' "$LOG" | tail -1)
+  [ -n "$hex_line" ] && say "  선수 육각 — ${hex_line}"
 fi
 
 if [ "$code" = "0" ]; then

@@ -17,6 +17,11 @@ html,
 body {
   background-color: var(--color-page);
 }
+/* ★v3 바닥★ — 시안의 방사형 그라데이션 (2026-09-10). 위가 살짝 밝고 아래로 갈수록 짙다 */
+body {
+  background-image: radial-gradient(1200px 700px at 50% -8%, #142238 0%, #0c1526 42%, #070d1c 100%);
+  background-attachment: fixed;
+}
 
 /* 드래그 선택. 진홍을 아주 옅게 깐다 */
 ::selection {

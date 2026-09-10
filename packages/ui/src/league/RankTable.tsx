@@ -505,8 +505,12 @@ export function PlayerRankTable({
         {columns.kd ? <div className={`${COL_STAT} ${kdHidden}`}>킬뎃</div> : null}
         {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
             머리글을 그대로 `래더` 로 두면 같은 자리에 다른 뜻의 숫자가 들어가 거짓말이 된다. */}
+        {/* ★통합 개인랭킹은 실력 점수 순★ (2026-09-10 · 사장님 확정). 점수가 온 줄이 하나라도 있으면
+            머리글도 «실력 점수» 다. 점수 표가 아직 비어 옛 래더 순으로 왔으면 «래더» 그대로다 */}
         {columns.rating ? (
-          <div className={COL_RATING}>{byWeapon ? '래더증감' : '래더'}</div>
+          <div className={COL_RATING}>
+            {byWeapon ? '래더증감' : (rows ?? []).some((row) => row.score !== null && row.score !== undefined) ? '실력 점수' : '래더'}
+          </div>
         ) : null}
       </div>
       <TableBody
@@ -643,7 +647,12 @@ export function PlayerRankTable({
               /* ★점수는 강조색(청록)으로 쓴다★ (2026-09-10 · 사장님이 고른 화면이 그렇다).
                  옛 모양은 `text-text-strong` 이었다 — 색만 바뀌고 자리·크기는 그대로다 */
               <div className={`${COL_RATING} ${NUM} text-accent`}>
-                {byWeapon ? formatRatingDelta(row.rating_delta ?? 0) : formatRating(row.rating)}
+                {byWeapon
+                  ? formatRatingDelta(row.rating_delta ?? 0)
+                  : formatRating(row.score ?? row.rating)}
+                {!byWeapon && row.score_weapon !== null && row.score_weapon !== undefined ? (
+                  <span className="ml-1 text-[10px] font-normal text-faint">{row.score_weapon === 1 ? '스나' : '라플'}</span>
+                ) : null}
               </div>
             ) : null}
           </div>

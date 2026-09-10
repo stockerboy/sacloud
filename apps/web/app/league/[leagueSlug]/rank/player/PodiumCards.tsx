@@ -151,11 +151,12 @@ function PodiumCard({
             <span className="num text-[22px] font-extralight leading-none text-[var(--v2-text-strong)]">
               {/* ★`점` 을 여기서 붙이지 않는다★ — 두 함수가 이미 붙여서 준다 */}
               {weapon === 'all'
-                ? formatRating(row.rating)
+                ? formatRating(row.score ?? row.rating)
                 : formatRatingDelta(row.rating_delta ?? 0)}
             </span>
             <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">
-              LADDER
+              {/* ★실력 점수★ (2026-09-10 · 사장님 확정) — 점수가 오면 SCORE, 아니면 옛 래더 */}
+              {weapon === 'all' && row.score !== null && row.score !== undefined ? 'SCORE' : 'LADDER'}
             </span>
           </span>
         ) : null}

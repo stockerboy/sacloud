@@ -1,128 +1,89 @@
 'use client'
 
-import { showsTier } from '@sacloud/contract'
-
-import { use } from 'react'
+/**
+ * ★클랜 층 레이아웃 v3★ (2026-09-10 · 사장님 시안 · "바로덮기")
+ *
+ *   필 탭 (기록실 / 클랜원 / 지난시즌) → 클랜 카드 (띠 + 클랜 테마 KPI + 성향 육각형) → 본문
+ *
+ * 옛 판은 `./LayoutLegacy.tsx` 에 ★한 글자도 안 바꾸고★ 있다 (`CLAUDE.md` 1-4).
+ * 되돌리려면 아래 `PROFILE_LAYOUT_V3` 를 false 로.
+ */
+import { use, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-/* ★2026-09-07 (Part 10 ⑦)★ — 머리띠를 v2 클랜 카드로 갈아끼웠다.
-   옛 판(`LeagueClanRecordHeader`)은 ★그대로 있다★ — 되돌리려면 이 import 한 줄 */
-import {
-  ClanIdentityCard,
-  ProfileEmpty,
-  ProfileNav,
-  ProfileSkeleton,
-  RelativeTime,
-  clanKpis,
-  useSeasonLabel,
-} from '@sacloud/ui'
-import { leagueScreen } from '@sacloud/contract'
+import { ClanCardV3, GhostButton, PillTabs, ProfileEmpty, ProfileSkeleton, RelativeTime, clanThemeOf, useSeasonLabel } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useRefresh } from '@/lib/useRefresh'
 import { leagueClanTabs } from '@/lib/profileTabs'
+import LegacyLayout from './LayoutLegacy'
 
-/**
- * 리그 클랜 화면 공통 — 헤더 + 탭.
- *
- * 원본은 `기록실` `클랜원` `지난시즌` 세 화면 모두에서 같은 헤더와 탭을 보여 준다.
- * 페이지마다 따로 그리면 세 곳이 갈라지므로 레이아웃으로 올린다
- * (전역 클랜 화면 `/clan/{slug}/layout.tsx` 와 같은 방식).
- */
-/*
- * ★로딩과 「없음」을 구분한다★ (2026-09-03 · O-008 ④ · O-033 ② 와 같은 처방).
- *
- * 전에는 `data ? 머리띠 : 스켈레톤` 하나였다. 없는 주소로 들어가면 `data` 가 영영
- * 안 채워지고 **화면이 영원히 로딩 중**으로 남는다. 운영에서 실제로 그랬다 —
- * 「없습니다」도 없는 **빈 상자**였다.
- *
- * ⚠ `isPending` 하나로는 모자란다 — **멈춰 있는 것도 참**이다.
- *   연결이 끊겨 재시도가 `paused` 로 서면 `isPending` 이 영영 참이다.
- *   그래서 **「지금 실제로 받아오는 중」일 때만** 스켈레톤을 그린다.
- */
-export default function LeagueClanLayout({
-  children,
-  params,
-}: {
+const PROFILE_LAYOUT_V3: boolean = true
+
+export default function LeagueClanLayout(props: {
   children: React.ReactNode
   params: Promise<{ leagueSlug: string; clanSlug: string }>
 }) {
+  if (!PROFILE_LAYOUT_V3) return <LegacyLayout {...props} />
+  return <LayoutV3 {...props} />
+}
+
+function LayoutV3({ children, params }: { children: React.ReactNode; params: Promise<{ leagueSlug: string; clanSlug: string }> }) {
   const { leagueSlug, clanSlug } = use(params)
   const pathname = usePathname() ?? ''
   const ready = useApiReady()
-
   const detail = useQuery({
     queryKey: ['league', leagueSlug, 'clan', clanSlug, 'show'],
     queryFn: () => apiGet('leagueClanShow', { params: { leagueSlug, clanSlug } }),
     enabled: ready,
   })
-
-  /* 헤더의 `최근갱신` 은 리그 참가 정보가 아니라 **클랜 자체**의 값이라
-     `leagueClanShow` 에 없다. 전역 클랜 응답에서 가져온다 (계약은 그대로 둔다). */
   const clan = useQuery({
     queryKey: ['clan', clanSlug],
     queryFn: () => apiGet('clanShow', { params: { clanSlug } }),
     enabled: ready,
   })
-
   const refresh = useRefresh('clanRenew', { clanSlug })
-  /* 카드 안 워터마크 — 지금 시즌 (`Cloud 0`). 모르면 안 그린다 */
   const season = useSeasonLabel()
-  /* 최근갱신 시각 — 옛 머리띠가 쓰던 것과 ★같은 우선순위★ 다 */
   const renewedAt = refresh.renewedAt ?? clan.data?.data.renewed_at ?? null
   const data = detail.data?.data
-
+  const [tierIndex, setTierIndex] = useState(0)
+  /* 구간 승률 — 상대전적을 상대 티어로 접는다. 계약에 있는 값만 더한다 */
+  const tierWins = useMemo(() => {
+    if (!data) return []
+    const by = new Map<number, { division: number; win: number; lose: number }>()
+    for (const r of data.head_to_head) {
+      if (r.division === null) continue
+      const acc = by.get(r.division) ?? { division: r.division, win: 0, lose: 0 }
+      acc.win += r.win
+      acc.lose += r.lose
+      by.set(r.division, acc)
+    }
+    return [...by.values()].sort((a, b) => a.division - b.division)
+  }, [data])
   return (
     <>
       {data ? (
         <div className="pc-container">
-          <ClanIdentityCard
-            leagueName={data.league.name}
-            name={data.clan.name}
+          <PillTabs tabs={leagueClanTabs(leagueSlug, clanSlug)} current={pathname} top={22} />
+          <ClanCardV3
+            data={data}
             infoHref={`/clan/${clanSlug}`}
-            clan={data.clan}
-            division={data.division}
-            /* 티어를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 단일리그처럼 넘긴다 —
-               카드의 «divisionCount 가 1 이면 티어를 안 붙인다» 규칙을 그대로 탄다 */
-            divisionCount={showsTier(leagueSlug) ? data.league.division_count : 1}
-            rank={data.rank}
-            watermark={season}
-            /* 최근갱신 — 옛 머리띠와 ★같은 값·같은 말★ 이다 */
+            seasonLabel={`SEASON ${(season ?? 'CLOUD 0').toUpperCase()}`}
+            memberCount={data.member_count ?? null}
             renewedNote={
-              <span className="flex items-center gap-2">
+              <span style={{ display: 'inline-flex', gap: 4 }}>
                 <span>최근갱신</span>
-                {refresh.state === 'failed' ? (
-                  <span className="text-[var(--v2-red)]">갱신 실패</span>
-                ) : renewedAt === null ? (
-                  <span className="text-[var(--v2-text-ghost)]">기록 없음</span>
-                ) : (
-                  <span className="text-[var(--v2-text)]">
-                    <RelativeTime value={renewedAt} />
-                  </span>
-                )}
+                {refresh.state === 'failed' ? <span style={{ color: '#ff5a63' }}>갱신 실패</span> : renewedAt === null ? <span>기록 없음</span> : <span style={{ color: '#a4b0c8' }}><RelativeTime value={renewedAt} /></span>}
               </span>
             }
-            action={
-              <button
-                type="button"
-                disabled={refresh.state === 'pending'}
-                onClick={refresh.run}
-                className="border border-[var(--v2-accent)] bg-[var(--v2-chip)] px-[18px] py-[9px] text-[12.5px] text-[var(--v2-accent)] disabled:opacity-50"
-              >
+            renewAction={
+              <GhostButton onClick={refresh.run} disabled={refresh.state === 'pending'} theme={clanThemeOf(data.clan.slug)}>
                 {refresh.state === 'pending' ? '갱신중' : '전적갱신'}
-              </button>
+              </GhostButton>
             }
-            kpis={clanKpis({
-              rating: data.rating,
-              win: data.win,
-              lose: data.lose,
-              winRate: data.win_rate,
-              rank: data.rank,
-              rankCount: data.rank_count,
-              showsRating: leagueScreen(leagueSlug).clanColumns.rating,
-            })}
-            /* ★한 판도 안 뛰었으면 0승 0패라고 하지 않는다★ — 왜 비었는지 말한다 */
-            kpiNote={data.win + data.lose === 0 ? `${season ?? '이번 시즌'} 경기 없음` : null}
+            tierWins={tierWins}
+            tierIndex={tierIndex}
+            onTierStep={(dir) => setTierIndex((i) => (tierWins.length === 0 ? 0 : (i + dir + tierWins.length) % tierWins.length))}
           />
         </div>
       ) : detail.isPending && detail.fetchStatus === 'fetching' ? (
@@ -134,7 +95,6 @@ export default function LeagueClanLayout({
           <ProfileEmpty message="클랜을 찾을 수 없습니다." />
         </div>
       )}
-      <ProfileNav tabs={leagueClanTabs(leagueSlug, clanSlug)} current={pathname} />
       {children}
     </>
   )

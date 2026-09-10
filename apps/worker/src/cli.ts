@@ -102,6 +102,7 @@ import { buildRoundProfiles } from './jobs/roundBuild.js'
 import { buildClanRoundProfiles } from './jobs/clanRoundBuild.js'
 /** 클랜 육각형 V2 (D-217 · D-235) — 스나싸움·소수싸움·세이브·템포·B어택·A어택. 옛 판과 따로 산다 */
 import { buildClanHexV2 } from './jobs/clanHexV2Build.js'
+import { buildPlayerHex } from './jobs/playerHexBuild.js'
 import {
   buildClanHexV2Summary,
   type ClanHexV2SummaryResult,
@@ -3367,6 +3368,27 @@ async function main(): Promise<number> {
      * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 멱등이고, 다시 돌리면 이어서 돈다.
      * **옛 판(`clan-round-build`)과 따로 산다 — 둘을 한 화면에 섞지 않는다.**
      */
+    /* ★선수 육각형 · 실력 점수★ (2026-09-10 · 사장님 확정) — 재료를 쌓고 리그별로 접는다 */
+    case 'player-hex-build': {
+      const result = await buildPlayerHex({
+        confirm: boolFlag(args, 'confirm'),
+        rebuild: boolFlag(args, 'rebuild'),
+        leagueSlug: stringFlag(args, 'league'),
+      })
+      table([
+        {
+          리그: result.leagues.join('+'),
+          '센 경기': result.matches,
+          '건너뜀(같은 판)': result.matchesSkipped,
+          '킬(겹침 뺌)': result.events,
+          '경기·선수 행': result.matchRows,
+          '선수 줄': result.playerRows,
+          '구역': result.zones.file === null ? '(없음 · 스나싸움 null)' : `A롱 ${result.zones.aLong}칸 · 비롱 ${result.zones.bLong}칸`,
+        },
+      ])
+      table(Object.entries(result.pools).map(([league, p]) => ({ 리그: league, 스나: p.sniper, 라플: p.rifle, 미측정: p.unmeasured })))
+      return 0
+    }
     case 'clan-hex-v2-build': {
       const result = await buildClanHexV2({
         confirm: boolFlag(args, 'confirm'),

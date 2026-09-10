@@ -1,4 +1,5 @@
-import LeaguePlayerRecordPage from './LeaguePlayerRecordScreen'
+/* ★v3 로 덮었다★ (2026-09-10 · 사장님 "바로덮기"). 옛 판은 './LeaguePlayerRecordScreen' 에 그대로 있다 */
+import LeaguePlayerRecordPage from './LeaguePlayerRecordScreenV3'
 
 /**
  * `/league/{leagueSlug}/player/{playerId}` **껍데기를 굳힌다** (2026-09-03 · O-016).

@@ -834,6 +834,9 @@ export function getPlayerRanks(leagueId: string, cursor: string | null, size: nu
         rating: leaguePlayer.rating,
         weapon: 'all',
         rating_delta: null,
+        hex: null,
+        score: null,
+        score_weapon: null,
       }
     })
     .filter((entry): entry is PlayerRankRow => Boolean(entry))
@@ -891,6 +894,9 @@ export function getPlayerRanksByWeapon(
       rating: leaguePlayer.rating,
       weapon,
       rating_delta: bucket.ratingDelta,
+      hex: null,
+      score: null,
+      score_weapon: null,
     }))
 
   return paginate(rows, cursor, size, (item) => item.league_player_id)
@@ -947,6 +953,9 @@ export function getFormTop(leagueId: string, weapon: RankWeapon): FormTop | null
           player: { id: player.id, name: player.name },
           clan: leagueClan ? clanSummaryOf(leagueClan.clanId) : null,
           rating_delta: value.delta,
+          hex: null,
+          score: null,
+          score_weapon: null,
           games: value.games,
         },
       ]
@@ -1554,6 +1563,7 @@ function buildTierBreakdownRows(
     rifle_kd: row.rifleKd,
     sniper_games: row.sniperGames,
     sniper_kd: row.sniperKd,
+    mvp: row.mvp,
     nemeses: row.nemeses.map((nemesis) => ({
       name: nemesis.name,
       slug: nemesis.slug,
@@ -1878,6 +1888,9 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
        픽스처에 가짜 성향값을 지어내지 않는다 */
     traits: buildTraits(league.id, playerId),
     playstyle: buildPlayerPlaystyle(),
+    /* 여섯 축 · 신고 (2026-09-10) — 목업은 아직 접힌 줄이 없다 */
+    hex: null,
+    report_count: 0,
     teammates: buildTeammates(matches, leaguePlayer.leagueClanId, playerId),
     weapon_stats: weaponStatsOf(leaguePlayer.id),
   }
@@ -2496,6 +2509,7 @@ export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueC
     hexagon: buildClanHexagonOfMock(leagueClan),
     /* 클랜 육각형 **V2** (D-217 · D-235). 옛 `hexagon` 은 그대로 둔다 (Q9 · 10-4) */
     hexagon_v2: buildClanHexV2OfMock(leagueClan),
+    head_to_head: [],
     /* 클랜원 정리 (SITE_SPEC_V2 5-2 · D-199). 기존 클랜원 목록은 그대로 둔다 */
     roster: buildClanRoster(leagueClan),
   }
@@ -2531,6 +2545,9 @@ export function getLeagueClanPlayers(
         kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
         kill_per_match: killPerMatch(leaguePlayer.kill, matchCount),
         rating: leaguePlayer.rating,
+        hex: null,
+        score: null,
+        score_weapon: null,
       }
     })
     .filter((entry): entry is PlayerRankRow => Boolean(entry))

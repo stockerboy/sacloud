@@ -1,4 +1,5 @@
-import LeagueClanRecordPage from './LeagueClanRecordScreen'
+/* ★v3 로 덮었다★ (2026-09-10 · 사장님 "바로덮기"). 옛 판은 './LeagueClanRecordScreen' 에 그대로 있다 */
+import LeagueClanRecordPage from './LeagueClanRecordScreenV3'
 
 /**
  * `/league/{leagueSlug}/clan/{clanSlug}` **껍데기를 굳힌다** (2026-09-03 · O-016).

@@ -42,21 +42,24 @@ describe('loadClanHexZones — 실제 파일', () => {
     expect(load.zones.attackLabels).toHaveLength(4)
   })
 
-  /* ★ 녹뒤 6칸 · 머리 6칸은 사용자가 「맞다」고 확정했다. 작다고 의심하거나 넓히지 않는다 */
-  it('`녹뒤` · `머리` 는 각각 6칸이다 — 작아도 맞는 값이다', () => {
+  /* ★ 녹뒤 6칸 · 머리 6칸은 사용자가 「맞다」고 확정했다. 작다고 의심하거나 넓히지 않는다
+     ⚠ 정정 2026-09-10 — 사장님이 홀정면을 칠하며 머리를 9칸으로 손봤다 (268칸 판 ·
+     `docs/archive/style-zones_2026-08-29_208cells.json` 이 옛 208칸 판이다). 녹뒤는 그대로 6칸 */
+  it('`녹뒤` 6칸 · `머리` 9칸이다 — 작아도 맞는 값이다', () => {
     const load = loadClanHexZones(REAL_FILE)
     expect(load.cells['NOKDWI']).toBe(6)
-    expect(load.cells['MERI']).toBe(6)
-    expect(load.cells['CONDWI']).toBe(19)
-    expect(load.cells['SEOLDAE']).toBe(15)
+    expect(load.cells['MERI']).toBe(9)
+    expect(load.cells['CONDWI']).toBe(23) /* ⚠ 정정 2026-09-10 — 268칸 판 (옛 19) */
+    expect(load.cells['SEOLDAE']).toBe(23) /* ⚠ 정정 2026-09-10 — 268칸 판 (옛 15) */
   })
 
   it('①`A쪽` 과 ⑥ 은 같은 집합이고, `B롱`(비롱)은 따로다', () => {
     const load = loadClanHexZones(REAL_FILE)
     /* 19 + 15 + 6 + 6 */
-    expect(load.zones.attack?.cells).toHaveLength(46)
-    expect(load.zones.aSide?.cells).toHaveLength(46)
-    expect(load.zones.bLong?.cells).toHaveLength(97)
+    /* ⚠ 정정 2026-09-10 — 268칸 판에서 A쪽 4구역은 61칸이다 (옛 208칸 판은 46칸) */
+    expect(load.zones.attack?.cells).toHaveLength(61)
+    expect(load.zones.aSide?.cells).toHaveLength(61)
+    expect(load.zones.bLong?.cells).toHaveLength(98) /* ⚠ 정정 2026-09-10 — 268칸 판 (옛 97) */
     expect(B_LONG_ZONE_LABEL).toBe('BIRONG')
   })
 

@@ -142,7 +142,8 @@ export const TRAIT_AXIS_LABEL: Record<
   duel: { sniper: '스나싸움', rifle: '샷싸움' },
   carry: { sniper: '캐리력', rifle: '캐리력' },
   /** 4번 축 — **라운드의 첫 킬을 딴 비율** (2026-08-31 사용자 확정 · D-214) */
-  opening: { sniper: '기회창출', rifle: '기회창출' },
+  /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름은 `기회창출` 이었다 */
+  opening: { sniper: '선짤', rifle: '선짤' },
   /** 빈 자리였던 판 (D-206). 이름이 곧 상태다 — 재료가 없는 게 아니라 **안 정한 것** */
   undecided: { sniper: '미정', rifle: '미정' },
   /** 옛 4번 축 (D-206). 육각형에서는 내려왔지만 이름은 남긴다 */
