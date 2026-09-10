@@ -19,12 +19,14 @@ import { rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
 import { V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
+import { TrendChartV3, type TrendMode } from './TrendChartV3'
 
 const halfStyle: CSSProperties = { marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 16, alignItems: 'stretch' }
 const halfCardStyle: CSSProperties = { display: 'flex', flexDirection: 'column', ...cardStyle }
 const statRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr)', alignItems: 'baseline', gap: 12, padding: '9px 0', borderTop: `1px solid ${V3.rowDivider2}` }
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '52px 124px minmax(0,1fr) minmax(0,150px) 62px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }
 const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 104px 74px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
+const playerRowSavesStyle: CSSProperties = { ...playerRowStyle, gridTemplateColumns: 'minmax(0,1fr) 104px 60px 74px' }
 
 export interface PlayerDetailV3Props {
   data: LeaguePlayerDetail
@@ -53,6 +55,8 @@ function TierRecordCard({ data, report }: { data: LeaguePlayerDetail; report: Pl
   const hasData = games >= 10
   const isTop = sel?.tier === 1 && data.league.category === 'independent'
   const mvpRate = sel && games > 0 ? (sel.mvp / games) * 100 : null
+  /* MVP 자료가 있는 리그인가 — 시즌 전체 MVP 가 0 이고 판이 있으면 원본에 MVP 가 없는 것 (IPL 병영 로그). 0 으로 찍지 않는다 */
+  const mvpKnown = data.mvp_count > 0 || rows.every((r) => r.games === 0)
   const tieredLeague = data.league.division_count >= 2
   return (
     <div style={halfCardStyle}>
@@ -96,8 +100,8 @@ function TierRecordCard({ data, report }: { data: LeaguePlayerDetail; report: Pl
           <StatRow label={isTop ? '킬뎃' : '통합 킬뎃'}>
             {isTop ? (
               <>
-                <Pair tag="스나" sub={`${sel.sniper_games}판`} value={pct1(sel.sniper_kd)} color={sel.sniper_kd === null ? V3.textMuted : statColor(sel.sniper_kd)} small />
-                <Pair tag="라플" sub={`${sel.rifle_games}판`} value={pct1(sel.rifle_kd)} color={sel.rifle_kd === null ? V3.textMuted : statColor(sel.rifle_kd)} small />
+                <Pair tag="스나" sub={`${sel.sniper_kill}/${sel.sniper_death}`} value={pct1(sel.sniper_kd)} color={sel.sniper_kd === null ? V3.textMuted : statColor(sel.sniper_kd)} small />
+                <Pair tag="라플" sub={`${sel.rifle_kill}/${sel.rifle_death}`} value={pct1(sel.rifle_kd)} color={sel.rifle_kd === null ? V3.textMuted : statColor(sel.rifle_kd)} small />
               </>
             ) : (
               <Pair sub={`${sel.known_games}판 기준`} value={pct1(sel.kd)} color={sel.kd === null ? V3.textMuted : statColor(sel.kd)} />
@@ -109,17 +113,28 @@ function TierRecordCard({ data, report }: { data: LeaguePlayerDetail; report: Pl
       )}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'flex-end', padding: '0 18px 16px' }}>
         <StatRow label="판킬">
-          <Pair sub="시즌 전체" value={data.kill_per_match.toFixed(1)} color={V3.text} />
+          {sel && (sel.sniper_kill_per_match !== null || sel.rifle_kill_per_match !== null) ? (
+            <>
+              <Pair tag="스나" sub="" value={sel.sniper_kill_per_match === null ? '-' : sel.sniper_kill_per_match.toFixed(1)} color={V3.text} small />
+              <Pair tag="라플" sub="" value={sel.rifle_kill_per_match === null ? '-' : sel.rifle_kill_per_match.toFixed(1)} color={V3.text} small />
+            </>
+          ) : (
+            <Pair sub="시즌 전체" value={data.kill_per_match.toFixed(1)} color={V3.text} />
+          )}
         </StatRow>
         <StatRow label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 10.5, color: V3.gold }}>★</span><span>MVP</span></span>}>
-          <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 9, minWidth: 0 }}>
-            <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{fmt(games)}판 중</span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 17, fontWeight: 700, color: V3.gold }}>{sel?.mvp ?? 0}</span>
-              <span style={{ fontSize: 10.5, fontWeight: 600, color: '#c9a94a' }}>회</span>
+          {mvpKnown ? (
+            <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 9, minWidth: 0 }}>
+              <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{fmt(games)}판 중</span>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 17, fontWeight: 700, color: V3.gold }}>{sel?.mvp ?? 0}</span>
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: '#c9a94a' }}>회</span>
+              </span>
+              <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap' }}>{pct1(mvpRate)}</span>
             </span>
-            <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap' }}>{pct1(mvpRate)}</span>
-          </span>
+          ) : (
+            <span style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>이 리그 자료에 MVP 가 없습니다</span>
+          )}
         </StatRow>
         <ReportButton report={report} />
       </div>
@@ -361,7 +376,34 @@ function weekPoints(points: readonly WeeklyPoint[]): TrendPoint[] {
     .map((p) => ({ label: p.start.slice(5).replace('-', '/'), winRate: p.win_rate, kd: p.kd }))
 }
 
+/** ⚠ 옛 추이 카드(`TrendChart` · 최근 3일/주간)는 아래에 그대로 있다. 2026-09-10 부터는 사장님 지시서대로 `TrendChartV3` 가 그린다 */
 function TrendCard({ data }: { data: LeaguePlayerDetail }) {
+  const [mode, setMode] = useState<TrendMode>('day')
+  const today = data.trend.find((d) => d.today) ?? null
+  return (
+    <Card style={{ marginTop: 16 }}>
+      <CardHead title="승률 및 킬뎃 추이" ribbon={V3.red} right={
+        <span style={{ display: 'flex', gap: 5 }}>
+          <span onClick={() => setMode('day')} style={chipStyle(mode === 'day')}>DAY</span>
+          <span onClick={() => setMode('cum')} style={chipStyle(mode === 'cum')}>누적</span>
+        </span>
+      }>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}><span style={{ width: 15, height: 2, background: '#ff5a63' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>킬뎃</span></span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 15, height: 2, background: '#7fa9ff' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>승률</span></span>
+        <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>매일 새벽 6시에 찍힙니다 · 2판 미만인 날은 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
+      </CardHead>
+      <TrendChartV3
+        days={data.trend}
+        mode={mode}
+        markSlug={data.clan?.slug ?? null}
+        winLabel={mode === 'day' && today ? `오늘 ${today.win}승 ${today.lose}패` : `${data.win}승 ${data.lose}패`}
+        kdLabel={mode === 'day' && today ? `오늘 ${today.kill}킬 ${today.death}데스` : data.kill !== null && data.death !== null ? `${fmt(data.kill)}킬 ${fmt(data.death)}데스` : ''}
+      />
+    </Card>
+  )
+}
+
+function TrendCardLegacy({ data }: { data: LeaguePlayerDetail }) {
   const [range, setRange] = useState<'DAY' | 'WEEK'>('DAY')
   const points = useMemo(() => (range === 'DAY' ? dayPoints(data.recent_days) : weekPoints(data.weekly?.points ?? [])), [range, data])
   return (
@@ -387,15 +429,16 @@ function TrendCard({ data }: { data: LeaguePlayerDetail }) {
     </Card>
   )
 }
+export { TrendCardLegacy }
 
 /* ── 최근 경기 · 스코어보드 ───────────────────────────────────── */
 
-function ScoreRow({ row, me, mvp, weaponKnown }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean }) {
+function ScoreRow({ row, me, mvp, weaponKnown, showSaves }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; showSaves: boolean }) {
   const sniper = weaponKnown && row.weapon === 1
   const kd = row.kd_rate
   const clan = row.match_time_clan
   return (
-    <div style={{ ...playerRowStyle, background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #8ff0ff, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
+    <div style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #8ff0ff, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
       {sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
       {me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#8ff0ff', opacity: 0.14, WebkitTextStroke: '2.2px #8ff0ff', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -404,13 +447,28 @@ function ScoreRow({ row, me, mvp, weaponKnown }: { row: MatchPlayerStat; me: boo
         {mvp ? <MvpBadge size={8.5} /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
+      {showSaves ? (
+        <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves ?? 0}회</span>
+      ) : null}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', color: kd === null ? V3.textGhost : statColor(kd) }}>{pct1(kd)}</span>
     </div>
   )
 }
 
+/** 스코어보드의 «우리 팀» — API 가 준 `viewer_side`. 없으면 명단의 소속으로 찾고, 그것도 없으면 red (2026-09-10 사장님 지적 — 팀이 뒤바뀌던 버그) */
+export function viewerSideOf(detail: MatchDetail): 'red' | 'blue' {
+  if (detail.viewer_side) return detail.viewer_side
+  const ours = detail.league_clan.league_clan_id
+  const redOurs = detail.red_stats.filter((s) => s.match_time_clan?.league_clan_id === ours).length
+  const blueOurs = detail.blue_stats.filter((s) => s.match_time_clan?.league_clan_id === ours).length
+  if (redOurs !== blueOurs) return redOurs > blueOurs ? 'red' : 'blue'
+  return detail.player_stat?.side ?? 'red'
+}
+
 function Scoreboard({ detail, me, leagueCategory }: { detail: MatchDetail; me: string; leagueCategory: string }) {
-  const mySide = detail.player_stat?.side ?? 'red'
+  const mySide = viewerSideOf(detail)
+  const showSaves = [...detail.red_stats, ...detail.blue_stats].some((s) => s.saves !== null)
+  const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
   const teams = (['red', 'blue'] as const).map((side) => {
     const stats = side === 'red' ? detail.red_stats : detail.blue_stats
     const ours = side === mySide
@@ -429,14 +487,16 @@ function Scoreboard({ detail, me, leagueCategory }: { detail: MatchDetail; me: s
             <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} />
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
             <div style={spacerStyle} />
-            <span style={{ fontSize: 11, color: '#4e5b76', whiteSpace: 'nowrap' }}>{t.side === 'red' ? 'RED' : 'BLUE'}</span>
+            <span style={{ fontSize: 11, color: '#4e5b76', whiteSpace: 'nowrap' }}>
+              {roundsOf(t.side) !== null && roundsOf(t.side === 'red' ? 'blue' : 'red') !== null ? `${roundsOf(t.side)}:${roundsOf(t.side === 'red' ? 'blue' : 'red')}` : t.side.toUpperCase()}
+            </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 104px 74px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em' }}>
-            <span>플레이어</span><span>K / D / A</span><span style={{ textAlign: 'right' }}>킬뎃</span>
+          <div style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 104px 60px 74px' : 'minmax(0,1fr) 104px 74px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em' }}>
+            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>킬뎃</span>
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => (
-            <ScoreRow key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} />
+            <ScoreRow key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} showSaves={showSaves} />
           ))}
         </div>
       ))}
@@ -455,9 +515,11 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
         const my = m.player_stat
         const mvpIsMe = m.mvp_player_id !== null && m.mvp_player_id === data.player.id
         const detail = expanded[m.id]
+        /* 명단이 아직 안 들어온 경기 — 펼치지 않는다 (2026-09-10 사장님: «킬데스 수집중») */
+        const pending = m.red.length === 0 && m.blue.length === 0
         return (
-          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : V3.card }}>
-            <div onClick={() => { setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={matchRowStyle}>
+          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : V3.card, opacity: pending ? 0.75 : 1 }}>
+            <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-match-row">
               <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
               <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                 <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
@@ -471,15 +533,15 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                   <MarkCircle clan={m.opponent.clan} size={20} />
                   <span style={{ fontSize: 12.5, color: '#9aa6bf', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
                 </span>
-                <TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} />
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}><span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.08em' }}>vs</span><TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} /></span>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, minWidth: 0, overflow: 'hidden' }}>
+              <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, minWidth: 0, overflow: 'hidden' }}>
                 {mvpIsMe ? <MvpBadge /> : null}
-                {my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}
+                {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}
                 {my && my.kd_rate !== null ? <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>{my.kd_rate.toFixed(1)}%</span> : null}
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: isOpen ? '#a9c3ff' : V3.textGhost }}>
-                상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
+                {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
               </span>
             </div>
             {isOpen ? (

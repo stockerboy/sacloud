@@ -43,9 +43,9 @@ export function ClanBackdrop({ theme, markSlug, watermark }: { theme: ClanTheme;
           style={{ position: 'absolute', left: '-3%', top: '-10%', width: '34%', height: '130%', backgroundImage: `url(${fitMarkUrl(markSlug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'left center', opacity: 0.11, pointerEvents: 'none' }}
         />
       ) : null}
-      <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '62%', background: `linear-gradient(180deg,${theme.light}29,${theme.main}0f 60%,transparent)`, pointerEvents: 'none' }} />
-      <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '44%', background: `linear-gradient(0deg,${theme.deep}2e,transparent)`, pointerEvents: 'none' }} />
-      <span aria-hidden style={{ position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)', fontSize: 34, fontWeight: 900, color: '#dff2ff', opacity: 0.12, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+      <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '62%', background: `linear-gradient(180deg,${theme.light}14,${theme.main}08 60%,transparent)`, pointerEvents: 'none' }} />
+      <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '44%', background: `linear-gradient(0deg,${theme.deep}1a,transparent)`, pointerEvents: 'none' }} />
+      <span aria-hidden className="v3-watermark" style={{ position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)', fontSize: 34, fontWeight: 900, color: '#dff2ff', opacity: 0.12, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
         {watermark}
       </span>
     </>
@@ -55,7 +55,7 @@ export function ClanBackdrop({ theme, markSlug, watermark }: { theme: ClanTheme;
 /** 리그 이름 중앙 열 — in-flow (absolute 로 두면 좌우와 겹친다 · 시안 함정 1번) */
 export function LeagueCenter({ name, season }: { name: string; season: string }) {
   return (
-    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, pointerEvents: 'none' }}>
+    <span className="v3-center" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, pointerEvents: 'none' }}>
       <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ width: 26, height: 1, background: 'linear-gradient(90deg,rgba(91,141,255,0),#5b8dff)' }} />
         <span style={{ fontSize: 26, fontWeight: 900, letterSpacing: '.2em', color: '#fff', lineHeight: 1, textShadow: '0 0 18px rgba(91,141,255,.55),0 0 40px rgba(91,141,255,.22)', whiteSpace: 'nowrap' }}>
@@ -116,7 +116,7 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
   ]
   return (
     <section style={{ ...cardStyle, marginTop: 22, borderTop: `2px solid ${theme.edge}` }}>
-      <div style={bandStyle}>
+      <div style={bandStyle} className="v3-band">
         <span style={{ display: 'flex', alignItems: 'center', gap: 13, minWidth: 0 }}>
           <MarkCircle clan={data.clan} size={46} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
@@ -150,7 +150,7 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
           <GhostButton href={infoHref}>기본정보</GhostButton>
         </span>
       </div>
-      <div style={kpiRowStyle}>
+      <div style={kpiRowStyle} className="v3-kpi">
         <ClanBackdrop theme={theme} markSlug={data.clan?.slug ?? null} watermark="Cloud 0" />
         {kpis.map((k) => (
           <div key={k.label} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: '15px 20px', borderRight: `1px solid ${V3.rowDivider}`, minWidth: 0 }}>

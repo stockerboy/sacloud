@@ -78,6 +78,8 @@ export const MatchPlayerStat = z.object({
   win: z.boolean(),
   /** MVP. 모르면 `null` (D-034) */
   mvp: z.boolean().nullable(),
+  /** 이 경기에서 혼자 남아 이긴 라운드 수 (세이브) — 배틀로그가 없으면 null (2026-09-10) */
+  saves: Count.nullable().default(null),
   /**
    * **그 경기를 했을 당시** 소속 클랜 (D-131).
    *
@@ -243,6 +245,11 @@ export type MatchClanHexagonV2 = z.infer<typeof MatchClanHexagonV2>
 export const MatchDetail = MatchListItem.extend({
   red_stats: z.array(MatchPlayerStat),
   blue_stats: z.array(MatchPlayerStat),
+  /** 이 응답을 요청한 클랜(`league_clan`)이 선 진영 — 스코어보드가 «우리 팀» 을 이걸로 잡는다 (2026-09-10) */
+  viewer_side: z.enum(['red', 'blue']).nullable().default(null),
+  /** 라운드 스코어 — 배틀로그의 라운드 승패로 센 것. 없으면 null (지어내지 않는다) */
+  red_rounds: Count.nullable().default(null),
+  blue_rounds: Count.nullable().default(null),
   /**
    * 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 준다 (D-235 Q7).
    *

@@ -57,7 +57,9 @@ export function LeagueTopBarV2({ leagueSlug, leagueName }: LeagueTopBarV2Props) 
       className={`${v2Class(leagueSlug, 'v2-tabbar')} fixed top-nav z-30 w-full`}
     >
       {/* --- PC: 한 줄. 리그명 + 탭 --- */}
-      <div className="v2-container v2-tabbar__inner max-md:hidden">
+      {/* ⚠ 2026-09-10 정정 — `max-md:hidden` 은 `.sac-v2 .v2-tabbar__inner{display:flex}` (무계층) 에
+          져서 폰에서 PC 줄까지 보였다. 가리는 일은 tokens.css 의 `v2-tabbar__pc` 미디어 규칙이 한다 */}
+      <div className="v2-container v2-tabbar__inner v2-tabbar__pc">
         <Link href={homeHref} className="v2-tabbar__league">
           <LeagueLabel name={leagueName} />
         </Link>
@@ -73,7 +75,7 @@ export function LeagueTopBarV2({ leagueSlug, leagueName }: LeagueTopBarV2Props) 
       </div>
 
       {/* --- 모바일: 두 줄 (48 + 54 = 102 = `--spacing-leaguebar-m`) --- */}
-      <div className="md:hidden">
+      <div className="v2-tabbar__m">
         <div className="flex h-12 items-center border-b border-[var(--v2-row-divider)] px-6">
           <span className="truncate text-[15px] font-bold text-[var(--v2-text-strong)]">
             <LeagueLabel name={leagueName} />

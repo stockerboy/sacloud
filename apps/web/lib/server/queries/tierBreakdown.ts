@@ -292,6 +292,12 @@ async function tiersOf(
     sniper_games: row.sniperGames,
     sniper_kd: row.sniperKd,
     mvp: row.mvp,
+    rifle_kill: row.rifleKill,
+    rifle_death: row.rifleDeath,
+    sniper_kill: row.sniperKill,
+    sniper_death: row.sniperDeath,
+    rifle_kill_per_match: row.rifleGames > 0 ? Math.round((row.rifleKill / row.rifleGames) * 10) / 10 : null,
+    sniper_kill_per_match: row.sniperGames > 0 ? Math.round((row.sniperKill / row.sniperGames) * 10) / 10 : null,
     nemeses: row.nemeses.map((nemesis) => ({
       name: nemesis.name,
       slug: nemesis.slug,

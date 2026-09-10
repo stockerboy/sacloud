@@ -199,6 +199,32 @@ export type PlayerTierNemesis = z.infer<typeof PlayerTierNemesis>
  * **판수가 0인 티어도 줄이 온다.** 사양 원문이 `vs4티어 0판` 을 적었다 —
  * "한 번도 안 붙었다" 는 것도 정보라서 줄을 지우지 않는다.
  */
+/**
+ * ★추이 그래프 한 칸★ — 하루 하나 (2026-09-10 · 사장님 지시서)
+ * 9/3 → 10/1 · 새벽 6시 경계 · 게임 없는 날 0% · 미래는 `future`
+ */
+export const PlayerTrendDay = z.object({
+  /** KST 날짜 `YYYY-MM-DD` */
+  date: z.string(),
+  /** «9/3» */
+  label: z.string(),
+  games: Count,
+  win: Count,
+  lose: Count,
+  kill: Count,
+  death: Count,
+  /** 그날 값 — 2판 미만이면 0 */
+  win_rate: Percent,
+  kd: Percent,
+  /** 9/3 부터 그날까지 누적 */
+  cum_games: Count,
+  cum_win_rate: Percent,
+  cum_kd: Percent,
+  future: z.boolean(),
+  today: z.boolean(),
+})
+export type PlayerTrendDay = z.infer<typeof PlayerTrendDay>
+
 export const PlayerTierRecord = z.object({
   /** 1부터. 리그의 `division_count` 만큼 온다 */
   tier: z.number().int().min(1),
@@ -232,6 +258,13 @@ export const PlayerTierRecord = z.object({
   sniper_kd: Percent.nullable().default(null),
   /** 그 구간에서 MVP 를 받은 판 수 (2026-09-10 · 선수 상세 v3 «MVP» 칸) */
   mvp: Count.default(0),
+  /** 무기별 킬·데스 원값과 무기별 판킬 (2026-09-10 · 목업 «스나 132/103 · 라플 312/273», «스나 2.6 · 라플 6.1») */
+  rifle_kill: Count.default(0),
+  rifle_death: Count.default(0),
+  sniper_kill: Count.default(0),
+  sniper_death: Count.default(0),
+  rifle_kill_per_match: z.number().nullable().default(null),
+  sniper_kill_per_match: z.number().nullable().default(null),
   /** 조건을 넘은 클랜만. 없으면 빈 배열이다 */
   nemeses: z.array(PlayerTierNemesis),
 })
@@ -360,6 +393,8 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
   hex: PlayerHex.nullable().default(null),
   /** 핵의심 신고 수 (2026-09-10 · 로그인한 회원만 누른다) */
   report_count: Count.default(0),
+  /** 추이 그래프 자료 — 9/3 → 10/1 하루 하나 (2026-09-10) */
+  trend: z.array(PlayerTrendDay).default([]),
   /**
    * **주간 추이 그래프** (2026-09-02 사용자 지시).
    *
@@ -451,5 +486,7 @@ export const LeagueClanShow = LeagueClanDetail.extend({
   hexagon_v2: ClanHexagonV2.nullable().default(null),
   /** 상대전적 — 시즌 0 안에서 붙은 상대들 (2026-09-10 · 클랜 상세 v3) */
   head_to_head: z.array(ClanHeadToHead).default([]),
+  /** 시즌 0 최다 연승 (2026-09-10 · 목업 KPI 넷째 줄). 경기가 없으면 null */
+  max_win_streak: Count.nullable().default(null),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>

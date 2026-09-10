@@ -8,7 +8,8 @@ import type {
   MatchListItem,
   MatchPlayerStat,
 } from '@sacloud/contract'
-import { showsTier } from '@sacloud/contract'
+import { isOfficialLeague, showsTier } from '@sacloud/contract'
+import { divisionLabel } from '../league/divisionLabel'
 import { ClanMark } from '../common/ClanMark'
 import { ClanHexagonV2 } from './ClanHexagonV2'
 
@@ -379,6 +380,8 @@ export function MatchCard({
   const skin = LOOK[look]
   const [open, setOpen] = useState(defaultExpanded)
   const win = match.win
+  /* 명단이 아직 안 들어온 경기 — 펼치지 않는다 (2026-09-10 사장님: «킬데스 수집중») */
+  const lineupPending = match.red.length === 0 && match.blue.length === 0
   const stat = match.player_stat
   /* 보는 쪽(`league_clan`)이 전반에 선 진영. 근거가 없으면 `null` 이고 칸을 비운다 (D-207) */
   const firstSide = matchFirstSideLabel(match.first_side)
@@ -449,6 +452,12 @@ export function MatchCard({
                 <span className={`num ${win ? 'text-num-win' : 'text-num-lose'}`}>
                   {formatRatingUpdate(match.rating_update)}
                 </span>
+              ) : lineupPending ? (
+                /* 명단이 아직 안 들어온 경기 (2026-09-10 사장님: «킬데스 수집중») */
+                <span className="text-[#8fa9d8]">킬데스 수집중</span>
+              ) : !isOfficialLeague(leagueSlug) ? (
+                /* 래더제가 아닌 리그(IPL) — 상대 티어를 적는다 (2026-09-10 사장님 결정) */
+                <span className="text-meta">vs {divisionLabel(match.opponent.division, 'independent')}</span>
               ) : (
                 /* 5v5 가 아니라 래더에 반영되지 않은 경기다.
                    표기는 `알수없음` 하나로 통일한다 (2026-08-28 사용자 지시 — 예전 `미반영`) */
@@ -580,15 +589,19 @@ export function MatchCard({
             ) : null}
 
             <div className="ml-auto flex shrink-0 items-center">
-              <button
-                type="button"
-                onClick={toggle}
-                aria-label="상세보기"
-                aria-expanded={open}
-                className="cursor-pointer px-2 py-2 text-faint transition-colors duration-100 hover:text-text-strong"
-              >
-                <Chevron open={open} />
-              </button>
+              {lineupPending ? (
+                <span className="px-2 py-2 text-[11px] text-faint" title="명단이 들어오면 펼쳐집니다">수집중</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  aria-label="상세보기"
+                  aria-expanded={open}
+                  className="cursor-pointer px-2 py-2 text-faint transition-colors duration-100 hover:text-text-strong"
+                >
+                  <Chevron open={open} />
+                </button>
+              )}
             </div>
           </div>
         </div>

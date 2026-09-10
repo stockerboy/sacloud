@@ -370,9 +370,10 @@ export async function getPlayerRanksByScore(
     select: { id: true, category: true },
   })
   if (!league) return null
+  /* ★스나·라플을 섞어 점수 순 한 줄★ (2026-09-10 · 사장님 확정). 무기별 등수(`scoreRank`)는 상세 화면 몫이다 */
   const where = {
     weapon: { not: null },
-    scoreRank: { not: null },
+    score: { not: null },
     leaguePlayer: { leagueId, placement: false },
   }
   const page = await cursorPage<ScoreRankRow>({
@@ -408,10 +409,23 @@ export async function getPlayerRanksByScore(
         },
       }) as Promise<ScoreRankRow[]>,
   })
+  const first = page.items[0]
+  const startRank =
+    first && first.score !== null
+      ? (await prisma.leaguePlayerHex.count({
+          where: {
+            ...where,
+            OR: [
+              { score: { gt: first.score } },
+              { score: first.score, leaguePlayerId: { lt: first.leaguePlayerId } },
+            ],
+          },
+        })) + 1
+      : 1
   return {
     cursor: page.cursor,
-    items: page.items.map((row) => {
-      const rank = row.scoreRank ?? 0
+    items: page.items.map((row, index) => {
+      const rank = startRank + index
       const lp = row.leaguePlayer
       return {
         rank,
@@ -433,8 +447,8 @@ export async function getPlayerRanksByScore(
   }
 }
 
-const SCORE_ORDER = [{ scoreRank: 'asc' as const }, { leaguePlayerId: 'asc' as const }]
-const SCORE_ORDER_REVERSED = [{ scoreRank: 'desc' as const }, { leaguePlayerId: 'desc' as const }]
+const SCORE_ORDER = [{ score: 'desc' as const }, { leaguePlayerId: 'asc' as const }]
+const SCORE_ORDER_REVERSED = [{ score: 'asc' as const }, { leaguePlayerId: 'desc' as const }]
 
 interface ScoreRankRow {
   leaguePlayerId: string

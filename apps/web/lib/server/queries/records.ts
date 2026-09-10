@@ -36,9 +36,10 @@ import { leagueClanHexagon, leagueClanRoundMetrics } from './clanRoundMetrics'
 /* D-238 로 잠시 뺐다가 **다시 들였다** — 재료가 `ClanHexV2Summary` 로 바뀌었다.
    자세한 것은 아래 호출 자리의 주석 */
 import { leagueClanHexV2 } from './clanHexV2'
-import { clanHeadToHead } from './clanHeadToHead'
+import { clanHeadToHead, clanMaxWinStreak } from './clanHeadToHead'
 import { playerHexOf } from './playerHex'
 import { playerReportCount } from './playerReports'
+import { buildPlayerTrend } from './playerTrend'
 import { leagueClanRoster } from './clanRoster'
 import { toKstIso } from '../format'
 import {
@@ -432,7 +433,7 @@ export async function getLeagueClanShow(
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
   }
 
-  const [rank, record, clanMetrics, roster, roundMetrics, hexagon, hexagonV2, headToHead] = await Promise.all([
+  const [rank, record, clanMetrics, roster, roundMetrics, hexagon, hexagonV2, headToHead, maxWinStreak] = await Promise.all([
     clanRankOf({
       id: leagueClan.id,
       leagueId: leagueClan.leagueId,
@@ -507,6 +508,9 @@ export async function getLeagueClanShow(
     softFail('clan-head-to-head', [] as Awaited<ReturnType<typeof clanHeadToHead>>, {
       leagueClanId: leagueClan.id,
     })(clanHeadToHead(leagueClan.leagueId, leagueClan.id)),
+    softFail('clan-max-win-streak', null as number | null, { leagueClanId: leagueClan.id })(
+      clanMaxWinStreak(leagueClan.leagueId, leagueClan.id),
+    ),
   ])
 
   return {
@@ -536,6 +540,7 @@ export async function getLeagueClanShow(
     hexagon,
     hexagon_v2: hexagonV2,
     head_to_head: headToHead,
+    max_win_streak: maxWinStreak,
   }
 }
 
@@ -582,6 +587,7 @@ export async function getLeagueClanPlayers(
     kill: number
     death: number
     player: { id: string; name: string }
+    hex: { score: number | null; weapon: number | null; hex: number | null } | null
   }>({
     cursor,
     size,
@@ -602,6 +608,8 @@ export async function getLeagueClanPlayers(
           kill: true,
           death: true,
           player: { select: PLAYER_SUMMARY_SELECT },
+          /* 실력 점수 (2026-09-10) — 접어 둔 한 줄에서 읽는다 */
+          hex: { select: { score: true, weapon: true, hex: true } },
         },
       }),
   })
@@ -643,9 +651,9 @@ export async function getLeagueClanPlayers(
       kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death), null),
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
-      hex: null,
-      score: null,
-      score_weapon: null,
+      hex: row.hex?.hex ?? null,
+      score: row.hex?.score ?? null,
+      score_weapon: row.hex?.weapon === 0 || row.hex?.weapon === 1 ? row.hex.weapon : null,
     })),
   }
 }
@@ -924,6 +932,8 @@ export async function getLeaguePlayerDetail(
     traits: traits?.traits ?? null,
     hex,
     report_count: reportCount,
+    /* 추이 그래프 — 같은 래더 경기 재료로 그 자리에서 접는다 (열 때마다 지금까지 경기로 다시 센다) */
+    trend: buildPlayerTrend(ladderRows),
     playstyle: traits?.playstyle ?? null,
     teammates: record.teammates,
     weapon_stats: weaponStats,

@@ -170,6 +170,8 @@ export async function resolveLeagueId(leagueIdOrSlug: string): Promise<string | 
 /** 경기 카드 한 장이 클랜에 대해 알아야 하는 전부 */
 export interface LeagueClanInfo {
   id: string
+  /** 지금 명부의 티어 (2026-09-10) */
+  division: number
   /** 구성 보정은 클랜의 **현재** 값이다 (D-149). 경기별 값이 아니다 */
   compositionScore: number | null
   compositionMembers: number | null
@@ -212,6 +214,8 @@ export async function loadLeagueClanContext(
     where: { leagueId, id: { in: wanted } },
     select: {
       id: true,
+      /* ★지금 티어★ (2026-09-10 · 사장님: 상대 티어는 지금 명부로) — 경기 당시 스냅샷은 래더 계산에만 쓴다 */
+      division: true,
       compositionScore: true,
       compositionMembers: true,
       clan: { select: CLAN_SUMMARY_SELECT },
@@ -455,6 +459,8 @@ function toMatchPlayerStat(
        "스나수가 무조건 스나를 드는것만은 아니야" 를 화면이 그대로 말할 수 있다.
        모르면 `null` 이고 화면은 이름만 적는다 (D-106) */
     position_label: positions?.get(stat.playerId) ?? null,
+    /* 세이브는 경기 상세가 배틀로그 표를 읽어 덮어쓴다. 목록에서는 모른다 (2026-09-10) */
+    saves: null,
   }
 }
 
@@ -503,7 +509,8 @@ function snapshotOf(match: MatchRow, side: TeamSide, clans: LeagueClanContext) {
     rating: isRed
       ? (match.redRatingBefore ?? match.redSourceRating)
       : (match.blueRatingBefore ?? match.blueSourceRating),
-    division: isRed ? match.redDivisionAtMatch : match.blueDivisionAtMatch,
+    /* 지금 명부의 티어. 명부에 없으면 경기 당시 값 (2026-09-10) */
+    division: leagueClan?.division ?? (isRed ? match.redDivisionAtMatch : match.blueDivisionAtMatch),
     placement: isRed ? match.redPlacement : match.bluePlacement,
     members_confirmed: reconstructed ? members : null,
     mercenaries_confirmed: reconstructed ? sideStats.length - members : null,
@@ -646,6 +653,8 @@ export async function getLeagueClanMatches(
   leagueClanId: string,
   cursor: string | null,
   size: number,
+  /** 상대 하나로 거른다 — 클랜 상세 «맞대결 기록» (2026-09-10) */
+  opponentLeagueClanId: string | null = null,
 ): Promise<CursorPage<MatchListItem> | null> {
   const leagueClan = await prisma.leagueClan.findUnique({
     where: { id: leagueClanId },
@@ -654,7 +663,14 @@ export async function getLeagueClanMatches(
   if (!leagueClan) return null
 
   return matchPage(
-    { OR: [{ redLeagueClanId: leagueClanId }, { blueLeagueClanId: leagueClanId }] },
+    opponentLeagueClanId
+      ? {
+          OR: [
+            { redLeagueClanId: leagueClanId, blueLeagueClanId: opponentLeagueClanId },
+            { redLeagueClanId: opponentLeagueClanId, blueLeagueClanId: leagueClanId },
+          ],
+        }
+      : { OR: [{ redLeagueClanId: leagueClanId }, { blueLeagueClanId: leagueClanId }] },
     cursor,
     size,
     () => ({ leagueClanId, playerId: null }),
@@ -831,10 +847,28 @@ export async function getMatch(
     [...positionsResolved].map(([id, value]) => [id, value.label]),
   )
 
+  /* ★세이브 · 라운드 스코어★ (2026-09-10) — 배틀로그에서 접어 둔 표를 읽는다. 없으면 null */
+  const [saveRows, hexRows] = await Promise.all([
+    softFail('match-saves', [] as { playerId: string; aloneWon: number }[], { matchId: match.id })(
+      prisma.matchPlayerHex.findMany({ where: { matchId: match.id }, select: { playerId: true, aloneWon: true } }),
+    ),
+    softFail('match-rounds', [] as { leagueClanId: string; tally: unknown }[], { matchId: match.id })(
+      prisma.matchClanHexV2.findMany({ where: { matchId: match.id }, select: { leagueClanId: true, tally: true } }),
+    ),
+  ])
+  const savesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneWon]))
+  const roundsWonOf = (leagueClanId: string): number | null => {
+    const row = hexRows.find((entry) => entry.leagueClanId === leagueClanId)
+    const tally = row?.tally as { roundsWon?: unknown } | null | undefined
+    return typeof tally?.roundsWon === 'number' ? tally.roundsWon : null
+  }
   const statsOf = (side: TeamSide): MatchPlayerStat[] =>
     match.stats
       .filter((stat) => stat.side === side)
-      .map((stat) => toMatchPlayerStat(match, stat, side === viewerSide, clans, positions))
+      .map((stat) => ({
+        ...toMatchPlayerStat(match, stat, side === viewerSide, clans, positions),
+        saves: saveRows.length > 0 ? (savesOf.get(stat.playerId) ?? 0) : null,
+      }))
 
   /* 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 읽는다 (D-235 Q7).
      경기 하나라 표본이 1이고, 그래서 리그 백분위가 아니라 **두 클랜의 상대 비교**다.
@@ -852,6 +886,9 @@ export async function getMatch(
     ...base,
     red_stats: statsOf('red'),
     blue_stats: statsOf('blue'),
+    viewer_side: viewerSide,
+    red_rounds: roundsWonOf(match.redLeagueClanId),
+    blue_rounds: roundsWonOf(match.blueLeagueClanId),
     red_hexagon_v2: hexV2?.red
       ? { league_clan_id: hexV2.red.leagueClanId, hexagon: hexV2.red.hexagon }
       : null,

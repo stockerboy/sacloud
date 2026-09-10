@@ -26,6 +26,7 @@ export default function LeagueClanRecordPageV3({
   const ready = useApiReady()
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState<Record<string, MatchDetail>>({})
+  const [opponent, setOpponent] = useState<string | null>(null)
   const detail = useQuery({
     queryKey: ['league', leagueSlug, 'clan', clanSlug, 'show'],
     queryFn: () => apiGet('leagueClanShow', { params: { leagueSlug, clanSlug } }),
@@ -36,6 +37,13 @@ export default function LeagueClanRecordPageV3({
     ['league', leagueSlug, 'clan', clanSlug, 'matches'],
     { params: { leagueClanId: detail.data?.data.id ?? '' } },
     !!detail.data,
+  )
+  /* 맞대결 기록 — `?opponent=` 로 그 상대와의 경기만 (2026-09-10) */
+  const vs = useCursorQuery<MatchListItem>(
+    'leagueClanMatches',
+    ['league', leagueSlug, 'clan', clanSlug, 'matches', 'vs', opponent ?? ''],
+    { params: { leagueClanId: detail.data?.data.id ?? '' }, search: { opponent: opponent ?? '' } },
+    !!detail.data && opponent !== null,
   )
   const loadDetail = (match: MatchListItem) => {
     const matchId = match.id
@@ -78,6 +86,8 @@ export default function LeagueClanRecordPageV3({
         onLoadMore={matches.loadMore}
         expanded={expanded}
         onExpand={loadDetail}
+        vsMatches={opponent === null || vs.loading ? null : vs.items}
+        onSelectOpponent={setOpponent}
       />
     </div>
   )

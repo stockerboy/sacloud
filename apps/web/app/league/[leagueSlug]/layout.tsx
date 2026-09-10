@@ -29,6 +29,9 @@ import { useApiReady } from '@/app/providers'
  *   페이지마다 조건을 뿌리면 새 경로가 생길 때 빠진다.
  *   서브내비 탭도 그리지 않는다 — 누를 곳을 주면 "준비중인데 왜 탭이 있나" 가 된다.
  */
+/* ★히어로 띠★ — 2026-09-10 사장님 목업(v3)에는 없다. 컴포넌트(`LeagueHeroBand`)는 그대로 두고 안 그린다 */
+const SHOW_HERO_BAND: boolean = false
+
 export default function LeagueLayout({
   children,
   params,
@@ -71,13 +74,13 @@ export default function LeagueLayout({
           버건디 히어로 띠. 리그 이름이 아직 안 왔으면 **빈 문자열**로 띠만 먼저 깔린다 —
           띠가 나중에 «생겨나면» 본문이 통째로 밀려 내려가 깜빡이는 것처럼 보인다.
         */}
-        <LeagueHeroBand
+        {SHOW_HERO_BAND ? <LeagueHeroBand
           leagueName={data?.name ?? ''}
           /* 공식/비공식 **표기**는 계약의 표(`leagueScreen`)가 정한다 (#17). `data.official`(DB 열)은
              안 읽는다 — 운영 행이 틀려 IPL 에 「비공식」 이 떴었다. 옛 줄: `official={data?.official}` */
           official={isOfficialLeague(leagueSlug)}
           clanCount={data?.clan_count}
-        />
+        /> : null}
         {children}
       </div>
     </>

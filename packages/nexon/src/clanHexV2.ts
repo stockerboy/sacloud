@@ -518,6 +518,8 @@ export interface ClanHexTally {
   foeTeamNo: string | null
   /** 이벤트로 확인된 라운드 수 (진영을 몰라도 센다) */
   rounds: number
+  /** 그중 **우리가 이긴** 라운드 수 (`win_flag`) — 라운드 스코어 «6:2» 의 재료 (2026-09-10). 승패를 모르는 라운드는 안 센다 */
+  roundsWon: number
   /** 그중 진영을 **아는** 라운드 수 */
   sidedRounds: number
   /** 그중 진영=레드(공격)인 라운드 수 */
@@ -573,6 +575,7 @@ const emptyTally = (teamNo: string, foeTeamNo: string | null): ClanHexTally => (
   teamNo,
   foeTeamNo,
   rounds: 0,
+  roundsWon: 0,
   sidedRounds: 0,
   redRounds: 0,
   foeSnipers: 0,
@@ -990,6 +993,7 @@ function tallyFor(input: {
   }
 
   tally.rounds = input.roundNumbers.length
+  tally.roundsWon = input.roundNumbers.filter((round) => input.wonRound(round) === true).length
 
   /* ① 은 **양쪽에 스나가 있어야** 성립한다. 한쪽만 있으면 0 이 「한 번도 못 잡았다」가 되고,
      그건 못 잰 것을 최악의 성적으로 만드는 짓이다 (D-106) */

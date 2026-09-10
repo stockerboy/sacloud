@@ -1032,6 +1032,7 @@ function toMatchPlayerStat(
     player_id: stat.playerId,
     name: playerById.get(stat.playerId)?.name ?? '알수없음',
     side: stat.side,
+    saves: null,
     kill: stat.kill,
     death: stat.death,
     assist: stat.assist,
@@ -1216,6 +1217,9 @@ export function getMatch(
     ...base,
     red_stats: statsOf('red'),
     blue_stats: statsOf('blue'),
+    viewer_side: null,
+    red_rounds: null,
+    blue_rounds: null,
     red_hexagon_v2: hexV2.red
       ? { league_clan_id: match.redLeagueClanId, hexagon: hexV2.red }
       : null,
@@ -1564,6 +1568,12 @@ function buildTierBreakdownRows(
     sniper_games: row.sniperGames,
     sniper_kd: row.sniperKd,
     mvp: row.mvp,
+    rifle_kill: row.rifleKill,
+    rifle_death: row.rifleDeath,
+    sniper_kill: row.sniperKill,
+    sniper_death: row.sniperDeath,
+    rifle_kill_per_match: null,
+    sniper_kill_per_match: null,
     nemeses: row.nemeses.map((nemesis) => ({
       name: nemesis.name,
       slug: nemesis.slug,
@@ -1891,6 +1901,7 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     /* 여섯 축 · 신고 (2026-09-10) — 목업은 아직 접힌 줄이 없다 */
     hex: null,
     report_count: 0,
+    trend: [],
     teammates: buildTeammates(matches, leaguePlayer.leagueClanId, playerId),
     weapon_stats: weaponStatsOf(leaguePlayer.id),
   }
@@ -2510,6 +2521,7 @@ export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueC
     /* 클랜 육각형 **V2** (D-217 · D-235). 옛 `hexagon` 은 그대로 둔다 (Q9 · 10-4) */
     hexagon_v2: buildClanHexV2OfMock(leagueClan),
     head_to_head: [],
+    max_win_streak: null,
     /* 클랜원 정리 (SITE_SPEC_V2 5-2 · D-199). 기존 클랜원 목록은 그대로 둔다 */
     roster: buildClanRoster(leagueClan),
   }

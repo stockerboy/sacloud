@@ -89,3 +89,30 @@ export async function clanHeadToHead(leagueId: string, leagueClanId: string): Pr
   rows.sort((a, b) => b.win + b.lose - (a.win + a.lose) || (b.last_played_at ?? '').localeCompare(a.last_played_at ?? ''))
   return rows
 }
+
+/** 시즌 0 최다 연승 (2026-09-10 · 목업 KPI «최다연승»). 경기가 없으면 null · 승패 모르는 경기는 연승을 끊지 않고 건너뛴다 */
+export async function clanMaxWinStreak(leagueId: string, leagueClanId: string): Promise<number | null> {
+  const matches = await prisma.match.findMany({
+    where: withSeasonWindow({
+      leagueId,
+      supersededAt: null,
+      OR: [{ redLeagueClanId: leagueClanId }, { blueLeagueClanId: leagueClanId }],
+    }),
+    orderBy: { startAt: 'asc' },
+    select: { winnerSide: true, redLeagueClanId: true },
+  })
+  if (matches.length === 0) return null
+  let best = 0
+  let run = 0
+  for (const m of matches) {
+    if (m.winnerSide !== 'red' && m.winnerSide !== 'blue') continue
+    const ourSide = m.redLeagueClanId === leagueClanId ? 'red' : 'blue'
+    if (m.winnerSide === ourSide) {
+      run += 1
+      if (run > best) best = run
+    } else {
+      run = 0
+    }
+  }
+  return best
+}
