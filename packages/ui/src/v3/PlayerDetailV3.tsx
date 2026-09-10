@@ -53,7 +53,6 @@ function TierRecordCard({ data, report }: { data: LeaguePlayerDetail; report: Pl
   const scoreRank = hex?.score_rank ?? null
   const games = sel?.games ?? 0
   const hasData = games >= 10
-  const isTop = sel?.tier === 1 && data.league.category === 'independent'
   const mvpRate = sel && games > 0 ? (sel.mvp / games) * 100 : null
   /* MVP 자료가 있는 리그인가 — 시즌 전체 MVP 가 0 이고 판이 있으면 원본에 MVP 가 없는 것 (IPL 병영 로그). 0 으로 찍지 않는다 */
   const mvpKnown = data.mvp_count > 0 || rows.every((r) => r.games === 0)
@@ -94,18 +93,13 @@ function TierRecordCard({ data, report }: { data: LeaguePlayerDetail; report: Pl
       </div>
       {sel && hasData ? (
         <div style={{ display: 'flex', flexDirection: 'column', padding: '0 18px 6px' }}>
-          <StatRow label={isTop ? '승률' : '통합 승률'}>
+          <StatRow label="승률">
             <Pair sub={`${sel.win}승 ${sel.lose}패`} value={pct1(sel.win_rate)} color={sel.win_rate === null ? V3.textMuted : statColor(sel.win_rate)} />
           </StatRow>
-          <StatRow label={isTop ? '킬뎃' : '통합 킬뎃'}>
-            {isTop ? (
-              <>
-                <Pair tag="스나" sub={`${sel.sniper_kill}/${sel.sniper_death}`} value={pct1(sel.sniper_kd)} color={sel.sniper_kd === null ? V3.textMuted : statColor(sel.sniper_kd)} small />
-                <Pair tag="라플" sub={`${sel.rifle_kill}/${sel.rifle_death}`} value={pct1(sel.rifle_kd)} color={sel.rifle_kd === null ? V3.textMuted : statColor(sel.rifle_kd)} small />
-              </>
-            ) : (
-              <Pair sub={`${sel.known_games}판 기준`} value={pct1(sel.kd)} color={sel.kd === null ? V3.textMuted : statColor(sel.kd)} />
-            )}
+          {/* 킬뎃은 어느 구간이든 스나·라플로 나눠 적는다 (2026-09-11 사장님: «라플킬뎃 스나킬뎃 분리») */}
+          <StatRow label="킬뎃">
+            <Pair tag="스나" sub={`${sel.sniper_kill}/${sel.sniper_death}`} value={pct1(sel.sniper_kd)} color={sel.sniper_kd === null ? V3.textMuted : statColor(sel.sniper_kd)} small />
+            <Pair tag="라플" sub={`${sel.rifle_kill}/${sel.rifle_death}`} value={pct1(sel.rifle_kd)} color={sel.rifle_kd === null ? V3.textMuted : statColor(sel.rifle_kd)} small />
           </StatRow>
         </div>
       ) : (
@@ -448,7 +442,7 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves }: { row: MatchPlayerSt
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
       {showSaves ? (
-        <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves ?? 0}회</span>
+        <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves ?? 0}/{row.save_chances ?? 0}</span>
       ) : null}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', color: kd === null ? V3.textGhost : statColor(kd) }}>{pct1(kd)}</span>
     </div>

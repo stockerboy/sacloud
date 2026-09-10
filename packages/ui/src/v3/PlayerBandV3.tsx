@@ -106,12 +106,19 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
   const scoreShown = hex?.score !== null && hex?.score !== undefined
   const weaponLabel = mainWeapon === null ? null : (WEAPON_LABEL[mainWeapon] ?? null)
   const kdLabel = hex?.weapon === 0 ? '라플' : hex?.weapon === 1 ? '스나' : weaponLabel ?? ''
+  /* 통합 킬뎃 — 서버가 100위 밖이라 감춘(null) 경우에도 무기별 킬·데스 합으로 다시 센다 (2026-09-11 사장님: 빈 칸 «-» 이상함) */
+  const kdRate = (() => {
+    if (data.kd_rate !== null) return data.kd_rate
+    const kill = (data.sniper_kill ?? 0) + (data.rifle_kill ?? 0)
+    const death = (data.sniper_death ?? 0) + (data.rifle_death ?? 0)
+    return kill + death > 0 ? Math.round((kill / (kill + death)) * 1000) / 10 : null
+  })()
   const kpis: { label: string; value: string; sub: string; color: string }[] = [
     scoreShown
       ? { label: '실력 점수', value: `${fmt(hex.score as number)}점`, sub: hex.measuring ? '측정 중' : '', color: '#ffffff' }
       : { label: '래더', value: `${fmt(data.rating)}점`, sub: data.placement ? '배치 중' : '', color: '#ffffff' },
     { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },
-    { label: '킬뎃', value: pct1(data.kd_rate), sub: kdLabel, color: data.kd_rate === null ? V3.textMuted : statColor(data.kd_rate) },
+    { label: '킬뎃', value: pct1(kdRate), sub: kdLabel, color: kdRate === null ? V3.textMuted : statColor(kdRate) },
     { label: '판킬', value: data.kill_per_match.toFixed(1), sub: '킬 / 판', color: V3.text },
   ]
   return (

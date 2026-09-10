@@ -230,6 +230,15 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
          AND jsonb_typeof(r."payload"->'battleLog') = 'array'
          AND e->>'event_type' IN ('kill', 'death')`
     const kills = new Map<string, Kill>()
+    /* ★라운드 승자★ — `win_flag` 는 그 배틀로그를 낸 클랜 쪽 시각이다. «lose» 만 있는 라운드는 상대가 이긴 것.
+       겹침을 빼기 전에 두 벌 모두에서 읽는다 (2026-09-11 · 이걸 안 읽어 상대 쪽 세이브가 전부 0 이었다) */
+    const roundWinner = new Map<string, string | null>()
+    for (const g of raw) {
+      if (!g.rd || (g.wf !== 'win' && g.wf !== 'lose') || !g.tn) continue
+      const key = `${g.k}|${g.rd}`
+      if (g.wf === 'win') roundWinner.set(key, g.tn)
+      else if (!roundWinner.has(key)) roundWinner.set(key, `!${g.tn}`)
+    }
     for (const g of raw) {
       const killer = g.et === 'kill' ? g.su : g.tu
       const victim = g.et === 'kill' ? g.tu : g.su
@@ -313,8 +322,10 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
 
       /* 세이브 · 소수싸움 — 살아 있는 수를 따라가며 밀린 쪽을 본다 */
       if (!teams || teams.size !== 2) continue
-      const win = arr.find((e) => e.wf === 'win')?.own ?? null
       const [tA, tB] = [...teams.keys()] as [string, string]
+      const flagged = roundWinner.get(`${mk}|${(arr[0] as Kill).rd}`) ?? null
+      /* «!팀» 은 그 팀이 졌다는 뜻 — 두 팀뿐이니 남은 쪽이 이겼다 */
+      const win = flagged === null ? null : flagged.startsWith('!') ? (flagged.slice(1) === tA ? tB : tA) : flagged
       const alive = new Map<string, Set<string>>([[tA, new Set(teams.get(tA))], [tB, new Set(teams.get(tB))]])
       const teamOf = new Map<string, string>()
       for (const [t, s] of teams) for (const u of s) teamOf.set(u, t)

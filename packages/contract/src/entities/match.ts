@@ -80,6 +80,8 @@ export const MatchPlayerStat = z.object({
   mvp: z.boolean().nullable(),
   /** 이 경기에서 혼자 남아 이긴 라운드 수 (세이브) — 배틀로그가 없으면 null (2026-09-10) */
   saves: Count.nullable().default(null),
+  /** 혼자 남았던 라운드 수 (세이브 시도) — «성공/시도» 표기용 (2026-09-11) */
+  save_chances: Count.nullable().default(null),
   /**
    * **그 경기를 했을 당시** 소속 클랜 (D-131).
    *

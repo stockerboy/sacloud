@@ -222,6 +222,18 @@ export const PlayerTrendDay = z.object({
   cum_kd: Percent,
   future: z.boolean(),
   today: z.boolean(),
+  /** 그날 경기마다 «그 경기 직후» 값 — 하루 안에서도 선이 움직인다 (2026-09-11). `at` 은 하루 안 위치 0~1 */
+  points: z
+    .array(
+      z.object({
+        at: z.number().min(0).max(1),
+        win_rate: Percent,
+        kd: Percent,
+        cum_win_rate: Percent,
+        cum_kd: Percent,
+      }),
+    )
+    .default([]),
 })
 export type PlayerTrendDay = z.infer<typeof PlayerTrendDay>
 

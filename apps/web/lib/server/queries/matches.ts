@@ -461,6 +461,7 @@ function toMatchPlayerStat(
     position_label: positions?.get(stat.playerId) ?? null,
     /* 세이브는 경기 상세가 배틀로그 표를 읽어 덮어쓴다. 목록에서는 모른다 (2026-09-10) */
     saves: null,
+    save_chances: null,
   }
 }
 
@@ -849,14 +850,15 @@ export async function getMatch(
 
   /* ★세이브 · 라운드 스코어★ (2026-09-10) — 배틀로그에서 접어 둔 표를 읽는다. 없으면 null */
   const [saveRows, hexRows] = await Promise.all([
-    softFail('match-saves', [] as { playerId: string; aloneWon: number }[], { matchId: match.id })(
-      prisma.matchPlayerHex.findMany({ where: { matchId: match.id }, select: { playerId: true, aloneWon: true } }),
+    softFail('match-saves', [] as { playerId: string; aloneWon: number; aloneRounds: number }[], { matchId: match.id })(
+      prisma.matchPlayerHex.findMany({ where: { matchId: match.id }, select: { playerId: true, aloneWon: true, aloneRounds: true } }),
     ),
     softFail('match-rounds', [] as { leagueClanId: string; tally: unknown }[], { matchId: match.id })(
       prisma.matchClanHexV2.findMany({ where: { matchId: match.id }, select: { leagueClanId: true, tally: true } }),
     ),
   ])
   const savesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneWon]))
+  const chancesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneRounds]))
   const roundsWonOf = (leagueClanId: string): number | null => {
     const row = hexRows.find((entry) => entry.leagueClanId === leagueClanId)
     const tally = row?.tally as { roundsWon?: unknown } | null | undefined
@@ -868,6 +870,7 @@ export async function getMatch(
       .map((stat) => ({
         ...toMatchPlayerStat(match, stat, side === viewerSide, clans, positions),
         saves: saveRows.length > 0 ? (savesOf.get(stat.playerId) ?? 0) : null,
+        save_chances: saveRows.length > 0 ? (chancesOf.get(stat.playerId) ?? 0) : null,
       }))
 
   /* 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 읽는다 (D-235 Q7).

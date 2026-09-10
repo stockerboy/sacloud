@@ -167,7 +167,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves }: { row: MatchP
         <span style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: 'nowrap', color: mvp ? '#ffe89a' : '#c3cbdb', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
-      {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves ?? 0}회</span> : null}
+      {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves ?? 0}/{row.save_chances ?? 0}</span> : null}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', color: kd === null ? V3.textGhost : statColor(kd) }}>{pct1(kd)}</span>
     </div>
   )
