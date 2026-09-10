@@ -209,6 +209,17 @@ export const PlayerTierRecord = z.object({
    * **0 이 아니다** — 0%는 "다 졌다", `null` 은 "아직 말하지 않는다" 는 뜻이다.
    */
   win_rate: Percent.nullable(),
+  /**
+   * ★킬뎃을 아는 판수★ (2026-09-10). `games` 와 다를 수 있다 — 서플라이에서 온
+   * 옛 경기에는 킬/데스가 없는 줄이 있다 (D-149). 모르는 판을 0킬로 세지 않는다.
+   */
+  known_games: Count.default(0),
+  /**
+   * 그 티어 상대 ★킬뎃 %★ (`킬 ÷ (킬+데스) × 100` — 사이트 공통 정의다).
+   * 승률과 ★같은 최소 판수★(10판)를 넘어야 나온다.
+   * 못 재면 `null` 이고 화면은 `—` 를 적는다 — ★0 이 아니다★ (D-106).
+   */
+  kd: Percent.nullable().default(null),
   /** 조건을 넘은 클랜만. 없으면 빈 배열이다 */
   nemeses: z.array(PlayerTierNemesis),
 })

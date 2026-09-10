@@ -1454,6 +1454,10 @@ function buildTierBreakdownRows(
     games: number
     win: number
     lose: number
+    /* 킬뎃 (2026-09-10). 픽스처는 킬/데스가 언제나 있으므로 `knownGames === games` 다 */
+    knownGames: number
+    kill: number
+    death: number
     clans: Map<string, { games: number; win: number; lose: number }>
   }
   const byTier = new Map<number, Bucket>()
@@ -1466,10 +1470,21 @@ function buildTierBreakdownRows(
     const opponentId = isRed ? match.blueLeagueClanId : match.redLeagueClanId
     const win = stat.side === match.winnerSide
 
-    const bucket = byTier.get(tier) ?? { games: 0, win: 0, lose: 0, clans: new Map() }
+    const bucket = byTier.get(tier) ?? {
+      games: 0,
+      win: 0,
+      lose: 0,
+      knownGames: 0,
+      kill: 0,
+      death: 0,
+      clans: new Map(),
+    }
     bucket.games += 1
     if (win) bucket.win += 1
     else bucket.lose += 1
+    bucket.knownGames += 1
+    bucket.kill += stat.kill
+    bucket.death += stat.death
     const clan = bucket.clans.get(opponentId) ?? { games: 0, win: 0, lose: 0 }
     clan.games += 1
     if (win) clan.win += 1
@@ -1488,7 +1503,16 @@ function buildTierBreakdownRows(
       if (!namedClan) continue
       clans.push({ key: id, name: namedClan.name, slug: namedClan.slug, ...clan })
     }
-    return { tier, games: bucket.games, win: bucket.win, lose: bucket.lose, clans }
+    return {
+      tier,
+      games: bucket.games,
+      win: bucket.win,
+      lose: bucket.lose,
+      knownGames: bucket.knownGames,
+      kill: bucket.kill,
+      death: bucket.death,
+      clans,
+    }
   })
 
   return buildTierBreakdown(divisionCount, tallies).map((row) => ({
@@ -1497,6 +1521,8 @@ function buildTierBreakdownRows(
     win: row.win,
     lose: row.lose,
     win_rate: row.winRate,
+    known_games: row.knownGames,
+    kd: row.kd,
     nemeses: row.nemeses.map((nemesis) => ({
       name: nemesis.name,
       slug: nemesis.slug,

@@ -57,7 +57,9 @@ export function TierBreakdown({
       <div className="flex items-baseline justify-between">
         <div>{divisionUnit(leagueCategory)}별 전적</div>
         {/* 왜 어떤 줄의 승률이 비어 있는지 밝힌다. 이 줄이 없으면 `—` 가 고장으로 보인다 */}
-        <div className="text-xs text-side-meta">{TIER_WIN_RATE_MIN_GAMES}판부터 승률을 봅니다</div>
+        <div className="text-xs text-side-meta">
+          {TIER_WIN_RATE_MIN_GAMES}판부터 승률·킬뎃을 봅니다
+        </div>
       </div>
       {rows.map((row) => (
         <div key={row.tier}>
@@ -80,6 +82,33 @@ export function TierBreakdown({
               )}
             </div>
           </div>
+          {/*
+            ★티어별 킬뎃★ (2026-09-10 · 사장님 «티어별 승률과 킬뎃을 따로 기록해서 ui에 나타낼거니까»).
+
+            승률 아래 작은 줄로 붙인다 — ★승률 자리를 뺏지 않는다.★
+            분모는 판수가 아니라 ★킬뎃을 아는 판수★ 다 (D-149). 서플라이에서 온 옛 경기에는
+            킬/데스가 없는 줄이 있어서, 그 판을 0킬로 세면 킬뎃이 조용히 낮아진다.
+            그래서 ★센 판수를 옆에 같이 적는다★ — 판수와 다르면 사장님이 바로 보신다.
+            줄이 통째로 없을 때(잰 판이 0판)는 ★아무것도 안 그린다.★ `0.0%` 를 찍지 않는다.
+          */}
+          {row.known_games === 0 ? null : (
+            <div className="flex justify-between px-1 pb-1 text-base">
+              <span className="text-side-meta">킬뎃</span>
+              <span>
+                {row.kd === null ? (
+                  <span className="text-side-meta">—</span>
+                ) : (
+                  <span className={`num ${rateClass(row.kd)}`}>{formatRate(row.kd)}%</span>
+                )}
+                {/* 판수와 다를 때만 «몇 판을 재서 나온 값인가» 를 밝힌다 */}
+                {row.known_games === row.games ? null : (
+                  <span className="num ml-2 text-xs text-side-meta">
+                    {formatCount(row.known_games)}판 기준
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
           {row.nemeses.length === 0 ? null : (
             /* 천적. 여럿이면 승률 높은 순으로 온다 — 화면은 순서를 다시 만지지 않는다 */
             <div className="px-1 pb-1 text-right text-base">

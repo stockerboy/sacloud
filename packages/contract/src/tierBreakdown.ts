@@ -28,7 +28,7 @@
  *   "10판이상 해야 알려줌" 이라고 한 것은 **그 미만은 말하지 않는다**는 뜻이다.
  *   `winRate()` 는 `0승 0패` 에도 `0` 을 돌려주므로 여기서는 쓸 수 없다.
  */
-import { winRate } from './derive'
+import { kdRate, winRate } from './derive'
 
 /* -------------------------------------------------------------------------- */
 /* 상수 — 사양 원문에서 온 값이다. 화면·서버·픽스처가 이 하나만 본다               */
@@ -65,6 +65,17 @@ export const NEMESIS_MIN_WIN_RATE = 70
  */
 export const NEMESIS_MAX = 2
 
+/**
+ * ★킬뎃을 보여 주는 최소 판수★ (2026-09-10 · 사장님 «티어별 승률과 킬뎃을 따로 기록해서 ui에»).
+ *
+ * 승률과 ★같은 값★ 을 쓴다. 한 카드 안에서 승률은 `—` 인데 킬뎃만 숫자가 뜨면
+ * ★어느 쪽을 믿어야 하는지 알 수 없다.★ 한 줄은 한 번에 말하거나 한 번에 다문다.
+ *
+ * ⚠ 분모는 판수가 아니라 ★킬뎃을 아는 판수(`knownGames`)★ 다 — 서플라이에서 온
+ *   옛 경기에는 킬/데스가 없는 줄이 있다 (D-149). 모르는 판을 0킬로 세지 않는다.
+ */
+export const TIER_KD_MIN_GAMES = TIER_WIN_RATE_MIN_GAMES
+
 /* -------------------------------------------------------------------------- */
 /* 입력 — 서버(Prisma)와 픽스처(mock)가 같은 모양으로 세어서 넘긴다                */
 /* -------------------------------------------------------------------------- */
@@ -89,6 +100,10 @@ export interface TierTally {
   games: number
   win: number
   lose: number
+  /** ★킬뎃을 아는 판수★ — `games` 와 다를 수 있다 (D-149). 없으면 0 으로 본다 */
+  knownGames?: number
+  kill?: number
+  death?: number
   clans: readonly TierClanTally[]
 }
 
@@ -113,6 +128,13 @@ export interface TierBreakdownRow {
   lose: number
   /** `TIER_WIN_RATE_MIN_GAMES` 판 미만이면 `null` — 화면이 `—` 를 적는다 */
   winRate: number | null
+  /** ★킬뎃을 아는 판수★. 이 값이 분모다 */
+  knownGames: number
+  /**
+   * 그 티어 상대 ★킬뎃 %★ (`킬 ÷ (킬+데스) × 100` · 사이트 공통 정의).
+   * `TIER_KD_MIN_GAMES` 판 미만이면 `null` — 화면이 `—` 를 적는다.
+   */
+  kd: number | null
   /** 조건을 넘은 클랜만. 없으면 **빈 배열**이다 */
   nemeses: TierNemesis[]
 }
@@ -133,6 +155,23 @@ export function tierWinRateOrNull(games: number, win: number, lose: number): num
      명시해 둔다. 언젠가 무효 경기가 들어와도 승률의 뜻이 흔들리지 않는다 */
   if (win + lose === 0) return null
   return winRate(win, lose)
+}
+
+/**
+ * ★킬뎃★ — 판수가 모자라면 ★내지 않는다★.
+ *
+ * ⚠ ★이 사이트의 「킬뎃」은 `킬 ÷ (킬+데스) × 100` 이다★ — 킬÷데스 가 아니다.
+ *   `derive.ts` 의 `kdRate()` 한 곳이 그 정의를 갖고 있고, 경기 카드·랭킹표가
+ *   전부 그 값을 쓴다. 여기서 ★다른 셈법을 새로 만들면★ 같은 화면 안에서
+ *   같은 이름의 숫자가 두 뜻을 갖게 된다. 그래서 ★그 함수를 그대로 부른다.★
+ *
+ * `kdRate()` 는 `0킬 0데스` 에도 `0` 을 돌려주므로 여기서 한 번 더 막는다 —
+ * 여기서 필요한 답은 «못 잰다»(`null`)다 (D-106).
+ */
+export function tierKdOrNull(knownGames: number, kill: number, death: number): number | null {
+  if (knownGames < TIER_KD_MIN_GAMES) return null
+  if (kill + death === 0) return null
+  return kdRate(kill, death)
 }
 
 /**
@@ -183,15 +222,27 @@ export function buildTierBreakdown(
     const tally = byTier.get(tier)
     if (!tally) {
       /* 한 판도 안 붙은 티어. **줄은 남긴다** — 원문이 `vs4티어 0판` 을 적었다 */
-      rows.push({ tier, games: 0, win: 0, lose: 0, winRate: null, nemeses: [] })
+      rows.push({
+        tier,
+        games: 0,
+        win: 0,
+        lose: 0,
+        winRate: null,
+        knownGames: 0,
+        kd: null,
+        nemeses: [],
+      })
       continue
     }
+    const knownGames = tally.knownGames ?? 0
     rows.push({
       tier,
       games: tally.games,
       win: tally.win,
       lose: tally.lose,
       winRate: tierWinRateOrNull(tally.games, tally.win, tally.lose),
+      knownGames,
+      kd: tierKdOrNull(knownGames, tally.kill ?? 0, tally.death ?? 0),
       nemeses: nemesesOf(tally.clans),
     })
   }
