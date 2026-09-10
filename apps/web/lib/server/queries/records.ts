@@ -381,6 +381,17 @@ async function buildRecordSummary(
 /* -------------------------------------------------------------------------- */
 
 /** GET /leagues/{leagueSlug}/clans/{clanSlug}/show */
+/**
+ * ★전투력 육각형·플레이스타일을 서버에서 계산하나★ (2026-09-10).
+ *
+ * 지금은 ★끈다.★ 화면 쪽 `SHOW_TRAIT_HEXAGON` · `SHOW_PLAYSTYLE` 이 둘 다 꺼져 있어서
+ * ★아무도 안 보는 값을 만드느라 첫 방문이 느려지고 있었다.★ 까닭은 아래 호출부 주석에.
+ *
+ * 타입을 `boolean` 으로 넓힌 이유는 리터럴로 좁히면 켠 쪽 가지가
+ * «닿을 수 없는 코드» 가 되기 때문이다.
+ */
+const PLAYER_TRAITS_ENABLED: boolean = false
+
 export async function getLeagueClanShow(
   leagueSlug: string,
   clanSlug: string,
@@ -750,9 +761,32 @@ export async function getLeaguePlayerDetail(
        **여기서 실패해도 프로필 전체를 죽이지 않는다.** 육각형은 없어도 되는 카드이고
        계약도 `nullable` 이다. 분포 계산은 리그 전체를 훑으므로 다른 조회보다 깨질 여지가
        크다 — 그 하나 때문에 기록실이 통째로 안 열리면 안 된다 */
-    softFail('player-traits', null, { leagueId: league.id, playerId })(
-      playerTraits(league.id, playerId),
-    ),
+    /*
+     * ★꺼져 있는 카드 때문에 제일 비싼 질의를 돌리고 있었다★ (2026-09-10 · 속도 실측).
+     *
+     * ── 무엇을 쟀나 (운영)
+     *   ```
+     *   선수 상세 API   첫 방문 9~22초 · 두 번째 0.1초
+     *   그 안에서       리그 전체 참가기록 훑기  ★차가울 때 38초★ (23,240줄)
+     *                   그 선수 참가기록만       차가울 때 12.7초 (104줄)
+     *   따뜻할 때는 15ms 다 — 인덱스는 맞다. ★2.7GB 표가 캐시에서 밀려나는 것★ 이 원인이다
+     *   ```
+     *
+     * ── ★그런데 그 카드는 화면에 없다★
+     *   `LeaguePlayerRecordScreen` 의 `SHOW_TRAIT_HEXAGON` · `SHOW_PLAYSTYLE` 이
+     *   ★둘 다 `false`★ 다 (2026-09-04 사장님: «구현이 안 된 것을 화면에 두지 않는다»).
+     *   아무도 안 보는 값을 만드느라 ★첫 방문자가 그 시간을 다 물고 있었다.★
+     *
+     * ⚠ ★코드를 지우지 않았다★ (`CLAUDE.md` 1-4). `playerTraits()` 도 계약도 그대로다.
+     * ⚠ ★육각형을 켤 때 이 스위치도 같이 켜야 한다.★ 안 켜면 카드가 영원히 비어 있다.
+     *   그때는 이 질의를 다시 돌리는 게 아니라 ★미리 접어 둔 표를 읽게★ 바꾼다
+     *   (`docs/ORDERS.md` 「개인랭킹을 실력 점수로」 칸의 「화면은 계산하지 않는다」).
+     */
+    PLAYER_TRAITS_ENABLED
+      ? softFail('player-traits', null, { leagueId: league.id, playerId })(
+          playerTraits(league.id, playerId),
+        )
+      : Promise.resolve(null),
     /* 좌표로 판정한 자리 (D-199). 없으면 `null` — 화면이 그 줄을 안 그린다 */
     softFail('player-position', null, { playerId })(playerJudgedPosition(playerId)),
   ])
