@@ -155,49 +155,38 @@ export default function LeaguePlayerRecordPage({
     /* ★껍데기(`sa-skin`)는 `layout.tsx` 가 씌운다★ — 머리띠·탭까지 한 톤이어야 해서다.
        여기만 씌웠더니 ★위는 적진 파랑, 아래는 검정 무광★ 으로 갈렸다 */
     <div className="pc-container pb-[40px]">
-      {/* ── 1. 전투력 — 이 화면에서 제일 먼저 보여 주고 싶은 것 */}
-      {!SHOW_TRAIT_HEXAGON || data.traits === null ? null : (
-        /* 카드가 스스로 `전투력` 제목을 그린다 — 위에 제목을 또 얹지 않는다 */
-        <section className="mt-[40px]">
-          <EggVeilPanel state={egg} note={EGG_BREAK_GUIDE}>
-            <TraitHexagon traits={data.traits} />
-          </EggVeilPanel>
-        </section>
-      )}
+      {/*
+        ── ★0. 티어별 전적 — 이 화면의 첫 칸★ (2026-09-10 · 사장님 지시)
 
-      {/* ── 2. 플레이스타일 */}
-      {!SHOW_PLAYSTYLE || data.playstyle === null ? null : (
-        <section className="mt-[40px]">
-          <EggVeilPanel state={egg}>
-            <PlaystyleBars playstyle={data.playstyle} />
-          </EggVeilPanel>
-        </section>
-      )}
+        > «이걸 가장 상단에 놓고 그 다음 기록카드 그 다음 그래프주간추이를 놔줘»
+
+        ★차례를 바꾼 것이지 무엇도 없애지 않았다.★ 전에는 화면 맨 아래 「더보기」 안에
+        접혀 있어서 ★펼치기를 눌러야 보였다★ — 사장님이 «왜 난 안보이지» 라고 하신 자리다.
+
+        지금 차례
+        ```
+        0 티어별 전적   ← 여기
+        1 기록카드(PlayerHeadCard)
+        2 주간 추이 그래프
+        3 전투력 · 플레이스타일   (켜져 있을 때만)
+        4 최근 경기
+        5 더보기 — 최근 같이한 플레이어
+        ```
+      */}
+      <section className="mt-[40px]">
+        <TierBreakdown
+          rows={data.tier_breakdown}
+          leagueSlug={leagueSlug}
+          leagueCategory={data.league.category}
+        />
+      </section>
 
       {/*
-        ── 3. 주간 추이 그래프 + 정보줄 (2026-09-02 사용자 지시)
-
-        > "기존선수카드 삭제 및 그래프카드 추가
-        >  (개인기록SPL,IPL,열산 모두 전부 적용-열산 차별x)"
-
-        **세 리그가 같은 화면을 쓴다.** 리그별로 칸을 감추는 분기를 여기 만들지 않는다
-        (`CLAUDE.md` 9장). 무소속리그의 킬뎃 제한은 화면이 아니라 **서버가 순위로** 갈라
-        `null` 을 주고, 정보줄이 그 사실을 문구로만 옮긴다.
-
-        옛 `PlayerStatSidebar` 는 **지우지 않았다** — 컴포넌트도 계약도 그대로 살아 있고
-        이 화면이 부르지 않을 뿐이다 (`CLAUDE.md` 10-4).
+        ★차례를 2026-09-10 에 바꿨다★ — 사장님 지시로 아래 셋의 순서만 옮겼다.
+        ★코드는 한 줄도 안 지웠다.★ 위아래로 옮겼을 뿐이다 (`CLAUDE.md` 1-4).
+        전 : 전투력 → 플레이스타일 → 주간추이 → 기록카드
+        후 : 기록카드 → 주간추이 → 전투력 → 플레이스타일
       */}
-      {data.weekly === null ? null : (
-        <section className="mt-[40px]">
-          <EggVeilPanel state={egg} note={EGG_BREAK_GUIDE}>
-            <WeeklyTrendCard
-              weekly={data.weekly}
-              rankNote="순위 변동은 주간 기록이 쌓이면 함께 그려집니다."
-            />
-          </EggVeilPanel>
-        </section>
-      )}
-
       <section className="mt-4">
         <PlayerHeadCard
           playerName={data.player.name}
@@ -228,6 +217,49 @@ export default function LeaguePlayerRecordPage({
           restrictsKd={data.league.hides_cumulative_kd}
         />
       </section>
+
+      {/*
+        ── 3. 주간 추이 그래프 + 정보줄 (2026-09-02 사용자 지시)
+
+        > "기존선수카드 삭제 및 그래프카드 추가
+        >  (개인기록SPL,IPL,열산 모두 전부 적용-열산 차별x)"
+
+        **세 리그가 같은 화면을 쓴다.** 리그별로 칸을 감추는 분기를 여기 만들지 않는다
+        (`CLAUDE.md` 9장). 무소속리그의 킬뎃 제한은 화면이 아니라 **서버가 순위로** 갈라
+        `null` 을 주고, 정보줄이 그 사실을 문구로만 옮긴다.
+
+        옛 `PlayerStatSidebar` 는 **지우지 않았다** — 컴포넌트도 계약도 그대로 살아 있고
+        이 화면이 부르지 않을 뿐이다 (`CLAUDE.md` 10-4).
+      */}
+      {data.weekly === null ? null : (
+        <section className="mt-[40px]">
+          <EggVeilPanel state={egg} note={EGG_BREAK_GUIDE}>
+            <WeeklyTrendCard
+              weekly={data.weekly}
+              rankNote="순위 변동은 주간 기록이 쌓이면 함께 그려집니다."
+            />
+          </EggVeilPanel>
+        </section>
+      )}
+
+      {/* ── 1. 전투력 — 이 화면에서 제일 먼저 보여 주고 싶은 것 */}
+      {!SHOW_TRAIT_HEXAGON || data.traits === null ? null : (
+        /* 카드가 스스로 `전투력` 제목을 그린다 — 위에 제목을 또 얹지 않는다 */
+        <section className="mt-[40px]">
+          <EggVeilPanel state={egg} note={EGG_BREAK_GUIDE}>
+            <TraitHexagon traits={data.traits} />
+          </EggVeilPanel>
+        </section>
+      )}
+
+      {/* ── 2. 플레이스타일 */}
+      {!SHOW_PLAYSTYLE || data.playstyle === null ? null : (
+        <section className="mt-[40px]">
+          <EggVeilPanel state={egg}>
+            <PlaystyleBars playstyle={data.playstyle} />
+          </EggVeilPanel>
+        </section>
+      )}
 
       {/* ── 4. 최근 경기 — 요약(오늘 기록 포함) 다음에 그 근거인 경기가 이어진다.
              `today` 를 넘기면 승률 도넛 자리에 **오늘 기록**이 들어간다 (D-186) */}
@@ -290,15 +322,9 @@ export default function LeaguePlayerRecordPage({
           }
         />
         {moreOpen ? (
-          <div className="mt-4 grid grid-cols-2 gap-3 max-md:grid-cols-1">
-            {/* 부리그/티어 표기는 리그 구분이 정한다 (D-165) — 화면이 임의로 고르지 않는다 */}
-            <EggVeilPanel state={egg}>
-              <TierBreakdown
-                rows={data.tier_breakdown}
-                leagueSlug={leagueSlug}
-                leagueCategory={data.league.category}
-              />
-            </EggVeilPanel>
+          <div className="mt-4">
+            {/* ★티어별 전적은 2026-09-10 에 맨 위로 올라갔다★ — 사장님 지시.
+               여기 남은 것은 「최근 같이한 플레이어」 하나다 */}
             <TeammateTable title="최근 같이한 플레이어" teammates={data.teammates} />
           </div>
         ) : null}

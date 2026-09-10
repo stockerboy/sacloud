@@ -332,6 +332,19 @@
    *   우리 배경은 검정이고, 빨강은 강조색(`--color-accent` #d92b2b)과 겹쳐 구분이 죽는다.
    *   그래서 노랑을 쓴다 — **사용자가 시안을 보고 고른 값이다.**
    */
+  /**
+   * ★티어 이름 색★ (2026-09-10 · 사장님 «글씨에 색도 있으면 좋겠어»).
+   *
+   * ⚠ ★여기에 있어야 `text-tier-1` 유틸리티가 생긴다★ — Tailwind v4 는 `@theme` 안의
+   *   `--color-*` 만 클래스로 만든다. 실제로 쓰는 값은 `v2/tokens.css` 가 덮는다.
+   *
+   * 셋을 다 칠하지 않는다 — ★맨 위 한 칸만 색이고 아래로 흐려진다.★
+   * 무지개로 칠하면 셋 다 강조라 아무것도 강조가 아니게 된다 (4장).
+   */
+  --color-tier-1: #22e0ff;
+  --color-tier-2: #a8aec2;
+  --color-tier-3: #8f95af;
+
   --color-rate-low: #ff3d3d;
   --color-rate-1: #02ab18;
   --color-rate-2: #f2711c;
@@ -706,6 +719,20 @@
    *
    *   자릿수 정렬은 글꼴이 아니라 `.num` 의 `font-variant-numeric: tabular-nums` 가 잡는다.
    */
+  /**
+   * ★티어 이름 전용★ (2026-09-10 · 사장님 «폰트가 일단 너무 구리고»).
+   *
+   * `Bebas Neue` — ★스코어보드 대문자★. `vs ASTRA` · `vs CHALLENGER1` 처럼
+   * 라틴 대문자만 들어가는 자리에 쓴다. 좁아서 ★긴 이름이 폰에서 안 넘친다.★
+   *
+   * ⚠ ★한글이 없다.★ 그래서 뒤에 한글 글꼴을 받쳐 둔다 — 모르는 티어가 `4티어` 로
+   *   떨어져도 글자가 안 깨진다. ★본문에는 쓰지 않는다.★
+   * ⚠ 폰트를 안 받아 왔거나 껐을 때는 그냥 본문 스택으로 떨어진다. 글자는 그대로 보인다.
+   */
+  --font-tier:
+    var(--font-bebas, "Bebas Neue"), "Noto Sans KR", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
   --font-num:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, "Noto Sans", sans-serif;
@@ -922,6 +949,17 @@ table,
  * 큰 제목용 헬퍼.
  * `Black Han Sans` 는 자간이 넓게 느껴져서 살짝 조인다.
  */
+/**
+ * ★티어 이름★ (2026-09-10). 스코어보드 대문자 + 넓은 자간.
+ * 색은 여기서 안 정한다 — 티어마다 다르고, 그 값은 `TierBreakdown.tsx` 가 고른다.
+ */
+.tier-name {
+  font-family: var(--font-tier);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
 .display {
   font-family: var(--font-display);
   font-weight: 400;

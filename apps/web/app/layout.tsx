@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Cinzel, Noto_Sans_KR } from 'next/font/google'
+import { Bebas_Neue, Cinzel, Noto_Sans_KR } from 'next/font/google'
 import { Providers } from './providers'
 import { EggBoot } from './_egg/EggBoot'
 import { AppShell } from '@/components/AppShell'
@@ -84,6 +84,29 @@ const fontCinzel = Cinzel({
 })
 
 /**
+ * ★티어 이름 전용 서체★ (2026-09-10 · 사장님 «폰트가 일단 너무 구리고»).
+ *
+ * ── 왜 새로 들였나
+ *   `vs ASTRA` · `vs CHALLENGER1` 은 ★라틴 대문자★ 다. 본문 글꼴(Noto Sans KR)로 찍으면
+ *   ★한글 본문과 똑같이 생겨서★ 구간 이름으로 안 읽힌다. 게다가 `CHALLENGER1` 은 길어서
+ *   폰 가로폭을 거의 다 먹는다 (실측 사진).
+ *
+ *   `Bebas Neue` 는 ★스코어보드 글꼴★ 이다 — 대문자만 있고, 좁고, 키가 크다.
+ *   ★길이 문제와 톤 문제를 한 번에 푼다.★
+ *
+ * ── ⚠ 한글도 없고 소문자도 없다
+ *   그래서 ★티어 이름 한 곳에만 쓴다.★ 본문에 쓰면 한글이 통째로 대체 글꼴로 떨어진다.
+ *   스택 뒤에 한글 글꼴을 받쳐 둔다 (`styles.css` 의 `--font-tier`) — 모르는 티어가
+ *   `4티어` 로 떨어져도 글자가 깨지지 않는다.
+ */
+const fontTier = Bebas_Neue({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-bebas',
+})
+
+/**
  * ★링크 미리보기★ (2026-09-03 · O-008 ⑤).
  *
  * ══ 왜 필요한가 ══
@@ -128,7 +151,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ko"
-      className={`${fontBody.variable} ${fontCinzel.variable}`}
+      className={`${fontBody.variable} ${fontCinzel.variable} ${fontTier.variable}`}
     >
       <body className="antialiased">
         <Providers>

@@ -72,11 +72,40 @@ const AXES = [
 
 type Axis = (typeof AXES)[number]['key']
 
+/**
+ * ★티어 이름 색★ (2026-09-10 · 사장님 «글씨에 색도 있으면 좋겠어»).
+ *
+ * ★맨 위 한 칸만 색이고 아래로 흐려진다.★ 셋을 무지개로 칠하면 셋 다 강조라
+ * ★아무것도 강조가 아니게 된다★ (`CLAUDE.md` 4장). 값은 `styles.css` 의 토큰이다.
+ * ⚠ 모르는 티어 번호는 ★지어내지 않고★ 기본 회색으로 떨어진다.
+ */
+const TIER_COLOR: Readonly<Record<number, string>> = {
+  1: 'text-tier-1',
+  2: 'text-tier-2',
+  3: 'text-tier-3',
+}
+
 /** 고른 축의 킬뎃과 ★그 축의 판수★ 를 꺼낸다. 판수는 축마다 다르다 */
 function kdOf(row: PlayerTierRecord, axis: Axis): { kd: number | null; games: number } {
   if (axis === 'sniper') return { kd: row.sniper_kd, games: row.sniper_games }
   if (axis === 'rifle') return { kd: row.rifle_kd, games: row.rifle_games }
   return { kd: row.kd, games: row.known_games }
+}
+
+/**
+ * ★가장 많이 뛴 구간★ — 처음에 펼쳐 둘 한 줄을 고른다
+ * (2026-09-10 · 사장님 «세 구간중 가장 많이 플레이한 구간만 펼쳐놔»).
+ *
+ * 판수가 같으면 ★위 티어★ 를 편다. 순서를 고정하지 않으면 새로고침마다 다른 줄이 열린다.
+ * 한 판도 없으면 `null` — ★아무 줄도 안 편다.★ 빈 줄을 펴 봐야 `—` 두 개뿐이다.
+ */
+function mostPlayedTier(rows: readonly PlayerTierRecord[]): number | null {
+  let best: PlayerTierRecord | null = null
+  for (const row of rows) {
+    if (row.games === 0) continue
+    if (best === null || row.games > best.games) best = row
+  }
+  return best?.tier ?? null
 }
 
 export function TierBreakdown({
@@ -93,6 +122,17 @@ export function TierBreakdown({
   /* ★칩은 카드 안에서만 산다★ — 주소에 안 넣는다. 부리그 탭과 달리 라우트가 안 나뉜다
      (개인랭킹의 무기 칩과 같은 판단이다) */
   const [axis, setAxis] = useState<Axis>('all')
+  /*
+   * ★어느 줄이 펼쳐져 있나★ (2026-09-10 · 사장님 «챌린저 1,2는 일단 접어둬»).
+   *
+   * ★한 번에 한 줄만 펼친다.★ 셋 다 펴 두면 사장님이 사진에서 보신 그 화면이 되는데,
+   * 폰에서 세로가 너무 길어 ★아래 카드가 안 보인다.★
+   * 처음 펼치는 줄은 ★가장 많이 뛴 구간★ — 사장님이 고르신 규칙이다.
+   *
+   * ⚠ 접힌 줄도 ★이름과 판수는 그대로 보인다.★ 한 판도 안 한 구간이라는 것 자체가
+   *   정보라서 줄을 지우지 않는다 (원문 `vs4티어 0판`).
+   */
+  const [openTier, setOpenTier] = useState<number | null>(() => mostPlayedTier(rows))
 
   /* 줄이 하나도 없으면 카드를 그리지 않는다. 빈 껍데기는 정보가 아니다 */
   if (rows.length === 0) return null
@@ -132,11 +172,33 @@ export function TierBreakdown({
       </div>
       {rows.map((row) => {
         const picked = kdOf(row, axis)
+        const open = openTier === row.tier
         return (
         <div key={row.tier}>
           <div className="my-2 border-t border-t-line-soft" />
-          {/* 티어 이름 — 이름은 `divisionLabel` 이 만든다. 여기서 지어내지 않는다 */}
-          <div className="pt-1 text-3xl">vs {divisionLabel(row.tier, leagueCategory)}</div>
+          {/*
+            ★티어 줄의 머리★ — 누르면 펴지고 접힌다 (2026-09-10).
+            접혀 있어도 ★이름과 판수는 보인다★ — 그 자체가 정보다.
+            이름 글꼴은 `.tier-name`(스코어보드 대문자), 색은 티어마다 다르다.
+            글자는 `divisionLabel` 이 만든다 — ★여기서 티어 이름을 지어내지 않는다.★
+          */}
+          <button
+            type="button"
+            onClick={() => setOpenTier(open ? null : row.tier)}
+            aria-expanded={open}
+            className="flex w-full cursor-pointer items-center justify-between gap-2 py-1 text-left"
+          >
+            <span className={`tier-name truncate text-3xl ${TIER_COLOR[row.tier] ?? 'text-meta'}`}>
+              vs {divisionLabel(row.tier, leagueCategory)}
+            </span>
+            <span className="flex shrink-0 items-baseline gap-2">
+              <span className="num text-xs text-side-meta">{formatCount(row.games)}판</span>
+              {/* 펼침 표시 — 글자로 그린다. 아이콘 파일을 새로 들이지 않는다 */}
+              <span className={`text-[10px] text-faint ${open ? 'rotate-180' : ''}`}>▾</span>
+            </span>
+          </button>
+          {!open ? null : (
+          <>
           {/*
             ★두 줄로 끝낸다★ — 승률 한 줄, 킬뎃 한 줄 (2026-09-10 회의).
             ★판수를 늘 같이 적는다★ (사장님이 고르신 값) — 무기별 판수는 승률의 판수와
@@ -189,6 +251,8 @@ export function TierBreakdown({
               ))}
               <span> 의 천적</span>
             </div>
+          )}
+          </>
           )}
         </div>
         )
