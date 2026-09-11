@@ -144,6 +144,11 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
       : hoverDay
         ? { t: Math.min(hover, end.t), wr: mode === 'day' ? hoverDay.win_rate : hoverDay.cum_win_rate, kd: mode === 'day' ? hoverDay.kd : hoverDay.cum_kd }
         : end
+  /* 두 끝 마커 글자가 가까우면(승률·킬뎃 비슷) 위·아래로 벌린다 — 폰에서 «66.7%»«60.3%» 가 겹쳤다 (QA 회차 7) */
+  const lblGap = yOf(last.kd) - yOf(last.wr)
+  const lblNeed = 40
+  const wrShift = Math.abs(lblGap) < lblNeed ? (lblGap >= 0 ? -(lblNeed - lblGap) / 2 : (lblNeed + lblGap) / 2) : 0
+  const kdShift = -wrShift
   const ticks = days.length > 0 ? [0, Math.floor(span / 2), span] : []
 
   return (
@@ -205,12 +210,12 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
             ) : (
               <circle cx={xOf(last.t)} cy={yOf(last.wr)} r={11} fill={V3.chip} stroke="#7fa9ff" strokeWidth={1.6} />
             )}
-            <text x={xOf(last.t) + 17} y={yOf(last.wr) + 5} textAnchor="start" fill="#dbe8ff" fontSize="16" fontWeight="700">{last.wr.toFixed(1)}%</text>
-            <text x={xOf(last.t) + 17} y={yOf(last.wr) + 20} textAnchor="start" fill="#8fa9d8" fontSize="10" fontWeight="700">{hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
+            <text x={xOf(last.t) + 17} y={yOf(last.wr) + 5 + wrShift} textAnchor="start" fill="#dbe8ff" fontSize="16" fontWeight="700">{last.wr.toFixed(1)}%</text>
+            <text x={xOf(last.t) + 17} y={yOf(last.wr) + 20 + wrShift} textAnchor="start" fill="#8fa9d8" fontSize="10" fontWeight="700">{hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
             <circle cx={xOf(last.t)} cy={yOf(last.kd)} r={11} fill={V3.chip} stroke="#ff5a63" strokeWidth={1.6} />
             <text x={xOf(last.t)} y={yOf(last.kd) + 3} textAnchor="middle" fill="#ffd7da" fontSize="8.5" fontWeight="700">K/D</text>
-            <text x={xOf(last.t) + 17} y={yOf(last.kd) + 5} textAnchor="start" fill="#ffd7da" fontSize="16" fontWeight="700">{last.kd.toFixed(1)}%</text>
-            <text x={xOf(last.t) + 17} y={yOf(last.kd) + 20} textAnchor="start" fill="#c98f95" fontSize="10" fontWeight="700">{hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
+            <text x={xOf(last.t) + 17} y={yOf(last.kd) + 5 + kdShift} textAnchor="start" fill="#ffd7da" fontSize="16" fontWeight="700">{last.kd.toFixed(1)}%</text>
+            <text x={xOf(last.t) + 17} y={yOf(last.kd) + 20 + kdShift} textAnchor="start" fill="#c98f95" fontSize="10" fontWeight="700">{hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
           </g>
         ) : null}
       </svg>
