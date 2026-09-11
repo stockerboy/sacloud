@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { V3 } from './tokens'
 import { fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
-import { PLOT, SPAN_DAYS, TICK_LABELS, dayOf, noise, plotBox, seedOf, shapePath, useDrawIn } from './seasonPlot'
+import { PLOT, SPAN_DAYS, TICK_LABELS, dayOf, noise, plotBox, seedOf, shapePath, useDrawIn, valueAt } from './seasonPlot'
 
 export interface H2HGame {
   /** 경기 시작 (ISO) */
@@ -75,10 +75,14 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
   const salt = seedOf(`${mineSlug ?? mineName}|${oppSlug ?? oppName}`)
   const mineLine = shapePath(mine, (p) => p.v, xOf, yOf, salt, noise)
   const oppLine = shapePath(mine, (p) => 100 - p.v, xOf, yOf, salt + 7, noise)
-  const endY = yOf(endShare)
-  const oppEndY = yOf(100 - endShare)
+  /* 그리는 중에는 마커가 ★선 끝★ 에 붙어 같이 간다 (2026-09-11 사장님 영상) */
+  const tipT = Math.min(nowT, draw * SPAN_DAYS)
+  const shownShare = draw < 1 ? valueAt(mine, (p) => p.v, tipT) : endShare
+  const tipX = draw < 1 ? xOf(tipT) : xOf(nowT)
+  const endY = yOf(shownShare)
+  const oppEndY = yOf(100 - shownShare)
   const close = Math.abs(endY - oppEndY) < 52
-  const nowX = xOf(nowT)
+  const nowX = tipX
   const R = PLOT.markerR
   const labelX = nowX + R + 10
 
@@ -104,8 +108,8 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
             <text x={xOf(t)} y={Y_BOTTOM + 26} textAnchor={k === 0 ? 'start' : k === 2 ? 'end' : 'middle'} fill={V3.textDim} fontSize={PLOT.tickFont}>{label}</text>
           </g>
         ))}
-        <line x1={nowX} y1={Y_TOP - 8} x2={nowX} y2={Y_BOTTOM + 6} stroke="#2b3a58" />
-        <text x={nowX} y={Y_TOP - 12} textAnchor="middle" fill="#8f9bb5" fontSize={PLOT.tickFont} fontWeight="700">now</text>
+        <line x1={xOf(nowT)} y1={Y_TOP - 8} x2={xOf(nowT)} y2={Y_BOTTOM + 6} stroke="#2b3a58" />
+        <text x={xOf(nowT)} y={Y_TOP - 12} textAnchor="middle" fill="#8f9bb5" fontSize={PLOT.tickFont} fontWeight="700">now</text>
         {played === 0 ? <text x={(X0 + X1) / 2} y={(Y_TOP + Y_BOTTOM) / 2} textAnchor="middle" fill={V3.textGhost} fontSize="13">승패를 아는 맞대결이 없습니다</text> : null}
         {mine.length > 1 ? (
           <g clipPath={draw < 1 ? 'url(#h2hDraw)' : undefined}>
@@ -117,16 +121,16 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
             <polyline points={mineLine} fill="none" stroke="#dbe8ff" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
           </g>
         ) : null}
-        {played > 0 && draw > 0.98 ? (
+        {played > 0 ? (
           <g pointerEvents="none">
             <circle cx={nowX} cy={oppEndY} r={R + 4} fill="none" stroke={oppTheme.deep} strokeWidth={6} filter="url(#h2hGlowR)" opacity={0.55} />
             <circle cx={nowX} cy={oppEndY} r={R} fill={V3.chip} stroke={oppTheme.main} strokeWidth={2} />
             {oppSlug && hasFitMark(oppSlug) ? <image href={fitMarkUrl(oppSlug)} x={nowX - R} y={oppEndY - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={oppEndY + (close ? 22 : 6)} fill="#ffffff" fontSize={PLOT.valueFont} fontWeight="700">{(100 - endShare).toFixed(1)}%</text>
+            <text x={labelX} y={oppEndY + (close ? 22 : 6)} fill="#ffffff" fontSize={PLOT.valueFont} fontWeight="700">{(100 - shownShare).toFixed(1)}%</text>
             <circle cx={nowX} cy={endY} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter="url(#h2hGlowB)" opacity={0.55} />
             <circle cx={nowX} cy={endY} r={R} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
             {mineSlug && hasFitMark(mineSlug) ? <image href={fitMarkUrl(mineSlug)} x={nowX - R} y={endY - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={endY + (close ? -14 : 6)} fill="#ffffff" fontSize={PLOT.valueFont} fontWeight="700">{endShare.toFixed(1)}%</text>
+            <text x={labelX} y={endY + (close ? -14 : 6)} fill="#ffffff" fontSize={PLOT.valueFont} fontWeight="700">{shownShare.toFixed(1)}%</text>
           </g>
         ) : null}
         <g>

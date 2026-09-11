@@ -134,3 +134,24 @@ export function useDrawIn(ms = 2200): number {
   }, [ms])
   return t
 }
+
+/**
+ * ★그리는 중 끝점의 값★ — 선이 자라는 동안 끝 마커가 그 끝을 따라간다 (2026-09-11 사장님 영상).
+ * 계단(HOLD)까지 똑같이 따라가 선과 마커가 어긋나지 않는다. 흔들림은 안 넣는다 — 마커는 진짜 값이다.
+ */
+export function valueAt<T extends { t: number }>(pts: readonly T[], pick: (p: T) => number, t: number): number {
+  if (pts.length === 0) return 0
+  const first = pts[0] as T
+  if (t <= first.t) return pick(first)
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const a = pts[i] as T
+    const b = pts[i + 1] as T
+    if (t > b.t) continue
+    const span = b.t - a.t
+    if (span <= 0) return pick(b)
+    const f = (t - a.t) / span
+    const g = f < HOLD ? 0 : (f - HOLD) / (1 - HOLD)
+    return pick(a) + (pick(b) - pick(a)) * g
+  }
+  return pick(pts[pts.length - 1] as T)
+}

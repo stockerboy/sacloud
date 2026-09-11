@@ -11,6 +11,7 @@
  * 눈금은 10 단위 열 줄 (값이 0~100 백분위) — 위쪽 축 옆에 숫자.
  */
 import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
+import { useDrawIn } from './seasonPlot'
 
 export interface HexAxisView {
   label: string
@@ -24,8 +25,10 @@ const RING_STEP = 10
 const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_STEP)
 
 export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id?: string }) {
+  /* ★가운데에서 바깥으로 자라난다★ (2026-09-11 사장님: «비슷한 느낌으로 육각그래프도 그려지게») */
+  const grow = useDrawIn(1500)
   const six = axes.slice(0, 6)
-  const vertices = six.map((a, i) => hexPoint(i, Math.max(0, Math.min(100, a.value ?? 0)) / 100))
+  const vertices = six.map((a, i) => hexPoint(i, (Math.max(0, Math.min(100, a.value ?? 0)) / 100) * grow))
   const area = vertices.map((v) => v.join(',')).join(' ')
   return (
     <svg viewBox={`0 0 ${HEX.w} ${HEX.h}`} style={{ width: HEX.w, height: HEX.h, flex: `0 0 ${HEX.w}px`, display: 'block' }}>
@@ -72,9 +75,9 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
         strokeLinejoin="round"
         filter={`url(#${id}Glow)`}
       />
-      {vertices.map(([x, y], i) => (
+      {grow > 0.98 ? vertices.map(([x, y], i) => (
         <circle key={i} cx={x} cy={y} r={3.2} fill={i < 3 ? '#ff7ac8' : '#7fa9ff'} stroke="#ffffff" strokeWidth={0.8} filter={`url(#${id}Glow)`} />
-      ))}
+      )) : null}
       {/* 눈금 숫자 — 채움·글로우 위에 그려야 보인다 (QA 교차검토 9-18) — 위쪽 축을 따라 10 단위 (짝수 눈금만 글자, 홀수는 선만 — 겹침 방지) */}
       {RINGS.filter((v) => v % 20 === 0).map((v) => {
         const [x, y] = hexPoint(0, v / 100)
