@@ -126,6 +126,7 @@ import {
   readWatchNumbers,
   saveWatchState,
   sendDiscord,
+  sendKakao,
   transitionWatch,
   type WatchNumbers,
   type WatchThresholds,
@@ -470,7 +471,8 @@ function usage(): void {
                    [--leagues <slug,...>] [--stale-min <slug>=<분>,...] [--ingest-stale-min N]
                    [--ingest-alert] [--apply-max-hours N] [--fail-streak N]
               수집 감시 (지시 #18) — 마지막 경기 지연 · 창구 정체 · 시즌0 반영 · 워크플로 연속 실패를
-              숫자로 판정하고, **바뀔 때만** 디스코드 웹훅(DISCORD_WEBHOOK_URL)으로 알린다.
+              숫자로 판정하고, **바뀔 때만** 카톡(KAKAO_REST_KEY·KAKAO_REFRESH_TOKEN)과
+              디스코드 웹훅(DISCORD_WEBHOOK_URL)으로 알린다. 둘 중 있는 곳으로만 간다.
               --fixture 는 DB·GitHub 대신 그 파일의 숫자로 판정한다 (접속 없이 문구 시험). 읽기만 한다
   season      --league <slug> [--close | --start] [--at <ISO>] [--number N] [--no-promotion]
               시즌 운영. 플래그가 없으면 현재 상태만 보여 준다.
@@ -1873,6 +1875,9 @@ async function main(): Promise<number> {
       }
 
       const webhook = process.env.DISCORD_WEBHOOK_URL?.trim() || null
+      /* ★카톡★ (2026-09-12 사장님) — 열쇠 둘이 다 있어야 보낸다. 값은 찍지 않는다 */
+      const kakaoKey = process.env.KAKAO_REST_KEY?.trim() || null
+      const kakaoRefresh = process.env.KAKAO_REFRESH_TOKEN?.trim() || null
       registerSecret(webhook)
 
       let numbers: WatchNumbers
@@ -1901,15 +1906,25 @@ async function main(): Promise<number> {
         log('---')
         if (dryRun) {
           log('--dry-run — 보내지 않고 상태도 남기지 않는다')
-        } else if (webhook === null) {
-          warn('DISCORD_WEBHOOK_URL 이 없다 — 문구만 찍었다')
+        } else if (webhook === null && (kakaoKey === null || kakaoRefresh === null)) {
+          warn('보낼 곳이 없다 (KAKAO_REST_KEY·KAKAO_REFRESH_TOKEN 또는 DISCORD_WEBHOOK_URL) — 문구만 찍었다')
         } else {
-          const sent = await sendDiscord(webhook, message)
-          if (!sent.ok) {
-            fail(`디스코드 전송 실패 HTTP ${sent.status} — 상태를 남기지 않는다. 다음 실행이 다시 보낸다`)
+          /* ★한 곳이라도 닿으면 성공★ — 둘 다 실패해야 상태를 안 남기고 다음 판이 다시 보낸다 */
+          let reached = false
+          if (kakaoKey !== null && kakaoRefresh !== null) {
+            const k = await sendKakao(kakaoKey, kakaoRefresh, message)
+            if (k.ok) { reached = true; log('카톡으로 보냈다') }
+            else warn(`카톡 전송 실패 HTTP ${k.status}${k.note ? ` (${k.note})` : ''}`)
+          }
+          if (webhook !== null) {
+            const sent = await sendDiscord(webhook, message)
+            if (sent.ok) { reached = true; log(`디스코드로 보냈다 (HTTP ${sent.status})`) }
+            else warn(`디스코드 전송 실패 HTTP ${sent.status}`)
+          }
+          if (!reached) {
+            fail('아무 데도 못 보냈다 — 상태를 남기지 않는다. 다음 실행이 다시 보낸다')
             return 1
           }
-          log(`디스코드로 보냈다 (HTTP ${sent.status})`)
         }
       }
       if (!dryRun) {

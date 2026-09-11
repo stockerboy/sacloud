@@ -408,6 +408,56 @@ export async function sendDiscord(webhookUrl: string, content: string, fetchImpl
   return { ok: res.ok, status: res.status }
 }
 
+/**
+ * ★카카오톡 「나에게 보내기」★ (2026-09-12 사장님: «디코 잘 안봐 카톡 제발 카톡»)
+ *
+ * 카카오는 ★오래 가는 열쇠를 주지 않는다.★ 그래서 두 걸음이다 —
+ *   ① `refresh_token` 으로 `access_token` 을 새로 받는다 (열두 시간짜리)
+ *   ② 그 토큰으로 나에게 메모를 보낸다
+ *
+ * 열쇠는 ★환경변수로만★ 받고 ★어디에도 찍지 않는다★ (`CLAUDE.md` 2장 6번).
+ *   KAKAO_REST_KEY        앱의 REST API 키
+ *   KAKAO_REFRESH_TOKEN   한 번 받아 두면 두 달 가고, 쓸 때마다 늘어난다
+ *
+ * 실패하면 `ok:false` 로 돌려준다 — 부르는 쪽이 상태를 안 남기고 다음 판에 다시 보낸다.
+ */
+export async function sendKakao(
+  restKey: string,
+  refreshToken: string,
+  content: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; status: number; note?: string }> {
+  /* ① 토큰 새로 받기 */
+  const tokenRes = await fetchImpl('https://kauth.kakao.com/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
+    body: new URLSearchParams({ grant_type: 'refresh_token', client_id: restKey, refresh_token: refreshToken }).toString(),
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!tokenRes.ok) return { ok: false, status: tokenRes.status, note: '토큰 갱신 실패' }
+  const token = (await tokenRes.json()) as { access_token?: string }
+  if (!token.access_token) return { ok: false, status: 200, note: 'access_token 이 안 왔다' }
+
+  /* ② 나에게 보내기 — 글자는 200자까지라 잘라서 넣는다 */
+  const text = content.length > 190 ? `${content.slice(0, 185)}…` : content
+  const template = {
+    object_type: 'text',
+    text,
+    link: { web_url: 'https://3rdcloud.my', mobile_web_url: 'https://3rdcloud.my' },
+    button_title: '사이트 열기',
+  }
+  const sendRes = await fetchImpl('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token.access_token}`,
+      'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+    },
+    body: new URLSearchParams({ template_object: JSON.stringify(template) }).toString(),
+    signal: AbortSignal.timeout(15_000),
+  })
+  return { ok: sendRes.ok, status: sendRes.status }
+}
+
 /** `--stale-min supply=60,sanply=30` 꼴을 푼다. 형식이 틀리면 throw */
 export function parseStaleMin(text: string | null): Record<string, number> {
   const out: Record<string, number> = {}

@@ -78,29 +78,70 @@ export function statColor(value: number): string {
 /* ── 3) 층수(실력 점수) 색 ──────────────────────────── */
 
 /**
- * ★층수 색★ (2026-09-11 사장님)
+ * ★층수 색 — 2층마다 한 칸★ (2026-09-12 사장님: «2층 단위로 색 바꾸자», 순서는 맡기셨다)
  *
- * > «50-45 강렬한 빨간색 / 40-45 노란색 / 35-40층 하늘색 / 30-34.9층 초록색
- * >  / 29.9 이하는 전부 하얀색»
+ * ── 왜 26~46층인가 (지어낸 범위가 아니다)
+ *   2026-09-12 IPL 875명 실측 분포 —
+ *   ```
+ *   34~36층     5명   상위 1%
+ *   32~34층    54명   상위 7%
+ *   30~32층   353명   상위 47%
+ *   28~30층   448명   상위 98%
+ *   26~28층    15명   상위 100%
+ *   ```
+ *   ★전원이 26~36층 안★ 이고 28~32층에 91%가 몰려 있다. 그래서 그 구간을
+ *   ★초록 → 연두 → 하늘★ 로 잘게 갈라 같은 구간 안에서도 서로 구분되게 했다.
+ *   40층 위는 아직 아무도 없지만 자리를 비워 둔다 — 시즌이 길어지면 올라온다.
  *
- * 넘기는 값은 ★점수★ 다 (3,462점). 층은 점수 ÷ 100 이다 — 부르는 쪽이 나누지 않게
- * 여기서 나눈다. 경계는 위가 열려 있다 (45층 이상이 빨강).
- * 등수 색(`rankColor`)·수치 색(`statColor`)과 ★섞어 쓰지 않는다.★
+ * ── 색 순서
+ *   아래는 차갑게 · 위는 뜨겁게. 한 번 보면 규칙을 외울 필요가 없다.
+ *
+ * ⚠ 옛 판(5층 단위 · 45/40/35/30)은 `floorColorV1` 로 남긴다 (`CLAUDE.md` 1-4).
+ *   그 판은 실측 분포에서 ★98%가 한 색★ 이라 색이 일을 하지 않았다.
  */
-export const FLOOR_COLORS = {
-  red:    '#ff2d2d', // 45층 ~
-  yellow: '#ffd83d', // 40 ~ 44.9층
-  sky:    '#63d9ff', // 35 ~ 39.9층
-  green:  '#22c55e', // 30 ~ 34.9층
-  plain:  '#ffffff', // ~ 29.9층
+export const FLOOR_STEPS: readonly (readonly [number, string])[] = [
+  [46, '#ff0033'], // 46층 ~      불빨강
+  [44, '#ff2d2d'], // 44 ~ 45.9   빨강
+  [42, '#ff8a3d'], // 42 ~ 43.9   주황
+  [40, '#ffd83d'], // 40 ~ 41.9   노랑
+  [38, '#ff6fb5'], // 38 ~ 39.9   분홍
+  [36, '#a78bfa'], // 36 ~ 37.9   보라
+  [34, '#5b8dff'], // 34 ~ 35.9   파랑
+  [32, '#63d9ff'], // 32 ~ 33.9   하늘
+  [30, '#a3e635'], // 30 ~ 31.9   연두
+  [28, '#22c55e'], // 28 ~ 29.9   초록
+  [26, '#ffffff'], // 26 ~ 27.9   하양
+] as const;
+
+/** 26층 아래 — 아직 표본이 거의 없는 자리 */
+export const FLOOR_BELOW = '#8a93a8';
+
+/**
+ * 넘기는 값은 ★점수★ 다 (3,462점). 층은 점수 ÷ 100 이다 — 부르는 쪽이 나누지 않게
+ * 여기서 나눈다. 등수 색(`rankColor`)·수치 색(`statColor`)과 ★섞어 쓰지 않는다.★
+ */
+export function floorColor(score: number | null | undefined): string {
+  if (score === null || score === undefined || Number.isNaN(score)) return FLOOR_BELOW;
+  const floor = score / 100;
+  for (const [from, color] of FLOOR_STEPS) if (floor >= from) return color;
+  return FLOOR_BELOW;
+}
+
+/** ★옛 판★ — 5층 단위 (45 빨강 · 40 노랑 · 35 하늘 · 30 초록 · 그 아래 하양). 지우지 않는다 */
+export const FLOOR_COLORS_V1 = {
+  red:    '#ff2d2d',
+  yellow: '#ffd83d',
+  sky:    '#63d9ff',
+  green:  '#22c55e',
+  plain:  '#ffffff',
 } as const;
 
-export function floorColor(score: number | null | undefined): string {
-  if (score === null || score === undefined || Number.isNaN(score)) return FLOOR_COLORS.plain;
+export function floorColorV1(score: number | null | undefined): string {
+  if (score === null || score === undefined || Number.isNaN(score)) return FLOOR_COLORS_V1.plain;
   const floor = score / 100;
-  if (floor >= 45) return FLOOR_COLORS.red;
-  if (floor >= 40) return FLOOR_COLORS.yellow;
-  if (floor >= 35) return FLOOR_COLORS.sky;
-  if (floor >= 30) return FLOOR_COLORS.green;
-  return FLOOR_COLORS.plain;
+  if (floor >= 45) return FLOOR_COLORS_V1.red;
+  if (floor >= 40) return FLOOR_COLORS_V1.yellow;
+  if (floor >= 35) return FLOOR_COLORS_V1.sky;
+  if (floor >= 30) return FLOOR_COLORS_V1.green;
+  return FLOOR_COLORS_V1.plain;
 }
