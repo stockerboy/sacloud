@@ -69,6 +69,9 @@ VPS     ★집계 서버(gwlove)가 32커밋 뒤(e53478f)였다★ — player-he
         구간×무기 승패를 계약에 추가(PlayerTierRecord.rifle_win/lose·sniper_win/lose · tierBreakdown 에서 센다) ·
         수정 5건: 클랜 «N티어» 알약 · «시즌 CLOUD0 상대전적» 글자 제거 · 무기 칩 위치 · 맞대결 줄 MVP 를 클랜 이름 옆 · ASTRA 클랜 인식표 배경 ·
         그래프 두 장을 seasonPlot 한 자로 (판 크게 · 선·마커 굵게 · 홈 아래 0% / 상대 위 100% · 선수는 킬뎃 0 / 승률 100 출발)
+사장님(밤)  개인랭킹 대표 승률·킬뎃을 ★주무기 줄(LeaguePlayerWeaponStat)★ 로 — 통합 아님 (구간별은 아직 대기) ·
+        10판 미만 가림막 제거(사장님: 무조건 보여줘라) · 집계 전 경기도 MVP 표시(matches.mvpPlayerIdOf — 이긴 팀·킬↑데스↓·고정 무작위,
+        30분 집계가 세이브까지 본 값으로 덮는다) · 섞은 목록에 무기별 scoreRank 를 써서 «1위» 가 둘이던 것 되돌림
 대기 중  개인랭킹 구간별 개편 + 인식표(먹구름·흰구름) — 사장님 허락 기다리는 중. 확정된 규칙은 ORDERS 0장에
 [결정 그대로] hilarious-·CeIebrity 등이 SPL 클랜랭킹에 없는 것은 O-044(사장님 분류 · 열산 클랜은 SPL 목록에서 감춤) — 선수 개인랭킹엔 뜬다
 [자료 빈틈] SPL 우리 수집 경기는 ★판별 래더 증감(Match.red/blueRatingUpdate)이 안 적힌다★ — season0-apply 는 합계만 쓴다. 미러(3rd.supply) 경기만 ±가 있다.
