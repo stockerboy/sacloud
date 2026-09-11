@@ -2,7 +2,7 @@ import 'server-only'
 import { QueryClient, dehydrate } from '@tanstack/react-query'
 import { PAGE_SIZE } from '@sacloud/contract'
 import { getPlayerRanks, resolveLeagueId } from '@/lib/server/queries/leagues'
-import { getFormTop } from '@/lib/server/queries/rankings'
+import { getFormTop, getPlayerRanksByScore } from '@/lib/server/queries/rankings'
 
 /**
  * ★개인랭킹 첫 화면을 서버에서 그린다★ (2026-09-10).
@@ -37,7 +37,11 @@ export async function prefetchPlayerRank(leagueSlug: string) {
   if (!leagueId) return dehydrate(client)
 
   const [page, form] = await Promise.all([
-    getPlayerRanks(leagueId, null, PAGE_SIZE.RANK).catch(() => null),
+    /* ★라우트와 같은 규칙★ — 실력 점수 순, 점수 표가 비면 옛 래더 순 (2026-09-11 QA 회차 3: 서버가 래더 순으로 그려 놓고
+       브라우저가 안 다시 물어 «래더 3,647점» 이 그대로 보였다) */
+    getPlayerRanksByScore(leagueId, null, PAGE_SIZE.RANK)
+      .then((scored) => (scored && scored.items.length > 0 ? scored : getPlayerRanks(leagueId, null, PAGE_SIZE.RANK)))
+      .catch(() => null),
     getFormTop(leagueId, FIRST_WEAPON).catch(() => null),
   ])
 

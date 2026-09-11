@@ -124,7 +124,7 @@ export function FilterChip<T extends string>({
         }}
       >
         {kind ? <span style={kindStyle}>{kind}</span> : null}
-        <span>{show(value)}</span>
+        <span style={{ whiteSpace: 'nowrap' }}>{show(value)}</span>
         <span style={caret} aria-hidden="true">
           {open ? '▲' : '▼'}
         </span>
