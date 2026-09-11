@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- 3rd cloud 파비콘 (2026-09-11 · 탭마다 /favicon.ico 404 가 나던 것). 구름 한 조각 · 우리 색 -->
+  <rect width="64" height="64" rx="14" fill="#0b1220"/>
+  <path d="M19 44h27a9 9 0 0 0 1-17.9A12 12 0 0 0 24.5 23 9.5 9.5 0 0 0 19 44z" fill="#5c80e0"/>
+  <path d="M19 44h27a9 9 0 0 0 1-17.9A12 12 0 0 0 24.5 23 9.5 9.5 0 0 0 19 44z" fill="none" stroke="#a9c3ff" stroke-width="2"/>
+</svg>

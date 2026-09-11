@@ -16,7 +16,7 @@ import { rankColor, statColor } from './rankColors'
 import { Card, CardHead, Kda, MarkCircle, SectionBar, TierText, clanThemeOf, fitMarkUrl, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 
-const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
+const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px 62px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
 const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 108px 78px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
 
 export interface ClanDetailV3Props {
@@ -355,8 +355,10 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
 
 /* ── 최근 경기 ─────────────────────────────────────────────────── */
 
-function RecentRows({ data, matches }: { data: LeagueClanShow; matches: readonly MatchListItem[] }) {
+/* 2026-09-11 QA 회차 2: 최근 경기도 줄을 누르면 스코어보드가 펼쳐진다 (선수 상세·경기 목록과 같은 규칙). 명단 없는 경기는 잠근다 */
+function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanShow; matches: readonly MatchListItem[]; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
   const theme = clanThemeOf(data.clan.slug)
+  const [open, setOpen] = useState<string | null>(null)
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {matches.map((m) => {
@@ -364,7 +366,8 @@ function RecentRows({ data, matches }: { data: LeagueClanShow; matches: readonly
         const delta = m.rating_update
         const pending = m.red.length === 0 && m.blue.length === 0
         return (
-          <div key={m.id} style={{ ...matchRowStyle, borderLeft: `2px solid ${edge}`, opacity: pending ? 0.75 : 1 }} className="v3-match-row">
+          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: open === m.id ? 'rgba(91,141,255,.04)' : V3.card, opacity: pending ? 0.75 : 1 }}>
+          <div onClick={() => { if (pending) return; const isOpen = open === m.id; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, border: 'none', borderRadius: 0, background: 'transparent', cursor: pending ? 'default' : 'pointer' }} className="v3-match-row">
             <span style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
             <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
               <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
@@ -392,6 +395,13 @@ function RecentRows({ data, matches }: { data: LeagueClanShow; matches: readonly
                 </>
               )}
             </span>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : open === m.id ? '#a9c3ff' : V3.textGhost }}>
+              {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{open === m.id ? '▲' : '▼'}</span></>}
+            </span>
+          </div>
+          {open === m.id ? (
+            expanded[m.id] ? <Scoreboard detail={expanded[m.id] as MatchDetail} leagueCategory={data.league.category} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
+          ) : null}
           </div>
         )
       })}
@@ -448,7 +458,7 @@ export function ClanDetailV3(props: ClanDetailV3Props) {
       ) : matches.length === 0 ? (
         <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>아직 경기가 없습니다.</div>
       ) : (
-        <RecentRows data={data} matches={matches} />
+        <RecentRows data={data} matches={matches} expanded={props.expanded} onExpand={props.onExpand} />
       )}
       {hasMore ? (
         <button type="button" onClick={onLoadMore} disabled={loadingMore} style={{ marginTop: 10, width: '100%', padding: '11px 0', fontFamily: 'inherit', fontSize: 12.5, color: '#a9c3ff', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.35)', borderRadius: V3.radiusCard, cursor: 'pointer' }}>
