@@ -47,6 +47,8 @@ VPS     ★집계 서버(gwlove)가 32커밋 뒤(e53478f)였다★ — player-he
         «이 리그 자료에 MVP 없음» 안내 접음(규칙 MVP 가 전 리그에 있다) · MVP 닉 앞 마크 · 폰 양 팀 줄 티어 글자 숨김(한 글자로 눌리던 것) ·
         폰 랭킹표 킬뎃 칸도 유지 · 폰 상대전적 그래프 폭 맞춤 · 맞대결 60판까지 이어 받기(«전부 보기» 가 20판이던 것) ·
         목록 줄에 라운드 점수(계약 MatchListItem.red_rounds/blue_rounds · MATCH_SELECT 에 clanHexV2 tally)
+회차 6~8  기계 검수 새 결함 0 (빈 상태 문구는 «미반영»·«측정 중» 등 정상 문구). 폰 추이 마커 글자 겹침 → 벌림.
+        ★백그라운드 Bash 로 띄운 회차는 내 턴이 끝나면 죽었다★ → 회차 9~40 은 Monitor(persistent) 루프로 (scratchpad/qa-round.mjs)
 남긴 것  옛 v2 표의 «58%»/«8킬» 소수 자리(원본 표기 따라 일부러 뗀 것 · common/format.ts) ·
         상대전적 X축은 판 순서(시간 비례 아님 · 시안대로) · 클랜 육각형 백분위 낮으면 작은 점 (자료 그대로)
 [미확인] 같은 이름 클랜이 한 리그에 둘씩 (SPL #chaseplay 2개 · 10mountain melody·sovereignwc…) — Clan 행이 slug 만 다르게 둘. 개명·재창단인지 자료로 못 가림. 화면은 사실대로 둘 다 보여 준다
