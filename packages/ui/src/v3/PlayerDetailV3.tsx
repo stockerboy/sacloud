@@ -19,6 +19,7 @@ import { rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
 import { V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
+import { formatRating } from '../common/format'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
 
@@ -79,7 +80,7 @@ function TierRecordCard({ data, report, ownTier }: { data: LeaguePlayerDetail; r
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, whiteSpace: 'nowrap' }}>
           {score !== null ? (
             <>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{fmt(score)}점</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{formatRating(score)}</span>
               {scoreRank !== null ? <RankText rank={scoreRank} color={rankColor(scoreRank)} /> : null}
             </>
           ) : hex ? (
@@ -87,7 +88,7 @@ function TierRecordCard({ data, report, ownTier }: { data: LeaguePlayerDetail; r
             <span style={{ fontSize: 13, fontWeight: 700, color: V3.textMuted }}>실력 점수 측정 중 · {fmt(hex.games)}판</span>
           ) : (
             <>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{fmt(data.rating)}점</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{formatRating(data.rating)}</span>
               {data.rank !== null ? <RankText rank={data.rank} color={rankColor(data.rank)} /> : null}
             </>
           )}

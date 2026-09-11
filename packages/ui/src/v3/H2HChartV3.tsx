@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { V3 } from './tokens'
 import { fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
-import { PLOT, SPAN_DAYS, TICK_LABELS, dayOf, noise, plotBox, seedOf, shapePath } from './seasonPlot'
+import { PLOT, SPAN_DAYS, TICK_LABELS, dayOf, noise, plotBox, seedOf, shapePath, useDrawIn } from './seasonPlot'
 
 export interface H2HGame {
   /** 경기 시작 (ISO) */
@@ -46,6 +46,7 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  const draw = useDrawIn()
   const box = plotBox(width)
   const { H, X0, X1, Y_TOP, Y_BOTTOM, phone } = box
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)
@@ -85,6 +86,8 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: V3.plot }}>
       <svg viewBox={`0 0 ${width} ${H}`} style={{ width: '100%', height: H, display: 'block' }}>
         <defs>
+          {/* 왼쪽부터 그려지는 가리개 (2026-09-11 사장님) */}
+          <clipPath id="h2hDraw"><rect x="0" y="0" width={X0 + (X1 - X0) * draw + 2} height={H} /></clipPath>
           <filter id="h2hGlowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b1" /><feGaussianBlur stdDeviation="16" result="b2" /><feMerge><feMergeNode in="b2" /><feMergeNode in="b1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
           <filter id="h2hGlowR" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="r1" /><feGaussianBlur stdDeviation="16" result="r2" /><feMerge><feMergeNode in="r2" /><feMergeNode in="r1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         </defs>
@@ -105,16 +108,16 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
         <text x={nowX} y={Y_TOP - 12} textAnchor="middle" fill="#8f9bb5" fontSize={PLOT.tickFont} fontWeight="700">now</text>
         {played === 0 ? <text x={(X0 + X1) / 2} y={(Y_TOP + Y_BOTTOM) / 2} textAnchor="middle" fill={V3.textGhost} fontSize="13">승패를 아는 맞대결이 없습니다</text> : null}
         {mine.length > 1 ? (
-          <>
+          <g clipPath={draw < 1 ? 'url(#h2hDraw)' : undefined}>
             <polyline points={oppLine} fill="none" stroke={oppTheme.deep} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter="url(#h2hGlowR)" opacity={0.5} />
             <polyline points={mineLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter="url(#h2hGlowB)" opacity={0.55} />
             <polyline points={oppLine} fill="none" stroke={oppTheme.deep} strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} />
             <polyline points={mineLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
             <polyline points={oppLine} fill="none" stroke={oppTheme.main} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
             <polyline points={mineLine} fill="none" stroke="#dbe8ff" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
-          </>
+          </g>
         ) : null}
-        {played > 0 ? (
+        {played > 0 && draw > 0.98 ? (
           <g pointerEvents="none">
             <circle cx={nowX} cy={oppEndY} r={R + 4} fill="none" stroke={oppTheme.deep} strokeWidth={6} filter="url(#h2hGlowR)" opacity={0.55} />
             <circle cx={nowX} cy={oppEndY} r={R} fill={V3.chip} stroke={oppTheme.main} strokeWidth={2} />

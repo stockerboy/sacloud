@@ -40,7 +40,20 @@ export function formatAverage(value: number): string {
 }
 
 /** `3432` → `3,432점` */
+/**
+ * ★점수를 「층」 으로 적는다★ (2026-09-11 사장님).
+ *
+ *   3,462점 → 34.6층 · 3,182점 → 31.8층  (100 으로 나눠 소수 첫째 자리)
+ *
+ * ★계산은 한 글자도 안 바꿨다.★ 래더도 실력 점수도 지금 방식 그대로 매기고,
+ * ★보이는 글자만★ 층으로 적는다. 옛 표기는 아래 `formatRatingPoint` 로 남겨 뒀다.
+ */
 export function formatRating(value: number): string {
+  return `${(value / 100).toFixed(1)}층`
+}
+
+/** 옛 표기 (`3,462점`) — 지우지 않았다 (`CLAUDE.md` 1-4) */
+export function formatRatingPoint(value: number): string {
   return `${NF.format(value)}점`
 }
 

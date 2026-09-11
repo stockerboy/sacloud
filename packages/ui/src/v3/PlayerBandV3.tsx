@@ -13,6 +13,7 @@ import type { LeaguePlayerDetail } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { MarkCircle, clanThemeOf, hasFitMark, fitMarkUrl, RankText, type ClanTheme } from './primitives'
 import { V3, cardStyle, fmt, pct1 } from './tokens'
+import { formatRating } from '../common/format'
 
 const WEAPON_LABEL: Readonly<Record<number, string>> = { 0: '라플', 1: '스나' }
 
@@ -117,10 +118,10 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
   })()
   const kpis: { label: string; value: string; sub: string; color: string }[] = [
     scoreShown
-      ? { label: '실력 점수', value: `${fmt(hex.score as number)}점`, sub: hex.measuring ? '측정 중' : '', color: '#ffffff' }
+      ? { label: '실력 점수', value: formatRating(hex.score as number), sub: hex.measuring ? '측정 중' : '', color: '#ffffff' }
       : hex
         ? { label: '실력 점수', value: '측정 중', sub: `${fmt(hex.games)}판 · 한 무기 10판부터`, color: V3.textMuted }
-        : { label: '래더', value: `${fmt(data.rating)}점`, sub: data.placement ? '배치 중' : '', color: '#ffffff' },
+        : { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: '#ffffff' },
     { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },
     { label: '킬뎃', value: pct1(kdRate), sub: kdLabel, color: kdRate === null ? V3.textMuted : statColor(kdRate) },
     { label: '판킬', value: data.kill_per_match.toFixed(1), sub: '킬 / 판', color: V3.text },

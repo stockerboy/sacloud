@@ -30,6 +30,7 @@ import { rankColor, statColor } from './rankColors'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, RankText, TierText, clanThemeOf } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
+import { formatRating } from '../common/format'
 
 const WEAPON_LABEL: Readonly<Record<number, string>> = { 0: '라플', 1: '스나' }
 
@@ -192,7 +193,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         <span className="v3-phead-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, minWidth: 0 }}>
             <span style={{ fontSize: 21, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
-              {hex?.score !== null && hex?.score !== undefined ? `${fmt(hex.score)}점` : hex ? '측정 중' : `${fmt(data.rating)}점`}
+              {hex?.score !== null && hex?.score !== undefined ? formatRating(hex.score) : hex ? '측정 중' : formatRating(data.rating)}
             </span>
             <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{hex?.score !== null && hex?.score !== undefined ? '실력 점수' : hex ? `${fmt(hex.games)}판` : '래더'}</span>
           </span>

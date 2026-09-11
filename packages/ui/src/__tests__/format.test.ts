@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatAverage, formatCount, formatDate, formatRate, formatRating } from '../common/format'
+import { formatAverage, formatCount, formatDate, formatRate, formatRating, formatRatingPoint } from '../common/format'
 import { rateTone, rateClass } from '../common/rate'
 
 /**
@@ -45,11 +45,17 @@ describe('formatAverage — 평균킬은 정수면 소수점을 뗀다', () => {
   })
 })
 
-describe('formatRating — 천 단위 콤마 + 점', () => {
-  it('원본 관측값', () => {
-    expect(formatRating(3432)).toBe('3,432점')
-    expect(formatRating(1718)).toBe('1,718점')
-    expect(formatRating(947)).toBe('947점')
+describe('formatRating — 층 (2026-09-11 사장님)', () => {
+  /* ⚠ 정정 — 옛 판정은 «천 단위 콤마 + 점»(3,432점) 이었다. 원본 표기를 따르던 값이다.
+     2026-09-11 사장님이 ★층수 표기★ 로 바꿨다: «3462점이면 34.6층». 계산은 그대로다. */
+  it('점수를 100 으로 나눠 소수 첫째 자리 + 층', () => {
+    expect(formatRating(3462)).toBe('34.6층')
+    expect(formatRating(3182)).toBe('31.8층')
+    expect(formatRating(3000)).toBe('30.0층')
+    expect(formatRating(947)).toBe('9.5층')
+  })
+  it('옛 표기도 그대로 남아 있다', () => {
+    expect(formatRatingPoint(3432)).toBe('3,432점')
   })
 })
 

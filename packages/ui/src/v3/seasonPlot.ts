@@ -1,3 +1,7 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
 /**
  * ★시즌 그래프 공용 자★ — 선수 추이(`TrendChartV3`)와 상대전적(`H2HChartV3`)이 같은 판을 쓴다.
  *
@@ -47,7 +51,8 @@ export function plotBox(width: number): {
   phone: boolean
 } {
   const phone = width < 700
-  const H = phone ? Math.round(width * 0.78) : 560
+  /* PC 세로는 낮게 — 가로로 길쭉한 판이 보기 좋다 (2026-09-11 사장님: «PC 그래프 카드 세로가 너무 크다»). 옛 값 560 */
+  const H = phone ? Math.round(width * 0.78) : 400
   const X0 = phone ? 36 : 46
   const right = phone ? 34 : 46
   return { H, X0, X1: width - right, Y_TOP: 30, Y_BOTTOM: H - (phone ? 52 : 66), phone }
@@ -101,4 +106,31 @@ export function shapePath<T extends { t: number }>(
   const end = pts[pts.length - 1] as T
   out.push(`${xOf(end.t).toFixed(1)},${yOf(pick(end)).toFixed(1)}`)
   return out.join(' ')
+}
+
+/**
+ * ★왼쪽부터 그려지는 효과★ (2026-09-11 사장님) — 빈 판에서 시작해 오른쪽 끝까지 선이 자란다.
+ *
+ * 선을 다시 계산하지 않는다. ★다 그려 놓고 가리개(clipPath)를 왼쪽에서 오른쪽으로 벗긴다★ —
+ * 값도 모양도 그대로고 보이는 순서만 바뀐다. 끝나면 가리개를 아예 뗀다 (드래그·탐색과 안 부딪힌다).
+ * `prefers-reduced-motion` 을 켠 사람에게는 처음부터 다 보여 준다.
+ */
+export function useDrawIn(ms = 900): number {
+  const [t, setT] = useState(0)
+  useEffect(() => {
+    if (typeof window === 'undefined') { setT(1); return }
+    const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (still) { setT(1); return }
+    let raf = 0
+    const from = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - from) / ms)
+      /* 끝에서 부드럽게 멎는다 */
+      setT(1 - (1 - p) * (1 - p))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [ms])
+  return t
 }

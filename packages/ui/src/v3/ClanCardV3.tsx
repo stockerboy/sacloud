@@ -14,6 +14,7 @@ import { Hexagon, type HexAxisView } from './Hexagon'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
 import { ASTRA_STYLE, V3, cardStyle, fmt, pct1 } from './tokens'
+import { formatRating } from '../common/format'
 
 const bandStyle: CSSProperties = {
   position: 'relative',
@@ -98,7 +99,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
   const tierRate = tier && tier.win + tier.lose > 0 ? (tier.win / (tier.win + tier.lose)) * 100 : null
   const tiered = data.league.division_count >= 2
   const kpis: { label: string; value: string; sub: ReactNode; color: string; picker?: boolean }[] = [
-    { label: '래더', value: `${fmt(data.rating)}점`, sub: data.placement ? '배치 중' : '', color: '#ffffff' },
+    { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: '#ffffff' },
     tier
       ? { label: '구간 승률', value: pct1(tierRate), sub: <><TierText division={tier.division} leagueCategory={data.league.category} size={11} /> <span>{tier.win}승 {tier.lose}패</span></>, color: tierRate === null ? V3.textMuted : statColor(tierRate), picker: tierWins.length > 1 }
       : { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },

@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PlayerTrendDay } from '@sacloud/contract'
 import { fitMarkUrl, hasFitMark } from './primitives'
 import { V3 } from './tokens'
-import { PLOT, plotBox } from './seasonPlot'
+import { PLOT, plotBox, useDrawIn } from './seasonPlot'
 
 /** 흔들림 폭 (% 단위) — 모양만 */
 const WIGGLE = 1.2
@@ -89,6 +89,7 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
   }, [])
   /* 판 크기·선 두께·마커는 상대전적 그래프와 ★같은 자★ 를 쓴다 (seasonPlot.ts · 2026-09-11 사장님) */
   const { H, X0, X1, Y_TOP, Y_BOTTOM } = plotBox(width)
+  const draw = useDrawIn()
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)
   const span = Math.max(1, days.length - 1) /* 28 */
   const xOf = (t: number) => X0 + ((X1 - X0) * t) / span
@@ -162,6 +163,8 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         onTouchEnd={() => setHover(null)}
       >
         <defs>
+          {/* 왼쪽부터 그려지는 가리개 (2026-09-11 사장님) */}
+          <clipPath id="trendDraw"><rect x="0" y="0" width={X0 + (X1 - X0) * draw + 2} height={H} /></clipPath>
           <filter id="trendGlow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="7" result="g1" />
             <feGaussianBlur stdDeviation="16" result="g2" />
@@ -189,19 +192,19 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
           </>
         ) : null}
         {pts.length > 1 ? (
-          <>
+          <g clipPath={draw < 1 ? 'url(#trendDraw)' : undefined}>
             <polyline points={wrLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter="url(#trendGlow)" opacity={0.42} />
             <polyline points={wrLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
             <polyline points={wrLine} fill="none" stroke="#dbe8ff" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
             <polyline points={kdLine} fill="none" stroke={V3.red} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter="url(#trendGlow)" opacity={0.5} />
             <polyline points={kdLine} fill="none" stroke="#ff5a63" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
             <polyline points={kdLine} fill="none" stroke="#ffd7da" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
-          </>
+          </g>
         ) : null}
         {hover !== null && hoverX !== null ? (
           <line x1={hoverX} y1={Y_TOP - 6} x2={hoverX} y2={Y_BOTTOM + 6} stroke="#8ff0ff" strokeWidth={1} opacity={0.7} pointerEvents="none" />
         ) : null}
-        {days.length > 0 ? (
+        {days.length > 0 && draw > 0.98 ? (
           <g pointerEvents="none">
             <circle cx={xOf(last.t)} cy={yOf(last.wr)} r={PLOT.markerR + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter="url(#trendGlow)" opacity={0.55} />
             <circle cx={xOf(last.t)} cy={yOf(last.wr)} r={PLOT.markerR} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
