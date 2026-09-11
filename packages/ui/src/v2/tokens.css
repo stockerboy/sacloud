@@ -588,9 +588,15 @@
   .v3-phead-right { flex-direction: column !important; align-items: flex-end !important; gap: 6px !important; }
   .v3-phead-id > span:first-child { gap: 10px !important; }
   .v3-phead-tier { padding: 10px 12px 8px !important; }
-  /* 육각형 — 폰 폭에 맞춘 배율 (300px 그림 × 1.2) */
-  .v3-hex-zoom { width: 360px !important; height: 314px !important; }
-  .v3-hex-zoom > span { transform: scale(1.2) !important; }
+  /* 육각형 — 폰 폭(390 − 카드 좌우 36)에 들어가는 배율. 넘치면 창이 넓어져 전 화면이 줄어든다 */
+  .v3-hex-zoom { width: 318px !important; height: 278px !important; }
+  .v3-hex-zoom > span { transform: scale(1.06) !important; }
+  /* 숫자 세 칸 — 목업처럼 한 줄에 셋. 좁으니 글자를 줄인다 */
+  .v3-phead-kpi > .v3-phead-cell { padding: 10px 9px !important; }
+  .v3-phead-kpi > .v3-phead-cell > span:first-child { gap: 5px !important; }
+  .v3-phead-kpi > .v3-phead-cell > span:first-child > span:first-child { font-size: 9.5px !important; }
+  .v3-phead-kpi > .v3-phead-cell > span:first-child > span:last-child { font-size: 9.5px !important; }
+  .v3-phead-kpi > .v3-phead-cell > span:last-child > span:first-child { font-size: 19px !important; }
   .v3-phead-kpi > .v3-phead-cell { padding: 11px 10px !important; gap: 4px !important; }
   .v3-phead-kpi > .v3-phead-cell span:nth-child(2) > span:first-child { font-size: 20px !important; }
   .v3-phead-kpi > .v3-phead-cell span:nth-child(2) { flex-wrap: wrap; gap: 2px 5px !important; }
