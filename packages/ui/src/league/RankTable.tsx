@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
 import { showsTier, leagueScreen } from '@sacloud/contract'
 /* 2026-09-11 QA 회차 2: 랭킹표 마크가 빈 클랜(publicity·NeedBackup·Lyrical: …)이 있었다 — 상세처럼 원 크롭 마크(/assets/clans) 먼저, 없으면 옛 ClanMark(구름) */
-import { MarkCircle } from '../v3/primitives'
+import { MarkCircle, SniperMark } from '../v3/primitives'
 /* 티어 구분선 라벨 — 공식리그면 `1부리그`, 무소속리그면 `1티어` (D-165) */
 import { divisionLabel } from './divisionLabel'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 랭킹도 알로 덮는다 */
@@ -555,15 +555,19 @@ export function PlayerRankTable({
                   </Egg>
                 </Link>
                 <div className="min-w-0">
-                  <Link
-                    className="block truncate hover:text-text-strong"
-                    href={leaguePlayerPath(leagueSlug, row.player.id)}
-                  >
-                    {/* `a { color: inherit }` — 색은 안쪽 span 에 준다 (D-231) */}
-                    <span style={rankTone ? { color: rankColor(row.rank) ?? undefined } : undefined}>
-                      {row.player.name}
-                    </span>
-                  </Link>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <Link
+                      className="block truncate hover:text-text-strong"
+                      href={leaguePlayerPath(leagueSlug, row.player.id)}
+                    >
+                      {/* `a { color: inherit }` — 색은 안쪽 span 에 준다 (D-231) */}
+                      <span style={rankTone ? { color: rankColor(row.rank) ?? undefined } : undefined}>
+                        {row.player.name}
+                      </span>
+                    </Link>
+                    {/* ★스나이퍼만★ 닉네임 옆에 스코프 (2026-09-11 사장님) */}
+                    {row.score_weapon === 1 ? <SniperMark size={12} /> : null}
+                  </div>
                   {row.clan ? (
                     <Link
                       className="mt-0.5 block truncate text-[0.72rem] leading-none text-meta hover:text-text-strong"
@@ -658,9 +662,7 @@ export function PlayerRankTable({
                   : scoreTable && (row.score === null || row.score === undefined)
                     ? <span className="text-[11px] font-normal text-faint">측정 중</span>
                     : formatRating(row.score ?? row.rating)}
-                {!byWeapon && row.score_weapon !== null && row.score_weapon !== undefined ? (
-                  <span className="ml-1 text-[10px] font-normal text-faint">{row.score_weapon === 1 ? '스나' : '라플'}</span>
-                ) : null}
+                {/* 2026-09-11 사장님: 점수 뒤 포지션 글자는 뺀다 — 스나이퍼만 닉네임 옆에 스코프를 단다 */}
               </div>
             ) : null}
           </div>
