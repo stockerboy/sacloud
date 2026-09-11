@@ -387,6 +387,9 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: 'flex-end' }}>
               {pending ? (
                 <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span>
+              ) : delta === null && data.league.category !== 'independent' ? (
+                /* 래더 리그(SPL)인데 이 판은 래더에 안 실렸다 — 티어로 바꿔치기하지 않는다 (QA 회차 3) */
+                <><span style={{ fontSize: 10.5, color: '#4e515d', whiteSpace: 'nowrap' }}>래더</span><span style={{ fontSize: 12, color: V3.textGhost, whiteSpace: 'nowrap' }}>미반영</span></>
               ) : delta === null ? (
                 /* 래더제가 아닌 리그(IPL) — 상대 티어를 적는다 (2026-09-10 사장님 결정) */
                 <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}><span style={{ fontSize: 10.5, color: '#4e515d', whiteSpace: 'nowrap' }}>vs</span><TierText division={m.opponent.division} leagueCategory={data.league.category} size={12} /></span>
