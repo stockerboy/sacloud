@@ -66,6 +66,9 @@ function TierRecordCard({ data, report }: { data: LeaguePlayerDetail; report: Pl
               <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{fmt(score)}점</span>
               {scoreRank !== null ? <RankText rank={scoreRank} color={rankColor(scoreRank)} /> : null}
             </>
+          ) : hex ? (
+            /* 점수 리그인데 아직 10판 미만 — 래더로 떨어지지 않는다 (QA 회차 2 · 띠와 같은 규칙) */
+            <span style={{ fontSize: 13, fontWeight: 700, color: V3.textMuted }}>실력 점수 측정 중 · {fmt(hex.games)}판</span>
           ) : (
             <>
               <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{fmt(data.rating)}점</span>
