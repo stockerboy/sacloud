@@ -578,19 +578,123 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
   )
 }
 
+
+/* ── 클랜별 전적 (2026-09-11 사장님 목업) ─────────────────────── */
+
+/**
+ * 구간마다 한 칸. 밑의 마크 줄에서 상대를 누르면 ★제목이 그 클랜으로 바뀌고★ 숫자가 그 상대와의 기록이 된다.
+ * 마크 줄은 ★많이 붙은 순★ 이다 (사장님: «상대로 많이 한 순서대로 앞쪽에»).
+ * 킬뎃은 그 선수 무기 것 · 승률은 통합이다 (같은 날 확정).
+ */
+function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
+  const rows = data.tier_breakdown.filter((r) => r.games > 0)
+  const weapon = data.hex?.weapon ?? null
+  const [picked, setPicked] = useState<Record<number, string | null>>({})
+  const theme = clanThemeOf(data.clan?.slug)
+  const tiered = data.league.division_count >= 2
+  return (
+    <div style={{ marginTop: 16, ...cardStyle }}>
+      <CardHead title="클랜별 전적" right={
+        <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(data.win + data.lose)}전 기준</span>
+      } />
+      {rows.length === 0 ? (
+        <div style={{ padding: 18, fontSize: 12, color: V3.textGhost }}>아직 경기가 없습니다.</div>
+      ) : null}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px 16px' }}>
+        {rows.map((r) => {
+          const sel = picked[r.tier] ?? null
+          const opp = sel === null ? null : r.opponents.find((o) => o.league_clan_id === sel) ?? null
+          /* 고른 상대가 있으면 그 상대 숫자, 없으면 구간 전체 */
+          const win = opp ? opp.win : r.win
+          const lose = opp ? opp.lose : r.lose
+          const winRate = opp ? opp.win_rate : r.win_rate
+          const kd = weapon === 1
+            ? (opp ? opp.sniper_kd : r.sniper_kd)
+            : weapon === 0
+              ? (opp ? opp.rifle_kd : r.rifle_kd)
+              : (opp ? opp.kd : r.kd)
+          return (
+            <div key={r.tier} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, background: V3.card, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <MarkCircle clan={data.clan} size={22} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.player.name}</span>
+                <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                {opp ? (
+                  <>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: clanThemeOf(opp.clan.slug).ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opp.clan.name}</span>
+                    <MarkCircle clan={opp.clan} size={22} />
+                    <div style={spacerStyle} />
+                    <span onClick={() => setPicked((p) => ({ ...p, [r.tier]: null }))} style={{ fontSize: 10.5, color: V3.textGhost, cursor: 'pointer', whiteSpace: 'nowrap' }}>구간 전체</span>
+                  </>
+                ) : tiered ? (
+                  <TierText division={r.tier} leagueCategory={data.league.category} size={12} />
+                ) : (
+                  <span style={{ fontSize: 12.5, color: V3.textMuted }}>전체</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap', marginTop: 8 }}>
+                <span style={{ fontSize: 10, color: V3.textGhost, letterSpacing: '.06em' }}>K/D</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: kd === null ? V3.textGhost : statColor(kd) }}>{pct1(kd)}</span>
+                <span style={{ width: 1, height: 11, background: V3.rowDivider }} />
+                <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap' }}>{fmt(win)}승 {fmt(lose)}패</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: winRate === null ? V3.textGhost : statColor(winRate) }}>{pct1(winRate)}</span>
+              </div>
+              {r.opponents.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginTop: 10 }}>
+                  {r.opponents.map((o) => (
+                    <span
+                      key={o.league_clan_id}
+                      onClick={() => setPicked((p) => ({ ...p, [r.tier]: p[r.tier] === o.league_clan_id ? null : o.league_clan_id }))}
+                      title={`${o.clan.name} · ${o.games}전`}
+                      style={{ display: 'inline-flex', cursor: 'pointer', borderRadius: '50%', padding: 2, background: o.league_clan_id === sel ? 'rgba(91,141,255,.28)' : 'transparent', boxShadow: o.league_clan_id === sel ? '0 0 0 1px rgba(127,169,255,.8)' : undefined }}
+                    >
+                      <MarkCircle clan={o.clan} size={26} />
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 /* ── 페이지 본문 ──────────────────────────────────────────────── */
 
 export function PlayerDetailV3(props: PlayerDetailV3Props) {
   const { data, matches, matchesLoading, hasMore, loadingMore, onLoadMore } = props
+  const [tab, setTab] = useState<'graph' | 'play' | 'clan'>('graph')
   return (
     <div>
-      <div style={TIER_CARD_IN_BODY ? halfStyle : { marginTop: 16 }}>
-        {TIER_CARD_IN_BODY ? (
+      {TIER_CARD_IN_BODY ? (
+        <div style={halfStyle}>
           <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} />
-        ) : null}
-        <StrengthCard data={data} />
+          <StrengthCard data={data} />
+        </div>
+      ) : null}
+      {/* ★탭 셋★ (2026-09-11 사장님 목업) — 그래프 · 플레이분석 · 클랜별전적 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 10, marginTop: 16 }}>
+        {([['graph', '그래프'], ['play', '플레이분석'], ['clan', '클랜별전적']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            style={{
+              padding: '12px 0', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              borderRadius: V3.radiusCard, whiteSpace: 'nowrap',
+              color: tab === key ? '#dbe8ff' : V3.textMuted,
+              background: tab === key ? 'rgba(91,141,255,.12)' : V3.card,
+              border: `1px solid ${tab === key ? 'rgba(127,169,255,.7)' : V3.cardBorder}`,
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      <TrendCard data={data} />
+      {tab === 'graph' ? <TrendCard data={data} /> : null}
+      {tab === 'play' ? <StrengthCard data={data} /> : null}
+      {tab === 'clan' ? <ClanVsCard data={data} /> : null}
       <SectionBar title="최근 경기" />
       {matchesLoading ? (
         <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
