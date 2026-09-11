@@ -34,7 +34,8 @@ QA 루프     scratchpad/qa-pool.mjs(대상 풀 선수 103·클랜 51) → qa-ro
         클랜 최근 경기도 펼침 · 파비콘 · 홈 오타 Opertation
 VPS     ★집계 서버(gwlove)가 32커밋 뒤(e53478f)였다★ — player-hex-build 가 없어 02:09 재계산 뒤 MVP·점수가 안 늘고
         ipl-rank-apply 는 prisma 클라이언트가 옛것이라 «upsert of undefined» 로 죽고 있었다.
-        09:40 잠금(flock 4개) 잡고 git pull → pnpm install → prisma generate. 10:00 회차부터 새 체인이 돈다 [확인 예정]
+        09:40 잠금(flock 4개) 잡고 git pull → pnpm install → prisma generate. ★10:00 회차 확인★ — ipl-rank-apply 정상 · clan-hex · player-hex-build(새 경기 55 · 행 250) 10:08 코드 0 ·
+        최근 14시간 명단 있는 경기 전부 MVP 있음 · LeaguePlayerHex 갱신 10:08. 메모리 여유 ~870MB
 클릭 검수 함정  «칩 눌러도 변화 없음» 은 innerText 길이 비교라 거짓 양성이 있다 — chipprobe.mjs 로 직접 눌러 확인함(칩은 된다)
 회차 3  개인랭킹 서버 프리페치가 옛 래더 순(getPlayerRanks)이라 첫 화면이 «래더 3,647점» — 라우트와 같은 점수 순으로 · 무기 칩 «통합» 줄바꿈 ·
         SPL 최근 경기 래더 미반영 판 «래더 미반영»(티어로 바꿔치기 안 함) · 경기 목록 이긴 팀 WIN 표
