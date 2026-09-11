@@ -1120,6 +1120,8 @@ function toMatchListItem(
     placement: viewerSide === 'red' ? match.redPlacement : match.bluePlacement,
     rating_update: viewerSide === 'red' ? match.redRatingUpdate : match.blueRatingUpdate,
     mvp_player_id: match.mvpPlayerId,
+    red_rounds: null,
+    blue_rounds: null,
     league_clan: own,
     opponent,
     red: lineupOf(match, 'red'),

@@ -179,6 +179,23 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves }: { row: MatchP
 }
 
 /** 우리 팀 진영 — API 의 `viewer_side`. 없으면 명단 소속으로 (2026-09-10) */
+/** 목록 줄만으로 «league_clan 이 선 진영» — 명단의 소속으로 본다. 명단이 없으면 null (2026-09-11 · 접힌 줄 라운드 점수) */
+export function listSideOf(m: MatchListItem): 'red' | 'blue' | null {
+  const ours = m.league_clan.league_clan_id
+  const red = m.red.filter((p) => p.match_time_clan?.league_clan_id === ours).length
+  const blue = m.blue.filter((p) => p.match_time_clan?.league_clan_id === ours).length
+  if (red === 0 && blue === 0) return null
+  return red >= blue ? 'red' : 'blue'
+}
+
+/** 목록 줄의 라운드 점수 [우리, 상대] — 모르면 null */
+export function listRoundsOf(m: MatchListItem): [number, number] | null {
+  if (m.red_rounds === null || m.blue_rounds === null) return null
+  const side = listSideOf(m)
+  if (side === null) return null
+  return side === 'red' ? [m.red_rounds, m.blue_rounds] : [m.blue_rounds, m.red_rounds]
+}
+
 export function ourSideOf(detail: MatchDetail): 'red' | 'blue' {
   if (detail.viewer_side) return detail.viewer_side
   const ours = detail.league_clan.league_clan_id
@@ -306,7 +323,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           const mvpName = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id)?.name ?? null
           const detail = expanded[m.id]
           const pending = m.red.length === 0 && m.blue.length === 0
-          const rounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : null
+          const rounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : listRoundsOf(m)
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: `1px solid ${V3.rowDivider}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : 'transparent', opacity: pending ? 0.75 : 1 }}>
               <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} className="v3-match-row" style={{ display: 'grid', gridTemplateColumns: '46px 110px minmax(0,1fr) minmax(0,196px) 70px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}>

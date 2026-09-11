@@ -204,6 +204,9 @@ export const MatchListItem = z.object({
   red: z.array(MatchLineupEntry),
   blue: z.array(MatchLineupEntry),
   player_stat: MatchPlayerStat.nullable(),
+  /** 라운드 점수(진영 기준) — 병영 로그 집계(MatchClanHexV2.tally.roundsWon). 모르면 null (2026-09-11 · 접힌 줄에서도 보이게) */
+  red_rounds: Count.nullable().default(null),
+  blue_rounds: Count.nullable().default(null),
   /**
    * 재구성 경기의 **확인 수준** (`"5v4"`). 재구성이 아니면 `null` (Phase 9 · D-068).
    *

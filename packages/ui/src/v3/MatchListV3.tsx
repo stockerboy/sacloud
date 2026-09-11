@@ -12,7 +12,7 @@
  */
 import { useState, type CSSProperties } from 'react'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
-import { ClanScoreboardV3, ourSideOf } from './ClanDetailV3'
+import { ClanScoreboardV3, listRoundsOf, ourSideOf } from './ClanDetailV3'
 import { MarkCircle, MvpBadge, TierText, clanThemeOf, relativeKst } from './primitives'
 import { V3, cardStyle } from './tokens'
 
@@ -68,7 +68,10 @@ export function MatchListV3(props: MatchListV3Props) {
             const mvp = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id) ?? null
             const viewerRounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : null
             /* 상세의 «보는 쪽» 은 목록의 league_clan 이다 — 왼쪽(이긴 팀)이 league_clan 이면 그대로, 아니면 뒤집는다 */
-            const rounds = viewerRounds && detail ? (left.league_clan_id === detail.league_clan.league_clan_id ? viewerRounds : [viewerRounds[1], viewerRounds[0]]) : null
+            const listRounds = listRoundsOf(m) /* [league_clan, 상대] */
+            const rounds = viewerRounds && detail
+              ? (left.league_clan_id === detail.league_clan.league_clan_id ? viewerRounds : [viewerRounds[1], viewerRounds[0]])
+              : listRounds ? (left.league_clan_id === m.league_clan.league_clan_id ? listRounds : [listRounds[1], listRounds[0]]) : null
             const edge = clanThemeOf(left.clan.slug).ink
             /* player_count 는 양 팀 합(10) — 한쪽은 반 (QA 회차 2: «10v10» 으로 찍혔다) */
             const perSide = Math.max(1, Math.round(m.player_count / 2))

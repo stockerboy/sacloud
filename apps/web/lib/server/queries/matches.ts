@@ -97,6 +97,8 @@ export const MATCH_SELECT = {
   lineupStatus: true,
   evidenceConfidence: true,
   map: { select: { id: true, name: true } },
+  /* 라운드 점수 — 클랜 육각 집계 행의 tally.roundsWon (경기당 2행) */
+  clanHexV2: { select: { leagueClanId: true, tally: true } },
   stats: {
     orderBy: { id: 'asc' },
     select: {
@@ -526,6 +528,13 @@ function snapshotOf(match: MatchRow, side: TeamSide, clans: LeagueClanContext) {
  * `win` / `placement` / `rating_update` / `league_clan` / `opponent`는
  * **보는 쪽(viewer) 기준**으로 달라진다.
  */
+/** 목록 줄의 라운드 점수 — 상세(`roundsWonOf`)와 같은 자리에서 같은 값을 읽는다 */
+function roundsWonInList(match: MatchRow, leagueClanId: string): number | null {
+  const row = match.clanHexV2.find((r) => r.leagueClanId === leagueClanId)
+  const tally = row?.tally as { roundsWon?: unknown } | null | undefined
+  return typeof tally?.roundsWon === 'number' ? tally.roundsWon : null
+}
+
 export function toMatchListItem(
   match: MatchRow,
   viewerLeagueClanId: string,
@@ -578,6 +587,8 @@ export function toMatchListItem(
         ? (match.redRatingUpdate ?? match.redSourceRatingUpdate)
         : (match.blueRatingUpdate ?? match.blueSourceRatingUpdate)),
     mvp_player_id: match.mvpPlayerId,
+    red_rounds: roundsWonInList(match, match.redLeagueClanId),
+    blue_rounds: roundsWonInList(match, match.blueLeagueClanId),
     league_clan: snapshotOf(match, viewerSide, clans),
     opponent: snapshotOf(match, opponentSide, clans),
     red: lineupOf(match, 'red', clans),
