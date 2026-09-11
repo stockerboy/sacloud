@@ -138,7 +138,39 @@ export function playerRawScore(byTier: Partial<Record<TierNo, { games: number; w
   return score - TOTAL_PENALTY * Math.sqrt(total)
 }
 
-/** 클랜 점수 */
-export function clanScore(tier: TierNo, elo: number, games: number): number {
-  return TIER_ANCHOR[tier] + (elo - ELO_INIT) * Math.sqrt(games / CLAN_GAMES_DIV)
+/**
+ * ★도전 가산★ (2026-09-12 사장님: «지더라도 가산을 좀 주긴 해야해 윗구간이랑 하는건»)
+ *
+ * ── 왜 Elo 안에 안 넣었나
+ *   K 를 승패에 따라 다르게 주면 ★주고받는 총합이 0 이 아니게 되어 점수가 통째로 부푼다.★
+ *   실측 — 윗 구간 승 ×1.3 / 패 ×0.7 로 돌리니 CHALLENGER1 1위가 31.8층 → 33.6층이 됐다.
+ *   층 눈금(2층마다 색)이 통째로 흔들린다. 그래서 ★Elo 는 한 글자도 안 건드리고★
+ *   점수 식 밖에 따로 더한다.
+ *
+ * ── 무엇을 세나
+ *   ★윗 구간 클랜과 붙은 판수★ 다. 이기고 지고는 안 본다 — 이긴 값은 Elo 가 이미 센다.
+ *   사장님 말대로 ★지더라도★ 도전 자체를 쳐 주는 자리다.
+ *
+ * ── 왜 제곱근인가
+ *   많이 붙을수록 오르되 ★점점 덜 오른다.★ 일부러 윗 구간에 져 주며 점수를 벌 수 없다.
+ *   실측(2026-09-12 · CHALLENGER1) — 윗 판이 가장 많은 Atraxia 가 63판이라 가산 111점(1.1층)이다.
+ *   윗 구간과 한 판도 안 붙은 vAN`kA 는 ★0점★ 이라 5위에서 8위 밖으로 밀린다.
+ *
+ * ⚠ ★지금은 0 이라 아무 일도 안 한다.★ 사장님이 세기를 고르면 켠다 —
+ *   약하게 8 · 세게 20 두 안을 실측으로 보여 드렸고 (2026-09-12), 아직 답을 안 받았다.
+ *   0 이면 옛 판과 한 점도 다르지 않다 (`CLAUDE.md` 1-4).
+ */
+export const CHALLENGE_BONUS = 0
+
+/**
+ * 클랜 점수.
+ *
+ * `upGames` 는 ★자기보다 윗 구간★ 클랜과 붙은 판수다. ASTRA 는 위가 없어 늘 0 이다.
+ */
+export function clanScore(tier: TierNo, elo: number, games: number, upGames = 0): number {
+  return (
+    TIER_ANCHOR[tier] +
+    (elo - ELO_INIT) * Math.sqrt(games / CLAN_GAMES_DIV) +
+    CHALLENGE_BONUS * Math.sqrt(Math.max(0, upGames))
+  )
 }

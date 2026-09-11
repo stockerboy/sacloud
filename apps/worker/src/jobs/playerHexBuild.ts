@@ -412,6 +412,9 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         t1: number
         t2: number
         t3: number
+        t1w: number
+        t2w: number
+        t3w: number
         clantier: number | null
       }[]
     >`
@@ -424,6 +427,10 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              SUM(CASE WHEN foe."division" = 1 THEN 1 ELSE 0 END)::int AS t1,
              SUM(CASE WHEN foe."division" = 2 THEN 1 ELSE 0 END)::int AS t2,
              SUM(CASE WHEN foe."division" = 3 THEN 1 ELSE 0 END)::int AS t3,
+             -- ★구간별 승수★ (2026-09-12 사장님: 승률은 «내 구간» 것을 쓴다)
+             SUM(CASE WHEN foe."division" = 1 AND m."winnerSide" = s."side" THEN 1 ELSE 0 END)::int AS t1w,
+             SUM(CASE WHEN foe."division" = 2 AND m."winnerSide" = s."side" THEN 1 ELSE 0 END)::int AS t2w,
+             SUM(CASE WHEN foe."division" = 3 AND m."winnerSide" = s."side" THEN 1 ELSE 0 END)::int AS t3w,
              MAX(own."division") AS clantier
         FROM "LeaguePlayer" lp
         JOIN "MatchPlayerStat" s ON s."playerId" = lp."playerId"
@@ -481,6 +488,7 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rifleGames: b.rifleg,
         kills: b.kills,
         tierGames: tiered ? { 1: b.t1, 2: b.t2, 3: b.t3 } : { 1: 0, 2: 0, 3: 0 },
+        tierWins: tiered ? { 1: b.t1w, 2: b.t2w, 3: b.t3w } : { 1: 0, 2: 0, 3: 0 },
         clanTier: asTier(b.clantier),
         rounds: h?.rounds ?? 0,
         firstKills: h?.firstkills ?? 0,

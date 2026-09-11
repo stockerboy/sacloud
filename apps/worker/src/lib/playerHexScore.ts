@@ -34,8 +34,20 @@ export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.0'
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700
 export const HEX_SHRINK_K = 120
-export const HEX_W_HEX = 0.8
-export const HEX_W_WR = 0.2
+/**
+ * ★여섯 축 : 승률 = 5 대 5★ (2026-09-12 사장님: «5대5로 해줘»).
+ *
+ * 옛 판은 8 대 2 였다. 그때는 25승 8패(승률 백분위 98.1)인 orczz 가 ★104위★ 였다 —
+ * 승률이 점수의 20% 밖에 안 됐기 때문이다. 5 대 5 로 바꾸면 33위가 된다.
+ * 상위권(starry · AixIeft · 반짝굴비 · 갑요징어젤)은 네 경우 다 top5 그대로였다.
+ *
+ * ⚠ 옛 값은 아래에 남긴다 (`CLAUDE.md` 1-4).
+ */
+export const HEX_W_HEX = 0.5
+export const HEX_W_WR = 0.5
+/** ★옛 판★ — 여섯 축 8 : 승률 2 (2026-09-10 ~ 2026-09-11) */
+export const HEX_W_HEX_V1 = 0.8
+export const HEX_W_WR_V1 = 0.2
 /** 소속 클랜 티어 보정 — ASTRA / CHALLENGER1 / CHALLENGER2 */
 export const HEX_CLAN_BONUS: Readonly<Record<TierNo, number>> = { 1: 40, 2: 0, 3: -40 }
 /** 주무기로 인정하는 최소 판수 */
@@ -159,6 +171,38 @@ export function percentileOf(sorted: readonly number[], v: number | null): numbe
  *
  * 판수가 같으면 높은 티어(숫자가 작은 쪽)를 준다. 한 판도 모르면 `null`.
  */
+/**
+ * ★점수에 쓰는 승률★ — 「내 구간」 승률이다 (2026-09-12 사장님: «어차피 저 구간의 승률로 계산하는 거잖아»).
+ *
+ * 선수 머리 카드가 이미 구간 승률(ASTRA 25승 8패)을 크게 띄우고 있었는데
+ * ★점수는 전체 승률로 세고 있었다.★ 보여 주는 숫자와 줄 세우는 숫자가 달랐다.
+ * 클랜 랭킹에서 같은 어긋남을 고친 것과 같은 이유로 여기도 맞춘다.
+ *
+ * ⚠ 내 구간 판이 ★10판 미만이면 전체 승률로 떨어진다.★ 3판 2승을 66.7% 로 세면
+ *   그 한 판이 순위를 흔든다. 구간을 모르면(단일 리그) 그대로 전체다.
+ *
+ * ⚠ 옛 판(늘 전체 승률)은 `WIN_RATE_BY_HOME_TIER` 를 `false` 로 두면 돌아온다 (`CLAUDE.md` 1-4).
+ */
+export const WIN_RATE_BY_HOME_TIER = true
+/** 구간 승률을 믿으려면 그 구간에서 최소 몇 판 */
+export const MIN_HOME_TIER_GAMES = 10
+
+export function winRateOf(p: {
+  games: number
+  wins: number
+  tierGames: Readonly<Record<TierNo, number>>
+  tierWins?: Readonly<Record<TierNo, number>>
+}): number | null {
+  if (WIN_RATE_BY_HOME_TIER && p.tierWins) {
+    const home = homeTierOf(p.tierGames)
+    if (home !== null) {
+      const g = p.tierGames[home]
+      if (g >= MIN_HOME_TIER_GAMES) return (p.tierWins[home] / g) * 100
+    }
+  }
+  return p.games > 0 ? (p.wins / p.games) * 100 : null
+}
+
 export function homeTierOf(tierGames: Readonly<Record<TierNo, number>>): TierNo | null {
   const tiers: TierNo[] = [1, 2, 3]
   let best: TierNo | null = null
@@ -271,7 +315,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       weapon: null,
       weaponGames: Math.max(p.sniperGames, p.rifleGames),
       axes: { save: empty(), duel: empty(), carry: empty(), opening: empty(), burst: empty(), outnumbered: empty() },
-      winRate: { value: p.games > 0 ? round1((p.wins / p.games) * 100) : null, pct: null, rank: null, total: null },
+      winRate: { value: (() => { const v = winRateOf(p); return v === null ? null : round1(v) })(), pct: null, rank: null, total: null },
       hex: null,
       tierFactor: tierFactorOf(p.tierGames),
       shrink: Math.round((p.rounds / (p.rounds + HEX_SHRINK_K)) * 1000) / 1000,

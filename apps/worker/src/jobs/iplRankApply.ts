@@ -111,6 +111,8 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
   const elo = new Map<string, number>()
   const games = new Map<string, number>()
   const wins = new Map<string, number>()
+  /* ★도전 가산★ 이 쓰는 칸 — 자기보다 윗 구간과 붙은 판수 (2026-09-12 사장님) */
+  const upGames = new Map<string, number>()
   const leagueClanIdOf = new Map<string, string>()
   const E = (c: string): number => elo.get(c) ?? ELO_INIT
 
@@ -127,6 +129,13 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     ] as const) {
       games.set(c, (games.get(c) ?? 0) + 1)
       wins.set(c, (wins.get(c) ?? 0) + won)
+    }
+    /* 티어 숫자는 작을수록 윗 구간이다 (1 ASTRA) */
+    const tRed = TIER_OF.get(m.red)
+    const tBlue = TIER_OF.get(m.blue)
+    if (tRed !== undefined && tBlue !== undefined) {
+      if (tBlue < tRed) upGames.set(m.red, (upGames.get(m.red) ?? 0) + 1)
+      if (tRed < tBlue) upGames.set(m.blue, (upGames.get(m.blue) ?? 0) + 1)
     }
     elo.set(m.red, Math.max(ELO_FLOOR, ra + ELO_K * (redWon - ea)))
     elo.set(m.blue, Math.max(ELO_FLOOR, rb + ELO_K * (1 - redWon - (1 - ea))))
@@ -249,7 +258,7 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
       leagueClanId: lcId,
       name,
       tier,
-      rating: Math.round(clanScore(tier, E(name), n)),
+      rating: Math.round(clanScore(tier, E(name), n, upGames.get(name) ?? 0)),
     })
   }
   /* 경기가 없어 위에서 못 찾은 클랜도 티어·기준점은 넣어 준다 */
