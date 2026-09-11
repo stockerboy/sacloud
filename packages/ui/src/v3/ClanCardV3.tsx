@@ -86,6 +86,10 @@ export interface ClanCardV3Props {
 }
 
 export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNote, renewAction, tierWins = [], tierIndex = 0, onTierStep }: ClanCardV3Props) {
+  /* ★인식표★ (2026-09-11 사장님) — ASTRA 구간 클랜만 준다. 1~3위 먹구름 · 나머지 흰구름.
+     다른 구간·SPL·열산 어디에도 안 준다 */
+  const plate: 'dark' | 'light' | null =
+    data.division === 1 && data.league.category === 'independent' ? ((data.rank ?? 999) <= 3 ? 'dark' : 'light') : null
   const theme = clanThemeOf(data.clan.slug)
   const rank = data.rank
   const ink = rank === null ? V3.textMuted : rankColor(rank)
@@ -126,11 +130,11 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
 
       <div style={traitBodyStyle}>
         <ClanTraitBackdrop theme={theme} markSlug={data.clan.slug} />
+        {plate ? <span aria-hidden className={`v3-plate v3-plate--${plate}`} /> : null}
         <div style={{ position: 'relative', flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 4px 12px', borderBottom: '1px solid #18222f' }}>
             {tiered ? (
               <>
-                <span style={{ fontSize: 11, color: V3.textMuted, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, background: V3.chip, padding: '3px 8px', whiteSpace: 'nowrap' }}>{data.division}티어</span>
                 {data.division === 1 && data.league.category === 'independent' ? (
                   <span style={{ fontSize: 11, border: '1px solid rgba(143,240,255,.35)', borderRadius: V3.radiusChip, background: 'rgba(143,240,255,.06)', padding: '3px 9px', whiteSpace: 'nowrap', ...ASTRA_STYLE }}>ASTRA</span>
                 ) : (

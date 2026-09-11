@@ -108,13 +108,13 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const mvpRate = sel && sel.games > 0 ? (sel.mvp / sel.games) * 100 : null
 
   const weaponChips = weapons.length === 0 ? null : (
-    <span style={{ display: 'inline-flex', gap: 4 }}>
+    <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}>
       {weapons.map((w) => (
         <span
           key={w}
           onClick={() => setPickedWeapon(w)}
           style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '.02em', padding: '2px 7px', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap',
+            fontSize: 11, fontWeight: 700, letterSpacing: '.02em', padding: '3px 10px', borderRadius: 5, lineHeight: 1.45, cursor: 'pointer', whiteSpace: 'nowrap',
             color: w === weapon ? '#dbe8ff' : V3.textGhost,
             background: w === weapon ? 'rgba(91,141,255,.18)' : 'transparent',
             border: `1px solid ${w === weapon ? 'rgba(91,141,255,.5)' : V3.chipBorder}`,
@@ -132,11 +132,11 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
       <span aria-hidden className="v3-phead-art" />
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 200, background: `linear-gradient(180deg, ${theme.main}1f, transparent 70%)`, pointerEvents: 'none' }} />
 
-      {/* 1 · 플레이구간 */}
-      {tiered ? (
-        <div className="v3-phead-tier" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, padding: '11px 16px 9px' }}>
-          <span style={{ fontSize: 11, color: '#b9c6de', letterSpacing: '.06em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,.85)' }}>플레이구간</span>
-          <span style={{ position: 'relative' }}>
+      {/* 1 · 플레이구간 · 무기 — 카드의 모든 숫자가 이 둘을 따른다 */}
+      {tiered || weapons.length > 0 ? (
+        <div className="v3-phead-tier" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, padding: '11px 16px 9px', flexWrap: 'wrap' }}>
+          {tiered ? <span style={{ fontSize: 11, color: '#b9c6de', letterSpacing: '.06em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,.85)' }}>플레이구간</span> : null}
+          <span style={{ position: 'relative', display: tiered ? 'inline-block' : 'none' }}>
             <span
               onClick={() => setOpen((v) => !v)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '2px 8px', borderRadius: 5, background: 'rgba(10,16,28,.45)', border: `1px solid ${V3.chipBorder}` }}
@@ -160,6 +160,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               </span>
             ) : null}
           </span>
+          {weaponChips}
         </div>
       ) : null}
 
@@ -212,7 +213,6 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           value={pct1(kd)}
           sub={weapon === null ? null : `${fmt(kill)} / ${fmt(death)}`}
           color={kd === null ? V3.textMuted : statColor(kd)}
-          extra={weaponChips}
         />
         <Kpi
           label="판킬"
