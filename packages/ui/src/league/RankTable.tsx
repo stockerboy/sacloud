@@ -495,6 +495,8 @@ export function PlayerRankTable({
   /* 2026-09-11 QA(폰 최적화): 래더 칸이 있어도 ★승률은 폰에 남긴다★ — 순위·이름·점수만으로는 왜 그 등수인지 안 보였다.
      옛 규칙: columns.rating ? null : … */
   const keptStat = columns.winRate ? 'winRate' : columns.kd ? 'kd' : null
+  /* 점수 표인가 — 한 줄이라도 점수가 있으면 점수 표. 점수 없는 줄은 래더로 채우지 않고 «측정 중» (QA 교차검토 · 기록 없음 선수가 «3,000점» 으로 보였다) */
+  const scoreTable = !byWeapon && (rows ?? []).some((row) => row.score !== null && row.score !== undefined)
   const winRateHidden = keptStat === 'winRate' ? '' : COL_HIDDEN
   const kdHidden = keptStat === 'kd' ? '' : COL_HIDDEN
 
@@ -512,7 +514,7 @@ export function PlayerRankTable({
             머리글도 «실력 점수» 다. 점수 표가 아직 비어 옛 래더 순으로 왔으면 «래더» 그대로다 */}
         {columns.rating ? (
           <div className={COL_RATING}>
-            {byWeapon ? '래더증감' : (rows ?? []).some((row) => row.score !== null && row.score !== undefined) ? '실력 점수' : '래더'}
+            {byWeapon ? '래더증감' : scoreTable ? '실력 점수' : '래더'}
           </div>
         ) : null}
       </div>
@@ -652,7 +654,9 @@ export function PlayerRankTable({
               <div className={`${COL_RATING} ${NUM} text-accent`}>
                 {byWeapon
                   ? formatRatingDelta(row.rating_delta ?? 0)
-                  : formatRating(row.score ?? row.rating)}
+                  : scoreTable && (row.score === null || row.score === undefined)
+                    ? <span className="text-[11px] font-normal text-faint">측정 중</span>
+                    : formatRating(row.score ?? row.rating)}
                 {!byWeapon && row.score_weapon !== null && row.score_weapon !== undefined ? (
                   <span className="ml-1 text-[10px] font-normal text-faint">{row.score_weapon === 1 ? '스나' : '라플'}</span>
                 ) : null}
