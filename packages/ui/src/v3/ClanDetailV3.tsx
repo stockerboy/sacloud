@@ -207,8 +207,7 @@ export function listRoundsOf(m: MatchListItem): [number, number] | null {
  *  아니면 명단에서 읽은 클랜(티어 모름 → null). 2026-09-11 QA 교차검토 4번: 용병으로 뛴 선수 페이지에서
  *  «sometimes» 라벨 아래 igloo 명단이 붙었다 — 보는 쪽 스냅샷을 진영에 그대로 씌운 탓 */
 export interface TeamSnap { clan: { id: string; slug: string; name: string; mark: { bg: string | null; front: string | null } }; division: number | null; league_clan_id: string | null }
-export function teamSnapOf(detail: MatchDetail, side: 'red' | 'blue', fallback: MatchDetail['league_clan']): TeamSnap {
-  const stats = side === 'red' ? detail.red_stats : detail.blue_stats
+const majorityClanOf = (stats: readonly MatchPlayerStat[]) => {
   const tally = new Map<string, { n: number; c: NonNullable<MatchPlayerStat['match_time_clan']> }>()
   const keyOf = (c: NonNullable<MatchPlayerStat['match_time_clan']>) => c.league_clan_id ?? c.slug ?? c.name
   for (const s of stats) {
@@ -219,8 +218,15 @@ export function teamSnapOf(detail: MatchDetail, side: 'red' | 'blue', fallback: 
     else tally.set(keyOf(c), { n: 1, c })
   }
   const top = [...tally.values()].sort((a, b) => b.n - a.n)[0] ?? null
+  return top ? { key: keyOf(top.c), c: top.c } : null
+}
+
+export function teamSnapOf(detail: MatchDetail, side: 'red' | 'blue', fallback: MatchDetail['league_clan']): TeamSnap {
+  const top = majorityClanOf(side === 'red' ? detail.red_stats : detail.blue_stats)
+  const other = majorityClanOf(side === 'red' ? detail.blue_stats : detail.red_stats)
   const snaps = [detail.league_clan, detail.opponent]
-  if (!top) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id }
+  /* 양쪽 다수가 같은 클랜(한 클랜이 용병으로 양쪽에 섰거나 자체 경기)이면 명단으로 못 가른다 → 수집기의 팀 라벨 그대로 */
+  if (!top || (other && other.key === top.key)) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id }
   const hit = snaps.find((s) => (top.c.league_clan_id && s.league_clan_id === top.c.league_clan_id) || (top.c.slug && s.clan.slug === top.c.slug) || s.clan.name === top.c.name)
   if (hit) return { clan: hit.clan, division: hit.division, league_clan_id: hit.league_clan_id }
   return { clan: { id: top.c.league_clan_id ?? fallback.clan.id, slug: top.c.slug ?? fallback.clan.slug, name: top.c.name, mark: top.c.mark }, division: null, league_clan_id: top.c.league_clan_id }
