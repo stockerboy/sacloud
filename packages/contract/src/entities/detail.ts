@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Count, Percent } from '../common'
+import { Count, Id, Percent } from '../common'
 import { PLAYSTYLE_SIDE_KEYS, TRAIT_AXIS_KEYS, TRAIT_PENDING_KEYS } from '../traits'
 import { WeeklyTrend } from '../weekly'
 import { ClanMetrics } from '../clanMetrics'
@@ -9,7 +9,7 @@ import { ClanHexagonV2 } from '../clanTraitsV2'
 import { ClanRoster } from '../clanRoster'
 import { ClanHeadToHead, PlayerHex } from '../playerHex'
 import { LeagueClanDetail, LeaguePlayer } from './league'
-import { LeagueSummary, PlayerSummary } from './summaries'
+import { ClanSummary, LeagueSummary, PlayerSummary } from './summaries'
 import { MatchSummary, TeammateStat } from './match'
 
 /**
@@ -178,6 +178,26 @@ export type PlayerTodayPerformance = z.infer<typeof PlayerTodayPerformance>
  * `slug` 를 함께 내리는 것은 화면이 클랜 기록실로 보내 주기 때문이다 —
  * 사이트의 다른 클랜명이 전부 그렇게 동작한다(최근매치의 `vs 상대클랜`).
  */
+/**
+ * ★그 구간에서 만난 상대 클랜 하나★ (2026-09-11 사장님 목업 «클랜별 전적»).
+ * 많이 붙은 순서로 온다 — 화면의 마크 줄이 그 순서 그대로다.
+ * 킬뎃은 무기별로도 같이 준다 (통합 킬뎃은 안 쓴다).
+ */
+export const PlayerTierOpponent = z.object({
+  league_clan_id: Id,
+  clan: ClanSummary,
+  games: Count,
+  win: Count,
+  lose: Count,
+  win_rate: Percent.nullable(),
+  kd: Percent.nullable(),
+  rifle_games: Count,
+  rifle_kd: Percent.nullable(),
+  sniper_games: Count,
+  sniper_kd: Percent.nullable(),
+})
+export type PlayerTierOpponent = z.infer<typeof PlayerTierOpponent>
+
 export const PlayerTierNemesis = z.object({
   name: z.string(),
   slug: z.string(),
@@ -288,6 +308,8 @@ export const PlayerTierRecord = z.object({
   sniper_lose: Count.default(0),
   /** 조건을 넘은 클랜만. 없으면 빈 배열이다 */
   nemeses: z.array(PlayerTierNemesis),
+  /** ★그 구간에서 만난 상대 전부★ — 많이 붙은 순 (2026-09-11 «클랜별 전적») */
+  opponents: z.array(PlayerTierOpponent).default([]),
 })
 export type PlayerTierRecord = z.infer<typeof PlayerTierRecord>
 

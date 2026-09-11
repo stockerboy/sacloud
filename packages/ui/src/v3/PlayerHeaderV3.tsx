@@ -98,8 +98,9 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
 
   /* 고른 구간 · 고른 무기의 숫자 (무기가 없으면 구간 전체) */
   const rifle = weapon === 0
-  const win = sel === null ? null : weapon === null ? sel.win : rifle ? sel.rifle_win : sel.sniper_win
-  const lose = sel === null ? null : weapon === null ? sel.lose : rifle ? sel.rifle_lose : sel.sniper_lose
+  /* ★승률은 그 구간의 통합 승률로 고정★ · ★킬뎃·판킬만 무기를 따라간다★ (2026-09-11 사장님) */
+  const win = sel === null ? null : sel.win
+  const lose = sel === null ? null : sel.lose
   const winRate = win === null || lose === null || win + lose === 0 ? null : Math.round((win / (win + lose)) * 1000) / 10
   const kd = sel === null ? null : weapon === null ? sel.kd : rifle ? sel.rifle_kd : sel.sniper_kd
   const perMatch = sel === null ? null : weapon === null ? null : rifle ? sel.rifle_kill_per_match : sel.sniper_kill_per_match

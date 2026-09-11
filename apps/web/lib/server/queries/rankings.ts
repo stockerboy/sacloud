@@ -364,15 +364,19 @@ export async function getPlayerRanksByScore(
   leagueId: string,
   cursor: string | null,
   size: number,
+  /** 0 라플 · 1 스나 — 주면 ★그 무기 선수만 남긴다.★ 순위 자체는 그대로다 (2026-09-11 사장님) */
+  onlyWeapon: 0 | 1 | null = null,
 ): Promise<CursorPage<PlayerRankRow> | null> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
     select: { id: true, category: true },
   })
   if (!league) return null
-  /* ★스나·라플을 섞어 점수 순 한 줄★ (2026-09-10 · 사장님 확정). 무기별 등수(`scoreRank`)는 상세 화면 몫이다 */
+  /* ★스나·라플을 섞어 점수 순 한 줄★ (2026-09-10 · 사장님 확정). 무기별 등수(`scoreRank`)는 상세 화면 몫이다.
+     ★무기 칩은 「거르개」지 「다른 순위」가 아니다★ (2026-09-11 사장님) — 래더는 스나·라플 점수를 합친 하나뿐이고
+     순위는 그 하나로 매긴다. 무기마다 다시 줄 세우면 통합 1등 스나와 스나 탭 1등이 달라진다 (실측: lximmore vs 모어젤) */
   const where = {
-    weapon: { not: null },
+    weapon: onlyWeapon === null ? { not: null } : onlyWeapon,
     score: { not: null },
     leaguePlayer: { leagueId, placement: false },
   }
@@ -441,8 +445,9 @@ export async function getPlayerRanksByScore(
         ws.find((w) => w.isMain) ??
         [...ws].sort((a, b) => b.games - a.games)[0] ??
         null
-      const win = mine ? mine.win : lp.win
-      const lose = mine ? mine.lose : lp.lose
+      /* ★승률은 통합★ · ★킬뎃·판킬만 그 무기★ (2026-09-11 사장님) */
+      const win = lp.win
+      const lose = lp.lose
       const kill = mine ? mine.kill : lp.kill
       const death = mine ? mine.death : lp.death
       const games = mine ? mine.games : row.games

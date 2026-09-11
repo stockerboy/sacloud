@@ -477,7 +477,9 @@ export function PlayerRankTable({
 }: PlayerRankTableProps) {
   const clanColumn = clanName === 'column'
   const clanLine = clanName === 'line'
-  const byWeapon = weapon !== 'all'
+  /* 2026-09-11: 무기 탭도 ★같은 점수 순★ 이다 — 점수가 오면 점수 칸으로 그린다.
+     래더증감 칸은 점수가 아예 없는 표(옛 방식)에서만 쓴다 */
+  const byWeapon = weapon !== 'all' && !(rows ?? []).some((row) => row.score !== null && row.score !== undefined)
   const { brokenPlayerIds } = useEggKnowledge()
 
   /**

@@ -23,6 +23,7 @@
  *   Mock 과 실제 API 가 같은 함수를 써야 두 모드의 응답이 갈리지 않는다.
  */
 import { prisma } from '@sacloud/db'
+import { CLAN_SUMMARY_SELECT, toClanSummary } from '../mappers'
 import {
   buildTierBreakdown,
   type PlayerTierRecord,
@@ -66,7 +67,7 @@ interface TierBucket {
   /** MVP 판 수 (2026-09-10) */
   mvp: number
   /** 키는 상대 `LeagueClan.id`. 이름은 나중에 한 번에 붙인다 */
-  clans: Map<string, { games: number; win: number; lose: number }>
+  clans: Map<string, { games: number; win: number; lose: number; kill: number; death: number; rifleGames: number; rifleKill: number; rifleDeath: number; sniperGames: number; sniperKill: number; sniperDeath: number }>
 }
 
 const emptyBucket = (): TierBucket => ({
@@ -194,7 +195,7 @@ async function tiersOf(
       ? []
       : await prisma.leagueClan.findMany({
           where: { id: { in: [...opponentIds] } },
-          select: { id: true, division: true, clan: { select: { name: true, slug: true } } },
+          select: { id: true, division: true, clan: { select: CLAN_SUMMARY_SELECT } },
         })
   const nameById = new Map(clanRows.map((row) => [row.id, row.clan]))
   const divisionById = new Map(clanRows.map((row) => [row.id, row.division]))
@@ -258,10 +259,24 @@ async function tiersOf(
 
     const opponentId =
       row.side === 'red' ? row.match.blueLeagueClanId : row.match.redLeagueClanId
-    const clan = bucket.clans.get(opponentId) ?? { games: 0, win: 0, lose: 0 }
+    const clan = bucket.clans.get(opponentId) ?? { games: 0, win: 0, lose: 0, kill: 0, death: 0, rifleGames: 0, rifleKill: 0, rifleDeath: 0, sniperGames: 0, sniperKill: 0, sniperDeath: 0 }
     clan.games += 1
     if (win) clan.win += 1
     else clan.lose += 1
+    /* 상대별 킬뎃 — 무기까지 나눠 센다 (2026-09-11 «클랜별 전적»). 모르는 판은 분모에서 뺀다 */
+    if (row.kill !== null && row.death !== null) {
+      clan.kill += row.kill
+      clan.death += row.death
+      if (row.weapon === 0) {
+        clan.rifleGames += 1
+        clan.rifleKill += row.kill
+        clan.rifleDeath += row.death
+      } else if (row.weapon === 1) {
+        clan.sniperGames += 1
+        clan.sniperKill += row.kill
+        clan.sniperDeath += row.death
+      }
+    }
     bucket.clans.set(opponentId, clan)
 
     byTier.set(tier, bucket)
@@ -297,9 +312,36 @@ async function tiersOf(
   })
 
   /* 무기별 승패는 `buildTierBreakdown`(계약 · 공용 규칙)이 모르는 값이라 여기서 붙인다 */
+  /* ★상대 클랜별 전적★ — 많이 붙은 순 (2026-09-11 사장님 «상대로 많이 한 순서대로 앞쪽에») */
+  const pct = (a: number, b: number): number | null => (a + b === 0 ? null : Math.round((a / (a + b)) * 1000) / 10)
+  const opponentsByTier = new Map(
+    [...byTier.entries()].map(([tier, b]) => [
+      tier,
+      [...b.clans.entries()]
+        .flatMap(([id, c]) => {
+          const named = nameById.get(id)
+          if (!named) return []
+          return [{
+            league_clan_id: id,
+            clan: toClanSummary(named),
+            games: c.games,
+            win: c.win,
+            lose: c.lose,
+            win_rate: pct(c.win, c.lose),
+            kd: pct(c.kill, c.death),
+            rifle_games: c.rifleGames,
+            rifle_kd: pct(c.rifleKill, c.rifleDeath),
+            sniper_games: c.sniperGames,
+            sniper_kd: pct(c.sniperKill, c.sniperDeath),
+          }]
+        })
+        .sort((x, y) => (y.games - x.games) || (x.clan.name < y.clan.name ? -1 : 1)),
+    ]),
+  )
   const byWeapon = new Map([...byTier.entries()].map(([tier, b]) => [tier, { rw: b.rifleWin, rl: b.rifleLose, sw: b.sniperWin, sl: b.sniperLose }]))
   return buildTierBreakdown(divisionCount, tallies).map((row) => ({
     tier: row.tier,
+    opponents: opponentsByTier.get(row.tier) ?? [],
     rifle_win: byWeapon.get(row.tier)?.rw ?? 0,
     rifle_lose: byWeapon.get(row.tier)?.rl ?? 0,
     sniper_win: byWeapon.get(row.tier)?.sw ?? 0,

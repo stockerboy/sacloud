@@ -22,17 +22,23 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     const weapon = parseRankWeapon(query(request, 'weapon'))
     /* ★통합 개인랭킹은 실력 점수 순★ (2026-09-10 · 사장님 확정). 점수 표가 비어 있으면
        (잡이 아직 안 돌았으면) 옛 래더 순으로 돌아간다 — 빈 화면을 내지 않는다 */
+    /* ★무기 탭도 같은 순위(실력 점수)를 쓰고 그 무기만 거른다★ (2026-09-11 사장님).
+       옛 방식(무기별 래더증감 순)은 RANK_BY_WEAPON_DELTA 로 되돌릴 수 있다 */
+    const onlyWeapon = weapon === 'sniper' ? 1 : weapon === 'rifle' ? 0 : null
     const page =
-      weapon === 'all'
-        ? await scoreOrLadder(leagueId, cursor, size)
+      weapon === 'all' || !RANK_BY_WEAPON_DELTA
+        ? await scoreOrLadder(leagueId, cursor, size, onlyWeapon)
         : await getPlayerRanksByWeapon(leagueId, weapon, cursor, size)
     /* 랭킹은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
     return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')
   })
 }
 
-async function scoreOrLadder(leagueId: string, cursor: string | null, size: number) {
-  const scored = await getPlayerRanksByScore(leagueId, cursor, size)
+/** true 로 두면 옛 방식(무기 탭 = 무기별 래더증감 순)으로 돌아간다 (`CLAUDE.md` 1-4) */
+const RANK_BY_WEAPON_DELTA = false
+
+async function scoreOrLadder(leagueId: string, cursor: string | null, size: number, onlyWeapon: 0 | 1 | null = null) {
+  const scored = await getPlayerRanksByScore(leagueId, cursor, size, onlyWeapon)
   if (scored && (scored.items.length > 0 || cursor !== null)) return scored
   return getPlayerRanks(leagueId, cursor, size)
 }
