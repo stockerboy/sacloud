@@ -84,9 +84,11 @@ export interface ClanCardV3Props {
   tierWins?: { division: number; win: number; lose: number }[]
   tierIndex?: number
   onTierStep?: (dir: 1 | -1) => void
+  /** 띠 안에 육각형을 그릴까 — 기록실에서는 «플레이스타일» 탭이 대신 그린다 (2026-09-11) */
+  showHexagon?: boolean
 }
 
-export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNote, renewAction, tierWins = [], tierIndex = 0, onTierStep }: ClanCardV3Props) {
+export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNote, renewAction, tierWins = [], tierIndex = 0, onTierStep, showHexagon = true }: ClanCardV3Props) {
   /* ★인식표★ (2026-09-11 사장님) — ASTRA 구간 클랜만 준다. 1~3위 먹구름 · 나머지 흰구름.
      다른 구간·SPL·열산 어디에도 안 준다 */
   const plate: 'dark' | 'light' | null =
@@ -160,7 +162,8 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
             </div>
           ))}
         </div>
-        <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHex" />
+        {/* 2026-09-11 사장님: 클랜 페이지도 선수 페이지처럼 탭으로 나눈다 — 육각형은 «플레이스타일» 탭에서 그린다 */}
+        {showHexagon ? <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHex" /> : null}
       </div>
     </section>
   )

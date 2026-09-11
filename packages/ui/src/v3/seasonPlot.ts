@@ -148,23 +148,54 @@ export function shapePath<T extends { t: number }>(
  * 값도 모양도 그대로고 보이는 순서만 바뀐다. 끝나면 가리개를 아예 뗀다 (드래그·탐색과 안 부딪힌다).
  * `prefers-reduced-motion` 을 켠 사람에게는 처음부터 다 보여 준다.
  */
-export function useDrawIn(ms = 3600): number {
+export function useDrawIn(
+  ms = 3600,
+  /** 이 값이 바뀌면 처음부터 다시 그린다 (DAY/누적 같은 것) */
+  restartKey: unknown = null,
+  /** 이 자리가 화면 밖으로 나갔다 다시 들어오면 또 그린다 */
+  ref?: { current: Element | null },
+): number {
   const [t, setT] = useState(0)
+  const [run, setRun] = useState(0)
+  /* 누를 때마다 — 첫 붙음도 여기서 한 번 센다 */
+  useEffect(() => { setRun((r) => r + 1) }, [restartKey])
+  /* 화면에 다시 들어올 때마다 */
   useEffect(() => {
+    const el = ref?.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    let seen = true
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            if (!seen) setRun((r) => r + 1)
+            seen = true
+          } else seen = false
+        }
+      },
+      { threshold: 0.3 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (run === 0) return
     if (typeof window === 'undefined') { setT(1); return }
     const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (still) { setT(1); return }
     let raf = 0
+    setT(0)
     const from = performance.now()
     const tick = (now: number) => {
       const p = Math.min(1, (now - from) / ms)
-      /* 천천히 출발해 미끄러지듯 멎는다 (2026-09-11 사장님: «좀 느리고 멋들어지게») */
+      /* 천천히 출발해 미끄러지듯 멎는다 */
       setT(p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
       if (p < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [ms])
+  }, [ms, run])
   return t
 }
 

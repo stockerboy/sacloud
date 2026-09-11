@@ -15,6 +15,8 @@ import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchLis
 import { rankColor, statColor } from './rankColors'
 import { Card, CardHead, Kda, MarkCircle, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
+import { Hexagon } from './Hexagon'
+import { clanHexAxes } from './ClanCardV3'
 import { H2HChartV3 } from './H2HChartV3'
 
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px 62px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
@@ -533,8 +535,43 @@ export function ClanDetailV3(props: ClanDetailV3Props) {
     return { league_clan_id: row.league_clan_id, clan: { id: row.clan.id, slug: row.clan.slug, name: row.clan.name, mark_bg_url: row.clan.mark.bg, mark_front_url: row.clan.mark.front }, division: row.division, win: 0, lose: 0, last_played_at: null, recent: [] }
   })()
   const tiered = data.league.division_count >= 2
+  /* ★탭 둘★ (2026-09-11 사장님: «클랜별전적 · 플레이스타일 이렇게 나눠서 최대한 개인 페이지랑 비슷한 형식으로») */
+  const [tab, setTab] = useState<'vs' | 'style'>('vs')
   return (
     <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10, marginTop: 18 }}>
+        {([['vs', '클랜별전적'], ['style', '플레이스타일']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            style={{
+              padding: '12px 0', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              borderRadius: V3.radiusCard, whiteSpace: 'nowrap',
+              color: tab === key ? '#dbe8ff' : V3.textMuted,
+              background: tab === key ? 'rgba(91,141,255,.12)' : V3.card,
+              border: `1px solid ${tab === key ? 'rgba(127,169,255,.7)' : V3.cardBorder}`,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'style' ? (
+        <Card style={{ marginTop: 14 }}>
+          <CardHead title={<span style={{ letterSpacing: '.06em' }}>PLAY STYLE</span>} right={
+            <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(data.win + data.lose)}전 기준</span>
+          } />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 14px 18px' }}>
+            <span className="v3-hex-zoom" style={{ display: 'block', width: 300 * 1.55, height: 262 * 1.55 }}>
+              <span style={{ display: 'block', transform: 'scale(1.55)', transformOrigin: 'top left' }}>
+                <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHexTab" />
+              </span>
+            </span>
+          </div>
+        </Card>
+      ) : (
+      <>
       {tiered && tiers.length > 1 ? (
         <div style={{ marginTop: 20, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {tiers.map((t) => (
@@ -549,6 +586,8 @@ export function ClanDetailV3(props: ClanDetailV3Props) {
         <HeadToHeadCard data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
       ) : (
         <Card style={{ marginTop: 14, padding: 18 }}><span style={{ fontSize: 12, color: V3.textGhost }}>시즌 Cloud 0 에 붙은 상대가 아직 없습니다</span></Card>
+      )}
+      </>
       )}
       <SectionBar title="최근 경기" />
       {matchesLoading ? (

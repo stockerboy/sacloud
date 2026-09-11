@@ -11,6 +11,7 @@
  * 눈금은 10 단위 열 줄 (값이 0~100 백분위) — 위쪽 축 옆에 숫자.
  */
 import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
+import { useRef } from 'react'
 import { penDash, useDrawIn } from './seasonPlot'
 
 export interface HexAxisView {
@@ -26,12 +27,14 @@ const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_S
 
 export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id?: string }) {
   /* ★가운데에서 바깥으로 자라난다★ (2026-09-11 사장님: «비슷한 느낌으로 육각그래프도 그려지게») */
-  const grow = useDrawIn(1500)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const grow = useDrawIn(1800, id, svgRef)
+  const labelIn = grow > 0.92 ? 1 : 0
   const six = axes.slice(0, 6)
   const vertices = six.map((a, i) => hexPoint(i, Math.max(0, Math.min(100, a.value ?? 0)) / 100))
   const area = vertices.map((v) => v.join(',')).join(' ')
   return (
-    <svg viewBox={`0 0 ${HEX.w} ${HEX.h}`} style={{ width: HEX.w, height: HEX.h, flex: `0 0 ${HEX.w}px`, display: 'block' }}>
+    <svg ref={svgRef} viewBox={`0 0 ${HEX.w} ${HEX.h}`} style={{ width: HEX.w, height: HEX.h, flex: `0 0 ${HEX.w}px`, display: 'block' }}>
       <defs>
         {/* 보라 → 파랑 → 분홍 (사장님 참고 «Dual Tone») */}
         <linearGradient id={`${id}Fill`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -88,6 +91,8 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
           </text>
         )
       })}
+      {/* 축 이름·등수는 ★다 그려진 뒤에 스며든다★ (2026-09-11 사장님) */}
+      <g opacity={labelIn} style={{ transition: 'opacity .45s ease' }}>
       {six.map((a, i) => {
         const [x, y, anchor] = HEX_LABELS[i] as (typeof HEX_LABELS)[number]
         return (
@@ -101,6 +106,7 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
           </g>
         )
       })}
+      </g>
     </svg>
   )
 }

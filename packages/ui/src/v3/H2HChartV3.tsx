@@ -46,7 +46,7 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const draw = useDrawIn()
+  const draw = useDrawIn(3600, oppSlug ?? oppName, boxRef)
   const box = plotBox(width)
   const { H, X0, X1, Y_TOP, Y_BOTTOM, phone } = box
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)

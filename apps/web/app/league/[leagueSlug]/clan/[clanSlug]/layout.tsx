@@ -85,6 +85,7 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
               </GhostButton>
             }
             tierWins={tierWins}
+            showHexagon={false}
             tierIndex={tierIndex}
             onTierStep={(dir) => setTierStep((i) => i + dir)}
           />

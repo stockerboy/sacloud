@@ -89,7 +89,8 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
   }, [])
   /* 판 크기·선 두께·마커는 상대전적 그래프와 ★같은 자★ 를 쓴다 (seasonPlot.ts · 2026-09-11 사장님) */
   const { H, X0, X1, Y_TOP, Y_BOTTOM } = plotBox(width)
-  const draw = useDrawIn()
+  /* DAY/누적을 누를 때마다, 화면에 다시 들어올 때마다 다시 그린다 (2026-09-11 사장님) */
+  const draw = useDrawIn(3600, mode, boxRef)
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)
   const span = Math.max(1, days.length - 1) /* 28 */
   const xOf = (t: number) => X0 + ((X1 - X0) * t) / span
