@@ -23,6 +23,9 @@ import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
 
 const MVP_LEGACY_UNKNOWN_NOTICE = false
+/* 2026-09-11 사장님 목업: 구간 카드(승률·킬뎃·MVP·핵의심)는 ★머리 카드★(PlayerHeaderV3 · 레이아웃)로 올라갔다.
+   true 로 되돌리면 옛 두 장 배치가 그대로 돌아온다 (`CLAUDE.md` 1-4) */
+const TIER_CARD_IN_BODY = false
 /* 2026-09-11 사장님: «누가 스나이퍼인지 안 떠 — 워터마크 폐지, 닉 옆에 빨간 (S)». 워터마크(SNIPER·ME)는 스위치로만 남긴다 */
 const SCORE_WATERMARKS = false
 
@@ -576,8 +579,10 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
   const { data, matches, matchesLoading, hasMore, loadingMore, onLoadMore } = props
   return (
     <div>
-      <div style={halfStyle}>
-        <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} />
+      <div style={TIER_CARD_IN_BODY ? halfStyle : { marginTop: 16 }}>
+        {TIER_CARD_IN_BODY ? (
+          <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} />
+        ) : null}
         <StrengthCard data={data} />
       </div>
       <TrendCard data={data} />

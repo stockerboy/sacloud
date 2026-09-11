@@ -277,6 +277,15 @@ export const PlayerTierRecord = z.object({
   sniper_death: Count.default(0),
   rifle_kill_per_match: z.number().nullable().default(null),
   sniper_kill_per_match: z.number().nullable().default(null),
+  /**
+   * ★그 구간에서 그 무기로 뛴 판의 승패★ (2026-09-11 사장님 지시).
+   * 선수 상세 머리 카드가 «이 구간 · 이 무기» 로 승률까지 바꿔 보여 준다.
+   * 무기를 모르는 판은 어느 쪽에도 안 넣는다 — 라플로 찍어 두면 라플 승률이 오염된다.
+   */
+  rifle_win: Count.default(0),
+  rifle_lose: Count.default(0),
+  sniper_win: Count.default(0),
+  sniper_lose: Count.default(0),
   /** 조건을 넘은 클랜만. 없으면 빈 배열이다 */
   nemeses: z.array(PlayerTierNemesis),
 })

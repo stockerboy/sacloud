@@ -1561,6 +1561,11 @@ function buildTierBreakdownRows(
 
   return buildTierBreakdown(divisionCount, tallies).map((row) => ({
     tier: row.tier,
+    /* 무기별 승패 — 목 자료는 세지 않는다 (실서버만 채운다) */
+    rifle_win: 0,
+    rifle_lose: 0,
+    sniper_win: 0,
+    sniper_lose: 0,
     games: row.games,
     win: row.win,
     lose: row.lose,

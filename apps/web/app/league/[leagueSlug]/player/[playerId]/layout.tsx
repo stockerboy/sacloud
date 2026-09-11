@@ -11,10 +11,11 @@
 import { use } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { PillTabs, PlayerBandV3, ProfileEmpty, ProfileSkeleton, mainWeaponFromStats, useSeasonLabel } from '@sacloud/ui'
+import { PillTabs, PlayerHeaderV3, ProfileEmpty, ProfileSkeleton, mainWeaponFromStats, useSeasonLabel } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { leaguePlayerTabs } from '@/lib/profileTabs'
+import { usePlayerReport } from '@/lib/usePlayerReport'
 import LegacyLayout from './LayoutLegacy'
 
 const PROFILE_LAYOUT_V3: boolean = true
@@ -38,15 +39,18 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
   })
   const data = detail.data?.data
   const season = useSeasonLabel()
+  /* 핵의심은 머리 카드 안에 있다 (2026-09-11 목업) — 훅은 조건 없이 부른다 */
+  const report = usePlayerReport(playerId, data?.report_count ?? 0)
   return (
     <div>
       {data ? (
         <div className="pc-container">
-          <PlayerBandV3
+          <PlayerHeaderV3
             data={data}
             infoHref={`/player/${playerId}`}
             seasonLabel={`SEASON ${(season ?? 'CLOUD 0').toUpperCase()}`}
             mainWeapon={data.hex?.weapon ?? mainWeaponFromStats(data.weapon_stats)}
+            report={report}
           />
           <PillTabs tabs={leaguePlayerTabs(leagueSlug, playerId)} current={pathname} />
         </div>

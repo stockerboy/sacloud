@@ -58,6 +58,11 @@ interface TierBucket {
   sniperGames: number
   sniperKill: number
   sniperDeath: number
+  /** 무기별 승패 (2026-09-11) — 무기를 아는 판만 센다 */
+  rifleWin: number
+  rifleLose: number
+  sniperWin: number
+  sniperLose: number
   /** MVP 판 수 (2026-09-10) */
   mvp: number
   /** 키는 상대 `LeagueClan.id`. 이름은 나중에 한 번에 붙인다 */
@@ -77,6 +82,10 @@ const emptyBucket = (): TierBucket => ({
   sniperGames: 0,
   sniperKill: 0,
   sniperDeath: 0,
+  rifleWin: 0,
+  rifleLose: 0,
+  sniperWin: 0,
+  sniperLose: 0,
   mvp: 0,
   clans: new Map(),
 })
@@ -236,10 +245,14 @@ async function tiersOf(
         bucket.rifleGames += 1
         bucket.rifleKill += row.kill
         bucket.rifleDeath += row.death
+        if (win) bucket.rifleWin += 1
+        else bucket.rifleLose += 1
       } else if (row.weapon === 1) {
         bucket.sniperGames += 1
         bucket.sniperKill += row.kill
         bucket.sniperDeath += row.death
+        if (win) bucket.sniperWin += 1
+        else bucket.sniperLose += 1
       }
     }
 
@@ -283,8 +296,14 @@ async function tiersOf(
     }
   })
 
+  /* 무기별 승패는 `buildTierBreakdown`(계약 · 공용 규칙)이 모르는 값이라 여기서 붙인다 */
+  const byWeapon = new Map([...byTier.entries()].map(([tier, b]) => [tier, { rw: b.rifleWin, rl: b.rifleLose, sw: b.sniperWin, sl: b.sniperLose }]))
   return buildTierBreakdown(divisionCount, tallies).map((row) => ({
     tier: row.tier,
+    rifle_win: byWeapon.get(row.tier)?.rw ?? 0,
+    rifle_lose: byWeapon.get(row.tier)?.rl ?? 0,
+    sniper_win: byWeapon.get(row.tier)?.sw ?? 0,
+    sniper_lose: byWeapon.get(row.tier)?.sl ?? 0,
     games: row.games,
     win: row.win,
     lose: row.lose,
