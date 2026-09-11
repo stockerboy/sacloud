@@ -334,7 +334,7 @@ export function ClanRankTable({
       <div className={HEAD}>
         {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>클랜</div>
-        {columns.winRate ? <div className={`${COL_STAT} ${COL_HIDDEN}`}>승률</div> : null}
+        {columns.winRate ? <div className={COL_STAT}>승률</div> : null}
         {columns.rating ? <div className={COL_RATING}>래더</div> : null}
       </div>
       <TableBody
@@ -376,15 +376,15 @@ export function ClanRankTable({
             </div>
             {/* 승/패는 없앤 것이 아니라 승률 아래로 접었다. 알이 있으면 둘 다 가린다 */}
             {!columns.winRate ? null : egg === 'sealed' ? (
-              <div className={`${COL_STAT} ${COL_HIDDEN}`}>
+              <div className={COL_STAT}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
             ) : row.win + row.lose === 0 ? (
               /* 한 판도 안 뛰었다 — `0%  0승 0패` 로 그리지 않는다 (O-033 · 위 NoRecordStat) */
-              <NoRecordStat className={`${COL_STAT} ${COL_HIDDEN}`} />
+              <NoRecordStat className={COL_STAT} />
             ) : (
             <Stat
-              className={`${COL_STAT} ${COL_HIDDEN}`}
+              className={COL_STAT}
               value={formatRate(row.win_rate)}
               tone={rateClass(row.win_rate)}
               unit="%"
@@ -492,7 +492,9 @@ export function PlayerRankTable({
    * 래더가 있는 표는 옛 규칙 그대로다. 리그 이름을 보지 않는다 — 칸 구성만 본다.
    * 옛 동작으로 되돌리려면 아래 두 값을 `COL_HIDDEN` 상수로 바꾸면 된다 (`CLAUDE.md` 10-4).
    */
-  const keptStat = columns.rating ? null : columns.winRate ? 'winRate' : columns.kd ? 'kd' : null
+  /* 2026-09-11 QA(폰 최적화): 래더 칸이 있어도 ★승률은 폰에 남긴다★ — 순위·이름·점수만으로는 왜 그 등수인지 안 보였다.
+     옛 규칙: columns.rating ? null : … */
+  const keptStat = columns.winRate ? 'winRate' : columns.kd ? 'kd' : null
   const winRateHidden = keptStat === 'winRate' ? '' : COL_HIDDEN
   const kdHidden = keptStat === 'kd' ? '' : COL_HIDDEN
 

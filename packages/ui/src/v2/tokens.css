@@ -552,8 +552,10 @@
 
 /* ── 스코어보드 폰 폭 (2026-09-11) — 닉네임 칸이 0 으로 눌리던 것 ── */
 @media (max-width: 767px) {
-  .v3-score-row { grid-template-columns: minmax(0, 1fr) 82px 58px !important; gap: 6px !important; padding: 8px 10px !important; }
-  .v3-score-row--saves { grid-template-columns: minmax(0, 1fr) 82px 40px 52px !important; }
+  .v3-score-row { grid-template-columns: minmax(0, 1fr) 76px 52px !important; gap: 6px !important; padding: 8px 10px !important; }
+  .v3-score-row--saves { grid-template-columns: minmax(0, 1fr) 76px 34px 48px !important; }
+  /* SNIPER · ME · MVP 워터마크는 폰에서 숫자 위에 겹친다 → 숨김 (QA 교차검토 2026-09-11) */
+  .v3-score-row > span[aria-hidden] { display: none !important; }
   .v3-score-row > span:first-child { min-width: 0; }
   .v3-score-row > span:first-child > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; }
   .v3-tier-row { flex-wrap: wrap !important; row-gap: 10px !important; }
