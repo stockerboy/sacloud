@@ -20,6 +20,9 @@ import { Hexagon, type HexAxisView } from './Hexagon'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
 import { V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
+import { teamSnapOf } from './ClanDetailV3'
+
+const MVP_LEGACY_UNKNOWN_NOTICE = false
 
 const halfStyle: CSSProperties = { marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 16, alignItems: 'stretch' }
 const halfCardStyle: CSSProperties = { display: 'flex', flexDirection: 'column', ...cardStyle }
@@ -55,7 +58,9 @@ function TierRecordCard({ data, report }: { data: LeaguePlayerDetail; report: Pl
   const hasData = games >= 10
   const mvpRate = sel && games > 0 ? (sel.mvp / games) * 100 : null
   /* MVP 자료가 있는 리그인가 — 시즌 전체 MVP 가 0 이고 판이 있으면 원본에 MVP 가 없는 것 (IPL 병영 로그). 0 으로 찍지 않는다 */
-  const mvpKnown = data.mvp_count > 0 || rows.every((r) => r.games === 0)
+  /* 2026-09-11: MVP 규칙(세이브 2회↑ → 킬↑데스↓)이 모든 리그·모든 판에 붙었다 — «자료에 MVP 없음» 안내는 접는다.
+     옛 판단은 LEGACY 스위치로 남긴다 (QA 교차검토 3번: 0회 선수에게 «자료에 MVP 가 없습니다» 가 떴다) */
+  const mvpKnown = MVP_LEGACY_UNKNOWN_NOTICE ? data.mvp_count > 0 || rows.every((r) => r.games === 0) : true
   const tieredLeague = data.league.division_count >= 2
   return (
     <div style={halfCardStyle}>
@@ -474,7 +479,7 @@ function Scoreboard({ detail, me, leagueCategory }: { detail: MatchDetail; me: s
   const teams = ([mySide, mySide === 'red' ? 'blue' : 'red'] as const).map((side) => {
     const stats = side === 'red' ? detail.red_stats : detail.blue_stats
     const ours = side === mySide
-    const snap = ours ? detail.league_clan : detail.opponent
+    const snap = teamSnapOf(detail, side, ours ? detail.league_clan : detail.opponent)
     const won = ours ? detail.win : !detail.win
     const theme = clanThemeOf(snap.clan.slug)
     return { side, stats, snap, won, theme }
@@ -486,7 +491,7 @@ function Scoreboard({ detail, me, leagueCategory }: { detail: MatchDetail; me: s
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
             <MarkCircle clan={t.snap.clan} size={22} />
             <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: t.theme.ink }}>{t.snap.clan.name}</span>
-            <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} />
+            {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
             <div style={spacerStyle} />
             <span style={{ fontSize: 11, color: '#4e5b76', whiteSpace: 'nowrap' }}>

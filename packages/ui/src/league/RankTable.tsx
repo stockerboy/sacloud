@@ -498,7 +498,8 @@ export function PlayerRankTable({
   /* 점수 표인가 — 한 줄이라도 점수가 있으면 점수 표. 점수 없는 줄은 래더로 채우지 않고 «측정 중» (QA 교차검토 · 기록 없음 선수가 «3,000점» 으로 보였다) */
   const scoreTable = !byWeapon && (rows ?? []).some((row) => row.score !== null && row.score !== undefined)
   const winRateHidden = keptStat === 'winRate' ? '' : COL_HIDDEN
-  const kdHidden = keptStat === 'kd' ? '' : COL_HIDDEN
+  /* 2026-09-11 QA 교차검토 8번: 킬뎃도 폰에 남긴다 (옛 규칙: keptStat === 'kd' ? '' : COL_HIDDEN) */
+  const kdHidden = ''
 
   return (
     <>

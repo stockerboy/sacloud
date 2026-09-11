@@ -9,7 +9,7 @@
  * 클랜 카드(띠 · KPI · 육각형)는 layout 이 그린다 — 기록실 · 클랜원 · 지난시즌 탭이 같이 쓴다.
  * 여기는 그 아래: vs 티어 스트립 · 상대전적 · 최근 경기.
  */
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ClanRankRow, MatchDetail, MatchListItem } from '@sacloud/contract'
 import { ClanDetailV3, ProfileEmpty, ProfileSkeleton } from '@sacloud/ui'
@@ -45,6 +45,12 @@ export default function LeagueClanRecordPageV3({
     { params: { leagueClanId: detail.data?.data.id ?? '' }, search: { opponent: opponent ?? '' } },
     !!detail.data && opponent !== null,
   )
+  /* 20판씩 오는데 «전부 보기» 가 전부가 아니었다 (QA 교차검토 10) — 상대와의 경기는 60판까지 이어 받는다 */
+  const vsHasMore = vs.hasMore ?? false
+  const vsLoadMore = vs.loadMore
+  useEffect(() => {
+    if (opponent !== null && vsHasMore && !vs.loading && !vs.loadingMore && vs.items.length < 60) vsLoadMore()
+  }, [opponent, vsHasMore, vs.loading, vs.loadingMore, vs.items.length, vsLoadMore])
   /* 티어별 클랜 전부 — «vs 티어» 마크 줄에 내 클랜 빼고 전부 나열한다 (2026-09-11 사장님) */
   const divisionCount = detail.data?.data.league.division_count ?? 0
   const tierQueries = useQueries({

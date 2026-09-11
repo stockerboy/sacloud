@@ -106,7 +106,7 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
   const finalShare = opp.win + opp.lose > 0 ? (opp.win / (opp.win + opp.lose)) * 100 : null
   return (
     <div style={{ padding: '6px 12px 10px', background: V3.plot }}>
-      <svg viewBox="0 0 640 330" style={{ width: '100%', height: 330, display: 'block' }}>
+      <svg viewBox="0 0 640 330" className="v3-h2h-svg" style={{ width: '100%', height: 330, display: 'block' }}>
         <defs>
           <filter id="h2hGlowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b1" /><feGaussianBlur stdDeviation="16" result="b2" /><feMerge><feMergeNode in="b2" /><feMergeNode in="b1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
           <filter id="h2hGlowR" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="r1" /><feGaussianBlur stdDeviation="16" result="r2" /><feMerge><feMergeNode in="r2" /><feMergeNode in="r1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
@@ -196,6 +196,28 @@ export function listRoundsOf(m: MatchListItem): [number, number] | null {
   return side === 'red' ? [m.red_rounds, m.blue_rounds] : [m.blue_rounds, m.red_rounds]
 }
 
+/** 진영의 팀 정보 — 그 진영 명단 다수의 «경기 당시 클랜». 스냅샷 둘 중 하나와 맞으면 그 스냅샷(티어까지),
+ *  아니면 명단에서 읽은 클랜(티어 모름 → null). 2026-09-11 QA 교차검토 4번: 용병으로 뛴 선수 페이지에서
+ *  «sometimes» 라벨 아래 igloo 명단이 붙었다 — 보는 쪽 스냅샷을 진영에 그대로 씌운 탓 */
+export interface TeamSnap { clan: { id: string; slug: string; name: string; mark: { bg: string | null; front: string | null } }; division: number | null; league_clan_id: string | null }
+export function teamSnapOf(detail: MatchDetail, side: 'red' | 'blue', fallback: MatchDetail['league_clan']): TeamSnap {
+  const stats = side === 'red' ? detail.red_stats : detail.blue_stats
+  const tally = new Map<string, { n: number; c: NonNullable<MatchPlayerStat['match_time_clan']> }>()
+  for (const s of stats) {
+    const c = s.match_time_clan
+    if (!c || !c.league_clan_id) continue
+    const cur = tally.get(c.league_clan_id)
+    if (cur) cur.n += 1
+    else tally.set(c.league_clan_id, { n: 1, c })
+  }
+  const top = [...tally.values()].sort((a, b) => b.n - a.n)[0] ?? null
+  const snaps = [detail.league_clan, detail.opponent]
+  if (!top) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id }
+  const hit = snaps.find((s) => s.league_clan_id === top.c.league_clan_id)
+  if (hit) return { clan: hit.clan, division: hit.division, league_clan_id: hit.league_clan_id }
+  return { clan: { id: top.c.league_clan_id ?? fallback.clan.id, slug: top.c.slug ?? fallback.clan.slug, name: top.c.name, mark: top.c.mark }, division: null, league_clan_id: top.c.league_clan_id }
+}
+
 export function ourSideOf(detail: MatchDetail): 'red' | 'blue' {
   if (detail.viewer_side) return detail.viewer_side
   const ours = detail.league_clan.league_clan_id
@@ -214,7 +236,7 @@ function Scoreboard({ detail, leagueCategory }: { detail: MatchDetail; leagueCat
   const teams = ([ourSide, ourSide === 'red' ? 'blue' : 'red'] as const).map((side) => {
     const stats = side === 'red' ? detail.red_stats : detail.blue_stats
     const ours = side === ourSide
-    const snap = ours ? detail.league_clan : detail.opponent
+    const snap = teamSnapOf(detail, side, ours ? detail.league_clan : detail.opponent)
     const won = ours ? detail.win : !detail.win
     return { side, stats, snap, won, theme: clanThemeOf(snap.clan.slug) }
   })
@@ -225,7 +247,7 @@ function Scoreboard({ detail, leagueCategory }: { detail: MatchDetail; leagueCat
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
             <MarkCircle clan={t.snap.clan} size={22} />
             <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: t.theme.ink }}>{t.snap.clan.name}</span>
-            <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} />
+            {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
             <div style={spacerStyle} />
             <span style={{ fontSize: 11, color: '#4e5b76', whiteSpace: 'nowrap' }}>
@@ -320,7 +342,8 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
         {vs.map((m) => {
           const isOpen = open === m.id
           const edge = m.win ? V3.blue : V3.red
-          const mvpName = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id)?.name ?? null
+          const mvpEntry = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id) ?? null
+          const mvpName = mvpEntry?.name ?? null
           const detail = expanded[m.id]
           const pending = m.red.length === 0 && m.blue.length === 0
           const rounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : listRoundsOf(m)
@@ -346,6 +369,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
                         <span style={{ fontSize: 10.5, color: V3.gold }}>★</span>
                         <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', color: V3.gold }}>MVP</span>
                       </span>
+                      <MarkCircle clan={mvpEntry?.match_time_clan ? { slug: mvpEntry.match_time_clan.slug, mark: mvpEntry.match_time_clan.mark } : null} size={16} />
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvpName}</span>
                     </span>
                   ) : null}
@@ -364,7 +388,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           )
         })}
         {!showAll && vsAll.length > 10 ? (
-          <div onClick={() => setShowAll(true)} style={{ padding: '11px 0', textAlign: 'center', fontSize: 12, color: '#a9c3ff', cursor: 'pointer' }}>맞대결 {vsAll.length}판 전부 보기</div>
+          <div onClick={() => setShowAll(true)} style={{ padding: '11px 0', textAlign: 'center', fontSize: 12, color: '#a9c3ff', cursor: 'pointer' }}>맞대결 전부 보기 · {vsAll.length}판{total > vsAll.length ? ` (최근 ${vsAll.length}판까지)` : ''}</div>
         ) : null}
       </div>
       </>}
@@ -394,12 +418,12 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
               <MarkCircle clan={data.clan} size={22} />
-              <span style={{ fontSize: 13, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap', flex: 'none' }}>{data.clan.name}</span>
-              <TierText division={m.league_clan.division} leagueCategory={data.league.category} size={10} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap', flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
+              <span className="v3-row-tier"><TierText division={m.league_clan.division} leagueCategory={data.league.category} size={10} /></span>
               <span style={{ fontSize: 11, color: '#3a3d47' }}>VS</span>
               <MarkCircle clan={m.opponent.clan} size={22} />
               <span style={{ fontSize: 13, color: '#9a9eb0', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
-              <TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} />
+              <span className="v3-row-tier"><TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} /></span>
             </span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: 'flex-end' }}>
               {pending ? (

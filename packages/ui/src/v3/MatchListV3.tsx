@@ -94,6 +94,7 @@ export function MatchListV3(props: MatchListV3Props) {
                     {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : mvp ? (
                       <>
                         <MvpBadge size={8.5} />
+                        <MarkCircle clan={mvp.match_time_clan ? { slug: mvp.match_time_clan.slug, mark: mvp.match_time_clan.mark } : null} size={16} />
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.name}</span>
                       </>
                     ) : <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>{perSide === 5 ? '' : `${perSide} vs ${perSide}`}</span>}
