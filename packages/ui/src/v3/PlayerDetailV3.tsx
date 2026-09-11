@@ -377,6 +377,10 @@ function weekPoints(points: readonly WeeklyPoint[]): TrendPoint[] {
 function TrendCard({ data }: { data: LeaguePlayerDetail }) {
   const [mode, setMode] = useState<TrendMode>('day')
   const today = data.trend.find((d) => d.today) ?? null
+  /* DAY 마커는 «경기가 있던 마지막 날» 값을 잇는다 — 오늘 0판이면 «오늘 0승 0패 83%» 처럼 읽혀 헷갈렸다 (QA 교차검토 16번)
+     → 오늘 판이 있으면 «오늘», 없으면 그 날짜를 적는다 */
+  const lastPlayed = [...data.trend].reverse().find((d) => !d.future && d.win + d.lose > 0) ?? null
+  const dayRef = today && today.win + today.lose > 0 ? { d: today, name: '오늘' } : lastPlayed ? { d: lastPlayed, name: lastPlayed.label } : null
   return (
     <Card style={{ marginTop: 16 }}>
       <CardHead title="승률 및 킬뎃 추이" ribbon={V3.red} right={
@@ -394,8 +398,8 @@ function TrendCard({ data }: { data: LeaguePlayerDetail }) {
         mode={mode}
         seed={data.player.id}
         markSlug={data.clan?.slug ?? null}
-        winLabel={mode === 'day' && today ? `오늘 ${today.win}승 ${today.lose}패` : `${data.win}승 ${data.lose}패`}
-        kdLabel={mode === 'day' && today ? `오늘 ${today.kill}킬 ${today.death}데스` : data.kill !== null && data.death !== null ? `${fmt(data.kill)}킬 ${fmt(data.death)}데스` : ''}
+        winLabel={mode === 'day' ? (dayRef ? `${dayRef.name} ${dayRef.d.win}승 ${dayRef.d.lose}패` : '아직 경기 없음') : `누적 ${data.win}승 ${data.lose}패`}
+        kdLabel={mode === 'day' ? (dayRef ? `${dayRef.name} ${dayRef.d.kill}킬 ${dayRef.d.death}데스` : '') : data.kill !== null && data.death !== null ? `누적 ${fmt(data.kill)}킬 ${fmt(data.death)}데스` : ''}
       />
     </Card>
   )
