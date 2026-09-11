@@ -179,7 +179,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves }: { row: MatchP
 }
 
 /** 우리 팀 진영 — API 의 `viewer_side`. 없으면 명단 소속으로 (2026-09-10) */
-function ourSideOf(detail: MatchDetail): 'red' | 'blue' {
+export function ourSideOf(detail: MatchDetail): 'red' | 'blue' {
   if (detail.viewer_side) return detail.viewer_side
   const ours = detail.league_clan.league_clan_id
   const redOurs = detail.red_stats.filter((s) => s.match_time_clan?.league_clan_id === ours).length
@@ -306,7 +306,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           const mvpName = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id)?.name ?? null
           const detail = expanded[m.id]
           const pending = m.red.length === 0 && m.blue.length === 0
-          const rounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (m.league_clan.league_clan_id === detail.league_clan.league_clan_id ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : null
+          const rounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : null
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: `1px solid ${V3.rowDivider}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : 'transparent', opacity: pending ? 0.75 : 1 }}>
               <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} className="v3-match-row" style={{ display: 'grid', gridTemplateColumns: '46px 110px minmax(0,1fr) minmax(0,196px) 70px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}>
