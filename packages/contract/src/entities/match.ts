@@ -78,6 +78,15 @@ export const MatchPlayerStat = z.object({
   win: z.boolean(),
   /** MVP. 모르면 `null` (D-034) */
   mvp: z.boolean().nullable(),
+  /**
+   * ★인식표★ (2026-09-11 사장님) — `dark` 먹구름(1~3위) · `light` 흰구름(4~100위) · 없으면 `null`.
+   *
+   * > «1,2,3등은 먹구름 버전 4등부터 100등은 하얀구름 버전으로 뒷배경에 깐다»
+   *
+   * ★ASTRA 구간 선수만★ 받는다 (구간 = 가장 많이 뛴 티어). 100등 밖이면 안 준다.
+   * 경기 상세에서만 채운다 — 목록에서는 `null` 이다 (왕복을 늘리지 않는다).
+   */
+  nameplate: z.enum(['dark', 'light']).nullable().optional(),
   /** 이 경기에서 혼자 남아 이긴 라운드 수 (세이브) — 배틀로그가 없으면 null (2026-09-10) */
   saves: Count.nullable().default(null),
   /** 혼자 남았던 라운드 수 (세이브 시도) — «성공/시도» 표기용 (2026-09-11) */

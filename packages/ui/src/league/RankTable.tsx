@@ -479,6 +479,20 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
   rankTone?: boolean
 }
 
+/**
+ * ★인식표★ (2026-09-11 사장님) — ★ASTRA 구간 선수만★ 준다.
+ *
+ * > «이 인식표는 1,2,3등은 먹구름 버전 4등부터 100등은 하얀구름 버전으로 뒷배경에 깐다»
+ *
+ * 구간은 ★가장 많이 뛴 티어★(`home_tier`) 다 — 클랜 소속이 아니다.
+ * 100등 밖이면 안 준다. 그림·규칙은 클랜 카드와 같다 (`.v3-plate`).
+ */
+function plateOf(row: { rank: number; home_tier?: number | null }): 'dark' | 'light' | null {
+  if (row.home_tier !== 1) return null
+  if (row.rank > 100) return null
+  return row.rank <= 3 ? 'dark' : 'light'
+}
+
 export function PlayerRankTable({
   leagueSlug,
   rows,
@@ -547,8 +561,11 @@ export function PlayerRankTable({
         {rows?.map((row) => {
           /* 개인 알 — 본인이 인증해 깬 선수만 기록이 열린다 (사양 3장) */
           const egg: EggState = brokenPlayerIds.includes(row.player.id) ? 'broken' : 'sealed'
+          const plate = plateOf(row)
           return (
-          <div key={row.player.id} className={ROW}>
+          <div key={row.player.id} className={ROW} style={plate ? { position: 'relative' } : undefined}>
+            {/* ★인식표★ — 줄 뒤에 깐다. 글자 위로 올라오지 않는다 (2026-09-11 사장님) */}
+            {plate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${plate}`} /> : null}
             {columns.rank ? (
               <div
                 className={rankTone ? rankToneClass(row.rank) : rankClass(row.rank)}

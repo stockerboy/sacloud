@@ -301,6 +301,12 @@ export const PlayerRankRow = z.object({
    * 0 이면 안 깎였다. 래더 계산은 이미 이 값을 빼고 낸 것이라 ★표시용★ 이다.
    */
   activity_penalty: z.number().optional(),
+  /**
+   * ★내 구간★ — 그 선수가 ★가장 많이 뛴 티어★ (`LeaguePlayerHex.homeTier`). 1 ASTRA · 2 CH1 · 3 CH2.
+   * 클랜 소속이 아니다 (2026-09-11 사장님). 아직 안 재졌으면 `null`.
+   * 화면은 이 값으로 ★인식표★ 를 깔지 정한다 — ASTRA 구간만 준다.
+   */
+  home_tier: Division.nullable().optional(),
 })
 export type PlayerRankRow = z.infer<typeof PlayerRankRow>
 

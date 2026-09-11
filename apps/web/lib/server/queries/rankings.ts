@@ -408,6 +408,8 @@ export async function getPlayerRanksByScore(
           scoreRank: true,
           hex: true,
           games: true,
+          /* ★인식표★ 가 쓰는 구간 — 가장 많이 뛴 티어 (2026-09-11 사장님) */
+          homeTier: true,
           leaguePlayer: {
             select: {
               rating: true,
@@ -474,6 +476,7 @@ export async function getPlayerRanksByScore(
         kill_per_match: killPerMatch(kill, games),
         rating: lp.rating,
         activity_penalty: lp.activityPenalty ?? 0,
+        home_tier: row.homeTier ?? null,
         weapon: 'all' as const,
         score: row.score,
         score_weapon: row.weapon === 0 || row.weapon === 1 ? row.weapon : null,
@@ -493,6 +496,7 @@ interface ScoreRankRow {
   scoreRank: number | null
   hex: number | null
   games: number
+  homeTier: number | null
   leaguePlayer: {
     rating: number
     activityPenalty: number

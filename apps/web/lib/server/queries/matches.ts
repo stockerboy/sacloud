@@ -913,6 +913,38 @@ export async function getMatch(
       prisma.matchClanHexV2.findMany({ where: { matchId: match.id }, select: { leagueClanId: true, tally: true } }),
     ),
   ])
+  /**
+   * ★인식표★ (2026-09-11 사장님) — ASTRA 구간 1~3위는 먹구름, 4~100위는 흰구름.
+   *
+   * 열 명의 등수를 하나씩 세면 왕복이 열 번이다. 대신 ★3위·100위 점수만★ 읽어서 자른다 —
+   * 왕복 세 번으로 끝난다. 동점이 3위·100위 경계에 걸리면 같은 편으로 친다 (지어내지 않는다).
+   */
+  const plateWhere = { weapon: { not: null }, score: { not: null }, leaguePlayer: { leagueId, placement: false } }
+  const plateOrder = [{ score: 'desc' as const }, { leaguePlayerId: 'asc' as const }]
+  const [plateRows, thirdRow, hundredthRow] = await Promise.all([
+    softFail('match-plate-rows', [] as { leaguePlayerId: string; homeTier: number | null; score: number | null; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
+      prisma.leaguePlayerHex.findMany({
+        where: { ...plateWhere, leaguePlayer: { leagueId, placement: false, playerId: { in: match.stats.map((stat) => stat.playerId) } } },
+        select: { leaguePlayerId: true, homeTier: true, score: true, leaguePlayer: { select: { playerId: true } } },
+      }),
+    ),
+    softFail('match-plate-3', [] as { score: number | null }[], { leagueId })(
+      prisma.leaguePlayerHex.findMany({ where: plateWhere, orderBy: plateOrder, skip: 2, take: 1, select: { score: true } }),
+    ),
+    softFail('match-plate-100', [] as { score: number | null }[], { leagueId })(
+      prisma.leaguePlayerHex.findMany({ where: plateWhere, orderBy: plateOrder, skip: 99, take: 1, select: { score: true } }),
+    ),
+  ])
+  const thirdScore = thirdRow[0]?.score ?? null
+  const hundredthScore = hundredthRow[0]?.score ?? null
+  const plateByPlayer = new Map<string, 'dark' | 'light'>()
+  for (const row of plateRows) {
+    /* ASTRA 구간이 아니면 안 준다 */
+    if (row.homeTier !== 1 || row.score === null) continue
+    if (hundredthScore !== null && row.score < hundredthScore) continue
+    plateByPlayer.set(row.leaguePlayer.playerId, thirdScore !== null && row.score >= thirdScore ? 'dark' : 'light')
+  }
+
   const savesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneWon]))
   const chancesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneRounds]))
   const roundsWonOf = (leagueClanId: string): number | null => {
@@ -927,6 +959,7 @@ export async function getMatch(
         ...toMatchPlayerStat(match, stat, side === viewerSide, clans, positions),
         saves: saveRows.length > 0 ? (savesOf.get(stat.playerId) ?? 0) : null,
         save_chances: saveRows.length > 0 ? (chancesOf.get(stat.playerId) ?? 0) : null,
+        nameplate: plateByPlayer.get(stat.playerId) ?? null,
       }))
 
   /* 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 읽는다 (D-235 Q7).
