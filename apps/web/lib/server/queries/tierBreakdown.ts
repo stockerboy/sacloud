@@ -141,6 +141,8 @@ export async function playerTierBreakdownByQuery(
       death: true,
       /* 무기축 — `0 = 라이플` · `1 = 스나이퍼`. 모르면 어느 무기에도 안 넣는다 */
       weapon: true,
+      /* MVP 판 수 — 이게 빠져서 구간 카드가 «0회» 로 거짓말했다 (QA 회차 2 · 2026-09-11) */
+      mvp: true,
       match: {
         select: { winnerSide: true, redLeagueClanId: true, blueLeagueClanId: true },
       },

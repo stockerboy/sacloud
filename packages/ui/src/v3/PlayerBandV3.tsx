@@ -100,8 +100,10 @@ export interface PlayerBandV3Props {
 export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: PlayerBandV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
   const hex = data.hex
-  const rank = hex?.score_rank ?? data.rank
-  const rankTotal = hex?.score_total ?? data.rank_count
+  /* 점수 리그(hex 가 오는 리그)는 ★래더 등수를 안 쓴다★ — 10판 미만이면 등수 없음. 옛 판(래더로 떨어짐)은 아래 주석 (QA 회차 2 · 2026-09-11)
+     const rank = hex?.score_rank ?? data.rank */
+  const rank = hex ? hex.score_rank : data.rank
+  const rankTotal = hex ? hex.score_total : data.rank_count
   const ink = rank === null ? V3.textMuted : rankColor(rank)
   const scoreShown = hex?.score !== null && hex?.score !== undefined
   const weaponLabel = mainWeapon === null ? null : (WEAPON_LABEL[mainWeapon] ?? null)
@@ -116,7 +118,9 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
   const kpis: { label: string; value: string; sub: string; color: string }[] = [
     scoreShown
       ? { label: '실력 점수', value: `${fmt(hex.score as number)}점`, sub: hex.measuring ? '측정 중' : '', color: '#ffffff' }
-      : { label: '래더', value: `${fmt(data.rating)}점`, sub: data.placement ? '배치 중' : '', color: '#ffffff' },
+      : hex
+        ? { label: '실력 점수', value: '측정 중', sub: `${fmt(hex.games)}판 · 한 무기 10판부터`, color: V3.textMuted }
+        : { label: '래더', value: `${fmt(data.rating)}점`, sub: data.placement ? '배치 중' : '', color: '#ffffff' },
     { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },
     { label: '킬뎃', value: pct1(kdRate), sub: kdLabel, color: kdRate === null ? V3.textMuted : statColor(kdRate) },
     { label: '판킬', value: data.kill_per_match.toFixed(1), sub: '킬 / 판', color: V3.text },
