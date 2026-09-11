@@ -221,7 +221,12 @@ const majorityClanOf = (stats: readonly MatchPlayerStat[]) => {
   return top ? { key: keyOf(top.c), c: top.c } : null
 }
 
+/* 2026-09-11 회차 11 에서 되돌림: crucialrz 경기의 우리 팀이 «loveless» 로 바뀌어 보였다 — 용병이 많은 리그라 명단 다수로 팀 이름을 갈아끼우면
+   등록 클랜(수집기 라벨)과 어긋난다. ★팀 이름은 등록 클랜★, 선수 옆 마크가 소속을 말한다. 명단 다수 방식은 스위치로 남긴다 */
+const TEAM_NAME_FROM_LINEUP = false
+
 export function teamSnapOf(detail: MatchDetail, side: 'red' | 'blue', fallback: MatchDetail['league_clan']): TeamSnap {
+  if (!TEAM_NAME_FROM_LINEUP) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id }
   const top = majorityClanOf(side === 'red' ? detail.red_stats : detail.blue_stats)
   const other = majorityClanOf(side === 'red' ? detail.blue_stats : detail.red_stats)
   const snaps = [detail.league_clan, detail.opponent]
