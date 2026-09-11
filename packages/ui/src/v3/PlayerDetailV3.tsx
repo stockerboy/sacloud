@@ -208,6 +208,8 @@ function strengthAxes(data: LeaguePlayerDetail): HexAxisView[] {
     value: a.percentile,
     note: a.rank === null ? '측정중' : `${a.rank}위`,
     noteColor: a.rank === null ? V3.textGhost : rankColor(a.rank),
+    /* ★10위 안은 더 세게★ (2026-09-11 사장님) */
+    strong: a.rank !== null && a.rank <= 10,
   }))
 }
 

@@ -11,7 +11,7 @@
  * 눈금은 10 단위 열 줄 (값이 0~100 백분위) — 위쪽 축 옆에 숫자.
  */
 import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { penDash, useDrawIn } from './seasonPlot'
 
 export interface HexAxisView {
@@ -20,6 +20,8 @@ export interface HexAxisView {
   value: number | null
   note: string
   noteColor: string
+  /** 10위 안 같은 «자랑할 것» — 나타날 때 더 세게 (2026-09-11 사장님) */
+  strong?: boolean
 }
 
 const RING_STEP = 10
@@ -30,6 +32,10 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
   const svgRef = useRef<SVGSVGElement>(null)
   const grow = useDrawIn(1800, id, svgRef)
   const labelIn = grow > 0.92 ? 1 : 0
+  /* 다 그려지면 한 번 번쩍 (2026-09-11 사장님). 다시 그릴 때마다 새로 번쩍이게 열쇠를 바꾼다 */
+  const done = grow >= 1
+  const [flash, setFlash] = useState(0)
+  useEffect(() => { if (done) setFlash((f) => f + 1) }, [done])
   const six = axes.slice(0, 6)
   const vertices = six.map((a, i) => hexPoint(i, Math.max(0, Math.min(100, a.value ?? 0)) / 100))
   const area = vertices.map((v) => v.join(',')).join(' ')
@@ -91,16 +97,17 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
           </text>
         )
       })}
+      {done ? <polygon key={flash} className="v3-hex-flash" points={area} fill={`url(#${id}Line)`} pointerEvents="none" /> : null}
       {/* 축 이름·등수는 ★다 그려진 뒤에 스며든다★ (2026-09-11 사장님) */}
       <g opacity={labelIn} style={{ transition: 'opacity .45s ease' }}>
       {six.map((a, i) => {
         const [x, y, anchor] = HEX_LABELS[i] as (typeof HEX_LABELS)[number]
         return (
           <g key={`${a.label}-${i}`}>
-            <text x={x} y={y} textAnchor={anchor} fontSize="12" fontWeight="700" fill={V3.textMuted}>
+            <text x={x} y={y} textAnchor={anchor} fontSize={a.strong ? 13 : 12} fontWeight="700" fill={a.strong ? '#e8eeff' : V3.textMuted}>
               {a.label}
             </text>
-            <text x={x} y={y + 14} textAnchor={anchor} fontSize="11.5" fontWeight="700" fill={a.noteColor}>
+            <text x={x} y={y + 14} textAnchor={anchor} fontSize={a.strong ? 14 : 11.5} fontWeight={a.strong ? 900 : 700} fill={a.noteColor} className={a.strong ? 'v3-hex-note-strong' : undefined}>
               {a.note}
             </text>
           </g>

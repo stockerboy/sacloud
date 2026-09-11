@@ -34,7 +34,8 @@ export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: str
   carry: { sniper: '캐리 머신', rifle: '캐리 머신' },
   opening: { sniper: 'First Blood', rifle: 'First Blood' },
   burst: { sniper: '멀티킬러', rifle: '멀티킬러' },
-  outnumbered: { sniper: '말맞추기', rifle: '말맞추기' },
+  /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
+  outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
 
 /** 축 설명 — 시안의 «의미» 칸. 무기별로 싸움만 다르다 */

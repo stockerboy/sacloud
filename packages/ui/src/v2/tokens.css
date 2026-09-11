@@ -627,3 +627,23 @@
   .v3-vs-row > :nth-child(6) { grid-column: 3 / 4 !important; grid-row: 3; justify-content: flex-end !important; }
   .v3-plate { height: 132px; }
 }
+
+/* ── 육각형 — 다 그려진 뒤 한 번 번쩍 · 10위 안 등수는 빛난다 (2026-09-11 사장님) ── */
+.v3-hex-flash { animation: v3HexFlash .62s cubic-bezier(.2,.7,.3,1) 1 both; }
+@keyframes v3HexFlash {
+  0% { opacity: 0 }
+  22% { opacity: .55 }
+  100% { opacity: 0 }
+}
+.v3-hex-note-strong {
+  animation: v3HexPop .5s ease-out 1 both;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+@keyframes v3HexPop {
+  0% { opacity: 0; transform: scale(.86) }
+  60% { opacity: 1; transform: scale(1.1) }
+  100% { opacity: 1; transform: scale(1) }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v3-hex-flash, .v3-hex-note-strong { animation: none }
+}
