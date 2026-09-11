@@ -101,6 +101,8 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
   const blue = shares.map((p) => `${p.x.toFixed(1)},${h2hY(p.share).toFixed(1)}`).join(' ')
   const red = shares.map((p) => `${p.x.toFixed(1)},${h2hY(100 - p.share).toFixed(1)}`).join(' ')
   const end = shares[shares.length - 1]
+  /* 두 끝값이 50% 근처면 마커 둘이 겹쳐 글자가 뭉개진다 (QA 회차 2 · publicity 47.1/52.9) → 글자를 위·아래로 벌린다 */
+  const close = end ? Math.abs(end.share - (100 - end.share)) < 16 : false
   const finalShare = opp.win + opp.lose > 0 ? (opp.win / (opp.win + opp.lose)) * 100 : null
   return (
     <div style={{ padding: '6px 12px 10px', background: V3.plot }}>
@@ -137,11 +139,11 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
             <circle cx={H2H_X1} cy={h2hY(end.share)} r={26} fill="none" stroke={V3.blue} strokeWidth={7} filter="url(#h2hGlowB)" opacity={0.55} />
             <circle cx={H2H_X1} cy={h2hY(end.share)} r={22} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
             {hasFitMark(mine.slug) ? <image href={fitMarkUrl(mine.slug)} x={H2H_X1 - 18} y={h2hY(end.share) - 18} width="36" height="36" clipPath="circle(18px at 18px 18px)" /> : null}
-            <text x={H2H_X1 + 30} y={h2hY(end.share) + 10} fill="#ffffff" fontSize="20" fontWeight="700">{finalShare.toFixed(1)}%</text>
+            <text x={H2H_X1 + 30} y={h2hY(end.share) + (close ? -26 : 10)} fill="#ffffff" fontSize="20" fontWeight="700">{finalShare.toFixed(1)}%</text>
             <circle cx={H2H_X1} cy={h2hY(100 - end.share)} r={26} fill="none" stroke={oppTheme.deep} strokeWidth={7} filter="url(#h2hGlowR)" opacity={0.5} />
             <circle cx={H2H_X1} cy={h2hY(100 - end.share)} r={22} fill={V3.chip} stroke={oppTheme.main} strokeWidth={2} />
             {hasFitMark(oppSlug) ? <image href={fitMarkUrl(oppSlug)} x={H2H_X1 - 18} y={h2hY(100 - end.share) - 18} width="36" height="36" clipPath="circle(18px at 18px 18px)" /> : null}
-            <text x={H2H_X1 + 30} y={h2hY(100 - end.share) + 10} fill="#ffffff" fontSize="20" fontWeight="700">{(100 - finalShare).toFixed(1)}%</text>
+            <text x={H2H_X1 + 30} y={h2hY(100 - end.share) + (close ? 38 : 10)} fill="#ffffff" fontSize="20" fontWeight="700">{(100 - finalShare).toFixed(1)}%</text>
           </>
         ) : null}
         <g>
