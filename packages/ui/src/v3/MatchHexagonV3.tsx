@@ -13,7 +13,7 @@
  *
  * ── 한쪽만 잰 축
  *   양쪽 다 `value=null` 로 온다 (`pending='compare'`). 그러면 그 축은 중심(0)에 둔다 —
- *   지어내지 않는다. 글자는 «측정중».
+ *   지어내지 않는다. 글자는 ★«없었음»★ 이다 — 클랜 페이지의 «측정중»(표본 부족)과 뜻이 다르다.
  *
  * 그리는 방법·프레임은 `Hexagon` 과 한 글자도 같다 (`useDrawIn` · `penDash`).
  */
@@ -56,8 +56,10 @@ function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] 
       label: LABEL[key],
       wonValue: w?.value ?? null,
       lostValue: l?.value ?? null,
-      wonText: w && w.value !== null ? w.text : '측정중',
-      lostText: l && l.value !== null ? l.text : '측정중',
+      /* ★없었음★ (2026-09-11 사장님) — 그 판에 그 일이 한 번도 안 일어났다는 뜻이다.
+         클랜 페이지의 «측정중»(표본이 아직 모자람)과 뜻이 다르다 */
+      wonText: w && w.value !== null ? w.text : '없었음',
+      lostText: l && l.value !== null ? l.text : '없었음',
     }
   })
 }

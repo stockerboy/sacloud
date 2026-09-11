@@ -51,6 +51,7 @@ import {
 } from '../mappers'
 import { cumulativeKdRate } from './visibility'
 import { ladderMatchWhere } from './ladderScope'
+import { rankTierStatsOf, weaponSliceOf } from './rankTierStats'
 import { SEASON0_ORIGINS, seasonWindowWhere } from './season0Scope'
 
 /** 한 무기 축(스나·라플)만 가리키는 좁은 타입 — `all` 은 여기 오지 않는다 */
@@ -361,6 +362,9 @@ export async function getFormTop(leagueId: string, weapon: RankWeapon): Promise<
  * 옛 래더 순 목록(`leagues.ts` 의 `getPlayerRanks`)은 지우지 않았다 (`CLAUDE.md` 1-4).
  * 표가 비어 있으면(잡이 아직 안 돌았으면) 라우트가 그쪽으로 돌아간다.
  */
+/** `false` 로 두면 옛 판 — 통합 승률 + 무기별 «전 구간» 킬뎃 (`CLAUDE.md` 1-4) */
+const RANK_STATS_BY_HOME_TIER = true
+
 export async function getPlayerRanksByScore(
   leagueId: string,
   cursor: string | null,
@@ -427,6 +431,17 @@ export async function getPlayerRanksByScore(
         },
       }) as Promise<ScoreRankRow[]>,
   })
+  /**
+   * ★대표 숫자는 「그 선수 구간」 것★ (2026-09-11 사장님).
+   *
+   * > «승률도 자기가 소속된 구간의 승률을 대표 승률로 적으라고 했는데»
+   *
+   * 선수 페이지 머리 카드는 이미 구간 기준인데 랭킹만 통합이라 두 화면이 갈렸다
+   * (실측 lximmore — 선수 페이지 ASTRA 48.0%, 랭킹 51.4%). 여기서 맞춘다.
+   * 한 페이지를 ★한 번에★ 읽는다 (줄마다 부르면 20번이 된다).
+   */
+  const tierStats = await rankTierStatsOf(leagueId, page.items.map((row) => row.leaguePlayer.player.id))
+
   const first = page.items[0]
   const startRank =
     first && first.score !== null
@@ -457,12 +472,23 @@ export async function getPlayerRanksByScore(
         ws.find((w) => w.isMain) ??
         [...ws].sort((a, b) => b.games - a.games)[0] ??
         null
-      /* ★승률은 통합★ · ★킬뎃·판킬만 그 무기★ (2026-09-11 사장님) */
-      const win = lp.win
-      const lose = lp.lose
-      const kill = mine ? mine.kill : lp.kill
-      const death = mine ? mine.death : lp.death
-      const games = mine ? mine.games : row.games
+      /**
+       * ★승률 = 내 구간 승률★ · ★킬뎃 = 내 구간 + 내 무기★ (2026-09-11 사장님).
+       *
+       * 내 구간은 ★가장 많이 뛴 티어★(`homeTier`) 다. 아직 안 재졌거나 그 구간 판이 없으면
+       * ★통합으로 떨어진다★ — 빈 칸을 만들지 않고, 지어내지도 않는다.
+       *
+       * ⚠ 옛 판(통합 승률 + 무기별 전 구간 킬뎃)은 아래 스위치로 돌아간다 (`CLAUDE.md` 1-4).
+       */
+      const home = row.homeTier ?? null
+      const tier = RANK_STATS_BY_HOME_TIER && home !== null ? tierStats.get(lp.player.id)?.get(home) : undefined
+      const slice = weaponSliceOf(tier, (row.weapon === 0 || row.weapon === 1 ? row.weapon : null))
+      const win = tier && tier.games > 0 ? tier.win : lp.win
+      const lose = tier && tier.games > 0 ? tier.lose : lp.lose
+      /* 그 구간에서 그 무기로 뛴 판이 없으면 → 그 구간 전체 → 그래도 없으면 통합 */
+      const kill = slice.games > 0 ? slice.kill : tier && tier.knownGames > 0 ? tier.kill : mine ? mine.kill : lp.kill
+      const death = slice.games > 0 ? slice.death : tier && tier.knownGames > 0 ? tier.death : mine ? mine.death : lp.death
+      const games = slice.games > 0 ? slice.games : tier && tier.knownGames > 0 ? tier.knownGames : mine ? mine.games : row.games
       return {
         rank,
         league_player_id: row.leaguePlayerId,
