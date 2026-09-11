@@ -35,6 +35,7 @@ import { ladderMatchWhere } from './ladderScope'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
 import { hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { seasonWindowWhere } from './season0Scope'
+import { withLadderMatch } from './ladderScope'
 
 /**
  * 리그 · 랭킹 조회.
@@ -219,6 +220,38 @@ const LEAGUE_CLAN_ORDER_REVERSED = [
   { id: 'desc' },
 ] as const
 
+/**
+ * ★클랜별 «내 구간 전적»★ — 같은 티어끼리 붙은 판만 센다 (2026-09-11 사장님).
+ * 클랜 상세의 «구간 승률»(상대전적을 상대 티어로 접는 것)과 같은 답이 나온다.
+ * 리그 한 번에 한 질의로 접는다 — 줄마다 다시 세면 42줄에 42번 돈다.
+ */
+async function tierRecordsOf(leagueId: string): Promise<Map<string, { win: number; lose: number }>> {
+  const [matches, clans] = await Promise.all([
+    prisma.match.findMany({
+      where: withLadderMatch({ leagueId, ...seasonWindowWhere() }),
+      select: { redLeagueClanId: true, blueLeagueClanId: true, winnerSide: true },
+    }),
+    prisma.leagueClan.findMany({ where: { leagueId }, select: { id: true, division: true } }),
+  ])
+  const divisionOf = new Map(clans.map((c) => [c.id, c.division]))
+  const out = new Map<string, { win: number; lose: number }>()
+  const add = (id: string, won: boolean) => {
+    const acc = out.get(id) ?? { win: 0, lose: 0 }
+    if (won) acc.win += 1
+    else acc.lose += 1
+    out.set(id, acc)
+  }
+  for (const m of matches) {
+    const rd = divisionOf.get(m.redLeagueClanId)
+    const bd = divisionOf.get(m.blueLeagueClanId)
+    /* 티어를 모르거나 서로 다른 티어면 «내 구간» 이 아니다 */
+    if (rd === undefined || bd === undefined || rd !== bd) continue
+    add(m.redLeagueClanId, m.winnerSide === 'red')
+    add(m.blueLeagueClanId, m.winnerSide === 'blue')
+  }
+  return out
+}
+
 export async function getLeagueClans(
   leagueSlug: string,
   cursor: string | null,
@@ -234,6 +267,7 @@ export async function getLeagueClans(
     reversedOrderBy: [...LEAGUE_CLAN_ORDER_REVERSED],
     idOf: (row) => row.id,
     fetch: async (args) => {
+      const tierRecords = await tierRecordsOf(leagueId)
       const rows = await prisma.leagueClan.findMany({
         where: { leagueId, ...activeClanIn(leagueSlug) },
         take: args.take,
@@ -252,7 +286,9 @@ export async function getLeagueClans(
           clan: { select: CLAN_SUMMARY_SELECT },
         },
       })
-      return rows.map((row) => ({
+      return rows.map((row) => {
+        const tier = tierRecords.get(row.id) ?? { win: 0, lose: 0 }
+        return {
         id: row.id,
         league_id: row.leagueId,
         clan: toClanSummary(row.clan),
@@ -261,10 +297,14 @@ export async function getLeagueClans(
         win: row.win,
         lose: row.lose,
         win_rate: winRate(row.win, row.lose),
+        tier_win: tier.win,
+        tier_lose: tier.lose,
+        tier_win_rate: tier.win + tier.lose === 0 ? null : winRate(tier.win, tier.lose),
         placement: row.placement,
         status: row.status,
         joined_at: toKstIso(row.joinedAt),
-      }))
+        }
+      })
     },
   })
 }

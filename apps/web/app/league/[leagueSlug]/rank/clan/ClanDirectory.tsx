@@ -119,9 +119,11 @@ function ClanRankDirectory({
         league_clan_id: row.id,
         clan: row.clan,
         division: row.division,
-        win: row.win,
-        lose: row.lose,
-        win_rate: row.win_rate,
+        /* ★내 구간에서의 승률★ (2026-09-11 사장님) — 같은 티어 상대와 붙은 판만.
+           같은 티어 경기가 아직 없으면 통합으로 떨어진다 (빈 칸을 만들지 않는다) */
+        win: row.tier_win_rate === null ? row.win : row.tier_win,
+        lose: row.tier_win_rate === null ? row.lose : row.tier_lose,
+        win_rate: row.tier_win_rate ?? row.win_rate,
         rating: row.rating,
       })),
     [filtered],
@@ -141,8 +143,8 @@ function ClanRankDirectory({
           title="클랜랭킹"
           notice={
             byTier
-              ? '티어 안에서 래더가 높은 순입니다. 이 리그에 소속된 클랜 전부를 보여 줍니다.'
-              : '래더가 높은 순입니다. 이 리그에 소속된 클랜 전부를 보여 줍니다.'
+              ? '티어 안에서 래더가 높은 순입니다. 승률은 같은 티어끼리 붙은 판만 셉니다. 높은 티어와 게임에서 승리시 더 큰 점수를 받습니다.'
+              : '래더가 높은 순입니다. 높은 티어와 게임에서 승리시 더 큰 점수를 받습니다.'
           }
         />
         <ClanSearchBox

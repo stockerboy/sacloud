@@ -54,6 +54,14 @@ export const LeagueClan = z.object({
   win: Count,
   lose: Count,
   win_rate: Percent,
+  /**
+   * ★내 구간에서의 전적★ — 같은 티어 상대와 붙은 판만 (2026-09-11 사장님:
+   * «클랜랭킹에서 자기 클랜이 속한 티어에서의 승률을 보여줘야 한다»).
+   * 클랜 상세의 «구간 승률» 과 같은 규칙이다. 같은 티어 경기가 없으면 `null`.
+   */
+  tier_win: Count.default(0),
+  tier_lose: Count.default(0),
+  tier_win_rate: Percent.nullable().default(null),
   placement: z.boolean(),
   status: LeagueClanStatus,
   joined_at: IsoDateTime,
