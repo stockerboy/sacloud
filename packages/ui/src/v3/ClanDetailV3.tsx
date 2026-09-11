@@ -181,6 +181,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves }: { row: MatchP
 /** 우리 팀 진영 — API 의 `viewer_side`. 없으면 명단 소속으로 (2026-09-10) */
 /** 목록 줄만으로 «league_clan 이 선 진영» — 명단의 소속으로 본다. 명단이 없으면 null (2026-09-11 · 접힌 줄 라운드 점수) */
 export function listSideOf(m: MatchListItem): 'red' | 'blue' | null {
+  if (m.league_clan_side) return m.league_clan_side
   /* league_clan_id 가 비어 있는 명단이 많다(2026-09-11 실측: 전부 null) → slug, 그것도 없으면 이름으로 짝짓는다 */
   const same = (p: MatchListItem['red'][number]) => {
     const c = p.match_time_clan
@@ -198,6 +199,8 @@ export function listSideOf(m: MatchListItem): 'red' | 'blue' | null {
 /** 목록 줄의 라운드 점수 [우리, 상대] — 모르면 null */
 export function listRoundsOf(m: MatchListItem): [number, number] | null {
   if (m.red_rounds === null || m.blue_rounds === null) return null
+  /* 5:5 처럼 같은데 승패가 있다 = 라운드 기록이 모자란 판 → 지어내지도, 모순되게 적지도 않는다 (QA 회차 12) */
+  if (m.red_rounds === m.blue_rounds) return null
   const side = listSideOf(m)
   if (side === null) return null
   return side === 'red' ? [m.red_rounds, m.blue_rounds] : [m.blue_rounds, m.red_rounds]
@@ -322,7 +325,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           <MarkCircle clan={data.clan} size={52} />
         </span>
         <span style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: theme.ink, letterSpacing: '-.02em' }}>{opp.win}</span>
-        <span style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 88 }}>
+        <span className="v3-setscore-mid" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 88 }}>
           <span style={{ fontSize: 10.5, color: V3.textFaint, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>SET SCORE</span>
           <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>Cloud0 시즌</span>
         </span>
@@ -368,7 +371,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           const rounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : listRoundsOf(m)
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: `1px solid ${V3.rowDivider}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : 'transparent', opacity: pending ? 0.75 : 1 }}>
-              <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} className="v3-match-row" style={{ display: 'grid', gridTemplateColumns: '46px 110px minmax(0,1fr) minmax(0,196px) 70px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}>
+              <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} className="v3-match-row" style={{ display: 'grid', gridTemplateColumns: '46px 110px minmax(0,1fr) minmax(0,270px) 70px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}>
                 <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                   <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
@@ -382,7 +385,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
                   <MarkCircle clan={oppClan} size={20} />
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', minWidth: 0, overflow: 'hidden' }}>
-                  {m.win && mvpName ? (
+                  {mvpName ? (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, flex: '0 1 230px', minWidth: 0, overflow: 'hidden' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none', padding: '3px 7px', whiteSpace: 'nowrap', background: 'rgba(255,216,61,.10)', border: '1px solid rgba(255,216,61,.55)', borderRadius: V3.radiusChip, boxShadow: '0 0 12px rgba(255,216,61,.22)' }}>
                         <span style={{ fontSize: 10.5, color: V3.gold }}>★</span>

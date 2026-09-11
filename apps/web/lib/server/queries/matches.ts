@@ -589,6 +589,7 @@ export function toMatchListItem(
     mvp_player_id: match.mvpPlayerId,
     red_rounds: roundsWonInList(match, match.redLeagueClanId),
     blue_rounds: roundsWonInList(match, match.blueLeagueClanId),
+    league_clan_side: viewerSide,
     league_clan: snapshotOf(match, viewerSide, clans),
     opponent: snapshotOf(match, opponentSide, clans),
     red: lineupOf(match, 'red', clans),

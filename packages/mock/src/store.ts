@@ -1122,6 +1122,7 @@ function toMatchListItem(
     mvp_player_id: match.mvpPlayerId,
     red_rounds: null,
     blue_rounds: null,
+    league_clan_side: null,
     league_clan: own,
     opponent,
     red: lineupOf(match, 'red'),

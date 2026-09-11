@@ -66,7 +66,7 @@ export function MatchListV3(props: MatchListV3Props) {
             const left = m.win ? m.league_clan : m.opponent
             const right = m.win ? m.opponent : m.league_clan
             const mvp = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id) ?? null
-            const viewerRounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : null
+            const viewerRounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null && detail.red_rounds !== detail.blue_rounds ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : null
             /* 상세의 «보는 쪽» 은 목록의 league_clan 이다 — 왼쪽(이긴 팀)이 league_clan 이면 그대로, 아니면 뒤집는다 */
             const listRounds = listRoundsOf(m) /* [league_clan, 상대] */
             const rounds = viewerRounds && detail
