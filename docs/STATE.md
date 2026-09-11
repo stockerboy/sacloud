@@ -49,6 +49,8 @@ VPS     ★집계 서버(gwlove)가 32커밋 뒤(e53478f)였다★ — player-he
         목록 줄에 라운드 점수(계약 MatchListItem.red_rounds/blue_rounds · MATCH_SELECT 에 clanHexV2 tally)
 회차 6~8  기계 검수 새 결함 0 (빈 상태 문구는 «미반영»·«측정 중» 등 정상 문구). 폰 추이 마커 글자 겹침 → 벌림.
         ★백그라운드 Bash 로 띄운 회차는 내 턴이 끝나면 죽었다★ → 회차 9~40 은 Monitor(persistent) 루프로 (scratchpad/qa-round.mjs)
+[자료 빈틈] SPL 우리 수집 경기는 ★판별 래더 증감(Match.red/blueRatingUpdate)이 안 적힌다★ — season0-apply 는 합계만 쓴다. 미러(3rd.supply) 경기만 ±가 있다.
+        화면은 «래더 증감 미기록» 으로 사실대로. 판별 증감을 남기려면 season0-apply 가 경기마다 써야 한다 → ORDERS 후보
 남긴 것  옛 v2 표의 «58%»/«8킬» 소수 자리(원본 표기 따라 일부러 뗀 것 · common/format.ts) ·
         상대전적 X축은 판 순서(시간 비례 아님 · 시안대로) · 클랜 육각형 백분위 낮으면 작은 점 (자료 그대로)
 [미확인] 같은 이름 클랜이 한 리그에 둘씩 (SPL #chaseplay 2개 · 10mountain melody·sovereignwc…) — Clan 행이 slug 만 다르게 둘. 개명·재창단인지 자료로 못 가림. 화면은 사실대로 둘 다 보여 준다
