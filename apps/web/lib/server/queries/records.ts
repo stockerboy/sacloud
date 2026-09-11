@@ -54,7 +54,7 @@ import {
 } from '../mappers'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
 import { resolvePlayerPositionOf, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
-import { cumulativeKd, cumulativeKdRate, hidesCumulativeKd } from './visibility'
+import { cumulativeKd, hidesCumulativeKd } from './visibility'
 import {
   clanRankOf,
   matchCountByPlayer,
@@ -548,8 +548,12 @@ export async function getLeagueClanShow(
 /* 리그 참여 클랜원 목록                                                          */
 /* -------------------------------------------------------------------------- */
 
-const CLAN_PLAYER_ORDER = [{ rating: 'desc' }, { id: 'asc' }] as const
-const CLAN_PLAYER_ORDER_REVERSED = [{ rating: 'asc' }, { id: 'desc' }] as const
+/* 2026-09-11 QA 교차검토: 클랜원 표가 래더 순인데 칸에는 실력 점수를 적어 «1위 3,059점 · 3위 3,158점» 처럼 뒤죽박죽이었다.
+   ★실력 점수 순(없는 사람은 뒤) → 래더 → id★. 옛 순서는 아래 _LEGACY 로 남긴다 */
+const CLAN_PLAYER_ORDER = [{ hex: { score: { sort: 'desc', nulls: 'last' } } }, { rating: 'desc' }, { id: 'asc' }] as const
+const CLAN_PLAYER_ORDER_REVERSED = [{ hex: { score: { sort: 'asc', nulls: 'first' } } }, { rating: 'asc' }, { id: 'desc' }] as const
+const CLAN_PLAYER_ORDER_LEGACY = [{ rating: 'desc' }, { id: 'asc' }] as const
+void CLAN_PLAYER_ORDER_LEGACY
 
 /**
  * GET /leagues/{leagueSlug}/clans/{clanSlug}/players
@@ -623,7 +627,18 @@ export async function getLeagueClanPlayers(
       ? prisma.leaguePlayer.count({
           where: {
             ...where,
-            OR: [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }],
+            /* 정렬(점수 → 래더 → id)과 같은 «앞에 오는 행» 조건 */
+            OR:
+              first.hex?.score !== null && first.hex?.score !== undefined
+                ? [
+                    { hex: { score: { gt: first.hex.score } } },
+                    { hex: { score: first.hex.score }, rating: { gt: first.rating } },
+                    { hex: { score: first.hex.score }, rating: first.rating, id: { lt: first.id } },
+                  ]
+                : [
+                    { hex: { score: { not: null } } },
+                    { AND: [{ OR: [{ hex: null }, { hex: { score: null } }] }, { OR: [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }] }] },
+                  ],
           },
         })
       : Promise.resolve(0),
@@ -648,7 +663,8 @@ export async function getLeagueClanPlayers(
       /* ⚠ 여기 `rank` 는 **클랜 안에서의 순번**이지 개인랭킹 순위가 아니다.
          개인랭킹 순위를 이 목록은 모른다 → 무소속리그에서는 `null` 로 **감춘다.**
          클랜 안 순번을 넘기면 전원이 top100 으로 판정돼 규칙이 무너진다 */
-      kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death), null),
+      /* 2026-09-11: 클랜원 표에서는 킬뎃을 감추지 않는다 (사장님: 빈 칸 «-» 이상함). 옛 판: cumulativeKdRate(league, kdRate(...), null) */
+      kd_rate: row.kill + row.death > 0 ? kdRate(row.kill, row.death) : null,
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
       hex: row.hex?.hex ?? null,
