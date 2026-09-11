@@ -17,6 +17,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail, MatchDetail, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
+import { AnalysisPanelV3 } from './AnalysisPanelV3'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
 import { V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
@@ -711,7 +712,13 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
         ))}
       </div>
       {tab === 'graph' ? <TrendCard data={data} /> : null}
-      {tab === 'play' ? <StrengthCard data={data} /> : null}
+      {tab === 'play' ? (
+        /* PC 는 왼쪽에 «어떻게 재는가», 오른쪽에 육각형 (2026-09-11 사장님). 폰은 육각형만 */
+        <div className="v3-play-split" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
+          <AnalysisPanelV3 />
+          <StrengthCard data={data} />
+        </div>
+      ) : null}
       {tab === 'clan' ? <ClanVsCard data={data} /> : null}
       <SectionBar title="최근 경기" />
       {matchesLoading ? (
