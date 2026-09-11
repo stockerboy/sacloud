@@ -456,6 +456,7 @@ function toMatchPlayerStat(
     win: match.winnerSide === stat.side,
     /* 집계 전 경기는 그 자리에서 같은 규칙으로 고른다 — 스코어보드에도 MVP 가 뜬다 (2026-09-11 사장님) */
     mvp: stat.mvp === true || stat.playerId === mvpPlayerIdOf(match),
+    participant_role: stat.participantRole === 'mercenary' ? ('mercenary' as const) : stat.participantRole === 'member' ? ('member' as const) : null,
     match_time_clan: matchTimeClanOf(stat, clans),
     /* 포지션은 이 경기의 사실이 아니라 **그 선수의 고유 자리**다 (D-199).
        바로 위 `weapon` 과 나란히 놓으면 `숏 · 스나` 처럼 읽힌다 —

@@ -1035,6 +1035,7 @@ function toMatchPlayerStat(
     player_id: stat.playerId,
     name: playerById.get(stat.playerId)?.name ?? '알수없음',
     side: stat.side,
+    participant_role: null,
     saves: null,
     save_chances: null,
     kill: stat.kill,

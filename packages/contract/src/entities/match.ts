@@ -112,6 +112,11 @@ export const MatchPlayerStat = z.object({
    * 기본값이 있어 이 필드가 없던 응답과도 호환된다.
    */
   position_label: z.string().nullable().default(null),
+  /**
+   * ★그 경기에서의 자리★ — `member`(본클랜원) · `mercenary`(용병).
+   * 수집원이 주는 값 그대로다 (D-073). 화면은 «클랜전» / «용병» 으로 적는다 (2026-09-11 사장님).
+   */
+  participant_role: z.enum(['member', 'mercenary']).nullable().default(null),
 })
 export type MatchPlayerStat = z.infer<typeof MatchPlayerStat>
 

@@ -533,6 +533,7 @@
   .v3-kpi > div { border-bottom: 1px solid #18233a; padding: 12px 14px !important; }
   .v3-kpi > div > span > span:first-child { font-size: 22px !important; }
   .v3-watermark { display: none !important; }
+  /* 선수 기록실 카드는 폰·PC 같은 모양이라 폰 전용 규칙이 필요 없다 (v3-prow) — 여기에 적어 두는 건 찾기 쉬우라고 */
   .v3-match-row { grid-template-columns: 52px minmax(0, 1fr) 60px !important; row-gap: 6px !important; }
   .v3-match-row > :nth-child(2) { grid-column: 2 / 4; }
   .v3-match-row > :nth-child(3) { grid-column: 1 / 4; } /* 양 팀 줄은 폰에서 한 줄 통째로 (상대 이름·티어가 «CHAL» 로 잘리던 것 · QA 회차 2) */
@@ -616,12 +617,13 @@
 
 @media (max-width: 767px) {
   /* 맞대결 줄 — 승패·시각 / 클랜들·MVP / 점수·상세 세 줄 (사장님: 오른쪽이 비어 있다) */
-  .v3-vs-row { grid-template-columns: minmax(0, 1fr) auto !important; row-gap: 7px !important; }
+  /* 2026-09-11 사장님: 긴 MVP 닉이 클랜명을 «a…» 로 가렸다 → 클랜 줄은 한 줄을 다 쓰고 MVP 는 점수 옆으로 내린다 */
+  .v3-vs-row { grid-template-columns: auto minmax(0, 1fr) auto !important; row-gap: 7px !important; }
   .v3-vs-row > :nth-child(1) { grid-column: 1 !important; grid-row: 1; }
-  .v3-vs-row > :nth-child(2) { grid-column: 2 !important; grid-row: 1; align-items: flex-end; }
-  .v3-vs-row > :nth-child(3) { grid-column: 1 !important; grid-row: 2; }
-  .v3-vs-row > :nth-child(4) { grid-column: 2 !important; grid-row: 2; justify-content: flex-end !important; }
-  .v3-vs-row > :nth-child(5) { grid-column: 1 !important; grid-row: 3; justify-content: flex-start !important; }
-  .v3-vs-row > :nth-child(6) { grid-column: 2 !important; grid-row: 3; justify-content: flex-end !important; }
+  .v3-vs-row > :nth-child(2) { grid-column: 2 / 4 !important; grid-row: 1; align-items: flex-end; }
+  .v3-vs-row > :nth-child(3) { grid-column: 1 / 4 !important; grid-row: 2; }
+  .v3-vs-row > :nth-child(4) { grid-column: 2 / 3 !important; grid-row: 3; justify-content: flex-start !important; }
+  .v3-vs-row > :nth-child(5) { grid-column: 1 / 2 !important; grid-row: 3; justify-content: flex-start !important; }
+  .v3-vs-row > :nth-child(6) { grid-column: 3 / 4 !important; grid-row: 3; justify-content: flex-end !important; }
   .v3-plate { height: 132px; }
 }

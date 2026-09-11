@@ -32,7 +32,9 @@ const SCORE_WATERMARKS = false
 const halfStyle: CSSProperties = { marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 16, alignItems: 'stretch' }
 const halfCardStyle: CSSProperties = { display: 'flex', flexDirection: 'column', ...cardStyle }
 const statRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr)', alignItems: 'baseline', gap: 12, padding: '9px 0', borderTop: `1px solid ${V3.rowDivider2}` }
-const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '52px 124px minmax(0,1fr) minmax(0,200px) 62px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }
+/* 2026-09-11 사장님: 경기 카드를 폰 모양 한 가지로 통일한다 — 두 칸 × 세 줄.
+   1줄 승패·맵·시각 / 자리   2줄 양 팀 / MVP·킬뎃   3줄 상대 티어 / 펼치기 */
+const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center', rowGap: 7, columnGap: 12, padding: '13px 18px', cursor: 'pointer' }
 const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 104px 74px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
 const playerRowSavesStyle: CSSProperties = { ...playerRowStyle, gridTemplateColumns: 'minmax(0,1fr) 104px 60px 74px' }
 
@@ -544,26 +546,37 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
         const pending = m.red.length === 0 && m.blue.length === 0
         return (
           <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: (m.win ? 'rgba(91,141,255,.13)' : 'rgba(255,90,99,.13)'), opacity: pending ? 0.75 : 1 }}>
-            <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-match-row">
-              <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
-              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-prow">
+              {/* 1줄 — 승패 · 맵 · 시각 / 오른쪽엔 그 경기에서 내 자리 */}
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
                 <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
                 <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
               </span>
-              <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                  <MarkCircle clan={m.league_clan.clan} size={20} />
-                  <span style={{ fontSize: 12.5, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.league_clan.clan.name}</span>
-                  <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
-                  <MarkCircle clan={m.opponent.clan} size={20} />
-                  <span style={{ fontSize: 12.5, color: '#9aa6bf', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
-                </span>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}><span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.08em' }}>vs</span><TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} /></span>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                {my?.participant_role ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', padding: '3px 8px', borderRadius: 5, color: my.participant_role === 'mercenary' ? '#c9a35b' : V3.textMuted, background: my.participant_role === 'mercenary' ? 'rgba(201,163,91,.10)' : V3.chip, border: `1px solid ${my.participant_role === 'mercenary' ? 'rgba(201,163,91,.45)' : V3.chipBorder}` }}>
+                    {my.participant_role === 'mercenary' ? '용병' : '클랜전'}
+                  </span>
+                ) : null}
+              </span>
+              {/* 2줄 — 양 팀 / 오른쪽엔 MVP · 킬뎃 */}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                <MarkCircle clan={m.league_clan.clan} size={20} />
+                <span style={{ fontSize: 12.5, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.league_clan.clan.name}</span>
+                <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                <MarkCircle clan={m.opponent.clan} size={20} />
+                <span style={{ fontSize: 12.5, color: '#9aa6bf', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
               </span>
               <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
                 {mvpIsMe ? <MvpBadge size={8.5} /> : null}
                 {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}
                 {my && my.kd_rate !== null ? <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>{my.kd_rate.toFixed(1)}%</span> : null}
+              </span>
+              {/* 3줄 — 상대 티어 / 오른쪽엔 펼치기 */}
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
+                <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.08em' }}>vs</span>
+                <TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} />
               </span>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
                 {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
