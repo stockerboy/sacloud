@@ -6,7 +6,7 @@ import { FEATURED_LEAGUES, isLeaguePreparing } from '@sacloud/ui'
  * ★★홈 사이트맵 다섯 칸★★ (2026-09-07 · Part 10 ④ · 시안)
  *
  * ```
- *   Connected   Leagues   Opertation   Users   Data
+ *   Connected   Leagues   Operation   Users   Data
  *   ↑ 첫 글자만 파랑 — 세로로 읽으면 C-L-O-U-D
  * ```
  * 940px · 5칸 · gap 26 · 위 1px 선 · 제목 14.5/700 · 링크 12.5 (시안 실측).
@@ -73,7 +73,7 @@ const COLUMNS: readonly { title: string; links: readonly SiteLink[] }[] = [
     })),
   },
   {
-    title: 'Opertation',
+    title: 'Operation',
     links: [
       { label: '이용약관', href: '/clause/service' },
       { label: '개인정보 취급방침', href: '/clause/policy' },
