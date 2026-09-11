@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
+import { MatchHexagonV3 } from './MatchHexagonV3'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 import { Hexagon } from './Hexagon'
@@ -281,6 +282,15 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
     const won = ours ? detail.win : !detail.win
     return { side, stats, snap, won, theme: clanThemeOf(snap.clan.slug) }
   })
+  /* ★경기분석★ (2026-09-11 사장님) — 누르면 그 팀 명단을 접고 그 자리에 이 판 육각형을 그린다.
+     이긴 팀 파랑 · 진 팀 빨강 한 판 위에 겹쳐서. 버튼은 ★양 팀 다★ 달되 한 번에 하나만 펴진다.
+     자료는 이미 이 응답에 실려 온다(`red_hexagon_v2`/`blue_hexagon_v2`) — 왕복이 늘지 않는다 */
+  const [analysis, setAnalysis] = useState<'red' | 'blue' | null>(null)
+  const hexOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_hexagon_v2 : detail.blue_hexagon_v2)?.hexagon ?? null
+  /* 배틀로그가 없는 옛 경기는 버튼을 아예 안 그린다 (지어내지 않는다) */
+  const canAnalyze = hexOf('red') !== null && hexOf('blue') !== null
+  const wonTeam = teams.find((t) => t.won) ?? teams[0]
+  const lostTeam = teams.find((t) => !t.won) ?? teams[1]
   return (
     <div style={{ background: '#0a0f1a', borderTop: `1px solid ${V3.rowDivider}`, padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {teams.map((t) => (
@@ -291,15 +301,37 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
             {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
             <div style={spacerStyle} />
+            {canAnalyze ? (
+              <span
+                onClick={(e) => { e.stopPropagation(); setAnalysis((now) => (now === t.side ? null : t.side)) }}
+                style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer', padding: '3px 9px', borderRadius: V3.radiusChip, color: analysis === t.side ? '#cfe0ff' : '#8fa9d8', border: `1px solid ${analysis === t.side ? 'rgba(159,192,255,.55)' : 'rgba(143,169,216,.32)'}`, background: analysis === t.side ? 'rgba(91,141,255,.16)' : 'transparent' }}
+              >
+                {analysis === t.side ? '명단' : '경기분석'}
+              </span>
+            ) : null}
             <span style={{ fontSize: 11, color: '#4e5b76', whiteSpace: 'nowrap' }}>
               {roundsOf(t.side) !== null && roundsOf(t.side === 'red' ? 'blue' : 'red') !== null ? `${roundsOf(t.side)}:${roundsOf(t.side === 'red' ? 'blue' : 'red')}` : t.side.toUpperCase()}
             </span>
           </div>
+          {analysis === t.side ? (
+            <div style={{ padding: '14px 10px 16px', display: 'flex', justifyContent: 'center' }}>
+              <MatchHexagonV3
+                won={wonTeam ? hexOf(wonTeam.side) : null}
+                lost={lostTeam ? hexOf(lostTeam.side) : null}
+                wonName={wonTeam?.snap.clan.name ?? '승리'}
+                lostName={lostTeam?.snap.clan.name ?? '패배'}
+                id={`mhex-${detail.id}-${t.side}`}
+              />
+            </div>
+          ) : (
+          <>
           <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 108px 64px 78px' : 'minmax(0,1fr) 108px 78px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>킬뎃</span>
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} leagueSlug={leagueSlug} />)}
+          </>
+          )}
         </div>
       ))}
     </div>

@@ -7,6 +7,7 @@ export * from './rankColors'
 /* 별표로 내보내면 primitives 가 다시 내보내는 셋(clanThemeOf · FALLBACK_THEME · ClanTheme)과 부딪힌다
    — 빌드가 «conflicting star exports» 라고 경고한다. 겹치지 않는 것만 적어서 내보낸다 (2026-09-11) */
 export { CLAN_THEMES } from './clanThemes'
+export * from './MatchHexagonV3'
 export * from './primitives'
 export * from './Hexagon'
 export * from './AnalysisPanelV3'
