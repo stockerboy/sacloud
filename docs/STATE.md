@@ -36,6 +36,9 @@ VPS     ★집계 서버(gwlove)가 32커밋 뒤(e53478f)였다★ — player-he
         ipl-rank-apply 는 prisma 클라이언트가 옛것이라 «upsert of undefined» 로 죽고 있었다.
         09:40 잠금(flock 4개) 잡고 git pull → pnpm install → prisma generate. 10:00 회차부터 새 체인이 돈다 [확인 예정]
 클릭 검수 함정  «칩 눌러도 변화 없음» 은 innerText 길이 비교라 거짓 양성이 있다 — chipprobe.mjs 로 직접 눌러 확인함(칩은 된다)
+회차 3  개인랭킹 서버 프리페치가 옛 래더 순(getPlayerRanks)이라 첫 화면이 «래더 3,647점» — 라우트와 같은 점수 순으로 · 무기 칩 «통합» 줄바꿈 ·
+        SPL 최근 경기 래더 미반영 판 «래더 미반영»(티어로 바꿔치기 안 함) · 경기 목록 이긴 팀 WIN 표
+[미확인] 같은 이름 클랜이 한 리그에 둘씩 (SPL #chaseplay 2개 · 10mountain melody·sovereignwc…) — Clan 행이 slug 만 다르게 둘. 개명·재창단인지 자료로 못 가림. 화면은 사실대로 둘 다 보여 준다
 ```
 
 ## 0-B. ★2026-09-11 새벽 — QA 회의 반영 (커밋 `aad9b8a`)★

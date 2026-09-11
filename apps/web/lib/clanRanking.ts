@@ -35,6 +35,8 @@ export interface ClanRankInput {
   readonly id: string
   readonly division: number
   readonly rating: number
+  /** 배치 중(경기 없음) — 있으면 번호를 안 매기고 티어 맨 아래 (2026-09-11 QA 회차 2: 클랜 띠 «13위/13팀» 과 목록 «14위» 가 어긋났다) */
+  readonly placement?: boolean
 }
 
 export interface ClanRankOptions {
@@ -54,9 +56,10 @@ export interface ClanRankOptions {
 export function rankClans<T extends ClanRankInput>(
   clans: readonly T[],
   { byTier }: ClanRankOptions,
-): (T & { rank: number })[] {
+): (T & { rank: number | null })[] {
   const sorted = [...clans].sort((a, b) => {
     if (byTier && a.division !== b.division) return a.division - b.division
+    if ((a.placement ?? false) !== (b.placement ?? false)) return a.placement ? 1 : -1
     if (a.rating !== b.rating) return b.rating - a.rating
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
   })
@@ -67,6 +70,7 @@ export function rankClans<T extends ClanRankInput>(
   return sorted.map((row) => {
     if (byTier && row.division !== lastDivision) rank = 0
     lastDivision = row.division
+    if (row.placement) return { ...row, rank: null }
     rank += 1
     return { ...row, rank }
   })

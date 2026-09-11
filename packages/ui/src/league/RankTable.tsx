@@ -276,9 +276,9 @@ function DivisionDivider({ division, leagueCategory }: { division: number; leagu
  * 그쪽 응답에는 `category`(클랜 구분)가 없다. 표는 그 값을 **한 번도 쓰지 않으므로**
  * 없는 값을 빈 문자열로 지어내 채우는 대신 타입에서 요구하지 않게 했다.
  */
-export type ClanRankTableRow = Pick<
+export type ClanRankTableRow = { rank: number | null } & Pick<
   ClanRankRow,
-  'rank' | 'league_clan_id' | 'clan' | 'division' | 'win' | 'lose' | 'win_rate' | 'rating'
+  'league_clan_id' | 'clan' | 'division' | 'win' | 'lose' | 'win_rate' | 'rating'
 >
 
 export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'emptyMessage'> {
@@ -355,7 +355,7 @@ export function ClanRankTable({
             <DivisionDivider division={row.division} leagueCategory={leagueCategory} />
           ) : null}
           <div className={ROW}>
-            {columns.rank ? <div className={rankClass(row.rank)}>{row.rank}</div> : null}
+            {columns.rank ? <div className={rankClass(row.rank ?? 0)}>{row.rank ?? '-'}</div> : null}
             <div className={COL_NAME}>
               <Link
                 className="flex min-w-0 items-center hover:text-text-strong"
