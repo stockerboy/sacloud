@@ -170,6 +170,18 @@ export function Kda({
 }
 
 /** MVP 배지 (선수 화면 — 본인일 때만) */
+/** 스나이퍼 표시 — 사장님이 고른 «발광 스코프» (2026-09-11 · 시안 02). 워터마크·(S) 대신 닉 옆에 붙는다 */
+export function SniperMark({ size = 15 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 16 16" width={size} height={size} style={{ flex: 'none', filter: 'drop-shadow(0 0 4px rgba(255,90,99,.55))' }} aria-label="스나이퍼">
+      <title>스나이퍼</title>
+      <circle cx="8" cy="8" r="6" fill="rgba(255,90,99,.16)" stroke={V3.red} strokeWidth="1.5" />
+      <circle cx="8" cy="8" r="1.6" fill={V3.red} />
+      <path d="M8 0.8v3M8 12.2v3M0.8 8h3M12.2 8h3" stroke={V3.red} strokeWidth="1.5" />
+    </svg>
+  )
+}
+
 export function MvpBadge({ size = 10 }: { size?: number }) {
   return (
     <span

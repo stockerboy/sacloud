@@ -17,7 +17,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail, MatchDetail, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
-import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
+import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
 import { V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
@@ -458,7 +458,7 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug }: { row: M
         <MarkCircle clan={clan ? { slug: clan.slug, mark: clan.mark } : null} size={20} />
         {/* 닉네임을 누르면 그 선수 화면으로 (2026-09-11 사장님). 줄 접힘과 안 겹치게 전파를 막는다 */}
         <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
-        {sniper ? <span style={{ flex: 'none', fontSize: 10.5, fontWeight: 900, color: V3.red, letterSpacing: '.02em' }} title="스나이퍼">(S)</span> : null}
+        {sniper ? <SniperMark /> : null}
         {mvp ? <MvpBadge size={8.5} /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
