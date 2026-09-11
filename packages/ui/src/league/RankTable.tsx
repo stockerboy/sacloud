@@ -4,7 +4,8 @@ import { Fragment } from 'react'
 import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
 import { showsTier } from '@sacloud/contract'
-import { ClanMark } from '../common/ClanMark'
+/* 2026-09-11 QA 회차 2: 랭킹표 마크가 빈 클랜(publicity·NeedBackup·Lyrical: …)이 있었다 — 상세처럼 원 크롭 마크(/assets/clans) 먼저, 없으면 옛 ClanMark(구름) */
+import { MarkCircle } from '../v3/primitives'
 /* 티어 구분선 라벨 — 공식리그면 `1부리그`, 무소속리그면 `1티어` (D-165) */
 import { divisionLabel } from './divisionLabel'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 랭킹도 알로 덮는다 */
@@ -362,7 +363,7 @@ export function ClanRankTable({
               >
                 {/* 알이 마크를 덮는다. 깨졌으면 마크가 그대로 나오고 은은하게 빛난다 */}
                 <Egg state={egg} size="xs" label={row.clan.name} className={MARK}>
-                  <ClanMark mark={row.clan.mark} alt={row.clan.name} />
+                  <MarkCircle clan={row.clan} size={24} title={row.clan.name} />
                 </Egg>
                 <span className="truncate">{row.clan.name}</span>
                 {/* 티어 라벨 — IPL 만 (지시 #23). 순서는 래더 순이라 경계선 대신 행마다 적는다 */}
@@ -545,7 +546,7 @@ export function PlayerRankTable({
                   aria-hidden="true"
                 >
                   <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
-                    <ClanMark clan={row.clan} alt={row.clan?.name ?? ''} />
+                    <MarkCircle clan={row.clan} size={24} title={row.clan?.name ?? ''} />
                   </Egg>
                 </Link>
                 <div className="min-w-0">
@@ -583,7 +584,7 @@ export function PlayerRankTable({
                     `clan ? ... : null` 로 감싸면 소속 없는 선수 옆이 통째로 빈다.
                     그 위를 알이 덮는다 — 닉네임은 그대로 보인다 (사양 5-2). */}
                 <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
-                  <ClanMark clan={row.clan} alt={row.clan?.name ?? ''} />
+                  <MarkCircle clan={row.clan} size={24} title={row.clan?.name ?? ''} />
                 </Egg>
                 <span className="truncate">{row.player.name}</span>
               </Link>
