@@ -46,7 +46,8 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
   const season = useSeasonLabel()
   const renewedAt = refresh.renewedAt ?? clan.data?.data.renewed_at ?? null
   const data = detail.data?.data
-  const [tierIndex, setTierIndex] = useState(0)
+  /* ‹ › 로 옮긴 칸 수 — 출발점은 «내 티어» (2026-09-11 회차 1: CHALLENGER 2 클랜인데 CHALLENGER 1 이 먼저 보였다) */
+  const [tierStep, setTierStep] = useState(0)
   /* 구간 승률 — 상대전적을 상대 티어로 접는다. 계약에 있는 값만 더한다 */
   const tierWins = useMemo(() => {
     if (!data) return []
@@ -60,6 +61,8 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
     }
     return [...by.values()].sort((a, b) => a.division - b.division)
   }, [data])
+  const ownTierAt = Math.max(0, tierWins.findIndex((t) => t.division === data?.division))
+  const tierIndex = tierWins.length === 0 ? 0 : (ownTierAt + tierStep + tierWins.length * 64) % tierWins.length
   return (
     <>
       {data ? (
@@ -83,7 +86,7 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
             }
             tierWins={tierWins}
             tierIndex={tierIndex}
-            onTierStep={(dir) => setTierIndex((i) => (tierWins.length === 0 ? 0 : (i + dir + tierWins.length) % tierWins.length))}
+            onTierStep={(dir) => setTierStep((i) => i + dir)}
           />
         </div>
       ) : detail.isPending && detail.fetchStatus === 'fetching' ? (

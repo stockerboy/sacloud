@@ -42,8 +42,9 @@ function buildSeries(days: readonly PlayerTrendDay[], mode: TrendMode): { pts: P
   let nowT = 0
   days.forEach((d, i) => {
     if (d.future) return
-    for (const p of d.points) {
-      pts.push({ t: i + p.at, wr: mode === 'day' ? p.win_rate : p.cum_win_rate, kd: mode === 'day' ? p.kd : p.cum_kd })
+    /* 경기별 점은 누적에서만 — DAY 는 그날 첫 판이 0%/100% 로 튀어 선이 벽처럼 서 버린다 (2026-09-11 회차 1 발견) */
+    if (mode !== 'day') {
+      for (const p of d.points) pts.push({ t: i + p.at, wr: p.cum_win_rate, kd: p.cum_kd })
     }
     const close = { t: i + 1, wr: mode === 'day' ? d.win_rate : d.cum_win_rate, kd: mode === 'day' ? d.kd : d.cum_kd }
     if (d.today) {

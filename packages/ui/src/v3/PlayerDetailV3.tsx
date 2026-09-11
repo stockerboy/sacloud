@@ -24,7 +24,7 @@ import { TrendChartV3, type TrendMode } from './TrendChartV3'
 const halfStyle: CSSProperties = { marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 16, alignItems: 'stretch' }
 const halfCardStyle: CSSProperties = { display: 'flex', flexDirection: 'column', ...cardStyle }
 const statRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr)', alignItems: 'baseline', gap: 12, padding: '9px 0', borderTop: `1px solid ${V3.rowDivider2}` }
-const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '52px 124px minmax(0,1fr) minmax(0,150px) 62px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }
+const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '52px 124px minmax(0,1fr) minmax(0,200px) 62px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }
 const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 104px 74px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
 const playerRowSavesStyle: CSSProperties = { ...playerRowStyle, gridTemplateColumns: 'minmax(0,1fr) 104px 60px 74px' }
 
@@ -530,8 +530,8 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}><span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.08em' }}>vs</span><TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} /></span>
               </span>
-              <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, minWidth: 0, overflow: 'hidden' }}>
-                {mvpIsMe ? <MvpBadge /> : null}
+              <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
+                {mvpIsMe ? <MvpBadge size={8.5} /> : null}
                 {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}
                 {my && my.kd_rate !== null ? <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>{my.kd_rate.toFixed(1)}%</span> : null}
               </span>
