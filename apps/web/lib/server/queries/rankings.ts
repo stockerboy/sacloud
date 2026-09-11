@@ -427,8 +427,10 @@ export async function getPlayerRanksByScore(
   return {
     cursor: page.cursor,
     items: page.items.map((row, index) => {
-      /* 동점은 같은 등수 — 접어 둔 scoreRank(경쟁 순위). 띠·구간 카드의 «16위» 와 목록 «17위» 가 어긋나던 것 (QA 교차검토 21) */
-      const rank = row.scoreRank ?? startRank + index
+      /* ⚠ 2026-09-11 되돌림 — 접어 둔 scoreRank 는 ★무기 안에서의 등수★ 라, 스나·라플을 섞은 이 목록에
+         그대로 쓰면 «1위» 가 둘이 된다 (실측: starry 1위 · lximmore 1위). 섞은 목록의 등수는 ★줄 순서★ 다.
+         띠에 뜨는 무기별 등수와는 뜻이 다르다 — 구간별 랭킹 개편 때 하나로 맞춘다 (ORDERS 맨 위 칸) */
+      const rank = startRank + index
       const lp = row.leaguePlayer
       /* ★대표 숫자는 주무기 것★ (2026-09-11 사장님: «해당 선수 주무기 사용한 개인 승률과 킬데스»).
          주무기는 여섯 축을 잰 무기(hex.weapon)를 먼저 본다 — 없으면 isMain, 그것도 없으면 많이 뛴 쪽.
