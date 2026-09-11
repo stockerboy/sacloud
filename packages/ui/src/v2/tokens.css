@@ -547,12 +547,17 @@
   .v3-match-row--list > :nth-child(4) { grid-column: 2 / 3; }
   .v3-row-tier { display: none !important; } /* 양 팀 줄의 티어 글자 — 폰에서는 상대 이름이 한 글자로 눌리던 것 (QA 교차검토 5) */
   .v3-h2h-svg { height: auto !important; } /* 상대전적 그래프 — 폰에서 폭에 맞춰 키움 (QA 교차검토 11) */
-  .v3-setscore { gap: 12px !important; padding: 18px 12px 16px !important; }
-  .v3-setscore > span { font-size: 26px !important; }
-  .v3-setscore-mid { flex-basis: 100% !important; order: 9; min-width: 0 !important; }
-  .v3-setscore-team { flex-basis: 100% !important; justify-content: center !important; } /* 폰: 팀 이름 한 줄 · 점수 한 줄 · 상대 한 줄 (QA 교차검토 15-8) */
-  .v3-setscore-num { font-size: 34px !important; padding: 0 10px; } /* SET SCORE 설명은 점수 밑 줄로 (폰에서 숫자에 깔림 · QA 회차 12) */
-  .v3-setscore > span > span > span:first-child { font-size: 20px !important; }
+  /* 2026-09-11 사장님: 세로가 부담스럽다 → 접힌 경기 카드 높이로. 한 줄에 [마크 이름] 18 : 11 [이름 마크], 설명은 아래 작은 줄 */
+  .v3-setscore { gap: 8px !important; padding: 10px 12px 8px !important; flex-wrap: wrap !important; }
+  .v3-setscore-bg { display: none !important; }
+  .v3-setscore-team { flex: 1 1 0 !important; min-width: 0; gap: 7px !important; }
+  .v3-setscore-team > span { gap: 1px !important; min-width: 0; }
+  .v3-setscore-team > span > span:first-child { font-size: 14px !important; overflow: hidden; text-overflow: ellipsis; }
+  .v3-setscore-team > span > span:last-child { font-size: 9px !important; }
+  .v3-setscore-mark { width: 26px !important; height: 26px !important; flex: 0 0 26px !important; }
+  .v3-setscore-num { font-size: 22px !important; padding: 0 2px; flex: none; }
+  .v3-setscore-mid { flex-basis: 100% !important; order: 9; min-width: 0 !important; gap: 0 !important; }
+  .v3-setscore-mid > span { font-size: 9px !important; }
 }
 
 /* ── 스코어보드 폰 폭 (2026-09-11) — 닉네임 칸이 0 으로 눌리던 것 ── */

@@ -319,8 +319,8 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
       <div className="v3-setscore" style={{ position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 26, padding: '26px 18px 22px', flexWrap: 'wrap' }}>
         <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${share}%`, background: `linear-gradient(100deg, ${theme.light}42, ${theme.main}29 40%, ${theme.deep}0f 78%, transparent)`, pointerEvents: 'none' }} />
         <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: `${100 - share}%`, background: `linear-gradient(260deg, ${oppTheme.light}3d, ${oppTheme.main}29 40%, ${oppTheme.deep}0f 78%, transparent)`, pointerEvents: 'none' }} />
-        {hasFitMark(data.clan.slug) ? <span aria-hidden style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 150, height: 150, backgroundImage: `url(${fitMarkUrl(data.clan.slug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', opacity: 0.15, pointerEvents: 'none' }} /> : null}
-        {hasFitMark(opp.clan.slug) ? <span aria-hidden style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 150, height: 150, backgroundImage: `url(${fitMarkUrl(opp.clan.slug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', opacity: 0.15, pointerEvents: 'none' }} /> : null}
+        {hasFitMark(data.clan.slug) ? <span aria-hidden className="v3-setscore-bg" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 150, height: 150, backgroundImage: `url(${fitMarkUrl(data.clan.slug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', opacity: 0.15, pointerEvents: 'none' }} /> : null}
+        {hasFitMark(opp.clan.slug) ? <span aria-hidden className="v3-setscore-bg" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 150, height: 150, backgroundImage: `url(${fitMarkUrl(opp.clan.slug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', opacity: 0.15, pointerEvents: 'none' }} /> : null}
         <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, width: `${share}%`, height: 2, background: `linear-gradient(90deg,${theme.light},${theme.main} 55%,${theme.main}40)`, pointerEvents: 'none' }} />
         <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, width: `${100 - share}%`, height: 2, background: `linear-gradient(270deg,${oppTheme.main},${oppTheme.main}33)`, pointerEvents: 'none' }} />
         <span aria-hidden style={{ position: 'absolute', left: `${share}%`, top: 0, bottom: 0, width: 1, background: 'linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.04))', pointerEvents: 'none' }} />
@@ -329,7 +329,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
             <span style={{ fontSize: 28, fontWeight: 900, color: theme.ink, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{data.clan.name}</span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}><TierText division={data.division} leagueCategory={data.league.category} size={11} />{data.rank !== null ? <span style={{ fontSize: 11, color: rankColor(data.rank) }}>{data.rank}위</span> : null}</span>
           </span>
-          <MarkCircle clan={data.clan} size={52} />
+          <MarkCircle clan={data.clan} size={52} className="v3-setscore-mark" />
         </span>
         <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: theme.ink, letterSpacing: '-.02em' }}>{opp.win}</span>
         <span className="v3-setscore-mid" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 88 }}>
@@ -338,7 +338,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
         </span>
         <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: oppTheme.ink, letterSpacing: '-.02em' }}>{opp.lose}</span>
         <span className="v3-setscore-team" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <MarkCircle clan={oppClan} size={52} />
+          <MarkCircle clan={oppClan} size={52} className="v3-setscore-mark" />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <span style={{ fontSize: 28, fontWeight: 900, color: oppTheme.ink, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{opp.clan.name}</span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}><TierText division={opp.division} leagueCategory={data.league.category} size={11} /></span>
@@ -390,7 +390,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           const pending = m.red.length === 0 && m.blue.length === 0
           const rounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (ourSideOf(detail) === 'red' ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : listRoundsOf(m)
           return (
-            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: `1px solid ${V3.rowDivider}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : 'transparent', opacity: pending ? 0.75 : 1 }}>
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: `1px solid ${V3.rowDivider}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: (m.win ? 'rgba(91,141,255,.13)' : 'rgba(255,90,99,.13)'), opacity: pending ? 0.75 : 1 }}>
               <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} className="v3-match-row" style={{ display: 'grid', gridTemplateColumns: '46px 110px minmax(0,1fr) minmax(0,270px) 70px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }}>
                 <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -451,7 +451,7 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
         const delta = m.rating_update
         const pending = m.red.length === 0 && m.blue.length === 0
         return (
-          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: open === m.id ? 'rgba(91,141,255,.04)' : V3.card, opacity: pending ? 0.75 : 1 }}>
+          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: (m.win ? 'rgba(91,141,255,.13)' : 'rgba(255,90,99,.13)'), opacity: pending ? 0.75 : 1 }}>
           <div onClick={() => { if (pending) return; const isOpen = open === m.id; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, border: 'none', borderRadius: 0, background: 'transparent', cursor: pending ? 'default' : 'pointer' }} className="v3-match-row">
             <span style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
             <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>

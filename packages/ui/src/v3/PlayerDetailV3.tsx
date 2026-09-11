@@ -533,7 +533,7 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
         /* 명단이 아직 안 들어온 경기 — 펼치지 않는다 (2026-09-10 사장님: «킬데스 수집중») */
         const pending = m.red.length === 0 && m.blue.length === 0
         return (
-          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : V3.card, opacity: pending ? 0.75 : 1 }}>
+          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: (m.win ? 'rgba(91,141,255,.13)' : 'rgba(255,90,99,.13)'), opacity: pending ? 0.75 : 1 }}>
             <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-match-row">
               <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
               <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
