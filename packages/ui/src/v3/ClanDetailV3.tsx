@@ -488,7 +488,14 @@ export function ClanDetailV3(props: ClanDetailV3Props) {
     for (const r of h2h) if (r.division !== null) set.add(r.division)
     return [...set].sort((a, b) => a - b)
   }, [h2h, data.league.division_count])
-  const [tier, setTier] = useState<number>(() => (tiers.includes(data.division) ? data.division : tiers[0] ?? data.division))
+  const [tier, setTier] = useState<number>(() => {
+    /* 내 티어에 맞대결 기록이 있으면 내 티어. 없으면(승격·강등 직후 등) 가장 많이 뛴 티어 — 칩·구간 승률·상대전적이 같은 티어를 보게 (QA 교차검토 15) */
+    if (h2h.some((r) => r.division === data.division)) return data.division
+    const games = new Map<number, number>()
+    for (const r of h2h) if (r.division !== null) games.set(r.division, (games.get(r.division) ?? 0) + r.win + r.lose)
+    const best = [...games.entries()].sort((a, b) => b[1] - a[1])[0]
+    return best ? best[0] : tiers.includes(data.division) ? data.division : tiers[0] ?? data.division
+  })
   const [selected, setSelectedState] = useState<string | null>(() => h2h.find((r) => r.division === tier)?.league_clan_id ?? h2h[0]?.league_clan_id ?? null)
   const setSelected = (id: string | null) => { setSelectedState(id); props.onSelectOpponent(id) }
   useEffect(() => { props.onSelectOpponent(selected) }, [])  // 첫 상대를 페이지에 알린다

@@ -36,6 +36,8 @@ export interface RankColumns {
 export interface LeagueScreenSpec {
   /** 클랜랭킹 화면이 있는가. 없으면 탭에서도 빠진다 */
   clanRank: boolean
+  /** 개인 순위가 ★실력 점수★ 인 리그 (2026-09-10 사장님 확정 · SPL·IPL). 표에 점수가 한 줄도 없어도 «측정 중» 이지 래더가 아니다 */
+  scoreLeague: boolean
   /** 개인랭킹 표의 칸 */
   playerColumns: RankColumns
   /** 클랜랭킹 표의 칸 */
@@ -93,6 +95,7 @@ export interface LeagueScreenSpec {
 /** 공식 래더가 있는 리그의 기본값 — 지금까지의 화면 그대로다 */
 const WITH_LADDER: LeagueScreenSpec = {
   clanRank: true,
+  scoreLeague: true,
   playerColumns: { rank: true, winRate: true, kd: true, rating: true },
   /* 클랜랭킹에는 킬뎃 칸이 원래 없다 */
   clanColumns: { rank: true, winRate: true, kd: false, rating: true },
@@ -131,6 +134,7 @@ const WITH_TIERS: LeagueScreenSpec = { ...WITH_LADDER, showsTier: true }
  */
 const NO_LADDER: LeagueScreenSpec = {
   clanRank: false,
+  scoreLeague: false,
   playerColumns: { rank: false, winRate: true, kd: true, rating: false },
   clanColumns: { rank: false, winRate: true, kd: false, rating: false },
   /* 원래 단일리그 — 티어 없음 (지시 #23) */

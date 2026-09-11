@@ -3,7 +3,7 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
-import { showsTier } from '@sacloud/contract'
+import { showsTier, leagueScreen } from '@sacloud/contract'
 /* 2026-09-11 QA 회차 2: 랭킹표 마크가 빈 클랜(publicity·NeedBackup·Lyrical: …)이 있었다 — 상세처럼 원 크롭 마크(/assets/clans) 먼저, 없으면 옛 ClanMark(구름) */
 import { MarkCircle } from '../v3/primitives'
 /* 티어 구분선 라벨 — 공식리그면 `1부리그`, 무소속리그면 `1티어` (D-165) */
@@ -496,7 +496,7 @@ export function PlayerRankTable({
      옛 규칙: columns.rating ? null : … */
   const keptStat = columns.winRate ? 'winRate' : columns.kd ? 'kd' : null
   /* 점수 표인가 — 한 줄이라도 점수가 있으면 점수 표. 점수 없는 줄은 래더로 채우지 않고 «측정 중» (QA 교차검토 · 기록 없음 선수가 «3,000점» 으로 보였다) */
-  const scoreTable = !byWeapon && (rows ?? []).some((row) => row.score !== null && row.score !== undefined)
+  const scoreTable = !byWeapon && (leagueScreen(leagueSlug).scoreLeague || (rows ?? []).some((row) => row.score !== null && row.score !== undefined))
   const winRateHidden = keptStat === 'winRate' ? '' : COL_HIDDEN
   /* 2026-09-11 QA 교차검토 8번: 킬뎃도 폰에 남긴다 (옛 규칙: keptStat === 'kd' ? '' : COL_HIDDEN) */
   const kdHidden = ''
