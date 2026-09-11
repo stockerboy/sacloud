@@ -57,6 +57,7 @@ VPS     ★집계 서버(gwlove)가 32커밋 뒤(e53478f)였다★ — player-he
         동점(5:5)인데 승자 있는 판은 라운드 점수 안 적음(기록 모자람) · 맞대결 진 판도 상대 MVP 표시 · MVP 칸 폭 270 · 폰 SET SCORE 설명 줄바꿈
 교차검토 15(SPL)  점수 리그 표는 점수 줄이 하나도 없어도 «측정 중»(leagueScreen.scoreLeague · innatemass 클랜원이 «래더 3,000점») ·
         클랜 상세 기본 티어 = 내 티어에 기록 있을 때만, 없으면 가장 많이 뛴 티어(칩·구간 승률·상대전적이 서로 다른 티어를 가리키던 것)
+사장님(오후)  스코어보드 워터마크(SNIPER·ME·MVP) 폐지 → 스나이퍼는 닉 옆 빨간 (S) · 스코어보드 닉네임 누르면 그 선수 화면으로 (스위치 SCORE_WATERMARKS=false)
 [결정 그대로] hilarious-·CeIebrity 등이 SPL 클랜랭킹에 없는 것은 O-044(사장님 분류 · 열산 클랜은 SPL 목록에서 감춤) — 선수 개인랭킹엔 뜬다
 [자료 빈틈] SPL 우리 수집 경기는 ★판별 래더 증감(Match.red/blueRatingUpdate)이 안 적힌다★ — season0-apply 는 합계만 쓴다. 미러(3rd.supply) 경기만 ±가 있다.
         화면은 «래더 증감 미기록» 으로 사실대로. 판별 증감을 남기려면 season0-apply 가 경기마다 써야 한다 → ORDERS 후보

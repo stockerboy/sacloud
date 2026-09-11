@@ -23,6 +23,8 @@ import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
 
 const MVP_LEGACY_UNKNOWN_NOTICE = false
+/* 2026-09-11 사장님: «누가 스나이퍼인지 안 떠 — 워터마크 폐지, 닉 옆에 빨간 (S)». 워터마크(SNIPER·ME)는 스위치로만 남긴다 */
+const SCORE_WATERMARKS = false
 
 const halfStyle: CSSProperties = { marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 16, alignItems: 'stretch' }
 const halfCardStyle: CSSProperties = { display: 'flex', flexDirection: 'column', ...cardStyle }
@@ -444,17 +446,19 @@ export { TrendCardLegacy }
 
 /* ── 최근 경기 · 스코어보드 ───────────────────────────────────── */
 
-function ScoreRow({ row, me, mvp, weaponKnown, showSaves }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; showSaves: boolean }) {
+function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; showSaves: boolean; leagueSlug: string }) {
   const sniper = weaponKnown && row.weapon === 1
   const kd = row.kd_rate
   const clan = row.match_time_clan
   return (
     <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #8ff0ff, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
-      {sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
-      {me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#8ff0ff', opacity: 0.14, WebkitTextStroke: '2.2px #8ff0ff', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
+      {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
+      {SCORE_WATERMARKS && me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#8ff0ff', opacity: 0.14, WebkitTextStroke: '2.2px #8ff0ff', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <MarkCircle clan={clan ? { slug: clan.slug, mark: clan.mark } : null} size={20} />
-        <span style={{ fontSize: 12.5, fontWeight: me ? 700 : 500, whiteSpace: 'nowrap', color: me ? '#dff2ff' : '#c3cbdb', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
+        {/* 닉네임을 누르면 그 선수 화면으로 (2026-09-11 사장님). 줄 접힘과 안 겹치게 전파를 막는다 */}
+        <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
+        {sniper ? <span style={{ flex: 'none', fontSize: 10.5, fontWeight: 900, color: V3.red, letterSpacing: '.02em' }} title="스나이퍼">(S)</span> : null}
         {mvp ? <MvpBadge size={8.5} /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
@@ -476,7 +480,7 @@ export function viewerSideOf(detail: MatchDetail): 'red' | 'blue' {
   return detail.player_stat?.side ?? 'red'
 }
 
-function Scoreboard({ detail, me, leagueCategory }: { detail: MatchDetail; me: string; leagueCategory: string }) {
+function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchDetail; me: string; leagueCategory: string; leagueSlug: string }) {
   const mySide = viewerSideOf(detail)
   const showSaves = [...detail.red_stats, ...detail.blue_stats].some((s) => s.saves !== null)
   const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
@@ -507,7 +511,7 @@ function Scoreboard({ detail, me, leagueCategory }: { detail: MatchDetail; me: s
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => (
-            <ScoreRow key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} showSaves={showSaves} />
+            <ScoreRow key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} showSaves={showSaves} leagueSlug={leagueSlug} />
           ))}
         </div>
       ))}
@@ -556,7 +560,7 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
               </span>
             </div>
             {isOpen ? (
-              detail ? <Scoreboard detail={detail} me={data.player.id} leagueCategory={data.league.category} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
+              detail ? <Scoreboard detail={detail} me={data.player.id} leagueCategory={data.league.category} leagueSlug={data.league.slug} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
             ) : null}
           </div>
         )

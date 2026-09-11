@@ -104,7 +104,7 @@ export function MatchListV3(props: MatchListV3Props) {
                   </span>
                 </div>
                 {isOpen ? (
-                  detail ? <ClanScoreboardV3 detail={detail} leagueCategory={leagueCategory} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
+                  detail ? <ClanScoreboardV3 detail={detail} leagueCategory={leagueCategory} leagueSlug={props.leagueSlug} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
                 ) : null}
               </div>
             )

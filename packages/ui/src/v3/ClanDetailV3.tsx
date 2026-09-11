@@ -159,17 +159,18 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
   )
 }
 
-function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves }: { row: MatchPlayerStat; mvp: boolean; weaponKnown: boolean; clanSlug: string | null; showSaves: boolean }) {
+function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: { row: MatchPlayerStat; mvp: boolean; weaponKnown: boolean; clanSlug: string | null; showSaves: boolean; leagueSlug: string }) {
   const sniper = weaponKnown && row.weapon === 1
   const kd = row.kd_rate
   const clan = row.match_time_clan
   return (
     <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 108px 64px 78px' } : {}), background: mvp ? 'linear-gradient(100deg,rgba(255,216,61,.10),rgba(255,216,61,.02) 55%,transparent)' : 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
-      {sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
-      {mvp ? <span aria-hidden style={{ position: 'absolute', left: '64%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: V3.gold, opacity: 0.15, WebkitTextStroke: `2.4px ${V3.gold}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>MVP</span> : null}
+      {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
+      {SCORE_WATERMARKS && mvp ? <span aria-hidden style={{ position: 'absolute', left: '64%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: V3.gold, opacity: 0.15, WebkitTextStroke: `2.4px ${V3.gold}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>MVP</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <MarkCircle clan={clan ? { slug: clan.slug ?? clanSlug, mark: clan.mark } : clanSlug ? { slug: clanSlug } : null} size={20} />
-        <span style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: 'nowrap', color: mvp ? '#ffe89a' : '#c3cbdb', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
+        <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: 500, color: mvp ? '#ffe89a' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
+        {sniper ? <span style={{ flex: 'none', fontSize: 10.5, fontWeight: 900, color: V3.red, letterSpacing: '.02em' }} title="스나이퍼">(S)</span> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
       {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves ?? 0}/{row.save_chances ?? 0}</span> : null}
@@ -227,6 +228,8 @@ const majorityClanOf = (stats: readonly MatchPlayerStat[]) => {
 /* 2026-09-11 회차 11 에서 되돌림: crucialrz 경기의 우리 팀이 «loveless» 로 바뀌어 보였다 — 용병이 많은 리그라 명단 다수로 팀 이름을 갈아끼우면
    등록 클랜(수집기 라벨)과 어긋난다. ★팀 이름은 등록 클랜★, 선수 옆 마크가 소속을 말한다. 명단 다수 방식은 스위치로 남긴다 */
 const TEAM_NAME_FROM_LINEUP = false
+/* 2026-09-11 사장님: 워터마크 폐지, 스나이퍼는 닉 옆 빨간 (S) */
+const SCORE_WATERMARKS = false
 
 export function teamSnapOf(detail: MatchDetail, side: 'red' | 'blue', fallback: MatchDetail['league_clan']): TeamSnap {
   if (!TEAM_NAME_FROM_LINEUP) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id }
@@ -249,9 +252,9 @@ export function ourSideOf(detail: MatchDetail): 'red' | 'blue' {
 }
 
 /** 경기 목록 v3(MatchListV3)도 같은 스코어보드를 쓴다 (2026-09-11) */
-export function ClanScoreboardV3(props: { detail: MatchDetail; leagueCategory: string }) { return <Scoreboard {...props} /> }
+export function ClanScoreboardV3(props: { detail: MatchDetail; leagueCategory: string; leagueSlug: string }) { return <Scoreboard {...props} /> }
 
-function Scoreboard({ detail, leagueCategory }: { detail: MatchDetail; leagueCategory: string }) {
+function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetail; leagueCategory: string; leagueSlug: string }) {
   const ourSide = ourSideOf(detail)
   const showSaves = [...detail.red_stats, ...detail.blue_stats].some((s) => s.saves !== null)
   const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
@@ -280,7 +283,7 @@ function Scoreboard({ detail, leagueCategory }: { detail: MatchDetail; leagueCat
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>킬뎃</span>
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
-          {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} />)}
+          {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} leagueSlug={leagueSlug} />)}
         </div>
       ))}
     </div>
@@ -405,7 +408,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>{pending ? '수집중' : <>경기상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}</span>
               </div>
-              {isOpen ? (detail ? <Scoreboard detail={detail} leagueCategory={data.league.category} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.rowDivider}` }}>불러오는 중…</div>) : null}
+              {isOpen ? (detail ? <Scoreboard detail={detail} leagueCategory={data.league.category} leagueSlug={data.league.slug} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.rowDivider}` }}>불러오는 중…</div>) : null}
             </div>
           )
         })}
@@ -468,7 +471,7 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
             </span>
           </div>
           {open === m.id ? (
-            expanded[m.id] ? <Scoreboard detail={expanded[m.id] as MatchDetail} leagueCategory={data.league.category} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
+            expanded[m.id] ? <Scoreboard detail={expanded[m.id] as MatchDetail} leagueCategory={data.league.category} leagueSlug={data.league.slug} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
           ) : null}
           </div>
         )
