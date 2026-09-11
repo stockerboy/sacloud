@@ -561,9 +561,11 @@ export const endpoints = {
     method: 'GET',
     path: '/leagues/:leagueId/ranks/players',
     origin: 'observed',
-    description: '개인랭킹. `weapon=all|sniper|rifle` 로 무기 축을 고른다 (D-169, 신규)',
+    description: '개인랭킹. `weapon=all|sniper|rifle` 로 무기 축을 · `tier=1|2|3` 으로 구간을 고른다',
     response: paginatedResponse(PlayerRankRow),
-    query: [...CURSOR, 'weapon'],
+    /* ★구간 고르개★ (2026-09-11 사장님: «개인랭킹 전체/astra/challenger1/challenger2 이렇게 선택해서 볼 수 있게»).
+       구간은 ★내 구간(가장 많이 뛴 티어)★ 이다 — 클랜 소속이 아니다 */
+    query: [...CURSOR, 'weapon', 'tier'],
   },
   leagueRankForm: {
     method: 'GET',

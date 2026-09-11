@@ -92,10 +92,11 @@ export function MatchListV3(props: MatchListV3Props) {
                   </span>
                   <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
                     {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : mvp ? (
+                      /* ★마크 · 닉네임 · MVP배지★ 순 — 배지가 제일 오른쪽 끝이다 (2026-09-11 사장님: 모든 경기카드 통일) */
                       <>
-                        <MvpBadge size={8.5} />
                         <MarkCircle clan={mvp.match_time_clan ? { slug: mvp.match_time_clan.slug, mark: mvp.match_time_clan.mark } : null} size={16} />
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.name}</span>
+                        <MvpBadge size={8.5} />
                       </>
                     ) : <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>{perSide === 5 ? '' : `${perSide} vs ${perSide}`}</span>}
                   </span>

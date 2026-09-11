@@ -783,12 +783,6 @@ async function main(): Promise<number> {
           찾음: result.resolved,
           바꿀대상: result.changed,
           모름: result.unknown,
-          /* 소속 신뢰 판정 진단 (2026-09-07 · affiliationTrust.ts) */
-          뛴팀행제외: result.skippedTeamOnly,
-          제외된선수: result.teamOnlyExcluded,
-          신뢰행으로되돌림: result.fallbackToTrustedClan,
-          신뢰근거없음: result.noTrustedClan,
-          신뢰판정: result.trustEnabled ? '켜짐' : '꺼짐(off)',
           반영: result.confirmed ? '했다' : '안했다',
         },
       ])
@@ -2743,10 +2737,6 @@ async function main(): Promise<number> {
           '소속 있음': row.players.withClan,
           무소속: row.players.clanless,
           'Clan 행 없음': row.players.clanNotInDb,
-          /* 소속 신뢰 판정 진단 (2026-09-07 · affiliationTrust.ts) */
-          '뛴팀 제외': row.players.teamOnlyExcluded,
-          '신뢰행 되돌림': row.players.fallbackToTrustedClan,
-          '신뢰근거 없음': row.players.noTrustedClan,
         })),
       )
       table([

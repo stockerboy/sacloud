@@ -6,6 +6,7 @@ import type { PlayerRankRow, RankWeapon } from '@sacloud/contract'
 import { RANK_WEAPON_LABEL, leagueScreen, parseRankWeapon } from '@sacloud/contract'
 import {
   FilterChip,
+  divisionLabel,
   FormTop3,
   LoadMoreButton,
   PageHead,
@@ -56,10 +57,24 @@ export default function PlayerRankPage({ params }: { params: Promise<{ leagueSlu
 /** 시안의 WEAPON 칩이 고르는 값 — ★옛 무기 탭과 같은 셋★ 이다 */
 const WEAPON_OPTIONS: readonly RankWeapon[] = ['all', 'sniper', 'rifle']
 
+/**
+ * ★구간 고르개★ — `전체 / ASTRA / CHALLENGER1 / CHALLENGER2` (2026-09-11 사장님).
+ *
+ * > «개인랭킹 전체/astra/challenger1/challenger2 이렇게 선택해서 볼 수 있게끔해»
+ *
+ * 고르는 구간은 ★그 선수가 가장 많이 뛴 구간★ 이다 — 클랜 소속이 아니다.
+ * 용병으로 다른 티어에서 뛴 판도 점수에는 그대로 들어간다 (구간은 자리만 정한다).
+ * 무기 칩과 같은 ★거르개★ 라 점수 순서는 바뀌지 않는다.
+ */
+type RankTier = 'all' | '1' | '2' | '3'
+const TIER_OPTIONS: readonly RankTier[] = ['all', '1', '2', '3']
+
 function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
   const [weapon, setWeapon] = useState<RankWeapon>('all')
+  /** ★구간 고르개★ — `all` 이면 전체다 (2026-09-11 사장님) */
+  const [tier, setTier] = useState<RankTier>('all')
   /** 지금 열려 있는 칩. ★한 번에 하나만★ 열린다 (칩이 상태를 안 갖는 이유) */
-  const [openChip, setOpenChip] = useState<'weapon' | null>(null)
+  const [openChip, setOpenChip] = useState<'weapon' | 'tier' | null>(null)
   /* 보여 줄 칸은 `leagueScreen()` 이 정한다 —
      `10🏔`(`sanply`)는 비공식이라 래더도 순위도 없다 (2026-09-01 사용자 지시) */
   const columns = leagueScreen(leagueSlug).playerColumns
@@ -67,9 +82,10 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
 
   const ranks = useCursorQuery<PlayerRankRow>(
     'leagueRankPlayers',
-    /* 무기 축이 쿼리 키에 들어가야 탭을 바꿀 때 캐시가 섞이지 않는다 */
-    ['ranks', 'players', leagueSlug, weapon],
-    { params: { leagueId: leagueSlug }, search: { weapon } },
+    /* 무기 축·구간이 쿼리 키에 들어가야 칩을 바꿀 때 캐시가 섞이지 않는다.
+       ★`all` 일 때는 키를 안 늘린다★ — 서버가 미리 담아 둔 키(`[…, weapon]`)와 한 글자도 같아야 한다 */
+    tier === 'all' ? ['ranks', 'players', leagueSlug, weapon] : ['ranks', 'players', leagueSlug, weapon, tier],
+    { params: { leagueId: leagueSlug }, search: tier === 'all' ? { weapon } : { weapon, tier } },
   )
 
   const form = useQuery({
@@ -122,6 +138,22 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
             </>
           }
           right={
+            /* ★구간 + 무기★ 두 칩. 구간 칩은 ★티어가 있는 리그에서만★ 그린다 (2026-09-11 사장님) */
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {(league.data?.data.division_count ?? 1) >= 2 ? (
+              <FilterChip
+                kind="구간"
+                value={tier}
+                options={TIER_OPTIONS}
+                labelOf={(value) => (value === 'all' ? '전체' : divisionLabel(Number(value), league.data?.data.category))}
+                open={openChip === 'tier'}
+                onToggle={() => setOpenChip((now) => (now === 'tier' ? null : 'tier'))}
+                onSelect={(value) => {
+                  setTier(value)
+                  setOpenChip(null)
+                }}
+              />
+            ) : null}
             <FilterChip
               kind="WEAPON"
               value={weapon}
@@ -134,6 +166,7 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
                 setOpenChip(null)
               }}
             />
+            </div>
           }
         />
 

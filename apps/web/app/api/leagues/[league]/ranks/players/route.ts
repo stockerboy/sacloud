@@ -25,9 +25,12 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     /* ★무기 탭도 같은 순위(실력 점수)를 쓰고 그 무기만 거른다★ (2026-09-11 사장님).
        옛 방식(무기별 래더증감 순)은 RANK_BY_WEAPON_DELTA 로 되돌릴 수 있다 */
     const onlyWeapon = weapon === 'sniper' ? 1 : weapon === 'rifle' ? 0 : null
+    /* ★구간 고르개★ (2026-09-11 사장님) — 1 ASTRA · 2 CHALLENGER1 · 3 CHALLENGER2.
+       모르는 값이면 전체다 (지어내지 않는다). 옛 래더 순 길은 구간을 모르니 안 거른다 */
+    const onlyTier = parseRankTier(query(request, 'tier'))
     const page =
       weapon === 'all' || !RANK_BY_WEAPON_DELTA
-        ? await scoreOrLadder(leagueId, cursor, size, onlyWeapon)
+        ? await scoreOrLadder(leagueId, cursor, size, onlyWeapon, onlyTier)
         : await getPlayerRanksByWeapon(leagueId, weapon, cursor, size)
     /* 랭킹은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
     return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')
@@ -37,8 +40,20 @@ export async function GET(request: Request, context: { params: Promise<Record<st
 /** true 로 두면 옛 방식(무기 탭 = 무기별 래더증감 순)으로 돌아간다 (`CLAUDE.md` 1-4) */
 const RANK_BY_WEAPON_DELTA = false
 
-async function scoreOrLadder(leagueId: string, cursor: string | null, size: number, onlyWeapon: 0 | 1 | null = null) {
-  const scored = await getPlayerRanksByScore(leagueId, cursor, size, onlyWeapon)
-  if (scored && (scored.items.length > 0 || cursor !== null)) return scored
+/** `tier=1|2|3` 만 받는다. 그 밖은 ★전체★ */
+function parseRankTier(raw: string | null): 1 | 2 | 3 | null {
+  return raw === '1' ? 1 : raw === '2' ? 2 : raw === '3' ? 3 : null
+}
+
+async function scoreOrLadder(
+  leagueId: string,
+  cursor: string | null,
+  size: number,
+  onlyWeapon: 0 | 1 | null = null,
+  onlyTier: 1 | 2 | 3 | null = null,
+) {
+  const scored = await getPlayerRanksByScore(leagueId, cursor, size, onlyWeapon, onlyTier)
+  /* 구간을 골라서 비었으면 ★그게 답★ 이다 — 옛 래더 순으로 떨어지면 «전체» 가 튀어나온다 */
+  if (scored && (scored.items.length > 0 || cursor !== null || onlyTier !== null)) return scored
   return getPlayerRanks(leagueId, cursor, size)
 }

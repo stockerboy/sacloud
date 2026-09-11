@@ -573,9 +573,10 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                 <span style={{ fontSize: 12.5, color: '#9aa6bf', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
               </span>
               <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
-                {mvpIsMe ? <MvpBadge size={8.5} /> : null}
                 {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}
                 {my && my.kd_rate !== null ? <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>{my.kd_rate.toFixed(1)}%</span> : null}
+                {/* ★배지는 제일 오른쪽 끝★ (2026-09-11 사장님: 경기카드 통일) */}
+                {mvpIsMe ? <MvpBadge size={8.5} /> : null}
               </span>
               {/* 3줄 — 상대 티어 / 오른쪽엔 펼치기 */}
               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
@@ -611,6 +612,15 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
   const [picked, setPicked] = useState<Record<number, string | null>>({})
   const theme = clanThemeOf(data.clan?.slug)
   const tiered = data.league.division_count >= 2
+  /* ★자기 구간★ = 가장 많이 뛴 구간 (워커의 homeTier 와 같은 규칙 — 같으면 높은 티어) */
+  const homeTier = useMemo(() => {
+    let best: number | null = null
+    for (const r of rows) if (best === null || r.games > (rows.find((x) => x.tier === best)?.games ?? 0)) best = r.tier
+    return best
+  }, [rows])
+  const [open, setOpen] = useState<number | null>(null)
+  /* 아직 아무것도 안 건드렸으면 자기 구간을 편다 */
+  const openTier = open === null ? homeTier : open
   return (
     <div style={{ marginTop: 16, ...cardStyle }}>
       <CardHead title="클랜별 전적" right={
@@ -619,8 +629,35 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
       {rows.length === 0 ? (
         <div style={{ padding: 18, fontSize: 12, color: V3.textGhost }}>아직 경기가 없습니다.</div>
       ) : null}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px 16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 16px' }}>
         {rows.map((r) => {
+          const opened = openTier === r.tier
+          const toggle = () => {
+            setPicked({})
+            setOpen(opened ? -1 : r.tier)
+          }
+          if (!opened) {
+            return (
+              <div
+                key={r.tier}
+                onClick={toggle}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer', border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, background: V3.card, padding: '8px 12px' }}
+              >
+                <MarkCircle clan={data.clan} size={18} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.player.name}</span>
+                <span style={{ fontSize: 9.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                {tiered ? (
+                  <TierText division={r.tier} leagueCategory={data.league.category} size={11} />
+                ) : (
+                  <span style={{ fontSize: 11.5, color: V3.textMuted }}>전체</span>
+                )}
+                <div style={spacerStyle} />
+                <span style={{ fontSize: 10.5, color: V3.textDim, whiteSpace: 'nowrap' }}>{fmt(r.win)}승 {fmt(r.lose)}패</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: r.win_rate === null ? V3.textGhost : statColor(r.win_rate) }}>{pct1(r.win_rate)}</span>
+                <span style={{ fontSize: 9, color: V3.textGhost, flex: 'none' }}>▼</span>
+              </div>
+            )
+          }
           const sel = picked[r.tier] ?? null
           const opp = sel === null ? null : r.opponents.find((o) => o.league_clan_id === sel) ?? null
           /* 고른 상대가 있으면 그 상대 숫자, 없으면 구간 전체 */
@@ -645,11 +682,17 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
                     <div style={spacerStyle} />
                     <span onClick={() => setPicked((p) => ({ ...p, [r.tier]: null }))} style={{ fontSize: 10.5, color: V3.textGhost, cursor: 'pointer', whiteSpace: 'nowrap' }}>구간 전체</span>
                   </>
-                ) : tiered ? (
-                  <TierText division={r.tier} leagueCategory={data.league.category} size={12} />
                 ) : (
-                  <span style={{ fontSize: 12.5, color: V3.textMuted }}>전체</span>
+                  <>
+                    {tiered ? (
+                      <TierText division={r.tier} leagueCategory={data.league.category} size={12} />
+                    ) : (
+                      <span style={{ fontSize: 12.5, color: V3.textMuted }}>전체</span>
+                    )}
+                    <div style={spacerStyle} />
+                  </>
                 )}
+                <span onClick={toggle} style={{ fontSize: 9, color: V3.textGhost, cursor: 'pointer', flex: 'none', marginLeft: 8 }}>▲</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap', marginTop: 8 }}>
                 <span style={{ fontSize: 10, color: V3.textGhost, letterSpacing: '.06em' }}>K/D</span>
@@ -679,6 +722,7 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
     </div>
   )
 }
+
 /* ── 페이지 본문 ──────────────────────────────────────────────── */
 
 export function PlayerDetailV3(props: PlayerDetailV3Props) {

@@ -367,6 +367,12 @@ export async function getPlayerRanksByScore(
   size: number,
   /** 0 라플 · 1 스나 — 주면 ★그 무기 선수만 남긴다.★ 순위 자체는 그대로다 (2026-09-11 사장님) */
   onlyWeapon: 0 | 1 | null = null,
+  /**
+   * 1 ASTRA · 2 CHALLENGER1 · 3 CHALLENGER2 — 주면 ★내 구간이 그 티어인 선수만 남긴다.★
+   * «내 구간» 은 ★가장 많이 뛴 티어★(`homeTier`) 다. 클랜 소속이 아니다 (2026-09-11 사장님).
+   * 무기 칩과 똑같이 ★거르개★ 라 등수는 걸러 낸 줄의 순서다.
+   */
+  onlyTier: 1 | 2 | 3 | null = null,
 ): Promise<CursorPage<PlayerRankRow> | null> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
@@ -379,6 +385,8 @@ export async function getPlayerRanksByScore(
   const where = {
     weapon: onlyWeapon === null ? { not: null } : onlyWeapon,
     score: { not: null },
+    /* 구간 고르개 — 안 고르면 칸을 아예 안 넣는다 (homeTier 가 빈 줄도 전체에는 남는다) */
+    ...(onlyTier === null ? {} : { homeTier: onlyTier }),
     leaguePlayer: { leagueId, placement: false },
   }
   const page = await cursorPage<ScoreRankRow>({

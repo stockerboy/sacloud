@@ -19,7 +19,12 @@ import { Hexagon } from './Hexagon'
 import { clanHexAxes } from './ClanCardV3'
 import { H2HChartV3 } from './H2HChartV3'
 
+/** ★선수 기록실과 같은 2칸×3줄★ (2026-09-11 사장님: «경기카드 전부 이 형식으로 통일») */
+const prowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center', rowGap: 7, columnGap: 12, padding: '13px 18px' }
+
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px 62px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
+/* 옛 5칸 한 줄판 — 지우지 않는다 (CLAUDE.md 1-4). 지금은 v3-prow 2칸×3줄을 쓴다 */
+void matchRowStyle
 const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 108px 78px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
 
 export interface ClanDetailV3Props {
@@ -411,12 +416,10 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', minWidth: 0, overflow: 'hidden' }}>
                   {mvpName ? (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, flex: '0 1 230px', minWidth: 0, overflow: 'hidden' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none', padding: '3px 7px', whiteSpace: 'nowrap', background: 'rgba(255,216,61,.10)', border: '1px solid rgba(255,216,61,.55)', borderRadius: V3.radiusChip, boxShadow: '0 0 12px rgba(255,216,61,.22)' }}>
-                        <span style={{ fontSize: 10.5, color: V3.gold }}>★</span>
-                        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', color: V3.gold }}>MVP</span>
-                      </span>
+                      {/* ★마크 · 닉네임 · MVP배지★ 순 (2026-09-11 사장님: 모든 경기카드 통일) */}
                       <MarkCircle clan={mvpEntry?.match_time_clan ? { slug: mvpEntry.match_time_clan.slug, mark: mvpEntry.match_time_clan.mark } : null} size={16} />
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvpName}</span>
+                      <MvpBadge size={8.5} />
                     </span>
                   ) : null}
                 </span>
@@ -447,6 +450,18 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
 /* ── 최근 경기 ─────────────────────────────────────────────────── */
 
 /* 2026-09-11 QA 회차 2: 최근 경기도 줄을 누르면 스코어보드가 펼쳐진다 (선수 상세·경기 목록과 같은 규칙). 명단 없는 경기는 잠근다 */
+/**
+ * ★최근 경기★ — 선수 기록실 카드와 ★같은 2칸×3줄★ 이다 (2026-09-11 사장님: «경기카드 전부 이 형식으로 통일»).
+ *
+ *   ┌──────────────────────────────┬───────────────────────┐
+ *   │ 승리 · 제3보급창고 · 1시간 전  │ 마크 닉네임 [MVP]     │  ← 오른쪽 위에 MVP (사장님)
+ *   │ igloo VS reBellion            │ 래더 +12점 / 수집중    │
+ *   │ vs CHALLENGER 1               │ 상세 ▼                │
+ *   └──────────────────────────────┴───────────────────────┘
+ *
+ * 줄을 누르면 스코어보드가 펼쳐진다 (선수 상세·경기 목록과 같은 규칙). 명단 없는 경기는 잠근다.
+ * 옛 5칸 한 줄판은 `matchRowStyle` 그대로 두었다 — 맞대결 기록카드가 아직 쓴다 (`CLAUDE.md` 1-4).
+ */
 function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanShow; matches: readonly MatchListItem[]; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
   const theme = clanThemeOf(data.clan.slug)
   const [open, setOpen] = useState<string | null>(null)
@@ -456,44 +471,59 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
         const edge = m.win ? V3.blue : V3.red
         const delta = m.rating_update
         const pending = m.red.length === 0 && m.blue.length === 0
+        /* ★그 경기 MVP★ — 명단에서 찾는다. 아직 안 박혔으면 안 그린다 (지어내지 않는다) */
+        const mvp = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id) ?? null
+        const isOpen = open === m.id
         return (
           <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: (m.win ? 'rgba(91,141,255,.13)' : 'rgba(255,90,99,.13)'), opacity: pending ? 0.75 : 1 }}>
-          <div onClick={() => { if (pending) return; const isOpen = open === m.id; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, border: 'none', borderRadius: 0, background: 'transparent', cursor: pending ? 'default' : 'pointer' }} className="v3-match-row">
-            <span style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
-            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...prowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-prow">
+            {/* 1줄 — 승패 · 맵 · 시각 / 오른쪽 위엔 MVP */}
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
               <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
-              <span style={{ fontSize: 10.5, color: '#4e515d', whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
+              <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
-              <MarkCircle clan={data.clan} size={22} />
-              <span style={{ fontSize: 13, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap', flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
-              <span className="v3-row-tier"><TierText division={m.league_clan.division} leagueCategory={data.league.category} size={10} /></span>
-              <span style={{ fontSize: 11, color: '#3a3d47' }}>VS</span>
-              <MarkCircle clan={m.opponent.clan} size={22} />
-              <span style={{ fontSize: 13, color: '#9a9eb0', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
-              <span className="v3-row-tier"><TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} /></span>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+              {mvp ? (
+                /* ★마크 · 닉네임 · MVP배지★ 순 — 배지가 제일 오른쪽 끝 (2026-09-11 사장님) */
+                <>
+                  <MarkCircle clan={mvp.match_time_clan ? { slug: mvp.match_time_clan.slug, mark: mvp.match_time_clan.mark } : null} size={16} />
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.name}</span>
+                  <MvpBadge size={8.5} />
+                </>
+              ) : null}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: 'flex-end' }}>
+            {/* 2줄 — 양 팀 / 오른쪽엔 래더 증감 */}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+              <MarkCircle clan={data.clan} size={20} />
+              <span style={{ fontSize: 12.5, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
+              <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
+              <MarkCircle clan={m.opponent.clan} size={20} />
+              <span style={{ fontSize: 12.5, color: '#9aa6bf', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
+            </span>
+            <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, minWidth: 0 }}>
               {pending ? (
                 <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span>
               ) : delta === null && data.league.category !== 'independent' ? (
                 /* 래더 리그(SPL)인데 이 판은 래더에 안 실렸다 — 티어로 바꿔치기하지 않는다 (QA 회차 3) */
                 <><span style={{ fontSize: 10.5, color: '#4e515d', whiteSpace: 'nowrap' }}>래더</span><span style={{ fontSize: 12, color: V3.textGhost, whiteSpace: 'nowrap' }} title="래더 합계에는 반영됐지만 이 판의 증감은 저장돼 있지 않습니다">증감 미기록</span></>
-              ) : delta === null ? (
-                /* 래더제가 아닌 리그(IPL) — 상대 티어를 적는다 (2026-09-10 사장님 결정) */
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}><span style={{ fontSize: 10.5, color: '#4e515d', whiteSpace: 'nowrap' }}>vs</span><TierText division={m.opponent.division} leagueCategory={data.league.category} size={12} /></span>
-              ) : (
+              ) : delta === null ? null : (
                 <>
                   <span style={{ fontSize: 10.5, color: '#4e515d', whiteSpace: 'nowrap' }}>래더</span>
-                  <span style={{ fontSize: 16, fontWeight: 500, whiteSpace: 'nowrap', color: delta > 0 ? V3.green : delta < 0 ? V3.red : V3.textMuted }}>{delta > 0 ? '+' : ''}{delta}점</span>
+                  <span style={{ fontSize: 15, fontWeight: 500, whiteSpace: 'nowrap', color: delta > 0 ? V3.green : delta < 0 ? V3.red : V3.textMuted }}>{delta > 0 ? '+' : ''}{delta}점</span>
                 </>
               )}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : open === m.id ? '#a9c3ff' : V3.textGhost }}>
-              {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{open === m.id ? '▲' : '▼'}</span></>}
+            {/* 3줄 — 상대 티어 / 오른쪽엔 펼치기 */}
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
+              <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.08em' }}>vs</span>
+              <TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} />
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
+              {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
             </span>
           </div>
-          {open === m.id ? (
+          {isOpen ? (
             expanded[m.id] ? <Scoreboard detail={expanded[m.id] as MatchDetail} leagueCategory={data.league.category} leagueSlug={data.league.slug} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
           ) : null}
           </div>
@@ -513,6 +543,16 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
  * 마크 줄은 ★그 구간의 모든 클랜★ (내 클랜 제외 · 2026-09-11 사장님) — 많이 붙은 순, 안 붙어 본 클랜은 뒤.
  * 고른 상대는 아래 «상대전적» 카드(그래프·맞대결 기록)도 같이 따라간다.
  */
+/**
+ * ★한 번에 한 구간만 편다★ (2026-09-11 사장님).
+ *
+ * > «자기 구간 아닌 부분은 그냥 접어놔 (…) 얇은 띠로 그리고 오른쪽에 전체 승률 적고
+ * >  펼치기 접기 만들어줘 이 파트가 세로로 너무 넓어서 밑에 그래프가 한눈에 안보여
+ * >  그리고 다른 구간 누르면 원래 펼쳐놨던 구간은 접히게 해줘»
+ *
+ * 처음 펴 두는 것은 ★자기 구간★ 이다. 접힌 띠는 제목 줄 + 오른쪽에 ★구간 전체★ 승률만 —
+ * 고른 상대의 숫자가 아니다 (접어 두면 누구를 골랐는지 안 보이니까).
+ */
 function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
   data: LeagueClanShow
   h2h: readonly ClanHeadToHead[]
@@ -528,12 +568,14 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
     for (const r of h2h) if (r.division !== null) set.add(r.division)
     return [...set].sort((a, b) => a - b)
   }, [h2h, data.league.division_count])
+  /* 처음에는 ★자기 구간★ 만 펴 둔다 */
+  const [open, setOpen] = useState<number | null>(data.division ?? null)
   return (
     <div style={{ marginTop: 14, ...cardStyle }}>
       <CardHead title="클랜별 전적" right={
         <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(data.win + data.lose)}전 기준</span>
       } />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px 16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 16px' }}>
         {tiers.map((t) => {
           const rows = h2h.filter((r) => r.division === t)
           const byId = new Map(rows.map((r) => [r.league_clan_id, r]))
@@ -542,10 +584,42 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
             .filter((c) => c.league_clan_id !== data.id)
             .map((c) => ({ id: c.league_clan_id, clan: c.clan, games: (byId.get(c.league_clan_id)?.win ?? 0) + (byId.get(c.league_clan_id)?.lose ?? 0) }))
             .sort((a, b) => b.games - a.games || (a.clan.name < b.clan.name ? -1 : 1))
+          /* ★구간 전체★ — 접힌 띠에 적는 숫자다 */
+          const tierWin = rows.reduce((n, r) => n + r.win, 0)
+          const tierLose = rows.reduce((n, r) => n + r.lose, 0)
+          const tierRate = tierWin + tierLose === 0 ? null : Math.round((tierWin / (tierWin + tierLose)) * 1000) / 10
+          const opened = open === t
+          const toggle = () => {
+            /* 다른 구간을 펴면 골라 둔 상대는 푼다 — 안 보이는 칸의 선택이 남지 않게 */
+            onSelect(null)
+            setOpen((now) => (now === t ? null : t))
+          }
+          if (!opened) {
+            return (
+              <div
+                key={t}
+                onClick={toggle}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer', border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, background: V3.card, padding: '8px 12px' }}
+              >
+                <MarkCircle clan={data.clan} size={18} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
+                <span style={{ fontSize: 9.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                {tiered ? (
+                  <TierText division={t} leagueCategory={data.league.category} size={11} />
+                ) : (
+                  <span style={{ fontSize: 11.5, color: V3.textMuted }}>전체</span>
+                )}
+                <div style={spacerStyle} />
+                <span style={{ fontSize: 10.5, color: V3.textDim, whiteSpace: 'nowrap' }}>{fmt(tierWin)}승 {fmt(tierLose)}패</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: tierRate === null ? V3.textGhost : statColor(tierRate) }}>{pct1(tierRate)}</span>
+                <span style={{ fontSize: 9, color: V3.textGhost, flex: 'none' }}>▼</span>
+              </div>
+            )
+          }
           const pick = selected === null ? null : byId.get(selected) ?? null
           const pickedHere = pick !== null || all.some((c) => c.id === selected)
-          const win = pickedHere && pick ? pick.win : rows.reduce((n, r) => n + r.win, 0)
-          const lose = pickedHere && pick ? pick.lose : rows.reduce((n, r) => n + r.lose, 0)
+          const win = pickedHere && pick ? pick.win : tierWin
+          const lose = pickedHere && pick ? pick.lose : tierLose
           const rate = win + lose === 0 ? null : Math.round((win / (win + lose)) * 1000) / 10
           const pickedClan = pickedHere ? all.find((c) => c.id === selected) ?? null : null
           return (
@@ -561,11 +635,17 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
                     <div style={spacerStyle} />
                     <span onClick={() => onSelect(null)} style={{ fontSize: 10.5, color: V3.textGhost, cursor: 'pointer', whiteSpace: 'nowrap' }}>구간 전체</span>
                   </>
-                ) : tiered ? (
-                  <TierText division={t} leagueCategory={data.league.category} size={12} />
                 ) : (
-                  <span style={{ fontSize: 12.5, color: V3.textMuted }}>전체</span>
+                  <>
+                    {tiered ? (
+                      <TierText division={t} leagueCategory={data.league.category} size={12} />
+                    ) : (
+                      <span style={{ fontSize: 12.5, color: V3.textMuted }}>전체</span>
+                    )}
+                    <div style={spacerStyle} />
+                  </>
                 )}
+                <span onClick={toggle} style={{ fontSize: 9, color: V3.textGhost, cursor: 'pointer', flex: 'none', marginLeft: 8 }}>▲</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap', marginTop: 8 }}>
                 <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap' }}>{fmt(win)}승 {fmt(lose)}패</span>
@@ -592,6 +672,7 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
     </div>
   )
 }
+
 /* 옛 구간 줄(TierStrip)은 지우지 않았다 — ClanVsTiersCard 가 대신 그린다 (CLAUDE.md 1-4) */
 void TierStrip
 
