@@ -67,6 +67,8 @@ export function MatchListV3(props: MatchListV3Props) {
             const mvp = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id) ?? null
             const rounds = detail && detail.red_rounds !== null && detail.blue_rounds !== null ? (left.league_clan_id === detail.league_clan.league_clan_id ? [detail.red_rounds, detail.blue_rounds] : [detail.blue_rounds, detail.red_rounds]) : null
             const edge = clanThemeOf(left.clan.slug).ink
+            /* player_count 는 양 팀 합(10) — 한쪽은 반 (QA 회차 2: «10v10» 으로 찍혔다) */
+            const perSide = Math.max(1, Math.round(m.player_count / 2))
             return (
               <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : V3.card, opacity: pending ? 0.75 : 1 }}>
                 <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...rowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-match-row v3-match-row--list">
@@ -78,7 +80,7 @@ export function MatchListV3(props: MatchListV3Props) {
                     <Side clan={left.clan} division={left.division} leagueCategory={leagueCategory} won align="left" />
                     <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 'none', minWidth: 44 }}>
                       {rounds ? <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', color: V3.textStrong }}>{rounds[0]}:{rounds[1]}</span> : <span style={{ fontSize: 10.5, color: '#3a4560' }}>VS</span>}
-                      <span style={{ fontSize: 9, color: '#4e5b76', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{rounds ? 'ROUND' : `${m.player_count}v${m.player_count}`}</span>
+                      <span style={{ fontSize: 9, color: '#4e5b76', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{rounds ? 'ROUND' : `${perSide}v${perSide}`}</span>
                     </span>
                     <Side clan={right.clan} division={right.division} leagueCategory={leagueCategory} won={false} align="right" />
                   </span>
@@ -88,7 +90,7 @@ export function MatchListV3(props: MatchListV3Props) {
                         <MvpBadge size={8.5} />
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.name}</span>
                       </>
-                    ) : <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>{m.player_count === 5 ? '' : `${m.player_count} vs ${m.player_count}`}</span>}
+                    ) : <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>{perSide === 5 ? '' : `${perSide} vs ${perSide}`}</span>}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
                     {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
