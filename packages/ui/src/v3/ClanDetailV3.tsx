@@ -85,7 +85,10 @@ function TierStrip({ data, h2h, division, selected, onSelect, tierClans }: { dat
 
 const H2H_X0 = 34.3
 const H2H_X1 = 549.7
-const h2hY = (share: number) => 262 - ((Math.max(30, Math.min(70, share)) - 30) / 40) * 236
+/* 시안은 30~70% 축이었는데 실제 자료는 0%·100% 가 흔해 눈금이 거짓말을 했다 (QA 회차 1) → 0~100 */
+const h2hY = (share: number) => 262 - (Math.max(0, Math.min(100, share)) / 100) * 236
+const h2hYLegacy = (share: number) => 262 - ((Math.max(30, Math.min(70, share)) - 30) / 40) * 236
+void h2hYLegacy
 
 /** 누적 세트 승률 추이 — 붙은 경기를 시간순으로 더해 간다 (지어내지 않는다 · 경기 수만큼 점) */
 function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead; theme: ClanTheme; oppTheme: ClanTheme; mine: LeagueClanShow['clan']; oppSlug: string }) {
@@ -107,7 +110,7 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
           <filter id="h2hGlowR" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="r1" /><feGaussianBlur stdDeviation="16" result="r2" /><feMerge><feMergeNode in="r2" /><feMergeNode in="r1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         </defs>
         <rect x="0" y="0" width="640" height="330" fill={V3.plot} />
-        {[30, 40, 50, 60, 70].map((g) => (
+        {[0, 25, 50, 75, 100].map((g) => (
           <g key={g}>
             <line x1={H2H_X0} y1={h2hY(g)} x2={H2H_X1} y2={h2hY(g)} stroke="#111826" />
             <text x={H2H_X0 - 8} y={h2hY(g) + 4} textAnchor="end" fill="#7c88a4" fontSize="11">{g}%</text>
@@ -181,6 +184,9 @@ function ourSideOf(detail: MatchDetail): 'red' | 'blue' {
   const blueOurs = detail.blue_stats.filter((s) => s.match_time_clan?.league_clan_id === ours).length
   return redOurs >= blueOurs ? 'red' : 'blue'
 }
+
+/** 경기 목록 v3(MatchListV3)도 같은 스코어보드를 쓴다 (2026-09-11) */
+export function ClanScoreboardV3(props: { detail: MatchDetail; leagueCategory: string }) { return <Scoreboard {...props} /> }
 
 function Scoreboard({ detail, leagueCategory }: { detail: MatchDetail; leagueCategory: string }) {
   const ourSide = ourSideOf(detail)

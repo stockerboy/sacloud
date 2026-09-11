@@ -1,10 +1,11 @@
 'use client'
 
 import { use, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import {
   MatchCard,
+  MatchListV3,
   ProfileEmpty,
   ProfileLoadMore,
   ProfileSkeleton,
@@ -22,13 +23,11 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
  * 홈의 최근경기는 O-001 로 뺐고(사장님 지시), 경기 목록 화면은 원래 없었다.
  * > 강민재 — *"검색어를 모르는 사람이 사이트에서 처음으로 볼 게 생긴다."*
  *
- * ══ 새로 만든 것이 거의 없다 ══
+ * ══ 2026-09-11 · v3 로 덮었다 (QA 회차 1) ══
  *
- * ```
- * 카드    `MatchCard` 그대로. 새 카드를 만들지 않았다
- * 더보기  `useCursorQuery` + `ProfileLoadMore` — 다른 목록과 같은 방식
- * 펼치기  `matchShow` 지연 로드 — 클랜·선수 기록실이 하던 그대로
- * ```
+ * 옛 `MatchCard` 는 마크 없이 «2티어 알수없음» 을 적고 펼쳐도 비어 있었다.
+ * 선수·클랜 상세와 같은 줄(`MatchListV3`) + 같은 스코어보드로 바꿨다.
+ * 옛 카드 분기는 `USE_V3 = false` 로 되돌릴 수 있게 남겼다 (`CLAUDE.md` 1-4).
  *
  * ══ 펼칠 때 `league_clan_id` 를 붙인다 ══
  *
@@ -38,9 +37,16 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
  * 카드가 보여 주는 승/패·래더 증감이 이미 그 팀 것이다. 펼친 상세도 같은 편에서
  * 봐야 앞뒤가 맞는다 — 안 붙이면 **접힌 줄과 펼친 표가 서로 다른 편**을 말한다.
  */
+const USE_V3 = true
+
 export default function MatchListPage({ params }: { params: Promise<{ leagueSlug: string }> }) {
   const { leagueSlug } = use(params)
   const queryClient = useQueryClient()
+
+  const league = useQuery({
+    queryKey: ['league', leagueSlug],
+    queryFn: () => apiGet('leagueShow', { params: { leagueSlug } }),
+  })
 
   const matches = useCursorQuery<MatchListItem>('leagueMatches', ['league', leagueSlug, 'matches'], {
     params: { leagueId: leagueSlug },
@@ -63,6 +69,25 @@ export default function MatchListPage({ params }: { params: Promise<{ leagueSlug
           }),
       })
       .then((response) => setExpanded((prev) => ({ ...prev, [matchId]: response.data })))
+  }
+
+  if (USE_V3) {
+    return (
+      <div className="pc-container pb-[40px] pt-[24px]">
+        <SectionTitle title="경기" note="최신순입니다. 줄을 누르면 스코어보드가 펼쳐집니다." />
+        <MatchListV3
+          leagueSlug={leagueSlug}
+          leagueCategory={league.data?.data.category ?? 'independent'}
+          matches={matches.items}
+          matchesLoading={matches.loading}
+          hasMore={matches.hasMore ?? false}
+          loadingMore={matches.loadingMore}
+          onLoadMore={matches.loadMore}
+          expanded={expanded}
+          onExpand={loadDetail}
+        />
+      </div>
+    )
   }
 
   return (
