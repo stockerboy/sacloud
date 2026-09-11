@@ -108,6 +108,8 @@ export async function playerTierBreakdownFrom(
       kill: row.kill,
       death: row.death,
       weapon: row.weapon,
+      /* MVP 판 — 이 경로(선수 상세가 쓰는 쪽)에서 빠져 있어 구간 카드가 «0회» 였다 (QA 회차 4 · 2026-09-11) */
+      mvp: row.mvp,
       match: {
         winnerSide: row.winnerSide,
         redLeagueClanId: row.redLeagueClanId,
