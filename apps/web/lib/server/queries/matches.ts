@@ -454,7 +454,8 @@ function toMatchPlayerStat(
     dropout: stat.dropout,
     // DB는 진영 승패만 들고 있다 (참가자별 win 컬럼 없음). 진영으로 판정한다.
     win: match.winnerSide === stat.side,
-    mvp: stat.mvp,
+    /* 집계 전 경기는 그 자리에서 같은 규칙으로 고른다 — 스코어보드에도 MVP 가 뜬다 (2026-09-11 사장님) */
+    mvp: stat.mvp === true || stat.playerId === mvpPlayerIdOf(match),
     match_time_clan: matchTimeClanOf(stat, clans),
     /* 포지션은 이 경기의 사실이 아니라 **그 선수의 고유 자리**다 (D-199).
        바로 위 `weapon` 과 나란히 놓으면 `숏 · 스나` 처럼 읽힌다 —
@@ -528,6 +529,37 @@ function snapshotOf(match: MatchRow, side: TeamSide, clans: LeagueClanContext) {
  * `win` / `placement` / `rating_update` / `league_clan` / `opponent`는
  * **보는 쪽(viewer) 기준**으로 달라진다.
  */
+/**
+ * ★MVP 가 아직 안 박힌 경기★ — 30분 집계(`player-hex-build`)가 돌기 전의 새 경기다.
+ * 사장님: «mvp는 내 판마다 있는거야» → 화면에서 비워 두지 않는다.
+ *
+ * 집계가 쓰는 규칙(`playerHexBuild.pickMvp`)의 ★2순위까지★ 를 그 자리에서 다시 센다:
+ *   이긴 팀 → 킬 많은 순 → 데스 적은 순 → 동률이면 경기 번호로 정한 고정 무작위.
+ * 1순위(세이브 2회 이상)는 병영 로그 집계가 있어야 알 수 있어 여기서는 못 본다 —
+ * 그래서 집계가 돌면 세이브를 본 값으로 ★덮인다.★ 지어낸 값이 아니라 같은 규칙의 앞부분이다.
+ */
+function mvpPlayerIdOf(match: MatchRow): string | null {
+  if (match.mvpPlayerId !== null) return match.mvpPlayerId
+  const stamped = match.stats.find((stat) => stat.mvp === true)
+  if (stamped) return stamped.playerId
+  const won = match.stats.filter((stat) => stat.side === match.winnerSide && stat.kill !== null && stat.death !== null)
+  if (won.length === 0) return null
+  let seed = 2166136261
+  for (let i = 0; i < match.id.length; i += 1) seed = Math.imul(seed ^ match.id.charCodeAt(i), 16777619) >>> 0
+  const best = [...won].sort((a, b) => {
+    const ak = a.kill ?? 0
+    const bk = b.kill ?? 0
+    if (ak !== bk) return bk - ak
+    const ad = a.death ?? 0
+    const bd = b.death ?? 0
+    if (ad !== bd) return ad - bd
+    /* 같으면 경기마다 정해진 순서로 — 새로고침해도 안 바뀐다 */
+    const ah = Math.imul(seed ^ a.playerId.charCodeAt(0), 16777619) >>> 0
+    const bh = Math.imul(seed ^ b.playerId.charCodeAt(0), 16777619) >>> 0
+    return ah === bh ? (a.playerId < b.playerId ? -1 : 1) : ah - bh
+  })[0]
+  return best ? best.playerId : null
+}
 /** 목록 줄의 라운드 점수 — 상세(`roundsWonOf`)와 같은 자리에서 같은 값을 읽는다 */
 function roundsWonInList(match: MatchRow, leagueClanId: string): number | null {
   const row = match.clanHexV2.find((r) => r.leagueClanId === leagueClanId)
@@ -586,7 +618,7 @@ export function toMatchListItem(
       (viewerSide === 'red'
         ? (match.redRatingUpdate ?? match.redSourceRatingUpdate)
         : (match.blueRatingUpdate ?? match.blueSourceRatingUpdate)),
-    mvp_player_id: match.mvpPlayerId,
+    mvp_player_id: mvpPlayerIdOf(match),
     red_rounds: roundsWonInList(match, match.redLeagueClanId),
     blue_rounds: roundsWonInList(match, match.blueLeagueClanId),
     league_clan_side: viewerSide,

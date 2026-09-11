@@ -404,6 +404,8 @@ export async function getPlayerRanksByScore(
               death: true,
               player: { select: PLAYER_SUMMARY_SELECT },
               clan: { select: CLAN_SUMMARY_SELECT },
+              /* ★주무기 줄★ — 랭킹의 승률·킬뎃은 통합이 아니라 «그 선수 주무기» 다 (2026-09-11 사장님) */
+              weaponStats: { select: { weapon: true, win: true, lose: true, kill: true, death: true, games: true, isMain: true } },
             },
           },
         },
@@ -428,16 +430,31 @@ export async function getPlayerRanksByScore(
       /* 동점은 같은 등수 — 접어 둔 scoreRank(경쟁 순위). 띠·구간 카드의 «16위» 와 목록 «17위» 가 어긋나던 것 (QA 교차검토 21) */
       const rank = row.scoreRank ?? startRank + index
       const lp = row.leaguePlayer
+      /* ★대표 숫자는 주무기 것★ (2026-09-11 사장님: «해당 선수 주무기 사용한 개인 승률과 킬데스»).
+         주무기는 여섯 축을 잰 무기(hex.weapon)를 먼저 본다 — 없으면 isMain, 그것도 없으면 많이 뛴 쪽.
+         그 무기 줄이 없으면 통합으로 떨어진다 (지어내지 않는다) */
+      const ws = lp.weaponStats ?? []
+      const mine =
+        ws.find((w) => w.weapon === row.weapon) ??
+        ws.find((w) => w.isMain) ??
+        [...ws].sort((a, b) => b.games - a.games)[0] ??
+        null
+      const win = mine ? mine.win : lp.win
+      const lose = mine ? mine.lose : lp.lose
+      const kill = mine ? mine.kill : lp.kill
+      const death = mine ? mine.death : lp.death
+      const games = mine ? mine.games : row.games
       return {
         rank,
         league_player_id: row.leaguePlayerId,
         player: toPlayerSummary(lp.player),
         clan: toClanSummaryOrNull(lp.clan),
-        win: lp.win,
-        lose: lp.lose,
-        win_rate: winRate(lp.win, lp.lose),
-        kd_rate: cumulativeKdRate(league, kdRate(lp.kill, lp.death), rank),
-        kill_per_match: killPerMatch(lp.kill, row.games),
+        win,
+        lose,
+        win_rate: winRate(win, lose),
+        /* ★10판 미만이라고 감추지 않는다★ (2026-09-11 사장님). 옛 판: cumulativeKdRate(league, …, rank) */
+        kd_rate: kill + death > 0 ? kdRate(kill, death) : null,
+        kill_per_match: killPerMatch(kill, games),
         rating: lp.rating,
         weapon: 'all' as const,
         score: row.score,
@@ -464,6 +481,7 @@ interface ScoreRankRow {
     lose: number
     kill: number
     death: number
+    weaponStats?: { weapon: number; win: number; lose: number; kill: number; death: number; games: number; isMain: boolean }[]
     player: { id: string; name: string }
     clan: {
       id: string
