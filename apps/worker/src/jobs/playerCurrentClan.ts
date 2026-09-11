@@ -34,6 +34,8 @@
  * ```
  */
 import { prisma } from '@sacloud/db'
+/* 「그 경기에서 뛴 팀」을 소속 근거에서 빼는 단일 기준 (2026-09-07 · 1순위 오염 차단) */
+import { clanSourceTrusted, affiliationTrustEnabled } from '@sacloud/db/ops'
 import { log, warn } from '../lib/log.js'
 
 /** 기본 대상. 이 칸을 채우는 경로가 없는 유일한 리그다 */
@@ -51,6 +53,22 @@ export interface PlayerCurrentClanResult {
   changed: number
   /** 경기가 없거나 경기 당시 소속을 모르는 선수 */
   unknown: number
+
+  /* ── 소속 신뢰 판정 진단 (2026-09-07 · `affiliationTrust.ts`) ────────────
+   *   이 잡은 IPL 을 채우려고 만들어졌는데, IPL 참가행은 **전부**
+   *   `barracks-battlelog`(= 그 경기에서 뛴 팀)다. 그래서 신뢰 판정을 켜면
+   *   **근거가 하나도 남지 않아 쓰기 0건**이 된다. 잡을 지우지 않고
+   *   「무엇이 왜 비었는가」를 숫자로 남기는 진단 도구로 유지한다 (사장님 지시). */
+  /** 「뛴 팀」이라 근거에서 뺀 **참가행** 수 */
+  skippedTeamOnly: number
+  /** 「뛴 팀」 행을 하나라도 제외당한 **선수** 수 */
+  teamOnlyExcluded: number
+  /** 최신 행이 제외됐지만 더 오래된 **신뢰 행**으로 소속을 정한 선수 */
+  fallbackToTrustedClan: number
+  /** 최신 행이 제외됐고 **신뢰 근거가 하나도 없어** 정하지 못한 선수 */
+  noTrustedClan: number
+  /** 신뢰 판정이 켜져 있나 (`SACLOUD_AFFILIATION_TRUST=off` 면 false) */
+  trustEnabled: boolean
   confirmed: boolean
   /** 클랜별 인원 상위 (미리보기용) */
   top: Array<{ name: string; members: number }>
@@ -93,6 +111,10 @@ export async function runPlayerCurrentClan(input: {
     select: {
       playerId: true,
       matchTimeLeagueClanId: true,
+      /* 그 값이 「선수 소속」인지 「뛴 팀」인지 가르는 유일한 근거 (2026-09-07).
+         `where` 로 거르지 않고 **읽어서 세면서 건너뛴다** — 무엇이 왜 빠졌는지를
+         숫자로 남기기 위해서다. 읽는 행 수는 예전과 똑같다 */
+      matchTimeClanSource: true,
       matchId: true,
       match: { select: { startAt: true } },
     },
@@ -100,12 +122,43 @@ export async function runPlayerCurrentClan(input: {
   })
 
   const latest = new Map<string, string>()
+  /** 그 선수의 **전체 최신 행**이 「뛴 팀」이라 밀렸는가 (진단용) */
+  const newestWasTeamOnly = new Set<string>()
+  /** 그 선수의 행을 하나라도 제외했는가 (진단용) */
+  const hadTeamOnly = new Set<string>()
+  const seenAnyRow = new Set<string>()
+  let skippedTeamOnly = 0
+
   for (const s of stats) {
+    const trusted = clanSourceTrusted(s.matchTimeClanSource)
+
+    /* 출처를 가리지 않은 **전체 최신 행**을 먼저 본다 — 진단 전용이다.
+       `stats` 가 최신순이라 그 선수를 처음 만나는 행이 곧 전체 최신 행이다 */
+    if (!seenAnyRow.has(s.playerId)) {
+      seenAnyRow.add(s.playerId)
+      if (!trusted) newestWasTeamOnly.add(s.playerId)
+    }
+
+    /* 「그 경기에서 뛴 팀」일 뿐인 행은 소속 근거가 아니다. **행을 지우지는 않는다** —
+       여기서 건너뛰기만 하면 더 오래된 신뢰 행이 그대로 답이 된다 */
+    if (!trusted) {
+      skippedTeamOnly += 1
+      hadTeamOnly.add(s.playerId)
+      continue
+    }
+
     if (latest.has(s.playerId)) continue
     const clanId = clanOfLeagueClan.get(s.matchTimeLeagueClanId as string)
     /* 다른 리그의 리그클랜을 가리키는 참가행이 있으면 건너뛴다 — 만들어 내지 않는다 */
     if (!clanId) continue
     latest.set(s.playerId, clanId)
+  }
+
+  let fallbackToTrustedClan = 0
+  let noTrustedClan = 0
+  for (const playerId of newestWasTeamOnly) {
+    if (latest.has(playerId)) fallbackToTrustedClan += 1
+    else noTrustedClan += 1
   }
 
   const writes: Array<{ playerId: string; clanId: string }> = []
@@ -150,6 +203,11 @@ export async function runPlayerCurrentClan(input: {
     resolved,
     changed: writes.length,
     unknown,
+    skippedTeamOnly,
+    teamOnlyExcluded: hadTeamOnly.size,
+    fallbackToTrustedClan,
+    noTrustedClan,
+    trustEnabled: affiliationTrustEnabled(),
     confirmed: input.confirm,
     top,
   }

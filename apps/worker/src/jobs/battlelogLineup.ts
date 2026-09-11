@@ -735,7 +735,12 @@ export async function runBattlelogLineup(
           weapon: player.weapon,
           dropout: null,
           mvp: null,
-          /* 경기 당시 클랜 — **그 경기에서 뛴 팀**이다. 용병 여부는 아직 모른다 */
+          /* 경기 당시 클랜 — **그 경기에서 뛴 팀**이다. 용병 여부는 아직 모른다.
+             ★이 값을 「등록 소속」의 근거로 쓰지 마라★ (2026-09-07).
+             판정은 confidence 가 아니라 `matchTimeClanSource` 로 한다 —
+             `packages/db/ops/affiliationTrust.ts` 가 유일한 기준이다.
+             `participantRole` 은 **건드리지 않는다** — 배틀로그는 용병 여부를
+             모르고, 모르는 것을 지어내면 공식전 판정이 뒤집힌다 (CLAUDE.md 2-1) */
           matchTimeClanName: side.clanName,
           matchTimeLeagueClanId: side.leagueClanId,
           matchTimeClanSlug: side.clanSlug,
@@ -743,7 +748,10 @@ export async function runBattlelogLineup(
           matchTimeClanMarkFrontUrl: side.markFrontUrl,
           matchTimeClanSource: CLAN_SOURCE,
           matchTimeClanObservedAt: plan.info.startAt,
-          matchTimeClanConfidence: 'medium',
+          /* 'medium' → 'low' (2026-09-07). 이 값은 「뛴 팀」이라 등록 소속의 근거로는
+             약하다. **판정 자체는 confidence 가 아니라 source 로 한다** — 이 칸을
+             기준으로 삼으면 이미 쌓인 행을 backfill 해야 하고, 그건 DB 쓰기다 */
+          matchTimeClanConfidence: 'low',
           playerDivisionAtMatch: side.division,
           opponentDivisionAtMatch: opponent.division,
         }

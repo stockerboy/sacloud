@@ -6,6 +6,7 @@ import {
   percentileOf,
   tierFactorOf,
   type PlayerHexInput,
+  homeTierOf,
 } from './playerHexScore.js'
 
 function player(over: Partial<PlayerHexInput> & { leaguePlayerId: string }): PlayerHexInput {
@@ -68,11 +69,20 @@ describe('백분위 · 티어계수', () => {
     expect(percentileOf([1], null)).toBeNull()
   })
 
-  it('티어계수는 상대 티어 판수의 가중 평균이다 (ASTRA 1 · CH1 0.367 · CH2 0.347)', () => {
+  /* ⚠ 정정 (2026-09-11 사장님) — 옛 판은 «상대 티어별 판수의 가중 평균» 이었다.
+     지금은 ★가장 많이 뛴 구간 하나★ 의 무게를 쓴다. 옛 판은 TIER_FACTOR_WEIGHTED 로 되돌린다 */
+  it('티어계수는 가장 많이 뛴 구간의 무게다 (ASTRA 1 · CH1 0.367 · CH2 0.347)', () => {
     expect(tierFactorOf({ 1: 10, 2: 0, 3: 0 })).toBe(1)
     expect(tierFactorOf({ 1: 0, 2: 10, 3: 0 })).toBe(0.367)
-    expect(tierFactorOf({ 1: 5, 2: 5, 3: 0 })).toBeCloseTo(0.684, 3)
+    /* 5:5 면 높은 구간(ASTRA)을 준다 — 용병으로 아래 티어를 뛰어도 깎이지 않는다 */
+    expect(tierFactorOf({ 1: 5, 2: 5, 3: 0 })).toBe(1)
+    expect(tierFactorOf({ 1: 3, 2: 9, 3: 0 })).toBe(0.367)
     expect(tierFactorOf({ 1: 0, 2: 0, 3: 0 })).toBe(1)
+  })
+  it('내 구간 — 가장 많이 뛴 티어 · 같으면 높은 쪽', () => {
+    expect(homeTierOf({ 1: 0, 2: 0, 3: 0 })).toBe(null)
+    expect(homeTierOf({ 1: 2, 2: 9, 3: 1 })).toBe(2)
+    expect(homeTierOf({ 1: 4, 2: 4, 3: 0 })).toBe(1)
   })
 })
 

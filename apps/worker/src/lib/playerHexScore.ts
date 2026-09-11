@@ -150,10 +150,40 @@ export function percentileOf(sorted: readonly number[], v: number | null): numbe
   return round1((lo / sorted.length) * 100)
 }
 
-/** 티어계수 — 상대 티어별 판수의 가중 평균. 한 판도 모르면 CH1 값 */
+/**
+ * ★내 구간★ — 가장 많이 뛴 티어 (2026-09-11 사장님).
+ *
+ * > «클랜 소속에 따라 티어 점수를 받는 게 아니라 자기가 가장 많이 플레이한 구간에 따라
+ * >  티어가중치를 받는 거야. 레폭 선수가 클랜 티어는 챌린저지만 본인이 게임을 아스트라에서
+ * >  많이 했을 수도 있잖아 (…) 아스트라 티어점수 가중치를 받는 거야, 소속은 챌린저이지만»
+ *
+ * 판수가 같으면 높은 티어(숫자가 작은 쪽)를 준다. 한 판도 모르면 `null`.
+ */
+export function homeTierOf(tierGames: Readonly<Record<TierNo, number>>): TierNo | null {
+  const tiers: TierNo[] = [1, 2, 3]
+  let best: TierNo | null = null
+  for (const t of tiers) {
+    if (tierGames[t] <= 0) continue
+    if (best === null || tierGames[t] > tierGames[best]) best = t
+  }
+  return best
+}
+
+/**
+ * ★티어계수★ — 2026-09-11 부터 ★내 구간(가장 많이 뛴 티어) 하나★ 의 무게를 쓴다 (사장님).
+ * 용병으로 다른 티어에서 뛴 판도 ★점수에는 그대로 들어간다★ — 구간은 무게와 순위 자리만 정한다.
+ *
+ * ⚠ 옛 판은 «상대 티어별 판수의 가중 평균» 이었다. `TIER_FACTOR_WEIGHTED = true` 로 되돌린다 (`CLAUDE.md` 1-4).
+ */
+export const TIER_FACTOR_WEIGHTED = false
+
 export function tierFactorOf(tierGames: Readonly<Record<TierNo, number>>): number {
   const n = tierGames[1] + tierGames[2] + tierGames[3]
   if (n === 0) return 1
+  if (!TIER_FACTOR_WEIGHTED) {
+    const home = homeTierOf(tierGames)
+    return home === null ? 1 : TIER_WEIGHT[home]
+  }
   return (
     Math.round(
       ((TIER_WEIGHT[1] * tierGames[1] + TIER_WEIGHT[2] * tierGames[2] + TIER_WEIGHT[3] * tierGames[3]) / n) *
@@ -196,7 +226,9 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       const hex = den > 0 ? round1(num / den) : null
       const tierFactor = tierFactorOf(p.tierGames)
       const shrink = Math.round((p.rounds / (p.rounds + HEX_SHRINK_K)) * 1000) / 1000
-      const clanBonus = p.clanTier === null ? 0 : HEX_CLAN_BONUS[p.clanTier]
+      /* ★소속 클랜의 티어가 아니라 「내 구간」★ (2026-09-11 사장님). 소속만 높은 사람이 덤을 받지 않는다 */
+      const homeTier = homeTierOf(p.tierGames) ?? p.clanTier
+      const clanBonus = homeTier === null ? 0 : HEX_CLAN_BONUS[homeTier]
       let score: number | null = null
       if (hex !== null) {
         const perf = (hex - 50) / 50
@@ -243,7 +275,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       hex: null,
       tierFactor: tierFactorOf(p.tierGames),
       shrink: Math.round((p.rounds / (p.rounds + HEX_SHRINK_K)) * 1000) / 1000,
-      clanBonus: p.clanTier === null ? 0 : HEX_CLAN_BONUS[p.clanTier],
+      clanBonus: (() => { const h = homeTierOf(p.tierGames) ?? p.clanTier; return h === null ? 0 : HEX_CLAN_BONUS[h] })(),
       score: null,
       scoreRank: null,
       scoreTotal: null,
