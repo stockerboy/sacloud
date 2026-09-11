@@ -12,8 +12,6 @@ export * from './supplyClans'
 export * from './supplyMatches'
 export * from './supplyRosters'
 export * from './matchTimeAffiliation'
-/* 「뛴 팀」과 「등록 소속」을 가르는 단일 기준 (2026-09-07 · 1순위 오염 차단) */
-export * from './affiliationTrust'
 export * from './currentMembership'
 export * from './supplyPlayerLink'
 export * from './supplyPlayerProfiles'

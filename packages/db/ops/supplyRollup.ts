@@ -89,8 +89,6 @@
 import { prisma } from '../src/index'
 // 적재 잡과 **같은 상수**를 쓴다. 출처 문자열이 두 곳에서 갈라지면 집계가 조용히 0건이 된다
 import { SUPPLY_ORIGIN } from './supplyMirrorImport'
-/* 「뛴 팀」을 소속 근거에서 빼는 단일 기준 (2026-09-07 · 1순위 오염 차단) */
-import { clanSourceTrusted } from './affiliationTrust'
 
 /* --------------------------------- 입력 형 --------------------------------- */
 
@@ -120,8 +118,6 @@ export interface RollupStat {
   sourceRating: number | null
   /** 원본이 그 선수 자리에 붙여 준 소속 clan slug. 무소속이면 `null` */
   matchTimeClanSlug: string | null
-  /** 그 값이 「선수 태그」인가 「뛴 팀」인가 (`affiliationTrust.ts`) */
-  matchTimeClanSource: string | null
 }
 
 /**
@@ -141,14 +137,6 @@ export interface PlayerRollupRow {
    * `sourceRating` 과 달리 결측과 무소속을 구분할 근거가 없으므로 최신 경기의 값을 그대로 쓴다.
    */
   clanSlug: string | null
-  /**
-   * 이 행의 `clanSlug` 를 **소속 근거로 쓸 수 있는가** (2026-09-07 · `affiliationTrust.ts`).
-   *
-   * `false` 면 그 값은 「그 선수의 소속」이 아니라 **「그 경기에서 뛴 팀」**이다
-   * (`barracks-battlelog`). **행을 버리지는 않는다** — 판수·승패·킬데스·`sourceRating`
-   * 은 그대로 누적하고, `clanSlug` 를 고르는 자리에서만 건너뛴다.
-   */
-  clanTrusted: boolean
   /** 최신 판정용. 동시각이면 matchId 로 순서를 고정한다 */
   matchId: string
   startAt: Date
@@ -193,13 +181,6 @@ export interface PlayerRollup {
    */
   clanSlug: string | null
   clanFrom: RatingPick | null
-  /* ── 진단용 (2026-09-07). **값을 정하는 데는 쓰지 않는다** ── */
-  /** 소속 근거에서 제외한 행 수 (`clanTrusted === false`) */
-  clanTeamOnlyRows: number
-  /** 출처를 가리지 않은 **전체** 최신 행. 아래 `newestTrusted` 와 짝이다 */
-  newestFrom: RatingPick | null
-  /** 그 전체 최신 행이 신뢰 출처였나. `false` 면 소속은 더 오래된 행으로 정해졌다 */
-  newestTrusted: boolean
 }
 
 /**
@@ -241,9 +222,6 @@ export function emptyPlayerRollup(): PlayerRollup {
     ratingFrom: null,
     clanSlug: null,
     clanFrom: null,
-    clanTeamOnlyRows: 0,
-    newestFrom: null,
-    newestTrusted: true,
   }
 }
 
@@ -306,19 +284,7 @@ export function accumulatePlayerRollups(
       acc.rating = row.sourceRating
       acc.ratingFrom = pick
     }
-    /* 출처를 가리지 않은 최신 행 — **진단용이다.** 소속 값은 아래에서 정한다 */
-    if (isNewer(acc.newestFrom, pick)) {
-      acc.newestFrom = pick
-      acc.newestTrusted = row.clanTrusted
-    }
-
-    /* ── 소속 근거 (D-160 + 2026-09-07 신뢰 판정)
-     *   `clanTrusted === false` 인 행은 「그 경기에서 뛴 팀」일 뿐이다. 건너뛴다 —
-     *   **`clanSlug` 를 `null` 로 덮지 않는다.** `null` 은 「무소속」이라는 실제 정보라
-     *   근거에서 빼는 것과 뜻이 다르다. 건너뛰면 **직전 신뢰 행의 값이 그대로 남는다.** */
-    if (!row.clanTrusted) {
-      acc.clanTeamOnlyRows += 1
-    } else if (isNewer(acc.clanFrom, pick)) {
+    if (isNewer(acc.clanFrom, pick)) {
       acc.clanSlug = row.clanSlug
       acc.clanFrom = pick
     }
@@ -662,17 +628,6 @@ export interface SupplyRollupResult extends SupplyRollupLeague {
     clanless: number
     /** 클랜 slug 는 있는데 `Clan` 표에 행이 없어 손대지 않은 선수. **만들지 않는다** */
     clanNotInDb: number
-
-    /* ── 소속 신뢰 판정 진단 (2026-09-07). 셋 다 **선수 수**다 ──────────────
-     *   `teamOnlyExcluded = fallbackToTrustedClan + noTrustedClan` 은 성립하지 않는다.
-     *   제외된 행이 최신이 아니었으면 소속은 원래부터 신뢰 행이 정했기 때문이다.
-     *   그 경우는 아래 두 칸 어디에도 들어가지 않는다. */
-    /** 「뛴 팀」 행을 근거에서 제외한 선수 */
-    teamOnlyExcluded: number
-    /** **최신 행이 「뛴 팀」이라 제외되고**, 더 오래된 신뢰 행으로 소속을 정한 선수 */
-    fallbackToTrustedClan: number
-    /** 최신 행이 제외됐는데 **신뢰 근거가 하나도 없어** 소속을 정하지 못한 선수 */
-    noTrustedClan: number
   }
   /**
    * 선수별 "현재 소속" 근거 (D-160). `Player.clanId` 를 쓰는 쪽이 리그를 넘어 합친다.
@@ -791,8 +746,6 @@ interface JoinedStatRow {
   headshot: number | null
   sourceRating: number | null
   matchTimeClanSlug: string | null
-  /** 소속 근거로 쓸 수 있는 출처인가 (`affiliationTrust.ts`) */
-  matchTimeClanSource: string | null
   match: { id: string; startAt: Date; winnerSide: string }
 }
 
@@ -892,8 +845,6 @@ async function collectPlayersIncremental(input: {
         headshot: true,
         sourceRating: true,
         matchTimeClanSlug: true,
-        /* 그 값이 「선수 태그」인지 「뛴 팀」인지 가르는 유일한 근거 (2026-09-07) */
-        matchTimeClanSource: true,
         match: { select: { id: true, startAt: true, winnerSide: true } },
       },
     })
@@ -908,7 +859,6 @@ async function collectPlayersIncremental(input: {
         headshot: row.headshot,
         sourceRating: row.sourceRating,
         clanSlug: row.matchTimeClanSlug,
-        clanTrusted: clanSourceTrusted(row.matchTimeClanSource),
         matchId: row.match.id,
         startAt: row.match.startAt,
       })),
@@ -996,8 +946,6 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
         sourceRating: true,
         /* 현재 소속의 근거 (D-160). `MatchPlayerStat` 은 읽기만 하고 고치지 않는다 */
         matchTimeClanSlug: true,
-        /* 그 값이 「선수 태그」인지 「뛴 팀」인지 가르는 유일한 근거 (2026-09-07) */
-        matchTimeClanSource: true,
       },
     })
     stats += rows.length
@@ -1016,7 +964,6 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
             headshot: row.headshot,
             sourceRating: row.sourceRating,
             clanSlug: row.matchTimeClanSlug,
-            clanTrusted: clanSourceTrusted(row.matchTimeClanSource),
             matchId: match.id,
             startAt: match.startAt,
           },
@@ -1045,9 +992,6 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
       withClan: 0,
       clanless: 0,
       clanNotInDb: 0,
-      teamOnlyExcluded: 0,
-      fallbackToTrustedClan: 0,
-      noTrustedClan: 0,
     },
     playerClans: new Map(),
     clans: {
@@ -1101,15 +1045,6 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
     if (!rollup.clanSlug) result.players.clanless += 1
     else if (clanIdBySlugForPlayers.has(rollup.clanSlug)) result.players.withClan += 1
     else result.players.clanNotInDb += 1
-
-    /* 신뢰 판정 진단 (2026-09-07). **값을 바꾸지 않는다 — 세기만 한다** */
-    if (rollup.clanTeamOnlyRows > 0) {
-      result.players.teamOnlyExcluded += 1
-      if (!rollup.newestTrusted) {
-        if (rollup.clanFrom) result.players.fallbackToTrustedClan += 1
-        else result.players.noTrustedClan += 1
-      }
-    }
   }
 
   const existingPlayers = await prisma.leaguePlayer.findMany({
