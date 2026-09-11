@@ -471,7 +471,7 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug }: { row: M
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
       {showSaves ? (
-        <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves ?? 0}/{row.save_chances ?? 0}</span>
+        <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves === null ? '-' : `${row.saves}/${row.save_chances ?? 0}`}</span>
       ) : null}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', color: kd === null ? V3.textGhost : statColor(kd) }}>{pct1(kd)}</span>
     </div>
@@ -490,7 +490,9 @@ export function viewerSideOf(detail: MatchDetail): 'red' | 'blue' {
 
 function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchDetail; me: string; leagueCategory: string; leagueSlug: string }) {
   const mySide = viewerSideOf(detail)
-  const showSaves = [...detail.red_stats, ...detail.blue_stats].some((s) => s.saves !== null)
+  /* 2026-09-11 사장님: 집계 전 경기라고 세이브 칸이 통째로 사라지면 «없는 화면» 처럼 보인다 →
+     칸은 늘 두고 아직 모르는 값만 «-» 로 적는다 (0 으로 채우지 않는다). 옛 판: [...].some((s) => s.saves !== null) */
+  const showSaves = detail.red_stats.length + detail.blue_stats.length > 0
   const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
   const teams = ([mySide, mySide === 'red' ? 'blue' : 'red'] as const).map((side) => {
     const stats = side === 'red' ? detail.red_stats : detail.blue_stats
