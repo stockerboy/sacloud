@@ -19,7 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PlayerTrendDay } from '@sacloud/contract'
 import { fitMarkUrl, hasFitMark } from './primitives'
 import { V3 } from './tokens'
-import { PLOT, plotBox, useDrawIn, valueAt } from './seasonPlot'
+import { PLOT, penDash, plotBox, pointAtLength, pointsToStr, useDrawIn } from './seasonPlot'
 
 /** 흔들림 폭 (% 단위) — 모양만 */
 const WIGGLE = 1.2
@@ -97,8 +97,8 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
   const s0 = seedOf(seed)
 
   /* 구간마다 잘게 쪼개 «수평 유지 → 이동» 으로 각지게 그리고, 잔잔한 흔들림을 얹는다 (모양만) */
-  const shaped = (pick: (p: Pt) => number, salt: number): string => {
-    const out: string[] = []
+  const shapedPts = (pick: (p: Pt) => number, salt: number): [number, number][] => {
+    const out: [number, number][] = []
     let k = 0
     for (let i = 0; i < pts.length - 1; i += 1) {
       const a = pts[i] as Pt
@@ -112,16 +112,18 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         const f = s / steps
         const base = f < HOLD ? va : va + ((vb - va) * (f - HOLD)) / (1 - HOLD)
         const w = s === 0 && i === 0 ? 0 : noise(s0 + salt, k) * WIGGLE
-        out.push(`${(xa + (xb - xa) * f).toFixed(1)},${yOf(base + w).toFixed(1)}`)
+        out.push([xa + (xb - xa) * f, yOf(base + w)])
         k += 1
       }
     }
     const end = pts[pts.length - 1] as Pt
-    out.push(`${xOf(end.t).toFixed(1)},${yOf(pick(end)).toFixed(1)}`)
-    return out.join(' ')
+    out.push([xOf(end.t), yOf(pick(end))])
+    return out
   }
-  const wrLine = shaped((p) => p.wr, 11)
-  const kdLine = shaped((p) => p.kd, 23)
+  const wrPts = shapedPts((p) => p.wr, 11)
+  const kdPts = shapedPts((p) => p.kd, 23)
+  const wrLine = pointsToStr(wrPts)
+  const kdLine = pointsToStr(kdPts)
   const end = pts[pts.length - 1] as Pt
 
   const [hover, setHover] = useState<number | null>(null)
@@ -145,10 +147,15 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         : end
   /* 두 끝 마커 글자가 가까우면(승률·킬뎃 비슷) 위·아래로 벌린다 — 폰에서 «66.7%»«60.3%» 가 겹쳤다 (QA 회차 7) */
   /* 그리는 중에는 마커가 ★선 끝★ 에 붙어 같이 간다 (2026-09-11 사장님 영상) */
-  const tipT = Math.min(end.t, (draw * (X1 - X0)) / (X1 - X0) * span)
   const drawing = draw < 1 && hover === null
-  const shown = drawing ? { t: tipT, wr: valueAt(pts, (p) => p.wr, tipT), kd: valueAt(pts, (p) => p.kd, tipT) } : last
-  const lblGap = yOf(shown.kd) - yOf(shown.wr)
+  /* 펜 끝 — 선 길이의 draw 지점. 화면 좌표라 값으로 되돌려 읽는다 */
+  const vOf = (y: number) => ((Y_BOTTOM - y) / (Y_BOTTOM - Y_TOP)) * 100
+  const wrTip = pointAtLength(wrPts, draw)
+  const kdTip = pointAtLength(kdPts, draw)
+  const shown = drawing
+    ? { t: 0, wr: vOf(wrTip[1]), kd: vOf(kdTip[1]) }
+    : last
+  const lblGap = (drawing ? kdTip[1] : yOf(shown.kd)) - (drawing ? wrTip[1] : yOf(shown.wr))
   const lblNeed = 46
   const wrShift = Math.abs(lblGap) < lblNeed ? (lblGap >= 0 ? -(lblNeed - lblGap) / 2 : (lblNeed + lblGap) / 2) : 0
   const kdShift = -wrShift
@@ -167,8 +174,6 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         onTouchEnd={() => setHover(null)}
       >
         <defs>
-          {/* 왼쪽부터 그려지는 가리개 (2026-09-11 사장님) */}
-          <clipPath id="trendDraw"><rect x="0" y="0" width={X0 + (X1 - X0) * draw + 2} height={H} /></clipPath>
           <filter id="trendGlow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="7" result="g1" />
             <feGaussianBlur stdDeviation="16" result="g2" />
@@ -196,13 +201,13 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
           </>
         ) : null}
         {pts.length > 1 ? (
-          <g clipPath={draw < 1 ? 'url(#trendDraw)' : undefined}>
-            <polyline points={wrLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter="url(#trendGlow)" opacity={0.42} />
-            <polyline points={wrLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
-            <polyline points={wrLine} fill="none" stroke="#dbe8ff" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
-            <polyline points={kdLine} fill="none" stroke={V3.red} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter="url(#trendGlow)" opacity={0.5} />
-            <polyline points={kdLine} fill="none" stroke="#ff5a63" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
-            <polyline points={kdLine} fill="none" stroke="#ffd7da" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
+          <g>
+            <polyline points={wrLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#trendGlow)'} {...penDash(draw)} opacity={0.42} />
+            <polyline points={wrLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
+            <polyline points={wrLine} fill="none" stroke="#dbe8ff" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            <polyline points={kdLine} fill="none" stroke={V3.red} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#trendGlow)'} {...penDash(draw)} opacity={0.5} />
+            <polyline points={kdLine} fill="none" stroke="#ff5a63" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
+            <polyline points={kdLine} fill="none" stroke="#ffd7da" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
           </g>
         ) : null}
         {hover !== null && hoverX !== null ? (
@@ -210,18 +215,18 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         ) : null}
         {days.length > 0 ? (
           <g pointerEvents="none">
-            <circle cx={xOf(shown.t)} cy={yOf(shown.wr)} r={PLOT.markerR + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter="url(#trendGlow)" opacity={0.55} />
-            <circle cx={xOf(shown.t)} cy={yOf(shown.wr)} r={PLOT.markerR} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
+            <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? wrTip[1] : yOf(shown.wr))} r={PLOT.markerR + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter="url(#trendGlow)" opacity={0.55} />
+            <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? wrTip[1] : yOf(shown.wr))} r={PLOT.markerR} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
             {markSlug && hasFitMark(markSlug) ? (
-              <image href={fitMarkUrl(markSlug)} x={xOf(shown.t) - PLOT.markerR} y={yOf(shown.wr) - PLOT.markerR} width={PLOT.markerR * 2} height={PLOT.markerR * 2} clipPath={`circle(${PLOT.markerR}px at ${PLOT.markerR}px ${PLOT.markerR}px)`} />
+              <image href={fitMarkUrl(markSlug)} x={(drawing ? wrTip[0] : xOf(shown.t)) - PLOT.markerR} y={(drawing ? wrTip[1] : yOf(shown.wr)) - PLOT.markerR} width={PLOT.markerR * 2} height={PLOT.markerR * 2} clipPath={`circle(${PLOT.markerR}px at ${PLOT.markerR}px ${PLOT.markerR}px)`} />
             ) : null}
-            <text x={xOf(shown.t) + PLOT.markerR + 8} y={yOf(shown.wr) + 5 + wrShift} textAnchor="start" fill="#dbe8ff" fontSize={PLOT.valueFont} fontWeight="700">{shown.wr.toFixed(1)}%</text>
-            <text x={xOf(shown.t) + PLOT.markerR + 8} y={yOf(shown.wr) + 20 + wrShift} textAnchor="start" fill="#8fa9d8" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
-            <circle cx={xOf(shown.t)} cy={yOf(shown.kd)} r={PLOT.markerR + 4} fill="none" stroke={V3.red} strokeWidth={6} filter="url(#trendGlow)" opacity={0.5} />
-            <circle cx={xOf(shown.t)} cy={yOf(shown.kd)} r={PLOT.markerR} fill={V3.chip} stroke="#ff5a63" strokeWidth={2} />
-            <text x={xOf(shown.t)} y={yOf(shown.kd) + 4} textAnchor="middle" fill="#ffd7da" fontSize="10" fontWeight="700">K/D</text>
-            <text x={xOf(shown.t) + PLOT.markerR + 8} y={yOf(shown.kd) + 5 + kdShift} textAnchor="start" fill="#ffd7da" fontSize={PLOT.valueFont} fontWeight="700">{shown.kd.toFixed(1)}%</text>
-            <text x={xOf(shown.t) + PLOT.markerR + 8} y={yOf(shown.kd) + 20 + kdShift} textAnchor="start" fill="#c98f95" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
+            <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? wrTip[1] : yOf(shown.wr)) + 5 + wrShift} textAnchor="start" fill="#dbe8ff" fontSize={PLOT.valueFont} fontWeight="700">{shown.wr.toFixed(1)}%</text>
+            <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? wrTip[1] : yOf(shown.wr)) + 20 + wrShift} textAnchor="start" fill="#8fa9d8" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
+            <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? kdTip[1] : yOf(shown.kd))} r={PLOT.markerR + 4} fill="none" stroke={V3.red} strokeWidth={6} filter="url(#trendGlow)" opacity={0.5} />
+            <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? kdTip[1] : yOf(shown.kd))} r={PLOT.markerR} fill={V3.chip} stroke="#ff5a63" strokeWidth={2} />
+            <text x={(drawing ? wrTip[0] : xOf(shown.t))} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 4} textAnchor="middle" fill="#ffd7da" fontSize="10" fontWeight="700">K/D</text>
+            <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 5 + kdShift} textAnchor="start" fill="#ffd7da" fontSize={PLOT.valueFont} fontWeight="700">{shown.kd.toFixed(1)}%</text>
+            <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 20 + kdShift} textAnchor="start" fill="#c98f95" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
           </g>
         ) : null}
       </svg>

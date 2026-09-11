@@ -104,7 +104,9 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const lose = sel === null ? null : sel.lose
   const winRate = win === null || lose === null || win + lose === 0 ? null : Math.round((win / (win + lose)) * 1000) / 10
   const kd = sel === null ? null : weapon === null ? sel.kd : rifle ? sel.rifle_kd : sel.sniper_kd
+  /* 판킬은 2026-09-11 에 순위 칸으로 바뀌었다 — 값은 남겨 둔다 (되돌릴 때 쓴다) */
   const perMatch = sel === null ? null : weapon === null ? null : rifle ? sel.rifle_kill_per_match : sel.sniper_kill_per_match
+  void perMatch
   const kill = sel === null ? 0 : rifle ? sel.rifle_kill : sel.sniper_kill
   const death = sel === null ? 0 : rifle ? sel.rifle_death : sel.sniper_death
   const mvpRate = sel && sel.games > 0 ? (sel.mvp / sel.games) * 100 : null
@@ -216,11 +218,12 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           sub={weapon === null ? null : `${fmt(kill)} / ${fmt(death)}`}
           color={kd === null ? V3.textMuted : statColor(kd)}
         />
+        {/* 2026-09-11 사장님: 판킬 자리에 ★순위★ */}
         <Kpi
-          label="판킬"
-          value={perMatch === null ? '-' : perMatch.toFixed(1)}
-          sub="킬 / 판"
-          color={V3.text}
+          label="순위"
+          value={rank === null ? '-' : `${fmt(rank)}위`}
+          sub={rankTotal === null ? null : `/ ${fmt(rankTotal)}명`}
+          color={rank === null ? V3.textMuted : rankColor(rank) ?? V3.textStrong}
         />
       </div>
 

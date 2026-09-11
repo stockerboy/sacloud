@@ -11,7 +11,7 @@
  * 눈금은 10 단위 열 줄 (값이 0~100 백분위) — 위쪽 축 옆에 숫자.
  */
 import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
-import { useDrawIn } from './seasonPlot'
+import { penDash, useDrawIn } from './seasonPlot'
 
 export interface HexAxisView {
   label: string
@@ -28,7 +28,7 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
   /* ★가운데에서 바깥으로 자라난다★ (2026-09-11 사장님: «비슷한 느낌으로 육각그래프도 그려지게») */
   const grow = useDrawIn(1500)
   const six = axes.slice(0, 6)
-  const vertices = six.map((a, i) => hexPoint(i, (Math.max(0, Math.min(100, a.value ?? 0)) / 100) * grow))
+  const vertices = six.map((a, i) => hexPoint(i, Math.max(0, Math.min(100, a.value ?? 0)) / 100))
   const area = vertices.map((v) => v.join(',')).join(' ')
   return (
     <svg viewBox={`0 0 ${HEX.w} ${HEX.h}`} style={{ width: HEX.w, height: HEX.h, flex: `0 0 ${HEX.w}px`, display: 'block' }}>
@@ -66,18 +66,19 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
       {HEX_SPOKES.map(([x, y], i) => (
         <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#2c3a5c" strokeWidth={0.9} />
       ))}
+      {/* 채움은 테두리가 한 바퀴 돈 뒤에 스며든다 */}
+      <polygon points={area} fill={`url(#${id}Fill)`} stroke="none" opacity={Math.max(0, (grow - 0.45) / 0.55)} />
       <polygon
         points={area}
-        fill={`url(#${id}Fill)`}
+        fill="none"
         stroke={`url(#${id}Line)`}
         strokeWidth={2}
         strokeOpacity={0.95}
         strokeLinejoin="round"
         filter={`url(#${id}Glow)`}
+        {...penDash(grow)}
       />
-      {grow > 0.98 ? vertices.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r={3.2} fill={i < 3 ? '#ff7ac8' : '#7fa9ff'} stroke="#ffffff" strokeWidth={0.8} filter={`url(#${id}Glow)`} />
-      )) : null}
+      {/* 2026-09-11 사장님: 꼭짓점 점은 없앤다 */}
       {/* 눈금 숫자 — 채움·글로우 위에 그려야 보인다 (QA 교차검토 9-18) — 위쪽 축을 따라 10 단위 (짝수 눈금만 글자, 홀수는 선만 — 겹침 방지) */}
       {RINGS.filter((v) => v % 20 === 0).map((v) => {
         const [x, y] = hexPoint(0, v / 100)

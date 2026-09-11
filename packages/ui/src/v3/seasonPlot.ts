@@ -76,6 +76,39 @@ export function seedOf(text: string): number {
  * 점들을 ★각진 선★ 으로 그린다 — 구간마다 «앞부분은 수평 유지 → 나머지에서 이동» 하고,
  * 이동 구간에 잔잔한 흔들림을 얹는다. ★값은 안 바뀐다. 보이는 모양만이다.★
  */
+/** `shapePath` 와 같은 모양을 점 배열로 (펜 끝 자리를 재려면 길이가 필요하다) */
+export function shapePoints<T extends { t: number }>(
+  pts: readonly T[],
+  pick: (p: T) => number,
+  xOf: (t: number) => number,
+  yOf: (v: number) => number,
+  salt: number,
+  rand: (seed: number, k: number) => number,
+): [number, number][] {
+  const out: [number, number][] = []
+  if (pts.length === 0) return out
+  let k = 0
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const a = pts[i] as T
+    const b = pts[i + 1] as T
+    const xa = xOf(a.t)
+    const xb = xOf(b.t)
+    const va = pick(a)
+    const vb = pick(b)
+    const steps = Math.max(1, Math.round((xb - xa) / 5))
+    for (let st = 0; st < steps; st += 1) {
+      const f = st / steps
+      const base = f < HOLD ? va : va + ((vb - va) * (f - HOLD)) / (1 - HOLD)
+      const w = st === 0 && i === 0 ? 0 : rand(salt, k) * WIGGLE
+      k += 1
+      out.push([xa + (xb - xa) * f, yOf(base + w)])
+    }
+  }
+  const end = pts[pts.length - 1] as T
+  out.push([xOf(end.t), yOf(pick(end))])
+  return out
+}
+
 export function shapePath<T extends { t: number }>(
   pts: readonly T[],
   pick: (p: T) => number,
@@ -115,7 +148,7 @@ export function shapePath<T extends { t: number }>(
  * 값도 모양도 그대로고 보이는 순서만 바뀐다. 끝나면 가리개를 아예 뗀다 (드래그·탐색과 안 부딪힌다).
  * `prefers-reduced-motion` 을 켠 사람에게는 처음부터 다 보여 준다.
  */
-export function useDrawIn(ms = 2200): number {
+export function useDrawIn(ms = 3600): number {
   const [t, setT] = useState(0)
   useEffect(() => {
     if (typeof window === 'undefined') { setT(1); return }
@@ -154,4 +187,47 @@ export function valueAt<T extends { t: number }>(pts: readonly T[], pick: (p: T)
     return pick(a) + (pick(b) - pick(a)) * g
   }
   return pick(pts[pts.length - 1] as T)
+}
+
+/**
+ * ★펜으로 그리듯★ — 선을 제 길이만큼 조금씩 내보낸다 (2026-09-11 사장님:
+ * «그냥 안 보였다가 보여지는 느낌이 아니라 진짜 선 모양 따라 펜으로 그려지는 것처럼»).
+ *
+ * SVG 의 점선(dash)을 쓴다 — 길이를 1 로 정규화(`pathLength={1}`)하고 점선 한 칸을 통째로
+ * 밀어 두었다가 되돌린다. 가리개(clip)와 달리 ★선이 지나간 자리만★ 나타나서, 가파른 구간은
+ * 오래, 평평한 구간은 짧게 걸린다. 진짜 그리는 속도가 된다.
+ */
+export function penDash(drawn: number): { pathLength: number; strokeDasharray: string; strokeDashoffset: number } {
+  return { pathLength: 1, strokeDasharray: `${1} ${1}`, strokeDashoffset: 1 - Math.max(0, Math.min(1, drawn)) }
+}
+
+/** 점 배열 → `points` 글자 */
+export function pointsToStr(pts: readonly (readonly [number, number])[]): string {
+  return pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+}
+
+/** 선 길이의 p(0~1) 지점 — 펜 끝이 지금 어디인가 */
+export function pointAtLength(pts: readonly (readonly [number, number])[], p: number): readonly [number, number] {
+  if (pts.length === 0) return [0, 0]
+  if (pts.length === 1 || p <= 0) return pts[0] as readonly [number, number]
+  let total = 0
+  const seg: number[] = []
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const a = pts[i] as readonly [number, number]
+    const b = pts[i + 1] as readonly [number, number]
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1])
+    seg.push(d)
+    total += d
+  }
+  if (total === 0 || p >= 1) return pts[pts.length - 1] as readonly [number, number]
+  let want = total * p
+  for (let i = 0; i < seg.length; i += 1) {
+    const d = seg[i] as number
+    if (want > d) { want -= d; continue }
+    const a = pts[i] as readonly [number, number]
+    const b = pts[i + 1] as readonly [number, number]
+    const f = d === 0 ? 0 : want / d
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]
+  }
+  return pts[pts.length - 1] as readonly [number, number]
 }
