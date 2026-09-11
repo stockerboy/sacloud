@@ -15,6 +15,7 @@ import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchLis
 import { rankColor, statColor } from './rankColors'
 import { Card, CardHead, Kda, MarkCircle, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
+import { H2HChartV3 } from './H2HChartV3'
 
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px 62px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
 const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 108px 78px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
@@ -91,7 +92,8 @@ const h2hYLegacy = (share: number) => 262 - ((Math.max(30, Math.min(70, share)) 
 void h2hYLegacy
 
 /** 누적 세트 승률 추이 — 붙은 경기를 시간순으로 더해 간다 (지어내지 않는다 · 경기 수만큼 점) */
-function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead; theme: ClanTheme; oppTheme: ClanTheme; mine: LeagueClanShow['clan']; oppSlug: string }) {
+/** ⚠ 옛 판(판 순서 X축) — 2026-09-11 부터는 H2HChartV3(시즌 시간축)가 그린다. 지우지 않았다 */
+function H2HChartLegacy({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead; theme: ClanTheme; oppTheme: ClanTheme; mine: LeagueClanShow['clan']; oppSlug: string }) {
   const games = [...opp.recent].filter((g) => g.won !== null).reverse()
   let w = 0
   const shares = games.map((g, i) => {
@@ -228,6 +230,8 @@ const majorityClanOf = (stats: readonly MatchPlayerStat[]) => {
 /* 2026-09-11 회차 11 에서 되돌림: crucialrz 경기의 우리 팀이 «loveless» 로 바뀌어 보였다 — 용병이 많은 리그라 명단 다수로 팀 이름을 갈아끼우면
    등록 클랜(수집기 라벨)과 어긋난다. ★팀 이름은 등록 클랜★, 선수 옆 마크가 소속을 말한다. 명단 다수 방식은 스위치로 남긴다 */
 const TEAM_NAME_FROM_LINEUP = false
+/* 상대전적 그래프 — 옛 판(판 순서 X축)으로 되돌리려면 true */
+const H2H_CHART_LEGACY = false
 /* 2026-09-11 사장님: 워터마크 폐지, 스나이퍼는 닉 옆 빨간 (S) */
 const SCORE_WATERMARKS = false
 
@@ -351,7 +355,20 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           <span style={{ fontSize: 11.5, color: '#8f9bb5', whiteSpace: 'nowrap' }}><span style={{ fontWeight: 700, color: oppTheme.ink }}>{total > 0 ? `${(100 - share).toFixed(1)}%` : '-'}</span> · {fmt(total)}전 기준</span>
         </div>
       </div>
-      <H2HChart opp={opp} theme={theme} oppTheme={oppTheme} mine={data.clan} oppSlug={opp.clan.slug} />
+      {H2H_CHART_LEGACY ? (
+        <H2HChartLegacy opp={opp} theme={theme} oppTheme={oppTheme} mine={data.clan} oppSlug={opp.clan.slug} />
+      ) : (
+        /* 이 상대와의 경기 전부(vsMatches · 60판까지) — 아직 안 왔으면 요약의 최근 판 */
+        <H2HChartV3
+          games={vsMatches ? vsMatches.map((m) => ({ at: m.start_at, won: m.win })) : opp.recent.filter((g) => g.won !== null).map((g) => ({ at: g.start_at, won: g.won as boolean }))}
+          theme={theme}
+          oppTheme={oppTheme}
+          mineName={data.clan.name}
+          mineSlug={data.clan.slug}
+          oppName={opp.clan.name}
+          oppSlug={opp.clan.slug}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderTop: `1px solid ${V3.rowDivider}` }}>
         <div style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>맞대결 기록</span>
