@@ -115,11 +115,11 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
         {[0, 25, 50, 75, 100].map((g) => (
           <g key={g}>
             <line x1={H2H_X0} y1={h2hY(g)} x2={H2H_X1} y2={h2hY(g)} stroke="#111826" />
-            <text x={H2H_X0 - 8} y={h2hY(g) + 4} textAnchor="end" fill="#7c88a4" fontSize="11">{g}%</text>
+            <text x={H2H_X0 - 8} y={h2hY(g) + 4} textAnchor="end" fill="#7c88a4" fontSize="13">{g}%</text>
           </g>
         ))}
         {shares.map((p, i) => (
-          <text key={i} x={p.x} y={292} textAnchor={i === 0 ? 'start' : i === shares.length - 1 ? 'end' : 'middle'} fill="#7c88a4" fontSize="11">{i > 0 && shares[i - 1]?.label === p.label ? '' : p.label}</text>
+          <text key={i} x={p.x} y={300} textAnchor={i === 0 ? 'start' : i === shares.length - 1 ? 'end' : 'middle'} fill="#7c88a4" fontSize="13">{i > 0 && shares[i - 1]?.label === p.label ? '' : p.label}</text>
         ))}
         <line x1={H2H_X1} y1={20} x2={H2H_X1} y2={268} stroke="#2b3a58" />
         <text x={H2H_X1} y={16} textAnchor="middle" fill="#8f9bb5" fontSize="14" fontWeight="700">now</text>
@@ -149,10 +149,10 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
         <g>
           <line x1={H2H_X0} y1={312} x2={H2H_X0 + 16} y2={312} stroke="#7fa9ff" strokeWidth={3} filter="url(#h2hGlowB)" />
           <line x1={H2H_X0} y1={312} x2={H2H_X0 + 16} y2={312} stroke="#dbe8ff" strokeWidth={1.6} />
-          <text x={H2H_X0 + 22} y={319} fill={theme.ink} fontSize="14">{mine.name}</text>
+          <text x={H2H_X0 + 22} y={321} fill={theme.ink} fontSize="15">{mine.name}</text>
           <line x1={H2H_X0 + 150} y1={312} x2={H2H_X0 + 166} y2={312} stroke={oppTheme.deep} strokeWidth={3} filter="url(#h2hGlowR)" />
           <line x1={H2H_X0 + 150} y1={312} x2={H2H_X0 + 166} y2={312} stroke={oppTheme.main} strokeWidth={1.6} />
-          <text x={H2H_X0 + 172} y={319} fill={oppTheme.ink} fontSize="14">{opp.clan.name}</text>
+          <text x={H2H_X0 + 172} y={321} fill={oppTheme.ink} fontSize="15">{opp.clan.name}</text>
         </g>
       </svg>
     </div>
@@ -317,20 +317,20 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
         <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, width: `${share}%`, height: 2, background: `linear-gradient(90deg,${theme.light},${theme.main} 55%,${theme.main}40)`, pointerEvents: 'none' }} />
         <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, width: `${100 - share}%`, height: 2, background: `linear-gradient(270deg,${oppTheme.main},${oppTheme.main}33)`, pointerEvents: 'none' }} />
         <span aria-hidden style={{ position: 'absolute', left: `${share}%`, top: 0, bottom: 0, width: 1, background: 'linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.04))', pointerEvents: 'none' }} />
-        <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <span className="v3-setscore-team" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
             <span style={{ fontSize: 28, fontWeight: 900, color: theme.ink, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{data.clan.name}</span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}><TierText division={data.division} leagueCategory={data.league.category} size={11} />{data.rank !== null ? <span style={{ fontSize: 11, color: rankColor(data.rank) }}>{data.rank}위</span> : null}</span>
           </span>
           <MarkCircle clan={data.clan} size={52} />
         </span>
-        <span style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: theme.ink, letterSpacing: '-.02em' }}>{opp.win}</span>
+        <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: theme.ink, letterSpacing: '-.02em' }}>{opp.win}</span>
         <span className="v3-setscore-mid" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 88 }}>
           <span style={{ fontSize: 10.5, color: V3.textFaint, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>SET SCORE</span>
           <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>Cloud0 시즌</span>
         </span>
-        <span style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: oppTheme.ink, letterSpacing: '-.02em' }}>{opp.lose}</span>
-        <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: oppTheme.ink, letterSpacing: '-.02em' }}>{opp.lose}</span>
+        <span className="v3-setscore-team" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
           <MarkCircle clan={oppClan} size={52} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <span style={{ fontSize: 28, fontWeight: 900, color: oppTheme.ink, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{opp.clan.name}</span>
