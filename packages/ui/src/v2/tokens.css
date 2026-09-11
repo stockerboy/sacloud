@@ -419,7 +419,8 @@
 
   --color-rate-low: var(--v2-red);
   --color-rate-1: var(--v2-green);
-  --color-rate-2: #a06a35;
+  /* ★2026-09-11 사장님: 밝은 갈색으로★ (옛 값 #a06a35) */
+  --color-rate-2: #c08a5a;
   --color-rate-3: var(--v2-blue);
   --color-rate-4: #f5c518;
   --color-rate-4-light: var(--v2-red);
@@ -627,9 +628,22 @@
 }
 .v3-plate-row--dark { background-image: url(/assets/plate-astra-dark.webp); }
 .v3-plate-row--light { background-image: url(/assets/plate-astra-light.webp); }
+/* 줄판 불타는 인식표 — 카드판과 같은 색 규칙 */
+.v3-plate-row--fire {
+  background-image: url(/assets/plate-astra-dark.webp);
+  filter: sepia(0.75) saturate(4.2) hue-rotate(-24deg) brightness(1.12) contrast(1.08);
+  opacity: .38;
+}
 /* 줄 안의 내용은 인식표 위로 */
 .v3-plate-row ~ * { position: relative; z-index: 1; }
 .v3-plate--light { background-image: url(/assets/plate-astra-light.webp); }
+/* ★불타는 인식표★ — 1~3위 (2026-09-11 사장님: «1,2,3등 색깔만 불타는 색으로»).
+   ★새 그림을 만들지 않는다★ — 먹구름 그림에 색만 입힌다 (사장님: «색깔만») */
+.v3-plate--fire {
+  background-image: url(/assets/plate-astra-dark.webp);
+  filter: sepia(0.75) saturate(4.2) hue-rotate(-24deg) brightness(1.12) contrast(1.08);
+  opacity: .40;
+}
 
 @media (max-width: 767px) {
   /* 맞대결 줄 — 승패·시각 / 클랜들·MVP / 점수·상세 세 줄 (사장님: 오른쪽이 비어 있다) */

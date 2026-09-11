@@ -23,6 +23,13 @@ export const RANK_COLORS = {
  * **순위 숫자와 닉네임 모두 이 함수 하나를 쓴다** (두 값이 항상 같은 색).
  */
 export function rankColor(rank: number): string {
+  /* ★1~100위는 한 색★ — 밝은 노랑 (2026-09-11 사장님) */
+  if (rank <= 100) return RANK_COLORS.top20;
+  return RANK_COLORS.rest;
+}
+
+/** ★옛 방식★ — 3 / 20 / 40 / 100 네 단계. 지우지 않는다 (`CLAUDE.md` 1-4) */
+export function rankColorV2(rank: number): string {
   if (rank <= 3)   return RANK_COLORS.top3;
   if (rank <= 20)  return RANK_COLORS.top20;
   if (rank <= 40)  return RANK_COLORS.top40;
@@ -39,7 +46,8 @@ export const STAT_COLORS = {
   red:    '#e01b24', // ~39.9
   white:  '#ffffff', // 40 ~ 49.9
   green:  '#22c55e', // 50 ~ 54.9
-  brown:  '#a06a35', // 55 ~ 59.9
+  /* ★2026-09-11 사장님: «갈색 숫자색 좀 밝은 갈색으로»★. 옛 값 #a06a35 */
+  brown:  '#c08a5a', // 55 ~ 59.9
   blue:   '#5b8dff', // 60 ~ 64.9
   yellow: '#f5c518', // 65 ~ 100
 } as const;
@@ -66,3 +74,33 @@ export function statColor(value: number): string {
 // <span style={{ color: statColor(row.winRate) }}>{row.winRate.toFixed(1)}</span>
 // <span style={{ color: statColor(row.kd) }}>{row.kd.toFixed(1)}</span>
 // <span>{row.ladder.toLocaleString()}점</span>   // 규칙 밖 — 흰색
+
+/* ── 3) 층수(실력 점수) 색 ──────────────────────────── */
+
+/**
+ * ★층수 색★ (2026-09-11 사장님)
+ *
+ * > «50-45 강렬한 빨간색 / 40-45 노란색 / 35-40층 하늘색 / 30-34.9층 초록색
+ * >  / 29.9 이하는 전부 하얀색»
+ *
+ * 넘기는 값은 ★점수★ 다 (3,462점). 층은 점수 ÷ 100 이다 — 부르는 쪽이 나누지 않게
+ * 여기서 나눈다. 경계는 위가 열려 있다 (45층 이상이 빨강).
+ * 등수 색(`rankColor`)·수치 색(`statColor`)과 ★섞어 쓰지 않는다.★
+ */
+export const FLOOR_COLORS = {
+  red:    '#ff2d2d', // 45층 ~
+  yellow: '#ffd83d', // 40 ~ 44.9층
+  sky:    '#63d9ff', // 35 ~ 39.9층
+  green:  '#22c55e', // 30 ~ 34.9층
+  plain:  '#ffffff', // ~ 29.9층
+} as const;
+
+export function floorColor(score: number | null | undefined): string {
+  if (score === null || score === undefined || Number.isNaN(score)) return FLOOR_COLORS.plain;
+  const floor = score / 100;
+  if (floor >= 45) return FLOOR_COLORS.red;
+  if (floor >= 40) return FLOOR_COLORS.yellow;
+  if (floor >= 35) return FLOOR_COLORS.sky;
+  if (floor >= 30) return FLOOR_COLORS.green;
+  return FLOOR_COLORS.plain;
+}

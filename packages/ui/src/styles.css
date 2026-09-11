@@ -203,7 +203,8 @@
   /** 11~50위 */
   --color-rank-blue: #5b9dff;
   /** 51~100위 */
-  --color-rank-brown: #a06a35;
+  /* ★2026-09-11 사장님: 밝은 갈색으로★ (옛 값 #a06a35) */
+  --color-rank-brown: #c08a5a;
   /** 101~200위 */
   --color-rank-green: #22c55e;
   /** 201위부터 */

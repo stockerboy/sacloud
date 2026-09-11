@@ -9,7 +9,7 @@
  */
 import type { CSSProperties, ReactNode } from 'react'
 import type { ClanHexagonV2, LeagueClanShow } from '@sacloud/contract'
-import { rankColor, statColor } from './rankColors'
+import { floorColor, rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
@@ -89,10 +89,13 @@ export interface ClanCardV3Props {
 }
 
 export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNote, renewAction, tierWins = [], tierIndex = 0, onTierStep, showHexagon = true }: ClanCardV3Props) {
-  /* ★인식표★ (2026-09-11 사장님) — ASTRA 구간 클랜만 준다. 1~3위 먹구름 · 나머지 흰구름.
-     다른 구간·SPL·열산 어디에도 안 준다 */
-  const plate: 'dark' | 'light' | null =
-    data.division === 1 && data.league.category === 'independent' ? ((data.rank ?? 999) <= 3 ? 'dark' : 'light') : null
+  /* ★인식표★ (2026-09-11 사장님) — ASTRA 구간 클랜만 준다.
+     ★1~3위 불 · 4~10위 먹구름 · 그 밖은 흰구름★. 다른 구간·SPL·열산 어디에도 안 준다 */
+  const plateRank = data.rank ?? 999
+  const plate: 'fire' | 'dark' | 'light' | null =
+    data.division === 1 && data.league.category === 'independent'
+      ? plateRank <= 3 ? 'fire' : plateRank <= 10 ? 'dark' : 'light'
+      : null
   const theme = clanThemeOf(data.clan.slug)
   const rank = data.rank
   const ink = rank === null ? V3.textMuted : rankColor(rank)
@@ -101,7 +104,8 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
   const tierRate = tier && tier.win + tier.lose > 0 ? (tier.win / (tier.win + tier.lose)) * 100 : null
   const tiered = data.league.division_count >= 2
   const kpis: { label: string; value: string; sub: ReactNode; color: string; picker?: boolean }[] = [
-    { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: '#ffffff' },
+    /* 같은 «층» 단위라 선수 점수와 ★같은 색 규칙★ 을 쓴다 (2026-09-11 사장님) */
+    { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: floorColor(data.rating) },
     tier
       ? { label: '구간 승률', value: pct1(tierRate), sub: <><TierText division={tier.division} leagueCategory={data.league.category} size={11} /> <span>{tier.win}승 {tier.lose}패</span></>, color: tierRate === null ? V3.textMuted : statColor(tierRate), picker: tierWins.length > 1 }
       : { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },

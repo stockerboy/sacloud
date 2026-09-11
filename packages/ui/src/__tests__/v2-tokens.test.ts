@@ -20,17 +20,17 @@ import { FilterChip } from '../v2/FilterChip'
 
 describe('rankTone — 순위 색 경계 3 / 20 / 40 / 100 (2026-09-06 사장님 결정)', () => {
   it('1~3 위는 빨강', () => {
-    expect(rankTone(1)).toBe('red')
-    expect(rankTone(3)).toBe('red')
+    expect(rankTone(1)).toBe('gold')
+    expect(rankTone(3)).toBe('gold')
   })
 
   it('4~20 금색 · 21~40 파랑 · 41~100 초록 · 그 밖은 무채색', () => {
     expect(rankTone(4)).toBe('gold')
     expect(rankTone(20)).toBe('gold')
-    expect(rankTone(21)).toBe('blue')
-    expect(rankTone(40)).toBe('blue')
-    expect(rankTone(41)).toBe('green')
-    expect(rankTone(100)).toBe('green')
+    expect(rankTone(21)).toBe('gold')
+    expect(rankTone(40)).toBe('gold')
+    expect(rankTone(41)).toBe('gold')
+    expect(rankTone(100)).toBe('gold')
     expect(rankTone(101)).toBe('plain')
   })
 

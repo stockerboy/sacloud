@@ -365,6 +365,18 @@ export type RankTone = 'red' | 'gold' | 'blue' | 'green' | 'plain' | 'brown'
  */
 export function rankTone(rank: number | null | undefined): RankTone | null {
   if (rank == null || rank <= 0) return null
+  /* ★1~100위는 한 색★ — 밝은 노랑 (2026-09-11 사장님: «1위부터 100위 순위색깔 밝은 노란색으로 통일») */
+  if (rank <= 100) return 'gold'
+  return 'plain'
+}
+
+/**
+ * ★옛 방식★ — 2026-09-06 (Part 10) 경계 3 / 20 / 40 / 100. ★지우지 않는다★ (`CLAUDE.md` 1-4).
+ *
+ *   1~3위 빨강 · 4~20위 노랑 · 21~40위 파랑 · 41~100위 초록 · 101위~ 하양
+ */
+export function rankToneV2(rank: number | null | undefined): RankTone | null {
+  if (rank == null || rank <= 0) return null
   if (rank <= 3) return 'red'
   if (rank <= 20) return 'gold'
   if (rank <= 40) return 'blue'

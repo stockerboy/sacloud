@@ -914,14 +914,14 @@ export async function getMatch(
     ),
   ])
   /**
-   * ★인식표★ (2026-09-11 사장님) — ASTRA 구간 1~3위는 먹구름, 4~100위는 흰구름.
+   * ★인식표★ (2026-09-11 사장님) — ASTRA 구간 ★1~3위 불 · 4~10위 먹구름 · 11~100위 흰구름★.
    *
-   * 열 명의 등수를 하나씩 세면 왕복이 열 번이다. 대신 ★3위·100위 점수만★ 읽어서 자른다 —
-   * 왕복 세 번으로 끝난다. 동점이 3위·100위 경계에 걸리면 같은 편으로 친다 (지어내지 않는다).
+   * 열 명의 등수를 하나씩 세면 왕복이 열 번이다. 대신 ★3위·10위·100위 점수만★ 읽어서 자른다.
+   * 동점이 경계에 걸리면 같은 편으로 친다 (지어내지 않는다).
    */
   const plateWhere = { weapon: { not: null }, score: { not: null }, leaguePlayer: { leagueId, placement: false } }
   const plateOrder = [{ score: 'desc' as const }, { leaguePlayerId: 'asc' as const }]
-  const [plateRows, thirdRow, hundredthRow] = await Promise.all([
+  const [plateRows, thirdRow, tenthRow, hundredthRow] = await Promise.all([
     softFail('match-plate-rows', [] as { leaguePlayerId: string; homeTier: number | null; score: number | null; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
       prisma.leaguePlayerHex.findMany({
         where: { ...plateWhere, leaguePlayer: { leagueId, placement: false, playerId: { in: match.stats.map((stat) => stat.playerId) } } },
@@ -931,18 +931,29 @@ export async function getMatch(
     softFail('match-plate-3', [] as { score: number | null }[], { leagueId })(
       prisma.leaguePlayerHex.findMany({ where: plateWhere, orderBy: plateOrder, skip: 2, take: 1, select: { score: true } }),
     ),
+    softFail('match-plate-10', [] as { score: number | null }[], { leagueId })(
+      prisma.leaguePlayerHex.findMany({ where: plateWhere, orderBy: plateOrder, skip: 9, take: 1, select: { score: true } }),
+    ),
     softFail('match-plate-100', [] as { score: number | null }[], { leagueId })(
       prisma.leaguePlayerHex.findMany({ where: plateWhere, orderBy: plateOrder, skip: 99, take: 1, select: { score: true } }),
     ),
   ])
   const thirdScore = thirdRow[0]?.score ?? null
+  const tenthScore = tenthRow[0]?.score ?? null
   const hundredthScore = hundredthRow[0]?.score ?? null
-  const plateByPlayer = new Map<string, 'dark' | 'light'>()
+  const plateByPlayer = new Map<string, 'fire' | 'dark' | 'light'>()
   for (const row of plateRows) {
     /* ASTRA 구간이 아니면 안 준다 */
     if (row.homeTier !== 1 || row.score === null) continue
     if (hundredthScore !== null && row.score < hundredthScore) continue
-    plateByPlayer.set(row.leaguePlayer.playerId, thirdScore !== null && row.score >= thirdScore ? 'dark' : 'light')
+    plateByPlayer.set(
+      row.leaguePlayer.playerId,
+      thirdScore !== null && row.score >= thirdScore
+        ? 'fire'
+        : tenthScore !== null && row.score >= tenthScore
+          ? 'dark'
+          : 'light',
+    )
   }
 
   const savesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneWon]))

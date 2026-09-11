@@ -16,6 +16,7 @@ import type { EggState } from '../egg/eggState'
 /* 승률·킬뎃 두 칸만 서플라이 등급색을 쓴다 (2026-08-30 사용자 지시) */
 import { rateClass } from '../common/rate'
 import { rankColor } from '../record/playerHeadCopy'
+import { floorColor } from '../v3/rankColors'
 import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
 import { Skeleton } from '../common/Skeleton'
@@ -483,14 +484,18 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
  * ★인식표★ (2026-09-11 사장님) — ★ASTRA 구간 선수만★ 준다.
  *
  * > «이 인식표는 1,2,3등은 먹구름 버전 4등부터 100등은 하얀구름 버전으로 뒷배경에 깐다»
+ * > «인식표 1,2,3등 색깔만 불타는 색으로 (…) 4등부터 10등까지는 원래하던 검정색 (…) 11장부터는 그대로»
  *
  * 구간은 ★가장 많이 뛴 티어★(`home_tier`) 다 — 클랜 소속이 아니다.
  * 100등 밖이면 안 준다. 그림·규칙은 클랜 카드와 같다 (`.v3-plate`).
  */
-function plateOf(row: { rank: number; home_tier?: number | null }): 'dark' | 'light' | null {
+/* ★층수 색★ 은 공통 함수 한 곳이 정한다 (2026-09-11 사장님) */
+function plateOf(row: { rank: number; home_tier?: number | null }): 'fire' | 'dark' | 'light' | null {
   if (row.home_tier !== 1) return null
   if (row.rank > 100) return null
-  return row.rank <= 3 ? 'dark' : 'light'
+  if (row.rank <= 3) return 'fire'
+  if (row.rank <= 10) return 'dark'
+  return 'light'
 }
 
 export function PlayerRankTable({
@@ -688,9 +693,12 @@ export function PlayerRankTable({
               />
             )}
             {columns.rating ? (
-              /* ★점수는 강조색(청록)으로 쓴다★ (2026-09-10 · 사장님이 고른 화면이 그렇다).
-                 옛 모양은 `text-text-strong` 이었다 — 색만 바뀌고 자리·크기는 그대로다 */
-              <div className={`${COL_RATING} ${NUM} text-accent`}>
+              /* ★층수마다 색이 다르다★ (2026-09-11 사장님: 45층~ 빨강 · 40 노랑 · 35 하늘 · 30 초록 · 그 아래 하양).
+                 옛 모양은 한 색(청록 `text-accent`)이었다 — 자리·크기는 그대로다 */
+              <div
+                className={`${COL_RATING} ${NUM}`}
+                style={byWeapon ? undefined : { color: floorColor(row.score ?? row.rating) }}
+              >
                 {byWeapon
                   ? formatRatingDelta(row.rating_delta ?? 0)
                   : scoreTable && (row.score === null || row.score === undefined)

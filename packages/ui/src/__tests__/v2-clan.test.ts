@@ -60,8 +60,9 @@ describe('클랜 KPI — 없는 값은 칸을 만들지 않는다', () => {
     expect(kpis.find((k) => k.label === '순위')?.sub).toBeUndefined()
   })
 
-  it('순위 색은 공통 함수가 정한다 (1위 = 빨강)', () => {
-    expect(clanKpis(base).find((k) => k.label === '순위')?.color).toBe('var(--color-rank-red)')
+  /* 2026-09-11 사장님: 1~100위는 한 색(밝은 노랑)으로 통일했다. 옛 판(1위 빨강)은 rankToneV2 */
+  it('순위 색은 공통 함수가 정한다 (1위 = 노랑)', () => {
+    expect(clanKpis(base).find((k) => k.label === '순위')?.color).toBe('var(--color-rank-gold)')
   })
 })
 
