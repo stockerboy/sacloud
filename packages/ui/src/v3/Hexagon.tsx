@@ -63,15 +63,6 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
       {HEX_SPOKES.map(([x, y], i) => (
         <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#2c3a5c" strokeWidth={0.9} />
       ))}
-      {/* 눈금 숫자 — 위쪽 축을 따라 10 단위 (짝수 눈금만 글자, 홀수는 선만 — 겹침 방지) */}
-      {RINGS.filter((v) => v % 20 === 0).map((v) => {
-        const [x, y] = hexPoint(0, v / 100)
-        return (
-          <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="600" fill="#6f7fa6" textAnchor="start">
-            {v}
-          </text>
-        )
-      })}
       <polygon
         points={area}
         fill={`url(#${id}Fill)`}
@@ -84,6 +75,15 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
       {vertices.map(([x, y], i) => (
         <circle key={i} cx={x} cy={y} r={3.2} fill={i < 3 ? '#ff7ac8' : '#7fa9ff'} stroke="#ffffff" strokeWidth={0.8} filter={`url(#${id}Glow)`} />
       ))}
+      {/* 눈금 숫자 — 채움·글로우 위에 그려야 보인다 (QA 교차검토 9-18) — 위쪽 축을 따라 10 단위 (짝수 눈금만 글자, 홀수는 선만 — 겹침 방지) */}
+      {RINGS.filter((v) => v % 20 === 0).map((v) => {
+        const [x, y] = hexPoint(0, v / 100)
+        return (
+          <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="700" fill="#c7d0e6" textAnchor="start">
+            {v}
+          </text>
+        )
+      })}
       {six.map((a, i) => {
         const [x, y, anchor] = HEX_LABELS[i] as (typeof HEX_LABELS)[number]
         return (

@@ -46,10 +46,14 @@ export interface PlayerDetailV3Props {
 
 /* ── 구간별 전적 ─────────────────────────────────────────────── */
 
-function TierRecordCard({ data, report }: { data: LeaguePlayerDetail; report: PlayerDetailV3Props['report'] }) {
+function TierRecordCard({ data, report, ownTier }: { data: LeaguePlayerDetail; report: PlayerDetailV3Props['report']; ownTier: number | null }) {
   const rows = data.tier_breakdown
   const played = rows.filter((r) => r.games > 0)
-  const [tier, setTier] = useState<number>(() => (played.length > 0 ? played.reduce((a, b) => (b.games > a.games ? b : a)).tier : rows[0]?.tier ?? 1))
+  /* 기본 칩 = ★내 클랜의 티어★(최근 경기에서 읽음 · QA 교차검토 9-14). 모르면 가장 많이 뛴 티어. 누르면 그것이 우선 */
+  const [picked, setPicked] = useState<number | null>(null)
+  const mostPlayed = played.length > 0 ? played.reduce((a, b) => (b.games > a.games ? b : a)).tier : rows[0]?.tier ?? 1
+  const tier = picked ?? (ownTier !== null && rows.some((r) => r.tier === ownTier) ? ownTier : mostPlayed)
+  const setTier = setPicked
   const sel = rows.find((r) => r.tier === tier) ?? null
   const hex = data.hex
   const score = hex?.score ?? null
@@ -569,7 +573,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
   return (
     <div>
       <div style={halfStyle}>
-        <TierRecordCard data={data} report={props.report} />
+        <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} />
         <StrengthCard data={data} />
       </div>
       <TrendCard data={data} />

@@ -106,12 +106,12 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
   const finalShare = opp.win + opp.lose > 0 ? (opp.win / (opp.win + opp.lose)) * 100 : null
   return (
     <div style={{ padding: '6px 12px 10px', background: V3.plot }}>
-      <svg viewBox="0 0 640 330" className="v3-h2h-svg" style={{ width: '100%', height: 330, display: 'block' }}>
+      <svg viewBox="0 0 700 330" className="v3-h2h-svg" style={{ width: '100%', height: 330, display: 'block' }}>
         <defs>
           <filter id="h2hGlowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b1" /><feGaussianBlur stdDeviation="16" result="b2" /><feMerge><feMergeNode in="b2" /><feMergeNode in="b1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
           <filter id="h2hGlowR" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="r1" /><feGaussianBlur stdDeviation="16" result="r2" /><feMerge><feMergeNode in="r2" /><feMergeNode in="r1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         </defs>
-        <rect x="0" y="0" width="640" height="330" fill={V3.plot} />
+        <rect x="0" y="0" width="700" height="330" fill={V3.plot} />
         {[0, 25, 50, 75, 100].map((g) => (
           <g key={g}>
             <line x1={H2H_X0} y1={h2hY(g)} x2={H2H_X1} y2={h2hY(g)} stroke="#111826" />
@@ -140,9 +140,9 @@ function H2HChart({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead
             <circle cx={H2H_X1} cy={h2hY(end.share)} r={22} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
             {hasFitMark(mine.slug) ? <image href={fitMarkUrl(mine.slug)} x={H2H_X1 - 18} y={h2hY(end.share) - 18} width="36" height="36" clipPath="circle(18px at 18px 18px)" /> : null}
             <text x={H2H_X1 + 30} y={h2hY(end.share) + (close ? -26 : 10)} fill="#ffffff" fontSize="20" fontWeight="700">{finalShare.toFixed(1)}%</text>
-            <circle cx={H2H_X1} cy={h2hY(100 - end.share)} r={26} fill="none" stroke={oppTheme.deep} strokeWidth={7} filter="url(#h2hGlowR)" opacity={0.5} />
-            <circle cx={H2H_X1} cy={h2hY(100 - end.share)} r={22} fill={V3.chip} stroke={oppTheme.main} strokeWidth={2} />
-            {hasFitMark(oppSlug) ? <image href={fitMarkUrl(oppSlug)} x={H2H_X1 - 18} y={h2hY(100 - end.share) - 18} width="36" height="36" clipPath="circle(18px at 18px 18px)" /> : null}
+            <circle cx={H2H_X1 - (close ? 34 : 0)} cy={h2hY(100 - end.share)} r={26} fill="none" stroke={oppTheme.deep} strokeWidth={7} filter="url(#h2hGlowR)" opacity={0.5} />
+            <circle cx={H2H_X1 - (close ? 34 : 0)} cy={h2hY(100 - end.share)} r={22} fill={V3.chip} stroke={oppTheme.main} strokeWidth={2} />
+            {hasFitMark(oppSlug) ? <image href={fitMarkUrl(oppSlug)} x={H2H_X1 - 18 - (close ? 34 : 0)} y={h2hY(100 - end.share) - 18} width="36" height="36" clipPath="circle(18px at 18px 18px)" /> : null}
             <text x={H2H_X1 + 30} y={h2hY(100 - end.share) + (close ? 38 : 10)} fill="#ffffff" fontSize="20" fontWeight="700">{(100 - finalShare).toFixed(1)}%</text>
           </>
         ) : null}
@@ -181,9 +181,16 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves }: { row: MatchP
 /** 우리 팀 진영 — API 의 `viewer_side`. 없으면 명단 소속으로 (2026-09-10) */
 /** 목록 줄만으로 «league_clan 이 선 진영» — 명단의 소속으로 본다. 명단이 없으면 null (2026-09-11 · 접힌 줄 라운드 점수) */
 export function listSideOf(m: MatchListItem): 'red' | 'blue' | null {
-  const ours = m.league_clan.league_clan_id
-  const red = m.red.filter((p) => p.match_time_clan?.league_clan_id === ours).length
-  const blue = m.blue.filter((p) => p.match_time_clan?.league_clan_id === ours).length
+  /* league_clan_id 가 비어 있는 명단이 많다(2026-09-11 실측: 전부 null) → slug, 그것도 없으면 이름으로 짝짓는다 */
+  const same = (p: MatchListItem['red'][number]) => {
+    const c = p.match_time_clan
+    if (!c) return false
+    if (c.league_clan_id && c.league_clan_id === m.league_clan.league_clan_id) return true
+    if (c.slug && c.slug === m.league_clan.clan.slug) return true
+    return c.name === m.league_clan.clan.name
+  }
+  const red = m.red.filter(same).length
+  const blue = m.blue.filter(same).length
   if (red === 0 && blue === 0) return null
   return red >= blue ? 'red' : 'blue'
 }
@@ -203,17 +210,18 @@ export interface TeamSnap { clan: { id: string; slug: string; name: string; mark
 export function teamSnapOf(detail: MatchDetail, side: 'red' | 'blue', fallback: MatchDetail['league_clan']): TeamSnap {
   const stats = side === 'red' ? detail.red_stats : detail.blue_stats
   const tally = new Map<string, { n: number; c: NonNullable<MatchPlayerStat['match_time_clan']> }>()
+  const keyOf = (c: NonNullable<MatchPlayerStat['match_time_clan']>) => c.league_clan_id ?? c.slug ?? c.name
   for (const s of stats) {
     const c = s.match_time_clan
-    if (!c || !c.league_clan_id) continue
-    const cur = tally.get(c.league_clan_id)
+    if (!c) continue
+    const cur = tally.get(keyOf(c))
     if (cur) cur.n += 1
-    else tally.set(c.league_clan_id, { n: 1, c })
+    else tally.set(keyOf(c), { n: 1, c })
   }
   const top = [...tally.values()].sort((a, b) => b.n - a.n)[0] ?? null
   const snaps = [detail.league_clan, detail.opponent]
   if (!top) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id }
-  const hit = snaps.find((s) => s.league_clan_id === top.c.league_clan_id)
+  const hit = snaps.find((s) => (top.c.league_clan_id && s.league_clan_id === top.c.league_clan_id) || (top.c.slug && s.clan.slug === top.c.slug) || s.clan.name === top.c.name)
   if (hit) return { clan: hit.clan, division: hit.division, league_clan_id: hit.league_clan_id }
   return { clan: { id: top.c.league_clan_id ?? fallback.clan.id, slug: top.c.slug ?? fallback.clan.slug, name: top.c.name, mark: top.c.mark }, division: null, league_clan_id: top.c.league_clan_id }
 }
@@ -364,7 +372,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', minWidth: 0, overflow: 'hidden' }}>
                   {m.win && mvpName ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, flex: '0 1 140px', minWidth: 0, overflow: 'hidden' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, flex: '0 1 230px', minWidth: 0, overflow: 'hidden' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none', padding: '3px 7px', whiteSpace: 'nowrap', background: 'rgba(255,216,61,.10)', border: '1px solid rgba(255,216,61,.55)', borderRadius: V3.radiusChip, boxShadow: '0 0 12px rgba(255,216,61,.22)' }}>
                         <span style={{ fontSize: 10.5, color: V3.gold }}>★</span>
                         <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.08em', color: V3.gold }}>MVP</span>

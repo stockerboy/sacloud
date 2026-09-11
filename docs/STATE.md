@@ -49,6 +49,10 @@ VPS     ★집계 서버(gwlove)가 32커밋 뒤(e53478f)였다★ — player-he
         목록 줄에 라운드 점수(계약 MatchListItem.red_rounds/blue_rounds · MATCH_SELECT 에 clanHexV2 tally)
 회차 6~8  기계 검수 새 결함 0 (빈 상태 문구는 «미반영»·«측정 중» 등 정상 문구). 폰 추이 마커 글자 겹침 → 벌림.
         ★백그라운드 Bash 로 띄운 회차는 내 턴이 끝나면 죽었다★ → 회차 9~40 은 Monitor(persistent) 루프로 (scratchpad/qa-round.mjs)
+교차검토 9(SPL)  ★명단의 match_time_clan.league_clan_id 가 전부 null★ → 진영 판정을 slug·이름으로(접힌 줄 라운드 점수·팀 이름 둘 다 이것 때문에 안 나왔다) ·
+        MVP 이름 칸 폭 · 상대전적 그래프 폭 700(«100.0%» 잘림)·가까운 마커 비켜 세움 · 폰 랭킹 칸 폭 줄여 닉네임 확보 ·
+        구간 칩 기본값 = 내 클랜 티어(최근 경기에서) · 육각형 눈금 숫자를 채움 위에
+[결정 그대로] hilarious-·CeIebrity 등이 SPL 클랜랭킹에 없는 것은 O-044(사장님 분류 · 열산 클랜은 SPL 목록에서 감춤) — 선수 개인랭킹엔 뜬다
 [자료 빈틈] SPL 우리 수집 경기는 ★판별 래더 증감(Match.red/blueRatingUpdate)이 안 적힌다★ — season0-apply 는 합계만 쓴다. 미러(3rd.supply) 경기만 ±가 있다.
         화면은 «래더 증감 미기록» 으로 사실대로. 판별 증감을 남기려면 season0-apply 가 경기마다 써야 한다 → ORDERS 후보
 남긴 것  옛 v2 표의 «58%»/«8킬» 소수 자리(원본 표기 따라 일부러 뗀 것 · common/format.ts) ·
