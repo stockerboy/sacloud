@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { LeagueClan } from '@sacloud/contract'
 import { leagueScreen, showsTier } from '@sacloud/contract'
 import type { ClanRankTableRow } from '@sacloud/ui'
-import { ClanRankTable, ClanSearchBox, EmptyState, RankBox, RankHeader } from '@sacloud/ui'
+import { ClanRankTable, ClanSearchBox, EmptyState, RankBox, RankHeader, type ClanRankNote } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
@@ -112,10 +112,35 @@ function ClanRankDirectory({
   /* ★검색은 순위를 매긴 뒤에 거른다.★ 걸러 놓고 번호를 매기면 3위가 1위로 보인다 */
   const filtered = useMemo(() => ranked.filter(matches(query)), [ranked, query])
 
+  /**
+   * ★승격유력 · 강등위기★ (2026-09-11 사장님)
+   *   구간마다 1·2등 → 승격유력 · 꼴찌 두 팀 → 강등위기.
+   *   맨 위 구간(ASTRA)은 올라갈 곳이 없어 승격 표시를 안 하고,
+   *   맨 아래 구간은 내려갈 곳이 없어 강등 표시를 안 한다.
+   *   ★순위가 없는(배치 중) 클랜은 세지 않는다★ — 뛴 적이 없으니 꼴찌가 아니다.
+   */
+  const noteOf = useMemo(() => {
+    const byTier = new Map<number, number>()
+    for (const r of ranked) {
+      if (r.rank === null) continue
+      byTier.set(r.division, Math.max(byTier.get(r.division) ?? 0, r.rank))
+    }
+    const top = Math.min(...[...byTier.keys()], Number.POSITIVE_INFINITY)
+    const bottom = Math.max(...[...byTier.keys()], Number.NEGATIVE_INFINITY)
+    return (division: number, rank: number | null): ClanRankNote => {
+      if (rank === null || !byTier.has(division)) return null
+      const size = byTier.get(division) as number
+      if (rank <= 2 && division !== top && size > 4) return 'promote'
+      if (rank > size - 2 && division !== bottom && size > 4) return 'relegate'
+      return null
+    }
+  }, [ranked])
+
   const rows: ClanRankTableRow[] = useMemo(
     () =>
       filtered.map((row) => ({
         rank: row.rank,
+        note: noteOf(row.division, row.rank),
         league_clan_id: row.id,
         clan: row.clan,
         division: row.division,
@@ -126,7 +151,7 @@ function ClanRankDirectory({
         win_rate: row.tier_win_rate ?? row.win_rate,
         rating: row.rating,
       })),
-    [filtered],
+    [filtered, noteOf],
   )
 
   /* 어떤 칸을 보여 줄지는 화면이 아니라 `leagueScreen()` 한 곳이 정한다.

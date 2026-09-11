@@ -114,6 +114,7 @@ export {
   ClanRankTable,
   PlayerRankTable,
   type ClanRankTableProps,
+  type ClanRankNote,
   type ClanRankTableRow,
   type PlayerRankTableProps,
 } from './league/RankTable'

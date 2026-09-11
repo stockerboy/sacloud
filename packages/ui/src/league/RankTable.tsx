@@ -276,7 +276,10 @@ function DivisionDivider({ division, leagueCategory }: { division: number; leagu
  * 그쪽 응답에는 `category`(클랜 구분)가 없다. 표는 그 값을 **한 번도 쓰지 않으므로**
  * 없는 값을 빈 문자열로 지어내 채우는 대신 타입에서 요구하지 않게 했다.
  */
-export type ClanRankTableRow = { rank: number | null } & Pick<
+/** 승격·강등 표시 (2026-09-11 사장님) — 표는 받은 대로 그리고, 누가 위태로운지는 화면이 정한다 */
+export type ClanRankNote = 'promote' | 'relegate' | null
+
+export type ClanRankTableRow = { rank: number | null; note?: ClanRankNote } & Pick<
   ClanRankRow,
   'league_clan_id' | 'clan' | 'division' | 'win' | 'lose' | 'win_rate' | 'rating'
 >
@@ -366,6 +369,18 @@ export function ClanRankTable({
                   <MarkCircle clan={row.clan} size={24} title={row.clan.name} />
                 </Egg>
                 <span className="truncate">{row.clan.name}</span>
+                {row.note ? (
+                  <span
+                    className="ml-2 shrink-0 rounded px-1.5 py-[2px] text-[10px] font-bold leading-none"
+                    style={
+                      row.note === 'promote'
+                        ? { color: '#8ff0ff', background: 'rgba(143,240,255,.10)', border: '1px solid rgba(143,240,255,.45)' }
+                        : { color: '#ff8a90', background: 'rgba(255,90,99,.10)', border: '1px solid rgba(255,90,99,.45)' }
+                    }
+                  >
+                    {row.note === 'promote' ? '승격유력' : '강등위기'}
+                  </span>
+                ) : null}
                 {/* 티어 라벨 — IPL 만 (지시 #23). 순서는 래더 순이라 경계선 대신 행마다 적는다 */}
                 {showTierLabel ? (
                   <span className="ml-2 shrink-0 text-xs text-faint">
