@@ -115,7 +115,7 @@ export function shapePath<T extends { t: number }>(
  * 값도 모양도 그대로고 보이는 순서만 바뀐다. 끝나면 가리개를 아예 뗀다 (드래그·탐색과 안 부딪힌다).
  * `prefers-reduced-motion` 을 켠 사람에게는 처음부터 다 보여 준다.
  */
-export function useDrawIn(ms = 900): number {
+export function useDrawIn(ms = 2200): number {
   const [t, setT] = useState(0)
   useEffect(() => {
     if (typeof window === 'undefined') { setT(1); return }
@@ -125,8 +125,8 @@ export function useDrawIn(ms = 900): number {
     const from = performance.now()
     const tick = (now: number) => {
       const p = Math.min(1, (now - from) / ms)
-      /* 끝에서 부드럽게 멎는다 */
-      setT(1 - (1 - p) * (1 - p))
+      /* 천천히 출발해 미끄러지듯 멎는다 (2026-09-11 사장님: «좀 느리고 멋들어지게») */
+      setT(p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
       if (p < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)

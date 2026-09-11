@@ -456,7 +456,18 @@ function toMatchPlayerStat(
     win: match.winnerSide === stat.side,
     /* 집계 전 경기는 그 자리에서 같은 규칙으로 고른다 — 스코어보드에도 MVP 가 뜬다 (2026-09-11 사장님) */
     mvp: stat.mvp === true || stat.playerId === mvpPlayerIdOf(match),
-    participant_role: stat.participantRole === 'mercenary' ? ('mercenary' as const) : stat.participantRole === 'member' ? ('member' as const) : null,
+    /**
+     * ★그 경기에서 남의 팀으로 뛰었나★ (2026-09-11 사장님: «용병 뛴 경기인데 클랜전으로 표시된다»).
+     *
+     * 수집원이 준 `participantRole` 은 병영 로그 경기에서 거의 다 `member` 다(기본값) — 믿을 수 없다.
+     * ★도장으로 판정한다★ — 본인 소속 도장(playerClan)과 그 경기에서 선 팀의 클랜이 다르면 용병이다.
+     * 도장이 없으면 수집원 값으로 떨어지고, 그것도 없으면 아무것도 안 적는다 (지어내지 않는다).
+     */
+    participant_role: (() => {
+      const teamSlug = clans.get(stat.side === 'red' ? match.redLeagueClanId : match.blueLeagueClanId)?.clan.slug ?? null
+      if (stat.playerClan && teamSlug) return stat.playerClan.slug === teamSlug ? ('member' as const) : ('mercenary' as const)
+      return stat.participantRole === 'mercenary' ? ('mercenary' as const) : stat.participantRole === 'member' ? ('member' as const) : null
+    })(),
     match_time_clan: matchTimeClanOf(stat, clans),
     /* 포지션은 이 경기의 사실이 아니라 **그 선수의 고유 자리**다 (D-199).
        바로 위 `weapon` 과 나란히 놓으면 `숏 · 스나` 처럼 읽힌다 —
