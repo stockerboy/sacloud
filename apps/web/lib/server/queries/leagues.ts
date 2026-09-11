@@ -134,7 +134,8 @@ export async function getLeague(leagueSlug: string): Promise<League | null> {
       owner: { select: USER_SUMMARY_SELECT },
       maps: { select: { map: { select: { id: true, name: true } } } },
       playerLimits: { select: { playerCount: true } },
-      _count: { select: { clans: { where: ACTIVE_CLAN } } },
+      /* 감춘 클랜(O-044)은 안 센다 — 클랜랭킹 «40곳» 과 같은 수 (QA 교차검토 21) */
+      _count: { select: { clans: { where: activeClanIn(leagueSlug) } } },
       /*
        * ★「지금 시즌」은 `status` 가 아니다★ (2026-09-07 · 사장님 결정).
        *

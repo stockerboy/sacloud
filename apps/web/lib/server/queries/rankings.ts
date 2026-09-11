@@ -425,7 +425,8 @@ export async function getPlayerRanksByScore(
   return {
     cursor: page.cursor,
     items: page.items.map((row, index) => {
-      const rank = startRank + index
+      /* 동점은 같은 등수 — 접어 둔 scoreRank(경쟁 순위). 띠·구간 카드의 «16위» 와 목록 «17위» 가 어긋나던 것 (QA 교차검토 21) */
+      const rank = row.scoreRank ?? startRank + index
       const lp = row.leaguePlayer
       return {
         rank,
