@@ -3178,6 +3178,9 @@ model LeaguePlayerHex {
   firstKills  Int @default(0)
   burstRounds Int @default(0)
   /// 상대 티어별 판수 — 티어계수의 근거
+  /// ★내 구간★ — 가장 많이 뛴 티어 (2026-09-11 사장님). 티어 가중치·구간별 랭킹이 이걸 본다.
+  /// 비어 있으면 아직 집계 전이다 — 지어내지 않는다.
+  homeTier    Int?
   tier1Games  Int @default(0)
   tier2Games  Int @default(0)
   tier3Games  Int @default(0)

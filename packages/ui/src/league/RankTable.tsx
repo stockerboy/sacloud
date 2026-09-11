@@ -680,6 +680,12 @@ export function PlayerRankTable({
                     ? <span className="text-[11px] font-normal text-faint">측정 중</span>
                     : formatRating(row.score ?? row.rating)}
                 {/* 2026-09-11 사장님: 점수 뒤 포지션 글자는 뺀다 — 스나이퍼만 닉네임 옆에 스코프를 단다 */}
+                {/* ★미참여 감점★ — 오래 안 뛰어 깎였으면 적는다 (2026-09-11 사장님) */}
+                {(row.activity_penalty ?? 0) > 0 ? (
+                  <div className="mt-0.5 text-[10px] font-bold leading-none text-[#ff8a90]">
+                    미참여 −{Math.round(row.activity_penalty as number)}점
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

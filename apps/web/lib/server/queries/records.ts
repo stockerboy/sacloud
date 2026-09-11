@@ -670,6 +670,7 @@ export async function getLeagueClanPlayers(
       kd_rate: row.kill + row.death > 0 ? kdRate(row.kill, row.death) : null,
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
+      activity_penalty: 0,
       hex: row.hex?.hex ?? null,
       score: row.hex?.score ?? null,
       score_weapon: row.hex?.weapon === 0 || row.hex?.weapon === 1 ? row.hex.weapon : null,
@@ -733,6 +734,7 @@ export async function getLeaguePlayerDetail(
       assist: true,
       headshot: true,
       mvpCount: true,
+      activityPenalty: true,
       placement: true,
       /* 기록실 사이드 `상세정보` 의 `포지션` 줄이 이 값을 쓴다 (D-161).
          `PLAYER_SUMMARY_SELECT` 를 넓히지 않는다 — 라인업·최근 같이한 플레이어처럼
@@ -867,6 +869,8 @@ export async function getLeaguePlayerDetail(
   return {
     id: effective.id,
     league_id: league.id,
+    /* ★미참여 감점★ — 오래 안 뛰어 깎인 점수 (2026-09-11 사장님: 표시만) */
+    activity_penalty: 'activityPenalty' in effective ? (effective.activityPenalty as number) : 0,
     league: toLeagueSummary(league),
     player: {
       ...toPlayerSummary(effective.player),

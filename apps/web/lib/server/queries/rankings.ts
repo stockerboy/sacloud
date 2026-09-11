@@ -97,6 +97,7 @@ interface WeaponRankRow {
   death: number
   leaguePlayer: {
     rating: number
+    activityPenalty: number
     player: { id: string; name: string }
     clan: {
       id: string
@@ -402,6 +403,7 @@ export async function getPlayerRanksByScore(
           leaguePlayer: {
             select: {
               rating: true,
+              activityPenalty: true,
               win: true,
               lose: true,
               kill: true,
@@ -463,6 +465,7 @@ export async function getPlayerRanksByScore(
         kd_rate: kill + death > 0 ? kdRate(kill, death) : null,
         kill_per_match: killPerMatch(kill, games),
         rating: lp.rating,
+        activity_penalty: lp.activityPenalty ?? 0,
         weapon: 'all' as const,
         score: row.score,
         score_weapon: row.weapon === 0 || row.weapon === 1 ? row.weapon : null,
@@ -484,6 +487,7 @@ interface ScoreRankRow {
   games: number
   leaguePlayer: {
     rating: number
+    activityPenalty: number
     win: number
     lose: number
     kill: number

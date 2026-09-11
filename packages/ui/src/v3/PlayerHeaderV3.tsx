@@ -198,6 +198,10 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               {hex?.score !== null && hex?.score !== undefined ? formatRating(hex.score) : hex ? '측정 중' : formatRating(data.rating)}
             </span>
             <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{hex?.score !== null && hex?.score !== undefined ? '실력 점수' : hex ? `${fmt(hex.games)}판` : '래더'}</span>
+            {/* ★미참여 감점★ (2026-09-11 사장님) */}
+            {(data.activity_penalty ?? 0) > 0 ? (
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#ff8a90', whiteSpace: 'nowrap' }}>미참여 −{Math.round(data.activity_penalty as number)}점</span>
+            ) : null}
           </span>
           {data.clan?.is_official_clan ? <OfficialPill theme={theme} /> : null}
           <GhostButton href={infoHref}>기본정보</GhostButton>

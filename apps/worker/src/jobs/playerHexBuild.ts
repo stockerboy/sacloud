@@ -40,6 +40,7 @@ import {
   foldPlayerHex,
   PLAYER_HEX_FORMULA_VERSION,
   type PlayerHexInput,
+  homeTierOf,
 } from '../lib/playerHexScore.js'
 
 export { PLAYER_HEX_FORMULA_VERSION }
@@ -533,6 +534,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         outWon: p.outWon,
         firstKills: p.firstKills,
         burstRounds: p.burstRounds,
+        /* ★내 구간★ — 가장 많이 뛴 티어 (2026-09-11 사장님). 구간별 랭킹이 이 칸을 거른다 */
+        homeTier: homeTierOf(p.tierGames),
         tier1Games: p.tierGames[1],
         tier2Games: p.tierGames[2],
         tier3Games: p.tierGames[3],

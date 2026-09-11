@@ -143,6 +143,11 @@ export const LeaguePlayer = z.object({
   rifle_death: Count.nullable().default(null),
   rifle_assist: Count.nullable().default(null),
   rifle_kd_rate: Percent.nullable().default(null),
+  /**
+   * ★미참여 감점★ — 오래 안 뛰어 깎인 점수 (2026-09-11 사장님: «미참여 -10점 이런 식으로 표시만»).
+   * 0 이면 안 깎였다. 래더 계산은 이미 이 값을 빼고 낸 것이라 ★표시용★ 이다.
+   */
+  activity_penalty: z.number().optional(),
 })
 export type LeaguePlayer = z.infer<typeof LeaguePlayer>
 
@@ -291,6 +296,11 @@ export const PlayerRankRow = z.object({
    * 무기 탭의 정렬 기준이자 표시값이다. 통합 랭킹에서는 `null`.
    */
   rating_delta: z.number().int().nullable().optional(),
+  /**
+   * ★미참여 감점★ — 오래 안 뛰어 깎인 점수 (2026-09-11 사장님: «미참여 -10점 이런 식으로 표시만»).
+   * 0 이면 안 깎였다. 래더 계산은 이미 이 값을 빼고 낸 것이라 ★표시용★ 이다.
+   */
+  activity_penalty: z.number().optional(),
 })
 export type PlayerRankRow = z.infer<typeof PlayerRankRow>
 
