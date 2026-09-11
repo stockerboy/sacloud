@@ -221,7 +221,12 @@ function StrengthCard({ data }: { data: LeaguePlayerDetail }) {
       } />
       <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', padding: '8px 18px 14px', flexWrap: 'wrap', gap: 12 }}>
         {hex && !hex.measuring ? (
-          <Hexagon axes={axes} id="playerHex" />
+          /* 2026-09-11: 머리 카드가 빠져 이 카드가 한 줄을 다 쓴다 → 육각형을 키운다 (300px 고정 그림을 배율로) */
+          <span className="v3-hex-zoom" style={{ display: 'block', width: 300 * 1.55, height: 262 * 1.55 }}>
+            <span style={{ display: 'block', transform: 'scale(1.55)', transformOrigin: 'top left' }}>
+              <Hexagon axes={axes} id="playerHex" />
+            </span>
+          </span>
         ) : (
           <div style={{ padding: '28px 8px', fontSize: 12, color: V3.textGhost, textAlign: 'center', lineHeight: 1.7 }}>
             {hex ? (

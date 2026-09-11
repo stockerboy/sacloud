@@ -50,13 +50,13 @@ const cellStyle: CSSProperties = { position: 'relative', display: 'flex', flexDi
 function Kpi({ label, value, sub, color, extra }: { label: string; value: string; sub?: ReactNode; color: string; extra?: ReactNode }) {
   return (
     <div style={{ ...cellStyle, borderRight: `1px solid ${V3.rowDivider}` }} className="v3-phead-cell">
-      <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-        <span style={{ fontSize: 10.5, color: V3.textGhost, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{label}</span>
-        {extra}
+      <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+        <span style={{ fontSize: 10.5, color: V3.textGhost, letterSpacing: '.08em', whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
+        {sub ? <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</span> : null}
       </span>
-      <span style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0 }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <span style={{ fontSize: 26, fontWeight: 600, lineHeight: 1, whiteSpace: 'nowrap', color }}>{value}</span>
-        {sub ? <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</span> : null}
+        {extra}
       </span>
     </div>
   )
@@ -134,8 +134,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
 
       {/* 1 · 플레이구간 */}
       {tiered ? (
-        <div className="v3-phead-tier" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, padding: '9px 16px' }}>
-          <span style={{ fontSize: 11, color: V3.textFaint, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>플레이구간</span>
+        <div className="v3-phead-tier" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, padding: '11px 16px 9px' }}>
+          <span style={{ fontSize: 11, color: '#b9c6de', letterSpacing: '.06em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,.85)' }}>플레이구간</span>
           <span style={{ position: 'relative' }}>
             <span
               onClick={() => setOpen((v) => !v)}
@@ -187,7 +187,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           </span>
         </span>
         <LeagueCenter name={data.league.name} season={seasonLabel} />
-        <span className="v3-phead-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, minWidth: 0 }}>
+        <span className="v3-phead-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, minWidth: 0 }}>
             <span style={{ fontSize: 21, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
               {hex?.score !== null && hex?.score !== undefined ? `${fmt(hex.score)}점` : hex ? '측정 중' : `${fmt(data.rating)}점`}
