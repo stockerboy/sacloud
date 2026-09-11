@@ -20,8 +20,8 @@ import type { PlayerTrendDay } from '@sacloud/contract'
 import { fitMarkUrl, hasFitMark } from './primitives'
 import { V3 } from './tokens'
 
-const X0 = 40
-const LABEL_W = 128
+const X0_PC = 40
+const LABEL_W_PC = 128
 const Y_TOP = 28
 /** 흔들림 폭 (% 단위) — 모양만 */
 const WIGGLE = 1.2
@@ -88,8 +88,12 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const H = width < 700 ? Math.round(width * 1.05) : 520
-  const Y_BOTTOM = H - 64
+  /* 2026-09-11 사장님(sleeper 참고): 폰에서 너무 정사각형 — 판을 가로로 넓히고 세로는 옛 0~60 높이만큼(×0.66). 옛 값 ×1.05 */
+  const phone = width < 700
+  const H = phone ? Math.round(width * 0.66) : 520
+  const Y_BOTTOM = H - (phone ? 46 : 64)
+  const LABEL_W = phone ? 96 : LABEL_W_PC
+  const X0 = phone ? 30 : X0_PC
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)
   const X1 = width - LABEL_W
   const span = Math.max(1, days.length - 1) /* 28 */
