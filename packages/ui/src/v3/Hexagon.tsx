@@ -78,7 +78,7 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
         strokeWidth={2}
         strokeOpacity={0.95}
         strokeLinejoin="round"
-        filter={`url(#${id}Glow)`}
+        filter={grow < 1 ? undefined : `url(#${id}Glow)`}
         {...penDash(grow)}
       />
       {/* 2026-09-11 사장님: 꼭짓점 점은 없앤다 */}

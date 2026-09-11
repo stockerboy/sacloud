@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { V3 } from './tokens'
 import { fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
-import { PLOT, SPAN_DAYS, TICK_LABELS, dayOf, noise, penDash, plotBox, pointAtLength, pointsToStr, seedOf, shapePoints, useDrawIn } from './seasonPlot'
+import { ORIGIN_MS, DAY_MS, PLOT, SPAN_DAYS, TICK_LABELS, dayOf, noise, penDash, plotBox, pointAtLength, pointsToStr, seedOf, shapePoints, useDrawIn, valueAt } from './seasonPlot'
 
 export interface H2HGame {
   /** 경기 시작 (ISO) */
@@ -61,14 +61,14 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
     let w = 0
     let n = 0
     /* ★우리 선은 0% 에서 출발★ — 상대는 100 − 우리라 저절로 위에서 출발한다 */
-    const pts: { t: number; v: number }[] = [{ t: 0, v: 0 }]
+    const pts: { t: number; v: number; w: number; n: number }[] = [{ t: 0, v: 0, w: 0, n: 0 }]
     for (const g of sorted) {
       n += 1
       if (g.won) w += 1
-      pts.push({ t: Math.max(0, Math.min(SPAN_DAYS, g.t)), v: (w / n) * 100 })
+      pts.push({ t: Math.max(0, Math.min(SPAN_DAYS, g.t)), v: (w / n) * 100, w, n })
     }
     const last = pts[pts.length - 1]
-    if (last && last.t < nowT) pts.push({ t: nowT, v: last.v })
+    if (last && last.t < nowT) pts.push({ t: nowT, v: last.v, w: last.w, n: last.n })
     return { mine: pts, played: n, endShare: last?.v ?? 0 }
   }, [games, nowT])
 
@@ -78,14 +78,26 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
   const mineLine = pointsToStr(minePts)
   const oppLine = pointsToStr(oppPts)
   /* 펜 끝 — 선 길이의 draw 지점 (2026-09-11 사장님) */
-  const drawing = draw < 1
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [hover, setHover] = useState<number | null>(null)
+  /* 바를 잡아 옮기면 그 날짜의 값으로 마커가 따라온다 (2026-09-11 사장님: «클랜페이지에서 축 이동이 안 된다») */
+  const pickAt = (clientX: number) => {
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    const x = ((clientX - rect.left) / rect.width) * width
+    const t = ((x - X0) / (X1 - X0)) * SPAN_DAYS
+    setHover(Math.max(0, Math.min(nowT, t)))
+  }
+  const drawing = draw < 1 && hover === null
   const mineTip = pointAtLength(minePts, draw)
   const oppTip = pointAtLength(oppPts, draw)
   const vOf = (y: number) => ((Y_BOTTOM - y) / (Y_BOTTOM - Y_TOP)) * 100
-  const shownShare = drawing ? vOf(mineTip[1]) : endShare
-  const tipX = drawing ? mineTip[0] : xOf(nowT)
-  const endY = drawing ? mineTip[1] : yOf(endShare)
-  const oppEndY = drawing ? oppTip[1] : yOf(100 - endShare)
+  const hoverShare = hover === null ? null : valueAt(mine, (p) => p.v, hover)
+  const shownShare = hover !== null ? (hoverShare as number) : drawing ? vOf(mineTip[1]) : endShare
+  const tipX = hover !== null ? xOf(hover) : drawing ? mineTip[0] : xOf(nowT)
+  const endY = hover !== null ? yOf(shownShare) : drawing ? mineTip[1] : yOf(endShare)
+  const oppEndY = hover !== null ? yOf(100 - shownShare) : drawing ? oppTip[1] : yOf(100 - endShare)
   const close = Math.abs(endY - oppEndY) < 52
   const nowX = tipX
   const R = PLOT.markerR
@@ -93,7 +105,16 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
 
   return (
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: V3.plot }}>
-      <svg viewBox={`0 0 ${width} ${H}`} style={{ width: '100%', height: H, display: 'block' }}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${width} ${H}`}
+        style={{ width: '100%', height: H, display: 'block', cursor: 'crosshair' }}
+        onMouseMove={(e) => pickAt(e.clientX)}
+        onMouseLeave={() => setHover(null)}
+        onTouchStart={(e) => { const t = e.touches[0]; if (t) pickAt(t.clientX) }}
+        onTouchMove={(e) => { const t = e.touches[0]; if (t) pickAt(t.clientX) }}
+        onTouchEnd={() => setHover(null)}
+      >
         <defs>
           <filter id="h2hGlowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b1" /><feGaussianBlur stdDeviation="16" result="b2" /><feMerge><feMergeNode in="b2" /><feMergeNode in="b1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
           <filter id="h2hGlowR" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="r1" /><feGaussianBlur stdDeviation="16" result="r2" /><feMerge><feMergeNode in="r2" /><feMergeNode in="r1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
@@ -122,6 +143,14 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
             <polyline points={mineLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
             <polyline points={oppLine} fill="none" stroke={oppTheme.main} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
             <polyline points={mineLine} fill="none" stroke="#dbe8ff" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+          </g>
+        ) : null}
+        {hover !== null ? (
+          <g pointerEvents="none">
+            <line x1={xOf(hover)} y1={Y_TOP - 6} x2={xOf(hover)} y2={Y_BOTTOM + 6} stroke="#8ff0ff" strokeWidth={1} opacity={0.7} />
+            <text x={xOf(hover)} y={Y_BOTTOM + 26} textAnchor="middle" fill="#8ff0ff" fontSize={PLOT.tickFont}>
+              {new Date(ORIGIN_MS + hover * DAY_MS).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', timeZone: 'Asia/Seoul' }).replace(/\.$/, '').replace(/\. /, '/')}
+            </text>
           </g>
         ) : null}
         {played > 0 ? (
