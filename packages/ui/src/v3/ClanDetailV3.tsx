@@ -505,6 +505,96 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
 
 /* ── 페이지 본문 ──────────────────────────────────────────────── */
 
+
+/* ── 클랜별 전적 (2026-09-11 사장님: 선수 페이지와 같은 방식으로) ─────────── */
+
+/**
+ * 구간마다 한 칸. 밑의 마크 줄에서 상대를 누르면 ★제목이 그 클랜으로 바뀌고★ 숫자가 그 상대와의 기록이 된다.
+ * 마크 줄은 ★그 구간의 모든 클랜★ (내 클랜 제외 · 2026-09-11 사장님) — 많이 붙은 순, 안 붙어 본 클랜은 뒤.
+ * 고른 상대는 아래 «상대전적» 카드(그래프·맞대결 기록)도 같이 따라간다.
+ */
+function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
+  data: LeagueClanShow
+  h2h: readonly ClanHeadToHead[]
+  tierClansOf: (division: number) => readonly ClanRankRow[] | null
+  selected: string | null
+  onSelect: (id: string | null) => void
+}) {
+  const theme = clanThemeOf(data.clan.slug)
+  const tiered = data.league.division_count >= 2
+  const tiers = useMemo(() => {
+    const set = new Set<number>()
+    for (let d = 1; d <= Math.max(1, data.league.division_count); d += 1) set.add(d)
+    for (const r of h2h) if (r.division !== null) set.add(r.division)
+    return [...set].sort((a, b) => a - b)
+  }, [h2h, data.league.division_count])
+  return (
+    <div style={{ marginTop: 14, ...cardStyle }}>
+      <CardHead title="클랜별 전적" right={
+        <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(data.win + data.lose)}전 기준</span>
+      } />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px 16px' }}>
+        {tiers.map((t) => {
+          const rows = h2h.filter((r) => r.division === t)
+          const byId = new Map(rows.map((r) => [r.league_clan_id, r]))
+          /* 그 구간의 모든 클랜 — 많이 붙은 순, 안 붙어 본 클랜은 뒤 */
+          const all = (tierClansOf(t) ?? [])
+            .filter((c) => c.league_clan_id !== data.id)
+            .map((c) => ({ id: c.league_clan_id, clan: c.clan, games: (byId.get(c.league_clan_id)?.win ?? 0) + (byId.get(c.league_clan_id)?.lose ?? 0) }))
+            .sort((a, b) => b.games - a.games || (a.clan.name < b.clan.name ? -1 : 1))
+          const pick = selected === null ? null : byId.get(selected) ?? null
+          const pickedHere = pick !== null || all.some((c) => c.id === selected)
+          const win = pickedHere && pick ? pick.win : rows.reduce((n, r) => n + r.win, 0)
+          const lose = pickedHere && pick ? pick.lose : rows.reduce((n, r) => n + r.lose, 0)
+          const rate = win + lose === 0 ? null : Math.round((win / (win + lose)) * 1000) / 10
+          const pickedClan = pickedHere ? all.find((c) => c.id === selected) ?? null : null
+          return (
+            <div key={t} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, background: V3.card, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <MarkCircle clan={data.clan} size={22} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
+                <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                {pickedClan ? (
+                  <>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: clanThemeOf(pickedClan.clan.slug).ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pickedClan.clan.name}</span>
+                    <MarkCircle clan={pickedClan.clan} size={22} />
+                    <div style={spacerStyle} />
+                    <span onClick={() => onSelect(null)} style={{ fontSize: 10.5, color: V3.textGhost, cursor: 'pointer', whiteSpace: 'nowrap' }}>구간 전체</span>
+                  </>
+                ) : tiered ? (
+                  <TierText division={t} leagueCategory={data.league.category} size={12} />
+                ) : (
+                  <span style={{ fontSize: 12.5, color: V3.textMuted }}>전체</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap', marginTop: 8 }}>
+                <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap' }}>{fmt(win)}승 {fmt(lose)}패</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: rate === null ? V3.textGhost : statColor(rate) }}>{pct1(rate)}</span>
+              </div>
+              {all.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginTop: 10 }}>
+                  {all.map((c) => (
+                    <span
+                      key={c.id}
+                      onClick={() => onSelect(selected === c.id ? null : c.id)}
+                      title={`${c.clan.name} · ${c.games}전`}
+                      style={{ display: 'inline-flex', cursor: 'pointer', borderRadius: '50%', padding: 2, opacity: c.games === 0 ? 0.45 : 1, background: c.id === selected ? 'rgba(91,141,255,.28)' : 'transparent', boxShadow: c.id === selected ? '0 0 0 1px rgba(127,169,255,.8)' : undefined }}
+                    >
+                      <MarkCircle clan={c.clan} size={26} />
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+/* 옛 구간 줄(TierStrip)은 지우지 않았다 — ClanVsTiersCard 가 대신 그린다 (CLAUDE.md 1-4) */
+void TierStrip
+
 export function ClanDetailV3(props: ClanDetailV3Props) {
   const { data, matches, matchesLoading, hasMore, loadingMore, onLoadMore } = props
   const h2h = data.head_to_head
@@ -514,7 +604,7 @@ export function ClanDetailV3(props: ClanDetailV3Props) {
     for (const r of h2h) if (r.division !== null) set.add(r.division)
     return [...set].sort((a, b) => a - b)
   }, [h2h, data.league.division_count])
-  const [tier, setTier] = useState<number>(() => {
+const [tier] = useState<number>(() => {
     /* 내 티어에 맞대결 기록이 있으면 내 티어. 없으면(승격·강등 직후 등) 가장 많이 뛴 티어 — 칩·구간 승률·상대전적이 같은 티어를 보게 (QA 교차검토 15) */
     if (h2h.some((r) => r.division === data.division)) return data.division
     const games = new Map<number, number>()
@@ -536,6 +626,7 @@ export function ClanDetailV3(props: ClanDetailV3Props) {
     return { league_clan_id: row.league_clan_id, clan: { id: row.clan.id, slug: row.clan.slug, name: row.clan.name, mark_bg_url: row.clan.mark.bg, mark_front_url: row.clan.mark.front }, division: row.division, win: 0, lose: 0, last_played_at: null, recent: [] }
   })()
   const tiered = data.league.division_count >= 2
+  void tiered
   /* ★탭 둘★ (2026-09-11 사장님: «클랜별전적 · 플레이스타일 이렇게 나눠서 최대한 개인 페이지랑 비슷한 형식으로») */
   const [tab, setTab] = useState<'vs' | 'style'>('vs')
   return (
@@ -573,16 +664,8 @@ export function ClanDetailV3(props: ClanDetailV3Props) {
         </Card>
       ) : (
       <>
-      {tiered && tiers.length > 1 ? (
-        <div style={{ marginTop: 20, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {tiers.map((t) => (
-            <span key={t} onClick={() => { setTier(t); const first = h2h.find((r) => r.division === t) ?? null; const firstAny = props.tierClansOf(t)?.find((r) => r.league_clan_id !== data.id) ?? null; setSelected(first?.league_clan_id ?? firstAny?.league_clan_id ?? null) }} style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: V3.radiusCtl, cursor: 'pointer', background: t === tier ? '#1a1c24' : '#111218', border: `1px solid ${t === tier ? '#3a3d4a' : '#24262f'}`, opacity: t === tier ? 1 : 0.6 }}>
-              <TierText division={t} leagueCategory={data.league.category} size={11} />
-            </span>
-          ))}
-        </div>
-      ) : null}
-      <TierStrip data={data} h2h={h2h} division={tier} selected={selected} onSelect={setSelected} tierClans={tierClans} />
+      {/* 2026-09-11 사장님: 선수 페이지와 같은 방식 — 구간마다 한 칸, 마크를 누르면 그 클랜과의 승률로 */}
+      <ClanVsTiersCard data={data} h2h={h2h} tierClansOf={props.tierClansOf} selected={selected} onSelect={setSelected} />
       {opp ? (
         <HeadToHeadCard data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
       ) : (
