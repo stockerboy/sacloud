@@ -24,6 +24,20 @@ QA 루프     scratchpad/qa-pool.mjs(대상 풀 선수 103·클랜 51) → qa-ro
             결과 scratchpad/qa-rounds/rNNN/summary.json — 발견 즉시 고치고 다시 민다
 ```
 
+### 0-C-1. QA 회차별 고친 것 (2026-09-11 아침 · 계속 늘어난다)
+
+```
+회차 1  티어 ‹› 출발점을 내 티어로 · DAY 그래프 첫 판 0/100% 벽 제거 · 폰 경기줄 킬/데스 칸 잘림 ·
+        상대전적 그래프 축 30~70 → 0~100 · ★리그 «경기» 목록이 옛 카드(마크 없음·알수없음·펼쳐도 빈 것)★ → MatchListV3 로 덮음
+회차 2  구간 카드 MVP «0회» 거짓말(tierBreakdown select 에 mvp 누락) · 점수 리그 띠·카드는 래더 등수 대신 «측정 중 · n판» ·
+        랭킹표 빈 마크(원 크롭 마크 먼저) · 경기 목록 «10v10» → 5v5 · 폰 양 팀 줄 «CHAL» 잘림 · 상대전적 끝 마커 글자 겹침 ·
+        클랜 최근 경기도 펼침 · 파비콘 · 홈 오타 Opertation
+VPS     ★집계 서버(gwlove)가 32커밋 뒤(e53478f)였다★ — player-hex-build 가 없어 02:09 재계산 뒤 MVP·점수가 안 늘고
+        ipl-rank-apply 는 prisma 클라이언트가 옛것이라 «upsert of undefined» 로 죽고 있었다.
+        09:40 잠금(flock 4개) 잡고 git pull → pnpm install → prisma generate. 10:00 회차부터 새 체인이 돈다 [확인 예정]
+클릭 검수 함정  «칩 눌러도 변화 없음» 은 innerText 길이 비교라 거짓 양성이 있다 — chipprobe.mjs 로 직접 눌러 확인함(칩은 된다)
+```
+
 ## 0-B. ★2026-09-11 새벽 — QA 회의 반영 (커밋 `aad9b8a`)★
 
 사장님 결정: IPL 래더 칸 → 상대 티어 · 명단 없는 경기 → «킬데스 수집중» 잠금 · 통합 개인랭킹 → 점수 순 한 줄.

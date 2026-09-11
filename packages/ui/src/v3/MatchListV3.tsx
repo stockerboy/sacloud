@@ -36,6 +36,7 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
   const tier = <TierText division={division} leagueCategory={leagueCategory} size={10} />
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
+      {align === 'left' ? <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', color: '#dbe8ff', background: 'rgba(91,141,255,.22)', border: '1px solid rgba(91,141,255,.45)', borderRadius: 3, padding: '1px 4px' }}>WIN</span> : null}
       {align === 'left' ? <MarkCircle clan={clan} size={22} /> : null}
       <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
         {name}
