@@ -362,6 +362,9 @@ export async function getFormTop(leagueId: string, weapon: RankWeapon): Promise<
  * 옛 래더 순 목록(`leagues.ts` 의 `getPlayerRanks`)은 지우지 않았다 (`CLAUDE.md` 1-4).
  * 표가 비어 있으면(잡이 아직 안 돌았으면) 라우트가 그쪽으로 돌아간다.
  */
+/** ★개인랭킹에 올리는 최소 판수★ (2026-09-12 사장님) — 0 이면 전부 올린다 */
+export const RANK_MIN_GAMES = 15
+
 /** `false` 로 두면 옛 판 — 통합 승률 + 무기별 «전 구간» 킬뎃 (`CLAUDE.md` 1-4) */
 const RANK_STATS_BY_HOME_TIER = true
 
@@ -389,6 +392,12 @@ export async function getPlayerRanksByScore(
   const where = {
     weapon: onlyWeapon === null ? { not: null } : onlyWeapon,
     score: { not: null },
+    /**
+     * ★적게 뛴 선수는 개인랭킹에 안 올린다★ (2026-09-12 사장님: «판수 적은데 상위권인 애들이 너무 많아»).
+     * 조절판에서 15판으로 고르셨다. 점수 자체는 그대로 계산되고 ★줄 세우기에서만 뺀다★ —
+     * 선수 페이지에는 점수가 그대로 뜬다. 0 으로 두면 규칙이 꺼진다 (CLAUDE.md 1-4).
+     */
+    ...(RANK_MIN_GAMES > 0 ? { games: { gte: RANK_MIN_GAMES } } : {}),
     /* 구간 고르개 — 안 고르면 칸을 아예 안 넣는다 (homeTier 가 빈 줄도 전체에는 남는다) */
     ...(onlyTier === null ? {} : { homeTier: onlyTier }),
     leaguePlayer: { leagueId, placement: false },

@@ -42,6 +42,8 @@ import {
   PLAYER_HEX_FORMULA_VERSION,
   type PlayerHexInput,
   homeTierOf,
+  mainWeaponOf,
+  MIN_HOME_TIER_GAMES,
 } from '../lib/playerHexScore.js'
 
 export { PLAYER_HEX_FORMULA_VERSION }
@@ -513,6 +515,54 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
        WHERE lp."leagueId" = ${league.id} AND h."formulaVersion" = ${PLAYER_HEX_FORMULA_VERSION}
          AND m."supersededAt" IS NULL
        GROUP BY lp."id"`
+    /**
+     * ★구간 × 무기 킬·데스★ (2026-09-12 사장님) — 점수의 킬뎃 몫이 쓴다.
+     * 칸을 열여덟 개 늘리는 대신 작은 질의 하나를 더 둔다. 한 리그에 수천 줄이다.
+     */
+    const tw = await prisma.$queryRaw<
+      { lpid: string; tier: number | null; wp: number | null; g: number; k: number; d: number }[]
+    >`
+      SELECT lp."id" AS lpid, foe."division" AS tier, s."weapon" AS wp,
+             COUNT(s.*)::int AS g,
+             COALESCE(SUM(s."kill"), 0)::int AS k,
+             COALESCE(SUM(s."death"), 0)::int AS d
+        FROM "LeaguePlayer" lp
+        JOIN "MatchPlayerStat" s ON s."playerId" = lp."playerId"
+        JOIN "Match" m ON m."id" = s."matchId" AND m."leagueId" = lp."leagueId"
+        LEFT JOIN "LeagueClan" foe ON foe."id" =
+          CASE WHEN s."side" = 'red' THEN m."blueLeagueClanId" ELSE m."redLeagueClanId" END
+       WHERE lp."leagueId" = ${league.id}
+         AND m."supersededAt" IS NULL AND m."startAt" >= ${SEASON0_FROM}
+         AND s."kill" IS NOT NULL AND s."death" IS NOT NULL
+         AND (s."participantRole" IS NULL OR s."participantRole" <> 'dropout')
+       GROUP BY lp."id", foe."division", s."weapon"`
+    const twOf = new Map<string, typeof tw>()
+    for (const row of tw) {
+      const list = twOf.get(row.lpid) ?? []
+      list.push(row)
+      twOf.set(row.lpid, list)
+    }
+    /**
+     * ★내 구간 + 내 무기 킬뎃★ — 표본이 모자라면 한 칸씩 넓힌다.
+     *   ① 내 구간 · 내 무기 (10판 이상)  ② 내 구간 전체 (10판 이상)  ③ 시즌 전체
+     * 셋 다 모자라면 `null` — 여섯 축 값으로 대신한다 (지어내지 않는다).
+     */
+    const kdRateOf = (lpid: string, homeTier: TierNo | null, weapon: 0 | 1 | null): number | null => {
+      const list = twOf.get(lpid) ?? []
+      const sum = (f: (r: (typeof list)[number]) => boolean) => {
+        let g = 0, k = 0, d = 0
+        for (const r of list) if (f(r)) { g += r.g; k += r.k; d += r.d }
+        return { g, k, d }
+      }
+      const pick =
+        homeTier !== null && weapon !== null && sum((r) => r.tier === homeTier && r.wp === weapon).g >= MIN_HOME_TIER_GAMES
+          ? sum((r) => r.tier === homeTier && r.wp === weapon)
+          : homeTier !== null && sum((r) => r.tier === homeTier).g >= MIN_HOME_TIER_GAMES
+            ? sum((r) => r.tier === homeTier)
+            : sum(() => true)
+      return pick.k + pick.d > 0 ? Math.round((pick.k / (pick.k + pick.d)) * 1000) / 10 : null
+    }
+
     const hexOf = new Map(hex.map((h) => [h.lpid, h]))
     const inputs: PlayerHexInput[] = base.map((b) => {
       const h = hexOf.get(b.lpid)
@@ -526,6 +576,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         kills: b.kills,
         tierGames: tiered ? { 1: b.t1, 2: b.t2, 3: b.t3 } : { 1: 0, 2: 0, 3: 0 },
         tierWins: tiered ? { 1: b.t1w, 2: b.t2w, 3: b.t3w } : { 1: 0, 2: 0, 3: 0 },
+        /* ★내 구간 + 내 무기 킬뎃★ (2026-09-12 사장님) */
+        kdRate: kdRateOf(b.lpid, tiered ? homeTierOf({ 1: b.t1, 2: b.t2, 3: b.t3 }) : null, mainWeaponOf({ sniperGames: b.sniperg, rifleGames: b.rifleg })),
         clanTier: asTier(b.clantier),
         rounds: h?.rounds ?? 0,
         firstKills: h?.firstkills ?? 0,

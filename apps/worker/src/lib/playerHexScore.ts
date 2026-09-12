@@ -33,7 +33,15 @@ export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.0'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700
-export const HEX_SHRINK_K = 120
+/**
+ * ★판수 무게★ — 라운드가 이만큼이면 점수의 절반을 받는다.
+ * 2026-09-12 사장님이 조절판에서 120 → 300 으로 올리셨다.
+ * > «지금 판수적은데 상위권인 애들이 너무 많아»
+ * 실측 — 상위 30명 중 20판 미만이 여럿이던 것이 1명으로 줄었다.
+ */
+export const HEX_SHRINK_K = 300
+/** ★옛 값★ (2026-09-10 ~ 2026-09-12) */
+export const HEX_SHRINK_K_V1 = 120
 /**
  * ★여섯 축 : 승률 = 5 대 5★ (2026-09-12 사장님: «5대5로 해줘»).
  *
@@ -43,11 +51,20 @@ export const HEX_SHRINK_K = 120
  *
  * ⚠ 옛 값은 아래에 남긴다 (`CLAUDE.md` 1-4).
  */
-export const HEX_W_HEX = 0.5
-export const HEX_W_WR = 0.5
-/** ★옛 판★ — 여섯 축 8 : 승률 2 (2026-09-10 ~ 2026-09-11) */
+export const HEX_W_HEX = 0.19
+export const HEX_W_WR = 0.35
+/**
+ * ★킬뎃 몫★ (2026-09-12 사장님이 조절판에서 고르신 값).
+ * 킬뎃은 ★내 구간 + 내 무기★ 것이다 — 화면에 뜨는 킬뎃과 같은 잣대다.
+ * 그 구간·무기 판이 10판이 안 되면 구간 전체로, 그것도 모자라면 시즌 전체로 떨어진다.
+ * 실측 (872명) — 구간·무기 645명 · 구간 40명 · 전체 187명.
+ */
+export const HEX_W_KD = 0.46
+/** ★옛 판★ — 여섯 축 8 : 승률 2 (2026-09-10 ~ 2026-09-11) · 5 대 5 (2026-09-12 반나절) */
 export const HEX_W_HEX_V1 = 0.8
 export const HEX_W_WR_V1 = 0.2
+export const HEX_W_HEX_V2 = 0.5
+export const HEX_W_WR_V2 = 0.5
 /** 소속 클랜 티어 보정 — ASTRA / CHALLENGER1 / CHALLENGER2 */
 export const HEX_CLAN_BONUS: Readonly<Record<TierNo, number>> = { 1: 40, 2: 0, 3: -40 }
 /** 주무기로 인정하는 최소 판수 */
@@ -62,7 +79,26 @@ export const BURST_GAP_SECONDS = 2
 export const HEX_AXIS_KEYS = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
 export type HexAxisKey = (typeof HEX_AXIS_KEYS)[number]
 
+/**
+ * ★축 무게★ — 2026-09-12 사장님이 조절판에서 세이브 0.5 → 2.0 · 소수싸움 0.3 → 2.0 으로 올리셨다.
+ *
+ * ⚠ 그 둘은 ★반분신뢰도가 가장 낮은 축★ 이다 (선짤 0.543 … 소수싸움 0.041).
+ *   «같은 선수가 다시 해도 값이 잘 안 맞는» 축이라 원래 무게를 낮춰 뒀었다.
+ *   올리면 운이 순위에 더 섞인다 — 사장님께 말씀드리고 그대로 넣었다.
+ *
+ * 옛 값은 AXIS_WEIGHT_V1 에 남긴다 (CLAUDE.md 1-4).
+ */
 export const AXIS_WEIGHT: Readonly<Record<HexAxisKey, number>> = {
+  opening: 1.0,
+  carry: 1.0,
+  duel: 1.0,
+  burst: 0.7,
+  save: 2.0,
+  outnumbered: 2.0,
+}
+
+/** ★옛 값★ — 반분신뢰도로 정한 무게 (2026-09-10 ~ 2026-09-12) */
+export const AXIS_WEIGHT_V1: Readonly<Record<HexAxisKey, number>> = {
   opening: 1.0,
   carry: 1.0,
   duel: 1.0,
@@ -81,6 +117,13 @@ export interface PlayerHexInput {
   kills: number
   /** 상대 티어별 판수 — 부리그가 셋이 아닌 리그면 전부 0 */
   tierGames: Readonly<Record<TierNo, number>>
+  /** 상대 티어별 이긴 판 — 승률을 «내 구간» 것으로 낼 때 쓴다 (2026-09-12 사장님) */
+  tierWins?: Readonly<Record<TierNo, number>>
+  /**
+   * ★내 구간 + 내 무기 킬뎃★ (%) — 잡이 미리 골라서 넘긴다 (2026-09-12 사장님).
+   * 표본이 모자라 못 고르면 null 이고, 그때는 여섯 축 값으로 대신한다 (지어내지 않는다).
+   */
+  kdRate?: number | null
   /** 소속 클랜의 현재 티어 — 모르거나 부리그가 셋이 아니면 null */
   clanTier: TierNo | null
   /** 배틀로그 합계 (`MatchPlayerHex` 를 더한 것) */
@@ -245,12 +288,13 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
   for (const weapon of [0, 1] as const) {
     const pool = players.filter((p) => mainWeaponOf(p) === weapon)
     const values = pool.map((p) => ({ p, v: axisValuesOf(p, weapon), wr: p.games > 0 ? (p.wins / p.games) * 100 : null }))
-    const dist: Record<HexAxisKey | 'winRate', number[]> = {
-      save: [], duel: [], carry: [], opening: [], burst: [], outnumbered: [], winRate: [],
+    const dist: Record<HexAxisKey | 'winRate' | 'kd', number[]> = {
+      save: [], duel: [], carry: [], opening: [], burst: [], outnumbered: [], winRate: [], kd: [],
     }
-    for (const { v, wr } of values) {
+    for (const { p, v, wr } of values) {
       for (const key of HEX_AXIS_KEYS) if (v[key] !== null) dist[key].push(v[key] as number)
       if (wr !== null) dist.winRate.push(wr)
+      if (p.kdRate !== null && p.kdRate !== undefined) dist.kd.push(p.kdRate)
     }
     for (const key of Object.keys(dist) as (keyof typeof dist)[]) dist[key].sort((a, b) => a - b)
 
@@ -267,6 +311,8 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
         }
       }
       const wrPct = percentileOf(dist.winRate, wr)
+      /* ★킬뎃 백분위★ — 같은 무기끼리 견준다 (2026-09-12 사장님) */
+      const kdPct = percentileOf(dist.kd, p.kdRate ?? null)
       const hex = den > 0 ? round1(num / den) : null
       const tierFactor = tierFactorOf(p.tierGames)
       const shrink = Math.round((p.rounds / (p.rounds + HEX_SHRINK_K)) * 1000) / 1000
@@ -277,7 +323,8 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       if (hex !== null) {
         const perf = (hex - 50) / 50
         const wperf = wrPct === null ? perf : (wrPct - 50) / 50
-        const mixed = HEX_W_HEX * perf + HEX_W_WR * wperf
+        const kperf = kdPct === null ? perf : (kdPct - 50) / 50
+        const mixed = HEX_W_HEX * perf + HEX_W_WR * wperf + HEX_W_KD * kperf
         score = Math.round(HEX_BASE + HEX_SPREAD * mixed * tierFactor * shrink + clanBonus)
       }
       return {
