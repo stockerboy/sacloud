@@ -67,6 +67,8 @@ function Kpi({ label, value, sub, color, extra }: { label: string; value: string
 export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
   const hex = data.hex
+  /* ★특성 배지★ — 열 위 안에 든 축 (2026-09-12 사장님). STRENGTH POINT 카드와 같은 값이다 */
+  const badges = hex ? hex.axes.filter((a) => a.badge !== null && a.rank !== null) : []
   const rank = hex ? hex.score_rank : data.rank
   const rankTotal = hex ? hex.score_total : data.rank_count
   const rows = data.tier_breakdown
@@ -210,6 +212,22 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         </span>
       </div>
 
+      {/*
+       * ★특성 배지★ (2026-09-12 사장님: «빈 공간에 뱃지 있는 선수는 여기에 진열해줘»).
+       * 열 위 안에 든 축만 배지를 받는다 — 아래 STRENGTH POINT 카드가 쓰는 것과 ★같은 값★ 이다.
+       * 배지가 없는 선수는 이 줄 자체가 안 그려져 카드가 길어지지 않는다.
+       */}
+      {badges.length > 0 ? (
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 18px 12px' }}>
+          <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>특성</span>
+          {badges.map((a) => (
+            <span key={a.key} title={a.desc ?? undefined} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', background: 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))', border: '1px solid rgba(255,216,61,.5)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#ffe89a' }}>{a.badge}</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: '#c9a94a' }}>{a.rank}위</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
       {/* 3 · 승률 · 킬뎃 · 판킬 — 고른 구간 · 고른 무기 */}
       <div className="v3-phead-kpi" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', borderTop: '1px solid #18233a' }}>
         <Kpi
