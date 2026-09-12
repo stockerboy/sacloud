@@ -702,3 +702,33 @@
 @media (min-width: 900px) {
   .v3-play-split { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) !important; gap: 20px !important; }
 }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★스코어보드 — PC 는 세 칸★ (2026-09-12 사장님)
+
+   > «이긴팀 명단 왼쪽 진팀 명단 오른쪽 (…) 세로로 명단이 두개 쳐지는게 가독성도 안좋고
+   >  이게 훨씬 이쁜거같아 경기 분석 누르지 않아도 경기상세 펼치면 저게 뜨게 해줘
+   >  모바일은 그대로 냅둬 경기분석 버튼을 없애지는 마»
+
+     이긴 팀 명단  │  경기분석 육각형  │  진 팀 명단
+
+   ★폰은 한 글자도 안 바뀐다★ — 아래 규칙은 900px 이상에서만 켜진다.
+   가운데 육각형은 폰에서 안 그린다 (경기분석 버튼이 그 자리를 대신한다).
+
+   ⚠ 자리는 ★DOM 차례가 아니라 grid-column 이 정한다.★ 명단은 «우리 팀 먼저» 로
+     그려지는데(폰이 그 차례를 쓴다) PC 에서는 이긴 팀이 왼쪽이어야 한다.
+   ────────────────────────────────────────────────────────────────────────── */
+.v3-board-hex { display: none; }
+
+@media (min-width: 900px) {
+  .v3-board {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: start;
+    gap: 14px !important;
+  }
+  .v3-board > .v3-board-win { grid-column: 1; grid-row: 1; }
+  .v3-board > .v3-board-hex { grid-column: 2; grid-row: 1; display: block; }
+  .v3-board > .v3-board-lose { grid-column: 3; grid-row: 1; }
+}

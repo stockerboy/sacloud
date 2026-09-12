@@ -298,10 +298,10 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
   const wonTeam = teams.find((t) => t.won) ?? teams[0]
   const lostTeam = teams.find((t) => !t.won) ?? teams[1]
   return (
-    <div style={{ background: '#0a0f1a', borderTop: `1px solid ${V3.rowDivider}`, padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="v3-board" style={{ background: '#0a0f1a', borderTop: `1px solid ${V3.rowDivider}`, padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {teams.map((t) => (
         /* ★이긴 팀 하늘색 · 진 팀 빨강★ (2026-09-12 사장님) — 경기분석 그래프와 같은 색 */
-        <div key={t.side} style={{ border: `1px solid ${t.won ? WIN_LOSS.winLine : WIN_LOSS.loseLine}`, borderRadius: V3.radiusBlock, background: t.won ? WIN_LOSS.winBg : WIN_LOSS.loseBg }}>
+        <div key={t.side} className={t.won ? 'v3-board-win' : 'v3-board-lose'} style={{ border: `1px solid ${t.won ? WIN_LOSS.winLine : WIN_LOSS.loseLine}`, borderRadius: V3.radiusBlock, background: t.won ? WIN_LOSS.winBg : WIN_LOSS.loseBg }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
             <MarkCircle clan={t.snap.clan} size={22} />
             <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>{t.snap.clan.name}</span>
@@ -341,6 +341,18 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
           )}
         </div>
       ))}
+      {/* ★PC 는 가운데에 경기분석 육각형이 늘 떠 있다★ (2026-09-12 사장님). 폰에서는 안 그린다 */}
+      {canAnalyze ? (
+        <div className="v3-board-hex" style={{ padding: '4px 0 0' }}>
+          <MatchHexagonV3
+            won={wonTeam ? hexOf(wonTeam.side) : null}
+            lost={lostTeam ? hexOf(lostTeam.side) : null}
+            wonName={wonTeam?.snap.clan.name ?? '승리'}
+            lostName={lostTeam?.snap.clan.name ?? '패배'}
+            id={`mhexPc-${detail.id}`}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
