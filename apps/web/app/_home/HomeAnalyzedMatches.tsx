@@ -57,8 +57,10 @@ export function HomeAnalyzedMatches() {
   /* 아직 못 받았거나 한 줄도 없으면 ★자리를 안 만든다★ — 빈 상자를 남기지 않는다 */
   if (rows.length === 0) return null
 
+  /* ⚠ 2026-09-12 사장님: «pc에서 최근경기뒤에 이상한 배경이 있어».
+     `.sac-v2` 가 바탕색을 칠해 히어로 사진을 가렸다 — 색 토큰만 빌리고 바탕은 안 칠한다 */
   return (
-    <section aria-label="최근 분석 완료 경기" className="sac-v2 mt-7">
+    <section aria-label="최근 분석 완료 경기" className="sac-v2 sac-v2--bare mt-7">
       <div className="mx-auto w-full max-w-[900px]">
         <div className="mb-[8px] flex items-baseline gap-[7px] px-[2px]">
           <span className="text-[10px] font-bold tracking-[.16em] text-[var(--v2-text-ghost)]">

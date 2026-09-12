@@ -13,8 +13,13 @@ export const V3 = {
   pageBg: 'radial-gradient(1200px 700px at 50% -8%, #142238 0%, #0c1526 42%, #070d1c 100%)',
   bar: 'linear-gradient(160deg,#0d1524,#080d18)',
   barBorder: '#16202e',
-  card: 'linear-gradient(160deg,#152036 0%,#101a2c 58%)',
-  cardFlat: '#111a2c',
+  /**
+   * ⚠ ★2026-09-12 — 반투명으로★ (사장님: «모든 카드색을 반투명 네온으로 해
+   *   완전 무광 불투명이니까 뭔가 촌스러»). 옛 값은 불투명이었다 —
+   *   card 'linear-gradient(160deg,#152036 0%,#101a2c 58%)' · cardFlat '#111a2c'
+   */
+  card: 'linear-gradient(160deg,rgba(21,32,54,.62) 0%,rgba(16,26,44,.62) 58%)',
+  cardFlat: 'rgba(17,26,44,.62)',
   cardBorder: '#1e2a42',
   divider: '#1b2537',
   rowDivider: '#18233a',
@@ -64,6 +69,9 @@ export const CHAL_NUM_COLOR = '#c2a07a'
 /** 카드 · 카드 머리 · 리본 — 시안 `s.card` 등 */
 export const cardStyle: CSSProperties = {
   background: V3.card,
+  /* ★반투명 유리★ (2026-09-12 사장님) — 뒤를 흐려서 글자가 안 묻히게 한다 */
+  backdropFilter: 'blur(10px) saturate(1.15)',
+  WebkitBackdropFilter: 'blur(10px) saturate(1.15)',
   border: `1px solid ${V3.cardBorder}`,
   borderRadius: V3.radiusCard,
 }
