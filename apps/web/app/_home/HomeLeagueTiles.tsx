@@ -60,7 +60,8 @@ const TILES = ORDER.flatMap((slug) => {
 export function HomeLeagueTiles() {
   return (
     <nav aria-label="리그 랭킹 바로가기" className="mt-6">
-      <ul className="mx-auto flex max-w-full items-start justify-center gap-[22px] max-md:gap-[12px]">
+      {/* ⚠ 2026-09-12 — 사장님: «세개가 너무 붙어있어서 이상해». 옛 값: PC 22px · 폰 12px */}
+      <ul className="mx-auto flex max-w-full items-start justify-center gap-[46px] max-md:gap-[30px]">
         {TILES.map((tile) => (
           <li key={tile.href}>
             <Link
@@ -73,32 +74,35 @@ export function HomeLeagueTiles() {
 
                 ⚠ 새 그림은 ★가로가 더 길다★ (10 은 1.42:1 · IPL 1.59:1 · SPL 1.88:1).
                   옛 판처럼 46×46 네모 상자에 `bg-contain` 으로 넣으면 세로가 24~32px 로
-                  눌려 안 보인다. 그래서 ★세로만 맞추고 가로는 그림이 정하게★ `<img>` 로 놓는다
-                  (`w-auto`). 상자 폭 `w-[88px]` 도 뺐다 — 로고마다 폭이 다르다.
+                  눌려 안 보인다. 그래서 ★세로만 맞추고 가로는 그림이 정하게★ `<img>` 로 놓는다.
+                  `width`·`height` 를 적어 두는 것도 그 때문이다 — 없으면 폰에서 가로가 0 이 된다.
 
-                ⚠ ★이름은 로고 안에 이미 들어 있다★ (IPL · SPL · 10).
-                  그래서 밑의 글자 줄을 뺐다 — 같은 말이 두 번 나오면 지저분하다.
-                  되살리려면 아래 주석 블록을 풀면 된다 (`CLAUDE.md` 1-4).
+                ⚠ ★크기가 세 번 바뀌었다★ (같은 날) —
+                  92px → 62px → 46px → 52px → 34px → ★40px★ (폰 40 → 34 → 28 → ★33px★)
               */}
-              {/* ⚠ 2026-09-12 — 사장님: «로고 크기 좀 줄여줘 너무 커». 옛 값: PC 52px · 폰 42px */}
               <img
                 src={MARK[tile.slug]}
                 width={SIZE[tile.slug]?.w}
                 height={SIZE[tile.slug]?.h}
                 alt=""
                 aria-hidden
-                className="block h-[34px] w-auto max-w-none opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[28px]"
+                className="block h-[40px] w-auto max-w-none opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[33px]"
                 style={{ filter: `drop-shadow(0 0 14px ${GLOW[tile.slug] ?? 'transparent'})` }}
               />
               {/*
-                옛 판 — 로고 밑 이름 줄 (2026-09-12 까지)
-                <span
-                  className="text-[13px] font-bold tracking-[.14em] text-[var(--v2-text-muted)] transition-colors duration-150 group-hover:text-[var(--v2-text)] max-md:text-[12px]"
-                  style={{ textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}` }}
-                >
-                  {tile.label}
-                </span>
+                ★로고 밑 이름 줄★ — 되살렸다 (2026-09-12 사장님: «로고밑에 IPL SPL 글씨를 써줘»).
+
+                한 번 뺐던 줄이다. 이름이 로고 안에 이미 있어서 두 번 나온다고 봤는데,
+                사장님이 ★밑에 글자가 있어야★ 한다고 하셨다. 로고 안 글자는 그림의 일부고
+                이 줄은 ★누르는 곳의 이름★ 이라 뜻이 다르다.
+                `<a>` 안쪽 span 에 색을 준다 — `a { color: inherit }` 함정 (D-231)
               */}
+              <span
+                className="text-[13px] font-bold tracking-[.14em] text-[var(--v2-text-muted)] transition-colors duration-150 group-hover:text-[var(--v2-text)] max-md:text-[12px]"
+                style={{ textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}` }}
+              >
+                {tile.label}
+              </span>
             </Link>
           </li>
         ))}
