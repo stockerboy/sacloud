@@ -89,3 +89,21 @@ export function affiliationLabel(clanName: string | null | undefined): string | 
   const name = clanName?.trim()
   return name ? `${name} 소속` : null
 }
+
+/**
+ * ★마크와 함께 쓰는 소속 표기★ — 클랜 이름만 (2026-09-13 사장님).
+ *
+ * > «계정연동 하고 댓글 달면 자기가 계정연동한 아이디의 소속 클랜마크와 클랜명이
+ * >  (마크) 클랜면 -익명1 이런식으로 뜬다»
+ *
+ * ⚠ ★`affiliationLabel` 을 지우지 않았다★ (`CLAUDE.md` 1-4).
+ *   그쪽은 «veritas 소속» 이라는 ★말★ 이고, 이쪽은 ★그림(마크) 옆에 붙는 이름★ 이다.
+ *   마크가 이미 «어디 소속인가» 를 그리고 있으므로 «소속» 이라는 글자를 또 붙이면
+ *   «(마크) veritas 소속 -익명1» 이 되어 한 줄이 길어진다.
+ *
+ * 무소속·비연동이면 `null` 이다 — 이름을 지어내지 않는다.
+ */
+export function affiliationName(clanName: string | null | undefined): string | null {
+  const name = clanName?.trim()
+  return name ? name : null
+}

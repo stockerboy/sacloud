@@ -33,9 +33,8 @@
  */
 import { prisma } from '@sacloud/db'
 import {
-  REQUIRED_TITLES,
   matchesTitle,
-  pickRequiredTitle,
+  pickRequiredTitleFor,
   TITLE_CHALLENGE_TTL_MINUTES,
   TITLE_CHALLENGE_MAX_ATTEMPTS,
   canManualTitleCheck,
@@ -128,8 +127,8 @@ export async function titleVerificationState(
   if (!challenge) {
     return {
       status: 'none',
-      /* 아직 도전이 없으면 첫 후보를 보여 준다 — 진짜 값은 도전을 열 때 정해진다 */
-      required_title: REQUIRED_TITLES[0] ?? '용병',
+      /* ★도전을 열기 전에도 같은 값★ — 회원 id 로 고르므로 나중에 열려도 안 바뀐다 */
+      required_title: pickRequiredTitleFor(userId),
       nickname: null,
       last_seen_title: null,
       outcome,
@@ -337,8 +336,8 @@ async function openChallenge(input: {
         userId: input.userId,
         ouid: input.ouid,
         nickname: input.nickname,
-        /* ★셋 중 하나를 무작위로★ (2026-09-12 사장님) */
-        expectedTitle: pickRequiredTitle(),
+        /* ★그 사람의 칭호★ — 화면이 미리 보여 준 것과 같은 값이다 (2026-09-13) */
+        expectedTitle: pickRequiredTitleFor(input.userId),
         /* 고정 칭호 방식에서는 기준 칭호를 쓰지 않는다 (칸은 남겨 둔다) */
         baselineTitle: null,
         expiresAt,

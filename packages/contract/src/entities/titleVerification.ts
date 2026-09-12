@@ -53,7 +53,31 @@ export const REQUIRED_TITLE = '[용병]'
  */
 export const REQUIRED_TITLES: readonly string[] = ['용병', '돌격', '저격']
 
-/** 가입할 때 하나를 뽑는다. 뽑힌 값은 `TitleChallenge.expectedTitle` 에 남는다 */
+/**
+ * ★사람마다 늘 같은 칭호★ — 회원 id 로 고른다 (2026-09-13).
+ *
+ * ⚠ ★난수로 뽑으면 안 된다.★ 화면은 도전을 열기 ★전에★ 도 «이 칭호로 바꾸세요» 를
+ *   보여 준다. 그때와 실제로 열릴 때가 다른 값이면 사람이 엉뚱한 칭호로 바꾸고
+ *   인증에 실패한다. 그래서 ★회원 id 를 섞은 값★ 으로 고른다 —
+ *   사람마다 다르고, 같은 사람에게는 언제 물어도 같다.
+ *
+ * 셋으로 나뉘는 것은 그대로다. 가로채려는 사람은 어느 칭호가 나올지 미리 알 수 없다
+ * (남의 회원 id 를 모르기 때문이다).
+ */
+export function pickRequiredTitleFor(userId: string): string {
+  let h = 2166136261
+  for (let i = 0; i < userId.length; i += 1) {
+    h ^= userId.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  const index = (h >>> 0) % REQUIRED_TITLES.length
+  return REQUIRED_TITLES[index] ?? REQUIRED_TITLES[0]!
+}
+
+/**
+ * @deprecated 2026-09-13 — 난수는 화면과 서버가 다른 칭호를 말하게 만든다.
+ * `pickRequiredTitleFor(userId)` 를 쓴다. 옛 호출부를 위해 남긴다.
+ */
 export function pickRequiredTitle(): string {
   const i = Math.floor(Math.random() * REQUIRED_TITLES.length)
   return REQUIRED_TITLES[i] ?? REQUIRED_TITLES[0]!
