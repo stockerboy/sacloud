@@ -44,30 +44,20 @@ const GLOW: Readonly<Record<string, string>> = {
  */
 const SIZE: Readonly<Record<string, { w: number; h: number }>> = {
   sanply: { w: 227, h: 160 },
-  nolink: { w: 254, h: 160 },
-  supply: { w: 300, h: 160 },
+  /* 2026-09-12 글자를 잘라 냈다. 옛 값: IPL 254 · SPL 300 */
+  nolink: { w: 177, h: 160 },
+  supply: { w: 210, h: 160 },
 }
 
 /**
- * ★이름 줄을 마크에 맞춰 옮기는 값★ (2026-09-12 사장님:
- * «SPL Ipl 글씨가 차지 하는 공간이 있어서 뭔가 가운데 정렬이 아닌것처럼 보여
- *  마크를 중심으로 가운데 정렬해줘»).
+ * ⚠ ★2026-09-12 — `NUDGE` 를 없앴다★ (사장님: «IPL SPL로고 바로 오른쪽에 있는
+ *   IPL SPL 글씨 지우고 로고만 남긴다음에 그 로고의 중심 축(I모양)을 첨탑의 중심선에
+ *   맞춰서 배치해줘»).
  *
- * IPL·SPL 로고는 ★마크 + 글자★ 한 덩어리라 그림의 가운데가 마크의 가운데가 아니다.
- * 그림 가운데에 이름을 두면 마크에서 오른쪽으로 밀린 것처럼 보인다.
- *
- * 값은 ★그림을 픽셀로 재서★ 얻었다 (지어낸 값이 아니다) —
- *   10   마크 3~223 / 폭 227 → 마크 가운데 113 · 그림 가운데 113.5 →  0.2%
- *   IPL  마크 2~172 / 폭 254 → 마크 가운데  87 · 그림 가운데 127   → 15.7%
- *   SPL  마크 3~205 / 폭 300 → 마크 가운데 104 · 그림 가운데 150   → 15.3%
- *
- * 이름 줄은 ★그림과 같은 폭★ 이라(`w-full`) 퍼센트가 곧 그림 폭의 퍼센트다.
+ *   그림에서 글자를 잘라 냈으니 이제 ★그림 가운데 = 마크 가운데★ 다 (실측 오차 1% 안).
+ *   옮길 값이 없다. 옛 값은 IPL −15.7% · SPL −15.3% 였다.
+ *   글자가 붙은 옛 그림은 `league-ipl-withtext.png` · `league-spl-withtext.png` 로 남겼다.
  */
-const NUDGE: Readonly<Record<string, number>> = {
-  sanply: 0,
-  nolink: -15.7,
-  supply: -15.3,
-}
 
 /** ★왼쪽 10 · 가운데 IPL · 오른쪽 SPL★ (2026-09-12 사장님) */
 const ORDER = ['sanply', 'nolink', 'supply'] as const
@@ -85,10 +75,18 @@ export function HomeLeagueTiles() {
       <ul className="mx-auto flex max-w-full items-start justify-center gap-[46px] max-md:gap-[30px]">
         {TILES.map((tile) => (
           <li key={tile.href}>
+            {/*
+              ★칸 폭을 셋 다 같게★ (2026-09-12 사장님: «그 로고의 중심 축(I모양)을
+              첨탑의 중심선에 맞춰서»).
+
+              로고마다 폭이 다르다 (10 227 · IPL 177 · SPL 210). 폭이 다른 채로 가운데
+              정렬하면 ★가운데 칸의 한가운데가 줄의 한가운데가 아니다★ — IPL 로고가
+              첨탑에서 몇 px 밀린다. 칸을 같은 폭으로 잡으면 저절로 맞는다.
+            */}
             <Link
               href={tile.href}
               aria-label={tile.label}
-              className="group flex flex-col items-center gap-[5px]"
+              className="group flex w-[92px] flex-col items-center gap-[5px] max-md:w-[76px]"
             >
               {/*
                 ★새 로고 (2026-09-12 사장님: «이것들로 로고 바꿔줘 전부»)★
@@ -120,10 +118,7 @@ export function HomeLeagueTiles() {
               */}
               <span
                 className="block w-full text-center text-[13px] font-bold tracking-[.14em] text-[var(--v2-text-muted)] transition-colors duration-150 group-hover:text-[var(--v2-text)] max-md:text-[12px]"
-                style={{
-                  textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}`,
-                  transform: `translateX(${NUDGE[tile.slug] ?? 0}%)`,
-                }}
+                style={{ textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}` }}
               >
                 {tile.label}
               </span>

@@ -258,6 +258,23 @@ export function parseRankWeapon(value: string | null | undefined): RankWeapon {
 }
 
 /** GET /leagues/{leagueId}/ranks/players */
+/**
+ * ★포디움 카드가 그리는 여섯 축★ (2026-09-12 사장님:
+ * «1,2,3등 선수들의 플레이스타일 분석 그래프를 보여줘»).
+ *
+ * 선수 상세의 `PlayerHexAxis` 와 ★같은 값★ 이지만 칸이 적다 — 카드는 이름·백분위·등수만
+ * 그린다. 원값·설명·배지는 안 쓰니 싣지 않는다 (목록 응답이 무거워진다).
+ */
+export const PlayerRankHexAxis = z.object({
+  key: z.string(),
+  label: z.string(),
+  /** 그래프 면적 (0~100). 못 잰 축은 null 이고 중심에 둔다 */
+  percentile: Percent.nullable(),
+  rank: Count.nullable(),
+  total: Count.nullable(),
+})
+export type PlayerRankHexAxis = z.infer<typeof PlayerRankHexAxis>
+
 export const PlayerRankRow = z.object({
   rank: Count,
   league_player_id: Id,
@@ -307,6 +324,13 @@ export const PlayerRankRow = z.object({
    * 화면은 이 값으로 ★인식표★ 를 깔지 정한다 — ASTRA 구간만 준다.
    */
   home_tier: Division.nullable().optional(),
+  /**
+   * ★여섯 축★ — ★1·2·3위에만★ 실린다 (2026-09-12 사장님).
+   *
+   * 스무 줄 전부에 실으면 목록 응답이 세 배가 된다. 카드를 그리는 세 줄만 담는다.
+   * 못 잰 선수(주무기 10판 미만)는 `null` 이고 카드는 그림 자리를 비운다 — 지어내지 않는다.
+   */
+  hex_axes: z.array(PlayerRankHexAxis).nullable().optional(),
 })
 export type PlayerRankRow = z.infer<typeof PlayerRankRow>
 

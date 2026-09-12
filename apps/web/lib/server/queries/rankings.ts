@@ -33,11 +33,14 @@ import { prisma } from '@sacloud/db'
 import {
   FORM_TOP_MIN_GAMES,
   FORM_TOP_SIZE,
+  PLAYER_HEX_AXIS_ORDER,
   RANK_WEAPON_CODE,
+  playerHexLabelOf,
   kdRate,
   killPerMatch,
   winRate,
   type FormTop,
+  type PlayerRankHexAxis,
   type PlayerRankRow,
   type RankWeapon,
 } from '@sacloud/contract'
@@ -414,28 +417,35 @@ export async function getPlayerRanksByScore(
     leaguePlayer: { leagueId, placement: false },
   }
   const SELECT = {
-        leaguePlayerId: true,
-        weapon: true,
-        score: true,
-        scoreRank: true,
-        hex: true,
-        games: true,
-        /* ★인식표★ 가 쓰는 구간 — 가장 많이 뛴 티어 (2026-09-11 사장님) */
-        homeTier: true,
-        leaguePlayer: {
-          select: {
-            rating: true,
-            activityPenalty: true,
-            win: true,
-            lose: true,
-            kill: true,
-            death: true,
-            player: { select: PLAYER_SUMMARY_SELECT },
-            clan: { select: CLAN_SUMMARY_SELECT },
-            /* ★주무기 줄★ — 랭킹의 승률·킬뎃은 통합이 아니라 «그 선수 주무기» 다 (2026-09-11 사장님) */
-            weaponStats: { select: { weapon: true, win: true, lose: true, kill: true, death: true, games: true, isMain: true } },
-          },
-        },
+    leaguePlayerId: true,
+    weapon: true,
+    score: true,
+    scoreRank: true,
+    hex: true,
+    games: true,
+    /* ★인식표★ 가 쓰는 구간 — 가장 많이 뛴 티어 (2026-09-11 사장님) */
+    homeTier: true,
+    /* ★여섯 축★ — 포디움(1·2·3위)만 쓴다. 같은 줄에 이미 있어 왕복이 안 늘어난다 (2026-09-12) */
+    savePct: true, saveRank: true, saveTotal: true,
+    duelPct: true, duelRank: true, duelTotal: true,
+    carryPct: true, carryRank: true, carryTotal: true,
+    openingPct: true, openingRank: true, openingTotal: true,
+    burstPct: true, burstRank: true, burstTotal: true,
+    outnumberedPct: true, outnumberedRank: true, outnumberedTotal: true,
+    leaguePlayer: {
+      select: {
+        rating: true,
+        activityPenalty: true,
+        win: true,
+        lose: true,
+        kill: true,
+        death: true,
+        player: { select: PLAYER_SUMMARY_SELECT },
+        clan: { select: CLAN_SUMMARY_SELECT },
+        /* ★주무기 줄★ — 랭킹의 승률·킬뎃은 통합이 아니라 «그 선수 주무기» 다 (2026-09-11 사장님) */
+        weaponStats: { select: { weapon: true, win: true, lose: true, kill: true, death: true, games: true, isMain: true } },
+      },
+    },
   } as const
 
   /* ★자리로 건너뛰는 길★ (페이지 번호) — 커서를 안 쓴다 */
@@ -543,6 +553,8 @@ export async function getPlayerRanksByScore(
         rating: lp.rating,
         activity_penalty: lp.activityPenalty ?? 0,
         home_tier: row.homeTier ?? null,
+        /* ★1·2·3위만★ 여섯 축을 싣는다 (2026-09-12 사장님) */
+        hex_axes: rank <= PODIUM_SIZE ? hexAxesOf(row) : null,
         weapon: 'all' as const,
         score: row.score,
         score_weapon: row.weapon === 0 || row.weapon === 1 ? row.weapon : null,
@@ -550,6 +562,26 @@ export async function getPlayerRanksByScore(
       }
     }),
   }
+}
+
+/**
+ * ★포디움에만 여섯 축을 싣는다★ (2026-09-12 사장님:
+ * «1,2,3등 선수들의 플레이스타일 분석 그래프를 보여줘»).
+ *
+ * 스무 줄 전부에 실으면 목록 응답이 세 배가 된다. 세 줄만 담는다.
+ */
+const PODIUM_SIZE = 3
+
+/** 축 차례는 선수 상세와 ★같다★ — 12시부터 시계 방향 (`PLAYER_HEX_AXIS_ORDER`) */
+function hexAxesOf(row: ScoreRankRow): PlayerRankHexAxis[] {
+  const weapon = row.weapon === 0 || row.weapon === 1 ? row.weapon : null
+  return PLAYER_HEX_AXIS_ORDER.map((key) => ({
+    key,
+    label: playerHexLabelOf(key, weapon),
+    percentile: row[`${key}Pct`] ?? null,
+    rank: row[`${key}Rank`] ?? null,
+    total: row[`${key}Total`] ?? null,
+  }))
 }
 
 const SCORE_ORDER = [{ score: 'desc' as const }, { leaguePlayerId: 'asc' as const }]
@@ -563,6 +595,13 @@ interface ScoreRankRow {
   hex: number | null
   games: number
   homeTier: number | null
+  /* 여섯 축 — 포디움용 (2026-09-12). 이름은 DB 칸 이름 그대로다 */
+  savePct: number | null; saveRank: number | null; saveTotal: number | null
+  duelPct: number | null; duelRank: number | null; duelTotal: number | null
+  carryPct: number | null; carryRank: number | null; carryTotal: number | null
+  openingPct: number | null; openingRank: number | null; openingTotal: number | null
+  burstPct: number | null; burstRank: number | null; burstTotal: number | null
+  outnumberedPct: number | null; outnumberedRank: number | null; outnumberedTotal: number | null
   leaguePlayer: {
     rating: number
     activityPenalty: number

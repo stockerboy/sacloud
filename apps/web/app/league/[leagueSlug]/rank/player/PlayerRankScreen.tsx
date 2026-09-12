@@ -229,8 +229,16 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           ★PC 에서는 그대로 둔다★ — 지우지 않았다 (`CLAUDE.md` 1-4).
         */}
         {/* ★1쪽에서만★ — 2쪽에 21~23위를 포디움으로 세우면 «1등» 처럼 보인다 (2026-09-12) */}
+        {/*
+          ⚠ ★2026-09-12 — 폰에서도 보인다★ (사장님: «모바일에서도 카드형태로 1,2,3등은
+            그래프 넣어서 만들어줘 pc처럼»).
+
+          옛 판은 폰에서 접었다 (2026-09-10 사장님: «순위가 모바일에서 한눈에 안보여서»).
+          그때 카드는 ★숫자만★ 이라 목록 첫 줄과 같은 말을 두 번 하는 셈이었다.
+          이제 카드마다 육각형이 들어가서 목록에 없는 것을 보여 준다.
+        */}
         {page === 1 ? (
-          <div className="max-md:hidden">
+          <div>
           <PodiumCards
             leagueSlug={leagueSlug}
             rows={ranks.items ?? []}

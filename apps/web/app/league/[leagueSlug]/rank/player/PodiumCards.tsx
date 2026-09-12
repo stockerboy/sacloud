@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import type { PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
+import type { PlayerRankHexAxis, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
 import {
   ClanMark,
+  Hexagon,
+  type HexAxisView,
   Panel,
   formatAverage,
   formatCount,
@@ -57,6 +59,24 @@ export interface PodiumCardsProps {
   rows: readonly PlayerRankRow[]
   columns: RankColumns
   weapon: RankWeapon
+}
+
+/**
+ * 카드 폭이 300px 그림보다 좁다 — 줄여서 넣는다 (2026-09-12).
+ * 그림은 300×262 고정이라 배율로만 줄인다 (`Hexagon` 주석의 시안 함정).
+ */
+const PODIUM_HEX_SCALE = 0.82
+
+/** 계약의 여섯 축 → 그림 입력. 선수 상세(`strengthAxes`)와 ★같은 규칙★ 이다 */
+function podiumAxes(axes: readonly PlayerRankHexAxis[]): HexAxisView[] {
+  return axes.map((a) => ({
+    label: a.label,
+    value: a.percentile,
+    note: a.rank === null ? '측정중' : `${a.rank}위`,
+    noteColor: a.rank === null ? 'var(--v2-text-ghost)' : (rankColor(a.rank) ?? 'var(--v2-text-muted)'),
+    note2: a.rank === null || a.total === null ? null : `${a.total.toLocaleString('ko-KR')}명중`,
+    strong: a.rank !== null && a.rank <= 10,
+  }))
 }
 
 export function PodiumCards({ leagueSlug, rows, columns, weapon }: PodiumCardsProps) {
@@ -161,6 +181,28 @@ function PodiumCard({
           </span>
         ) : null}
       </div>
+
+      {/*
+        ★1·2·3위 플레이스타일★ (2026-09-12 사장님: «저 사이에 1,2,3등 선수들의
+        플레이스타일 분석 그래프를 보여줘 여기도 그래프 그려지는 애니메이트 똑같이 적용»).
+
+        그림은 선수 상세와 ★같은 컴포넌트★ 다 — 그리는 애니메이션도 그래서 같다.
+        `id` 가 카드마다 달라야 셋이 따로 그려진다.
+        못 잰 선수(주무기 10판 미만)는 축이 안 와서 ★그림 자리를 통째로 비운다★ —
+        빈 육각형을 그리지 않는다 (D-106).
+      */}
+      {row.hex_axes && row.hex_axes.length > 0 ? (
+        <div className="relative mt-[14px] flex justify-center">
+          <span className="block origin-top" style={{ width: 300 * PODIUM_HEX_SCALE, height: 262 * PODIUM_HEX_SCALE }}>
+            <span
+              className="block origin-top-left"
+              style={{ transform: `scale(${PODIUM_HEX_SCALE})` }}
+            >
+              <Hexagon axes={podiumAxes(row.hex_axes)} id={`podiumHex-${row.league_player_id}`} />
+            </span>
+          </span>
+        </div>
+      ) : null}
 
       <div className="relative mt-[18px] flex items-baseline gap-[22px] border-t border-[var(--v2-card-divider)] pt-[14px]">
         <span className="flex items-baseline gap-[2px]" style={{ color: ink }}>

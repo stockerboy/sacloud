@@ -7,6 +7,7 @@
  * 육각형은 `hexagon_v2`(워커가 접어 둔 것) 를 그대로 그린다 — 등수는 리그 안 등수,
  * 게임템포만 글자(`text`) 다. 못 잰 축은 «측정중» 이고 면적은 0 이다.
  */
+import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { ClanHexagonV2, LeagueClanShow } from '@sacloud/contract'
 import { floorColor, rankColor, statColor } from './rankColors'
@@ -220,10 +221,32 @@ function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme })
   const slots: (0 | 1)[] = [0, 0, 0, 0, 1]
   const rifles = rows.filter((row) => row.weapon === 0)
   const snipers = rows.filter((row) => row.weapon === 1)
+  /**
+   * ★들어올 때는 접혀 있다★ (2026-09-12 사장님: «추천 글씨를 주요멤버 라고 적고
+   * 얇은띠로 접어놔 일단 그리고 누르면 나오게끔 해줘»).
+   *
+   * 다섯 줄이 늘 펴져 있으면 머리 카드가 화면 한 판을 다 먹는다. 띠 한 줄로 접어 둔다.
+   */
+  const [open, setOpen] = useState(false)
   return (
-    <div style={{ position: 'relative', flex: '0 1 210px', minWidth: 168, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.12em', padding: '0 2px 6px' }}>주전</span>
-      {slots.map((weapon, index) => {
+    <div style={{ position: 'relative', flex: open ? '0 1 210px' : '0 0 auto', minWidth: 168, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((now) => !now)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          width: '100%', padding: '6px 8px', fontFamily: 'inherit', cursor: 'pointer',
+          fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', whiteSpace: 'nowrap',
+          color: open ? '#cfe0ff' : V3.textDim,
+          background: open ? 'rgba(91,141,255,.12)' : 'rgba(255,255,255,.03)',
+          border: `1px solid ${open ? 'rgba(159,192,255,.45)' : V3.cardBorder}`,
+          borderRadius: V3.radiusChip,
+        }}
+      >
+        <span>주요멤버</span>
+        <span style={{ fontSize: 9, color: V3.textGhost }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {!open ? null : slots.map((weapon, index) => {
         const row = weapon === 0 ? rifles[index] : snipers[0]
         return (
           <span

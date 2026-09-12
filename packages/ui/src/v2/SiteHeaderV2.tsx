@@ -69,8 +69,9 @@ const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> 
    *   그런 일이 안 생긴다. 화면에 실제로 쓰는 크기는 CSS(`.v2-gnb__mark`) 가 정한다.
    */
   sanply: { src: '/assets/league-10.png', w: 227, h: 160 },
-  nolink: { src: '/assets/league-ipl.png', w: 254, h: 160 },
-  supply: { src: '/assets/league-spl.png', w: 300, h: 160 },
+  /* 2026-09-12 글자를 잘라 냈다. 옛 값: IPL 254 · SPL 300 */
+  nolink: { src: '/assets/league-ipl.png', w: 177, h: 160 },
+  supply: { src: '/assets/league-spl.png', w: 210, h: 160 },
 }
 
 /**
@@ -196,20 +197,20 @@ export function SiteHeaderV2({
                     <img src={mark.src} width={mark.w} height={mark.h} alt="" aria-hidden className="v2-gnb__mark" />
                   ) : null}
                   {/*
-                    ★이름은 표장이 없는 리그만 적는다★ (2026-09-12 사장님: «이것들로 로고 바꿔줘 전부»).
+                    ★이름을 다시 적는다★ (2026-09-12 사장님이 로고에서 «IPL» · «SPL» 글자를
+                    잘라 내라고 하셔서, 이제 로고만 보고는 리그를 알 수 없다).
 
-                    새 로고 안에 이미 «10» · «IPL» · «SPL» 이 들어 있다. 옆이나 밑에 또 적으면
-                    같은 말이 두 번 나온다. 표장이 없는 리그는 글자가 유일한 표시라 그대로 적는다.
-
-                    ⚠ 옛 판 — 폰에서는 표장 밑에 9.5px 로 이름을 적었다
-                      (사장님: «빨간색 줄친곳에 작게 10 IPL SPL 써줘»). 로고가 바뀌기 전 이야기다.
+                    ⚠ 하루에 세 번 바뀐 자리다 —
+                      ① 폰에서 글자 없음 (표장만)
+                      ② 폰에서 표장 밑에 9.5px 로 이름
+                      ③ 로고가 이름을 품게 되어 글자를 뺌
+                      ④ ★지금★ — 로고에서 글자를 잘라 내서 다시 적는다
+                    PC 는 옆에, 폰은 밑에 (자리는 CSS `.v2-gnb__cell` 이 정한다).
                   */}
-                  {mark ? null : (
-                    <span className="v2-gnb__name">
-                      {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
-                      <LeagueLabel name={item.label} />
-                    </span>
-                  )}
+                  <span className="v2-gnb__name">
+                    {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
+                    <LeagueLabel name={item.label} />
+                  </span>
                 </span>
               </Link>
             )

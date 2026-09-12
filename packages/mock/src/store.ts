@@ -840,6 +840,7 @@ export function getPlayerRanks(leagueId: string, cursor: string | null, size: nu
         hex: null,
         score: null,
         score_weapon: null,
+        hex_axes: null,
       }
     })
     .filter((entry): entry is PlayerRankRow => Boolean(entry))
@@ -900,6 +901,7 @@ export function getPlayerRanksByWeapon(
       hex: null,
       score: null,
       score_weapon: null,
+      hex_axes: null,
     }))
 
   return paginate(rows, cursor, size, (item) => item.league_player_id)
@@ -959,6 +961,7 @@ export function getFormTop(leagueId: string, weapon: RankWeapon): FormTop | null
           hex: null,
           score: null,
           score_weapon: null,
+          hex_axes: null,
           games: value.games,
         },
       ]
@@ -2576,6 +2579,7 @@ export function getLeagueClanPlayers(
         hex: null,
         score: null,
         score_weapon: null,
+        hex_axes: null,
       }
     })
     .filter((entry): entry is PlayerRankRow => Boolean(entry))
