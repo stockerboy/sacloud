@@ -68,8 +68,20 @@ async function scoreOrLadder(
   offset: number | null = null,
 ) {
   const scored = await getPlayerRanksByScore(leagueId, cursor, size, onlyWeapon, onlyTier, offset)
-  /* 구간을 골라서 비었으면 ★그게 답★ 이다 — 옛 래더 순으로 떨어지면 «전체» 가 튀어나온다.
-     페이지 번호로 왔으면 빈 쪽도 ★그게 답★ 이다 (마지막 쪽 너머) */
-  if (scored && (scored.items.length > 0 || cursor !== null || onlyTier !== null || offset !== null)) return scored
-  return getPlayerRanks(leagueId, cursor, size)
+  /**
+   * ★쪽 번호로 왔을 때는 「그 쪽이 비었나」가 아니라 「모두 몇 줄인가」로 고른다★
+   * (2026-09-12).
+   *
+   * ⚠ 처음엔 «offset 이 있으면 무조건 점수 목록» 으로 뒀다가 ★10🏔 개인랭킹을 통째로
+   *   비웠다.★ 10 은 실력 점수를 안 매기는 리그라 점수 표가 늘 비어 있고, 옛 래더로
+   *   떨어져야 목록이 나온다. 3쪽이 비었다고 떨어뜨리면 1쪽과 3쪽이 딴 목록이 되니
+   *   ★모집단 수★ 로 판단한다.
+   */
+  if (scored && offset !== null) {
+    if (onlyTier !== null || (scored.total ?? 0) > 0) return scored
+    return getPlayerRanks(leagueId, cursor, size, offset)
+  }
+  /* 구간을 골라서 비었으면 ★그게 답★ 이다 — 옛 래더 순으로 떨어지면 «전체» 가 튀어나온다 */
+  if (scored && (scored.items.length > 0 || cursor !== null || onlyTier !== null)) return scored
+  return getPlayerRanks(leagueId, cursor, size, offset)
 }

@@ -581,14 +581,37 @@ export async function getPlayerRanks(
   leagueId: string,
   cursor: string | null,
   size: number,
-): Promise<CursorPage<PlayerRankRow> | null> {
+  /**
+   * ★페이지 번호로 건너뛰기★ (2026-09-12 사장님). 0 이면 1쪽이다.
+   *
+   * ⚠ 이 길은 ★실력 점수가 없는 리그★(10🏔) 가 쓴다. 쪽 번호를 여기까지 안 내려 주면
+   *   10 개인랭킹이 통째로 빈다 — 실제로 그렇게 깨뜨렸다 (2026-09-12).
+   */
+  offset: number | null = null,
+): Promise<(CursorPage<PlayerRankRow> & { total?: number }) | null> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
     select: { id: true, category: true },
   })
   if (!league) return null
 
-  const page = await cursorPage<{
+  /* 리그 안의 선수는 **전원** 랭킹에 들어간다 (D-107).
+     무소속리그에도 개인 랭킹이 있다. 리그가 다르면 애초에 다른 목록이라
+     여기서 걸러 낼 것이 없다. 무소속리그에서 감추는 것은 누적 킬뎃 컬럼뿐이다. */
+  const RANK_WHERE = playerRankWhere(leagueId)
+  const RANK_SELECT = {
+    id: true,
+    rating: true,
+    win: true,
+    lose: true,
+    kill: true,
+    death: true,
+    player: { select: PLAYER_SUMMARY_SELECT },
+    clan: { select: CLAN_SUMMARY_SELECT },
+    /* 평균킬 분모 — 분자와 같은 집계에서 나온 판수를 쓴다 (D-172) */
+    weaponStats: { select: { knownStatGames: true } },
+  } as const
+  type RankRowShape = {
     id: string
     rating: number
     win: number
@@ -598,35 +621,36 @@ export async function getPlayerRanks(
     player: { id: string; name: string }
     clan: { id: string; slug: string; name: string; markBgUrl: string | null; markFrontUrl: string | null } | null
     weaponStats: { knownStatGames: number }[]
-  }>({
-    cursor,
-    size,
-    orderBy: [...RANK_ORDER],
-    reversedOrderBy: [...RANK_ORDER_REVERSED],
-    idOf: (row) => row.id,
-    fetch: (args) =>
-      prisma.leaguePlayer.findMany({
-        /* 리그 안의 선수는 **전원** 랭킹에 들어간다 (D-107).
-           무소속리그에도 개인 랭킹이 있다. 리그가 다르면 애초에 다른 목록이라
-           여기서 걸러 낼 것이 없다. 무소속리그에서 감추는 것은 누적 킬뎃 컬럼뿐이다. */
-        where: playerRankWhere(leagueId),
-        take: args.take,
-        orderBy: args.orderBy as never,
-        ...(args.cursor ? { cursor: args.cursor, skip: args.skip } : {}),
-        select: {
-          id: true,
-          rating: true,
-          win: true,
-          lose: true,
-          kill: true,
-          death: true,
-          player: { select: PLAYER_SUMMARY_SELECT },
-          clan: { select: CLAN_SUMMARY_SELECT },
-          /* 평균킬 분모 — 분자와 같은 집계에서 나온 판수를 쓴다 (D-172) */
-          weaponStats: { select: { knownStatGames: true } },
-        },
-      }),
-  })
+  }
+
+  const byOffset = offset !== null
+  const total = byOffset ? await prisma.leaguePlayer.count({ where: RANK_WHERE }) : undefined
+  const page = byOffset
+    ? {
+        items: (await prisma.leaguePlayer.findMany({
+          where: RANK_WHERE,
+          skip: offset,
+          take: size,
+          orderBy: [...RANK_ORDER] as never,
+          select: RANK_SELECT,
+        })) as unknown as RankRowShape[],
+        cursor: { prev: null, next: null },
+      }
+    : await cursorPage<RankRowShape>({
+        cursor,
+        size,
+        orderBy: [...RANK_ORDER],
+        reversedOrderBy: [...RANK_ORDER_REVERSED],
+        idOf: (row) => row.id,
+        fetch: (args) =>
+          prisma.leaguePlayer.findMany({
+            where: RANK_WHERE,
+            take: args.take,
+            orderBy: args.orderBy as never,
+            ...(args.cursor ? { cursor: args.cursor, skip: args.skip } : {}),
+            select: RANK_SELECT,
+          }) as unknown as Promise<RankRowShape[]>,
+      })
 
   /* 평균킬 분모는 `knownStatGames` 가 **먼저**다 (D-172). 그것이 있는 선수는
      `matchCountByPlayer` 를 부를 이유가 없다 — 결과를 쓰지도 않는다.
@@ -641,7 +665,7 @@ export async function getPlayerRanks(
     /* **첫 쪽이면 세지 않는다** (2026-09-01 · D-239 후속).
        목록과 순위 계산이 같은 조건·같은 정렬이라, 커서가 없을 때 첫 줄보다 앞에 오는 행은
        **정의상 0개**다. 메인 TOP3·랭킹 첫 화면에서 왕복 한 번이 사라진다 */
-    cursor === null ? Promise.resolve(1) : rankOfFirstPlayer(leagueId, page.items[0]),
+    byOffset ? Promise.resolve((offset as number) + 1) : cursor === null ? Promise.resolve(1) : rankOfFirstPlayer(leagueId, page.items[0]),
     matchCountByPlayer(
       leagueId,
       unknownGames.map((row) => row.player.id),
@@ -650,6 +674,7 @@ export async function getPlayerRanks(
 
   return {
     cursor: page.cursor,
+    ...(total === undefined ? {} : { total }),
     items: page.items.map((row, index) => ({
       rank: startRank + index,
       league_player_id: row.id,
