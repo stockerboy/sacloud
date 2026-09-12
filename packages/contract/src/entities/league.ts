@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { Count, Id, IsoDateTime, Percent, Rating, Slug } from '../common'
 import { Division, LeagueClanStatus, LeagueStatus, PlayerLimit, SeasonType } from '../codes'
 import { ClanSummary, LeagueSummary, PlayerSummary, UserSummary } from './summaries'
+import { MatchListItem } from './match'
 
 /** 리그맵. 실제 맵 목록은 원본 조사 범위 밖이라 [미확인] — Mock은 자리표시자 이름을 쓴다. */
 export const GameMap = z.object({
@@ -281,12 +282,12 @@ export function parseRankWeapon(value: string | null | undefined): RankWeapon {
  * 「경기분석까지 마친」 = 그 판 육각형을 ★양 팀 다★ 접었다는 뜻이다.
  */
 export const HomeAnalyzedMatch = z.object({
-  match_id: Id,
   league_slug: Slug,
-  map_name: z.string().nullable(),
-  start_at: z.string(),
-  won_clan: ClanSummary,
-  lost_clan: ClanSummary,
+  /** 티어 표기에 쓴다 — 경기 목록과 같은 값 */
+  league_category: z.enum(['official', 'independent']),
+  start_at: IsoDateTime,
+  /** ★경기 목록과 같은 카드★ — 화면이 `MatchListV3` 를 그대로 쓴다 */
+  match: MatchListItem,
 })
 export type HomeAnalyzedMatch = z.infer<typeof HomeAnalyzedMatch>
 
