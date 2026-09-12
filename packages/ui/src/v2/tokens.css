@@ -292,11 +292,8 @@
  */
 .sac-v2 .v2-gnb__mark {
   display: block;
-  width: 19px;
-  height: 19px;
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
+  height: 22px;
+  width: auto;
   flex: none;
 }
 /**
@@ -308,19 +305,14 @@
   line-height: 1;
 }
 @media (max-width: 767px) {
-  /* 폰 — 표장 위, 이름 아래 (2026-09-12 사장님) */
-  .sac-v2 .v2-gnb__cell {
-    flex-direction: column;
-    gap: 2px;
-  }
+  /* 폰 — 로고가 이름을 품고 있어 한 줄로 둔다 (2026-09-12 사장님) */
   .sac-v2 .v2-gnb__name {
-    font-size: 9.5px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.04em;
     line-height: 1;
   }
   .sac-v2 .v2-gnb__mark {
-    width: 21px;
     height: 21px;
   }
   .sac-v2 .v2-gnb__board {

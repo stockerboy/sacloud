@@ -55,22 +55,37 @@ export function HomeLeagueTiles() {
           <li key={tile.href}>
             <Link
               href={tile.href}
-              className="group flex w-[88px] flex-col items-center gap-[5px] max-md:w-[72px]"
+              aria-label={tile.label}
+              className="group flex flex-col items-center gap-[5px]"
             >
-              <span
+              {/*
+                ★새 로고 (2026-09-12 사장님: «이것들로 로고 바꿔줘 전부»)★
+
+                ⚠ 새 그림은 ★가로가 더 길다★ (10 은 1.42:1 · IPL 1.59:1 · SPL 1.88:1).
+                  옛 판처럼 46×46 네모 상자에 `bg-contain` 으로 넣으면 세로가 24~32px 로
+                  눌려 안 보인다. 그래서 ★세로만 맞추고 가로는 그림이 정하게★ `<img>` 로 놓는다
+                  (`w-auto`). 상자 폭 `w-[88px]` 도 뺐다 — 로고마다 폭이 다르다.
+
+                ⚠ ★이름은 로고 안에 이미 들어 있다★ (IPL · SPL · 10).
+                  그래서 밑의 글자 줄을 뺐다 — 같은 말이 두 번 나오면 지저분하다.
+                  되살리려면 아래 주석 블록을 풀면 된다 (`CLAUDE.md` 1-4).
+              */}
+              <img
+                src={MARK[tile.slug]}
+                alt=""
                 aria-hidden
-                /* ⚠ 2026-09-12 두 번째 손질 — 사장님: «홈페이지 검색창 밑에있는 로고도 너무 크고 더 줄여서».
-                   옛 값: PC 62px · 폰 52px (그 앞은 PC 92px). 지금: PC 46px · 폰 40px */
-                className="block h-[46px] w-[46px] bg-contain bg-center bg-no-repeat opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[40px] max-md:w-[40px]"
-                style={{ backgroundImage: `url(${MARK[tile.slug]})` }}
+                className="block h-[52px] w-auto opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[42px]"
+                style={{ filter: `drop-shadow(0 0 14px ${GLOW[tile.slug] ?? 'transparent'})` }}
               />
-              {/* `<a>` 안쪽 span 에 색을 준다 — `a { color: inherit }` 함정 (D-231) */}
-              <span
-                className="text-[13px] font-bold tracking-[.14em] text-[var(--v2-text-muted)] transition-colors duration-150 group-hover:text-[var(--v2-text)] max-md:text-[12px]"
-                style={{ textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}` }}
-              >
-                {tile.label}
-              </span>
+              {/*
+                옛 판 — 로고 밑 이름 줄 (2026-09-12 까지)
+                <span
+                  className="text-[13px] font-bold tracking-[.14em] text-[var(--v2-text-muted)] transition-colors duration-150 group-hover:text-[var(--v2-text)] max-md:text-[12px]"
+                  style={{ textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}` }}
+                >
+                  {tile.label}
+                </span>
+              */}
             </Link>
           </li>
         ))}

@@ -178,25 +178,30 @@ export function SiteHeaderV2({
                 className={`v2-gnb__item ${isActive(pathname, item.href) ? 'is-on' : ''}`}
               >
                 <span className="v2-gnb__cell">
+                  {/*
+                    ★새 로고 (2026-09-12 사장님)★ — 가로가 더 길어서 네모 상자에 넣으면
+                    세로가 눌린다. `<img>` 로 놓고 ★세로만★ 정한다 (가로는 그림이 정한다).
+                    옛 판은 19×19 네모에 `background-size: contain` 이었다.
+                  */}
                   {mark ? (
-                    <span
-                      aria-hidden
-                      className="v2-gnb__mark"
-                      style={{ backgroundImage: `url(${mark})` }}
-                    />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mark} alt="" aria-hidden className="v2-gnb__mark" />
                   ) : null}
                   {/*
-                    ★폰에서는 표장 ★밑에★ 작은 이름★ (2026-09-12 사장님:
-                    «빨간색 줄친곳에 작게 10 IPL SPL 써줘»).
+                    ★이름은 표장이 없는 리그만 적는다★ (2026-09-12 사장님: «이것들로 로고 바꿔줘 전부»).
 
-                    옛 판은 폰에서 글자를 아예 뺐다 (`max-md:hidden`) — 표장만 보고
-                    어느 리그인지 알기 어려웠다. PC 는 그대로 옆에 붙는다.
-                    자리를 바꾸는 것은 CSS(`.v2-gnb__cell`) 다 — 여기 마크업은 하나다.
+                    새 로고 안에 이미 «10» · «IPL» · «SPL» 이 들어 있다. 옆이나 밑에 또 적으면
+                    같은 말이 두 번 나온다. 표장이 없는 리그는 글자가 유일한 표시라 그대로 적는다.
+
+                    ⚠ 옛 판 — 폰에서는 표장 밑에 9.5px 로 이름을 적었다
+                      (사장님: «빨간색 줄친곳에 작게 10 IPL SPL 써줘»). 로고가 바뀌기 전 이야기다.
                   */}
-                  <span className="v2-gnb__name">
-                    {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
-                    <LeagueLabel name={item.label} />
-                  </span>
+                  {mark ? null : (
+                    <span className="v2-gnb__name">
+                      {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
+                      <LeagueLabel name={item.label} />
+                    </span>
+                  )}
                 </span>
               </Link>
             )
