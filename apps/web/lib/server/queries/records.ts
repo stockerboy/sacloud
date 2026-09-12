@@ -397,6 +397,43 @@ async function buildRecordSummary(
  */
 const PLAYER_TRAITS_ENABLED: boolean = false
 
+/**
+ * ★주전 다섯★ — 라플 1~4 + 스나 1 (2026-09-12 사장님).
+ *
+ * 잣대는 ★실력 점수★(`LeaguePlayerHex.score`) 다 — 개인랭킹과 같은 줄이다.
+ * 주무기는 여섯 축을 잰 무기(`weapon`)로 가른다. 아직 못 잰 사람은 빠진다 —
+ * 어느 쪽으로 셀지 모르는 사람을 억지로 넣지 않는다 (D-106).
+ *
+ * 모자라면 ★짧게 돌려준다.★ 화면이 빈 자리에 «없음» 을 적는다.
+ * 한 번의 질의로 클랜 사람 전부의 (무기·점수)를 읽고 여기서 자른다 — 왕복이 하나다.
+ */
+async function mainLineupOf(leagueId: string, clanId: string) {
+  const rows = await prisma.leaguePlayerHex.findMany({
+    where: {
+      score: { not: null },
+      weapon: { not: null },
+      leaguePlayer: { leagueId, clanId, placement: false },
+    },
+    orderBy: [{ score: 'desc' }, { leaguePlayerId: 'asc' }],
+    select: {
+      weapon: true,
+      score: true,
+      leaguePlayer: { select: { player: { select: PLAYER_SUMMARY_SELECT } } },
+    },
+  })
+  const pick = (weapon: 0 | 1, take: number) =>
+    rows
+      .filter((row) => row.weapon === weapon)
+      .slice(0, take)
+      .map((row) => ({
+        player: toPlayerSummary(row.leaguePlayer.player),
+        weapon,
+        score: row.score,
+      }))
+  /* ★라플 넷이 먼저, 스나가 맨 아래★ (사장님이 차례까지 정하셨다) */
+  return [...pick(0, 4), ...pick(1, 1)]
+}
+
 export async function getLeagueClanShow(
   leagueSlug: string,
   clanSlug: string,
@@ -434,7 +471,7 @@ export async function getLeagueClanShow(
     OR: [{ redLeagueClanId: leagueClan.id }, { blueLeagueClanId: leagueClan.id }],
   }
 
-  const [rank, record, clanMetrics, roster, roundMetrics, hexagon, hexagonV2, headToHead, maxWinStreak] = await Promise.all([
+  const [rank, record, clanMetrics, roster, roundMetrics, hexagon, hexagonV2, headToHead, maxWinStreak, mainLineup] = await Promise.all([
     clanRankOf({
       id: leagueClan.id,
       leagueId: leagueClan.leagueId,
@@ -512,6 +549,11 @@ export async function getLeagueClanShow(
     softFail('clan-max-win-streak', null as number | null, { leagueClanId: leagueClan.id })(
       clanMaxWinStreak(leagueClan.leagueId, leagueClan.id),
     ),
+    /* ★주전 다섯★ (2026-09-12 사장님). 실패해도 화면 전체를 죽이지 않는다 — 그때는 빈 줄이다 */
+    softFail('clan-main-lineup', [] as Awaited<ReturnType<typeof mainLineupOf>>, {
+      leagueId: leagueClan.leagueId,
+      clanId: clan.id,
+    })(mainLineupOf(leagueClan.leagueId, clan.id)),
   ])
 
   return {
@@ -545,6 +587,7 @@ export async function getLeagueClanShow(
     hexagon_v2: hexagonV2,
     head_to_head: headToHead,
     max_win_streak: maxWinStreak,
+    main_lineup: mainLineup ?? [],
   }
 }
 

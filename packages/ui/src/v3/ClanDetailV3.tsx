@@ -16,8 +16,7 @@ import { rankColor, statColor } from './rankColors'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
-import { Hexagon } from './Hexagon'
-import { clanHexAxes } from './ClanCardV3'
+/* 육각형은 2026-09-12 부터 머리 카드(ClanCardV3)가 그린다 — 여기서는 안 쓴다 */
 import { H2HChartV3 } from './H2HChartV3'
 
 /** ★선수 기록실과 같은 2칸×3줄★ (2026-09-11 사장님: «경기카드 전부 이 형식으로 통일») */
@@ -826,52 +825,54 @@ const [tier] = useState<number>(() => {
   })()
   const tiered = data.league.division_count >= 2
   void tiered
-  /* ★탭 둘★ (2026-09-11 사장님: «클랜별전적 · 플레이스타일 이렇게 나눠서 최대한 개인 페이지랑 비슷한 형식으로») */
-  const [tab, setTab] = useState<'vs' | 'style'>('vs')
+  /**
+   * ★들어올 때는 접혀 있다★ (2026-09-12 사장님: «이거 들어갈때는 접어둔 상태로 만들어줘»).
+   *
+   * 클랜별전적은 구간마다 상대가 줄줄이 붙는 긴 칸이라, 펼친 채로 들어오면
+   * 「최근 경기」가 화면 두 번 아래로 밀린다. 머리줄을 누르면 펴진다.
+   */
+  const [vsOpen, setVsOpen] = useState(false)
+  /**
+   * ⚠ ★2026-09-12 — 탭을 없앴다★ (사장님: «클랜 플레이 스타일 파트를 없애고
+   *   그 그래프를 그냥 메인 카드 왼쪽에 배치해줄 수 있어?»).
+   *
+   * 옛 판은 «클랜별전적 / 플레이스타일» 두 탭이었다 (2026-09-11 사장님:
+   * «최대한 개인 페이지랑 비슷한 형식으로»). 육각형이 머리 카드로 올라가서
+   * 남는 탭이 하나뿐이라 탭 줄 자체가 뜻이 없어졌다. 클랜별전적을 그냥 편다.
+   */
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10, marginTop: 18 }}>
-        {([['vs', '클랜별전적'], ['style', '플레이스타일']] as const).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            style={{
-              padding: '12px 0', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              borderRadius: V3.radiusCard, whiteSpace: 'nowrap',
-              color: tab === key ? '#dbe8ff' : V3.textMuted,
-              background: tab === key ? 'rgba(91,141,255,.12)' : V3.card,
-              border: `1px solid ${tab === key ? 'rgba(127,169,255,.7)' : V3.cardBorder}`,
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === 'style' ? (
-        <Card style={{ marginTop: 14 }}>
-          <CardHead title={<span style={{ letterSpacing: '.06em' }}>PLAY STYLE</span>} right={
-            <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(data.win + data.lose)}전 기준</span>
-          } />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 14px 18px' }}>
-            <span className="v3-hex-zoom" style={{ display: 'block', width: 300 * 1.55, height: 262 * 1.55 }}>
-              <span style={{ display: 'block', transform: 'scale(1.55)', transformOrigin: 'top left' }}>
-                <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHexTab" />
-              </span>
-            </span>
-          </div>
-        </Card>
-      ) : (
-      <>
-      {/* 2026-09-11 사장님: 선수 페이지와 같은 방식 — 구간마다 한 칸, 마크를 누르면 그 클랜과의 승률로 */}
-      <ClanVsTiersCard data={data} h2h={h2h} tierClansOf={props.tierClansOf} selected={selected} onSelect={setSelected} />
-      {opp ? (
-        <HeadToHeadCard data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
-      ) : (
-        <Card style={{ marginTop: 14, padding: 18 }}><span style={{ fontSize: 12, color: V3.textGhost }}>시즌 Cloud 0 에 붙은 상대가 아직 없습니다</span></Card>
-      )}
-      </>
-      )}
+      {/*
+        ★클랜별전적 — 접이식★ (2026-09-12 사장님).
+        옛 판은 «클랜별전적 / 플레이스타일» 두 탭이었다. 플레이스타일이 머리 카드로
+        올라가서 탭이 하나뿐이 됐고, 사장님이 접어 두라고 하셨다.
+      */}
+      <button
+        type="button"
+        onClick={() => setVsOpen((now) => !now)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          width: '100%', marginTop: 18, padding: '13px 16px', fontFamily: 'inherit',
+          fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+          borderRadius: V3.radiusCard, color: vsOpen ? '#dbe8ff' : V3.textMuted,
+          background: vsOpen ? 'rgba(91,141,255,.12)' : V3.card,
+          border: `1px solid ${vsOpen ? 'rgba(127,169,255,.7)' : V3.cardBorder}`,
+        }}
+      >
+        <span>클랜별전적</span>
+        <span style={{ fontSize: 10, color: V3.textGhost }}>{vsOpen ? '▲' : '▼'}</span>
+      </button>
+      {vsOpen ? (
+        <>
+          {/* 2026-09-11 사장님: 선수 페이지와 같은 방식 — 구간마다 한 칸, 마크를 누르면 그 클랜과의 승률로 */}
+          <ClanVsTiersCard data={data} h2h={h2h} tierClansOf={props.tierClansOf} selected={selected} onSelect={setSelected} />
+          {opp ? (
+            <HeadToHeadCard data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
+          ) : (
+            <Card style={{ marginTop: 14, padding: 18 }}><span style={{ fontSize: 12, color: V3.textGhost }}>시즌 Cloud 0 에 붙은 상대가 아직 없습니다</span></Card>
+          )}
+        </>
+      ) : null}
       <SectionBar title="최근 경기" />
       {matchesLoading ? (
         <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>

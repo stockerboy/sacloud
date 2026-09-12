@@ -454,6 +454,18 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
 export type LeaguePlayerDetail = z.infer<typeof LeaguePlayerDetail>
 
 /** GET /leagues/{leagueSlug}/clans/{clanSlug}/show */
+/**
+ * 주전 한 명 (2026-09-12 사장님) — 마크는 클랜 것이라 안 싣는다.
+ * `weapon` 은 `0 = 라이플` · `1 = 스나이퍼` (도메인 규칙 그대로).
+ */
+export const ClanMainPlayer = z.object({
+  player: PlayerSummary,
+  weapon: z.union([z.literal(0), z.literal(1)]),
+  /** 실력 점수 — 줄 세운 잣대. 아직 없으면 null */
+  score: Count.nullable(),
+})
+export type ClanMainPlayer = z.infer<typeof ClanMainPlayer>
+
 export const LeagueClanShow = LeagueClanDetail.extend({
   /**
    * **주간 승률 그래프** (2026-09-02 사용자 지시).
@@ -531,5 +543,19 @@ export const LeagueClanShow = LeagueClanDetail.extend({
   head_to_head: z.array(ClanHeadToHead).default([]),
   /** 시즌 0 최다 연승 (2026-09-10 · 목업 KPI 넷째 줄). 경기가 없으면 null */
   max_win_streak: Count.nullable().default(null),
+  /**
+   * ★주전 다섯★ — 라플 넷 + 스나 하나 (2026-09-12 사장님).
+   *
+   * > «메인카드 남는공간에 클랜 메인스나(1명 클랜내에서 가장 순위가 높은 스나)
+   * >  메인라플 4명(클랜 내 라플순위 1,2,3,4등) 5명 세로로 나열해줘
+   * >  라플4명부터 나열하고 마지막 젤 아래가 스나»
+   *
+   * 차례는 ★라플 1·2·3·4 그다음 스나★ 다. 배열 순서가 곧 화면 순서다.
+   * 「순위」는 ★실력 점수★ 순이다 — 개인랭킹과 같은 잣대다.
+   *
+   * 다섯이 안 되면 ★모자란 만큼 그냥 짧게★ 온다. 화면이 빈 자리를 «없음» 으로 적는다 —
+   * 여기서 가짜 줄을 만들지 않는다 (D-106).
+   */
+  main_lineup: z.array(ClanMainPlayer).default([]),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>

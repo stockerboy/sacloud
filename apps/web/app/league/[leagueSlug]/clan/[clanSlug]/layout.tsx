@@ -85,7 +85,9 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
               </GhostButton>
             }
             tierWins={tierWins}
-            showHexagon={false}
+            /* ★2026-09-12 사장님★ — 「플레이스타일」 탭을 없애고 육각형을 카드 왼쪽으로 데려왔다.
+               옛 판은 여기가 false 였고 탭이 그렸다 (2026-09-11) */
+            showHexagon
             tierIndex={tierIndex}
             onTierStep={(dir) => setTierStep((i) => i + dir)}
           />

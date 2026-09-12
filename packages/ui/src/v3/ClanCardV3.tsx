@@ -58,6 +58,21 @@ export function ClanTraitBackdrop({ theme, markSlug }: { theme: ClanTheme; markS
   )
 }
 
+/**
+ * ★게임템포 기준★ (2026-09-12 사장님: «게임 템포는 초 옆에 기준을 만들어서»).
+ *
+ * 초만 적혀 있으면 25.5초가 빠른 건지 느린 건지 알 수가 없다. 리그 안 백분위로
+ * 다섯 칸을 나눠 말로 적는다. 값은 ★리그 안 상대 위치★ 라 리그가 커지면 같이 움직인다.
+ * 백분위가 높을수록 빠르다 (`clanTraitsV2` 의 tempo 정규화 방향).
+ */
+function tempoTier(pct: number): string {
+  if (pct >= 80) return '매우 빠름'
+  if (pct >= 60) return '빠른 편'
+  if (pct >= 40) return '보통'
+  if (pct >= 20) return '느린 편'
+  return '매우 느림'
+}
+
 /** 클랜 육각형 축 → 그림 입력. 시안 순서(스나싸움 · 소수싸움 · 세이브 · 게임템포 · 선짤 · 교환율) */
 export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
   const order = ['sniperDuel', 'outnumbered', 'save', 'tempo', 'firstBlood', 'trade'] as const
@@ -67,8 +82,14 @@ export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
   return order.map((key) => {
     const axis = hex?.axes.find((a) => a.key === key) ?? null
     if (!axis || axis.value === null) return { label: label[key], value: null, note: '측정중', noteColor: V3.textGhost }
-    if (key === 'tempo') return { label: label[key], value: axis.value * 100, note: axis.text, noteColor: '#a9c3ff' }
-    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, noteColor: rankColor(axis.rank) }
+    /* 게임템포는 등수가 아니라 ★초 + 기준★ 이다 (2026-09-12 사장님) */
+    if (key === 'tempo') return { label: label[key], value: axis.value * 100, note: axis.text, noteColor: '#a9c3ff', note2: tempoTier(axis.value * 100) }
+    /*
+     * ★«42개중 28위»★ (2026-09-12 사장님: «클랜 몇개중 몇위 이렇게 해주고»).
+     * 등수만 적으면 몇 팀 중인지를 몰라 28위가 잘한 건지 못한 건지 안 보인다.
+     * 모집단을 못 세면 등수만 적는다 — 지어내지 않는다.
+     */
+    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, noteColor: rankColor(axis.rank), note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
     return { label: label[key], value: axis.value * 100, note: axis.text, noteColor: V3.textMuted }
   })
 }
@@ -138,7 +159,18 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
       <div style={traitBodyStyle}>
         <ClanTraitBackdrop theme={theme} markSlug={data.clan.slug} />
         {plate ? <span aria-hidden className={`v3-plate v3-plate--${plate}`} /> : null}
-        <div style={{ position: 'relative', flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/*
+          ★육각형이 왼쪽★ (2026-09-12 사장님: «클랜 플레이 스타일 파트를 없애고
+          그 그래프를 그냥 메인 카드 왼쪽에 배치해줄 수 있어?»).
+
+          옛 판은 이 그림을 ★따로 「플레이스타일」 탭★ 에 뒀고(2026-09-11) 카드에는
+          `showHexagon={false}` 로 안 그렸다. 탭을 없애고 카드로 데려왔다.
+          ⚠ `showHexagon` 은 남긴다 — 되돌릴 자리다 (`CLAUDE.md` 1-4).
+        */}
+        {showHexagon ? <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHex" /> : null}
+        {/* ★주전 다섯★ — 카드 남는 자리 (2026-09-12 사장님) */}
+        <MainLineup data={data} theme={theme} />
+        <div style={{ position: 'relative', flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 4px 12px', borderBottom: '1px solid #18222f' }}>
             {tiered ? (
               <>
@@ -166,10 +198,49 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
             </div>
           ))}
         </div>
-        {/* 2026-09-11 사장님: 클랜 페이지도 선수 페이지처럼 탭으로 나눈다 — 육각형은 «플레이스타일» 탭에서 그린다 */}
-        {showHexagon ? <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHex" /> : null}
       </div>
     </section>
+  )
+}
+
+/**
+ * ★주전 다섯★ — 라플 넷 + 스나 하나 (2026-09-12 사장님).
+ *
+ * > «메인카드 남는공간에 클랜 메인스나(1명 클랜내에서 가장 순위가 높은 스나)
+ * >  메인라플 4명(클랜 내 라플순위 1,2,3,4등) 5명 세로로 나열해줘
+ * >  라플4명부터 나열하고 마지막 젤 아래가 스나 (…) 5명이 안되는 클랜은 그냥 없음»
+ *
+ * 줄 수는 ★언제나 다섯★ 이다. 모자란 자리는 «없음» 이라고 적는다 —
+ * 자리를 없애면 카드 높이가 클랜마다 달라져 목록이 들쭉날쭉해진다.
+ * 차례를 서버가 정해서 준다 (`main_lineup`) — 화면에서 다시 줄 세우지 않는다.
+ */
+function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme }) {
+  const rows = data.main_lineup ?? []
+  /* 라플 넷 · 스나 하나 — 자리마다 무엇이 와야 하는지 여기서 정한다 */
+  const slots: (0 | 1)[] = [0, 0, 0, 0, 1]
+  const rifles = rows.filter((row) => row.weapon === 0)
+  const snipers = rows.filter((row) => row.weapon === 1)
+  return (
+    <div style={{ position: 'relative', flex: '0 1 210px', minWidth: 168, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.12em', padding: '0 2px 6px' }}>주전</span>
+      {slots.map((weapon, index) => {
+        const row = weapon === 0 ? rifles[index] : snipers[0]
+        return (
+          <span
+            key={`${weapon}-${index}`}
+            style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', alignItems: 'center', gap: 7, padding: '5px 2px', borderTop: index === 0 ? 'none' : '1px solid #18222f' }}
+          >
+            {row ? <MarkCircle clan={data.clan} size={18} /> : <span aria-hidden style={{ width: 18, height: 18 }} />}
+            <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: row ? theme.ink : V3.textGhost2 }}>
+              {row ? row.player.name : '없음'}
+            </span>
+            <span style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', color: row ? (weapon === 1 ? V3.redSoft : V3.textDim) : V3.textGhost2 }}>
+              {weapon === 1 ? '스나수' : '라플수'}
+            </span>
+          </span>
+        )
+      })}
+    </div>
   )
 }
 
