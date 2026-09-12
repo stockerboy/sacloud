@@ -15,6 +15,7 @@ import {
   leagueClanPath,
   leaguePlayerPath,
   rankColor,
+  rankColorSniperDuel,
   rateClass,
 } from '@sacloud/ui'
 
@@ -73,7 +74,11 @@ function podiumAxes(axes: readonly PlayerRankHexAxis[]): HexAxisView[] {
     label: a.label,
     value: a.percentile,
     note: a.rank === null ? '측정중' : `${a.rank}위`,
-    noteColor: a.rank === null ? 'var(--v2-text-ghost)' : (rankColor(a.rank) ?? 'var(--v2-text-muted)'),
+    /* ★스나싸움(duel)만 20위 기준★ (2026-09-12 사장님) */
+    noteColor:
+      a.rank === null
+        ? 'var(--v2-text-ghost)'
+        : (a.key === 'duel' ? rankColorSniperDuel(a.rank) : rankColor(a.rank)) ?? 'var(--v2-text-muted)',
     note2: a.rank === null || a.total === null ? null : `${a.total.toLocaleString('ko-KR')}명중`,
     strong: a.rank !== null && a.rank <= 10,
   }))

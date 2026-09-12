@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { ClanHexagonV2, LeagueClanShow } from '@sacloud/contract'
-import { floorColor, rankColor, statColor } from './rankColors'
+import { floorColor, rankColor, rankColorSniperDuel, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
@@ -90,7 +90,8 @@ export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
      * 등수만 적으면 몇 팀 중인지를 몰라 28위가 잘한 건지 못한 건지 안 보인다.
      * 모집단을 못 세면 등수만 적는다 — 지어내지 않는다.
      */
-    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, noteColor: rankColor(axis.rank), note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
+    /* ★스나싸움만 20위 기준★ (2026-09-12 사장님) — 까닭은 `rankColorSniperDuel` 주석에 */
+    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, noteColor: key === 'sniperDuel' ? rankColorSniperDuel(axis.rank) : rankColor(axis.rank), note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
     return { label: label[key], value: axis.value * 100, note: axis.text, noteColor: V3.textMuted }
   })
 }

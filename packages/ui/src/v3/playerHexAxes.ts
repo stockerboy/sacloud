@@ -8,7 +8,7 @@
  */
 import type { LeaguePlayerDetail } from '@sacloud/contract'
 import type { HexAxisView } from './Hexagon'
-import { rankColor } from './rankColors'
+import { rankColor, rankColorSniperDuel } from './rankColors'
 import { V3, fmt } from './tokens'
 
 /**
@@ -31,7 +31,8 @@ export function strengthAxes(data: LeaguePlayerDetail): HexAxisView[] {
     label: a.label,
     value: a.percentile,
     note: a.rank === null ? '측정중' : `${a.rank}위`,
-    noteColor: a.rank === null ? V3.textGhost : rankColor(a.rank),
+    /* ★스나싸움(duel)만 20위 기준★ — 모집단이 한 무기라 작다 (2026-09-12 사장님) */
+    noteColor: a.rank === null ? V3.textGhost : a.key === 'duel' ? rankColorSniperDuel(a.rank) : rankColor(a.rank),
     note2: a.rank === null || a.total === null ? null : `${poolNameOf(a.key, hex.weapon)} ${fmt(a.total)}명중`,
     /* ★10위 안은 더 세게★ (2026-09-11 사장님) */
     strong: a.rank !== null && a.rank <= 10,

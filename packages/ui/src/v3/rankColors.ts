@@ -37,6 +37,23 @@ export function rankColorV2(rank: number): string {
   return RANK_COLORS.rest;
 }
 
+/**
+ * ★스나싸움만 20위★ (2026-09-12 사장님: «스나싸움은 20위부터 노란색으로 해줘»).
+ *
+ * ── 왜 이 축만 다른가
+ *   다른 축은 모집단이 크다 (IPL 선수 876명 · 클랜 42개 전체). 그래서 «100위 안» 이
+ *   실제로 상위 11% 다. 그런데 ★스나싸움은 같은 무기끼리만★ 견준다 —
+ *   IPL 스나수는 141명뿐이다. 141명 중 100위도 노란색이 되어 «잘한다» 로 보인다.
+ *   실측: 73위(141명 중)가 노란색이었다. 절반 아래인데 상위권 색이었다.
+ *
+ * 20위 안이면 노랑, 아니면 하양. 되돌리려면 부르는 쪽에서 `rankColor` 로 바꾸면 된다.
+ */
+export const SNIPER_DUEL_RANK_LIMIT = 20
+
+export function rankColorSniperDuel(rank: number): string {
+  return rank <= SNIPER_DUEL_RANK_LIMIT ? RANK_COLORS.top20 : RANK_COLORS.rest
+}
+
 /** 별칭 — 닉네임에 쓸 때 의도가 드러나도록. 동작은 rankColor 와 동일. */
 export const nameColor = rankColor;
 
