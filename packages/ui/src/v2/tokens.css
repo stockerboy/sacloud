@@ -950,3 +950,30 @@
   border-color: rgba(200, 210, 235, 0.55);
   background: rgba(200, 210, 235, 0.1);
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★선수 머리 카드 — PC 는 왼쪽 그림 · 오른쪽 숫자★ (2026-09-12 사장님)
+
+   > «Pc버전에서 왼쪽 정보들 오른쪽에 몰아넣고 공간 만들어서
+   >  저기도 플레이분석 그래프 만들어줘»
+
+   ★폰은 한 글자도 안 바뀐다★ — 900px 미만에서는 두 상자가 그냥 위아래로 쌓인다
+   (클랜 스코어보드 `.v3-board` 와 같은 경계를 쓴다).
+   ────────────────────────────────────────────────────────────────────────── */
+.v3-phead-hex { display: none; }
+
+@media (min-width: 900px) {
+  .v3-phead-body {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    border-top: 1px solid #18233a;
+  }
+  .v3-phead-body > .v3-phead-hex {
+    display: block;
+    padding: 6px 4px 10px 10px;
+    border-right: 1px solid #18233a;
+  }
+  /* 위 테두리는 바깥 상자가 그린다 — 두 줄이 겹치지 않게 */
+  .v3-phead-body .v3-phead-kpi { border-top: 0 !important; }
+}

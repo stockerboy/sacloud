@@ -27,6 +27,8 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
+import { Hexagon } from './Hexagon'
+import { strengthAxes } from './playerHexAxes'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, RankText, TierText, clanThemeOf } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
@@ -77,6 +79,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const rank = hex?.score_rank_all ?? (hex ? hex.score_rank : data.rank)
   const rankTotal = hex?.score_total_all ?? (hex ? hex.score_total : data.rank_count)
   const rows = data.tier_breakdown
+  /* ★머리 카드가 그리는 여섯 축★ (2026-09-12). STRENGTH POINT 카드와 ★같은 함수★ 다 */
+  const axes = strengthAxes(data)
   const tiered = data.league.division_count >= 2
 
   /* ★플레이구간★ — 가장 많이 뛴 구간이 기본. 누르면 그것이 우선 */
@@ -233,6 +237,21 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           ))}
         </div>
       ) : null}
+      {/*
+        ★PC 는 왼쪽에 그림 · 오른쪽에 숫자★ (2026-09-12 사장님:
+        «Pc버전에서 왼쪽 정보들 오른쪽에 몰아넣고 공간 만들어서 저기도 플레이분석 그래프 만들어줘»).
+
+        카드 가운데가 통째로 비어 있었다. 숫자 줄을 오른쪽으로 몰고 그 자리에 여섯 축을 넣는다.
+        ★폰은 한 글자도 안 바뀐다★ — 아래 두 상자는 900px 미만에서 그냥 위아래로 쌓인다
+        (`.v3-phead-body` 는 900px 이상에서만 두 칸이 된다).
+      */}
+      <div className="v3-phead-body">
+      {axes.length > 0 ? (
+        <div className="v3-phead-hex">
+          <Hexagon axes={axes} id={`pheadHex-${data.player.id}`} />
+        </div>
+      ) : null}
+      <div className="v3-phead-stats">
       {/* 3 · 승률 · 킬뎃 · 판킬 — 고른 구간 · 고른 무기 */}
       <div className="v3-phead-kpi" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', borderTop: '1px solid #18233a' }}>
         <Kpi
@@ -284,6 +303,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         </div>
       </div>
       {report?.message ? <div style={{ position: 'relative', padding: '0 20px 9px', fontSize: 10.5, color: V3.textDim }}>{report.message}</div> : null}
+      </div>
+      </div>
     </section>
   )
 }
