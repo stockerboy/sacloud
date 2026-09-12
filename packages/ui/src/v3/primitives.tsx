@@ -182,9 +182,15 @@ export function SniperMark({ size = 15 }: { size?: number }) {
   )
 }
 
-export function MvpBadge({ size = 10 }: { size?: number }) {
+/**
+ * ★MVP 알약★ — PC 에서 가로로 길게 늘일 수 있게 className 을 연다 (2026-09-12 사장님:
+ * «pc에서는 mvp카드를 좀 더 가로로 길게 잘 보이게 배치해줘»). 늘리는 값은 CSS 쪽
+ * `.v3-mvp-wide` 에 있다 — 폰은 한 픽셀도 안 바뀐다.
+ */
+export function MvpBadge({ size = 10, className }: { size?: number; className?: string }) {
   return (
     <span
+      className={className}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

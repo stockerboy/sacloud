@@ -38,8 +38,9 @@ const statRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'aut
 /* 2026-09-11 사장님: 경기 카드를 폰 모양 한 가지로 통일한다 — 두 칸 × 세 줄.
    1줄 승패·맵·시각 / 자리   2줄 양 팀 / MVP·킬뎃   3줄 상대 티어 / 펼치기 */
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center', rowGap: 7, columnGap: 12, padding: '13px 18px', cursor: 'pointer' }
-const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 104px 74px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
-const playerRowSavesStyle: CSSProperties = { ...playerRowStyle, gridTemplateColumns: 'minmax(0,1fr) 104px 60px 74px' }
+/** ★마지막 칸이 MVP★ — 까닭은 ClanDetailV3 의 같은 상수 주석에 (2026-09-12 사장님) */
+const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 94px 64px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
+const playerRowSavesStyle: CSSProperties = { ...playerRowStyle, gridTemplateColumns: 'minmax(0,1fr) 94px 50px 64px 22px' }
 
 export interface PlayerDetailV3Props {
   data: LeaguePlayerDetail
@@ -478,7 +479,6 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug }: { row: M
         {/* 닉네임을 누르면 그 선수 화면으로 (2026-09-11 사장님). 줄 접힘과 안 겹치게 전파를 막는다 */}
         <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
         {sniper ? <SniperMark /> : null}
-        {mvp ? <MvpBadge size={8.5} /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
       {showSaves ? (
@@ -489,6 +489,8 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug }: { row: M
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', color: row.main_weapon === null || row.main_weapon === undefined ? '#4e5b76' : '#c3cbdb' }}>
         {row.main_weapon === 1 ? '스나수' : row.main_weapon === 0 ? '라플수' : '알수없음'}
       </span>
+      {/* ★MVP 는 줄 맨 오른쪽★ — 별 하나라 이름을 안 가린다 (2026-09-12 사장님) */}
+      <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, lineHeight: 1, color: mvp ? V3.gold : 'transparent' }} title={mvp ? 'MVP' : undefined}>★</span>
     </div>
   )
 }
@@ -562,7 +564,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
           ) : (
           <>
           <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 104px 60px 74px' : 'minmax(0,1fr) 104px 74px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span>
+            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => (
@@ -612,7 +614,16 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                 <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
                 <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+              {/*
+                ★MVP 는 1줄 · 「클랜전」 알약 왼쪽★ (2026-09-12 사장님:
+                «mvp 클랜전 표시 왼쪽에 배치해줘»).
+
+                옛 자리는 ★2줄 오른쪽 끝★ 이었다 (킬뎃 옆). 거기서는 킬뎃·킬데스와
+                한 줄에 몰려 좁았고, 사장님 PC 화면에서 잘 안 보였다.
+                1줄 오른쪽은 알약 하나뿐이라 자리가 남는다 — 거기로 옮긴다.
+              */}
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7 }}>
+                {mvpIsMe ? <MvpBadge size={10} className="v3-mvp-wide" /> : null}
                 {my?.participant_role ? (
                   <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', padding: '3px 8px', borderRadius: 5, color: my.participant_role === 'mercenary' ? '#c9a35b' : V3.textMuted, background: my.participant_role === 'mercenary' ? 'rgba(201,163,91,.10)' : V3.chip, border: `1px solid ${my.participant_role === 'mercenary' ? 'rgba(201,163,91,.45)' : V3.chipBorder}` }}>
                     {my.participant_role === 'mercenary' ? '용병' : '클랜전'}
@@ -631,8 +642,6 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
               <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
                 {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}
                 {my && my.kd_rate !== null ? <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>{my.kd_rate.toFixed(1)}%</span> : null}
-                {/* ★배지는 제일 오른쪽 끝★ (2026-09-11 사장님: 경기카드 통일) */}
-                {mvpIsMe ? <MvpBadge size={8.5} /> : null}
               </span>
               {/* 3줄 — 상대 티어 / 오른쪽엔 펼치기 */}
               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>

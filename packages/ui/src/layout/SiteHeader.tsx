@@ -60,6 +60,16 @@ export interface SiteHeaderProps {
   onLogout?: () => void
 }
 
+/** 상단바 표장 — 홈 리그 표장과 ★같은 파일★ 이다 (2026-09-12 사장님) */
+const GNB_MARK: Readonly<Record<string, string>> = {
+  sanply: '/assets/league-10.png',
+  nolink: '/assets/league-ipl.png',
+  supply: '/assets/league-spl.png',
+}
+
+/** 리그 옆 넷째 자리 (2026-09-12 사장님) */
+const GNB_BOARD = { label: '게시판', href: '/board/hot' }
+
 export function SiteHeader({
   /* 상단바 순서는 홈과 다르다 (IPL 먼저 · 지시 #14). 목록은 `FEATURED_LEAGUES` 하나, 순서만 여기서 */
   featuredLeagues = GNB_LEAGUES,
@@ -145,17 +155,42 @@ export function SiteHeader({
               </div>
             </div>
           ) : (
-            /* 지시 #14 ① — 상단바는 IPL · SPL · 10🏔 셋뿐. 각각이 1차 메뉴이고 현재 리그에 밑줄 */
-            featuredLeagues.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`${NAV_LINK} ${isActive(pathname, item.href) ? NAV_ACTIVE : ''}`}
-              >
-                <LeagueLabel name={item.label} />
-              </Link>
-            ))
+            /*
+             * ★상단바 바로가기★ (2026-09-12 사장님: «로고10/로고IPL/로고SPL/게시판»).
+             * 리그마다 표장을 앞에 붙인다 — 홈에 쓰는 그림과 ★같은 파일★ 이다.
+             * 옛 판은 글자만 있었다 (지시 #14 ①). 표장이 없는 리그는 글자만 나온다 — 지어내지 않는다.
+             */
+            featuredLeagues.map((item) => {
+              const slug = item.href.split('/')[2] ?? ''
+              const mark = GNB_MARK[slug]
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`${NAV_LINK} ${isActive(pathname, item.href) ? NAV_ACTIVE : ''}`}
+                >
+                  <span className="flex items-center gap-[6px]">
+                    {mark ? (
+                      <span
+                        aria-hidden
+                        className="block h-[22px] w-[22px] bg-contain bg-center bg-no-repeat"
+                        style={{ backgroundImage: `url(${mark})` }}
+                      />
+                    ) : null}
+                    <LeagueLabel name={item.label} />
+                  </span>
+                </Link>
+              )
+            })
           )}
+
+          {/* ★넷째 자리 — 게시판★ (2026-09-12 사장님). 리그 안 게시판을 없애고 여기로 모았다 */}
+          <Link
+            href={GNB_BOARD.href}
+            className={`${NAV_LINK} ${pathname.startsWith('/board') ? NAV_ACTIVE : ''}`}
+          >
+            {GNB_BOARD.label}
+          </Link>
 
           {restNav.map((item) => (
             <Link

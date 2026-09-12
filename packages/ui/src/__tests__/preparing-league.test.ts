@@ -54,9 +54,10 @@ describe('준비중 리그', () => {
     expect(hrefs).not.toContain('/league/daerule')
   })
 
-  it('상단바는 IPL · SPL · 10mountain 순서다 (지시 #14 ①) — 같은 셋, 순서만 다르다', () => {
+  /* 2026-09-12 사장님: 상단바를 10 · IPL · SPL 차례로 (홈 표장과 같은 차례) */
+  it('상단바는 10 · IPL · SPL 순서다 — 같은 셋, 순서만 다르다', () => {
     const hrefs = GNB_LEAGUES.map((item) => item.href)
-    expect(hrefs).toEqual(['/league/nolink', '/league/supply', '/league/sanply'])
+    expect(hrefs).toEqual(['/league/sanply', '/league/nolink', '/league/supply'])
     expect([...hrefs].sort()).toEqual([...FEATURED_LEAGUES.map((item) => item.href)].sort())
   })
 

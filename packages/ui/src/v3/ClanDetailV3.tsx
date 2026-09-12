@@ -26,7 +26,15 @@ const prowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px 62px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
 /* 옛 5칸 한 줄판 — 지우지 않는다 (CLAUDE.md 1-4). 지금은 v3-prow 2칸×3줄을 쓴다 */
 void matchRowStyle
-const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 108px 78px', gap: 10, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
+/**
+ * ★스코어보드 한 줄★ — 마지막 칸이 MVP 다 (2026-09-12 사장님: «MVP위치가 너무 많은걸 가려»).
+ *
+ * 옛 판은 MVP 알약이 ★닉네임 바로 뒤★ 에 있었다. PC 에서 명단이 좌우로 갈리면서
+ * 이름 칸이 좁아졌고, 알약이 그 자리를 먹어 «Sexy…» · «유핵…» 처럼 이름이 잘렸다.
+ * 이름 칸을 넓히고 MVP 는 ★줄 맨 오른쪽★ 으로 뺐다 — 사장님이 경기카드에서도
+ * «배지가 제일 오른쪽 끝» 이라고 하신 것과 같은 규칙이다.
+ */
+const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 96px 66px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
 
 export interface ClanDetailV3Props {
   data: LeagueClanShow
@@ -176,7 +184,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: {
   void kd
   const clan = row.match_time_clan
   return (
-    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 108px 64px 78px' } : {}), background: 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 96px 52px 66px 22px' } : {}), background: 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
@@ -185,7 +193,6 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: {
         <MarkCircle clan={clan ? { slug: clan.slug ?? clanSlug, mark: clan.mark } : clanSlug ? { slug: clanSlug } : null} size={20} />
         <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: 500, color: mvp ? '#ffe89a' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
         {sniper ? <SniperMark /> : null}
-        {mvp ? <MvpBadge size={8.5} /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
       {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves === null ? '-' : `${row.saves}/${row.save_chances ?? 0}`}</span> : null}
@@ -194,6 +201,8 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: {
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', color: row.main_weapon === null || row.main_weapon === undefined ? '#4e5b76' : '#c3cbdb' }}>
         {row.main_weapon === 1 ? '스나수' : row.main_weapon === 0 ? '라플수' : '알수없음'}
       </span>
+      {/* ★MVP 는 줄 맨 오른쪽★ — 별 하나라 이름을 안 가린다 (2026-09-12 사장님) */}
+      <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, lineHeight: 1, color: mvp ? V3.gold : 'transparent' }} title={mvp ? 'MVP' : undefined}>★</span>
     </div>
   )
 }
@@ -333,7 +342,7 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
           ) : (
           <>
           <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 108px 64px 78px' : 'minmax(0,1fr) 108px 78px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span>
+            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} leagueSlug={leagueSlug} />)}
