@@ -38,6 +38,7 @@ import { leagueClanHexagon, leagueClanRoundMetrics } from './clanRoundMetrics'
 import { leagueClanHexV2 } from './clanHexV2'
 import { clanHeadToHead, clanMaxWinStreak } from './clanHeadToHead'
 import { playerHexOf } from './playerHex'
+import { RANK_MIN_GAMES } from './rankings'
 import { playerReportCount } from './playerReports'
 import { buildPlayerTrend } from './playerTrend'
 import { leagueClanRoster } from './clanRoster'
@@ -866,6 +867,30 @@ export async function getLeaguePlayerDetail(
   const sniperRank = weaponRanks.get(1) as WeaponRankResult
   const rifleRank = weaponRanks.get(0) as WeaponRankResult
 
+  /**
+   * ★통합 순위★ — 스나·라플을 섞어 점수로 줄 세운 등수 (2026-09-12 사장님).
+   * 접혀 있는 scoreRank 는 그 무기 안에서만의 등수라 «15위 / 140명» 이 나온다.
+   * 개인랭킹이 보여 주는 등수와 맞추려고 ★같은 모집단★ 으로 여기서 센다 —
+   * 점수가 있고 최소 판수를 넘긴 선수. 왕복 두 번(앞선 사람 세기 · 모집단 세기)이다.
+   */
+  const rankPool = {
+    weapon: { not: null },
+    score: { not: null },
+    ...(RANK_MIN_GAMES > 0 ? { games: { gte: RANK_MIN_GAMES } } : {}),
+    leaguePlayer: { leagueId: league.id, placement: false },
+  } as const
+  const myScore = hex?.score ?? null
+  const [aheadCount, poolCount] = myScore === null
+    ? [null, null]
+    : await Promise.all([
+        prisma.leaguePlayerHex.count({ where: { ...rankPool, score: { gt: myScore } } }),
+        prisma.leaguePlayerHex.count({ where: rankPool }),
+      ])
+  const hexWithAllRank = hex === null ? null : {
+    ...hex,
+    score_rank_all: aheadCount === null ? null : aheadCount + 1,
+    score_total_all: poolCount,
+  }
   return {
     id: effective.id,
     league_id: league.id,
@@ -953,7 +978,7 @@ export async function getLeaguePlayerDetail(
        모양을 손보지 않는다 — `buildPlayerTraits()` 가 계약 모양 그대로 만들어 준다.
        계산이 실패했으면 `null` 이고 화면은 카드를 그리지 않는다 */
     traits: traits?.traits ?? null,
-    hex,
+    hex: hexWithAllRank,
     report_count: reportCount,
     /* 추이 그래프 — 같은 래더 경기 재료로 그 자리에서 접는다 (열 때마다 지금까지 경기로 다시 센다) */
     trend: buildPlayerTrend(ladderRows),

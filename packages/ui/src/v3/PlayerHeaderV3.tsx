@@ -69,8 +69,13 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const hex = data.hex
   /* ★특성 배지★ — 열 위 안에 든 축 (2026-09-12 사장님). STRENGTH POINT 카드와 같은 값이다 */
   const badges = hex ? hex.axes.filter((a) => a.badge !== null && a.rank !== null) : []
-  const rank = hex ? hex.score_rank : data.rank
-  const rankTotal = hex ? hex.score_total : data.rank_count
+  /**
+   * ★통합 순위★ (2026-09-12 사장님: «이거 통합 순위 맞아? 왜 140명? 통합 순위로 넣어»).
+   * 옛 판은 score_rank — ★그 무기 안에서만★ 의 등수라 «15위 / 140명» 이 떴다.
+   * 이제 스나·라플을 섞은 등수를 먼저 쓰고, 그게 없을 때만 옛 값으로 떨어진다.
+   */
+  const rank = hex?.score_rank_all ?? (hex ? hex.score_rank : data.rank)
+  const rankTotal = hex?.score_total_all ?? (hex ? hex.score_total : data.rank_count)
   const rows = data.tier_breakdown
   const tiered = data.league.division_count >= 2
 

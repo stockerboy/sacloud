@@ -83,6 +83,18 @@ export const PlayerHex = z.object({
   hex: Percent.nullable(),
   score: Count.nullable(),
   score_rank: Count.nullable(),
+  /**
+   * ★통합 순위★ — 스나·라플을 섞어 실력 점수로 줄 세운 등수 (2026-09-12 사장님).
+   *
+   * > «이거 통합 순위 맞아? 왜 140명? 통합 순위로 넣어»
+   *
+   * 바로 위 `score_rank` 는 ★그 무기 안에서만★ 의 등수라 «15위 / 140명» 처럼 나온다.
+   * 개인랭킹 화면이 보여 주는 등수는 섞은 줄의 순서다 — 그 값을 여기 따로 싣는다.
+   * 모집단은 개인랭킹과 ★같다★ (점수가 있고 최소 판수를 넘긴 선수).
+   * 못 세면 `null` 이다 (지어내지 않는다).
+   */
+  score_rank_all: Count.nullable().optional(),
+  score_total_all: Count.nullable().optional(),
   score_total: Count.nullable(),
   win_rate_rank: Count.nullable(),
   win_rate_total: Count.nullable(),
