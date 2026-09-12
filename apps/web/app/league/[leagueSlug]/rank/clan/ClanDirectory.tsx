@@ -157,6 +157,32 @@ function ClanRankDirectory({
   /* 어떤 칸을 보여 줄지는 화면이 아니라 `leagueScreen()` 한 곳이 정한다.
      ★순위 칸을 내리던 `rank: false` 를 걷어냈다★ — 그게 이번 지시의 알맹이다 */
   const columns = leagueScreen(leagueSlug).clanColumns
+  /**
+   * ★클랜랭킹을 안 하는 리그★ (2026-09-12 사장님: «SPL은 클랜 랭킹이 없다 (…) 공지하라»).
+   * 표도 검색칸도 안 그린다 — 없는 순위를 뒤지게 두지 않는다.
+   */
+  const notice = leagueScreen(leagueSlug).clanRankNotice
+  if (notice !== null) {
+    return (
+      <div className="pc-container">
+        <div className="pb-[var(--section-gap)] max-md:pb-8">
+          <div
+            className="mx-auto mt-[30px] w-full max-w-[900px] px-[22px] py-[26px] text-center"
+            style={{
+              borderRadius: 10,
+              border: '1px solid var(--v2-card-border)',
+              background: 'var(--v2-card)',
+            }}
+          >
+            <p className="text-[14px] font-bold leading-[1.7] text-[var(--v2-text-strong)]">{notice}</p>
+            <p className="mt-[10px] text-[12px] leading-[1.7] text-[var(--v2-text-faint)]">
+              개인랭킹과 경기 기록은 그대로 제공됩니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const searching = query.trim().length > 0
 

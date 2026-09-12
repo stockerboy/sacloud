@@ -5,8 +5,11 @@
  *
  * > «로고가 빠진 사이 공간에 스나싸움1위 / 세이브1위 / 소수싸움1위 / 샷싸움1위 (…)
  * >  개인 6각 특성 스나수까지 총 7개부문 1위 (마크) 닉네임 성공률 퍼센티지
- * >  ex 스나싸움 성공률 60퍼센트 (…) 스나수면 스코프 표시
- * >  그리고 닉네임 클릭하면 바로 갈 수 있게끔»
+ * >  (…) 스나수면 스코프 표시 / 닉네임 클릭하면 바로 갈 수 있게끔»
+ *
+ * ⚠ ★2026-09-12 두 번째 판 — 얇은 줄★ (사장님: «너무 크고 두껍잖아 얇게 배열해줘야지
+ *   이쁘게 개오바 너무 커»). 옛 판은 테두리 있는 카드 일곱 장이었다 —
+ *   폰에서 화면 한 판을 다 먹었다. 이제 ★한 줄에 한 부문★ 이고 테두리 대신 가는 선이다.
  *
  * ── 왜 일곱인가
  *   여섯 축인데 ★싸움만 무기별로 둘★ 이다 — 스나싸움(스나수 안)과 샷싸움(라플수 안).
@@ -14,7 +17,6 @@
  *
  * ── [가정] 어느 리그인가
  *   IPL 이다. 축 등수는 ★리그 안에서만★ 매겨진다 — 리그를 섞은 «1위» 는 없는 값이다.
- *   세 리그 중 사람이 가장 많은 곳을 골랐다. 사장님이 다른 리그를 원하시면 한 줄이다.
  */
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -37,54 +39,58 @@ export function HomeTopPlayers() {
   if (rows.length === 0) return null
 
   return (
-    <section aria-label="부문별 1위" className="mt-7">
-      <div className="mx-auto grid w-full max-w-[980px] grid-cols-4 gap-[10px] max-lg:grid-cols-3 max-md:grid-cols-2">
-        {rows.map((row) => (
-          <div
-            key={row.key + (row.weapon ?? '')}
-            className="flex min-w-0 flex-col gap-[7px] border border-[var(--v2-card-border)] bg-[var(--v2-card)] px-[13px] py-[11px]"
-            style={{ borderRadius: 8 }}
-          >
-            <span className="flex items-center gap-[5px]">
-              <span className="truncate text-[11px] font-bold tracking-[.06em] text-[var(--v2-text-muted)]">
-                {row.label}
-              </span>
-              {/* ★스나수면 스코프★ (2026-09-12 사장님) */}
-              {row.weapon === 1 ? <SniperMark size={12} /> : null}
-              <span className="ml-auto text-[10px] font-bold text-[#ffd83d]">1위</span>
-            </span>
+    <section aria-label="부문별 1위" className="mt-6">
+      <div className="mx-auto w-full max-w-[760px]">
+        <div className="mb-[6px] flex items-baseline gap-[7px] px-[2px]">
+          <span className="text-[10px] font-bold tracking-[.16em] text-[var(--v2-text-ghost)]">
+            부문별 1위
+          </span>
+          <span className="text-[10px] text-[var(--v2-text-ghost)]">IPL · 시즌 Cloud 0</span>
+        </div>
 
-            <span className="flex min-w-0 items-center gap-[7px]">
+        {/* PC 는 두 줄로 접어 담는다 — 일곱 줄이 세로로 늘어지지 않게 */}
+        <ul className="grid grid-cols-2 gap-x-[26px] max-md:grid-cols-1">
+          {rows.map((row) => (
+            <li
+              key={row.key + (row.weapon ?? '')}
+              className="grid min-w-0 grid-cols-[64px_18px_minmax(0,1fr)_auto] items-center gap-[7px] border-b border-[var(--v2-row-divider)] py-[7px] max-md:grid-cols-[58px_16px_minmax(0,1fr)_auto]"
+            >
+              <span className="flex items-center gap-[3px] truncate text-[10.5px] font-bold text-[var(--v2-text-faint)]">
+                {row.label}
+                {/* ★스나수면 스코프★ (2026-09-12 사장님) */}
+                {row.weapon === 1 ? <SniperMark size={10} /> : null}
+              </span>
+
               {row.clan ? (
                 <Link
                   href={leagueClanPath(HOME_TOP_LEAGUE, row.clan.slug)}
                   aria-label={row.clan.name}
-                  className="flex h-[22px] w-[22px] shrink-0 items-center justify-center"
+                  className="flex h-[18px] w-[18px] items-center justify-center"
                 >
                   <ClanMark clan={row.clan} alt={row.clan.name} />
                 </Link>
               ) : (
-                <span aria-hidden className="h-[22px] w-[22px] shrink-0" />
+                <span aria-hidden />
               )}
-              {/* 닉네임을 누르면 그 선수로 간다 (2026-09-12 사장님) */}
+
+              {/* 닉네임을 누르면 그 선수로 간다. `a { color: inherit }` 이라 색은 안쪽 span 에 (D-231) */}
               <Link href={leaguePlayerPath(HOME_TOP_LEAGUE, row.player.id)} className="min-w-0">
-                {/* `a { color: inherit }` — 색은 안쪽 span 에 (D-231) */}
-                <span className="block truncate text-[13px] font-bold text-[var(--v2-text-strong)]">
+                <span className="block truncate text-[12px] font-bold text-[var(--v2-text-strong)]">
                   {row.player.name}
                 </span>
               </Link>
-            </span>
 
-            <span className="flex items-baseline gap-[3px]">
-              <span className="num text-[17px] font-extralight text-[#8ff0ff]">
-                {row.unit === 'percent' ? row.value.toFixed(1) : row.value.toFixed(2)}
+              <span className="flex items-baseline gap-[2px] whitespace-nowrap">
+                <span className="num text-[12px] font-semibold text-[#8ff0ff]">
+                  {row.unit === 'percent' ? `${row.value.toFixed(1)}%` : row.value.toFixed(2)}
+                </span>
+                {row.unit === 'per_game' ? (
+                  <span className="text-[9.5px] text-[var(--v2-text-ghost)]">킬/판</span>
+                ) : null}
               </span>
-              <span className="text-[10.5px] text-[var(--v2-text-ghost)]">
-                {row.unit === 'percent' ? '%' : '킬 / 판'}
-              </span>
-            </span>
-          </div>
-        ))}
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   )

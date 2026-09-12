@@ -36,6 +36,15 @@ export interface RankColumns {
 export interface LeagueScreenSpec {
   /** 클랜랭킹 화면이 있는가. 없으면 탭에서도 빠진다 */
   clanRank: boolean
+  /**
+   * ★클랜랭킹 대신 띄울 공지★ (2026-09-12 사장님).
+   *
+   * > «SPL은 클랜 랭킹이 없다. 승격유력도 없다 그래서 이것을 공지하라»
+   *
+   * `clanRank: false` 는 탭 자체를 없애 버려서 ★왜 없는지를 말할 자리가 사라진다.★
+   * 그래서 탭은 두고 표 자리에 이 글을 대신 그린다. `null` 이면 여느 때처럼 표를 그린다.
+   */
+  clanRankNotice: string | null
   /** 개인 순위가 ★실력 점수★ 인 리그 (2026-09-10 사장님 확정 · SPL·IPL). 표에 점수가 한 줄도 없어도 «측정 중» 이지 래더가 아니다 */
   scoreLeague: boolean
   /** 개인랭킹 표의 칸 */
@@ -95,6 +104,7 @@ export interface LeagueScreenSpec {
 /** 공식 래더가 있는 리그의 기본값 — 지금까지의 화면 그대로다 */
 const WITH_LADDER: LeagueScreenSpec = {
   clanRank: true,
+  clanRankNotice: null,
   scoreLeague: true,
   playerColumns: { rank: true, winRate: true, kd: true, rating: true },
   /* 클랜랭킹에는 킬뎃 칸이 원래 없다 */
@@ -134,6 +144,7 @@ const WITH_TIERS: LeagueScreenSpec = { ...WITH_LADDER, showsTier: true }
  */
 const NO_LADDER: LeagueScreenSpec = {
   clanRank: false,
+  clanRankNotice: null,
   scoreLeague: false,
   playerColumns: { rank: false, winRate: true, kd: true, rating: false },
   clanColumns: { rank: false, winRate: true, kd: false, rating: false },
@@ -151,7 +162,15 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
      SPL 은 등급 개념이 없다 — `WITH_LADDER` 의 `showsTier: false` 그대로 (지시 #23) */
   /* ★2026-09-12 사장님: 리그 안 게시판을 없앤다★ — «IPL페이지에 있는 게시판이랑 SPL 페이지 안에있는 게시판 둘다 없애고
      게시판 카텍을 따로 만들어». 글은 그대로 있고 /board 로만 들어간다. 옛 값은 'spl' 이었다 */
-  supply: { ...WITH_LADDER, boardCategory: null },
+  /**
+   * ★SPL 은 클랜랭킹을 안 한다★ (2026-09-12 사장님).
+   * 탭은 남기고 표 자리에 까닭을 적는다 — 없애 버리면 왜 없는지를 말할 데가 없다.
+   */
+  supply: {
+    ...WITH_LADDER,
+    boardCategory: null,
+    clanRankNotice: 'SPL은 클랜랭킹 서비스가 제공되지 않습니다 (사유: 소속감 없음, 퀵 없음, 열빡 위주 게임)',
+  },
   /* IPL 만 티어를 쓴다 (지시 #23). 같은 날 오전(#9)에는 반대였다 */
   /* 옛 값은 'ipl' 이었다 — 위 주석 참조 */
   nolink: { ...WITH_TIERS, boardCategory: null },
