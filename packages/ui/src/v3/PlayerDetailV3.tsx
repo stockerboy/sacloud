@@ -203,6 +203,22 @@ function ReportButton({ report }: { report: PlayerDetailV3Props['report'] }) {
 
 /* ── STRENGTH POINT ───────────────────────────────────────────── */
 
+/**
+ * ★축마다 모집단이 다르다★ (2026-09-12 사장님).
+ *
+ * > «그 6각형 스나싸움이랑 샷싸움만 라플끼리 스나끼리 비교해서 랭크매기고
+ * >  나머지는 전부 다 통합으로 비교분석해 그리고 스나싸움 옆에 스나수 n명중 n위 라고
+ * >  써놔 그리고 나머지 특성은 통합 n명중 n위»
+ *
+ * 싸움(`duel`)만 같은 무기끼리 견준다 — 스나는 «롱 안 스나 대 스나», 라플은 «라플 대 라플»
+ * 이라 잣대가 아예 다르기 때문이다. 셈은 워커(`playerHexScore.foldPlayerHex`)가 한다.
+ * 여기서는 그 모집단의 ★이름만★ 붙인다 — 숫자(`total`)는 워커가 준 것을 그대로 쓴다.
+ */
+function poolNameOf(key: string, weapon: 0 | 1 | null): string {
+  if (key !== 'duel') return '통합'
+  return weapon === 1 ? '스나수' : weapon === 0 ? '라플수' : '같은 무기'
+}
+
 function strengthAxes(data: LeaguePlayerDetail): HexAxisView[] {
   const hex = data.hex
   if (!hex) return []
@@ -211,6 +227,7 @@ function strengthAxes(data: LeaguePlayerDetail): HexAxisView[] {
     value: a.percentile,
     note: a.rank === null ? '측정중' : `${a.rank}위`,
     noteColor: a.rank === null ? V3.textGhost : rankColor(a.rank),
+    note2: a.rank === null || a.total === null ? null : `${poolNameOf(a.key, hex.weapon)} ${fmt(a.total)}명중`,
     /* ★10위 안은 더 세게★ (2026-09-11 사장님) */
     strong: a.rank !== null && a.rank <= 10,
   }))

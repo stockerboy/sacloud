@@ -15,9 +15,13 @@
  *   신뢰 = 라운드 / (라운드 + SHRINK_K)
  *   클랜보정 = 소속 클랜의 현재 티어로 ASTRA +40 / CH1 0 / CH2 −40
  *
- * ── 모집단
- *   리그 × 무기다. 스나수는 스나수끼리, 라플수는 라플수끼리 백분위와 등수를 낸다.
+ * ── 모집단 (2026-09-12 사장님이 바꾸심)
+ *   싸움(스나싸움/샷싸움) · 승률 · 킬뎃 → ★리그 × 무기★. 스나수는 스나수끼리.
+ *   나머지 다섯 축(세이브·캐리력·선짤·연속킬·소수싸움) → ★리그 통합★. 스나·라플을 섞는다.
  *   주무기 = 그 무기 판수가 다른 무기보다 많고 `MIN_WEAPON_GAMES` 이상. 아니면 못 잰다(null).
+ *
+ *   ⚠ 옛 서술 — «리그 × 무기다. 스나수는 스나수끼리, 라플수는 라플수끼리 백분위와 등수를
+ *     낸다.» 2026-09-12 까지는 여섯 축 전부가 그랬다. 옛 함수는 `foldPlayerHexV1` 이다.
  *
  * ── 축 무게 (반분신뢰도 실측 2026-09-10)
  *   선짤 0.543 · 캐리력 0.528 · 싸움 0.499 · 연속킬 0.340 · 세이브 0.224 · 소수싸움 0.041
@@ -280,10 +284,151 @@ export function tierFactorOf(tierGames: Readonly<Record<TierNo, number>>): numbe
 }
 
 /**
+ * ★통합으로 견주는 다섯 축★ — 싸움(duel)만 빼고 전부 (2026-09-12 사장님).
+ *
+ * > «그 6각형 스나싸움이랑 샷싸움만 라플끼리 스나끼리 비교해서 랭크매기고
+ * >  나머지는 전부 다 통합으로 비교분석해»
+ *
+ * 싸움은 스나면 «롱 안 스나 대 스나», 라플이면 «라플 대 라플» 이라 잣대가 아예 다르다.
+ * 나머지 다섯은 무기와 상관없이 같은 뜻의 값이라 스나·라플을 섞어 견준다.
+ */
+export const HEX_UNIFIED_AXIS_KEYS: readonly HexAxisKey[] = HEX_AXIS_KEYS.filter((k) => k !== 'duel')
+
+/**
+ * 한 리그의 선수들을 받아 백분위·등수·점수를 낸다 (2026-09-12 판).
+ *
+ * ── 모집단이 축마다 다르다
+ *   싸움(duel) · 승률 · 킬뎃 → ★리그 × 무기★ (스나수는 스나수끼리)
+ *   나머지 다섯 축          → ★리그 통합★ (스나·라플을 섞는다)
+ *   점수 등수(`scoreRank`)   → 리그 × 무기 (통합 등수는 화면이 따로 매긴다)
+ *
+ * 주무기가 없는 사람도 돌려준다 — `weapon: null` · 등수 null. 화면이 「측정 중」을 그린다.
+ *
+ * ⚠ 여섯 축 백분위가 바뀌므로 ★점수도 조금 움직인다.★ 옛 판은 `foldPlayerHexV1` 이다.
+ */
+export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResult[] {
+  const out: PlayerHexResult[] = []
+
+  /* ── ① 통합 분포 — 다섯 축은 무기를 안 가린다 ── */
+  const uni: Record<HexAxisKey, number[]> = {
+    save: [], duel: [], carry: [], opening: [], burst: [], outnumbered: [],
+  }
+  for (const p of players) {
+    const w = mainWeaponOf(p)
+    if (w === null) continue
+    const v = axisValuesOf(p, w)
+    for (const key of HEX_UNIFIED_AXIS_KEYS) if (v[key] !== null) uni[key].push(v[key] as number)
+  }
+  for (const key of HEX_AXIS_KEYS) uni[key].sort((a, b) => a - b)
+
+  /* ── ② 무기별로 접는다. 싸움·승률·킬뎃만 무기 안에서 견준다 ── */
+  const measured: PlayerHexResult[] = []
+  for (const weapon of [0, 1] as const) {
+    const pool = players.filter((p) => mainWeaponOf(p) === weapon)
+    const values = pool.map((p) => ({ p, v: axisValuesOf(p, weapon), wr: p.games > 0 ? (p.wins / p.games) * 100 : null }))
+    const dist = { duel: [] as number[], winRate: [] as number[], kd: [] as number[] }
+    for (const { p, v, wr } of values) {
+      if (v.duel !== null) dist.duel.push(v.duel)
+      if (wr !== null) dist.winRate.push(wr)
+      if (p.kdRate !== null && p.kdRate !== undefined) dist.kd.push(p.kdRate)
+    }
+    dist.duel.sort((a, b) => a - b)
+    dist.winRate.sort((a, b) => a - b)
+    dist.kd.sort((a, b) => a - b)
+
+    const rows: PlayerHexResult[] = values.map(({ p, v, wr }) => {
+      const axes = {} as Record<HexAxisKey, AxisResult>
+      let num = 0
+      let den = 0
+      for (const key of HEX_AXIS_KEYS) {
+        /* ★싸움만 무기 안에서, 나머지는 통합★ (2026-09-12 사장님) */
+        const pct = percentileOf(key === 'duel' ? dist.duel : uni[key], v[key])
+        axes[key] = { value: v[key], pct, rank: null, total: null }
+        if (pct !== null) {
+          num += pct * AXIS_WEIGHT[key]
+          den += AXIS_WEIGHT[key]
+        }
+      }
+      const wrPct = percentileOf(dist.winRate, wr)
+      /* ★킬뎃 백분위★ — 같은 무기끼리 견준다 (2026-09-12 사장님) */
+      const kdPct = percentileOf(dist.kd, p.kdRate ?? null)
+      const hex = den > 0 ? round1(num / den) : null
+      const tierFactor = tierFactorOf(p.tierGames)
+      const shrink = Math.round((p.rounds / (p.rounds + HEX_SHRINK_K)) * 1000) / 1000
+      /* ★소속 클랜의 티어가 아니라 「내 구간」★ (2026-09-11 사장님) */
+      const homeTier = homeTierOf(p.tierGames) ?? p.clanTier
+      const clanBonus = homeTier === null ? 0 : HEX_CLAN_BONUS[homeTier]
+      let score: number | null = null
+      if (hex !== null) {
+        const perf = (hex - 50) / 50
+        const wperf = wrPct === null ? perf : (wrPct - 50) / 50
+        const kperf = kdPct === null ? perf : (kdPct - 50) / 50
+        const mixed = HEX_W_HEX * perf + HEX_W_WR * wperf + HEX_W_KD * kperf
+        score = Math.round(HEX_BASE + HEX_SPREAD * mixed * tierFactor * shrink + clanBonus)
+      }
+      return {
+        leaguePlayerId: p.leaguePlayerId,
+        weapon,
+        weaponGames: weapon === 1 ? p.sniperGames : p.rifleGames,
+        axes,
+        winRate: { value: wr === null ? null : round1(wr), pct: wrPct, rank: null, total: null },
+        hex,
+        tierFactor,
+        shrink,
+        clanBonus,
+        score,
+        scoreRank: null,
+        scoreTotal: null,
+        duelWon: weapon === 1 ? p.sniperDuelWon : p.rifleDuelWon,
+        duelLost: weapon === 1 ? p.sniperDuelLost : p.rifleDuelLost,
+      }
+    })
+
+    /* 무기 안에서 매기는 등수 — 점수 · 싸움 · 승률 */
+    rankBy(rows, (r) => r.score, (r, rank, total) => { r.scoreRank = rank; r.scoreTotal = total })
+    rankBy(rows, (r) => r.axes.duel.pct, (r, rank, total) => { r.axes.duel.rank = rank; r.axes.duel.total = total })
+    rankBy(rows, (r) => r.winRate.pct, (r, rank, total) => { r.winRate.rank = rank; r.winRate.total = total })
+    measured.push(...rows)
+  }
+
+  /* ── ③ 다섯 축 등수는 ★스나·라플을 섞어서★ 매긴다 ── */
+  for (const key of HEX_UNIFIED_AXIS_KEYS) {
+    rankBy(measured, (r) => r.axes[key].pct, (r, rank, total) => { r.axes[key].rank = rank; r.axes[key].total = total })
+  }
+  out.push(...measured)
+
+  /* ── ④ 주무기가 없는 사람 — 못 잰 채로 돌려준다 ── */
+  for (const p of players) {
+    if (mainWeaponOf(p) !== null) continue
+    const empty = (): AxisResult => ({ value: null, pct: null, rank: null, total: null })
+    out.push({
+      leaguePlayerId: p.leaguePlayerId,
+      weapon: null,
+      weaponGames: Math.max(p.sniperGames, p.rifleGames),
+      axes: { save: empty(), duel: empty(), carry: empty(), opening: empty(), burst: empty(), outnumbered: empty() },
+      winRate: { value: (() => { const v = winRateOf(p); return v === null ? null : round1(v) })(), pct: null, rank: null, total: null },
+      hex: null,
+      tierFactor: tierFactorOf(p.tierGames),
+      shrink: Math.round((p.rounds / (p.rounds + HEX_SHRINK_K)) * 1000) / 1000,
+      clanBonus: (() => { const h = homeTierOf(p.tierGames) ?? p.clanTier; return h === null ? 0 : HEX_CLAN_BONUS[h] })(),
+      score: null,
+      scoreRank: null,
+      scoreTotal: null,
+      duelWon: 0,
+      duelLost: 0,
+    })
+  }
+  return out
+}
+
+/**
+ * ★옛 판★ (2026-09-10 ~ 2026-09-12) — 여섯 축을 ★전부★ 무기별 모집단으로 견줬다.
+ * 지우지 않는다 (`CLAUDE.md` 1-4). 되돌리려면 `foldPlayerHex` 자리에 이것을 부르면 된다.
+ *
  * 한 리그의 선수들을 받아 무기별 모집단으로 나눠 백분위·등수·점수를 낸다.
  * 주무기가 없는 사람도 돌려준다 — `weapon: null` · 등수 null. 화면이 「측정 중」을 그린다.
  */
-export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResult[] {
+export function foldPlayerHexV1(players: readonly PlayerHexInput[]): PlayerHexResult[] {
   const out: PlayerHexResult[] = []
   for (const weapon of [0, 1] as const) {
     const pool = players.filter((p) => mainWeaponOf(p) === weapon)

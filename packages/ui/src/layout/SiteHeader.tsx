@@ -114,7 +114,7 @@ export function SiteHeader({
         <Link
           href="/"
           aria-label="홈"
-          className={`flex items-center pr-8 ${pathname === '/' ? 'hidden' : ''}`}
+          className={`flex items-center pr-8 max-md:pr-2 ${pathname === '/' ? 'hidden' : ''}`}
         >
           {/*
             두 줄짜리 확정 로고다. 18px 로 놓으면 글자가 6px 이 되어 안 읽힌다 —
@@ -124,10 +124,19 @@ export function SiteHeader({
           <NavLogo className="h-[32px] w-auto max-md:h-[26px]" />
         </Link>
 
-        <div className="hidden items-stretch md:flex">
-          {/* --- 리그: 링크이면서 대표 리그를 펼치는 자리 --- */}
+        {/*
+          ★폰에서도 리그 바로가기를 보여 준다★ (2026-09-12 사장님:
+          «모바일버전에는 왼쪽의 상단에 로고버튼들이 안보여»).
+
+          옛 판은 이 상자가 통째로 `hidden md:flex` 였다 — 폰에서는 햄버거 서랍으로만
+          갈 수 있었다. 이제 상자는 늘 보이고, ★폰에서는 글자를 빼고 표장만★ 남긴다.
+          표장이 22px 셋 + 게시판 글자라 좁은 화면에도 들어간다.
+          서랍은 ★그대로★ 다 — 없앤 길은 하나도 없다.
+        */}
+        <div className="flex items-stretch">
+          {/* --- 리그: 링크이면서 대표 리그를 펼치는 자리 (PC 전용 · 지금은 안 쓰인다) --- */}
           {leagueEntry ? (
-            <div className="group relative flex items-stretch">
+            <div className="group relative hidden items-stretch md:flex">
               <Link
                 href={leagueEntry.href}
                 className={`${NAV_LINK} ${
@@ -167,17 +176,21 @@ export function SiteHeader({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`${NAV_LINK} ${isActive(pathname, item.href) ? NAV_ACTIVE : ''}`}
+                  aria-label={item.label}
+                  className={`${NAV_LINK} max-md:px-2 ${isActive(pathname, item.href) ? NAV_ACTIVE : ''}`}
                 >
                   <span className="flex items-center gap-[6px]">
                     {mark ? (
                       <span
                         aria-hidden
-                        className="block h-[22px] w-[22px] bg-contain bg-center bg-no-repeat"
+                        className="block h-[22px] w-[22px] bg-contain bg-center bg-no-repeat max-md:h-[24px] max-md:w-[24px]"
                         style={{ backgroundImage: `url(${mark})` }}
                       />
                     ) : null}
-                    <LeagueLabel name={item.label} />
+                    {/* 표장이 있는 리그는 폰에서 글자를 뺀다 — 없는 리그는 글자만 남는다 */}
+                    <span className={mark ? 'max-md:hidden' : undefined}>
+                      <LeagueLabel name={item.label} />
+                    </span>
                   </span>
                 </Link>
               )
@@ -187,16 +200,17 @@ export function SiteHeader({
           {/* ★넷째 자리 — 게시판★ (2026-09-12 사장님). 리그 안 게시판을 없애고 여기로 모았다 */}
           <Link
             href={GNB_BOARD.href}
-            className={`${NAV_LINK} ${pathname.startsWith('/board') ? NAV_ACTIVE : ''}`}
+            className={`${NAV_LINK} max-md:px-2 max-md:text-[12px] ${pathname.startsWith('/board') ? NAV_ACTIVE : ''}`}
           >
             {GNB_BOARD.label}
           </Link>
 
+          {/* 나머지 1차 메뉴는 PC 에만 — 폰은 자리가 없어 서랍으로 간다 */}
           {restNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`${NAV_LINK} ${isActive(pathname, item.href) ? NAV_ACTIVE : ''}`}
+              className={`${NAV_LINK} max-md:hidden ${isActive(pathname, item.href) ? NAV_ACTIVE : ''}`}
             >
               {item.label}
             </Link>

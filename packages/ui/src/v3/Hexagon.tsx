@@ -22,6 +22,11 @@ export interface HexAxisView {
   value: number | null
   note: string
   noteColor: string
+  /**
+   * ★모집단 한 줄★ — «통합 512명중» · «스나수 240명중» (2026-09-12 사장님).
+   * 없으면 안 그린다. 등수만 있던 옛 판과 같아진다.
+   */
+  note2?: string | null
   /** 10위 안 같은 «자랑할 것» — 나타날 때 더 세게 (2026-09-11 사장님) */
   strong?: boolean
 }
@@ -112,6 +117,16 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
             <text x={x} y={y + 14} textAnchor={anchor} fontSize={a.strong ? 14 : 11.5} fontWeight={a.strong ? 900 : 700} fill={a.noteColor} className={a.strong ? 'v3-hex-note-strong' : undefined}>
               {a.note}
             </text>
+            {/*
+              ★모집단 줄★ (2026-09-12 사장님: «스나수 n명중 n위»).
+              12시 축만 ★이름 위★ 에 붙인다 — 아래에 두면 눈금 숫자(100·80…)와 겹친다.
+              눈금은 위쪽 살을 따라 그려지고 맨 위 «100» 이 (155, 49) 라 y+24 자리가 겹친다.
+            */}
+            {a.note2 ? (
+              <text x={x} y={i === 0 ? y - 11 : y + 24} textAnchor={anchor} fontSize="8.5" fontWeight="700" fill={V3.textGhost2}>
+                {a.note2}
+              </text>
+            ) : null}
           </g>
         )
       })}

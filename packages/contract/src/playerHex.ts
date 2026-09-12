@@ -60,7 +60,14 @@ export const PlayerHexAxis = z.object({
   /** 원값 — 캐리력은 킬/판, 나머지는 % */
   value: z.number().nullable(),
   unit: z.enum(['percent', 'per_game']),
-  /** 리그 × 무기 모집단 백분위 (0~100). 그래프 면적은 이것으로 그린다 */
+  /**
+   * 모집단 백분위 (0~100). 그래프 면적은 이것으로 그린다.
+   *
+   * ★모집단이 축마다 다르다★ (2026-09-12 사장님) —
+   *   싸움(`duel`)  → 리그 × 무기 (스나수는 스나수끼리)
+   *   나머지 다섯   → 리그 통합 (스나·라플을 섞는다)
+   * ⚠ 옛 서술은 «리그 × 무기 모집단 백분위» 였다 — 2026-09-12 까지는 여섯 축 전부 그랬다.
+   */
   percentile: Percent.nullable(),
   rank: Count.nullable(),
   total: Count.nullable(),
