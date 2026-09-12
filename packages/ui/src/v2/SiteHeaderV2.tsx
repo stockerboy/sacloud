@@ -96,7 +96,17 @@ export function SiteHeaderV2({
     return (
       <header className={`${v2Class(null, 'v2-topbar')} fixed top-0 z-50 w-full`}>
         <div className="v2-container v2-topbar__inner v2-topbar__inner--home">
-          {/* 시안의 학교·학번 줄이 있던 자리. ★공개 저장소라 비워 둔다★ */}
+          {/*
+            ★홈 상단바에도 로고★ (2026-09-12 사장님: «메인홈에 상단에 로고 넣어줘»).
+
+            옛 판은 이 자리가 ★통째로 비어★ 있었다 (시안의 학교·학번 줄 자리인데
+            공개 저장소라 안 넣었다). 본문 가운데에 큰 로고가 있으니 됐다고 봤는데,
+            아래로 내려가면 띠만 남아 ★어느 사이트인지 사라졌다.★
+            띠가 56px 이라 본문 큰 로고보다 훨씬 작게 둔다 — 두 개가 안 싸운다.
+          */}
+          <Link href="/" aria-label="홈" className="v2-brand flex items-center">
+            <NavLogo className="h-[24px] w-auto max-md:h-[20px]" />
+          </Link>
           <div className="flex-1" />
           {user ? (
             <div className="flex items-center gap-5">

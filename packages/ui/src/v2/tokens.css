@@ -255,10 +255,14 @@
  * `bg-contain` 이라 그림 비율이 어떻든 22px 상자 안에 들어간다.
  * 폰에서는 글자를 빼는 대신 조금 키운다 (26px) — 그것만으로 눌러야 하니까.
  */
+/**
+ * ⚠ 2026-09-12 두 번째 손질 — 사장님: «상단바에 올라가는 로고가 너무 커».
+ *   옛 값: PC 22px · 폰 26px. 지금: PC 19px · 폰 21px.
+ */
 .sac-v2 .v2-gnb__mark {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -270,8 +274,8 @@
 }
 @media (max-width: 767px) {
   .sac-v2 .v2-gnb__mark {
-    width: 26px;
-    height: 26px;
+    width: 21px;
+    height: 21px;
   }
   .sac-v2 .v2-gnb__board {
     font-size: 13px;

@@ -59,7 +59,9 @@ export function HomeLeagueTiles() {
             >
               <span
                 aria-hidden
-                className="block h-[62px] w-[62px] bg-contain bg-center bg-no-repeat opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[52px] max-md:w-[52px]"
+                /* ⚠ 2026-09-12 두 번째 손질 — 사장님: «홈페이지 검색창 밑에있는 로고도 너무 크고 더 줄여서».
+                   옛 값: PC 62px · 폰 52px (그 앞은 PC 92px). 지금: PC 46px · 폰 40px */
+                className="block h-[46px] w-[46px] bg-contain bg-center bg-no-repeat opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[40px] max-md:w-[40px]"
                 style={{ backgroundImage: `url(${MARK[tile.slug]})` }}
               />
               {/* `<a>` 안쪽 span 에 색을 준다 — `a { color: inherit }` 함정 (D-231) */}
