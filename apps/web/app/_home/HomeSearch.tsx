@@ -29,6 +29,7 @@ import {
 } from '@sacloud/ui'
 import { ApiError, apiGet } from '@/lib/api'
 import { HomeLeagueTiles } from './HomeLeagueTiles'
+import { HomeTopPlayers } from './HomeTopPlayers'
 
 /**
  * 홈 윗머리 — `0 로고 · 1 통합검색 · 2 리그 바로가기`.
@@ -95,6 +96,8 @@ function clanOf(row: unknown): { clan?: ClanSummary | null } {
   if ('slug' in row && 'mark' in row) return { clan: row as ClanSummary }
   return {}
 }
+
+void HomeLeagueTiles
 
 export function HomeSearch() {
   const router = useRouter()
@@ -259,7 +262,12 @@ export function HomeSearch() {
              ★가는 곳은 그대로다★ (`/league/{slug}/rank/player`).
              옛 버튼 모습은 아래 `LeagueShortcutButtons` 에 ★그대로 남겼다★ (`CLAUDE.md` 1-4) —
              되돌리려면 이 한 줄을 `<LeagueShortcutButtons />` 로 바꾸면 된다. */}
-      <HomeLeagueTiles />
+      {/*
+        ⚠ ★2026-09-12 — 리그 단추 셋을 상단바로 올렸다★ (사장님: «저거 다 상단바에 올려줘»).
+          `HomeLeagueTiles` 파일은 ★그대로 있다★ — 되살리려면 이 줄만 되돌린다
+          (`CLAUDE.md` 1-4). 그 자리에는 부문별 1위 판이 들어간다.
+      */}
+      <HomeTopPlayers />
     </section>
   )
 }

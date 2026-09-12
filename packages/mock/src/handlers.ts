@@ -273,6 +273,8 @@ const resolvers: Record<EndpointKey, Resolver> = {
         : store.getPlayerRanksByWeapon(leagueId, weapon, cursor, PAGE_SIZE.RANK)
     return page ? okPage(page) : notFound()
   },
+  /* ★부문별 1위★ (2026-09-12) — 픽스처에는 여섯 축 값이 없어 빈 줄이다 */
+  leagueTopAxes: () => ok([]),
   leagueRankForm: ({ params, request }) => {
     const leagueId = resolveLeagueId(param(params['leagueId']))
     const form = leagueId

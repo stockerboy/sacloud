@@ -265,6 +265,30 @@ export function parseRankWeapon(value: string | null | undefined): RankWeapon {
  * 선수 상세의 `PlayerHexAxis` 와 ★같은 값★ 이지만 칸이 적다 — 카드는 이름·백분위·등수만
  * 그린다. 원값·설명·배지는 안 쓰니 싣지 않는다 (목록 응답이 무거워진다).
  */
+/**
+ * ★부문별 1위★ — 홈 검색창 밑 판 (2026-09-12 사장님).
+ *
+ * > «개인 6각 특성 스나수까지 총 7개부문 1위 (마크) 닉네임 성공률 퍼센티지»
+ *
+ * 여섯 축인데 ★싸움만 무기별로 둘★ 이라 일곱이다 — 스나싸움(스나수 안)·샷싸움(라플수 안).
+ * 잣대가 아예 달라 한 줄로 묶을 수 없다.
+ */
+export const TopAxisLeader = z.object({
+  /** 축 열쇠 (`save` · `duel` · …) */
+  key: z.string(),
+  label: z.string(),
+  /** 싸움만 무기가 있다 — 0 라플(샷싸움) · 1 스나(스나싸움). 나머지는 null */
+  weapon: z.union([z.literal(0), z.literal(1)]).nullable(),
+  player: PlayerSummary,
+  clan: ClanSummary.nullable(),
+  /** 원값 — 캐리력은 판당 킬, 나머지는 % */
+  value: z.number(),
+  unit: z.enum(['percent', 'per_game']),
+  /** 모집단 — 몇 명 중 1위인가 */
+  total: Count.nullable(),
+})
+export type TopAxisLeader = z.infer<typeof TopAxisLeader>
+
 export const PlayerRankHexAxis = z.object({
   key: z.string(),
   label: z.string(),

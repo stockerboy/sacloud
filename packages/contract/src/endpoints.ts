@@ -48,6 +48,7 @@ import {
   LeagueClanDeleteState,
   LeagueClanSeason,
   LeagueClanShow,
+  TopAxisLeader,
   LeagueInvitation,
   LeagueListItem,
   LeaguePlayerDetail,
@@ -569,6 +570,17 @@ export const endpoints = {
        `page=1` 이 1~20위다. 주면 커서를 안 쓰고 그 자리로 바로 건너뛴다.
        안 주면 옛 커서 방식 그대로다 — 다른 화면은 한 글자도 안 바뀐다 */
     query: [...CURSOR, 'weapon', 'tier', 'page'],
+  },
+  /**
+   * ★부문별 1위★ — 홈 검색창 밑 판 (2026-09-12 사장님).
+   * 여섯 축 + 싸움을 무기로 나눈 일곱 줄. 못 잰 축은 줄 자체가 안 온다.
+   */
+  leagueTopAxes: {
+    method: 'GET',
+    path: '/leagues/:leagueId/top-axes',
+    origin: 'designed',
+    description: '부문별 1위 — 여섯 축(싸움은 무기별) 각 1위 선수',
+    response: apiResponse(z.array(TopAxisLeader)),
   },
   leagueRankForm: {
     method: 'GET',

@@ -44,6 +44,7 @@ export function SiteShell({
 }) {
   const pathname = usePathname() ?? '/'
   const isHome = pathname === '/'
+  void isHome
   const v2 = isV2Route(pathname)
 
   /* 옮긴 화면이면 리그색까지 같이 물려준다 — 본문 안의 강조색이 리그를 따라간다 */
@@ -51,7 +52,14 @@ export function SiteShell({
 
   return (
     <>
-      <SiteHeader variant={isHome ? 'home' : 'default'} user={user} onLogout={onLogout} />
+      {/*
+        ★홈도 보통 상단바를 쓴다★ (2026-09-12 사장님: «저거 다 상단바에 올려줘»).
+
+        옛 판은 홈만 56px 짜리 «로그인 하나뿐» 인 띠였다 (시안). 리그 바로가기는
+        검색창 밑 큰 단추 셋이 맡았는데, 사장님이 그 셋을 상단바로 올리라고 하셨다.
+        ⚠ `variant="home"` 은 지우지 않았다 — 되돌리려면 아래 한 줄만 되돌린다.
+      */}
+      <SiteHeader variant="default" user={user} onLogout={onLogout} />
       <div
         className={`flex min-h-screen flex-col bg-page text-[var(--color-text,#d6c9c9)] ${shellClass}`}
       >
