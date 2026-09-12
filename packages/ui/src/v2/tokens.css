@@ -290,10 +290,18 @@
  * ⚠ 2026-09-12 두 번째 손질 — 사장님: «상단바에 올라가는 로고가 너무 커».
  *   옛 값: PC 22px · 폰 26px. 지금: PC 19px · 폰 21px.
  */
+/**
+ * ⚠ 2026-09-12 — 사장님: «로고 크기 좀 줄여줘 너무 커». 옛 값: PC 22px · 폰 21px.
+ *
+ * `max-width: none` 은 ★꼭 있어야 한다★ — 틀 CSS 가 모든 그림에 `max-width: 100%` 를
+ * 걸어 두는데, 좁은 폰에서 그 값이 먼저 걸리면 가로가 눌려 로고가 안 보인다.
+ */
 .sac-v2 .v2-gnb__mark {
   display: block;
-  height: 22px;
+  height: 18px;
   width: auto;
+  max-width: none;
+  object-fit: contain;
   flex: none;
 }
 /**
@@ -313,7 +321,7 @@
     line-height: 1;
   }
   .sac-v2 .v2-gnb__mark {
-    height: 21px;
+    height: 17px;
   }
   .sac-v2 .v2-gnb__board {
     font-size: 20px;

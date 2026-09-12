@@ -59,10 +59,18 @@ export interface SiteHeaderV2Props {
  * ★상단바 표장★ — 홈 리그 단추와 ★같은 파일★ 이다 (2026-09-12 사장님).
  * 표장이 없는 슬러그는 글자만 나온다 — 지어내지 않는다.
  */
-const GNB_MARK: Readonly<Record<string, string>> = {
-  sanply: '/assets/league-10.png',
-  nolink: '/assets/league-ipl.png',
-  supply: '/assets/league-spl.png',
+const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> = {
+  /**
+   * ★본디 크기를 같이 적는다★ (2026-09-12).
+   *
+   * ⚠ 폰에서 로고가 ★자리만 잡고 안 그려지는★ 일이 있었다 (사장님 사진 3:38).
+   *   `<img>` 에 `width`·`height` 가 없고 CSS 로 `height` 만 준 채 flex 안에 놓으면
+   *   일부 폰 브라우저가 가로를 0 으로 잡는다. 본디 크기를 적어 두면 비율을 알아서
+   *   그런 일이 안 생긴다. 화면에 실제로 쓰는 크기는 CSS(`.v2-gnb__mark`) 가 정한다.
+   */
+  sanply: { src: '/assets/league-10.png', w: 227, h: 160 },
+  nolink: { src: '/assets/league-ipl.png', w: 254, h: 160 },
+  supply: { src: '/assets/league-spl.png', w: 300, h: 160 },
 }
 
 /**
@@ -185,7 +193,7 @@ export function SiteHeaderV2({
                   */}
                   {mark ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={mark} alt="" aria-hidden className="v2-gnb__mark" />
+                    <img src={mark.src} width={mark.w} height={mark.h} alt="" aria-hidden className="v2-gnb__mark" />
                   ) : null}
                   {/*
                     ★이름은 표장이 없는 리그만 적는다★ (2026-09-12 사장님: «이것들로 로고 바꿔줘 전부»).

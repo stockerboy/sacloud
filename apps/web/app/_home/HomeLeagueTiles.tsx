@@ -38,6 +38,16 @@ const GLOW: Readonly<Record<string, string>> = {
   supply: 'rgba(255,90,99,.45)',
 }
 
+/**
+ * 로고 본디 크기 — `<img>` 에 적어 둬야 폰에서 가로를 0 으로 잡는 일이 없다 (2026-09-12).
+ * 화면에 쓰는 크기는 className 이 정한다.
+ */
+const SIZE: Readonly<Record<string, { w: number; h: number }>> = {
+  sanply: { w: 227, h: 160 },
+  nolink: { w: 254, h: 160 },
+  supply: { w: 300, h: 160 },
+}
+
 /** ★왼쪽 10 · 가운데 IPL · 오른쪽 SPL★ (2026-09-12 사장님) */
 const ORDER = ['sanply', 'nolink', 'supply'] as const
 
@@ -70,11 +80,14 @@ export function HomeLeagueTiles() {
                   그래서 밑의 글자 줄을 뺐다 — 같은 말이 두 번 나오면 지저분하다.
                   되살리려면 아래 주석 블록을 풀면 된다 (`CLAUDE.md` 1-4).
               */}
+              {/* ⚠ 2026-09-12 — 사장님: «로고 크기 좀 줄여줘 너무 커». 옛 값: PC 52px · 폰 42px */}
               <img
                 src={MARK[tile.slug]}
+                width={SIZE[tile.slug]?.w}
+                height={SIZE[tile.slug]?.h}
                 alt=""
                 aria-hidden
-                className="block h-[52px] w-auto opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[42px]"
+                className="block h-[34px] w-auto max-w-none opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[28px]"
                 style={{ filter: `drop-shadow(0 0 14px ${GLOW[tile.slug] ?? 'transparent'})` }}
               />
               {/*
