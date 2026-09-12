@@ -1,4 +1,4 @@
-import { SIGNUP_ALLOWED_EMAIL_DOMAINS, Username } from '@sacloud/contract'
+import { NewPassword, SIGNUP_ALLOWED_EMAIL_DOMAINS, Username } from '@sacloud/contract'
 
 /**
  * 회원가입 폼 제약.
@@ -50,8 +50,18 @@ export function validateSignupUsername(username: string): string | null {
   return result.success ? null : (result.error.issues[0]?.message ?? '아이디를 확인해주세요')
 }
 
+/**
+ * 비밀번호 검증 — ★규칙을 여기에 새로 적지 않는다★ (2026-09-13).
+ *
+ * 바로 위 `validateSignupUsername` 과 같은 이유다. 옛 판은 `password.length >= 8` 을
+ * ★여기에 다시 적었다★ — 그래서 계약에 길이 상한과 흔한 비밀번호 거르기를 더하자마자
+ * 화면과 서버가 갈렸다. 「버튼은 눌리는데 서버가 400」이 되는 자리다.
+ *
+ * 이제 계약(`NewPassword`)을 그대로 돌리고 그 문구까지 받아 쓴다.
+ */
 export function validateSignupPassword(password: string): string | null {
-  return password.length >= 8 ? null : '비밀번호는 8자 이상이어야 합니다.'
+  const result = NewPassword.safeParse(password)
+  return result.success ? null : (result.error.issues[0]?.message ?? '비밀번호를 확인해주세요')
 }
 
 export function validateSignupNickname(nickname: string): string | null {

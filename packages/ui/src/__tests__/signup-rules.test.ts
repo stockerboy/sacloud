@@ -50,8 +50,27 @@ describe.skip('LEGACY — 네이버 전용 정책이었을 때 (계약 배열에
 
 describe('비밀번호 · 닉네임 경계값', () => {
   it('비밀번호는 8자 이상', () => {
-    expect(validateSignupPassword('1234567')).not.toBeNull()
-    expect(validateSignupPassword('12345678')).toBeNull()
+    expect(validateSignupPassword('kkokki7')).not.toBeNull()
+    expect(validateSignupPassword('kkokkio7')).toBeNull()
+  })
+
+  /*
+   * ★2026-09-13★ — 화면 검증이 계약(`NewPassword`)을 그대로 쓴다.
+   *   옛 판은 길이만 봤다. 그래서 «12345678» 이 통과했고, 서버에 새 규칙이 붙은 뒤에는
+   *   ★버튼은 눌리는데 서버가 400★ 이 됐을 자리다. 두 곳이 같은 함수를 보는지 고정한다.
+   */
+  it('흔한 비밀번호는 길어도 막힌다', () => {
+    for (const weak of ['12345678', 'password', 'qwer1234', 'SACLOUD1', 'sudden123']) {
+      expect(validateSignupPassword(weak)).not.toBeNull()
+    }
+  })
+
+  it('bcrypt 가 읽는 72바이트를 넘기면 막힌다 — 한글은 3바이트다', () => {
+    expect(validateSignupPassword('a'.repeat(72))).toBeNull()
+    expect(validateSignupPassword('a'.repeat(73))).not.toBeNull()
+    /* 한글 24자 = 72바이트 (경계) · 25자 = 75바이트 */
+    expect(validateSignupPassword('가'.repeat(24))).toBeNull()
+    expect(validateSignupPassword('가'.repeat(25))).not.toBeNull()
   })
 
   it('닉네임은 2~16자', () => {

@@ -162,7 +162,12 @@ function signupFieldMessage(field: string, raw: string): string {
       ? raw
       : '아이디는 영문으로 시작하는 4~16자의 영문·숫자·밑줄이어야 합니다'
   }
-  if (field === 'password') return '비밀번호는 8자 이상이어야 합니다'
+  /* ★계약이 이미 사람 말로 답한 것은 그대로 내보낸다★ (2026-09-13).
+     옛 판은 무조건 «8자 이상» 으로 덮어써서 «너무 흔한 비밀번호입니다» 가 사라졌다 —
+     사람은 8자를 넘겼는데 계속 거절당하는 이유를 알 수 없었다. 아이디 칸과 같은 방식이다 */
+  if (field === 'password') {
+    return raw.startsWith('비밀번호') ? raw : '비밀번호는 8자 이상이어야 합니다'
+  }
   if (field === 'nickname') return '닉네임은 2~16자여야 합니다'
   if (field === 'email') return '이메일 주소 형식이 올바르지 않습니다'
   return '입력값을 확인해주세요'

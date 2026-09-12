@@ -80,8 +80,16 @@ describe('가입 계약 — 화면이 보내는 몸통 (O-027)', () => {
   })
 
   it('비밀번호는 8자 이상 · 닉네임은 2~16자', () => {
-    expect(SignupInput.safeParse(bodyFromScreen({ password: '1234567' })).success).toBe(false)
-    expect(SignupInput.safeParse(bodyFromScreen({ password: '12345678' })).success).toBe(true)
+    expect(SignupInput.safeParse(bodyFromScreen({ password: 'kkokki7' })).success).toBe(false)
+    expect(SignupInput.safeParse(bodyFromScreen({ password: 'kkokkio7' })).success).toBe(true)
+
+    /* ★2026-09-13★ — 길이만으로는 «12345678» 이 통과했다. 이제 흔한 것은 막는다 */
+    expect(SignupInput.safeParse(bodyFromScreen({ password: '12345678' })).success).toBe(false)
+    expect(SignupInput.safeParse(bodyFromScreen({ password: 'Password123' })).success).toBe(false)
+
+    /* bcrypt 는 앞 72바이트만 해시한다 — 그보다 길면 조용히 버려지므로 받지 않는다 */
+    expect(SignupInput.safeParse(bodyFromScreen({ password: 'a'.repeat(72) })).success).toBe(true)
+    expect(SignupInput.safeParse(bodyFromScreen({ password: 'a'.repeat(73) })).success).toBe(false)
     expect(SignupInput.safeParse(bodyFromScreen({ nickname: 'ㄱ' })).success).toBe(false)
     expect(SignupInput.safeParse(bodyFromScreen({ nickname: 'ㄱ'.repeat(17) })).success).toBe(false)
   })

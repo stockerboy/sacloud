@@ -32,7 +32,7 @@ export default function MePasswordPage() {
       <Field label="새 비밀번호 확인" value={confirm} onChange={setConfirm} />
 
       {next && next.length < 8 ? (
-        <div className="-mt-3 mb-4 text-sm text-accent">새 비밀번호는 8자 이상이어야 합니다.</div>
+        <div className="-mt-3 mb-4 text-sm text-accent">새 비밀번호는 8자 이상이어야 하고, 너무 흔한 비밀번호는 쓸 수 없습니다.</div>
       ) : null}
       {confirm && next !== confirm ? (
         <div className="-mt-3 mb-4 text-sm text-accent">새 비밀번호가 서로 다릅니다.</div>

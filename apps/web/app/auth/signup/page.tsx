@@ -245,7 +245,7 @@ export default function SignupPage() {
       {/* ③ 규칙을 **치기 전에** 보여 준다. 짧게 치고 나서야 알려 주지 않는다 */}
       <AuthField
         label="비밀번호"
-        hint="8자 이상"
+        hint="8자 이상 · 흔한 비밀번호는 쓸 수 없습니다"
         error={(password && passwordError) || serverFieldError('password')}
       >
         <AuthInput

@@ -93,6 +93,61 @@ export type RemoteConfigs = z.infer<typeof RemoteConfigs>
 /* -------------------------------------------------------------------------- */
 
 /**
+ * ★새 비밀번호 규칙★ (2026-09-13 사장님: «사이트 보안을 손보고 다듬어줘 꼼꼼하게»).
+ *
+ * 옛 규칙은 `z.string().min(8)` 하나였다. 세 군데(가입 · 재설정 · 변경)에 ★따로★
+ * 적혀 있어서 한 곳을 고치면 나머지가 조용히 뒤처졌다. 여기 하나로 모은다.
+ *
+ * ── ① 위는 ★72바이트★ 다 — 지어낸 값이 아니다
+ *   bcrypt 는 ★앞 72바이트만★ 해시한다. 그 뒤는 조용히 버려진다.
+ *   상한이 없으면 «앞 72바이트가 같은 다른 비밀번호» 로도 로그인이 된다 —
+ *   사람은 긴 비밀번호를 만들었다고 믿는데 실제로는 아니다. 그래서 ★거절★ 한다.
+ *   한글은 한 글자가 3바이트라 24자쯤에서 걸린다. 글자 수가 아니라 ★바이트★ 로 센다.
+ *
+ * ── ② 아래는 그대로 8자다
+ *   이미 가입한 사람이 있다. 여기를 올리면 ★기존 비밀번호가 규칙 위반이 되는데★
+ *   로그인(`LoginInput`)은 `min(1)` 이라 그대로 들어온다 — 규칙과 현실이 어긋난다.
+ *   길이 대신 ③ 으로 막는다.
+ *
+ * ── ③ ★너무 흔한 것은 막는다★
+ *   길이만으로는 `12345678` · `password` · `sacloud1` 이 전부 통과한다.
+ *   실제로 털리는 계정은 짧은 비밀번호가 아니라 ★남들도 쓰는★ 비밀번호다.
+ *   목록은 짧게 둔다 — 사전 전체를 들고 다닐 일은 아니고, 사이트 이름·게임 이름처럼
+ *   ★여기서만 흔한 것★ 을 넣는 게 값이 크다.
+ *
+ * ⚠ ★로그인에는 걸지 않는다.★ 이미 그런 비밀번호로 가입한 사람이 못 들어오게 되면
+ *   보안이 아니라 사고다. 새로 정하는 자리(가입 · 재설정 · 변경)에만 건다.
+ */
+export const PASSWORD_MIN = 8
+/** bcrypt 가 실제로 읽는 길이 */
+export const PASSWORD_MAX_BYTES = 72
+
+/** 소문자로 견준다. 사이트·게임 이름은 여기서만 흔한 것이라 따로 넣었다 */
+const WEAK_PASSWORDS: ReadonlySet<string> = new Set([
+  '12345678', '123456789', '1234567890', '11111111', '00000000', '87654321',
+  'password', 'password1', 'password123', 'passw0rd', 'qwertyui', 'qwerty123',
+  'asdfasdf', 'asdf1234', 'qwer1234', 'zxcv1234', '1q2w3e4r', '1q2w3e4r5t',
+  'iloveyou', 'letmein1', 'welcome1', 'abcd1234', 'a1234567', 'admin123',
+  'administrator', 'sacloud1', 'sacloud123', 'suddenattack', 'sudden123',
+])
+
+function utf8Length(value: string): number {
+  /* Node 도 브라우저도 가진 것으로 센다 — `Buffer` 는 브라우저에 없다 */
+  return new TextEncoder().encode(value).length
+}
+
+/** 새로 정하는 비밀번호. ★로그인에는 쓰지 않는다★ */
+export const NewPassword = z
+  .string()
+  .min(PASSWORD_MIN, `비밀번호는 ${PASSWORD_MIN}자 이상이어야 합니다`)
+  .refine((value) => utf8Length(value) <= PASSWORD_MAX_BYTES, {
+    message: '비밀번호가 너무 깁니다 (영문 72자 · 한글 24자까지)',
+  })
+  .refine((value) => !WEAK_PASSWORDS.has(value.toLowerCase()), {
+    message: '너무 흔한 비밀번호입니다. 다른 것을 쓰세요',
+  })
+
+/**
  * 로그인 (2026-09-01 · D-252).
  *
  * **아이디로 로그인한다.** 다만 `email` 도 계속 받는다 — 이메일로 가입한 옛 계정
@@ -121,7 +176,8 @@ export type LoginInput = z.infer<typeof LoginInput>
  */
 export const SignupInput = z.object({
   username: Username,
-  password: z.string().min(8),
+  /* ★2026-09-13★ — 옛 값은 `z.string().min(8)`. 규칙은 `NewPassword` 한 곳에 있다 */
+  password: NewPassword,
   nickname: z.string().min(2).max(16),
   email: Email.nullish(),
   captcha_token: z.string().min(1).optional(),
@@ -164,7 +220,8 @@ export type PasswordForgetInput = z.infer<typeof PasswordForgetInput>
 
 export const PasswordResetInput = z.object({
   token: z.string().min(1),
-  password: z.string().min(8),
+  /* ★2026-09-13★ — 옛 값은 `z.string().min(8)` */
+  password: NewPassword,
 })
 export type PasswordResetInput = z.infer<typeof PasswordResetInput>
 
@@ -179,7 +236,8 @@ export type MeSettingInput = z.infer<typeof MeSettingInput>
 
 export const MePasswordInput = z.object({
   current_password: z.string().min(1),
-  password: z.string().min(8),
+  /* ★2026-09-13★ — 옛 값은 `z.string().min(8)` */
+  password: NewPassword,
 })
 export type MePasswordInput = z.infer<typeof MePasswordInput>
 

@@ -39,7 +39,7 @@ function ResetForm() {
         <AuthInput
           type="password"
           value={password}
-          placeholder="8자 이상"
+          placeholder="8자 이상 · 흔한 비밀번호 불가"
           onChange={(event) => setPassword(event.target.value)}
         />
       </AuthField>
