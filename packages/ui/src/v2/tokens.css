@@ -1011,3 +1011,61 @@
     gap: 4px;
   }
 }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★개인랭킹 1·2·3위 카드★ (2026-09-12 사장님)
+
+   > «공간이 너무 많이 비어서 모바일 기준 효율이 너무 떨어져 그래프를 오른쪽끝에
+   >  밀어넣고 밑에 숫자정보를 오른쪽에 띄워서 카드세로크기를 좀 줄여»
+
+   PC 는 세 장이 나란히 서니 세로로 쌓아도 된다. 폰은 한 장이 화면을 다 먹어서
+   ★그림을 오른쪽에 눕히고 숫자를 왼쪽에★ 둔다. 카드 높이가 절반쯤 줄어든다.
+
+   그림은 300×262 고정이라 ★배율로만★ 줄인다 (Hexagon 주석의 시안 함정).
+   ────────────────────────────────────────────────────────────────────────── */
+.v3-podium-hex {
+  --podium-hex: 0.82;
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+.v3-podium-hex__box {
+  display: block;
+  width: calc(300px * var(--podium-hex));
+  height: calc(262px * var(--podium-hex));
+}
+.v3-podium-hex__inner {
+  display: block;
+  transform: scale(var(--podium-hex));
+  transform-origin: top left;
+}
+.v3-podium-stats {
+  margin-top: 18px;
+}
+
+@media (max-width: 899px) {
+  .v3-podium-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+  /* 자리는 grid-column 이 정한다 — 숫자가 왼쪽, 그림이 오른쪽 끝 */
+  .v3-podium-body > .v3-podium-stats {
+    grid-column: 1;
+    grid-row: 1;
+    margin-top: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    border-top: 0;
+    padding-top: 0;
+  }
+  .v3-podium-body > .v3-podium-hex {
+    --podium-hex: 0.6;
+    grid-column: 2;
+    grid-row: 1;
+    margin-top: 6px;
+  }
+}

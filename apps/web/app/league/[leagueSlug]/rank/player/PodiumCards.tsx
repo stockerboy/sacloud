@@ -62,11 +62,7 @@ export interface PodiumCardsProps {
   weapon: RankWeapon
 }
 
-/**
- * 카드 폭이 300px 그림보다 좁다 — 줄여서 넣는다 (2026-09-12).
- * 그림은 300×262 고정이라 배율로만 줄인다 (`Hexagon` 주석의 시안 함정).
- */
-const PODIUM_HEX_SCALE = 0.82
+/* 그림 배율은 CSS 변수 `--podium-hex` 가 정한다 (PC 0.82 · 폰 0.6) — `tokens.css` */
 
 /** 계약의 여섯 축 → 그림 입력. 선수 상세(`strengthAxes`)와 ★같은 규칙★ 이다 */
 function podiumAxes(axes: readonly PlayerRankHexAxis[]): HexAxisView[] {
@@ -193,20 +189,26 @@ function PodiumCard({
         못 잰 선수(주무기 10판 미만)는 축이 안 와서 ★그림 자리를 통째로 비운다★ —
         빈 육각형을 그리지 않는다 (D-106).
       */}
-      {row.hex_axes && row.hex_axes.length > 0 ? (
-        <div className="relative mt-[14px] flex justify-center">
-          <span className="block origin-top" style={{ width: 300 * PODIUM_HEX_SCALE, height: 262 * PODIUM_HEX_SCALE }}>
-            <span
-              className="block origin-top-left"
-              style={{ transform: `scale(${PODIUM_HEX_SCALE})` }}
-            >
-              <Hexagon axes={podiumAxes(row.hex_axes)} id={`podiumHex-${row.league_player_id}`} />
-            </span>
-          </span>
-        </div>
-      ) : null}
+      {/*
+        ★폰에서는 그림이 오른쪽 · 숫자가 왼쪽★ (2026-09-12 사장님:
+        «공간이 너무 많이 비어서 모바일 기준 효율이 너무 떨어져 그래프를 오른쪽끝에
+        밀어넣고 밑에 숫자정보를 오른쪽에 띄워서 카드세로크기를 좀 줄여»).
 
-      <div className="relative mt-[18px] flex items-baseline gap-[22px] border-t border-[var(--v2-card-divider)] pt-[14px]">
+        옛 판은 그림 아래에 숫자 줄이 가로로 붙어 카드가 세로로 길었다.
+        900px 미만에서는 두 칸으로 눕히고 그림도 한 단 줄인다 — 자리는 CSS 가 정한다.
+      */}
+      <div className="v3-podium-body relative">
+        {row.hex_axes && row.hex_axes.length > 0 ? (
+          <div className="v3-podium-hex">
+            <span className="v3-podium-hex__box">
+              <span className="v3-podium-hex__inner">
+                <Hexagon axes={podiumAxes(row.hex_axes)} id={`podiumHex-${row.league_player_id}`} />
+              </span>
+            </span>
+          </div>
+        ) : null}
+
+        <div className="v3-podium-stats relative flex items-baseline gap-[22px] border-t border-[var(--v2-card-divider)] pt-[14px]">
         <span className="flex items-baseline gap-[2px]" style={{ color: ink }}>
           <span className="num text-[34px] font-black leading-none tracking-[-.02em]">
             {row.rank}
@@ -233,6 +235,7 @@ function PodiumCard({
             sub={`% · ${formatAverage(row.kill_per_match)}킬`}
           />
         ) : null}
+        </div>
       </div>
     </Panel>
   )
