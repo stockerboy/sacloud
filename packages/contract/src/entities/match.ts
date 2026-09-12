@@ -352,3 +352,27 @@ export const TeammateStat = z.object({
   win_rate: Percent,
 })
 export type TeammateStat = z.infer<typeof TeammateStat>
+
+
+/**
+ * ★홈 · 경기분석까지 끝난 최근 경기★ (2026-09-12 사장님).
+ *
+ * > «가장최근 끝난 IPL SPL 경기 (경기분석까지 마친) 3개보여주자 눌러서 상세보기 볼 수 있게»
+ *
+ * 「경기분석까지 마친」 = 그 판 육각형을 ★양 팀 다★ 접었다는 뜻이다.
+ *
+ * ⚠ ★이 자리가 `league.ts` 가 아닌 까닭★ — 거기 두면 `league.ts` → `match.ts` →
+ *   `league.ts` 로 ★순환 참조★ 가 된다. 타입 검사와 로컬 컴파일은 멀쩡히 지나가고
+ *   ★배포 빌드의 「page data 수집」 단계에서만★ 죽는다
+ *   («Cannot access 'cJ' before initialization» · 2026-09-12 실측).
+ *   `match.ts` 는 이미 `league.ts` 를 보고 있으니 여기가 맞다.
+ */
+export const HomeAnalyzedMatch = z.object({
+  league_slug: Slug,
+  /** 티어 표기에 쓴다 — 경기 목록과 같은 값 */
+  league_category: z.enum(['official', 'independent']),
+  start_at: IsoDateTime,
+  /** ★경기 목록과 같은 카드★ — 화면이 `MatchListV3` 를 그대로 쓴다 */
+  match: MatchListItem,
+})
+export type HomeAnalyzedMatch = z.infer<typeof HomeAnalyzedMatch>
