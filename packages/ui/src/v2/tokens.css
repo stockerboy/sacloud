@@ -1024,8 +1024,10 @@
 
    그림은 300×262 고정이라 ★배율로만★ 줄인다 (Hexagon 주석의 시안 함정).
    ────────────────────────────────────────────────────────────────────────── */
+/* ⚠ 2026-09-12 두 번째 손질 — 사장님: «6각그래프 크기 더 키워 너무 작아».
+   옛 값: PC 0.82 · 폰 0.6. PC 는 카드 폭(약 315px)이 그림 원래 폭(300px)이라 1.0 이 한계다 */
 .v3-podium-hex {
-  --podium-hex: 0.82;
+  --podium-hex: 1;
   display: flex;
   justify-content: center;
   margin-top: 14px;
@@ -1063,7 +1065,7 @@
     padding-top: 0;
   }
   .v3-podium-body > .v3-podium-hex {
-    --podium-hex: 0.6;
+    --podium-hex: 0.78;
     grid-column: 2;
     grid-row: 1;
     margin-top: 6px;
