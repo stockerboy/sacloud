@@ -6,7 +6,10 @@ import {
 } from '../clanLeagueHidden'
 
 /**
- * **감춘 43곳을 지킨다** (O-044 · 2026-09-03).
+ * **감춘 곳을 지킨다** (O-044 · 2026-09-03).
+ *
+ * ⚠ 2026-09-12 — 43 → 46. 사장님이 SPL 에서 셋을 더 감추라고 하셨다
+ *   (supremacy- · daytona · UlsaN_CIaN). 경기 기록은 그대로 두고 목록에서만 뺀다.
  *
  * > 사장님: «등록도 겹치면 안된다 **못박아라**»
  *
@@ -14,11 +17,11 @@ import {
  * 표가 흐트러지면 여기서 잡는다.
  */
 describe('리그마다 감출 클랜', () => {
-  it('★43곳이다★ — 사장님이 직접 분류하셨다', () => {
+  it('★46곳이다★ — 사장님이 직접 분류하셨다 (2026-09-12 셋 추가)', () => {
     const total = CLAN_HIDDEN_IN_LEAGUE.reduce((n, r) => n + r.clanSlugs.length, 0)
-    expect(total).toBe(43)
+    expect(total).toBe(46)
     expect(hiddenClanSlugsIn('sanply')).toHaveLength(29)
-    expect(hiddenClanSlugsIn('supply')).toHaveLength(14)
+    expect(hiddenClanSlugsIn('supply')).toHaveLength(17)
   })
 
   it('★같은 클랜이 두 리그에서 다 감춰지지 않는다★', () => {

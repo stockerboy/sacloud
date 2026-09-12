@@ -12,6 +12,7 @@ import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 import { rankClans } from '@/lib/clanRanking'
 import { ClanDirectoryV1 } from './ClanDirectoryV1'
+import { ClanPodiumCards } from './ClanPodiumCards'
 
 /**
  * ★클랜랭킹★ — `/league/{slug}/rank/clan` (2026-09-10 사장님 지시).
@@ -309,6 +310,25 @@ function ClanRankDirectory({
               : '래더가 높은 순입니다. 높은 티어와 게임에서 승리시 더 큰 점수를 받습니다.'
           }
         />
+        {/*
+          ★1·2·3위 카드★ (2026-09-12 사장님: «클랜도 탑3는 플레이스타일 6각형이랑
+          승률 같은거 개인랭킹페이지 처럼 보여줘»). 검색 중에는 안 그린다 —
+          걸러 낸 목록의 1위는 1위가 아니다.
+        */}
+        {!searching && complete ? (
+          <ClanPodiumCards
+            leagueSlug={leagueSlug}
+            rows={ranked.slice(0, 3).map((row) => ({
+              rank: row.rank,
+              leagueClanId: row.id,
+              clan: row.clan,
+              win: row.win,
+              lose: row.lose,
+              winRate: row.win_rate,
+              rating: row.rating,
+            }))}
+          />
+        ) : null}
         <ClanSearchBox
           value={query}
           onChange={setQuery}

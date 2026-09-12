@@ -207,57 +207,6 @@ export const LeagueClanSeason = z.object({
 export type LeagueClanSeason = z.infer<typeof LeagueClanSeason>
 
 /** GET /leagues/{leagueId}/ranks/clans?division=N */
-export const ClanRankRow = z.object({
-  rank: Count,
-  league_clan_id: Id,
-  clan: ClanSummary,
-  division: Division,
-  win: Count,
-  lose: Count,
-  win_rate: Percent,
-  rating: Rating,
-  /**
-   * 클랜 구분 — `official` | `independent`.
-   *
-   * **통합 래더에서만 의미가 있다.** 무소속 클랜도 같은 Team Elo로 계산되고
-   * 통합 순위에 그대로 들어간다. 화면에서 구분해 보여 주기 위한 값이다 (D-102).
-   */
-  category: z.string(),
-})
-export type ClanRankRow = z.infer<typeof ClanRankRow>
-
-/**
- * 개인랭킹 무기 축 (D-169) — **원본에 없는 우리 신규 기능**이다.
- *
- * 사용자 지시로 개인랭킹을 셋으로 나눈다. 화면 표기는 `통합 / 스나 / 라플`.
- *
- *   `all`     통합 — 스나·라플 구분 없이 모든 기록을 합친 기존 개인 래더 (`LeaguePlayer.rating`)
- *   `sniper`  스나 — `MatchPlayerStat.weapon = 1` 경기만
- *   `rifle`   라플 — `MatchPlayerStat.weapon = 0` 경기만
- *
- * **무기별 공식은 없다** (`CLAUDE.md` 3-B 1번). 통합 공식이 계산한 증감을
- * 무기에 따라 **기록만** 나눠 담은 `LeaguePlayerWeaponStat.ratingDelta` 를 읽을 뿐이다.
- * 무기 축을 도입해도 통합 래더 값은 한 점도 바뀌지 않는다.
- */
-export const RankWeapon = z.enum(['all', 'sniper', 'rifle'])
-export type RankWeapon = z.infer<typeof RankWeapon>
-
-/** 무기 축 → `MatchPlayerStat.weapon` 코드 (`CLAUDE.md` 6장: 0 = 라이플, 1 = 스나이퍼) */
-export const RANK_WEAPON_CODE = { sniper: 1, rifle: 0 } as const
-
-/** 화면 표기 — 사용자가 쓴 말 그대로 (`통합 / 스나 / 라플`) */
-export const RANK_WEAPON_LABEL: Record<RankWeapon, string> = {
-  all: '통합',
-  sniper: '스나',
-  rifle: '라플',
-}
-
-/** 문자열 하나를 무기 축으로 좁힌다. 모르는 값은 `all` (기존 동작 유지) */
-export function parseRankWeapon(value: string | null | undefined): RankWeapon {
-  return value === 'sniper' || value === 'rifle' ? value : 'all'
-}
-
-/** GET /leagues/{leagueId}/ranks/players */
 /**
  * ★포디움 카드가 그리는 여섯 축★ (2026-09-12 사장님:
  * «1,2,3등 선수들의 플레이스타일 분석 그래프를 보여줘»).
@@ -299,6 +248,66 @@ export const PlayerRankHexAxis = z.object({
 })
 export type PlayerRankHexAxis = z.infer<typeof PlayerRankHexAxis>
 
+export const ClanRankRow = z.object({
+  rank: Count,
+  league_clan_id: Id,
+  clan: ClanSummary,
+  division: Division,
+  win: Count,
+  lose: Count,
+  win_rate: Percent,
+  rating: Rating,
+  /**
+   * 클랜 구분 — `official` | `independent`.
+   *
+   * **통합 래더에서만 의미가 있다.** 무소속 클랜도 같은 Team Elo로 계산되고
+   * 통합 순위에 그대로 들어간다. 화면에서 구분해 보여 주기 위한 값이다 (D-102).
+   */
+  category: z.string(),
+  /**
+   * ★여섯 축★ — ★1·2·3위에만★ 실린다 (2026-09-12 사장님:
+   * «클랜도 탑3는 플레이스타일 6각형이랑 승률 같은거 개인랭킹페이지 처럼 보여줘»).
+   *
+   * 스무 줄 전부에 실으면 목록 응답이 세 배가 되고, 백분위를 리그 전체로 다시 재느라
+   * 왕복도 늘어난다. 카드를 그리는 세 줄만 담는다.
+   * 배틀로그가 아직 없는 클랜은 `null` 이고 카드는 그림 자리를 비운다 (D-106).
+   */
+  hex_axes: z.array(PlayerRankHexAxis).nullable().optional(),
+})
+export type ClanRankRow = z.infer<typeof ClanRankRow>
+
+/**
+ * 개인랭킹 무기 축 (D-169) — **원본에 없는 우리 신규 기능**이다.
+ *
+ * 사용자 지시로 개인랭킹을 셋으로 나눈다. 화면 표기는 `통합 / 스나 / 라플`.
+ *
+ *   `all`     통합 — 스나·라플 구분 없이 모든 기록을 합친 기존 개인 래더 (`LeaguePlayer.rating`)
+ *   `sniper`  스나 — `MatchPlayerStat.weapon = 1` 경기만
+ *   `rifle`   라플 — `MatchPlayerStat.weapon = 0` 경기만
+ *
+ * **무기별 공식은 없다** (`CLAUDE.md` 3-B 1번). 통합 공식이 계산한 증감을
+ * 무기에 따라 **기록만** 나눠 담은 `LeaguePlayerWeaponStat.ratingDelta` 를 읽을 뿐이다.
+ * 무기 축을 도입해도 통합 래더 값은 한 점도 바뀌지 않는다.
+ */
+export const RankWeapon = z.enum(['all', 'sniper', 'rifle'])
+export type RankWeapon = z.infer<typeof RankWeapon>
+
+/** 무기 축 → `MatchPlayerStat.weapon` 코드 (`CLAUDE.md` 6장: 0 = 라이플, 1 = 스나이퍼) */
+export const RANK_WEAPON_CODE = { sniper: 1, rifle: 0 } as const
+
+/** 화면 표기 — 사용자가 쓴 말 그대로 (`통합 / 스나 / 라플`) */
+export const RANK_WEAPON_LABEL: Record<RankWeapon, string> = {
+  all: '통합',
+  sniper: '스나',
+  rifle: '라플',
+}
+
+/** 문자열 하나를 무기 축으로 좁힌다. 모르는 값은 `all` (기존 동작 유지) */
+export function parseRankWeapon(value: string | null | undefined): RankWeapon {
+  return value === 'sniper' || value === 'rifle' ? value : 'all'
+}
+
+/** GET /leagues/{leagueId}/ranks/players */
 export const PlayerRankRow = z.object({
   rank: Count,
   league_player_id: Id,

@@ -9,6 +9,7 @@ import {
   type ClanSummary,
   type PlayerSummary,
   type ClanRankRow,
+  type PlayerRankHexAxis,
   type League,
   type LeagueClan,
   type LeagueListItem,
@@ -35,6 +36,8 @@ import { ladderMatchWhere } from './ladderScope'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
 import { hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { seasonWindowWhere } from './season0Scope'
+import { leagueClanHexV2 } from './clanHexV2'
+import { softFail } from '../softFail'
 import { withLadderMatch } from './ladderScope'
 
 /**
@@ -513,6 +516,41 @@ export async function getClanRanks(
   const startRank =
     cursor === null ? 1 : await rankOfFirstClan(leagueId, division, page.items[0], byTier)
 
+  /**
+   * ★1·2·3위만 여섯 축을 싣는다★ (2026-09-12 사장님: «클랜도 탑3는 플레이스타일 6각형»).
+   *
+   * 백분위는 리그 전체 분포를 봐야 나온다 — 줄마다 부르면 스무 번이다.
+   * 세 줄만 부른다. 실패해도 목록을 죽이지 않는다 (그때는 그림 없이 그린다).
+   */
+  const podium = page.items.slice(0, CLAN_PODIUM_SIZE)
+  const hexOf = new Map<string, PlayerRankHexAxis[]>()
+  if (podium.length > 0) {
+    const built = await Promise.all(
+      podium.map(async (row) => {
+        const hex = await softFail('clan-rank-hex', null, { leagueClanId: row.id })(
+          leagueClanHexV2({ leagueClanId: row.id, leagueId }),
+        )
+        return { id: row.id, hex }
+      }),
+    )
+    for (const entry of built) {
+      if (!entry.hex) continue
+      hexOf.set(
+        entry.id,
+        CLAN_HEX_ORDER.map((key) => {
+          const axis = entry.hex?.axes.find((a) => a.key === key) ?? null
+          return {
+            key,
+            label: CLAN_HEX_LABEL[key] ?? key,
+            percentile: axis?.value === null || axis?.value === undefined ? null : axis.value * 100,
+            rank: axis?.rank ?? null,
+            total: axis?.total ?? null,
+          }
+        }),
+      )
+    }
+  }
+
   return {
     cursor: page.cursor,
     items: page.items.map((row, index) => ({
@@ -525,8 +563,23 @@ export async function getClanRanks(
       win_rate: winRate(row.win, row.lose),
       rating: row.rating,
       category: row.clan.category,
+      hex_axes: hexOf.get(row.id) ?? null,
     })),
   }
+}
+
+/** 카드를 그리는 줄 수 — 개인랭킹 포디움과 같다 */
+const CLAN_PODIUM_SIZE = 3
+
+/** 클랜 육각형 축 차례·이름 — 클랜 카드(`clanHexAxes`)와 ★같은 차례★ 다 */
+const CLAN_HEX_ORDER = ['sniperDuel', 'outnumbered', 'save', 'tempo', 'firstBlood', 'trade'] as const
+const CLAN_HEX_LABEL: Readonly<Record<string, string>> = {
+  sniperDuel: '스나싸움',
+  outnumbered: '소수싸움',
+  save: '세이브',
+  tempo: '게임템포',
+  firstBlood: '선짤',
+  trade: '교환율',
 }
 
 /**
