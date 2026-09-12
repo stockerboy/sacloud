@@ -48,6 +48,27 @@ const SIZE: Readonly<Record<string, { w: number; h: number }>> = {
   supply: { w: 300, h: 160 },
 }
 
+/**
+ * ★이름 줄을 마크에 맞춰 옮기는 값★ (2026-09-12 사장님:
+ * «SPL Ipl 글씨가 차지 하는 공간이 있어서 뭔가 가운데 정렬이 아닌것처럼 보여
+ *  마크를 중심으로 가운데 정렬해줘»).
+ *
+ * IPL·SPL 로고는 ★마크 + 글자★ 한 덩어리라 그림의 가운데가 마크의 가운데가 아니다.
+ * 그림 가운데에 이름을 두면 마크에서 오른쪽으로 밀린 것처럼 보인다.
+ *
+ * 값은 ★그림을 픽셀로 재서★ 얻었다 (지어낸 값이 아니다) —
+ *   10   마크 3~223 / 폭 227 → 마크 가운데 113 · 그림 가운데 113.5 →  0.2%
+ *   IPL  마크 2~172 / 폭 254 → 마크 가운데  87 · 그림 가운데 127   → 15.7%
+ *   SPL  마크 3~205 / 폭 300 → 마크 가운데 104 · 그림 가운데 150   → 15.3%
+ *
+ * 이름 줄은 ★그림과 같은 폭★ 이라(`w-full`) 퍼센트가 곧 그림 폭의 퍼센트다.
+ */
+const NUDGE: Readonly<Record<string, number>> = {
+  sanply: 0,
+  nolink: -15.7,
+  supply: -15.3,
+}
+
 /** ★왼쪽 10 · 가운데 IPL · 오른쪽 SPL★ (2026-09-12 사장님) */
 const ORDER = ['sanply', 'nolink', 'supply'] as const
 
@@ -98,8 +119,11 @@ export function HomeLeagueTiles() {
                 `<a>` 안쪽 span 에 색을 준다 — `a { color: inherit }` 함정 (D-231)
               */}
               <span
-                className="text-[13px] font-bold tracking-[.14em] text-[var(--v2-text-muted)] transition-colors duration-150 group-hover:text-[var(--v2-text)] max-md:text-[12px]"
-                style={{ textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}` }}
+                className="block w-full text-center text-[13px] font-bold tracking-[.14em] text-[var(--v2-text-muted)] transition-colors duration-150 group-hover:text-[var(--v2-text)] max-md:text-[12px]"
+                style={{
+                  textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}`,
+                  transform: `translateX(${NUDGE[tile.slug] ?? 0}%)`,
+                }}
               >
                 {tile.label}
               </span>
