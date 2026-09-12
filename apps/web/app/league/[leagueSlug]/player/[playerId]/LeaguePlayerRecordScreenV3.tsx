@@ -12,7 +12,7 @@
 import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
-import { PlayerDetailV3, ProfileEmpty, ProfileSkeleton } from '@sacloud/ui'
+import { PlayerDetailV3, ProfileEmpty, ProfileSkeleton, type StrengthCompare } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
@@ -69,6 +69,54 @@ export default function LeaguePlayerRecordPageV3({
   return <Body data={detail.data.data} leagueSlug={leagueSlug} playerId={playerId} matches={matches} expanded={expanded} onExpand={loadDetail} />
 }
 
+/**
+ * ★비교분석★ — 다른 선수 여섯 축을 겹쳐 그린다 (2026-09-12 사장님).
+ *
+ * 찾기는 `playersSearch`, 값은 그 선수의 `leaguePlayerShow` 에서 온다.
+ * ★같은 리그 안에서만★ 견준다 — 축 백분위는 리그 안에서 매긴 값이라 리그를 섞으면
+ * 뜻이 없다. 그 리그에 없는 선수를 고르면 값이 안 와서 겹치지 않는다.
+ *
+ * 스나수·라플수는 가리지 않는다 (사장님 지시). 싸움 축만 잣대가 달라서
+ * 그림 밑에 그 말을 한 줄 적어 둔다.
+ */
+function useCompare(leagueSlug: string, playerId: string): StrengthCompare {
+  const ready = useApiReady()
+  const [query, setQuery] = useState('')
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null)
+
+  const q = query.trim()
+  const found = useQuery({
+    queryKey: ['compare', 'search', q],
+    enabled: ready && q.length > 0,
+    queryFn: () => apiGet('playersSearch', { params: { q } }),
+  })
+
+  const other = useQuery({
+    queryKey: ['compare', 'hex', leagueSlug, picked?.id ?? ''],
+    enabled: ready && picked !== null,
+    queryFn: () => apiGet('leaguePlayerShow', { params: { leagueSlug, playerId: picked?.id ?? '' } }),
+  })
+
+  const values =
+    picked === null
+      ? null
+      : (other.data?.data.hex?.axes ?? []).map((axis) => axis.percentile)
+
+  return {
+    picked,
+    values: values === null || values.length === 0 ? null : values,
+    /* 자기 자신은 고를 수 없다 — 겹쳐 봐야 같은 그림이다 */
+    results: (found.data?.data ?? [])
+      .filter((row) => row.id !== playerId)
+      .slice(0, 8)
+      .map((row) => ({ id: row.id, name: row.name, clanName: row.clan?.name ?? null })),
+    loading: found.isFetching,
+    onQueryChange: setQuery,
+    onPick: (candidate) => setPicked({ id: candidate.id, name: candidate.name }),
+    onClear: () => setPicked(null),
+  }
+}
+
 function Body({
   data,
   leagueSlug,
@@ -85,6 +133,7 @@ function Body({
   onExpand: (match: MatchListItem) => void
 }) {
   const report = usePlayerReport(playerId, data.report_count)
+  const compare = useCompare(leagueSlug, playerId)
   return (
     <div className="pc-container pb-[40px]">
       <PlayerDetailV3
@@ -98,6 +147,7 @@ function Body({
         expanded={expanded}
         onExpand={onExpand}
         report={report}
+        compare={compare}
       />
     </div>
   )

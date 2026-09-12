@@ -17,6 +17,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail, MatchDetail, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
+import { CompareSearchV3, type CompareCandidate } from './CompareSearchV3'
 import { strengthAxes } from './playerHexAxes'
 import { AnalysisPanelV3 } from './AnalysisPanelV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
@@ -54,6 +55,8 @@ export interface PlayerDetailV3Props {
   expanded: Readonly<Record<string, MatchDetail>>
   onExpand: (match: MatchListItem) => void
   report: { count: number; reported: boolean; pending: boolean; message: string | null; onReport: () => void }
+  /** ★비교분석★ (2026-09-12 사장님). 안 주면 검색칸이 안 뜨고 옛 제목이 나온다 */
+  compare?: StrengthCompare
 }
 
 /* ── 구간별 전적 ─────────────────────────────────────────────── */
@@ -207,13 +210,52 @@ function ReportButton({ report }: { report: PlayerDetailV3Props['report'] }) {
 /* ★`strengthAxes` 는 `playerHexAxes.ts` 로 옮겼다★ (2026-09-12) —
    머리 카드도 같은 그림을 그려서 규칙이 두 곳에 있으면 안 된다 */
 
-function StrengthCard({ data }: { data: LeaguePlayerDetail }) {
+/**
+ * ★비교분석★ — STRENGTH POINT 제목 자리에 검색칸 (2026-09-12 사장님).
+ *
+ * > «없애고 비교분석하기 버튼 만들고 (…) 검색 후 클릭 누르면 그 선수 그래프 불러와서
+ * >  여기에 겹쳐줘 색깔 다르게 해서 (…) 스나수 라플수 구분없이 그래프 대볼 수 있게»
+ *
+ * 찾기·불러오기는 ★화면(앱) 쪽★ 이 넘겨준다 — `packages/ui` 는 API 를 모른다.
+ * 넘겨주지 않으면 검색칸이 안 뜨고 옛 제목이 그대로 나온다 (기존 화면이 안 깨진다).
+ */
+export interface StrengthCompare {
+  picked: { id: string; name: string } | null
+  /** 겹쳐 그릴 여섯 값 (0~100). 축 차례는 주인과 같다 */
+  values: readonly (number | null)[] | null
+  results: readonly CompareCandidate[]
+  loading: boolean
+  onQueryChange: (query: string) => void
+  onPick: (candidate: CompareCandidate) => void
+  onClear: () => void
+}
+
+function StrengthCard({ data, compare }: { data: LeaguePlayerDetail; compare?: StrengthCompare }) {
   const hex = data.hex
   const axes = strengthAxes(data)
   const badges = hex ? hex.axes.filter((a) => a.badge !== null && a.rank !== null) : []
+  const overlay =
+    compare && compare.picked !== null && compare.values !== null
+      ? { values: compare.values, label: compare.picked.name }
+      : null
   return (
     <div style={halfCardStyle}>
-      <CardHead title={<span style={{ letterSpacing: '.06em' }}>STRENGTH POINT</span>} right={
+      <CardHead
+        title={
+          compare ? (
+            <CompareSearchV3
+              picked={compare.picked}
+              results={compare.results}
+              loading={compare.loading}
+              onQueryChange={compare.onQueryChange}
+              onPick={compare.onPick}
+              onClear={compare.onClear}
+            />
+          ) : (
+            <span style={{ letterSpacing: '.06em' }}>STRENGTH POINT</span>
+          )
+        }
+        right={
         <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
           {hex ? `시즌 Cloud 0 · ${fmt(hex.games)}전 기준` : '시즌 Cloud 0'}
         </span>
@@ -223,7 +265,7 @@ function StrengthCard({ data }: { data: LeaguePlayerDetail }) {
           /* 2026-09-11: 머리 카드가 빠져 이 카드가 한 줄을 다 쓴다 → 육각형을 키운다 (300px 고정 그림을 배율로) */
           <span className="v3-hex-zoom" style={{ display: 'block', width: 300 * 1.55, height: 262 * 1.55 }}>
             <span style={{ display: 'block', transform: 'scale(1.55)', transformOrigin: 'top left' }}>
-              <Hexagon axes={axes} id="playerHex" />
+              <Hexagon axes={axes} id="playerHex" overlay={overlay} />
             </span>
           </span>
         ) : (
@@ -236,6 +278,23 @@ function StrengthCard({ data }: { data: LeaguePlayerDetail }) {
           </div>
         )}
       </div>
+      {/* ★범례★ — 겹쳐 놓았을 때만. 어느 선이 누구인지 그림 안에 적을 자리가 없다 */}
+      {overlay !== null ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap', padding: '0 18px 10px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span aria-hidden style={{ width: 12, height: 3, borderRadius: 2, background: '#b98bff', flex: 'none' }} />
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: V3.text, whiteSpace: 'nowrap' }}>{data.player.name}</span>
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span aria-hidden style={{ width: 12, height: 3, borderRadius: 2, background: '#8ff0ff', flex: 'none' }} />
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: '#8ff0ff', whiteSpace: 'nowrap' }}>{overlay.label}</span>
+          </span>
+          {/* 잣대가 다른 축이 하나 있다 — 숨기지 않고 적어 둔다 */}
+          <span style={{ fontSize: 10, color: V3.textGhost2, whiteSpace: 'nowrap' }}>
+            싸움 축은 무기별로 따로 잰 값입니다
+          </span>
+        </div>
+      ) : null}
       {badges.length > 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '0 18px 16px' }}>
           <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>특성</span>
@@ -842,7 +901,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
       {TIER_CARD_IN_BODY ? (
         <div style={halfStyle}>
           <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} />
-          <StrengthCard data={data} />
+          <StrengthCard data={data} compare={props.compare} />
         </div>
       ) : null}
       {/* ★탭 셋★ (2026-09-11 사장님 목업) — 그래프 · 플레이분석 · 클랜별전적 */}
@@ -869,7 +928,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
         /* PC 는 왼쪽에 «어떻게 재는가», 오른쪽에 육각형 (2026-09-11 사장님). 폰은 육각형만 */
         <div className="v3-play-split" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
           <AnalysisPanelV3 />
-          <StrengthCard data={data} />
+          <StrengthCard data={data} compare={props.compare} />
         </div>
       ) : null}
       {tab === 'clan' ? <ClanVsCard data={data} /> : null}

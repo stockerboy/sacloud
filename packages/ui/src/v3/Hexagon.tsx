@@ -34,7 +34,32 @@ export interface HexAxisView {
 const RING_STEP = 10
 const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_STEP)
 
-export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id?: string }) {
+/**
+ * ★겹쳐 그릴 두 번째 선★ (2026-09-12 사장님: «비교분석하기 버튼 만들고 (…) 검색 후
+ * 클릭 누르면 그 선수 그래프 불러와서 여기에 겹쳐줘 색깔 다르게 해서 한눈에 보고 비교»).
+ *
+ * 값만 받는다 — 축 이름·등수 글자는 ★주인 것 하나만★ 그린다. 두 벌을 다 적으면
+ * 글자가 서로 겹쳐 아무것도 안 읽힌다. 대신 그림 아래 범례에 이름을 적는다.
+ *
+ * 못 잰 축은 `null` 이고 중심(0)에 둔다 — 지어내지 않는다.
+ */
+export interface HexOverlay {
+  values: readonly (number | null)[]
+  label: string
+}
+
+/** 겹쳐 그리는 선 색 — 주인은 보라 그라데이션, 상대는 ★청록 한 색★ 이라 헷갈리지 않는다 */
+const OVERLAY_INK = '#8ff0ff'
+
+export function Hexagon({
+  axes,
+  id = 'hex',
+  overlay = null,
+}: {
+  axes: readonly HexAxisView[]
+  id?: string
+  overlay?: HexOverlay | null
+}) {
   /* ★가운데에서 바깥으로 자라난다★ (2026-09-11 사장님: «비슷한 느낌으로 육각그래프도 그려지게») */
   const svgRef = useRef<SVGSVGElement>(null)
   const grow = useDrawIn(1800, id, svgRef)
@@ -46,6 +71,13 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
   const six = axes.slice(0, 6)
   const vertices = six.map((a, i) => hexPoint(i, Math.max(0, Math.min(100, a.value ?? 0)) / 100))
   const area = vertices.map((v) => v.join(',')).join(' ')
+  /* ★겹쳐 그리는 선★ (2026-09-12 사장님) — 여섯 자리에 맞춰 자르고 모자라면 중심에 둔다 */
+  const overlayArea =
+    overlay === null
+      ? null
+      : Array.from({ length: 6 }, (_, i) =>
+          hexPoint(i, Math.max(0, Math.min(100, overlay.values[i] ?? 0)) / 100).join(','),
+        ).join(' ')
   return (
     <svg ref={svgRef} viewBox={`0 0 ${HEX.w} ${HEX.h}`} style={{ width: HEX.w, height: HEX.h, flex: `0 0 ${HEX.w}px`, display: 'block' }}>
       <defs>
@@ -104,6 +136,21 @@ export function Hexagon({ axes, id = 'hex' }: { axes: readonly HexAxisView[]; id
           </text>
         )
       })}
+      {/* ★상대 선은 주인 위에★ — 아래에 두면 채움에 묻힌다 (2026-09-12 사장님) */}
+      {overlayArea !== null ? (
+        <>
+          <polygon points={overlayArea} fill={OVERLAY_INK} fillOpacity={0.1} stroke="none" opacity={labelIn} />
+          <polygon
+            points={overlayArea}
+            fill="none"
+            stroke={OVERLAY_INK}
+            strokeWidth={2}
+            strokeOpacity={0.95}
+            strokeLinejoin="round"
+            {...penDash(grow)}
+          />
+        </>
+      ) : null}
       {done ? <polygon key={flash} className="v3-hex-flash" points={area} fill={`url(#${id}Line)`} pointerEvents="none" /> : null}
       {/* 축 이름·등수는 ★다 그려진 뒤에 스며든다★ (2026-09-11 사장님) */}
       <g opacity={labelIn} style={{ transition: 'opacity .45s ease' }}>
