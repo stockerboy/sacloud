@@ -35,6 +35,7 @@ import { REPO_ROOT } from '../lib/env.js'
 import { log, warn } from '../lib/log.js'
 import { SEASON0_FROM } from '../lib/season0Window.js'
 import type { TierNo } from '../lib/iplTiers.js'
+import { MIN_MEMBERS, SHORT_MEMBER_WEIGHT } from '../lib/iplTiers.js'
 import {
   BURST_GAP_SECONDS,
   foldPlayerHex,
@@ -401,6 +402,10 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
   /* ── 2. 접기 ──────────────────────────────────────────────────────────── */
   for (const league of leagues) {
     const tiered = league.divisionCount >= 3
+    /* ★인원수 규칙은 IPL 에만★ (2026-09-12 사장님). 다른 리그는 무게를 늘 1 로 둔다 */
+    const shortRule = league.slug === 'nolink'
+    const minMembers = shortRule ? MIN_MEMBERS : 0
+    const shortWeight = shortRule ? SHORT_MEMBER_WEIGHT : 1
     const base = await prisma.$queryRaw<
       {
         lpid: string
@@ -418,23 +423,39 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         clantier: number | null
       }[]
     >`
+      WITH mw AS (
+        -- ★인원수 규칙★ (2026-09-12 사장님) — 양 팀 클랜원 합이 모자란 판은 10%만 센다.
+        -- IPL 에만 먹인다. 다른 리그는 ${shortRule ? '' : '이 값이 늘 1 이라'} 그대로다
+        SELECT m."id" AS mid,
+               CASE WHEN COALESCE((
+                 SELECT count(*)::int FROM "MatchPlayerStat" st
+                  WHERE st."matchId" = m."id"
+                    AND st."playerClanId" IS NOT NULL
+                    AND st."playerClanId" = CASE WHEN st."side" = 'red' THEN rl."clanId" ELSE bl."clanId" END
+               ), 0) >= ${minMembers} THEN 1::float ELSE ${shortWeight}::float END AS w
+          FROM "Match" m
+          LEFT JOIN "LeagueClan" rl ON rl."id" = m."redLeagueClanId"
+          LEFT JOIN "LeagueClan" bl ON bl."id" = m."blueLeagueClanId"
+         WHERE m."leagueId" = ${league.id} AND m."supersededAt" IS NULL
+      )
       SELECT lp."id" AS lpid,
-             COUNT(s.*)::int AS games,
-             SUM(CASE WHEN m."winnerSide" = s."side" THEN 1 ELSE 0 END)::int AS wins,
-             SUM(CASE WHEN s."weapon" = 1 THEN 1 ELSE 0 END)::int AS sniperg,
-             SUM(CASE WHEN s."weapon" = 0 THEN 1 ELSE 0 END)::int AS rifleg,
-             COALESCE(SUM(s."kill"), 0)::int AS kills,
-             SUM(CASE WHEN foe."division" = 1 THEN 1 ELSE 0 END)::int AS t1,
-             SUM(CASE WHEN foe."division" = 2 THEN 1 ELSE 0 END)::int AS t2,
-             SUM(CASE WHEN foe."division" = 3 THEN 1 ELSE 0 END)::int AS t3,
+             SUM(mw.w) AS games,
+             SUM(CASE WHEN m."winnerSide" = s."side" THEN mw.w ELSE 0 END) AS wins,
+             SUM(CASE WHEN s."weapon" = 1 THEN mw.w ELSE 0 END) AS sniperg,
+             SUM(CASE WHEN s."weapon" = 0 THEN mw.w ELSE 0 END) AS rifleg,
+             COALESCE(SUM(s."kill" * mw.w), 0) AS kills,
+             SUM(CASE WHEN foe."division" = 1 THEN mw.w ELSE 0 END) AS t1,
+             SUM(CASE WHEN foe."division" = 2 THEN mw.w ELSE 0 END) AS t2,
+             SUM(CASE WHEN foe."division" = 3 THEN mw.w ELSE 0 END) AS t3,
              -- ★구간별 승수★ (2026-09-12 사장님: 승률은 «내 구간» 것을 쓴다)
-             SUM(CASE WHEN foe."division" = 1 AND m."winnerSide" = s."side" THEN 1 ELSE 0 END)::int AS t1w,
-             SUM(CASE WHEN foe."division" = 2 AND m."winnerSide" = s."side" THEN 1 ELSE 0 END)::int AS t2w,
-             SUM(CASE WHEN foe."division" = 3 AND m."winnerSide" = s."side" THEN 1 ELSE 0 END)::int AS t3w,
+             SUM(CASE WHEN foe."division" = 1 AND m."winnerSide" = s."side" THEN mw.w ELSE 0 END) AS t1w,
+             SUM(CASE WHEN foe."division" = 2 AND m."winnerSide" = s."side" THEN mw.w ELSE 0 END) AS t2w,
+             SUM(CASE WHEN foe."division" = 3 AND m."winnerSide" = s."side" THEN mw.w ELSE 0 END) AS t3w,
              MAX(own."division") AS clantier
         FROM "LeaguePlayer" lp
         JOIN "MatchPlayerStat" s ON s."playerId" = lp."playerId"
         JOIN "Match" m ON m."id" = s."matchId" AND m."leagueId" = lp."leagueId"
+        JOIN mw ON mw."mid" = m."id"
         LEFT JOIN "LeagueClan" foe ON foe."id" =
           CASE WHEN s."side" = 'red' THEN m."blueLeagueClanId" ELSE m."redLeagueClanId" END
         LEFT JOIN "LeagueClan" own ON own."leagueId" = lp."leagueId" AND own."clanId" = lp."clanId"
@@ -458,21 +479,37 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rduellost: number
       }[]
     >`
+      WITH mw AS (
+        -- ★인원수 규칙★ (2026-09-12 사장님) — 양 팀 클랜원 합이 모자란 판은 10%만 센다.
+        -- IPL 에만 먹인다. 다른 리그는 ${shortRule ? '' : '이 값이 늘 1 이라'} 그대로다
+        SELECT m."id" AS mid,
+               CASE WHEN COALESCE((
+                 SELECT count(*)::int FROM "MatchPlayerStat" st
+                  WHERE st."matchId" = m."id"
+                    AND st."playerClanId" IS NOT NULL
+                    AND st."playerClanId" = CASE WHEN st."side" = 'red' THEN rl."clanId" ELSE bl."clanId" END
+               ), 0) >= ${minMembers} THEN 1::float ELSE ${shortWeight}::float END AS w
+          FROM "Match" m
+          LEFT JOIN "LeagueClan" rl ON rl."id" = m."redLeagueClanId"
+          LEFT JOIN "LeagueClan" bl ON bl."id" = m."blueLeagueClanId"
+         WHERE m."leagueId" = ${league.id} AND m."supersededAt" IS NULL
+      )
       SELECT lp."id" AS lpid,
-             SUM(h."rounds")::int AS rounds,
-             SUM(h."firstKills")::int AS firstkills,
-             SUM(h."burstRounds")::int AS burstrounds,
-             SUM(h."aloneRounds")::int AS alonerounds,
-             SUM(h."aloneWon")::int AS alonewon,
-             SUM(h."outRounds")::int AS outrounds,
-             SUM(h."outWon")::int AS outwon,
-             SUM(CASE WHEN h."weapon" = 1 THEN h."duelWon" ELSE 0 END)::int AS sduelwon,
-             SUM(CASE WHEN h."weapon" = 1 THEN h."duelLost" ELSE 0 END)::int AS sduellost,
-             SUM(CASE WHEN h."weapon" = 0 THEN h."duelWon" ELSE 0 END)::int AS rduelwon,
-             SUM(CASE WHEN h."weapon" = 0 THEN h."duelLost" ELSE 0 END)::int AS rduellost
+             SUM(h."rounds" * mw.w) AS rounds,
+             SUM(h."firstKills" * mw.w) AS firstkills,
+             SUM(h."burstRounds" * mw.w) AS burstrounds,
+             SUM(h."aloneRounds" * mw.w) AS alonerounds,
+             SUM(h."aloneWon" * mw.w) AS alonewon,
+             SUM(h."outRounds" * mw.w) AS outrounds,
+             SUM(h."outWon" * mw.w) AS outwon,
+             SUM(CASE WHEN h."weapon" = 1 THEN h."duelWon" * mw.w ELSE 0 END) AS sduelwon,
+             SUM(CASE WHEN h."weapon" = 1 THEN h."duelLost" * mw.w ELSE 0 END) AS sduellost,
+             SUM(CASE WHEN h."weapon" = 0 THEN h."duelWon" * mw.w ELSE 0 END) AS rduelwon,
+             SUM(CASE WHEN h."weapon" = 0 THEN h."duelLost" * mw.w ELSE 0 END) AS rduellost
         FROM "LeaguePlayer" lp
         JOIN "MatchPlayerHex" h ON h."playerId" = lp."playerId"
         JOIN "Match" m ON m."id" = h."matchId" AND m."leagueId" = lp."leagueId"
+        JOIN mw ON mw."mid" = m."id"
        WHERE lp."leagueId" = ${league.id} AND h."formulaVersion" = ${PLAYER_HEX_FORMULA_VERSION}
          AND m."supersededAt" IS NULL
        GROUP BY lp."id"`

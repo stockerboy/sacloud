@@ -42,6 +42,8 @@ import { log, warn } from '../lib/log.js'
 import {
   ELO_DIV,
   ELO_FLOOR,
+  MIN_MEMBERS,
+  SHORT_MEMBER_WEIGHT,
   ELO_INIT,
   ELO_K,
   PLAYER_BASE,
@@ -82,6 +84,8 @@ interface MatchRow {
   blue: string
   redLeagueClanId: string
   blueLeagueClanId: string
+  /** ★양 팀 클랜원 합★ — `MIN_MEMBERS` 미만이면 그 판은 10%만 센다 (2026-09-12 사장님) */
+  members: number
 }
 
 export async function runIplRankApply(input: { confirm: boolean }): Promise<IplRankApplyResult> {
@@ -92,7 +96,14 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     SELECT m."winnerSide" AS win,
            rc."name" AS red, bc."name" AS blue,
            m."redLeagueClanId"  AS "redLeagueClanId",
-           m."blueLeagueClanId" AS "blueLeagueClanId"
+           m."blueLeagueClanId" AS "blueLeagueClanId",
+           -- ★양 팀 클랜원 합★ (2026-09-12 사장님) — 용병은 안 센다
+           COALESCE((
+             SELECT count(*)::int FROM "MatchPlayerStat" st
+              WHERE st."matchId" = m."id"
+                AND st."playerClanId" IS NOT NULL
+                AND st."playerClanId" = CASE WHEN st."side" = 'red' THEN rl."clanId" ELSE bl."clanId" END
+           ), 0) AS members
       FROM "Match" m
       JOIN "LeagueClan" rl ON rl."id" = m."redLeagueClanId"
       JOIN "Clan" rc ON rc."id" = rl."clanId"
@@ -113,6 +124,8 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
   const wins = new Map<string, number>()
   /* ★도전 가산★ 이 쓰는 칸 — 자기보다 윗 구간과 붙은 판수 (2026-09-12 사장님) */
   const upGames = new Map<string, number>()
+  /* 인원수 규칙에 걸린 판 수 — 보고용 */
+  let shortMatches = 0
   const leagueClanIdOf = new Map<string, string>()
   const E = (c: string): number => elo.get(c) ?? ELO_INIT
 
@@ -123,12 +136,15 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     const rb = E(m.blue)
     const ea = 1 / (1 + 10 ** ((rb - ra) / ELO_DIV))
     const redWon = m.win === 'red' ? 1 : 0
+    /* ★인원수 규칙★ — 양 팀 클랜원이 모자란 판은 증감도 판수도 10% (2026-09-12 사장님) */
+    const wt = m.members >= MIN_MEMBERS ? 1 : SHORT_MEMBER_WEIGHT
+    if (wt < 1) shortMatches += 1
     for (const [c, won] of [
       [m.red, redWon],
       [m.blue, 1 - redWon],
     ] as const) {
-      games.set(c, (games.get(c) ?? 0) + 1)
-      wins.set(c, (wins.get(c) ?? 0) + won)
+      games.set(c, (games.get(c) ?? 0) + wt)
+      wins.set(c, (wins.get(c) ?? 0) + won * wt)
     }
     /* 티어 숫자는 작을수록 윗 구간이다 (1 ASTRA) */
     const tRed = TIER_OF.get(m.red)
@@ -137,9 +153,10 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
       if (tBlue < tRed) upGames.set(m.red, (upGames.get(m.red) ?? 0) + 1)
       if (tRed < tBlue) upGames.set(m.blue, (upGames.get(m.blue) ?? 0) + 1)
     }
-    elo.set(m.red, Math.max(ELO_FLOOR, ra + ELO_K * (redWon - ea)))
-    elo.set(m.blue, Math.max(ELO_FLOOR, rb + ELO_K * (1 - redWon - (1 - ea))))
+    elo.set(m.red, Math.max(ELO_FLOOR, ra + ELO_K * wt * (redWon - ea)))
+    elo.set(m.blue, Math.max(ELO_FLOOR, rb + ELO_K * wt * (1 - redWon - (1 - ea))))
   }
+  log(`인원수 규칙 — 양 팀 클랜원 ${MIN_MEMBERS}명 미만이라 10%만 센 판 ${shortMatches}건 / ${used.length}건`)
 
   /* ── 개인 점수 ─────────────────────────────────────────── */
   const stats = await prisma.$queryRaw<

@@ -163,6 +163,27 @@ export function playerRawScore(byTier: Partial<Record<TierNo, { games: number; w
 export const CHALLENGE_BONUS = 0
 
 /**
+ * ★인원수 규칙★ (2026-09-12 사장님)
+ *
+ * > «a팀은 클원2 b팀 클원3 이건 정상 기록, 근데 a팀2 b팀2 or a팀1 b팀3 이건
+ * >  원래 받을 점수의 10퍼센트만 줘버려 (IPL에만 적용) 클랜점수와 개인점수 모두»
+ *
+ * 사장님이 ㉠ 로 확정 — ★양 팀 클랜원을 합쳐 `MIN_MEMBERS` 명 이상이면 정상★ 이다.
+ * 2+3=5 정상 · 2+2=4 깎임 · 1+3=4 깎임 — 주신 예 셋이 이 규칙으로 전부 맞는다.
+ *
+ * 클랜원 = 그 경기에서 선 팀의 클랜이 ★자기 도장(`MatchPlayerStat.playerClanId`)★ 인 사람.
+ * 용병은 안 센다. 도장이 없으면 클랜원이 아니다 (지어내지 않는다).
+ *
+ * 실측 (2026-09-12 · IPL 시즌0 2,889판) — 깎이는 판 ★53판 (1.8%)★.
+ * 5:5 가 1,199판 · 4:5 가 867판이라 대부분은 그대로다.
+ *
+ * ⚠ IPL(`nolink`) 에만 먹인다. SPL·열산은 손대지 않는다.
+ * ⚠ `WEIGHT` 를 1 로 두면 규칙이 꺼진다 (`CLAUDE.md` 1-4).
+ */
+export const MIN_MEMBERS = 5
+export const SHORT_MEMBER_WEIGHT = 0.1
+
+/**
  * 클랜 점수.
  *
  * `upGames` 는 ★자기보다 윗 구간★ 클랜과 붙은 판수다. ASTRA 는 위가 없어 늘 0 이다.
