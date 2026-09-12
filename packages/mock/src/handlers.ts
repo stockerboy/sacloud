@@ -275,6 +275,8 @@ const resolvers: Record<EndpointKey, Resolver> = {
   },
   /* ★부문별 1위★ (2026-09-12) — 픽스처에는 여섯 축 값이 없어 빈 줄이다 */
   leagueTopAxes: () => ok([]),
+  /* ★경기분석까지 끝난 최근 경기★ (2026-09-12) — 픽스처에는 배틀로그가 없어 빈 줄이다 */
+  homeAnalyzedMatches: () => ok([]),
   leagueRankForm: ({ params, request }) => {
     const leagueId = resolveLeagueId(param(params['leagueId']))
     const form = leagueId

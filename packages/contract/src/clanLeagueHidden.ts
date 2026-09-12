@@ -95,6 +95,19 @@ export const CLAN_HIDDEN_IN_LEAGUE: readonly HiddenInLeague[] = [
       'skytak',
       'system1',
       'zxcvddr2',
+      /*
+       * ★2026-09-12 사장님: «슈프리 데이토나 울산 삭제» → 목록에서만 감춘다 (사장님이 ㄱ 고르심)★
+       *
+       * 경기가 붙어 있어 정말로 지우면 상대 클랜의 경기 상세에서 이름이 사라진다 —
+       *   supremacy-(dasd123445)   509건
+       *   daytona(w2makerule)    2,237건
+       *   UlsaN_CIaN(ulsanulsan) 2,762건
+       * 그래서 이 표로 ★목록에서만★ 뺀다. 기록은 그대로 남는다.
+       * ⚠ 열산의 daytona(youtube96)는 ★다른 클랜★ 이다 — 건드리지 않았다.
+       */
+      'dasd123445',
+      'w2makerule',
+      'ulsanulsan',
     ],
   },
 ]

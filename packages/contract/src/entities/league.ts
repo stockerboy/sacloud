@@ -273,6 +273,23 @@ export function parseRankWeapon(value: string | null | undefined): RankWeapon {
  * 여섯 축인데 ★싸움만 무기별로 둘★ 이라 일곱이다 — 스나싸움(스나수 안)·샷싸움(라플수 안).
  * 잣대가 아예 달라 한 줄로 묶을 수 없다.
  */
+/**
+ * ★홈 · 경기분석까지 끝난 최근 경기★ (2026-09-12 사장님).
+ *
+ * > «가장최근 끝난 IPL SPL 경기 (경기분석까지 마친) 3개보여주자 눌러서 상세보기 볼 수 있게»
+ *
+ * 「경기분석까지 마친」 = 그 판 육각형을 ★양 팀 다★ 접었다는 뜻이다.
+ */
+export const HomeAnalyzedMatch = z.object({
+  match_id: Id,
+  league_slug: Slug,
+  map_name: z.string().nullable(),
+  start_at: z.string(),
+  won_clan: ClanSummary,
+  lost_clan: ClanSummary,
+})
+export type HomeAnalyzedMatch = z.infer<typeof HomeAnalyzedMatch>
+
 export const TopAxisLeader = z.object({
   /** 축 열쇠 (`save` · `duel` · …) */
   key: z.string(),

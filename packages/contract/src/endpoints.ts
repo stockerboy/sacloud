@@ -48,6 +48,7 @@ import {
   LeagueClanDeleteState,
   LeagueClanSeason,
   LeagueClanShow,
+  HomeAnalyzedMatch,
   TopAxisLeader,
   LeagueInvitation,
   LeagueListItem,
@@ -575,6 +576,14 @@ export const endpoints = {
    * ★부문별 1위★ — 홈 검색창 밑 판 (2026-09-12 사장님).
    * 여섯 축 + 싸움을 무기로 나눈 일곱 줄. 못 잰 축은 줄 자체가 안 온다.
    */
+  /** ★홈 · 경기분석까지 끝난 최근 경기 셋★ (2026-09-12 사장님) */
+  homeAnalyzedMatches: {
+    method: 'GET',
+    path: '/home/analyzed-matches',
+    origin: 'designed',
+    description: '경기분석까지 끝난 최근 경기 (IPL·SPL 섞음)',
+    response: apiResponse(z.array(HomeAnalyzedMatch)),
+  },
   leagueTopAxes: {
     method: 'GET',
     path: '/leagues/:leagueId/top-axes',

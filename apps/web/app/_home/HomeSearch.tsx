@@ -30,6 +30,7 @@ import {
 import { ApiError, apiGet } from '@/lib/api'
 import { HomeLeagueTiles } from './HomeLeagueTiles'
 import { HomeTopPlayers } from './HomeTopPlayers'
+import { HomeAnalyzedMatches } from './HomeAnalyzedMatches'
 
 /**
  * 홈 윗머리 — `0 로고 · 1 통합검색 · 2 리그 바로가기`.
@@ -98,6 +99,7 @@ function clanOf(row: unknown): { clan?: ClanSummary | null } {
 }
 
 void HomeLeagueTiles
+void HomeTopPlayers
 
 export function HomeSearch() {
   const router = useRouter()
@@ -267,7 +269,9 @@ export function HomeSearch() {
           `HomeLeagueTiles` 파일은 ★그대로 있다★ — 되살리려면 이 줄만 되돌린다
           (`CLAUDE.md` 1-4). 그 자리에는 부문별 1위 판이 들어간다.
       */}
-      <HomeTopPlayers />
+      {/* ⚠ 2026-09-12 — 「부문별 1위」를 「최근 분석 완료 경기」로 바꿨다 (사장님).
+          HomeTopPlayers 는 지우지 않았다 (CLAUDE.md 1-4) */}
+      <HomeAnalyzedMatches />
     </section>
   )
 }
