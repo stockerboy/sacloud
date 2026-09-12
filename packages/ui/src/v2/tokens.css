@@ -977,3 +977,33 @@
   /* 위 테두리는 바깥 상자가 그린다 — 두 줄이 겹치지 않게 */
   .v3-phead-body .v3-phead-kpi { border-top: 0 !important; }
 }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★클랜평 세 마디★ (2026-09-12 사장님) — 유형 알약 · 유형 설명 · 템포 · 강한 축
+
+   > «모바일 버전 줄 맞춰줘»
+
+   PC 는 알약과 설명이 한 줄이다. 폰은 좁아서 설명만 두 줄로 접히고 알약과 어긋난다 —
+   그래서 폰에서는 ★알약을 윗줄로 올린다.★ 가운데 정렬은 두 폭에서 같다.
+   ────────────────────────────────────────────────────────────────────────── */
+.v3-clanstyle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  line-height: 1.55;
+}
+.v3-clanstyle__head {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+@media (max-width: 899px) {
+  .v3-clanstyle__head {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

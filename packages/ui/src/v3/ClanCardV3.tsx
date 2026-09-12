@@ -286,8 +286,10 @@ function ClanStyleLine({ hex }: { hex: ClanHexagonV2 | null }) {
   const note = clanStyleNote(hex)
   if (!note) return null
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, maxWidth: 320, padding: '0 8px 2px', textAlign: 'center' }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+    <div className="v3-clanstyle" style={{ maxWidth: 320, padding: '0 8px 2px' }}>
+      {/* ★폰에서는 알약이 윗줄★ (2026-09-12 사장님: «모바일 버전 줄 맞춰줘») —
+          알약과 설명이 한 줄에 있으면 좁은 화면에서 설명만 두 줄로 접혀 줄이 어긋난다 */}
+      <span className="v3-clanstyle__head">
         <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.04em', color: '#cfe0ff', padding: '3px 10px', borderRadius: 999, background: 'rgba(91,141,255,.14)', border: '1px solid rgba(159,192,255,.4)', whiteSpace: 'nowrap' }}>
           {note.type}
         </span>
