@@ -1071,3 +1071,28 @@
     margin-top: 6px;
   }
 }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★클랜랭킹 카드는 그림을 크게★ (2026-09-12 사장님: «그래프가 너무너무 작아»)
+
+   개인랭킹 카드는 폰에서 그림을 오른쪽으로 눕혔다 — 세 장이 나뉘어 좁기 때문이다.
+   클랜 카드는 폰에서 한 장이 한 줄을 다 쓴다. 눕힐 이유가 없다 —
+   그림을 가운데에 크게 놓고 숫자를 그 밑에 늘어놓는다.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 899px) {
+  .v3-podium-body--wide {
+    display: block;
+  }
+  .v3-podium-body--wide > .v3-podium-hex {
+    --podium-hex: 1;
+    margin-top: 10px;
+  }
+  .v3-podium-body--wide > .v3-podium-stats {
+    margin-top: 14px;
+    flex-direction: row;
+    align-items: baseline;
+    border-top: 1px solid var(--v2-card-divider);
+    padding-top: 14px;
+  }
+}

@@ -24,6 +24,8 @@ import {
   Hexagon,
   Panel,
   clanHexAxes,
+  clanStyleNote,
+  divisionLabel,
   formatRate,
   formatRating,
   leagueClanPath,
@@ -50,6 +52,26 @@ const SHEEN: Readonly<Record<number, string>> = {
   3: 'rgba(201,163,91,.14)',
 }
 
+/** 카드 한 칸 — 값이 없으면 「기록 없음」이라고 적는다 (숫자를 지어내지 않는다) */
+function ClanStat({ cap, value, unit, tone, sub }: { cap: string; value: string | null; unit: string; tone: string; sub: string | null }) {
+  return (
+    <span className="flex flex-col gap-[3px]">
+      <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">{cap}</span>
+      <span className="flex items-baseline gap-[3px]">
+        {value === null ? (
+          <span className="text-[13px] text-[var(--v2-text-ghost)]">기록 없음</span>
+        ) : (
+          <>
+            <span className={`num text-[20px] font-extralight ${tone}`}>{value}</span>
+            <span className="text-[10.5px] text-[var(--v2-text-ghost)]">{unit}</span>
+            {sub ? <span className="text-[10.5px] text-[var(--v2-text-ghost)]">· {sub}</span> : null}
+          </>
+        )}
+      </span>
+    </span>
+  )
+}
+
 export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows: readonly ClanPodiumRow[] }) {
   const ready = useApiReady()
   const top = rows.slice(0, 3)
@@ -70,7 +92,12 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
     <div className="mt-[26px] grid grid-cols-3 gap-[14px] max-md:grid-cols-1">
       {top.map((row, index) => {
         const ink = row.rank === null ? 'var(--v2-text-strong)' : (rankColor(row.rank) ?? 'var(--v2-text-strong)')
-        const hex = details[index]?.data?.data.hexagon_v2 ?? null
+        const detail = details[index]?.data?.data ?? null
+        const hex = detail?.hexagon_v2 ?? null
+        /* 클랜원 수는 상세 응답에 없다 — 지어내지 않고 구간(티어)을 대신 적는다 */
+        const division = detail?.division ?? null
+        /* 클랜평의 유형 한 마디만 빌려 온다 — 카드에 긴 글을 넣지 않는다 */
+        const styleNote = clanStyleNote(hex)?.type ?? null
         const played = row.win + row.lose > 0
         return (
           <Panel
@@ -85,7 +112,8 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
                 href={leagueClanPath(leagueSlug, row.clan.slug)}
                 tabIndex={-1}
                 aria-hidden="true"
-                className="flex h-[54px] w-[54px] shrink-0 items-center justify-center border border-[var(--v2-emblem-border)]"
+                /* ⚠ 2026-09-12 사장님: «클랜마크 주변에 사각형 없애줘». 옛 판은 1px 네모였다 */
+                className="flex h-[54px] w-[54px] shrink-0 items-center justify-center"
               >
                 <ClanMark clan={row.clan} alt={row.clan.name} />
               </Link>
@@ -112,7 +140,9 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
               </span>
             </div>
 
-            <div className="v3-podium-body relative">
+            {/* ★클랜 카드는 폰에서 한 장이 한 줄을 다 쓴다★ — 그림을 크게 놓을 자리가 있다.
+                개인랭킹은 세 장이 나뉘어 좁아서 눕혔다 (`is-wide` 가 그 차이다) */}
+            <div className="v3-podium-body v3-podium-body--wide relative">
               {hex ? (
                 <div className="v3-podium-hex">
                   <span className="v3-podium-hex__box">
@@ -123,7 +153,7 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
                 </div>
               ) : null}
 
-              <div className="v3-podium-stats relative flex items-baseline gap-[22px] border-t border-[var(--v2-card-divider)] pt-[14px]">
+              <div className="v3-podium-stats relative flex flex-wrap items-baseline gap-x-[20px] gap-y-[10px] border-t border-[var(--v2-card-divider)] pt-[14px]">
                 <span className="flex items-baseline gap-[2px]" style={{ color: ink }}>
                   <span className="num text-[34px] font-black leading-none tracking-[-.02em]">
                     {row.rank ?? '-'}
@@ -131,22 +161,30 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
                   <span className="text-[15px] font-bold">위</span>
                 </span>
 
-                <span className="flex flex-col gap-[3px]">
-                  <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">승률</span>
-                  <span className="flex items-baseline gap-[3px]">
-                    {played && row.winRate !== null ? (
-                      <>
-                        <span className={`num text-[20px] font-extralight ${rateClass(row.winRate)}`}>
-                          {formatRate(row.winRate)}
-                        </span>
-                        <span className="text-[10.5px] text-[var(--v2-text-ghost)]">%</span>
-                      </>
-                    ) : (
-                      /* ★기록이 없으면 숫자를 만들지 않는다★ */
-                      <span className="text-[13px] text-[var(--v2-text-ghost)]">기록 없음</span>
-                    )}
-                  </span>
-                </span>
+                <ClanStat
+                  cap="승률"
+                  value={played && row.winRate !== null ? formatRate(row.winRate) : null}
+                  unit="%"
+                  tone={played && row.winRate !== null ? rateClass(row.winRate) : ''}
+                  sub={played ? `${row.win}승 ${row.lose}패` : null}
+                />
+
+                {/* ★숫자를 더★ (2026-09-12 사장님). 값은 이미 받아 둔 클랜 상세에서 온다 */}
+                <ClanStat
+                  cap="최다연승"
+                  value={detail?.max_win_streak === null || detail?.max_win_streak === undefined ? null : String(detail.max_win_streak)}
+                  unit="연승"
+                  tone=""
+                  sub={detail ? `${detail.win + detail.lose}전` : null}
+                />
+
+                <ClanStat
+                  cap="구간"
+                  value={division === null ? null : divisionLabel(division, detail?.league.category)}
+                  unit=""
+                  tone=""
+                  sub={styleNote}
+                />
               </div>
             </div>
           </Panel>
