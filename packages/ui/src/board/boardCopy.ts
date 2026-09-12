@@ -25,7 +25,25 @@ const AGGREGATE_BOARD = 'hot'
  */
 const DISPLAY_NAME: Readonly<Record<string, string>> = {
   [AGGREGATE_BOARD]: 'Hot',
+  /* 2026-09-12 사장님: «게시판 Hot /자유 /공지사항 이렇게 세개만» */
+  notice: '공지사항',
 }
+
+/**
+ * ★내비에 세울 게시판 — 셋뿐★ (2026-09-12 사장님).
+ *
+ * > «게시판 Hot /자유 /공지사항 이렇게 세개 만 만들어줘»
+ *
+ * 옛 판은 `notice` 만 빼고 서버가 준 카테고리를 ★전부★ 세웠다 —
+ * 화면에 «Hot 자유 SPL IPL 랭크전 방송» 여섯 개가 떴다.
+ *
+ * ★카테고리를 지우지 않는다.★ (`CLAUDE.md` 1-4 · 이미 쌓인 글이 갈 곳을 잃으면 안 된다)
+ * DB 표도 계약의 `BOARD_CATEGORIES` 도 그대로다. 주소를 직접 치면 `/board/spl` 도 열린다.
+ * 여기서 정하는 것은 ★내비에 무엇을 세우고 어떤 차례로 세우나★ 뿐이다.
+ *
+ * 차례도 이 배열이 정한다 — 사장님이 말씀하신 «Hot / 자유 / 공지사항» 그대로다.
+ */
+export const BOARD_NAV_SLUGS: readonly string[] = ['hot', 'free', 'notice']
 
 /**
  * 카테고리 이름을 화면 표기로 바꾼다.
@@ -43,8 +61,13 @@ export function boardDisplayName(categorySlug: string, categoryName: string): st
  * 넘겨받는 이름은 이미 `boardDisplayName` 을 거친 표시 이름이어야 한다
  * (`hot` → `Hot` → `Hot게시판`).
  */
+const HEADING_AS_IS: ReadonlySet<string> = new Set([
+  /* «공지사항게시판» 은 말이 겹친다 — 그대로 쓴다 (2026-09-12) */
+  '공지사항',
+])
+
 export function boardHeading(categoryName: string): string {
-  return `${categoryName}게시판`
+  return HEADING_AS_IS.has(categoryName) ? categoryName : `${categoryName}게시판`
 }
 
 /** 이 게시판에 `글쓰기`·검색 폼을 보여 주는가 (Hot게시판만 둘 다 없다) */

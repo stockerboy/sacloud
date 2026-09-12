@@ -971,6 +971,44 @@ export async function getMatch(
     if (row.weapon === 0 || row.weapon === 1) mainWeaponOfPlayer.set(row.leaguePlayer.playerId, row.weapon)
   }
 
+  /**
+   * ★포지션이 없는 리그를 위한 두 번째 길★ (2026-09-12 사장님:
+   * «열산하는 사람들도 포지션 적어줘 스나수인지 라플수인지 경기상세에»).
+   *
+   * 위의 첫 번째 길은 여섯 축을 잰 무기(`LeaguePlayerHex.weapon`)다. 그 표는
+   * ★IPL·SPL 만★ 접는다 — 10🏔 은 비공식이라 안 돈다. 그래서 10 은 전원 「알수없음」이었다.
+   *
+   * 두 번째 길은 ★그냥 무기별 판수★(`LeaguePlayerWeaponStat`) 다.
+   *   ① `isMain` 이 참인 줄 (그 무기로 절반 넘게 뛴 사람)
+   *   ② 없으면 판수가 더 많은 쪽
+   *   ③ 둘 다 0판이면 ★안 적는다★ — 「알수없음」이 맞다 (지어내지 않는다)
+   *
+   * 첫 번째 길이 있으면 그걸 그대로 쓴다. 두 길이 어긋날 일은 없지만,
+   * 여섯 축 쪽이 ★최소 판수★ 를 보고 고른 값이라 더 엄격하다.
+   */
+  const needWeapon = match.stats.map((stat) => stat.playerId).filter((id) => !mainWeaponOfPlayer.has(id))
+  if (needWeapon.length > 0) {
+    const statRows = await softFail('match-weapon-stats', [] as { weapon: number; games: number; isMain: boolean; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
+      prisma.leaguePlayerWeaponStat.findMany({
+        where: { leaguePlayer: { leagueId, playerId: { in: needWeapon } } },
+        select: { weapon: true, games: true, isMain: true, leaguePlayer: { select: { playerId: true } } },
+      }),
+    )
+    const best = new Map<string, { weapon: 0 | 1; games: number; isMain: boolean }>()
+    for (const row of statRows ?? []) {
+      if (row.weapon !== 0 && row.weapon !== 1) continue
+      if (row.games <= 0) continue
+      const id = row.leaguePlayer.playerId
+      const now = best.get(id)
+      const better =
+        now === undefined ||
+        (row.isMain && !now.isMain) ||
+        (row.isMain === now.isMain && row.games > now.games)
+      if (better) best.set(id, { weapon: row.weapon, games: row.games, isMain: row.isMain })
+    }
+    for (const [id, row] of best) mainWeaponOfPlayer.set(id, row.weapon)
+  }
+
   const savesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneWon]))
   const chancesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneRounds]))
   const roundsWonOf = (leagueClanId: string): number | null => {

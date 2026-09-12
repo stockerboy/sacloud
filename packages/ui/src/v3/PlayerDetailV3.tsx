@@ -540,6 +540,16 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
      이긴 팀 파랑 · 진 팀 빨강 한 판 위에 겹쳐서. 버튼은 ★양 팀 다★ 달되 한 번에 하나만 펴진다.
      자료는 이미 이 응답에 실려 온다(`red_hexagon_v2`/`blue_hexagon_v2`) — 왕복이 늘지 않는다 */
   const [analysis, setAnalysis] = useState<'red' | 'blue' | null>(null)
+  /**
+   * ★폰에서 무엇을 그릴지 고르개★ (2026-09-12 사장님).
+   *
+   * > «모바일에서는 승리팀클랜명/진팀클랜명/겹쳐서보기 이렇게 세개 선택 해서 볼 수 있게»
+   *
+   * PC 는 가운데에 겹친 판이 늘 떠 있어서 고를 것이 없다. 폰은 그 자리가 없으니
+   * 한 그림을 놓고 ★칩 세 개★ 로 갈아 끼운다. 칩은 900px 미만에서만 보인다.
+   * 처음 켤 때는 ★누른 팀★ 이 골라져 있다.
+   */
+  const [pick, setPick] = useState<'won' | 'lost' | 'both'>('won')
   const hexOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_hexagon_v2 : detail.blue_hexagon_v2)?.hexagon ?? null
   /* 배틀로그가 없는 옛 경기는 버튼을 아예 안 그린다 (지어내지 않는다) */
   const canAnalyze = hexOf('red') !== null && hexOf('blue') !== null
@@ -568,7 +578,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             ) : null}
             {canAnalyze ? (
               <span
-                onClick={(e) => { e.stopPropagation(); setAnalysis((now) => (now === t.side ? null : t.side)) }}
+                onClick={(e) => { e.stopPropagation(); setPick(t.won ? 'won' : 'lost'); setAnalysis((now) => (now === t.side ? null : t.side)) }}
                 style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer', padding: '3px 9px', borderRadius: V3.radiusChip, color: analysis === t.side ? '#cfe0ff' : '#8fa9d8', border: `1px solid ${analysis === t.side ? 'rgba(159,192,255,.55)' : 'rgba(143,169,216,.32)'}`, background: analysis === t.side ? 'rgba(91,141,255,.16)' : 'transparent' }}
               >
                 {analysis === t.side ? '명단' : '경기분석'}
@@ -584,15 +594,31 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             </span>
           </div>
           {analysis === t.side ? (
-            <div style={{ padding: '14px 10px 16px', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ padding: '14px 10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              {/*
+                ★칩 셋★ — 승리팀 · 진팀 · 겹쳐서 (2026-09-12 사장님). 폰에서만 보인다.
+                `id` 에 고른 값을 넣어 갈아 끼울 때마다 ★다시 그려지게★ 한다.
+              */}
+              <div className="v3-hexpick">
+                {([['won', wonTeam?.snap.clan.name ?? '승리'], ['lost', lostTeam?.snap.clan.name ?? '패배'], ['both', '겹쳐서']] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setPick(key) }}
+                    className={`v3-hexpick__chip v3-hexpick__chip--${key} ${pick === key ? 'is-on' : ''}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <MatchHexagonV3
                 won={wonTeam ? hexOf(wonTeam.side) : null}
                 lost={lostTeam ? hexOf(lostTeam.side) : null}
                 wonName={wonTeam?.snap.clan.name ?? '승리'}
                 lostName={lostTeam?.snap.clan.name ?? '패배'}
-                /* ★그 팀 하나만★ (2026-09-12 사장님) — 가운데 판과 같은 그림이 두 번 뜨던 것 */
-                only={t.won ? 'won' : 'lost'}
-                id={`mhex-${detail.id}-${t.side}`}
+                /* ★고른 것만★ (2026-09-12 사장님). 「겹쳐서」면 옛 판대로 두 팀을 겹친다 */
+                only={pick === 'both' ? null : pick}
+                id={`mhex-${detail.id}-${t.side}-${pick}`}
               />
             </div>
           ) : (

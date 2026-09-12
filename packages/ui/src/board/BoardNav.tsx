@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { Category } from '@sacloud/contract'
-import { boardDisplayName } from './boardCopy'
+import { BOARD_NAV_SLUGS, boardDisplayName } from './boardCopy'
 
 /**
  * 게시판 좌측 카테고리 내비.
@@ -14,8 +14,14 @@ import { boardDisplayName } from './boardCopy'
  * 표시 이름은 `boardDisplayName` 을 거친다 — 사용자 지시로 `인기` 는 화면에서 `Hot` 이다.
  * **slug(`hot`) · 링크(`/board/hot`) 는 그대로다.** 여기서 바뀌는 것은 글자뿐이다.
  *
- * 카테고리 목록은 `GET /infos` 의 `categories[]` 를 그대로 쓴다.
- * `notice`(공지)는 별도 카테고리 화면이 아니라 각 목록 상단에 고정되므로 내비에 넣지 않는다.
+ * ⚠ ★2026-09-12 — 내비에 세우는 것은 셋뿐이다★ (사장님: «Hot /자유 /공지사항 이렇게 세개만»).
+ *   목록은 여전히 `GET /infos` 의 `categories[]` 지만, `BOARD_NAV_SLUGS` 에 있는 것만
+ *   그 차례대로 세운다. 카테고리 자체는 하나도 안 지웠다 — 주소로는 그대로 열린다.
+ *
+ * ── 옛 서술 (그대로 남긴다)
+ *   카테고리 목록은 `GET /infos` 의 `categories[]` 를 그대로 쓴다.
+ *   `notice`(공지)는 별도 카테고리 화면이 아니라 각 목록 상단에 고정되므로 내비에 넣지 않는다.
+ *   → 사장님이 공지사항을 ★내비에 세우라★ 고 하셔서 그 규칙은 끝났다.
  */
 export function BoardNav({
   categories,
@@ -24,7 +30,10 @@ export function BoardNav({
   categories: readonly Category[]
   current: string
 }) {
-  const items = categories.filter((category) => !category.notice)
+  /* 차례는 `BOARD_NAV_SLUGS` 가 정한다 — 서버가 준 순번이 아니다 */
+  const items = BOARD_NAV_SLUGS.map((slug) => categories.find((category) => category.slug === slug)).filter(
+    (category): category is NonNullable<typeof category> => category !== undefined,
+  )
 
   return (
     /*

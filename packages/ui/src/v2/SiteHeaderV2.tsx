@@ -65,8 +65,15 @@ const GNB_MARK: Readonly<Record<string, string>> = {
   supply: '/assets/league-spl.png',
 }
 
-/** 리그 옆 넷째 자리 (2026-09-12 사장님) */
-const GNB_BOARD = { label: '게시판', href: '/board/hot' }
+/**
+ * 리그 옆 넷째 자리 (2026-09-12 사장님).
+ *
+ * ⚠ ★글자가 아니라 이모티콘★ 이다 (사장님: «상단에 게시판 메뉴를 글씨로 만들지 말고
+ *   게시판 이모티콘을 넣어줘»). 폰에서 «게시판» 석 자가 ★세로로 쪼개져★ 있었다 —
+ *   리그 표장 셋이 자리를 먹어서 글자 칸이 한 글자 폭까지 눌린 탓이다.
+ *   옛 값: `label: '게시판'`. 읽어 주는 이름(`aria-label`)은 그대로 «게시판» 이다.
+ */
+const GNB_BOARD = { label: '게시판', icon: '📋', href: '/board/hot' }
 
 /** `/league/nolink` → `nolink`. 주소가 리그가 아니면 빈 글자다 */
 function leagueSlugOfHref(href: string): string {
@@ -190,9 +197,11 @@ export function SiteHeaderV2({
           {/* ★넷째 자리 — 게시판★. 리그 안 게시판을 없애고 여기로 모았다 (2026-09-12 사장님) */}
           <Link
             href={GNB_BOARD.href}
+            aria-label={GNB_BOARD.label}
+            title={GNB_BOARD.label}
             className={`v2-gnb__item v2-gnb__board ${pathname.startsWith('/board') ? 'is-on' : ''}`}
           >
-            {GNB_BOARD.label}
+            <span aria-hidden>{GNB_BOARD.icon}</span>
           </Link>
           {/* `PRIMARY_NAV` 는 지금 비어 있다. 되살리면 리그 뒤에 그대로 붙는다 */}
           {primaryNav.map((item) => (

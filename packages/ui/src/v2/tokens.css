@@ -268,9 +268,13 @@
   background-repeat: no-repeat;
   flex: none;
 }
-/** 게시판은 글자라 리그 이름보다 한 칸 작게 — 표장 옆에서 튀지 않는다 */
+/**
+ * 게시판 — ★이모티콘 한 글자★ (2026-09-12 사장님). 리그 표장(19px)과 눈높이를 맞춘다.
+ * ⚠ 옛 판은 «게시판» 글자였고 15px 이었다. 폰에서 석 자가 세로로 쪼개졌다.
+ */
 .sac-v2 .v2-gnb__board {
-  font-size: 15px;
+  font-size: 18px;
+  line-height: 1;
 }
 @media (max-width: 767px) {
   .sac-v2 .v2-gnb__mark {
@@ -278,7 +282,7 @@
     height: 21px;
   }
   .sac-v2 .v2-gnb__board {
-    font-size: 13px;
+    font-size: 20px;
   }
 }
 .sac-v2 .v2-gnb__item:hover {
@@ -846,4 +850,57 @@
     margin-top: 6px;
     text-align: center;
   }
+}
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★경기분석 그림 고르개★ (2026-09-12 사장님)
+
+   > «모바일에서는 승리팀클랜명/진팀클랜명/겹쳐서보기 이렇게 세개 선택 해서 볼 수 있게»
+
+   ★폰에서만★ 보인다 — PC 는 가운데에 겹친 판이 늘 떠 있어 고를 것이 없다
+   (`.v3-board-hex` 와 같은 900px 경계를 쓴다. 두 값이 갈라지면 PC 에 칩이 뜬다).
+   ────────────────────────────────────────────────────────────────────────── */
+.v3-hexpick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+@media (min-width: 900px) {
+  .v3-hexpick { display: none; }
+}
+.v3-hexpick__chip {
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(143, 169, 216, 0.28);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: #7f8cb0;
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+/** 고른 것만 색이 켜진다 — 이긴 팀 파랑 · 진 팀 빨강 (그래프와 같은 색) */
+.v3-hexpick__chip--won.is-on {
+  color: #cfe0ff;
+  border-color: rgba(156, 192, 255, 0.6);
+  background: rgba(91, 141, 255, 0.16);
+}
+.v3-hexpick__chip--lost.is-on {
+  color: #ffd3d6;
+  border-color: rgba(255, 154, 160, 0.6);
+  background: rgba(255, 90, 99, 0.16);
+}
+.v3-hexpick__chip--both.is-on {
+  color: #e8eeff;
+  border-color: rgba(200, 210, 235, 0.55);
+  background: rgba(200, 210, 235, 0.1);
 }
