@@ -77,9 +77,20 @@ export interface MatchHexagonV3Props {
   lostName: string
   /** 다시 그리기 열쇠 — 누를 때마다 새로 그려진다 */
   id?: string
+  /**
+   * ★한 팀만 그린다★ (2026-09-12 사장님: «각 명단에서 경기분석 누르면 자기 팀 그래프만
+   * 띄워주라 지금 오른쪽 보면 똑같은게 한번 더 뜨고있어»).
+   *
+   * PC 스코어보드는 가운데에 ★두 팀 겹친 판★ 이 늘 떠 있다. 거기에 팀 칸의 경기분석까지
+   * 두 팀을 그리니 같은 그림이 두 번 나왔다. 팀 칸은 ★그 팀 하나만★ 그린다.
+   *
+   * 값의 뜻은 그대로 «이 판 두 팀 비교» 다 — 상대가 있어야 나오는 숫자라 설명 줄은 남긴다.
+   * 없으면(기본) 옛 판대로 두 팀을 겹쳐 그린다.
+   */
+  only?: 'won' | 'lost' | null
 }
 
-export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex' }: MatchHexagonV3Props) {
+export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', only = null }: MatchHexagonV3Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const grow = useDrawIn(1800, id, svgRef)
   const labelIn = grow > 0.92 ? 1 : 0
@@ -88,6 +99,8 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex' }
   useEffect(() => { if (done) setFlash((f) => f + 1) }, [done])
 
   const pairs = pairsOf(won, lost)
+  const showWon = only !== 'lost'
+  const showLost = only !== 'won'
   const wonArea = areaOf(pairs.map((p) => p.wonValue))
   const lostArea = areaOf(pairs.map((p) => p.lostValue))
   const fillIn = Math.max(0, (grow - 0.45) / 0.55)
@@ -119,29 +132,33 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex' }
           <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#2c3a5c" strokeWidth={0.9} />
         ))}
 
-        {/* 진 팀이 밑 · 이긴 팀이 위 — 겹쳐도 이긴 쪽이 보인다 */}
-        <polygon points={lostArea} fill={LOST.fill} fillOpacity={0.22} stroke="none" opacity={fillIn} />
-        <polygon points={wonArea} fill={WON.fill} fillOpacity={0.24} stroke="none" opacity={fillIn} />
-        <polygon
-          points={lostArea}
-          fill="none"
-          stroke={LOST.line}
-          strokeWidth={2}
-          strokeOpacity={0.95}
-          strokeLinejoin="round"
-          filter={grow < 1 ? undefined : `url(#${id}Glow)`}
-          {...penDash(grow)}
-        />
-        <polygon
-          points={wonArea}
-          fill="none"
-          stroke={WON.line}
-          strokeWidth={2}
-          strokeOpacity={0.95}
-          strokeLinejoin="round"
-          filter={grow < 1 ? undefined : `url(#${id}Glow)`}
-          {...penDash(grow)}
-        />
+        {/* 진 팀이 밑 · 이긴 팀이 위 — 겹쳐도 이긴 쪽이 보인다. `only` 면 한 쪽만 */}
+        {showLost ? <polygon points={lostArea} fill={LOST.fill} fillOpacity={0.22} stroke="none" opacity={fillIn} /> : null}
+        {showWon ? <polygon points={wonArea} fill={WON.fill} fillOpacity={0.24} stroke="none" opacity={fillIn} /> : null}
+        {showLost ? (
+          <polygon
+            points={lostArea}
+            fill="none"
+            stroke={LOST.line}
+            strokeWidth={2}
+            strokeOpacity={0.95}
+            strokeLinejoin="round"
+            filter={grow < 1 ? undefined : `url(#${id}Glow)`}
+            {...penDash(grow)}
+          />
+        ) : null}
+        {showWon ? (
+          <polygon
+            points={wonArea}
+            fill="none"
+            stroke={WON.line}
+            strokeWidth={2}
+            strokeOpacity={0.95}
+            strokeLinejoin="round"
+            filter={grow < 1 ? undefined : `url(#${id}Glow)`}
+            {...penDash(grow)}
+          />
+        ) : null}
 
         {/* 눈금 숫자 — 채움 위에 (Hexagon 과 같은 규칙) */}
         {RINGS.filter((v) => v % 20 === 0).map((v) => {
@@ -152,7 +169,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex' }
             </text>
           )
         })}
-        {done ? <polygon key={flash} className="v3-hex-flash" points={wonArea} fill={WON.line} pointerEvents="none" /> : null}
+        {done ? <polygon key={flash} className="v3-hex-flash" points={showWon ? wonArea : lostArea} fill={showWon ? WON.line : LOST.line} pointerEvents="none" /> : null}
 
         {/* 축 이름·숫자는 다 그려진 뒤에 스며든다 (Hexagon 과 같은 규칙) */}
         <g opacity={labelIn} style={{ transition: 'opacity .45s ease' }}>
@@ -164,9 +181,9 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex' }
                   {p.label}
                 </text>
                 <text x={x} y={y + 14} textAnchor={anchor} fontSize={11} fontWeight="700">
-                  <tspan fill={WON.line}>{p.wonText}</tspan>
-                  <tspan fill="#44506c"> · </tspan>
-                  <tspan fill={LOST.line}>{p.lostText}</tspan>
+                  {showWon ? <tspan fill={WON.line}>{p.wonText}</tspan> : null}
+                  {showWon && showLost ? <tspan fill="#44506c"> · </tspan> : null}
+                  {showLost ? <tspan fill={LOST.line}>{p.lostText}</tspan> : null}
                 </text>
               </g>
             )
@@ -176,19 +193,23 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex' }
 
       {/* 범례 — 어느 색이 어느 클랜인가 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 2, background: WON.fill, flex: 'none' }} />
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: WON.line, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{wonName}</span>
-          <span style={{ fontSize: 10, color: V3.textGhost2 }}>승</span>
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 2, background: LOST.fill, flex: 'none' }} />
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: LOST.line, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lostName}</span>
-          <span style={{ fontSize: 10, color: V3.textGhost2 }}>패</span>
-        </span>
+        {showWon ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: WON.fill, flex: 'none' }} />
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: WON.line, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{wonName}</span>
+            <span style={{ fontSize: 10, color: V3.textGhost2 }}>승</span>
+          </span>
+        ) : null}
+        {showLost ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: LOST.fill, flex: 'none' }} />
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: LOST.line, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lostName}</span>
+            <span style={{ fontSize: 10, color: V3.textGhost2 }}>패</span>
+          </span>
+        ) : null}
       </div>
       <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.04em', textAlign: 'center' }}>
-        이 판 두 팀 비교 · 리그 순위와는 잣대가 다릅니다
+        {only === null ? '이 판 두 팀 비교 · 리그 순위와는 잣대가 다릅니다' : '상대와 견준 값입니다 · 리그 순위와는 잣대가 다릅니다'}
       </span>
     </div>
   )

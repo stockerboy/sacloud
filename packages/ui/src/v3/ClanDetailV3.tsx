@@ -336,6 +336,8 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
                 lost={lostTeam ? hexOf(lostTeam.side) : null}
                 wonName={wonTeam?.snap.clan.name ?? '승리'}
                 lostName={lostTeam?.snap.clan.name ?? '패배'}
+                /* ★그 팀 하나만★ (2026-09-12 사장님) — 가운데 판과 같은 그림이 두 번 뜨던 것 */
+                only={t.won ? 'won' : 'lost'}
                 id={`mhex-${detail.id}-${t.side}`}
               />
             </div>
