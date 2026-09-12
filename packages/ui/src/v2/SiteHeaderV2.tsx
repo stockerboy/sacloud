@@ -177,7 +177,7 @@ export function SiteHeaderV2({
                 aria-label={item.label}
                 className={`v2-gnb__item ${isActive(pathname, item.href) ? 'is-on' : ''}`}
               >
-                <span className="inline-flex items-center gap-[7px]">
+                <span className="v2-gnb__cell">
                   {mark ? (
                     <span
                       aria-hidden
@@ -185,8 +185,15 @@ export function SiteHeaderV2({
                       style={{ backgroundImage: `url(${mark})` }}
                     />
                   ) : null}
-                  {/* 표장이 있는 리그는 폰에서 글자를 뺀다 — 없는 리그는 글자만 남는다 */}
-                  <span className={mark ? 'max-md:hidden' : undefined}>
+                  {/*
+                    ★폰에서는 표장 ★밑에★ 작은 이름★ (2026-09-12 사장님:
+                    «빨간색 줄친곳에 작게 10 IPL SPL 써줘»).
+
+                    옛 판은 폰에서 글자를 아예 뺐다 (`max-md:hidden`) — 표장만 보고
+                    어느 리그인지 알기 어려웠다. PC 는 그대로 옆에 붙는다.
+                    자리를 바꾸는 것은 CSS(`.v2-gnb__cell`) 다 — 여기 마크업은 하나다.
+                  */}
+                  <span className="v2-gnb__name">
                     {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
                     <LeagueLabel name={item.label} />
                   </span>

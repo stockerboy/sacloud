@@ -256,6 +256,16 @@
  * 폰에서는 글자를 빼는 대신 조금 키운다 (26px) — 그것만으로 눌러야 하니까.
  */
 /**
+ * ★리그 한 칸★ — PC 는 표장과 이름이 ★나란히★, 폰은 표장 밑에 ★작은 이름★
+ * (2026-09-12 사장님: «빨간색 줄친곳에 작게 10 IPL SPL 써줘»).
+ */
+.sac-v2 .v2-gnb__cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/**
  * ⚠ 2026-09-12 두 번째 손질 — 사장님: «상단바에 올라가는 로고가 너무 커».
  *   옛 값: PC 22px · 폰 26px. 지금: PC 19px · 폰 21px.
  */
@@ -277,6 +287,17 @@
   line-height: 1;
 }
 @media (max-width: 767px) {
+  /* 폰 — 표장 위, 이름 아래 (2026-09-12 사장님) */
+  .sac-v2 .v2-gnb__cell {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sac-v2 .v2-gnb__name {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
   .sac-v2 .v2-gnb__mark {
     width: 21px;
     height: 21px;
