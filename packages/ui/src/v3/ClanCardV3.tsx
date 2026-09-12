@@ -12,6 +12,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { ClanHexagonV2, LeagueClanShow } from '@sacloud/contract'
 import { floorColor, rankColor, rankColorSniperDuel, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
+import { clanStyleNote } from './clanStyleNote'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
 import { ASTRA_STYLE, V3, cardStyle, fmt, pct1 } from './tokens'
@@ -169,7 +170,13 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
           `showHexagon={false}` 로 안 그렸다. 탭을 없애고 카드로 데려왔다.
           ⚠ `showHexagon` 은 남긴다 — 되돌릴 자리다 (`CLAUDE.md` 1-4).
         */}
-        {showHexagon ? <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHex" /> : null}
+        {showHexagon ? (
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHex" />
+            {/* ★클랜평 세 마디★ — 유형 · 템포 · 강한 축 (2026-09-12 사장님 확정) */}
+            <ClanStyleLine hex={data.hexagon_v2} />
+          </div>
+        ) : null}
         {/* ★주전 다섯★ — 카드 남는 자리 (2026-09-12 사장님) */}
         <MainLineup data={data} theme={theme} />
         <div style={{ position: 'relative', flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -264,6 +271,29 @@ function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme })
           </span>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * ★클랜평★ (2026-09-12 사장님: «유형 템포 강한 축 ㄱㄱ»).
+ *
+ * 규칙과 까닭은 `clanStyleNote.ts` 한 곳에 있다 — 여기서는 그리기만 한다.
+ * 한 축이라도 못 쟀으면 `null` 이라 아무것도 안 그린다 (반쪽 자료로 평하지 않는다).
+ */
+function ClanStyleLine({ hex }: { hex: ClanHexagonV2 | null }) {
+  const note = clanStyleNote(hex)
+  if (!note) return null
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, maxWidth: 320, padding: '0 8px 2px', textAlign: 'center' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.04em', color: '#cfe0ff', padding: '3px 10px', borderRadius: 999, background: 'rgba(91,141,255,.14)', border: '1px solid rgba(159,192,255,.4)', whiteSpace: 'nowrap' }}>
+          {note.type}
+        </span>
+        <span style={{ fontSize: 10.5, color: V3.textDim }}>{note.typeNote}</span>
+      </span>
+      <span style={{ fontSize: 10.5, color: V3.textFaint, lineHeight: 1.5 }}>{note.tempo}</span>
+      <span style={{ fontSize: 10.5, color: '#c9a94a', lineHeight: 1.5 }}>{note.praise}</span>
     </div>
   )
 }
