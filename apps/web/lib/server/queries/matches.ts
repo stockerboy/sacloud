@@ -956,6 +956,21 @@ export async function getMatch(
     )
   }
 
+  /**
+   * ★포지션★ — 주무기 (2026-09-12 사장님). 인식표 질의와 달리 ★점수가 없어도 읽는다★ —
+   * 아직 점수가 안 난 선수도 주무기는 정해져 있을 수 있다.
+   */
+  const weaponRows = await softFail('match-main-weapon', [] as { weapon: number | null; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
+    prisma.leaguePlayerHex.findMany({
+      where: { leaguePlayer: { leagueId, playerId: { in: match.stats.map((stat) => stat.playerId) } } },
+      select: { weapon: true, leaguePlayer: { select: { playerId: true } } },
+    }),
+  )
+  const mainWeaponOfPlayer = new Map<string, 0 | 1>()
+  for (const row of weaponRows) {
+    if (row.weapon === 0 || row.weapon === 1) mainWeaponOfPlayer.set(row.leaguePlayer.playerId, row.weapon)
+  }
+
   const savesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneWon]))
   const chancesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneRounds]))
   const roundsWonOf = (leagueClanId: string): number | null => {
@@ -971,6 +986,7 @@ export async function getMatch(
         saves: saveRows.length > 0 ? (savesOf.get(stat.playerId) ?? 0) : null,
         save_chances: saveRows.length > 0 ? (chancesOf.get(stat.playerId) ?? 0) : null,
         nameplate: plateByPlayer.get(stat.playerId) ?? null,
+        main_weapon: mainWeaponOfPlayer.get(stat.playerId) ?? null,
       }))
 
   /* 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 읽는다 (D-235 Q7).

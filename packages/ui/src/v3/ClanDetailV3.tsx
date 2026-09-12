@@ -171,7 +171,9 @@ function H2HChartLegacy({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHead
 
 function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: { row: MatchPlayerStat; mvp: boolean; weaponKnown: boolean; clanSlug: string | null; showSaves: boolean; leagueSlug: string }) {
   const sniper = weaponKnown && row.weapon === 1
+  /* 킬뎃은 포지션이 자리를 가져갔다 (2026-09-12 사장님). 값은 계약에 그대로 있다 */
   const kd = row.kd_rate
+  void kd
   const clan = row.match_time_clan
   return (
     <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 108px 64px 78px' } : {}), background: 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
@@ -187,7 +189,11 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: {
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
       {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves === null ? '-' : `${row.saves}/${row.save_chances ?? 0}`}</span> : null}
-      <span style={{ position: 'relative', textAlign: 'right', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', color: kd === null ? V3.textGhost : statColor(kd) }}>{pct1(kd)}</span>
+      {/* ★포지션★ (2026-09-12 사장님) — 킬뎃 % 대신 스나수 / 라플수. 아직 못 잰 선수는 «알수없음».
+          그 판에 든 총이 아니라 ★주무기★ 다. 판수가 차면 옛 경기 화면에도 소급해서 뜬다 */}
+      <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', color: row.main_weapon === null || row.main_weapon === undefined ? '#4e5b76' : '#c3cbdb' }}>
+        {row.main_weapon === 1 ? '스나수' : row.main_weapon === 0 ? '라플수' : '알수없음'}
+      </span>
     </div>
   )
 }
@@ -327,7 +333,7 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
           ) : (
           <>
           <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 108px 64px 78px' : 'minmax(0,1fr) 108px 78px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>킬뎃</span>
+            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span>
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} leagueSlug={leagueSlug} />)}
