@@ -205,9 +205,24 @@ export const SHORT_MEMBER_WEIGHT = 0.1
  * ⚠ 옛 공식은 `clanScoreV1` 로 남긴다 (`CLAUDE.md` 1-4).
  */
 export const CLAN_SPREAD = 300
-export const CLAN_W_ELO = 0.20
-export const CLAN_W_UP = 0.65
-export const CLAN_W_GAMES = 0.15
+/**
+ * ⚠ ★2026-09-13 — 실력(래더) 몫을 올렸다★ (사장님: «승률비중 0.35로 올린»).
+ *
+ * 사장님이 클랜랭킹을 보고 «승률 낮은 클랜이 왜 위에 있나» 를 물으셨다. 까닭은
+ * 윗판(0.65)이 너무 커서였다 — 센 상대와 많이 붙은 쪽이 승률을 눌렀다.
+ * 실력을 0.20 → 0.35 로 올리고 남은 0.65 를 윗판·판수에 ★같은 비율로★ 나눴다.
+ *
+ *   옛 값: 실력 0.20 · 윗판 0.65 · 판수 0.15  (2026-09-12, 사장님이 손으로 매긴 순위에서 역산)
+ *   지금:  실력 0.35 · 윗판 0.53 · 판수 0.12
+ *
+ * 세 값의 합은 ★1.00 이어야 한다.★ 안 그러면 구간 기준점에서 벗어난다.
+ */
+export const CLAN_W_ELO = 0.35
+export const CLAN_W_UP = 0.53
+export const CLAN_W_GAMES = 0.12
+
+/** ★옛 값★ (2026-09-12) — 되돌릴 때 이 셋을 위에 넣는다 */
+export const CLAN_W_V2 = { elo: 0.2, up: 0.65, games: 0.15 } as const
 
 /**
  * `unitElo` · `unitUp` · `unitGames` 는 ★그 구간 안 백분위★ 를 −1~+1 로 편 값이다.
