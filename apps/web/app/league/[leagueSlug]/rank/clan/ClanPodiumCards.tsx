@@ -57,14 +57,20 @@ function ClanStat({ cap, value, unit, tone, sub }: { cap: string; value: string 
   return (
     <span className="flex flex-col gap-[3px]">
       <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">{cap}</span>
-      <span className="flex items-baseline gap-[3px]">
+      <span className="flex min-w-0 flex-col gap-[2px]">
         {value === null ? (
           <span className="text-[13px] text-[var(--v2-text-ghost)]">기록 없음</span>
         ) : (
           <>
-            <span className={`num text-[20px] font-extralight ${tone}`}>{value}</span>
-            <span className="text-[10.5px] text-[var(--v2-text-ghost)]">{unit}</span>
-            {sub ? <span className="text-[10.5px] text-[var(--v2-text-ghost)]">· {sub}</span> : null}
+            <span className={`num-strong text-[20px] leading-none ${tone}`}>
+              {value}
+              <span className="text-[11px]">{unit}</span>
+            </span>
+            {sub ? (
+              <span className="whitespace-nowrap text-[10.5px] leading-none text-[var(--v2-text-ghost)]">
+                {sub}
+              </span>
+            ) : null}
           </>
         )}
       </span>
@@ -105,7 +111,8 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
             edge={ink}
             sweep
             sweepColor={SHEEN[row.rank ?? 0]}
-            style={{ padding: '20px 20px 18px' }}
+            /* ⚠ 2026-09-12 사장님: «카드 모서리 전부 둥글고 세련되게» */
+            style={{ padding: '20px 20px 18px', borderRadius: 14, overflow: 'hidden' }}
           >
             <div className="relative flex items-start gap-4">
               <Link
@@ -133,7 +140,7 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
               <span className="flex-1" />
 
               <span className="flex shrink-0 flex-col items-end gap-[2px]">
-                <span className="num text-[22px] font-extralight leading-none text-[var(--v2-text-strong)]">
+                <span className="num-strong text-[22px] leading-none text-[var(--v2-text-strong)]">
                   {formatRating(row.rating)}
                 </span>
                 <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">LADDER</span>
@@ -155,7 +162,7 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
 
               <div className="v3-podium-stats relative flex flex-wrap items-baseline gap-x-[20px] gap-y-[10px] border-t border-[var(--v2-card-divider)] pt-[14px]">
                 <span className="flex items-baseline gap-[2px]" style={{ color: ink }}>
-                  <span className="num text-[34px] font-black leading-none tracking-[-.02em]">
+                  <span className="num-strong text-[34px] leading-none tracking-[-.02em]">
                     {row.rank ?? '-'}
                   </span>
                   <span className="text-[15px] font-bold">위</span>

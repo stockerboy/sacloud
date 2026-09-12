@@ -126,14 +126,16 @@ function PodiumCard({
       edge={ink}
       sweep={sheen !== undefined}
       sweepColor={sheen?.color}
-      style={{ padding: '20px 20px 18px' }}
+      /* ⚠ 2026-09-12 사장님: «카드 모서리 전부 둥글고 세련되게». 시안은 각졌었다 */
+      style={{ padding: '20px 20px 18px', borderRadius: 14, overflow: 'hidden' }}
     >
       <div className="relative flex items-start gap-4">
         <Link
           href={leaguePlayerPath(leagueSlug, row.player.id)}
           tabIndex={-1}
           aria-hidden="true"
-          className="flex h-[54px] w-[54px] shrink-0 items-center justify-center border border-[var(--v2-emblem-border)]"
+          /* ⚠ 2026-09-12 사장님: «클랜마크 주변에 사각형 없애줘» (클랜 카드와 같게) */
+          className="flex h-[54px] w-[54px] shrink-0 items-center justify-center"
         >
           <ClanMark clan={row.clan} alt={row.clan?.name ?? ''} />
         </Link>
@@ -166,7 +168,7 @@ function PodiumCard({
         {/* 래더가 없는 리그(10mountain)에서는 ★이 칸을 안 만든다★ */}
         {columns.rating ? (
           <span className="flex shrink-0 flex-col items-end gap-[2px]">
-            <span className="num text-[22px] font-extralight leading-none text-[var(--v2-text-strong)]">
+            <span className="num-strong text-[22px] leading-none text-[var(--v2-text-strong)]">
               {/* ★`점` 을 여기서 붙이지 않는다★ — 두 함수가 이미 붙여서 준다 */}
               {weapon === 'all'
                 ? formatRating(row.score ?? row.rating)
@@ -210,7 +212,7 @@ function PodiumCard({
 
         <div className="v3-podium-stats relative flex items-baseline gap-[22px] border-t border-[var(--v2-card-divider)] pt-[14px]">
         <span className="flex items-baseline gap-[2px]" style={{ color: ink }}>
-          <span className="num text-[34px] font-black leading-none tracking-[-.02em]">
+          <span className="num-strong text-[34px] leading-none tracking-[-.02em]">
             {row.rank}
           </span>
           <span className="text-[15px] font-bold">위</span>
@@ -220,9 +222,9 @@ function PodiumCard({
           <StatBlock
             cap="승률"
             /* 한 판도 안 뛰었으면 승률을 지어내지 않는다 (O-033 과 같은 규칙) */
-            value={played ? formatRate(row.win_rate) : null}
+            value={played ? `${formatRate(row.win_rate)}%` : null}
             tone={played ? rateClass(row.win_rate) : ''}
-            sub={played ? `% · ${formatCount(row.win)}승 ${formatCount(row.lose)}패` : null}
+            sub={played ? `${formatCount(row.win)}승 ${formatCount(row.lose)}패` : null}
           />
         ) : null}
 
@@ -230,9 +232,9 @@ function PodiumCard({
         {columns.kd && row.kd_rate !== null ? (
           <StatBlock
             cap="킬뎃"
-            value={formatRate(row.kd_rate)}
+            value={`${formatRate(row.kd_rate)}%`}
             tone={rateClass(row.kd_rate)}
-            sub={`% · ${formatAverage(row.kill_per_match)}킬`}
+            sub={`${formatAverage(row.kill_per_match)}킬`}
           />
         ) : null}
         </div>
@@ -241,6 +243,13 @@ function PodiumCard({
   )
 }
 
+/**
+ * ★값 밑에 세부정보를 가로로★ (2026-09-12 사장님:
+ * «퍼센 옆에 세부정보 밑에 가로로 깔아줘»).
+ *
+ * 옛 판은 «58.1 % · 36승 26패» 를 ★한 줄에★ 붙였다. 폰에서 칸이 좁아
+ * «36승 / 26패» 가 세로로 접혀 줄이 어긋났다. 이제 값은 값끼리, 잔글씨는 그 밑에 한 줄로.
+ */
 function StatBlock({
   cap,
   value,
@@ -253,19 +262,21 @@ function StatBlock({
   sub: string | null
 }) {
   return (
-    <span className="flex flex-col gap-[3px]">
+    <span className="flex min-w-0 flex-col gap-[2px]">
       <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">{cap}</span>
-      <span className="flex items-baseline gap-[3px]">
-        {value === null ? (
-          /* ★기록이 없으면 숫자를 만들지 않는다★ */
-          <span className="text-[13px] text-[var(--v2-text-ghost)]">기록 없음</span>
-        ) : (
-          <>
-            <span className={`num text-[20px] font-extralight ${tone}`}>{value}</span>
-            <span className="text-[10.5px] text-[var(--v2-text-ghost)]">{sub}</span>
-          </>
-        )}
-      </span>
+      {value === null ? (
+        /* ★기록이 없으면 숫자를 만들지 않는다★ */
+        <span className="text-[13px] text-[var(--v2-text-ghost)]">기록 없음</span>
+      ) : (
+        <>
+          <span className={`num-strong text-[20px] leading-none ${tone}`}>{value}</span>
+          {sub ? (
+            <span className="whitespace-nowrap text-[10.5px] leading-none text-[var(--v2-text-ghost)]">
+              {sub}
+            </span>
+          ) : null}
+        </>
+      )}
     </span>
   )
 }
