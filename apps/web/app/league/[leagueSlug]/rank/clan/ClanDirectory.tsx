@@ -5,7 +5,8 @@ import { useQuery } from '@tanstack/react-query'
 import type { LeagueClan } from '@sacloud/contract'
 import { leagueScreen, showsTier } from '@sacloud/contract'
 import type { ClanRankTableRow } from '@sacloud/ui'
-import { ClanRankTable, ClanSearchBox, EmptyState, RankBox, RankHeader, type ClanRankNote } from '@sacloud/ui'
+import { ClanMark, ClanRankTable, ClanSearchBox, EmptyState, RankBox, RankHeader, leagueClanPath, type ClanRankNote } from '@sacloud/ui'
+import Link from 'next/link'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
@@ -48,6 +49,32 @@ import { ClanDirectoryV1 } from './ClanDirectoryV1'
  * 타입을 `boolean` 으로 넓혀 둔 이유는 리터럴로 좁히면 옛 가지가 «닿을 수 없는 코드» 가 되기 때문이다.
  */
 const RANKED: boolean = true
+
+/**
+ * ★SPL 참가 · 전환 안내★ (2026-09-12 사장님) — 사장님이 «이 내용은 SPL 클랜랭킹파트에»
+ * 라고 자리를 지정하셨다. 글은 사장님이 쓰신 것을 다듬기만 했다.
+ */
+const SPL_NOTES: readonly { title: string; lines: readonly string[] }[] = [
+  {
+    title: 'SPL → IPL 전환 안내',
+    lines: [
+      'SPL은 플레이어 수가 적고 미활동 클랜이 대부분이라, SPL 리그 중 IPL 전환 참가 클랜을 받습니다.',
+      '전환 비용은 CLOUD 0 시즌(9/3~10/1) 동안만 무료입니다.',
+      'IPL 참가와 SPL 참가를 겸할 수 없습니다.',
+      'SPL 클랜 중 10월 1일까지 활동이 없는 클랜은 일괄 삭제됩니다.',
+      'IPL 전환 비율이 일정 수를 넘으면 SPL 리그는 폐지됩니다. 신중히 선택해 주세요.',
+      '클린한 게임과 클랜원 5인 체제로 말 맞추는 무소속 퀵매치 참가를 강력히 권합니다.',
+    ],
+  },
+  {
+    title: '리그 참가 신청',
+    lines: [
+      'CLOUD 1 시즌에 참가할 IPL 리그 참가 클랜을 CLOUD 0 시즌 동안 모집합니다.',
+      '이 기간에는 SPL → IPL 전환 클랜을 제외한 신규 참가 클랜에 5만원의 등록 비용이 발생합니다.',
+      '정규 시즌 시작은 10월 1일입니다. 그 이후의 리그 신청은 유료입니다.',
+    ],
+  },
+]
 
 export function ClanDirectory({
   leagueSlug,
@@ -159,15 +186,39 @@ function ClanRankDirectory({
   const columns = leagueScreen(leagueSlug).clanColumns
   /**
    * ★클랜랭킹을 안 하는 리그★ (2026-09-12 사장님: «SPL은 클랜 랭킹이 없다 (…) 공지하라»).
-   * 표도 검색칸도 안 그린다 — 없는 순위를 뒤지게 두지 않는다.
+   * 순위표 대신 공지 · 참가 안내 · 클랜 목록을 그린다.
    */
   const notice = leagueScreen(leagueSlug).clanRankNotice
+
+  /**
+   * ★번호 없이 무작위로 늘어놓는다★ (2026-09-12 사장님:
+   * «그냥 내가 지우라고 한 클랜을 제외한 클랜들을 무작위로 나열해 번호 붙이지 말고»).
+   *
+   * ⚠ `Math.random()` 을 쓰면 안 된다 — 서버가 그린 차례와 브라우저가 그린 차례가 달라
+   *   화면이 한 번 튄다(hydration mismatch). 그래서 ★클랜 id 를 섞은 값★ 으로 줄 세운다.
+   *   사람 눈에는 무작위이고 두 곳에서 늘 같은 차례가 나온다.
+   *
+   * 감춘 클랜(사장님이 지우라고 하신 셋)은 목록을 만드는 질의에서 이미 빠져 있다
+   * (계약의 `CLAN_HIDDEN_IN_LEAGUE`).
+   */
+  const scattered = useMemo(() => {
+    const keyOf = (id: string) => {
+      let h = 2166136261
+      for (let i = 0; i < id.length; i += 1) {
+        h ^= id.charCodeAt(i)
+        h = Math.imul(h, 16777619)
+      }
+      return h >>> 0
+    }
+    return [...ranked].sort((a, b) => keyOf(a.clan.id) - keyOf(b.clan.id))
+  }, [ranked])
+
   if (notice !== null) {
     return (
       <div className="pc-container">
         <div className="pb-[var(--section-gap)] max-md:pb-8">
           <div
-            className="mx-auto mt-[30px] w-full max-w-[900px] px-[22px] py-[26px] text-center"
+            className="mx-auto mt-[30px] w-full max-w-[900px] px-[22px] py-[24px] text-center"
             style={{
               borderRadius: 10,
               border: '1px solid var(--v2-card-border)',
@@ -178,6 +229,66 @@ function ClanRankDirectory({
             <p className="mt-[10px] text-[12px] leading-[1.7] text-[var(--v2-text-faint)]">
               개인랭킹과 경기 기록은 그대로 제공됩니다.
             </p>
+          </div>
+
+          {/* ★리그 참가 · 전환 안내★ — 사장님 지시로 이 자리에 붙인다 (2026-09-12) */}
+          <div className="mx-auto mt-[14px] w-full max-w-[900px]">
+            {SPL_NOTES.map((block) => (
+              <div
+                key={block.title}
+                className="mb-[10px] px-[18px] py-[15px]"
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid var(--v2-card-border)',
+                  background: 'var(--v2-card)',
+                }}
+              >
+                <p className="mb-[7px] text-[13px] font-bold text-[#9cc0ff]">{block.title}</p>
+                {block.lines.map((line) => (
+                  <p
+                    key={line}
+                    className="mb-[5px] pl-[13px] text-[12.5px] leading-[1.85] text-[var(--v2-text-muted)]"
+                    style={{ textIndent: '-13px' }}
+                  >
+                    · {line}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* ★참가 클랜 — 번호 없이 무작위★ (2026-09-12 사장님) */}
+          <div className="mx-auto mt-[14px] w-full max-w-[900px]">
+            <div className="mb-[8px] flex items-baseline gap-[8px] px-[2px]">
+              <span className="text-[10.5px] font-bold tracking-[.14em] text-[var(--v2-text-ghost)]">
+                참가 클랜
+              </span>
+              {complete ? (
+                <span className="text-[10.5px] text-[var(--v2-text-ghost)]">{scattered.length}곳 · 순서 없음</span>
+              ) : null}
+            </div>
+            <ul className="flex flex-wrap gap-[7px]">
+              {scattered.map((row) => (
+                <li key={row.clan.id}>
+                  <Link
+                    href={leagueClanPath(leagueSlug, row.clan.slug)}
+                    className="flex items-center gap-[7px] px-[10px] py-[7px]"
+                    style={{
+                      borderRadius: 999,
+                      border: '1px solid var(--v2-card-border)',
+                      background: 'var(--v2-card)',
+                    }}
+                  >
+                    <span className="flex h-[20px] w-[20px] items-center justify-center">
+                      <ClanMark clan={row.clan} alt={row.clan.name} />
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-[var(--v2-text)]">
+                      {row.clan.name}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>

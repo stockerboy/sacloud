@@ -67,7 +67,11 @@ export const FEATURED_LEAGUES: readonly NavLink[] = [
 
 /** 상단바의 순서 — href 로 적는다. 목록(`FEATURED_LEAGUES`)에 없는 것은 그려지지 않는다 */
 /* ★2026-09-12 사장님: 상단바는 로고10 · 로고IPL · 로고SPL · 게시판 넷★ — 왼쪽부터 10 */
-export const GNB_LEAGUE_ORDER: readonly string[] = ['/league/sanply', '/league/nolink', '/league/supply']
+/**
+ * ⚠ ★2026-09-12 두 번째 손질★ — 사장님: «상단바 IPL SPL 열산 이용방법 게시판 순서로 바꿔».
+ *   옛 차례: 10 · IPL · SPL (같은 날 아침). 그 앞은 IPL · SPL · 10 이었다.
+ */
+export const GNB_LEAGUE_ORDER: readonly string[] = ['/league/nolink', '/league/supply', '/league/sanply']
 
 /** 목록에서 주어진 순서대로 골라낸다. 순서표에 없는 리그는 빠진다 — 지어내지 않는다 */
 export function orderLeagues(order: readonly string[]): readonly NavLink[] {

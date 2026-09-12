@@ -75,14 +75,19 @@ const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> 
 }
 
 /**
- * 리그 옆 넷째 자리 (2026-09-12 사장님).
+ * 리그 뒤 두 자리 — ★이용방법 · 게시판★ (2026-09-12 사장님).
  *
- * ⚠ ★글자가 아니라 이모티콘★ 이다 (사장님: «상단에 게시판 메뉴를 글씨로 만들지 말고
- *   게시판 이모티콘을 넣어줘»). 폰에서 «게시판» 석 자가 ★세로로 쪼개져★ 있었다 —
- *   리그 표장 셋이 자리를 먹어서 글자 칸이 한 글자 폭까지 눌린 탓이다.
- *   옛 값: `label: '게시판'`. 읽어 주는 이름(`aria-label`)은 그대로 «게시판» 이다.
+ * > «상단바 IPL SPL 열산 이용방법 게시판 순서로 바꿔»
+ * > «게시판 이모티콘은 삭제하고 그냥 게시판 이라고 써»
+ *
+ * ⚠ 같은 날 낮에 «게시판» 을 📋 이모티콘으로 바꿨다가 되돌린다.
+ *   그때 이모티콘으로 간 까닭은 폰에서 석 자가 세로로 쪼개져서였다 —
+ *   지금은 로고에서 글자를 잘라 내 표장이 좁아졌고, 아래 CSS 로 줄바꿈을 막았다.
  */
-const GNB_BOARD = { label: '게시판', icon: '📋', href: '/board/hot' }
+const GNB_LINKS: readonly { label: string; href: string; match: string }[] = [
+  { label: '이용방법', href: '/guide', match: '/guide' },
+  { label: '게시판', href: '/board/hot', match: '/board' },
+]
 
 /** `/league/nolink` → `nolink`. 주소가 리그가 아니면 빈 글자다 */
 function leagueSlugOfHref(href: string): string {
@@ -215,15 +220,16 @@ export function SiteHeaderV2({
               </Link>
             )
           })}
-          {/* ★넷째 자리 — 게시판★. 리그 안 게시판을 없애고 여기로 모았다 (2026-09-12 사장님) */}
-          <Link
-            href={GNB_BOARD.href}
-            aria-label={GNB_BOARD.label}
-            title={GNB_BOARD.label}
-            className={`v2-gnb__item v2-gnb__board ${pathname.startsWith('/board') ? 'is-on' : ''}`}
-          >
-            <span aria-hidden>{GNB_BOARD.icon}</span>
-          </Link>
+          {/* ★리그 뒤 두 자리 — 이용방법 · 게시판★ (2026-09-12 사장님) */}
+          {GNB_LINKS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`v2-gnb__item v2-gnb__board ${pathname.startsWith(item.match) ? 'is-on' : ''}`}
+            >
+              {item.label}
+            </Link>
+          ))}
           {/* `PRIMARY_NAV` 는 지금 비어 있다. 되살리면 리그 뒤에 그대로 붙는다 */}
           {primaryNav.map((item) => (
             <Link
