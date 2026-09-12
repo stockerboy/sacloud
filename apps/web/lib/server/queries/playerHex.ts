@@ -11,7 +11,7 @@ import { prisma } from '@sacloud/db'
 import {
   PLAYER_HEX_AXIS_ORDER,
   PLAYER_HEX_BADGE,
-  PLAYER_HEX_BADGE_RANK,
+  playerHexBadgeRank,
   PLAYER_HEX_DESC,
   playerHexLabelOf,
   type PlayerHex,
@@ -84,7 +84,8 @@ export function toPlayerHex(row: HexRow): PlayerHex {
       percentile: num(row[col.pct]),
       rank,
       total: num(row[col.total]),
-      badge: rank !== null && rank <= PLAYER_HEX_BADGE_RANK ? (weapon === 0 ? badgePair.rifle : badgePair.sniper) : null,
+      /* ★싸움은 3위 · 나머지는 5위★ (2026-09-12 사장님). 까닭은 `playerHexBadgeRank` 주석에 */
+      badge: rank !== null && rank <= playerHexBadgeRank(key) ? (weapon === 0 ? badgePair.rifle : badgePair.sniper) : null,
       ...partsOf(row, key),
     }
   })

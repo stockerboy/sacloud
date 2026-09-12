@@ -3,7 +3,7 @@
 import { use, useEffect, useRef, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import type { PlayerRankRow, RankWeapon } from '@sacloud/contract'
-import { PAGE_SIZE, RANK_WEAPON_LABEL, leagueScreen, parseRankWeapon } from '@sacloud/contract'
+import { PAGE_SIZE, RANK_WEAPON_LABEL, leagueScreen, parseRankWeapon, showsTier } from '@sacloud/contract'
 import {
   FilterChip,
   divisionLabel,
@@ -188,7 +188,12 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           right={
             /* ★구간 + 무기★ 두 칩. 구간 칩은 ★티어가 있는 리그에서만★ 그린다 (2026-09-11 사장님) */
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {(league.data?.data.division_count ?? 1) >= 2 ? (
+            {/*
+              ★티어를 쓰는 리그는 IPL 뿐이다★ (2026-09-12 사장님: «SPL티어 없애 SPL에는 티어가 없어»).
+              옛 판은 `division_count >= 2` 만 봤다 — DB 에 부리그 수가 남아 있는 SPL 에도 칩이 떴다.
+              규칙은 계약의 `showsTier` 한 곳이다 (`CLAUDE.md` 5장).
+            */}
+            {showsTier(leagueSlug) && (league.data?.data.division_count ?? 1) >= 2 ? (
               <FilterChip
                 kind="구간"
                 value={tier}

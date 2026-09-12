@@ -9,8 +9,8 @@
  */
 import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { ClanHexagonV2, LeagueClanShow } from '@sacloud/contract'
-import { floorColor, rankColor, rankColorSniperDuel, statColor } from './rankColors'
+import { showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
+import { floorColor, rankColor, rankColorHexAxis, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
@@ -91,8 +91,8 @@ export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
      * 등수만 적으면 몇 팀 중인지를 몰라 28위가 잘한 건지 못한 건지 안 보인다.
      * 모집단을 못 세면 등수만 적는다 — 지어내지 않는다.
      */
-    /* ★스나싸움만 20위 기준★ (2026-09-12 사장님) — 까닭은 `rankColorSniperDuel` 주석에 */
-    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, noteColor: key === 'sniperDuel' ? rankColorSniperDuel(axis.rank) : rankColor(axis.rank), note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
+    /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 까닭은 `rankColorHexAxis` 주석에 */
+    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, noteColor: rankColorHexAxis(axis.rank, key === 'sniperDuel'), note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
     return { label: label[key], value: axis.value * 100, note: axis.text, noteColor: V3.textMuted }
   })
 }
@@ -126,7 +126,8 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
   const games = data.win + data.lose
   const tier = tierWins.length > 0 ? tierWins[tierIndex % tierWins.length] : null
   const tierRate = tier && tier.win + tier.lose > 0 ? (tier.win / (tier.win + tier.lose)) * 100 : null
-  const tiered = data.league.division_count >= 2
+  /* ★티어는 IPL 만★ (2026-09-12 사장님: «SPL티어 없애»). 규칙은 계약의 `showsTier` 한 곳 */
+  const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
   const kpis: { label: string; value: string; sub: ReactNode; color: string; picker?: boolean }[] = [
     /* 같은 «층» 단위라 선수 점수와 ★같은 색 규칙★ 을 쓴다 (2026-09-11 사장님) */
     { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: floorColor(data.rating) },

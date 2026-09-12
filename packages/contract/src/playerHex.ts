@@ -25,8 +25,29 @@ export const PLAYER_HEX_AXIS_ORDER: readonly TraitAxisKey[] = [
   'outnumbered',
 ]
 
-/** 10위 이내일 때만 다는 배지 (선수 상세 v3 설명서 5절). 11위부터는 없다 */
-export const PLAYER_HEX_BADGE_RANK = 10
+/**
+ * ★배지 경계★ (2026-09-12 사장님).
+ *
+ * > «벳지중 스나싸움은 3위 안에 들어야 준다 그리고 나머지 벳지들은 5위안에 들어야준다
+ * >  5위미만은 전부 평범한 색으로 바꿔라 각 특성을 사람이 적어서 다 잘해보인다»
+ *
+ * ── 왜 싸움만 더 좁은가
+ *   싸움(`duel`)은 ★같은 무기끼리만★ 견준다 — IPL 스나수는 141명뿐이다.
+ *   다른 축은 스나·라플을 섞어 876명이다. 같은 «5위» 라도 무게가 다르다.
+ *
+ * ⚠ ★옛 값은 10 이었다★ (`PLAYER_HEX_BADGE_RANK_V1`) — 축 하나에 열 명씩,
+ *   여섯 축이면 예순 명이 배지를 달았다. 사장님 말씀대로 «다 잘해 보였다».
+ */
+export const PLAYER_HEX_BADGE_RANK = 5
+/** 싸움(스나싸움·샷싸움)만 더 좁다 */
+export const PLAYER_HEX_BADGE_RANK_DUEL = 3
+/** ★옛 값★ (2026-09-10 ~ 2026-09-12) — 모든 축 10위 (`CLAUDE.md` 1-4) */
+export const PLAYER_HEX_BADGE_RANK_V1 = 10
+
+/** 이 축에서 배지를 주는 등수 경계 */
+export function playerHexBadgeRank(key: string): number {
+  return key === 'duel' ? PLAYER_HEX_BADGE_RANK_DUEL : PLAYER_HEX_BADGE_RANK
+}
 
 export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
   save: { sniper: '세이브 머신', rifle: '세이브 머신' },

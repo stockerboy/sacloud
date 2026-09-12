@@ -38,20 +38,31 @@ export function rankColorV2(rank: number): string {
 }
 
 /**
- * ★스나싸움만 20위★ (2026-09-12 사장님: «스나싸움은 20위부터 노란색으로 해줘»).
+ * ★육각형 축 등수 색★ — 싸움 3위 · 나머지 5위 (2026-09-12 사장님).
  *
- * ── 왜 이 축만 다른가
- *   다른 축은 모집단이 크다 (IPL 선수 876명 · 클랜 42개 전체). 그래서 «100위 안» 이
- *   실제로 상위 11% 다. 그런데 ★스나싸움은 같은 무기끼리만★ 견준다 —
- *   IPL 스나수는 141명뿐이다. 141명 중 100위도 노란색이 되어 «잘한다» 로 보인다.
- *   실측: 73위(141명 중)가 노란색이었다. 절반 아래인데 상위권 색이었다.
+ * > «5위미만은 전부 평범한 색으로 바꿔라 각 특성을 사람이 적어서 다 잘해보인다»
  *
- * 20위 안이면 노랑, 아니면 하양. 되돌리려면 부르는 쪽에서 `rankColor` 로 바꾸면 된다.
+ * 축 등수는 ★배지와 같은 경계★ 를 쓴다 — 색이 켜지면 배지가 있고, 꺼지면 없다.
+ * 두 곳이 갈라지면 «노란데 배지가 없네» 가 된다.
+ *
+ * ⚠ 하루에 두 번 바뀐 자리다 —
+ *   ① 모든 축 100위 (개인랭킹과 같은 규칙)
+ *   ② 스나싸움만 20위 (`SNIPER_DUEL_RANK_LIMIT`)
+ *   ③ ★지금★ — 싸움 3위 · 나머지 5위
  */
+export const HEX_AXIS_RANK_LIMIT = 5
+export const HEX_DUEL_RANK_LIMIT = 3
+/** ★옛 값★ (2026-09-12 낮) — 스나싸움만 20위였다 */
 export const SNIPER_DUEL_RANK_LIMIT = 20
 
+export function rankColorHexAxis(rank: number, isDuel = false): string {
+  const limit = isDuel ? HEX_DUEL_RANK_LIMIT : HEX_AXIS_RANK_LIMIT
+  return rank <= limit ? RANK_COLORS.top20 : RANK_COLORS.rest
+}
+
+/** @deprecated 2026-09-12 — `rankColorHexAxis(rank, true)` 를 쓴다. 옛 호출부를 위해 남긴다 */
 export function rankColorSniperDuel(rank: number): string {
-  return rank <= SNIPER_DUEL_RANK_LIMIT ? RANK_COLORS.top20 : RANK_COLORS.rest
+  return rankColorHexAxis(rank, true)
 }
 
 /** 별칭 — 닉네임에 쓸 때 의도가 드러나도록. 동작은 rankColor 와 동일. */
