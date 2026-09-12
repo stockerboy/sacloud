@@ -18,9 +18,12 @@ export const V3 = {
    *   완전 무광 불투명이니까 뭔가 촌스러»). 옛 값은 불투명이었다 —
    *   card 'linear-gradient(160deg,#152036 0%,#101a2c 58%)' · cardFlat '#111a2c'
    */
-  card: 'linear-gradient(160deg,rgba(21,32,54,.62) 0%,rgba(16,26,44,.62) 58%)',
-  cardFlat: 'rgba(17,26,44,.62)',
-  cardBorder: '#1e2a42',
+  /* ⚠ 2026-09-13 — 바탕보다 확실히 밝게 (사장님: «벽에 칠해진 느낌»).
+     옛 값: rgba(21,32,54,.62) → rgba(16,26,44,.62) · flat rgba(17,26,44,.62) */
+  card: 'linear-gradient(160deg,rgba(44,62,102,.58) 0%,rgba(32,48,82,.58) 58%)',
+  cardFlat: 'rgba(38,55,92,.58)',
+  /* 유리 가장자리 — 조금 더 밝게 (2026-09-13). 옛 값 #1e2a42 */
+  cardBorder: '#3a4870',
   divider: '#1b2537',
   rowDivider: '#18233a',
   rowDivider2: '#141d2c',
@@ -70,10 +73,12 @@ export const CHAL_NUM_COLOR = '#c2a07a'
 export const cardStyle: CSSProperties = {
   background: V3.card,
   /* ★반투명 유리★ (2026-09-12 사장님) — 뒤를 흐려서 글자가 안 묻히게 한다 */
-  backdropFilter: 'blur(10px) saturate(1.15)',
-  WebkitBackdropFilter: 'blur(10px) saturate(1.15)',
+  backdropFilter: 'blur(12px) saturate(1.2)',
+  WebkitBackdropFilter: 'blur(12px) saturate(1.2)',
   border: `1px solid ${V3.cardBorder}`,
   borderRadius: V3.radiusCard,
+  /* ★떠 있게★ (2026-09-13 사장님: «벽에 칠해진 느낌») */
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.35)',
 }
 export const cardHeadStyle: CSSProperties = {
   display: 'flex',

@@ -67,14 +67,21 @@
    *   홈 히어로 사진 위에서는 구름이, 본문에서는 바탕색이 은은하게 올라온다.
    *   흐림(`backdrop-filter`)은 `.v2-panel` 쪽에 건다.
    */
-  --v2-panel: rgba(24, 36, 62, 0.6);
+  /**
+   * ⚠ ★2026-09-13 두 번째 손질★ (사장님: «카드가 없어서 벽에 칠해진 느낌이야»).
+   *   어제 반투명으로 바꿀 때 카드 색을 바탕(#0c1526)과 거의 같게 잡아서
+   *   카드가 통째로 사라져 보였다. ★바탕보다 확실히 밝게★ 올린다.
+   *   옛 값: rgba(24, 36, 62, 0.6) → 그 앞은 단색 #17223b
+   */
+  --v2-panel: rgba(40, 58, 96, 0.58);
   --v2-plot: #0e1a2f;
   /* ★그라디언트를 뺐다★ — 사장님이 고른 화면은 카드가 단색이다 */
-  --v2-card: rgba(24, 36, 62, 0.6);
+  --v2-card: rgba(40, 58, 96, 0.58);
 
   /* ── 선 ────────────────────────────────────────────────── */
   --v2-bar-border: #1f2942;
-  --v2-card-border: #27324f;
+  /* 유리 테두리는 조금 더 밝아야 가장자리가 보인다 (2026-09-13). 옛 값 #27324f */
+  --v2-card-border: #3a4870;
   --v2-card-divider: #222d4a;
   --v2-row-divider: #1e283f;
   --v2-head-divider: #27324f;
@@ -159,10 +166,17 @@
   overflow: hidden;
   background: var(--v2-card);
   /* ★반투명 유리★ (2026-09-12 사장님) — 뒤를 흐려서 글자가 안 묻히게 한다 */
-  backdrop-filter: blur(10px) saturate(1.15);
-  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
   border: 1px solid var(--v2-card-border);
   border-radius: var(--v2-radius);
+  /**
+   * ★떠 있게 보이게★ (2026-09-13 사장님: «벽에 칠해진 느낌»).
+   * 안쪽 윗선 한 줄이 유리의 두께를 만들고, 바깥 그림자가 카드를 띄운다.
+   */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 10px 26px rgba(0, 0, 0, 0.35);
 }
 /** 위쪽 2px 강조선 — 시안이 카드를 구분하는 방식이다 */
 .sac-v2 .v2-panel--edge {
