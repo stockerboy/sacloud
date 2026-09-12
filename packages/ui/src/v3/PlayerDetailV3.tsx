@@ -527,7 +527,12 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
   /* 2026-09-11 사장님: 집계 전 경기라고 세이브 칸이 통째로 사라지면 «없는 화면» 처럼 보인다 →
      칸은 늘 두고 아직 모르는 값만 «-» 로 적는다 (0 으로 채우지 않는다). 옛 판: [...].some((s) => s.saves !== null) */
   const showSaves = detail.red_stats.length + detail.blue_stats.length > 0
+  /**
+   * 라운드 스코어 — 지금은 머리줄에서 뺐다 (2026-09-12 사장님: «경기분석 옆에 라운드
+   * 스코어 없애줘»). 함수는 ★남긴다★ — 되살릴 때 쓴다 (CLAUDE.md 1-4).
+   */
   const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
+  void roundsOf
   const teams = ([mySide, mySide === 'red' ? 'blue' : 'red'] as const).map((side) => {
     const stats = side === 'red' ? detail.red_stats : detail.blue_stats
     const ours = side === mySide
@@ -560,9 +565,11 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
       {teams.map((t) => (
         /* ★이긴 팀 하늘색 · 진 팀 빨강★ (2026-09-12 사장님) */
         <div key={t.side} className={t.won ? 'v3-board-win' : 'v3-board-lose'} style={{ border: `1px solid ${t.won ? WIN_LOSS.winLine : WIN_LOSS.loseLine}`, borderRadius: 8, background: t.won ? WIN_LOSS.winBg : WIN_LOSS.loseBg }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, overflow: 'hidden', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
             <MarkCircle clan={t.snap.clan} size={22} />
-            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>{t.snap.clan.name}</span>
+            {/* ★넘치면 이름이 줄어든다★ (2026-09-12 사장님: «저 버튼이 튀어나가지 않게해줘»).
+                minWidth:0 이 없으면 flex 칸이 안 줄어들어 단추가 화면 밖으로 밀린다 */}
+            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, color: t.won ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>{t.snap.clan.name}</span>
             {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
             <div style={spacerStyle} />
@@ -572,26 +579,29 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
               단추가 그냥 사라지면 «이 경기는 원래 없는 기능» 처럼 보인다. 그래서 자리를 남긴다.
             */}
             {!canAnalyze ? (
-              <span style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', padding: '3px 9px', borderRadius: V3.radiusChip, color: '#5d6b8a', border: '1px dashed rgba(93,107,138,.45)' }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', padding: '3px 9px', borderRadius: V3.radiusChip, color: '#5d6b8a', border: '1px dashed rgba(93,107,138,.45)' }}>
                 경기분석중
               </span>
             ) : null}
             {canAnalyze ? (
               <span
                 onClick={(e) => { e.stopPropagation(); setPick(t.won ? 'won' : 'lost'); setAnalysis((now) => (now === t.side ? null : t.side)) }}
-                style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer', padding: '3px 9px', borderRadius: V3.radiusChip, color: analysis === t.side ? '#cfe0ff' : '#8fa9d8', border: `1px solid ${analysis === t.side ? 'rgba(159,192,255,.55)' : 'rgba(143,169,216,.32)'}`, background: analysis === t.side ? 'rgba(91,141,255,.16)' : 'transparent' }}
+                style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', cursor: 'pointer', padding: '3px 9px', borderRadius: V3.radiusChip, color: analysis === t.side ? '#cfe0ff' : '#8fa9d8', border: `1px solid ${analysis === t.side ? 'rgba(159,192,255,.55)' : 'rgba(143,169,216,.32)'}`, background: analysis === t.side ? 'rgba(91,141,255,.16)' : 'transparent' }}
               >
                 {analysis === t.side ? '명단' : '경기분석'}
               </span>
             ) : null}
-            <span style={{ fontSize: 11, color: '#4e5b76', whiteSpace: 'nowrap' }}>
-              {/*
-                ★«RED» · «BLUE» 를 뺐다★ (2026-09-12 사장님: «저기 레드 블루 글자 빼고»).
-                진영 이름은 보는 사람에게 아무 뜻이 없다 — 이긴 팀·진 팀은 이미 색과 글자로 말한다.
-                라운드 수를 아직 모르면 ★아무것도 안 적는다★ (지어내지 않는다).
-              */}
-              {roundsOf(t.side) !== null && roundsOf(t.side === 'red' ? 'blue' : 'red') !== null ? `${roundsOf(t.side)}:${roundsOf(t.side === 'red' ? 'blue' : 'red')}` : null}
-            </span>
+            {/*
+              ★라운드 스코어를 뺐다★ (2026-09-12 사장님: «경기분석 옆에 라운드 스코어 없애줘»).
+
+              그 줄은 이미 카드 머리에 «7:5» 로 적혀 있다. 팀 칸마다 또 적으니 같은 수가
+              한 화면에 세 번 나왔고, 폰에서는 그 글자 때문에 경기분석 단추가 오른쪽으로 밀려
+              화면 밖으로 튀어나갔다.
+
+              ⚠ 옛 판 — 여기에 «7:5» 를 적었다. 그 앞에는 «RED» · «BLUE» 였다.
+                되살리려면 아래 한 줄을 쓰면 된다 (`CLAUDE.md` 1-4) —
+                {roundsOf(t.side) !== null && roundsOf(other) !== null ? `${roundsOf(t.side)}:${roundsOf(other)}` : null}
+            */}
           </div>
           {analysis === t.side ? (
             <div style={{ padding: '14px 10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
