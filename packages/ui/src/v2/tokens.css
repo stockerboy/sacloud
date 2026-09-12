@@ -623,7 +623,57 @@
 .sac-v2 .v2-tabbar__m { display: none; }
 @media (max-width: 767px) {
   .sac-v2.v2-topbar, .sac-v2 .v2-topbar { padding: 8px 10px 0; }
-  .sac-v2 .v2-topbar__inner { height: 52px; padding: 0 12px; border-radius: 12px; }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     ★폰 상단바를 두 줄로★ (2026-09-13 QA)
+
+     ⚠ ★한 줄에 안 들어갔다.★ 실측(390px 뷰포트 · CDP 로 뷰포트를 직접 준 값):
+
+       로고 75 + 메뉴 339 + 로그인 19 + 좌우 여백 24 = ★457px★  (화면은 390)
+
+     그래서 «📌 notice» 가 반쯤 잘리고 «📋 board» 와 로그인이 ★화면 밖★ 에 있었다.
+     사장님이 넣으라고 하신 단추 둘이 폰에서는 통째로 안 보였던 것이다.
+
+     ── 왜 글자를 줄이지 않았나
+       전부 줄여 봐야 70px 남짓 준다. 174px 이 모자란다 — 줄이는 길로는 못 넣는다.
+       게다가 사장님이 ★이름을 쓰라고★ 하셨다 («로고기준 오른쪽에 써»).
+       메뉴 줄만 따로 내리면 ★하나도 안 지우고★ 다 보인다 (메뉴 339 < 366).
+
+       1줄   [로고] ………………………… [로그인]
+       2줄   IPL  SPL  10  📌notice  📋board
+
+     ── 높이도 같이 올려야 한다
+       띠 높이 변수는 ★본문 밀림★ 도 정한다 (`SiteShell`). 띠만 키우면 본문이
+       띠 밑으로 파고든다. 그래서 여기서 ★변수와 띠 높이를 함께★ 올린다.
+       ⚠ 이 껍데기(v3)는 `height: 68px` 를 ★px 로 박아 뒀다★ — 변수만 바꾸면 안 듣는다.
+
+     ⚠ ★본문 밀림 변수는 여기서 안 고친다.★ 이 파일은 `.sac-v2` 안에서만
+       사는 층이고, `:root` 를 건드리면 안 붙인 화면까지 흔든다 (테스트가 그걸 막는다).
+       그 값은 ★변수가 사는 곳★ 인 `styles.css` 의 같은 폭 미디어쿼리에서 올린다 —
+       두 파일이 ★같은 767px★ 을 본다. 한쪽만 고치면 띠와 본문이 어긋난다.
+     ────────────────────────────────────────────────────────────────────── */
+  .sac-v2 .v2-topbar__inner,
+  .sac-v2 .v2-topbar__inner--home {
+    height: auto;
+    min-height: 80px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 7px;
+  }
+  /* 로고와 로그인이 첫 줄, 메뉴가 통째로 둘째 줄 (`flex-basis: 100%` 가 줄을 바꾼다) */
+  .sac-v2 .v2-topbar__inner > .v2-brand { order: 1; }
+  .sac-v2 .v2-topbar__inner > .flex-1 { order: 2; }
+  .sac-v2 .v2-topbar__inner > .v2-login,
+  .sac-v2 .v2-topbar__inner > div:last-child { order: 3; }
+  .sac-v2 .v2-topbar__inner > .v2-gnb {
+    order: 4;
+    flex: 0 0 100%;
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
   .sac-v2.v2-tabbar, .sac-v2 .v2-tabbar { padding: 6px 10px 0; }
   .sac-v2 .v2-tabbar__pc { display: none; }
   .sac-v2 .v2-tabbar__m { display: block; pointer-events: auto; background: linear-gradient(160deg, #0d1524, #080d18); border: 1px solid #16202e; border-radius: 12px; overflow: hidden; }

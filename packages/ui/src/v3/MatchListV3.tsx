@@ -38,7 +38,16 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
       {align === 'left' ? <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', color: '#dbe8ff', background: 'rgba(91,141,255,.22)', border: '1px solid rgba(91,141,255,.45)', borderRadius: 3, padding: '1px 4px' }}>WIN</span> : null}
       {align === 'left' ? <MarkCircle clan={clan} size={22} /> : null}
-      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
+      {/*
+        ★`overflow: hidden` 이 반드시 있어야 한다★ (2026-09-13 QA).
+          `TierText` 는 `whiteSpace: nowrap` 이고 `overflow` 가 없다. 이 칸이 `minWidth: 0` 이라
+          줄어들기는 하는데, ★줄어든 만큼 글자가 밖으로 삐져나갔다★ —
+          홈 「최근 경기」(900px)에서 «CHALLENGER 1» 이 가운데 점수 위로 올라타
+          «5:0» 과 «ROUND» 에 겹쳐 찍혔다. 폰에서도 같았다.
+          이름(`name`)은 제 안에 말줄임이 있어서 멀쩡했다 — 티어만 새어 나간 것이다.
+          여기서 잘라 두면 좁아질 때 티어가 ★겹치는 대신 잘린다.★
+      */}
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden', alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
         {name}
         {tier}
       </span>

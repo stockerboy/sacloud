@@ -1147,6 +1147,21 @@ a:hover {
  * 그대로 쓰고 있으므로 **바꾸지 않는다.**
  */
 @media (max-width: 767px) {
+  /**
+   * ★폰 상단바가 두 줄이 됐다★ (2026-09-13 QA) — 그래서 본문도 그만큼 더 내린다.
+   *
+   * 390px 실측으로 한 줄에 안 들어갔다 — 로고 75 + 메뉴 339 + 로그인 19 + 여백 24 = 457.
+   * «📌 notice» 가 잘리고 «📋 board» 와 로그인이 화면 밖이었다. 메뉴 줄만 아래로 내렸다.
+   * 띠 모양은 `v2/tokens.css` 의 ★같은 767px★ 미디어쿼리가 잡는다 —
+   * ★두 파일이 같이 움직여야 한다.★ 한쪽만 고치면 본문이 띠 밑으로 파고든다.
+   *
+   * ⚠ 옛 값: `--spacing-nav: 68px` · `--spacing-nav-home: 56px` (PC 는 그대로다).
+   */
+  :root {
+    --spacing-nav: 96px;
+    --spacing-nav-home: 96px;
+  }
+
   .pc-container {
     max-width: 100%;
     padding-left: 0.75rem;

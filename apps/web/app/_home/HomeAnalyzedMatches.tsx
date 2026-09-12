@@ -60,13 +60,28 @@ export function HomeAnalyzedMatches() {
   /* ⚠ 2026-09-12 사장님: «pc에서 최근경기뒤에 이상한 배경이 있어».
      `.sac-v2` 가 바탕색을 칠해 히어로 사진을 가렸다 — 색 토큰만 빌리고 바탕은 안 칠한다 */
   return (
-    <section aria-label="최근 분석 완료 경기" className="sac-v2 sac-v2--bare mt-7">
-      <div className="mx-auto w-full max-w-[900px]">
-        <div className="mb-[8px] flex items-baseline gap-[7px] px-[2px]">
-          <span className="text-[10px] font-bold tracking-[.16em] text-[var(--v2-text-ghost)]">
+    <section aria-label="최근 분석 완료 경기" className="sac-v2 sac-v2--bare mt-7 w-full">
+      {/*
+        ★폭을 경기 목록과 같게★ (2026-09-13 QA).
+          900px 로 좁혀 두었더니 ★가운데 점수 칸에 티어 글자가 겹쳐 찍혔다★ —
+          «5:0» 위에 «CHALLENGER 1» 과 «ROUND» 가 포개졌다. 같은 줄이 경기 목록
+          화면(`pc-container` · 1120px)에서는 멀쩡하다. 사장님이 «경기 카테고리에 있는
+          카드랑 똑같은 카드» 를 원하셨으니 ★폭도 같게★ 한다 — 규칙을 새로 만들지 않는다.
+      */}
+      <div className="pc-container">
+        {/*
+          ★글자를 밝게★ (2026-09-13 QA). `--v2-text-ghost` 는 어두운 바탕을 전제한 색인데
+            이 줄만 ★히어로 사진(밝은 하늘) 위★ 에 놓인다 — 실제로 읽히지 않았다.
+            사진 위에서도 읽히도록 밝은 색 + 옅은 그림자를 준다. 다른 화면은 안 바뀐다.
+        */}
+        <div
+          className="mb-[8px] flex items-baseline gap-[7px] px-[2px]"
+          style={{ textShadow: '0 1px 4px rgba(0,0,0,.92), 0 0 14px rgba(0,0,0,.7)' }}
+        >
+          <span className="text-[10px] font-bold tracking-[.16em] text-[var(--v2-text-strong)]">
             최근 경기
           </span>
-          <span className="text-[10px] text-[var(--v2-text-ghost)]">
+          <span className="text-[10px] text-[var(--v2-text-muted)]">
             경기분석 완료 · 줄을 누르면 여기서 펼쳐집니다
           </span>
         </div>
