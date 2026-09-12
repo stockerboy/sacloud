@@ -315,6 +315,26 @@ export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'e
   columns?: RankColumns
 }
 
+/**
+ * ★클랜 인식표★ (2026-09-12 사장님)
+ *
+ * > «클랜도 아스트라 구간은 1,2,3등 인식표랑 (빨간색) 4등-6등(검은색) 7등이하(하얀색)
+ * >  인식표 만들어줘 강등위기는 인식표 주지마»
+ *
+ * ASTRA 구간(division 1 · IPL)만 준다. 다른 구간·SPL·열산에는 없다.
+ * ★강등위기(`note === 'relegate'`)는 등수와 상관없이 안 준다.★
+ * 선수 인식표와 그림은 같고 경계만 다르다 (선수는 3 / 10 / 100).
+ */
+function clanPlateOf(row: { rank: number | null; division: number; note?: ClanRankNote }, leagueCategory?: string): 'fire' | 'dark' | 'light' | null {
+  if (leagueCategory !== 'independent' || row.division !== 1) return null
+  if (row.note === 'relegate') return null
+  const rank = row.rank
+  if (rank === null) return null
+  if (rank <= 3) return 'fire'
+  if (rank <= 6) return 'dark'
+  return 'light'
+}
+
 export function ClanRankTable({
   leagueSlug,
   rows,
@@ -358,7 +378,10 @@ export function ClanRankTable({
           {divider ? (
             <DivisionDivider division={row.division} leagueCategory={leagueCategory} />
           ) : null}
-          <div className={ROW}>
+          <div className={ROW} style={clanPlateOf(row, leagueCategory) ? { position: 'relative' } : undefined}>
+            {/* ★인식표★ — ASTRA 1~3등 불 · 4~6등 먹구름 · 7등부터 흰구름 (2026-09-12 사장님).
+                강등위기는 안 준다. 줄 뒤에 깔리고 글자 위로 안 올라온다 */}
+            {(() => { const plate = clanPlateOf(row, leagueCategory); return plate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${plate}`} /> : null })()}
             {columns.rank ? <div className={rankClass(row.rank ?? 0)}>{row.rank ?? '-'}</div> : null}
             <div className={COL_NAME}>
               <Link

@@ -90,11 +90,11 @@ export interface ClanCardV3Props {
 
 export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNote, renewAction, tierWins = [], tierIndex = 0, onTierStep, showHexagon = true }: ClanCardV3Props) {
   /* ★인식표★ (2026-09-11 사장님) — ASTRA 구간 클랜만 준다.
-     ★1~3위 불 · 4~10위 먹구름 · 그 밖은 흰구름★. 다른 구간·SPL·열산 어디에도 안 준다 */
+     ★1~3위 불 · 4~6위 먹구름 · 7위부터 흰구름★ (2026-09-12 사장님이 경계를 이렇게 확정). 다른 구간·SPL·열산 어디에도 안 준다 */
   const plateRank = data.rank ?? 999
   const plate: 'fire' | 'dark' | 'light' | null =
     data.division === 1 && data.league.category === 'independent'
-      ? plateRank <= 3 ? 'fire' : plateRank <= 10 ? 'dark' : 'light'
+      ? plateRank <= 3 ? 'fire' : plateRank <= 6 ? 'dark' : 'light'
       : null
   const theme = clanThemeOf(data.clan.slug)
   const rank = data.rank
