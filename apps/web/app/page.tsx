@@ -1,4 +1,5 @@
-import { HomeGuide, SiteIntro } from '@sacloud/ui'
+/* 2026-09-12 사장님이 두 칸을 빼라고 하셨다 — 컴포넌트는 살아 있고 여기서 안 부를 뿐이다 */
+// import { HomeGuide, SiteIntro } from '@sacloud/ui'
 import { HomeSearch } from './_home/HomeSearch'
 import { HomeSeasonLine } from './_home/HomeSeasonLine'
 import { HomeSitemap } from './_home/HomeSitemap'
@@ -216,10 +217,16 @@ export default function HomePage() {
         `owner-copy.test.ts` 가 sha256 으로 잠가 두고 있고, 문구는 사장님만 바꾸신다.
         시안의 사이트맵 아래에 그대로 둔다 (`CLAUDE.md` 1-4 · «기능을 디자인에 맞춘다고 삭제하지 않는다»).
       */}
-      <div className="section-stack mx-auto w-full max-w-[var(--layout-max,1180px)] px-6 pb-[var(--section-gap,40px)] max-md:px-3">
+      {/*
+        ★2026-09-12 사장님이 「사이트 소개」와 「사용법」 두 칸에 가위표를 치셨다.★
+        홈에서 안 그린다. ★두 컴포넌트는 지우지 않았다★ —
+        `packages/ui/src/home/SiteIntro.tsx` · `HomeGuide.tsx` 에 그대로 있고 export 도 남아 있다.
+        되살리려면 아래 두 줄의 주석만 풀면 된다 (`CLAUDE.md` 1-4).
+      */}
+      {/* <div className="section-stack mx-auto w-full max-w-[var(--layout-max,1180px)] px-6 pb-[var(--section-gap,40px)] max-md:px-3">
         <SiteIntro />
         <HomeGuide />
-      </div>
+      </div> */}
     </div>
   )
 }

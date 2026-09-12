@@ -2,91 +2,73 @@ import Link from 'next/link'
 import { FEATURED_LEAGUES, isLeaguePreparing } from '@sacloud/ui'
 
 /**
- * ★★홈 리그 타일 셋★★ (2026-09-07 · Part 10 ④ · 시안)
+ * ★★홈 리그 표장 셋★★ (2026-09-12 사장님)
+ *
+ * > «저 박스 세개 다 치워버리고 이 로고 써서 검색창 밑에 일열로 세련되게 배열해줘
+ * >  왼쪽이 열산 가운데가 Ipl 오른쪽이 SPL»
  *
  * ```
- *   ┌──────────┐ ┌──────────┐     150×42 · 위 2px 리그색
- *   │   SPL    │ │   IPL    │     322px 안에서 두 개가 한 줄
- *   └──────────┘ └──────────┘
- *        ┌──────────┐              셋째는 아래 가운데로 접힌다
- *        │  10 열산 │              열산에만 산 능선
- *        └──────────┘
+ *      ◇          ◇          ◇        세 개가 ★한 줄★ · 가운데 정렬
+ *      10        IPL        SPL       왼쪽 10 · 가운데 IPL · 오른쪽 SPL
  * ```
- * 322 = 150 + 10 + 150 + 12(여유). 시안 주석이 그 숫자를 못 박아 뒀다.
+ *
+ * ── 그림은 사장님이 주셨다
+ *   한 장에 셋이 붙어 온 것을 셋으로 잘라 `public/assets/league-*.png` 로 두었다.
+ *   ★CSS 로 흉내 내지 않는다★ — 옛 판은 산 능선을 `clip-path` 로 그렸었다 (2026-09-07 시안).
  *
  * ── ★가는 곳은 안 바뀌었다★
- *   옛 버튼 셋과 ★같은 주소★ (`/league/{slug}/rank/player`).
- *   준비중 리그(`daerule`)는 여기 안 나온다 — 옛 판과 같은 규칙이다.
- *   ⚠ 목록은 `FEATURED_LEAGUES` 한 곳에서 온다. 여기에 리그 이름을 다시 적지 않는다.
+ *   `/league/{slug}/rank/player`. 준비중 리그(`daerule`)는 여기 안 나온다.
  *
- * ── 산 능선
- *   시안이 `clip-path` 두 겹으로 그렸다. ★그림 파일이 아니다★ —
- *   없는 자산을 지어내지 않고 시안이 준 좌표를 그대로 쓴다.
+ * ── 옛 판
+ *   150×42 상자 셋에 글자만 넣고 열산에만 산 능선을 그렸다. 사장님이 «다 치워버리고» 라고 하셔서
+ *   지웠다. 되살리려면 이 파일의 2026-09-07 판을 git 에서 꺼내면 된다 (`CLAUDE.md` 1-4).
  */
 
-/** 리그 slug → 위 2px 선 색. ★모르는 리그는 색을 안 준다★ */
-const INK: Readonly<Record<string, string>> = {
-  supply: 'var(--v2-red)',
-  nolink: 'var(--v2-blue)',
-  sanply: 'var(--v2-green)',
+/** 리그 slug → 표장 그림. ★없는 리그는 안 그린다★ (지어내지 않는다) */
+const MARK: Readonly<Record<string, string>> = {
+  sanply: '/assets/league-10.png',
+  nolink: '/assets/league-ipl.png',
+  supply: '/assets/league-spl.png',
 }
 
-/**
- * 타일에 붙는 작은 글자. ★지금은 하나도 없다★ — 그래서 아무 타일에도 안 그려진다.
- *
- * 시안은 `10` 옆에 `열산` 을 붙였다. ★우리 리그 이름이 이미 `10mountain` 이라★
- * 그대로 두면 「10mountain 열산」이 되어 같은 말을 두 번 한다.
- * 리그 이름은 `FEATURED_LEAGUES` 한 곳이 정한다 (`CLAUDE.md` 4장) — 여기서 안 바꾼다.
- */
-const SUB: Readonly<Record<string, string>> = {}
+/** 표장 아래 글자에 얹는 빛 — 리그색 그대로 */
+const GLOW: Readonly<Record<string, string>> = {
+  sanply: 'rgba(159,196,255,.45)',
+  nolink: 'rgba(91,141,255,.50)',
+  supply: 'rgba(255,90,99,.45)',
+}
 
-/** 산 능선 두 겹 — 시안 좌표 그대로 */
-const RIDGE = [
-  {
-    height: 26,
-    background: 'linear-gradient(180deg,rgba(34,197,94,.34),rgba(34,197,94,.10))',
-    clipPath: 'polygon(0% 100%, 17% 42%, 30% 68%, 47% 10%, 63% 52%, 74% 32%, 100% 100%)',
-  },
-  {
-    height: 16,
-    background: 'rgba(34,197,94,.16)',
-    clipPath: 'polygon(0% 100%, 26% 30%, 44% 74%, 68% 22%, 88% 62%, 100% 100%)',
-  },
-] as const
+/** ★왼쪽 10 · 가운데 IPL · 오른쪽 SPL★ (2026-09-12 사장님) */
+const ORDER = ['sanply', 'nolink', 'supply'] as const
 
-const TILES = FEATURED_LEAGUES.map((league) => {
-  const slug = league.href.split('/')[2] ?? ''
-  return { slug, label: league.label, href: `${league.href}/rank/player` }
-}).filter((tile) => !isLeaguePreparing(tile.slug))
+const TILES = ORDER.flatMap((slug) => {
+  const found = FEATURED_LEAGUES.find((league) => league.href === `/league/${slug}`)
+  if (!found || isLeaguePreparing(slug)) return []
+  return [{ slug, label: found.label, href: `${found.href}/rank/player` }]
+})
 
 export function HomeLeagueTiles() {
   return (
-    <nav aria-label="리그 랭킹 바로가기" className="mt-4">
-      <ul className="mx-auto flex w-[322px] max-w-full flex-wrap justify-center gap-[10px]">
+    <nav aria-label="리그 랭킹 바로가기" className="mt-6">
+      <ul className="mx-auto flex max-w-full items-start justify-center gap-[26px] max-md:gap-[14px]">
         {TILES.map((tile) => (
           <li key={tile.href}>
             <Link
               href={tile.href}
-              className="relative flex h-[42px] w-[150px] items-center justify-center gap-[7px] overflow-hidden border border-[var(--v2-chip-border)] bg-[var(--v2-panel)] text-[14px] font-bold text-[var(--v2-text)] transition-colors duration-100 hover:border-[var(--v2-chip-border-on)]"
-              style={{ borderTop: `2px solid ${INK[tile.slug] ?? 'var(--v2-accent)'}` }}
+              className="group flex w-[118px] flex-col items-center gap-[6px] max-md:w-[98px]"
             >
-              {tile.slug === 'sanply'
-                ? RIDGE.map((ridge, index) => (
-                    <span
-                      key={index}
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 bottom-0"
-                      style={ridge}
-                    />
-                  ))
-                : null}
+              <span
+                aria-hidden
+                className="block h-[92px] w-[92px] bg-contain bg-center bg-no-repeat opacity-[.88] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[76px] max-md:w-[76px]"
+                style={{ backgroundImage: `url(${MARK[tile.slug]})` }}
+              />
               {/* `<a>` 안쪽 span 에 색을 준다 — `a { color: inherit }` 함정 (D-231) */}
-              <span className="relative text-[var(--v2-text)]">{tile.label}</span>
-              {SUB[tile.slug] ? (
-                <span className="relative text-[11px] text-[var(--v2-text-ghost)]">
-                  {SUB[tile.slug]}
-                </span>
-              ) : null}
+              <span
+                className="text-[13px] font-bold tracking-[.14em] text-[var(--v2-text-muted)] transition-colors duration-150 group-hover:text-[var(--v2-text)] max-md:text-[12px]"
+                style={{ textShadow: `0 0 14px ${GLOW[tile.slug] ?? 'transparent'}` }}
+              >
+                {tile.label}
+              </span>
             </Link>
           </li>
         ))}

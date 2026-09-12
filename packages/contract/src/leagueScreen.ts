@@ -149,9 +149,12 @@ const NO_LADDER: LeagueScreenSpec = {
 const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
   /* 리그 안 게시판 = 계약 `BOARD_CATEGORIES` 의 `spl` · `ipl` (지시 #14-2).
      SPL 은 등급 개념이 없다 — `WITH_LADDER` 의 `showsTier: false` 그대로 (지시 #23) */
-  supply: { ...WITH_LADDER, boardCategory: 'spl' },
+  /* ★2026-09-12 사장님: 리그 안 게시판을 없앤다★ — «IPL페이지에 있는 게시판이랑 SPL 페이지 안에있는 게시판 둘다 없애고
+     게시판 카텍을 따로 만들어». 글은 그대로 있고 /board 로만 들어간다. 옛 값은 'spl' 이었다 */
+  supply: { ...WITH_LADDER, boardCategory: null },
   /* IPL 만 티어를 쓴다 (지시 #23). 같은 날 오전(#9)에는 반대였다 */
-  nolink: { ...WITH_TIERS, boardCategory: 'ipl' },
+  /* 옛 값은 'ipl' 이었다 — 위 주석 참조 */
+  nolink: { ...WITH_TIERS, boardCategory: null },
   sanply: NO_LADDER,
   /* 2026-09-02 지시 #22 — 목록에서 뺀다. 그전에는 표에 없었다(= 기본값 · 목록에 보였다) */
   daerule: CLOSED,

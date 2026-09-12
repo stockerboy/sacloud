@@ -61,7 +61,8 @@ export interface NavLink {
 export const FEATURED_LEAGUES: readonly NavLink[] = [
   { label: 'SPL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
-  { label: '10mountain', href: '/league/sanply' },
+  /* ★2026-09-12 사장님: «앞으로 모든 이름을 10으로 바꿔»★ — 옛 표기는 '10mountain' 이었다 */
+  { label: '10', href: '/league/sanply' },
 ]
 
 /** 상단바의 순서 — href 로 적는다. 목록(`FEATURED_LEAGUES`)에 없는 것은 그려지지 않는다 */

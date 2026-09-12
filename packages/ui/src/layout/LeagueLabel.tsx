@@ -23,7 +23,13 @@
  */
 
 /** 산 표시를 붙일 리그의 표시 이름. slug 가 아니다 — 위 주석 참고 */
-export const MOUNTAIN_LEAGUE_NAME = '10mountain'
+/**
+ * ★2026-09-12 사장님: «앞으로 모든 이름을 10으로 바꿔»★
+ * 운영 DB 의 League.name 도 '10' 으로 바꿨다. 옛 이름도 계속 알아본다 —
+ * 캐시나 목 자료에 '10mountain' 이 남아 있어도 산 표시가 붙는다.
+ */
+export const MOUNTAIN_LEAGUE_NAME = '10'
+export const MOUNTAIN_LEAGUE_NAME_V1 = '10mountain'
 
 /**
  * 작은 산 표시. `currentColor` 로만 그려서 글자색을 그대로 따라간다.
@@ -86,7 +92,7 @@ const MOUNTAIN_SHORT_TEXT = '10'
  * 지우지 않고 남겨 둔다 (`CLAUDE.md` 10-4).
  */
 export function LeagueLabel({ name, className = '', variant = 'short' }: LeagueLabelProps) {
-  if (name !== MOUNTAIN_LEAGUE_NAME) return <>{name}</>
+  if (name !== MOUNTAIN_LEAGUE_NAME && name !== MOUNTAIN_LEAGUE_NAME_V1) return <>{name}</>
   return (
     <span className={`inline-flex items-center gap-1 ${className}`}>
       {variant === 'full' ? name : MOUNTAIN_SHORT_TEXT}
