@@ -275,8 +275,15 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     const unit = (pick: (n: string) => number): Map<string, number> => {
       const sorted = names.map(pick).sort((a, b) => a - b)
       const last = Math.max(1, sorted.length - 1)
-      return new Map(names.map((n) => {
-        const v = pick(n)
+      /**
+       * ★같은 값끼리는 한가운데를 준다★ — 아래 개수와 위 개수의 가운데를 쓴다.
+       *
+       * ⚠ 이 한 줄이 없으면 ASTRA 가 통째로 내려간다 (2026-09-12 실측).
+       *   ASTRA 는 윗 구간이 없어 ★윗판이 전원 0★ 인데, «나보다 작은 값의 개수» 만 세면
+       *   전원이 0 등이 되어 −1(꼴찌)을 받는다. 그러면 구간 전체가 기준점보다 195점 아래로 깔린다.
+       *   전원이 같으면 −1 도 +1 도 아니고 ★0(한가운데)★ 이 맞다.
+       */
+      const below = (v: number): number => {
         let lo = 0
         let hi = sorted.length
         while (lo < hi) {
@@ -284,7 +291,22 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
           if ((sorted[mid] as number) < v) lo = mid + 1
           else hi = mid
         }
-        return [n, (lo / last) * 2 - 1]
+        return lo
+      }
+      const atMost = (v: number): number => {
+        let lo = 0
+        let hi = sorted.length
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1
+          if ((sorted[mid] as number) <= v) lo = mid + 1
+          else hi = mid
+        }
+        return lo
+      }
+      return new Map(names.map((n) => {
+        const v = pick(n)
+        const mid = (below(v) + atMost(v) - 1) / 2
+        return [n, (mid / last) * 2 - 1]
       }))
     }
     const ue = unit((n) => E(n))
