@@ -17,6 +17,7 @@
  *   배틀로그가 아직 없는 클랜은 그림 자리를 비운다. 셋이 다 차지 않으면 카드도 안 낸다 —
  *   반쪽 포디움을 만들지 않는다 (개인랭킹과 같은 규칙).
  */
+import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { useQueries } from '@tanstack/react-query'
 import {
@@ -50,6 +51,28 @@ const SHEEN: Readonly<Record<number, string>> = {
   1: 'rgba(255,216,61,.16)',
   2: 'rgba(200,214,255,.14)',
   3: 'rgba(201,163,91,.14)',
+}
+
+/**
+ * ★테두리 카드★ (2026-09-13 사장님: «테두리카드 만들어줘 너무 밋밋해»).
+ *
+ * 반투명으로 바꾼 뒤 카드 가장자리가 사라져 «벽에 칠한 것» 처럼 보였다.
+ * 토큰만 고쳐서는 부족해서 이 카드에는 ★등수 색 테두리★ 를 직접 준다 —
+ * 1위 금색 · 2위 은색 · 3위 동색 띠가 카드를 감싼다.
+ *
+ *   ① 등수 색 1px 테두리 + 같은 색 바깥 번짐 (네온)
+ *   ② 안쪽 윗선 1px — 유리에 두께를 준다
+ *   ③ 짙은 그림자 — 바탕에서 떠오른다
+ */
+function podiumCardStyle(ink: string): CSSProperties {
+  return {
+    padding: '20px 20px 18px',
+    borderRadius: 16,
+    overflow: 'hidden',
+    border: `1px solid ${ink}66`,
+    background: 'linear-gradient(160deg, rgba(46,66,110,.55) 0%, rgba(26,40,70,.55) 100%)',
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,.09), 0 12px 30px rgba(0,0,0,.42), 0 0 26px ${ink}26`,
+  }
 }
 
 /** 카드 한 칸 — 값이 없으면 「기록 없음」이라고 적는다 (숫자를 지어내지 않는다) */
@@ -111,8 +134,7 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
             edge={ink}
             sweep
             sweepColor={SHEEN[row.rank ?? 0]}
-            /* ⚠ 2026-09-12 사장님: «카드 모서리 전부 둥글고 세련되게» */
-            style={{ padding: '20px 20px 18px', borderRadius: 14, overflow: 'hidden' }}
+            style={podiumCardStyle(ink)}
           >
             <div className="relative flex items-start gap-4">
               <Link
