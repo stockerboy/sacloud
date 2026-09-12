@@ -55,6 +55,24 @@ export interface SiteHeaderV2Props {
   onLogout?: () => void
 }
 
+/**
+ * ★상단바 표장★ — 홈 리그 단추와 ★같은 파일★ 이다 (2026-09-12 사장님).
+ * 표장이 없는 슬러그는 글자만 나온다 — 지어내지 않는다.
+ */
+const GNB_MARK: Readonly<Record<string, string>> = {
+  sanply: '/assets/league-10.png',
+  nolink: '/assets/league-ipl.png',
+  supply: '/assets/league-spl.png',
+}
+
+/** 리그 옆 넷째 자리 (2026-09-12 사장님) */
+const GNB_BOARD = { label: '게시판', href: '/board/hot' }
+
+/** `/league/nolink` → `nolink`. 주소가 리그가 아니면 빈 글자다 */
+function leagueSlugOfHref(href: string): string {
+  return href.split('/')[2] ?? ''
+}
+
 export function SiteHeaderV2({
   variant = 'default',
   /* 상단바 순서는 홈과 다르다 (IPL 먼저 · 지시 #14). 목록은 한 곳(`FEATURED_LEAGUES`) */
@@ -121,23 +139,57 @@ export function SiteHeaderV2({
           <NavLogo className="h-[34px] w-auto max-md:h-[26px]" />
         </Link>
 
-        <nav className="v2-gnb max-md:hidden">
-          {featuredLeagues.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`v2-gnb__item ${isActive(pathname, item.href) ? 'is-on' : ''}`}
-            >
-              {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
-              <LeagueLabel name={item.label} />
-            </Link>
-          ))}
+        {/*
+          ★상단바 바로가기 넷★ (2026-09-12 사장님: «상단바에 로고10/로고IPL/로고SPL/게시판
+          이렇게 네개 바로가기 만들어» · «모바일버전에는 왼쪽의 상단에 로고버튼들이 안보여»).
+
+          ── 바뀐 것 두 가지
+          ① 리그 이름 앞에 ★표장★ 을 붙인다 — 홈 리그 단추와 ★같은 그림 파일★ 이다
+          ② 이 줄이 ★폰에서도 보인다★. 옛 판은 `max-md:hidden` 이라 햄버거 서랍뿐이었다.
+             폰에서는 자리가 없으니 ★글자를 빼고 표장만★ 남긴다 (게시판은 글자).
+
+          서랍은 ★그대로★ 다 — 없앤 길은 하나도 없다.
+        */}
+        <nav className="v2-gnb">
+          {featuredLeagues.map((item) => {
+            const mark = GNB_MARK[leagueSlugOfHref(item.href)]
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-label={item.label}
+                className={`v2-gnb__item ${isActive(pathname, item.href) ? 'is-on' : ''}`}
+              >
+                <span className="inline-flex items-center gap-[7px]">
+                  {mark ? (
+                    <span
+                      aria-hidden
+                      className="v2-gnb__mark"
+                      style={{ backgroundImage: `url(${mark})` }}
+                    />
+                  ) : null}
+                  {/* 표장이 있는 리그는 폰에서 글자를 뺀다 — 없는 리그는 글자만 남는다 */}
+                  <span className={mark ? 'max-md:hidden' : undefined}>
+                    {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
+                    <LeagueLabel name={item.label} />
+                  </span>
+                </span>
+              </Link>
+            )
+          })}
+          {/* ★넷째 자리 — 게시판★. 리그 안 게시판을 없애고 여기로 모았다 (2026-09-12 사장님) */}
+          <Link
+            href={GNB_BOARD.href}
+            className={`v2-gnb__item v2-gnb__board ${pathname.startsWith('/board') ? 'is-on' : ''}`}
+          >
+            {GNB_BOARD.label}
+          </Link>
           {/* `PRIMARY_NAV` 는 지금 비어 있다. 되살리면 리그 뒤에 그대로 붙는다 */}
           {primaryNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`v2-gnb__item ${isActive(pathname, item.href) ? 'is-on' : ''}`}
+              className={`v2-gnb__item max-md:hidden ${isActive(pathname, item.href) ? 'is-on' : ''}`}
             >
               {item.label}
             </Link>
