@@ -34,6 +34,20 @@ export interface HealthCheck {
   ms?: number
 }
 
+/**
+ * ★넥슨 열쇠가 꽂혀 있나★ (2026-09-12) — 계정인증(칭호)이 이 열쇠로 돈다.
+ * ★값은 절대 안 내보낸다.★ 있다/없다와 길이만 말한다.
+ */
+function nexonKeyCheck(): HealthCheck {
+  const raw = (process.env.NEXON_API_KEY ?? '').trim().replace(/^["']|["']$/g, '')
+  if (raw === '') {
+    return { status: 'down', detail: '넥슨 열쇠가 없다 — 칭호 계정인증이 「이용 불가」로 뜬다' }
+  }
+  const kind = raw.startsWith('test_') ? '시험용(test_)' : '운영용'
+  /* 시험용 열쇠는 진짜 조회가 안 된다 — 없는 것과 같게 본다 (2026-09-12 실측) */
+  return { status: raw.startsWith('test_') ? 'down' : 'ok', detail: `넥슨 열쇠 있음 · ${kind} · ${raw.length}자` }
+}
+
 export interface HealthReport {
   status: HealthStatus
   checkedAt: string
@@ -41,6 +55,15 @@ export interface HealthReport {
     db: HealthCheck
     collector: HealthCheck
     data: HealthCheck
+    /**
+     * ★계정인증에 쓰는 넥슨 열쇠가 꽂혀 있나★ (2026-09-12).
+     *
+     * 열쇠가 없으면 칭호 인증이 통째로 «이용 불가» 가 된다. 그런데 화면 어디에도
+     * 그 사실이 안 보여서 «왜 안 되지» 로 헤매게 된다. 여기서 한 줄로 말한다.
+     *
+     * ⚠ ★열쇠 값을 절대 내보내지 않는다.★ 있다/없다만 말한다 (`CLAUDE.md` 2장 6번).
+     */
+    nexonKey: HealthCheck
   }
   metrics: {
     /**
@@ -102,6 +125,7 @@ function downReport(now: Date): HealthReport {
       db: { status: 'down', detail: 'DB에 질의할 수 없다' },
       collector: { status: 'down', detail: 'DB가 없어 확인할 수 없다' },
       data: { status: 'down', detail: 'DB가 없어 확인할 수 없다' },
+      nexonKey: nexonKeyCheck(),
     },
     metrics: {
       /* DB 를 못 읽었으니 신선도도 모른다. 빈 배열이지 「최신」이 아니다 */
@@ -344,7 +368,7 @@ export async function getHealth(now: Date = new Date()): Promise<HealthReport> {
   return {
     status: worst([db.status, collector.status, data.status]),
     checkedAt: now.toISOString(),
-    checks: { db, collector, data },
+    checks: { db, collector, data, nexonKey: nexonKeyCheck() },
     metrics: {
       /* ★리그별 신선도 — 「수집기」 칸이 이것으로 판정한다★ (2026-09-03) */
       leagueFreshness,
