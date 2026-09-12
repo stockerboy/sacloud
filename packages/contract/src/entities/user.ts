@@ -125,6 +125,15 @@ export const SignupInput = z.object({
   nickname: z.string().min(2).max(16),
   email: Email.nullish(),
   captcha_token: z.string().min(1).optional(),
+  /**
+   * ★서든 닉네임★ — 가입과 계정인증을 한 번에 (2026-09-12 사장님).
+   *
+   * > «회원가입은 서든 계정인증으로 하는거야 (…) 칭호 바꾸면 계정인증 자동으로 되는 시스템»
+   *
+   * 넣으면 가입과 동시에 칭호 도전이 열리고, 배정된 칭호를 응답이 알려 준다.
+   * ★안 넣어도 가입은 된다★ — 넥슨이 멈췄을 때 가입까지 막지 않는다. 나중에 마이페이지에서 한다.
+   */
+  sudden_nickname: z.string().trim().min(1).max(16).nullish(),
 })
 export type SignupInput = z.infer<typeof SignupInput>
 

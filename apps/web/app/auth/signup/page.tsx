@@ -44,6 +44,14 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
+  /**
+   * ★서든 닉네임★ — 가입과 계정인증을 한 번에 (2026-09-12 사장님:
+   * «회원가입은 서든 계정인증으로 하는거야»).
+   * ★비워도 가입은 된다★ — 넥슨이 멈췄을 때 가입까지 막지 않는다.
+   */
+  const [suddenNickname, setSuddenNickname] = useState('')
+  /** 가입 직후 배정된 칭호. 이게 있으면 「칭호를 바꾸세요」 안내로 넘어간다 */
+  const [titleTask, setTitleTask] = useState<{ title: string; nickname: string } | null>(null)
   const [agreed, setAgreed] = useState(false)
 
   // 검증 규칙은 `packages/ui/src/auth/signupRules.ts` 한 곳에 있다 (단위 테스트로 고정)
@@ -70,6 +78,8 @@ export default function SignupPage() {
           username,
           password,
           nickname: nickname.trim(),
+          /* 비었으면 아예 안 보낸다 — 서버가 «없음» 과 «빈 글자» 를 다르게 볼 이유가 없다 */
+          ...(suddenNickname.trim() ? { sudden_nickname: suddenNickname.trim() } : {}),
           /* 이메일은 **선택**이다 (D-252). 비었으면 아예 안 보낸다 —
              빈 문자열을 보내면 서버의 이메일 형식 검사에 걸린다 */
           ...(email.trim() ? { email: email.trim() } : {}),
@@ -90,11 +100,22 @@ export default function SignupPage() {
      * 옛 줄 — `router.push('/auth/email/verify')`. 그 화면은 지우지 않았다
      * (`CLAUDE.md` 10-4). 메일 발송이 붙으면 그때 다시 그리로 보낸다.
      */
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['me'] }),
         queryClient.invalidateQueries({ queryKey: ['infos'] }),
       ])
+      /**
+       * ★칭호가 배정됐으면 그 자리에 머문다★ (2026-09-12 사장님).
+       * 홈으로 튕기면 «무슨 칭호로 바꾸라고 했지» 를 다시 찾아야 한다.
+       * 배정이 없으면(서든 닉네임을 안 넣었거나 넥슨이 멈췄으면) 옛날처럼 홈으로 간다.
+       */
+      const task = (result as { data?: { title_task?: { title: string; nickname: string } | null } })
+        ?.data?.title_task
+      if (task) {
+        setTitleTask(task)
+        return
+      }
       router.push('/')
     },
   })
@@ -108,6 +129,46 @@ export default function SignupPage() {
   const shownByField = ['username', 'email', 'password', 'nickname'].some(
     (field) => serverFieldError(field) !== undefined,
   )
+
+  /**
+   * ★가입이 끝났고 칭호가 배정된 화면★ (2026-09-12 사장님).
+   *
+   * 여기서 홈으로 튕기면 «무슨 칭호로 바꾸라고 했지» 를 다시 찾아야 한다.
+   * 그래서 배정된 칭호를 크게 적고, 확인하러 갈 곳을 바로 준다.
+   */
+  if (titleTask !== null) {
+    return (
+      <AuthCard
+        footer={
+          <Link href="/">
+            <span className="underline underline-offset-4">나중에 하기 · 둘러보기</span>
+          </Link>
+        }
+      >
+        <p className="text-sm leading-[1.9] text-meta">
+          가입이 끝났습니다. 이제 <b className="text-text-strong">{titleTask.nickname}</b> 계정이
+          본인 것인지 확인합니다.
+        </p>
+        <div className="my-5 border border-line px-4 py-5 text-center">
+          <p className="text-xs tracking-[.14em] text-faint">게임에서 칭호를 이것으로</p>
+          <p className="mt-2 text-3xl font-black text-text-strong">{titleTask.title}</p>
+        </div>
+        <ol className="mb-5 text-sm leading-[1.9] text-meta">
+          <li>1. 서든어택에 접속합니다</li>
+          <li>2. 칭호를 <b className="text-text-strong">{titleTask.title}</b> 으로 바꿉니다</li>
+          <li>3. 아래 「확인하기」를 누릅니다</li>
+        </ol>
+        <p className="mb-4 text-xs leading-[1.8] text-faint">
+          확인이 끝나면 칭호는 다시 바꿔도 됩니다. 30분 안에 하지 않으면 다시 신청하면 됩니다.
+        </p>
+        <Link href="/me">
+          <span className="btn-line block w-full py-3 text-center text-sm text-text-strong">
+            확인하러 가기
+          </span>
+        </Link>
+      </AuthCard>
+    )
+  }
 
   return (
     <AuthCard
@@ -207,6 +268,23 @@ export default function SignupPage() {
           value={nickname}
           placeholder="닉네임"
           onChange={(event) => setNickname(event.target.value)}
+        />
+      </AuthField>
+
+      {/*
+        ★서든 닉네임★ (2026-09-12 사장님) — 여기 넣으면 가입과 동시에 계정인증이 시작된다.
+        비워도 가입은 된다. 그때는 나중에 마이페이지에서 하면 된다.
+      */}
+      <AuthField
+        label="서든 닉네임"
+        hint="넣으면 가입과 동시에 계정인증이 시작됩니다 · 비워도 가입됩니다"
+        error={serverFieldError('sudden_nickname')}
+      >
+        <AuthInput
+          type="text"
+          value={suddenNickname}
+          placeholder="게임에서 쓰는 닉네임"
+          onChange={(event) => setSuddenNickname(event.target.value)}
         />
       </AuthField>
 

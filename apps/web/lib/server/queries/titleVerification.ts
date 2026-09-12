@@ -33,12 +33,13 @@
  */
 import { prisma } from '@sacloud/db'
 import {
-  REQUIRED_TITLE,
+  REQUIRED_TITLES,
+  matchesTitle,
+  pickRequiredTitle,
   TITLE_CHALLENGE_TTL_MINUTES,
   TITLE_CHALLENGE_MAX_ATTEMPTS,
   canManualTitleCheck,
   effectiveChallengeStatus,
-  matchesRequiredTitle,
   normalizeTitleName,
   type TitleVerificationOutcome,
   type TitleVerificationState,
@@ -55,6 +56,8 @@ type ChallengeRow = {
   userId: string
   ouid: string
   nickname: string | null
+  /* ★그 사람에게 배정된 칭호★ — 사람마다 다르다 (2026-09-12) */
+  expectedTitle: string
   status: string
   expiresAt: Date
   attempts: number
@@ -125,7 +128,8 @@ export async function titleVerificationState(
   if (!challenge) {
     return {
       status: 'none',
-      required_title: REQUIRED_TITLE,
+      /* 아직 도전이 없으면 첫 후보를 보여 준다 — 진짜 값은 도전을 열 때 정해진다 */
+      required_title: REQUIRED_TITLES[0] ?? '용병',
       nickname: null,
       last_seen_title: null,
       outcome,
@@ -141,7 +145,8 @@ export async function titleVerificationState(
 
   return {
     status,
-    required_title: REQUIRED_TITLE,
+    /* ★그 사람에게 배정된 칭호★ (2026-09-12) */
+    required_title: challenge.expectedTitle,
     nickname: challenge.nickname,
     last_seen_title: challenge.lastSeenTitle,
     outcome,
@@ -243,7 +248,8 @@ export async function checkTitleVerification(input: {
   }
 
   /* ④ 판정. 관측한 칭호는 **성공이든 실패든 남긴다** — 나중의 근거다 */
-  const passed = matchesRequiredTitle(observedTitle)
+  /* ★그 사람에게 배정된 칭호★ 와 견준다 (2026-09-12 사장님). 옛 판은 모두 `[용병]` 이었다 */
+  const passed = matchesTitle(challenge.expectedTitle, observedTitle)
   await prisma.titleChallenge.update({
     where: { id: challenge.id },
     data: {
@@ -331,7 +337,8 @@ async function openChallenge(input: {
         userId: input.userId,
         ouid: input.ouid,
         nickname: input.nickname,
-        expectedTitle: REQUIRED_TITLE,
+        /* ★셋 중 하나를 무작위로★ (2026-09-12 사장님) */
+        expectedTitle: pickRequiredTitle(),
         /* 고정 칭호 방식에서는 기준 칭호를 쓰지 않는다 (칸은 남겨 둔다) */
         baselineTitle: null,
         expiresAt,

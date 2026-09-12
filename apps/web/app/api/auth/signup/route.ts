@@ -4,6 +4,7 @@ import { normalizeUsername, SignupInput } from '@sacloud/contract'
 import { badRequest, guard, ok, tooManyRequests } from '@/lib/server/respond'
 import { jsonBody } from '@/lib/server/request'
 import { isAllowedSignupEmail, issueAuthToken, startSession } from '@/lib/server/queries/auth'
+import { checkTitleVerification, titleVerificationState } from '@/lib/server/queries/titleVerification'
 import {
   clientIdentity,
   consumeQuota,
@@ -116,7 +117,31 @@ export async function POST(request: Request) {
        **가입을 막지는 않는다** — 토큰은 나중에 메일이 붙었을 때 쓰려고 남기는 것이다 */
     if (email) await issueAuthToken(user.id, 'email_verify', 60 * 24)
 
-    return ok(await startSession(user.id))
+    /**
+     * ★가입과 계정인증을 한 번에★ (2026-09-12 사장님).
+     *
+     * 서든 닉네임을 넣었으면 그 자리에서 칭호 도전을 연다 — 닉네임 → ouid 를 넥슨에 묻고
+     * 셋 중 하나를 배정한다. 그 칭호를 응답에 실어 «게임에서 이걸로 바꾸세요» 를 바로 띄운다.
+     *
+     * ★실패해도 가입은 그대로 끝난다.★ 넥슨이 멈췄거나 없는 닉이어도 계정은 만들어졌다 —
+     * 나중에 마이페이지에서 다시 하면 된다. 여기서 되돌리면 가입 자체가 넥슨에 매인다.
+     */
+    let titleTask: { title: string; nickname: string } | null = null
+    const suddenNickname = parsed.data.sudden_nickname?.trim() ?? ''
+    if (suddenNickname !== '') {
+      try {
+        await checkTitleVerification({ userId: user.id, nickname: suddenNickname })
+        const state = await titleVerificationState(user.id)
+        if (state.status === 'pending' || state.status === 'verified') {
+          titleTask = { title: state.required_title, nickname: suddenNickname }
+        }
+      } catch (error) {
+        console.warn('[signup] 칭호 도전을 못 열었다 — 가입은 그대로 끝낸다', error)
+      }
+    }
+
+    const session = await startSession(user.id)
+    return ok({ ...session, title_task: titleTask })
   })
 }
 

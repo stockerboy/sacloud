@@ -34,6 +34,45 @@ import { PlayerSummary } from './summaries'
 export const REQUIRED_TITLE = '[용병]'
 
 /**
+ * ★칭호 후보 셋★ (2026-09-12 사장님: «용병 이랑 보통 서든 1달만해도 주는 칭호 2개 더
+ * 조사해서 셋중에 하나 랜덤으로»).
+ *
+ * ── ⚠ ★대괄호를 뺐다 — 이게 버그였다★
+ *   넥슨 `user/basic` 의 `title_name` 은 ★대괄호 없이★ 온다. 실측 (2026-09-12 ·
+ *   실제 계정 111개 조사) — 여섯 명이 `용병` 을 달고 있었고 `[용병]` 은 ★한 명도 없었다.★
+ *   옛 값 `'[용병]'` 으로는 ★아무도 인증에 성공할 수 없었다.★ 옛 값은 위에 남긴다.
+ *
+ * ── 왜 셋인가
+ *   하나로 고정하면 «어쩌다 그 칭호를 달고 있는 남의 닉네임» 을 가로챌 수 있다.
+ *   가입할 때 셋 중 ★하나를 무작위로 배정★ 하면 그 수법이 세 배로 어려워진다.
+ *
+ * ── 무엇을 골랐나 (실측 2026-09-12 · 계정 111개)
+ *   `용병` 6명 · `돌격` 3명 · `저격` 1명. 셋 다 무기·전투 계열 기본 칭호다.
+ *   ⚠ ★획득 조건은 API 로 확인할 수 없다.★ «한 달이면 누구나» 인지는 사장님 확인이 필요하다.
+ *   바꾸려면 이 배열만 고치면 된다 — 화면·서버가 여기 한 곳을 본다.
+ */
+export const REQUIRED_TITLES: readonly string[] = ['용병', '돌격', '저격']
+
+/** 가입할 때 하나를 뽑는다. 뽑힌 값은 `TitleChallenge.expectedTitle` 에 남는다 */
+export function pickRequiredTitle(): string {
+  const i = Math.floor(Math.random() * REQUIRED_TITLES.length)
+  return REQUIRED_TITLES[i] ?? REQUIRED_TITLES[0]!
+}
+
+/**
+ * 관측한 칭호가 ★배정된 칭호★ 인가.
+ *
+ * 대괄호는 있으나 없으나 같은 것으로 본다 — 옛 판이 `[용병]` 을 기대했고 그 값으로
+ * 열린 도전이 남아 있을 수 있다. 그 사람들이 갑자기 못 지나가면 안 된다.
+ */
+export function matchesTitle(expected: string, observed: string | null | undefined): boolean {
+  const strip = (v: string | null) => (v === null ? null : v.replace(/^\[|\]$/g, '').trim())
+  const want = strip(normalizeTitleName(expected))
+  const got = strip(normalizeTitleName(observed))
+  return want !== null && got !== null && want === got
+}
+
+/**
  * 도전의 상태.
  *
  * `none`      아직 아무것도 신청하지 않았다
@@ -153,9 +192,12 @@ export function normalizeTitleName(value: string | null | undefined): string | n
 }
 
 /** 관측한 칭호가 우리가 요구한 칭호인가 */
+/**
+ * @deprecated 2026-09-12 — 칭호가 사람마다 다르다. `matchesTitle(expected, observed)` 를 쓴다.
+ * 옛 호출부를 위해 남긴다. 셋 중 아무거나 맞으면 참이다.
+ */
 export function matchesRequiredTitle(observed: string | null | undefined): boolean {
-  const value = normalizeTitleName(observed)
-  return value !== null && value === normalizeTitleName(REQUIRED_TITLE)
+  return REQUIRED_TITLES.some((title) => matchesTitle(title, observed))
 }
 
 /**
