@@ -585,7 +585,41 @@ export async function getLeagueClanPlayers(
   })
   if (!leagueClan) return null
 
-  const where = { leagueId: league.id, clanId: clan.id }
+  /**
+   * ★같은 사람이 두 줄로 뜨던 것★ (2026-09-12 사장님: «클랜원 목록에 같은 선수 이름이 두명이 뜨고»).
+   *
+   * 뿌리는 ★선수 줄이 둘★ 이라는 데 있다. 실측(2026-09-12 · IPL) —
+   *   차코  BRK-FBD6…  참가기록 46건  ← 경기에서 만들어진 줄
+   *         738635904  참가기록  0건  ← 클랜 명부에서 만들어진 빈 줄
+   * 이름이 겹치는 선수 묶음이 1,551개다. 둘 다 클랜원으로 잡혀 화면에 두 번 떴다.
+   *
+   * ★여기서는 화면만 고친다.★ 두 줄을 하나로 잇는 일은 동명이인을 잘못 합칠 수 있어
+   * 따로 검토한다 (사장님이 «가 해봐 일단» — 먼저 감추는 쪽을 고르셨다).
+   *
+   * 감추는 것은 ★겹치는 이름 중 기록이 하나도 없는 줄★ 뿐이다.
+   * 둘 다 0판이면 앞선 줄 하나만 남긴다 — 그때도 화면에 두 번 뜨면 안 된다.
+   * 이름이 안 겹치면 기록이 0이어도 그대로 둔다 — 갓 들어온 클랜원이 사라지면 안 된다.
+   */
+  const twins = await prisma.$queryRaw<{ id: string }[]>`
+    WITH rows AS (
+      SELECT lp."id" AS id, pl."name" AS name, (lp."win" + lp."lose") AS g
+        FROM "LeaguePlayer" lp
+        JOIN "Player" pl ON pl."id" = lp."playerId"
+       WHERE lp."leagueId" = ${league.id} AND lp."clanId" = ${clan.id}
+    )
+    SELECT a.id FROM rows a
+     WHERE a.g = 0
+       AND EXISTS (
+         SELECT 1 FROM rows b
+          WHERE b.name = a.name AND b.id <> a.id
+            AND (b.g > 0 OR b.id < a.id))`
+  const hidden = twins.map((row) => row.id)
+
+  const where = {
+    leagueId: league.id,
+    clanId: clan.id,
+    ...(hidden.length > 0 ? { id: { notIn: hidden } } : {}),
+  }
 
   const page = await cursorPage<{
     id: string
