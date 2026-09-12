@@ -80,6 +80,8 @@ export {
 } from './common/ClanMark'
 export { Label } from './common/Label'
 export { LoadMoreButton } from './common/LoadMoreButton'
+/* ★페이지 번호★ (2026-09-12 사장님 — 개인랭킹). 「더 불러오기」는 그대로 남는다 */
+export { Pager, pageWindow } from './common/Pager'
 export {
   formatCount,
   formatRate,

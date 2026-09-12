@@ -565,7 +565,10 @@ export const endpoints = {
     response: paginatedResponse(PlayerRankRow),
     /* ★구간 고르개★ (2026-09-11 사장님: «개인랭킹 전체/astra/challenger1/challenger2 이렇게 선택해서 볼 수 있게»).
        구간은 ★내 구간(가장 많이 뛴 티어)★ 이다 — 클랜 소속이 아니다 */
-    query: [...CURSOR, 'weapon', 'tier'],
+    /* ★페이지 번호★ (2026-09-12 사장님: «개인랭킹은 페이지로 만들고싶어 (…) 쟤 1페야»).
+       `page=1` 이 1~20위다. 주면 커서를 안 쓰고 그 자리로 바로 건너뛴다.
+       안 주면 옛 커서 방식 그대로다 — 다른 화면은 한 글자도 안 바뀐다 */
+    query: [...CURSOR, 'weapon', 'tier', 'page'],
   },
   leagueRankForm: {
     method: 'GET',

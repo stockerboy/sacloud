@@ -1,20 +1,19 @@
 'use client'
 
-import { use, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { use, useEffect, useRef, useState } from 'react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import type { PlayerRankRow, RankWeapon } from '@sacloud/contract'
-import { RANK_WEAPON_LABEL, leagueScreen, parseRankWeapon } from '@sacloud/contract'
+import { PAGE_SIZE, RANK_WEAPON_LABEL, leagueScreen, parseRankWeapon } from '@sacloud/contract'
 import {
   FilterChip,
   divisionLabel,
   FormTop3,
-  LoadMoreButton,
   PageHead,
+  Pager,
   PlayerRankTable,
   useSeasonLabel,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
-import { useCursorQuery } from '@/lib/useCursorQuery'
 import { useApiReady } from '@/app/providers'
 import { PodiumCards } from './PodiumCards'
 
@@ -69,24 +68,73 @@ const WEAPON_OPTIONS: readonly RankWeapon[] = ['all', 'sniper', 'rifle']
 type RankTier = 'all' | '1' | '2' | '3'
 const TIER_OPTIONS: readonly RankTier[] = ['all', '1', '2', '3']
 
+/**
+ * ★한 쪽에 몇 명★ — 20명 (2026-09-12 사장님이 고르심).
+ *
+ * > «개인랭킹은 페이지로 만들고싶어 한페이지에 몇명씩 들어가는게 좋을까?
+ * >  (…) 쟤 1페야 ㄴㄴ 쟤 2페이지로 내려감 ㅋㅋㅋ 이런거» → «20명가자»
+ *
+ * 서버 기본값(`PAGE_SIZE.RANK`)과 ★같은 수★ 라야 «1페 = 1~20위» 가 맞는다.
+ * 따로 숫자를 적지 않고 그 값을 그대로 쓴다 — 두 곳이 갈라지지 않게.
+ */
+const RANK_PER_PAGE = PAGE_SIZE.RANK
+
 function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
   const [weapon, setWeapon] = useState<RankWeapon>('all')
   /** ★구간 고르개★ — `all` 이면 전체다 (2026-09-11 사장님) */
   const [tier, setTier] = useState<RankTier>('all')
   /** 지금 열려 있는 칩. ★한 번에 하나만★ 열린다 (칩이 상태를 안 갖는 이유) */
   const [openChip, setOpenChip] = useState<'weapon' | 'tier' | null>(null)
+  /** ★지금 쪽★ — 1부터. 칩을 바꾸면 1쪽으로 돌아간다 (다른 목록의 3쪽은 뜻이 없다) */
+  const [page, setPage] = useState(1)
   /* 보여 줄 칸은 `leagueScreen()` 이 정한다 —
      `10🏔`(`sanply`)는 비공식이라 래더도 순위도 없다 (2026-09-01 사용자 지시) */
   const columns = leagueScreen(leagueSlug).playerColumns
   const ready = useApiReady()
 
-  const ranks = useCursorQuery<PlayerRankRow>(
-    'leagueRankPlayers',
-    /* 무기 축·구간이 쿼리 키에 들어가야 칩을 바꿀 때 캐시가 섞이지 않는다.
-       ★`all` 일 때는 키를 안 늘린다★ — 서버가 미리 담아 둔 키(`[…, weapon]`)와 한 글자도 같아야 한다 */
-    tier === 'all' ? ['ranks', 'players', leagueSlug, weapon] : ['ranks', 'players', leagueSlug, weapon, tier],
-    { params: { leagueId: leagueSlug }, search: tier === 'all' ? { weapon } : { weapon, tier } },
-  )
+  /**
+   * ★쪽 단위로 받는다★ (2026-09-12 사장님). 옛 판은 커서 «더 불러오기» 였다
+   * (`useCursorQuery` — 지우지 않았다. 다른 목록이 그대로 쓴다).
+   *
+   * `keepPreviousData` 로 쪽을 넘길 때 표가 ★안 비워진다★ — 깜빡임 없이 갈린다.
+   */
+  const ranksQuery = useQuery({
+    /* 무기 축·구간·쪽이 쿼리 키에 들어가야 칩을 바꿀 때 캐시가 섞이지 않는다 */
+    queryKey: ['ranks', 'players', 'page', leagueSlug, weapon, tier, page],
+    enabled: ready,
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      apiGet('leagueRankPlayers', {
+        params: { leagueId: leagueSlug },
+        search: { weapon, page, ...(tier === 'all' ? {} : { tier }) },
+      }),
+  })
+  const rows = ranksQuery.data?.data as readonly PlayerRankRow[] | undefined
+  /* 서버가 «모두 몇 줄» 을 같이 보낸다. 못 받으면 쪽 단추를 안 그린다 — 지어내지 않는다 */
+  const total = ranksQuery.data?.metadata.total ?? null
+  const lastPage = total === null ? 1 : Math.max(1, Math.ceil(total / RANK_PER_PAGE))
+  const ranks = {
+    items: rows,
+    loading: !ready || ranksQuery.isPending,
+    error: ranksQuery.isError,
+    retry: () => void ranksQuery.refetch(),
+  }
+
+  /* 칩을 바꾸면 1쪽으로. 3쪽을 보다 구간을 바꾸면 그 3쪽은 딴 사람들이다 */
+  useEffect(() => {
+    setPage(1)
+  }, [weapon, tier])
+
+  /* 쪽을 넘기면 표 머리로 올린다 — 폰에서 20줄 아래에 그대로 서 있으면 뭐가 바뀐지 모른다 */
+  const tableRef = useRef<HTMLDivElement>(null)
+  const firstRender = useRef(true)
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    tableRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [page])
 
   const form = useQuery({
     queryKey: ['ranks', 'form', leagueSlug, weapon],
@@ -180,14 +228,17 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           첫 화면에 1위가 한 명도 안 보였다. 목록 첫 줄이 이미 1위라 같은 것을 두 번 보여 준다.
           ★PC 에서는 그대로 둔다★ — 지우지 않았다 (`CLAUDE.md` 1-4).
         */}
-        <div className="max-md:hidden">
-        <PodiumCards
-          leagueSlug={leagueSlug}
-          rows={ranks.items ?? []}
-          columns={columns}
-          weapon={weapon}
-        />
-        </div>
+        {/* ★1쪽에서만★ — 2쪽에 21~23위를 포디움으로 세우면 «1등» 처럼 보인다 (2026-09-12) */}
+        {page === 1 ? (
+          <div className="max-md:hidden">
+          <PodiumCards
+            leagueSlug={leagueSlug}
+            rows={ranks.items ?? []}
+            columns={columns}
+            weapon={weapon}
+          />
+          </div>
+        ) : null}
 
         {/* 폼 TOP3 는 **래더 증감**만 보여 주는 칸이다. 래더가 없는 리그에서는 그리지 않는다.
             ⚠ 시안에는 없다. ★우리 기능이라 지우지 않는다★ (`CLAUDE.md` 1-4) */}
@@ -204,7 +255,7 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
         ) : null}
 
         {/* ★표는 900px★ (시안 `TABLE_W`). 표 자체는 옛 컴포넌트 그대로다 */}
-        <div className="mx-auto mt-[30px] w-full max-w-[900px]">
+        <div ref={tableRef} className="mx-auto mt-[30px] w-full max-w-[900px] scroll-mt-[120px]">
           <PlayerRankTable
             leagueSlug={leagueSlug}
             weapon={weapon}
@@ -218,9 +269,16 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
             /* ★시안: 순위·닉네임을 등급 색으로★ (3 / 20 / 40 / 100). 옛 표는 1위만 강조색 */
             rankTone
           />
-          {ranks.hasMore ? (
-            <LoadMoreButton onClick={ranks.loadMore} loading={ranks.loadingMore} />
-          ) : null}
+          {/*
+            ★쪽 번호★ (2026-09-12 사장님). 옛 판은 «더 불러오기» 였다 —
+            이어 붙이는 목록에는 경계가 없어서 «몇 페이지» 라는 말 자체가 안 생겼다.
+          */}
+          <Pager
+            page={page}
+            lastPage={lastPage}
+            onSelect={setPage}
+            note={total === null ? null : `${total.toLocaleString('ko-KR')}명 · ${lastPage}쪽`}
+          />
         </div>
       </div>
     </div>

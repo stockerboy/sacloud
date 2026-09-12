@@ -28,9 +28,15 @@ export async function GET(request: Request, context: { params: Promise<Record<st
     /* ★구간 고르개★ (2026-09-11 사장님) — 1 ASTRA · 2 CHALLENGER1 · 3 CHALLENGER2.
        모르는 값이면 전체다 (지어내지 않는다). 옛 래더 순 길은 구간을 모르니 안 거른다 */
     const onlyTier = parseRankTier(query(request, 'tier'))
+    /**
+     * ★페이지 번호★ (2026-09-12 사장님: «개인랭킹은 페이지로 만들고싶어 (…) 쟤 1페야»).
+     * 한 쪽에 20명(`PAGE_SIZE.RANK`). `page=1` 이 1~20위다.
+     * 없거나 1보다 작으면 ★옛 커서 방식★ 으로 간다 — 다른 화면이 안 깨진다.
+     */
+    const offset = pageOffset(query(request, 'page'), size)
     const page =
       weapon === 'all' || !RANK_BY_WEAPON_DELTA
-        ? await scoreOrLadder(leagueId, cursor, size, onlyWeapon, onlyTier)
+        ? await scoreOrLadder(leagueId, cursor, size, onlyWeapon, onlyTier, offset)
         : await getPlayerRanksByWeapon(leagueId, weapon, cursor, size)
     /* 랭킹은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
     return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')
@@ -39,6 +45,14 @@ export async function GET(request: Request, context: { params: Promise<Record<st
 
 /** true 로 두면 옛 방식(무기 탭 = 무기별 래더증감 순)으로 돌아간다 (`CLAUDE.md` 1-4) */
 const RANK_BY_WEAPON_DELTA = false
+
+/** `page=1` → 0 · `page=3` → 40. 숫자가 아니거나 1보다 작으면 null (커서 방식) */
+function pageOffset(raw: string | null, size: number): number | null {
+  if (raw === null) return null
+  const n = Number(raw)
+  if (!Number.isInteger(n) || n < 1) return null
+  return (n - 1) * size
+}
 
 /** `tier=1|2|3` 만 받는다. 그 밖은 ★전체★ */
 function parseRankTier(raw: string | null): 1 | 2 | 3 | null {
@@ -51,9 +65,11 @@ async function scoreOrLadder(
   size: number,
   onlyWeapon: 0 | 1 | null = null,
   onlyTier: 1 | 2 | 3 | null = null,
+  offset: number | null = null,
 ) {
-  const scored = await getPlayerRanksByScore(leagueId, cursor, size, onlyWeapon, onlyTier)
-  /* 구간을 골라서 비었으면 ★그게 답★ 이다 — 옛 래더 순으로 떨어지면 «전체» 가 튀어나온다 */
-  if (scored && (scored.items.length > 0 || cursor !== null || onlyTier !== null)) return scored
+  const scored = await getPlayerRanksByScore(leagueId, cursor, size, onlyWeapon, onlyTier, offset)
+  /* 구간을 골라서 비었으면 ★그게 답★ 이다 — 옛 래더 순으로 떨어지면 «전체» 가 튀어나온다.
+     페이지 번호로 왔으면 빈 쪽도 ★그게 답★ 이다 (마지막 쪽 너머) */
+  if (scored && (scored.items.length > 0 || cursor !== null || onlyTier !== null || offset !== null)) return scored
   return getPlayerRanks(leagueId, cursor, size)
 }

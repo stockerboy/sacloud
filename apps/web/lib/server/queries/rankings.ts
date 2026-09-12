@@ -380,7 +380,18 @@ export async function getPlayerRanksByScore(
    * 무기 칩과 똑같이 ★거르개★ 라 등수는 걸러 낸 줄의 순서다.
    */
   onlyTier: 1 | 2 | 3 | null = null,
-): Promise<CursorPage<PlayerRankRow> | null> {
+  /**
+   * ★페이지 번호로 건너뛰기★ (2026-09-12 사장님: «개인랭킹은 페이지로 만들고싶어»).
+   *
+   * 0 이면 1페이지(1~20위), 20 이면 2페이지다. 주면 ★커서를 안 쓰고★ 그 자리에서
+   * `size` 줄을 떠 오고, «모두 몇 줄인가»(`total`)도 같이 센다 — 페이지 단추를 그리려면
+   * 그 값이 있어야 한다. 안 주면(`null`) 옛 커서 방식 그대로다 (`CLAUDE.md` 1-4).
+   *
+   * 줄 차례가 `score desc, leaguePlayerId asc` 로 ★한 가지로 정해져 있어★ 자리로 떠도
+   * 커서로 떠도 같은 줄이 나온다. 그래서 등수는 `offset + 1` 로 바로 안다 — 셈이 하나 준다.
+   */
+  offset: number | null = null,
+): Promise<(CursorPage<PlayerRankRow> & { total?: number }) | null> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
     select: { id: true, category: true },
@@ -402,44 +413,61 @@ export async function getPlayerRanksByScore(
     ...(onlyTier === null ? {} : { homeTier: onlyTier }),
     leaguePlayer: { leagueId, placement: false },
   }
-  const page = await cursorPage<ScoreRankRow>({
-    cursor,
-    size,
-    orderBy: [...SCORE_ORDER],
-    reversedOrderBy: [...SCORE_ORDER_REVERSED],
-    idOf: (row) => row.leaguePlayerId,
-    fetch: (args) =>
-      prisma.leaguePlayerHex.findMany({
-        where,
-        take: args.take,
-        orderBy: args.orderBy as never,
-        ...(args.cursor ? { cursor: { leaguePlayerId: args.cursor.id }, skip: args.skip } : {}),
-        select: {
-          leaguePlayerId: true,
-          weapon: true,
-          score: true,
-          scoreRank: true,
-          hex: true,
-          games: true,
-          /* ★인식표★ 가 쓰는 구간 — 가장 많이 뛴 티어 (2026-09-11 사장님) */
-          homeTier: true,
-          leaguePlayer: {
-            select: {
-              rating: true,
-              activityPenalty: true,
-              win: true,
-              lose: true,
-              kill: true,
-              death: true,
-              player: { select: PLAYER_SUMMARY_SELECT },
-              clan: { select: CLAN_SUMMARY_SELECT },
-              /* ★주무기 줄★ — 랭킹의 승률·킬뎃은 통합이 아니라 «그 선수 주무기» 다 (2026-09-11 사장님) */
-              weaponStats: { select: { weapon: true, win: true, lose: true, kill: true, death: true, games: true, isMain: true } },
-            },
+  const SELECT = {
+        leaguePlayerId: true,
+        weapon: true,
+        score: true,
+        scoreRank: true,
+        hex: true,
+        games: true,
+        /* ★인식표★ 가 쓰는 구간 — 가장 많이 뛴 티어 (2026-09-11 사장님) */
+        homeTier: true,
+        leaguePlayer: {
+          select: {
+            rating: true,
+            activityPenalty: true,
+            win: true,
+            lose: true,
+            kill: true,
+            death: true,
+            player: { select: PLAYER_SUMMARY_SELECT },
+            clan: { select: CLAN_SUMMARY_SELECT },
+            /* ★주무기 줄★ — 랭킹의 승률·킬뎃은 통합이 아니라 «그 선수 주무기» 다 (2026-09-11 사장님) */
+            weaponStats: { select: { weapon: true, win: true, lose: true, kill: true, death: true, games: true, isMain: true } },
           },
         },
-      }) as Promise<ScoreRankRow[]>,
-  })
+  } as const
+
+  /* ★자리로 건너뛰는 길★ (페이지 번호) — 커서를 안 쓴다 */
+  const byOffset = offset !== null
+  const total = byOffset ? await prisma.leaguePlayerHex.count({ where }) : undefined
+  const page = byOffset
+    ? {
+        items: (await prisma.leaguePlayerHex.findMany({
+          where,
+          skip: offset,
+          take: size,
+          orderBy: [...SCORE_ORDER],
+          select: SELECT,
+        })) as unknown as ScoreRankRow[],
+        /* 페이지 단추가 앞뒤를 정하니 커서는 안 쓴다 — 칸은 계약대로 채운다 */
+        cursor: { prev: null, next: null },
+      }
+    : await cursorPage<ScoreRankRow>({
+        cursor,
+        size,
+        orderBy: [...SCORE_ORDER],
+        reversedOrderBy: [...SCORE_ORDER_REVERSED],
+        idOf: (row) => row.leaguePlayerId,
+        fetch: (args) =>
+          prisma.leaguePlayerHex.findMany({
+            where,
+            take: args.take,
+            orderBy: args.orderBy as never,
+            ...(args.cursor ? { cursor: { leaguePlayerId: args.cursor.id }, skip: args.skip } : {}),
+            select: SELECT,
+          }) as unknown as Promise<ScoreRankRow[]>,
+      })
   /**
    * ★대표 숫자는 「그 선수 구간」 것★ (2026-09-11 사장님).
    *
@@ -452,8 +480,10 @@ export async function getPlayerRanksByScore(
   const tierStats = await rankTierStatsOf(leagueId, page.items.map((row) => row.leaguePlayer.player.id))
 
   const first = page.items[0]
-  const startRank =
-    first && first.score !== null
+  /* 자리로 떠 왔으면 등수는 이미 안다 — 세러 가지 않는다 */
+  const startRank = byOffset
+    ? (offset as number) + 1
+    : first && first.score !== null
       ? (await prisma.leaguePlayerHex.count({
           where: {
             ...where,
@@ -466,6 +496,7 @@ export async function getPlayerRanksByScore(
       : 1
   return {
     cursor: page.cursor,
+    ...(total === undefined ? {} : { total }),
     items: page.items.map((row, index) => {
       /* ⚠ 2026-09-11 되돌림 — 접어 둔 scoreRank 는 ★무기 안에서의 등수★ 라, 스나·라플을 섞은 이 목록에
          그대로 쓰면 «1위» 가 둘이 된다 (실측: starry 1위 · lximmore 1위). 섞은 목록의 등수는 ★줄 순서★ 다.

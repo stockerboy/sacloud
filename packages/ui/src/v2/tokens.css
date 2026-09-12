@@ -773,3 +773,73 @@
   .v3-mvp-wide { padding: 4px 16px !important; gap: 8px !important; }
   .v3-mvp-wide > span:last-child { font-size: 11.5px !important; letter-spacing: .18em !important; }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★페이지 번호 줄★ (2026-09-12 사장님 — 개인랭킹)
+
+   > «개인랭킹은 페이지로 만들고싶어 (…) 쟤 1페야 ㄴㄴ 쟤 2페이지로 내려감»
+
+   면을 칠하지 않는다. 지금 쪽만 1px 테두리와 밝은 글자로 말한다.
+   폰에서는 번호를 조금 줄이고 «명·쪽» 안내를 아래 줄로 내린다.
+   ────────────────────────────────────────────────────────────────────────── */
+.v2-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 22px;
+}
+.v2-pager__num,
+.v2-pager__step {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--v2-text-dim, #8f95af);
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+}
+.v2-pager__num:hover:not(.is-on),
+.v2-pager__step:hover:not(:disabled) {
+  color: var(--v2-text-strong, #f2f4f8);
+}
+.v2-pager__step:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+/** ★지금 쪽★ — 「1페」 가 눈에 박혀야 자랑이 된다 */
+.v2-pager__num.is-on {
+  color: var(--v2-text-strong, #f2f4f8);
+  font-weight: 700;
+  border-color: var(--v2-line, #454b73);
+  cursor: default;
+}
+.v2-pager__note {
+  margin-left: 10px;
+  font-size: 11.5px;
+  color: var(--v2-text-ghost, #6b7290);
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .v2-pager {
+    gap: 2px;
+  }
+  .v2-pager__num,
+  .v2-pager__step {
+    min-width: 28px;
+    height: 30px;
+    padding: 0 5px;
+    font-size: 12px;
+  }
+  .v2-pager__note {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 6px;
+    text-align: center;
+  }
+}

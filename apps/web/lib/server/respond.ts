@@ -16,11 +16,13 @@ export function ok<T>(data: T, metadata?: { cursor: CursorMetadata }) {
   return NextResponse.json({ message: SUCCESS_MESSAGE, data, ...(metadata ? { metadata } : {}) })
 }
 
-export function okPage<T>(page: { items: T[]; cursor: CursorMetadata }) {
+export function okPage<T>(page: { items: T[]; cursor: CursorMetadata; total?: number | null }) {
   return NextResponse.json({
     message: SUCCESS_MESSAGE,
     data: page.items,
-    metadata: { cursor: page.cursor },
+    /* ★`total` 은 센 곳만 싣는다★ (2026-09-12 사장님: 개인랭킹 페이지 번호).
+       안 세는 목록은 칸 자체가 안 나간다 — 0 을 지어내지 않는다 */
+    metadata: { cursor: page.cursor, ...(page.total === undefined ? {} : { total: page.total }) },
   })
 }
 
@@ -93,7 +95,7 @@ export function okPublic<T>(
 
 /** 공개 목록 응답 (`okPage` 과 같고 캐시 머리말만 붙는다) */
 export function okPagePublic<T>(
-  page: { items: T[]; cursor: CursorMetadata },
+  page: { items: T[]; cursor: CursorMetadata; total?: number | null },
   seconds = PUBLIC_CACHE_SECONDS,
 ) {
   return withPublicCache(okPage(page), seconds)

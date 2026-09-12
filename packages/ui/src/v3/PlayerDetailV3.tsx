@@ -556,6 +556,16 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
             <div style={spacerStyle} />
+            {/*
+              ★아직 못 잰 경기는 «경기분석중»★ (2026-09-12 사장님: «아직 경기분석 안된 경기는
+              경기분석중 이라고 표시해줘»). 배틀로그가 안 들어오면 육각형을 못 그린다 —
+              단추가 그냥 사라지면 «이 경기는 원래 없는 기능» 처럼 보인다. 그래서 자리를 남긴다.
+            */}
+            {!canAnalyze ? (
+              <span style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', padding: '3px 9px', borderRadius: V3.radiusChip, color: '#5d6b8a', border: '1px dashed rgba(93,107,138,.45)' }}>
+                경기분석중
+              </span>
+            ) : null}
             {canAnalyze ? (
               <span
                 onClick={(e) => { e.stopPropagation(); setAnalysis((now) => (now === t.side ? null : t.side)) }}
@@ -565,7 +575,12 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
               </span>
             ) : null}
             <span style={{ fontSize: 11, color: '#4e5b76', whiteSpace: 'nowrap' }}>
-              {roundsOf(t.side) !== null && roundsOf(t.side === 'red' ? 'blue' : 'red') !== null ? `${roundsOf(t.side)}:${roundsOf(t.side === 'red' ? 'blue' : 'red')}` : t.side.toUpperCase()}
+              {/*
+                ★«RED» · «BLUE» 를 뺐다★ (2026-09-12 사장님: «저기 레드 블루 글자 빼고»).
+                진영 이름은 보는 사람에게 아무 뜻이 없다 — 이긴 팀·진 팀은 이미 색과 글자로 말한다.
+                라운드 수를 아직 모르면 ★아무것도 안 적는다★ (지어내지 않는다).
+              */}
+              {roundsOf(t.side) !== null && roundsOf(t.side === 'red' ? 'blue' : 'red') !== null ? `${roundsOf(t.side)}:${roundsOf(t.side === 'red' ? 'blue' : 'red')}` : null}
             </span>
           </div>
           {analysis === t.side ? (
