@@ -107,9 +107,10 @@ describe('접기', () => {
     expect(byId.get('n1')?.scoreRank).toBeNull()
   })
 
-  it('점수 = 3000 + 700 × (여섯축 0.8 + 승률 0.2) × 티어계수 × 신뢰 + 클랜보정', () => {
+  /* 2026-09-12 사장님이 비중을 19:35:46 · 판수무게 300 으로 바꿨다. 혼자면 셋 다 백분위 0 이라 합은 그대로 −1 이다 */
+  it('점수 = 3000 + 700 × (여섯축 + 승률 + 킬뎃) × 티어계수 × 신뢰 + 클랜보정', () => {
     /* 혼자면 모든 백분위가 0 → perf −1 → 3000 − 700 × 티어계수 × 신뢰 + 보정 */
-    const [r] = foldPlayerHex([player({ leaguePlayerId: 'a', tierGames: { 1: 20, 2: 0, 3: 0 }, clanTier: 1, rounds: 120 })])
+    const [r] = foldPlayerHex([player({ leaguePlayerId: 'a', tierGames: { 1: 20, 2: 0, 3: 0 }, clanTier: 1, rounds: 300 })])
     expect(r?.hex).toBe(0)
     expect(r?.tierFactor).toBe(1)
     expect(r?.shrink).toBe(0.5)
