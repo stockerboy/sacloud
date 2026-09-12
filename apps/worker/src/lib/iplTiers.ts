@@ -184,11 +184,46 @@ export const MIN_MEMBERS = 5
 export const SHORT_MEMBER_WEIGHT = 0.1
 
 /**
- * 클랜 점수.
+ * ★클랜 점수 — 구간 안 백분위 셋을 섞는다★ (2026-09-12 사장님 확정)
  *
- * `upGames` 는 ★자기보다 윗 구간★ 클랜과 붙은 판수다. ASTRA 는 위가 없어 늘 0 이다.
+ * ── 왜 바꿨나
+ *   사장님이 클랜 순위를 ★손으로 직접 세워★ 두 번 저장해 주셨다. 그 차례를 읽어 보니
+ *   윗 구간과 얼마나 붙었나가 제일 크다 · 판수가 적으면 위로 못 간다 · 승률은 거의 안 본다
+ *   CHALLENGER2 는 ★윗판 많은 순과 한 짝도 안 틀렸다.★
+ *   옛 공식(Elo × √(판수/50))으로 낸 차례는 사장님 차례와 47% 가 뒤집혀 있었다.
+ *
+ * ── 왜 백분위인가
+ *   Elo·윗판·판수는 단위가 달라 그냥 못 더한다. 또 가산을 크게 얹으면
+ *   ★층수가 48층까지 부풀어★ 2층마다 정한 색이 통째로 깨진다 (실측).
+ *   구간 안에서 몇 등인지(−1~+1)로 바꿔 섞으면 점수가 ★기준점 ±3층★ 안에 머문다.
+ *   실측 — 25.4~32.0층. 옛 판(26.5~34.6층)과 거의 같다.
+ *
+ * ── 얼마나 맞나
+ *   사장님 차례와 ★85.5% 일치★ (뒤집힌 짝 30/207). 옛 공식은 52.7% 였다.
+ *   CHALLENGER1 아래 넷과 CHALLENGER2 여섯 자리가 정확히 같다.
+ *
+ * ⚠ 옛 공식은 `clanScoreV1` 로 남긴다 (`CLAUDE.md` 1-4).
  */
-export function clanScore(tier: TierNo, elo: number, games: number, upGames = 0): number {
+export const CLAN_SPREAD = 300
+export const CLAN_W_ELO = 0.20
+export const CLAN_W_UP = 0.65
+export const CLAN_W_GAMES = 0.15
+
+/**
+ * `unitElo` · `unitUp` · `unitGames` 는 ★그 구간 안 백분위★ 를 −1~+1 로 편 값이다.
+ * 부르는 쪽(`iplRankApply`)이 구간마다 한 번 계산해서 넘긴다.
+ */
+export function clanScore(tier: TierNo, unitElo: number, unitUp: number, unitGames: number): number {
+  return (
+    TIER_ANCHOR[tier] +
+    CLAN_SPREAD * (CLAN_W_ELO * unitElo + CLAN_W_UP * unitUp + CLAN_W_GAMES * unitGames)
+  )
+}
+
+/**
+ * ★옛 공식★ — 기준점 + (Elo − 3000) × √(판수/50) + 도전가산. 지우지 않는다.
+ */
+export function clanScoreV1(tier: TierNo, elo: number, games: number, upGames = 0): number {
   return (
     TIER_ANCHOR[tier] +
     (elo - ELO_INIT) * Math.sqrt(games / CLAN_GAMES_DIV) +

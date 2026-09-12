@@ -262,20 +262,51 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
   }
 
   /* ── 쓸 값 ────────────────────────────────────────────── */
+  /**
+   * ★구간 안 백분위★ — Elo · 윗판 · 판수 셋을 −1~+1 로 편다 (2026-09-12 사장님).
+   * 단위가 다른 셋을 그냥 더할 수 없고, 크게 더하면 층수가 부푼다. 까닭은 `clanScore` 주석에.
+   * 그 구간에 ★경기가 있는 클랜만★ 줄을 세운다 — 한 판도 안 뛴 클랜은 기준점 그대로다.
+   */
+  const played = [...TIER_OF].filter(([name]) => leagueClanIdOf.has(name))
+  const unitBy = new Map<string, { e: number; u: number; g: number }>()
+  for (const tier of [1, 2, 3] as const) {
+    const names = played.filter(([, t]) => t === tier).map(([n]) => n)
+    if (names.length === 0) continue
+    const unit = (pick: (n: string) => number): Map<string, number> => {
+      const sorted = names.map(pick).sort((a, b) => a - b)
+      const last = Math.max(1, sorted.length - 1)
+      return new Map(names.map((n) => {
+        const v = pick(n)
+        let lo = 0
+        let hi = sorted.length
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1
+          if ((sorted[mid] as number) < v) lo = mid + 1
+          else hi = mid
+        }
+        return [n, (lo / last) * 2 - 1]
+      }))
+    }
+    const ue = unit((n) => E(n))
+    const uu = unit((n) => upGames.get(n) ?? 0)
+    const ug = unit((n) => games.get(n) ?? 0)
+    for (const n of names) unitBy.set(n, { e: ue.get(n) ?? 0, u: uu.get(n) ?? 0, g: ug.get(n) ?? 0 })
+  }
+
   const clanPlan: Array<{ leagueClanId: string; name: string; tier: TierNo; rating: number }> = []
   const unknownClans: string[] = []
   for (const [name, tier] of TIER_OF) {
     const lcId = leagueClanIdOf.get(name)
-    const n = games.get(name) ?? 0
     if (!lcId) {
       /* 시즌0 경기가 없는 클랜 — 기준점만 준다. 그 리그클랜 id 는 따로 찾는다 */
       continue
     }
+    const u = unitBy.get(name) ?? { e: 0, u: 0, g: 0 }
     clanPlan.push({
       leagueClanId: lcId,
       name,
       tier,
-      rating: Math.round(clanScore(tier, E(name), n, upGames.get(name) ?? 0)),
+      rating: Math.round(clanScore(tier, u.e, u.u, u.g)),
     })
   }
   /* 경기가 없어 위에서 못 찾은 클랜도 티어·기준점은 넣어 준다 */
@@ -288,7 +319,8 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     for (const f of found) {
       const tier = TIER_OF.get(f.name)
       if (!tier) continue
-      clanPlan.push({ leagueClanId: f.id, name: f.name, tier, rating: Math.round(clanScore(tier, ELO_INIT, 0)) })
+        /* 한 판도 안 뛴 클랜 — 구간 기준점 그대로 (백분위가 없다) */
+      clanPlan.push({ leagueClanId: f.id, name: f.name, tier, rating: Math.round(clanScore(tier, 0, 0, 0)) })
     }
     for (const n of missing) if (!found.some((f) => f.name === n)) unknownClans.push(n)
   }
