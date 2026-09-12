@@ -15,6 +15,8 @@ import { EGG_SYSTEM_ENABLED } from '@sacloud/ui'
  */
 const MENU = [
   { href: '/admin', label: '대시보드' },
+  /* ★회원★ (2026-09-13) — 가입을 연 날 더했다. 그 전에는 회원을 볼 자리가 없었다 */
+  { href: '/admin/users', label: '회원' },
   { href: '/admin/clans', label: '클랜' },
   { href: '/admin/seasons', label: '시즌' },
   { href: '/admin/matches', label: '경기' },
