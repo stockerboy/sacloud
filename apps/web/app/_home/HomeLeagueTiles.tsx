@@ -50,16 +50,16 @@ const TILES = ORDER.flatMap((slug) => {
 export function HomeLeagueTiles() {
   return (
     <nav aria-label="리그 랭킹 바로가기" className="mt-6">
-      <ul className="mx-auto flex max-w-full items-start justify-center gap-[26px] max-md:gap-[14px]">
+      <ul className="mx-auto flex max-w-full items-start justify-center gap-[22px] max-md:gap-[12px]">
         {TILES.map((tile) => (
           <li key={tile.href}>
             <Link
               href={tile.href}
-              className="group flex w-[118px] flex-col items-center gap-[6px] max-md:w-[98px]"
+              className="group flex w-[88px] flex-col items-center gap-[5px] max-md:w-[72px]"
             >
               <span
                 aria-hidden
-                className="block h-[92px] w-[92px] bg-contain bg-center bg-no-repeat opacity-[.88] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[76px] max-md:w-[76px]"
+                className="block h-[62px] w-[62px] bg-contain bg-center bg-no-repeat opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[52px] max-md:w-[52px]"
                 style={{ backgroundImage: `url(${MARK[tile.slug]})` }}
               />
               {/* `<a>` 안쪽 span 에 색을 준다 — `a { color: inherit }` 함정 (D-231) */}

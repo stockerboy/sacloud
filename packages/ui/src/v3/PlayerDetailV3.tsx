@@ -20,7 +20,7 @@ import { Hexagon, type HexAxisView } from './Hexagon'
 import { AnalysisPanelV3 } from './AnalysisPanelV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
-import { V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
+import { WIN_LOSS, V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
@@ -523,10 +523,11 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
   return (
     <div style={{ background: '#0a0f1a', borderTop: `1px solid ${V3.divider}`, padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {teams.map((t) => (
-        <div key={t.side} style={{ border: `1px solid ${V3.divider}`, borderRadius: 8, background: 'linear-gradient(160deg,#111b2c,#0c1420)' }}>
+        /* ★이긴 팀 하늘색 · 진 팀 빨강★ (2026-09-12 사장님) */
+        <div key={t.side} style={{ border: `1px solid ${t.won ? WIN_LOSS.winLine : WIN_LOSS.loseLine}`, borderRadius: 8, background: t.won ? WIN_LOSS.winBg : WIN_LOSS.loseBg }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
             <MarkCircle clan={t.snap.clan} size={22} />
-            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: t.theme.ink }}>{t.snap.clan.name}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>{t.snap.clan.name}</span>
             {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
             <div style={spacerStyle} />
@@ -571,7 +572,9 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
 
 function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<PlayerDetailV3Props, 'data' | 'leagueSlug' | 'matches' | 'expanded' | 'onExpand'>) {
   const [open, setOpen] = useState<string | null>(null)
+  /* 클랜 색은 이제 승패 색이 대신한다 (2026-09-12 사장님) — 지우지 않고 void 로 남긴다 */
   const theme = clanThemeOf(data.clan?.slug)
+  void theme
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {matches.map((m) => {
@@ -600,11 +603,12 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
               </span>
               {/* 2줄 — 양 팀 / 오른쪽엔 MVP · 킬뎃 */}
               <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                {/* ★클랜명은 승패 색★ (2026-09-12 사장님) */}
                 <MarkCircle clan={m.league_clan.clan} size={20} />
-                <span style={{ fontSize: 12.5, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.league_clan.clan.name}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.league_clan.clan.name}</span>
                 <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
                 <MarkCircle clan={m.opponent.clan} size={20} />
-                <span style={{ fontSize: 12.5, color: '#9aa6bf', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
               </span>
               <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
                 {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}

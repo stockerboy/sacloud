@@ -147,3 +147,27 @@ export const HEX_LABELS: [number, number, 'start' | 'middle' | 'end'][] = [
 export const fmt = (n: number): string => n.toLocaleString('ko-KR')
 export const pct1 = (v: number | null | undefined): string =>
   v === null || v === undefined || !Number.isFinite(v) ? '-' : `${v.toFixed(1)}%`
+
+
+/**
+ * ★승패 색★ (2026-09-12 사장님)
+ *
+ * > «이긴팀 명단 배경을 하늘색(경기분석 그래프랑 똑같은 색으로) 진팀은 빨간색»
+ * > «경기카드에서 클랜명은 무조건 이긴팀이 파란색 진팀이 빨간색 — 모든 경기카드»
+ *
+ * 경기분석 육각형(`MatchHexagonV3`)이 쓰는 값과 ★같은 색★ 이다. 두 곳이 갈라지지 않게 여기 한 곳에 둔다.
+ * 클랜마다 다른 색(`clanThemeOf`)은 ★경기카드에서만★ 안 쓴다 — 다른 화면에서는 그대로다.
+ */
+export const WIN_LOSS = {
+  /** 이긴 팀 — 글자 */
+  winInk: '#9cc0ff',
+  /** 진 팀 — 글자 */
+  loseInk: '#ff9aa0',
+  /** 이긴 팀 — 명단 바탕 */
+  winBg: 'linear-gradient(160deg,rgba(91,141,255,.17),rgba(91,141,255,.05))',
+  /** 진 팀 — 명단 바탕 */
+  loseBg: 'linear-gradient(160deg,rgba(255,90,99,.16),rgba(255,90,99,.045))',
+  /** 명단 테두리 */
+  winLine: 'rgba(91,141,255,.34)',
+  loseLine: 'rgba(255,90,99,.30)',
+} as const

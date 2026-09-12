@@ -13,8 +13,8 @@
 import { useState, type CSSProperties } from 'react'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { ClanScoreboardV3, listRoundsOf, ourSideOf } from './ClanDetailV3'
-import { MarkCircle, MvpBadge, TierText, clanThemeOf, relativeKst } from './primitives'
-import { V3, cardStyle } from './tokens'
+import { MarkCircle, MvpBadge, TierText, relativeKst } from './primitives'
+import { WIN_LOSS, V3, cardStyle } from './tokens'
 
 export interface MatchListV3Props {
   leagueSlug: string
@@ -31,8 +31,8 @@ export interface MatchListV3Props {
 const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '124px minmax(0,1fr) minmax(0,190px) 62px', alignItems: 'center', gap: 10, padding: '12px 16px', cursor: 'pointer' }
 
 function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListItem['league_clan']['clan']; division: number; leagueCategory: string; won: boolean; align: 'left' | 'right' }) {
-  const theme = clanThemeOf(clan.slug)
-  const name = <span style={{ fontSize: 13, fontWeight: won ? 700 : 500, color: won ? theme.ink : '#8d97ad', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clan.name}</span>
+  /* ★클랜명은 승패 색★ (2026-09-12 사장님) — 옛 판은 클랜마다 다른 색(clanThemeOf)이었다 */
+  const name = <span style={{ fontSize: 13, fontWeight: won ? 700 : 600, color: won ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clan.name}</span>
   const tier = <TierText division={division} leagueCategory={leagueCategory} size={10} />
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
@@ -72,7 +72,8 @@ export function MatchListV3(props: MatchListV3Props) {
             const rounds = viewerRounds && detail
               ? (left.league_clan_id === detail.league_clan.league_clan_id ? viewerRounds : [viewerRounds[1], viewerRounds[0]])
               : listRounds ? (left.league_clan_id === m.league_clan.league_clan_id ? listRounds : [listRounds[1], listRounds[0]]) : null
-            const edge = clanThemeOf(left.clan.slug).ink
+            /* 카드 왼쪽 세로선 — 이긴 팀 색 (2026-09-12 사장님: 승패 색으로 통일) */
+            const edge = WIN_LOSS.winInk
             /* player_count 는 양 팀 합(10) — 한쪽은 반 (QA 회차 2: «10v10» 으로 찍혔다) */
             const perSide = Math.max(1, Math.round(m.player_count / 2))
             return (
