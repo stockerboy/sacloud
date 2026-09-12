@@ -810,7 +810,15 @@ const [tier] = useState<number>(() => {
     const best = [...games.entries()].sort((a, b) => b[1] - a[1])[0]
     return best ? best[0] : tiers.includes(data.division) ? data.division : tiers[0] ?? data.division
   })
-  const [selected, setSelectedState] = useState<string | null>(() => h2h.find((r) => r.division === tier)?.league_clan_id ?? h2h[0]?.league_clan_id ?? null)
+  /**
+   * ★들어올 때는 아무도 안 골라 둔다★ (2026-09-13 사장님: «카드 저렇게 접어진 상태를
+   * 기본값으로 해줘»).
+   *
+   * 옛 판은 첫 상대를 자동으로 골라 상대전적 카드를 펴 놓았다. 그러면 들어오자마자
+   * 화면이 길어지고, 「최근 경기」가 두 판 아래로 밀린다.
+   * 이제 구간 줄만 접힌 채로 보이고, 줄을 누르면 그때 펴진다.
+   */
+  const [selected, setSelectedState] = useState<string | null>(null)
   const setSelected = (id: string | null) => { setSelectedState(id); props.onSelectOpponent(id) }
   useEffect(() => { props.onSelectOpponent(selected) }, [])  // 첫 상대를 페이지에 알린다
   const tierClans = props.tierClansOf(tier)
@@ -867,11 +875,15 @@ const [tier] = useState<number>(() => {
         <>
           {/* 2026-09-11 사장님: 선수 페이지와 같은 방식 — 구간마다 한 칸, 마크를 누르면 그 클랜과의 승률로 */}
           <ClanVsTiersCard data={data} h2h={h2h} tierClansOf={props.tierClansOf} selected={selected} onSelect={setSelected} />
+          {/*
+            ⚠ ★빈 카드를 없앴다★ (2026-09-13 사장님이 X 로 지우심).
+              아무도 안 골랐을 때 「붙은 상대가 아직 없습니다」 라는 빈 칸이 떴는데,
+              ★상대가 없는 게 아니라 아직 안 고른 것★ 이라 말 자체가 틀렸다.
+              고르기 전에는 아무것도 안 그린다 — 위의 구간 줄이 이미 «누르세요» 다.
+          */}
           {opp ? (
             <HeadToHeadCard data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
-          ) : (
-            <Card style={{ marginTop: 14, padding: 18 }}><span style={{ fontSize: 12, color: V3.textGhost }}>시즌 Cloud 0 에 붙은 상대가 아직 없습니다</span></Card>
-          )}
+          ) : null}
         </>
       ) : null}
       <SectionBar title="최근 경기" />
