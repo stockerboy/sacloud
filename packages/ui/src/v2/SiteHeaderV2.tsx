@@ -84,15 +84,19 @@ const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> 
  *   그때 이모티콘으로 간 까닭은 폰에서 석 자가 세로로 쪼개져서였다 —
  *   지금은 로고에서 글자를 잘라 내 표장이 좁아졌고, 아래 CSS 로 줄바꿈을 막았다.
  */
-const GNB_LINKS: readonly { label: string; href: string; match: string }[] = [
-  { label: '이용방법', href: '/guide', match: '/guide' },
-  { label: '게시판', href: '/board/hot', match: '/board' },
+const GNB_LINKS: readonly { icon: string; label: string; aria: string; href: string; match: string }[] = [
+  /* ⚠ 2026-09-12 사장님: «이용방법 이름을 notice로 바꾸고 노티스 앞에 압정 임티를 박아
+     그리고 그 오른쪽에 게시판임티와 board 라는 영어를 적어». 옛 글자: 이용방법 · 게시판 */
+  { icon: '📌', label: 'notice', aria: '이용방법', href: '/guide', match: '/guide' },
+  { icon: '📋', label: 'board', aria: '게시판', href: '/board/hot', match: '/board' },
 ]
 
 /** `/league/nolink` → `nolink`. 주소가 리그가 아니면 빈 글자다 */
 function leagueSlugOfHref(href: string): string {
   return href.split('/')[2] ?? ''
 }
+
+void MenuIcon
 
 export function SiteHeaderV2({
   variant = 'default',
@@ -154,16 +158,13 @@ export function SiteHeaderV2({
       className={`${v2Class(leagueSlugOf(pathname), 'v2-topbar')} fixed top-0 z-50 w-full`}
     >
       <div className="v2-container v2-topbar__inner max-md:gap-0">
-        {/* --- 모바일: 햄버거 --- */}
-        <button
-          type="button"
-          aria-label="메뉴"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="flex items-center pr-3 text-[var(--v2-text-dim)] md:hidden"
-        >
-          <MenuIcon />
-        </button>
+        {/*
+          ⚠ ★2026-09-12 — 햄버거를 뺐다★ (사장님: «맨 왼쪽에 바3개 누르면 메뉴창 열리는거
+            없애고 그 자리에 로고 넣어»). 이제 그 자리에 브랜드 로고가 온다.
+
+          ★서랍 코드는 지우지 않았다★ (`CLAUDE.md` 1-4) — 아래 `{open ? … }` 가 그대로 있다.
+          되살리려면 이 자리에 단추만 다시 놓으면 된다. 지금은 열 길이 없어 늘 닫혀 있다.
+        */}
 
         {/* `v2-brand` — 로고의 `.my` 만 언제나 빨강으로 되돌린다 (리그색을 안 따라간다) */}
         <Link href="/" aria-label="홈" className="v2-brand flex items-center">
@@ -225,9 +226,13 @@ export function SiteHeaderV2({
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.aria}
               className={`v2-gnb__item v2-gnb__board ${pathname.startsWith(item.match) ? 'is-on' : ''}`}
             >
-              {item.label}
+              <span className="v2-gnb__cell">
+                <span aria-hidden className="v2-gnb__emoji">{item.icon}</span>
+                <span>{item.label}</span>
+              </span>
             </Link>
           ))}
           {/* `PRIMARY_NAV` 는 지금 비어 있다. 되살리면 리그 뒤에 그대로 붙는다 */}
@@ -308,6 +313,8 @@ export function SiteHeaderV2({
 
 /* 아이콘은 원본 자산을 가져오지 않고 새로 그렸다 (`CLAUDE.md` 2장 4번) */
 
+/* 햄버거 그림 — 2026-09-12 부터 안 쓴다. 서랍을 되살릴 때 필요해 남긴다 (CLAUDE.md 1-4) */
+void 0
 function MenuIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>

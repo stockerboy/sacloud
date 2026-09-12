@@ -317,15 +317,12 @@
   white-space: nowrap;
 }
 @media (max-width: 767px) {
-  /* 폰 — 표장 위 · 이름 아래 (2026-09-12 사장님. 로고에서 글자를 잘라 낸 뒤) */
-  .sac-v2 .v2-gnb__cell {
-    flex-direction: column;
-    gap: 2px;
-  }
+  /* ⚠ 2026-09-12 되돌림 — 사장님: «로고밑에 Ipl 이나 SPL 글씨 쓰지말고 로고기준 오른쪽에 써».
+     그 앞에는 폰에서 표장 위 · 이름 아래로 세웠었다 (같은 날) */
   .sac-v2 .v2-gnb__name {
-    font-size: 9.5px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     line-height: 1;
   }
   .sac-v2 .v2-gnb__mark {
@@ -1250,4 +1247,16 @@
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: -0.015em;
+}
+
+
+/** 상단바 이모티콘 (📌 notice · 📋 board) — 글자보다 조금 크게 (2026-09-12 사장님) */
+.sac-v2 .v2-gnb__emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+@media (max-width: 767px) {
+  .sac-v2 .v2-gnb__emoji {
+    font-size: 13px;
+  }
 }
