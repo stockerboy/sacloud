@@ -1096,3 +1096,142 @@
     padding-top: 14px;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★이용방법 · 경기 로그 분석 — 날아오는 일곱 단계★ (2026-09-12 사장님)
+
+   > «막 그 배틀로그 분석 설명처럼 어디서 날아오는 막 애니메이트 써서 개간지나게»
+
+   ── 규칙
+   ① ★기본은 보이는 것★ — `.is-armed` 가 붙은 뒤에만 숨긴다. 스크립트가 죽어도 글은 남는다
+   ② 홀수는 왼쪽, 짝수는 오른쪽에서 날아온다 (지그재그로 단계를 밟는 느낌)
+   ③ 번호 → 제목 → 설명 → 표딱지 차례로 뜬다. 표딱지는 하나씩 늦게
+   ④ 칸 왼쪽 세로 선이 위에서 아래로 자란다
+   ⑤ 움직임을 줄이라고 한 사람에게는 ★아무것도 안 움직인다★
+   ────────────────────────────────────────────────────────────────────────── */
+.guide-flow__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.guide-flow__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px 15px 18px;
+  border: 1px solid var(--v2-card-border);
+  border-radius: 10px;
+  background: var(--v2-card);
+  overflow: hidden;
+}
+@media (max-width: 767px) {
+  .guide-flow__item {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+/** 왼쪽 세로 선 — 위에서 아래로 자란다 */
+.guide-flow__rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #8ff0ff, #5b8dff 60%, transparent);
+  transform-origin: top center;
+}
+.guide-flow__no {
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1;
+  color: #8ff0ff;
+  text-shadow: 0 0 14px rgba(143, 240, 255, 0.35);
+}
+.guide-flow__title {
+  margin-bottom: 5px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--v2-text-strong);
+}
+.guide-flow__detail {
+  margin-bottom: 9px;
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: var(--v2-text-muted);
+}
+.guide-flow__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.guide-flow__fact {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--v2-text-faint);
+  border: 1px solid var(--v2-chip-border);
+  border-radius: 4px;
+  background: var(--v2-chip);
+}
+
+/* ── 여기서부터가 움직임. `.is-armed` 없이는 하나도 안 걸린다 ── */
+.guide-flow.is-armed .guide-flow__item {
+  opacity: 0;
+  transform: translateX(var(--from, -30px));
+  transition:
+    opacity 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) var(--step-delay, 0ms),
+    transform 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) var(--step-delay, 0ms);
+}
+.guide-flow.is-armed .guide-flow__item.from-left {
+  --from: -30px;
+}
+.guide-flow.is-armed .guide-flow__item.from-right {
+  --from: 30px;
+}
+.guide-flow.is-armed .guide-flow__item.is-in {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.guide-flow.is-armed .guide-flow__rail {
+  transform: scaleY(0);
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) 0.1s;
+}
+.guide-flow.is-armed .guide-flow__item.is-in .guide-flow__rail {
+  transform: scaleY(1);
+}
+
+.guide-flow.is-armed .guide-flow__no {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.4s ease 0.18s,
+    transform 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) 0.18s;
+}
+.guide-flow.is-armed .guide-flow__item.is-in .guide-flow__no {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.guide-flow.is-armed .guide-flow__fact {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.34s ease calc(0.26s + var(--fact-i, 0) * 0.05s),
+    transform 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) calc(0.26s + var(--fact-i, 0) * 0.05s);
+}
+.guide-flow.is-armed .guide-flow__item.is-in .guide-flow__fact {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-flow.is-armed .guide-flow__item,
+  .guide-flow.is-armed .guide-flow__rail,
+  .guide-flow.is-armed .guide-flow__no,
+  .guide-flow.is-armed .guide-flow__fact {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

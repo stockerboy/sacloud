@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import { GuidePipeline, type PipelineStep } from './GuidePipeline'
 
 /**
  * ★이용방법★ — 사이트 소개 · 운영 원칙 · 랭킹 규칙 · 로그 분석 방식 (2026-09-12 사장님)
@@ -149,13 +150,6 @@ const SECTIONS: readonly Section[] = [
    경기 로그 분석 — 사장님이 «자세하고 멋있게» 라고 하신 절.
    숫자는 전부 2026-09-12 실측이다.
    ──────────────────────────────────────────────────────────────────────────── */
-
-interface PipelineStep {
-  no: string
-  title: string
-  detail: string
-  facts: readonly string[]
-}
 
 const PIPELINE: readonly PipelineStep[] = [
   {
@@ -341,45 +335,28 @@ export default function GuidePage() {
             아래 숫자는 {MEASURED_ON} 기준 실측값입니다. 시즌이 돌면 달라집니다.
           </p>
 
-          <ol className="flex flex-col gap-[10px]">
-            {PIPELINE.map((step) => (
-              <li
-                key={step.no}
-                className="grid grid-cols-[40px_minmax(0,1fr)] gap-[12px] rounded-[8px] border border-[var(--v2-card-border)] bg-[var(--v2-card)] px-[14px] py-[13px] max-md:grid-cols-1 max-md:gap-[6px]"
-              >
-                <span className="num text-[17px] font-black leading-none text-[#8ff0ff]">{step.no}</span>
-                <div className="min-w-0">
-                  <p className="mb-[5px] text-[13.5px] font-bold text-[var(--v2-text-strong)]">
-                    {step.title}
-                  </p>
-                  <p className="mb-[8px] text-[12.5px] leading-[1.85] text-[var(--v2-text-muted)]">
-                    {step.detail}
-                  </p>
-                  <ul className="flex flex-wrap gap-[5px]">
-                    {step.facts.map((fact) => (
-                      <li
-                        key={fact}
-                        className="rounded-[4px] border border-[var(--v2-chip-border)] bg-[var(--v2-chip)] px-[8px] py-[4px] text-[11px] text-[var(--v2-text-faint)]"
-                      >
-                        {fact}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </li>
-            ))}
-          </ol>
+          {/*
+            ★날아오는 일곱 단계★ (2026-09-12 사장님: «막 그 배틀로그 분석 설명처럼
+            어디서 날아오는 막 애니메이트 써서 개간지나게»).
 
-          <div className="mt-[14px]">
-            {ANALYSIS_NOTES.map((line) => (
-              <p
-                key={line}
-                className="mb-[6px] border-l-2 border-[var(--v2-chip-border-on)] py-[2px] pl-[12px] text-[12.5px] leading-[1.8] text-[var(--v2-text-faint)]"
-              >
-                {line}
-              </p>
-            ))}
-          </div>
+            움직임은 `GuidePipeline` 이 맡는다 — 화면에 들어올 때 한 칸씩 옆에서 날아온다.
+            ★스크립트가 죽어도 글은 그대로 보인다★ (그 조각의 주석에 까닭이 있다).
+          */}
+          <GuidePipeline
+            steps={PIPELINE}
+            note={
+              <>
+                {ANALYSIS_NOTES.map((line) => (
+                  <p
+                    key={line}
+                    className="mb-[6px] border-l-2 border-[var(--v2-chip-border-on)] py-[2px] pl-[12px] text-[12.5px] leading-[1.8] text-[var(--v2-text-faint)]"
+                  >
+                    {line}
+                  </p>
+                ))}
+              </>
+            }
+          />
         </section>
 
         {/* ── 관리자 서약 ── */}
