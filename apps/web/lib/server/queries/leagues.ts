@@ -641,6 +641,18 @@ export async function getPlayerRanks(
    *   10 개인랭킹이 통째로 빈다 — 실제로 그렇게 깨뜨렸다 (2026-09-12).
    */
   offset: number | null = null,
+  /**
+   * ★무기 거르개★ — 0 라플 · 1 스나 (2026-09-13 사장님: «검색 필터가 안먹혀 스나 라플 통합»).
+   *
+   * ⚠ ★이 길에는 거르개가 아예 없었다.★ 그래서 ★열산 개인랭킹의 무기 칩이 아무 일도
+   *   안 했다★ — 통합 829명 · 스나 826명 · 라플 826명으로 세 탭이 사실상 같은 목록이었다.
+   *   (실측 2026-09-13. IPL·SPL 은 실력 점수 길로 가서 멀쩡했고, 점수를 안 매기는
+   *    10🏔 만 이 길로 떨어져서 티가 안 났다.)
+   *
+   * 모집단 판정은 `LeaguePlayerWeaponStat.isMain` 이다 — ★점수 길과 같은 뜻★ 을 쓴다
+   * (그 무기로 뛴 판이 절반 이상). 어쩌다 든 스나 몇 판으로 스나 랭킹에 들어오지 않는다.
+   */
+  onlyWeapon: 0 | 1 | null = null,
 ): Promise<(CursorPage<PlayerRankRow> & { total?: number }) | null> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
@@ -651,7 +663,13 @@ export async function getPlayerRanks(
   /* 리그 안의 선수는 **전원** 랭킹에 들어간다 (D-107).
      무소속리그에도 개인 랭킹이 있다. 리그가 다르면 애초에 다른 목록이라
      여기서 걸러 낼 것이 없다. 무소속리그에서 감추는 것은 누적 킬뎃 컬럼뿐이다. */
-  const RANK_WHERE = playerRankWhere(leagueId)
+  const RANK_WHERE = {
+    ...playerRankWhere(leagueId),
+    /* 무기를 고르면 ★그 무기가 주무기인 선수만★ (2026-09-13). 안 고르면 칸을 아예 안 넣는다 */
+    ...(onlyWeapon === null
+      ? {}
+      : { weaponStats: { some: { weapon: onlyWeapon, isMain: true } } }),
+  }
   const RANK_SELECT = {
     id: true,
     rating: true,

@@ -79,9 +79,10 @@ async function scoreOrLadder(
    */
   if (scored && offset !== null) {
     if (onlyTier !== null || (scored.total ?? 0) > 0) return scored
-    return getPlayerRanks(leagueId, cursor, size, offset)
+    /* ★무기 칩을 여기까지 내려 준다★ (2026-09-13) — 안 내려 주면 10🏔 의 무기 칩이 죽는다 */
+    return getPlayerRanks(leagueId, cursor, size, offset, onlyWeapon)
   }
   /* 구간을 골라서 비었으면 ★그게 답★ 이다 — 옛 래더 순으로 떨어지면 «전체» 가 튀어나온다 */
   if (scored && (scored.items.length > 0 || cursor !== null || onlyTier !== null)) return scored
-  return getPlayerRanks(leagueId, cursor, size, offset)
+  return getPlayerRanks(leagueId, cursor, size, offset, onlyWeapon)
 }

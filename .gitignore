@@ -140,3 +140,6 @@ player-twin-plan-*.json
 scripts/pipeline/watch24.jsonl
 scripts/pipeline/lap.log
 scripts/pipeline/lap.state.json
+
+# 운영 데이터 백업 (게시판 삭제 등) — 저장소에 넣지 않는다
+backup/
