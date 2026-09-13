@@ -7,7 +7,7 @@ import { showsTier, leagueScreen } from '@sacloud/contract'
 /* 2026-09-11 QA 회차 2: 랭킹표 마크가 빈 클랜(publicity·NeedBackup·Lyrical: …)이 있었다 — 상세처럼 원 크롭 마크(/assets/clans) 먼저, 없으면 옛 ClanMark(구름) */
 import { MarkCircle, SniperMark } from '../v3/primitives'
 /* 티어 구분선 라벨 — 공식리그면 `1부리그`, 무소속리그면 `1티어` (D-165) */
-import { divisionLabel } from './divisionLabel'
+import { divisionLabel, tierGroupOf } from './divisionLabel'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 랭킹도 알로 덮는다 */
 import { Egg } from '../egg/Egg'
 import { useEggKnowledge } from '../egg/EggContext'
@@ -371,7 +371,14 @@ export function ClanRankTable({
       >
         {rows?.map((row) => {
           const egg: EggState = brokenClanSlugs.includes(row.clan.slug) ? 'broken' : 'sealed'
-          const divider = divideByDivision && row.division !== lastDivision
+          /*
+           * ★경계선은 「구간 묶음」이 바뀔 때만★ (2026-09-13 사장님:
+           *   «Astra 는 따로 둬 챌린저1,2구분만 없애는거야»).
+           *   옛 판은 `row.division !== lastDivision` — CHALLENGER 1 과 2 사이에도 선이 그였다.
+           */
+          const divider =
+            divideByDivision &&
+            (lastDivision === null || tierGroupOf(row.division) !== tierGroupOf(lastDivision))
           lastDivision = row.division
           return (
           <Fragment key={row.clan.id}>

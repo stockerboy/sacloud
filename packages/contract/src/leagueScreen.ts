@@ -254,3 +254,16 @@ export function leagueLandingPath(slug: string): string {
     ? `/league/${slug}/rank/clan`
     : `/league/${slug}/rank/player`
 }
+
+/**
+ * ★보여 줄 때의 구간 묶음★ (2026-09-13 사장님: «Astra 는 따로 둬 챌린저1,2구분만 없애는거야»).
+ *
+ * ASTRA(1)는 따로, CHALLENGER(2·3)는 ★하나로★ 본다.
+ * 경계선을 어디에 그을지 · 어디까지 한 덩어리로 줄 세울지를 이 함수 ★한 곳★ 이 정한다 —
+ * 화면과 서버가 각자 적으면 반드시 어긋난다 (`TIER_FIRST_SORT` 가 실제로 그랬다).
+ *
+ * ⚠ `division` 값 자체는 안 건드린다. 승강·구간 승률은 여전히 2와 3을 구분한다.
+ */
+export function tierGroupOf(division: number): number {
+  return division <= 1 ? 1 : 2
+}

@@ -31,13 +31,11 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
  * 사장님 지시 #24 ⑤ — 티어를 넘나들지 않는 순위 · 티어 사이 경계선. 그래서 `true`.
  */
 /**
- * ⚠ ★2026-09-13 — 티어 경계선을 없앴다★ (사장님: «challenger1,2 경계 없애줘»).
- *   옛 값 true — ASTRA / CHALLENGER 1 / CHALLENGER 2 사이에 가로선을 긋고
- *   티어를 넘나들지 않는 순위였다 (지시 #24 ⑤ · 2026-09-01).
- *   false 면 ★래더 순 한 줄★ 이고, 경계선 대신 ★행마다 티어 라벨★ 이 붙는다.
- *   되돌리려면 양쪽(서버·화면)을 함께 true 로.
+ * ⚠ ★2026-09-13 되돌림★ — 사장님: «Astra 는 따로 둬 챌린저1,2구분만 없애는거야».
+ *   잠깐 false 였다 (그때는 ASTRA 경계까지 사라졌다). 챌린저 둘을 합치는 일은
+ *   경계선이 아니라 ★구간 묶음★(`tierGroupOf`)이 맡는다.
  */
-const TIER_FIRST_SORT: boolean = false
+const TIER_FIRST_SORT: boolean = true
 
 /**
  * 클랜랭킹 — **SPL(왼쪽) · IPL(오른쪽) 한 화면** (2026-09-01 사용자 지시).

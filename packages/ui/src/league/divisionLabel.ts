@@ -38,10 +38,18 @@ export function divisionUnit(leagueCategory?: string): string {
  * ⚠ ★번호를 새로 매기지 않는다.★ `LeagueClan.division` 이 그대로 1·2·3 이다.
  * ⚠ 모르는 번호는 ★지어내지 않고★ 옛 표기(`4티어`)로 떨어진다.
  */
+/**
+ * ⚠ ★2026-09-13 — 챌린저를 하나로 합쳤다★ (사장님: «Astra 는 따로 둬 챌린저1,2구분만
+ *   없애는거야» · «걍 challenger 라고 붙여»).
+ *
+ *   옛 값 — 2: 'CHALLENGER1' · 3: 'CHALLENGER2' (2026-09-10 확정).
+ *   ★번호(division)는 그대로 2·3 이다.★ 승강·구간 승률·클랜 배정은 한 글자도 안 바뀐다 —
+ *   ★보이는 이름만★ 합친다. 되돌리려면 이 표에 번호를 다시 붙이면 된다.
+ */
 const IPL_TIER_NAME: Readonly<Record<number, string>> = {
   1: 'ASTRA',
-  2: 'CHALLENGER1',
-  3: 'CHALLENGER2',
+  2: 'CHALLENGER',
+  3: 'CHALLENGER',
 }
 
 /**
@@ -64,8 +72,14 @@ export function divisionLabel(division: number, leagueCategory?: string): string
 export function divisionShort(division: number, leagueCategory?: string): string {
   if (IPL_TIER_NAMES_ON && leagueCategory === 'independent') {
     if (division === 1) return 'AST'
-    if (division === 2) return 'CH1'
-    if (division === 3) return 'CH2'
+    /* ★2026-09-13 — 둘 다 CH★ (사장님). 옛 값: 2 → 'CH1' · 3 → 'CH2' */
+    if (division === 2 || division === 3) return 'CH'
   }
   return `${division}T`
 }
+
+/**
+ * ★구간 묶음은 계약이 정한다★ — 여기서 다시 적지 않는다 (2026-09-13).
+ * 화면과 서버가 같은 함수를 봐야 경계선과 정렬이 안 어긋난다.
+ */
+export { tierGroupOf } from '@sacloud/contract'

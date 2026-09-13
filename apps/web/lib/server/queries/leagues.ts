@@ -5,6 +5,7 @@ import {
   killPerMatch,
   kdRate,
   showsTier,
+  tierGroupOf,
   winRate,
   type ClanSummary,
   type PlayerSummary,
@@ -365,13 +366,32 @@ export const ALL_DIVISIONS = 0
  * 타입을 `boolean` 으로 넓혀 둔 이유는 리터럴로 좁히면 `&&` 뒤가 «닿을 수 없는 코드» 가 되기 때문이다.
  */
 /**
- * ⚠ ★2026-09-13 — 티어 경계선을 없앴다★ (사장님: «challenger1,2 경계 없애줘»).
- *   옛 값 true — ASTRA / CHALLENGER 1 / CHALLENGER 2 사이에 가로선을 긋고
- *   티어를 넘나들지 않는 순위였다 (지시 #24 ⑤ · 2026-09-01).
- *   false 면 ★래더 순 한 줄★ 이고, 경계선 대신 ★행마다 티어 라벨★ 이 붙는다.
- *   되돌리려면 양쪽(서버·화면)을 함께 true 로.
+ * ⚠ ★2026-09-13 — 두 번 바뀐 자리다★
+ *   ① «challenger1,2 경계 없애줘» → false (경계선이 통째로 사라짐)
+ *   ② «Astra 는 따로 둬 챌린저1,2구분만 없애는거야» → 다시 true
+ *
+ *   ①은 ASTRA 경계까지 같이 지웠다. 사장님이 원한 것은 ★챌린저 둘만★ 합치는 것이라
+ *   되돌리고, 대신 ★구간 묶음★ 으로 줄 세운다 (아래 `CHALLENGER_MERGED`).
  */
-export const TIER_FIRST_SORT: boolean = false
+export const TIER_FIRST_SORT: boolean = true
+
+/**
+ * ★CHALLENGER 1·2 를 한 덩어리로 줄 세운다★ (2026-09-13 사장님).
+ *
+ * ⚠ 이름만 «CHALLENGER» 로 합치고 순서를 그대로 두면 ★래더가 위아래로 섞여 보인다★ —
+ *   CH1 2,777점이 CH2 3,033점 위에 온다. 같은 이름인데 순서가 어긋나면 표가 고장 나 보인다.
+ *   그래서 ★정렬도 같이★ 합친다: ASTRA 먼저, 그 다음 CHALLENGER 전부를 래더 순으로.
+ *
+ * ── 왜 한 번에 다 떠 오나
+ *   «구간 묶음» 은 계산해서 만드는 값이라 DB 정렬 칸으로 못 쓴다
+ *   (`division` 은 1·2·3 그대로 두어야 한다 — 승강과 구간 승률이 그 값을 쓴다).
+ *   IPL 클랜은 ★43곳★ 이라 한 번에 떠서 여기서 줄 세우는 편이 정확하고 싸다.
+ *   `MERGE_CAP` 을 넘기면 ★옛 방식(티어 우선)으로 그냥 돌아간다★ — 큰 리그가 생겨도 안 터진다.
+ *
+ * `false` 로 두면 CHALLENGER 1·2 가 다시 따로 줄 선다.
+ */
+export const CHALLENGER_MERGED: boolean = true
+const MERGE_CAP = 300
 
 /**
  * 페이지 첫 행의 순위를 구한다.
@@ -446,6 +466,36 @@ async function rankOfFirstPlayer(
  *
  *   **없던 데이터를 만들지 않는다.** 걸러 내는 조건(배치고사 · `ACTIVE_CLAN`)은 그대로다.
  */
+/**
+ * ★ASTRA 먼저, 그 다음 CHALLENGER 전부를 래더 순으로★ (2026-09-13 사장님).
+ *
+ * 한 번에 떠서 여기서 줄 세운다. `MERGE_CAP` 을 넘기면 `null` 을 돌려주고
+ * ★옛 길(쪽 나눔)로 그냥 내려간다★ — 큰 리그가 생겨도 안 터진다.
+ */
+async function mergedChallengerPage(where: Record<string, unknown>) {
+  const all = await prisma.leagueClan.findMany({
+    where: where as never,
+    take: MERGE_CAP + 1,
+    orderBy: [...RANK_ORDER],
+    select: {
+      id: true,
+      rating: true,
+      division: true,
+      win: true,
+      lose: true,
+      clan: { select: { ...CLAN_SUMMARY_SELECT, category: true } },
+    },
+  })
+  if (all.length > MERGE_CAP) return null
+  all.sort(
+    (a, b) =>
+      tierGroupOf(a.division) - tierGroupOf(b.division) ||
+      b.rating - a.rating ||
+      a.id.localeCompare(b.id),
+  )
+  return { items: all, cursor: { prev: null, next: null } }
+}
+
 export async function getClanRanks(
   leagueId: string,
   division: number,
@@ -479,7 +529,17 @@ export async function getClanRanks(
     ...activeClanIn(league.slug),
   }
 
-  const page = await cursorPage<{
+  /*
+   * ★CHALLENGER 를 한 덩어리로★ (2026-09-13) — 한 번에 떠서 여기서 줄 세운다.
+   * «구간 묶음» 은 계산해서 만드는 값이라 DB 정렬 칸으로 못 쓴다. IPL 은 43곳이라
+   * 한 번에 떠서 줄 세우는 편이 정확하고 싸다. 쪽 단추가 없어지는 대신 ★순서가 맞는다.★
+   */
+  const merged =
+    byTier && CHALLENGER_MERGED
+      ? await mergedChallengerPage(where)
+      : null
+
+  const page = merged ?? await cursorPage<{
     id: string
     rating: number
     division: number
@@ -521,7 +581,9 @@ export async function getClanRanks(
      앞에 오는 행은 **정의상 0개**다. 세러 가는 왕복 한 번이 통째로 사라진다.
      커서가 있을 때만 예전처럼 센다 */
   const startRank =
-    cursor === null ? 1 : await rankOfFirstClan(leagueId, division, page.items[0], byTier)
+    merged !== null || cursor === null
+      ? 1
+      : await rankOfFirstClan(leagueId, division, page.items[0], byTier)
 
   /**
    * ★1·2·3위만 여섯 축을 싣는다★ (2026-09-12 사장님: «클랜도 탑3는 플레이스타일 6각형»).
