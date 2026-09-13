@@ -3,8 +3,10 @@ import {
   accountsOf,
   planLineup,
   teamClanMapOf,
+  LINEUP_TEAM_SIZE,
   type LineupEvent,
 } from '../lib/battlelogLineup.js'
+import { teamSizeOf } from '../jobs/battlelogLineup.js'
 
 /**
  * 킬 한 건을 배틀로그 한 줄로 만든다.
@@ -346,5 +348,34 @@ describe('죽음 세기 — 자살은 데스가 아니고 낙사는 데스다 (2
     const plan = planLineup({ ...base, events, deathSource: 'kills' })
     if (!plan.ok) throw new Error('계획이 나와야 한다')
     expect(plan.players.find((p) => p.usn === 'A1')?.death).toBe(1)
+  })
+})
+
+/**
+ * ★4대4 경기를 통째로 버리던 것★ (2026-09-13 사장님: «기록 찍히게 못하는거야?»)
+ *
+ * 판정이 `LINEUP_TEAM_SIZE`(5)를 ★고정으로★ 요구해서, 8명으로 시작한 경기는
+ * 양 팀 4명이 다 확인돼도 `roster_incomplete` 로 떨어졌다.
+ * 실측(최근 12일 33건): ★4v4 가 28건★ · 라운드 5~18 로 멀쩡히 끝까지 싸운 판이다.
+ *
+ * 규칙을 느슨하게 한 것이 아니다 — 기준 숫자를 경기에서 읽을 뿐이다.
+ */
+describe('teamSizeOf — 그 경기가 말하는 인원으로 판정한다', () => {
+  it('8명이면 4대4 · 10명이면 5대5', () => {
+    expect(teamSizeOf(8)).toBe(4)
+    expect(teamSizeOf(10)).toBe(5)
+    expect(teamSizeOf(6)).toBe(3)
+    expect(teamSizeOf(12)).toBe(6)
+  })
+
+  it('★이상한 수는 안 믿는다★ — 옛 기본값(5)으로 떨어진다', () => {
+    /* 홀수 · 범위 밖 · 없음 — 3명짜리 명단을 넣어 버리면 안 된다 */
+    expect(teamSizeOf(9)).toBe(LINEUP_TEAM_SIZE)
+    expect(teamSizeOf(4)).toBe(LINEUP_TEAM_SIZE)
+    expect(teamSizeOf(14)).toBe(LINEUP_TEAM_SIZE)
+    expect(teamSizeOf(0)).toBe(LINEUP_TEAM_SIZE)
+    expect(teamSizeOf(null)).toBe(LINEUP_TEAM_SIZE)
+    expect(teamSizeOf(undefined)).toBe(LINEUP_TEAM_SIZE)
+    expect(teamSizeOf(8.5)).toBe(LINEUP_TEAM_SIZE)
   })
 })

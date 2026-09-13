@@ -191,8 +191,31 @@ interface MatchInfo {
   leagueId: string
   leagueSlug: string
   startAt: Date
+  /**
+   * ★그 경기의 총 인원★ (`Match.playerCount`) — 8이면 4대4, 10이면 5대5다.
+   *
+   * ⚠ ★2026-09-13 — 이 칸이 없어서 4대4 경기를 통째로 버리고 있었다.★
+   *   판정이 `LINEUP_TEAM_SIZE`(5) 를 고정으로 요구해서, 8명으로 시작한 경기는
+   *   양 팀 4명이 다 확인돼도 `roster_incomplete` 로 떨어졌다.
+   *   실측(최근 12일 33건): ★4v4 가 28건★ · 라운드 5~18 로 멀쩡히 끝까지 싸운 판이다.
+   */
+  playerCount: number
   red: MatchSide
   blue: MatchSide
+}
+
+/**
+ * 총 인원 → 한 팀 인원. 8 → 4 · 10 → 5.
+ *
+ * 아는 값만 믿는다 — ★짝수이고 6~12명★ 인 경우에만 나눈다. 그 밖은 옛 기본값(5)이다.
+ * (클랜전에서 3대3 이하나 7대7 이상은 관측된 적이 없다. 지어내지 않는다)
+ */
+export function teamSizeOf(playerCount: number | null | undefined): number {
+  if (playerCount === null || playerCount === undefined) return LINEUP_TEAM_SIZE
+  if (!Number.isInteger(playerCount)) return LINEUP_TEAM_SIZE
+  if (playerCount % 2 !== 0) return LINEUP_TEAM_SIZE
+  if (playerCount < 6 || playerCount > 12) return LINEUP_TEAM_SIZE
+  return playerCount / 2
 }
 
 function chunked<T>(items: readonly T[], size: number): T[][] {
@@ -406,6 +429,8 @@ export async function runBattlelogLineup(
         sourceMatchId: true,
         leagueId: true,
         startAt: true,
+        /* ★4대4냐 5대5냐★ — 판정이 요구할 인원을 여기서 가져온다 (2026-09-13) */
+        playerCount: true,
         /* ★이미 적힌 상태★ — 같으면 다시 안 쓴다 (아래 「바뀔 때만」) */
         lineupStatus: true,
         lineupSkipReason: true,
@@ -457,6 +482,7 @@ export async function runBattlelogLineup(
         leagueId: match.leagueId,
         leagueSlug: slugOfLeague.get(match.leagueId) ?? '(모름)',
         startAt: match.startAt,
+        playerCount: match.playerCount,
         red: side(match.redClan, match.redDivisionAtMatch),
         blue: side(match.blueClan, match.blueDivisionAtMatch),
       })
@@ -556,7 +582,17 @@ export async function runBattlelogLineup(
         resolveClanNo: (clanNo) => clanOfNumber.get(clanNo) ?? null,
         redClanId: info.red.clanId,
         blueClanId: info.blue.clanId,
-        teamSize: LINEUP_TEAM_SIZE,
+        /**
+         * ★그 경기가 말하는 인원으로 판정한다★ (2026-09-13 사장님: «기록 찍히게 못하는거야?»).
+         *
+         * 규칙을 ★느슨하게 하는 게 아니다★ — 4대4면 4명씩, 5대5면 5명씩 ★전부★ 확인돼야
+         * 넣는다. 「반쪽 명단은 안 넣는다」는 원래 원칙은 한 글자도 안 바뀐다.
+         * 바뀐 것은 ★기준 숫자를 5로 박아 두지 않고 경기에서 읽는다★ 는 것뿐이다.
+         *
+         * `playerCount` 가 짝수가 아니거나 터무니없으면 옛 값(5)으로 떨어진다 —
+         * 이상한 수를 믿고 3명짜리 명단을 넣지 않는다.
+         */
+        teamSize: teamSizeOf(info.playerCount),
       })
       if (!planned.ok) {
         result.skipped[planned.reason] += 1
