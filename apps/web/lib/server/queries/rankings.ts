@@ -29,7 +29,7 @@
  *   `ratingUpdate ?? sourceRatingDelta` 로 폴백한다. 이 폴백이 없으면
  *   폼 TOP3 가 통째로 빈 화면이 된다.
  */
-import { prisma } from '@sacloud/db'
+import { prisma, type Prisma } from '@sacloud/db'
 import {
   FORM_TOP_MIN_GAMES,
   FORM_TOP_SIZE,
@@ -371,6 +371,27 @@ export const RANK_MIN_GAMES = 15
 /** `false` 로 두면 옛 판 — 통합 승률 + 무기별 «전 구간» 킬뎃 (`CLAUDE.md` 1-4) */
 const RANK_STATS_BY_HOME_TIER = true
 
+/**
+ * ★모집단 수를 기억해 둔다★ (2026-09-13 · 사장님: «버튼 누를때마다 너무 오래걸려»).
+ *
+ * ⚠ `total` 은 ★쪽마다 똑같은 값★ 이다 (1쪽이든 3쪽이든 «모두 750명»). 그런데
+ *   쪽을 넘길 때마다 `COUNT(*)` 를 새로 셌다. 실측 3쪽 콜드 ★1.77초★.
+ *   거르개(리그·무기·구간)가 같으면 같은 수라, 그 셋을 열쇠로 60초 들고 있는다.
+ *
+ * 값이 바뀌는 때는 `player-hex-build` 잡이 돌 때뿐이고 그건 30분에 한 번이다.
+ * 서버가 새로 뜨면 비어 있는 채로 시작한다 — 틀린 값을 오래 들고 있을 길이 없다.
+ */
+const SCORE_TOTAL_TTL_MS = 60_000
+const scoreTotalCache = new Map<string, { at: number; total: number }>()
+
+async function scoreTotalOf(key: string, where: Prisma.LeaguePlayerHexWhereInput): Promise<number> {
+  const hit = scoreTotalCache.get(key)
+  if (hit && Date.now() - hit.at < SCORE_TOTAL_TTL_MS) return hit.total
+  const total = await prisma.leaguePlayerHex.count({ where })
+  scoreTotalCache.set(key, { at: Date.now(), total })
+  return total
+}
+
 export async function getPlayerRanksByScore(
   leagueId: string,
   cursor: string | null,
@@ -450,16 +471,26 @@ export async function getPlayerRanksByScore(
 
   /* ★자리로 건너뛰는 길★ (페이지 번호) — 커서를 안 쓴다 */
   const byOffset = offset !== null
-  const total = byOffset ? await prisma.leaguePlayerHex.count({ where }) : undefined
-  const page = byOffset
-    ? {
-        items: (await prisma.leaguePlayerHex.findMany({
+  /*
+   * ★세는 일과 떠 오는 일은 서로 안 기다린다★ (2026-09-13).
+   * 옛 판은 `count` 를 끝까지 기다린 뒤에야 `findMany` 를 시작했다 — 왕복이 그대로 더해졌다.
+   */
+  const totalKey = `${leagueId}|${onlyWeapon ?? 'all'}|${onlyTier ?? 'all'}`
+  const [total, offsetItems] = byOffset
+    ? await Promise.all([
+        scoreTotalOf(totalKey, where),
+        prisma.leaguePlayerHex.findMany({
           where,
           skip: offset,
           take: size,
           orderBy: [...SCORE_ORDER],
           select: SELECT,
-        })) as unknown as ScoreRankRow[],
+        }) as unknown as Promise<ScoreRankRow[]>,
+      ])
+    : [undefined, undefined]
+  const page = byOffset
+    ? {
+        items: offsetItems as ScoreRankRow[],
         /* 페이지 단추가 앞뒤를 정하니 커서는 안 쓴다 — 칸은 계약대로 채운다 */
         cursor: { prev: null, next: null },
       }

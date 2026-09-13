@@ -1,4 +1,5 @@
 'use client'
+import { showsTier } from '@sacloud/contract'
 
 /**
  * ★클랜랭킹 1·2·3위 카드★ (2026-09-12 사장님)
@@ -207,13 +208,26 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
                   sub={detail ? `${detail.win + detail.lose}전` : null}
                 />
 
-                <ClanStat
-                  cap="구간"
-                  value={division === null ? null : divisionLabel(division, detail?.league.category)}
-                  unit=""
-                  tone=""
-                  sub={styleNote}
-                />
+                {/*
+                  ★티어를 안 쓰는 리그에는 이 칸을 아예 안 만든다★
+                  (2026-09-13 사장님: «티어가 없어 SPL은»).
+
+                  ⚠ 이 자리가 `TierText` 를 안 거치고 `divisionLabel` 을 직접 부른다.
+                    그래서 SPL 1위 카드에 «구간 2티어» 가 그대로 찍혀 있었다.
+                    칸을 없애도 `styleNote`(클랜평)는 잃지 않는다 — 아래로 옮긴다.
+                */}
+                {showsTier(leagueSlug) ? (
+                  <ClanStat
+                    cap="구간"
+                    value={division === null ? null : divisionLabel(division, detail?.league.category)}
+                    unit=""
+                    tone=""
+                    sub={styleNote}
+                  />
+                ) : styleNote ? (
+                  /* 티어가 없는 리그에서는 클랜평만 남긴다 — 「구간」 이라는 말은 안 쓴다 */
+                  <ClanStat cap="플레이" value={styleNote} unit="" tone="" sub={null} />
+                ) : null}
               </div>
             </div>
           </Panel>

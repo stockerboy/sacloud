@@ -1126,31 +1126,44 @@
   margin-top: 18px;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   ★폰 포디움 — 그림을 한 줄 통째로★ (2026-09-13 사장님: «6각 그래프가 너무 작아 개인랭킹»)
+
+   ⚠ 이 자리는 하루에 세 번 바뀌었다. 남겨 둔다 —
+     ① 2026-09-12  그림 아래 숫자 가로줄 (카드가 세로로 길었다)
+     ② 2026-09-12  사장님 «그래프를 오른쪽끝에 밀어넣고 숫자를 왼쪽에»
+                    → 두 칸으로 눕히고 그림 0.78 배
+     ③ 2026-09-13  축 이름이 눈금 숫자와 겹쳐 0.70 으로 더 줄임
+     ④ ★지금★      사장님 «6각 그래프가 너무 작아»
+
+   ②의 까닭은 «공간이 너무 많이 비어서» 였다. 그림을 ★한 줄 통째로 크게★ 쓰면
+   그 빈 자리가 애초에 안 생긴다 — 390px 카드 안폭이 약 330px 이라 0.95 배(285px)면
+   좌우가 꽉 찬다. 숫자 줄은 그림 아래 ★가로 한 줄★ 로 (원래 그렇게 생겼다).
+   축 이름이 눈금과 겹치던 문제는 ★그림이 커져서★ 같이 풀린다.
+   ────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 899px) {
   .v3-podium-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 10px;
-  }
-  /* 자리는 grid-column 이 정한다 — 숫자가 왼쪽, 그림이 오른쪽 끝 */
-  .v3-podium-body > .v3-podium-stats {
-    grid-column: 1;
-    grid-row: 1;
-    margin-top: 12px;
+    display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 10px;
-    border-top: 0;
-    padding-top: 0;
   }
+  /* 그림이 먼저, 숫자 줄이 그 밑에 가로로 */
   .v3-podium-body > .v3-podium-hex {
-    /* ⚠ 2026-09-13 — 0.78 에서 줄였다. 축 이름(«세이브 75위»)이 눈금 숫자(100/80/60)와
-       겹쳐 찍혔다 (사장님: «디자인도 별로고»). 그림이 작아진 만큼 숫자 칸이 넓어진다 */
-    --podium-hex: 0.7;
-    grid-column: 2;
-    grid-row: 1;
-    margin-top: 6px;
+    order: 1;
+    /* ★0.95 — 카드 안폭(약 330px)을 거의 다 쓴다.★ 옛 값 0.78 → 0.70 → 지금 */
+    --podium-hex: 0.95;
+    margin-top: 4px;
+  }
+  .v3-podium-body > .v3-podium-stats {
+    order: 2;
+    margin-top: 4px;
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 18px;
+    border-top: 1px solid var(--v2-card-divider);
+    padding-top: 12px;
   }
 }
 
