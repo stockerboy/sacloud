@@ -142,7 +142,17 @@ const WITH_TIERS: LeagueScreenSpec = { ...WITH_LADDER, showsTier: true }
  *   이 표에 닉네임만 남는다. 그것은 알 시스템이 의도한 모습이지만, 래더·순위까지
  *   빠지면 **덮이지 않는 칸이 하나도 없다.** 사용자에게 확인이 필요한 지점이다.
  */
-const NO_LADDER: LeagueScreenSpec = {
+/**
+ * ⚠ ★2026-09-13 — 열산도 다른 리그와 똑같이 그린다★ (사장님: «열산도 그냥 랭킹 제대로
+ *   만들어주고 (…) 세 리그 전부 공평하게 대한다»).
+ *
+ *   아래 `NO_LADDER` 는 ★지우지 않는다★ (`CLAUDE.md` 1-4). 되돌리려면 표에서
+ *   `sanply: NO_LADDER` 로 되돌리면 된다. 지금은 안 쓰인다.
+ *
+ *   `official: false` 만 남긴다 — 그건 화면을 깎는 값이 아니라 ★사실 표기★ 다
+ *   (「비공식」 딱지 한 줄). 순위·점수·육각형은 이제 다 준다.
+ */
+export const NO_LADDER: LeagueScreenSpec = {
   clanRank: false,
   clanRankNotice: null,
   scoreLeague: false,
@@ -166,15 +176,23 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
    * ★SPL 은 클랜랭킹을 안 한다★ (2026-09-12 사장님).
    * 탭은 남기고 표 자리에 까닭을 적는다 — 없애 버리면 왜 없는지를 말할 데가 없다.
    */
-  supply: {
-    ...WITH_LADDER,
-    boardCategory: null,
-    clanRankNotice: 'SPL은 클랜랭킹 서비스가 제공되지 않습니다 (사유: 소속감 없음, 퀵 없음, 열빡 위주 게임)',
-  },
+  /**
+   * ⚠ ★2026-09-13 — SPL 클랜랭킹을 되살렸다★ (사장님: «SPL 클랭랭킹도 걍 다시 복구해»).
+   *   옛 값 (2026-09-12 하루) —
+   *     clanRankNotice: 'SPL은 클랜랭킹 서비스가 제공되지 않습니다 (사유: 소속감 없음, 퀵 없음, 열빡 위주 게임)'
+   *   그 문구를 지운다. 티어는 원래대로 안 쓴다 (`WITH_LADDER` 의 `showsTier: false`) —
+   *   사장님: «SPL은 1티어 2티어 구분 없어».
+   */
+  supply: { ...WITH_LADDER, boardCategory: null },
   /* IPL 만 티어를 쓴다 (지시 #23). 같은 날 오전(#9)에는 반대였다 */
   /* 옛 값은 'ipl' 이었다 — 위 주석 참조 */
   nolink: { ...WITH_TIERS, boardCategory: null },
-  sanply: NO_LADDER,
+  /**
+   * ★열산(10🏔)도 같은 화면★ (2026-09-13 사장님: «세 리그 전부 공평하게 대한다»).
+   * 티어는 안 쓴다 — 원래 단일리그다. 「비공식」 딱지만 그대로 단다.
+   * 옛 값은 `NO_LADDER` 였다 (순위·점수 칸이 통째로 빠져 있었다).
+   */
+  sanply: { ...WITH_LADDER, official: false, boardCategory: null },
   /* 2026-09-02 지시 #22 — 목록에서 뺀다. 그전에는 표에 없었다(= 기본값 · 목록에 보였다) */
   daerule: CLOSED,
 }

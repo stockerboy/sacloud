@@ -94,11 +94,35 @@ describe('leagueScreen — 티어 표시 (#23)', () => {
 })
 
 describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
-  it('10mountain(sanply) 은 래더도 순위도 클랜랭킹도 없다 (D-245)', () => {
+  /**
+   * ⚠ ★2026-09-13 뒤집혔다★ (사장님: «열산도 그냥 랭킹 제대로 만들어주고 (…)
+   *   세 리그 전부 공평하게 대한다»).
+   *
+   *   옛 시험 (D-245 · 2026-09-13 이전) —
+   *     clanRank false · playerColumns { rank:false, winRate:true, kd:true, rating:false }
+   *   그때는 «비공식이라 래더가 없고, 래더가 없으니 순위도 없다» 였다.
+   *   이제 셋 다 같은 화면을 쓴다. 「비공식」 딱지(`official: false`)만 남는다.
+   */
+  it('10mountain(sanply) 도 다른 리그와 같은 칸을 쓴다 (2026-09-13)', () => {
     const spec = leagueScreen('sanply')
-    expect(spec.clanRank).toBe(false)
-    expect(spec.playerColumns).toEqual({ rank: false, winRate: true, kd: true, rating: false })
-    expect(leagueLandingPath('sanply')).toBe('/league/sanply/rank/player')
+    expect(spec.clanRank).toBe(true)
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: true })
+    /* 티어는 여전히 안 쓴다 — 단일리그다 */
+    expect(spec.showsTier).toBe(false)
+    /* 「비공식」 은 사실 표기라 그대로 둔다 */
+    expect(spec.official).toBe(false)
+  })
+
+  /**
+   * ★SPL 클랜랭킹을 되살렸다★ (2026-09-13 사장님: «SPL 클랭랭킹도 걍 다시 복구해»).
+   * 하루(2026-09-12) 동안 «SPL은 클랜랭킹 서비스가 제공되지 않습니다» 문구가 떠 있었다.
+   */
+  it('SPL 클랜랭킹 — 문구 없이 표가 그대로 나온다', () => {
+    const spec = leagueScreen('supply')
+    expect(spec.clanRank).toBe(true)
+    expect(spec.clanRankNotice).toBeNull()
+    /* «SPL은 1티어 2티어 구분 없어» (사장님) — division_count 가 2 여도 안 그린다 */
+    expect(spec.showsTier).toBe(false)
   })
 
   it('SPL 은 다섯 칸 그대로다', () => {

@@ -12,6 +12,7 @@
  */
 import type { CSSProperties, ReactNode } from 'react'
 import { ClanMark, type ClanMarkInput } from '../common/ClanMark'
+import { showsTier } from '@sacloud/contract'
 import { divisionLabel } from '../league/divisionLabel'
 import { CLAN_THEMES, FALLBACK_THEME, clanThemeOf, type ClanTheme } from './clanThemes'
 import { ASTRA_STYLE, CHAL_NUM_COLOR, CHAL_STYLE, V3, cardHeadStyle, cardStyle, cardTitleStyle, ribbonStyle, spacerStyle } from './tokens'
@@ -76,15 +77,48 @@ export function MarkCircle({ clan, size = 20, ring, style, className, title }: M
 export function TierText({
   division,
   leagueCategory,
+  leagueSlug,
   size = 11,
   style,
 }: {
   division: number | null | undefined
   leagueCategory?: string
+  /**
+   * ★티어를 쓰는 리그인가★ 를 여기서 본다 (2026-09-13 사장님: «SPL은 1티어 2티어 구분 없어»).
+   *
+   * ⚠ 계약에 `showsTier(slug)` 가 이미 있었는데 ★이 조각만 안 보고 있었다.★
+   *   그래서 경기 카드·상대전적·스코어보드에 SPL 인데 «2티어» 가 찍혔다.
+   *   화면마다 따로 감추면 또 빠뜨린다 — ★글자를 만드는 여기 한 곳★ 에서 막는다.
+   *
+   * 안 넘기면 지금까지처럼 그대로 그린다 (아직 안 고친 호출부가 안 깨진다).
+   */
+  leagueSlug?: string
   size?: number
   style?: CSSProperties
 }) {
   if (division === null || division === undefined) return null
+  /**
+   * ★티어를 안 쓰는 리그에는 안 그린다★ (2026-09-13 사장님: «SPL은 1티어 2티어 구분 없어»).
+   *
+   * ── 두 갈래로 판정한다
+   *   ① `leagueSlug` 를 받았으면 계약(`showsTier`)이 정한다 — ★이게 진짜 기준★ 이다
+   *   ② 안 받았으면 `leagueCategory` 로 본다 — ★`independent`(IPL) 만★ 그린다
+   *
+   * ── 왜 ② 가 필요한가
+   *   이 조각을 부르는 자리가 ★열아홉 군데★ 인데 거의 다 slug 가 아니라 category 만 들고 있다.
+   *   열아홉 군데에 slug 를 실어 나르다 보면 ★반드시 몇 개를 빠뜨린다.★
+   *   운영 실측(2026-09-13): `independent` 인 리그는 IPL 하나뿐이고, IPL 이 티어를 쓰는
+   *   유일한 리그다 — 두 갈래가 ★같은 답★ 을 낸다. SPL(official·division_count 2)과
+   *   10🏔(official·1)은 이제 티어 글자가 아예 안 나간다.
+   *
+   * ⚠ 나중에 `independent` 인데 티어를 안 쓰는 리그가 생기면 그 자리에 `leagueSlug` 를
+   *   넘기면 된다 — ①이 ②를 이긴다.
+   */
+  if (leagueSlug !== undefined) {
+    if (!showsTier(leagueSlug)) return null
+  } else if (leagueCategory !== undefined && leagueCategory !== 'independent') {
+    return null
+  }
   const label = divisionLabel(division, leagueCategory)
   if (label === 'ASTRA') {
     return <span style={{ ...ASTRA_STYLE, fontSize: size, whiteSpace: 'nowrap', ...style }}>ASTRA</span>

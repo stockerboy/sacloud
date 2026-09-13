@@ -11,8 +11,9 @@
  *   2. 접기 — 리그마다 선수 한 명에 한 줄로 `LeaguePlayerHex` 를 쓴다. 백분위·등수·점수는
  *      `lib/playerHexScore.ts` 가 낸다. 화면은 이 줄만 읽는다.
  *
- * 대상 리그는 IPL(`nolink`) 과 SPL(`supply`) 이다. 열산(`sanply`)은 육각형을 주지 않는다 —
- * 사장님 2026-09-10: "열산은 클랜도 개인도 육각형 제공x".
+ * 대상 리그는 `HEX_LEAGUE_SLUGS` 가 정한다 — 지금은 ★세 리그 전부★ 다 (2026-09-13 사장님).
+ * ⚠ 옛 서술: «IPL 과 SPL 이다. 열산은 육각형을 주지 않는다 — 2026-09-10 사장님».
+ *   그 판단이 2026-09-13 에 뒤집혔다 («세 리그 전부 공평하게 대한다»).
  *
  * `--rebuild` 가 없으면 이미 같은 `formulaVersion` 으로 만든 경기는 건너뛴다 (재개 가능).
  * 접기(2단계)는 매번 통째로 다시 한다 — 등수는 모집단 전체를 봐야 한다.
@@ -48,8 +49,15 @@ import {
 
 export { PLAYER_HEX_FORMULA_VERSION }
 
-/** 육각형을 주는 리그 — 열산은 없다 */
-export const HEX_LEAGUE_SLUGS = ['nolink', 'supply'] as const
+/**
+ * 육각형·개인 점수를 만드는 리그.
+ *
+ * ⚠ ★2026-09-13 — 열산을 넣었다★ (사장님: «열산도 그냥 랭킹 제대로 만들어주고
+ *   플레이어 분석이랑 경기분석 그런 시스템 다 넣어줘 (…) 세 리그 전부 공평하게 대한다»).
+ *   옛 값은 `['nolink', 'supply']` 였고, 그때 근거는 2026-09-10 «열산은 클랜도 개인도
+ *   육각형 제공x» 였다. 사장님이 뒤집으셨다.
+ */
+export const HEX_LEAGUE_SLUGS = ['nolink', 'supply', 'sanply'] as const
 
 const ZONE_FILE = join(REPO_ROOT, 'data/barracks/style-zones.json')
 /** 배틀로그를 한 번에 읽는 경기 수 — 운영 풀러의 문장 시간제한 안에 든다 (실측 150) */
