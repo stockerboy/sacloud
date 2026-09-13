@@ -826,7 +826,15 @@
   .v3-vs-row > :nth-child(4) { grid-column: 2 / 3 !important; grid-row: 3; justify-content: flex-start !important; }
   .v3-vs-row > :nth-child(5) { grid-column: 1 / 2 !important; grid-row: 3; justify-content: flex-start !important; }
   .v3-vs-row > :nth-child(6) { grid-column: 3 / 4 !important; grid-row: 3; justify-content: flex-end !important; }
-  .v3-plate { height: 132px; }
+  /*
+   * ⚠ ★2026-09-13 — 폰에서 더 낮췄다 (132 → 96px).★
+   *   클랜 머리 카드 육각형을 0.95 배로 키우면서 그림이 위로 올라왔는데,
+   *   인식표(구름 사진)가 ★왼쪽 축 이름을 덮었다★ — «교환율 35위» · «선짤 20위» 가
+   *   구름에 묻혀 안 읽혔다. 인식표는 ★이름 띠 뒤★ 에만 깔리면 된다.
+   */
+  .v3-plate { height: 96px; }
+  /* 축 이름은 어떤 배경 위에서도 읽혀야 한다 — 옅은 그림자 한 겹 */
+  .v3-clanhex svg text { paint-order: stroke fill; }
 }
 
 /* ── 육각형 — 다 그려진 뒤 한 번 번쩍 · 10위 안 등수는 빛난다 (2026-09-11 사장님) ── */

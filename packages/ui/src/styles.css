@@ -2432,3 +2432,30 @@ a:hover {
   0% { transform: translateX(-120%); }
   55%, 100% { transform: translateX(320%); }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★옆으로 밀리는 표에 「더 있다」 표시★ (2026-09-13 QA)
+
+   `.mobile-scroll-x` 는 표를 ★제 안에서만★ 밀리게 한다 (본문에 가로 스크롤을
+   안 만들려고). 그런데 폰에서 보면 오른쪽 끝 글자가 «조회수» → «조» 처럼
+   ★그냥 잘린 것처럼★ 보인다 — 밀 수 있다는 것을 알 길이 없다.
+
+   오른쪽 가장자리에 옅은 그늘을 깔아 «여기 더 있다» 를 말한다.
+   ⚠ 그늘은 `pointer-events: none` 이라 ★누르는 것을 가리지 않는다.★
+   되돌리려면 이 블록만 지우면 된다.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .mobile-scroll-x {
+    position: relative;
+  }
+  .mobile-scroll-x::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 26px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(7, 13, 28, 0.85));
+  }
+}

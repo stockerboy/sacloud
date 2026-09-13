@@ -56,6 +56,12 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
   )
 }
 
+/**
+ * 이 시간을 넘겨도 명단이 비어 있으면 ★기다리는 척을 그만둔다★ (2026-09-13 QA).
+ * 수집 잡은 5분마다 돈다 — 6시간이면 72번 돌고도 남는다. 0 으로 두면 규칙이 꺼진다.
+ */
+const STALE_HOURS = 6
+
 export function MatchListV3(props: MatchListV3Props) {
   const { matches, matchesLoading, hasMore, loadingMore, onLoadMore, expanded, onExpand, leagueCategory } = props
   const [open, setOpen] = useState<string | null>(null)
@@ -71,6 +77,24 @@ export function MatchListV3(props: MatchListV3Props) {
             const isOpen = open === m.id
             const detail = expanded[m.id]
             const pending = m.red.length === 0 && m.blue.length === 0
+            /**
+             * ★기다려도 안 오는 판★ (2026-09-13 QA).
+             *
+             * 명단 수집 잡은 ★5분마다★ 돈다. 그런데 화면은 명단이 비어 있으면
+             * 언제까지나 «킬데스 수집중» 이라고 적었다 — 사장님이 ★14시간 전 경기★ 를
+             * 보고 «이거 왜 아직도 수집중인지» 물으셨다.
+             *
+             * 실측으로 안 사실: 안 들어오는 판에는 까닭이 있고(클랜번호 미매핑 ·
+             * 배틀로그 없음), 그런 판은 ★몇 시간을 더 기다려도 안 온다.★
+             * `STALE_HOURS` 를 넘겼는데도 비어 있으면 ★기다리는 척을 그만둔다.★
+             *
+             * ⚠ 6시간은 ★잡이 확실히 여러 번 돌고도 남는 시간★ 이다 (5분마다 = 72번).
+             *   서버가 «못 넣는다» 고 말해 주는 칸이 계약에 아직 없어서 ★시각으로 가른다★ —
+             *   칸이 생기면 이 줄을 그 값으로 바꾼다. 0 으로 두면 규칙이 꺼진다.
+             */
+            const staleMs = STALE_HOURS * 3_600_000
+            const stale =
+              pending && staleMs > 0 && Date.now() - new Date(m.start_at).getTime() > staleMs
             /* 목록의 `league_clan` 이 이긴 쪽에 서 있다 (`win` 은 그 편 기준) — 왼쪽에 이긴 팀 */
             const left = m.win ? m.league_clan : m.opponent
             const right = m.win ? m.opponent : m.league_clan
@@ -101,7 +125,7 @@ export function MatchListV3(props: MatchListV3Props) {
                     <Side clan={right.clan} division={right.division} leagueCategory={leagueCategory} won={false} align="right" />
                   </span>
                   <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
-                    {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : mvp ? (
+                    {pending ? <span style={{ fontSize: 11.5, color: stale ? V3.textGhost : '#8fa9d8', whiteSpace: 'nowrap' }}>{stale ? '기록 없음' : '킬데스 수집중'}</span> : mvp ? (
                       /* ★마크 · 닉네임 · MVP배지★ 순 — 배지가 제일 오른쪽 끝이다 (2026-09-11 사장님: 모든 경기카드 통일) */
                       <>
                         <MarkCircle clan={mvp.match_time_clan ? { slug: mvp.match_time_clan.slug, mark: mvp.match_time_clan.mark } : null} size={16} />
@@ -111,7 +135,7 @@ export function MatchListV3(props: MatchListV3Props) {
                     ) : <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>{perSide === 5 ? '' : `${perSide} vs ${perSide}`}</span>}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
-                    {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
+                    {pending ? (stale ? '—' : '수집중') : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
                   </span>
                 </div>
                 {isOpen ? (
