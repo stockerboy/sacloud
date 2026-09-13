@@ -1,6 +1,6 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import { useRef, type CSSProperties } from 'react'
 import Link from 'next/link'
 import type { PlayerRankHexAxis, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
 import {
@@ -18,6 +18,7 @@ import {
   rankColor,
   rankColorPlayerHexAxis,
   rateClass,
+  useCountUp,
 } from '@sacloud/ui'
 
 /**
@@ -50,6 +51,23 @@ import {
  */
 
 /** 시안의 카드 빛 — 세 장이 어긋난 타이밍으로 지나간다 */
+/**
+ * ★1·2·3 메달 색★ (2026-09-13 사장님: «모바일에서 그탑3 육각카드 카드 색이 너무 별로야
+ *   디자인도 별로고 카드자체가»).
+ *
+ * ⚠ 옛 판은 ★셋이 똑같은 잿빛 남색★ 이었다. 등수 색은 이름 글자에만 있어서
+ *   카드 세 장이 구분이 안 됐고, 카드 자체도 바탕과 붙어 보였다.
+ *   ★포디움인데 금·은·동이 없었다.★
+ *
+ * 이제 카드마다 제 금속색을 갖는다 — 위에서 비스듬히 드는 빛 + 위 테두리 띠.
+ * `glow` 는 옅게(0.13~0.18) 둔다. 카드 위에 숫자가 앉으므로 가운데는 어두워야 한다.
+ */
+const MEDAL: Readonly<Record<number, { rim: string; glow: string; bar: string; label: string }>> = {
+  1: { rim: '#ffd166', glow: 'rgba(255,201,102,.18)', bar: 'linear-gradient(90deg,#ffe9a8,#ffc94d 45%,#c8912a)', label: '금' },
+  2: { rim: '#cfe0f5', glow: 'rgba(198,216,240,.14)', bar: 'linear-gradient(90deg,#eef4ff,#c3d4ec 45%,#8496b4)', label: '은' },
+  3: { rim: '#e0a074', glow: 'rgba(224,160,116,.14)', bar: 'linear-gradient(90deg,#f4c9a8,#dc9a66 45%,#a56536)', label: '동' },
+}
+
 const SHEEN: Readonly<Record<number, { color: string; delay: string }>> = {
   1: { color: 'rgba(255,77,77,.16)', delay: '0s' },
   2: { color: 'rgba(255,216,61,.13)', delay: '2.4s' },
@@ -122,15 +140,23 @@ function PodiumCard({
   const ink = rankColor(row.rank) ?? 'var(--v2-text-strong)'
   const sheen = SHEEN[row.rank]
   const played = row.win + row.lose > 0
+  /**
+   * ★숫자도 눈에 들어왔을 때 한 번만 오른다★ (2026-09-13 사장님).
+   * 육각형과 ★같은 훅★ 이라 그림과 숫자가 같이 시작하고 같이 멎는다.
+   */
+  const cardRef = useRef<HTMLDivElement>(null)
+  const roll = useCountUp(900, row.league_player_id, cardRef)
 
   return (
     <Panel
       edge={ink}
       sweep={sheen !== undefined}
       sweepColor={sheen?.color}
-      style={podiumCardStyle(ink)}
+      style={podiumCardStyle(row.rank)}
     >
-      <div className="relative flex items-start gap-4">
+      {/* 금·은·동 띠 (2026-09-13) */}
+      <span aria-hidden style={medalBarStyle(row.rank)} />
+      <div ref={cardRef} className="relative flex items-start gap-4">
         <Link
           href={leaguePlayerPath(leagueSlug, row.player.id)}
           tabIndex={-1}
@@ -223,7 +249,7 @@ function PodiumCard({
           <StatBlock
             cap="승률"
             /* 한 판도 안 뛰었으면 승률을 지어내지 않는다 (O-033 과 같은 규칙) */
-            value={played ? `${formatRate(row.win_rate)}%` : null}
+            value={played ? `${formatRate((row.win_rate ?? 0) * roll)}%` : null}
             tone={played ? rateClass(row.win_rate) : ''}
             sub={played ? `${formatCount(row.win)}승 ${formatCount(row.lose)}패` : null}
           />
@@ -233,7 +259,7 @@ function PodiumCard({
         {columns.kd && row.kd_rate !== null ? (
           <StatBlock
             cap="킬뎃"
-            value={`${formatRate(row.kd_rate)}%`}
+            value={`${formatRate(row.kd_rate * roll)}%`}
             tone={rateClass(row.kd_rate)}
             sub={`${formatAverage(row.kill_per_match)}킬`}
           />
@@ -262,14 +288,40 @@ function PodiumCard({
  *   ② 안쪽 윗선 1px — 유리에 두께를 준다
  *   ③ 짙은 그림자 — 바탕에서 떠오른다
  */
-function podiumCardStyle(ink: string): CSSProperties {
+function podiumCardStyle(rank: number): CSSProperties {
+  const m = MEDAL[rank] ?? MEDAL[3]!
   return {
-    padding: '20px 20px 18px',
-    borderRadius: 16,
+    padding: '18px 18px 16px',
+    borderRadius: 18,
     overflow: 'hidden',
-    border: `1px solid ${ink}66`,
-    background: 'linear-gradient(160deg, rgba(46,66,110,.55) 0%, rgba(26,40,70,.55) 100%)',
-    boxShadow: `inset 0 1px 0 rgba(255,255,255,.09), 0 12px 30px rgba(0,0,0,.42), 0 0 26px ${ink}26`,
+    /* 테두리는 금속색을 옅게 — 세 장이 나란히 있을 때 색으로 먼저 갈린다 */
+    border: `1px solid ${m.rim}59`,
+    background: [
+      /* 왼쪽 위에서 비스듬히 드는 금속빛 */
+      `radial-gradient(130% 100% at 0% 0%, ${m.glow}, transparent 62%)`,
+      /* 오른쪽 아래로 가라앉는 밤색 — 글자가 앉는 자리는 어둡게 */
+      'linear-gradient(158deg, rgba(38,54,92,.72) 0%, rgba(18,28,50,.86) 62%, rgba(13,21,38,.9) 100%)',
+    ].join(','),
+    boxShadow: [
+      'inset 0 1px 0 rgba(255,255,255,.10)',
+      `inset 0 0 0 1px ${m.rim}1f`,
+      '0 14px 34px rgba(0,0,0,.5)',
+      `0 0 30px ${m.rim}1c`,
+    ].join(','),
+  }
+}
+
+/** 카드 맨 위 금속 띠 — 3px. 등수를 색으로 먼저 말한다 */
+function medalBarStyle(rank: number): CSSProperties {
+  const m = MEDAL[rank] ?? MEDAL[3]!
+  return {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 3,
+    background: m.bar,
+    pointerEvents: 'none',
   }
 }
 

@@ -1145,7 +1145,9 @@
     padding-top: 0;
   }
   .v3-podium-body > .v3-podium-hex {
-    --podium-hex: 0.78;
+    /* ⚠ 2026-09-13 — 0.78 에서 줄였다. 축 이름(«세이브 75위»)이 눈금 숫자(100/80/60)와
+       겹쳐 찍혔다 (사장님: «디자인도 별로고»). 그림이 작아진 만큼 숫자 칸이 넓어진다 */
+    --podium-hex: 0.7;
     grid-column: 2;
     grid-row: 1;
     margin-top: 6px;

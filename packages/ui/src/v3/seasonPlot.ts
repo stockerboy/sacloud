@@ -148,44 +148,74 @@ export function shapePath<T extends { t: number }>(
  * 값도 모양도 그대로고 보이는 순서만 바뀐다. 끝나면 가리개를 아예 뗀다 (드래그·탐색과 안 부딪힌다).
  * `prefers-reduced-motion` 을 켠 사람에게는 처음부터 다 보여 준다.
  */
+/**
+ * ★눈에 들어왔을 때 한 번★ — 화면에 처음 보인 순간에만 재생하고, 그 뒤로는 다시 안 한다.
+ *
+ * ⚠ ★2026-09-13 — 되풀이를 없앴다★ (사장님: «육각형 한번만 애니메이트(사용자 눈에
+ *   보였을때) 하고 킬뎃 승률도 한번만 애니메이트 해»).
+ *
+ *   옛 판은 ★화면 밖으로 나갔다 들어올 때마다★ 다시 그렸다. 스크롤을 위아래로
+ *   움직이면 같은 그림이 계속 다시 그려져서, 값을 읽으려는 사람에게 방해가 됐다.
+ *   게다가 붙자마자(화면 밖이어도) 한 번 재생해서, ★정작 눈에 들어왔을 때는
+ *   이미 끝나 있었다.★
+ *
+ * ── 지금 규칙
+ *   ① `ref` 를 주면 ★그 자리가 처음 보일 때★ 재생한다. 관찰은 그때 바로 끊는다
+ *   ② `ref` 가 없으면 붙자마자 한 번
+ *   ③ `restartKey` 가 ★바뀌면★ 다시 한 번 — 그건 스크롤이 아니라 ★값이 바뀐 것★ 이다
+ *      (상대전적에서 상대를 바꾸면 그래프가 다시 그려져야 한다)
+ *   ④ 관찰자가 끝내 안 울리는 자리(숨겨졌다 나타나는 칸 등)를 위해 `FALLBACK_MS` 뒤에는
+ *      그냥 재생한다 — ★빈 그림이 남는 것★ 이 제일 나쁘다
+ */
+const DRAW_FALLBACK_MS = 1500
+
 export function useDrawIn(
   ms = 3600,
-  /** 이 값이 바뀌면 처음부터 다시 그린다 (DAY/누적 같은 것) */
+  /** 이 값이 ★바뀌면★ 처음부터 다시 그린다 (상대를 바꿨을 때 같은 것) */
   restartKey: unknown = null,
-  /** 이 자리가 화면 밖으로 나갔다 다시 들어오면 또 그린다 */
+  /** 이 자리가 ★처음 보일 때★ 그린다. 다시 들어와도 또 그리지는 않는다 */
   ref?: { current: Element | null },
 ): number {
   const [t, setT] = useState(0)
-  const [run, setRun] = useState(0)
-  /* 누를 때마다 — 첫 붙음도 여기서 한 번 센다 */
-  useEffect(() => { setRun((r) => r + 1) }, [restartKey])
-  /* 화면에 다시 들어올 때마다 */
+  /* 이 값이 1 이 되면 «이제 그려도 된다» — 값이 바뀌면 0 으로 돌아가 다시 한 번 */
+  const [armed, setArmed] = useState(false)
+
   useEffect(() => {
+    setArmed(false)
+    setT(0)
     const el = ref?.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
-    let seen = true
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setArmed(true)
+      return
+    }
+    let done = false
+    const fire = () => {
+      if (done) return
+      done = true
+      setArmed(true)
+    }
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            if (!seen) setRun((r) => r + 1)
-            seen = true
-          } else seen = false
-        }
+        for (const e of entries) if (e.isIntersecting) fire()
+        if (done) io.disconnect()
       },
-      { threshold: 0.3 },
+      { threshold: 0.25 },
     )
     io.observe(el)
-    return () => io.disconnect()
+    const timer = window.setTimeout(fire, DRAW_FALLBACK_MS)
+    return () => {
+      io.disconnect()
+      window.clearTimeout(timer)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [restartKey])
+
   useEffect(() => {
-    if (run === 0) return
+    if (!armed) return
     if (typeof window === 'undefined') { setT(1); return }
     const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (still) { setT(1); return }
     let raf = 0
-    setT(0)
     const from = performance.now()
     const tick = (now: number) => {
       const p = Math.min(1, (now - from) / ms)
@@ -195,8 +225,26 @@ export function useDrawIn(
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [ms, run])
+  }, [ms, armed])
   return t
+}
+
+/**
+ * ★숫자가 0 에서 제 값까지 한 번 올라간다★ (2026-09-13 사장님: «킬뎃 승률도 한번만 애니메이트 해»).
+ *
+ * `useDrawIn` 과 ★같은 규칙★ 을 쓴다 — 눈에 들어왔을 때 한 번, 그 뒤로는 안 움직인다.
+ * 그래서 육각형이 그려지는 것과 숫자가 오르는 것이 ★같이 시작하고 같이 멎는다.★
+ *
+ * ⚠ ★반올림은 부르는 쪽이 한다.★ 여기서는 0~1 배율만 준다 — 승률(58.7%)과
+ *   킬뎃(56.6%)은 소수 한 자리인데 여기서 반올림해 버리면 끝값이 진짜 값과 어긋난다.
+ *   끝나면 `1` 을 정확히 돌려주므로 `value * 1` 은 언제나 원래 값이다.
+ */
+export function useCountUp(
+  ms = 900,
+  restartKey: unknown = null,
+  ref?: { current: Element | null },
+): number {
+  return useDrawIn(ms, restartKey, ref)
 }
 
 /**
