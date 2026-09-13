@@ -428,13 +428,20 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
   const share = total > 0 ? (opp.win / total) * 100 : 50
   const [open, setOpen] = useState<string | null>(null)
   /**
-   * ★들어올 때는 접혀 있다★ (2026-09-13 사장님: «두번째 사진을 기본 상태로 둬»).
+   * ★펼친 채로 나온다★ (2026-09-13 사장님: «클랜마크 누르면 자동으로 밑에 상대전적
+   *   펼쳐지게 해줘»).
    *
-   * 옛 값은 `false`(펼침)였다. 펼쳐 두면 세트스코어 · 막대 · 추이 그래프 ·
-   * 경기 목록이 한꺼번에 나와서 ★화면 세 판★ 을 먹고, 그 아래 「통합 기록실」이
-   * 보이지 않는다. 머리줄의 «펼치기 ▼» 를 누르면 그대로 열린다.
+   * ⚠ 오늘 두 번 뒤집혔다. 두 지시가 ★서로 다른 것★ 을 말하고 있었다 —
+   *   ① «두번째 사진을 기본 상태로 둬» → `true`(접힘) 로 바꿨다
+   *   ② «클랜마크 누르면 자동으로 펼쳐지게» → 다시 `false`
+   *
+   *   ①의 뜻은 ★페이지가 열릴 때 이 카드가 없어야 한다★ 였는데, 그건 이미
+   *   `selected = null` 이 하고 있다 — 상대를 안 고르면 카드 자체가 안 그려진다.
+   *   ★이 카드는 마크를 누른 뒤에만 나타난다.★ 그러니 나타났을 때 접혀 있으면
+   *   ★한 번 더 눌러야 하는 헛걸음★ 이다. 그래서 펼친 채로 둔다.
+   *   머리줄의 «접기 ▲» 로 언제든 접을 수 있다.
    */
-  const [folded, setFolded] = useState(true)
+  const [folded, setFolded] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const vsAll = vsMatches ?? []
   /**
@@ -898,7 +905,9 @@ const [tier] = useState<number>(() => {
               고르기 전에는 아무것도 안 그린다 — 위의 구간 줄이 이미 «누르세요» 다.
           */}
           {opp ? (
-            <HeadToHeadCard data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
+            /* ★`key` 가 있어야 상대를 바꿀 때 카드가 새로 그려진다★ (2026-09-13) —
+               접어 둔 채로 다른 마크를 누르면 그 상대도 접혀 있는 것처럼 보인다 */
+            <HeadToHeadCard key={opp.clan.slug} data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
           ) : null}
         </>
       ) : null}

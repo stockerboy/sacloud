@@ -1398,13 +1398,20 @@
 .v3-clanhex__inner { display: block; }
 
 @media (max-width: 767px) {
+  /*
+   * ⚠ ★2026-09-13 — 0.72 에서 키웠다★ (사장님: «육각 좀 크게 해주고»).
+   *   0.72 로 줄인 까닭은 «카드가 너무 세로로 길어» 였는데, 그때는 그림 옆에
+   *   KPI 숫자가 나란히 서 있어서 폭을 나눠 써야 했다. 지금은 KPI 가 2×2 격자로
+   *   ★아래로 내려갔다★ — 그림이 한 줄을 통째로 쓸 수 있다.
+   *   0.95 면 390px 카드 안폭(약 330px)을 거의 다 쓴다.
+   */
   .v3-clanhex__box {
     /* 줄어든 그림이 차지할 자리 — 그림 원본은 300×262 다 */
-    width: calc(300px * 0.72);
-    height: calc(262px * 0.72);
+    width: calc(300px * 0.95);
+    height: calc(262px * 0.95);
   }
   .v3-clanhex__inner {
-    transform: scale(0.72);
+    transform: scale(0.95);
     transform-origin: top left;
   }
 
