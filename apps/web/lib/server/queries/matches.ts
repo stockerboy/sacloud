@@ -851,6 +851,44 @@ export async function leagueClanIdOfPlayer(
  * 원본 URL에는 이 정보가 없지만(개별 URL이 없다) 결측 처리를 재현하려면 필요해서
  * 선택적 쿼리 파라미터로 뒀다 (`docs/DECISIONS.md` D-004). 없으면 red 쪽을 기본으로 본다.
  */
+/**
+ * ★인식표 경계 — 리그마다 기억해 둔다★ (2026-09-13 · 사장님: «경기카드 누르고 여는게 오래걸려»).
+ *
+ * ⚠ 이 세 값(3위·10위·100위 점수)은 ★그 경기와 아무 상관이 없다.★ 리그 전체 점수표를
+ *   `ORDER BY score DESC OFFSET 99 LIMIT 1` 로 훑는 값이라, 경기 하나를 열 때마다
+ *   ★리그 전체를 세 번 정렬★ 하고 있었다. 경기 상세가 느렸던 가장 큰 몫이다.
+ *
+ * 값이 바뀌는 때는 `player-hex-build` 잡이 돌 때뿐이고 그건 30분에 한 번이다.
+ * 60초만 들고 있어도 같은 사람이 카드를 여러 개 여는 동안은 한 번도 다시 안 묻는다.
+ * 서버가 새로 뜨면 비어 있는 채로 시작한다 — ★틀린 값을 오래 들고 있을 길이 없다.★
+ */
+const PLATE_CUT_TTL_MS = 60_000
+const plateCutCache = new Map<string, { at: number; cuts: [number | null, number | null, number | null] }>()
+
+async function plateCutsOf(leagueId: string): Promise<[number | null, number | null, number | null]> {
+  const hit = plateCutCache.get(leagueId)
+  if (hit && Date.now() - hit.at < PLATE_CUT_TTL_MS) return hit.cuts
+
+  const where = { weapon: { not: null }, score: { not: null }, leaguePlayer: { leagueId, placement: false } }
+  const orderBy = [{ score: 'desc' as const }, { leaguePlayerId: 'asc' as const }]
+  const one = (skip: number, tag: string) =>
+    softFail(tag, [] as { score: number | null }[], { leagueId })(
+      prisma.leaguePlayerHex.findMany({ where, orderBy, skip, take: 1, select: { score: true } }),
+    )
+  const [third, tenth, hundredth] = await Promise.all([
+    one(2, 'match-plate-3'),
+    one(9, 'match-plate-10'),
+    one(99, 'match-plate-100'),
+  ])
+  const cuts: [number | null, number | null, number | null] = [
+    third[0]?.score ?? null,
+    tenth[0]?.score ?? null,
+    hundredth[0]?.score ?? null,
+  ]
+  plateCutCache.set(leagueId, { at: Date.now(), cuts })
+  return cuts
+}
+
 export async function getMatch(
   leagueId: string,
   matchId: string,
@@ -885,62 +923,80 @@ export async function getMatch(
   })
   if (!match) return null
 
-  const clans = await loadLeagueClanContext(leagueId, leagueClanIdsOf([match]))
-  const viewerId = viewerLeagueClanId ?? match.redLeagueClanId
-  const base = toMatchListItem(match, viewerId, null, clans)
-  if (!base) return null
-  const viewerSide = sideOfLeagueClan(match, viewerId)
-  if (!viewerSide) return null
-
-  /* 참가자 포지션 — **여기서만** 읽는다 (D-199). 목록에서는 읽지 않는다.
-     한 경기 열 명이라 왕복 세 번으로 끝난다 (`resolvePositionsOf`).
-     실패해도 경기 상세를 죽이지 않는다 — 그때는 포지션 없이 그린다 */
-  const positionsResolved = await softFail(
-    'match-positions',
-    new Map<string, { label: string | null }>(),
-    { leagueId, matchId: match.id },
-  )(resolvePositionsOf(leagueId, match.stats.map((stat) => stat.playerId)))
-  const positions = new Map<string, string | null>(
-    [...positionsResolved].map(([id, value]) => [id, value.label]),
-  )
-
-  /* ★세이브 · 라운드 스코어★ (2026-09-10) — 배틀로그에서 접어 둔 표를 읽는다. 없으면 null */
-  const [saveRows, hexRows] = await Promise.all([
+  /**
+   * ★한꺼번에 묻는다★ (2026-09-13 · 사장님: «경기카드 누르고 여는게 오래걸려»).
+   *
+   * ⚠ 옛 판은 ★일곱 덩어리를 줄줄이★ 기다렸다 — 클랜 → 포지션 → 세이브 → 인식표 →
+   *   주무기 → 육각형. 서로 아무 관계가 없는데도 왕복 시간이 그대로 더해졌다.
+   *   실측 0.5~0.74초였다. 여기서 ★서로 안 기다리는 것끼리 묶는다.★
+   *
+   * ⚠ 대신 ★보는 편이 틀린 요청★ 도 이 일을 한 번 하고 나서 걸린다 (옛 판은 그 전에 끊었다).
+   *   그건 주소를 손으로 고쳐야 나오는 경우라 드물고, 대신 정상 요청 전부가 빨라진다.
+   */
+  const playerIds = match.stats.map((stat) => stat.playerId)
+  const [clans, positionsResolved, saveRows, hexRows, plateRows, plateCuts, weaponRows, hexV2] = await Promise.all([
+    loadLeagueClanContext(leagueId, leagueClanIdsOf([match])),
+    /* 참가자 포지션 — **여기서만** 읽는다 (D-199). 목록에서는 읽지 않는다.
+       실패해도 경기 상세를 죽이지 않는다 — 그때는 포지션 없이 그린다 */
+    softFail('match-positions', new Map<string, { label: string | null }>(), { leagueId, matchId: match.id })(
+      resolvePositionsOf(leagueId, playerIds),
+    ),
+    /* ★세이브 · 라운드 스코어★ (2026-09-10) — 배틀로그에서 접어 둔 표를 읽는다. 없으면 null */
     softFail('match-saves', [] as { playerId: string; aloneWon: number; aloneRounds: number }[], { matchId: match.id })(
       prisma.matchPlayerHex.findMany({ where: { matchId: match.id }, select: { playerId: true, aloneWon: true, aloneRounds: true } }),
     ),
     softFail('match-rounds', [] as { leagueClanId: string; tally: unknown }[], { matchId: match.id })(
       prisma.matchClanHexV2.findMany({ where: { matchId: match.id }, select: { leagueClanId: true, tally: true } }),
     ),
+    /* ★인식표★ (2026-09-11 사장님) — 이 경기 열 명의 점수·구간만 읽는다 */
+    softFail('match-plate-rows', [] as { leaguePlayerId: string; homeTier: number | null; score: number | null; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
+      prisma.leaguePlayerHex.findMany({
+        where: { weapon: { not: null }, score: { not: null }, leaguePlayer: { leagueId, placement: false, playerId: { in: playerIds } } },
+        select: { leaguePlayerId: true, homeTier: true, score: true, leaguePlayer: { select: { playerId: true } } },
+      }),
+    ),
+    /* 경계 세 값 — 리그마다 60초 기억해 둔다 (`plateCutsOf`) */
+    plateCutsOf(leagueId),
+    /**
+     * ★포지션★ — 주무기 (2026-09-12 사장님). 인식표 질의와 달리 ★점수가 없어도 읽는다★ —
+     * 아직 점수가 안 난 선수도 주무기는 정해져 있을 수 있다.
+     */
+    softFail('match-main-weapon', [] as { weapon: number | null; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
+      prisma.leaguePlayerHex.findMany({
+        where: { leaguePlayer: { leagueId, playerId: { in: playerIds } } },
+        select: { weapon: true, leaguePlayer: { select: { playerId: true } } },
+      }),
+    ),
+    /* 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 읽는다 (D-235 Q7).
+       경기 하나라 표본이 1이고, 그래서 리그 백분위가 아니라 **두 클랜의 상대 비교**다.
+       슬롯(`red`/`blue`)은 이미 알고 있으니 넘겨 준다 — 왕복 한 번을 아낀다.
+       배틀로그 행이 없으면 `null` 이고 화면은 도형을 안 그린다 (D-106).
+       실패해도 경기 상세를 죽이지 않는다 — 그때는 육각형 없이 그린다 */
+    softFail('match-hexagon-v2', null, { matchId: match.id })(
+      matchClanHexV2(match.id, {
+        redLeagueClanId: match.redLeagueClanId,
+        blueLeagueClanId: match.blueLeagueClanId,
+      }),
+    ),
   ])
+
+  const viewerId = viewerLeagueClanId ?? match.redLeagueClanId
+  const base = toMatchListItem(match, viewerId, null, clans)
+  if (!base) return null
+  const viewerSide = sideOfLeagueClan(match, viewerId)
+  if (!viewerSide) return null
+
+  const positions = new Map<string, string | null>(
+    [...positionsResolved].map(([id, value]) => [id, value.label]),
+  )
+
+  const [thirdScore, tenthScore, hundredthScore] = plateCuts
   /**
    * ★인식표★ (2026-09-11 사장님) — ASTRA 구간 ★1~3위 불 · 4~10위 먹구름 · 11~100위 흰구름★.
    *
    * 열 명의 등수를 하나씩 세면 왕복이 열 번이다. 대신 ★3위·10위·100위 점수만★ 읽어서 자른다.
    * 동점이 경계에 걸리면 같은 편으로 친다 (지어내지 않는다).
    */
-  const plateWhere = { weapon: { not: null }, score: { not: null }, leaguePlayer: { leagueId, placement: false } }
-  const plateOrder = [{ score: 'desc' as const }, { leaguePlayerId: 'asc' as const }]
-  const [plateRows, thirdRow, tenthRow, hundredthRow] = await Promise.all([
-    softFail('match-plate-rows', [] as { leaguePlayerId: string; homeTier: number | null; score: number | null; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
-      prisma.leaguePlayerHex.findMany({
-        where: { ...plateWhere, leaguePlayer: { leagueId, placement: false, playerId: { in: match.stats.map((stat) => stat.playerId) } } },
-        select: { leaguePlayerId: true, homeTier: true, score: true, leaguePlayer: { select: { playerId: true } } },
-      }),
-    ),
-    softFail('match-plate-3', [] as { score: number | null }[], { leagueId })(
-      prisma.leaguePlayerHex.findMany({ where: plateWhere, orderBy: plateOrder, skip: 2, take: 1, select: { score: true } }),
-    ),
-    softFail('match-plate-10', [] as { score: number | null }[], { leagueId })(
-      prisma.leaguePlayerHex.findMany({ where: plateWhere, orderBy: plateOrder, skip: 9, take: 1, select: { score: true } }),
-    ),
-    softFail('match-plate-100', [] as { score: number | null }[], { leagueId })(
-      prisma.leaguePlayerHex.findMany({ where: plateWhere, orderBy: plateOrder, skip: 99, take: 1, select: { score: true } }),
-    ),
-  ])
-  const thirdScore = thirdRow[0]?.score ?? null
-  const tenthScore = tenthRow[0]?.score ?? null
-  const hundredthScore = hundredthRow[0]?.score ?? null
   const plateByPlayer = new Map<string, 'fire' | 'dark' | 'light'>()
   for (const row of plateRows) {
     /* ASTRA 구간이 아니면 안 준다 */
@@ -956,16 +1012,6 @@ export async function getMatch(
     )
   }
 
-  /**
-   * ★포지션★ — 주무기 (2026-09-12 사장님). 인식표 질의와 달리 ★점수가 없어도 읽는다★ —
-   * 아직 점수가 안 난 선수도 주무기는 정해져 있을 수 있다.
-   */
-  const weaponRows = await softFail('match-main-weapon', [] as { weapon: number | null; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
-    prisma.leaguePlayerHex.findMany({
-      where: { leaguePlayer: { leagueId, playerId: { in: match.stats.map((stat) => stat.playerId) } } },
-      select: { weapon: true, leaguePlayer: { select: { playerId: true } } },
-    }),
-  )
   const mainWeaponOfPlayer = new Map<string, 0 | 1>()
   for (const row of weaponRows) {
     if (row.weapon === 0 || row.weapon === 1) mainWeaponOfPlayer.set(row.leaguePlayer.playerId, row.weapon)
@@ -986,7 +1032,7 @@ export async function getMatch(
    * 첫 번째 길이 있으면 그걸 그대로 쓴다. 두 길이 어긋날 일은 없지만,
    * 여섯 축 쪽이 ★최소 판수★ 를 보고 고른 값이라 더 엄격하다.
    */
-  const needWeapon = match.stats.map((stat) => stat.playerId).filter((id) => !mainWeaponOfPlayer.has(id))
+  const needWeapon = playerIds.filter((id) => !mainWeaponOfPlayer.has(id))
   if (needWeapon.length > 0) {
     const statRows = await softFail('match-weapon-stats', [] as { weapon: number; games: number; isMain: boolean; leaguePlayer: { playerId: string } }[], { matchId: match.id })(
       prisma.leaguePlayerWeaponStat.findMany({
@@ -1027,17 +1073,7 @@ export async function getMatch(
         main_weapon: mainWeaponOfPlayer.get(stat.playerId) ?? null,
       }))
 
-  /* 두 클랜의 육각형 V2 — **겹쳐 그리라고** 양쪽 다 읽는다 (D-235 Q7).
-     경기 하나라 표본이 1이고, 그래서 리그 백분위가 아니라 **두 클랜의 상대 비교**다.
-     슬롯(`red`/`blue`)은 이미 알고 있으니 넘겨 준다 — 왕복 한 번을 아낀다.
-     배틀로그 행이 없으면 `null` 이고 화면은 도형을 안 그린다 (D-106).
-     실패해도 경기 상세를 죽이지 않는다 — 그때는 육각형 없이 그린다 */
-  const hexV2 = await softFail('match-hexagon-v2', null, { matchId: match.id })(
-    matchClanHexV2(match.id, {
-      redLeagueClanId: match.redLeagueClanId,
-      blueLeagueClanId: match.blueLeagueClanId,
-    }),
-  )
+  /* (위 Promise.all 로 옮겼다 — 왕복을 줄이려고) */
 
   return {
     ...base,

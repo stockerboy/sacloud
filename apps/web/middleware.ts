@@ -126,5 +126,12 @@ export const config = {
    * 정적 파일은 미들웨어를 아예 안 거치게 한다 — 「준비 중」 한 장도 못 그리면 안 된다.
    * (그래도 `isOpenPath` 에 같은 길을 남겨 둔다. 두 곳이 어긋나도 화면이 깨지지 않게)
    */
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|assets/|uploads/).*)'],
+  /*
+   * ⚠ ★`api/` 를 뺐다★ (2026-09-13 · 사장님: «사이트가 좀 느려진거같아»).
+   *   문이 열려 있어도 미들웨어가 걸린 길은 ★Edge 를 한 번 더 거친다.★
+   *   화면 하나가 API 를 여러 번 부르니 그 몫이 제일 크다.
+   *   API 는 어차피 제 손으로 권한을 본다 (`requireAdmin` · `currentUserId`) —
+   *   가림막이 없어도 ★남의 데이터가 새지 않는다.★ 가리는 것은 ★화면★ 이면 된다.
+   */
+  matcher: ['/((?!api/|_next/static|_next/image|favicon.ico|assets/|uploads/).*)'],
 }
