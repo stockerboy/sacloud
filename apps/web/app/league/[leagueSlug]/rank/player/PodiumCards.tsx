@@ -16,6 +16,7 @@ import {
   leagueClanPath,
   leaguePlayerPath,
   rankColor,
+  playerHexSteps,
   rankColorPlayerHexAxis,
   rateClass,
   useCountUp,
@@ -84,16 +85,17 @@ export interface PodiumCardsProps {
 /* 그림 배율은 CSS 변수 `--podium-hex` 가 정한다 (PC 0.82 · 폰 0.6) — `tokens.css` */
 
 /** 계약의 여섯 축 → 그림 입력. 선수 상세(`strengthAxes`)와 ★같은 규칙★ 이다 */
-function podiumAxes(axes: readonly PlayerRankHexAxis[]): HexAxisView[] {
+function podiumAxes(axes: readonly PlayerRankHexAxis[], leagueSlug: string): HexAxisView[] {
   return axes.map((a) => ({
     label: a.label,
     value: a.percentile,
     note: a.rank === null ? '측정중' : `${a.rank}위`,
     /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 배지와 같은 경계다 */
-    /* ★10위 빨강 · 50위 노랑 · 100위 파랑★ (2026-09-13 사장님) — 개인 육각형은 모집단이 749명이다 */
-    noteColor: a.rank === null ? 'var(--v2-text-ghost)' : rankColorPlayerHexAxis(a.rank),
+    /* ★경계는 리그마다 다르다★ (2026-09-13 사장님) — IPL 10/50/100 · SPL·열산 5/10/20 */
+    noteColor: a.rank === null ? 'var(--v2-text-ghost)' : rankColorPlayerHexAxis(a.rank, leagueSlug),
     note2: a.rank === null || a.total === null ? null : `${a.total.toLocaleString('ko-KR')}명중`,
-    strong: a.rank !== null && a.rank <= 10,
+    /* ★맨 윗칸(빨강)만 더 세게★ — 경계가 리그마다 다르니 숫자를 여기 또 적지 않는다 */
+    strong: a.rank !== null && a.rank <= (playerHexSteps(leagueSlug)[0]?.[0] ?? 10),
   }))
 }
 
@@ -231,7 +233,7 @@ function PodiumCard({
           <div className="v3-podium-hex">
             <span className="v3-podium-hex__box">
               <span className="v3-podium-hex__inner">
-                <Hexagon axes={podiumAxes(row.hex_axes)} id={`podiumHex-${row.league_player_id}`} />
+                <Hexagon axes={podiumAxes(row.hex_axes, leagueSlug)} id={`podiumHex-${row.league_player_id}`} />
               </span>
             </span>
           </div>

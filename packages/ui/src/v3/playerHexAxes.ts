@@ -8,7 +8,7 @@
  */
 import type { LeaguePlayerDetail } from '@sacloud/contract'
 import type { HexAxisView } from './Hexagon'
-import { rankColorPlayerHexAxis } from './rankColors'
+import { playerHexSteps, rankColorPlayerHexAxis } from './rankColors'
 import { V3, fmt } from './tokens'
 
 /**
@@ -32,11 +32,12 @@ export function strengthAxes(data: LeaguePlayerDetail): HexAxisView[] {
     value: a.percentile,
     note: a.rank === null ? '측정중' : `${a.rank}위`,
     /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 배지와 같은 경계다 */
-    /* ★10위 빨강 · 50위 노랑 · 100위 파랑★ (2026-09-13 사장님).
-       옛 판은 `rankColorHexAxis(rank, key === 'duel')` — 싸움 3위 · 나머지 5위였다 */
-    noteColor: a.rank === null ? V3.textGhost : rankColorPlayerHexAxis(a.rank),
+    /* ★경계는 리그마다 다르다★ (2026-09-13 사장님) —
+       IPL 10/50/100 (749명) · SPL·열산 5/10/20 (117명 · 171명).
+       옛 판들: `rankColorHexAxis(rank, key === 'duel')`(싸움 3위·나머지 5위) → 10/50/100 한 벌 */
+    noteColor: a.rank === null ? V3.textGhost : rankColorPlayerHexAxis(a.rank, data.league.slug),
     note2: a.rank === null || a.total === null ? null : `${poolNameOf(a.key, hex.weapon)} ${fmt(a.total)}명중`,
-    /* ★10위 안은 더 세게★ (2026-09-11 사장님) */
-    strong: a.rank !== null && a.rank <= 10,
+    /* ★맨 윗칸(빨강)만 더 세게★ — 경계가 리그마다 다르니 숫자를 여기 또 적지 않는다 */
+    strong: a.rank !== null && a.rank <= (playerHexSteps(data.league.slug)[0]?.[0] ?? 10),
   }))
 }

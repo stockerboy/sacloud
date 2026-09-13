@@ -80,8 +80,34 @@ export const PLAYER_HEX_STEPS: readonly (readonly [number, string])[] = [
   [100, '#5b9dff'], // 51 ~ 100위   파랑
 ] as const
 
-export function rankColorPlayerHexAxis(rank: number): string {
-  for (const [limit, color] of PLAYER_HEX_STEPS) if (rank <= limit) return color
+/**
+ * ★작은 리그는 경계도 작다★ — SPL · 열산 (2026-09-13 사장님).
+ *
+ * > «SPL 열산은 5위 안 빨간색 10위 안 노란색 20등 안 파란색 나머지 흰색 육각말하는거야»
+ *
+ * ── 왜 리그마다 다른가
+ *   IPL 개인랭킹은 ★749명★ 이고 SPL 은 ★117명★, 열산은 축을 잰 사람이 ★171명★ 이다.
+ *   IPL 경계(10/50/100)를 그대로 쓰면 SPL 은 ★거의 전원이 색을 받는다★ —
+ *   색이 「잘한다」를 말하지 못하고 그냥 칠해진다.
+ *   사장님이 작은 리그용으로 5/10/20 을 직접 정하셨다.
+ */
+export const PLAYER_HEX_STEPS_SMALL: readonly (readonly [number, string])[] = [
+  [5, '#ff0033'], //  1 ~  5위   강렬한 빨강
+  [10, '#ffd83d'], //  6 ~ 10위   노랑
+  [20, '#5b9dff'], // 11 ~ 20위   파랑
+] as const
+
+/** 큰 경계를 쓰는 리그 — 지금은 IPL 하나다. 모르는 리그는 ★작은 쪽★ 으로 본다 */
+const BIG_POOL_LEAGUES: ReadonlySet<string> = new Set(['nolink'])
+
+export function playerHexSteps(leagueSlug?: string): readonly (readonly [number, string])[] {
+  /* slug 를 안 넘긴 옛 호출부는 지금까지처럼 큰 경계다 (화면이 조용히 안 바뀐다) */
+  if (leagueSlug === undefined) return PLAYER_HEX_STEPS
+  return BIG_POOL_LEAGUES.has(leagueSlug) ? PLAYER_HEX_STEPS : PLAYER_HEX_STEPS_SMALL
+}
+
+export function rankColorPlayerHexAxis(rank: number, leagueSlug?: string): string {
+  for (const [limit, color] of playerHexSteps(leagueSlug)) if (rank <= limit) return color
   return RANK_COLORS.rest
 }
 
