@@ -30,7 +30,14 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
  * 서버 모듈은 클라이언트에서 import 할 수 없어 여기 한 번 더 적는다. 둘이 다르면 경계선이 엉뚱한 자리에 선다.
  * 사장님 지시 #24 ⑤ — 티어를 넘나들지 않는 순위 · 티어 사이 경계선. 그래서 `true`.
  */
-const TIER_FIRST_SORT: boolean = true
+/**
+ * ⚠ ★2026-09-13 — 티어 경계선을 없앴다★ (사장님: «challenger1,2 경계 없애줘»).
+ *   옛 값 true — ASTRA / CHALLENGER 1 / CHALLENGER 2 사이에 가로선을 긋고
+ *   티어를 넘나들지 않는 순위였다 (지시 #24 ⑤ · 2026-09-01).
+ *   false 면 ★래더 순 한 줄★ 이고, 경계선 대신 ★행마다 티어 라벨★ 이 붙는다.
+ *   되돌리려면 양쪽(서버·화면)을 함께 true 로.
+ */
+const TIER_FIRST_SORT: boolean = false
 
 /**
  * 클랜랭킹 — **SPL(왼쪽) · IPL(오른쪽) 한 화면** (2026-09-01 사용자 지시).

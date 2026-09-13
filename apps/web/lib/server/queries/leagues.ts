@@ -364,7 +364,14 @@ export const ALL_DIVISIONS = 0
  *   화면의 `ClanRankSplit` 에 같은 이름 스위치가 있어 함께 바꿔야 한다.
  * 타입을 `boolean` 으로 넓혀 둔 이유는 리터럴로 좁히면 `&&` 뒤가 «닿을 수 없는 코드» 가 되기 때문이다.
  */
-export const TIER_FIRST_SORT: boolean = true
+/**
+ * ⚠ ★2026-09-13 — 티어 경계선을 없앴다★ (사장님: «challenger1,2 경계 없애줘»).
+ *   옛 값 true — ASTRA / CHALLENGER 1 / CHALLENGER 2 사이에 가로선을 긋고
+ *   티어를 넘나들지 않는 순위였다 (지시 #24 ⑤ · 2026-09-01).
+ *   false 면 ★래더 순 한 줄★ 이고, 경계선 대신 ★행마다 티어 라벨★ 이 붙는다.
+ *   되돌리려면 양쪽(서버·화면)을 함께 true 로.
+ */
+export const TIER_FIRST_SORT: boolean = false
 
 /**
  * 페이지 첫 행의 순위를 구한다.
