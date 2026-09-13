@@ -217,21 +217,91 @@ export const CLAN_SPREAD = 300
  *
  * 세 값의 합은 ★1.00 이어야 한다.★ 안 그러면 구간 기준점에서 벗어난다.
  */
-export const CLAN_W_ELO = 0.35
-export const CLAN_W_UP = 0.53
-export const CLAN_W_GAMES = 0.12
-
-/** ★옛 값★ (2026-09-12) — 되돌릴 때 이 셋을 위에 넣는다 */
-export const CLAN_W_V2 = { elo: 0.2, up: 0.65, games: 0.15 } as const
+/**
+ * ⚠ ★2026-09-13 — 사장님이 35곳을 손으로 다시 세우셨고, 거기에 맞춰 다시 짰다.★
+ *
+ *   조절판(아티팩트)에서 구간별로 직접 차례를 세워 저장해 주셨다. 그 차례에
+ *   비중을 0.05 칸으로 전부 훑어 맞췄다 (뒤집힌 짝이 가장 적은 조합).
+ *   ⚠ 동점은 ★0.5 틀림★ 으로 센다 — ASTRA 는 윗판이 전원 0 이라 동점을 「맞음」 으로
+ *     세면 «윗판만 써도 88.9% 일치» 같은 거짓말이 나온다. 실제로 한 번 그랬다.
+ *
+ * ── 나온 것 (사장님 차례와 얼마나 맞나)
+ *   ```
+ *   옛 공식 (0.20/0.65/0.15)                  78.5%
+ *   어제 값 (0.35/0.53/0.12)                  72.9%   ← 오히려 더 멀어졌다
+ *   지금    (아래 값 + 판수 벌점)              93.7%   (ASTRA 98 · C1 90 · C2 100)
+ *   ```
+ *
+ * ── 배운 것 셋
+ *   ① ★승률을 실제로 보고 계셨다.★ 지금까지 공식에 ★아예 안 들어가 있었다.★
+ *      그래서 «승률 낮은 클랜이 왜 위에 있나» 가 계속 나왔던 것이다.
+ *   ② ★Elo(실력)는 거의 안 보신다.★ Elo 하나로만 세우면 53.6% — 동전 던지기와 비슷하다.
+ *      0.05 만 남겼다. 0.10 을 줘도 92.8% 라 크게 다르지 않지만, 데이터가 말하는 대로 둔다.
+ *   ③ ★판수는 「많아서 올라가는」 게 아니라 「적으면 내려가는」 것이다.★
+ *      hingˇ 는 Elo 3182(ASTRA 2위) · 승률 63% 인데 ★30판★ 이라 사장님이 ★꼴찌★ 로 두셨다.
+ *      더하는 축(`CLAN_W_GAMES`)으로는 이게 안 나온다 — 벌점이라야 나온다.
+ */
+export const CLAN_W_ELO = 0.05
+export const CLAN_W_UP = 0.65
+export const CLAN_W_GAMES = 0.05
+/** ★새 축★ — 구간 안 승률 백분위 (2026-09-13). 0 으로 두면 옛 판처럼 승률을 안 본다 */
+export const CLAN_W_RATE = 0.25
 
 /**
- * `unitElo` · `unitUp` · `unitGames` 는 ★그 구간 안 백분위★ 를 −1~+1 로 편 값이다.
- * 부르는 쪽(`iplRankApply`)이 구간마다 한 번 계산해서 넘긴다.
+ * ★판수 벌점★ — 판이 모자란 만큼만 ★아래로 당긴다★ (2026-09-13).
+ *
+ *   당김 = `CLAN_SHY_PULL × max(0, 1 − 판수 / CLAN_SHY_GAMES)`
+ *
+ * 80판을 채우면 벌점이 0 이고, 0판이면 −1.2(섞은 값의 전체 폭보다 크다)다.
+ * 벼랑(문턱)이 아니라 ★비스듬한 언덕★ 이라 79판과 81판이 확 안 갈린다.
+ * `CLAN_SHY_PULL` 을 0 으로 두면 규칙이 꺼진다 (`CLAUDE.md` 1-4).
+ *
+ * ── ⚠ 층수 폭이 넓어졌다 (실측 2026-09-13)
+ *   21.9 ~ 32.8층. 벌점이 없던 옛 판은 25.4~32.0 이었다.
+ *   아래로 벌어진 것은 ★열 판 안팎만 뛴 클랜 넷★ 이다 (NeedΒackup 9판 · recent.wct- 10판 ·
+ *   romantico 11판 · nightbloom 15판). 사장님이 직접 꼴찌로 두신 클랜들이라 ★맞는 방향★ 이고,
+ *   26층 아래는 `FLOOR_BELOW`(회색)가 이미 맡고 있어 색이 깨지지 않는다 —
+ *   오히려 «아직 판이 모자란다» 가 색으로 드러난다.
+ *   위쪽은 32.8층이라 색표(46층까지) 안에 넉넉히 들어간다.
  */
-export function clanScore(tier: TierNo, unitElo: number, unitUp: number, unitGames: number): number {
+export const CLAN_SHY_GAMES = 80
+export const CLAN_SHY_PULL = 1.2
+
+/** ★옛 값★ (2026-09-12) — 되돌릴 때 이 셋을 위에 넣고 `CLAN_SHY_PULL` 을 0 으로 */
+export const CLAN_W_V2 = { elo: 0.2, up: 0.65, games: 0.15 } as const
+/** ★어제 값★ (2026-09-13 낮) — 실력 0.35. 사장님 차례와 72.9% 였다 */
+export const CLAN_W_V3 = { elo: 0.35, up: 0.53, games: 0.12 } as const
+
+/**
+ * `unit*` 넷은 ★그 구간 안 백분위★ 를 −1~+1 로 편 값이다.
+ * 부르는 쪽(`iplRankApply`)이 구간마다 한 번 계산해서 넘긴다.
+ * `games` 만 ★백분위가 아니라 진짜 판수★ 다 — 벌점이 「몇 판 뛰었나」를 직접 보기 때문이다.
+ */
+export function clanScore(
+  tier: TierNo,
+  unitElo: number,
+  unitUp: number,
+  unitGames: number,
+  unitRate = 0,
+  games = Number.POSITIVE_INFINITY,
+): number {
+  const mix =
+    CLAN_W_ELO * unitElo +
+    CLAN_W_UP * unitUp +
+    CLAN_W_GAMES * unitGames +
+    CLAN_W_RATE * unitRate
+  /* 판이 모자란 만큼 아래로. 다 채웠으면 0 이다 */
+  const shy = CLAN_SHY_PULL * Math.max(0, 1 - games / CLAN_SHY_GAMES)
+  return TIER_ANCHOR[tier] + CLAN_SPREAD * (mix - shy)
+}
+
+/**
+ * ★어제 판★ — 승률도 판수 벌점도 없던 셋뿐인 공식 (2026-09-13 낮). 지우지 않는다.
+ */
+export function clanScoreV3(tier: TierNo, unitElo: number, unitUp: number, unitGames: number): number {
   return (
     TIER_ANCHOR[tier] +
-    CLAN_SPREAD * (CLAN_W_ELO * unitElo + CLAN_W_UP * unitUp + CLAN_W_GAMES * unitGames)
+    CLAN_SPREAD * (CLAN_W_V3.elo * unitElo + CLAN_W_V3.up * unitUp + CLAN_W_V3.games * unitGames)
   )
 }
 

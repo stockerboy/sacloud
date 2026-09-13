@@ -268,7 +268,7 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
    * 그 구간에 ★경기가 있는 클랜만★ 줄을 세운다 — 한 판도 안 뛴 클랜은 기준점 그대로다.
    */
   const played = [...TIER_OF].filter(([name]) => leagueClanIdOf.has(name))
-  const unitBy = new Map<string, { e: number; u: number; g: number }>()
+  const unitBy = new Map<string, { e: number; u: number; g: number; r: number; n: number }>()
   for (const tier of [1, 2, 3] as const) {
     const names = played.filter(([, t]) => t === tier).map(([n]) => n)
     if (names.length === 0) continue
@@ -312,7 +312,21 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
     const ue = unit((n) => E(n))
     const uu = unit((n) => upGames.get(n) ?? 0)
     const ug = unit((n) => games.get(n) ?? 0)
-    for (const n of names) unitBy.set(n, { e: ue.get(n) ?? 0, u: uu.get(n) ?? 0, g: ug.get(n) ?? 0 })
+    /* ★승률 백분위★ (2026-09-13) — 사장님 차례를 맞춰 보니 이 축이 제일 크게 빠져 있었다 */
+    const ur = unit((n) => {
+      const g = games.get(n) ?? 0
+      return g > 0 ? (wins.get(n) ?? 0) / g : 0
+    })
+    for (const n of names) {
+      unitBy.set(n, {
+        e: ue.get(n) ?? 0,
+        u: uu.get(n) ?? 0,
+        g: ug.get(n) ?? 0,
+        r: ur.get(n) ?? 0,
+        /* 판수 벌점은 백분위가 아니라 ★진짜 판수★ 를 본다 */
+        n: games.get(n) ?? 0,
+      })
+    }
   }
 
   const clanPlan: Array<{ leagueClanId: string; name: string; tier: TierNo; rating: number }> = []
@@ -323,12 +337,12 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
       /* 시즌0 경기가 없는 클랜 — 기준점만 준다. 그 리그클랜 id 는 따로 찾는다 */
       continue
     }
-    const u = unitBy.get(name) ?? { e: 0, u: 0, g: 0 }
+    const u = unitBy.get(name) ?? { e: 0, u: 0, g: 0, r: 0, n: 0 }
     clanPlan.push({
       leagueClanId: lcId,
       name,
       tier,
-      rating: Math.round(clanScore(tier, u.e, u.u, u.g)),
+      rating: Math.round(clanScore(tier, u.e, u.u, u.g, u.r, u.n)),
     })
   }
   /* 경기가 없어 위에서 못 찾은 클랜도 티어·기준점은 넣어 준다 */
@@ -342,7 +356,8 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
       const tier = TIER_OF.get(f.name)
       if (!tier) continue
         /* 한 판도 안 뛴 클랜 — 구간 기준점 그대로 (백분위가 없다) */
-      clanPlan.push({ leagueClanId: f.id, name: f.name, tier, rating: Math.round(clanScore(tier, 0, 0, 0)) })
+      /* 한 판도 안 뛴 클랜 — 백분위가 없다. 판수 벌점도 안 먹인다 (뛸 기회가 없던 것과 다르지 않다) */
+      clanPlan.push({ leagueClanId: f.id, name: f.name, tier, rating: Math.round(clanScore(tier, 0, 0, 0, 0, Number.POSITIVE_INFINITY)) })
     }
     for (const n of missing) if (!found.some((f) => f.name === n)) unknownClans.push(n)
   }
