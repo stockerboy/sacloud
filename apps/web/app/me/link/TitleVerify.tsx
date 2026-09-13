@@ -33,6 +33,26 @@ export function TitleVerify() {
   const queryClient = useQueryClient()
   const [nickname, setNickname] = useState('')
   const [copied, setCopied] = useState(false)
+  /**
+   * ★닉을 타이핑하지 않게 한다★ (2026-09-13 사장님: «편하고 확실한 계정인증 방법»).
+   *
+   * ⚠ 실패의 대부분이 ★닉을 잘못 적어서★ 였다. 실측으로 확인했다 —
+   *   같은 계정인증이 `suzin`·`bbochaco` 로는 ★한 번에 됐고★, 우리 화면에 떠 있는
+   *   표시 이름(`밤빵걸`·`starry`)으로는 전부 «모르는 닉» 이었다.
+   *   넥슨 `/id` 는 ★지금 그 닉을 쓰는 사람★ 을 준다 — 옛 닉·오타는 통째로 실패한다.
+   *
+   * 그래서 우리가 아는 25,000여 명에서 ★골라 주고★, 직접 치는 길도 남긴다.
+   * 고르면 클랜 이름이 같이 뜨므로 «이게 나다» 를 눈으로 확인할 수 있다.
+   */
+  const [picked, setPicked] = useState(false)
+  const term = nickname.trim()
+  const suggest = useQuery({
+    queryKey: ['players', 'search', term],
+    /* 두 글자부터 · 이미 고른 뒤에는 안 묻는다 */
+    enabled: ready && !picked && term.length >= 2,
+    queryFn: () => apiGet('playersSearch', { params: { q: term } }),
+  })
+  const hints = (suggest.data?.data ?? []).slice(0, 6)
 
   const state = useQuery({
     queryKey: ['me', 'title-verification'],
@@ -133,8 +153,11 @@ export function TitleVerify() {
       <div className="flex items-center gap-3">
         <MeInput
           value={nickname}
-          onChange={(event) => setNickname(event.target.value)}
-          placeholder="서든어택 닉네임"
+          onChange={(event) => {
+            setNickname(event.target.value)
+            setPicked(false)
+          }}
+          placeholder="서든어택 닉네임 (두 글자만 쳐도 찾아 줍니다)"
         />
         <MeButton
           disabled={!nickname.trim() || check.isPending}
@@ -144,6 +167,35 @@ export function TitleVerify() {
           {check.isPending ? '확인중' : '확인'}
         </MeButton>
       </div>
+
+      {/*
+        ★찾아 주는 목록★ — 우리가 아는 선수에서 고른다. 고르면 오타·옛닉이 사라진다.
+        ⚠ 여기 없다고 인증이 안 되는 것은 아니다 — 우리 표에 없는 사람도 직접 쳐서 할 수 있다.
+           그래서 «없으면 직접 쳐도 됩니다» 를 같이 적는다.
+      */}
+      {!picked && term.length >= 2 && hints.length > 0 ? (
+        <div className="mt-3 overflow-hidden rounded border border-line">
+          {hints.map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => {
+                setNickname(row.name)
+                setPicked(true)
+              }}
+              className="flex w-full items-baseline gap-2 border-b border-line-soft px-3 py-2 text-left last:border-b-0 hover:bg-card-2"
+            >
+              <span className="text-sm text-text-strong">{row.name}</span>
+              <span className="text-xs text-faint">{row.clan?.name ?? '무소속'}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {!picked && term.length >= 2 && !suggest.isPending && hints.length === 0 ? (
+        <p className="mt-3 text-xs leading-relaxed text-faint">
+          우리 기록에는 없는 닉입니다. ★게임에서 지금 쓰는 닉★ 이 맞다면 그대로 「확인」을 누르세요.
+        </p>
+      ) : null}
 
       {minutesLeft !== null ? (
         <p className="mt-4 text-sm text-meta">
@@ -182,7 +234,9 @@ function outcomeMessage(
       /* 넥슨이 칭호를 안 주면 `알수없음` 이다. 없는 값을 지어내지 않는다 */
       return `칭호를 읽지 못했습니다 (알수없음). ${required} 을 착용한 뒤 다시 확인해 주세요.`
     case 'unknown-nickname':
-      return '그 닉네임을 쓰는 계정을 찾지 못했습니다. 띄어쓰기까지 정확히 넣어 주세요.'
+      /* ★가장 흔한 실패다★ (2026-09-13 실측). 「띄어쓰기 정확히」 만으로는 못 고친다 —
+         옛 닉이거나, 우리 화면의 표시 이름을 그대로 옮겨 적은 경우가 대부분이다 */
+      return '지금 그 닉네임을 쓰는 계정이 없습니다. 게임을 켜서 쓰고 있는 닉을 그대로 넣어 주세요 (닉을 바꿨다면 바뀐 쪽입니다). 두 글자만 쳐도 아래에서 찾아 줍니다.'
     case 'taken':
       return '그 계정은 이미 다른 회원이 인증했습니다.'
     case 'closed':
