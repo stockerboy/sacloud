@@ -100,6 +100,33 @@ export const TIER_WEIGHT: Readonly<Record<TierNo, number>> = { 1: 1.0, 2: 0.367,
 export const TIER_ANCHOR: Readonly<Record<TierNo, number>> = { 1: 3200, 2: 3000, 3: 2800 }
 
 /**
+ * ★구간 묶음 기준점★ — CHALLENGER 1·2 를 한 덩어리로 볼 때 쓴다 (2026-09-13 사장님:
+ *   «챌린저 구간 순위 재계산해서 다시 배열해»).
+ *
+ * ⚠ 이름과 경계선만 합치면 ★점수는 안 합쳐진다.★ 지금까지 CH1 은 3000, CH2 는 2800 에서
+ *   출발하고 백분위도 ★각자 안에서★ 매겼다 — 두 무리가 200점 떨어진 채 따로 줄 서 있었다.
+ *   화면에서만 섞어 놓으면 «CH2 1등» 이 «CH1 꼴찌» 아래로 가는 일이 생긴다.
+ *
+ * 그래서 ★모집단 자체를 합친다★ — 챌린저 전원을 한 줄로 세워 백분위를 매기고,
+ * 기준점도 하나(2900 · 3000 과 2800 의 가운데)를 쓴다. 그래야 챌린저 안에서
+ * 「몇 등인가」가 진짜 등수가 된다.
+ *
+ * `CHALLENGER_MERGED_SCORE` 를 false 로 두면 옛 방식(티어마다 따로)으로 돌아간다.
+ */
+export const GROUP_ANCHOR: Readonly<Record<number, number>> = { 1: 3200, 2: 2900 }
+export const CHALLENGER_MERGED_SCORE: boolean = true
+
+/** 점수를 매길 때의 구간 묶음 — ASTRA(1) 따로 · CHALLENGER(2·3) 하나 */
+export function scoreGroupOf(tier: TierNo): number {
+  return CHALLENGER_MERGED_SCORE ? (tier <= 1 ? 1 : 2) : tier
+}
+
+/** 그 구간 묶음의 기준점. 안 합칠 때는 옛 표를 그대로 본다 */
+export function anchorOf(tier: TierNo): number {
+  return CHALLENGER_MERGED_SCORE ? (GROUP_ANCHOR[scoreGroupOf(tier)] ?? TIER_ANCHOR[tier]) : TIER_ANCHOR[tier]
+}
+
+/**
  * ★개인 점수의 출발점★ (사장님 «3000시작»).
  *
  * 공식이 내는 원점수는 145 · 141 처럼 작은 수라 화면의 다른 점수와 자릿수가 다르다.
@@ -292,7 +319,7 @@ export function clanScore(
     CLAN_W_RATE * unitRate
   /* 판이 모자란 만큼 아래로. 다 채웠으면 0 이다 */
   const shy = CLAN_SHY_PULL * Math.max(0, 1 - games / CLAN_SHY_GAMES)
-  return TIER_ANCHOR[tier] + CLAN_SPREAD * (mix - shy)
+  return anchorOf(tier) + CLAN_SPREAD * (mix - shy)
 }
 
 /**

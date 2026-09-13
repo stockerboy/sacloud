@@ -39,21 +39,7 @@ import path from 'node:path'
 import { prisma } from '@sacloud/db'
 import { REPO_ROOT } from '../lib/env.js'
 import { log, warn } from '../lib/log.js'
-import {
-  ELO_DIV,
-  ELO_FLOOR,
-  MIN_MEMBERS,
-  SHORT_MEMBER_WEIGHT,
-  ELO_INIT,
-  ELO_K,
-  PLAYER_BASE,
-  REMOVED,
-  TIER_NAME,
-  TIER_OF,
-  clanScore,
-  playerRawScore,
-  type TierNo,
-} from '../lib/iplTiers.js'
+import { ELO_DIV, ELO_FLOOR, MIN_MEMBERS, SHORT_MEMBER_WEIGHT, ELO_INIT, ELO_K, PLAYER_BASE, REMOVED, TIER_NAME, TIER_OF, clanScore, playerRawScore, type TierNo, scoreGroupOf } from '../lib/iplTiers.js'
 
 /** 시즌0 시작 (KST 2026-09-03 07:00) */
 const SEASON0_FROM = new Date('2026-09-02T22:00:00.000Z')
@@ -269,8 +255,14 @@ export async function runIplRankApply(input: { confirm: boolean }): Promise<IplR
    */
   const played = [...TIER_OF].filter(([name]) => leagueClanIdOf.has(name))
   const unitBy = new Map<string, { e: number; u: number; g: number; r: number; n: number }>()
-  for (const tier of [1, 2, 3] as const) {
-    const names = played.filter(([, t]) => t === tier).map(([n]) => n)
+  /*
+   * ★구간 묶음 안에서 백분위를 매긴다★ (2026-09-13 사장님: «챌린저 구간 순위 재계산»).
+   * 옛 판은 `t === tier` — CH1 과 CH2 가 ★각자 안에서★ 등수를 매겼다.
+   * 이제 `scoreGroupOf` 가 같은 무리는 한 줄로 세운다 (ASTRA 따로 · 챌린저 하나).
+   */
+  const groups = [...new Set(played.map(([, t]) => scoreGroupOf(t)))].sort((a, b) => a - b)
+  for (const group of groups) {
+    const names = played.filter(([, t]) => scoreGroupOf(t) === group).map(([n]) => n)
     if (names.length === 0) continue
     const unit = (pick: (n: string) => number): Map<string, number> => {
       const sorted = names.map(pick).sort((a, b) => a - b)
