@@ -54,9 +54,14 @@ function pageOffset(raw: string | null, size: number): number | null {
   return (n - 1) * size
 }
 
-/** `tier=1|2|3` 만 받는다. 그 밖은 ★전체★ */
+/**
+ * `tier=1|2|3` 만 받는다. 그 밖은 ★전체★.
+ *
+ * ⚠ ★2026-09-13 — `2` 는 이제 「CHALLENGER 전체」다★ (사장님이 1·2 를 합치심).
+ *   `3` 도 계속 받는다 — 옛 주소·즐겨찾기가 안 깨지게. 둘 다 같은 답을 준다.
+ */
 function parseRankTier(raw: string | null): 1 | 2 | 3 | null {
-  return raw === '1' ? 1 : raw === '2' ? 2 : raw === '3' ? 3 : null
+  return raw === '1' ? 1 : raw === '2' || raw === '3' ? 2 : null
 }
 
 async function scoreOrLadder(

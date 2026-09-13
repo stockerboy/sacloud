@@ -66,7 +66,16 @@ const WEAPON_OPTIONS: readonly RankWeapon[] = ['all', 'sniper', 'rifle']
  * 무기 칩과 같은 ★거르개★ 라 점수 순서는 바뀌지 않는다.
  */
 type RankTier = 'all' | '1' | '2' | '3'
-const TIER_OPTIONS: readonly RankTier[] = ['all', '1', '2', '3']
+/**
+ * ⚠ ★2026-09-13 — CHALLENGER 를 하나로★ (사장님: «모든 페이지에 있는 challenger1,2
+ *   없애고 challenge로 통일해»).
+ *
+ *   옛 값 `['all', '1', '2', '3']`. 이름을 합치고 나니 고르개에 «CHALLENGER» 가
+ *   ★두 개★ 떴다 — 눌러도 뭐가 다른지 알 수 없다.
+ *   `'2'` 하나로 두고, 서버가 그것을 ★2와 3 둘 다★ 로 읽는다
+ *   (`parseRankTier` · `getPlayerRanksByScore`).
+ */
+const TIER_OPTIONS: readonly RankTier[] = ['all', '1', '2']
 
 /**
  * ★한 쪽에 몇 명★ — 20명 (2026-09-12 사장님이 고르심).

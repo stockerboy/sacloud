@@ -9,6 +9,7 @@
  * 되돌리려면 아래 `PROFILE_LAYOUT_V3` 를 false 로.
  */
 import { use, useEffect, useMemo, useState } from 'react'
+import { tierGroupOf } from '@sacloud/contract'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { ClanCardV3, GhostButton, PillTabs, ProfileEmpty, ProfileSkeleton, RelativeTime, clanThemeOf, useSeasonLabel } from '@sacloud/ui'
@@ -77,17 +78,25 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
   /* 구간 승률 — 상대전적을 상대 티어로 접는다. 계약에 있는 값만 더한다 */
   const tierWins = useMemo(() => {
     if (!data) return []
+    /*
+     * ⚠ ★2026-09-13 — CHALLENGER 를 한 칸으로★ (사장님: «challenger1,2 없애고 통일»).
+     *   옛 판은 `r.division` 으로 나눠서 «CHALLENGER» 칸이 ★두 개★ 나왔다 —
+     *   ‹ › 로 넘겨도 같은 이름이 두 번 나와 무엇이 다른지 알 수 없었다.
+     *   묶는 규칙은 계약의 `tierGroupOf` 한 곳이다.
+     *   보여 줄 번호는 ★그 무리의 대표★ (챌린저면 2) 를 쓴다.
+     */
     const by = new Map<number, { division: number; win: number; lose: number }>()
     for (const r of data.head_to_head) {
       if (r.division === null) continue
-      const acc = by.get(r.division) ?? { division: r.division, win: 0, lose: 0 }
+      const key = tierGroupOf(r.division) === 1 ? 1 : 2
+      const acc = by.get(key) ?? { division: key, win: 0, lose: 0 }
       acc.win += r.win
       acc.lose += r.lose
-      by.set(r.division, acc)
+      by.set(key, acc)
     }
     return [...by.values()].sort((a, b) => a.division - b.division)
   }, [data])
-  const ownTierAt = Math.max(0, tierWins.findIndex((t) => t.division === data?.division))
+  const ownTierAt = Math.max(0, tierWins.findIndex((t) => t.division === (data ? (tierGroupOf(data.division) === 1 ? 1 : 2) : 0)))
   const tierIndex = tierWins.length === 0 ? 0 : (ownTierAt + tierStep + tierWins.length * 64) % tierWins.length
   return (
     <>

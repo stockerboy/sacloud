@@ -82,7 +82,19 @@ export function buildPlayerTrend(rows: readonly TrendRow[], now: Date = new Date
     const dayStart = TREND_FROM.getTime() + i * DAY
     let day = empty()
     const points: PlayerTrendDay['points'] = []
-    const enough = list.length >= TREND_MIN_GAMES
+    /**
+     * ★오늘은 한 판만 해도 바로 찍힌다★ (2026-09-13 사장님: «경기 했는데 왜 안 올라가 (…)
+     *   그래프가 그 전까지 아예 안 올라가면 어떡해»).
+     *
+     * ⚠ 「2판 미만인 날은 안 찍는다」는 ★지나간 날★ 을 위한 규칙이다 — 한 판만 한 날의
+     *   0% 나 100% 가 선을 튀게 하니까 전날 값에 머물게 한 것이다.
+     *   그런데 그 규칙을 ★오늘★ 에도 걸면, 첫 판을 이기고 들어와도 그래프가 꿈쩍 안 한다.
+     *   사장님이 «경기 했는데 왜 안 올라가» 라고 물으신 자리가 여기다.
+     *
+     * 오늘은 아직 ★쌓이는 중★ 이라 두 판이 될 때까지 기다릴 이유가 없다.
+     * 하루가 지나면 그때는 판수가 다 모여 있으므로 옛 규칙이 그대로 산다.
+     */
+    const enough = list.length >= TREND_MIN_GAMES || (i === todayIndex && list.length > 0)
     for (const row of list) {
       day = add(day, row)
       cum = add(cum, row)

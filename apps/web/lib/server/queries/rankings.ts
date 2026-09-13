@@ -433,8 +433,17 @@ export async function getPlayerRanksByScore(
      * 선수 페이지에는 점수가 그대로 뜬다. 0 으로 두면 규칙이 꺼진다 (CLAUDE.md 1-4).
      */
     ...(RANK_MIN_GAMES > 0 ? { games: { gte: RANK_MIN_GAMES } } : {}),
-    /* 구간 고르개 — 안 고르면 칸을 아예 안 넣는다 (homeTier 가 빈 줄도 전체에는 남는다) */
-    ...(onlyTier === null ? {} : { homeTier: onlyTier }),
+    /*
+     * 구간 고르개 — 안 고르면 칸을 아예 안 넣는다 (homeTier 가 빈 줄도 전체에는 남는다).
+     *
+     * ⚠ ★2026-09-13 — CHALLENGER 는 한 무리다★ (사장님). `2` 를 고르면 `homeTier` 가
+     *   2 이거나 3 인 선수를 ★모두★ 남긴다. ASTRA(1) 만 그대로 하나다.
+     */
+    ...(onlyTier === null
+      ? {}
+      : onlyTier === 1
+        ? { homeTier: 1 }
+        : { homeTier: { in: [2, 3] } }),
     leaguePlayer: { leagueId, placement: false },
   }
   const SELECT = {

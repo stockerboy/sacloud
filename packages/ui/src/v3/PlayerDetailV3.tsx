@@ -468,7 +468,7 @@ function TrendCard({ data }: { data: LeaguePlayerDetail }) {
       }>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}><span style={{ width: 15, height: 2, background: '#ff5a63' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>킬뎃</span></span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 15, height: 2, background: '#7fa9ff' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>승률</span></span>
-        <span style={{ fontSize: 10.5, color: V3.textGhost2, minWidth: 0 }}>매일 새벽 6시에 찍힙니다 · 2판 미만인 날은 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
+        <span style={{ fontSize: 10.5, color: V3.textGhost2, minWidth: 0 }}>오늘은 경기가 끝날 때마다 바로 움직입니다 · 지난 날은 2판 미만이면 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
       </CardHead>
       <TrendChartV3
         days={data.trend}
