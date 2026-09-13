@@ -8,7 +8,7 @@
  * 옛 판은 `./LayoutLegacy.tsx` 에 ★한 글자도 안 바꾸고★ 있다 (`CLAUDE.md` 1-4).
  * 되돌리려면 아래 `PROFILE_LAYOUT_V3` 를 false 로.
  */
-import { use, useMemo, useState } from 'react'
+import { use, useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { ClanCardV3, GhostButton, PillTabs, ProfileEmpty, ProfileSkeleton, RelativeTime, clanThemeOf, useSeasonLabel } from '@sacloud/ui'
@@ -42,6 +42,32 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
     queryFn: () => apiGet('clanShow', { params: { clanSlug } }),
     enabled: ready,
   })
+  /**
+   * ★들어오면 맨 위부터★ (2026-09-13 사장님).
+   *
+   * > «클랜페이지 들어왔을때 (…) 맨위에서 시작하는게 아니라 살짝 내려와있어
+   * >  클랜페이지 들어오면 가장 먼저 보이는게 육각이야 클랜명이 보이는게 아니라»
+   *
+   * ── 왜 브라우저에 맡기면 안 되나
+   *   이 화면은 ★들어온 뒤에 자란다★ — 클랜 정보와 경기 목록이 따로 와서 붙는다.
+   *   그 사이 브라우저의 ★스크롤 앵커링★ 과 iOS 사파리의 ★스크롤 복원★ 이
+   *   「보고 있던 자리」를 지키려고 화면을 도로 내린다. 그래서 클랜 이름이 위로 밀려
+   *   나가고 육각형부터 보인다.
+   *
+   * ── 무엇을 하나
+   *   ★클랜이 바뀔 때 한 번★ 맨 위로 올린다 (`clanSlug` 가 열쇠다).
+   *   같은 클랜 안에서 탭을 옮기거나(기록실 → 클랜원) 카드를 펼칠 때는 ★안 건드린다★ —
+   *   보고 있던 자리가 튀면 그게 더 나쁘다.
+   *   `pageshow` 도 같이 듣는다. 뒤로 가기로 되살아난 화면(bfcache)은 `useEffect` 가
+   *   다시 돌지 않아서, 그 길로 들어오면 여전히 내려가 있다.
+   */
+  useEffect(() => {
+    const toTop = () => window.scrollTo(0, 0)
+    toTop()
+    window.addEventListener('pageshow', toTop)
+    return () => window.removeEventListener('pageshow', toTop)
+  }, [clanSlug])
+
   const refresh = useRefresh('clanRenew', { clanSlug })
   const season = useSeasonLabel()
   const renewedAt = refresh.renewedAt ?? clan.data?.data.renewed_at ?? null

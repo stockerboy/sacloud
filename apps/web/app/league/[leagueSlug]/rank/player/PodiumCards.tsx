@@ -16,7 +16,7 @@ import {
   leagueClanPath,
   leaguePlayerPath,
   rankColor,
-  rankColorHexAxis,
+  rankColorPlayerHexAxis,
   rateClass,
 } from '@sacloud/ui'
 
@@ -72,7 +72,8 @@ function podiumAxes(axes: readonly PlayerRankHexAxis[]): HexAxisView[] {
     value: a.percentile,
     note: a.rank === null ? '측정중' : `${a.rank}위`,
     /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 배지와 같은 경계다 */
-    noteColor: a.rank === null ? 'var(--v2-text-ghost)' : rankColorHexAxis(a.rank, a.key === 'duel'),
+    /* ★10위 빨강 · 50위 노랑 · 100위 파랑★ (2026-09-13 사장님) — 개인 육각형은 모집단이 749명이다 */
+    noteColor: a.rank === null ? 'var(--v2-text-ghost)' : rankColorPlayerHexAxis(a.rank),
     note2: a.rank === null || a.total === null ? null : `${a.total.toLocaleString('ko-KR')}명중`,
     strong: a.rank !== null && a.rank <= 10,
   }))

@@ -164,7 +164,16 @@
 .sac-v2 .v2-panel {
   position: relative;
   overflow: hidden;
-  background: var(--v2-card);
+  /*
+   * ★2026-09-13 — 카드 바탕에 빛무리★ (사장님: «카드 배경 디자인 이쁜걸로 바꿔봐»).
+   *   v3 카드(`v3/tokens.ts`의 `V3.card`)와 ★같은 두 겹★ 을 쓴다 —
+   *   왼쪽 위 푸른 빛 · 오른쪽 위 보랏빛. 두 층이 다른 얼굴을 하면 안 된다.
+   *   옛 값은 `background: var(--v2-card)` 한 줄이었다.
+   */
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(122, 162, 255, 0.1), transparent 58%),
+    radial-gradient(95% 75% at 100% 0%, rgba(196, 132, 252, 0.075), transparent 52%),
+    var(--v2-card);
   /* ★반투명 유리★ (2026-09-12 사장님) — 뒤를 흐려서 글자가 안 묻히게 한다 */
   backdrop-filter: blur(12px) saturate(1.2);
   -webkit-backdrop-filter: blur(12px) saturate(1.2);
@@ -1353,4 +1362,65 @@
 .v3-glass {
   backdrop-filter: blur(10px) saturate(1.15);
   -webkit-backdrop-filter: blur(10px) saturate(1.15);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★클랜 머리 카드 — 폰에서 세로를 줄인다★ (2026-09-13 사장님)
+
+   > «클랜카드가 너무 세로로 길어 길이좀 줄여줘 공간잘 활용해서»
+
+   390px 실측(카드 전체 ★877px★):
+     이름 띠 120 · 육각형 394 · 주요멤버 띠 30 · KPI 넉 줄 248 · 여백 85
+   화면 한 판이 874px 이라 ★카드 하나가 화면을 통째로 먹었다.★
+
+   ── 무엇을 줄였나 (지운 것은 하나도 없다)
+     ① 육각형을 0.72 배로 — 394 → 약 250
+     ② KPI 넉 줄을 ★2×2★ 로 — 248 → 약 130
+     ③ 카드 안 여백을 좁힘
+   합쳐서 ★877 → 약 560★. PC 는 이 규칙 밖이라 그대로다.
+   ────────────────────────────────────────────────────────────────────────── */
+.v3-clanhex__box { display: block; }
+.v3-clanhex__inner { display: block; }
+
+@media (max-width: 767px) {
+  .v3-clanhex__box {
+    /* 줄어든 그림이 차지할 자리 — 그림 원본은 300×262 다 */
+    width: calc(300px * 0.72);
+    height: calc(262px * 0.72);
+  }
+  .v3-clanhex__inner {
+    transform: scale(0.72);
+    transform-origin: top left;
+  }
+
+  /* KPI 넉 줄 → 2×2. 줄 사이 선이 격자에서는 지저분해서 칸마다 옅은 테두리로 바꾼다 */
+  .v3-clankpis {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    flex: 1 1 100% !important;
+  }
+  .v3-clankpis__chips { grid-column: 1 / -1; padding-bottom: 8px !important; }
+  .v3-clankpi {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 2px !important;
+    padding: 8px 10px !important;
+    border: 1px solid #18222f;
+    border-radius: 10px;
+    background: rgba(13, 21, 36, 0.42);
+  }
+  /* 값 줄은 왼쪽으로 (칸이 좁아 오른쪽 정렬이면 이름과 붙는다) */
+  .v3-clankpi > span:last-child {
+    justify-content: flex-start !important;
+    flex-direction: row-reverse;
+    align-items: baseline;
+    width: 100%;
+  }
+  .v3-clankpi > span:last-child > span:first-child { text-align: left !important; justify-content: flex-start !important; }
+
+  /* 카드 안 여백 — 넓은 여백이 폰에서는 그냥 빈 자리다 */
+  .v3-band { padding: 11px 12px !important; gap: 8px !important; }
+  .v3-clanbody { gap: 12px !important; padding: 10px 12px 14px !important; }
 }

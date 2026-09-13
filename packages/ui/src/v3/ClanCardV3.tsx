@@ -160,7 +160,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
         </span>
       </div>
 
-      <div style={traitBodyStyle}>
+      <div className="v3-clanbody" style={traitBodyStyle}>
         <ClanTraitBackdrop theme={theme} markSlug={data.clan.slug} />
         {plate ? <span aria-hidden className={`v3-plate v3-plate--${plate}`} /> : null}
         {/*
@@ -172,16 +172,31 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
           ⚠ `showHexagon` 은 남긴다 — 되돌릴 자리다 (`CLAUDE.md` 1-4).
         */}
         {showHexagon ? (
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHex" />
+          <div className="v3-clanhex" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            {/*
+              ★배율 상자★ (2026-09-13 사장님: «클랜카드가 너무 세로로 길어 길이좀 줄여줘
+                공간잘 활용해서»).
+
+              그림은 300×262 ★고정★ 이다 — `Hexagon` 머리말의 시안 함정 때문에 `width` 로
+              줄이면 안의 글자만 8px 내려앉는다. 그래서 ★`transform: scale`★ 로만 줄이고,
+              바깥 상자가 줄어든 크기만큼만 자리를 차지하게 한다
+              (포디움 카드의 `.v3-podium-hex` 와 ★같은 수법★ 이다 — 새로 짜지 않았다).
+
+              PC 는 배율 1 이라 ★한 픽셀도 안 바뀐다.★ 줄어드는 것은 폰뿐이다.
+            */}
+            <span className="v3-clanhex__box">
+              <span className="v3-clanhex__inner">
+                <Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHex" />
+              </span>
+            </span>
             {/* ★클랜평 세 마디★ — 유형 · 템포 · 강한 축 (2026-09-12 사장님 확정) */}
             <ClanStyleLine hex={data.hexagon_v2} />
           </div>
         ) : null}
         {/* ★주전 다섯★ — 카드 남는 자리 (2026-09-12 사장님) */}
         <MainLineup data={data} theme={theme} />
-        <div style={{ position: 'relative', flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 4px 12px', borderBottom: '1px solid #18222f' }}>
+        <div className="v3-clankpis" style={{ position: 'relative', flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="v3-clankpis__chips" style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 4px 12px', borderBottom: '1px solid #18222f' }}>
             {tiered ? (
               <>
                 {data.division === 1 && data.league.category === 'independent' ? (
@@ -195,7 +210,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
             <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap', display: 'inline-flex', gap: 4 }}>· {renewedNote}</span>
           </div>
           {kpis.map((k) => (
-            <div key={k.label} style={kpiRowStyle}>
+            <div key={k.label} className="v3-clankpi" style={kpiRowStyle}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 {k.picker && onTierStep ? <StepButton onClick={() => onTierStep(-1)}>‹</StepButton> : null}
                 <span style={{ fontSize: 11.5, color: V3.textDim, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>{k.label}</span>

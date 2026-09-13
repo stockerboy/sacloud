@@ -8,7 +8,7 @@
  */
 import type { LeaguePlayerDetail } from '@sacloud/contract'
 import type { HexAxisView } from './Hexagon'
-import { rankColorHexAxis } from './rankColors'
+import { rankColorPlayerHexAxis } from './rankColors'
 import { V3, fmt } from './tokens'
 
 /**
@@ -32,7 +32,9 @@ export function strengthAxes(data: LeaguePlayerDetail): HexAxisView[] {
     value: a.percentile,
     note: a.rank === null ? '측정중' : `${a.rank}위`,
     /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 배지와 같은 경계다 */
-    noteColor: a.rank === null ? V3.textGhost : rankColorHexAxis(a.rank, a.key === 'duel'),
+    /* ★10위 빨강 · 50위 노랑 · 100위 파랑★ (2026-09-13 사장님).
+       옛 판은 `rankColorHexAxis(rank, key === 'duel')` — 싸움 3위 · 나머지 5위였다 */
+    noteColor: a.rank === null ? V3.textGhost : rankColorPlayerHexAxis(a.rank),
     note2: a.rank === null || a.total === null ? null : `${poolNameOf(a.key, hex.weapon)} ${fmt(a.total)}명중`,
     /* ★10위 안은 더 세게★ (2026-09-11 사장님) */
     strong: a.rank !== null && a.rank <= 10,

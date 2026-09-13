@@ -234,6 +234,23 @@ export function relativeKst(iso: string): string {
   return `${rel} ${hh}:${mm}`
 }
 
+/**
+ * ★마지막 경기 시각★ — «2026년 9월 12일 19시 30분» (2026-09-13 사장님).
+ *
+ * > «최근경기 이름을 통합 기록실(마지막경기 n년n월n일n시n분) 로 바꿔줘»
+ *
+ * `relativeKst` 는 «11시간 전 19:30» 처럼 ★상대★ 시각이다. 줄 제목에는 그게 안 맞는다 —
+ * 「마지막 경기가 언제였나」 는 지금으로부터 몇 시간인지가 아니라 ★그 날짜★ 를 묻는 말이다.
+ * 시간대는 `relativeKst` 와 ★같은 방식★ 으로 맞춘다 (UTC 에 9시간을 더한다).
+ */
+export function fullKst(iso: string): string {
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return iso
+  const kst = new Date(at.getTime() + 9 * 3_600_000)
+  const mm = String(kst.getUTCMinutes()).padStart(2, '0')
+  return `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일 ${kst.getUTCHours()}시 ${mm}분`
+}
+
 /** «9/3» 같은 월/일 */
 export function monthDay(iso: string): string {
   const at = new Date(iso)

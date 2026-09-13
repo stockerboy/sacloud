@@ -60,6 +60,31 @@ export function rankColorHexAxis(rank: number, isDuel = false): string {
   return rank <= limit ? RANK_COLORS.top20 : RANK_COLORS.rest
 }
 
+/**
+ * ★개인 육각형 축 등수 색★ — 10위 빨강 · 50위 노랑 · 100위 파랑 (2026-09-13 사장님).
+ *
+ * > «Ipl 개인 육각 100등안에 드는 등수 파랑색 50등안 노랑색 10등 안 강렬한 빨간색»
+ *
+ * ── 왜 클랜과 다른 규칙인가
+ *   ★모집단 크기가 다르다.★ IPL 개인은 ★749명★ 인데 클랜은 ★42곳★ 이다.
+ *   클랜에 100위 경계를 두면 ★전부 파랑★ 이 되어 색이 아무 말도 안 한다.
+ *   그래서 클랜은 그대로 `rankColorHexAxis`(싸움 3위 · 나머지 5위)를 쓰고,
+ *   개인만 이 함수를 쓴다. ★두 함수를 섞어 쓰지 않는다.★
+ *
+ * 세 단계는 위로 갈수록 뜨겁다 — 파랑 → 노랑 → 빨강. 층수 색(`FLOOR_STEPS`)과 같은 방향이라
+ * 사람이 규칙을 두 번 외우지 않는다.
+ */
+export const PLAYER_HEX_STEPS: readonly (readonly [number, string])[] = [
+  [10, '#ff0033'], //  1 ~  10위   강렬한 빨강
+  [50, '#ffd83d'], // 11 ~  50위   노랑
+  [100, '#5b9dff'], // 51 ~ 100위   파랑
+] as const
+
+export function rankColorPlayerHexAxis(rank: number): string {
+  for (const [limit, color] of PLAYER_HEX_STEPS) if (rank <= limit) return color
+  return RANK_COLORS.rest
+}
+
 /** @deprecated 2026-09-12 — `rankColorHexAxis(rank, true)` 를 쓴다. 옛 호출부를 위해 남긴다 */
 export function rankColorSniperDuel(rank: number): string {
   return rankColorHexAxis(rank, true)

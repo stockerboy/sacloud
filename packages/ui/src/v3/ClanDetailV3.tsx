@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { MatchHexagonV3 } from './MatchHexagonV3'
-import { Card, CardHead, Kda, MarkCircle, MvpBadge, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
+import { Card, CardHead, Kda, MarkCircle, MvpBadge, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 /* 육각형은 2026-09-12 부터 머리 카드(ClanCardV3)가 그린다 — 여기서는 안 쓴다 */
 import { H2HChartV3 } from './H2HChartV3'
@@ -418,16 +418,30 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
   )
 }
 
+/** 상대전적 카드가 접힌 채로 보여 주는 경기 수 (2026-09-13 사장님) */
+const VS_PREVIEW = 2
+
 function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: LeagueClanShow; opp: ClanHeadToHead; vsMatches: readonly MatchListItem[] | null; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
   const theme = clanThemeOf(data.clan.slug)
   const oppTheme = clanThemeOf(opp.clan.slug)
   const total = opp.win + opp.lose
   const share = total > 0 ? (opp.win / total) * 100 : 50
   const [open, setOpen] = useState<string | null>(null)
-  const [folded, setFolded] = useState(false)
+  /**
+   * ★들어올 때는 접혀 있다★ (2026-09-13 사장님: «두번째 사진을 기본 상태로 둬»).
+   *
+   * 옛 값은 `false`(펼침)였다. 펼쳐 두면 세트스코어 · 막대 · 추이 그래프 ·
+   * 경기 목록이 한꺼번에 나와서 ★화면 세 판★ 을 먹고, 그 아래 「통합 기록실」이
+   * 보이지 않는다. 머리줄의 «펼치기 ▼» 를 누르면 그대로 열린다.
+   */
+  const [folded, setFolded] = useState(true)
   const [showAll, setShowAll] = useState(false)
   const vsAll = vsMatches ?? []
-  const vs = showAll ? vsAll : vsAll.slice(0, 10)
+  /**
+   * ★기본은 두 판★ (2026-09-13 사장님: «기본 두경기만 보여주고 OOO과의 경기 모아보기 로 바꿔»).
+   * 옛 값은 10판이었다. 더 보고 싶으면 아래 줄을 누른다.
+   */
+  const vs = showAll ? vsAll : vsAll.slice(0, VS_PREVIEW)
   const oppClan = { id: opp.clan.id, slug: opp.clan.slug, name: opp.clan.name, mark: { bg: opp.clan.mark_bg_url, front: opp.clan.mark_front_url } }
   return (
     <Card style={{ marginTop: 14 }} edge={V3.blue}>
@@ -495,7 +509,8 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderTop: `1px solid ${V3.rowDivider}` }}>
         <div style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>맞대결 기록</span>
+        {/* ★2026-09-13 사장님★ — «맞대결 기록 이름을 vs ooo 경기모음 으로 바꿔줘» */}
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {opp.clan.name} 경기모음</span>
         <div style={spacerStyle} />
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
           <span style={{ fontSize: 11.5, color: V3.textFaint }}>{opp.win}승 {opp.lose}패</span>
@@ -552,8 +567,9 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
             </div>
           )
         })}
-        {!showAll && vsAll.length > 10 ? (
-          <div onClick={() => setShowAll(true)} style={{ padding: '11px 0', textAlign: 'center', fontSize: 12, color: '#a9c3ff', cursor: 'pointer' }}>맞대결 전부 보기 · {vsAll.length}판{total > vsAll.length ? ` (최근 ${vsAll.length}판까지)` : ''}</div>
+        {/* ★2026-09-13 사장님★ — «OOO과의 경기 모아보기 로 바꿔». 옛 문구는 «맞대결 전부 보기» */}
+        {!showAll && vsAll.length > VS_PREVIEW ? (
+          <div onClick={() => setShowAll(true)} style={{ padding: '11px 0', textAlign: 'center', fontSize: 12, color: '#a9c3ff', cursor: 'pointer' }}>{opp.clan.name}과의 경기 모아보기 · {vsAll.length}판{total > vsAll.length ? ` (최근 ${vsAll.length}판까지)` : ''}</div>
         ) : null}
       </div>
       </>}
@@ -886,7 +902,26 @@ const [tier] = useState<number>(() => {
           ) : null}
         </>
       ) : null}
-      <SectionBar title="최근 경기" />
+      {/*
+        ★2026-09-13 사장님★ — «최근경기 이름을 통합 기록실(마지막경기 n년n월n일n시n분) 로 바꿔줘»
+
+        「최근」이라는 말이 ★언제까지가 최근인지★ 를 안 알려 준다. 이 줄은 상대를 안 가리고
+        ★모든 경기★ 를 모은 자리이므로 「통합 기록실」이 맞고, 괄호 안에 마지막 경기 시각을
+        박아 두면 「데이터가 어디까지 들어와 있나」 를 한눈에 본다.
+        경기가 하나도 없으면 괄호를 안 붙인다 — 없는 시각을 지어내지 않는다.
+      */}
+      <SectionBar
+        title={
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, flexWrap: 'wrap' }}>
+            <span>통합 기록실</span>
+            {matches.length > 0 && matches[0] ? (
+              <span style={{ fontSize: 11, fontWeight: 500, color: V3.textGhost2, whiteSpace: 'nowrap' }}>
+                (마지막경기 {fullKst(matches[0].start_at)})
+              </span>
+            ) : null}
+          </span>
+        }
+      />
       {matchesLoading ? (
         <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
       ) : matches.length === 0 ? (
