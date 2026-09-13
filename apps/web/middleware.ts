@@ -7,10 +7,15 @@ import { NextResponse, type NextRequest } from 'next/server'
  *   로그인하지 않은 사람에게는 ★「준비 중」 한 장★ 만 보여 준다 (503).
  *   로그인한 사람에게는 지금까지와 ★똑같은 사이트★ 가 보인다.
  *
- * ── 여는 법 (사장님)
- *   ① `https://3rdcloud.my/auth/login` 에서 로그인한다 → 그 뒤로는 전부 보인다
- *   ② 다시 공개로 돌릴 때는 Vercel 환경변수에 `SACLOUD_PUBLIC=1` 을 넣는다.
- *      (또는 이 파일을 지운다 — 그러면 문이 통째로 없어진다)
+ * ── ★지금은 열려 있다★ (2026-09-13 사장님: «사이트 다시 공개로 돌려봐»)
+ *
+ *   ⚠ ★스위치를 뒤집었다.★ 처음에는 «`SACLOUD_PUBLIC=1` 이 있어야 열린다» 였는데,
+ *     그러면 여는 데 Vercel 대시보드가 필요하다. 지금은 반대다 —
+ *     ★`SACLOUD_PRIVATE=1` 이 있을 때만 잠긴다.★
+ *     ★파일을 지우지 않았다★ (`CLAUDE.md` 1-4). 문은 그대로 있고 스위치만 꺼져 있다.
+ *
+ *   다시 잠그려면 — Vercel 환경변수에 `SACLOUD_PRIVATE=1` 을 넣는다.
+ *   잠긴 동안에도 `https://3rdcloud.my/auth/login` 으로 로그인하면 전부 보인다.
  *
  * ── ⚠ 이 문의 ★한계를 분명히★ 적어 둔다
  *   여기서는 세션 쿠키가 ★있는지만★ 본다. 서명을 검사하지 않는다 —
@@ -90,8 +95,13 @@ function noticePage(): string {
 }
 
 export function middleware(request: NextRequest) {
-  /* 공개로 되돌리는 스위치 — 환경변수 하나면 이 문이 사라진다 */
-  if (process.env.SACLOUD_PUBLIC === '1') return NextResponse.next()
+  /*
+   * ★기본은 열림★ (2026-09-13). 잠그려면 `SACLOUD_PRIVATE=1`.
+   * `SACLOUD_PUBLIC=1` 도 계속 받는다 — 이미 넣어 두셨다면 그게 이긴다.
+   */
+  if (process.env.SACLOUD_PRIVATE !== '1' || process.env.SACLOUD_PUBLIC === '1') {
+    return NextResponse.next()
+  }
 
   const { pathname } = request.nextUrl
   if (isOpenPath(pathname)) return NextResponse.next()
