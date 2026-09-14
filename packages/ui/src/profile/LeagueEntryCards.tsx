@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ClanLeagueEntry, PlayerLeagueEntry } from '@sacloud/contract'
-import { isLeagueListed, isOfficialLeague, showsTier } from '@sacloud/contract'
+import { isLeagueListed, isOfficialLeague, leagueScreen, showsTier } from '@sacloud/contract'
 import { Label } from '../common/Label'
 import { EmptyState } from '../common/EmptyState'
 import { Skeleton } from '../common/Skeleton'
@@ -94,15 +94,28 @@ function PlayerEntryCard({ entry, playerId }: { entry: PlayerLeagueEntry; player
     >
       {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
       <CardTitle name={entry.league.name} official={isOfficialLeague(entry.league.slug)} />
-      <div className="mt-6 flex flex-row-reverse items-center">
-        <div className="flex items-center">
-          래더
-          {/* 이 창에 0판이면 래더 자리에 `기록 없음` (배치고사 폐지 · 2026-09-01) */}
-          <span className="ml-2 w-20 text-right text-2xl">
-            {entry.placement ? '기록 없음' : `${entry.rating}점`}
-          </span>
+      {/*
+       * ★래더를 안 쓰는 리그에는 이 줄을 아예 안 그린다★ (2026-09-15 QA에서 잡았다).
+       *
+       *   사장님: «아직도 IPL에 층수가 나와있고 … SPL도 마찬가지 1티어 2티어 왜있는 거야»
+       *   그래서 9/14 에 계약을 `playerColumns.rating: false` 로 바꿨는데,
+       *   ★이 카드가 그 계약을 안 보고 있었다.★ 선수 화면 「참여중인 리그」에
+       *   ★「래더 2,965점」★ 이 그대로 떠 있었다 (IPL · 리리컬뚱이).
+       *
+       *   진실의 출처는 `leagueScreen(slug).playerColumns.rating` 하나다.
+       *   slug 를 여기서 비교하지 않는다.
+       */}
+      {leagueScreen(entry.league.slug).playerColumns.rating ? (
+        <div className="mt-6 flex flex-row-reverse items-center">
+          <div className="flex items-center">
+            래더
+            {/* 이 창에 0판이면 래더 자리에 `기록 없음` (배치고사 폐지 · 2026-09-01) */}
+            <span className="ml-2 w-20 text-right text-2xl">
+              {entry.placement ? '기록 없음' : `${entry.rating}점`}
+            </span>
+          </div>
         </div>
-      </div>
+      ) : null}
       <div className="mt-2 flex items-center justify-between">
         <div>
           {formatCount(entry.win + entry.lose)}전 {formatCount(entry.win)}승{' '}
