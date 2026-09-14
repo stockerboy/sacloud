@@ -9,7 +9,7 @@
  */
 import Link from 'next/link'
 import type { CSSProperties, ReactNode } from 'react'
-import type { LeaguePlayerDetail } from '@sacloud/contract'
+import { leagueScreen, type LeaguePlayerDetail } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { MarkCircle, clanThemeOf, hasFitMark, fitMarkUrl, RankText, type ClanTheme } from './primitives'
 import { V3, cardStyle, fmt, pct1 } from './tokens'
@@ -121,7 +121,11 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
       ? { label: '실력 점수', value: formatRating(hex.score as number), sub: hex.measuring ? '측정 중' : '', color: '#ffffff' }
       : hex
         ? { label: '실력 점수', value: '측정 중', sub: `${fmt(hex.games)}판 · 한 무기 10판부터`, color: V3.textMuted }
-        : { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: '#ffffff' },
+        : /* ★래더를 안 쓰는 리그면 그 자리에 전적을 놓는다★ (2026-09-15) —
+             육각 점수가 아직 없는 IPL 선수에게 「래더」가 뜬다 */
+          leagueScreen(data.league.slug).playerColumns.rating
+          ? { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: '#ffffff' }
+          : { label: '전적', value: `${fmt(data.win + data.lose)}전`, sub: `${data.win}승 ${data.lose}패`, color: V3.text },
     { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },
     { label: '킬뎃', value: pct1(kdRate), sub: kdLabel, color: kdRate === null ? V3.textMuted : statColor(kdRate) },
     { label: '판킬', value: data.kill_per_match.toFixed(1), sub: '킬 / 판', color: V3.text },

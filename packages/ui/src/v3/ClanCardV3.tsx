@@ -9,7 +9,7 @@
  */
 import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
+import { leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
 import { floorColor, rankColor, rankColorHexAxis, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
@@ -128,10 +128,25 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
   const tierRate = tier && tier.win + tier.lose > 0 ? (tier.win / (tier.win + tier.lose)) * 100 : null
   /* ★티어는 IPL 만★ (2026-09-12 사장님: «SPL티어 없애»). 규칙은 계약의 `showsTier` 한 곳 */
   const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
+  /*
+   * ★래더·구간을 안 쓰는 리그에서는 그 칸을 아예 안 만든다★ (2026-09-15 QA에서 잡았다).
+   *
+   *   사장님: «아직도 IPL에 층수가 나와있고 ASTRA CHALLENGER 다 안없어졌어»
+   *   9/14 에 계약을 `clanColumns.rating: false` · `showsTier: false` 로 바꿨는데
+   *   ★이 카드가 그 계약을 안 보고 있었다.★ 폰으로 IPL vuvuzela 를 열어 보니
+   *   ★「래더 31.9층」★ 과 ★「구간 승률 46.9%」★ 가 그대로 떠 있었다.
+   *
+   *   래더가 빠지면 칸이 셋(승률 · 순위 · 최다연승)이 된다 — 그래도 줄은 안 깨진다.
+   *   규칙은 계약 한 곳이다. 여기서 slug 를 비교하지 않는다.
+   */
+  const showsLadder = leagueScreen(data.league.slug).clanColumns.rating
+  const showsBand = showsTier(data.league.slug)
   const kpis: { label: string; value: string; sub: ReactNode; color: string; picker?: boolean }[] = [
     /* 같은 «층» 단위라 선수 점수와 ★같은 색 규칙★ 을 쓴다 (2026-09-11 사장님) */
-    { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: floorColor(data.rating) },
-    tier
+    ...(showsLadder
+      ? [{ label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: floorColor(data.rating) }]
+      : []),
+    tier && showsBand
       ? { label: '구간 승률', value: pct1(tierRate), sub: <><TierText division={tier.division} leagueCategory={data.league.category} size={11} /> <span>{tier.win}승 {tier.lose}패</span></>, color: tierRate === null ? V3.textMuted : statColor(tierRate), picker: tierWins.length > 1 }
       : { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },
     { label: '순위', value: rank === null ? '-' : `${rank}위`, sub: <>{tiered ? <TierText division={data.division} leagueCategory={data.league.category} size={11} /> : null}{data.rank_count !== null ? <span> / {fmt(data.rank_count)}팀</span> : null}</>, color: ink },
