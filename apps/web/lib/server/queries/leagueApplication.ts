@@ -49,15 +49,6 @@ export async function submitLeagueApplication(
   if (kind === null) return { ok: false, message: '모르는 등록 종류입니다' }
   const leagueSlug = kind.to
 
-  const members =
-    input.members === undefined
-      ? null
-      : input.members.map((m) => ({
-          position: m.position,
-          name: m.name,
-          url: normalizeUrl(m.url),
-        }))
-
   const existing = await prisma.leagueApplication.findUnique({
     where: { leagueSlug_clanName: { leagueSlug, clanName: input.clan_name } },
     select: { id: true, status: true },
@@ -71,11 +62,12 @@ export async function submitLeagueApplication(
     contactKind: input.contact_kind,
     contactId: input.contact_id,
     /*
-     * ⚠ Json 칸에 `null` 을 넣을 때는 ★`Prisma.DbNull`★ 을 써야 한다.
-     *   그냥 `null` 은 «JSON 값으로서의 null» 이라 뜻이 다르고 타입도 안 맞는다.
-     *   여기서 뜻하는 것은 ★칸이 비었다★ 이다 (멤버를 안 적었다).
+     * ⚠ ★주요 멤버는 이제 안 받는다★ (2026-09-14 저녁 사장님: «주요멤버5명은 빼»).
+     *   Json 칸에 «비었다» 를 넣으려면 ★`Prisma.DbNull`★ 이어야 한다 —
+     *   그냥 `null` 은 «JSON 값으로서의 null» 이라 뜻이 다르다.
+     *   ★옛 신청서의 멤버는 그대로 남아 있다★ — 이 줄은 새로 들어오는 것만 비운다.
      */
-    members: members === null ? Prisma.DbNull : members,
+    members: Prisma.DbNull,
     note: input.note ?? null,
     userAgent: meta.userAgent ?? null,
   }

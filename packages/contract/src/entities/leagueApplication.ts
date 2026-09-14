@@ -154,14 +154,13 @@ export const LeagueApplicationInput = z.object({
     .trim()
     .min(1, '연락 가능한 ID를 넣어 주세요')
     .max(80, 'ID 가 너무 깁니다'),
-  /**
-   * 주요 멤버 다섯 — ★선택★ 이다 (2026-09-14 저녁 양식에서 빠졌다).
-   * 적을 거면 ★다섯 자리를 다 채워야★ 한다. 두세 자리만 적힌 명단은 쓸모가 없다.
+  /*
+   * ⚠ ★주요 멤버 다섯은 양식에서 뺐다★ (2026-09-14 저녁 사장님: «주요멤버5명은 빼»).
+   *
+   *   ★칸(`ApplicationMemberInput` · `APPLICATION_POSITIONS`)은 지우지 않는다★ —
+   *   이미 들어온 옛 신청서가 그 값을 들고 있고, 관리자 화면이 그것을 읽어 그린다.
+   *   다시 받게 되면 이 자리에 `members` 를 되돌리면 된다 (`CLAUDE.md` 1-4).
    */
-  members: z
-    .array(ApplicationMemberInput)
-    .length(APPLICATION_POSITIONS.length, '적으실 거면 다섯 자리를 모두 채워 주세요')
-    .optional(),
   note: z.string().trim().max(500, '남길 말이 너무 깁니다').optional(),
 })
 export type LeagueApplicationInput = z.infer<typeof LeagueApplicationInput>

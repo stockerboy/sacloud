@@ -88,6 +88,12 @@ const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> 
  *   지금은 로고에서 글자를 잘라 내 표장이 좁아졌고, 아래 CSS 로 줄바꿈을 막았다.
  */
 const GNB_LINKS: readonly { icon: string; label: string; aria: string; href: string; match: string }[] = [
+  /*
+   * ★소개를 맨 앞에 둔다★ (2026-09-14 저녁 사장님: «2번 앞으로 빼»).
+   *   처음 오는 사람이 가장 먼저 눌러야 할 자리다 — 여기가 무엇을 하는 곳인지
+   *   설명하고, 마지막에 참가 신청으로 이어진다.
+   */
+  { icon: '✨', label: 'about', aria: '소개', href: '/about', match: '/about' },
   /* ⚠ 2026-09-12 사장님: «이용방법 이름을 notice로 바꾸고 노티스 앞에 압정 임티를 박아
      그리고 그 오른쪽에 게시판임티와 board 라는 영어를 적어». 옛 글자: 이용방법 · 게시판 */
   { icon: '📌', label: 'notice', aria: '이용방법', href: '/guide', match: '/guide' },

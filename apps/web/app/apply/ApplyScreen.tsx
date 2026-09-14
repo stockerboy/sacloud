@@ -33,7 +33,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   APPLICATION_KINDS,
-  APPLICATION_POSITIONS,
   CONTACT_KINDS,
   CONTACT_KIND_LABEL,
   LeagueApplicationInput,
@@ -53,7 +52,6 @@ const TONE: Readonly<Record<string, string>> = {
 }
 
 type PickedClan = { slug: string; name: string; mark: { bg: string | null; front: string | null } }
-type Member = { position: string; name: string; url: string }
 
 export function ApplyScreen() {
   const ready = useApiReady()
@@ -66,10 +64,6 @@ export function ApplyScreen() {
   const [manualUrl, setManualUrl] = useState('')
   const [contactKind, setContactKind] = useState<(typeof CONTACT_KINDS)[number]>('discord')
   const [contactId, setContactId] = useState('')
-  const [withMembers, setWithMembers] = useState(false)
-  const [members, setMembers] = useState<Member[]>(
-    APPLICATION_POSITIONS.map((p) => ({ position: p, name: '', url: '' })),
-  )
   const [note, setNote] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -88,17 +82,12 @@ export function ApplyScreen() {
     return map
   }, [waiting.data])
 
-  const setMember = (i: number, patch: Partial<Member>) => {
-    setMembers((prev) => prev.map((m, k) => (k === i ? { ...m, ...patch } : m)))
-  }
-
   async function submit() {
     setError(null)
     if (kind === null) {
       setError('등록 종류를 골라 주세요')
       return
     }
-    const filled = members.filter((m) => m.name.trim() !== '' || m.url.trim() !== '')
     const parsed = LeagueApplicationInput.safeParse({
       kind,
       clan_slug: manual ? null : (clan?.slug ?? null),
@@ -107,7 +96,6 @@ export function ApplyScreen() {
       clan_url: manual ? manualUrl : null,
       contact_kind: contactKind,
       contact_id: contactId,
-      ...(withMembers && filled.length > 0 ? { members } : {}),
       ...(note.trim() === '' ? {} : { note }),
     })
     if (!parsed.success) {
@@ -296,61 +284,8 @@ export function ApplyScreen() {
         />
       </Step>
 
-      {/* ④ 주요 멤버 — 선택 */}
-      <Step no="4" title="주요 멤버 5명 (선택)">
-        {!withMembers ? (
-          <button type="button" onClick={() => setWithMembers(true)} style={linkButtonStyle}>
-            + 포지션별 다섯 자리를 적겠습니다
-          </button>
-        ) : (
-          <>
-            <p style={{ fontSize: 11.5, lineHeight: 1.7, color: V3.textGhost2, marginBottom: 10 }}>
-              적으실 거면 <b style={{ color: '#fff' }}>다섯 자리를 모두</b> 채워 주세요.
-            </p>
-            {members.map((m, i) => (
-              <div
-                key={m.position}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '58px minmax(0,1fr)',
-                  gap: 8,
-                  alignItems: 'start',
-                  marginBottom: 8,
-                }}
-              >
-                <span
-                  style={{
-                    marginTop: 9,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#ffd98a',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {m.position}
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                  <input
-                    value={m.name}
-                    onChange={(e) => setMember(i, { name: e.target.value })}
-                    placeholder={`예) ${m.position} 담당 닉네임`}
-                    style={inputStyle}
-                  />
-                  <input
-                    value={m.url}
-                    onChange={(e) => setMember(i, { url: e.target.value })}
-                    placeholder="예) https://barracks.sa.nexon.com/userinfo/..."
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-            ))}
-            <button type="button" onClick={() => setWithMembers(false)} style={linkButtonStyle}>
-              — 접기
-            </button>
-          </>
-        )}
-      </Step>
+      {/* ⚠ ★주요 멤버 5명 칸은 뺐다★ (2026-09-14 저녁 사장님: «주요멤버5명은 빼»).
+          관리자 화면은 옛 신청서의 멤버를 그대로 읽어 그린다 — 그쪽은 안 건드렸다 */}
 
       <Field label="남기실 말 (선택)">
         <textarea

@@ -15,4 +15,4 @@
  * ⚠ 사이트 전체 잠금(`middleware.ts`)과 ★다른 자물쇠★ 다.
  *   사이트가 열려 있어도 이 값이 `false` 면 소개 페이지는 관리자만 본다.
  */
-export const ABOUT_PUBLIC = false
+export const ABOUT_PUBLIC = true
