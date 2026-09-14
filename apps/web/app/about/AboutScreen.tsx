@@ -33,6 +33,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { LeagueClanShow, LeaguePlayerDetail, MatchDetail } from '@sacloud/contract'
 import { leagueScreen } from '@sacloud/contract'
 import {
+  AnalysisPanelV3,
   Card,
   CardHead,
   ClanScoreboardV3,
@@ -99,6 +100,7 @@ export function AboutScreen() {
       ) : (
         (picks.data?.leagues ?? []).map((pick) => <LeagueShowcase key={pick.league} pick={pick} />)
       )}
+      <HowWeMeasure />
       <Closing />
     </div>
   )
@@ -418,6 +420,33 @@ function MatchShowcase({
       {/* 카테고리는 클랜 구분 표기에만 쓰인다 (D-165). 경기 상세에는 그 칸이 없어 기본값을 쓴다 */}
       <ClanScoreboardV3 detail={detail} leagueCategory="official" leagueSlug={leagueSlug} />
     </Card>
+  )
+}
+
+/* ── 어떻게 재는가 — 배틀로그가 좌표가 되는 그림 ───────────── */
+
+/**
+ * ★배틀로그 분석 방법★ (2026-09-14 사장님:
+ * «배틀로그 분석방법 간지나게 우리 페이지에 있는 그 위치정보 픽셀 날라오면서
+ *   하는거 더 간지나게 만들어서 설명해줘»).
+ *
+ * ★선수 상세의 플레이분석 탭과 같은 부품★ 을 그대로 쓴다. 소개용으로 다시 만들면
+ * 두 곳이 어긋난다 — 거기 적힌 숫자(268칸 · 2초 · 30분)는 전부 실제 코드에서 온 값이다.
+ * 다른 점은 ★폰에서도 보인다★ 는 것뿐이다 (소개 페이지는 설명이 본문이다).
+ */
+function HowWeMeasure() {
+  return (
+    <section style={{ marginTop: 34 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '0 2px 14px' }}>
+        <h2 style={{ fontSize: 19, fontWeight: 800, color: '#fff' }}>어떻게 재는가</h2>
+        <span style={{ fontSize: 11.5, color: V3.textGhost2 }}>배틀로그 한 줄이 좌표가 됩니다</span>
+      </div>
+      <Card>
+        <div style={{ padding: '14px 14px 4px' }}>
+          <AnalysisPanelV3 always />
+        </div>
+      </Card>
+    </section>
   )
 }
 

@@ -38,6 +38,48 @@ const W = ZONE_BOUNDS.maxX - ZONE_BOUNDS.minX + 1 + PAD * 2
 const H = ZONE_BOUNDS.maxY - ZONE_BOUNDS.minY + 1 + PAD * 2
 const isLong = (key: string) => (ZONE_LONG as readonly string[]).includes(key)
 
+/**
+ * ★픽셀이 날아와 꽂힌다★ (2026-09-14 사장님:
+ * «위치정보 픽셀 날라오면서 하는거 ★더 간지나게★ 만들어서 설명해줘»).
+ *
+ * ⚠ ★옛 움직임을 지우지 않았다★ (`CLAUDE.md` 1-4) —
+ *   이 값을 `false` 로 두면 옛 판(칸이 그 자리에서 «퐁» 커지던 것)이 그대로 돌아온다.
+ */
+const PIXEL_FLY = true
+
+/**
+ * 날아오는 점을 몇 개나 그리나.
+ *
+ * ★268칸 전부에 점을 붙이지 않는다.★ 붙여 봤자 눈에는 안개로 보이고 기계만 힘들다.
+ * ★일정 간격으로 고른 칸★ 에만 점을 붙이고, 나머지 칸은 그 점들이 도착하는 물결에
+ * 맞춰 뒤따라 켜진다. 눈에는 «좌표가 쏟아져 들어와 지도가 된다» 로 보인다.
+ */
+const FLY_EVERY = 5
+/** 전부 날아오는 데 걸리는 시간 (초) */
+const FLY_SPAN = 1.5
+/** 한 점이 날아오는 시간 (초) */
+const FLY_DUR = 0.62
+
+/**
+ * 그 칸을 향해 ★어느 쪽에서★ 날아오나.
+ *
+ * `Math.random()` 을 쓰면 안 된다 — 서버가 그린 값과 브라우저가 그린 값이 달라
+ * 화면이 한 번 튄다(hydration mismatch). 그래서 ★칸 좌표에서 만든 값★ 을 쓴다.
+ * 사람 눈에는 제멋대로이고 두 곳에서 늘 같은 답이 나온다. (클랜 목록의 «무작위 나열» 과 같은 수법)
+ */
+function flyFrom(x: number, y: number): { dx: number; dy: number; t: number } {
+  let h = 2166136261
+  for (const n of [x, y]) {
+    h ^= n & 0xff
+    h = Math.imul(h, 16777619)
+    h ^= (n >> 8) & 0xff
+    h = Math.imul(h, 16777619)
+  }
+  const a = ((h >>> 0) % 360) * (Math.PI / 180)
+  const far = 26 + ((h >>> 9) % 22)
+  return { dx: Math.cos(a) * far, dy: Math.sin(a) * far, t: ((h >>> 3) % 1000) / 1000 }
+}
+
 function ZoneMap() {
   const ref = useRef<SVGSVGElement>(null)
   const [on, setOn] = useState(0)
@@ -53,8 +95,38 @@ function ZoneMap() {
     io.observe(el)
     return () => io.disconnect()
   }, [])
+
+  /* 날아오는 점 — 칸 몇 개마다 하나씩. 도착 시각은 그 칸이 켜지는 시각과 같다 */
+  const flyers: { key: string; x: number; y: number; color: string; fly: ReturnType<typeof flyFrom> }[] = []
+  if (PIXEL_FLY) {
+    for (const [zone, cells] of Object.entries(ZONE_CELLS)) {
+      for (let i = 0; i < cells.length; i += FLY_EVERY) {
+        const cell = cells[i]
+        if (cell === undefined) continue
+        const [cx, cy] = cell
+        flyers.push({
+          key: `${zone}-${cx}-${cy}`,
+          x: cx - ZONE_BOUNDS.minX + PAD,
+          y: cy - ZONE_BOUNDS.minY + PAD,
+          color: ZONE_COLOR[zone] ?? '#5b8dff',
+          fly: flyFrom(cx, cy),
+        })
+      }
+    }
+  }
+
   return (
     <svg ref={ref} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} aria-label={`구역 ${ZONE_TOTAL_CELLS}칸`}>
+      <defs>
+        {/* 날아오는 점의 번짐 — 꼬리처럼 보이게 한다 */}
+        <filter id="v3PixelGlow" x="-120%" y="-120%" width="340%" height="340%">
+          <feGaussianBlur stdDeviation="0.5" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
       <rect x="0" y="0" width={W} height={H} fill="#0a1220" />
       {Array.from({ length: Math.ceil(W / 10) + 1 }, (_, i) => (
         <line key={`v${i}`} x1={i * 10} y1="0" x2={i * 10} y2={H} stroke="#16203a" strokeWidth={0.08} />
@@ -62,21 +134,63 @@ function ZoneMap() {
       {Array.from({ length: Math.ceil(H / 10) + 1 }, (_, i) => (
         <line key={`h${i}`} x1="0" y1={i * 10} x2={W} y2={i * 10} stroke="#16203a" strokeWidth={0.08} />
       ))}
+
       {Object.entries(ZONE_CELLS).map(([key, cells]) => (
         <g key={key} fill={ZONE_COLOR[key] ?? '#5b8dff'} opacity={isLong(key) ? 0.85 : 0.42}>
-          {cells.map(([x, y], i) => (
-            <rect
-              key={`${x}-${y}`}
-              x={x - ZONE_BOUNDS.minX + PAD}
-              y={y - ZONE_BOUNDS.minY + PAD}
-              width={0.92}
-              height={0.92}
-              rx={0.16}
-              style={on > 0 ? { animation: `v3ZoneIn .5s ease-out ${(i % 20) * 0.022 + 0.05}s both` } : undefined}
-            />
-          ))}
+          {cells.map(([x, y], i) => {
+            /* 옛 판과 새 판이 ★같은 자리★ 에서 갈린다. 옛 값은 아래 `else` 쪽 그대로다 */
+            const land = PIXEL_FLY
+              ? { animation: `v3ZoneLand .42s cubic-bezier(.2,1.4,.4,1) ${(flyFrom(x, y).t * FLY_SPAN + FLY_DUR).toFixed(3)}s both` }
+              : { animation: `v3ZoneIn .5s ease-out ${(i % 20) * 0.022 + 0.05}s both` }
+            return (
+              <rect
+                key={`${x}-${y}`}
+                x={x - ZONE_BOUNDS.minX + PAD}
+                y={y - ZONE_BOUNDS.minY + PAD}
+                width={0.92}
+                height={0.92}
+                rx={0.16}
+                style={on > 0 ? land : undefined}
+              />
+            )
+          })}
         </g>
       ))}
+
+      {/* ★날아오는 좌표★ — 배틀로그 한 줄이 칸에 꽂히는 그림이다 */}
+      {!PIXEL_FLY || on === 0
+        ? null
+        : flyers.map((f) => (
+            <g key={f.key}>
+              <rect
+                x={f.x}
+                y={f.y}
+                width={0.92}
+                height={0.92}
+                rx={0.16}
+                fill={f.color}
+                filter="url(#v3PixelGlow)"
+                style={{
+                  ['--fx' as string]: `${f.fly.dx.toFixed(2)}px`,
+                  ['--fy' as string]: `${f.fly.dy.toFixed(2)}px`,
+                  animation: `v3PixelFly ${FLY_DUR}s cubic-bezier(.3,0,.2,1) ${(f.fly.t * FLY_SPAN).toFixed(3)}s both`,
+                }}
+              />
+              {/* 꽂히는 순간의 고리 */}
+              <circle
+                cx={f.x + 0.46}
+                cy={f.y + 0.46}
+                r={0.9}
+                fill="none"
+                stroke={f.color}
+                strokeWidth={0.16}
+                style={{
+                  transformOrigin: `${(f.x + 0.46).toFixed(2)}px ${(f.y + 0.46).toFixed(2)}px`,
+                  animation: `v3PixelHit .5s ease-out ${(f.fly.t * FLY_SPAN + FLY_DUR).toFixed(3)}s both`,
+                }}
+              />
+            </g>
+          ))}
     </svg>
   )
 }
@@ -116,9 +230,15 @@ const AXES: readonly (readonly [string, string])[] = [
   ['소수싸움', '인원이 모자란 상황의 승률입니다'],
 ]
 
-export function AnalysisPanelV3() {
+/**
+ * @param always ★폰에서도 보인다★ (2026-09-14). 기본값은 옛 동작 그대로 —
+ *   선수 상세의 플레이분석 탭은 PC 에서만 이 칸을 둔다 (`.v3-analysis`).
+ *   소개 페이지(`/about`)는 ★설명이 본문★ 이라 폰에서도 보여야 한다.
+ */
+export function AnalysisPanelV3({ always = false }: { always?: boolean } = {}) {
   return (
-    <div className="v3-analysis" style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 4px 10px', minWidth: 0 }}>
+    <div className={always ? '' : 'v3-analysis'} style={{
+      ...(always ? { display: 'flex' } : {}), display: 'flex', flexDirection: 'column', gap: 16, padding: '4px 4px 10px', minWidth: 0 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.18em', color: '#7fa9ff' }}>HOW WE MEASURE</span>
         <span style={{ fontSize: 17, fontWeight: 800, color: '#ffffff', letterSpacing: '-.01em' }}>전장을 칸으로 잘라 셉니다</span>

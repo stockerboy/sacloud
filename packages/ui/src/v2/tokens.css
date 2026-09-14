@@ -882,8 +882,51 @@
   from { opacity: 0; transform: scale(.4) }
   to { opacity: 1; transform: scale(1) }
 }
+
+/*
+ * ★픽셀이 날아와 꽂힌다★ (2026-09-14 사장님:
+ *   «배틀로그 분석방법 간지나게 우리 페이지에 있는 그 위치정보 픽셀 날라오면서
+ *     하는거 ★더 간지나게★ 만들어서 설명해줘»)
+ *
+ * ── 무엇이 달라졌나
+ *   옛 판(`v3ZoneIn`)은 칸이 그 자리에서 «퐁» 하고 커지기만 했다. 그건 «칸이 있다» 는
+ *   말이지 ★«좌표가 날아와 칸이 된다»★ 는 말이 아니다. 우리가 실제로 하는 일은
+ *   ★배틀로그 한 줄이 좌표가 되어 칸에 꽂히는 것★ 이라 그림도 그렇게 움직여야 한다.
+ *
+ * ── 어떻게 움직이나 (겹 셋)
+ *   ① `v3PixelFly`  — 화면 밖에서 제 칸까지 날아온다. 도착 직전에 가장 밝다
+ *   ② `v3PixelHit`  — 꽂히는 순간 한 번 번쩍이며 고리가 퍼진다
+ *   ③ `v3ZoneLand`  — 그 칸이 자리를 잡는다 (옛 `v3ZoneIn` 보다 늦게, 도착에 맞춰)
+ *   날아오는 방향·거리·시각은 칸마다 다르다 — CSS 변수로 그 자리에서 준다.
+ *
+ * ── ★옛 판을 지우지 않는다★ (`CLAUDE.md` 1-4)
+ *   위 `v3ZoneIn` 은 그대로 있다. `AnalysisPanelV3.tsx` 의 `PIXEL_FLY = false` 로
+ *   되돌리면 옛 움직임이 그대로 돌아온다.
+ */
+@keyframes v3PixelFly {
+  0%   { opacity: 0; transform: translate(var(--fx), var(--fy)) scale(.5) }
+  12%  { opacity: 1 }
+  88%  { opacity: 1 }
+  100% { opacity: 0; transform: translate(0, 0) scale(1) }
+}
+@keyframes v3PixelHit {
+  0%   { opacity: 0; transform: scale(.2) }
+  40%  { opacity: .9; transform: scale(1) }
+  100% { opacity: 0; transform: scale(2.2) }
+}
+@keyframes v3ZoneLand {
+  0%   { opacity: 0; transform: scale(.35) }
+  70%  { opacity: 1; transform: scale(1.35) }
+  100% { opacity: 1; transform: scale(1) }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  [style*="v3ZoneIn"] { animation: none !important }
+  [style*="v3ZoneIn"],
+  [style*="v3ZoneLand"],
+  [style*="v3PixelFly"],
+  [style*="v3PixelHit"] { animation: none !important }
+  /* 움직임을 끈 사람에게는 ★날아오는 점 자체를 안 보인다★ — 멈춘 점은 먼지로 보인다 */
+  [style*="v3PixelFly"], [style*="v3PixelHit"] { display: none !important }
 }
 
 /* 플레이분석 — PC 에서만 왼쪽 설명 칸을 둔다 (폰은 육각형만) */
