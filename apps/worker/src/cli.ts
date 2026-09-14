@@ -103,6 +103,7 @@ import { buildRoundProfiles } from './jobs/roundBuild.js'
 import { buildClanRoundProfiles } from './jobs/clanRoundBuild.js'
 /** 클랜 육각형 V2 (D-217 · D-235) — 스나싸움·소수싸움·세이브·템포·B어택·A어택. 옛 판과 따로 산다 */
 import { buildClanHexV2 } from './jobs/clanHexV2Build.js'
+import { plantFlags } from './jobs/flagPlant.js'
 import { buildPlayerHex } from './jobs/playerHexBuild.js'
 import {
   buildClanHexV2Summary,
@@ -3411,6 +3412,53 @@ async function main(): Promise<number> {
         },
       ])
       table(Object.entries(result.pools).map(([league, p]) => ({ 리그: league, 스나: p.sniper, 라플: p.rifle, 미측정: p.unmeasured })))
+      return 0
+    }
+    /**
+     * ★깃발 꽂기★ — 하루(17:00~03:00)의 1·2·3등을 박는다 (2026-09-15 사장님).
+     *
+     *   pnpm --filter @sacloud/worker nexon flag-plant --confirm
+     *   pnpm --filter @sacloud/worker nexon flag-plant --day 2026-09-15 --confirm
+     *   pnpm --filter @sacloud/worker nexon flag-plant --league nolink
+     *
+     * **`--confirm` 없이는 한 줄도 쓰지 않는다.** 몇 번을 돌려도 깃발은 하나다.
+     * 아직 안 끝난 하루는 건너뛴다 (`--force` 로만 억지로 꽂는다 — 시험용).
+     */
+    case 'flag-plant': {
+      const result = await plantFlags({
+        confirm: boolFlag(args, 'confirm'),
+        dayKey: stringFlag(args, 'day'),
+        leagueSlug: stringFlag(args, 'league'),
+        force: boolFlag(args, 'force'),
+      })
+      table([
+        {
+          '깃발 하루': result.day,
+          '열림': result.opensAt.slice(0, 16).replace('T', ' '),
+          '닫힘': result.closesAt.slice(0, 16).replace('T', ' '),
+          '아직 진행중': result.stillLive ? '예' : '아니오',
+        },
+      ])
+      if (result.stillLive && result.leagues.length === 0) {
+        log('아직 안 끝난 하루다 — 꽂지 않았다. 마감(03:00) 뒤에 돌리거나 --day 로 지난 날을 지목해라')
+        return 0
+      }
+      for (const lg of result.leagues) {
+        if (lg.empty) {
+          log(`${lg.league} — 그날 뛴 선수 ${lg.players}명 · ★문턱을 넘은 사람이 없다★ (깃발 없음)`)
+          continue
+        }
+        log(`${lg.league} — 그날 뛴 선수 ${lg.players}명`)
+        table(
+          lg.planted.map((p) => ({
+            등수: `${p.rank}위`,
+            닉네임: p.name,
+            점수: p.score,
+            전적: `${p.games}전 ${p.win}승 ${p.lose}패`,
+          })),
+        )
+      }
+      if (!result.written) log('미리보기다. 실제로 꽂으려면 --confirm')
       return 0
     }
     case 'clan-hex-v2-build': {

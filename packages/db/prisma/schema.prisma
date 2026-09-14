@@ -355,6 +355,7 @@ model Player {
   @@index([name])
   @@index([clanId])
   @@index([origin])
+  flags          LeagueFlag[]
 }
 
 /// 클랜. 원본은 넥슨 병영수첩 slug를 그대로 식별자로 쓴다(관측).
@@ -409,6 +410,7 @@ model Clan {
   @@unique([sourceClanId])
   @@index([name])
   @@index([origin])
+  flags           LeagueFlag[]
 }
 
 /// 클랜의 다른 표기 (Phase 10).
@@ -528,6 +530,7 @@ model League {
   @@unique([sourceLeagueId])
   @@index([official, createdAt])
   @@index([origin])
+  flags         LeagueFlag[]
 }
 
 /// 리그가 기록 대상으로 삼는 맵. 여기 없는 맵의 경기는 저장하지 않는다.
@@ -3276,4 +3279,57 @@ model LeagueApplication {
   @@unique([leagueSlug, clanName])
   @@index([status, createdAt])
   @@index([kind])
+}
+
+/// ★깃발★ — 하루(17:00~03:00)의 1등이 정상에 꽂는다 (2026-09-15 사장님).
+///
+/// > «막 경쟁해서 새벽 3시에 1등인 사람이 깃발 꽂고
+/// >  그 깃발을 개인기록에 깃발 5개 이런식으로 표시해주면 좋겠어»
+///
+/// ── 한 줄이 곧 깃발 하나다
+///   `(리그, 마감일, 등수)` 가 자물쇠다. 마감 잡을 몇 번을 다시 돌려도
+///   ★깃발은 하나뿐★ 이다 — 같은 자리에 다시 쓰면 덮어쓴다.
+///
+/// ── 왜 점수를 같이 저장하나
+///   그날 왜 1등이었는지는 ★그때의 값★ 으로만 설명된다. 나중에 다시 세면
+///   집계가 바뀌어 숫자가 달라진다. 깃발은 ★그 순간의 기록★ 이라 스냅샷을 박는다.
+///
+/// ⚠ 클랜은 깃발이 없다 (2026-09-15 사장님: «클랜은 깃발없어»). 개인만이다.
+model LeagueFlag {
+  id String @id @default(cuid())
+
+  leagueId String
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  /// 깃발 하루의 이름 = ★마감한 날★ `YYYY-MM-DD` (KST). `flagDayOf()` 가 만든다
+  dayKey String
+
+  /// 1 · 2 · 3. 1등만 정상에 꽂고 2·3 등은 같이 남긴다 (화면이 셋을 보여 준다)
+  rank Int
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// 꽂힐 때의 소속 — 나중에 옮겨도 그날의 소속이 남아야 한다
+  clanId String?
+  clan   Clan?   @relation(fields: [clanId], references: [id], onDelete: SetNull)
+
+  /// ★그때의 값★ (스냅샷). 다시 세도 안 바뀐다
+  score    Float
+  games    Int
+  win      Int
+  lose     Int
+  /// 킬÷(킬+데스) · % — 계약의 `kdRate` 와 같은 뜻
+  kdRate   Float?
+  winRate  Float?
+
+  /// 마감 잡이 이 줄을 만든 시각 (= 03:00 직후)
+  plantedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leagueId, dayKey, rank])
+  /// 「이 선수의 깃발 몇 개」를 세는 길
+  @@index([playerId, rank])
+  @@index([leagueId, dayKey])
 }
