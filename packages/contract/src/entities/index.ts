@@ -15,3 +15,5 @@ export * from './home'
 export * from './hexTop'
 /* 리그 참가 신청 — 로그인 없이 받는다 (2026-09-14 사장님) */
 export * from './leagueApplication'
+/* 오늘의 셋 — 그날 고르게 잘한 사람·클랜 (2026-09-14 사장님) */
+export * from './dailyPodium'

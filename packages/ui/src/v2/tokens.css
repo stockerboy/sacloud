@@ -1532,15 +1532,44 @@
 }
 
 /**
- * ★육각형 옆 빈자리에 숫자를 올린다★ (사장님: «pc는 너무 공간낭비가 심해
- * 승률 킬뎃을 오른쪽에 올려줘»).
+ * ★한 가로 카드 안에 그래프(왼쪽) + 육각형(오른쪽)★ (2026-09-14 저녁 사장님:
+ * «개인, 클랜 기록 전부 이렇게 보여줘 모바일에서는 위 아래로 보여주고(세로배열로)
+ *   여기선 가로카드안에 전부 넣어 ★그래프 왼쪽 / 육각형 오른쪽★»).
  *
- * 폰에서는 육각형이 한 줄을 다 쓰고 숫자가 그 아래로 간다 — 폰은 원래 안 비었다
- * (사장님: «모바일은 상관없는데»).
+ * ── ⚠ 옛 판을 그대로 남긴다 (`CLAUDE.md` 1-4)
+ *   처음에는 ★육각형 왼쪽 + 숫자 카드 오른쪽★ 이었다 (`.about-hexrow` · `.about-hexside`).
+ *   사장님이 사진에 ★숫자 카드에 X★ 를 치시고 ★육각형을 오른쪽으로★ 화살표를 그려 주셨다.
+ *   숫자는 그래프 안에 이미 붙어 나오므로(«56.5% / 56.4%») 따로 적을 자리가 필요 없었다.
+ *   아래 옛 규칙은 지우지 않는다 — 쓰는 곳이 없어도 되돌릴 때 쓴다.
  */
 .about-hexrow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 4px 12px 14px; }
 .about-hexside { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 @media (min-width: 860px) {
-  /* 육각형이 조금 더 넓다 — 그림이 주인공이고 숫자는 곁이다 */
   .about-hexrow { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: center; }
 }
+
+/**
+ * ★지금 쓰는 것★ — 폰은 위아래(그래프 → 육각형), PC 는 좌우(그래프 | 육각형).
+ *
+ * 그래프가 넓다 — 가로로 긴 그림이라 좁으면 날짜 눈금이 뭉갠다.
+ * 육각형은 정사각에 가까워서 좁아도 읽힌다.
+ */
+.about-record { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 4px 4px 8px; align-items: center; }
+@media (min-width: 980px) {
+  .about-record { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; padding: 4px 14px 10px; }
+}
+
+/**
+ * ★오늘의 셋★ (2026-09-14 사장님) — 폰은 한 줄씩, PC 는 셋이 나란히.
+ *
+ * 셋은 ★언제나 셋★ 이라 `auto-fit` 을 안 쓴다 — 화면 폭에 따라 둘이 되면
+ * «1·2·3등» 이라는 모양이 깨진다.
+ */
+.daily-podium { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (min-width: 860px) { .daily-podium { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } }
+.daily-podium-card {
+  display: block; min-width: 0; padding: 14px 15px 13px; border-radius: 12px;
+  background: rgba(16, 26, 44, .62); border: 1px solid var(--v2-card-border, #24314a);
+  transition: border-color .15s ease, background .15s ease;
+}
+.daily-podium-card:hover { border-color: rgba(255, 217, 138, .45); background: rgba(22, 34, 56, .72); }

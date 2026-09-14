@@ -386,9 +386,6 @@ function PlayerShowcase({
         ? { d: lastPlayed, name: lastPlayed.label }
         : null
 
-  const winRate = data.win + data.lose === 0 ? null : (data.win / (data.win + data.lose)) * 100
-  const kd = data.kill !== null && data.death !== null && data.death > 0 ? (data.kill / data.death) * 100 : null
-
   return (
     <Card style={{ marginBottom: 14 }}>
       <CardHead
@@ -416,43 +413,30 @@ function PlayerShowcase({
         )}
       </div>
 
-      {/* ① PC 는 육각형 왼쪽 · 숫자 오른쪽. 폰은 위아래 */}
-      <div className="about-hexrow">
+      {/*
+        ★한 가로 카드 안에 그래프(왼쪽) + 육각형(오른쪽)★ (2026-09-14 저녁 사장님이
+        사진에 직접 그려 주셨다 — 숫자 카드에 X, 육각형에 «오른쪽으로» 화살표).
+        폰은 위아래로 내려간다.
+
+        ⚠ 승률·킬뎃을 따로 안 적는다 — ★그래프가 이미 끝에 적어 준다★ («56.5% / 56.4%»).
+          두 번 적으면 그게 사장님이 X 치신 공간낭비다.
+      */}
+      <div className="about-record">
         <div style={{ minWidth: 0 }}>
-          <p style={{ padding: '0 4px 6px', fontSize: 11.5, lineHeight: 1.8, color: V3.textMuted }}>
-            여섯 축은 <b style={{ color: '#fff' }}>이 선수가 무엇으로 이기는가</b>를 말합니다.
-          </p>
-          {axes.length === 0 ? null : <Hexagon axes={axes} id={`aboutHex-${playerId}`} />}
-        </div>
-
-        <div className="about-hexside">
-          <SideStat label="승률" value={winRate === null ? '—' : `${winRate.toFixed(1)}%`} sub={`${data.win}승 ${data.lose}패`} tone="#7fa9ff" />
-          <SideStat label="킬뎃" value={kd === null ? '—' : `${kd.toFixed(1)}%`} sub={data.kill === null || data.death === null ? '' : `${data.kill}킬 ${data.death}데스`} tone="#ff8a90" />
-          <SideStat label="판수" value={`${games}판`} sub="이 시즌" tone={V3.textMuted} />
-          {kdNotice === null ? null : (
-            <p
-              style={{
-                marginTop: 4,
-                fontSize: 10.5,
-                lineHeight: 1.7,
-                color: '#ffb9bd',
-                background: 'rgba(255,138,144,.08)',
-                border: '1px solid rgba(255,138,144,.32)',
-                borderRadius: 8,
-                padding: '9px 11px',
-              }}
-            >
-              {kdNotice}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div style={{ borderTop: `1px solid ${V3.divider}` }}>
-        <CardHead
-          title="승률 및 킬뎃 추이"
-          ribbon={V3.red}
-          right={
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '0 2px 6px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#fff' }}>승률 및 킬뎃 추이</span>
+            <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>
+              DAY 는 그날그날, 누적은 시즌 전체입니다
+            </span>
+            <span style={{ flex: 1 }} />
             <span style={{ display: 'flex', gap: 5 }}>
               {(['day', 'cum'] as const).map((m) => (
                 <span
@@ -473,57 +457,67 @@ function PlayerShowcase({
                 </span>
               ))}
             </span>
-          }
-        >
-          <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>
-            DAY 는 그날그날, 누적은 시즌 전체입니다
-          </span>
-        </CardHead>
-        <TrendChartV3
-          days={data.trend}
-          mode={mode}
-          seed={`about-${playerId}`}
-          markSlug={data.clan?.slug ?? null}
-          winLabel={
-            mode === 'day'
-              ? ref
-                ? `${ref.name} ${ref.d.win}승 ${ref.d.lose}패`
-                : '아직 경기 없음'
-              : `누적 ${data.win}승 ${data.lose}패`
-          }
-          kdLabel={
-            mode === 'day'
-              ? ref
-                ? `${ref.name} ${ref.d.kill}킬 ${ref.d.death}데스`
-                : ''
-              : data.kill !== null && data.death !== null
-                ? `누적 ${data.kill}킬 ${data.death}데스`
-                : ''
-          }
-        />
-        {/* ④ K/D 마커 오른쪽 안내 — 그래프 바로 밑에 이어 붙인다 */}
-        {kdNotice === null ? null : (
-          <p
-            style={{
-              margin: '0 14px 14px',
-              fontSize: 11,
-              lineHeight: 1.75,
-              color: '#ffb9bd',
-              background: 'rgba(255,138,144,.08)',
-              border: '1px solid rgba(255,138,144,.32)',
-              borderRadius: 8,
-              padding: '10px 12px',
-            }}
-          >
-            <b style={{ color: '#ff8a90' }}>K/D</b> — {kdNotice}
+          </div>
+          <TrendChartV3
+            days={data.trend}
+            mode={mode}
+            seed={`about-${playerId}`}
+            markSlug={data.clan?.slug ?? null}
+            winLabel={
+              mode === 'day'
+                ? ref
+                  ? `${ref.name} ${ref.d.win}승 ${ref.d.lose}패`
+                  : '아직 경기 없음'
+                : `누적 ${data.win}승 ${data.lose}패`
+            }
+            kdLabel={
+              mode === 'day'
+                ? ref
+                  ? `${ref.name} ${ref.d.kill}킬 ${ref.d.death}데스`
+                  : ''
+                : data.kill !== null && data.death !== null
+                  ? `누적 ${data.kill}킬 ${data.death}데스`
+                  : ''
+            }
+          />
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <p style={{ padding: '0 2px 4px', fontSize: 11.5, lineHeight: 1.8, color: V3.textMuted }}>
+            여섯 축은 <b style={{ color: '#fff' }}>이 선수가 무엇으로 이기는가</b>를 말합니다.
           </p>
-        )}
+          {axes.length === 0 ? null : <Hexagon axes={axes} id={`aboutHex-${playerId}`} />}
+        </div>
       </div>
+
+      {/* ④ K/D 안내 — 그래프 바로 밑 (2026-09-14 사장님: «K/D 원마크 멈출때 오른쪽에 써놔») */}
+      {kdNotice === null ? null : (
+        <p
+          style={{
+            margin: '0 14px 14px',
+            fontSize: 11,
+            lineHeight: 1.75,
+            color: '#ffb9bd',
+            background: 'rgba(255,138,144,.08)',
+            border: '1px solid rgba(255,138,144,.32)',
+            borderRadius: 8,
+            padding: '10px 12px',
+          }}
+        >
+          <b style={{ color: '#ff8a90' }}>K/D</b> — {kdNotice}
+        </p>
+      )}
     </Card>
   )
 }
 
-function SideStat({
+/**
+ * ⚠ ★지금은 아무도 안 쓴다★ (2026-09-14 저녁) — 육각형 옆에 승률·킬뎃·판수를
+ *   적던 옛 방식의 부품이다. 사장님이 사진에 ★X★ 를 치시고 그 자리를 그래프에
+ *   내주라고 하셨다 (숫자는 그래프가 이미 끝에 적어 준다).
+ *   지우지 않는다 (`CLAUDE.md` 1-4) — `.about-hexside` 와 짝이고, 되돌릴 때 쓴다.
+ */
+export function SideStat({
   label,
   value,
   sub,
@@ -579,7 +573,6 @@ function ClanShowcase({
     .filter((o) => o.win + o.lose > 0)
     .sort((a, b) => b.win + b.lose - (a.win + a.lose))[0]
   const theme = clanThemeOf(data.clan.slug)
-  const winRate = data.win + data.lose === 0 ? null : (data.win / (data.win + data.lose)) * 100
 
   return (
     <Card style={{ marginBottom: 14 }}>
@@ -602,53 +595,51 @@ function ClanShowcase({
         </Link>
       </div>
 
-      <div className="about-hexrow">
+      {/*
+        ★상대전적(왼쪽) + 육각형(오른쪽)★ — 선수 카드와 같은 규칙이다
+        (2026-09-14 사장님: «개인, 클랜 기록 전부 이렇게 보여줘 (…) 그래프 왼쪽 / 육각형 오른쪽»).
+        폰은 위아래로 내려간다.
+      */}
+      <div className="about-record">
         <div style={{ minWidth: 0 }}>
-          <p style={{ padding: '0 4px 6px', fontSize: 11.5, lineHeight: 1.8, color: V3.textMuted }}>
+          {h2h === undefined ? (
+            <p style={{ padding: '18px 2px', fontSize: 11.5, color: V3.textGhost2 }}>
+              아직 맞붙은 기록이 없습니다
+            </p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, padding: '0 2px 6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12.5, fontWeight: 800, color: '#fff' }}>상대전적</span>
+                <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>
+                  가장 많이 붙은 상대 — {h2h.clan.name} 와 {h2h.win + h2h.lose}판
+                </span>
+              </div>
+              <H2HChartV3
+                /* 계약의 `recent` 를 그래프가 아는 모양으로 옮긴다 — 아직 안 끝난 판은 뺀다 */
+                games={(h2h.recent ?? [])
+                  .filter((g): g is typeof g & { won: boolean } => g.won !== null)
+                  .map((g) => ({ at: g.start_at, won: g.won }))}
+                theme={theme}
+                oppTheme={clanThemeOf(h2h.clan.slug)}
+                mineName={data.clan.name}
+                mineSlug={data.clan.slug}
+                oppName={h2h.clan.name}
+                oppSlug={h2h.clan.slug}
+              />
+            </>
+          )}
+        </div>
+
+        <div style={{ minWidth: 0 }}>
+          <p style={{ padding: '0 2px 4px', fontSize: 11.5, lineHeight: 1.8, color: V3.textMuted }}>
             클랜의 여섯 축은 <b style={{ color: '#fff' }}>이 팀이 어떻게 싸우는가</b>입니다.
           </p>
           {data.hexagon_v2 === null ? null : (
             <Hexagon axes={clanHexAxes(data.hexagon_v2)} id={`aboutClanHex-${clanSlug}`} />
           )}
         </div>
-        <div className="about-hexside">
-          <SideStat
-            label="승률"
-            value={winRate === null ? '—' : `${winRate.toFixed(1)}%`}
-            sub={`${data.win}승 ${data.lose}패`}
-            tone="#7fa9ff"
-          />
-          <SideStat label="판수" value={`${games}판`} sub="이 시즌" tone={V3.textMuted} />
-          <p style={{ fontSize: 10.5, lineHeight: 1.8, color: V3.textGhost2, padding: '2px 2px 0' }}>
-            스나싸움 · 소수싸움 · 세이브 · 게임템포 · 선짤 · 교환 — 전부 배틀로그를 다시 세어 만든
-            값입니다.
-          </p>
-        </div>
       </div>
 
-      {h2h === undefined ? null : (
-        <div style={{ borderTop: `1px solid ${V3.divider}` }}>
-          <CardHead title="상대전적" ribbon="#ffd98a">
-            <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>
-              가장 많이 붙은 상대 — {h2h.clan.name} 와 {h2h.win + h2h.lose}판
-            </span>
-          </CardHead>
-          <div style={{ padding: '0 8px 14px' }}>
-            <H2HChartV3
-              /* 계약의 `recent` 를 그래프가 아는 모양으로 옮긴다 — 아직 안 끝난 판은 뺀다 */
-              games={(h2h.recent ?? [])
-                .filter((g): g is typeof g & { won: boolean } => g.won !== null)
-                .map((g) => ({ at: g.start_at, won: g.won }))}
-              theme={theme}
-              oppTheme={clanThemeOf(h2h.clan.slug)}
-              mineName={data.clan.name}
-              mineSlug={data.clan.slug}
-              oppName={h2h.clan.name}
-              oppSlug={h2h.clan.slug}
-            />
-          </div>
-        </div>
-      )}
     </Card>
   )
 }

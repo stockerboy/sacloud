@@ -37,6 +37,7 @@ import {
   ClanPlayer,
   ClanRankRow,
   ApplicationWaiting,
+  DailyPodium,
   LeagueHexTop,
   ClanSummary,
   Comment,
@@ -549,6 +550,18 @@ export const endpoints = {
     origin: 'designed',
     description: '참가대기 클랜 — 리그마다 최근 7일 경기가 많은 넷',
     response: apiResponse(ApplicationWaiting),
+  },
+  /**
+   * ★오늘의 셋★ (2026-09-14 사장님: «그 날 클랜전한 인원들을 일열로 세워서
+   *   육각축이 고르게 전부 잘한 사람 + 승률도 좋아야함 3명 그리고 3개씩»).
+   *   개인 셋 · 클랜 셋을 한 번에 준다 — 두 화면이 같은 응답을 나눠 쓴다.
+   */
+  leagueDailyPodium: {
+    method: 'GET',
+    path: '/leagues/:leagueId/daily-podium',
+    origin: 'designed',
+    description: '오늘의 셋 — 그날 고르게 잘한 선수 3명 · 클랜 3곳',
+    response: apiResponse(DailyPodium),
   },
   leagueHexTop: {
     method: 'GET',

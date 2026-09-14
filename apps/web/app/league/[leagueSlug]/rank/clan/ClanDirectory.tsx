@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { LeagueClan } from '@sacloud/contract'
 import { leagueScreen, showsTier } from '@sacloud/contract'
 import type { ClanRankTableRow } from '@sacloud/ui'
-import { ClanMark, ClanRankTable, ClanSearchBox, EmptyState, RankBox, RankHeader, leagueClanPath, type ClanRankNote } from '@sacloud/ui'
+import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, RankBox, RankHeader, leagueClanPath, type ClanRankNote } from '@sacloud/ui'
 import Link from 'next/link'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -105,6 +105,13 @@ function ClanRankDirectory({
 
   /* 티어 이름(`ASTRA` · `CHALLENGER1` · `CHALLENGER2`)은 리그 구분(`independent`)을 봐야 나온다.
      이름은 `divisionLabel` 이 만든다 — ★여기서 티어 이름을 지어내지 않는다★ */
+  /** ★오늘의 셋★ — 개인 셋·클랜 셋이 한 응답으로 온다 (2026-09-14) */
+  const daily = useQuery({
+    queryKey: ['league', leagueSlug, 'daily-podium'],
+    queryFn: () => apiGet('leagueDailyPodium', { params: { leagueId: leagueSlug } }),
+    enabled: ready,
+  })
+
   const league = useQuery({
     queryKey: ['league', leagueSlug],
     queryFn: () => apiGet('leagueShow', { params: { leagueSlug } }),
@@ -328,6 +335,19 @@ function ClanRankDirectory({
                 : '래더가 높은 순입니다. 센 상대를 이길수록 더 큰 점수를 받습니다.'
           }
         />
+        {/*
+          ★오늘의 셋★ (2026-09-14 사장님: «그 날 클랜전한 인원들을 일열로 세워서
+          육각축이 고르게 전부 잘한 사람 + 승률도 좋아야함 3명 그리고 3개씩»).
+          검색 중에는 안 그린다 — 걸러 낸 화면에 «오늘» 이 끼어들면 헷갈린다.
+        */}
+        {searching ? null : (
+          <DailyPodium
+            day={daily.data?.data.day ?? null}
+            rows={daily.data?.data.clans ?? []}
+            kind="clan"
+            hrefOf={(row) => (row.clan_slug === null ? null : leagueClanPath(leagueSlug, row.clan_slug))}
+          />
+        )}
         {/*
           ★1·2·3위 카드★ (2026-09-12 사장님: «클랜도 탑3는 플레이스타일 6각형이랑
           승률 같은거 개인랭킹페이지 처럼 보여줘»). 검색 중에는 안 그린다 —

@@ -5,12 +5,14 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import type { PlayerRankRow, RankWeapon } from '@sacloud/contract'
 import { PAGE_SIZE, RANK_WEAPON_LABEL, leagueScreen, parseRankWeapon, showsTier } from '@sacloud/contract'
 import {
+  DailyPodium,
   FilterChip,
   divisionLabel,
   FormTop3,
   PageHead,
   Pager,
   PlayerRankTable,
+  leaguePlayerPath,
   useSeasonLabel,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
@@ -107,6 +109,13 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
    *
    * `keepPreviousData` 로 쪽을 넘길 때 표가 ★안 비워진다★ — 깜빡임 없이 갈린다.
    */
+  /** ★오늘의 셋★ — 개인 셋·클랜 셋이 한 응답으로 온다 (2026-09-14) */
+  const daily = useQuery({
+    queryKey: ['league', leagueSlug, 'daily-podium'],
+    queryFn: () => apiGet('leagueDailyPodium', { params: { leagueId: leagueSlug } }),
+    enabled: ready,
+  })
+
   const ranksQuery = useQuery({
     /* 무기 축·구간·쪽이 쿼리 키에 들어가야 칩을 바꿀 때 캐시가 섞이지 않는다 */
     queryKey: ['ranks', 'players', 'page', leagueSlug, weapon, tier, page],
@@ -251,6 +260,22 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           그때 카드는 ★숫자만★ 이라 목록 첫 줄과 같은 말을 두 번 하는 셈이었다.
           이제 카드마다 육각형이 들어가서 목록에 없는 것을 보여 준다.
         */}
+        {/*
+          ★오늘의 셋★ (2026-09-14 사장님: «그 날 클랜전한 인원들을 일열로 세워서
+          육각축이 고르게 전부 잘한 사람 + 승률도 좋아야함 3명 그리고 3개씩 뽑아서
+          올려주는거 어때? 그 날 승률이랑 킬뎃 적어주고 (IPL도 여기에만 예외로 킬뎃 적어줌)»).
+
+          ★첫 쪽에만★ 올린다 — 두 쪽부터는 목록을 보러 온 것이지 오늘을 보러 온 게 아니다.
+          그날 경기가 없으면 부품이 스스로 아무것도 안 그린다.
+        */}
+        {page === 1 ? (
+          <DailyPodium
+            day={daily.data?.data.day ?? null}
+            rows={daily.data?.data.players ?? []}
+            kind="player"
+            hrefOf={(row) => (row.player_id === null ? null : leaguePlayerPath(leagueSlug, row.player_id))}
+          />
+        ) : null}
         {page === 1 ? (
           <div>
           <PodiumCards

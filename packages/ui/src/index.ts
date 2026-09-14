@@ -377,3 +377,4 @@ export { EggGallery, type EggGalleryItem, type EggGalleryProps } from './egg/Egg
  *      모양은 `design/gacha-guide.html` 에 남아 있다 (design/ 은 손대지 않는다).
  */
 export * from './league/ClanBadges'
+export * from './league/DailyPodium'
