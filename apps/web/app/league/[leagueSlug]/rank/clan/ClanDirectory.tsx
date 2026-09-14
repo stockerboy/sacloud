@@ -15,6 +15,13 @@ import { ClanDirectoryV1 } from './ClanDirectoryV1'
 import { ClanPodiumCards } from './ClanPodiumCards'
 
 /**
+ * 이번 시즌 한 판도 안 뛴 클랜을 랭킹 표에서 뺄 것인가 (2026-09-15 사장님 지시로 켬).
+ * ⚠ 같은 이름의 스위치가 `lib/server/queries/ladders.ts` · `leagues.ts` 에도 있다.
+ *   래더·API 쪽이고, 이것은 ★리그 화면의 클랜 표★ 다. 끄려면 같이 끈다.
+ */
+const HIDE_NO_GAME_CLANS = true
+
+/**
  * ★클랜랭킹★ — `/league/{slug}/rank/clan` (2026-09-10 사장님 지시).
  *
  * > «여유되면 클랜랭킹까지 매기고 ★지금 클랜랭킹페이지에 클랜들이 그냥 나열만 돼있음★»
@@ -141,8 +148,30 @@ function ClanRankDirectory({
      규칙은 계약의 `showsTier` 한 곳이다 (D-204) */
   const byTier = showsTier(leagueSlug)
 
+  /*
+   * ★이번 시즌 한 판도 안 뛴 클랜은 표에서 뺀다★ (2026-09-15 사장님:
+   * «미활동 클랜 전부 db에서 삭제»).
+   *
+   * 표 맨 아래에 ★「기록 없음 · 30.0층」★ 만 줄줄이 서 있던 줄들이다.
+   * 순위 자리를 차지하면서 보여 줄 것이 없다.
+   *
+   *   실측 (2026-09-15 운영) — 시즌0(9/3~) 에 한 판도 안 뛴 클랜
+   *   IPL 1곳 · LLM 20곳 · YSL 249곳 (356곳 중)
+   *
+   * ★끝점이 아니라 여기서 거른다★ — 같은 끝점(`leagueClans`)을 ★리그 설정(관리자)★ 과
+   * 알 갤러리도 읽는다. 거기서 안 뛴 클랜이 사라지면 관리를 못 한다.
+   *
+   * ★지우지도, 도장을 찍지도 않는다★ (`CLAUDE.md` 2장 2번) — 승·패가 둘 다 0 이라는
+   * ★지금 값★ 으로 거른다. 한 판이라도 뛰면 ★저절로 돌아온다.★
+   * 되돌리려면 `HIDE_NO_GAME_CLANS` 를 `false` 로.
+   */
+  const played = useMemo(
+    () => (HIDE_NO_GAME_CLANS ? clans.items.filter((c) => c.win + c.lose > 0) : clans.items),
+    [clans.items],
+  )
+
   /* 줄 세우기 + 번호 붙이기. 규칙은 `@/lib/clanRanking` 한 곳에 있다 */
-  const ranked = useMemo(() => rankClans(clans.items, { byTier }), [clans.items, byTier])
+  const ranked = useMemo(() => rankClans(played, { byTier }), [played, byTier])
 
   /* ★검색은 순위를 매긴 뒤에 거른다.★ 걸러 놓고 번호를 매기면 3위가 1위로 보인다 */
   const filtered = useMemo(() => ranked.filter(matches(query)), [ranked, query])

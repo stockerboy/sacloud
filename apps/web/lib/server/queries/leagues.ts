@@ -296,6 +296,12 @@ export async function getLeagueClans(
     fetch: async (args) => {
       const tierRecords = await tierRecordsOf(leagueId)
       const rows = await prisma.leagueClan.findMany({
+        /*
+         * ⚠ ★여기서는 「이번 시즌 0판」을 거르지 않는다★ (2026-09-15).
+         *   이 끝점은 랭킹 표만 쓰는 것이 아니다 — ★리그 설정(관리자)★ 과 알 갤러리도
+         *   같은 곳을 읽는다. 관리자 화면에서 안 뛴 클랜이 사라지면 관리를 못 한다.
+         *   거르는 것은 ★랭킹 표 쪽(`ClanDirectory`)★ 이 한다.
+         */
         where: { leagueId, ...activeClanIn(leagueSlug) },
         take: args.take,
         orderBy: args.orderBy as never,
