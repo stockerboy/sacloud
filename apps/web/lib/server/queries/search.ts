@@ -373,8 +373,9 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
 
   /* ★지금 시즌에 뛴 사람을 앞으로★ — 자리 규칙(`mixPrefixFirst`)은 한 글자도 안 건드린다 */
   const players = mixPrefixFirst(
-    season0First(prefixRows).slice(0, SEARCH_LIMIT),
-    season0First(containsOnlyRows).slice(0, SEARCH_LIMIT),
+    /* 겹친 줄을 접고 나서 자른다 — 접기 전에 자르면 껍데기가 자리를 먹는다 (2026-09-14) */
+    season0First(dedupeSamePerson(prefixRows)).slice(0, SEARCH_LIMIT),
+    season0First(dedupeSamePerson(containsOnlyRows)).slice(0, SEARCH_LIMIT),
     SEARCH_LIMIT,
   )
   return players.map((player) => ({
@@ -430,6 +431,59 @@ export function season0First<T extends { _count: { leaguePlayers: number } }>(
   const rest: T[] = []
   for (const row of rows) (row._count.leaguePlayers > 0 ? played : rest).push(row)
   return [...played, ...rest]
+}
+
+/**
+ * ★같은 사람이 두 줄로 뜨던 것★ (2026-09-14 사장님: «애들한테 피드백 받았는데
+ *   같은 닉네임 두개씩 뜨고»).
+ *
+ * ── 왜 생겼나 (운영 실측 2026-09-14)
+ *   선수 표에 ★출처가 셋★ 이고 서로 안 이어져 있다 —
+ *   `3rd.supply` 21,150명 · `nexon_barracks` 3,833명 · `nexon` 976명.
+ *   같은 사람이 옛 거울(3rd.supply)에도, 옛 넥슨 길에도, 지금 병영수첩 길에도 한 줄씩 있다.
+ *   실측 — `dda` 3줄(기록 20 · 6 · 0) · `watercow` 3줄(기록 8 · 0 · 0).
+ *   IPL 에서 겹친 줄 694개 중 ★343개가 이 리그 기록이 0★ 인 껍데기다.
+ *
+ * ── 무엇을 하나 (★한 줄도 지우지 않는다★)
+ *   ① ★이름과 클랜이 같은 줄★ 은 한 줄로 본다 — 같은 사람이다.
+ *      남길 줄은 ★이번 시즌에 뛴 리그가 많은 쪽★ · 같으면 id 가 앞선 쪽.
+ *   ② 이름이 같은데 ★클랜이 다르면 그대로 둔다★ — 동명이인일 수 있다.
+ *      다만 ★기록이 0인 줄★ 은, 같은 이름에 기록이 있는 줄이 하나라도 있으면 뺀다.
+ *      (그 줄은 이번 시즌에 한 판도 안 뛴 껍데기라 보여 줄 것이 없다)
+ *
+ * ⚠ ★주소로는 여전히 열린다.★ `/player/{id}` 는 그대로다 — 목록에서만 접는다.
+ * ⚠ 진짜 해결은 ★선수를 합치는 것★ 이다 (`player-merge` 잡). 이건 그때까지의 가림막이고,
+ *   합치고 나면 이 함수는 할 일이 없어져 저절로 조용해진다.
+ *
+ * 순수 함수라 DB 없이 시험한다.
+ */
+export function dedupeSamePerson<
+  T extends { id: string; name: string; clan: { slug: string } | null; _count: { leaguePlayers: number } },
+>(rows: readonly T[]): T[] {
+  /* 이름별로 «기록이 있는 줄이 하나라도 있나» 를 먼저 센다 */
+  const hasPlayed = new Set<string>()
+  for (const row of rows) if (row._count.leaguePlayers > 0) hasPlayed.add(row.name.toLowerCase())
+
+  const best = new Map<string, T>()
+  const order: string[] = []
+  for (const row of rows) {
+    const nameKey = row.name.toLowerCase()
+    /* ② 기록 0 인데 같은 이름에 기록 있는 줄이 있으면 안 보여 준다 */
+    if (row._count.leaguePlayers === 0 && hasPlayed.has(nameKey)) continue
+    /* ① 이름 + 클랜이 같으면 한 사람으로 본다 */
+    const key = `${nameKey}|${row.clan?.slug ?? ''}`
+    const now = best.get(key)
+    if (now === undefined) {
+      best.set(key, row)
+      order.push(key)
+      continue
+    }
+    const better =
+      row._count.leaguePlayers > now._count.leaguePlayers ||
+      (row._count.leaguePlayers === now._count.leaguePlayers && row.id < now.id)
+    if (better) best.set(key, row)
+  }
+  return order.map((key) => best.get(key) as T)
 }
 
 /**
