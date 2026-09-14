@@ -102,6 +102,37 @@ describe('dedupeSamePerson — 목록에서만 접는다 (지우지 않는다)',
     expect(out.map((r) => r.id)).toEqual(['a'])
   })
 
+  /*
+   * ⚠ ★내가 만든 버그★ (2026-09-15) — 규칙 ③ 이 ★살아 있는 줄을 죽였다.★
+   *
+   *   접는 규칙은 `row.clan` 을 보는데 그 칸은 `Player.clan` 하나다.
+   *   우리 자료에서는 소속이 ★리그 명부에만★ 있는 줄이 많아서, 그런 줄이
+   *   «클랜이 없다» 로 판정돼 통째로 빠졌다.
+   *   ```
+   *   diac  cmtuabmm…  Player.clan 없음 · 명부 roma   ← 9/10 까지 뛴 진짜 줄 (빠졌다)
+   *   diac  SUP-14264…  Player.clan roma              ← 9/3 에 멈춘 줄 (남았다)
+   *   ```
+   *   그래서 `searchPlayers` 가 ★`playerClanOf` 로 푼 소속★ 을 넣어 준다.
+   *   이 시험은 «소속이 같게 풀린 두 줄» 이 접히고 ★살아 있는 쪽★ 이 남는지를 본다.
+   */
+  it('★소속이 같게 풀리면 접고, 마지막으로 뛴 쪽을 남긴다★ (diac 실화)', () => {
+    const at = (iso: string) => new Date(iso).getTime()
+    const out = dedupeSamePerson([
+      { ...row('cmtuabmm40023', 'diac', 'roma', 1), lastPlayedMs: at('2026-09-09') },
+      { ...row('SUP-1426443380', 'diac', 'roma', 1), lastPlayedMs: at('2026-09-03') },
+    ])
+    expect(out.map((r) => r.id)).toEqual(['cmtuabmm40023'])
+  })
+
+  it('★들어온 차례가 반대여도 같은 줄을 남긴다★', () => {
+    const at = (iso: string) => new Date(iso).getTime()
+    const out = dedupeSamePerson([
+      { ...row('SUP-1426443380', 'diac', 'roma', 1), lastPlayedMs: at('2026-09-03') },
+      { ...row('cmtuabmm40023', 'diac', 'roma', 1), lastPlayedMs: at('2026-09-09') },
+    ])
+    expect(out.map((r) => r.id)).toEqual(['cmtuabmm40023'])
+  })
+
   it('★전부 기록 0 이면 아무도 안 지운다★ — 빈 화면을 만들지 않는다', () => {
     const out = dedupeSamePerson([row('a', 'ghost', 'c1', 0), row('b', 'ghost', 'c2', 0)])
     expect(out.map((r) => r.id)).toEqual(['a', 'b'])

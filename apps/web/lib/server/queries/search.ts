@@ -20,6 +20,7 @@ import {
   PLAYER_CLAN_FALLBACK_SELECT,
   playerClanOf,
   toLeagueSummary,
+  type ClanFields
 } from '../mappers'
 import { publicOriginWhere } from './publicScope'
 import { SEASON0_FROM } from './season0Scope'
@@ -402,8 +403,28 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
   const lastAt = await lastPlayedMap([
     ...new Set([...prefixRows, ...containsOnlyRows].map((r) => r.id)),
   ])
-  const withLast = <T extends { id: string }>(rows: readonly T[]) =>
-    rows.map((r) => ({ ...r, lastPlayedMs: lastAt.get(r.id) ?? 0 }))
+  /*
+   * ⚠ ★소속도 여기서 풀어서 넘긴다★ (2026-09-15 — 내가 만든 버그를 잡았다).
+   *
+   *   접는 규칙은 `row.clan` 을 본다. 그런데 그 칸은 ★`Player.clan` 하나★ 이고,
+   *   우리 자료에서는 소속이 ★리그 명부(`leaguePlayers[0].clan`)에만★ 있는 줄이 많다.
+   *   그래서 «클랜 없는 줄은 뺀다» 는 규칙 ③ 이 ★살아 있는 줄을 죽이고 있었다.★
+   *   ```
+   *   diac  cmtuabmm…  Player.clan 없음 · 명부 roma   ← 9/10 까지 뛴 진짜 줄 (규칙이 뺐다)
+   *   diac  SUP-14264…  Player.clan roma              ← 9/3 에 멈춘 줄 (남았다)
+   *   ```
+   *   `playerClanOf` 는 화면이 소속을 고를 때 쓰는 ★그 함수★ 다. 접을 때도 같은 눈으로 본다.
+   */
+  const withLast = <
+    T extends { id: string; clan?: ClanFields | null; leaguePlayers?: { clan: ClanFields | null }[] },
+  >(
+    rows: readonly T[],
+  ) =>
+    rows.map((r) => ({
+      ...r,
+      clan: playerClanOf(r),
+      lastPlayedMs: lastAt.get(r.id) ?? 0,
+    }))
 
   /* ★지금 시즌에 뛴 사람을 앞으로★ — 자리 규칙(`mixPrefixFirst`)은 한 글자도 안 건드린다 */
   const players = mixPrefixFirst(
