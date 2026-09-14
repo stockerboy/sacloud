@@ -1638,3 +1638,234 @@
   transition: border-color .15s ease, background .15s ease;
 }
 .daily-podium-card:hover { border-color: rgba(255, 217, 138, .45); background: rgba(22, 34, 56, .72); }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★깃발 산★ (2026-09-15 사장님: «그 깃발꼽는게 귀엽게»)
+
+   하루(17:00~03:00)를 산 하나로 그린다. 마감(03시)에 1등이 정상에 깃발을 꽂는다.
+
+   ── 움직임
+     ① 정상이 ★반짝★  ② 깃대가 위에서 ★톡★ 떨어져 살짝 튕긴다
+     ③ 천이 ★펄럭★ 펴진다  ④ 닉네임이 옆에 뜬다
+   ★기본은 꽂힌 모습★ — `.is-armed` 가 붙은 뒤에만 숨겼다가 움직인다.
+   스크립트가 죽어도 깃발은 그대로 서 있다.
+   ────────────────────────────────────────────────────────────────────────── */
+.sac-v2 .v2-flagmt {
+  border: 1px solid var(--v2-card-border);
+  border-radius: 12px;
+  background: var(--v2-card);
+  overflow: hidden;
+}
+.sac-v2 .v2-flagmt__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px 8px;
+}
+.sac-v2 .v2-flagmt__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--v2-text-strong);
+  letter-spacing: -0.01em;
+}
+.sac-v2 .v2-flagmt__state {
+  font-size: 11px;
+  color: var(--v2-text-ghost);
+  white-space: nowrap;
+}
+/* 경쟁 중이면 ★심장이 뛴다★ — 지금 순위가 움직이고 있다는 뜻 */
+.sac-v2 .v2-flagmt__state.is-live {
+  color: #ffd95e;
+}
+.sac-v2 .v2-flagmt__state.is-live::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: #ffd95e;
+  animation: v2-flagmt-pulse 1.6s ease-in-out infinite;
+}
+@keyframes v2-flagmt-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.72); }
+}
+
+.sac-v2 .v2-flagmt__scene {
+  position: relative;
+}
+/*
+ * ⚠ ★PC 에서 산이 너무 커지던 것★ (2026-09-15 QA).
+ *   `width: 100%` 만 두면 1120px 폭에서 비율대로 늘어나 ★높이가 500px★ 이 됐다.
+ *   산은 카드 한 칸이지 배경이 아니다. 폭을 묶고 가운데 세운다 —
+ *   폰(390px)은 이 값보다 좁아 ★한 픽셀도 안 바뀐다.★
+ */
+.sac-v2 .v2-flagmt__svg {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  height: auto;
+}
+
+/* ── 깃발 ── */
+.sac-v2 .v2-flagmt__flag.is-armed .v2-flagmt__pole {
+  transform: translateY(-22px);
+  opacity: 0;
+}
+.sac-v2 .v2-flagmt__flag.is-armed .v2-flagmt__cloth {
+  transform: scaleX(0);
+  transform-origin: 1.2px -23.5px;
+  opacity: 0;
+}
+/* ★톡 떨어져 살짝 튕긴다★ — 바로 멈추면 안 귀엽다 */
+.sac-v2 .v2-flagmt__flag.is-armed.is-in .v2-flagmt__pole {
+  transform: translateY(0);
+  opacity: 1;
+  transition:
+    transform 0.46s cubic-bezier(0.34, 1.7, 0.5, 1),
+    opacity 0.2s linear;
+}
+.sac-v2 .v2-flagmt__flag.is-armed.is-in .v2-flagmt__cloth {
+  transform: scaleX(1);
+  opacity: 1;
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.5, 1) 0.3s,
+    opacity 0.18s linear 0.3s;
+}
+.sac-v2 .v2-flagmt__flag.is-armed.is-in .v2-flagmt__spark {
+  animation: v2-flagmt-spark 0.62s ease-out 0.06s 1;
+}
+@keyframes v2-flagmt-spark {
+  0% { opacity: 0.85; r: 3; }
+  100% { opacity: 0; r: 17; }
+}
+
+/* ── 정상에 선 사람 ── */
+/*
+ * ★1등 카드는 산 「밑」에 선다★ (2026-09-15 QA).
+ *   처음에는 산 위에 겹쳐 놨는데 ★능선을 통째로 가렸다.★
+ *   산은 산대로 보이고, 누가 꽂았는지는 바로 아래에서 읽는다.
+ */
+.sac-v2 .v2-flagmt__below {
+  padding: 0 12px 10px;
+}
+.sac-v2 .v2-flagmt__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 217, 94, 0.3);
+  background: rgba(255, 217, 94, 0.06);
+  text-decoration: none;
+}
+.sac-v2 .v2-flagmt__topname {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffe89a;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sac-v2 .v2-flagmt__topclan {
+  font-size: 11px;
+  color: var(--v2-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sac-v2 .v2-flagmt__topline {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--v2-text-ghost);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sac-v2 .v2-flagmt__count {
+  margin-top: 2px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.sac-v2 .v2-flagmt__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 10px 2px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--v2-text-muted);
+}
+.sac-v2 .v2-flagmt__empty > span {
+  font-size: 10.5px;
+  color: var(--v2-text-ghost);
+}
+
+/* ── 2·3등 ── */
+.sac-v2 .v2-flagmt__rest {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--v2-card-border);
+}
+.sac-v2 .v2-flagmt__rest > li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+.sac-v2 .v2-flagmt__rest > li + li {
+  border-top: 1px solid var(--v2-row-divider, rgba(255, 255, 255, 0.05));
+}
+.sac-v2 .v2-flagmt__rank {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+}
+.sac-v2 .v2-flagmt__rest a {
+  color: var(--v2-text-strong);
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sac-v2 .v2-flagmt__restclan {
+  font-size: 11px;
+  color: var(--v2-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.sac-v2 .v2-flagmt__restline {
+  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  color: var(--v2-text-ghost);
+  white-space: nowrap;
+}
+
+/* ★움직임을 줄이라고 한 사람에게는 아무것도 안 움직인다★ */
+@media (prefers-reduced-motion: reduce) {
+  .sac-v2 .v2-flagmt__flag.is-armed .v2-flagmt__pole,
+  .sac-v2 .v2-flagmt__flag.is-armed .v2-flagmt__cloth {
+    transform: none;
+    opacity: 1;
+    transition: none;
+  }
+  .sac-v2 .v2-flagmt__flag.is-armed.is-in .v2-flagmt__spark { animation: none; }
+  .sac-v2 .v2-flagmt__state.is-live::before { animation: none; }
+}

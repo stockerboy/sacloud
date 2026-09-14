@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { apiResponse, paginatedResponse } from './response'
 import { EggBrokenList } from './egg'
+import { FlagBoard } from './flagScore'
 import {
   /*
    * ── ★서버가 `safeParse` 에 쓰는 스키마들★ (O-037 · 2026-09-03)
@@ -562,6 +563,17 @@ export const endpoints = {
     origin: 'designed',
     description: '오늘의 셋 — 그날 고르게 잘한 선수 3명 · 클랜 3곳',
     response: apiResponse(DailyPodium),
+  },
+  /**
+   * ★깃발판★ (2026-09-15 사장님: «17시부터 03시까지의 1,2,3등을 라이브로 보여주고
+   *   3시에 마감치는거야»). 열려 있으면 지금 세서, 닫혀 있으면 박아 둔 깃발을 준다.
+   */
+  leagueFlags: {
+    method: 'GET',
+    path: '/leagues/:leagueId/flags',
+    origin: 'designed',
+    description: '깃발판 — 그날(17:00~03:00) 1·2·3등과 깃발 수',
+    response: apiResponse(FlagBoard),
   },
   leagueHexTop: {
     method: 'GET',

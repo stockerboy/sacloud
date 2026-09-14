@@ -29,6 +29,8 @@
  * 순수 함수라 DB 없이 시험한다 (`__tests__/flagScore.test.ts`).
  */
 
+import { z } from 'zod'
+
 /** 여섯 축 — 순서를 바꾸지 않는다. 화면의 육각형이 이 차례로 그린다 */
 export const FLAG_AXIS_ORDER = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
 export type FlagAxisKey = (typeof FLAG_AXIS_ORDER)[number]
@@ -228,3 +230,52 @@ export function rankFlagDay<T>(
     .slice(0, size)
     .map((row, i) => ({ ...row, rank: i + 1 }))
 }
+
+/* -------------------------------------------------------------------------- */
+/* 화면이 받는 모양                                                              */
+/* -------------------------------------------------------------------------- */
+
+/** 깃발판 한 줄 — 1·2·3등 */
+export const FlagBoardRowSchema = z.object({
+  rank: z.number().int(),
+  player_id: z.string(),
+  name: z.string(),
+  clan: z
+    .object({
+      slug: z.string(),
+      name: z.string(),
+      mark: z.object({ bg: z.string().nullable(), front: z.string().nullable() }),
+    })
+    .nullable(),
+  score: z.number(),
+  games: z.number().int(),
+  win: z.number().int(),
+  lose: z.number().int(),
+  win_rate: z.number(),
+  /** 킬 ÷ (킬+데스) · % */
+  kd_rate: z.number().nullable(),
+  /** 그날 육각 — 백분위. 마감 뒤 저장본에는 빈 배열이다 */
+  axes: z.array(
+    z.object({
+      key: z.string(),
+      value: z.number().nullable(),
+      pct: z.number().nullable(),
+    }),
+  ),
+  /** 지금까지 받은 깃발 수 (1등만) */
+  flags: z.number().int(),
+})
+export type FlagBoardRowSchema = z.infer<typeof FlagBoardRowSchema>
+
+/** 깃발판 — 산 하나 */
+export const FlagBoard = z.object({
+  league: z.string(),
+  /** 마감일 `YYYY-MM-DD` (KST) */
+  day_key: z.string(),
+  opens_at: z.string(),
+  closes_at: z.string(),
+  /** 아직 경쟁 중인가 */
+  live: z.boolean(),
+  rows: z.array(FlagBoardRowSchema),
+})
+export type FlagBoard = z.infer<typeof FlagBoard>

@@ -244,6 +244,19 @@ const resolvers: Record<EndpointKey, Resolver> = {
   leagueHexTop: () => ok({ clan: [], player: [] }),
   /* 오늘의 셋 — 픽스처에는 «그날» 이 없다. 빈 목록이면 화면이 그 칸을 안 그린다 */
   leagueDailyPodium: () => ok({ day: null, players: [], clans: [] }),
+  /*
+   * ★깃발판★ — 픽스처에는 하루 창(17:00~03:00)에 든 경기가 없다.
+   * 빈 목록이면 화면이 «아직 아무도 안 올랐습니다» 를 그린다 — 가짜 1등을 지어내지 않는다.
+   */
+  leagueFlags: () =>
+    ok({
+      league: 'supply',
+      day_key: '2026-09-15',
+      opens_at: '2026-09-14T08:00:00.000Z',
+      closes_at: '2026-09-14T18:00:00.000Z',
+      live: false,
+      rows: [],
+    }),
   /* 참가대기 클랜 — 픽스처에는 최근 7일 경기가 없다. 빈 목록이면 화면이 그 칸을 안 그린다 */
   leagueApplicationWaiting: () => ok({ leagues: [] }),
   leagueRankClans: ({ params, request }) => {

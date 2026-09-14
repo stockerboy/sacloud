@@ -98,10 +98,20 @@ export interface LeagueTopBarProps {
  */
 export function leagueTabs(leagueSlug: string) {
   const base = `/league/${leagueSlug}`
+  /*
+   * ★홈★ (2026-09-15 사장님: «각 리그 페이지에 홈(여기에 최근경기랑 깃발 그래프 다 나옴)
+   *   그리고 이제 클랜랭킹 개인랭킹 이런식으로»).
+   *
+   * ⚠ ★2026-09-01 에 없앴던 자리다★ — 그때 사장님: «리그홈같은 쓸데없는건 없애버리고
+   *   누르면 바로 랭킹 보여줘». 그 리그홈은 소개글 한 장이라 ★보여 줄 것이 없었다.★
+   *   지금 홈에는 ★오늘의 깃발과 최근 경기★ 가 있다. 같은 이름, 다른 화면이다.
+   *   되돌리려면 이 `unshift` 한 줄만 지우면 된다.
+   */
   const tabs = [{ label: '개인랭킹', href: `${base}/rank/player` }]
   if (leagueScreen(leagueSlug).clanRank) {
     tabs.unshift({ label: '클랜랭킹', href: `${base}/rank/clan` })
   }
+  tabs.unshift({ label: '홈', href: `${base}/home` })
   /*
    * ★경기 (2026-09-03 · O-015)★
    *

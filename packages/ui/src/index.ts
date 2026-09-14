@@ -384,3 +384,4 @@ export { EggGallery, type EggGalleryItem, type EggGalleryProps } from './egg/Egg
 export * from './layout/leagueLogo'
 export * from './league/ClanBadges'
 export * from './league/DailyPodium'
+export * from './league/FlagMountain'

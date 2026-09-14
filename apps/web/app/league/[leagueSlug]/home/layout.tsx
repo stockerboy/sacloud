@@ -1,33 +1,20 @@
-import { redirect } from 'next/navigation'
-
 /**
- * 리그홈은 **화면에서 없앴다** (2026-09-01 · D-251).
+ * 리그홈 레이아웃 — ★지나가기만 한다★.
  *
- * 사용자 지시: *"리그홈은 다 없애고 클랜랭킹이랑 개인랭킹만 해"*
+ * ── ⚠ 두 번 뒤집힌 자리다. 둘 다 사장님 말씀이다
+ *   ```
+ *   2026-09-01  «리그홈은 다 없애고 클랜랭킹이랑 개인랭킹만 해»   → 이 레이아웃이 전부 랭킹으로 돌려보냈다
+ *   2026-09-15  «각 리그 페이지에 홈(여기에 최근경기랑 깃발 그래프 다 나옴)
+ *                그리고 이제 클랜랭킹 개인랭킹 이런식으로»        → ★홈을 되살린다★
+ *   ```
+ *   9/1 에 없앤 이유는 ★보여 줄 것이 없어서★ 였다 — 소개글 한 장이었다.
+ *   지금 홈에는 ★오늘의 깃발과 최근 경기★ 가 있다. 같은 이름, 다른 화면이다.
  *
- * ── 라우트 파일을 지우지 않았다
- *   `home/info/page.tsx` · `home/desc/page.tsx` · `home/page.tsx` 는 그대로 있고
- *   옛 레이아웃도 `LeagueHomeLayoutLegacy.tsx` 로 남아 있다 (`CLAUDE.md` 10-4).
- *   **가는 길만 막는다.** 이 레이아웃이 리그홈 하위 경로 전부를 지나므로,
- *   여기 한 곳에서 클랜랭킹으로 보내면 `/home` · `/home/info` · `/home/desc` 가
- *   한꺼번에 랭킹으로 간다 — 경로마다 리다이렉트를 뿌리면 새 경로가 생길 때 빠진다.
- *
- * ── 링크를 지우지 않는 이유
- *   리그 목록(`LeagueListTable`)이나 북마크처럼 밖에서 들어오는 `/home/info` 링크가
- *   남아 있다. 그것들이 404 가 되면 안 된다 — **랭킹으로 보낸다.**
- *
- * ── 되돌리려면
- *   이 파일을 지우고 `LeagueHomeLayoutLegacy.tsx` 를 `layout.tsx` 로 되돌린 뒤,
- *   `packages/ui/src/layout/LeagueTopBar.tsx` 의 `leagueTabs` 에 리그홈을 다시 넣는다.
+ * ── 옛 소개 화면은 어떻게 됐나
+ *   `/home/info` · `/home/desc` 는 ★그 경로의 레이아웃이 각각★ 랭킹으로 보낸다.
+ *   여기서 한꺼번에 막으면 ★새 홈까지 같이 막힌다★ (실제로 그래서 홈이 안 열렸다).
+ *   파일은 하나도 지우지 않았다 (`CLAUDE.md` 1-4).
  */
-export default async function LeagueHomeRedirect({
-  params,
-}: {
-  /* `children` 은 받기만 하고 그리지 않는다 — 아래 `redirect()` 가 먼저 던진다.
-     타입에서 빼면 Next 의 레이아웃 타입 검사가 걸린다 */
-  children: React.ReactNode
-  params: Promise<{ leagueSlug: string }>
-}) {
-  const { leagueSlug } = await params
-  redirect(`/league/${leagueSlug}/rank/clan`)
+export default function LeagueHomeLayout({ children }: { children: React.ReactNode }) {
+  return <>{children}</>
 }
