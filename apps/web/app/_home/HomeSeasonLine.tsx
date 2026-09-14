@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { SEASON_WINDOWS, cloudSeasonLabel, type SeasonWindow } from '@sacloud/contract'
+import { FEATURED_LEAGUES } from '@sacloud/ui'
 
 /**
  * ★★홈 맨 위 시즌 한 줄★★ (2026-09-07 · Part 10 ④ · 시안)
@@ -75,9 +76,20 @@ export function HomeSeasonLine() {
       {/* 다음 시즌이 없으면 ★이 줄 자체를 안 그린다★ */}
       {next ? (
         <span className="text-[11px] tracking-[.14em] text-[var(--v2-text-faint)]">
-          SPL <span className="text-[var(--v2-text-ghost2)]">·</span> IPL{' '}
-          <span className="text-[var(--v2-text-ghost2)]">·</span> {shortDate(next.startedAt)}{' '}
-          {label(next)} 정식 오픈
+          {/*
+           * ⚠ ★리그 이름을 여기 적지 않는다★ (2026-09-15 QA에서 잡았다).
+           *   여기에 «SPL · IPL» 이 ★박혀 있었다.★ 9/14 에 이름을 SPL→LLM ·
+           *   10→YSL 로 바꿨는데 이 줄만 옛 이름으로 남아 홈 첫 화면에 떠 있었다.
+           *   이름은 `FEATURED_LEAGUES` 한 곳이 정한다 — 또 바뀌어도 여기는 안 고친다.
+           */}
+          {FEATURED_LEAGUES.map((l, i) => (
+            <span key={l.href}>
+              {i === 0 ? null : <span className="text-[var(--v2-text-ghost2)]"> · </span>}
+              {l.label}
+            </span>
+          ))}
+          <span className="text-[var(--v2-text-ghost2)]"> · </span>
+          {shortDate(next.startedAt)} {label(next)} 정식 오픈
         </span>
       ) : null}
     </div>
