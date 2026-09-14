@@ -43,6 +43,44 @@ describe('dedupeSamePerson — 목록에서만 접는다 (지우지 않는다)',
     expect(out.map((r) => r.id)).toEqual(['a'])
   })
 
+  /*
+   * ★규칙 ③★ (2026-09-15 사장님: «자꾸 두명씩 뜨고 아예 기록없고 원랜 있는데»).
+   *
+   * ② 만으로는 안 막혔다 — 껍데기 줄에도 기록이 ★0 이 아니라 조금★ 붙어 있었다.
+   * 운영 실측: `cutezz` 가 amaryllis 소속 73판 · 클랜 없음 4판 두 줄로 떴다.
+   */
+  it('★클랜 없는 줄은, 같은 이름에 클랜 있는 줄이 있으면 뺀다★ — 기록이 있어도', () => {
+    const out = dedupeSamePerson([
+      row('real', 'cutezz', 'amaryllis', 3),
+      row('shell', 'cutezz', null, 2),
+    ])
+    expect(out.map((r) => r.id)).toEqual(['real'])
+  })
+
+  it('클랜 없는 줄이 ★기록이 더 많아도★ 클랜 있는 쪽을 남긴다', () => {
+    const out = dedupeSamePerson([
+      row('shell', 'cutezz', null, 9),
+      row('real', 'cutezz', 'amaryllis', 1),
+    ])
+    expect(out.map((r) => r.id)).toEqual(['real'])
+  })
+
+  it('★둘 다 클랜이 없으면★ 한 줄로 접는다 — 갈라 둘 근거가 없다', () => {
+    const out = dedupeSamePerson([
+      row('a', 'clitorixs', null, 2),
+      row('b', 'clitorixs', null, 1),
+    ])
+    expect(out.map((r) => r.id)).toEqual(['a'])
+  })
+
+  it('★둘 다 클랜이 있으면 그대로 둔다★ — 진짜 동명이인일 수 있다', () => {
+    const out = dedupeSamePerson([
+      row('a', 'feeling', 'grave', 1),
+      row('b', 'feeling', 'aeonic', 1),
+    ])
+    expect(out.map((r) => r.id)).toEqual(['a', 'b'])
+  })
+
   it('★전부 기록 0 이면 아무도 안 지운다★ — 빈 화면을 만들지 않는다', () => {
     const out = dedupeSamePerson([row('a', 'ghost', 'c1', 0), row('b', 'ghost', 'c2', 0)])
     expect(out.map((r) => r.id)).toEqual(['a', 'b'])

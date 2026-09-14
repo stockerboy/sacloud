@@ -450,6 +450,20 @@ export function season0First<T extends { _count: { leaguePlayers: number } }>(
  *   ② 이름이 같은데 ★클랜이 다르면 그대로 둔다★ — 동명이인일 수 있다.
  *      다만 ★기록이 0인 줄★ 은, 같은 이름에 기록이 있는 줄이 하나라도 있으면 뺀다.
  *      (그 줄은 이번 시즌에 한 판도 안 뛴 껍데기라 보여 줄 것이 없다)
+ *   ③ ★클랜이 안 붙은 줄★ 은, 같은 이름에 ★클랜이 붙은 줄★ 이 있으면 안 보여 준다
+ *      (2026-09-15 사장님: «자꾸 두명씩 뜨고 아예 기록없고 원랜 있는데 그러니까 짜증나»).
+ *
+ *      ──  ②만으로는 왜 안 막혔나 (운영 실측 2026-09-15)
+ *        ② 는 ★기록이 0★ 인 줄만 뺀다. 그런데 껍데기 줄에도 ★기록이 조금 붙어 있다.★
+ *        ```
+ *        cutezz   amaryllis 소속   73판   ← 진짜
+ *        cutezz   클랜 없음         4판   ← 껍데기인데 0 이 아니라 안 걸렸다
+ *        ```
+ *        이번 시즌에 뛰는 사람 중 ★두 줄 다 기록이 있는 이름이 12가지★ 였고,
+ *        그 대부분이 이 꼴이다 — 한쪽만 클랜이 붙어 있다.
+ *
+ *      ★클랜이 없다는 것은 동명이인의 근거가 못 된다.★ 진짜 다른 사람이면
+ *      둘 다 어딘가에 소속돼 있다. 그래서 ★둘 다 클랜이 있을 때만★ 갈라 둔다.
  *
  * ⚠ ★주소로는 여전히 열린다.★ `/player/{id}` 는 그대로다 — 목록에서만 접는다.
  * ⚠ 진짜 해결은 ★선수를 합치는 것★ 이다 (`player-merge` 잡). 이건 그때까지의 가림막이고,
@@ -464,12 +478,18 @@ export function dedupeSamePerson<
   const hasPlayed = new Set<string>()
   for (const row of rows) if (row._count.leaguePlayers > 0) hasPlayed.add(row.name.toLowerCase())
 
+  /* ③ 이름별로 «클랜이 붙은 줄이 하나라도 있나» */
+  const hasClan = new Set<string>()
+  for (const row of rows) if (row.clan !== null) hasClan.add(row.name.toLowerCase())
+
   const best = new Map<string, T>()
   const order: string[] = []
   for (const row of rows) {
     const nameKey = row.name.toLowerCase()
     /* ② 기록 0 인데 같은 이름에 기록 있는 줄이 있으면 안 보여 준다 */
     if (row._count.leaguePlayers === 0 && hasPlayed.has(nameKey)) continue
+    /* ③ 클랜이 안 붙은 줄은, 같은 이름에 클랜 붙은 줄이 있으면 안 보여 준다 */
+    if (row.clan === null && hasClan.has(nameKey)) continue
     /* ① 이름 + 클랜이 같으면 한 사람으로 본다 */
     const key = `${nameKey}|${row.clan?.slug ?? ''}`
     const now = best.get(key)
@@ -478,6 +498,7 @@ export function dedupeSamePerson<
       order.push(key)
       continue
     }
+    /* 같은 칸이면 ★이번 시즌에 뛴 리그가 많은 쪽★ · 같으면 id 가 앞선 쪽 */
     const better =
       row._count.leaguePlayers > now._count.leaguePlayers ||
       (row._count.leaguePlayers === now._count.leaguePlayers && row.id < now.id)

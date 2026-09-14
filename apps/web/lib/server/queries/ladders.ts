@@ -90,10 +90,37 @@ function toRow(row: LadderRow, rank: number): ClanRankRow {
  *   그래서 추방해도 랭킹에 그대로 남아 "등록 해제" 가 되지 않았다.
  *   여기서 한 번 거르면 전체·부리그·무소속 래더가 전부 따라온다.
  *   **경기 기록은 지우지 않는다** — 순위에서만 빠진다.
+ *
+ * ── ★이번 시즌 한 판도 안 뛴 클랜은 순위에 넣지 않는다★ (2026-09-15 사장님:
+ *   «미활동 클랜 전부 db에서 삭제»)
+ *
+ *   화면에 ★「기록 없음 · 30.0층」★ 으로만 줄줄이 서 있던 줄들이다.
+ *   순위 자리를 차지하면서 보여 줄 것은 없다.
+ *
+ *   ★실측 (2026-09-15 운영)★ — 시즌0(9/3~) 에 한 판도 안 뛴 클랜
+ *   ```
+ *   IPL    1곳      LLM   20곳      YSL  249곳
+ *   ```
+ *   YSL 이 356곳 중 249곳이다. 옛 미러(`3rd.supply`)가 9/3 에 얼어붙어서,
+ *   그 뒤로 병영수첩 수집에 안 잡힌 클랜이 통째로 여기 들어온다.
+ *
+ *   ★지우지 않는다. 도장도 안 찍는다★ (`CLAUDE.md` 2장 2번).
+ *   `win + lose = 0` 이라는 ★지금 값★ 으로 거른다 — 그 클랜이 한 판이라도 뛰면
+ *   집계가 승패를 채우고 ★저절로 순위에 돌아온다.★ 손댈 것이 없다.
+ *
+ *   되돌리려면 `HIDE_NO_GAME_CLANS` 를 `false` 로 바꾸면 된다.
  */
+/** 이번 시즌 한 판도 안 뛴 클랜을 순위에서 뺄 것인가 (2026-09-15 사장님 지시로 켬) */
+const HIDE_NO_GAME_CLANS = true
+
 async function ladderRows(where: object, limit?: number): Promise<LadderRow[]> {
   return prisma.leagueClan.findMany({
-    where: { ...where, expelledAt: null },
+    where: {
+      ...where,
+      expelledAt: null,
+      /* 승·패가 둘 다 0 이면 이번 시즌에 한 판도 안 뛴 것이다 */
+      ...(HIDE_NO_GAME_CLANS ? { NOT: { win: 0, lose: 0 } } : {}),
+    },
     orderBy: LADDER_ORDER,
     select: LADDER_SELECT,
     /* `take` 는 **정렬 뒤에** 걸린다. 상위 N건만 필요한 호출자가 전체를 끌어오지 않게 한다.
