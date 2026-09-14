@@ -87,6 +87,29 @@ function activeClanIn(leagueSlug: string) {
     : { clan: { active: true, slug: { notIn: [...hidden] } }, expelledAt: null }
 }
 
+/**
+ * ★이번 시즌 한 판도 안 뛴 클랜은 랭킹에 넣지 않는다★
+ * (2026-09-15 사장님: «미활동 클랜 전부 db에서 삭제»).
+ *
+ * 화면에 ★「기록 없음 · 30.0층」★ 으로만 줄줄이 서 있던 줄들이다.
+ * 순위 자리를 차지하면서 보여 줄 것이 없다.
+ *
+ * ★실측 (2026-09-15 운영)★ — 시즌0(9/3~) 에 한 판도 안 뛴 클랜
+ * ```
+ * IPL 1곳  ·  LLM 20곳  ·  YSL 249곳 (356곳 중)
+ * ```
+ * YSL 이 유독 많은 것은 옛 미러(`3rd.supply`)가 9/3 에 얼어붙었기 때문이다.
+ *
+ * ★지우지도, 도장을 찍지도 않는다★ (`CLAUDE.md` 2장 2번) —
+ * `win + lose = 0` 이라는 ★지금 값★ 으로 거른다. 한 판이라도 뛰면 집계가 승패를
+ * 채우고 ★저절로 순위에 돌아온다.★ 손댈 것이 없다.
+ *
+ * ⚠ ★같은 규칙이 `ladders.ts` 에도 있다★ (`HIDE_NO_GAME_CLANS`).
+ *   랭킹 표는 이 파일, 래더는 그쪽이다. 끄려면 ★두 곳을 같이★ 끈다.
+ */
+const HIDE_NO_GAME_CLANS = true
+const PLAYED_THIS_SEASON = HIDE_NO_GAME_CLANS ? { NOT: { win: 0, lose: 0 } } : {}
+
 /* -------------------------------- 리그 목록 ------------------------------- */
 
 export async function listLeagues(cursor: string | null, size: number): Promise<CursorPage<LeagueListItem>> {
@@ -537,6 +560,8 @@ export async function getClanRanks(
     placement: false,
     /* 감춘 클랜은 랭킹에도 안 나온다 (O-044). `league.slug` 는 위에서 이미 읽었다 */
     ...activeClanIn(league.slug),
+    /* 이번 시즌 한 판도 안 뛴 클랜도 뺀다 (2026-09-15) */
+    ...PLAYED_THIS_SEASON,
   }
 
   /*
