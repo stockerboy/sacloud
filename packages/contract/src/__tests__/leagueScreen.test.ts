@@ -126,14 +126,33 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
    * ★IPL — 킬데스는 화면에서만 뺀다★ (2026-09-14 사장님:
    *   «킬데스를 써라 킬데스는 숨기는거 뿐이다 우리가 몰래 랭킹계산할때 써야하는 자료이다»)
    */
-  it('IPL — 개인 킬데스 칸만 없고 나머지는 그대로', () => {
+  /**
+   * ⚠ ★2026-09-14 저녁 정정 — 래더도 뺀다★
+   *   사장님이 처음부터 «(★래더시스템 미제공★ , 경기분석 및 플레이 분석 , 승률 정보 제공)»
+   *   이라고 적어 주셨는데 내가 괄호 안을 놓쳤다. 클랜랭킹에 «32.8층» 이 남아 있었고
+   *   사장님이 «아직도 IPL에 층수가 나와있고» 라고 잡아 주셨다.
+   *   옛 기대값 — `rating: true` (개인·클랜 둘 다)
+   */
+  it('IPL — 킬데스도 래더도 없다. 순위와 승률만 남는다', () => {
     const spec = leagueScreen('nolink')
-    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: false, rating: true })
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: false, rating: false })
     /* 클랜 목록은 번호를 안 붙인다 — 순서가 곧 순위다 */
     expect(spec.clanColumns.rank).toBe(false)
+    expect(spec.clanColumns.rating).toBe(false)
     expect(spec.clanRank).toBe(true)
     /* 티어 글자는 화면에서 사라진다 */
     expect(spec.showsTier).toBe(false)
+    /* ★승률은 남는다★ — 사장님: «승률 정보 제공» */
+    expect(spec.playerColumns.winRate).toBe(true)
+    expect(spec.clanColumns.winRate).toBe(true)
+  })
+
+  it('★티어를 화면에 쓰는 리그가 하나도 없다★ (2026-09-14)', () => {
+    /* 사장님: «IPL 티어 전부 없애고» · «SPL도 마찬가지 1티어 2티어 왜있는지».
+       화면 부품들이 «부리그가 둘이면 티어» 로 판단하던 것을 이 값으로 바꿨다 */
+    for (const slug of ['nolink', 'supply', 'sanply']) {
+      expect(leagueScreen(slug).showsTier).toBe(false)
+    }
   })
 
   it('SPL — 전부 100% 제공 (승률·킬데스·랭킹)', () => {

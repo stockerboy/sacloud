@@ -455,8 +455,11 @@ export function MatchCard({
               ) : lineupPending ? (
                 /* 명단이 아직 안 들어온 경기 (2026-09-10 사장님: «킬데스 수집중») */
                 <span className="text-[#8fa9d8]">킬데스 수집중</span>
-              ) : !isOfficialLeague(leagueSlug) ? (
-                /* 래더제가 아닌 리그(IPL) — 상대 티어를 적는다 (2026-09-10 사장님 결정) */
+              ) : !isOfficialLeague(leagueSlug) && showsTier(leagueSlug) ? (
+                /* 래더제가 아닌 리그(IPL) — 상대 티어를 적었다 (2026-09-10 사장님 결정).
+                   ⚠ ★2026-09-14 — 티어를 안 쓰는 리그에는 안 적는다★ (사장님:
+                   «아직도 IPL에 ASTRA CHALLENGER 다 안없어졌어»). 옛 조건은
+                   `!isOfficialLeague(leagueSlug)` 하나뿐이었다 */
                 <span className="text-meta">vs {divisionLabel(match.opponent.division, 'independent')}</span>
               ) : (
                 /* 5v5 가 아니라 래더에 반영되지 않은 경기다.

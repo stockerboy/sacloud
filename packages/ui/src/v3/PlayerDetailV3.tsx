@@ -15,6 +15,7 @@
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail, MatchDetail, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { CompareSearchV3, type CompareCandidate } from './CompareSearchV3'
@@ -91,7 +92,15 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
   /* 2026-09-11: MVP 규칙(세이브 2회↑ → 킬↑데스↓)이 모든 리그·모든 판에 붙었다 — «자료에 MVP 없음» 안내는 접는다.
      옛 판단은 LEGACY 스위치로 남긴다 (QA 교차검토 3번: 0회 선수에게 «자료에 MVP 가 없습니다» 가 떴다) */
   const mvpKnown = MVP_LEGACY_UNKNOWN_NOTICE ? data.mvp_count > 0 || rows.every((r) => r.games === 0) : true
-  const tieredLeague = data.league.division_count >= 2
+  /*
+   * ★티어는 리그가 정한다★ (2026-09-14 사장님: «아직도 IPL에 층수가 나와있고
+   *   ASTRA CHALLENGER 다 안없어졌어 SPL도 마찬가지 1티어 2티어 왜있는지»).
+   *
+   *   옛 값은 `data.league.division_count >= 2` 뿐이었다 — 부리그가 둘이면 무조건
+   *   티어를 그렸다. 그런데 «부리그가 몇 개인가» 와 «티어를 화면에 쓰는가» 는
+   *   ★다른 물음★ 이다. 계약(`showsTier`)이 정하고 화면은 따른다.
+   */
+  const tieredLeague = showsTier(data.league.slug) && data.league.division_count >= 2
   return (
     <div style={halfCardStyle}>
       <CardHead>
@@ -794,7 +803,7 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
   const weapon = data.hex?.weapon ?? null
   const [picked, setPicked] = useState<Record<number, string | null>>({})
   const theme = clanThemeOf(data.clan?.slug)
-  const tiered = data.league.division_count >= 2
+  const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
   /* ★자기 구간★ = 가장 많이 뛴 구간 (워커의 homeTier 와 같은 규칙 — 같으면 높은 티어) */
   const homeTier = useMemo(() => {
     let best: number | null = null

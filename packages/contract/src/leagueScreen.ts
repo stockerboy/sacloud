@@ -220,10 +220,16 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
     ...WITH_LADDER,
     boardCategory: null,
     showsTier: false,
-    /* 개인 킬데스만 뺀다. 순위·승률·래더 칸은 그대로 */
-    playerColumns: { rank: true, winRate: true, kd: false, rating: true },
+    /*
+     * ⚠ ★2026-09-14 저녁 정정 — 래더(층수)도 뺀다★
+     *   사장님이 처음부터 «(★래더시스템 미제공★ , 경기분석 및 플레이 분석 , 승률 정보 제공)»
+     *   이라고 적어 주셨는데 내가 그 괄호를 놓쳤다. 그래서 클랜랭킹에 «32.8층» 이
+     *   그대로 남아 있었고 사장님이 «아직도 IPL에 층수가 나와있고» 라고 잡아 주셨다.
+     *   옛 값은 둘 다 `rating: true` 였다.
+     */
+    playerColumns: { rank: true, winRate: true, kd: false, rating: false },
     /* 클랜 목록은 번호를 안 붙인다 — 순서가 곧 순위다 */
-    clanColumns: { rank: false, winRate: true, kd: false, rating: true },
+    clanColumns: { rank: false, winRate: true, kd: false, rating: false },
   },
   /**
    * ★열산(10🏔) — 클랜 기록은 안 준다★ (2026-09-14 사장님).

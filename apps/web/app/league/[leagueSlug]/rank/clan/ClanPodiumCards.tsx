@@ -1,5 +1,6 @@
 'use client'
 import { showsTier } from '@sacloud/contract'
+import { leagueScreen } from '@sacloud/contract'
 
 /**
  * ★클랜랭킹 1·2·3위 카드★ (2026-09-12 사장님)
@@ -162,12 +163,21 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
 
               <span className="flex-1" />
 
-              <span className="flex shrink-0 flex-col items-end gap-[2px]">
-                <span className="num-strong text-[22px] leading-none text-[var(--v2-text-strong)]">
-                  {formatRating(row.rating)}
+              {/*
+                * ★래더를 안 주는 리그는 이 칸을 안 그린다★ (2026-09-14 사장님:
+                *   «아직도 IPL에 층수가 나와있고»). IPL 은 «래더시스템 미제공» 이다.
+                *   표(`ClanRankTable`)는 이미 `clanColumns.rating` 을 보는데
+                *   ★포디움 카드만 안 보고 있었다★ — 같은 화면에서 표는 숨기고
+                *   카드는 «32.8층» 을 그리고 있었다.
+                */}
+              {leagueScreen(leagueSlug).clanColumns.rating ? (
+                <span className="flex shrink-0 flex-col items-end gap-[2px]">
+                  <span className="num-strong text-[22px] leading-none text-[var(--v2-text-strong)]">
+                    {formatRating(row.rating)}
+                  </span>
+                  <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">LADDER</span>
                 </span>
-                <span className="text-[10.5px] tracking-[.06em] text-[var(--v2-text-ghost)]">LADDER</span>
-              </span>
+              ) : null}
             </div>
 
             {/* ★클랜 카드는 폰에서 한 장이 한 줄을 다 쓴다★ — 그림을 크게 놓을 자리가 있다.

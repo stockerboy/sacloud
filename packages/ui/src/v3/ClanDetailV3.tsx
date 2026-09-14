@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
+import { showsTier } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
@@ -701,7 +702,15 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
   onSelect: (id: string | null) => void
 }) {
   const theme = clanThemeOf(data.clan.slug)
-  const tiered = data.league.division_count >= 2
+  /*
+   * ★티어는 리그가 정한다★ (2026-09-14 사장님: «아직도 IPL에 층수가 나와있고
+   *   ASTRA CHALLENGER 다 안없어졌어 SPL도 마찬가지 1티어 2티어 왜있는지»).
+   *
+   *   옛 값은 `data.league.division_count >= 2` 뿐이었다 — 부리그가 둘이면 무조건
+   *   티어를 그렸다. 그런데 «부리그가 몇 개인가» 와 «티어를 화면에 쓰는가» 는
+   *   ★다른 물음★ 이다. 계약(`showsTier`)이 정하고 화면은 따른다.
+   */
+  const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
   const tiers = useMemo(() => {
     const set = new Set<number>()
     for (let d = 1; d <= Math.max(1, data.league.division_count); d += 1) set.add(d)
@@ -854,7 +863,7 @@ const [tier] = useState<number>(() => {
     /* 아직 안 붙어 본 클랜 — 0전 (지어내지 않는다 · 경기 없음이 사실이다) */
     return { league_clan_id: row.league_clan_id, clan: { id: row.clan.id, slug: row.clan.slug, name: row.clan.name, mark_bg_url: row.clan.mark.bg, mark_front_url: row.clan.mark.front }, division: row.division, win: 0, lose: 0, last_played_at: null, recent: [] }
   })()
-  const tiered = data.league.division_count >= 2
+  const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
   void tiered
   /**
    * ★들어올 때는 접혀 있다★ (2026-09-12 사장님: «이거 들어갈때는 접어둔 상태로 만들어줘»).

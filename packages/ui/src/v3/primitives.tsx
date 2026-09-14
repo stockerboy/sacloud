@@ -17,6 +17,15 @@ import { divisionLabel } from '../league/divisionLabel'
 import { CLAN_THEMES, FALLBACK_THEME, clanThemeOf, type ClanTheme } from './clanThemes'
 import { ASTRA_STYLE, CHAL_NUM_COLOR, CHAL_STYLE, V3, cardHeadStyle, cardStyle, cardTitleStyle, ribbonStyle, spacerStyle } from './tokens'
 
+/**
+ * ★slug 를 못 받은 티어 칩을 「카테고리로 판단」 하게 되돌리는 스위치★ (2026-09-14).
+ *
+ * `true` 면 2026-09-13 판 그대로 — `independent`(IPL) 이면 그린다.
+ * `false`(지금) 면 slug 를 받은 자리만 그린다. 지금은 티어를 쓰는 리그가 없어서
+ * 결국 아무 데도 안 그린다 — 그게 사장님이 시키신 «티어 전부 없애고» 다.
+ */
+const TIER_CHIP_CATEGORY_FALLBACK = false
+
 export { clanThemeOf, FALLBACK_THEME, type ClanTheme }
 
 /** 원 크롭 마크가 있는 클랜인가 — 테마 표와 마크 파일은 같은 403개에서 나왔다 */
@@ -113,9 +122,22 @@ export function TierText({
    *
    * ⚠ 나중에 `independent` 인데 티어를 안 쓰는 리그가 생기면 그 자리에 `leagueSlug` 를
    *   넘기면 된다 — ①이 ②를 이긴다.
+   *
+   * ── ⚠ ★2026-09-14 — ② 의 전제가 깨졌다★
+   *   위에 «IPL 이 티어를 쓰는 유일한 리그다» 라고 적어 뒀는데, 바로 그날
+   *   사장님이 «IPL 티어 전부 없애고» 라고 하셨다. 이제 ★티어를 쓰는 리그가 없다.★
+   *   그런데 ② 는 여전히 `independent`(=IPL) 에 그려 주고 있어서, 사장님이
+   *   «아직도 IPL에 ASTRA CHALLENGER 다 안없어졌어» 라고 잡아 주셨다.
+   *
+   *   ★slug 를 못 받았을 때의 기본값을 「안 그린다」로 뒤집는다.★
+   *   열아홉 군데에 slug 를 실어 나르지 않아도 되고, 티어를 다시 쓰는 리그가 생기면
+   *   그 화면에서 slug 를 넘기면 된다 — ①이 언제나 ②를 이긴다.
+   *   옛 갈래는 `TIER_CHIP_CATEGORY_FALLBACK = true` 로 되돌아온다 (`CLAUDE.md` 1-4).
    */
   if (leagueSlug !== undefined) {
     if (!showsTier(leagueSlug)) return null
+  } else if (!TIER_CHIP_CATEGORY_FALLBACK) {
+    return null
   } else if (leagueCategory !== undefined && leagueCategory !== 'independent') {
     return null
   }

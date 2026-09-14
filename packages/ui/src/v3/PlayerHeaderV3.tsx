@@ -26,6 +26,7 @@
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail } from '@sacloud/contract'
+import { leagueScreen, showsTier } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { strengthAxes } from './playerHexAxes'
@@ -92,7 +93,17 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const rows = data.tier_breakdown
   /* ★머리 카드가 그리는 여섯 축★ (2026-09-12). STRENGTH POINT 카드와 ★같은 함수★ 다 */
   const axes = strengthAxes(data)
-  const tiered = data.league.division_count >= 2
+  /*
+   * ★티어는 리그가 정한다★ (2026-09-14 사장님: «아직도 IPL에 층수가 나와있고
+   *   ASTRA CHALLENGER 다 안없어졌어 SPL도 마찬가지 1티어 2티어 왜있는지»).
+   *
+   *   옛 값은 `data.league.division_count >= 2` 뿐이었다 — 부리그가 둘이면 무조건
+   *   티어를 그렸다. 그런데 «부리그가 몇 개인가» 와 «티어를 화면에 쓰는가» 는
+   *   ★다른 물음★ 이다. 계약(`showsTier`)이 정하고 화면은 따른다.
+   */
+  /** ★래더(점수) 칸을 그리나★ — 계약이 정한다 (2026-09-14) */
+  const showsRating = leagueScreen(data.league.slug).playerColumns.rating
+  const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
 
   /* ★플레이구간★ — 가장 많이 뛴 구간이 기본. 누르면 그것이 우선 */
   const [pickedTier, setPickedTier] = useState<number | null>(null)
@@ -216,6 +227,14 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         </span>
         <LeagueCenter name={data.league.name} season={seasonLabel} />
         <span className="v3-phead-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
+          {/*
+            * ⚠ ★래더를 안 주는 리그는 점수 칸을 통째로 안 그린다★ (2026-09-14 사장님:
+            *   «IPL (…) ★래더시스템 미제공★» · «아직도 IPL에 층수가 나와있고»).
+            *   표·포디움은 이미 계약을 보고 있었는데 ★머리 카드만 안 보고★ «34.8층» 을
+            *   그리고 있었다. 점수 계산은 그대로 돈다 — 순위를 세우는 데 쓴다.
+            *   ★순위(«1위 / 836명»)는 남긴다★ — 사장님: «개인랭킹도 은글슬쩍 유지해».
+            */}
+          {!showsRating ? null : (
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, minWidth: 0 }}>
             {/* ★층수마다 색★ (2026-09-11 사장님). 아직 못 잰 «측정 중» 은 흐린 글자 그대로 */}
             <span style={{ fontSize: 21, fontWeight: 700, color: hex?.score !== null && hex?.score !== undefined ? floorColor(hex.score) : '#fff', whiteSpace: 'nowrap' }}>
@@ -227,6 +246,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               <span style={{ fontSize: 10, fontWeight: 700, color: '#ff8a90', whiteSpace: 'nowrap' }}>미참여 −{Math.round(data.activity_penalty as number)}점</span>
             ) : null}
           </span>
+          )}
           {data.clan?.is_official_clan ? <OfficialPill theme={theme} /> : null}
           <GhostButton href={infoHref}>기본정보</GhostButton>
         </span>
