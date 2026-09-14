@@ -48,6 +48,11 @@ import {
 import { useApiReady } from '@/app/providers'
 import { ABOUT_LEAGUES, IPL_KD_NOTICE, type AboutLeague } from './leagueCopy'
 
+/** 상대전적 마크를 몇 개 보여 주나 (사장님: «클랜마크 5개정도») */
+const H2H_COUNT = 5
+/** 몇 판 이상 붙은 상대만 — 한두 판으로는 «엎치락뒤치락» 을 말할 수 없다 */
+const H2H_MIN_GAMES = 5
+
 interface Pick {
   league: string
   label: string
@@ -718,10 +723,46 @@ function ClanShowcase({
   data: LeagueClanShow
   league: AboutLeague
 }) {
-  /* 계약에 `games` 칸은 없다 — 승+패가 판수다 */
-  const h2h = [...(data.head_to_head ?? [])]
-    .filter((o) => o.win + o.lose > 0)
-    .sort((a, b) => b.win + b.lose - (a.win + a.lose))[0]
+  /**
+   * ★많이 붙고 + 엎치락뒤치락한 상대 다섯★ (2026-09-14 저녁 사장님:
+   * «부젤이랑 가장많이 하고 가장많이 엎치락뒷치락 한 클랜마크 5개정도 주고
+   *   누르면 그래프로 승률 추이 보여줘(기본으로 클랜 하나 골라서 펼쳐놔)»).
+   *
+   * ── 「엎치락뒤치락」 을 어떻게 쟀나
+   *   ★승률이 50% 에 얼마나 가까운가★ 다. 판수가 아무리 많아도 한쪽이 계속 이겼으면
+   *   그건 엎치락뒤치락이 아니다 (실측: vuvuzela 는 igloo 와 249판을 붙었지만 36% —
+   *   많이 붙은 상대이긴 해도 «엎치락뒤치락» 은 아니다).
+   *
+   *   ```
+   *   점수 = 판수 비중 × 0.55 + (50% 에 가까운 정도) × 0.45
+   *   ```
+   *   판수가 조금 더 무겁다 — «가장 많이 하고» 를 먼저 적으셨다.
+   *   실측으로 나온 vuvuzela 의 다섯: evermore 274판 49% · amaryllis 229판 53% ·
+   *   hardcores 255판 46% · methodcrew 176판 48% · deluxe 125판 49%
+   */
+  const h2hList = useMemo(() => {
+    const rows = [...(data.head_to_head ?? [])].filter((o) => o.win + o.lose >= H2H_MIN_GAMES)
+    if (rows.length === 0) return []
+    const maxGames = Math.max(...rows.map((o) => o.win + o.lose))
+    return rows
+      .map((o) => {
+        const games = o.win + o.lose
+        const winRate = (o.win / games) * 100
+        /* 50% 에서 멀수록 0에 가까워진다 */
+        const even = 1 - Math.min(1, Math.abs(winRate - 50) / 50)
+        return { o, games, winRate, score: (games / maxGames) * 0.55 + even * 0.45 }
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, H2H_COUNT)
+  }, [data.head_to_head])
+
+  /* ★기본으로 하나는 펼쳐 둔다★ (사장님) — 가장 앞선 상대다 */
+  const [oppSlug, setOppSlug] = useState<string | null>(null)
+  const opp = useMemo(
+    () => h2hList.find((x) => x.o.clan.slug === oppSlug) ?? h2hList[0] ?? null,
+    [h2hList, oppSlug],
+  )
+  const h2h = opp?.o
   const theme = clanThemeOf(data.clan.slug)
   /** ★기록을 숫자로 안 적는 리그★ — 그 자리에 «-미제공-» 을 쓴다 (2026-09-14 사장님) */
   const hideRecord = league.slug === 'nolink'
@@ -750,7 +791,7 @@ function ClanShowcase({
       */}
       <div className="about-record">
         <div style={{ minWidth: 0 }}>
-          {h2h === undefined ? (
+          {h2h === undefined || h2h === null || opp === null ? (
             <p style={{ padding: '18px 2px', fontSize: 11.5, color: V3.textGhost2 }}>
               아직 맞붙은 기록이 없습니다
             </p>
@@ -759,8 +800,55 @@ function ClanShowcase({
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, padding: '0 2px 6px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 12.5, fontWeight: 800, color: '#fff' }}>상대전적</span>
                 <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>
-                  가장 많이 붙은 상대 — {h2h.clan.name} 와 {h2h.win + h2h.lose}판
+                  많이 붙고 엎치락뒤치락한 상대 — 눌러서 바꿔 보세요
                 </span>
+              </div>
+
+              {/* ★마크 다섯★ — 누르면 그 상대의 승률 추이로 바뀐다 */}
+              <div style={{ display: 'flex', gap: 8, padding: '0 2px 10px', flexWrap: 'wrap' }}>
+                {h2hList.map((x) => {
+                  const on = x.o.clan.slug === h2h.clan.slug
+                  return (
+                    <button
+                      key={x.o.clan.slug}
+                      type="button"
+                      onClick={() => setOppSlug(x.o.clan.slug)}
+                      title={`${x.o.clan.name} · ${x.games}판 · ${x.winRate.toFixed(0)}%`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        cursor: 'pointer',
+                        padding: '5px 10px 5px 6px',
+                        borderRadius: 999,
+                        background: on ? 'rgba(255,217,138,.10)' : 'rgba(10,17,30,.5)',
+                        border: `1px solid ${on ? '#ffd98a' : V3.divider}`,
+                        minWidth: 0,
+                      }}
+                    >
+                      <MarkCircle
+                        clan={{
+                          slug: x.o.clan.slug,
+                          mark: { bg: x.o.clan.mark_bg_url, front: x.o.clan.mark_front_url },
+                        }}
+                        size={20}
+                      />
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: on ? 800 : 600,
+                          color: on ? '#ffd98a' : V3.textMuted,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {x.o.clan.name}
+                      </span>
+                      <span style={{ fontSize: 10, color: V3.textGhost2, whiteSpace: 'nowrap' }}>
+                        {x.games}판 {x.winRate.toFixed(0)}%
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
               <H2HChartV3
                 /* 계약의 `recent` 를 그래프가 아는 모양으로 옮긴다 — 아직 안 끝난 판은 뺀다 */

@@ -112,6 +112,43 @@ const LEAGUES: readonly { slug: string; label: string }[] = [
 ]
 
 /**
+ * ★사장님이 직접 고르신 대상★ (2026-09-14 저녁).
+ *
+ *   «주일이로 하지말고 one needyou 이사람걸로 해»
+ *   «밑에 클랜정보는 tsarntc로 하고»
+ *   «무소속 개인기록은 (…) 다른건 애매한데 하나만 유독 잘하는 애껄로»  → 리리컬뚱이
+ *   «클랜기록은 vuvuzela 걸로 해»
+ *
+ * ── 왜 손으로 적나
+ *   자동으로 고르면 «경기 제일 많이 한 사람» 이 나오는데, 그게 ★소개에 어울리는 사람★
+ *   이라는 보장이 없다. 소개 페이지는 «무엇을 볼 수 있나» 를 보여 주는 자리라
+ *   ★사장님이 보시기에 좋은 예★ 를 고르는 것이 맞다.
+ *
+ * ── ⚠ 여기 적은 이름이 없으면 ★자동 선정으로 돌아간다★
+ *   닉을 바꾸거나 클랜이 사라져도 화면이 비지 않는다. 대신 ★조용히 다른 사람★ 이
+ *   나오므로, 사장님이 «왜 딴 사람이 나오지» 하시면 여기를 먼저 본다.
+ *
+ * ── ⚠ ★이름이 아니라 slug·playerId 로 적는다★
+ *   이름은 바뀐다 (실측: 최근 5일에 69명이 닉을 바꿨다). slug 와 id 는 안 바뀐다.
+ */
+const HAND_PICKED: Readonly<
+  Record<string, { playerId?: string; clanSlug?: string }>
+> = {
+  /* 리리컬뚱이 — 세이브만 상위 96%, 나머지는 36% (사장님: «하나만 유독 잘하는 애») */
+  nolink: { playerId: 'cmtsn0lys003wtedyqknenelj', clanSlug: 'uava01' },
+  /*
+   * ⚠ 클랜은 ★slug 가 `sorentolove`★ 다 — 이름이 «-tsAr.nTc» 인 그 클랜이다.
+   *   `tsArnTc` 라는 slug 도 따로 있는데 그건 YSL 의 «overthere» 이고 0승 0패다.
+   *   같은 클랜이 두 줄로 들어간 자국이다 (선수 3출처 미병합 문제와 같은 뿌리).
+   *
+   * ⚠ 선수(`one needyou`)는 ★아직 못 넣었다★ — LLM 에 «Oneːneedyou» 로 등록은
+   *   되어 있는데 ★경기 기록이 0줄★ 이다. 사장님께 여쭙는 중이다.
+   *   그동안은 자동 선정(경기 최다)이 그 자리를 채운다.
+   */
+  supply: { clanSlug: 'sorentolove' },
+}
+
+/**
  * ⚠ ★한 줄씩 차례로 묻는다 — 한꺼번에 묻지 않는다★ (2026-09-14 실측).
  *
  *   처음에는 두 리그 × 세 질의를 ★전부 동시에★ 던졌다. 그랬더니 —
@@ -158,27 +195,38 @@ async function buildAboutPicks(): Promise<AboutPicks> {
         continue
       }
 
+      const hand = HAND_PICKED[slug] ?? {}
+
       const [playerRows, clanRows, matchRows] = await sequence([
         /* 경기를 가장 많이 한 선수 */
+        /*
+         * ★손으로 고른 선수가 있으면 그 사람★ — 없으면 경기 최다.
+         * `COALESCE` 로 한 질의에서 끝낸다 (연결이 하나뿐인 환경이라 왕복을 아낀다).
+         */
         () => prisma.$queryRawUnsafe(
           `SELECT lp."playerId" AS id, pl.name, (lp.win + lp.lose) AS games
              FROM "LeaguePlayer" lp
              JOIN "Player" pl ON pl.id = lp."playerId"
             WHERE lp."leagueId" = $1
+              AND ($2::text IS NULL OR lp."playerId" = $2)
             ORDER BY (lp.win + lp.lose) DESC
             LIMIT 1`,
           league.id,
+          hand.playerId ?? null,
         ) as Promise<{ id: string; name: string; games: number }[]>,
 
         /* 경기를 가장 많이 한 클랜 — 쫓겨난 클랜은 뺀다 */
+        /* ★손으로 고른 클랜이 있으면 그 곳★ — 없으면 경기 최다 */
         () => prisma.$queryRawUnsafe(
           `SELECT c.slug, c.name, (lc.win + lc.lose) AS games
              FROM "LeagueClan" lc
              JOIN "Clan" c ON c.id = lc."clanId"
             WHERE lc."leagueId" = $1 AND lc."expelledAt" IS NULL
+              AND ($2::text IS NULL OR c.slug = $2)
             ORDER BY (lc.win + lc.lose) DESC
             LIMIT 1`,
           league.id,
+          hand.clanSlug ?? null,
         ) as Promise<{ slug: string; name: string; games: number }[]>,
 
         /*
