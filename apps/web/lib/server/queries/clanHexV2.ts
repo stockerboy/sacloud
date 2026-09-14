@@ -47,8 +47,10 @@ import {
   normalizeAgainstFoe,
   normalizeByPercentile,
   /* `sumClanHexTallies` 는 여기서 안 부른다 — 접는 일은 잡이 미리 해 둔다 (D-238) */
+  clanBadgeAxes,
   type ClanHexTallyLike,
   type ClanHexV2,
+  type ClanHexV2AxisKey,
 } from '@sacloud/contract'
 
 /**
@@ -270,4 +272,45 @@ export async function matchClanHexV2(
     red: redRaw === null ? null : { leagueClanId: resolved.redLeagueClanId, hexagon: red },
     blue: blueRaw === null ? null : { leagueClanId: resolved.blueLeagueClanId, hexagon: blue },
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 뱃지 (2026-09-14)                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * ★리그 한 곳의 뱃지를 한 번에 만든다★ (2026-09-14 사장님:
+ * «6각이 5위 안에 드는 클랜은 클랜목록에서 승률옆에 뱃지를 달아주자»).
+ *
+ * ── 왜 목록에서 줄마다 부르지 않나
+ *   뱃지는 ★모든 줄★ 에 붙는다. 줄마다 `leagueClanHexV2` 를 부르면 클랜 수만큼
+ *   정규화가 돈다 (42곳이면 42번 × 42곳 비교). 분포는 어차피 한 덩어리라
+ *   ★한 번 받아서 한 번에 판정한다.★ 분포 캐시는 그대로 같이 쓴다.
+ *
+ * ── 판정 규칙은 여기 없다
+ *   5위 컷도 ASTRA 보정값도 `packages/contract/src/clanBadge.ts` 한 곳에 있다.
+ *   여기서 숫자를 지어내지 않는다 — 두 곳에 있으면 반드시 어긋난다.
+ *
+ * ── 못 잰 클랜
+ *   요약이 없으면 분포에도 없다 → 그 클랜은 ★빈 배열★ 이다. 「아직 모른다」 를
+ *   「못했다」 로 바꾸지 않는다 (D-106).
+ */
+export async function leagueClanBadges(args: {
+  leagueId: string
+  /** leagueClanId → 지금 구간. ASTRA 보정이 이 값을 본다 */
+  divisionOf: ReadonlyMap<string, number>
+  now?: Date
+}): Promise<Map<string, ClanHexV2AxisKey[]>> {
+  const now = args.now ?? new Date()
+  const distribution = await distributionOf(args.leagueId, now.getTime())
+  const pool = [...distribution.hexagons.values()]
+
+  const out = new Map<string, ClanHexV2AxisKey[]>()
+  for (const [leagueClanId, raw] of distribution.hexagons) {
+    const hex = normalizeByPercentile(raw, pool)
+    const axes = hex.axes.map((a) => ({ key: a.key, rank: a.rank }))
+    const won = clanBadgeAxes(axes, args.divisionOf.get(leagueClanId) ?? 0)
+    if (won.length > 0) out.set(leagueClanId, won)
+  }
+  return out
 }

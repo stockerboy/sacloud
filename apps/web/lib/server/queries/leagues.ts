@@ -37,7 +37,7 @@ import { ladderMatchWhere } from './ladderScope'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
 import { hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { seasonWindowWhere } from './season0Scope'
-import { leagueClanHexV2 } from './clanHexV2'
+import { leagueClanHexV2, leagueClanBadges } from './clanHexV2'
 import { softFail } from '../softFail'
 import { withLadderMatch } from './ladderScope'
 
@@ -290,6 +290,15 @@ export async function getLeagueClans(
           clan: { select: CLAN_SUMMARY_SELECT },
         },
       })
+      /* ★뱃지★ (2026-09-14) — 분포를 한 번만 읽는다. 실패해도 목록은 그대로 나간다 */
+      const badgeOf =
+        (await softFail('league-clan-badge', null, { leagueId })(
+          leagueClanBadges({
+            leagueId,
+            divisionOf: new Map(rows.map((row) => [row.id, row.division])),
+          }),
+        )) ?? new Map<string, string[]>()
+
       return rows.map((row) => {
         const tier = tierRecords.get(row.id) ?? { win: 0, lose: 0 }
         return {
@@ -304,6 +313,7 @@ export async function getLeagueClans(
         tier_win: tier.win,
         tier_lose: tier.lose,
         tier_win_rate: tier.win + tier.lose === 0 ? null : winRate(tier.win, tier.lose),
+        badges: badgeOf.get(row.id) ?? [],
         placement: row.placement,
         status: row.status,
         joined_at: toKstIso(row.joinedAt),
@@ -620,6 +630,24 @@ export async function getClanRanks(
     }
   }
 
+  /**
+   * ★뱃지★ (2026-09-14 사장님: «6각이 5위 안에 드는 클랜은 승률옆에 뱃지를»).
+   *
+   * 육각과 달리 ★모든 줄★ 에 붙는다. 그래서 줄마다 부르지 않고 한 번에 만든다 —
+   * `leagueClanBadges` 가 분포를 한 덩어리로 받아 축별 등수를 한 번에 끊는다.
+   * 축 등수는 ★리그 전체★ 로 이미 정해져 있어서, 이 페이지 밖 클랜의 구간을 몰라도
+   * 이 페이지 줄들의 판정은 달라지지 않는다 (보정은 자기 구간만 본다).
+   *
+   * 실패해도 목록을 죽이지 않는다 — 그때는 뱃지 없이 그린다.
+   */
+  const badgeOf =
+    (await softFail('clan-rank-badge', null, { leagueId })(
+      leagueClanBadges({
+        leagueId,
+        divisionOf: new Map(page.items.map((row) => [row.id, row.division])),
+      }),
+    )) ?? new Map<string, string[]>()
+
   return {
     cursor: page.cursor,
     items: page.items.map((row, index) => ({
@@ -632,6 +660,7 @@ export async function getClanRanks(
       win_rate: winRate(row.win, row.lose),
       rating: row.rating,
       category: row.clan.category,
+      badges: badgeOf.get(row.id) ?? [],
       hex_axes: hexOf.get(row.id) ?? null,
     })),
   }

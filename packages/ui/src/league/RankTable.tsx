@@ -28,6 +28,7 @@ import {
   formatRatingDelta,
 } from '../common/format'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
+import { ClanBadges } from './ClanBadges'
 import {
   COL_CLAN,
   COL_HIDDEN,
@@ -280,7 +281,11 @@ function DivisionDivider({ division, leagueCategory }: { division: number; leagu
 /** 승격·강등 표시 (2026-09-11 사장님) — 표는 받은 대로 그리고, 누가 위태로운지는 화면이 정한다 */
 export type ClanRankNote = 'promote' | 'relegate' | null
 
-export type ClanRankTableRow = { rank: number | null; note?: ClanRankNote } & Pick<
+/**
+ * `badges` 는 ★받아도 되고 안 받아도 된다★ (2026-09-14).
+ * 안 넘기는 화면(옛 래더 표 등)은 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
+ */
+export type ClanRankTableRow = { rank: number | null; note?: ClanRankNote; badges?: readonly string[] } & Pick<
   ClanRankRow,
   'league_clan_id' | 'clan' | 'division' | 'win' | 'lose' | 'win_rate' | 'rating'
 >
@@ -412,6 +417,8 @@ export function ClanRankTable({
                     {row.note === 'promote' ? '승격유력' : '강등위기'}
                   </span>
                 ) : null}
+                {/* ★뱃지★ — 육각 축 중 리그 5위 안에 든 것 (2026-09-14 사장님) */}
+                <ClanBadges badges={row.badges} />
                 {/* 티어 라벨 — IPL 만 (지시 #23). 순서는 래더 순이라 경계선 대신 행마다 적는다 */}
                 {showTierLabel ? (
                   <span className="ml-2 shrink-0 text-xs text-faint">

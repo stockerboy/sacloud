@@ -178,6 +178,8 @@ function ClanRankDirectory({
         lose: row.tier_win_rate === null ? row.lose : row.tier_lose,
         win_rate: row.tier_win_rate ?? row.win_rate,
         rating: row.rating,
+        /* ★뱃지★ (2026-09-14 사장님) — 판정은 서버가 이미 끝냈다. 여기는 나른다 */
+        badges: row.badges,
       })),
     [filtered, noteOf],
   )

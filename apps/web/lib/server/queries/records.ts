@@ -35,7 +35,7 @@ import { leagueClanMetrics } from './clanMetrics'
 import { leagueClanHexagon, leagueClanRoundMetrics } from './clanRoundMetrics'
 /* D-238 로 잠시 뺐다가 **다시 들였다** — 재료가 `ClanHexV2Summary` 로 바뀌었다.
    자세한 것은 아래 호출 자리의 주석 */
-import { leagueClanHexV2 } from './clanHexV2'
+import { leagueClanHexV2, leagueClanBadges } from './clanHexV2'
 import { clanHeadToHead, clanMaxWinStreak } from './clanHeadToHead'
 import { playerHexOf } from './playerHex'
 import { RANK_MIN_GAMES } from './rankings'
@@ -556,6 +556,16 @@ export async function getLeagueClanShow(
     })(mainLineupOf(leagueClan.leagueId, clan.id)),
   ])
 
+  /* ★뱃지★ (2026-09-14 사장님) — 목록과 ★같은 함수★ 로 판정한다.
+     두 곳에서 따로 세면 목록과 상세가 서로 다른 말을 하게 된다 */
+  const badgeOf =
+    (await softFail('clan-detail-badge', null, { leagueClanId: leagueClan.id })(
+      leagueClanBadges({
+        leagueId: leagueClan.leagueId,
+        divisionOf: new Map([[leagueClan.id, leagueClan.division]]),
+      }),
+    )) ?? new Map<string, string[]>()
+
   return {
     id: leagueClan.id,
     league_id: leagueClan.leagueId,
@@ -568,6 +578,7 @@ export async function getLeagueClanShow(
     tier_win: 0,
     tier_lose: 0,
     tier_win_rate: null,
+    badges: badgeOf.get(leagueClan.id) ?? [],
     placement: leagueClan.placement,
     status: leagueClan.status,
     joined_at: toKstIso(leagueClan.joinedAt),

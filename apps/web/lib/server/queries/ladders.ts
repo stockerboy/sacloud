@@ -75,6 +75,10 @@ function toRow(row: LadderRow, rank: number): ClanRankRow {
     win_rate: winRate(row.win, row.lose),
     rating: row.rating,
     category: row.clan.category,
+    /* 뱃지는 ★클랜 목록★ 것이다 (2026-09-14). 옛 래더 표에는 안 단다 —
+       달려면 여기서도 리그 분포를 읽어야 하는데, 이 통로는 동기 함수다.
+       필요해지면 `leagueClanBadges` 를 부르는 자리를 부르는 쪽에 만든다 */
+    badges: [],
   }
 }
 

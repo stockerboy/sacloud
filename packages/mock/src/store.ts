@@ -690,6 +690,8 @@ function toLeagueClan(leagueClan: MockLeagueClan): LeagueClan | null {
     id: leagueClan.id,
     league_id: leagueClan.leagueId,
     clan: toClanSummary(clan),
+    /* 뱃지는 ★리그 전체 분포★ 가 있어야 판정된다 (2026-09-14). 픽스처에는 분포가 없다 */
+    badges: [],
     rating: leagueClan.rating,
     division: leagueClan.division,
     win: leagueClan.win,

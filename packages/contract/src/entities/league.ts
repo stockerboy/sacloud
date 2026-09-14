@@ -62,6 +62,13 @@ export const LeagueClan = z.object({
   tier_win: Count.default(0),
   tier_lose: Count.default(0),
   tier_win_rate: Percent.nullable().default(null),
+  /**
+   * ★뱃지★ — 육각 여섯 축 중 그 클랜이 리그 5위 안에 든 축들 (2026-09-14 사장님:
+   * «6각이 5위 안에 드는 클랜은 클랜목록에서 승률옆에 뱃지를 달아주자»).
+   * 판정 규칙과 ASTRA 보정값은 `clanBadge.ts` 한 곳에 있다.
+   * 아직 배틀로그가 없어 못 잰 클랜은 빈 배열이다.
+   */
+  badges: z.array(z.string()).default([]),
   placement: z.boolean(),
   status: LeagueClanStatus,
   joined_at: IsoDateTime,
@@ -264,6 +271,18 @@ export const ClanRankRow = z.object({
    * 통합 순위에 그대로 들어간다. 화면에서 구분해 보여 주기 위한 값이다 (D-102).
    */
   category: z.string(),
+  /**
+   * ★뱃지★ — 육각 여섯 축 중 그 클랜이 리그 5위 안에 든 축들 (2026-09-14 사장님:
+   * «6각이 5위 안에 드는 클랜은 클랜목록에서 승률옆에 뱃지를 달아주자»).
+   *
+   * ★모든 줄에 실린다★ — 여섯 축 값 전체가 아니라 «이겼다» 는 축 이름뿐이라
+   * 한 줄에 길어야 여섯 글자 남짓이다. `hex_axes` 와 달리 세 줄로 줄일 이유가 없다.
+   * 아직 배틀로그가 없어 못 잰 클랜은 빈 배열이다 — `null` 과 구별하지 않는다
+   * (둘 다 «달 뱃지가 없다» 로 똑같이 그린다).
+   *
+   * 판정 규칙과 ASTRA 보정값은 `clanBadge.ts` 한 곳에 있다.
+   */
+  badges: z.array(z.string()).default([]),
   /**
    * ★여섯 축★ — ★1·2·3위에만★ 실린다 (2026-09-12 사장님:
    * «클랜도 탑3는 플레이스타일 6각형이랑 승률 같은거 개인랭킹페이지 처럼 보여줘»).

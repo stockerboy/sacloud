@@ -376,3 +376,4 @@ export { EggGallery, type EggGalleryItem, type EggGalleryProps } from './egg/Egg
  *   ⚠ `CLAUDE.md` 10-4(옛 버전을 남긴다)의 예외다. 「전부 삭제」가 명시 지시였다.
  *      모양은 `design/gacha-guide.html` 에 남아 있다 (design/ 은 손대지 않는다).
  */
+export * from './league/ClanBadges'

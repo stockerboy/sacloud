@@ -16,6 +16,7 @@ export * from './clanRoundMetrics'
 export * from './clanRoster'
 export * from './clanTraits'
 export * from './clanTraitsV2'
+export * from './clanBadge'
 export * from './season'
 export * from './barracksUrl'
 /* 붙여 넣은 검색어 다듬기 (D-254) */
