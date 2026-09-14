@@ -21,7 +21,24 @@ import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 import { H2HChartV3 } from './H2HChartV3'
 
 /** ★선수 기록실과 같은 2칸×3줄★ (2026-09-11 사장님: «경기카드 전부 이 형식으로 통일») */
-const prowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center', rowGap: 7, columnGap: 12, padding: '13px 18px' }
+/**
+ * ★기록실 경기 카드 두 줄★
+ * ```
+ * 1줄   승리  제3보급창고  4시간 전      마크 MVP닉네임 ★MVP
+ * 2줄   마크 우리팀 VS 마크 상대팀        래더 +12
+ * ```
+ *
+ * ── ⚠ ★오른쪽 열에 상한을 둔다★ (2026-09-15 QA에서 잡았다)
+ *   옛 값은 `auto` 였다. 격자의 열 너비는 ★두 줄이 함께★ 정하므로,
+ *   MVP 닉네임이 길면 그 열이 넓어지면서 ★아래 줄 클랜 이름까지 같이 좁아졌다.
+ *   폰에서 재 보니 클랜 이름이 ★55px 이 필요한데 35px★ 만 받아
+ *   «vuvuzela» 가 ★«vu···»★ 로, 맵 이름도 «제3···» 으로 뭉개졌다.
+ *
+ *   경기 카드에서 제일 중요한 것은 ★누가 누구와 붙었나★ 다. 그래서 오른쪽 열을
+ *   40% 로 묶고, 넘치는 것은 ★MVP 닉네임 쪽★ 이 말줄임으로 받는다.
+ *   PC 는 카드가 넓어 40% 도 500px 이 넘는다 — 한 글자도 안 잘린다.
+ */
+const prowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,40%)', alignItems: 'center', rowGap: 7, columnGap: 12, padding: '13px 18px' }
 
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px 62px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
 /* 옛 5칸 한 줄판 — 지우지 않는다 (CLAUDE.md 1-4). 지금은 v3-prow 2칸×3줄을 쓴다 */
