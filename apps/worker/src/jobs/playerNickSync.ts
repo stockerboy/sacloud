@@ -61,11 +61,8 @@ export interface PlayerNickSyncResult {
   samples: { usn: string; before: string; after: string; at: string }[]
 }
 
-interface LogRow {
-  matchKey: string
-  payload: { battleLog?: unknown[] }
-  startAt: Date
-}
+/** 한 번에 읽을 경기 수 — 원문 하나가 90KB 안팎이라 크게 잡으면 메모리로 죽는다 */
+const LOG_BATCH = 150
 
 const str = (v: unknown): string | null => {
   if (v === null || v === undefined) return null
@@ -80,8 +77,13 @@ export async function playerNickSync(options: PlayerNickSyncOptions): Promise<Pl
    * ★경기 시각 오름차순★ 으로 훑는다. 뒤에 오는 줄이 앞을 덮으므로,
    * 다 돌고 나면 각 계정에 ★가장 최근 경기의 이름★ 이 남는다.
    */
-  const rows = (await prisma.$queryRawUnsafe(
-    `SELECT b."matchKey", b.payload, m."startAt"
+  /**
+   * ⚠ ★원문을 한꺼번에 끌어오지 않는다.★ 배틀로그 하나가 90KB 안팎이라
+   *   7일치(수천 건)를 한 번에 뜨면 ★서버가 메모리로 죽는다★ — 실제로 죽었다 (exit 137).
+   *   `battlelogLineup` 이 같은 이유로 150건씩 나눠 읽는다. 여기도 같게 한다.
+   */
+  const keys = (await prisma.$queryRawUnsafe(
+    `SELECT b."matchKey", m."startAt"
        FROM "BarracksBattleLogRaw" b
        JOIN "Match" m ON m."sourceMatchId" = b."matchKey"
       WHERE b."subjectKind" = 'clan' AND b.status = 'ok'
@@ -89,26 +91,43 @@ export async function playerNickSync(options: PlayerNickSyncOptions): Promise<Pl
         AND m."startAt" > now() - ($1 || ' day')::interval
       ORDER BY m."startAt" ASC`,
     String(days),
-  )) as LogRow[]
+  )) as { matchKey: string; startAt: Date }[]
 
   /** usn → 가장 최근에 부른 이름 */
   const latest = new Map<string, { nick: string; at: Date }>()
-  for (const row of rows) {
-    for (const raw of row.payload.battleLog ?? []) {
-      const e = raw as Record<string, unknown>
-      const put = (usn: unknown, nick: unknown) => {
-        const u = str(usn)
-        const n = str(nick)
-        if (u === null || n === null) return
-        latest.set(u, { nick: n, at: row.startAt })
+  const atOf = new Map(keys.map((k) => [k.matchKey, k.startAt]))
+  let matchesRead = 0
+  for (let i = 0; i < keys.length; i += LOG_BATCH) {
+    const slice = keys.slice(i, i + LOG_BATCH).map((k) => k.matchKey)
+    const rows = (await prisma.$queryRawUnsafe(
+      `SELECT "matchKey", payload FROM "BarracksBattleLogRaw"
+        WHERE "subjectKind" = 'clan' AND status = 'ok' AND "matchKey" = ANY($1)`,
+      slice,
+    )) as { matchKey: string; payload: { battleLog?: unknown[] } }[]
+    /* 경기 시각 오름차순으로 덮어써야 «가장 최근» 이 남는다 */
+    rows.sort(
+      (a, b) => (atOf.get(a.matchKey)?.getTime() ?? 0) - (atOf.get(b.matchKey)?.getTime() ?? 0),
+    )
+    for (const row of rows) {
+      matchesRead += 1
+      const at = atOf.get(row.matchKey) ?? new Date(0)
+      for (const raw of row.payload.battleLog ?? []) {
+        const e = raw as Record<string, unknown>
+        const put = (usn: unknown, nick: unknown) => {
+          const u = str(usn)
+          const n = str(nick)
+          if (u === null || n === null) return
+          latest.set(u, { nick: n, at })
+        }
+        put(e.str_usn, e.user_nick)
+        put(e.target_str_usn, e.target_user_nick)
       }
-      put(e.str_usn, e.user_nick)
-      put(e.target_str_usn, e.target_user_nick)
     }
+    if ((i / LOG_BATCH) % 5 === 0) log(`  ${Math.min(i + LOG_BATCH, keys.length)} / ${keys.length} 경기`)
   }
 
   const result: PlayerNickSyncResult = {
-    matchesRead: rows.length,
+    matchesRead,
     accounts: latest.size,
     changed: 0,
     skippedSameName: 0,
@@ -147,7 +166,7 @@ export async function playerNickSync(options: PlayerNickSyncOptions): Promise<Pl
   result.samples = capped.slice(0, 20).map(({ usn, before, after, at }) => ({ usn, before, after, at }))
 
   log(
-    `경기 ${rows.length}판 · 계정 ${latest.size}개 · 우리 선수 아님 ${result.notOurPlayer} · ` +
+    `경기 ${matchesRead}판 · 계정 ${latest.size}개 · 우리 선수 아님 ${result.notOurPlayer} · ` +
       `이름 그대로 ${result.skippedSameName} · ★바꿀 것 ${capped.length}★`,
   )
   for (const row of result.samples) {
