@@ -30,6 +30,7 @@ import {
   CLAN_HEX_V2_CONFIG,
   PLAYER_HEX_AXIS_ORDER,
   buildClanHexV2Raw,
+  kdRate,
   playerHexLabelOf,
   normalizeByPercentile,
   type ClanHexTallyLike,
@@ -186,7 +187,13 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
           const w = r.weapon
           return playerHexLabelOf(key, w === 0 || w === 1 ? w : null)
         })(),
-        kd: death === 0 ? null : (Number(r.kill) / death) * 100,
+        /*
+         * ⚠ ★킬뎃은 «킬 ÷ (킬+데스)» 다★ — «킬 ÷ 데스» 가 아니다 (2026-09-14 저녁 정정).
+         *   내가 «킬÷데스» 로 적어서 화면에 ★220%·120%★ 같은 값이 나왔다.
+         *   사장님: «킬뎃 이상해 120프로가 뭐야 55% 이런게 정상인데».
+         *   ★계약의 `kdRate` 를 쓴다★ — 사이트 어디서나 같은 잣대여야 한다.
+         */
+        kd: death === 0 && Number(r.kill) === 0 ? null : kdRate(Number(r.kill), death),
         games,
         win,
         score: scoreOf(low, avg, winRate),
@@ -303,7 +310,8 @@ async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]>
         avg,
         winRate,
         lowLabel: hex.axes[lowIndex]?.label ?? '',
-        kd: r.death === 0 ? null : (r.kill / r.death) * 100,
+        /* ⚠ 위와 같다 — ★킬 ÷ (킬+데스)★. 계약의 `kdRate` 한 곳이 정한다 */
+        kd: r.death === 0 && r.kill === 0 ? null : kdRate(r.kill, r.death),
         score: scoreOf(low, avg, winRate),
       }
     })

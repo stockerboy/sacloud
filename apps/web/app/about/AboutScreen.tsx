@@ -27,10 +27,17 @@
  * ── 지금은 관리자만 본다
  *   자물쇠는 `lib/aboutGate.ts` 의 `ABOUT_PUBLIC` 한 줄이다.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import type { LeagueClanShow, LeaguePlayerDetail, MatchDetail } from '@sacloud/contract'
+import type {
+  LeagueClanShow,
+  LeaguePlayerDetail,
+  MatchDetail,
+  MatchListItem,
+} from '@sacloud/contract'
+/* ★킬뎃은 계약이 정한다★ — «킬 ÷ (킬+데스)». 화면에서 다시 계산하지 않는다 (2026-09-14) */
+import { kdRateOrNull } from '@sacloud/contract'
 import {
   AnalysisPanelV3,
   Card,
@@ -39,12 +46,15 @@ import {
   H2HChartV3,
   Hexagon,
   MarkCircle,
+  MatchListV3,
   TrendChartV3,
   V3,
   clanHexAxes,
   clanThemeOf,
   strengthAxes,
 } from '@sacloud/ui'
+import { apiGet } from '@/lib/api'
+import { useCursorQuery } from '@/lib/useCursorQuery'
 import { useApiReady } from '@/app/providers'
 import { ABOUT_LEAGUES, IPL_KD_NOTICE, type AboutLeague } from './leagueCopy'
 
@@ -389,10 +399,13 @@ function PlayerShowcase({
   const rank = hex?.score_rank_all ?? (hex ? hex.score_rank : data.rank)
   const rankTotal = hex?.score_total_all ?? (hex ? hex.score_total : data.rank_count)
   const winRate = data.win + data.lose === 0 ? null : (data.win / (data.win + data.lose)) * 100
-  const kd =
-    data.kill !== null && data.death !== null && data.death > 0
-      ? (data.kill / data.death) * 100
-      : null
+  /*
+   * ⚠ ★킬뎃은 «킬 ÷ (킬+데스)» 다★ — «킬 ÷ 데스» 가 아니다 (2026-09-14 저녁 정정).
+   *   내가 «킬÷데스» 로 적어서 ★124.7%★ 같은 값이 나왔다.
+   *   사장님: «킬뎃 이상해 120프로가 뭐야 55% 이런게 정상인데».
+   *   ★계약의 `kdRate` 를 쓴다★ — 랭킹표·선수 상세가 쓰는 그 함수다.
+   */
+  const kd = kdRateOrNull(data.kill, data.death)
 
   const axes = strengthAxes(data)
   const today = data.trend.find((d) => d.today) ?? null
@@ -407,11 +420,16 @@ function PlayerShowcase({
   return (
     <Card style={{ marginBottom: 14 }}>
       <CardHead
-        title="선수 분석"
+        /*
+         * ★제목에도 닉네임을 적는다★ (2026-09-14 저녁 사장님: «선수닉네임 위 아래 다 써주고»).
+         * 그래프 아래에도 있지만, 스크롤로 내려오면 ★누구 기록인지★ 를 위에서 먼저 봐야 한다.
+         * 클랜 카드가 «vuvuzela vs 상대» 로 제목을 쓰는 것과 같은 규칙이다.
+         */
+        title={`선수 분석 — ${name}`}
         ribbon={league.tone}
         right={
           <span style={{ fontSize: 11, color: V3.textGhost2 }}>
-            이 리그에서 가장 많이 뛴 선수 · {games}판
+            {data.clan === null ? '무소속' : data.clan.name} · {games}판
           </span>
         }
       />
@@ -774,7 +792,12 @@ function ClanShowcase({
   return (
     <Card style={{ marginBottom: 14 }}>
       <CardHead
-        title="클랜 분석"
+        /*
+         * ★제목에 고른 상대를 넣는다★ (2026-09-14 저녁 사장님이 사진에 빨간 펜으로
+         * 그 자리를 가리키시며 «vuvuzela vs ooo 해서 누르면 거기에 누른 클랜명 넣어주고»).
+         * 상대를 바꾸면 제목도 같이 바뀐다 — 지금 무엇을 보고 있는지가 제목에 있다.
+         */
+        title={h2h === undefined || h2h === null ? '클랜 분석' : `${name} vs ${h2h.clan.name}`}
         ribbon="#a6e3c4"
         right={
           <span style={{ fontSize: 11, color: V3.textGhost2 }}>
@@ -903,7 +926,103 @@ function ClanShowcase({
         클랜의 여섯 축은 <b style={{ color: '#fff' }}>이 팀이 어떻게 싸우는가</b>입니다.
       </p>
 
+      {/*
+        ★고른 상대와의 경기 모음★ (2026-09-14 저녁 사장님:
+        «vs methodcrew 경기모음 (경기카드 하나만 나와있고 상세보기 누르면 경기 분석
+          버튼 누를 수 있음 그리고 더 불러오기 누르면 9/3이후 모든 경기 카드 나옴)»).
+
+        ★경기 목록 부품을 그대로 쓴다★ (`MatchListV3`) — 경기 화면과 같은 카드이고,
+        펼치면 같은 스코어보드가 나오고 «경기분석» 단추도 그 안에 있다.
+        소개용으로 다시 만들면 두 곳이 어긋난다.
+      */}
+      {h2h === undefined || h2h === null ? null : (
+        <div style={{ borderTop: `1px solid ${V3.divider}`, padding: '12px 14px 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#fff' }}>
+              vs {h2h.clan.name} 경기모음
+            </span>
+            <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>
+              카드를 누르면 펼쳐집니다 · 더 불러오면 이 시즌 전부가 나옵니다
+            </span>
+          </div>
+          <VsMatches
+            leagueSlug={leagueSlug}
+            leagueClanId={data.id}
+            leagueCategory={data.league.category}
+            opponentLeagueClanId={h2h.league_clan_id}
+          />
+        </div>
+      )}
     </Card>
+  )
+}
+
+/* ── 고른 상대와의 경기 모음 ─────────────────────────────────── */
+
+/**
+ * ★처음에는 한 판만 보여 준다★ (사장님: «경기카드 하나만 나와있고 (…)
+ * 더 불러오기 누르면 9/3이후 모든 경기 카드 나옴»).
+ *
+ * 소개 페이지는 ★맛보기★ 자리라 목록이 길면 읽는 흐름이 끊긴다.
+ * 더 보고 싶은 사람만 펼친다.
+ */
+function VsMatches({
+  leagueSlug,
+  leagueClanId,
+  leagueCategory,
+  opponentLeagueClanId,
+}: {
+  leagueSlug: string
+  leagueClanId: string
+  leagueCategory: string
+  opponentLeagueClanId: string
+}) {
+  const [expanded, setExpanded] = useState<Record<string, MatchDetail>>({})
+  /** 접혀 있는 동안은 한 장만 */
+  const [showAll, setShowAll] = useState(false)
+
+  const vs = useCursorQuery<MatchListItem>(
+    'leagueClanMatches',
+    ['about', 'clan', leagueClanId, 'vs', opponentLeagueClanId],
+    { params: { leagueClanId }, search: { opponent: opponentLeagueClanId } },
+    leagueClanId !== '' && opponentLeagueClanId !== '',
+  )
+
+  /* 상대를 바꾸면 펼친 것을 접는다 — 다른 상대의 펼침이 남으면 헷갈린다 */
+  useEffect(() => {
+    setExpanded({})
+    setShowAll(false)
+  }, [opponentLeagueClanId])
+
+  const shown = showAll ? vs.items : vs.items.slice(0, 1)
+
+  async function onExpand(match: MatchListItem) {
+    if (expanded[match.id] !== undefined) return
+    const res = await apiGet('matchShow', {
+      params: { leagueId: leagueSlug, matchId: match.id },
+    })
+    setExpanded((prev) => ({ ...prev, [match.id]: res.data as MatchDetail }))
+  }
+
+  return (
+    <MatchListV3
+      leagueSlug={leagueSlug}
+      leagueCategory={leagueCategory}
+      matches={shown}
+      matchesLoading={vs.loading}
+      /* 접혀 있으면 «더 불러오기» 가 곧 «전부 보기» 다 */
+      hasMore={showAll ? vs.hasMore : vs.items.length > 1 || vs.hasMore}
+      loadingMore={vs.loadingMore}
+      onLoadMore={() => {
+        if (!showAll) {
+          setShowAll(true)
+          return
+        }
+        vs.loadMore()
+      }}
+      expanded={expanded}
+      onExpand={(m) => void onExpand(m)}
+    />
   )
 }
 

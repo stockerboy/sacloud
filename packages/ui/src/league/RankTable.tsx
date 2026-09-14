@@ -330,7 +330,20 @@ export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'e
  * ★강등위기(`note === 'relegate'`)는 등수와 상관없이 안 준다.★
  * 선수 인식표와 그림은 같고 경계만 다르다 (선수는 3 / 10 / 100).
  */
+/**
+ * ⚠ ★2026-09-14 저녁 — 인식표를 껐다★ (사장님: «IPL 인식표 일단 없애줘»).
+ *
+ *   «일단» 이라고 하셔서 ★규칙은 그대로 두고 스위치만★ 내린다.
+ *   다시 켜려면 `CLAN_PLATE_ON = true` 로 두면 옛 모습이 그대로 돌아온다
+ *   (ASTRA 1~3등 불 · 4~6등 먹구름 · 7등부터 흰구름 · `CLAUDE.md` 1-4).
+ *
+ *   ⚠ 인식표가 없어지면 그 줄에 걸어 둔 글자 그림자(`.v3-plate-row ~ *`)도 같이
+ *     빠진다 — 그건 원래 «불꽃 위에서 숫자가 안 읽힌다» 를 고치려던 것이라 괜찮다.
+ */
+const CLAN_PLATE_ON = false
+
 function clanPlateOf(row: { rank: number | null; division: number; note?: ClanRankNote }, leagueCategory?: string): 'fire' | 'dark' | 'light' | null {
+  if (!CLAN_PLATE_ON) return null
   if (leagueCategory !== 'independent' || row.division !== 1) return null
   if (row.note === 'relegate') return null
   const rank = row.rank
@@ -527,7 +540,11 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
  * 100등 밖이면 안 준다. 그림·규칙은 클랜 카드와 같다 (`.v3-plate`).
  */
 /* ★층수 색★ 은 공통 함수 한 곳이 정한다 (2026-09-11 사장님) */
+/* ⚠ 2026-09-14 저녁 — 클랜 쪽과 ★같이 껐다★ (사장님: «IPL 인식표 일단 없애줘»).
+      개인랭킹 인식표도 같은 그림·같은 규칙이라 한쪽만 남기면 화면이 어긋난다.
+      되살리려면 위 `CLAN_PLATE_ON` 과 같이 `true` 로 둔다 */
 function plateOf(row: { rank: number; home_tier?: number | null }): 'fire' | 'dark' | 'light' | null {
+  if (!CLAN_PLATE_ON) return null
   if (row.home_tier !== 1) return null
   if (row.rank > 100) return null
   if (row.rank <= 3) return 'fire'
