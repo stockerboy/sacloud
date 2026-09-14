@@ -86,6 +86,7 @@
  *
  *   전수 경로를 없애지 않는다. 값이 어긋났을 때 되돌릴 길이 있어야 한다 — `--full` 이 그것이다.
  */
+import { clanSourceTrusted } from './affiliationTrust'
 import { prisma } from '../src/index'
 // 적재 잡과 **같은 상수**를 쓴다. 출처 문자열이 두 곳에서 갈라지면 집계가 조용히 0건이 된다
 import { SUPPLY_ORIGIN } from './supplyMirrorImport'
@@ -118,6 +119,11 @@ export interface RollupStat {
   sourceRating: number | null
   /** 원본이 그 선수 자리에 붙여 준 소속 clan slug. 무소속이면 `null` */
   matchTimeClanSlug: string | null
+  /**
+   * ★그 값이 어디서 왔나★ — 소속 근거로 써도 되는지를 이것으로 가른다
+   * (`affiliationTrust.ts`). 안 읽어 오면 `undefined` 라 옛 동작 그대로다.
+   */
+  matchTimeClanSource?: string | null
 }
 
 /**
@@ -137,6 +143,17 @@ export interface PlayerRollupRow {
    * `sourceRating` 과 달리 결측과 무소속을 구분할 근거가 없으므로 최신 경기의 값을 그대로 쓴다.
    */
   clanSlug: string | null
+  /**
+   * ★이 행을 소속 근거로 써도 되나★ (2026-09-07 · 1순위 오염 차단 → 2026-09-14 배선 완료).
+   *
+   * `barracks-battlelog` 이 적는 «경기 당시 클랜» 은 ★그 경기에서 뛴 팀★ 이지
+   * 그 선수의 등록 소속이 아니다. 용병으로 한 판 뛴 것이 그대로 가입으로 굳어서,
+   * IPL 에서 명부와 ★71% 어긋났다★ (320명 중 226명).
+   *
+   * 판정은 `affiliationTrust.ts` 한 곳이 한다 — 여기서 출처 문자열을 박지 마라.
+   * 안 주면 `true` 다 (옛 동작 그대로 · `CLAUDE.md` 1-4).
+   */
+  clanTrusted?: boolean
   /** 최신 판정용. 동시각이면 matchId 로 순서를 고정한다 */
   matchId: string
   startAt: Date
@@ -181,6 +198,21 @@ export interface PlayerRollup {
    */
   clanSlug: string | null
   clanFrom: RatingPick | null
+  /**
+   * ★소속 근거에서 뺀 행 수★ (2026-09-14). 판수·승패·킬데스에는 ★그대로 들어간 행★ 이다 —
+   * 행을 버리지 않는다. 이 숫자는 «얼마나 걸렀나» 를 눈으로 보기 위한 것이다.
+   */
+  clanTeamOnlyRows: number
+  /**
+   * ★가장 최근 경기가 신뢰 출처였나★. `false` 면 더 옛 행으로 되돌아가 고른 것이다.
+   * 되돌아간 비율이 높으면 수집 경로 쪽을 다시 봐야 한다는 신호다.
+   */
+  newestTrusted: boolean
+  /**
+   * 전체에서 가장 최근 행 — `newestTrusted` 를 정하는 데만 쓴다.
+   * 소속을 고르는 `clanFrom` 과 ★다른 값★ 이다 (걸러진 행도 여기서는 최신일 수 있다).
+   */
+  newestFrom: RatingPick | null
 }
 
 /**
@@ -222,6 +254,9 @@ export function emptyPlayerRollup(): PlayerRollup {
     ratingFrom: null,
     clanSlug: null,
     clanFrom: null,
+    clanTeamOnlyRows: 0,
+    newestTrusted: true,
+    newestFrom: null,
   }
 }
 
@@ -284,7 +319,22 @@ export function accumulatePlayerRollups(
       acc.rating = row.sourceRating
       acc.ratingFrom = pick
     }
-    if (isNewer(acc.clanFrom, pick)) {
+    /*
+     * ★소속은 신뢰 행 중에서만 고른다★ (2026-09-07 지시 · 2026-09-14 배선).
+     *
+     * «뛴 팀» 행도 위에서 판수·승패·킬데스에 ★이미 다 들어갔다★ — 여기서만 빠진다.
+     * 안 주면 `true` 라 이 함수를 옛 방식으로 부르던 곳은 한 줄도 안 바뀐다.
+     *
+     * `newestTrusted` 는 ★전체에서 가장 최근 행★ 이 신뢰였나를 따로 센다 —
+     * 소속을 고르는 일과 별개라 `clanFrom` 으로는 알 수 없다.
+     */
+    const trusted = row.clanTrusted !== false
+    if (!trusted) acc.clanTeamOnlyRows += 1
+    if (isNewer(acc.newestFrom, pick)) {
+      acc.newestFrom = pick
+      acc.newestTrusted = trusted
+    }
+    if (trusted && isNewer(acc.clanFrom, pick)) {
       acc.clanSlug = row.clanSlug
       acc.clanFrom = pick
     }
@@ -746,6 +796,8 @@ interface JoinedStatRow {
   headshot: number | null
   sourceRating: number | null
   matchTimeClanSlug: string | null
+  /** ★소속 근거 판정용★ — `affiliationTrust.ts` 가 이 값을 본다 */
+  matchTimeClanSource: string | null
   match: { id: string; startAt: Date; winnerSide: string }
 }
 
@@ -845,6 +897,8 @@ async function collectPlayersIncremental(input: {
         headshot: true,
         sourceRating: true,
         matchTimeClanSlug: true,
+        /* ★그 값의 출처★ — «뛴 팀» 인지 «등록 소속» 인지를 가른다 (2026-09-14) */
+        matchTimeClanSource: true,
         match: { select: { id: true, startAt: true, winnerSide: true } },
       },
     })
@@ -859,6 +913,8 @@ async function collectPlayersIncremental(input: {
         headshot: row.headshot,
         sourceRating: row.sourceRating,
         clanSlug: row.matchTimeClanSlug,
+        /* ★«뛴 팀» 은 소속 근거에서 뺀다★ — 판수·승패·킬데스에는 그대로 들어간다 */
+        clanTrusted: clanSourceTrusted(row.matchTimeClanSource),
         matchId: row.match.id,
         startAt: row.match.startAt,
       })),
@@ -946,6 +1002,8 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
         sourceRating: true,
         /* 현재 소속의 근거 (D-160). `MatchPlayerStat` 은 읽기만 하고 고치지 않는다 */
         matchTimeClanSlug: true,
+        /* ★그 값의 출처★ — «뛴 팀» 인지 «등록 소속» 인지를 가른다 (2026-09-14) */
+        matchTimeClanSource: true,
       },
     })
     stats += rows.length
@@ -964,6 +1022,8 @@ export async function rollupSupplyLeague(input: SupplyRollupInput): Promise<Supp
             headshot: row.headshot,
             sourceRating: row.sourceRating,
             clanSlug: row.matchTimeClanSlug,
+            /* ★«뛴 팀» 은 소속 근거에서 뺀다★ — 판수·승패·킬데스에는 그대로 들어간다 */
+            clanTrusted: clanSourceTrusted(row.matchTimeClanSource),
             matchId: match.id,
             startAt: match.startAt,
           },
