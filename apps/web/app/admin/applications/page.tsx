@@ -17,7 +17,12 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { LEAGUE_NAME } from '@sacloud/ui'
-import { APPLICATION_STATUS, APPLICATION_STATUS_LABEL } from '@sacloud/contract'
+import {
+  APPLICATION_STATUS,
+  APPLICATION_STATUS_LABEL,
+  CONTACT_KIND_LABEL,
+  applicationKindOf,
+} from '@sacloud/contract'
 import { AdminError, adminFetch } from '../lib'
 
 interface Member {
@@ -28,8 +33,13 @@ interface Member {
 interface Row {
   id: string
   league: string
+  /** 등록 종류 — 옛 신청서에는 없다 (2026-09-14 저녁부터) */
+  kind: string | null
   clan_name: string
-  clan_url: string
+  clan_slug: string | null
+  clan_url: string | null
+  contact_kind: string | null
+  contact_id: string | null
   members: Member[]
   note: string | null
   status: number
@@ -122,14 +132,29 @@ export default function AdminApplicationsPage() {
                 <span className="text-xs font-bold text-accent">
                   {LEAGUE_LABEL[row.league] ?? row.league}
                 </span>
-                <a
-                  href={row.clan_url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-base font-bold text-text-strong underline decoration-line"
-                >
-                  {row.clan_name}
-                </a>
+                {row.clan_url === null ? (
+                  /* 명단에서 고른 클랜은 주소를 안 받는다 — 우리 클랜 화면으로 보낸다 */
+                  <a
+                    href={row.clan_slug === null ? '#' : `/clan/${row.clan_slug}`}
+                    className="text-base font-bold text-text-strong underline decoration-line"
+                  >
+                    {row.clan_name}
+                  </a>
+                ) : (
+                  <a
+                    href={row.clan_url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="text-base font-bold text-text-strong underline decoration-line"
+                  >
+                    {row.clan_name}
+                  </a>
+                )}
+                {row.kind === null ? null : (
+                  <span className="text-xs font-bold text-[#9fd3b4]">
+                    {applicationKindOf(row.kind)?.label ?? row.kind}
+                  </span>
+                )}
                 <span className="text-xs text-faint">
                   {APPLICATION_STATUS_LABEL[row.status] ?? row.status}
                 </span>
@@ -137,6 +162,17 @@ export default function AdminApplicationsPage() {
                 <span className="text-xs text-faint">{row.created_at.slice(0, 16).replace('T', ' ')}</span>
               </div>
 
+              {/* ★연락처★ — 로그인이 없어서 우리가 먼저 연락할 길이 이것뿐이다 (2026-09-14 저녁) */}
+              {row.contact_id === null ? null : (
+                <p className="mt-2 text-xs text-text">
+                  <span className="font-bold text-meta">
+                    {CONTACT_KIND_LABEL[row.contact_kind ?? ''] ?? '연락처'}
+                  </span>{' '}
+                  {row.contact_id}
+                </p>
+              )}
+
+              {row.members.length === 0 ? null : (
               <ul className="mt-3 flex flex-col gap-1">
                 {row.members.map((m) => (
                   <li key={m.position} className="flex items-baseline gap-2 text-xs">
@@ -153,6 +189,7 @@ export default function AdminApplicationsPage() {
                   </li>
                 ))}
               </ul>
+              )}
 
               {row.note === null ? null : (
                 <p className="mt-3 text-xs leading-relaxed text-meta">남긴 말 — {row.note}</p>

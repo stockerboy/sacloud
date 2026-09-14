@@ -12,6 +12,10 @@ import { submitLeagueApplication } from '@/lib/server/queries/leagueApplication'
  *   새 줄이 생기지 않고 그 줄이 고쳐진다. 그래서 백 번 눌러도 줄은 하나다.
  *   양식 검사는 계약(`LeagueApplicationInput`)이 한다 — 병영수첩 주소가 아니면 받지 않는다.
  *
+ * ⚠ ★2026-09-14 저녁 — 양식이 바뀌었다★ (사장님이 새로 적어 주셨다).
+ *   어느 리그로 들어가는지는 ★「등록 종류」★ 가 정한다 — «IPL → LLM 전환» 은 리그가
+ *   둘이라 리그 하나로는 표현이 안 된다. 옛 양식은 `LeagueApplicationInputV1` 로 남아 있다.
+ *
  * ⚠ ★여기서 캐시를 쓰지 않는다.★ 쓰는 요청이다.
  */
 export async function POST(request: Request) {

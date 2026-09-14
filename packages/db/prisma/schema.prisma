@@ -792,6 +792,7 @@ model LeaguePlayerSeason {
   /**
    * /**
    * /**
+   * /**
    * /* ══ ★★시즌7 마감 카드가 쓰는 칸★★ (2026-09-06 · Part 5 · 사장님 지시) ══
    * > «시즌7 → 우리가 이미 보유한 3rd.supply 경기/참가기록을 기준으로
    * >  ★SACLOUD 가 직접 계산해서 만든 마감 카드★»
@@ -3239,11 +3240,22 @@ model LeagueApplication {
   leagueSlug String
   /// 클랜 이름 — 신청자가 적은 그대로다. 우리 `Clan` 과 이어 주지 않는다 (아직 없을 수 있다)
   clanName   String
-  /// 클랜 병영수첩 주소
-  clanUrl    String
+  /// 클랜 병영수첩 주소. ★명단에서 고른 클랜은 안 받는다★ (2026-09-14 저녁부터 NULL 허용)
+  clanUrl    String?
 
-  /// 주요 멤버 다섯 — 포지션별 한 명씩. `[{ position, name, url }]` 다섯 줄
-  members Json
+  /// ★등록 종류★ (2026-09-14 저녁) — `ipl-to-llm` · `llm-new` · `ysl-new` · `ipl-new`.
+  /// 옛 신청서에는 없다(NULL). 어느 리그로 들어가는지는 이 값이 정한다
+  kind        String?
+  /// ★우리 명단에서 고른 클랜★ 의 slug. 직접 적었으면 NULL
+  clanSlug    String?
+  /// 연락처 종류 — `kakao` · `discord` (사장님: «카톡ID or Discord ID»)
+  contactKind String?
+  /// 그 ID. 로그인이 없어서 ★우리가 먼저 연락할 길이 이것뿐★ 이다
+  contactId   String?
+
+  /// 주요 멤버 다섯 — 포지션별 한 명씩. `[{ position, name, url }]` 다섯 줄.
+  /// ★2026-09-14 저녁부터 선택★ 이다 (새 양식에서 빠졌다). 옛 줄은 그대로 들고 있다
+  members Json?
 
   /// 남기고 싶은 말 (선택)
   note String?
@@ -3263,4 +3275,5 @@ model LeagueApplication {
 
   @@unique([leagueSlug, clanName])
   @@index([status, createdAt])
+  @@index([kind])
 }

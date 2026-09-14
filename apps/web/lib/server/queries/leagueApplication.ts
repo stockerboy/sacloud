@@ -14,9 +14,10 @@
  *   그건 ★새 이야기★ 라서, 상태를 «대기» 로 되돌리고 관리자 메모는 남긴다.
  *   조용히 덮어쓰면 관리자가 처리한 기록이 사라진다.
  */
-import { prisma } from '@sacloud/db'
+import { Prisma, prisma } from '@sacloud/db'
 import {
   APPLICATION_STATUS,
+  applicationKindOf,
   WAITING_CLAN_COUNT,
   WAITING_WINDOW_DAYS,
   type ApplicationWaiting,
@@ -38,27 +39,50 @@ export async function submitLeagueApplication(
   input: LeagueApplicationInput,
   meta: { userAgent?: string | null },
 ): Promise<SubmitResult> {
-  const members = input.members.map((m) => ({
-    position: m.position,
-    name: m.name,
-    url: normalizeUrl(m.url),
-  }))
+  /**
+   * ★어느 리그로 들어가는지는 「등록 종류」가 정한다★ (2026-09-14 저녁).
+   *
+   * 옛 양식은 리그를 직접 골랐다. 그런데 «IPL → LLM 전환등록» 은 리그가 ★둘★ 이라
+   * 리그 하나로는 표현이 안 된다. 종류가 리그를 정하고, 신청은 ★가는 쪽★ 으로 들어간다.
+   */
+  const kind = applicationKindOf(input.kind)
+  if (kind === null) return { ok: false, message: '모르는 등록 종류입니다' }
+  const leagueSlug = kind.to
+
+  const members =
+    input.members === undefined
+      ? null
+      : input.members.map((m) => ({
+          position: m.position,
+          name: m.name,
+          url: normalizeUrl(m.url),
+        }))
 
   const existing = await prisma.leagueApplication.findUnique({
-    where: { leagueSlug_clanName: { leagueSlug: input.league, clanName: input.clan_name } },
+    where: { leagueSlug_clanName: { leagueSlug, clanName: input.clan_name } },
     select: { id: true, status: true },
   })
 
   const data = {
-    clanUrl: normalizeUrl(input.clan_url),
-    members,
+    kind: input.kind,
+    clanSlug: input.clan_slug,
+    /* 명단에서 고른 클랜은 주소를 안 받는다 — 우리가 이미 아는 값이다 */
+    clanUrl: input.clan_url === null ? null : normalizeUrl(input.clan_url),
+    contactKind: input.contact_kind,
+    contactId: input.contact_id,
+    /*
+     * ⚠ Json 칸에 `null` 을 넣을 때는 ★`Prisma.DbNull`★ 을 써야 한다.
+     *   그냥 `null` 은 «JSON 값으로서의 null» 이라 뜻이 다르고 타입도 안 맞는다.
+     *   여기서 뜻하는 것은 ★칸이 비었다★ 이다 (멤버를 안 적었다).
+     */
+    members: members === null ? Prisma.DbNull : members,
     note: input.note ?? null,
     userAgent: meta.userAgent ?? null,
   }
 
   if (existing === null) {
     const row = await prisma.leagueApplication.create({
-      data: { leagueSlug: input.league, clanName: input.clan_name, ...data },
+      data: { leagueSlug, clanName: input.clan_name, ...data },
       select: { id: true },
     })
     return { ok: true, id: row.id, updated: false }
@@ -106,8 +130,12 @@ export async function adminApplicationList(args: {
     rows: rows.map((r) => ({
       id: r.id,
       league: r.leagueSlug,
+      kind: r.kind,
       clan_name: r.clanName,
+      clan_slug: r.clanSlug,
       clan_url: r.clanUrl,
+      contact_kind: r.contactKind,
+      contact_id: r.contactId,
       members: Array.isArray(r.members)
         ? (r.members as { position: string; name: string; url: string }[])
         : [],
