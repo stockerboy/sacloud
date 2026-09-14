@@ -23,6 +23,8 @@ const MENU = [
   ...(EGG_SYSTEM_ENABLED ? [{ href: '/admin/eggs', label: '알' }] : []),
   /* 클랜 마스터 인증 심사 (2026-09-01 · D-253) — 사진을 보고 승인/거부한다 */
   { href: '/admin/clan-master-claims', label: '마스터인증' },
+  /* ★리그 참가 신청★ (2026-09-14 사장님: «신청방식은 내가 관리자 대시보드에서 볼 수 있게») */
+  { href: '/admin/applications', label: '참가신청' },
   { href: '/admin/legacy', label: '과거기록' },
 ]
 

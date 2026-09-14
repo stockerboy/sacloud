@@ -242,6 +242,8 @@ const resolvers: Record<EndpointKey, Resolver> = {
    * 빈 표를 받은 화면은 «아직 잴 만큼 경기가 없습니다» 로 말한다.
    */
   leagueHexTop: () => ok({ clan: [], player: [] }),
+  /* 참가대기 클랜 — 픽스처에는 최근 7일 경기가 없다. 빈 목록이면 화면이 그 칸을 안 그린다 */
+  leagueApplicationWaiting: () => ok({ leagues: [] }),
   leagueRankClans: ({ params, request }) => {
     const leagueId = resolveLeagueId(param(params['leagueId']))
     const division = Number(query(request, 'division') ?? '1')

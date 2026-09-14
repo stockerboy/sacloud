@@ -36,6 +36,7 @@ import {
   ClanMasterClaimState,
   ClanPlayer,
   ClanRankRow,
+  ApplicationWaiting,
   LeagueHexTop,
   ClanSummary,
   Comment,
@@ -537,6 +538,18 @@ export const endpoints = {
    * 왕복인데, 이 화면은 열둘을 한꺼번에 그린다.
    * 클랜 기록을 안 주는 리그는 `clan` 이 빈 배열이다 (`leagueScreen` 이 정한다).
    */
+  /**
+   * ★참가대기 클랜★ (2026-09-14 사장님: «참가대기 클랜들 하고 보여줘
+   *   (Ipl Spl 활동량 가장 많은 클랜 마크 4개씩 하고 등등 으로 써줘)»).
+   *   ★활동량 = 최근 7일 경기 수★ 다 — 래더 순이 아니다.
+   */
+  leagueApplicationWaiting: {
+    method: 'GET',
+    path: '/league-applications/waiting',
+    origin: 'designed',
+    description: '참가대기 클랜 — 리그마다 최근 7일 경기가 많은 넷',
+    response: apiResponse(ApplicationWaiting),
+  },
   leagueHexTop: {
     method: 'GET',
     path: '/leagues/:leagueId/hex-top',

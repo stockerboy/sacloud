@@ -791,6 +791,7 @@ model LeaguePlayerSeason {
   /// 그 시즌 시점의 소속·부리그·닉네임. 지금 값이 아니라 **그때의 값**이다
   /**
    * /**
+   * /**
    * /* ══ ★★시즌7 마감 카드가 쓰는 칸★★ (2026-09-06 · Part 5 · 사장님 지시) ══
    * > «시즌7 → 우리가 이미 보유한 3rd.supply 경기/참가기록을 기준으로
    * >  ★SACLOUD 가 직접 계산해서 만든 마감 카드★»
@@ -3169,21 +3170,21 @@ model LeaguePlayerHex {
   scoreTotal Int?
 
   /// 원시 합계 — 화면의 «47:23» 같은 표기에 쓴다
-  duelWon     Int @default(0)
-  duelLost    Int @default(0)
-  aloneRounds Int @default(0)
-  aloneWon    Int @default(0)
-  outRounds   Int @default(0)
-  outWon      Int @default(0)
-  firstKills  Int @default(0)
-  burstRounds Int @default(0)
+  duelWon     Int  @default(0)
+  duelLost    Int  @default(0)
+  aloneRounds Int  @default(0)
+  aloneWon    Int  @default(0)
+  outRounds   Int  @default(0)
+  outWon      Int  @default(0)
+  firstKills  Int  @default(0)
+  burstRounds Int  @default(0)
   /// 상대 티어별 판수 — 티어계수의 근거
   /// ★내 구간★ — 가장 많이 뛴 티어 (2026-09-11 사장님). 티어 가중치·구간별 랭킹이 이걸 본다.
   /// 비어 있으면 아직 집계 전이다 — 지어내지 않는다.
   homeTier    Int?
-  tier1Games  Int @default(0)
-  tier2Games  Int @default(0)
-  tier3Games  Int @default(0)
+  tier1Games  Int  @default(0)
+  tier2Games  Int  @default(0)
+  tier3Games  Int  @default(0)
 
   formulaVersion String
   updatedAt      DateTime @updatedAt
@@ -3214,4 +3215,52 @@ model PlayerReport {
 
   @@unique([playerId, userId, day])
   @@index([playerId, withdrawnAt])
+}
+
+/// ★리그 참가 신청★ (2026-09-14 사장님).
+///
+/// > «마지막에 어느 리그에 참가하시겠습니까 / 하고 참가대기 클랜들 하고 보여줘 (…)
+/// >   참가신청은 IPL SPL 둘중에 하나 가능하고 / 신청방식은 내가 관리자 대시보드에서
+/// >   볼 수 있게 해줘 / 신청양식은 클랜명 / 클랜병영 / 주요멤버 포지별 5명 병영 /
+/// >   숏 이층 비리베 바리베 스나 / 이렇게 만들어줘 ★로그인 회원가입 없이 신청★ 할 수 있게»
+/// > → 뒤에 «열산도 신청 양식에 넣어 예시도 보여줘» 로 셋이 됐다.
+///
+/// ── 로그인이 없다는 뜻
+///   누가 냈는지 우리가 모른다. 그래서 ★연락 닿을 곳★ 을 양식이 직접 받아야 하고
+///   (클랜 병영 주소), 장난 신청을 막을 자물쇠도 계정이 아니라 ★같은 클랜명+리그★ 로 건다.
+///   이미 낸 클랜이 또 내면 새 줄을 만들지 않고 ★그 줄을 고친다★ — 신청서는 하나다.
+///
+/// ── 지우지 않는다
+///   처리된 신청도 남긴다. `status` 만 움직인다 (0 대기 · 1 승인 · 2 반려).
+model LeagueApplication {
+  id String @id @default(cuid())
+
+  /// 어느 리그에 내는가 — 리그 slug (`nolink` · `supply` · `sanply`)
+  leagueSlug String
+  /// 클랜 이름 — 신청자가 적은 그대로다. 우리 `Clan` 과 이어 주지 않는다 (아직 없을 수 있다)
+  clanName   String
+  /// 클랜 병영수첩 주소
+  clanUrl    String
+
+  /// 주요 멤버 다섯 — 포지션별 한 명씩. `[{ position, name, url }]` 다섯 줄
+  members Json
+
+  /// 남기고 싶은 말 (선택)
+  note String?
+
+  /// 0 대기 · 1 승인 · 2 반려
+  status    Int       @default(0)
+  /// 관리자가 적는 메모 — 신청자에게 안 보인다
+  adminNote String?
+  handledAt DateTime?
+  handledBy String?
+
+  /// 누가 냈는지 모르므로 최소한의 흔적만 남긴다 (장난 신청 되짚기용)
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leagueSlug, clanName])
+  @@index([status, createdAt])
 }

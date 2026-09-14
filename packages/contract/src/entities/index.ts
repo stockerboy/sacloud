@@ -13,3 +13,5 @@ export * from './detail'
 export * from './home'
 /* 분야별 TOP5 — 육각 축마다 다섯 손가락 (2026-09-14 사장님) */
 export * from './hexTop'
+/* 리그 참가 신청 — 로그인 없이 받는다 (2026-09-14 사장님) */
+export * from './leagueApplication'
