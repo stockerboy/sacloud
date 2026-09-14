@@ -335,6 +335,14 @@ export interface TempoTally {
   redClearThreeSecondsLowerBoundSum: number
   /** 3명을 못 지운 레드 라운드 — **분모에서 뺐다** (④-2 미확인) */
   redRoundsWithoutThreeClears: number
+  /**
+   * ★라운드가 실제로 몇 초에 끝났나★ (2026-09-14 저녁 사장님).
+   *   30초 미만(역개)·140초 초과는 세지 않는다 — 아래 `roundLengthDropped*` 에 남는다.
+   */
+  roundLengthRounds: number
+  roundLengthSecondsSum: number
+  roundLengthDroppedShort: number
+  roundLengthDroppedLong: number
 }
 
 /**
@@ -591,6 +599,46 @@ const emptyTally = (teamNo: string, foeTeamNo: string | null): ClanHexTally => (
 })
 
 /**
+ * ★한 라운드의 길이★ (초). 사장님: «한 라운드는 2분20초야».
+ *
+ * ⚠ ★계약(`@sacloud/contract`)에도 같은 값이 있다★ — `ROUND_FULL_SECONDS`.
+ *   이 꾸러미는 ★계약을 모른다★ (`CLAUDE.md` 7장 — 순수 클라이언트다) 그래서 여기 따로 둔다.
+ *   둘이 어긋나면 화면 글자와 계산이 달라진다. 고칠 때 ★두 곳을 같이★ 고친다.
+ */
+const ROUND_FULL_SECONDS = 140
+
+/**
+ * ★이보다 짧게 끝난 라운드는 안 센다★ (2026-09-14 저녁 사장님:
+ * «1분 50초도 깨지기전에 끝난 라운드는 세지마 이건 역개당한거라 세도 의미가 없어»).
+ * 시계가 2:20 에서 줄어드니 «1:50 이 깨지기 전» 은 ★시작 30초 안★ 이다.
+ */
+const TEMPO_MIN_ROUND_SECONDS = ROUND_FULL_SECONDS - 110
+
+/**
+ * ★경기 시작 → 1라운드 시작★ 까지 (초). **사장님이 직접 재신 값이다** (2026-09-14 저녁:
+ * «첫라운드 시작은 정확히 10초후»).
+ *
+ * 배틀로그 시계는 ★경기 시작★ 이 0:00 이라, 1라운드 길이를 구하려면 이만큼 빼야 한다.
+ */
+const MATCH_TO_FIRST_ROUND_SECONDS = 10
+
+/**
+ * ★라운드 끝 → 다음 라운드 시작★ 까지 (초). **사장님이 직접 재신 값이다** (2026-09-14 저녁:
+ * «라운드랑 라운드 사이 간격(마지막킬기준) 정확히 8.45초»).
+ *
+ * 정산 · 리스폰 · 구매에 쓰는 시간이다. 킬 기록만으로는 라운드 시작을 알 수 없어서
+ * 이 상수가 없으면 «싸운 시간» 에 이게 통째로 섞여 들어간다.
+ *
+ * ── ⚠ 내가 재려다 못 잰 값이다. 사장님이 주셔서 들어왔다
+ *   나는 «앞 라운드 마지막 킬 → 다음 라운드 첫 킬» 16,028개를 재서
+ *   ★최솟값 13초 · 1% 15초★ 라는 딱딱한 바닥까지만 찾았다. 그 13초 안에는
+ *   «대기» 말고 «첫 접촉까지» 도 섞여 있어 둘을 가를 수가 없었다.
+ *   따로 «140초를 넘을 수 없다» 는 성질로 벽을 찾아 ★8초★ 라는 값도 얻었는데,
+ *   사장님 실측 8.45초와 맞았다. 두 길이 같은 곳을 가리켰으니 이 값을 쓴다.
+ */
+const ROUND_GAP_SECONDS = 8.45
+
+/**
  * 배틀로그 원문 한 건(클랜 응답) → **양쪽 클랜**의 여섯 축 분자/분모.
  *
  * `teamNo` 는 그 응답을 받은 클랜의 `team_no` 다 (`clanByTeamNo()` 로 찾는다).
@@ -751,6 +799,78 @@ function tallyFor(input: {
     redClearThreeSecondsLowerBound: [],
     redClearThreeSecondsLowerBoundSum: 0,
     redRoundsWithoutThreeClears: 0,
+    roundLengthRounds: 0,
+    roundLengthSecondsSum: 0,
+    roundLengthDroppedShort: 0,
+    roundLengthDroppedLong: 0,
+  }
+
+  /**
+   * ★라운드 길이★ — 우리 진영을 가리지 않고 ★그 경기의 모든 라운드★ 를 센다
+   * (2026-09-14 저녁 사장님: «평균적으로 라운드가 몇분 몇초에 끝나는지»).
+   *
+   * ── 어떻게 재나 (실측으로 찾은 길)
+   *   배틀로그의 `event_time` 은 라운드별 경과가 아니라 ★경기 시작부터의 누적★ 이다.
+   *   그래서 ★라운드의 마지막 이벤트 시각★ 을 이어 붙이면 길이가 나온다:
+   *   ```
+   *   1라운드            00:00 에 시작하니 «마지막 이벤트 시각» 이 곧 길이
+   *   그 뒤 라운드 N     (N 의 마지막) − (N−1 의 마지막)
+   *   ```
+   * ── ★대기 시간을 뺀다★ (2026-09-14 저녁 · 사장님 실측)
+   *   위 뺄셈에는 «싸운 시간» 말고 ★라운드 사이 대기★ 가 통째로 섞여 있다.
+   *   정산 화면 · 리스폰 · 총 사는 시간이다. 사장님이 직접 재서 주셨다:
+   *
+   *     «첫라운드 시작은 정확히 10초후»
+   *     «라운드랑 라운드 사이 간격(마지막킬기준) 정확히 8.45초»
+   *
+   *   그래서 실제로 쓰는 식은 이렇다:
+   *   ```
+   *   1라운드            (마지막 이벤트 시각) − 10
+   *   그 뒤 라운드 N     (N 의 마지막) − (N−1 의 마지막) − 8.45
+   *   ```
+   *   내가 «140초를 넘을 수 없다» 는 성질로 따로 찾은 벽이 ★8초★ 였다 —
+   *   사장님 값과 맞았다. 두 길이 같은 곳을 가리켰다.
+   *
+   *   ⚠ ★클랜 순위는 이 뺄셈으로 바뀌지 않는다.★ 모든 클랜에 똑같이 붙는 상수라
+   *     육각 축(백분위)은 그대로다. 달라지는 것은 화면에 찍히는 «몇 분 몇 초» 다.
+   *
+   * ── 무엇을 빼나
+   *   `< 30초`   ★역개★ — 사장님: «세도 의미가 없어». 실측 0.3%
+   *   `> 140초`  한 라운드는 2분 20초다. 넘으면 연장이거나 자국이 섞인 것. 실측 1.5%
+   */
+  {
+    const ends = [...input.clocks.entries()]
+      .map(([round, c]) => ({ round, end: c.last }))
+      .sort((a, b) => a.round - b.round)
+    let prevEnd: number | null = null
+    let prevRound: number | null = null
+    for (const { round, end } of ends) {
+      /*
+       * 1라운드는 경기 시작 10초 뒤에 열린다 · 그 뒤는 앞 라운드 끝에서 8.45초 뒤다.
+       * 라운드 번호가 건너뛰면(킬이 하나도 없는 라운드) 두 라운드가 붙어 버려서 못 잰다.
+       */
+      const length =
+        prevRound === null
+          ? round === 1
+            ? end - MATCH_TO_FIRST_ROUND_SECONDS
+            : null
+          : round === prevRound + 1
+            ? end - prevEnd! - ROUND_GAP_SECONDS
+            : null
+      prevRound = round
+      prevEnd = end
+      if (length === null) continue
+      if (length < TEMPO_MIN_ROUND_SECONDS) {
+        tempo.roundLengthDroppedShort += 1
+        continue
+      }
+      if (length > ROUND_FULL_SECONDS) {
+        tempo.roundLengthDroppedLong += 1
+        continue
+      }
+      tempo.roundLengthRounds += 1
+      tempo.roundLengthSecondsSum += length
+    }
   }
   const lastSniper: LastSniperTally = {
     redWonRounds: 0,

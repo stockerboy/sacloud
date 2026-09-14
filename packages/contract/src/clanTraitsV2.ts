@@ -343,7 +343,13 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    *     `buildClanHexV2Raw` 위의 주석을 읽어라 — 그쪽을 안 고치면 버전을 어떻게
    *     맞춰도 같은 일이 난다.
    */
-  formulaVersion: 'clan-hex-v2.4',
+  /*
+   * ⚠ ★2026-09-14 저녁 — v2.5★ (게임템포를 «라운드가 몇 초에 끝났나» 로 바꿨다).
+   *   ★버전을 올리면 옛 요약이 화면에서 사라진다★ — 재계산(`clan-hex-v2-build`
+   *   → `clan-hex-v2-summary`)을 ★배포 전에★ 끝내야 한다. v2.3 때 그 순서를 어겨
+   *   클랜 육각형이 통째로 안 그려졌다 (위 주석).
+   */
+  formulaVersion: 'clan-hex-v2.5',
 }
 
 /**
@@ -436,14 +442,77 @@ export interface SaveTallyLike {
   won: number
 }
 
-/** ④ 게임템포 — ⚠ 초는 **전부 하한값이다** (라운드 시작 시각이 관측되지 않는다) */
+/**
+ * ④ 게임템포 — ★라운드가 실제로 몇 초에 끝나는가★ (2026-09-14 저녁 사장님).
+ *
+ *   «이거 평균적으로 라운드가 몇분 몇초에 끝나는지 써줘야할거같은데
+ *     보통 상대팀 혹은 우리팀이 다 죽는시간이 몇분 몇초인지? 한 라운드는 2분20초야»
+ *   «게임템포 55초/2분20초»
+ *   «라운드가 1분 50초도 깨지기전에 끝난 라운드는 세지마 이건 역개당한거라 세도 의미가 없어»
+ *
+ * ── ★잴 수 있다는 것을 실측으로 찾았다★
+ *   배틀로그의 `event_time` 은 라운드별 경과가 아니라 ★경기 시작부터의 누적 시간★ 이다.
+ *   그래서 ★라운드의 마지막 이벤트 시각★ 을 이어 붙이면 라운드 길이가 나온다 —
+ *   1라운드는 00:00 에 시작하니 그 자체가 길이이고, 그 뒤는 «앞 라운드 끝 → 이 라운드 끝» 이다.
+ *
+ *   실측 (경기 400판 · 라운드 4,541개):
+ *   ```
+ *   30초 미만 (역개)        12개  0.3%   ← 뺀다
+ *   140초 초과              66개  1.5%   ← 뺀다 (한 라운드는 2분 20초다. 넘으면 연장이거나 자국이 섞인 것)
+ *   남는 라운드          4,463개  평균 77.4초 = ★1분 17초★
+ *   ```
+ *
+ * ── ⚠ 옛 칸(`redClearThree*`)을 지우지 않는다 (`CLAUDE.md` 1-4)
+ *   그건 «레드일 때 상대 3명을 지우기까지» 였고 ★첫 교전부터★ 재는 값이라 늘 짧았다
+ *   («25.4초»). 옛 요약 행이 아직 그 칸만 들고 있어서, 새 칸이 없으면 옛 방식으로 떨어진다.
+ */
 export interface TempoTallyLike {
   redRounds: number
   redClearThreeRounds: number
   redClearThreeSecondsLowerBound: number[]
   redClearThreeSecondsLowerBoundSum: number
   redRoundsWithoutThreeClears: number
+  /**
+   * ★센 라운드 수★ — 30초 미만·140초 초과를 뺀 나머지 (2026-09-14).
+   * 옛 행에는 없다 (`undefined`) — 그때는 새 방식으로 재지 않았다.
+   */
+  roundLengthRounds?: number
+  /** 그 라운드들의 길이 합(초) */
+  roundLengthSecondsSum?: number
+  /** ★역개로 버린 라운드★ — 몇 판을 뺐는지 보이게 남긴다 (버린 것도 기록이다) */
+  roundLengthDroppedShort?: number
+  /** 2분 20초를 넘어 버린 라운드 */
+  roundLengthDroppedLong?: number
 }
+
+/**
+ * ★한 라운드의 길이★ (초). 사장님: «한 라운드는 2분20초야».
+ * 화면에 «1분 17초 / ★2분 20초★» 로 같이 적어 잣대를 보여 준다.
+ *
+ * ── 이 «1분 17초» 는 ★순수하게 싸운 시간★ 이다 (2026-09-14 저녁)
+ *   재료를 만드는 쪽(`@sacloud/nexon` 의 `clanHexV2.ts`)이 라운드 사이 대기를
+ *   이미 빼고 넣어 준다. 사장님이 직접 재신 값이다 —
+ *   경기 시작 → 1라운드 ★10초★ · 라운드 끝 → 다음 라운드 ★8.45초★.
+ *   그러니 여기서 또 빼면 안 된다.
+ */
+export const ROUND_FULL_SECONDS = 140
+
+/** 초 → «1분 17초» · 1분 미만이면 «55초» (사장님이 적어 주신 모양) */
+export function mmss(seconds: number): string {
+  const v = Math.max(0, Math.round(seconds))
+  const m = Math.floor(v / 60)
+  const s = v % 60
+  return m === 0 ? `${s}초` : `${m}분 ${String(s).padStart(2, '0')}초`
+}
+
+/**
+ * ★이보다 짧게 끝난 라운드는 안 센다★ — 사장님: «1분 50초도 깨지기전에 끝난 라운드는
+ * 세지마 이건 역개당한거라 세도 의미가 없어».
+ *
+ * 라운드 시계는 2분 20초에서 줄어든다. «1분 50초가 깨지기 전» 은 시계가 1:50 밑으로
+ * 내려가기 전이라는 뜻이고, 그건 ★시작 30초 안★ 이다 (140 − 110 = 30).
+ */
+export const TEMPO_MIN_ROUND_SECONDS = ROUND_FULL_SECONDS - 110
 
 /** ⑤ B어택성공 */
 export interface LastSniperTallyLike {
@@ -771,6 +840,10 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
       redClearThreeSecondsLowerBound: [],
       redClearThreeSecondsLowerBoundSum: 0,
       redRoundsWithoutThreeClears: 0,
+      roundLengthRounds: 0,
+      roundLengthSecondsSum: 0,
+      roundLengthDroppedShort: 0,
+      roundLengthDroppedLong: 0,
     }),
     (into, from) => {
       into.redRounds += from.redRounds
@@ -778,6 +851,11 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
       /* 라운드별 초를 **버리지 않는다.** 나중에 중앙값·분포로 다시 볼 수 있어야 한다 */
       into.redClearThreeSecondsLowerBound.push(...from.redClearThreeSecondsLowerBound)
       into.redClearThreeSecondsLowerBoundSum += from.redClearThreeSecondsLowerBoundSum
+      /* 옛 행에는 새 칸이 없다 — 없으면 0으로 더한다 (`CLAUDE.md` 2장 1번: 없는 것을 지어내지 않는다) */
+      into.roundLengthRounds = (into.roundLengthRounds ?? 0) + (from.roundLengthRounds ?? 0)
+      into.roundLengthSecondsSum = (into.roundLengthSecondsSum ?? 0) + (from.roundLengthSecondsSum ?? 0)
+      into.roundLengthDroppedShort = (into.roundLengthDroppedShort ?? 0) + (from.roundLengthDroppedShort ?? 0)
+      into.roundLengthDroppedLong = (into.roundLengthDroppedLong ?? 0) + (from.roundLengthDroppedLong ?? 0)
       into.redRoundsWithoutThreeClears += from.redRoundsWithoutThreeClears
     },
   )
@@ -845,8 +923,40 @@ export function clanHexV2Text(key: ClanHexV2AxisKey, raw: number | null): string
     case 'ratio':
       return `${Math.round(raw * 100)}%`
     case 'seconds':
-      return `${raw.toFixed(1)}초`
+      /*
+       * ★«2분 20초 중 1분 10초 종료» 로 적는다★
+       * (2026-09-14 저녁 사장님: «앞으로 소비시간 말고 끝난 시간을 적어 헷갈려 /
+       *  2분20초중 1분 10초에 평균적으로 라운드 종료»).
+       *
+       * ── 왜 바꿨나
+       *   «1분 10초 / 2분 20초» 는 ★두 가지로 읽힌다★ — «1분 10초를 썼다» 인지
+       *   «1분 10초 남기고 끝났다» 인지. 사장님이 헷갈린다고 하셨다.
+       *   그래서 ★잣대를 앞에 놓고★ «어디서 끝났나» 를 말로 박는다. 한 가지로만 읽힌다.
+       *
+       *   1분이 안 되면 «55초» 처럼 분을 안 적는다 — 사장님이 적어 주신 모양 그대로다.
+       *
+       *   ⚠ 옛 표기는 지우지 않고 아래 `clanHexV2TextV1` 에 남겼다 (`CLAUDE.md` 1-4).
+       */
+      return `${mmss(ROUND_FULL_SECONDS)} 중 ${mmss(raw)} 종료`
     /* 라운드당 킬수는 1을 넘을 수 있어 `%` 로 못 적는다 (`CLAN_HEX_V2_AXIS_UNITS` 주석) */
+    case 'perRound':
+      return `${raw.toFixed(2)}킬`
+  }
+}
+
+/**
+ * ⚠ ★옛 표기★ (2026-09-14 저녁까지). 지우지 않는다 (`CLAUDE.md` 1-4).
+ *
+ * «1분 10초 / 2분 20초» — 사장님이 «소비시간인지 남은시간인지 헷갈린다» 고 하셔서
+ * `clanHexV2Text` 를 «2분 20초 중 1분 10초 종료» 로 바꿨다. 되돌리려면 이것을 쓰면 된다.
+ */
+export function clanHexV2TextV1(key: ClanHexV2AxisKey, raw: number | null): string {
+  if (raw === null) return CLAN_HEX_V2_PENDING_LABEL
+  switch (CLAN_HEX_V2_AXIS_UNITS[key]) {
+    case 'ratio':
+      return `${Math.round(raw * 100)}%`
+    case 'seconds':
+      return `${mmss(raw)} / ${mmss(ROUND_FULL_SECONDS)}`
     case 'perRound':
       return `${raw.toFixed(2)}킬`
   }
@@ -991,6 +1101,15 @@ export function buildClanHexV2Raw(input: {
       case 'tempo': {
         const part = tally.tempo ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
+        /*
+         * ★새 방식 — 라운드가 실제로 몇 초에 끝났나★ (2026-09-14 저녁 사장님).
+         *   30초 미만(역개)·140초 초과는 세는 쪽에서 이미 뺐다.
+         *   ⚠ 새 칸이 없는 ★옛 요약 행★ 은 아래 옛 방식으로 떨어진다 (`CLAUDE.md` 1-4).
+         */
+        const lengthRounds = part.roundLengthRounds ?? 0
+        if (lengthRounds > 0) {
+          return measuredAxis(key, part.roundLengthSecondsSum ?? 0, lengthRounds)
+        }
         if (part.redRounds === 0) return pendingAxis(key, 'side')
         /* 3명을 못 지운 라운드는 **분모에서 뺐다** (D-235 Q4). 하나도 없으면 못 잰다 */
         if (part.redClearThreeRounds === 0) return pendingAxis(key, 'sample')

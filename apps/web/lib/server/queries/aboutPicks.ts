@@ -75,6 +75,12 @@ export function aboutShowcases(): Promise<AboutShowcases> {
 
 let showMemo: { at: number; value: Promise<AboutShowcases> } | null = null
 
+/**
+ * ★클랜 칸을 안 쓰는 리그★ — 화면(`AboutScreen.tsx` 의 `ABOUT_CLAN_HIDDEN_LEAGUES`)과
+ * ★같은 집합★ 이어야 한다. 한쪽만 고치면 안 쓰는 자료를 계속 퍼 오게 된다.
+ */
+const CLAN_HIDDEN_LEAGUES = new Set(['sanply'])
+
 async function buildShowcases(): Promise<AboutShowcases> {
   const picks = await aboutPicks()
   const leagues: AboutShowcase[] = []
@@ -82,7 +88,15 @@ async function buildShowcases(): Promise<AboutShowcases> {
     /* ★차례로★ 부른다 — 한꺼번에 부르면 연결이 모자라 전부 멈춘다 */
     const player =
       pick.player === null ? null : await getLeaguePlayerDetail(pick.league, pick.player.player_id)
-    const clan = pick.clan === null ? null : await getLeagueClanShow(pick.league, pick.clan.slug)
+    /*
+     * ★클랜 칸을 안 쓰는 리그는 아예 안 부른다★ (2026-09-14 밤 사장님:
+     * «YSL은 클랜 분석 필요없어 클랜별전적도 필요없고»).
+     * 화면에서 숨기기만 하면 ★질의는 그대로 돈다★ — 연결이 하나뿐이라 그만큼 늦어진다.
+     */
+    const clan =
+      pick.clan === null || CLAN_HIDDEN_LEAGUES.has(pick.league)
+        ? null
+        : await getLeagueClanShow(pick.league, pick.clan.slug)
     const league = await prisma.league.findFirst({ where: { slug: pick.league }, select: { id: true } })
     const match =
       pick.match === null || league === null ? null : await getMatch(league.id, pick.match.id, null)

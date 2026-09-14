@@ -198,7 +198,9 @@ describe('sumClanHexTallies — **비율을 평균 내지 않는다** (D-235 Q8)
     const axis = axisOf(buildClanHexV2Raw({ tally: sum, matches: 2 }), 'tempo')
     /* 경기 평균이었다면 (10 + 30) / 2 = 20초 였을 것이다 */
     expect(axis.raw).toBe(28)
-    expect(axis.text).toBe('28.0초')
+    /* ⚠ 2026-09-14 저녁 — 표기가 «28.0초» 에서 바뀌었다 (사장님: «게임템포 55초/2분20초»).
+       한 라운드가 2분 20초라는 잣대를 같이 적어야 빠른지 느린지 안다 */
+    expect(axis.text).toBe('2분 20초 중 28초 종료')
   })
 
   it('못 잰 경기(`null`)는 분모에 섞이지 않고, 전부 못 쟀으면 결과도 `null` 이다', () => {
@@ -336,7 +338,8 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(axisOf(hex, 'save').text).toBe('40%')
     /* ④ 72초 / 4라운드 */
     expect(axisOf(hex, 'tempo').raw).toBe(18)
-    expect(axisOf(hex, 'tempo').text).toBe('18.0초')
+    /* ⚠ 옛 표기는 «18.0초» 였다 (2026-09-14 저녁에 바뀜) */
+    expect(axisOf(hex, 'tempo').text).toBe('2분 20초 중 18초 종료')
     /* ⑤ 선짤 — 7 / 12. 동시각 2라운드는 **분모에 없다** (사용자 (가)) */
     expect(axisOf(hex, 'firstBlood').numerator).toBe(7)
     expect(axisOf(hex, 'firstBlood').denominator).toBe(12)

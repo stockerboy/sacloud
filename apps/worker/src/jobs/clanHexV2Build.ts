@@ -90,6 +90,7 @@ import {
   type LabeledZoneFile,
 } from '@sacloud/nexon'
 import { REPO_ROOT } from '../lib/env.js'
+import { log } from '../lib/log.js'
 import {
   buildClanHexV2Summary,
   type ClanHexV2SummaryResult,
@@ -405,7 +406,18 @@ export async function buildClanHexV2(input: {
   let cursor: string | undefined
   let stop = false
 
+  /*
+   * ★진행 표시★ (2026-09-14 저녁).
+   *
+   * 이 작업은 끝날 때까지 한 글자도 안 찍었다. 그래서 ★도는 중인지 멈춘 건지★ 를
+   * 구별할 수가 없어서, 5분을 기다리다 죽였다가 다시 돌리기를 되풀이했다.
+   * 배치마다 한 줄 찍는다 — 느린 게 어디인지도 이 줄로 드러난다.
+   */
+  const startedAt = Date.now()
+  let batchNo = 0
+
   for (; !stop; ) {
+    const batchAt = Date.now()
     const rows = await prisma.barracksBattleLogRaw.findMany({
       where: { subjectKind: 'clan', status: 'ok' },
       select: { id: true, subject: true, matchKey: true, payload: true },
@@ -583,6 +595,17 @@ export async function buildClanHexV2(input: {
         break
       }
     }
+
+    batchNo += 1
+    log(
+      `배치 ${batchNo} · 원문 ${result.rows}줄 · 경기 ${result.matches} · 행 ${result.planned}` +
+        ` · 이번 ${((Date.now() - batchAt) / 1000).toFixed(1)}초 · 누적 ${((Date.now() - startedAt) / 1000).toFixed(0)}초` +
+        /* 경기가 0 이면 ★왜 버렸는지★ 가 곧 답이다 (2026-09-14 저녁) */
+        ` · 버림 ${Object.entries(result.skips)
+          .filter(([, n]) => n > 0)
+          .map(([k, n]) => `${k} ${n}`)
+          .join(' / ')}`,
+    )
   }
 
   result.written = input.confirm

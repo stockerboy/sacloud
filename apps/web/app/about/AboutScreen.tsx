@@ -328,7 +328,20 @@ function Panel({
 
 /* ── 실제 기록 ─────────────────────────────────────────────── */
 
+/**
+ * ★클랜 칸을 보여 주지 않는 리그★ (2026-09-14 밤 사장님:
+ * «YSL은 클랜 분석 필요없어 클랜별전적도 필요없고»).
+ *
+ * 클랜 칸 하나에 ★둘이 같이★ 들어 있다 — 상대전적(클랜별 전적)과 여섯 축(클랜 분석).
+ * 사장님이 사진 두 장에 각각 X 를 치셨고, 세 번째 「경기 분석」에는 동그라미를 치셨다.
+ * 그래서 ★클랜 칸만 통째로 빼고★ 선수 칸과 경기 분석은 그대로 둔다.
+ *
+ * ⚠ 지우지 않고 ★감춘다★ (`CLAUDE.md` 1-4). 이 목록에서 slug 만 빼면 도로 나온다.
+ */
+const ABOUT_CLAN_HIDDEN_LEAGUES = new Set(['sanply'])
+
 function Showcase({ pick, league }: { pick: Pick; league: AboutLeague }) {
+  const hideClan = ABOUT_CLAN_HIDDEN_LEAGUES.has(league.slug)
   return (
     <section>
       <p style={{ padding: '0 2px 12px', fontSize: 11.5, lineHeight: 1.8, color: V3.textGhost2 }}>
@@ -348,7 +361,7 @@ function Showcase({ pick, league }: { pick: Pick; league: AboutLeague }) {
           league={league}
         />
       )}
-      {pick.clan === null || pick.clan_detail === null ? null : (
+      {hideClan || pick.clan === null || pick.clan_detail === null ? null : (
         <ClanShowcase
           leagueSlug={pick.league}
           clanSlug={pick.clan.slug}
