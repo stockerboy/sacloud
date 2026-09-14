@@ -163,7 +163,15 @@ export async function getLeague(leagueSlug: string): Promise<League | null> {
       maps: { select: { map: { select: { id: true, name: true } } } },
       playerLimits: { select: { playerCount: true } },
       /* 감춘 클랜(O-044)은 안 센다 — 클랜랭킹 «40곳» 과 같은 수 (QA 교차검토 21) */
-      _count: { select: { clans: { where: activeClanIn(leagueSlug) } } },
+      /*
+       * ★이번 시즌 뛴 클랜만 센다★ (2026-09-15 QA에서 잡았다).
+       *
+       *   개인랭킹 머리에 «약 1시간마다 갱신 · ★308개 클랜★» 이라고 적혀 있었다.
+       *   그런데 YSL 356곳 중 ★249곳은 이번 시즌 한 판도 안 뛰었다.★
+       *   표에서는 그 줄을 이미 뺐는데 숫자만 옛 수를 세고 있었다 —
+       *   ★세는 집합과 보여 주는 집합이 달라지면 안 된다★ (바로 위 D-147 과 같은 규칙).
+       */
+      _count: { select: { clans: { where: { ...activeClanIn(leagueSlug), ...PLAYED_THIS_SEASON } } } },
       /*
        * ★「지금 시즌」은 `status` 가 아니다★ (2026-09-07 · 사장님 결정).
        *
