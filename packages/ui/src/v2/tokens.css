@@ -794,8 +794,15 @@
 .v3-plate-row {
   position: absolute; left: 30%; right: 0; top: 0; bottom: 0; z-index: 0; pointer-events: none;
   background-size: cover; background-position: 50% 45%; opacity: .30;
-  -webkit-mask-image: linear-gradient(90deg, transparent, rgba(0,0,0,.85) 38%, rgba(0,0,0,.95));
-  mask-image: linear-gradient(90deg, transparent, rgba(0,0,0,.85) 38%, rgba(0,0,0,.95));
+  /*
+   * ⚠ ★오른쪽 끝을 다시 비운다★ (2026-09-14 폰 390px 실측).
+   *   옛 값은 오른쪽으로 갈수록 진해지기만 했다(…38%, .95). 그런데 ★승률·승패 숫자가
+   *   바로 그 자리★ 에 있어서, 불타는 인식표 위에서 «69승 59패» 가 안 읽혔다.
+   *   그림은 ★가운데에서 가장 진하고★ 숫자 칸에서 옅어지게 바꾼다 — 그림도 살고
+   *   숫자도 읽힌다. 옛 값은 이 주석에 남긴다.
+   */
+  -webkit-mask-image: linear-gradient(90deg, transparent, rgba(0,0,0,.85) 38%, rgba(0,0,0,.95) 66%, rgba(0,0,0,.22));
+  mask-image: linear-gradient(90deg, transparent, rgba(0,0,0,.85) 38%, rgba(0,0,0,.95) 66%, rgba(0,0,0,.22));
 }
 .v3-plate-row--dark { background-image: url(/assets/plate-astra-dark.webp); }
 .v3-plate-row--light { background-image: url(/assets/plate-astra-light.webp); }
@@ -807,6 +814,19 @@
 }
 /* 줄 안의 내용은 인식표 위로 */
 .v3-plate-row ~ * { position: relative; z-index: 1; }
+/*
+ * ⚠ ★인식표 위에서 작은 글자가 묻혔다★ (2026-09-14 폰 390px 실측).
+ *   불타는 인식표는 오른쪽으로 갈수록 진해지는데(`mask` 가 오른쪽 .95),
+ *   ★승·패 작은 글자(«99승 48패»)가 딱 그 자리에 있다.★ 밝은 불꽃 위에서
+ *   흐린 회색 글자가 읽히지 않았다.
+ *
+ *   ★그림을 지우거나 흐리게 하지 않는다★ — 사장님이 고르신 그림이다 (2026-09-11
+ *   «1,2,3등 색깔만 불타는 색으로»). 대신 ★글자 쪽에 얇은 그림자★ 를 깐다.
+ *   인식표가 깔린 줄에서만 걸리므로 다른 표는 한 픽셀도 안 바뀐다.
+ */
+.v3-plate-row ~ * { text-shadow: 0 1px 2px rgba(0, 0, 0, .85); }
+/* 승·패처럼 작고 흐린 글자는 인식표 줄에서만 한 톤 밝힌다 (`--v2-text-faint` → `--v2-text-meta`) */
+.v3-plate-row ~ * .text-faint { color: var(--v2-text-meta, #a8aec2); }
 .v3-plate--light { background-image: url(/assets/plate-astra-light.webp); }
 /* ★불타는 인식표★ — 1~3위 (2026-09-11 사장님: «1,2,3등 색깔만 불타는 색으로»).
    ★새 그림을 만들지 않는다★ — 먹구름 그림에 색만 입힌다 (사장님: «색깔만») */
