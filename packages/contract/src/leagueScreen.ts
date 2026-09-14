@@ -130,7 +130,12 @@ const CLOSED: LeagueScreenSpec = { ...WITH_LADDER, listed: false }
  *   사장님이 뒤집었다: 티어를 쓰는 쪽이 IPL 이고, 등급이 없는 쪽이 SPL 이다.
  *   되돌리려면 `showsTier: false` 로 (`CLAUDE.md` 10-4).
  */
-const WITH_TIERS: LeagueScreenSpec = { ...WITH_LADDER, showsTier: true }
+/**
+ * ⚠ ★2026-09-14 — 아무도 안 쓴다★ (사장님: «IPL 티어 전부 없애고»).
+ *   지우지 않고 내보낸다 (`CLAUDE.md` 1-4). 티어를 다시 화면에 쓰려면
+ *   그 리그 줄을 `{ ...WITH_TIERS, … }` 로 되돌리면 된다.
+ */
+export const WITH_TIERS: LeagueScreenSpec = { ...WITH_LADDER, showsTier: true }
 
 /**
  * `10🏔️`(`sanply`) — **킬뎃과 승률만** 보여 준다 (2026-09-01 사용자 지시).
@@ -183,16 +188,62 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
    *   그 문구를 지운다. 티어는 원래대로 안 쓴다 (`WITH_LADDER` 의 `showsTier: false`) —
    *   사장님: «SPL은 1티어 2티어 구분 없어».
    */
-  supply: { ...WITH_LADDER, boardCategory: null },
-  /* IPL 만 티어를 쓴다 (지시 #23). 같은 날 오전(#9)에는 반대였다 */
-  /* 옛 값은 'ipl' 이었다 — 위 주석 참조 */
-  nolink: { ...WITH_TIERS, boardCategory: null },
   /**
-   * ★열산(10🏔)도 같은 화면★ (2026-09-13 사장님: «세 리그 전부 공평하게 대한다»).
-   * 티어는 안 쓴다 — 원래 단일리그다. 「비공식」 딱지만 그대로 단다.
-   * 옛 값은 `NO_LADDER` 였다 (순위·점수 칸이 통째로 빠져 있었다).
+   * ★SPL — 전부 100% 제공★ (2026-09-14 사장님).
+   *   «CPL- 모든 기록 100퍼센트 제공 /승률, 킬데스 전부 기록 및 랭킹제도(래더시스템 적용)»
+   *   (사장님이 CPL 이라 적으셨다가 «Cpl은 Spl 이다 잘못말했다» 로 바로잡으심)
+   *   승률 · 킬데스 · 랭킹 전부 있다. 티어만 안 쓴다.
    */
-  sanply: { ...WITH_LADDER, official: false, boardCategory: null },
+  supply: { ...WITH_LADDER, boardCategory: null },
+  /**
+   * ★IPL — 승률만 보여 준다★ (2026-09-14 사장님).
+   *
+   *   «IPL - 개인 , 클랜 승률만 기록, 개인 킬데스 정보 제공x
+   *    (래더시스템 미제공 , 경기분석 및 플레이 분석 , 승률 정보 제공)»
+   *
+   * ── ⚠ ★킬데스는 「숨기는 것」 이지 「안 쓰는 것」 이 아니다★
+   *   사장님: «킬데스를 써라 킬데스는 숨기는거 뿐이다 우리가 몰래 랭킹계산할때
+   *   써야하는 자료이다». 수집·저장·점수 계산은 ★한 글자도 안 바뀐다.★
+   *   바뀌는 것은 `playerColumns.kd` 하나 — ★화면에 칸을 안 만든다.★
+   *
+   * ── ⚠ ★티어는 화면에서만 사라진다★
+   *   사장님: «IPL 티어 전부 없애고 그냥 순위는 없는데 사실은 클랜명단이 우리가 만든
+   *   점수시스템으로 만든 클랜 순위인 시스템». `showsTier: false` 로 글자를 없애되
+   *   `division` 값과 점수 계산은 그대로다 — 승강·뱃지 보정이 그 값을 쓴다.
+   *   옛 값은 `WITH_TIERS`(showsTier: true) 였다 (지시 #23 · 2026-09-02).
+   *
+   * ── 클랜랭킹은 남는다
+   *   «순위는 없는데» 는 ★번호를 안 붙인다★ 는 뜻이고 목록 자체는 점수순으로 선다.
+   *   그 «번호 없음» 은 화면(`ClanRankTable`)이 `clanColumns.rank` 로 정한다.
+   */
+  nolink: {
+    ...WITH_LADDER,
+    boardCategory: null,
+    showsTier: false,
+    /* 개인 킬데스만 뺀다. 순위·승률·래더 칸은 그대로 */
+    playerColumns: { rank: true, winRate: true, kd: false, rating: true },
+    /* 클랜 목록은 번호를 안 붙인다 — 순서가 곧 순위다 */
+    clanColumns: { rank: false, winRate: true, kd: false, rating: true },
+  },
+  /**
+   * ★열산(10🏔) — 클랜 기록은 안 준다★ (2026-09-14 사장님).
+   *
+   *   «열산은 클랜 기록 미제공 , 고용가능 클랜으로 진행한 개인킬데스,
+   *    개인 플레이스타일 , 경기분석 , 개인승률 제공»
+   *
+   * ⚠ ★하루 만에 뒤집혔다.★ 2026-09-13 «세 리그 전부 공평하게 대한다» 로 클랜랭킹을
+   *   열었는데, 다음 날 «열산은 클랜 기록 미제공» 으로 도로 닫는다.
+   *   개인 쪽은 ★그대로 다 준다★ — 킬데스 · 플레이스타일(육각) · 경기분석 · 승률.
+   *   그래서 `NO_LADDER`(개인 칸까지 빠진 옛 표)가 아니라 ★클랜만 닫은 표★ 다.
+   */
+  sanply: {
+    ...WITH_LADDER,
+    official: false,
+    boardCategory: null,
+    clanRank: false,
+    clanRankNotice:
+      '10산은 클랜 기록을 제공하지 않습니다 — 고용 가능 클랜으로 진행하는 리그입니다. 개인 기록·플레이 분석·경기 분석은 그대로 제공됩니다.',
+  },
   /* 2026-09-02 지시 #22 — 목록에서 뺀다. 그전에는 표에 없었다(= 기본값 · 목록에 보였다) */
   daerule: CLOSED,
 }

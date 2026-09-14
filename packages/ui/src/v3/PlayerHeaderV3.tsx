@@ -45,6 +45,17 @@ export interface PlayerHeaderV3Props {
   mainWeapon: number | null
   /** 핵의심 — 없으면 그 칸을 안 그린다 */
   report?: { count: number; reported: boolean; pending: boolean; message: string | null; onReport: () => void }
+  /**
+   * ★킬데스를 화면에서만 가린다★ (2026-09-14 사장님).
+   *
+   *   «IPL - 개인 , 클랜 승률만 기록, 개인 킬데스 정보 제공x»
+   *   «킬데스를 써라 킬데스는 숨기는거 뿐이다 우리가 몰래 랭킹계산할때 써야하는 자료이다»
+   *
+   *   그래서 ★수집·저장·점수 계산은 한 글자도 안 바뀐다.★ 값은 계약에 그대로 실려 오고,
+   *   이 깃발은 ★칸을 그리느냐★ 만 정한다. 기본 `true` 라 옛 화면은 그대로다 (`CLAUDE.md` 1-4).
+   *   진실의 출처는 `leagueScreen(slug).playerColumns.kd` 하나뿐이다 — 여기서 지어내지 않는다.
+   */
+  showsKd?: boolean
 }
 
 type Row = LeaguePlayerDetail['tier_breakdown'][number]
@@ -66,7 +77,7 @@ function Kpi({ label, value, sub, color, extra }: { label: string; value: string
   )
 }
 
-export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report }: PlayerHeaderV3Props) {
+export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
   const hex = data.hex
   /* ★특성 배지★ — 열 위 안에 든 축 (2026-09-12 사장님). STRENGTH POINT 카드와 같은 값이다 */
@@ -260,12 +271,22 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           sub={win === null || lose === null ? null : `${fmt(win)}승 ${fmt(lose)}패`}
           color={winRate === null ? V3.textMuted : statColor(winRate)}
         />
-        <Kpi
-          label="킬뎃"
-          value={pct1(kd)}
-          sub={weapon === null ? null : `${fmt(kill)} / ${fmt(death)}`}
-          color={kd === null ? V3.textMuted : statColor(kd)}
-        />
+        {/* 킬데스를 안 주는 리그는 ★판수★ 가 이 자리를 받는다 — 칸을 비우면 3열 격자가 무너진다 (2026-09-14) */}
+        {showsKd ? (
+          <Kpi
+            label="킬뎃"
+            value={pct1(kd)}
+            sub={weapon === null ? null : `${fmt(kill)} / ${fmt(death)}`}
+            color={kd === null ? V3.textMuted : statColor(kd)}
+          />
+        ) : (
+          <Kpi
+            label="판수"
+            value={sel === null ? '-' : `${fmt(sel.games)}판`}
+            sub={win === null || lose === null ? null : `${fmt(win)}승 ${fmt(lose)}패`}
+            color={sel === null ? V3.textMuted : V3.textStrong}
+          />
+        )}
         {/* 2026-09-11 사장님: 판킬 자리에 ★순위★ */}
         <Kpi
           label="순위"

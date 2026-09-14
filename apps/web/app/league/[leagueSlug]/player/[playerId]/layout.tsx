@@ -12,6 +12,7 @@ import { use } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { PillTabs, PlayerHeaderV3, ProfileEmpty, ProfileSkeleton, mainWeaponFromStats, useSeasonLabel } from '@sacloud/ui'
+import { leagueScreen } from '@sacloud/contract'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { leaguePlayerTabs } from '@/lib/profileTabs'
@@ -45,7 +46,9 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
     <div>
       {data ? (
         <div className="pc-container">
+          {/* ★킬데스는 리그가 정한다★ (2026-09-14) — 가리면 그 자리에 판수가 선다 */}
           <PlayerHeaderV3
+            showsKd={leagueScreen(leagueSlug).playerColumns.kd}
             data={data}
             infoHref={`/player/${playerId}`}
             seasonLabel={`SEASON ${(season ?? 'CLOUD 0').toUpperCase()}`}

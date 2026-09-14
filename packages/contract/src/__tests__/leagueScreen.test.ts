@@ -65,8 +65,8 @@ describe('leagueScreen — 공식/비공식 표기 (#17)', () => {
  */
 describe('leagueScreen — 티어 표시 (#23)', () => {
   it('IPL(nolink) 만 티어를 화면에 표시한다', () => {
-    expect(showsTier('nolink')).toBe(true)
-    expect(leagueScreen('nolink').showsTier).toBe(true)
+    expect(showsTier('nolink')).toBe(false)
+    expect(leagueScreen('nolink').showsTier).toBe(false)
   })
 
   it('SPL(supply) 은 등급 개념이 없다 — 표시하지 않는다', () => {
@@ -82,8 +82,11 @@ describe('leagueScreen — 티어 표시 (#23)', () => {
   })
 
   it('옛 이름 showsDivision 은 같은 값을 준다 (별칭)', () => {
-    expect(showsDivision('nolink')).toBe(true)
-    expect(showsDivision('supply')).toBe(false)
+    /* ⚠ 2026-09-14 — IPL 도 false 가 됐다 (사장님 «IPL 티어 전부 없애고»).
+       이 시험이 보는 것은 「별칭이 같은 값을 주나」 이지 값 자체가 아니다 */
+    expect(showsDivision('nolink')).toBe(showsTier('nolink'))
+    expect(showsDivision('supply')).toBe(showsTier('supply'))
+    expect(showsDivision('nolink')).toBe(false)
   })
 
   it('IPL 은 데이터·라우트가 그대로다 — 클랜랭킹 화면 자체는 남는다', () => {
@@ -103,14 +106,41 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
    *   그때는 «비공식이라 래더가 없고, 래더가 없으니 순위도 없다» 였다.
    *   이제 셋 다 같은 화면을 쓴다. 「비공식」 딱지(`official: false`)만 남는다.
    */
-  it('10mountain(sanply) 도 다른 리그와 같은 칸을 쓴다 (2026-09-13)', () => {
+  /**
+   * ⚠ ★2026-09-14 또 뒤집혔다★ (사장님: «열산은 클랜 기록 미제공 , 고용가능 클랜으로
+   *   진행한 개인킬데스, 개인 플레이스타일 , 경기분석 , 개인승률 제공»).
+   *   전날(9/13) «세 리그 전부 공평하게» 로 클랜랭킹을 열었다가 하루 만에 닫는다.
+   *   ★개인 쪽은 그대로 다 준다★ — 그래서 옛 NO_LADDER(개인 칸까지 빠진 표)가 아니다.
+   */
+  it('10mountain(sanply) — 클랜 기록만 닫고 개인은 다 준다 (2026-09-14)', () => {
     const spec = leagueScreen('sanply')
-    expect(spec.clanRank).toBe(true)
+    expect(spec.clanRank).toBe(false)
+    expect(spec.clanRankNotice).not.toBeNull()
+    /* 개인 킬데스·승률·순위는 그대로 */
     expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: true })
-    /* 티어는 여전히 안 쓴다 — 단일리그다 */
     expect(spec.showsTier).toBe(false)
-    /* 「비공식」 은 사실 표기라 그대로 둔다 */
     expect(spec.official).toBe(false)
+  })
+
+  /**
+   * ★IPL — 킬데스는 화면에서만 뺀다★ (2026-09-14 사장님:
+   *   «킬데스를 써라 킬데스는 숨기는거 뿐이다 우리가 몰래 랭킹계산할때 써야하는 자료이다»)
+   */
+  it('IPL — 개인 킬데스 칸만 없고 나머지는 그대로', () => {
+    const spec = leagueScreen('nolink')
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: false, rating: true })
+    /* 클랜 목록은 번호를 안 붙인다 — 순서가 곧 순위다 */
+    expect(spec.clanColumns.rank).toBe(false)
+    expect(spec.clanRank).toBe(true)
+    /* 티어 글자는 화면에서 사라진다 */
+    expect(spec.showsTier).toBe(false)
+  })
+
+  it('SPL — 전부 100% 제공 (승률·킬데스·랭킹)', () => {
+    const spec = leagueScreen('supply')
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: true })
+    expect(spec.clanRank).toBe(true)
+    expect(spec.clanRankNotice).toBeNull()
   })
 
   /**

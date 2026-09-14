@@ -74,7 +74,12 @@ function seedOf(text: string): number {
   return h
 }
 
-export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '' }: { days: readonly PlayerTrendDay[]; mode: TrendMode; markSlug: string | null; winLabel: string; kdLabel: string; seed?: string }) {
+/**
+ * ★킬데스를 안 주는 리그에서는 붉은 K/D 선을 안 그린다★ (2026-09-14 사장님).
+ *   `showsKd` 기본값이 `true` 라 다른 리그 그래프는 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
+ *   값 계산(`kdPts`)은 그대로 돈다 — 지우면 두 선을 떼어 놓는 눈금(`lblGap`)이 어긋난다.
+ */
+export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '', showsKd = true }: { days: readonly PlayerTrendDay[]; mode: TrendMode; markSlug: string | null; winLabel: string; kdLabel: string; seed?: string; showsKd?: boolean }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const [width, setWidth] = useState(900)
@@ -206,9 +211,11 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
             <polyline points={wrLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#trendGlow)'} {...penDash(draw)} opacity={0.42} />
             <polyline points={wrLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
             <polyline points={wrLine} fill="none" stroke="#dbe8ff" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            {showsKd ? (<>
             <polyline points={kdLine} fill="none" stroke={V3.red} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#trendGlow)'} {...penDash(draw)} opacity={0.5} />
             <polyline points={kdLine} fill="none" stroke="#ff5a63" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
             <polyline points={kdLine} fill="none" stroke="#ffd7da" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            </>) : null}
           </g>
         ) : null}
         {hover !== null && hoverX !== null ? (
@@ -223,11 +230,13 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
             ) : null}
             <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? wrTip[1] : yOf(shown.wr)) + 5 + wrShift} textAnchor="start" fill="#dbe8ff" fontSize={PLOT.valueFont} fontWeight="700">{shown.wr.toFixed(1)}%</text>
             <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? wrTip[1] : yOf(shown.wr)) + 20 + wrShift} textAnchor="start" fill="#8fa9d8" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
+            {showsKd ? (<>
             <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? kdTip[1] : yOf(shown.kd))} r={PLOT.markerR + 4} fill="none" stroke={V3.red} strokeWidth={6} filter="url(#trendGlow)" opacity={0.5} />
             <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? kdTip[1] : yOf(shown.kd))} r={PLOT.markerR} fill={V3.chip} stroke="#ff5a63" strokeWidth={2} />
             <text x={(drawing ? wrTip[0] : xOf(shown.t))} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 4} textAnchor="middle" fill="#ffd7da" fontSize="10" fontWeight="700">K/D</text>
             <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 5 + kdShift} textAnchor="start" fill="#ffd7da" fontSize={PLOT.valueFont} fontWeight="700">{shown.kd.toFixed(1)}%</text>
             <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 20 + kdShift} textAnchor="start" fill="#c98f95" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
+            </>) : null}
           </g>
         ) : null}
       </svg>

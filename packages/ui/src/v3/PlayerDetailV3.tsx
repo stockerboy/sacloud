@@ -57,11 +57,22 @@ export interface PlayerDetailV3Props {
   report: { count: number; reported: boolean; pending: boolean; message: string | null; onReport: () => void }
   /** ★비교분석★ (2026-09-12 사장님). 안 주면 검색칸이 안 뜨고 옛 제목이 나온다 */
   compare?: StrengthCompare
+  /**
+   * ★킬데스를 화면에서만 가린다★ (2026-09-14 사장님).
+   *
+   *   «IPL - 개인 , 클랜 승률만 기록, 개인 킬데스 정보 제공x»
+   *   «킬데스를 써라 킬데스는 숨기는거 뿐이다 우리가 몰래 랭킹계산할때 써야하는 자료이다»
+   *
+   *   그래서 ★수집·저장·점수 계산은 한 글자도 안 바뀐다.★ 값은 계약에 그대로 실려 오고,
+   *   이 깃발은 ★칸을 그리느냐★ 만 정한다. 기본 `true` 라 옛 화면은 그대로다 (`CLAUDE.md` 1-4).
+   *   진실의 출처는 `leagueScreen(slug).playerColumns.kd` 하나뿐이다 — 여기서 지어내지 않는다.
+   */
+  showsKd?: boolean
 }
 
 /* ── 구간별 전적 ─────────────────────────────────────────────── */
 
-function TierRecordCard({ data, report, ownTier }: { data: LeaguePlayerDetail; report: PlayerDetailV3Props['report']; ownTier: number | null }) {
+function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayerDetail; report: PlayerDetailV3Props['report']; ownTier: number | null; showsKd: boolean }) {
   const rows = data.tier_breakdown
   const played = rows.filter((r) => r.games > 0)
   /* 기본 칩 = ★내 클랜의 티어★(최근 경기에서 읽음 · QA 교차검토 9-14). 모르면 가장 많이 뛴 티어. 누르면 그것이 우선 */
@@ -123,14 +134,17 @@ function TierRecordCard({ data, report, ownTier }: { data: LeaguePlayerDetail; r
           <StatRow label="승률">
             <Pair sub={`${sel.win}승 ${sel.lose}패`} value={pct1(sel.win_rate)} color={sel.win_rate === null ? V3.textMuted : statColor(sel.win_rate)} />
           </StatRow>
-          {/* 킬뎃은 어느 구간이든 스나·라플로 나눠 적는다 (2026-09-11 사장님: «라플킬뎃 스나킬뎃 분리») */}
-          <StatRow label="킬뎃">
-            <Pair tag="스나" sub={`${sel.sniper_kill}/${sel.sniper_death}`} value={pct1(sel.sniper_kd)} color={sel.sniper_kd === null ? V3.textMuted : statColor(sel.sniper_kd)} small />
-            <Pair tag="라플" sub={`${sel.rifle_kill}/${sel.rifle_death}`} value={pct1(sel.rifle_kd)} color={sel.rifle_kd === null ? V3.textMuted : statColor(sel.rifle_kd)} small />
-          </StatRow>
+          {/* 킬뎃은 어느 구간이든 스나·라플로 나눠 적는다 (2026-09-11 사장님: «라플킬뎃 스나킬뎃 분리»).
+             ★킬데스를 안 주는 리그에서는 이 줄 자체를 안 그린다★ (2026-09-14) — 값은 계약에 그대로 실려 온다 */}
+          {showsKd ? (
+            <StatRow label="킬뎃">
+              <Pair tag="스나" sub={`${sel.sniper_kill}/${sel.sniper_death}`} value={pct1(sel.sniper_kd)} color={sel.sniper_kd === null ? V3.textMuted : statColor(sel.sniper_kd)} small />
+              <Pair tag="라플" sub={`${sel.rifle_kill}/${sel.rifle_death}`} value={pct1(sel.rifle_kd)} color={sel.rifle_kd === null ? V3.textMuted : statColor(sel.rifle_kd)} small />
+            </StatRow>
+          ) : null}
         </div>
       ) : (
-        <div style={{ padding: '14px 18px 8px', fontSize: 11.5, color: V3.textGhost2 }}>10판 이상 기록이 쌓이면 승률·킬뎃을 표시합니다</div>
+        <div style={{ padding: '14px 18px 8px', fontSize: 11.5, color: V3.textGhost2 }}>10판 이상 기록이 쌓이면 {showsKd ? '승률·킬뎃' : '승률'}을 표시합니다</div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'flex-end', padding: '0 18px 16px' }}>
         <StatRow label="판킬">
@@ -451,7 +465,7 @@ function weekPoints(points: readonly WeeklyPoint[]): TrendPoint[] {
 }
 
 /** ⚠ 옛 추이 카드(`TrendChart` · 최근 3일/주간)는 아래에 그대로 있다. 2026-09-10 부터는 사장님 지시서대로 `TrendChartV3` 가 그린다 */
-function TrendCard({ data }: { data: LeaguePlayerDetail }) {
+function TrendCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: boolean }) {
   const [mode, setMode] = useState<TrendMode>('day')
   const today = data.trend.find((d) => d.today) ?? null
   /* DAY 마커는 «경기가 있던 마지막 날» 값을 잇는다 — 오늘 0판이면 «오늘 0승 0패 83%» 처럼 읽혀 헷갈렸다 (QA 교차검토 16번)
@@ -460,14 +474,14 @@ function TrendCard({ data }: { data: LeaguePlayerDetail }) {
   const dayRef = today && today.win + today.lose > 0 ? { d: today, name: '오늘' } : lastPlayed ? { d: lastPlayed, name: lastPlayed.label } : null
   return (
     <Card style={{ marginTop: 16 }}>
-      <CardHead title="승률 및 킬뎃 추이" ribbon={V3.red} right={
+      <CardHead title={showsKd ? '승률 및 킬뎃 추이' : '승률 추이'} ribbon={V3.red} right={
         <span style={{ display: 'flex', gap: 5 }}>
           <span onClick={() => setMode('day')} style={chipStyle(mode === 'day')}>DAY</span>
           <span onClick={() => setMode('cum')} style={chipStyle(mode === 'cum')}>누적</span>
         </span>
       }>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}><span style={{ width: 15, height: 2, background: '#ff5a63' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>킬뎃</span></span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 15, height: 2, background: '#7fa9ff' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>승률</span></span>
+        {showsKd ? <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}><span style={{ width: 15, height: 2, background: '#ff5a63' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>킬뎃</span></span> : null}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: showsKd ? 0 : 4 }}><span style={{ width: 15, height: 2, background: '#7fa9ff' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>승률</span></span>
         <span style={{ fontSize: 10.5, color: V3.textGhost2, minWidth: 0 }}>오늘은 경기가 끝날 때마다 바로 움직입니다 · 지난 날은 2판 미만이면 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
       </CardHead>
       <TrendChartV3
@@ -477,6 +491,7 @@ function TrendCard({ data }: { data: LeaguePlayerDetail }) {
         markSlug={data.clan?.slug ?? null}
         winLabel={mode === 'day' ? (dayRef ? `${dayRef.name} ${dayRef.d.win}승 ${dayRef.d.lose}패` : '아직 경기 없음') : `누적 ${data.win}승 ${data.lose}패`}
         kdLabel={mode === 'day' ? (dayRef ? `${dayRef.name} ${dayRef.d.kill}킬 ${dayRef.d.death}데스` : '') : data.kill !== null && data.death !== null ? `누적 ${fmt(data.kill)}킬 ${fmt(data.death)}데스` : ''}
+        showsKd={showsKd}
       />
     </Card>
   )
@@ -900,7 +915,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
     <div>
       {TIER_CARD_IN_BODY ? (
         <div style={halfStyle}>
-          <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} />
+          <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} showsKd={props.showsKd ?? true} />
           <StrengthCard data={data} compare={props.compare} />
         </div>
       ) : null}
@@ -923,7 +938,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           </button>
         ))}
       </div>
-      {tab === 'graph' ? <TrendCard data={data} /> : null}
+      {tab === 'graph' ? <TrendCard data={data} showsKd={props.showsKd ?? true} /> : null}
       {tab === 'play' ? (
         /* PC 는 왼쪽에 «어떻게 재는가», 오른쪽에 육각형 (2026-09-11 사장님). 폰은 육각형만 */
         <div className="v3-play-split" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 16, alignItems: 'start' }}>

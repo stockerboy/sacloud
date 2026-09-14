@@ -3,6 +3,7 @@
 import { use } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { SeasonTable } from '@sacloud/ui'
+import { leagueScreen } from '@sacloud/contract'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -42,7 +43,10 @@ export default function LeaguePlayerSeasonPage({
         kind="player"
         /* 카드 왼쪽 위 리그 이름은 원본 카드에 있는 값이다 (관측 2026-08-28) */
         leagueName={league.data?.data.name}
-        hidesCumulativeKd={league.data?.data.hides_cumulative_kd ?? false}
+        /* ★두 곳 중 하나만 «가린다» 해도 가린다★ (2026-09-14).
+           `hides_cumulative_kd` 는 DB 리그 깃발(D-107)이고,
+           `playerColumns.kd` 는 사장님이 그날 정하신 리그 규칙이다 */
+        hidesCumulativeKd={(league.data?.data.hides_cumulative_kd ?? false) || !leagueScreen(leagueSlug).playerColumns.kd}
       />
     </div>
   )

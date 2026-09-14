@@ -11,7 +11,7 @@
  */
 import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { MatchDetail, MatchListItem } from '@sacloud/contract'
+import { leagueScreen, type MatchDetail, type MatchListItem } from '@sacloud/contract'
 import { PlayerDetailV3, ProfileEmpty, ProfileSkeleton, type StrengthCompare } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -136,7 +136,9 @@ function Body({
   const compare = useCompare(leagueSlug, playerId)
   return (
     <div className="pc-container pb-[40px]">
+      {/* ★킬데스는 리그가 정한다★ (2026-09-14) — IPL 은 화면에서만 가린다. 값은 그대로 온다 */}
       <PlayerDetailV3
+        showsKd={leagueScreen(leagueSlug).playerColumns.kd}
         data={data}
         leagueSlug={leagueSlug}
         matches={matches.items}
