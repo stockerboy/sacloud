@@ -95,11 +95,22 @@ function noticePage(): string {
 }
 
 export function middleware(request: NextRequest) {
-  /*
-   * ★기본은 열림★ (2026-09-13). 잠그려면 `SACLOUD_PRIVATE=1`.
-   * `SACLOUD_PUBLIC=1` 도 계속 받는다 — 이미 넣어 두셨다면 그게 이긴다.
+  /**
+   * ⚠ ★2026-09-14 — 다시 잠갔다★ (사장님: «일단 사이트 비공개로 돌려»).
+   *
+   *   ★코드 기본값을 「잠금」 으로 둔다.★ 환경변수를 안 건드려도 잠긴다 —
+   *   Vercel 대시보드를 열지 않고 배포만으로 잠글 수 있어야 해서다.
+   *
+   *   ⚠ 하루에 세 번 뒤집힌 자리다. 이력을 남긴다 —
+   *     ① 2026-09-13 «비공개로 돌려»     → `SACLOUD_PUBLIC=1` 이 있어야 열림
+   *     ② 2026-09-13 «다시 공개로»       → `SACLOUD_PRIVATE=1` 이 있어야 잠김
+   *     ③ ★지금★  «일단 비공개로 돌려»  → 기본이 잠김
+   *
+   *   다시 열려면 — Vercel 환경변수에 `SACLOUD_PUBLIC=1` 을 넣거나,
+   *   이 줄을 `process.env.SACLOUD_PRIVATE !== '1'` 로 되돌린다.
+   *   잠긴 동안에도 로그인하면 사이트 전체가 그대로 보인다.
    */
-  if (process.env.SACLOUD_PRIVATE !== '1' || process.env.SACLOUD_PUBLIC === '1') {
+  if (process.env.SACLOUD_PUBLIC === '1') {
     return NextResponse.next()
   }
 
