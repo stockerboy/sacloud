@@ -450,6 +450,14 @@ export const LeaguePlayerDetail = LeaguePlayer.extend({
   weekly: WeeklyTrend.nullable().default(null),
   /** 최근 같이한 플레이어 승률 */
   teammates: z.array(TeammateStat),
+  /**
+   * ★깃발 수★ — 하루(17:00~03:00) 1등으로 정상에 꽂은 횟수 (2026-09-15 사장님:
+   * «그 깃발을 개인기록에 깃발 5개 이런식으로 표시해주면 좋겠어»).
+   *
+   * ★리그를 가리지 않고 센다★ — 세 리그 어디서 받았든 그 사람의 깃발이다.
+   * 이 칸이 없던 응답과도 맞도록 기본값을 0 으로 둔다.
+   */
+  flags: Count.default(0),
 })
 export type LeaguePlayerDetail = z.infer<typeof LeaguePlayerDetail>
 

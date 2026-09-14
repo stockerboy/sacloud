@@ -1827,6 +1827,8 @@ export function getLeaguePlayerDetail(leagueSlug: string, playerId: string): Lea
     id: leaguePlayer.id,
     league_id: league.id,
     league: toLeagueSummary(league),
+    /* ★깃발 수★ (2026-09-15) — 픽스처에는 깃발이 없다. 0 이면 화면이 그 줄을 안 그린다 */
+    flags: 0,
     /* 선수가 직접 설정하는 값이라 픽스처도 **일부만** 채운다 (D-161).
        원본 실측에서도 21,107명 중 대부분이 `null` 이다 — 화면은 그때 줄을 그리지 않는다 */
     player: { id: player.id, name: player.name, position: player.position, note: player.note },

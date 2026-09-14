@@ -212,6 +212,21 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               {weapon !== null ? (
                 <span style={{ fontSize: 11, color: V3.textMuted, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, background: V3.chip, padding: '3px 8px', whiteSpace: 'nowrap' }}>{WEAPON_LABEL[weapon]}</span>
               ) : null}
+              {/*
+               * ★깃발★ (2026-09-15 사장님: «그 깃발을 개인기록에 깃발 5개 이런식으로
+               *   표시해주면 좋겠어»). 하루 1등으로 정상에 꽂은 횟수다.
+               *   ★0 이면 줄을 안 그린다★ — 「깃발 0개」 는 보여 줄 것이 아니다.
+               *   다섯 개까지는 깃발을 늘어놓고, 넘으면 «🚩 7» 로 센다.
+               */}
+              {data.flags <= 0 ? null : (
+                <span
+                  title={`깃발 ${data.flags}개`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, letterSpacing: 1, whiteSpace: 'nowrap', flex: 'none' }}
+                >
+                  {'🚩'.repeat(Math.min(data.flags, 5))}
+                  {data.flags > 5 ? <span style={{ fontSize: 11, fontWeight: 700, color: V3.gold, letterSpacing: 0 }}>{data.flags}</span> : null}
+                </span>
+              )}
             </span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5, color: '#6f93b4', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
               <span style={{ color: theme.ink, fontWeight: 500 }}>{data.clan?.name ?? '무소속'}</span>

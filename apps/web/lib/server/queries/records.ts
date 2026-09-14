@@ -979,6 +979,11 @@ export async function getLeaguePlayerDetail(
     score_rank_all: aheadCount === null ? null : aheadCount + 1,
     score_total_all: poolCount,
   }
+  /*
+   * 깃발 수 — 한 줄 질의다 (`LeagueFlag` 에 `(playerId, rank)` 인덱스가 있다).
+   * 차례로 부른다 — 연결이 하나뿐이라 한꺼번에 던지면 전부 멈춘다.
+   */
+  const flagCount = await prisma.leagueFlag.count({ where: { playerId, rank: 1 } })
   return {
     id: effective.id,
     league_id: league.id,
@@ -1073,6 +1078,12 @@ export async function getLeaguePlayerDetail(
     playstyle: traits?.playstyle ?? null,
     teammates: record.teammates,
     weapon_stats: weaponStats,
+    /*
+     * ★깃발 수★ (2026-09-15 사장님: «그 깃발을 개인기록에 깃발 5개 이런식으로»).
+     * ★리그를 가리지 않고★ 센다 — 세 리그 어디서 받았든 그 사람의 깃발이다.
+     * 1등만 깃발이다 (2·3 등은 그날 화면에만 남는다).
+     */
+    flags: flagCount,
   }
 }
 
