@@ -73,6 +73,7 @@ import { runIplClanNumber } from './jobs/iplClanNumber.js'
 import { runLineupDedupe } from './jobs/lineupDedupe.js'
 import { runPlayerTwinLink } from './jobs/playerTwinLink.js'
 import { ALL_LEAGUE_SLUGS, runBattlelogLineup } from './jobs/battlelogLineup.js'
+import { playerNickSync } from './jobs/playerNickSync.js'
 import { runSeason7Build } from './jobs/season7Build.js'
 import { runMatchSeasonFix, runMatchSeasonRestore, type MatchSeasonBackupRow } from './jobs/matchSeasonFix.js'
 import { runCollect } from './jobs/collect.js'
@@ -346,6 +347,7 @@ function usage(): void {
               2024-04-01 ~ 2026-09-03 07:00 KST 로 ★기간 고정★ 해 집계한다
               ★최종 순위는 저장하지 않는다★ (그 기간의 원본 rating/rank 가 없다)
               **--confirm 없이는 한 줄도 쓰지 않는다.** 멱등이다
+  player-nick-sync [--days N] [--limit N] [--confirm]
   battlelog-lineup [--all-leagues | --league <slug>] [--limit N] [--from-cutoff] [--only-pending] [--confirm]
               클랜 배틀로그 원문 → **MatchPlayerStat**(참가 기록). 라인업의 유일한 출처다
               ★--all-leagues 면 IPL·SPL·열산을 한 번에 돈다★ (Part 4). 클랜번호 표는
@@ -956,6 +958,23 @@ async function main(): Promise<number> {
       return 0
     }
 
+    case 'player-nick-sync': {
+      /*
+        선수 이름을 ★가장 최근 경기에서 부른 이름★ 으로 맞춘다 (2026-09-14 사장님:
+        «바꿀때마다 실시간 반영되는건 안되나»).
+        옛 판은 처음 본 이름이 영영 굳었다 — 닉을 바꿔도 안 따라왔다 (실측 5일에 67명).
+        --confirm 없이는 한 줄도 안 쓰고, 바꾸기 전 이름은 backup/ 에 남는다.
+      */
+      const result = await playerNickSync({
+        confirm: boolFlag(args, 'confirm'),
+        days: Number(stringFlag(args, 'days') ?? 7),
+        ...(stringFlag(args, 'limit') ? { limit: Number(stringFlag(args, 'limit')) } : {}),
+      })
+      console.log(
+        `경기=${result.matchesRead}  계정=${result.accounts}  바꿈=${result.changed}  그대로=${result.skippedSameName}`,
+      )
+      return 0
+    }
     case 'battlelog-lineup': {
       /*
         클랜 배틀로그 → `MatchPlayerStat`. IPL 참가 기록의 유일한 경로다.
