@@ -116,11 +116,29 @@ export async function findPlayerByName(name: string): Promise<PlayerSearchItem |
   return usn ? playerByBarracksUsn(usn) : null
 }
 
-/** 닉네임 정확일치 1건 */
+/**
+ * 닉네임 정확일치 1건.
+ *
+ * ── ⚠ ★한 줄만 뽑으면 안 된다★ (2026-09-15 사장님:
+ *   «자꾸 두명씩 뜨고 ★아예 기록없고 원랜 있는데★ 그러니까 짜증나»)
+ *
+ *   같은 닉네임이 ★출처마다 한 줄씩★ 있다 (3rd.supply 21,150 · 병영수첩 3,874 · 넥슨 976).
+ *   여기는 `orderBy: id asc` 로 ★맨 앞 한 줄★ 만 뽑고 있었는데,
+ *   `SUP-…` 가 `cmt…` 보다 ★글자 순서가 앞선다.★ 그래서 옛 미러 줄이 늘 이겼고,
+ *   미러는 ★9/3 에 얼어붙어★ 그 화면에는 최근 기록이 없다.
+ *
+ *   실측 — `diac` : 병영수첩 줄 9/10 까지 · 미러 줄 9/3 에서 멈춤. 검색은 미러를 골랐다.
+ *
+ *   그래서 ★몇 줄 받아서 「마지막으로 뛴 날」로 고른다.★ 같은 사람의 여러 줄 중
+ *   ★살아 있는 줄★ 을 집는다. 여전히 한 줄만 돌려준다 — 화면 모양은 안 바뀐다.
+ */
+const EXACT_CANDIDATES = 8
+
 async function playerByName(name: string): Promise<PlayerSearchItem | null> {
-  const player = await prisma.player.findFirst({
+  const players = await prisma.player.findMany({
     where: { name: ciEquals(name), ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
+    take: EXACT_CANDIDATES,
     select: {
       id: true,
       name: true,
@@ -128,7 +146,13 @@ async function playerByName(name: string): Promise<PlayerSearchItem | null> {
       ...PLAYER_CLAN_FALLBACK_SELECT,
     },
   })
-  if (!player) return null
+  if (players.length === 0) return null
+  const lastAt = await lastPlayedMap(players.map((p) => p.id))
+  /* ★가장 최근에 뛴 줄★ — 같으면 먼저 온 줄(= id 가 앞선 줄)을 그대로 둔다 */
+  let player = players[0]!
+  for (const row of players) {
+    if ((lastAt.get(row.id) ?? 0) > (lastAt.get(player.id) ?? 0)) player = row
+  }
   return { id: player.id, name: player.name, clan: toClanSummaryOrNull(playerClanOf(player)) }
 }
 
@@ -371,11 +395,21 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
     }),
   ])
 
+  /*
+   * ★마지막으로 뛴 날을 붙인다★ (2026-09-15) — 접을 때 ★살아 있는 줄★ 을 고르는 데 쓴다.
+   * 질의 한 번이고 아이디는 많아야 백 개다.
+   */
+  const lastAt = await lastPlayedMap([
+    ...new Set([...prefixRows, ...containsOnlyRows].map((r) => r.id)),
+  ])
+  const withLast = <T extends { id: string }>(rows: readonly T[]) =>
+    rows.map((r) => ({ ...r, lastPlayedMs: lastAt.get(r.id) ?? 0 }))
+
   /* ★지금 시즌에 뛴 사람을 앞으로★ — 자리 규칙(`mixPrefixFirst`)은 한 글자도 안 건드린다 */
   const players = mixPrefixFirst(
     /* 겹친 줄을 접고 나서 자른다 — 접기 전에 자르면 껍데기가 자리를 먹는다 (2026-09-14) */
-    season0First(dedupeSamePerson(prefixRows)).slice(0, SEARCH_LIMIT),
-    season0First(dedupeSamePerson(containsOnlyRows)).slice(0, SEARCH_LIMIT),
+    season0First(dedupeSamePerson(withLast(prefixRows))).slice(0, SEARCH_LIMIT),
+    season0First(dedupeSamePerson(withLast(containsOnlyRows))).slice(0, SEARCH_LIMIT),
     SEARCH_LIMIT,
   )
   return players.map((player) => ({
@@ -471,8 +505,34 @@ export function season0First<T extends { _count: { leaguePlayers: number } }>(
  *
  * 순수 함수라 DB 없이 시험한다.
  */
+/**
+ * ★선수마다 마지막으로 뛴 날★ (밀리초) — 한 번의 질의로 모아 온다.
+ *
+ * 선수 칸(`PLAYER_CLAN_FALLBACK_SELECT`)이 `leaguePlayers` 관계를 ★이미 쓰고 있어서★
+ * (소속을 고르는 데 쓴다) 같은 관계를 한 번 더 고를 수가 없다. 그래서 따로 묶어 센다.
+ * 아이디가 많아야 쉰 개라 한 번 더 도는 값이 싸다.
+ */
+async function lastPlayedMap(ids: readonly string[]): Promise<Map<string, number>> {
+  if (ids.length === 0) return new Map()
+  const rows = await prisma.leaguePlayer.groupBy({
+    by: ['playerId'],
+    where: { playerId: { in: [...ids] } },
+    _max: { lastRatedAt: true },
+  })
+  return new Map(
+    rows.map((r) => [r.playerId, r._max.lastRatedAt ? new Date(r._max.lastRatedAt).getTime() : 0]),
+  )
+}
+
 export function dedupeSamePerson<
-  T extends { id: string; name: string; clan: { slug: string } | null; _count: { leaguePlayers: number } },
+  T extends {
+    id: string
+    name: string
+    clan: { slug: string } | null
+    _count: { leaguePlayers: number }
+    /** 마지막으로 뛴 날(밀리초). 있으면 «살아 있는 줄» 을 고르는 데 쓴다. 시험은 이 칸 없이도 돈다 */
+    lastPlayedMs?: number
+  },
 >(rows: readonly T[]): T[] {
   /* 이름별로 «기록이 있는 줄이 하나라도 있나» 를 먼저 센다 */
   const hasPlayed = new Set<string>()
@@ -498,10 +558,26 @@ export function dedupeSamePerson<
       order.push(key)
       continue
     }
-    /* 같은 칸이면 ★이번 시즌에 뛴 리그가 많은 쪽★ · 같으면 id 가 앞선 쪽 */
+    /*
+     * 같은 칸이면 누구를 남기나 —
+     *   ㉠ ★마지막으로 뛴 날이 늦은 쪽★ (2026-09-15)
+     *   ㉡ 그다음 이번 시즌에 뛴 리그가 많은 쪽
+     *   ㉢ 그래도 같으면 id 가 앞선 쪽 (안정적이게)
+     *
+     * ── ㉠ 을 맨 앞에 둔 이유 (운영 실측 2026-09-15)
+     *   `diac` 가 두 줄이었다 — 병영수첩 줄은 ★9/10★ 까지 살아 있고
+     *   옛 미러(`3rd.supply`) 줄은 ★9/3 에 멈춰★ 있었다. 둘 다 3판이라
+     *   판수로는 못 가르고, id 로 고르면 ★멈춘 쪽★ 이 이겼다
+     *   (`SUP-…` 가 `cmt…` 보다 글자 순서가 앞선다).
+     *   사장님이 «들어가면 기록이 없다» 고 하신 자리가 여기다.
+     */
+    const rowAt = row.lastPlayedMs ?? 0
+    const nowAt = now.lastPlayedMs ?? 0
     const better =
-      row._count.leaguePlayers > now._count.leaguePlayers ||
-      (row._count.leaguePlayers === now._count.leaguePlayers && row.id < now.id)
+      rowAt > nowAt ||
+      (rowAt === nowAt &&
+        (row._count.leaguePlayers > now._count.leaguePlayers ||
+          (row._count.leaguePlayers === now._count.leaguePlayers && row.id < now.id)))
     if (better) best.set(key, row)
   }
   return order.map((key) => best.get(key) as T)

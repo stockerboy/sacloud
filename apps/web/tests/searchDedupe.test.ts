@@ -81,6 +81,27 @@ describe('dedupeSamePerson — 목록에서만 접는다 (지우지 않는다)',
     expect(out.map((r) => r.id)).toEqual(['a', 'b'])
   })
 
+  /*
+   * ★살아 있는 줄을 고른다★ (2026-09-15 운영 실측).
+   *
+   * `diac` 가 두 줄이었다 — 병영수첩 줄은 9/10 까지 살아 있고, 옛 미러 줄은
+   * 9/3 에 멈춰 있었다. 둘 다 3판이라 판수로는 못 가르고, id 로 고르면
+   * 멈춘 쪽(`SUP-…`)이 이겼다. 사장님이 «들어가면 기록이 없다» 고 하신 자리다.
+   */
+  it('★같은 이름·같은 클랜이면 마지막으로 뛴 날이 늦은 쪽★', () => {
+    const at = (iso: string) => new Date(iso).getTime()
+    const out = dedupeSamePerson([
+      { ...row('SUP-1426443380', 'diac', 'hing', 2), lastPlayedMs: at('2026-09-03') },
+      { ...row('cmtuabmm40023', 'diac', 'hing', 1), lastPlayedMs: at('2026-09-10') },
+    ])
+    expect(out.map((r) => r.id)).toEqual(['cmtuabmm40023'])
+  })
+
+  it('마지막으로 뛴 날을 모르면 ★옛 규칙 그대로★ — 리그 수 · id 순', () => {
+    const out = dedupeSamePerson([row('b', 'x', 'c1', 1), row('a', 'x', 'c1', 1)])
+    expect(out.map((r) => r.id)).toEqual(['a'])
+  })
+
   it('★전부 기록 0 이면 아무도 안 지운다★ — 빈 화면을 만들지 않는다', () => {
     const out = dedupeSamePerson([row('a', 'ghost', 'c1', 0), row('b', 'ghost', 'c2', 0)])
     expect(out.map((r) => r.id)).toEqual(['a', 'b'])
