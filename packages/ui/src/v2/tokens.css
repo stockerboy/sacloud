@@ -1517,3 +1517,30 @@
   .v3-band { padding: 11px 12px !important; gap: 8px !important; }
   .v3-clanbody { gap: 12px !important; padding: 10px 12px 14px !important; }
 }
+
+/* ══ 소개 페이지 `/about` (2026-09-14 사장님 지적 두 건) ══════════════════════ */
+
+/**
+ * ★제공 / 미제공★ — «왼쪽오른쪽(피씨) 모바일은 위쪽 아래쪽 으로 구분해서 확실하게».
+ *
+ * `auto-fit` 같은 눈치 보는 격자를 ★쓰지 않는다★ — 칸 수가 화면 폭에 따라 달라지면
+ * «왼쪽·오른쪽» 이라는 약속 자체가 깨진다. 폰 한 줄 · PC 두 줄로 못 박는다.
+ */
+.about-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (min-width: 860px) {
+  .about-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+}
+
+/**
+ * ★육각형 옆 빈자리에 숫자를 올린다★ (사장님: «pc는 너무 공간낭비가 심해
+ * 승률 킬뎃을 오른쪽에 올려줘»).
+ *
+ * 폰에서는 육각형이 한 줄을 다 쓰고 숫자가 그 아래로 간다 — 폰은 원래 안 비었다
+ * (사장님: «모바일은 상관없는데»).
+ */
+.about-hexrow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 4px 12px 14px; }
+.about-hexside { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (min-width: 860px) {
+  /* 육각형이 조금 더 넓다 — 그림이 주인공이고 숫자는 곁이다 */
+  .about-hexrow { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: center; }
+}

@@ -96,9 +96,19 @@ async function buildShowcases(): Promise<AboutShowcases> {
   return { leagues }
 }
 
+/**
+ * ★세 리그 전부★ (2026-09-14 저녁 사장님: «위 상단에 세개를 두고 클릭해서
+ * 화면전환으로 각각 리그들을 볼 수 있게 해줘 / ★순서는 IPL이 먼저 SPL이 그 다음
+ * 그 다음이 YSL★»).
+ *
+ * ⚠ 이름은 `app/about/leagueCopy.ts` 가 정한다 — 여기는 ★슬러그와 차례★ 만 안다.
+ *   옛 판은 IPL·SPL 둘뿐이었고 이름표(`label`)를 여기서 들고 있었다.
+ *   그러다 «SPL → LLM» 처럼 이름이 바뀌면 두 곳을 고쳐야 한다. 한 곳으로 모은다.
+ */
 const LEAGUES: readonly { slug: string; label: string }[] = [
   { slug: 'nolink', label: 'IPL' },
-  { slug: 'supply', label: 'SPL' },
+  { slug: 'supply', label: 'LLM' },
+  { slug: 'sanply', label: 'YSL' },
 ]
 
 /**

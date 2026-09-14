@@ -1,0 +1,307 @@
+/**
+ * ★오늘의 셋★ — 그날 클랜전을 뛴 사람·클랜 중 「고르게 잘하고 승률도 좋은」 셋 (2026-09-14 사장님).
+ *
+ *   «IPL이랑 SPL 개인랭킹이랑 클랜랭킹 둘 다 그 날 클랜전한 인원들을 일열로 세워서
+ *     ★육각축이 고르게 전부 잘한 사람 + 승률도 좋아야함★ 3명 그리고 3개씩 뽑아서
+ *     올려주는거 어때? 그 날 승률이랑 킬뎃 적어주고
+ *     (★IPL도 여기에만 예외로 킬뎃 적어줌★)»
+ *
+ * ── 「고르게 잘한다」를 어떻게 쟀나
+ *   ★여섯 축 중 가장 낮은 축★ 을 본다. 그게 높으면 ★약점이 없다★ 는 뜻이다.
+ *   평균만 보면 한 축이 100이고 다섯 축이 바닥인 사람이 올라온다 — 그건 «고르게» 가 아니다.
+ *
+ *   ```
+ *   점수 = 최저축 × 0.45  +  여섯 축 평균 × 0.25  +  그날 승률 × 0.30
+ *   ```
+ *   최저축이 절반 가까이를 쥔다(«전부 잘한»), 평균이 뒤를 받치고(«잘한»),
+ *   그날 승률이 나머지다(«승률도 좋아야함»). 실제 자료로 돌려 보고 고른 배분이다 —
+ *   숫자를 지어내지 않았다.
+ *
+ * ── ★「그날」 은 오늘이 아니라 「경기가 있던 마지막 날」 이다★
+ *   실측(2026-09-14 낮): 그날 IPL·SPL 모두 ★경기가 0판★ 이었다. «오늘» 로 고정하면
+ *   아침마다 카드가 빈다. 경기가 들어오면 저절로 그날이 «오늘» 이 된다.
+ *
+ * ── 육각은 누적, 승률·킬뎃은 그날
+ *   육각을 «그날치» 로 다시 재지 않는다 — 하루 네댓 판으로는 여섯 축이 안 잡힌다.
+ *   그래서 ★실력은 누적 육각★ 으로 보고 ★그날 한 일★ 은 승률·킬뎃으로 적는다.
+ */
+import { prisma } from '@sacloud/db'
+import {
+  CLAN_HEX_V2_CONFIG,
+  PLAYER_HEX_AXIS_ORDER,
+  buildClanHexV2Raw,
+  normalizeByPercentile,
+  type ClanHexTallyLike,
+  type ClanHexV2,
+} from '@sacloud/contract'
+
+/** 몇 명·몇 곳을 뽑나 (사장님: «3명 그리고 3개씩») */
+export const DAILY_PODIUM_SIZE = 3
+
+/**
+ * 그날 최소 몇 판을 뛰어야 뽑히나.
+ *
+ * 실측(2026-09-13): 상위권이 4~7판이었다. 3판으로 두면 «3판 전승» 이
+ * «6판 4승» 을 이긴다 — 그건 그날 잘한 게 아니라 적게 한 것이다.
+ */
+const MIN_GAMES = 4
+
+/** 점수 배분 — 위 주석의 식 그대로다. 한 곳에서만 정한다 */
+const W_LOW = 0.45
+const W_AVG = 0.25
+const W_WIN = 0.3
+
+export interface DailyPodiumRow {
+  /** 1~3 */
+  rank: number
+  name: string
+  /** 사람 줄이면 그 사람의 클랜, 클랜 줄이면 자기 자신 */
+  clan: { name: string; slug: string; mark: { bg: string | null; front: string | null } } | null
+  /** 상세로 가는 주소를 만드는 값 */
+  player_id: string | null
+  clan_slug: string | null
+  games: number
+  win: number
+  lose: number
+  /** 그날 승률 (%) */
+  win_rate: number
+  /**
+   * 그날 킬뎃 (%) — 킬/데스 × 100.
+   * ★IPL 도 여기에만 적는다★ (사장님이 콕 집어 예외로 두셨다).
+   */
+  kd_rate: number | null
+  /** 여섯 축 중 가장 낮은 축의 백분위 — «약점 없음» 의 크기다 */
+  low_axis: number
+  /** 그 축 이름 — «가장 약한 데가 여기인데 그것도 상위 76%» 를 보여 준다 */
+  low_axis_label: string
+  /** 여섯 축 평균 */
+  avg_axis: number
+}
+
+export interface DailyPodium {
+  /** 기준일 (KST `YYYY-MM-DD`). 경기가 하나도 없으면 `null` */
+  day: string | null
+  players: DailyPodiumRow[]
+  clans: DailyPodiumRow[]
+}
+
+function tallyOf(value: unknown): ClanHexTallyLike | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as ClanHexTallyLike
+}
+
+function scoreOf(low: number, avg: number, winRate: number): number {
+  return low * W_LOW + avg * W_AVG + winRate * W_WIN
+}
+
+export async function dailyPodium(leagueSlug: string): Promise<DailyPodium | null> {
+  const league = await prisma.league.findFirst({ where: { slug: leagueSlug }, select: { id: true } })
+  if (league === null) return null
+
+  /* ★경기가 있던 마지막 날★ — 오늘 경기가 들어오면 저절로 오늘이 된다 */
+  const dayRows = (await prisma.$queryRawUnsafe(
+    `SELECT (m."startAt" AT TIME ZONE 'Asia/Seoul')::date::text AS d
+       FROM "Match" m
+      WHERE m."leagueId" = $1 AND m."supersededAt" IS NULL
+      ORDER BY m."startAt" DESC
+      LIMIT 1`,
+    league.id,
+  )) as { d: string }[]
+  const day = dayRows[0]?.d ?? null
+  if (day === null) return { day: null, players: [], clans: [] }
+
+  const players = await playersOf(league.id, day)
+  const clans = await clansOf(league.id, day)
+  return { day, players, clans }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 사람                                                                         */
+/* -------------------------------------------------------------------------- */
+
+async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[]> {
+  const axisCols = PLAYER_HEX_AXIS_ORDER.map((k) => `h."${k}Pct" AS "${k}"`).join(', ')
+  const rows = (await prisma.$queryRawUnsafe(
+    `SELECT s."playerId", pl.name,
+            c.name AS "clanName", c.slug AS "clanSlug", c."markBgUrl", c."markFrontUrl",
+            COUNT(*)::int AS games,
+            SUM(CASE WHEN m."winnerSide" = s.side THEN 1 ELSE 0 END)::int AS win,
+            SUM(COALESCE(s.kill, 0))::int AS kill,
+            SUM(COALESCE(s.death, 0))::int AS death,
+            ${axisCols}
+       FROM "MatchPlayerStat" s
+       JOIN "Match" m ON m.id = s."matchId"
+       JOIN "Player" pl ON pl.id = s."playerId"
+       JOIN "LeaguePlayer" lp ON lp."playerId" = s."playerId" AND lp."leagueId" = $1
+       LEFT JOIN "Clan" c ON c.id = lp."clanId"
+       LEFT JOIN "LeaguePlayerHex" h ON h."leaguePlayerId" = lp.id
+      WHERE m."leagueId" = $1 AND m."supersededAt" IS NULL
+        AND (m."startAt" AT TIME ZONE 'Asia/Seoul')::date = $2::date
+      GROUP BY s."playerId", pl.name, c.name, c.slug, c."markBgUrl", c."markFrontUrl", ${PLAYER_HEX_AXIS_ORDER.map((k) => `h."${k}Pct"`).join(', ')}`,
+    leagueId,
+    day,
+  )) as Record<string, unknown>[]
+
+  const scored = rows
+    .map((r) => {
+      const axes = PLAYER_HEX_AXIS_ORDER.map((k) => r[k] as number | null)
+      if (axes.some((v) => v === null)) return null
+      const games = Number(r.games)
+      if (games < MIN_GAMES) return null
+      const vals = axes as number[]
+      const low = Math.min(...vals)
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+      const win = Number(r.win)
+      const winRate = games === 0 ? 0 : (win / games) * 100
+      const death = Number(r.death)
+      const lowIndex = vals.indexOf(low)
+      return {
+        row: r,
+        low,
+        avg,
+        winRate,
+        lowLabel: PLAYER_HEX_AXIS_ORDER[lowIndex] ?? '',
+        kd: death === 0 ? null : (Number(r.kill) / death) * 100,
+        games,
+        win,
+        score: scoreOf(low, avg, winRate),
+      }
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, DAILY_PODIUM_SIZE)
+
+  return scored.map((x, i) => ({
+    rank: i + 1,
+    name: String(x.row.name),
+    clan:
+      x.row.clanSlug === null || x.row.clanSlug === undefined
+        ? null
+        : {
+            name: String(x.row.clanName),
+            slug: String(x.row.clanSlug),
+            mark: {
+              bg: (x.row.markBgUrl as string | null) ?? null,
+              front: (x.row.markFrontUrl as string | null) ?? null,
+            },
+          },
+    player_id: String(x.row.playerId),
+    clan_slug: null,
+    games: x.games,
+    win: x.win,
+    lose: x.games - x.win,
+    win_rate: Math.round(x.winRate * 10) / 10,
+    kd_rate: x.kd === null ? null : Math.round(x.kd * 10) / 10,
+    low_axis: Math.round(x.low),
+    low_axis_label: x.lowLabel,
+    avg_axis: Math.round(x.avg),
+  }))
+}
+
+/* -------------------------------------------------------------------------- */
+/* 클랜                                                                         */
+/* -------------------------------------------------------------------------- */
+
+async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]> {
+  /* 그날 뛴 클랜의 성적 — 한 경기에 두 클랜이라 red/blue 를 펼쳐 센다 */
+  const rows = (await prisma.$queryRawUnsafe(
+    `WITH played AS (
+       SELECT m."redLeagueClanId" AS "leagueClanId",
+              (m."winnerSide" = 'red') AS won, m.id AS "matchId"
+         FROM "Match" m
+        WHERE m."leagueId" = $1 AND m."supersededAt" IS NULL
+          AND (m."startAt" AT TIME ZONE 'Asia/Seoul')::date = $2::date
+       UNION ALL
+       SELECT m."blueLeagueClanId", (m."winnerSide" = 'blue'), m.id
+         FROM "Match" m
+        WHERE m."leagueId" = $1 AND m."supersededAt" IS NULL
+          AND (m."startAt" AT TIME ZONE 'Asia/Seoul')::date = $2::date
+     )
+     SELECT lc.id AS "leagueClanId", c.name, c.slug, c."markBgUrl", c."markFrontUrl",
+            COUNT(*)::int AS games,
+            SUM(CASE WHEN p.won THEN 1 ELSE 0 END)::int AS win,
+            COALESCE(SUM(k.kill), 0)::int AS kill,
+            COALESCE(SUM(k.death), 0)::int AS death
+       FROM played p
+       JOIN "LeagueClan" lc ON lc.id = p."leagueClanId"
+       JOIN "Clan" c ON c.id = lc."clanId"
+       LEFT JOIN LATERAL (
+         SELECT SUM(COALESCE(s.kill, 0))::int AS kill, SUM(COALESCE(s.death, 0))::int AS death
+           FROM "MatchPlayerStat" s
+          WHERE s."matchId" = p."matchId" AND s."matchTimeLeagueClanId" = lc.id
+       ) k ON TRUE
+      WHERE lc."expelledAt" IS NULL
+      GROUP BY lc.id, c.name, c.slug, c."markBgUrl", c."markFrontUrl"`,
+    leagueId,
+    day,
+  )) as {
+    leagueClanId: string
+    name: string
+    slug: string
+    markBgUrl: string | null
+    markFrontUrl: string | null
+    games: number
+    win: number
+    kill: number
+    death: number
+  }[]
+  if (rows.length === 0) return []
+
+  /* 클랜 육각은 원값뿐이라 ★리그 분포★ 로 정규화해야 축 백분위가 나온다 (뱃지와 같은 길) */
+  const summaries = await prisma.clanHexV2Summary.findMany({
+    where: { leagueId, formulaVersion: CLAN_HEX_V2_CONFIG.formulaVersion },
+    select: { leagueClanId: true, tally: true, matches: true },
+  })
+  const raw = new Map<string, ClanHexV2>()
+  for (const r of summaries) {
+    raw.set(r.leagueClanId, buildClanHexV2Raw({ tally: tallyOf(r.tally), matches: r.matches }))
+  }
+  const pool = [...raw.values()]
+
+  const scored = rows
+    .map((r) => {
+      if (r.games < MIN_GAMES) return null
+      const target = raw.get(r.leagueClanId)
+      if (target === undefined) return null
+      const hex = normalizeByPercentile(target, pool)
+      const vals = hex.axes.map((a) => (a.value === null ? null : a.value * 100))
+      if (vals.some((v) => v === null)) return null
+      const nums = vals as number[]
+      const low = Math.min(...nums)
+      const avg = nums.reduce((a, b) => a + b, 0) / nums.length
+      const winRate = (r.win / r.games) * 100
+      const lowIndex = nums.indexOf(low)
+      return {
+        r,
+        low,
+        avg,
+        winRate,
+        lowLabel: hex.axes[lowIndex]?.label ?? '',
+        kd: r.death === 0 ? null : (r.kill / r.death) * 100,
+        score: scoreOf(low, avg, winRate),
+      }
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, DAILY_PODIUM_SIZE)
+
+  return scored.map((x, i) => ({
+    rank: i + 1,
+    name: x.r.name,
+    clan: {
+      name: x.r.name,
+      slug: x.r.slug,
+      mark: { bg: x.r.markBgUrl, front: x.r.markFrontUrl },
+    },
+    player_id: null,
+    clan_slug: x.r.slug,
+    games: x.r.games,
+    win: x.r.win,
+    lose: x.r.games - x.r.win,
+    win_rate: Math.round(x.winRate * 10) / 10,
+    kd_rate: x.kd === null ? null : Math.round(x.kd * 10) / 10,
+    low_axis: Math.round(x.low),
+    low_axis_label: x.lowLabel,
+    avg_axis: Math.round(x.avg),
+  }))
+}
