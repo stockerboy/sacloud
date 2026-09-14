@@ -336,29 +336,51 @@ export async function runBattlelogLineup(
   */
   const keyRows =
     options.onlyPending === true
-      ? await prisma.$queryRaw<Array<{ matchKey: string }>>`
-          SELECT DISTINCT b."matchKey"
-          FROM "BarracksBattleLogRaw" b
-          JOIN "Match" m
-            ON  m."sourceMatchId" = b."matchKey"
-            AND m."origin"        = ${MATCH_ORIGIN}
-            AND m."supersededAt"  IS NULL
-            AND m."leagueId"      = ANY(${leagueIds})
-            AND m."startAt"      >= ${MIRROR_FREEZE_FROM}
-          WHERE b."subjectKind" = 'clan' AND b."status" = 'ok'
+      ? /*
+         * ⚠ ★2026-09-15 — 이 질의가 DB 시간초과로 죽고 있었다★
+         *
+         *   운영 로그: `Code: 57014 · canceling statement due to statement timeout`.
+         *   ★오늘 23번 돌아서 완료된 회차가 0번★ 이었다. 그래서 배틀로그는 다 들어와 있는데
+         *   명단이 하나도 안 만들어졌고, 화면에 ★「기록 없음」★ 이 줄줄이 떴다
+         *   (사장님: «기록이 없는건 또 무야»).
+         *
+         *   ★왜 무거웠나★ — `BarracksBattleLogRaw`(11만 줄)에서 ★출발★ 해서 `Match` 를
+         *   조인하고 `DISTINCT` 를 걸었다. 원문이 쌓일수록 무거워지는 모양이다.
+         *
+         *   ★뒤집었다★ — `Match` 에서 출발한다. `(leagueId, startAt desc)` 인덱스로
+         *   9/3 이후 세 리그만 좁히면 ★천여 건★ 이고, 그 각각에 `EXISTS` 한 번이다.
+         *   `BarracksBattleLogRaw` 에는 `matchKey` 인덱스가 있어 한 건씩은 싸다.
+         *   ★고르는 집합은 한 건도 안 바뀌었다★ — 같은 조건을 방향만 바꿔 적었다.
+         *
+         *   옛 질의는 아래 `PENDING_KEYS_V1` 에 남겼다 (`CLAUDE.md` 1-4).
+         */
+        await prisma.$queryRaw<Array<{ matchKey: string }>>`
+          SELECT DISTINCT m."sourceMatchId" AS "matchKey"
+          FROM "Match" m
+          WHERE m."origin"       = ${MATCH_ORIGIN}
+            AND m."supersededAt" IS NULL
+            AND m."leagueId"     = ANY(${leagueIds})
+            AND m."startAt"     >= ${MIRROR_FREEZE_FROM}
+            AND m."sourceMatchId" IS NOT NULL
             AND (
                   /* ① 한 번도 안 봤다 */
                   m."lineupStatus" IS NULL
                   /* ②③ 결론이 아직 안 난 incomplete */
-               OR ( m."lineupStatus" = 'incomplete'
-                    AND (
-                          /* ② 우리가 고칠 수 있는 사유 — 클랜을 등록하면 살아난다 */
-                          m."lineupSkipReason" IS DISTINCT FROM 'roster_incomplete'
-                          /* ③ 마지막으로 본 뒤에 새 배틀로그가 왔다 */
-                       OR m."lineupCheckedAt" IS NULL
-                       OR b."fetchedAt" > m."lineupCheckedAt"
-                    )
-                  )
+               OR m."lineupStatus" = 'incomplete'
+            )
+            AND EXISTS (
+              SELECT 1 FROM "BarracksBattleLogRaw" b
+               WHERE b."matchKey" = m."sourceMatchId"
+                 AND b."subjectKind" = 'clan'
+                 AND b."status" = 'ok'
+                 AND (
+                       m."lineupStatus" IS NULL
+                       /* ② 우리가 고칠 수 있는 사유 — 클랜을 등록하면 살아난다 */
+                    OR m."lineupSkipReason" IS DISTINCT FROM 'roster_incomplete'
+                       /* ③ 마지막으로 본 뒤에 새 배틀로그가 왔다 */
+                    OR m."lineupCheckedAt" IS NULL
+                    OR b."fetchedAt" > m."lineupCheckedAt"
+                 )
             )
           ORDER BY 1 ASC
         `

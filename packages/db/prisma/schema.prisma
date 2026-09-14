@@ -1088,6 +1088,10 @@ model Match {
   @@unique([leagueId, origin, sourceMatchId])
   // 기록실: 리그별 최신순
   @@index([leagueId, startAt(sort: Desc)])
+  /// ★라인업이 손볼 경기를 찾는 길★ (2026-09-15) — 실제 인덱스는 ★부분 인덱스★ 다
+  /// (`lineupStatus IS NULL OR 'incomplete'` 인 줄만). Prisma 스키마는 부분 인덱스를
+  /// 표현하지 못해서 여기에는 조건 없이 적고, 조건은 마이그레이션 SQL 이 갖고 있다.
+  /// 이것이 없을 때 라인업 잡이 DB 시간초과(57014)로 매번 죽었다 — 5,232ms → 45ms.
   @@index([redLeagueClanId, startAt(sort: Desc)])
   @@index([blueLeagueClanId, startAt(sort: Desc)])
   @@index([seasonId])
