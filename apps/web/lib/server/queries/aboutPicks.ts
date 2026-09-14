@@ -134,18 +134,41 @@ const LEAGUES: readonly { slug: string; label: string }[] = [
 const HAND_PICKED: Readonly<
   Record<string, { playerId?: string; clanSlug?: string }>
 > = {
-  /* 리리컬뚱이 — 세이브만 상위 96%, 나머지는 36% (사장님: «하나만 유독 잘하는 애») */
-  nolink: { playerId: 'cmtsn0lys003wtedyqknenelj', clanSlug: 'uava01' },
   /*
+   * ★세 리그 모두 「하나만 유독 잘하는」 선수★ (2026-09-14 저녁 사장님:
+   * «걍 LLM이랑 YSL도 하나 특성만 특출난 애로 넣어»).
+   *
+   * 고른 기준 — 여섯 축 중 ★최고축이 85 이상★ 이면서 ★나머지 다섯 평균이 35~65★.
+   *   그래야 육각형이 ★한쪽만 뾰족★ 하게 나와서 «이 사람은 이걸로 이긴다» 가
+   *   한눈에 보인다. 평균이 높은 사람은 육각형이 둥글어 무엇으로 이기는지가 안 보인다.
+   *   20판 이상만 본다 — 표본이 적으면 축이 흔들린다.
+   *
+   *   IPL  리리컬뚱이  세이브 96 · 나머지 36   (벌어짐 60)
+   *   LLM  조맨        연속킬 94 · 나머지 42   (벌어짐 52)
+   *   YSL  람쥐6       선짤   91 · 나머지 43   (벌어짐 48)
+   */
+
+  /* 리리컬뚱이 — 세이브만 상위 96%, 나머지는 36% */
+  nolink: { playerId: 'cmtsn0lys003wtedyqknenelj', clanSlug: 'uava01' },
+
+  /*
+   * 조맨 — 연속킬만 상위 94%, 나머지는 42%.
+   *   같은 조건 2위가 그 클랜(`-tsAr.nTc`)의 tsArM 이었는데, 클랜기록을 이미
+   *   그 클랜으로 넣어서 ★한 화면에 같은 클랜이 두 번★ 나오지 않게 조맨으로 골랐다.
+   *
    * ⚠ 클랜은 ★slug 가 `sorentolove`★ 다 — 이름이 «-tsAr.nTc» 인 그 클랜이다.
    *   `tsArnTc` 라는 slug 도 따로 있는데 그건 YSL 의 «overthere» 이고 0승 0패다.
    *   같은 클랜이 두 줄로 들어간 자국이다 (선수 3출처 미병합 문제와 같은 뿌리).
    *
-   * ⚠ 선수(`one needyou`)는 ★아직 못 넣었다★ — LLM 에 «Oneːneedyou» 로 등록은
-   *   되어 있는데 ★경기 기록이 0줄★ 이다. 사장님께 여쭙는 중이다.
-   *   그동안은 자동 선정(경기 최다)이 그 자리를 채운다.
+   * ⚠ 사장님이 처음 지목하신 `one needyou` 는 못 넣었다 — LLM 에 «Oneːneedyou» 로
+   *   등록은 되어 있는데 ★경기 기록이 0줄★ 이고 계정 id 조차 없어(`sourcePlayerId`
+   *   null) 다른 이름과 이어 붙일 수 없다. 닉을 바꾸신 것 같다고 하셔서
+   *   원포인트 명단을 올려 드리고 답을 기다리는 중이다.
    */
-  supply: { clanSlug: 'sorentolove' },
+  supply: { playerId: 'cmtwzukhs002kter03slzq0qu', clanSlug: 'sorentolove' },
+
+  /* 람쥐6 — 선짤만 상위 91%, 나머지는 43% */
+  sanply: { playerId: 'cmtpj5pqm2yxivlowkbxu4p7w' },
 }
 
 /**
