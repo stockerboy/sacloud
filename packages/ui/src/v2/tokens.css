@@ -1281,6 +1281,22 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /*
+   * ★날아오기 전 자리가 화면 밖이라 가로 스크롤이 생기던 것★ (2026-09-15 QA에서 잡았다).
+   *
+   *   칸이 `translateX(±30px)` 에서 출발한다. 아직 안 들어온 칸은 화면 밖에 걸쳐 있고,
+   *   폰(390px)에서 재 보니 ★문서가 409px★ 이 되어 ★가로로 19px 넘쳤다.★
+   *   («왼쪽 -19px · 오른쪽 409px» — `guide-flow__item.from-left` / `.from-right`)
+   *
+   *   ★움직임은 한 글자도 안 바꿨다★ — 넘친 자리를 잘라 낼 뿐이다.
+   *   칸 자체는 `overflow: hidden` 이 이미 있는데, ★그 바깥 목록★ 이 없어서 새어 나갔다.
+   *
+   * ⚠ ★`overflow-y: visible` 을 같이 쓰면 안 된다★ — 한 축을 자르면 CSS 가 다른 축을
+   *   `auto` 로 바꿔 버려서 ★세로 스크롤 상자★ 가 생긴다. 그래서 가로만 적는다.
+   *   `clip` 은 그 부작용이 없는 새 값이라 먼저 쓰고, 모르는 브라우저는 `hidden` 으로 받는다.
+   */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 .guide-flow__item {
   position: relative;
