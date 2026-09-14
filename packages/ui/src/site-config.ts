@@ -58,10 +58,32 @@ export interface NavLink {
  *   그래서 `FEATURED_LEAGUES` 는 **리그 목록이자 홈 순서**(D-246 그대로)로 두고,
  *   상단바는 아래 `GNB_LEAGUES` 를 쓴다. 리그를 더하거나 빼는 것은 여기 한 곳에서만 한다.
  */
+/**
+ * ⚠ ★2026-09-14 — 리그 이름이 바뀌었다★ (사장님이 새 로고와 함께 정하셨다).
+ *
+ *   ```
+ *   IPL  Independent Premier League   무소속 리그      (그대로)
+ *   LLM  Limitless Leagues Matches    구 서플라이      ← ★SPL 에서 바뀜★
+ *   YSL                               열산 리그        ← ★10 에서 바뀜★
+ *   ```
+ *
+ *   ★주소(slug)는 한 글자도 안 바뀐다★ — `supply` · `sanply` 그대로다.
+ *   바꾸면 지금까지 나간 링크가 전부 깨진다. 바뀐 것은 ★보이는 이름★ 뿐이다.
+ *   운영 DB 의 `League.name` 도 같이 바꿨다 (화면 대부분은 그 값을 쓴다).
+ *
+ *   옛 이름은 아래 `FEATURED_LEAGUES_V1` 에 남긴다 (`CLAUDE.md` 1-4).
+ */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
+  { label: 'LLM', href: '/league/supply' },
+  { label: 'IPL', href: '/league/nolink' },
+  { label: 'YSL', href: '/league/sanply' },
+]
+
+/** ⚠ 옛 이름 (2026-09-14 이전). 지우지 않는다 — 되돌릴 때 쓴다 */
+export const FEATURED_LEAGUES_V1: readonly NavLink[] = [
   { label: 'SPL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
-  /* ★2026-09-12 사장님: «앞으로 모든 이름을 10으로 바꿔»★ — 옛 표기는 '10mountain' 이었다 */
+  /* ★2026-09-12 사장님: «앞으로 모든 이름을 10으로 바꿔»★ — 그 앞 표기는 '10mountain' 이었다 */
   { label: '10', href: '/league/sanply' },
 ]
 
@@ -204,3 +226,25 @@ export const SITE_BRAND = {
    */
   contactEmail: 'softgw01@naver.com',
 } as const
+
+/**
+ * ★슬러그 → 화면에 쓰는 리그 이름★ (2026-09-14).
+ *
+ * ⚠ ★이름이 네 곳에 흩어져 있었다★ — 상단바·관리자 신청목록·신청서·통합랭킹.
+ *   2026-09-14 에 «SPL → LLM» 으로 바뀔 때 ★세 곳이 옛 이름 그대로 남아 있었다.★
+ *   이제 여기 한 곳만 고치면 된다.
+ *
+ * ⚠ 화면 대부분은 서버가 주는 `League.name` 을 쓴다 — 이 표는 ★서버 값이 없는 자리★
+ *   (상단바·신청서처럼 리그를 아직 안 불러온 화면)를 위한 것이다. 두 값이 어긋나지 않게
+ *   운영 DB 의 `League.name` 도 같은 이름으로 맞춰 두었다.
+ */
+export const LEAGUE_NAME: Readonly<Record<string, string>> = {
+  nolink: 'IPL',
+  supply: 'LLM',
+  sanply: 'YSL',
+}
+
+/** 그 리그의 이름. 모르는 슬러그면 슬러그를 그대로 돌려준다 — 지어내지 않는다 */
+export function leagueNameOf(slug: string): string {
+  return LEAGUE_NAME[slug] ?? slug
+}

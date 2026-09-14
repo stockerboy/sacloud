@@ -16,6 +16,7 @@
  * 권한 판정은 서버가 한다 (정책 22). 여기서 403 을 받으면 그대로 적는다.
  */
 import { useCallback, useEffect, useState } from 'react'
+import { LEAGUE_NAME } from '@sacloud/ui'
 import { APPLICATION_STATUS, APPLICATION_STATUS_LABEL } from '@sacloud/contract'
 import { AdminError, adminFetch } from '../lib'
 
@@ -42,11 +43,8 @@ interface List {
   pending: number
 }
 
-const LEAGUE_LABEL: Readonly<Record<string, string>> = {
-  nolink: 'IPL',
-  supply: 'SPL',
-  sanply: '10mountain',
-}
+/* 리그 이름은 한 곳(`site-config`)이 정한다 — 네 곳에 흩어져 있다가 어긋났다 (2026-09-14) */
+const LEAGUE_LABEL = LEAGUE_NAME
 
 const FILTERS: { key: string; label: string }[] = [
   { key: '', label: '전체' },

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { FEATURED_LEAGUES, isLeaguePreparing } from '@sacloud/ui'
+import { LEAGUE_LOGO } from '@sacloud/ui'
 
 /**
  * ★★홈 리그 표장 셋★★ (2026-09-12 사장님)
@@ -25,11 +26,13 @@ import { FEATURED_LEAGUES, isLeaguePreparing } from '@sacloud/ui'
  */
 
 /** 리그 slug → 표장 그림. ★없는 리그는 안 그린다★ (지어내지 않는다) */
-const MARK: Readonly<Record<string, string>> = {
-  sanply: '/assets/league-10.png',
-  nolink: '/assets/league-ipl.png',
-  supply: '/assets/league-spl.png',
-}
+/* ⚠ ★2026-09-14 — 로고가 한 곳으로 모였다★ (사장님이 새 로고 셋을 주셨다).
+   옛 판은 상단바(v1·v2)와 홈 타일 세 곳에 주소가 따로 박혀 있었다 — 바뀔 때마다
+   하나를 빠뜨렸다. 이제 `leagueLogo.ts` 한 곳이 그림도 크기도 정한다.
+   옛 로고는 `LEAGUE_LOGO_V1` 로 그대로 살아 있다 (`CLAUDE.md` 1-4). */
+const MARK: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(LEAGUE_LOGO).map(([slug, logo]) => [slug, logo.src]),
+)
 
 /** 표장 아래 글자에 얹는 빛 — 리그색 그대로 */
 const GLOW: Readonly<Record<string, string>> = {

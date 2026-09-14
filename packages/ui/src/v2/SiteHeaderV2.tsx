@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { LEAGUE_LOGO } from '../layout/leagueLogo'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { GNB_LEAGUES, MOBILE_NAV_GROUPS, PRIMARY_NAV, type NavGroup, type NavLink } from '../site-config'
@@ -59,6 +60,10 @@ export interface SiteHeaderV2Props {
  * ★상단바 표장★ — 홈 리그 단추와 ★같은 파일★ 이다 (2026-09-12 사장님).
  * 표장이 없는 슬러그는 글자만 나온다 — 지어내지 않는다.
  */
+/* ⚠ ★2026-09-14 — 로고가 한 곳으로 모였다★ (사장님이 새 로고 셋을 주셨다).
+   옛 판은 상단바(v1·v2)와 홈 타일 세 곳에 주소가 따로 박혀 있었다 — 바뀔 때마다
+   하나를 빠뜨렸다. 이제 `leagueLogo.ts` 한 곳이 그림도 크기도 정한다.
+   옛 로고는 `LEAGUE_LOGO_V1` 로 그대로 살아 있다 (`CLAUDE.md` 1-4). */
 const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> = {
   /**
    * ★본디 크기를 같이 적는다★ (2026-09-12).
@@ -68,10 +73,8 @@ const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> 
    *   일부 폰 브라우저가 가로를 0 으로 잡는다. 본디 크기를 적어 두면 비율을 알아서
    *   그런 일이 안 생긴다. 화면에 실제로 쓰는 크기는 CSS(`.v2-gnb__mark`) 가 정한다.
    */
-  sanply: { src: '/assets/league-10.png', w: 227, h: 160 },
-  /* 2026-09-12 글자를 잘라 냈다. 옛 값: IPL 254 · SPL 300 */
-  nolink: { src: '/assets/league-ipl.png', w: 177, h: 160 },
-  supply: { src: '/assets/league-spl.png', w: 210, h: 160 },
+  /* 2026-09-12 글자를 잘라 냈다. 옛 값: IPL 254 · SPL 300 · 10 227 */
+  ...LEAGUE_LOGO,
 }
 
 /**

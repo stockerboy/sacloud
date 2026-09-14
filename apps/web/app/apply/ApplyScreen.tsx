@@ -28,7 +28,7 @@ import {
   type ApplicationLeague,
   type ApplicationWaitingLeague,
 } from '@sacloud/contract'
-import { MarkCircle, V3 } from '@sacloud/ui'
+import { MarkCircle, V3, LEAGUE_NAME } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -41,19 +41,19 @@ const LEAGUE_CARD: Record<
   { name: string; head: string; gives: string[]; tone: string }
 > = {
   nolink: {
-    name: 'IPL',
+    name: LEAGUE_NAME.nolink ?? 'IPL',
     head: '개인·클랜 승률만 기록',
     gives: ['경기 분석 · 플레이 분석', '개인/클랜 승률', '개인 킬데스는 공개하지 않습니다', '래더(점수) 미제공'],
     tone: '#9cc0ff',
   },
   supply: {
-    name: 'SPL',
+    name: LEAGUE_NAME.supply ?? 'LLM',
     head: '모든 기록 100% 제공',
     gives: ['경기 분석 · 플레이 분석', '승률 · 킬데스 전부 기록', '랭킹 제도(래더) 적용'],
     tone: '#ffd98a',
   },
   sanply: {
-    name: '10mountain',
+    name: LEAGUE_NAME.sanply ?? 'YSL',
     head: '고용 가능 클랜으로 진행',
     gives: ['개인 킬데스 · 개인 승률', '개인 플레이 스타일 분석', '경기 분석', '클랜 기록은 제공하지 않습니다'],
     tone: '#a6e3c4',

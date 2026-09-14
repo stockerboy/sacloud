@@ -340,6 +340,7 @@ function Showcase({ pick, league }: { pick: Pick; league: AboutLeague }) {
           name={pick.clan.name}
           games={pick.clan.games}
           data={pick.clan_detail}
+          league={league}
         />
       )}
       {pick.match === null || pick.match_detail === null ? null : (
@@ -375,6 +376,18 @@ function PlayerShowcase({
    * 대신 IPL 에는 안내문이 붙는다 — 아래 `kdNotice`.
    */
   const kdNotice = league.slug === 'nolink' ? IPL_KD_NOTICE : null
+  /** ★기록을 숫자로 안 적는 리그★ — 그 자리에 «-미제공-» 을 쓴다 (2026-09-14 사장님) */
+  const hideRecord = league.slug === 'nolink'
+
+  /* 순위는 선수 머리 카드(`PlayerHeaderV3`)와 ★같은 규칙★ 으로 고른다 — 통합 등수가 먼저다 */
+  const hex = data.hex
+  const rank = hex?.score_rank_all ?? (hex ? hex.score_rank : data.rank)
+  const rankTotal = hex?.score_total_all ?? (hex ? hex.score_total : data.rank_count)
+  const winRate = data.win + data.lose === 0 ? null : (data.win / (data.win + data.lose)) * 100
+  const kd =
+    data.kill !== null && data.death !== null && data.death > 0
+      ? (data.kill / data.death) * 100
+      : null
 
   const axes = strengthAxes(data)
   const today = data.trend.find((d) => d.today) ?? null
@@ -397,21 +410,7 @@ function PlayerShowcase({
           </span>
         }
       />
-      <div style={{ padding: '4px 18px 10px', display: 'flex', alignItems: 'center', gap: 9 }}>
-        <MarkCircle
-          clan={data.clan === null ? null : { slug: data.clan.slug, mark: data.clan.mark }}
-          size={26}
-        />
-        <Link
-          href={`/league/${leagueSlug}/player/${playerId}`}
-          style={{ fontSize: 15, fontWeight: 700, color: '#fff', textDecoration: 'none' }}
-        >
-          {name}
-        </Link>
-        {data.clan === null ? null : (
-          <span style={{ fontSize: 11.5, color: V3.textFaint }}>{data.clan.name}</span>
-        )}
-      </div>
+      {/* ⚠ 이름 줄은 ★육각형 위★ 로 옮겼다 (2026-09-14 저녁 사장님이 빨간 화살표로 그 자리를 가리키셨다) */}
 
       {/*
         ★한 가로 카드 안에 그래프(왼쪽) + 육각형(오른쪽)★ (2026-09-14 저녁 사장님이
@@ -470,25 +469,81 @@ function PlayerShowcase({
                   : '아직 경기 없음'
                 : `누적 ${data.win}승 ${data.lose}패`
             }
+            /*
+             * ★K/D 마커 오른쪽에 «제공하지 않습니다» 를 적는다★ (2026-09-14 저녁 사장님이
+             *   빨간 펜으로 그 자리를 찍어 주셨다).
+             *
+             * ⚠ 킬데스 ★숫자★ 를 그 자리에 그대로 두면 안 된다 — IPL 은 «킬데스 미제공» 인데
+             *   «225킬 174데스» 가 찍혀 있었다. 안내로 ★갈아 끼운다.★
+             *   선과 비율(56.4%)은 남긴다 — 사장님: «킬뎃 승률 다 그래프로 보여주는데».
+             */
             kdLabel={
-              mode === 'day'
-                ? ref
-                  ? `${ref.name} ${ref.d.kill}킬 ${ref.d.death}데스`
-                  : ''
-                : data.kill !== null && data.death !== null
-                  ? `누적 ${data.kill}킬 ${data.death}데스`
-                  : ''
+              kdNotice !== null
+                ? 'K/D 는 제공하지 않습니다'
+                : mode === 'day'
+                  ? ref
+                    ? `${ref.name} ${ref.d.kill}킬 ${ref.d.death}데스`
+                    : ''
+                  : data.kill !== null && data.death !== null
+                    ? `누적 ${data.kill}킬 ${data.death}데스`
+                    : ''
             }
           />
         </div>
 
-        <div style={{ minWidth: 0 }}>
-          <p style={{ padding: '0 2px 4px', fontSize: 11.5, lineHeight: 1.8, color: V3.textMuted }}>
-            여섯 축은 <b style={{ color: '#fff' }}>이 선수가 무엇으로 이기는가</b>를 말합니다.
-          </p>
+        {/*
+          ★그래프 판 위 오른쪽 빈 자리에 얹는다★ (2026-09-14 저녁 사장님).
+          «닉네임 순위 킬뎃 승률 그런정도 오른쪽에 6각 그래프 위에 잘 보이게 배치해줘
+            (★ipl도 형식은 똑같은데 킬뎃 승률 그쪽에 기록 쓰지말고 걍 -미제공- 이렇게 써놔★)»
+        */}
+        <div className="about-hexover">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px 6px', minWidth: 0 }}>
+            <MarkCircle
+              clan={data.clan === null ? null : { slug: data.clan.slug, mark: data.clan.mark }}
+              size={24}
+            />
+            <Link
+              href={`/league/${leagueSlug}/player/${playerId}`}
+              style={{
+                fontSize: 15,
+                fontWeight: 800,
+                color: '#fff',
+                textDecoration: 'none',
+                pointerEvents: 'auto',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {name}
+            </Link>
+            {data.clan === null ? null : (
+              <span
+                style={{
+                  fontSize: 11,
+                  color: V3.textFaint,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {data.clan.name}
+              </span>
+            )}
+          </div>
+          <HeadStats
+            rank={rank}
+            rankTotal={rankTotal}
+            winRate={hideRecord ? null : winRate}
+            kd={hideRecord ? null : kd}
+            hidden={hideRecord}
+          />
           {axes.length === 0 ? null : <Hexagon axes={axes} id={`aboutHex-${playerId}`} />}
         </div>
       </div>
+      <p style={{ padding: '0 16px 8px', fontSize: 11.5, lineHeight: 1.8, color: V3.textMuted }}>
+        여섯 축은 <b style={{ color: '#fff' }}>이 선수가 무엇으로 이기는가</b>를 말합니다.
+      </p>
 
       {/* ④ K/D 안내 — 그래프 바로 밑 (2026-09-14 사장님: «K/D 원마크 멈출때 오른쪽에 써놔») */}
       {kdNotice === null ? null : (
@@ -553,6 +608,99 @@ export function SideStat({
   )
 }
 
+/**
+ * ★육각형 위에 붙는 한 줄★ — 순위 · 승률 · 킬뎃 (2026-09-14 저녁 사장님).
+ *
+ * ⚠ ★IPL 은 숫자를 안 적는다★ — «킬뎃 승률 그쪽에 기록 쓰지말고 걍 -미제공- 이렇게 써놔».
+ *   칸을 없애지 않고 ★자리는 그대로 두고 글자만 바꾼다★ — 형식이 같아야 리그를 견줄 수 있다.
+ *   순위는 IPL 도 적는다 (사장님: «개인랭킹도 은글슬쩍 유지해»).
+ */
+function HeadStats({
+  rank,
+  rankTotal,
+  winRate,
+  kd,
+  hidden,
+  showKd = true,
+}: {
+  rank: number | null
+  rankTotal: number | null
+  winRate: number | null
+  kd: number | null
+  hidden: boolean
+  /** 클랜은 킬뎃 칸이 아예 없다 — 계약에 그 값이 없다 (2026-09-14) */
+  showKd?: boolean
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 14,
+        flexWrap: 'wrap',
+        padding: '0 2px 8px',
+        alignItems: 'baseline',
+      }}
+    >
+      <HeadStat
+        label="순위"
+        value={rank === null ? '—' : `${rank}위`}
+        sub={rankTotal === null ? '' : `/ ${rankTotal.toLocaleString()}명`}
+        tone="#ffd98a"
+      />
+      <HeadStat
+        label="승률"
+        value={hidden ? '-미제공-' : winRate === null ? '—' : `${winRate.toFixed(1)}%`}
+        sub=""
+        tone={hidden ? V3.textGhost2 : '#7fa9ff'}
+        muted={hidden}
+      />
+      {!showKd ? null : (
+        <HeadStat
+          label="킬뎃"
+          value={hidden ? '-미제공-' : kd === null ? '—' : `${kd.toFixed(1)}%`}
+          sub=""
+          tone={hidden ? V3.textGhost2 : '#ff8a90'}
+          muted={hidden}
+        />
+      )}
+    </div>
+  )
+}
+
+function HeadStat({
+  label,
+  value,
+  sub,
+  tone,
+  muted = false,
+}: {
+  label: string
+  value: string
+  sub: string
+  tone: string
+  muted?: boolean
+}) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
+      <span style={{ fontSize: 10.5, color: V3.textFaint }}>{label}</span>
+      <span
+        style={{
+          fontSize: muted ? 12 : 15,
+          fontWeight: muted ? 600 : 800,
+          color: tone,
+          fontVariantNumeric: 'tabular-nums',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {value}
+      </span>
+      {sub === '' ? null : (
+        <span style={{ fontSize: 10, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{sub}</span>
+      )}
+    </span>
+  )
+}
+
 /* ── 클랜 — 육각 + 상대전적 ────────────────────────────────── */
 
 function ClanShowcase({
@@ -561,18 +709,26 @@ function ClanShowcase({
   name,
   games,
   data,
+  league,
 }: {
   leagueSlug: string
   clanSlug: string
   name: string
   games: number
   data: LeagueClanShow
+  league: AboutLeague
 }) {
   /* 계약에 `games` 칸은 없다 — 승+패가 판수다 */
   const h2h = [...(data.head_to_head ?? [])]
     .filter((o) => o.win + o.lose > 0)
     .sort((a, b) => b.win + b.lose - (a.win + a.lose))[0]
   const theme = clanThemeOf(data.clan.slug)
+  /** ★기록을 숫자로 안 적는 리그★ — 그 자리에 «-미제공-» 을 쓴다 (2026-09-14 사장님) */
+  const hideRecord = league.slug === 'nolink'
+  const winRate = data.win + data.lose === 0 ? null : (data.win / (data.win + data.lose)) * 100
+  /* ⚠ 클랜 상세에는 ★킬뎃 칸이 없다★ (계약 실측) — 선수와 달리 클랜은 킬/데스를 안 싣는다.
+     그래서 킬뎃 자리를 아예 안 그린다 (`kd={null}` + `showKd={false}`).
+     없는 값을 «—» 로 그리면 «잴 수 있는데 비었다» 로 읽힌다 (D-106) */
 
   return (
     <Card style={{ marginBottom: 14 }}>
@@ -585,15 +741,7 @@ function ClanShowcase({
           </span>
         }
       />
-      <div style={{ padding: '4px 18px 10px', display: 'flex', alignItems: 'center', gap: 9 }}>
-        <MarkCircle clan={{ slug: data.clan.slug, mark: data.clan.mark }} size={28} />
-        <Link
-          href={`/league/${leagueSlug}/clan/${clanSlug}`}
-          style={{ fontSize: 15, fontWeight: 700, color: '#fff', textDecoration: 'none' }}
-        >
-          {name}
-        </Link>
-      </div>
+      {/* ⚠ 이름 줄은 ★육각형 위★ 로 옮겼다 — 선수 카드와 같은 형식이다 (2026-09-14 저녁) */}
 
       {/*
         ★상대전적(왼쪽) + 육각형(오른쪽)★ — 선수 카드와 같은 규칙이다
@@ -630,15 +778,42 @@ function ClanShowcase({
           )}
         </div>
 
-        <div style={{ minWidth: 0 }}>
-          <p style={{ padding: '0 2px 4px', fontSize: 11.5, lineHeight: 1.8, color: V3.textMuted }}>
-            클랜의 여섯 축은 <b style={{ color: '#fff' }}>이 팀이 어떻게 싸우는가</b>입니다.
-          </p>
+        {/* ★그래프 판 위 오른쪽 빈 자리에 얹는다★ — 선수 카드와 같은 형식 (2026-09-14 저녁) */}
+        <div className="about-hexover">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px 6px', minWidth: 0 }}>
+            <MarkCircle clan={{ slug: data.clan.slug, mark: data.clan.mark }} size={24} />
+            <Link
+              href={`/league/${leagueSlug}/clan/${clanSlug}`}
+              style={{
+                fontSize: 15,
+                fontWeight: 800,
+                color: '#fff',
+                textDecoration: 'none',
+                pointerEvents: 'auto',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {name}
+            </Link>
+          </div>
+          <HeadStats
+            rank={data.rank}
+            rankTotal={data.rank_count}
+            winRate={hideRecord ? null : winRate}
+            kd={null}
+            hidden={hideRecord}
+            showKd={false}
+          />
           {data.hexagon_v2 === null ? null : (
             <Hexagon axes={clanHexAxes(data.hexagon_v2)} id={`aboutClanHex-${clanSlug}`} />
           )}
         </div>
       </div>
+      <p style={{ padding: '0 16px 8px', fontSize: 11.5, lineHeight: 1.8, color: V3.textMuted }}>
+        클랜의 여섯 축은 <b style={{ color: '#fff' }}>이 팀이 어떻게 싸우는가</b>입니다.
+      </p>
 
     </Card>
   )

@@ -62,6 +62,11 @@ export { ErrorState } from './common/ErrorState'
 
 export {
   FEATURED_LEAGUES,
+  /* ⚠ 옛 이름 표 — 지우지 않는다 (2026-09-14 «SPL→LLM · 10→YSL») */
+  FEATURED_LEAGUES_V1,
+  /* ★리그 이름은 여기 한 곳이 정한다★ (2026-09-14 — 네 곳에 흩어져 있다가 어긋났다) */
+  LEAGUE_NAME,
+  leagueNameOf,
   MOBILE_NAV_GROUPS,
   PRIMARY_NAV,
   PREPARING_LEAGUE_SLUGS,
@@ -376,5 +381,6 @@ export { EggGallery, type EggGalleryItem, type EggGalleryProps } from './egg/Egg
  *   ⚠ `CLAUDE.md` 10-4(옛 버전을 남긴다)의 예외다. 「전부 삭제」가 명시 지시였다.
  *      모양은 `design/gacha-guide.html` 에 남아 있다 (design/ 은 손대지 않는다).
  */
+export * from './layout/leagueLogo'
 export * from './league/ClanBadges'
 export * from './league/DailyPodium'

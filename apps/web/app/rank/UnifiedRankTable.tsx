@@ -1,12 +1,9 @@
 import Link from 'next/link'
+import { LEAGUE_NAME } from '@sacloud/ui'
 import type { UnifiedRankRow } from '@/lib/server/queries/unifiedRank'
 
-/** 리그 이름 — 화면에 쓰는 말 (O-040 에서 통일한 것) */
-const LEAGUE_LABEL: Record<string, string> = {
-  supply: 'SPL',
-  nolink: 'IPL',
-  sanply: '10mountain',
-}
+/** 리그 이름 — 화면에 쓰는 말 (O-040 에서 통일 · 2026-09-14 한 곳으로 모음) */
+const LEAGUE_LABEL = LEAGUE_NAME
 
 /**
  * 통합 랭킹 표.

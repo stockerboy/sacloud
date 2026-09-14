@@ -30,6 +30,7 @@ import {
   CLAN_HEX_V2_CONFIG,
   PLAYER_HEX_AXIS_ORDER,
   buildClanHexV2Raw,
+  playerHexLabelOf,
   normalizeByPercentile,
   type ClanHexTallyLike,
   type ClanHexV2,
@@ -45,6 +46,17 @@ export const DAILY_PODIUM_SIZE = 3
  * «6판 4승» 을 이긴다 — 그건 그날 잘한 게 아니라 적게 한 것이다.
  */
 const MIN_GAMES = 4
+
+/**
+ * ★그날 승률이 이보다 낮으면 안 뽑는다★ (2026-09-14 실측으로 넣었다).
+ *
+ *   사장님: «육각축이 고르게 전부 잘한 사람 ★+ 승률도 좋아야함★».
+ *   처음엔 점수에 승률을 30%만 섞었는데, 클랜은 그날 20~35판이라 승률이
+ *   평준화돼서 ★승률 43.5% 인 클랜이 「오늘의 클랜」 3위★ 로 올라왔다.
+ *   «승률도 좋아야 한다» 는 말에 43.5% 는 안 맞는다. 그래서 ★문턱★ 을 따로 둔다 —
+ *   점수를 흔드는 대신, 진 날은 애초에 안 올린다.
+ */
+const MIN_WIN_RATE = 50
 
 /** 점수 배분 — 위 주석의 식 그대로다. 한 곳에서만 정한다 */
 const W_LOW = 0.45
@@ -125,6 +137,7 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
     `SELECT s."playerId", pl.name,
             c.name AS "clanName", c.slug AS "clanSlug", c."markBgUrl", c."markFrontUrl",
             COUNT(*)::int AS games,
+            MAX(h.weapon)::int AS weapon,
             SUM(CASE WHEN m."winnerSide" = s.side THEN 1 ELSE 0 END)::int AS win,
             SUM(COALESCE(s.kill, 0))::int AS kill,
             SUM(COALESCE(s.death, 0))::int AS death,
@@ -153,6 +166,7 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
       const avg = vals.reduce((a, b) => a + b, 0) / vals.length
       const win = Number(r.win)
       const winRate = games === 0 ? 0 : (win / games) * 100
+      if (winRate < MIN_WIN_RATE) return null
       const death = Number(r.death)
       const lowIndex = vals.indexOf(low)
       return {
@@ -160,7 +174,18 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
         low,
         avg,
         winRate,
-        lowLabel: PLAYER_HEX_AXIS_ORDER[lowIndex] ?? '',
+        /*
+         * ⚠ ★영어 열쇠를 그대로 내보내면 안 된다★ (2026-09-14 실측 — «최저축 duel 76»).
+         *   클랜 쪽은 계약이 한글 이름을 들고 있어서 «세이브» 로 잘 나왔는데,
+         *   개인 쪽만 열쇠(`duel`·`burst`)가 그대로 나갔다. 화면에 쓰는 이름은
+         *   `playerHexLabelOf` 가 정한다 — 무기에 따라 «스나싸움/샷싸움» 으로 갈린다.
+         */
+        lowLabel: (() => {
+          const key = PLAYER_HEX_AXIS_ORDER[lowIndex]
+          if (key === undefined) return ''
+          const w = r.weapon
+          return playerHexLabelOf(key, w === 0 || w === 1 ? w : null)
+        })(),
         kd: death === 0 ? null : (Number(r.kill) / death) * 100,
         games,
         win,
@@ -270,6 +295,7 @@ async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]>
       const low = Math.min(...nums)
       const avg = nums.reduce((a, b) => a + b, 0) / nums.length
       const winRate = (r.win / r.games) * 100
+      if (winRate < MIN_WIN_RATE) return null
       const lowIndex = nums.indexOf(low)
       return {
         r,
