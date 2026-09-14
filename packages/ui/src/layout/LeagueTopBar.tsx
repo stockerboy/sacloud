@@ -109,6 +109,14 @@ export function leagueTabs(leagueSlug: string) {
    * 리그마다 다 있으므로 분기를 걸지 않는다 — 경기가 없는 리그는 화면이
    * 「아직 경기가 없습니다」로 말한다. 탭을 감춰서 없는 것처럼 만들지 않는다.
    */
+  /*
+   * ★TOP5★ (2026-09-14 사장님: «추가로 페이지 하나 더 만들자 여기서는
+   *   클랜 , 개인6각 top5 보여주자 각 분야별 top5»).
+   *
+   * 랭킹 바로 뒤에 선다 — 종합 등수를 본 다음에 «분야별로는?» 이 오는 차례다.
+   * 리그를 가리지 않는다. 클랜 기록을 안 주는 리그는 화면 안에서 개인만 보인다.
+   */
+  tabs.push({ label: 'TOP5', href: `${base}/rank/top5` })
   tabs.push({ label: '경기', href: leagueMatchListPath(leagueSlug) })
   /* 리그 안 게시판 (2026-09-02 지시 #14-2 — "게시판은 SPL메뉴 안에 있는거다").
      카테고리가 있는 리그에만 셋째 탭이 붙는다. 10mountain 은 없다 (`leagueScreen` 표가 정한다) */

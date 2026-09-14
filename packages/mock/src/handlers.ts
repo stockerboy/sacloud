@@ -234,6 +234,14 @@ const resolvers: Record<EndpointKey, Resolver> = {
     const detail = slug ? store.getLeaguePlayerDetail(slug, param(params['playerId'])) : null
     return detail ? ok(detail) : notFound()
   },
+  /**
+   * ★분야별 TOP5★ (2026-09-14) — 픽스처는 ★빈 표★ 를 준다.
+   *
+   * 축별 등수는 리그 전체 분포가 있어야 나오는데 픽스처에는 분포가 없다.
+   * 없는 등수를 지어내면 화면이 «5위 안» 이라고 거짓말을 하게 된다 (D-106).
+   * 빈 표를 받은 화면은 «아직 잴 만큼 경기가 없습니다» 로 말한다.
+   */
+  leagueHexTop: () => ok({ clan: [], player: [] }),
   leagueRankClans: ({ params, request }) => {
     const leagueId = resolveLeagueId(param(params['leagueId']))
     const division = Number(query(request, 'division') ?? '1')

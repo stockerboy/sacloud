@@ -36,6 +36,7 @@ import {
   ClanMasterClaimState,
   ClanPlayer,
   ClanRankRow,
+  LeagueHexTop,
   ClanSummary,
   Comment,
   FormTop,
@@ -528,6 +529,20 @@ export const endpoints = {
     origin: 'observed',
     description: '리그 내 플레이어 상세 (match_summary 포함)',
     response: apiResponse(LeaguePlayerDetail),
+  },
+  /**
+   * ★분야별 TOP5★ (2026-09-14 사장님: «클랜 , 개인6각 top5 보여주자 각 분야별 top5»).
+   *
+   * 클랜 여섯 축 · 개인 여섯 축을 ★한 번에★ 내린다. 축마다 따로 부르면 열두 번
+   * 왕복인데, 이 화면은 열둘을 한꺼번에 그린다.
+   * 클랜 기록을 안 주는 리그는 `clan` 이 빈 배열이다 (`leagueScreen` 이 정한다).
+   */
+  leagueHexTop: {
+    method: 'GET',
+    path: '/leagues/:leagueId/hex-top',
+    origin: 'designed',
+    description: '분야별 TOP5 — 육각 축마다 클랜·개인 다섯 줄',
+    response: apiResponse(LeagueHexTop),
   },
   leagueRankClans: {
     method: 'GET',
