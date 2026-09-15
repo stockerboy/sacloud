@@ -266,10 +266,12 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
         value: a.value,
         pct: a.pct,
         unit:
-          /* ★게임영향력은 퍼센트다★ (2026-09-15 사장님) — 옛 판에서는 판당 킬이었다 */
-          a.key === 'opening' || a.key === 'burst'
-            ? ('per_game' as const)
-            : ('percent' as const),
+          /*
+           * ★선짤만 «판당 n.n회»★ 다 (2026-09-15 사장님).
+           * ⚠ 같은 날 두 축이 퍼센트로 옮겨 갔다 — 게임영향력(옛 캐리력)과
+           *   5번 축(옛 연속킬 → 교환율). 남은 `per_game` 은 선짤뿐이다.
+           */
+          a.key === 'opening' ? ('per_game' as const) : ('percent' as const),
       })),
     }
   })

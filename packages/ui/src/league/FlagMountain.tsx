@@ -137,7 +137,8 @@ export function FlagMountain({
       note:
         a.value === null
           ? '측정중'
-          : a.key === 'opening' || a.key === 'burst'
+          /* ⚠ ★선짤만 «회»★ 다 (2026-09-15) — 5번 축이 «연속킬»(회) 에서 «교환율»(%) 로 바뀌었다 */
+          : a.key === 'opening'
             ? `${a.value}회`
             : `${a.value}%`,
       /*

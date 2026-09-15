@@ -49,7 +49,14 @@ function tallyOf(value: unknown): ClanHexTallyLike | null {
  */
 function playerValueText(key: TraitAxisKey, raw: number | null): string {
   if (raw === null) return '알수없음'
-  void key
+  /*
+   * ★선짤만 «판당 n.n회»★ 다 (2026-09-15 사장님). 나머지 다섯은 퍼센트다.
+   *
+   * ⚠ 같은 날 두 번 틀렸다 — ① 캐리력이 «판당 킬» 이라 «킬» 을 붙이던 것을
+   *   게임영향력(%)으로 바꾸며 ★전부 %★ 로 만들었고, 그 바람에 선짤이 «2.0%» 가 됐다.
+   *   축마다 단위가 다르다는 걸 한 줄로 뭉뚱그리면 이런 일이 난다.
+   */
+  if (key === 'opening') return `${raw.toFixed(1)}회`
   return `${raw.toFixed(1)}%`
 }
 
