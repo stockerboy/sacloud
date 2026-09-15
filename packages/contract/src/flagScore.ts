@@ -106,8 +106,17 @@ export function dayAxisValues(t: FlagDayTally): Record<FlagAxisKey, number | nul
     save: t.aloneRounds >= FLAG_MIN_SITUATION_ROUNDS ? round1((t.aloneWon / t.aloneRounds) * 100) : null,
     duel: t.weapon !== null && duels >= FLAG_MIN_DUELS ? round1((duelWon / duels) * 100) : null,
     carry: t.games > 0 ? Math.round((t.kill / t.games) * 100) / 100 : null,
-    opening: t.rounds > 0 ? round1((t.firstKills / t.rounds) * 100) : null,
-    burst: t.rounds > 0 ? round1((t.burstRounds / t.rounds) * 100) : null,
+    /*
+     * ★선짤·연속킬은 「판당 몇 번」 이다★ (2026-09-15 사장님:
+     * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔»).
+     *
+     * ⚠ 옛 값은 ★라운드 비율(%)★ 이었다 (`firstKills / rounds × 100`).
+     *   퍼센트로 적으니 «선짤 7%» 처럼 작은 숫자만 나와서 무슨 뜻인지 안 와닿았다.
+     *   지금은 캐리력(판당 킬)과 ★같은 단위★ 라 나란히 읽힌다.
+     *   ★백분위는 그대로다★ — 순위를 가리는 잣대는 안 바뀐다 (단조 변환이다).
+     */
+    opening: t.games > 0 ? Math.round((t.firstKills / t.games) * 100) / 100 : null,
+    burst: t.games > 0 ? Math.round((t.burstRounds / t.games) * 100) / 100 : null,
     outnumbered: t.outRounds >= FLAG_MIN_SITUATION_ROUNDS ? round1((t.outWon / t.outRounds) * 100) : null,
   }
 }
@@ -268,6 +277,13 @@ export const FlagBoardRowSchema = z.object({
 export type FlagBoardRowSchema = z.infer<typeof FlagBoardRowSchema>
 
 /** 깃발판 — 산 하나 */
+/** 능선 한 점 — «그 시각까지의 1등 점수» */
+export const FlagTimelinePointSchema = z.object({
+  slot: z.number().int(),
+  score: z.number().nullable(),
+  player_id: z.string().nullable(),
+})
+
 export const FlagBoard = z.object({
   league: z.string(),
   /** 마감일 `YYYY-MM-DD` (KST) */
@@ -276,6 +292,10 @@ export const FlagBoard = z.object({
   closes_at: z.string(),
   /** 아직 경쟁 중인가 */
   live: z.boolean(),
+  /** 한 칸이 몇 분인가 */
+  slot_minutes: z.number().int().default(30),
+  /** ★능선★ — 시각마다 «그때까지의 1등 점수» */
+  timeline: z.array(FlagTimelinePointSchema).default([]),
   rows: z.array(FlagBoardRowSchema),
 })
 export type FlagBoard = z.infer<typeof FlagBoard>

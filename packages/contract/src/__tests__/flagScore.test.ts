@@ -43,8 +43,9 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
     expect(v.save).toBe(50)
     expect(v.duel).toBeCloseTo(66.7, 1)
     expect(v.carry).toBe(10)
-    expect(v.opening).toBe(20)
-    expect(v.burst).toBe(15)
+    /* ★선짤·연속킬은 판당 몇 번★ (2026-09-15 사장님) — 12회/6판 · 9회/6판 */
+    expect(v.opening).toBe(2)
+    expect(v.burst).toBe(1.5)
     expect(v.outnumbered).toBeCloseTo(55.6, 1)
   })
 

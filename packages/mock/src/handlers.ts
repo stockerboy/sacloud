@@ -255,6 +255,8 @@ const resolvers: Record<EndpointKey, Resolver> = {
       opens_at: '2026-09-14T08:00:00.000Z',
       closes_at: '2026-09-14T18:00:00.000Z',
       live: false,
+      slot_minutes: 30,
+      timeline: [],
       rows: [],
     }),
   /* 참가대기 클랜 — 픽스처에는 최근 7일 경기가 없다. 빈 목록이면 화면이 그 칸을 안 그린다 */

@@ -84,8 +84,15 @@ export function HomeTopPlayers() {
                 <span className="num text-[12px] font-semibold text-[#8ff0ff]">
                   {row.unit === 'percent' ? `${row.value.toFixed(1)}%` : row.value.toFixed(2)}
                 </span>
+                {/*
+                 * ⚠ ★「킬/판」은 캐리력에만 붙는다★ (2026-09-15).
+                 *   선짤·연속킬도 «판당» 단위가 되면서 같은 `per_game` 이 됐는데,
+                 *   그쪽은 킬이 아니라 ★횟수★ 다. 축을 보고 말을 고른다.
+                 */}
                 {row.unit === 'per_game' ? (
-                  <span className="text-[9.5px] text-[var(--v2-text-ghost)]">킬/판</span>
+                  <span className="text-[9.5px] text-[var(--v2-text-ghost)]">
+                    {row.key === 'carry' ? '킬/판' : '회/판'}
+                  </span>
                 ) : null}
               </span>
             </li>

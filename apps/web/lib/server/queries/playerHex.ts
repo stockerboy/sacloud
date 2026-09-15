@@ -39,8 +39,9 @@ const AXIS_COLUMNS: Record<
   save: { value: 'save', pct: 'savePct', rank: 'saveRank', total: 'saveTotal', unit: 'percent' },
   duel: { value: 'duel', pct: 'duelPct', rank: 'duelRank', total: 'duelTotal', unit: 'percent' },
   carry: { value: 'carry', pct: 'carryPct', rank: 'carryRank', total: 'carryTotal', unit: 'per_game' },
-  opening: { value: 'opening', pct: 'openingPct', rank: 'openingRank', total: 'openingTotal', unit: 'percent' },
-  burst: { value: 'burst', pct: 'burstPct', rank: 'burstRank', total: 'burstTotal', unit: 'percent' },
+  /* ★선짤·연속킬은 판당 몇 번★ (2026-09-15 사장님) — 캐리력과 같은 단위다. 옛 값은 `percent` */
+  opening: { value: 'opening', pct: 'openingPct', rank: 'openingRank', total: 'openingTotal', unit: 'per_game' },
+  burst: { value: 'burst', pct: 'burstPct', rank: 'burstRank', total: 'burstTotal', unit: 'per_game' },
   outnumbered: {
     value: 'outnumbered',
     pct: 'outnumberedPct',

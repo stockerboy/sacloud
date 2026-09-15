@@ -48,6 +48,16 @@ export interface FlagBoardRow {
   flags: number
 }
 
+/** 능선 한 점 — «그 시각까지의 1등 점수» */
+export interface FlagTimelinePoint {
+  /** 0부터. `FLAG_SLOT_MINUTES` 칸 번호 */
+  slot: number
+  /** 0~100. 아직 아무도 문턱을 못 넘었으면 null */
+  score: number | null
+  /** 그 시각의 1등 (없으면 null) */
+  player_id: string | null
+}
+
 export interface FlagBoard {
   league: string
   /** 마감일 `YYYY-MM-DD` (KST) */
@@ -56,8 +66,20 @@ export interface FlagBoard {
   closes_at: string
   /** 아직 경쟁 중인가 */
   live: boolean
+  /** 한 칸이 몇 분인가 */
+  slot_minutes: number
+  /** ★능선★ — 시각마다 «그때까지의 1등 점수» */
+  timeline: FlagTimelinePoint[]
   rows: FlagBoardRow[]
 }
+
+/**
+ * ★능선을 그리는 칸★ — 하루(10시간)를 30분씩 스무 칸으로 나눈다 (2026-09-15).
+ *
+ * 파노라처럼 ★시간이 흐르며 점수가 오르내리는 선★ 을 그리려면 시각별 값이 있어야 한다.
+ * 칸을 잘게 하면 질의가 무거워지고 굵게 하면 선이 각진다 — 30분이 실측상 알맞았다.
+ */
+export const FLAG_SLOT_MINUTES = 30
 
 /** `MatchPlayerHex` + `MatchPlayerStat` 을 그날 창으로 접은 한 줄 */
 interface DayRow {
@@ -105,6 +127,9 @@ function dayWeaponOf(r: DayRow): 0 | 1 | null {
  * ★시즌 표(`LeaguePlayerHex`)를 쓰지 않는다★ — 그건 누적이라
  * «오늘 잘한 사람» 이 아니라 «원래 잘하는 사람» 이 나온다 (사장님이 짚어 주신 자리).
  */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// @ts-expect-error — ★지금은 안 쓴다★ (`CLAUDE.md` 1-4). 칸별 질의(`daySlotRowsOf`)가
+// 같은 재료를 시각까지 담아 주므로 그것을 합쳐 쓴다. 능선이 필요 없어지면 이쪽으로 돌아온다.
 async function dayRowsOf(leagueId: string, day: FlagDay): Promise<DayRow[]> {
   return (await prisma.$queryRawUnsafe(
     `SELECT s."playerId",
@@ -144,6 +169,54 @@ async function dayRowsOf(leagueId: string, day: FlagDay): Promise<DayRow[]> {
   )) as DayRow[]
 }
 
+/**
+ * ★칸(30분)별 재료★ — 능선을 그리려고 시각을 함께 받는다.
+ *
+ * `dayRowsOf` 와 ★같은 재료★ 지만 `GROUP BY` 에 칸 번호가 하나 더 붙는다.
+ * 화면에서 칸을 앞에서부터 더해 가며 «그 시각까지의 1등 점수» 를 만든다 —
+ * 시각마다 질의를 던지면 스무 번이 되고, 연결이 하나뿐인 곳에서는 그게 곧 멈춤이다.
+ */
+async function daySlotRowsOf(leagueId: string, day: FlagDay): Promise<(DayRow & { slot: number })[]> {
+  return (await prisma.$queryRawUnsafe(
+    `SELECT s."playerId",
+            pl.name,
+            c.slug AS "clanSlug", c.name AS "clanName",
+            c."markBgUrl" AS "markBg", c."markFrontUrl" AS "markFront",
+            FLOOR(EXTRACT(EPOCH FROM (m."startAt" - $2::timestamptz)) / ($4 * 60))::int AS slot,
+            COUNT(DISTINCT s."matchId")::int AS games,
+            SUM(CASE WHEN m."winnerSide" = s.side THEN 1 ELSE 0 END)::int AS win,
+            SUM(COALESCE(s.kill, 0))::int AS kill,
+            SUM(COALESCE(s.death, 0))::int AS death,
+            SUM(CASE WHEN s.weapon = 1 THEN 1 ELSE 0 END)::int AS "sniperGames",
+            SUM(CASE WHEN s.weapon = 0 THEN 1 ELSE 0 END)::int AS "rifleGames",
+            COALESCE(SUM(h.rounds), 0)::int       AS rounds,
+            COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
+            COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
+            COALESCE(SUM(h."aloneRounds"), 0)::int AS "aloneRounds",
+            COALESCE(SUM(h."aloneWon"), 0)::int    AS "aloneWon",
+            COALESCE(SUM(h."outRounds"), 0)::int   AS "outRounds",
+            COALESCE(SUM(h."outWon"), 0)::int      AS "outWon",
+            COALESCE(SUM(CASE WHEN h.weapon = 1 THEN h."duelWon"  ELSE 0 END), 0)::int AS "sniperDuelWon",
+            COALESCE(SUM(CASE WHEN h.weapon = 1 THEN h."duelLost" ELSE 0 END), 0)::int AS "sniperDuelLost",
+            COALESCE(SUM(CASE WHEN h.weapon = 0 THEN h."duelWon"  ELSE 0 END), 0)::int AS "rifleDuelWon",
+            COALESCE(SUM(CASE WHEN h.weapon = 0 THEN h."duelLost" ELSE 0 END), 0)::int AS "rifleDuelLost"
+       FROM "MatchPlayerStat" s
+       JOIN "Match" m ON m.id = s."matchId"
+       JOIN "Player" pl ON pl.id = s."playerId"
+       LEFT JOIN "LeaguePlayer" lp ON lp."playerId" = s."playerId" AND lp."leagueId" = $1
+       LEFT JOIN "Clan" c ON c.id = lp."clanId"
+       LEFT JOIN "MatchPlayerHex" h ON h."matchId" = s."matchId" AND h."playerId" = s."playerId"
+      WHERE m."leagueId" = $1
+        AND m."supersededAt" IS NULL
+        AND m."startAt" >= $2 AND m."startAt" < $3
+      GROUP BY s."playerId", pl.name, c.slug, c.name, c."markBgUrl", c."markFrontUrl", 7`,
+    leagueId,
+    day.opensAt,
+    day.closesAt,
+    FLAG_SLOT_MINUTES,
+  )) as (DayRow & { slot: number })[]
+}
+
 const tallyOf = (r: DayRow): FlagDayTally => ({
   games: Number(r.games),
   win: Number(r.win),
@@ -180,6 +253,113 @@ const clanOf = (r: { clanSlug: string | null; clanName: string | null; markBg: s
     ? null
     : { slug: r.clanSlug, name: r.clanName, mark: { bg: r.markBg, front: r.markFront } }
 
+/** 두 재료를 더한다 — 칸을 앞에서부터 쌓을 때 쓴다 */
+function addTally(into: FlagDayTally, from: FlagDayTally): FlagDayTally {
+  return {
+    games: into.games + from.games,
+    win: into.win + from.win,
+    lose: into.lose + from.lose,
+    kill: into.kill + from.kill,
+    death: into.death + from.death,
+    rounds: into.rounds + from.rounds,
+    firstKills: into.firstKills + from.firstKills,
+    burstRounds: into.burstRounds + from.burstRounds,
+    aloneRounds: into.aloneRounds + from.aloneRounds,
+    aloneWon: into.aloneWon + from.aloneWon,
+    outRounds: into.outRounds + from.outRounds,
+    outWon: into.outWon + from.outWon,
+    sniperDuelWon: into.sniperDuelWon + from.sniperDuelWon,
+    sniperDuelLost: into.sniperDuelLost + from.sniperDuelLost,
+    rifleDuelWon: into.rifleDuelWon + from.rifleDuelWon,
+    rifleDuelLost: into.rifleDuelLost + from.rifleDuelLost,
+    /* 무기는 더할 수 없다 — 판수가 많은 쪽으로 다시 정한다 (아래에서 덮는다) */
+    weapon: null,
+  }
+}
+
+/**
+ * ★능선★ — 칸마다 «그때까지의 1등 점수».
+ *
+ * 질의는 ★한 번★ 이다. 칸별 재료를 받아 ★앞에서부터 쌓아 가며★ 매 칸에서
+ * 줄 세우기를 다시 한다. 시각마다 DB 를 부르면 스무 번이 되고,
+ * 연결이 하나뿐인 곳에서는 그게 곧 멈춤이다.
+ *
+ * 아직 아무도 문턱(4판·승률 50%)을 못 넘은 칸은 `null` 이다 — 0 으로 채우지 않는다.
+ */
+function timelineOf(
+  slotRows: readonly (DayRow & { slot: number })[],
+  slots: number,
+): FlagTimelinePoint[] {
+  /* 선수별 누적 재료 + 무기 판수 */
+  const acc = new Map<string, { tally: FlagDayTally; sniper: number; rifle: number; row: DayRow }>()
+  const bySlot = new Map<number, (DayRow & { slot: number })[]>()
+  for (const r of slotRows) {
+    const k = Math.max(0, Math.min(slots - 1, Number(r.slot)))
+    const list = bySlot.get(k)
+    if (list) list.push(r)
+    else bySlot.set(k, [r])
+  }
+
+  const out: FlagTimelinePoint[] = []
+  for (let i = 0; i < slots; i += 1) {
+    for (const r of bySlot.get(i) ?? []) {
+      const cur = acc.get(r.playerId)
+      const add = tallyOf(r)
+      const sniper = (cur?.sniper ?? 0) + Number(r.sniperGames)
+      const rifle = (cur?.rifle ?? 0) + Number(r.rifleGames)
+      acc.set(r.playerId, {
+        tally: cur === undefined ? add : addTally(cur.tally, add),
+        sniper,
+        rifle,
+        row: r,
+      })
+    }
+    const candidates = [...acc.entries()].map(([playerId, v]) => ({
+      ref: playerId,
+      /* 무기는 ★누적 판수★ 로 다시 정한다 — 칸마다 바뀔 수 있다 */
+      tally: { ...v.tally, weapon: v.sniper > v.rifle ? 1 : v.rifle > v.sniper ? 0 : null } as FlagDayTally,
+    }))
+    const top = rankFlagDay(candidates, 1)[0] ?? null
+    out.push({
+      slot: i,
+      score: top === null ? null : Math.round(top.score * 10) / 10,
+      player_id: top === null ? null : top.ref,
+    })
+  }
+  return out
+}
+
+/** 칸별 줄을 선수 하나로 합친다 — `dayRowsOf` 와 같은 결과가 된다 */
+function mergeSlots(slotRows: readonly (DayRow & { slot: number })[]): DayRow[] {
+  const by = new Map<string, DayRow>()
+  const num = (v: unknown) => Number(v ?? 0)
+  for (const r of slotRows) {
+    const cur = by.get(r.playerId)
+    if (cur === undefined) {
+      by.set(r.playerId, { ...r })
+      continue
+    }
+    cur.games = num(cur.games) + num(r.games)
+    cur.win = num(cur.win) + num(r.win)
+    cur.kill = num(cur.kill) + num(r.kill)
+    cur.death = num(cur.death) + num(r.death)
+    cur.sniperGames = num(cur.sniperGames) + num(r.sniperGames)
+    cur.rifleGames = num(cur.rifleGames) + num(r.rifleGames)
+    cur.rounds = num(cur.rounds) + num(r.rounds)
+    cur.firstKills = num(cur.firstKills) + num(r.firstKills)
+    cur.burstRounds = num(cur.burstRounds) + num(r.burstRounds)
+    cur.aloneRounds = num(cur.aloneRounds) + num(r.aloneRounds)
+    cur.aloneWon = num(cur.aloneWon) + num(r.aloneWon)
+    cur.outRounds = num(cur.outRounds) + num(r.outRounds)
+    cur.outWon = num(cur.outWon) + num(r.outWon)
+    cur.sniperDuelWon = num(cur.sniperDuelWon) + num(r.sniperDuelWon)
+    cur.sniperDuelLost = num(cur.sniperDuelLost) + num(r.sniperDuelLost)
+    cur.rifleDuelWon = num(cur.rifleDuelWon) + num(r.rifleDuelWon)
+    cur.rifleDuelLost = num(cur.rifleDuelLost) + num(r.rifleDuelLost)
+  }
+  return [...by.values()]
+}
+
 /**
  * ★지금 이 리그의 깃발판★.
  *
@@ -193,12 +373,23 @@ export async function getFlagBoard(leagueSlug: string, now: Date = new Date()): 
   const day = flagDayOf(now)
   const live = flagDayIsLive(now)
 
+  /* 하루를 몇 칸으로 나누나 — 10시간 ÷ 30분 = 20칸 */
+  const slots = Math.max(
+    1,
+    Math.round((day.closesAt.getTime() - day.opensAt.getTime()) / (FLAG_SLOT_MINUTES * 60_000)),
+  )
+  /* ★능선은 라이브든 마감이든 늘 그린다★ — 하루가 어떻게 흘렀나는 안 바뀐다 */
+  const slotRows = await daySlotRowsOf(league.id, day)
+  const timeline = timelineOf(slotRows, slots)
+
   const base = {
     league: leagueSlug,
     day_key: day.key,
     opens_at: day.opensAt.toISOString(),
     closes_at: day.closesAt.toISOString(),
     live,
+    slot_minutes: FLAG_SLOT_MINUTES,
+    timeline,
   }
 
   if (!live) {
@@ -221,8 +412,9 @@ export async function getFlagBoard(leagueSlug: string, now: Date = new Date()): 
     })
     if (planted.length > 0) {
       const counts = await flagCountsOf(planted.map((p) => p.playerId))
-      /* 축만 다시 접는다 — 순위·전적은 박아 둔 값을 쓴다 */
-      const dayRows = await dayRowsOf(league.id, day)
+      /* 축만 다시 접는다 — 순위·전적은 박아 둔 값을 쓴다.
+         ★칸별 재료를 이미 읽었으니 그것을 합친다★ — 같은 질의를 두 번 던지지 않는다 */
+      const dayRows = mergeSlots(slotRows)
       const wanted = new Set(planted.map((p) => p.playerId))
       const axesOf = new Map(
         rankFlagDay(
@@ -267,7 +459,8 @@ export async function getFlagBoard(leagueSlug: string, now: Date = new Date()): 
        ★그때까지의 기록으로 세어서 보여 준다.★ 빈 화면보다는 낫다 */
   }
 
-  const rows = await dayRowsOf(league.id, day)
+  /* ★칸별 재료를 합쳐 쓴다★ — 같은 것을 두 번 읽지 않는다 */
+  const rows = mergeSlots(slotRows)
   const ranked = rankFlagDay(
     rows.map((r) => ({ ref: r, tally: tallyOf(r) })),
     FLAG_PODIUM_SIZE,

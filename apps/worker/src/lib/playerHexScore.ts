@@ -190,8 +190,17 @@ export function axisValuesOf(
     save: input.aloneRounds >= MIN_SITUATION_ROUNDS ? round1((input.aloneWon / input.aloneRounds) * 100) : null,
     duel: duels >= MIN_DUELS ? round1((duelWon / duels) * 100) : null,
     carry: input.games > 0 ? Math.round((input.kills / input.games) * 100) / 100 : null,
-    opening: input.rounds > 0 ? round1((input.firstKills / input.rounds) * 100) : null,
-    burst: input.rounds > 0 ? round1((input.burstRounds / input.rounds) * 100) : null,
+    /*
+     * ★선짤·연속킬은 「판당 몇 번」 이다★ (2026-09-15 사장님:
+     * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔 / 클랜축도 마찬가지»).
+     *
+     * ⚠ 옛 값은 ★라운드 비율(%)★ 이었다 (`firstKills / rounds × 100`).
+     *   화면에 «선짤 7%» 처럼 작은 숫자만 나와서 무슨 뜻인지 안 와닿았다.
+     *   지금은 캐리력(판당 킬)과 ★같은 단위★ 라 나란히 읽힌다.
+     *   ★등수·백분위는 안 바뀐다★ — 분모만 라운드에서 판으로 옮긴 단조 변환이다.
+     */
+    opening: input.games > 0 ? Math.round((input.firstKills / input.games) * 100) / 100 : null,
+    burst: input.games > 0 ? Math.round((input.burstRounds / input.games) * 100) / 100 : null,
     outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
   }
 }

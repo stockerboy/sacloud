@@ -105,6 +105,8 @@ export default function LeagueHomeScreen({
             dayKey={board.day_key}
             live={board.live}
             progress={progress}
+            slotMinutes={board.slot_minutes}
+            timeline={board.timeline}
             rows={board.rows}
           />
         </div>
