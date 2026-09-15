@@ -363,6 +363,19 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       const flagged = roundWinner.get(`${mk}|${(arr[0] as Kill).rd}`) ?? null
       /* «!팀» 은 그 팀이 졌다는 뜻 — 두 팀뿐이니 남은 쪽이 이겼다 */
       const win = flagged === null ? null : flagged.startsWith('!') ? (flagged.slice(1) === tA ? tB : tA) : flagged
+      /*
+       * ★그 라운드를 이겼는지 모르면 세이브·소수싸움을 아예 안 센다★
+       * (2026-09-15 사장님: «양팀 다 아무도 세이브 한적이 없는데 40:10으로 뜨는 이유가 궁금해»).
+       *
+       * ⚠ 옛 판은 `win` 이 `null` 이어도 ★분모만★ 늘렸다. 그러면 «혼자 남았는데 못 이김»
+       *   으로 쌓여서, 승패를 모르는 경기가 통째로 «세이브 0/15» 로 보였다.
+       *   실측(260915013708124001): 개인 합계 0/15 인데 클랜은 4/10 · 1/10 이었다 —
+       *   ★클랜 쪽(`clanHexV2.ts`)에는 `won !== null` 조건이 있었고 여기만 빠져 있었다.★
+       *
+       * 모르는 것을 «못 했다» 로 적지 않는다 (D-106).
+       * 킬·선짤·연속킬은 승패와 무관하므로 위에서 이미 다 셌다 — 여기서만 끊는다.
+       */
+      if (win === null) continue
       const alive = new Map<string, Set<string>>([[tA, new Set(teams.get(tA))], [tB, new Set(teams.get(tB))]])
       const teamOf = new Map<string, string>()
       for (const [t, s] of teams) for (const u of s) teamOf.set(u, t)
@@ -383,14 +396,14 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         if (!W) continue
         const t = tallyOf(mk, W.pid)
         t.outRounds += 1
-        if (win !== null && teamOf.get(u) === win) t.outWon += 1
+        if (teamOf.get(u) === win) t.outWon += 1
       }
       for (const u of sawAlone) {
         const W = whoOf(mk, u)
         if (!W) continue
         const t = tallyOf(mk, W.pid)
         t.aloneRounds += 1
-        if (win !== null && teamOf.get(u) === win) t.aloneWon += 1
+        if (teamOf.get(u) === win) t.aloneWon += 1
       }
     }
 

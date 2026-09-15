@@ -39,7 +39,12 @@ import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
  *   `maxRoundKills` · `maxRoundTimes` 두 칸이 새로 생겨서, 옛 줄에는 0 이 들어 있다.
  *   버전을 올려야 `--rebuild` 없이도 다시 세어 채운다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.1'
+/**
+ * ⚠ ★v1.2 — 세이브·소수싸움에서 «승패를 모르는 라운드» 를 뺐다★ (2026-09-15 사장님).
+ *   옛 줄은 그 라운드를 분모에만 넣어 «혼자 남았는데 못 이김» 으로 쌓았다.
+ *   버전을 올려야 다시 세어 고친다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.2'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700
