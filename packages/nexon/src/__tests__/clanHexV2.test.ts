@@ -389,6 +389,7 @@ describe('③ 세이브 — 1대1 도 세이브다 (사용자 원문)', () => {
  * R3  A3 가 1번째로 죽는다 · 킬 없음 · 패  → ★분모만★
  * R4  A3 가 4번째로 죽는다 · 킬 없음 · 승  → 조건 밖 (사장님 «4,5때는 제외»)
  * R5  A3 가 1번째로 죽지만 그 전에 1킬     → 조건 밖 («1킬도 하지못하고»)
+ * R6  A3 가 ★안 죽고★ 킬도 없다 · 승      → ★분모 + 분자★ (2026-09-15 밤 사장님)
  * ```
  */
 function riflePowerMatch(): ClanHexEvent[] {
@@ -420,17 +421,40 @@ function riflePowerMatch(): ClanHexEvent[] {
     killed(5, 402, A(3), B(1), 'riple'),
     killed(5, 406, A(1), B(2), 'riple'),
     kill(5, 410, A(2), B(1), 'riple'),
+
+    /*
+     * R6 — A3 가 ★죽지도 않고 잡지도 않았다★. 그 라운드 줄에 아예 안 나온다.
+     *   2026-09-15 밤 사장님: «스나가 1킬도 못하고 살아있는데 라플끼리 딴 라운드도 포함시켜»
+     */
+    kill(6, 500, A(1), B(1), 'riple'),
+    kill(6, 504, A(2), B(2), 'riple'),
+    killed(6, 508, A(4), B(3), 'riple'),
   ]
 }
 
 describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸나 (2026-09-15 사장님)', () => {
-  /** R2·R4·R5 를 땄다 */
-  const won = (round: number): boolean | null => round === 2 || round === 4 || round === 5
+  /** R2·R4·R5·R6 을 땄다 */
+  const won = (round: number): boolean | null =>
+    round === 2 || round === 4 || round === 5 || round === 6
 
   it('조건에 맞는 라운드만 분모에 들어가고, 이긴 라운드가 분자다', () => {
     const tally = run(riflePowerMatch(), US, won).byTeam.get(US)
-    /* R2(승) · R3(패) 둘뿐이다 — R1 은 킬이 있고 R4 는 4번째, R5 는 1킬을 했다 */
-    expect(tally?.riflePower).toEqual({ rounds: 2, won: 1 })
+    /*
+     * 걸린 라운드는 R2·R3·R6 셋이다 — R1 은 킬이 있고 R4 는 4번째, R5 는 1킬을 했다.
+     * ★세는 것은 라운드가 아니라 킬★ 이다 (2026-09-15 밤 · ⑥안):
+     *   R2  킬 4 (우리 2 · 상대 2)   R3  킬 3 (우리 1 · 상대 2)   R6  킬 3 (우리 2 · 상대 1)
+     *   → 분모 10 · 분자 5
+     */
+    expect(tally?.riflePower).toEqual({ rounds: 10, won: 5, situationRounds: 3 })
+  })
+
+  it('★스나가 안 죽고 킬도 없으면 센다★ (2026-09-15 밤 사장님)', () => {
+    /* R1(무기 확정) + R6(스나가 그 라운드 줄에 아예 안 나온다) 만 남긴다 */
+    const only = riflePowerMatch().filter((e) => e.round === '1' || e.round === '6')
+    /* R6 만 걸린다 — 킬 3 중 우리가 2 */
+    expect(run(only, US, won).byTeam.get(US)?.riflePower).toEqual({
+      rounds: 3, won: 2, situationRounds: 1,
+    })
   })
 
   it('**4번째로 죽은 라운드는 안 센다** — 사장님이 괄호로 뺐다', () => {
@@ -458,14 +482,88 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
     expect(tally?.foeSnipers).toBe(0)
     /* ① 은 상대 스나가 없어 못 재는데 ④ 는 그대로 잰다 — 관문이 다르다는 뜻이다 */
     expect(tally?.sniperDuel).toBeNull()
-    expect(tally?.riflePower).toEqual({ rounds: 2, won: 1 })
+    /* 위 «조건에 맞는 라운드» 시험과 같은 값이다 — R2·R3·R6 의 킬 10개 */
+    expect(tally?.riflePower).toEqual({ rounds: 10, won: 5, situationRounds: 3 })
   })
 
   it('승패를 모르는 라운드는 **분모에서도 빠진다** (D-106)', () => {
     const tally = run(riflePowerMatch(), US, (round) => (round === 3 ? null : won(round)))
       .byTeam.get(US)
-    /* R3 이 빠져 R2 하나만 남는다 */
-    expect(tally?.riflePower).toEqual({ rounds: 1, won: 1 })
+    /* R3 이 빠져 R2(킬 4 · 우리 2) · R6(킬 3 · 우리 2) 만 남는다 */
+    expect(tally?.riflePower).toEqual({ rounds: 7, won: 4, situationRounds: 2 })
+  })
+
+  /* ------------------------------------------------------------------ */
+  /* ★합이 100%★ (2026-09-15 저녁 사장님)                                */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * 사장님: *"0:0이랑 100:0은 안되는데 (…) 양팀 다 스나싸움처럼 둘이 합쳐서 100퍼센트면"*
+   *
+   * 그래서 분모는 ★양 팀 공통★ 이다 — «어느 쪽이든 스나가 1킬 없이 1~3번째로 지워진 라운드».
+   * 위 `riflePowerMatch()` 는 상대에 스나가 없어 그 성질이 드러나지 않는다.
+   * 여기서는 ★상대에게도 스나를 준다★ (B3 가 R1 에서 스나로 잡는다).
+   *
+   * ```
+   * R1  A3 가 스나로 · B3 도 스나로 잡는다      → 양쪽 다 킬이 있어 조건 밖
+   * R2  ★우리★ 스나 A3 가 1번째로 지워짐 · 우리 승  → 분모 +1 · 우리 +1
+   * R3  ★상대★ 스나 B3 가 1번째로 지워짐 · 우리 패  → 분모 +1 · 상대 +1
+   * ```
+   */
+  function bothSnipersMatch(): ClanHexEvent[] {
+    return [
+      /* R1 — 양 팀 스나가 한 방씩. 여기서 A3·B3 의 무기가 확정된다 */
+      kill(1, 10, A(3), B(1), 'sniper'),
+      killed(1, 14, A(1), B(3), 'sniper'),
+
+      /* R2 — 우리 스나가 맨 먼저 지워지고 라플들이 딴다 */
+      killed(2, 100, A(3), B(1), 'riple'),
+      kill(2, 110, A(2), B(1), 'riple'),
+      kill(2, 112, A(2), B(2), 'riple'),
+
+      /* R3 — 상대 스나가 맨 먼저 지워지는데 ★상대가★ 딴다 */
+      kill(3, 200, A(1), B(3), 'riple'),
+      killed(3, 206, A(1), B(1), 'riple'),
+      killed(3, 208, A(2), B(2), 'riple'),
+    ]
+  }
+
+  const bothWon = (round: number): boolean | null => round === 1 || round === 2
+
+  it('★상대 스나가 지워진 라운드도 분모★ 다 — 양 팀 분모가 같다', () => {
+    const match = run(bothSnipersMatch(), US, bothWon)
+    const ours = match.byTeam.get(US)?.riflePower
+    const theirs = match.byTeam.get(THEM)?.riflePower
+    /* R2(킬 3) · R3(킬 3) — 분모는 ★킬 6★ 이고 양 팀이 같은 수를 본다 */
+    expect(ours?.rounds).toBe(6)
+    expect(theirs?.rounds).toBe(6)
+    expect(ours?.situationRounds).toBe(2)
+  })
+
+  it('★두 값을 더하면 정확히 100%★ 다 (사장님: «스나싸움처럼 둘이 합쳐서 100퍼센트»)', () => {
+    const match = run(bothSnipersMatch(), US, bothWon)
+    const ours = match.byTeam.get(US)?.riflePower
+    const theirs = match.byTeam.get(THEM)?.riflePower
+    expect(ours).toEqual({ rounds: 6, won: 3, situationRounds: 2 })
+    expect(theirs).toEqual({ rounds: 6, won: 3, situationRounds: 2 })
+    const sum =
+      (ours as { rounds: number; won: number }).won / (ours as { rounds: number }).rounds +
+      (theirs as { rounds: number; won: number }).won / (theirs as { rounds: number }).rounds
+    expect(sum).toBeCloseTo(1, 10)
+  })
+
+  it('우리 스나가 없어도 **상대 스나만으로** 잰다', () => {
+    /* A3 의 스나 킬을 라플로 바꾸면 우리 팀에 스나가 없어진다 — B3 는 그대로 스나다 */
+    const noOurs = bothSnipersMatch().map((e) =>
+      e.event_type === 'kill' && e.str_usn === 'A3' ? { ...e, weapon: 'riple' } : e,
+    )
+    const tally = run(noOurs, US, bothWon).byTeam.get(US)?.riflePower
+    /*
+     * R2(상대 스나 B3 가 ★살아 있고 킬도 없다★ · 우리 승) · R3(B3 가 먼저 지워짐 · 우리 패).
+     * ⚠ 옛 기대값은 `{ rounds: 1, won: 0 }` 이었다 — 2026-09-15 밤에 «살아있는데» 가
+     *   더해지면서 R2 도 분모에 들어왔다 (사장님).
+     */
+    expect(tally).toEqual({ rounds: 6, won: 3, situationRounds: 2 })
   })
 })
 

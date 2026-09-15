@@ -163,14 +163,29 @@ export function Hexagon({
             </text>
             <text x={x} y={y + 14} textAnchor={anchor} fontSize={a.strong ? 14 : 11.5} fontWeight={a.strong ? 900 : 700} fill={a.noteColor} className={a.strong ? 'v3-hex-note-strong' : undefined}>
               {a.note}
+              {/*
+                ★12시 축만 모집단을 «등수 옆»★ 에 붙인다 (2026-09-15 · 무한 QA).
+
+                ⚠ 옛 자리는 `y - 11`(=15) 이라 ★이름 위★ 였다. 그 자리가 그림 맨 위
+                  14px 안이라 ★카드 테두리에 반쯤 잘려★ 안 읽혔다 (폰 390px 실측 —
+                  스나싸움만 «42개중» 이 선에 먹혔다).
+                  아래(`y + 24`)로 못 내리는 까닭은 눈금 «100» 이 (155, 49) 라 겹치기 때문이다.
+                  그래서 ★같은 줄 오른쪽★ 으로 보낸다 — 가운데 맞춤이라 둘이 한 덩어리로 선다.
+                  눈금은 9px 아래 줄이고 글자가 더 작아 닿지 않는다.
+              */}
+              {i === 0 && a.note2 ? (
+                /*
+                 * ★12시만 한 단계 진하게★ — 클랜 카드 맨 위에는 ★구름 배경 띠★ 가 깔려 있어
+                 *   `textGhost2` 로는 묻힌다. 나머지 다섯은 어두운 바탕 위라 그대로 둔다.
+                 */
+                <tspan dx="4" fontSize="8.5" fontWeight="700" fill={V3.textMuted}>
+                  {a.note2}
+                </tspan>
+              ) : null}
             </text>
-            {/*
-              ★모집단 줄★ (2026-09-12 사장님: «스나수 n명중 n위»).
-              12시 축만 ★이름 위★ 에 붙인다 — 아래에 두면 눈금 숫자(100·80…)와 겹친다.
-              눈금은 위쪽 살을 따라 그려지고 맨 위 «100» 이 (155, 49) 라 y+24 자리가 겹친다.
-            */}
-            {a.note2 ? (
-              <text x={x} y={i === 0 ? y - 11 : y + 24} textAnchor={anchor} fontSize="8.5" fontWeight="700" fill={V3.textGhost2}>
+            {/* ★모집단 줄★ (2026-09-12 사장님: «스나수 n명중 n위») — 12시 축은 위에서 이미 그렸다 */}
+            {a.note2 && i !== 0 ? (
+              <text x={x} y={y + 24} textAnchor={anchor} fontSize="8.5" fontWeight="700" fill={V3.textGhost2}>
                 {a.note2}
               </text>
             ) : null}
