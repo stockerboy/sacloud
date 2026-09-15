@@ -89,7 +89,8 @@ export function HomeTopPlayers() {
                  *   ① 선짤·연속킬이 «판당» 단위가 되면서 캐리력과 같은 `per_game` 이 됐다
                  *      — 그때는 «킬/판» 과 «회/판» 을 축으로 갈랐다
                  *   ② 캐리력이 ★게임영향력★ 이 되며 퍼센트로 옮겨 갔다
-                 *      — 이제 `per_game` 은 선짤·연속킬뿐이라 늘 «회/판» 이다
+                 *   ③ 5번 축이 «연속킬» 에서 «교환율»(%) 로 바뀌었다
+                 *      — 이제 `per_game` 은 ★선짤 하나뿐★ 이라 늘 «회/판» 이다
                  */}
                 {row.unit === 'per_game' ? (
                   <span className="text-[9.5px] text-[var(--v2-text-ghost)]">회/판</span>
