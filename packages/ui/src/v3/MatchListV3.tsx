@@ -123,7 +123,14 @@ export function MatchListV3(props: MatchListV3Props) {
                     <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{m.map.name}</span>
                     <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
                   </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  {/*
+                    ⚠ ★2026-09-15 밤 — PC 에서 두 이름이 화면 양끝으로 벌어졌다★ (무한 QA).
+                      이 칸은 격자에서 `1fr` 이라 1280px 에서는 900px 가까이 된다. 그 안에서
+                      양 팀이 `flex: 1 1 0` 으로 좌우 끝에 붙으니 «누가 누구와» 가
+                      ★한눈에 안 들어왔다.★ 가운데 «VS» 둘레만 텅 비었다.
+                      칸은 그대로 두고 ★안쪽만 가운데로 모은다★ — 폰은 이 폭보다 좁아 그대로다.
+                  */}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, width: '100%', maxWidth: 520, marginInline: 'auto' }}>
                     <Side clan={left.clan} division={left.division} leagueCategory={leagueCategory} won align="left" />
                     <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 'none', minWidth: 44 }}>
                       {rounds ? <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', color: V3.textStrong }}>{rounds[0]}:{rounds[1]}</span> : <span style={{ fontSize: 10.5, color: '#3a4560' }}>VS</span>}
