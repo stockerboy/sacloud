@@ -31,6 +31,10 @@ import {
   zoneCellsOfLabels,
   type LabeledZoneFile,
   type ZoneCells,
+  /* ★라운드 시작 시각★ — 선짤의 25초 창을 재려면 필요하다 (2026-09-15).
+     게임템포와 ★같은 상수★ 를 쓴다. 두 곳이 어긋나면 안 된다 */
+  MATCH_TO_FIRST_ROUND_SECONDS,
+  ROUND_GAP_SECONDS,
 } from '@sacloud/nexon'
 import { REPO_ROOT } from '../lib/env.js'
 import { log, warn } from '../lib/log.js'
@@ -257,6 +261,12 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
      * 5초는 클랜 육각 6번 축에서 사장님이 확정한 값이다 (D-256). 둘을 같은 값으로 둔다.
      */
     const TRADE_WINDOW_SECONDS = 5
+
+    /**
+     * ★선짤의 창★ — 라운드 시작 후 이 안에 난 첫 킬만 «선짤» 이다 (2026-09-15 사장님).
+     * 실측 라운드 시작 → 첫 킬 중앙 22초 · 25초 안이 58.9%.
+     */
+    const OPENING_WINDOW_SECONDS = 25
     const kills = new Map<string, Kill>()
     /* ★라운드 승자★ — `win_flag` 는 그 배틀로그를 낸 클랜 쪽 시각이다. «lose» 만 있는 라운드는 상대가 이긴 것.
        겹침을 빼기 전에 두 벌 모두에서 읽는다 (2026-09-11 · 이걸 안 읽어 상대 쪽 세이브가 전부 0 이었다) */
@@ -323,7 +333,38 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
     }
     const whoOf = (k: string, usn: string): Who | undefined => who.get(`${k}|${usn}`)
 
-    for (const [, arr] of byRound) {
+    /*
+     * ★라운드가 몇 초에 시작했나★ — 선짤의 25초 창을 재려면 필요하다 (2026-09-15 사장님:
+     * «라운드 시작 후 25초 안에 가장 먼저 죽이면 선짤점수가 올라야해»).
+     *
+     * `event_time` 은 ★경기 시작부터의 누적 시간★ 이라 라운드 시작을 따로 짚어야 한다.
+     * 값은 게임템포에서 사장님이 실측해 주신 것을 그대로 쓴다 —
+     *   1라운드  경기 시작 + 10초
+     *   그 뒤    직전 라운드 ★마지막 킬★ + 8.45초
+     * 두 곳이 어긋나면 안 되므로 `@sacloud/nexon` 의 같은 상수를 가져다 쓴다.
+     */
+    const roundStartAt = new Map<string, number>()
+    {
+      const byMatch = new Map<string, { rd: number; key: string; last: number }[]>()
+      for (const [key, arr] of byRound) {
+        const head = arr[0] as Kill
+        let last = head.t
+        for (const e of arr) if (e.t > last) last = e.t
+        const list = byMatch.get(head.k) ?? []
+        list.push({ rd: Number(head.rd), key, last })
+        byMatch.set(head.k, list)
+      }
+      for (const [, list] of byMatch) {
+        list.sort((a, b) => a.rd - b.rd)
+        let prevEnd: number | null = null
+        for (const r of list) {
+          roundStartAt.set(r.key, prevEnd === null ? MATCH_TO_FIRST_ROUND_SECONDS : prevEnd + ROUND_GAP_SECONDS)
+          prevEnd = r.last
+        }
+      }
+    }
+
+    for (const [roundKey, arr] of byRound) {
       arr.sort((a, b) => a.t - b.t)
       const mk = (arr[0] as Kill).k
       const teams = roster.get(mk)
@@ -378,8 +419,22 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           t.maxRoundTimes += 1
         }
       }
-      const firstK = whoOf(mk, (arr[0] as Kill).killer)
-      if (firstK) tallyOf(mk, firstK.pid).firstKills += 1
+      /*
+       * ★선짤 — 라운드 시작 후 25초 안의 첫 킬만★ (2026-09-15 사장님).
+       *
+       * ⚠ 옛 판은 «그 라운드의 첫 킬» 을 무조건 셌다. 그러면 40초쯤 지나 한 명이
+       *   슬쩍 잡은 것도 «선짤» 이 됐다. 사장님이 재 주신 25초는 실측 중앙(22초)
+       *   바로 뒤라, 라운드 6,975개 중 ★58.9%★ 가 걸린다 — 절반 조금 넘는 좋은 자리다.
+       *
+       * 라운드 시작을 못 짚은 경기(첫 라운드 정보가 없는 등)는 ★안 센다★ —
+       * 25초인지 모르면서 선짤이라 적지 않는다 (D-106).
+       */
+      const opener = arr[0] as Kill
+      const startedAt = roundStartAt.get(roundKey)
+      if (startedAt !== undefined && opener.t - startedAt <= OPENING_WINDOW_SECONDS) {
+        const firstK = whoOf(mk, opener.killer)
+        if (firstK) tallyOf(mk, firstK.pid).firstKills += 1
+      }
       /*
        * ★교환율★ (2026-09-15 사장님 «교환율로 해줘») — 동료가 죽은 직후 그 킬러를 되잡았나.
        *

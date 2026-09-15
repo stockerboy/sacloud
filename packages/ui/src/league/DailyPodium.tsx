@@ -56,6 +56,9 @@ export interface DailyPodiumRowView {
     value: number | null
     pct: number | null
     unit: 'percent' | 'per_game' | 'seconds'
+    /** ★그날 안에서의 등수★ — 축 밑에 «n위» 로 적는다 (2026-09-15 사장님) */
+    rank?: number | null
+    total?: number | null
   }[]
 }
 
@@ -123,24 +126,31 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
     const axes = row.axes
     if (axes === undefined || axes.length === 0) return null
     if (axes.some((a) => a.pct === null)) return null
+    /** 원값을 축 단위에 맞게 적는다 — 두 번째 줄로 내려간다 */
+    const valueText = (a: (typeof axes)[number]): string | null => {
+      if (a.value === null) return null
+      if (a.unit === 'seconds') return mmss(a.value)
+      if (a.unit === 'per_game') return `${Number.isInteger(a.value) ? a.value : a.value.toFixed(1)}회`
+      return `${Math.round(a.value * (a.value <= 1 ? 100 : 1))}%`
+    }
     return axes.map((a) => ({
       label: a.label,
       value: a.pct,
-      note:
-        a.value === null
-          ? '측정중'
-          : a.unit === 'seconds'
-            ? mmss(a.value)
-            : a.unit === 'per_game'
-              /* ⚠ 게임영향력은 2026-09-15 에 퍼센트가 됐다 — 여기로 안 온다 */
-              ? `${Number.isInteger(a.value) ? a.value : a.value.toFixed(1)}회`
-              : `${Math.round(a.value * (a.value <= 1 ? 100 : 1))}%`,
       /*
-       * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그건 «등수» 를 받는다.
-       *   여기 값은 ★백분위★ 라 승률과 같은 잣대를 쓴다.
+       * ★축 밑에는 «등수» 를 적는다★ (2026-09-15 사장님 «퍼센트 말고 순위로 해주면 안돼?»).
+       *
+       * 선수 상세·클랜 카드는 처음부터 «n위» 였는데 여기와 깃발만 값을 적고 있었다 —
+       * 그날 자료라 시즌 등수가 없어서였다. 이제 ★그날 뛴 사람들 안에서의 등수★ 다.
+       * ★값은 안 사라진다★ — 두 번째 줄로 내려간다 (41.7% 같은 원값).
+       */
+      note: a.rank === null ? (valueText(a) ?? '측정중') : `${a.rank}위`,
+      /*
+       * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그건 «등수» 를 받는데
+       *   그 함수의 경계는 시즌 랭킹용이다. 여기 등수는 ★그날★ 안의 것이라
+       *   모집단이 훨씬 작다. 그래서 백분위로 색을 고른다 (승률과 같은 잣대).
        */
       noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
-      note2: null,
+      note2: a.rank === null ? null : valueText(a),
     }))
   })()
 

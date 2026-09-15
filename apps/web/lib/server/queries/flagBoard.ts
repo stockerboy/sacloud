@@ -43,7 +43,14 @@ export interface FlagBoardRow {
   /** 킬 ÷ (킬+데스) · % — 잴 수 없으면 null */
   kd_rate: number | null
   /** 그날 육각 — 백분위 (그날 뛴 사람들 안에서) */
-  axes: { key: FlagAxisKey; value: number | null; pct: number | null }[]
+  axes: {
+    key: FlagAxisKey
+    value: number | null
+    pct: number | null
+    /** ★그날 안에서의 등수★ — 축 밑에 «n위» 로 적는다 (2026-09-15 사장님) */
+    rank: number | null
+    total: number | null
+  }[]
   /** 지금까지 받은 깃발 수 (1등만 센다) */
   flags: number
 }

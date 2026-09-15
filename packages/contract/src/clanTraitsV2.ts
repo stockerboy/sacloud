@@ -112,13 +112,16 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
   save: 'ratio',
   tempo: 'seconds',
   /*
-   * ★선짤은 «판당 몇 번»★ 이다 (2026-09-15 사장님:
-   * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔 / 클랜축도 마찬가지»).
+   * ★클랜 선짤은 «비율»★ 이다 (2026-09-15 사장님이 회의에서 ②안을 고르심).
    *
-   * ⚠ 이 줄만 `ratio` 로 남아 있었다 — 바로 위 주석은 이미 perGame 을 말하는데
-   *   값이 안 따라왔다. 그래서 화면이 «선짤 54%» 라고 적었다 (라운드 비율 그대로).
+   * 뜻: «25초 안에 첫 킬이 난 라운드 중 우리가 먼저 딴 비율».
+   * 분모가 이미 «겨룬 라운드» 라 비율이 곧 뜻이다 — 판으로 나누면 오히려 흐려진다.
+   *
+   * ⚠ 같은 날 «판당 n.n회» 로 잠깐 바꿨다가 되돌렸다.
+   *   개인 선짤은 «판당 n.n회» 그대로다 — 개인은 한 사람이 몇 번 땄나가 궁금하고,
+   *   클랜은 다섯이 함께라 «겨뤄서 이겼나» 가 궁금하다. 뜻이 달라서 단위도 다르다.
    */
-  firstBlood: 'perGame',
+  firstBlood: 'ratio',
   trade: 'ratio',
 }
 
@@ -1144,14 +1147,15 @@ export function buildClanHexV2Raw(input: {
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
         if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
         /*
-         * ★분모가 «라운드» 에서 «경기» 로 바뀌었다★ (2026-09-15 사장님).
+         * ★25초 안에 겨룬 라운드 중 먼저 딴 비율★ (2026-09-15 사장님 ②안).
          *
-         * ⚠ 옛 값은 `won / rounds` 라 «라운드의 몇 %에서 선짤» 이었다 (0.54 → «54%»).
-         *   지금은 «판당 몇 번» 이라 같은 판이 «5.4회» 로 읽힌다 — 개인 축과 같은 단위다.
-         *   ★백분위와 등수는 안 바뀐다★ — 모두 같은 분모로 나누는 단조 변환이다.
-         *   경기 수를 모르면(0) 옛 분모로 되돌린다 — 값을 지어내지 않는다.
+         * `part.rounds` 는 세는 쪽(`clanHexV2.ts`)에서 이미 ★25초 안에 첫 킬이 난
+         * 라운드★ 로 좁혀 놓았다. 그러니 여기서는 그대로 나누기만 한다.
+         *
+         * ⚠ 같은 날 분모를 «경기» 로 바꿔 «판당 5.4회» 로 적었다가 되돌렸다.
+         *   ②안은 분모가 이미 «겨룬 라운드» 라 비율이 곧 뜻이다.
          */
-        return measuredAxis(key, part.won, input.matches > 0 ? input.matches : part.rounds)
+        return measuredAxis(key, part.won, part.rounds)
       }
       /**
        * ⑥ **교환** — 팀원이 죽은 「직후」 그 킬러를 되잡았나 (D-256).

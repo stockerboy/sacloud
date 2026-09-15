@@ -62,6 +62,13 @@ export const DailyPodiumRow = z.object({
         /** 그날 안에서의 백분위 (0~100) — 그래프 면적은 이것으로 그린다 */
         pct: z.number().nullable(),
         unit: z.enum(['percent', 'per_game', 'seconds']),
+        /**
+         * ★그날 안에서의 등수★ (2026-09-15 사장님 «퍼센트 말고 순위로 해주면 안돼?»).
+         * 시즌 등수가 아니다. `total` 은 그날 그 축을 잴 수 있었던 수다.
+         * 못 재면 둘 다 `null` 이고 화면은 «측정중» 이라 적는다.
+         */
+        rank: z.number().nullable().default(null),
+        total: z.number().nullable().default(null),
       }),
     )
     .default([]),

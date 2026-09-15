@@ -527,7 +527,20 @@ export interface FlagRanked<T> {
   rank: number
   score: number
   /** 백분위로 바꾼 여섯 축 (그날 뛴 사람들 사이에서) */
-  axes: { key: FlagAxisKey; value: number | null; pct: number | null }[]
+  /**
+   * 축마다의 값·백분위·★등수★.
+   *
+   * ★등수는 «그날 뛴 사람들» 안에서 낸다★ (2026-09-15 사장님 «퍼센트 말고 순위로»).
+   * 시즌 등수가 아니다 — 깃발도 오늘의 셋도 그날 자료만 본다.
+   * `total` 은 그 축을 잴 수 있었던 사람 수다 (못 잰 사람은 안 센다).
+   */
+  axes: {
+    key: FlagAxisKey
+    value: number | null
+    pct: number | null
+    rank: number | null
+    total: number | null
+  }[]
   /** 가장 낮은 축의 백분위와 이름 */
   lowPct: number
   lowKey: FlagAxisKey
@@ -609,6 +622,23 @@ export function dayAxisScores(
   }
 }
 
+/**
+ * ★그 모집단 안에서 몇 위인가★ — 높을수록 1위 (2026-09-15 사장님 «퍼센트 말고 순위로»).
+ *
+ * 같은 값이면 ★같은 등수★ 다 (공동 3위가 둘이면 다음은 5위).
+ * `sorted` 는 오름차순이고, 못 잰 값(`null`)이면 등수도 없다.
+ */
+export function rankInPool(sorted: readonly number[], v: number | null): number | null {
+  if (v === null || sorted.length === 0) return null
+  /* 나보다 큰 값이 몇 개인가 + 1 */
+  let above = 0
+  for (let i = sorted.length - 1; i >= 0; i -= 1) {
+    if ((sorted[i] as number) > v) above += 1
+    else break
+  }
+  return above + 1
+}
+
 export function rankFlagDay<T>(
   candidates: readonly FlagCandidate<T>[],
   size: number = FLAG_PODIUM_SIZE,
@@ -645,6 +675,9 @@ export function rankFlagDay<T>(
       /* 적는 값은 원값이고, 자리는 ★잣대★ 가 정한다 */
       value: values[key],
       pct: flagPercentile(pools[key], scores[key]),
+      /* ★그날 안에서 몇 위인가★ — 같은 값이면 같은 등수다 (2026-09-15 사장님) */
+      rank: rankInPool(pools[key], scores[key]),
+      total: pools[key].length > 0 ? pools[key].length : null,
     }))
     /* 하나라도 못 잰 축이 있으면 «고르게» 를 말할 수 없다 */
     if (axes.some((a) => a.pct === null)) continue
@@ -705,6 +738,12 @@ export const FlagBoardRowSchema = z.object({
       key: z.string(),
       value: z.number().nullable(),
       pct: z.number().nullable(),
+      /**
+       * ★그날 안에서의 등수★ (2026-09-15 사장님 «퍼센트 말고 순위로 해주면 안돼?»).
+       * 시즌 등수가 아니다. `total` 은 그날 그 축을 잴 수 있었던 사람 수다.
+       */
+      rank: z.number().nullable().default(null),
+      total: z.number().nullable().default(null),
     }),
   ),
   /** 지금까지 받은 깃발 수 (1등만) */

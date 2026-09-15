@@ -620,7 +620,7 @@ const TEMPO_MIN_ROUND_SECONDS = ROUND_FULL_SECONDS - 110
  *
  * 배틀로그 시계는 ★경기 시작★ 이 0:00 이라, 1라운드 길이를 구하려면 이만큼 빼야 한다.
  */
-const MATCH_TO_FIRST_ROUND_SECONDS = 10
+export const MATCH_TO_FIRST_ROUND_SECONDS = 10
 
 /**
  * ★라운드 끝 → 다음 라운드 시작★ 까지 (초). **사장님이 직접 재신 값이다** (2026-09-14 저녁:
@@ -636,7 +636,20 @@ const MATCH_TO_FIRST_ROUND_SECONDS = 10
  *   따로 «140초를 넘을 수 없다» 는 성질로 벽을 찾아 ★8초★ 라는 값도 얻었는데,
  *   사장님 실측 8.45초와 맞았다. 두 길이 같은 곳을 가리켰으니 이 값을 쓴다.
  */
-const ROUND_GAP_SECONDS = 8.45
+export const ROUND_GAP_SECONDS = 8.45
+
+/**
+ * ★선짤의 창★ — 라운드 시작 후 이 안에 난 첫 킬만 «선짤» 로 센다 (2026-09-15 사장님:
+ * «라운드 시작 후 25초 안에 가장 먼저 죽이면 선짤점수가 올라야해»).
+ *
+ * ★분모도 같이 좁힌다★ (사장님이 회의에서 ②안을 고르심) —
+ * «25초 안에 첫 킬이 난 라운드» 만 분모다. 25초 안에 아무도 못 딴 라운드는
+ * 양 팀 다 못 겨룬 것이라 «졌다» 로 적지 않는다.
+ *
+ * 실측(클랜 6,729라운드): 지금 52.5% → ②안 53.8% — ★값이 거의 안 움직인다.★
+ * (분모를 안 좁히는 ①안이면 32.0% 로 떨어져 육각이 통째로 쪼그라든다)
+ */
+export const OPENING_WINDOW_SECONDS = 25
 
 /**
  * 배틀로그 원문 한 건(클랜 응답) → **양쪽 클랜**의 여섯 축 분자/분모.
@@ -1058,9 +1071,17 @@ function tallyFor(input: {
 
   const isOurs = (usn: string): boolean => input.roster.teamOf.get(usn) === input.teamNo
 
+  /*
+   * ★라운드가 몇 초에 시작했나★ — 선짤의 25초 창을 재려면 필요하다 (2026-09-15 사장님).
+   * 게임템포와 ★같은 값★ 을 쓴다: 1라운드는 경기 시작 +10초, 그 뒤는 직전 라운드
+   * 마지막 킬 +8.45초. `input.roundNumbers` 는 오름차순이다.
+   */
+  let prevRoundEnd: number | null = null
+
   for (const round of input.roundNumbers) {
     const kills = input.killsByRound.get(round) ?? []
     if (kills.length === 0) continue
+    const roundStart = prevRoundEnd === null ? MATCH_TO_FIRST_ROUND_SECONDS : prevRoundEnd + ROUND_GAP_SECONDS
 
     /* ── ① 스나 대 스나. 구역을 안 본다 ── */
     for (const kill of kills) {
@@ -1081,11 +1102,27 @@ function tallyFor(input: {
       if (isOurs(kill.killer)) oursFirst = true
       else foeFirst = true
     }
+    /*
+     * ★25초 창★ (2026-09-15 사장님 «2로 가») — 라운드 시작 후 25초 안에 첫 킬이 난
+     * 라운드만 ★분모★ 다. 25초 안에 아무도 못 딴 라운드는 양 팀 다 못 겨룬 것이라
+     * «졌다» 로 적지 않는다 (①안처럼 전 라운드를 분모로 쓰면 52.5% → 32.0% 로
+     * 육각이 통째로 쪼그라든다).
+     *
+     * 실측(클랜 6,729라운드): 지금 52.5% → ②안 ★53.8%★ — 값이 거의 안 움직인다.
+     */
+    const openedInWindow = earliest - roundStart <= OPENING_WINDOW_SECONDS
     if (oursFirst && foeFirst) {
       firstBlood.tiedRounds += 1
-    } else {
+    } else if (openedInWindow) {
       firstBlood.rounds += 1
       if (oursFirst) firstBlood.won += 1
+    }
+
+    /* 다음 라운드의 시작을 재려고 이 라운드의 ★마지막 킬★ 시각을 남긴다 */
+    {
+      let end = -Infinity
+      for (const kill of kills) if (kill.at > end) end = kill.at
+      if (Number.isFinite(end)) prevRoundEnd = end
     }
 
     /* ── ⑥ 교환. 우리 팀원이 상대에게 죽은 뒤 **그 킬러**를 되잡았나 ── */

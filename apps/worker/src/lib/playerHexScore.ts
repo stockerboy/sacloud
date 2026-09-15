@@ -72,7 +72,12 @@ import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
  *   옛 판은 내가 먼저 죽은 뒤의 동료 죽음까지 분모에 넣어, 되갚을 수 없었던 것을
  *   «안 갚았다» 로 적었다. 그 탓에 교환율이 평균 4.4% 로 바닥에 깔렸다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.6'
+/**
+ * ⚠ ★v1.7 — 선짤에 «라운드 시작 후 25초» 창이 생겼다★ (2026-09-15 사장님).
+ *   그 전에는 «그 라운드의 첫 킬» 을 무조건 셌다. 40초쯤 지나 슬쩍 잡은 것도
+ *   «선짤» 이 됐다. 실측 25초 안이 58.9% 라 절반 조금 넘는 좋은 자리다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.7'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700

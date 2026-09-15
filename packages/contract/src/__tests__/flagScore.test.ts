@@ -199,6 +199,22 @@ describe('★flagPercentileMid★ — 동점을 가운데로 (한 판 육각용)
   })
 })
 
+describe('★선짤 잣대★ — 무기 기준값으로 나눈다 (2026-09-15 사장님)', () => {
+  it('같은 «판당 회수» 라도 라플이 더 위다 — 스나가 2.62배 유리한 것을 지운다', () => {
+    const sniper = tally({ weapon: 1, games: 10, firstKills: 23 })
+    const rifle = tally({
+      weapon: 0, games: 10, firstKills: 23,
+      rifleDuelWon: 20, rifleDuelLost: 10, sniperDuelWon: 0, sniperDuelLost: 0,
+    })
+    /* 적는 값은 같다 */
+    expect(dayAxisValues(sniper).opening).toBe(dayAxisValues(rifle).opening)
+    /* 줄 세우는 잣대는 라플이 위다 */
+    expect(dayAxisScores(rifle).opening as number).toBeGreaterThan(dayAxisScores(sniper).opening as number)
+    /* 그 무기의 «보통» 은 1.0 근처다 */
+    expect(dayAxisScores(sniper).opening as number).toBeCloseTo(1, 1)
+  })
+})
+
 describe('★saveScaleOf★ — 세이브는 횟수 고정 눈금 (2026-09-15 사장님)', () => {
   it('0회면 그래프가 움직이지 않는다', () => {
     expect(saveScaleOf(0)).toBe(0)

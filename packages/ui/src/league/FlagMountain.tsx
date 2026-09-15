@@ -56,7 +56,14 @@ export interface FlagMountainRow {
   kd_rate: number | null
   flags: number
   /** 그날(17:00~03:00) 기록만으로 만든 여섯 축. 못 재면 빈 배열 */
-  axes: readonly { key: string; value: number | null; pct: number | null }[]
+  axes: readonly {
+    key: string
+    value: number | null
+    pct: number | null
+    /** ★그날 안에서의 등수★ — 축 밑에 «n위» 로 적는다 (2026-09-15 사장님) */
+    rank?: number | null
+    total?: number | null
+  }[]
 }
 
 export interface FlagTimelinePoint {
@@ -122,6 +129,10 @@ export function FlagMountain({
 
   const picked = rows.find((r) => r.rank === pickedRank) ?? rows[0] ?? null
 
+  /** 원값을 축 단위에 맞게 — ★선짤만 «회»★ 이고 나머지는 % 다 (2026-09-15) */
+  const axisValueText = (a: { key: string; value: number | null }): string =>
+    a.value === null ? '측정중' : a.key === 'opening' ? `${a.value}회` : `${a.value}%`
+
   /* 그날 여섯 축 → 육각형이 읽는 모양. 면적은 ★백분위★ 로 그린다 */
   const hexAxes = useMemo<HexAxisView[]>(() => {
     if (picked === null) return []
@@ -129,24 +140,22 @@ export function FlagMountain({
       label: playerHexLabelOf(a.key as TraitAxisKey, null),
       value: a.pct,
       /*
-       * 단위 — ★선짤·연속킬만 «회»★ 이고 나머지는 % 다 (2026-09-15 사장님).
+       * ★축 밑에는 «등수» 를 적는다★ (2026-09-15 사장님 «퍼센트 말고 순위로 해주면 안돼?»).
        *
-       * ⚠ 같은 날 캐리력도 «킬» 이었다. 이름이 ★게임영향력★ 으로 바뀌면서
-       *   «한 라운드에 적 다섯 중 몇 명» 이 되어 ★퍼센트★ 가 됐다.
+       * 선수 상세·클랜 카드는 처음부터 «n위» 였는데 깃발과 오늘의 셋만 값을 적고 있었다 —
+       * 그날 자료라 시즌 등수가 없어서였다. 이제 ★그날 뛴 사람들 안에서의 등수★ 다.
+       * ★값은 안 사라진다★ — 두 번째 줄로 내려간다.
+       *
+       * ⚠ 단위는 ★선짤만 «회»★ 다. 같은 날 캐리력(→게임영향력)과 연속킬(→교환율)이
+       *   둘 다 퍼센트로 옮겨 가서, 남은 «회» 는 선짤 하나뿐이다.
        */
-      note:
-        a.value === null
-          ? '측정중'
-          /* ⚠ ★선짤만 «회»★ 다 (2026-09-15) — 5번 축이 «연속킬»(회) 에서 «교환율»(%) 로 바뀌었다 */
-          : a.key === 'opening'
-            ? `${a.value}회`
-            : `${a.value}%`,
+      note: a.rank === null ? (a.value === null ? '측정중' : axisValueText(a)) : `${a.rank}위`,
       /*
        * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그 함수는 «등수» 를 받는다.
        *   여기 값은 ★백분위★ (높을수록 좋다) 라 승률과 같은 잣대를 쓴다.
        */
       noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
-      note2: null,
+      note2: a.rank === null || a.value === null ? null : axisValueText(a),
     }))
   }, [picked])
 

@@ -361,6 +361,38 @@ async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]>
   }
   const pool = [...raw.values()]
 
+  /*
+   * ★그날 뛴 클랜들 안에서 축마다 등수★ (2026-09-15 사장님 «퍼센트 말고 순위로»).
+   *
+   * 축 원값(`raw`)을 모아 내림차순으로 두고, 같은 값이면 같은 등수로 센다.
+   * 시즌 등수가 아니다 — 오늘의 셋은 ★그날 자료만★ 본다.
+   */
+  const clanAxisPool = new Map<string, number[]>()
+  for (const hex of pool) {
+    for (const a of hex.axes) {
+      if (a.raw === null) continue
+      const list = clanAxisPool.get(a.key) ?? []
+      list.push(a.raw)
+      clanAxisPool.set(a.key, list)
+    }
+  }
+  for (const list of clanAxisPool.values()) list.sort((x, y) => y - x)
+  /** 게임템포는 ★작을수록 좋다★ — 라운드가 빨리 끝난 쪽이 위다 */
+  const LOWER_IS_BETTER = new Set(['tempo'])
+  const clanAxisRank = (key: string, raw: number | null): number | null => {
+    if (raw === null) return null
+    const list = clanAxisPool.get(key)
+    if (!list || list.length === 0) return null
+    const better = LOWER_IS_BETTER.has(key)
+      ? list.filter((v) => v < raw).length
+      : list.filter((v) => v > raw).length
+    return better + 1
+  }
+  const clanAxisTotal = (key: string): number | null => {
+    const n = clanAxisPool.get(key)?.length ?? 0
+    return n > 0 ? n : null
+  }
+
   const scored = rows
     .map((r) => {
       if (r.games < MIN_GAMES) return null
@@ -419,6 +451,9 @@ async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]>
       label: a.label,
       value: a.raw,
       pct: a.value === null ? null : Math.round(a.value * 1000) / 10,
+      /* ★그날 뛴 클랜들 안에서의 등수★ (2026-09-15 사장님 «퍼센트 말고 순위로») */
+      rank: clanAxisRank(a.key, a.raw),
+      total: clanAxisTotal(a.key),
       unit:
         CLAN_HEX_V2_AXIS_UNITS[a.key] === 'seconds'
           ? ('seconds' as const)

@@ -342,14 +342,15 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(axisOf(hex, 'tempo').text).toBe('2분 20초 중 18초 종료')
     /* ⑤ 선짤 — 7 / 12. 동시각 2라운드는 **분모에 없다** (사용자 (가)) */
     /*
-     * ⚠ ★2026-09-15 — 선짤의 분모가 «라운드» 에서 «경기» 로 바뀌었다★ (사장님:
-     *   «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔 / 클랜축도 마찬가지»).
-     *   옛 시험은 `denominator 12` (라운드) · `text '58%'` 였다.
-     *   지금은 경기 수(1)로 나눠 «판당 7.0회» 다.
+     * ⚠ ★같은 날 두 번 바뀌었다가 제자리로 왔다★ (2026-09-15)
+     *   ① 분모를 «경기» 로 → «판당 7.0회» (사장님 «클랜축도 마찬가지»)
+     *   ② ★되돌림★ — 회의에서 ②안을 고르시며 «25초 안에 겨룬 라운드 중 먼저 딴 비율»
+     *      이 됐다. 분모가 이미 «겨룬 라운드» 라 비율이 곧 뜻이다.
+     *   세는 쪽이 `rounds` 를 25초로 좁혀 놓으므로 여기서는 그대로 나눈다.
      */
     expect(axisOf(hex, 'firstBlood').numerator).toBe(7)
-    expect(axisOf(hex, 'firstBlood').denominator).toBe(1)
-    expect(axisOf(hex, 'firstBlood').text).toBe('7.0회')
+    expect(axisOf(hex, 'firstBlood').denominator).toBe(12)
+    expect(axisOf(hex, 'firstBlood').text).toBe('58%')
     /* ⑥ 교환 — within5(5) / deaths(20). **5초가 사용자 확정이다** */
     expect(axisOf(hex, 'trade').numerator).toBe(5)
     expect(axisOf(hex, 'trade').denominator).toBe(20)
@@ -367,9 +368,7 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     const tally = fullTally()
     expect(required(tally.firstBlood).tiedRounds).toBe(2)
     /* 분모 12 는 동시각 2 를 뺀 값이다 — 14 가 아니다 */
-    /* ⚠ 분모가 «경기» 로 바뀌었다 (2026-09-15) — 동시각 2라운드를 뺀 것은 분자 쪽 이야기다.
-       그 수(`tiedRounds`)는 그대로 남아 있다 */
-    expect(axisOf(buildClanHexV2Raw({ tally, matches: 1 }), 'firstBlood').denominator).toBe(1)
+    expect(axisOf(buildClanHexV2Raw({ tally, matches: 1 }), 'firstBlood').denominator).toBe(12)
   })
 
   /**
