@@ -203,8 +203,18 @@ async function clanTop(leagueId: string): Promise<HexTopAxis[]> {
         clan: toClanSummary(clan),
         league_player_id: null,
         league_clan_id: id,
-        /* 축마다 단위가 다르다(비율 · 초 · 라운드당 킬수). 계약이 이미 글자로 만들어 뒀다 */
-        value: axis.text,
+        /*
+         * 축마다 단위가 다르다(비율 · 초 · 라운드당 킬수). 계약이 이미 글자로 만들어 뒀다.
+         *
+         * ⚠ ★게임템포만 줄여서 적는다★ (2026-09-15 · 무한 QA).
+         *   계약의 글자는 «2분 20초 중 1분 12초 종료» 다. 선수 화면에서는 그 설명이
+         *   필요하지만, TOP5 는 ★같은 줄이 다섯 번★ 반복돼 카드 폭이 혼자 넓어졌다.
+         *   여기서는 ★끝난 시각만★ 적는다 — «2분 20초 중» 은 다섯 줄이 다 같다.
+         */
+        value:
+          key === 'tempo' && axis.text !== null
+            ? (/중 (.+) 종료$/.exec(axis.text)?.[1] ?? axis.text)
+            : axis.text,
         percentile: axis.value === null ? null : axis.value * 100,
       })
     }
