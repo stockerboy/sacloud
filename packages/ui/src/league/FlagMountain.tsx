@@ -30,6 +30,10 @@
  *   스크립트가 죽어도 산과 깃발은 남는다. 움직임은 `mounted` 가 붙은 뒤에만 건다.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { playerHexLabelOf, type TraitAxisKey } from '@sacloud/contract'
+import { Hexagon, type HexAxisView } from '../v3/Hexagon'
+import { V3 } from '../v3/tokens'
+import { statColor } from '../v3/rankColors'
 
 export interface FlagMountainRow {
   rank: number
@@ -43,6 +47,12 @@ export interface FlagMountainRow {
   win_rate: number
   kd_rate: number | null
   flags: number
+  /**
+   * ★그날 육각★ — 그 하루(17:00~03:00) 기록만으로 만든 여섯 축 (2026-09-15 사장님:
+   * «이것도 그 날 1700-0300까지의 육각이다 알겠지?»).
+   * 마감 뒤 저장본에는 아직 없다 — 그때는 빈 배열이고 육각을 안 그린다.
+   */
+  axes: readonly { key: string; value: number | null; pct: number | null }[]
 }
 
 export interface FlagMountainProps {
@@ -133,6 +143,31 @@ export function FlagMountain({ leagueSlug, dayKey, live, progress, rows }: FlagM
     }
   }, [live, rows.length, dayKey])
 
+  /*
+   * ★누구의 육각을 볼까★ (2026-09-15 사장님: «맨위 육각그래프는 (…)
+   *   그 날 마감기준 1,2,3등 (…) 이것도 그 날 1700-0300까지의 육각이다»).
+   *   기본은 1등. 2·3 등 줄을 누르면 그 사람 것으로 바뀐다.
+   */
+  const [pickedRank, setPickedRank] = useState(1)
+  const picked = rows.find((r) => r.rank === pickedRank) ?? rows[0] ?? null
+
+  /* 그날 여섯 축 → 육각형이 읽는 모양. 면적은 ★백분위★ 로 그린다 */
+  const hexAxes = useMemo<HexAxisView[]>(() => {
+    if (picked === null) return []
+    return picked.axes.map((a) => ({
+      label: playerHexLabelOf(a.key as TraitAxisKey, null),
+      value: a.pct,
+      /* 원값을 밑에 적는다 — 캐리력은 «킬/판» 이라 % 가 아니다 */
+      note: a.value === null ? '측정중' : a.key === 'carry' ? `${a.value}킬` : `${a.value}%`,
+      /*
+       * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그 함수는 «등수» 를 받는다.
+       *   여기 값은 ★백분위★ (높을수록 좋다) 라 승률과 같은 잣대(`statColor`)를 쓴다.
+       */
+      noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
+      note2: null,
+    }))
+  }, [picked])
+
   const peaks = useMemo(() => rows.map((r) => r.score), [rows])
   const path = useMemo(() => ridgePath(peaks), [peaks])
   const summit = useMemo(() => summitOf(peaks), [peaks])
@@ -200,6 +235,20 @@ export function FlagMountain({ leagueSlug, dayKey, live, progress, rows }: FlagM
 
       </div>
 
+      {/*
+       * ★그날 육각★ (2026-09-15 사장님: «맨위 육각그래프는 (…) 그 날 마감기준 1,2,3등
+       *   (…) 이것도 그 날 1700-0300까지의 육각이다 알겠지?»).
+       *
+       *   ★시즌 누적이 아니다★ — 그 하루에 뛴 것만으로 만든 여섯 축이고,
+       *   백분위도 ★그날 뛴 사람들 안에서★ 낸 값이다.
+       *   아래 1·2·3등 줄을 누르면 그 사람 것으로 바뀐다.
+       */}
+      {picked === null || hexAxes.length === 0 ? null : (
+        <div className="v2-flagmt__hex">
+          <Hexagon axes={hexAxes} id={`flagmt-${leagueSlug}-${picked.player_id}`} />
+        </div>
+      )}
+
       {/* 정상에 선 사람 — ★산 밑에 선다★ (2026-09-15 QA: 겹쳐 놓으니 능선을 가렸다) */}
       <div className="v2-flagmt__below">
         {top === null ? (
@@ -225,14 +274,24 @@ export function FlagMountain({ leagueSlug, dayKey, live, progress, rows }: FlagM
         )}
       </div>
 
-      {/* 2·3등 — 정상 아래 */}
-      {rows.length <= 1 ? null : (
+      {/*
+       * 1·2·3등 — ★누르면 위 육각이 그 사람 것으로 바뀐다★ (2026-09-15).
+       * 닉네임만 기록실로 가는 링크다. 줄 자체를 링크로 두면 육각을 못 바꾼다.
+       */}
+      {rows.length === 0 ? null : (
         <ol className="v2-flagmt__rest">
-          {rows.slice(1).map((r) => (
-            <li key={r.player_id}>
-              <span className="v2-flagmt__rank" style={{ color: MEDAL[r.rank - 1] ?? '#8fa0bd' }}>
-                {r.rank}위
-              </span>
+          {rows.map((r) => (
+            <li key={r.player_id} className={r.rank === pickedRank ? 'is-on' : undefined}>
+              <button
+                type="button"
+                className="v2-flagmt__pick"
+                aria-pressed={r.rank === pickedRank}
+                onClick={() => setPickedRank(r.rank)}
+              >
+                <span className="v2-flagmt__rank" style={{ color: MEDAL[r.rank - 1] ?? '#8fa0bd' }}>
+                  {r.rank}위
+                </span>
+              </button>
               <a href={`/league/${leagueSlug}/player/${r.player_id}`}>{r.name}</a>
               {r.clan === null ? null : <span className="v2-flagmt__restclan">{r.clan.name}</span>}
               <span className="v2-flagmt__restline">

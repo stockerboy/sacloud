@@ -221,6 +221,18 @@ export async function getFlagBoard(leagueSlug: string, now: Date = new Date()): 
     })
     if (planted.length > 0) {
       const counts = await flagCountsOf(planted.map((p) => p.playerId))
+      /* 축만 다시 접는다 — 순위·전적은 박아 둔 값을 쓴다 */
+      const dayRows = await dayRowsOf(league.id, day)
+      const wanted = new Set(planted.map((p) => p.playerId))
+      const axesOf = new Map(
+        rankFlagDay(
+          dayRows.map((r) => ({ ref: r, tally: tallyOf(r) })),
+          /* 셋만 뽑으면 2·3 등이 빠질 수 있다 — 넉넉히 받아 필요한 사람만 고른다 */
+          Number.MAX_SAFE_INTEGER,
+        )
+          .filter((r) => wanted.has(r.ref.playerId))
+          .map((r) => [r.ref.playerId, r.axes] as const),
+      )
       return {
         ...base,
         rows: planted.map((p) => ({
@@ -237,8 +249,16 @@ export async function getFlagBoard(leagueSlug: string, now: Date = new Date()): 
           lose: p.lose,
           win_rate: p.winRate ?? 0,
           kd_rate: p.kdRate,
-          /* 저장된 육각은 아직 없다 — 화면은 이 줄에서 육각을 안 그린다 */
-          axes: [],
+          /*
+           * ★마감 뒤에도 육각을 보여 준다★ (2026-09-15 사장님:
+           * «이것도 그 날 1700-0300까지의 육각이다»).
+           *
+           * 깃발 표에는 점수만 박혀 있고 축은 없다. 그래서 ★그날 창으로 다시 접어★
+           * 축만 붙인다 — ★순위와 전적은 박아 둔 값 그대로★ 다.
+           * (다시 세면 집계가 늦게 바뀌어 «어제 1등» 이 뒤바뀔 수 있다.
+           *  바뀌면 안 되는 것은 순위이지 그림이 아니다)
+           */
+          axes: axesOf.get(p.playerId) ?? [],
           flags: counts.get(p.playerId) ?? 0,
         })),
       }

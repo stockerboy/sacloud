@@ -20,6 +20,13 @@ import { useApiReady } from '@/app/providers'
 import { PodiumCards } from './PodiumCards'
 
 /**
+ * ★시즌 누적 1·2·3등 육각 카드를 그리나★ — 지금은 ★아니다★ (2026-09-15 사장님 지시).
+ * 그날 마감 기준 1·2·3등 육각은 리그 홈의 「오늘의 깃발」이 그린다.
+ * 부품(`PodiumCards`)은 지우지 않았다 — 이 줄만 `true` 로 바꾸면 돌아온다.
+ */
+const SEASON_PODIUM_ON = false
+
+/**
  * 「개인랭킹」 `/league/{slug}/rank/player`.
  *
  * ══ 2026-09-07 · Part 10 ⑤ — 시안으로 갈아끼웠다 ══
@@ -276,7 +283,19 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
             hrefOf={(row) => (row.player_id === null ? null : leaguePlayerPath(leagueSlug, row.player_id))}
           />
         ) : null}
-        {page === 1 ? (
+        {/*
+          ⚠ ★맨 위 1·2·3등 육각을 치웠다★ (2026-09-15 사장님:
+            «맨위 육각그래프는 1,2,3등껄 보여주는게 아니라 그 날 오전2시마감기준으로
+             1,2,3등 육각그래프 보여줘 (…) 기존에 있단 개인랭킹 1,2,3등 육각은 치워버려»).
+
+          이 카드 셋은 ★시즌 누적★ 1·2·3등이었다. 사장님이 보고 싶은 것은
+          ★그날(17:00~03:00) 마감 기준★ 1·2·3등이고, 그것은 이제 리그 ★홈★ 의
+          「오늘의 깃발」이 그린다 (`FlagMountain`).
+
+          ★부품은 지우지 않았다★ (`CLAUDE.md` 1-4) — `PodiumCards.tsx` 는 그대로 있다.
+          되돌리려면 `SEASON_PODIUM_ON` 을 `true` 로 바꾸면 된다.
+        */}
+        {SEASON_PODIUM_ON && page === 1 ? (
           <div>
           <PodiumCards
             leagueSlug={leagueSlug}
