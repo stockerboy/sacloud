@@ -138,7 +138,12 @@ export type TraitAxisKeyV3 = (typeof TRAIT_AXIS_KEYS_V3)[number]
  * ★옛 이름표★ (2026-09-15 이전). 지우지 않는다 — 옛 글·옛 화면이 이 말을 쓴다.
  *   `carry` 가 «캐리력» 이던 판이다.
  */
-export const TRAIT_AXIS_LABEL_V1 = { carry: { sniper: '캐리력', rifle: '캐리력' } } as const
+export const TRAIT_AXIS_LABEL_V1 = {
+  /** 3번 축의 옛 이름 — 지금은 «게임영향력» 이다 */
+  carry: { sniper: '캐리력', rifle: '캐리력' },
+  /** 5번 축의 옛 이름 — 지금은 «안 짤림» 이다 */
+  burst: { sniper: '연속킬', rifle: '연속킬' },
+} as const
 
 export const TRAIT_AXIS_LABEL: Record<
   TraitAxisKey | TraitAxisKeyV1 | TraitAxisKeyV2 | TraitAxisKeyV3,
@@ -159,8 +164,26 @@ export const TRAIT_AXIS_LABEL: Record<
   undecided: { sniper: '미정', rifle: '미정' },
   /** 옛 4번 축 (D-206). 육각형에서는 내려왔지만 이름은 남긴다 */
   matchman: { sniper: '매치의 사나이', rifle: '매치의 사나이' },
-  /** 5번 축 — **직전 킬과 2초 이하로 이어진 킬의 비율** (2026-09-02 · D-260) */
-  burst: { sniper: '연속킬', rifle: '연속킬' },
+  /**
+   * 5번 축.
+   *
+   * ⚠ ★2026-09-15 — «연속킬» 이 내려가고 «안 짤림» 이 들어왔다★ (사장님:
+   *   «개인육각 연속킬을 빼고 (…)» → 후보를 재 보이고 «안짤림으로 가자»).
+   *
+   *   뜻은 ★동료가 죽은 직후(5초 안) 그 킬러를 되잡은 비율★ 이다 —
+   *   동료의 죽음을 헛되게 만들지 않는 능력. 클랜 육각 6번 축과 같은 뜻이고
+   *   그걸 개인 단위로 내린 것이다.
+   *
+   *   실측(500판): 총 킬과 상관 0.24 · 게임영향력과 0.37 · 세이브와 0.12 ·
+   *   무기 편향 1.16배 · 갈래 7.06 — ★킬 순위와 다른 줄★ 을 세운다.
+   *
+   *   ★열쇠(`burst`)는 안 바꿨다★ — DB 칸과 계약 자리를 그대로 물려받는다.
+   *   옛 재료(`burstRounds`)도 남아 있어 `TRADE_AXIS` 를 `false` 로 하면 돌아간다.
+   *
+   *   옛 뜻 — «직전 킬과 2초 이하로 이어진 킬» (2026-09-02 · D-260).
+   *   같은 날 «안 짤림» 도 잠깐 올랐다가 사장님이 «교환율» 로 바꾸셨다.
+   */
+  burst: { sniper: '교환율', rifle: '교환율' },
   /** 옛 5번 축 (D-260). 육각형에서는 내려왔지만 재료도 이름도 그대로 남긴다 */
   finish: { sniper: '작업 성공률', rifle: '원어택 성공률' },
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },

@@ -286,7 +286,7 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 })
 
-describe('buildPlayerTraits — 5번은 연속킬이다 (D-260)', () => {
+describe('buildPlayerTraits — 5번은 교환율이다 (2026-09-15)', () => {
   it('5번 자리이고 옛 판(`V3`)은 그 자리에 `finish` 를 두고 있었다', () => {
     expect(TRAIT_AXIS_KEYS[4]).toBe('burst')
     expect(TRAIT_AXIS_KEYS_V3[4]).toBe('finish')
@@ -297,9 +297,14 @@ describe('buildPlayerTraits — 5번은 연속킬이다 (D-260)', () => {
     expect(buildPlayerTraits(rifleInput()).axes).toHaveLength(6)
   })
 
-  it('이름은 무기와 무관하게 `연속킬` 이다', () => {
+  /*
+   * ⚠ ★5번 축의 이름이 두 번 바뀌었다★
+   *   «작업 성공률/원어택»(V3) → «연속킬»(2026-09-02 D-260) → ★«교환율»★(2026-09-15 사장님)
+   *   열쇠(`burst`)는 한 번도 안 바꿨다 — DB 칸과 계약 자리를 그대로 물려받는다.
+   */
+  it('이름은 무기와 무관하게 `교환율` 이다', () => {
     for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'burst').label).toBe('연속킬')
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'burst').label).toBe('교환율')
     }
   })
 

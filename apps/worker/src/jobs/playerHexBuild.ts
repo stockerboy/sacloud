@@ -132,6 +132,11 @@ interface MatchTally {
   /** ★한 라운드에 몰아친 최대 킬★ 과 그 최고를 낸 라운드 수 (2026-09-15 사장님) */
   maxRoundKills: number
   maxRoundTimes: number
+  /** ★우위를 만든 킬★ — 딴 그 순간 우리가 상대보다 많지 않았던 킬 (2026-09-15 사장님) */
+  evenKills: number
+  /** ★교환★ — 동료가 죽은 직후 그 킬러를 되잡은 횟수 · 그 분모(동료 죽음) */
+  tradeKills: number
+  mateDeaths: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -141,7 +146,7 @@ interface MatchTally {
 }
 
 const emptyTally = (): MatchTally => ({
-  rounds: 0, kills: 0, firstKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0,
+  rounds: 0, kills: 0, firstKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
 })
 
@@ -247,6 +252,11 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
        WHERE r."matchKey" IN (${Prisma.join(keys)}) AND r."status" = 'ok'
          AND jsonb_typeof(r."payload"->'battleLog') = 'array'
          AND e->>'event_type' IN ('kill', 'death')`
+    /**
+     * ★교환★ 의 창 — 동료가 죽고 이 안에 그 킬러를 잡으면 «되갚았다» 로 센다 (2026-09-15).
+     * 5초는 클랜 육각 6번 축에서 사장님이 확정한 값이다 (D-256). 둘을 같은 값으로 둔다.
+     */
+    const TRADE_WINDOW_SECONDS = 5
     const kills = new Map<string, Kill>()
     /* ★라운드 승자★ — `win_flag` 는 그 배틀로그를 낸 클랜 쪽 시각이다. «lose» 만 있는 라운드는 상대가 이긴 것.
        겹침을 빼기 전에 두 벌 모두에서 읽는다 (2026-09-11 · 이걸 안 읽어 상대 쪽 세이브가 전부 0 이었다) */
@@ -370,6 +380,47 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       }
       const firstK = whoOf(mk, (arr[0] as Kill).killer)
       if (firstK) tallyOf(mk, firstK.pid).firstKills += 1
+      /*
+       * ★교환율★ (2026-09-15 사장님 «교환율로 해줘») — 동료가 죽은 직후 그 킬러를 되잡았나.
+       *
+       * 분자 `tradeKills`  동료가 죽고 ★5초 안★ 에 그 킬러를 잡은 횟수
+       * 분모 `mateDeaths`  그 라운드에 죽은 ★내 동료★ 수 (나는 안 센다)
+       *
+       * 클랜 육각 6번 축과 같은 뜻이고 그걸 개인 단위로 내린 것이다.
+       * 5초는 클랜 축에서 사장님이 확정한 값이다 (D-256).
+       */
+      for (let n = 0; n < arr.length; n += 1) {
+        const e = arr[n] as Kill
+        const K = whoOf(mk, e.killer)
+        if (!K) continue
+        for (let m = n - 1; m >= 0; m -= 1) {
+          const past = arr[m] as Kill
+          if (e.t - past.t > TRADE_WINDOW_SECONDS) break
+          /* 먼저 죽은 사람이 ★내 편★ 이고, 그 사람을 잡은 자가 ★지금 내가 잡은 자★ 인가 */
+          if (past.vt !== null && e.kt !== null && past.vt === e.kt && past.killer === e.victim) {
+            tallyOf(mk, K.pid).tradeKills += 1
+            break
+          }
+        }
+      }
+      /* 분모 — 그 라운드에 죽은 동료 수 (나를 뺀 우리 편) */
+      {
+        const deadBySide = new Map<string, string[]>()
+        for (const e of arr) {
+          if (e.vt === null) continue
+          const list = deadBySide.get(e.vt) ?? []
+          if (!list.includes(e.victim)) list.push(e.victim)
+          deadBySide.set(e.vt, list)
+        }
+        for (const [side, set] of teams ?? []) {
+          const dead = deadBySide.get(side) ?? []
+          for (const u of set) {
+            const W = whoOf(mk, u)
+            if (!W) continue
+            tallyOf(mk, W.pid).mateDeaths += dead.filter((d) => d !== u).length
+          }
+        }
+      }
 
       /* 세이브 · 소수싸움 — 살아 있는 수를 따라가며 밀린 쪽을 본다 */
       if (!teams || teams.size !== 2) continue
@@ -389,6 +440,45 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
        * 모르는 것을 «못 했다» 로 적지 않는다 (D-106).
        * 킬·선짤·연속킬은 승패와 무관하므로 위에서 이미 다 셌다 — 여기서만 끊는다.
        */
+      /*
+       * ★게임영향력 — «우위를 만든 킬»★ (2026-09-15 사장님:
+       * «나는 킬을 가장 많이했다고 무조건 걔가 잘한것처럼 되는 그 구조가 싫은거야»
+       *  → «너무 좋다 그걸 게임영향력으로 넣자»).
+       *
+       * 킬을 날린 ★그 순간★ 우리 생존자가 상대보다 많지 않았던 킬만 센다.
+       * 4대1로 이기고 있을 때 딴 킬은 안 센다 — 이미 이긴 판이다.
+       * 5대5·4대5 처럼 팽팽하거나 밀리는 순간에 따낸 킬만 «영향» 으로 본다.
+       *
+       * 실측(515판 · 4,078 «경기×선수»)
+       *   총 킬과의 상관 ★0.620★ — 최대 라운드 킬은 0.913, 총 킬은 1.000
+       *   한 판 열 명이 갈리는 갈래 5.01 (최대 라운드 킬은 3.43)
+       *   무기 편향 1.33배 — 킬 자체 편향(1.34배)과 같은 수준이라 보정하지 않는다
+       *
+       * ⚠ ★승패를 몰라도 센다★ — 이 축은 라운드 승패와 무관하다.
+       *   그래서 바로 아래 `win === null` 문보다 ★먼저★ 둔다.
+       */
+      {
+        const left = new Map<string, number>([
+          [tA, (teams.get(tA) as Set<string>).size],
+          [tB, (teams.get(tB) as Set<string>).size],
+        ])
+        const sideOf = new Map<string, string>()
+        for (const [t, set] of teams) for (const u of set) sideOf.set(u, t)
+        for (const e of arr) {
+          const mine = sideOf.get(e.killer)
+          if (mine !== undefined) {
+            const foe = mine === tA ? tB : tA
+            /* «많지 않았다» 이므로 동수도 센다 — 5대5 에서 먼저 따낸 킬이 제일 크다 */
+            if ((left.get(mine) ?? 0) <= (left.get(foe) ?? 0)) {
+              const K = whoOf(mk, e.killer)
+              if (K) tallyOf(mk, K.pid).evenKills += 1
+            }
+          }
+          const vt = sideOf.get(e.victim)
+          if (vt !== undefined) left.set(vt, (left.get(vt) ?? 1) - 1)
+        }
+      }
+
       if (win === null) continue
       const alive = new Map<string, Set<string>>([[tA, new Set(teams.get(tA))], [tB, new Set(teams.get(tB))]])
       const teamOf = new Map<string, string>()
@@ -549,6 +639,9 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         outrounds: number
         outwon: number
         maxroundkills: number
+        evenkills: number
+        tradekills: number
+        matedeaths: number
         sduelwon: number
         sduellost: number
         rduelwon: number
@@ -578,6 +671,11 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              -- 시즌 값은 이걸 판수로 나눈 ★평균★ 이다. 시즌 최대를 쓰면 거의 전원이
              -- 4~5킬(80~100%)로 몰려 줄이 안 선다.
              SUM(h."maxRoundKills" * mw.w) AS maxroundkills,
+             -- ★게임영향력★ — «우위를 만든 킬» 의 합. 값은 이걸 라운드로 나눈다
+             SUM(h."evenKills" * mw.w) AS evenkills,
+             -- ★교환율★ — 동료가 죽은 직후 그 킬러를 되잡은 횟수 / 동료가 죽은 횟수
+             SUM(h."tradeKills" * mw.w) AS tradekills,
+             SUM(h."mateDeaths" * mw.w) AS matedeaths,
              SUM(h."aloneRounds" * mw.w) AS alonerounds,
              SUM(h."aloneWon" * mw.w) AS alonewon,
              SUM(h."outRounds" * mw.w) AS outrounds,
@@ -662,6 +760,9 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         burstRounds: h?.burstrounds ?? 0,
         /* 경기별 «한 라운드 최대 킬» 의 합 — 값은 판수로 나눠 평균을 낸다 (2026-09-15) */
         maxRoundKills: h?.maxroundkills ?? 0,
+        evenKills: h?.evenkills ?? 0,
+        tradeKills: h?.tradekills ?? 0,
+        mateDeaths: h?.matedeaths ?? 0,
         aloneRounds: h?.alonerounds ?? 0,
         aloneWon: h?.alonewon ?? 0,
         outRounds: h?.outrounds ?? 0,

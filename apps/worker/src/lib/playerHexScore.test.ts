@@ -57,8 +57,13 @@ describe('축 원값', () => {
      *                지금 — 재료(maxRoundKills)가 없으면 ★null★ 이다 (0 이라 우기지 않는다)
      */
     expect(v.opening).toBe(2)
-    expect(v.burst).toBe(1.5)
-    expect(v.carry).toBeNull()
+    /*
+     * ⚠ ★5번 축이 «교환율» 이 됐다★ (2026-09-15 사장님) — 재료가 없으면 null 이다.
+     *   옛 기대값 — 1.5 (판당 연속킬)
+     */
+    expect(v.burst).toBeNull()
+    /* ★3번 축은 «우위를 만든 킬 ÷ 라운드»★ — 재료가 없으면 0 이다 (라운드는 240 이 있다) */
+    expect(v.carry).toBe(0)
     expect(v.outnumbered).toBeCloseTo(33.3)
   })
 

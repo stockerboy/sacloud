@@ -36,7 +36,7 @@ function radiusOf(point: { x: number; y: number }): number {
 
 /** 축 하나를 만든다 — 검사하는 값만 넘긴다 */
 function axis(over: Partial<PlayerTraitAxis> = {}): PlayerTraitAxis {
-  return { key: 'carry', label: '캐리력', percentile: null, pending: 'rounds', ...over }
+  return { key: 'carry', label: '게임영향력', percentile: null, pending: 'rounds', ...over }
 }
 
 /* -------------------------------------------------------------------------- */

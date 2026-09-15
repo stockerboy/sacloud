@@ -42,6 +42,9 @@ export const MATCH_HEX_SELECT = {
   kills: true,
   firstKills: true,
   maxRoundKills: true,
+  evenKills: true,
+  tradeKills: true,
+  mateDeaths: true,
   maxRoundTimes: true,
   burstRounds: true,
   aloneRounds: true,
@@ -59,6 +62,9 @@ export interface MatchHexRow {
   kills: number
   firstKills: number
   maxRoundKills: number
+  evenKills: number
+  tradeKills: number
+  mateDeaths: number
   maxRoundTimes: number
   burstRounds: number
   aloneRounds: number
@@ -160,6 +166,9 @@ export function matchHexOf(
       rounds: row.rounds,
       firstKills: row.firstKills,
       maxRoundKills: row.maxRoundKills,
+      evenKills: row.evenKills,
+      tradeKills: row.tradeKills,
+      mateDeaths: row.mateDeaths,
       maxRoundTimes: row.maxRoundTimes,
       burstRounds: row.burstRounds,
       aloneRounds: row.aloneRounds,

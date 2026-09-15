@@ -100,6 +100,9 @@ interface DayRow {
   burstRounds: number
   maxRoundKills: number
   maxRoundTimes: number
+  evenKills: number
+  tradeKills: number
+  mateDeaths: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -147,6 +150,9 @@ async function dayRowsOf(leagueId: string, day: FlagDay): Promise<DayRow[]> {
             COALESCE(SUM(h.rounds), 0)::int       AS rounds,
             COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
             COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
+            COALESCE(SUM(h."evenKills"), 0)::int AS "evenKills",
+            COALESCE(SUM(h."tradeKills"), 0)::int AS "tradeKills",
+            COALESCE(SUM(h."mateDeaths"), 0)::int AS "mateDeaths",
             /*
              * ★캐리력은 «한 라운드 최대 킬»★ — ★더하지 않는다.★ 가장 큰 것을 남긴다.
              *
@@ -206,6 +212,9 @@ async function daySlotRowsOf(leagueId: string, day: FlagDay): Promise<(DayRow & 
             COALESCE(SUM(h.rounds), 0)::int       AS rounds,
             COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
             COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
+            COALESCE(SUM(h."evenKills"), 0)::int AS "evenKills",
+            COALESCE(SUM(h."tradeKills"), 0)::int AS "tradeKills",
+            COALESCE(SUM(h."mateDeaths"), 0)::int AS "mateDeaths",
             /*
              * ★캐리력은 «한 라운드 최대 킬»★ — ★더하지 않는다.★ 가장 큰 것을 남긴다.
              *
@@ -254,6 +263,9 @@ const tallyOf = (r: DayRow): FlagDayTally => ({
   burstRounds: Number(r.burstRounds),
   maxRoundKills: Number(r.maxRoundKills ?? 0),
   maxRoundTimes: Number(r.maxRoundTimes ?? 0),
+  evenKills: Number(r.evenKills ?? 0),
+  tradeKills: Number(r.tradeKills ?? 0),
+  mateDeaths: Number(r.mateDeaths ?? 0),
   aloneRounds: Number(r.aloneRounds),
   aloneWon: Number(r.aloneWon),
   outRounds: Number(r.outRounds),
@@ -293,6 +305,9 @@ function addTally(into: FlagDayTally, from: FlagDayTally): FlagDayTally {
     firstKills: into.firstKills + from.firstKills,
     burstRounds: into.burstRounds + from.burstRounds,
     /* ★최대는 더하지 않는다★ — 큰 쪽을 남기고, 같으면 «몇 번 냈나» 를 더한다 */
+    evenKills: into.evenKills + from.evenKills,
+    tradeKills: into.tradeKills + from.tradeKills,
+    mateDeaths: into.mateDeaths + from.mateDeaths,
     maxRoundKills: Math.max(into.maxRoundKills, from.maxRoundKills),
     maxRoundTimes:
       into.maxRoundKills === from.maxRoundKills
@@ -384,6 +399,9 @@ function mergeSlots(slotRows: readonly (DayRow & { slot: number })[]): DayRow[] 
     cur.rounds = num(cur.rounds) + num(r.rounds)
     cur.firstKills = num(cur.firstKills) + num(r.firstKills)
     cur.burstRounds = num(cur.burstRounds) + num(r.burstRounds)
+    cur.evenKills = num(cur.evenKills) + num(r.evenKills)
+    cur.tradeKills = num(cur.tradeKills) + num(r.tradeKills)
+    cur.mateDeaths = num(cur.mateDeaths) + num(r.mateDeaths)
     /* 최대는 큰 쪽을 남기고, 같을 때만 횟수를 더한다 */
     if (num(r.maxRoundKills) > num(cur.maxRoundKills)) {
       cur.maxRoundKills = num(r.maxRoundKills)

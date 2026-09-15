@@ -30,7 +30,14 @@
  * 부리그가 셋이 아닌 리그(SPL)는 티어계수 1 · 클랜보정 0 이다 — 상대 티어라는 것이 없다.
  * [가정] 사장님이 따로 정하지 않았다. 등수는 리그 안에서만 매기므로 순위에는 영향이 없다.
  */
-import { CARRY_BY_TOTAL_KILLS, OPENING_BASELINE, influencePercentOf } from '@sacloud/contract'
+import {
+  CARRY_BY_TOTAL_KILLS,
+  INFLUENCE_BY_EVEN_KILLS,
+  TRADE_AXIS,
+  OPENING_BASELINE,
+  influenceOf,
+  influencePercentOf,
+} from '@sacloud/contract'
 import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
 
 /** 공식이 바뀌면 올린다. 화면은 이 판으로 접힌 줄만 믿는다 */
@@ -54,7 +61,13 @@ import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
  *   «1대1세이브같은경우에 무조건 두팀중 한명은 세이브인데 1대1 상황이 별로 없나?»).
  *   세이브와 소수싸움을 한 줄에서 세다 «수가 같으면 건너뛴다» 가 세이브에도 걸렸다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.4'
+/**
+ * ⚠ ★v1.5 — 축 두 개의 뜻이 바뀌었다★ (2026-09-15 사장님).
+ *   3번 게임영향력  «한 라운드 최대 킬» → ★우위를 만든 킬 ÷ 라운드★
+ *   5번 교환율      «연속킬»           → ★동료가 죽은 직후 되갚은 비율★
+ *   새 재료 `evenKills` · `tradeKills` · `mateDeaths` 를 채우려면 다시 세야 한다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.5'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700
@@ -161,6 +174,12 @@ export interface PlayerHexInput {
    * 이 칸이 없던 옛 줄은 0 이고, 그때는 축이 `null` 이다 (0% 라고 우기지 않는다).
    */
   maxRoundKills?: number
+  /** ★우위를 만든 킬★ 의 합 — 값은 이걸 라운드로 나눈다 (2026-09-15 사장님) */
+  evenKills?: number
+  /** ★교환★ — 동료가 죽은 직후 그 킬러를 되잡은 횟수의 합 (2026-09-15 사장님) */
+  tradeKills?: number
+  /** 동료가 죽은 횟수의 합 — 교환의 분모 */
+  mateDeaths?: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -229,13 +248,15 @@ export function axisValuesOf(
      *
      * 재료가 없는 옛 줄(합이 0)은 `null` 이다 — 0% 라고 우기지 않는다 (D-106).
      */
-    carry: CARRY_BY_TOTAL_KILLS
-      ? input.games > 0
-        ? Math.round((input.kills / input.games) * 100) / 100
-        : null
-      : input.games > 0 && (input.maxRoundKills ?? 0) > 0
-        ? influencePercentOf((input.maxRoundKills as number) / input.games, input.kills / input.games)
-        : null,
+    carry: INFLUENCE_BY_EVEN_KILLS
+      ? influenceOf(input.evenKills ?? 0, input.rounds)
+      : CARRY_BY_TOTAL_KILLS
+        ? input.games > 0
+          ? Math.round((input.kills / input.games) * 100) / 100
+          : null
+        : input.games > 0 && (input.maxRoundKills ?? 0) > 0
+          ? influencePercentOf((input.maxRoundKills as number) / input.games, input.kills / input.games)
+          : null,
     /*
      * ★선짤·연속킬은 「판당 몇 번」 이다★ (2026-09-15 사장님:
      * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔 / 클랜축도 마찬가지»).
@@ -246,7 +267,14 @@ export function axisValuesOf(
      *   ★등수·백분위는 안 바뀐다★ — 분모만 라운드에서 판으로 옮긴 단조 변환이다.
      */
     opening: input.games > 0 ? Math.round((input.firstKills / input.games) * 100) / 100 : null,
-    burst: input.games > 0 ? Math.round((input.burstRounds / input.games) * 100) / 100 : null,
+    /* ★5번 축은 «교환율»★ (2026-09-15 사장님) — 옛 «연속킬» 은 스위치로 돌아간다 */
+    burst: TRADE_AXIS
+      ? (input.mateDeaths ?? 0) > 0
+        ? round1(((input.tradeKills ?? 0) / (input.mateDeaths as number)) * 100)
+        : null
+      : input.games > 0
+        ? Math.round((input.burstRounds / input.games) * 100) / 100
+        : null,
     outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
   }
 }

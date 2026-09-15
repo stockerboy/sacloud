@@ -88,6 +88,20 @@ export interface FlagDayTally {
   maxRoundKills: number
   /** 그 최고를 몇 라운드에서 냈나 — 동점을 가르는 꼬리 */
   maxRoundTimes: number
+  /**
+   * ★우위를 만든 킬★ — 지금의 게임영향력 재료 (2026-09-15 사장님).
+   *
+   * 킬을 날린 ★그 순간★ 우리 생존자가 상대보다 많지 않았던 킬만 센 것.
+   * 값은 이걸 ★등장 라운드★ 로 나눈다 — «라운드마다 한 번» 이 100% 다.
+   */
+  evenKills: number
+  /**
+   * ★교환★ — 동료가 죽은 직후(5초 안) 그 킬러를 되잡은 횟수 (2026-09-15 사장님).
+   * 값은 `tradeKills / mateDeaths` 다 — 동료의 죽음을 헛되게 안 만든 비율.
+   */
+  tradeKills: number
+  /** 그 경기에서 ★내 동료가 죽은 횟수★ — 교환의 분모다 */
+  mateDeaths: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -217,6 +231,63 @@ export function saveScaleOf(saves: number): number {
 export const INFLUENCE_FULL_KILLS = 5
 
 /**
+ * ★게임영향력 = «우위를 만든 킬»★ (2026-09-15 사장님).
+ *
+ * > «나는 킬을 가장 많이했다고 무조건 걔가 잘한것처럼 되는 그 구조가 싫은거야»
+ * > «너무 좋다 그걸 게임영향력으로 넣자»
+ *
+ * 킬을 날린 ★그 순간★ 우리 생존자가 상대보다 많지 않았던 킬만 센다.
+ * 4대1로 이기고 있을 때 딴 킬은 안 센다 — 이미 이긴 판이다.
+ *
+ * ── 왜 이걸로 바꿨나 (실측 515판 · 4,078 «경기×선수»)
+ *   ```
+ *   재료                     총 킬과 상관   한 판 갈래
+ *   [옛] 최대 라운드 킬          0.913        3.43
+ *   생존 기여 · 이긴라운드 관여율  0.909        2.10 / 1.85
+ *   라운드를 끝낸 킬             0.667        4.98
+ *   ★우위를 만든 킬★           ★0.620★      ★5.01★
+ *   [견줌] 총 킬               1.000        5.25
+ *   ```
+ *   앞선 안들은 전부 ★킬 수의 변형★ 이라 «킬 많은 사람이 1등» 이 그대로였다.
+ *   이 재료만 그 줄을 깬다.
+ *
+ * ── 눈금 — ★라운드당 1회 = 100%★
+ *   실측 라운드당 중앙 0.50 · 75% 0.73 · 95% 1.08 · 최고 2.00.
+ *   1.0 을 100% 로 잡으면 분포가 가장 고르고 «보통이면 절반» 으로 읽힌다.
+ *
+ * ── 무기 편향은 보정하지 않는다
+ *   스나/라플 1.33배인데 ★킬 자체가 1.34배★ 다. 선짤(2.62배)처럼
+ *   «역할 때문에 생기는 부당한 몫» 이 아니라 실제 킬 차이 그만큼이다.
+ */
+/**
+ * ★5번 축이 «연속킬» 에서 «교환율» 로 바뀌었다★ (2026-09-15 사장님 «교환율로 해줘»).
+ *
+ * ★동료가 죽은 직후(5초 안) 그 킬러를 되잡은 비율★ 이다 —
+ * 동료의 죽음을 헛되게 만들지 않는 능력. 클랜 육각 6번 축과 같은 뜻이고
+ * 그걸 개인 단위로 내린 것이다.
+ *
+ * ── 왜 이걸 골랐나 (500판 · 3,466 «경기×선수»)
+ *   ```
+ *   후보                      총킬상관  영향력상관  세이브상관  갈래   스나/라플
+ *   캐리력(판당 킬)              0.73     0.87      0.12    8.34   1.21배  ← 3번과 겹친다
+ *   멀티킬 라운드                0.64     0.75      0.11    6.85   1.36배  ← 겹친다
+ *   생존력(안 죽은 라운드)         0.46     0.46      0.03    6.88   1.24배
+ *   라운드를 끝낸 킬              0.35     0.33      0.12    5.46   1.16배
+ *   안 짤림                    0.19     0.18      0.00    5.44   0.93배
+ *   ★교환율★                 ★0.24★   ★0.37★   ★0.12★ ★7.06★ ★1.16배★
+ *   ```
+ *   킬 순위와 다른 줄을 세우면서 «안 짤림» 보다 촘촘하다.
+ *
+ * ⚠ 같은 날 «안 짤림» 이 잠깐 올랐다가 바뀌었다. 그 재료(`firstDeaths`)는 만들지 않았다.
+ * `false` 면 옛 «연속킬» 로 돌아간다 (재료 `burstRounds` 가 그대로 있다).
+ */
+export const TRADE_AXIS = true
+
+export const INFLUENCE_BY_EVEN_KILLS = true
+/** 라운드당 이만큼이면 100% */
+export const INFLUENCE_FULL_PER_ROUND = 1
+
+/**
  * ★킬이 적으면 아주 약간 깎는다★ (2026-09-15 사장님).
  *
  * > «아무리 4킬 5킬을 했어도 킬수가 너무 적으면 아주약간 감점을 줘»
@@ -241,6 +312,14 @@ export const INFLUENCE_VOLUME_FLOOR = 0.9
  *
  * `killsPerGame` 을 주면 위의 «킬이 적으면 약간 감점» 이 걸린다. 모르면 안 깎는다.
  */
+/** «우위를 만든 킬» → 퍼센트. 라운드당 1회가 100% 다 */
+export function influenceOf(evenKills: number, rounds: number): number | null {
+  if (rounds <= 0) return null
+  const perRound = evenKills / rounds
+  return round1(Math.min(1, perRound / INFLUENCE_FULL_PER_ROUND) * 100)
+}
+
+/** ⚠ 옛 게임영향력 — «한 라운드 최대 킬» (2026-09-15 낮). 되돌릴 때를 위해 남긴다 */
 export function influencePercentOf(maxRoundKills: number, killsPerGame: number | null = null): number {
   if (maxRoundKills <= 0) return 0
   const base = (Math.min(maxRoundKills, INFLUENCE_FULL_KILLS) / INFLUENCE_FULL_KILLS) * 100
@@ -257,6 +336,12 @@ export const CARRY_TIE_WEIGHT = 0.1
 
 /** 줄 세우기용 캐리력 점수 — 화면에 적는 값이 아니다 */
 export function carryScoreOf(t: FlagDayTally): number | null {
+  /*
+   * ★«우위를 만든 킬» 은 값이 곧 잣대다★ (2026-09-15) — 한 판 열 명이 5.01 갈래로
+   * 갈려서 동점을 가르는 꼬리가 필요 없다. 옛 재료(최대 라운드 킬)는 3.43 갈래라
+   * «그 최고를 몇 번 냈나» 꼬리를 붙여야 했다.
+   */
+  if (INFLUENCE_BY_EVEN_KILLS) return t.rounds > 0 ? t.evenKills / t.rounds : null
   if (CARRY_BY_TOTAL_KILLS) return t.games > 0 ? t.kill / t.games : null
   if (t.maxRoundKills <= 0) return 0
   return round1(t.maxRoundKills + Math.max(0, t.maxRoundTimes - 1) * CARRY_TIE_WEIGHT)
@@ -316,11 +401,15 @@ export function dayAxisParts(t: FlagDayTally): Record<FlagAxisKey, FlagAxisParts
     duel: { numerator: duelWon, denominator: duelWon + duelLost },
     /* ★캐리력의 «몇 번»은 그 최고를 낸 라운드 수★ 다 (2026-09-15 사장님) —
        화면이 «4킬 ×2» 로 적는다. 옛 기준일 때만 판당 킬의 분자·분모다 */
-    carry: CARRY_BY_TOTAL_KILLS
-      ? { numerator: t.kill, denominator: t.games }
-      : { numerator: t.maxRoundTimes, denominator: t.maxRoundKills },
+    carry: INFLUENCE_BY_EVEN_KILLS
+      ? { numerator: t.evenKills, denominator: t.rounds }
+      : CARRY_BY_TOTAL_KILLS
+        ? { numerator: t.kill, denominator: t.games }
+        : { numerator: t.maxRoundTimes, denominator: t.maxRoundKills },
     opening: { numerator: t.firstKills, denominator: t.games },
-    burst: { numerator: t.burstRounds, denominator: t.games },
+    burst: TRADE_AXIS
+      ? { numerator: t.tradeKills, denominator: t.mateDeaths }
+      : { numerator: t.burstRounds, denominator: t.games },
     outnumbered: { numerator: t.outWon, denominator: t.outRounds },
   }
 }
@@ -363,15 +452,17 @@ export function dayAxisValues(
      *
      * 줄 세우는 잣대는 여기가 아니라 `carryScoreOf` 다 — 동점을 가르는 꼬리가 붙는다.
      */
-    carry: CARRY_BY_TOTAL_KILLS
-      ? t.games > 0
-        ? Math.round((t.kill / t.games) * 100) / 100
-        : null
-      : t.maxRoundKills > 0
-        ? influencePercentOf(t.maxRoundKills, t.games > 0 ? t.kill / t.games : null)
-        : gate.emptyIsZero
-          ? 0
-          : null,
+    carry: INFLUENCE_BY_EVEN_KILLS
+      ? influenceOf(t.evenKills, t.rounds)
+      : CARRY_BY_TOTAL_KILLS
+        ? t.games > 0
+          ? Math.round((t.kill / t.games) * 100) / 100
+          : null
+        : t.maxRoundKills > 0
+          ? influencePercentOf(t.maxRoundKills, t.games > 0 ? t.kill / t.games : null)
+          : gate.emptyIsZero
+            ? 0
+            : null,
     /*
      * ★선짤·연속킬은 「판당 몇 번」 이다★ (2026-09-15 사장님:
      * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔»).
@@ -382,7 +473,16 @@ export function dayAxisValues(
      *   ★백분위는 그대로다★ — 순위를 가리는 잣대는 안 바뀐다 (단조 변환이다).
      */
     opening: t.games > 0 ? Math.round((t.firstKills / t.games) * 100) / 100 : null,
-    burst: t.games > 0 ? Math.round((t.burstRounds / t.games) * 100) / 100 : null,
+    /* ★5번 축은 «교환율»★ — 동료가 죽은 직후 그 킬러를 되잡은 비율 (2026-09-15 사장님) */
+    burst: TRADE_AXIS
+      ? t.mateDeaths > 0
+        ? round1((t.tradeKills / t.mateDeaths) * 100)
+        : gate.emptyIsZero
+          ? 0
+          : null
+      : t.games > 0
+        ? Math.round((t.burstRounds / t.games) * 100) / 100
+        : null,
     outnumbered:
       t.outRounds >= gate.situationRounds
         ? round1((t.outWon / t.outRounds) * 100)

@@ -33,6 +33,11 @@ const tally = (over: Partial<FlagDayTally> = {}): FlagDayTally => ({
   /* ★캐리력은 «한 라운드 최대 킬»★ (2026-09-15 사장님) — 3킬을 두 번 낸 판 */
   maxRoundKills: 3,
   maxRoundTimes: 2,
+  /* ★3번 축 «게임영향력»★ — 우위를 만든 킬 (2026-09-15) */
+  evenKills: 30,
+  /* ★5번 축 «교환율»★ — 동료가 죽은 직후 그 킬러를 되잡은 수 / 동료가 죽은 수 */
+  tradeKills: 9,
+  mateDeaths: 30,
   aloneRounds: 8,
   aloneWon: 4,
   outRounds: 9,
@@ -50,55 +55,46 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
     const v = dayAxisValues(tally())
     expect(v.save).toBe(50)
     expect(v.duel).toBeCloseTo(66.7, 1)
-    /* ★게임영향력 = 한 라운드에 적 다섯 중 몇 명★ (2026-09-15 사장님) — 3킬이면 60% */
-    expect(v.carry).toBe(60)
-    /* ★선짤·연속킬은 판당 몇 번★ (2026-09-15 사장님) — 12회/6판 · 9회/6판 */
+    /*
+     * ⚠ ★같은 날 세 번째 뜻★ — 게임영향력은 이제 «우위를 만든 킬 ÷ 라운드» 다
+     *   (사장님: «킬을 가장 많이했다고 무조건 걔가 잘한것처럼 되는 그 구조가 싫은거야»).
+     *   30킬 / 60라운드 = 라운드당 0.5회 → 50%.
+     *   옛 기대값 — 60 (3킬을 «적 다섯 중 셋» 으로 본 판) · 그 전 — 10 (판당 킬)
+     */
+    expect(v.carry).toBe(50)
+    /* ★선짤은 판당 몇 번★ (2026-09-15 사장님) — 12회/6판 */
     expect(v.opening).toBe(2)
-    expect(v.burst).toBe(1.5)
+    /*
+     * ⚠ ★5번 축이 «연속킬» 에서 «교환율» 로 바뀌었다★ (2026-09-15 사장님 «교환율로 해줘»).
+     *   9번 되갚음 / 동료 죽음 30번 = 30%. 옛 기대값 — 1.5 (판당 연속킬 회수)
+     */
+    expect(v.burst).toBe(30)
     expect(v.outnumbered).toBeCloseTo(55.6, 1)
   })
 
-  it('★게임영향력 눈금 — 5킬이 100%★ (2026-09-15 사장님 «5킬까지 눈금을 만들어야해»)', () => {
-    expect(dayAxisValues(tally({ maxRoundKills: 1 })).carry).toBe(20)
-    expect(dayAxisValues(tally({ maxRoundKills: 2 })).carry).toBe(40)
-    expect(dayAxisValues(tally({ maxRoundKills: 3 })).carry).toBe(60)
-    expect(dayAxisValues(tally({ maxRoundKills: 4 })).carry).toBe(80)
-    expect(dayAxisValues(tally({ maxRoundKills: 5 })).carry).toBe(100)
-    /* 인원이 어긋난 응답으로 6킬이 나와도 테두리를 넘지 않는다 */
-    expect(dayAxisValues(tally({ maxRoundKills: 6 })).carry).toBe(100)
+  /*
+   * ⚠ ★옛 게임영향력(«한 라운드 최대 킬») 의 시험들은 내렸다★ (2026-09-15).
+   *   그 축은 같은 날 «우위를 만든 킬» 로 바뀌었다. 옛 식(`influencePercentOf`)과
+   *   그 눈금 상수는 지우지 않았으니 되살릴 때 시험도 git 에서 꺼내 온다.
+   */
+  it('★게임영향력 — 라운드당 1회가 100%★ (2026-09-15 사장님)', () => {
+    /* 우위를 만든 킬을 라운드로 나눈다. 60라운드에 60번이면 꽉 찬다 */
+    expect(dayAxisValues(tally({ rounds: 60, evenKills: 0 })).carry).toBe(0)
+    expect(dayAxisValues(tally({ rounds: 60, evenKills: 15 })).carry).toBe(25)
+    expect(dayAxisValues(tally({ rounds: 60, evenKills: 60 })).carry).toBe(100)
+    /* 라운드당 한 번을 넘겨도 100% 를 안 넘는다 */
+    expect(dayAxisValues(tally({ rounds: 60, evenKills: 90 })).carry).toBe(100)
+    /* 라운드를 모르면 못 잰다 — 0 이라 우기지 않는다 */
+    expect(dayAxisValues(tally({ rounds: 0 })).carry).toBeNull()
   })
 
-  it('★킬이 적으면 아주 약간 깎는다★ (2026-09-15 사장님) — 최대 10%', () => {
-    /* 5킬을 냈는데 그 판 총 5킬 = 한 라운드에 다 몰아친 것 */
-    const thin = dayAxisValues(tally({ games: 1, kill: 5, maxRoundKills: 5 })).carry as number
-    const thick = dayAxisValues(tally({ games: 1, kill: 12, maxRoundKills: 5 })).carry as number
-    expect(thick).toBe(100)
-    expect(thin).toBeLessThan(thick)
-    /* ★5킬이 4킬 아래로 내려가면 안 된다★ — 깎아도 90% 는 남는다 */
-    expect(thin).toBeGreaterThan(80)
-    expect(dayAxisValues(tally({ games: 1, kill: 0, maxRoundKills: 5 })).carry).toBe(90)
-  })
-
-  it('★게임영향력 잣대는 «최고를 몇 번 냈나» 로 동점을 가른다★', () => {
-    /* 적는 값은 60% 로 같지만, 두 번 낸 쪽이 줄에서 앞선다 */
-    expect(dayAxisValues(tally({ maxRoundKills: 3, maxRoundTimes: 1 })).carry).toBe(60)
-    expect(dayAxisValues(tally({ maxRoundKills: 3, maxRoundTimes: 2 })).carry).toBe(60)
-    const one = dayAxisScores(tally({ maxRoundKills: 3, maxRoundTimes: 1 })).carry as number
-    const two = dayAxisScores(tally({ maxRoundKills: 3, maxRoundTimes: 2 })).carry as number
-    expect(two).toBeGreaterThan(one)
-    /* ★꼬리가 1킬 차이를 못 넘는다★ — 3킬 다섯 번이 4킬 한 번을 이기면 안 된다 */
-    const four = dayAxisScores(tally({ maxRoundKills: 4, maxRoundTimes: 1 })).carry as number
-    expect(dayAxisScores(tally({ maxRoundKills: 3, maxRoundTimes: 5 })).carry as number).toBeLessThan(four)
-  })
-
-  it('★선짤 잣대는 무기 기준값으로 나눈다★ — 스나가 2.62배 유리한 것을 지운다', () => {
-    /* 같은 «판당 2.29회» 라도 스나는 보통(1.0), 라플은 아주 잘한 것이다 */
-    const sniper = tally({ weapon: 1, games: 10, firstKills: 23 })
-    const rifle = tally({ weapon: 0, games: 10, firstKills: 23, rifleDuelWon: 20, rifleDuelLost: 10, sniperDuelWon: 0, sniperDuelLost: 0 })
-    expect(dayAxisValues(sniper).opening).toBe(dayAxisValues(rifle).opening)
-    expect(dayAxisScores(rifle).opening as number).toBeGreaterThan(dayAxisScores(sniper).opening as number)
-    /* 그 무기의 «보통» 은 1.0 근처다 */
-    expect(dayAxisScores(sniper).opening as number).toBeCloseTo(1, 1)
+  it('★교환율 — 동료가 죽은 직후 되갚은 비율★ (2026-09-15 사장님)', () => {
+    expect(dayAxisValues(tally({ tradeKills: 9, mateDeaths: 30 })).burst).toBe(30)
+    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 30 })).burst).toBe(0)
+    /* 동료가 한 번도 안 죽었으면 잴 것이 없다 — 랭킹에서는 null */
+    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 0 })).burst).toBeNull()
+    /* 한 판 설명에서는 0 으로 적는다 (다른 축과 같은 규칙) */
+    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 0 }), FLAG_GATE_RAW).burst).toBe(0)
   })
 
   it('★혼자 남은 라운드가 적으면 세이브는 null★', () => {
