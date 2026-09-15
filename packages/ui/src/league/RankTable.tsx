@@ -656,8 +656,11 @@ export function PlayerRankTable({
                 </Link>
                 <div className="min-w-0">
                   <div className="flex min-w-0 items-center gap-1.5">
+                    {/* ★누름 영역★ — 글자 높이가 19px 라 손가락으로 집기 어려웠다
+                        (2026-09-15 · 무한 QA). 위아래 여백을 주고 같은 만큼 당겨
+                        ★보이는 크기는 그대로★ 두면서 누를 면만 넓힌다 */}
                     <Link
-                      className="block truncate hover:text-text-strong"
+                      className="-my-2 block truncate py-2 hover:text-text-strong"
                       href={leaguePlayerPath(leagueSlug, row.player.id)}
                     >
                       {/* `a { color: inherit }` — 색은 안쪽 span 에 준다 (D-231) */}
@@ -670,7 +673,7 @@ export function PlayerRankTable({
                   </div>
                   {row.clan ? (
                     <Link
-                      className="mt-0.5 block truncate text-[0.72rem] leading-none text-meta hover:text-text-strong"
+                      className="-my-1.5 mt-0.5 block truncate py-1.5 text-[0.72rem] leading-none text-meta hover:text-text-strong"
                       href={leagueClanPath(leagueSlug, row.clan.slug)}
                       title={row.clan.name}
                     >
