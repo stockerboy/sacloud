@@ -327,9 +327,20 @@ export function ourSideOf(detail: MatchDetail): 'red' | 'blue' {
 }
 
 /** 경기 목록 v3(MatchListV3)도 같은 스코어보드를 쓴다 (2026-09-11) */
-export function ClanScoreboardV3(props: { detail: MatchDetail; leagueCategory: string; leagueSlug: string }) { return <Scoreboard {...props} /> }
+export function ClanScoreboardV3(props: { detail: MatchDetail; leagueCategory: string; leagueSlug: string; winnerFirst?: boolean }) { return <Scoreboard {...props} /> }
 
-function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetail; leagueCategory: string; leagueSlug: string }) {
+function Scoreboard({
+  detail,
+  leagueCategory,
+  leagueSlug,
+  /** 이긴 팀을 위에 세울까 — 경기 목록에서만 켠다 (2026-09-15 · 무한 QA) */
+  winnerFirst = false,
+}: {
+  detail: MatchDetail
+  leagueCategory: string
+  leagueSlug: string
+  winnerFirst?: boolean
+}) {
   const ourSide = ourSideOf(detail)
   /* 2026-09-11 사장님: 집계 전 경기라고 세이브 칸이 통째로 사라지면 «없는 화면» 처럼 보인다 →
      칸은 늘 두고 아직 모르는 값만 «-» 로 적는다 (0 으로 채우지 않는다). 옛 판: [...].some((s) => s.saves !== null) */
@@ -340,7 +351,18 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
    */
   const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
   void roundsOf
-  const teams = ([ourSide, ourSide === 'red' ? 'blue' : 'red'] as const).map((side) => {
+  /*
+   * ★경기 목록에서는 이긴 팀이 위★ (2026-09-15 · 무한 QA 회차 7).
+   *
+   * 접힌 줄은 «WIN e2stro- 7:1 unfair» 로 이긴 팀이 왼쪽인데, 펼치면 진 팀이
+   * 먼저 나와 읽는 순서가 뒤집혔다.
+   *
+   * ⚠ ★기록실에서는 «내 팀» 이 먼저다★ — 내 기록을 보러 온 자리라
+   *   내가 진 경기에서 내 팀이 아래로 내려가면 안 된다. 그래서 `winnerFirst` 는
+   *   경기 목록(`MatchListV3`)에서만 켠다.
+   */
+  const first = winnerFirst ? (detail.win ? ourSide : ourSide === 'red' ? 'blue' : 'red') : ourSide
+  const teams = ([first, first === 'red' ? 'blue' : 'red'] as const).map((side) => {
     const stats = side === 'red' ? detail.red_stats : detail.blue_stats
     const ours = side === ourSide
     const snap = teamSnapOf(detail, side, ours ? detail.league_clan : detail.opponent)
