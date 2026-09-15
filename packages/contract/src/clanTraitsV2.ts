@@ -104,7 +104,8 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AxisKey, boolean> = {
  */
 export const CLAN_HEX_V2_AXIS_UNITS: Record<
   ClanHexV2AxisKey,
-  'ratio' | 'seconds' | 'perRound'
+  /* ★`perGame` 이 2026-09-15 에 늘었다★ — 선짤이 «판당 몇 번» 이 됐다 (사장님) */
+  'ratio' | 'seconds' | 'perRound' | 'perGame'
 > = {
   sniperDuel: 'ratio',
   outnumbered: 'ratio',
@@ -941,6 +942,9 @@ export function clanHexV2Text(key: ClanHexV2AxisKey, raw: number | null): string
     /* 라운드당 킬수는 1을 넘을 수 있어 `%` 로 못 적는다 (`CLAN_HEX_V2_AXIS_UNITS` 주석) */
     case 'perRound':
       return `${raw.toFixed(2)}킬`
+    /* ★판당 몇 번★ (2026-09-15 사장님: «판당평균 n.n회 / 클랜축도 마찬가지») — 선짤이 이 단위다 */
+    case 'perGame':
+      return `${raw.toFixed(1)}회`
   }
 }
 
@@ -959,6 +963,9 @@ export function clanHexV2TextV1(key: ClanHexV2AxisKey, raw: number | null): stri
       return `${mmss(raw)} / ${mmss(ROUND_FULL_SECONDS)}`
     case 'perRound':
       return `${raw.toFixed(2)}킬`
+    /* ★판당 몇 번★ (2026-09-15 사장님: «판당평균 n.n회 / 클랜축도 마찬가지») — 선짤이 이 단위다 */
+    case 'perGame':
+      return `${raw.toFixed(1)}회`
   }
 }
 

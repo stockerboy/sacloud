@@ -28,8 +28,10 @@
 import { prisma } from '@sacloud/db'
 import {
   CLAN_HEX_V2_CONFIG,
-  PLAYER_HEX_AXIS_ORDER,
+  rankFlagDay,
   buildClanHexV2Raw,
+  sumClanHexTallies,
+  CLAN_HEX_V2_AXIS_UNITS,
   kdRate,
   playerHexLabelOf,
   normalizeByPercentile,
@@ -133,101 +135,131 @@ export async function dailyPodium(leagueSlug: string): Promise<DailyPodium | nul
 /* -------------------------------------------------------------------------- */
 
 async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[]> {
-  const axisCols = PLAYER_HEX_AXIS_ORDER.map((k) => `h."${k}Pct" AS "${k}"`).join(', ')
+  /*
+   * ⚠ ★시즌 누적을 쓰지 않는다★ (2026-09-15 사장님:
+   *   «누적 1,2,3등말고 / ★그 날 한 경기 데이터로만 분석해서 육각축 만들어달라고★»).
+   *
+   *   옛 질의는 `LeaguePlayerHex` 의 `{축}Pct` — ★시즌 누적 백분위★ 를 읽었다.
+   *   그러면 «오늘 잘한 사람» 이 아니라 ★«원래 잘하는 사람»★ 이 뽑힌다.
+   *   이제 경기 단위 재료(`MatchPlayerHex`)를 ★그날 것만 접어서★ 축을 만들고,
+   *   백분위도 ★그날 뛴 사람들 안에서★ 낸다 (`rankFlagDay` — 깃발과 같은 함수다).
+   */
   const rows = (await prisma.$queryRawUnsafe(
     `SELECT s."playerId", pl.name,
             c.name AS "clanName", c.slug AS "clanSlug", c."markBgUrl", c."markFrontUrl",
-            COUNT(*)::int AS games,
-            MAX(h.weapon)::int AS weapon,
+            COUNT(DISTINCT s."matchId")::int AS games,
             SUM(CASE WHEN m."winnerSide" = s.side THEN 1 ELSE 0 END)::int AS win,
             SUM(COALESCE(s.kill, 0))::int AS kill,
             SUM(COALESCE(s.death, 0))::int AS death,
-            ${axisCols}
+            SUM(CASE WHEN s.weapon = 1 THEN 1 ELSE 0 END)::int AS "sniperGames",
+            SUM(CASE WHEN s.weapon = 0 THEN 1 ELSE 0 END)::int AS "rifleGames",
+            COALESCE(SUM(h.rounds), 0)::int        AS rounds,
+            COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
+            COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
+            COALESCE(SUM(h."aloneRounds"), 0)::int AS "aloneRounds",
+            COALESCE(SUM(h."aloneWon"), 0)::int    AS "aloneWon",
+            COALESCE(SUM(h."outRounds"), 0)::int   AS "outRounds",
+            COALESCE(SUM(h."outWon"), 0)::int      AS "outWon",
+            COALESCE(SUM(CASE WHEN h.weapon = 1 THEN h."duelWon"  ELSE 0 END), 0)::int AS "sniperDuelWon",
+            COALESCE(SUM(CASE WHEN h.weapon = 1 THEN h."duelLost" ELSE 0 END), 0)::int AS "sniperDuelLost",
+            COALESCE(SUM(CASE WHEN h.weapon = 0 THEN h."duelWon"  ELSE 0 END), 0)::int AS "rifleDuelWon",
+            COALESCE(SUM(CASE WHEN h.weapon = 0 THEN h."duelLost" ELSE 0 END), 0)::int AS "rifleDuelLost"
        FROM "MatchPlayerStat" s
        JOIN "Match" m ON m.id = s."matchId"
        JOIN "Player" pl ON pl.id = s."playerId"
        JOIN "LeaguePlayer" lp ON lp."playerId" = s."playerId" AND lp."leagueId" = $1
        LEFT JOIN "Clan" c ON c.id = lp."clanId"
-       LEFT JOIN "LeaguePlayerHex" h ON h."leaguePlayerId" = lp.id
+       LEFT JOIN "MatchPlayerHex" h ON h."matchId" = s."matchId" AND h."playerId" = s."playerId"
       WHERE m."leagueId" = $1 AND m."supersededAt" IS NULL
         AND (m."startAt" AT TIME ZONE 'Asia/Seoul')::date = $2::date
-      GROUP BY s."playerId", pl.name, c.name, c.slug, c."markBgUrl", c."markFrontUrl", ${PLAYER_HEX_AXIS_ORDER.map((k) => `h."${k}Pct"`).join(', ')}`,
+      GROUP BY s."playerId", pl.name, c.name, c.slug, c."markBgUrl", c."markFrontUrl"`,
     leagueId,
     day,
   )) as Record<string, unknown>[]
 
-  const scored = rows
-    .map((r) => {
-      const axes = PLAYER_HEX_AXIS_ORDER.map((k) => r[k] as number | null)
-      if (axes.some((v) => v === null)) return null
-      const games = Number(r.games)
-      if (games < MIN_GAMES) return null
-      const vals = axes as number[]
-      const low = Math.min(...vals)
-      const avg = vals.reduce((a, b) => a + b, 0) / vals.length
-      const win = Number(r.win)
-      const winRate = games === 0 ? 0 : (win / games) * 100
-      if (winRate < MIN_WIN_RATE) return null
-      const death = Number(r.death)
-      const lowIndex = vals.indexOf(low)
-      return {
-        row: r,
-        low,
-        avg,
-        winRate,
-        /*
-         * ⚠ ★영어 열쇠를 그대로 내보내면 안 된다★ (2026-09-14 실측 — «최저축 duel 76»).
-         *   클랜 쪽은 계약이 한글 이름을 들고 있어서 «세이브» 로 잘 나왔는데,
-         *   개인 쪽만 열쇠(`duel`·`burst`)가 그대로 나갔다. 화면에 쓰는 이름은
-         *   `playerHexLabelOf` 가 정한다 — 무기에 따라 «스나싸움/샷싸움» 으로 갈린다.
-         */
-        lowLabel: (() => {
-          const key = PLAYER_HEX_AXIS_ORDER[lowIndex]
-          if (key === undefined) return ''
-          const w = r.weapon
-          return playerHexLabelOf(key, w === 0 || w === 1 ? w : null)
-        })(),
-        /*
-         * ⚠ ★킬뎃은 «킬 ÷ (킬+데스)» 다★ — «킬 ÷ 데스» 가 아니다 (2026-09-14 저녁 정정).
-         *   내가 «킬÷데스» 로 적어서 화면에 ★220%·120%★ 같은 값이 나왔다.
-         *   사장님: «킬뎃 이상해 120프로가 뭐야 55% 이런게 정상인데».
-         *   ★계약의 `kdRate` 를 쓴다★ — 사이트 어디서나 같은 잣대여야 한다.
-         */
-        kd: death === 0 && Number(r.kill) === 0 ? null : kdRate(Number(r.kill), death),
-        games,
-        win,
-        score: scoreOf(low, avg, winRate),
-      }
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, DAILY_PODIUM_SIZE)
+  /*
+   * ★줄 세우기는 깃발과 같은 함수★ (`rankFlagDay`) — 그날 재료로 축을 만들고
+   * 백분위도 그날 안에서 낸다. 두 화면이 한 리그에서 다른 사람을 1등이라고 하면 안 된다.
+   */
+  const num = (v: unknown) => Number(v ?? 0)
+  const ranked = rankFlagDay(
+    rows.map((r) => ({
+      ref: r,
+      tally: {
+        games: num(r.games),
+        win: num(r.win),
+        lose: num(r.games) - num(r.win),
+        kill: num(r.kill),
+        death: num(r.death),
+        rounds: num(r.rounds),
+        firstKills: num(r.firstKills),
+        burstRounds: num(r.burstRounds),
+        aloneRounds: num(r.aloneRounds),
+        aloneWon: num(r.aloneWon),
+        outRounds: num(r.outRounds),
+        outWon: num(r.outWon),
+        sniperDuelWon: num(r.sniperDuelWon),
+        sniperDuelLost: num(r.sniperDuelLost),
+        rifleDuelWon: num(r.rifleDuelWon),
+        rifleDuelLost: num(r.rifleDuelLost),
+        /* 그날 더 많이 쓴 무기. 같으면 못 정한 것으로 둔다 */
+        weapon:
+          num(r.sniperGames) > num(r.rifleGames)
+            ? (1 as const)
+            : num(r.rifleGames) > num(r.sniperGames)
+              ? (0 as const)
+              : null,
+      },
+    })),
+    DAILY_PODIUM_SIZE,
+  )
 
-  return scored.map((x, i) => ({
-    rank: i + 1,
-    name: String(x.row.name),
-    clan:
-      x.row.clanSlug === null || x.row.clanSlug === undefined
-        ? null
-        : {
-            name: String(x.row.clanName),
-            slug: String(x.row.clanSlug),
-            mark: {
-              bg: (x.row.markBgUrl as string | null) ?? null,
-              front: (x.row.markFrontUrl as string | null) ?? null,
+  return ranked.map((x) => {
+    const r = x.ref
+    /* 그날 주무기 — 축 이름이 무기에 따라 갈린다 (스나싸움 / 샷싸움) */
+    const w: 0 | 1 | null =
+      num(r.sniperGames) > num(r.rifleGames) ? 1 : num(r.rifleGames) > num(r.sniperGames) ? 0 : null
+    return {
+      rank: x.rank,
+      name: String(r.name),
+      clan:
+        r.clanSlug === null || r.clanSlug === undefined
+          ? null
+          : {
+              name: String(r.clanName),
+              slug: String(r.clanSlug),
+              mark: {
+                bg: (r.markBgUrl as string | null) ?? null,
+                front: (r.markFrontUrl as string | null) ?? null,
+              },
             },
-          },
-    player_id: String(x.row.playerId),
-    clan_slug: null,
-    games: x.games,
-    win: x.win,
-    lose: x.games - x.win,
-    win_rate: Math.round(x.winRate * 10) / 10,
-    kd_rate: x.kd === null ? null : Math.round(x.kd * 10) / 10,
-    low_axis: Math.round(x.low),
-    low_axis_label: x.lowLabel,
-    avg_axis: Math.round(x.avg),
-  }))
+      player_id: String(r.playerId),
+      clan_slug: null,
+      games: x.games,
+      win: x.win,
+      lose: x.lose,
+      win_rate: x.winRate,
+      kd_rate: x.kdRate,
+      low_axis: Math.round(x.lowPct),
+      /*
+       * ⚠ ★영어 열쇠를 그대로 내보내면 안 된다★ (2026-09-14 실측 — «최저축 duel 76»).
+       *   화면에 쓰는 이름은 `playerHexLabelOf` 가 정한다 — 무기에 따라 갈린다.
+       */
+      low_axis_label: playerHexLabelOf(x.lowKey, w),
+      avg_axis: Math.round(x.axes.reduce((a, b) => a + (b.pct ?? 0), 0) / x.axes.length),
+      /* ★그날 육각★ — 사장님: «그 날 한 경기 데이터로만 분석해서 육각축 만들어달라고» */
+      axes: x.axes.map((a) => ({
+        key: a.key,
+        label: playerHexLabelOf(a.key, w),
+        value: a.value,
+        pct: a.pct,
+        unit:
+          a.key === 'carry' || a.key === 'opening' || a.key === 'burst'
+            ? ('per_game' as const)
+            : ('percent' as const),
+      })),
+    }
+  })
 }
 
 /* -------------------------------------------------------------------------- */
@@ -279,14 +311,38 @@ async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]>
   }[]
   if (rows.length === 0) return []
 
-  /* 클랜 육각은 원값뿐이라 ★리그 분포★ 로 정규화해야 축 백분위가 나온다 (뱃지와 같은 길) */
-  const summaries = await prisma.clanHexV2Summary.findMany({
-    where: { leagueId, formulaVersion: CLAN_HEX_V2_CONFIG.formulaVersion },
-    select: { leagueClanId: true, tally: true, matches: true },
-  })
+  /*
+   * ⚠ ★시즌 요약을 쓰지 않는다★ (2026-09-15 사장님:
+   *   «누적 1,2,3등말고 / ★그 날 한 경기 데이터로만 분석해서 육각축 만들어달라고★»).
+   *
+   *   옛 판은 `ClanHexV2Summary` — ★시즌 누적★ 을 읽어 리그 분포로 정규화했다.
+   *   그러면 «오늘 잘한 클랜» 이 아니라 ★«원래 잘하는 클랜»★ 이 뽑힌다.
+   *   이제 경기 단위 재료(`MatchClanHexV2`)를 ★그날 경기만★ 합쳐서 축을 만들고,
+   *   백분위도 ★그날 뛴 클랜들 안에서★ 낸다.
+   */
+  const dayRows = await prisma.$queryRawUnsafe<
+    { leagueClanId: string; tally: unknown; matches: number }[]
+  >(
+    `SELECT h."leagueClanId", jsonb_agg(h.tally) AS tally, COUNT(*)::int AS matches
+       FROM "MatchClanHexV2" h
+       JOIN "Match" m ON m.id = h."matchId"
+      WHERE m."leagueId" = $1 AND m."supersededAt" IS NULL
+        AND (m."startAt" AT TIME ZONE 'Asia/Seoul')::date = $2::date
+        AND h."formulaVersion" = $3
+      GROUP BY h."leagueClanId"`,
+    leagueId,
+    day,
+    CLAN_HEX_V2_CONFIG.formulaVersion,
+  )
   const raw = new Map<string, ClanHexV2>()
-  for (const r of summaries) {
-    raw.set(r.leagueClanId, buildClanHexV2Raw({ tally: tallyOf(r.tally), matches: r.matches }))
+  for (const r of dayRows) {
+    /* 경기별 tally 를 하나로 접는다 — 요약 잡이 시즌 단위로 하는 일을 하루 단위로 */
+    const parts = Array.isArray(r.tally) ? r.tally : [r.tally]
+    const talls = parts.map((t) => tallyOf(t)).filter((t): t is NonNullable<typeof t> => t !== null)
+    if (talls.length === 0) continue
+    /* 분자·분모를 각각 쌓고 ★마지막에 한 번만 나눈다★ — 요약 잡과 같은 함수다 */
+    const merged = sumClanHexTallies(talls)
+    raw.set(r.leagueClanId, buildClanHexV2Raw({ tally: merged, matches: Number(r.matches) }))
   }
   const pool = [...raw.values()]
 
@@ -310,6 +366,8 @@ async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]>
         avg,
         winRate,
         lowLabel: hex.axes[lowIndex]?.label ?? '',
+        /* ★그날 육각★ — 사장님: «그 날 한 경기 데이터로만 분석해서 육각축 만들어달라고» */
+        hex,
         /* ⚠ 위와 같다 — ★킬 ÷ (킬+데스)★. 계약의 `kdRate` 한 곳이 정한다 */
         kd: r.death === 0 && r.kill === 0 ? null : kdRate(r.kill, r.death),
         score: scoreOf(low, avg, winRate),
@@ -337,5 +395,21 @@ async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]>
     low_axis: Math.round(x.low),
     low_axis_label: x.lowLabel,
     avg_axis: Math.round(x.avg),
+    /*
+     * ★그날 육각★ — 면적은 백분위(`value`), 밑에 적는 글자는 원값이다.
+     * 단위는 계약의 `CLAN_HEX_V2_AXIS_UNITS` 가 정한다 (게임템포만 초다).
+     */
+    axes: x.hex.axes.map((a) => ({
+      key: a.key,
+      label: a.label,
+      value: a.raw,
+      pct: a.value === null ? null : Math.round(a.value * 1000) / 10,
+      unit:
+        CLAN_HEX_V2_AXIS_UNITS[a.key] === 'seconds'
+          ? ('seconds' as const)
+          : CLAN_HEX_V2_AXIS_UNITS[a.key] === 'perGame' || CLAN_HEX_V2_AXIS_UNITS[a.key] === 'perRound'
+            ? ('per_game' as const)
+            : ('percent' as const),
+    })),
   }))
 }

@@ -42,6 +42,29 @@ export const DailyPodiumRow = z.object({
   low_axis_label: z.string(),
   /** 여섯 축 평균 */
   avg_axis: z.number(),
+  /**
+   * ★그날 육각★ — ★그 하루에 뛴 경기만★ 으로 만든 여섯 축 (2026-09-15 사장님:
+   * «개인랭킹도 그렇고 클랜랭킹도 그렇고 저렇게 두지 말고 그 날 1,2,3위 육각그래프를
+   *  띄워달라고 / 누적 1,2,3등말고 / 그 날 한 경기 데이터로만 분석해서 육각축 만들어달라고»).
+   *
+   * ⚠ ★시즌 누적이 아니다.★ 백분위도 ★그날 뛴 사람·클랜 안에서★ 낸다 —
+   *   시즌 분포를 쓰면 «오늘 잘한 쪽» 이 아니라 «원래 잘하는 쪽» 이 나온다.
+   *
+   * 못 잰 축이 있으면 빈 배열이다 (그런 줄은 애초에 셋에 못 든다).
+   */
+  axes: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        /** 원값 — 축마다 단위가 다르다 (`unit`) */
+        value: z.number().nullable(),
+        /** 그날 안에서의 백분위 (0~100) — 그래프 면적은 이것으로 그린다 */
+        pct: z.number().nullable(),
+        unit: z.enum(['percent', 'per_game', 'seconds']),
+      }),
+    )
+    .default([]),
 })
 export type DailyPodiumRow = z.infer<typeof DailyPodiumRow>
 

@@ -15,6 +15,12 @@ import { ClanDirectoryV1 } from './ClanDirectoryV1'
 import { ClanPodiumCards } from './ClanPodiumCards'
 
 /**
+ * ★시즌 누적 1·2·3위 카드를 그리나★ — 지금은 ★아니다★ (2026-09-15 사장님 지시).
+ * 그날 1·2·3위 육각은 「오늘의 클랜」이 그린다. 부품은 지우지 않았다.
+ */
+const SEASON_PODIUM_ON = false
+
+/**
  * 이번 시즌 한 판도 안 뛴 클랜을 랭킹 표에서 뺄 것인가 (2026-09-15 사장님 지시로 켬).
  * ⚠ 같은 이름의 스위치가 `lib/server/queries/ladders.ts` · `leagues.ts` 에도 있다.
  *   래더·API 쪽이고, 이것은 ★리그 화면의 클랜 표★ 다. 끄려면 같이 끈다.
@@ -382,7 +388,18 @@ function ClanRankDirectory({
           승률 같은거 개인랭킹페이지 처럼 보여줘»). 검색 중에는 안 그린다 —
           걸러 낸 목록의 1위는 1위가 아니다.
         */}
-        {!searching && complete ? (
+        {/*
+          ⚠ ★감췄다★ (2026-09-15 사장님: «개인랭킹도 그렇고 클랜랭킹도 그렇고 저렇게 두지 말고
+            그 날 1,2,3위 육각그래프를 띄워달라고 / 누적 1,2,3등말고 /
+            그 날 한 경기 데이터로만 분석해서 육각축 만들어달라고»).
+
+          이 카드 셋은 ★시즌 누적★ 1·2·3위다. 사장님이 보고 싶은 것은 ★그날★ 1·2·3위이고
+          그것은 바로 위 「오늘의 클랜」(`DailyPodium`)이 그린다 — 이제 그 카드에
+          ★그날 한 경기 자료로만 만든 육각★ 이 들어간다.
+
+          ★부품은 지우지 않았다★ (`CLAUDE.md` 1-4) — `SEASON_PODIUM_ON` 을 `true` 로.
+        */}
+        {SEASON_PODIUM_ON && !searching && complete ? (
           <ClanPodiumCards
             leagueSlug={leagueSlug}
             rows={ranked.slice(0, 3).map((row) => ({

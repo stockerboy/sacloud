@@ -27,6 +27,9 @@
 import type { ReactNode } from 'react'
 import { MarkCircle } from '../v3/primitives'
 import { V3 } from '../v3/tokens'
+import { Hexagon, type HexAxisView } from '../v3/Hexagon'
+import { statColor } from '../v3/rankColors'
+import { mmss } from '@sacloud/contract'
 
 export interface DailyPodiumRowView {
   rank: number
@@ -42,6 +45,18 @@ export interface DailyPodiumRowView {
   low_axis: number
   low_axis_label: string
   avg_axis: number
+  /**
+   * ★그날 육각★ — ★그 하루에 뛴 경기만★ 으로 만든 여섯 축 (2026-09-15 사장님:
+   * «누적 1,2,3등말고 / 그 날 한 경기 데이터로만 분석해서 육각축 만들어달라고»).
+   * 비어 있으면 육각을 안 그린다.
+   */
+  axes?: readonly {
+    key: string
+    label: string
+    value: number | null
+    pct: number | null
+    unit: 'percent' | 'per_game' | 'seconds'
+  }[]
 }
 
 /** 1·2·3등 색 — 개인랭킹 포디움과 같은 금·은·동이다 */
@@ -100,6 +115,34 @@ export function DailyPodium({
 }
 
 function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' }) {
+  /*
+   * 그날 육각 — 면적은 백분위, 글자는 원값.
+   * ★못 잰 축이 하나라도 있으면 안 그린다★ — 반쪽짜리 육각은 거짓말을 한다.
+   */
+  const hexAxes: HexAxisView[] | null = (() => {
+    const axes = row.axes
+    if (axes === undefined || axes.length === 0) return null
+    if (axes.some((a) => a.pct === null)) return null
+    return axes.map((a) => ({
+      label: a.label,
+      value: a.pct,
+      note:
+        a.value === null
+          ? '측정중'
+          : a.unit === 'seconds'
+            ? mmss(a.value)
+            : a.unit === 'per_game'
+              ? `${a.value.toFixed(a.value < 10 ? 1 : 0)}${a.key === 'carry' ? '킬' : '회'}`
+              : `${Math.round(a.value * (a.value <= 1 ? 100 : 1))}%`,
+      /*
+       * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그건 «등수» 를 받는다.
+       *   여기 값은 ★백분위★ 라 승률과 같은 잣대를 쓴다.
+       */
+      noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
+      note2: null,
+    }))
+  })()
+
   const medal = MEDAL[row.rank - 1] ?? V3.textFaint
   return (
     <>
@@ -140,6 +183,19 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
           ) : null}
         </span>
       </div>
+
+      {/*
+       * ★그날 육각★ (2026-09-15 사장님: «개인랭킹도 그렇고 클랜랭킹도 그렇고 저렇게 두지 말고
+       *   그 날 1,2,3위 육각그래프를 띄워달라고 / 누적 1,2,3등말고»).
+       *
+       *   ★시즌 누적이 아니다.★ 면적은 ★그날 안에서의 백분위★ 로 그리고,
+       *   축 밑에는 ★원값★ 을 적는다 (게임템포만 «초», 선짤·연속킬·캐리력은 «회/킬»).
+       */}
+      {hexAxes === null ? null : (
+        <div style={{ marginTop: 10 }}>
+          <Hexagon axes={hexAxes} id={`daily-${kind}-${row.player_id ?? row.clan_slug ?? row.rank}`} />
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 14, marginTop: 11, flexWrap: 'wrap' }}>
         <Stat label="승률" value={`${row.win_rate.toFixed(0)}%`} sub={`${row.win}승 ${row.lose}패`} tone="#7fa9ff" />
