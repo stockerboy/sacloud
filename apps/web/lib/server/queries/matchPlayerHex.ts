@@ -111,12 +111,24 @@ const SAVE_BY_COUNT = true
  * 배틀로그 줄이 없는 선수는 ★아예 넣지 않는다★ — 빈 육각을 그리면
  * «못 잰 사람» 과 «못한 사람» 이 같아 보인다 (D-106).
  */
+/**
+ * ★꺼 뒀다★ (2026-09-15 사장님: «그냥 판마다 분석하건 없애자 10명을 다 분석하거 너무 정신없»).
+ *
+ * 닉네임을 누르면 그 판 육각이 펼쳐지는 기능을 껐다. `false` 면 응답의 `hexagon` 이
+ * 빈 배열이고, 화면은 ★옛날처럼 닉네임이 기록실 링크★ 로 돌아간다 (`hex.length > 0` 분기).
+ *
+ * ★지우지 않는다★ — 이 파일과 `PlayerMatchHexV3` 를 그대로 두고 스위치만 끈다.
+ * 다시 켜려면 여기를 `true` 로 되돌리면 된다 (`CLAUDE.md` 1-4).
+ */
+const MATCH_PLAYER_HEX_ON = false
+
 export function matchHexOf(
   rows: readonly MatchHexRow[],
   stats: readonly StatLike[],
   winnerSide: string | null,
 ): Map<string, Axis[]> {
   const out = new Map<string, Axis[]>()
+  if (!MATCH_PLAYER_HEX_ON) return out
   if (rows.length === 0) return out
 
   const statOf = new Map(stats.map((s) => [s.playerId, s]))
