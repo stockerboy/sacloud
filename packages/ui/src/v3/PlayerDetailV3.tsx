@@ -780,12 +780,20 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
               </span>
               {/* 2줄 — 양 팀 / 오른쪽엔 MVP · 킬뎃 */}
               <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                {/* ★클랜명은 승패 색★ (2026-09-12 사장님) */}
+                {/*
+                  * ★클랜명은 승패 색★ (2026-09-12 사장님)
+                  *
+                  * ⚠ ★두 이름에 `flex: 1 1 0` 이 있어야 한다★ (2026-09-15 · 무한 QA).
+                  *   없으면 폭이 «내용 크기» 로 잡혀 ★앞쪽만 먼저 쭈그러든다★ —
+                  *   폰 390px 에서 «MiraGe.» 가 «Mira···» 로, «lunatic`Gaming» 이
+                  *   «lunatic`Ga···» 로 잘렸다. 상대 이름은 멀쩡했다.
+                  *   `1 1 0` 이면 남는 자리를 ★똑같이 나눠 갖는다.★
+                  */}
                 <MarkCircle clan={m.league_clan.clan} size={20} />
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.league_clan.clan.name}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '1 1 0', minWidth: 0 }}>{m.league_clan.clan.name}</span>
                 <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
                 <MarkCircle clan={m.opponent.clan} size={20} />
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.opponent.clan.name}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '1 1 0', minWidth: 0 }}>{m.opponent.clan.name}</span>
               </span>
               <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
                 {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}

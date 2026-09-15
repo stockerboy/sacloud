@@ -91,4 +91,8 @@
  *                    v2.2 는 «byVictim + 네 구역» 을 뜻하는 번호로 이미 이력에
  *                    적혀 있어서 건너뛴다. 번호를 재활용하면 뜻이 겹친다
  */
-export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v2.5'
+/**
+ * ⚠ ★2026-09-15 · v2.5 → v2.7★ — 선짤 25초 창 + 요약 표에 섞여 있던 v2.6 을 피한다.
+ *   계약(`clanTraitsV2.ts`)과 ★반드시 같은 값★ 이어야 화면이 읽는다.
+ */
+export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v2.7'
