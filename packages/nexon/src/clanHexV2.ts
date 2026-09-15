@@ -526,6 +526,35 @@ export interface FirstBloodTally {
  *   (0명 6.5% · 2명 이상 0%). 그래서 두 읽기의 값이 같다 (18,628 대 18,615).
  *   **엄한 쪽**을 쓴다 — 스나가 둘인 드문 경기에서 «라플들끼리» 가 참이 된다.
  *
+ * ── ★분모는 «양 팀 공통» 이다★ (2026-09-15 저녁 사장님이 화면을 보고 고치심)
+ *   > *"0:0이랑 100:0은 안되는데 어카지 무조건 있긴 있어야하는데
+ *   >   양팀 다 스나싸움처럼 둘이 합쳐서 100퍼센트면 좋겠는데"*
+ *
+ *   ```
+ *   분모  어느 쪽이든 스나가 1킬 없이 1~3번째로 지워진 라운드   ← 양 팀이 같은 수
+ *   분자  그중 ★우리가 딴★ 라운드
+ *   ```
+ *   모든 라운드는 한 쪽이 이기므로 두 팀 값을 더하면 **정확히 100%** 다.
+ *
+ *   ⚠ 첫 판(②안)은 «내 스나가 지워진 라운드 중 내가 이긴 비율» 이었다.
+ *     뜻은 더 곧았지만 양 팀 분모가 달라 합이 100% 가 아니었고, 한 판에 걸리는
+ *     라운드가 1~2개뿐이라 화면이 «0% · 0%» 로 떴다.
+ *
+ *   ── 한 판에서 얼마나 극단적인가 (경기×클랜 56,388 · 66,113라운드 실측)
+ *   ```
+ *                     0:0      100:0     둘 다 있음
+ *     스나싸움         3.1%     16.6%      80.3%
+ *     소수싸움         2.0%     21.0%      77.0%
+ *     세이브           3.7%     39.7%      56.6%
+ *     ②안(옛)        19.5%     49.8%      30.8%   ← 못 쓴다
+ *     ③안(지금)       1.1%     15.6%      83.3%   ← 스나싸움보다 낫다
+ *   ```
+ *   한 판 평균 6.1라운드가 걸린다 (전체 라운드의 52.7%).
+ *
+ *   ★맞바꾼 것★: 라운드 승률과의 겹침이 0.552 → **0.839** 로 올랐다.
+ *     합 100% 를 만들려면 모든 라운드를 한 쪽에 몰아줘야 해서 피할 수 없다.
+ *     소수싸움이 이미 0.824 라 같은 수준이다.
+ *
  * ── 왜 게임템포를 이걸로 바꿨나 (실측 근거)
  *   ```
  *                  클랜 25~75% 폭   승률과 겹침   사람이 읽히나
@@ -541,9 +570,12 @@ export interface FirstBloodTally {
  *   (평균 179라운드). 게임템포(레드 라운드 중 3명 지운 것)보다 넉넉하다.
  */
 export interface RiflePowerTally {
-  /** 스나가 1킬 없이 1~3번째로 죽고 **승패까지 아는** 라운드 (분모) */
+  /**
+   * ★어느 쪽이든★ 스나가 1킬 없이 1~3번째로 지워지고 **승패까지 아는** 라운드 (분모).
+   * 양 팀 tally 가 **같은 수**를 갖는다 — 그래야 두 값의 합이 100% 가 된다.
+   */
   rounds: number
-  /** 그중 라플들끼리 이긴 라운드 (분자) */
+  /** 그중 **우리가 딴** 라운드 (분자) */
   won: number
 }
 
@@ -1102,6 +1134,15 @@ function tallyFor(input: {
     ourSnipers.add(usn)
   }
 
+  /** 상대 팀에서 스나로 확정된 선수들 — ④ 는 **양 팀**을 다 본다 (2026-09-15) */
+  const foeSniperSet = new Set<string>()
+  for (const [usn, weapon] of input.weaponByPlayer) {
+    if (weapon !== 1) continue
+    const team = input.roster.teamOf.get(usn)
+    if (team === undefined || team === input.teamNo) continue
+    foeSniperSet.add(usn)
+  }
+
   const sniperDuel: SniperDuelTally = { rounds: input.roundNumbers.length, won: 0, lost: 0 }
   /* ★스나싸움은 롱에서만★ — 잡은 쪽·죽은 쪽 좌표가 **둘 다** A롱 5구역 또는 비롱 안일 때만
      센다 (2026-09-10 사장님 확정 · `SNIPER_DUEL_ZONE_RULE`). 옛 판은 맵 전체를 셌다 */
@@ -1171,29 +1212,35 @@ function tallyFor(input: {
       if (oursFirst) firstBlood.won += 1
     }
 
-    /* ── ④ 라이플화력. 우리 스나가 1킬 없이 1~3번째로 죽었는데 라운드를 땄나 ── */
-    if (ourSnipers.size > 0) {
+    /* ── ④ 라이플화력. ★어느 쪽이든★ 스나가 1킬 없이 1~3번째로 지워진 라운드를 나눠 갖는다 ── */
+    if (ourSnipers.size > 0 || foeSniperSet.size > 0) {
       const won = input.wonRound(round)
       if (won !== null) {
-        /* 우리 팀이 죽은 차례 — 같은 사람이 두 번 나오지 않게 처음 것만 남긴다 */
-        const deathOrder: string[] = []
+        /* 팀별로 죽은 차례 — 같은 사람이 두 번 나오지 않게 처음 것만 남긴다 */
+        const deathOrder = new Map<boolean, string[]>([[true, []], [false, []]])
         for (const kill of kills) {
-          if (!isOurs(kill.victim)) continue
-          if (!deathOrder.includes(kill.victim)) deathOrder.push(kill.victim)
+          const side = isOurs(kill.victim)
+          const list = deathOrder.get(side) as string[]
+          if (!list.includes(kill.victim)) list.push(kill.victim)
         }
-        /* 그 라운드에 킬을 낸 우리 사람들 */
+        /* 그 라운드에 킬을 낸 사람들 — 「1킬도 하지못하고」 를 가른다 */
         const killedSomeone = new Set<string>()
-        for (const kill of kills) if (isOurs(kill.killer)) killedSomeone.add(kill.killer)
+        for (const kill of kills) killedSomeone.add(kill.killer)
 
         /*
          * ★스나 전원★ 이 「1킬 0 + 1~3번째 사망」 이어야 «라플들끼리 남았다» 가 참이다.
-         * 실측상 우리 스나는 93%가 한 명뿐이라 이 조건은 거의 «그 한 명» 과 같다.
+         * 실측상 한 팀의 스나는 93%가 한 명뿐이라 이 조건은 거의 «그 한 명» 과 같다.
          */
-        const allSnipersDownEarly = [...ourSnipers].every((usn) => {
-          const order = deathOrder.indexOf(usn)
-          return order >= 0 && order < RIFLE_POWER_DEATH_ORDER && !killedSomeone.has(usn)
-        })
-        if (allSnipersDownEarly) {
+        const downEarly = (snipers: ReadonlySet<string>, ours: boolean): boolean => {
+          if (snipers.size === 0) return false
+          const order = deathOrder.get(ours) as string[]
+          return [...snipers].every((usn) => {
+            const at = order.indexOf(usn)
+            return at >= 0 && at < RIFLE_POWER_DEATH_ORDER && !killedSomeone.has(usn)
+          })
+        }
+        /* ★한쪽만 걸려도 분모★ — 그래야 양 팀 분모가 같아지고 합이 100% 가 된다 */
+        if (downEarly(ourSnipers, true) || downEarly(foeSniperSet, false)) {
           riflePower.rounds += 1
           if (won) riflePower.won += 1
         }
@@ -1241,16 +1288,17 @@ function tallyFor(input: {
   tally.firstBlood = firstBlood.rounds > 0 || firstBlood.tiedRounds > 0 ? firstBlood : null
   tally.trade = trade.deaths > 0 ? trade : null
   /*
-   * ④ 는 **우리 스나**만 있으면 된다. `sniperKnown`(=상대 스나를 아는가)은 **안 본다** —
-   * 상대가 라플만 들고 나온 경기에서도 우리 스나는 일찍 지워질 수 있다.
+   * ④ 는 **어느 쪽 스나든** 짚을 수 있으면 성립한다 (2026-09-15 · ③안).
+   * 양 팀을 다 보므로 한쪽에 스나가 없어도 다른 쪽으로 잰다.
    *
    * 스나를 아예 못 짚었으면 조건을 따질 수가 없으니 `null` 이다.
    * 0 이 「한 번도 못 살렸다」가 되면 안 된다 (D-106 — 못 잰 것을 최악으로 적지 않는다).
    *
-   * ⚠ 우리 스나는 ★킬로그의 무기★ 로 짚는다 (`weaponByPlayerOf`). 한 판 내내 0킬인
+   * ⚠ 스나는 ★킬로그의 무기★ 로 짚는다 (`weaponByPlayerOf`). 한 판 내내 0킬인
    *   스나는 안 보인다는 뜻인데, 실측상 스나 11,525명 중 ★3명★(0.03%)뿐이라 무시한다.
    */
-  tally.riflePower = ourSnipers.size > 0 && riflePower.rounds > 0 ? riflePower : null
+  tally.riflePower =
+    (ourSnipers.size > 0 || foeSniperSet.size > 0) && riflePower.rounds > 0 ? riflePower : null
 
   tally.outnumbered = input.restorable ? outnumbered : null
   tally.save = input.restorable ? save : null

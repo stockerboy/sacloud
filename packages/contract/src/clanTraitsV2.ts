@@ -123,6 +123,11 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
    * 뜻: «우리 스나가 1킬 없이 1~3번째로 지워진 라운드 중 라플들끼리 딴 비율».
    * 분모가 이미 «그런 상황이 벌어진 라운드» 라 비율이 곧 뜻이다 — 세이브·소수싸움과 같은 꼴.
    */
+  /*
+   * ★라이플화력은 «비율»★ 이다.
+   * 뜻: «어느 쪽이든 스나가 1킬 없이 1~3번째로 지워진 라운드 중 우리가 딴 비율».
+   * 분모가 ★양 팀 공통★ 이라 두 팀 값을 더하면 100% 다 (스나싸움과 같은 꼴).
+   */
   riflePower: 'ratio',
   /*
    * ★클랜 선짤은 «비율»★ 이다 (2026-09-15 사장님이 회의에서 ②안을 고르심).
@@ -389,7 +394,11 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    *   ★올리는 순서★: 가지로 VPS 만 먼저 올려 재계산 → 끝나면 main 에 병합.
    *   거꾸로 하면 재계산 전까지 클랜 육각이 통째로 사라진다 (v2.3 때 겪음).
    */
-  formulaVersion: 'clan-hex-v2.8',
+  /*
+   * ⚠ ★2026-09-15 저녁 · v2.8 → v2.9★ — 라이플화력의 분모가 ★양 팀 공통★ 이 됐다.
+   *   사장님: *"양팀 다 스나싸움처럼 둘이 합쳐서 100퍼센트면 좋겠는데"*
+   */
+  formulaVersion: 'clan-hex-v2.9',
 }
 
 /**
@@ -477,7 +486,10 @@ export interface OutnumberedTallyLike {
 }
 
 /** ③ 세이브 */
-/** ④ 라이플화력 — 뜻과 근거는 `packages/nexon/src/clanHexV2.ts` 의 `RiflePowerTally` 에 있다 */
+/**
+ * ④ 라이플화력 — 뜻과 근거는 `packages/nexon/src/clanHexV2.ts` 의 `RiflePowerTally` 에 있다.
+ * `rounds` 는 ★양 팀이 같은 수★ 다 (2026-09-15 저녁 · 합 100% 규칙).
+ */
 export interface RiflePowerTallyLike {
   rounds: number
   won: number
@@ -1193,10 +1205,10 @@ export function buildClanHexV2Raw(input: {
         return measuredAxis(key, part.won, part.rounds)
       }
       /**
-       * ④ **라이플화력** — 스나가 일찍 지워져도 라플이 라운드를 살렸나 (2026-09-15 신설).
+       * ④ **라이플화력** — 스나가 일찍 지워진 라운드를 누가 가져갔나 (2026-09-15 신설).
        *
-       * 분모가 «그런 상황이 벌어진 라운드» 라 세이브·소수싸움과 똑같은 꼴이다.
-       * 상황이 한 번도 없었으면 `sample` 로 «측정중» 이다 — 0% 로 적지 않는다.
+       * 분모가 ★양 팀 공통★ 이라 **스나싸움과 똑같이 두 값의 합이 100%** 다.
+       * 그런 라운드가 한 번도 없었으면 `sample` 로 «측정중» 이다 — 0% 로 적지 않는다.
        */
       case 'riflePower': {
         const part = tally.riflePower ?? null

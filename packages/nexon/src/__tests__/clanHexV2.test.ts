@@ -467,6 +467,73 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
     /* R3 이 빠져 R2 하나만 남는다 */
     expect(tally?.riflePower).toEqual({ rounds: 1, won: 1 })
   })
+
+  /* ------------------------------------------------------------------ */
+  /* ★합이 100%★ (2026-09-15 저녁 사장님)                                */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * 사장님: *"0:0이랑 100:0은 안되는데 (…) 양팀 다 스나싸움처럼 둘이 합쳐서 100퍼센트면"*
+   *
+   * 그래서 분모는 ★양 팀 공통★ 이다 — «어느 쪽이든 스나가 1킬 없이 1~3번째로 지워진 라운드».
+   * 위 `riflePowerMatch()` 는 상대에 스나가 없어 그 성질이 드러나지 않는다.
+   * 여기서는 ★상대에게도 스나를 준다★ (B3 가 R1 에서 스나로 잡는다).
+   *
+   * ```
+   * R1  A3 가 스나로 · B3 도 스나로 잡는다      → 양쪽 다 킬이 있어 조건 밖
+   * R2  ★우리★ 스나 A3 가 1번째로 지워짐 · 우리 승  → 분모 +1 · 우리 +1
+   * R3  ★상대★ 스나 B3 가 1번째로 지워짐 · 우리 패  → 분모 +1 · 상대 +1
+   * ```
+   */
+  function bothSnipersMatch(): ClanHexEvent[] {
+    return [
+      /* R1 — 양 팀 스나가 한 방씩. 여기서 A3·B3 의 무기가 확정된다 */
+      kill(1, 10, A(3), B(1), 'sniper'),
+      killed(1, 14, A(1), B(3), 'sniper'),
+
+      /* R2 — 우리 스나가 맨 먼저 지워지고 라플들이 딴다 */
+      killed(2, 100, A(3), B(1), 'riple'),
+      kill(2, 110, A(2), B(1), 'riple'),
+      kill(2, 112, A(2), B(2), 'riple'),
+
+      /* R3 — 상대 스나가 맨 먼저 지워지는데 ★상대가★ 딴다 */
+      kill(3, 200, A(1), B(3), 'riple'),
+      killed(3, 206, A(1), B(1), 'riple'),
+      killed(3, 208, A(2), B(2), 'riple'),
+    ]
+  }
+
+  const bothWon = (round: number): boolean | null => round === 1 || round === 2
+
+  it('★상대 스나가 지워진 라운드도 분모★ 다 — 양 팀 분모가 같다', () => {
+    const match = run(bothSnipersMatch(), US, bothWon)
+    const ours = match.byTeam.get(US)?.riflePower
+    const theirs = match.byTeam.get(THEM)?.riflePower
+    expect(ours?.rounds).toBe(2)
+    expect(theirs?.rounds).toBe(2)
+  })
+
+  it('★두 값을 더하면 정확히 100%★ 다 (사장님: «스나싸움처럼 둘이 합쳐서 100퍼센트»)', () => {
+    const match = run(bothSnipersMatch(), US, bothWon)
+    const ours = match.byTeam.get(US)?.riflePower
+    const theirs = match.byTeam.get(THEM)?.riflePower
+    expect(ours).toEqual({ rounds: 2, won: 1 })
+    expect(theirs).toEqual({ rounds: 2, won: 1 })
+    const sum =
+      (ours as { rounds: number; won: number }).won / (ours as { rounds: number }).rounds +
+      (theirs as { rounds: number; won: number }).won / (theirs as { rounds: number }).rounds
+    expect(sum).toBeCloseTo(1, 10)
+  })
+
+  it('우리 스나가 없어도 **상대 스나만으로** 잰다', () => {
+    /* A3 의 스나 킬을 라플로 바꾸면 우리 팀에 스나가 없어진다 — B3 는 그대로 스나다 */
+    const noOurs = bothSnipersMatch().map((e) =>
+      e.event_type === 'kill' && e.str_usn === 'A3' ? { ...e, weapon: 'riple' } : e,
+    )
+    const tally = run(noOurs, US, bothWon).byTeam.get(US)?.riflePower
+    /* R3(상대 스나가 먼저 지워짐) 하나만 남고, 그 라운드는 우리가 졌다 */
+    expect(tally).toEqual({ rounds: 1, won: 0 })
+  })
 })
 
 describe('④ 게임템포 — 상대 3명 제거까지 (하한값)', () => {
