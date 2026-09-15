@@ -427,9 +427,15 @@
   color: var(--v2-text-muted);
 }
 /** ★현재 리그★ — 면을 칠하지 않는다. 밝기와 굵기로만 말한다 */
+/*
+ * ⚠ ★2026-09-16 — 지금 자리를 «색» 으로 말한다★ (사장님이 sleeper 시안을 주심).
+ *   시안은 지금 보고 있는 종목만 ★하늘색 글자 + 같은 색 아이콘★ 이다.
+ *   옛 값은 `color: var(--v2-text-strong)`(흰색) 이라 ★어디에 있는지가 약했다.★
+ *   리그마다 강조색이 다르므로(`--v2-accent`) 리그 색을 그대로 쓴다.
+ */
 .sac-v2 .v2-gnb__item.is-on {
-  color: var(--v2-text-strong);
-  font-weight: 500;
+  color: var(--v2-accent, #5b8dff);
+  font-weight: 700;
 }
 
 .sac-v2 .v2-login {
@@ -680,19 +686,38 @@
   border-radius: 14px;
   overflow: hidden;
 }
+/*
+ * ⚠ ★2026-09-16 — 알약 단추를 밑줄로★ (사장님이 sleeper 시안을 주시며
+ *   «상단바 이런식으로 디자인좀 해주라 간격도 저렇게 좀 쓰고»).
+ *
+ *   위 두 띠는 «배경색 + 글자색» 으로만 나뉘는데 리그 탭만 ★둥근 알약★ 이라
+ *   결이 따로 놀았다. 시안은 지금 자리를 ★색과 밑줄★ 로만 말한다.
+ *
+ *   옛 값 (지우지 않는다 · `CLAUDE.md` 1-4):
+ *     .v2-tab      { margin: 9px 3px; padding: 0 20px; border-radius: 9px; }
+ *     .v2-tab.is-on{ background: rgba(91,141,255,.14);
+ *                    box-shadow: inset 0 0 0 1px rgba(91,141,255,.42); }
+ */
 .sac-v2 .v2-tab {
-  margin: 9px 3px;
-  padding: 0 20px;
-  border-radius: 9px;
-  font-size: 14px;
+  margin: 0;
+  padding: 0 22px;
+  border-radius: 0;
+  font-size: 14.5px;
 }
 .sac-v2 .v2-tab.is-on {
-  background: rgba(91, 141, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(91, 141, 255, 0.42);
+  /* 밑줄은 `inset` 그림자다 — `border-bottom` 싸움(D-232)을 피한다 */
+  box-shadow: inset 0 -2px 0 0 var(--v2-accent, #5b8dff);
+  color: var(--v2-accent, #5b8dff);
 }
 .sac-v2 .v2-tabbar__m { display: none; }
 @media (max-width: 767px) {
-  .sac-v2.v2-topbar, .sac-v2 .v2-topbar { padding: 8px 10px 0; }
+  /*
+   * ⚠ ★2026-09-16 — 띠를 화면 끝까지★ (사장님이 sleeper 시안을 주시며
+   *   «상단바 이런식으로 디자인좀 해주라 간격도 저렇게 좀 쓰고»).
+   *   옛 값은 `padding: 8px 10px 0` 이라 띠가 ★떠 있는 둥근 카드★ 였다.
+   *   시안은 두 띠가 화면을 꽉 채우고 배경색으로만 나뉜다.
+   */
+  .sac-v2.v2-topbar, .sac-v2 .v2-topbar { padding: 0; }
 
   /* ──────────────────────────────────────────────────────────────────────
      ★폰 상단바를 두 줄로★ (2026-09-13 QA)
@@ -722,33 +747,62 @@
        그 값은 ★변수가 사는 곳★ 인 `styles.css` 의 같은 폭 미디어쿼리에서 올린다 —
        두 파일이 ★같은 767px★ 을 본다. 한쪽만 고치면 띠와 본문이 어긋난다.
      ────────────────────────────────────────────────────────────────────── */
+  /* ⚠ 옛 값: `padding: 8px 12px` · `border-radius: 12px` · `row-gap: 7px` (둥근 카드) */
   .sac-v2 .v2-topbar__inner,
   .sac-v2 .v2-topbar__inner--home {
     height: auto;
-    min-height: 80px;
-    padding: 8px 12px;
-    border-radius: 12px;
+    min-height: 88px;
+    padding: 0;
+    border-radius: 0;
     flex-wrap: wrap;
     align-content: center;
-    row-gap: 7px;
+    row-gap: 0;
   }
+  /* 첫 줄(로고·로그인)에만 좌우 여백 — 둘째 줄은 제 배경을 끝까지 깔아야 한다 */
+  .sac-v2 .v2-topbar__inner > .v2-brand { padding-left: 14px; }
+  .sac-v2 .v2-topbar__inner > .v2-login,
+  .sac-v2 .v2-topbar__inner > div:last-child { padding-right: 14px; }
   /* 로고와 로그인이 첫 줄, 메뉴가 통째로 둘째 줄 (`flex-basis: 100%` 가 줄을 바꾼다) */
   .sac-v2 .v2-topbar__inner > .v2-brand { order: 1; }
   .sac-v2 .v2-topbar__inner > .flex-1 { order: 2; }
   .sac-v2 .v2-topbar__inner > .v2-login,
   .sac-v2 .v2-topbar__inner > div:last-child { order: 3; }
+  /*
+   * ★둘째 줄을 한 톤 밝은 띠로★ (2026-09-16 시안).
+   *   옛 값은 `justify-content: space-between; gap: 8px` 이라 ★양끝 정렬★ 이었다 —
+   *   메뉴가 여섯이라 화면 끝까지 억지로 벌어지고 사이가 들쭉날쭉했다.
+   *   시안은 ★왼쪽부터 같은 간격★ 으로 놓고 넘치면 옆으로 민다.
+   */
   .sac-v2 .v2-topbar__inner > .v2-gnb {
     order: 4;
     flex: 0 0 100%;
     width: 100%;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: flex-start;
+    gap: 26px;
+    background: var(--v2-tabbar);
+    border-top: 1px solid var(--v2-bar-border);
+    padding-left: 14px;
+    margin-top: 0;
   }
-  .sac-v2.v2-tabbar, .sac-v2 .v2-tabbar { padding: 6px 10px 0; }
+  /* ⚠ 옛 값: `padding: 6px 10px 0` + 둥근 카드(`border-radius: 12px`, 테두리) */
+  .sac-v2.v2-tabbar, .sac-v2 .v2-tabbar { padding: 0; }
   .sac-v2 .v2-tabbar__pc { display: none; }
-  .sac-v2 .v2-tabbar__m { display: block; pointer-events: auto; background: linear-gradient(160deg, #0d1524, #080d18); border: 1px solid #16202e; border-radius: 12px; overflow: hidden; }
-  .sac-v2 .v2-tabbar__m .v2-tabbar__inner { border: 0; border-radius: 0; background: transparent; height: 46px; padding: 0 4px; }
-  .sac-v2 .v2-tab { margin: 6px 2px; padding: 0 8px; font-size: 13px; }
+  .sac-v2 .v2-tabbar__m { display: block; pointer-events: auto; background: transparent; border: 0; border-radius: 0; overflow: hidden; }
+  /* ⚠ 높이 54 → 46px. 54 에서는 글자가 가운데라 ★밑줄이 멀리 떨어져 보였다★ */
+  .sac-v2 .v2-tabbar__m .v2-tabbar__inner {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    height: 46px;
+    padding: 0 6px;
+    border-bottom: 1px solid var(--v2-bar-border);
+  }
+  /*
+   * ★탭도 시원하게★ (2026-09-16 시안) — 옛 값 `margin: 6px 2px; padding: 0 8px; font-size: 13px`.
+   *   탭이 셋뿐이라 폭을 나눠 갖게 두고(`flex: 1`은 부품이 준다) 글자를 키운다.
+   */
+  /* 폰은 탭이 셋뿐이라 폭을 나눠 갖는다 (부품이 `flex: 1` 을 준다). 밑줄이 보이게 꽉 채운다 */
+  .sac-v2 .v2-tab { margin: 0; padding: 0 10px; font-size: 14.5px; align-items: center; }
 }
 
 /* ── v3 카드의 폰 규칙 (2026-09-10) ── */

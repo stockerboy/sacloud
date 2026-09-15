@@ -662,7 +662,8 @@
    *   본문이 48px 밀려 있었다. 이름 줄을 빼고 탭 줄만 남긴다.
    *   되돌리려면 102px 로 되돌리고 `LeagueTopBarV2` 의 `v2-tabbar__mname` 를 되살린다.
    */
-  --spacing-leaguebar-m: 54px;
+  /* ⚠ 2026-09-16 — 54 → 47px (탭 줄 46 + 경계선 1). 시안에 맞춰 띠를 얇게 */
+  --spacing-leaguebar-m: 47px;
   /** 데스크톱 본문 폭. `--layout-max` 와 같은 값이다 (px 로 고정해 루트 크기와 무관하다) */
   --spacing-container: 1180px;
   /** 홈 로고 */
@@ -1165,8 +1166,10 @@ a:hover {
    * ⚠ 옛 값: `--spacing-nav: 68px` · `--spacing-nav-home: 56px` (PC 는 그대로다).
    */
   :root {
-    --spacing-nav: 96px;
-    --spacing-nav-home: 96px;
+    /* ⚠ ★2026-09-16 — 96 → 88px★. 띠에서 좌우·위 여백(8px)을 뺐으니 그만큼 낮아진다
+       (사장님이 sleeper 시안을 주시며 «상단바 이런식으로 디자인좀 해주라») */
+    --spacing-nav: 88px;
+    --spacing-nav-home: 88px;
   }
 
   .pc-container {

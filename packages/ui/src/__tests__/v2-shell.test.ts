@@ -104,7 +104,8 @@ describe('치수는 한 곳에만 있다', () => {
     expect(styles).toContain('--spacing-leaguebar: 54px')
     expect(styles).toContain(/* ⚠ 옛 값 `102px` (48px 리그이름 줄 + 54px 탭 줄) — 2026-09-15 밤 사장님
        «상단에 바가 두개나 있는게 별로야» 로 이름 줄을 뺐다 */
-      '--spacing-leaguebar-m: 54px')
+      /* ⚠ 옛 값 `54px` — 2026-09-16 사장님 시안(sleeper)에 맞춰 띠를 얇게 (탭 46 + 선 1) */
+      '--spacing-leaguebar-m: 47px')
     expect(styles).toContain('--layout-max: 1180px')
     expect(styles).toContain('--spacing-layout: 1180px')
     expect(styles).toContain('--spacing-container: 1180px')
