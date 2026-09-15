@@ -1186,9 +1186,42 @@ a:hover {
   }
 
   /* 표는 넘칠 때 **자기 안에서만** 가로로 스크롤한다. 본문이 밀리면 안 된다 */
+  /*
+   * ★오른쪽 끝을 흐리게★ (2026-09-15 밤 · 무한 QA · 상단바와 같은 수법).
+   *
+   * 표는 제 안에서만 가로로 밀리게 해 뒀는데, 글자가 ★뚝 잘려서★ 사용자가
+   * «거기서 끝» 으로 읽는다. 게시판 실측(폰 390px): 머리글이 «제목 · 작성시간 · 조»
+   * 로 끊겨 «조회수» 인 줄도 모르고, 밀 수 있다는 것도 모른다.
+   * 흐려지면 «더 있다» 가 보여서 손이 간다. 스크롤 막대도 숨긴다 — 손가락으로 민다.
+   */
   .mobile-scroll-x {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  }
+  .mobile-scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+  /*
+   * ⚠ 다 밀었으면 흐림을 끈다 — 끝까지 갔는데도 흐리면 «아직 더 있나» 하고 또 민다.
+   *   `animation-timeline: scroll(self inline)` 을 아는 브라우저에서만 도는 덤이다.
+   */
+  @supports (animation-timeline: scroll(self inline)) {
+    .mobile-scroll-x {
+      animation: mobile-scroll-fade linear both;
+      animation-timeline: scroll(self inline);
+      animation-range: contain;
+    }
+    @keyframes mobile-scroll-fade {
+      to {
+        -webkit-mask-image: linear-gradient(to right, #000 100%, transparent 100%);
+        mask-image: linear-gradient(to right, #000 100%, transparent 100%);
+      }
+    }
   }
 
   /* 좁은 화면에서 감추는 표 컬럼. 데이터를 지우는 것이 아니라 보이지 않게 할 뿐이다 */
