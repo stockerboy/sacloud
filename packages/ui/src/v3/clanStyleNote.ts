@@ -5,7 +5,8 @@
  * >  성장가능성 - 그나마 높은 성향을 칭찬해줘»
  *
  * ── 왜 이렇게 갈랐나 (IPL 41개 클랜 실측 · 2026-09-12)
- *   여섯 축 중 ★다섯이 한 덩어리★ 다 — 소수싸움·세이브·게임템포·선짤·교환율이
+ *   여섯 축 중 ★다섯이 한 덩어리★ 다 — 소수싸움·세이브·라이플화력·선짤·교환율이
+ *   (옛 넷째는 게임템포였다 · 2026-09-15 에 바뀜)
  *   서로 r = 0.41 ~ 0.74 로 붙어 다닌다. 잘하는 클랜은 다섯이 같이 높다.
  *   그 다섯을 「운영」 하나로 묶는다.
  *
@@ -22,7 +23,10 @@
 import type { ClanHexagonV2 } from '@sacloud/contract'
 
 /** 「운영」을 이루는 다섯 축 — 스나싸움만 뺀 전부 */
-export const CLAN_CORE_AXES = ['outnumbered', 'save', 'tempo', 'firstBlood', 'trade'] as const
+/* ⚠ ★2026-09-15★ — `tempo` → `riflePower` (사장님이 ④ 를 바꿈). 옛 배열은 `CLAN_CORE_AXES_V1` */
+export const CLAN_CORE_AXES = ['outnumbered', 'save', 'riflePower', 'firstBlood', 'trade'] as const
+/** 2026-09-15 까지 쓰던 다섯. **지우지 않는다** (`CLAUDE.md` 1-4) */
+export const CLAN_CORE_AXES_V1 = ['outnumbered', 'save', 'tempo', 'firstBlood', 'trade'] as const
 
 /** 유형을 가르는 경계 (백분위 %) */
 export const CLAN_TYPE_CUT = 50
@@ -31,13 +35,33 @@ export const CLAN_AXIS_LABEL: Readonly<Record<string, string>> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
-  tempo: '게임템포',
+  riflePower: '라이플화력',
   firstBlood: '선짤',
   trade: '교환율',
 }
 
-/** 템포 다섯 칸 — 위에서부터 [백분위 하한, 문장] */
+/**
+ * ★둘째 마디 다섯 칸★ — 위에서부터 [백분위 하한, 문장].
+ *
+ * ⚠ ★2026-09-15 — 무엇을 말하는 줄인지가 바뀌었다★
+ *   사장님이 ④ 를 게임템포에서 **라이플화력**으로 바꿨다. 둘째 마디를 옛 문장
+ *   («어택속도가 빠른편입니다»)으로 두면 ★이제 아무 데이터도 안 보고 말하는 줄★ 이
+ *   된다 — 게임템포 백분위가 육각에 없으니 늘 맨 아래 칸으로 굳는다.
+ *   그래서 문장을 **새 축이 실제로 재는 것**으로 갈았다. 옛 문장은 아래에 남는다.
+ *
+ *   ★가정★: 사장님은 «게임템포를 삭제» 라고 하셨으므로 그 축이 하던 말도 함께
+ *   내린다고 봤다. 세 마디 틀(유형 · 둘째 · 강한 축)은 그대로다.
+ */
 export const TEMPO_LINES: readonly (readonly [number, string])[] = [
+  [80, '스나가 지워져도 라플들이 라운드를 되찾아옵니다'],
+  [60, '스나가 무너진 뒤에도 라이플이 버텨 줍니다'],
+  [40, '스나가 빠지면 버티는 힘이 보통입니다'],
+  [20, '스나가 일찍 빠지면 라운드가 흔들립니다'],
+  [0, '스나가 지워지면 라운드를 거의 놓칩니다'],
+]
+
+/** ★2026-09-15 까지 쓰던 «어택속도» 문장★ — 게임템포가 ④ 이던 때의 것이다 */
+export const TEMPO_LINES_V2: readonly (readonly [number, string])[] = [
   [80, '어택속도가 매우빠르고 바로바로 결과를 내는 것을 선호합니다'],
   [60, '어택속도와 게임전개가 빠른편입니다'],
   [40, '어택속도와 게임전개가 보통입니다'],
@@ -87,7 +111,7 @@ export function clanStyleNote(hex: ClanHexagonV2 | null): ClanStyleNote | null {
   const type: ClanStyleType =
     core >= CLAN_TYPE_CUT ? (sniper >= CLAN_TYPE_CUT ? '완성형' : '오더플레이') : sniper >= CLAN_TYPE_CUT ? '스나중심' : '성장가능성'
 
-  const tempoPct = pct.get('tempo') ?? 0
+  const tempoPct = pct.get('riflePower') ?? 0
   const tempo = TEMPO_LINES.find(([low]) => tempoPct >= low)?.[1] ?? TEMPO_LINES[TEMPO_LINES.length - 1]![1]
 
   /* 제일 높은 축 하나. 같은 값이면 앞선 축이 이긴다 (차례는 계약이 정한 그대로) */

@@ -709,12 +709,13 @@ export async function getClanRanks(
 const CLAN_PODIUM_SIZE = 3
 
 /** 클랜 육각형 축 차례·이름 — 클랜 카드(`clanHexAxes`)와 ★같은 차례★ 다 */
-const CLAN_HEX_ORDER = ['sniperDuel', 'outnumbered', 'save', 'tempo', 'firstBlood', 'trade'] as const
+/* ⚠ ★2026-09-15★ — ④ 가 `tempo`(게임템포) 에서 `riflePower`(라이플화력) 로 바뀌었다 (사장님) */
+const CLAN_HEX_ORDER = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'firstBlood', 'trade'] as const
 const CLAN_HEX_LABEL: Readonly<Record<string, string>> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
-  tempo: '게임템포',
+  riflePower: '라이플화력',
   firstBlood: '선짤',
   trade: '교환율',
 }
