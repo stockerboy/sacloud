@@ -224,9 +224,9 @@ const K = ({ children }: { children: React.ReactNode }) => <b style={{ color: '#
 const AXES: readonly (readonly [string, string])[] = [
   ['세이브', '혼자 남아 이긴 라운드를 셉니다'],
   ['샷싸움', '롱 안 스나 대 스나 승률입니다'],
-  ['게임영향력', '한 라운드에 상대 다섯 중 몇 명을 혼자 지웠는지 봅니다 (5명 = 100%)'],
+  ['게임영향력', '팽팽하거나 밀릴 때 따낸 킬만 셉니다 — 이미 이긴 판에서 딴 킬은 안 셉니다'],
   ['선짤', '라운드 첫 킬을 냈는지 봅니다'],
-  ['연속킬', '2초 안에 이어진 킬입니다'],
+  ['교환율', '동료가 죽은 직후 그 킬러를 되잡은 비율입니다'],
   ['소수싸움', '인원이 모자란 상황의 승률입니다'],
 ]
 
@@ -276,7 +276,7 @@ export function AnalysisPanelV3({ always = false }: { always?: boolean } = {}) {
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', padding: '12px 0', borderTop: `1px solid ${V3.rowDivider}`, borderBottom: `1px solid ${V3.rowDivider}` }}>
         <Num value={String(ZONE_TOTAL_CELLS)} unit="칸" note={`구역 ${Object.keys(ZONE_CELLS).length}곳`} />
         <Num value={String(ZONE_CELL)} unit="좌표" note="한 칸 크기" />
-        <Num value="2" unit="초" note="연속킬 간격" />
+        <Num value="5" unit="초" note="교환 인정 시간" />
         <Num value="30" unit="분" note="다시 접는 주기" />
       </div>
 
