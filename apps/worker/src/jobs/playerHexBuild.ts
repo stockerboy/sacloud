@@ -252,7 +252,21 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
        겹침을 빼기 전에 두 벌 모두에서 읽는다 (2026-09-11 · 이걸 안 읽어 상대 쪽 세이브가 전부 0 이었다) */
     const roundWinner = new Map<string, string | null>()
     for (const g of raw) {
-      if (!g.rd || (g.wf !== 'win' && g.wf !== 'lose') || !g.tn) continue
+      /*
+       * ⚠ ★`!g.tn` 은 «0번 팀» 을 통째로 버렸다★ (2026-09-15 사장님이 화면에서 잡아 주심:
+       *   «양팀 다 아무도 세이브 한적이 없는데 40:10으로 뜨는 이유가 궁금해»).
+       *
+       *   `team_no` 는 «0» 과 «1» 두 값이다 (teamList: team 0→clan A · team 1→clan B).
+       *   그런데 문자열 «0» 은 자바스크립트에서 ★거짓★ 이라 `!g.tn` 이 참이 된다.
+       *   그래서 0번 팀 쪽 줄이 승자 표에 하나도 안 들어갔고, 0번 응답만 있는 경기는
+       *   라운드 승자를 아예 못 읽어 세이브·소수싸움이 ★전부 «못 이김»★ 으로 쌓였다.
+       *   실측: 개인 세이브 6.7% · 클랜 세이브 14.5% — 같은 것을 재는데 두 배 차이였다.
+       *
+       *   라운드도 같은 함정이 있다 — 지금은 1부터라 안 걸리지만 뜻으로 막아 둔다.
+       */
+      const noRound = g.rd === null || g.rd === undefined || g.rd === ''
+      const noTeam = g.tn === null || g.tn === undefined || g.tn === ''
+      if (noRound || noTeam || (g.wf !== 'win' && g.wf !== 'lose')) continue
       const key = `${g.k}|${g.rd}`
       if (g.wf === 'win') roundWinner.set(key, g.tn)
       else if (!roundWinner.has(key)) roundWinner.set(key, `!${g.tn}`)

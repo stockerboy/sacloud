@@ -47,9 +47,18 @@ describe('축 원값', () => {
     const v = axisValuesOf(player({ leaguePlayerId: 'a', aloneRounds: 9, aloneWon: 9, rifleDuelWon: 10, rifleDuelLost: 9 }), 0)
     expect(v.save).toBeNull()
     expect(v.duel).toBeNull()
-    expect(v.opening).toBeCloseTo(16.7)
-    expect(v.burst).toBe(12.5)
-    expect(v.carry).toBe(8)
+    /*
+     * ⚠ ★2026-09-15 에 세 축의 뜻이 바뀌었다★ (사장님).
+     *   선짤·연속킬  «라운드 비율(%)» → ★판당 몇 번★
+     *                옛 기대값 — opening 16.7 · burst 12.5 (40/240 · 30/240)
+     *                지금 — 40/20 = 2회 · 30/20 = 1.5회
+     *   캐리력→게임영향력  «판당 킬» → ★한 라운드에 적 다섯 중 몇 명★
+     *                옛 기대값 — 8 (160킬/20판)
+     *                지금 — 재료(maxRoundKills)가 없으면 ★null★ 이다 (0 이라 우기지 않는다)
+     */
+    expect(v.opening).toBe(2)
+    expect(v.burst).toBe(1.5)
+    expect(v.carry).toBeNull()
     expect(v.outnumbered).toBeCloseTo(33.3)
   })
 

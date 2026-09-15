@@ -44,7 +44,12 @@ import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
  *   옛 줄은 그 라운드를 분모에만 넣어 «혼자 남았는데 못 이김» 으로 쌓았다.
  *   버전을 올려야 다시 세어 고친다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.2'
+/**
+ * ⚠ ★v1.3 — «0번 팀» 버그를 고쳤다★ (2026-09-15 사장님이 화면에서 잡아 주심).
+ *   `!g.tn` 이 문자열 «0» 을 거짓으로 봐서 0번 팀의 승패가 통째로 빠졌고,
+ *   세이브·소수싸움이 «해봤지만 한 번도 못 이김» 으로 쌓였다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.3'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700

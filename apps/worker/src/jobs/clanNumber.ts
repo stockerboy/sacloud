@@ -129,7 +129,10 @@ export async function linkClanNumbers(input: { confirm: boolean }): Promise<Clan
     }
 
     for (const team of raw.teamList ?? []) {
-      if (!team.team_no || !team.clan_no) continue
+      /* ⚠ ★«0» 은 거짓이다★ — `!team.team_no` 로 막으면 0번 팀이 통째로 빠진다.
+             team_no 는 «0»·«1» 두 값이라 그게 절반이다 (2026-09-15) */
+      if (team.team_no === null || team.team_no === undefined || team.team_no === '') continue
+      if (team.clan_no === null || team.clan_no === undefined || team.clan_no === '') continue
       const inner = sideVotes.get(String(team.team_no))
       if (!inner) continue
       const best = [...inner.entries()].sort((a, b) => b[1] - a[1])[0]
