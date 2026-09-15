@@ -159,7 +159,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
         <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <MarkCircle clan={data.clan} size={42} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-            <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.ink, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.ink, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
               {data.clan.name}
             </span>
             <span style={{ fontSize: 11, color: '#6f93b4', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>

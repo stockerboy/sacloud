@@ -32,7 +32,14 @@ const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '124px m
 
 function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListItem['league_clan']['clan']; division: number; leagueCategory: string; won: boolean; align: 'left' | 'right' }) {
   /* ★클랜명은 승패 색★ (2026-09-12 사장님) — 옛 판은 클랜마다 다른 색(clanThemeOf)이었다 */
-  const name = <span style={{ fontSize: 13, fontWeight: won ? 700 : 600, color: won ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clan.name}</span>
+  /*
+   * ⚠ ★`maxWidth: 100%` 가 반드시 있어야 한다★ (2026-09-15 · 무한 QA).
+   *   이 글자는 ★세로 flex★ 안에 있고 그 부모가 `align-items: flex-start` 다.
+   *   그러면 자식 폭이 ★내용 크기★ 로 잡혀 부모보다 커지고, 제 `textOverflow` 가
+   *   쓸 일이 없어진다 — 대신 부모의 `overflow: hidden` 이 ★말줄임 없이 싹둑★ 자른다.
+   *   실측(폰 390px 홈): «plenilune» 이 «plenilun» 으로 잘렸다. 점 세 개도 없었다.
+   */
+  const name = <span style={{ fontSize: 13, fontWeight: won ? 700 : 600, color: won ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{clan.name}</span>
   const tier = <TierText division={division} leagueCategory={leagueCategory} size={10} />
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
@@ -113,7 +120,7 @@ export function MatchListV3(props: MatchListV3Props) {
               <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : V3.card, opacity: pending ? 0.75 : 1 }}>
                 <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...rowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-match-row v3-match-row--list">
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                    <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
+                    <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{m.map.name}</span>
                     <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
