@@ -49,7 +49,12 @@ import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
  *   `!g.tn` 이 문자열 «0» 을 거짓으로 봐서 0번 팀의 승패가 통째로 빠졌고,
  *   세이브·소수싸움이 «해봤지만 한 번도 못 이김» 으로 쌓였다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.3'
+/**
+ * ⚠ ★v1.4 — 1대1 이 세이브에서 빠지고 있었다★ (2026-09-15 사장님이 물어서 찾음:
+ *   «1대1세이브같은경우에 무조건 두팀중 한명은 세이브인데 1대1 상황이 별로 없나?»).
+ *   세이브와 소수싸움을 한 줄에서 세다 «수가 같으면 건너뛴다» 가 세이브에도 걸렸다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.4'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700

@@ -400,10 +400,26 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         if (vt !== undefined) alive.get(vt)?.delete(e.victim)
         const na = (alive.get(tA) as Set<string>).size
         const nb = (alive.get(tB) as Set<string>).size
+
+        /*
+         * ★세이브는 상대 수를 안 본다★ (2026-09-15 사장님:
+         * «1대1세이브같은경우에 무조건 두팀중 한명은 세이브인데»).
+         *
+         * ⚠ 옛 판은 세이브와 소수싸움을 ★한 줄에서★ 셌다. 그래서 «수가 같으면
+         *   건너뛴다» 가 세이브에도 걸려 ★1대1 이 통째로 빠졌다.★
+         *   1대1 은 ★이길 확률이 가장 높은 세이브★ 라, 빠지니 승률이 절반이 됐다 —
+         *   실측 개인 6.7% vs 클랜 14.5%. `roundState.ts` 주석은 처음부터
+         *   «1대1 이든 1대5 든 전부 세이브» 라고 말하고 있었는데 구현이 안 따랐다.
+         *
+         * 혼자 남았으면 ★양 팀 다 따로★ 센다 — 1대1 이면 두 사람 다 세이브 상황이다.
+         */
+        if (na === 1) for (const u of alive.get(tA) as Set<string>) sawAlone.add(u)
+        if (nb === 1) for (const u of alive.get(tB) as Set<string>) sawAlone.add(u)
+
+        /* 소수싸움은 ★밀릴 때만★ 이다 — 수가 같으면 우리가 밀린 게 아니다 */
         if (na === nb) continue
         const few = alive.get(na < nb ? tA : tB) as Set<string>
         for (const u of few) sawOut.add(u)
-        if (few.size === 1) for (const u of few) sawAlone.add(u)
       }
       for (const u of sawOut) {
         const W = whoOf(mk, u)
