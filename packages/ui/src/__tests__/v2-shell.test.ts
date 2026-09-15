@@ -102,7 +102,9 @@ describe('치수는 한 곳에만 있다', () => {
   it('시안 실측값이 styles.css 에 있다', () => {
     expect(styles).toContain('--spacing-nav: 68px')
     expect(styles).toContain('--spacing-leaguebar: 54px')
-    expect(styles).toContain('--spacing-leaguebar-m: 102px')
+    expect(styles).toContain(/* ⚠ 옛 값 `102px` (48px 리그이름 줄 + 54px 탭 줄) — 2026-09-15 밤 사장님
+       «상단에 바가 두개나 있는게 별로야» 로 이름 줄을 뺐다 */
+      '--spacing-leaguebar-m: 54px')
     expect(styles).toContain('--layout-max: 1180px')
     expect(styles).toContain('--spacing-layout: 1180px')
     expect(styles).toContain('--spacing-container: 1180px')

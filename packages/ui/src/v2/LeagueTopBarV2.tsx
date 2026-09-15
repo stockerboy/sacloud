@@ -39,6 +39,13 @@ import { v2Class } from './leagueAccent'
  *   리그 레이아웃이 ★정확히 그만큼★ 본문을 내린다. 여기를 바꾸면 저기도 바꿔야 한다.
  */
 
+/**
+ * ★폰 리그바에 「리그 이름 줄」 을 둘 것인가★ (2026-09-15 밤 사장님이 내리심).
+ * `true` 로 두면 옛 두 줄(102px)로 돌아간다 — `--spacing-leaguebar-m` 도 함께 되돌린다.
+ * 타입을 `boolean` 으로 넓혀 둔다 — 리터럴로 좁히면 옛 가지가 «닿을 수 없는 코드» 가 된다.
+ */
+const LEAGUE_NAME_ROW: boolean = false
+
 export interface LeagueTopBarV2Props {
   /** 라우트 slug (`supply` · `nolink` · `sanply`). 화면에 쓰지 않는다 */
   leagueSlug: string
@@ -74,13 +81,24 @@ export function LeagueTopBarV2({ leagueSlug, leagueName }: LeagueTopBarV2Props) 
         ))}
       </div>
 
-      {/* --- 모바일: 두 줄 (48 + 54 = 102 = `--spacing-leaguebar-m`) --- */}
+      {/*
+        --- 모바일: ★한 줄★ (54 = `--spacing-leaguebar-m`) ---
+
+        ⚠ ★2026-09-15 밤 — 두 줄에서 한 줄로★ (사장님: «상단에 바가 두개나 있는게 별로야»).
+          옛 판은 ★리그 이름 줄(48px)★ 이 위에 있어 102px 이었다. 그 이름은 바로 위
+          GNB 가 이미 밝은 글자로 말해 준다 — 같은 말을 두 줄로 두 번 하느라 본문이
+          48px 밀려 있었다.
+          ★지우지 않고 감춘다★ (`CLAUDE.md` 1-4) — 아래 `LEAGUE_NAME_ROW` 를 `true` 로
+          두면 그대로 돌아온다. 그때는 `--spacing-leaguebar-m` 도 102px 로 되돌린다.
+      */}
       <div className="v2-tabbar__m">
-        <div className="flex h-12 items-center border-b border-[var(--v2-row-divider)] px-6">
-          <span className="truncate text-[15px] font-bold text-[var(--v2-text-strong)]">
-            <LeagueLabel name={leagueName} />
-          </span>
-        </div>
+        {LEAGUE_NAME_ROW ? (
+          <div className="flex h-12 items-center border-b border-[var(--v2-row-divider)] px-6">
+            <span className="truncate text-[15px] font-bold text-[var(--v2-text-strong)]">
+              <LeagueLabel name={leagueName} />
+            </span>
+          </div>
+        ) : null}
         <div className="v2-tabbar__inner">
           {items.map((item) => (
             <Link

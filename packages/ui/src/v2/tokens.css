@@ -290,14 +290,52 @@
 .sac-v2 .v2-gnb {
   display: flex;
   align-items: center;
-  gap: 28px;
+  /* ⚠ 옛 값 28px — 2026-09-15 밤 사장님 «메뉴끼리 간격이 너무 좁아 좀 띄어놓고» */
+  gap: 34px;
   font-size: 22px;
   line-height: 1;
 }
 @media (max-width: 767px) {
+  /*
+   * ★폰에서는 옆으로 슥 넘긴다★ (2026-09-15 밤 사장님: «메뉴끼리 간격이 너무 좁아
+   * 좀 띄어놓고 모바일버전에서는 옆으로 슥슥 터치하면 다른 메뉴들이 보게»).
+   *
+   * 옛 값은 `gap: 16px` 하나뿐이었고, 메뉴 여섯이 390px 안에 억지로 들어가느라
+   * 서로 붙어 있었다. 이제 ★넘치면 넘긴다★ —
+   *   `flex: none` 없이 두면 flex 가 칸을 줄여 글자를 눌러 버린다
+   *   `scrollbar-width: none` 으로 막대는 숨긴다 (손가락으로 미는 것이라 필요 없다)
+   *   `overscroll-behavior-x: contain` — 끝까지 밀어도 뒤 페이지로 안 넘어간다
+   *   `-webkit-overflow-scrolling: touch` — iOS 관성
+   */
   .sac-v2 .v2-gnb {
-    gap: 16px;
+    gap: 22px;
     font-size: 17px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    /* 마지막 칸이 화면 끝에 딱 붙지 않게 — 더 있다는 것이 보인다 */
+    padding-right: 12px;
+    /*
+     * ★오른쪽 끝을 흐리게★ — 글자가 뚝 잘리면 «거기서 끝» 으로 읽힌다.
+     * 흐려지면 «더 있다» 가 보여서 밀어 볼 생각이 든다.
+     * 왼쪽으로 다 민 상태에서도 흐림은 오른쪽에만 남는다 — 거기가 늘 «더 있는» 쪽이다.
+     */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    /* 누름 영역 음수 마진(-11px)이 잘리지 않게 위아래로 자리를 준다 */
+    padding-block: 11px;
+    margin-block: -11px;
+  }
+  .sac-v2 .v2-gnb::-webkit-scrollbar {
+    display: none;
+  }
+  /* flex 가 칸을 줄여 글자를 누르지 않게 — 각 메뉴는 제 폭을 지킨다 */
+  .sac-v2 .v2-gnb > * {
+    flex: none;
   }
 }
 .sac-v2 .v2-gnb__item {
