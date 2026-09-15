@@ -67,7 +67,12 @@ import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
  *   5번 교환율      «연속킬»           → ★동료가 죽은 직후 되갚은 비율★
  *   새 재료 `evenKills` · `tradeKills` · `mateDeaths` 를 채우려면 다시 세야 한다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.5'
+/**
+ * ⚠ ★v1.6 — 교환율의 분모를 «내가 살아 있을 때» 로 좁혔다★ (2026-09-15).
+ *   옛 판은 내가 먼저 죽은 뒤의 동료 죽음까지 분모에 넣어, 되갚을 수 없었던 것을
+ *   «안 갚았다» 로 적었다. 그 탓에 교환율이 평균 4.4% 로 바닥에 깔렸다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.6'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700

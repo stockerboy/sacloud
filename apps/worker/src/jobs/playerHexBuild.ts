@@ -403,21 +403,31 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           }
         }
       }
-      /* 분모 — 그 라운드에 죽은 동료 수 (나를 뺀 우리 편) */
+      /*
+       * 분모 — ★내가 살아 있을 때★ 죽은 동료 수.
+       *
+       * ⚠ 옛 판은 «그 라운드에 죽은 동료» 를 다 셌다. 그러면 ★내가 먼저 죽은 뒤★ 의
+       *   동료 죽음까지 분모에 들어가서, 되갚을 수 없었던 것을 «안 갚았다» 로 적는다.
+       *   실측 그 판의 교환율 평균 4.4% · 중앙 3.4% 로 바닥에 깔렸다.
+       *   모르는 것도 못 한 것도 아닌 ★할 수 없었던 것★ 은 빼는 게 맞다 (D-106).
+       */
       {
-        const deadBySide = new Map<string, string[]>()
+        const myDeathAt = new Map<string, number>()
+        for (const e of arr) {
+          if (!myDeathAt.has(e.victim)) myDeathAt.set(e.victim, e.t)
+        }
         for (const e of arr) {
           if (e.vt === null) continue
-          const list = deadBySide.get(e.vt) ?? []
-          if (!list.includes(e.victim)) list.push(e.victim)
-          deadBySide.set(e.vt, list)
-        }
-        for (const [side, set] of teams ?? []) {
-          const dead = deadBySide.get(side) ?? []
-          for (const u of set) {
+          const team = teams?.get(e.vt)
+          if (!team) continue
+          for (const u of team) {
+            if (u === e.victim) continue
+            /* 내가 그 전에 죽었으면 되갚을 수 없었다 — 분모에 안 넣는다 */
+            const mine = myDeathAt.get(u)
+            if (mine !== undefined && mine < e.t) continue
             const W = whoOf(mk, u)
             if (!W) continue
-            tallyOf(mk, W.pid).mateDeaths += dead.filter((d) => d !== u).length
+            tallyOf(mk, W.pid).mateDeaths += 1
           }
         }
       }
