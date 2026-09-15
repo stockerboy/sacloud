@@ -17,23 +17,49 @@
  * 계약을 import 하지 않고 구조로만 받는다. 이 파일이 어느 쪽에도 매이지 않게 한다.
  */
 export interface ClanHexAxisHolder {
-  sniperFight: object | null
+  sniperDuel: object | null
   outnumbered: object | null
   save: object | null
-  tempo: object | null
-  lastSniper: object | null
-  attackZone: object | null
+  riflePower: object | null
+  firstBlood: object | null
+  trade: object | null
+
+  /* ── 아래 셋은 **옛 축**이다. 세는 데는 안 쓰지만 받기는 받는다 (`CLAUDE.md` 1-4) ── */
+  sniperFight?: object | null
+  tempo?: object | null
+  lastSniper?: object | null
+  attackZone?: object | null
 }
 
-/** 여섯 축 중 **`null` 이 아닌** 개수 (0~6). 화면의 `측정중 N/6` 에 쓴다 */
+/**
+ * 여섯 축 중 **`null` 이 아닌** 개수 (0~6). 화면의 `측정중 N/6` 에 쓴다.
+ *
+ * ⚠ ★2026-09-15 — 이 함수는 줄곧 ★옛 여섯 축★ 을 세고 있었다★
+ *   `sniperFight` · `lastSniper` · `attackZone` 은 2026-09-02(D-256)에 화면에서
+ *   내려갔는데 여기만 안 따라왔다. 그래서 «측정중 N/6» 의 N 이 화면과 어긋났다.
+ *   ④ 를 라이플화력으로 바꾸면서 같이 바로잡는다. 옛 셈은 `axesMeasuredOfV1` 에 남긴다.
+ */
 export function axesMeasuredOf(tally: ClanHexAxisHolder): number {
   const axes = [
-    tally.sniperFight,
+    tally.sniperDuel,
     tally.outnumbered,
     tally.save,
-    tally.tempo,
-    tally.lastSniper,
-    tally.attackZone,
+    tally.riflePower,
+    tally.firstBlood,
+    tally.trade,
+  ]
+  return axes.filter((axis) => axis !== null).length
+}
+
+/** 2026-09-15 까지 쓰던 셈 — **옛 여섯 축**을 센다. 지우지 않는다 (`CLAUDE.md` 1-4) */
+export function axesMeasuredOfV1(tally: ClanHexAxisHolder): number {
+  const axes = [
+    tally.sniperFight ?? null,
+    tally.outnumbered,
+    tally.save,
+    tally.tempo ?? null,
+    tally.lastSniper ?? null,
+    tally.attackZone ?? null,
   ]
   return axes.filter((axis) => axis !== null).length
 }

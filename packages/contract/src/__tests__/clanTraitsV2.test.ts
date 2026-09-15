@@ -22,6 +22,7 @@ import {
   CLAN_HEX_V2_ZONE_LABELS_TOTAL,
   ClanHexagonV2,
   buildClanHexV2Raw,
+  legacyTempoSeconds,
   normalizeAgainstFoe,
   normalizeByPercentile,
   sumClanHexTallies,
@@ -47,6 +48,7 @@ function emptyTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     trade: null,
     outnumbered: null,
     save: null,
+    riflePower: null,
     tempo: null,
     sniperFight: null,
     lastSniper: null,
@@ -79,6 +81,8 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     },
     outnumbered: { rounds: 10, won: 4 },
     save: { rounds: 5, won: 2 },
+    /* ④ 라이플화력 — 스나가 1킬 없이 1~3번째로 지워진 6라운드 중 3을 라플이 살렸다 */
+    riflePower: { rounds: 6, won: 3 },
     tempo: {
       redRounds: 8,
       redClearThreeRounds: 4,
@@ -147,9 +151,20 @@ describe('축 목록', () => {
     }
   })
 
-  it('게임템포만 「짧을수록 좋다」이다', () => {
+  /*
+   * ⚠ ★2026-09-15★ — 옛 시험은 `expect(lower).toEqual(['tempo'])` 였다.
+   *   사장님이 ④ 를 게임템포 → 라이플화력(비율, 클수록 좋다)으로 바꾸면서
+   *   뒤집는 축이 하나도 남지 않았다. 표와 뒤집기 기계는 **남아 있다** —
+   *   되살릴 때를 위해서고, 아래 「뒤집힌다」 시험이 계속 그걸 돌린다.
+   */
+  it('지금은 「짧을수록 좋다」인 축이 하나도 없다', () => {
     const lower = CLAN_HEX_V2_AXIS_KEYS.filter((key) => CLAN_HEX_V2_LOWER_IS_BETTER[key])
-    expect(lower).toEqual(['tempo'])
+    expect(lower).toEqual([])
+  })
+
+  it('④ 는 **라이플화력**이다 — 게임템포가 아니다', () => {
+    expect(CLAN_HEX_V2_AXIS_KEYS[3]).toBe('riflePower')
+    expect(CLAN_HEX_V2_AXIS_LABELS.riflePower).toBe('라이플화력')
   })
 })
 
@@ -195,12 +210,26 @@ describe('sumClanHexTallies — **비율을 평균 내지 않는다** (D-235 Q8)
     expect(sum.tempo?.redClearThreeRounds).toBe(10)
     expect(sum.tempo?.redClearThreeSecondsLowerBound).toHaveLength(10)
 
-    const axis = axisOf(buildClanHexV2Raw({ tally: sum, matches: 2 }), 'tempo')
+    /*
+     * ⚠ ★2026-09-15★ — 옛 시험은 `axisOf(hex, 'tempo')` 로 축을 꺼냈다.
+     *   게임템포가 꼭지점에서 내려와 이제 축이 아니다. 셈은 `legacyTempoSeconds`
+     *   로 살아 있고 재료도 계속 쌓이므로, **합치는 방식**은 그대로 지킨다.
+     */
     /* 경기 평균이었다면 (10 + 30) / 2 = 20초 였을 것이다 */
-    expect(axis.raw).toBe(28)
-    /* ⚠ 2026-09-14 저녁 — 표기가 «28.0초» 에서 바뀌었다 (사장님: «게임템포 55초/2분20초»).
-       한 라운드가 2분 20초라는 잣대를 같이 적어야 빠른지 느린지 안다 */
-    expect(axis.text).toBe('2분 20초 중 28초 종료')
+    expect(legacyTempoSeconds(sum)).toBe(28)
+  })
+
+  it('라이플화력도 **판을 평균 내지 않는다** — 분자합 / 분모합이다', () => {
+    const few = fullTally({ riflePower: { rounds: 2, won: 2 } })
+    const many = fullTally({ riflePower: { rounds: 18, won: 0 } })
+
+    const sum = sumClanHexTallies([few, many])
+    expect(sum.riflePower).toEqual({ rounds: 20, won: 2 })
+
+    const axis = axisOf(buildClanHexV2Raw({ tally: sum, matches: 2 }), 'riflePower')
+    /* 판 평균이었다면 (100% + 0%) / 2 = 50% 였을 것이다 */
+    expect(axis.raw).toBeCloseTo(0.1, 10)
+    expect(axis.text).toBe('10%')
   })
 
   it('못 잰 경기(`null`)는 분모에 섞이지 않고, 전부 못 쟀으면 결과도 `null` 이다', () => {
@@ -289,14 +318,20 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
    * ⚠ **바뀌었다 (D-256)** — 진영을 보는 축이 **④ 게임템포 하나만** 남았다.
    * ①⑤⑥ 이 전부 진영을 안 보는 정의로 바뀌었기 때문이다.
    */
-  it('진영을 하나도 몰라도 **④ 만** `side` 다', () => {
+  /*
+   * ⚠ ★2026-09-15★ — 옛 시험 이름은 «진영을 하나도 몰라도 **④ 만** `side` 다» 였다.
+   *   진영을 보던 축은 게임템포 하나였는데 라이플화력으로 바뀌었다.
+   *   라이플화력은 «누가 먼저 죽었나 + 라운드를 땄나» 라 레드/블루를 안 본다.
+   *   **이제 여섯 축이 전부 진영을 안 본다.**
+   */
+  it('진영을 하나도 몰라도 여섯 축이 다 측정된다', () => {
     const tally = fullTally()
     const hex = buildClanHexV2Raw({
       tally: { ...tally, redRounds: 0, tempo: { ...required(tally.tempo), redRounds: 0 } },
       matches: 1,
     })
-    expect(axisOf(hex, 'tempo').pending).toBe('side')
-    /* 나머지 다섯은 진영을 안 본다 — 그대로 잰다 */
+    expect(hex.measured).toBe(6)
+    expect(axisOf(hex, 'riflePower').pending).toBeNull()
     expect(axisOf(hex, 'sniperDuel').pending).toBeNull()
     expect(axisOf(hex, 'firstBlood').pending).toBeNull()
     expect(axisOf(hex, 'trade').pending).toBeNull()
@@ -336,10 +371,12 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(axisOf(hex, 'sniperDuel').text).toBe('60%')
     expect(axisOf(hex, 'outnumbered').text).toBe('40%')
     expect(axisOf(hex, 'save').text).toBe('40%')
-    /* ④ 72초 / 4라운드 */
-    expect(axisOf(hex, 'tempo').raw).toBe(18)
-    /* ⚠ 옛 표기는 «18.0초» 였다 (2026-09-14 저녁에 바뀜) */
-    expect(axisOf(hex, 'tempo').text).toBe('2분 20초 중 18초 종료')
+    /* ④ 라이플화력 — 3 / 6. 스나가 지워진 6라운드 중 3을 라플이 살렸다 */
+    expect(axisOf(hex, 'riflePower').numerator).toBe(3)
+    expect(axisOf(hex, 'riflePower').denominator).toBe(6)
+    expect(axisOf(hex, 'riflePower').text).toBe('50%')
+    /* ⚠ 옛 ④ 게임템포는 72초 / 4라운드 = 18초 였다. 셈은 남아 있다 (`CLAUDE.md` 1-4) */
+    expect(legacyTempoSeconds(fullTally())).toBe(18)
     /* ⑤ 선짤 — 7 / 12. 동시각 2라운드는 **분모에 없다** (사용자 (가)) */
     /*
      * ⚠ ★같은 날 두 번 바뀌었다가 제자리로 왔다★ (2026-09-15)
@@ -492,16 +529,37 @@ describe('normalizeAgainstFoe — 경기 상세 (D-235 Q7)', () => {
     expect(axisOf(ours, 'save').raw).toBe(0.6)
   })
 
-  it('**게임템포는 뒤집힌다** — 짧은 쪽이 1.0 이다', () => {
-    const [fast, slow] = normalizeAgainstFoe(
-      oneAxis('tempo', 15),
-      oneAxis('tempo', 30),
+  /*
+   * ⚠ ★2026-09-15★ — 옛 시험은 «게임템포는 뒤집힌다» 였다. 게임템포가 꼭지점에서
+   *   내려와 지금은 뒤집히는 축이 하나도 없다. 그래도 **뒤집기 기계는 남아 있고**
+   *   («짧을수록 좋다» 축이 다시 생길 수 있다) 안 돌리면 조용히 썩는다.
+   *   그래서 표를 그 시험 동안만 손대서 기계를 그대로 돌린다. 끝나면 되돌린다.
+   */
+  it('**「짧을수록 좋다」 축은 뒤집힌다** — 기계가 아직 산다', () => {
+    const was = CLAN_HEX_V2_LOWER_IS_BETTER.riflePower
+    CLAN_HEX_V2_LOWER_IS_BETTER.riflePower = true
+    try {
+      const [fast, slow] = normalizeAgainstFoe(
+        oneAxis('riflePower', 15),
+        oneAxis('riflePower', 30),
+      )
+      expect(axisOf(fast, 'riflePower').value).toBe(1)
+      expect(axisOf(slow, 'riflePower').value).toBeCloseTo(0.5, 10)
+      /* 뒤집힌 것은 `value` 뿐이다. 원값은 그대로 */
+      expect(axisOf(fast, 'riflePower').raw).toBe(15)
+      expect(axisOf(slow, 'riflePower').raw).toBe(30)
+    } finally {
+      CLAN_HEX_V2_LOWER_IS_BETTER.riflePower = was
+    }
+  })
+
+  it('라이플화력은 **안 뒤집힌다** — 높은 쪽이 1.0 이다', () => {
+    const [strong, weak] = normalizeAgainstFoe(
+      oneAxis('riflePower', 0.4),
+      oneAxis('riflePower', 0.2),
     )
-    expect(axisOf(fast, 'tempo').value).toBe(1)
-    expect(axisOf(slow, 'tempo').value).toBeCloseTo(0.5, 10)
-    /* 뒤집힌 것은 `value` 뿐이다. 초는 그대로 */
-    expect(axisOf(fast, 'tempo').raw).toBe(15)
-    expect(axisOf(slow, 'tempo').raw).toBe(30)
+    expect(axisOf(strong, 'riflePower').value).toBe(1)
+    expect(axisOf(weak, 'riflePower').value).toBeCloseTo(0.5, 10)
   })
 
   it('한쪽만 값이 있는 축은 **양쪽 다 `null`** 이고 `pending=compare` 다', () => {
@@ -558,13 +616,20 @@ describe('normalizeByPercentile — 클랜 페이지 (D-235 Q8)', () => {
     expect(bottomValue as number).toBeGreaterThanOrEqual(0)
   })
 
-  it('게임템포는 **짧을수록 높은 백분위**다', () => {
-    const cohort = [10, 20, 30, 40, 50, 60].map((raw) => oneAxis('tempo', raw))
-    const fast = normalizeByPercentile(oneAxis('tempo', 5), cohort)
-    const slow = normalizeByPercentile(oneAxis('tempo', 90), cohort)
-    expect(axisOf(fast, 'tempo').value as number).toBeGreaterThan(
-      axisOf(slow, 'tempo').value as number,
-    )
+  /* ⚠ ★2026-09-15★ — 옛 시험은 «게임템포는 짧을수록 높은 백분위다» 였다. 위와 같은 뜻으로 옮겼다 */
+  it('「짧을수록 좋다」 축은 **짧을수록 높은 백분위**다 — 기계가 아직 산다', () => {
+    const was = CLAN_HEX_V2_LOWER_IS_BETTER.riflePower
+    CLAN_HEX_V2_LOWER_IS_BETTER.riflePower = true
+    try {
+      const cohort = [10, 20, 30, 40, 50, 60].map((raw) => oneAxis('riflePower', raw))
+      const fast = normalizeByPercentile(oneAxis('riflePower', 5), cohort)
+      const slow = normalizeByPercentile(oneAxis('riflePower', 90), cohort)
+      expect(axisOf(fast, 'riflePower').value as number).toBeGreaterThan(
+        axisOf(slow, 'riflePower').value as number,
+      )
+    } finally {
+      CLAN_HEX_V2_LOWER_IS_BETTER.riflePower = was
+    }
   })
 
   it(`분모가 ${CLAN_HEX_V2_CONFIG.minDenominator} 라운드 미만이면 표본으로도 값으로도 안 쓴다`, () => {

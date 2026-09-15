@@ -505,6 +505,48 @@ export interface FirstBloodTally {
  * ── 되잡기는 **같은 라운드 안에서만** 센다
  *   `event_time` 이 경기 누적이라 라운드를 안 보면 다음 라운드의 킬이 5초 안에 들어올 수 있다.
  */
+/**
+ * ④ **라이플화력** — 스나가 일찍 지워져도 라플이 라운드를 살렸나 (2026-09-15 · 신설).
+ *
+ * ★ 이름은 **「라이플화력」** 이다. 사장님이 직접 고른 말이다.
+ *
+ * ── 사장님 원문
+ *   *"팀 스나가 1킬도 하지못하고 팀에서 1,2,3번째(4,5때는 제외) 죽었는데
+ *     라플들끼리 남아서 라운드를 획득한 경우"*
+ *
+ * ── 「1,2,3번째」 는 **우리 팀 안에서의 사망 차례**다. 상대 포함이 아니다.
+ *   4·5번째로 죽었으면 이미 라운드가 거의 끝났거나 스나가 제 몫을 한 뒤라
+ *   «라플이 살려냈다» 고 말할 수 없다.
+ *
+ * ── 「1킬도 하지못하고」 — 그 라운드에 그 스나의 킬이 0이어야 한다.
+ *   한 킬이라도 했으면 스나가 값을 했으므로 라플만의 공이 아니다.
+ *
+ * ── 「라플들끼리」 — 스나를 **전원** 따져야 하나 한 명만 따져야 하나
+ *   실측(라운드 66,113): 한 라운드에 우리 스나는 **93%가 딱 1명**이다
+ *   (0명 6.5% · 2명 이상 0%). 그래서 두 읽기의 값이 같다 (18,628 대 18,615).
+ *   **엄한 쪽**을 쓴다 — 스나가 둘인 드문 경기에서 «라플들끼리» 가 참이 된다.
+ *
+ * ── 왜 게임템포를 이걸로 바꿨나 (실측 근거)
+ *   ```
+ *                  클랜 25~75% 폭   승률과 겹침   사람이 읽히나
+ *   게임템포          2.9초          -0.287      「26.1초」 — 뜻을 모른다
+ *   라이플화력         8pt            0.552      스나 지워져도 라플이 살린다
+ *   ```
+ *   지금 다른 축들의 폭은 3~4pt 다. **라이플화력이 두 배 넓게 줄을 세운다.**
+ *   승률 겹침 0.552 는 소수싸움(0.824)·세이브(0.617)와 선짤(0.428) 사이다 —
+ *   실제로 승률 1·2·5위가 라이플화력 3·9·**83**위로 뒤집힌다.
+ *
+ * ── 표본
+ *   조건에 걸리는 라운드가 **전체의 28.2%** 라 클랜 95곳이 10라운드를 넘긴다
+ *   (평균 179라운드). 게임템포(레드 라운드 중 3명 지운 것)보다 넉넉하다.
+ */
+export interface RiflePowerTally {
+  /** 스나가 1킬 없이 1~3번째로 죽고 **승패까지 아는** 라운드 (분모) */
+  rounds: number
+  /** 그중 라플들끼리 이긴 라운드 (분자) */
+  won: number
+}
+
 export interface TradeTally {
   /** 우리 팀원이 **상대에게** 죽은 수 = 분모 */
   deaths: number
@@ -541,7 +583,13 @@ export interface ClanHexTally {
 
   /** ② */ outnumbered: OutnumberedTally | null
   /** ③ */ save: SaveTally | null
-  /** ④ */ tempo: TempoTally | null
+  /** ④ **지금 쓰는 것** — 라이플화력 (2026-09-15 사장님) */ riflePower: RiflePowerTally | null
+
+  /**
+   * 옛 ④ 게임템포. **화면이 안 본다** — 사장님이 2026-09-15 에 라이플화력으로 바꿨다.
+   * 지우지 않고 계속 센다 (`CLAUDE.md` 1-4) — 되살릴 때 재수집이 없어야 한다.
+   */
+  tempo: TempoTally | null
 
   /* ── 아래 셋은 **옛 축이다. 화면이 안 본다.** 지우지 않는다 (`CLAUDE.md` 10-4) ──
      계산은 계속 돈다. 사용자가 포지션 판정을 이유로 ⑤⑥ 을 뺐으므로, 그게 좋아지면
@@ -592,6 +640,7 @@ const emptyTally = (teamNo: string, foeTeamNo: string | null): ClanHexTally => (
   trade: null,
   outnumbered: null,
   save: null,
+  riflePower: null,
   tempo: null,
   sniperFight: null,
   lastSniper: null,
@@ -1068,6 +1117,10 @@ function tallyFor(input: {
   }
   const firstBlood: FirstBloodTally = { rounds: 0, won: 0, tiedRounds: 0 }
   const trade: TradeTally = { deaths: 0, within3: 0, within5: 0, within10: 0, sameRound: 0 }
+  /** ④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸나 (2026-09-15 사장님) */
+  const riflePower: RiflePowerTally = { rounds: 0, won: 0 }
+  /** 「1,2,3번째」 의 경계. 4·5번째는 제외다 (사장님이 괄호로 못 박음) */
+  const RIFLE_POWER_DEATH_ORDER = 3
 
   const isOurs = (usn: string): boolean => input.roster.teamOf.get(usn) === input.teamNo
 
@@ -1118,6 +1171,35 @@ function tallyFor(input: {
       if (oursFirst) firstBlood.won += 1
     }
 
+    /* ── ④ 라이플화력. 우리 스나가 1킬 없이 1~3번째로 죽었는데 라운드를 땄나 ── */
+    if (ourSnipers.size > 0) {
+      const won = input.wonRound(round)
+      if (won !== null) {
+        /* 우리 팀이 죽은 차례 — 같은 사람이 두 번 나오지 않게 처음 것만 남긴다 */
+        const deathOrder: string[] = []
+        for (const kill of kills) {
+          if (!isOurs(kill.victim)) continue
+          if (!deathOrder.includes(kill.victim)) deathOrder.push(kill.victim)
+        }
+        /* 그 라운드에 킬을 낸 우리 사람들 */
+        const killedSomeone = new Set<string>()
+        for (const kill of kills) if (isOurs(kill.killer)) killedSomeone.add(kill.killer)
+
+        /*
+         * ★스나 전원★ 이 「1킬 0 + 1~3번째 사망」 이어야 «라플들끼리 남았다» 가 참이다.
+         * 실측상 우리 스나는 93%가 한 명뿐이라 이 조건은 거의 «그 한 명» 과 같다.
+         */
+        const allSnipersDownEarly = [...ourSnipers].every((usn) => {
+          const order = deathOrder.indexOf(usn)
+          return order >= 0 && order < RIFLE_POWER_DEATH_ORDER && !killedSomeone.has(usn)
+        })
+        if (allSnipersDownEarly) {
+          riflePower.rounds += 1
+          if (won) riflePower.won += 1
+        }
+      }
+    }
+
     /* 다음 라운드의 시작을 재려고 이 라운드의 ★마지막 킬★ 시각을 남긴다 */
     {
       let end = -Infinity
@@ -1158,6 +1240,17 @@ function tallyFor(input: {
   /* ⑤⑥ 은 스나도 진영도 안 본다. 킬 이벤트만 있으면 센다 */
   tally.firstBlood = firstBlood.rounds > 0 || firstBlood.tiedRounds > 0 ? firstBlood : null
   tally.trade = trade.deaths > 0 ? trade : null
+  /*
+   * ④ 는 **우리 스나**만 있으면 된다. `sniperKnown`(=상대 스나를 아는가)은 **안 본다** —
+   * 상대가 라플만 들고 나온 경기에서도 우리 스나는 일찍 지워질 수 있다.
+   *
+   * 스나를 아예 못 짚었으면 조건을 따질 수가 없으니 `null` 이다.
+   * 0 이 「한 번도 못 살렸다」가 되면 안 된다 (D-106 — 못 잰 것을 최악으로 적지 않는다).
+   *
+   * ⚠ 우리 스나는 ★킬로그의 무기★ 로 짚는다 (`weaponByPlayerOf`). 한 판 내내 0킬인
+   *   스나는 안 보인다는 뜻인데, 실측상 스나 11,525명 중 ★3명★(0.03%)뿐이라 무시한다.
+   */
+  tally.riflePower = ourSnipers.size > 0 && riflePower.rounds > 0 ? riflePower : null
 
   tally.outnumbered = input.restorable ? outnumbered : null
   tally.save = input.restorable ? save : null

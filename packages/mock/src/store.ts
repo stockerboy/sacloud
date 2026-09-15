@@ -2252,7 +2252,10 @@ function buildClanHexagonOfMock(leagueClan: MockLeagueClan): ClanHexagon | null 
 /* ------------------- 클랜 육각형 V2 (D-217 · D-235) ------------------- */
 
 /**
- * 스나싸움 · 소수싸움 · 세이브 · 게임템포 · B어택성공 · A어택성공.
+ * 스나싸움 · 소수싸움 · 세이브 · ★라이플화력★ · 선짤 · 교환.
+ *
+ * ⚠ 옛 서술: «스나싸움 · 소수싸움 · 세이브 · 게임템포 · B어택성공 · A어택성공».
+ *   ⑤⑥ 은 2026-09-02(D-256)에, ④ 는 2026-09-15 에 사장님이 바꿨다.
  *
  * 합산(`sumClanHexTallies`)·비율(`buildClanHexV2Raw`)·정규화(`normalizeAgainstFoe` ·
  * `normalizeByPercentile`)는 전부 `@sacloud/contract` 가 한다. 실제 서버
@@ -2322,6 +2325,7 @@ function mockHexV2TallyOf(
     trade: null,
     outnumbered: null,
     save: null,
+    riflePower: null,
     tempo: null,
     sniperFight: null,
     lastSniper: null,
@@ -2356,6 +2360,18 @@ function mockHexV2TallyOf(
   const saveRounds = Math.round(rounds * rng.float(0.12, 0.24, 3))
   base.save = { rounds: saveRounds, won: Math.round(saveRounds * rng.float(0.2, 0.45, 3)) }
 
+  /*
+   * ④ 라이플화력 — 스나가 1킬 없이 1~3번째로 지워진 라운드 중 라플이 딴 비율
+   *   (2026-09-15 사장님). 운영 실측에 맞춰 둔다: 그런 라운드가 전체의 ★28%★,
+   *   그중 이기는 게 ★26%★ 다 (라운드 66,113 실측).
+   */
+  const riflePowerRounds = Math.max(1, Math.round(rounds * rng.float(0.24, 0.33, 3)))
+  base.riflePower = {
+    rounds: riflePowerRounds,
+    won: Math.round(riflePowerRounds * rng.float(0.16, 0.38, 3)),
+  }
+
+  /* ⚠ 아래 게임템포는 **옛 ④** 다. 화면이 안 보지만 계속 만든다 (`CLAUDE.md` 1-4) */
   const clearThree = Math.max(1, Math.round(redRounds * rng.float(0.4, 0.7, 3)))
   const seconds = rng.float(14, 32, 1)
   base.tempo = {
@@ -2436,6 +2452,7 @@ function mockHexV2TallyOf(
        ⚠ 옛 `lastSniper` 대신 **지금 화면이 쓰는 `trade`** 를 비운다. 옛 축을 비워 봐야
        화면에는 아무 변화가 없어서 「측정중이 섞인 모습」을 볼 수 없다 */
     base.save = null
+    base.riflePower = null
     base.tempo = null
     base.trade = null
     base.lastSniper = null

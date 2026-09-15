@@ -41,7 +41,9 @@ const SHORT: Partial<Record<ClanHexV2AxisKey, string>> = {
   sniperDuel: '스나',
   outnumbered: '소수',
   save: '세이브',
-  tempo: '템포',
+  /* ⚠ ★2026-09-15★ — 옛 ④ 는 `tempo: '템포'` 였다. 사장님이 라이플화력으로 바꿨다.
+     칩은 자리가 좁아 «라이플화력» 일곱 글자가 안 들어간다 — «라플» 로 줄인다 */
+  riflePower: '라플',
   firstBlood: '선짤',
   trade: '교환',
 }

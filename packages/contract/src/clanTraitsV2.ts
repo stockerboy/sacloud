@@ -56,7 +56,9 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
   'sniperDuel',
   'outnumbered',
   'save',
-  'tempo',
+  /* ★2026-09-15 — ④ 가 `tempo` 에서 `riflePower` 로 바뀌었다★ (사장님).
+     키를 바꿨다. 뜻만 바꾸고 키를 두면 옛 값과 새 값이 한 이름으로 섞인다 (위 D-235 함정) */
+  'riflePower',
   'firstBlood',
   'trade',
 ] as const
@@ -73,13 +75,19 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AxisKey, string> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
-  tempo: '게임템포',
+  /* ★사장님이 직접 고른 말이다★ (2026-09-15) — 「라이플파워」·「소총화력」이 아니다 */
+  riflePower: '라이플화력',
   firstBlood: '선짤',
   trade: '교환',
 }
 
 /**
- * **게임템포만 「짧을수록 좋다」.** 나머지 다섯은 클수록 좋다.
+ * ⚠ **정정 (2026-09-15) — 지금은 여섯 축이 전부 「클수록 좋다」 이다.**
+ *
+ * 옛 서술: *"게임템포만 「짧을수록 좋다」. 나머지 다섯은 클수록 좋다."*
+ * 사장님이 ④ 를 게임템포에서 **라이플화력**(비율, 클수록 좋다)으로 바꾸면서
+ * 뒤집는 축이 하나도 남지 않았다. **표는 지우지 않는다** — 게임템포를 되살리면
+ * 다시 필요하고, 새 축이 「짧을수록 좋다」일 수도 있다.
  *
  * 정규화(`normalizeAgainstFoe` · `normalizeByPercentile`)가 이 표를 보고 부호를 뒤집는다.
  * 원값(`raw`)은 **뒤집지 않는다** — 화면에 `18.3초` 라고 적어야 하기 때문이다.
@@ -88,7 +96,7 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AxisKey, boolean> = {
   sniperDuel: false,
   outnumbered: false,
   save: false,
-  tempo: true,
+  riflePower: false,
   firstBlood: false,
   trade: false,
 }
@@ -110,7 +118,12 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
   sniperDuel: 'ratio',
   outnumbered: 'ratio',
   save: 'ratio',
-  tempo: 'seconds',
+  /*
+   * ★라이플화력은 «비율»★ (2026-09-15 사장님).
+   * 뜻: «우리 스나가 1킬 없이 1~3번째로 지워진 라운드 중 라플들끼리 딴 비율».
+   * 분모가 이미 «그런 상황이 벌어진 라운드» 라 비율이 곧 뜻이다 — 세이브·소수싸움과 같은 꼴.
+   */
+  riflePower: 'ratio',
   /*
    * ★클랜 선짤은 «비율»★ 이다 (2026-09-15 사장님이 회의에서 ②안을 고르심).
    *
@@ -370,7 +383,13 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    *      v2.6 은 코드에 한 번도 없던 판이다 — 커밋 안 된 코드가 쓴 것으로 보인다.
    *      그 줄과 섞이지 않게 ★v2.6 을 건너뛰고 v2.7★ 로 간다.
    */
-  formulaVersion: 'clan-hex-v2.7',
+  /*
+   * ⚠ ★2026-09-15 · v2.7 → v2.8★ — ④ 가 ★게임템포 → 라이플화력★ 으로 바뀌었다 (사장님).
+   *   세는 식이 통째로 다르니 재료를 다시 만들어야 한다.
+   *   ★올리는 순서★: 가지로 VPS 만 먼저 올려 재계산 → 끝나면 main 에 병합.
+   *   거꾸로 하면 재계산 전까지 클랜 육각이 통째로 사라진다 (v2.3 때 겪음).
+   */
+  formulaVersion: 'clan-hex-v2.8',
 }
 
 /**
@@ -458,6 +477,12 @@ export interface OutnumberedTallyLike {
 }
 
 /** ③ 세이브 */
+/** ④ 라이플화력 — 뜻과 근거는 `packages/nexon/src/clanHexV2.ts` 의 `RiflePowerTally` 에 있다 */
+export interface RiflePowerTallyLike {
+  rounds: number
+  won: number
+}
+
 export interface SaveTallyLike {
   rounds: number
   won: number
@@ -607,6 +632,10 @@ export interface ClanHexTallyLike {
   trade: TradeTallyLike | null
   outnumbered: OutnumberedTallyLike | null
   save: SaveTallyLike | null
+  /** ④ **지금 쓰는 것** — 라이플화력 (2026-09-15 사장님) */
+  riflePower: RiflePowerTallyLike | null
+
+  /** 옛 ④ 게임템포. 화면이 안 본다. 계속 세고 저장한다 (`CLAUDE.md` 1-4) */
   tempo: TempoTallyLike | null
 
   /* ── 옛 축. **화면이 안 본다. 지우지 않는다** (`CLAUDE.md` 10-4) ──
@@ -615,6 +644,34 @@ export interface ClanHexTallyLike {
   sniperFight: SniperFightTallyLike | null
   lastSniper: LastSniperTallyLike | null
   attackZone: AttackZoneTallyLike | null
+}
+
+/**
+ * ⚠ **옛 ④ 게임템포의 셈** — 2026-09-15 에 사장님이 ④ 를 ★라이플화력★ 으로 바꿔서
+ * 꼭지점에서 내려왔다. **지우지 않는다** (`CLAUDE.md` 1-4) — 되살릴 때 이 식이 필요하고,
+ * `tally.tempo` 재료도 계속 쌓이고 있다.
+ *
+ * `null` 이면 못 잰 것이다. 숫자가 나오면 **초**이고 ★짧을수록 좋다★.
+ *
+ * ── 왜 내려왔나 (실측 근거 · 라운드 66,113)
+ *   클랜 25~75% 폭이 **2.9초**(19~35초 범위) 밖에 안 돼 줄이 거의 안 선다.
+ *   승률과의 겹침도 -0.287 로 약했고, 무엇보다 화면의 「26.1초」가 무슨 뜻인지
+ *   사람이 못 읽었다. 라이플화력은 폭 8pt · 겹침 0.552 다.
+ */
+export const legacyTempoSeconds = (tally: ClanHexTallyLike): number | null => {
+  const part = tally.tempo ?? null
+  if (part === null) return null
+  /*
+   * ★새 방식 — 라운드가 실제로 몇 초에 끝났나★ (2026-09-14 저녁 사장님).
+   *   30초 미만(역개)·140초 초과는 세는 쪽에서 이미 뺐다.
+   *   ⚠ 새 칸이 없는 ★옛 요약 행★ 은 아래 옛 방식으로 떨어진다.
+   */
+  const lengthRounds = part.roundLengthRounds ?? 0
+  if (lengthRounds > 0) return (part.roundLengthSecondsSum ?? 0) / lengthRounds
+  if (part.redRounds === 0) return null
+  /* 3명을 못 지운 라운드는 **분모에서 뺐다** (D-235 Q4). 하나도 없으면 못 잰다 */
+  if (part.redClearThreeRounds === 0) return null
+  return part.redClearThreeSecondsLowerBoundSum / part.redClearThreeRounds
 }
 
 /* -------------------------------------------------------------------------- */
@@ -762,6 +819,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
     trade: null,
     outnumbered: null,
     save: null,
+    riflePower: null,
     tempo: null,
     sniperFight: null,
     lastSniper: null,
@@ -847,6 +905,15 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   sum.save = sumParts(
     tallies.map((tally) => tally.save ?? null),
     (): SaveTallyLike => ({ rounds: 0, won: 0 }),
+    (into, from) => {
+      into.rounds += from.rounds
+      into.won += from.won
+    },
+  )
+
+  sum.riflePower = sumParts(
+    tallies.map((tally) => tally.riflePower ?? null),
+    (): RiflePowerTallyLike => ({ rounds: 0, won: 0 }),
     (into, from) => {
       into.rounds += from.rounds
       into.won += from.won
@@ -1125,26 +1192,17 @@ export function buildClanHexV2Raw(input: {
         if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
         return measuredAxis(key, part.won, part.rounds)
       }
-      case 'tempo': {
-        const part = tally.tempo ?? null
-        if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
-        /*
-         * ★새 방식 — 라운드가 실제로 몇 초에 끝났나★ (2026-09-14 저녁 사장님).
-         *   30초 미만(역개)·140초 초과는 세는 쪽에서 이미 뺐다.
-         *   ⚠ 새 칸이 없는 ★옛 요약 행★ 은 아래 옛 방식으로 떨어진다 (`CLAUDE.md` 1-4).
-         */
-        const lengthRounds = part.roundLengthRounds ?? 0
-        if (lengthRounds > 0) {
-          return measuredAxis(key, part.roundLengthSecondsSum ?? 0, lengthRounds)
-        }
-        if (part.redRounds === 0) return pendingAxis(key, 'side')
-        /* 3명을 못 지운 라운드는 **분모에서 뺐다** (D-235 Q4). 하나도 없으면 못 잰다 */
-        if (part.redClearThreeRounds === 0) return pendingAxis(key, 'sample')
-        return measuredAxis(
-          key,
-          part.redClearThreeSecondsLowerBoundSum,
-          part.redClearThreeRounds,
-        )
+      /**
+       * ④ **라이플화력** — 스나가 일찍 지워져도 라플이 라운드를 살렸나 (2026-09-15 신설).
+       *
+       * 분모가 «그런 상황이 벌어진 라운드» 라 세이브·소수싸움과 똑같은 꼴이다.
+       * 상황이 한 번도 없었으면 `sample` 로 «측정중» 이다 — 0% 로 적지 않는다.
+       */
+      case 'riflePower': {
+        const part = tally.riflePower ?? null
+        if (part === null) return pendingAxis(key, tallyMissingReason(tally, true))
+        if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
+        return measuredAxis(key, part.won, part.rounds)
       }
       /**
        * ⑤ **선짤** — 라운드 첫 킬을 우리가 냈나 (D-256).

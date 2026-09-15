@@ -372,6 +372,103 @@ describe('③ 세이브 — 1대1 도 세이브다 (사용자 원문)', () => {
 /* 4. ④ 게임템포 — 하한값이다                                                    */
 /* -------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+/* ④ 라이플화력 (2026-09-15 사장님 신설)                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 사장님 원문: *"팀 스나가 1킬도 하지못하고 팀에서 1,2,3번째(4,5때는 제외) 죽었는데
+ * 라플들끼리 남아서 라운드를 획득한 경우"*
+ *
+ * 다섯 라운드로 **경계를 하나씩** 건드린다. A3 가 우리 스나다
+ * (R1 에서 스나로 잡아 무기가 확정된다 — 무기는 킬로그로만 짚기 때문이다).
+ *
+ * ```
+ * R1  A3 가 스나로 B1 을 잡는다            → 킬이 있으니 조건 밖. A3 를 스나로 확정
+ * R2  A3 가 1번째로 죽는다 · 킬 없음 · 승  → ★분모 + 분자★
+ * R3  A3 가 1번째로 죽는다 · 킬 없음 · 패  → ★분모만★
+ * R4  A3 가 4번째로 죽는다 · 킬 없음 · 승  → 조건 밖 (사장님 «4,5때는 제외»)
+ * R5  A3 가 1번째로 죽지만 그 전에 1킬     → 조건 밖 («1킬도 하지못하고»)
+ * ```
+ */
+function riflePowerMatch(): ClanHexEvent[] {
+  return [
+    /* R1 — A3 가 스나로 잡는다. 이 한 줄이 «A3 = 우리 스나» 의 근거다 */
+    kill(1, 10, A(3), B(1), 'sniper'),
+    kill(1, 14, A(1), B(2), 'riple'),
+
+    /* R2 — 스나가 맨 먼저 지워졌는데 라플들이 딴다 */
+    killed(2, 100, A(3), B(1), 'riple'),
+    killed(2, 104, A(1), B(2), 'riple'),
+    kill(2, 110, A(2), B(1), 'riple'),
+    kill(2, 112, A(2), B(2), 'riple'),
+
+    /* R3 — 같은 모양인데 졌다 */
+    killed(3, 200, A(3), B(1), 'riple'),
+    killed(3, 204, A(2), B(2), 'riple'),
+    kill(3, 208, A(4), B(3), 'riple'),
+
+    /* R4 — 스나가 ★4번째★ 로 죽었다. 사장님이 괄호로 뺀 경우다 */
+    killed(4, 300, A(1), B(1), 'riple'),
+    killed(4, 302, A(2), B(2), 'riple'),
+    killed(4, 304, A(4), B(3), 'riple'),
+    killed(4, 306, A(3), B(1), 'riple'),
+    kill(4, 310, A(5), B(1), 'riple'),
+
+    /* R5 — 맨 먼저 죽었지만 ★1킬을 하고★ 죽었다 */
+    kill(5, 400, A(3), B(4), 'sniper'),
+    killed(5, 402, A(3), B(1), 'riple'),
+    killed(5, 406, A(1), B(2), 'riple'),
+    kill(5, 410, A(2), B(1), 'riple'),
+  ]
+}
+
+describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸나 (2026-09-15 사장님)', () => {
+  /** R2·R4·R5 를 땄다 */
+  const won = (round: number): boolean | null => round === 2 || round === 4 || round === 5
+
+  it('조건에 맞는 라운드만 분모에 들어가고, 이긴 라운드가 분자다', () => {
+    const tally = run(riflePowerMatch(), US, won).byTeam.get(US)
+    /* R2(승) · R3(패) 둘뿐이다 — R1 은 킬이 있고 R4 는 4번째, R5 는 1킬을 했다 */
+    expect(tally?.riflePower).toEqual({ rounds: 2, won: 1 })
+  })
+
+  it('**4번째로 죽은 라운드는 안 센다** — 사장님이 괄호로 뺐다', () => {
+    /* R4 만 남긴 경기. 분모가 0이라 `null` 이다 — 0% 가 아니다 (D-106) */
+    const only = riflePowerMatch().filter((e) => e.round === '1' || e.round === '4')
+    expect(run(only, US, won).byTeam.get(US)?.riflePower).toBeNull()
+  })
+
+  it('**1킬이라도 했으면 안 센다** — 스나가 제 몫을 했으면 라플만의 공이 아니다', () => {
+    const only = riflePowerMatch().filter((e) => e.round === '1' || e.round === '5')
+    expect(run(only, US, won).byTeam.get(US)?.riflePower).toBeNull()
+  })
+
+  it('우리 스나를 하나도 못 짚으면 `null` 이다 — 0 으로 적지 않는다 (D-106)', () => {
+    /* A3 의 스나 킬을 라플로 바꾸면 우리 팀에 스나가 없어진다 */
+    const noSniper = riflePowerMatch().map((e) =>
+      e.event_type === 'kill' && e.str_usn === 'A3' ? { ...e, weapon: 'riple' } : e,
+    )
+    expect(run(noSniper, US, won).byTeam.get(US)?.riflePower).toBeNull()
+  })
+
+  it('**상대 스나를 몰라도 잰다** — 우리 스나 이야기이지 상대 이야기가 아니다', () => {
+    /* 이 경기에서 상대는 전부 라플이다 (스나 킬이 A3 것뿐이다) */
+    const tally = run(riflePowerMatch(), US, won).byTeam.get(US)
+    expect(tally?.foeSnipers).toBe(0)
+    /* ① 은 상대 스나가 없어 못 재는데 ④ 는 그대로 잰다 — 관문이 다르다는 뜻이다 */
+    expect(tally?.sniperDuel).toBeNull()
+    expect(tally?.riflePower).toEqual({ rounds: 2, won: 1 })
+  })
+
+  it('승패를 모르는 라운드는 **분모에서도 빠진다** (D-106)', () => {
+    const tally = run(riflePowerMatch(), US, (round) => (round === 3 ? null : won(round)))
+      .byTeam.get(US)
+    /* R3 이 빠져 R2 하나만 남는다 */
+    expect(tally?.riflePower).toEqual({ rounds: 1, won: 1 })
+  })
+})
+
 describe('④ 게임템포 — 상대 3명 제거까지 (하한값)', () => {
   const tally = run(baseMatch()).byTeam.get(US)?.tempo
 

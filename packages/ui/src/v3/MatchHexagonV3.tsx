@@ -8,7 +8,9 @@
  *
  * ── 값의 뜻이 클랜 페이지와 ★다르다★
  *   클랜 페이지 육각형은 ★리그 안 백분위★ 다. 여기는 ★그 판 두 클랜의 상대 비교★ 다
- *   (`MatchDetail.red_hexagon_v2` 주석 · D-235 Q7). 큰 쪽이 1.0 이고 게임템포만 작은 쪽이 1.0 이다.
+ *   (`MatchDetail.red_hexagon_v2` 주석 · D-235 Q7). 큰 쪽이 1.0 이다.
+ *   ⚠ 옛 서술은 «게임템포만 작은 쪽이 1.0 이다» 였다 — 2026-09-15 에 ④ 가 라이플화력이
+ *     되면서 뒤집히는 축이 하나도 없어졌다.
  *   두 숫자를 같은 잣대로 읽으면 안 되니 화면에 «이 판 두 팀 비교» 라고 적어 둔다.
  *
  * ── 한쪽만 잰 축
@@ -26,12 +28,13 @@ const RING_STEP = 10
 const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_STEP)
 
 /** 축 차례·이름은 클랜 카드와 같다 (`clanHexAxes`) */
-const ORDER = ['sniperDuel', 'outnumbered', 'save', 'tempo', 'firstBlood', 'trade'] as const
+/* ⚠ ★2026-09-15★ — ④ 가 `tempo`(게임템포) 에서 `riflePower`(라이플화력) 로 바뀌었다 (사장님) */
+const ORDER = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'firstBlood', 'trade'] as const
 const LABEL: Record<(typeof ORDER)[number], string> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
-  tempo: '게임템포',
+  riflePower: '라이플화력',
   firstBlood: '선짤',
   trade: '교환율',
 }
