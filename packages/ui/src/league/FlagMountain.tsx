@@ -155,7 +155,12 @@ export function FlagMountain({
        *   여기 값은 ★백분위★ (높을수록 좋다) 라 승률과 같은 잣대를 쓴다.
        */
       noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
-      note2: a.rank === null || a.value === null ? null : axisValueText(a),
+      /*
+       * ★모집단을 같이 적는다★ (2026-09-15 · 무한 QA) — «60위» 가 혼자 있으면
+       * 깃발 1등인데 왜 60위인지 알 수 없다. «그날 82명중» 이 붙으면 읽힌다.
+       * 선수 상세(`playerHexAxes`)도 «스나 24명중» 으로 같은 꼴이다.
+       */
+      note2: a.rank === null ? null : a.total === null ? null : `그날 ${a.total}명중`,
     }))
   }, [picked])
 

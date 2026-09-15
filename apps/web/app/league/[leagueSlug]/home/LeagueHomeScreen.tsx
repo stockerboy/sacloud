@@ -113,18 +113,6 @@ export default function LeagueHomeScreen({
         </div>
       )}
 
-      {/*
-        * ★분야별 TOP5 를 홈으로 들였다★ (2026-09-15 사장님:
-        * «각리그 홈에다가 top5를 합쳐줘 / top5랑 경기페이지는 없애버려»).
-        *
-        * 순서는 ★오늘 → 분야별 → 최근★ 이다. 깃발은 지금 벌어지는 경쟁이고,
-        * TOP5 는 «이건 누가 제일 잘하나», 최근 경기는 그 근거다.
-        */}
-      <div className="mb-[26px]">
-        <SectionTitle title="분야별 TOP 5" note="축마다 가장 잘하는 다섯입니다." />
-        <HexTopScreen leagueSlug={leagueSlug} embedded />
-      </div>
-
       <SectionTitle title="최근 경기" note="줄을 누르면 스코어보드가 펼쳐집니다." />
       <MatchListV3
         leagueSlug={leagueSlug}
@@ -140,6 +128,22 @@ export default function LeagueHomeScreen({
       />
       {/* ⚠ ★「경기 전부 보기」를 뺐다★ (2026-09-15 사장님이 경기 탭을 없애라 하셨다).
              링크만 남으면 탭에서 지운 화면으로 다시 들어가게 된다 */}
+
+      {/*
+        * ★분야별 TOP5 를 홈으로 들였다★ (2026-09-15 사장님:
+        * «각리그 홈에다가 top5를 합쳐줘 / top5랑 경기페이지는 없애버려»).
+        *
+        * ⚠ ★순서를 바꿨다★ (2026-09-15 · 무한 QA) — 옛 순서는 «깃발 → TOP5 → 최근» 이라
+        *   홈에서 제일 자주 볼 «최근 경기» 가 스크롤 끝(6,834px)에 있었다.
+        *   지금은 ★깃발 → 최근 경기 → TOP5★ 다.
+        *   깃발은 «지금 벌어지는 일», 최근 경기는 «방금 있었던 일»,
+        *   TOP5 는 «더 파고들 사람» 용이라 뒤에 둔다.
+        */}
+      <div className="mt-[26px]">
+        <SectionTitle title="분야별 TOP 5" note="축마다 가장 잘하는 다섯입니다." />
+        <HexTopScreen leagueSlug={leagueSlug} embedded />
+      </div>
+
     </div>
   )
 }

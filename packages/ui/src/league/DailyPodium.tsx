@@ -150,7 +150,8 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
        *   모집단이 훨씬 작다. 그래서 백분위로 색을 고른다 (승률과 같은 잣대).
        */
       noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
-      note2: a.rank === null ? null : valueText(a),
+      /* ★모집단을 같이★ (2026-09-15 · 무한 QA) — «60위» 만 있으면 읽히지 않는다 */
+      note2: a.rank === null ? null : a.total === null ? valueText(a) : `그날 ${a.total}${a.key === 'tempo' || row.clan_slug !== null ? '팀중' : '명중'}`,
     }))
   })()
 

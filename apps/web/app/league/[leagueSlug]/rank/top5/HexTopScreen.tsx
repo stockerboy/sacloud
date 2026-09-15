@@ -59,6 +59,20 @@ export function HexTopScreen({
 
   const axes: HexTopAxis[] = (side === 'clan' ? top.data?.data.clan : top.data?.data.player) ?? []
 
+  /*
+   * ★축을 가로 탭으로★ (2026-09-15 · 무한 QA ①).
+   *
+   * 여섯 축을 한꺼번에 펼치니 홈이 6,834px 이 됐다 — 폰에서 스크롤 아홉 번이다.
+   * 사장님은 «10명을 다 분석하는 게 너무 정신없» 다고 하신 성향이라, 한 번에
+   * ★한 축만★ 보여 준다. 세로가 6분의 1로 준다.
+   *
+   * ⚠ ★따로 선 화면(`/rank/top5`)에서는 다 펼친다★ — 거기는 «분야별로 파고드는»
+   *   자리라 한눈에 견주는 게 낫다. 홈(`embedded`)에서만 탭을 쓴다.
+   */
+  const [axisKey, setAxisKey] = useState<string | null>(null)
+  const picked = embedded ? (axes.find((a) => a.key === axisKey) ?? axes[0] ?? null) : null
+  const shown = embedded ? (picked === null ? [] : [picked]) : axes
+
   return (
     <div className={embedded ? '' : 'pc-container pb-[var(--section-gap)]'}>
       {embedded ? null : (
@@ -99,6 +113,47 @@ export function HexTopScreen({
         </div>
       ) : null}
 
+      {/*
+        * 축 탭 — 홈에 얹었을 때만 나온다 (2026-09-15 · 무한 QA).
+        * 여섯을 한꺼번에 펼치면 홈이 6,834px 이 된다. 한 번에 하나만 본다.
+        */}
+      {embedded && axes.length > 1 ? (
+        <div
+          style={{
+            display: 'flex',
+            gap: 5,
+            overflowX: 'auto',
+            padding: '0 2px 12px',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {axes.map((a) => {
+            const on = (picked?.key ?? '') === a.key
+            return (
+              <button
+                key={a.key}
+                type="button"
+                onClick={() => setAxisKey(a.key)}
+                style={{
+                  flex: 'none',
+                  fontSize: 11.5,
+                  fontWeight: on ? 700 : 500,
+                  padding: '6px 11px',
+                  borderRadius: 999,
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  color: on ? '#cfe0ff' : V3.textDim,
+                  border: `1px solid ${on ? 'rgba(159,192,255,.55)' : V3.rowDivider}`,
+                  background: on ? 'rgba(91,141,255,.16)' : 'transparent',
+                }}
+              >
+                {a.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+
       {top.isLoading ? (
         <p style={{ padding: '30px 2px', fontSize: 12.5, color: V3.textGhost }}>불러오는 중…</p>
       ) : axes.length === 0 || axes.every((a) => a.rows.length === 0) ? (
@@ -115,7 +170,7 @@ export function HexTopScreen({
             gap: 14,
           }}
         >
-          {axes.map((axis) => (
+          {shown.map((axis) => (
             <AxisCard key={axis.key} axis={axis} leagueSlug={leagueSlug} side={side} />
           ))}
         </div>
