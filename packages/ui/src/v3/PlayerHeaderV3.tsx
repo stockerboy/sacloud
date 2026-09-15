@@ -145,7 +145,15 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const death = sel === null ? 0 : rifle ? sel.rifle_death : sel.sniper_death
   const mvpRate = sel && sel.games > 0 ? (sel.mvp / sel.games) * 100 : null
 
-  const weaponChips = weapons.length === 0 ? null : (
+  /*
+   * ⚠ ★고를 게 하나뿐이면 안 그린다★ (2026-09-15 · 무한 QA).
+   *
+   *   이 칩은 «스나/라플 중 어느 쪽 기록을 볼까» 를 ★고르는★ 물건이다.
+   *   그런데 한 무기만 뛴 선수는 칩이 하나뿐이라 누를 것이 없고,
+   *   이름 옆에 ★같은 글자(«라플»)가 또★ 있어서 «라플 라플» 로 보였다.
+   *   둘 이상일 때만 고르기를 세운다 — 표시는 이름 옆이 맡는다.
+   */
+  const weaponChips = weapons.length < 2 ? null : (
     <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}>
       {weapons.map((w) => (
         <span
