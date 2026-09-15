@@ -89,6 +89,8 @@ export function TierText({
   leagueSlug,
   size = 11,
   style,
+  prefix,
+  prefixSize,
 }: {
   division: number | null | undefined
   leagueCategory?: string
@@ -104,6 +106,16 @@ export function TierText({
   leagueSlug?: string
   size?: number
   style?: CSSProperties
+  /**
+   * ★티어 앞에 붙는 말★ (2026-09-15 밤 · 무한 QA) — 예: «vs».
+   *
+   * 부모가 따로 그리면, 티어를 안 쓰는 리그에서 이 조각이 `null` 을 돌려줄 때
+   * ★앞말만 혼자 남는다.★ 실제로 경기 카드에 «vs» 한 글자가 떠 있었다.
+   * 위 주석의 방침 그대로 — ★글자를 만드는 여기 한 곳★ 에서 같이 막는다.
+   */
+  prefix?: string
+  /** 앞말 크기 (안 주면 `size` 보다 한 단계 작게) */
+  prefixSize?: number
 }) {
   if (division === null || division === undefined) return null
   /**
@@ -142,19 +154,44 @@ export function TierText({
     return null
   }
   const label = divisionLabel(division, leagueCategory)
+  /* 앞말은 ★여기까지 온 뒤에만★ 그린다 — 위에서 `null` 로 돌아갔으면 같이 사라진다 */
+  const head =
+    prefix === undefined ? null : (
+      <span
+        style={{
+          fontSize: prefixSize ?? Math.max(9, size - 1),
+          color: V3.textGhost2,
+          letterSpacing: '.08em',
+          marginRight: 4,
+        }}
+      >
+        {prefix}
+      </span>
+    )
   if (label === 'ASTRA') {
-    return <span style={{ ...ASTRA_STYLE, fontSize: size, whiteSpace: 'nowrap', ...style }}>ASTRA</span>
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'baseline', whiteSpace: 'nowrap', ...style }}>
+        {head}
+        <span style={{ ...ASTRA_STYLE, fontSize: size }}>ASTRA</span>
+      </span>
+    )
   }
   const m = /^CHALLENGER\s*(\d)$/.exec(label)
   if (m) {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, whiteSpace: 'nowrap', ...style }}>
+        {head}
         <span style={{ fontSize: size, ...CHAL_STYLE }}>CHALLENGER</span>
         <span style={{ fontSize: size, fontWeight: 600, color: CHAL_NUM_COLOR }}>{m[1]}</span>
       </span>
     )
   }
-  return <span style={{ fontSize: size, color: V3.textMuted, whiteSpace: 'nowrap', ...style }}>{label}</span>
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', whiteSpace: 'nowrap', ...style }}>
+      {head}
+      <span style={{ fontSize: size, color: V3.textMuted }}>{label}</span>
+    </span>
+  )
 }
 
 export function Card({ children, style, edge }: { children: ReactNode; style?: CSSProperties; edge?: string }) {

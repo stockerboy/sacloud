@@ -723,9 +723,16 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
               )}
             </span>
             {/* 3줄 — 상대 티어 / 오른쪽엔 펼치기 */}
+            {/* ⚠ «vs» 를 ★TierText 안으로★ 넣었다 (2026-09-15 밤) — 티어를 안 그리는
+                리그에서 «vs» 만 혼자 떠 있었다 */}
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
-              <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.08em' }}>vs</span>
-              <TierText division={m.opponent.division} leagueCategory={data.league.category} size={10} />
+              <TierText
+                division={m.opponent.division}
+                leagueCategory={data.league.category}
+                leagueSlug={data.league.slug}
+                size={10}
+                prefix="vs"
+              />
             </span>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
               {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}

@@ -78,6 +78,14 @@ function Kpi({ label, value, sub, color, extra }: { label: string; value: string
   )
 }
 
+/**
+ * ★이름 줄에도 순위를 적을 것인가★ (2026-09-15 밤 · 무한 QA에서 내렸다).
+ * 아래 KPI 칸에 이미 «순위 4위 / 137명» 이 있어 한 카드에 같은 말이 두 번이었다.
+ * `true` 로 두면 옛 모습으로 돌아간다.
+ */
+const RANK_ON_NAME_LINE: boolean = false
+
+
 export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
   const hex = data.hex
@@ -238,7 +246,14 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             </span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5, color: '#6f93b4', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
               <span style={{ color: theme.ink, fontWeight: 500 }}>{data.clan?.name ?? '무소속'}</span>
-              {rank !== null ? (
+              {/*
+                ⚠ ★2026-09-15 밤 — 순위를 여기서 뺐다★ (무한 QA).
+                  같은 카드 안에 «4위 / 137명» 이 ★두 번★ 있었다 — 이름 줄과 아래 KPI 칸.
+                  이름 줄은 «누구인가» 만 말하게 두고, 순위는 ★승률·킬뎃과 나란한 KPI★
+                  한 곳으로 모은다. 거기서 크고, 옆 숫자와 견주기도 좋다.
+                  되돌리려면 `RANK_ON_NAME_LINE` 을 `true` 로 (`CLAUDE.md` 1-4).
+              */}
+              {RANK_ON_NAME_LINE && rank !== null ? (
                 <>
                   <span style={{ color: '#3a4560' }}>·</span>
                   <RankText rank={rank} color={rankColor(rank) ?? V3.textMuted} />

@@ -49,18 +49,62 @@ export function playerHexBadgeRank(key: string): number {
   return key === 'duel' ? PLAYER_HEX_BADGE_RANK_DUEL : PLAYER_HEX_BADGE_RANK
 }
 
+/**
+ * ⚠ ★2026-09-15 밤 — 축 이름이 바뀌었는데 배지가 안 따라왔다★ (무한 QA).
+ *
+ *   선수 머리 카드에 «특성 — 세이브 머신 3위 · ★캐리 머신★ 2위» 가 떠 있었다.
+ *   그 축은 그날 낮에 사장님이 ★게임영향력★ 으로 바꾸셨고, 5번 축도 «연속킬» 에서
+ *   ★교환율★ 로 갈렸다. 배지만 옛 이름을 달고 있어 ★없는 축을 말하고 있었다.★
+ *
+ *   ★새 별명을 지어내지 않는다★ — 이미 `outnumbered` 가 축 이름 그대로 «소수싸움» 이다
+ *   (2026-09-11 사장님이 «말맞추기» 를 그렇게 바꾸셨다). 그 전례를 따른다.
+ *
+ *   옛 이름은 아래 `PLAYER_HEX_BADGE_V1` 에 남긴다 (`CLAUDE.md` 1-4).
+ */
 export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
+  save: { sniper: '세이브 머신', rifle: '세이브 머신' },
+  duel: { sniper: '롱 마스터', rifle: '샷터' },
+  carry: { sniper: '게임영향력', rifle: '게임영향력' },
+  /* 사장님이 «선취점» 을 «선짤» 로 못 박으셨다 (2026-09-02) — 배지만 영어로 남아 있었다 */
+  opening: { sniper: '선짤', rifle: '선짤' },
+  burst: { sniper: '교환율', rifle: '교환율' },
+  /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
+  outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
+}
+
+/** ★2026-09-15 밤까지 쓰던 배지 이름★ — 축이 갈리기 전 판이다. 지우지 않는다 */
+export const PLAYER_HEX_BADGE_V1: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
   save: { sniper: '세이브 머신', rifle: '세이브 머신' },
   duel: { sniper: '롱 마스터', rifle: '샷터' },
   carry: { sniper: '캐리 머신', rifle: '캐리 머신' },
   opening: { sniper: 'First Blood', rifle: 'First Blood' },
   burst: { sniper: '멀티킬러', rifle: '멀티킬러' },
-  /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
 
-/** 축 설명 — 시안의 «의미» 칸. 무기별로 싸움만 다르다 */
+/**
+ * 축 설명 — 시안의 «의미» 칸. 무기별로 싸움만 다르다.
+ *
+ * ⚠ ★2026-09-15 밤 — 셋이 사실과 달랐다★ (무한 QA). 축이 바뀌었는데 설명이 안 따라왔다.
+ *   ```
+ *   carry    «한 판 평균 킬»              → 지금은 ★우위를 만든 킬★ 이다
+ *   burst    «2초 안에 연달아 잡은 라운드» → 지금은 ★교환율★ 이다
+ *   opening  «라운드 첫 킬을 딴 비율»      → 지금은 ★25초 창★ 이고 단위가 판당 횟수다
+ *   save     «혼자 남은 라운드를 이긴 비율» → 지금은 ★횟수 눈금★ 이다 (0~4회)
+ *   ```
+ *   옛 설명은 아래 `PLAYER_HEX_DESC_V1` 에 남긴다.
+ */
 export const PLAYER_HEX_DESC: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
+  save: { sniper: '혼자 남아 이긴 횟수 (4회면 가득)', rifle: '혼자 남아 이긴 횟수 (4회면 가득)' },
+  duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
+  carry: { sniper: '수가 안 밀릴 때 낸 킬 (라운드당)', rifle: '수가 안 밀릴 때 낸 킬 (라운드당)' },
+  opening: { sniper: '라운드 시작 25초 안 첫 킬 (판당)', rifle: '라운드 시작 25초 안 첫 킬 (판당)' },
+  burst: { sniper: '팀원이 죽은 뒤 5초 안에 되잡은 비율', rifle: '팀원이 죽은 뒤 5초 안에 되잡은 비율' },
+  outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
+}
+
+/** ★2026-09-15 밤까지 쓰던 설명★ — 축이 갈리기 전 판이다. 지우지 않는다 */
+export const PLAYER_HEX_DESC_V1: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
   save: { sniper: '혼자 남은 라운드를 이긴 비율', rifle: '혼자 남은 라운드를 이긴 비율' },
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '한 판 평균 킬', rifle: '한 판 평균 킬' },
