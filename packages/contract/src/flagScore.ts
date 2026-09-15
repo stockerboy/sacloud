@@ -767,6 +767,21 @@ export const FlagBoard = z.object({
   closes_at: z.string(),
   /** 아직 경쟁 중인가 */
   live: z.boolean(),
+  /**
+   * ★직전 마감의 1등★ — 오늘 아직 아무도 없을 때 대신 보여 준다 (2026-09-15 · 무한 QA).
+   *
+   * 깃발은 17:00 에 열려 03:00 에 마감하므로 ★저녁마다 한동안 빈다★ (하루 4판을
+   * 채운 사람이 없다). 첫 화면 맨 위가 비면 사이트가 죽은 것처럼 보인다.
+   * 오늘 줄이 하나라도 있으면 `null` 이다 — 오늘 것이 우선이다.
+   */
+  previous: z
+    .object({
+      day_key: z.string(),
+      name: z.string(),
+      clan: z.string().nullable(),
+    })
+    .nullable()
+    .default(null),
   /** 한 칸이 몇 분인가 */
   slot_minutes: z.number().int().default(30),
   /** ★능선★ — 시각마다 «그때까지의 1등 점수» */

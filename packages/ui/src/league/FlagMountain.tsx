@@ -83,6 +83,8 @@ export interface FlagMountainProps {
   slotMinutes: number
   /** 능선 — 칸마다 «그때까지의 1등 점수» */
   timeline: readonly FlagTimelinePoint[]
+  /** ★직전 마감의 1등★ — 오늘 아직 아무도 없을 때 대신 보여 준다 (2026-09-15 · 무한 QA) */
+  previous?: { day_key: string; name: string; clan: string | null } | null
   rows: readonly FlagMountainRow[]
 }
 
@@ -115,6 +117,7 @@ export function FlagMountain({
   slotMinutes,
   timeline,
   rows,
+  previous = null,
 }: FlagMountainProps) {
   const [mounted, setMounted] = useState(false)
   const [planted, setPlanted] = useState(false)
@@ -207,9 +210,23 @@ export function FlagMountain({
       )}
 
       {rows.length === 0 ? (
+        /*
+         * ★비었을 때는 «어제 꽂은 사람»★ (2026-09-15 · 무한 QA).
+         * 저녁 17시에 새 칸이 열리면 한동안 아무도 4판을 못 채운다. 그때 첫 화면
+         * 맨 위가 비면 사이트가 죽은 것처럼 보인다. 직전 마감의 1등을 대신 세운다.
+         */
         <p className="v2-flagmt__empty">
           {live ? '아직 아무도 정상에 오르지 않았습니다' : '이 날은 깃발이 없습니다'}
-          <span>하루 4판 이상 · 승률 50% 이상이면 깃발을 다툽니다</span>
+          {previous === null ? (
+            <span>하루 4판 이상 · 승률 50% 이상이면 깃발을 다툽니다</span>
+          ) : (
+            <span>
+              <b style={{ color: '#ffd95e', fontWeight: 700 }}>
+                {previous.day_key.slice(5).replace('-', '/')} 깃발은 {previous.name}
+              </b>
+              {previous.clan === null ? '' : ` (${previous.clan})`} 이 꽂았습니다
+            </span>
+          )}
         </p>
       ) : (
         <ol className="v2-flagmt__rest">

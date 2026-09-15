@@ -109,6 +109,8 @@ export default function LeagueHomeScreen({
             slotMinutes={board.slot_minutes}
             timeline={board.timeline}
             rows={board.rows}
+            /* 오늘 아직 아무도 없을 때 «어제 꽂은 사람» (2026-09-15 · 무한 QA) */
+            previous={board.previous}
           />
         </div>
       )}

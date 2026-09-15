@@ -450,6 +450,24 @@ export async function getFlagBoard(leagueSlug: string, now: Date = new Date()): 
   const slotRows = await daySlotRowsOf(league.id, day)
   const timeline = timelineOf(slotRows, slots)
 
+  /*
+   * ★직전 마감의 1등★ — 오늘 아직 아무도 없을 때 대신 보여 준다 (2026-09-15 · 무한 QA).
+   *
+   * 깃발은 17:00 에 열려 03:00 에 마감한다. 그래서 ★저녁마다 한동안★ 홈 첫 칸이
+   * «아직 아무도 정상에 오르지 않았습니다» 로 빈다 — 하루 4판을 채운 사람이 없어서다.
+   * 첫 화면 맨 위가 비어 있으면 사이트가 죽은 것처럼 보인다.
+   *
+   * ★오늘 줄이 하나라도 있으면 안 쓴다★ — 오늘 것이 늘 우선이다.
+   * 실패해도 깃발판을 죽이지 않는다 (없으면 옛 문구 그대로).
+   */
+  const previousFlag = await prisma.leagueFlag
+    .findFirst({
+      where: { leagueId: league.id, rank: 1, dayKey: { lt: day.key } },
+      orderBy: { dayKey: 'desc' },
+      select: { dayKey: true, player: { select: { name: true } }, clan: { select: { name: true } } },
+    })
+    .catch(() => null)
+
   const base = {
     league: leagueSlug,
     day_key: day.key,
@@ -458,6 +476,14 @@ export async function getFlagBoard(leagueSlug: string, now: Date = new Date()): 
     live,
     slot_minutes: FLAG_SLOT_MINUTES,
     timeline,
+    previous:
+      previousFlag === null
+        ? null
+        : {
+            day_key: previousFlag.dayKey,
+            name: previousFlag.player?.name ?? '알수없음',
+            clan: previousFlag.clan?.name ?? null,
+          },
   }
 
   if (!live) {
