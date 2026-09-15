@@ -1,4 +1,5 @@
 import { prisma, type Prisma } from '@sacloud/db'
+import { MATCH_HEX_SELECT, matchHexOf, type MatchHexRow } from './matchPlayerHex'
 import { softFail } from '../softFail'
 import {
   kdRateOrNull,
@@ -477,6 +478,8 @@ function toMatchPlayerStat(
     /* 세이브는 경기 상세가 배틀로그 표를 읽어 덮어쓴다. 목록에서는 모른다 (2026-09-10) */
     saves: null,
     save_chances: null,
+    /* 한 판 육각도 경기 상세에서만 채운다 — 목록은 빈 배열이다 (2026-09-15) */
+    hexagon: [],
   }
 }
 
@@ -942,8 +945,9 @@ export async function getMatch(
       resolvePositionsOf(leagueId, playerIds),
     ),
     /* ★세이브 · 라운드 스코어★ (2026-09-10) — 배틀로그에서 접어 둔 표를 읽는다. 없으면 null */
-    softFail('match-saves', [] as { playerId: string; aloneWon: number; aloneRounds: number }[], { matchId: match.id })(
-      prisma.matchPlayerHex.findMany({ where: { matchId: match.id }, select: { playerId: true, aloneWon: true, aloneRounds: true } }),
+    /* ★같은 줄에서 한 판 육각까지 받는다★ (2026-09-15) — 왕복이 늘지 않는다 */
+    softFail('match-saves', [] as MatchHexRow[], { matchId: match.id })(
+      prisma.matchPlayerHex.findMany({ where: { matchId: match.id }, select: MATCH_HEX_SELECT }),
     ),
     softFail('match-rounds', [] as { leagueClanId: string; tally: unknown }[], { matchId: match.id })(
       prisma.matchClanHexV2.findMany({ where: { matchId: match.id }, select: { leagueClanId: true, tally: true } }),
@@ -1057,6 +1061,8 @@ export async function getMatch(
 
   const savesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneWon]))
   const chancesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneRounds]))
+  /* ★한 판 육각★ — 그 판에 뛴 사람들 안에서 백분위를 낸다 (2026-09-15) */
+  const hexOf = matchHexOf(saveRows, match.stats, match.winnerSide)
   const roundsWonOf = (leagueClanId: string): number | null => {
     const row = hexRows.find((entry) => entry.leagueClanId === leagueClanId)
     const tally = row?.tally as { roundsWon?: unknown } | null | undefined
@@ -1071,6 +1077,7 @@ export async function getMatch(
         save_chances: saveRows.length > 0 ? (chancesOf.get(stat.playerId) ?? 0) : null,
         nameplate: plateByPlayer.get(stat.playerId) ?? null,
         main_weapon: mainWeaponOfPlayer.get(stat.playerId) ?? null,
+        hexagon: hexOf.get(stat.playerId) ?? [],
       }))
 
   /* (위 Promise.all 로 옮겼다 — 왕복을 줄이려고) */

@@ -27,6 +27,7 @@ import { WIN_LOSS, V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './to
 import { formatRating } from '../common/format'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
+import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 
 const MVP_LEGACY_UNKNOWN_NOTICE = false
 /* 2026-09-11 사장님 목업: 구간 카드(승률·킬뎃·MVP·핵의심)는 ★머리 카드★(PlayerHeaderV3 · 레이아웃)로 올라갔다.
@@ -536,13 +537,17 @@ export { TrendCardLegacy }
 
 /* ── 최근 경기 · 스코어보드 ───────────────────────────────────── */
 
-function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; showSaves: boolean; leagueSlug: string }) {
+function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; showSaves: boolean; leagueSlug: string; side: 'red' | 'blue' }) {
+  /* ★열림은 줄마다 따로★ — 다른 줄을 눌러도 안 접힌다 (2026-09-15 사장님) */
+  const [openHex, setOpenHex] = useState(false)
+  const hex = row.hexagon ?? []
   const sniper = weaponKnown && row.weapon === 1
   /* 킬뎃은 포지션이 자리를 가져갔다 (2026-09-12 사장님). 값은 계약에 그대로 있다 */
   const kd = row.kd_rate
   void kd
   const clan = row.match_time_clan
   return (
+    <>
     <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #8ff0ff, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
@@ -550,8 +555,20 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug }: { row: M
       {SCORE_WATERMARKS && me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#8ff0ff', opacity: 0.14, WebkitTextStroke: '2.2px #8ff0ff', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <MarkCircle clan={clan ? { slug: clan.slug, mark: clan.mark } : null} size={20} />
-        {/* 닉네임을 누르면 그 선수 화면으로 (2026-09-11 사장님). 줄 접힘과 안 겹치게 전파를 막는다 */}
-        <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
+        {/* ★닉네임을 누르면 그 판 육각이 펼쳐진다★ (2026-09-15 사장님).
+            ⚠ 옛 판은 ★선수 화면으로 가는 링크★ 였다 (2026-09-11). 그 길은 없어지지 않았다 —
+              펼친 칸 안의 «기록실 →» 버튼으로 옮겼다.
+            잴 재료가 없는 경기는 옛날처럼 링크다 — 눌러도 안 열리는 글자를 만들지 않는다 */}
+        {hex.length > 0 ? (
+          <button
+            type="button"
+            aria-expanded={openHex}
+            onClick={(e) => { e.stopPropagation(); setOpenHex((v) => !v) }}
+            style={{ all: 'unset', cursor: 'pointer', fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: `1px dotted ${openHex ? V3.blueSoft : 'rgba(255,255,255,.22)'}` }}
+          >{row.name}</button>
+        ) : (
+          <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
+        )}
         {sniper ? <SniperMark /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
@@ -566,6 +583,10 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug }: { row: M
       {/* ★MVP 는 줄 맨 오른쪽★ — 별 하나라 이름을 안 가린다 (2026-09-12 사장님) */}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, lineHeight: 1, color: mvp ? V3.gold : 'transparent' }} title={mvp ? 'MVP' : undefined}>★</span>
     </div>
+    {openHex ? (
+      <PlayerMatchHexV3 axes={hex} name={row.name} side={side} href={`/league/${leagueSlug}/player/${row.player_id}`} />
+    ) : null}
+    </>
   )
 }
 
@@ -695,7 +716,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => (
-            <ScoreRow key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} showSaves={showSaves} leagueSlug={leagueSlug} />
+            <ScoreRow key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} showSaves={showSaves} leagueSlug={leagueSlug} side={t.side} />
           ))}
           </>
           )}

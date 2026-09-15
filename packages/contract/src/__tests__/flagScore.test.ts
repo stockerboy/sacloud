@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FLAG_GATE_RAW,
   FLAG_MIN_GAMES,
   FLAG_MIN_WIN_RATE,
+  dayAxisParts,
   dayAxisValues,
   flagPercentile,
+  flagPercentileMid,
+  saveScaleOf,
   rankFlagDay,
   type FlagDayTally,
 } from '../flagScore'
@@ -67,6 +71,48 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
   })
 })
 
+describe('★한 판 문턱★ FLAG_GATE_RAW — 0/0 은 0% 다 (2026-09-15 사장님)', () => {
+  /*
+   * > «세이브 상황없었으면 0%(0/0) 있었는디 못해도 0%(0/1) 두번중한번하면(1/2) 50% 이런식»
+   *
+   * 경기 상세는 ★줄을 세우는 자리가 아니다.★ 그래서 «못 잼»(null) 을 두지 않고
+   * «없었다» 를 0 으로 적는다. 랭킹은 반대다 — 바로 밑 시험이 그걸 지킨다.
+   */
+  it('상황이 아예 없었으면 0% 다 (0/0)', () => {
+    const v = dayAxisValues(tally({ aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0 }), FLAG_GATE_RAW)
+    expect(v.save).toBe(0)
+    expect(v.outnumbered).toBe(0)
+  })
+
+  it('한 번 있었는데 못했으면 0% 다 (0/1)', () => {
+    expect(dayAxisValues(tally({ aloneRounds: 1, aloneWon: 0 }), FLAG_GATE_RAW).save).toBe(0)
+  })
+
+  it('두 번 중 한 번이면 50% 다 (1/2)', () => {
+    expect(dayAxisValues(tally({ aloneRounds: 2, aloneWon: 1 }), FLAG_GATE_RAW).save).toBe(50)
+  })
+
+  it('★무기를 몰라도 싸움은 0% 다★ — 한 판 설명에서는 빈칸을 두지 않는다', () => {
+    expect(dayAxisValues(tally({ weapon: null }), FLAG_GATE_RAW).duel).toBe(0)
+  })
+
+  it('★랭킹은 그대로 null 이다★ — 안 겪은 사람을 못한 사람과 같이 깔면 안 된다', () => {
+    expect(dayAxisValues(tally({ aloneRounds: 0, aloneWon: 0 })).save).toBeNull()
+  })
+})
+
+describe('dayAxisParts — «몇 번 중 몇 번»', () => {
+  it('세이브는 이긴 수 / 혼자 남은 수', () => {
+    const p = dayAxisParts(tally({ aloneRounds: 2, aloneWon: 1 }))
+    expect(p.save).toEqual({ numerator: 1, denominator: 2 })
+  })
+
+  it('판당 회수인 축은 분모가 판수다', () => {
+    const p = dayAxisParts(tally({ games: 6, firstKills: 12 }))
+    expect(p.opening).toEqual({ numerator: 12, denominator: 6 })
+  })
+})
+
 describe('flagPercentile', () => {
   it('나보다 낮은 사람의 비율이다', () => {
     expect(flagPercentile([10, 20, 30, 40], 30)).toBe(50)
@@ -77,6 +123,60 @@ describe('flagPercentile', () => {
   it('못 잰 값이나 빈 모집단이면 null', () => {
     expect(flagPercentile([10, 20], null)).toBeNull()
     expect(flagPercentile([], 10)).toBeNull()
+  })
+})
+
+describe('★flagPercentileMid★ — 동점을 가운데로 (한 판 육각용)', () => {
+  it('★동점이 여럿이면 다 같은 가운데 값★ — 바닥에 깔리지 않는다', () => {
+    /* 열 명 중 일곱이 0 인 판. 옛 방식이면 일곱 다 0 백분위라 도형이 찌그러졌다 */
+    const pool = [0, 0, 0, 0, 0, 0, 0, 40, 60, 80]
+    expect(flagPercentile(pool, 0)).toBe(0)
+    expect(flagPercentileMid(pool, 0)).toBe(35)
+  })
+
+  it('혼자 꼭대기면 거의 100, 혼자 바닥이면 거의 0', () => {
+    const pool = [10, 20, 30, 40]
+    expect(flagPercentileMid(pool, 40)).toBe(87.5)
+    expect(flagPercentileMid(pool, 10)).toBe(12.5)
+  })
+
+  it('순서는 뒤집히지 않는다 — 높은 값이 늘 더 크다', () => {
+    const pool = [10, 10, 30, 30, 50]
+    const a = flagPercentileMid(pool, 10) as number
+    const b = flagPercentileMid(pool, 30) as number
+    const c = flagPercentileMid(pool, 50) as number
+    expect(a).toBeLessThan(b)
+    expect(b).toBeLessThan(c)
+  })
+
+  it('못 잰 값이나 빈 모집단이면 null', () => {
+    expect(flagPercentileMid([1, 2], null)).toBeNull()
+    expect(flagPercentileMid([], 1)).toBeNull()
+  })
+})
+
+describe('★saveScaleOf★ — 세이브는 횟수 고정 눈금 (2026-09-15 사장님)', () => {
+  it('0회면 그래프가 움직이지 않는다', () => {
+    expect(saveScaleOf(0)).toBe(0)
+  })
+
+  it('★1회는 중간 육각 테두리★ (0.66)', () => {
+    expect(saveScaleOf(1)).toBe(66)
+  })
+
+  it('★4회는 가장 큰 육각 테두리★', () => {
+    expect(saveScaleOf(4)).toBe(100)
+  })
+
+  it('2·3회는 그 사이를 고르게 나눈 자리다', () => {
+    expect(saveScaleOf(2)).toBeGreaterThan(66)
+    expect(saveScaleOf(2)).toBeLessThan(saveScaleOf(3) as number)
+    expect(saveScaleOf(3)).toBeLessThan(100)
+  })
+
+  it('★5회 이상은 4회로 친다★ — 테두리를 넘지 않는다', () => {
+    expect(saveScaleOf(5)).toBe(100)
+    expect(saveScaleOf(12)).toBe(100)
   })
 })
 

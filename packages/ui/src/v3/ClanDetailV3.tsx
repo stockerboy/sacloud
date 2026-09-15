@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
 import { showsTier } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
+import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
@@ -194,13 +195,23 @@ function H2HChartLegacy({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHead
   )
 }
 
-function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: { row: MatchPlayerStat; mvp: boolean; weaponKnown: boolean; clanSlug: string | null; showSaves: boolean; leagueSlug: string }) {
+function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, side }: { row: MatchPlayerStat; mvp: boolean; weaponKnown: boolean; clanSlug: string | null; showSaves: boolean; leagueSlug: string; side: 'red' | 'blue' }) {
+  /**
+   * ★열림은 줄마다 따로 갖는다★ (2026-09-15 사장님:
+   *   «다른선수꺼 눌러도 다시 잡히면안됨 / 사용자가 접기전까지 자동으로 접히면 안됨»).
+   *
+   * 한 곳에 모아 두면 «다른 줄을 열 때 이 줄을 닫는» 규칙이 끼어들 틈이 생긴다.
+   * 여기 두면 ★그 줄의 닉네임을 다시 누를 때 말고는 접힐 길이 없다.★
+   */
+  const [openHex, setOpenHex] = useState(false)
+  const hex = row.hexagon ?? []
   const sniper = weaponKnown && row.weapon === 1
   /* 킬뎃은 포지션이 자리를 가져갔다 (2026-09-12 사장님). 값은 계약에 그대로 있다 */
   const kd = row.kd_rate
   void kd
   const clan = row.match_time_clan
   return (
+    <>
     <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 96px 52px 66px 22px' } : {}), background: 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
@@ -208,7 +219,20 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: {
       {SCORE_WATERMARKS && mvp ? <span aria-hidden style={{ position: 'absolute', left: '64%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: V3.gold, opacity: 0.15, WebkitTextStroke: `2.4px ${V3.gold}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>MVP</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <MarkCircle clan={clan ? { slug: clan.slug ?? clanSlug, mark: clan.mark } : clanSlug ? { slug: clanSlug } : null} size={20} />
-        <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: 500, color: mvp ? '#ffe89a' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
+        {/* ★닉네임을 누르면 그 판 육각이 펼쳐진다★ (2026-09-15 사장님).
+            기록실로 가던 길은 펼친 칸 안의 버튼으로 옮겼다 — 길이 사라진 게 아니다.
+            ⚠ 잴 재료(배틀로그)가 없는 경기는 ★옛날처럼 링크★ 다. 눌러도 안 열리는
+              글자를 만들면 «고장난 것» 처럼 보인다 */}
+        {hex.length > 0 ? (
+          <button
+            type="button"
+            aria-expanded={openHex}
+            onClick={(e) => { e.stopPropagation(); setOpenHex((v) => !v) }}
+            style={{ all: 'unset', cursor: 'pointer', fontSize: 12.5, fontWeight: 500, color: mvp ? '#ffe89a' : '#c3cbdb', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: `1px dotted ${openHex ? V3.blueSoft : 'rgba(255,255,255,.22)'}` }}
+          >{row.name}</button>
+        ) : (
+          <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: 500, color: mvp ? '#ffe89a' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
+        )}
         {sniper ? <SniperMark /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
@@ -221,6 +245,10 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug }: {
       {/* ★MVP 는 줄 맨 오른쪽★ — 별 하나라 이름을 안 가린다 (2026-09-12 사장님) */}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, lineHeight: 1, color: mvp ? V3.gold : 'transparent' }} title={mvp ? 'MVP' : undefined}>★</span>
     </div>
+    {openHex ? (
+      <PlayerMatchHexV3 axes={hex} name={row.name} side={side} href={`/league/${leagueSlug}/player/${row.player_id}`} />
+    ) : null}
+    </>
   )
 }
 
@@ -415,7 +443,7 @@ function Scoreboard({ detail, leagueCategory, leagueSlug }: { detail: MatchDetai
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
-          {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} leagueSlug={leagueSlug} />)}
+          {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} leagueSlug={leagueSlug} side={t.side} />)}
           </>
           )}
         </div>

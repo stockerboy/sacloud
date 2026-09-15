@@ -1043,6 +1043,8 @@ function toMatchPlayerStat(
     participant_role: null,
     saves: null,
     save_chances: null,
+    /* 한 판 육각은 배틀로그가 있어야 한다 — 픽스처에는 없다 (2026-09-15) */
+    hexagon: [],
     kill: stat.kill,
     death: stat.death,
     assist: stat.assist,
