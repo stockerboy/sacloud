@@ -311,7 +311,15 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
         {/* ⚠ 감싸는 `<div>` 를 두지 않는다 — 폼 TOP3 가 그릴 것이 없을 때
                ★빈 상자에 여백만 26px 남아★ 표가 아래로 밀린다 (2026-09-07 실측).
                옛 화면(V1)도 감싸지 않고 그대로 뒀다 */}
-        {columns.rating ? (
+        {/*
+          ⚠ ★2026-09-16 — 조건을 `columns.rating` 에서 `scoreLeague` 로 바꿨다★
+            (사장님: «랭킹 전부 살려»).
+            폼 TOP3 는 ★래더 증감★ 을 보여 주는 칸인데, 막는 조건이 «층 칸을 그리나»
+            였다. 2026-09-15 밤에 층을 끄면서 ★세 리그 모두에서 같이 사라졌다.★
+            래더가 있는 리그인가(`scoreLeague`)가 맞는 물음이다 — 층을 화면에 적는지와
+            래더를 매기는지는 다른 이야기다.
+        */}
+        {leagueScreen(leagueSlug).scoreLeague ? (
           <FormTop3
             leagueSlug={leagueSlug}
             form={form.data?.data}

@@ -119,14 +119,20 @@ export interface LeagueScreenSpec {
  *     playerColumns: { rank: true, winRate: true, kd: true, rating: ★true★ }
  *     clanColumns:   { rank: ★true★, winRate: true, kd: false, rating: ★true★ }
  *   되돌리려면 위 두 줄로 되돌리면 된다 (`CLAUDE.md` 1-4).
+ *
+ * ⚠ ★2026-09-16 — 클랜 순위 번호를 도로 켰다★ (사장님: «IPL 킬뎃이랑 랭킹 전부 살려
+ *   티어만 없애»). 전날 «통일» 을 이유로 번호를 세 리그에서 다 껐는데, 사장님이
+ *   ★랭킹은 살리라★ 고 하셨다. ★층(`rating`)만 끈 채 둔다★ — 전날 사장님이
+ *   «33.1층» 을 가리켜 «티어의 흔적» 이라 부르셨고, 오늘의 «티어만 없애» 에
+ *   그 층이 들어간다고 읽었다. 틀렸다면 `rating: true` 한 줄이면 돌아온다.
  */
 const WITH_LADDER: LeagueScreenSpec = {
   clanRank: true,
   clanRankNotice: null,
   scoreLeague: true,
   playerColumns: { rank: true, winRate: true, kd: true, rating: false },
-  /* 클랜랭킹에는 킬뎃 칸이 원래 없다. 번호도 안 붙인다 — 순서가 곧 순위다 */
-  clanColumns: { rank: false, winRate: true, kd: false, rating: false },
+  /* 클랜랭킹에는 킬뎃 칸이 원래 없다 */
+  clanColumns: { rank: true, winRate: true, kd: false, rating: false },
   /* 티어는 IPL 만 쓴다 (지시 #23). 모르는 리그는 등급 개념 없이 그린다 */
   showsTier: false,
   official: true,
@@ -234,20 +240,24 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
    *   «순위는 없는데» 는 ★번호를 안 붙인다★ 는 뜻이고 목록 자체는 점수순으로 선다.
    *   그 «번호 없음» 은 화면(`ClanRankTable`)이 `clanColumns.rank` 로 정한다.
    */
+  /*
+   * ⚠ ★2026-09-16 — IPL 만 깎던 두 줄을 걷어냈다★ (사장님: «IPL 킬뎃이랑 랭킹 전부 살려
+   *   티어만 없애»).
+   *
+   *   2026-09-14 에 «IPL - 개인 , 클랜 승률만 기록, 개인 킬데스 정보 제공x» 라고
+   *   하셔서 ★IPL 만★ 킬뎃 칸과 클랜 순위 번호를 껐었다. 오늘 그걸 되돌리신다.
+   *   이제 IPL 은 `WITH_LADDER` 그대로다 — ★세 리그가 같은 표★ 를 쓴다.
+   *   남는 IPL 만의 차이는 ★티어를 안 쓴다★ 하나인데, 그건 이미 기본값이라
+   *   아래 `showsTier: false` 는 ★뜻을 또렷이 적어 두려고★ 남긴다.
+   *
+   *   옛 값 (2026-09-14 ~ 09-16):
+   *     playerColumns: { rank: true, winRate: true, kd: ★false★, rating: false }
+   *     clanColumns:   { rank: ★false★, winRate: true, kd: false, rating: false }
+   */
   nolink: {
     ...WITH_LADDER,
     boardCategory: null,
     showsTier: false,
-    /*
-     * ⚠ ★2026-09-14 저녁 정정 — 래더(층수)도 뺀다★
-     *   사장님이 처음부터 «(★래더시스템 미제공★ , 경기분석 및 플레이 분석 , 승률 정보 제공)»
-     *   이라고 적어 주셨는데 내가 그 괄호를 놓쳤다. 그래서 클랜랭킹에 «32.8층» 이
-     *   그대로 남아 있었고 사장님이 «아직도 IPL에 층수가 나와있고» 라고 잡아 주셨다.
-     *   옛 값은 둘 다 `rating: true` 였다.
-     */
-    playerColumns: { rank: true, winRate: true, kd: false, rating: false },
-    /* 클랜 목록은 번호를 안 붙인다 — 순서가 곧 순위다 */
-    clanColumns: { rank: false, winRate: true, kd: false, rating: false },
   },
   /**
    * ★열산(10🏔) — 클랜 기록은 안 준다★ (2026-09-14 사장님).

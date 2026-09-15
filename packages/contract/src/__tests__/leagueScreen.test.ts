@@ -133,11 +133,16 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
    *   사장님이 «아직도 IPL에 층수가 나와있고» 라고 잡아 주셨다.
    *   옛 기대값 — `rating: true` (개인·클랜 둘 다)
    */
-  it('IPL — 킬데스도 래더도 없다. 순위와 승률만 남는다', () => {
+  /*
+   * ⚠ ★2026-09-16 — 킬뎃과 클랜 순위 번호가 돌아왔다★ (사장님: «IPL 킬뎃이랑 랭킹
+   *   전부 살려 티어만 없애»). 옛 기대값은 `kd: false` · `clanColumns.rank: false` 였다.
+   *   ★층(`rating`)만 계속 끈 채 둔다★ — 전날 사장님이 «33.1층» 을 «티어의 흔적» 이라
+   *   부르셨고, 오늘의 «티어만 없애» 에 그 층이 들어간다고 읽었다.
+   */
+  it('IPL — 티어만 없다. 킬뎃도 순위도 다 있다 (2026-09-16)', () => {
     const spec = leagueScreen('nolink')
-    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: false, rating: false })
-    /* 클랜 목록은 번호를 안 붙인다 — 순서가 곧 순위다 */
-    expect(spec.clanColumns.rank).toBe(false)
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: false })
+    expect(spec.clanColumns.rank).toBe(true)
     expect(spec.clanColumns.rating).toBe(false)
     expect(spec.clanRank).toBe(true)
     /* 티어 글자는 화면에서 사라진다 */
@@ -197,8 +202,8 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
       const spec = leagueScreen(slug)
       expect(spec.playerColumns.rating).toBe(false)
       expect(spec.clanColumns.rating).toBe(false)
-      /* 클랜랭킹은 번호도 안 붙인다 — 순서가 곧 순위다 */
-      expect(spec.clanColumns.rank).toBe(false)
+      /* ⚠ 2026-09-16 — 클랜 순위 번호는 도로 켰다 (사장님: «랭킹 전부 살려») */
+      expect(spec.clanColumns.rank).toBe(true)
     }
   })
 })
