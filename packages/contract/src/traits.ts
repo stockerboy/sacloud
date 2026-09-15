@@ -148,6 +148,10 @@ export const TRAIT_AXIS_LABEL_V1 = {
 /** ★2026-09-15 밤까지 쓰던 2번 축 이름★ — 라플이 «샷싸움» 이던 판이다. 지우지 않는다 */
 export const TRAIT_AXIS_LABEL_V2_DUEL = { sniper: '스나싸움', rifle: '샷싸움' } as const
 
+/** ★2026-09-16 새벽까지 쓰던 이름★ — 5번 축이 «교환율», 4번 축이 «선짤» 이던 판이다 */
+export const TRAIT_AXIS_LABEL_V3_BURST = { sniper: '교환율', rifle: '교환율' } as const
+export const TRAIT_AXIS_LABEL_V3_OPENING = { sniper: '선짤', rifle: '선짤' } as const
+
 export const TRAIT_AXIS_LABEL: Record<
   TraitAxisKey | TraitAxisKeyV1 | TraitAxisKeyV2 | TraitAxisKeyV3,
   { sniper: string; rifle: string }
@@ -173,7 +177,8 @@ export const TRAIT_AXIS_LABEL: Record<
   carry: { sniper: '게임영향력', rifle: '게임영향력' },
   /** 4번 축 — **라운드의 첫 킬을 딴 비율** (2026-08-31 사용자 확정 · D-214) */
   /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름은 `기회창출` 이었다 */
-  opening: { sniper: '선짤', rifle: '선짤' },
+  /** ⚠ ★2026-09-16 새벽 — «선짤» → «선짤(1턴)»★ (사장님). 재는 것은 그대로다 */
+  opening: { sniper: '선짤(1턴)', rifle: '선짤(1턴)' },
   /** 빈 자리였던 판 (D-206). 이름이 곧 상태다 — 재료가 없는 게 아니라 **안 정한 것** */
   undecided: { sniper: '미정', rifle: '미정' },
   /** 옛 4번 축 (D-206). 육각형에서는 내려왔지만 이름은 남긴다 */
@@ -197,7 +202,13 @@ export const TRAIT_AXIS_LABEL: Record<
    *   옛 뜻 — «직전 킬과 2초 이하로 이어진 킬» (2026-09-02 · D-260).
    *   같은 날 «안 짤림» 도 잠깐 올랐다가 사장님이 «교환율» 로 바꾸셨다.
    */
-  burst: { sniper: '교환율', rifle: '교환율' },
+  /**
+   * ⚠ ★2026-09-16 새벽 — «교환율» → «백어택성공률(2턴)»★ (사장님).
+   *   재는 것은 그대로다 — 동료가 죽은 뒤 ★5초 안★ 에 그 킬러를 되잡은 비율.
+   *   «2턴» 은 사장님이 쓰시는 말로 그 되잡기를 부르는 이름이다.
+   *   옛 이름은 `TRAIT_AXIS_LABEL_V3_BURST` 에 남긴다.
+   */
+  burst: { sniper: '백어택성공률(2턴)', rifle: '백어택성공률(2턴)' },
   /** 옛 5번 축 (D-260). 육각형에서는 내려왔지만 재료도 이름도 그대로 남긴다 */
   finish: { sniper: '작업 성공률', rifle: '원어택 성공률' },
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },

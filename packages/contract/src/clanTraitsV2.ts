@@ -77,6 +77,18 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AxisKey, string> = {
   save: '세이브',
   /* ★사장님이 직접 고른 말이다★ (2026-09-15) — 「라이플파워」·「소총화력」이 아니다 */
   riflePower: '라이플화력',
+  /* ⚠ ★2026-09-16 새벽 — «선짤» → «선짤(1턴)» · «교환» → «백어택성공률(2턴)»★ (사장님).
+     재는 것은 둘 다 그대로다. 옛 이름은 아래 `CLAN_HEX_V2_AXIS_LABELS_V1` 에 남긴다 */
+  firstBlood: '선짤(1턴)',
+  trade: '백어택성공률(2턴)',
+}
+
+/** ★2026-09-16 새벽까지 쓰던 이름★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
+export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<ClanHexV2AxisKey, string> = {
+  sniperDuel: '스나싸움',
+  outnumbered: '소수싸움',
+  save: '세이브',
+  riflePower: '라이플화력',
   firstBlood: '선짤',
   trade: '교환',
 }

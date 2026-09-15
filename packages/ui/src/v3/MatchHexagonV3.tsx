@@ -35,8 +35,8 @@ const LABEL: Record<(typeof ORDER)[number], string> = {
   outnumbered: '소수싸움',
   save: '세이브',
   riflePower: '라이플화력',
-  firstBlood: '선짤',
-  trade: '교환율',
+  firstBlood: '선짤(1턴)',
+  trade: '백어택성공률(2턴)',
 }
 
 /** 이긴 팀 파랑 · 진 팀 빨강 (사장님) */

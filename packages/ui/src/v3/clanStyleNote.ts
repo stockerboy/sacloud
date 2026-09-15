@@ -36,8 +36,8 @@ export const CLAN_AXIS_LABEL: Readonly<Record<string, string>> = {
   outnumbered: '소수싸움',
   save: '세이브',
   riflePower: '라이플화력',
-  firstBlood: '선짤',
-  trade: '교환율',
+  firstBlood: '선짤(1턴)',
+  trade: '백어택성공률(2턴)',
 }
 
 /**

@@ -156,12 +156,36 @@ export function Hexagon({
       <g opacity={labelIn} style={{ transition: 'opacity .45s ease' }}>
       {six.map((a, i) => {
         const [x, y, anchor] = HEX_LABELS[i] as (typeof HEX_LABELS)[number]
+        /*
+         * ★긴 이름은 괄호 앞에서 두 줄로★ (2026-09-16 새벽).
+         *
+         * 사장님이 «교환율» 을 «백어택성공률(2턴)» 로 바꾸셨다 — 10글자다.
+         * ★좌우 축★ 은 쓸 수 있는 폭이 ★68px★ 뿐이라(x=68/232, 바깥이 0/300)
+         * 12px 글자 열 개가 안 들어간다. SVG `text` 는 줄바꿈도 말줄임도 없어서
+         * ★그냥 밖으로 나가 잘렸다★ — 화면에 «액성공률(2턴)» 로 찍혔다.
+         *
+         * 12시(i=0)·6시(i=3) 는 가운데 맞춤이라 280px 이 남는다 — 안 건드린다.
+         * 괄호가 없으면 아무 일도 안 일어난다.
+         */
+        const side = i !== 0 && i !== 3
+        const cut = side ? a.label.indexOf('(') : -1
+        const two = cut > 0 ? [a.label.slice(0, cut), a.label.slice(cut)] : null
+        /* 두 줄이면 아래 줄들을 그만큼 내린다 */
+        const drop = two ? 12 : 0
         return (
           <g key={`${a.label}-${i}`}>
             <text x={x} y={y} textAnchor={anchor} fontSize={a.strong ? 13 : 12} fontWeight="700" fill={a.strong ? '#e8eeff' : V3.textMuted}>
-              {a.label}
+              {two ? (
+                <>
+                  {/* 첫 줄은 한 글자만큼 줄여 68px 안에 들인다 */}
+                  <tspan x={x} fontSize={a.strong ? 12 : 11}>{two[0]}</tspan>
+                  <tspan x={x} dy={12} fontSize={a.strong ? 11 : 10}>{two[1]}</tspan>
+                </>
+              ) : (
+                a.label
+              )}
             </text>
-            <text x={x} y={y + 14} textAnchor={anchor} fontSize={a.strong ? 14 : 11.5} fontWeight={a.strong ? 900 : 700} fill={a.noteColor} className={a.strong ? 'v3-hex-note-strong' : undefined}>
+            <text x={x} y={y + 14 + drop} textAnchor={anchor} fontSize={a.strong ? 14 : 11.5} fontWeight={a.strong ? 900 : 700} fill={a.noteColor} className={a.strong ? 'v3-hex-note-strong' : undefined}>
               {a.note}
               {/*
                 ★12시 축만 모집단을 «등수 옆»★ 에 붙인다 (2026-09-15 · 무한 QA).
@@ -185,7 +209,7 @@ export function Hexagon({
             </text>
             {/* ★모집단 줄★ (2026-09-12 사장님: «스나수 n명중 n위») — 12시 축은 위에서 이미 그렸다 */}
             {a.note2 && i !== 0 ? (
-              <text x={x} y={y + 24} textAnchor={anchor} fontSize="8.5" fontWeight="700" fill={V3.textGhost2}>
+              <text x={x} y={y + 24 + drop} textAnchor={anchor} fontSize="8.5" fontWeight="700" fill={V3.textGhost2}>
                 {a.note2}
               </text>
             ) : null}

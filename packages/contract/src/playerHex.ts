@@ -67,8 +67,9 @@ export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: str
   duel: { sniper: '롱 마스터', rifle: '라이플화력' },
   carry: { sniper: '게임영향력', rifle: '게임영향력' },
   /* 사장님이 «선취점» 을 «선짤» 로 못 박으셨다 (2026-09-02) — 배지만 영어로 남아 있었다 */
-  opening: { sniper: '선짤', rifle: '선짤' },
-  burst: { sniper: '교환율', rifle: '교환율' },
+  /* ⚠ 2026-09-16 새벽 — 축 이름을 따라간다 (사장님) */
+  opening: { sniper: '선짤(1턴)', rifle: '선짤(1턴)' },
+  burst: { sniper: '백어택성공률(2턴)', rifle: '백어택성공률(2턴)' },
   /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }

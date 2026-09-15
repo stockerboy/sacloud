@@ -233,9 +233,10 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 
   /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름 `기회창출` 은 주석에만 남는다 */
-  it('이름은 무기와 무관하게 `선짤` 이다', () => {
+  /* ⚠ 옛 기대값 `'선짤'` — 2026-09-16 새벽 사장님 «선짤을 선짤(1턴)로» */
+  it('이름은 무기와 무관하게 `선짤(1턴)` 이다', () => {
     for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'opening').label).toBe('선짤')
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'opening').label).toBe('선짤(1턴)')
     }
   })
 
@@ -302,9 +303,10 @@ describe('buildPlayerTraits — 5번은 교환율이다 (2026-09-15)', () => {
    *   «작업 성공률/원어택»(V3) → «연속킬»(2026-09-02 D-260) → ★«교환율»★(2026-09-15 사장님)
    *   열쇠(`burst`)는 한 번도 안 바꿨다 — DB 칸과 계약 자리를 그대로 물려받는다.
    */
-  it('이름은 무기와 무관하게 `교환율` 이다', () => {
+  /* ⚠ 옛 기대값 `'교환율'` — 2026-09-16 새벽 사장님 «교환율을 백어택성공률(2턴)로» */
+  it('이름은 무기와 무관하게 `백어택성공률(2턴)` 이다', () => {
     for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'burst').label).toBe('교환율')
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'burst').label).toBe('백어택성공률(2턴)')
     }
   })
 
