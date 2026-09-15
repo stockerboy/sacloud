@@ -116,8 +116,8 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
     const spec = leagueScreen('sanply')
     expect(spec.clanRank).toBe(false)
     expect(spec.clanRankNotice).not.toBeNull()
-    /* 개인 킬데스·승률·순위는 그대로 */
-    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: true })
+    /* 개인 킬데스·승률·순위는 그대로. ⚠ 옛 기대값 `rating: true` — 2026-09-15 밤에 층을 뺐다 */
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: false })
     expect(spec.showsTier).toBe(false)
     expect(spec.official).toBe(false)
   })
@@ -157,7 +157,9 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
 
   it('SPL — 전부 100% 제공 (승률·킬데스·랭킹)', () => {
     const spec = leagueScreen('supply')
-    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: true })
+    /* ⚠ 옛 기대값 `rating: true` — 2026-09-15 밤 «티어의 흔적» 지시로 층 칸을 뺐다.
+       점수 계산과 순위는 그대로다. 화면에서 칸만 사라진다 */
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: false })
     expect(spec.clanRank).toBe(true)
     expect(spec.clanRankNotice).toBeNull()
   })
@@ -175,11 +177,28 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
   })
 
   it('SPL 은 다섯 칸 그대로다', () => {
+    /* ⚠ 옛 기대값 `rating: true` (2026-09-15 밤에 층을 뺐다) */
     expect(leagueScreen('supply').playerColumns).toEqual({
       rank: true,
       winRate: true,
       kd: true,
-      rating: true,
+      rating: false,
     })
+  })
+
+  /**
+   * ★세 리그가 같은 표를 쓴다★ (2026-09-15 밤 사장님: «티어의 흔적들이 아직도 많이
+   * 남아있어 (…) 같은 폼인데 글씨 다른것들 통일성있게 좀 맞춰주고»).
+   *
+   * 2026-09-14 에 IPL 만 껐던 탓에 SPL·열산에는 «33.1층» «31.1층» 이 남아 있었다.
+   */
+  it('★어느 리그도 「층」 칸을 그리지 않는다★ — 세 리그가 같은 표다', () => {
+    for (const slug of ['supply', 'nolink', 'sanply']) {
+      const spec = leagueScreen(slug)
+      expect(spec.playerColumns.rating).toBe(false)
+      expect(spec.clanColumns.rating).toBe(false)
+      /* 클랜랭킹은 번호도 안 붙인다 — 순서가 곧 순위다 */
+      expect(spec.clanColumns.rank).toBe(false)
+    }
   })
 })

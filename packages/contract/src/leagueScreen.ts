@@ -101,14 +101,32 @@ export interface LeagueScreenSpec {
   listed: boolean
 }
 
-/** 공식 래더가 있는 리그의 기본값 — 지금까지의 화면 그대로다 */
+/**
+ * 공식 래더가 있는 리그의 기본값.
+ *
+ * ⚠ ★2026-09-15 밤 — 래더 칸(「층」)과 클랜 순위 번호를 껐다★ (사장님:
+ *   «티어의 흔적들이 아직도 많이 남아있어 (…) 같은 폼인데 글씨 다른것들
+ *    통일성있게 좀 맞춰주고»).
+ *
+ *   2026-09-14 에 IPL 만 끄는 바람에 SPL·열산에는 «33.1층» «31.1층» 이 그대로
+ *   남아 있었다. 「34층」 은 누가 봐도 등급이라 사장님이 ★티어의 흔적★ 이라 부르셨다.
+ *   이제 ★세 리그가 같은 표★ 를 쓴다.
+ *
+ *   ★계산은 한 글자도 안 바꿨다★ — 래더는 그대로 매기고 클랜랭킹 순서도
+ *   그대로 래더 내림차순이다 (`apps/web/lib/clanRanking.ts`). 화면에서 칸만 뺀다.
+ *
+ *   옛 값 (2026-09-15 까지):
+ *     playerColumns: { rank: true, winRate: true, kd: true, rating: ★true★ }
+ *     clanColumns:   { rank: ★true★, winRate: true, kd: false, rating: ★true★ }
+ *   되돌리려면 위 두 줄로 되돌리면 된다 (`CLAUDE.md` 1-4).
+ */
 const WITH_LADDER: LeagueScreenSpec = {
   clanRank: true,
   clanRankNotice: null,
   scoreLeague: true,
-  playerColumns: { rank: true, winRate: true, kd: true, rating: true },
-  /* 클랜랭킹에는 킬뎃 칸이 원래 없다 */
-  clanColumns: { rank: true, winRate: true, kd: false, rating: true },
+  playerColumns: { rank: true, winRate: true, kd: true, rating: false },
+  /* 클랜랭킹에는 킬뎃 칸이 원래 없다. 번호도 안 붙인다 — 순서가 곧 순위다 */
+  clanColumns: { rank: false, winRate: true, kd: false, rating: false },
   /* 티어는 IPL 만 쓴다 (지시 #23). 모르는 리그는 등급 개념 없이 그린다 */
   showsTier: false,
   official: true,

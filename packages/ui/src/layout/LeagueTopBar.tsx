@@ -111,7 +111,16 @@ export function leagueTabs(leagueSlug: string) {
   if (leagueScreen(leagueSlug).clanRank) {
     tabs.unshift({ label: '클랜랭킹', href: `${base}/rank/clan` })
   }
-  tabs.unshift({ label: '홈', href: `${base}/home` })
+  /*
+   * ⚠ ★2026-09-15 밤 — 이름을 「홈」 에서 「최근경기」 로 바꿨다★ (사장님:
+   *   «홈 <버튼을 최근경기로 바꿔»).
+   *
+   *   주소(`/home`)와 화면은 그대로다. 「홈」 은 그 리그의 첫 화면이라는 뜻이었는데,
+   *   상단바에 이미 리그 이름이 있어 «어느 리그의 홈인지» 가 겹쳤다.
+   *   그 화면에서 가장 크게 보는 것이 ★최근 경기★ 라 이름을 거기에 맞춘다.
+   *   되돌리려면 label 을 '홈' 으로.
+   */
+  tabs.unshift({ label: '최근경기', href: `${base}/home` })
   /*
    * ★경기 (2026-09-03 · O-015)★
    *
