@@ -63,11 +63,15 @@ export function ClanTraitBackdrop({ theme, markSlug }: { theme: ClanTheme; markS
 /**
  * ★게임템포 기준★ (2026-09-12 사장님: «게임 템포는 초 옆에 기준을 만들어서»).
  *
+ * ⚠ ★2026-09-15 — 지금은 안 부른다★ 사장님이 ④ 를 게임템포에서 라이플화력(비율)으로
+ *   바꿨다. 라이플화력은 다른 다섯 축과 똑같이 ★등수★ 로 적으면 되므로 이 기준이
+ *   필요 없다. **지우지 않는다** (`CLAUDE.md` 1-4) — 게임템포가 돌아오면 그대로 쓴다.
+ *
  * 초만 적혀 있으면 25.5초가 빠른 건지 느린 건지 알 수가 없다. 리그 안 백분위로
  * 다섯 칸을 나눠 말로 적는다. 값은 ★리그 안 상대 위치★ 라 리그가 커지면 같이 움직인다.
  * 백분위가 높을수록 빠르다 (`clanTraitsV2` 의 tempo 정규화 방향).
  */
-function tempoTier(pct: number): string {
+export function tempoTier(pct: number): string {
   if (pct >= 80) return '매우 빠름'
   if (pct >= 60) return '빠른 편'
   if (pct >= 40) return '보통'
@@ -75,17 +79,21 @@ function tempoTier(pct: number): string {
   return '매우 느림'
 }
 
-/** 클랜 육각형 축 → 그림 입력. 시안 순서(스나싸움 · 소수싸움 · 세이브 · 게임템포 · 선짤 · 교환율) */
+/**
+ * 클랜 육각형 축 → 그림 입력. 시안 순서(스나싸움 · 소수싸움 · 세이브 · ★라이플화력★ · 선짤 · 교환율)
+ *
+ * ⚠ ★2026-09-15★ — ④ 가 게임템포에서 라이플화력으로 바뀌었다 (사장님).
+ *   게임템포만 «초 + 빠름/느림» 으로 따로 적던 갈래가 없어졌다 — 여섯 축이 다 비율이라
+ *   전부 ★등수★ 로 적는다. 그 갈래는 `tempoTier` 에 남아 있다 (`CLAUDE.md` 1-4).
+ */
 export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
-  const order = ['sniperDuel', 'outnumbered', 'save', 'tempo', 'firstBlood', 'trade'] as const
+  const order = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'firstBlood', 'trade'] as const
   const label: Record<(typeof order)[number], string> = {
-    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', tempo: '게임템포', firstBlood: '선짤', trade: '교환율',
+    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력', firstBlood: '선짤', trade: '교환율',
   }
   return order.map((key) => {
     const axis = hex?.axes.find((a) => a.key === key) ?? null
     if (!axis || axis.value === null) return { label: label[key], value: null, note: '측정중', noteColor: V3.textGhost }
-    /* 게임템포는 등수가 아니라 ★초 + 기준★ 이다 (2026-09-12 사장님) */
-    if (key === 'tempo') return { label: label[key], value: axis.value * 100, note: axis.text, noteColor: '#a9c3ff', note2: tempoTier(axis.value * 100) }
     /*
      * ★«42개중 28위»★ (2026-09-12 사장님: «클랜 몇개중 몇위 이렇게 해주고»).
      * 등수만 적으면 몇 팀 중인지를 몰라 28위가 잘한 건지 못한 건지 안 보인다.

@@ -380,8 +380,14 @@ async function clansOf(leagueId: string, day: string): Promise<DailyPodiumRow[]>
     }
   }
   for (const list of clanAxisPool.values()) list.sort((x, y) => y - x)
-  /** 게임템포는 ★작을수록 좋다★ — 라운드가 빨리 끝난 쪽이 위다 */
-  const LOWER_IS_BETTER = new Set(['tempo'])
+  /**
+   * ★작을수록 좋다★ 인 축들.
+   *
+   * ⚠ ★2026-09-15 — 지금은 비어 있다★ 게임템포(라운드가 빨리 끝난 쪽이 위)가 ④ 에서
+   *   내려가고 라이플화력(클수록 좋다)이 들어왔다. 판단 기계는 **남긴다** —
+   *   그런 축이 다시 생기면 이름만 넣으면 된다 (`CLAUDE.md` 1-4).
+   */
+  const LOWER_IS_BETTER = new Set<string>([])
   const clanAxisRank = (key: string, raw: number | null): number | null => {
     if (raw === null) return null
     const list = clanAxisPool.get(key)

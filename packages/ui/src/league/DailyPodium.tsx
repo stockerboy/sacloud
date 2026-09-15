@@ -151,7 +151,8 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
        */
       noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
       /* ★모집단을 같이★ (2026-09-15 · 무한 QA) — «60위» 만 있으면 읽히지 않는다 */
-      note2: a.rank === null ? null : a.total === null ? valueText(a) : `그날 ${a.total}${a.key === 'tempo' || row.clan_slug !== null ? '팀중' : '명중'}`,
+      /* ⚠ ★2026-09-15★ — 클랜 전용 축 이름이 `tempo` 에서 `riflePower` 로 바뀌었다 (사장님) */
+      note2: a.rank === null ? null : a.total === null ? valueText(a) : `그날 ${a.total}${a.key === 'riflePower' || row.clan_slug !== null ? '팀중' : '명중'}`,
     }))
   })()
 

@@ -2,7 +2,8 @@
  * 클랜 육각형 V2 재료를 `MatchClanHexV2` 에 **경기 × 클랜** 단위로 쌓는다 (D-217 · D-235).
  *
  * ```
- * ① 스나싸움  ② 소수싸움  ③ 세이브  ④ 게임템포  ⑤ 선짤  ⑥ 교환   (D-256)
+ * ① 스나싸움  ② 소수싸움  ③ 세이브  ④ ★라이플화력★  ⑤ 선짤  ⑥ 교환
+ *   ⚠ 옛 ④ 는 게임템포였다 — 2026-09-15 에 사장님이 바꿨다 (D-256 이후의 첫 축 교체)
  * ```
  *
  * 판정은 전부 `@sacloud/nexon` 의 순수 함수(`clanHexV2Of`)가 한다. 여기서는 DB 를
@@ -253,7 +254,8 @@ export function axisDenominators(tally: ClanHexTally): Record<string, boolean> {
     '① 스나싸움': ((tally.sniperDuel?.won ?? 0) + (tally.sniperDuel?.lost ?? 0)) > 0,
     '② 소수싸움': (tally.outnumbered?.rounds ?? 0) > 0,
     '③ 세이브': (tally.save?.rounds ?? 0) > 0,
-    '④ 게임템포': (tally.tempo?.redClearThreeRounds ?? 0) > 0,
+    /* ⚠ ★2026-09-15★ — 옛 ④ 는 `(tally.tempo?.redClearThreeRounds ?? 0) > 0` 이었다 */
+    '④ 라이플화력': (tally.riflePower?.rounds ?? 0) > 0,
     '⑤ 선짤': (tally.firstBlood?.rounds ?? 0) > 0,
     '⑥ 교환': (tally.trade?.deaths ?? 0) > 0,
   }
@@ -383,7 +385,7 @@ export async function buildClanHexV2(input: {
       '① 스나싸움': 0,
       '② 소수싸움': 0,
       '③ 세이브': 0,
-      '④ 게임템포': 0,
+      '④ 라이플화력': 0,
       '⑤ 선짤': 0,
       '⑥ 교환': 0,
     },
