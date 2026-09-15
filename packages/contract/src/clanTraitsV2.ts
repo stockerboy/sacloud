@@ -125,7 +125,7 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
    */
   /*
    * ★라이플화력은 «비율»★ 이다.
-   * 뜻: «어느 쪽이든 스나가 1킬 없이 1~3번째로 지워진 라운드 중 우리가 딴 비율».
+   * 뜻: «스나가 아무것도 못 한 라운드에서 ★양 팀이 낸 킬 중 우리 몫★».
    * 분모가 ★양 팀 공통★ 이라 두 팀 값을 더하면 100% 다 (스나싸움과 같은 꼴).
    */
   riflePower: 'ratio',
@@ -402,7 +402,11 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    * ⚠ ★2026-09-15 밤 · v2.9 → v3.0★ — 라이플화력이 ★살아남은 스나★ 도 센다.
    *   사장님: *"스나가 1킬도 못하고 살아있는데 라플끼리 딴 라운드도 포함시켜"*
    */
-  formulaVersion: 'clan-hex-v3.0',
+  /*
+   * ⚠ ★2026-09-15 밤 · v3.0 → v3.1★ — 라이플화력이 ★라운드가 아니라 킬★ 을 나눠 갖는다.
+   *   사장님: *"0퍼만 아니면 된다는 얘기를 한거야"* — «0%» 가 뜨는 경우를 8.7% → 0.1% 로.
+   */
+  formulaVersion: 'clan-hex-v3.1',
 }
 
 /**
@@ -495,8 +499,11 @@ export interface OutnumberedTallyLike {
  * `rounds` 는 ★양 팀이 같은 수★ 다 (2026-09-15 저녁 · 합 100% 규칙).
  */
 export interface RiflePowerTallyLike {
+  /** ⚠ 이름은 `rounds` 지만 **세는 것은 킬**이다 (2026-09-15 밤 · ⑥안) */
   rounds: number
   won: number
+  /** 조건에 걸린 **라운드 수** — 표본을 볼 때만 쓴다. 옛 행에는 없다 */
+  situationRounds?: number
 }
 
 export interface SaveTallyLike {
@@ -929,10 +936,12 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
 
   sum.riflePower = sumParts(
     tallies.map((tally) => tally.riflePower ?? null),
-    (): RiflePowerTallyLike => ({ rounds: 0, won: 0 }),
+    (): RiflePowerTallyLike => ({ rounds: 0, won: 0, situationRounds: 0 }),
     (into, from) => {
       into.rounds += from.rounds
       into.won += from.won
+      /* 옛 행에는 새 칸이 없다 — 없으면 0으로 더한다 (`CLAUDE.md` 2장 1번) */
+      into.situationRounds = (into.situationRounds ?? 0) + (from.situationRounds ?? 0)
     },
   )
 
@@ -1209,9 +1218,10 @@ export function buildClanHexV2Raw(input: {
         return measuredAxis(key, part.won, part.rounds)
       }
       /**
-       * ④ **라이플화력** — 스나가 일찍 지워진 라운드를 누가 가져갔나 (2026-09-15 신설).
+       * ④ **라이플화력** — 스나가 아무것도 못 한 라운드의 ★킬★ 을 누가 냈나 (2026-09-15 신설).
        *
        * 분모가 ★양 팀 공통★ 이라 **스나싸움과 똑같이 두 값의 합이 100%** 다.
+       * ⚠ `rounds` 칸이 담는 것은 **킬 수**다 (칸 이름만 옛것이다 · `RiflePowerTally` 주석).
        * 그런 라운드가 한 번도 없었으면 `sample` 로 «측정중» 이다 — 0% 로 적지 않는다.
        */
       case 'riflePower': {

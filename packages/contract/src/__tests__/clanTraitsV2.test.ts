@@ -224,7 +224,8 @@ describe('sumClanHexTallies — **비율을 평균 내지 않는다** (D-235 Q8)
     const many = fullTally({ riflePower: { rounds: 18, won: 0 } })
 
     const sum = sumClanHexTallies([few, many])
-    expect(sum.riflePower).toEqual({ rounds: 20, won: 2 })
+    /* 옛 표본에는 `situationRounds` 칸이 없다 — 없으면 0으로 더한다 */
+    expect(sum.riflePower).toEqual({ rounds: 20, won: 2, situationRounds: 0 })
 
     const axis = axisOf(buildClanHexV2Raw({ tally: sum, matches: 2 }), 'riflePower')
     /* 판 평균이었다면 (100% + 0%) / 2 = 50% 였을 것이다 */
