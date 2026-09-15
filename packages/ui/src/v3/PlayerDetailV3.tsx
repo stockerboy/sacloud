@@ -36,6 +36,15 @@ const TIER_CARD_IN_BODY = false
 /* 2026-09-11 사장님: «누가 스나이퍼인지 안 떠 — 워터마크 폐지, 닉 옆에 빨간 (S)». 워터마크(SNIPER·ME)는 스위치로만 남긴다 */
 const SCORE_WATERMARKS = false
 
+/**
+ * ★스코어보드 줄의 인식표★ — 지금은 안 그린다 (2026-09-16 사장님: «인식표 아직도 안없어졌네»).
+ *
+ * 랭킹 표에서는 이미 껐는데(`RankTable` 의 `CLAN_PLATE_ON`) ★경기 상세★ 에 남아 있었다.
+ * 줄 뒤에 구름·산 그림이 깔려 숫자가 그림 위로 읽혀 지저분했다.
+ * ★지우지 않는다★ (`CLAUDE.md` 1-4) — `true` 로 두면 그대로 돌아온다.
+ */
+const SCORE_PLATE_ON: boolean = false
+
 const halfStyle: CSSProperties = { marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 16, alignItems: 'stretch' }
 const halfCardStyle: CSSProperties = { display: 'flex', flexDirection: 'column', ...cardStyle }
 const statRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr)', alignItems: 'baseline', gap: 12, padding: '9px 0', borderTop: `1px solid ${V3.rowDivider2}` }
@@ -550,7 +559,7 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { 
     <>
     <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #8ff0ff, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
-      {row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
+      {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
       {SCORE_WATERMARKS && me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#8ff0ff', opacity: 0.14, WebkitTextStroke: '2.2px #8ff0ff', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
@@ -835,11 +844,73 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
  * 킬뎃은 그 선수 무기 것 · 승률은 통합이다 (같은 날 확정).
  */
 function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
-  const rows = data.tier_breakdown.filter((r) => r.games > 0)
+  const tieredCard = showsTier(data.league.slug) && data.league.division_count >= 2
+  /*
+   * ⚠ ★2026-09-16 — 티어를 안 쓰면 구간을 안 나눈다★ (사장님: «두개 합쳐야지
+   *   티어 구분이 없는데»).
+   *
+   *   `tier_breakdown` 은 ★구간마다 한 줄★ 인데, 티어를 안 쓰는 리그는 줄마다 이름을
+   *   «전체» 라고 적는다. 그래서 같은 이름이 두 줄 서고 무엇이 다른지 알 수 없었다
+   *   (실측 saylove — «VS 전체 1승1패» 와 «VS 전체 9승2패»).
+   *   어제 ★클랜★ 화면에서 같은 것을 고쳤는데 ★선수★ 화면을 빠뜨렸다.
+   *
+   *   합칠 때 ★비율은 다시 센다★ — 두 줄의 승률을 평균 내면 판수가 다른 구간이
+   *   같은 무게를 갖는다 (D-235 Q8 와 같은 함정).
+   */
+  const rows = useMemo(() => {
+    const live = data.tier_breakdown.filter((r) => r.games > 0)
+    if (tieredCard || live.length <= 1) return live
+    const first = live[0] as (typeof live)[number]
+    const sum = (f: (r: (typeof live)[number]) => number) => live.reduce((a, r) => a + f(r), 0)
+    /* 같은 상대는 한 줄로 — 구간이 갈려 있어도 같은 클랜이다 */
+    const byFoe = new Map<string, (typeof first.opponents)[number]>()
+    for (const r of live) {
+      for (const o of r.opponents) {
+        const now = byFoe.get(o.league_clan_id)
+        if (now === undefined) {
+          byFoe.set(o.league_clan_id, { ...o })
+          continue
+        }
+        now.games += o.games
+        now.win += o.win
+        now.lose += o.lose
+        now.rifle_games += o.rifle_games
+        now.sniper_games += o.sniper_games
+        /* 킬뎃은 판수로 무게를 준다. 한쪽만 알면 그쪽 값을 쓴다 */
+        const mix = (a: number | null, an: number, b: number | null, bn: number): number | null => {
+          if (a === null && b === null) return null
+          if (a === null) return b
+          if (b === null) return a
+          const n = an + bn
+          return n === 0 ? null : Math.round(((a * an + b * bn) / n) * 10) / 10
+        }
+        now.kd = mix(now.kd, now.games - o.games, o.kd, o.games)
+        now.rifle_kd = mix(now.rifle_kd, now.rifle_games - o.rifle_games, o.rifle_kd, o.rifle_games)
+        now.sniper_kd = mix(now.sniper_kd, now.sniper_games - o.sniper_games, o.sniper_kd, o.sniper_games)
+        now.win_rate = now.games === 0 ? null : Math.round((now.win / now.games) * 1000) / 10
+      }
+    }
+    const games = sum((r) => r.games)
+    const win = sum((r) => r.win)
+    const merged: (typeof live)[number] = {
+      ...first,
+      /* 구간을 안 나눌 때의 단 하나뿐인 열쇠. 실제 `tier`(1부터)와 안 겹친다 */
+      tier: 0,
+      games,
+      win,
+      lose: sum((r) => r.lose),
+      win_rate: games === 0 ? null : Math.round((win / games) * 1000) / 10,
+      known_games: sum((r) => r.known_games),
+      rifle_games: sum((r) => r.rifle_games),
+      sniper_games: sum((r) => r.sniper_games),
+      opponents: [...byFoe.values()].sort((a, b) => b.games - a.games),
+    }
+    return [merged]
+  }, [data.tier_breakdown, tieredCard])
   const weapon = data.hex?.weapon ?? null
   const [picked, setPicked] = useState<Record<number, string | null>>({})
   const theme = clanThemeOf(data.clan?.slug)
-  const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
+  const tiered = tieredCard
   /* ★자기 구간★ = 가장 많이 뛴 구간 (워커의 homeTier 와 같은 규칙 — 같으면 높은 티어) */
   const homeTier = useMemo(() => {
     let best: number | null = null

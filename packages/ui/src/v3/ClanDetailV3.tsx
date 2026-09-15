@@ -39,6 +39,15 @@ import { H2HChartV3 } from './H2HChartV3'
  *   40% 로 묶고, 넘치는 것은 ★MVP 닉네임 쪽★ 이 말줄임으로 받는다.
  *   PC 는 카드가 넓어 40% 도 500px 이 넘는다 — 한 글자도 안 잘린다.
  */
+/**
+ * ★스코어보드 줄의 인식표★ — 지금은 안 그린다 (2026-09-16 사장님: «인식표 아직도 안없어졌네»).
+ *
+ * 랭킹 표에서는 이미 껐는데(`RankTable` 의 `CLAN_PLATE_ON`) ★경기 상세★ 에 남아 있었다.
+ * 줄 뒤에 구름·산 그림이 깔려 숫자가 그림 위로 읽혀 지저분했다.
+ * ★지우지 않는다★ (`CLAUDE.md` 1-4) — `true` 로 두면 그대로 돌아온다.
+ */
+const SCORE_PLATE_ON: boolean = false
+
 const prowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,40%)', alignItems: 'center', rowGap: 7, columnGap: 12, padding: '13px 18px' }
 
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '70px 150px minmax(0,1fr) 108px 62px', alignItems: 'center', gap: 14, padding: '13px 18px', background: V3.card, border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden' }
@@ -214,7 +223,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
     <>
     <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 96px 52px 66px 22px' } : {}), background: 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
-      {row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
+      {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
       {SCORE_WATERMARKS && mvp ? <span aria-hidden style={{ position: 'absolute', left: '64%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: V3.gold, opacity: 0.15, WebkitTextStroke: `2.4px ${V3.gold}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>MVP</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
