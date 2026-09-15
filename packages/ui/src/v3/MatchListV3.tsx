@@ -142,7 +142,13 @@ export function MatchListV3(props: MatchListV3Props) {
                     ) : <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>{perSide === 5 ? '' : `${perSide} vs ${perSide}`}</span>}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
-                    {pending ? (stale ? '—' : '수집중') : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
+                    {/*
+                      ⚠ ★2026-09-15 밤 — 같은 말을 두 번 하고 있었다★ (무한 QA).
+                        바로 왼쪽 칸이 이미 «킬데스 수집중» / «기록 없음» 이라고 말하는데
+                        여기서 또 «수집중» / «—» 을 적어 한 줄에 같은 말이 두 번 나왔다.
+                        칸은 남긴다 (격자가 어긋나면 안 된다) — ★글자만★ 지운다.
+                    */}
+                    {pending ? null : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
                   </span>
                 </div>
                 {isOpen ? (
