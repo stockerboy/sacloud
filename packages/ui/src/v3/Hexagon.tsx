@@ -174,7 +174,11 @@ export function Hexagon({
                   눈금은 9px 아래 줄이고 글자가 더 작아 닿지 않는다.
               */}
               {i === 0 && a.note2 ? (
-                <tspan dx="3" fontSize="8.5" fontWeight="700" fill={V3.textGhost2}>
+                /*
+                 * ★12시만 한 단계 진하게★ — 클랜 카드 맨 위에는 ★구름 배경 띠★ 가 깔려 있어
+                 *   `textGhost2` 로는 묻힌다. 나머지 다섯은 어두운 바탕 위라 그대로 둔다.
+                 */
+                <tspan dx="4" fontSize="8.5" fontWeight="700" fill={V3.textMuted}>
                   {a.note2}
                 </tspan>
               ) : null}
