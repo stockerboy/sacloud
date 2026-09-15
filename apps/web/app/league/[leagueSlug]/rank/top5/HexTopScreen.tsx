@@ -36,7 +36,17 @@ import { useApiReady } from '@/app/providers'
 
 type Side = 'clan' | 'player'
 
-export function HexTopScreen({ leagueSlug }: { leagueSlug: string }) {
+export function HexTopScreen({
+  leagueSlug,
+  /**
+   * ★홈 안에 얹을 때는 머리글을 끈다★ (2026-09-15 사장님: «각리그 홈에다가 top5를 합쳐줘»).
+   * 홈은 이미 자기 제목을 갖고 있어서, 여기 h1 이 또 나오면 제목이 둘이 된다.
+   */
+  embedded = false,
+}: {
+  leagueSlug: string
+  embedded?: boolean
+}) {
   const ready = useApiReady()
   const showsClan = leagueScreen(leagueSlug).clanRank
   const [side, setSide] = useState<Side>(showsClan ? 'clan' : 'player')
@@ -50,17 +60,19 @@ export function HexTopScreen({ leagueSlug }: { leagueSlug: string }) {
   const axes: HexTopAxis[] = (side === 'clan' ? top.data?.data.clan : top.data?.data.player) ?? []
 
   return (
-    <div className="pc-container pb-[var(--section-gap)]">
-      <header style={{ padding: '22px 2px 14px' }}>
-        <h1 style={{ fontSize: 19, fontWeight: 800, color: '#fff', letterSpacing: '-.01em' }}>
-          분야별 TOP 5
-        </h1>
-        <p style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.7, color: V3.textFaint }}>
-          여섯 가지 플레이 성향을 따로 재서, 분야마다 가장 잘하는 다섯을 세웁니다.
-          <br />
-          종합 등수가 아니라 <b style={{ color: '#9cc0ff' }}>«이건 누가 제일 잘하나»</b> 를 봅니다.
-        </p>
-      </header>
+    <div className={embedded ? '' : 'pc-container pb-[var(--section-gap)]'}>
+      {embedded ? null : (
+        <header style={{ padding: '22px 2px 14px' }}>
+          <h1 style={{ fontSize: 19, fontWeight: 800, color: '#fff', letterSpacing: '-.01em' }}>
+            분야별 TOP 5
+          </h1>
+          <p style={{ marginTop: 6, fontSize: 12.5, lineHeight: 1.7, color: V3.textFaint }}>
+            여섯 가지 플레이 성향을 따로 재서, 분야마다 가장 잘하는 다섯을 세웁니다.
+            <br />
+            종합 등수가 아니라 <b style={{ color: '#9cc0ff' }}>«이건 누가 제일 잘하나»</b> 를 봅니다.
+          </p>
+        </header>
+      )}
 
       {/* 클랜 / 개인 — 클랜 기록을 안 주는 리그는 칸 자체가 없다 */}
       {showsClan ? (

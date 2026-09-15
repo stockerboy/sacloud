@@ -126,8 +126,18 @@ export function leagueTabs(leagueSlug: string) {
    * 랭킹 바로 뒤에 선다 — 종합 등수를 본 다음에 «분야별로는?» 이 오는 차례다.
    * 리그를 가리지 않는다. 클랜 기록을 안 주는 리그는 화면 안에서 개인만 보인다.
    */
-  tabs.push({ label: 'TOP5', href: `${base}/rank/top5` })
-  tabs.push({ label: '경기', href: leagueMatchListPath(leagueSlug) })
+  /*
+   * ⚠ ★2026-09-15 — TOP5 와 경기 탭을 없앴다★ (사장님:
+   *   «각리그 홈에다가 top5를 합쳐줘 / 그리고 top5랑 경기페이지는 없애버려»).
+   *
+   *   TOP5 는 ★홈 안으로 들어갔고★, 최근 경기도 홈에 있다. 탭 넷이 셋이 된다.
+   *   화면 파일은 지우지 않았다 — 주소로 들어오면 홈으로 보낸다 (`CLAUDE.md` 1-4).
+   *   되돌리려면 아래 두 줄의 주석을 풀면 된다.
+   */
+  // tabs.push({ label: 'TOP5', href: `${base}/rank/top5` })
+  // tabs.push({ label: '경기', href: leagueMatchListPath(leagueSlug) })
+  /* 위 두 줄을 주석으로 두는 동안 쓰이지 않는다 — 되살릴 때 그대로 쓴다 */
+  void leagueMatchListPath
   /* 리그 안 게시판 (2026-09-02 지시 #14-2 — "게시판은 SPL메뉴 안에 있는거다").
      카테고리가 있는 리그에만 셋째 탭이 붙는다. 10mountain 은 없다 (`leagueScreen` 표가 정한다) */
   if (leagueBoardCategory(leagueSlug) !== null) {

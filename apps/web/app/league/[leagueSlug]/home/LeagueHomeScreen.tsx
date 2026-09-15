@@ -26,6 +26,7 @@ import { MatchListV3 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 import { useApiReady } from '@/app/providers'
+import { HexTopScreen } from '../rank/top5/HexTopScreen'
 
 /** 홈에 보여 주는 최근 경기 줄 수 — 더 보려면 「경기」 탭으로 간다 */
 const HOME_MATCHES = 8
@@ -112,6 +113,18 @@ export default function LeagueHomeScreen({
         </div>
       )}
 
+      {/*
+        * ★분야별 TOP5 를 홈으로 들였다★ (2026-09-15 사장님:
+        * «각리그 홈에다가 top5를 합쳐줘 / top5랑 경기페이지는 없애버려»).
+        *
+        * 순서는 ★오늘 → 분야별 → 최근★ 이다. 깃발은 지금 벌어지는 경쟁이고,
+        * TOP5 는 «이건 누가 제일 잘하나», 최근 경기는 그 근거다.
+        */}
+      <div className="mb-[26px]">
+        <SectionTitle title="분야별 TOP 5" note="축마다 가장 잘하는 다섯입니다." />
+        <HexTopScreen leagueSlug={leagueSlug} embedded />
+      </div>
+
       <SectionTitle title="최근 경기" note="줄을 누르면 스코어보드가 펼쳐집니다." />
       <MatchListV3
         leagueSlug={leagueSlug}
@@ -125,14 +138,8 @@ export default function LeagueHomeScreen({
         expanded={expanded}
         onExpand={loadDetail}
       />
-      <div className="mt-[14px] text-center">
-        <a
-          href={`/league/${leagueSlug}/match`}
-          className="text-[12.5px] text-[var(--v2-text-muted,#8fa0bd)] underline decoration-[rgba(255,255,255,.18)]"
-        >
-          경기 전부 보기
-        </a>
-      </div>
+      {/* ⚠ ★「경기 전부 보기」를 뺐다★ (2026-09-15 사장님이 경기 탭을 없애라 하셨다).
+             링크만 남으면 탭에서 지운 화면으로 다시 들어가게 된다 */}
     </div>
   )
 }
