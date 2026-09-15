@@ -17,7 +17,7 @@
  * ── 자리가 안 차면 안 찬 대로
  *   표본이 모자라 못 잰 줄은 애초에 안 온다 (D-106). 다섯 칸을 «-» 로 채우지 않는다.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import type { HexTopAxis, HexTopRow } from '@sacloud/contract'
@@ -70,8 +70,26 @@ export function HexTopScreen({
    *   자리라 한눈에 견주는 게 낫다. 홈(`embedded`)에서만 탭을 쓴다.
    */
   const [axisKey, setAxisKey] = useState<string | null>(null)
-  const picked = embedded ? (axes.find((a) => a.key === axisKey) ?? axes[0] ?? null) : null
-  const shown = embedded ? (picked === null ? [] : [picked]) : axes
+  /*
+   * ★폰만 탭, PC 는 다 펼친다★ (2026-09-15 · 무한 QA ②).
+   *
+   * PC(1440px)에서 한 축만 보이니 카드가 왼쪽 3분의 1만 쓰고 오른쪽이 텅 비었다.
+   * 폰은 세로가 아까워서 탭이 맞고, PC 는 가로가 남아서 격자가 맞다.
+   *
+   * ⚠ 서버에서 그릴 때는 ★폰으로 친다★ — 좁은 쪽으로 그려 두면 넓은 화면에서
+   *   한 번 더 그려도 글자가 안 넘친다. 반대로 하면 폰에서 잠깐 삐져나온다.
+   */
+  const [narrow, setNarrow] = useState(true)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 720px)')
+    const apply = () => setNarrow(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+  const tabbed = embedded && narrow
+  const picked = tabbed ? (axes.find((a) => a.key === axisKey) ?? axes[0] ?? null) : null
+  const shown = tabbed ? (picked === null ? [] : [picked]) : axes
 
   return (
     <div className={embedded ? '' : 'pc-container pb-[var(--section-gap)]'}>
@@ -117,7 +135,7 @@ export function HexTopScreen({
         * 축 탭 — 홈에 얹었을 때만 나온다 (2026-09-15 · 무한 QA).
         * 여섯을 한꺼번에 펼치면 홈이 6,834px 이 된다. 한 번에 하나만 본다.
         */}
-      {embedded && axes.length > 1 ? (
+      {tabbed && axes.length > 1 ? (
         <div
           style={{
             display: 'flex',
