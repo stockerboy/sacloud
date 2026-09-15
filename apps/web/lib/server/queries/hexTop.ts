@@ -40,10 +40,16 @@ function tallyOf(value: unknown): ClanHexTallyLike | null {
   return value as ClanHexTallyLike
 }
 
-/** 개인 축은 전부 비율(%)이다 — 캐리력만 «판당 킬» 이라 단위를 달리 적는다 */
+/**
+ * 개인 축의 단위.
+ *
+ * ⚠ ★2026-09-15 — 캐리력이 «게임영향력» 이 되면서 퍼센트가 됐다.★
+ *   옛 판은 «판당 킬» 이라 `${raw.toFixed(2)}킬` 로 적었다.
+ *   지금은 «한 라운드에 적 다섯 중 몇 명» 이라 다른 축과 같은 % 다.
+ */
 function playerValueText(key: TraitAxisKey, raw: number | null): string {
   if (raw === null) return '알수없음'
-  if (key === 'carry') return `${raw.toFixed(2)}킬`
+  void key
   return `${raw.toFixed(1)}%`
 }
 

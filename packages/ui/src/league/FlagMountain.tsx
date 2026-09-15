@@ -129,17 +129,17 @@ export function FlagMountain({
       label: playerHexLabelOf(a.key as TraitAxisKey, null),
       value: a.pct,
       /*
-       * 단위 — ★캐리력은 «킬», 선짤·연속킬은 «회»★ (2026-09-15 사장님:
-       * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔»). 나머지는 %.
+       * 단위 — ★선짤·연속킬만 «회»★ 이고 나머지는 % 다 (2026-09-15 사장님).
+       *
+       * ⚠ 같은 날 캐리력도 «킬» 이었다. 이름이 ★게임영향력★ 으로 바뀌면서
+       *   «한 라운드에 적 다섯 중 몇 명» 이 되어 ★퍼센트★ 가 됐다.
        */
       note:
         a.value === null
           ? '측정중'
-          : a.key === 'carry'
-            ? `${a.value}킬`
-            : a.key === 'opening' || a.key === 'burst'
-              ? `${a.value}회`
-              : `${a.value}%`,
+          : a.key === 'opening' || a.key === 'burst'
+            ? `${a.value}회`
+            : `${a.value}%`,
       /*
        * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그 함수는 «등수» 를 받는다.
        *   여기 값은 ★백분위★ (높을수록 좋다) 라 승률과 같은 잣대를 쓴다.

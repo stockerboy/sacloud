@@ -57,10 +57,15 @@ const areaOf = (axes: readonly Axis[]) =>
     })
     .join(' ')
 
-/** 판당 몇 번인 축 — 나머지는 퍼센트다 */
+/**
+ * 판당 몇 번인 축 — 나머지는 퍼센트다.
+ *
+ * ★게임영향력은 퍼센트다★ (2026-09-15 사장님) — «한 라운드에 적 다섯 중 몇 명».
+ * ⚠ 옛 판은 «3킬» 처럼 횟수로 적었다. 15킬 한 사람이 3킬로 떠서 작아 보였다.
+ */
 const valueText = (a: Axis): string => {
   if (a.value === null) return '—'
-  if (a.unit === 'per_game') return a.key === 'carry' ? `${a.value}킬` : `${a.value}회`
+  if (a.unit === 'per_game') return `${a.value}회`
   return `${a.value}%`
 }
 
@@ -68,14 +73,19 @@ const valueText = (a: Axis): string => {
  * 축 옆의 작은 글씨 — 축마다 뜻이 다르다 (2026-09-15 사장님).
  *
  *   세이브   «3/9»  몇 번 혼자 남아 몇 번 이겼나. «3회» 가 무거운지 가벼운지 여기서 안다
- *   캐리력   «×2»   ★그 최고를 몇 번 냈나★ — 4킬을 두 번 낸 사람이 한 번보다 위다
+ *   게임영향력 «3킬 ×2»  몇 킬이었고 그 최고를 몇 번 냈나 — 퍼센트만으론 킬 수가 안 보인다
  *   싸움·소수싸움  «7/15»  이긴 수 / 붙은 수
  *   선짤·연속킬    비운다 — 분모가 판수(=1)라 세는 게 뜻이 없다
  */
 const partsText = (a: Axis): string => {
   if (a.numerator === null) return ''
   if (a.key === 'save') return `${a.numerator}/${a.denominator ?? 0}`
-  if (a.key === 'carry') return a.numerator > 1 ? `×${a.numerator}` : ''
+  /* 값이 «60%» 라 몇 킬인지 안 보인다 — 분모(그 최대 킬)를 같이 적는다 */
+  if (a.key === 'carry') {
+    const kills = a.denominator ?? 0
+    if (kills <= 0) return ''
+    return a.numerator > 1 ? `${kills}킬 ×${a.numerator}` : `${kills}킬`
+  }
   if (a.unit === 'per_game') return ''
   return `${a.numerator}/${a.denominator ?? 0}`
 }

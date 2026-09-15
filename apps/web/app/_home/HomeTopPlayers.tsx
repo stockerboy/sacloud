@@ -85,14 +85,14 @@ export function HomeTopPlayers() {
                   {row.unit === 'percent' ? `${row.value.toFixed(1)}%` : row.value.toFixed(2)}
                 </span>
                 {/*
-                 * ⚠ ★「킬/판」은 캐리력에만 붙는다★ (2026-09-15).
-                 *   선짤·연속킬도 «판당» 단위가 되면서 같은 `per_game` 이 됐는데,
-                 *   그쪽은 킬이 아니라 ★횟수★ 다. 축을 보고 말을 고른다.
+                 * ⚠ ★같은 날 두 번 바뀐 자리다★ (2026-09-15).
+                 *   ① 선짤·연속킬이 «판당» 단위가 되면서 캐리력과 같은 `per_game` 이 됐다
+                 *      — 그때는 «킬/판» 과 «회/판» 을 축으로 갈랐다
+                 *   ② 캐리력이 ★게임영향력★ 이 되며 퍼센트로 옮겨 갔다
+                 *      — 이제 `per_game` 은 선짤·연속킬뿐이라 늘 «회/판» 이다
                  */}
                 {row.unit === 'per_game' ? (
-                  <span className="text-[9.5px] text-[var(--v2-text-ghost)]">
-                    {row.key === 'carry' ? '킬/판' : '회/판'}
-                  </span>
+                  <span className="text-[9.5px] text-[var(--v2-text-ghost)]">회/판</span>
                 ) : null}
               </span>
             </li>

@@ -132,8 +132,8 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
           : a.unit === 'seconds'
             ? mmss(a.value)
             : a.unit === 'per_game'
-              /* 캐리력은 «한 라운드 최대 킬» 이라 정수다 — «4.0킬» 로 적지 않는다 (2026-09-15) */
-              ? `${Number.isInteger(a.value) ? a.value : a.value.toFixed(1)}${a.key === 'carry' ? '킬' : '회'}`
+              /* ⚠ 게임영향력은 2026-09-15 에 퍼센트가 됐다 — 여기로 안 온다 */
+              ? `${Number.isInteger(a.value) ? a.value : a.value.toFixed(1)}회`
               : `${Math.round(a.value * (a.value <= 1 ? 100 : 1))}%`,
       /*
        * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그건 «등수» 를 받는다.

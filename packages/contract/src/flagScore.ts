@@ -206,6 +206,51 @@ export function saveScaleOf(saves: number): number {
  *
  * ★화면 값은 최대킬 그대로★ 다 («4킬»). 꼬리는 ★줄 세우기에만★ 쓴다.
  */
+/**
+ * ★한 라운드에 지울 수 있는 최대 인원★ — 5대5 이므로 다섯이다 (2026-09-15 사장님).
+ *
+ * > «5킬까지 눈금을 만들어야해»
+ *
+ * 실측에서도 한 라운드 최고가 5킬이었다 (1,060판에 6킬은 한 번 — 인원이 어긋난 응답).
+ * 5킬을 넘는 값은 100% 로 자른다.
+ */
+export const INFLUENCE_FULL_KILLS = 5
+
+/**
+ * ★킬이 적으면 아주 약간 깎는다★ (2026-09-15 사장님).
+ *
+ * > «아무리 4킬 5킬을 했어도 킬수가 너무 적으면 아주약간 감점을 줘»
+ *
+ * 한 라운드만 몰아치고 나머지를 못 하면 «게임영향력» 이라 부르기 어렵다.
+ * 다만 ★아주 약간★ 이라 하셨으므로 ★최대 10%★ 만 깎는다 —
+ * 그래야 5킬이 4킬 아래로 내려가지 않는다 (100×0.9 = 90 > 80).
+ *
+ * ```
+ * 판당 8킬 이상   깎지 않는다 (실측 판당 평균이 8.48킬이다)
+ * 판당 0킬        90% 만 남는다  ← 바닥
+ * 그 사이         고르게
+ * ```
+ * 예) 5킬을 냈는데 그 판 총 5킬이면 100% → 96.3% · 총 12킬이면 100% 그대로.
+ */
+export const INFLUENCE_VOLUME_FULL_KPG = 8
+/** 아무리 킬이 적어도 이만큼은 남는다 */
+export const INFLUENCE_VOLUME_FLOOR = 0.9
+
+/**
+ * 한 라운드 최대 킬 → «적 팀의 몇 %를 혼자 지웠나» (1킬 20% … 5킬 100%).
+ *
+ * `killsPerGame` 을 주면 위의 «킬이 적으면 약간 감점» 이 걸린다. 모르면 안 깎는다.
+ */
+export function influencePercentOf(maxRoundKills: number, killsPerGame: number | null = null): number {
+  if (maxRoundKills <= 0) return 0
+  const base = (Math.min(maxRoundKills, INFLUENCE_FULL_KILLS) / INFLUENCE_FULL_KILLS) * 100
+  if (killsPerGame === null || !Number.isFinite(killsPerGame)) return round1(base)
+  const volume =
+    INFLUENCE_VOLUME_FLOOR +
+    (1 - INFLUENCE_VOLUME_FLOOR) * Math.min(1, Math.max(0, killsPerGame) / INFLUENCE_VOLUME_FULL_KPG)
+  return round1(base * volume)
+}
+
 export const CARRY_BY_TOTAL_KILLS = false
 /** 꼬리의 무게 — 한 번 더 냈을 때 최대킬 0.1 만큼 앞선다 (1킬 차이를 못 넘게 작게) */
 export const CARRY_TIE_WEIGHT = 0.1
@@ -305,12 +350,25 @@ export function dayAxisValues(
      * ⚠ 옛 값은 판당 킬이었다 — `CARRY_BY_TOTAL_KILLS` 로 되돌릴 수 있다.
      *   줄 세우는 잣대는 여기가 아니라 `carryScoreOf` 다 (동점을 가르는 꼬리가 붙는다).
      */
+    /*
+     * ★게임영향력 — 한 라운드에 적 팀의 몇 %를 혼자 지웠나★ (2026-09-15 사장님:
+     * «5킬까지 눈금을 만들어야해 / 앞으로 캐력의 이름은 게임영향력»).
+     *
+     * ⚠ 이름과 뜻이 같은 날 두 번 바뀌었다.
+     *   ① 옛 판 — «판당 킬» (`CARRY_BY_TOTAL_KILLS` 로 되돌릴 수 있다)
+     *   ② 낮 — «한 라운드 최대 킬» (3킬 처럼 횟수로 적었다)
+     *   ③ 지금 — 그 최대 킬을 ★적 다섯 기준 퍼센트★ 로 적는다
+     *   ③으로 바꾼 이유: «15킬 한 사람이 3킬로 뜬다» 는 게 어색했고,
+     *   다른 축이 전부 % 라 단위도 안 맞았다.
+     *
+     * 줄 세우는 잣대는 여기가 아니라 `carryScoreOf` 다 — 동점을 가르는 꼬리가 붙는다.
+     */
     carry: CARRY_BY_TOTAL_KILLS
       ? t.games > 0
         ? Math.round((t.kill / t.games) * 100) / 100
         : null
       : t.maxRoundKills > 0
-        ? t.maxRoundKills
+        ? influencePercentOf(t.maxRoundKills, t.games > 0 ? t.kill / t.games : null)
         : gate.emptyIsZero
           ? 0
           : null,

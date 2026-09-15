@@ -30,7 +30,7 @@
  * 부리그가 셋이 아닌 리그(SPL)는 티어계수 1 · 클랜보정 0 이다 — 상대 티어라는 것이 없다.
  * [가정] 사장님이 따로 정하지 않았다. 등수는 리그 안에서만 매기므로 순위에는 영향이 없다.
  */
-import { OPENING_BASELINE } from '@sacloud/contract'
+import { CARRY_BY_TOTAL_KILLS, OPENING_BASELINE, influencePercentOf } from '@sacloud/contract'
 import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
 
 /** 공식이 바뀌면 올린다. 화면은 이 판으로 접힌 줄만 믿는다 */
@@ -140,6 +140,12 @@ export interface PlayerHexInput {
   rounds: number
   firstKills: number
   burstRounds: number
+  /**
+   * ★게임영향력의 재료★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한 값.
+   * 값은 이걸 판수로 나눈 ★평균★ 을 적 다섯 기준 퍼센트로 바꾼 것이다.
+   * 이 칸이 없던 옛 줄은 0 이고, 그때는 축이 `null` 이다 (0% 라고 우기지 않는다).
+   */
+  maxRoundKills?: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -195,7 +201,26 @@ export function axisValuesOf(
   return {
     save: input.aloneRounds >= MIN_SITUATION_ROUNDS ? round1((input.aloneWon / input.aloneRounds) * 100) : null,
     duel: duels >= MIN_DUELS ? round1((duelWon / duels) * 100) : null,
-    carry: input.games > 0 ? Math.round((input.kills / input.games) * 100) / 100 : null,
+    /*
+     * ★게임영향력 — 매 판 한 라운드에 적 다섯 중 몇 명을 지웠나★ (2026-09-15 사장님:
+     * «5킬까지 눈금을 만들어야해 / 앞으로 캐력의 이름은 게임영향력 으로 바꾼다»).
+     *
+     * ⚠ 옛 값은 ★판당 킬★ 이었다 (`CARRY_BY_TOTAL_KILLS` 로 되돌릴 수 있다).
+     *   이름이 «캐리력» 이던 판은 `TRAIT_AXIS_LABEL_V1` 에 남겼다.
+     *
+     * ⚠ ★시즌은 «최대» 가 아니라 «평균» 이다.★ 한 판 육각은 그 판의 최대 라운드 킬을
+     *   그대로 쓰지만, 시즌은 판이 수백이라 최대를 쓰면 거의 전원이 4~5킬(80~100%)로
+     *   몰려 줄이 안 선다. 경기마다의 최대를 ★판수로 나눈다★ — 2킬씩 꾸준하면 40% 다.
+     *
+     * 재료가 없는 옛 줄(합이 0)은 `null` 이다 — 0% 라고 우기지 않는다 (D-106).
+     */
+    carry: CARRY_BY_TOTAL_KILLS
+      ? input.games > 0
+        ? Math.round((input.kills / input.games) * 100) / 100
+        : null
+      : input.games > 0 && (input.maxRoundKills ?? 0) > 0
+        ? influencePercentOf((input.maxRoundKills as number) / input.games, input.kills / input.games)
+        : null,
     /*
      * ★선짤·연속킬은 「판당 몇 번」 이다★ (2026-09-15 사장님:
      * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔 / 클랜축도 마찬가지»).

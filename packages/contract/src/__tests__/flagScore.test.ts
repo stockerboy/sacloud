@@ -50,18 +50,39 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
     const v = dayAxisValues(tally())
     expect(v.save).toBe(50)
     expect(v.duel).toBeCloseTo(66.7, 1)
-    /* ★캐리력은 판당 킬이 아니라 «한 라운드 최대 킬» 이다★ (2026-09-15 사장님) */
-    expect(v.carry).toBe(3)
+    /* ★게임영향력 = 한 라운드에 적 다섯 중 몇 명★ (2026-09-15 사장님) — 3킬이면 60% */
+    expect(v.carry).toBe(60)
     /* ★선짤·연속킬은 판당 몇 번★ (2026-09-15 사장님) — 12회/6판 · 9회/6판 */
     expect(v.opening).toBe(2)
     expect(v.burst).toBe(1.5)
     expect(v.outnumbered).toBeCloseTo(55.6, 1)
   })
 
-  it('★캐리력 잣대는 «최고를 몇 번 냈나» 로 동점을 가른다★', () => {
-    /* 적는 값은 3킬로 같지만, 두 번 낸 쪽이 줄에서 앞선다 */
-    expect(dayAxisValues(tally({ maxRoundKills: 3, maxRoundTimes: 1 })).carry).toBe(3)
-    expect(dayAxisValues(tally({ maxRoundKills: 3, maxRoundTimes: 2 })).carry).toBe(3)
+  it('★게임영향력 눈금 — 5킬이 100%★ (2026-09-15 사장님 «5킬까지 눈금을 만들어야해»)', () => {
+    expect(dayAxisValues(tally({ maxRoundKills: 1 })).carry).toBe(20)
+    expect(dayAxisValues(tally({ maxRoundKills: 2 })).carry).toBe(40)
+    expect(dayAxisValues(tally({ maxRoundKills: 3 })).carry).toBe(60)
+    expect(dayAxisValues(tally({ maxRoundKills: 4 })).carry).toBe(80)
+    expect(dayAxisValues(tally({ maxRoundKills: 5 })).carry).toBe(100)
+    /* 인원이 어긋난 응답으로 6킬이 나와도 테두리를 넘지 않는다 */
+    expect(dayAxisValues(tally({ maxRoundKills: 6 })).carry).toBe(100)
+  })
+
+  it('★킬이 적으면 아주 약간 깎는다★ (2026-09-15 사장님) — 최대 10%', () => {
+    /* 5킬을 냈는데 그 판 총 5킬 = 한 라운드에 다 몰아친 것 */
+    const thin = dayAxisValues(tally({ games: 1, kill: 5, maxRoundKills: 5 })).carry as number
+    const thick = dayAxisValues(tally({ games: 1, kill: 12, maxRoundKills: 5 })).carry as number
+    expect(thick).toBe(100)
+    expect(thin).toBeLessThan(thick)
+    /* ★5킬이 4킬 아래로 내려가면 안 된다★ — 깎아도 90% 는 남는다 */
+    expect(thin).toBeGreaterThan(80)
+    expect(dayAxisValues(tally({ games: 1, kill: 0, maxRoundKills: 5 })).carry).toBe(90)
+  })
+
+  it('★게임영향력 잣대는 «최고를 몇 번 냈나» 로 동점을 가른다★', () => {
+    /* 적는 값은 60% 로 같지만, 두 번 낸 쪽이 줄에서 앞선다 */
+    expect(dayAxisValues(tally({ maxRoundKills: 3, maxRoundTimes: 1 })).carry).toBe(60)
+    expect(dayAxisValues(tally({ maxRoundKills: 3, maxRoundTimes: 2 })).carry).toBe(60)
     const one = dayAxisScores(tally({ maxRoundKills: 3, maxRoundTimes: 1 })).carry as number
     const two = dayAxisScores(tally({ maxRoundKills: 3, maxRoundTimes: 2 })).carry as number
     expect(two).toBeGreaterThan(one)

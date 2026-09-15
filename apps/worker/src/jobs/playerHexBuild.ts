@@ -505,6 +505,7 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         alonewon: number
         outrounds: number
         outwon: number
+        maxroundkills: number
         sduelwon: number
         sduellost: number
         rduelwon: number
@@ -530,6 +531,10 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              SUM(h."rounds" * mw.w) AS rounds,
              SUM(h."firstKills" * mw.w) AS firstkills,
              SUM(h."burstRounds" * mw.w) AS burstrounds,
+             -- ★게임영향력★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한다.
+             -- 시즌 값은 이걸 판수로 나눈 ★평균★ 이다. 시즌 최대를 쓰면 거의 전원이
+             -- 4~5킬(80~100%)로 몰려 줄이 안 선다.
+             SUM(h."maxRoundKills" * mw.w) AS maxroundkills,
              SUM(h."aloneRounds" * mw.w) AS alonerounds,
              SUM(h."aloneWon" * mw.w) AS alonewon,
              SUM(h."outRounds" * mw.w) AS outrounds,
@@ -612,6 +617,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rounds: h?.rounds ?? 0,
         firstKills: h?.firstkills ?? 0,
         burstRounds: h?.burstrounds ?? 0,
+        /* 경기별 «한 라운드 최대 킬» 의 합 — 값은 판수로 나눠 평균을 낸다 (2026-09-15) */
+        maxRoundKills: h?.maxroundkills ?? 0,
         aloneRounds: h?.alonerounds ?? 0,
         aloneWon: h?.alonewon ?? 0,
         outRounds: h?.outrounds ?? 0,

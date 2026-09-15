@@ -81,7 +81,18 @@ interface StatLike {
 type Axis = MatchPlayerStat['hexagon'][number]
 
 /** «판당 몇 번» 인 축 — 나머지는 퍼센트다 (깃발·오늘의 셋과 같은 구분) */
-const PER_GAME = new Set<string>(['carry', 'opening', 'burst'])
+const PER_GAME = new Set<string>(['opening', 'burst'])
+
+/**
+ * ★고정 눈금을 쓰는 축★ — 백분위가 아니라 값 그대로 그린다 (2026-09-15 사장님).
+ *
+ *   세이브      0회 중심 · 1회 중간테두리 · 4회 바깥테두리
+ *   게임영향력  한 라운드에 적 다섯 중 몇 명 — 1킬 20% … ★5킬 100%★
+ *
+ * 둘 다 «한 판에 전원 0» 인 경기가 흔하다. 백분위로 그리면 그 열 명이 모두 가운데에
+ * 찍혀서 «아무도 못 한 판» 이 «다들 보통은 했다» 로 보인다. 고정 눈금은 안 속인다.
+ */
+const FIXED_SCALE = new Set<string>(['save', 'carry'])
 
 /**
  * ★세이브만 백분위를 안 쓴다★ (2026-09-15 사장님) — 횟수 고정 눈금이다.
@@ -183,11 +194,17 @@ export function matchHexOf(
         /* 세이브는 «이긴 횟수» 를 그대로 값으로 쓰고, 자리도 고정 눈금이 정한다 */
         const saveCount = part.numerator ?? 0
         const isSave = SAVE_BY_COUNT && key === 'save'
+        /* 게임영향력은 이미 퍼센트라 ★값이 곧 자리★ 다 (2026-09-15) */
+        const isFixed = FIXED_SCALE.has(key)
         return {
           key,
           label: playerHexLabelOf(key as TraitAxisKey, b.weapon),
           value: isSave ? saveCount : value,
-          pct: isSave ? saveScaleOf(saveCount) : flagPercentileMid(pools.get(key) ?? [], b.scores[key] ?? null),
+          pct: isSave
+            ? saveScaleOf(saveCount)
+            : isFixed
+              ? (value ?? 0)
+              : flagPercentileMid(pools.get(key) ?? [], b.scores[key] ?? null),
           unit: isSave || PER_GAME.has(key) ? ('per_game' as const) : ('percent' as const),
           numerator: part.numerator,
           denominator: part.denominator,

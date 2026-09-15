@@ -260,7 +260,8 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
         value: a.value,
         pct: a.pct,
         unit:
-          a.key === 'carry' || a.key === 'opening' || a.key === 'burst'
+          /* ★게임영향력은 퍼센트다★ (2026-09-15 사장님) — 옛 판에서는 판당 킬이었다 */
+          a.key === 'opening' || a.key === 'burst'
             ? ('per_game' as const)
             : ('percent' as const),
       })),

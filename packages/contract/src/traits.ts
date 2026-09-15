@@ -134,13 +134,24 @@ export type TraitAxisKeyV3 = (typeof TRAIT_AXIS_KEYS_V3)[number]
  * 옛 4번(`matchman`) · 빈 자리(`undecided`) · 옛 5번(`finish`)의 이름도 남긴다.
  * `TRAIT_AXIS_KEYS_V1` · `TRAIT_AXIS_KEYS_V2` · `TRAIT_AXIS_KEYS_V3` 참조.
  */
+/**
+ * ★옛 이름표★ (2026-09-15 이전). 지우지 않는다 — 옛 글·옛 화면이 이 말을 쓴다.
+ *   `carry` 가 «캐리력» 이던 판이다.
+ */
+export const TRAIT_AXIS_LABEL_V1 = { carry: { sniper: '캐리력', rifle: '캐리력' } } as const
+
 export const TRAIT_AXIS_LABEL: Record<
   TraitAxisKey | TraitAxisKeyV1 | TraitAxisKeyV2 | TraitAxisKeyV3,
   { sniper: string; rifle: string }
 > = {
   save: { sniper: '세이브', rifle: '세이브' },
   duel: { sniper: '스나싸움', rifle: '샷싸움' },
-  carry: { sniper: '캐리력', rifle: '캐리력' },
+  /**
+   * ⚠ ★2026-09-15 «캐리력» → «게임영향력»★ (사장님: «앞으로 캐력의 이름은 게임영향력 으로 바꾼다»).
+   *   같은 날 뜻도 바뀌었다 — 옛 뜻은 «판당 킬», 지금은 ★한 라운드에 지운 적의 비율★ 이다
+   *   (5명이 상대이므로 5킬 = 100%). 옛 이름은 `TRAIT_AXIS_LABEL_V1` 에 남긴다.
+   */
+  carry: { sniper: '게임영향력', rifle: '게임영향력' },
   /** 4번 축 — **라운드의 첫 킬을 딴 비율** (2026-08-31 사용자 확정 · D-214) */
   /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름은 `기회창출` 이었다 */
   opening: { sniper: '선짤', rifle: '선짤' },
