@@ -778,14 +778,32 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
    *   ★다른 물음★ 이다. 계약(`showsTier`)이 정하고 화면은 따른다.
    */
   const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
+  /*
+   * ⚠ ★2026-09-15 밤 — 같은 줄이 두 번 서던 것★ (무한 QA).
+   *
+   *   실측 (LLM · MiraGe.):
+   *   ```
+   *     MiraGe.  VS 전체    8승 4패  66.7%
+   *     MiraGe.  VS 전체   17승 6패  73.9%
+   *   ```
+   *   줄을 ★몇 개 만들지★ 는 `division_count` 가 정하고, 줄에 ★뭐라 적을지★ 는
+   *   `tiered` 가 정했다. 두 판단이 어긋나 있었다 — 티어를 안 쓰는 리그는 구간이
+   *   둘이어도 둘 다 «전체» 라고 적으니, 같은 이름이 두 줄 서고 무엇이 다른지
+   *   알 수가 없다 (부리그 값은 DB 에 남아 있어 SPL 도 `division_count` 가 2 다).
+   *
+   *   ★티어를 안 쓰면 구간도 안 나눈다.★ 「전체」 한 줄에 모든 상대가 선다.
+   */
+  /** 티어를 안 쓰는 리그의 단 하나뿐인 구간 열쇠 — 실제 `division` 과 안 겹치는 값 */
+  const ALL_TIERS = 0
   const tiers = useMemo(() => {
+    if (!tiered) return [ALL_TIERS]
     const set = new Set<number>()
     for (let d = 1; d <= Math.max(1, data.league.division_count); d += 1) set.add(d)
     for (const r of h2h) if (r.division !== null) set.add(r.division)
     return [...set].sort((a, b) => a - b)
-  }, [h2h, data.league.division_count])
-  /* 처음에는 ★자기 구간★ 만 펴 둔다 */
-  const [open, setOpen] = useState<number | null>(data.division ?? null)
+  }, [h2h, data.league.division_count, tiered])
+  /* 처음에는 ★자기 구간★ 만 펴 둔다. 구간이 하나뿐이면 그것을 편다 */
+  const [open, setOpen] = useState<number | null>(tiered ? data.division ?? null : ALL_TIERS)
   return (
     <div style={{ marginTop: 14, ...cardStyle }}>
       <CardHead title="클랜별 전적" right={
@@ -793,10 +811,21 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
       } />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 16px' }}>
         {tiers.map((t) => {
-          const rows = h2h.filter((r) => r.division === t)
+          /* 티어를 안 쓰면 구간을 안 나눈다 — 맞대결 기록을 통째로 본다 */
+          const rows = tiered ? h2h.filter((r) => r.division === t) : h2h
           const byId = new Map(rows.map((r) => [r.league_clan_id, r]))
-          /* 그 구간의 모든 클랜 — 많이 붙은 순, 안 붙어 본 클랜은 뒤 */
-          const all = (tierClansOf(t) ?? [])
+          /* 그 구간의 모든 클랜 — 많이 붙은 순, 안 붙어 본 클랜은 뒤.
+             구간을 안 나눌 때는 ★모든 구간을 합쳐서★ 한 줄에 다 세운다 */
+          const pool = tiered
+            ? (tierClansOf(t) ?? [])
+            : (() => {
+                const seen = new Map<string, ClanRankRow>()
+                for (let d = 1; d <= Math.max(1, data.league.division_count); d += 1) {
+                  for (const c of tierClansOf(d) ?? []) seen.set(c.league_clan_id, c)
+                }
+                return [...seen.values()]
+              })()
+          const all = pool
             .filter((c) => c.league_clan_id !== data.id)
             .map((c) => ({ id: c.league_clan_id, clan: c.clan, games: (byId.get(c.league_clan_id)?.win ?? 0) + (byId.get(c.league_clan_id)?.lose ?? 0) }))
             .sort((a, b) => b.games - a.games || (a.clan.name < b.clan.name ? -1 : 1))
