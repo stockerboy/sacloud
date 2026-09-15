@@ -315,9 +315,32 @@ export async function runBattlelogLineup(
     for (const row of stored) {
       if (registered.has(row.clanId)) clanOfNumber.set(row.clanNo, row.clanId)
     }
-    /* ② 리그 전용 표가 이긴다 — 저장된 표는 리그를 모른다 */
-    for (const [clanNo, clanId] of await iplClanNumberMap(league.id)) {
-      clanOfNumber.set(clanNo, clanId)
+    /*
+     * ② 리그 전용 표가 이긴다 — 저장된 표는 리그를 모른다.
+     *
+     * ── ⚠ ★이 단계가 실패해도 라인업은 돈다★ (2026-09-15)
+     *   이 표를 만드는 질의(`loadSubjectClanNoPairs`)가 `BarracksClanMatchRaw`
+     *   ★56만 줄 · 1.18GB★ 에서 payload 를 꺼내 `DISTINCT` 를 건다.
+     *   운영에서 ★DB 시간초과(57014)★ 로 죽기 시작했고, 그 바람에
+     *   ★라인업 잡이 통째로 멈췄다★ — 오늘 23번 돌아 완료된 회차가 0번이었다.
+     *   배틀로그는 다 들어와 있는데 명단이 안 만들어져 화면에 「기록 없음」이 줄줄이 떴다
+     *   (사장님: «기록이 없는건 또 무야»).
+     *
+     *   ★보정이 본 작업을 막으면 안 된다.★ ① 의 저장된 표(`BarracksClanNumber`)가
+     *   주 재료이고 이것은 ★그 위에 덮는 보정★ 이다. 실패하면 보정 없이 간다 —
+     *   그러면 개명한 클랜 몇 곳의 경기만 못 풀고, 나머지는 전부 살아난다.
+     *   ★조용히 넘기지 않는다★ — 경고를 찍어 사람이 알게 한다.
+     *
+     *   ⚠ 진짜 해결은 저 표를 가볍게 하는 것이다 (`BarracksClanMatchRaw` 정리 또는
+     *     쌍을 미리 저장). `docs/ORDERS.md` 에 남긴다.
+     */
+    try {
+      for (const [clanNo, clanId] of await iplClanNumberMap(league.id)) {
+        clanOfNumber.set(clanNo, clanId)
+      }
+    } catch (error) {
+      const why = error instanceof Error ? error.message.slice(0, 120) : String(error)
+      warn(`${league.slug} 클랜번호 보정을 건너뛴다 — 저장된 표로만 간다 (${why})`)
     }
     numberOfLeague.set(league.id, clanOfNumber)
     if (clanOfNumber.size === 0) {
