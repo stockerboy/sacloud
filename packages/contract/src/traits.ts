@@ -145,12 +145,26 @@ export const TRAIT_AXIS_LABEL_V1 = {
   burst: { sniper: '연속킬', rifle: '연속킬' },
 } as const
 
+/** ★2026-09-15 밤까지 쓰던 2번 축 이름★ — 라플이 «샷싸움» 이던 판이다. 지우지 않는다 */
+export const TRAIT_AXIS_LABEL_V2_DUEL = { sniper: '스나싸움', rifle: '샷싸움' } as const
+
 export const TRAIT_AXIS_LABEL: Record<
   TraitAxisKey | TraitAxisKeyV1 | TraitAxisKeyV2 | TraitAxisKeyV3,
   { sniper: string; rifle: string }
 > = {
   save: { sniper: '세이브', rifle: '세이브' },
-  duel: { sniper: '스나싸움', rifle: '샷싸움' },
+  /**
+   * ⚠ ★2026-09-15 밤 — 라플 쪽 이름을 «샷싸움» → «라이플화력» 으로★ (사장님:
+   *   «샷싸움을 라이플 화력으로 이름만 바꿔줘 (둘이 다르지만 눈속임)»).
+   *
+   *   ★계산은 한 글자도 안 바꿨다.★ 여기 «라이플화력» 은 ★라플끼리 붙어 이긴 비율★ 이고,
+   *   클랜 육각의 «라이플화력» 은 ★스나가 아무것도 못 한 라운드의 킬 몫★ 이다 —
+   *   ★서로 다른 값★ 이다. 사장님도 괄호로 그걸 짚으셨다.
+   *   개인·클랜 육각에 같은 이름이 서서 ★사용자에게 한 낱말로 읽히게★ 하려는 것이다.
+   *
+   *   옛 이름은 아래 `TRAIT_AXIS_LABEL_V2_DUEL` 에 남긴다 (`CLAUDE.md` 1-4).
+   */
+  duel: { sniper: '스나싸움', rifle: '라이플화력' },
   /**
    * ⚠ ★2026-09-15 «캐리력» → «게임영향력»★ (사장님: «앞으로 캐력의 이름은 게임영향력 으로 바꾼다»).
    *   같은 날 뜻도 바뀌었다 — 옛 뜻은 «판당 킬», 지금은 ★한 라운드에 지운 적의 비율★ 이다
