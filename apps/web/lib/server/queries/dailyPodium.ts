@@ -265,6 +265,9 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
         label: playerHexLabelOf(a.key, w),
         value: a.value,
         pct: a.pct,
+        /* ★그날 뛴 사람들 안에서의 등수★ (2026-09-15 사장님 «퍼센트 말고 순위로») */
+        rank: a.rank,
+        total: a.total,
         unit:
           /*
            * ★선짤만 «판당 n.n회»★ 다 (2026-09-15 사장님).
