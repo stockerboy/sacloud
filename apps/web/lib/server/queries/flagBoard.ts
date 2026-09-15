@@ -98,6 +98,8 @@ interface DayRow {
   rounds: number
   firstKills: number
   burstRounds: number
+  maxRoundKills: number
+  maxRoundTimes: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -145,6 +147,18 @@ async function dayRowsOf(leagueId: string, day: FlagDay): Promise<DayRow[]> {
             COALESCE(SUM(h.rounds), 0)::int       AS rounds,
             COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
             COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
+            /*
+             * ★캐리력은 «한 라운드 최대 킬»★ — ★더하지 않는다.★ 가장 큰 것을 남긴다.
+             *
+             * ⚠ 「그 최대를 낸 경기의 횟수」를 고르려면 «최대» 를 두 번 써야 하는데
+             *   집계 안에 창함수를 중첩할 수 없다. 배열 비교로 한 번에 고른다 —
+             *   Postgres 의 배열 대소는 ★앞 칸부터 차례로★ 보므로
+             *   MAX(ARRAY[킬, 횟수]) 는 «가장 많이 몰아친 경기, 그중 더 자주 낸 쪽» 이다.
+             *   (⚠ SQL 주석 안에 백틱을 쓰면 이 template literal 이 끊긴다)
+             *   그래서 [2] 는 ★그 최고를 세운 경기에서 몇 번 냈나★ 다 (2026-09-15).
+             */
+            COALESCE(MAX(h."maxRoundKills"), 0)::int AS "maxRoundKills",
+            COALESCE((MAX(ARRAY[h."maxRoundKills", h."maxRoundTimes"]))[2], 0)::int AS "maxRoundTimes",
             COALESCE(SUM(h."aloneRounds"), 0)::int AS "aloneRounds",
             COALESCE(SUM(h."aloneWon"), 0)::int    AS "aloneWon",
             COALESCE(SUM(h."outRounds"), 0)::int   AS "outRounds",
@@ -192,6 +206,18 @@ async function daySlotRowsOf(leagueId: string, day: FlagDay): Promise<(DayRow & 
             COALESCE(SUM(h.rounds), 0)::int       AS rounds,
             COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
             COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
+            /*
+             * ★캐리력은 «한 라운드 최대 킬»★ — ★더하지 않는다.★ 가장 큰 것을 남긴다.
+             *
+             * ⚠ 「그 최대를 낸 경기의 횟수」를 고르려면 «최대» 를 두 번 써야 하는데
+             *   집계 안에 창함수를 중첩할 수 없다. 배열 비교로 한 번에 고른다 —
+             *   Postgres 의 배열 대소는 ★앞 칸부터 차례로★ 보므로
+             *   MAX(ARRAY[킬, 횟수]) 는 «가장 많이 몰아친 경기, 그중 더 자주 낸 쪽» 이다.
+             *   (⚠ SQL 주석 안에 백틱을 쓰면 이 template literal 이 끊긴다)
+             *   그래서 [2] 는 ★그 최고를 세운 경기에서 몇 번 냈나★ 다 (2026-09-15).
+             */
+            COALESCE(MAX(h."maxRoundKills"), 0)::int AS "maxRoundKills",
+            COALESCE((MAX(ARRAY[h."maxRoundKills", h."maxRoundTimes"]))[2], 0)::int AS "maxRoundTimes",
             COALESCE(SUM(h."aloneRounds"), 0)::int AS "aloneRounds",
             COALESCE(SUM(h."aloneWon"), 0)::int    AS "aloneWon",
             COALESCE(SUM(h."outRounds"), 0)::int   AS "outRounds",
@@ -226,6 +252,8 @@ const tallyOf = (r: DayRow): FlagDayTally => ({
   rounds: Number(r.rounds),
   firstKills: Number(r.firstKills),
   burstRounds: Number(r.burstRounds),
+  maxRoundKills: Number(r.maxRoundKills ?? 0),
+  maxRoundTimes: Number(r.maxRoundTimes ?? 0),
   aloneRounds: Number(r.aloneRounds),
   aloneWon: Number(r.aloneWon),
   outRounds: Number(r.outRounds),
@@ -264,6 +292,14 @@ function addTally(into: FlagDayTally, from: FlagDayTally): FlagDayTally {
     rounds: into.rounds + from.rounds,
     firstKills: into.firstKills + from.firstKills,
     burstRounds: into.burstRounds + from.burstRounds,
+    /* ★최대는 더하지 않는다★ — 큰 쪽을 남기고, 같으면 «몇 번 냈나» 를 더한다 */
+    maxRoundKills: Math.max(into.maxRoundKills, from.maxRoundKills),
+    maxRoundTimes:
+      into.maxRoundKills === from.maxRoundKills
+        ? into.maxRoundTimes + from.maxRoundTimes
+        : into.maxRoundKills > from.maxRoundKills
+          ? into.maxRoundTimes
+          : from.maxRoundTimes,
     aloneRounds: into.aloneRounds + from.aloneRounds,
     aloneWon: into.aloneWon + from.aloneWon,
     outRounds: into.outRounds + from.outRounds,
@@ -348,6 +384,13 @@ function mergeSlots(slotRows: readonly (DayRow & { slot: number })[]): DayRow[] 
     cur.rounds = num(cur.rounds) + num(r.rounds)
     cur.firstKills = num(cur.firstKills) + num(r.firstKills)
     cur.burstRounds = num(cur.burstRounds) + num(r.burstRounds)
+    /* 최대는 큰 쪽을 남기고, 같을 때만 횟수를 더한다 */
+    if (num(r.maxRoundKills) > num(cur.maxRoundKills)) {
+      cur.maxRoundKills = num(r.maxRoundKills)
+      cur.maxRoundTimes = num(r.maxRoundTimes)
+    } else if (num(r.maxRoundKills) === num(cur.maxRoundKills)) {
+      cur.maxRoundTimes = num(cur.maxRoundTimes) + num(r.maxRoundTimes)
+    }
     cur.aloneRounds = num(cur.aloneRounds) + num(r.aloneRounds)
     cur.aloneWon = num(cur.aloneWon) + num(r.aloneWon)
     cur.outRounds = num(cur.outRounds) + num(r.outRounds)

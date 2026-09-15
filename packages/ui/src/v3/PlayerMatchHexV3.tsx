@@ -65,14 +65,17 @@ const valueText = (a: Axis): string => {
 }
 
 /**
- * «몇 번 중 몇 번». 판당 회수인 축은 분모가 판수(=1)라 세는 게 뜻이 없어 비운다.
+ * 축 옆의 작은 글씨 — 축마다 뜻이 다르다 (2026-09-15 사장님).
  *
- * ★세이브는 다르다★ (2026-09-15 사장님) — 값은 «이긴 횟수» 지만
- * «몇 번 혼자 남았나» 를 같이 보여 줘야 «3회» 가 무거운지 가벼운지 안다.
+ *   세이브   «3/9»  몇 번 혼자 남아 몇 번 이겼나. «3회» 가 무거운지 가벼운지 여기서 안다
+ *   캐리력   «×2»   ★그 최고를 몇 번 냈나★ — 4킬을 두 번 낸 사람이 한 번보다 위다
+ *   싸움·소수싸움  «7/15»  이긴 수 / 붙은 수
+ *   선짤·연속킬    비운다 — 분모가 판수(=1)라 세는 게 뜻이 없다
  */
 const partsText = (a: Axis): string => {
   if (a.numerator === null) return ''
   if (a.key === 'save') return `${a.numerator}/${a.denominator ?? 0}`
+  if (a.key === 'carry') return a.numerator > 1 ? `×${a.numerator}` : ''
   if (a.unit === 'per_game') return ''
   return `${a.numerator}/${a.denominator ?? 0}`
 }

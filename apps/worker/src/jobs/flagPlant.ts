@@ -66,6 +66,8 @@ interface DayRow {
   rounds: number
   firstKills: number
   burstRounds: number
+  maxRoundKills: number
+  maxRoundTimes: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -95,6 +97,8 @@ const tallyOf = (r: DayRow): FlagDayTally => ({
   rounds: Number(r.rounds),
   firstKills: Number(r.firstKills),
   burstRounds: Number(r.burstRounds),
+  maxRoundKills: Number(r.maxRoundKills ?? 0),
+  maxRoundTimes: Number(r.maxRoundTimes ?? 0),
   aloneRounds: Number(r.aloneRounds),
   aloneWon: Number(r.aloneWon),
   outRounds: Number(r.outRounds),
@@ -124,6 +128,10 @@ async function dayRowsOf(leagueId: string, day: FlagDay): Promise<DayRow[]> {
             COALESCE(SUM(h.rounds), 0)::int        AS rounds,
             COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
             COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
+            /* ★캐리력은 «한 라운드 최대 킬»★ — 더하지 않는다.
+               배열 대소는 앞 칸부터 보므로 [2] 는 그 최고를 세운 경기의 횟수다 (2026-09-15) */
+            COALESCE(MAX(h."maxRoundKills"), 0)::int AS "maxRoundKills",
+            COALESCE((MAX(ARRAY[h."maxRoundKills", h."maxRoundTimes"]))[2], 0)::int AS "maxRoundTimes",
             COALESCE(SUM(h."aloneRounds"), 0)::int AS "aloneRounds",
             COALESCE(SUM(h."aloneWon"), 0)::int    AS "aloneWon",
             COALESCE(SUM(h."outRounds"), 0)::int   AS "outRounds",

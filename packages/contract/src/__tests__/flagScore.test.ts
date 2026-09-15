@@ -4,6 +4,7 @@ import {
   FLAG_MIN_GAMES,
   FLAG_MIN_WIN_RATE,
   dayAxisParts,
+  dayAxisScores,
   dayAxisValues,
   flagPercentile,
   flagPercentileMid,
@@ -29,6 +30,9 @@ const tally = (over: Partial<FlagDayTally> = {}): FlagDayTally => ({
   rounds: 60,
   firstKills: 12,
   burstRounds: 9,
+  /* ★캐리력은 «한 라운드 최대 킬»★ (2026-09-15 사장님) — 3킬을 두 번 낸 판 */
+  maxRoundKills: 3,
+  maxRoundTimes: 2,
   aloneRounds: 8,
   aloneWon: 4,
   outRounds: 9,
@@ -46,11 +50,34 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
     const v = dayAxisValues(tally())
     expect(v.save).toBe(50)
     expect(v.duel).toBeCloseTo(66.7, 1)
-    expect(v.carry).toBe(10)
+    /* ★캐리력은 판당 킬이 아니라 «한 라운드 최대 킬» 이다★ (2026-09-15 사장님) */
+    expect(v.carry).toBe(3)
     /* ★선짤·연속킬은 판당 몇 번★ (2026-09-15 사장님) — 12회/6판 · 9회/6판 */
     expect(v.opening).toBe(2)
     expect(v.burst).toBe(1.5)
     expect(v.outnumbered).toBeCloseTo(55.6, 1)
+  })
+
+  it('★캐리력 잣대는 «최고를 몇 번 냈나» 로 동점을 가른다★', () => {
+    /* 적는 값은 3킬로 같지만, 두 번 낸 쪽이 줄에서 앞선다 */
+    expect(dayAxisValues(tally({ maxRoundKills: 3, maxRoundTimes: 1 })).carry).toBe(3)
+    expect(dayAxisValues(tally({ maxRoundKills: 3, maxRoundTimes: 2 })).carry).toBe(3)
+    const one = dayAxisScores(tally({ maxRoundKills: 3, maxRoundTimes: 1 })).carry as number
+    const two = dayAxisScores(tally({ maxRoundKills: 3, maxRoundTimes: 2 })).carry as number
+    expect(two).toBeGreaterThan(one)
+    /* ★꼬리가 1킬 차이를 못 넘는다★ — 3킬 다섯 번이 4킬 한 번을 이기면 안 된다 */
+    const four = dayAxisScores(tally({ maxRoundKills: 4, maxRoundTimes: 1 })).carry as number
+    expect(dayAxisScores(tally({ maxRoundKills: 3, maxRoundTimes: 5 })).carry as number).toBeLessThan(four)
+  })
+
+  it('★선짤 잣대는 무기 기준값으로 나눈다★ — 스나가 2.62배 유리한 것을 지운다', () => {
+    /* 같은 «판당 2.29회» 라도 스나는 보통(1.0), 라플은 아주 잘한 것이다 */
+    const sniper = tally({ weapon: 1, games: 10, firstKills: 23 })
+    const rifle = tally({ weapon: 0, games: 10, firstKills: 23, rifleDuelWon: 20, rifleDuelLost: 10, sniperDuelWon: 0, sniperDuelLost: 0 })
+    expect(dayAxisValues(sniper).opening).toBe(dayAxisValues(rifle).opening)
+    expect(dayAxisScores(rifle).opening as number).toBeGreaterThan(dayAxisScores(sniper).opening as number)
+    /* 그 무기의 «보통» 은 1.0 근처다 */
+    expect(dayAxisScores(sniper).opening as number).toBeCloseTo(1, 1)
   })
 
   it('★혼자 남은 라운드가 적으면 세이브는 null★', () => {

@@ -30,10 +30,16 @@
  * 부리그가 셋이 아닌 리그(SPL)는 티어계수 1 · 클랜보정 0 이다 — 상대 티어라는 것이 없다.
  * [가정] 사장님이 따로 정하지 않았다. 등수는 리그 안에서만 매기므로 순위에는 영향이 없다.
  */
+import { OPENING_BASELINE } from '@sacloud/contract'
 import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
 
 /** 공식이 바뀌면 올린다. 화면은 이 판으로 접힌 줄만 믿는다 */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.0'
+/**
+ * ⚠ ★v1.1 — 캐리력 재료가 늘었다★ (2026-09-15 사장님: «캐리력은 라운드당 한 최대 킬 수»).
+ *   `maxRoundKills` · `maxRoundTimes` 두 칸이 새로 생겨서, 옛 줄에는 0 이 들어 있다.
+ *   버전을 올려야 `--rebuild` 없이도 다시 세어 채운다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.1'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700
@@ -205,6 +211,35 @@ export function axisValuesOf(
   }
 }
 
+/**
+ * ★줄 세우는 잣대★ — 화면에 적는 값(`axisValuesOf`)과 ★선짤 하나만★ 다르다.
+ *
+ * ── 왜 (2026-09-15 사장님: «선짤 부문이 스나수한테 너무 유리한데 어떡하지»)
+ *   실측 54,863 «경기×선수»:
+ *   ```
+ *   라플 판당 선짤 0.87 · 스나 2.29  →  ★2.62배★
+ *   (견줌: 킬은 1.34배 · 연속킬 1.17배 — ★선짤만 유독 심하다★)
+ *   ```
+ *   진영으로 갈라도 안 사라진다 — 레드(공격) 1.30배 · 블루(수비) 1.44배 (킬 20,958건).
+ *
+ * ── 왜 여기에도 필요한가
+ *   시즌 육각은 2026-09-12 사장님 지시로 ★싸움만 무기별, 나머지 다섯은 통합★ 이다.
+ *   그래서 선짤도 스나·라플을 섞어 견주고 있었고 편향이 그대로 남았다.
+ *   ★모집단을 무기별로 쪼개지 않는다★ — 그건 그 지시를 뒤집는 것이다.
+ *   대신 그 무기의 «보통» 을 1.0 으로 놓고 그 대비로 견준다.
+ *
+ * ★적는 값은 안 바뀐다★ (`axisValuesOf`). 백분위와 점수만 공평해진다.
+ */
+export function axisScoresOf(
+  input: PlayerHexInput,
+  weapon: 0 | 1,
+): Record<HexAxisKey, number | null> {
+  const values = axisValuesOf(input, weapon)
+  if (values.opening === null) return values
+  const base = weapon === 1 ? OPENING_BASELINE.sniper : OPENING_BASELINE.rifle
+  return { ...values, opening: Math.round((values.opening / base) * 1000) / 1000 }
+}
+
 /** 백분위 — 나보다 낮은 사람의 비율 × 100. 오름차순 정렬된 배열을 받는다 */
 export function percentileOf(sorted: readonly number[], v: number | null): number | null {
   if (v === null || !Number.isFinite(v) || sorted.length === 0) return null
@@ -325,7 +360,8 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
   for (const p of players) {
     const w = mainWeaponOf(p)
     if (w === null) continue
-    const v = axisValuesOf(p, w)
+    /* ★모집단은 «잣대» 로 만든다★ — 적는 값으로 만들면 선짤 편향이 그대로 남는다 */
+    const v = axisScoresOf(p, w)
     for (const key of HEX_UNIFIED_AXIS_KEYS) if (v[key] !== null) uni[key].push(v[key] as number)
   }
   for (const key of HEX_AXIS_KEYS) uni[key].sort((a, b) => a - b)
@@ -334,7 +370,13 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
   const measured: PlayerHexResult[] = []
   for (const weapon of [0, 1] as const) {
     const pool = players.filter((p) => mainWeaponOf(p) === weapon)
-    const values = pool.map((p) => ({ p, v: axisValuesOf(p, weapon), wr: p.games > 0 ? (p.wins / p.games) * 100 : null }))
+    const values = pool.map((p) => ({
+      p,
+      v: axisValuesOf(p, weapon),
+      /* 적는 값과 잣대가 다른 축이 있다 — 선짤 (2026-09-15) */
+      sc: axisScoresOf(p, weapon),
+      wr: p.games > 0 ? (p.wins / p.games) * 100 : null,
+    }))
     const dist = { duel: [] as number[], winRate: [] as number[], kd: [] as number[] }
     for (const { p, v, wr } of values) {
       if (v.duel !== null) dist.duel.push(v.duel)
@@ -345,13 +387,14 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
     dist.winRate.sort((a, b) => a - b)
     dist.kd.sort((a, b) => a - b)
 
-    const rows: PlayerHexResult[] = values.map(({ p, v, wr }) => {
+    const rows: PlayerHexResult[] = values.map(({ p, v, sc, wr }) => {
       const axes = {} as Record<HexAxisKey, AxisResult>
       let num = 0
       let den = 0
       for (const key of HEX_AXIS_KEYS) {
-        /* ★싸움만 무기 안에서, 나머지는 통합★ (2026-09-12 사장님) */
-        const pct = percentileOf(key === 'duel' ? dist.duel : uni[key], v[key])
+        /* ★싸움만 무기 안에서, 나머지는 통합★ (2026-09-12 사장님).
+           자리는 ★잣대★ 가 정하고, 적는 값은 원값 그대로다 (2026-09-15) */
+        const pct = percentileOf(key === 'duel' ? dist.duel : uni[key], sc[key])
         axes[key] = { value: v[key], pct, rank: null, total: null }
         if (pct !== null) {
           num += pct * AXIS_WEIGHT[key]

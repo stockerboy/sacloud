@@ -132,7 +132,8 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
           : a.unit === 'seconds'
             ? mmss(a.value)
             : a.unit === 'per_game'
-              ? `${a.value.toFixed(a.value < 10 ? 1 : 0)}${a.key === 'carry' ? '킬' : '회'}`
+              /* 캐리력은 «한 라운드 최대 킬» 이라 정수다 — «4.0킬» 로 적지 않는다 (2026-09-15) */
+              ? `${Number.isInteger(a.value) ? a.value : a.value.toFixed(1)}${a.key === 'carry' ? '킬' : '회'}`
               : `${Math.round(a.value * (a.value <= 1 ? 100 : 1))}%`,
       /*
        * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그건 «등수» 를 받는다.

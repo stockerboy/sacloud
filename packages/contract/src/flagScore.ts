@@ -78,6 +78,16 @@ export interface FlagDayTally {
   rounds: number
   firstKills: number
   burstRounds: number
+  /**
+   * ★한 라운드에 몰아친 최대 킬★ — 새 캐리력 (2026-09-15 사장님).
+   *
+   * > «캐리력은 라운드당 한 최대 킬 수 / 12라운드를 경기했으면 a선수가 7라쯤 한라운드에 4킬»
+   *
+   * 창이 여러 판이면 ★그 창 전체의 최고★ 다. 하루면 그날 최고 몰아치기다.
+   */
+  maxRoundKills: number
+  /** 그 최고를 몇 라운드에서 냈나 — 동점을 가르는 꼬리 */
+  maxRoundTimes: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -176,6 +186,76 @@ export function saveScaleOf(saves: number): number {
   return round1(SAVE_SCALE_FIRST + ((100 - SAVE_SCALE_FIRST) * (capped - 1)) / (SAVE_SCALE_FULL - 1))
 }
 
+/**
+ * ★캐리력 = 한 라운드에 몰아친 최대 킬★ (2026-09-15 사장님).
+ *
+ * > «캐리력은 라운드당 한 최대 킬 수 (…) a선수가 7라쯤 한라운드에 4킬을 함 > 캐리력1등»
+ *
+ * ── ⚠ 옛 기준은 ★판당 킬★ 이었다 (`kill / games`). 지우지 않고 `CARRY_BY_TOTAL_KILLS`
+ *   로 되돌릴 수 있게 남긴다. 두 기준의 상관은 0.636 이라 ★서로 다른 것을 잰다.★
+ *
+ * ── 왜 꼬리를 붙이나 (실측 · 8명 이상 뛴 134판)
+ *   ```
+ *   최대킬만        갈래 3.34개   최다 동점묶음 5.27명  ← 열 명 중 절반이 동점
+ *   + 몇 번 냈나    갈래 5.84개   최다 동점묶음 3.48명
+ *   [견줌] 판당 킬  갈래 7.09개   최다 동점묶음 2.51명
+ *   ```
+ *   값이 1·2·3·4 네 칸뿐이라 최대킬만으로는 줄이 안 선다.
+ *   «4킬을 두 번 낸 사람이 4킬 한 번 낸 사람보다 위» 라는 꼬리가 그걸 가른다.
+ *   ★연속킬 축과 겹치지 않는다★ — 연속킬은 «2초 안에 이어 잡은 라운드» 라 시간 조건이 다르다.
+ *
+ * ★화면 값은 최대킬 그대로★ 다 («4킬»). 꼬리는 ★줄 세우기에만★ 쓴다.
+ */
+export const CARRY_BY_TOTAL_KILLS = false
+/** 꼬리의 무게 — 한 번 더 냈을 때 최대킬 0.1 만큼 앞선다 (1킬 차이를 못 넘게 작게) */
+export const CARRY_TIE_WEIGHT = 0.1
+
+/** 줄 세우기용 캐리력 점수 — 화면에 적는 값이 아니다 */
+export function carryScoreOf(t: FlagDayTally): number | null {
+  if (CARRY_BY_TOTAL_KILLS) return t.games > 0 ? t.kill / t.games : null
+  if (t.maxRoundKills <= 0) return 0
+  return round1(t.maxRoundKills + Math.max(0, t.maxRoundTimes - 1) * CARRY_TIE_WEIGHT)
+}
+
+/**
+ * ★선짤은 무기를 탄다 — 기준값으로 나눠 줄 세운다★ (2026-09-15 사장님:
+ * «선짤 부문이 스나수한테 너무 유리한데 어떡하지»).
+ *
+ * ── 실측 (54,863 «경기×선수»)
+ *   ```
+ *   라플  판당 선짤 0.87   스나  판당 선짤 2.29   →  ★2.62배★
+ *   (견줌: 킬은 1.34배 · 연속킬은 1.17배 — ★선짤만 유독 심하다★)
+ *   스나는 인원의 20%인데 선짤의 40%를 가져간다
+ *   ```
+ *
+ * ── ⚠ ★진영으로 갈라도 안 사라진다★ (2026-09-15 · 킬 20,958건)
+ *   «수비 때 롱에서 따는 게 원인» 이라 보고 C4 판정(`roundSidesOf`)으로 갈라 재 봤다.
+ *   ```
+ *   레드(공격)  스나 쏠림 1.30배      블루(수비)  스나 쏠림 1.44배
+ *   ```
+ *   수비가 더 심할 뿐 ★공격에서도 남는다.★ 레드만 재도 1.44 가 1.30 이 될 뿐이다.
+ *   그래서 진영 분리는 답이 아니다.
+ *
+ * ── 그래서 기준값으로 나눈다
+ *   스나 2.29 · 라플 0.87 을 각각 «1.0» 으로 놓고 그 대비로 줄을 세운다.
+ *   ★표본을 쪼개지 않으므로 한 판 열 명 안에서도 그대로 쓴다★ —
+ *   무기별로 모집단을 가르면 «스나 둘 중 1등» 이 되어 버린다.
+ *
+ * ★화면 값은 원값 그대로★ 다 («2.3회»). 기준값은 ★줄 세우기에만★ 쓴다.
+ */
+export const OPENING_BASELINE = { sniper: 2.29, rifle: 0.87 } as const
+/** 무기를 모르면 둘의 가운데로 — 어느 쪽으로도 밀지 않는다 */
+const OPENING_BASELINE_UNKNOWN = (OPENING_BASELINE.sniper + OPENING_BASELINE.rifle) / 2
+
+/** 줄 세우기용 선짤 점수 — 그 무기의 «보통» 을 1.0 으로 본 값 */
+export function openingScoreOf(t: FlagDayTally): number | null {
+  if (t.games <= 0) return null
+  const raw = t.firstKills / t.games
+  const base =
+    t.weapon === 1 ? OPENING_BASELINE.sniper : t.weapon === 0 ? OPENING_BASELINE.rifle : OPENING_BASELINE_UNKNOWN
+  return round1((raw / base) * 100) / 100
+}
+
 /** 축마다 «몇 번 중 몇 번» — 화면이 «100% (1/1)» 로 적을 수 있게 */
 export interface FlagAxisParts {
   numerator: number | null
@@ -189,7 +269,11 @@ export function dayAxisParts(t: FlagDayTally): Record<FlagAxisKey, FlagAxisParts
   return {
     save: { numerator: t.aloneWon, denominator: t.aloneRounds },
     duel: { numerator: duelWon, denominator: duelWon + duelLost },
-    carry: { numerator: t.kill, denominator: t.games },
+    /* ★캐리력의 «몇 번»은 그 최고를 낸 라운드 수★ 다 (2026-09-15 사장님) —
+       화면이 «4킬 ×2» 로 적는다. 옛 기준일 때만 판당 킬의 분자·분모다 */
+    carry: CARRY_BY_TOTAL_KILLS
+      ? { numerator: t.kill, denominator: t.games }
+      : { numerator: t.maxRoundTimes, denominator: t.maxRoundKills },
     opening: { numerator: t.firstKills, denominator: t.games },
     burst: { numerator: t.burstRounds, denominator: t.games },
     outnumbered: { numerator: t.outWon, denominator: t.outRounds },
@@ -216,7 +300,20 @@ export function dayAxisValues(
         : gate.emptyIsZero
           ? 0
           : null,
-    carry: t.games > 0 ? Math.round((t.kill / t.games) * 100) / 100 : null,
+    /*
+     * ★캐리력은 «한 라운드 최대 킬» 이다★ (2026-09-15 사장님).
+     * ⚠ 옛 값은 판당 킬이었다 — `CARRY_BY_TOTAL_KILLS` 로 되돌릴 수 있다.
+     *   줄 세우는 잣대는 여기가 아니라 `carryScoreOf` 다 (동점을 가르는 꼬리가 붙는다).
+     */
+    carry: CARRY_BY_TOTAL_KILLS
+      ? t.games > 0
+        ? Math.round((t.kill / t.games) * 100) / 100
+        : null
+      : t.maxRoundKills > 0
+        ? t.maxRoundKills
+        : gate.emptyIsZero
+          ? 0
+          : null,
     /*
      * ★선짤·연속킬은 「판당 몇 번」 이다★ (2026-09-15 사장님:
      * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔»).
@@ -331,25 +428,55 @@ export function flagPercentileMid(sorted: readonly number[], v: number | null): 
   return round1((((below + lo2) / 2 / sorted.length) * 100))
 }
 
+/**
+ * ★줄 세우는 잣대★ — 화면에 적는 값(`dayAxisValues`)과 ★다른 축이 둘★ 있다.
+ *
+ *   캐리력  «4킬» 로 적지만 «4킬 + 그 최고를 몇 번 냈나» 로 줄을 세운다
+ *           (최대킬만으로는 열 명 중 다섯이 동점이었다 — 실측 갈래 3.34개)
+ *   선짤    «2.3회» 로 적지만 «그 무기의 보통 대비» 로 줄을 세운다
+ *           (스나가 라플보다 2.62배 유리하고, 진영을 갈라도 안 사라진다)
+ *
+ * 나머지 네 축은 적는 값이 곧 잣대다.
+ * ★백분위의 모집단은 반드시 이 값으로 만든다★ — 적는 값으로 만들면 편향이 그대로 남는다.
+ */
+export function dayAxisScores(
+  t: FlagDayTally,
+  gate: FlagAxisGate = FLAG_GATE_RANKED,
+): Record<FlagAxisKey, number | null> {
+  const values = dayAxisValues(t, gate)
+  return {
+    ...values,
+    carry: carryScoreOf(t),
+    opening: t.games > 0 ? openingScoreOf(t) : values.opening,
+  }
+}
+
 export function rankFlagDay<T>(
   candidates: readonly FlagCandidate<T>[],
   size: number = FLAG_PODIUM_SIZE,
 ): FlagRanked<T>[] {
-  /* ① 축 원값을 먼저 다 구한다 — 백분위의 모집단이 되어야 한다 */
-  const withValues = candidates.map((c) => ({ c, values: dayAxisValues(c.tally) }))
+  /*
+   * ① 축을 먼저 다 구한다. ★적는 값과 줄 세우는 잣대를 따로 든다★ (2026-09-15) —
+   *   캐리력·선짤은 둘이 다르다. 백분위의 모집단은 ★잣대★ 로 만든다.
+   */
+  const withValues = candidates.map((c) => ({
+    c,
+    values: dayAxisValues(c.tally),
+    scores: dayAxisScores(c.tally),
+  }))
 
   /* ② 축마다 그날의 분포 (null 은 모집단에 안 넣는다) */
   const pools = {} as Record<FlagAxisKey, number[]>
   for (const key of FLAG_AXIS_ORDER) {
     pools[key] = withValues
-      .map((w) => w.values[key])
+      .map((w) => w.scores[key])
       .filter((v): v is number => v !== null)
       .sort((a, b) => a - b)
   }
 
   /* ③ 문턱을 넘은 사람만 점수를 낸다 */
   const scored: FlagRanked<T>[] = []
-  for (const { c, values } of withValues) {
+  for (const { c, values, scores } of withValues) {
     const t = c.tally
     if (t.games < FLAG_MIN_GAMES) continue
     const winRate = t.games === 0 ? 0 : (t.win / t.games) * 100
@@ -357,8 +484,9 @@ export function rankFlagDay<T>(
 
     const axes = FLAG_AXIS_ORDER.map((key) => ({
       key,
+      /* 적는 값은 원값이고, 자리는 ★잣대★ 가 정한다 */
       value: values[key],
-      pct: flagPercentile(pools[key], values[key]),
+      pct: flagPercentile(pools[key], scores[key]),
     }))
     /* 하나라도 못 잰 축이 있으면 «고르게» 를 말할 수 없다 */
     if (axes.some((a) => a.pct === null)) continue

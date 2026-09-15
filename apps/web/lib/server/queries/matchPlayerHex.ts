@@ -25,6 +25,7 @@ import {
   FLAG_GATE_RAW,
   dayAxisParts,
   dayAxisValues,
+  dayAxisScores,
   flagPercentileMid,
   saveScaleOf,
   playerHexLabelOf,
@@ -40,6 +41,8 @@ export const MATCH_HEX_SELECT = {
   rounds: true,
   kills: true,
   firstKills: true,
+  maxRoundKills: true,
+  maxRoundTimes: true,
   burstRounds: true,
   aloneRounds: true,
   aloneWon: true,
@@ -55,6 +58,8 @@ export interface MatchHexRow {
   rounds: number
   kills: number
   firstKills: number
+  maxRoundKills: number
+  maxRoundTimes: number
   burstRounds: number
   aloneRounds: number
   aloneWon: number
@@ -104,7 +109,13 @@ export function matchHexOf(
   if (rows.length === 0) return out
 
   const statOf = new Map(stats.map((s) => [s.playerId, s]))
-  const built: { playerId: string; weapon: 0 | 1 | null; values: Record<string, number | null>; parts: ReturnType<typeof dayAxisParts> }[] = []
+  const built: {
+    playerId: string
+    weapon: 0 | 1 | null
+    values: Record<string, number | null>
+    scores: Record<string, number | null>
+    parts: ReturnType<typeof dayAxisParts>
+  }[] = []
 
   for (const row of rows) {
     const stat = statOf.get(row.playerId)
@@ -125,6 +136,8 @@ export function matchHexOf(
       death: stat.death ?? 0,
       rounds: row.rounds,
       firstKills: row.firstKills,
+      maxRoundKills: row.maxRoundKills,
+      maxRoundTimes: row.maxRoundTimes,
       burstRounds: row.burstRounds,
       aloneRounds: row.aloneRounds,
       aloneWon: row.aloneWon,
@@ -142,6 +155,8 @@ export function matchHexOf(
       weapon,
       /* ★문턱 1★ — 한 번만 겪어도 적는다 (사장님: «1번중 1번은 100퍼센트가 맞잖아») */
       values: dayAxisValues(tally, FLAG_GATE_RAW),
+      /* 줄 세우는 잣대는 따로다 — 캐리력·선짤은 적는 값과 다르다 (2026-09-15) */
+      scores: dayAxisScores(tally, FLAG_GATE_RAW),
       parts: dayAxisParts(tally),
     })
   }
@@ -153,7 +168,7 @@ export function matchHexOf(
     pools.set(
       key,
       built
-        .map((b) => b.values[key])
+        .map((b) => b.scores[key])
         .filter((v): v is number => v !== null && v !== undefined)
         .sort((a, b) => a - b),
     )
@@ -172,7 +187,7 @@ export function matchHexOf(
           key,
           label: playerHexLabelOf(key as TraitAxisKey, b.weapon),
           value: isSave ? saveCount : value,
-          pct: isSave ? saveScaleOf(saveCount) : flagPercentileMid(pools.get(key) ?? [], value),
+          pct: isSave ? saveScaleOf(saveCount) : flagPercentileMid(pools.get(key) ?? [], b.scores[key] ?? null),
           unit: isSave || PER_GAME.has(key) ? ('per_game' as const) : ('percent' as const),
           numerator: part.numerator,
           denominator: part.denominator,

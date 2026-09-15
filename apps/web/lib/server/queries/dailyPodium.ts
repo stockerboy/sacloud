@@ -156,6 +156,10 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
             COALESCE(SUM(h.rounds), 0)::int        AS rounds,
             COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
             COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
+            /* ★캐리력은 «한 라운드 최대 킬»★ — 더하지 않고 가장 큰 것을 남긴다.
+               배열 대소는 앞 칸부터 보므로 [2] 는 그 최고를 세운 경기의 횟수다 (2026-09-15) */
+            COALESCE(MAX(h."maxRoundKills"), 0)::int AS "maxRoundKills",
+            COALESCE((MAX(ARRAY[h."maxRoundKills", h."maxRoundTimes"]))[2], 0)::int AS "maxRoundTimes",
             COALESCE(SUM(h."aloneRounds"), 0)::int AS "aloneRounds",
             COALESCE(SUM(h."aloneWon"), 0)::int    AS "aloneWon",
             COALESCE(SUM(h."outRounds"), 0)::int   AS "outRounds",
@@ -194,6 +198,8 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
         rounds: num(r.rounds),
         firstKills: num(r.firstKills),
         burstRounds: num(r.burstRounds),
+        maxRoundKills: num(r.maxRoundKills),
+        maxRoundTimes: num(r.maxRoundTimes),
         aloneRounds: num(r.aloneRounds),
         aloneWon: num(r.aloneWon),
         outRounds: num(r.outRounds),

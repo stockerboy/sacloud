@@ -129,6 +129,9 @@ interface MatchTally {
   kills: number
   firstKills: number
   burstRounds: number
+  /** ★한 라운드에 몰아친 최대 킬★ 과 그 최고를 낸 라운드 수 (2026-09-15 사장님) */
+  maxRoundKills: number
+  maxRoundTimes: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -138,7 +141,7 @@ interface MatchTally {
 }
 
 const emptyTally = (): MatchTally => ({
-  rounds: 0, kills: 0, firstKills: 0, burstRounds: 0,
+  rounds: 0, kills: 0, firstKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
 })
 
@@ -332,6 +335,25 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       }
       for (const pid of seen) tallyOf(mk, pid).rounds += 1
       for (const pid of burstHere) tallyOf(mk, pid).burstRounds += 1
+
+      /*
+       * ★캐리력 — 이 라운드에 몇 킬을 했나★ (2026-09-15 사장님).
+       * 최고를 새로 세우면 «몇 번 냈나» 를 1로 되돌리고, 같으면 하나 더한다.
+       */
+      const killsHere = new Map<string, number>()
+      for (const e of arr) {
+        const K = whoOf(mk, e.killer)
+        if (K) killsHere.set(K.pid, (killsHere.get(K.pid) ?? 0) + 1)
+      }
+      for (const [pid, n] of killsHere) {
+        const t = tallyOf(mk, pid)
+        if (n > t.maxRoundKills) {
+          t.maxRoundKills = n
+          t.maxRoundTimes = 1
+        } else if (n === t.maxRoundKills) {
+          t.maxRoundTimes += 1
+        }
+      }
       const firstK = whoOf(mk, (arr[0] as Kill).killer)
       if (firstK) tallyOf(mk, firstK.pid).firstKills += 1
 
