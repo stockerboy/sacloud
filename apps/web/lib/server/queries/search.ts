@@ -555,22 +555,44 @@ export function dedupeSamePerson<
     lastPlayedMs?: number
   },
 >(rows: readonly T[]): T[] {
-  /* 이름별로 «기록이 있는 줄이 하나라도 있나» 를 먼저 센다 */
-  const hasPlayed = new Set<string>()
-  for (const row of rows) if (row._count.leaguePlayers > 0) hasPlayed.add(row.name.toLowerCase())
+  /*
+   * ★②③ 을 점수 하나로 합쳤다★ (2026-09-15 밤 — 세 줄이 서로를 지우던 것).
+   *
+   * ⚠ 옛 판은 규칙 둘이 ★따로★ 돌았다:
+   *     ② 기록 0 인데 같은 이름에 기록 있는 줄이 있으면 뺀다
+   *     ③ 클랜 없는데 같은 이름에 클랜 붙은 줄이 있으면 뺀다
+   *   둘이 ★서로 다른 줄을 근거로★ 도는 바람에 물고 물려 ★전멸★ 했다.
+   *   운영 실측 («젤존») —
+   *   ```
+   *     nexon_barracks   기록 1 · 클랜 없음   → ③ 에 걸려 제거
+   *     3rd.supply       기록 0 · 클랜 있음   → ② 에 걸려 제거
+   *     nexon            기록 0 · 클랜 없음   → 둘 다 걸려 제거
+   *                                            ★한 줄도 안 남았다★
+   *   ```
+   *   검색창에 «젤존» 을 쳐도 아무것도 안 나왔다. 있는 사람을 없다고 말한 것이다.
+   *
+   * ★지금★ — 한 줄의 «실체» 를 점수로 매기고 같은 이름에서 ★최고점만★ 남긴다.
+   *   최고점은 언제나 하나 이상 있으므로 ★전멸할 수 없다.★
+   *   껍데기를 거르는 힘은 그대로다 — 기록도 클랜도 없는 줄(0점)은 실체 있는 줄에 진다.
+   */
+  const scoreOf = (row: T): number =>
+    (row._count.leaguePlayers > 0 ? 2 : 0) + (row.clan !== null ? 1 : 0)
 
-  /* ③ 이름별로 «클랜이 붙은 줄이 하나라도 있나» */
-  const hasClan = new Set<string>()
-  for (const row of rows) if (row.clan !== null) hasClan.add(row.name.toLowerCase())
+  /* 이름별 최고점 */
+  const topScore = new Map<string, number>()
+  for (const row of rows) {
+    const nameKey = row.name.toLowerCase()
+    const now = topScore.get(nameKey)
+    const mine = scoreOf(row)
+    if (now === undefined || mine > now) topScore.set(nameKey, mine)
+  }
 
   const best = new Map<string, T>()
   const order: string[] = []
   for (const row of rows) {
     const nameKey = row.name.toLowerCase()
-    /* ② 기록 0 인데 같은 이름에 기록 있는 줄이 있으면 안 보여 준다 */
-    if (row._count.leaguePlayers === 0 && hasPlayed.has(nameKey)) continue
-    /* ③ 클랜이 안 붙은 줄은, 같은 이름에 클랜 붙은 줄이 있으면 안 보여 준다 */
-    if (row.clan === null && hasClan.has(nameKey)) continue
+    /* ②③ 같은 이름에 ★더 실체 있는 줄★ 이 있으면 안 보여 준다 */
+    if (scoreOf(row) < (topScore.get(nameKey) as number)) continue
     /* ① 이름 + 클랜이 같으면 한 사람으로 본다 */
     const key = `${nameKey}|${row.clan?.slug ?? ''}`
     const now = best.get(key)
