@@ -317,8 +317,7 @@
  */
 .sac-v2 .v2-gnb__item,
 .sac-v2 .v2-gnb__board,
-/* 로그인/로그아웃 단추도 같은 줄에 선다 — 19px 였다 */
-.sac-v2 .v2-gnb a[aria-label='로그인'],
+/* 로그인/로그아웃 단추 — 아래 `.v2-login` 규칙에서 직접 준다 (`padding: 0` 이 여기를 덮는다) */
 .sac-v2 .v2-gnb button {
   padding-block: 11px;
   margin-block: -11px;
@@ -400,7 +399,10 @@
   color: var(--v2-text-muted);
   background: none;
   border: 0;
-  padding: 0;
+  /* ★누름 영역★ — 19px 였다. 보이는 크기는 그대로 두고 위아래로만 넓힌다
+     (2026-09-15 · 무한 QA). 좌우는 0 이라 옆 글자와 안 겹친다 */
+  padding: 11px 0;
+  margin-block: -11px;
   cursor: pointer;
   font-family: inherit;
 }
