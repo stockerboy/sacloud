@@ -232,8 +232,22 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
           color: V3.textGhost2,
         }}
       >
-        가장 약한 축이 <b style={{ color: '#c8d4ea' }}>{row.low_axis_label}</b> 인데 그것도{' '}
-        <b style={{ color: '#ffd98a' }}>상위 {row.low_axis}%</b> 입니다
+        {/*
+          ⚠ ★2026-09-15 밤 — 숫자가 뒤집혀 있었다★ (무한 QA).
+            `low_axis` 는 ★백분위★ 다 — «나보다 못한 사람이 몇 %» 이므로 클수록 좋다.
+            그걸 그대로 «상위 N%» 라고 적으면 ★반대로 읽힌다.★
+            실측: 교환율 «30위 / 그날 49명중» 인데 «상위 39%» 라고 적혀 있었다.
+            30/49 는 상위 61% 다. 못한 것을 잘한 것처럼 말하고 있었다.
+
+          ★말도 두 갈래로 나눴다★ — «그것도» 는 잘했을 때 쓰는 말이다.
+            절반 안에 들면 «그것도 상위 N%», 아니면 담담하게 «상위 N%» 라고만 적는다.
+        */}
+        가장 약한 축이 <b style={{ color: '#c8d4ea' }}>{row.low_axis_label}</b>
+        {100 - row.low_axis <= 50 ? ' 인데 그것도 ' : ' — '}
+        <b style={{ color: 100 - row.low_axis <= 50 ? '#ffd98a' : V3.textMuted }}>
+          상위 {100 - row.low_axis}%
+        </b>{' '}
+        입니다
       </p>
     </>
   )
