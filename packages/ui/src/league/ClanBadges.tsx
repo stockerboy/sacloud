@@ -24,7 +24,13 @@
 import { CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AxisKey } from '@sacloud/contract'
 
 /** 폰 / PC 에서 나란히 적는 최대 개수 */
-const MAX_PHONE = 2
+/*
+ * ⚠ ★2026-09-15 · 무한 QA — 둘에서 하나로 줄였다★
+ *   클랜 줄에는 이 배지 말고 ★«승격유력»/«강등위기» 칩★ 도 붙는다. 셋이 겹치니
+ *   이름 자리가 없어져 «-tsAr.nTc» 가 ★«-t···»★ 로 잘렸다 (폰 390px 실측).
+ *   접힌 것은 «+n» 으로 알려 주고, 눌러 보면 title 에 다 적혀 있다.
+ */
+const MAX_PHONE = 1
 const MAX_PC = 3
 
 /**

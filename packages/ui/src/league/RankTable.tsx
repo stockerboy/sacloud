@@ -427,7 +427,14 @@ export function ClanRankTable({
                         : { color: '#ff8a90', background: 'rgba(255,90,99,.10)', border: '1px solid rgba(255,90,99,.45)' }
                     }
                   >
-                    {row.note === 'promote' ? '승격유력' : '강등위기'}
+                    {/* ★폰에서는 두 글자★ (2026-09-15 · 무한 QA) — 네 글자가 이름 자리를 먹어
+                        «-tsAr.nTc» 가 «-t···» 로 잘렸다. 뜻은 title 이 채운다 */}
+                    <span className="md:hidden" title={row.note === 'promote' ? '승격유력' : '강등위기'}>
+                      {row.note === 'promote' ? '승격' : '강등'}
+                    </span>
+                    <span className="max-md:hidden">
+                      {row.note === 'promote' ? '승격유력' : '강등위기'}
+                    </span>
                   </span>
                 ) : null}
                 {/* ★뱃지★ — 육각 축 중 리그 5위 안에 든 것 (2026-09-14 사장님) */}
