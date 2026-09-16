@@ -95,7 +95,7 @@ const COLUMNS: readonly { title: string; nodes: readonly SiteNode[] }[] = [
       {
         label: '경쟁리그',
         links: live('supply')
-          ? [{ label: nameOf('supply'), href: leagueLandingPath('supply'), sub: '구 서플라이' }]
+          ? [{ label: nameOf('supply'), href: leagueLandingPath('supply'), sub: '기록게임' }]
           : [],
       },
       {

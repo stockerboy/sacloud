@@ -58,7 +58,7 @@ export const ABOUT_LEAGUES: readonly AboutLeague[] = [
   {
     tab: 'PL',
     slug: 'supply',
-    sub: '구 서플라이',
+    sub: '기록게임',
     /* ⚠ 2026-09-16 — 이름이 「PL」 이 되어 옛 약자 풀이(Limitless Leagues Matches)가 안 맞는다 */
     full: 'Premier League',
     body: [
