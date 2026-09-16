@@ -121,8 +121,8 @@ async function buildShowcases(): Promise<AboutShowcases> {
  */
 const LEAGUES: readonly { slug: string; label: string }[] = [
   { slug: 'nolink', label: 'IPL' },
-  { slug: 'supply', label: 'LLM' },
-  { slug: 'sanply', label: 'YSL' },
+  { slug: 'supply', label: 'PL' },
+  { slug: 'sanply', label: '열산리그' },
 ]
 
 /**

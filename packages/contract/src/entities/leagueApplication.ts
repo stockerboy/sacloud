@@ -60,21 +60,21 @@ export const APPLICATION_KINDS = [
     /** 옮겨 가는 등록이라 리그가 둘이다 — 신청은 `to` 리그로 들어간다 */
     from: 'nolink',
     to: 'supply',
-    label: 'IPL → LLM 전환등록',
+    label: 'IPL → PL 전환등록',
     benefit: '혜택 — 전환비 무료 · 자격심사 없음',
   },
   {
     key: 'llm-new',
     from: null,
     to: 'supply',
-    label: 'LLM 신규등록',
+    label: 'PL 신규등록',
     benefit: '등록책임비용 — 10/1까지 전원 무료',
   },
   {
     key: 'ysl-new',
     from: null,
     to: 'sanply',
-    label: 'YSL 신규등록',
+    label: '열산리그 신규등록',
     benefit: '등록책임비용 — 10/1까지 전원 무료',
   },
   {

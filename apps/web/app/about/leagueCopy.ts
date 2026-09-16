@@ -56,10 +56,11 @@ export const ABOUT_LEAGUES: readonly AboutLeague[] = [
     tone: '#9cc0ff',
   },
   {
-    tab: 'LLM',
+    tab: 'PL',
     slug: 'supply',
     sub: '구 서플라이',
-    full: 'Limitless Leagues Matches',
+    /* ⚠ 2026-09-16 — 이름이 「PL」 이 되어 옛 약자 풀이(Limitless Leagues Matches)가 안 맞는다 */
+    full: 'Premier League',
     body: [
       '데이터를 기반으로 한 풀체인지 기록 게임입니다. 빈틈 없는 체계와 래더 관리를 바탕으로 운영합니다.',
       '모든 플레이어와 클랜의 킬데스·승률이 기록됩니다. 모든 랭킹 정보와 래더 시스템을 이용하실 수 있습니다.',
@@ -79,7 +80,7 @@ export const ABOUT_LEAGUES: readonly AboutLeague[] = [
     tone: '#ffd98a',
   },
   {
-    tab: 'YSL',
+    tab: '열산리그',
     slug: 'sanply',
     sub: '열산 리그',
     full: null,

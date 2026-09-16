@@ -174,8 +174,8 @@ export async function adminSetApplicationStatus(args: {
 /** 화면에 쓰는 리그 이름. 계약의 `LeagueLabel` 과 같은 말이다 */
 const LEAGUE_LABEL: Readonly<Record<string, string>> = {
   nolink: 'IPL',
-  supply: 'SPL',
-  sanply: '10mountain',
+  supply: 'PL',
+  sanply: '열산리그',
 }
 
 /**

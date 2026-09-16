@@ -165,9 +165,48 @@ export interface NavGroup {
  * ── 2026-09-02 (지시 #14 ①) — 서랍도 **리그 셋뿐**이다
  *   `리그`(/leagues) 항목과 `게시판` 묶음을 뺐다. 그때의 모습은 아래 `MOBILE_NAV_GROUPS_LEGACY` 다.
  */
+/**
+ * ⚠ ★2026-09-16 — 서랍이 사이트의 ★유일한 메뉴★ 가 됐다★ (사장님:
+ *   «최상단바에 써클로고를 가운데에 배치하고 ★모든 카테고리를 지워★ 그리고 왼쪽에
+ *    햄버거메뉴 (…) 경쟁전-pl/공식 토너먼트(준비중)  일반전-ipl/열산리그
+ *    게시판-hot/자유  참가신청-경쟁전/일반전 로 만들어줘»).
+ *
+ *   그래서 ★PC 에서도 서랍을 쓴다★ — 상단바에 길이 하나도 없으니 폰에서만 열리면
+ *   PC 사용자는 갈 곳이 사라진다.
+ *
+ *   ★준비중인 칸은 링크를 안 건다★ — 없는 화면으로 보내면 404 를 만난다 (D-106).
+ *   옛 서랍은 아래 `MOBILE_NAV_GROUPS_V2` 에 남긴다.
+ */
 export const MOBILE_NAV_GROUPS: readonly NavGroup[] = [
+  {
+    label: '경쟁전',
+    items: [
+      { label: 'PL', href: '/league/supply' },
+      /* 아직 없는 화면이다. `href` 가 비면 화면이 «준비중» 으로 그리고 링크를 안 건다 */
+      { label: '공식 토너먼트 (준비중)', href: '' },
+    ],
+  },
+  { label: '일반전', items: [
+    { label: 'IPL', href: '/league/nolink' },
+    { label: '열산리그', href: '/league/sanply' },
+  ] },
+  { label: '게시판', items: [
+    { label: 'HOT', href: '/board/hot' },
+    { label: '자유', href: '/board/free' },
+  ] },
+  /*
+   * 참가신청은 한 화면(`/about`)이 리그를 골라 보여 준다. 어느 쪽으로 들어왔는지를
+   * 물음표 뒤에 실어 그 화면이 알맞은 칸을 편다.
+   */
+  { label: '참가신청', items: [
+    { label: '경쟁전', href: '/about?kind=competitive' },
+    { label: '일반전', href: '/about?kind=casual' },
+  ] },
+]
+
+/** ★2026-09-16 까지 쓰던 서랍★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
+export const MOBILE_NAV_GROUPS_V2: readonly NavGroup[] = [
   { label: '홈', items: [{ label: 'Home', href: '/' }] },
-  /* 서랍은 상단바와 같은 순서(IPL 먼저) */
   { label: '리그', items: [...GNB_LEAGUES] },
 ]
 

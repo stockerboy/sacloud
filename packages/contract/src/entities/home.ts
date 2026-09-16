@@ -73,9 +73,9 @@ export const HOME_TOP_SIZE = 3
  *   다르게 쓰고 있고(약칭은 배지, 이름은 제목), 나중에 다시 갈릴 수 있다.
  */
 export const HOME_LEAGUES: readonly { slug: string; abbr: string; name: string }[] = [
-  { slug: 'supply', abbr: 'SPL', name: 'SPL' },
+  { slug: 'supply', abbr: 'PL', name: 'PL' },
   { slug: 'nolink', abbr: 'IPL', name: 'IPL' },
-  { slug: 'sanply', abbr: '10mountain', name: '10mountain' },
+  { slug: 'sanply', abbr: '열산리그', name: '열산리그' },
 ]
 
 /**
@@ -91,7 +91,7 @@ export const HOME_LEAGUES: readonly { slug: string; abbr: string; name: string }
  * slug 는 라우트 그대로다. 이름만 D-246 표기를 따른다.
  */
 export const RANK_SPLIT_LEAGUES: readonly { slug: string; name: string }[] = [
-  { slug: 'supply', name: 'SPL' },
+  { slug: 'supply', name: 'PL' },
   { slug: 'nolink', name: 'IPL' },
 ]
 

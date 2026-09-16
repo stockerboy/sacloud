@@ -163,7 +163,7 @@ export const BOARD_CATEGORIES: readonly Category[] = [
   { slug: 'notice', name: '공지', notice: true, order: 0 },
   { slug: 'hot', name: '인기', notice: false, order: 1 },
   { slug: 'free', name: '자유', notice: false, order: 2 },
-  { slug: 'spl', name: 'SPL', notice: false, order: 3 },
+  { slug: 'spl', name: 'PL', notice: false, order: 3 },
   { slug: 'ipl', name: 'IPL', notice: false, order: 4 },
   { slug: 'officialmain', name: '공식전', notice: false, order: 5 },
   { slug: 'secondline', name: '세컨드', notice: false, order: 6 },

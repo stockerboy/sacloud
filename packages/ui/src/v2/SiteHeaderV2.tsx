@@ -71,6 +71,13 @@ export interface SiteHeaderV2Props {
  */
 const GNB_MARK_ON: boolean = false
 
+/**
+ * ★상단바에 리그·메뉴 줄을 둘 것인가★ (2026-09-16 사장님이 내리심:
+ * «모든 카테고리를 지워»). 길은 전부 왼쪽 햄버거 서랍으로 모였다.
+ * `true` 로 두면 옛 줄이 그대로 돌아온다.
+ */
+const GNB_ROW_ON: boolean = false
+
 const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> = {
   /**
    * ★본디 크기를 같이 적는다★ (2026-09-12).
@@ -180,18 +187,33 @@ export function SiteHeaderV2({
       /* 강조색은 ★지금 보고 있는 리그★ 를 따른다 — 주소에서 읽는다 */
       className={`${v2Class(leagueSlugOf(pathname), 'v2-topbar')} fixed top-0 z-50 w-full`}
     >
-      <div className="v2-container v2-topbar__inner max-md:gap-0">
+      <div className="v2-container v2-topbar__inner v2-topbar__inner--menu">
         {/*
-          ⚠ ★2026-09-12 — 햄버거를 뺐다★ (사장님: «맨 왼쪽에 바3개 누르면 메뉴창 열리는거
-            없애고 그 자리에 로고 넣어»). 이제 그 자리에 브랜드 로고가 온다.
+          ⚠ ★2026-09-16 — 햄버거가 돌아오고 카테고리가 통째로 사라졌다★ (사장님:
+            «최상단바에 써클로고를 가운데에 배치하고 ★모든 카테고리를 지워★ 그리고
+             왼쪽에 햄버거메뉴 (…) 로 만들어줘»).
 
-          ★서랍 코드는 지우지 않았다★ (`CLAUDE.md` 1-4) — 아래 `{open ? … }` 가 그대로 있다.
-          되살리려면 이 자리에 단추만 다시 놓으면 된다. 지금은 열 길이 없어 늘 닫혀 있다.
+            2026-09-12 에 «햄버거 없애고 그 자리에 로고 넣어» 로 단추를 뺐었고,
+            그때 ★서랍 코드는 남겨 뒀다.★ 그래서 단추만 도로 놓으면 된다.
+
+            ★서랍이 이제 사이트의 유일한 메뉴다★ — 폰에서만 열리면 PC 사용자는
+            갈 곳이 없어지므로 `md:hidden` 을 뗐다.
         */}
+        <button
+          type="button"
+          className="v2-burger"
+          aria-label={open ? '메뉴 닫기' : '메뉴 열기'}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span aria-hidden className="v2-burger__bar" />
+          <span aria-hidden className="v2-burger__bar" />
+          <span aria-hidden className="v2-burger__bar" />
+        </button>
 
         {/* `v2-brand` — 로고의 `.my` 만 언제나 빨강으로 되돌린다 (리그색을 안 따라간다) */}
-        <Link href="/" aria-label="홈" className="v2-brand flex items-center">
-          <NavLogo className="h-[34px] w-auto max-md:h-[26px]" />
+        <Link href="/" aria-label="홈" className="v2-brand v2-brand--center flex items-center">
+          <NavLogo className="h-[34px] w-auto max-md:h-[28px]" />
         </Link>
 
         {/*
@@ -205,6 +227,12 @@ export function SiteHeaderV2({
 
           서랍은 ★그대로★ 다 — 없앤 길은 하나도 없다.
         */}
+        {/*
+          ⚠ ★2026-09-16 — 이 줄을 통째로 내렸다★ (사장님: «모든 카테고리를 지워»).
+            길은 전부 왼쪽 햄버거 서랍으로 모였다.
+            ★지우지 않는다★ — `GNB_ROW_ON` 을 `true` 로 두면 그대로 돌아온다.
+        */}
+        {GNB_ROW_ON ? (
         <nav className="v2-gnb">
           {featuredLeagues.map((item) => {
             const mark = GNB_MARK[leagueSlugOfHref(item.href)]
@@ -277,6 +305,7 @@ export function SiteHeaderV2({
             </Link>
           ))}
         </nav>
+        ) : null}
 
         <div className="flex-1" />
 
@@ -306,25 +335,40 @@ export function SiteHeaderV2({
 
       {/* --- 모바일 서랍 — 옛 판과 같은 구성이다 --- */}
       {open ? (
-        <div className="border-b border-[var(--v2-bar-border)] bg-[var(--v2-panel)] pb-2 md:hidden">
+        /*
+         * ⚠ 2026-09-16 — `md:hidden` 을 뗐다. 이제 서랍이 사이트의 유일한 메뉴다.
+         *   배경은 ★불투명★ 이어야 한다 — `--v2-panel` 은 반투명(0.58)이라
+         *   서랍 글자와 본문 글자가 겹쳐 읽혔다 (폰 실측).
+         */
+        <div className="v2-drawer border-b border-[var(--v2-bar-border)] pb-2">
           {navGroups.map((group) => (
             <div key={group.label} className="border-b border-[var(--v2-row-divider)]">
               <div className="px-6 pb-1 pt-4 text-[11px] tracking-widest text-[var(--v2-text-ghost)]">
                 {group.label}
               </div>
-              {group.items.map((item) => (
-                <Link
-                  key={`${group.label}:${item.href}`}
-                  href={item.href}
-                  className={`block px-6 py-3 text-[14px] ${
-                    isActive(pathname, item.href)
-                      ? 'font-bold text-[var(--v2-text-strong)]'
-                      : 'text-[var(--v2-text-dim)]'
-                  }`}
-                >
-                  <LeagueLabel name={item.label} />
-                </Link>
-              ))}
+              {group.items.map((item) =>
+                /* ★아직 없는 화면은 링크를 안 건다★ — 404 로 보내지 않는다 (D-106) */
+                item.href === '' ? (
+                  <span
+                    key={`${group.label}:${item.label}`}
+                    className="block px-6 py-3 text-[14px] text-[var(--v2-text-ghost)]"
+                  >
+                    {item.label}
+                  </span>
+                ) : (
+                  <Link
+                    key={`${group.label}:${item.href}`}
+                    href={item.href}
+                    className={`block px-6 py-3 text-[14px] ${
+                      isActive(pathname, item.href)
+                        ? 'font-bold text-[var(--v2-text-strong)]'
+                        : 'text-[var(--v2-text-dim)]'
+                    }`}
+                  >
+                    <LeagueLabel name={item.label} />
+                  </Link>
+                ),
+              )}
             </div>
           ))}
           {user ? (

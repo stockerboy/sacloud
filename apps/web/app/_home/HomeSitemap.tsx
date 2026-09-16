@@ -46,7 +46,7 @@ const ordered = ORDER.flatMap((slug) => LIVE_LEAGUES.filter((l) => l.slug === sl
 
 /** 리그의 ★원래 이름★ — `sanply` 는 안 붙인다 (이름이 이미 `10` 이다) */
 const LEAGUE_SUB: Readonly<Record<string, string>> = {
-  supply: '서플라이',
+  supply: '구 서플라이',
   nolink: '무소속',
 }
 
