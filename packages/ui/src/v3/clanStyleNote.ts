@@ -25,7 +25,7 @@ import type { ClanHexagonV2 } from '@sacloud/contract'
 /** 「운영」을 이루는 다섯 축 — 스나싸움만 뺀 전부 */
 /* ⚠ ★2026-09-15★ — `tempo` → `riflePower` (사장님이 ④ 를 바꿈). 옛 배열은 `CLAN_CORE_AXES_V1` */
 /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 (사장님). 옛 판은 아래 `_V1` */
-export const CLAN_CORE_AXES = ['outnumbered', 'save', 'riflePower', 'sniperInfluence', 'trade'] as const
+export const CLAN_CORE_AXES = ['outnumbered', 'save', 'riflePower', 'sniperInfluence', 'firstBloodless'] as const
 /** 2026-09-15 까지 쓰던 다섯. **지우지 않는다** (`CLAUDE.md` 1-4) */
 export const CLAN_CORE_AXES_V1 = ['outnumbered', 'save', 'tempo', 'firstBlood', 'trade'] as const
 
@@ -38,7 +38,7 @@ export const CLAN_AXIS_LABEL: Readonly<Record<string, string>> = {
   save: '세이브',
   riflePower: '라이플화력',
   sniperInfluence: '스나영향력',
-  trade: '백어택성공률(2턴)',
+  firstBloodless: '선짤없이 라운드 시작',
 }
 
 /**
