@@ -56,6 +56,7 @@ import {
   CLAN_HEX_V2_PENDING_TEXT as PENDING_TEXT,
   type ClanHexV2,
   type ClanHexV2Axis,
+  type ClanHexV2AnyAxisKey,
   type ClanHexV2AxisKey,
   type ClanHexV2PendingReason,
 } from '@sacloud/contract'
@@ -99,7 +100,7 @@ function Fraction({ axis }: { axis: ClanHexV2Axis }) {
 }
 
 /** 같은 축을 키로 짚는다. 순서는 고정이라지만 키로 맞추면 순서가 흔들려도 안 어긋난다 */
-function axisOf(hexagon: ClanHexV2 | undefined, key: ClanHexV2AxisKey): ClanHexV2Axis | undefined {
+function axisOf(hexagon: ClanHexV2 | undefined, key: ClanHexV2AnyAxisKey): ClanHexV2Axis | undefined {
   return hexagon?.axes.find((axis) => axis.key === key)
 }
 

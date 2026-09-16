@@ -44,6 +44,7 @@ import { prisma } from '@sacloud/db'
 import {
   CLAN_HEX_V2_CONFIG,
   buildClanHexV2Raw,
+  CLAN_HEX_V2_MATCH_AXIS_KEYS,
   normalizeAgainstFoe,
   normalizeByPercentile,
   /* `sumClanHexTallies` 는 여기서 안 부른다 — 접는 일은 잡이 미리 해 둔다 (D-238) */
@@ -257,7 +258,8 @@ export async function matchClanHexV2(
   const rawOf = (leagueClanId: string): ClanHexV2 | null => {
     const row = rows.find((entry) => entry.leagueClanId === leagueClanId)
     if (row === undefined) return null
-    return buildClanHexV2Raw({ tally: tallyOf(row.tally), matches: 1 })
+    /* ★경기 육각은 «유리한 기회» 를 쓴다★ (2026-09-17 사장님) — 클랜 쪽은 그대로 기회차단 */
+    return buildClanHexV2Raw({ tally: tallyOf(row.tally), matches: 1, axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS })
   }
 
   const redRaw = rawOf(resolved.redLeagueClanId)
@@ -265,7 +267,7 @@ export async function matchClanHexV2(
   if (redRaw === null && blueRaw === null) return null
 
   /* 빈 육각형 = 「재료가 아예 없다」. 상대 자리에 세우면 우리 축이 `compare` 로 내려간다 */
-  const empty = (): ClanHexV2 => buildClanHexV2Raw({ tally: null, matches: 0 })
+  const empty = (): ClanHexV2 => buildClanHexV2Raw({ tally: null, matches: 0, axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS })
   const [red, blue] = normalizeAgainstFoe(redRaw ?? empty(), blueRaw ?? empty())
 
   return {

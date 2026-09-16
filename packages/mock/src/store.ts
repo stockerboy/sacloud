@@ -97,6 +97,7 @@ import {
   type ClanRoundTallyInput,
   /* 클랜 육각형 V2 — 합산·정규화 규칙도 계약 한 곳에만 둔다 (D-217 · D-235) */
   buildClanHexV2Raw,
+  CLAN_HEX_V2_MATCH_AXIS_KEYS,
   normalizeAgainstFoe,
   normalizeByPercentile,
   type ClanHexTallyLike,
@@ -2544,14 +2545,15 @@ function buildMatchHexV2OfMock(match: MockMatch): {
     const seed = `${match.id}:${leagueClanId}`
     const shape = mockHexV2ShapeOf(seed)
     if (shape === 'none') return null
-    return buildClanHexV2Raw({ tally: mockHexV2TallyOf(seed, 1, shape), matches: 1 })
+    /* ★경기 육각은 «유리한 기회» 를 쓴다★ (2026-09-17 사장님) — 클랜 쪽은 그대로 기회차단 */
+    return buildClanHexV2Raw({ tally: mockHexV2TallyOf(seed, 1, shape), matches: 1, axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS })
   }
   const redRaw = rawOf(match.redLeagueClanId)
   const blueRaw = rawOf(match.blueLeagueClanId)
   if (redRaw === null && blueRaw === null) return { red: null, blue: null }
 
   /* 빈 육각형 = 「재료가 아예 없다」. 상대 자리에 세우면 우리 축이 `compare` 로 내려간다 */
-  const empty = (): ClanHexV2 => buildClanHexV2Raw({ tally: null, matches: 0 })
+  const empty = (): ClanHexV2 => buildClanHexV2Raw({ tally: null, matches: 0, axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS })
   const [red, blue] = normalizeAgainstFoe(redRaw ?? empty(), blueRaw ?? empty())
   return { red: redRaw === null ? null : red, blue: blueRaw === null ? null : blue }
 }

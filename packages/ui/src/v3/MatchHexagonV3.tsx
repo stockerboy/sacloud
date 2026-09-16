@@ -20,7 +20,7 @@
  * 그리는 방법·프레임은 `Hexagon` 과 한 글자도 같다 (`useDrawIn` · `penDash`).
  */
 import { useEffect, useRef, useState } from 'react'
-import { CLAN_HEX_V2_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, type ClanHexagonV2 } from '@sacloud/contract'
+import { CLAN_HEX_V2_AXIS_LABELS, CLAN_HEX_V2_MATCH_AXIS_KEYS, type ClanHexV2AnyAxisKey, type ClanHexagonV2 } from '@sacloud/contract'
 import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
 import { penDash, useDrawIn } from './seasonPlot'
 import { matchVerdict, matchVerdictText } from './matchVerdict'
@@ -38,7 +38,8 @@ const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_S
  *   한 곳이 빠지는 일을 오늘만 세 번 걱었다.
  *   옛 순서는 `CLAN_HEX_V2_AXIS_KEYS_V4` 에 있다.
  */
-const ORDER = CLAN_HEX_V2_AXIS_KEYS
+/* ★경기는 «유리한 기회» 를 쓴다★ (2026-09-17 사장님) — 클랜은 기회차단 그대로 */
+const ORDER = CLAN_HEX_V2_MATCH_AXIS_KEYS
 /* ⚠ 열쇠를 넓혀 ★옛 축 이름도 남긴다★ (2026-09-16 밤 · `CLAUDE.md` 1-4) */
 const LABEL: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
   sniperDuel: '스나싸움',
@@ -48,6 +49,7 @@ const LABEL: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
   sniperInfluence: '스나영향력',
   rifleInfluence: '라플영향력',
   blockChance: '기회차단',
+  openChance: '유리한 기회',
   firstBloodless: '크랙 성공',
 }
 

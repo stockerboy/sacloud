@@ -136,6 +136,12 @@ export interface ClanCardV3Props {
   showHexagon?: boolean
 }
 
+/**
+ * ★인식표(육각 위 그림 띄)를 그릴 것인가★ (2026-09-17 사장님이 «없애» 하심).
+ *   판정 규칙(1~3위 불 · 4~6위 먹구름 · 7위부터 흰구름)은 그대로 남긴다.
+ */
+const PLATE_ON = false
+
 export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNote, renewAction, tierWins = [], tierIndex = 0, onTierStep, showHexagon = true }: ClanCardV3Props) {
   /* ★인식표★ (2026-09-11 사장님) — ASTRA 구간 클랜만 준다.
      ★1~3위 불 · 4~6위 먹구름 · 7위부터 흰구름★ (2026-09-12 사장님이 경계를 이렇게 확정). 다른 구간·SPL·열산 어디에도 안 준다 */
@@ -207,7 +213,12 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
 
       <div className="v3-clanbody" style={traitBodyStyle}>
         <ClanTraitBackdrop theme={theme} markSlug={data.clan.slug} />
-        {plate ? <span aria-hidden className={`v3-plate v3-plate--${plate}`} /> : null}
+        {/*
+          * ⚠ ★인식표를 뗐었다★ (2026-09-17 사장님: «인식표 없애»).
+          *   육각형 위에 가로로 긴 그림 띄가 깔려 자리를 먹고 있었다.
+          *   되살리려면 `PLATE_ON` 을 true 로 두면 된다 (`CLAUDE.md` 1-4).
+          */}
+        {PLATE_ON && plate ? <span aria-hidden className={`v3-plate v3-plate--${plate}`} /> : null}
         {/*
           ★육각형이 왼쪽★ (2026-09-12 사장님: «클랜 플레이 스타일 파트를 없애고
           그 그래프를 그냥 메인 카드 왼쪽에 배치해줄 수 있어?»).

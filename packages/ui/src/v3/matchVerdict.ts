@@ -51,6 +51,7 @@ const PHRASE: Readonly<Record<string, string>> = {
   sniperInfluence: '스나들의 판 가르기',
   rifleInfluence: '라플들의 판 가르기',
   blockChance: '먼저 맞고 시작한 라운드',
+  openChance: '라운드를 먼저 여는 힘',
   trade: '동료가 당한 직후의 되받아치기',
   firstBloodless: '라운드 초반 크랙',
 }

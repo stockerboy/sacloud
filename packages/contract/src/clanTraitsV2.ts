@@ -78,6 +78,24 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
 ] as const
 
 /**
+ * ★경기 육각만 다른 여섯★ (2026-09-17 사장님:
+ * «기회차단 대신 유리한기회를 넣어(경기6축만)»).
+ *
+ * ★한 판에서는 «끊었나» 보다 «열었나» 가 더 읽힌다.★
+ *   기회차단은 분모가 «상대가 연 라운드» 라 13라운드 한 판에서 6개뿐이다.
+ *   유리한 기회는 분모가 ★전체 라운드★ 라 두 배 넓다.
+ *   클랜 육각은 판이 쌓이므로 기회차단을 그대로 쓴다.
+ */
+export const CLAN_HEX_V2_MATCH_AXIS_KEYS = [
+  'sniperDuel',
+  'sniperInfluence',
+  'rifleInfluence',
+  'openChance',
+  'outnumbered',
+  'save',
+] as const
+
+/**
  * ⚠ ★2026-09-16 저녁까지 쓰던 여섯★ — 라이플화력·크랙 성공이 있던 판이다.
  * 지우지 않는다 (`CLAUDE.md` 1-4). 재료도 계속 쌓이므로 되돌릴 때 재수집이 없다.
  */
@@ -109,6 +127,7 @@ export type ClanHexV2AxisKey = (typeof CLAN_HEX_V2_AXIS_KEYS)[number]
  */
 export type ClanHexV2AnyAxisKey =
   | ClanHexV2AxisKey
+  | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS)[number]
   | (typeof CLAN_HEX_V2_AXIS_KEYS_V4)[number]
   | (typeof CLAN_HEX_V2_AXIS_KEYS_V3)[number]
 
@@ -125,6 +144,8 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AnyAxisKey, string> = {
   trade: '교환',
   /* ★2026-09-16 밤 — 새 이름 둘★ (사장님) */
   rifleInfluence: '라플영향력',
+  /* ★2026-09-17 사장님 — 경기 육각은 이걸 쓴다★ */
+  openChance: '유리한 기회',
   blockChance: '기회차단',
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
@@ -183,6 +204,7 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AnyAxisKey, boolean> =
   sniperDuel: false,
   /* 점수 차가 클수록 좋다 — 우리 쪽이 상대보다 앞섰다는 뜻이다 */
   rifleInfluence: false,
+  openChance: false,
   /* 맞고 시작한 라운드를 끊을수록 좋다 */
   blockChance: false,
   outnumbered: false,
@@ -223,6 +245,7 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
    *   한 표에 둘을 담을 수 없으므로 여기서는 경기 쪽(`diff`)으로 둔다.
    */
   rifleInfluence: 'diff',
+  openChance: 'ratio',
   /* ★기회차단★ — 상대가 연 라운드 중 우리가 되받은 비율 */
   blockChance: 'ratio',
   /*
@@ -906,7 +929,7 @@ export const legacyTempoSeconds = (tally: ClanHexTallyLike): number | null => {
 /* -------------------------------------------------------------------------- */
 
 export interface ClanHexV2Axis {
-  key: ClanHexV2AxisKey
+  key: ClanHexV2AnyAxisKey
   label: string
   /** 분자. 못 세면 `null` */
   numerator: number | null
@@ -963,7 +986,18 @@ export interface ClanHexV2 {
 const Unit = z.number().min(0).max(1)
 
 export const ClanHexagonV2Axis = z.object({
-  key: z.enum(CLAN_HEX_V2_AXIS_KEYS),
+  /*
+   * ★경기와 클랜이 다른 여섯을 쓴다★ (2026-09-17 사장님) — 둘을 다 받는다.
+   *   경기  … 유리한 기회(`openChance`)
+   *   클랜  … 기회차단(`blockChance`)
+   *   옛 이름도 받는다 — 예전 행이 화면으로 올 수 있다 (`CLAUDE.md` 1-4).
+   */
+  key: z.enum([
+    'sniperDuel', 'sniperInfluence', 'rifleInfluence', 'blockChance', 'openChance',
+    'outnumbered', 'save',
+    /* ★옛 이름들★ — 예전 행이 화면으로 올 수 있다 (`CLAUDE.md` 1-4) */
+    'riflePower', 'firstBloodless', 'firstBlood', 'trade',
+  ]),
   label: z.string(),
   numerator: z.number().nullable(),
   denominator: z.number().nullable(),
@@ -1319,7 +1353,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
 /* -------------------------------------------------------------------------- */
 
 /** 화면 글자. **`raw` 가 `null` 이면 언제나 `측정중`** 이다 */
-export function clanHexV2Text(key: ClanHexV2AxisKey, raw: number | null): string {
+export function clanHexV2Text(key: ClanHexV2AnyAxisKey, raw: number | null): string {
   if (raw === null) return CLAN_HEX_V2_PENDING_LABEL
   switch (CLAN_HEX_V2_AXIS_UNITS[key]) {
     case 'ratio':
@@ -1363,7 +1397,7 @@ export function clanHexV2Text(key: ClanHexV2AxisKey, raw: number | null): string
  * «1분 10초 / 2분 20초» — 사장님이 «소비시간인지 남은시간인지 헷갈린다» 고 하셔서
  * `clanHexV2Text` 를 «2분 20초 중 1분 10초 종료» 로 바꿨다. 되돌리려면 이것을 쓰면 된다.
  */
-export function clanHexV2TextV1(key: ClanHexV2AxisKey, raw: number | null): string {
+export function clanHexV2TextV1(key: ClanHexV2AnyAxisKey, raw: number | null): string {
   if (raw === null) return CLAN_HEX_V2_PENDING_LABEL
   switch (CLAN_HEX_V2_AXIS_UNITS[key]) {
     case 'ratio':
@@ -1388,7 +1422,7 @@ export function clanHexV2TextV1(key: ClanHexV2AxisKey, raw: number | null): stri
 
 /** 못 잰 축 한 칸 */
 function pendingAxis(
-  key: ClanHexV2AxisKey,
+  key: ClanHexV2AnyAxisKey,
   pending: ClanHexV2PendingReason,
   parts?: { numerator?: number | null; denominator?: number | null },
 ): ClanHexV2Axis {
@@ -1408,7 +1442,7 @@ function pendingAxis(
 
 /** 잰 축 한 칸. **`value` 는 아직 `null` 이다** — 정규화는 다음 단계다 */
 function measuredAxis(
-  key: ClanHexV2AxisKey,
+  key: ClanHexV2AnyAxisKey,
   numerator: number,
   denominator: number,
 ): ClanHexV2Axis {
@@ -1474,7 +1508,7 @@ export function firstBloodAxisV3(part: {
  *   지금 축은 안 부르지만 재료가 계속 쌓이므로 함수를 남긴다 (`CLAUDE.md` 1-4).
  */
 export function diffAxis(
-  key: ClanHexV2AxisKey,
+  key: ClanHexV2AnyAxisKey,
   part: { rounds: number; won: number; quietRounds: number; quietWon: number },
 ): ClanHexV2Axis {
   const active = part.won / part.rounds
@@ -1578,6 +1612,12 @@ export function buildClanHexV2Raw(input: {
   tally: ClanHexTallyLike | null
   matches: number
   config?: ClanHexV2Config
+  /**
+   * ★어느 여섯을 낼 것인가★ (2026-09-17 사장님:
+   * «기회차단 대신 유리한기회를 넣어(경기6축만)»).
+   * 안 주면 클랜용(`CLAN_HEX_V2_AXIS_KEYS`)이다 — 부르는 곳이 대부분 그쪽이라.
+   */
+  axisKeys?: readonly ClanHexV2AnyAxisKey[]
 }): ClanHexV2 {
   const config = input.config ?? CLAN_HEX_V2_CONFIG
   const tally = input.tally
@@ -1585,7 +1625,8 @@ export function buildClanHexV2Raw(input: {
      사용자가 ① 을 스나 대 스나로 바꾸고 ⑤⑥ 을 빼면서 구역을 보는 축이 사라졌다.
      설정과 `zoneCountOf` 를 **지우지 않는다** — 옛 축이 되살아나면 그대로 쓴다 (`CLAUDE.md` 10-4) */
 
-  const axes: ClanHexV2Axis[] = CLAN_HEX_V2_AXIS_KEYS.map((key) => {
+  const axisKeys = input.axisKeys ?? CLAN_HEX_V2_AXIS_KEYS
+  const axes: ClanHexV2Axis[] = axisKeys.map((key) => {
     if (tally === null) return pendingAxis(key, 'battlelog')
     switch (key) {
       /**
@@ -1698,6 +1739,23 @@ export function buildClanHexV2Raw(input: {
        * 실측 — 끊으면 그 라운드 승률 49.7%, 못 끊으면 ★40.8%★.
        * ★경기 승률과 상관 0.015★ 로 여섯 축 중 «그냥 강팀» 이 안 섞인 유일한 축이다.
        */
+      /**
+       * ★유리한 기회★ — 전체 라운드 중 «우리가 첫 킬을 낸» 비율 (2026-09-17 사장님).
+       *
+       * 기회차단과 ★같은 재료★ 를 쓴다 — 분모만 다르다.
+       *   기회차단  상대가 연 라운드 중 되받은 비율
+       *   유리한 기회  ★전체 라운드★ 중 우리가 열은 비율
+       *
+       * 한 판에서는 분모가 두 배라 훨씬 든든하다 — 그래서 경기 육각에만 쓴다.
+       */
+      case 'openChance': {
+        const part = tally.blockChance ?? null
+        if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
+        const opened = part.openRounds ?? 0
+        const rounds = opened + part.foeOpenRounds
+        if (rounds === 0) return pendingAxis(key, 'sample', { numerator: opened })
+        return measuredAxis(key, opened, rounds)
+      }
       case 'blockChance': {
         const part = tally.blockChance ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
@@ -1737,6 +1795,13 @@ export function buildClanHexV2Raw(input: {
        * ⚠ ★옛 축★ ⑥ 크랙 성공 (2026-09-16) — 축 키에서 빠졌다.
        *   재료(`tally.firstBloodless`)와 셈은 그대로 살아 있다.
        */
+      /*
+       * ⚠ ★모르는 축은 «측정중» 이다★ (2026-09-17).
+       *   표가 옛 이름까지 알게 넓어졌으므로, 지금 여섯에 없는 키가
+       *   들어올 수 있다. 그때 0% 로 적지 않고 «측정중» 이라 적는다 (D-106).
+       */
+      default:
+        return pendingAxis(key, 'battlelog')
     }
   })
 

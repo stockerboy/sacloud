@@ -32,7 +32,7 @@
  *   «두 칸 앞당긴다» 와 ★같은 말★ 이다. 그런데 클랜이 늘면 한 칸 크기가 바뀌므로
  *   점수로 박아 두면 뜻이 흔들린다. 등수로 적으면 흔들리지 않는다.
  */
-import { CLAN_HEX_V2_AXIS_KEYS, type ClanHexV2AxisKey } from './clanTraitsV2'
+import { CLAN_HEX_V2_AXIS_KEYS, type ClanHexV2AnyAxisKey, type ClanHexV2AxisKey } from './clanTraitsV2'
 
 /** 축마다 여기까지 뱃지를 준다 (사장님: «5위 안») */
 export const CLAN_BADGE_TOP = 5
@@ -50,7 +50,7 @@ export const CLAN_BADGE_BONUS_DIVISION = 1
 
 /** 한 축의 뱃지 판정에 필요한 것 */
 export interface ClanBadgeAxisInput {
-  key: ClanHexV2AxisKey
+  key: ClanHexV2AnyAxisKey
   /** 리그 안 등수 (1 = 최고). 아직 못 잰 축은 `null` */
   rank: number | null
 }
@@ -67,7 +67,7 @@ export function clanBadgeAxes(
 ): ClanHexV2AxisKey[] {
   const bonus = division === CLAN_BADGE_BONUS_DIVISION ? CLAN_BADGE_ASTRA_RANK_BONUS : 0
   const cut = CLAN_BADGE_TOP + bonus
-  const won = new Set<ClanHexV2AxisKey>()
+  const won = new Set<ClanHexV2AnyAxisKey>()
   for (const axis of axes) {
     if (axis.rank === null) continue
     if (axis.rank <= cut) won.add(axis.key)
