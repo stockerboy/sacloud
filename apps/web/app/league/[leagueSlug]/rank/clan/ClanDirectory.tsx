@@ -234,18 +234,16 @@ function ClanRankDirectory({
         /* ★뱃지★ (2026-09-14 사장님) — 판정은 서버가 이미 끝냈다. 여기는 나른다 */
         badges: row.badges,
         /*
-         * ★주요멤버 다섯 — 화면은 다 됐는데 ★자료가 이 끝점으로 안 온다★ (2026-09-17).
+         * ★주요멤버 다섯★ (2026-09-16 밤 사장님:
+         * «클명이랑 승률사이에 메인 이라고 쓰고 메인멤버 5명을 써주든가»).
          *
-         *   사장님: «클명이랑 승률사이에 메인 이라고 쓰고 메인멤버 5명을 써주든가».
-         *   `ClanRankTable` 은 `main_members` 를 받으면 ★바로 그린다★ (칸·머리글·줄바꿈 다 됨).
+         * 셈은 서버가 끝냈다 (`mainMembersOf` 한 함수) — 여기는 나르기만 한다.
+         * 짧게 오거나 빈 배열일 수 있다. 그때 표는 ★자리를 그냥 비운다★ (「없음」 을 적지 않는다).
          *
-         *   ⚠ 그런데 `main_members` 는 `ClanRankRow`(= `GET /leagues/{slug}/ranks/clans`)에만 붙었다.
-         *     ★이 화면이 읽는 것은 `LeagueClan`(= `GET /leagues/{slug}/clans`) 이다★ —
-         *     순위를 우리가 직접 세우려고 전체 목록을 받는 끝점이라 칸이 다르다.
-         *
-         *   그 끝점에도 칸이 생기면 여기 한 줄만 살리면 된다:
-         *       main_members: row.main_members,
+         * ⚠ 한때 이 칸이 `ClanRankRow`(`/ranks/clans`)에만 있어서 ★이 화면에 영영 안 왔다.★
+         *   이 화면은 순위를 직접 세우려고 `LeagueClan`(`/clans`)로 전체를 받는다 (8672a2ee 에서 고침).
          */
+        main_members: row.main_members,
       })),
     [filtered, noteOf],
   )
