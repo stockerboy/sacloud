@@ -45,7 +45,13 @@ export const AXIS_COLUMNS: Record<
 > = {
   save: { value: 'save', pct: 'savePct', rank: 'saveRank', total: 'saveTotal', unit: 'percent' },
   duel: { value: 'duel', pct: 'duelPct', rank: 'duelRank', total: 'duelTotal', unit: 'percent' },
-  carry: { value: 'carry', pct: 'carryPct', rank: 'carryRank', total: 'carryTotal', unit: 'per_game' },
+  /*
+   * ⚠ ★단위가 «판당 회수» 로 남아 있었다★ (2026-09-16 밤에 찾음).
+   *   2026-09-15 에 캐리력이 «게임영향력»(한 라운드에 적 다섯 중 몇 명 = ★퍼센트★)
+   *   으로 바뀌었는데 이 표만 안 따라와서 «90.4회» 로 적혔다.
+   *   그동안 안 보인 이유 — 분야별 TOP5 가 단위를 안 보고 늘 % 를 붙이고 있었다.
+   */
+  carry: { value: 'carry', pct: 'carryPct', rank: 'carryRank', total: 'carryTotal', unit: 'percent' },
   /*
    * ★게임템포★ (2026-09-16 저녁 사장님) — 단위가 ★초★ 다. «2분 20초 중 34초» 로 적는다.
    *   ⚠ 옛 ④ 는 «평균 사망 시간» 이었다 (같은 칸·같은 단위, 재료만 갈렸다).
