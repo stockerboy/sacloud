@@ -2128,3 +2128,88 @@
   outline-offset: 2px;
   border-radius: 3px;
 }
+
+/* ══ ★첫 화면 기능 예시 — 펼침 움직임★ (2026-09-16 사장님 «애니메이트도 나와야해») ══
+ *
+ *   사장님이 물리신 것은 ★내용★ 만이 아니었다. 눌렀을 때 아무 기척 없이 글자가
+ *   툭 나타나면 «열렸다» 가 안 읽힌다. 칸이 ★자라나고★ 그림이 ★그려지는★ 느낌이 있어야
+ *   «내가 눌러서 이게 열렸다» 가 몸으로 전해진다.
+ *
+ *   ⚠ `.sac-v2` 안에서만 사는 규칙이다 — 첫 화면은 그 껍데기를 두르고 있다.
+ */
+.sac-v2 .home-ex {
+  animation: home-ex-open 260ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
+  overflow: hidden;
+}
+@keyframes home-ex-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    /* 높이를 0 에서 키우면 안쪽 그림이 눌려 찌그러진다 — 칸은 위에서 미끄러져 내려온다 */
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* 그림은 칸보다 ★한 박자 늦게★ 또렷해진다 — 칸이 먼저 자리를 잡아야 안 흔들린다 */
+.sac-v2 .home-ex-draw {
+  animation: home-ex-draw 420ms 120ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+@keyframes home-ex-draw {
+  from {
+    opacity: 0;
+    transform: scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 라운드 막대 — 왼쪽에서 자란다. 폭은 인라인 스타일이 정하고 여기서는 ★비율★ 만 민다 */
+.sac-v2 .home-ex-bar {
+  display: block;
+  height: 100%;
+  transform-origin: left center;
+  animation: home-ex-bar 520ms 160ms cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+@keyframes home-ex-bar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* 불러오는 동안 도는 점 — 「멈춘 건가」를 없앤다 */
+.sac-v2 .home-ex-spin {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--v2-head-divider, #1e2637);
+  border-top-color: var(--v2-accent, #5b8dff);
+  border-radius: 50%;
+  animation: home-ex-spin 700ms linear infinite;
+}
+@keyframes home-ex-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ★움직임을 꺼 둔 분에게는 그냥 나타난다★ — 멀미를 만들지 않는다 */
+@media (prefers-reduced-motion: reduce) {
+  .sac-v2 .home-ex,
+  .sac-v2 .home-ex-draw,
+  .sac-v2 .home-ex-bar {
+    animation: none;
+  }
+  .sac-v2 .home-ex-spin {
+    animation-duration: 2s;
+  }
+}

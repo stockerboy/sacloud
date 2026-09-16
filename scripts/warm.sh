@@ -69,6 +69,11 @@ hit() {
         -H 'Accept: application/json' \
         "$1" 2>/dev/null)
   echo "  $out  $1"
+  #
+  # ★한 박자 쉰다★ — 데우려다 DB 를 몰아치면 본말전도다.
+  #   실측(2026-09-16): 쉼 없이 몰아치니 무거운 질의가 겹쳐 500 이 났다.
+  #   40여 개 × 1초라도 5분 주기 안에 넉넉히 끝난다.
+  sleep "${GAP:-1}"
 }
 
 echo "== 캐시 데우기 $(date '+%F %T') · $BASE"
@@ -82,6 +87,39 @@ for lg in $LEAGUES; do
     hit "$BASE/api/leagues/$lg/$p"
   done
 done
+
+# ── ★1위 선수·클랜의 상세★ ──────────────────────────────────
+#   첫 화면의 «예시» 가 1위의 상세를 펼쳐 보여 준다 (육각형·그래프).
+#   그 두 질의가 ★차가울 때 4초★ 다 (실측). 랭킹만 데워 놓으면 예시를 누른
+#   사람이 그 4초를 그대로 맞는다.
+#
+#   1위는 날마다 바뀐다 — 랭킹을 먼저 읽어 1위를 뽑은 뒤 그 상세를 밟는다.
+#   뽑아내는 데 node 를 쓴다 (VPS 에 이미 있다). 없으면 조용히 건너뛴다.
+first_of() {
+  # $1 주소 · $2 꺼낼 길 (예: data.0.player.id)
+  curl -s -m "$TIMEOUT" "$1" 2>/dev/null | node -e '
+    let raw = ""
+    process.stdin.on("data", (d) => (raw += d))
+    process.stdin.on("end", () => {
+      try {
+        let v = JSON.parse(raw)
+        for (const k of process.argv[1].split(".")) v = v?.[k]
+        if (typeof v === "string" && v !== "") process.stdout.write(v)
+      } catch {}
+    })
+  ' "$2" 2>/dev/null
+}
+
+if command -v node >/dev/null 2>&1; then
+  for lg in $LEAGUES; do
+    pid=$(first_of "$BASE/api/leagues/$lg/ranks/players?page=1&weapon=all" "data.0.player.id")
+    [ -n "$pid" ] && hit "$BASE/api/leagues/$lg/players/$pid"
+    cs=$(first_of "$BASE/api/leagues/$lg/ranks/clans?size=3" "data.0.clan.slug")
+    [ -n "$cs" ] && hit "$BASE/api/leagues/$lg/clans/$cs/show"
+  done
+else
+  echo "  (node 가 없어 1위 상세는 건너뛴다)"
+fi
 
 # ⚠ ★화면(HTML)은 데우지 않는다★ (2026-09-16 실측).
 #   사이트가 아직 비공개라 로그인 없는 접속은 503 을 받는다.
