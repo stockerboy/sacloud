@@ -50,7 +50,21 @@ interface Pair {
   lostValue: number | null
   wonText: string
   lostText: string
+  /** «몇 번 중 몇 번» — 없으면 안 적는다 */
+  wonCount: string | null
+  lostCount: string | null
+  /** 표본이 적어 퍼센트가 과장되는 축인가 (2026-09-16 사장님) */
+  thin: boolean
 }
+
+/**
+ * ★표본이 이만큼은 돼야 또렷하게 보여 준다★ (2026-09-16).
+ *
+ * 한 판이 보통 10~13 라운드다. 열 번도 안 일어난 일이면 그 판에서 드물었던 것이고,
+ * «60%» 같은 퍼센트가 실제보다 크게 보인다 — 5번 중 3번일 뿐인데.
+ * 지어낸 수가 아니라 ★한 판의 길이★ 에서 나왔다.
+ */
+const THIN_SAMPLE = 10
 
 function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] {
   return ORDER.map((key) => {
@@ -64,6 +78,12 @@ function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] 
          클랜 페이지의 «측정중»(표본이 아직 모자람)과 뜻이 다르다 */
       wonText: w && w.value !== null ? w.text : '없었음',
       lostText: l && l.value !== null ? l.text : '없었음',
+      /* ★분모를 그대로 보여 준다★ — «60%» 뒤에 «(3/5)» 가 붙으면 뜻이 달라진다 */
+      wonCount: w && w.value !== null ? `${w.numerator}/${w.denominator}` : null,
+      lostCount: l && l.value !== null ? `${l.numerator}/${l.denominator}` : null,
+      /* 양쪽 다 표본이 적으면 흐리게 — 한쪽만 적은 경우는 그 판이 원래 그런 것이다 */
+      thin:
+        Math.max(w?.denominator ?? 0, l?.denominator ?? 0) < THIN_SAMPLE,
     }
   })
 }
@@ -180,7 +200,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
           {pairs.map((p, i) => {
             const [x, y, anchor] = HEX_LABELS[i] as (typeof HEX_LABELS)[number]
             return (
-              <g key={p.label}>
+              <g key={p.label} opacity={p.thin ? 0.45 : 1}>
                 <text x={x} y={y} textAnchor={anchor} fontSize={12} fontWeight="700" fill={V3.textMuted}>
                   {p.label}
                 </text>
@@ -189,6 +209,20 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                   {showWon && showLost ? <tspan fill="#44506c"> · </tspan> : null}
                   {showLost ? <tspan fill={LOST.line}>{p.lostText}</tspan> : null}
                 </text>
+                {/*
+                  ★몇 번 중 몇 번★ (2026-09-16 사장님 «다른건 다 압도했는데?»).
+                    «60%» 만 보면 5번 중 3번인 줄 모른다. 분모를 적어 두면
+                    유저가 스스로 «저건 표본이 적네» 를 판단할 수 있다.
+                */}
+                {p.wonCount !== null || p.lostCount !== null ? (
+                  <text x={x} y={y + 25} textAnchor={anchor} fontSize={9} fill="#5a6a8c">
+                    {showWon && p.wonCount !== null ? <tspan fill="#6f86b5">{p.wonCount}</tspan> : null}
+                    {showWon && showLost && p.wonCount !== null && p.lostCount !== null ? (
+                      <tspan fill="#3b465e"> · </tspan>
+                    ) : null}
+                    {showLost && p.lostCount !== null ? <tspan fill="#b5757c">{p.lostCount}</tspan> : null}
+                  </text>
+                ) : null}
               </g>
             )
           })}
