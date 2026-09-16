@@ -305,8 +305,17 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
                 <span style={{ fontSize: 11.5, color: V3.textDim, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>{k.label}</span>
                 {k.picker && onTierStep ? <StepButton onClick={() => onTierStep(1)}>›</StepButton> : null}
               </span>
-              <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: KPI_SPREAD ? 'flex-end' : 'flex-start', gap: 8, minWidth: 0, flexDirection: KPI_SPREAD ? 'row' : 'row-reverse' }}>
-                <span style={{ fontSize: 11.5, color: V3.textGhost, fontWeight: 500, minWidth: 0, display: 'inline-flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap', justifyContent: 'flex-end', textAlign: 'right' }}>{k.sub}</span>
+              {/*
+                * ⚠ ★2026-09-17 — 값이 아직도 칸 오른쪽 끕에 붙어 있었다★.
+                *
+                *   `KPI_SPREAD=false` 로 라벨 칸을 좀혔는데도 «승률» 과 «68.7%» 가
+                *   폰 390px 에서 ★250px 떨어져★ 서 있었다. 기둘어진 줄(`row-reverse`)에서는
+                *   `flex-start` 가 ★오른쪽 끕★ 이다 — 반대로 준 셈이다.
+                *   라벨 바로 옆에 붙이려면 `flex-end` 가 맞다.
+                *   여전히 값끼리는 같은 자리에서 시작하므로 줄이 알맞게 맞는다.
+                */}
+              <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: KPI_SPREAD ? 'flex-end' : 'flex-end', gap: 8, minWidth: 0, flexDirection: KPI_SPREAD ? 'row' : 'row-reverse' }}>
+                <span style={{ fontSize: 11.5, color: V3.textGhost, fontWeight: 500, minWidth: 0, display: 'inline-flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap', justifyContent: KPI_SPREAD ? 'flex-end' : 'flex-start', textAlign: KPI_SPREAD ? 'right' : 'left' }}>{k.sub}</span>
                 <span style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, whiteSpace: 'nowrap', flex: 'none', color: k.color }}>{k.value}</span>
               </span>
             </div>
