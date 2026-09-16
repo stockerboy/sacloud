@@ -64,6 +64,13 @@ export interface SiteHeaderV2Props {
    옛 판은 상단바(v1·v2)와 홈 타일 세 곳에 주소가 따로 박혀 있었다 — 바뀔 때마다
    하나를 빠뜨렸다. 이제 `leagueLogo.ts` 한 곳이 그림도 크기도 정한다.
    옛 로고는 `LEAGUE_LOGO_V1` 로 그대로 살아 있다 (`CLAUDE.md` 1-4). */
+/**
+ * ★상단바에 리그 표장(그림)을 그릴 것인가★ (2026-09-16 사장님이 내리심:
+ * «위에 앰블럼들 다 없애고 그냥 글씨만 깔끔하게»).
+ * `true` 로 두면 옛 모습이 그대로 돌아온다. 그림 파일은 하나도 안 지웠다.
+ */
+const GNB_MARK_ON: boolean = false
+
 const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> = {
   /**
    * ★본디 크기를 같이 적는다★ (2026-09-12).
@@ -93,11 +100,18 @@ const GNB_LINKS: readonly { icon: string; label: string; aria: string; href: str
    *   처음 오는 사람이 가장 먼저 눌러야 할 자리다 — 여기가 무엇을 하는 곳인지
    *   설명하고, 마지막에 참가 신청으로 이어진다.
    */
-  { icon: '✨', label: 'about', aria: '소개', href: '/about', match: '/about' },
-  /* ⚠ 2026-09-12 사장님: «이용방법 이름을 notice로 바꾸고 노티스 앞에 압정 임티를 박아
-     그리고 그 오른쪽에 게시판임티와 board 라는 영어를 적어». 옛 글자: 이용방법 · 게시판 */
-  { icon: '📌', label: 'notice', aria: '이용방법', href: '/guide', match: '/guide' },
-  { icon: '📋', label: 'board', aria: '게시판', href: '/board/hot', match: '/board' },
+  /*
+   * ⚠ ★2026-09-16 — 글자가 바뀌고 이모티콘이 빠졌다★ (사장님:
+   *   «위에 앰블럼들 다 없애고 그냥 글씨만 깔끔하게 (…) ABOUT은 참가신청 으로 한글로
+   *    바꿔 그리고 notice를 ABOUT으로 바꿔 그리고 BOARD는 게시판 으로 바꿔»).
+   *
+   *   ★주소는 한 글자도 안 바뀐다★ — `/about` · `/guide` · `/board` 그대로다.
+   *   바뀐 것은 ★그 자리에 적는 말★ 뿐이다.
+   *   옛 글자: ✨about · 📌notice · 📋board
+   */
+  { icon: '', label: '참가신청', aria: '참가신청', href: '/about', match: '/about' },
+  { icon: '', label: 'ABOUT', aria: '이용방법', href: '/guide', match: '/guide' },
+  { icon: '', label: '게시판', aria: '게시판', href: '/board/hot', match: '/board' },
 ]
 
 /** `/league/nolink` → `nolink`. 주소가 리그가 아니면 빈 글자다 */
@@ -207,7 +221,13 @@ export function SiteHeaderV2({
                     세로가 눌린다. `<img>` 로 놓고 ★세로만★ 정한다 (가로는 그림이 정한다).
                     옛 판은 19×19 네모에 `background-size: contain` 이었다.
                   */}
-                  {mark ? (
+                  {/*
+                    ⚠ ★2026-09-16 — 표장을 안 그린다★ (사장님: «위에 앰블럼들 다 없애고
+                      그냥 글씨만 깔끔하게»). 그림 파일과 주소표(`GNB_MARK`)는
+                      ★그대로 둔다★ — 홈 타일이 같은 파일을 쓴다 (`CLAUDE.md` 1-4).
+                      되살리려면 `GNB_MARK_ON` 을 `true` 로.
+                  */}
+                  {GNB_MARK_ON && mark ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={mark.src} width={mark.w} height={mark.h} alt="" aria-hidden className="v2-gnb__mark" />
                   ) : null}
@@ -239,7 +259,9 @@ export function SiteHeaderV2({
               className={`v2-gnb__item v2-gnb__board ${pathname.startsWith(item.match) ? 'is-on' : ''}`}
             >
               <span className="v2-gnb__cell">
-                <span aria-hidden className="v2-gnb__emoji">{item.icon}</span>
+                {/* ⚠ 2026-09-16 — 이모티콘을 뺐다 (사장님: «그냥 글씨만 깔끔하게»).
+                    `icon` 칸은 남긴다 — 다시 붙일 때 표만 채우면 된다 */}
+                {item.icon === '' ? null : <span aria-hidden className="v2-gnb__emoji">{item.icon}</span>}
                 <span>{item.label}</span>
               </span>
             </Link>

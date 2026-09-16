@@ -74,9 +74,11 @@ export interface NavLink {
  *   옛 이름은 아래 `FEATURED_LEAGUES_V1` 에 남긴다 (`CLAUDE.md` 1-4).
  */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
-  { label: 'LLM', href: '/league/supply' },
+  /* ⚠ 2026-09-16 — «LLM» → «PL» (사장님). 주소는 그대로 `supply` 다 */
+  { label: 'PL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
-  { label: 'YSL', href: '/league/sanply' },
+  /* ⚠ 2026-09-16 — «YSL» → «열산리그» (사장님). 주소는 그대로 `sanply` 다 */
+  { label: '열산리그', href: '/league/sanply' },
 ]
 
 /** ⚠ 옛 이름 (2026-09-14 이전). 지우지 않는다 — 되돌릴 때 쓴다 */
@@ -240,11 +242,20 @@ export const SITE_BRAND = {
  */
 export const LEAGUE_NAME: Readonly<Record<string, string>> = {
   nolink: 'IPL',
+  /* ⚠ ★2026-09-16 — 이름이 또 바뀌었다★ (사장님: «LLM을 PL로» · «YSL을 열산리그로»).
+     옛 이름은 `LEAGUE_NAME_V2` 에 남긴다. 주소는 한 글자도 안 바뀐다 */
+  supply: 'PL',
+  sanply: '열산리그',
+}
+
+/** 그 리그의 이름. 모르는 슬러그면 슬러그를 그대로 돌려준다 — 지어내지 않는다 */
+/** ★2026-09-16 까지 쓰던 이름★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
+export const LEAGUE_NAME_V2: Readonly<Record<string, string>> = {
+  nolink: 'IPL',
   supply: 'LLM',
   sanply: 'YSL',
 }
 
-/** 그 리그의 이름. 모르는 슬러그면 슬러그를 그대로 돌려준다 — 지어내지 않는다 */
 export function leagueNameOf(slug: string): string {
   return LEAGUE_NAME[slug] ?? slug
 }
