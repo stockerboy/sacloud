@@ -287,9 +287,9 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 })
 
-describe('buildPlayerTraits — 5번은 교환율이다 (2026-09-15)', () => {
+describe('buildPlayerTraits — 5번은 ★크랙 성공★ 이다 (2026-09-16 사장님)', () => {
   it('5번 자리이고 옛 판(`V3`)은 그 자리에 `finish` 를 두고 있었다', () => {
-    expect(TRAIT_AXIS_KEYS[4]).toBe('burst')
+    expect(TRAIT_AXIS_KEYS[4]).toBe('crack')
     expect(TRAIT_AXIS_KEYS_V3[4]).toBe('finish')
     expect(TRAIT_AXIS_KEYS).toHaveLength(6)
   })
@@ -306,7 +306,7 @@ describe('buildPlayerTraits — 5번은 교환율이다 (2026-09-15)', () => {
   /* ⚠ 옛 기대값 `'교환율'` — 2026-09-16 새벽 사장님 «교환율을 백어택성공률(2턴)로» */
   it('이름은 무기와 무관하게 `백어택성공률(2턴)` 이다', () => {
     for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'burst').label).toBe('백어택성공률(2턴)')
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'crack').label).toBe('크랙 성공')
     }
   })
 
@@ -332,14 +332,14 @@ describe('buildPlayerTraits — 5번은 교환율이다 (2026-09-15)', () => {
   })
 
   it('백분위가 오면 그대로 실린다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput({ burstPercentile: 73.4 })), 'burst')
+    const axis = axisOf(buildPlayerTraits(rifleInput({ crackPercentile: 73.4 })), 'crack')
     expect(axis).toMatchObject({ percentile: 73.4, pending: null })
   })
 
   it('라운드 자료는 있는데 킬이 모자라면 `games` 다', () => {
     const axis = axisOf(
-      buildPlayerTraits(rifleInput({ hasRoundData: true, burstPercentile: null })),
-      'burst',
+      buildPlayerTraits(rifleInput({ hasRoundData: true, crackPercentile: null })),
+      'crack',
     )
     expect(axis).toMatchObject({ percentile: null, pending: 'games' })
   })
@@ -347,22 +347,22 @@ describe('buildPlayerTraits — 5번은 교환율이다 (2026-09-15)', () => {
   /*
    * ★ D-259 회귀 ★ — 새 축을 읽는 코드는 **없는 값을 견뎌야 한다**.
    *
-   * 이 축이 붙기 전에 만들어진 호출부는 `burstPercentile` 을 아예 넘기지 않는다.
+   * 이 축이 붙기 전에 만들어진 호출부는 `crackPercentile` 을 아예 넘기지 않는다.
    * `=== null` 로만 막으면 `undefined` 가 그대로 `percentile` 에 실려
    * 계약(`number | null`)이 깨진다. 클랜 육각형에서 그 실수가 카드를 통째로 지웠고
    * **오류 한 줄 없이 조용했다.**
    */
-  it('`burstPercentile` 을 아예 안 넘겨도 터지지 않고 `pending` 이 붙는다', () => {
+  it('`crackPercentile` 을 아예 안 넘겨도 터지지 않고 `pending` 이 붙는다', () => {
     const input = rifleInput()
-    delete (input as { burstPercentile?: unknown }).burstPercentile
-    const axis = axisOf(buildPlayerTraits(input), 'burst')
+    delete (input as { crackPercentile?: unknown }).crackPercentile
+    const axis = axisOf(buildPlayerTraits(input), 'crack')
     expect(axis.percentile).toBeNull()
     expect(axis.percentile).not.toBeUndefined()
     expect(axis.pending).toBe('rounds')
   })
 
   it('`undefined` 를 명시적으로 넘겨도 `null` 로 정리된다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput({ burstPercentile: undefined })), 'burst')
+    const axis = axisOf(buildPlayerTraits(rifleInput({ crackPercentile: undefined })), 'crack')
     expect(axis.percentile).toBeNull()
   })
 })
@@ -389,7 +389,7 @@ describe('buildPlayerTraits — 축별 판정 (라이플)', () => {
    *   화면이 사람에게 「할 수 없는 일」을 시키고 있었다.
    */
   it('연속킬(burst)은 라운드 자료가 없으면 rounds 로 남는다', () => {
-    expect(axisOf(hexagon, 'burst')).toMatchObject({ percentile: null, pending: 'rounds' })
+    expect(axisOf(hexagon, 'crack')).toMatchObject({ percentile: null, pending: 'rounds' })
   })
 
   it('백분위가 없으면 그 축만 pending=games 로 남는다', () => {
@@ -423,7 +423,7 @@ describe('buildPlayerTraits — 축별 판정 (스나이퍼)', () => {
   it('연속킬(burst)은 스나에게도 `rounds` 다 — 배틀로그가 아니라 라운드 복원이 재료다', () => {
     // 옛 5번(`작업 성공률`)은 상대 무기를 알아야 해서 `battlelog` 였다.
     // 연속킬은 **킬 시각만** 있으면 되므로 세이브·소수싸움과 같은 갈래를 쓴다 (D-260)
-    expect(axisOf(hexagon, 'burst')).toMatchObject({ percentile: null, pending: 'rounds' })
+    expect(axisOf(hexagon, 'crack')).toMatchObject({ percentile: null, pending: 'rounds' })
   })
 
   it('캐리력은 무기와 무관하게 채워진다', () => {
@@ -465,7 +465,7 @@ describe('buildPlayerTraits — 축 이름은 주무기를 따른다', () => {
   })
 
   it('나머지 다섯 축은 무기와 무관하게 같은 이름이다', () => {
-    for (const key of ['save', 'carry', 'survival', 'burst', 'outnumbered'] as const) {
+    for (const key of ['save', 'carry', 'survival', 'crack', 'outnumbered'] as const) {
       expect(axisOf(sniper, key).label).toBe(axisOf(rifle, key).label)
       expect(axisOf(sniper, key).label).toBe(TRAIT_AXIS_LABEL[key].sniper)
     }

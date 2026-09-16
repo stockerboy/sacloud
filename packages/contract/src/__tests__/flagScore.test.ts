@@ -71,10 +71,12 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
      */
     expect(v.survival).toBe(87)
     /*
-     * ⚠ ★5번 축이 «연속킬» 에서 «교환율» 로 바뀌었다★ (2026-09-15 사장님 «교환율로 해줘»).
-     *   9번 되갚음 / 동료 죽음 30번 = 30%. 옛 기대값 — 1.5 (판당 연속킬 회수)
+     * ⚠ ★5번 축이 «교환율» 에서 «크랙 성공» 으로 바뀌었다★ (2026-09-16 사장님:
+     *   «빽어택 빼고 크랙성공 으로 바꿔 — 라운드시작 25초 이내에 상대를 잡는 비율이
+     *    판수를 분모로»). 12회 / 6판 = 2회.
+     *   옛 기대값 — 30 (교환율 9/30) · 그 전 — 1.5 (판당 연속킬)
      */
-    expect(v.burst).toBe(30)
+    expect(v.crack).toBe(2)
     expect(v.outnumbered).toBeCloseTo(55.6, 1)
   })
 
@@ -94,13 +96,14 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
     expect(dayAxisValues(tally({ rounds: 0 })).carry).toBeNull()
   })
 
-  it('★교환율 — 동료가 죽은 직후 되갚은 비율★ (2026-09-15 사장님)', () => {
-    expect(dayAxisValues(tally({ tradeKills: 9, mateDeaths: 30 })).burst).toBe(30)
-    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 30 })).burst).toBe(0)
-    /* 동료가 한 번도 안 죽었으면 잴 것이 없다 — 랭킹에서는 null */
-    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 0 })).burst).toBeNull()
-    /* 한 판 설명에서는 0 으로 적는다 (다른 축과 같은 규칙) */
-    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 0 }), FLAG_GATE_RAW).burst).toBe(0)
+  it('★크랙 성공 — 25초 안 첫 킬 ÷ 판수★ (2026-09-16 사장님)', () => {
+    expect(dayAxisValues(tally({ games: 6, firstKills: 12 })).crack).toBe(2)
+    /* 기본 픽스처가 firstKills 12 를 들고 있으므로 명시로 0 을 덮어쓴다 */
+    expect(dayAxisValues({ ...tally({ games: 6 }), firstKills: 0 }).crack).toBe(0)
+    /* 한 판도 안 뛰었으면 잴 것이 없다 */
+    expect(dayAxisValues(tally({ games: 0, firstKills: 0 })).crack).toBeNull()
+    /* 한 판 설명에서도 25초 안 첫 킬이 없으면 0 이다 */
+    expect(dayAxisValues({ ...tally(), firstKills: 0 }, FLAG_GATE_RAW).crack).toBe(0)
   })
 
   it('★혼자 남은 라운드가 적으면 세이브는 null★', () => {

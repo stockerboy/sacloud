@@ -605,7 +605,7 @@ export async function playerTraits(
       survivalPercentile: percentileIn(cohort.openingSorted, round?.openingRate),
       /* 5번 `연속킬` (D-260) — 옛 5번(`작업/원어택 성공률`)을 내리고 올린 자리다.
          `cohort` 가 무기별로 갈려 있으므로 **스나는 스나끼리, 라플은 라플끼리** 견준다 */
-      burstPercentile: percentileIn(cohort.burstSorted, round?.burstRate),
+      crackPercentile: percentileIn(cohort.burstSorted, round?.burstRate),
       hasRoundData: round !== undefined,
     }),
     /* 플레이스타일 바 두 줄 (8절 · D-211).

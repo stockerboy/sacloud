@@ -21,7 +21,7 @@ export const PLAYER_HEX_AXIS_ORDER: readonly TraitAxisKey[] = [
   'duel',
   'carry',
   'survival',
-  'burst',
+  'crack',
   'outnumbered',
 ]
 
@@ -69,7 +69,7 @@ export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: str
   /* 사장님이 «선취점» 을 «선짤» 로 못 박으셨다 (2026-09-02) — 배지만 영어로 남아 있었다 */
   /* ⚠ 2026-09-16 새벽 — 축 이름을 따라간다 (사장님) */
   survival: { sniper: '선짤(1턴)', rifle: '선짤(1턴)' },
-  burst: { sniper: '백어택성공률(2턴)', rifle: '백어택성공률(2턴)' },
+  crack: { sniper: '백어택성공률(2턴)', rifle: '백어택성공률(2턴)' },
   /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
@@ -80,7 +80,7 @@ export const PLAYER_HEX_BADGE_V1: Record<TraitAxisKey, { sniper: string; rifle: 
   duel: { sniper: '롱 마스터', rifle: '샷터' },
   carry: { sniper: '캐리 머신', rifle: '캐리 머신' },
   survival: { sniper: 'First Blood', rifle: 'First Blood' },
-  burst: { sniper: '멀티킬러', rifle: '멀티킬러' },
+  crack: { sniper: '멀티킬러', rifle: '멀티킬러' },
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
 
@@ -101,7 +101,7 @@ export const PLAYER_HEX_DESC: Record<TraitAxisKey, { sniper: string; rifle: stri
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '수가 안 밀릴 때 낸 킬 (라운드당)', rifle: '수가 안 밀릴 때 낸 킬 (라운드당)' },
   survival: { sniper: '라운드 시작 25초 안 첫 킬 (판당)', rifle: '라운드 시작 25초 안 첫 킬 (판당)' },
-  burst: { sniper: '팀원이 죽은 뒤 5초 안에 되잡은 비율', rifle: '팀원이 죽은 뒤 5초 안에 되잡은 비율' },
+  crack: { sniper: '팀원이 죽은 뒤 5초 안에 되잡은 비율', rifle: '팀원이 죽은 뒤 5초 안에 되잡은 비율' },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
 }
 
@@ -111,7 +111,7 @@ export const PLAYER_HEX_DESC_V1: Record<TraitAxisKey, { sniper: string; rifle: s
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '한 판 평균 킬', rifle: '한 판 평균 킬' },
   survival: { sniper: '라운드 첫 킬을 딴 비율', rifle: '라운드 첫 킬을 딴 비율' },
-  burst: { sniper: '2초 안에 연달아 잡은 라운드 비율', rifle: '2초 안에 연달아 잡은 라운드 비율' },
+  crack: { sniper: '2초 안에 연달아 잡은 라운드 비율', rifle: '2초 안에 연달아 잡은 라운드 비율' },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
 }
 

@@ -34,7 +34,7 @@ export const TRAIT_AXIS_KEYS = [
   'duel',
   'carry',
   'survival',
-  'burst',
+  'crack',
   'outnumbered',
 ] as const
 export type TraitAxisKey = (typeof TRAIT_AXIS_KEYS)[number]
@@ -211,7 +211,10 @@ export const TRAIT_AXIS_LABEL: Record<
    *   «2턴» 은 사장님이 쓰시는 말로 그 되잡기를 부르는 이름이다.
    *   옛 이름은 `TRAIT_AXIS_LABEL_V3_BURST` 에 남긴다.
    */
-  burst: { sniper: '백어택성공률(2턴)', rifle: '백어택성공률(2턴)' },
+  /* ⚠ ★2026-09-16 — ⑤ 가 백어택에서 «크랙 성공» 으로★ (사장님).
+     라운드 시작 25초 안에 첫 킬을 낸 횟수 ÷ 판수. 클랜 축과 같은 말이다.
+     옛 이름은 `TRAIT_AXIS_LABEL_V3_BURST` 에 남아 있다 */
+  crack: { sniper: '크랙 성공', rifle: '크랙 성공' },
   /** 옛 5번 축 (D-260). 육각형에서는 내려왔지만 재료도 이름도 그대로 남긴다 */
   finish: { sniper: '작업 성공률', rifle: '원어택 성공률' },
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
@@ -506,7 +509,8 @@ export interface TraitInput {
    *   「라운드당 2명」 쪽 재료(`burstKillRounds` / `burstMultiKillRounds`)도 함께
    *   저장해 두었으므로, 정의를 바꾸더라도 **집계를 다시 돌릴 필요는 없다.**
    */
-  burstPercentile?: number | null
+  /** ★크랙 성공★ 의 백분위 (2026-09-16). 옛 이름은 `burstPercentile` */
+  crackPercentile?: number | null
   /**
    * 그 선수에게 **라운드 복원 자료 자체가 있는가**.
    *
@@ -582,7 +586,7 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
           pending: input.damagePercentile === null ? 'games' : null,
         }
       }
-      case 'burst': {
+      case 'crack': {
         /* 5번 `연속킬` — 직전 킬과 2초 이하로 이어진 킬의 비율 (D-260).
            라운드 복원이 재료라 1·4·6번과 **같은 사유 갈래**를 쓴다: 자료가 없으면
            `라운드 복원 필요`, 있는데 킬이 모자라면 `경기 부족` 이다.
@@ -591,7 +595,7 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
              `burstPercentile` 을 아예 넘기지 않는다 (`undefined`). `=== null` 로만
              막으면 `undefined` 가 그대로 `percentile` 에 실려 계약(`number | null`)이
              깨진다. 같은 함정이 클랜 육각형에서 카드를 통째로 지웠다 (D-259). */
-        const value = input.burstPercentile ?? null
+        const value = input.crackPercentile ?? null
         return {
           key,
           label: label(key),

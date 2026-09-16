@@ -45,7 +45,7 @@ const AXIS_COLUMNS: Record<
    *   어느 판의 값인지는 `formulaVersion` 이 가른다.
    */
   survival: { value: 'opening', pct: 'openingPct', rank: 'openingRank', total: 'openingTotal', unit: 'seconds' },
-  burst: { value: 'burst', pct: 'burstPct', rank: 'burstRank', total: 'burstTotal', unit: 'per_game' },
+  crack: { value: 'burst', pct: 'burstPct', rank: 'burstRank', total: 'burstTotal', unit: 'per_game' },
   outnumbered: {
     value: 'outnumbered',
     pct: 'outnumberedPct',
@@ -63,7 +63,7 @@ function partsOf(row: HexRow, key: TraitAxisKey): { numerator: number | null; de
       return { numerator: row.duelWon, denominator: row.duelLost }
     case 'survival':
       return { numerator: row.firstKills, denominator: row.rounds }
-    case 'burst':
+    case 'crack':
       return { numerator: row.burstRounds, denominator: row.rounds }
     case 'outnumbered':
       return { numerator: row.outWon, denominator: row.outRounds }

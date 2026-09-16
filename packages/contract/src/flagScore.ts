@@ -33,7 +33,8 @@ import { z } from 'zod'
 
 /** 여섯 축 — 순서를 바꾸지 않는다. 화면의 육각형이 이 차례로 그린다 */
 /* ⚠ ★2026-09-16 — ④ 가 `opening`(선짤) 에서 `survival`(평균 사망 시간) 로★ (사장님) */
-export const FLAG_AXIS_ORDER = ['save', 'duel', 'carry', 'survival', 'burst', 'outnumbered'] as const
+/* ⚠ 2026-09-16 — ⑤ 가 `burst`(백어택) 에서 `crack`(크랙 성공) 으로 (사장님) */
+export const FLAG_AXIS_ORDER = ['save', 'duel', 'carry', 'survival', 'crack', 'outnumbered'] as const
 /** 2026-09-16 까지 쓰던 차례 — 지우지 않는다 (`CLAUDE.md` 1-4) */
 export const FLAG_AXIS_ORDER_V1 = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
 export type FlagAxisKey = (typeof FLAG_AXIS_ORDER)[number]
@@ -429,9 +430,8 @@ export function dayAxisParts(t: FlagDayTally): Record<FlagAxisKey, FlagAxisParts
         ? { numerator: t.kill, denominator: t.games }
         : { numerator: t.maxRoundTimes, denominator: t.maxRoundKills },
     survival: { numerator: t.deathSeconds ?? 0, denominator: t.deathCount ?? 0 },
-    burst: TRADE_AXIS
-      ? { numerator: t.tradeKills, denominator: t.mateDeaths }
-      : { numerator: t.burstRounds, denominator: t.games },
+    /* ⑤ ★크랙 성공★ — 25초 안 첫 킬 ÷ 판수 (2026-09-16 사장님) */
+    crack: { numerator: t.firstKills, denominator: t.games },
     outnumbered: { numerator: t.outWon, denominator: t.outRounds },
   }
 }
@@ -495,16 +495,11 @@ export function dayAxisValues(
      *   ★백분위는 그대로다★ — 순위를 가리는 잣대는 안 바뀐다 (단조 변환이다).
      */
     survival: survivalScoreOf(t),
-    /* ★5번 축은 «교환율»★ — 동료가 죽은 직후 그 킬러를 되잡은 비율 (2026-09-15 사장님) */
-    burst: TRADE_AXIS
-      ? t.mateDeaths > 0
-        ? round1((t.tradeKills / t.mateDeaths) * 100)
-        : gate.emptyIsZero
-          ? 0
-          : null
-      : t.games > 0
-        ? Math.round((t.burstRounds / t.games) * 100) / 100
-        : null,
+    /*
+     * ★5번 축은 «크랙 성공»★ (2026-09-16 사장님) — 라운드 시작 25초 안에 첫 킬을
+     * 낸 횟수 ÷ 판수. 옛 «교환율» 셈은 아래 주석과 tally 에 그대로 남아 있다.
+     */
+    crack: t.games > 0 ? Math.round((t.firstKills / t.games) * 100) / 100 : null,
     outnumbered:
       t.outRounds >= gate.situationRounds
         ? round1((t.outWon / t.outRounds) * 100)

@@ -63,10 +63,11 @@ describe('축 원값', () => {
      */
     expect(v.survival).toBeNull()
     /*
-     * ⚠ ★5번 축이 «교환율» 이 됐다★ (2026-09-15 사장님) — 재료가 없으면 null 이다.
-     *   옛 기대값 — 1.5 (판당 연속킬)
+     * ⚠ ★5번 축이 «크랙 성공» 이 됐다★ (2026-09-16 사장님) — 25초 안 첫 킬 ÷ 판수.
+     *   이 픽스처는 40회 / 20판 = 2 다.
+     *   옛 기대값 — null (교환율, 재료 없음) · 그 전 — 1.5 (판당 연속킬)
      */
-    expect(v.burst).toBeNull()
+    expect(v.crack).toBe(2)
     /* ★3번 축은 «우위를 만든 킬 ÷ 라운드»★ — 재료가 없으면 0 이다 (라운드는 240 이 있다) */
     expect(v.carry).toBe(0)
     expect(v.outnumbered).toBeCloseTo(33.3)
