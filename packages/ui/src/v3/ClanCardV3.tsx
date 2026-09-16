@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 import type { CSSProperties, ReactNode } from 'react'
-import { leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
+import { CLAN_HEX_V2_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
 import { floorColor, rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
@@ -89,22 +89,26 @@ export function tempoTier(pct: number): string {
  */
 export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
   /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 (사장님) */
-  const order = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'firstBloodless'] as const
-  const label: Record<(typeof order)[number], string> = {
-    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력', sniperInfluence: '스나영향력', firstBloodless: '크랙 성공',
+  /* ⚠ 축 목록은 계약이 정한다 (2026-09-16 밤) */
+  const order = CLAN_HEX_V2_AXIS_KEYS
+  /* ⚠ 열쇠를 넓혀 ★옛 축 이름도 남긴다★ (2026-09-16 밤 · `CLAUDE.md` 1-4) */
+  const label: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
+    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력',
+    sniperInfluence: '스나영향력', rifleInfluence: '라플영향력', blockChance: '기회차단',
+    firstBloodless: '크랙 성공',
   }
   return order.map((key) => {
     const axis = hex?.axes.find((a) => a.key === key) ?? null
-    if (!axis || axis.value === null) return { label: label[key], value: null, note: '측정중', noteColor: V3.textGhost }
+    if (!axis || axis.value === null) return { label: label[key] ?? CLAN_HEX_V2_AXIS_LABELS[key], value: null, note: '측정중', noteColor: V3.textGhost }
     /*
      * ★«42개중 28위»★ (2026-09-12 사장님: «클랜 몇개중 몇위 이렇게 해주고»).
      * 등수만 적으면 몇 팀 중인지를 몰라 28위가 잘한 건지 못한 건지 안 보인다.
      * 모집단을 못 세면 등수만 적는다 — 지어내지 않는다.
      */
     /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 까닭은 `rankColorHexAxis` 주석에 */
-    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, /* ★비율★ (2026-09-16 사장님) — 옛 값 `rankColorHexAxis(axis.rank, key === 'sniperDuel')` */
+    if (axis.rank !== null) return { label: label[key] ?? CLAN_HEX_V2_AXIS_LABELS[key], value: axis.value * 100, note: `${axis.rank}위`, /* ★비율★ (2026-09-16 사장님) — 옛 값 `rankColorHexAxis(axis.rank, key === 'sniperDuel')` */
       noteColor: rankColorByRatio(axis.rank, axis.total) ?? V3.textMuted, note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
-    return { label: label[key], value: axis.value * 100, note: axis.text, noteColor: V3.textMuted }
+    return { label: label[key] ?? CLAN_HEX_V2_AXIS_LABELS[key], value: axis.value * 100, note: axis.text, noteColor: V3.textMuted }
   })
 }
 

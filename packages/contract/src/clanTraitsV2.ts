@@ -54,21 +54,42 @@ import { percentileOf } from './traits'
  */
 export const CLAN_HEX_V2_AXIS_KEYS = [
   'sniperDuel',
+  /*
+   * ★2026-09-16 밤 — ②③ 이 «스나영향력 · 라플영향력» 이 됐다★ (사장님이 밤새 회의로 확정).
+   *
+   *   두 축은 ★무기별 점수를 상대와 견준 것★ 이다 (`GapScoreTally` 의 점수표).
+   *   경기에서는 «그 판의 점수 차», 클랜에서는 «그 차가 앞선 경기 비율» 로 접는다 —
+   *   ★같은 재료·같은 이름·다른 접기★ 다.
+   *
+   *   ⚠ `sniperInfluence` 는 키를 ★그대로 쓴다★. 2026-09-16 낮의 뜻(스나가 안 죽은
+   *     라운드 승률차)과 다르지만, 그 판은 하루도 안 갔고 `formulaVersion` 이 가른다.
+   *     낮 판의 재료(`SniperInfluenceTally`)는 지우지 않고 계속 쌓는다.
+   */
+  'sniperInfluence',
+  'rifleInfluence',
+  /*
+   * ★기회차단★ — 먼저 맞고 시작한 라운드를 끊어냈나.
+   *   실측에서 ★경기 승률과 상관 0.015★ — 여섯 축 중 «그냥 강팀» 이 안 섞인 유일한 축이다.
+   *   못 끊으면 그 라운드 승률이 40.8% 로 떨어진다.
+   */
+  'blockChance',
   'outnumbered',
   'save',
-  /* ★2026-09-15 — ④ 가 `tempo` 에서 `riflePower` 로 바뀌었다★ (사장님).
-     키를 바꿨다. 뜻만 바꾸고 키를 두면 옛 값과 새 값이 한 이름으로 섞인다 (위 D-235 함정) */
+] as const
+
+/**
+ * ⚠ ★2026-09-16 저녁까지 쓰던 여섯★ — 라이플화력·크랙 성공이 있던 판이다.
+ * 지우지 않는다 (`CLAUDE.md` 1-4). 재료도 계속 쌓이므로 되돌릴 때 재수집이 없다.
+ */
+export const CLAN_HEX_V2_AXIS_KEYS_V4 = [
+  'sniperDuel',
+  'outnumbered',
+  'save',
   'riflePower',
-  /* ★2026-09-16 — ⑤ 가 `firstBlood` 에서 `sniperInfluence` 로 바뀌었다★ (사장님:
-     «D로 가 / ★선짤파트를 없애고 이걸 넣어★»).
-     키를 바꾼다 — 뜻만 바꾸고 키를 두면 옛 값과 새 값이 한 이름으로 섞인다 */
   'sniperInfluence',
-  /* ★2026-09-16 — ⑥ 이 `trade`(백어택) 에서 `firstBloodless` 로 바뀌었다★ (사장님:
-     «백어택성공률을 ★선짤없이 라운드 시작★ 로 바꾸고») */
   'firstBloodless',
 ] as const
 
-/** ★2026-09-16 까지 쓰던 여섯 축★ — 지우지 않는다 (`CLAUDE.md` 1-4). ⑤ 가 선짤이던 판 */
 export const CLAN_HEX_V2_AXIS_KEYS_V3 = [
   'sniperDuel',
   'outnumbered',
@@ -80,13 +101,31 @@ export const CLAN_HEX_V2_AXIS_KEYS_V3 = [
 export type ClanHexV2AxisKey = (typeof CLAN_HEX_V2_AXIS_KEYS)[number]
 
 /**
+ * ★지금 쓰는 여섯 + 옛 이름들★ — 라벨·단위·방향 표의 열쇠다.
+ *
+ * 축이 갈릴 때마다 표에서 옛 항목을 빼면 «지우지 않는다» 를 어기게 된다
+ * (`CLAUDE.md` 1-4). 그래서 표는 ★옛 이름까지 다 알고★, «지금 여섯» 은
+ * `CLAN_HEX_V2_AXIS_KEYS` 하나만 정한다.
+ */
+export type ClanHexV2AnyAxisKey =
+  | ClanHexV2AxisKey
+  | (typeof CLAN_HEX_V2_AXIS_KEYS_V4)[number]
+  | (typeof CLAN_HEX_V2_AXIS_KEYS_V3)[number]
+
+/**
  * 화면에 그대로 쓰는 이름 — **사용자가 직접 고른 말이다.**
  *
  * ★ `선짤` 은 「선취점」이 아니고 `교환` 은 「되잡기」·「트레이드」가 아니다.
  *   2026-09-02 에 사용자가 *"선취점을 **선짤** >이걸로 바꾸고 진행시켜 / 되잡기를 **교환**
  *   이라고 바꾸고 적용"* 이라고 못 박았다. **바꾸지 마라.**
  */
-export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AxisKey, string> = {
+export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AnyAxisKey, string> = {
+  /* ★옛 축★ — 화면은 안 보지만 표에는 남긴다 (`CLAUDE.md` 1-4) */
+  firstBlood: '선짤',
+  trade: '교환',
+  /* ★2026-09-16 밤 — 새 이름 둘★ (사장님) */
+  rifleInfluence: '라플영향력',
+  blockChance: '기회차단',
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
@@ -107,9 +146,16 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AxisKey, string> = {
   firstBloodless: '크랙 성공',
 }
 
-/** ★2026-09-16 새벽까지 쓰던 이름★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
+/**
+ * ★2026-09-16 새벽까지 쓰던 이름★ — 지우지 않는다 (`CLAUDE.md` 1-4).
+ *
+ * ⚠ ★2026-09-16 밤 정정★ — 열쇠가 `V3 + 지금 여섯` 이었는데, 그날 밤 축이 바뀌며
+ *   「지금 여섯」에 `rifleInfluence`·`blockChance` 가 들어왔다. 이 표는 ★그때 있던
+ *   이름만★ 담는 표라 새 이름을 넣을 수 없다 — 넣으면 없던 옛 이름을 지어내는 셈이다.
+ *   그래서 열쇠를 «V3 ∪ V4»(= 이 표가 실제로 담은 여덟) 로 못 박았다.
+ */
 export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<
-  (typeof CLAN_HEX_V2_AXIS_KEYS_V3)[number] | ClanHexV2AxisKey,
+  (typeof CLAN_HEX_V2_AXIS_KEYS_V3)[number] | (typeof CLAN_HEX_V2_AXIS_KEYS_V4)[number],
   string
 > = {
   sniperDuel: '스나싸움',
@@ -133,8 +179,12 @@ export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<
  * 정규화(`normalizeAgainstFoe` · `normalizeByPercentile`)가 이 표를 보고 부호를 뒤집는다.
  * 원값(`raw`)은 **뒤집지 않는다** — 화면에 `18.3초` 라고 적어야 하기 때문이다.
  */
-export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AxisKey, boolean> = {
+export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AnyAxisKey, boolean> = {
   sniperDuel: false,
+  /* 점수 차가 클수록 좋다 — 우리 쪽이 상대보다 앞섰다는 뜻이다 */
+  rifleInfluence: false,
+  /* 맞고 시작한 라운드를 끊을수록 좋다 */
+  blockChance: false,
   outnumbered: false,
   save: false,
   riflePower: false,
@@ -142,6 +192,9 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AxisKey, boolean> = {
   sniperInfluence: false,
   /* 먼저 안 맞을수록 좋다 — 클수록 좋다 */
   firstBloodless: false,
+  /* ★V3 판의 둘★ — 축에서 내려갔지만 표는 옛 이름까지 안다. 둘 다 클수록 좋았다 */
+  firstBlood: false,
+  trade: false,
 }
 
 /**
@@ -154,7 +207,7 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AxisKey, boolean> = {
  * 단위 자체는 **남겨 둔다** — 옆 ①(구역 판)이 되살아나면 다시 필요하다 (`CLAUDE.md` 10-4).
  */
 export const CLAN_HEX_V2_AXIS_UNITS: Record<
-  ClanHexV2AxisKey,
+  ClanHexV2AnyAxisKey,
   /* ★`perGame` 이 2026-09-15 에 늘었다★ — 선짤이 «판당 몇 번» 이 됐다 (사장님) */
   /* ★`diff` 가 2026-09-16 에 늘었다★ — 스나영향력이 «두 승률의 차(%p)» 다 (사장님) */
   'ratio' | 'seconds' | 'perRound' | 'perGame' | 'diff'
@@ -162,6 +215,16 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
   sniperDuel: 'ratio',
   outnumbered: 'ratio',
   save: 'ratio',
+  /*
+   * ★스나영향력 · 라플영향력★ (2026-09-16 밤 사장님).
+   *   ★경기와 클랜이 단위가 다르다★ —
+   *     경기  «점» (한 사람당 · 라운드당 점수 차)   → `diff` 로 적는다
+   *     클랜  «앞선 경기 비율»                      → 만들 때 `text` 를 직접 채운다
+   *   한 표에 둘을 담을 수 없으므로 여기서는 경기 쪽(`diff`)으로 둔다.
+   */
+  rifleInfluence: 'diff',
+  /* ★기회차단★ — 상대가 연 라운드 중 우리가 되받은 비율 */
+  blockChance: 'ratio',
   /*
    * ★라이플화력은 «비율»★ (2026-09-15 사장님).
    * 뜻: «우리 스나가 1킬 없이 1~3번째로 지워진 라운드 중 라플들끼리 딴 비율».
@@ -196,6 +259,12 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
   sniperInfluence: 'diff',
   /* 겨룬 라운드 중 «먼저 안 맞은» 비율 — 그냥 비율이다 */
   firstBloodless: 'ratio',
+  /*
+   * ★V3 판의 둘★ — 축에서 내려갔지만 단위는 그때 그대로 남긴다.
+   *   선짤 = «25초 안에 겨룬 라운드 중 먼저 딴 비율» · 교환 = «죽은 수 중 되잡은 비율».
+   */
+  firstBlood: 'ratio',
+  trade: 'ratio',
 }
 
 /**
@@ -204,6 +273,14 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
  * 실측(6,000판 · 클랜 59곳) 범위가 20.1 ~ 43.1%p 였다. 50 으로 잡으면 그 범위가
  * 0.40 ~ 0.86 으로 펴져 여섯 축과 결이 맞는다. ★지어낸 수가 아니라 실측에서 나왔다.★
  */
+/**
+ * ★스나영향력·라플영향력의 눈금★ (2026-09-16 밤) — 한 사람당 · 라운드당 점수 차.
+ *
+ * 실측(경기 2,331건) — 스나 +0.68 · 라플 +0.45 가 평균이고 퍼짐이 1.0 · 0.5 다.
+ * ±1.5 를 눈금 끝으로 두면 거의 모든 판이 그 안에 들어온다.
+ */
+export const GAP_FULL_SCALE = 1.5
+
 export const SNIPER_INFLUENCE_FULL_SCALE = 50
 
 /** 못 잰 이유 — 화면이 이 코드로 `측정중` 옆에 설명을 붙인다 */
@@ -469,7 +546,7 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    * ⚠ ★2026-09-15 밤 · v3.0 → v3.1★ — 라이플화력이 ★라운드가 아니라 킬★ 을 나눠 갖는다.
    *   사장님: *"0퍼만 아니면 된다는 얘기를 한거야"* — «0%» 가 뜨는 경우를 8.7% → 0.1% 로.
    */
-  formulaVersion: 'clan-hex-v4.3',
+  formulaVersion: 'clan-hex-v5',
 }
 
 /**
@@ -694,15 +771,51 @@ export interface FirstBloodlessTallyLike {
   tiedRounds: number
 }
 
-export interface SniperInfluenceTallyLike {
-  /** 우리 스나가 1킬 이상 낸 라운드 */
+/** ★기회차단★ 의 재료 (2026-09-16 밤) — `@sacloud/nexon` 의 `BlockChanceTally` 와 짝이다 */
+export interface BlockChanceTallyLike {
+  /** 상대가 그 라운드 첫 킬을 낸 라운드 수 = 분모 */
+  foeOpenRounds: number
+  /** 그중 다음 킬을 우리가 낸 라운드 수 = 분자 */
+  cutRounds: number
+  /** 뒷면 — 우리가 연 라운드 · 그중 이어서 또 잡은 수. 축에는 안 쓰고 남긴다 */
+  openRounds?: number
+  heldRounds?: number
+}
+
+/** ★스나영향력 · 라플영향력★ 의 재료 (2026-09-16 밤) — `GapScoreTally` 와 짝이다 */
+export interface GapScoreTallyLike {
+  ourSniper: number
+  ourRifle: number
+  foeSniper: number
+  foeRifle: number
+  sniperHeads: number
+  rifleHeads: number
   rounds: number
-  /** 그중 이긴 라운드 */
+  /**
+   * ★클랜 접기 전용★ — 스나/라플 차가 앞섰던 경기 수와 센 경기 수.
+   * 경기 하나에서는 없다 (`undefined`). 여러 판을 합칠 때 `sumClanHexV2Tallies` 가 채운다.
+   */
+  sniperAheadGames?: number
+  rifleAheadGames?: number
+  games?: number
+}
+
+export interface SniperInfluenceTallyLike {
+  /** ⚠ 옛 셈(A) — 우리 스나가 1킬 이상 낸 라운드. 지우지 않는다 */
+  rounds: number
   won: number
-  /** 우리 스나가 한 명도 못 잡은 라운드 */
+  /** ⚠ 옛 셈(A) — 우리 스나가 한 명도 못 잡은 라운드 */
   quietRounds: number
-  /** 그중 이긴 라운드 */
   quietWon: number
+  /**
+   * ★지금 셈(B)★ — 죽은 차례 1~2번째에 우리 스나가 «안» 든 라운드 (2026-09-16 밤).
+   * 옛 줄에는 이 칸이 없다 — 그때는 `undefined` 라 축이 옛 셈으로 떨어진다.
+   */
+  aliveRounds?: number
+  aliveWon?: number
+  /** 죽은 차례 1~2번째에 우리 스나가 든 라운드 */
+  deadEarlyRounds?: number
+  deadEarlyWon?: number
 }
 
 export interface FirstBloodTallyLike {
@@ -736,6 +849,9 @@ export interface ClanHexTallyLike {
   sniperDuel: SniperDuelTallyLike | null
   /** ⑤ **지금 쓰는 것** — 스나영향력 (2026-09-16 사장님) */
   sniperInfluence: SniperInfluenceTallyLike | null
+  /** ★새 축 둘★ (2026-09-16 밤 사장님) */
+  blockChance?: BlockChanceTallyLike | null
+  gapScore?: GapScoreTallyLike | null
   /** ⑥ **지금 쓰는 것** — 선짤없이 라운드 시작 (2026-09-16 사장님) */
   firstBloodless: FirstBloodlessTallyLike | null
   /** 옛 ⑤ 선짤. 화면이 안 본다. 계속 세고 저장한다 (`CLAUDE.md` 1-4) */
@@ -962,12 +1078,73 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
   /* ★차를 평균 내지 않는다★ — 네 칸(분자·분모 두 쌍)을 쌓고 마지막에 한 번만 나눈다 */
   sum.sniperInfluence = sumParts(
     tallies.map((tally) => tally.sniperInfluence ?? null),
-    (): SniperInfluenceTallyLike => ({ rounds: 0, won: 0, quietRounds: 0, quietWon: 0 }),
+    (): SniperInfluenceTallyLike => ({
+      rounds: 0, won: 0, quietRounds: 0, quietWon: 0,
+      aliveRounds: 0, aliveWon: 0, deadEarlyRounds: 0, deadEarlyWon: 0,
+    }),
     (into, from) => {
       into.rounds += from.rounds
       into.won += from.won
       into.quietRounds += from.quietRounds
       into.quietWon += from.quietWon
+      into.aliveRounds = (into.aliveRounds ?? 0) + (from.aliveRounds ?? 0)
+      into.aliveWon = (into.aliveWon ?? 0) + (from.aliveWon ?? 0)
+      into.deadEarlyRounds = (into.deadEarlyRounds ?? 0) + (from.deadEarlyRounds ?? 0)
+      into.deadEarlyWon = (into.deadEarlyWon ?? 0) + (from.deadEarlyWon ?? 0)
+    },
+  )
+
+  /*
+   * ★기회차단★ — 분자·분모를 그대로 쌓는다 (2026-09-16 밤).
+   */
+  sum.blockChance = sumParts(
+    tallies.map((tally) => tally.blockChance ?? null),
+    (): BlockChanceTallyLike => ({ foeOpenRounds: 0, cutRounds: 0, openRounds: 0, heldRounds: 0 }),
+    (into, from) => {
+      into.foeOpenRounds += from.foeOpenRounds
+      into.cutRounds += from.cutRounds
+      into.openRounds = (into.openRounds ?? 0) + (from.openRounds ?? 0)
+      into.heldRounds = (into.heldRounds ?? 0) + (from.heldRounds ?? 0)
+    },
+  )
+
+  /*
+   * ★스나영향력 · 라플영향력★ — 여기서 ★두 가지를 한꺼번에★ 쌓는다 (2026-09-16 밤).
+   *
+   *   ① 점수 합 — 경기 단위 값을 되살릴 때 쓴다
+   *   ② ★앞선 경기 수★ — 클랜 축이 쓰는 것이다 (사장님: «스나차이 난 판을 모으기»)
+   *
+   *   ②를 여기서 세는 까닭: 합친 뒤에는 «어느 판에서 앞섰나» 를 알 수 없다.
+   *   판마다 한 번씩 세어 두어야 한다.
+   */
+  sum.gapScore = sumParts(
+    tallies.map((tally) => tally.gapScore ?? null),
+    (): GapScoreTallyLike => ({
+      ourSniper: 0, ourRifle: 0, foeSniper: 0, foeRifle: 0,
+      sniperHeads: 0, rifleHeads: 0, rounds: 0,
+      sniperAheadGames: 0, rifleAheadGames: 0, games: 0,
+    }),
+    (into, from) => {
+      into.ourSniper += from.ourSniper
+      into.ourRifle += from.ourRifle
+      into.foeSniper += from.foeSniper
+      into.foeRifle += from.foeRifle
+      into.rounds += from.rounds
+      /* 사람 수는 판마다 다르므로 ★합이 아니라 마지막 판의 값★ 을 둔다 — 경기 단위에서만 쓴다 */
+      into.sniperHeads = from.sniperHeads
+      into.rifleHeads = from.rifleHeads
+      into.games = (into.games ?? 0) + (from.games ?? 1)
+      /* 이미 합쳐진 것이면 그 수를 그대로 더하고, 한 판짜리면 여기서 판정한다 */
+      if (from.sniperAheadGames !== undefined) {
+        into.sniperAheadGames = (into.sniperAheadGames ?? 0) + from.sniperAheadGames
+      } else if (from.ourSniper > from.foeSniper) {
+        into.sniperAheadGames = (into.sniperAheadGames ?? 0) + 1
+      }
+      if (from.rifleAheadGames !== undefined) {
+        into.rifleAheadGames = (into.rifleAheadGames ?? 0) + from.rifleAheadGames
+      } else if (from.ourRifle > from.foeRifle) {
+        into.rifleAheadGames = (into.rifleAheadGames ?? 0) + 1
+      }
     },
   )
 
@@ -1292,7 +1469,11 @@ export function firstBloodAxisV3(part: {
  * ⚠ 차가 음수일 수 있다 (스나가 일해도 더 지는 팀). 그때 `raw` 는 0 이다 —
  *   음수 반지름을 그릴 수 없다. ★숫자는 음수 그대로 적는다★ (지어내지 않는다).
  */
-function diffAxis(
+/**
+ * ⚠ ★옛 축★ ⑤ 스나영향력의 셈 (2026-09-16 낮).
+ *   지금 축은 안 부르지만 재료가 계속 쌓이므로 함수를 남긴다 (`CLAUDE.md` 1-4).
+ */
+export function diffAxis(
   key: ClanHexV2AxisKey,
   part: { rounds: number; won: number; quietRounds: number; quietWon: number },
 ): ClanHexV2Axis {
@@ -1440,12 +1621,11 @@ export function buildClanHexV2Raw(input: {
        * ⚠ `rounds` 칸이 담는 것은 **킬 수**다 (칸 이름만 옛것이다 · `RiflePowerTally` 주석).
        * 그런 라운드가 한 번도 없었으면 `sample` 로 «측정중» 이다 — 0% 로 적지 않는다.
        */
-      case 'riflePower': {
-        const part = tally.riflePower ?? null
-        if (part === null) return pendingAxis(key, tallyMissingReason(tally, true))
-        if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
-        return measuredAxis(key, part.won, part.rounds)
-      }
+      /*
+       * ⚠ ★옛 축★ ④ 라이플화력 (2026-09-15~16) — 축 키에서 빠졌다.
+       *   재료(`tally.riflePower`)와 셈은 그대로 살아 있다 — 되살리려면
+       *   축 키에 도로 넣고 `measuredAxis(key, part.won, part.rounds)` 를 부르면 된다.
+       */
       /**
        * ⑤ **선짤** — 라운드 첫 킬을 우리가 냈나 (D-256).
        *
@@ -1461,16 +1641,77 @@ export function buildClanHexV2Raw(input: {
        *
        * ★두 분모가 다 있어야 잰다★ — 스나가 늘 일했거나 늘 침묵했으면 차가 없다.
        */
-      case 'sniperInfluence': {
-        const part = tally.sniperInfluence ?? null
+      /**
+       * ★스나영향력 · 라플영향력★ (2026-09-16 밤 사장님).
+       *
+       *   한 판이면   «한 사람당 · 라운드당 점수 차» 를 그대로 적는다 (+0.68점)
+       *   여러 판이면 «그 차가 앞선 경기 비율» 로 적는다 (38/59판 = 64.4%)
+       *
+       * ★같은 재료·같은 이름·다른 접기★ 다. 어느 쪽인지는 `games` 가 있는지로 안다 —
+       * `sumClanHexV2Tallies` 만 그 칸을 채운다.
+       */
+      case 'sniperInfluence':
+      case 'rifleInfluence': {
+        const part = tally.gapScore ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
-        /*
-         * ★우리 스나가 한 번도 킬을 못 냈으면★ 그때만 «측정중» 이다.
-         *   «침묵한 라운드» 가 없는 것은 잴 수 있다 — 위 `diffAxis` 가 승률로 떨어진다.
-         */
-        if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
-        return diffAxis(key, part)
+        if (part.rounds === 0) return pendingAxis(key, 'sample')
+        const sniper = key === 'sniperInfluence'
+        const ahead = sniper ? part.sniperAheadGames : part.rifleAheadGames
+        const games = part.games
+        if (games !== undefined && games > 0 && ahead !== undefined) {
+          /* ── 클랜 (여러 판) — 앞선 판 비율 ── */
+          return {
+            key,
+            label: CLAN_HEX_V2_AXIS_LABELS[key],
+            numerator: ahead,
+            denominator: games,
+            raw: ahead / games,
+            value: null,
+            text: `${Math.round((ahead / games) * 100)}%`,
+            pending: null,
+            rank: null,
+            total: null,
+          }
+        }
+        /* ── 경기 (한 판) — 한 사람당 · 라운드당 점수 차 ── */
+        const ours = sniper ? part.ourSniper : part.ourRifle
+        const foe = sniper ? part.foeSniper : part.foeRifle
+        const heads = Math.max(1, sniper ? part.sniperHeads : part.rifleHeads)
+        const diff = (ours - foe) / part.rounds / heads
+        return {
+          key,
+          label: CLAN_HEX_V2_AXIS_LABELS[key],
+          numerator: Math.round(ours * 10) / 10,
+          denominator: Math.round(foe * 10) / 10,
+          /* ★−1.5 ~ +1.5 를 0~1 눈금으로 편다★ — 실측 범위가 그 안이다 */
+          raw: Math.max(0, Math.min(1, (diff + GAP_FULL_SCALE) / (GAP_FULL_SCALE * 2))),
+          value: null,
+          text: `${diff >= 0 ? '+' : ''}${diff.toFixed(2)}점`,
+          pending: null,
+          rank: null,
+          total: null,
+        }
       }
+      /**
+       * ★기회차단★ — 먼저 맞고 시작한 라운드를 끊어냈나 (2026-09-16 밤 사장님).
+       *
+       * 실측 — 끊으면 그 라운드 승률 49.7%, 못 끊으면 ★40.8%★.
+       * ★경기 승률과 상관 0.015★ 로 여섯 축 중 «그냥 강팀» 이 안 섞인 유일한 축이다.
+       */
+      case 'blockChance': {
+        const part = tally.blockChance ?? null
+        if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
+        if (part.foeOpenRounds === 0) return pendingAxis(key, 'sample', { numerator: part.cutRounds })
+        return measuredAxis(key, part.cutRounds, part.foeOpenRounds)
+      }
+      /* ⚠ ★옛 ⑤ 스나영향력★ (2026-09-16 낮) — 축 키에서 빠졌지만 재료는 계속 쌓는다.
+           되살리려면 아래 갈래를 축 키에 도로 넣으면 된다 (`CLAUDE.md` 1-4) */
+      /*
+       * ⚠ ★옛 ⑤ 스나영향력★ (2026-09-16 낮 — 스나가 안 죽은 라운드 승률차).
+       *   축 키에서 빠졌지만 ★재료(`tally.sniperInfluence`)는 계속 쌓는다★.
+       *   셈은 `diffAxis()` 에 그대로 있다 — 되살리려면 축 키에 도로 넣고
+       *   여기서 `diffAxis(key, tally.sniperInfluence)` 를 부르면 된다 (`CLAUDE.md` 1-4).
+       */
       /*
        * ⚠ ★옛 ⑤ 선짤★ — 2026-09-16 에 스나영향력과 자리를 바꿨다 (사장님).
        *   ★셈은 그대로 살아 있다★ — tally.firstBlood 를 계속 쌓고 저장한다.
@@ -1492,12 +1733,10 @@ export function buildClanHexV2Raw(input: {
        * 그래서 분자는 `rounds - lost` 다 — «안 당한 라운드».
        * 옛 ⑤ 선짤과 달리 ★25초 창을 안 본다★. 두 팀 합이 100% 가 아니다.
        */
-      case 'firstBloodless': {
-        const part = tally.firstBloodless ?? null
-        if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
-        if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: 0 })
-        return measuredAxis(key, part.rounds - part.lost, part.rounds)
-      }
+      /*
+       * ⚠ ★옛 축★ ⑥ 크랙 성공 (2026-09-16) — 축 키에서 빠졌다.
+       *   재료(`tally.firstBloodless`)와 셈은 그대로 살아 있다.
+       */
     }
   })
 

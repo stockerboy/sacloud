@@ -160,7 +160,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="ko"
       className={`${fontBody.variable} ${fontCinzel.variable} ${fontTier.variable} ${fontChakra.variable}`}
     >
-      <body className="antialiased">
+      {/*
+        ★`sac-sky` — 2026-09-16 사장님이 주신 픽셀 밤하늘 배경★
+          («사이트 배경이랑 로고 이걸로 바꿔봐 (…) 원상복구도 가능해야해»)
+
+        ★★되돌리는 법: 이 낱말 `sac-sky` 하나만 지우면 2026-09-15 배경으로 돌아간다★★
+        규칙은 `packages/ui/src/styles.css` 맨 아래 「새 사이트 배경」 블록에 있다 —
+        클래스를 떼면 그 블록이 통째로 잠든다. 옛 규칙은 한 줄도 안 지웠다.
+      */}
+      <body className="antialiased sac-sky">
         <Providers>
           {/* 「알」이 깨졌는지를 화면 전체에 하나로 알려 준다 (`docs/EGG_SYSTEM_SPEC.md`) */}
           <EggBoot>

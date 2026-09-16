@@ -250,8 +250,23 @@ export function HomeSearch() {
       {/* --- 0 로고 — **3배** (2026-09-02 사장님 지시 #13-a). 42 → 126px · 폰 32 → 96px.
              그 전(#3)에는 «작게. 화면의 주인공은 검색창» 이었다 — 옛 값은 이 줄에 남긴다 --- */}
       {/* `v2-brand` — 로고의 `.my` 만 언제나 빨강 (리그색을 안 따라간다) */}
-      <Link href="/" aria-label="3rd cloud 홈" className="v2-brand mb-[38px] block max-md:mb-[24px]">
-        <MainLogo className="h-[110px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[84px]" />
+      {/*
+        ⚠ ★2026-09-16 — 폰에서 로고를 줄였다★ (사장님: «모바일 버전에서 메인화면에
+          로고가 너무 큼»).
+
+          ★폰에서만★ 줄인다 — PC 높이 110px 는 그대로다.
+          폰 84px → ★56px★. 그림이 바뀌면서 가로도 같이 줄었다:
+
+          ```
+          옛 벡터 로고(비율 2.885)  84px 높이 → ★242px 폭★  (390px 화면의 62%)
+          새 그림 로고(비율 1.808)  56px 높이 → ★101px 폭★  (390px 화면의 26%)
+          ```
+          아래 여백도 24 → 18 로 같이 줄였다. 로고만 줄이면 그 밑이 휑해진다.
+
+          ★되돌리려면 이 두 줄의 `max-md:` 값을 `h-[84px]` · `mb-[24px]` 로 되돌린다.★
+      */}
+      <Link href="/" aria-label="3rd cloud 홈" className="v2-brand mb-[38px] block max-md:mb-[18px]">
+        <MainLogo className="h-[110px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[56px]" />
       </Link>
 
       {/* --- 1 통합검색 — 크고 가운데. 동작은 하나도 바뀌지 않았다 --- */}

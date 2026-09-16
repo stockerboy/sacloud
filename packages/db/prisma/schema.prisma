@@ -3106,6 +3106,15 @@ model MatchPlayerHex {
   tempoSeconds Int @default(0)
   /// 위 합에 들어간 라운드 수 — 킬도 없고 죽지도 않은 라운드는 안 센다
   tempoCount   Int @default(0)
+  /// ★기회창출★ — 그 라운드 «첫 킬» 을 낸 라운드 수 (2026-09-16 밤 사장님)
+  openRounds    Int @default(0)
+  /// ★기회차단★ 의 분모 — 상대가 그 라운드 첫 킬을 낸 라운드 수
+  foeOpenRounds Int @default(0)
+  /// ★기회차단★ 의 분자 — 그중 «다음 킬» 을 내가 낸 수
+  cutRounds     Int @default(0)
+  /// ★안전함★ — 그 라운드를 «끝까지 산» 수.
+  /// 실측상 스나는 살면 그 라운드 승률 62.0%, 죽으면 43.5% 다 (몇 초에 죽었나는 차이가 없었다)
+  aliveRounds   Int @default(0)
   /// ★한 라운드에 몰아친 최대 킬★ — 새 캐리력 (2026-09-15 사장님)
   ///
   /// > «캐리력은 라운드당 한 최대 킬 수 / 12라운드를 경기했으면 a선수가 7라쯤 한라운드에 4킬»
@@ -3244,6 +3253,17 @@ model LeaguePlayerHex {
   /// ★게임템포★ 의 재료 — 합과 그 라운드 수 (2026-09-16). 값은 합 ÷ 라운드 수
   tempoSeconds Int @default(0)
   tempoCount   Int @default(0)
+  /// ★기회창출★ — 그 라운드 «첫 킬» 을 낸 라운드 수 (2026-09-16 밤 사장님)
+  openRounds    Int @default(0)
+  /// ★기회차단★ 의 분모 — 상대가 그 라운드 첫 킬을 낸 라운드 수
+  foeOpenRounds Int @default(0)
+  /// ★기회차단★ 의 분자 — 그중 «다음 킬» 을 내가 낸 수
+  cutRounds     Int @default(0)
+  /// ★안전함★ — 그 라운드를 «끝까지 산» 수.
+  /// 실측상 스나는 살면 그 라운드 승률 62.0%, 죽으면 43.5% 다 (몇 초에 죽었나는 차이가 없었다)
+  aliveRounds   Int @default(0)
+  /// ★스나차이 · 라플차이★ — 그 선수가 뛴 경기 중 «우리 무기 쪽이 앞선» 판 수
+  gapWinGames   Int @default(0)
   burstRounds Int  @default(0)
   /// 상대 티어별 판수 — 티어계수의 근거
   /// ★내 구간★ — 가장 많이 뛴 티어 (2026-09-11 사장님). 티어 가중치·구간별 랭킹이 이걸 본다.

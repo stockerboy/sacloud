@@ -20,7 +20,7 @@
  * 그리는 방법·프레임은 `Hexagon` 과 한 글자도 같다 (`useDrawIn` · `penDash`).
  */
 import { useEffect, useRef, useState } from 'react'
-import type { ClanHexagonV2 } from '@sacloud/contract'
+import { CLAN_HEX_V2_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, type ClanHexagonV2 } from '@sacloud/contract'
 import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
 import { penDash, useDrawIn } from './seasonPlot'
 import { matchVerdict, matchVerdictText } from './matchVerdict'
@@ -31,13 +31,23 @@ const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_S
 /** 축 차례·이름은 클랜 카드와 같다 (`clanHexAxes`) */
 /* ⚠ ★2026-09-15★ — ④ 가 `tempo`(게임템포) 에서 `riflePower`(라이플화력) 로 바뀌었다 (사장님) */
 /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 (사장님) */
-const ORDER = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'firstBloodless'] as const
-const LABEL: Record<(typeof ORDER)[number], string> = {
+/*
+ * ⚠ ★축 순서를 여기 적지 않는다★ (2026-09-16 밤).
+ *   계약(`CLAN_HEX_V2_AXIS_KEYS`)이 정한 순서를 그대로 따른다 —
+ *   한 날 사이에 축이 두 번 갈렸는데 화면마다 목록을 적어 둔 탓에
+ *   한 곳이 빠지는 일을 오늘만 세 번 걱었다.
+ *   옛 순서는 `CLAN_HEX_V2_AXIS_KEYS_V4` 에 있다.
+ */
+const ORDER = CLAN_HEX_V2_AXIS_KEYS
+/* ⚠ 열쇠를 넓혀 ★옛 축 이름도 남긴다★ (2026-09-16 밤 · `CLAUDE.md` 1-4) */
+const LABEL: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
   riflePower: '라이플화력',
   sniperInfluence: '스나영향력',
+  rifleInfluence: '라플영향력',
+  blockChance: '기회차단',
   firstBloodless: '크랙 성공',
 }
 
@@ -72,7 +82,7 @@ function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] 
     const w = won?.axes.find((a) => a.key === key) ?? null
     const l = lost?.axes.find((a) => a.key === key) ?? null
     return {
-      label: LABEL[key],
+      label: LABEL[key] ?? CLAN_HEX_V2_AXIS_LABELS[key],
       wonValue: w?.value ?? null,
       lostValue: l?.value ?? null,
       /* ★없었음★ (2026-09-11 사장님) — 그 판에 그 일이 한 번도 안 일어났다는 뜻이다.

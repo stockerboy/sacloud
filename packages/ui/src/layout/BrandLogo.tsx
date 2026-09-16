@@ -1,6 +1,22 @@
 /**
  * 브랜드 로고.
  *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║ ★★되돌리는 법 — 아래 `DEFAULT_VARIANT` 를 `'mark'` 로 바꾸면 끝이다★★      ║
+ * ║   (2026-09-16 이전의 벡터 로고로 완전히 돌아간다. 파일은 하나도 안 지웠다) ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * ── ★2026-09-16: 사장님이 그림 로고를 주셨다★ («사이트 배경이랑 로고 이걸로 바꿔봐»)
+ *   빨간 `Log` 글자 셋이 달려가고, 구름 위에 `SA CLOUD` 가 얹힌 그림이다.
+ *   `variant="art"` 가 그 로고이고 **지금의 기본값**이다 (`DEFAULT_VARIANT`).
+ *
+ *   ⚠ 사장님이 주신 PNG 는 **투명이 아니었다** — 투명을 흉내 낸 ★체커보드가 그림에
+ *     구워져★ 있었다(1536×1024 · 알파 없음). 그래서 테두리에서 flood fill 로
+ *     체커를 벗겨 내고(70.5%) 티끌을 지운 뒤 잘라, `apps/web/public/brand/` 에
+ *     webp 로 넣었다. 원본 PNG 1682KB → **webp 50KB**.
+ *
+ *   ⚠ ★옛 벡터 로고(`mark` · `wordmark`)는 한 줄도 안 지웠다★ (`CLAUDE.md` 1-4).
+ *
  * ── 2026-08-30: 원본 재현을 그만두고 자체 디자인(`적진`)으로 다시 그렸다
  *   예전 로고는 3rd.supply 로고 박스(616×143.5 / 152×24)에 맞춘 껍데기였다.
  *   이제 원본 박스를 따라갈 이유가 없어 **글자 자체가 로고**가 되도록 바꿨다.
@@ -74,10 +90,52 @@ export type BrandWordmark = '3rdcloud' | 'sacloud'
 /**
  * 어떤 모양으로 그릴 것인가.
  *
- * - `mark`     확정 로고(구름 + 두 줄 글자). **기본값**
- * - `wordmark` 2026-09-01 오전까지 쓰던 한 줄 글자 로고. 되돌릴 수 있게 남겨 뒀다
+ * - `art`      2026-09-16 사장님이 주신 그림 로고. **지금의 기본값** (`DEFAULT_VARIANT`)
+ * - `mark`     2026-09-01 ~ 09-15 의 벡터 로고(구름 + 두 줄 글자). 안 지웠다
+ * - `wordmark` 2026-09-01 오전까지 쓰던 한 줄 글자 로고. 안 지웠다
  */
-export type BrandLogoVariant = 'mark' | 'wordmark'
+export type BrandLogoVariant = 'art' | 'mark' | 'wordmark'
+
+/**
+ * ★★되돌리는 스위치 — 이 한 줄★★
+ *
+ * `'art'` → `'mark'` 로 바꾸면 사이트 전체 로고가 2026-09-15 모습으로 돌아간다.
+ * `variant` 를 직접 넘긴 호출은 이 값을 무시한다 (그런 호출은 지금 없다).
+ */
+const DEFAULT_VARIANT: BrandLogoVariant = 'art'
+
+/**
+ * 그림 로고의 크기.
+ *
+ * `apps/web/public/brand/sa-cloud-logo.webp` — 640×354 · 50KB.
+ * 체커를 벗기고 잘라 낸 잉크 상자가 1360×752 였고, 그 비율(1.808)을 그대로 줄인 값이다.
+ * 사장님 원본 PNG(`1536×1024`)의 비율(1.5)이 아니다 — 원본은 투명 여백을 포함한 값이다.
+ */
+const ART_SRC = '/brand/sa-cloud-logo.webp'
+const ART_W = 640
+const ART_H = 354
+
+/**
+ * 그림 로고 본체.
+ *
+ * ⚠ ★`width`·`height` 를 반드시 준다★ — 이 로고는 `flex` 안에 놓이는데
+ *   (`v2-brand flex items-center`) 치수가 없으면 ★세로가 눌린다.★
+ *   `SiteHeaderV2` 가 표장에서 이미 같은 함정을 적어 뒀다.
+ *   `shrink-0` 도 같은 이유다 — 좁은 폰에서 가로로 찌그러지지 않게.
+ */
+function ArtMark({ className, height }: { className?: string; height?: number }) {
+  const h = height ?? 32
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={ART_SRC}
+      alt={MARK_LABEL}
+      width={Math.round((h * ART_W) / ART_H)}
+      height={h}
+      className={className ? `${className} shrink-0` : 'shrink-0'}
+    />
+  )
+}
 
 const WORDMARK_TEXT: Record<BrandWordmark, string> = {
   '3rdcloud': '3RD CLOUD',
@@ -96,7 +154,7 @@ const WORDMARK_LABEL: Record<BrandWordmark, string> = {
  */
 function resolveVariant(variant: BrandLogoVariant | undefined, wordmark: BrandWordmark) {
   if (variant) return variant
-  return wordmark === 'sacloud' ? 'wordmark' : 'mark'
+  return wordmark === 'sacloud' ? 'wordmark' : DEFAULT_VARIANT
 }
 
 /** 확정 로고 본체. 크기는 부모(className)가 정한다 */
@@ -146,7 +204,12 @@ export function MainLogo({
   wordmark?: BrandWordmark
   variant?: BrandLogoVariant
 }) {
-  if (resolveVariant(variant, wordmark) === 'mark') {
+  const resolved = resolveVariant(variant, wordmark)
+  if (resolved === 'art') {
+    /* 홈 큰 로고. 높이는 `HomeSearch` 가 정한다 (PC 110px · 폰 56px) */
+    return <ArtMark className={className} height={110} />
+  }
+  if (resolved === 'mark') {
     return <Mark className={className} />
   }
 
@@ -198,7 +261,18 @@ export function NavLogo({
   const ink =
     tone === 'dark' ? 'var(--color-ink, #060505)' : 'var(--color-text-strong, #f6eded)'
 
-  if (resolveVariant(variant, wordmark) === 'mark') {
+  const resolved = resolveVariant(variant, wordmark)
+  if (resolved === 'art') {
+    /*
+     * ⚠ ★그림 로고는 작아지면 구름 속 `SA CLOUD` 글자가 안 읽힌다★ —
+     *   34px 높이에서 그 글자는 4px 남짓이다. 여기서는 ★그림표(픽토그램)로 쓴다★:
+     *   빨간 `Log` 셋 + 흰 구름 실루엣으로 알아본다.
+     *   ★읽는 기계에는 `alt` 로 «3RD CLOUD.my» 가 그대로 들린다.★
+     *   글자로 읽히는 로고가 필요하면 `DEFAULT_VARIANT` 를 `'mark'` 로 되돌린다.
+     */
+    return <ArtMark className={className} height={34} />
+  }
+  if (resolved === 'mark') {
     /* className 이 안 먹더라도 박스가 터지지 않게 기본 크기를 준다 (32px 높이 기준) */
     return (
       <Mark

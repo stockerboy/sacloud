@@ -21,7 +21,7 @@
  *   5위 컷도 ASTRA 보정도 `packages/contract/src/clanBadge.ts` 가 이미 끝냈다.
  *   이 부품은 받은 이름을 그리기만 한다.
  */
-import { CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AxisKey } from '@sacloud/contract'
+import { CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, type ClanHexV2AxisKey } from '@sacloud/contract'
 
 /** 폰 / PC 에서 나란히 적는 최대 개수 */
 /*
@@ -37,13 +37,16 @@ const MAX_PC = 3
  * ★칩에만 쓰는 짧은 이름★ — 육각형·카드의 이름(`CLAN_HEX_V2_AXIS_LABELS`)은 안 건드린다.
  * 여기 없는 축은 긴 이름을 그대로 쓴다 (축이 늘어도 안 깨진다).
  */
-const SHORT: Partial<Record<ClanHexV2AxisKey, string>> = {
+const SHORT: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
   sniperDuel: '스나',
   outnumbered: '소수',
   save: '세이브',
   /* ⚠ ★2026-09-15★ — 옛 ④ 는 `tempo: '템포'` 였다. 사장님이 라이플화력으로 바꿨다.
      칩은 자리가 좁아 «라이플화력» 일곱 글자가 안 들어간다 — «라플» 로 줄인다 */
   riflePower: '라플',
+  /* ★2026-09-16 밤 — 새 축 둘★ (사장님) */
+  rifleInfluence: '라플',
+  blockChance: '차단',
   /* ⚠ 2026-09-16 새벽 — 축이 «선짤(1턴)» · «백어택성공률(2턴)» 이 됐다.
      칩은 자리가 좁아 ★턴 번호만★ 남긴다 — 육각을 본 사람은 무슨 말인지 안다 */
   /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 ★스나영향력★ 으로 바뀌었다 (사장님).

@@ -480,14 +480,29 @@ export interface SniperDuelTally {
  * ★우리 스나가 있어야 잰다★ — 스나를 안 쓴 경기는 «침묵» 이 아니라 «해당 없음» 이다.
  */
 export interface SniperInfluenceTally {
-  /** 우리 스나가 1킬 이상 낸 라운드 */
+  /** ⚠ 옛 셈(A) — 우리 스나가 1킬 이상 낸 라운드. 지우지 않는다 (`CLAUDE.md` 1-4) */
   rounds: number
-  /** 그중 이긴 라운드 */
   won: number
-  /** 우리 스나가 한 명도 못 잡은 라운드 */
+  /** ⚠ 옛 셈(A) — 우리 스나가 한 명도 못 잡은 라운드 */
   quietRounds: number
-  /** 그중 이긴 라운드 */
   quietWon: number
+  /**
+   * ★스나가 «먼저» 죽지 않은 라운드★ (2026-09-16 밤 사장님 «b로 가자»).
+   *
+   * 라운드에서 죽은 차례 1~2번째에 우리 스나가 ★안 들어간★ 라운드다.
+   * 값은 이 승률에서 «먼저 죽은» 라운드 승률을 뺀 것이다.
+   *
+   * ⚠ 사장님 지적 — «원래 보통 스나가 먼저 죽는게 당연히 치명적이지».
+   *   맞다. 전체 실측도 46.1% 대 50.9% 로 어느 팀이나 그렇다.
+   *   ★이 축이 재는 것은 그 «당연한 것» 이 아니라 그 정도가 팀마다 얼마나 다른가★ 다.
+   *   클랜별 범위 -3.4 ~ +27.1%p — 차가 크면 스나에 크게 기댄 팀이고,
+   *   작으면 스나가 죽어도 라플이 수습하는 팀이다.
+   */
+  aliveRounds: number
+  aliveWon: number
+  /** 죽은 차례 1~2번째에 우리 스나가 든 라운드 */
+  deadEarlyRounds: number
+  deadEarlyWon: number
 }
 
 /**
@@ -637,6 +652,42 @@ export interface FirstBloodTally {
  *
  * 넓히면 걸리는 라운드가 63.4% → 70.0% 로 는다 (6,000판 실측).
  */
+/**
+ * ★몇 번째까지를 «먼저 죽었다» 로 볼 것인가★ — 스나영향력(⑤) 전용 (2026-09-16 밤).
+ *
+ * 실측은 1~2번째로 재서 골랐다 (클랜 54곳 · 퍼짐 5.6 · 스나싸움과 상관 0.115).
+ * 1번째만 보면 표본이 반으로 줄고, 3번째까지 넓히면 «라운드 중반» 까지 들어와
+ * «먼저» 라는 말이 흐려진다.
+ */
+/**
+ * ★스나차이·라플차이 점수표★ — 사장님이 직접 주신 곡선 (2026-09-16 밤).
+ *
+ * > «상대스나를 선짤했다? 이러면 1점 / 거기서 1킬 더? 2점 / 거기서 또 1킬 더? 4점 /
+ * >  거기서 1킬 더? 6점 / 올킬? 10점 / 이런느낌임»
+ *
+ * 오름폭이 +1 → +2 → +2 → +4 로 ★뒤로 갈수록 가팔라진다.★
+ * 올킬이 선짤의 열 배다 — «혼자 판을 끝냈다» 를 확실히 띄우는 모양이다.
+ */
+export const GAP_OPEN_POINTS: readonly number[] = [1, 2, 4, 6, 10]
+/**
+ * ★판을 안 열고 킬만 한 라운드★ — 같은 킬 수에서 절반.
+ *
+ * 사장님 표는 «선짤했다» 에서 시작한다. 선짤 없이 3킬 한 스나를 0점 두면 안 되고,
+ * 그렇다고 «균형을 먼저 무너뜨린» 선짤과 같은 값을 줄 수도 없다.
+ */
+export const GAP_PLAIN_POINTS: readonly number[] = [0.5, 2, 3, 5, 8]
+/**
+ * ★세이브★ — 혼자 남아 이기면 +3점.
+ * 실측상 라운드의 3.9% 뿐이라 선짤(1점)보다 훨씬 귀하다.
+ */
+export const GAP_SAVE_POINT = 3
+/** ★소수싸움에서 살아남아 1킬 이상★ — +2점. 밀린 판의 킬은 균형 판의 킬보다 무겁다 */
+export const GAP_FEW_POINT = 2
+/** 거기서 그 라운드까지 따면 +2점 더 */
+export const GAP_FEW_WIN_POINT = 2
+
+export const SNIPER_EARLY_DEATH_ORDER = 2
+
 export const RIFLE_POWER_DEATH_ORDER_V1 = 3
 export const RIFLE_POWER_DEATH_ORDER_V2 = 4
 
@@ -663,6 +714,61 @@ export const RIFLE_POWER_BY_KILLS = false
  * 사장님이 «라플들은 잘했는데 스나가 못해서 진 판» 이 안 보인다고 짚으신 것이 이것이다.
  */
 export const RIFLE_POWER_UNIT: 'rifleKills' | 'rounds' | 'allKills' = 'rifleKills'
+
+/**
+ * ★기회차단★ — 먼저 맞고 시작한 라운드를 끊어냈나 (2026-09-16 밤 사장님).
+ *
+ * > «불리한 시작» 이라 부르려다 «기회차단» 으로 못 박으셨다.
+ *
+ * ── 왜 이 모양인가 (실측 · 최근 2,500경기)
+ *   첫 킬 뒤 «몇 초 잠잠했나» 는 축이 못 됐다 — 잠잠할수록 오히려 승률이 내려갔다
+ *   (우위가 녹는다). 반면 «다음 킬을 누가 냈나» 는 창과 무관하게 갈랐다:
+ *     우리가 열고 또 잡음  59.2%   /   맞고 못 끊음  ★40.8%★
+ *   그리고 ★경기 승률과 상관 0.015★ — 여섯 축 중 유일하게 «그냥 강팀» 이 안 섞인다.
+ */
+export interface BlockChanceTally {
+  /** 상대가 그 라운드 첫 킬을 낸 라운드 수 = 분모 */
+  foeOpenRounds: number
+  /** 그중 ★다음 킬을 우리가 낸★ 라운드 수 = 분자 */
+  cutRounds: number
+  /** 뒷면 — 우리가 연 라운드와 그중 이어서 우리가 또 잡은 수. 축에는 안 쓰고 남긴다 */
+  openRounds: number
+  heldRounds: number
+}
+
+/**
+ * ★스나차이 · 라플차이★ — 무기별 점수를 상대와 견준다 (2026-09-16 밤 사장님).
+ *
+ * 점수표 (사장님이 직접 주신 곡선) —
+ *   상대 스나를 «라운드 첫 킬» 로 잡음   1점
+ *   + 1킬 더 (총 2킬)                  2점
+ *   + 1킬 더 (총 3킬)                  4점
+ *   + 1킬 더 (총 4킬)                  6점
+ *   올킬 (5킬)                        10점
+ *   선짤 없이 킬만 한 라운드            그 절반 (0.5 / 2 / 3 / 5 / 8)
+ *   세이브(혼자 남아 이김)              +3점
+ *   소수싸움에서 살아남아 1킬 이상       +2점 · 그 라운드까지 따면 +2점 더
+ *
+ * ★라플은 시작점만 «라운드 첫 킬» 로 바꾼다★ — 스나는 «상대 스나를» 잡아야 선짤이지만
+ * 라플은 누구를 잡든 판을 연 것이다.
+ *
+ * ★사람 수로 나눈다★ (사장님: «순수 스나차이로 게임을 이기는 경우가 확연히 잘 보이면 좋겠어»).
+ * 라플 점수가 2.7배 큰 건 실력이 아니라 머릿수다 (스나 1명 vs 라플 4명).
+ * 나누면 한 사람당 스나 +0.68 · 라플 +0.45 로 ★스나가 더 크게★ 보인다.
+ */
+export interface GapScoreTally {
+  /** 우리 스나·라플 점수 합 */
+  ourSniper: number
+  ourRifle: number
+  /** 상대 스나·라플 점수 합 */
+  foeSniper: number
+  foeRifle: number
+  /** 사람 수 (양 팀 평균) — 한 사람당으로 나눌 때 쓴다 */
+  sniperHeads: number
+  rifleHeads: number
+  /** 위 점수를 센 라운드 수 = 분모 */
+  rounds: number
+}
 
 export interface RiflePowerTally {
   /**
@@ -721,6 +827,11 @@ export interface ClanHexTally {
   /** 옛 ⑤ 선짤. 화면이 안 본다. 계속 세고 저장한다 (`CLAUDE.md` 1-4) */
   firstBlood: FirstBloodTally | null
   /** ⑥ **지금 쓰는 것** — 교환 (D-256) */ trade: TradeTally | null
+
+  /** ★새 축 — 기회차단★ (2026-09-16 밤 사장님). 경기·클랜 둘 다 쓴다 */
+  blockChance: BlockChanceTally | null
+  /** ★새 축 — 스나차이·라플차이★ (2026-09-16 밤 사장님). 경기는 점수차, 클랜은 앞선 판 비율 */
+  gapScore: GapScoreTally | null
 
   /** ② */ outnumbered: OutnumberedTally | null
   /** ③ */ save: SaveTally | null
@@ -781,6 +892,9 @@ const emptyTally = (teamNo: string, foeTeamNo: string | null): ClanHexTally => (
   firstBloodless: null,
   firstBlood: null,
   trade: null,
+  /* ★새 축 둘★ (2026-09-16 밤 사장님) */
+  blockChance: null,
+  gapScore: null,
   outnumbered: null,
   save: null,
   riflePower: null,
@@ -1271,10 +1385,26 @@ function tallyFor(input: {
   /** ⑥ 선짤없이 라운드 시작 — 먼저 맞지 않고 연 라운드 (2026-09-16 사장님) */
   const firstBloodless: FirstBloodlessTally = { rounds: 0, lost: 0, tiedRounds: 0 }
   /** ⑤ 스나영향력 — 우리 스나가 일한 라운드 / 침묵한 라운드 (2026-09-16 사장님) */
-  const sniperInfluence: SniperInfluenceTally = { rounds: 0, won: 0, quietRounds: 0, quietWon: 0 }
+  const sniperInfluence: SniperInfluenceTally = {
+    rounds: 0, won: 0, quietRounds: 0, quietWon: 0,
+    aliveRounds: 0, aliveWon: 0, deadEarlyRounds: 0, deadEarlyWon: 0,
+  }
   const trade: TradeTally = { deaths: 0, within3: 0, within5: 0, within10: 0, sameRound: 0 }
   /** ④ 라이플화력 — 스나가 아무것도 못 한 라운드의 ★킬★ 을 누가 냈나 (2026-09-15 사장님) */
   const riflePower: RiflePowerTally = { rounds: 0, won: 0, situationRounds: 0 }
+  /* ★새 축 둘★ (2026-09-16 밤 사장님) */
+  const blockChance: BlockChanceTally = { foeOpenRounds: 0, cutRounds: 0, openRounds: 0, heldRounds: 0 }
+  const gapScore: GapScoreTally = {
+    ourSniper: 0, ourRifle: 0, foeSniper: 0, foeRifle: 0,
+    sniperHeads: 0, rifleHeads: 0, rounds: 0,
+  }
+  /* 한 팀 인원 — 세이브·소수싸움 가산을 가리는 데 쓴다 */
+  let ourSize = 0
+  let foeSize = 0
+  for (const [, team] of input.roster.teamOf) {
+    if (team === input.teamNo) ourSize += 1
+    else foeSize += 1
+  }
   /**
    * 「1,2,3번째」 의 경계. 4·5번째는 제외다 (사장님이 괄호로 못 박음).
    * ★죽지 않은 스나는 이 경계를 안 탄다★ — 2026-09-15 밤에 «살아있는데» 가 더해졌다.
@@ -1363,12 +1493,133 @@ function tallyFor(input: {
           if (input.weaponByPlayer.get(kill.killer) !== 1) continue
           ourSniperKills += 1
         }
+        /* ⚠ 옛 셈(A) — 계속 쌓는다. 되돌리려면 이 네 칸만 보면 된다 */
         if (ourSniperKills > 0) {
           sniperInfluence.rounds += 1
           if (wonThisRound) sniperInfluence.won += 1
         } else {
           sniperInfluence.quietRounds += 1
           if (wonThisRound) sniperInfluence.quietWon += 1
+        }
+        /*
+         * ★지금 셈(B) — 우리 스나가 «먼저» 죽었나★ (2026-09-16 밤 사장님 «b로 가자»).
+         *
+         * ── 왜 A 에서 갈아탔나
+         *   A 의 «침묵한 라운드» 에는 ①진짜 조용 과 ②먼저 죽어서 못 쏨 이 섞여 있었다.
+         *   ②가 섞이면 «스나 덕에 이겼다» 가 아니라 «지는 라운드라 스나가 못 쐈다» 를
+         *   같이 재게 된다 — 인과가 거꾸로 섞인다.
+         *
+         * ── 실측 (최근 2,500경기 · 클랜 54곳)
+         *   A 지금 축 +8.3%p 퍼짐 5.0 · ★B +9.2%p 퍼짐 5.6★ · C 선취 +6.8%p · D 살아남음 +17.6%p
+         *   B 는 스나싸움과 상관 ★0.115★ — 거의 딴 말을 한다 (사장님: «스나싸움을 많이
+         *   이겼다고 게임 영향력이 무조건 큰건 아니라서»).
+         *
+         * ★죽은 차례는 양 팀을 통틀어 센다★ — «라운드 초반에 지워졌나» 가 뜻이다.
+         *   우리 팀 안에서 첫 번째인지를 보면 우리가 늦게까지 안 죽은 라운드도
+         *   «먼저 죽음» 이 되어 버린다.
+         */
+        const deadOrder: string[] = []
+        for (const kill of kills) if (!deadOrder.includes(kill.victim)) deadOrder.push(kill.victim)
+        const sniperDiedEarly = deadOrder
+          .slice(0, SNIPER_EARLY_DEATH_ORDER)
+          .some((usn) => ourSnipers.has(usn))
+        if (sniperDiedEarly) {
+          sniperInfluence.deadEarlyRounds += 1
+          if (wonThisRound) sniperInfluence.deadEarlyWon += 1
+        } else {
+          sniperInfluence.aliveRounds += 1
+          if (wonThisRound) sniperInfluence.aliveWon += 1
+        }
+      }
+    }
+
+    /*
+     * ── ★기회차단★ — 먼저 맞고 시작한 라운드를 끊어냈나 (2026-09-16 밤 사장님) ──
+     *
+     *   상대가 그 라운드 첫 킬을 냈을 때, ★다음 킬을 우리가 냈나★.
+     *   5대4 로 밀린 걸 4대4 로 되돌려놓은 것이다. 이겼는지는 안 본다 —
+     *   실측에서 «이겼나» 를 넣으면 경기 승률과 0.79 로 겹쳤고, «되받았나» 는 0.015 였다.
+     *
+     *   뒷면(우리가 열고 또 잡음)도 같이 쌓는다. 축에는 안 쓰지만 «굳힘» 을 되살릴 때
+     *   재수집이 없어야 한다 (`CLAUDE.md` 1-4).
+     */
+    /* ★시간순이 필요하다★ — `killsByRound` 는 정렬을 약속하지 않는다 */
+    const ordered = [...kills].sort((a, b) => a.at - b.at)
+    if (ordered.length >= 2) {
+      const opener = ordered[0] as PlaystyleKill
+      const second = ordered[1] as PlaystyleKill
+      const openerOurs = isOurs(opener.killer)
+      const secondOurs = isOurs(second.killer)
+      if (openerOurs) {
+        blockChance.openRounds += 1
+        if (secondOurs) blockChance.heldRounds += 1
+      } else {
+        blockChance.foeOpenRounds += 1
+        if (secondOurs) blockChance.cutRounds += 1
+      }
+    }
+
+    /*
+     * ── ★스나차이 · 라플차이★ — 무기별 점수를 상대와 견준다 (2026-09-16 밤 사장님) ──
+     *
+     *   점수표는 `GapScoreTally` 주석에 그대로 적어 두었다.
+     *   ★양 팀을 다 센다★ — 그래야 «차» 가 나온다.
+     */
+    {
+      const won = input.wonRound(round)
+      if (won !== null) {
+        gapScore.rounds += 1
+        /* 팀별 사망 차례 — 세이브·소수싸움 가산을 가리는 데 쓴다 */
+        const deadOurs: string[] = []
+        const deadFoe: string[] = []
+        for (const kill of ordered) {
+          const list = isOurs(kill.victim) ? deadOurs : deadFoe
+          if (!list.includes(kill.victim)) list.push(kill.victim)
+        }
+        /* 우리가 수적으로 밀린 순간이 있었나 */
+        let ourFew = false
+        let foeFew = false
+        {
+          let dOurs = 0
+          let dFoe = 0
+          for (const kill of ordered) {
+            if (isOurs(kill.victim)) dOurs += 1
+            else dFoe += 1
+            if (ourSize - dOurs < foeSize - dFoe) ourFew = true
+            if (foeSize - dFoe < ourSize - dOurs) foeFew = true
+          }
+        }
+        const opener = ordered[0] as PlaystyleKill | undefined
+        for (const [usn, weapon] of input.weaponByPlayer) {
+          const ours = isOurs(usn)
+          const roster = ours ? ourSize : foeSize
+          const dead = ours ? deadOurs : deadFoe
+          const isSniper = weapon === 1
+          let mine = 0
+          for (const kill of kills) if (kill.killer === usn) mine += 1
+          const alone = !dead.includes(usn) && dead.length === roster - 1
+          if (mine === 0 && !alone) continue
+          let pt = 0
+          if (mine > 0 && opener !== undefined) {
+            /* ★판을 열었나★ — 스나는 «상대 스나를» 잡아야 하고, 라플은 누구든 좋다 */
+            const opened = opener.killer === usn
+            const rightOpen = isSniper
+              ? opened && input.weaponByPlayer.get(opener.victim) === 1 && isOurs(opener.victim) !== ours
+              : opened
+            const table = rightOpen ? GAP_OPEN_POINTS : GAP_PLAIN_POINTS
+            pt += table[Math.min(mine, table.length) - 1] as number
+          }
+          if (alone && won === ours) pt += GAP_SAVE_POINT
+          if (!dead.includes(usn) && mine > 0 && (ours ? ourFew : foeFew)) {
+            pt += GAP_FEW_POINT
+            if (won === ours) pt += GAP_FEW_WIN_POINT
+          }
+          if (pt === 0) continue
+          if (ours) {
+            if (isSniper) gapScore.ourSniper += pt
+            else gapScore.ourRifle += pt
+          } else if (isSniper) gapScore.foeSniper += pt
+          else gapScore.foeRifle += pt
         }
       }
     }
@@ -1506,6 +1757,35 @@ function tallyFor(input: {
    */
   tally.riflePower =
     (ourSnipers.size > 0 || foeSniperSet.size > 0) && riflePower.rounds > 0 ? riflePower : null
+
+  /*
+   * ★기회차단★ — 상대가 연 라운드가 하나라도 있어야 잴 수 있다.
+   *   0 이면 «한 번도 못 끊었다» 가 아니라 «그런 라운드가 없었다» 다 (D-106).
+   */
+  tally.blockChance = blockChance.foeOpenRounds > 0 ? blockChance : null
+  /*
+   * ★스나차이·라플차이★ — 사람 수는 마지막에 채운다 (한 사람당으로 나누려고).
+   *   양 팀 평균을 쓴다 — 한쪽이 스나 둘, 다른 쪽이 하나면 그 중간이 공평하다.
+   */
+  if (gapScore.rounds > 0) {
+    let ourSn = 0
+    let ourRf = 0
+    let foeSn = 0
+    let foeRf = 0
+    for (const [usn, weapon] of input.weaponByPlayer) {
+      const ours = input.roster.teamOf.get(usn) === input.teamNo
+      if (weapon === 1) {
+        if (ours) ourSn += 1
+        else foeSn += 1
+      } else if (weapon === 0) {
+        if (ours) ourRf += 1
+        else foeRf += 1
+      }
+    }
+    gapScore.sniperHeads = Math.max(1, (ourSn + foeSn) / 2)
+    gapScore.rifleHeads = Math.max(1, (ourRf + foeRf) / 2)
+    tally.gapScore = gapScore
+  } else tally.gapScore = null
 
   tally.outnumbered = input.restorable ? outnumbered : null
   tally.save = input.restorable ? save : null

@@ -165,6 +165,25 @@ interface MatchTally {
   tempoSeconds: number
   /** 위 합에 들어간 라운드 수 */
   tempoCount: number
+  /**
+   * ★기회창출★ — 그 라운드 «첫 킬» 을 낸 라운드 수 (2026-09-16 밤 사장님).
+   * 스나 육각 ②가 쓴다 — «판을 여는 힘».
+   */
+  openRounds: number
+  /** ★기회차단★ 의 분모 — 상대가 그 라운드 첫 킬을 낸 라운드 수 */
+  foeOpenRounds: number
+  /**
+   * ★기회차단★ 의 분자 — 그중 «다음 킬» 을 내가 낸 수. 라플 육각 ②가 쓴다.
+   * 실측 — 끊으면 그 라운드 승률 49.7%, 못 끊으면 ★40.8%★.
+   */
+  cutRounds: number
+  /**
+   * ★안전함★ — 그 라운드를 «끝까지 산» 수. 스나 육각 ⑥이 쓴다.
+   * ⚠ ★몇 초에 죽었나로 나누면 안 된다★ — 늦게 죽은 건 잘한 게 아니라 혼자 남아 버틴 것이었다
+   *   (실측: 100초 넘겨 죽은 라운드는 그 순간 0.5 대 2.0 이었다).
+   *   살았나 죽었나만 승률을 62.0% 대 43.5% 로 가른다.
+   */
+  aliveRounds: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -176,6 +195,7 @@ interface MatchTally {
 const emptyTally = (): MatchTally => ({
   rounds: 0, kills: 0, firstKills: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
   deathSeconds: 0, deathCount: 0, tempoSeconds: 0, tempoCount: 0,
+  openRounds: 0, foeOpenRounds: 0, cutRounds: 0, aliveRounds: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
 })
 
@@ -553,6 +573,52 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         }
       }
       /*
+       * ── ★기회창출 · 기회차단 · 안전함★ (2026-09-16 밤 사장님) ──
+       *
+       *   기회창출  그 라운드 ★첫 킬★ 을 냈나 (스나 ②)
+       *   기회차단  상대가 열었을 때 ★다음 킬★ 을 냈나 (라플 ②)
+       *   안전함    그 라운드를 ★끝까지 살았나★ (스나 ⑥)
+       *
+       *   셋 다 «몇 초» 를 안 본다 — 오늘 실측에서 시간은 판이 기운 그림자였다.
+       */
+      if (teams) {
+        const opener = arr[0] as Kill
+        const second = arr.length > 1 ? (arr[1] as Kill) : null
+        /* usn → team — 아래 `teamOf` 는 이 지점보다 뒤에 만들어진다 */
+        const teamOfUsn = new Map<string, string>()
+        for (const [t, set] of teams) for (const u of set) teamOfUsn.set(u, t)
+
+        const openerWho = whoOf(mk, opener.killer)
+        if (openerWho) tallyOf(mk, openerWho.pid).openRounds += 1
+        const openerTeam = teamOfUsn.get(opener.killer)
+        const secondPid = second ? (whoOf(mk, second.killer)?.pid ?? null) : null
+
+        /* 이 라운드에 죽은 사람들 — «끝까지 살았나» 를 가린다 */
+        const diedHere = new Set<string>()
+        for (const e of arr) {
+          const V = whoOf(mk, e.victim)
+          if (V) diedHere.add(V.pid)
+        }
+        /* 등장한 usn 을 모으면 팀까지 안다 (`seen` 은 pid 라 팀을 모른다) */
+        const usnHere = new Set<string>()
+        for (const e of arr) {
+          usnHere.add(e.killer)
+          usnHere.add(e.victim)
+        }
+        for (const usn of usnHere) {
+          const W = whoOf(mk, usn)
+          if (!W) continue
+          const t = tallyOf(mk, W.pid)
+          if (!diedHere.has(W.pid)) t.aliveRounds += 1
+          /* ★상대가 열었을 때만 «기회차단» 의 판이다★ */
+          const myTeam = teamOfUsn.get(usn)
+          if (openerTeam === undefined || myTeam === undefined || openerTeam === myTeam) continue
+          t.foeOpenRounds += 1
+          if (secondPid !== null && secondPid === W.pid) t.cutRounds += 1
+        }
+      }
+
+      /*
        * ★교환율★ (2026-09-15 사장님 «교환율로 해줘») — 동료가 죽은 직후 그 킬러를 되잡았나.
        *
        * 분자 `tradeKills`  동료가 죽고 ★5초 안★ 에 그 킬러를 잡은 횟수
@@ -833,6 +899,10 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         deathcount: number
         temposeconds: number
         tempocount: number
+        openrounds: number
+        foeopenrounds: number
+        cutrounds: number
+        aliverounds: number
       }[]
     >`
       WITH mw AS (
@@ -870,6 +940,11 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              -- ★게임템포★ — 라운드마다 «먼저 겪은 일» 까지의 초 (2026-09-16)
              SUM(h."tempoSeconds" * mw.w) AS temposeconds,
              SUM(h."tempoCount" * mw.w) AS tempocount,
+             -- ★개인 새 6축★ (2026-09-16 밤) — 기회창출 · 기회차단 · 안전함
+             SUM(h."openRounds" * mw.w)    AS openrounds,
+             SUM(h."foeOpenRounds" * mw.w) AS foeopenrounds,
+             SUM(h."cutRounds" * mw.w)     AS cutrounds,
+             SUM(h."aliveRounds" * mw.w)   AS aliverounds,
              SUM(h."aloneRounds" * mw.w) AS alonerounds,
              SUM(h."aloneWon" * mw.w) AS alonewon,
              SUM(h."outRounds" * mw.w) AS outrounds,
@@ -962,6 +1037,10 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         deathCount: h?.deathcount ?? 0,
         tempoSeconds: h?.temposeconds ?? 0,
         tempoCount: h?.tempocount ?? 0,
+        openRounds: h?.openrounds ?? 0,
+        foeOpenRounds: h?.foeopenrounds ?? 0,
+        cutRounds: h?.cutrounds ?? 0,
+        aliveRounds: h?.aliverounds ?? 0,
         aloneRounds: h?.alonerounds ?? 0,
         aloneWon: h?.alonewon ?? 0,
         outRounds: h?.outrounds ?? 0,
@@ -1019,6 +1098,11 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         /* 게임템포의 재료 — 화면은 접힌 값(`opening`)을 읽지만 원시 합도 남겨 둔다 */
         tempoSeconds: p.tempoSeconds,
         tempoCount: p.tempoCount,
+        /* ★개인 새 6축 재료★ (2026-09-16 밤 사장님) */
+        openRounds: p.openRounds,
+        foeOpenRounds: p.foeOpenRounds,
+        cutRounds: p.cutRounds,
+        aliveRounds: p.aliveRounds,
         burstRounds: p.burstRounds,
         /* ★내 구간★ — 가장 많이 뛴 티어 (2026-09-11 사장님). 구간별 랭킹이 이 칸을 거른다 */
         homeTier: homeTierOf(p.tierGames),

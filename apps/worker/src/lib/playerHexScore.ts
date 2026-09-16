@@ -32,6 +32,7 @@
  */
 import {
   CARRY_BY_TOTAL_KILLS,
+  PLAYER_HEX_WEAPON_POOL_AXIS_KEYS,
   INFLUENCE_BY_EVEN_KILLS,
   TRADE_AXIS,
   influenceOf,
@@ -195,6 +196,17 @@ export interface PlayerHexInput {
    */
   tempoSeconds?: number
   tempoCount?: number
+  /**
+   * ★개인 새 6축의 재료★ (2026-09-16 밤 사장님).
+   *   `openRounds`    그 라운드 첫 킬 — 스나 «기회창출»
+   *   `cutRounds`/`foeOpenRounds`  라플 «기회차단»
+   *   `aliveRounds`   스나 «안전함»
+   * 이 칸이 없던 옛 줄은 `undefined` 고, 그때는 축이 `null` 이다.
+   */
+  openRounds?: number
+  foeOpenRounds?: number
+  cutRounds?: number
+  aliveRounds?: number
   burstRounds: number
   /**
    * ★게임영향력의 재료★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한 값.
@@ -526,7 +538,8 @@ export function tierFactorOf(tierGames: Readonly<Record<TierNo, number>>): numbe
  *     라플수는 라플수끼리 비교해»). 스나는 뒤에서 오래 버티고 라플은 앞에서 죽는다 —
  *     한 줄에 세우면 무기가 곧 순위가 된다.
  */
-export const HEX_WEAPON_SCOPED_AXIS_KEYS: readonly HexAxisKey[] = ['duel', 'survival', 'crack']
+export const HEX_WEAPON_SCOPED_AXIS_KEYS: readonly HexAxisKey[] =
+  PLAYER_HEX_WEAPON_POOL_AXIS_KEYS as readonly HexAxisKey[]
 export const HEX_UNIFIED_AXIS_KEYS: readonly HexAxisKey[] = HEX_AXIS_KEYS.filter(
   (k) => !HEX_WEAPON_SCOPED_AXIS_KEYS.includes(k),
 )

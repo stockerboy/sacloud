@@ -47,7 +47,10 @@ const PHRASE: Readonly<Record<string, string>> = {
   outnumbered: '수적 열세 상황',
   save: '한 명 남은 상황',
   riflePower: '스나가 빠진 뒤의 화력',
-  sniperInfluence: '스나가 살아 있을 때와 아닐 때의 차이',
+  /* ★2026-09-16 밤 — 뜻이 갈렸다★ (사장님): 무기별 점수를 상대와 견준 차다 */
+  sniperInfluence: '스나들의 판 가르기',
+  rifleInfluence: '라플들의 판 가르기',
+  blockChance: '먼저 맞고 시작한 라운드',
   trade: '동료가 당한 직후의 되받아치기',
   firstBloodless: '라운드 초반 크랙',
 }

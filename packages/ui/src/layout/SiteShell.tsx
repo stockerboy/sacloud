@@ -60,8 +60,15 @@ export function SiteShell({
         ⚠ `variant="home"` 은 지우지 않았다 — 되돌리려면 아래 한 줄만 되돌린다.
       */}
       <SiteHeader variant="default" user={user} onLogout={onLogout} />
+      {/*
+        ★`sac-shell` 은 이름표일 뿐이다★ (2026-09-16). 이 칸은 `bg-page` 로 ★불투명★ 이라
+        화면 전체를 덮는다 — `<body>` 에 깐 새 밤하늘 배경이 여기서 통째로 가렸다.
+        `styles.css` 의 「새 사이트 배경」 블록이 ★`body.sac-sky` 안에서만★ 이 칸을
+        투명하게 만든다. `sac-sky` 를 떼면 이 이름표는 아무 일도 안 한다 (`bg-page` 그대로).
+        ⚠ Tailwind 유틸리티(`bg-page`)를 선택자로 쓰지 않는다 — 카드에도 붙는 이름이다.
+      */}
       <div
-        className={`flex min-h-screen flex-col bg-page text-[var(--color-text,#d6c9c9)] ${shellClass}`}
+        className={`sac-shell flex min-h-screen flex-col bg-page text-[var(--color-text,#d6c9c9)] ${shellClass}`}
       >
         {/* 고정 헤더 높이만큼 본문을 내린다 — 머리띠와 ★같은 토큰★ 을 본다 */}
         <div

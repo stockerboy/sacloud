@@ -35,7 +35,7 @@ import { cumulativeKdRate } from './visibility'
 import { publicOriginWhere } from './publicScope'
 import { ladderMatchWhere } from './ladderScope'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
-import { hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
+import { CLAN_HEX_V2_AXIS_KEYS, hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { seasonWindowWhere } from './season0Scope'
 import { leagueClanHexV2, leagueClanBadges } from './clanHexV2'
 import { softFail } from '../softFail'
@@ -711,12 +711,19 @@ const CLAN_PODIUM_SIZE = 3
 /** 클랜 육각형 축 차례·이름 — 클랜 카드(`clanHexAxes`)와 ★같은 차례★ 다 */
 /* ⚠ ★2026-09-15★ — ④ 가 `tempo`(게임템포) 에서 `riflePower`(라이플화력) 로 바뀌었다 (사장님) */
 /* ⚠ ★2026-09-16★ — ⑤ 가 `firstBlood`(선짤) 에서 `sniperInfluence`(스나영향력) 로 바뀌었다 (사장님) */
-const CLAN_HEX_ORDER = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'firstBloodless'] as const
+/*
+ * ⚠ ★축 목록을 여기 적지 않는다★ (2026-09-16 밤).
+ *   계약이 정한 여섯을 그대로 따른다 — 화면마다 적어 둔 탓에
+ *   축이 갈릴 때 한 곳이 빠지는 일을 오늘만 세 번 걱었다.
+ */
+const CLAN_HEX_ORDER = CLAN_HEX_V2_AXIS_KEYS
 const CLAN_HEX_LABEL: Readonly<Record<string, string>> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
   riflePower: '라이플화력',
+  rifleInfluence: '라플영향력',
+  blockChance: '기회차단',
   sniperInfluence: '스나영향력',
   firstBloodless: '크랙 성공',
 }
