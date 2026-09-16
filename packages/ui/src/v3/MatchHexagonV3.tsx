@@ -38,7 +38,7 @@ const LABEL: Record<(typeof ORDER)[number], string> = {
   save: '세이브',
   riflePower: '라이플화력',
   sniperInfluence: '스나영향력',
-  firstBloodless: '선짤없이 라운드 시작',
+  firstBloodless: '선짤 방어',
 }
 
 /** 이긴 팀 파랑 · 진 팀 빨강 (사장님) */

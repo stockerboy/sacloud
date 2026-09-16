@@ -69,7 +69,7 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     /* ① 스나 대 스나 — 분모는 won+lost 다 (D-256) */
     sniperDuel: { rounds: 16, won: 6, lost: 4 },
     /* ⑤ 선짤 — 동시각 2라운드는 **분모에서 이미 빠진** 값이다 (사용자 (가)) */
-    /* ⑤ 스나영향력 — 일한 20 중 14승(70%) · 침묵 20 중 8승(40%) → ★+30.0%p★ */
+    /* ⑤ 스나영향력 — 일한 20 중 14승(70%) · 침묵 20 중 8승(40%) → ★+30.0%★ (2026-09-16 사장님이 «p» 를 빼심) */
     sniperInfluence: { rounds: 20, won: 14, quietRounds: 20, quietWon: 8 },
     firstBlood: { rounds: 12, won: 7, tiedRounds: 2 },
     /* ⑥ 교환 — 창 넷을 다 다르게 잡았다. 창을 바꾸면 값이 바뀌는지 시험하려는 것이다 */
@@ -401,7 +401,7 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
      */
     expect(axisOf(hex, 'sniperInfluence').numerator).toBe(14)
     expect(axisOf(hex, 'sniperInfluence').denominator).toBe(20)
-    expect(axisOf(hex, 'sniperInfluence').text).toBe('+30.0%p')
+    expect(axisOf(hex, 'sniperInfluence').text).toBe('+30.0%')
     expect(axisOf(hex, 'sniperInfluence').raw).toBeCloseTo(0.6, 10)
     /* ⑥ 교환 — within5(5) / deaths(20). **5초가 사용자 확정이다** */
     /*

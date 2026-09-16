@@ -104,7 +104,7 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AxisKey, string> = {
    * 값 = 1 − (우리가 선짤 당한 라운드 ÷ 겨룬 라운드 전부).
    * 13라운드에서 6번 당했으면 1 − 6/13 = 53.8% 다.
    */
-  firstBloodless: '선짤없이 라운드 시작',
+  firstBloodless: '선짤 방어',
 }
 
 /** ★2026-09-16 새벽까지 쓰던 이름★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
@@ -118,7 +118,7 @@ export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<
   riflePower: '라이플화력',
   firstBlood: '선짤',
   sniperInfluence: '스나영향력',
-  firstBloodless: '선짤없이 라운드 시작',
+  firstBloodless: '선짤 방어',
   trade: '교환',
 }
 
@@ -1176,7 +1176,7 @@ export function clanHexV2Text(key: ClanHexV2AxisKey, raw: number | null): string
      *   `raw` 만 들고 글자를 다시 만드는 자리(요약·시험)가 있어 맞춰 둔다.
      */
     case 'diff':
-      return `+${((raw * SNIPER_INFLUENCE_FULL_SCALE)).toFixed(1)}%p`
+      return `+${((raw * SNIPER_INFLUENCE_FULL_SCALE)).toFixed(1)}%`
   }
 }
 
@@ -1205,7 +1205,7 @@ export function clanHexV2TextV1(key: ClanHexV2AxisKey, raw: number | null): stri
      *   `raw` 만 들고 글자를 다시 만드는 자리(요약·시험)가 있어 맞춰 둔다.
      */
     case 'diff':
-      return `+${((raw * SNIPER_INFLUENCE_FULL_SCALE)).toFixed(1)}%p`
+      return `+${((raw * SNIPER_INFLUENCE_FULL_SCALE)).toFixed(1)}%`
   }
 }
 
@@ -1329,7 +1329,9 @@ function diffAxis(
     denominator: part.rounds,
     raw,
     value: null,
-    text: `${diff >= 0 ? '+' : ''}${(diff * 100).toFixed(1)}%p`,
+    /* ⚠ 2026-09-16 — 사장님: «+p 없애고 퍼센트만 써». 엄밀히는 두 승률의 차라
+       «%p» 가 맞지만 화면에서는 «%» 로 읽는 편이 자연스럽다 */
+    text: `${diff >= 0 ? '+' : ''}${(diff * 100).toFixed(1)}%`,
     pending: null,
     rank: null,
     total: null,
