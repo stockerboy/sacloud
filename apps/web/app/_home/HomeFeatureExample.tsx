@@ -1,45 +1,56 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { ClanHexagonV2, Hexagon, MarkCircle, TrendChartV3, strengthAxes } from '@sacloud/ui'
+import {
+  ClanCardV3,
+  ClanScoreboardV3,
+  Hexagon,
+  MarkCircle,
+  MatchHexagonV3,
+  PlayerHeaderV3,
+  TrendChartV3,
+  mainWeaponFromStats,
+  ourSideOf,
+  strengthAxes,
+} from '@sacloud/ui'
+import { leagueScreen } from '@sacloud/contract'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
 /**
  * ★기능 줄을 눌렀을 때 그 자리에서 펼쳐지는 예시★ (2026-09-16 사장님).
  *
- * > «그냥 보기 누르면 ★다른페이지로 넘어가지말고 그자리에서 밑으로 펼쳐서★
- * >  예시를 ★하나씩만★ 보여줘»
- * > «펼치면 ★경기분석카드, 그래프(day누적) 육각그래프 전부 다★ 각각 펼치기에 맞게
- * >  나와야지(★애니메이트도 나와야해★) 저렇게 나오면 누가 해»
+ * > «그냥 보기 누르면 다른페이지로 넘어가지말고 그자리에서 밑으로 펼쳐서
+ * >  예시를 하나씩만 보여줘»
+ * > «펼치면 경기분석카드, 그래프(day누적) 육각그래프 전부 다 각각 펼치기에 맞게
+ * >  나와야지(애니메이트도 나와야해) 저렇게 나오면 누가 해»
+ * > «★실제 이 자료들을 전부 넣으라는거야 니가 만들지말고★ 하나씩 예시로 넣으라고»
  *
- * ── ★글자 요약이 아니라 진짜 화면★
- *   첫 판은 «1위 선수 승률 70.6%» 같은 ★글자★ 였다. 사장님이 바로 물리셨다 —
- *   «클랜 분석» 을 눌렀는데 글자 두 줄이 나오면 그게 무슨 클랜 분석인가.
+ * ── ★내가 만들지 않는다★
+ *   사장님이 화면 사진을 하나씩 보내 주시며 못 박으셨다. 그래서 이 파일은
+ *   ★새로 그리는 것이 하나도 없다.★ 실제 화면이 쓰는 그 컴포넌트를 그대로 부른다.
  *
- *   그래서 ★실제 화면이 쓰는 그 컴포넌트를 그대로 심는다.★
- *     육각형   `Hexagon` · `ClanHexagonV2`   ← 선수·클랜 상세가 쓰는 바로 그것
- *     그래프   `TrendChartV3`                ← 선수 상세의 «그래프» 탭 그대로
- *     경기     실제 경기 한 판의 점수·맵
- *   따로 만든 흉내가 아니라서 ★화면이 바뀌면 예시도 같이 바뀐다.★
+ * ```
+ *   경기 분석      `ClanScoreboardV3` + `MatchHexagonV3`   경기 상세 그대로
+ *   킬뎃 그래프    `TrendChartV3`                          선수 «그래프» 탭 그대로
+ *   기록 카드      `PlayerHeaderV3`                        선수 머리 카드 그대로
+ *   플레이어 분석  `Hexagon`                               선수 여섯 축 그대로
+ *   클랜 분석      `ClanCardV3`                            클랜 머리 카드 그대로
+ *                                                          (육각 + 플레이스타일 + 승률·순위)
+ *   개인/클랜 랭킹 · 래더                                   랭킹 줄 셋
+ * ```
+ *   흉내가 아니므로 ★화면이 바뀌면 예시도 저절로 같이 바뀐다.★
  *
  * ── ★지어내지 않는다★ (`CLAUDE.md` 2-1)
- *   예시는 운영 자료 그대로다. 견본 숫자를 그리지 않는다.
- *   자료가 아직 없으면 «아직 쌓인 기록이 없습니다» 라고 적는다.
+ *   예시는 운영 자료 그대로다. 자료가 없으면 «아직 쌓인 기록이 없습니다» 라고 적는다.
  *
  * ── ★펼칠 때만 부른다★
  *   여덟 줄 × 세 리그를 미리 받으면 첫 화면이 무거워진다.
- *   이 조각은 펼쳐질 때 처음 그려진다 — 안 누르면 질의가 하나도 안 나간다.
+ *   안 누르면 질의가 하나도 안 나간다.
  *
  * ── 질의 사슬
- * ```
- *   개인랭킹 1위 → 그 선수 상세   육각(플레이어 분석) · 그래프(킬뎃) · 기록 카드
- *   클랜랭킹 1위 → 그 클랜 상세   클랜 육각(클랜 분석)
- *   클랜랭킹                      클랜 랭킹 · 래더 점수
- *   경기 목록                     경기 분석
- * ```
- *   1위를 먼저 뽑아야 상세를 부를 수 있어 ★두 번 이어 부른다.★ 두 번째 질의는
- *   첫 번째가 온 뒤에만 켜진다(`enabled`) — 빈 주소로 부르지 않는다.
+ *   1위를 먼저 뽑아야 상세를 부를 수 있어 ★두 번 이어 부른다.★
+ *   두 번째는 첫 번째가 온 뒤에만 켜진다(`enabled`) — 빈 주소로 부르지 않는다.
  */
 
 /** 그 기능이 어느 자료를 쓰나 */
@@ -61,7 +72,6 @@ const box: React.CSSProperties = {
   border: '1px solid var(--v2-head-divider, #1e2637)',
 }
 
-/** 작은 이름표 */
 function Cap({ children }: { children: React.ReactNode }) {
   return (
     <div className="mb-[9px] text-[10.5px] tracking-[.12em] text-[var(--v2-text-ghost)]">
@@ -126,7 +136,7 @@ export function HomeFeatureExample({
     staleTime: 10 * 60 * 1000,
   })
 
-  /* ── ② 1위의 상세 — 육각·그래프가 여기 들어 있다 ────── */
+  /* ── ② 상세 — 육각·그래프·스코어보드가 여기 들어 있다 ─ */
   const topPlayerId = players.data?.data[0]?.player.id ?? ''
   const player = useQuery({
     queryKey: ['home-ex-player', leagueSlug, topPlayerId],
@@ -143,11 +153,24 @@ export function HomeFeatureExample({
     staleTime: 10 * 60 * 1000,
   })
 
+  /* 경기 상세 — 스코어보드와 경기 육각이 여기 있다 */
+  const topMatch = matches.data?.data[0] ?? null
+  const matchDetail = useQuery({
+    queryKey: ['home-ex-match', leagueSlug, topMatch?.id ?? ''],
+    queryFn: () =>
+      apiGet('matchShow', {
+        params: { leagueId: leagueSlug, matchId: topMatch?.id ?? '' },
+        search: { league_clan_id: topMatch?.league_clan.league_clan_id ?? '' },
+      }),
+    enabled: ready && source === 'match' && topMatch !== null,
+    staleTime: 10 * 60 * 1000,
+  })
+
   const busy =
     (source === 'player' && (players.isPending || player.isPending)) ||
     (source === 'clan' && (clans.isPending || clan.isPending)) ||
     (source === 'clanRank' && clans.isPending) ||
-    (source === 'match' && matches.isPending)
+    (source === 'match' && (matches.isPending || matchDetail.isPending))
 
   /* 펼쳐질 때 부드럽게 — 사장님: «애니메이트도 나와야해» */
   const wrap = (inner: React.ReactNode) => (
@@ -168,7 +191,26 @@ export function HomeFeatureExample({
     const detail = player.data?.data ?? null
     if (!top) return wrap(<Empty what="쌓인 개인 기록" />)
 
-    /* ★플레이어 분석 — 진짜 육각형★ */
+    /* ★기록 카드 — 선수 머리 카드 그대로★ (사장님 사진 ⑤) */
+    if (featureKey === 'recordCard') {
+      if (!detail) return wrap(<Empty what="선수 기록" />)
+      return wrap(
+        <>
+          <Cap>1위 선수의 기록 카드 — 실제 선수 화면 그대로입니다</Cap>
+          <div className="home-ex-draw">
+            <PlayerHeaderV3
+              showsKd={leagueScreen(leagueSlug).playerColumns.kd}
+              data={detail}
+              infoHref={`/player/${topPlayerId}`}
+              seasonLabel={`SEASON ${detail.league.name.toUpperCase()}`}
+              mainWeapon={detail.hex?.weapon ?? mainWeaponFromStats(detail.weapon_stats)}
+            />
+          </div>
+        </>,
+      )
+    }
+
+    /* ★플레이어 분석 — 선수 여섯 축 육각형 그대로★ */
     if (featureKey === 'playerHex') {
       const axes = detail ? strengthAxes(detail) : []
       if (axes.length === 0) return wrap(<Empty what="잴 수 있는 여섯 축" />)
@@ -184,7 +226,7 @@ export function HomeFeatureExample({
       )
     }
 
-    /* ★킬뎃 그래프 — 진짜 그래프★ (날짜별 누적) */
+    /* ★킬뎃 그래프 — 선수 「그래프」 탭 그대로★ (날짜별 누적) */
     if (featureKey === 'kdGraph') {
       const days = detail?.trend ?? []
       if (days.length === 0) return wrap(<Empty what="날짜별 기록" />)
@@ -201,90 +243,56 @@ export function HomeFeatureExample({
               winLabel="승률"
               kdLabel="킬뎃"
               seed={topPlayerId}
+              showsKd={leagueScreen(leagueSlug).playerColumns.kd}
             />
           </div>
         </>,
       )
     }
 
-    /* 개인 랭킹 — 실제 줄 세 개 */
-    if (featureKey === 'playerRank') {
-      return wrap(
-        <>
-          <Cap>지금 이 리그 1~3위</Cap>
-          <div className="flex flex-col gap-[9px]">
-            {rows.slice(0, 3).map((r) => (
-              <div key={r.league_player_id} className="flex items-center gap-[9px]">
-                <span
-                  className="num w-[20px] shrink-0 text-[13px] font-bold"
-                  style={{ color: tone }}
-                >
-                  {r.rank}
-                </span>
-                {r.clan ? <MarkCircle clan={r.clan} size={17} /> : null}
-                <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--v2-text-strong)]">
-                  {r.player.name}
-                </span>
-                <span className="num shrink-0 text-[12.5px] text-[var(--v2-text-dim)]">
-                  {pct(r.win_rate)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </>,
-      )
-    }
-
-    /* 기록 카드 — 한 장에 승률·킬뎃·전적 */
+    /* 개인 랭킹 — 실제 줄 셋 */
     return wrap(
       <>
-        <Cap>1위 선수의 기록 카드</Cap>
-        <div className="flex items-center gap-[9px]">
-          {top.clan ? <MarkCircle clan={top.clan} size={22} /> : null}
-          <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-[var(--v2-text-strong)]">
-            {top.player.name}
-          </span>
-          <span className="num shrink-0 text-[12px]" style={{ color: tone }}>
-            {top.rank}위
-          </span>
-        </div>
-        <div className="mt-[11px] grid grid-cols-3 gap-[10px]">
-          <div className="flex flex-col gap-[2px]">
-            <span className="text-[10.5px] text-[var(--v2-text-ghost)]">승률</span>
-            <span className="num text-[15px] font-bold" style={{ color: tone }}>
-              {pct(top.win_rate)}
-            </span>
-          </div>
-          <div className="flex flex-col gap-[2px]">
-            <span className="text-[10.5px] text-[var(--v2-text-ghost)]">킬뎃</span>
-            <span className="num text-[15px] font-bold text-[var(--v2-text-strong)]">
-              {pct(top.kd_rate)}
-            </span>
-          </div>
-          <div className="flex flex-col gap-[2px]">
-            <span className="text-[10.5px] text-[var(--v2-text-ghost)]">전적</span>
-            <span className="num text-[15px] font-bold text-[var(--v2-text-strong)]">
-              {top.win}승 {top.lose}패
-            </span>
-          </div>
+        <Cap>지금 이 리그 1~3위</Cap>
+        <div className="flex flex-col gap-[9px]">
+          {rows.slice(0, 3).map((r) => (
+            <div key={r.league_player_id} className="flex items-center gap-[9px]">
+              <span className="num w-[20px] shrink-0 text-[13px] font-bold" style={{ color: tone }}>
+                {r.rank}
+              </span>
+              {r.clan ? <MarkCircle clan={r.clan} size={17} /> : null}
+              <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--v2-text-strong)]">
+                {r.player.name}
+              </span>
+              <span className="num shrink-0 text-[12.5px] text-[var(--v2-text-dim)]">
+                {pct(r.win_rate)}
+              </span>
+            </div>
+          ))}
         </div>
       </>,
     )
   }
 
-  /* ══ 클랜 분석 — 진짜 클랜 육각형 ═══════════════════════ */
+  /* ══ 클랜 분석 — 클랜 머리 카드 그대로 ═══════════════════ */
   if (source === 'clan') {
     const top = clans.data?.data[0]
-    const hexagon = clan.data?.data.hexagon_v2 ?? null
+    const detail = clan.data?.data ?? null
     if (!top) return wrap(<Empty what="쌓인 클랜 기록" />)
-    if (!hexagon) return wrap(<Empty what="잴 수 있는 여섯 축" />)
+    if (!detail) return wrap(<Empty what="클랜 기록" />)
     return wrap(
       <>
-        <Cap>
-          1위 <b style={{ color: 'var(--v2-text-strong)' }}>{top.clan.name}</b> 의 여섯 축
-        </Cap>
+        <Cap>1위 클랜의 기록실 — 실제 클랜 화면 그대로입니다</Cap>
         <div className="home-ex-draw">
-          <ClanHexagonV2 hexagon={hexagon} name={top.clan.name} />
+          <ClanCardV3
+            data={detail}
+            infoHref={`/clan/${topClanSlug}`}
+            seasonLabel={`SEASON ${detail.league.name.toUpperCase()}`}
+            memberCount={null}
+            /* 첫 화면에서는 손대는 단추를 안 준다 — 보여 주기만 한다 */
+            renewedNote={null}
+            renewAction={null}
+          />
         </div>
       </>,
     )
@@ -323,49 +331,51 @@ export function HomeFeatureExample({
     )
   }
 
-  /* ══ 경기 분석 ═════════════════════════════════════════ */
-  const m = matches.data?.data[0]
-  if (!m) return wrap(<Empty what="분석된 경기" />)
+  /* ══ 경기 분석 — 스코어보드 + 경기 육각 그대로 ══════════ */
+  const detail = matchDetail.data?.data ?? null
+  if (!topMatch || !detail) return wrap(<Empty what="분석된 경기" />)
+
   /*
-   * ★점수를 보는 쪽 기준으로 돌려 놓는다★ — `red_rounds`/`blue_rounds` 는 ★진영★ 점수다.
-   *   `league_clan_side` 가 그 경기에서 보는 쪽이 어느 진영이었는지를 알려 준다.
-   *   모르면(null) 돌리지 않는다 — ★뒤집힌 점수를 지어내지 않는다.★
+   * 육각은 ★승패★ 로 넘긴다 — 색이 승패를 뜻하기 때문이다 (`MatchHexagonV3` 주석).
+   * 어느 슬롯이 우리인지는 `ourSideOf` 가 정한다.
    */
-  const flip = m.league_clan_side === 'blue'
-  const mine = flip ? m.blue_rounds : m.red_rounds
-  const yours = flip ? m.red_rounds : m.blue_rounds
-  const known = m.league_clan_side !== null && mine !== null && yours !== null
-  const share = known ? ((mine as number) / Math.max(1, (mine as number) + (yours as number))) * 100 : 0
+  const ourSide = ourSideOf(detail)
+  const weWon = detail.win
+  const ourHex = (ourSide === 'red' ? detail.red_hexagon_v2 : detail.blue_hexagon_v2)?.hexagon ?? null
+  const foeHex = (ourSide === 'red' ? detail.blue_hexagon_v2 : detail.red_hexagon_v2)?.hexagon ?? null
+  const ourName = detail.league_clan.clan.name
+  const foeName = detail.opponent.clan.name
 
   return wrap(
     <>
-      <Cap>가장 최근 경기 한 판</Cap>
-      <div className="home-ex-draw flex items-center gap-[10px]">
-        <MarkCircle clan={m.league_clan.clan} size={26} />
-        <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold text-[var(--v2-text-strong)]">
-          {m.league_clan.clan.name}
-        </span>
-        {known ? (
-          <span className="num shrink-0 text-[19px] font-bold" style={{ color: tone }}>
-            {mine} : {yours}
-          </span>
-        ) : (
-          <span className="shrink-0 text-[12px] text-[var(--v2-text-ghost)]">vs</span>
-        )}
-        <span className="min-w-0 flex-1 truncate text-right text-[13.5px] font-bold text-[var(--v2-text-strong)]">
-          {m.opponent.clan.name}
-        </span>
-        <MarkCircle clan={m.opponent.clan} size={26} />
+      <Cap>
+        가장 최근 경기 — {ourName} vs {foeName} · 실제 경기 화면 그대로입니다
+      </Cap>
+      <div className="home-ex-draw">
+        <ClanScoreboardV3
+          detail={detail}
+          /*
+           * ★리그 종류★ — 층 이름표()가 이 값을 본다.
+           *   경기 상세 응답에는 리그 종류가 안 담겨 있어 ★기본값 그대로★ 둔다
+           *   (다른 화면도 값이 없으면  로 떨어진다).
+           *   ⚠ 지어내지 않는다 — 틀린 종류를 넘기면 층 이름이 엉뚱해진다.
+           */
+          leagueCategory="independent"
+          leagueSlug={leagueSlug}
+        />
       </div>
-      {/* 라운드 막대 — 점수를 눈으로 본다. 펼칠 때 왼쪽에서 자란다 */}
-      {known ? (
-        <div className="mt-[10px] flex h-[6px] overflow-hidden rounded-[3px] bg-[rgba(255,255,255,.06)]">
-          <span className="home-ex-bar" style={{ width: `${share}%`, background: tone }} />
+      {/* 여섯 축을 양 팀 겹쳐서 — 경기 상세의 「경기분석」과 같은 그림 */}
+      {ourHex || foeHex ? (
+        <div className="home-ex-draw mt-[12px]">
+          <MatchHexagonV3
+            won={weWon ? ourHex : foeHex}
+            lost={weWon ? foeHex : ourHex}
+            wonName={weWon ? ourName : foeName}
+            lostName={weWon ? foeName : ourName}
+            id="homeExMatchHex"
+          />
         </div>
       ) : null}
-      <div className="mt-[9px] text-[11.5px] leading-[1.6] text-[var(--v2-text-ghost)]">
-        {m.map.name} · 라운드마다 누가 먼저 쓰러졌는지까지 펼쳐 볼 수 있습니다
-      </div>
     </>,
   )
 }
