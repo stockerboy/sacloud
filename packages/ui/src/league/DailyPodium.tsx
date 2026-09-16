@@ -29,7 +29,7 @@ import { rankColorByRatio } from '../record/playerHeadCopy'
 import { MarkCircle } from '../v3/primitives'
 import { V3 } from '../v3/tokens'
 import { Hexagon, type HexAxisView } from '../v3/Hexagon'
-import { mmss } from '@sacloud/contract'
+import { playerHexValueText } from '@sacloud/contract'
 
 export interface DailyPodiumRowView {
   rank: number
@@ -129,9 +129,8 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
     /** 원값을 축 단위에 맞게 적는다 — 두 번째 줄로 내려간다 */
     const valueText = (a: (typeof axes)[number]): string | null => {
       if (a.value === null) return null
-      if (a.unit === 'seconds') return mmss(a.value)
-      if (a.unit === 'per_game') return `${Number.isInteger(a.value) ? a.value : a.value.toFixed(1)}회`
-      return `${Math.round(a.value * (a.value <= 1 ? 100 : 1))}%`
+      /* ★한 곳에서만 적는다★ — 화면마다 복사하면 축이 바뀔 때 한 곳이 빠진다 (2026-09-16) */
+      return playerHexValueText(a.unit, a.value)
     }
     return axes.map((a) => ({
       label: a.label,

@@ -91,7 +91,7 @@ export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
   /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 (사장님) */
   const order = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'firstBloodless'] as const
   const label: Record<(typeof order)[number], string> = {
-    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력', sniperInfluence: '스나영향력', firstBloodless: '선짤 방어',
+    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력', sniperInfluence: '스나영향력', firstBloodless: '크랙 성공',
   }
   return order.map((key) => {
     const axis = hex?.axes.find((a) => a.key === key) ?? null

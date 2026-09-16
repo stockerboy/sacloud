@@ -15,13 +15,14 @@
 import { z } from 'zod'
 import { Count, Percent } from './common'
 import { TRAIT_AXIS_KEYS, TRAIT_AXIS_LABEL, type TraitAxisKey } from './traits'
+import { ROUND_FULL_SECONDS, mmss } from './clanTraitsV2'
 
 export const PLAYER_HEX_AXIS_ORDER: readonly TraitAxisKey[] = [
   'save',
   'duel',
   'carry',
   'survival',
-  'burst',
+  'crack',
   'outnumbered',
 ]
 
@@ -67,9 +68,15 @@ export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: str
   duel: { sniper: '롱 마스터', rifle: '라이플화력' },
   carry: { sniper: '게임영향력', rifle: '게임영향력' },
   /* 사장님이 «선취점» 을 «선짤» 로 못 박으셨다 (2026-09-02) — 배지만 영어로 남아 있었다 */
-  /* ⚠ 2026-09-16 새벽 — 축 이름을 따라간다 (사장님) */
-  survival: { sniper: '선짤(1턴)', rifle: '선짤(1턴)' },
-  burst: { sniper: '백어택성공률(2턴)', rifle: '백어택성공률(2턴)' },
+  /*
+   * ⚠ ★2026-09-16 — 또 축 이름을 안 따라오고 있었다★ (같은 함정 두 번째다).
+   *   ④ 는 그날 아침에 «평균 사망 시간», ⑤ 는 저녁에 «크랙 성공» 이 됐는데
+   *   배지만 «선짤(1턴)»·«백어택성공률(2턴)» 이라 ★없는 축을 말하고 있었다★.
+   *   ★새 별명을 지어내지 않는다★ — `outnumbered` 처럼 축 이름을 그대로 쓴다.
+   */
+  /* ⚠ 2026-09-16 저녁 — ④ 가 «게임템포» 가 됐다 (사장님) */
+  survival: { sniper: '게임템포', rifle: '게임템포' },
+  crack: { sniper: '크랙 성공', rifle: '크랙 성공' },
   /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
@@ -80,7 +87,7 @@ export const PLAYER_HEX_BADGE_V1: Record<TraitAxisKey, { sniper: string; rifle: 
   duel: { sniper: '롱 마스터', rifle: '샷터' },
   carry: { sniper: '캐리 머신', rifle: '캐리 머신' },
   survival: { sniper: 'First Blood', rifle: 'First Blood' },
-  burst: { sniper: '멀티킬러', rifle: '멀티킬러' },
+  crack: { sniper: '멀티킬러', rifle: '멀티킬러' },
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
 
@@ -100,8 +107,9 @@ export const PLAYER_HEX_DESC: Record<TraitAxisKey, { sniper: string; rifle: stri
   save: { sniper: '혼자 남아 이긴 횟수 (4회면 가득)', rifle: '혼자 남아 이긴 횟수 (4회면 가득)' },
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '수가 안 밀릴 때 낸 킬 (라운드당)', rifle: '수가 안 밀릴 때 낸 킬 (라운드당)' },
-  survival: { sniper: '라운드 시작 25초 안 첫 킬 (판당)', rifle: '라운드 시작 25초 안 첫 킬 (판당)' },
-  burst: { sniper: '팀원이 죽은 뒤 5초 안에 되잡은 비율', rifle: '팀원이 죽은 뒤 5초 안에 되잡은 비율' },
+  /* ⚠ 2026-09-16 — ④⑤ 가 갈리면서 설명도 따라간다 (배지와 같은 함정이었다) */
+  survival: { sniper: '잡거나 죽기까지 걸린 시간 (짧을수록 빠르다)', rifle: '잡거나 죽기까지 걸린 시간 (짧을수록 빠르다)' },
+  crack: { sniper: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)', rifle: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)' },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
 }
 
@@ -111,8 +119,48 @@ export const PLAYER_HEX_DESC_V1: Record<TraitAxisKey, { sniper: string; rifle: s
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '한 판 평균 킬', rifle: '한 판 평균 킬' },
   survival: { sniper: '라운드 첫 킬을 딴 비율', rifle: '라운드 첫 킬을 딴 비율' },
-  burst: { sniper: '2초 안에 연달아 잡은 라운드 비율', rifle: '2초 안에 연달아 잡은 라운드 비율' },
+  crack: { sniper: '2초 안에 연달아 잡은 라운드 비율', rifle: '2초 안에 연달아 잡은 라운드 비율' },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
+}
+
+/**
+ * ★축 원값을 사람이 읽는 꼴로★ — 한 곳에서만 만든다.
+ *
+ * ⚠ 전에는 화면마다 따로 적고 있었고, ④ 가 «평균 사망 시간»(초) 이 되면서
+ *   ★초를 모르는 화면이 «50%» 라고 적고 있었다★ (`PlayerMatchHexV3`).
+ *   화면마다 복사하지 않는다 — 클랜 육각도 `clanHexV2Text` 한 곳뿐이다.
+ *
+ * ── «2분 20초 중 34초» 로 적는다 (2026-09-16 사장님)
+ *   > «우리는 평균적으로 죽은 시간을 봐야해 1분 25초에 죽음 > 2분20초 -55초»
+ *
+ *   «34초» 만 적으면 그게 빠른지 느린지 알 수 없다. ★잣대(한 라운드)를 앞에★
+ *   놓아야 «2분 20초짜리 라운드에서 34초 만에 갈렸다» 로 한 가지로 읽힌다.
+ *   클랜 육각이 «2분 20초 중 1분 10초 종료» 로 이미 같은 모양을 쓴다 — 그 전례를 따른다.
+ *
+ * ⚠ ★«사망» 이라 적지 않는다★ (2026-09-16 저녁) — ④ 가 «게임템포» 가 되면서
+ *   ★잡은 시각도 같이 센다★. «사망» 이라 적으면 죽은 것만 잰다고 읽힌다.
+ */
+export function playerHexValueText(
+  unit: 'percent' | 'per_game' | 'seconds',
+  value: number | null,
+): string {
+  if (value === null) return '측정중'
+  if (unit === 'seconds') return `${mmss(ROUND_FULL_SECONDS)} 중 ${mmss(value)}`
+  if (unit === 'per_game') return `${Number.isInteger(value) ? value : value.toFixed(1)}회`
+  return `${Math.round(value * (value <= 1 ? 100 : 1))}%`
+}
+
+/**
+ * ⚠ ★옛 표기★ (2026-09-16 저녁까지) — «1분 25초» 만 적었다. 지우지 않는다.
+ */
+export function playerHexValueTextV1(
+  unit: 'percent' | 'per_game' | 'seconds',
+  value: number | null,
+): string {
+  if (value === null) return '측정중'
+  if (unit === 'seconds') return mmss(value)
+  if (unit === 'per_game') return `${Number.isInteger(value) ? value : value.toFixed(1)}회`
+  return `${Math.round(value * (value <= 1 ? 100 : 1))}%`
 }
 
 export function playerHexLabelOf(key: TraitAxisKey, weapon: 0 | 1 | null): string {

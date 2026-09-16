@@ -33,7 +33,8 @@ import { z } from 'zod'
 
 /** 여섯 축 — 순서를 바꾸지 않는다. 화면의 육각형이 이 차례로 그린다 */
 /* ⚠ ★2026-09-16 — ④ 가 `opening`(선짤) 에서 `survival`(평균 사망 시간) 로★ (사장님) */
-export const FLAG_AXIS_ORDER = ['save', 'duel', 'carry', 'survival', 'burst', 'outnumbered'] as const
+/* ⚠ 2026-09-16 — ⑤ 가 `burst`(백어택) 에서 `crack`(크랙 성공) 으로 (사장님) */
+export const FLAG_AXIS_ORDER = ['save', 'duel', 'carry', 'survival', 'crack', 'outnumbered'] as const
 /** 2026-09-16 까지 쓰던 차례 — 지우지 않는다 (`CLAUDE.md` 1-4) */
 export const FLAG_AXIS_ORDER_V1 = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
 export type FlagAxisKey = (typeof FLAG_AXIS_ORDER)[number]
@@ -80,10 +81,24 @@ export interface FlagDayTally {
   /** 등장한 라운드 수 — 선짤·연속킬의 분모 */
   rounds: number
   firstKills: number
-  /** ★평균 사망 시간★ — 라운드 시작부터 죽기까지의 초, 합 (2026-09-16 사장님) */
+  /**
+   * ★크랙 성공의 분자★ (2026-09-16 저녁 사장님) — 위 첫 킬 중 ★칠하신 116칸 안★.
+   * 이 칸이 없던 옛 줄은 `undefined` 고, 그때는 축이 `null` 이다 (0회라고 우기지 않는다).
+   */
+  crackKills?: number
+  /** ⚠ ★옛 ④ 평균 사망 시간★ — 라운드 시작부터 죽기까지의 초, 합. 지우지 않는다 */
   deathSeconds?: number
   /** 위 합에 들어간 죽음의 수 */
   deathCount?: number
+  /**
+   * ★게임템포★ — 라운드마다 «내가 먼저 겪은 일» 까지의 초, 합 (2026-09-16 저녁 사장님).
+   *
+   * > «죽거나 잡은(라운드마다의 첫 킬) 시간을 평균내서 그걸 게임템포 축으로 만든다
+   * >  빨리 잡거나 죽을수록 게임템포가 빠른거야»
+   */
+  tempoSeconds?: number
+  /** 위 합에 들어간 라운드 수 */
+  tempoCount?: number
   burstRounds: number
   /**
    * ★한 라운드에 몰아친 최대 킬★ — 새 캐리력 (2026-09-15 사장님).
@@ -397,12 +412,30 @@ export function openingScoreOf(t: FlagDayTally): number | null {
 }
 
 /**
- * ★평균 사망 시간★ (초) — 라운드 시작부터 내가 죽기까지 (2026-09-16 사장님).
+ * ★게임템포★ (초) — 라운드마다 «내가 먼저 겪은 일» 까지 (2026-09-16 저녁 사장님).
  *
- * ★클수록 좋다★ — 늦게 죽었다는 뜻이다. 죽은 적이 없으면 잴 수 없다.
+ * 내가 낸 첫 킬과 내가 죽은 시각 중 ★빠른 쪽★ 이다. 잡아도 세므로 끝까지 살아
+ * 3킬을 낸 라운드도 들어온다 — 사망 시간은 그 라운드를 통째로 빠뜨렸다.
+ *
+ * ★작을수록 빠르다★ — 줄 세울 때 부호를 뒤집는다. 적는 값은 초 그대로다.
  * 기준선으로 나누지 않는다 — 스나는 스나끼리, 라플은 라플끼리 견주기 때문이다.
  */
 export function survivalScoreOf(t: FlagDayTally): number | null {
+  const n = t.tempoCount ?? 0
+  if (n <= 0) return null
+  return Math.round(((t.tempoSeconds ?? 0) / n) * 10) / 10
+}
+
+/**
+ * ⚠ ★옛 ④ — 평균 사망 시간★ (2026-09-16 아침~저녁). 지우지 않는다 (`CLAUDE.md` 1-4).
+ * 죽은 라운드만 보고 «죽을 때는 언제 죽었나» 를 잰다. 재료는 계속 쌓인다.
+ */
+/** ⚠ ★옛 ⑤ 크랙 — 구역을 안 보던 셈★ (2026-09-16 저녁까지). 지우지 않는다 */
+export function crackScoreV1(t: FlagDayTally): number | null {
+  return t.games > 0 ? Math.round((t.firstKills / t.games) * 100) / 100 : null
+}
+
+export function deathTimeScoreV1(t: FlagDayTally): number | null {
   const n = t.deathCount ?? 0
   if (n <= 0) return null
   return Math.round(((t.deathSeconds ?? 0) / n) * 10) / 10
@@ -428,10 +461,10 @@ export function dayAxisParts(t: FlagDayTally): Record<FlagAxisKey, FlagAxisParts
       : CARRY_BY_TOTAL_KILLS
         ? { numerator: t.kill, denominator: t.games }
         : { numerator: t.maxRoundTimes, denominator: t.maxRoundKills },
-    survival: { numerator: t.deathSeconds ?? 0, denominator: t.deathCount ?? 0 },
-    burst: TRADE_AXIS
-      ? { numerator: t.tradeKills, denominator: t.mateDeaths }
-      : { numerator: t.burstRounds, denominator: t.games },
+    /* ★게임템포★ — 먼저 겪은 일까지의 초 합 ÷ 그 라운드 수 (2026-09-16 저녁) */
+    survival: { numerator: t.tempoSeconds ?? 0, denominator: t.tempoCount ?? 0 },
+    /* ⑤ ★크랙 성공★ — 25초 안 첫 킬 ÷ 판수 (2026-09-16 사장님) */
+    crack: { numerator: t.crackKills ?? null, denominator: t.games },
     outnumbered: { numerator: t.outWon, denominator: t.outRounds },
   }
 }
@@ -495,15 +528,14 @@ export function dayAxisValues(
      *   ★백분위는 그대로다★ — 순위를 가리는 잣대는 안 바뀐다 (단조 변환이다).
      */
     survival: survivalScoreOf(t),
-    /* ★5번 축은 «교환율»★ — 동료가 죽은 직후 그 킬러를 되잡은 비율 (2026-09-15 사장님) */
-    burst: TRADE_AXIS
-      ? t.mateDeaths > 0
-        ? round1((t.tradeKills / t.mateDeaths) * 100)
-        : gate.emptyIsZero
-          ? 0
-          : null
-      : t.games > 0
-        ? Math.round((t.burstRounds / t.games) * 100) / 100
+    /*
+     * ★5번 축은 «크랙 성공»★ (2026-09-16 사장님) — 라운드 시작 25초 안에 첫 킬을
+     * 낸 횟수 ÷ 판수. 옛 «교환율» 셈은 아래 주석과 tally 에 그대로 남아 있다.
+     */
+    /* ★구역 안 25초 첫 킬 ÷ 판수★ (2026-09-16 저녁). 옛 셈은 `crackScoreV1` 에 남겼다 */
+    crack:
+      t.games > 0 && t.crackKills !== undefined
+        ? Math.round((t.crackKills / t.games) * 100) / 100
         : null,
     outnumbered:
       t.outRounds >= gate.situationRounds

@@ -49,7 +49,7 @@ const PHRASE: Readonly<Record<string, string>> = {
   riflePower: '스나가 빠진 뒤의 화력',
   sniperInfluence: '스나가 살아 있을 때와 아닐 때의 차이',
   trade: '동료가 당한 직후의 되받아치기',
-  firstBloodless: '라운드 초반 선제 피해',
+  firstBloodless: '라운드 초반 크랙',
 }
 
 export interface MatchVerdict {

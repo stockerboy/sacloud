@@ -125,7 +125,9 @@ export const BURST_GAP_SECONDS = 2
 
 /* ⚠ ★2026-09-16 — ④ 가 `opening`(선짤) 에서 `survival`(평균 사망 시간) 로★ (사장님).
    키를 그대로 두면 옛 값과 새 값이 한 이름으로 섞인다 */
-export const HEX_AXIS_KEYS = ['save', 'duel', 'carry', 'survival', 'burst', 'outnumbered'] as const
+export const HEX_AXIS_KEYS = ['save', 'duel', 'carry', 'survival', 'crack', 'outnumbered'] as const
+/** 2026-09-16 저녁까지 쓰던 여섯 — ⑤ 가 `burst`(백어택) 였다 (`CLAUDE.md` 1-4) */
+export const HEX_AXIS_KEYS_V2 = ['save', 'duel', 'carry', 'survival', 'burst', 'outnumbered'] as const
 /** 2026-09-16 까지 쓰던 여섯 — 지우지 않는다 (`CLAUDE.md` 1-4) */
 export const HEX_AXIS_KEYS_V1 = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
 export type HexAxisKey = (typeof HEX_AXIS_KEYS)[number]
@@ -143,7 +145,7 @@ export const AXIS_WEIGHT: Readonly<Record<HexAxisKey, number>> = {
   survival: 1.0,
   carry: 1.0,
   duel: 1.0,
-  burst: 0.7,
+  crack: 0.7,
   save: 2.0,
   outnumbered: 2.0,
 }
@@ -153,7 +155,7 @@ export const AXIS_WEIGHT_V1: Readonly<Record<HexAxisKey, number>> = {
   survival: 1.0,
   carry: 1.0,
   duel: 1.0,
-  burst: 0.7,
+  crack: 0.7,
   save: 0.5,
   outnumbered: 0.3,
 }
@@ -180,6 +182,19 @@ export interface PlayerHexInput {
   /** 배틀로그 합계 (`MatchPlayerHex` 를 더한 것) */
   rounds: number
   firstKills: number
+  /**
+   * ★크랙 성공의 분자★ (2026-09-16 사장님) — 위 첫 킬 중 ★칠하신 116칸 안★ 에서
+   * 잡은 것만. 좌표를 모르는 킬은 안 세므로 언제나 `crackKills <= firstKills` 다.
+   * 이 칸이 없던 옛 줄은 0 이고, 그때는 축이 `null` 이다 (0회라고 우기지 않는다).
+   */
+  crackKills?: number
+  /**
+   * ★게임템포의 재료★ (2026-09-16 사장님) — 라운드마다 «먼저 겪은 일» 까지의 초, 합.
+   * 값은 이걸 `tempoCount` 로 나눈 ★평균★ 이다. 이 칸이 없던 옛 줄은 `undefined` 고,
+   * 그때는 축이 `null` 이다 (0초라고 우기지 않는다).
+   */
+  tempoSeconds?: number
+  tempoCount?: number
   burstRounds: number
   /**
    * ★게임영향력의 재료★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한 값.
@@ -292,18 +307,41 @@ export function axisValuesOf(
      *   ⚠ 끝까지 산 라운드는 안 들어간다 — 이 값은 «죽을 때는 언제 죽었나» 다.
      *
      *   옛 ④ 선짤은 `input.firstKills / input.games` 였다 (`CLAUDE.md` 1-4).
+     *
+     * ⚠ ★2026-09-16 저녁 — 다시 «게임템포» 로 갈렸다★ (사장님:
+     *   «평균사망시간이라고 적지 말고 ★게임템포★ 라고 적고 죽거나 잡은(라운드마다의
+     *    첫 킬) 시간을 평균내서 그걸 게임템포 축으로 만든다 빨리 잡거나 죽을수록
+     *    게임템포가 빠른거야»).
+     *
+     *   ★왜 사망 시간만으로는 모자랐나★ — 죽은 라운드만 세니 끝까지 살아 3킬을
+     *   낸 라운드가 통째로 빠졌다. «잘한 라운드가 안 세어지는» 자리였다.
+     *   게임템포는 ★잡아도 센다★ — 내 첫 킬과 내 죽음 중 빠른 쪽이다.
+     *
+     *   ⚠ ★작을수록 빠르다★ — 줄 세울 때 부호를 뒤집는다 (`axisScoresOf`).
+     *     화면에 적는 값은 ★초 그대로★ 다. 뒤집은 값을 보여 주면 «-50초» 가 된다.
+     *   옛 사망 시간 셈은 `deathTimeValueV1()` 에 남아 있고 재료도 계속 쌓인다.
      */
     survival:
-      (input.deathCount ?? 0) > 0
-        ? Math.round(((input.deathSeconds ?? 0) / (input.deathCount as number)) * 10) / 10
+      (input.tempoCount ?? 0) > 0
+        ? Math.round(((input.tempoSeconds ?? 0) / (input.tempoCount as number)) * 10) / 10
         : null,
     /* ★5번 축은 «교환율»★ (2026-09-15 사장님) — 옛 «연속킬» 은 스위치로 돌아간다 */
-    burst: TRADE_AXIS
-      ? (input.mateDeaths ?? 0) > 0
-        ? round1(((input.tradeKills ?? 0) / (input.mateDeaths as number)) * 100)
-        : null
-      : input.games > 0
-        ? Math.round((input.burstRounds / input.games) * 100) / 100
+    /*
+     * ★⑤ 크랙 성공★ (2026-09-16 사장님: «라운드시작 25초 이내에 상대를 잡는 비율이
+     *   판수를 분모로»). 옛 ④ 선짤이 쓰던 셈 그대로다 — ④ 가 «평균 사망 시간» 으로
+     *   가면서 빈자리가 된 것을 사장님이 ⑤ 로 옮기셨다.
+     *   클랜 축 «크랙 성공» 과 같은 일을 사람 단위로 본다.
+     *
+     * ⚠ ★2026-09-16 저녁 — 「어디서」 가 붙었다★ (사장님: «내가 어디서 1분55초 내에
+     *   잡으면 크랙인지 표시해주면 그것만 샐 수 있어?» → 아티팩트로 116칸을 칠하심).
+     *   그 전에는 맵 어디서 잡았든 25초 안이면 셌다 — 그 옛 셈은 `crackValueV1()` 에
+     *   남아 있고 재료(`firstKills`)도 계속 쌓인다 (`CLAUDE.md` 1-4).
+     *   ★`crackKills` 가 아직 안 채워진 줄은 `null`★ 이다 — 0회라고 우기면
+     *   재집계 전 선수 전원이 꼴찌가 된다.
+     */
+    crack:
+      input.games > 0 && input.crackKills !== undefined
+        ? Math.round((input.crackKills / input.games) * 100) / 100
         : null,
     outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
   }
@@ -328,6 +366,42 @@ export function axisValuesOf(
  *
  * ★적는 값은 안 바뀐다★ (`axisValuesOf`). 백분위와 점수만 공평해진다.
  */
+/**
+ * ★옛 ⑤ «백어택(교환율)» 의 셈★ — 2026-09-16 에 «크랙 성공» 으로 바뀌며 화면에서
+ * 내려갔다. 지우지 않는다 (`CLAUDE.md` 1-4). 재료(`tradeKills`·`mateDeaths`)는 계속 쌓인다.
+ */
+/**
+ * ⚠ ★옛 ⑤ 크랙 — 구역을 안 보던 셈★ (2026-09-16 저녁까지 쓰던 것). 지우지 않는다.
+ *
+ * 맵 어디서 잡았든 라운드 시작 25초 안의 첫 킬이면 셌다. 사장님이 116칸을 칠해
+ * 주시면서 «거기서 잡은 것만» 으로 좁혔다 — 재료 `firstKills` 는 계속 쌓이므로
+ * 이 함수로 언제든 옛 값을 되낼 수 있다 (`CLAUDE.md` 1-4).
+ */
+/**
+ * ⚠ ★옛 ④ — 평균 사망 시간★ (2026-09-16 아침~저녁). 지우지 않는다.
+ *
+ * 죽은 라운드만 보고 «죽을 때는 언제 죽었나» 를 잰다. 재료(`deathSeconds`·
+ * `deathCount`)는 계속 쌓이므로 언제든 옛 값을 되낼 수 있다 (`CLAUDE.md` 1-4).
+ */
+export function deathTimeValueV1(input: PlayerHexInput): number | null {
+  return (input.deathCount ?? 0) > 0
+    ? Math.round(((input.deathSeconds ?? 0) / (input.deathCount as number)) * 10) / 10
+    : null
+}
+
+export function crackValueV1(input: PlayerHexInput): number | null {
+  return input.games > 0 ? Math.round((input.firstKills / input.games) * 100) / 100 : null
+}
+
+export function burstValueV2(input: PlayerHexInput): number | null {
+  if (TRADE_AXIS) {
+    return (input.mateDeaths ?? 0) > 0
+      ? round1(((input.tradeKills ?? 0) / (input.mateDeaths as number)) * 100)
+      : null
+  }
+  return input.games > 0 ? Math.round((input.burstRounds / input.games) * 100) / 100 : null
+}
+
 export function axisScoresOf(
   input: PlayerHexInput,
   weapon: 0 | 1,
@@ -337,9 +411,18 @@ export function axisScoresOf(
    *   바꾸심). 옛 판은 무기별 기준선(`OPENING_BASELINE`)으로 나눠 스나·라플을
    *   한 줄에 세웠는데, 새 축은 ★아예 무기별로 견준다★ (`HEX_WEAPON_SCOPED_AXIS_KEYS`)
    *   — 나눌 필요가 없다. `OPENING_BASELINE` 은 지우지 않는다.
+   *
+   * ★④ 게임템포만 부호를 뒤집는다★ (2026-09-16 저녁 사장님: «빨리 잡거나 죽을수록
+   *   게임템포가 빠른거야»). 여섯 축 중 ★유일하게 작을수록 좋은 축★ 이다.
+   *   백분위(`percentileOf`)는 «클수록 위» 로만 세므로, 여기서 한 번 뒤집어
+   *   ★빠른 사람이 위★ 로 오게 한다. 화면 값은 안 건드린다 — 초 그대로 적는다.
    */
-  return axisValuesOf(input, weapon)
+  const v = axisValuesOf(input, weapon)
+  return { ...v, survival: v.survival === null ? null : -v.survival }
 }
+
+/** ★작을수록 좋은 축★ — 지금은 게임템포 하나뿐이다 (2026-09-16) */
+export const HEX_LOWER_IS_BETTER: readonly HexAxisKey[] = ['survival']
 
 /** 백분위 — 나보다 낮은 사람의 비율 × 100. 오름차순 정렬된 배열을 받는다 */
 export function percentileOf(sorted: readonly number[], v: number | null): number | null {
@@ -443,7 +526,7 @@ export function tierFactorOf(tierGames: Readonly<Record<TierNo, number>>): numbe
  *     라플수는 라플수끼리 비교해»). 스나는 뒤에서 오래 버티고 라플은 앞에서 죽는다 —
  *     한 줄에 세우면 무기가 곧 순위가 된다.
  */
-export const HEX_WEAPON_SCOPED_AXIS_KEYS: readonly HexAxisKey[] = ['duel', 'survival']
+export const HEX_WEAPON_SCOPED_AXIS_KEYS: readonly HexAxisKey[] = ['duel', 'survival', 'crack']
 export const HEX_UNIFIED_AXIS_KEYS: readonly HexAxisKey[] = HEX_AXIS_KEYS.filter(
   (k) => !HEX_WEAPON_SCOPED_AXIS_KEYS.includes(k),
 )
@@ -465,7 +548,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
 
   /* ── ① 통합 분포 — 다섯 축은 무기를 안 가린다 ── */
   const uni: Record<HexAxisKey, number[]> = {
-    save: [], duel: [], carry: [], survival: [], burst: [], outnumbered: [],
+    save: [], duel: [], carry: [], survival: [], crack: [], outnumbered: [],
   }
   for (const p of players) {
     const w = mainWeaponOf(p)
@@ -488,15 +571,25 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       wr: p.games > 0 ? (p.wins / p.games) * 100 : null,
     }))
     /* ⚠ 2026-09-16 — 무기별로 견주는 축이 둘이 됐다 (싸움 · 평균 사망 시간) */
-    const dist = { duel: [] as number[], survival: [] as number[], winRate: [] as number[], kd: [] as number[] }
-    for (const { p, v, wr } of values) {
-      if (v.duel !== null) dist.duel.push(v.duel)
-      if (v.survival !== null) dist.survival.push(v.survival)
+    /* ⚠ 2026-09-16 — 무기별로 견주는 축이 셋이 됐다 (싸움 · 평균 사망 시간 · 크랙 성공) */
+    const dist = { duel: [] as number[], survival: [] as number[], crack: [] as number[], winRate: [] as number[], kd: [] as number[] }
+    /*
+     * ⚠ ★분포도 «잣대»(`sc`)로 만든다★ — 통합 분포(`uni`)가 이미 그렇게 한다.
+     *
+     *   여기만 ★적는 값(`v`)★ 으로 만들고 있었다. 두 축이 같은 값이던 동안에는
+     *   티가 안 났는데, 2026-09-16 저녁에 ④ 가 «게임템포» 가 되면서 잣대만 부호를
+     *   뒤집게 됐다 — 분포는 +50 인데 찾는 값은 -50 이라 ★전원이 0%★ 가 된다.
+     */
+    for (const { p, sc, wr } of values) {
+      if (sc.duel !== null) dist.duel.push(sc.duel)
+      if (sc.survival !== null) dist.survival.push(sc.survival)
+      if (sc.crack !== null) dist.crack.push(sc.crack)
       if (wr !== null) dist.winRate.push(wr)
       if (p.kdRate !== null && p.kdRate !== undefined) dist.kd.push(p.kdRate)
     }
     dist.duel.sort((a, b) => a - b)
     dist.survival.sort((a, b) => a - b)
+    dist.crack.sort((a, b) => a - b)
     dist.winRate.sort((a, b) => a - b)
     dist.kd.sort((a, b) => a - b)
 
@@ -509,7 +602,8 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
            자리는 ★잣대★ 가 정하고, 적는 값은 원값 그대로다 (2026-09-15) */
         /* 무기별 축은 그 무기 분포로, 나머지는 통합 분포로 (2026-09-16) */
         /* 무기별 축은 그 무기 분포로, 나머지는 통합 분포로 (2026-09-16) */
-        const scoped = key === 'duel' ? dist.duel : key === 'survival' ? dist.survival : null
+        const scoped =
+          key === 'duel' ? dist.duel : key === 'survival' ? dist.survival : key === 'crack' ? dist.crack : null
         const pct = percentileOf(scoped ?? uni[key], sc[key])
         axes[key] = { value: v[key], pct, rank: null, total: null }
         if (pct !== null) {
@@ -552,10 +646,20 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       }
     })
 
-    /* 무기 안에서 매기는 등수 — 점수 · 싸움 · 승률 */
+    /* 무기 안에서 매기는 등수 — 점수 · 승률 · ★무기별 축 전부★ */
     rankBy(rows, (r) => r.score, (r, rank, total) => { r.scoreRank = rank; r.scoreTotal = total })
-    rankBy(rows, (r) => r.axes.duel.pct, (r, rank, total) => { r.axes.duel.rank = rank; r.axes.duel.total = total })
     rankBy(rows, (r) => r.winRate.pct, (r, rank, total) => { r.winRate.rank = rank; r.winRate.total = total })
+    /*
+     * ⚠ ★여기가 «싸움» 하나만 매기고 있었다★ (2026-09-16 저녁에 찾음).
+     *
+     *   그 사이 무기별 축이 셋으로 늘었다 — 싸움 · 게임템포 · 크랙 성공
+     *   (사장님: «이건 스나수는 스나수끼리비교하고 라플수는 라플수끼리 비교해»).
+     *   백분위는 무기별로 냈는데 ★등수만 아무도 안 매겼다★ — 두 축이 통째로 `null`
+     *   이라 화면이 «측정중» 으로 보였다. 목록을 돌면 축이 늘어도 안 빠진다.
+     */
+    for (const key of HEX_WEAPON_SCOPED_AXIS_KEYS) {
+      rankBy(rows, (r) => r.axes[key].pct, (r, rank, total) => { r.axes[key].rank = rank; r.axes[key].total = total })
+    }
     measured.push(...rows)
   }
 
@@ -573,7 +677,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       leaguePlayerId: p.leaguePlayerId,
       weapon: null,
       weaponGames: Math.max(p.sniperGames, p.rifleGames),
-      axes: { save: empty(), duel: empty(), carry: empty(), survival: empty(), burst: empty(), outnumbered: empty() },
+      axes: { save: empty(), duel: empty(), carry: empty(), survival: empty(), crack: empty(), outnumbered: empty() },
       winRate: { value: (() => { const v = winRateOf(p); return v === null ? null : round1(v) })(), pct: null, rank: null, total: null },
       hex: null,
       tierFactor: tierFactorOf(p.tierGames),
@@ -602,7 +706,7 @@ export function foldPlayerHexV1(players: readonly PlayerHexInput[]): PlayerHexRe
     const pool = players.filter((p) => mainWeaponOf(p) === weapon)
     const values = pool.map((p) => ({ p, v: axisValuesOf(p, weapon), wr: p.games > 0 ? (p.wins / p.games) * 100 : null }))
     const dist: Record<HexAxisKey | 'winRate' | 'kd', number[]> = {
-      save: [], duel: [], carry: [], survival: [], burst: [], outnumbered: [], winRate: [], kd: [],
+      save: [], duel: [], carry: [], survival: [], crack: [], outnumbered: [], winRate: [], kd: [],
     }
     for (const { p, v, wr } of values) {
       for (const key of HEX_AXIS_KEYS) if (v[key] !== null) dist[key].push(v[key] as number)
@@ -674,7 +778,7 @@ export function foldPlayerHexV1(players: readonly PlayerHexInput[]): PlayerHexRe
       leaguePlayerId: p.leaguePlayerId,
       weapon: null,
       weaponGames: Math.max(p.sniperGames, p.rifleGames),
-      axes: { save: empty(), duel: empty(), carry: empty(), survival: empty(), burst: empty(), outnumbered: empty() },
+      axes: { save: empty(), duel: empty(), carry: empty(), survival: empty(), crack: empty(), outnumbered: empty() },
       winRate: { value: (() => { const v = winRateOf(p); return v === null ? null : round1(v) })(), pct: null, rank: null, total: null },
       hex: null,
       tierFactor: tierFactorOf(p.tierGames),

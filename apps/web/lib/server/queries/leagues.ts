@@ -718,7 +718,7 @@ const CLAN_HEX_LABEL: Readonly<Record<string, string>> = {
   save: '세이브',
   riflePower: '라이플화력',
   sniperInfluence: '스나영향력',
-  firstBloodless: '선짤 방어',
+  firstBloodless: '크랙 성공',
 }
 
 /**

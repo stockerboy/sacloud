@@ -104,7 +104,7 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AxisKey, string> = {
    * 값 = 1 − (우리가 선짤 당한 라운드 ÷ 겨룬 라운드 전부).
    * 13라운드에서 6번 당했으면 1 − 6/13 = 53.8% 다.
    */
-  firstBloodless: '선짤 방어',
+  firstBloodless: '크랙 성공',
 }
 
 /** ★2026-09-16 새벽까지 쓰던 이름★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
@@ -118,7 +118,7 @@ export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<
   riflePower: '라이플화력',
   firstBlood: '선짤',
   sniperInfluence: '스나영향력',
-  firstBloodless: '선짤 방어',
+  firstBloodless: '크랙 성공',
   trade: '교환',
 }
 
@@ -469,7 +469,7 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    * ⚠ ★2026-09-15 밤 · v3.0 → v3.1★ — 라이플화력이 ★라운드가 아니라 킬★ 을 나눠 갖는다.
    *   사장님: *"0퍼만 아니면 된다는 얘기를 한거야"* — «0%» 가 뜨는 경우를 8.7% → 0.1% 로.
    */
-  formulaVersion: 'clan-hex-v4.2',
+  formulaVersion: 'clan-hex-v4.3',
 }
 
 /**

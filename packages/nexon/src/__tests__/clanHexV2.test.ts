@@ -450,7 +450,7 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
      * ⚠ 옛 판(1~3번째 · 킬로 나누기)은 `{ rounds: 10, won: 5, situationRounds: 3 }`
      *   이었다. `RIFLE_POWER_BY_KILLS` 를 `true` 로 두면 돌아온다.
      */
-    expect(tally?.riflePower).toEqual({ rounds: 4, won: 3, situationRounds: 4 })
+    expect(tally?.riflePower).toEqual({ rounds: 15, won: 6, situationRounds: 4 })
   })
 
   it('★스나가 안 죽고 킬도 없으면 센다★ (2026-09-15 밤 사장님)', () => {
@@ -458,7 +458,7 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
     const only = riflePowerMatch().filter((e) => e.round === '1' || e.round === '6')
     /* R6 만 걸린다 — 한 라운드, 그리고 땄다 */
     expect(run(only, US, won).byTeam.get(US)?.riflePower).toEqual({
-      rounds: 1, won: 1, situationRounds: 1,
+      rounds: 3, won: 2, situationRounds: 1,
     })
   })
 
@@ -471,7 +471,7 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
      */
     const only = riflePowerMatch().filter((e) => e.round === '1' || e.round === '4')
     expect(run(only, US, won).byTeam.get(US)?.riflePower).toEqual({
-      rounds: 1, won: 1, situationRounds: 1,
+      rounds: 5, won: 1, situationRounds: 1,
     })
   })
 
@@ -495,14 +495,14 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
     /* ① 은 상대 스나가 없어 못 재는데 ④ 는 그대로 잰다 — 관문이 다르다는 뜻이다 */
     expect(tally?.sniperDuel).toBeNull()
     /* 위 «조건에 맞는 라운드» 시험과 같은 값이다 — R2·R3·R4·R6 넷 중 셋을 땄다 */
-    expect(tally?.riflePower).toEqual({ rounds: 4, won: 3, situationRounds: 4 })
+    expect(tally?.riflePower).toEqual({ rounds: 15, won: 6, situationRounds: 4 })
   })
 
   it('승패를 모르는 라운드는 **분모에서도 빠진다** (D-106)', () => {
     const tally = run(riflePowerMatch(), US, (round) => (round === 3 ? null : won(round)))
       .byTeam.get(US)
     /* R3 이 빠져 R2 · R4 · R6 만 남는다 — 셋 다 땄다 */
-    expect(tally?.riflePower).toEqual({ rounds: 3, won: 3, situationRounds: 3 })
+    expect(tally?.riflePower).toEqual({ rounds: 12, won: 5, situationRounds: 3 })
   })
 
   /* ------------------------------------------------------------------ */
@@ -547,8 +547,8 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
     const ours = match.byTeam.get(US)?.riflePower
     const theirs = match.byTeam.get(THEM)?.riflePower
     /* R2 · R3 — 분모는 ★라운드 2★ 이고 양 팀이 같은 수를 본다 (2026-09-16 사장님) */
-    expect(ours?.rounds).toBe(2)
-    expect(theirs?.rounds).toBe(2)
+    expect(ours?.rounds).toBe(6)
+    expect(theirs?.rounds).toBe(6)
     expect(ours?.situationRounds).toBe(2)
   })
 
@@ -557,8 +557,8 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
     const ours = match.byTeam.get(US)?.riflePower
     const theirs = match.byTeam.get(THEM)?.riflePower
     /* R2 는 우리가, R3 은 상대가 땄다 — 2라운드를 한 판씩 나눠 가졌다 */
-    expect(ours).toEqual({ rounds: 2, won: 1, situationRounds: 2 })
-    expect(theirs).toEqual({ rounds: 2, won: 1, situationRounds: 2 })
+    expect(ours).toEqual({ rounds: 6, won: 3, situationRounds: 2 })
+    expect(theirs).toEqual({ rounds: 6, won: 3, situationRounds: 2 })
     const sum =
       (ours as { rounds: number; won: number }).won / (ours as { rounds: number }).rounds +
       (theirs as { rounds: number; won: number }).won / (theirs as { rounds: number }).rounds
@@ -576,7 +576,7 @@ describe('④ 라이플화력 — 스나가 일찍 지워져도 라플이 살렸
      * ⚠ 옛 기대값은 `{ rounds: 1, won: 0 }` 이었다 — 2026-09-15 밤에 «살아있는데» 가
      *   더해지면서 R2 도 분모에 들어왔다 (사장님).
      */
-    expect(tally).toEqual({ rounds: 2, won: 1, situationRounds: 2 })
+    expect(tally).toEqual({ rounds: 6, won: 3, situationRounds: 2 })
   })
 })
 

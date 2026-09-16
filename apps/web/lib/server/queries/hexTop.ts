@@ -32,7 +32,7 @@ import {
   type LeagueHexTop,
   type TraitAxisKey,
 } from '@sacloud/contract'
-import { leagueScreen } from '@sacloud/contract'
+import { leagueScreen, playerHexValueText } from '@sacloud/contract'
 import { toClanSummary, toClanSummaryOrNull, toPlayerSummary } from '../mappers'
 
 function tallyOf(value: unknown): ClanHexTallyLike | null {
@@ -57,15 +57,12 @@ function playerValueText(key: TraitAxisKey, raw: number | null): string {
    *   축마다 단위가 다르다는 걸 한 줄로 뭉뚱그리면 이런 일이 난다.
    */
   /*
-   * ★평균 사망 시간은 «1분 27초»★ (2026-09-16 사장님).
-   *   옛 ④ 선짤은 «2.0회» 였다 — 축이 바뀌면 단위도 같이 바뀐다.
+   * ★게임템포는 «2분 20초 중 34초»★ (2026-09-16 저녁 사장님).
+   *   옛 판 — «1분 27초» (평균 사망 시간) · 그 전 — «2.0회» (선짤).
+   *   ★여기서 초를 따로 만들지 않는다★ — `playerHexValueText` 한 곳에서 만든다.
+   *   화면마다 복사해 두면 축이 바뀔 때 한 곳이 늘 빠진다 (그날 두 번 겪었다).
    */
-  if (key === 'survival') {
-    const sec = Math.round(raw)
-    const m = Math.floor(sec / 60)
-    const rest = sec % 60
-    return m > 0 ? `${m}분 ${rest}초` : `${rest}초`
-  }
+  if (key === 'survival') return playerHexValueText('seconds', raw)
   return `${raw.toFixed(1)}%`
 }
 

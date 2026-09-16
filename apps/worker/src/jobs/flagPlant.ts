@@ -65,6 +65,9 @@ interface DayRow {
   rifleGames: number
   rounds: number
   firstKills: number
+  crackKills: number
+  tempoSeconds: number
+  tempoCount: number
   burstRounds: number
   maxRoundKills: number
   maxRoundTimes: number
@@ -99,6 +102,13 @@ const tallyOf = (r: DayRow): FlagDayTally => ({
   death: Number(r.death),
   rounds: Number(r.rounds),
   firstKills: Number(r.firstKills),
+  /*
+   * ⚠ ★재료가 안 따라오고 있었다★ (2026-09-16 저녁). ④⑤ 가 그날 갈렸는데
+   *   깃발 쪽은 옛 재료만 실어서 ④ 는 늘 `측정중`, ⑤ 는 구역 전 셈이었다.
+   */
+  crackKills: Number(r.crackKills ?? 0),
+  tempoSeconds: Number(r.tempoSeconds ?? 0),
+  tempoCount: Number(r.tempoCount ?? 0),
   burstRounds: Number(r.burstRounds),
   maxRoundKills: Number(r.maxRoundKills ?? 0),
   maxRoundTimes: Number(r.maxRoundTimes ?? 0),
@@ -133,6 +143,10 @@ async function dayRowsOf(leagueId: string, day: FlagDay): Promise<DayRow[]> {
             SUM(CASE WHEN s.weapon = 0 THEN 1 ELSE 0 END)::int AS "rifleGames",
             COALESCE(SUM(h.rounds), 0)::int        AS rounds,
             COALESCE(SUM(h."firstKills"), 0)::int  AS "firstKills",
+            /* ★크랙 성공★ — 칠한 구역 안 25초 첫 킬 · ★게임템포★ — 먼저 겪은 일까지의 초 */
+            COALESCE(SUM(h."crackKills"), 0)::int   AS "crackKills",
+            COALESCE(SUM(h."tempoSeconds"), 0)::int AS "tempoSeconds",
+            COALESCE(SUM(h."tempoCount"), 0)::int   AS "tempoCount",
             COALESCE(SUM(h."burstRounds"), 0)::int AS "burstRounds",
             /* ★캐리력은 «한 라운드 최대 킬»★ — 더하지 않는다.
                배열 대소는 앞 칸부터 보므로 [2] 는 그 최고를 세운 경기의 횟수다 (2026-09-15) */

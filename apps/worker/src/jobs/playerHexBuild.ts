@@ -64,6 +64,15 @@ export { PLAYER_HEX_FORMULA_VERSION }
 export const HEX_LEAGUE_SLUGS = ['nolink', 'supply', 'sanply'] as const
 
 const ZONE_FILE = join(REPO_ROOT, 'data/barracks/style-zones.json')
+/**
+ * ★크랙 구역★ — 2026-09-16 19:03 에 사장님이 아티팩트로 직접 칠하신 116칸.
+ *
+ * > «내가 어디서 1분55초 내에 잡으면 크랙인지 표시해주면 그것만 샐 수 있어?»
+ *
+ * 겹치는 이름난 구역: 비롱 32 · 홀정면 31 · 벙커 27(전부) · 달방 15(전부) · ㄱ자 11.
+ * ★한 칸도 구역 밖으로 안 나갔다★ — 격자가 맵과 맞다는 확인이기도 하다.
+ */
+const CRACK_ZONE_FILE = join(REPO_ROOT, 'data/barracks/crack-zone.json')
 /** 배틀로그를 한 번에 읽는 경기 수 — 운영 풀러의 문장 시간제한 안에 든다 (실측 150) */
 const LOG_BATCH = 150
 
@@ -132,6 +141,8 @@ interface MatchTally {
   rounds: number
   kills: number
   firstKills: number
+  /** ★크랙 성공★ — 위 첫 킬 중 ★칠한 구역 안★ 에서 잡은 것만 (2026-09-16 사장님) */
+  crackKills: number
   burstRounds: number
   /** ★한 라운드에 몰아친 최대 킬★ 과 그 최고를 낸 라운드 수 (2026-09-15 사장님) */
   maxRoundKills: number
@@ -145,6 +156,15 @@ interface MatchTally {
   deathSeconds: number
   /** 위 합에 들어간 죽음의 수 */
   deathCount: number
+  /**
+   * ★게임템포★ — 라운드마다 «내가 먼저 겪은 일» 까지 걸린 초, 합 (2026-09-16 사장님).
+   *
+   * > «죽거나 잡은(라운드마다의 첫 킬) 시간을 평균내서 그걸 게임템포 축으로 만든다
+   * >  빨리 잡거나 죽을수록 게임템포가 빠른거야»
+   */
+  tempoSeconds: number
+  /** 위 합에 들어간 라운드 수 */
+  tempoCount: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -154,14 +174,24 @@ interface MatchTally {
 }
 
 const emptyTally = (): MatchTally => ({
-  rounds: 0, kills: 0, firstKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
-  deathSeconds: 0, deathCount: 0,
+  rounds: 0, kills: 0, firstKills: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
+  deathSeconds: 0, deathCount: 0, tempoSeconds: 0, tempoCount: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
 })
 
 const secondsOf = (t: string | null): number => {
   const [m, s] = String(t ?? '0:0').split(':')
   return Number(m) * 60 + Number(s)
+}
+
+/**
+ * 크랙 구역을 읽는다. ★파일이 없으면 null★ — 구역을 모르면서 크랙이라 적지 않는다.
+ * 그때는 `crackKills` 가 0으로 남고, 옛 셈 `firstKills` 는 그대로 쌓인다.
+ */
+function loadCrackZone(): ZoneCells | null {
+  if (!existsSync(CRACK_ZONE_FILE)) return null
+  const parsed = JSON.parse(readFileSync(CRACK_ZONE_FILE, 'utf8')) as ZoneCells
+  return parsed.cells.length > 0 ? { cell: parsed.cell, cells: parsed.cells } : null
 }
 
 function loadLongZones(): { file: string | null; aLong: ZoneCells | null; bLong: ZoneCells | null } {
@@ -189,6 +219,11 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
   if (longZones.length === 0) warn('구역 파일이 없다 — 스나싸움을 못 잰다 (null 로 남는다)')
   const inLong = (x: number | null, y: number | null): boolean =>
     x !== null && y !== null && longZones.some((zone) => inZone(zone, { x, y }))
+
+  /* ★크랙 구역★ — 사장님이 칠하신 칸. 없으면 `crackKills` 가 0으로 남는다 (2026-09-16) */
+  const crackZone = loadCrackZone()
+  if (crackZone === null) warn('크랙 구역 파일이 없다 — 크랙 성공을 못 잰다 (0 으로 남는다)')
+  else log(`크랙 구역 ${crackZone.cells.length}칸 · 칸 크기 ${crackZone.cell}`)
 
   const result: PlayerHexBuildResult = {
     leagues: leagues.map((l) => l.slug),
@@ -438,7 +473,21 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       const startedAt = roundStartAt.get(roundKey)
       if (startedAt !== undefined && opener.t - startedAt <= OPENING_WINDOW_SECONDS) {
         const firstK = whoOf(mk, opener.killer)
-        if (firstK) tallyOf(mk, firstK.pid).firstKills += 1
+        if (firstK) {
+          tallyOf(mk, firstK.pid).firstKills += 1
+          /*
+           * ★크랙 성공 — 그 첫 킬이 «칠한 구역» 안이었나★ (2026-09-16 사장님).
+           *
+           * 자리는 ★죽은 사람★ 기준이다 (`dx`/`dy` = `death_x`/`death_y`).
+           * 구역 판정을 `byVictim` 으로 하는 것은 스나싸움에서 이미 정한 약속이다 —
+           * `byKiller` 로 세면 «어디서 잡혔나» 가 아니라 «어디서 쐈나» 가 된다.
+           *
+           * ⚠ ★좌표를 모르면 안 센다★ (D-106) — 그래서 `crackKills <= firstKills` 다.
+           */
+          if (crackZone && inZone(crackZone, opener.dx !== null && opener.dy !== null ? { x: opener.dx, y: opener.dy } : null)) {
+            tallyOf(mk, firstK.pid).crackKills += 1
+          }
+        }
       }
 
       /*
@@ -461,6 +510,46 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           const t = tallyOf(mk, victim.pid)
           t.deathSeconds += lived
           t.deathCount += 1
+        }
+      }
+      /*
+       * ★게임템포★ (2026-09-16 저녁 사장님).
+       *
+       * > «죽거나 잡은(라운드마다의 첫 킬) 시간을 평균내서 그걸 게임템포 축으로 만든다
+       * >  ★빨리 잡거나 죽을수록★ 게임템포가 빠른거야»
+       *
+       * ── 무엇을 재나
+       *   한 라운드에서 그 선수가 ★먼저 겪은 일★ 까지 걸린 초다 —
+       *   ★내가 낸 첫 킬★ 과 ★내가 죽은 시각★ 중 ★빠른 쪽★.
+       *   잡든 죽든 «판에 들어간 순간» 이라 둘을 한 자로 잰다.
+       *
+       * ── 평균 사망 시간과 무엇이 다른가 (④ 가 이것으로 갈렸다)
+       *   사망 시간은 ★죽은 라운드만★ 본다. 끝까지 살아 3킬을 낸 라운드는 빠진다 —
+       *   «잘한 라운드가 안 세어지는» 자리였다. 게임템포는 ★잡아도 센다★.
+       *
+       * ── 안 세는 라운드
+       *   킬도 없고 죽지도 않은 라운드는 ★안 센다★ — 그 선수에게 아무 일도 안 일어났다.
+       *   라운드 시작을 모르면 안 센다 (D-106).
+       */
+      if (startedAt !== undefined) {
+        const firstAt = new Map<string, number>()
+        const mark = (pid: string, at: number): void => {
+          /* 음수는 시각이 어긋난 줄이다 — 버린다 (사망 시간과 같은 규칙) */
+          if (at < 0) return
+          const had = firstAt.get(pid)
+          if (had === undefined || at < had) firstAt.set(pid, at)
+        }
+        for (const k of arr) {
+          const at = k.t - startedAt
+          const K = whoOf(mk, k.killer)
+          if (K) mark(K.pid, at)
+          const V = whoOf(mk, k.victim)
+          if (V) mark(V.pid, at)
+        }
+        for (const [pid, at] of firstAt) {
+          const t = tallyOf(mk, pid)
+          t.tempoSeconds += at
+          t.tempoCount += 1
         }
       }
       /*
@@ -726,6 +815,7 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         lpid: string
         rounds: number
         firstkills: number
+        crackkills: number
         burstrounds: number
         alonerounds: number
         alonewon: number
@@ -741,6 +831,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rduellost: number
         deathseconds: number
         deathcount: number
+        temposeconds: number
+        tempocount: number
       }[]
     >`
       WITH mw AS (
@@ -761,6 +853,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       SELECT lp."id" AS lpid,
              SUM(h."rounds" * mw.w) AS rounds,
              SUM(h."firstKills" * mw.w) AS firstkills,
+             -- ★크랙 성공★ — 칠한 구역 안 25초 첫 킬 (2026-09-16). 값은 판수로 나눈다
+             SUM(h."crackKills" * mw.w) AS crackkills,
              SUM(h."burstRounds" * mw.w) AS burstrounds,
              -- ★게임영향력★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한다.
              -- 시즌 값은 이걸 판수로 나눈 ★평균★ 이다. 시즌 최대를 쓰면 거의 전원이
@@ -773,6 +867,9 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              SUM(h."mateDeaths" * mw.w) AS matedeaths,
              SUM(h."deathSeconds" * mw.w) AS deathseconds,
              SUM(h."deathCount" * mw.w) AS deathcount,
+             -- ★게임템포★ — 라운드마다 «먼저 겪은 일» 까지의 초 (2026-09-16)
+             SUM(h."tempoSeconds" * mw.w) AS temposeconds,
+             SUM(h."tempoCount" * mw.w) AS tempocount,
              SUM(h."aloneRounds" * mw.w) AS alonerounds,
              SUM(h."aloneWon" * mw.w) AS alonewon,
              SUM(h."outRounds" * mw.w) AS outrounds,
@@ -854,6 +951,7 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         clanTier: asTier(b.clantier),
         rounds: h?.rounds ?? 0,
         firstKills: h?.firstkills ?? 0,
+        crackKills: h?.crackkills ?? 0,
         burstRounds: h?.burstrounds ?? 0,
         /* 경기별 «한 라운드 최대 킬» 의 합 — 값은 판수로 나눠 평균을 낸다 (2026-09-15) */
         maxRoundKills: h?.maxroundkills ?? 0,
@@ -862,6 +960,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         mateDeaths: h?.matedeaths ?? 0,
         deathSeconds: h?.deathseconds ?? 0,
         deathCount: h?.deathcount ?? 0,
+        tempoSeconds: h?.temposeconds ?? 0,
+        tempoCount: h?.tempocount ?? 0,
         aloneRounds: h?.alonerounds ?? 0,
         aloneWon: h?.alonewon ?? 0,
         outRounds: h?.outrounds ?? 0,
@@ -895,7 +995,9 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
            으로 바뀌었지만 칸을 갈면 마이그레이션이 커진다. 어느 판의 값인지는
             이 가른다. 화면에는 칸 이름이 안 나간다 */
         opening: r.axes.survival.value, openingPct: r.axes.survival.pct, openingRank: r.axes.survival.rank, openingTotal: r.axes.survival.total,
-        burst: r.axes.burst.value, burstPct: r.axes.burst.pct, burstRank: r.axes.burst.rank, burstTotal: r.axes.burst.total,
+        /* ⚠ ★DB 칸 이름은 `burst*` 그대로다★ — 2026-09-16 에 ⑤ 가 «크랙 성공» 이 됐지만
+           칸을 갈면 마이그레이션이 커진다. 어느 판인지는 `formulaVersion` 이 가른다 */
+        burst: r.axes.crack.value, burstPct: r.axes.crack.pct, burstRank: r.axes.crack.rank, burstTotal: r.axes.crack.total,
         outnumbered: r.axes.outnumbered.value, outnumberedPct: r.axes.outnumbered.pct,
         outnumberedRank: r.axes.outnumbered.rank, outnumberedTotal: r.axes.outnumbered.total,
         winRate: r.winRate.value, winRatePct: r.winRate.pct, winRateRank: r.winRate.rank, winRateTotal: r.winRate.total,
@@ -913,6 +1015,10 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         outRounds: p.outRounds,
         outWon: p.outWon,
         firstKills: p.firstKills,
+        crackKills: p.crackKills,
+        /* 게임템포의 재료 — 화면은 접힌 값(`opening`)을 읽지만 원시 합도 남겨 둔다 */
+        tempoSeconds: p.tempoSeconds,
+        tempoCount: p.tempoCount,
         burstRounds: p.burstRounds,
         /* ★내 구간★ — 가장 많이 뛴 티어 (2026-09-11 사장님). 구간별 랭킹이 이 칸을 거른다 */
         homeTier: homeTierOf(p.tierGames),

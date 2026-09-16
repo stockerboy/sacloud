@@ -4,6 +4,8 @@ import {
   FLAG_MIN_GAMES,
   FLAG_MIN_WIN_RATE,
   dayAxisParts,
+  crackScoreV1,
+  deathTimeScoreV1,
   dayAxisScores,
   dayAxisValues,
   flagPercentile,
@@ -29,9 +31,14 @@ const tally = (over: Partial<FlagDayTally> = {}): FlagDayTally => ({
   death: 50,
   rounds: 60,
   firstKills: 12,
-  /* ★4번 축 «평균 사망 시간»★ (2026-09-16 사장님) — 261초를 세 번에 = 87초 */
+  /* ⚠ 옛 ④ «평균 사망 시간» 의 재료 — 지우지 않는다. 셈은 `deathTimeScoreV1` 에 남았다 */
   deathSeconds: 261,
   deathCount: 3,
+  /* ★4번 축 «게임템포»★ (2026-09-16 저녁 사장님) — 204초를 여섯 라운드에 = 34초 */
+  tempoSeconds: 204,
+  tempoCount: 6,
+  /* ★5번 축 «크랙 성공»★ — 위 12회 중 ★칠한 구역 안★ 이었던 6회 (2026-09-16 저녁) */
+  crackKills: 6,
   burstRounds: 9,
   /* ★캐리력은 «한 라운드 최대 킬»★ (2026-09-15 사장님) — 3킬을 두 번 낸 판 */
   maxRoundKills: 3,
@@ -66,15 +73,18 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
      */
     expect(v.carry).toBe(50)
     /*
-     * ★평균 사망 시간★ (2026-09-16 사장님) — 죽은 시각 합 ÷ 죽은 수.
-     * ⚠ 옛 ④ 선짤은 «판당 몇 번» 이라 12회/6판 = 2 였다.
+     * ★게임템포★ (2026-09-16 저녁 사장님) — 먼저 겪은 일까지의 초 합 ÷ 그 라운드 수.
+     *   204초 / 6라운드 = 34초.
+     * ⚠ 옛 기대값 — 87 (평균 사망 시간 261/3) · 그 전 — 2 (선짤 12회/6판)
      */
-    expect(v.survival).toBe(87)
+    expect(v.survival).toBe(34)
     /*
-     * ⚠ ★5번 축이 «연속킬» 에서 «교환율» 로 바뀌었다★ (2026-09-15 사장님 «교환율로 해줘»).
-     *   9번 되갚음 / 동료 죽음 30번 = 30%. 옛 기대값 — 1.5 (판당 연속킬 회수)
+     * ⚠ ★5번 축이 «교환율» 에서 «크랙 성공» 으로 바뀌었다★ (2026-09-16 사장님:
+     *   «빽어택 빼고 크랙성공 으로 바꿔 — 라운드시작 25초 이내에 상대를 잡는 비율이
+     *    판수를 분모로»). ★그날 저녁에 «어디서» 가 붙었다★ — 칠한 구역 안 6회 / 6판 = 1회.
+     *   옛 기대값 — 2 (구역을 안 보던 12회/6판) · 그 전 — 30 (교환율) · 그 전 — 1.5
      */
-    expect(v.burst).toBe(30)
+    expect(v.crack).toBe(1)
     expect(v.outnumbered).toBeCloseTo(55.6, 1)
   })
 
@@ -94,13 +104,22 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
     expect(dayAxisValues(tally({ rounds: 0 })).carry).toBeNull()
   })
 
-  it('★교환율 — 동료가 죽은 직후 되갚은 비율★ (2026-09-15 사장님)', () => {
-    expect(dayAxisValues(tally({ tradeKills: 9, mateDeaths: 30 })).burst).toBe(30)
-    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 30 })).burst).toBe(0)
-    /* 동료가 한 번도 안 죽었으면 잴 것이 없다 — 랭킹에서는 null */
-    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 0 })).burst).toBeNull()
-    /* 한 판 설명에서는 0 으로 적는다 (다른 축과 같은 규칙) */
-    expect(dayAxisValues(tally({ tradeKills: 0, mateDeaths: 0 }), FLAG_GATE_RAW).burst).toBe(0)
+  it('★크랙 성공 — 칠한 구역 안 25초 첫 킬 ÷ 판수★ (2026-09-16 저녁 사장님)', () => {
+    expect(dayAxisValues(tally({ games: 6, crackKills: 12 })).crack).toBe(2)
+    /* 기본 픽스처가 crackKills 6 을 들고 있으므로 명시로 0 을 덮어쓴다 */
+    expect(dayAxisValues({ ...tally({ games: 6 }), crackKills: 0 }).crack).toBe(0)
+    /* 한 판도 안 뛰었으면 잴 것이 없다 */
+    expect(dayAxisValues(tally({ games: 0, crackKills: 0 })).crack).toBeNull()
+    /* 한 판 설명에서도 구역 안 첫 킬이 없으면 0 이다 */
+    expect(dayAxisValues({ ...tally(), crackKills: 0 }, FLAG_GATE_RAW).crack).toBe(0)
+    /*
+     * ★재료가 아직 안 채워진 줄은 `null`★ — 0회라고 우기면 재집계 전 전원이 꼴찌가 된다.
+     * 구역을 안 보던 옛 셈은 그대로 살아 있다 (`CLAUDE.md` 1-4).
+     */
+    const old = { ...tally({ games: 6, firstKills: 12 }) }
+    delete (old as { crackKills?: number }).crackKills
+    expect(dayAxisValues(old).crack).toBeNull()
+    expect(crackScoreV1(old)).toBe(2)
   })
 
   it('★혼자 남은 라운드가 적으면 세이브는 null★', () => {
@@ -157,17 +176,22 @@ describe('dayAxisParts — «몇 번 중 몇 번»', () => {
     expect(p.save).toEqual({ numerator: 1, denominator: 2 })
   })
 
-  it('★평균 사망 시간은 분모가 「죽은 수」다★ (2026-09-16 사장님)', () => {
-    const p = dayAxisParts(tally({ deathSeconds: 261, deathCount: 3 }))
-    expect(p.survival).toEqual({ numerator: 261, denominator: 3 })
+  it('★게임템포는 분모가 「그 라운드 수」다★ (2026-09-16 저녁 사장님)', () => {
+    const p = dayAxisParts(tally({ tempoSeconds: 204, tempoCount: 6 }))
+    expect(p.survival).toEqual({ numerator: 204, denominator: 6 })
   })
 
-  it('★평균 사망 시간 — 261초를 세 번에 나누면 87초★', () => {
-    expect(dayAxisValues(tally({ deathSeconds: 261, deathCount: 3 })).survival).toBe(87)
+  it('★게임템포 — 204초를 여섯 라운드에 나누면 34초★', () => {
+    expect(dayAxisValues(tally({ tempoSeconds: 204, tempoCount: 6 })).survival).toBe(34)
   })
 
-  it('죽은 적이 없으면 잴 수 없다 — 0 이라고 적지 않는다 (D-106)', () => {
-    expect(dayAxisValues(tally({ deathSeconds: 0, deathCount: 0 })).survival).toBeNull()
+  it('킬도 죽음도 없었으면 잴 수 없다 — 0 이라고 적지 않는다 (D-106)', () => {
+    expect(dayAxisValues(tally({ tempoSeconds: 0, tempoCount: 0 })).survival).toBeNull()
+  })
+
+  /* 옛 ④ 셈은 그대로 살아 있다 (`CLAUDE.md` 1-4) */
+  it('★옛 ④ 평균 사망 시간 — 261초를 세 번에 나누면 87초★', () => {
+    expect(deathTimeScoreV1(tally({ deathSeconds: 261, deathCount: 3 }))).toBe(87)
   })
 })
 
@@ -225,13 +249,15 @@ describe('★선짤 잣대★ — 무기 기준값으로 나눈다 (2026-09-15 �
      *   ★기준선으로 나누지 않는다.★ 스나는 스나끼리, 라플은 라플끼리 견주기 때문에
      *   («스나수는 스나수끼리 비교하고 라플수는 라플수끼리») 무기별 보정이 필요 없다.
      *   옛 판(선짤 기준선 나누기)은 `openingScoreOf` 에 그대로 남아 있다.
+     *   ⚠ 2026-09-16 저녁에 ④ 가 «게임템포» 로 한 번 더 갈렸다 — 기준선을 안 나누는
+     *     것은 그대로다. 옛 기대값 87 (평균 사망 시간 261/3).
      */
-    const withDeaths = (t: FlagDayTally): FlagDayTally => ({ ...t, deathSeconds: 261, deathCount: 3 })
-    expect(dayAxisValues(withDeaths(sniper)).survival).toBe(87)
-    expect(dayAxisValues(withDeaths(rifle)).survival).toBe(87)
+    const withTempo = (t: FlagDayTally): FlagDayTally => ({ ...t, tempoSeconds: 204, tempoCount: 6 })
+    expect(dayAxisValues(withTempo(sniper)).survival).toBe(34)
+    expect(dayAxisValues(withTempo(rifle)).survival).toBe(34)
     /* 잣대도 값 그대로다 — 무기로 밀어 주지 않는다 */
-    expect(dayAxisScores(withDeaths(sniper)).survival).toBe(
-      dayAxisScores(withDeaths(rifle)).survival,
+    expect(dayAxisScores(withTempo(sniper)).survival).toBe(
+      dayAxisScores(withTempo(rifle)).survival,
     )
   })
 })
