@@ -1804,7 +1804,7 @@ function buildTraits(leagueId: string, playerId: string) {
     weapon,
     knownGames: value?.knownGames ?? below?.games ?? 0,
     cohort: weapon === null ? null : cohort.killSorted.length,
-    carryPercentile: value ? percentileOf(cohort.killSorted, value.killPerGame) : null,
+    chancePercentile: value ? percentileOf(cohort.killSorted, value.killPerGame) : null,
     damagePercentile: value ? percentileOf(cohort.damageSorted, value.damagePerGame) : null,
   })
 }

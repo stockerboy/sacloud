@@ -245,7 +245,7 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     const top = await playerTraits(leagueId, `${P}r5`)
     const bottom = await playerTraits(leagueId, `${P}r1`)
     const carry = (result: Awaited<ReturnType<typeof playerTraits>>) =>
-      result.traits.axes.find((axis) => axis.key === 'carry')?.percentile
+      result.traits.axes.find((axis) => axis.key === 'chance')?.percentile
 
     /* 판당 킬 [1, 2, 3, 3, 5 …] 6명. mid-rank 로 꼴찌 8.3, 1등 91.7 이다 */
     expect(carry(bottom)).toBe(8.3)
@@ -292,7 +292,7 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
     expect(axis('burst')?.label).toBe('연속킬')
     expect(axis('burst')?.pending).toBe('rounds')
     /* 캐리력은 스나 무리(1명) 안에서 재진다 — 라플 무리에 섞이지 않았다 */
-    expect(axis('carry')?.percentile).toBe(50)
+    expect(axis('chance')?.percentile).toBe(50)
   })
 
   it('라운드 복원이 필요한 네 축은 항상 `측정중` 이다', async () => {
@@ -368,7 +368,7 @@ describe.runIf(up)('전투력 육각형 — 모집단과 백분위 (D-185)', () 
 
     /* 킬은 아는 값이라 캐리력은 재진다 — 딜량만 잴 판이 없는 것이다 */
     expect(traits.weapon).toBe(0)
-    expect(axis('carry')?.percentile).not.toBeNull()
+    expect(axis('chance')?.percentile).not.toBeNull()
 
     /* 예전 규칙이라면 `판당 0딜` 로 분포 맨 아래(8.3%)에 실제 숫자가 찍혔다.
        0은 "딜을 못 넣는다" 가 아니라 **모른다** 이므로 `null` 이어야 한다 (D-106) */

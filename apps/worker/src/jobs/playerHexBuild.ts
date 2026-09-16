@@ -1069,14 +1069,17 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rounds: p.rounds,
         save: r.axes.save.value, savePct: r.axes.save.pct, saveRank: r.axes.save.rank, saveTotal: r.axes.save.total,
         duel: r.axes.duel.value, duelPct: r.axes.duel.pct, duelRank: r.axes.duel.rank, duelTotal: r.axes.duel.total,
-        carry: r.axes.carry.value, carryPct: r.axes.carry.pct, carryRank: r.axes.carry.rank, carryTotal: r.axes.carry.total,
+        /* ★기회창출 / 기회차단★ — DB 칸은 `carry*` 그대로 (2026-09-16 밤) */
+        carry: r.axes.chance.value, carryPct: r.axes.chance.pct, carryRank: r.axes.chance.rank, carryTotal: r.axes.chance.total,
         /* ⚠ ★DB 칸 이름은  그대로다★ — 2026-09-16 에 축이 «평균 사망 시간»
            으로 바뀌었지만 칸을 갈면 마이그레이션이 커진다. 어느 판의 값인지는
             이 가른다. 화면에는 칸 이름이 안 나간다 */
-        opening: r.axes.survival.value, openingPct: r.axes.survival.pct, openingRank: r.axes.survival.rank, openingTotal: r.axes.survival.total,
+        /* ★안전함 / 크랙★ — DB 칸은 `opening*` 그대로 */
+        opening: r.axes.safe.value, openingPct: r.axes.safe.pct, openingRank: r.axes.safe.rank, openingTotal: r.axes.safe.total,
         /* ⚠ ★DB 칸 이름은 `burst*` 그대로다★ — 2026-09-16 에 ⑤ 가 «크랙 성공» 이 됐지만
            칸을 갈면 마이그레이션이 커진다. 어느 판인지는 `formulaVersion` 이 가른다 */
-        burst: r.axes.crack.value, burstPct: r.axes.crack.pct, burstRank: r.axes.crack.rank, burstTotal: r.axes.crack.total,
+        /* ★스나차이 / 라플차이★ — DB 칸은 `burst*` 그대로 */
+        burst: r.axes.gap.value, burstPct: r.axes.gap.pct, burstRank: r.axes.gap.rank, burstTotal: r.axes.gap.total,
         outnumbered: r.axes.outnumbered.value, outnumberedPct: r.axes.outnumbered.pct,
         outnumberedRank: r.axes.outnumbered.rank, outnumberedTotal: r.axes.outnumbered.total,
         winRate: r.winRate.value, winRatePct: r.winRate.pct, winRateRank: r.winRate.rank, winRateTotal: r.winRate.total,

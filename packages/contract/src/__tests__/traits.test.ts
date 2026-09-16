@@ -52,7 +52,7 @@ function rifleInput(over: Partial<TraitInput> = {}): TraitInput {
     weapon: 0,
     knownGames: TRAIT_MIN_GAMES,
     cohort: 120,
-    carryPercentile: 71.2,
+    chancePercentile: 71.2,
     damagePercentile: 64.8,
     ...over,
   }
@@ -190,7 +190,7 @@ describe('buildPlayerTraits — 못 재는 경우', () => {
     expect(hexagon.measured).toBe(0)
     expect(hexagon.measuring).toBe(true)
     // 4번도 이제 데이터 축이다 — 무기를 모르면 함께 막힌다 (D-214)
-    expect(axisOf(hexagon, 'survival').pending).toBe('weapon')
+    expect(axisOf(hexagon, 'safe').pending).toBe('weapon')
   })
 
   it('주무기를 모르면 모집단도 null 이다 — 섞어 세지 않는다', () => {
@@ -204,7 +204,7 @@ describe('buildPlayerTraits — 못 재는 경우', () => {
     expect(hexagon.cohort).toBeNull()
     expect(hexagon.measured).toBe(0)
     /* 4번도 같이 막힌다 — `기회창출` 은 더 뛰면 채워지는 축이다 (D-214) */
-    expect(axisOf(hexagon, 'survival').pending).toBe('games')
+    expect(axisOf(hexagon, 'safe').pending).toBe('games')
   })
 
   it(`정확히 ${TRAIT_MIN_GAMES}판이면 재기 시작한다 — 경계는 미만이다`, () => {
@@ -227,19 +227,19 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 
   it('4번 자리이고 옛 두 판과 같은 자리다', () => {
-    expect(TRAIT_AXIS_KEYS[3]).toBe('survival')
+    expect(TRAIT_AXIS_KEYS[3]).toBe('safe')
     expect(TRAIT_AXIS_KEYS_V2[3]).toBe('undecided')
     expect(TRAIT_AXIS_KEYS_V1[3]).toBe('matchman')
   })
 
-  /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름 `기회창출` 은 주석에만 남는다 */
-  /* ⚠ 옛 기대값 — `'선짤'` → `'선짤(1턴)'` → `'평균 사망 시간'` → ★`'게임템포'`★
-       (2026-09-16 저녁 사장님: «평균사망시간이라고 적지 말고 게임템포라고 적고
-        죽거나 잡은(라운드마다의 첫 킬) 시간을 평균내서») */
-  it('이름은 무기와 무관하게 `게임템포` 이다', () => {
-    for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'survival').label).toBe('게임템포')
-    }
+  /*
+   * ⚠ ★2026-09-16 밤 — 무기별로 이름이 갈렸다★ (사장님).
+   *   스나 «안전함» · 라플 «크랙» — 재는 것이 아예 다르다.
+   *   옛 기대값 — `'게임템포'`(무기 무관) · 그 전 `'평균 사망 시간'` · `'선짤(1턴)'`
+   */
+  it('★무기별로 이름이 갈린다★ — 스나 «안전함» · 라플 «크랙»', () => {
+    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 1 })), 'safe').label).toBe('안전함')
+    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 0 })), 'safe').label).toBe('크랙')
   })
 
   it('`매치의 사나이` 는 축 목록에서 빠진 채다', () => {
@@ -264,12 +264,12 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 
   it('백분위를 주면 그대로 붙는다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput({ survivalPercentile: 82.5 })), 'survival')
+    const axis = axisOf(buildPlayerTraits(rifleInput({ safePercentile: 82.5 })), 'safe')
     expect(axis).toMatchObject({ percentile: 82.5, pending: null })
   })
 
   it('재료가 아예 없으면 `라운드 복원 필요` 다 — 0 으로 채우지 않는다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput()), 'survival')
+    const axis = axisOf(buildPlayerTraits(rifleInput()), 'safe')
     expect(axis.percentile).toBeNull()
     expect(axis.percentile).not.toBe(0) // 0 은 "꼴찌" 라는 실제 값이다 (D-106)
     expect(axis.pending).toBe('rounds')
@@ -277,8 +277,8 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
 
   it('자료는 있는데 표본이 모자라면 `경기 부족` 이다 — 둘을 뭉뚱그리지 않는다', () => {
     const axis = axisOf(
-      buildPlayerTraits(rifleInput({ hasRoundData: true, survivalPercentile: null })),
-      'survival',
+      buildPlayerTraits(rifleInput({ hasRoundData: true, safePercentile: null })),
+      'safe',
     )
     expect(axis.pending).toBe('games')
   })
@@ -291,7 +291,7 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
 
 describe('buildPlayerTraits — 5번은 ★크랙 성공★ 이다 (2026-09-16 사장님)', () => {
   it('5번 자리이고 옛 판(`V3`)은 그 자리에 `finish` 를 두고 있었다', () => {
-    expect(TRAIT_AXIS_KEYS[4]).toBe('crack')
+    expect(TRAIT_AXIS_KEYS[4]).toBe('gap')
     expect(TRAIT_AXIS_KEYS_V3[4]).toBe('finish')
     expect(TRAIT_AXIS_KEYS).toHaveLength(6)
   })
@@ -305,11 +305,14 @@ describe('buildPlayerTraits — 5번은 ★크랙 성공★ 이다 (2026-09-16 �
    *   «작업 성공률/원어택»(V3) → «연속킬»(2026-09-02 D-260) → ★«교환율»★(2026-09-15 사장님)
    *   열쇠(`burst`)는 한 번도 안 바꿨다 — DB 칸과 계약 자리를 그대로 물려받는다.
    */
-  /* ⚠ 옛 기대값 `'교환율'` — 2026-09-16 새벽 사장님 «교환율을 백어택성공률(2턴)로» */
-  it('이름은 무기와 무관하게 `백어택성공률(2턴)` 이다', () => {
-    for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'crack').label).toBe('크랙 성공')
-    }
+  /*
+   * ⚠ ★2026-09-16 밤 — 무기별로 이름이 갈렸다★ (사장님).
+   *   스나 «스나차이» · 라플 «라플차이» — 무기별 점수를 상대와 견준 것이다.
+   *   옛 기대값 — `'크랙 성공'` · `'백어택성공률(2턴)'` · `'교환율'`
+   */
+  it('★무기별로 이름이 갈린다★ — 스나 «스나차이» · 라플 «라플차이»', () => {
+    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 1 })), 'gap').label).toBe('스나차이')
+    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 0 })), 'gap').label).toBe('라플차이')
   })
 
   it('`작업/원어택 성공률` 은 축 목록에서 빠진 채다', () => {
@@ -334,14 +337,14 @@ describe('buildPlayerTraits — 5번은 ★크랙 성공★ 이다 (2026-09-16 �
   })
 
   it('백분위가 오면 그대로 실린다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput({ crackPercentile: 73.4 })), 'crack')
+    const axis = axisOf(buildPlayerTraits(rifleInput({ gapPercentile: 73.4 })), 'gap')
     expect(axis).toMatchObject({ percentile: 73.4, pending: null })
   })
 
   it('라운드 자료는 있는데 킬이 모자라면 `games` 다', () => {
     const axis = axisOf(
-      buildPlayerTraits(rifleInput({ hasRoundData: true, crackPercentile: null })),
-      'crack',
+      buildPlayerTraits(rifleInput({ hasRoundData: true, gapPercentile: null })),
+      'gap',
     )
     expect(axis).toMatchObject({ percentile: null, pending: 'games' })
   })
@@ -349,22 +352,22 @@ describe('buildPlayerTraits — 5번은 ★크랙 성공★ 이다 (2026-09-16 �
   /*
    * ★ D-259 회귀 ★ — 새 축을 읽는 코드는 **없는 값을 견뎌야 한다**.
    *
-   * 이 축이 붙기 전에 만들어진 호출부는 `crackPercentile` 을 아예 넘기지 않는다.
+   * 이 축이 붙기 전에 만들어진 호출부는 `gapPercentile` 을 아예 넘기지 않는다.
    * `=== null` 로만 막으면 `undefined` 가 그대로 `percentile` 에 실려
    * 계약(`number | null`)이 깨진다. 클랜 육각형에서 그 실수가 카드를 통째로 지웠고
    * **오류 한 줄 없이 조용했다.**
    */
-  it('`crackPercentile` 을 아예 안 넘겨도 터지지 않고 `pending` 이 붙는다', () => {
+  it('`gapPercentile` 을 아예 안 넘겨도 터지지 않고 `pending` 이 붙는다', () => {
     const input = rifleInput()
-    delete (input as { crackPercentile?: unknown }).crackPercentile
-    const axis = axisOf(buildPlayerTraits(input), 'crack')
+    delete (input as { gapPercentile?: unknown }).gapPercentile
+    const axis = axisOf(buildPlayerTraits(input), 'gap')
     expect(axis.percentile).toBeNull()
     expect(axis.percentile).not.toBeUndefined()
     expect(axis.pending).toBe('rounds')
   })
 
   it('`undefined` 를 명시적으로 넘겨도 `null` 로 정리된다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput({ crackPercentile: undefined })), 'crack')
+    const axis = axisOf(buildPlayerTraits(rifleInput({ gapPercentile: undefined })), 'gap')
     expect(axis.percentile).toBeNull()
   })
 })
@@ -373,7 +376,7 @@ describe('buildPlayerTraits — 축별 판정 (라이플)', () => {
   const hexagon = buildPlayerTraits(rifleInput())
 
   it('캐리력은 판당 킬 백분위로 채워진다', () => {
-    expect(axisOf(hexagon, 'carry')).toMatchObject({ percentile: 71.2, pending: null })
+    expect(axisOf(hexagon, 'chance')).toMatchObject({ percentile: 71.2, pending: null })
   })
 
   it('샷싸움(duel)은 딜량 백분위로 채워진다 — 라플은 지금 잴 수 있다', () => {
@@ -391,12 +394,12 @@ describe('buildPlayerTraits — 축별 판정 (라이플)', () => {
    *   화면이 사람에게 「할 수 없는 일」을 시키고 있었다.
    */
   it('연속킬(burst)은 라운드 자료가 없으면 rounds 로 남는다', () => {
-    expect(axisOf(hexagon, 'crack')).toMatchObject({ percentile: null, pending: 'rounds' })
+    expect(axisOf(hexagon, 'gap')).toMatchObject({ percentile: null, pending: 'rounds' })
   })
 
   it('백분위가 없으면 그 축만 pending=games 로 남는다', () => {
-    const partial = buildPlayerTraits(rifleInput({ carryPercentile: null }))
-    expect(axisOf(partial, 'carry')).toMatchObject({ percentile: null, pending: 'games' })
+    const partial = buildPlayerTraits(rifleInput({ chancePercentile: null }))
+    expect(axisOf(partial, 'chance')).toMatchObject({ percentile: null, pending: 'games' })
     // 다른 축까지 막히지 않는다
     expect(axisOf(partial, 'duel').percentile).toBe(64.8)
   })
@@ -404,12 +407,12 @@ describe('buildPlayerTraits — 축별 판정 (라이플)', () => {
   it('딜량이 없으면 duel 만 pending=games 다', () => {
     const partial = buildPlayerTraits(rifleInput({ damagePercentile: null }))
     expect(axisOf(partial, 'duel')).toMatchObject({ percentile: null, pending: 'games' })
-    expect(axisOf(partial, 'carry').percentile).toBe(71.2)
+    expect(axisOf(partial, 'chance').percentile).toBe(71.2)
   })
 
   it('백분위 0 은 유효한 값이다 — 모르는 것으로 떨어지지 않는다', () => {
-    const zero = buildPlayerTraits(rifleInput({ carryPercentile: 0, damagePercentile: 0 }))
-    expect(axisOf(zero, 'carry')).toMatchObject({ percentile: 0, pending: null })
+    const zero = buildPlayerTraits(rifleInput({ chancePercentile: 0, damagePercentile: 0 }))
+    expect(axisOf(zero, 'chance')).toMatchObject({ percentile: 0, pending: null })
     expect(axisOf(zero, 'duel')).toMatchObject({ percentile: 0, pending: null })
     expect(zero.measured).toBe(2)
   })
@@ -425,11 +428,11 @@ describe('buildPlayerTraits — 축별 판정 (스나이퍼)', () => {
   it('연속킬(burst)은 스나에게도 `rounds` 다 — 배틀로그가 아니라 라운드 복원이 재료다', () => {
     // 옛 5번(`작업 성공률`)은 상대 무기를 알아야 해서 `battlelog` 였다.
     // 연속킬은 **킬 시각만** 있으면 되므로 세이브·소수싸움과 같은 갈래를 쓴다 (D-260)
-    expect(axisOf(hexagon, 'crack')).toMatchObject({ percentile: null, pending: 'rounds' })
+    expect(axisOf(hexagon, 'gap')).toMatchObject({ percentile: null, pending: 'rounds' })
   })
 
   it('캐리력은 무기와 무관하게 채워진다', () => {
-    expect(axisOf(hexagon, 'carry')).toMatchObject({ percentile: 71.2, pending: null })
+    expect(axisOf(hexagon, 'chance')).toMatchObject({ percentile: 71.2, pending: null })
   })
 
   it('스나는 잴 수 있는 축이 캐리력 하나뿐이다', () => {
@@ -466,10 +469,21 @@ describe('buildPlayerTraits — 축 이름은 주무기를 따른다', () => {
     expect(TRAIT_AXIS_LABEL.finish.rifle).toBe('원어택 성공률')
   })
 
-  it('나머지 다섯 축은 무기와 무관하게 같은 이름이다', () => {
-    for (const key of ['save', 'carry', 'survival', 'crack', 'outnumbered'] as const) {
+  /*
+   * ⚠ ★2026-09-16 밤 — «나머지 다섯» 이 «둘» 로 줄었다★ (사장님).
+   *   이제 무기별로 이름이 갈리는 축이 넷이다 — 싸움 · 기회 · 안전함/크랙 · 차이.
+   *   같은 이름을 쓰는 것은 ★세이브와 소수싸움 둘뿐★ 이다.
+   */
+  it('세이브와 소수싸움만 무기와 무관하게 같은 이름이다', () => {
+    for (const key of ['save', 'outnumbered'] as const) {
       expect(axisOf(sniper, key).label).toBe(axisOf(rifle, key).label)
       expect(axisOf(sniper, key).label).toBe(TRAIT_AXIS_LABEL[key].sniper)
+    }
+  })
+
+  it('★네 축은 무기별로 이름이 다르다★ (2026-09-16 밤 사장님)', () => {
+    for (const key of ['duel', 'chance', 'safe', 'gap'] as const) {
+      expect(axisOf(sniper, key).label).not.toBe(axisOf(rifle, key).label)
     }
   })
 
@@ -483,9 +497,9 @@ describe('buildPlayerTraits — 축 이름은 주무기를 따른다', () => {
 describe('buildPlayerTraits — measured / measuring', () => {
   it('measured 는 값이 있는 축 수다', () => {
     expect(buildPlayerTraits(rifleInput()).measured).toBe(2)
-    expect(buildPlayerTraits(rifleInput({ carryPercentile: null })).measured).toBe(1)
+    expect(buildPlayerTraits(rifleInput({ chancePercentile: null })).measured).toBe(1)
     expect(
-      buildPlayerTraits(rifleInput({ carryPercentile: null, damagePercentile: null })).measured,
+      buildPlayerTraits(rifleInput({ chancePercentile: null, damagePercentile: null })).measured,
     ).toBe(0)
   })
 

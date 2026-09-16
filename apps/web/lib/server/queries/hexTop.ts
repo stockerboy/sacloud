@@ -93,7 +93,7 @@ function playerValueText(unit: 'percent' | 'per_game' | 'seconds', raw: number |
  *   무기를 안 갈라 부르니 스나 1~5위와 라플 1~5위가 섞여 열 줄이 나오고
  *   앞에서 다섯 줄만 잘려 나갔다.
  */
-const WEAPON_SPLIT: readonly TraitAxisKey[] = ['duel', 'survival', 'crack']
+const WEAPON_SPLIT: readonly TraitAxisKey[] = ['duel', 'safe', 'gap', 'chance']
 const WEAPONS: readonly (0 | 1)[] = [1, 0] /* 스나 먼저 — 사장님이 늘 스나를 앞에 두신다 */
 
 async function playerTop(leagueId: string): Promise<HexTopAxis[]> {

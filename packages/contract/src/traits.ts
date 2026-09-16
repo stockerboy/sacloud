@@ -29,7 +29,29 @@
  * 5번은 **연속킬**이다 (2026-09-02 · D-260). `작업/원어택 성공률`(`finish`)을 내렸다.
  * 그 판도 `TRAIT_AXIS_KEYS_V3` 로 그대로 남긴다.
  */
+/*
+ * ★개인 여섯 — 2026-09-16 밤 사장님이 통째로 바꿨다★.
+ *
+ *   스나  스나싸움 · 기회창출 · 소수싸움 · 세이브 · 스나차이 · 안전함
+ *   라플  화력 · 기회차단 · 크랙 · 세이브 · 소수싸움 · 라플차이
+ *
+ * ★키는 여섯이고 무기별로 «다른 값» 이 들어간다★ — 이름만 갈린다.
+ *   `TRAIT_AXIS_LABEL` 이 이미 `{sniper, rifle}` 쌍이라 그 틀을 그대로 쓴다.
+ *
+ * ⚠ DB 칸은 ★갈지 않는다★ — 매핑표(`AXIS_COLUMNS`) 한 곳만 고친다.
+ *   칸을 갈면 마이그레이션이 커지고, 어느 판인지는 `formulaVersion` 이 가른다.
+ */
 export const TRAIT_AXIS_KEYS = [
+  'save',
+  'duel',
+  'chance',
+  'safe',
+  'gap',
+  'outnumbered',
+] as const
+
+/** ⚠ ★2026-09-16 저녁까지 쓰던 여섯★ — 게임영향력·게임템포·크랙성공이 있던 판. 지우지 않는다 */
+export const TRAIT_AXIS_KEYS_V4 = [
   'save',
   'duel',
   'carry',
@@ -38,6 +60,20 @@ export const TRAIT_AXIS_KEYS = [
   'outnumbered',
 ] as const
 export type TraitAxisKey = (typeof TRAIT_AXIS_KEYS)[number]
+
+/**
+ * ★지금 여섯 + 옛 이름들★ — 라벨·배지·설명 표의 열쇠다 (2026-09-16 밤).
+ *
+ * 축이 갈릴 때마다 표에서 옛 항목을 빼면 «지우지 않는다» 를 어기게 된다.
+ * 표는 ★옛 이름까지 다 알고★, «지금 여섯» 은 `TRAIT_AXIS_KEYS` 하나만 정한다.
+ * 클랜 육각도 같은 처방이다 (`ClanHexV2AnyAxisKey`).
+ */
+export type TraitAxisAnyKey =
+  | TraitAxisKey
+  | (typeof TRAIT_AXIS_KEYS_V4)[number]
+  | 'matchman'
+  | 'finish'
+  | 'undecided'
 
 /**
  * **4번 자리를 비우기 전**의 여섯 축 (D-206). 지우지 않는다.
@@ -140,7 +176,6 @@ export type TraitAxisKeyV3 = (typeof TRAIT_AXIS_KEYS_V3)[number]
  */
 export const TRAIT_AXIS_LABEL_V1 = {
   /** 3번 축의 옛 이름 — 지금은 «게임영향력» 이다 */
-  carry: { sniper: '캐리력', rifle: '캐리력' },
   /** 5번 축의 옛 이름 — 지금은 «안 짤림» 이다 */
   burst: { sniper: '연속킬', rifle: '연속킬' },
 } as const
@@ -153,10 +188,16 @@ export const TRAIT_AXIS_LABEL_V3_BURST = { sniper: '교환율', rifle: '교환�
 export const TRAIT_AXIS_LABEL_V3_OPENING = { sniper: '선짤', rifle: '선짤' } as const
 
 export const TRAIT_AXIS_LABEL: Record<
-  TraitAxisKey | TraitAxisKeyV1 | TraitAxisKeyV2 | TraitAxisKeyV3,
+  /* ★지금 여섯 + 옛 이름을 다 알게 넣는다★ (2026-09-16 밤) */
+  TraitAxisAnyKey | TraitAxisKeyV1 | TraitAxisKeyV2 | TraitAxisKeyV3,
   { sniper: string; rifle: string }
 > = {
   save: { sniper: '세이브', rifle: '세이브' },
+  /* ⚠ ★옛 축 이름 셋★ — 화면은 안 보지만 표에는 남긴다 (`CLAUDE.md` 1-4).
+     어느 키로 물어도 이름이 나와야 예전 글·예전 화면이 안 깨진다 */
+  carry: { sniper: '게임영향력', rifle: '게임영향력' },
+  survival: { sniper: '게임템포', rifle: '게임템포' },
+  crack: { sniper: '크랙 성공', rifle: '크랙 성공' },
   /**
    * ⚠ ★2026-09-15 밤 — 라플 쪽 이름을 «샷싸움» → «라이플화력» 으로★ (사장님:
    *   «샷싸움을 라이플 화력으로 이름만 바꿔줘 (둘이 다르지만 눈속임)»).
@@ -174,7 +215,8 @@ export const TRAIT_AXIS_LABEL: Record<
    *   같은 날 뜻도 바뀌었다 — 옛 뜻은 «판당 킬», 지금은 ★한 라운드에 지운 적의 비율★ 이다
    *   (5명이 상대이므로 5킬 = 100%). 옛 이름은 `TRAIT_AXIS_LABEL_V1` 에 남긴다.
    */
-  carry: { sniper: '게임영향력', rifle: '게임영향력' },
+  /* ★2026-09-16 밤 — «기회창출 / 기회차단» ★ (사장님). 스나는 판을 열고 라플은 끊는다 */
+  chance: { sniper: '기회창출', rifle: '기회차단' },
   /** 4번 축 — **라운드의 첫 킬을 딴 비율** (2026-08-31 사용자 확정 · D-214) */
   /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름은 `기회창출` 이었다 */
   /** ⚠ ★2026-09-16 새벽 — «선짤» → «선짤(1턴)»★ (사장님). 재는 것은 그대로다 */
@@ -189,7 +231,8 @@ export const TRAIT_AXIS_LABEL: Record<
      «잘한 라운드가 안 세어지는» 자리였다. 게임템포는 잡아도 센다.
      ⚠ «게임템포» 는 라이플화력이 거쳐 간 이름이기도 하다 (게임템포→샷싸움→라이플화력).
        지금은 ④ 의 이름이다. 옛 이름들은 `TRAIT_AXIS_LABEL_V*` 에 남아 있다 */
-  survival: { sniper: '게임템포', rifle: '게임템포' },
+  /* ★2026-09-16 밤 — «안전함 / 크랙» ★ (사장님). 스나는 살아남고 라플은 구역에서 연다 */
+  safe: { sniper: '안전함', rifle: '크랙' },
   /** 빈 자리였던 판 (D-206). 이름이 곧 상태다 — 재료가 없는 게 아니라 **안 정한 것** */
   undecided: { sniper: '미정', rifle: '미정' },
   /** 옛 4번 축 (D-206). 육각형에서는 내려왔지만 이름은 남긴다 */
@@ -222,7 +265,8 @@ export const TRAIT_AXIS_LABEL: Record<
   /* ⚠ ★2026-09-16 — ⑤ 가 백어택에서 «크랙 성공» 으로★ (사장님).
      라운드 시작 25초 안에 첫 킬을 낸 횟수 ÷ 판수. 클랜 축과 같은 말이다.
      옛 이름은 `TRAIT_AXIS_LABEL_V3_BURST` 에 남아 있다 */
-  crack: { sniper: '크랙 성공', rifle: '크랙 성공' },
+  /* ★2026-09-16 밤 — «스나차이 / 라플차이» ★ (사장님). 상대 같은 무기보다 앞선 판 비율 */
+  gap: { sniper: '스나차이', rifle: '라플차이' },
   /** 옛 5번 축 (D-260). 육각형에서는 내려왔지만 재료도 이름도 그대로 남긴다 */
   finish: { sniper: '작업 성공률', rifle: '원어택 성공률' },
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
@@ -463,7 +507,7 @@ export interface TraitInput {
   /** 같은 주무기 선수 수. 모집단을 못 만들었으면 `null` */
   cohort: number | null
   /** 판당 평균 킬의 백분위 (3 캐리력) */
-  carryPercentile: number | null
+  chancePercentile: number | null
   /** 판당 평균 딜량의 백분위 (2 샷싸움 · **라플 전용**) */
   damagePercentile: number | null
   /**
@@ -504,7 +548,7 @@ export interface TraitInput {
    * 읽히는 것을 실측으로 확인했고, 그래서 축 이름도 무기에 따라 갈리지 않는다.
    */
   /** ★평균 사망 시간★ 의 백분위 (2026-09-16 사장님). 옛 이름은  */
-  survivalPercentile?: number | null
+  safePercentile?: number | null
   /**
    * 5번 `연속킬` — 직전 킬과 **2초 이하**로 이어진 킬의 비율의 백분위 (D-260).
    *
@@ -518,7 +562,7 @@ export interface TraitInput {
    *   저장해 두었으므로, 정의를 바꾸더라도 **집계를 다시 돌릴 필요는 없다.**
    */
   /** ★크랙 성공★ 의 백분위 (2026-09-16). 옛 이름은 `burstPercentile` */
-  crackPercentile?: number | null
+  gapPercentile?: number | null
   /**
    * 그 선수에게 **라운드 복원 자료 자체가 있는가**.
    *
@@ -556,11 +600,11 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
     if (blocked !== null) return { key, label: label(key), percentile: null, pending: blocked }
 
     switch (key) {
-      case 'survival': {
+      case 'safe': {
         /* 4번 `기회창출` — 라운드의 첫 킬을 딴 비율 (D-214). 라운드 복원이 재료라
            1·6번과 같은 사유 갈래를 쓴다: 자료가 없으면 `라운드 복원 필요`,
            있는데 표본이 모자라면 `경기 부족` 이다 */
-        const value = input.survivalPercentile ?? null
+        const value = input.safePercentile ?? null
         return {
           key,
           label: label(key),
@@ -568,12 +612,12 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
           pending: value !== null ? null : input.hasRoundData === true ? 'games' : 'rounds',
         }
       }
-      case 'carry':
+      case 'chance':
         return {
           key,
           label: label(key),
-          percentile: input.carryPercentile,
-          pending: input.carryPercentile === null ? 'games' : null,
+          percentile: input.chancePercentile,
+          pending: input.chancePercentile === null ? 'games' : null,
         }
       case 'duel': {
         /* 스나 `스나싸움` = 스나싸움 구역에서 상대 **스나**와의 교전 승률 (D-195).
@@ -594,7 +638,7 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
           pending: input.damagePercentile === null ? 'games' : null,
         }
       }
-      case 'crack': {
+      case 'gap': {
         /* 5번 `연속킬` — 직전 킬과 2초 이하로 이어진 킬의 비율 (D-260).
            라운드 복원이 재료라 1·4·6번과 **같은 사유 갈래**를 쓴다: 자료가 없으면
            `라운드 복원 필요`, 있는데 킬이 모자라면 `경기 부족` 이다.
@@ -603,7 +647,7 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
              `burstPercentile` 을 아예 넘기지 않는다 (`undefined`). `=== null` 로만
              막으면 `undefined` 가 그대로 `percentile` 에 실려 계약(`number | null`)이
              깨진다. 같은 함정이 클랜 육각형에서 카드를 통째로 지웠다 (D-259). */
-        const value = input.crackPercentile ?? null
+        const value = input.gapPercentile ?? null
         return {
           key,
           label: label(key),

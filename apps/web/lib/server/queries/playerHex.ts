@@ -51,15 +51,21 @@ export const AXIS_COLUMNS: Record<
    *   으로 바뀌었는데 이 표만 안 따라와서 «90.4회» 로 적혔다.
    *   그동안 안 보인 이유 — 분야별 TOP5 가 단위를 안 보고 늘 % 를 붙이고 있었다.
    */
-  carry: { value: 'carry', pct: 'carryPct', rank: 'carryRank', total: 'carryTotal', unit: 'percent' },
+  /*
+   * ★기회창출 / 기회차단★ (2026-09-16 밤 사장님) — DB 칸은 `carry*` 그대로 쓴다.
+   *   칸을 갈면 마이그레이션이 커지고, 어느 판인지는 `formulaVersion` 이 가른다.
+   */
+  chance: { value: 'carry', pct: 'carryPct', rank: 'carryRank', total: 'carryTotal', unit: 'percent' },
   /*
    * ★게임템포★ (2026-09-16 저녁 사장님) — 단위가 ★초★ 다. «2분 20초 중 34초» 로 적는다.
    *   ⚠ 옛 ④ 는 «평균 사망 시간» 이었다 (같은 칸·같은 단위, 재료만 갈렸다).
    * ⚠ DB 칸 이름은 `opening*` 그대로다 — 칸을 갈면 마이그레이션이 커지고,
    *   어느 판의 값인지는 `formulaVersion` 이 가른다.
    */
-  survival: { value: 'opening', pct: 'openingPct', rank: 'openingRank', total: 'openingTotal', unit: 'seconds' },
-  crack: { value: 'burst', pct: 'burstPct', rank: 'burstRank', total: 'burstTotal', unit: 'per_game' },
+  /* ★안전함 / 크랙★ — 칸은 `opening*` 그대로. 둘 다 비율이라 «초» 가 아니다 */
+  safe: { value: 'opening', pct: 'openingPct', rank: 'openingRank', total: 'openingTotal', unit: 'percent' },
+  /* ★스나차이 / 라플차이★ — 칸은 `burst*` 그대로. «앞선 판 비율» 이라 퍼센트다 */
+  gap: { value: 'burst', pct: 'burstPct', rank: 'burstRank', total: 'burstTotal', unit: 'percent' },
   outnumbered: {
     value: 'outnumbered',
     pct: 'outnumberedPct',
@@ -75,13 +81,13 @@ function partsOf(row: HexRow, key: TraitAxisKey): { numerator: number | null; de
       return { numerator: row.aloneWon, denominator: row.aloneRounds }
     case 'duel':
       return { numerator: row.duelWon, denominator: row.duelLost }
-    case 'survival':
+    case 'safe':
       return { numerator: row.firstKills, denominator: row.rounds }
-    case 'crack':
+    case 'gap':
       return { numerator: row.burstRounds, denominator: row.rounds }
     case 'outnumbered':
       return { numerator: row.outWon, denominator: row.outRounds }
-    case 'carry':
+    case 'chance':
       return { numerator: null, denominator: null }
   }
 }
@@ -97,14 +103,18 @@ export function toPlayerHex(row: HexRow): PlayerHex {
     return {
       key,
       label: playerHexLabelOf(key, weapon),
-      desc: weapon === 0 ? descPair.rifle : descPair.sniper,
+      /* ★빈 칸은 축 이름으로 떨어진다★ — 표가 Partial 이라 축이 늘어도 안 깨진다 (2026-09-16 밤) */
+      desc: descPair === undefined ? playerHexLabelOf(key, weapon) : (weapon === 0 ? descPair.rifle : descPair.sniper),
       value: num(row[col.value]),
       unit: col.unit,
       percentile: num(row[col.pct]),
       rank,
       total: num(row[col.total]),
       /* ★싸움은 3위 · 나머지는 5위★ (2026-09-12 사장님). 까닭은 `playerHexBadgeRank` 주석에 */
-      badge: rank !== null && rank <= playerHexBadgeRank(key) ? (weapon === 0 ? badgePair.rifle : badgePair.sniper) : null,
+      badge:
+        rank !== null && rank <= playerHexBadgeRank(key) && badgePair !== undefined
+          ? (weapon === 0 ? badgePair.rifle : badgePair.sniper)
+          : null,
       ...partsOf(row, key),
     }
   })

@@ -126,7 +126,15 @@ export const BURST_GAP_SECONDS = 2
 
 /* ⚠ ★2026-09-16 — ④ 가 `opening`(선짤) 에서 `survival`(평균 사망 시간) 로★ (사장님).
    키를 그대로 두면 옛 값과 새 값이 한 이름으로 섞인다 */
-export const HEX_AXIS_KEYS = ['save', 'duel', 'carry', 'survival', 'crack', 'outnumbered'] as const
+/*
+ * ★개인 여섯 — 2026-09-16 밤 사장님이 통째로 바꿨다★.
+ *   스나  스나싸움 · 기회창출 · 소수싸움 · 세이브 · 스나차이 · 안전함
+ *   라플  화력 · 기회차단 · 크랙 · 세이브 · 소수싸움 · 라플차이
+ * 키는 여섯이고 ★무기별로 다른 값★ 이 들어간다.
+ */
+export const HEX_AXIS_KEYS = ['save', 'duel', 'chance', 'safe', 'gap', 'outnumbered'] as const
+/** ⚠ ★2026-09-16 저녁까지 쓰던 여섯★ — 게임영향력·게임템포·크랙성공. 지우지 않는다 */
+export const HEX_AXIS_KEYS_V4 = ['save', 'duel', 'carry', 'survival', 'crack', 'outnumbered'] as const
 /** 2026-09-16 저녁까지 쓰던 여섯 — ⑤ 가 `burst`(백어택) 였다 (`CLAUDE.md` 1-4) */
 export const HEX_AXIS_KEYS_V2 = ['save', 'duel', 'carry', 'survival', 'burst', 'outnumbered'] as const
 /** 2026-09-16 까지 쓰던 여섯 — 지우지 않는다 (`CLAUDE.md` 1-4) */
@@ -143,20 +151,20 @@ export type HexAxisKey = (typeof HEX_AXIS_KEYS)[number]
  * 옛 값은 AXIS_WEIGHT_V1 에 남긴다 (CLAUDE.md 1-4).
  */
 export const AXIS_WEIGHT: Readonly<Record<HexAxisKey, number>> = {
-  survival: 1.0,
-  carry: 1.0,
+  safe: 1.0,
+  chance: 1.0,
   duel: 1.0,
-  crack: 0.7,
+  gap: 0.7,
   save: 2.0,
   outnumbered: 2.0,
 }
 
 /** ★옛 값★ — 반분신뢰도로 정한 무게 (2026-09-10 ~ 2026-09-12) */
 export const AXIS_WEIGHT_V1: Readonly<Record<HexAxisKey, number>> = {
-  survival: 1.0,
-  carry: 1.0,
+  safe: 1.0,
+  chance: 1.0,
   duel: 1.0,
-  crack: 0.7,
+  gap: 0.7,
   save: 0.5,
   outnumbered: 0.3,
 }
@@ -207,6 +215,11 @@ export interface PlayerHexInput {
   foeOpenRounds?: number
   cutRounds?: number
   aliveRounds?: number
+  /**
+   * ★스나차이 · 라플차이★ 의 분자 — 우리 무기 쪽이 앞선 경기 수.
+   * 이 칸이 없던 옛 줄은 `undefined` 고, 그때는 축이 `null` 이다.
+   */
+  gapWinGames?: number
   burstRounds: number
   /**
    * ★게임영향력의 재료★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한 값.
@@ -292,68 +305,49 @@ export function axisValuesOf(
      *
      * 재료가 없는 옛 줄(합이 0)은 `null` 이다 — 0% 라고 우기지 않는다 (D-106).
      */
-    carry: INFLUENCE_BY_EVEN_KILLS
-      ? influenceOf(input.evenKills ?? 0, input.rounds)
-      : CARRY_BY_TOTAL_KILLS
-        ? input.games > 0
-          ? Math.round((input.kills / input.games) * 100) / 100
-          : null
-        : input.games > 0 && (input.maxRoundKills ?? 0) > 0
-          ? influencePercentOf((input.maxRoundKills as number) / input.games, input.kills / input.games)
-          : null,
     /*
-     * ★선짤·연속킬은 「판당 몇 번」 이다★ (2026-09-15 사장님:
-     * «연속킬이랑 선짤 이 두개만 판당평균 n.n회 이런식으로 바꿔 / 클랜축도 마찬가지»).
+     * ★기회창출(스나) / 기회차단(라플)★ (2026-09-16 밤 사장님).
      *
-     * ⚠ 옛 값은 ★라운드 비율(%)★ 이었다 (`firstKills / rounds × 100`).
-     *   화면에 «선짤 7%» 처럼 작은 숫자만 나와서 무슨 뜻인지 안 와닿았다.
-     *   지금은 캐리력(판당 킬)과 ★같은 단위★ 라 나란히 읽힌다.
-     *   ★등수·백분위는 안 바뀐다★ — 분모만 라운드에서 판으로 옮긴 단조 변환이다.
+     *   스나  그 라운드 ★첫 킬★ 을 낸 비율 — «판을 여는 힘»
+     *   라플  먼저 맞고 시작한 라운드에서 ★다음 킬★ 을 낸 비율 — «끊는 힘»
+     *
+     *   실측 — 끊으면 그 라운드 승률 49.7%, 못 끊으면 ★40.8%★.
+     *   옛 «게임영향력» 은 `influenceOf` 로 그대로 살아 있다 (`CLAUDE.md` 1-4).
      */
+    chance:
+      weapon === 1
+        ? (input.rounds > 0 && input.openRounds !== undefined
+            ? round1((input.openRounds / input.rounds) * 100)
+            : null)
+        : ((input.foeOpenRounds ?? 0) > 0
+            ? round1(((input.cutRounds ?? 0) / (input.foeOpenRounds as number)) * 100)
+            : null),
     /*
-     * ★평균 사망 시간★ (2026-09-16 사장님: «평균사망시간 1분27초 이런식으로 /
-     *   더 늦게 죽었을수록 축이 더 높게끔»).
+     * ★안전함(스나) / 크랙(라플)★ (2026-09-16 밤 사장님).
      *
-     *   라운드 시작부터 내가 죽기까지의 초를 평균낸다. ★클수록 좋다★ —
-     *   늦게 죽었다는 뜻이다. 죽은 적이 없으면 잴 수 없다 (`null`).
-     *   ⚠ 끝까지 산 라운드는 안 들어간다 — 이 값은 «죽을 때는 언제 죽었나» 다.
-     *
-     *   옛 ④ 선짤은 `input.firstKills / input.games` 였다 (`CLAUDE.md` 1-4).
-     *
-     * ⚠ ★2026-09-16 저녁 — 다시 «게임템포» 로 갈렸다★ (사장님:
-     *   «평균사망시간이라고 적지 말고 ★게임템포★ 라고 적고 죽거나 잡은(라운드마다의
-     *    첫 킬) 시간을 평균내서 그걸 게임템포 축으로 만든다 빨리 잡거나 죽을수록
-     *    게임템포가 빠른거야»).
-     *
-     *   ★왜 사망 시간만으로는 모자랐나★ — 죽은 라운드만 세니 끝까지 살아 3킬을
-     *   낸 라운드가 통째로 빠졌다. «잘한 라운드가 안 세어지는» 자리였다.
-     *   게임템포는 ★잡아도 센다★ — 내 첫 킬과 내 죽음 중 빠른 쪽이다.
-     *
-     *   ⚠ ★작을수록 빠르다★ — 줄 세울 때 부호를 뒤집는다 (`axisScoresOf`).
-     *     화면에 적는 값은 ★초 그대로★ 다. 뒤집은 값을 보여 주면 «-50초» 가 된다.
-     *   옛 사망 시간 셈은 `deathTimeValueV1()` 에 남아 있고 재료도 계속 쌓인다.
+     *   스나  그 라운드를 ★끝까지 산★ 비율.
+     *         ⚠ ★몇 초에 죽었나로 나누면 안 된다★ — 늦게 죽은 건 잘한 게 아니라
+     *           혼자 남아 버후 것이었다 (100초 넘어 죽은 라운드는 그때 0.5 대 2.0).
+     *           살았나 죽었나만 승률을 62.0% 대 43.5% 로 가른다.
+     *   라플  사장님이 칠하신 116칸에서 25초 안에 난 첫 킬 (판당)
      */
-    survival:
-      (input.tempoCount ?? 0) > 0
-        ? Math.round(((input.tempoSeconds ?? 0) / (input.tempoCount as number)) * 10) / 10
-        : null,
-    /* ★5번 축은 «교환율»★ (2026-09-15 사장님) — 옛 «연속킬» 은 스위치로 돌아간다 */
+    safe:
+      weapon === 1
+        ? (input.rounds > 0 && input.aliveRounds !== undefined
+            ? round1((input.aliveRounds / input.rounds) * 100)
+            : null)
+        : (input.games > 0 && input.crackKills !== undefined
+            ? round1((input.crackKills / input.games) * 100)
+            : null),
     /*
-     * ★⑤ 크랙 성공★ (2026-09-16 사장님: «라운드시작 25초 이내에 상대를 잡는 비율이
-     *   판수를 분모로»). 옛 ④ 선짤이 쓰던 셈 그대로다 — ④ 가 «평균 사망 시간» 으로
-     *   가면서 빈자리가 된 것을 사장님이 ⑤ 로 옮기셨다.
-     *   클랜 축 «크랙 성공» 과 같은 일을 사람 단위로 본다.
-     *
-     * ⚠ ★2026-09-16 저녁 — 「어디서」 가 붙었다★ (사장님: «내가 어디서 1분55초 내에
-     *   잡으면 크랙인지 표시해주면 그것만 샐 수 있어?» → 아티팩트로 116칸을 칠하심).
-     *   그 전에는 맵 어디서 잡았든 25초 안이면 셌다 — 그 옛 셈은 `crackValueV1()` 에
-     *   남아 있고 재료(`firstKills`)도 계속 쌓인다 (`CLAUDE.md` 1-4).
-     *   ★`crackKills` 가 아직 안 채워진 줄은 `null`★ 이다 — 0회라고 우기면
-     *   재집계 전 선수 전원이 꼴찌가 된다.
+     * ★스나차이 / 라플차이★ (2026-09-16 밤 사장님) —
+     *   그 선수가 뛴 경기 중 «우리 무기 쪽이 상대보다 앞선» 판의 비율.
+     *   재료는 클랜 육각의 점수표와 같다 (선짤 1 → 올킬 10).
+     *   ⚠ 아직 안 쌓는다 — 그때는 `null` 이다 (0% 라고 우기지 않는다).
      */
-    crack:
-      input.games > 0 && input.crackKills !== undefined
-        ? Math.round((input.crackKills / input.games) * 100) / 100
+    gap:
+      input.games > 0 && input.gapWinGames !== undefined
+        ? round1((input.gapWinGames / input.games) * 100)
         : null,
     outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
   }
@@ -401,6 +395,31 @@ export function deathTimeValueV1(input: PlayerHexInput): number | null {
     : null
 }
 
+/**
+ * ⚠ ★옛 ③ 게임영향력★ (2026-09-15~16) — 축에서 빠졌지만 셈은 살려 둔다.
+ *   재료(`evenKills`·`maxRoundKills`)도 계속 쌓이므로 언제든 되낼 수 있다 (`CLAUDE.md` 1-4).
+ */
+/**
+ * ⚠ ★옛 ④ 게임템포★ (2026-09-16 저녁) — 라운드마다 «먼저 겪은 일» 까지의 초.
+ *   축에서 빠졌지만 재료(`tempoSeconds`·`tempoCount`)는 계속 쌓인다.
+ *   ★작을수록 빠르다★ — 되살리면 부호 뒤집기도 같이 되살려야 한다.
+ */
+export function tempoValueV5(input: PlayerHexInput): number | null {
+  return (input.tempoCount ?? 0) > 0
+    ? Math.round(((input.tempoSeconds ?? 0) / (input.tempoCount as number)) * 10) / 10
+    : null
+}
+
+export function carryValueV4(input: PlayerHexInput): number | null {
+  if (INFLUENCE_BY_EVEN_KILLS) return influenceOf(input.evenKills ?? 0, input.rounds)
+  if (CARRY_BY_TOTAL_KILLS) {
+    return input.games > 0 ? Math.round((input.kills / input.games) * 100) / 100 : null
+  }
+  return input.games > 0 && (input.maxRoundKills ?? 0) > 0
+    ? influencePercentOf((input.maxRoundKills as number) / input.games, input.kills / input.games)
+    : null
+}
+
 export function crackValueV1(input: PlayerHexInput): number | null {
   return input.games > 0 ? Math.round((input.firstKills / input.games) * 100) / 100 : null
 }
@@ -429,12 +448,20 @@ export function axisScoresOf(
    *   백분위(`percentileOf`)는 «클수록 위» 로만 세므로, 여기서 한 번 뒤집어
    *   ★빠른 사람이 위★ 로 오게 한다. 화면 값은 안 건드린다 — 초 그대로 적는다.
    */
-  const v = axisValuesOf(input, weapon)
-  return { ...v, survival: v.survival === null ? null : -v.survival }
+  /*
+   * ⚠ ★2026-09-16 밤 — 부호를 뒤집지 않는다★.
+   *   전날 «게임템포» 는 작을수록 좋았지만, «안전함» 은 클수록 좋다.
+   *   여섯 축이 전부 «클수록 좋다» 가 됐으므로 적는 값과 잣대가 같다.
+   */
+  return axisValuesOf(input, weapon)
 }
 
-/** ★작을수록 좋은 축★ — 지금은 게임템포 하나뿐이다 (2026-09-16) */
-export const HEX_LOWER_IS_BETTER: readonly HexAxisKey[] = ['survival']
+/**
+ * ★작을수록 좋은 축★ — 지금은 ★하나도 없다★ (2026-09-16 밤).
+ *   전날 «게임템포» 가 유일했는데 «안전함» 으로 갈리면서 없어졌다.
+ *   표는 남긴다 — 그런 축이 다시 생기면 여기 넣으면 된다.
+ */
+export const HEX_LOWER_IS_BETTER: readonly HexAxisKey[] = []
 
 /** 백분위 — 나보다 낮은 사람의 비율 × 100. 오름차순 정렬된 배열을 받는다 */
 export function percentileOf(sorted: readonly number[], v: number | null): number | null {
@@ -561,7 +588,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
 
   /* ── ① 통합 분포 — 다섯 축은 무기를 안 가린다 ── */
   const uni: Record<HexAxisKey, number[]> = {
-    save: [], duel: [], carry: [], survival: [], crack: [], outnumbered: [],
+    save: [], duel: [], chance: [], safe: [], gap: [], outnumbered: [],
   }
   for (const p of players) {
     const w = mainWeaponOf(p)
@@ -585,7 +612,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
     }))
     /* ⚠ 2026-09-16 — 무기별로 견주는 축이 둘이 됐다 (싸움 · 평균 사망 시간) */
     /* ⚠ 2026-09-16 — 무기별로 견주는 축이 셋이 됐다 (싸움 · 평균 사망 시간 · 크랙 성공) */
-    const dist = { duel: [] as number[], survival: [] as number[], crack: [] as number[], winRate: [] as number[], kd: [] as number[] }
+    const dist = { duel: [] as number[], safe: [] as number[], gap: [] as number[], winRate: [] as number[], kd: [] as number[] }
     /*
      * ⚠ ★분포도 «잣대»(`sc`)로 만든다★ — 통합 분포(`uni`)가 이미 그렇게 한다.
      *
@@ -595,14 +622,14 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
      */
     for (const { p, sc, wr } of values) {
       if (sc.duel !== null) dist.duel.push(sc.duel)
-      if (sc.survival !== null) dist.survival.push(sc.survival)
-      if (sc.crack !== null) dist.crack.push(sc.crack)
+      if (sc.safe !== null) dist.safe.push(sc.safe)
+      if (sc.gap !== null) dist.gap.push(sc.gap)
       if (wr !== null) dist.winRate.push(wr)
       if (p.kdRate !== null && p.kdRate !== undefined) dist.kd.push(p.kdRate)
     }
     dist.duel.sort((a, b) => a - b)
-    dist.survival.sort((a, b) => a - b)
-    dist.crack.sort((a, b) => a - b)
+    dist.safe.sort((a, b) => a - b)
+    dist.gap.sort((a, b) => a - b)
     dist.winRate.sort((a, b) => a - b)
     dist.kd.sort((a, b) => a - b)
 
@@ -616,7 +643,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
         /* 무기별 축은 그 무기 분포로, 나머지는 통합 분포로 (2026-09-16) */
         /* 무기별 축은 그 무기 분포로, 나머지는 통합 분포로 (2026-09-16) */
         const scoped =
-          key === 'duel' ? dist.duel : key === 'survival' ? dist.survival : key === 'crack' ? dist.crack : null
+          key === 'duel' ? dist.duel : key === 'safe' ? dist.safe : key === 'gap' ? dist.gap : null
         const pct = percentileOf(scoped ?? uni[key], sc[key])
         axes[key] = { value: v[key], pct, rank: null, total: null }
         if (pct !== null) {
@@ -690,7 +717,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       leaguePlayerId: p.leaguePlayerId,
       weapon: null,
       weaponGames: Math.max(p.sniperGames, p.rifleGames),
-      axes: { save: empty(), duel: empty(), carry: empty(), survival: empty(), crack: empty(), outnumbered: empty() },
+      axes: { save: empty(), duel: empty(), chance: empty(), safe: empty(), gap: empty(), outnumbered: empty() },
       winRate: { value: (() => { const v = winRateOf(p); return v === null ? null : round1(v) })(), pct: null, rank: null, total: null },
       hex: null,
       tierFactor: tierFactorOf(p.tierGames),
@@ -719,7 +746,7 @@ export function foldPlayerHexV1(players: readonly PlayerHexInput[]): PlayerHexRe
     const pool = players.filter((p) => mainWeaponOf(p) === weapon)
     const values = pool.map((p) => ({ p, v: axisValuesOf(p, weapon), wr: p.games > 0 ? (p.wins / p.games) * 100 : null }))
     const dist: Record<HexAxisKey | 'winRate' | 'kd', number[]> = {
-      save: [], duel: [], carry: [], survival: [], crack: [], outnumbered: [], winRate: [], kd: [],
+      save: [], duel: [], chance: [], safe: [], gap: [], outnumbered: [], winRate: [], kd: [],
     }
     for (const { p, v, wr } of values) {
       for (const key of HEX_AXIS_KEYS) if (v[key] !== null) dist[key].push(v[key] as number)
@@ -791,7 +818,7 @@ export function foldPlayerHexV1(players: readonly PlayerHexInput[]): PlayerHexRe
       leaguePlayerId: p.leaguePlayerId,
       weapon: null,
       weaponGames: Math.max(p.sniperGames, p.rifleGames),
-      axes: { save: empty(), duel: empty(), carry: empty(), survival: empty(), crack: empty(), outnumbered: empty() },
+      axes: { save: empty(), duel: empty(), chance: empty(), safe: empty(), gap: empty(), outnumbered: empty() },
       winRate: { value: (() => { const v = winRateOf(p); return v === null ? null : round1(v) })(), pct: null, rank: null, total: null },
       hex: null,
       tierFactor: tierFactorOf(p.tierGames),

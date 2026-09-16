@@ -71,20 +71,20 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
      *   30킬 / 60라운드 = 라운드당 0.5회 → 50%.
      *   옛 기대값 — 60 (3킬을 «적 다섯 중 셋» 으로 본 판) · 그 전 — 10 (판당 킬)
      */
-    expect(v.carry).toBe(50)
+    expect(v.chance).toBe(50)
     /*
      * ★게임템포★ (2026-09-16 저녁 사장님) — 먼저 겪은 일까지의 초 합 ÷ 그 라운드 수.
      *   204초 / 6라운드 = 34초.
      * ⚠ 옛 기대값 — 87 (평균 사망 시간 261/3) · 그 전 — 2 (선짤 12회/6판)
      */
-    expect(v.survival).toBe(34)
+    expect(v.safe).toBe(34)
     /*
      * ⚠ ★5번 축이 «교환율» 에서 «크랙 성공» 으로 바뀌었다★ (2026-09-16 사장님:
      *   «빽어택 빼고 크랙성공 으로 바꿔 — 라운드시작 25초 이내에 상대를 잡는 비율이
      *    판수를 분모로»). ★그날 저녁에 «어디서» 가 붙었다★ — 칠한 구역 안 6회 / 6판 = 1회.
      *   옛 기대값 — 2 (구역을 안 보던 12회/6판) · 그 전 — 30 (교환율) · 그 전 — 1.5
      */
-    expect(v.crack).toBe(1)
+    expect(v.gap).toBe(1)
     expect(v.outnumbered).toBeCloseTo(55.6, 1)
   })
 
@@ -95,30 +95,30 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
    */
   it('★게임영향력 — 라운드당 1회가 100%★ (2026-09-15 사장님)', () => {
     /* 우위를 만든 킬을 라운드로 나눈다. 60라운드에 60번이면 꽉 찬다 */
-    expect(dayAxisValues(tally({ rounds: 60, evenKills: 0 })).carry).toBe(0)
-    expect(dayAxisValues(tally({ rounds: 60, evenKills: 15 })).carry).toBe(25)
-    expect(dayAxisValues(tally({ rounds: 60, evenKills: 60 })).carry).toBe(100)
+    expect(dayAxisValues(tally({ rounds: 60, evenKills: 0 })).chance).toBe(0)
+    expect(dayAxisValues(tally({ rounds: 60, evenKills: 15 })).chance).toBe(25)
+    expect(dayAxisValues(tally({ rounds: 60, evenKills: 60 })).chance).toBe(100)
     /* 라운드당 한 번을 넘겨도 100% 를 안 넘는다 */
-    expect(dayAxisValues(tally({ rounds: 60, evenKills: 90 })).carry).toBe(100)
+    expect(dayAxisValues(tally({ rounds: 60, evenKills: 90 })).chance).toBe(100)
     /* 라운드를 모르면 못 잰다 — 0 이라 우기지 않는다 */
-    expect(dayAxisValues(tally({ rounds: 0 })).carry).toBeNull()
+    expect(dayAxisValues(tally({ rounds: 0 })).chance).toBeNull()
   })
 
   it('★크랙 성공 — 칠한 구역 안 25초 첫 킬 ÷ 판수★ (2026-09-16 저녁 사장님)', () => {
-    expect(dayAxisValues(tally({ games: 6, crackKills: 12 })).crack).toBe(2)
+    expect(dayAxisValues(tally({ games: 6, crackKills: 12 })).gap).toBe(2)
     /* 기본 픽스처가 crackKills 6 을 들고 있으므로 명시로 0 을 덮어쓴다 */
-    expect(dayAxisValues({ ...tally({ games: 6 }), crackKills: 0 }).crack).toBe(0)
+    expect(dayAxisValues({ ...tally({ games: 6 }), crackKills: 0 }).gap).toBe(0)
     /* 한 판도 안 뛰었으면 잴 것이 없다 */
-    expect(dayAxisValues(tally({ games: 0, crackKills: 0 })).crack).toBeNull()
+    expect(dayAxisValues(tally({ games: 0, crackKills: 0 })).gap).toBeNull()
     /* 한 판 설명에서도 구역 안 첫 킬이 없으면 0 이다 */
-    expect(dayAxisValues({ ...tally(), crackKills: 0 }, FLAG_GATE_RAW).crack).toBe(0)
+    expect(dayAxisValues({ ...tally(), crackKills: 0 }, FLAG_GATE_RAW).gap).toBe(0)
     /*
      * ★재료가 아직 안 채워진 줄은 `null`★ — 0회라고 우기면 재집계 전 전원이 꼴찌가 된다.
      * 구역을 안 보던 옛 셈은 그대로 살아 있다 (`CLAUDE.md` 1-4).
      */
     const old = { ...tally({ games: 6, firstKills: 12 }) }
     delete (old as { crackKills?: number }).crackKills
-    expect(dayAxisValues(old).crack).toBeNull()
+    expect(dayAxisValues(old).gap).toBeNull()
     expect(crackScoreV1(old)).toBe(2)
   })
 
@@ -178,15 +178,15 @@ describe('dayAxisParts — «몇 번 중 몇 번»', () => {
 
   it('★게임템포는 분모가 「그 라운드 수」다★ (2026-09-16 저녁 사장님)', () => {
     const p = dayAxisParts(tally({ tempoSeconds: 204, tempoCount: 6 }))
-    expect(p.survival).toEqual({ numerator: 204, denominator: 6 })
+    expect(p.safe).toEqual({ numerator: 204, denominator: 6 })
   })
 
   it('★게임템포 — 204초를 여섯 라운드에 나누면 34초★', () => {
-    expect(dayAxisValues(tally({ tempoSeconds: 204, tempoCount: 6 })).survival).toBe(34)
+    expect(dayAxisValues(tally({ tempoSeconds: 204, tempoCount: 6 })).safe).toBe(34)
   })
 
   it('킬도 죽음도 없었으면 잴 수 없다 — 0 이라고 적지 않는다 (D-106)', () => {
-    expect(dayAxisValues(tally({ tempoSeconds: 0, tempoCount: 0 })).survival).toBeNull()
+    expect(dayAxisValues(tally({ tempoSeconds: 0, tempoCount: 0 })).safe).toBeNull()
   })
 
   /* 옛 ④ 셈은 그대로 살아 있다 (`CLAUDE.md` 1-4) */
@@ -253,11 +253,11 @@ describe('★선짤 잣대★ — 무기 기준값으로 나눈다 (2026-09-15 �
      *     것은 그대로다. 옛 기대값 87 (평균 사망 시간 261/3).
      */
     const withTempo = (t: FlagDayTally): FlagDayTally => ({ ...t, tempoSeconds: 204, tempoCount: 6 })
-    expect(dayAxisValues(withTempo(sniper)).survival).toBe(34)
-    expect(dayAxisValues(withTempo(rifle)).survival).toBe(34)
+    expect(dayAxisValues(withTempo(sniper)).safe).toBe(34)
+    expect(dayAxisValues(withTempo(rifle)).safe).toBe(34)
     /* 잣대도 값 그대로다 — 무기로 밀어 주지 않는다 */
-    expect(dayAxisScores(withTempo(sniper)).survival).toBe(
-      dayAxisScores(withTempo(rifle)).survival,
+    expect(dayAxisScores(withTempo(sniper)).safe).toBe(
+      dayAxisScores(withTempo(rifle)).safe,
     )
   })
 })

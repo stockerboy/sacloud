@@ -34,7 +34,10 @@ import { z } from 'zod'
 /** 여섯 축 — 순서를 바꾸지 않는다. 화면의 육각형이 이 차례로 그린다 */
 /* ⚠ ★2026-09-16 — ④ 가 `opening`(선짤) 에서 `survival`(평균 사망 시간) 로★ (사장님) */
 /* ⚠ 2026-09-16 — ⑤ 가 `burst`(백어택) 에서 `crack`(크랙 성공) 으로 (사장님) */
-export const FLAG_AXIS_ORDER = ['save', 'duel', 'carry', 'survival', 'crack', 'outnumbered'] as const
+/* ★2026-09-16 밤 — 개인 여섯이 통째로 갈렸다★ (사장님). 옛 차례는 `FLAG_AXIS_ORDER_V4` */
+export const FLAG_AXIS_ORDER = ['save', 'duel', 'chance', 'safe', 'gap', 'outnumbered'] as const
+/** ⚠ ★2026-09-16 저녁까지★. 지우지 않는다 */
+export const FLAG_AXIS_ORDER_V4 = ['save', 'duel', 'carry', 'survival', 'crack', 'outnumbered'] as const
 /** 2026-09-16 까지 쓰던 차례 — 지우지 않는다 (`CLAUDE.md` 1-4) */
 export const FLAG_AXIS_ORDER_V1 = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
 export type FlagAxisKey = (typeof FLAG_AXIS_ORDER)[number]
@@ -456,15 +459,15 @@ export function dayAxisParts(t: FlagDayTally): Record<FlagAxisKey, FlagAxisParts
     duel: { numerator: duelWon, denominator: duelWon + duelLost },
     /* ★캐리력의 «몇 번»은 그 최고를 낸 라운드 수★ 다 (2026-09-15 사장님) —
        화면이 «4킬 ×2» 로 적는다. 옛 기준일 때만 판당 킬의 분자·분모다 */
-    carry: INFLUENCE_BY_EVEN_KILLS
+    chance: INFLUENCE_BY_EVEN_KILLS
       ? { numerator: t.evenKills, denominator: t.rounds }
       : CARRY_BY_TOTAL_KILLS
         ? { numerator: t.kill, denominator: t.games }
         : { numerator: t.maxRoundTimes, denominator: t.maxRoundKills },
     /* ★게임템포★ — 먼저 겪은 일까지의 초 합 ÷ 그 라운드 수 (2026-09-16 저녁) */
-    survival: { numerator: t.tempoSeconds ?? 0, denominator: t.tempoCount ?? 0 },
+    safe: { numerator: t.tempoSeconds ?? 0, denominator: t.tempoCount ?? 0 },
     /* ⑤ ★크랙 성공★ — 25초 안 첫 킬 ÷ 판수 (2026-09-16 사장님) */
-    crack: { numerator: t.crackKills ?? null, denominator: t.games },
+    gap: { numerator: t.crackKills ?? null, denominator: t.games },
     outnumbered: { numerator: t.outWon, denominator: t.outRounds },
   }
 }
@@ -507,7 +510,7 @@ export function dayAxisValues(
      *
      * 줄 세우는 잣대는 여기가 아니라 `carryScoreOf` 다 — 동점을 가르는 꼬리가 붙는다.
      */
-    carry: INFLUENCE_BY_EVEN_KILLS
+    chance: INFLUENCE_BY_EVEN_KILLS
       ? influenceOf(t.evenKills, t.rounds)
       : CARRY_BY_TOTAL_KILLS
         ? t.games > 0
@@ -527,13 +530,13 @@ export function dayAxisValues(
      *   지금은 캐리력(판당 킬)과 ★같은 단위★ 라 나란히 읽힌다.
      *   ★백분위는 그대로다★ — 순위를 가리는 잣대는 안 바뀐다 (단조 변환이다).
      */
-    survival: survivalScoreOf(t),
+    safe: survivalScoreOf(t),
     /*
      * ★5번 축은 «크랙 성공»★ (2026-09-16 사장님) — 라운드 시작 25초 안에 첫 킬을
      * 낸 횟수 ÷ 판수. 옛 «교환율» 셈은 아래 주석과 tally 에 그대로 남아 있다.
      */
     /* ★구역 안 25초 첫 킬 ÷ 판수★ (2026-09-16 저녁). 옛 셈은 `crackScoreV1` 에 남겼다 */
-    crack:
+    gap:
       t.games > 0 && t.crackKills !== undefined
         ? Math.round((t.crackKills / t.games) * 100) / 100
         : null,
@@ -669,11 +672,12 @@ export function dayAxisScores(
   gate: FlagAxisGate = FLAG_GATE_RANKED,
 ): Record<FlagAxisKey, number | null> {
   const values = dayAxisValues(t, gate)
-  return {
-    ...values,
-    carry: carryScoreOf(t),
-    survival: values.survival,
-  }
+  /*
+   * ⚠ ★2026-09-16 밤 — 적는 값과 잣대가 다른 축이 없어졌다★ (사장님이 여섯을 갈아 끼우심).
+   *   옛 «캐리력» · «선짤» 의 보정(`carryScoreOf` · `openingScoreOf`)은
+   *   함수로 그대로 남아 있다 — 되살리면 여기서 다시 부르면 된다 (`CLAUDE.md` 1-4).
+   */
+  return { ...values }
 }
 
 /**

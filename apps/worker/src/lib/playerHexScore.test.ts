@@ -62,7 +62,7 @@ describe('축 원값', () => {
      *   이 픽스처에는 죽은 시각 재료가 없으므로 ★null★ 이다 — 0 이라 우기지 않는다.
      *   옛 기대값은 2 였다 (선짤 40회/20판).
      */
-    expect(v.survival).toBeNull()
+    expect(v.safe).toBeNull()
     /*
      * ⚠ ★5번 축이 «크랙 성공» 이 됐다★ (2026-09-16 사장님) — 칠한 구역 안 25초 첫 킬 ÷ 판수.
      *
@@ -71,12 +71,23 @@ describe('축 원값', () => {
      *   이 픽스처에는 `crackKills` 가 없으므로 ★null★ 이다 — 0회라고 우기지 않는다.
      *   옛 기대값 — 2 (구역을 안 보던 40회/20판) · 그 전 — null (교환율) · 그 전 — 1.5
      */
-    expect(v.crack).toBeNull()
+    expect(v.gap).toBeNull()
     /* 구역을 안 보던 옛 셈은 그대로 살아 있다 (`CLAUDE.md` 1-4) */
     expect(crackValueV1(player({ leaguePlayerId: 'a', games: 20, firstKills: 40 }))).toBe(2)
-    expect(axisValuesOf(player({ leaguePlayerId: 'a', games: 20, crackKills: 9 }), 0).crack).toBe(0.45)
-    /* ★3번 축은 «우위를 만든 킬 ÷ 라운드»★ — 재료가 없으면 0 이다 (라운드는 240 이 있다) */
-    expect(v.carry).toBe(0)
+    /*
+     * ⚠ ★2026-09-16 밤 — «크랙» 이 라플 ★안전함★ 자리로 옮겨 갔다★ (사장님).
+     *   `gap` 은 이제 «스나차이 / 라플차이» 다 — 앞선 판 비율.
+     *   9회 / 20판 = 45% 가 ★라플 안전함★ 으로 간다.
+     */
+    expect(axisValuesOf(player({ leaguePlayerId: 'a', games: 20, crackKills: 9 }), 0).safe).toBe(45)
+    /*
+     * ⚠ ★2026-09-16 밤 — ③가 «기회창출 / 기회차단» 이 됐다★ (사장님).
+     *   이 픽스처는 라플(weapon 0)라 «기회차단» 이고, 그 재료(`foeOpenRounds`)가
+     *   없으므로 ★null★ 이다 — 0% 라고 우기지 않는다.
+     *   옛 기대값 — 0 (게임영향력 «우위를 만든 킬 ÷ 라운드») · 그 전 — 8 (판당 킬)
+     *   옛 셈은 `carryValueV4()` 에 그대로 살아 있다.
+     */
+    expect(v.chance).toBeNull()
     expect(v.outnumbered).toBeCloseTo(33.3)
   })
 

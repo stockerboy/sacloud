@@ -36,7 +36,7 @@ function radiusOf(point: { x: number; y: number }): number {
 
 /** 축 하나를 만든다 — 검사하는 값만 넘긴다 */
 function axis(over: Partial<PlayerTraitAxis> = {}): PlayerTraitAxis {
-  return { key: 'carry', label: '게임영향력', percentile: null, pending: 'rounds', ...over }
+  return { key: 'chance', label: '게임영향력', percentile: null, pending: 'rounds', ...over }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -275,12 +275,12 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
     const axes = [
       axis({ key: 'save', pending: 'rounds' }),
       axis({ key: 'duel', percentile: 64.8, pending: null }),
-      axis({ key: 'carry', percentile: 71.2, pending: null }),
-      axis({ key: 'survival', label: '미정', pending: 'undecided' }),
+      axis({ key: 'chance', percentile: 71.2, pending: null }),
+      axis({ key: 'safe', label: '미정', pending: 'undecided' }),
       // 5번 축은 2026-09-02 에 `finish` → `burst` 로 바뀌었다 (D-260).
       // 이 테스트가 보는 것은 `pendingSummary` 의 중복 제거이지 축 자체가 아니라,
       // 키만 옮기고 사유(`position`)는 그대로 둔다 — 그 사유도 지우지 않았다
-      axis({ key: 'crack', pending: 'position' }),
+      axis({ key: 'gap', pending: 'position' }),
       axis({ key: 'outnumbered', pending: 'rounds' }),
     ]
     // `라운드 복원 필요` 가 두 축이지만 문구는 한 번만 나온다.
@@ -295,7 +295,7 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
 
   it('처음 나온 순서대로 이유를 잇는다', () => {
     const axes = [
-      axis({ key: 'crack', pending: 'position' }),
+      axis({ key: 'gap', pending: 'position' }),
       axis({ key: 'save', pending: 'rounds' }),
       axis({ key: 'duel', pending: 'battlelog' }),
       axis({ key: 'save', pending: 'rounds' }),
@@ -309,7 +309,7 @@ describe('pendingSummary — 아래 한 줄 요약', () => {
     // 재료를 기다리는 중이 아니라 **아직 정하지 않은** 축이다. 섞어 세면 "곧 채워진다" 로 읽힌다
     const axes = [
       axis({ key: 'save', pending: 'rounds' }),
-      axis({ key: 'survival', label: '미정', pending: 'undecided' }),
+      axis({ key: 'safe', label: '미정', pending: 'undecided' }),
     ]
     expect(pendingSummary(axes)).toBe('측정중 1항목 — 라운드 복원 필요')
     // 빈 자리 하나만 남았으면 아무 말도 하지 않는다 — 꼭지점의 `미정` 이 이미 말한다

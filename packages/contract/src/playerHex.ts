@@ -14,15 +14,15 @@
  */
 import { z } from 'zod'
 import { Count, Percent } from './common'
-import { TRAIT_AXIS_KEYS, TRAIT_AXIS_LABEL, type TraitAxisKey } from './traits'
+import { TRAIT_AXIS_KEYS, TRAIT_AXIS_LABEL, type TraitAxisAnyKey, type TraitAxisKey } from './traits'
 import { ROUND_FULL_SECONDS, mmss } from './clanTraitsV2'
 
 export const PLAYER_HEX_AXIS_ORDER: readonly TraitAxisKey[] = [
   'save',
   'duel',
-  'carry',
-  'survival',
-  'crack',
+  'chance',
+  'safe',
+  'gap',
   'outnumbered',
 ]
 
@@ -40,8 +40,8 @@ export const PLAYER_HEX_AXIS_ORDER: readonly TraitAxisKey[] = [
  */
 export const PLAYER_HEX_WEAPON_POOL_AXIS_KEYS: readonly TraitAxisKey[] = [
   'duel',
-  'survival',
-  'crack',
+  'safe',
+  'gap',
 ]
 
 /**
@@ -80,11 +80,12 @@ export function playerHexBadgeRank(key: string): number {
  *
  *   옛 이름은 아래 `PLAYER_HEX_BADGE_V1` 에 남긴다 (`CLAUDE.md` 1-4).
  */
-export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
+export const PLAYER_HEX_BADGE: Partial<Record<TraitAxisAnyKey, { sniper: string; rifle: string }>> = {
   save: { sniper: '세이브 머신', rifle: '세이브 머신' },
   /* ⚠ 2026-09-15 밤 — 축 이름이 «샷싸움» → «라이플화력» 이 되어 배지도 따라간다 (사장님) */
   duel: { sniper: '롱 마스터', rifle: '라이플화력' },
-  carry: { sniper: '게임영향력', rifle: '게임영향력' },
+  /* ★2026-09-16 밤 — 새 이름 셋★ (사장님). 배지도 축 이름을 그대로 쓴다 */
+  chance: { sniper: '기회창출', rifle: '기회차단' },
   /* 사장님이 «선취점» 을 «선짤» 로 못 박으셨다 (2026-09-02) — 배지만 영어로 남아 있었다 */
   /*
    * ⚠ ★2026-09-16 — 또 축 이름을 안 따라오고 있었다★ (같은 함정 두 번째다).
@@ -93,14 +94,14 @@ export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: str
    *   ★새 별명을 지어내지 않는다★ — `outnumbered` 처럼 축 이름을 그대로 쓴다.
    */
   /* ⚠ 2026-09-16 저녁 — ④ 가 «게임템포» 가 됐다 (사장님) */
-  survival: { sniper: '게임템포', rifle: '게임템포' },
-  crack: { sniper: '크랙 성공', rifle: '크랙 성공' },
+  safe: { sniper: '안전함', rifle: '크랙' },
+  gap: { sniper: '스나차이', rifle: '라플차이' },
   /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
 
 /** ★2026-09-15 밤까지 쓰던 배지 이름★ — 축이 갈리기 전 판이다. 지우지 않는다 */
-export const PLAYER_HEX_BADGE_V1: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
+export const PLAYER_HEX_BADGE_V1: Partial<Record<TraitAxisAnyKey, { sniper: string; rifle: string }>> = {
   save: { sniper: '세이브 머신', rifle: '세이브 머신' },
   duel: { sniper: '롱 마스터', rifle: '샷터' },
   carry: { sniper: '캐리 머신', rifle: '캐리 머신' },
@@ -121,18 +122,21 @@ export const PLAYER_HEX_BADGE_V1: Record<TraitAxisKey, { sniper: string; rifle: 
  *   ```
  *   옛 설명은 아래 `PLAYER_HEX_DESC_V1` 에 남긴다.
  */
-export const PLAYER_HEX_DESC: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
+export const PLAYER_HEX_DESC: Partial<Record<TraitAxisAnyKey, { sniper: string; rifle: string }>> = {
   save: { sniper: '혼자 남아 이긴 횟수 (4회면 가득)', rifle: '혼자 남아 이긴 횟수 (4회면 가득)' },
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
-  carry: { sniper: '수가 안 밀릴 때 낸 킬 (라운드당)', rifle: '수가 안 밀릴 때 낸 킬 (라운드당)' },
+  /* ★2026-09-16 밤★ (사장님) — 스나는 판을 열고, 라플은 열린 판을 끊는다 */
+  chance: { sniper: '그 라운드 첫 킬을 낸 비율', rifle: '먼저 맞고 시작한 라운드에서 되받은 비율' },
   /* ⚠ 2026-09-16 — ④⑤ 가 갈리면서 설명도 따라간다 (배지와 같은 함정이었다) */
-  survival: { sniper: '잡거나 죽기까지 걸린 시간 (짧을수록 빠르다)', rifle: '잡거나 죽기까지 걸린 시간 (짧을수록 빠르다)' },
-  crack: { sniper: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)', rifle: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)' },
+  /* ★안전함★ — 몇 초에 죽었나는 안 본다. 실측상 살면 62.0% · 죽으면 43.5% 다 */
+  safe: { sniper: '그 라운드를 끝까지 산 비율', rifle: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)' },
+  /* ★스나차이 · 라플차이★ — 팀의 무기별 점수가 상대보다 앞선 경기 비율 */
+  gap: { sniper: '상대 스나보다 점수가 앞선 경기 비율', rifle: '상대 라플보다 점수가 앞선 경기 비율' },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
 }
 
 /** ★2026-09-15 밤까지 쓰던 설명★ — 축이 갈리기 전 판이다. 지우지 않는다 */
-export const PLAYER_HEX_DESC_V1: Record<TraitAxisKey, { sniper: string; rifle: string }> = {
+export const PLAYER_HEX_DESC_V1: Partial<Record<TraitAxisAnyKey, { sniper: string; rifle: string }>> = {
   save: { sniper: '혼자 남은 라운드를 이긴 비율', rifle: '혼자 남은 라운드를 이긴 비율' },
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '한 판 평균 킬', rifle: '한 판 평균 킬' },
