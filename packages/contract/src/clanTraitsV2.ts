@@ -459,7 +459,7 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    * ⚠ ★2026-09-15 밤 · v3.0 → v3.1★ — 라이플화력이 ★라운드가 아니라 킬★ 을 나눠 갖는다.
    *   사장님: *"0퍼만 아니면 된다는 얘기를 한거야"* — «0%» 가 뜨는 경우를 8.7% → 0.1% 로.
    */
-  formulaVersion: 'clan-hex-v4',
+  formulaVersion: 'clan-hex-v4.1',
 }
 
 /**

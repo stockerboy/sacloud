@@ -125,4 +125,4 @@
  *   ⚠ 판을 올리면 ★재계산 전까지 육각이 통째로 사라진다.★ 그래서 가지로 VPS 만
  *     먼저 올리고 재계산이 끝난 뒤 main 에 병합한다.
  */
-export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v4'
+export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v4.1'

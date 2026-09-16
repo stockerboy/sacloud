@@ -610,6 +610,29 @@ export interface FirstBloodTally {
  *   조건에 걸리는 라운드가 **전체의 28.2%** 라 클랜 95곳이 10라운드를 넘긴다
  *   (평균 179라운드). 게임템포(레드 라운드 중 3명 지운 것)보다 넉넉하다.
  */
+/**
+ * ★죽은 차례를 몇 번째까지 «아무것도 못 했다» 로 볼 것인가★
+ *
+ *   3 — 2026-09-15 판 (1~3번째. 4·5번째는 뺀다)
+ *   ★4★ — 2026-09-16 사장님 «1,2,3,4번째로 1킬도못하고 죽거나»
+ *
+ * 넓히면 걸리는 라운드가 63.4% → 70.0% 로 는다 (6,000판 실측).
+ */
+export const RIFLE_POWER_DEATH_ORDER_V1 = 3
+export const RIFLE_POWER_DEATH_ORDER_V2 = 4
+
+/**
+ * ★킬로 나눌 것인가, 라운드로 나눌 것인가★
+ *
+ *   `true`  — 2026-09-15 판. 그 라운드들의 ★킬★ 을 나눠 갖는다
+ *   ★`false`★ — 2026-09-16 사장님 «라플끼리 딴 라운드를 전부 뽑아서 몇대몇»
+ *
+ * 킬로 나누면 모든 클랜이 48~52% 로 몰려 «둘이 별로 차이가 안 난다» (퍼짐 1.7).
+ * 라운드로 나누면 40.9~57.6 으로 벌어진다 (퍼짐 3.5) — 실측 6,000판.
+ * 0% 가 되는 클랜은 ★한 곳도 없다★ (1~4 로 넓힌 덕이다).
+ */
+export const RIFLE_POWER_BY_KILLS = false
+
 export interface RiflePowerTally {
   /**
    * 조건에 걸린 라운드에서 **양 팀이 낸 킬의 합** (분모).
@@ -1220,7 +1243,7 @@ function tallyFor(input: {
    * 「1,2,3번째」 의 경계. 4·5번째는 제외다 (사장님이 괄호로 못 박음).
    * ★죽지 않은 스나는 이 경계를 안 탄다★ — 2026-09-15 밤에 «살아있는데» 가 더해졌다.
    */
-  const RIFLE_POWER_DEATH_ORDER = 3
+  const RIFLE_POWER_DEATH_ORDER = RIFLE_POWER_DEATH_ORDER_V2
 
   const isOurs = (usn: string): boolean => input.roster.teamOf.get(usn) === input.teamNo
 
@@ -1339,13 +1362,23 @@ function tallyFor(input: {
         /* ★한쪽만 걸려도 분모★ — 그래야 양 팀 분모가 같아지고 합이 100% 가 된다 */
         if (sniperIdle(ourSnipers, true) || sniperIdle(foeSniperSet, false)) {
           riflePower.situationRounds = (riflePower.situationRounds ?? 0) + 1
-          /*
-           * ★라운드가 아니라 «킬» 을 나눠 갖는다★ (2026-09-15 밤 · ⑥안).
-           * 라운드로 나누면 그런 라운드를 다 진 팀이 0% 가 된다 (한 판에 8.7%).
-           */
-          for (const kill of kills) {
+          if (RIFLE_POWER_BY_KILLS) {
+            /*
+             * ⚠ ★2026-09-15 판★ — 그 라운드들의 «킬» 을 나눠 갖는다.
+             *   0% 를 막으려던 것인데, 모든 클랜이 48~52% 로 몰려 버렸다.
+             */
+            for (const kill of kills) {
+              riflePower.rounds += 1
+              if (isOurs(kill.killer)) riflePower.won += 1
+            }
+          } else {
+            /*
+             * ★2026-09-16 사장님★ — «라플끼리 딴 라운드를 전부 뽑아서 몇 대 몇».
+             *   라운드를 나눠 갖는다. 1~4 로 넓힌 덕에 0% 가 되는 클랜이 없다 (실측).
+             *   ⚠ `rounds` 칸 이름은 옛것이다 — 지금은 «라운드 수» 가 맞다.
+             */
             riflePower.rounds += 1
-            if (isOurs(kill.killer)) riflePower.won += 1
+            if (won === true) riflePower.won += 1
           }
         }
       }
