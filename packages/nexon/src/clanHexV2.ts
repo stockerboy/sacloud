@@ -652,6 +652,18 @@ export const RIFLE_POWER_DEATH_ORDER_V2 = 4
  */
 export const RIFLE_POWER_BY_KILLS = false
 
+/**
+ * ★무엇을 나눠 갖나★ (2026-09-16 사장님 «어 좋다 그렇게 ㄱㄱ»)
+ *
+ *   `'rifleKills'` — ★지금★. 그 라운드 ★양 팀 라플이 낸 킬★ 중 우리 몫
+ *   `'rounds'`     — 2026-09-16 낮. 그 라운드를 땄나
+ *   `'allKills'`   — 2026-09-15 밤. 그 라운드 전체 킬 중 우리 몫
+ *
+ * 라운드 승패로 세면 «스나가 못한 라운드» 는 대체로 지므로 ★라플이 잘해도 낮게★ 나온다.
+ * 사장님이 «라플들은 잘했는데 스나가 못해서 진 판» 이 안 보인다고 짚으신 것이 이것이다.
+ */
+export const RIFLE_POWER_UNIT: 'rifleKills' | 'rounds' | 'allKills' = 'rifleKills'
+
 export interface RiflePowerTally {
   /**
    * 조건에 걸린 라운드에서 **양 팀이 낸 킬의 합** (분모).
@@ -1402,10 +1414,24 @@ function tallyFor(input: {
         /* ★한쪽만 걸려도 분모★ — 그래야 양 팀 분모가 같아지고 합이 100% 가 된다 */
         if (sniperIdle(ourSnipers, true) || sniperIdle(foeSniperSet, false)) {
           riflePower.situationRounds = (riflePower.situationRounds ?? 0) + 1
-          if (RIFLE_POWER_BY_KILLS) {
+          if (RIFLE_POWER_UNIT === 'rifleKills') {
             /*
-             * ⚠ ★2026-09-15 판★ — 그 라운드들의 «킬» 을 나눠 갖는다.
-             *   0% 를 막으려던 것인데, 모든 클랜이 48~52% 로 몰려 버렸다.
+             * ★지금 — 양 팀 라플이 낸 킬 중 우리 몫★ (2026-09-16 사장님).
+             *
+             *   스나가 아무것도 못 한 라운드를 고른 것이므로 ★스나 킬은 안 센다★ —
+             *   섞으면 상대 스나의 활약이 «우리 라플이 못했다» 로 둔갑한다.
+             *   ⚠ `rounds` 칸이 담는 것은 ★라플 킬 수★ 다 (칸 이름은 옛것이다).
+             */
+            for (const kill of kills) {
+              if (input.weaponByPlayer.get(kill.killer) !== 0) continue
+              riflePower.rounds += 1
+              if (isOurs(kill.killer)) riflePower.won += 1
+            }
+          } else if (RIFLE_POWER_UNIT === 'allKills') {
+            /*
+             * ⚠ ★2026-09-15 판★ — 그 라운드들의 «모든 킬» 을 나눠 갖는다.
+             *   0% 를 막으려던 것인데, 모든 클랜이 48~52% 로 몰렸고
+             *   상대 스나의 킬까지 섞여 라플 실력이 흐려졌다.
              */
             for (const kill of kills) {
               riflePower.rounds += 1
@@ -1413,9 +1439,9 @@ function tallyFor(input: {
             }
           } else {
             /*
-             * ★2026-09-16 사장님★ — «라플끼리 딴 라운드를 전부 뽑아서 몇 대 몇».
-             *   라운드를 나눠 갖는다. 1~4 로 넓힌 덕에 0% 가 되는 클랜이 없다 (실측).
-             *   ⚠ `rounds` 칸 이름은 옛것이다 — 지금은 «라운드 수» 가 맞다.
+             * ⚠ ★2026-09-16 낮 판★ — 라운드를 나눠 갖는다 («몇 대 몇»).
+             *   ★스나가 못한 라운드는 대체로 지므로 라플이 잘해도 낮게 나왔다★ —
+             *   사장님이 바로 물리셨다.
              */
             riflePower.rounds += 1
             if (won === true) riflePower.won += 1
