@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   ClanCardV3,
@@ -14,6 +15,7 @@ import {
   strengthAxes,
 } from '@sacloud/ui'
 import { leagueScreen } from '@sacloud/contract'
+import { PlayerRankTable } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -145,7 +147,16 @@ export function HomeFeatureExample({
     staleTime: 10 * 60 * 1000,
   })
 
-  const topClanSlug = clans.data?.data[0]?.clan.slug ?? ''
+  /*
+   * ★클랜 예시는 고정한다★ (2026-09-16 사장님: «이거 tsarntc 클랜 걸어 여기다가»).
+   *
+   *   1위는 날마다 바뀌는데, 마침 오늘 1위는 육각 재계산 중이라 여섯 축이 전부
+   *   «측정중» 이고 주요멤버가 «없음» 이었다. 예시로 보여 줄 화면이 아니다.
+   *   ★없는 리그에서는 1위로 떨어진다★ — 그 리그에 이 클랜이 없을 수 있다.
+   */
+  const PINNED_CLAN: Readonly<Record<string, string>> = { supply: 'tsarntc' }
+  const pinned = PINNED_CLAN[leagueSlug] ?? null
+  const topClanSlug = pinned ?? clans.data?.data[0]?.clan.slug ?? ''
   const clan = useQuery({
     queryKey: ['home-ex-clan', leagueSlug, topClanSlug],
     queryFn: () => apiGet('leagueClanShow', { params: { leagueSlug, clanSlug: topClanSlug } }),
@@ -153,8 +164,38 @@ export function HomeFeatureExample({
     staleTime: 10 * 60 * 1000,
   })
 
-  /* 경기 상세 — 스코어보드와 경기 육각이 여기 있다 */
-  const topMatch = matches.data?.data[0] ?? null
+  /*
+   * ★예시로 쓸 경기 한 판★ (2026-09-16 사장님: «경기 분석이 완료된 경기를 가지고와
+   *   예시니까 그냥 ★라운드 가장 많이한★ ex 9:9 이런 라운드 가져와서 걸고»).
+   *
+   *   여태는 ★가장 최근★ 판을 그냥 집었다. 그래서 «경기분석중» 이 뜨는 판이 걸렸다 —
+   *   배틀로그가 아직 안 들어와 육각을 못 그리는 경기다. 예시로는 쓸모가 없다.
+   *
+   *   이제 ★라운드 합이 가장 큰 판★ 을 고른다 (9:9 면 18). 접전일수록 스코어보드가
+   *   꽉 차고 볼 게 많다. 라운드를 모르는 판은 아예 안 고른다 — 지어내지 않는다.
+   */
+  const ranked = (() => {
+    const list = [...(matches.data?.data ?? [])]
+    const roundsOf = (m: (typeof list)[number]) =>
+      m.red_rounds === null || m.blue_rounds === null ? -1 : m.red_rounds + m.blue_rounds
+    /* 라운드 많은 순 — 접전일수록 스코어보드가 꽉 차고 볼 게 많다 */
+    list.sort((a, b) => roundsOf(b) - roundsOf(a))
+    return list
+  })()
+  /*
+   * ★기록이 빈 판은 건너뛴다★ — 라운드는 많은데 선수 기록이 아직 안 들어온 판이 있다.
+   *   목록만 봐서는 알 수 없어서(인원수가 전부 10 으로 찍힌다) 상세를 받아 보고 옮긴다.
+   *   ★다섯 번까지만★ 시도한다 — 그 이상은 그날 자료가 통째로 덜 들어온 것이다.
+   */
+  const [tryIdx, setTryIdx] = useState(0)
+  /*
+   * ★다 훑어도 비면 가장 최근 판으로 되돌아간다★ (2026-09-16 실측).
+   *   라운드가 가장 많은 판들이 오히려 ★아직 기록이 안 들어온 최신 경기★ 인 경우가 있다.
+   *   빈 칸을 보여 주느니 «라운드는 좀 적지만 제대로 찬» 판이 낫다.
+   */
+  const TRY_LIMIT = 8
+  const fallback = matches.data?.data[0] ?? null
+  const topMatch = tryIdx >= TRY_LIMIT ? fallback : (ranked[tryIdx] ?? fallback)
   const matchDetail = useQuery({
     queryKey: ['home-ex-match', leagueSlug, topMatch?.id ?? ''],
     queryFn: () =>
@@ -165,6 +206,20 @@ export function HomeFeatureExample({
     enabled: ready && source === 'match' && topMatch !== null,
     staleTime: 10 * 60 * 1000,
   })
+
+  /* 받아 보니 비었으면 다음 후보로 — 그리기 전에 옮긴다 */
+  const md = matchDetail.data?.data ?? null
+  useEffect(() => {
+    if (md === null) return
+    /*
+     * ★«분석 완료» 는 둘 다 있어야 한다★ (2026-09-16 사장님: «경기 분석이 완료된
+     *   경기를 가지고와»). 명단만 있고 육각이 없으면 화면에 «경기분석중» 이 뜬다.
+     */
+    const empty =
+      (md.red_stats.length === 0 && md.blue_stats.length === 0) ||
+      (md.red_hexagon_v2 === null && md.blue_hexagon_v2 === null)
+    if (empty && tryIdx < TRY_LIMIT) setTryIdx((i) => i + 1)
+  }, [md, tryIdx, ranked.length])
 
   const busy =
     (source === 'player' && (players.isPending || player.isPending)) ||
@@ -250,25 +305,25 @@ export function HomeFeatureExample({
       )
     }
 
-    /* 개인 랭킹 — 실제 줄 셋 */
+    /*
+     * ★개인 랭킹 — 실제 랭킹 표 그대로★ (2026-09-16 사장님: «개인랭킹 화면을 이걸 넣어야지»).
+     *   내가 만든 세 줄(순위·마크·이름·승률)을 걷어냈다. 진짜 표는 클랜명·승패·평균킬까지
+     *   나오고, 순위 색도 «상위 몇 %» 로 칠해진다 — 그게 사장님이 보여 주신 화면이다.
+     */
     return wrap(
       <>
-        <Cap>지금 이 리그 1~3위</Cap>
-        <div className="flex flex-col gap-[9px]">
-          {rows.slice(0, 3).map((r) => (
-            <div key={r.league_player_id} className="flex items-center gap-[9px]">
-              <span className="num w-[20px] shrink-0 text-[13px] font-bold" style={{ color: tone }}>
-                {r.rank}
-              </span>
-              {r.clan ? <MarkCircle clan={r.clan} size={17} /> : null}
-              <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--v2-text-strong)]">
-                {r.player.name}
-              </span>
-              <span className="num shrink-0 text-[12.5px] text-[var(--v2-text-dim)]">
-                {pct(r.win_rate)}
-              </span>
-            </div>
-          ))}
+        <Cap>지금 이 리그 1~3위 — 실제 개인랭킹 화면 그대로입니다</Cap>
+        <div className="home-ex-draw">
+          <PlayerRankTable
+            leagueSlug={leagueSlug}
+            weapon="all"
+            rows={rows.slice(0, 3)}
+            columns={leagueScreen(leagueSlug).playerColumns}
+            /* 소속 클랜명은 닉네임 아래 줄 — 랭킹 화면과 같은 배치다 */
+            clanName="line"
+            rankTone
+            rankTotal={players.data?.metadata.total ?? null}
+          />
         </div>
       </>,
     )
@@ -276,13 +331,11 @@ export function HomeFeatureExample({
 
   /* ══ 클랜 분석 — 클랜 머리 카드 그대로 ═══════════════════ */
   if (source === 'clan') {
-    const top = clans.data?.data[0]
     const detail = clan.data?.data ?? null
-    if (!top) return wrap(<Empty what="쌓인 클랜 기록" />)
     if (!detail) return wrap(<Empty what="클랜 기록" />)
     return wrap(
       <>
-        <Cap>1위 클랜의 기록실 — 실제 클랜 화면 그대로입니다</Cap>
+        <Cap>{detail.clan.name} 의 기록실 — 실제 클랜 화면 그대로입니다</Cap>
         <div className="home-ex-draw">
           <ClanCardV3
             data={detail}
@@ -332,8 +385,12 @@ export function HomeFeatureExample({
   }
 
   /* ══ 경기 분석 — 스코어보드 + 경기 육각 그대로 ══════════ */
-  const detail = matchDetail.data?.data ?? null
+  const detail = md
   if (!topMatch || !detail) return wrap(<Empty what="분석된 경기" />)
+  /* 다섯 번을 옮겨도 비어 있으면 그날 자료가 덜 들어온 것이다 — 그렇게 적는다 */
+  if (detail.red_stats.length === 0 && detail.blue_stats.length === 0) {
+    return wrap(<Empty what="기록이 들어온 경기" />)
+  }
 
   /*
    * 육각은 ★승패★ 로 넘긴다 — 색이 승패를 뜻하기 때문이다 (`MatchHexagonV3` 주석).

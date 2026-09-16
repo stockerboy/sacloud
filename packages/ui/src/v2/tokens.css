@@ -996,9 +996,33 @@
 
 /* ── 스코어보드 폰 폭 (2026-09-11) — 닉네임 칸이 0 으로 눌리던 것 ── */
 @media (max-width: 767px) {
-  /* 2026-09-12 사장님: 마지막 칸이 MVP(★) 다 — 20px 만 준다 */
-  .v3-score-row { grid-template-columns: minmax(0, 1fr) 74px 48px 18px !important; gap: 6px !important; padding: 8px 10px !important; }
-  .v3-score-row--saves { grid-template-columns: minmax(0, 1fr) 74px 32px 46px 18px !important; }
+  /*
+   * ⚠ ★2026-09-16 — 칸을 더 줄여 닉네임에게 폭을 넘겼다★ (사장님:
+   *   «닉네임이 안보이잖아 글씨 크기들을 좀 줄여서 마크 닉네임 세이브 킬뎃 mvp 표시가
+   *    다 보이게해 · 모든 경기카드를»).
+   *
+   *   옛 값 — 74px(K/D/A) · 32px(세이브) · 46px(포지션) · 18px(MVP) · 틈 6 · 여백 10
+   *   지금 — 60 · 28 · 38 · 15 · 틈 5 · 여백 8   →  닉네임이 ★60px 쯤★ 넓어진다
+   *
+   *   2026-09-12 사장님: 마지막 칸이 MVP(★) 다 — 작게만 준다
+   */
+  .v3-score-row { grid-template-columns: minmax(0, 1fr) 60px 38px 15px !important; gap: 5px !important; padding: 7px 8px !important; }
+  .v3-score-row--saves { grid-template-columns: minmax(0, 1fr) 60px 28px 38px 15px !important; }
+
+  /*
+   * ★글씨도 같이 줄인다★ — 칸만 줄이면 숫자가 넘쳐 «12/8/0» 이 «12/8/…» 이 된다.
+   *   인라인 스타일을 덮어야 해서 `!important` 다. 컴포넌트(PC)는 안 건드린다.
+   */
+  .v3-score-row > span > span[style*="inline-flex"] { font-size: 14px !important; gap: 3px !important; }
+  /* 세이브 · 포지션 · MVP — 줄 안의 오른쪽 세 칸 */
+  .v3-score-row > span:not(:first-child) { font-size: 11px !important; }
+  /* 닉네임은 ★줄이지 않는다★ — 읽으라고 자리를 만든 것이다 */
+  .v3-score-row > span:first-child a,
+  .v3-score-row > span:first-child button { font-size: 12px !important; }
+  /* 마크는 조금만 — 없애면 어느 클랜인지 사라진다 */
+  .v3-score-row > span:first-child > span:first-child { width: 18px !important; height: 18px !important; }
+  /* 머리글(플레이어 · K/D/A · 세이브 · 포지션)도 같은 자로 */
+  .v3-score-row[style*="9.5"] > span { font-size: 9px !important; }
   /* SNIPER · ME · MVP 워터마크는 폰에서 숫자 위에 겹친다 → 숨김 (QA 교차검토 2026-09-11) */
   /* ⚠ 인식표(.v3-plate-row)는 빼고 숨긴다 — 2026-09-11 사장님이 «경기상세에도 인식표» 라고 했는데
      이 줄이 폰에서 같이 지워 버리고 있었다 */

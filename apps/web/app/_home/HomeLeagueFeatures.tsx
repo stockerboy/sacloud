@@ -86,10 +86,15 @@ const endTitle = (league: string, kept: readonly string[], n: number): string =>
 export function HomeLeagueFeatures() {
   const [slug, setSlug] = useState<string>('supply')
   /**
-   * ★지금 펼쳐진 기능 하나★ (2026-09-16 사장님: «그자리에서 밑으로 펼쳐서»).
-   * 하나만 담는다 — 여럿이 동시에 펴지면 첫 화면이 도로 길어진다.
+   * ★펼쳐 둔 기능들★ (2026-09-16 사장님: «펼치고 접지 않는 이상 계속 펼쳐놔»).
+   *
+   * ⚠ 처음에는 ★하나만★ 담았다 — 다른 줄을 누르면 앞의 것이 닫혔다.
+   *   여덟 가지를 견주어 보려는 사람에게는 그게 방해다. 사장님이 바로잡으셨다.
+   *   이제 누른 만큼 다 열려 있고 ★다시 누를 때만★ 닫힌다.
    */
-  const [openKey, setOpenKey] = useState<string | null>(null)
+  const [openKeys, setOpenKeys] = useState<readonly string[]>([])
+  const toggleKey = (key: string) =>
+    setOpenKeys((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
   const pick = PICKS.find((p) => p.slug === slug) ?? PICKS[0]
   const tone = TONE[pick.slug] ?? 'var(--v2-blue, #5b8dff)'
   const given = leagueFeatureCount(pick.slug)
@@ -119,7 +124,7 @@ export function HomeLeagueFeatures() {
               onClick={() => {
                 setSlug(p.slug)
                 /* 리그가 바뀌면 접는다 — 옛 리그의 예시가 새 이름 아래 남으면 거짓말이다 */
-                setOpenKey(null)
+                setOpenKeys([])
               }}
               className="flex flex-col items-center gap-[4px] border px-[10px] py-[15px] text-center transition-colors duration-100 max-md:px-[4px] max-md:py-[12px]"
               style={{
@@ -173,7 +178,7 @@ export function HomeLeagueFeatures() {
       <ul className="mt-[12px] border-t border-[var(--v2-head-divider)]">
         {LEAGUE_FEATURES.map((f) => {
           const state = leagueFeature(pick.slug, f.key)
-          const open = openKey === f.key
+          const open = openKeys.includes(f.key)
           /* ★주는 것만 펼친다★ — 없는 기능은 보여 줄 예시가 없다 */
           const canOpen = state.given
           /*
@@ -191,13 +196,13 @@ export function HomeLeagueFeatures() {
               tabIndex={canOpen ? 0 : undefined}
               aria-expanded={canOpen ? open : undefined}
               style={canOpen ? { cursor: 'pointer' } : undefined}
-              onClick={canOpen ? () => setOpenKey(open ? null : f.key) : undefined}
+              onClick={canOpen ? () => toggleKey(f.key) : undefined}
               onKeyDown={
                 canOpen
                   ? (e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
-                        setOpenKey(open ? null : f.key)
+                        toggleKey(f.key)
                       }
                     }
                   : undefined
