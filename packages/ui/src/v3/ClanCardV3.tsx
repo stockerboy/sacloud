@@ -298,7 +298,13 @@ function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme })
    */
   const [open, setOpen] = useState(false)
   return (
-    <div style={{ position: 'relative', flex: open ? '0 1 210px' : '0 0 auto', minWidth: 168, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    /*
+     * ⚠ ★접혔을 때는 자리를 안 차지한다★ (2026-09-17 무한 QA).
+     *   `minWidth: 168` 을 항상 걸어 둔 탓에 PC 에서 접힌 띄가
+     *   육각형과 숫자 사이에 ★혼자 떠 있었다★ (x 500~670).
+     *   펼쳬을 때만 다섯 줄이 들어갈 폭이 필요하다.
+     */
+    <div style={{ position: 'relative', flex: open ? '0 1 210px' : '0 0 auto', minWidth: open ? 168 : 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <button
         type="button"
         onClick={() => setOpen((now) => !now)}
