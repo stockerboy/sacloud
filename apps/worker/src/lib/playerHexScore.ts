@@ -646,10 +646,20 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       }
     })
 
-    /* 무기 안에서 매기는 등수 — 점수 · 싸움 · 승률 */
+    /* 무기 안에서 매기는 등수 — 점수 · 승률 · ★무기별 축 전부★ */
     rankBy(rows, (r) => r.score, (r, rank, total) => { r.scoreRank = rank; r.scoreTotal = total })
-    rankBy(rows, (r) => r.axes.duel.pct, (r, rank, total) => { r.axes.duel.rank = rank; r.axes.duel.total = total })
     rankBy(rows, (r) => r.winRate.pct, (r, rank, total) => { r.winRate.rank = rank; r.winRate.total = total })
+    /*
+     * ⚠ ★여기가 «싸움» 하나만 매기고 있었다★ (2026-09-16 저녁에 찾음).
+     *
+     *   그 사이 무기별 축이 셋으로 늘었다 — 싸움 · 게임템포 · 크랙 성공
+     *   (사장님: «이건 스나수는 스나수끼리비교하고 라플수는 라플수끼리 비교해»).
+     *   백분위는 무기별로 냈는데 ★등수만 아무도 안 매겼다★ — 두 축이 통째로 `null`
+     *   이라 화면이 «측정중» 으로 보였다. 목록을 돌면 축이 늘어도 안 빠진다.
+     */
+    for (const key of HEX_WEAPON_SCOPED_AXIS_KEYS) {
+      rankBy(rows, (r) => r.axes[key].pct, (r, rank, total) => { r.axes[key].rank = rank; r.axes[key].total = total })
+    }
     measured.push(...rows)
   }
 
