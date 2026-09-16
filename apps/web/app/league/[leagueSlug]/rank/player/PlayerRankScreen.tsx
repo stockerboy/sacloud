@@ -212,7 +212,13 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
 
   return (
     <div className="pc-container">
-      <div className="pb-[var(--section-gap)] max-md:pb-8">
+      {/*
+        ⚠ ★2026-09-17 — 탭 줄 위 여백을 세 화면이 같게 맞춘다★.
+          같은 탭 줄인데 폰에서 화면마다 30 / 16 / 0px 로 서 있어
+          탭을 누를 때마다 줄이 위아래로 튀었다 (사장님: «빈공간이 뚝 떨어져있어»).
+          리그홈이 쓰던 16px 에 맞춘다. PC 는 그대로다.
+      */}
+      <div className="pb-[var(--section-gap)] pt-[16px] max-md:pb-8">
         {/* ★리그 탭★ — 상단 고정 띠에서 내려왔다 (2026-09-16 사장님) */}
         <LeagueTabsInline leagueSlug={leagueSlug} />
         {/*
