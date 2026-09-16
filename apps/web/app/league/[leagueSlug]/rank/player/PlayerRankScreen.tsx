@@ -57,6 +57,12 @@ const SEASON_PODIUM_ON = false
  *   지우지 않았다. 이름도 `플레이어 개인랭킹` → `개인순위` → ★개인랭킹★ 으로 두 번 바뀌었다
  *   (O-040 ③ · 사장님: «개인순위>개인랭킹»).
  */
+/**
+ * ★그날 1·2·3위 카드를 랭킹 화면에도 둘 것인가★ (2026-09-16 사장님이 내리심).
+ * 그 자리는 홈의 「최근 폼 1위」 카드 하나로 모았다. `true` 면 옛 모습이 돌아온다.
+ */
+const DAILY_PODIUM_ON: boolean = false
+
 export default function PlayerRankPage({ params }: { params: Promise<{ leagueSlug: string }> }) {
   const { leagueSlug } = use(params)
   return <SingleLeaguePlayerRank leagueSlug={leagueSlug} />
@@ -275,7 +281,12 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           ★첫 쪽에만★ 올린다 — 두 쪽부터는 목록을 보러 온 것이지 오늘을 보러 온 게 아니다.
           그날 경기가 없으면 부품이 스스로 아무것도 안 그린다.
         */}
-        {page === 1 ? (
+        {/*
+          ⚠ ★2026-09-16 — 「오늘의 선수」 를 내렸다★ (사장님이 화면에 ✕ 를 그어 주심).
+            그날 1·2·3위는 ★홈의 「최근 폼 1위」 카드★ 한 곳으로 모은다.
+            ★지우지 않는다★ — `DAILY_PODIUM_ON` 을 `true` 로 두면 돌아온다.
+        */}
+        {DAILY_PODIUM_ON && page === 1 ? (
           <DailyPodium
             day={daily.data?.data.day ?? null}
             rows={daily.data?.data.players ?? []}

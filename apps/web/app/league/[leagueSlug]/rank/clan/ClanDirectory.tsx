@@ -65,6 +65,12 @@ const HIDE_NO_GAME_CLANS = true
 const RANKED: boolean = true
 
 /**
+ * ★그날 1·2·3위 카드를 랭킹 화면에도 둘 것인가★ (2026-09-16 사장님이 내리심).
+ * 그 자리는 홈의 「최근 폼 1위」 카드 하나로 모았다. `true` 면 옛 모습이 돌아온다.
+ */
+const DAILY_PODIUM_ON: boolean = false
+
+/**
  * ★SPL 참가 · 전환 안내★ (2026-09-12 사장님) — 사장님이 «이 내용은 SPL 클랜랭킹파트에»
  * 라고 자리를 지정하셨다. 글은 사장님이 쓰신 것을 다듬기만 했다.
  */
@@ -387,14 +393,21 @@ function ClanRankDirectory({
           육각축이 고르게 전부 잘한 사람 + 승률도 좋아야함 3명 그리고 3개씩»).
           검색 중에는 안 그린다 — 걸러 낸 화면에 «오늘» 이 끼어들면 헷갈린다.
         */}
-        {searching ? null : (
+        {/*
+          ⚠ ★2026-09-16 — 「오늘의 클랜」 을 내렸다★ (사장님이 화면에 ✕ 를 그어 주심).
+            그날 1·2·3위는 ★홈의 「최근 폼 1위」 카드★ 한 곳으로 모은다 —
+            랭킹 화면은 «줄 세운 목록» 을 보러 오는 곳이라 그 앞에 카드가 서면
+            정작 표가 화면 밖으로 밀린다.
+            ★지우지 않는다★ (`CLAUDE.md` 1-4) — `DAILY_PODIUM_ON` 을 `true` 로 두면 돌아온다.
+        */}
+        {DAILY_PODIUM_ON && !searching ? (
           <DailyPodium
             day={daily.data?.data.day ?? null}
             rows={daily.data?.data.clans ?? []}
             kind="clan"
             hrefOf={(row) => (row.clan_slug === null ? null : leagueClanPath(leagueSlug, row.clan_slug))}
           />
-        )}
+        ) : null}
         {/*
           ★1·2·3위 카드★ (2026-09-12 사장님: «클랜도 탑3는 플레이스타일 6각형이랑
           승률 같은거 개인랭킹페이지 처럼 보여줘»). 검색 중에는 안 그린다 —
