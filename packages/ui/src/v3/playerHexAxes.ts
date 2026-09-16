@@ -6,7 +6,7 @@
  *   ② STRENGTH POINT 카드
  * 규칙을 두 곳에 적으면 조용히 갈라진다. 그래서 이 파일 하나만 본다.
  */
-import type { LeaguePlayerDetail } from '@sacloud/contract'
+import { PLAYER_HEX_WEAPON_POOL_AXIS_KEYS, type LeaguePlayerDetail } from '@sacloud/contract'
 import type { HexAxisView } from './Hexagon'
 import { playerHexSteps, rankColorPlayerHexAxis } from './rankColors'
 import { V3, fmt } from './tokens'
@@ -20,7 +20,14 @@ import { V3, fmt } from './tokens'
  * 셈은 워커(`playerHexScore.foldPlayerHex`)가 한다. 여기서는 이름만 붙인다.
  */
 export function poolNameOf(key: string, weapon: 0 | 1 | null): string {
-  if (key !== 'duel') return '통합'
+  /*
+   * ⚠ ★여기가 «싸움» 하나만 알고 있었다★ (2026-09-16 밤 사장님:
+   *   «통합 이라고 하면 안되고 스나수중 이라고 해야지»).
+   *   그 사이 게임템포·크랙 성공도 무기별이 됐는데 이 줄만 안 따라와서
+   *   «스나수 171명중» 이어야 할 자리에 «통합 171명중» 이라 적혔다.
+   *   ★목록은 계약 한 곳에만 둔다★ — 축이 또 늘어도 여기는 안 고친다.
+   */
+  if (!PLAYER_HEX_WEAPON_POOL_AXIS_KEYS.includes(key as never)) return '통합'
   return weapon === 1 ? '스나수' : weapon === 0 ? '라플수' : '같은 무기'
 }
 
