@@ -72,6 +72,16 @@ export const LeagueClan = z.object({
   placement: z.boolean(),
   status: LeagueClanStatus,
   joined_at: IsoDateTime,
+  /**
+   * ★주요멤버 다섯★ (2026-09-16 밤 사장님:
+   * «클명이랑 승률사이에 메인 이라고 쓰고 메인멤버 5명을 써주든가»).
+   *
+   * PC 에서 클랜명과 승률 사이가 800px 비어 있었다 (무한 QA 실측 · 24줄 중 13줄은 배지도 없음).
+   *
+   * ★클랜 상세와 같은 셈★ 이다 — 점수 순 라플 넷 + 스나 하나.
+   * 무기나 점수를 모르는 사람은 안 넣는다 (D-106). 모자라면 짧게 온다.
+   */
+  main_members: z.array(ClanMainPlayer).default([]),
 })
 export type LeagueClan = z.infer<typeof LeagueClan>
 

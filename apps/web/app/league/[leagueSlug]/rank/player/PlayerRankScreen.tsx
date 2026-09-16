@@ -28,6 +28,12 @@ import { PodiumCards } from './PodiumCards'
 const SEASON_PODIUM_ON = false
 
 /**
+ * ★개인랭킹 표를 본문 폭까지 펼 것인가★ (2026-09-17 무한 QA).
+ * `false` 로 두면 옛 시안 폭(900px)으로 돌아간다 (`CLAUDE.md` 1-4).
+ */
+const TABLE_FULL_WIDTH: boolean = true
+
+/**
  * 「개인랭킹」 `/league/{slug}/rank/player`.
  *
  * ══ 2026-09-07 · Part 10 ⑤ — 시안으로 갈아끼웠다 ══
@@ -343,8 +349,26 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
           />
         ) : null}
 
-        {/* ★표는 900px★ (시안 `TABLE_W`). 표 자체는 옛 컴포넌트 그대로다 */}
-        <div ref={tableRef} className="mx-auto mt-[30px] w-full max-w-[900px] scroll-mt-[120px]">
+        {/*
+          ⚠ ★2026-09-17 — 표를 본문 폭까지 폈다★ (무한 QA · 총괄 지시).
+
+            옛 값은 시안 폭 ★900px★ 였다 (`TABLE_W`). 그런데 본문은 1180px 이라
+            ★표 양옆이 140px 씩 죽어 있었다★ (1440px 실측: 컨테이너 130~1310 · 표 270~1170).
+            바로 옆 탭의 ★클랜랭킹은 본문 폭을 다 쓴다★ — 같은 자리에서 두 표의 폭이 달랐다.
+
+            ⚠ ★맞바꾼 것을 분명히 적어 둔다★ — 이걸로 줄 안쪽이 더 비었다.
+              닉네임 끝 ~ 승률 시작:  ★517px → 797px★ (실측)
+              죽은 바깥 여백 280px 이 ★줄 안쪽 빈칸으로 옮겨 간 것★ 이다.
+              그 빈칸을 메우려면 줄마다 값을 하나 더 세워야 하는데,
+              `PlayerRankRow` 에는 지금 화면이 안 쓰는 값이 `score`·`hex` 뿐이고
+              둘 다 이 리그에서 칸을 내린 값이라 ★내 판단으로 되살리지 않는다.★
+
+            옛 폭이 필요하면 `TABLE_FULL_WIDTH` 를 `false` 로 (`CLAUDE.md` 1-4).
+        */}
+        <div
+          ref={tableRef}
+          className={`mx-auto mt-[30px] w-full scroll-mt-[120px] ${TABLE_FULL_WIDTH ? '' : 'max-w-[900px]'}`}
+        >
           <PlayerRankTable
             leagueSlug={leagueSlug}
             weapon={weapon}

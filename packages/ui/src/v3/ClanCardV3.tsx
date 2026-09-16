@@ -38,9 +38,18 @@ const traitBodyStyle: CSSProperties = {
   gap: 24,
   padding: '14px 22px 20px',
 }
+/*
+ * ⚠ ★라벨과 값이 350px 떨어져 있었다★ (2026-09-17 무한 QA).
+ *   값 열이 `1fr` 로 늘어나고 그 안에서 오른쪽 끝으로 붙어,
+ *   PC 에서 «최다연승» 과 «3연승» 이 카드 양끝에 서 있었다 —
+ *   어느 값이 어느 라벨인지 한눈에 안 읽힌다.
+ *   라벨 열을 고정폭으로 두어 줄끼리 맞추고 값은 바로 옆에 붙인다.
+ *   옛 모습은 `KPI_SPREAD` 를 true 로 두면 돌아온다.
+ */
+const KPI_SPREAD = false
 const kpiRowStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'auto minmax(0,1fr)',
+  gridTemplateColumns: KPI_SPREAD ? 'auto minmax(0,1fr)' : 'minmax(58px,auto) minmax(0,1fr)',
   alignItems: 'baseline',
   gap: 12,
   padding: '13px 4px',
@@ -164,9 +173,15 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
     tier && showsBand
       ? { label: '구간 승률', value: pct1(tierRate), sub: <><TierText division={tier.division} leagueCategory={data.league.category} size={11} /> <span>{tier.win}승 {tier.lose}패</span></>, color: tierRate === null ? V3.textMuted : statColor(tierRate), picker: tierWins.length > 1 }
       : { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },
-    { label: '순위', value: rank === null ? '-' : `${rank}위`, sub: <>{tiered ? <TierText division={data.division} leagueCategory={data.league.category} size={11} /> : null}{data.rank_count !== null ? <span> / {fmt(data.rank_count)}팀</span> : null}</>, color: ink },
-    /* 목업 넷째 줄은 «최다연승». 시즌 0 경기에서 센 값 — 없으면 «-» */
-    { label: '최다연승', value: data.max_win_streak === null ? '-' : `${fmt(data.max_win_streak)}연승`, sub: `${fmt(games)}전 ${data.win}승 ${data.lose}패`, color: data.max_win_streak === null ? V3.textMuted : V3.gold },
+    { label: '순위', value: rank === null ? '-' : `${rank}위`, sub: <>{tiered ? <TierText division={data.division} leagueCategory={data.league.category} size={11} /> : null}{data.rank_count !== null ? <span>{tiered ? ' · ' : ''}{fmt(data.rank_count)}팀 중</span> : null}</>, color: ink },
+    /*
+   * 목업 넷째 줄은 «최다연승». 시즌 0 경기에서 센 값 — 없으면 «-»
+   *
+   * ⚠ ★밑줄이 윈줄과 같은 말이었다★ (2026-09-17 무한 QA) — «182전 82승 100패» 인데
+   *   바로 위 승률 줄이 이미 «82승 100패» 를 적고 있다. 한 칸을 같은 말로 두 번 쓴 셈이다.
+   *   총 판수만 남긴다 — ★값을 지우는 것이 아니라 겹치는 말을 빼는 것★ 이다.
+   */
+    { label: '최다연승', value: data.max_win_streak === null ? '-' : `${fmt(data.max_win_streak)}연승`, sub: `${fmt(games)}전 중`, color: data.max_win_streak === null ? V3.textMuted : V3.gold },
   ]
   return (
     <section style={{ ...cardStyle, marginTop: 16, borderTop: `2px solid ${theme.edge}` }}>
@@ -246,7 +261,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
                 <span style={{ fontSize: 11.5, color: V3.textDim, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>{k.label}</span>
                 {k.picker && onTierStep ? <StepButton onClick={() => onTierStep(1)}>›</StepButton> : null}
               </span>
-              <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
+              <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: KPI_SPREAD ? 'flex-end' : 'flex-start', gap: 8, minWidth: 0, flexDirection: KPI_SPREAD ? 'row' : 'row-reverse' }}>
                 <span style={{ fontSize: 11.5, color: V3.textGhost, fontWeight: 500, minWidth: 0, display: 'inline-flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap', justifyContent: 'flex-end', textAlign: 'right' }}>{k.sub}</span>
                 <span style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, whiteSpace: 'nowrap', flex: 'none', color: k.color }}>{k.value}</span>
               </span>

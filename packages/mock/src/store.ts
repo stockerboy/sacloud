@@ -692,6 +692,8 @@ function toLeagueClan(leagueClan: MockLeagueClan): LeagueClan | null {
     clan: toClanSummary(clan),
     /* 뱃지는 ★리그 전체 분포★ 가 있어야 판정된다 (2026-09-14). 픽스처에는 분포가 없다 */
     badges: [],
+    /* ★주요멤버★ (2026-09-16 밤) — 픍스쳐는 빈다. 화면이 빈 자리를 그냥 비운다 */
+    main_members: [],
     rating: leagueClan.rating,
     division: leagueClan.division,
     win: leagueClan.win,

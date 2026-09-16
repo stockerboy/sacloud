@@ -233,6 +233,19 @@ function ClanRankDirectory({
         rating: row.rating,
         /* ★뱃지★ (2026-09-14 사장님) — 판정은 서버가 이미 끝냈다. 여기는 나른다 */
         badges: row.badges,
+        /*
+         * ★주요멤버 다섯 — 화면은 다 됐는데 ★자료가 이 끝점으로 안 온다★ (2026-09-17).
+         *
+         *   사장님: «클명이랑 승률사이에 메인 이라고 쓰고 메인멤버 5명을 써주든가».
+         *   `ClanRankTable` 은 `main_members` 를 받으면 ★바로 그린다★ (칸·머리글·줄바꿈 다 됨).
+         *
+         *   ⚠ 그런데 `main_members` 는 `ClanRankRow`(= `GET /leagues/{slug}/ranks/clans`)에만 붙었다.
+         *     ★이 화면이 읽는 것은 `LeagueClan`(= `GET /leagues/{slug}/clans`) 이다★ —
+         *     순위를 우리가 직접 세우려고 전체 목록을 받는 끝점이라 칸이 다르다.
+         *
+         *   그 끝점에도 칸이 생기면 여기 한 줄만 살리면 된다:
+         *       main_members: row.main_members,
+         */
       })),
     [filtered, noteOf],
   )

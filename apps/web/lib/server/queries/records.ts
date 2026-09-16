@@ -599,6 +599,12 @@ export async function getLeagueClanShow(
     head_to_head: headToHead,
     max_win_streak: maxWinStreak,
     main_lineup: mainLineup ?? [],
+    /*
+     * ★목록과 같은 값★ (2026-09-16 밤) — 클랜랭킹 빈칸을 메우려고
+     *   `LeagueClan` 에 `main_members` 를 넣었다. 상세는 이미 같은 것을
+     *   `main_lineup` 으로 들고 있어 ★두 번 세지 않고 그대로 넣는다★.
+     */
+    main_members: mainLineup ?? [],
   }
 }
 

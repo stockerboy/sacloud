@@ -953,6 +953,13 @@
   .v3-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .v3-kpi > div { border-bottom: 1px solid #18233a; padding: 12px 14px !important; }
   .v3-kpi > div > span > span:first-child { font-size: 22px !important; }
+  /*
+   * ★칸이 홀수면 마지막 칸이 두 줄을 다 쓴다★ (2026-09-17 무한 QA).
+   *   클랜 카드는 래더가 빠지면 칸이 셋(승률·순위·최다연승) 이라 마지막 하나가
+   *   혼자 한 줄을 차지하고 ★오른쪽 절반이 통째로 비었다★.
+   *   넷이면 2×2 로 딱 맞으므로 이 규칙에 안 걸린다.
+   */
+  .v3-kpi > div:last-child:nth-child(odd) { grid-column: 1 / -1 !important; }
   .v3-watermark { display: none !important; }
   /* ⚠ ★2026-09-17 정정★ — 여기 «선수 기록실 카드는 폰·PC 같은 모양이라 폰 전용 규칙이
      필요 없다 (v3-prow)» 고 적혀 있었다. ★사실이 아니었다.★ 그 격자는 고정폭 다섯이라

@@ -3,7 +3,7 @@
 import { Fragment } from 'react'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 import Link from 'next/link'
-import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
+import type { ClanMainPlayer, ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
 import { showsTier, leagueScreen } from '@sacloud/contract'
 /* 2026-09-11 QA 회차 2: 랭킹표 마크가 빈 클랜(publicity·NeedBackup·Lyrical: …)이 있었다 — 상세처럼 원 크롭 마크(/assets/clans) 먼저, 없으면 옛 ClanMark(구름) */
 import { MarkCircle, SniperMark } from '../v3/primitives'
@@ -33,6 +33,7 @@ import { ClanBadges } from './ClanBadges'
 import {
   COL_CLAN,
   COL_HIDDEN,
+  COL_MAIN,
   COL_NAME,
   COL_RANK,
   COL_RATING,
@@ -297,11 +298,60 @@ function DivisionDivider({ division, leagueCategory }: { division: number; leagu
 /** 승격·강등 표시 (2026-09-11 사장님) — 표는 받은 대로 그리고, 누가 위태로운지는 화면이 정한다 */
 export type ClanRankNote = 'promote' | 'relegate' | null
 
+/* ------------------------------------------------------------ 메인멤버 --- */
+
+/**
+ * ★클랜랭킹의 「메인」 칸★ (2026-09-16 밤 사장님:
+ * «클랜랭킹에서 클명이랑 승률사이에 메인 이라고 쓰고 메인멤버 5명을 써주든가
+ *  암튼 개인기록카드도 그렇고 다 너무 공간낭비가 심해»).
+ *
+ * PC 1440px 에서 클랜명 끝과 승률 사이가 ★800px 비어 있었다.★ 그 자리를 메운다.
+ *
+ * ── ★글자를 자르지 않는다. 사람 수를 줄인다★ (총괄 지시)
+ *   닉네임을 «…» 로 끊으면 사장님이 지적하신 「잘림」 이 여기서 또 생긴다.
+ *   그래서 ★줄바꿈을 켜 두고 한 줄 높이만 남긴 채 넘치는 것을 감춘다.★
+ *   자리가 모자라면 ★다섯째 사람이 통째로 사라진다★ — 이름은 언제나 온전하다.
+ *   (`flex-wrap` + 한 줄 높이 + `overflow:hidden` — 재지 않고도 되는 방법이다)
+ *
+ * ── 지키는 것
+ *   · ★폰에서는 통째로 감춘다★ — 390px 에 넣을 자리가 없다. 가로 스크롤은 절대 안 된다
+ *   · 빈 배열이면 ★그냥 비운다.★ 「없음」 을 적지 않는다 (없는 말을 만들지 않는다)
+ *   · ★클랜마크는 이름 앞에 항상★ (이 저장소 규칙). 모르면 `MarkCircle` 이 구름을 그린다
+ *   · 스나는 `[S]` 로 표시한다 — 클랜 상세 카드가 「스나수」 라고 적는 것과 같은 사실이다
+ */
+function MainMembers({ members, clan }: { members: readonly ClanMainPlayer[]; clan: ClanRankTableRow['clan'] }) {
+  if (members.length === 0) return null
+  return (
+    <span
+      aria-label="메인멤버"
+      /* 한 줄 높이(22px)만 남기고 넘치는 사람은 아랫줄로 내려가 감춰진다 */
+      className="flex h-[22px] flex-wrap content-start items-center gap-x-[14px] gap-y-1 overflow-hidden"
+    >
+      {members.map((m) => (
+        <span key={m.player.id} className="flex shrink-0 items-center gap-[5px] whitespace-nowrap">
+          <MarkCircle clan={clan} size={16} title={clan.name} />
+          <span className="text-[0.8rem] leading-none text-meta">{m.player.name}</span>
+          {m.weapon === 1 ? <SniperMark size={10} /> : null}
+        </span>
+      ))}
+    </span>
+  )
+}
+
 /**
  * `badges` 는 ★받아도 되고 안 받아도 된다★ (2026-09-14).
  * 안 넘기는 화면(옛 래더 표 등)은 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
  */
-export type ClanRankTableRow = { rank: number | null; note?: ClanRankNote; badges?: readonly string[] } & Pick<
+export type ClanRankTableRow = {
+  rank: number | null
+  note?: ClanRankNote
+  badges?: readonly string[]
+  /**
+   * ★주요멤버 다섯★ — 넘겨도 되고 안 넘겨도 된다 (2026-09-17).
+   * 안 넘기는 화면(옛 래더 표 · 부리그 탭)은 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
+   */
+  main_members?: readonly ClanMainPlayer[]
+} & Pick<
   ClanRankRow,
   'league_clan_id' | 'clan' | 'division' | 'win' | 'lose' | 'win_rate' | 'rating'
 >
@@ -390,6 +440,8 @@ export function ClanRankTable({
   /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 호출부가 뭐라 하든 선을 긋지 않는다.
      규칙은 `@sacloud/contract` 의 `leagueScreen` 한 곳이다. 행의 `division` 값 자체는 그대로 온다 */
   const divideByDivision = groupByDivision && showsTier(leagueSlug)
+  /* 「메인」 칸은 ★자료가 온 표에만★ 선다 — 안 넘기는 화면은 칸 자체가 안 생긴다 (`CLAUDE.md` 1-4) */
+  const anyMembers = (rows ?? []).some((row) => (row.main_members?.length ?? 0) > 0)
   /* 바로 앞 행과 부리그가 다르면 그 위에 선을 긋는다. 첫 행에도 긋는다 —
      맨 위 묶음이 어느 티어인지 이름이 없으면 아래 묶음들만 이름이 붙어 이상해진다 */
   let lastDivision: number | null = null
@@ -398,6 +450,8 @@ export function ClanRankTable({
       <div className={HEAD}>
         {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>클랜</div>
+        {/* 「메인」 머리글 — 한 줄이라도 멤버가 오면 세운다. 폰에서는 칸째로 없다 */}
+        {anyMembers ? <div className={COL_MAIN}>메인</div> : null}
         {columns.winRate ? <div className={COL_STAT}>승률</div> : null}
         {columns.rating ? <div className={COL_RATING}>래더</div> : null}
       </div>
@@ -490,6 +544,16 @@ export function ClanRankTable({
                 ) : null}
               </Link>
             </div>
+            {/*
+              ★「메인」 — 클랜명과 승률 사이의 빈 800px★ (2026-09-16 밤 사장님).
+              알이 안 깨진 클랜은 기록을 가리는 중이므로 멤버도 안 보인다 (승률·래더와 같은 규칙).
+              멤버가 없으면 `MainMembers` 가 `null` 을 내어 ★자리를 그냥 비운다★ — 「없음」 을 적지 않는다.
+            */}
+            {anyMembers ? (
+              <div className={COL_MAIN}>
+                {egg === 'sealed' ? null : <MainMembers members={row.main_members ?? []} clan={row.clan} />}
+              </div>
+            ) : null}
             {/* 승/패는 없앤 것이 아니라 승률 아래로 접었다. 알이 있으면 둘 다 가린다 */}
             {!columns.winRate ? null : egg === 'sealed' ? (
               <div className={COL_STAT}>

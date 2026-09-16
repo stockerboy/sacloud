@@ -67,6 +67,19 @@ export const COL_STAT = 'w-28 shrink-0 text-right max-md:w-[60px]'
  * 홈 미리보기가 켜서 쓴다 (`PlayerRankTable` 의 `clanColumn`). 폰에서도 남긴다 — 길면 말줄임.
  */
 export const COL_CLAN = 'w-36 shrink-0 pr-3 max-md:w-24 max-md:pr-2'
+/**
+ * ★「메인」 칸★ — 클랜랭킹의 주요멤버 다섯 (2026-09-16 밤 사장님:
+ * "클명이랑 승률사이에 메인 이라고 쓰고 메인멤버 5명을 써주든가").
+ *
+ * PC 1440px 에서 클랜명과 승률 사이가 **800px 비어 있던** 자리다.
+ * 폭은 고정이 아니라 **남는 만큼**이다 — 이름 칸이 먼저 제 몫을 가져가고 나머지를 받는다.
+ * `max-w` 는 아주 넓은 화면에서 다섯이 화면 끝까지 흩어지지 않게 하는 고삐다.
+ *
+ * ⚠ **1120px 아래에서는 칸째로 사라진다.** 좁은 화면에서는 이름 칸을 먼저 살려야 하고,
+ *   폰(390px)에는 넣을 자리가 아예 없다 — 가로 스크롤은 절대 만들지 않는다.
+ */
+export const COL_MAIN = 'hidden min-[1120px]:flex min-w-0 flex-[2_1_0] max-w-[560px] items-center pr-4'
+
 /** 래더 칸 — 표에서 가장 무거운 숫자 */
 export const COL_RATING = 'w-32 shrink-0 text-right max-md:w-[76px]'
 /** 좁은 화면에서 감추는 칸 */

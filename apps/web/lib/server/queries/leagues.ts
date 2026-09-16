@@ -287,6 +287,57 @@ async function tierRecordsOf(leagueId: string): Promise<Map<string, { win: numbe
   return out
 }
 
+/**
+ * ★주요멤버 다섯★ — 여러 클랜을 한 질의로 (2026-09-16 밤 사장님).
+ *
+ * 셈은 클랜 상세(`records.ts` 의 `mainLineupOf`)와 ★똑같다★ —
+ * 점수 순 라플 넷 + 스나 하나, 무기나 점수를 모르면 안 넣는다 (D-106).
+ *
+ * 다른 것은 ★왜복 하나★ 라는 점뿐이다 — 목록은 스무 줄이라
+ * 줄마다 부르면 스무 번이 된다.
+ */
+async function mainMembersOf(
+  leagueId: string,
+  clanIds: readonly string[],
+): Promise<Map<string, { player: ReturnType<typeof toPlayerSummary>; weapon: 0 | 1; score: number | null }[]>> {
+  const out = new Map<string, { player: ReturnType<typeof toPlayerSummary>; weapon: 0 | 1; score: number | null }[]>()
+  if (clanIds.length === 0) return out
+  const rows =
+    (await softFail('clan-main-members', null, { leagueId })(
+      prisma.leaguePlayerHex.findMany({
+        where: {
+          score: { not: null },
+          weapon: { not: null },
+          leaguePlayer: { leagueId, clanId: { in: [...clanIds] }, placement: false },
+        },
+        orderBy: [{ score: 'desc' }, { leaguePlayerId: 'asc' }],
+        select: {
+          weapon: true,
+          score: true,
+          leaguePlayer: { select: { clanId: true, player: { select: PLAYER_SUMMARY_SELECT } } },
+        },
+      }),
+    )) ?? []
+  const byClan = new Map<string, typeof rows>()
+  for (const row of rows) {
+    const clanId = row.leaguePlayer.clanId
+    if (clanId === null) continue
+    const list = byClan.get(clanId) ?? []
+    list.push(row)
+    byClan.set(clanId, list)
+  }
+  for (const [clanId, list] of byClan) {
+    const pick = (weapon: 0 | 1, take: number) =>
+      list
+        .filter((row) => row.weapon === weapon)
+        .slice(0, take)
+        .map((row) => ({ player: toPlayerSummary(row.leaguePlayer.player), weapon, score: row.score }))
+    /* ★라플 넷이 먼저, 스나가 맨 아래★ — 사장님이 차례까지 정하셨다 */
+    out.set(clanId, [...pick(0, 4), ...pick(1, 1)])
+  }
+  return out
+}
+
 export async function getLeagueClans(
   leagueSlug: string,
   cursor: string | null,
@@ -335,6 +386,8 @@ export async function getLeagueClans(
             divisionOf: new Map(rows.map((row) => [row.id, row.division])),
           }),
         )) ?? new Map<string, string[]>()
+      /* ★주요멤버★ — 빈칸을 메운다 (2026-09-16 밤 사장님) */
+      const mainOf = await mainMembersOf(leagueId, rows.map((row) => row.clan.id))
 
       return rows.map((row) => {
         const tier = tierRecords.get(row.id) ?? { win: 0, lose: 0 }
@@ -354,6 +407,7 @@ export async function getLeagueClans(
         placement: row.placement,
         status: row.status,
         joined_at: toKstIso(row.joinedAt),
+        main_members: mainOf.get(row.clan.id) ?? [],
         }
       })
     },
@@ -698,47 +752,8 @@ export async function getClanRanks(
    * 셈은 상세와 ★똑같다★ — 점수 순 라플 넷 + 스나 하나, 무기·점수를 모르면 안 넣는다.
    * 실패해도 목록을 죽이지 않는다 — 그때는 빈 자리로 그린다.
    */
-  const mainOf = new Map<string, { player: ReturnType<typeof toPlayerSummary>; weapon: 0 | 1; score: number | null }[]>()
-  if (page.items.length > 0) {
-    const clanIds = page.items.map((row) => row.clan.id)
-    const rows =
-      (await softFail('clan-rank-main', null, { leagueId })(
-        prisma.leaguePlayerHex.findMany({
-          where: {
-            score: { not: null },
-            weapon: { not: null },
-            leaguePlayer: { leagueId, clanId: { in: clanIds }, placement: false },
-          },
-          orderBy: [{ score: 'desc' }, { leaguePlayerId: 'asc' }],
-          select: {
-            weapon: true,
-            score: true,
-            leaguePlayer: { select: { clanId: true, player: { select: PLAYER_SUMMARY_SELECT } } },
-          },
-        }),
-      )) ?? []
-    const byClan = new Map<string, typeof rows>()
-    for (const row of rows) {
-      const clanId = row.leaguePlayer.clanId
-      if (clanId === null) continue
-      const list = byClan.get(clanId) ?? []
-      list.push(row)
-      byClan.set(clanId, list)
-    }
-    for (const [clanId, list] of byClan) {
-      const pick = (weapon: 0 | 1, take: number) =>
-        list
-          .filter((row) => row.weapon === weapon)
-          .slice(0, take)
-          .map((row) => ({
-            player: toPlayerSummary(row.leaguePlayer.player),
-            weapon,
-            score: row.score,
-          }))
-      /* ★라플 넷이 먼저, 스나가 맨 아래★ — 클랜 상세와 같은 차례다 */
-      mainOf.set(clanId, [...pick(0, 4), ...pick(1, 1)])
-    }
-  }
+  /* ★주요멤버★ — 메인 목록과 ★같은 함수★ 를 쓴다 (두 곳에 베끼면 갈린다) */
+  const mainOf = await mainMembersOf(leagueId, page.items.map((row) => row.clan.id))
 
   return {
     cursor: page.cursor,
