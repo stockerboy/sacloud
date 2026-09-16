@@ -36,6 +36,7 @@ import {
   MATCH_TO_FIRST_ROUND_SECONDS,
   ROUND_GAP_SECONDS,
 } from '@sacloud/nexon'
+import { CLAN_HEX_V2_FORMULA_VERSION } from '../lib/clanHexV2Version.js'
 import { REPO_ROOT } from '../lib/env.js'
 import { log, warn } from '../lib/log.js'
 import { SEASON0_FROM } from '../lib/season0Window.js'
@@ -960,6 +961,42 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
        WHERE lp."leagueId" = ${league.id} AND h."formulaVersion" = ${PLAYER_HEX_FORMULA_VERSION}
          AND m."supersededAt" IS NULL
        GROUP BY lp."id"`
+    /*
+     * ── ★스나차이 · 라플차이★ — «앞선 판» 세기 (2026-09-16 밤 사장님) ──
+     *
+     *   클랜 육각이 경기마다 무기별 점수를 이미 쌓아 두었다 (`tally.gapScore`).
+     *   ★다시 세지 않고 읽는다★ — 두 곳에서 세면 갈린다.
+     *
+     *   선수가 그 경기에서 어느 클랜이었는지는 `MatchPlayerStat.playerClanId` 가 안다.
+     *   그 클랜의 줄에서 `ourSniper > foeSniper` 면 «스나 쪽이 앞섰다» 이다.
+     *
+     *   ⚠ 클랜 육각이 아직 v5 로 안 돌았으면 여기서 아무것도 안 나온다 —
+     *     그때는 축이 `null` 이고 화면이 «측정중» 이라 적는다 (0% 로 안 우긴다).
+     */
+    const gapRows = await prisma.$queryRaw<{ lpid: string; sniperahead: bigint; rifleahead: bigint; games: bigint }[]>`
+      SELECT lp."id" AS lpid,
+             COUNT(*) FILTER (
+               WHERE (h."tally"->'gapScore'->>'ourSniper')::float
+                   > (h."tally"->'gapScore'->>'foeSniper')::float
+             ) AS sniperahead,
+             COUNT(*) FILTER (
+               WHERE (h."tally"->'gapScore'->>'ourRifle')::float
+                   > (h."tally"->'gapScore'->>'foeRifle')::float
+             ) AS rifleahead,
+             COUNT(*) AS games
+        FROM "LeaguePlayer" lp
+        JOIN "MatchPlayerStat" s ON s."playerId" = lp."playerId"
+        JOIN "Match" m ON m."id" = s."matchId" AND m."leagueId" = lp."leagueId"
+        JOIN "LeagueClan" lc ON lc."id" = s."playerClanId" OR lc."clanId" = s."playerClanId"
+        JOIN "MatchClanHexV2" h
+          ON h."matchId" = m."id" AND h."leagueClanId" = lc."id"
+         AND h."formulaVersion" = ${CLAN_HEX_V2_FORMULA_VERSION}
+       WHERE lp."leagueId" = ${league.id}
+         AND m."supersededAt" IS NULL AND m."startAt" >= ${SEASON0_FROM}
+         AND h."tally"->'gapScore' IS NOT NULL
+       GROUP BY lp."id"`
+    const gapOf = new Map(gapRows.map((r) => [r.lpid, r]))
+
     /**
      * ★구간 × 무기 킬·데스★ (2026-09-12 사장님) — 점수의 킬뎃 몫이 쓴다.
      * 칸을 열여덟 개 늘리는 대신 작은 질의 하나를 더 둔다. 한 리그에 수천 줄이다.
@@ -1027,6 +1064,17 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rounds: h?.rounds ?? 0,
         firstKills: h?.firstkills ?? 0,
         crackKills: h?.crackkills ?? 0,
+        /*
+         * ★스나차이 · 라플차이★ — 그 선수 무기 쪽이 앞선 판 수 (2026-09-16 밤).
+         *   무기를 모르면 셀 수 없다 — 그때는 `undefined` 라 축이 `null` 이 된다.
+         */
+        gapWinGames: (() => {
+          const g = gapOf.get(b.lpid)
+          if (g === undefined) return undefined
+          const w = mainWeaponOf({ sniperGames: b.sniperg, rifleGames: b.rifleg })
+          if (w === null) return undefined
+          return Number(w === 1 ? g.sniperahead : g.rifleahead)
+        })(),
         burstRounds: h?.burstrounds ?? 0,
         /* 경기별 «한 라운드 최대 킬» 의 합 — 값은 판수로 나눠 평균을 낸다 (2026-09-15) */
         maxRoundKills: h?.maxroundkills ?? 0,
@@ -1098,6 +1146,7 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         outWon: p.outWon,
         firstKills: p.firstKills,
         crackKills: p.crackKills,
+        gapWinGames: p.gapWinGames ?? 0,
         /* 게임템포의 재료 — 화면은 접힌 값(`opening`)을 읽지만 원시 합도 남겨 둔다 */
         tempoSeconds: p.tempoSeconds,
         tempoCount: p.tempoCount,
