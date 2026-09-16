@@ -61,6 +61,12 @@ export type PlayerWeaponStat = z.infer<typeof PlayerWeaponStat>
 export const LeaguePlayerProfile = PlayerSummary.extend({
   position: z.string().nullable().default(null),
   note: z.string().nullable().default(null),
+  /**
+   * ★병영수첩 계정 고유값★ (`str_usn` · 2026-09-16 사장님 «병영수첩 바로가기»).
+   * 이어 붙은 계정이 없으면 `null` 이고 ★화면이 단추를 안 그린다.★
+   * 주소는 `barracksPlayerUrl()` 이 만든다 — 화면이 주소 모양을 알 필요가 없다.
+   */
+  barracks_usn: z.string().nullable().default(null),
 })
 export type LeaguePlayerProfile = z.infer<typeof LeaguePlayerProfile>
 

@@ -26,7 +26,7 @@
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail } from '@sacloud/contract'
-import { leagueScreen, showsTier } from '@sacloud/contract'
+import { barracksPlayerUrl, leagueScreen, showsTier } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { strengthAxes } from './playerHexAxes'
@@ -88,6 +88,8 @@ const RANK_ON_NAME_LINE: boolean = false
 
 export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
+  /* 이어 붙은 병영수첩 계정이 없으면 null — 아래에서 단추를 안 그린다 */
+  const barracksHref = barracksPlayerUrl(data.player.barracks_usn)
   const hex = data.hex
   /* ★특성 배지★ — 열 위 안에 든 축 (2026-09-12 사장님). STRENGTH POINT 카드와 같은 값이다 */
   const badges = hex ? hex.axes.filter((a) => a.badge !== null && a.rank !== null) : []
@@ -286,6 +288,34 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           </span>
           )}
           {data.clan?.is_official_clan ? <OfficialPill theme={theme} /> : null}
+          {/*
+           * ★병영수첩 바로가기★ (2026-09-16 사장님: «카드옆에 병영수첩바로가기
+           *   버튼만들어 거기에 해당선수 병영수첩을 넣어서 누르면 거기로 넘어가게»).
+           *
+           *   ★밖으로 나가는 길이라 새 창★ — 우리 화면을 덮으면 보던 기록을 잃는다.
+           *   ★이어 붙은 계정이 없으면 안 그린다★ — 닉으로 찾아가면 위장닉 때문에
+           *   엉뚱한 사람에게 간다 (D-221). 지어내지 않는다.
+           */}
+          {barracksHref === null ? null : (
+            <a
+              href={barracksHref}
+              target="_blank"
+              rel="noreferrer"
+              title="넥슨 병영수첩에서 이 선수 보기"
+              style={{
+                fontSize: 11.5,
+                color: '#a4b6c8',
+                border: '1px solid #24384c',
+                borderRadius: V3.radiusCtl,
+                background: '#0e1a28',
+                padding: '6px 13px',
+                whiteSpace: 'nowrap',
+                textDecoration: 'none',
+              }}
+            >
+              병영수첩 ↗
+            </a>
+          )}
           <GhostButton href={infoHref}>기본정보</GhostButton>
         </span>
       </div>

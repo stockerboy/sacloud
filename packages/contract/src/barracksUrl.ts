@@ -167,6 +167,25 @@ function classify(value: string): BarracksRef {
  * **닉네임 조회보다 먼저 쓰지 마라.** 16진 16자리 + `SA` 인 닉네임이 있을 가능성은
  * 거의 없지만 0 은 아니고, 그런 사람이 있다면 그 사람이 먼저다.
  */
+/**
+ * ★병영수첩 선수 화면 주소★ (2026-09-16 사장님 «병영수첩 바로가기»).
+ *
+ * 여태 이 파일은 주소를 ★읽기만★ 했다 (붙여넣은 주소에서 값을 캐냈다).
+ * 이제 ★만들기도★ 한다.
+ *
+ *   `D9EBC75CCBD60C12SA`  →  https://barracks.sa.nexon.com/D9EBC75CCBD60C12SA/match
+ *
+ * 값이 비었으면 `null` 이고 화면이 단추를 안 그린다 — ★없는 주소를 짓지 않는다.★
+ */
+export function barracksPlayerUrl(usn: string | null | undefined): string | null {
+  if (typeof usn !== 'string') return null
+  const clean = usn.trim()
+  if (clean === '') return null
+  /* 우리가 아는 모양만 통과시킨다 (16진 + `SA`) — 이상한 값을 밖으로 내보내지 않는다 */
+  if (!/^[0-9A-F]+SA$/i.test(clean)) return null
+  return `https://barracks.sa.nexon.com/${clean}/match`
+}
+
 export function barracksUsnOf(input: string): string | null {
   const value = input.trim()
   return USN_SHAPE.test(value) ? value.toUpperCase() : null

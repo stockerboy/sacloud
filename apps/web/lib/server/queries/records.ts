@@ -828,7 +828,13 @@ export async function getLeaguePlayerDetail(
       /* 기록실 사이드 `상세정보` 의 `포지션` 줄이 이 값을 쓴다 (D-161).
          `PLAYER_SUMMARY_SELECT` 를 넓히지 않는다 — 라인업·최근 같이한 플레이어처럼
          이 값이 필요 없는 곳까지 매 행마다 두 칸을 더 읽게 된다 */
-      player: { select: { ...PLAYER_SUMMARY_SELECT, position: true, note: true } },
+      player: {
+        select: {
+          ...PLAYER_SUMMARY_SELECT,
+          position: true,
+          note: true,
+        },
+      },
       clan: { select: CLAN_SUMMARY_SELECT },
     },
   })
@@ -984,6 +990,11 @@ export async function getLeaguePlayerDetail(
    * 차례로 부른다 — 연결이 하나뿐이라 한꺼번에 던지면 전부 멈춘다.
    */
   const flagCount = await prisma.leagueFlag.count({ where: { playerId, rank: 1 } })
+  /*
+   * ★병영수첩 주소를 찾는다★ (2026-09-16 사장님 «병영수첩 바로가기»).
+   *   겹치는 닉이면 누구인지 알 수 없으므로 `null` 이다 — 단추가 안 뜬다.
+   */
+  const barracksUsn = await barracksUsnOfNick(effective.player.name)
   return {
     id: effective.id,
     league_id: league.id,
@@ -996,6 +1007,9 @@ export async function getLeaguePlayerDetail(
          `-` 나 `알수없음` 으로 채우지 않는다 (D-099 · D-106) */
       position: effective.player.position,
       note: effective.player.note,
+      /* 이어 붙은 병영수첩 계정이 없으면 `null` — 화면이 단추를 안 그린다 */
+      /* 닉으로 찾는다 — 겹치는 닉이면 `null` 이고 화면이 단추를 안 그린다 */
+      barracks_usn: barracksUsn,
     },
     clan: toClanSummaryOrNull(effective.clan),
     rating: effective.rating,
@@ -1248,4 +1262,26 @@ export async function getLeagueClanSeasons(
     lose: row.lose,
     win_rate: winRate(row.win, row.lose),
   }))
+}
+
+/**
+ * ★닉으로 병영수첩 계정값을 찾는다★ (2026-09-16).
+ *
+ * 병영수첩 클랜 페이지를 훑어 모은 관측(`BarracksClanMember`)이 유일한 다리다 —
+ * `NexonIdentity.barracksUsn` 은 아직 선수와 이어져 있지 않다 (실측 0줄).
+ *
+ * ★겹치는 닉은 버린다★ — 실측 8,875개 중 셋뿐이다. 그 셋은 누구인지 알 수 없으니
+ * 엉뚱한 사람에게 보내느니 단추를 안 그린다 (`CLAUDE.md` 2-1 «지어내지 않는다»).
+ *
+ * ★두 줄만 읽는다★ — 「둘 이상인가」만 알면 되므로 `take: 2` 로 끊는다.
+ */
+async function barracksUsnOfNick(name: string): Promise<string | null> {
+  const seen = await prisma.barracksClanMember.findMany({
+    where: { userNick: name },
+    select: { strUsn: true },
+    distinct: ['strUsn'],
+    take: 2,
+  })
+  if (seen.length !== 1) return null
+  return seen[0]?.strUsn ?? null
 }
