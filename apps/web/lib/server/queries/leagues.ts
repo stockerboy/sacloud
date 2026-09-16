@@ -687,6 +687,59 @@ export async function getClanRanks(
       }),
     )) ?? new Map<string, string[]>()
 
+  /*
+   * ★주요멤버 다섯★ (2026-09-16 밤 사장님:
+   * «클명이랑 승률사이에 메인 이라고 쓰고 메인멤버 5명을 써주든가»).
+   *
+   * PC 에서 클랜명과 승률 사이가 800px 비어 있었다 (무한 QA 실측).
+   *
+   * ★왕복 하나★ — 클랜 상세(`mainLineupOf`)처럼 줄마다 부르면 스무 번이다.
+   * 이 페이지 클랜들의 선수를 한 번에 읽어 여기서 자른다.
+   * 셈은 상세와 ★똑같다★ — 점수 순 라플 넷 + 스나 하나, 무기·점수를 모르면 안 넣는다.
+   * 실패해도 목록을 죽이지 않는다 — 그때는 빈 자리로 그린다.
+   */
+  const mainOf = new Map<string, { player: ReturnType<typeof toPlayerSummary>; weapon: 0 | 1; score: number | null }[]>()
+  if (page.items.length > 0) {
+    const clanIds = page.items.map((row) => row.clan.id)
+    const rows =
+      (await softFail('clan-rank-main', null, { leagueId })(
+        prisma.leaguePlayerHex.findMany({
+          where: {
+            score: { not: null },
+            weapon: { not: null },
+            leaguePlayer: { leagueId, clanId: { in: clanIds }, placement: false },
+          },
+          orderBy: [{ score: 'desc' }, { leaguePlayerId: 'asc' }],
+          select: {
+            weapon: true,
+            score: true,
+            leaguePlayer: { select: { clanId: true, player: { select: PLAYER_SUMMARY_SELECT } } },
+          },
+        }),
+      )) ?? []
+    const byClan = new Map<string, typeof rows>()
+    for (const row of rows) {
+      const clanId = row.leaguePlayer.clanId
+      if (clanId === null) continue
+      const list = byClan.get(clanId) ?? []
+      list.push(row)
+      byClan.set(clanId, list)
+    }
+    for (const [clanId, list] of byClan) {
+      const pick = (weapon: 0 | 1, take: number) =>
+        list
+          .filter((row) => row.weapon === weapon)
+          .slice(0, take)
+          .map((row) => ({
+            player: toPlayerSummary(row.leaguePlayer.player),
+            weapon,
+            score: row.score,
+          }))
+      /* ★라플 넷이 먼저, 스나가 맨 아래★ — 클랜 상세와 같은 차례다 */
+      mainOf.set(clanId, [...pick(0, 4), ...pick(1, 1)])
+    }
+  }
+
   return {
     cursor: page.cursor,
     items: page.items.map((row, index) => ({
@@ -701,6 +754,7 @@ export async function getClanRanks(
       category: row.clan.category,
       badges: badgeOf.get(row.id) ?? [],
       hex_axes: hexOf.get(row.id) ?? null,
+      main_members: mainOf.get(row.clan.id) ?? [],
     })),
   }
 }

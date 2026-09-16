@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { Count, Id, IsoDateTime, Percent, Rating, Slug } from '../common'
 import { Division, LeagueClanStatus, LeagueStatus, PlayerLimit, SeasonType } from '../codes'
-import { ClanSummary, LeagueSummary, PlayerSummary, UserSummary } from './summaries'
+import { ClanMainPlayer, ClanSummary, LeagueSummary, PlayerSummary, UserSummary } from './summaries'
 
 /** 리그맵. 실제 맵 목록은 원본 조사 범위 밖이라 [미확인] — Mock은 자리표시자 이름을 쓴다. */
 export const GameMap = z.object({
@@ -293,6 +293,18 @@ export const ClanRankRow = z.object({
    * 배틀로그가 아직 없는 클랜은 `null` 이고 카드는 그림 자리를 비운다 (D-106).
    */
   hex_axes: z.array(PlayerRankHexAxis).nullable().optional(),
+  /**
+   * ★주요멤버 다섯★ (2026-09-16 밤 사장님:
+   * «클명이랑 승률사이에 메인 이라고 쓰고 메인멤버 5명을 써주든가»).
+   *
+   * PC 에서 클랜명과 승률 사이가 800px 비어 있었다 — 그 자리를 메운다.
+   *
+   * ★클랜 상세와 같은 셈★ 이다 (`mainLineupOf`) — 점수 순 라플 넷 + 스나 하나,
+   * 무기를 모르거나 점수가 없는 사람은 안 넣는다 (D-106).
+   * 모자라면 ★짧게 돌려준다★ — 화면이 빈 자리를 그냥 비운다.
+   * 아직 배틀로그가 없는 클랜은 빈 배열이다.
+   */
+  main_members: z.array(ClanMainPlayer).default([]),
 })
 export type ClanRankRow = z.infer<typeof ClanRankRow>
 

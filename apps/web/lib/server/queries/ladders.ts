@@ -79,6 +79,9 @@ function toRow(row: LadderRow, rank: number): ClanRankRow {
        달려면 여기서도 리그 분포를 읽어야 하는데, 이 통로는 동기 함수다.
        필요해지면 `leagueClanBadges` 를 부르는 자리를 부르는 쪽에 만든다 */
     badges: [],
+    /* ★래더 목록은 주요멤버를 안 실는다★ — 클랜랭킹과 달리 줄이 짧고
+       사장님이 빈칸을 짚으신 것도 클랜랭킹이다 (2026-09-16 밤) */
+    main_members: [],
   }
 }
 

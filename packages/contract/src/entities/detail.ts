@@ -9,7 +9,7 @@ import { ClanHexagonV2 } from '../clanTraitsV2'
 import { ClanRoster } from '../clanRoster'
 import { ClanHeadToHead, PlayerHex } from '../playerHex'
 import { LeagueClanDetail, LeaguePlayer } from './league'
-import { ClanSummary, LeagueSummary, PlayerSummary } from './summaries'
+import { ClanMainPlayer, ClanSummary, LeagueSummary, PlayerSummary } from './summaries'
 import { MatchSummary, TeammateStat } from './match'
 
 /**
@@ -472,13 +472,10 @@ export type LeaguePlayerDetail = z.infer<typeof LeaguePlayerDetail>
  * 주전 한 명 (2026-09-12 사장님) — 마크는 클랜 것이라 안 싣는다.
  * `weapon` 은 `0 = 라이플` · `1 = 스나이퍼` (도메인 규칙 그대로).
  */
-export const ClanMainPlayer = z.object({
-  player: PlayerSummary,
-  weapon: z.union([z.literal(0), z.literal(1)]),
-  /** 실력 점수 — 줄 세운 잣대. 아직 없으면 null */
-  score: Count.nullable(),
-})
-export type ClanMainPlayer = z.infer<typeof ClanMainPlayer>
+/* ⚠ ★`summaries.ts` 로 올렸다★ (2026-09-16 밤) — 클랜랭킹도 쓰게 돼 순환을 피했다.
+     밖에서 보던 이름은 그대로 살아 있다 */
+export { ClanMainPlayer } from './summaries'
+export type { ClanMainPlayer as ClanMainPlayerType } from './summaries'
 
 export const LeagueClanShow = LeagueClanDetail.extend({
   /**

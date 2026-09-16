@@ -94,3 +94,19 @@ export type UserSummary = z.infer<typeof UserSummary>
 
 /** 마지막 갱신 시각을 노출하는 엔티티 공통 필드 */
 export const RenewedAt = IsoDateTime.nullable()
+
+/**
+ * ★클랜 주요멤버 한 사람★ — 점수 순 라플 넷 + 스나 하나 (사장님이 차례까지 정하셨다).
+ *
+ * ⚠ ★여기에 있는 까닭★ (2026-09-16 밤) — 원래 `detail.ts` 에 있었는데
+ *   클랜랭킹(`league.ts`)도 쓰게 됐다. 그런데 `detail.ts` 가 `league.ts` 를
+ *   이미 읽어서 거꾸로 가져오면 순환이 된다. 둘 다 읽는 여기로 올렸다.
+ *   `detail.ts` 가 다시 내보내므로 밖에서 보던 이름은 그대로다.
+ */
+export const ClanMainPlayer = z.object({
+  player: PlayerSummary,
+  weapon: z.union([z.literal(0), z.literal(1)]),
+  /** 실력 점수 — 줄 세운 잣대. 아직 없으면 null */
+  score: Count.nullable(),
+})
+export type ClanMainPlayer = z.infer<typeof ClanMainPlayer>
