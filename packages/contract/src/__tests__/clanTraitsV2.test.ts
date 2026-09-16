@@ -38,7 +38,9 @@ import {
   CLAN_HEX_V2_ZONE_LABELS_TOTAL,
   ClanHexagonV2,
   GAP_FULL_SCALE,
+  SNIPER_INFLUENCE_FULL_SCALE,
   buildClanHexV2Raw,
+  diffAxis,
   legacyTempoSeconds,
   normalizeAgainstFoe,
   normalizeByPercentile,
@@ -92,6 +94,16 @@ function emptyTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
  * 스나  (40 − 24) / 16라운드 / 2명 = +0.50점
  * 라플  (60 − 48) / 16라운드 / 3명 = +0.25점
  * ```
+ *
+ * ── ★«점수» 가 무엇인가★ (2026-09-16 밤 · 세는 쪽이 매긴다)
+ *   상대 스나를 선짤로 잡으면 1점, 2킬 2점, 3킬 4점, 4킬 6점, 올킬 10점
+ *   (선짤 없이 냈으면 절반). 세이브 +3 · 소수싸움에서 살아 나가며 잡으면 +2,
+ *   그 라운드를 이기면 +2 더. ★여기 40·60 은 그 점수의 합이다★ — 킬 수가 아니다.
+ *
+ * ── 이 표본이 «그럴듯한 값» 인 근거
+ *   실측(이긴 팀 기준) 한 사람당·라운드당 점수 차가 ★스나 +0.68점 · 라플 +0.45점★ 이다.
+ *   +0.50 / +0.25 는 그 언저리라 눈금(`GAP_FULL_SCALE` ±1.5) 한가운데에 떨어진다 —
+ *   자르기(clamp)에 걸려 시험이 통과해 버리는 일이 없다.
  */
 function gapTally(over: Partial<GapScoreTallyLike> = {}): GapScoreTallyLike {
   return {
@@ -886,6 +898,63 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
       /* 14라운드 중 6번 먼저 맞음 → 안 당한 8 → 8/14 = 57% (옛 기대값 그대로다) */
       expect(part.rounds - part.lost).toBe(8)
       expect(Math.round(((part.rounds - part.lost) / part.rounds) * 100)).toBe(57)
+    })
+  })
+
+  /**
+   * ★옛 ⑤ 스나영향력의 셈 — `diffAxis`★ (2026-09-16 낮 · 사장님이 실측 넷 중 D 를 고르심).
+   *
+   * 뜻: «스나가 킬을 낸 라운드 승률 − 스나가 한 명도 못 잡은 라운드 승률».
+   * 같은 날 밤에 `sniperInfluence` 가 ★키를 그대로 둔 채 뜻만★ «무기별 점수 차» 로
+   * 바뀌어서, 이 셈은 축 빌더에서 안 불린다. 함수는 `export` 로 살려 뒀고
+   * 재료(`tally.sniperInfluence`)도 계속 쌓인다 (`CLAUDE.md` 1-4).
+   *
+   * ⚠ ★아무도 안 부르는 export 는 조용히 썩는다.★ 되살리는 날 «있는 줄 알았는데
+   *   안 돌아간다» 가 되지 않게, 여기서 직접 불러 옛 값을 못 박는다.
+   */
+  describe('옛 ⑤ 스나영향력의 셈(`diffAxis`)은 아직 돈다 (2026-09-16 낮)', () => {
+    it('두 승률의 차를 내고 0~50%p 를 0~1 눈금으로 편다', () => {
+      /* `fullTally` 의 재료 그대로 — 일한 20 중 14승(70%) · 침묵 20 중 8승(40%) */
+      const axis = diffAxis('sniperInfluence', required(fullTally().sniperInfluence))
+      /* 차 = 70% − 40% = ★+30.0%★ (사장님이 «p» 를 빼셨다 — «%p» 가 아니라 «%» 로 적는다) */
+      expect(axis.text).toBe('+30.0%')
+      /* 육각형은 반지름이 0~1 이라 30 / 50 = 0.6 으로 편다 */
+      expect(axis.raw).toBeCloseTo(30 / SNIPER_INFLUENCE_FULL_SCALE, 10)
+      /* 분자·분모는 «일한 라운드» 쪽을 적는다 — 화면이 «14/20» 을 보여 줄 때 쓴다 */
+      expect(axis.numerator).toBe(14)
+      expect(axis.denominator).toBe(20)
+      expect(axis.pending).toBeNull()
+    })
+
+    it('침묵한 라운드가 없으면 「일한 라운드 승률」로 떨어진다 — 차를 0 으로 안 만든다', () => {
+      /*
+       * 사장님: «둘다 0이면 좀 그래». 6:1 처럼 짧은 판에서 스나가 매 라운드 킬을 내면
+       * 침묵한 라운드가 0 이다. 그때 차를 0 으로 찍으면 «영향력이 없다» 가 되어 거짓이다.
+       */
+      const axis = diffAxis('sniperInfluence', {
+        rounds: 10,
+        won: 7,
+        quietRounds: 0,
+        quietWon: 0,
+      })
+      expect(axis.text).toBe('70%')
+      expect(axis.raw).toBeCloseTo(0.7, 10)
+      /* 「측정중」이 아니다 — 잰 값이다 */
+      expect(axis.pending).toBeNull()
+    })
+
+    it('차가 음수면 숫자는 음수 그대로 적고 `raw` 만 0 으로 막는다', () => {
+      /* 일한 20 중 8승(40%) · 침묵 20 중 14승(70%) → 차 −30.0% */
+      const axis = diffAxis('sniperInfluence', {
+        rounds: 20,
+        won: 8,
+        quietRounds: 20,
+        quietWon: 14,
+      })
+      /* ★숫자는 지어내지 않는다★ — 스나가 일해도 더 지는 팀이 실제로 있다 */
+      expect(axis.text).toBe('-30.0%')
+      /* 음수 반지름은 그릴 수 없다 */
+      expect(axis.raw).toBe(0)
     })
   })
 
