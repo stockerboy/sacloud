@@ -975,15 +975,20 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
      */
     const gapRows = await prisma.$queryRaw<{ lpid: string; sniperahead: bigint; rifleahead: bigint; games: bigint }[]>`
       SELECT lp."id" AS lpid,
-             COUNT(*) FILTER (
+             /*
+              * ⚠ ★COUNT(DISTINCT) 이어야 한다★ — 처음엔 COUNT(*) 로 셀다가
+              *   한 경기에 같은 선수 줄이 여럿이면 두 번 세졌다.
+              *   그 탓에 ★137%★ 같은 값이 나왔다 (분모는 DISTINCT 였다).
+              */
+             COUNT(DISTINCT m."id") FILTER (
                WHERE (h."tally"->'gapScore'->>'ourSniper')::float
                    > (h."tally"->'gapScore'->>'foeSniper')::float
              ) AS sniperahead,
-             COUNT(*) FILTER (
+             COUNT(DISTINCT m."id") FILTER (
                WHERE (h."tally"->'gapScore'->>'ourRifle')::float
                    > (h."tally"->'gapScore'->>'foeRifle')::float
              ) AS rifleahead,
-             COUNT(*) AS games
+             COUNT(DISTINCT m."id") AS games
         FROM "LeaguePlayer" lp
         JOIN "MatchPlayerStat" s ON s."playerId" = lp."playerId"
         JOIN "Match" m ON m."id" = s."matchId" AND m."leagueId" = lp."leagueId"

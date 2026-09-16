@@ -347,7 +347,8 @@ export function axisValuesOf(
      */
     gap:
       input.games > 0 && input.gapWinGames !== undefined
-        ? round1((input.gapWinGames / input.games) * 100)
+        /* ⚠ ★100% 를 모통 넘지 않게 막는다★ — 분모가 어긋나면 137% 같은 값이 나왔다 */
+        ? round1(Math.min(100, (input.gapWinGames / input.games) * 100))
         : null,
     outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
   }
