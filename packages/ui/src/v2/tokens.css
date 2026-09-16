@@ -401,16 +401,30 @@
  * ★`white-space: nowrap` 이 꼭 있어야 한다★ — 없으면 좁은 폰에서 «게 / 시 / 판» 으로
  * 세로로 쪼개진다. 실제로 그래서 한 번 이모티콘으로 도망갔었다.
  */
+/*
+ * ⚠ ★2026-09-16 — PC 도 리그 이름과 같은 크기로★ (사장님 «일자로 고쳐줘»).
+ *   리그 이름은 `.v2-gnb` 의 22px 를 그대로 물려받는데 여기만 15px 이라
+ *   아랫선이 어긋났다. 옛 값: 15px.
+ */
 .sac-v2 .v2-gnb__board {
-  font-size: 15px;
+  font-size: 22px;
   line-height: 1;
   white-space: nowrap;
 }
 @media (max-width: 767px) {
   /* ⚠ 2026-09-12 되돌림 — 사장님: «로고밑에 Ipl 이나 SPL 글씨 쓰지말고 로고기준 오른쪽에 써».
      그 앞에는 폰에서 표장 위 · 이름 아래로 세웠었다 (같은 날) */
+  /*
+   * ⚠ ★2026-09-16 — 줄이 어긋나 있었다★ (사장님: «상단바에 메뉴들 줄이 열산리그랑
+   *   참가신청 그 사이부터 안맞아 (…) 일자로 고쳐줘»).
+   *
+   *   리그 이름은 `.v2-gnb__name` 이 ★12px★, 오른쪽 셋은 `.v2-gnb__board` 가
+   *   ★12.5px★ 였다. 크기가 다르면 글자 아랫선이 어긋나 «줄이 안 맞는» 것으로 보인다.
+   *   ★같은 크기·같은 줄높이·같은 굵기★ 로 맞춘다. 강조는 ★색★ 이 한다.
+   *   옛 값: name 12px/700 · board 12.5px(굵기 상속)
+   */
   .sac-v2 .v2-gnb__name {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.02em;
     line-height: 1;
@@ -420,7 +434,10 @@
     height: 20px;
   }
   .sac-v2 .v2-gnb__board {
-    font-size: 12.5px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
   }
 }
 .sac-v2 .v2-gnb__item:hover {
@@ -803,6 +820,16 @@
    */
   /* 폰은 탭이 셋뿐이라 폭을 나눠 갖는다 (부품이 `flex: 1` 을 준다). 밑줄이 보이게 꽉 채운다 */
   .sac-v2 .v2-tab { margin: 0; padding: 0 10px; font-size: 14.5px; align-items: center; }
+}
+
+/*
+ * ★페이지 제목은 클랜랭킹과 같은 크기★ (2026-09-16 사장님).
+ *   클랜랭킹은 `max-md:text-2xl`(22.5px) 이다. 같은 자로 맞춘다.
+ */
+@media (max-width: 767px) {
+  .sac-v2 .v2-pagehead__title {
+    font-size: 22.5px !important;
+  }
 }
 
 /* ── v3 카드의 폰 규칙 (2026-09-10) ── */

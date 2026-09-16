@@ -58,8 +58,20 @@ const titleRow: CSSProperties = {
   flexWrap: 'wrap',
   minWidth: 0,
 }
+/**
+ * ⚠ ★2026-09-16 — 클랜랭킹 제목과 크기를 맞췄다★ (사장님: «클랜랭킹이랑 개인랭킹
+ *   글씨 크기가 달라 클랜랭킹 글씨크기 기준으로 통일좀 시켜줘(제목말하는거야)»).
+ *
+ *   두 화면이 ★아예 다른 부품★ 을 쓰고 있었다 —
+ *     클랜랭킹 `RankHeader`  `text-3xl`(PC 28.1px) · `max-md:text-2xl`(폰 22.5px)
+ *     개인랭킹 `PageHead`    ★34px 고정★
+ *   그래서 폰에서 34 대 22.5 로 눈에 띄게 달랐다.
+ *
+ *   여기 값을 클랜랭킹의 PC 값에 맞추고, 폰은 아래 `.v2-pagehead__title` 미디어
+ *   규칙이 22.5px 로 줄인다 (`v2/tokens.css`). 옛 값은 34px 이다.
+ */
 const titleStyle: CSSProperties = {
-  fontSize: 34,
+  fontSize: 28,
   fontWeight: 700,
   lineHeight: 1.1,
   color: 'var(--v2-text-strong)',
@@ -93,7 +105,7 @@ export function PageHead({
           </div>
         ) : null}
         <div style={titleRow}>
-          <h1 style={titleStyle}>{title}</h1>
+          <h1 className="v2-pagehead__title" style={titleStyle}>{title}</h1>
           {subtitle ? <span style={subtitleStyle}>{subtitle}</span> : null}
         </div>
       </div>
