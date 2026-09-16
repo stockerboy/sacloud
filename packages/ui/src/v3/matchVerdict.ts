@@ -24,16 +24,22 @@ import type { ClanHexagonV2 } from '@sacloud/contract'
  */
 
 /**
- * ★이만큼은 쌓여야 «갈렸다» 고 말한다★
+ * ★표본이 적을수록 더 큰 차이를 요구한다★ (2026-09-16 사장님:
+ * «스나영향력이 압도적으로 높아서 이긴 그런 경기는 왜 안보이지»).
  *
- * 한 판이 보통 10~13 라운드다. 열 번도 안 일어난 일을 «이래서 졌다» 라고 하면
- * 한두 번 차이를 원인으로 지목하는 셈이다 — 실측에서 스나싸움이 딱 그랬다
- * (5번 중 3:2 인데 60% 대 40% 로 보인다).
+ * ⚠ 첫 판은 표본 10 미만을 ★통째로 버렸다.★ 그런데 한 판에서 스나싸움은 보통
+ *   5~10번, 스나영향력은 «스나가 일한 라운드» 5~8개라 ★거의 늘 탈락★ 했다.
+ *   그래서 스나로 이긴 판은 이유가 안 나왔다.
+ *
+ * 이제 두 문턱을 둔다 — 적은 표본은 ★«압도적» 일 때만★ 이유가 된다.
  */
-const MIN_SAMPLE = 10
-
-/** 이만큼은 벌어져야 «갈렸다» 고 말한다 (퍼센트포인트) */
+const MIN_SAMPLE = 5
+/** 이만큼 쌓였으면 «보통 차이» 로도 이유가 된다 */
+const SOLID_SAMPLE = 10
+/** 표본이 넉넉할 때의 문턱 (퍼센트포인트) */
 const MIN_GAP = 8
+/** 표본이 얇을 때의 문턱 — 이만큼 벌어져야 «압도적» 이다 */
+const MIN_GAP_THIN = 30
 
 /** 축마다 «무엇이 갈렸나» 를 사람 말로 */
 const PHRASE: Readonly<Record<string, string>> = {
@@ -59,6 +65,10 @@ export interface MatchVerdict {
   wonPct: number
   /** 진 팀 값 (%) */
   lostPct: number
+  /** 표본이 얇은 축인가 — 문장에 «◯번뿐이지만» 을 붙인다 */
+  thin: boolean
+  /** 두 팀 중 큰 쪽 분모 */
+  sample: number
 }
 
 /** 분자·분모가 없으면 «잴 수 없음» 이다 — 0 으로 치지 않는다 */
@@ -87,16 +97,18 @@ export function matchVerdict(
     if (l === null) continue
     /* 못 잰 축은 건너뛴다 — 없는 값으로 이유를 만들지 않는다 */
     if (w.value === null || l.value === null) continue
-    /* ★표본이 얇으면 후보가 아니다★ — 한두 번 차이를 원인이라고 하지 않는다 */
     if (w.denominator === null || l.denominator === null) continue
     const sample = Math.max(w.denominator, l.denominator)
+    /* 세 번 중 두 번을 원인이라 할 수는 없다 */
     if (sample < MIN_SAMPLE) continue
     const wp = pctOf(w)
     const lp = pctOf(l)
     if (wp === null || lp === null) continue
     /* 이긴 팀이 앞선 축만 — 진 팀이 앞선 축은 «졌는데 이겼다» 라 이유가 못 된다 */
     const gap = wp - lp
-    if (gap < MIN_GAP) continue
+    /* ★표본이 얇으면 «압도적» 일 때만★ (2026-09-16 사장님) */
+    const thin = sample < SOLID_SAMPLE
+    if (gap < (thin ? MIN_GAP_THIN : MIN_GAP)) continue
     if (best !== null && gap <= best.wonPct - best.lostPct) continue
     best = {
       key: w.key,
@@ -105,6 +117,8 @@ export function matchVerdict(
       lostCount: `${l.numerator}/${l.denominator}`,
       wonPct: wp,
       lostPct: lp,
+      thin,
+      sample,
     }
   }
   return best
@@ -116,8 +130,13 @@ export function matchVerdict(
  * ★숫자를 그대로 넣는다★ — «몇 번 중 몇 번» 이 없으면 퍼센트가 또 표본을 감춘다.
  */
 export function matchVerdictText(v: MatchVerdict, wonName: string, lostName: string): string {
+  /*
+   * ★표본이 얇으면 그렇다고 밝힌다★ (2026-09-16) — 숨기면 «5번 중 4번» 이
+   *   «80%» 로만 보여 커 보인다. 사장님이 처음 물으신 것이 그 문제였다.
+   */
+  const head = v.thin ? `${v.phrase}에서 갈렸습니다 (${v.sample}번뿐이지만 크게 벌어졌습니다)` : `${v.phrase}에서 갈렸습니다`
   return (
-    `${v.phrase}에서 갈렸습니다 — ` +
+    `${head} — ` +
     `${wonName} ${v.wonCount}(${Math.round(v.wonPct)}%) · ` +
     `${lostName} ${v.lostCount}(${Math.round(v.lostPct)}%)`
   )
