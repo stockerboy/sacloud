@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { CLAN_SEARCH_HINT } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
+/* 터미널 껍데기 둘째 줄이 리그 이름을 적을 때 쓴다 — ★이름은 한 곳에서만 온다★ */
+import { FEATURED_LEAGUES } from '../site-config'
 import {
   SEARCH_SUGGEST_ENABLED,
   SUGGEST_MAX_ITEMS,
@@ -33,6 +35,20 @@ interface SearchOption {
   type: SearchType
   label: string
   placeholder: string
+  /**
+   * ★터미널 껍데기에서 프롬프트로 쓰는 이름★ (2026-09-17 · 시안 `> findPlayer(`).
+   * `terminal` 을 안 켜면 아무 데서도 안 쓰인다.
+   */
+  fn: string
+  /**
+   * 터미널 껍데기 둘째 줄(`02`)에 적는 안내.
+   *
+   * ★새 문구를 지어내지 않는다★ — 이미 화면·계약에 있던 말을 그대로 옮긴다.
+   *   클랜   `CLAN_SEARCH_HINT` (계약 · 지금도 검색창 밑에 뜨는 그 문장)
+   *   플레이어 `HomeGuide` 1번 줄의 문장
+   *   리그   `FEATURED_LEAGUES` 의 이름들 — 여기 적지 않고 아래에서 붙인다
+   */
+  hint: string
 }
 
 const OPTIONS: readonly SearchOption[] = [
@@ -45,9 +61,26 @@ const OPTIONS: readonly SearchOption[] = [
     type: 'player',
     label: '플레이어',
     placeholder: '닉네임 또는 병영수첩 주소',
+    fn: 'findPlayer',
+    /* `HomeGuide` 1번 줄 그대로 — 실제로 되는 동작이다 (D-162) */
+    hint: '병영수첩 주소나 계정 번호를 붙여 넣어도 됩니다',
   },
-  { type: 'clan', label: '클랜', placeholder: '클랜명' },
-  { type: 'league', label: '리그', placeholder: '리그명' },
+  {
+    type: 'clan',
+    label: '클랜',
+    placeholder: '클랜명',
+    fn: 'findClan',
+    /* 계약의 문장 그대로. 터미널 껍데기에서는 이 줄이 아래 안내를 대신한다 */
+    hint: CLAN_SEARCH_HINT,
+  },
+  {
+    type: 'league',
+    label: '리그',
+    placeholder: '리그명',
+    fn: 'findLeague',
+    /* ★리그 이름을 여기 적지 않는다★ — `FEATURED_LEAGUES` 가 정한다 */
+    hint: FEATURED_LEAGUES.map((league) => league.label).join(' · '),
+  },
 ]
 
 export interface SearchBarProps {
@@ -86,6 +119,19 @@ export interface SearchBarProps {
    * 설정(`prefers-reduced-motion`)은 `.v2-sweep` 이 이미 존중한다.
    */
   sweep?: boolean
+  /**
+   * ★터미널 껍데기★ (2026-09-17 · 사장님 시안).
+   *
+   * ```
+   *   01 | > findPlayer(  닉네임 또는 병영수첩 주소            🔍
+   *   02 | > // 병영수첩 주소나 계정 번호를 붙여 넣어도 됩니다
+   * ```
+   *
+   * ★기본은 끄기다★ — 안 넘기면 지금까지와 한 픽셀도 안 다르다 (`CLAUDE.md` 1-4).
+   * ★동작은 한 줄도 안 바뀐다★ — 종류 셋 · 제출 · 자동완성 · 디바운스 전부 그대로다.
+   * 「검색 종류」 드롭다운은 ★사라지지 않았다★ — `> findPlayer(` 가 그 단추다.
+   */
+  terminal?: boolean
 }
 
 export function SearchBar({
@@ -97,6 +143,7 @@ export function SearchBar({
   /* 560 — 2026-08-30 「적진」부터의 값. 시안 홈만 720 을 넘긴다 */
   maxWidth = 560,
   sweep = false,
+  terminal = false,
 }: SearchBarProps) {
   const [type, setType] = useState<SearchType>('player')
   const [text, setText] = useState('')
@@ -174,32 +221,88 @@ export function SearchBar({
          * *「글자와 사진 사이에 값을 아는 층을 한 겹 깐다」*.
          * 색은 페이지와 같은 `--color-page` 라 **사진이 없는 화면에서는 아무 변화가 없다.**
          */
-        className={`relative flex items-stretch rounded-[var(--radius,2px)] border bg-page transition-colors duration-100 ${
-          sweep ? 'overflow-hidden' : ''
+        /*
+         * ★터미널 껍데기는 두 줄짜리 상자다★ (2026-09-17). 그래서 세로로 쌓는다.
+         * 옛 껍데기는 한 줄이라 `items-stretch` 그대로다 — 아래 `contents` 참고.
+         */
+        className={`relative rounded-[var(--radius,2px)] border bg-page transition-colors duration-100 ${
+          terminal ? 'flex flex-col' : 'flex items-stretch'
         } ${focused || open ? 'border-accent' : 'border-line'}`}
       >
         {/* 시안의 빛 — 없으면 ★요소 자체를 안 만든다★ */}
+        {/*
+         * ⚠ ★2026-09-17 — 자르는 자리를 옮겼다★ (버그 수정).
+         *
+         *   여기 있던 `overflow-hidden` 은 ★상자 자체★ 에 걸려 있었다. 빛이 상자 밖으로
+         *   새는 것을 막으려던 것인데, ★「검색 종류」 드롭다운까지 같이 잘렸다.★
+         *   드롭다운은 상자 ★아래★ 로 펼쳐지므로 눌러도 아무것도 안 보였다 —
+         *   헤드리스로 눌러 보고 찾았다 (`[role=option]` 셋은 DOM 에 있는데 화면에 없다).
+         *   ★터미널 껍데기 이전부터 있던 문제다★ (`sweep` 은 2026-09-07 부터 켜져 있었다).
+         *
+         *   이제 ★빛만★ 제 칸 안에서 잘린다. 상자는 안 자른다.
+         */}
         {sweep ? (
-          <span
-            aria-hidden
-            className="v2-sweep"
-            style={{
-              background:
-                'linear-gradient(90deg,rgba(255,255,255,0),rgba(91,141,255,.10),rgba(255,255,255,0))',
-            }}
-          />
+          <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            <span
+              className="v2-sweep"
+              style={{
+                background:
+                  'linear-gradient(90deg,rgba(255,255,255,0),rgba(91,141,255,.10),rgba(255,255,255,0))',
+              }}
+            />
+          </span>
         ) : null}
+        {/*
+          ★첫 줄★ — 터미널이면 `01 |` 줄번호가 앞에 붙고 세 조각이 한 줄로 선다.
+          터미널이 아니면 `display:contents` 라 ★이 div 자체가 없는 것처럼★ 동작한다 —
+          옛 껍데기의 배치가 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
+        */}
+        <div className={terminal ? 'flex items-stretch' : 'contents'}>
+          {terminal ? <LineNo n="01" /> : null}
         {/* --- 검색 종류 --- */}
         <div className="relative shrink-0">
           <button
             type="button"
             aria-haspopup="listbox"
             aria-expanded={open}
+            /*
+             * ★터미널 껍데기에서는 읽는 기계에 이름을 따로 준다★ (2026-09-17).
+             *   화면에 보이는 글자가 `> findPlayer(` 라서, 그대로 읽으면
+             *   ★「findPlayer 여는괄호」★ 가 된다. 무슨 단추인지 알 수 없다.
+             *
+             * ⚠ 처음엔 `sr-only` 한 칸을 안에 숨겨 뒀는데, 그 방법은
+             *   ★1px 칸에 52px 글자를 담는 것★ 이라 QA 도구가 「글자 짤림」으로 잡는다.
+             *   `aria-label` 이면 칸 자체가 없다. 옛 껍데기는 라벨이 그대로 보이므로 안 준다.
+             */
+            aria-label={terminal ? `검색 종류: ${selected.label}` : undefined}
             onClick={() => setOpen((value) => !value)}
-            className="flex h-full w-[112px] cursor-pointer select-none items-center justify-between gap-2 border-r border-line px-4 text-[13px] text-meta transition-colors duration-100 hover:text-[var(--color-text-strong,#f6eded)] max-md:w-[92px] max-md:px-3"
+            className={
+              terminal
+                ? /* ★시안의 `> findPlayer(`★ — 이 글자가 곧 옛 「검색 종류」 단추다 */
+                  'flex h-full cursor-pointer select-none items-center gap-[4px] py-[11px] pl-[2px] pr-[8px] font-[var(--font-num)] text-[14px] text-[var(--v2-blue,#5b8dff)] transition-opacity duration-100 hover:opacity-80 max-md:text-[12px] max-md:pr-[6px]'
+                : 'flex h-full w-[112px] cursor-pointer select-none items-center justify-between gap-2 border-r border-line px-4 text-[13px] text-meta transition-colors duration-100 hover:text-[var(--color-text-strong,#f6eded)] max-md:w-[92px] max-md:px-3'
+            }
           >
-            <span className="whitespace-nowrap">{selected.label}</span>
-            <CaretDownIcon />
+            {terminal ? (
+              <>
+                <span aria-hidden className="text-[var(--v2-text-ghost2,#3d4869)]">
+                  {'>'}
+                </span>
+                <span className="whitespace-nowrap">
+                  {selected.fn}
+                  <span className="text-[var(--v2-text-ghost,#5c6580)]">(</span>
+                </span>
+                {/* 종류를 바꿀 수 있다는 표시 — 시안에는 없지만 없애면 드롭다운이 숨는다 */}
+                <span className="text-[var(--v2-text-ghost,#5c6580)]">
+                  <CaretDownIcon />
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="whitespace-nowrap">{selected.label}</span>
+                <CaretDownIcon />
+              </>
+            )}
           </button>
 
           {open ? (
@@ -279,17 +382,43 @@ export function SearchBar({
               submit()
             }
           }}
-          className="min-w-0 flex-1 appearance-none bg-transparent px-4 py-4 text-[15px] text-[var(--color-text-strong,#f6eded)] placeholder:text-[var(--color-faint,#6b5555)] focus:outline-none max-md:px-3 max-md:py-3"
+          className={
+            terminal
+              ? 'min-w-0 flex-1 appearance-none bg-transparent px-0 py-[11px] font-[var(--font-num)] text-[14px] text-[var(--color-text-strong,#f6eded)] placeholder:text-[var(--color-faint,#6b5555)] focus:outline-none max-md:text-[12px] max-md:py-[10px]'
+              : 'min-w-0 flex-1 appearance-none bg-transparent px-4 py-4 text-[15px] text-[var(--color-text-strong,#f6eded)] placeholder:text-[var(--color-faint,#6b5555)] focus:outline-none max-md:px-3 max-md:py-3'
+          }
         />
 
         <button
           type="button"
           aria-label="검색"
           onClick={submit}
-          className="flex shrink-0 cursor-pointer items-center px-4 text-meta transition-colors duration-100 hover:text-accent max-md:px-3"
+          className={`flex shrink-0 cursor-pointer items-center text-meta transition-colors duration-100 hover:text-accent ${
+            terminal ? 'pl-[10px] pr-[12px]' : 'px-4 max-md:px-3'
+          }`}
         >
           <SearchIcon />
         </button>
+        </div>
+
+        {/* --- ★둘째 줄 `02`★ — 터미널 껍데기에서만 ------------------
+               ★새 문구를 지어내지 않는다★ (`OPTIONS[].hint` 주석 참고).
+               클랜일 때는 이 줄이 아래 「클랜 검색 안내」를 대신하므로
+               같은 문장이 두 번 나오지 않는다. */}
+        {terminal ? (
+          <div className="flex items-start border-t border-[var(--v2-head-divider,#1b2542)]">
+            <LineNo n="02" />
+            <span
+              aria-hidden
+              className="shrink-0 py-[9px] pl-[2px] pr-[6px] font-[var(--font-num)] text-[12px] text-[var(--v2-text-ghost2,#3d4869)] max-md:text-[10px]"
+            >
+              {'>'}
+            </span>
+            <span className="min-w-0 flex-1 truncate py-[9px] pr-[12px] font-[var(--font-num)] text-[12px] text-[var(--v2-text-ghost,#5c6580)] max-md:text-[10px]">
+              {`// ${selected.hint}`}
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {/* --- 후보 목록 (2026-09-02 · O-002) ---
@@ -359,7 +488,8 @@ export function SearchBar({
              늘 띄우면 헛말이 된다. 문구 자체는 `@sacloud/contract` 의
              `CLAN_SEARCH_HINT` 하나에서 온다(화면과 계약이 갈리지 않게).
              면을 칠하지 않고 흐린 글자 한 줄로만 둔다 — 검색창이 주인공이다. */}
-      {type === 'clan' ? (
+      {/* ★터미널 껍데기에서는 이 문장이 이미 둘째 줄(`02`)에 있다★ — 두 번 적지 않는다 */}
+      {type === 'clan' && !terminal ? (
         <p className="mt-2 px-1 text-[12px] leading-relaxed text-[var(--color-faint,#6b5555)]">
           {CLAN_SEARCH_HINT}
         </p>
@@ -383,6 +513,21 @@ export function SearchBar({
         </p>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * 터미널 껍데기 왼쪽의 줄번호 칸 (`01` · `02`).
+ * 읽는 기계에는 아무 뜻도 없는 장식이라 `aria-hidden` 이다.
+ */
+function LineNo({ n }: { n: string }) {
+  return (
+    <span
+      aria-hidden
+      className="flex shrink-0 select-none items-center border-r border-[var(--v2-head-divider,#1b2542)] px-[10px] py-[9px] font-[var(--font-num)] text-[12px] text-[var(--v2-text-ghost2,#3d4869)] max-md:px-[8px] max-md:text-[10px]"
+    >
+      {n}
+    </span>
   )
 }
 

@@ -105,7 +105,7 @@ export function HomeLeagueFeatures() {
   return (
     <section
       aria-label="리그 고르기"
-      className="mx-auto mt-[58px] w-full max-w-[940px] max-md:mt-[38px]"
+      className="mx-auto mt-[24px] w-full max-w-[940px] max-md:mt-[16px]"
     >
       {/* ── 리그 셋 ─────────────────────────────────────── */}
       <div
@@ -127,7 +127,7 @@ export function HomeLeagueFeatures() {
                 /* 리그가 바뀌면 접는다 — 옛 리그의 예시가 새 이름 아래 남으면 거짓말이다 */
                 setOpenKeys([])
               }}
-              className="flex flex-col items-center gap-[4px] border px-[10px] py-[15px] text-center transition-colors duration-100 max-md:px-[4px] max-md:py-[12px]"
+              className="flex flex-col items-center gap-[2px] border px-[10px] py-[10px] text-center transition-colors duration-100 max-md:px-[4px] max-md:py-[8px]"
               style={{
                 /* 고른 칸만 제 리그 색으로 선다. 나머지는 한 겹 죽인다 */
                 borderColor: on ? t : 'var(--v2-head-divider, #1e2637)',
@@ -166,14 +166,23 @@ export function HomeLeagueFeatures() {
         판이 없으면 PC 에서 목록 글자가 구름에 묻힌다 (실측).
       */}
       <div
-        className="mt-[10px] border border-[var(--v2-head-divider)] px-[18px] pb-[18px] pt-[16px] max-md:mt-[8px] max-md:px-[13px] max-md:pb-[14px] max-md:pt-[13px]"
+        className="mt-[8px] border border-[var(--v2-head-divider)] px-[18px] pb-[14px] pt-[13px] max-md:mt-[6px] max-md:px-[12px] max-md:pb-[11px] max-md:pt-[11px]"
         style={{ background: 'rgba(9, 14, 24, 0.86)' }}
       >
-      <div className="flex items-baseline justify-between gap-[10px]">
-        <div className="text-[15px] font-bold text-[var(--v2-text-strong)] max-md:text-[13.5px]">
+      {/*
+        ⚠ ★2026-09-17 — 제목과 숫자를 붙였다★ (무한 QA 가 ★665px 빈틈★ 으로 잡았다).
+          옛 모양은 `justify-between` 이라 940px 판에서 제목은 맨 왼쪽, 숫자는 맨 오른쪽 —
+          그 사이가 통째로 비었다. 사장님 상시 지적 그대로다:
+          «한눈에 들어오는걸 굳이 떨어뜨려 빈공간 만든다».
+
+          ★폰에서는 원래 안 벌어졌다★ (칸이 좁아 저절로 붙는다) — 그래서 폰은 그대로다.
+          ★되돌리려면★ 이 줄을 `flex items-baseline justify-between gap-[10px]` 로.
+      */}
+      <div className="flex items-baseline gap-[12px] max-md:justify-between max-md:gap-[10px]">
+        <div className="shrink-0 text-[15px] font-bold text-[var(--v2-text-strong)] max-md:text-[13.5px]">
           <span style={{ color: tone }}>{pick.label}</span> 에서 볼 수 있는 것
         </div>
-        <div className="shrink-0 text-right text-[12px] text-[var(--v2-text-ghost)] max-md:text-[11px]">
+        <div className="shrink-0 text-[12px] text-[var(--v2-text-ghost)] max-md:text-right max-md:text-[11px]">
           {LEAGUE_FEATURES.length}가지 중 <span className="num">{given}</span>가지 제공
           {/* ★곧 끊기면 그 뒤도 같이 적는다★ — 안 그러면 위 숫자가 경고와 어긋나 보인다 */}
           {ending > 0 ? (
@@ -184,7 +193,7 @@ export function HomeLeagueFeatures() {
         </div>
       </div>
 
-      <ul className="mt-[12px] border-t border-[var(--v2-head-divider)]">
+      <ul className="mt-[10px] border-t border-[var(--v2-head-divider)]">
         {LEAGUE_FEATURES.map((f) => {
           const state = leagueFeature(pick.slug, f.key)
           const open = openKeys.includes(f.key)
@@ -197,7 +206,7 @@ export function HomeLeagueFeatures() {
           return (
             <li
               key={f.key}
-              className="border-b border-[var(--v2-head-divider)] py-[13px] max-md:py-[11px]"
+              className="border-b border-[var(--v2-head-divider)] py-[9px] max-md:py-[8px]"
             >
             <div
               className="flex items-center gap-[12px] max-md:gap-[9px]"
@@ -343,7 +352,7 @@ export function HomeLeagueFeatures() {
        */}
       <Link
         href={`/apply?kind=${pick.applyKind}`}
-        className="mt-[20px] flex items-center justify-center border py-[15px] text-[15px] font-bold transition-opacity duration-100 max-md:mt-[16px] max-md:py-[13px] max-md:text-[14px]"
+        className="mt-[14px] flex items-center justify-center border py-[11px] text-[15px] font-bold transition-opacity duration-100 max-md:mt-[12px] max-md:py-[10px] max-md:text-[14px]"
         style={{ borderColor: tone, color: tone }}
       >
         {pick.label} 참가 신청하기

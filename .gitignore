@@ -143,3 +143,6 @@ scripts/pipeline/lap.state.json
 
 # 운영 데이터 백업 (게시판 삭제 등) — 저장소에 넣지 않는다
 backup/
+
+# 무한 QA 가 찍어 두는 그림 — 기록이 아니라 확인용이다
+scratchpad/qa-shots/

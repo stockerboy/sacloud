@@ -41,6 +41,9 @@ export { HotPostList, HOT_POST_COUNT, type HotPostListProps } from './home/HotPo
  * 데이터를 주던 `GET /api/home/top` 라우트는 살아 있다 — 화면만 안 부른다.
  */
 export { SiteIntro } from './home/SiteIntro'
+/* ★이름의 뜻★ — 홈 히어로의 코드 배경이 이 문장에서 `CLOUD` 약자를 뽑아 쓴다
+   (2026-09-17). ★두 곳에 적지 않는다★ — 값은 `SiteIntro.tsx` 한 곳뿐이다 */
+export { NAME_MEANING } from './home/SiteIntro'
 /* 소개 글이 게시판을 「있다」고 말해도 되는가 (O-004 · 2026-09-02).
    길이 열리면 이 한 줄을 true 로 (`./board/boardOpen.ts`) */
 export { BOARD_OPEN } from './board/boardOpen'

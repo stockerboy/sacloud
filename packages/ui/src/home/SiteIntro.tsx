@@ -24,7 +24,7 @@ import { FoldCard } from './FoldCard'
  * `CLOUD` = Connected League Operations & User Data.
  * 우리가 지어낸 풀이가 아니므로 임의로 고치지 않는다.
  */
-const NAME_MEANING = 'CLOUD — Connected League Operations & User Data'
+export const NAME_MEANING = 'CLOUD — Connected League Operations & User Data'
 
 /**
  * ══ 2026-09-02 (O-004) — **본문을 사장님이 쓰신 글로 바꿨다** ══

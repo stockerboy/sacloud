@@ -187,7 +187,7 @@ export function HomeSitemap() {
   return (
     <nav
       aria-label="사이트맵"
-      className="mx-auto mt-[66px] w-full max-w-[940px] border-t border-[var(--v2-head-divider)] pt-[28px]"
+      className="mx-auto mt-[30px] w-full max-w-[940px] border-t border-[var(--v2-head-divider)] pt-[22px]"
     >
       {/* PC — 다섯 칸. 폰 — 칸이 세로로 쌓인다 (접혀 있어 길지 않다) */}
       <div className="grid grid-cols-5 gap-[26px] max-md:flex max-md:flex-col max-md:gap-[18px]">
@@ -220,7 +220,17 @@ export function HomeSitemap() {
                       </span>
                       <span className="whitespace-nowrap">{node.label}</span>
                     </summary>
-                    <div className="mt-[7px] flex flex-col gap-[7px] pl-[13px]">
+                    {/*
+                      ⚠ ★2026-09-17 — 접혀 있을 때 ★진짜로★ 없애 준다★ (무한 QA 가 잡았다).
+                        크롬은 닫힌 `<details>` 안쪽 글자에도 ★사각형을 준다.★ 그리지는 않는데
+                        `getBoundingClientRect()` 는 154x19 를 돌려준다 — 그래서 자동 QA 가
+                        «「PL」과 「일반리그」가 겹친다» 고 잡았다. 눈으로는 안 보인다.
+                        ★재서 확인했다★ — summary «경쟁리그»(y1250) · 안 보이는 leaf «PL»(y1248).
+
+                        `hidden group-open:flex` 를 주면 닫혔을 때 `display:none` 이라
+                        사각형이 0 이 된다. ★펼쳤을 때의 모습은 그대로다.★
+                    */}
+                    <div className="mt-[7px] hidden flex-col gap-[7px] pl-[13px] group-open:flex">
                       {(node.links ?? []).map((link) => (
                         <Leaf key={link.href} link={link} />
                       ))}

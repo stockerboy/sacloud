@@ -32,6 +32,8 @@ import { HomeLeagueTiles } from './HomeLeagueTiles'
 import { HomeTopPlayers } from './HomeTopPlayers'
 import { HomeAnalyzedMatches } from './HomeAnalyzedMatches'
 import { HomeLeagueFeatures } from './HomeLeagueFeatures'
+import { HomeHeroHead } from './HomeHeroHead'
+import { HERO_V2 } from './heroV2'
 
 /**
  * 홈 윗머리 — `0 로고 · 1 통합검색 · 2 리그 바로가기`.
@@ -265,17 +267,32 @@ export function HomeSearch() {
 
           ★되돌리려면 이 두 줄의 `max-md:` 값을 `h-[84px]` · `mb-[24px]` 로 되돌린다.★
       */}
-      <Link href="/" aria-label="3rd cloud 홈" className="v2-brand mb-[38px] block max-md:mb-[18px]">
-        <MainLogo className="h-[110px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[56px]" />
-      </Link>
+      {/*
+        ⚠ ★2026-09-17 — 코드 배경 시안에서는 이 큰 로고 대신 `Log_ / in SA CLOUD_` 글자다.★
+          ★지우지 않았다★ — `heroV2.ts` 의 `HERO_V2` 를 `false` 로 두면 그대로 돌아온다
+          (`CLAUDE.md` 1-4). 상단바의 작은 로고는 건드리지 않았다.
+      */}
+      {HERO_V2 ? (
+        <div className="mb-[18px] w-full max-w-[940px] max-md:mb-[14px]">
+          <HomeHeroHead />
+        </div>
+      ) : (
+        <Link href="/" aria-label="3rd cloud 홈" className="v2-brand mb-[38px] block max-md:mb-[18px]">
+          <MainLogo className="h-[110px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[56px]" />
+        </Link>
+      )}
 
       {/* --- 1 통합검색 — 크고 가운데. 동작은 하나도 바뀌지 않았다 --- */}
       {/* ★시안 검색창은 720px 다★ (`width: 720, maxWidth: '100%'`).
              옛 값은 `mt-6 w-full` — 본문 폭을 다 썼다 */}
-      <div className="w-full max-w-[720px]">
+      {/* ★코드 배경 시안에서는 검색창이 아래 리그 칸과 ★같은 폭★ 이다 (940px).
+             옛 값 720 은 아래 `maxWidth` 에 그대로 살아 있다 (`CLAUDE.md` 1-4) */}
+      <div className={HERO_V2 ? 'w-full max-w-[940px]' : 'w-full max-w-[720px]'}>
         <SearchBar
           /* ★시안 홈 검색창은 720px★ (`width: 720`). 기본값 560 은 그대로 살아 있다 */
-          maxWidth={720}
+          maxWidth={HERO_V2 ? 940 : 720}
+          /* ★터미널 껍데기★ — 껍데기만 바뀐다. 동작은 한 줄도 안 건드렸다 */
+          terminal={HERO_V2}
           sweep
           onSubmit={handleSearch}
           notice={notice}

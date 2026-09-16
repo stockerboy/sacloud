@@ -1,8 +1,10 @@
 /* 2026-09-12 사장님이 두 칸을 빼라고 하셨다 — 컴포넌트는 살아 있고 여기서 안 부를 뿐이다 */
 // import { HomeGuide, SiteIntro } from '@sacloud/ui'
+import { HomeCodeBackdrop } from './_home/HomeCodeBackdrop'
 import { HomeSearch } from './_home/HomeSearch'
 import { HomeSeasonLine } from './_home/HomeSeasonLine'
 import { HomeSitemap } from './_home/HomeSitemap'
+import { HERO_V2 } from './_home/heroV2'
 
 /**
  * 홈.
@@ -191,10 +193,15 @@ export default function HomePage() {
   return (
     /* `home-night` — 밤하늘 배경. 규칙과 이유는 `packages/ui/src/styles.css` 맨 아래에 있다.
        ★사진이 안 와도 이 자리는 우리 검정이다★ (`background-color` 를 먼저 칠한다) */
-    <div className="home-night">
+    /* ★2026-09-17 — 히어로를 「코드 배경」으로 갈아끼웠다★ (사장님 시안).
+       `HERO_V2` 한 줄로 옛 밤하늘 히어로가 그대로 돌아온다 (`_home/heroV2.ts`). */
+    <div className={HERO_V2 ? 'home-code' : 'home-night'}>
+      {/* 배경 코드 — 읽는 기계는 안 만난다(`aria-hidden`). 글자는 전부 실제 파일에서 온다 */}
+      {HERO_V2 ? <HomeCodeBackdrop /> : null}
       <div className="mx-auto flex w-full max-w-[var(--layout-max,1180px)] flex-col items-center px-6 max-md:px-3">
         {/* ★시즌 한 줄★ (2026-09-07 · Part 10 ④) — 시안 맨 위. 날짜는 계약에서 온다 */}
-        <div className="pt-[74px] max-md:pt-[36px]">
+        {/* 코드 배경에서는 위 여백을 줄인다 — 시안의 히어로는 머리띠 바로 밑에서 시작한다 */}
+        <div className={HERO_V2 ? 'pt-[30px] max-md:pt-[18px]' : 'pt-[74px] max-md:pt-[36px]'}>
           <HomeSeasonLine />
         </div>
 
