@@ -31,8 +31,15 @@ export async function playerHexOf(leaguePlayerId: string): Promise<PlayerHex | n
   return row ? toPlayerHex(row) : null
 }
 
-/** 축마다 (원값 · 백분위 · 등수 · 모집단 · «잡음:당함» 표기) — 열 이름이 규칙적이라 표로 뽑는다 */
-const AXIS_COLUMNS: Record<
+/**
+ * 축마다 (원값 · 백분위 · 등수 · 모집단 · «잡음:당함» 표기) — 열 이름이 규칙적이라 표로 뽑는다.
+ *
+ * ⚠ ★축 키와 DB 칸 이름이 다르다★ — `survival` → `opening*`, `crack` → `burst*`.
+ *   축이 갈릴 때 칸을 안 갈았기 때문이다 (마이그레이션이 커진다).
+ *   ★그래서 이 표를 내보낸다★ — 분야별 TOP5(`hexTop`)가 이 표를 안 보고 축 키로
+ *   칸 이름을 만들다가 ★`survivalRank` 를 찾아 500★ 을 냈다 (2026-09-16 저녁).
+ */
+export const AXIS_COLUMNS: Record<
   TraitAxisKey,
   { value: keyof HexRow; pct: keyof HexRow; rank: keyof HexRow; total: keyof HexRow; unit: 'percent' | 'per_game' | 'seconds' }
 > = {

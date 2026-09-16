@@ -34,6 +34,7 @@ import {
 } from '@sacloud/contract'
 import { leagueScreen, playerHexValueText } from '@sacloud/contract'
 import { toClanSummary, toClanSummaryOrNull, toPlayerSummary } from '../mappers'
+import { AXIS_COLUMNS } from './playerHex'
 
 function tallyOf(value: unknown): ClanHexTallyLike | null {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return null
@@ -84,7 +85,16 @@ function playerValueText(key: TraitAxisKey, raw: number | null): string {
  *   ★두 카드로 나눈다.★ 스나싸움 · 라플싸움 각각 다섯 줄이다. 그래야 «160명 중»
  *   이라는 모집단 숫자도 그 카드의 진짜 모집단이 된다.
  */
-const WEAPON_SPLIT: readonly TraitAxisKey[] = ['duel']
+/*
+ * ★무기별로 나눠 내는 축★ — 워커가 등수를 ★무기 안에서★ 매기는 축과 같아야 한다
+ *   (`HEX_WEAPON_SCOPED_AXIS_KEYS`). 여기 안 든 축은 리그 전체 한 줄이다.
+ *
+ * ⚠ ★«싸움» 하나만 들어 있었다★ (2026-09-16 저녁). 그 사이 사장님이 게임템포·
+ *   크랙 성공도 «스나수는 스나수끼리» 로 바꾸셔서 그 둘도 ★1위가 둘★ 이 됐는데,
+ *   무기를 안 갈라 부르니 스나 1~5위와 라플 1~5위가 섞여 열 줄이 나오고
+ *   앞에서 다섯 줄만 잘려 나갔다.
+ */
+const WEAPON_SPLIT: readonly TraitAxisKey[] = ['duel', 'survival', 'crack']
 const WEAPONS: readonly (0 | 1)[] = [1, 0] /* 스나 먼저 — 사장님이 늘 스나를 앞에 두신다 */
 
 async function playerTop(leagueId: string): Promise<HexTopAxis[]> {
@@ -104,6 +114,12 @@ async function playerAxis(
   key: TraitAxisKey,
   weapon: 0 | 1 | null,
 ): Promise<HexTopAxis> {
+  /*
+   * ⚠ ★축 키로 칸 이름을 만들지 않는다★ (2026-09-16 저녁 — 이것 때문에 500 이 났다).
+   *   `survival` 의 칸은 `opening*`, `crack` 의 칸은 `burst*` 다. 선수 상세와
+   *   ★같은 표★(`AXIS_COLUMNS`)를 본다 — 두 곳이 어긋나면 한 곳만 빈다.
+   */
+  const col = AXIS_COLUMNS[key]
   {
     /*
      * ★저장된 등수를 그대로 믿는다.★ 워커가 잰 값이고, 선수 상세·랭킹 배지가
@@ -113,20 +129,20 @@ async function playerAxis(
       where: {
         leaguePlayer: { leagueId },
         ...(weapon === null ? {} : { weapon }),
-        [`${key}Rank`]: { lte: HEX_TOP_SIZE, gt: 0 },
+        [col.rank]: { lte: HEX_TOP_SIZE, gt: 0 },
       },
       select: {
         leaguePlayerId: true,
         weapon: true,
-        [key]: true,
-        [`${key}Rank`]: true,
-        [`${key}Pct`]: true,
-        [`${key}Total`]: true,
+        [col.value]: true,
+        [col.rank]: true,
+        [col.pct]: true,
+        [col.total]: true,
         leaguePlayer: {
           select: { id: true, player: true, clan: true },
         },
       } as never,
-      orderBy: { [`${key}Rank`]: 'asc' },
+      orderBy: { [col.rank]: 'asc' },
       take: HEX_TOP_SIZE,
     })
 
@@ -138,13 +154,13 @@ async function playerAxis(
     }[]
 
     const built: HexTopRow[] = list.map((row) => ({
-      rank: Number(row[`${key}Rank`] ?? 0),
+      rank: Number(row[col.rank] ?? 0),
       player: toPlayerSummary(row.leaguePlayer.player),
       clan: toClanSummaryOrNull(row.leaguePlayer.clan),
       league_player_id: row.leaguePlayerId,
       league_clan_id: null,
-      value: playerValueText(key, (row[key] as number | null) ?? null),
-      percentile: (row[`${key}Pct`] as number | null) ?? null,
+      value: playerValueText(key, (row[col.value] as number | null) ?? null),
+      percentile: (row[col.pct] as number | null) ?? null,
     }))
 
     return {
@@ -152,7 +168,7 @@ async function playerAxis(
       key: weapon === null ? key : `${key}:${weapon}`,
       /* 이름은 무기가 정한다. 안 나눈 축은 첫 줄의 무기를 따르고, 모르면 스나 쪽 이름이다 */
       label: playerHexLabelOf(key, weapon ?? firstWeaponOf(list)),
-      total: (list[0]?.[`${key}Total`] as number | null) ?? null,
+      total: (list[0]?.[col.total] as number | null) ?? null,
       rows: built,
     }
   }
