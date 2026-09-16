@@ -10,10 +10,26 @@
  * ```
  *
  * 둘 다 그럴듯한 그림을 그리기 때문에 **테스트로 못 박는다.**
+ *
+ * ── ⚠ ★2026-09-16 밤 — 축 여섯이 통째로 바뀌었다★ (사장님이 밤새 회의로 확정)
+ *
+ * ```
+ * 옛 여섯   sniperDuel · outnumbered · save · riflePower · sniperInfluence · firstBloodless
+ * 새 여섯   sniperDuel · sniperInfluence · rifleInfluence · blockChance · outnumbered · save
+ * ```
+ *
+ *   · `sniperInfluence` 는 ★키는 같지만 뜻이 다르다★ — 옛것은 «스나가 킬 낸 라운드
+ *     승률 − 침묵 라운드 승률» 이었고, 새것은 «무기별 점수를 상대와 견준 차» 다
+ *   · `riflePower`·`firstBloodless` 는 축에서 내려갔다. ★재료와 셈은 그대로 산다★
+ *
+ *   그래서 이 파일은 ★옛 축을 시험하던 것을 지우지 않았다★ (`CLAUDE.md` 1-4).
+ *   축에서 내려간 것은 화면 축 대신 ★tally 와 셈 함수를 직접★ 본다.
+ *   바뀐 시험에는 「⚠ 옛 기대값 — …」 을 주석으로 남겼다.
  */
 import { describe, expect, it } from 'vitest'
 import {
   CLAN_HEX_V2_AXIS_KEYS,
+  CLAN_HEX_V2_AXIS_KEYS_V4,
   CLAN_HEX_V2_AXIS_LABELS,
   CLAN_HEX_V2_CONFIG,
   CLAN_HEX_V2_CONFIG_KILLER,
@@ -21,6 +37,7 @@ import {
   CLAN_HEX_V2_MIN_SAMPLES,
   CLAN_HEX_V2_ZONE_LABELS_TOTAL,
   ClanHexagonV2,
+  GAP_FULL_SCALE,
   buildClanHexV2Raw,
   legacyTempoSeconds,
   normalizeAgainstFoe,
@@ -32,7 +49,9 @@ import {
   zoneCountOf,
   type ClanHexTallyLike,
   type ClanHexV2,
+  type ClanHexV2AnyAxisKey,
   type ClanHexV2AxisKey,
+  type GapScoreTallyLike,
 } from '../clanTraitsV2'
 
 /** 여섯 축이 전부 `null` 인 tally — 「배틀로그는 읽었는데 아무것도 못 쟀다」 */
@@ -46,6 +65,9 @@ function emptyTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     foeSnipers: 1,
     sniperDuel: null,
     sniperInfluence: null,
+    /* ★2026-09-16 밤에 늘어난 두 칸★ — 새 축 셋(스나·라플 영향력 · 기회차단)의 재료다 */
+    blockChance: null,
+    gapScore: null,
     firstBlood: null,
     firstBloodless: null,
     trade: null,
@@ -56,6 +78,30 @@ function emptyTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     sniperFight: null,
     lastSniper: null,
     attackZone: null,
+    ...over,
+  }
+}
+
+/**
+ * ★스나·라플 영향력★ 의 재료 한 판치. 숫자는 시험용 표본이지 운영 데이터가 아니다.
+ *
+ * 값은 ★스나와 라플이 서로 다른 답★ 이 나오게 골랐다 — 둘이 같으면 스나 칸과 라플
+ * 칸을 바꿔 읽는 버그를 시험이 못 잡는다. 셈은 «(우리 − 상대) ÷ 라운드 ÷ 사람수» 다.
+ *
+ * ```
+ * 스나  (40 − 24) / 16라운드 / 2명 = +0.50점
+ * 라플  (60 − 48) / 16라운드 / 3명 = +0.25점
+ * ```
+ */
+function gapTally(over: Partial<GapScoreTallyLike> = {}): GapScoreTallyLike {
+  return {
+    ourSniper: 40,
+    ourRifle: 60,
+    foeSniper: 24,
+    foeRifle: 48,
+    sniperHeads: 2,
+    rifleHeads: 3,
+    rounds: 16,
     ...over,
   }
 }
@@ -71,6 +117,14 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     /* ⑤ 선짤 — 동시각 2라운드는 **분모에서 이미 빠진** 값이다 (사용자 (가)) */
     /* ⑤ 스나영향력 — 일한 20 중 14승(70%) · 침묵 20 중 8승(40%) → ★+30.0%★ (2026-09-16 사장님이 «p» 를 빼심) */
     sniperInfluence: { rounds: 20, won: 14, quietRounds: 20, quietWon: 8 },
+    /*
+     * ★기회차단★ (2026-09-16 밤) — 상대가 먼저 킬을 낸 10라운드 중 3을 우리가 끊었다 → 30%.
+     *   뒷면(`openRounds`·`heldRounds`)은 축에 안 쓰지만 ★버리지 않는다★ — 세는 쪽이
+     *   같이 담아 두므로 합산이 그것도 지켜야 한다.
+     */
+    blockChance: { foeOpenRounds: 10, cutRounds: 3, openRounds: 6, heldRounds: 2 },
+    /* ★스나·라플 영향력★ (2026-09-16 밤) — `games` 가 없으니 ★한 판★ 이다 */
+    gapScore: gapTally(),
     firstBlood: { rounds: 12, won: 7, tiedRounds: 2 },
     /* ⑥ 교환 — 창 넷을 다 다르게 잡았다. 창을 바꾸면 값이 바뀌는지 시험하려는 것이다 */
     /* ⑥ 선짤없이 라운드 시작 — 14라운드 중 6번 먼저 맞음 → 1 − 6/14 = 57% */
@@ -120,13 +174,27 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
   })
 }
 
-/** 표본에서 하위 tally 를 꺼낸다 — 시험 표본이 잘못됐으면 그 자리에서 터뜨린다 */
-function required<T>(value: T | null): T {
-  if (value === null) throw new Error('시험 표본이 잘못됐다')
+/**
+ * 표본에서 하위 tally 를 꺼낸다 — 시험 표본이 잘못됐으면 그 자리에서 터뜨린다.
+ *
+ * ⚠ ★2026-09-16 밤★ — `undefined` 도 받는다. 새로 생긴 `blockChance`·`gapScore` 는
+ *   `ClanHexTallyLike` 에서 **선택 칸**(`?`)이라 «옛 줄에는 아예 없다» 를 `undefined`
+ *   로 말한다. 그 둘을 이 함수로 꺼내려면 여기가 `undefined` 를 알아야 한다.
+ */
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) throw new Error('시험 표본이 잘못됐다')
   return value
 }
 
-function axisOf(hex: ClanHexV2, key: ClanHexV2AxisKey) {
+/**
+ * ⚠ ★2026-09-16 밤 — 열쇠를 `ClanHexV2AnyAxisKey` 로 넓혔다.★
+ *
+ * 축에서 내려간 이름(`riflePower`·`firstBloodless`)으로도 **부를 수 있어야** 한다.
+ * 그런 이름은 육각형에 없으니 아래 `throw` 로 떨어진다 — 그게 맞다. 옛 축을 되살리면
+ * 그날부터 다시 찾아진다. 타입에서 막아 버리면 옛 시험을 지워야 하고, 그건
+ * «지우지 않는다» 를 어긴다 (`CLAUDE.md` 1-4).
+ */
+function axisOf(hex: ClanHexV2, key: ClanHexV2AnyAxisKey) {
   const axis = hex.axes.find((entry) => entry.key === key)
   if (axis === undefined) throw new Error(`축이 없다: ${key}`)
   return axis
@@ -169,9 +237,41 @@ describe('축 목록', () => {
     expect(lower).toEqual([])
   })
 
-  it('④ 는 **라이플화력**이다 — 게임템포가 아니다', () => {
-    expect(CLAN_HEX_V2_AXIS_KEYS[3]).toBe('riflePower')
+  /*
+   * ⚠ ★2026-09-16 밤 — 축 여섯이 통째로 바뀌었다★ (사장님).
+   *
+   *   ⚠ 옛 기대값 — 이 시험은 «④ 는 **라이플화력**이다» 였고 이렇게 봤다:
+   *   ```
+   *   expect(CLAN_HEX_V2_AXIS_KEYS[3]).toBe('riflePower')
+   *   expect(CLAN_HEX_V2_AXIS_LABELS.riflePower).toBe('라이플화력')
+   *   ```
+   *   ④ 는 이제 ★기회차단★ 이다. 라이플화력의 ★이름표는 그대로 살아 있고★
+   *   (`CLAN_HEX_V2_AXIS_KEYS_V4` 에 축 자리도 남아 있다) 아래가 그걸 지킨다.
+   */
+  it('여섯 축은 ★2026-09-16 밤 판★ 이다 — ④ 가 기회차단이다', () => {
+    expect([...CLAN_HEX_V2_AXIS_KEYS]).toEqual([
+      'sniperDuel',
+      'sniperInfluence',
+      'rifleInfluence',
+      'blockChance',
+      'outnumbered',
+      'save',
+    ])
+    expect(CLAN_HEX_V2_AXIS_KEYS[3]).toBe('blockChance')
+    expect(CLAN_HEX_V2_AXIS_LABELS.blockChance).toBe('기회차단')
+    expect(CLAN_HEX_V2_AXIS_LABELS.rifleInfluence).toBe('라플영향력')
+  })
+
+  /* 내려간 둘은 **지우지 않았다** — 옛 축 배열과 이름표가 그대로 있어야 되살릴 수 있다 */
+  it('내려간 `riflePower`·`firstBloodless` 는 옛 축 배열과 이름표에 남아 있다', () => {
+    const now = [...CLAN_HEX_V2_AXIS_KEYS] as string[]
+    expect(now).not.toContain('riflePower')
+    expect(now).not.toContain('firstBloodless')
+
+    expect([...CLAN_HEX_V2_AXIS_KEYS_V4] as string[]).toContain('riflePower')
+    expect([...CLAN_HEX_V2_AXIS_KEYS_V4] as string[]).toContain('firstBloodless')
     expect(CLAN_HEX_V2_AXIS_LABELS.riflePower).toBe('라이플화력')
+    expect(CLAN_HEX_V2_AXIS_LABELS.firstBloodless).toBe('크랙 성공')
   })
 })
 
@@ -234,10 +334,15 @@ describe('sumClanHexTallies — **비율을 평균 내지 않는다** (D-235 Q8)
     /* 옛 표본에는 `situationRounds` 칸이 없다 — 없으면 0으로 더한다 */
     expect(sum.riflePower).toEqual({ rounds: 20, won: 2, situationRounds: 0 })
 
-    const axis = axisOf(buildClanHexV2Raw({ tally: sum, matches: 2 }), 'riflePower')
+    /*
+     * ⚠ ★2026-09-16 밤★ — 라이플화력이 축에서 내려갔다 (기회차단과 교대).
+     *   ★쌓는 방식은 그대로 지킨다★ — 되살릴 때 재수집이 없어야 하기 때문이다
+     *   (`CLAUDE.md` 1-4). 그래서 화면 축 대신 합쳐진 tally 를 직접 나눠 본다.
+     *   ⚠ 옛 기대값 — `axisOf(hex, 'riflePower').raw` 가 0.1 · `text` 가 `'10%'` 였다.
+     */
+    const part = required(sum.riflePower)
     /* 판 평균이었다면 (100% + 0%) / 2 = 50% 였을 것이다 */
-    expect(axis.raw).toBeCloseTo(0.1, 10)
-    expect(axis.text).toBe('10%')
+    expect(part.won / part.rounds).toBeCloseTo(0.1, 10)
   })
 
   it('못 잰 경기(`null`)는 분모에 섞이지 않고, 전부 못 쟀으면 결과도 `null` 이다', () => {
@@ -274,6 +379,270 @@ describe('sumClanHexTallies — **비율을 평균 내지 않는다** (D-235 Q8)
   })
 })
 
+/* -------------------------------------------------------------------------- */
+/* ★새 축 셋★ (2026-09-16 밤)                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * ★기회차단★ — 먼저 맞고 시작한 라운드를 끊어냈나.
+ *
+ * 분모 `foeOpenRounds` = 상대가 그 라운드 첫 킬을 낸 라운드 수,
+ * 분자 `cutRounds` = 그중 ★다음 킬을 우리가 낸★ 라운드 수.
+ *
+ * 실측에서 ★경기 승률과 상관 0.015★ — 여섯 축 중 «그냥 강팀» 이 안 섞인 유일한 축이다
+ * (`CLAN_HEX_V2_AXIS_KEYS` 주석). 그래서 이 축이 조용히 틀리면 알아챌 다른 단서가 없다.
+ */
+describe('★기회차단★ — 상대가 연 라운드를 끊었나 (2026-09-16 밤)', () => {
+  it('분자는 끊은 라운드 · 분모는 상대가 연 라운드다', () => {
+    const axis = axisOf(buildClanHexV2Raw({ tally: fullTally(), matches: 1 }), 'blockChance')
+    /* 표본은 `{ foeOpenRounds: 10, cutRounds: 3 }` 이다 → 3/10 */
+    expect(axis.numerator).toBe(3)
+    expect(axis.denominator).toBe(10)
+    expect(axis.raw).toBeCloseTo(0.3, 10)
+    expect(axis.text).toBe('30%')
+    expect(axis.pending).toBeNull()
+  })
+
+  it('분모가 0 이면 「측정중」 이다 — 0% 로 적지 않는다 (D-106)', () => {
+    const hex = buildClanHexV2Raw({
+      tally: fullTally({ blockChance: { foeOpenRounds: 0, cutRounds: 0 } }),
+      matches: 1,
+    })
+    const axis = axisOf(hex, 'blockChance')
+    /* 「한 번도 안 맞고 시작했다」는 «못 끊었다» 가 아니다 — 잴 일이 없었던 것이다 */
+    expect(axis.pending).toBe('sample')
+    expect(axis.raw).toBeNull()
+    expect(axis.text).toBe('측정중')
+  })
+
+  it('「당했는데 한 번도 못 끊었다」는 0% 다 — `null` 로 바꾸지 않는다', () => {
+    const hex = buildClanHexV2Raw({
+      tally: fullTally({ blockChance: { foeOpenRounds: 9, cutRounds: 0 } }),
+      matches: 1,
+    })
+    const axis = axisOf(hex, 'blockChance')
+    expect(axis.raw).toBe(0)
+    expect(axis.pending).toBeNull()
+    expect(axis.text).toBe('0%')
+  })
+
+  it('재료가 아예 없으면 `battlelog` 다 — 상대 스나를 안 보는 축이다', () => {
+    const hex = buildClanHexV2Raw({ tally: emptyTally({ foeSnipers: 0 }), matches: 1 })
+    expect(axisOf(hex, 'blockChance').pending).toBe('battlelog')
+  })
+
+  it('여러 판은 **비율을 평균 내지 않는다** — 분자합 / 분모합이다', () => {
+    const few = fullTally({ blockChance: { foeOpenRounds: 2, cutRounds: 2 } })
+    const many = fullTally({ blockChance: { foeOpenRounds: 18, cutRounds: 0 } })
+
+    const sum = sumClanHexTallies([few, many])
+    /* 뒷면 두 칸은 이 표본에 없다 — 없으면 0 으로 더한다 (`riflePower.situationRounds` 와 같은 꼴) */
+    expect(sum.blockChance).toEqual({
+      foeOpenRounds: 20,
+      cutRounds: 2,
+      openRounds: 0,
+      heldRounds: 0,
+    })
+
+    const axis = axisOf(buildClanHexV2Raw({ tally: sum, matches: 2 }), 'blockChance')
+    /* 판 평균이었다면 (100% + 0%) / 2 = 50% 였을 것이다 */
+    expect(axis.raw).toBeCloseTo(0.1, 10)
+    expect(axis.text).toBe('10%')
+  })
+
+  it('축이 안 쓰는 뒷면(`openRounds`·`heldRounds`)도 버리지 않고 쌓는다', () => {
+    const sum = sumClanHexTallies([fullTally(), fullTally()])
+    /* 표본 하나가 `{ openRounds: 6, heldRounds: 2 }` 다 — 두 판이면 그 두 배 */
+    expect(sum.blockChance?.openRounds).toBe(12)
+    expect(sum.blockChance?.heldRounds).toBe(4)
+  })
+})
+
+/**
+ * ★스나영향력 · 라플영향력★ — 무기별 점수를 상대와 견준 차 (2026-09-16 밤 사장님).
+ *
+ * ★같은 재료·같은 이름·다른 접기★ 다. 어느 쪽인지는 `games` 칸이 있는지로 갈린다:
+ *
+ * ```
+ * 한 판 (games 없음)   «한 사람당 · 라운드당 점수 차»   +0.50점
+ * 여러 판 (games 있음)  «그 차가 앞선 판 비율»          64%
+ * ```
+ *
+ * ⚠ 이 둘이 ★조용히 뒤바뀌면 그림이 멀쩡해 보인다★ — 둘 다 0~1 로 펴져 꼭짓점이
+ *   그럴듯하게 찍힌다. 그래서 `text` 까지 못 박는다.
+ */
+describe('★스나영향력 · 라플영향력★ — 한 판과 여러 판이 다르게 접힌다 (2026-09-16 밤)', () => {
+  it('한 판이면 «한 사람당 · 라운드당 점수 차» 를 적는다', () => {
+    const hex = buildClanHexV2Raw({ tally: fullTally(), matches: 1 })
+
+    const sniper = axisOf(hex, 'sniperInfluence')
+    /* (40 − 24) / 16라운드 / 2명 = +0.50점 */
+    expect(sniper.text).toBe('+0.50점')
+    /* 분자·분모는 «우리 점수 / 상대 점수» 다 — 비율이 아니다 (화면이 둘을 나란히 보여 준다) */
+    expect(sniper.numerator).toBe(40)
+    expect(sniper.denominator).toBe(24)
+    /* `raw` 는 −1.5 ~ +1.5 를 0~1 로 편 값이다: (0.5 + 1.5) / 3 */
+    expect(sniper.raw).toBeCloseTo((0.5 + GAP_FULL_SCALE) / (GAP_FULL_SCALE * 2), 10)
+    expect(sniper.pending).toBeNull()
+
+    const rifle = axisOf(hex, 'rifleInfluence')
+    /* (60 − 48) / 16라운드 / 3명 = +0.25점.
+       ★스나(+0.50)와 다른 값이어야 한다★ — 같으면 두 칸을 바꿔 읽는 버그를 못 잡는다 */
+    expect(rifle.text).toBe('+0.25점')
+    expect(rifle.numerator).toBe(60)
+    expect(rifle.denominator).toBe(48)
+    expect(rifle.raw).toBeCloseTo((0.25 + GAP_FULL_SCALE) / (GAP_FULL_SCALE * 2), 10)
+  })
+
+  it('뒤진 판은 음수로 적는다 — 숫자를 지어내지 않는다', () => {
+    const hex = buildClanHexV2Raw({
+      /* 스나 칸만 뒤집었다: (24 − 40) / 16 / 2 = −0.50점 */
+      tally: fullTally({ gapScore: gapTally({ ourSniper: 24, foeSniper: 40 }) }),
+      matches: 1,
+    })
+    const sniper = axisOf(hex, 'sniperInfluence')
+    expect(sniper.text).toBe('-0.50점')
+    /* 눈금은 0~1 이라 음수도 그림에는 들어온다 — (−0.5 + 1.5) / 3 */
+    expect(sniper.raw).toBeCloseTo((-0.5 + GAP_FULL_SCALE) / (GAP_FULL_SCALE * 2), 10)
+    /* 라플 칸은 안 건드렸으니 그대로다 */
+    expect(axisOf(hex, 'rifleInfluence').text).toBe('+0.25점')
+  })
+
+  it('눈금(±1.5점)을 넘어가도 `raw` 는 0~1 밖으로 안 나간다 — 숫자는 그대로 적는다', () => {
+    /* (0 − 160) / 16 / 2 = −5.00점 — 눈금 −1.5 를 한참 넘는다 */
+    const low = buildClanHexV2Raw({
+      tally: fullTally({ gapScore: gapTally({ ourSniper: 0, foeSniper: 160 }) }),
+      matches: 1,
+    })
+    expect(axisOf(low, 'sniperInfluence').raw).toBe(0)
+    expect(axisOf(low, 'sniperInfluence').text).toBe('-5.00점')
+
+    /* 반대쪽도 같다 — 육각형은 반지름이 1 을 넘을 수 없다 */
+    const high = buildClanHexV2Raw({
+      tally: fullTally({ gapScore: gapTally({ ourSniper: 160, foeSniper: 0 }) }),
+      matches: 1,
+    })
+    expect(axisOf(high, 'sniperInfluence').raw).toBe(1)
+    expect(axisOf(high, 'sniperInfluence').text).toBe('+5.00점')
+  })
+
+  it('라운드를 하나도 못 세면 두 축이 「측정중」 이다 — 0 으로 나누지 않는다', () => {
+    const hex = buildClanHexV2Raw({
+      tally: fullTally({ gapScore: gapTally({ rounds: 0 }) }),
+      matches: 1,
+    })
+    for (const key of ['sniperInfluence', 'rifleInfluence'] as const) {
+      expect(axisOf(hex, key).pending).toBe('sample')
+      expect(axisOf(hex, key).raw).toBeNull()
+      expect(axisOf(hex, key).text).toBe('측정중')
+    }
+  })
+
+  it('재료가 아예 없으면 `battlelog` 다 — 상대 스나를 안 보는 축이다', () => {
+    const hex = buildClanHexV2Raw({ tally: emptyTally({ foeSnipers: 0 }), matches: 1 })
+    expect(axisOf(hex, 'sniperInfluence').pending).toBe('battlelog')
+    expect(axisOf(hex, 'rifleInfluence').pending).toBe('battlelog')
+  })
+
+  /**
+   * ★여기가 클랜 축의 핵심이다★ — 사장님: «스나차이 난 판을 모으기».
+   *
+   * «앞섰나» 는 ★판마다 한 번씩★ 세어 두어야 한다. 합친 뒤에는 어느 판에서
+   * 앞섰는지 알 수 없기 때문이다 (점수를 다 더해 버리면 한 판의 큰 승리가
+   * 여러 판의 작은 패배를 덮는다). 그래서 `sumClanHexTallies` 가 그 자리다.
+   */
+  describe('여러 판 — `sumClanHexTallies` 가 ★앞선 판 수★ 를 센다', () => {
+    /* 스나 앞섬 · 라플 앞섬 (`fullTally` 기본: 40>24 · 60>48) */
+    const bothAhead = () => fullTally()
+    /* 스나 뒤짐 · 라플 앞섬 */
+    const rifleOnly = () =>
+      fullTally({ gapScore: gapTally({ ourSniper: 10, foeSniper: 90, ourRifle: 90, foeRifle: 10 }) })
+    /* 스나 앞섬 · 라플 뒤짐 */
+    const sniperOnly = () =>
+      fullTally({ gapScore: gapTally({ ourSniper: 90, foeSniper: 10, ourRifle: 10, foeRifle: 90 }) })
+
+    it('판마다 스나·라플을 따로 세고, 센 판 수도 남긴다', () => {
+      /* 스나 앞선 판 = ①③ 두 판 · 라플 앞선 판 = ①②④ 세 판 */
+      const sum = sumClanHexTallies([bothAhead(), rifleOnly(), sniperOnly(), rifleOnly()])
+      expect(sum.gapScore?.games).toBe(4)
+      expect(sum.gapScore?.sniperAheadGames).toBe(2)
+      /* ★스나와 라플이 다른 수여야 한다★ — 같으면 한쪽 셈이 빠져도 안 걸린다 */
+      expect(sum.gapScore?.rifleAheadGames).toBe(3)
+    })
+
+    it('합친 결과를 육각형에 넣으면 «앞선 판 비율» 이 된다 — 점수 차가 아니다', () => {
+      const sum = sumClanHexTallies([bothAhead(), rifleOnly(), sniperOnly(), rifleOnly()])
+      const hex = buildClanHexV2Raw({ tally: sum, matches: 4 })
+
+      const sniper = axisOf(hex, 'sniperInfluence')
+      expect(sniper.numerator).toBe(2)
+      expect(sniper.denominator).toBe(4)
+      expect(sniper.raw).toBeCloseTo(0.5, 10)
+      expect(sniper.text).toBe('50%')
+
+      const rifle = axisOf(hex, 'rifleInfluence')
+      expect(rifle.text).toBe('75%')
+      expect(rifle.raw).toBeCloseTo(0.75, 10)
+
+      /* ★한 판짜리 글자(«+0.50점»)가 나오면 접기가 뒤바뀐 것이다★ */
+      expect(sniper.text).not.toContain('점')
+      expect(rifle.text).not.toContain('점')
+    })
+
+    it('동점인 판은 「앞섰다」로 안 센다 — 이겨야 앞선 것이다', () => {
+      const tie = () =>
+        fullTally({
+          gapScore: gapTally({ ourSniper: 30, foeSniper: 30, ourRifle: 30, foeRifle: 30 }),
+        })
+      const sum = sumClanHexTallies([tie(), tie()])
+      expect(sum.gapScore?.games).toBe(2)
+      expect(sum.gapScore?.sniperAheadGames).toBe(0)
+      expect(sum.gapScore?.rifleAheadGames).toBe(0)
+      /* 0 은 실제 관측이다 — «한 판도 못 앞섰다» 이지 «못 쟀다» 가 아니다 (D-106) */
+      const axis = axisOf(buildClanHexV2Raw({ tally: sum, matches: 2 }), 'sniperInfluence')
+      expect(axis.raw).toBe(0)
+      expect(axis.text).toBe('0%')
+      expect(axis.pending).toBeNull()
+    })
+
+    it('이미 합친 것을 또 합쳐도 판 수가 두 번 세지지 않는다', () => {
+      /*
+       * 잡(`clanHexV2Summary`)이 실제로 이렇게 부른다 — 한 판씩 `folded` 에 접어 넣는다.
+       * 그래서 «합 + 한 판» 이 늘 맞아야 한다. 합쳐진 쪽은 이미 센 수를 그대로 더하고,
+       * 한 판짜리는 그 자리에서 판정한다.
+       */
+      const first = sumClanHexTallies([bothAhead(), rifleOnly()])
+      expect(first.gapScore?.games).toBe(2)
+      expect(first.gapScore?.sniperAheadGames).toBe(1)
+
+      const second = sumClanHexTallies([first, sniperOnly()])
+      expect(second.gapScore?.games).toBe(3)
+      /* 1(이미 센 것) + 1(새 판) = 2 */
+      expect(second.gapScore?.sniperAheadGames).toBe(2)
+      /* 라플은 2(이미 센 것) + 0 = 2 */
+      expect(second.gapScore?.rifleAheadGames).toBe(2)
+    })
+
+    it('점수 합도 같이 쌓는다 — 경기 단위 값을 되살릴 수 있어야 한다', () => {
+      const sum = sumClanHexTallies([bothAhead(), bothAhead()])
+      expect(sum.gapScore?.ourSniper).toBe(80)
+      expect(sum.gapScore?.foeSniper).toBe(48)
+      expect(sum.gapScore?.rounds).toBe(32)
+      /* 사람 수는 판마다 다르므로 **합이 아니다** — 마지막 판의 값을 둔다 */
+      expect(sum.gapScore?.sniperHeads).toBe(2)
+      expect(sum.gapScore?.rifleHeads).toBe(3)
+    })
+
+    it('재료가 없는 판은 분모(`games`)에 안 들어간다', () => {
+      const sum = sumClanHexTallies([bothAhead(), fullTally({ gapScore: null })])
+      expect(sum.gapScore?.games).toBe(1)
+      expect(sum.gapScore?.sniperAheadGames).toBe(1)
+      /* 전부 없으면 결과도 `null` 이다 */
+      expect(sumClanHexTallies([fullTally({ gapScore: null })]).gapScore).toBeNull()
+    })
+  })
+})
+
 describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다** (D-106)', () => {
   it('tally 자체가 없으면 여섯 축이 전부 `null` · `측정중` 이다', () => {
     const hex = buildClanHexV2Raw({ tally: null, matches: 0 })
@@ -296,9 +665,14 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     const hex = buildClanHexV2Raw({ tally: emptyTally({ foeSnipers: 0 }), matches: 1 })
     expect(axisOf(hex, 'sniperDuel').pending).toBe('foeSniper')
     expect(axisOf(hex, 'sniperDuel').raw).toBeNull()
-    /* ⑤⑥ 은 재료 자체가 없어서 `battlelog` 다. **`foeSniper` 가 아니다** */
+    /*
+     * 나머지 다섯은 재료 자체가 없어서 `battlelog` 다. **`foeSniper` 가 아니다**
+     * ⚠ 옛 기대값 — 이 줄은 `sniperInfluence` 와 `firstBloodless` 를 봤다.
+     *   `firstBloodless` 가 축에서 내려가고 ★기회차단·라플영향력★ 이 들어왔다.
+     */
     expect(axisOf(hex, 'sniperInfluence').pending).toBe('battlelog')
-    expect(axisOf(hex, 'firstBloodless').pending).toBe('battlelog')
+    expect(axisOf(hex, 'rifleInfluence').pending).toBe('battlelog')
+    expect(axisOf(hex, 'blockChance').pending).toBe('battlelog')
   })
 
   /**
@@ -339,10 +713,11 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
       matches: 1,
     })
     expect(hex.measured).toBe(6)
-    expect(axisOf(hex, 'riflePower').pending).toBeNull()
+    /* ⚠ 옛 기대값 — 이 줄들은 `riflePower` 와 `firstBloodless` 를 봤다 (2026-09-16 밤에 교대) */
+    expect(axisOf(hex, 'blockChance').pending).toBeNull()
     expect(axisOf(hex, 'sniperDuel').pending).toBeNull()
     expect(axisOf(hex, 'sniperInfluence').pending).toBeNull()
-    expect(axisOf(hex, 'firstBloodless').pending).toBeNull()
+    expect(axisOf(hex, 'rifleInfluence').pending).toBeNull()
     expect(axisOf(hex, 'outnumbered').raw).toBeCloseTo(0.4, 10)
     expect(axisOf(hex, 'save').raw).toBeCloseTo(0.4, 10)
   })
@@ -379,10 +754,16 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(axisOf(hex, 'sniperDuel').text).toBe('60%')
     expect(axisOf(hex, 'outnumbered').text).toBe('40%')
     expect(axisOf(hex, 'save').text).toBe('40%')
-    /* ④ 라이플화력 — 3 / 6. 스나가 지워진 6라운드 중 3을 라플이 살렸다 */
-    expect(axisOf(hex, 'riflePower').numerator).toBe(3)
-    expect(axisOf(hex, 'riflePower').denominator).toBe(6)
-    expect(axisOf(hex, 'riflePower').text).toBe('50%')
+    /* ④ ★기회차단★ — 상대가 연 10라운드 중 3을 끊었다 (2026-09-16 밤) */
+    expect(axisOf(hex, 'blockChance').numerator).toBe(3)
+    expect(axisOf(hex, 'blockChance').denominator).toBe(10)
+    expect(axisOf(hex, 'blockChance').text).toBe('30%')
+    /*
+     * ⚠ 옛 ④ 라이플화력은 `{ numerator: 3, denominator: 6, text: '50%' }` 였다.
+     *   셈도 재료도 남아 있다 (`CLAUDE.md` 1-4) — tally 로 그대로 확인한다.
+     */
+    expect(required(fullTally().riflePower).won).toBe(3)
+    expect(required(fullTally().riflePower).rounds).toBe(6)
     /* ⚠ 옛 ④ 게임템포는 72초 / 4라운드 = 18초 였다. 셈은 남아 있다 (`CLAUDE.md` 1-4) */
     expect(legacyTempoSeconds(fullTally())).toBe(18)
     /* ⑤ 선짤 — 7 / 12. 동시각 2라운드는 **분모에 없다** (사용자 (가)) */
@@ -394,25 +775,32 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
      *   세는 쪽이 `rounds` 를 25초로 좁혀 놓으므로 여기서는 그대로 나눈다.
      */
     /*
-     * ⑤ ★스나영향력★ (2026-09-16 사장님이 실측 넷 중 D 를 고르심) —
-     *   일한 라운드 14/20 = 70% · 침묵 라운드 8/20 = 40% → ★차 +30.0%p★.
-     *   `raw` 는 육각형이 반지름으로 쓰므로 ★0~50%p 를 0~1 로 편 값★ 이다 (30/50 = 0.6).
-     *   분자·분모는 «일한 라운드» 쪽을 적는다.
+     * ②③ ★스나영향력 · 라플영향력★ (2026-09-16 밤 사장님) —
+     *   한 판이라 «한 사람당 · 라운드당 점수 차» 다. 분자·분모는 «우리 / 상대 점수».
+     *
+     *   ⚠ 옛 기대값 (2026-09-16 낮 · 두 승률의 차) —
+     *     `{ numerator: 14, denominator: 20, text: '+30.0%', raw: 0.6 }`.
+     *     일한 라운드 14/20 = 70% · 침묵 라운드 8/20 = 40% → 차 +30.0%p 를
+     *     0~50%p 눈금으로 편 값이 0.6 이었다. 그 셈은 `diffAxis` 에 그대로 있고
+     *     재료(`tally.sniperInfluence`)도 계속 쌓인다.
      */
-    expect(axisOf(hex, 'sniperInfluence').numerator).toBe(14)
-    expect(axisOf(hex, 'sniperInfluence').denominator).toBe(20)
-    expect(axisOf(hex, 'sniperInfluence').text).toBe('+30.0%')
-    expect(axisOf(hex, 'sniperInfluence').raw).toBeCloseTo(0.6, 10)
+    expect(axisOf(hex, 'sniperInfluence').numerator).toBe(40)
+    expect(axisOf(hex, 'sniperInfluence').denominator).toBe(24)
+    expect(axisOf(hex, 'sniperInfluence').text).toBe('+0.50점')
+    expect(axisOf(hex, 'rifleInfluence').text).toBe('+0.25점')
+    /* 옛 셈의 재료는 그대로다 — 일한 20 중 14승 · 침묵 20 중 8승 */
+    expect(required(fullTally().sniperInfluence).won).toBe(14)
+    expect(required(fullTally().sniperInfluence).quietWon).toBe(8)
     /* ⑥ 교환 — within5(5) / deaths(20). **5초가 사용자 확정이다** */
     /*
-     * ⑥ ★선짤없이 라운드 시작★ (2026-09-16 사장님: «전체라운드를 분모에 두고
-     *   당한 라운드를 분자에 넣고 ★1에서 빼면★ 안당한 라운드가 나오잖아»).
-     *   14라운드 중 6번 먼저 맞았으니 안 당한 것은 8 → 8/14 = 57%.
-     *   ⚠ 옛 ⑥ 백어택은 `{ numerator: 5, denominator: 20, text: '25%' }` 였다.
+     * ⚠ 옛 ⑥ ★선짤없이 라운드 시작★ 은 `{ numerator: 8, denominator: 14, text: '57%' }`
+     *   였다 (2026-09-16 사장님: «전체라운드를 분모에 두고 당한 라운드를 분자에 넣고
+     *   ★1에서 빼면★ 안당한 라운드가 나오잖아»). 14라운드 중 6번 먼저 맞았으니 8/14.
+     *   그 앞의 ⑥ 백어택은 `{ numerator: 5, denominator: 20, text: '25%' }` 였다.
+     *   ★둘 다 재료가 계속 쌓인다★ — 아래가 그것을 지킨다.
      */
-    expect(axisOf(hex, 'firstBloodless').numerator).toBe(8)
-    expect(axisOf(hex, 'firstBloodless').denominator).toBe(14)
-    expect(axisOf(hex, 'firstBloodless').text).toBe('57%')
+    expect(required(fullTally().firstBloodless).rounds).toBe(14)
+    expect(required(fullTally().firstBloodless).lost).toBe(6)
 
     for (const axis of hex.axes) expect(axis.value).toBeNull()
   })
@@ -468,6 +856,36 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
       expect(tradeCountOf(trade, 5)).toBe(2)
       expect(tradeCountOf(trade, 10)).toBe(3)
       expect(tradeCountOf(trade, 'sameRound')).toBe(4)
+    })
+  })
+
+  /**
+   * ★2026-09-16 밤에 축에서 내려간 둘★ — 라이플화력 · 크랙 성공.
+   *
+   * 사장님이 여섯을 통째로 바꿨지만 **재료와 셈은 지우지 않았다** (`CLAUDE.md` 1-4).
+   * 되살릴 때 ★재수집이 없어야★ 하므로, 합산이 그 둘을 계속 쌓는지 못 박는다.
+   */
+  describe('내려간 두 축의 재료는 계속 쌓인다 (2026-09-16 밤)', () => {
+    it('`riflePower` · `firstBloodless` 가 tally 에 그대로 있다', () => {
+      const tally = fullTally()
+      expect(tally.riflePower).not.toBeNull()
+      expect(tally.firstBloodless).not.toBeNull()
+    })
+
+    it('합산도 계속 돈다 — 분자·분모를 쌓는다', () => {
+      const sum = sumClanHexTallies([fullTally(), fullTally()])
+      /* 라이플화력 3/6 짜리 두 판 → 6/12 */
+      expect(sum.riflePower?.won).toBe(6)
+      expect(sum.riflePower?.rounds).toBe(12)
+      /* 크랙 성공 14라운드 중 6번 당한 두 판 → 28라운드 중 12번. 동시각 수도 남는다 */
+      expect(sum.firstBloodless).toEqual({ rounds: 28, lost: 12, tiedRounds: 4 })
+    })
+
+    it('옛 ⑥ 의 셈(`1 − 당한 ÷ 전체`)이 내던 값은 그대로 나온다', () => {
+      const part = required(fullTally().firstBloodless)
+      /* 14라운드 중 6번 먼저 맞음 → 안 당한 8 → 8/14 = 57% (옛 기대값 그대로다) */
+      expect(part.rounds - part.lost).toBe(8)
+      expect(Math.round(((part.rounds - part.lost) / part.rounds) * 100)).toBe(57)
     })
   })
 
@@ -562,32 +980,37 @@ describe('normalizeAgainstFoe — 경기 상세 (D-235 Q7)', () => {
    *   내려와 지금은 뒤집히는 축이 하나도 없다. 그래도 **뒤집기 기계는 남아 있고**
    *   («짧을수록 좋다» 축이 다시 생길 수 있다) 안 돌리면 조용히 썩는다.
    *   그래서 표를 그 시험 동안만 손대서 기계를 그대로 돌린다. 끝나면 되돌린다.
+   *
+   * ⚠ ★2026-09-16 밤★ — 손대는 축을 `riflePower` → `blockChance` 로 옮겼다.
+   *   라이플화력이 축에서 내려가 육각형에 그 꼭지점이 없다. ★재는 것은 축 이름이
+   *   아니라 뒤집기 기계★ 라서, 지금 있는 축 아무거나로 돌리면 뜻이 같다.
    */
   it('**「짧을수록 좋다」 축은 뒤집힌다** — 기계가 아직 산다', () => {
-    const was = CLAN_HEX_V2_LOWER_IS_BETTER.riflePower
-    CLAN_HEX_V2_LOWER_IS_BETTER.riflePower = true
+    const was = CLAN_HEX_V2_LOWER_IS_BETTER.blockChance
+    CLAN_HEX_V2_LOWER_IS_BETTER.blockChance = true
     try {
       const [fast, slow] = normalizeAgainstFoe(
-        oneAxis('riflePower', 15),
-        oneAxis('riflePower', 30),
+        oneAxis('blockChance', 15),
+        oneAxis('blockChance', 30),
       )
-      expect(axisOf(fast, 'riflePower').value).toBe(1)
-      expect(axisOf(slow, 'riflePower').value).toBeCloseTo(0.5, 10)
+      expect(axisOf(fast, 'blockChance').value).toBe(1)
+      expect(axisOf(slow, 'blockChance').value).toBeCloseTo(0.5, 10)
       /* 뒤집힌 것은 `value` 뿐이다. 원값은 그대로 */
-      expect(axisOf(fast, 'riflePower').raw).toBe(15)
-      expect(axisOf(slow, 'riflePower').raw).toBe(30)
+      expect(axisOf(fast, 'blockChance').raw).toBe(15)
+      expect(axisOf(slow, 'blockChance').raw).toBe(30)
     } finally {
-      CLAN_HEX_V2_LOWER_IS_BETTER.riflePower = was
+      CLAN_HEX_V2_LOWER_IS_BETTER.blockChance = was
     }
   })
 
-  it('라이플화력은 **안 뒤집힌다** — 높은 쪽이 1.0 이다', () => {
+  /* ⚠ 옛 기대값 — 이 시험은 «라이플화력은 안 뒤집힌다» 였다 (2026-09-16 밤에 교대) */
+  it('기회차단은 **안 뒤집힌다** — 높은 쪽이 1.0 이다', () => {
     const [strong, weak] = normalizeAgainstFoe(
-      oneAxis('riflePower', 0.4),
-      oneAxis('riflePower', 0.2),
+      oneAxis('blockChance', 0.4),
+      oneAxis('blockChance', 0.2),
     )
-    expect(axisOf(strong, 'riflePower').value).toBe(1)
-    expect(axisOf(weak, 'riflePower').value).toBeCloseTo(0.5, 10)
+    expect(axisOf(strong, 'blockChance').value).toBe(1)
+    expect(axisOf(weak, 'blockChance').value).toBeCloseTo(0.5, 10)
   })
 
   it('한쪽만 값이 있는 축은 **양쪽 다 `null`** 이고 `pending=compare` 다', () => {
@@ -644,19 +1067,23 @@ describe('normalizeByPercentile — 클랜 페이지 (D-235 Q8)', () => {
     expect(bottomValue as number).toBeGreaterThanOrEqual(0)
   })
 
-  /* ⚠ ★2026-09-15★ — 옛 시험은 «게임템포는 짧을수록 높은 백분위다» 였다. 위와 같은 뜻으로 옮겼다 */
+  /*
+   * ⚠ ★2026-09-15★ — 옛 시험은 «게임템포는 짧을수록 높은 백분위다» 였다. 위와 같은 뜻으로 옮겼다
+   * ⚠ ★2026-09-16 밤★ — 손대는 축을 `riflePower` → `blockChance` 로 옮겼다 (축에서 내려갔다).
+   *   재는 것은 축 이름이 아니라 ★부호 뒤집기★ 라서 지금 있는 축 아무거나로 돌리면 뜻이 같다.
+   */
   it('「짧을수록 좋다」 축은 **짧을수록 높은 백분위**다 — 기계가 아직 산다', () => {
-    const was = CLAN_HEX_V2_LOWER_IS_BETTER.riflePower
-    CLAN_HEX_V2_LOWER_IS_BETTER.riflePower = true
+    const was = CLAN_HEX_V2_LOWER_IS_BETTER.blockChance
+    CLAN_HEX_V2_LOWER_IS_BETTER.blockChance = true
     try {
-      const cohort = [10, 20, 30, 40, 50, 60].map((raw) => oneAxis('riflePower', raw))
-      const fast = normalizeByPercentile(oneAxis('riflePower', 5), cohort)
-      const slow = normalizeByPercentile(oneAxis('riflePower', 90), cohort)
-      expect(axisOf(fast, 'riflePower').value as number).toBeGreaterThan(
-        axisOf(slow, 'riflePower').value as number,
+      const cohort = [10, 20, 30, 40, 50, 60].map((raw) => oneAxis('blockChance', raw))
+      const fast = normalizeByPercentile(oneAxis('blockChance', 5), cohort)
+      const slow = normalizeByPercentile(oneAxis('blockChance', 90), cohort)
+      expect(axisOf(fast, 'blockChance').value as number).toBeGreaterThan(
+        axisOf(slow, 'blockChance').value as number,
       )
     } finally {
-      CLAN_HEX_V2_LOWER_IS_BETTER.riflePower = was
+      CLAN_HEX_V2_LOWER_IS_BETTER.blockChance = was
     }
   })
 

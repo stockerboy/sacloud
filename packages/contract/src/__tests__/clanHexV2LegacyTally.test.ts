@@ -111,6 +111,13 @@ describe('옛 tally(새 칸 없음)를 넣어도 육각형이 죽지 않는다',
     expect('sniperDuel' in raw).toBe(false)
     expect('firstBlood' in raw).toBe(false)
     expect('trade' in raw).toBe(false)
+    /*
+     * ★2026-09-16 밤에 늘어난 두 칸★ — 이 옛 행에는 당연히 없다.
+     *   칸이 늘 때마다 여기가 «없는 칸» 의 덫을 다시 확인하는 자리다
+     *   (`buildClanHexV2Raw` 위의 2026-09-02 주석).
+     */
+    expect('blockChance' in raw).toBe(false)
+    expect('gapScore' in raw).toBe(false)
   })
 
   it('터지지 않고 여섯 축을 돌려준다', () => {
@@ -124,7 +131,13 @@ describe('옛 tally(새 칸 없음)를 넣어도 육각형이 죽지 않는다',
 
     /* 칸이 없던 축 — 사라지지 않고 「측정중」으로 떨어진다 */
     /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 바뀌었다. 옛 tally 에는 둘 다 없다 */
-    for (const key of ['sniperDuel', 'sniperInfluence', 'firstBloodless']) {
+    /*
+     * ⚠ ★2026-09-16 밤★ — 옛 목록은 `['sniperDuel', 'sniperInfluence', 'firstBloodless']`
+     *   였다. 사장님이 여섯을 통째로 바꾸면서 `firstBloodless` 가 축에서 내려가고
+     *   ★라플영향력·기회차단★ 이 들어왔다. 셋 다 이 옛 행에는 칸이 없다 —
+     *   `sniperInfluence` 는 키는 그대로지만 이제 `gapScore` 를 읽으므로 역시 없다.
+     */
+    for (const key of ['sniperDuel', 'sniperInfluence', 'rifleInfluence', 'blockChance']) {
       expect(at(key), `${key} 축이 있어야 한다`).toBeDefined()
       /* 측정 못 한 축은 `pending` 에 사유가 들어가고 `raw` 가 null 이다 */
       expect(at(key)?.pending, `${key} 는 측정중이어야 한다`).not.toBeNull()
