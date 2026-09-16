@@ -147,7 +147,13 @@ export function playerHexValueText(
   if (value === null) return '측정중'
   if (unit === 'seconds') return `${mmss(ROUND_FULL_SECONDS)} 중 ${mmss(value)}`
   if (unit === 'per_game') return `${Number.isInteger(value) ? value : value.toFixed(1)}회`
-  return `${Math.round(value * (value <= 1 ? 100 : 1))}%`
+  /*
+   * ★소수 한 자리를 살린다★ — 분야별 TOP5 는 다섯 줄을 나란히 세우므로
+   *   38.5% 와 38.4% 가 «39%» 로 뭉치면 누가 위인지 안 보인다.
+   *   `value <= 1` 은 비율(0~1)로 저장된 축을 퍼센트로 펴는 자리다.
+   */
+  const pct = value * (value <= 1 ? 100 : 1)
+  return `${Number.isInteger(pct) ? pct : pct.toFixed(1)}%`
 }
 
 /**

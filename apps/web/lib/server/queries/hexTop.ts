@@ -48,23 +48,22 @@ function tallyOf(value: unknown): ClanHexTallyLike | null {
  *   옛 판은 «판당 킬» 이라 `${raw.toFixed(2)}킬` 로 적었다.
  *   지금은 «한 라운드에 적 다섯 중 몇 명» 이라 다른 축과 같은 % 다.
  */
-function playerValueText(key: TraitAxisKey, raw: number | null): string {
+function playerValueText(unit: 'percent' | 'per_game' | 'seconds', raw: number | null): string {
   if (raw === null) return '알수없음'
   /*
-   * ★선짤만 «판당 n.n회»★ 다 (2026-09-15 사장님). 나머지 다섯은 퍼센트다.
+   * ★축마다 단위가 다르다 — 여기서 고르지 않는다★.
    *
-   * ⚠ 같은 날 두 번 틀렸다 — ① 캐리력이 «판당 킬» 이라 «킬» 을 붙이던 것을
-   *   게임영향력(%)으로 바꾸며 ★전부 %★ 로 만들었고, 그 바람에 선짤이 «2.0%» 가 됐다.
-   *   축마다 단위가 다르다는 걸 한 줄로 뭉뚱그리면 이런 일이 난다.
+   * ⚠ 같은 자리에서 ★세 번★ 틀렸다.
+   *   ① 캐리력이 «판당 킬» 이라 «킬» 을 붙이던 것을 게임영향력(%)으로 바꾸며
+   *      전부 % 로 만들어 선짤이 «2.0%» 가 됐다 (2026-09-15)
+   *   ② ④ 가 «평균 사망 시간»(초) 이 됐는데 % 로 적혔다 (2026-09-16 낮)
+   *   ③ ⑤ 가 «크랙 성공»(판당 n.n회) 이 됐는데 «1.2%» 로 적혔다 (2026-09-16 밤)
+   *
+   *   ★단위는 `AXIS_COLUMNS` 가 이미 알고 있다★ — 그걸 그대로 넘긴다.
+   *   글자는 `playerHexValueText` 한 곳에서 만든다. 여기서 축을 세지 않으므로
+   *   축이 또 갈려도 이 함수는 안 고쳐도 된다.
    */
-  /*
-   * ★게임템포는 «2분 20초 중 34초»★ (2026-09-16 저녁 사장님).
-   *   옛 판 — «1분 27초» (평균 사망 시간) · 그 전 — «2.0회» (선짤).
-   *   ★여기서 초를 따로 만들지 않는다★ — `playerHexValueText` 한 곳에서 만든다.
-   *   화면마다 복사해 두면 축이 바뀔 때 한 곳이 늘 빠진다 (그날 두 번 겪었다).
-   */
-  if (key === 'survival') return playerHexValueText('seconds', raw)
-  return `${raw.toFixed(1)}%`
+  return playerHexValueText(unit, raw)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -159,7 +158,7 @@ async function playerAxis(
       clan: toClanSummaryOrNull(row.leaguePlayer.clan),
       league_player_id: row.leaguePlayerId,
       league_clan_id: null,
-      value: playerValueText(key, (row[col.value] as number | null) ?? null),
+      value: playerValueText(col.unit, (row[col.value] as number | null) ?? null),
       percentile: (row[col.pct] as number | null) ?? null,
     }))
 
