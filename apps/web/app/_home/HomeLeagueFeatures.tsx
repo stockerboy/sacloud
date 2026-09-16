@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { HomeFeatureExample } from './HomeFeatureExample'
 import { useState } from 'react'
 import {
   LEAGUE_FEATURES,
@@ -84,6 +85,11 @@ const endTitle = (league: string, kept: readonly string[], n: number): string =>
 
 export function HomeLeagueFeatures() {
   const [slug, setSlug] = useState<string>('supply')
+  /**
+   * ★지금 펼쳐진 기능 하나★ (2026-09-16 사장님: «그자리에서 밑으로 펼쳐서»).
+   * 하나만 담는다 — 여럿이 동시에 펴지면 첫 화면이 도로 길어진다.
+   */
+  const [openKey, setOpenKey] = useState<string | null>(null)
   const pick = PICKS.find((p) => p.slug === slug) ?? PICKS[0]
   const tone = TONE[pick.slug] ?? 'var(--v2-blue, #5b8dff)'
   const given = leagueFeatureCount(pick.slug)
@@ -110,7 +116,11 @@ export function HomeLeagueFeatures() {
               type="button"
               role="tab"
               aria-selected={on}
-              onClick={() => setSlug(p.slug)}
+              onClick={() => {
+                setSlug(p.slug)
+                /* 리그가 바뀌면 접는다 — 옛 리그의 예시가 새 이름 아래 남으면 거짓말이다 */
+                setOpenKey(null)
+              }}
               className="flex flex-col items-center gap-[4px] border px-[10px] py-[15px] text-center transition-colors duration-100 max-md:px-[4px] max-md:py-[12px]"
               style={{
                 /* 고른 칸만 제 리그 색으로 선다. 나머지는 한 겹 죽인다 */
@@ -163,6 +173,9 @@ export function HomeLeagueFeatures() {
       <ul className="mt-[12px] border-t border-[var(--v2-head-divider)]">
         {LEAGUE_FEATURES.map((f) => {
           const state = leagueFeature(pick.slug, f.key)
+          const open = openKey === f.key
+          /* ★주는 것만 펼친다★ — 없는 기능은 보여 줄 예시가 없다 */
+          const canOpen = state.given
           /*
            * ★안 주는 줄도 지우지 않는다★ — 빠지면 «왜 없는지» 를 화면에서 알 수 없다.
            * 대신 한 겹 죽이고 «미제공» 딱지와 까닭을 붙인다.
@@ -170,7 +183,25 @@ export function HomeLeagueFeatures() {
           return (
             <li
               key={f.key}
-              className="flex items-center gap-[12px] border-b border-[var(--v2-head-divider)] py-[13px] max-md:gap-[9px] max-md:py-[11px]"
+              className="border-b border-[var(--v2-head-divider)] py-[13px] max-md:py-[11px]"
+            >
+            <div
+              className="flex items-center gap-[12px] max-md:gap-[9px]"
+              role={canOpen ? 'button' : undefined}
+              tabIndex={canOpen ? 0 : undefined}
+              aria-expanded={canOpen ? open : undefined}
+              style={canOpen ? { cursor: 'pointer' } : undefined}
+              onClick={canOpen ? () => setOpenKey(open ? null : f.key) : undefined}
+              onKeyDown={
+                canOpen
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setOpenKey(open ? null : f.key)
+                      }
+                    }
+                  : undefined
+              }
             >
               {/* 주는가 — 리그 색 점 / 안 주면 빈 점 */}
               <span
@@ -221,27 +252,41 @@ export function HomeLeagueFeatures() {
 
               {/* 오른쪽 — 보러 가기 / 미제공 딱지 */}
               {state.endsOn ? (
-                /* ★오늘은 있다★ — 그래서 링크를 그대로 걸되 딱지를 빨갛게 붙인다 */
-                <Link
-                  href={state.href ?? '#'}
+                /*
+                 * ★오늘은 있다★ — 그래서 예시도 그대로 펼쳐 보인다.
+                 *   딱지만 빨갛게 «언제 끊기는지» 를 알린다.
+                 */
+                <span
                   className="shrink-0 whitespace-nowrap border px-[7px] py-[3px] text-[11px] font-bold max-md:text-[10px]"
                   style={{ color: WARN, borderColor: WARN }}
                 >
                   {state.endsOn} 종료
-                </Link>
-              ) : state.given && state.href !== null ? (
-                <Link
-                  href={state.href}
+                </span>
+              ) : state.given ? (
+                /*
+                 * ★다른 화면으로 안 보낸다★ (2026-09-16 사장님).
+                 *   여기서 펼친다 — 여덟 가지를 보려고 여덟 번 나갔다 오게 하지 않는다.
+                 */
+                <span
                   className="shrink-0 whitespace-nowrap text-[12px] font-bold max-md:text-[11px]"
                   style={{ color: tone }}
                 >
-                  보기 →
-                </Link>
+                  예시 {open ? '▴' : '▾'}
+                </span>
               ) : (
                 <span className="shrink-0 whitespace-nowrap border border-[var(--v2-head-divider)] px-[7px] py-[3px] text-[11px] text-[var(--v2-text-ghost)] max-md:text-[10px]">
                   미제공
                 </span>
               )}
+            </div>
+
+            {/*
+              ★펼쳐진 예시★ — 눌렸을 때만 그린다.
+              안 누르면 질의가 하나도 안 나간다 (`HomeFeatureExample` 주석 참고).
+            */}
+            {open ? (
+              <HomeFeatureExample leagueSlug={pick.slug} featureKey={f.key} tone={tone} />
+            ) : null}
             </li>
           )
         })}
