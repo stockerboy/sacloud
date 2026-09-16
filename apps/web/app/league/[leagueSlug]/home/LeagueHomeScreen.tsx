@@ -21,7 +21,8 @@
 import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
-import { FlagMountain, SectionTitle } from '@sacloud/ui'
+import { leagueScreen } from '@sacloud/contract'
+import { FlagMountain, FormTopCard, SectionTitle, type FormTopEntry } from '@sacloud/ui'
 import { MatchListV3 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
@@ -55,6 +56,19 @@ export default function LeagueHomeScreen({
     enabled: ready,
     /* 경쟁 중에는 스스로 다시 묻는다 — «라이브» 가 거짓말이 되면 안 된다 */
     refetchInterval: FLAG_REFRESH_MS,
+  })
+
+  /*
+   * ★홈 첫 칸★ — 리그마다 다르다 (2026-09-16 사장님: «IPL LLM 두개만 열산은 또
+   *   따로 다르게할거야»). 화면에서 slug 를 비교하지 않고 계약이 정한다 (D-204).
+   */
+  const hero = leagueScreen(leagueSlug).homeHero
+
+  const daily = useQuery({
+    queryKey: ['league', leagueSlug, 'daily-podium'],
+    queryFn: () => apiGet('leagueDailyPodium', { params: { leagueId: leagueSlug } }),
+    /* 폼 카드를 안 쓰는 리그에서는 아예 묻지 않는다 */
+    enabled: ready && hero === 'form',
   })
 
   const matches = useCursorQuery<MatchListItem>('leagueMatches', ['league', leagueSlug, 'matches'], {
@@ -97,9 +111,37 @@ export default function LeagueHomeScreen({
     return (now - open) / (close - open)
   })()
 
+  /*
+   * ★폼 1위 줄 셋★ — 스나 → 클랜 → 라플 (사장님이 «폼1위스나부터» 라고 첫 자리를 못 박음).
+   * 없는 줄은 자리를 안 만든다 — 그날 그 무기로 뛴 사람이 없으면 그 줄이 없다 (D-106).
+   */
+  const formEntries: FormTopEntry[] = (() => {
+    const d = daily.data?.data
+    if (d === undefined) return []
+    const out: FormTopEntry[] = []
+    if (d.form_sniper !== null) out.push({ key: 'sniper', label: '스나', row: d.form_sniper })
+    const clan = d.clans[0]
+    if (clan !== undefined) out.push({ key: 'clan', label: '클랜', row: clan })
+    if (d.form_rifle !== null) out.push({ key: 'rifle', label: '라플', row: d.form_rifle })
+    return out
+  })()
+
   return (
     <div className="pc-container pb-[40px] pt-[24px]">
-      {board === null ? null : (
+      {/*
+        ⚠ ★2026-09-16 — 첫 칸이 리그마다 다르다★ (사장님: «최근경기 페이지에서 기존꺼
+          지우고 최근 폼1위 파트를 만들어서 (…) IPL LLM 두개만 열산은 또 따로 다르게할거야»).
+          열산리그는 ★지금 그대로 깃발★ 이다 — 사장님이 따로 정하신다고 하셨다.
+      */}
+      {hero === 'form' ? (
+        <div className="mb-[22px]">
+          <FormTopCard
+            leagueSlug={leagueSlug}
+            day={daily.data?.data.day ?? null}
+            entries={formEntries}
+          />
+        </div>
+      ) : hero === 'none' || board === null ? null : (
         <div className="mb-[22px]">
           <FlagMountain
             leagueSlug={leagueSlug}

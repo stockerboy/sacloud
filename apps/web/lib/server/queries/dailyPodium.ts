@@ -98,6 +98,9 @@ export interface DailyPodium {
   day: string | null
   players: DailyPodiumRow[]
   clans: DailyPodiumRow[]
+  /** ★그날 폼 1위★ — 무기별 하나씩 (2026-09-16 사장님). 없으면 `null` */
+  form_sniper: DailyPodiumRow | null
+  form_rifle: DailyPodiumRow | null
 }
 
 function tallyOf(value: unknown): ClanHexTallyLike | null {
@@ -123,18 +126,45 @@ export async function dailyPodium(leagueSlug: string): Promise<DailyPodium | nul
     league.id,
   )) as { d: string }[]
   const day = dayRows[0]?.d ?? null
-  if (day === null) return { day: null, players: [], clans: [] }
+  if (day === null) return { day: null, players: [], clans: [], form_sniper: null, form_rifle: null }
 
-  const players = await playersOf(league.id, day)
+  /*
+   * ★폼 1위 — 무기별 하나씩★ (2026-09-16 사장님).
+   * 클랜 1위는 `clans[0]` 을 그대로 쓴다 — 따로 세지 않는다.
+   * ⚠ ★질의는 한 번★ 이다 — 갈래마다 부르면 연결 풀이 말라 500 이 난다 (실측 P2024).
+   */
+  const [players, sniperTop, rifleTop] = await playersOfMany(league.id, day, ['all', 1, 0])
   const clans = await clansOf(league.id, day)
-  return { day, players, clans }
+  return {
+    day,
+    players: players ?? [],
+    clans,
+    form_sniper: sniperTop?.[0] ?? null,
+    form_rifle: rifleTop?.[0] ?? null,
+  }
 }
 
 /* -------------------------------------------------------------------------- */
 /* 사람                                                                         */
 /* -------------------------------------------------------------------------- */
 
-async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[]> {
+/**
+ * ★무엇을 뽑나★ — 셋을 뽑을지, 한 무기의 1등만 뽑을지 (2026-09-16).
+ *   `'all'`    지금까지처럼 무기를 안 가리고 셋
+ *   `1` · `0`  그날 그 무기를 더 많이 쓴 사람만 골라 ★1등 하나★
+ */
+type PodiumPick = 'all' | 0 | 1
+
+/**
+ * ⚠ ★질의는 한 번만★ (2026-09-16). 갈래마다 따로 부르면 같은 무거운 질의를 세 번
+ *   던지게 되고, 연결 풀이 하나뿐이라 ★풀이 말라 500 이 난다★ (실측 P2024).
+ *   그래서 ★한 번 읽고 그 자리에서 갈래마다 줄을 세운다.★
+ */
+async function playersOfMany(
+  leagueId: string,
+  day: string,
+  picks: readonly PodiumPick[],
+): Promise<DailyPodiumRow[][]> {
   /*
    * ⚠ ★시즌 누적을 쓰지 않는다★ (2026-09-15 사장님:
    *   «누적 1,2,3등말고 / ★그 날 한 경기 데이터로만 분석해서 육각축 만들어달라고★»).
@@ -189,7 +219,17 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
    * 백분위도 그날 안에서 낸다. 두 화면이 한 리그에서 다른 사람을 1등이라고 하면 안 된다.
    */
   const num = (v: unknown) => Number(v ?? 0)
-  const ranked = rankFlagDay(
+  /*
+   * ★무기로 가른다★ (2026-09-16) — 그날 더 많이 쓴 쪽이다. 같으면 어느 쪽에도 안 넣는다.
+   *
+   * ⚠ ★자르는 자리가 중요하다.★ `rankFlagDay` 에 넣기 ★전★ 에 자르면 백분위가
+   *   «스나끼리» 가 되어 옆 줄(클랜·라플)과 잣대가 달라진다. 화면은 셋을 나란히
+   *   두므로 ★같은 자★ 로 재야 한다 — 그래서 ★순위를 다 매긴 뒤★ 에 고른다.
+   */
+  const weaponOfRow = (r: (typeof rows)[number]): 0 | 1 | null =>
+    num(r.sniperGames) > num(r.rifleGames) ? 1 : num(r.rifleGames) > num(r.sniperGames) ? 0 : null
+
+  const ranked0 = rankFlagDay(
     rows.map((r) => ({
       ref: r,
       tally: {
@@ -223,10 +263,18 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
               : null,
       },
     })),
-    DAILY_PODIUM_SIZE,
+    /* 무기로 고를 갈래가 있으면 ★전부★ 줄을 세운 뒤 그 무기의 맨 위를 집는다 */
+    picks.every((p) => p === 'all') ? DAILY_PODIUM_SIZE : rows.length,
   )
 
-  return ranked.map((x) => {
+  /* 갈래마다 같은 줄 세우기를 나눠 쓴다 — 질의는 위에서 ★한 번★ 만 했다 */
+  return picks.map((pick) => {
+    const ranked =
+      pick === 'all'
+        ? ranked0.slice(0, DAILY_PODIUM_SIZE)
+        : ranked0.filter((x) => weaponOfRow(x.ref as (typeof rows)[number]) === pick).slice(0, 1)
+
+    return ranked.map((x) => {
     const r = x.ref
     /* 그날 주무기 — 축 이름이 무기에 따라 갈린다 (스나싸움 / 샷싸움) */
     const w: 0 | 1 | null =
@@ -277,6 +325,7 @@ async function playersOf(leagueId: string, day: string): Promise<DailyPodiumRow[
           a.key === 'opening' ? ('per_game' as const) : ('percent' as const),
       })),
     }
+  })
   })
 }
 

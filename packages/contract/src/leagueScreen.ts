@@ -99,6 +99,20 @@ export interface LeagueScreenSpec {
    * 되돌리려면 그 리그 줄의 이 값을 `true` 로.
    */
   listed: boolean
+  /**
+   * ★홈 첫 칸에 무엇을 둘 것인가★ (2026-09-16 사장님).
+   *
+   * > «최근경기 페이지에서 기존꺼 지우고 최근 폼1위 파트를 만들어서 (…)»
+   * > «IPL LLM 두개만 열산은 또 따로 다르게할거야»
+   *
+   *   `'form'`  최근 폼 1위 — 육각 하나 + 줄 셋(스나·클랜·라플), 눌러서 바뀐다
+   *   `'flag'`  오늘의 깃발 — 17:00~03:00 1·2·3등 (옛 모습)
+   *   `'none'`  아무것도 안 둔다
+   *
+   * 열산리그는 사장님이 «또 따로 다르게 할거야» 라고 하셨으므로 ★건드리지 않고★
+   * 깃발을 그대로 둔다. 정해지면 이 한 줄만 바꾼다.
+   */
+  homeHero: 'form' | 'flag' | 'none'
 }
 
 /**
@@ -139,6 +153,8 @@ const WITH_LADDER: LeagueScreenSpec = {
   /* 모르는 리그에는 게시판이 없다 — 카테고리 행을 지어내지 않는다 */
   boardCategory: null,
   listed: true,
+  /* 모르는 리그는 옛 모습(깃발)으로 — 새 카드는 사장님이 IPL·PL 둘만 지정하셨다 */
+  homeHero: 'flag',
 }
 
 /**
@@ -194,6 +210,7 @@ export const NO_LADDER: LeagueScreenSpec = {
   /* 10mountain 에는 게시판 탭이 없다 (지시 #14 · #16) */
   boardCategory: null,
   listed: true,
+  homeHero: 'flag',
 }
 
 const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
@@ -218,7 +235,8 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
    *   (사장님이 CPL 이라 적으셨다가 «Cpl은 Spl 이다 잘못말했다» 로 바로잡으심)
    *   승률 · 킬데스 · 랭킹 전부 있다. 티어만 안 쓴다.
    */
-  supply: { ...WITH_LADDER, boardCategory: null },
+  /* ⚠ 2026-09-16 — 홈 첫 칸이 「최근 폼 1위」 다 (사장님: «IPL LLM 두개만») */
+  supply: { ...WITH_LADDER, boardCategory: null, homeHero: 'form' },
   /**
    * ★IPL — 승률만 보여 준다★ (2026-09-14 사장님).
    *
@@ -258,6 +276,8 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
     ...WITH_LADDER,
     boardCategory: null,
     showsTier: false,
+    /* ⚠ 2026-09-16 — 홈 첫 칸이 「최근 폼 1위」 다 (사장님: «IPL LLM 두개만») */
+    homeHero: 'form',
   },
   /**
    * ★열산(10🏔) — 클랜 기록은 안 준다★ (2026-09-14 사장님).

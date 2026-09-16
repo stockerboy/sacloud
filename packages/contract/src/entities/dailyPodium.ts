@@ -80,5 +80,20 @@ export const DailyPodium = z.object({
   day: z.string().nullable().default(null),
   players: z.array(DailyPodiumRow),
   clans: z.array(DailyPodiumRow),
+  /**
+   * ★그날 폼 1위 — 무기별 하나씩★ (2026-09-16 사장님).
+   *
+   * > «최근 폼1위 파트를 만들어서 폼1위클랜 , 폼1위스나 , 폼1위라플 이렇게 보여주는데
+   * >  폼1위스나부터 보여주고 밑에 저렇게 세개 나열해서 (…) 한 카드내에서 다른 사람
+   * >  그래프로 바뀌게 해줘»
+   *
+   * 뽑는 규칙은 `players` 와 ★같다★ (고르게 잘하고 승률도 좋은 쪽) — 무기로 먼저
+   * 가른 뒤 1등만 낸다. 그날 그 무기로 뛴 사람이 없으면 `null` 이다.
+   * 클랜 폼 1위는 `clans[0]` 을 그대로 쓴다 — 따로 칸을 만들지 않는다.
+   *
+   * ⚠ 무기는 ★그날 더 많이 쓴 쪽★ 이다. 같으면 어느 쪽에도 안 넣는다 (지어내지 않는다).
+   */
+  form_sniper: DailyPodiumRow.nullable().default(null),
+  form_rifle: DailyPodiumRow.nullable().default(null),
 })
 export type DailyPodium = z.infer<typeof DailyPodium>
