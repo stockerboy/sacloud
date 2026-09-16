@@ -182,6 +182,12 @@ export interface PlayerHexInput {
   /** 배틀로그 합계 (`MatchPlayerHex` 를 더한 것) */
   rounds: number
   firstKills: number
+  /**
+   * ★크랙 성공의 분자★ (2026-09-16 사장님) — 위 첫 킬 중 ★칠하신 116칸 안★ 에서
+   * 잡은 것만. 좌표를 모르는 킬은 안 세므로 언제나 `crackKills <= firstKills` 다.
+   * 이 칸이 없던 옛 줄은 0 이고, 그때는 축이 `null` 이다 (0회라고 우기지 않는다).
+   */
+  crackKills?: number
   burstRounds: number
   /**
    * ★게임영향력의 재료★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한 값.
@@ -305,8 +311,18 @@ export function axisValuesOf(
      *   판수를 분모로»). 옛 ④ 선짤이 쓰던 셈 그대로다 — ④ 가 «평균 사망 시간» 으로
      *   가면서 빈자리가 된 것을 사장님이 ⑤ 로 옮기셨다.
      *   클랜 축 «크랙 성공» 과 같은 일을 사람 단위로 본다.
+     *
+     * ⚠ ★2026-09-16 저녁 — 「어디서」 가 붙었다★ (사장님: «내가 어디서 1분55초 내에
+     *   잡으면 크랙인지 표시해주면 그것만 샐 수 있어?» → 아티팩트로 116칸을 칠하심).
+     *   그 전에는 맵 어디서 잡았든 25초 안이면 셌다 — 그 옛 셈은 `crackValueV1()` 에
+     *   남아 있고 재료(`firstKills`)도 계속 쌓인다 (`CLAUDE.md` 1-4).
+     *   ★`crackKills` 가 아직 안 채워진 줄은 `null`★ 이다 — 0회라고 우기면
+     *   재집계 전 선수 전원이 꼴찌가 된다.
      */
-    crack: input.games > 0 ? Math.round((input.firstKills / input.games) * 100) / 100 : null,
+    crack:
+      input.games > 0 && input.crackKills !== undefined
+        ? Math.round((input.crackKills / input.games) * 100) / 100
+        : null,
     outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
   }
 }
@@ -334,6 +350,17 @@ export function axisValuesOf(
  * ★옛 ⑤ «백어택(교환율)» 의 셈★ — 2026-09-16 에 «크랙 성공» 으로 바뀌며 화면에서
  * 내려갔다. 지우지 않는다 (`CLAUDE.md` 1-4). 재료(`tradeKills`·`mateDeaths`)는 계속 쌓인다.
  */
+/**
+ * ⚠ ★옛 ⑤ 크랙 — 구역을 안 보던 셈★ (2026-09-16 저녁까지 쓰던 것). 지우지 않는다.
+ *
+ * 맵 어디서 잡았든 라운드 시작 25초 안의 첫 킬이면 셌다. 사장님이 116칸을 칠해
+ * 주시면서 «거기서 잡은 것만» 으로 좁혔다 — 재료 `firstKills` 는 계속 쌓이므로
+ * 이 함수로 언제든 옛 값을 되낼 수 있다 (`CLAUDE.md` 1-4).
+ */
+export function crackValueV1(input: PlayerHexInput): number | null {
+  return input.games > 0 ? Math.round((input.firstKills / input.games) * 100) / 100 : null
+}
+
 export function burstValueV2(input: PlayerHexInput): number | null {
   if (TRADE_AXIS) {
     return (input.mateDeaths ?? 0) > 0

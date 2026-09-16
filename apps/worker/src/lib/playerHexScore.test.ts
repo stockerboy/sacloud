@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   axisValuesOf,
+  crackValueV1,
   foldPlayerHex,
   mainWeaponOf,
   percentileOf,
@@ -63,11 +64,17 @@ describe('축 원값', () => {
      */
     expect(v.survival).toBeNull()
     /*
-     * ⚠ ★5번 축이 «크랙 성공» 이 됐다★ (2026-09-16 사장님) — 25초 안 첫 킬 ÷ 판수.
-     *   이 픽스처는 40회 / 20판 = 2 다.
-     *   옛 기대값 — null (교환율, 재료 없음) · 그 전 — 1.5 (판당 연속킬)
+     * ⚠ ★5번 축이 «크랙 성공» 이 됐다★ (2026-09-16 사장님) — 칠한 구역 안 25초 첫 킬 ÷ 판수.
+     *
+     *   ★그날 저녁에 «어디서» 가 붙었다★ — 사장님이 아티팩트로 116칸을 칠하셔서
+     *   재료가 `firstKills`(맵 전체) 에서 `crackKills`(구역 안) 로 바뀌었다.
+     *   이 픽스처에는 `crackKills` 가 없으므로 ★null★ 이다 — 0회라고 우기지 않는다.
+     *   옛 기대값 — 2 (구역을 안 보던 40회/20판) · 그 전 — null (교환율) · 그 전 — 1.5
      */
-    expect(v.crack).toBe(2)
+    expect(v.crack).toBeNull()
+    /* 구역을 안 보던 옛 셈은 그대로 살아 있다 (`CLAUDE.md` 1-4) */
+    expect(crackValueV1(player({ leaguePlayerId: 'a', games: 20, firstKills: 40 }))).toBe(2)
+    expect(axisValuesOf(player({ leaguePlayerId: 'a', games: 20, crackKills: 9 }), 0).crack).toBe(0.45)
     /* ★3번 축은 «우위를 만든 킬 ÷ 라운드»★ — 재료가 없으면 0 이다 (라운드는 240 이 있다) */
     expect(v.carry).toBe(0)
     expect(v.outnumbered).toBeCloseTo(33.3)
