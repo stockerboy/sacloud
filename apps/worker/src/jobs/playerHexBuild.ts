@@ -987,9 +987,13 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         FROM "LeaguePlayer" lp
         JOIN "MatchPlayerStat" s ON s."playerId" = lp."playerId"
         JOIN "Match" m ON m."id" = s."matchId" AND m."leagueId" = lp."leagueId"
-        JOIN "LeagueClan" lc ON lc."id" = s."playerClanId" OR lc."clanId" = s."playerClanId"
+        /*
+         * ★클랜 표를 거치지 않는다★ — 그 선수가 어느 쪽이었는지는 side 가 바로 말해 준다.
+         *   처음엔 LeagueClan 을 OR 로 이었다가 ★질의가 타임아웃★ 났다.
+         */
         JOIN "MatchClanHexV2" h
-          ON h."matchId" = m."id" AND h."leagueClanId" = lc."id"
+          ON h."matchId" = m."id"
+         AND h."leagueClanId" = CASE WHEN s."side" = 'red' THEN m."redLeagueClanId" ELSE m."blueLeagueClanId" END
          AND h."formulaVersion" = ${CLAN_HEX_V2_FORMULA_VERSION}
        WHERE lp."leagueId" = ${league.id}
          AND m."supersededAt" IS NULL AND m."startAt" >= ${SEASON0_FROM}
