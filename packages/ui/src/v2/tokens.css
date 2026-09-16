@@ -954,7 +954,10 @@
   .v3-kpi > div { border-bottom: 1px solid #18233a; padding: 12px 14px !important; }
   .v3-kpi > div > span > span:first-child { font-size: 22px !important; }
   .v3-watermark { display: none !important; }
-  /* 선수 기록실 카드는 폰·PC 같은 모양이라 폰 전용 규칙이 필요 없다 (v3-prow) — 여기에 적어 두는 건 찾기 쉬우라고 */
+  /* ⚠ ★2026-09-17 정정★ — 여기 «선수 기록실 카드는 폰·PC 같은 모양이라 폰 전용 규칙이
+     필요 없다 (v3-prow)» 고 적혀 있었다. ★사실이 아니었다.★ 그 격자는 고정폭 다섯이라
+     폰에서 `1fr` 칸(양 팀 이름)이 0 으로 눌려 여섯 줄이 «…» 로 끊겼다.
+     지금은 아래 `.v3-prow--stack` 이 클랜·선수 두 줄을 같이 고친다 */
   .v3-match-row { grid-template-columns: 52px minmax(0, 1fr) 60px !important; row-gap: 6px !important; }
   .v3-match-row > :nth-child(2) { grid-column: 2 / 4; }
   .v3-match-row > :nth-child(3) { grid-column: 1 / 4; } /* 양 팀 줄은 폰에서 한 줄 통째로 (상대 이름·티어가 «CHAL» 로 잘리던 것 · QA 회차 2) */
@@ -979,6 +982,31 @@
   .v3-match-row--list > :nth-child(1) { grid-column: 1 / 2; grid-row: 2; }
   .v3-match-row--list > :nth-child(3) { grid-column: 2 / 3; grid-row: 2; justify-content: flex-end !important; }
   .v3-match-row--list > :nth-child(4) { grid-column: 3 / 4; grid-row: 2; justify-content: flex-end !important; }
+  /* ★양 팀 칸을 내용대로 나눈다★ (2026-09-17 무한 QA) — 까닭은 `MatchListV3.tsx` 의 `Side` 에 적었다.
+     PC 는 `1 1 0`(똑같은 폭) 그대로다. 되돌리려면 이 한 줄만 지운다 */
+  .v3-match-side { flex: 1 1 auto !important; }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     ★클랜 기록실의 경기 줄 — 폰에서 두 클랜명이 잘렸다★ (2026-09-17 무한 QA)
+
+     격자가 `1fr / 40%` 라 왼쪽 칸이 폰에서 184px 인데, 그 안에 마크 둘(40) ·
+     «VS» · 틈 넷(28)이 먼저 자리를 먹어 ★이름 둘이 50px 씩★ 밖에 못 받았다.
+     실측: «★PURPLE★» 74px 필요 / 66px 받음 · «e2stro-» 43 / 39 · MVP «bIacknight» 66 / 54.
+
+     ★한 줄을 통째로 준다.★ 그러면 318px 을 둘이 나눠 갖는다.
+     밀려난 「래더 증감」은 ★비어 있던 마지막 줄 왼쪽★ 으로 내려보낸다 —
+     지금까지 그 자리는 「상세」 옆이 통째로 비어 있었다 (사장님: «왜 빈공간을 만들어»).
+     ★값은 하나도 안 없앴다.★ 늘어난 높이는 빈 줄 틈 7px 뿐이다.
+     되돌리려면 이 묶음만 지운다 (`CLAUDE.md` 1-4).
+     ────────────────────────────────────────────────────────────────────── */
+  /* 오른쪽 칸은 ★고정 40%★ 였다 — 그 안에서 MVP 닉네임이 54px 만 받아 «bIacknight» 가 잘렸다.
+     `auto` 로 두면 오른쪽이 제 내용만큼만 가져가고 나머지는 왼쪽(맵·시각)이 받는다.
+     맵 이름에는 말줄임이 있어 왼쪽이 좁아져도 삐져나가지 않는다. 옛 값은 `minmax(0,40%)` */
+  .v3-prow--stack { grid-template-columns: minmax(0, 1fr) auto !important; padding-left: 14px !important; padding-right: 14px !important; }
+  .v3-prow--stack > :nth-child(3) { grid-column: 1 / 3 !important; grid-row: 2 !important; }
+  .v3-prow--stack > :nth-child(4) { grid-column: 1 !important; grid-row: 3 !important; justify-content: flex-start !important; }
+  .v3-prow--stack > :nth-child(5) { grid-column: 1 !important; grid-row: 4 !important; }
+  .v3-prow--stack > :nth-child(6) { grid-column: 2 !important; grid-row: 3 !important; }
   .v3-row-tier { display: none !important; } /* 양 팀 줄의 티어 글자 — 폰에서는 상대 이름이 한 글자로 눌리던 것 (QA 교차검토 5) */
   .v3-h2h-svg { height: auto !important; } /* 상대전적 그래프 — 폰에서 폭에 맞춰 키움 (QA 교차검토 11) */
   /* 2026-09-11 사장님: 세로가 부담스럽다 → 접힌 경기 카드 높이로. 한 줄에 [마크 이름] 18 : 11 [이름 마크], 설명은 아래 작은 줄 */

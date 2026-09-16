@@ -466,10 +466,20 @@ export function ClanHexagonV2({
         {header}
         {/* 두 쪽. PC: 왼쪽 열 = [aside 위 · 목록 아래], 오른쪽 열 = 그래프(두 줄을 다 차지).
             폰: 한 열로 TOP3 → 그래프 → 목록 (DOM 순서가 곧 폰 순서다) */}
-        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3 max-md:grid-cols-1">
+        {/*
+          ⚠ ★2026-09-17 — 왼쪽 열이 그래프 높이만큼 벌어져 있었다★ (무한 QA).
+
+            줄 높이를 안 정해 두면 격자가 ★두 줄에 걸친 그래프의 남는 높이를 두 줄에 똑같이 나눈다.★
+            경기상세처럼 TOP3(`aside`)가 없는 화면에서는 윗줄이 ★빈 채로 170px★ 을 받아
+            축 목록이 아래로 밀리고 제목과 표 사이가 통째로 비었다 (1440px 실측).
+
+            `auto 1fr` 로 못을 박는다 — 윗줄은 ★내용만큼만★ (없으면 0), 남는 높이는 아랫줄이 받는다.
+            `self-start` 로 목록은 제 줄 맨 위에 붙는다. ★값도 폰 순서도 그대로다.★
+        */}
+        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3 max-md:grid-cols-1 md:grid-rows-[auto_1fr]">
           <div className="min-w-0 md:col-start-1 md:row-start-1">{aside ?? null}</div>
           <div className="min-w-0 md:col-start-2 md:row-span-2 md:row-start-1">{chart}</div>
-          <div className="min-w-0 md:col-start-1 md:row-start-2">{list}</div>
+          <div className="min-w-0 self-start md:col-start-1 md:row-start-2">{list}</div>
         </div>
       </div>
     )

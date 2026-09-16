@@ -79,6 +79,17 @@ function Kpi({ label, value, sub, color, extra }: { label: string; value: string
 }
 
 /**
+ * ★MVP·핵의심 줄을 양끝으로 벌릴 것인가★ (2026-09-17 무한 QA에서 내렸다).
+ * `true` 면 옛 모습 — 라벨은 왼쪽 끝, 값은 오른쪽 끝.
+ */
+const FOOT_SPREAD: boolean = false
+
+/** 옛 순위 보조 문구 — 지우지 않는다 (`CLAUDE.md` 1-4) */
+export const RANK_SUB_V1 = (total: number): string => `/ ${fmt(total)}명`
+/** 지금 쓰는 순위 보조 문구 — 슬래시를 떼고 «몇 명 중» 으로 말한다 */
+const rankSub = (total: number): string => `${fmt(total)}명 중`
+
+/**
  * ★이름 줄에도 순위를 적을 것인가★ (2026-09-15 밤 · 무한 QA에서 내렸다).
  * 아래 KPI 칸에 이미 «순위 4위 / 137명» 이 있어 한 카드에 같은 말이 두 번이었다.
  * `true` 로 두면 옛 모습으로 돌아간다.
@@ -376,20 +387,38 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           />
         )}
         {/* 2026-09-11 사장님: 판킬 자리에 ★순위★ */}
+        {/*
+         * ⚠ ★2026-09-17 — 보조 문구를 「/ 138명」 에서 「138명 중」 으로★ (무한 QA).
+         *   옛 문구는 라벨 바로 옆에 «순위  / 138명» 으로 붙어 ★슬래시 앞이 빈 칸★ 으로 보였다 —
+         *   등수가 빠진 것처럼 읽힌다. 값(«1위»)은 아래 큰 글자에 따로 있어 슬래시가 이을 짝이 없다.
+         *   ★숫자는 한 글자도 안 바뀐다★ — 138 은 그대로다.
+         *   옛 문구가 필요하면 아래 `RANK_SUB_V1` 을 쓴다 (`CLAUDE.md` 1-4).
+         */}
         <Kpi
           label="순위"
           value={rank === null ? '-' : `${fmt(rank)}위`}
-          sub={rankTotal === null ? null : `/ ${fmt(rankTotal)}명`}
+          sub={rankTotal === null ? null : rankSub(rankTotal)}
           color={rank === null ? V3.textMuted : rankColor(rank) ?? V3.textStrong}
         />
       </div>
 
-      {/* 4 · MVP · 핵의심 */}
+      {/*
+       * 4 · MVP · 핵의심
+       *
+       * ⚠ ★2026-09-17 — 라벨과 값을 붙였다★ (무한 QA · 사장님: «한눈에 들어오는건
+       *   굳이 새로 배열해서 떨어뜨려서 빈공간을 만들어 왜»).
+       *
+       *   옛 판은 라벨과 값 사이에 `spacerStyle`(flex:1)이 있었다 — PC 1440px 에서
+       *   반 칸이 ★400px★ 이라 «핵의심» 과 «2 회» 가 ★350px 떨어져★ 섰다.
+       *   어느 값이 어느 라벨의 것인지 눈으로 이을 수 없었다.
+       *   이제 라벨 바로 뒤에 값이 온다. ★값은 하나도 안 없앴다★ — 자리만 좁혔다.
+       *   옛 모습이 필요하면 `FOOT_SPREAD` 를 `true` 로 (`CLAUDE.md` 1-4).
+       */}
       <div className="v3-phead-foot" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', borderTop: `1px solid ${V3.rowDivider}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRight: `1px solid ${V3.rowDivider}`, minWidth: 0 }}>
           <span style={{ fontSize: 11, color: V3.gold, whiteSpace: 'nowrap' }}>★</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: V3.textFaint, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>MVP</span>
-          <div style={spacerStyle} />
+          {FOOT_SPREAD ? <div style={spacerStyle} /> : null}
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
             <span style={{ fontSize: 17, fontWeight: 700, color: (sel?.mvp ?? 0) > 0 ? '#ffe89a' : V3.textGhost }}>{fmt(sel?.mvp ?? 0)}</span>
             <span style={{ fontSize: 10.5, color: V3.textDim }}>회</span>
@@ -404,7 +433,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           >
             핵의심
           </span>
-          <div style={spacerStyle} />
+          {FOOT_SPREAD ? <div style={spacerStyle} /> : null}
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, whiteSpace: 'nowrap' }}>
             <span style={{ fontSize: 17, fontWeight: 700, color: (report?.reported ? report.count : data.report_count) > 0 ? '#ff6b6b' : V3.textGhost }}>{fmt(report?.reported ? report.count : data.report_count)}</span>
             <span style={{ fontSize: 10.5, color: V3.textDim }}>회</span>

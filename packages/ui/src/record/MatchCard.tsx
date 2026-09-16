@@ -719,6 +719,12 @@ function TeamCompare({
 /* ------------------------------------------------------------- 팀 표 --- */
 
 /**
+ * ★넓은 화면에서 두 팀 표를 나란히 세울 것인가★ (2026-09-17 무한 QA).
+ * `false` 로 두면 옛 모습 — 위아래로 쌓인다 (`CLAUDE.md` 1-4).
+ */
+const TEAMS_SIDE_BY_SIDE: boolean = true
+
+/**
  * 한 팀의 참가자 표.
  *
  * `적진` — 면을 칠하지 않는다. 승패는 **좌측 막대**(승 `--color-win` · 패 `--color-lose`)와
@@ -761,7 +767,8 @@ function TeamBlock({
   const won = teamWon(stats)
 
   return (
-    <div className={`mt-3 flex items-stretch border ${skin.box}`}>
+    /* `min-w-0` — 두 칸 격자에서 자식이 제 내용 폭으로 버티면 칸이 넘친다 */
+    <div className={`mt-3 flex min-w-0 items-stretch border ${skin.box}`}>
       <div
         className={`w-[3px] shrink-0 ${won === null ? 'bg-line' : won ? 'bg-win' : 'bg-lose'}`}
       />
@@ -802,7 +809,8 @@ function TeamBlock({
         >
           <div className="w-52 px-3 max-md:w-auto max-md:min-w-0 max-md:flex-1">플레이어</div>
           <div className="w-28 text-center max-md:w-20">kda</div>
-          <div className="w-20 text-center max-md:w-12">무기</div>
+          {/* 폭은 아래 값 칸과 ★반드시 같아야 한다★ — 어긋나면 머리와 값이 세로로 안 맞는다 */}
+          <div className="w-20 text-center max-md:w-14">무기</div>
           {/* 마지막 칸의 역사 (D-250)
                 딜량 → 포지션 (2026-08-30) → **래더** (2026-09-01)
               사용자 지시: "포지션도 사치야 딜량도 사치고 걍 둘다 지워버려".
@@ -991,7 +999,13 @@ function StatRow({
         )}
       </div>
 
-      <div className="w-20 text-center text-meta max-md:w-12">
+      {/*
+        ⚠ ★2026-09-17 — 폰에서 칸을 48 → 56px 로★ (무한 QA).
+          「라플」·「스나」 두 글자에 맞춘 폭이라 ★「알수없음」 이 「알수없 / 음」 두 줄로 쪼개졌다.★
+          한 글자를 떼어 다음 줄로 내리면 값이 아니라 낱말로 읽힌다.
+          옛 폭은 `max-md:w-12` 다. `nowrap` 은 다시 쪼개지지 않게 못을 박는다.
+      */}
+      <div className="w-20 whitespace-nowrap text-center text-meta max-md:w-14">
         {weapon === null ? <span className="text-faint">{UNKNOWN}</span> : weapon}
       </div>
 
@@ -1186,29 +1200,45 @@ function MatchDetailPanel({
             ]}
           />
 
-          {/* 레드 팀을 먼저 그린다 */}
-          <TeamBlock
-            first={redFirstLabel}
-            stats={detail.red_stats}
-            snapshot={redSnapshot}
-            mvpPlayerId={match.mvp_player_id}
-            leagueSlug={leagueSlug}
-            viewerPlayerId={viewerPlayerId}
-            showExtra={showExtra}
-            look={look}
-            skin={skin}
-          />
-          <TeamBlock
-            first={blueFirstLabel}
-            stats={detail.blue_stats}
-            snapshot={blueSnapshot}
-            mvpPlayerId={match.mvp_player_id}
-            leagueSlug={leagueSlug}
-            viewerPlayerId={viewerPlayerId}
-            showExtra={showExtra}
-            look={look}
-            skin={skin}
-          />
+          {/*
+            ⚠ ★2026-09-17 — 넓은 화면에서는 두 팀을 나란히★ (무한 QA · 사장님:
+              «너무 큰 공간낭비 (…) 어차피 한눈에 들어오는건 굳이 새로 배열해서
+               떨어뜨려서 빈공간을 만들어 왜»).
+
+              표의 칸 넷은 고정폭이라 다 합쳐 ★496px★ 다. 그런데 카드는 1440px 화면에서
+              1100px 이다 — 두 팀을 위아래로 쌓으면 ★오른쪽 600px 이 열 줄 내내 빈다.★
+              나란히 세우면 그 빈자리가 상대 팀 표로 차고 ★세로 길이가 절반★ 이 된다.
+
+              ★1200px 부터만★ 두 칸이다. 그보다 좁으면 한 칸이 496px 을 못 담아
+              칸이 찌그러진다 — 그때는 지금까지와 똑같이 위아래로 쌓인다.
+              ★폰은 한 픽셀도 안 바뀐다.★ 값도 하나 안 없앴다 — 자리만 옮겼다.
+              옛 모습이 필요하면 `TEAMS_SIDE_BY_SIDE` 를 `false` 로 (`CLAUDE.md` 1-4).
+          */}
+          <div className={TEAMS_SIDE_BY_SIDE ? 'min-[1200px]:grid min-[1200px]:grid-cols-2 min-[1200px]:items-start min-[1200px]:gap-x-3' : undefined}>
+            {/* 레드 팀을 먼저 그린다 */}
+            <TeamBlock
+              first={redFirstLabel}
+              stats={detail.red_stats}
+              snapshot={redSnapshot}
+              mvpPlayerId={match.mvp_player_id}
+              leagueSlug={leagueSlug}
+              viewerPlayerId={viewerPlayerId}
+              showExtra={showExtra}
+              look={look}
+              skin={skin}
+            />
+            <TeamBlock
+              first={blueFirstLabel}
+              stats={detail.blue_stats}
+              snapshot={blueSnapshot}
+              mvpPlayerId={match.mvp_player_id}
+              leagueSlug={leagueSlug}
+              viewerPlayerId={viewerPlayerId}
+              showExtra={showExtra}
+              look={look}
+              skin={skin}
+            />
+          </div>
 
           {/*
             경기 육각형 — **양 클랜을 한 도형에 겹쳐 그린다** (D-217 원문 · D-235 Q7).

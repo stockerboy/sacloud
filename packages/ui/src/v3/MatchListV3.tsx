@@ -42,7 +42,17 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
   const name = <span style={{ fontSize: 13, fontWeight: won ? 700 : 600, color: won ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{clan.name}</span>
   const tier = <TierText division={division} leagueCategory={leagueCategory} size={10} />
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
+    /*
+     * ⚠ ★`v3-match-side` — 폰에서만 칸을 내용대로 나눈다★ (2026-09-17 무한 QA).
+     *   `flex: 1 1 0` 은 두 팀에게 ★똑같은 폭★ 을 준다. PC 에서는 «VS» 가 정확히 가운데
+     *   서야 하므로 그게 맞다. 그런데 폰(390px)에서는 한 줄에 326px 뿐이고 왼쪽 칸만
+     *   ★WIN 배지 31px★ 를 더 짊어져서, 이름 자리가 오른쪽보다 늘 좁다.
+     *   실측: «★PURPLE★» 은 77px 이 필요한데 67px 만 받아 «★PURP…» 로 잘렸다.
+     *   상대는 «rNtwo-» 라 48px 만 쓰고 나머지를 남겼는데도 그 자리를 못 빌렸다.
+     *   폰에서만 `1 1 auto` 로 바꾼다 — 짧은 이름이 남긴 자리를 긴 이름이 받는다.
+     *   ★PC 는 한 픽셀도 안 바뀐다★ (규칙은 `tokens.css` 의 767px 아래에만 있다).
+     */
+    <span className="v3-match-side" style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
       {align === 'left' ? <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', color: '#dbe8ff', background: 'rgba(91,141,255,.22)', border: '1px solid rgba(91,141,255,.45)', borderRadius: 3, padding: '1px 4px' }}>WIN</span> : null}
       {align === 'left' ? <MarkCircle clan={clan} size={22} /> : null}
       {/*

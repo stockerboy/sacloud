@@ -707,7 +707,16 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
         const isOpen = open === m.id
         return (
           <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: (m.win ? 'rgba(91,141,255,.13)' : 'rgba(255,90,99,.13)'), opacity: pending ? 0.75 : 1 }}>
-          <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...prowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-prow">
+          {/*
+            ★`v3-prow--stack` — 폰에서 여섯 칸을 쌓는 이름표★ (2026-09-17 무한 QA).
+
+              `v3-prow` 에 바로 걸면 안 된다 — 그 이름은 ★PC 재질★ 만 뜻하고,
+              클랜(2칸)·선수(5칸) 두 격자가 같이 쓴다. 자리를 옮기는 규칙은 따로 건다.
+              ★선수 기록실의 경기 줄도 아이 여섯의 차례가 똑같아서★ 같은 이름표를 쓴다
+              (승패·맵·시각 / 오른쪽 위 / 양 팀 / 오른쪽 아래 / vs티어 / 상세).
+              규칙과 까닭은 `tokens.css` 한 곳에 있다.
+          */}
+          <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...prowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-prow v3-prow--stack">
             {/* 1줄 — 승패 · 맵 · 시각 / 오른쪽 위엔 MVP */}
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
               <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
@@ -759,7 +768,13 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
               />
             </span>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
-              {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
+              {/*
+                ⚠ ★2026-09-17 — 한 줄에 같은 말이 두 번 있었다★ (무한 QA).
+                  바로 위 칸이 이미 «킬데스 수집중» 이라고 말하는데 여기서 또 «수집중» 을 적었다.
+                  칸은 남긴다 (격자가 어긋나면 안 된다) — ★글자만★ 지운다.
+                  경기목록(`MatchListV3`)이 2026-09-15 밤에 같은 자리를 이렇게 고쳤다. 말을 맞춘다.
+              */}
+              {pending ? null : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
             </span>
           </div>
           {isOpen ? (

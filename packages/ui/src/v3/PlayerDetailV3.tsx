@@ -764,7 +764,18 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
         const pending = m.red.length === 0 && m.blue.length === 0
         return (
           <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: (m.win ? 'rgba(91,141,255,.13)' : 'rgba(255,90,99,.13)'), opacity: pending ? 0.75 : 1 }}>
-            <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-prow">
+            {/*
+              ★`v3-prow--stack` — 폰에서 여섯 칸을 쌓는다★ (2026-09-17 무한 QA).
+
+                PC 격자는 고정폭 다섯(70·150·1fr·108·62)이라 폰 390px 에서는 ★`1fr` 칸이 0 으로 눌린다.★
+                그 칸에 양 팀 이름이 들어 있어서 실측 «lunatic`Gaming» 98px 필요 / ★61px 받음★,
+                «recent.wct» 66 / 56, «One.PoinT» 64 / 56 — 여섯 줄이 «…» 로 끊겼다.
+                `tokens.css` 의 767px 아래에서 두 칸으로 갈고 양 팀 줄에 한 줄을 통째로 준다.
+                ★PC 는 한 픽셀도 안 바뀐다★ · 값도 하나 안 없앴다.
+                (`tokens.css` 에 «선수 기록실은 폰 전용 규칙이 필요 없다» 고 적혀 있었는데
+                 ★사실이 아니었다★ — 그 줄도 같이 고쳤다)
+            */}
+            <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...matchRowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-prow v3-prow--stack">
               {/* 1줄 — 승패 · 맵 · 시각 / 오른쪽엔 그 경기에서 내 자리 */}
               <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
@@ -788,7 +799,17 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                 ) : null}
               </span>
               {/* 2줄 — 양 팀 / 오른쪽엔 MVP · 킬뎃 */}
-              <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+              {/*
+                ⚠ ★2026-09-17 — PC 에서 두 이름이 양끝으로 벌어져 있었다★ (무한 QA).
+                  이 칸은 격자에서 `1fr` 이라 1440px 에서 ★600px 가까이★ 된다. 그 안에서
+                  두 이름이 `flex: 1 1 0` 으로 반씩 가지니 «MiraGe.» 와 «vs One.PoinT» 사이가
+                  ★300px 넘게 비었다.★ 사장님: «한눈에 들어오는건 굳이 새로 배열해서
+                  떨어뜨려서 빈공간을 만들어 왜».
+                  경기목록(`MatchListV3`)이 2026-09-15 밤에 같은 자리를 이렇게 고쳤다 —
+                  ★칸은 그대로 두고 안쪽만 가운데로 모은다.★ 같은 값(520px)을 쓴다.
+                  ★폰은 이 폭보다 좁아 한 픽셀도 안 바뀐다.★
+              */}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, width: '100%', maxWidth: 520, marginInline: 'auto' }}>
                 {/*
                   * ★클랜명은 승패 색★ (2026-09-12 사장님)
                   *
