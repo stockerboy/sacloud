@@ -367,7 +367,24 @@ function ClanRankDirectory({
   return (
     <div className="pc-container">
       {/* 좁은 화면에서는 좌우 안쪽 여백을 없앤다 — `.mobile-bleed`(표)가 화면 끝까지 가도록 */}
-      <div className="py-[var(--section-gap)] max-md:py-8">
+      {/*
+        ⚠ ★2026-09-17 — 폰에서 탭 줄 위가 뚝 떨어져 있었다★ (사장님: «모바일 버전에서
+          아직도 저렇게 빈공간이 뚝 떨어져있어 저거 붙여»).
+
+          390px 실측(CDP 로 뷰포트를 직접 준 값) — 상단 띠는 88px 에서 끝나는데
+          탭 줄이 ★118px★ 에서 시작했다. 그 사이 ★30px★ 이 이 칸의 위 여백이다.
+          같은 탭 줄이 화면마다 다른 자리에 섰다:
+            클랜랭킹 ★30px★ · 리그홈 16px · 개인랭킹 0px
+          탭을 바꿀 때마다 줄이 위아래로 튀었다. ★16px★ 로 낮춰 리그홈과 맞춘다.
+
+          ⚠ PC 는 한 픽셀도 안 바뀐다 — `py-[var(--section-gap)]`(40px) 그대로다.
+          ⚠ `v2/tokens.css` 에 넣지 않았다 — 그 파일은 전부 `.sac-v2` 안에서만 사는데
+            이 주소(`/league/<slug>/rank/clan`)는 `v2/migrated.ts` 목록에 ★없어서★
+            셸이 `.sac-v2` 를 안 두른다 (실측으로 확인). 거기 적으면 안 걸린다.
+
+          옛 값: `py-[var(--section-gap)] max-md:py-8` (아래 여백은 그대로 `max-md:pb-8`)
+      */}
+      <div className="py-[var(--section-gap)] max-md:pb-8 max-md:pt-[16px]">
         {/* ★리그 탭★ — 상단 고정 띠에서 내려왔다. 지금 탭이 곧 제목이다 (2026-09-16 사장님) */}
         <LeagueTabsInline leagueSlug={leagueSlug} />
         {/*

@@ -304,6 +304,17 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
  */
 export const GAP_FULL_SCALE = 1.5
 
+/**
+ * ★옛 영향력 셈 — 한 사람당 · 한 라운드당 점수 차★ (2026-09-16 판).
+ *
+ * 2026-09-17 에 화면은 «몱(%)» 으로 바뀜다 — 사장님이 «+0.33점» 은
+ * 안 와닿는다고 하셨다. 그래도 ★지우지 않는다★ (`CLAUDE.md` 1-4).
+ */
+export function gapDiffPerRound(ours: number, foe: number, rounds: number, heads: number): number {
+  if (rounds <= 0) return 0
+  return (ours - foe) / rounds / Math.max(1, heads)
+}
+
 export const SNIPER_INFLUENCE_FULL_SCALE = 50
 
 /** 못 잰 이유 — 화면이 이 코드로 `측정중` 옆에 설명을 붙인다 */
@@ -1715,19 +1726,43 @@ export function buildClanHexV2Raw(input: {
           }
         }
         /* ── 경기 (한 판) — 한 사람당 · 라운드당 점수 차 ── */
+        /*
+         * ★두 팀 점수의 몱★ — 경기 한 판 (2026-09-17 사장님).
+         *
+         *   옛 판은 점수를 ★라운드수로 한 번 · 머릿수로 한 번★ 나눠 «+0.33점» 을 적었다.
+         *   사장님: «스나영향력 차이랑 라플 영향력차이가 별로 와닿지가 않아
+         *   저렇게 무슨 0.15 -1.18 이렇게하면 어케 와닿겠어»
+         *
+         *   두 번 나누면 사장님이 정하신 점수표(선짤 1점 · 세이브 3점)와 연결이 끊긴다 —
+         *   0.33 이 선짤 몇 번어치인지 알 길이 없다.
+         *
+         *   사장님이 고르신 길: ★ 60% : 40% (20%p 차이) ★
+         *   나누지 않고 ★두 팀 총점 중 우리 몱★ 을 적는다. 50% 가 팡팡한 것이고,
+         *   육각의 다른 네 축이 전부 % 라 읽는 법이 통일된다.
+         *
+         *   머릿수로 나누지 않는다 — 몱은 비율이라 양쪽을 같은 수로 나눠도 값이 안 변한다.
+         *   머릿수가 다르면 그 차이가 그대로 보이는데 ★그게 사실이다★.
+         *
+         *   옛 셈은 `gapDiffPerRound()` 에 남겨 두었다 (`CLAUDE.md` 1-4).
+         */
         const ours = sniper ? part.ourSniper : part.ourRifle
         const foe = sniper ? part.foeSniper : part.foeRifle
-        const heads = Math.max(1, sniper ? part.sniperHeads : part.rifleHeads)
-        const diff = (ours - foe) / part.rounds / heads
+        const sum = ours + foe
+        /* 두 팀 다 0점 — 아무 일도 안 일어난 판이다. 비율을 만들 수 없다 */
+        if (sum <= 0) return pendingAxis(key, 'sample')
+        const share = ours / sum
+        const ourPct = Math.round(share * 100)
+        const foePct = 100 - ourPct
+        const spread = Math.abs(ourPct - foePct)
         return {
           key,
           label: CLAN_HEX_V2_AXIS_LABELS[key],
           numerator: Math.round(ours * 10) / 10,
-          denominator: Math.round(foe * 10) / 10,
+          denominator: Math.round(sum * 10) / 10,
           /* ★−1.5 ~ +1.5 를 0~1 눈금으로 편다★ — 실측 범위가 그 안이다 */
-          raw: Math.max(0, Math.min(1, (diff + GAP_FULL_SCALE) / (GAP_FULL_SCALE * 2))),
+          raw: share,
           value: null,
-          text: `${diff >= 0 ? '+' : ''}${diff.toFixed(2)}점`,
+          text: `${ourPct}% : ${foePct}% (${spread}%p 차이)`,
           pending: null,
           rank: null,
           total: null,

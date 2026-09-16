@@ -38,6 +38,7 @@ import {
   CLAN_HEX_V2_ZONE_LABELS_TOTAL,
   ClanHexagonV2,
   GAP_FULL_SCALE,
+  gapDiffPerRound,
   SNIPER_INFLUENCE_FULL_SCALE,
   buildClanHexV2Raw,
   diffAxis,
@@ -476,66 +477,85 @@ describe('★기회차단★ — 상대가 연 라운드를 끊었나 (2026-09-1
  * ★같은 재료·같은 이름·다른 접기★ 다. 어느 쪽인지는 `games` 칸이 있는지로 갈린다:
  *
  * ```
- * 한 판 (games 없음)   «한 사람당 · 라운드당 점수 차»   +0.50점
+ * 한 판 (games 없음)   «두 팀 총점 중 우리 몫»          63% : 37% (26%p 차이)
  * 여러 판 (games 있음)  «그 차가 앞선 판 비율»          64%
  * ```
+ *
+ * ⚠ ★2026-09-17 — 한 판 쪽이 «점» 에서 «몫(%)» 으로 바뀌었다★ (사장님:
+ *   «무슨 0.15 -1.18 이렇게하면 어케 와닿겠어»). 옛 셈은 `gapDiffPerRound()` 에 그대로 있다.
  *
  * ⚠ 이 둘이 ★조용히 뒤바뀌면 그림이 멀쩡해 보인다★ — 둘 다 0~1 로 펴져 꼭짓점이
  *   그럴듯하게 찍힌다. 그래서 `text` 까지 못 박는다.
  */
 describe('★스나영향력 · 라플영향력★ — 한 판과 여러 판이 다르게 접힌다 (2026-09-16 밤)', () => {
-  it('한 판이면 «한 사람당 · 라운드당 점수 차» 를 적는다', () => {
+  it('한 판이면 «두 팀 총점 중 우리 몫» 을 적는다 (2026-09-17)', () => {
     const hex = buildClanHexV2Raw({ tally: fullTally(), matches: 1 })
 
     const sniper = axisOf(hex, 'sniperInfluence')
-    /* (40 − 24) / 16라운드 / 2명 = +0.50점 */
-    expect(sniper.text).toBe('+0.50점')
-    /* 분자·분모는 «우리 점수 / 상대 점수» 다 — 비율이 아니다 (화면이 둘을 나란히 보여 준다) */
+    /* 40 / (40 + 24) = 62.5% → 63% : 37% · 차이 26%p */
+    expect(sniper.text).toBe('63% : 37% (26%p 차이)')
+    /* 분자는 우리 점수 · 분모는 ★두 팀 합★ 이다 — 몫의 분모다 */
     expect(sniper.numerator).toBe(40)
-    expect(sniper.denominator).toBe(24)
-    /* `raw` 는 −1.5 ~ +1.5 를 0~1 로 편 값이다: (0.5 + 1.5) / 3 */
-    expect(sniper.raw).toBeCloseTo((0.5 + GAP_FULL_SCALE) / (GAP_FULL_SCALE * 2), 10)
+    expect(sniper.denominator).toBe(64)
+    /* `raw` 는 몫 그대로다 — 눈금을 따로 펼 필요가 없다 */
+    expect(sniper.raw).toBeCloseTo(40 / 64, 10)
     expect(sniper.pending).toBeNull()
 
     const rifle = axisOf(hex, 'rifleInfluence')
-    /* (60 − 48) / 16라운드 / 3명 = +0.25점.
-       ★스나(+0.50)와 다른 값이어야 한다★ — 같으면 두 칸을 바꿔 읽는 버그를 못 잡는다 */
-    expect(rifle.text).toBe('+0.25점')
+    /* 60 / (60 + 48) = 55.6% → 56% : 44%.
+       ★스나(63%)와 다른 값이어야 한다★ — 같으면 두 칸을 바꿔 읽는 버그를 못 잡는다 */
+    expect(rifle.text).toBe('56% : 44% (12%p 차이)')
     expect(rifle.numerator).toBe(60)
-    expect(rifle.denominator).toBe(48)
-    expect(rifle.raw).toBeCloseTo((0.25 + GAP_FULL_SCALE) / (GAP_FULL_SCALE * 2), 10)
+    expect(rifle.denominator).toBe(108)
+    expect(rifle.raw).toBeCloseTo(60 / 108, 10)
   })
 
-  it('뒤진 판은 음수로 적는다 — 숫자를 지어내지 않는다', () => {
+  it('옛 셈(한 사람당 · 라운드당 점수 차)은 그대로 살아 있다 — 지우지 않는다', () => {
+    /* (40 − 24) / 16라운드 / 2명 = +0.50점 — 2026-09-16 판이 적던 값이다 */
+    expect(gapDiffPerRound(40, 24, 16, 2)).toBeCloseTo(0.5, 10)
+    expect(gapDiffPerRound(60, 48, 16, 3)).toBeCloseTo(0.25, 10)
+    /* 0 으로 나누지 않는다 */
+    expect(gapDiffPerRound(40, 24, 0, 2)).toBe(0)
+    expect(gapDiffPerRound(40, 24, 16, 0)).toBeCloseTo(1, 10)
+  })
+
+  it('뒤진 판은 몫이 절반 아래다 — 숫자를 지어내지 않는다', () => {
     const hex = buildClanHexV2Raw({
-      /* 스나 칸만 뒤집었다: (24 − 40) / 16 / 2 = −0.50점 */
+      /* 스나 칸만 뒤집었다: 24 / (24 + 40) = 37.5% → 38% : 62% */
       tally: fullTally({ gapScore: gapTally({ ourSniper: 24, foeSniper: 40 }) }),
       matches: 1,
     })
     const sniper = axisOf(hex, 'sniperInfluence')
-    expect(sniper.text).toBe('-0.50점')
-    /* 눈금은 0~1 이라 음수도 그림에는 들어온다 — (−0.5 + 1.5) / 3 */
-    expect(sniper.raw).toBeCloseTo((-0.5 + GAP_FULL_SCALE) / (GAP_FULL_SCALE * 2), 10)
+    expect(sniper.text).toBe('38% : 62% (24%p 차이)')
+    expect(sniper.raw).toBeCloseTo(24 / 64, 10)
     /* 라플 칸은 안 건드렸으니 그대로다 */
-    expect(axisOf(hex, 'rifleInfluence').text).toBe('+0.25점')
+    expect(axisOf(hex, 'rifleInfluence').text).toBe('56% : 44% (12%p 차이)')
   })
 
-  it('눈금(±1.5점)을 넘어가도 `raw` 는 0~1 밖으로 안 나간다 — 숫자는 그대로 적는다', () => {
-    /* (0 − 160) / 16 / 2 = −5.00점 — 눈금 −1.5 를 한참 넘는다 */
+  it('한쪽이 올킬이면 100% : 0% 다 — `raw` 가 0~1 밖으로 안 나간다', () => {
+    /* 몫은 본래 0~1 이라 재금 자체가 필요 없다 — 그게 «점» 보다 나은 점이다 */
     const low = buildClanHexV2Raw({
       tally: fullTally({ gapScore: gapTally({ ourSniper: 0, foeSniper: 160 }) }),
       matches: 1,
     })
     expect(axisOf(low, 'sniperInfluence').raw).toBe(0)
-    expect(axisOf(low, 'sniperInfluence').text).toBe('-5.00점')
+    expect(axisOf(low, 'sniperInfluence').text).toBe('0% : 100% (100%p 차이)')
 
-    /* 반대쪽도 같다 — 육각형은 반지름이 1 을 넘을 수 없다 */
     const high = buildClanHexV2Raw({
       tally: fullTally({ gapScore: gapTally({ ourSniper: 160, foeSniper: 0 }) }),
       matches: 1,
     })
     expect(axisOf(high, 'sniperInfluence').raw).toBe(1)
-    expect(axisOf(high, 'sniperInfluence').text).toBe('+5.00점')
+    expect(axisOf(high, 'sniperInfluence').text).toBe('100% : 0% (100%p 차이)')
+  })
+
+  it('두 팀 다 0점이면 「측정중」 이다 — 0 으로 나누지 않는다 (2026-09-17)', () => {
+    const hex = buildClanHexV2Raw({
+      tally: fullTally({ gapScore: gapTally({ ourSniper: 0, foeSniper: 0 }) }),
+      matches: 1,
+    })
+    expect(axisOf(hex, 'sniperInfluence').pending).not.toBeNull()
+    expect(axisOf(hex, 'sniperInfluence').value).toBeNull()
   })
 
   it('라운드를 하나도 못 세면 두 축이 「측정중」 이다 — 0 으로 나누지 않는다', () => {
@@ -788,18 +808,21 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
      */
     /*
      * ②③ ★스나영향력 · 라플영향력★ (2026-09-16 밤 사장님) —
-     *   한 판이라 «한 사람당 · 라운드당 점수 차» 다. 분자·분모는 «우리 / 상대 점수».
+     *   한 판이라 «두 팀 총점 중 우리 몫» 이다. 분자는 우리 점수 · 분모는 ★두 팀 합★.
      *
-     *   ⚠ 옛 기대값 (2026-09-16 낮 · 두 승률의 차) —
-     *     `{ numerator: 14, denominator: 20, text: '+30.0%', raw: 0.6 }`.
-     *     일한 라운드 14/20 = 70% · 침묵 라운드 8/20 = 40% → 차 +30.0%p 를
-     *     0~50%p 눈금으로 편 값이 0.6 이었다. 그 셈은 `diffAxis` 에 그대로 있고
-     *     재료(`tally.sniperInfluence`)도 계속 쌓인다.
+     *   ⚠ 옛 기대값 둘을 남긴다 (`CLAUDE.md` 1-4) —
+     *     2026-09-16 낮 (두 승률의 차)
+     *       `{ numerator: 14, denominator: 20, text: '+30.0%', raw: 0.6 }`.
+     *       일한 라운드 14/20 = 70% · 침묵 라운드 8/20 = 40% → 차 +30.0%p 를
+     *       0~50%p 눈금으로 편 값이 0.6 이었다. 그 셈은 `diffAxis` 에 그대로 있다.
+     *     2026-09-16 밤 (한 사람당 · 라운드당 점수 차)
+     *       `{ numerator: 40, denominator: 24, text: '+0.50점' }`.
+     *       그 셈은 `gapDiffPerRound()` 에 그대로 있다.
      */
     expect(axisOf(hex, 'sniperInfluence').numerator).toBe(40)
-    expect(axisOf(hex, 'sniperInfluence').denominator).toBe(24)
-    expect(axisOf(hex, 'sniperInfluence').text).toBe('+0.50점')
-    expect(axisOf(hex, 'rifleInfluence').text).toBe('+0.25점')
+    expect(axisOf(hex, 'sniperInfluence').denominator).toBe(64)
+    expect(axisOf(hex, 'sniperInfluence').text).toBe('63% : 37% (26%p 차이)')
+    expect(axisOf(hex, 'rifleInfluence').text).toBe('56% : 44% (12%p 차이)')
     /* 옛 셈의 재료는 그대로다 — 일한 20 중 14승 · 침묵 20 중 8승 */
     expect(required(fullTally().sniperInfluence).won).toBe(14)
     expect(required(fullTally().sniperInfluence).quietWon).toBe(8)

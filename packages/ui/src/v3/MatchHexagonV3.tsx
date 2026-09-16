@@ -21,7 +21,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { CLAN_HEX_V2_AXIS_LABELS, CLAN_HEX_V2_MATCH_AXIS_KEYS, type ClanHexV2AnyAxisKey, type ClanHexagonV2 } from '@sacloud/contract'
-import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
+import { V3 } from './tokens'
 import { penDash, useDrawIn } from './seasonPlot'
 import { matchVerdict, matchVerdictText } from './matchVerdict'
 
@@ -40,6 +40,57 @@ const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_S
  */
 /* ★경기는 «유리한 기회» 를 쓴다★ (2026-09-17 사장님) — 클랜은 기회차단 그대로 */
 const ORDER = CLAN_HEX_V2_MATCH_AXIS_KEYS
+
+/**
+ * ★경기 육각은 선수 육각보다 크게 그린다★ (2026-09-17 사장님:
+ * «육각 그래프 크기 더 키워주고 밑에 멘트 필요없어 전부 없애»).
+ *
+ * —— 폰에서 «r 을 키우면 커진다» 가 아니다
+ *   그림판은 `maxWidth: 100%` 라 폰에서는 카드 폭에 맞춰 통째로 줄어든다.
+ *   그래서 r 과 그림판을 같이 키우면 화면에서는 ★하나도 안 커진다.★
+ *   진짜로 키우는 길은 ★그림판 안에서 육각이 차지하는 몱을 늘리는 것★ 이다 —
+ *   양옆 빈 여백을 34 → 18 로 깎고 r 을 74 → 92 로 올렸다.
+ *   폭 368 → 338 이라 폰 390px 에서 실제 반지름이 68 → 93 이 된다 (+36%).
+ *
+ * —— 선수 육각(`HEX`)은 건드리지 않는다
+ *   `tokens.ts` 의 `HEX` 는 선수 화면과 클랜 카드가 같이 쓴다.
+ *   여기서 바꾸면 세 화면이 한꺼번에 틀어진다 — 경기용만 따로 둔다.
+ */
+const MHEX = { cx: 150, cy: 138, r: 92, vbX: -18, vbW: 338, vbH: 300 } as const
+
+function mhexPoint(i: number, f: number): [number, number] {
+  const a = -Math.PI / 2 + (Math.PI * 2 * i) / 6
+  return [
+    +(MHEX.cx + Math.cos(a) * MHEX.r * f).toFixed(1),
+    +(MHEX.cy + Math.sin(a) * MHEX.r * f).toFixed(1),
+  ]
+}
+const MHEX_SPOKES = Array.from({ length: 6 }, (_, i) => mhexPoint(i, 1))
+/** 축 라벨 자리 — 육각 꿀짓점 밖으로 14px */
+const MHEX_LABELS: [number, number, 'start' | 'middle' | 'end'][] = [
+  [150, 30, 'middle'],
+  [244, 86, 'start'],
+  [244, 186, 'start'],
+  [150, 250, 'middle'],
+  [56, 186, 'end'],
+  [56, 86, 'end'],
+]
+
+/**
+ * ★양쪽 값이 한 문장 안에 다 들어 있는 축★ (2026-09-17).
+ *
+ * 영향력 둘은 값이 «60% : 40% (20%p 차이)» 라 한 줄에 두 팀이 다 들어 있다.
+ * 그걸 양쪽 이름으로 두 번 적으면 같은 말이 네 번 나온다 — 한 번만 적는다.
+ */
+const SINGLE_TEXT_AXES: readonly string[] = ['sniperInfluence', 'rifleInfluence']
+
+/**
+ * ★육각 밑 설명 글을 그릴 것인가★ (2026-09-17 사장님: «밑에 멘트 필요없어 전부 없애»).
+ *
+ * «어디서 갈렸나» 한 줄과 맨 아래 잣대 안내줄 둘 다 해당된다.
+ * 셈과 글은 `matchVerdict.ts` 에 그대로 살아 있다 — 여기를 true 로 두면 돌아온다.
+ */
+const NOTES_ON = false
 /* ⚠ 열쇠를 넓혀 ★옛 축 이름도 남긴다★ (2026-09-16 밤 · `CLAUDE.md` 1-4) */
 const LABEL: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
   sniperDuel: '스나싸움',
@@ -68,6 +119,8 @@ interface Pair {
   lostCount: string | null
   /** 표본이 적어 퍼센트가 과장되는 축인가 (2026-09-16 사장님) */
   thin: boolean
+  /** 한 문장에 두 팀이 다 들어 있는 축 — 값을 한 번만 적는다 (2026-09-17) */
+  single: boolean
 }
 
 /**
@@ -97,13 +150,14 @@ function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] 
       /* 양쪽 다 표본이 적으면 흐리게 — 한쪽만 적은 경우는 그 판이 원래 그런 것이다 */
       thin:
         Math.max(w?.denominator ?? 0, l?.denominator ?? 0) < THIN_SAMPLE,
+      single: SINGLE_TEXT_AXES.includes(key),
     }
   })
 }
 
 const areaOf = (values: readonly (number | null)[]): string =>
   values
-    .map((v, i) => hexPoint(i, Math.max(0, Math.min(1, v ?? 0))).join(','))
+    .map((v, i) => mhexPoint(i, Math.max(0, Math.min(1, v ?? 0))).join(','))
     .join(' ')
 
 export interface MatchHexagonV3Props {
@@ -153,8 +207,8 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
       */}
       <svg
         ref={svgRef}
-        viewBox={`-34 0 ${HEX.w + 68} ${HEX.h}`}
-        style={{ width: HEX.w + 68, height: HEX.h, maxWidth: '100%', display: 'block' }}
+        viewBox={`${MHEX.vbX} 0 ${MHEX.vbW} ${MHEX.vbH}`}
+        style={{ width: '100%', maxWidth: 420, height: 'auto', display: 'block' }}
       >
         <defs>
           <filter id={`${id}Glow`} x="-50%" y="-50%" width="200%" height="200%">
@@ -170,14 +224,14 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
         {RINGS.map((v) => (
           <polygon
             key={v}
-            points={Array.from({ length: 6 }, (_, i) => hexPoint(i, v / 100).join(',')).join(' ')}
+            points={Array.from({ length: 6 }, (_, i) => mhexPoint(i, v / 100).join(',')).join(' ')}
             fill="none"
             stroke={v % 50 === 0 ? '#4a5c88' : '#2c3a5c'}
             strokeWidth={v % 50 === 0 ? 1.2 : 0.9}
           />
         ))}
-        {HEX_SPOKES.map(([x, y], i) => (
-          <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#2c3a5c" strokeWidth={0.9} />
+        {MHEX_SPOKES.map(([x, y], i) => (
+          <line key={i} x1={MHEX.cx} y1={MHEX.cy} x2={x} y2={y} stroke="#2c3a5c" strokeWidth={0.9} />
         ))}
 
         {/* 진 팀이 밑 · 이긴 팀이 위 — 겹쳐도 이긴 쪽이 보인다. `only` 면 한 쪽만 */}
@@ -210,7 +264,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
 
         {/* 눈금 숫자 — 채움 위에 (Hexagon 과 같은 규칙) */}
         {RINGS.filter((v) => v % 20 === 0).map((v) => {
-          const [x, y] = hexPoint(0, v / 100)
+          const [x, y] = mhexPoint(0, v / 100)
           return (
             <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="700" fill="#c7d0e6" textAnchor="start">
               {v}
@@ -222,7 +276,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
         {/* 축 이름·숫자는 다 그려진 뒤에 스며든다 (Hexagon 과 같은 규칙) */}
         <g opacity={labelIn} style={{ transition: 'opacity .45s ease' }}>
           {pairs.map((p, i) => {
-            const [x, y, anchor] = HEX_LABELS[i] as (typeof HEX_LABELS)[number]
+            const [x, y, anchor] = MHEX_LABELS[i] as (typeof MHEX_LABELS)[number]
             return (
               <g key={p.label} opacity={p.thin ? 0.45 : 1}>
                 {/*
@@ -248,9 +302,32 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                   fontSize={11}
                   fontWeight="700"
                 >
-                  {showWon ? <tspan fill={WON.line}>{p.wonText}</tspan> : null}
-                  {showWon && showLost ? <tspan fill="#44506c"> · </tspan> : null}
-                  {showLost ? <tspan fill={LOST.line}>{p.lostText}</tspan> : null}
+                  {(() => {
+                    /*
+                     * ★영향력 축은 한 번만 적는다★ (2026-09-17) — 값 자체가
+                     *   «60% : 40% (20%p 차이)» 라 두 팀이 이미 다 들어 있다.
+                     *   길어서 괄호 앞에서 끈는다 — 라벨과 같은 방법이다.
+                     */
+                    if (p.single) {
+                      const one = showWon ? p.wonText : p.lostText
+                      const tone = showWon ? WON.line : LOST.line
+                      const cut = one.indexOf('(')
+                      if (cut <= 0) return <tspan fill={tone}>{one}</tspan>
+                      return (
+                        <>
+                          <tspan x={x} fill={tone}>{one.slice(0, cut).trim()}</tspan>
+                          <tspan x={x} dy={12} fill="#7f8db0" fontSize={10}>{one.slice(cut)}</tspan>
+                        </>
+                      )
+                    }
+                    return (
+                      <>
+                        {showWon ? <tspan fill={WON.line}>{p.wonText}</tspan> : null}
+                        {showWon && showLost ? <tspan fill="#44506c"> · </tspan> : null}
+                        {showLost ? <tspan fill={LOST.line}>{p.lostText}</tspan> : null}
+                      </>
+                    )
+                  })()}
                 </text>
                 {/*
                   ⚠ ★2026-09-16 — «몇 번 중 몇 번» 줄을 뺐다★ (사장님: «6축 전부
@@ -271,7 +348,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
           «다 압도했는데 왜 졌지» 가 된다. 그래서 ★답을 우리가 써 준다.★
           표본이 얇은 축은 후보가 아니고, 뽑을 게 없으면 아무 말도 안 한다.
       */}
-      {verdict !== null ? (
+      {NOTES_ON && verdict !== null ? (
         <div
           style={{
             margin: '2px 12px 10px',
@@ -304,9 +381,13 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
           </span>
         ) : null}
       </div>
-      <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.04em', textAlign: 'center' }}>
-        {only === null ? '이 판 두 팀 비교 · 리그 순위와는 잣대가 다릅니다' : '상대와 견준 값입니다 · 리그 순위와는 잣대가 다릅니다'}
-      </span>
+      {/* ⚠ ★잣대 안내줄도 뜻었다★ (2026-09-17 사장님: «밑에 멘트 필요없어 전부 없애»).
+          글은 그대로 놓아 둔다 — `NOTES_ON` 을 true 로 두면 돌아온다 (`CLAUDE.md` 1-4). */}
+      {NOTES_ON ? (
+        <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.04em', textAlign: 'center' }}>
+          {only === null ? '이 판 두 팀 비교 · 리그 순위와는 잣대가 다릅니다' : '상대와 견준 값입니다 · 리그 순위와는 잣대가 다릅니다'}
+        </span>
+      ) : null}
     </div>
   )
 }

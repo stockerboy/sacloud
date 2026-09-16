@@ -55,6 +55,124 @@
 const DISPLAY_FONT = { fontFamily: 'var(--font-display)' } as const
 const ACCENT = { fill: 'var(--color-accent, #d92b2b)' } as const
 
+/* ══════════════════════════════════════════════════════════════════════════
+   ★2026-09-17 — 상단바 로고를 세 가지 색으로 다시 그렸다 (`variant="tri"`)★
+
+   사장님: «이 사진에서 상단 바 로고도 글자에 빨간색(SA) 파란색(CLOUD)
+           구름은 흰색 채워서 가면 될거같고»
+
+   ── 왜 그림(webp)이 아니라 코드인가
+     PNG/WebP 는 ★색을 못 바꾼다.★ 그리고 그림 로고(`art`)는 폰 상단바(24~34px)로
+     줄면 구름 속 `SA CLOUD` 글자가 4px 남짓이 되어 ★흐릿하게 뭉개졌다★ —
+     사장님이 본 그 화면이다. 그래서 상단바용은 벡터로 새로 그린다.
+
+   ── 무엇을 그리는가
+     왼쪽에 ★흰 구름★(원 셋 + 둥근 띠로 만든 실루엣), 오른쪽에 한 줄로
+     `SA`(빨강) `CLOUD`(파랑). ★원본 그림을 베끼지 않았다★ (`CLAUDE.md` 2장 4번) —
+     달리는 `Log` 글자·노트북은 넣지 않았고 구름은 좌표를 새로 잡았다.
+
+   ── 색은 프로젝트 토큰을 쓴다
+     빨강 `--v2-red`(#e01b24) · 파랑 `--v2-blue`(#5b8dff). 둘 다 `.sac-v2` 안에서만
+     살아 있어서 ★바깥(옛 `SiteHeader` · `AuthCard`)을 위해 대체값을 같이 적는다.★
+     `--color-accent` 는 쓰지 않는다 — 리그마다 갈아끼워지는 색이라 SPL 에서는
+     빨강, IPL 에서는 파랑이 되어 ★로고 색이 화면마다 달라진다.★
+
+   ── 되돌리는 법
+     아래 `NAV_VARIANT` 를 `'art'` 로 바꾸면 2026-09-16 의 그림 로고로 돌아간다.
+     그림 파일도 `art`/`mark`/`wordmark` 코드도 ★한 줄도 안 지웠다★ (`CLAUDE.md` 1-4).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * 글자 굵기는 ★웹폰트에 맡기지 않는다.★
+ * `--font-display`(Black Han Sans)는 한글용이라 라틴 글자 폭이 그때그때 다르고,
+ * 늦게 오면 로고가 한 번 출렁인다. 그래서 굵은 시스템 스택을 쓰고,
+ * 폭은 아래 `textLength` 로 못 박는다 — ★어떤 서체가 잡혀도 자리 폭은 같다.★
+ */
+const TRI_FONT = {
+  fontFamily: '"Arial Black", "Arial Bold", "Segoe UI", system-ui, sans-serif',
+  fontWeight: 900,
+  letterSpacing: '0',
+} as const
+
+/** 구름 = 흰색. 상단바 바탕이 어두우므로 통짜 흰색이 가장 또렷하다 */
+const TRI_CLOUD = '#ffffff'
+/** `SA` = 빨강. `.sac-v2` 밖에서도 보이게 대체값을 같이 준다 */
+const TRI_RED = 'var(--v2-red, #e23b3b)'
+/** `CLOUD` = 파랑 */
+const TRI_BLUE = 'var(--v2-blue, #5b8dff)'
+
+/**
+ * 좌표계 404×100.
+ *
+ * 구름이 x 18~122, 글자가 x 136~396 을 쓴다. 비율 4.04 —
+ * 상단바 34px 에서 폭 137px 이라 ★옛 그림 로고(61px 폭 · 34px)보다 넓지만
+ * 글자가 읽힌다.★ 폰(28px)에서는 113px 이고 68px 머리띠 안에 여유 있게 들어간다.
+ */
+const TRI_VIEWBOX = '0 0 404 100'
+const TRI_RATIO = 404 / 100
+const TRI_LABEL = 'SA CLOUD'
+
+/** 상단바용 세 색 로고 본체. 크기는 부모(className 또는 height)가 정한다 */
+function TriMark({
+  className,
+  width,
+  height,
+}: {
+  className?: string
+  width?: number
+  height?: number
+}) {
+  return (
+    <svg
+      className={className}
+      viewBox={TRI_VIEWBOX}
+      width={width}
+      height={height}
+      role="img"
+      aria-label={TRI_LABEL}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/*
+        구름 — 원 셋과 둥근 띠 하나를 겹쳐 실루엣을 만든다.
+        path 한 붓으로 그리지 않은 이유: ★같은 색으로 겹치면 경계가 사라진다★ —
+        좌표를 손으로 고치기 쉬워 나중에 모양을 다듬을 때 편하다.
+      */}
+      <g fill={TRI_CLOUD}>
+        <circle cx="40" cy="58" r="22" />
+        <circle cx="72" cy="41" r="28" />
+        <circle cx="102" cy="60" r="20" />
+        <rect x="30" y="58" width="80" height="24" rx="12" />
+      </g>
+      {/*
+        `textLength` + `lengthAdjust` 로 폭을 못 박는다.
+        서체가 바뀌어도 `SA` 는 항상 72, `CLOUD` 는 항상 176 을 차지한다.
+      */}
+      <text
+        x="136"
+        y="69"
+        textLength="72"
+        lengthAdjust="spacingAndGlyphs"
+        fontSize="58"
+        fill={TRI_RED}
+        style={TRI_FONT}
+      >
+        SA
+      </text>
+      <text
+        x="220"
+        y="69"
+        textLength="176"
+        lengthAdjust="spacingAndGlyphs"
+        fontSize="58"
+        fill={TRI_BLUE}
+        style={TRI_FONT}
+      >
+        CLOUD
+      </text>
+    </svg>
+  )
+}
+
 /**
  * 확정 로고의 좌표계.
  *
@@ -90,11 +208,13 @@ export type BrandWordmark = '3rdcloud' | 'sacloud'
 /**
  * 어떤 모양으로 그릴 것인가.
  *
- * - `art`      2026-09-16 사장님이 주신 그림 로고. **지금의 기본값** (`DEFAULT_VARIANT`)
+ * - `tri`      2026-09-17 세 색 벡터 로고(흰 구름 + 빨강 `SA` + 파랑 `CLOUD`).
+ *              **상단바의 지금 기본값** (`NAV_VARIANT`)
+ * - `art`      2026-09-16 사장님이 주신 그림 로고. **홈 큰 로고의 기본값** (`DEFAULT_VARIANT`)
  * - `mark`     2026-09-01 ~ 09-15 의 벡터 로고(구름 + 두 줄 글자). 안 지웠다
  * - `wordmark` 2026-09-01 오전까지 쓰던 한 줄 글자 로고. 안 지웠다
  */
-export type BrandLogoVariant = 'art' | 'mark' | 'wordmark'
+export type BrandLogoVariant = 'tri' | 'art' | 'mark' | 'wordmark'
 
 /**
  * ★★되돌리는 스위치 — 이 한 줄★★
@@ -103,6 +223,17 @@ export type BrandLogoVariant = 'art' | 'mark' | 'wordmark'
  * `variant` 를 직접 넘긴 호출은 이 값을 무시한다 (그런 호출은 지금 없다).
  */
 const DEFAULT_VARIANT: BrandLogoVariant = 'art'
+
+/**
+ * ★★상단바만 따로 도는 스위치★★ (2026-09-17)
+ *
+ * `'tri'` → `'art'` 로 바꾸면 상단바 로고가 2026-09-16 의 그림 로고로 돌아간다.
+ *
+ * ⚠ ★`DEFAULT_VARIANT` 와 일부러 갈라 놓았다.★ 홈 한가운데의 큰 로고(`MainLogo`)는
+ *   110px 이라 그림이 또렷하게 보이고 ★다른 사람이 지금 손대는 중★ 이다.
+ *   한 스위치로 묶으면 상단바를 고치면서 홈 히어로까지 같이 바뀐다.
+ */
+const NAV_VARIANT: BrandLogoVariant = 'tri'
 
 /**
  * 그림 로고의 크기.
@@ -152,9 +283,14 @@ const WORDMARK_LABEL: Record<BrandWordmark, string> = {
  * 옛 이름을 달라고 하면 그림 로고로는 그릴 수 없다 — 확정본은 `3RD CLOUD.my` 하나뿐이다.
  * 그때는 말없이 글자 로고로 내려간다.
  */
-function resolveVariant(variant: BrandLogoVariant | undefined, wordmark: BrandWordmark) {
+function resolveVariant(
+  variant: BrandLogoVariant | undefined,
+  wordmark: BrandWordmark,
+  /** 아무것도 안 정해졌을 때의 기본값. 상단바는 `NAV_VARIANT`, 홈 큰 로고는 `DEFAULT_VARIANT` */
+  fallback: BrandLogoVariant = DEFAULT_VARIANT,
+) {
   if (variant) return variant
-  return wordmark === 'sacloud' ? 'wordmark' : DEFAULT_VARIANT
+  return wordmark === 'sacloud' ? 'wordmark' : fallback
 }
 
 /** 확정 로고 본체. 크기는 부모(className)가 정한다 */
@@ -205,6 +341,13 @@ export function MainLogo({
   variant?: BrandLogoVariant
 }) {
   const resolved = resolveVariant(variant, wordmark)
+  if (resolved === 'tri') {
+    /*
+     * 홈 큰 로고를 세 색 로고로 부르면 여기로 온다. ★기본값은 아니다★ —
+     * 홈 히어로는 `DEFAULT_VARIANT`(`'art'`) 그대로다. 불렀을 때만 그린다.
+     */
+    return <TriMark className={className} height={110} width={Math.round(110 * TRI_RATIO)} />
+  }
   if (resolved === 'art') {
     /* 홈 큰 로고. 높이는 `HomeSearch` 가 정한다 (PC 110px · 폰 56px) */
     return <ArtMark className={className} height={110} />
@@ -261,7 +404,20 @@ export function NavLogo({
   const ink =
     tone === 'dark' ? 'var(--color-ink, #060505)' : 'var(--color-text-strong, #f6eded)'
 
-  const resolved = resolveVariant(variant, wordmark)
+  const resolved = resolveVariant(variant, wordmark, NAV_VARIANT)
+  if (resolved === 'tri') {
+    /*
+     * ★지금 상단바가 쓰는 로고★ — 흰 구름 + 빨강 `SA` + 파랑 `CLOUD`.
+     *
+     * ⚠ ★`width`·`height` 를 반드시 준다★ — 상단바는 `flex` 다. 치수 없는 `svg` 는
+     *   브라우저가 300×150 으로 잡았다가 눌린다. `className`(`h-[34px] w-auto`)이
+     *   덮어쓰지만, ★못 오는 경우(옛 `SiteHeader`)를 위해 기본 치수를 같이 준다.★
+     *   `tone` 은 안 본다 — 세 색이 이미 정해져 있어 밝기로 갈아끼울 것이 없다.
+     */
+    return (
+      <TriMark className={className} height={34} width={Math.round(34 * TRI_RATIO)} />
+    )
+  }
   if (resolved === 'art') {
     /*
      * ⚠ ★그림 로고는 작아지면 구름 속 `SA CLOUD` 글자가 안 읽힌다★ —
