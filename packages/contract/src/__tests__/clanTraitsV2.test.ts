@@ -37,7 +37,6 @@ import {
   CLAN_HEX_V2_MIN_SAMPLES,
   CLAN_HEX_V2_ZONE_LABELS_TOTAL,
   ClanHexagonV2,
-  GAP_FULL_SCALE,
   gapDiffPerRound,
   SNIPER_INFLUENCE_FULL_SCALE,
   buildClanHexV2Raw,
