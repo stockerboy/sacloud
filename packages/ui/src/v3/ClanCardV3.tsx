@@ -88,9 +88,10 @@ export function tempoTier(pct: number): string {
  *   전부 ★등수★ 로 적는다. 그 갈래는 `tempoTier` 에 남아 있다 (`CLAUDE.md` 1-4).
  */
 export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
-  const order = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'firstBlood', 'trade'] as const
+  /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 (사장님) */
+  const order = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'trade'] as const
   const label: Record<(typeof order)[number], string> = {
-    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력', firstBlood: '선짤(1턴)', trade: '백어택성공률(2턴)',
+    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력', sniperInfluence: '스나영향력', trade: '백어택성공률(2턴)',
   }
   return order.map((key) => {
     const axis = hex?.axes.find((a) => a.key === key) ?? null

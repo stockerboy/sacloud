@@ -117,4 +117,12 @@
  * ⚠ ★2026-09-15 밤 · v3.0 → v3.1★ — 라이플화력이 ★라운드가 아니라 킬★ 을 나눠 갖는다.
  *   계약(`clanTraitsV2.ts`)과 ★반드시 같은 값★ 이어야 화면이 읽는다.
  */
-export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v3.1'
+/*
+ * ⚠ ★ 2026-09-16 — v3.1 → v4 ★ (사장님: «D로 가 / 선짤파트를 없애고 이걸 넣어»).
+ *   ⑤ 가 선짤에서 ★스나영향력★ 으로 바뀜다. 축이 바뀌면 옛 값을 그대로 쓸 수 없다.
+ *
+ *   ⚠ 계약(CLAN_HEX_V2_CONFIG.formulaVersion)과 ★반드시 같아야★ 화면이 읽는다.
+ *   ⚠ 판을 올리면 ★재계산 전까지 육각이 통째로 사라진다.★ 그래서 가지로 VPS 만
+ *     먼저 올리고 재계산이 끝난 뒤 main 에 병합한다.
+ */
+export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v4'

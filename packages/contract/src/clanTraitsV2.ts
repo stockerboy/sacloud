@@ -59,6 +59,19 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
   /* ★2026-09-15 — ④ 가 `tempo` 에서 `riflePower` 로 바뀌었다★ (사장님).
      키를 바꿨다. 뜻만 바꾸고 키를 두면 옛 값과 새 값이 한 이름으로 섞인다 (위 D-235 함정) */
   'riflePower',
+  /* ★2026-09-16 — ⑤ 가 `firstBlood` 에서 `sniperInfluence` 로 바뀌었다★ (사장님:
+     «D로 가 / ★선짤파트를 없애고 이걸 넣어★»).
+     키를 바꾼다 — 뜻만 바꾸고 키를 두면 옛 값과 새 값이 한 이름으로 섞인다 */
+  'sniperInfluence',
+  'trade',
+] as const
+
+/** ★2026-09-16 까지 쓰던 여섯 축★ — 지우지 않는다 (`CLAUDE.md` 1-4). ⑤ 가 선짤이던 판 */
+export const CLAN_HEX_V2_AXIS_KEYS_V3 = [
+  'sniperDuel',
+  'outnumbered',
+  'save',
+  'riflePower',
   'firstBlood',
   'trade',
 ] as const
@@ -79,17 +92,25 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AxisKey, string> = {
   riflePower: '라이플화력',
   /* ⚠ ★2026-09-16 새벽 — «선짤» → «선짤(1턴)» · «교환» → «백어택성공률(2턴)»★ (사장님).
      재는 것은 둘 다 그대로다. 옛 이름은 아래 `CLAN_HEX_V2_AXIS_LABELS_V1` 에 남긴다 */
-  firstBlood: '선짤(1턴)',
+  /*
+   * ★스나영향력★ (2026-09-16 사장님). 두 승률의 ★차★ 라 단위가 «%p» 다.
+   * 뜻: «스나가 킬을 낸 라운드 승률 − 스나가 침묵한 라운드 승률».
+   */
+  sniperInfluence: '스나영향력',
   trade: '백어택성공률(2턴)',
 }
 
 /** ★2026-09-16 새벽까지 쓰던 이름★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
-export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<ClanHexV2AxisKey, string> = {
+export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<
+  (typeof CLAN_HEX_V2_AXIS_KEYS_V3)[number] | ClanHexV2AxisKey,
+  string
+> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
   riflePower: '라이플화력',
   firstBlood: '선짤',
+  sniperInfluence: '스나영향력',
   trade: '교환',
 }
 
@@ -109,7 +130,8 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AxisKey, boolean> = {
   outnumbered: false,
   save: false,
   riflePower: false,
-  firstBlood: false,
+  /* 차가 클수록 «스나가 일할 때 더 이긴다» 는 뜻이다 — 클수록 좋다 */
+  sniperInfluence: false,
   trade: false,
 }
 
@@ -125,7 +147,8 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AxisKey, boolean> = {
 export const CLAN_HEX_V2_AXIS_UNITS: Record<
   ClanHexV2AxisKey,
   /* ★`perGame` 이 2026-09-15 에 늘었다★ — 선짤이 «판당 몇 번» 이 됐다 (사장님) */
-  'ratio' | 'seconds' | 'perRound' | 'perGame'
+  /* ★`diff` 가 2026-09-16 에 늘었다★ — 스나영향력이 «두 승률의 차(%p)» 다 (사장님) */
+  'ratio' | 'seconds' | 'perRound' | 'perGame' | 'diff'
 > = {
   sniperDuel: 'ratio',
   outnumbered: 'ratio',
@@ -151,9 +174,27 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
    *   개인 선짤은 «판당 n.n회» 그대로다 — 개인은 한 사람이 몇 번 땄나가 궁금하고,
    *   클랜은 다섯이 함께라 «겨뤄서 이겼나» 가 궁금하다. 뜻이 달라서 단위도 다르다.
    */
-  firstBlood: 'ratio',
+  /*
+   * ★스나영향력은 «차»★ 다 (2026-09-16 사장님이 실측 넷 중 D 를 고르심).
+   *
+   * 뜻: «우리 스나가 킬을 낸 라운드 승률 − 스나가 한 명도 못 잡은 라운드 승률».
+   * 다른 축처럼 하나의 분모로 나눈 비율이 아니라 ★두 비율의 차★ 라 단위가 «%p» 다.
+   *
+   * ⚠ 육각형은 0~1 을 반지름으로 쓴다. 차는 실측 20.1 ~ 43.1%p 라 그대로 넣으면
+   *   여섯 축 중 이 축만 늘 안쪽에 몰린다. 그래서 ★0~50%p 를 0~1 로★ 편다
+   *   (`SNIPER_INFLUENCE_FULL_SCALE`). 화면 숫자는 «+32.5%p» 그대로다.
+   */
+  sniperInfluence: 'diff',
   trade: 'ratio',
 }
+
+/**
+ * ★스나영향력 눈금★ — 이 값이면 육각 꼭짓점이 끝까지 간다 (2026-09-16).
+ *
+ * 실측(6,000판 · 클랜 59곳) 범위가 20.1 ~ 43.1%p 였다. 50 으로 잡으면 그 범위가
+ * 0.40 ~ 0.86 으로 펴져 여섯 축과 결이 맞는다. ★지어낸 수가 아니라 실측에서 나왔다.★
+ */
+export const SNIPER_INFLUENCE_FULL_SCALE = 50
 
 /** 못 잰 이유 — 화면이 이 코드로 `측정중` 옆에 설명을 붙인다 */
 export const CLAN_HEX_V2_PENDING_KEYS = [
@@ -418,7 +459,7 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    * ⚠ ★2026-09-15 밤 · v3.0 → v3.1★ — 라이플화력이 ★라운드가 아니라 킬★ 을 나눠 갖는다.
    *   사장님: *"0퍼만 아니면 된다는 얘기를 한거야"* — «0%» 가 뜨는 경우를 8.7% → 0.1% 로.
    */
-  formulaVersion: 'clan-hex-v3.1',
+  formulaVersion: 'clan-hex-v4',
 }
 
 /**
@@ -634,6 +675,17 @@ export interface SniperDuelTallyLike {
 }
 
 /** ⑤ **선짤** — 라운드 첫 킬 (2026-09-02 · D-256) */
+export interface SniperInfluenceTallyLike {
+  /** 우리 스나가 1킬 이상 낸 라운드 */
+  rounds: number
+  /** 그중 이긴 라운드 */
+  won: number
+  /** 우리 스나가 한 명도 못 잡은 라운드 */
+  quietRounds: number
+  /** 그중 이긴 라운드 */
+  quietWon: number
+}
+
 export interface FirstBloodTallyLike {
   /** 첫 킬이 있고 **동시각이 아닌** 라운드 수 = 분모 */
   rounds: number
@@ -663,6 +715,9 @@ export interface ClanHexTallyLike {
 
   /* ── 지금 화면이 쓰는 축 (D-256) ── */
   sniperDuel: SniperDuelTallyLike | null
+  /** ⑤ **지금 쓰는 것** — 스나영향력 (2026-09-16 사장님) */
+  sniperInfluence: SniperInfluenceTallyLike | null
+  /** 옛 ⑤ 선짤. 화면이 안 본다. 계속 세고 저장한다 (`CLAUDE.md` 1-4) */
   firstBlood: FirstBloodTallyLike | null
   trade: TradeTallyLike | null
   outnumbered: OutnumberedTallyLike | null
@@ -850,6 +905,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
     redRounds: 0,
     foeSnipers: 0,
     sniperDuel: null,
+    sniperInfluence: null,
     firstBlood: null,
     trade: null,
     outnumbered: null,
@@ -878,6 +934,18 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
       into.rounds += from.rounds
       into.won += from.won
       into.lost += from.lost
+    },
+  )
+
+  /* ★차를 평균 내지 않는다★ — 네 칸(분자·분모 두 쌍)을 쌓고 마지막에 한 번만 나눈다 */
+  sum.sniperInfluence = sumParts(
+    tallies.map((tally) => tally.sniperInfluence ?? null),
+    (): SniperInfluenceTallyLike => ({ rounds: 0, won: 0, quietRounds: 0, quietWon: 0 }),
+    (into, from) => {
+      into.rounds += from.rounds
+      into.won += from.won
+      into.quietRounds += from.quietRounds
+      into.quietWon += from.quietWon
     },
   )
 
@@ -1069,6 +1137,14 @@ export function clanHexV2Text(key: ClanHexV2AxisKey, raw: number | null): string
     /* ★판당 몇 번★ (2026-09-15 사장님: «판당평균 n.n회 / 클랜축도 마찬가지») — 선짤이 이 단위다 */
     case 'perGame':
       return `${raw.toFixed(1)}회`
+    /*
+     * ★두 승률의 차★ (2026-09-16 스나영향력).
+     * ⚠ 여기 오는 `raw` 는 ★눈금으로 편 0~1★ 이다 (`diffAxis`). 그래서 되돌려 적는다.
+     *   축을 만들 때 `text` 를 이미 채우므로 이 길은 거의 안 쓰이지만,
+     *   `raw` 만 들고 글자를 다시 만드는 자리(요약·시험)가 있어 맞춰 둔다.
+     */
+    case 'diff':
+      return `+${((raw * SNIPER_INFLUENCE_FULL_SCALE)).toFixed(1)}%p`
   }
 }
 
@@ -1090,6 +1166,14 @@ export function clanHexV2TextV1(key: ClanHexV2AxisKey, raw: number | null): stri
     /* ★판당 몇 번★ (2026-09-15 사장님: «판당평균 n.n회 / 클랜축도 마찬가지») — 선짤이 이 단위다 */
     case 'perGame':
       return `${raw.toFixed(1)}회`
+    /*
+     * ★두 승률의 차★ (2026-09-16 스나영향력).
+     * ⚠ 여기 오는 `raw` 는 ★눈금으로 편 0~1★ 이다 (`diffAxis`). 그래서 되돌려 적는다.
+     *   축을 만들 때 `text` 를 이미 채우므로 이 길은 거의 안 쓰이지만,
+     *   `raw` 만 들고 글자를 다시 만드는 자리(요약·시험)가 있어 맞춰 둔다.
+     */
+    case 'diff':
+      return `+${((raw * SNIPER_INFLUENCE_FULL_SCALE)).toFixed(1)}%p`
   }
 }
 
@@ -1128,6 +1212,57 @@ function measuredAxis(
     raw,
     value: null,
     text: clanHexV2Text(key, raw),
+    pending: null,
+    rank: null,
+    total: null,
+  }
+}
+
+/**
+ * ★옛 ⑤ 선짤의 축 셈★ — 2026-09-16 에 화면에서 내려갔다. 지우지 않는다.
+ *
+ * «25초 안에 첫 킬이 난 라운드 중 우리가 먼저 땡 비율» (2026-09-15 사장님 ②안).
+ * 분모는 세는 쪽이 이미 25초 안으로 좁혀 놓는다.
+ */
+export function firstBloodAxisV3(part: {
+  rounds: number
+  won: number
+}): { numerator: number; denominator: number; raw: number } | null {
+  if (part.rounds === 0) return null
+  return { numerator: part.won, denominator: part.rounds, raw: part.won / part.rounds }
+}
+
+/**
+ * ★두 승률의 차★ 로 축을 만든다 — 스나영향력 전용 (2026-09-16 사장님).
+ *
+ * 다른 축은 «분자/분모» 하나지만 이 축은 분모가 둘이다:
+ *   `won / rounds`           스나가 킬을 낸 라운드 승률
+ *   `quietWon / quietRounds` 스나가 침묵한 라운드 승률
+ *
+ * ★`raw` 는 0~1 로 편다★ — 육각형이 `raw` 를 반지름으로 쓴다. 실측 범위가
+ * 20.1~43.1%p 라 그대로 넣으면 이 축만 늘 안쪽에 몰린다.
+ * 화면 숫자(`text`)는 «+32.5%p» 그대로다 — 눈금은 그림에만 쓴다.
+ *
+ * ⚠ 차가 음수일 수 있다 (스나가 일해도 더 지는 팀). 그때 `raw` 는 0 이다 —
+ *   음수 반지름을 그릴 수 없다. ★숫자는 음수 그대로 적는다★ (지어내지 않는다).
+ */
+function diffAxis(
+  key: ClanHexV2AxisKey,
+  part: { rounds: number; won: number; quietRounds: number; quietWon: number },
+): ClanHexV2Axis {
+  const active = part.won / part.rounds
+  const quiet = part.quietWon / part.quietRounds
+  const diff = active - quiet
+  const raw = Math.max(0, Math.min(1, (diff * 100) / SNIPER_INFLUENCE_FULL_SCALE))
+  return {
+    key,
+    label: CLAN_HEX_V2_AXIS_LABELS[key],
+    /* 분자·분모는 «일한 라운드» 쪽을 적는다 — 화면이 «12/34» 를 보여 줄 때 쓴다 */
+    numerator: part.won,
+    denominator: part.rounds,
+    raw,
+    value: null,
+    text: `${diff >= 0 ? '+' : ''}${(diff * 100).toFixed(1)}%p`,
     pending: null,
     rank: null,
     total: null,
@@ -1248,21 +1383,30 @@ export function buildClanHexV2Raw(input: {
        * 분모는 **첫 킬이 있고 동시각이 아닌** 라운드 수다. 동시각은 양 팀 다 미리 뺀다
        * (사용자 (가) · 실측 4.48%). 그 수는 `tiedRounds` 에 남아 있다.
        */
-      case 'firstBlood': {
-        const part = tally.firstBlood ?? null
+      /**
+       * ⑤ **스나영향력** — 스나가 일하면 팀이 얼마나 더 이기나 (2026-09-16 사장님).
+       *
+       * 6,000판 실측에서 스나싸움과의 닮은 정도가 0.206 으로 가장 낮았다 —
+       * 사장님 말씀 «스나싸움을 많이 이겼다고 게임 영향력이 무조건 큰건 아니라서»
+       * 를 숫자로 확인한 축이다.
+       *
+       * ★두 분모가 다 있어야 잰다★ — 스나가 늘 일했거나 늘 침묵했으면 차가 없다.
+       */
+      case 'sniperInfluence': {
+        const part = tally.sniperInfluence ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
-        if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
-        /*
-         * ★25초 안에 겨룬 라운드 중 먼저 딴 비율★ (2026-09-15 사장님 ②안).
-         *
-         * `part.rounds` 는 세는 쪽(`clanHexV2.ts`)에서 이미 ★25초 안에 첫 킬이 난
-         * 라운드★ 로 좁혀 놓았다. 그러니 여기서는 그대로 나누기만 한다.
-         *
-         * ⚠ 같은 날 분모를 «경기» 로 바꿔 «판당 5.4회» 로 적었다가 되돌렸다.
-         *   ②안은 분모가 이미 «겨룬 라운드» 라 비율이 곧 뜻이다.
-         */
-        return measuredAxis(key, part.won, part.rounds)
+        if (part.rounds === 0 || part.quietRounds === 0) {
+          return pendingAxis(key, 'sample', { numerator: part.won })
+        }
+        return diffAxis(key, part)
       }
+      /*
+       * ⚠ ★옛 ⑤ 선짤★ — 2026-09-16 에 스나영향력과 자리를 바꿨다 (사장님).
+       *   ★셈은 그대로 살아 있다★ — tally.firstBlood 를 계속 쌓고 저장한다.
+       *   다만 축 키에서 빠져 이 갈래로는 들어오지 않으므로 함수로 남긴다
+       *   (firstBloodAxisV3). 되살리려면 축 키에 firstBlood 를 도로 넣고
+       *   그 함수를 이 자리에서 부르면 된다.
+       */
       /**
        * ⑥ **교환** — 팀원이 죽은 「직후」 그 킬러를 되잡았나 (D-256).
        *

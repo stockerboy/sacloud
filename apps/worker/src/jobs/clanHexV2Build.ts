@@ -256,7 +256,7 @@ export function axisDenominators(tally: ClanHexTally): Record<string, boolean> {
     '③ 세이브': (tally.save?.rounds ?? 0) > 0,
     /* ⚠ ★2026-09-15★ — 옛 ④ 는 `(tally.tempo?.redClearThreeRounds ?? 0) > 0` 이었다 */
     '④ 라이플화력': (tally.riflePower?.rounds ?? 0) > 0,
-    '⑤ 선짤': (tally.firstBlood?.rounds ?? 0) > 0,
+    '⑤ 스나영향력': (tally.sniperInfluence?.rounds ?? 0) > 0,
     '⑥ 교환': (tally.trade?.deaths ?? 0) > 0,
   }
 }

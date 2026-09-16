@@ -470,6 +470,26 @@ export interface SniperDuelTally {
  *   킬 이벤트가 하나라도 빠지면 **첫 킬이 뒤바뀔 수 있다.** ①⑥ 처럼 «값이 낮아지는 쪽으로만»
  *   틀리지 않는다. 다만 복원율이 99.7% 라(`isRestorable` 실측) 영향은 작다고 본다 `[미확인]`.
  */
+/**
+ * ★스나영향력★ — 스나가 일하면 팀이 얼마나 더 이기나 (2026-09-16 사장님).
+ *
+ * 두 승률의 ★차★ 다. 그래서 분모가 둘이다:
+ *   `won / rounds`           우리 스나가 1킬 이상 낸 라운드의 승률
+ *   `quietWon / quietRounds` 우리 스나가 한 명도 못 잡은 라운드의 승률
+ *
+ * ★우리 스나가 있어야 잰다★ — 스나를 안 쓴 경기는 «침묵» 이 아니라 «해당 없음» 이다.
+ */
+export interface SniperInfluenceTally {
+  /** 우리 스나가 1킬 이상 낸 라운드 */
+  rounds: number
+  /** 그중 이긴 라운드 */
+  won: number
+  /** 우리 스나가 한 명도 못 잡은 라운드 */
+  quietRounds: number
+  /** 그중 이긴 라운드 */
+  quietWon: number
+}
+
 export interface FirstBloodTally {
   /** 첫 킬이 있고 **동시각이 아닌** 라운드 수 = 분모 */
   rounds: number
@@ -640,7 +660,10 @@ export interface ClanHexTally {
   foeSnipers: number
 
   /** ① **지금 쓰는 것** — 스나 대 스나 (D-256) */ sniperDuel: SniperDuelTally | null
-  /** ⑤ **지금 쓰는 것** — 선짤 (D-256) */ firstBlood: FirstBloodTally | null
+  /** ⑤ **지금 쓰는 것** — 스나영향력 (2026-09-16 사장님이 선짤과 바꾸심) */
+  sniperInfluence: SniperInfluenceTally | null
+  /** 옛 ⑤ 선짤. 화면이 안 본다. 계속 세고 저장한다 (`CLAUDE.md` 1-4) */
+  firstBlood: FirstBloodTally | null
   /** ⑥ **지금 쓰는 것** — 교환 (D-256) */ trade: TradeTally | null
 
   /** ② */ outnumbered: OutnumberedTally | null
@@ -698,6 +721,7 @@ const emptyTally = (teamNo: string, foeTeamNo: string | null): ClanHexTally => (
   redRounds: 0,
   foeSnipers: 0,
   sniperDuel: null,
+  sniperInfluence: null,
   firstBlood: null,
   trade: null,
   outnumbered: null,
@@ -1187,6 +1211,8 @@ function tallyFor(input: {
     return longZones.some((zone) => inZone(zone, spot))
   }
   const firstBlood: FirstBloodTally = { rounds: 0, won: 0, tiedRounds: 0 }
+  /** ⑤ 스나영향력 — 우리 스나가 일한 라운드 / 침묵한 라운드 (2026-09-16 사장님) */
+  const sniperInfluence: SniperInfluenceTally = { rounds: 0, won: 0, quietRounds: 0, quietWon: 0 }
   const trade: TradeTally = { deaths: 0, within3: 0, within5: 0, within10: 0, sameRound: 0 }
   /** ④ 라이플화력 — 스나가 아무것도 못 한 라운드의 ★킬★ 을 누가 냈나 (2026-09-15 사장님) */
   const riflePower: RiflePowerTally = { rounds: 0, won: 0, situationRounds: 0 }
@@ -1243,6 +1269,33 @@ function tallyFor(input: {
     } else if (openedInWindow) {
       firstBlood.rounds += 1
       if (oursFirst) firstBlood.won += 1
+    }
+
+    /*
+     * ── ⑤ 스나영향력. ★우리 스나가 일한 라운드와 침묵한 라운드의 승률을 따로 쌓는다 ──
+     *
+     *   값은 나중에 ★두 승률의 차★ 로 낸다 (`clanHexV2Axes`). 여기서는 나누지 않는다 —
+     *   경기를 합칠 때 «비율을 평균 내지 않는다» 는 규칙 때문이다 (분자·분모를 쌓는다).
+     *
+     *   ★우리 스나가 없으면 안 센다★ — 스나를 안 쓴 경기는 «침묵» 이 아니라 «해당 없음» 이다.
+     */
+    if (ourSnipers.size > 0) {
+      const wonThisRound = input.wonRound(round)
+      if (wonThisRound !== null) {
+        let ourSniperKills = 0
+        for (const kill of kills) {
+          if (!isOurs(kill.killer)) continue
+          if (input.weaponByPlayer.get(kill.killer) !== 1) continue
+          ourSniperKills += 1
+        }
+        if (ourSniperKills > 0) {
+          sniperInfluence.rounds += 1
+          if (wonThisRound) sniperInfluence.won += 1
+        } else {
+          sniperInfluence.quietRounds += 1
+          if (wonThisRound) sniperInfluence.quietWon += 1
+        }
+      }
     }
 
     /* ── ④ 라이플화력. ★어느 쪽이든★ 스나가 1킬 없이 1~3번째로 지워진 라운드를 나눠 갖는다 ── */
@@ -1337,6 +1390,9 @@ function tallyFor(input: {
   tally.sniperDuel = sniperKnown && ourSnipers.size > 0 && duelZonesKnown ? sniperDuel : null
   /* ⑤⑥ 은 스나도 진영도 안 본다. 킬 이벤트만 있으면 센다 */
   tally.firstBlood = firstBlood.rounds > 0 || firstBlood.tiedRounds > 0 ? firstBlood : null
+  /* ★두 분모가 다 있어야 차를 낼 수 있다★ — 한쪽이 0 이면 «잴 수 없음» 이다 */
+  tally.sniperInfluence =
+    sniperInfluence.rounds > 0 && sniperInfluence.quietRounds > 0 ? sniperInfluence : null
   tally.trade = trade.deaths > 0 ? trade : null
   /*
    * ④ 는 **어느 쪽 스나든** 짚을 수 있으면 성립한다 (2026-09-15 · ③안).
