@@ -20,7 +20,7 @@ export const PLAYER_HEX_AXIS_ORDER: readonly TraitAxisKey[] = [
   'save',
   'duel',
   'carry',
-  'opening',
+  'survival',
   'burst',
   'outnumbered',
 ]
@@ -68,7 +68,7 @@ export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: str
   carry: { sniper: '게임영향력', rifle: '게임영향력' },
   /* 사장님이 «선취점» 을 «선짤» 로 못 박으셨다 (2026-09-02) — 배지만 영어로 남아 있었다 */
   /* ⚠ 2026-09-16 새벽 — 축 이름을 따라간다 (사장님) */
-  opening: { sniper: '선짤(1턴)', rifle: '선짤(1턴)' },
+  survival: { sniper: '선짤(1턴)', rifle: '선짤(1턴)' },
   burst: { sniper: '백어택성공률(2턴)', rifle: '백어택성공률(2턴)' },
   /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
@@ -79,7 +79,7 @@ export const PLAYER_HEX_BADGE_V1: Record<TraitAxisKey, { sniper: string; rifle: 
   save: { sniper: '세이브 머신', rifle: '세이브 머신' },
   duel: { sniper: '롱 마스터', rifle: '샷터' },
   carry: { sniper: '캐리 머신', rifle: '캐리 머신' },
-  opening: { sniper: 'First Blood', rifle: 'First Blood' },
+  survival: { sniper: 'First Blood', rifle: 'First Blood' },
   burst: { sniper: '멀티킬러', rifle: '멀티킬러' },
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
 }
@@ -100,7 +100,7 @@ export const PLAYER_HEX_DESC: Record<TraitAxisKey, { sniper: string; rifle: stri
   save: { sniper: '혼자 남아 이긴 횟수 (4회면 가득)', rifle: '혼자 남아 이긴 횟수 (4회면 가득)' },
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '수가 안 밀릴 때 낸 킬 (라운드당)', rifle: '수가 안 밀릴 때 낸 킬 (라운드당)' },
-  opening: { sniper: '라운드 시작 25초 안 첫 킬 (판당)', rifle: '라운드 시작 25초 안 첫 킬 (판당)' },
+  survival: { sniper: '라운드 시작 25초 안 첫 킬 (판당)', rifle: '라운드 시작 25초 안 첫 킬 (판당)' },
   burst: { sniper: '팀원이 죽은 뒤 5초 안에 되잡은 비율', rifle: '팀원이 죽은 뒤 5초 안에 되잡은 비율' },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
 }
@@ -110,7 +110,7 @@ export const PLAYER_HEX_DESC_V1: Record<TraitAxisKey, { sniper: string; rifle: s
   save: { sniper: '혼자 남은 라운드를 이긴 비율', rifle: '혼자 남은 라운드를 이긴 비율' },
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '한 판 평균 킬', rifle: '한 판 평균 킬' },
-  opening: { sniper: '라운드 첫 킬을 딴 비율', rifle: '라운드 첫 킬을 딴 비율' },
+  survival: { sniper: '라운드 첫 킬을 딴 비율', rifle: '라운드 첫 킬을 딴 비율' },
   burst: { sniper: '2초 안에 연달아 잡은 라운드 비율', rifle: '2초 안에 연달아 잡은 라운드 비율' },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
 }
@@ -126,7 +126,8 @@ export const PlayerHexAxis = z.object({
   desc: z.string(),
   /** 원값 — 캐리력은 킬/판, 나머지는 % */
   value: z.number().nullable(),
-  unit: z.enum(['percent', 'per_game']),
+  /* ⚠ 2026-09-16 — ④ 가 «평균 사망 시간» 이 되면서 «초» 가 늘었다 (사장님) */
+  unit: z.enum(['percent', 'per_game', 'seconds']),
   /**
    * 모집단 백분위 (0~100). 그래프 면적은 이것으로 그린다.
    *

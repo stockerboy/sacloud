@@ -32,7 +32,10 @@
 import { z } from 'zod'
 
 /** 여섯 축 — 순서를 바꾸지 않는다. 화면의 육각형이 이 차례로 그린다 */
-export const FLAG_AXIS_ORDER = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
+/* ⚠ ★2026-09-16 — ④ 가 `opening`(선짤) 에서 `survival`(평균 사망 시간) 로★ (사장님) */
+export const FLAG_AXIS_ORDER = ['save', 'duel', 'carry', 'survival', 'burst', 'outnumbered'] as const
+/** 2026-09-16 까지 쓰던 차례 — 지우지 않는다 (`CLAUDE.md` 1-4) */
+export const FLAG_AXIS_ORDER_V1 = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
 export type FlagAxisKey = (typeof FLAG_AXIS_ORDER)[number]
 
 /**
@@ -77,6 +80,10 @@ export interface FlagDayTally {
   /** 등장한 라운드 수 — 선짤·연속킬의 분모 */
   rounds: number
   firstKills: number
+  /** ★평균 사망 시간★ — 라운드 시작부터 죽기까지의 초, 합 (2026-09-16 사장님) */
+  deathSeconds?: number
+  /** 위 합에 들어간 죽음의 수 */
+  deathCount?: number
   burstRounds: number
   /**
    * ★한 라운드에 몰아친 최대 킬★ — 새 캐리력 (2026-09-15 사장님).
@@ -377,13 +384,28 @@ export const OPENING_BASELINE = { sniper: 2.29, rifle: 0.87 } as const
 /** 무기를 모르면 둘의 가운데로 — 어느 쪽으로도 밀지 않는다 */
 const OPENING_BASELINE_UNKNOWN = (OPENING_BASELINE.sniper + OPENING_BASELINE.rifle) / 2
 
-/** 줄 세우기용 선짤 점수 — 그 무기의 «보통» 을 1.0 으로 본 값 */
+/**
+ * ⚠ ★옛 ④ 선짤의 줄 세우기 점수★ — 2026-09-16 에 축이 «평균 사망 시간» 으로
+ *   바뀌며 안 쓴다. 지우지 않는다 (`CLAUDE.md` 1-4).
+ */
 export function openingScoreOf(t: FlagDayTally): number | null {
   if (t.games <= 0) return null
   const raw = t.firstKills / t.games
   const base =
     t.weapon === 1 ? OPENING_BASELINE.sniper : t.weapon === 0 ? OPENING_BASELINE.rifle : OPENING_BASELINE_UNKNOWN
   return round1((raw / base) * 100) / 100
+}
+
+/**
+ * ★평균 사망 시간★ (초) — 라운드 시작부터 내가 죽기까지 (2026-09-16 사장님).
+ *
+ * ★클수록 좋다★ — 늦게 죽었다는 뜻이다. 죽은 적이 없으면 잴 수 없다.
+ * 기준선으로 나누지 않는다 — 스나는 스나끼리, 라플은 라플끼리 견주기 때문이다.
+ */
+export function survivalScoreOf(t: FlagDayTally): number | null {
+  const n = t.deathCount ?? 0
+  if (n <= 0) return null
+  return Math.round(((t.deathSeconds ?? 0) / n) * 10) / 10
 }
 
 /** 축마다 «몇 번 중 몇 번» — 화면이 «100% (1/1)» 로 적을 수 있게 */
@@ -406,7 +428,7 @@ export function dayAxisParts(t: FlagDayTally): Record<FlagAxisKey, FlagAxisParts
       : CARRY_BY_TOTAL_KILLS
         ? { numerator: t.kill, denominator: t.games }
         : { numerator: t.maxRoundTimes, denominator: t.maxRoundKills },
-    opening: { numerator: t.firstKills, denominator: t.games },
+    survival: { numerator: t.deathSeconds ?? 0, denominator: t.deathCount ?? 0 },
     burst: TRADE_AXIS
       ? { numerator: t.tradeKills, denominator: t.mateDeaths }
       : { numerator: t.burstRounds, denominator: t.games },
@@ -472,7 +494,7 @@ export function dayAxisValues(
      *   지금은 캐리력(판당 킬)과 ★같은 단위★ 라 나란히 읽힌다.
      *   ★백분위는 그대로다★ — 순위를 가리는 잣대는 안 바뀐다 (단조 변환이다).
      */
-    opening: t.games > 0 ? Math.round((t.firstKills / t.games) * 100) / 100 : null,
+    survival: survivalScoreOf(t),
     /* ★5번 축은 «교환율»★ — 동료가 죽은 직후 그 킬러를 되잡은 비율 (2026-09-15 사장님) */
     burst: TRADE_AXIS
       ? t.mateDeaths > 0
@@ -618,7 +640,7 @@ export function dayAxisScores(
   return {
     ...values,
     carry: carryScoreOf(t),
-    opening: t.games > 0 ? openingScoreOf(t) : values.opening,
+    survival: values.survival,
   }
 }
 

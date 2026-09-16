@@ -3133,6 +3133,12 @@ model MatchPlayerHex {
   duelWon  Int @default(0)
   duelLost Int @default(0)
 
+  /// ★평균 사망 시간★ (2026-09-16 사장님) — 라운드 시작부터 내가 죽기까지의 초, 경기 합
+  /// 평균은 `deathSeconds / deathCount` 다. 라운드 시작을 모르는 라운드는 안 센다
+  deathSeconds Int @default(0)
+  /// 위 합에 들어간 죽음의 수 (분모)
+  deathCount   Int @default(0)
+
   formulaVersion String
   builtAt        DateTime @default(now())
 

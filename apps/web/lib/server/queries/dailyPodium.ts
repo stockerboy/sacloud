@@ -318,11 +318,10 @@ async function playersOfMany(
         total: a.total,
         unit:
           /*
-           * ★선짤만 «판당 n.n회»★ 다 (2026-09-15 사장님).
-           * ⚠ 같은 날 두 축이 퍼센트로 옮겨 갔다 — 게임영향력(옛 캐리력)과
-           *   5번 축(옛 연속킬 → 교환율). 남은 `per_game` 은 선짤뿐이다.
+           * ★평균 사망 시간만 «초»★ 다 (2026-09-16 사장님).
+           * ⚠ 옛 ④ 선짤은 «판당 n.n회» 였다 — 축이 바뀌면 단위도 같이 바뀐다.
            */
-          a.key === 'opening' ? ('per_game' as const) : ('percent' as const),
+          a.key === 'survival' ? ('seconds' as const) : ('percent' as const),
       })),
     }
   })

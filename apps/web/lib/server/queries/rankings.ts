@@ -613,14 +613,22 @@ export async function getPlayerRanksByScore(
 const PODIUM_SIZE = 3
 
 /** 축 차례는 선수 상세와 ★같다★ — 12시부터 시계 방향 (`PLAYER_HEX_AXIS_ORDER`) */
+/** 축 키 → DB 칸 이름. `survival` 만 옛 이름(`opening`)을 쓴다 (2026-09-16) */
+type HexDbKey = 'save' | 'duel' | 'carry' | 'opening' | 'burst' | 'outnumbered'
+const dbKeyOf = (key: string): HexDbKey => (key === 'survival' ? 'opening' : (key as HexDbKey))
+
 function hexAxesOf(row: ScoreRankRow): PlayerRankHexAxis[] {
   const weapon = row.weapon === 0 || row.weapon === 1 ? row.weapon : null
   return PLAYER_HEX_AXIS_ORDER.map((key) => ({
     key,
     label: playerHexLabelOf(key, weapon),
-    percentile: row[`${key}Pct`] ?? null,
-    rank: row[`${key}Rank`] ?? null,
-    total: row[`${key}Total`] ?? null,
+    /*
+     * ⚠ ★DB 칸은 아직 `opening*` 이다★ — 2026-09-16 에 축 키만 `survival` 로 바꿨다.
+     *   칸을 갈면 마이그레이션이 커지고, 어느 판의 값인지는 `formulaVersion` 이 가른다.
+     */
+    percentile: row[`${dbKeyOf(key)}Pct`] ?? null,
+    rank: row[`${dbKeyOf(key)}Rank`] ?? null,
+    total: row[`${dbKeyOf(key)}Total`] ?? null,
   }))
 }
 

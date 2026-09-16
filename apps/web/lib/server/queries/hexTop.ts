@@ -56,7 +56,16 @@ function playerValueText(key: TraitAxisKey, raw: number | null): string {
    *   게임영향력(%)으로 바꾸며 ★전부 %★ 로 만들었고, 그 바람에 선짤이 «2.0%» 가 됐다.
    *   축마다 단위가 다르다는 걸 한 줄로 뭉뚱그리면 이런 일이 난다.
    */
-  if (key === 'opening') return `${raw.toFixed(1)}회`
+  /*
+   * ★평균 사망 시간은 «1분 27초»★ (2026-09-16 사장님).
+   *   옛 ④ 선짤은 «2.0회» 였다 — 축이 바뀌면 단위도 같이 바뀐다.
+   */
+  if (key === 'survival') {
+    const sec = Math.round(raw)
+    const m = Math.floor(sec / 60)
+    const rest = sec % 60
+    return m > 0 ? `${m}분 ${rest}초` : `${rest}초`
+  }
   return `${raw.toFixed(1)}%`
 }
 

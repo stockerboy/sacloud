@@ -81,7 +81,13 @@ export async function leagueTopAxes(leagueId: string): Promise<TopAxisLeader[]> 
         player: toPlayerSummary(found.leaguePlayer.player),
         clan: toClanSummaryOrNull(found.leaguePlayer.clan),
         value,
-        unit: PER_GAME_AXES.has(slot.key) ? ('per_game' as const) : ('percent' as const),
+        /* ⚠ 2026-09-16 — 평균 사망 시간은 «초» 다 (사장님) */
+        unit:
+          slot.key === 'survival'
+            ? ('seconds' as const)
+            : PER_GAME_AXES.has(slot.key)
+              ? ('per_game' as const)
+              : ('percent' as const),
         total,
       }
     }),

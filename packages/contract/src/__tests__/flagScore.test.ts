@@ -29,6 +29,9 @@ const tally = (over: Partial<FlagDayTally> = {}): FlagDayTally => ({
   death: 50,
   rounds: 60,
   firstKills: 12,
+  /* ★4번 축 «평균 사망 시간»★ (2026-09-16 사장님) — 261초를 세 번에 = 87초 */
+  deathSeconds: 261,
+  deathCount: 3,
   burstRounds: 9,
   /* ★캐리력은 «한 라운드 최대 킬»★ (2026-09-15 사장님) — 3킬을 두 번 낸 판 */
   maxRoundKills: 3,
@@ -62,8 +65,11 @@ describe('dayAxisValues — 표본이 모자라면 null (0 으로 안 채운다)
      *   옛 기대값 — 60 (3킬을 «적 다섯 중 셋» 으로 본 판) · 그 전 — 10 (판당 킬)
      */
     expect(v.carry).toBe(50)
-    /* ★선짤은 판당 몇 번★ (2026-09-15 사장님) — 12회/6판 */
-    expect(v.opening).toBe(2)
+    /*
+     * ★평균 사망 시간★ (2026-09-16 사장님) — 죽은 시각 합 ÷ 죽은 수.
+     * ⚠ 옛 ④ 선짤은 «판당 몇 번» 이라 12회/6판 = 2 였다.
+     */
+    expect(v.survival).toBe(87)
     /*
      * ⚠ ★5번 축이 «연속킬» 에서 «교환율» 로 바뀌었다★ (2026-09-15 사장님 «교환율로 해줘»).
      *   9번 되갚음 / 동료 죽음 30번 = 30%. 옛 기대값 — 1.5 (판당 연속킬 회수)
@@ -151,9 +157,17 @@ describe('dayAxisParts — «몇 번 중 몇 번»', () => {
     expect(p.save).toEqual({ numerator: 1, denominator: 2 })
   })
 
-  it('판당 회수인 축은 분모가 판수다', () => {
-    const p = dayAxisParts(tally({ games: 6, firstKills: 12 }))
-    expect(p.opening).toEqual({ numerator: 12, denominator: 6 })
+  it('★평균 사망 시간은 분모가 「죽은 수」다★ (2026-09-16 사장님)', () => {
+    const p = dayAxisParts(tally({ deathSeconds: 261, deathCount: 3 }))
+    expect(p.survival).toEqual({ numerator: 261, denominator: 3 })
+  })
+
+  it('★평균 사망 시간 — 261초를 세 번에 나누면 87초★', () => {
+    expect(dayAxisValues(tally({ deathSeconds: 261, deathCount: 3 })).survival).toBe(87)
+  })
+
+  it('죽은 적이 없으면 잴 수 없다 — 0 이라고 적지 않는다 (D-106)', () => {
+    expect(dayAxisValues(tally({ deathSeconds: 0, deathCount: 0 })).survival).toBeNull()
   })
 })
 
@@ -206,12 +220,19 @@ describe('★선짤 잣대★ — 무기 기준값으로 나눈다 (2026-09-15 �
       weapon: 0, games: 10, firstKills: 23,
       rifleDuelWon: 20, rifleDuelLost: 10, sniperDuelWon: 0, sniperDuelLost: 0,
     })
-    /* 적는 값은 같다 */
-    expect(dayAxisValues(sniper).opening).toBe(dayAxisValues(rifle).opening)
-    /* 줄 세우는 잣대는 라플이 위다 */
-    expect(dayAxisScores(rifle).opening as number).toBeGreaterThan(dayAxisScores(sniper).opening as number)
-    /* 그 무기의 «보통» 은 1.0 근처다 */
-    expect(dayAxisScores(sniper).opening as number).toBeCloseTo(1, 1)
+    /*
+     * ⚠ ★뜻이 바뀐 시험이다★ — 2026-09-16 에 ④ 가 «평균 사망 시간» 이 되면서
+     *   ★기준선으로 나누지 않는다.★ 스나는 스나끼리, 라플은 라플끼리 견주기 때문에
+     *   («스나수는 스나수끼리 비교하고 라플수는 라플수끼리») 무기별 보정이 필요 없다.
+     *   옛 판(선짤 기준선 나누기)은 `openingScoreOf` 에 그대로 남아 있다.
+     */
+    const withDeaths = (t: FlagDayTally): FlagDayTally => ({ ...t, deathSeconds: 261, deathCount: 3 })
+    expect(dayAxisValues(withDeaths(sniper)).survival).toBe(87)
+    expect(dayAxisValues(withDeaths(rifle)).survival).toBe(87)
+    /* 잣대도 값 그대로다 — 무기로 밀어 주지 않는다 */
+    expect(dayAxisScores(withDeaths(sniper)).survival).toBe(
+      dayAxisScores(withDeaths(rifle)).survival,
+    )
   })
 })
 

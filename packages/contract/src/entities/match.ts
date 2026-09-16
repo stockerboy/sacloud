@@ -163,7 +163,8 @@ export const MatchPlayerStat = z.object({
         value: z.number().nullable(),
         /** 그 판 열 명 안에서의 백분위 (0~100) — ★그래프 면적은 이것으로 그린다★ */
         pct: z.number().nullable(),
-        unit: z.enum(['percent', 'per_game']),
+        /* ⚠ 2026-09-16 — ④ 가 «평균 사망 시간» 이 되면서 «초» 가 늘었다 (사장님) */
+  unit: z.enum(['percent', 'per_game', 'seconds']),
         /** «몇 번 중 몇 번» — 표본이 작을 때 보는 사람이 판단할 근거다 */
         numerator: z.number().nullable(),
         denominator: z.number().nullable(),

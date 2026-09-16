@@ -34,13 +34,17 @@ export async function playerHexOf(leaguePlayerId: string): Promise<PlayerHex | n
 /** 축마다 (원값 · 백분위 · 등수 · 모집단 · «잡음:당함» 표기) — 열 이름이 규칙적이라 표로 뽑는다 */
 const AXIS_COLUMNS: Record<
   TraitAxisKey,
-  { value: keyof HexRow; pct: keyof HexRow; rank: keyof HexRow; total: keyof HexRow; unit: 'percent' | 'per_game' }
+  { value: keyof HexRow; pct: keyof HexRow; rank: keyof HexRow; total: keyof HexRow; unit: 'percent' | 'per_game' | 'seconds' }
 > = {
   save: { value: 'save', pct: 'savePct', rank: 'saveRank', total: 'saveTotal', unit: 'percent' },
   duel: { value: 'duel', pct: 'duelPct', rank: 'duelRank', total: 'duelTotal', unit: 'percent' },
   carry: { value: 'carry', pct: 'carryPct', rank: 'carryRank', total: 'carryTotal', unit: 'per_game' },
-  /* ★선짤·연속킬은 판당 몇 번★ (2026-09-15 사장님) — 캐리력과 같은 단위다. 옛 값은 `percent` */
-  opening: { value: 'opening', pct: 'openingPct', rank: 'openingRank', total: 'openingTotal', unit: 'per_game' },
+  /*
+   * ★평균 사망 시간★ (2026-09-16 사장님) — 단위가 ★초★ 다. «1분 27초» 로 적는다.
+   * ⚠ DB 칸 이름은 `opening*` 그대로다 — 칸을 갈면 마이그레이션이 커지고,
+   *   어느 판의 값인지는 `formulaVersion` 이 가른다.
+   */
+  survival: { value: 'opening', pct: 'openingPct', rank: 'openingRank', total: 'openingTotal', unit: 'seconds' },
   burst: { value: 'burst', pct: 'burstPct', rank: 'burstRank', total: 'burstTotal', unit: 'per_game' },
   outnumbered: {
     value: 'outnumbered',
@@ -57,7 +61,7 @@ function partsOf(row: HexRow, key: TraitAxisKey): { numerator: number | null; de
       return { numerator: row.aloneWon, denominator: row.aloneRounds }
     case 'duel':
       return { numerator: row.duelWon, denominator: row.duelLost }
-    case 'opening':
+    case 'survival':
       return { numerator: row.firstKills, denominator: row.rounds }
     case 'burst':
       return { numerator: row.burstRounds, denominator: row.rounds }

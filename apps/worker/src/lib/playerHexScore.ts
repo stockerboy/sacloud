@@ -34,7 +34,6 @@ import {
   CARRY_BY_TOTAL_KILLS,
   INFLUENCE_BY_EVEN_KILLS,
   TRADE_AXIS,
-  OPENING_BASELINE,
   influenceOf,
   influencePercentOf,
 } from '@sacloud/contract'
@@ -124,7 +123,11 @@ export const MIN_SITUATION_ROUNDS = 10
 /** 연속킬 — 앞 킬과 이 초 이내면 연속이다 */
 export const BURST_GAP_SECONDS = 2
 
-export const HEX_AXIS_KEYS = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
+/* ⚠ ★2026-09-16 — ④ 가 `opening`(선짤) 에서 `survival`(평균 사망 시간) 로★ (사장님).
+   키를 그대로 두면 옛 값과 새 값이 한 이름으로 섞인다 */
+export const HEX_AXIS_KEYS = ['save', 'duel', 'carry', 'survival', 'burst', 'outnumbered'] as const
+/** 2026-09-16 까지 쓰던 여섯 — 지우지 않는다 (`CLAUDE.md` 1-4) */
+export const HEX_AXIS_KEYS_V1 = ['save', 'duel', 'carry', 'opening', 'burst', 'outnumbered'] as const
 export type HexAxisKey = (typeof HEX_AXIS_KEYS)[number]
 
 /**
@@ -137,7 +140,7 @@ export type HexAxisKey = (typeof HEX_AXIS_KEYS)[number]
  * 옛 값은 AXIS_WEIGHT_V1 에 남긴다 (CLAUDE.md 1-4).
  */
 export const AXIS_WEIGHT: Readonly<Record<HexAxisKey, number>> = {
-  opening: 1.0,
+  survival: 1.0,
   carry: 1.0,
   duel: 1.0,
   burst: 0.7,
@@ -147,7 +150,7 @@ export const AXIS_WEIGHT: Readonly<Record<HexAxisKey, number>> = {
 
 /** ★옛 값★ — 반분신뢰도로 정한 무게 (2026-09-10 ~ 2026-09-12) */
 export const AXIS_WEIGHT_V1: Readonly<Record<HexAxisKey, number>> = {
-  opening: 1.0,
+  survival: 1.0,
   carry: 1.0,
   duel: 1.0,
   burst: 0.7,
@@ -190,6 +193,10 @@ export interface PlayerHexInput {
   tradeKills?: number
   /** 동료가 죽은 횟수의 합 — 교환의 분모 */
   mateDeaths?: number
+  /** ★평균 사망 시간★ — 라운드 시작부터 죽기까지의 초, 합 (2026-09-16 사장님) */
+  deathSeconds?: number
+  /** 위 합에 들어간 죽음의 수 */
+  deathCount?: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -276,7 +283,20 @@ export function axisValuesOf(
      *   지금은 캐리력(판당 킬)과 ★같은 단위★ 라 나란히 읽힌다.
      *   ★등수·백분위는 안 바뀐다★ — 분모만 라운드에서 판으로 옮긴 단조 변환이다.
      */
-    opening: input.games > 0 ? Math.round((input.firstKills / input.games) * 100) / 100 : null,
+    /*
+     * ★평균 사망 시간★ (2026-09-16 사장님: «평균사망시간 1분27초 이런식으로 /
+     *   더 늦게 죽었을수록 축이 더 높게끔»).
+     *
+     *   라운드 시작부터 내가 죽기까지의 초를 평균낸다. ★클수록 좋다★ —
+     *   늦게 죽었다는 뜻이다. 죽은 적이 없으면 잴 수 없다 (`null`).
+     *   ⚠ 끝까지 산 라운드는 안 들어간다 — 이 값은 «죽을 때는 언제 죽었나» 다.
+     *
+     *   옛 ④ 선짤은 `input.firstKills / input.games` 였다 (`CLAUDE.md` 1-4).
+     */
+    survival:
+      (input.deathCount ?? 0) > 0
+        ? Math.round(((input.deathSeconds ?? 0) / (input.deathCount as number)) * 10) / 10
+        : null,
     /* ★5번 축은 «교환율»★ (2026-09-15 사장님) — 옛 «연속킬» 은 스위치로 돌아간다 */
     burst: TRADE_AXIS
       ? (input.mateDeaths ?? 0) > 0
@@ -312,10 +332,13 @@ export function axisScoresOf(
   input: PlayerHexInput,
   weapon: 0 | 1,
 ): Record<HexAxisKey, number | null> {
-  const values = axisValuesOf(input, weapon)
-  if (values.opening === null) return values
-  const base = weapon === 1 ? OPENING_BASELINE.sniper : OPENING_BASELINE.rifle
-  return { ...values, opening: Math.round((values.opening / base) * 1000) / 1000 }
+  /*
+   * ⚠ ★2026-09-16 — 선짤 기준선 나누기를 안 한다★ (사장님이 ④ 를 평균 사망 시간으로
+   *   바꾸심). 옛 판은 무기별 기준선(`OPENING_BASELINE`)으로 나눠 스나·라플을
+   *   한 줄에 세웠는데, 새 축은 ★아예 무기별로 견준다★ (`HEX_WEAPON_SCOPED_AXIS_KEYS`)
+   *   — 나눌 필요가 없다. `OPENING_BASELINE` 은 지우지 않는다.
+   */
+  return axisValuesOf(input, weapon)
 }
 
 /** 백분위 — 나보다 낮은 사람의 비율 × 100. 오름차순 정렬된 배열을 받는다 */
@@ -414,7 +437,16 @@ export function tierFactorOf(tierGames: Readonly<Record<TierNo, number>>): numbe
  * 싸움은 스나면 «롱 안 스나 대 스나», 라플이면 «라플 대 라플» 이라 잣대가 아예 다르다.
  * 나머지 다섯은 무기와 상관없이 같은 뜻의 값이라 스나·라플을 섞어 견준다.
  */
-export const HEX_UNIFIED_AXIS_KEYS: readonly HexAxisKey[] = HEX_AXIS_KEYS.filter((k) => k !== 'duel')
+/*
+ * ★무기끼리 견주는 축★ — 여기 안 든 축은 리그 전체로 견준다.
+ *   ⚠ 2026-09-16 — `survival` 이 늘었다 (사장님: «스나수는 스나수끼리 비교하고
+ *     라플수는 라플수끼리 비교해»). 스나는 뒤에서 오래 버티고 라플은 앞에서 죽는다 —
+ *     한 줄에 세우면 무기가 곧 순위가 된다.
+ */
+export const HEX_WEAPON_SCOPED_AXIS_KEYS: readonly HexAxisKey[] = ['duel', 'survival']
+export const HEX_UNIFIED_AXIS_KEYS: readonly HexAxisKey[] = HEX_AXIS_KEYS.filter(
+  (k) => !HEX_WEAPON_SCOPED_AXIS_KEYS.includes(k),
+)
 
 /**
  * 한 리그의 선수들을 받아 백분위·등수·점수를 낸다 (2026-09-12 판).
@@ -433,7 +465,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
 
   /* ── ① 통합 분포 — 다섯 축은 무기를 안 가린다 ── */
   const uni: Record<HexAxisKey, number[]> = {
-    save: [], duel: [], carry: [], opening: [], burst: [], outnumbered: [],
+    save: [], duel: [], carry: [], survival: [], burst: [], outnumbered: [],
   }
   for (const p of players) {
     const w = mainWeaponOf(p)
@@ -455,13 +487,16 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       sc: axisScoresOf(p, weapon),
       wr: p.games > 0 ? (p.wins / p.games) * 100 : null,
     }))
-    const dist = { duel: [] as number[], winRate: [] as number[], kd: [] as number[] }
+    /* ⚠ 2026-09-16 — 무기별로 견주는 축이 둘이 됐다 (싸움 · 평균 사망 시간) */
+    const dist = { duel: [] as number[], survival: [] as number[], winRate: [] as number[], kd: [] as number[] }
     for (const { p, v, wr } of values) {
       if (v.duel !== null) dist.duel.push(v.duel)
+      if (v.survival !== null) dist.survival.push(v.survival)
       if (wr !== null) dist.winRate.push(wr)
       if (p.kdRate !== null && p.kdRate !== undefined) dist.kd.push(p.kdRate)
     }
     dist.duel.sort((a, b) => a - b)
+    dist.survival.sort((a, b) => a - b)
     dist.winRate.sort((a, b) => a - b)
     dist.kd.sort((a, b) => a - b)
 
@@ -472,7 +507,10 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       for (const key of HEX_AXIS_KEYS) {
         /* ★싸움만 무기 안에서, 나머지는 통합★ (2026-09-12 사장님).
            자리는 ★잣대★ 가 정하고, 적는 값은 원값 그대로다 (2026-09-15) */
-        const pct = percentileOf(key === 'duel' ? dist.duel : uni[key], sc[key])
+        /* 무기별 축은 그 무기 분포로, 나머지는 통합 분포로 (2026-09-16) */
+        /* 무기별 축은 그 무기 분포로, 나머지는 통합 분포로 (2026-09-16) */
+        const scoped = key === 'duel' ? dist.duel : key === 'survival' ? dist.survival : null
+        const pct = percentileOf(scoped ?? uni[key], sc[key])
         axes[key] = { value: v[key], pct, rank: null, total: null }
         if (pct !== null) {
           num += pct * AXIS_WEIGHT[key]
@@ -535,7 +573,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       leaguePlayerId: p.leaguePlayerId,
       weapon: null,
       weaponGames: Math.max(p.sniperGames, p.rifleGames),
-      axes: { save: empty(), duel: empty(), carry: empty(), opening: empty(), burst: empty(), outnumbered: empty() },
+      axes: { save: empty(), duel: empty(), carry: empty(), survival: empty(), burst: empty(), outnumbered: empty() },
       winRate: { value: (() => { const v = winRateOf(p); return v === null ? null : round1(v) })(), pct: null, rank: null, total: null },
       hex: null,
       tierFactor: tierFactorOf(p.tierGames),
@@ -564,7 +602,7 @@ export function foldPlayerHexV1(players: readonly PlayerHexInput[]): PlayerHexRe
     const pool = players.filter((p) => mainWeaponOf(p) === weapon)
     const values = pool.map((p) => ({ p, v: axisValuesOf(p, weapon), wr: p.games > 0 ? (p.wins / p.games) * 100 : null }))
     const dist: Record<HexAxisKey | 'winRate' | 'kd', number[]> = {
-      save: [], duel: [], carry: [], opening: [], burst: [], outnumbered: [], winRate: [], kd: [],
+      save: [], duel: [], carry: [], survival: [], burst: [], outnumbered: [], winRate: [], kd: [],
     }
     for (const { p, v, wr } of values) {
       for (const key of HEX_AXIS_KEYS) if (v[key] !== null) dist[key].push(v[key] as number)
@@ -636,7 +674,7 @@ export function foldPlayerHexV1(players: readonly PlayerHexInput[]): PlayerHexRe
       leaguePlayerId: p.leaguePlayerId,
       weapon: null,
       weaponGames: Math.max(p.sniperGames, p.rifleGames),
-      axes: { save: empty(), duel: empty(), carry: empty(), opening: empty(), burst: empty(), outnumbered: empty() },
+      axes: { save: empty(), duel: empty(), carry: empty(), survival: empty(), burst: empty(), outnumbered: empty() },
       winRate: { value: (() => { const v = winRateOf(p); return v === null ? null : round1(v) })(), pct: null, rank: null, total: null },
       hex: null,
       tierFactor: tierFactorOf(p.tierGames),

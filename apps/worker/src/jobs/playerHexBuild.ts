@@ -141,6 +141,10 @@ interface MatchTally {
   /** ★교환★ — 동료가 죽은 직후 그 킬러를 되잡은 횟수 · 그 분모(동료 죽음) */
   tradeKills: number
   mateDeaths: number
+  /** ★평균 사망 시간★ — 라운드 시작부터 죽기까지의 초, 합 (2026-09-16 사장님) */
+  deathSeconds: number
+  /** 위 합에 들어간 죽음의 수 */
+  deathCount: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -151,6 +155,7 @@ interface MatchTally {
 
 const emptyTally = (): MatchTally => ({
   rounds: 0, kills: 0, firstKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
+  deathSeconds: 0, deathCount: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
 })
 
@@ -435,6 +440,29 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         const firstK = whoOf(mk, opener.killer)
         if (firstK) tallyOf(mk, firstK.pid).firstKills += 1
       }
+
+      /*
+       * ★평균 사망 시간★ (2026-09-16 사장님: «평균사망시간 1분27초 이런식으로 /
+       *   더 늦게 죽었을수록 축이 더 높게끔»).
+       *
+       *   ★라운드 시작 기준★ 이다 — 경기 시작 기준으로 재면 뒤 라운드일수록 커져서
+       *   «오래 살았다» 와 «늦은 라운드였다» 가 섞인다.
+       *   ★라운드 시작을 모르면 안 센다★ — 몇 초인지 모르면서 적지 않는다 (D-106).
+       *   ⚠ 끝까지 산 라운드는 여기 안 들어온다 (죽은 줄이 없다). 그래서 이 값은
+       *     «죽을 때는 언제 죽었나» 이지 «얼마나 오래 사나» 가 아니다.
+       */
+      if (startedAt !== undefined) {
+        for (const k of arr) {
+          const victim = whoOf(mk, k.victim)
+          if (!victim) continue
+          const lived = k.t - startedAt
+          /* 음수는 시각이 어긋난 줄이다 — 버린다 */
+          if (lived < 0) continue
+          const t = tallyOf(mk, victim.pid)
+          t.deathSeconds += lived
+          t.deathCount += 1
+        }
+      }
       /*
        * ★교환율★ (2026-09-15 사장님 «교환율로 해줘») — 동료가 죽은 직후 그 킬러를 되잡았나.
        *
@@ -711,6 +739,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         sduellost: number
         rduelwon: number
         rduellost: number
+        deathseconds: number
+        deathcount: number
       }[]
     >`
       WITH mw AS (
@@ -741,6 +771,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              -- ★교환율★ — 동료가 죽은 직후 그 킬러를 되잡은 횟수 / 동료가 죽은 횟수
              SUM(h."tradeKills" * mw.w) AS tradekills,
              SUM(h."mateDeaths" * mw.w) AS matedeaths,
+             SUM(h."deathSeconds" * mw.w) AS deathseconds,
+             SUM(h."deathCount" * mw.w) AS deathcount,
              SUM(h."aloneRounds" * mw.w) AS alonerounds,
              SUM(h."aloneWon" * mw.w) AS alonewon,
              SUM(h."outRounds" * mw.w) AS outrounds,
@@ -828,6 +860,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         evenKills: h?.evenkills ?? 0,
         tradeKills: h?.tradekills ?? 0,
         mateDeaths: h?.matedeaths ?? 0,
+        deathSeconds: h?.deathseconds ?? 0,
+        deathCount: h?.deathcount ?? 0,
         aloneRounds: h?.alonerounds ?? 0,
         aloneWon: h?.alonewon ?? 0,
         outRounds: h?.outrounds ?? 0,
@@ -857,7 +891,10 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         save: r.axes.save.value, savePct: r.axes.save.pct, saveRank: r.axes.save.rank, saveTotal: r.axes.save.total,
         duel: r.axes.duel.value, duelPct: r.axes.duel.pct, duelRank: r.axes.duel.rank, duelTotal: r.axes.duel.total,
         carry: r.axes.carry.value, carryPct: r.axes.carry.pct, carryRank: r.axes.carry.rank, carryTotal: r.axes.carry.total,
-        opening: r.axes.opening.value, openingPct: r.axes.opening.pct, openingRank: r.axes.opening.rank, openingTotal: r.axes.opening.total,
+        /* ⚠ ★DB 칸 이름은  그대로다★ — 2026-09-16 에 축이 «평균 사망 시간»
+           으로 바뀌었지만 칸을 갈면 마이그레이션이 커진다. 어느 판의 값인지는
+            이 가른다. 화면에는 칸 이름이 안 나간다 */
+        opening: r.axes.survival.value, openingPct: r.axes.survival.pct, openingRank: r.axes.survival.rank, openingTotal: r.axes.survival.total,
         burst: r.axes.burst.value, burstPct: r.axes.burst.pct, burstRank: r.axes.burst.rank, burstTotal: r.axes.burst.total,
         outnumbered: r.axes.outnumbered.value, outnumberedPct: r.axes.outnumbered.pct,
         outnumberedRank: r.axes.outnumbered.rank, outnumberedTotal: r.axes.outnumbered.total,

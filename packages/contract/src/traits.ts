@@ -33,7 +33,7 @@ export const TRAIT_AXIS_KEYS = [
   'save',
   'duel',
   'carry',
-  'opening',
+  'survival',
   'burst',
   'outnumbered',
 ] as const
@@ -108,7 +108,7 @@ export const TRAIT_AXIS_KEYS_V3 = [
   'save',
   'duel',
   'carry',
-  'opening',
+  'survival',
   'finish',
   'outnumbered',
 ] as const
@@ -178,7 +178,10 @@ export const TRAIT_AXIS_LABEL: Record<
   /** 4번 축 — **라운드의 첫 킬을 딴 비율** (2026-08-31 사용자 확정 · D-214) */
   /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름은 `기회창출` 이었다 */
   /** ⚠ ★2026-09-16 새벽 — «선짤» → «선짤(1턴)»★ (사장님). 재는 것은 그대로다 */
-  opening: { sniper: '선짤(1턴)', rifle: '선짤(1턴)' },
+  /* ⚠ ★2026-09-16 — ④ 가 선짤에서 ★평균 사망 시간★ 으로★ (사장님).
+     스나는 스나끼리, 라플은 라플끼리 견준다 — 스나는 뒤에서 버티고 라플은 앞에서
+     죽으므로 한 줄에 세우면 무기가 곧 순위가 된다. 옛 이름은  */
+  survival: { sniper: '평균 사망 시간', rifle: '평균 사망 시간' },
   /** 빈 자리였던 판 (D-206). 이름이 곧 상태다 — 재료가 없는 게 아니라 **안 정한 것** */
   undecided: { sniper: '미정', rifle: '미정' },
   /** 옛 4번 축 (D-206). 육각형에서는 내려왔지만 이름은 남긴다 */
@@ -489,7 +492,8 @@ export interface TraitInput {
    * 라운드 복원(D-194)이 재료다. **무기와 무관**하다 — 라플이든 스나든 같은 뜻으로
    * 읽히는 것을 실측으로 확인했고, 그래서 축 이름도 무기에 따라 갈리지 않는다.
    */
-  openingPercentile?: number | null
+  /** ★평균 사망 시간★ 의 백분위 (2026-09-16 사장님). 옛 이름은  */
+  survivalPercentile?: number | null
   /**
    * 5번 `연속킬` — 직전 킬과 **2초 이하**로 이어진 킬의 비율의 백분위 (D-260).
    *
@@ -540,11 +544,11 @@ export function buildPlayerTraits(input: TraitInput): TraitHexagon {
     if (blocked !== null) return { key, label: label(key), percentile: null, pending: blocked }
 
     switch (key) {
-      case 'opening': {
+      case 'survival': {
         /* 4번 `기회창출` — 라운드의 첫 킬을 딴 비율 (D-214). 라운드 복원이 재료라
            1·6번과 같은 사유 갈래를 쓴다: 자료가 없으면 `라운드 복원 필요`,
            있는데 표본이 모자라면 `경기 부족` 이다 */
-        const value = input.openingPercentile ?? null
+        const value = input.survivalPercentile ?? null
         return {
           key,
           label: label(key),

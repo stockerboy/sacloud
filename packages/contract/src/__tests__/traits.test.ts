@@ -190,7 +190,7 @@ describe('buildPlayerTraits — 못 재는 경우', () => {
     expect(hexagon.measured).toBe(0)
     expect(hexagon.measuring).toBe(true)
     // 4번도 이제 데이터 축이다 — 무기를 모르면 함께 막힌다 (D-214)
-    expect(axisOf(hexagon, 'opening').pending).toBe('weapon')
+    expect(axisOf(hexagon, 'survival').pending).toBe('weapon')
   })
 
   it('주무기를 모르면 모집단도 null 이다 — 섞어 세지 않는다', () => {
@@ -204,7 +204,7 @@ describe('buildPlayerTraits — 못 재는 경우', () => {
     expect(hexagon.cohort).toBeNull()
     expect(hexagon.measured).toBe(0)
     /* 4번도 같이 막힌다 — `기회창출` 은 더 뛰면 채워지는 축이다 (D-214) */
-    expect(axisOf(hexagon, 'opening').pending).toBe('games')
+    expect(axisOf(hexagon, 'survival').pending).toBe('games')
   })
 
   it(`정확히 ${TRAIT_MIN_GAMES}판이면 재기 시작한다 — 경계는 미만이다`, () => {
@@ -227,16 +227,16 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 
   it('4번 자리이고 옛 두 판과 같은 자리다', () => {
-    expect(TRAIT_AXIS_KEYS[3]).toBe('opening')
+    expect(TRAIT_AXIS_KEYS[3]).toBe('survival')
     expect(TRAIT_AXIS_KEYS_V2[3]).toBe('undecided')
     expect(TRAIT_AXIS_KEYS_V1[3]).toBe('matchman')
   })
 
   /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름 `기회창출` 은 주석에만 남는다 */
-  /* ⚠ 옛 기대값 `'선짤'` — 2026-09-16 새벽 사장님 «선짤을 선짤(1턴)로» */
-  it('이름은 무기와 무관하게 `선짤(1턴)` 이다', () => {
+  /* ⚠ 옛 기대값 — `'선짤'` → `'선짤(1턴)'` → ★`'평균 사망 시간'`★ (2026-09-16 사장님) */
+  it('이름은 무기와 무관하게 `평균 사망 시간` 이다', () => {
     for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'opening').label).toBe('선짤(1턴)')
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'survival').label).toBe('평균 사망 시간')
     }
   })
 
@@ -262,12 +262,12 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 
   it('백분위를 주면 그대로 붙는다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput({ openingPercentile: 82.5 })), 'opening')
+    const axis = axisOf(buildPlayerTraits(rifleInput({ survivalPercentile: 82.5 })), 'survival')
     expect(axis).toMatchObject({ percentile: 82.5, pending: null })
   })
 
   it('재료가 아예 없으면 `라운드 복원 필요` 다 — 0 으로 채우지 않는다', () => {
-    const axis = axisOf(buildPlayerTraits(rifleInput()), 'opening')
+    const axis = axisOf(buildPlayerTraits(rifleInput()), 'survival')
     expect(axis.percentile).toBeNull()
     expect(axis.percentile).not.toBe(0) // 0 은 "꼴찌" 라는 실제 값이다 (D-106)
     expect(axis.pending).toBe('rounds')
@@ -275,8 +275,8 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
 
   it('자료는 있는데 표본이 모자라면 `경기 부족` 이다 — 둘을 뭉뚱그리지 않는다', () => {
     const axis = axisOf(
-      buildPlayerTraits(rifleInput({ hasRoundData: true, openingPercentile: null })),
-      'opening',
+      buildPlayerTraits(rifleInput({ hasRoundData: true, survivalPercentile: null })),
+      'survival',
     )
     expect(axis.pending).toBe('games')
   })
@@ -465,7 +465,7 @@ describe('buildPlayerTraits — 축 이름은 주무기를 따른다', () => {
   })
 
   it('나머지 다섯 축은 무기와 무관하게 같은 이름이다', () => {
-    for (const key of ['save', 'carry', 'opening', 'burst', 'outnumbered'] as const) {
+    for (const key of ['save', 'carry', 'survival', 'burst', 'outnumbered'] as const) {
       expect(axisOf(sniper, key).label).toBe(axisOf(rifle, key).label)
       expect(axisOf(sniper, key).label).toBe(TRAIT_AXIS_LABEL[key].sniper)
     }

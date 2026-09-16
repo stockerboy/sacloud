@@ -602,7 +602,7 @@ export async function playerTraits(
       oneAttackPercentile: percentileIn(cohort.oneAttackSorted, round?.oneAttackRate),
       /* 4번 `기회창출` (D-214) — D-206 에서 비워 뒀던 자리다.
          라운드 복원이 재료라 1·6번과 같은 곳에서 온다 */
-      openingPercentile: percentileIn(cohort.openingSorted, round?.openingRate),
+      survivalPercentile: percentileIn(cohort.openingSorted, round?.openingRate),
       /* 5번 `연속킬` (D-260) — 옛 5번(`작업/원어택 성공률`)을 내리고 올린 자리다.
          `cohort` 가 무기별로 갈려 있으므로 **스나는 스나끼리, 라플은 라플끼리** 견준다 */
       burstPercentile: percentileIn(cohort.burstSorted, round?.burstRate),

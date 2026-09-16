@@ -239,7 +239,8 @@ export const TopAxisLeader = z.object({
   clan: ClanSummary.nullable(),
   /** 원값 — 캐리력은 판당 킬, 나머지는 % */
   value: z.number(),
-  unit: z.enum(['percent', 'per_game']),
+  /* ⚠ 2026-09-16 — ④ 가 «평균 사망 시간» 이 되면서 «초» 가 늘었다 (사장님) */
+  unit: z.enum(['percent', 'per_game', 'seconds']),
   /** 모집단 — 몇 명 중 1위인가 */
   total: Count.nullable(),
 })
