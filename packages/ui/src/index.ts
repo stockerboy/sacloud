@@ -387,3 +387,5 @@ export * from './league/DailyPodium'
 export * from './league/FlagMountain'
 /** ★최근 폼 1위★ — 한 카드에 육각 하나 + 줄 셋 (2026-09-16 사장님) */
 export * from './league/FormTopCard'
+/** ★리그 탭을 본문 맨 위로★ — 고정 띠를 하나로 (2026-09-16 사장님) */
+export * from './league/LeagueTabsInline'

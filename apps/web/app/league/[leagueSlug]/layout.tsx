@@ -32,6 +32,14 @@ import { useApiReady } from '@/app/providers'
 /* ★히어로 띠★ — 2026-09-10 사장님 목업(v3)에는 없다. 컴포넌트(`LeagueHeroBand`)는 그대로 두고 안 그린다 */
 const SHOW_HERO_BAND: boolean = false
 
+
+/**
+ * ★리그 탭을 상단에 고정할 것인가★ (2026-09-16 사장님이 내리심).
+ * `false` 면 탭이 본문 맨 위(`LeagueTabsInline`)로 내려가 스크롤과 함께 올라간다.
+ * `true` 로 두면 옛 모습(고정 띠 둘)이 그대로 돌아온다.
+ */
+const LEAGUE_TOPBAR_FIXED: boolean = false
+
 export default function LeagueLayout({
   children,
   params,
@@ -66,10 +74,28 @@ export default function LeagueLayout({
         ⚠ 2026-09-07 (Part 10 ③) — 띠 높이가 바뀌었다: PC 48 → ★54★ · 모바일 96 → ★102★.
         본문 밀림도 같이 바뀌었다. 두 값은 `styles.css` 의 `--spacing-leaguebar*` 한 곳에 있다.
       */}
-      <LeagueTopBar leagueSlug={leagueSlug} leagueName={data?.name ?? ''} />
-      {/* ⚠ 띠 높이와 ★반드시 같은 값★ — `styles.css` 의 두 토큰이 정한다.
-             옛 값은 `pt-24 md:pt-12` (모바일 96 · PC 48) 였다 */}
-      <div className="pt-[var(--spacing-leaguebar-m,102px)] md:pt-[var(--spacing-leaguebar,54px)]">
+      {/*
+        ⚠ ★2026-09-16 — 고정 띠를 하나로★ (사장님: «위 두번째 바 없애버리고 저 파란색
+          원 세개에 각각 나눠서 최근경기 클랜랭킹 개인랭킹 넣어
+          (상단고정 드래그내리면 고정돼있어서 안보임)»).
+
+          상단에 고정된 띠가 ★둘★ 이라 폰에서 150px 을 늘 먹고, 스크롤을 내려도
+          따라와 화면을 가렸다. 리그 탭은 ★본문 맨 위★(`LeagueTabsInline`)로 내려가
+          제목 자리를 겸한다 — 각 화면이 그린다.
+
+          ★부품은 지우지 않았다★ (`CLAUDE.md` 1-4) — `LEAGUE_TOPBAR_FIXED` 를
+          `true` 로 두면 옛 모습이 그대로 돌아온다. 본문 밀림도 같이 돌아온다.
+      */}
+      {LEAGUE_TOPBAR_FIXED ? (
+        <LeagueTopBar leagueSlug={leagueSlug} leagueName={data?.name ?? ''} />
+      ) : null}
+      <div
+        className={
+          LEAGUE_TOPBAR_FIXED
+            ? 'pt-[var(--spacing-leaguebar-m,102px)] md:pt-[var(--spacing-leaguebar,54px)]'
+            : ''
+        }
+      >
         {/*
           버건디 히어로 띠. 리그 이름이 아직 안 왔으면 **빈 문자열**로 띠만 먼저 깔린다 —
           띠가 나중에 «생겨나면» 본문이 통째로 밀려 내려가 깜빡이는 것처럼 보인다.

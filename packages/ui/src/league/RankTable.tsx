@@ -153,9 +153,12 @@ export function RankHeader({ title, notice }: { title: string; notice: string })
   return (
     /* 좁은 화면에서는 한 줄에 나란히 두지 않는다 — 안내문구가 제목을 밀어 두 줄로 쪼갠다 */
     <div className="mb-6 flex items-baseline max-md:flex-col max-md:items-start">
-      <h1 className="font-display text-3xl tracking-wide text-text-strong max-md:whitespace-nowrap max-md:text-2xl">
-        {title}
-      </h1>
+      {/* ⚠ 제목이 비면 자리를 안 만든다 — 빈 상자가 여백만 남긴다 (2026-09-16) */}
+      {title === '' ? null : (
+        <h1 className="font-display text-3xl tracking-wide text-text-strong max-md:whitespace-nowrap max-md:text-2xl">
+          {title}
+        </h1>
+      )}
       <div className="ml-4 text-sm text-faint max-md:ml-0 max-md:mt-1.5">{notice}</div>
     </div>
   )

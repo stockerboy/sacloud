@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { LeagueClan } from '@sacloud/contract'
 import { leagueScreen, showsTier } from '@sacloud/contract'
 import type { ClanRankTableRow } from '@sacloud/ui'
-import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, RankBox, RankHeader, leagueClanPath, type ClanRankNote } from '@sacloud/ui'
+import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, LeagueTabsInline, RankBox, RankHeader, leagueClanPath, type ClanRankNote } from '@sacloud/ui'
 import Link from 'next/link'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -352,8 +352,16 @@ function ClanRankDirectory({
     <div className="pc-container">
       {/* 좁은 화면에서는 좌우 안쪽 여백을 없앤다 — `.mobile-bleed`(표)가 화면 끝까지 가도록 */}
       <div className="py-[var(--section-gap)] max-md:py-8">
+        {/* ★리그 탭★ — 상단 고정 띠에서 내려왔다. 지금 탭이 곧 제목이다 (2026-09-16 사장님) */}
+        <LeagueTabsInline leagueSlug={leagueSlug} />
+        {/*
+          ⚠ ★2026-09-16 — 제목은 탭이 대신한다★ (사장님이 제목 자리에 동그라미 셋을
+            그리시며 «저 파란색 원 세개에 각각 나눠서 (…) 넣어»). 바로 위 탭에
+            「클랜랭킹」 이 굵게 서 있어 같은 말을 두 번 쓰지 않는다.
+            설명 줄은 남긴다 — 그건 제목이 아니라 «무슨 순서인가» 를 말한다.
+        */}
         <RankHeader
-          title="클랜랭킹"
+          title=""
           /*
            * ★티어를 안 쓰는 리그에는 티어 얘기를 안 한다★ (2026-09-13 사장님: «티어가 없어 SPL은»).
            * 옛 문구는 어느 리그에서나 «높은 티어와 게임에서 승리시…» 라고 말했다 —

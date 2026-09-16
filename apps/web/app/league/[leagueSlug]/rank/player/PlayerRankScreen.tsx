@@ -9,6 +9,7 @@ import {
   FilterChip,
   divisionLabel,
   FormTop3,
+  LeagueTabsInline,
   PageHead,
   Pager,
   PlayerRankTable,
@@ -196,6 +197,8 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
   return (
     <div className="pc-container">
       <div className="pb-[var(--section-gap)] max-md:pb-8">
+        {/* ★리그 탭★ — 상단 고정 띠에서 내려왔다 (2026-09-16 사장님) */}
+        <LeagueTabsInline leagueSlug={leagueSlug} />
         <PageHead
           /*
            * ★시안의 자리에 무엇을 넣었나★
@@ -208,7 +211,8 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
            *   이름은 `seasonDisplayLabel()` 한 곳에서 온다 (`Cloud 0`). 모르면 안 그린다.
            */
           kicker={seasonKicker}
-          title="개인랭킹"
+          /* ⚠ 2026-09-16 — 제목은 바로 위 탭이 대신한다 (사장님) */
+          title=""
           subtitle={
             <>
               약 1시간마다 갱신

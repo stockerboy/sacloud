@@ -105,7 +105,10 @@ export function PageHead({
           </div>
         ) : null}
         <div style={titleRow}>
-          <h1 className="v2-pagehead__title" style={titleStyle}>{title}</h1>
+          {/* ⚠ 제목이 비면 자리를 안 만든다 (2026-09-16) */}
+          {title === '' ? null : (
+            <h1 className="v2-pagehead__title" style={titleStyle}>{title}</h1>
+          )}
           {subtitle ? <span style={subtitleStyle}>{subtitle}</span> : null}
         </div>
       </div>

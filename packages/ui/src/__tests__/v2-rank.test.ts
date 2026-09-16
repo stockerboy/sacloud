@@ -52,9 +52,10 @@ describe('PageHead — 없는 조각은 안 그린다', () => {
     expect(html).not.toContain('var(--v2-accent)')
   })
 
-  it('제목은 34px 700 (시안 실측)', () => {
+  /* ⚠ 옛 기대값 34px — 2026-09-16 사장님 «클랜랭킹 글씨크기 기준으로 통일» */
+  it('제목은 28px 700 — 클랜랭킹 제목과 같은 크기다 (2026-09-16)', () => {
     const html = renderToStaticMarkup(createElement(PageHead, { title: 'x' }))
-    expect(html).toContain('font-size:34px')
+    expect(html).toContain('font-size:28px')
     expect(html).toContain('font-weight:700')
   })
 

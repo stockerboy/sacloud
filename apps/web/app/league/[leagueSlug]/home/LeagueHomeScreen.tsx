@@ -22,7 +22,7 @@ import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { leagueScreen } from '@sacloud/contract'
-import { FlagMountain, FormTopCard, SectionTitle, type FormTopEntry } from '@sacloud/ui'
+import { FlagMountain, FormTopCard, LeagueTabsInline, SectionTitle, type FormTopEntry } from '@sacloud/ui'
 import { MatchListV3 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
@@ -127,7 +127,9 @@ export default function LeagueHomeScreen({
   })()
 
   return (
-    <div className="pc-container pb-[40px] pt-[24px]">
+    <div className="pc-container pb-[40px] pt-[16px]">
+      {/* ★리그 탭★ — 상단 고정 띠에서 내려왔다 (2026-09-16 사장님) */}
+      <LeagueTabsInline leagueSlug={leagueSlug} />
       {/*
         ⚠ ★2026-09-16 — 첫 칸이 리그마다 다르다★ (사장님: «최근경기 페이지에서 기존꺼
           지우고 최근 폼1위 파트를 만들어서 (…) IPL LLM 두개만 열산은 또 따로 다르게할거야»).
