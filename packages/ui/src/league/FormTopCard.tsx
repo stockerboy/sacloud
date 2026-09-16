@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { playerHexValueText } from '@sacloud/contract'
 import { Hexagon } from '../v3/Hexagon'
 import type { HexAxisView } from '../v3/Hexagon'
 import { V3 } from '../v3/tokens'
@@ -62,13 +63,6 @@ const TONE: Readonly<Record<FormTopEntry['key'], string>> = {
   rifle: '#b7a6ff',
 }
 
-/** `142` → `2:22` — 초 단위 축을 사람이 읽는 꼴로 */
-function mmss(sec: number): string {
-  const m = Math.floor(sec / 60)
-  const s = Math.round(sec % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 function axesOf(row: FormTopRow): HexAxisView[] {
   const axes = row.axes
   if (axes === undefined || axes.length === 0) return []
@@ -76,9 +70,8 @@ function axesOf(row: FormTopRow): HexAxisView[] {
   if (axes.some((a) => a.pct === null)) return []
   const valueText = (a: (typeof axes)[number]): string | null => {
     if (a.value === null) return null
-    if (a.unit === 'seconds') return mmss(a.value)
-    if (a.unit === 'per_game') return `${Number.isInteger(a.value) ? a.value : a.value.toFixed(1)}회`
-    return `${Math.round(a.value * (a.value <= 1 ? 100 : 1))}%`
+    /* ★한 곳에서만 적는다★ — 화면마다 복사하면 축이 바뀔 때 한 곳이 빠진다 (2026-09-16) */
+    return playerHexValueText(a.unit, a.value)
   }
   return axes.map((a) => ({
     label: a.label,

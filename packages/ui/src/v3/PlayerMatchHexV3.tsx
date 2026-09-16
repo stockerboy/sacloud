@@ -25,7 +25,7 @@
  *   라 하셨고, 맞는 말이라 값은 100% 로 적되 ★가벼운 100% 라는 걸 옆에서 말해 준다.★
  */
 import type { CSSProperties } from 'react'
-import type { MatchPlayerStat } from '@sacloud/contract'
+import { playerHexValueText, type MatchPlayerStat } from '@sacloud/contract'
 import { V3 } from './tokens'
 
 type Axis = MatchPlayerStat['hexagon'][number]
@@ -65,8 +65,11 @@ const areaOf = (axes: readonly Axis[]) =>
  */
 const valueText = (a: Axis): string => {
   if (a.value === null) return '—'
-  if (a.unit === 'per_game') return `${a.value}회`
-  return `${a.value}%`
+  /*
+   * ⚠ ★여기가 «초» 를 몰라서 «50%» 라고 적고 있었다★ (2026-09-16).
+   *   ④ 가 «평균 사망 시간» 이 된 날 이 화면만 안 따라왔다. 이제 한 곳에서 만든다.
+   */
+  return playerHexValueText(a.unit, a.value)
 }
 
 /**
