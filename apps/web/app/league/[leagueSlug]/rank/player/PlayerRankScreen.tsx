@@ -215,6 +215,15 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
       <div className="pb-[var(--section-gap)] max-md:pb-8">
         {/* ★리그 탭★ — 상단 고정 띠에서 내려왔다 (2026-09-16 사장님) */}
         <LeagueTabsInline leagueSlug={leagueSlug} />
+        {/*
+          * ★머리말도 표와 같은 폭으로 묶는다★ (2026-09-17 사장님).
+          *
+          *   표를 900px 덩어리로 모으고 나니, 바로 위 머리말만 화면 양끕으로
+          *   벌어져 있었다 — «CLOUD 0 · 약 1시간마다 갱신» 이 왼쪽 끕,
+          *   «WEAPON» 칩이 오른쪽 끕이라 아래 표와 줄이 안 맞았다.
+          *   탭 띄는 화면 폭 그대로 둔다 — 그건 길목이지 표가 아니다.
+          */}
+        <div className={`mx-auto w-full ${TABLE_FULL_WIDTH ? '' : 'max-w-[900px]'}`}>
         <PageHead
           /*
            * ★시안의 자리에 무엇을 넣었나★
@@ -273,6 +282,7 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
             </div>
           }
         />
+        </div>
 
         {/* ★1~3위 포디움★ — 1·2·3위가 다 있을 때만 그린다 */}
         {/*
