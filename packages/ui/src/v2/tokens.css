@@ -1878,9 +1878,17 @@
     border-radius: 10px;
     background: rgba(13, 21, 36, 0.42);
   }
-  /* 값 줄은 왼쪽으로 (칸이 좁아 오른쪽 정렬이면 이름과 붙는다) */
+  /*
+   * 값 줄은 왼쪽으로.
+   *
+   * ⚠ ★2026-09-17 — «왼쪽» 이라 써 두고 오른쪽으로 붙여 있었다★.
+   *   `flex-direction: row-reverse` 된 줄에서는 `flex-start` 가 ★오른쪽 끕★ 이다.
+   *   그래서 «최다연승» 처럼 한 줄을 다 쓰는 칸에서 값이 화면 끕까지 날아갔다 —
+   *   사장님: «싹다 왼쪽끕과 오른쪽끕에 붙어있어».
+   *   `flex-end` 가 기울어진 줄의 «왼쪽» 이다.
+   */
   .v3-clankpi > span:last-child {
-    justify-content: flex-start !important;
+    justify-content: flex-end !important;
     flex-direction: row-reverse;
     align-items: baseline;
     width: 100%;

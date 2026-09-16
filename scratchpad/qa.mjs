@@ -18,6 +18,19 @@
  *   node scratchpad/qa.mjs <포트> [pc|m|both]
  *
  * 화면은 아래 `PAGES` 에 있다. 찍은 그림은 `scratchpad/qa-shots/` 에 남는다.
+ *
+ * ⚠⚠ ★사진에서 육각형 축 이름이 안 보이는 것은 버그가 아니다★ (2026-09-17 확인).
+ *
+ *   헤드리스에서는 웹폰트(Noto Sans KR)가 안 올라와 ★SVG 안의 한글★ 이 한 글자도 안 그려진다.
+ *   눈금 숫자(100 · 80 …)는 아스키라 멀줦히 나온다 — 그게 가르는 증거다.
+ *   HTML 한글은 멀줦하다. SVG 한글만 비어 보인다.
+ *
+ *   확인한 방법 — 화면에 직접 물어봤다 (`scratchpad/probe.mjs`):
+ *     글자상자가 있고(42×16) · fill 은 rgb(164,176,200) · opacity 1 · 맨 위에 있다.
+ *     그런데 그 자리 픽셀을 읽으면 바탕색뿐이다.
+ *
+ *   ★진짜 폰에서는 멀줦히 나온다★ — 사장님 스크린샷에 축 이름이 다 찍혔 있다.
+ *   이걸 모르면 ★없는 버그를 반나절토록 쪼게 된다.★ 한 번 그러고 적어 둔다.
  */
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
@@ -164,6 +177,14 @@ async function run() {
 
   await send('Page.enable')
   await send('Runtime.enable')
+/*
+ * ★헤드리스에서는 requestAnimationFrame 이 멈춰 선다★ — 창이 안 보이는 것으로 치기 때문이다.
+ *   그러면 육각형같이 «그려지는» 그림이 끝까지 안 가고, 축 이름이 opacity 0 으로 남는다.
+ *   실제 폰에서는 멀줦한데 사진에만 글자가 없어 ★없는 버그를 쪼게 된다.★
+ *   초점을 가진 것으로 속여 시계를 돌린다.
+ */
+  await send('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {})
+  await send('Page.setWebLifecycleState', { state: 'active' }).catch(() => {})
 
   const report = []
   for (const [w, tag] of WIDTHS) {

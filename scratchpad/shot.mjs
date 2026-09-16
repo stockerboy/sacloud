@@ -12,7 +12,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const [url, wRaw, hRaw, out, waitFor] = process.argv.slice(2)
+const [url, wRaw, hRaw, out, waitFor, only] = process.argv.slice(2)
 if (!url || !out) {
   console.error('쓰는 법: node scratchpad/shot.mjs <url> <가로> <세로> <파일.png> [기다릴글자]')
   process.exit(1)
@@ -75,6 +75,14 @@ const send = (method, params = {}) =>
 
 await send('Page.enable')
 await send('Runtime.enable')
+/*
+ * ★헤드리스에서는 requestAnimationFrame 이 멈춰 선다★ — 창이 안 보이는 것으로 치기 때문이다.
+ *   그러면 육각형같이 «그려지는» 그림이 끝까지 안 가고, 축 이름이 opacity 0 으로 남는다.
+ *   실제 폰에서는 멀줦한데 사진에만 글자가 없어 ★없는 버그를 쪼게 된다.★
+ *   초점을 가진 것으로 속여 시계를 돌린다.
+ */
+await send('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {})
+await send('Page.setWebLifecycleState', { state: 'active' }).catch(() => {})
 /* ★뷰포트를 직접 박는다★ — 창 크기가 아니라 이것이 진짜 화면 폭이다 */
 await send('Emulation.setDeviceMetricsOverride', {
   width, height, deviceScaleFactor: 2, mobile: width < 700,
@@ -105,7 +113,8 @@ const probe = await send('Runtime.evaluate', {
 })
 console.log('probe', probe.result?.value)
 
-const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
+/* «viewport» 를 더 주면 보이는 한 화면만 찍는다 — 위쪽을 크게 보고 싶을 때 */
+const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: only !== 'viewport' })
 writeFileSync(out, Buffer.from(shot.data, 'base64'))
 console.log('saved', out)
 
