@@ -63,7 +63,9 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
      «D로 가 / ★선짤파트를 없애고 이걸 넣어★»).
      키를 바꾼다 — 뜻만 바꾸고 키를 두면 옛 값과 새 값이 한 이름으로 섞인다 */
   'sniperInfluence',
-  'trade',
+  /* ★2026-09-16 — ⑥ 이 `trade`(백어택) 에서 `firstBloodless` 로 바뀌었다★ (사장님:
+     «백어택성공률을 ★선짤없이 라운드 시작★ 로 바꾸고») */
+  'firstBloodless',
 ] as const
 
 /** ★2026-09-16 까지 쓰던 여섯 축★ — 지우지 않는다 (`CLAUDE.md` 1-4). ⑤ 가 선짤이던 판 */
@@ -97,7 +99,12 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AxisKey, string> = {
    * 뜻: «스나가 킬을 낸 라운드 승률 − 스나가 침묵한 라운드 승률».
    */
   sniperInfluence: '스나영향력',
-  trade: '백어택성공률(2턴)',
+  /*
+   * ★선짤없이 라운드 시작★ (2026-09-16 사장님).
+   * 값 = 1 − (우리가 선짤 당한 라운드 ÷ 겨룬 라운드 전부).
+   * 13라운드에서 6번 당했으면 1 − 6/13 = 53.8% 다.
+   */
+  firstBloodless: '선짤없이 라운드 시작',
 }
 
 /** ★2026-09-16 새벽까지 쓰던 이름★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
@@ -111,6 +118,7 @@ export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<
   riflePower: '라이플화력',
   firstBlood: '선짤',
   sniperInfluence: '스나영향력',
+  firstBloodless: '선짤없이 라운드 시작',
   trade: '교환',
 }
 
@@ -132,7 +140,8 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AxisKey, boolean> = {
   riflePower: false,
   /* 차가 클수록 «스나가 일할 때 더 이긴다» 는 뜻이다 — 클수록 좋다 */
   sniperInfluence: false,
-  trade: false,
+  /* 먼저 안 맞을수록 좋다 — 클수록 좋다 */
+  firstBloodless: false,
 }
 
 /**
@@ -185,7 +194,8 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
    *   (`SNIPER_INFLUENCE_FULL_SCALE`). 화면 숫자는 «+32.5%p» 그대로다.
    */
   sniperInfluence: 'diff',
-  trade: 'ratio',
+  /* 겨룬 라운드 중 «먼저 안 맞은» 비율 — 그냥 비율이다 */
+  firstBloodless: 'ratio',
 }
 
 /**
@@ -459,7 +469,7 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    * ⚠ ★2026-09-15 밤 · v3.0 → v3.1★ — 라이플화력이 ★라운드가 아니라 킬★ 을 나눠 갖는다.
    *   사장님: *"0퍼만 아니면 된다는 얘기를 한거야"* — «0%» 가 뜨는 경우를 8.7% → 0.1% 로.
    */
-  formulaVersion: 'clan-hex-v4',
+  formulaVersion: 'clan-hex-v4.2',
 }
 
 /**
@@ -675,6 +685,15 @@ export interface SniperDuelTallyLike {
 }
 
 /** ⑤ **선짤** — 라운드 첫 킬 (2026-09-02 · D-256) */
+export interface FirstBloodlessTallyLike {
+  /** 킬이 있었던 라운드 수 = 분모 */
+  rounds: number
+  /** 그중 우리 쪽에서 첫 죽음이 난 라운드 수 */
+  lost: number
+  /** 동시각이라 어느 쪽도 «당했다» 로 안 센 라운드 */
+  tiedRounds: number
+}
+
 export interface SniperInfluenceTallyLike {
   /** 우리 스나가 1킬 이상 낸 라운드 */
   rounds: number
@@ -717,6 +736,8 @@ export interface ClanHexTallyLike {
   sniperDuel: SniperDuelTallyLike | null
   /** ⑤ **지금 쓰는 것** — 스나영향력 (2026-09-16 사장님) */
   sniperInfluence: SniperInfluenceTallyLike | null
+  /** ⑥ **지금 쓰는 것** — 선짤없이 라운드 시작 (2026-09-16 사장님) */
+  firstBloodless: FirstBloodlessTallyLike | null
   /** 옛 ⑤ 선짤. 화면이 안 본다. 계속 세고 저장한다 (`CLAUDE.md` 1-4) */
   firstBlood: FirstBloodTallyLike | null
   trade: TradeTallyLike | null
@@ -906,6 +927,7 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
     foeSnipers: 0,
     sniperDuel: null,
     sniperInfluence: null,
+    firstBloodless: null,
     firstBlood: null,
     trade: null,
     outnumbered: null,
@@ -946,6 +968,16 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
       into.won += from.won
       into.quietRounds += from.quietRounds
       into.quietWon += from.quietWon
+    },
+  )
+
+  sum.firstBloodless = sumParts(
+    tallies.map((tally) => tally.firstBloodless ?? null),
+    (): FirstBloodlessTallyLike => ({ rounds: 0, lost: 0, tiedRounds: 0 }),
+    (into, from) => {
+      into.rounds += from.rounds
+      into.lost += from.lost
+      into.tiedRounds += from.tiedRounds
     },
   )
 
@@ -1219,6 +1251,20 @@ function measuredAxis(
 }
 
 /**
+ * ★옛 ⑥ 교환(백어택)의 축 셈★ — 2026-09-16 에 화면에서 내려갔다. 지우지 않는다.
+ *
+ * «팀원이 죽은 뒤 창(기본 5초) 안에 그 킬러를 되잡았나». tally 는 계속 쌓인다.
+ */
+export function tradeAxisV4(
+  part: TradeTallyLike,
+  window: 3 | 5 | 10,
+): { numerator: number; denominator: number; raw: number } | null {
+  const back = tradeCountOf(part, window)
+  if (part.deaths === 0) return null
+  return { numerator: back, denominator: part.deaths, raw: back / part.deaths }
+}
+
+/**
  * ★옛 ⑤ 선짤의 축 셈★ — 2026-09-16 에 화면에서 내려갔다. 지우지 않는다.
  *
  * «25초 안에 첫 킬이 난 라운드 중 우리가 먼저 땡 비율» (2026-09-15 사장님 ②안).
@@ -1436,12 +1482,19 @@ export function buildClanHexV2Raw(input: {
        * 「직후」는 `config.tradeWindow` 가 고른다 (사용자 확정 **5초**).
        * tally 가 창 넷을 다 들고 있어서 창을 바꿔도 **재빌드가 필요 없다.**
        */
-      case 'trade': {
-        const part = tally.trade ?? null
+      /**
+       * ⑥ **선짤없이 라운드 시작** — 먼저 맞지 않고 라운드를 연 비율 (2026-09-16 사장님).
+       *
+       * > «전체라운드를 분모에 두고 당한 라운드를 분자에 넣고 ★1에서 빼면★»
+       *
+       * 그래서 분자는 `rounds - lost` 다 — «안 당한 라운드».
+       * 옛 ⑤ 선짤과 달리 ★25초 창을 안 본다★. 두 팀 합이 100% 가 아니다.
+       */
+      case 'firstBloodless': {
+        const part = tally.firstBloodless ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
-        const back = tradeCountOf(part, config.tradeWindow)
-        if (part.deaths === 0) return pendingAxis(key, 'sample', { numerator: back })
-        return measuredAxis(key, back, part.deaths)
+        if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: 0 })
+        return measuredAxis(key, part.rounds - part.lost, part.rounds)
       }
     }
   })

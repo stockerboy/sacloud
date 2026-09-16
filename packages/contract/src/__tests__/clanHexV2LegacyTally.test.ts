@@ -124,7 +124,7 @@ describe('옛 tally(새 칸 없음)를 넣어도 육각형이 죽지 않는다',
 
     /* 칸이 없던 축 — 사라지지 않고 「측정중」으로 떨어진다 */
     /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 바뀌었다. 옛 tally 에는 둘 다 없다 */
-    for (const key of ['sniperDuel', 'sniperInfluence', 'trade']) {
+    for (const key of ['sniperDuel', 'sniperInfluence', 'firstBloodless']) {
       expect(at(key), `${key} 축이 있어야 한다`).toBeDefined()
       /* 측정 못 한 축은 `pending` 에 사유가 들어가고 `raw` 가 null 이다 */
       expect(at(key)?.pending, `${key} 는 측정중이어야 한다`).not.toBeNull()

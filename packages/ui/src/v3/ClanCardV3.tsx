@@ -89,9 +89,9 @@ export function tempoTier(pct: number): string {
  */
 export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
   /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 (사장님) */
-  const order = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'trade'] as const
+  const order = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'firstBloodless'] as const
   const label: Record<(typeof order)[number], string> = {
-    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력', sniperInfluence: '스나영향력', trade: '백어택성공률(2턴)',
+    sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력', sniperInfluence: '스나영향력', firstBloodless: '선짤없이 라운드 시작',
   }
   return order.map((key) => {
     const axis = hex?.axes.find((a) => a.key === key) ?? null

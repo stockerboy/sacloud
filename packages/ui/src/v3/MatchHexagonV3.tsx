@@ -31,14 +31,14 @@ const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_S
 /** 축 차례·이름은 클랜 카드와 같다 (`clanHexAxes`) */
 /* ⚠ ★2026-09-15★ — ④ 가 `tempo`(게임템포) 에서 `riflePower`(라이플화력) 로 바뀌었다 (사장님) */
 /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 (사장님) */
-const ORDER = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'trade'] as const
+const ORDER = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'firstBloodless'] as const
 const LABEL: Record<(typeof ORDER)[number], string> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
   riflePower: '라이플화력',
   sniperInfluence: '스나영향력',
-  trade: '백어택성공률(2턴)',
+  firstBloodless: '선짤없이 라운드 시작',
 }
 
 /** 이긴 팀 파랑 · 진 팀 빨강 (사장님) */

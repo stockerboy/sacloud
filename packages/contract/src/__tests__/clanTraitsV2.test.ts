@@ -28,11 +28,11 @@ import {
   sumClanHexTallies,
   tradeCountOf,
   firstBloodAxisV3,
+  tradeAxisV4,
   zoneCountOf,
   type ClanHexTallyLike,
   type ClanHexV2,
   type ClanHexV2AxisKey,
-  type ClanHexV2Config,
 } from '../clanTraitsV2'
 
 /** 여섯 축이 전부 `null` 인 tally — 「배틀로그는 읽었는데 아무것도 못 쟀다」 */
@@ -47,6 +47,7 @@ function emptyTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     sniperDuel: null,
     sniperInfluence: null,
     firstBlood: null,
+    firstBloodless: null,
     trade: null,
     outnumbered: null,
     save: null,
@@ -72,6 +73,8 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     sniperInfluence: { rounds: 20, won: 14, quietRounds: 20, quietWon: 8 },
     firstBlood: { rounds: 12, won: 7, tiedRounds: 2 },
     /* ⑥ 교환 — 창 넷을 다 다르게 잡았다. 창을 바꾸면 값이 바뀌는지 시험하려는 것이다 */
+    /* ⑥ 선짤없이 라운드 시작 — 14라운드 중 6번 먼저 맞음 → 1 − 6/14 = 57% */
+    firstBloodless: { rounds: 14, lost: 6, tiedRounds: 2 },
     trade: { deaths: 20, within3: 2, within5: 5, within10: 8, sameRound: 12 },
     sniperFight: {
       redRounds: 8,
@@ -295,7 +298,7 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(axisOf(hex, 'sniperDuel').raw).toBeNull()
     /* ⑤⑥ 은 재료 자체가 없어서 `battlelog` 다. **`foeSniper` 가 아니다** */
     expect(axisOf(hex, 'sniperInfluence').pending).toBe('battlelog')
-    expect(axisOf(hex, 'trade').pending).toBe('battlelog')
+    expect(axisOf(hex, 'firstBloodless').pending).toBe('battlelog')
   })
 
   /**
@@ -339,7 +342,7 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(axisOf(hex, 'riflePower').pending).toBeNull()
     expect(axisOf(hex, 'sniperDuel').pending).toBeNull()
     expect(axisOf(hex, 'sniperInfluence').pending).toBeNull()
-    expect(axisOf(hex, 'trade').pending).toBeNull()
+    expect(axisOf(hex, 'firstBloodless').pending).toBeNull()
     expect(axisOf(hex, 'outnumbered').raw).toBeCloseTo(0.4, 10)
     expect(axisOf(hex, 'save').raw).toBeCloseTo(0.4, 10)
   })
@@ -401,9 +404,15 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(axisOf(hex, 'sniperInfluence').text).toBe('+30.0%p')
     expect(axisOf(hex, 'sniperInfluence').raw).toBeCloseTo(0.6, 10)
     /* ⑥ 교환 — within5(5) / deaths(20). **5초가 사용자 확정이다** */
-    expect(axisOf(hex, 'trade').numerator).toBe(5)
-    expect(axisOf(hex, 'trade').denominator).toBe(20)
-    expect(axisOf(hex, 'trade').text).toBe('25%')
+    /*
+     * ⑥ ★선짤없이 라운드 시작★ (2026-09-16 사장님: «전체라운드를 분모에 두고
+     *   당한 라운드를 분자에 넣고 ★1에서 빼면★ 안당한 라운드가 나오잖아»).
+     *   14라운드 중 6번 먼저 맞았으니 안 당한 것은 8 → 8/14 = 57%.
+     *   ⚠ 옛 ⑥ 백어택은 `{ numerator: 5, denominator: 20, text: '25%' }` 였다.
+     */
+    expect(axisOf(hex, 'firstBloodless').numerator).toBe(8)
+    expect(axisOf(hex, 'firstBloodless').denominator).toBe(14)
+    expect(axisOf(hex, 'firstBloodless').text).toBe('57%')
 
     for (const axis of hex.axes) expect(axis.value).toBeNull()
   })
@@ -437,18 +446,20 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     })
 
     it('창을 바꾸면 같은 tally 에서 다른 값이 나온다', () => {
+      /*
+       * ⚠ 2026-09-16 에 백어택이 축에서 내려갔다 (선짤없이 라운드 시작과 교대).
+       *   ★셈은 그대로 돈다★ — 그래서 화면 축 대신 `tradeAxisV4` 를 직접 본다.
+       *   되살릴 때를 위한 시험이다.
+       */
       const tally = fullTally()
-      const at = (window: ClanHexV2Config['tradeWindow']) =>
-        axisOf(
-          buildClanHexV2Raw({ tally, matches: 1, config: { ...CLAN_HEX_V2_CONFIG, tradeWindow: window } }),
-          'trade',
-        ).numerator
+      const part = required(tally.trade)
+      const at = (window: 3 | 5 | 10) => tradeAxisV4(part, window)?.numerator
       expect(at(3)).toBe(2)
       expect(at(5)).toBe(5)
       expect(at(10)).toBe(8)
-      expect(at('sameRound')).toBe(12)
+      expect(tradeCountOf(part, 'sameRound')).toBe(12)
       /* 분모는 창과 무관하다 — 우리 팀원이 죽은 수다 */
-      expect(axisOf(buildClanHexV2Raw({ tally, matches: 1 }), 'trade').denominator).toBe(20)
+      expect(tradeAxisV4(part, 5)?.denominator).toBe(20)
     })
 
     it('`tradeCountOf` 가 분기의 유일한 자리다', () => {

@@ -2329,6 +2329,7 @@ function mockHexV2TallyOf(
     foeSnipers: 0,
     sniperDuel: null,
     sniperInfluence: null,
+    firstBloodless: null,
     firstBlood: null,
     trade: null,
     outnumbered: null,
@@ -2447,6 +2448,13 @@ function mockHexV2TallyOf(
     won: Math.round(siActive * Math.min(0.95, quietRate + gap)),
     quietRounds: siQuiet,
     quietWon: Math.round(siQuiet * quietRate),
+  }
+
+  /* ⑥ 선짤없이 라운드 시작 — 먼저 맞은 라운드는 3~6할쯤 (실측 범위) */
+  base.firstBloodless = {
+    rounds: Math.max(1, Math.round(rounds * 0.95)),
+    lost: Math.round(rounds * rng.float(0.35, 0.6, 3)),
+    tiedRounds: Math.round(rounds * 0.045),
   }
 
   /* 첫 킬이 없는 라운드가 있으므로 분모는 라운드보다 조금 작다 */
