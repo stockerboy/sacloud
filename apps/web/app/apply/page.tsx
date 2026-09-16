@@ -8,6 +8,17 @@ import { ApplyScreen } from './ApplyScreen'
  */
 export const metadata = { title: '리그 참가 신청' }
 
-export default function ApplyPage() {
-  return <ApplyScreen />
+/**
+ * ★`?kind=` 를 받는다★ (2026-09-16 사장님 «리그참가신청버튼을 각 리그별로»).
+ * 첫 화면의 리그별 단추가 종류를 실어 보내면 그 칸이 미리 골라진 채 열린다.
+ * Next 15 에서 `searchParams` 는 ★약속(Promise)★ 이다 — 기다려서 읽는다.
+ */
+export default async function ApplyPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const q = await searchParams
+  const kind = typeof q.kind === 'string' ? q.kind : null
+  return <ApplyScreen initialKind={kind} />
 }

@@ -31,6 +31,7 @@ import { ApiError, apiGet } from '@/lib/api'
 import { HomeLeagueTiles } from './HomeLeagueTiles'
 import { HomeTopPlayers } from './HomeTopPlayers'
 import { HomeAnalyzedMatches } from './HomeAnalyzedMatches'
+import { HomeLeagueFeatures } from './HomeLeagueFeatures'
 
 /**
  * 홈 윗머리 — `0 로고 · 1 통합검색 · 2 리그 바로가기`.
@@ -51,6 +52,16 @@ import { HomeAnalyzedMatches } from './HomeAnalyzedMatches'
  * 대상은 `/league/{slug}/rank/player` — **개인랭킹**이다. `/league/{slug}` 로 보내면
  * 리그홈(`/home/info`)으로 한 번 더 튕긴다.
  */
+/**
+ * ★첫 화면 가운데 칸에 무엇을 둘 것인가★ (2026-09-16 사장님).
+ *
+ *   `true`  — 최근 분석 완료 경기 (2026-09-12 ~ 09-16)
+ *   `false` — ★리그 셋과 기능 소개★ (지금)
+ *
+ * 옛 칸을 지우지 않는다 (`CLAUDE.md` 1-4). 한 줄로 되돌아간다.
+ */
+const HOME_RECENT_ON: boolean = false
+
 const LEAGUE_SHORTCUTS = FEATURED_LEAGUES.filter(
   (league) => !isLeaguePreparing(league.href.split('/')[2] ?? ''),
 ).map((league) => ({ label: league.label, href: `${league.href}/rank/player` }))
@@ -271,7 +282,19 @@ export function HomeSearch() {
       */}
       {/* ⚠ 2026-09-12 — 「부문별 1위」를 「최근 분석 완료 경기」로 바꿨다 (사장님).
           HomeTopPlayers 는 지우지 않았다 (CLAUDE.md 1-4) */}
-      <HomeAnalyzedMatches />
+      {/*
+        ⚠ ★2026-09-16 — 「최근 경기」를 내리고 ★리그 셋★ 을 올렸다★ (사장님:
+          «메인화면에 최근경기 없애고 pl ipl 열산리그 세개로 카텍 나눠서 클릭하면
+           모든기능 (…) 깔아놓고 리그별로 제공하는 기능별 예시 전부 보여주고
+           제공되지 않는 기능은 미제공 이라고 해줘»).
+
+          ★왜 바꿨나★ — 「최근 경기」는 ★이미 우리를 아는 사람★ 만 쓸 수 있는 칸이었다.
+          처음 온 사람은 이 사이트가 무엇을 해 주는지 첫 화면에서 알 길이 없었다.
+
+          ★지우지 않는다★ (`CLAUDE.md` 1-4) — `HOME_RECENT_ON` 을 `true` 로 두면
+          최근 경기가 그대로 돌아온다. 파일도 import 도 남아 있다.
+      */}
+      {HOME_RECENT_ON ? <HomeAnalyzedMatches /> : <HomeLeagueFeatures />}
     </section>
   )
 }

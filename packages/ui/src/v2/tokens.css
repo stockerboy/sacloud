@@ -314,6 +314,16 @@
 .sac-v2 .v2-drawer {
   background: #0b1220;
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
+  /*
+   * ⚠ ★이 한 줄이 없으면 서랍 글자를 눌러도 아무 일이 없다★ (2026-09-16 사장님이 잡으심).
+   *   아래 v3 껍데기가 `.v2-topbar` 를 `pointer-events: none` 으로 만들고
+   *   ★둥근 카드(`__inner`)만★ 되살린다. 서랍은 그 카드 밖이라 되살림을 못 받았다.
+   */
+  pointer-events: auto;
+  /* 카드 바깥으로 흘러도 띠 안에 얌전히 눕는다 — 둥근 카드와 결을 맞춘다 */
+  border-radius: 14px;
+  overflow: hidden;
+  margin-top: 8px;
 }
 
 /** ★햄버거★ — 선 셋. 누름칸은 44px 로 손가락 크기를 지킨다 */

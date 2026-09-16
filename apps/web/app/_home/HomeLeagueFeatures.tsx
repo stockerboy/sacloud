@@ -1,0 +1,287 @@
+'use client'
+
+import Link from 'next/link'
+import { useState } from 'react'
+import {
+  LEAGUE_FEATURES,
+  leagueFeature,
+  leagueFeatureCount,
+  leagueFeatureEndingCount,
+} from '@sacloud/contract'
+
+/**
+ * ★첫 화면의 주인공 — 리그 셋과 «무엇을 주는가»★ (2026-09-16 사장님).
+ *
+ * > «메인화면에 최근경기 없애고 ★pl ipl 열산리그 세개로 카텍 나눠서★ 클릭하면
+ * >  모든기능(경기분석 킬뎃그래프, 기록카드 플레이어분석 클랜분석등등) 깔아놓고
+ * >  리그별로 제공하는 기능별 예시 전부 보여주고 ★제공되지 않는 기능은 미제공★ 이라고
+ * >  해줘 그리고 ★마지막에 리그참가신청버튼★ 을 줘 각 리그별로»
+ *
+ * ── 무엇이 바뀌었나
+ *   여태 첫 화면은 «최근 경기» 를 걸어 ★이미 우리를 아는 사람★ 만 쓸 수 있었다.
+ *   처음 온 사람은 이 사이트가 무엇을 해 주는지 알 길이 없었다.
+ *   이제 첫 화면이 ★리그를 고르게 하고, 고르면 받는 것을 전부 세어 보여 준다.★
+ *
+ * ── ★미제공을 감추지 않는다★
+ *   리그마다 주는 게 다르다. 없는 것을 빼 버리면 «왜 내 리그엔 클랜랭킹이 없지» 를
+ *   화면에서 알 수 없다. 그래서 ★여덟 줄을 늘 같은 차례로 다 그리고★ 안 주는 줄만
+ *   흐리게 «미제공» 을 붙인다. 어느 리그를 눌러도 줄 수와 차례가 같아 눈이 안 흔들린다.
+ *
+ * ── 어디서 «주는가» 를 아나
+ *   `packages/contract/src/leagueFeatures.ts` 한 곳이다. 이 화면은 표만 읽는다.
+ *
+ * ── 왜 한 화면에서 탭으로 바뀌나
+ *   리그마다 페이지를 따로 두면 셋을 ★견주어 볼 수가 없다.★ 사장님이 «세개로 카텍
+ *   나눠서 클릭하면» 이라 하신 대로 한 자리에서 눌러 갈아 끼운다.
+ */
+
+/**
+ * ★곧 끊기는 기능의 색★ (2026-09-16 사장님: «전부 빨갛게 잘보이게»).
+ * 리그 강조색과 섞이면 안 된다 — IPL 의 강조색이 파랑이라 경고가 묻혔다.
+ */
+const WARN = 'var(--v2-red, #e04b5a)'
+
+/** 리그 강조색 — `tokens.css` 의 `.sac-spl`·`.sac-ipl`·`.sac-sanply` 와 같은 값이다 */
+const TONE: Readonly<Record<string, string>> = {
+  supply: 'var(--v2-red, #e04b5a)',
+  nolink: 'var(--v2-blue, #5b8dff)',
+  sanply: 'var(--v2-green, #3fb27f)',
+}
+
+interface Pick {
+  slug: string
+  /** 화면에 적는 이름 */
+  label: string
+  /** 한 줄 부제 */
+  sub: string
+  /** 참가 신청 화면이 미리 골라 둘 종류 (`APPLICATION_KINDS` 의 key) */
+  applyKind: string
+}
+
+/**
+ * 차례는 ★경쟁전이 먼저★ 다 — 서랍(`MOBILE_NAV_GROUPS`)과 같은 순서다.
+ * `applyKind` 는 `contract/entities/leagueApplication.ts` 의 key 그대로다.
+ * ★key 를 새로 짓지 않는다★ — 이미 들어온 신청서가 그 값을 들고 있다.
+ */
+/* 튜플로 적는다 — 첫 칸이 ★반드시 있다★ 를 타입이 알아야 기본값에 물음표가 안 붙는다 */
+const PICKS: readonly [Pick, Pick, Pick] = [
+  { slug: 'supply', label: 'PL', sub: '경쟁전 · 구 서플라이', applyKind: 'llm-new' },
+  { slug: 'nolink', label: 'IPL', sub: '일반전 · 무소속 리그', applyKind: 'ipl-new' },
+  { slug: 'sanply', label: '열산리그', sub: '일반전 · 고용 클랜', applyKind: 'ysl-new' },
+]
+
+/** 경고 제목 — 글귀를 화면 한가운데 적지 않는다 */
+const IPL_END_TITLE = (league: string, n: number): string =>
+  `${league} 은 10/1 부터 ${n}가지 기능이 제공되지 않습니다`
+
+export function HomeLeagueFeatures() {
+  const [slug, setSlug] = useState<string>('supply')
+  const pick = PICKS.find((p) => p.slug === slug) ?? PICKS[0]
+  const tone = TONE[pick.slug] ?? 'var(--v2-blue, #5b8dff)'
+  const given = leagueFeatureCount(pick.slug)
+  /** 곧 끊기는 기능 수 — 0 이면 경고 줄을 안 그린다 */
+  const ending = leagueFeatureEndingCount(pick.slug)
+
+  return (
+    <section
+      aria-label="리그 고르기"
+      className="mx-auto mt-[58px] w-full max-w-[940px] max-md:mt-[38px]"
+    >
+      {/* ── 리그 셋 ─────────────────────────────────────── */}
+      <div
+        role="tablist"
+        aria-label="리그"
+        className="grid grid-cols-3 gap-[10px] max-md:gap-[6px]"
+      >
+        {PICKS.map((p) => {
+          const on = p.slug === pick.slug
+          const t = TONE[p.slug] ?? 'var(--v2-blue, #5b8dff)'
+          return (
+            <button
+              key={p.slug}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => setSlug(p.slug)}
+              className="flex flex-col items-center gap-[4px] border px-[10px] py-[15px] text-center transition-colors duration-100 max-md:px-[4px] max-md:py-[12px]"
+              style={{
+                /* 고른 칸만 제 리그 색으로 선다. 나머지는 한 겹 죽인다 */
+                borderColor: on ? t : 'var(--v2-head-divider, #1e2637)',
+                /*
+                 * ★불투명에 가깝게 깐다★ — 첫 화면은 뒤에 밤하늘 사진이 깔려 있다.
+                 *   비워 두면 PC 에서 부제가 구름에 묻혀 안 읽혔다 (실측).
+                 */
+                background: on ? 'rgba(14, 22, 40, 0.94)' : 'rgba(9, 14, 24, 0.82)',
+              }}
+            >
+              <span
+                className="text-[17px] font-bold max-md:text-[14.5px]"
+                style={{ color: on ? t : 'var(--v2-text-dim, #7b86a0)' }}
+              >
+                {p.label}
+              </span>
+              <span className="text-[11.5px] text-[var(--v2-text-dim)] max-md:text-[10.5px]">
+                {p.sub}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/*
+        ── 고른 리그가 주는 것 ────────────────────────────
+        ★어두운 판 위에 올린다★ — 첫 화면 뒤에는 밤하늘 사진이 깔려 있어서
+        판이 없으면 PC 에서 목록 글자가 구름에 묻힌다 (실측).
+      */}
+      <div
+        className="mt-[10px] border border-[var(--v2-head-divider)] px-[18px] pb-[18px] pt-[16px] max-md:mt-[8px] max-md:px-[13px] max-md:pb-[14px] max-md:pt-[13px]"
+        style={{ background: 'rgba(9, 14, 24, 0.86)' }}
+      >
+      <div className="flex items-baseline justify-between gap-[10px]">
+        <div className="text-[15px] font-bold text-[var(--v2-text-strong)] max-md:text-[13.5px]">
+          <span style={{ color: tone }}>{pick.label}</span> 에서 볼 수 있는 것
+        </div>
+        <div className="shrink-0 text-right text-[12px] text-[var(--v2-text-ghost)] max-md:text-[11px]">
+          {LEAGUE_FEATURES.length}가지 중 <span className="num">{given}</span>가지 제공
+          {/* ★곧 끊기면 그 뒤도 같이 적는다★ — 안 그러면 위 숫자가 경고와 어긋나 보인다 */}
+          {ending > 0 ? (
+            <span className="block" style={{ color: WARN, fontWeight: 700 }}>
+              10/1부터 <span className="num">{given - ending}</span>가지
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <ul className="mt-[12px] border-t border-[var(--v2-head-divider)]">
+        {LEAGUE_FEATURES.map((f) => {
+          const state = leagueFeature(pick.slug, f.key)
+          /*
+           * ★안 주는 줄도 지우지 않는다★ — 빠지면 «왜 없는지» 를 화면에서 알 수 없다.
+           * 대신 한 겹 죽이고 «미제공» 딱지와 까닭을 붙인다.
+           */
+          return (
+            <li
+              key={f.key}
+              className="flex items-center gap-[12px] border-b border-[var(--v2-head-divider)] py-[13px] max-md:gap-[9px] max-md:py-[11px]"
+            >
+              {/* 주는가 — 리그 색 점 / 안 주면 빈 점 */}
+              <span
+                aria-hidden
+                className="h-[7px] w-[7px] shrink-0 rounded-full"
+                style={{
+                  background: state.given ? tone : 'transparent',
+                  boxShadow: state.given ? 'none' : 'inset 0 0 0 1px var(--v2-text-ghost, #5c6580)',
+                }}
+              />
+
+              <div className="min-w-0 flex-1">
+                <div
+                  className="text-[14px] font-bold max-md:text-[13px]"
+                  style={{
+                    color: state.given
+                      ? 'var(--v2-text-strong, #e8edf7)'
+                      : 'var(--v2-text-ghost, #5c6580)',
+                  }}
+                >
+                  {f.label}
+                </div>
+                <div
+                  className="mt-[3px] text-[12px] max-md:text-[11px]"
+                  style={{
+                    /* ★곧 끊기는 줄은 빨강★ — 사장님: «전부 빨갛게 잘보이게» */
+                    color: state.endsOn
+                      ? WARN
+                      : state.given
+                        ? 'var(--v2-text-dim, #7b86a0)'
+                        : 'var(--v2-text-ghost, #5c6580)',
+                    fontWeight: state.endsOn ? 700 : 400,
+                  }}
+                >
+                  {/*
+                   * 세 갈래다 —
+                   *   ★곧 끊긴다★ 오늘은 있지만 그날부터 없다 (빨강)
+                   *   준다        무엇인지 설명한다
+                   *   안 준다     ★까닭★ 을 적는다
+                   */}
+                  {state.endsOn
+                    ? `${state.endsOn}부터 ${pick.label} 리그에는 제공되지 않는 기능입니다`
+                    : state.given
+                      ? f.note
+                      : (state.why ?? '이 리그에서는 제공하지 않습니다')}
+                </div>
+              </div>
+
+              {/* 오른쪽 — 보러 가기 / 미제공 딱지 */}
+              {state.endsOn ? (
+                /* ★오늘은 있다★ — 그래서 링크를 그대로 걸되 딱지를 빨갛게 붙인다 */
+                <Link
+                  href={state.href ?? '#'}
+                  className="shrink-0 whitespace-nowrap border px-[7px] py-[3px] text-[11px] font-bold max-md:text-[10px]"
+                  style={{ color: WARN, borderColor: WARN }}
+                >
+                  {state.endsOn} 종료
+                </Link>
+              ) : state.given && state.href !== null ? (
+                <Link
+                  href={state.href}
+                  className="shrink-0 whitespace-nowrap text-[12px] font-bold max-md:text-[11px]"
+                  style={{ color: tone }}
+                >
+                  보기 →
+                </Link>
+              ) : (
+                <span className="shrink-0 whitespace-nowrap border border-[var(--v2-head-divider)] px-[7px] py-[3px] text-[11px] text-[var(--v2-text-ghost)] max-md:text-[10px]">
+                  미제공
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+
+      {/*
+       * ── ★곧 끊기는 기능이 있으면 크게 알린다★ ─────────────
+       *   사장님: «10/1 이후제공 안되는데 보여주는건 전부 다 (…) 이런식으로 써놔
+       *   ★PL 참가하고싶게끔★». 그래서 경고로 끝내지 않고 ★갈 곳★ 을 같이 준다.
+       */}
+      {ending > 0 ? (
+        <div
+          className="mt-[18px] border px-[15px] py-[13px] max-md:mt-[14px] max-md:px-[12px] max-md:py-[11px]"
+          style={{ borderColor: WARN, background: 'rgba(224, 75, 90, 0.07)' }}
+        >
+          <div
+            className="text-[13.5px] font-bold max-md:text-[12.5px]"
+            style={{ color: WARN }}
+          >
+            {IPL_END_TITLE(pick.label, ending)}
+          </div>
+          <div className="mt-[5px] text-[12px] leading-[1.6] text-[var(--v2-text-dim)] max-md:text-[11.5px]">
+            같은 기록을 <b style={{ color: TONE.supply }}>PL</b> 에서는 계속 보실 수 있습니다.
+            래더 점수와 클랜 랭킹도 <b style={{ color: TONE.supply }}>PL</b> 에만 있습니다.
+          </div>
+          <Link
+            href="/apply?kind=llm-new"
+            className="mt-[11px] inline-flex items-center border px-[13px] py-[8px] text-[12.5px] font-bold max-md:text-[12px]"
+            style={{ borderColor: TONE.supply, color: TONE.supply }}
+          >
+            PL 참가 신청하기 →
+          </Link>
+        </div>
+      ) : null}
+
+      {/*
+       * ── 마지막은 참가 신청 ───────────────────────────────
+       *   사장님: «마지막에 리그참가신청버튼을 줘 ★각 리그별로★».
+       *   `?kind=` 로 종류를 실어 보내면 신청 화면이 그 칸을 미리 골라 둔다.
+       */}
+      <Link
+        href={`/apply?kind=${pick.applyKind}`}
+        className="mt-[20px] flex items-center justify-center border py-[15px] text-[15px] font-bold transition-opacity duration-100 max-md:mt-[16px] max-md:py-[13px] max-md:text-[14px]"
+        style={{ borderColor: tone, color: tone }}
+      >
+        {pick.label} 참가 신청하기
+      </Link>
+      </div>
+    </section>
+  )
+}

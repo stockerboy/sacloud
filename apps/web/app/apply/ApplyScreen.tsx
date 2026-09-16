@@ -53,10 +53,17 @@ const TONE: Readonly<Record<string, string>> = {
 
 type PickedClan = { slug: string; name: string; mark: { bg: string | null; front: string | null } }
 
-export function ApplyScreen() {
+/**
+ * `initialKind` — 첫 화면의 ★리그별 신청 버튼★ 이 실어 보낸 종류 (2026-09-16 사장님).
+ * 없거나 모르는 값이면 `null` 로 떨어져 여태처럼 «고르세요» 로 연다.
+ * ★지어내지 않는다★ — `APPLICATION_KINDS` 에 있는 key 만 받아들인다.
+ */
+export function ApplyScreen({ initialKind = null }: { initialKind?: string | null }) {
   const ready = useApiReady()
 
-  const [kind, setKind] = useState<ApplicationKindKey | null>(null)
+  const [kind, setKind] = useState<ApplicationKindKey | null>(
+    () => APPLICATION_KINDS.find((k) => k.key === initialKind)?.key ?? null,
+  )
   const [clan, setClan] = useState<PickedClan | null>(null)
   /** 명단에 없어 직접 적는 중인가 */
   const [manual, setManual] = useState(false)
