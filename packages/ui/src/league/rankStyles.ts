@@ -27,7 +27,20 @@ export const HEAD =
 
 /** 표 본문 한 줄. 배경 없음 — 행 구분은 아래 실선 1px 뿐이다 */
 export const ROW =
-  'flex items-center border-b border-b-line-soft px-4 py-3 text-base text-text last:border-b-0 max-md:px-3 max-md:py-[0.55rem] max-md:text-sm'
+  /*
+   * ⚠ ★2026-09-16 — 폰 글자를 키웠다★ (사장님: «랭킹글씨 맞춰달라고 했잖아
+   *   클랜랭킹 글자크기로 맞춰줘»).
+   *
+   *   ★실측부터 했다★ — 개인랭킹 닉네임도 클랜랭킹 클랜명도 ★둘 다 13.125px★ 로
+   *   이미 같았다 (CDP computed style). 달라 보인 까닭은 ★색★ 이다 —
+   *   개인랭킹 닉네임은 순위색(노랑)이라 어두운 바탕에서 가늘어 보이고,
+   *   클랜랭킹 클랜명은 흰색이라 또렷하다.
+   *
+   *   크기를 «맞추는» 것으로는 할 일이 없으므로, 사장님이 작다고 느끼신 쪽을 따라
+   *   ★랭킹 표 글자를 함께 키운다★ — 13.125 → 14.25px. 둘은 여전히 같다.
+   *   옛 값은 `max-md:text-sm` 이다.
+   */
+  'flex items-center border-b border-b-line-soft px-4 py-3 text-base text-text last:border-b-0 max-md:px-3 max-md:py-[0.55rem] max-md:text-[0.95rem]'
 
 /** 표 안의 클랜마크 — 좁은 화면에서만 줄인다 (모바일 행 높이 36px 계산의 기준) */
 export const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'

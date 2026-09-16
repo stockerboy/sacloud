@@ -673,14 +673,15 @@ export function PlayerRankTable({
                   </div>
                   {row.clan ? (
                     <Link
-                      className="-my-1.5 mt-0.5 block truncate py-1.5 text-[0.72rem] leading-none text-meta hover:text-text-strong"
+                      /* ⚠ 2026-09-16 — 10.8 → 11.7px (사장님: 랭킹 글씨를 키움). 옛 값 `text-[0.72rem]` */
+                      className="-my-1.5 mt-0.5 block truncate py-1.5 text-[0.78rem] leading-none text-meta hover:text-text-strong"
                       href={leagueClanPath(leagueSlug, row.clan.slug)}
                       title={row.clan.name}
                     >
                       {row.clan.name}
                     </Link>
                   ) : (
-                    <span className="mt-0.5 block truncate text-[0.72rem] leading-none text-faint">
+                    <span className="mt-0.5 block truncate text-[0.78rem] leading-none text-faint">
                       무소속
                     </span>
                   )}
