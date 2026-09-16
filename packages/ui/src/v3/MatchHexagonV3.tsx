@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ClanHexagonV2 } from '@sacloud/contract'
 import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
 import { penDash, useDrawIn } from './seasonPlot'
+import { matchVerdict, matchVerdictText } from './matchVerdict'
 
 const RING_STEP = 10
 const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_STEP)
@@ -123,6 +124,8 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
   useEffect(() => { if (done) setFlash((f) => f + 1) }, [done])
 
   const pairs = pairsOf(won, lost)
+  /* ★겹쳐 볼 때만 «갈린 자리» 를 적는다★ — 한 팀만 보고 있으면 견줄 상대가 없다 */
+  const verdict = only === null ? matchVerdict(won, lost) : null
   const showWon = only !== 'lost'
   const showLost = only !== 'won'
   const wonArea = areaOf(pairs.map((p) => p.wonValue))
@@ -228,6 +231,28 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
           })}
         </g>
       </svg>
+
+      {/*
+        ★이 판이 어디서 갈렸나★ (2026-09-16 사장님: «걍 진팀이 진 이유를 알면 되는데»).
+          여섯 축을 나란히 두면 유저가 스스로 해석해야 하는데, 퍼센트가 표본을 감춰서
+          «다 압도했는데 왜 졌지» 가 된다. 그래서 ★답을 우리가 써 준다.★
+          표본이 얇은 축은 후보가 아니고, 뽑을 게 없으면 아무 말도 안 한다.
+      */}
+      {verdict !== null ? (
+        <div
+          style={{
+            margin: '2px 12px 10px',
+            padding: '9px 12px',
+            borderLeft: `3px solid ${WON.fill}`,
+            background: 'rgba(91,141,255,.07)',
+            fontSize: 11.5,
+            lineHeight: 1.6,
+            color: V3.text,
+          }}
+        >
+          {matchVerdictText(verdict, wonName, lostName)}
+        </div>
+      ) : null}
 
       {/* 범례 — 어느 색이 어느 클랜인가 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
