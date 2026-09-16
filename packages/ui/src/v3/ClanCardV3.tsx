@@ -14,6 +14,7 @@ import { CLAN_HEX_V2_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKe
 import { floorColor, rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
+import { markAccentOf, markColorsOf, markRailOf } from './clanMarkColors'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
 import { ASTRA_STYLE, V3, cardStyle, fmt, pct1 } from './tokens'
@@ -27,6 +28,15 @@ const bandStyle: CSSProperties = {
   gap: 13,
   padding: '14px 18px',
   borderBottom: `1px solid ${V3.divider}`,
+}
+/**
+ * ★둥근 문장 뒤 두째 색★ (2026-09-17 사장님) — 마크의 두째 색을
+ * 띄 오른쪽 끝에 아주 엷게 깔아 카드 전체가 한 클랜의 것으로 읽히게 한다.
+ * 두째 색이 없으면 그리지 않는다.
+ */
+export function markWash(second: string | undefined): CSSProperties | null {
+  if (second === undefined) return null
+  return { position: 'absolute', right: 0, top: 0, bottom: 0, width: '38%', background: `linear-gradient(270deg, ${second}12, transparent)`, pointerEvents: 'none' }
 }
 const traitBodyStyle: CSSProperties = {
   position: 'relative',
@@ -151,6 +161,17 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
       ? plateRank <= 3 ? 'fire' : plateRank <= 6 ? 'dark' : 'light'
       : null
   const theme = clanThemeOf(data.clan.slug)
+  /*
+   * ★마크에 들어 있는 색으로 카드를 꾸민다★ (2026-09-17 사장님:
+   *   «클랜마크에 들어간 3가지색 혹은 2가지 색을 이용해서 조화롭게»).
+   *
+   *   `CLAN_THEMES` 는 한 색을 명암만 다르게 펼친 것이라 ★두 색을 못 쓴다.★
+   *   디럭스를 «검·흰» 으로 그리려면 색이 둘 이상 있어야 한다.
+   *   마크가 없는 클랜은 전부 `null` 이라 ★지금 모습 그대로★ 떨어진다.
+   */
+  const rail = markRailOf(data.clan.slug)
+  const accent = markAccentOf(data.clan.slug)
+  const marks = markColorsOf(data.clan.slug)
   const rank = data.rank
   const ink = rank === null ? V3.textMuted : rankColor(rank)
   const games = data.win + data.lose
@@ -190,12 +211,24 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
     { label: '최다연승', value: data.max_win_streak === null ? '-' : `${fmt(data.max_win_streak)}연승`, sub: `${fmt(games)}전 중`, color: data.max_win_streak === null ? V3.textMuted : V3.gold },
   ]
   return (
-    <section style={{ ...cardStyle, marginTop: 16, borderTop: `2px solid ${theme.edge}` }}>
+    <section
+      style={{
+        ...cardStyle,
+        marginTop: 16,
+        /* 마크 색이 없으면 예전대로 한 줄 테두리다 */
+        borderTop: rail === null ? `2px solid ${theme.edge}` : 'none',
+      }}
+    >
+      {/* ★마크 색 띄★ — 카드 맨 위 3px. 자리를 안 먹고 클랜을 바로 알려 준다 */}
+      {rail === null ? null : (
+        <span aria-hidden style={{ display: 'block', height: 3, background: rail, borderRadius: '2px 2px 0 0' }} />
+      )}
       <div style={bandStyle} className="v3-band">
+        {markWash(marks[1]) === null ? null : <span aria-hidden style={markWash(marks[1]) as CSSProperties} />}
         <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <MarkCircle clan={data.clan} size={42} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-            <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.ink, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+            <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.ink, textShadow: `0 0 16px ${accent ?? theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
               {data.clan.name}
             </span>
             <span style={{ fontSize: 11, color: '#6f93b4', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
