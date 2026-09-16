@@ -27,7 +27,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail } from '@sacloud/contract'
 import { barracksPlayerUrl, leagueScreen, showsTier } from '@sacloud/contract'
-import { rankColor, statColor } from './rankColors'
+import { rankColorOf, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { strengthAxes } from './playerHexAxes'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
@@ -269,7 +269,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               {RANK_ON_NAME_LINE && rank !== null ? (
                 <>
                   <span style={{ color: '#3a4560' }}>·</span>
-                  <RankText rank={rank} color={rankColor(rank) ?? V3.textMuted} />
+                  {/* ★비율 색★ — 표와 같은 규칙 (2026-09-17 무한 QA) */}
+                  <RankText rank={rank} color={rankColorOf(rank, rankTotal) ?? V3.textMuted} />
                   {rankTotal !== null ? <span style={{ color: V3.textGhost2, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>/ {fmt(rankTotal)}명</span> : null}
                 </>
               ) : null}
@@ -398,7 +399,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           label="순위"
           value={rank === null ? '-' : `${fmt(rank)}위`}
           sub={rankTotal === null ? null : rankSub(rankTotal)}
-          color={rank === null ? V3.textMuted : rankColor(rank) ?? V3.textStrong}
+          color={rank === null ? V3.textMuted : rankColorOf(rank, rankTotal) ?? V3.textStrong}
         />
       </div>
 

@@ -30,8 +30,18 @@ const SEASON_PODIUM_ON = false
 /**
  * ★개인랭킹 표를 본문 폭까지 펼 것인가★ (2026-09-17 무한 QA).
  * `false` 로 두면 옛 시안 폭(900px)으로 돌아간다 (`CLAUDE.md` 1-4).
+ *
+ * ⚠ ★폈다가 되돌렸다★ — 펌더니 빈칸이 ★늘었다★ (2026-09-17 실측).
+ *   1440×900 — 표 상자 900 → 1132px 로 넓어졌는데
+ *   닉네임 끝과 승률 사이가 ★517 → 814px★ 로 벌어졌다.
+ *   바깥 여백이 줄 안쪽으로 옮겨 갔을 뿐이다.
+ *   사장님이 짚으신 «빈공간» 이 더 커졌으므로 되돌렸다.
+ *
+ *   ★메울 값을 세우기 전까지는 좁은 폭이 낫다.★
+ *   후보는 `PlayerRankRow` 의 `score`·`hex` 둘인데 둘 다 이 리그가
+ *   일부러 칸을 내린 값이라 사장님 판단이 필요하다.
  */
-const TABLE_FULL_WIDTH: boolean = true
+const TABLE_FULL_WIDTH: boolean = false
 
 /**
  * 「개인랭킹」 `/league/{slug}/rank/player`.

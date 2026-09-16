@@ -1852,6 +1852,22 @@
     flex: 1 1 100% !important;
   }
   .v3-clankpis__chips { grid-column: 1 / -1; padding-bottom: 8px !important; }
+  /*
+   * ★마지막 칸이 혼자 서면 한 줄을 다 쓴다★ (2026-09-17 무한 QA).
+   *
+   *   래더가 빠진 리그는 KPI 가 셋(승률·순위·최다연승)이라 ★마지막 하나가 혼자 서고
+   *   오른쪽 절반이 통째로 비었다.★ 사장님이 짚으신 공간낭비다.
+   *
+   *   ⚠ ★같은 뜻의 규칙이 `.v3-kpi` 에도 있는데 이 카드에는 안 걸린다★ —
+   *     ① 이 카드의 격자 이름은 `.v3-clankpis` 다 (`.v3-kpi` 는 ★선수★ 카드다)
+   *     ② 여기는 맨 앞에 칩 줄(`__chips`)이 ★한 줄을 통째로★ 쓰고 있어
+   *        아이 수가 «칩 1 + KPI n» 이다. 그래서 KPI 가 셋일 때 마지막은
+   *        ★넷째 아이(짝수)★ 다 — `:nth-child(odd)` 로는 절대 안 잡힌다.
+   *
+   *   ★칩 줄은 늘 그려진다★ (`ClanCardV3` 에서 조건 없이 나온다) — 그래서 이 셈이 성립한다.
+   *   KPI 가 넷이면 마지막은 다섯째(홀수)라 안 걸리고 2×2 가 그대로다.
+   */
+  .v3-clankpis > div:last-child:nth-child(even) { grid-column: 1 / -1 !important; }
   .v3-clankpi {
     display: flex !important;
     flex-direction: column;
