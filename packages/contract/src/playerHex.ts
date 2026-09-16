@@ -74,7 +74,8 @@ export const PLAYER_HEX_BADGE: Record<TraitAxisKey, { sniper: string; rifle: str
    *   배지만 «선짤(1턴)»·«백어택성공률(2턴)» 이라 ★없는 축을 말하고 있었다★.
    *   ★새 별명을 지어내지 않는다★ — `outnumbered` 처럼 축 이름을 그대로 쓴다.
    */
-  survival: { sniper: '평균 사망 시간', rifle: '평균 사망 시간' },
+  /* ⚠ 2026-09-16 저녁 — ④ 가 «게임템포» 가 됐다 (사장님) */
+  survival: { sniper: '게임템포', rifle: '게임템포' },
   crack: { sniper: '크랙 성공', rifle: '크랙 성공' },
   /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
@@ -107,7 +108,7 @@ export const PLAYER_HEX_DESC: Record<TraitAxisKey, { sniper: string; rifle: stri
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   carry: { sniper: '수가 안 밀릴 때 낸 킬 (라운드당)', rifle: '수가 안 밀릴 때 낸 킬 (라운드당)' },
   /* ⚠ 2026-09-16 — ④⑤ 가 갈리면서 설명도 따라간다 (배지와 같은 함정이었다) */
-  survival: { sniper: '라운드 시작부터 죽기까지 (늦을수록 좋다)', rifle: '라운드 시작부터 죽기까지 (늦을수록 좋다)' },
+  survival: { sniper: '잡거나 죽기까지 걸린 시간 (짧을수록 빠르다)', rifle: '잡거나 죽기까지 걸린 시간 (짧을수록 빠르다)' },
   crack: { sniper: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)', rifle: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)' },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
 }
@@ -129,19 +130,22 @@ export const PLAYER_HEX_DESC_V1: Record<TraitAxisKey, { sniper: string; rifle: s
  *   ★초를 모르는 화면이 «50%» 라고 적고 있었다★ (`PlayerMatchHexV3`).
  *   화면마다 복사하지 않는다 — 클랜 육각도 `clanHexV2Text` 한 곳뿐이다.
  *
- * ── «2분 20초 중 1분 25초 사망» 으로 적는다 (2026-09-16 사장님)
+ * ── «2분 20초 중 34초» 로 적는다 (2026-09-16 사장님)
  *   > «우리는 평균적으로 죽은 시간을 봐야해 1분 25초에 죽음 > 2분20초 -55초»
  *
- *   «1분 25초» 만 적으면 그게 이른지 늦은지 알 수 없다. ★잣대(한 라운드)를 앞에★
- *   놓아야 «2분 20초짜리 라운드에서 1분 25초를 버텼다» 로 한 가지로 읽힌다.
+ *   «34초» 만 적으면 그게 빠른지 느린지 알 수 없다. ★잣대(한 라운드)를 앞에★
+ *   놓아야 «2분 20초짜리 라운드에서 34초 만에 갈렸다» 로 한 가지로 읽힌다.
  *   클랜 육각이 «2분 20초 중 1분 10초 종료» 로 이미 같은 모양을 쓴다 — 그 전례를 따른다.
+ *
+ * ⚠ ★«사망» 이라 적지 않는다★ (2026-09-16 저녁) — ④ 가 «게임템포» 가 되면서
+ *   ★잡은 시각도 같이 센다★. «사망» 이라 적으면 죽은 것만 잰다고 읽힌다.
  */
 export function playerHexValueText(
   unit: 'percent' | 'per_game' | 'seconds',
   value: number | null,
 ): string {
   if (value === null) return '측정중'
-  if (unit === 'seconds') return `${mmss(ROUND_FULL_SECONDS)} 중 ${mmss(value)} 사망`
+  if (unit === 'seconds') return `${mmss(ROUND_FULL_SECONDS)} 중 ${mmss(value)}`
   if (unit === 'per_game') return `${Number.isInteger(value) ? value : value.toFixed(1)}회`
   return `${Math.round(value * (value <= 1 ? 100 : 1))}%`
 }

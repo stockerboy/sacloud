@@ -233,10 +233,12 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
   })
 
   /* ⚠ 정정 2026-09-10 — 사장님: "선짤로 통일해". 옛 이름 `기회창출` 은 주석에만 남는다 */
-  /* ⚠ 옛 기대값 — `'선짤'` → `'선짤(1턴)'` → ★`'평균 사망 시간'`★ (2026-09-16 사장님) */
-  it('이름은 무기와 무관하게 `평균 사망 시간` 이다', () => {
+  /* ⚠ 옛 기대값 — `'선짤'` → `'선짤(1턴)'` → `'평균 사망 시간'` → ★`'게임템포'`★
+       (2026-09-16 저녁 사장님: «평균사망시간이라고 적지 말고 게임템포라고 적고
+        죽거나 잡은(라운드마다의 첫 킬) 시간을 평균내서») */
+  it('이름은 무기와 무관하게 `게임템포` 이다', () => {
     for (const weapon of [0, 1, null] as const) {
-      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'survival').label).toBe('평균 사망 시간')
+      expect(axisOf(buildPlayerTraits(rifleInput({ weapon })), 'survival').label).toBe('게임템포')
     }
   })
 

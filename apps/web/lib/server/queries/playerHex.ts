@@ -40,7 +40,8 @@ const AXIS_COLUMNS: Record<
   duel: { value: 'duel', pct: 'duelPct', rank: 'duelRank', total: 'duelTotal', unit: 'percent' },
   carry: { value: 'carry', pct: 'carryPct', rank: 'carryRank', total: 'carryTotal', unit: 'per_game' },
   /*
-   * ★평균 사망 시간★ (2026-09-16 사장님) — 단위가 ★초★ 다. «1분 27초» 로 적는다.
+   * ★게임템포★ (2026-09-16 저녁 사장님) — 단위가 ★초★ 다. «2분 20초 중 34초» 로 적는다.
+   *   ⚠ 옛 ④ 는 «평균 사망 시간» 이었다 (같은 칸·같은 단위, 재료만 갈렸다).
    * ⚠ DB 칸 이름은 `opening*` 그대로다 — 칸을 갈면 마이그레이션이 커지고,
    *   어느 판의 값인지는 `formulaVersion` 이 가른다.
    */

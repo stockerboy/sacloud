@@ -318,8 +318,8 @@ async function playersOfMany(
         total: a.total,
         unit:
           /*
-           * ★평균 사망 시간만 «초»★ 다 (2026-09-16 사장님).
-           * ⚠ 옛 ④ 선짤은 «판당 n.n회» 였다 — 축이 바뀌면 단위도 같이 바뀐다.
+           * ★게임템포만 «초»★ 다 (2026-09-16 저녁 사장님).
+           * ⚠ 옛 ④ — «평균 사망 시간»(초) · 그 전 — 선짤(판당 n.n회).
            */
           a.key === 'survival' ? ('seconds' as const) : ('percent' as const),
       })),

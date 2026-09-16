@@ -188,6 +188,13 @@ export interface PlayerHexInput {
    * 이 칸이 없던 옛 줄은 0 이고, 그때는 축이 `null` 이다 (0회라고 우기지 않는다).
    */
   crackKills?: number
+  /**
+   * ★게임템포의 재료★ (2026-09-16 사장님) — 라운드마다 «먼저 겪은 일» 까지의 초, 합.
+   * 값은 이걸 `tempoCount` 로 나눈 ★평균★ 이다. 이 칸이 없던 옛 줄은 `undefined` 고,
+   * 그때는 축이 `null` 이다 (0초라고 우기지 않는다).
+   */
+  tempoSeconds?: number
+  tempoCount?: number
   burstRounds: number
   /**
    * ★게임영향력의 재료★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한 값.
@@ -300,10 +307,23 @@ export function axisValuesOf(
      *   ⚠ 끝까지 산 라운드는 안 들어간다 — 이 값은 «죽을 때는 언제 죽었나» 다.
      *
      *   옛 ④ 선짤은 `input.firstKills / input.games` 였다 (`CLAUDE.md` 1-4).
+     *
+     * ⚠ ★2026-09-16 저녁 — 다시 «게임템포» 로 갈렸다★ (사장님:
+     *   «평균사망시간이라고 적지 말고 ★게임템포★ 라고 적고 죽거나 잡은(라운드마다의
+     *    첫 킬) 시간을 평균내서 그걸 게임템포 축으로 만든다 빨리 잡거나 죽을수록
+     *    게임템포가 빠른거야»).
+     *
+     *   ★왜 사망 시간만으로는 모자랐나★ — 죽은 라운드만 세니 끝까지 살아 3킬을
+     *   낸 라운드가 통째로 빠졌다. «잘한 라운드가 안 세어지는» 자리였다.
+     *   게임템포는 ★잡아도 센다★ — 내 첫 킬과 내 죽음 중 빠른 쪽이다.
+     *
+     *   ⚠ ★작을수록 빠르다★ — 줄 세울 때 부호를 뒤집는다 (`axisScoresOf`).
+     *     화면에 적는 값은 ★초 그대로★ 다. 뒤집은 값을 보여 주면 «-50초» 가 된다.
+     *   옛 사망 시간 셈은 `deathTimeValueV1()` 에 남아 있고 재료도 계속 쌓인다.
      */
     survival:
-      (input.deathCount ?? 0) > 0
-        ? Math.round(((input.deathSeconds ?? 0) / (input.deathCount as number)) * 10) / 10
+      (input.tempoCount ?? 0) > 0
+        ? Math.round(((input.tempoSeconds ?? 0) / (input.tempoCount as number)) * 10) / 10
         : null,
     /* ★5번 축은 «교환율»★ (2026-09-15 사장님) — 옛 «연속킬» 은 스위치로 돌아간다 */
     /*
@@ -357,6 +377,18 @@ export function axisValuesOf(
  * 주시면서 «거기서 잡은 것만» 으로 좁혔다 — 재료 `firstKills` 는 계속 쌓이므로
  * 이 함수로 언제든 옛 값을 되낼 수 있다 (`CLAUDE.md` 1-4).
  */
+/**
+ * ⚠ ★옛 ④ — 평균 사망 시간★ (2026-09-16 아침~저녁). 지우지 않는다.
+ *
+ * 죽은 라운드만 보고 «죽을 때는 언제 죽었나» 를 잰다. 재료(`deathSeconds`·
+ * `deathCount`)는 계속 쌓이므로 언제든 옛 값을 되낼 수 있다 (`CLAUDE.md` 1-4).
+ */
+export function deathTimeValueV1(input: PlayerHexInput): number | null {
+  return (input.deathCount ?? 0) > 0
+    ? Math.round(((input.deathSeconds ?? 0) / (input.deathCount as number)) * 10) / 10
+    : null
+}
+
 export function crackValueV1(input: PlayerHexInput): number | null {
   return input.games > 0 ? Math.round((input.firstKills / input.games) * 100) / 100 : null
 }
@@ -379,9 +411,18 @@ export function axisScoresOf(
    *   바꾸심). 옛 판은 무기별 기준선(`OPENING_BASELINE`)으로 나눠 스나·라플을
    *   한 줄에 세웠는데, 새 축은 ★아예 무기별로 견준다★ (`HEX_WEAPON_SCOPED_AXIS_KEYS`)
    *   — 나눌 필요가 없다. `OPENING_BASELINE` 은 지우지 않는다.
+   *
+   * ★④ 게임템포만 부호를 뒤집는다★ (2026-09-16 저녁 사장님: «빨리 잡거나 죽을수록
+   *   게임템포가 빠른거야»). 여섯 축 중 ★유일하게 작을수록 좋은 축★ 이다.
+   *   백분위(`percentileOf`)는 «클수록 위» 로만 세므로, 여기서 한 번 뒤집어
+   *   ★빠른 사람이 위★ 로 오게 한다. 화면 값은 안 건드린다 — 초 그대로 적는다.
    */
-  return axisValuesOf(input, weapon)
+  const v = axisValuesOf(input, weapon)
+  return { ...v, survival: v.survival === null ? null : -v.survival }
 }
+
+/** ★작을수록 좋은 축★ — 지금은 게임템포 하나뿐이다 (2026-09-16) */
+export const HEX_LOWER_IS_BETTER: readonly HexAxisKey[] = ['survival']
 
 /** 백분위 — 나보다 낮은 사람의 비율 × 100. 오름차순 정렬된 배열을 받는다 */
 export function percentileOf(sorted: readonly number[], v: number | null): number | null {
@@ -532,10 +573,17 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
     /* ⚠ 2026-09-16 — 무기별로 견주는 축이 둘이 됐다 (싸움 · 평균 사망 시간) */
     /* ⚠ 2026-09-16 — 무기별로 견주는 축이 셋이 됐다 (싸움 · 평균 사망 시간 · 크랙 성공) */
     const dist = { duel: [] as number[], survival: [] as number[], crack: [] as number[], winRate: [] as number[], kd: [] as number[] }
-    for (const { p, v, wr } of values) {
-      if (v.duel !== null) dist.duel.push(v.duel)
-      if (v.survival !== null) dist.survival.push(v.survival)
-      if (v.crack !== null) dist.crack.push(v.crack)
+    /*
+     * ⚠ ★분포도 «잣대»(`sc`)로 만든다★ — 통합 분포(`uni`)가 이미 그렇게 한다.
+     *
+     *   여기만 ★적는 값(`v`)★ 으로 만들고 있었다. 두 축이 같은 값이던 동안에는
+     *   티가 안 났는데, 2026-09-16 저녁에 ④ 가 «게임템포» 가 되면서 잣대만 부호를
+     *   뒤집게 됐다 — 분포는 +50 인데 찾는 값은 -50 이라 ★전원이 0%★ 가 된다.
+     */
+    for (const { p, sc, wr } of values) {
+      if (sc.duel !== null) dist.duel.push(sc.duel)
+      if (sc.survival !== null) dist.survival.push(sc.survival)
+      if (sc.crack !== null) dist.crack.push(sc.crack)
       if (wr !== null) dist.winRate.push(wr)
       if (p.kdRate !== null && p.kdRate !== undefined) dist.kd.push(p.kdRate)
     }

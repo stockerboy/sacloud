@@ -156,6 +156,15 @@ interface MatchTally {
   deathSeconds: number
   /** 위 합에 들어간 죽음의 수 */
   deathCount: number
+  /**
+   * ★게임템포★ — 라운드마다 «내가 먼저 겪은 일» 까지 걸린 초, 합 (2026-09-16 사장님).
+   *
+   * > «죽거나 잡은(라운드마다의 첫 킬) 시간을 평균내서 그걸 게임템포 축으로 만든다
+   * >  빨리 잡거나 죽을수록 게임템포가 빠른거야»
+   */
+  tempoSeconds: number
+  /** 위 합에 들어간 라운드 수 */
+  tempoCount: number
   aloneRounds: number
   aloneWon: number
   outRounds: number
@@ -166,7 +175,7 @@ interface MatchTally {
 
 const emptyTally = (): MatchTally => ({
   rounds: 0, kills: 0, firstKills: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
-  deathSeconds: 0, deathCount: 0,
+  deathSeconds: 0, deathCount: 0, tempoSeconds: 0, tempoCount: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
 })
 
@@ -504,6 +513,46 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         }
       }
       /*
+       * ★게임템포★ (2026-09-16 저녁 사장님).
+       *
+       * > «죽거나 잡은(라운드마다의 첫 킬) 시간을 평균내서 그걸 게임템포 축으로 만든다
+       * >  ★빨리 잡거나 죽을수록★ 게임템포가 빠른거야»
+       *
+       * ── 무엇을 재나
+       *   한 라운드에서 그 선수가 ★먼저 겪은 일★ 까지 걸린 초다 —
+       *   ★내가 낸 첫 킬★ 과 ★내가 죽은 시각★ 중 ★빠른 쪽★.
+       *   잡든 죽든 «판에 들어간 순간» 이라 둘을 한 자로 잰다.
+       *
+       * ── 평균 사망 시간과 무엇이 다른가 (④ 가 이것으로 갈렸다)
+       *   사망 시간은 ★죽은 라운드만★ 본다. 끝까지 살아 3킬을 낸 라운드는 빠진다 —
+       *   «잘한 라운드가 안 세어지는» 자리였다. 게임템포는 ★잡아도 센다★.
+       *
+       * ── 안 세는 라운드
+       *   킬도 없고 죽지도 않은 라운드는 ★안 센다★ — 그 선수에게 아무 일도 안 일어났다.
+       *   라운드 시작을 모르면 안 센다 (D-106).
+       */
+      if (startedAt !== undefined) {
+        const firstAt = new Map<string, number>()
+        const mark = (pid: string, at: number): void => {
+          /* 음수는 시각이 어긋난 줄이다 — 버린다 (사망 시간과 같은 규칙) */
+          if (at < 0) return
+          const had = firstAt.get(pid)
+          if (had === undefined || at < had) firstAt.set(pid, at)
+        }
+        for (const k of arr) {
+          const at = k.t - startedAt
+          const K = whoOf(mk, k.killer)
+          if (K) mark(K.pid, at)
+          const V = whoOf(mk, k.victim)
+          if (V) mark(V.pid, at)
+        }
+        for (const [pid, at] of firstAt) {
+          const t = tallyOf(mk, pid)
+          t.tempoSeconds += at
+          t.tempoCount += 1
+        }
+      }
+      /*
        * ★교환율★ (2026-09-15 사장님 «교환율로 해줘») — 동료가 죽은 직후 그 킬러를 되잡았나.
        *
        * 분자 `tradeKills`  동료가 죽고 ★5초 안★ 에 그 킬러를 잡은 횟수
@@ -782,6 +831,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rduellost: number
         deathseconds: number
         deathcount: number
+        temposeconds: number
+        tempocount: number
       }[]
     >`
       WITH mw AS (
@@ -816,6 +867,9 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              SUM(h."mateDeaths" * mw.w) AS matedeaths,
              SUM(h."deathSeconds" * mw.w) AS deathseconds,
              SUM(h."deathCount" * mw.w) AS deathcount,
+             -- ★게임템포★ — 라운드마다 «먼저 겪은 일» 까지의 초 (2026-09-16)
+             SUM(h."tempoSeconds" * mw.w) AS temposeconds,
+             SUM(h."tempoCount" * mw.w) AS tempocount,
              SUM(h."aloneRounds" * mw.w) AS alonerounds,
              SUM(h."aloneWon" * mw.w) AS alonewon,
              SUM(h."outRounds" * mw.w) AS outrounds,
@@ -906,6 +960,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         mateDeaths: h?.matedeaths ?? 0,
         deathSeconds: h?.deathseconds ?? 0,
         deathCount: h?.deathcount ?? 0,
+        tempoSeconds: h?.temposeconds ?? 0,
+        tempoCount: h?.tempocount ?? 0,
         aloneRounds: h?.alonerounds ?? 0,
         aloneWon: h?.alonewon ?? 0,
         outRounds: h?.outrounds ?? 0,
