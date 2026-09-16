@@ -30,6 +30,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CLAN_HEX_V2_AXIS_KEYS,
   CLAN_HEX_V2_AXIS_KEYS_V4,
+  CLAN_HEX_V2_MATCH_AXIS_KEYS,
   CLAN_HEX_V2_AXIS_LABELS,
   CLAN_HEX_V2_CONFIG,
   CLAN_HEX_V2_CONFIG_KILLER,
@@ -1203,5 +1204,56 @@ describe('normalizeByPercentile — 클랜 페이지 (D-235 Q8)', () => {
   it('축은 여전히 6개이고 순서가 같다', () => {
     const hex = normalizeByPercentile(sample(0.5), [])
     expect(hex.axes.map((axis) => axis.key)).toEqual([...CLAN_HEX_V2_AXIS_KEYS])
+  })
+})
+
+/**
+ * ★상대와 견줄 때 「경기 여섯 축」도 다 값을 받는가★ (2026-09-17).
+ *
+ * ── 실제로 났던 일
+ *   `normalizeAgainstFoe` 가 축 목록을 **`CLAN_HEX_V2_AXIS_KEYS`(클랜용 여섯)로 박아** 두고 있었다.
+ *   경기 육각이 「유리한 기회」(`openChance`)로 갈아탄 날, 그 축만 목록에 없어서
+ *   `value` 가 끝까지 `null` 로 남고 화면은 ★「없었음」★ 을 그렸다.
+ *
+ *   ★그림은 멀쩡해 보인다★ — 나머지 다섯이 멀쩡하니 한 칸만 주저앉을 뿐이다.
+ *   그래서 눈으로는 못 잡는다. 여기서 못 박는다.
+ */
+describe('★상대와 견주기★ — 경기 여섯 축이 다 값을 받는다 (2026-09-17)', () => {
+  const pair = () => {
+    const ours = buildClanHexV2Raw({ tally: fullTally(), matches: 1, axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS })
+    const foe = buildClanHexV2Raw({ tally: fullTally(), matches: 1, axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS })
+    return normalizeAgainstFoe(ours, foe)
+  }
+
+  it('여섯 축이 그대로 여섯이다', () => {
+    const [red] = pair()
+    expect(red.axes.map((a) => a.key)).toEqual([...CLAN_HEX_V2_MATCH_AXIS_KEYS])
+  })
+
+  it('★유리한 기회도 값을 받는다★ — 이 줄이 깨지면 화면에 「없었음」 이 뜬다', () => {
+    const [red, blue] = pair()
+    for (const hex of [red, blue]) {
+      const axis = hex.axes.find((a) => a.key === 'openChance')
+      expect(axis).toBeDefined()
+      expect(axis?.pending, '측정중으로 떨어졌다').toBeNull()
+      expect(axis?.value, '값이 안 매겨졌다').not.toBeNull()
+    }
+  })
+
+  it('경기 여섯 축 중 하나도 `value` 가 null 이 아니다', () => {
+    const [red, blue] = pair()
+    for (const hex of [red, blue]) {
+      for (const axis of hex.axes) {
+        expect(axis.value, `${axis.key} 가 null 이다`).not.toBeNull()
+      }
+    }
+  })
+
+  it('클랜 여섯 축도 그대로 다 값을 받는다 — 옛 길이 안 깨졌다', () => {
+    const ours = buildClanHexV2Raw({ tally: fullTally(), matches: 3 })
+    const foe = buildClanHexV2Raw({ tally: fullTally(), matches: 3 })
+    const [red] = normalizeAgainstFoe(ours, foe)
+    expect(red.axes.map((a) => a.key)).toEqual([...CLAN_HEX_V2_AXIS_KEYS])
+    for (const axis of red.axes) expect(axis.value, axis.key).not.toBeNull()
   })
 })

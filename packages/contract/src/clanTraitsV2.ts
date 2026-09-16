@@ -1886,7 +1886,22 @@ export function normalizeAgainstFoe(
   const ourAxes = ours.axes.map(cloneAxis)
   const foeAxes = theirs.axes.map(cloneAxis)
 
-  for (const key of CLAN_HEX_V2_AXIS_KEYS) {
+  /*
+   * ⚠ ★2026-09-17 — 리스트를 박아 두면 새 축이 조용히 죽는다★.
+   *
+   *   예전에는 `CLAN_HEX_V2_AXIS_KEYS`(클랜용 여섯)를 돌았다.
+   *   그런데 경기 육각은 «유리한 기회» 를 쓴다 — 그 축은 이 목록에 없어
+   *   `value` 가 끝까지 `null` 로 남고, 화면은 «없었음» 을 그린다.
+   *   ★그림은 멀줦해 보인다★ — 나머지 다섯 축이 멀줦하니 한 칸만 주저앉을 뿐이다.
+   *
+   *   그래서 ★실제로 들어있는 축★ 을 돌린다. 축이 늘어나도 안 깨진다.
+   */
+  const keys: ClanHexV2AnyAxisKey[] = []
+  for (const axis of [...ourAxes, ...foeAxes]) {
+    if (!keys.includes(axis.key)) keys.push(axis.key)
+  }
+
+  for (const key of keys) {
     const a = ourAxes.find((axis) => axis.key === key)
     const b = foeAxes.find((axis) => axis.key === key)
     if (a === undefined || b === undefined) continue
