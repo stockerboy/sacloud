@@ -463,6 +463,12 @@ function ClanRankDirectory({
               groupByDivision
               leagueCategory={category}
               columns={columns}
+              /*
+               * ★모집단★ — 참가 클랜 수 (2026-09-16 사장님: «참가중인 인원수나
+               * 클랜수의 상위비율로 하자»). 색이 «상위 몇 %» 로 칠해진다.
+               * ⚠ 검색으로 걸러도 ★전체 수★ 를 쓴다 — 줄의 등수가 전체 기준이기 때문이다.
+               */
+              rankTotal={ranked.length}
             />
           </RankBox>
         )}

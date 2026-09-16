@@ -25,10 +25,10 @@
  *   누구를 올릴지도, 그날이 언제인지도 서버가 이미 끝냈다. 화면은 ★받은 대로 그린다.★
  */
 import type { ReactNode } from 'react'
+import { rankColorByRatio } from '../record/playerHeadCopy'
 import { MarkCircle } from '../v3/primitives'
 import { V3 } from '../v3/tokens'
 import { Hexagon, type HexAxisView } from '../v3/Hexagon'
-import { statColor } from '../v3/rankColors'
 import { mmss } from '@sacloud/contract'
 
 export interface DailyPodiumRowView {
@@ -149,7 +149,13 @@ function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' 
        *   그 함수의 경계는 시즌 랭킹용이다. 여기 등수는 ★그날★ 안의 것이라
        *   모집단이 훨씬 작다. 그래서 백분위로 색을 고른다 (승률과 같은 잣대).
        */
-      noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
+      /*
+       * ⚠ ★2026-09-16 — 등수 색을 «비율» 로★ (사장님: «상위 5프로 이내는 노란색
+       *   10프로이내는 파란색 20프로이내는 초록색 나머지는 걍 하얀색»).
+       *   옛 값은 백분위를 승률 잣대(`statColor`)로 칠했다 — 승률과 등수는 다른 값이라
+       *   같은 자로 재면 «60% 면 초록» 같은 엉뚱한 뜻이 붙는다.
+       */
+      noteColor: rankColorByRatio(a.rank, a.total) ?? V3.textMuted,
       /* ★모집단을 같이★ (2026-09-15 · 무한 QA) — «60위» 만 있으면 읽히지 않는다 */
       /* ⚠ ★2026-09-15★ — 클랜 전용 축 이름이 `tempo` 에서 `riflePower` 로 바뀌었다 (사장님) */
       note2: a.rank === null ? null : a.total === null ? valueText(a) : `그날 ${a.total}${a.key === 'riflePower' || row.clan_slug !== null ? '팀중' : '명중'}`,

@@ -371,6 +371,39 @@ export function rankTone(rank: number | null | undefined): RankTone | null {
 }
 
 /**
+ * ★등수 색을 «비율» 로★ (2026-09-16 사장님).
+ *
+ * > «상위 5프로 이내는 노란색 10프로이내는 파란색 20프로이내는 초록색
+ * >  나머지는 걍 하얀색 (…) ★참가중인 인원수나 클랜수의 상위비율★ 로 하자»
+ *
+ * ── 왜 비율인가
+ *   절대 등수로 색을 주면 모집단이 다른 화면끼리 뜻이 어긋난다 — 같은 «10위» 가
+ *   어떤 곳에서는 상위 1%, 어떤 곳에서는 상위 25% 다. 그래서 «개인 749명 /
+ *   클랜 42곳» 처럼 ★리그마다 다른 경계표★ 를 따로 두는 땜질이 쌓여 왔다.
+ *   비율은 ★하나의 자★ 로 모든 화면을 잰다.
+ *
+ * ── 모집단을 모르면 색을 안 준다
+ *   `total` 이 없으면 «상위 몇 %» 를 말할 수 없다. 지어내지 않고 `plain` 이다 (D-106).
+ *
+ * ── 1등만은 언제나 노랑
+ *   ★가정★: 참가가 스무 곳 미만이면 1등도 5% 를 넘어 색이 없어진다.
+ *   1등이 흰색이면 «색이 고장났나» 로 읽히므로 비율과 무관하게 `gold` 다.
+ */
+export function rankToneOf(
+  rank: number | null | undefined,
+  total: number | null | undefined,
+): RankTone | null {
+  if (rank == null || rank <= 0) return null
+  if (rank === 1) return 'gold'
+  if (total == null || total <= 0) return 'plain'
+  const pct = (rank / total) * 100
+  if (pct <= 5) return 'gold'
+  if (pct <= 10) return 'blue'
+  if (pct <= 20) return 'green'
+  return 'plain'
+}
+
+/**
  * ★옛 방식★ — 2026-09-06 (Part 10) 경계 3 / 20 / 40 / 100. ★지우지 않는다★ (`CLAUDE.md` 1-4).
  *
  *   1~3위 빨강 · 4~20위 노랑 · 21~40위 파랑 · 41~100위 초록 · 101위~ 하양

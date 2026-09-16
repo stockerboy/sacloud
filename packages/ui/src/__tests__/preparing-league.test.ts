@@ -57,9 +57,10 @@ describe('준비중 리그', () => {
   /* 2026-09-12 사장님: 상단바를 10 · IPL · SPL 차례로 (홈 표장과 같은 차례) */
   /* ⚠ 2026-09-12 사장님: «상단바 IPL SPL 열산 이용방법 게시판 순서로 바꿔».
      그날 아침에는 10 · IPL · SPL 이었다 */
-  it('상단바는 IPL · SPL · 10 순서다 — 같은 셋, 순서만 다르다', () => {
+  /* ⚠ 옛 차례는 IPL · PL · 열산 — 2026-09-16 사장님 «pl을 맨앞으로 옮겨» */
+  it('상단바는 PL · IPL · 열산 순서다 — 홈 목록과 같아졌다 (2026-09-16)', () => {
     const hrefs = GNB_LEAGUES.map((item) => item.href)
-    expect(hrefs).toEqual(['/league/nolink', '/league/supply', '/league/sanply'])
+    expect(hrefs).toEqual(['/league/supply', '/league/nolink', '/league/sanply'])
     expect([...hrefs].sort()).toEqual([...FEATURED_LEAGUES.map((item) => item.href)].sort())
   })
 

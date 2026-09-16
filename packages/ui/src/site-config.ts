@@ -95,7 +95,11 @@ export const FEATURED_LEAGUES_V1: readonly NavLink[] = [
  * ⚠ ★2026-09-12 두 번째 손질★ — 사장님: «상단바 IPL SPL 열산 이용방법 게시판 순서로 바꿔».
  *   옛 차례: 10 · IPL · SPL (같은 날 아침). 그 앞은 IPL · SPL · 10 이었다.
  */
-export const GNB_LEAGUE_ORDER: readonly string[] = ['/league/nolink', '/league/supply', '/league/sanply']
+/**
+ * ⚠ ★2026-09-16 — PL 을 맨 앞으로★ (사장님: «pl을 맨앞으로 옮겨»).
+ *   옛 차례: IPL · PL · 열산리그 (`/league/nolink` 이 먼저였다).
+ */
+export const GNB_LEAGUE_ORDER: readonly string[] = ['/league/supply', '/league/nolink', '/league/sanply']
 
 /** 목록에서 주어진 순서대로 골라낸다. 순서표에 없는 리그는 빠진다 — 지어내지 않는다 */
 export function orderLeagues(order: readonly string[]): readonly NavLink[] {

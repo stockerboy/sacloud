@@ -28,6 +28,41 @@ export function rankColor(rank: number): string {
   return RANK_COLORS.rest;
 }
 
+/**
+ * ★등수 색을 «비율» 로★ (2026-09-16 사장님).
+ *
+ * > «순위(뭐 그 날 탑3든지 그냥 개인랭킹이든지 클랜랭킹이든지 상위 5프로 이내는
+ * >  노란색 10프로이내는 파란색 20프로이내는 초록색 나머지는 걍 하얀색 으로 해줘
+ * >  ★참가중인 인원수나 클랜수의 상위비율★ 로 하자»
+ *
+ * ── 왜 이게 옳은가
+ *   지금까지는 ★절대 등수★ 로 색을 줬는데, 모집단이 리그마다 달라서 같은 «10위» 가
+ *   어떤 곳에서는 상위 1%, 어떤 곳에서는 상위 25% 였다. 그래서 «IPL 개인 749명 /
+ *   클랜 42곳» 처럼 ★리그마다 다른 경계표★ 를 따로 두는 땜질이 쌓였다
+ *   (`PLAYER_HEX_STEPS` · `SMALL_LEAGUE_STEPS` 주석 참고).
+ *   비율로 재면 그 표들이 통째로 필요 없어진다 — ★하나의 자★ 로 모든 화면을 잰다.
+ *
+ * ── 모집단을 모르면 색을 안 준다
+ *   `total` 이 없으면 «상위 몇 %» 를 말할 수 없다. 지어내지 않고 흰색이다 (D-106).
+ *
+ * ── 1등만은 언제나 노랑
+ *   ★가정★: 참가가 스무 곳 미만이면 1등도 5% 를 넘어 색이 없어진다. 1등이 흰색이면
+ *   사람이 «색이 고장났나» 로 읽는다. 그래서 1등은 비율과 무관하게 노랑으로 둔다.
+ */
+export const RANK_RATIO_STEPS: readonly (readonly [number, string])[] = [
+  [5, RANK_COLORS.top20], //  상위 5%   노랑
+  [10, RANK_COLORS.top40], // 상위 10%  파랑
+  [20, RANK_COLORS.top100], // 상위 20%  초록
+] as const
+
+export function rankColorOf(rank: number, total: number | null | undefined): string {
+  if (rank === 1) return RANK_COLORS.top20
+  if (total === null || total === undefined || total <= 0) return RANK_COLORS.rest
+  const pct = (rank / total) * 100
+  for (const [limit, color] of RANK_RATIO_STEPS) if (pct <= limit) return color
+  return RANK_COLORS.rest
+}
+
 /** ★옛 방식★ — 3 / 20 / 40 / 100 네 단계. 지우지 않는다 (`CLAUDE.md` 1-4) */
 export function rankColorV2(rank: number): string {
   if (rank <= 3)   return RANK_COLORS.top3;

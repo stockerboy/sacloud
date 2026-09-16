@@ -353,6 +353,8 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
             clanName="line"
             /* ★시안: 순위·닉네임을 등급 색으로★ (3 / 20 / 40 / 100). 옛 표는 1위만 강조색 */
             rankTone
+            /* ★모집단★ — 색을 «상위 몇 %» 로 칠한다 (2026-09-16 사장님) */
+            rankTotal={total}
           />
           {/*
             ★쪽 번호★ (2026-09-12 사장님). 옛 판은 «더 불러오기» 였다 —

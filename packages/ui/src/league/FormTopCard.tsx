@@ -5,7 +5,7 @@ import { Hexagon } from '../v3/Hexagon'
 import type { HexAxisView } from '../v3/Hexagon'
 import { V3 } from '../v3/tokens'
 import { MarkCircle } from '../v3/primitives'
-import { rankColorHexAxis } from '../v3/rankColors'
+import { rankColorByRatio } from '../record/playerHeadCopy'
 
 /**
  * ★최근 폼 1위★ — 그날 가장 잘한 셋을 ★한 카드★ 에 담는다 (2026-09-16 사장님).
@@ -88,10 +88,8 @@ function axesOf(row: FormTopRow): HexAxisView[] {
      * 모집단(«그날 n명중»)을 같이 적는다 — «60위» 만 있으면 잘한 건지 모른다.
      */
     note: a.rank === null || a.rank === undefined ? (valueText(a) ?? '측정중') : `${a.rank}위`,
-    noteColor:
-      a.rank === null || a.rank === undefined
-        ? V3.textMuted
-        : (rankColorHexAxis(a.rank, false) ?? V3.textStrong),
+    /* ★등수 색은 «비율»★ (2026-09-16 사장님) — 모집단(`total`)을 같이 본다 */
+    noteColor: rankColorByRatio(a.rank, a.total) ?? V3.textMuted,
     note2:
       a.rank === null || a.rank === undefined
         ? null

@@ -1,4 +1,4 @@
-import { rankTone, type RankTone } from '@sacloud/contract'
+import { rankTone, type RankTone, rankToneOf } from '@sacloud/contract'
 
 /**
  * 선수 정보줄의 **문구 판단** (2026-09-02 사용자 지시).
@@ -22,6 +22,18 @@ const RANK_COLOR: Record<RankTone, string> = {
 /** 그 순위를 무슨 색으로 적나. 순위가 없으면 `null` — 색을 지어내지 않는다 */
 export function rankColor(rank: number | null | undefined): string | null {
   const tone = rankTone(rank)
+  return tone === null ? null : RANK_COLOR[tone]
+}
+
+/**
+ * ★모집단을 아는 자리에서는 이쪽을 쓴다★ (2026-09-16 사장님 «참가중인 인원수나
+ * 클랜수의 상위비율로»). 경계는 계약(`rankToneOf`) 한 곳에만 있다.
+ */
+export function rankColorByRatio(
+  rank: number | null | undefined,
+  total: number | null | undefined,
+): string | null {
+  const tone = rankToneOf(rank, total)
   return tone === null ? null : RANK_COLOR[tone]
 }
 

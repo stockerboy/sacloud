@@ -38,10 +38,10 @@
  *   `prefers-reduced-motion` 이면 아무것도 안 움직인다.
  */
 import { useEffect, useMemo, useState } from 'react'
+import { rankColorByRatio } from '../record/playerHeadCopy'
 import { playerHexLabelOf, type TraitAxisKey } from '@sacloud/contract'
 import { Hexagon, type HexAxisView } from '../v3/Hexagon'
 import { V3 } from '../v3/tokens'
-import { statColor } from '../v3/rankColors'
 
 export interface FlagMountainRow {
   rank: number
@@ -157,7 +157,13 @@ export function FlagMountain({
        * ⚠ ★`rankColorHexAxis` 를 쓰면 안 된다★ — 그 함수는 «등수» 를 받는다.
        *   여기 값은 ★백분위★ (높을수록 좋다) 라 승률과 같은 잣대를 쓴다.
        */
-      noteColor: a.pct === null ? V3.textMuted : statColor(a.pct),
+      /*
+       * ⚠ ★2026-09-16 — 등수 색을 «비율» 로★ (사장님: «상위 5프로 이내는 노란색
+       *   10프로이내는 파란색 20프로이내는 초록색 나머지는 걍 하얀색»).
+       *   옛 값은 백분위를 승률 잣대(`statColor`)로 칠했다 — 승률과 등수는 다른 값이라
+       *   같은 자로 재면 «60% 면 초록» 같은 엉뚱한 뜻이 붙는다.
+       */
+      noteColor: rankColorByRatio(a.rank, a.total) ?? V3.textMuted,
       /*
        * ★모집단을 같이 적는다★ (2026-09-15 · 무한 QA) — «60위» 가 혼자 있으면
        * 깃발 1등인데 왜 60위인지 알 수 없다. «그날 82명중» 이 붙으면 읽힌다.

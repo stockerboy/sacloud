@@ -8,9 +8,10 @@
  * 게임템포만 글자(`text`) 다. 못 잰 축은 «측정중» 이고 면적은 0 이다.
  */
 import { useState } from 'react'
+import { rankColorByRatio } from '../record/playerHeadCopy'
 import type { CSSProperties, ReactNode } from 'react'
 import { leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
-import { floorColor, rankColor, rankColorHexAxis, statColor } from './rankColors'
+import { floorColor, rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
@@ -100,7 +101,8 @@ export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
      * 모집단을 못 세면 등수만 적는다 — 지어내지 않는다.
      */
     /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 까닭은 `rankColorHexAxis` 주석에 */
-    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, noteColor: rankColorHexAxis(axis.rank, key === 'sniperDuel'), note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
+    if (axis.rank !== null) return { label: label[key], value: axis.value * 100, note: `${axis.rank}위`, /* ★비율★ (2026-09-16 사장님) — 옛 값 `rankColorHexAxis(axis.rank, key === 'sniperDuel')` */
+      noteColor: rankColorByRatio(axis.rank, axis.total) ?? V3.textMuted, note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
     return { label: label[key], value: axis.value * 100, note: axis.text, noteColor: V3.textMuted }
   })
 }

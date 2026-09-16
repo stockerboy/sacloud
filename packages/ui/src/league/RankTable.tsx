@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment } from 'react'
+import { rankColorByRatio } from '../record/playerHeadCopy'
 import Link from 'next/link'
 import type { ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
 import { showsTier, leagueScreen } from '@sacloud/contract'
@@ -312,6 +313,11 @@ export interface ClanRankTableProps extends Omit<TableStateProps, 'columns' | 'e
    */
   showTierLabel?: boolean
   /**
+   * ★모집단★ — 참가 클랜 수 (2026-09-16 사장님: «참가중인 인원수나 클랜수의
+   * 상위비율로 하자»). 주면 순위 숫자·클랜명이 ★비율 색★ 이 된다.
+   */
+  rankTotal?: number | null
+  /**
    * 보여 줄 칸 (2026-09-01). 넘기지 않으면 **지금까지의 표 그대로**다.
    *
    * 리그마다 다른 칸을 화면에서 `if (slug === …)` 로 가르지 않는다 —
@@ -363,6 +369,7 @@ export function ClanRankTable({
   leagueCategory,
   columns = ALL_COLUMNS,
   showTierLabel = false,
+  rankTotal = null,
 }: ClanRankTableProps) {
   const { brokenClanSlugs } = useEggKnowledge()
   /* 부리그를 화면에 내지 않는 리그(지시 #9 · D-265 ③)는 호출부가 뭐라 하든 선을 긋지 않는다.
@@ -407,7 +414,19 @@ export function ClanRankTable({
             {/* ★인식표★ — ASTRA 1~3등 불 · 4~6등 먹구름 · 7등부터 흰구름 (2026-09-12 사장님).
                 강등위기는 안 준다. 줄 뒤에 깔리고 글자 위로 안 올라온다 */}
             {(() => { const plate = clanPlateOf(row, leagueCategory); return plate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${plate}`} /> : null })()}
-            {columns.rank ? <div className={rankClass(row.rank ?? 0)}>{row.rank ?? '-'}</div> : null}
+            {/* ★모집단을 알면 «비율» 로 칠한다★ (2026-09-16 사장님) */}
+            {columns.rank ? (
+              <div
+                className={rankClass(row.rank ?? 0)}
+                style={
+                  rankTotal === null
+                    ? undefined
+                    : { color: rankColorByRatio(row.rank ?? 0, rankTotal) ?? undefined }
+                }
+              >
+                {row.rank ?? '-'}
+              </div>
+            ) : null}
             <div className={COL_NAME}>
               <Link
                 className="flex min-w-0 items-center hover:text-text-strong"
@@ -417,7 +436,16 @@ export function ClanRankTable({
                 <Egg state={egg} size="xs" label={row.clan.name} className={MARK}>
                   <MarkCircle clan={row.clan} size={24} title={row.clan.name} />
                 </Egg>
-                <span className="truncate">{row.clan.name}</span>
+                <span
+                  className="truncate"
+                  style={
+                    rankTotal === null
+                      ? undefined
+                      : { color: rankColorByRatio(row.rank ?? 0, rankTotal) ?? undefined }
+                  }
+                >
+                  {row.clan.name}
+                </span>
                 {row.note ? (
                   <span
                     className="ml-2 shrink-0 rounded px-1.5 py-[2px] text-[10px] font-bold leading-none"
@@ -535,6 +563,12 @@ export interface PlayerRankTableProps extends Omit<TableStateProps, 'columns' | 
    * 경계값은 ★공통 함수 한 곳★ 이 정한다 — 화면마다 복제하지 않는다 (사장님 지시).
    */
   rankTone?: boolean
+  /**
+   * ★모집단★ — 참가 중인 인원·클랜 수 (2026-09-16 사장님: «참가중인 인원수나
+   * 클랜수의 상위비율로 하자»). 주면 등수 색이 ★비율★ 로 바뀐다.
+   * 안 주면 지금까지처럼 절대 등수로 칠한다 (`CLAUDE.md` 1-4).
+   */
+  rankTotal?: number | null
 }
 
 /**
@@ -569,6 +603,7 @@ export function PlayerRankTable({
   columns = ALL_COLUMNS,
   clanName = 'none',
   rankTone = false,
+  rankTotal = null,
 }: PlayerRankTableProps) {
   const clanColumn = clanName === 'column'
   const clanLine = clanName === 'line'
@@ -635,7 +670,14 @@ export function PlayerRankTable({
             {columns.rank ? (
               <div
                 className={rankTone ? rankToneClass(row.rank) : rankClass(row.rank)}
-                style={rankTone ? { color: rankColor(row.rank) ?? undefined } : undefined}
+                /* ★모집단을 알면 «비율» 로 칠한다★ (2026-09-16 사장님) */
+                style={
+                  rankTotal !== null
+                    ? { color: rankColorByRatio(row.rank, rankTotal) ?? undefined }
+                    : rankTone
+                      ? { color: rankColor(row.rank) ?? undefined }
+                      : undefined
+                }
               >
                 {row.rank}
               </div>
@@ -664,7 +706,15 @@ export function PlayerRankTable({
                       href={leaguePlayerPath(leagueSlug, row.player.id)}
                     >
                       {/* `a { color: inherit }` — 색은 안쪽 span 에 준다 (D-231) */}
-                      <span style={rankTone ? { color: rankColor(row.rank) ?? undefined } : undefined}>
+                      <span
+                        style={
+                          rankTotal !== null
+                            ? { color: rankColorByRatio(row.rank, rankTotal) ?? undefined }
+                            : rankTone
+                              ? { color: rankColor(row.rank) ?? undefined }
+                              : undefined
+                        }
+                      >
                         {row.player.name}
                       </span>
                     </Link>
