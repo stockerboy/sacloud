@@ -262,6 +262,28 @@ export function Kda({
   )
 }
 
+/**
+ * ★경쟁전 엠블럼★ (2026-09-16 사장님: «모든 경쟁전글씨 옆에 저 로고 장착(경쟁전만)»).
+ *
+ * ★경쟁전에만 붙인다★ — 일반전(IPL·열산리그)에는 안 붙는다. 그래서 이 조각은
+ * «경쟁전» 이라고 적는 자리에서만 부른다. 조각 하나로 두면 크기·간격이 안 흩어진다.
+ *
+ * 원본 그림이 1.5MB 라 22px 로 줄여 webp 로 넣었다 (1.0KB · 2배 판 2.6KB).
+ */
+export function CompetitiveMark({ size = 16 }: { size?: number }) {
+  return (
+    <img
+      src="/assets/competitive-emblem.webp"
+      srcSet="/assets/competitive-emblem.webp 1x, /assets/competitive-emblem@2x.webp 2x"
+      alt=""
+      aria-hidden
+      width={Math.round(size * (30 / 22))}
+      height={size}
+      style={{ display: 'inline-block', verticalAlign: 'middle', flex: 'none' }}
+    />
+  )
+}
+
 /** MVP 배지 (선수 화면 — 본인일 때만) */
 /** 스나이퍼 표시 — 사장님이 고른 «발광 스코프» (2026-09-11 · 시안 02). 워터마크·(S) 대신 닉 옆에 붙는다 */
 export function SniperMark({ size = 15 }: { size?: number }) {

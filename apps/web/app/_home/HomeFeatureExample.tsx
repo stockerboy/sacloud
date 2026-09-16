@@ -154,7 +154,9 @@ export function HomeFeatureExample({
    *   «측정중» 이고 주요멤버가 «없음» 이었다. 예시로 보여 줄 화면이 아니다.
    *   ★없는 리그에서는 1위로 떨어진다★ — 그 리그에 이 클랜이 없을 수 있다.
    */
-  const PINNED_CLAN: Readonly<Record<string, string>> = { supply: 'tsarntc' }
+  /* ⚠ ★slug 는 «sorentolove» 다★ — 화면 이름(-tsAr.nTc)과 다르다.
+       «tsArnTc» 라는 slug 도 따로 있는데 그건 ★다른 클랜(overthere)★ 이다 (2026-09-16 실측) */
+  const PINNED_CLAN: Readonly<Record<string, string>> = { supply: 'sorentolove' }
   const pinned = PINNED_CLAN[leagueSlug] ?? null
   const topClanSlug = pinned ?? clans.data?.data[0]?.clan.slug ?? ''
   const clan = useQuery({

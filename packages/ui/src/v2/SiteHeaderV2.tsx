@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { CompetitiveMark } from '../v3/primitives'
 import { LEAGUE_LOGO } from '../layout/leagueLogo'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -343,7 +344,12 @@ export function SiteHeaderV2({
         <div className="v2-drawer border-b border-[var(--v2-bar-border)] pb-2">
           {navGroups.map((group) => (
             <div key={group.label} className="border-b border-[var(--v2-row-divider)]">
-              <div className="px-6 pb-1 pt-4 text-[11px] tracking-widest text-[var(--v2-text-ghost)]">
+              {/*
+                ★«경쟁전» 에만 엠블럼★ (2026-09-16 사장님: «모든 경쟁전글씨 옆에
+                  저 로고 장착(경쟁전만)»). 일반전·게시판·참가신청에는 안 붙는다.
+              */}
+              <div className="flex items-center gap-[6px] px-6 pb-1 pt-4 text-[11px] tracking-widest text-[var(--v2-text-ghost)]">
+                {group.label === '경쟁전' ? <CompetitiveMark size={14} /> : null}
                 {group.label}
               </div>
               {group.items.map((item) =>
@@ -359,12 +365,14 @@ export function SiteHeaderV2({
                   <Link
                     key={`${group.label}:${item.href}`}
                     href={item.href}
-                    className={`block px-6 py-3 text-[14px] ${
+                    className={`flex items-center gap-[6px] px-6 py-3 text-[14px] ${
                       isActive(pathname, item.href)
                         ? 'font-bold text-[var(--v2-text-strong)]'
                         : 'text-[var(--v2-text-dim)]'
                     }`}
                   >
+                    {/* 참가신청 안의 «경쟁전» 에도 붙는다 — 같은 말이니 같은 표시다 */}
+                    {item.label === '경쟁전' ? <CompetitiveMark size={14} /> : null}
                     <LeagueLabel name={item.label} />
                   </Link>
                 ),

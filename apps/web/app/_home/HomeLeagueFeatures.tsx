@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { CompetitiveMark } from '@sacloud/ui'
 import { HomeFeatureExample } from './HomeFeatureExample'
 import { useState } from 'react'
 import {
@@ -143,7 +144,15 @@ export function HomeLeagueFeatures() {
               >
                 {p.label}
               </span>
-              <span className="text-[11.5px] text-[var(--v2-text-dim)] max-md:text-[10.5px]">
+              {/*
+                ⚠ ★엠블럼이 붙으면 폰에서 부제가 두 줄로 깨진다★ (2026-09-16 실측).
+                  탭 하나가 폰에서 110px 남짓인데 «경쟁전 · 구 서플라이» 열한 자에
+                  엠블럼까지 얹으면 넘친다. 그래서 폰에서만 한 단계 더 줄이고
+                  ★줄바꿈을 막는다★ — 두 줄이 되면 탭 셋의 높이가 어긋난다.
+              */}
+              <span className="flex items-center justify-center gap-[4px] whitespace-nowrap text-[11.5px] text-[var(--v2-text-dim)] max-md:gap-[3px] max-md:text-[9px]">
+                {/* ★경쟁전에만 엠블럼★ (2026-09-16 사장님) — 일반전 둘에는 안 붙는다 */}
+                {p.sub.startsWith('경쟁전') ? <CompetitiveMark size={12} /> : null}
                 {p.sub}
               </span>
             </button>

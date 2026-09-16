@@ -116,6 +116,18 @@ if command -v node >/dev/null 2>&1; then
     [ -n "$pid" ] && hit "$BASE/api/leagues/$lg/players/$pid"
     cs=$(first_of "$BASE/api/leagues/$lg/ranks/clans?size=3" "data.0.clan.slug")
     [ -n "$cs" ] && hit "$BASE/api/leagues/$lg/clans/$cs/show"
+
+    # ★첫 화면 예시가 고정으로 쓰는 클랜★ (2026-09-16 사장님 «tsarntc 클랜 걸어»)
+    if [ "$lg" = "supply" ]; then
+      hit "$BASE/api/leagues/$lg/clans/sorentolove/show"
+    fi
+
+    # ★경기 상세★ — 예시가 스코어보드를 그리려면 이걸 받아야 한다
+    mid=$(first_of "$BASE/api/leagues/$lg/matches" "data.0.id")
+    lcid=$(first_of "$BASE/api/leagues/$lg/matches" "data.0.league_clan.league_clan_id")
+    if [ -n "$mid" ] && [ -n "$lcid" ]; then
+      hit "$BASE/api/leagues/$lg/matches/$mid?league_clan_id=$lcid"
+    fi
   done
 else
   echo "  (node 가 없어 1위 상세는 건너뛴다)"

@@ -1006,8 +1006,9 @@
    *
    *   2026-09-12 사장님: 마지막 칸이 MVP(★) 다 — 작게만 준다
    */
-  .v3-score-row { grid-template-columns: minmax(0, 1fr) 60px 38px 15px !important; gap: 5px !important; padding: 7px 8px !important; }
-  .v3-score-row--saves { grid-template-columns: minmax(0, 1fr) 60px 28px 38px 15px !important; }
+  /* ⚠ 2026-09-16 — 마지막 칸이 ★MVP 엠블럼★ 이 됐다 (별 대신). 22px 이 필요하다 */
+  .v3-score-row { grid-template-columns: minmax(0, 1fr) 60px 38px 24px !important; gap: 5px !important; padding: 7px 8px !important; }
+  .v3-score-row--saves { grid-template-columns: minmax(0, 1fr) 60px 28px 38px 24px !important; }
 
   /*
    * ★글씨도 같이 줄인다★ — 칸만 줄이면 숫자가 넘쳐 «12/8/0» 이 «12/8/…» 이 된다.

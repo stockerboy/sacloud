@@ -251,8 +251,23 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', color: row.main_weapon === null || row.main_weapon === undefined ? '#4e5b76' : '#c3cbdb' }}>
         {row.main_weapon === 1 ? '스나수' : row.main_weapon === 0 ? '라플수' : '알수없음'}
       </span>
-      {/* ★MVP 는 줄 맨 오른쪽★ — 별 하나라 이름을 안 가린다 (2026-09-12 사장님) */}
-      <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, lineHeight: 1, color: mvp ? V3.gold : 'transparent' }} title={mvp ? 'MVP' : undefined}>★</span>
+      {/*
+        ★MVP 는 줄 맨 오른쪽★ — 이름을 안 가린다 (2026-09-12 사장님).
+        ⚠ ★2026-09-16 — 별(★) 을 금색 엠블럼으로 바꿨다★ (사장님이 그림을 주심).
+          MVP 가 아닌 줄은 ★자리를 비워 둔다★ — 칸이 사라지면 줄이 어긋난다.
+      */}
+      <span style={{ position: 'relative', textAlign: 'right', lineHeight: 0 }} title={mvp ? 'MVP' : undefined}>
+        {mvp ? (
+          <img
+            src="/assets/mvp-emblem.webp"
+            srcSet="/assets/mvp-emblem.webp 1x, /assets/mvp-emblem@2x.webp 2x"
+            alt="MVP"
+            width={22}
+            height={15}
+            style={{ display: 'inline-block', verticalAlign: 'middle' }}
+          />
+        ) : null}
+      </span>
     </div>
     {openHex ? (
       <PlayerMatchHexV3 axes={hex} name={row.name} side={side} href={`/league/${leagueSlug}/player/${row.player_id}`} />
