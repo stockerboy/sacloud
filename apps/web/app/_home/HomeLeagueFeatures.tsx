@@ -152,8 +152,8 @@ export function HomeLeagueFeatures() {
               */}
               <span className="flex items-center justify-center gap-[4px] whitespace-nowrap text-[11.5px] text-[var(--v2-text-dim)] max-md:gap-[3px] max-md:text-[9px]">
                 {/* ★경쟁전에만 엠블럼★ (2026-09-16 사장님) — 일반전 둘에는 안 붙는다 */}
-                {p.sub.startsWith('경쟁전') ? <CompetitiveMark size={12} /> : null}
                 {p.sub}
+                {p.sub.startsWith('경쟁전') ? <CompetitiveMark size={12} /> : null}
               </span>
             </button>
           )

@@ -349,8 +349,9 @@ export function SiteHeaderV2({
                   저 로고 장착(경쟁전만)»). 일반전·게시판·참가신청에는 안 붙는다.
               */}
               <div className="flex items-center gap-[6px] px-6 pb-1 pt-4 text-[11px] tracking-widest text-[var(--v2-text-ghost)]">
-                {group.label === '경쟁전' ? <CompetitiveMark size={14} /> : null}
                 {group.label}
+                {/* ★글씨 오른쪽★ (2026-09-16 사장님: «로고를 오른쪽으로 옮겨 전부») */}
+                {group.label === '경쟁전' ? <CompetitiveMark size={14} /> : null}
               </div>
               {group.items.map((item) =>
                 /* ★아직 없는 화면은 링크를 안 건다★ — 404 로 보내지 않는다 (D-106) */
@@ -372,8 +373,8 @@ export function SiteHeaderV2({
                     }`}
                   >
                     {/* 참가신청 안의 «경쟁전» 에도 붙는다 — 같은 말이니 같은 표시다 */}
-                    {item.label === '경쟁전' ? <CompetitiveMark size={14} /> : null}
                     <LeagueLabel name={item.label} />
+                    {item.label === '경쟁전' ? <CompetitiveMark size={14} /> : null}
                   </Link>
                 ),
               )}
