@@ -7,6 +7,7 @@ import {
   leagueFeature,
   leagueFeatureCount,
   leagueFeatureEndingCount,
+  leagueFeatureRemaining,
 } from '@sacloud/contract'
 
 /**
@@ -70,9 +71,16 @@ const PICKS: readonly [Pick, Pick, Pick] = [
   { slug: 'sanply', label: '열산리그', sub: '일반전 · 고용 클랜', applyKind: 'ysl-new' },
 ]
 
-/** 경고 제목 — 글귀를 화면 한가운데 적지 않는다 */
-const IPL_END_TITLE = (league: string, n: number): string =>
-  `${league} 은 10/1 부터 ${n}가지 기능이 제공되지 않습니다`
+/**
+ * 경고 제목 — 글귀를 화면 한가운데 적지 않는다.
+ *
+ * ★남는 것으로 적는다★ — «6가지가 안 된다» 보다 «경기 분석만 된다» 가
+ * 한 번에 읽힌다. 남는 게 셋을 넘으면 그때는 없어지는 수를 적는다.
+ */
+const endTitle = (league: string, kept: readonly string[], n: number): string =>
+  kept.length > 0 && kept.length <= 3
+    ? `${league} 은 10/1 부터 ${kept.join(' · ')}만 제공됩니다`
+    : `${league} 은 10/1 부터 ${n}가지 기능이 제공되지 않습니다`
 
 export function HomeLeagueFeatures() {
   const [slug, setSlug] = useState<string>('supply')
@@ -253,7 +261,7 @@ export function HomeLeagueFeatures() {
             className="text-[13.5px] font-bold max-md:text-[12.5px]"
             style={{ color: WARN }}
           >
-            {IPL_END_TITLE(pick.label, ending)}
+            {endTitle(pick.label, leagueFeatureRemaining(pick.slug), ending)}
           </div>
           <div className="mt-[5px] text-[12px] leading-[1.6] text-[var(--v2-text-dim)] max-md:text-[11.5px]">
             같은 기록을 <b style={{ color: TONE.supply }}>PL</b> 에서는 계속 보실 수 있습니다.

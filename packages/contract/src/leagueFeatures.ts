@@ -79,6 +79,30 @@ const all = (slug: string): Record<string, LeagueFeatureState> => ({
   ladder: { given: true, href: `/league/${slug}/rank/clan` },
 })
 
+/** ★10/1 뒤에도 IPL 에 남는 기능★ — 사장님: «경기분석말고 아무것도 제공되지 않음» */
+const IPL_KEEPS: readonly string[] = ['match']
+
+/** IPL 칸을 짓는다 — 남기는 것 말고는 전부 «10/1 종료» 가 붙는다 */
+function buildIpl(): Record<string, LeagueFeatureState> {
+  const base = all('nolink')
+  const out: Record<string, LeagueFeatureState> = {}
+  for (const f of LEAGUE_FEATURES) {
+    const state = base[f.key] as LeagueFeatureState
+    out[f.key] = IPL_KEEPS.includes(f.key) ? state : { ...state, endsOn: IPL_FEATURE_END }
+  }
+  /*
+   * ★래더는 «곧 끊긴다» 가 아니라 «처음부터 없다» 다★ (2026-09-14 사장님
+   *   «래더시스템 미제공»). 위 루프가 붙인 날짜를 여기서 걷어낸다 —
+   *   오늘 눌러도 없는 것에 «10/1 종료» 를 붙이면 거짓말이다.
+   */
+  out.ladder = {
+    given: false,
+    href: null,
+    why: '순위는 우리 점수로 세우되 점수 자체는 안 보여 줍니다',
+  }
+  return out
+}
+
 /**
  * 리그별 기능 표.
  *
@@ -88,21 +112,19 @@ const all = (slug: string): Record<string, LeagueFeatureState> => ({
 export const LEAGUE_FEATURE_MAP: Readonly<Record<string, Record<string, LeagueFeatureState>>> = {
   /* PL — 전부 준다 */
   supply: all('supply'),
-  /* IPL — 래더만 안 준다 (2026-09-14 사장님 «래더시스템 미제공») */
-  nolink: {
-    ...all('nolink'),
-    ladder: { given: false, href: null, why: '순위는 우리 점수로 세우되 점수 자체는 안 보여 줍니다' },
-    /*
-     * ★10/1 부터 거둔다★ (2026-09-16 사장님: «IPL 개인랭킹이랑 클랜랭킹 지금
-     *   있긴하잖아 킬뎃도 다 있고 > 근데 이거 10/1일이후 미제공이라고 써놔»).
-     *   ★오늘은 실제로 있다★ — 그래서 `given` 을 내리지 않고 링크도 그대로 건다.
-     */
-    kdGraph: { ...all('nolink').kdGraph, endsOn: IPL_FEATURE_END } as LeagueFeatureState,
-    /* 클랜 화면의 ★클랜별 전적★ 도 여기 딸려 있다 (2026-09-16 사장님이 화면에 X 를 치심) */
-    clanHex: { ...all('nolink').clanHex, endsOn: IPL_FEATURE_END } as LeagueFeatureState,
-    playerRank: { ...all('nolink').playerRank, endsOn: IPL_FEATURE_END } as LeagueFeatureState,
-    clanRank: { ...all('nolink').clanRank, endsOn: IPL_FEATURE_END } as LeagueFeatureState,
-  },
+  /*
+   * IPL — ★10/1 부터 경기 분석 하나만 남는다★ (2026-09-16 사장님:
+   *   «ipl은 경기분석말고 아무것도 제공되지 않음»).
+   *
+   *   ★오늘은 실제로 다 있다★ (사장님: «지금 있긴하잖아 킬뎃도 다 있고»).
+   *   그래서 `given` 을 내리지 않고 링크도 그대로 건다 — 대신 화면이 빨갛게
+   *   «10/1부터 제공되지 않는 기능입니다» 를 붙인다. 없는 것처럼 회색으로
+   *   죽이면 ★오늘 눌러 본 사람에게 거짓말★ 이 된다.
+   *
+   *   ★남기는 것을 적는다★ — 기능이 늘 때마다 «IPL 에도 넣어야 하나» 를
+   *   사람이 기억하지 않아도 새 기능은 저절로 «10/1 종료» 쪽에 붙는다.
+   */
+  nolink: buildIpl(),
   /* 열산리그 — 클랜 기록을 안 준다 (2026-09-14 사장님 «열산은 클랜 기록 미제공») */
   sanply: {
     ...all('sanply'),
@@ -120,6 +142,17 @@ export function leagueFeature(slug: string, key: string): LeagueFeatureState {
 /** 그 리그에서 ★곧 끊기는★ 기능 수 — 0 이면 화면이 경고를 안 그린다 */
 export function leagueFeatureEndingCount(slug: string): number {
   return LEAGUE_FEATURES.filter((f) => leagueFeature(slug, f.key).endsOn !== undefined).length
+}
+
+/**
+ * ★그날 뒤에도 남는 기능 이름★ — 화면이 «경기 분석만 제공됩니다» 라고 적을 때 쓴다.
+ * 이름을 화면에 손으로 적지 않는다 — 표가 바뀌면 글귀가 따라 바뀐다.
+ */
+export function leagueFeatureRemaining(slug: string): readonly string[] {
+  return LEAGUE_FEATURES.filter((f) => {
+    const st = leagueFeature(slug, f.key)
+    return st.given && st.endsOn === undefined
+  }).map((f) => f.label)
 }
 
 /** 그 리그가 주는 기능 수 — 카드에 «8가지 중 6가지» 로 적는다 */
