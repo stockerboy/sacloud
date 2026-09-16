@@ -27,6 +27,7 @@ import {
   normalizeByPercentile,
   sumClanHexTallies,
   tradeCountOf,
+  firstBloodAxisV3,
   zoneCountOf,
   type ClanHexTallyLike,
   type ClanHexV2,
@@ -44,6 +45,7 @@ function emptyTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     redRounds: 0,
     foeSnipers: 1,
     sniperDuel: null,
+    sniperInfluence: null,
     firstBlood: null,
     trade: null,
     outnumbered: null,
@@ -66,6 +68,8 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
     /* ① 스나 대 스나 — 분모는 won+lost 다 (D-256) */
     sniperDuel: { rounds: 16, won: 6, lost: 4 },
     /* ⑤ 선짤 — 동시각 2라운드는 **분모에서 이미 빠진** 값이다 (사용자 (가)) */
+    /* ⑤ 스나영향력 — 일한 20 중 14승(70%) · 침묵 20 중 8승(40%) → ★+30.0%p★ */
+    sniperInfluence: { rounds: 20, won: 14, quietRounds: 20, quietWon: 8 },
     firstBlood: { rounds: 12, won: 7, tiedRounds: 2 },
     /* ⑥ 교환 — 창 넷을 다 다르게 잡았다. 창을 바꾸면 값이 바뀌는지 시험하려는 것이다 */
     trade: { deaths: 20, within3: 2, within5: 5, within10: 8, sameRound: 12 },
@@ -290,7 +294,7 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(axisOf(hex, 'sniperDuel').pending).toBe('foeSniper')
     expect(axisOf(hex, 'sniperDuel').raw).toBeNull()
     /* ⑤⑥ 은 재료 자체가 없어서 `battlelog` 다. **`foeSniper` 가 아니다** */
-    expect(axisOf(hex, 'firstBlood').pending).toBe('battlelog')
+    expect(axisOf(hex, 'sniperInfluence').pending).toBe('battlelog')
     expect(axisOf(hex, 'trade').pending).toBe('battlelog')
   })
 
@@ -334,7 +338,7 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     expect(hex.measured).toBe(6)
     expect(axisOf(hex, 'riflePower').pending).toBeNull()
     expect(axisOf(hex, 'sniperDuel').pending).toBeNull()
-    expect(axisOf(hex, 'firstBlood').pending).toBeNull()
+    expect(axisOf(hex, 'sniperInfluence').pending).toBeNull()
     expect(axisOf(hex, 'trade').pending).toBeNull()
     expect(axisOf(hex, 'outnumbered').raw).toBeCloseTo(0.4, 10)
     expect(axisOf(hex, 'save').raw).toBeCloseTo(0.4, 10)
@@ -386,9 +390,16 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
      *      이 됐다. 분모가 이미 «겨룬 라운드» 라 비율이 곧 뜻이다.
      *   세는 쪽이 `rounds` 를 25초로 좁혀 놓으므로 여기서는 그대로 나눈다.
      */
-    expect(axisOf(hex, 'firstBlood').numerator).toBe(7)
-    expect(axisOf(hex, 'firstBlood').denominator).toBe(12)
-    expect(axisOf(hex, 'firstBlood').text).toBe('58%')
+    /*
+     * ⑤ ★스나영향력★ (2026-09-16 사장님이 실측 넷 중 D 를 고르심) —
+     *   일한 라운드 14/20 = 70% · 침묵 라운드 8/20 = 40% → ★차 +30.0%p★.
+     *   `raw` 는 육각형이 반지름으로 쓰므로 ★0~50%p 를 0~1 로 편 값★ 이다 (30/50 = 0.6).
+     *   분자·분모는 «일한 라운드» 쪽을 적는다.
+     */
+    expect(axisOf(hex, 'sniperInfluence').numerator).toBe(14)
+    expect(axisOf(hex, 'sniperInfluence').denominator).toBe(20)
+    expect(axisOf(hex, 'sniperInfluence').text).toBe('+30.0%p')
+    expect(axisOf(hex, 'sniperInfluence').raw).toBeCloseTo(0.6, 10)
     /* ⑥ 교환 — within5(5) / deaths(20). **5초가 사용자 확정이다** */
     expect(axisOf(hex, 'trade').numerator).toBe(5)
     expect(axisOf(hex, 'trade').denominator).toBe(20)
@@ -406,7 +417,12 @@ describe('buildClanHexV2Raw — 못 잰 축은 `null` 이다. **0 이 아니다*
     const tally = fullTally()
     expect(required(tally.firstBlood).tiedRounds).toBe(2)
     /* 분모 12 는 동시각 2 를 뺀 값이다 — 14 가 아니다 */
-    expect(axisOf(buildClanHexV2Raw({ tally, matches: 1 }), 'firstBlood').denominator).toBe(12)
+    /*
+     * ⚠ 2026-09-16 에 선짤이 축에서 내려갔다 (스나영향력과 교대). ★셈은 그대로 돈다★ —
+     *   그래서 화면 축 대신 tally 를 직접 본다. 되살릴 때를 위한 시험이다.
+     */
+    expect(required(tally.firstBlood).rounds).toBe(12)
+    expect(firstBloodAxisV3(required(tally.firstBlood))?.denominator).toBe(12)
   })
 
   /**

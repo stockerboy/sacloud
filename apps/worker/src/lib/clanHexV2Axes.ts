@@ -21,6 +21,9 @@ export interface ClanHexAxisHolder {
   outnumbered: object | null
   save: object | null
   riflePower: object | null
+  /** ⑤ 지금 쓰는 것 — 스나영향력 (2026-09-16 사장님) */
+  sniperInfluence: object | null
+  /** 옛 ⑤ 선짤. 세는 데는 안 쓰지만 받기는 받는다 */
   firstBlood: object | null
   trade: object | null
 
@@ -45,7 +48,7 @@ export function axesMeasuredOf(tally: ClanHexAxisHolder): number {
     tally.outnumbered,
     tally.save,
     tally.riflePower,
-    tally.firstBlood,
+    tally.sniperInfluence,
     tally.trade,
   ]
   return axes.filter((axis) => axis !== null).length

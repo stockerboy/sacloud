@@ -710,13 +710,14 @@ const CLAN_PODIUM_SIZE = 3
 
 /** 클랜 육각형 축 차례·이름 — 클랜 카드(`clanHexAxes`)와 ★같은 차례★ 다 */
 /* ⚠ ★2026-09-15★ — ④ 가 `tempo`(게임템포) 에서 `riflePower`(라이플화력) 로 바뀌었다 (사장님) */
-const CLAN_HEX_ORDER = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'firstBlood', 'trade'] as const
+/* ⚠ ★2026-09-16★ — ⑤ 가 `firstBlood`(선짤) 에서 `sniperInfluence`(스나영향력) 로 바뀌었다 (사장님) */
+const CLAN_HEX_ORDER = ['sniperDuel', 'outnumbered', 'save', 'riflePower', 'sniperInfluence', 'trade'] as const
 const CLAN_HEX_LABEL: Readonly<Record<string, string>> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
   riflePower: '라이플화력',
-  firstBlood: '선짤(1턴)',
+  sniperInfluence: '스나영향력',
   trade: '백어택성공률(2턴)',
 }
 

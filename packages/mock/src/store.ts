@@ -2328,6 +2328,7 @@ function mockHexV2TallyOf(
     redRounds,
     foeSnipers: 0,
     sniperDuel: null,
+    sniperInfluence: null,
     firstBlood: null,
     trade: null,
     outnumbered: null,
@@ -2431,6 +2432,22 @@ function mockHexV2TallyOf(
   const duelWon = Math.max(1, Math.round(redRounds * rng.float(0.2, 0.5, 3)))
   const duelLost = Math.max(1, Math.round(duelWon * rng.float(0.7, 1.4, 3)))
   base.sniperDuel = { rounds, won: duelWon, lost: duelLost }
+
+  /*
+   * ⑤ ★스나영향력★ (2026-09-16 사장님) — 스나가 일한 라운드와 침묵한 라운드를 따로 센다.
+   *   ★실측 범위를 따른다★ — 6,000판에서 기여 차가 20.1 ~ 43.1%p 였다.
+   *   침묵 라운드 승률을 40% 언저리로 두고, 일한 라운드를 그보다 20~43%p 높게 잡는다.
+   */
+  const siActive = Math.max(1, Math.round(rounds * rng.float(0.45, 0.6, 3)))
+  const siQuiet = Math.max(1, rounds - siActive)
+  const quietRate = rng.float(0.36, 0.46, 3)
+  const gap = rng.float(0.2, 0.43, 3)
+  base.sniperInfluence = {
+    rounds: siActive,
+    won: Math.round(siActive * Math.min(0.95, quietRate + gap)),
+    quietRounds: siQuiet,
+    quietWon: Math.round(siQuiet * quietRate),
+  }
 
   /* 첫 킬이 없는 라운드가 있으므로 분모는 라운드보다 조금 작다 */
   const fbRounds = Math.max(1, Math.round(rounds * rng.float(0.9, 0.98, 3)))
