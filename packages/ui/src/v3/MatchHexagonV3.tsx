@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ClanHexagonV2 } from '@sacloud/contract'
 import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
 import { penDash, useDrawIn } from './seasonPlot'
+import { matchVerdict, matchVerdictText } from './matchVerdict'
 
 const RING_STEP = 10
 const RINGS = Array.from({ length: 100 / RING_STEP }, (_, i) => (i + 1) * RING_STEP)
@@ -123,6 +124,8 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
   useEffect(() => { if (done) setFlash((f) => f + 1) }, [done])
 
   const pairs = pairsOf(won, lost)
+  /* ★겹쳐 볼 때만 «갈린 자리» 를 적는다★ — 한 팀만 보고 있으면 견줄 상대가 없다 */
+  const verdict = only === null ? matchVerdict(won, lost) : null
   const showWon = only !== 'lost'
   const showLost = only !== 'won'
   const wonArea = areaOf(pairs.map((p) => p.wonValue))
@@ -131,7 +134,16 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-      <svg ref={svgRef} viewBox={`0 0 ${HEX.w} ${HEX.h}`} style={{ width: HEX.w, height: HEX.h, maxWidth: '100%', display: 'block' }}>
+      {/*
+        ★양옆으로 34 씩 넓힌 그림판★ (2026-09-16 사장님 «글씨 안튀어나가게»).
+          육각 자체는 그대로고 ★글자 자리만★ 생긴다. 왼쪽 축은 `textAnchor="end"` 라
+          이름이 길수록 왼쪽으로 뻗는데, 0 에서 잘려 카드 밖으로 나갔다.
+      */}
+      <svg
+        ref={svgRef}
+        viewBox={`-34 0 ${HEX.w + 68} ${HEX.h}`}
+        style={{ width: HEX.w + 68, height: HEX.h, maxWidth: '100%', display: 'block' }}
+      >
         <defs>
           <filter id={`${id}Glow`} x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="4" result="b1" />
@@ -201,33 +213,67 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
             const [x, y, anchor] = HEX_LABELS[i] as (typeof HEX_LABELS)[number]
             return (
               <g key={p.label} opacity={p.thin ? 0.45 : 1}>
+                {/*
+                  ★긴 이름은 괄호 앞에서 두 줄★ — «백어택성공률(2턴)» 은 열두 자라
+                  한 줄로는 어디로 늘려도 삐져나온다 (선수 육각과 같은 방법).
+                */}
                 <text x={x} y={y} textAnchor={anchor} fontSize={12} fontWeight="700" fill={V3.textMuted}>
-                  {p.label}
+                  {(() => {
+                    const cut = p.label.indexOf('(')
+                    if (cut <= 0) return p.label
+                    return (
+                      <>
+                        <tspan x={x}>{p.label.slice(0, cut)}</tspan>
+                        <tspan x={x} dy={13}>{p.label.slice(cut)}</tspan>
+                      </>
+                    )
+                  })()}
                 </text>
-                <text x={x} y={y + 14} textAnchor={anchor} fontSize={11} fontWeight="700">
+                <text
+                  x={x}
+                  y={y + (p.label.includes('(') ? 27 : 14)}
+                  textAnchor={anchor}
+                  fontSize={11}
+                  fontWeight="700"
+                >
                   {showWon ? <tspan fill={WON.line}>{p.wonText}</tspan> : null}
                   {showWon && showLost ? <tspan fill="#44506c"> · </tspan> : null}
                   {showLost ? <tspan fill={LOST.line}>{p.lostText}</tspan> : null}
                 </text>
                 {/*
-                  ★몇 번 중 몇 번★ (2026-09-16 사장님 «다른건 다 압도했는데?»).
-                    «60%» 만 보면 5번 중 3번인 줄 모른다. 분모를 적어 두면
-                    유저가 스스로 «저건 표본이 적네» 를 판단할 수 있다.
+                  ⚠ ★2026-09-16 — «몇 번 중 몇 번» 줄을 뺐다★ (사장님: «6축 전부
+                    몇번중에 몇번인지 쓰지마»). 줄이 셋이 되니 빽빽하고 왼쪽 글씨가
+                    카드 밖으로 밀렸다. ★그 몫은 육각 밑 「어디서 갈렸나」 한 줄이
+                    이미 한다★ — 거기에 «23/43» 처럼 횟수가 들어간다.
+                    `wonCount`·`lostCount` 는 `pairsOf` 에 그대로 남겨 뒀다.
                 */}
-                {p.wonCount !== null || p.lostCount !== null ? (
-                  <text x={x} y={y + 25} textAnchor={anchor} fontSize={9} fill="#5a6a8c">
-                    {showWon && p.wonCount !== null ? <tspan fill="#6f86b5">{p.wonCount}</tspan> : null}
-                    {showWon && showLost && p.wonCount !== null && p.lostCount !== null ? (
-                      <tspan fill="#3b465e"> · </tspan>
-                    ) : null}
-                    {showLost && p.lostCount !== null ? <tspan fill="#b5757c">{p.lostCount}</tspan> : null}
-                  </text>
-                ) : null}
               </g>
             )
           })}
         </g>
       </svg>
+
+      {/*
+        ★이 판이 어디서 갈렸나★ (2026-09-16 사장님: «걍 진팀이 진 이유를 알면 되는데»).
+          여섯 축을 나란히 두면 유저가 스스로 해석해야 하는데, 퍼센트가 표본을 감춰서
+          «다 압도했는데 왜 졌지» 가 된다. 그래서 ★답을 우리가 써 준다.★
+          표본이 얇은 축은 후보가 아니고, 뽑을 게 없으면 아무 말도 안 한다.
+      */}
+      {verdict !== null ? (
+        <div
+          style={{
+            margin: '2px 12px 10px',
+            padding: '9px 12px',
+            borderLeft: `3px solid ${WON.fill}`,
+            background: 'rgba(91,141,255,.07)',
+            fontSize: 11.5,
+            lineHeight: 1.6,
+            color: V3.text,
+          }}
+        >
+          {matchVerdictText(verdict, wonName, lostName)}
+        </div>
+      ) : null}
 
       {/* 범례 — 어느 색이 어느 클랜인가 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>

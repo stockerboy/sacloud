@@ -42,6 +42,14 @@ const wrap: CSSProperties = {
   gap: 20,
   padding: '38px 0 26px',
 }
+/**
+ * ★제목이 없을 때의 여백★ (2026-09-16 사장님: «바랑 내용 사이가 좀 떨어져있는거야»).
+ *
+ * 제목을 없앴는데(바로 위 탭이 제목을 대신한다) ★제목이 서 있던 자리의 여백이
+ * 그대로 남아★ 탭과 내용 사이가 떴다. 글자만 빠지고 빈 칸이 남은 셈이다.
+ * 제목이 있는 화면은 위 `wrap` 그대로다 — 한 픽셀도 안 바뀐다.
+ */
+const wrapNoTitle: CSSProperties = { ...wrap, padding: '14px 0 18px' }
 const left: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }
 const ribbonRow: CSSProperties = { display: 'flex', alignItems: 'center', gap: 9 }
 const ribbon: CSSProperties = { width: 38, height: 2, flex: 'none', background: 'var(--v2-accent)' }
@@ -92,7 +100,7 @@ export function PageHead({
     <div
       className={className}
       style={{
-        ...wrap,
+        ...(title === '' ? wrapNoTitle : wrap),
         ...(divider ? { borderBottom: '1px solid var(--v2-head-divider)' } : {}),
         ...style,
       }}

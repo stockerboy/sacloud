@@ -152,14 +152,26 @@ function NoRecordStat({ className = '' }: { className?: string }) {
 export function RankHeader({ title, notice }: { title: string; notice: string }) {
   return (
     /* 좁은 화면에서는 한 줄에 나란히 두지 않는다 — 안내문구가 제목을 밀어 두 줄로 쪼갠다 */
-    <div className="mb-6 flex items-baseline max-md:flex-col max-md:items-start">
-      {/* ⚠ 제목이 비면 자리를 안 만든다 — 빈 상자가 여백만 남긴다 (2026-09-16) */}
+    /*
+      ⚠ ★제목이 없으면 제목 몫의 여백도 없앤다★ (2026-09-16 사장님:
+        «바랑 내용 사이가 좀 떨어져있는거야»). 글자만 빼고 빈 칸을 남기면
+        탭과 안내문 사이가 뜬다. 제목이 있는 화면은 그대로다.
+    */
+    <div
+      className={`flex items-baseline max-md:flex-col max-md:items-start ${
+        title === '' ? 'mb-3.5' : 'mb-6'
+      }`}
+    >
       {title === '' ? null : (
         <h1 className="font-display text-3xl tracking-wide text-text-strong max-md:whitespace-nowrap max-md:text-2xl">
           {title}
         </h1>
       )}
-      <div className="ml-4 text-sm text-faint max-md:ml-0 max-md:mt-1.5">{notice}</div>
+      <div
+        className={`text-sm text-faint ${title === '' ? '' : 'ml-4 max-md:ml-0 max-md:mt-1.5'}`}
+      >
+        {notice}
+      </div>
     </div>
   )
 }

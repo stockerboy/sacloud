@@ -8,6 +8,7 @@ export * from './rankColors'
    — 빌드가 «conflicting star exports» 라고 경고한다. 겹치지 않는 것만 적어서 내보낸다 (2026-09-11) */
 export { CLAN_THEMES } from './clanThemes'
 export * from './MatchHexagonV3'
+export * from './matchVerdict'
 export * from './primitives'
 export * from './Hexagon'
 export * from './CompareSearchV3'
