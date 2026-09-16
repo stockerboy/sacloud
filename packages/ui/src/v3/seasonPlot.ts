@@ -199,7 +199,8 @@ export function useDrawIn(
         for (const e of entries) if (e.isIntersecting) fire()
         if (done) io.disconnect()
       },
-      { threshold: 0.25 },
+      /* ⚠ 2026-09-16 — 0.25 → 0.05. 긴 카드는 25% 를 채우기 전에 사람이 먼저 본다 */
+      { threshold: 0.05 },
     )
     io.observe(el)
     const timer = window.setTimeout(fire, DRAW_FALLBACK_MS)
@@ -224,7 +225,18 @@ export function useDrawIn(
       if (p < 1) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    /*
+     * ★최종 보장★ (2026-09-16 사장님: «그래프가 안나와 지금»).
+     *   `requestAnimationFrame` 은 ★탭이 뒤에 있으면 아예 안 돈다.★ 그 사이에
+     *   이 자리가 그려지면 `t` 가 0 에 머물러 ★틀과 눈금만 남는다★ —
+     *   축 이름조차 안 보인다 (`grow > 0.92` 여야 나온다).
+     *   시간이 지났으면 rAF 가 한 번도 안 돌았더라도 다 그린 것으로 놓는다.
+     */
+    const settle = window.setTimeout(() => setT(1), ms + 400)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(settle)
+    }
   }, [ms, armed])
   return t
 }

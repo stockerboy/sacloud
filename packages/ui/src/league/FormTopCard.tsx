@@ -126,12 +126,15 @@ export function FormTopCard({
   return (
     <section className="v2-flagmt">
       <header className="v2-flagmt__head">
-        <span className="v2-flagmt__title">최근 폼 1위</span>
-        {/* ⚠ 제목과 붙어 «1위09/15» 로 읽혔다 — 앞에 한 칸 띄운다 (2026-09-16 QA) */}
-        <span className="v2-flagmt__state">
-          {' '}
-          {day.slice(5).replace('-', '/')} · 고르게 잘하고 승률도 좋은 쪽
-        </span>
+        {/*
+          ★제목이 «무엇의 1위인지» 를 말한다★ (2026-09-16 사장님:
+            «그냥 최근 폼 1위 스나 / 최근 폼 1위 라플 이라고 적고»).
+          여태는 날짜와 «고르게 잘하고 승률도 좋은 쪽» 이 붙어 길기만 했고,
+          정작 지금 보는 것이 스나인지 라플인지 클랜인지를 안 알려 줬다.
+        */}
+        <span className="v2-flagmt__title">최근 폼 1위 {picked.label}</span>
+        {/* 날짜는 작게 뒤에 — 어느 날 기록인지는 알아야 한다 */}
+        <span className="v2-flagmt__state"> {day.slice(5).replace('-', '/')}</span>
       </header>
 
       {/* 고른 줄의 이름 — 육각만 있으면 «누구 것인지» 를 모른다 */}
@@ -160,6 +163,13 @@ export function FormTopCard({
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap' }}>
           {picked.row.win}승 {picked.row.lose}패 · {picked.row.win_rate}%
+          {/* ★킬뎃도 적는다★ (2026-09-16 사장님). 못 잰 줄에는 안 적는다 — 0% 로 우기지 않는다 */}
+          {typeof picked.row.kd_rate === 'number' ? (
+            <>
+              <span style={{ color: V3.textGhost2 }}> · </span>
+              킬뎃 {picked.row.kd_rate}%
+            </>
+          ) : null}
         </span>
       </div>
 

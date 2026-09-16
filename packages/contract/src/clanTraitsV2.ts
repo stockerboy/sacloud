@@ -1251,6 +1251,27 @@ function diffAxis(
   part: { rounds: number; won: number; quietRounds: number; quietWon: number },
 ): ClanHexV2Axis {
   const active = part.won / part.rounds
+  /*
+   * ⚠ ★한 판에서는 차를 못 내는 일이 흔하다★ (2026-09-16 사장님: «둘다 0이면 좀 그래»).
+   *   6:1 처럼 짧은 판에서 스나가 매 라운드 킬을 내면 «침묵한 라운드» 가 0 이다.
+   *   그때는 ★스나가 일한 라운드 승률★ 로 떨어진다 — 경기 육각은 두 팀을 견주라고
+   *   있는 자리라 양쪽 다 «없었음» 이면 쓸모가 없다.
+   *   경기 육각 밑에는 이미 «이 판 두 팀 비교 · 리그 순위와는 잣대가 다릅니다» 라고 적혀 있다.
+   */
+  if (part.quietRounds === 0) {
+    return {
+      key,
+      label: CLAN_HEX_V2_AXIS_LABELS[key],
+      numerator: part.won,
+      denominator: part.rounds,
+      raw: active,
+      value: null,
+      text: `${Math.round(active * 100)}%`,
+      pending: null,
+      rank: null,
+      total: null,
+    }
+  }
   const quiet = part.quietWon / part.quietRounds
   const diff = active - quiet
   const raw = Math.max(0, Math.min(1, (diff * 100) / SNIPER_INFLUENCE_FULL_SCALE))
@@ -1395,9 +1416,11 @@ export function buildClanHexV2Raw(input: {
       case 'sniperInfluence': {
         const part = tally.sniperInfluence ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
-        if (part.rounds === 0 || part.quietRounds === 0) {
-          return pendingAxis(key, 'sample', { numerator: part.won })
-        }
+        /*
+         * ★우리 스나가 한 번도 킬을 못 냈으면★ 그때만 «측정중» 이다.
+         *   «침묵한 라운드» 가 없는 것은 잴 수 있다 — 위 `diffAxis` 가 승률로 떨어진다.
+         */
+        if (part.rounds === 0) return pendingAxis(key, 'sample', { numerator: part.won })
         return diffAxis(key, part)
       }
       /*
