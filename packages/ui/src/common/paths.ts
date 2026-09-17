@@ -56,3 +56,19 @@ export function leagueMatchPath(leagueSlug: string, matchId: string): string {
 export function leagueMatchListPath(leagueSlug: string): string {
   return `/league/${leagueSlug}/match`
 }
+
+/**
+ * ★배지 페이지★ — 일곱 그림을 걸어 두는 곳 (2026-09-17 사장님).
+ *
+ * > «페이지를 하나 더 만들어서 저 7개 걸어놓고 밑에 어떤 특성인지 쓰고
+ * >  들어가면 뱃지 소유자들을 전부 보여줘
+ * >  (개인랭킹이나 클랜랭킹에서 누르면 여기로 페이지전환)»
+ */
+export function leagueBadgeListPath(leagueSlug: string): string {
+  return `/league/${leagueSlug}/badge`
+}
+
+/** 배지 하나 — 그 배지를 가진 사람 전부를 순위대로 */
+export function leagueBadgePath(leagueSlug: string, badgeKey: string): string {
+  return `/league/${leagueSlug}/badge/${badgeKey}`
+}

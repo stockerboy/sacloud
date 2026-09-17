@@ -15,7 +15,8 @@
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail, MatchDetail, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
-import { showsTier } from '@sacloud/contract'
+import { showsTier, badgeArtPath, badgeOfAxis } from '@sacloud/contract'
+import { leagueBadgePath } from '../common/paths'
 import { rankColor, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { CompareSearchV3, type CompareCandidate } from './CompareSearchV3'
@@ -263,7 +264,7 @@ export interface StrengthCompare {
   onClear: () => void
 }
 
-function StrengthCard({ data, compare }: { data: LeaguePlayerDetail; compare?: StrengthCompare }) {
+function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail; compare?: StrengthCompare; leagueSlug: string }) {
   const hex = data.hex
   const axes = strengthAxes(data)
   const badges = hex ? hex.axes.filter((a) => a.badge !== null && a.rank !== null) : []
@@ -331,13 +332,26 @@ function StrengthCard({ data, compare }: { data: LeaguePlayerDetail; compare?: S
       {badges.length > 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '0 18px 16px' }}>
           <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>특성</span>
-          {badges.map((a) => (
-            <span key={a.key} title={a.desc} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))', border: '1px solid rgba(255,216,61,.5)', boxShadow: '0 0 14px rgba(255,216,61,.18)' }}>
-              <BadgeIcon kind={a.key === 'save' ? 'shield' : 'trend'} />
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#ffe89a' }}>{a.badge}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#c9a94a' }}>{a.rank}위</span>
-            </span>
-          ))}
+          {/*
+                * ★배지 그림★ (2026-09-17 사장님) — 손으로 그리던 것이 아니라 ★사장님이 주신 일곱 장★ 이다.
+                *   누르면 그 배지를 가진 사람 전부가 나오는 페이지로 간다
+                *   («뱃지 클릭하면 (…) 누구누구가 이 뱃지 가지고있는지»).
+                *   그림을 못 찾으면 ★글자만 남는다★ — 빈칸을 만들지 않는다.
+                */}
+          {badges.map((a) => {
+            const art = hex?.weapon === null || hex?.weapon === undefined ? null : badgeOfAxis(a.key, hex.weapon)
+            const pill = (
+              <span title={a.desc} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))', border: '1px solid rgba(255,216,61,.5)', boxShadow: '0 0 14px rgba(255,216,61,.18)' }}>
+                {art === null ? <BadgeIcon kind={a.key === 'save' ? 'shield' : 'trend'} />
+                  : <img src={badgeArtPath(art)} alt="" width={20} height={20} style={{ width: 20, height: 20, display: 'block' }} />}
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: '#ffe89a' }}>{art?.label ?? a.badge}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#c9a94a' }}>{a.rank}위</span>
+              </span>
+            )
+            return art === null ? <span key={a.key}>{pill}</span> : (
+              <a key={a.key} href={leagueBadgePath(leagueSlug, art.key)} style={{ textDecoration: 'none' }}>{pill}</a>
+            )
+          })}
         </div>
       ) : null}
     </div>
@@ -1053,7 +1067,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
       {TIER_CARD_IN_BODY ? (
         <div style={halfStyle}>
           <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} showsKd={props.showsKd ?? true} />
-          <StrengthCard data={data} compare={props.compare} />
+          <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
         </div>
       ) : null}
       {/* ★탭 셋★ (2026-09-11 사장님 목업) — 그래프 · 플레이분석 · 클랜별전적 */}
@@ -1080,7 +1094,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
         /* PC 는 왼쪽에 «어떻게 재는가», 오른쪽에 육각형 (2026-09-11 사장님). 폰은 육각형만 */
         <div className="v3-play-split" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
           <AnalysisPanelV3 />
-          <StrengthCard data={data} compare={props.compare} />
+          <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
         </div>
       ) : null}
       {tab === 'clan' ? <ClanVsCard data={data} /> : null}

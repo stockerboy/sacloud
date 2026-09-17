@@ -11,6 +11,8 @@ export * from './todayPerformance'
 export * from './tierBreakdown'
 export * from './traits'
 export * from './playerHex'
+/* ★배지 여덟★ — 이름·그림·축을 정하는 단일 출처 (2026-09-17 사장님) */
+export * from './badges'
 export * from './traitTier'
 export * from './playerPosition'
 export * from './clanMetrics'

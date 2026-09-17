@@ -30,8 +30,9 @@ import {
 } from '../common/format'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 import { ClanBadges } from './ClanBadges'
-import { PLAYER_HEX_BADGE } from '@sacloud/contract'
-import { TraitEmblem } from './TraitEmblem'
+import { badgeOfAxis } from '@sacloud/contract'
+/* ⚠ 옛 SVG 배지(`TraitEmblem.tsx`)는 그대로 있다 — 사장님 그림으로 바뀌었을 뿐이다 (`CLAUDE.md` 1-4) */
+import { AxisBadge } from './BadgeArt'
 
 /**
  * ★클랜 줄에 배지를 그릴 것인가★ (2026-09-17 사장님:
@@ -917,20 +918,28 @@ export function PlayerRankTable({
                   */}
                 {(row.trait_emblems ?? []).length > 0 ? (
                   <span className="flex shrink-0 items-start justify-start gap-1.5 max-md:ml-2 max-md:w-[78px] md:mx-auto md:w-[186px] md:gap-2">
+                    {/*
+                      * ⚠ ★2026-09-17 — 손으로 그리던 SVG 배지를 사장님 그림으로 바꿨다★.
+                      *   옛 판(`TraitEmblem`)은 지우지 않았다 — 파일이 그대로 있고 이 줄만
+                      *   `AxisBadge` 로 바뀌었다 (`CLAUDE.md` 1-4).
+                      *   그리고 ★누르면 배지 페이지로 간다★ (사장님: «뱃지 클릭하면 (…)
+                      *   누구누구가 이 뱃지 가지고있는지»).
+                      */}
                     {(row.trait_emblems ?? []).slice(0, 3).map((e) => {
-                      const axis = e.axis as Parameters<typeof TraitEmblem>[0]['axis']
-                      const name = PLAYER_HEX_BADGE[axis]?.[e.weapon === 1 ? 'sniper' : 'rifle'] ?? ''
+                      const axis = e.axis as Parameters<typeof AxisBadge>[0]['axis']
+                      const name = badgeOfAxis(axis, e.weapon)?.label ?? ''
                       return (
                         <span
                           key={`${e.axis}-${e.weapon}`}
                           className="flex flex-col items-center gap-[3px] max-md:w-[24px] md:w-[58px]"
                         >
-                          <TraitEmblem
+                          <AxisBadge
                             axis={axis}
                             weapon={e.weapon}
                             tier={e.tier}
                             size={22}
-                            className="h-[22px] w-auto md:h-[30px]"
+                            leagueSlug={leagueSlug}
+                            className="md:[&_img]:!h-[30px] md:[&_img]:!w-[30px]"
                           />
                           <span className="hidden truncate text-center text-[9.5px] leading-none text-faint md:block md:w-full">
                             {name}

@@ -26,7 +26,7 @@
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail } from '@sacloud/contract'
-import { barracksPlayerUrl, leagueScreen, showsTier } from '@sacloud/contract'
+import { barracksPlayerUrl, leagueScreen, showsTier, badgeArtPath, badgeOfAxis } from '@sacloud/contract'
 import { rankColorOf, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { strengthAxes } from './playerHexAxes'
@@ -353,12 +353,21 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
       {badges.length > 0 ? (
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 18px 12px' }}>
           <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>특성</span>
-          {badges.map((a) => (
-            <span key={a.key} title={a.desc ?? undefined} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', background: 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))', border: '1px solid rgba(255,216,61,.5)' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#ffe89a' }}>{a.badge}</span>
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: '#c9a94a' }}>{a.rank}위</span>
-            </span>
-          ))}
+          {/*
+            * ★배지 그림★ (2026-09-17 사장님) — 사장님이 주신 일곱 장을 그대로 쓴다.
+            *   ⚠ 여기는 `leagueSlug` 가 없어 ★링크를 안 건다★ — 없는 슬러그를 지어내지 않는다.
+            *     누르는 것은 상세 카드(`PlayerDetailV3`)와 랭킹 표에서 된다.
+            */}
+          {badges.map((a) => {
+            const art = hex?.weapon === null || hex?.weapon === undefined ? null : badgeOfAxis(a.key, hex.weapon)
+            return (
+              <span key={a.key} title={a.desc ?? undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 6px', borderRadius: 999, whiteSpace: 'nowrap', background: 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))', border: '1px solid rgba(255,216,61,.5)' }}>
+                {art === null ? null : <img src={badgeArtPath(art)} alt="" width={18} height={18} style={{ width: 18, height: 18, display: 'block' }} />}
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#ffe89a' }}>{art?.label ?? a.badge}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 700, color: '#c9a94a' }}>{a.rank}위</span>
+              </span>
+            )
+          })}
         </div>
       ) : null}
       {/*
