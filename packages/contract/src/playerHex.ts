@@ -82,8 +82,12 @@ export function playerHexBadgeRank(key: string): number {
  */
 export const PLAYER_HEX_BADGE: Partial<Record<TraitAxisAnyKey, { sniper: string; rifle: string }>> = {
   save: { sniper: '세이브 머신', rifle: '세이브 머신' },
-  /* ⚠ 2026-09-15 밤 — 축 이름이 «샷싸움» → «라이플화력» 이 되어 배지도 따라간다 (사장님) */
-  duel: { sniper: '롱 마스터', rifle: '라이플화력' },
+  /*
+   * ⚠ 축 이름이 왕복했고 배지는 ★언제나 축 이름을 그대로 따라간다★ —
+   *   샷싸움 → (2026-09-15 밤) 라이플화력 → (2026-09-17 사장님) 샷싸움.
+   *   옛 배지 «샷터» 는 `PLAYER_HEX_BADGE_V1` 에 그대로 있다. 새 별명을 지어내지 않는다.
+   */
+  duel: { sniper: '롱 마스터', rifle: '샷싸움' },
   /* ★2026-09-16 밤 — 새 이름 셋★ (사장님). 배지도 축 이름을 그대로 쓴다 */
   chance: { sniper: '기회창출', rifle: '기회차단' },
   /* 사장님이 «선취점» 을 «선짤» 로 못 박으셨다 (2026-09-02) — 배지만 영어로 남아 있었다 */

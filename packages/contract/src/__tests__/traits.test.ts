@@ -459,9 +459,12 @@ describe('buildPlayerTraits — 축 이름은 주무기를 따른다', () => {
     expect(axisOf(sniper, 'duel').label).toBe('스나싸움')
   })
 
-  /* ⚠ 옛 기대값 `'샷싸움'` — 2026-09-15 밤 사장님 «샷싸움을 라이플 화력으로 이름만 바꿔줘» */
-  it('라플 화면은 라이플화력', () => {
-    expect(axisOf(rifle, 'duel').label).toBe('라이플화력')
+  /*
+   * ⚠ 이 기대값은 두 번 바뀌었다 — `'샷싸움'` → `'라이플화력'`(2026-09-15 밤) → `'샷싸움'`(2026-09-17).
+   *   사장님: «라이플화력을 샷싸움으로만 바꾸는거야 내용은 같아». 계산은 그대로다.
+   */
+  it('라플 화면은 샷싸움', () => {
+    expect(axisOf(rifle, 'duel').label).toBe('샷싸움')
   })
 
   it('내려온 5번(`finish`)의 무기별 이름은 그대로 남아 있다 (D-260)', () => {
@@ -489,7 +492,7 @@ describe('buildPlayerTraits — 축 이름은 주무기를 따른다', () => {
 
   it('주무기를 몰라도 이름은 붙는다 (라플 표기가 기본)', () => {
     const unknown = buildPlayerTraits(rifleInput({ weapon: null }))
-    expect(axisOf(unknown, 'duel').label).toBe('라이플화력')
+    expect(axisOf(unknown, 'duel').label).toBe('샷싸움')
     expect(unknown.axes.every((axis) => axis.label.length > 0)).toBe(true)
   })
 })

@@ -1,0 +1,414 @@
+<title>라운드 검시</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@300;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+:root{
+  --ground:#eceef3; --panel:#fff; --panel2:#f6f7fa;
+  --ink:#151822; --muted:#5b6274; --faint:#8c92a4;
+  --line:#d9dce4; --line2:#e8eaf0;
+  --red:#c2423a; --blue:#2c5fbe; --warn:#a8690f;
+  --redSoft:rgba(194,66,58,.11); --blueSoft:rgba(44,95,190,.11); --warnSoft:rgba(168,105,15,.13);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ground:#0f111a; --panel:#181c27; --panel2:#141824;
+  --ink:#e7e9f1; --muted:#98a0b4; --faint:#6c7387;
+  --line:#272c3b; --line2:#1f2431;
+  --red:#ef6f65; --blue:#6d9bf2; --warn:#e0a44d;
+  --redSoft:rgba(239,111,101,.14); --blueSoft:rgba(109,155,242,.14); --warnSoft:rgba(224,164,77,.15);
+}}
+:root[data-theme="dark"]{
+  --ground:#0f111a; --panel:#181c27; --panel2:#141824;
+  --ink:#e7e9f1; --muted:#98a0b4; --faint:#6c7387;
+  --line:#272c3b; --line2:#1f2431;
+  --red:#ef6f65; --blue:#6d9bf2; --warn:#e0a44d;
+  --redSoft:rgba(239,111,101,.14); --blueSoft:rgba(109,155,242,.14); --warnSoft:rgba(224,164,77,.15);
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);
+  font-family:'Gothic A1',-apple-system,'Malgun Gothic',sans-serif;font-weight:500;
+  line-height:1.6;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1060px;margin:0 auto;padding:26px 18px 80px}
+
+/* ── 머리 ── */
+header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+h1{margin:0;font-size:1.72rem;font-weight:900;letter-spacing:-.02em;text-wrap:balance}
+.sub{margin:6px 0 0;color:var(--muted);font-size:.86rem;font-weight:400}
+.warnbar{margin-top:12px;border-left:3px solid var(--warn);background:var(--warnSoft);
+  padding:9px 12px;font-size:.79rem;color:var(--ink);font-weight:400}
+.warnbar b{font-weight:700}
+
+/* ── 경기 고르기 ── */
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:20px}
+.tab{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--muted);
+  border-radius:2px;padding:8px 12px;cursor:pointer;font-family:inherit;font-size:.78rem;
+  font-weight:700;text-align:left;line-height:1.35;white-space:nowrap}
+.tab:hover{border-color:var(--faint)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.tab small{display:block;font-weight:400;font-size:.68rem;opacity:.72;letter-spacing:.02em}
+.tab:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* ── 점수판 ── */
+.score{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;
+  background:var(--panel);border:1px solid var(--line);padding:16px 18px;margin-bottom:6px}
+.sideName{font-size:1.14rem;font-weight:900;letter-spacing:-.01em;word-break:break-all}
+.sideTag{font-size:.66rem;font-weight:700;letter-spacing:.14em;color:var(--faint)}
+.r .sideName{color:var(--red)} .b .sideName{color:var(--blue)}
+.b{text-align:right}
+.scoreNum{font-size:1.5rem;font-weight:700;letter-spacing:.02em}
+.crown{font-size:.64rem;font-weight:700;letter-spacing:.1em;border:1px solid currentColor;
+  padding:1px 5px;margin-left:6px;vertical-align:.14em}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.74rem;color:var(--muted);
+  border:1px solid var(--line);border-top:0;background:var(--panel2);padding:9px 18px;margin-bottom:24px}
+.meta b{font-weight:700;color:var(--ink)}
+
+/* ── 육각 + 표 ── */
+.hexrow{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:22px;
+  align-items:start;margin-bottom:26px}
+@media (max-width:760px){ .hexrow{grid-template-columns:1fr} }
+.card{background:var(--panel);border:1px solid var(--line);padding:16px}
+.cardTitle{margin:0 0 12px;font-size:.7rem;font-weight:700;letter-spacing:.14em;color:var(--faint)}
+svg{display:block;width:100%;height:auto}
+.ledger{width:100%;border-collapse:collapse;font-size:.83rem}
+.ledger th{font-size:.66rem;font-weight:700;letter-spacing:.1em;color:var(--faint);
+  text-align:right;padding:0 0 8px;border-bottom:1px solid var(--line)}
+.ledger th:first-child{text-align:left}
+.ledger td{padding:9px 0;border-bottom:1px solid var(--line2);text-align:right;vertical-align:top}
+.ledger td:first-child{text-align:left;font-weight:700}
+.ledger tr:last-child td{border-bottom:0}
+.axName small{display:block;font-weight:400;font-size:.68rem;color:var(--faint);letter-spacing:0}
+.val{font-weight:700;font-size:.95rem}
+.den{display:block;font-size:.66rem;color:var(--faint);font-weight:400}
+.lead{position:relative}
+.lead::after{content:'';position:absolute;right:-9px;top:50%;width:3px;height:16px;
+  transform:translateY(-50%);background:currentColor}
+.dash{color:var(--faint);font-weight:400}
+.viewnote{margin:10px 0 0;font-size:.7rem;color:var(--faint);text-align:center;line-height:1.5}
+.viewnote b{color:var(--muted)}
+
+/* ── 라운드 띠 ── */
+.strip{display:flex;gap:3px;margin-bottom:6px;overflow-x:auto;padding-bottom:4px}
+.rbtn{flex:1 1 0;min-width:46px;border:1px solid var(--line);background:var(--panel);
+  cursor:pointer;font-family:inherit;padding:7px 3px 6px;display:flex;flex-direction:column;
+  align-items:center;gap:4px;border-radius:2px}
+.rbtn:hover{border-color:var(--faint)}
+.rbtn[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.rbtn:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.rno{font-size:.7rem;font-weight:700;color:var(--muted)}
+.rbar{width:100%;height:5px;border-radius:1px}
+.rrole{font-size:.6rem;font-weight:700;letter-spacing:.06em;color:var(--faint)}
+.rchips{display:flex;gap:2px;min-height:12px}
+.chip{font-size:.55rem;font-weight:700;line-height:1;padding:2px 3px;border-radius:1px;
+  background:var(--warnSoft);color:var(--warn);font-family:'JetBrains Mono',monospace}
+.halfmark{display:flex;font-size:.64rem;color:var(--faint);letter-spacing:.1em;
+  font-weight:700;margin-bottom:18px}
+.halfmark span{border-top:1px solid var(--line);padding-top:4px}
+
+/* ── 라운드 상세 ── */
+.detail{background:var(--panel);border:1px solid var(--line);padding:18px}
+.dhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;
+  border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px}
+.dno{font-size:1.3rem;font-weight:900}
+.pill{font-size:.66rem;font-weight:700;letter-spacing:.08em;padding:3px 7px;border-radius:2px;
+  background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.pill.win{border-color:currentColor;background:transparent}
+.verdict{margin:0 0 14px;padding:12px 14px;background:var(--panel2);border-left:3px solid var(--line)}
+.verdict.bad{border-left-color:var(--warn);background:var(--warnSoft)}
+.vline{margin:0;font-size:.86rem}
+.vline+.vline{margin-top:6px}
+.vk{font-size:.64rem;font-weight:700;letter-spacing:.1em;color:var(--warn);
+  font-family:'JetBrains Mono',monospace;margin-right:6px}
+.vname{font-weight:900}
+.hero{margin:10px 0 0;font-size:.82rem;color:var(--muted)}
+.timeline{list-style:none;margin:0;padding:0;font-size:.82rem}
+.timeline li{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:baseline;
+  padding:7px 0;border-bottom:1px solid var(--line2)}
+.timeline li:last-child{border-bottom:0}
+.tn{font-size:.68rem;color:var(--faint);font-weight:700}
+.tz{font-size:.72rem;color:var(--muted);white-space:nowrap}
+.tz.hit{color:var(--warn);font-weight:700}
+.kn{font-weight:700} .vn{font-weight:700;opacity:.9}
+.arrow{color:var(--faint);margin:0 5px}
+.snip{font-size:.6rem;font-weight:700;letter-spacing:.06em;color:var(--faint);
+  border:1px solid var(--line);padding:0 3px;margin-left:4px;vertical-align:.1em}
+.foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:.74rem;color:var(--faint);font-weight:400}
+.foot p{margin:0 0 6px}
+.foot b{color:var(--muted);font-weight:700}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>라운드 검시</h1>
+  <p class="sub">사장님이 정하신 여섯 축과 구역으로 다섯 경기를 한 라운드씩 뜯었습니다.
+    누가 어디서 먼저 죽어 그 라운드가 넘어갔는지까지.</p>
+  <div class="warnbar"><b>다 실제 배틀로그입니다.</b> 지어낸 값은 한 줄도 없습니다.
+    다만 <b>스코어는 배틀로그가 센 라운드 수</b>라 사이트에 적힌 점수와 다를 수 있습니다 —
+    <code class="mono">win_team_no</code> 가 모든 라운드에 오지 않아서, 빈 라운드는
+    <b>더 많이 죽은 팀이 졌다</b>로 메웠습니다(승자를 아는 44라운드 중 43건 일치).</div>
+</header>
+
+<div class="tabs" id="tabs" role="tablist"></div>
+<div id="board"></div>
+
+<div class="foot">
+  <p><b>A어택</b> 니은자·중길·설대앞·쓰리깡·머리·녹뒤·컨뒤·A설대(<b>숏은 뺐습니다</b>).
+     잡은 자리나 죽은 자리 중 하나라도 거기면 <b>A 교전</b>이고,
+     그 교전들에서 <b>공격이 수비보다 적게 죽으면 뚫은 것</b>입니다. 비기면 못 뚫은 것입니다.
+     A 교전이 한 건도 없는 라운드는 <b>분모에서 뺍니다</b> — 안 간 곳을 실패로 적지 않습니다.
+     — 9/17 사장님 정정: 「3명까진 막았지만… 이건 진짜 에이 잘막은거야.
+     이거 졌으면 걍 세이브를 못한거지」</p>
+  <p><b>B어택</b> 비롱·벙커·바닥·일문에서 <b>7번째 이내 수비 죽음이 두 번</b>이면 뚫은 것.
+     — 원안은 3번째였는데 실측에서 창을 열수록 좋아지기만 했습니다
+     (앞선팀승률 62.0→64.3% · 두 팀 다 100%인 경기 62.5→8.9% · 잰 경기 8,937→21,287판).</p>
+  <p><b>2층어택</b> B쪽보다 <b>먼저</b> 2층에서 수비가 죽으면 뚫은 것.</p>
+  <p><b>전·후반</b> 한 팀이 5승에 닿은 라운드까지가 전반(29,176판 반례 0).
+     <b>진영</b>은 C4를 설치한 팀이 공격. 한 반에 C4가 하나도 없으면
+     바닥 교전·스나 머리/녹뒤/컨뒤 교전이 많은 쪽을 수비로 봅니다(실측 99.66%).</p>
+  <p><b>소수싸움·스나싸움·세이브</b>는 사이트가 이미 쓰는 셈 그대로입니다.</p>
+</div>
+</div>
+
+<script src="data.js"></script>
+<script>
+const $ = (s, r) => (r || document).querySelector(s);
+/**
+ * ★경기 육각은 어택으로 읽는다★ (2026-09-17 사장님: «경기6축은 어택으로»).
+ *
+ * 한 경기 안에서 ★어택성공(우리) + 방어율(상대) = 항상 100★ 이다 (27칸 실측 · 어긋남 0).
+ * 우리가 공격한 라운드가 곧 상대가 수비한 라운드라서, 같은 판정을 어느 쪽에 붙이느냐일 뿐이다.
+ * 그래서 두 팀을 견준 결과는 한 칸도 안 바뀐다 — 바뀌는 건 ★읽는 방향★ 이다.
+ *
+ * 옛 판(방어로 읽기)은 `VIEW = 'def'` 한 글자로 돌아온다 (`CLAUDE.md` 1-4).
+ * 시즌을 모으는 클랜 육각에서는 분모가 달라져 둘이 ★서로 다른 말★ 을 하므로 거기선 둘 다 쓴다.
+ */
+const VIEW = 'atk';   // 'atk' | 'def'
+const AX_DEF = [
+  { k:'A',  n:'A방어',   d:'A쪽으로 온 공격을 막은 비율' },
+  { k:'B',  n:'B방어',   d:'B쪽으로 온 공격을 막은 비율' },
+  { k:'F2', n:'2층방어', d:'2층으로 온 공격을 막은 비율' },
+];
+const AX_ATK = [
+  { k:'A',  n:'A어택',   d:'우리가 공격할 때 A를 뚫은 비율' },
+  { k:'B',  n:'B어택',   d:'우리가 공격할 때 B를 뚫은 비율' },
+  { k:'F2', n:'2층어택', d:'우리가 공격할 때 2층을 뚫은 비율' },
+];
+const AX = [
+  { k:'few',  n:'소수싸움', d:'수가 밀린 라운드를 이긴 비율' },
+  { k:'duel', n:'스나싸움', d:'롱 안 스나 대 스나에서 이긴 비율' },
+  { k:'save', n:'세이브',   d:'질 뻔한 라운드를 살린 비율' },
+  ...(VIEW === 'atk' ? AX_ATK : AX_DEF),
+];
+/* 셋(소수·스나·세이브)은 진영을 안 보므로 두 읽기에서 값이 같다 */
+const boxOf = (t) => (VIEW === 'def' ? t.axes
+  : { ...t.attack, few: t.axes.few, duel: t.axes.duel, save: t.axes.save });
+const ZK = (c) => ZONE_KO[c] || c;
+const pctOf = (ax, k) => {
+  const v = ax[k];
+  if (v == null) return null;
+  return typeof v === 'object' ? v.pct : v;
+};
+const denOf = (ax, k) => {
+  const v = ax[k];
+  const rounds = VIEW === 'def' ? ax.defenceRounds : ax.attackRounds;
+  if (v == null) return (k === 'A' || k === 'B' || k === 'F2')
+    ? (VIEW === 'def' ? '수비 0라운드' : '공격 0라운드') : '표본 없음';
+  if (typeof v === 'object') return v.ok + '/' + v.n;
+  /* A 는 ★교전이 있었던 라운드★ 만 분모다 — 안 간 곳을 실패로 적지 않는다 */
+  const n = k === 'A' ? (ax.aRounds ?? rounds) : rounds;
+  return Math.round((v / 100) * n) + '/' + n;
+};
+
+let mi = 0, ri = 0;
+
+/* ── 한 라운드의 판정을 ★화면에서 다시 센다★ — 계산기와 같은 규칙이라 값이 어긋나면 눈에 띈다 ── */
+function verdictOf(m, r) {
+  const out = { breach: [], held: [], blame: [], hero: null, hint: [] };
+  const D = r.def;
+  if (D == null) out.hint.push('이 라운드는 진영을 몰라 방어 판정을 하지 않았습니다.');
+  /* 계산기가 적어 준 판정 근거를 그대로 씁니다 — 화면이 따로 세면 둘이 어긋납니다 */
+  (r.why || []).forEach((w) => {
+    const tag = w.startsWith('A') ? 'A' : w.startsWith('B') ? 'B' : '2층';
+    if (/막음/.test(w)) { out.held.push({ tag, text: w.replace(/^\S+ 막음 — /, '') }); return; }
+    out.breach.push({ tag, text: w.replace(/^(A|B|2층) 뚫림 — /, '') });
+  });
+  const loser = r.win == null ? null : m.teams.find((t) => t.team !== r.win)?.team;
+  if (loser != null) {
+    const first = r.kills.find((k) => k.vt === loser);
+    if (first) out.blame.push({ who:first.v, why:`진 팀에서 제일 먼저 죽었습니다 (${ZK(first.z[0])})` });
+    const cnt = {};
+    r.kills.forEach((k) => { if (k.kt === r.win) cnt[k.k] = (cnt[k.k] || 0) + 1; });
+    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] >= 2) out.hero = { who: top[0], n: top[1] };
+  }
+  return out;
+}
+
+/* ── 육각형 ── */
+function hexSvg(m) {
+  const cx = 158, cy = 150, R = 104;
+  const pt = (i, f) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 3;
+    return [cx + Math.cos(a) * R * f, cy + Math.sin(a) * R * f];
+  };
+  let g = '';
+  for (const f of [0.25, 0.5, 0.75, 1]) {
+    const p = AX.map((_, i) => pt(i, f).map((n) => n.toFixed(1)).join(',')).join(' ');
+    g += `<polygon points="${p}" fill="none" stroke="var(--line)" stroke-width="1"/>`;
+  }
+  AX.forEach((_, i) => {
+    const [x, y] = pt(i, 1);
+    g += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
+  });
+  m.teams.forEach((t) => {
+    const col = t.side === 'red' ? 'var(--red)' : 'var(--blue)';
+    const vs = AX.map((a, i) => { const v = pctOf(boxOf(t), a.k); return [i, v == null ? 0 : v / 100]; });
+    const p = vs.map(([i, f]) => pt(i, Math.max(f, 0.012)).map((n) => n.toFixed(1)).join(',')).join(' ');
+    g += `<polygon points="${p}" fill="${col}" fill-opacity=".15" stroke="${col}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    vs.forEach(([i, f]) => {
+      if (pctOf(boxOf(t), AX[i].k) == null) return;
+      const [x, y] = pt(i, Math.max(f, 0.012));
+      g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${col}"/>`;
+    });
+  });
+  AX.forEach((a, i) => {
+    const [x, y] = pt(i, 1.26);
+    const an = i === 0 || i === 3 ? 'middle' : x > cx ? 'start' : 'end';
+    const dy = i === 0 ? -2 : i === 3 ? 12 : 4;
+    g += `<text x="${x.toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${an}" `
+       + `font-size="12.5" font-weight="700" fill="var(--muted)" `
+       + `font-family="Gothic A1,sans-serif">${a.n}</text>`;
+  });
+  return `<svg viewBox="-16 -8 348 316" role="img" aria-label="여섯 축 육각형">${g}</svg>`;
+}
+
+function ledger(m) {
+  const [t1, t2] = m.teams;
+  const cell = (t, k) => {
+    const box = boxOf(t);
+    const v = pctOf(box, k);
+    if (v == null) return `<td><span class="dash">측정중</span><span class="den">${denOf(box, k)}</span></td>`;
+    const o = pctOf(boxOf(t === t1 ? t2 : t1), k);
+    const lead = o != null && v > o;
+    const col = t.side === 'red' ? 'var(--red)' : 'var(--blue)';
+    return `<td><span class="val mono ${lead ? 'lead' : ''}" style="color:${col}">${v}%</span>`
+         + `<span class="den mono">${denOf(box, k)}</span></td>`;
+  };
+  return `<table class="ledger"><thead><tr><th>축</th>`
+    + m.teams.map((t) => `<th style="color:${t.side === 'red' ? 'var(--red)' : 'var(--blue)'}">${t.name}</th>`).join('')
+    + `</tr></thead><tbody>`
+    + AX.map((a) => `<tr><td class="axName">${a.n}<small>${a.d}</small></td>`
+        + m.teams.map((t) => cell(t, a.k)).join('') + `</tr>`).join('')
+    + `</tbody></table>`;
+}
+
+function render() {
+  const m = MATCHES[mi];
+  const teamOf = (t) => m.teams.find((x) => x.team === t) || null;
+  const colOf = (t) => { const o = teamOf(t); return o == null ? 'var(--line)' : o.side === 'red' ? 'var(--red)' : 'var(--blue)'; };
+  const nameOf = (t) => teamOf(t)?.name ?? '?';
+  const wins = {};
+  m.rounds.forEach((r) => { if (r.win != null) wins[r.win] = (wins[r.win] || 0) + 1; });
+  const [t1, t2] = m.teams;
+  const red = m.teams.find((t) => t.side === 'red'), blue = m.teams.find((t) => t.side === 'blue');
+  const d = new Date(m.at);
+  const date = `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  const r = m.rounds[Math.min(ri, m.rounds.length - 1)];
+  const v = verdictOf(m, r);
+
+  let strip = '', lastHalf = null, halfCut = 0;
+  m.rounds.forEach((rr, i) => {
+    const chips = ['A', 'B', '2층'].filter((_, j) => rr.br[['A', 'B', 'F2'][j]])
+      .map((c) => `<span class="chip">${c}</span>`).join('');
+    const role = rr.att == null ? '?' : rr.att === t1.team ? '' : '';
+    strip += `<button class="rbtn" data-r="${i}" aria-pressed="${i === ri}" `
+      + `title="${rr.no}라운드 · ${rr.half}">`
+      + `<span class="rno mono">${rr.no}</span>`
+      + `<span class="rbar" style="background:${rr.win == null ? 'var(--line)' : colOf(rr.win)}"></span>`
+      + `<span class="rrole">${rr.def == null ? '—' : rr.def === t1.team ? '수' : '공'}</span>`
+      + `<span class="rchips">${chips}</span></button>`;
+    if (lastHalf != null && rr.half !== lastHalf) halfCut = i;
+    lastHalf = rr.half;
+  });
+
+  const bombs = r.bombs.length ? r.bombs.map((b) => b.startsWith('install') ? 'C4 설치' : 'C4 해체').join(' · ') : null;
+
+  const verdictHtml =
+    `<div class="verdict ${v.breach.length ? 'bad' : ''}">`
+    + (v.breach.length
+        ? v.breach.map((b) => `<p class="vline"><span class="vk mono">${b.tag} 뚫림</span>${b.text}</p>`).join('')
+        : `<p class="vline">${r.def == null ? v.hint[0] || '판정 없음'
+            : `<b>${nameOf(r.def)}</b> 가 세 방향을 다 막았습니다.`}</p>`)
+    + v.held.map((h) => `<p class="vline" style="opacity:.8"><span class="vk mono" style="color:var(--muted)">${h.tag} 막음</span>${h.text}</p>`).join('')
+    + (v.blame.length ? `<p class="hero">가장 먼저 무너진 자리 — <b>${v.blame[0].who}</b> · ${v.blame[0].why}</p>` : '')
+    + (v.hero ? `<p class="hero">그 라운드 주역 — <b>${v.hero.who}</b> · ${v.hero.n}킬</p>` : '')
+    + `</div>`;
+
+  const timeline = r.kills.map((k, i) => {
+    const hitA = i < 3 && k.z.some((z) => A_ZONES.includes(z));
+    const hitB = i < 3 && k.vt === r.def && k.z.some((z) => B_ZONES.includes(z));
+    const hit2 = k.vt === r.def && k.z.includes('ICHUNG');
+    return `<li><span class="tn mono">${i + 1}</span>`
+      + `<span><span class="kn" style="color:${colOf(k.kt)}">${k.k}</span>`
+      + (k.sn ? `<span class="snip">S</span>` : '')
+      + `<span class="arrow">→</span>`
+      + `<span class="vn" style="color:${colOf(k.vt)}">${k.v}</span></span>`
+      + `<span class="tz ${hitA || hitB || hit2 ? 'hit' : ''}">${k.z.map(ZK).join(' · ')}</span></li>`;
+  }).join('');
+
+  $('#board').innerHTML =
+    `<div class="score">
+       <div class="r"><div class="sideTag mono">RED</div><div class="sideName">${red?.name ?? '?'}
+         ${m.win === 'red' ? '<span class="crown">WIN</span>' : ''}</div></div>
+       <div class="scoreNum mono">${wins[red?.team] || 0} : ${wins[blue?.team] || 0}</div>
+       <div class="b"><div class="sideTag mono">BLUE</div><div class="sideName">${blue?.name ?? '?'}
+         ${m.win === 'blue' ? '<span class="crown">WIN</span>' : ''}</div></div>
+     </div>
+     <div class="meta"><span>${date}</span><span>${m.map}</span>
+       <span>배틀로그 <b>${m.rounds.length}라운드</b></span>
+       <span>전반 끝 <b>${m.switchAt == null ? '알수없음' : m.switchAt + '라운드'}</b></span></div>
+
+     <div class="hexrow">
+       <div class="card"><p class="cardTitle">경기 여섯 축</p>${hexSvg(m)}
+         <p class="viewnote">A·B·2층은 <b>우리가 공격한 라운드</b>가 분모입니다.
+           어택성공(우리) + 방어율(상대) = 항상 100 이라 방어로 읽어도 결과는 같습니다.</p></div>
+       <div class="card"><p class="cardTitle">축마다 얼마였나</p>${ledger(m)}</div>
+     </div>
+
+     <p class="cardTitle" style="margin-bottom:8px">라운드 — 색은 이긴 팀 · 「수」는 ${t1.name} 가 수비</p>
+     <div class="strip" id="strip">${strip}</div>
+     <div class="halfmark"><span style="flex:${halfCut || m.rounds.length}">전반</span>
+       ${halfCut ? `<span style="flex:${m.rounds.length - halfCut};margin-left:3px">후반</span>` : ''}</div>
+
+     <div class="detail">
+       <div class="dhead">
+         <span class="dno mono">${r.no}<span style="font-size:.7rem;font-weight:700">라운드</span></span>
+         <span class="pill">${r.half}</span>
+         ${r.att == null ? '<span class="pill">진영 모름</span>'
+           : `<span class="pill">공격 ${nameOf(r.att)}</span><span class="pill">수비 ${nameOf(r.def)}</span>`}
+         ${r.win == null ? '<span class="pill">승자 모름</span>'
+           : `<span class="pill win" style="color:${colOf(r.win)}">${nameOf(r.win)} 승${r.winSrc === 'deaths' ? ' (추정)' : ''}</span>`}
+         ${bombs ? `<span class="pill">${bombs}</span>` : ''}
+       </div>
+       ${verdictHtml}
+       <ul class="timeline">${timeline}</ul>
+     </div>`;
+
+  $('#strip').addEventListener('click', (e) => {
+    const b = e.target.closest('.rbtn'); if (!b) return;
+    ri = Number(b.dataset.r); render();
+  });
+}
+
+$('#tabs').innerHTML = MATCHES.map((m, i) => {
+  const d = new Date(m.at);
+  return `<button class="tab" role="tab" data-m="${i}" aria-selected="${i === 0}">`
+    + `${m.red} vs ${m.blue}<small class="mono">${d.getMonth() + 1}/${d.getDate()} · ${m.rounds.length}R</small></button>`;
+}).join('');
+$('#tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('.tab'); if (!b) return;
+  mi = Number(b.dataset.m); ri = 0;
+  [...$('#tabs').children].forEach((c, i) => c.setAttribute('aria-selected', String(i === mi)));
+  render();
+});
+render();
+</script>
