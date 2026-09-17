@@ -56,7 +56,7 @@ export default async function BadgePage({
 
       {data === null || data.rows.length === 0 ? (
         <p className="py-10 text-center text-[0.86rem] text-faint">
-          아직 잴 수 있는 선수가 없다 — 표본이 모자란 값을 0% 로 적지 않는다.
+          아직 잴 수 있는 선수가 없습니다 — 표본이 모자란 값을 0% 로 적지 않습니다.
         </p>
       ) : (
         <ul className="divide-y divide-line-soft border-y border-line-soft">

@@ -24,7 +24,7 @@ export default async function BadgeListPage({
       <header className="border-b border-line-soft pb-4">
         <h1 className="text-[1.5rem] font-black tracking-tight text-text-strong">배지</h1>
         <p className="mt-2 text-[0.85rem] text-meta">
-          여섯 축에서 앞선 선수에게 붙는다. 배지를 누르면 ★가진 사람 전부★ 가 순위대로 나온다.
+          여섯 축에서 앞선 선수에게 붙습니다. 배지를 누르면 그 배지를 가진 선수가 순위대로 나옵니다.
         </p>
       </header>
 
@@ -57,8 +57,8 @@ export default async function BadgeListPage({
 
       <p className="text-[0.72rem] leading-relaxed text-faint">
         스나에게는 <b className="text-meta">샷터 · 크래커 · 어태커</b> 가 없고, 라플에게는{' '}
-        <b className="text-meta">스나싸움마스터 · A장악력 · B장악력</b> 이 없다. 그 무기가 재지 않는 축이라
-        빈칸도 만들지 않는다.
+        <b className="text-meta">스나싸움마스터 · A장악력 · B장악력</b> 이 없습니다.
+        그 무기로는 재지 않는 축이라 빈칸도 만들지 않습니다.
       </p>
     </main>
   )
