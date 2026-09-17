@@ -383,8 +383,7 @@ async function main(): Promise<void> {
   }
 
   /* 보정을 얼마 줬을 때 몇 명이 30등 안에 드나 */
-  console.log('
-  보정   30등 안 상위권  1등 클랜        최고 등수 변화')
+  console.log('\n  보정   30등 안 상위권  1등 클랜        최고 등수')
   for (const bonus of [0, 0.5, 1, 1.5, 2, 3]) {
     const bumped = list
       .map((t) => ({ ...t, adj: t.avg + (topSlugs.has(t.clan) ? bonus : 0) }))
@@ -407,8 +406,7 @@ async function main(): Promise<void> {
     const moved = list.filter((t) => t.avg >= a + 0.5).length
     gaps.push(`${n}등 → 0.5점 주면 ${moved + 1}등`)
   }
-  console.log('
-  0.5점이 몇 등짜리인가 — ' + gaps.join(' · '))
+  console.log('\n  0.5점이 몇 등짜리인가 — ' + gaps.join(' · '))
 
   await prisma.$disconnect()
 }
