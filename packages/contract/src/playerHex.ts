@@ -88,8 +88,11 @@ export const PLAYER_HEX_BADGE: Partial<Record<TraitAxisAnyKey, { sniper: string;
    *   옛 배지 «샷터» 는 `PLAYER_HEX_BADGE_V1` 에 그대로 있다. 새 별명을 지어내지 않는다.
    */
   duel: { sniper: '롱 마스터', rifle: '샷싸움' },
-  /* ★2026-09-16 밤 — 새 이름 셋★ (사장님). 배지도 축 이름을 그대로 쓴다 */
-  chance: { sniper: '기회창출', rifle: '기회차단' },
+  /*
+   * ★2026-09-17 — ④⑤⑥ 이 구역 축이 됐다★ (사장님). 배지는 ★언제나 축 이름을 그대로★ 쓴다.
+   *   옛 배지(기회창출·기회차단·안전함·스나차이·라플차이)는 `PLAYER_HEX_BADGE_V3` 에 남긴다.
+   */
+  chance: { sniper: 'A어택', rifle: '어택성공률' },
   /* 사장님이 «선취점» 을 «선짤» 로 못 박으셨다 (2026-09-02) — 배지만 영어로 남아 있었다 */
   /*
    * ⚠ ★2026-09-16 — 또 축 이름을 안 따라오고 있었다★ (같은 함정 두 번째다).
@@ -98,10 +101,17 @@ export const PLAYER_HEX_BADGE: Partial<Record<TraitAxisAnyKey, { sniper: string;
    *   ★새 별명을 지어내지 않는다★ — `outnumbered` 처럼 축 이름을 그대로 쓴다.
    */
   /* ⚠ 2026-09-16 저녁 — ④ 가 «게임템포» 가 됐다 (사장님) */
-  safe: { sniper: '안전함', rifle: '크랙' },
-  gap: { sniper: '스나차이', rifle: '라플차이' },
+  safe: { sniper: 'A방어', rifle: '크랙' },
+  gap: { sniper: 'B어택', rifle: '방어율' },
   /* 2026-09-11 사장님: «말맞추기» → «소수싸움» */
   outnumbered: { sniper: '소수싸움', rifle: '소수싸움' },
+}
+
+/** ⚠ ★2026-09-17 까지 쓰던 ④⑤⑥ 배지★ — 지우지 않는다 (`CLAUDE.md` 1-4) */
+export const PLAYER_HEX_BADGE_V3: Partial<Record<TraitAxisAnyKey, { sniper: string; rifle: string }>> = {
+  chance: { sniper: '기회창출', rifle: '기회차단' },
+  safe: { sniper: '안전함', rifle: '크랙' },
+  gap: { sniper: '스나차이', rifle: '라플차이' },
 }
 
 /** ★2026-09-15 밤까지 쓰던 배지 이름★ — 축이 갈리기 전 판이다. 지우지 않는다 */
@@ -130,12 +140,25 @@ export const PLAYER_HEX_DESC: Partial<Record<TraitAxisAnyKey, { sniper: string; 
   save: { sniper: '혼자 남아 이긴 횟수 (4회면 가득)', rifle: '혼자 남아 이긴 횟수 (4회면 가득)' },
   duel: { sniper: 'A롱·비롱에서 상대 스나를 잡은 비율', rifle: '라플끼리 붙어 이긴 비율' },
   /* ★2026-09-16 밤★ (사장님) — 스나는 판을 열고, 라플은 열린 판을 끊는다 */
-  chance: { sniper: '그 라운드 첫 킬을 낸 비율', rifle: '먼저 맞고 시작한 라운드에서 되받은 비율' },
+  /*
+   * ★2026-09-17 — ④⑤⑥ 이 구역 축이 됐다★ (사장님). 설명도 따라간다 —
+   * 옛 설명이 남아 ★없는 축을 말하는★ 함정을 두 번 겪었다 (배지·설명 둘 다).
+   */
+  chance: {
+    sniper: '우리가 공격한 라운드 중 A쪽을 뚫은 비율',
+    rifle: '우리가 공격한 라운드 중 B·2층·숏을 뚫은 비율',
+  },
   /* ⚠ 2026-09-16 — ④⑤ 가 갈리면서 설명도 따라간다 (배지와 같은 함정이었다) */
   /* ★안전함★ — 몇 초에 죽었나는 안 본다. 실측상 살면 62.0% · 죽으면 43.5% 다 */
-  safe: { sniper: '그 라운드를 끝까지 산 비율', rifle: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)' },
+  safe: {
+    sniper: '우리가 수비한 라운드 중 A쪽을 막은 비율',
+    rifle: '정해 둔 구역에서 25초 안에 잡은 횟수 (판당)',
+  },
   /* ★스나차이 · 라플차이★ — 팀의 무기별 점수가 상대보다 앞선 경기 비율 */
-  gap: { sniper: '상대 스나보다 점수가 앞선 경기 비율', rifle: '상대 라플보다 점수가 앞선 경기 비율' },
+  gap: {
+    sniper: '우리가 공격한 라운드 중 B쪽을 뚫은 비율',
+    rifle: '우리가 수비한 라운드 중 B·2층·숏을 막은 비율',
+  },
   outnumbered: { sniper: '수가 밀린 라운드를 이긴 비율', rifle: '수가 밀린 라운드를 이긴 비율' },
 }
 

@@ -77,6 +77,28 @@ import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
  *   그 전에는 «그 라운드의 첫 킬» 을 무조건 셌다. 40초쯤 지나 슬쩍 잡은 것도
  *   «선짤» 이 됐다. 실측 25초 안이 58.9% 라 절반 조금 넘는 좋은 자리다.
  */
+/**
+ * ★구역 축의 분모 문턱★ — 이보다 적으면 `null` 이다 (화면에 「측정중」).
+ *
+ * 실측(시즌0) — 라플 합산(B+2층+숏) 분모 중앙 79 · 10 미만인 선수 13.1%.
+ * 스나 A 는 중앙 11 이라 10 미만이 46.3% 다. ★그래서 스나 ④⑥ 은 자주 빈다★ —
+ * 사장님이 구역을 콕 집어 주신 값이라 그대로 두고, 0% 로 우기지 않는다.
+ */
+export const MIN_SIDE_ROUNDS = 10
+
+/** 분모가 문턱을 넘을 때만 비율을 낸다 — 못 재면 `null` 이다 (D-106) */
+const sideRate = (ok: number | undefined, n: number | undefined): number | null => {
+  const N = n ?? 0
+  if (N < MIN_SIDE_ROUNDS) return null
+  return round1(((ok ?? 0) / N) * 100)
+}
+
+/** 라플 ④⑤ 는 ★B + 2층 + 숏★ 을 합친다. A 는 안 넣는다 (아래 주석) */
+const sumSide = (
+  input: PlayerHexInput,
+  keys: readonly (keyof PlayerHexInput)[],
+): number => keys.reduce((acc, k) => acc + Number(input[k] ?? 0), 0)
+
 /*
  * ⚠ ★v1.8 — 구역별 어택/방어를 쌓기 시작했다★ (2026-09-17 사장님).
  *   A·B·2층·숏 넷을 라운드마다 판정해 선수마다 쌓는다. 옇 줄(v1.7)은 그 칸이 0 이라
@@ -349,14 +371,24 @@ export function axisValuesOf(
      *   실측 — 끊으면 그 라운드 승률 49.7%, 못 끊으면 ★40.8%★.
      *   옛 «게임영향력» 은 `influenceOf` 로 그대로 살아 있다 (`CLAUDE.md` 1-4).
      */
+    /*
+     * ★④ A어택(스나) / 어택성공률(라플)★ (2026-09-17 사장님).
+     *
+     *   스나  우리가 공격한 라운드 중 ★A 를 뚫은★ 비율 — 사장님이 A 를 콕 집으셨다
+     *   라플  ★B + 2층 + 숏★ 을 합쳐 뚫은 비율. ★A 는 안 넣는다★ —
+     *         A 단독은 앞선팀승률 70.3% 로 넷 중 꼴찌이고 선수 46.3% 가 분모 10 미만이다.
+     *         빼면 「진 팀이 축을 이겨버린」 판의 설명력이 88.2% → 90.4% 로 오른다.
+     *
+     *   ⚠ 옛 축 «기회창출 / 기회차단» 은 ★지우지 않았다★ — 재료(`openRounds`·`cutRounds`·
+     *     `foeOpenRounds`)가 그대로 쌓이고 있고, 아래 `chanceV3` 가 그 셈이다.
+     */
     chance:
       weapon === 1
-        ? (input.rounds > 0 && input.openRounds !== undefined
-            ? round1((input.openRounds / input.rounds) * 100)
-            : null)
-        : ((input.foeOpenRounds ?? 0) > 0
-            ? round1(((input.cutRounds ?? 0) / (input.foeOpenRounds as number)) * 100)
-            : null),
+        ? sideRate(input.aAtkOk, input.aAtkN)
+        : sideRate(
+            sumSide(input, ['bAtkOk', 'f2AtkOk', 'shortAtkOk']),
+            sumSide(input, ['bAtkN', 'f2AtkN', 'shortAtkN']),
+          ),
     /*
      * ★안전함(스나) / 크랙(라플)★ (2026-09-16 밤 사장님).
      *
@@ -366,11 +398,14 @@ export function axisValuesOf(
      *           살았나 죽었나만 승률을 62.0% 대 43.5% 로 가른다.
      *   라플  사장님이 칠하신 116칸에서 25초 안에 난 첫 킬 (판당)
      */
+    /*
+     * ★⑥ A방어(스나) / 크랙(라플)★ (2026-09-17 사장님).
+     *   라플 쪽 «크랙» 은 ★그대로다★ — 사장님 사양에 그 이름이 그대로 있다.
+     *   스나 쪽만 «안전함» 에서 A방어로 바뀌었다. 옛 셈은 `safeV3` 에 남는다.
+     */
     safe:
       weapon === 1
-        ? (input.rounds > 0 && input.aliveRounds !== undefined
-            ? round1((input.aliveRounds / input.rounds) * 100)
-            : null)
+        ? sideRate(input.aDefOk, input.aDefN)
         : (input.games > 0 && input.crackKills !== undefined
             ? round1((input.crackKills / input.games) * 100)
             : null),
@@ -380,11 +415,22 @@ export function axisValuesOf(
      *   재료는 클랜 육각의 점수표와 같다 (선짤 1 → 올킬 10).
      *   ⚠ 아직 안 쌓는다 — 그때는 `null` 이다 (0% 라고 우기지 않는다).
      */
+    /*
+     * ★⑤ B어택(스나) / 방어율(라플)★ (2026-09-17 사장님).
+     *   스나  우리가 공격한 라운드 중 ★B 를 뚫은★ 비율
+     *   라플  우리가 수비한 라운드 중 ★B+2층+숏 을 안 뚫린★ 비율
+     *
+     *   ⚠ 어택과 방어는 ★경기 하나 안에서는 같은 수★ 다 (우리 공격 = 상대 수비).
+     *     그런데 ★시즌으로 모으면 갈린다★ — 선수 단위 순서 겹침 64.0%,
+     *     「막기는 잘 하는데 못 뚫는 선수」가 821명 중 112명(13.6%)이다. 두 칸 다 쓴다.
+     */
     gap:
-      input.games > 0 && input.gapWinGames !== undefined
-        /* ⚠ ★100% 를 모통 넘지 않게 막는다★ — 분모가 어긋나면 137% 같은 값이 나왔다 */
-        ? round1(Math.min(100, (input.gapWinGames / input.games) * 100))
-        : null,
+      weapon === 1
+        ? sideRate(input.bAtkOk, input.bAtkN)
+        : sideRate(
+            sumSide(input, ['bDefOk', 'f2DefOk', 'shortDefOk']),
+            sumSide(input, ['bDefN', 'f2DefN', 'shortDefN']),
+          ),
     outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
   }
 }
@@ -886,4 +932,47 @@ function rankBy<T>(
     prev = v
     assign(r, rank, has.length)
   })
+}
+
+/**
+ * ⚠ ★2026-09-17 까지 쓰던 ④⑤⑥ 의 셈★ — 지우지 않는다 (`CLAUDE.md` 1-4).
+ *
+ *   ④ 기회창출(스나) / 기회차단(라플)
+ *   ⑤ 스나차이 / 라플차이
+ *   ⑥ 안전함(스나) / 크랙(라플)
+ *
+ * 재료(`openRounds` · `cutRounds` · `foeOpenRounds` · `aliveRounds` · `gapWinGames`)는
+ * ★그대로 쌓고 있다★. 되살리려면 `axisValuesOf` 의 세 칸을 이 값으로 바꾸면 된다.
+ * 이름표는 `TRAIT_AXIS_LABEL_V3` 에 있다.
+ */
+export function axisValuesV3Of(
+  input: PlayerHexInput,
+  weapon: 0 | 1 | null,
+): { chance: number | null; safe: number | null; gap: number | null } {
+  return {
+    /** ⚠ 옛 ④ — 되살리려면 위 `chance` 를 이걸로 바꾸면 된다 */
+    chance:
+      weapon === 1
+        ? (input.rounds > 0 && input.openRounds !== undefined
+            ? round1((input.openRounds / input.rounds) * 100)
+            : null)
+        : ((input.foeOpenRounds ?? 0) > 0
+            ? round1(((input.cutRounds ?? 0) / (input.foeOpenRounds as number)) * 100)
+            : null),
+    /** ⚠ 옛 ⑥ 스나 «안전함» — 그 라운드를 끝까지 산 비율 */
+    safe:
+      weapon === 1
+        ? (input.rounds > 0 && input.aliveRounds !== undefined
+            ? round1((input.aliveRounds / input.rounds) * 100)
+            : null)
+        : (input.games > 0 && input.crackKills !== undefined
+            ? round1((input.crackKills / input.games) * 100)
+            : null),
+    /** ⚠ 옛 ⑤ «스나차이 / 라플차이» — 우리 무기 쪽이 앞선 판의 비율 */
+    gap:
+      input.games > 0 && input.gapWinGames !== undefined
+        /* ⚠ ★100% 를 모통 넘지 않게 막는다★ — 분모가 어긋나면 137% 같은 값이 나왔다 */
+        ? round1(Math.min(100, (input.gapWinGames / input.games) * 100))
+        : null,
+  }
 }

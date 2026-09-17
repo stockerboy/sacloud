@@ -237,8 +237,14 @@ describe('buildPlayerTraits — 4번은 기회창출이다 (D-214)', () => {
    *   스나 «안전함» · 라플 «크랙» — 재는 것이 아예 다르다.
    *   옛 기대값 — `'게임템포'`(무기 무관) · 그 전 `'평균 사망 시간'` · `'선짤(1턴)'`
    */
-  it('★무기별로 이름이 갈린다★ — 스나 «안전함» · 라플 «크랙»', () => {
-    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 1 })), 'safe').label).toBe('안전함')
+  /*
+   * ⚠ ★2026-09-17 — 스나 쪽이 «안전함» → «A방어» 로 바뀌었다★ (사장님 사양:
+   *   «스나6각: 세이브/소수싸움/스나싸움/a어택성공률/b어택성공률/A방어율»).
+   *   ★라플 «크랙» 은 그대로다★ — 사장님 사양에 그 이름이 그대로 있다.
+   *   옛 셈은 `axisValuesV3Of` 에, 옛 이름은 `TRAIT_AXIS_LABEL_V3` 에 살아 있다.
+   */
+  it('★무기별로 이름이 갈린다★ — 스나 «A방어» · 라플 «크랙»', () => {
+    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 1 })), 'safe').label).toBe('A방어')
     expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 0 })), 'safe').label).toBe('크랙')
   })
 
@@ -310,9 +316,14 @@ describe('buildPlayerTraits — 5번은 ★크랙 성공★ 이다 (2026-09-16 �
    *   스나 «스나차이» · 라플 «라플차이» — 무기별 점수를 상대와 견준 것이다.
    *   옛 기대값 — `'크랙 성공'` · `'백어택성공률(2턴)'` · `'교환율'`
    */
-  it('★무기별로 이름이 갈린다★ — 스나 «스나차이» · 라플 «라플차이»', () => {
-    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 1 })), 'gap').label).toBe('스나차이')
-    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 0 })), 'gap').label).toBe('라플차이')
+  /*
+   * ⚠ ★2026-09-17 — «스나차이 / 라플차이» → «B어택 / 방어율»★ (사장님).
+   *   라플의 방어율은 ★B + 2층 + 숏★ 셋을 합친 값이다 (A 는 안 넣는다).
+   *   옛 기대값 — `'스나차이'` · `'라플차이'`
+   */
+  it('★무기별로 이름이 갈린다★ — 스나 «B어택» · 라플 «방어율»', () => {
+    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 1 })), 'gap').label).toBe('B어택')
+    expect(axisOf(buildPlayerTraits(rifleInput({ weapon: 0 })), 'gap').label).toBe('방어율')
   })
 
   it('`작업/원어택 성공률` 은 축 목록에서 빠진 채다', () => {
