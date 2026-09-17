@@ -268,15 +268,13 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
   const hex = data.hex
   const axes = strengthAxes(data)
   /*
-   * ★배지는 여섯을 다 진열한다★ (2026-09-17 사장님: «개인기록실에 뱃지 진열도 안돼있어»).
+   * ★부여된 배지만 진열한다★ (2026-09-17 사장님: «부여된것만 들고있어야하는데»).
    *
-   * ⚠ 옛 판은 `a.badge !== null` 로 ★딴 것만★ 골랐다 (5위 컷 · 스나싸움 3위).
-   *   그러면 대부분의 선수에게 줄 자체가 안 그려진다 — 사장님 계정이 11위/938명이라
-   *   여섯 중 하나도 안 떴다. 버그가 아니라 사양이었지만 「진열」 이 안 된다.
-   *   여섯을 다 걸고 ★딴 것만 빛낸다.★ 못 딴 것은 흐리게 두고 등수를 적는다.
-   * ⚠ ★잴 수 없는 축은 안 그린다★ — `rank` 가 없으면 없는 등수를 지어낼 수 없다.
+   * ⚠ 같은 날 제가 「여섯을 다 걸어라」 로 잘못 읽고 전부 그렸었다. 사장님 말씀은
+   *   ★딴 것만★ 이다. 배지 컷은 스나싸움 3위 · 나머지 5위다 (2026-09-12 사장님).
+   *   배지가 없는 선수는 이 줄 자체가 안 그려진다 — 그게 맞는 모양이다.
    */
-  const badges = hex ? hex.axes.filter((a) => a.rank !== null) : []
+  const badges = hex ? hex.axes.filter((a) => a.badge !== null && a.rank !== null) : []
   const overlay =
     compare && compare.picked !== null && compare.values !== null
       ? { values: compare.values, label: compare.picked.name }

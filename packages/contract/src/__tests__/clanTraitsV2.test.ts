@@ -1267,3 +1267,59 @@ describe('★상대와 견주기★ — 경기 여섯 축이 다 값을 받는�
     for (const axis of red.axes) expect(axis.value, axis.key).not.toBeNull()
   })
 })
+
+/**
+ * ★구역 축은 두 팀의 몫이다★ — 합이 100% 가 된다 (2026-09-17 사장님).
+ *
+ * > «레드가 에이어택 2번성공 블루가 후반가서 에이어택 1번 성공 이면
+ * >  2/3 1/3 이렇게 계산하면 안돼? 둘이 합치면 100퍼센트가 되게끔»
+ *
+ * 스나싸움이 이미 그렇게 센다 (`won / (won + lost)`). 같은 읽기로 맞췄다.
+ */
+describe('★경기 육각 — 구역 축은 합이 100%★ (2026-09-17 사장님)', () => {
+  const pairOf = (ours: number, theirs: number) => {
+    const mk = (ok: number) =>
+      buildClanHexV2Raw({
+        tally: fullTally({
+          zoneAttack: { aN: 5, aOk: ok, bN: 5, bOk: 0, f2N: 5, f2Ok: 0, shortN: 5, shortOk: 0 },
+        }),
+        matches: 1,
+        axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS,
+      })
+    return normalizeAgainstFoe(mk(ours), mk(theirs))
+  }
+
+  it('사장님 예 그대로 — 2번 대 1번이면 2/3 · 1/3 이다', () => {
+    const [red, blue] = pairOf(2, 1)
+    const a = (h: typeof red) => h.axes.find((x) => x.key === 'aAttack')
+    expect(a(red)?.value).toBeCloseTo(2 / 3, 3)
+    expect(a(blue)?.value).toBeCloseTo(1 / 3, 3)
+    expect((a(red)?.value ?? 0) + (a(blue)?.value ?? 0)).toBeCloseTo(1, 6)
+  })
+
+  it('★분모가 달라도 합은 100%★ — 「몇 번 뚫었나」 를 나눈다', () => {
+    const [red, blue] = pairOf(4, 1)
+    const a = (h: typeof red) => h.axes.find((x) => x.key === 'aAttack')
+    expect(a(red)?.value).toBeCloseTo(0.8, 3)
+    expect(a(blue)?.value).toBeCloseTo(0.2, 3)
+  })
+
+  it('★둘 다 한 번도 못 뚫으면 「없었음」★ — 0 대 0 을 50:50 으로 적지 않는다', () => {
+    const [red, blue] = pairOf(0, 0)
+    for (const hex of [red, blue]) {
+      const axis = hex.axes.find((x) => x.key === 'aAttack')
+      expect(axis?.value).toBeNull()
+      expect(axis?.pending).toBe('sample')
+    }
+  })
+
+  it('구역 셋만 몫으로 읽는다 — 스나싸움·소수싸움·세이브는 그대로다', () => {
+    const [red, blue] = pairOf(2, 1)
+    for (const key of ['sniperDuel', 'outnumbered', 'save'] as const) {
+      const sum = (red.axes.find((x) => x.key === key)?.value ?? 0)
+        + (blue.axes.find((x) => x.key === key)?.value ?? 0)
+      /* 둘이 똑같은 재료라 서로 1.0 이 된다 — 합이 1 이 아니어야 「몫이 아니다」 가 지켜진다 */
+      expect(sum).toBeGreaterThan(1)
+    }
+  })
+})

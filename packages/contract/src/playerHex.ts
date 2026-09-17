@@ -40,6 +40,18 @@ export const PLAYER_HEX_AXIS_ORDER: readonly TraitAxisKey[] = [
  */
 export const PLAYER_HEX_WEAPON_POOL_AXIS_KEYS: readonly TraitAxisKey[] = [
   'duel',
+  /*
+   * ⚠ ★2026-09-17 — `chance` 가 빠져 있었다★ (사장님 화면에서 찾음).
+   *
+   *   그날 ④ 가 «기회창출 / 기회차단» 에서 ★A어택 / 어택성공률★ 로 바뀌었는데
+   *   이 목록이 안 따라왔다. 그래서 ★스나의 A어택과 라플의 어택성공률이 한 줄★ 에서
+   *   등수가 매겨졌다 — 재는 것이 아예 다른 두 값이다
+   *   (A쪽을 뚫은 비율 대 B·2층·숏을 뚫은 비율).
+   *
+   *   실제로 zergling(스나) A장악력 492위 · haechan(라플) 어태커 455위 가
+   *   같은 941명 줄에 서 있었다. ★무기별로 갈라야 한다.★
+   */
+  'chance',
   'safe',
   'gap',
 ]

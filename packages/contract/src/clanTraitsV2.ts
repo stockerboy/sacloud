@@ -1970,6 +1970,12 @@ const withAxes = (hex: ClanHexV2, axes: ClanHexV2Axis[]): ClanHexV2 => ({
  * `raw` · `numerator` · `denominator` · `text` 는 **건드리지 않는다.** 화면은 여전히
  * `18.3초` 를 적어야 한다. 바뀌는 것은 `value` 와 (필요하면) `pending` 뿐이다.
  */
+/**
+ * ★두 팀의 몫으로 읽는 축★ (2026-09-17 사장님) — 합이 100% 가 된다.
+ * 경기 육각의 구역 셋뿐이다. 클랜 육각은 리그 백분위라 이 셈을 안 쓴다.
+ */
+const ZONE_SHARE_AXES: readonly ClanHexV2AnyAxisKey[] = ['aAttack', 'bAttack', 'f2Attack']
+
 export function normalizeAgainstFoe(
   ours: ClanHexV2,
   theirs: ClanHexV2,
@@ -1996,6 +2002,43 @@ export function normalizeAgainstFoe(
     const a = ourAxes.find((axis) => axis.key === key)
     const b = foeAxes.find((axis) => axis.key === key)
     if (a === undefined || b === undefined) continue
+
+    /*
+     * ★구역 축은 「몫」 으로 읽는다★ (2026-09-17 사장님):
+     *
+     * > «레드가 에이어택 2번성공 블루가 후반가서 에이어택 1번 성공 이면
+     * >  2/3 1/3 이렇게 계산하면 안돼? 둘이 합치면 100퍼센트가 되게끔»
+     *
+     * 스나싸움이 이미 그렇게 센다 (`won / (won + lost)`). 같은 읽기로 맞춘다.
+     *
+     * ⚠ 비율(`raw`)끼리 견주지 않고 ★뚫은 횟수(`numerator`)★ 로 나눈다 —
+     *   두 팀의 분모(공격한 라운드 수)가 서로 달라서 비율을 견주면 뜻이 흐려진다.
+     *   「몇 번 뚫었나」 를 나누는 것이 사장님이 말씀하신 셈이다.
+     * ⚠ 둘 다 0이면 ★«없었음»★ 이다 — 0 대 0 을 50:50 으로 적지 않는다.
+     */
+    if (ZONE_SHARE_AXES.includes(key)) {
+      const an = a.numerator ?? 0
+      const bn = b.numerator ?? 0
+      const sum = an + bn
+      if (sum <= 0) {
+        for (const axis of [a, b]) {
+          axis.value = null
+          axis.pending = 'sample'
+        }
+        continue
+      }
+      const share = (n: number): number => Math.round((n / sum) * 1000) / 1000
+      a.value = share(an)
+      b.value = share(bn)
+      /* 화면에 적는 글도 몫으로 — 분모는 「둘이 뚫은 횟수의 합」 이다 */
+      a.denominator = sum
+      b.denominator = sum
+      a.text = `${Math.round(share(an) * 100)}%`
+      b.text = `${Math.round(share(bn) * 100)}%`
+      a.pending = null
+      b.pending = null
+      continue
+    }
 
     if (a.raw === null && b.raw === null) continue
     if (a.raw === null || b.raw === null) {
