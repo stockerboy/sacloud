@@ -50,6 +50,18 @@ const PAGES = [
   ['개인랭킹', '/league/supply/rank/player'],
   ['분야별TOP5', '/league/supply/rank/top5'],
   ['게시판', '/league/supply/board'],
+  ['소개', '/about'],
+]
+
+/**
+ * ★주소를 모르는 화면★ — 클랜 상세 · 선수 기록카드.
+ *
+ * mock 은 돌 때마다 새 자료를 만들어 slug 가 바뀜다 — 박아 두면 «찾을 수 없음» 이 뜨고
+ * ★빈 화면을 깨끗하다고 보고하게 된다.★ 그래서 목록 화면에서 주소를 거둔다.
+ */
+const DISCOVER = [
+  ['클랜상세', '/league/supply/rank/clan', 'a[href*="/clan/"]'],
+  ['기록카드', '/league/supply/rank/player', 'a[href*="/player/"]'],
 ]
 
 const WIDTHS = which === 'pc' ? [[1280, 'pc']] : which === 'm' ? [[390, 'm']] : [[390, 'm'], [1280, 'pc']]
@@ -186,12 +198,54 @@ async function run() {
   await send('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {})
   await send('Page.setWebLifecycleState', { state: 'active' }).catch(() => {})
 
+  /* ── 주소를 먼저 거둔다 ── */
+  const pages = [...PAGES]
+  for (const [name, from, sel] of DISCOVER) {
+    try {
+      await send('Page.navigate', { url: BASE + from })
+      /* 목록이 차기 전에 물어보면 링크가 없다 — 나올 때까지 둘러본다 (최대 14초) */
+      let r = null
+      for (let i = 0; i < 24; i += 1) {
+        await sleep(600)
+        r = await send('Runtime.evaluate', {
+          expression: `(() => { const a = document.querySelector('${sel}'); return a ? a.getAttribute('href') : '' })()`,
+          returnByValue: true,
+        }).catch(() => null)
+        if (String(r?.result?.value ?? '') !== '') break
+      }
+      const href = String(r?.result?.value ?? '')
+      if (href !== '') pages.push([name, href])
+      else console.log(`(${name} 주소를 못 찾음 — ${from} 에 링크가 없다)`)
+    } catch { console.log(`(${name} 주소 찾기 실패)`) }
+  }
+
   const report = []
   for (const [w, tag] of WIDTHS) {
     await send('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: w < 700 })
-    for (const [name, path] of PAGES) {
+    for (const [name, path] of pages) {
       await send('Page.navigate', { url: BASE + path })
-      await sleep(4200)
+      /*
+       * ★화면이 다 차기를 기다린다★ — 정해둔 초를 재면 큼직한 화면은
+       *   ★비어 있는 믿그림★ 을 찍고는 «깨끗함» 이라 보고한다. 실제로 그러었다 —
+       *   클랜 상세가 4.2초에는 아직 믿그림이었고 사진이 텔 비었다.
+       *   글자 길이가 ★두 번 연달아 같으면★ 다 찬 것으로 본다. 최대 14초.
+       */
+      await sleep(2000)
+      let last = -1
+      let same = 0
+      for (let i = 0; i < 24; i += 1) {
+        const r = await send('Runtime.evaluate', {
+          expression: 'document.body.innerText.length',
+          returnByValue: true,
+        }).catch(() => null)
+        const now = Number(r?.result?.value ?? -1)
+        /* ★빈 껍데기도 «안 변함» 이다★ — 글자가 어느 정도는 차야 다 찬 것으로 본다.
+           그렇지 않으면 컴파일 중인 텍 빈 화면을 찍고 «깨끗함» 이라 적는다 */
+        if (now === last && now > 400) { same += 1; if (same >= 2) break } else same = 0
+        last = now
+        await sleep(500)
+      }
+      await sleep(700)
       let probe
       try {
         const r = await send('Runtime.evaluate', { expression: PROBE, returnByValue: true, awaitPromise: false })
