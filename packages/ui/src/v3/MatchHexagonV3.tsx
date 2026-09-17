@@ -144,6 +144,19 @@ interface Pair {
  */
 const THIN_SAMPLE = 10
 
+/**
+ * ★구역 축은 문턱이 다르다★ (2026-09-17).
+ *
+ * A어택·B어택·2층어택의 분모는 ★우리가 공격한 라운드 중 그 구역에 교전이 있던 수★ 다.
+ * 한 판이 10~13 라운드고 그 절반이 공격, 거기서 또 그 구역에 간 라운드만 남으니
+ * 실측으로 ★2~8★ 이다. 문턱 10 을 그대로 쓰면 세 축이 ★영영 흐린 채★ 로 남아
+ * 「못 쟀다」 처럼 보인다 — 그게 그 축의 정상 분모인데도.
+ *
+ * 그래서 절반인 5 를 쓴다. 지어낸 수가 아니라 ★그 축이 가질 수 있는 최대★ 에서 나왔다.
+ */
+const THIN_SAMPLE_ZONE = 5
+const ZONE_AXES: readonly string[] = ['aAttack', 'bAttack', 'f2Attack']
+
 function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] {
   return ORDER.map((key) => {
     const w = won?.axes.find((a) => a.key === key) ?? null
@@ -161,7 +174,8 @@ function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] 
       lostCount: l && l.value !== null ? `${l.numerator}/${l.denominator}` : null,
       /* 양쪽 다 표본이 적으면 흐리게 — 한쪽만 적은 경우는 그 판이 원래 그런 것이다 */
       thin:
-        Math.max(w?.denominator ?? 0, l?.denominator ?? 0) < THIN_SAMPLE,
+        Math.max(w?.denominator ?? 0, l?.denominator ?? 0) <
+        (ZONE_AXES.includes(key) ? THIN_SAMPLE_ZONE : THIN_SAMPLE),
       single: SINGLE_TEXT_AXES.includes(key),
     }
   })
