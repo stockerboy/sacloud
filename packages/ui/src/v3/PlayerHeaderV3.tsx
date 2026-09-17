@@ -97,6 +97,12 @@ const rankSub = (total: number): string => `${fmt(total)}명 중`
 const RANK_ON_NAME_LINE: boolean = false
 
 
+/**
+ * ★기록카드 뒤 그림을 깔 것인가★ (2026-09-17 사장님이 «없애버려» 하심).
+ *   구름·건물 그림(`/assets/player-hero.webp`)와 CSS 는 그대로 남아 있다.
+ */
+const HEAD_ART = false
+
 export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
   /* 이어 붙은 병영수첩 계정이 없으면 null — 아래에서 단추를 안 그린다 */
@@ -195,8 +201,15 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
 
   return (
     <section style={{ ...cardStyle, position: 'relative', overflow: 'hidden', marginTop: 22, borderTop: `2px solid ${theme.edge}` }} className="v3-phead">
-      {/* 사장님이 준 구름성 그림 — 카드 위쪽에 은은하게 */}
-      <span aria-hidden className="v3-phead-art" />
+      {/*
+        * ⚠ ★구름·건물 그림을 뜼다★ (2026-09-17 사장님:
+        *   «개인기록카드 뒤에 구름이랑 건물 인식표 희미하게 있는거 없애버려 개구려»).
+        *
+        *   카드 위 150px 에 `player-hero.webp` 가 투명도 0.3 으로 깔려 있었다.
+        *   그림 파일과 CSS(`.v3-phead-art`)는 ★지우지 않았다★ — 그리지만 않는다.
+        *   되살리려면 `HEAD_ART` 를 true 로 (`CLAUDE.md` 1-4).
+        */}
+      {HEAD_ART ? <span aria-hidden className="v3-phead-art" /> : null}
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 200, background: `linear-gradient(180deg, ${theme.main}1f, transparent 70%)`, pointerEvents: 'none' }} />
 
       {/* 1 · 플레이구간 · 무기 — 카드의 모든 숫자가 이 둘을 따른다 */}

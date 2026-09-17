@@ -23,7 +23,7 @@
 
 /** 표 머리글 줄 */
 export const HEAD =
-  'flex items-center justify-center max-md:justify-start border-b border-b-line px-4 py-2.5 text-xs tracking-[0.14em] text-faint max-md:px-3'
+  'flex items-center border-b border-b-line px-4 py-2.5 text-xs tracking-[0.14em] text-faint max-md:px-3'
 
 /** 표 본문 한 줄. 배경 없음 — 행 구분은 아래 실선 1px 뿐이다 */
 export const ROW =
@@ -40,7 +40,7 @@ export const ROW =
    *   ★랭킹 표 글자를 함께 키운다★ — 13.125 → 14.25px. 둘은 여전히 같다.
    *   옛 값은 `max-md:text-sm` 이다.
    */
-  'flex items-center justify-center max-md:justify-start border-b border-b-line-soft px-4 py-3 text-base text-text last:border-b-0 max-md:px-3 max-md:py-[0.55rem] max-md:text-[0.95rem]'
+  'flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-3 max-md:py-[0.55rem] max-md:text-[1.02rem]'
 
 /** 표 안의 클랜마크 — 좁은 화면에서만 줄인다 (모바일 행 높이 36px 계산의 기준) */
 export const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'
@@ -59,24 +59,19 @@ export const RANK_TOP = 'text-accent font-bold'
 /** 순위 칸 */
 export const COL_RANK = 'w-16 shrink-0 text-center max-md:w-7'
 /**
- * 이름 칸.
+ * 이름 칸 — 남는 폭을 다 쓴다.
  *
- * ⚠ ★PC 에서는 고무줄이 아니다★ (2026-09-17 사장님:
- *   «닉네임이랑 수치정보랑 너무 떨어져있어서 가독성이 안좋은데
- *    싹다 왼쪽끕과 오른쪽끕에 붙어있어»).
+ * ⚠ ★2026-09-17 — 고정폭(260px)으로 좁혔다가 되돌렸다★.
+ *   낮에 «닉네임과 수치가 멀다» 는 지적을 받고 칸을 고정해 줄을 가운데로 모았는데,
+ *   사장님이 보시고 «지금 간격을 억지로 줄여놓아서 병신같음 걱 원상복구시키고
+ *   거기서 글자 크기를 키우셈» 하셨다.
  *
- *   예전에는 `flex-1` 이라 남는 폭을 혼자 먹었다. 표 폭 900px 안쪽 836px 에서
- *   순위 64 · 승률 112 · 킬뎃 112 · 래더 128 을 빼면 ★이름 칸이 420px★ 이었고,
- *   실제 닉네임은 60~100px 이라 ★닉네임 뒤에 300px 넘는 빈 칸★ 이 생겼다.
- *   글씨가 작은 게 아니라 칸이 고무줄이었다.
+ *   ★빈 자리를 없애는 것이 아니라 채우는 것이 답이다★ — 그 자리에는
+ *   상위 10% 특성 에블럼(`TraitEmblem`)이 들어간다.
  *
- *   고정폭으로 바꾸면 줄 전체가 676px 덩어리가 되고, `ROW` 의 `justify-center` 가
- *   그걸 표 가운데 놓는다 — ★바깥 테두리는 여전히 가로로 길다.★
- *
- *   폰은 그대로 `flex-1` 이다 — 390px 에서는 이미 붙어 있고,
- *   고정폭을 주면 오히려 가로 스크롤이 생긴다.
+ *   좁혔던 판이 필요하면 `w-[260px] max-md:w-auto max-md:flex-1` 로 두면 된다.
  */
-export const COL_NAME = 'flex min-w-0 w-[260px] items-center max-md:w-auto max-md:flex-1'
+export const COL_NAME = 'flex min-w-0 flex-1 items-center'
 /** 지표 칸 (승률 · 킬뎃) */
 export const COL_STAT = 'w-28 shrink-0 text-right max-md:w-[60px]'
 /**

@@ -30,6 +30,24 @@ import {
 } from '../common/format'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 import { ClanBadges } from './ClanBadges'
+
+/**
+ * ★클랜 줄에 배지를 그릴 것인가★ (2026-09-17 사장님:
+ * 「클랜랭킹에 그 특성 배찌 달아놓은거랑 승격유력 강등위기 배찌는 다 없애」).
+ *
+ * ── 왜 뗐나
+ *   클랜명 옆에 ★칩이 셋까지★ 붙었다 — 특성 배지 · 승격유력/강등위기 · 티어.
+ *   폰에서는 그것들이 이름 자리를 먹어 「-tsAr.nTc」 같은 이름이 잘렸고,
+ *   PC 에서는 이름과 승률 사이가 배지로 어수선했다.
+ *
+ * ── 셈은 그대로 살아 있다
+ *   `packages/contract/src/clanBadge.ts`(5위 컷 · ASTRA 보정)도,
+ *   `row.note`(승격/강등 판정)도 한 줄도 안 지웠다. ★그리지만 않는다.★
+ *   되살리려면 아래 둘을 `true` 로 두면 그대로 돌아온다.
+ */
+const CLAN_ROW_BADGES = false
+/** 승격유력 · 강등위기 칩 (2026-09-11 사장님이 넣으셨고 2026-09-17 에 빼셨다) */
+const CLAN_ROW_NOTE = false
 import {
   COL_CLAN,
   COL_HIDDEN,
@@ -515,7 +533,7 @@ export function ClanRankTable({
                 >
                   {row.clan.name}
                 </span>
-                {row.note ? (
+                {CLAN_ROW_NOTE && row.note ? (
                   <span
                     className="ml-2 shrink-0 rounded px-1.5 py-[2px] text-[10px] font-bold leading-none"
                     style={
@@ -534,8 +552,9 @@ export function ClanRankTable({
                     </span>
                   </span>
                 ) : null}
-                {/* ★뱃지★ — 육각 축 중 리그 5위 안에 든 것 (2026-09-14 사장님) */}
-                <ClanBadges badges={row.badges} />
+                {/* ★뱃지★ — 육각 축 중 리그 5위 안에 든 것 (2026-09-14 사장님).
+                    ⚠ 2026-09-17 사장님이 「다 없애」 하셔서 안 그린다. 셈은 그대로다 */}
+                {CLAN_ROW_BADGES ? <ClanBadges badges={row.badges} /> : null}
                 {/* 티어 라벨 — IPL 만 (지시 #23). 순서는 래더 순이라 경계선 대신 행마다 적는다 */}
                 {showTierLabel ? (
                   <span className="ml-2 shrink-0 text-xs text-faint">
