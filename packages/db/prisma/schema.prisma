@@ -3166,6 +3166,57 @@ model MatchPlayerHex {
   /// 위 합에 들어간 죽음의 수 (분모)
   deathCount   Int @default(0)
 
+
+  /**
+   * ★구역별 어택/방어★ (2026-09-17 사장님).
+   *
+   * 한 칸 = (그 선수가 낀 한 라운드 × 한 구역). 라운드 하나가 0~4칸 들어간다.
+   *   `*N`  분모 — 그 구역에서 그 선수가 ★킬이나 데스를 낸★ 라운드 수
+   *   `*Ok` 분자 — 어택이면 ★뚫은★ 칸 · 방어면 ★안 뚫린★ 칸
+   *
+   * 판정 규칙은 `packages/nexon/src/sideAxes.ts` 하나뿐이다 — 여기 셈을 따로 적지 마라.
+   *   A·B·2층  그 구역 교전에서 수비가 공격보다 많이 죽으면 뚫림 (비김은 막음)
+   *   숏        ★공격이 다섯 구역에서 적을 잡았나★ (교전 차가 아니다)
+   *
+   * 개인 육각이 쓰는 것
+   *   스나  A어택 · B어택 · A방어
+   *   라플  어택성공률 = bAtk + f2Atk + shortAtk · 방어율 = bDef + f2Def + shortDef
+   *         ★A 는 안 넣는다★ — A 단독은 앞선팀승률 70.3% 로 넷 중 꼴찌이고
+   *         선수 46.3% 가 분모 10 미만이다. 빼면 「진 팀이 축을 이겨버린」 판의
+   *         설명력이 88.2% → 90.4% 로 오른다 (전 후보 중 1위).
+   */
+  aAtkN      Int @default(0)
+  aAtkOk     Int @default(0)
+  aDefN      Int @default(0)
+  aDefOk     Int @default(0)
+  bAtkN      Int @default(0)
+  bAtkOk     Int @default(0)
+  bDefN      Int @default(0)
+  bDefOk     Int @default(0)
+  f2AtkN     Int @default(0)
+  f2AtkOk    Int @default(0)
+  f2DefN     Int @default(0)
+  f2DefOk    Int @default(0)
+  shortAtkN  Int @default(0)
+  shortAtkOk Int @default(0)
+  shortDefN  Int @default(0)
+  shortDefOk Int @default(0)
+
+  /**
+   * ★자리(포지션) 재료★ — 그 선수가 ★자기 자리★ 로 찍힌 횟수.
+   * 킬이면 잡은 자리 · 데스면 죽은 자리다 (`zone-means-victim-position` 과 같은 약속).
+   *
+   * ⚠ 자리는 ★시즌 줄에서만★ 정한다 — 경기 하나로 정하면 최빈 자리 비율이 69.8%로 흔들렸다.
+   *   선수별로 모으면 앞 30경기↔시즌 전체가 91.7% 로 맞는다 (사장님: «한 30경기만 때봐도»).
+   * ⚠ 개인 육각은 자리를 ★안 쓴다★ (사장님이 어택성공률로 통일하셨다). 화면 이름표용이다.
+   */
+  seatSpots      Int @default(0)
+  seatBSpots     Int @default(0)
+  seatF2Spots    Int @default(0)
+  seatShortSpots Int @default(0)
+  /** 스나로 잡은 킬 — 자리 판정의 스나 문턱(50%)에 쓴다. ★낮추지 마라★ (`sideAxes.ts`) */
+  sniperKills    Int @default(0)
+
   formulaVersion String
   builtAt        DateTime @default(now())
 
@@ -3264,6 +3315,44 @@ model LeaguePlayerHex {
   aliveRounds   Int @default(0)
   /// ★스나차이 · 라플차이★ — 그 선수가 뛴 경기 중 «우리 무기 쪽이 앞선» 판 수
   gapWinGames   Int @default(0)
+
+  /// ★구역별 어택/방어★ — 경기 줄(`MatchPlayerHex`)의 합이다. 뜻은 그쪽 주석에 있다 (2026-09-17)
+  aAtkN      Int @default(0)
+  aAtkOk     Int @default(0)
+  aDefN      Int @default(0)
+  aDefOk     Int @default(0)
+  bAtkN      Int @default(0)
+  bAtkOk     Int @default(0)
+  bDefN      Int @default(0)
+  bDefOk     Int @default(0)
+  f2AtkN     Int @default(0)
+  f2AtkOk    Int @default(0)
+  f2DefN     Int @default(0)
+  f2DefOk    Int @default(0)
+  shortAtkN  Int @default(0)
+  shortAtkOk Int @default(0)
+  shortDefN  Int @default(0)
+  shortDefOk Int @default(0)
+
+  /// ★자리(포지션) 재료★ — 경기 줄의 합
+  seatSpots      Int @default(0)
+  seatBSpots     Int @default(0)
+  seatF2Spots    Int @default(0)
+  seatShortSpots Int @default(0)
+  sniperKills    Int @default(0)
+  /**
+   * ★그 선수의 자리★ — `biribe` · `f2` · `short` · `sniper` · `all`(올포지션).
+   *
+   * ⚠ ★여기서만 정한다.★ 경기 하나로 정하면 최빈 자리 비율이 69.8%로 흔들렸다.
+   *   선수별 시즌 전체로 모으면 앞 30경기↔시즌이 91.7% 로 맞는다.
+   * ⚠ 30경기 미만이면 `null` 이다 — 모르면 이름을 안 붙인다.
+   * ⚠ 1위가 2위의 1.3배… 가 아니라 ★1.1배★ 미만이면 `all` 이다. 셈은 `sideAxes.ts` 뿐이다.
+   * ⚠ ★개인 육각은 이 칸을 안 본다★ (사장님이 어택성공률로 통일하셨다). 화면 이름표용이다.
+   */
+  seat        String?
+  /// 1위 비중 / 2위 비중 — 자리를 얼마나 확신하나. 2위가 0이면 null
+  seatRatio   Float?
+
   burstRounds Int  @default(0)
   /// 상대 티어별 판수 — 티어계수의 근거
   /// ★내 구간★ — 가장 많이 뛴 티어 (2026-09-11 사장님). 티어 가중치·구간별 랭킹이 이걸 본다.
