@@ -495,8 +495,7 @@ async function main(): Promise<void> {
 
   /* 상대 래더 구간별 평균 점수 — 기울기를 눈으로 본다 */
   const bands = [[0, 3000], [3000, 3050], [3050, 3100], [3100, 3150], [3150, 9999]]
-  console.log('
-  상대 래더별 경기당 점수 (래더 안에 든 선수만)')
+  console.log('\n  상대 래더별 경기당 점수 (래더 안에 든 선수만)')
   for (const [lo, hi] of bands) {
     const pts = perMatch.filter((r) => strong.has(r.usn) && r.foeRating >= lo && r.foeRating < hi)
     if (pts.length === 0) continue
