@@ -112,12 +112,11 @@
   </div>
 
   <div class="note" id="note">
-    <b>중길 · 숏 · 니은자 · 쓰리깡 · 설대앞</b>을 칠해 주세요.
-    바닥·2층은 ★이미 칠하신 그대로★ 깔려 있습니다.
+    <b>일문</b>을 칠해 주세요 — B방어율 판정에 씁니다.
+    앞서 칠하신 여섯(바닥·2층·중길·숏·니은자·쓰리깡·설대앞)은 ★그대로★ 깔려 있습니다.
     위 칸으로 구역을 바꿔 가며 칠하세요.
     좁은 데는 <b>2배·3배·4배</b>로 키우고 지도를 밀어 움직이면 됩니다.
-    <b>중길</b>이 제일 급합니다 — A방어율 판정에 씁니다
-    (「상대가 중길이나 머리 넘어서까지 와서 우리팀 스나 혹은 라플을 잡으면 A방어 실패」).
+    고치실 게 있으면 지우개로 고치셔도 됩니다 — 저장하면 그 상태로 덮어씁니다.
     저장을 누르면 제 세션이 바로 받습니다.
   </div>
 
@@ -143,11 +142,13 @@
     /* ★사장님: 「쓰리깡이랑 설대앞도 어딘지 알려줄게」 (2026-09-17) */
     { key: 'THREEKKANG', label: '쓰리깡', color: '#ffa04d' },
     { key: 'SEOLDAEAP', label: '설대앞', color: '#4de0d8' },
+    /* ★사장님: 「b방어실패 더 디테일하게 알려줄게 일문을 칠해야해」 (2026-09-17) */
+    { key: 'ILMUN', label: '일문', color: '#ff6b6b' },
   ]
   const painted = {
     BADAK: new Set(), ICHUNG: new Set(),
     JUNGGIL: new Set(), SHORT: new Set(), NIEUN: new Set(),
-    THREEKKANG: new Set(), SEOLDAEAP: new Set(),
+    THREEKKANG: new Set(), SEOLDAEAP: new Set(), ILMUN: new Set(),
   }
   /*
    * ★벙커도 바닥이다★ (2026-09-17 사장님: 「생각해보니 벙커도 바닥임」).
