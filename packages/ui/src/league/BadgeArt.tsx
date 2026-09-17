@@ -18,6 +18,7 @@ import Link from 'next/link'
 import {
   TRAIT_TIER_LABEL,
   badgeArtPath,
+  badgeArtSmallPath,
   badgeOfAxis,
   type BadgeDef,
   type TraitAxisKey,
@@ -26,10 +27,16 @@ import {
 
 import { leagueBadgePath } from '../common/paths'
 
-/** 등급 테 — 최상위권은 금, 상위권은 은. 판정은 `traitTierOf` 가 한다 */
+/**
+ * 등급 빛 — 최상위권은 금, 상위권은 은. 판정은 `traitTierOf` 가 한다.
+ *
+ * ⚠ ★`ring` 을 쓰면 안 된다★ (2026-09-17 에 화면으로 잡음). 배지는 ★육각★ 인데
+ *   `ring` 은 네모로 돈다 — 그림 둘레에 빈 네모가 그려져 배지가 상자에 든 것처럼 보였다.
+ *   `drop-shadow` 는 ★투명도를 따라가서★ 육각 모양 그대로 빛난다.
+ */
 const RING: Record<'best' | 'high', string> = {
-  best: 'ring-[1.5px] ring-[#e8c15a] shadow-[0_0_6px_rgba(232,193,90,.35)]',
-  high: 'ring-[1.5px] ring-[#c3c9d6]',
+  best: '[filter:drop-shadow(0_0_3px_rgba(232,193,90,.95))_drop-shadow(0_0_6px_rgba(232,193,90,.5))]',
+  high: '[filter:drop-shadow(0_0_2px_rgba(195,201,214,.75))]',
 }
 
 export interface BadgeArtProps {
@@ -57,12 +64,16 @@ export function BadgeArt({
   const title = tier ? `${badge.label} · ${TRAIT_TIER_LABEL[tier]}` : badge.label
   const art = (
     <img
-      src={badgeArtPath(badge)}
+      src={size <= 64 ? badgeArtSmallPath(badge) : badgeArtPath(badge)}
       alt={title}
       title={title}
       width={size}
       height={size}
-      loading="lazy"
+      /*
+       * ⚠ ★`loading="lazy"` 를 쓰지 않는다★ (2026-09-17 에 화면으로 잡음).
+       *   랭킹 표에서 배지가 ★빈 네모★ 로만 떴다 — 테두리만 보이고 그림이 안 왔다.
+       *   작은 그림은 2KB 라 미루는 값어치가 없다.
+       */
       /* 육각이라 모서리를 둥글리지 않는다 — 그림 자체가 테두리를 갖고 있다 */
       className={`block h-auto w-auto select-none ${ring}`}
       style={{ height: size, width: size }}

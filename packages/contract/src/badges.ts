@@ -153,8 +153,14 @@ export function badgeOfAxis(axis: TraitAxisKey, weapon: BadgeWeapon): BadgeDef |
   return null
 }
 
-/** 그림 파일 경로 — 화면이 문자열을 만들지 않게 여기서 준다 */
+/**
+ * 그림 파일 경로 — 화면이 문자열을 만들지 않게 여기서 준다.
+ *
+ * ★두 벌이 있다★ — 256px 는 배지 페이지용(14KB), 64px 는 표·카드용(2KB).
+ * 랭킹 표는 한 줄에 셋씩 스무 줄이라 큰 것을 쓰면 ★한 화면에 800KB★ 가 된다.
+ */
 export const badgeArtPath = (b: BadgeDef): string => `/badges/${b.art}.png`
+export const badgeArtSmallPath = (b: BadgeDef): string => `/badges/${b.art}@64.png`
 
 /**
  * ★클랜 축 → 배지 그림★ (2026-09-17 사장님: «클랜도 뱃지도 저걸 활용해서 쓴다»).
@@ -177,7 +183,8 @@ export const CLAN_AXIS_BADGE: Record<string, BadgeKey> = {
 /** 클랜 축의 배지 그림 경로. 짝이 없으면 `null` — 글자로만 적는다 */
 export function clanAxisBadgeArt(axisKey: string): string | null {
   const key = CLAN_AXIS_BADGE[axisKey]
-  return key === undefined ? null : badgeArtPath(BADGES[key])
+  /* 클랜 배지는 표 안에만 있다 — ★작은 그림★ 을 쓴다 */
+  return key === undefined ? null : badgeArtSmallPath(BADGES[key])
 }
 
 /** 클랜 축이 어느 배지인가 — 누르면 갈 곳을 정한다. 짝이 없으면 `null` */
