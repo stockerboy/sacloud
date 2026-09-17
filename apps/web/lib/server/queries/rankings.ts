@@ -484,6 +484,16 @@ export async function getPlayerRanksByScore(
     leaguePlayer: {
       select: {
         rating: true,
+        /*
+         * ★점수 래더★ (2026-09-18) — ★이 칸을 빼면 개인랭킹이 통째로 안 뜬다.★
+         *
+         *   `undefined` 를 `Math.round(undefined / 10)` 에 넣으면 `NaN` 이 되고,
+         *   JSON 으로 나가면서 ★`null`★ 이 된다. 계약은 `score_bonus` 를 숫자로 받으므로
+         *   파싱이 깨지고 목록이 통째로 사라진다. 실제로 그렇게 됐다 (사장님: «개인랭킹 안떠»).
+         */
+        scoreRating: true,
+        scoreGames: true,
+        scoreBonus: true,
         activityPenalty: true,
         win: true,
         lose: true,
