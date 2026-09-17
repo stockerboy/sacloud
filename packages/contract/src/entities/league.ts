@@ -82,6 +82,21 @@ export const LeagueClan = z.object({
    * 무기나 점수를 모르는 사람은 안 넣는다 (D-106). 모자라면 짧게 온다.
    */
   main_members: z.array(ClanMainPlayer).default([]),
+  /**
+   * ★라이벌★ — 시즌 0 안에서 ★제일 많이 붙은 상대 클랜★ (2026-09-17 사장님:
+   * 「라이벌 클랜의 클랜마크 넣어줘 상대로 많이한 클랜」).
+   *
+   * 클랜명과 승률 사이 빈자리에 그 클랜의 ★마크★ 를 띄운다.
+   * 아직 한 판도 안 붙었거나 상대를 못 찾으면 `null` — 자리를 비운다. 지어내지 않는다.
+   */
+  rival: z
+    .object({
+      clan: ClanSummary,
+      /** 그 상대와 붙은 판 수 */
+      games: Count,
+    })
+    .nullable()
+    .optional(),
 })
 export type LeagueClan = z.infer<typeof LeagueClan>
 
@@ -315,6 +330,21 @@ export const ClanRankRow = z.object({
    * 아직 배틀로그가 없는 클랜은 빈 배열이다.
    */
   main_members: z.array(ClanMainPlayer).default([]),
+  /**
+   * ★라이벌★ — 시즌 0 안에서 ★제일 많이 붙은 상대 클랜★ (2026-09-17 사장님:
+   * 「라이벌 클랜의 클랜마크 넣어줘 상대로 많이한 클랜」).
+   *
+   * 클랜명과 승률 사이 빈자리에 그 클랜의 ★마크★ 를 띄운다.
+   * 아직 한 판도 안 붙었거나 상대를 못 찾으면 `null` — 자리를 비운다. 지어내지 않는다.
+   */
+  rival: z
+    .object({
+      clan: ClanSummary,
+      /** 그 상대와 붙은 판 수 */
+      games: Count,
+    })
+    .nullable()
+    .optional(),
 })
 export type ClanRankRow = z.infer<typeof ClanRankRow>
 

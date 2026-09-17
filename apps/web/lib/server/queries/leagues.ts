@@ -36,7 +36,7 @@ import { publicOriginWhere } from './publicScope'
 import { ladderMatchWhere } from './ladderScope'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
 import { CLAN_HEX_V2_AXIS_KEYS, hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
-import { seasonWindowWhere } from './season0Scope'
+import { SEASON0_FROM, seasonWindowWhere } from './season0Scope'
 import { leagueClanHexV2, leagueClanBadges } from './clanHexV2'
 import { softFail } from '../softFail'
 import { withLadderMatch } from './ladderScope'
@@ -296,6 +296,58 @@ async function tierRecordsOf(leagueId: string): Promise<Map<string, { win: numbe
  * 다른 것은 ★왜복 하나★ 라는 점뿐이다 — 목록은 스무 줄이라
  * 줄마다 부르면 스무 번이 된다.
  */
+/**
+ * ★라이벌★ — 그 리그 클랜들이 ★제일 많이 붙은 상대★ 를 한 번에 (2026-09-17 사장님).
+ *
+ * ── 왜 한 번에 가져오나
+ *   `clanHeadToHead()` 는 ★클랜 하나씩★ 이다. 랭킹 스무 줄에 그걸 쓰면 왕복이 스무 번이다.
+ *   `mainMembersOf` 와 같은 결로 ★질의 하나★ 로 끝낸다.
+ *
+ * ── 셈
+ *   경기 한 판을 ★양쪽에서 한 번씩★ 센다 (`UNION ALL` 로 red↔blue 를 뒤집어 붙인다).
+ *   그러면 「나 → 상대」 짝이 생기고, 짝마다 세어 클랜별 제일 많은 하나만 남긴다.
+ *   판 수가 같으면 ★상대 id 가 작은 쪽★ 으로 못 박는다 — 새로고침마다 라이벌이 바뀌면 안 된다.
+ *
+ * ⚠ 자기 자신은 뺀다. 같은 클랜끼리 붙은 판이 자료에 있을 수 있다.
+ */
+async function rivalsOf(
+  leagueId: string,
+  from: Date,
+): Promise<Map<string, { leagueClanId: string; games: number }>> {
+  const out = new Map<string, { leagueClanId: string; games: number }>()
+  const rows =
+    (await softFail('clan-rival', null, { leagueId })(
+      prisma.$queryRaw<{ me: string; foe: string; games: bigint }[]>`
+        WITH pairs AS (
+          SELECT "redLeagueClanId" AS me, "blueLeagueClanId" AS foe
+            FROM "Match"
+           WHERE "leagueId" = ${leagueId} AND "supersededAt" IS NULL AND "startAt" >= ${from}
+             AND "redLeagueClanId" IS NOT NULL AND "blueLeagueClanId" IS NOT NULL
+          UNION ALL
+          SELECT "blueLeagueClanId" AS me, "redLeagueClanId" AS foe
+            FROM "Match"
+           WHERE "leagueId" = ${leagueId} AND "supersededAt" IS NULL AND "startAt" >= ${from}
+             AND "redLeagueClanId" IS NOT NULL AND "blueLeagueClanId" IS NOT NULL
+        ),
+        counted AS (
+          SELECT me, foe, COUNT(*) AS games
+            FROM pairs
+           WHERE me <> foe
+           GROUP BY me, foe
+        ),
+        ranked AS (
+          SELECT me, foe, games,
+                 ROW_NUMBER() OVER (PARTITION BY me ORDER BY games DESC, foe ASC) AS rn
+            FROM counted
+        )
+        SELECT me, foe, games FROM ranked WHERE rn = 1`,
+    )) ?? []
+  for (const row of rows) {
+    out.set(row.me, { leagueClanId: row.foe, games: Number(row.games) })
+  }
+  return out
+}
+
 async function mainMembersOf(
   leagueId: string,
   clanIds: readonly string[],
@@ -388,6 +440,9 @@ export async function getLeagueClans(
         )) ?? new Map<string, string[]>()
       /* ★주요멤버★ — 빈칸을 메운다 (2026-09-16 밤 사장님) */
       const mainOf = await mainMembersOf(leagueId, rows.map((row) => row.clan.id))
+      /* ★라이벌★ — 제일 많이 붙은 상대 (2026-09-17 사장님). 질의 하나로 리그 전체를 가져온다 */
+      const rivalOf = await rivalsOf(leagueId, SEASON0_FROM)
+      const clanById = new Map(rows.map((row) => [row.id, row.clan]))
 
       return rows.map((row) => {
         const tier = tierRecords.get(row.id) ?? { win: 0, lose: 0 }
@@ -408,6 +463,14 @@ export async function getLeagueClans(
         status: row.status,
         joined_at: toKstIso(row.joinedAt),
         main_members: mainOf.get(row.clan.id) ?? [],
+        rival: (() => {
+          const hit = rivalOf.get(row.id)
+          if (hit === undefined) return null
+          const foe = clanById.get(hit.leagueClanId)
+          /* 상대가 이 쪽에 없으면(탈퇴·다른 부리그) 안 그린다 — 이름을 지어내지 않는다 */
+          if (foe === undefined) return null
+          return { clan: toClanSummary(foe), games: hit.games }
+        })(),
         }
       })
     },
@@ -754,6 +817,9 @@ export async function getClanRanks(
    */
   /* ★주요멤버★ — 메인 목록과 ★같은 함수★ 를 쓴다 (두 곳에 베끼면 갈린다) */
   const mainOf = await mainMembersOf(leagueId, page.items.map((row) => row.clan.id))
+  /* ★라이벌★ — 제일 많이 붙은 상대 (2026-09-17 사장님). 질의 하나로 리그 전체를 가져온다 */
+  const rivalOf = await rivalsOf(leagueId, SEASON0_FROM)
+  const clanById = new Map(page.items.map((row) => [row.id, row.clan]))
 
   return {
     cursor: page.cursor,
@@ -770,6 +836,14 @@ export async function getClanRanks(
       badges: badgeOf.get(row.id) ?? [],
       hex_axes: hexOf.get(row.id) ?? null,
       main_members: mainOf.get(row.clan.id) ?? [],
+      rival: (() => {
+        const hit = rivalOf.get(row.id)
+        if (hit === undefined) return null
+        const foe = clanById.get(hit.leagueClanId)
+        /* 상대가 이 쪽에 없으면(탈퇴·다른 부리그) 안 그린다 — 이름을 지어내지 않는다 */
+        if (foe === undefined) return null
+        return { clan: toClanSummary(foe), games: hit.games }
+      })(),
     })),
   }
 }

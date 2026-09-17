@@ -309,14 +309,37 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                      *   길어서 괄호 앞에서 끈는다 — 라벨과 같은 방법이다.
                      */
                     if (p.single) {
+                      /*
+                       * ★앞은 이긴팀 색 · 뒤는 진팀 색★ (2026-09-17 사장님:
+                       *   «납득이 너무 안가 … 심지어 첫번째 사진은 소수싸움 세이브를
+                       *    다이겼는데 겠을 왜진건지 납득이 안감»).
+                       *
+                       *   영향력 둘만 ★한 색 한 덩어리★ 라 앞 숫자가 누구 것인지 안 보였다.
+                       *   옆 네 축은 색으로 가르는데 이 둘만 읽는 법이 달랐다 — 그게 범인이다.
+                       *   이제 가운뙙점으로 쪼개서 양쪽을 따로 칠한다 — 다른 축과 같은 모양이 된다.
+                       */
                       const one = showWon ? p.wonText : p.lostText
                       const tone = showWon ? WON.line : LOST.line
+                      const foeTone = showWon ? LOST.line : WON.line
                       const cut = one.indexOf('(')
-                      if (cut <= 0) return <tspan fill={tone}>{one}</tspan>
+                      const head = cut > 0 ? one.slice(0, cut).trim() : one
+                      const tail = cut > 0 ? one.slice(cut) : null
+                      const parts = head.split(' · ')
+                      const pair =
+                        parts.length === 2 ? (
+                          <>
+                            <tspan fill={tone}>{parts[0]}</tspan>
+                            <tspan fill="#44506c"> · </tspan>
+                            <tspan fill={foeTone}>{parts[1]}</tspan>
+                          </>
+                        ) : (
+                          <tspan fill={tone}>{head}</tspan>
+                        )
+                      if (tail === null) return pair
                       return (
                         <>
-                          <tspan x={x} fill={tone}>{one.slice(0, cut).trim()}</tspan>
-                          <tspan x={x} dy={12} fill="#7f8db0" fontSize={10}>{one.slice(cut)}</tspan>
+                          <tspan x={x}>{pair}</tspan>
+                          <tspan x={x} dy={12} fill="#7f8db0" fontSize={10}>{tail}</tspan>
                         </>
                       )
                     }

@@ -30,6 +30,7 @@ import {
 } from '../common/format'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 import { ClanBadges } from './ClanBadges'
+import { PLAYER_HEX_BADGE } from '@sacloud/contract'
 import { TraitEmblem } from './TraitEmblem'
 
 /**
@@ -317,6 +318,43 @@ function DivisionDivider({ division, leagueCategory }: { division: number; leagu
 /** 승격·강등 표시 (2026-09-11 사장님) — 표는 받은 대로 그리고, 누가 위태로운지는 화면이 정한다 */
 export type ClanRankNote = 'promote' | 'relegate' | null
 
+/* -------------------------------------------------------------- 라이벌 --- */
+
+/**
+ * ★라이벌★ — 그 클랜이 시즌 0 에서 제일 많이 붙은 상대 (2026-09-17 사장님:
+ * 「라이벌 클랜의 클랜마크 넣어줘 상대로 많이한 클랜」).
+ *
+ * ── 왜 메인멤버 대신인가
+ *   그 자리는 원래 주요멤버 다섯이었는데 사장님이 「5명 다 안채워지는곳들도 있어서
+ *   애매한거같은데」 하셨다. 라이벌은 ★한 클랜에 하나뿐★ 이라 그 문제가 없다.
+ *   한 판이라도 붙었으면 반드시 있고, 안 붙었으면 그냥 빈다.
+ *
+ * ── 마크가 먼저다
+ *   사장님이 원하신 것은 ★마크★ 다 (`CLAUDE.md` — 클랜명 앞에 항상 마크).
+ *   이름은 좁은 화면에서 접고 마크만 남긴다. 몇 판 붙었는지는 뒤에 작게.
+ *
+ * 옛 판(주요멤버 다섯)은 `MainMembers` 로 그대로 살아 있다 — `RIVAL_COL` 을
+ * `false` 로 두면 돌아온다 (`CLAUDE.md` 1-4).
+ */
+function RivalCell({ rival, leagueSlug }: {
+  rival: ClanRankTableRow['rival']
+  leagueSlug: string
+}) {
+  /* 아직 한 판도 안 붙었으면 ★자리를 그냥 비운다★ — 「없음」 을 적지 않는다 */
+  if (!rival) return null
+  return (
+    <Link
+      className="flex min-w-0 items-center gap-2 hover:text-text-strong"
+      href={leagueClanPath(leagueSlug, rival.clan.slug)}
+      title={`라이벌 ${rival.clan.name} · ${rival.games}판`}
+    >
+      <MarkCircle clan={rival.clan} size={22} title={rival.clan.name} />
+      <span className="truncate text-[0.82rem] text-meta max-md:hidden">{rival.clan.name}</span>
+      <span className="shrink-0 text-[0.72rem] text-faint">{rival.games}판</span>
+    </Link>
+  )
+}
+
 /* ------------------------------------------------------------ 메인멤버 --- */
 
 /**
@@ -370,6 +408,11 @@ export type ClanRankTableRow = {
    * 안 넘기는 화면(옛 래더 표 · 부리그 탭)은 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
    */
   main_members?: readonly ClanMainPlayer[]
+  /**
+   * ★라이벌★ — 제일 많이 붙은 상대 (2026-09-17 사장님).
+   * 주요멤버와 같은 자리를 쓴다. 안 넘기는 화면은 안 바뀜다.
+   */
+  rival?: ClanRankRow['rival']
 } & Pick<
   ClanRankRow,
   'league_clan_id' | 'clan' | 'division' | 'win' | 'lose' | 'win_rate' | 'rating'
@@ -460,7 +503,14 @@ export function ClanRankTable({
      규칙은 `@sacloud/contract` 의 `leagueScreen` 한 곳이다. 행의 `division` 값 자체는 그대로 온다 */
   const divideByDivision = groupByDivision && showsTier(leagueSlug)
   /* 「메인」 칸은 ★자료가 온 표에만★ 선다 — 안 넘기는 화면은 칸 자체가 안 생긴다 (`CLAUDE.md` 1-4) */
+  /**
+   * ★그 자리에 무엇을 그릴까★ (2026-09-17 사장님) — 라이벌이 기본이다.
+   *   `false` 로 두면 옛 「메인멤버 다섯」 으로 돌아간다 (`CLAUDE.md` 1-4).
+   */
+  const RIVAL_COL = true
+  const anyRivals = (rows ?? []).some((row) => row.rival != null)
   const anyMembers = (rows ?? []).some((row) => (row.main_members?.length ?? 0) > 0)
+  const showSide = RIVAL_COL ? anyRivals : anyMembers
   /* 바로 앞 행과 부리그가 다르면 그 위에 선을 긋는다. 첫 행에도 긋는다 —
      맨 위 묶음이 어느 티어인지 이름이 없으면 아래 묶음들만 이름이 붙어 이상해진다 */
   let lastDivision: number | null = null
@@ -470,7 +520,7 @@ export function ClanRankTable({
         {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>클랜</div>
         {/* 「메인」 머리글 — 한 줄이라도 멤버가 오면 세운다. 폰에서는 칸째로 없다 */}
-        {anyMembers ? <div className={COL_MAIN}>메인</div> : null}
+        {showSide ? <div className={COL_MAIN}>{RIVAL_COL ? '라이벌' : '메인'}</div> : null}
         {columns.winRate ? <div className={COL_STAT}>승률</div> : null}
         {columns.rating ? <div className={COL_RATING}>래더</div> : null}
       </div>
@@ -569,9 +619,13 @@ export function ClanRankTable({
               알이 안 깨진 클랜은 기록을 가리는 중이므로 멤버도 안 보인다 (승률·래더와 같은 규칙).
               멤버가 없으면 `MainMembers` 가 `null` 을 내어 ★자리를 그냥 비운다★ — 「없음」 을 적지 않는다.
             */}
-            {anyMembers ? (
+            {showSide ? (
               <div className={COL_MAIN}>
-                {egg === 'sealed' ? null : <MainMembers members={row.main_members ?? []} clan={row.clan} />}
+                {egg === 'sealed' ? null : RIVAL_COL ? (
+                  <RivalCell rival={row.rival} leagueSlug={leagueSlug} />
+                ) : (
+                  <MainMembers members={row.main_members ?? []} clan={row.clan} />
+                )}
               </div>
             ) : null}
             {/* 승/패는 없앤 것이 아니라 승률 아래로 접었다. 알이 있으면 둘 다 가린다 */}
@@ -847,33 +901,48 @@ export function PlayerRankTable({
                   *   보통 0~2개라 줄이 안 부푸다. 폰에서 자리가 모자라면 줄바꿈하지 않고
                   *   ★숨는다★ — 줄 높이가 틀어지면 표 리듬이 깨진다.
                   */}
+                {/*
+                  * ★특성 앨블럼★ (2026-09-17 사장님).
+                  *
+                  * ⚠ ★줄이 안 맞는다★ — 사장님이 바로 잡으셨다.
+                  *   첫 판은 `mx-auto` 로 가운데 정렬만 했다. 그러면 앨블럼이
+                  *   둘인 줄과 하나인 줄의 ★시작점이 달라★ 세로로 듬넣날럭했다.
+                  *   칸 폭을 ★고정★ 하고 그 안에서 ★왼쪽부터★ 채운다.
+                  *   ⚠ 가운데 정렬(`justify-center`)은 안 된다 — 둘인 줄과 하나인 줄의
+                  *     ★첫 앨블럼 x 가 여전히 달라진다.★ 사장님이 두 번 짚으셨다.
+                  *     왼쪽 기준이어야 첫째끼리 · 둘째끼리 세로로 맞는다.
+                  *
+                  *   이름은 PC 에만 적는다 — «세이브 머신» 이 여섯 자라 폰 390px 에서는
+                  *   세 개를 놓을 자리가 없다. 폰은 그림만, 뜻은 누르면 뜨는 이름이 말한다.
+                  */}
                 {(row.trait_emblems ?? []).length > 0 ? (
-                  /*
-                   * ★PC 는 크게 · 가운데쪽에★ (2026-09-17 사장님:
-                   *   «Pc에서는 조금 더 크게 만들어줘 앨블럼
-                   *    그리고 앨블럼 가운데쪽에 진열해줘라»).
-                   *
-                   *   `mx-auto` — 이름 칸이 `flex-1` 이라 양쪽 여백을 같이 밀어
-                   *   닉네임 덩어리와 수치 사이 ★한가운데★ 에 선다.
-                   *   폰은 자리가 없으니 예전대로 이름 바로 뒤다 (`max-md:ml-2`).
-                   *
-                   *   ★크기는 CSS 로 바꾼다★ — `size` 는 SVG 속성이라 화면 폭에 따라
-                   *   못 바뀜다. 높이만 주면 속성 폭이 남아 찌그러지므로
-                   *   `w-auto` 를 같이 준다. 그려야 비율이 산다.
-                   */
-                  <span className="flex shrink-0 items-center gap-1.5 overflow-hidden max-md:ml-2 md:mx-auto">
-                    {(row.trait_emblems ?? []).slice(0, 3).map((e) => (
-                      <TraitEmblem
-                        key={`${e.axis}-${e.weapon}`}
-                        axis={e.axis as Parameters<typeof TraitEmblem>[0]['axis']}
-                        weapon={e.weapon}
-                        tier={e.tier}
-                        size={22}
-                        className="h-[22px] w-auto md:h-[30px]"
-                      />
-                    ))}
+                  <span className="flex shrink-0 items-start justify-start gap-1.5 max-md:ml-2 max-md:w-[78px] md:mx-auto md:w-[186px] md:gap-2">
+                    {(row.trait_emblems ?? []).slice(0, 3).map((e) => {
+                      const axis = e.axis as Parameters<typeof TraitEmblem>[0]['axis']
+                      const name = PLAYER_HEX_BADGE[axis]?.[e.weapon === 1 ? 'sniper' : 'rifle'] ?? ''
+                      return (
+                        <span
+                          key={`${e.axis}-${e.weapon}`}
+                          className="flex flex-col items-center gap-[3px] max-md:w-[24px] md:w-[58px]"
+                        >
+                          <TraitEmblem
+                            axis={axis}
+                            weapon={e.weapon}
+                            tier={e.tier}
+                            size={22}
+                            className="h-[22px] w-auto md:h-[30px]"
+                          />
+                          <span className="hidden truncate text-center text-[9.5px] leading-none text-faint md:block md:w-full">
+                            {name}
+                          </span>
+                        </span>
+                      )
+                    })}
                   </span>
-                ) : null}
+                ) : (
+                  /* ★앨블럼이 없어도 자리를 비워 둔다★ — 그래야 아래윗줄 수치가 같은 자리에 선다 */
+                  <span aria-hidden className="shrink-0 max-md:w-0 md:mx-auto md:w-[186px]" />
+                )}
               </div>
             ) : (
             <div className={COL_NAME}>

@@ -684,6 +684,24 @@ export function getLeague(leagueSlug: string): League | null {
   }
 }
 
+
+/**
+ * ★가짜 라이벌★ (2026-09-17) — 화면 확인용.
+ *   같은 리그의 다른 클랜 하나를 정해진 자리로 고른다 — 줄이 안 흔들린다.
+ *   진짜 셈은 `apps/web/lib/server/queries/leagues.ts` 의 `rivalsOf()` 가 한다.
+ */
+function mockRivalOf(leagueClan: { id: string; leagueId: string; clanId: string }): { clan: ClanSummary; games: number } | null {
+  const mates = (leagueClansByLeague.get(leagueClan.leagueId) ?? []).filter((e) => e.id !== leagueClan.id)
+  if (mates.length === 0) return null
+  let seed = 0
+  for (const ch of leagueClan.id) seed = (seed * 31 + ch.charCodeAt(0)) % 100000
+  const foe = mates[seed % mates.length]
+  if (foe === undefined) return null
+  const clan = clanById.get(foe.clanId)
+  if (clan === undefined) return null
+  return { clan: toClanSummary(clan), games: 3 + (seed % 12) }
+}
+
 function toLeagueClan(leagueClan: MockLeagueClan): LeagueClan | null {
   const clan = clanById.get(leagueClan.clanId)
   if (!clan) return null
@@ -695,6 +713,12 @@ function toLeagueClan(leagueClan: MockLeagueClan): LeagueClan | null {
     badges: [],
     /* ★주요멤버★ (2026-09-16 밤) — 픍스쳐는 빈다. 화면이 빈 자리를 그냥 비운다 */
     main_members: [],
+    /*
+     * ★라이벌★ (2026-09-17) — 화면을 눈으로 보려고 둔다.
+     *   정해진 값이다(무작위가 아니다) — 같은 줄이 늘 같은 라이벌을 달아야 한다.
+     *   진짜 값은 서버가 `rivalsOf()` 로 낸다.
+     */
+    rival: mockRivalOf(leagueClan),
     rating: leagueClan.rating,
     division: leagueClan.division,
     win: leagueClan.win,

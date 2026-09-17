@@ -1762,7 +1762,13 @@ export function buildClanHexV2Raw(input: {
           /* ★−1.5 ~ +1.5 를 0~1 눈금으로 편다★ — 실측 범위가 그 안이다 */
           raw: share,
           value: null,
-          text: `${ourPct}% : ${foePct}% (${spread}%p 차이)`,
+          /*
+           * ⚠ ★구분자를 «:» 에서 «·» 로★ (2026-09-17 사장님이 납득 안 간다 하셨다).
+           *   다른 네 축은 «60% · 40%» 로 적고 ★앞뒤를 다른 색으로★ 칠한다.
+           *   영향력 둘만 «:» 에 한 색이라 ★앞 숫자가 누구 것인지 안 보였다.★
+           *   같은 구분자를 써야 화면이 그걸 쪼개서 두 색으로 칠한다.
+           */
+          text: `${ourPct}% · ${foePct}% (${spread}%p 차이)`,
           pending: null,
           rank: null,
           total: null,

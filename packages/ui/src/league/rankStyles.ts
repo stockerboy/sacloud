@@ -40,7 +40,16 @@ export const ROW =
    *   ★랭킹 표 글자를 함께 키운다★ — 13.125 → 14.25px. 둘은 여전히 같다.
    *   옛 값은 `max-md:text-sm` 이다.
    */
-  'flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-3 max-md:py-[0.55rem] max-md:text-[1.02rem]'
+  /*
+   * ⚠ ★2026-09-17 — 폰 줄이 답답하다★ (사장님: «모바일 개인랭킹은 지금
+   *   간격이 너무 좁다 세로폭이 좁은건지 글씨가 너무 큰건지 답답해»).
+   *
+   *   글자를 키우면서(14.25 → 15.3px) 위아래 여백은 그대로 두었다 —
+   *   글자만 커지고 줄 높이가 안 늘어나면 글자가 줄을 꽉 채운다.
+   *   폰 위아래 여백을 0.55 → 0.9rem 으로. 줄 높이가 약 36 → 45px 가 된다.
+   *   PC 는 그대로다 (`py-3`).
+   */
+  'flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-3 max-md:py-[0.9rem] max-md:text-[1.02rem]'
 
 /** 표 안의 클랜마크 — 좁은 화면에서만 줄인다 (모바일 행 높이 36px 계산의 기준) */
 export const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'
