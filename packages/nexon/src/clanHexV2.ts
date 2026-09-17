@@ -92,6 +92,13 @@
  */
 import { judgeExchange, judgeShort, type SideKill, type SideVerdict } from './sideAxes'
 import {
+  bombScore,
+  emptyMatchScore,
+  killScore,
+  scoreSlotOf,
+  type MatchScoreTally,
+} from './matchScore'
+import {
   outnumberedRound,
   roundClocksOf,
   type ClanRoundEvent,
@@ -112,8 +119,10 @@ import {
   type RoundDeath,
 } from './roundState'
 import {
+  bombEvidenceOf,
   roundResultsOf,
   roundSidesOf,
+  type BombEvidence,
   type RoundResultEvent,
   type RoundSide,
 } from './roundSide'
@@ -856,6 +865,17 @@ export interface ClanHexTally {
    */
   zoneAttack: ZoneAttackTally | null
 
+  /**
+   * ★점수제★ (2026-09-18 사장님) — 경기 육각의 점수 축 넷이 쓴다.
+   *
+   * > «이렇게 퍼센트로 보니까 진짜 잘모르겠음 (…) 걍 봤을때 별 생각이 안듦»
+   * > «우리 이거 점수제로 해서 퍼센트를 매겨볼까»
+   *
+   * 셈은 `matchScore.ts` 가 한다 — 여기서 점수표를 다시 적지 않는다.
+   * ⚠ ★`zoneAttack` 을 지우지 않는다★ (`CLAUDE.md` 1-4) — 둘 다 센다.
+   */
+  score: MatchScoreTally | null
+
   /** ★새 축 — 기회차단★ (2026-09-16 밤 사장님). 경기·클랜 둘 다 쓴다 */
   blockChance: BlockChanceTally | null
   /** ★새 축 — 스나차이·라플차이★ (2026-09-16 밤 사장님). 경기는 점수차, 클랜은 앞선 판 비율 */
@@ -923,6 +943,7 @@ const emptyTally = (teamNo: string, foeTeamNo: string | null): ClanHexTally => (
   /* ★새 축 둘★ (2026-09-16 밤 사장님) */
   blockChance: null,
   zoneAttack: null,
+  score: null,
   gapScore: null,
   outnumbered: null,
   save: null,
@@ -1044,6 +1065,9 @@ export function clanHexV2Of(input: {
     else killsByRound.set(kill.round, [kill])
   }
 
+  /* ★점수제★ 가 쓰는 폭탄 설치. 진영 판정이 이미 읽는 것을 그대로 쓴다 */
+  const bombs = bombEvidenceOf(input.events)
+
   const shared = {
     teamSize,
     zones,
@@ -1054,6 +1078,7 @@ export function clanHexV2Of(input: {
     roster,
     weaponByPlayer,
     restorable,
+    bombs,
   }
 
   const byTeam = new Map<string, ClanHexTally>()
@@ -1114,6 +1139,8 @@ function tallyFor(input: {
   restorable: boolean
   sideOf: ReadonlyMap<number, RoundSide>
   wonRound: (round: number) => boolean | null
+  /** ★점수제★ 가 쓰는 폭탄 설치. 좌표를 모르면 그 줄은 버린다 */
+  bombs: readonly BombEvidence[]
 }): ClanHexTally {
   const tally = emptyTally(input.teamNo, input.foeTeamNo)
 
@@ -1155,6 +1182,75 @@ function tallyFor(input: {
         add(judgeShort(side, z.sideShort ?? null), 'shortN', 'shortOk')
       }
       if (zt.aN + zt.bN + zt.f2N + zt.shortN > 0) tally.zoneAttack = zt
+    }
+  }
+
+  /*
+   * ★점수제★ (2026-09-18 사장님) — 규칙은 `matchScore.ts` 하나뿐이다.
+   *
+   * > «우리 이거 점수제로 해서 퍼센트를 매겨볼까»
+   * > «우리 2층이 다른곳에서 킬을 더 많이하고 더 쭉쭉 뚫고 이러면 점수를 더주는거야»
+   *
+   * ⚠ ★구역 어택과 달리 진영을 안 가린다★ — 사장님 점수표에 «공격일 때만» 이 없다.
+   *   공격이든 방어든 잡으면 점수다. 그래서 진영을 몰라도 셀 수 있다.
+   * ⚠ ★스나는 「그 경기에서 든 총」 으로 가른다★ (`weaponByPlayer`). 자리표를 안 쓴다 —
+   *   한 경기로 자리를 맞히면 69.8% 지만, 실제로 든 총은 틀릴 일이 없다.
+   */
+  {
+    const z = input.zones
+    const anyZone = z.sideA ?? z.sideB ?? z.sideF2 ?? z.sideShort ?? null
+    if (anyZone !== null) {
+      const sc = emptyMatchScore()
+      let touched = false
+      const isSniper = (who: string): boolean => input.weaponByPlayer.get(who) === 1
+
+      for (const round of input.roundNumbers) {
+        const kills = input.killsByRound.get(round) ?? []
+        /* ★순번은 우리 팀이 그 라운드에서 몇 번째로 잡았나★ 다 — 스나 킬 2점의 문턱 */
+        let rank = 0
+        for (const kill of kills) {
+          if ((input.roster.teamOf.get(kill.killer) ?? null) !== input.teamNo) continue
+          rank += 1
+          const points = killScore(isSniper(kill.victim), rank)
+          touched = true
+          /* 스나가 번 점수는 ★구역을 안 보고★ 스나칸으로 간다 (사장님) */
+          if (isSniper(kill.killer)) {
+            sc.sniper += points
+            continue
+          }
+          const at = { x: kill.victimX, y: kill.victimY }
+          const point = at.x === null || at.y === null ? null : { x: at.x, y: at.y }
+          const slot = scoreSlotOf({
+            inF2: z.sideF2 ? inZone(z.sideF2, point) : false,
+            inShortOrA:
+              (z.sideShort ? inZone(z.sideShort, point) : false) ||
+              (z.sideA ? inZone(z.sideA, point) : false),
+            inB: z.sideB ? inZone(z.sideB, point) : false,
+          })
+          sc[slot] += points
+        }
+
+        /* ── 폭탄. ★B쪽에 심으면 져도 2점★ (사장님) */
+        const won = input.wonRound(round)
+        for (const bomb of input.bombs) {
+          if (bomb.round !== round || bomb.action !== 'install') continue
+          if (bomb.team !== input.teamNo) continue
+          const point = bomb.x === null || bomb.y === null ? null : { x: bomb.x, y: bomb.y }
+          const onB = z.sideB ? inZone(z.sideB, point) : false
+          const points = bombScore(won === true, onB)
+          touched = true
+          /* 폭탄 점수도 ★심은 자리★ 로 간다 — 사장님 표에 폭탄이 자리마다 있었다 */
+          const slot = scoreSlotOf({
+            inF2: z.sideF2 ? inZone(z.sideF2, point) : false,
+            inShortOrA:
+              (z.sideShort ? inZone(z.sideShort, point) : false) ||
+              (z.sideA ? inZone(z.sideA, point) : false),
+            inB: onB,
+          })
+          sc[slot] += points
+        }
+      }
+      if (touched) tally.score = sc
     }
   }
 

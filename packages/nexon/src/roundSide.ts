@@ -61,6 +61,15 @@ export interface BombEvidence {
   team: string
   /** `install` 이면 그 팀이 공격, `dismantle` 이면 수비 */
   action: 'install' | 'dismantle'
+  /**
+   * 폭탄을 놓은 자리. 모르면 `null`.
+   *
+   * ⚠ ★폭탄 줄은 좌표가 `kill_x`/`kill_y` 에 있다★ (2026-09-18 실측) —
+   *   `death_x`/`death_y` 는 ★0,0★ 이다. 죽음 줄과 반대라 그냥 쓰면 구역이 안 잡힌다.
+   *   실제로 제3보급창고는 두 자리뿐이다: ★(165,438) 벙커·바닥★ 과 ★(400,309) A설대★.
+   */
+  x: number | null
+  y: number | null
 }
 
 export interface RoundSideEvent {
@@ -71,6 +80,9 @@ export interface RoundSideEvent {
   target_team_no?: number | string | null
   event_type?: string | null
   target_event_type?: string | null
+  /** 폭탄 줄에서는 ★설치 자리★ 다 (2026-09-18 실측). 죽음 줄에서는 죽인 사람 자리 */
+  kill_x?: number | string | null
+  kill_y?: number | string | null
 }
 
 /**
@@ -115,7 +127,13 @@ export function bombEvidenceOf(events: readonly RoundSideEvent[]): BombEvidence[
       if (weapon !== 'c4-install' && weapon !== 'c4-dismantle') continue
       const team = str(event[teamKey])
       if (team === null) continue
-      out.push({ round, team, action: weapon === 'c4-install' ? 'install' : 'dismantle' })
+      out.push({
+        round,
+        team,
+        action: weapon === 'c4-install' ? 'install' : 'dismantle',
+        x: num(event.kill_x),
+        y: num(event.kill_y),
+      })
     }
   }
   return out

@@ -102,7 +102,29 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
  * 옛 셋(스나영향력·라플영향력·유리한 기회)은 ★지우지 않는다★ — 재료도 셈도 그대로 쌓이고
  * `CLAN_HEX_V2_MATCH_AXIS_KEYS_V5` 에 목록을 남긴다 (`CLAUDE.md` 1-4).
  */
+/**
+ * ★경기 육각 — 점수제 여섯★ (2026-09-18 사장님).
+ *
+ * > «육각형에 스나싸움 소수싸움 스나점수 2층점수 비리베점수 숏점수
+ * >  이걸 하고싶은건데 포지를 모를때에도 이게 가능하게 하려면 어떻게 해야할까»
+ * > «ㄱ.빼 ㄴ.숏점수»   (숏점수 하나로 A쪽까지 담는다)
+ *
+ * 뚫었나 못 뚫었나(0/1)로는 ★얼마나★ 가 안 보였다. 점수는 그게 보인다 —
+ * 사장님이 퍼센트를 보시고 «걍 봤을때 별 생각이 안듦» 이라 하신 게 출발점이다.
+ *
+ * ⚠ 옛 여섯(구역 어택)은 ★지우지 않는다★ — `..._V6` 에 남고 재료도 계속 쌓인다.
+ */
 export const CLAN_HEX_V2_MATCH_AXIS_KEYS = [
+  'sniperDuel',
+  'sniperScore',
+  'shortScore',
+  'f2Score',
+  'bScore',
+  'outnumbered',
+] as const
+
+/** ⚠ 2026-09-17~18 에 쓰던 경기 여섯 — 구역 어택 판 */
+export const CLAN_HEX_V2_MATCH_AXIS_KEYS_V6 = [
   'sniperDuel',
   'aAttack',
   'bAttack',
@@ -154,6 +176,8 @@ export type ClanHexV2AxisKey = (typeof CLAN_HEX_V2_AXIS_KEYS)[number]
 export type ClanHexV2AnyAxisKey =
   | ClanHexV2AxisKey
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS)[number]
+  | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V6)[number]
+  | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS)[number]
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V5)[number]
   | (typeof CLAN_HEX_V2_AXIS_KEYS_V4)[number]
   | (typeof CLAN_HEX_V2_AXIS_KEYS_V3)[number]
@@ -177,6 +201,11 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AnyAxisKey, string> = {
   aAttack: 'A어택',
   bAttack: 'B어택',
   f2Attack: '2층어택',
+  /* ★2026-09-18 사장님 — 점수제 넷★ */
+  sniperScore: '스나점수',
+  shortScore: '숏점수',
+  f2Score: '2층점수',
+  bScore: '비리베점수',
   blockChance: '기회차단',
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
@@ -237,6 +266,11 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AnyAxisKey, boolean> =
   aAttack: false,
   bAttack: false,
   f2Attack: false,
+  /* ★점수제 넷★ — 많이 벌수록 좋다 (2026-09-18) */
+  sniperScore: false,
+  shortScore: false,
+  f2Score: false,
+  bScore: false,
   /* 점수 차가 클수록 좋다 — 우리 쪽이 상대보다 앞섰다는 뜻이다 */
   rifleInfluence: false,
   openChance: false,
@@ -273,6 +307,11 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
   aAttack: 'ratio',
   bAttack: 'ratio',
   f2Attack: 'ratio',
+  /* ★점수제 넷★ — 두 팀 점수의 몫이라 비율이다 (2026-09-18) */
+  sniperScore: 'ratio',
+  shortScore: 'ratio',
+  f2Score: 'ratio',
+  bScore: 'ratio',
   sniperDuel: 'ratio',
   outnumbered: 'ratio',
   save: 'ratio',
@@ -627,7 +666,7 @@ export const CLAN_HEX_V2_CONFIG: ClanHexV2Config = {
    *     워커는 v6 를 쌓는데 화면은 v5 만 찾아 ★육각이 통째로 안 뜼다★.
    *     2026-09-17 에 실제로 그러다 — 두 곣을 같이 올린다.
    */
-  formulaVersion: 'clan-hex-v6',
+  formulaVersion: 'clan-hex-v7',
 }
 
 /**
@@ -936,6 +975,20 @@ export interface ClanHexTallyLike {
     bN: number; bOk: number
     f2N: number; f2Ok: number
     shortN: number; shortOk: number
+  } | null
+
+  /**
+   * ★점수제★ (2026-09-18 사장님) — 경기 육각의 점수 축 넷이 쓴다.
+   *
+   * 셈은 `packages/nexon/src/matchScore.ts` 하나가 한다.
+   * `spare` 는 구역을 못 읽은 라플 점수다 — ★버리지 않고★ 여기 쌓는다.
+   */
+  score?: {
+    sniper: number
+    short: number
+    b: number
+    f2: number
+    spare: number
   } | null
 
   /* ── 지금 화면이 쓰는 축 (D-256) ── */
@@ -1731,6 +1784,34 @@ export function buildClanHexV2Raw(input: {
         if (pick.n === 0) return pendingAxis(key, 'sample', { numerator: pick.ok })
         return measuredAxis(key, pick.ok, pick.n)
       }
+      /*
+       * ★점수제 넷★ (2026-09-18 사장님) — 경기 육각의 점수 축.
+       *
+       *   분자  우리가 그 칸에서 ★번 점수★
+       *   분모  여기서는 분자와 같다 — 진짜 분모는 `normalizeAgainstFoe` 가
+       *         ★두 팀 점수의 합★ 으로 다시 잡는다 (`ZONE_SHARE_AXES`).
+       *
+       * 셈은 `packages/nexon/src/matchScore.ts` 하나가 한다.
+       * ⚠ 점수가 0 이면 «측정중» 이 아니라 ★0점★ 이다 — 다만 ★둘 다 0★ 이면
+       *   그 칸에서 아무 일도 없었다는 뜻이라 `normalizeAgainstFoe` 가 «측정중» 으로 돌린다.
+       */
+      case 'sniperScore':
+      case 'shortScore':
+      case 'f2Score':
+      case 'bScore': {
+        const part = tally.score ?? null
+        if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
+        const points =
+          key === 'sniperScore'
+            ? part.sniper
+            : key === 'shortScore'
+              ? part.short
+              : key === 'f2Score'
+                ? part.f2
+                : part.b
+        if (points === 0) return pendingAxis(key, 'sample', { numerator: 0 })
+        return measuredAxis(key, points, points)
+      }
       case 'sniperDuel': {
         const part = tally.sniperDuel ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, true))
@@ -1974,7 +2055,16 @@ const withAxes = (hex: ClanHexV2, axes: ClanHexV2Axis[]): ClanHexV2 => ({
  * ★두 팀의 몫으로 읽는 축★ (2026-09-17 사장님) — 합이 100% 가 된다.
  * 경기 육각의 구역 셋뿐이다. 클랜 육각은 리그 백분위라 이 셈을 안 쓴다.
  */
-const ZONE_SHARE_AXES: readonly ClanHexV2AnyAxisKey[] = ['aAttack', 'bAttack', 'f2Attack']
+const ZONE_SHARE_AXES: readonly ClanHexV2AnyAxisKey[] = [
+  'aAttack',
+  'bAttack',
+  'f2Attack',
+  /* ★점수제 넷도 두 팀의 몫이다★ (2026-09-18) — 합이 100% 가 된다 */
+  'sniperScore',
+  'shortScore',
+  'f2Score',
+  'bScore',
+]
 
 export function normalizeAgainstFoe(
   ours: ClanHexV2,

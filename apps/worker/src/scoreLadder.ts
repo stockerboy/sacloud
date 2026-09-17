@@ -24,6 +24,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { REPO_ROOT } from './lib/env.js'
 import { prisma } from '@sacloud/db'
 
 const SLUG = process.argv[2] ?? 'nolink'
@@ -33,7 +34,8 @@ const BATCH = 400
 
 /* ------------------------------------------------------------- 구역 --- */
 
-const ROOT = join(process.cwd(), 'data/barracks')
+/* ⚠ ★`process.cwd()` 를 쓰면 안 된다★ — pnpm 이 `apps/worker` 에서 돌린다 */
+const ROOT = join(REPO_ROOT, 'data/barracks')
 const style = JSON.parse(readFileSync(join(ROOT, 'style-zones.json'), 'utf-8')) as {
   cell: number
   zone: Record<string, string | string[]>

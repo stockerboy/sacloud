@@ -132,6 +132,15 @@
  *   재료()가 새로 쌓인다 — 옇 줄(v5)은 그 칸이 없어 «측정중» 이다.
  *   다시 돌려야 값이 찬다. 옇 축의 재료는 하나도 안 지웠다.
  */
-export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v6'
+/*
+ * ⚠ ★v7 — 경기 육각이 점수제가 됐다★ (2026-09-18 사장님:
+ *   «우리 이거 점수제로 해서 퍼센트를 매겨볼까»).
+ *     A어택 · B어택 · 2층어택 · 세이브   →   ★스나점수 · 숏점수 · 2층점수 · 비리베점수★
+ *   재료(`tally.score`)가 새로 쌓인다 — 옛 줄(v6)은 그 칸이 없어 «측정중» 이다.
+ *   다시 돌려야 값이 찬다. ★옛 축의 재료(`zoneAttack`)는 하나도 안 지웠다.★
+ */
+export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v7'
+/** ⚠ 옛 판 — 경기 육각이 구역 어택이던 때 */
+export const CLAN_HEX_V2_FORMULA_VERSION_V6 = 'clan-hex-v6'
 /** ⚠ 옇 판 — 경기 육각에 영향력 두 축이 있던 때 */
 export const CLAN_HEX_V2_FORMULA_VERSION_V5 = 'clan-hex-v5'
