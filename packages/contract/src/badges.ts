@@ -155,3 +155,27 @@ export function badgeOfAxis(axis: TraitAxisKey, weapon: BadgeWeapon): BadgeDef |
 
 /** 그림 파일 경로 — 화면이 문자열을 만들지 않게 여기서 준다 */
 export const badgeArtPath = (b: BadgeDef): string => `/badges/${b.art}.png`
+
+/**
+ * ★클랜 축 → 배지 그림★ (2026-09-17 사장님: «클랜도 뱃지도 저걸 활용해서 쓴다»).
+ *
+ * ⚠ ★뜻이 확실한 넷만 붙인다.★ 스나영향력·라플영향력은 사장님이 ★내리기로 하신 축★ 이라
+ *   (방어율이 확정되면 그 자리에 들어간다) 지금 그림을 붙이면 곧 버려진다.
+ *   붙이지 않은 축은 화면이 ★글자로만★ 적는다 — 없는 짝을 지어내지 않는다.
+ *
+ * ⚠ ★이름은 클랜 것을 쓴다.★ 그림만 빌린다 — 클랜의 «기회차단» 을 «디펜딩챔피언» 이라
+ *   부르지 않는다. 두 육각이 같은 낱말을 쓰면 뜻이 섞인다 (2026-09-15 에 한 번 겪었다).
+ */
+export const CLAN_AXIS_BADGE_ART: Record<string, BadgeDef['art']> = {
+  sniperDuel: 'snipeduel',
+  outnumbered: 'outnumber',
+  save: 'save',
+  /* «기회차단» — 상대가 연 판을 끊는다. 막는 쪽이라 방패다 */
+  blockChance: 'defender',
+}
+
+/** 클랜 축의 배지 그림 경로. 짝이 없으면 `null` — 글자로만 적는다 */
+export function clanAxisBadgeArt(axisKey: string): string | null {
+  const art = CLAN_AXIS_BADGE_ART[axisKey]
+  return art === undefined ? null : `/badges/${art}.png`
+}

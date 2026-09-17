@@ -21,6 +21,7 @@
  *   5위 컷도 ASTRA 보정도 `packages/contract/src/clanBadge.ts` 가 이미 끝냈다.
  *   이 부품은 받은 이름을 그리기만 한다.
  */
+import { clanAxisBadgeArt } from '@sacloud/contract'
 import { CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, type ClanHexV2AxisKey } from '@sacloud/contract'
 
 /** 폰 / PC 에서 나란히 적는 최대 개수 */
@@ -84,16 +85,30 @@ export function ClanBadges({ badges }: { badges?: readonly string[] }) {
       className="ml-2 flex shrink-0 items-center gap-[3px]"
       title={`리그 5위 안 — ${keys.map(longOf).join(' · ')}`}
     >
-      {keys.slice(0, MAX_PC).map((key, i) => (
-        <span
-          key={key}
-          /* 세 번째 칩은 ★PC 에서만★ 보인다 — 폰에서는 이름 자리를 뺏는다 */
-          className={i < MAX_PHONE ? CHIP : `${CHIP} max-md:hidden`}
-          style={TONE}
-        >
-          {shortOf(key)}
-        </span>
-      ))}
+      {/*
+        * ★배지 그림★ (2026-09-17 사장님: «클랜도 뱃지도 저걸 활용해서 쓴다»).
+        *   짝이 있는 축만 그림이고 ★없으면 글자 칩 그대로★ 다 — 없는 짝을 지어내지 않는다.
+        *   스나영향력·라플영향력은 사장님이 내리기로 하신 축이라 일부러 안 붙였다.
+        */}
+      {keys.slice(0, MAX_PC).map((key, i) => {
+        const art = clanAxisBadgeArt(key)
+        const hide = i < MAX_PHONE ? '' : ' max-md:hidden'
+        return art === null ? (
+          <span key={key} className={`${CHIP}${hide}`} style={TONE}>
+            {shortOf(key)}
+          </span>
+        ) : (
+          <img
+            key={key}
+            src={art}
+            alt={longOf(key)}
+            title={longOf(key)}
+            width={18}
+            height={18}
+            className={`block h-[18px] w-[18px] select-none md:h-[22px] md:w-[22px]${hide}`}
+          />
+        )
+      })}
       {/* 접힌 개수는 폰·PC 가 다르다. 두 벌을 그리고 화면 크기가 하나만 고른다 */}
       {restPhone > 0 ? (
         <span className={`${MORE} md:hidden`} style={{ color: TONE.color }}>
