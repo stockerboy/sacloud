@@ -276,13 +276,18 @@ const addSeat = (
  * 셈을 여기서 다시 적지 않는다. 못 정하면 두 칸 다 `null` 이다 — 지어내지 않는다.
  */
 const seatOf = (
-  p: { games: number },
+  p: { games: number; kills: number },
   h: { seatspots?: unknown; seatbspots?: unknown; seatf2spots?: unknown; seatshortspots?: unknown; sniperkills?: unknown } | undefined,
 ): { seat: string | null; seatRatio: number | null } => {
   const n = (v: unknown): number => Number(v ?? 0)
   const v = positionOf({
     games: p.games,
-    kills: 0,
+    /*
+     * ⚠ ★여기에 0 을 넣으면 스나가 한 명도 안 나온다★ (2026-09-17 에 실제로 그랬다).
+     *   스나 문턱은 «자기 킬의 절반 이상이 스나» 인데 분모가 0 이면 비중이 언제나 0 이다.
+     *   첫 재계산에서 자리 722명 중 ★스나 0명★ 이 나와서 찾았다.
+     */
+    kills: p.kills,
     sniperKills: n(h?.sniperkills),
     bSpots: n(h?.seatbspots),
     f2Spots: n(h?.seatf2spots),
