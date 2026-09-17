@@ -104,6 +104,7 @@ import { buildClanRoundProfiles } from './jobs/clanRoundBuild.js'
 /** 클랜 육각형 V2 (D-217 · D-235) — 스나싸움·소수싸움·세이브·템포·B어택·A어택. 옛 판과 따로 산다 */
 import { buildClanHexV2 } from './jobs/clanHexV2Build.js'
 import { plantFlags } from './jobs/flagPlant.js'
+import { buildScoreLadder } from './jobs/scoreLadderBuild.js'
 import { buildPlayerHex } from './jobs/playerHexBuild.js'
 import {
   buildClanHexV2Summary,
@@ -3394,6 +3395,28 @@ async function main(): Promise<number> {
      * **옛 판(`clan-round-build`)과 따로 산다 — 둘을 한 화면에 섞지 않는다.**
      */
     /* ★선수 육각형 · 실력 점수★ (2026-09-10 · 사장님 확정) — 재료를 쌓고 리그별로 접는다 */
+    /*
+     * ★점수 래더★ (2026-09-18 사장님) — 개인 래더를 점수제로 다시 센다.
+     *   옛 Elo 래더(`rating`)는 한 줄도 안 건드린다 — 새 칸에만 쓴다.
+     *
+     *   pnpm --filter @sacloud/worker nexon score-ladder-build --league nolink --confirm
+     */
+    case 'score-ladder-build': {
+      const slug = stringFlag(args, 'league') ?? 'nolink'
+      const result = await buildScoreLadder({
+        leagueSlug: slug,
+        confirm: boolFlag(args, 'confirm'),
+        minGames: Number(stringFlag(args, 'min-games') ?? '') || undefined,
+      })
+      table([{
+        리그: result.league,
+        선수: String(result.players),
+        '순위 매김': String(result.ranked),
+        '보정 받음': String(result.bonused),
+      }])
+      return 0
+    }
+
     case 'player-hex-build': {
       const result = await buildPlayerHex({
         confirm: boolFlag(args, 'confirm'),

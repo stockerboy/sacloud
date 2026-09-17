@@ -484,8 +484,32 @@ export async function getLeagueClans(
  * 원본은 1시간 주기 배치로 만들지만 여기서는 요청 시 정렬한다.
  * 배치(`RankSnapshot`) 재현은 Phase 9에서 다룬다.
  */
+/** ★클랜 랭킹★ 의 줄 세우기 — 클랜은 그대로 래더 순이다 */
 const RANK_ORDER = [{ rating: 'desc' }, { id: 'asc' }] as const
 const RANK_ORDER_REVERSED = [{ rating: 'asc' }, { id: 'desc' }] as const
+
+/*
+ * ★개인 랭킹은 점수 래더 순★ (2026-09-18 사장님: «래더점수도 이걸로 계산해»).
+ *
+ * `scoreRating` 은 ★경기당 평균 점수 × 100★ 이고 ★상위권 보정이 이미 들어 있다★.
+ *
+ * ⚠ ★아직 안 잰 선수(`null`)는 뒤로 보낸다★ — 0점으로 우기지 않는다 (D-106).
+ *   그 뒤는 ★옛 Elo 래더★ 로 줄을 세운다. 재계산 전에도 목록이 안 무너진다.
+ * ⚠ ★옛 정렬을 지우지 않는다★ (`CLAUDE.md` 1-4) — `PLAYER_RANK_ORDER_V1` 이 그것이다.
+ */
+const PLAYER_RANK_ORDER = [
+  { scoreRating: { sort: 'desc', nulls: 'last' } },
+  { rating: 'desc' },
+  { id: 'asc' },
+] as const
+const PLAYER_RANK_ORDER_REVERSED = [
+  { scoreRating: { sort: 'asc', nulls: 'last' } },
+  { rating: 'asc' },
+  { id: 'desc' },
+] as const
+
+/** ⚠ 옛 개인 정렬 — 2026-09-18 까지 쓰던 판 (Elo 래더만 봤다) */
+export const PLAYER_RANK_ORDER_V1 = [{ rating: 'desc' }, { id: 'asc' }] as const
 
 /**
  * 개인랭킹 **모집단** — 목록 · 순위 계산 · 메인 TOP3 가 같은 조건을 써야 한다.
@@ -991,7 +1015,7 @@ export async function getPlayerRanks(
           where: RANK_WHERE,
           skip: offset,
           take: size,
-          orderBy: [...RANK_ORDER] as never,
+          orderBy: [...PLAYER_RANK_ORDER] as never,
           select: RANK_SELECT,
         })) as unknown as RankRowShape[],
         cursor: { prev: null, next: null },
@@ -999,8 +1023,8 @@ export async function getPlayerRanks(
     : await cursorPage<RankRowShape>({
         cursor,
         size,
-        orderBy: [...RANK_ORDER],
-        reversedOrderBy: [...RANK_ORDER_REVERSED],
+        orderBy: [...PLAYER_RANK_ORDER],
+        reversedOrderBy: [...PLAYER_RANK_ORDER_REVERSED],
         idOf: (row) => row.id,
         fetch: (args) =>
           prisma.leaguePlayer.findMany({
