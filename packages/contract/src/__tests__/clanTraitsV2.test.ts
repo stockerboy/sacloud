@@ -31,6 +31,7 @@ import {
   CLAN_HEX_V2_AXIS_KEYS,
   CLAN_HEX_V2_AXIS_KEYS_V4,
   CLAN_HEX_V2_MATCH_AXIS_KEYS,
+  CLAN_HEX_V2_MATCH_AXIS_KEYS_V6,
   CLAN_HEX_V2_AXIS_LABELS,
   CLAN_HEX_V2_CONFIG,
   CLAN_HEX_V2_CONFIG_KILLER,
@@ -141,6 +142,8 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
      *   공격 8라운드 중 A 는 6에서 교전이 있었고 3을 뚫었다 → 50%.
      */
     zoneAttack: { aN: 6, aOk: 3, bN: 8, bOk: 5, f2N: 5, f2Ok: 2, shortN: 8, shortOk: 4 },
+    /* ★점수제★ (2026-09-18 사장님) — 경기 육각의 점수 축 넷이 쓴다 */
+    score: { sniper: 18, short: 25, b: 16, f2: 10, spare: 3 },
     /* ★스나·라플 영향력★ (2026-09-16 밤) — `games` 가 없으니 ★한 판★ 이다 */
     gapScore: gapTally(),
     firstBlood: { rounds: 12, won: 7, tiedRounds: 2 },
@@ -1240,13 +1243,33 @@ describe('★상대와 견주기★ — 경기 여섯 축이 다 값을 받는�
    *   옛 기대값은 `openChance`(유리한 기회) 였다. 같은 함정을 다시 밟지 않으려고
    *   ★지금 축★ 으로 갈아 끼웠다 — 새 축이 목록에 없으면 여기서 먼저 빨개진다.
    */
-  it('★A어택도 값을 받는다★ — 이 줄이 깨지면 화면에 「없었음」 이 뜬다', () => {
+  it('★점수 축 넷이 다 값을 받는다★ — 이 줄이 깨지면 화면에 「없었음」 이 뜬다', () => {
     const [red, blue] = pair()
     for (const hex of [red, blue]) {
-      const axis = hex.axes.find((a) => a.key === 'aAttack')
-      expect(axis).toBeDefined()
-      expect(axis?.pending, '측정중으로 떨어졌다').toBeNull()
-      expect(axis?.value, '값이 안 매겨졌다').not.toBeNull()
+      for (const key of ['sniperScore', 'shortScore', 'f2Score', 'bScore'] as const) {
+        const axis = hex.axes.find((a) => a.key === key)
+        expect(axis, `${key} 축이 없다`).toBeDefined()
+        expect(axis?.pending, `${key} 가 측정중으로 떨어졌다`).toBeNull()
+        expect(axis?.value, `${key} 값이 안 매겨졌다`).not.toBeNull()
+      }
+    }
+  })
+
+  /*
+   * ⚠ ★옛 판(구역 어택)도 계속 잰다★ (`CLAUDE.md` 1-4) —
+   *   되돌릴 때 재수집이 없어야 하므로 재료도 셈도 그대로 살아 있어야 한다.
+   */
+  it('옛 구역 축 셋도 여전히 값을 받는다 (v6 판)', () => {
+    const mk = () => buildClanHexV2Raw({
+      tally: fullTally(), matches: 1, axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS_V6,
+    })
+    const [red, blue] = normalizeAgainstFoe(mk(), mk())
+    for (const hex of [red, blue]) {
+      for (const key of ['aAttack', 'bAttack', 'f2Attack'] as const) {
+        const axis = hex.axes.find((a) => a.key === key)
+        expect(axis, `${key} 축이 없다`).toBeDefined()
+        expect(axis?.value, `${key} 값이 안 매겨졌다`).not.toBeNull()
+      }
     }
   })
 
@@ -1284,7 +1307,8 @@ describe('★경기 육각 — 구역 축은 합이 100%★ (2026-09-17 사장�
           zoneAttack: { aN: 5, aOk: ok, bN: 5, bOk: 0, f2N: 5, f2Ok: 0, shortN: 5, shortOk: 0 },
         }),
         matches: 1,
-        axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS,
+        /* ⚠ 이 시험은 ★옛 구역 축★ 을 잰다 — 경기 육각은 2026-09-18 에 점수제로 갈아탔다 */
+        axisKeys: CLAN_HEX_V2_MATCH_AXIS_KEYS_V6,
       })
     return normalizeAgainstFoe(mk(ours), mk(theirs))
   }

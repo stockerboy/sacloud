@@ -416,7 +416,10 @@ async function main(): Promise<void> {
   })
 
   /* 가중치를 정하려면 ★점수 차이가 얼마나 촘촘한지★ 를 알아야 한다 */
-  const at = (n: number): string => (list[n - 1] ? list[n - 1].avg.toFixed(2) : '—')
+  const at = (n: number): string => {
+    const row = list[n - 1]
+    return row ? row.avg.toFixed(2) : '—'
+  }
   console.log(`
 경기당 점수 분포 — 1위 ${at(1)} · 5위 ${at(5)} · 10위 ${at(10)} · 20위 ${at(20)} · 30위 ${at(30)} · 50위 ${at(50)} · 100위 ${at(100)}`)
 
@@ -441,7 +444,9 @@ async function main(): Promise<void> {
   const ranks = inTop.map((t) => list.indexOf(t) + 1)
   console.log(`  그 클랜 선수 ${inTop.length}명 (${MIN_GAMES}경기 이상)`)
   if (ranks.length > 0) {
-    console.log(`  지금 순위 — 제일 높은 ★${Math.min(...ranks)}등★ · 중간값 ${ranks.sort((a, b) => a - b)[Math.floor(ranks.length / 2)]}등 · 30등 안 ${ranks.filter((r) => r <= 30).length}명`)
+    const sorted = [...ranks].sort((a, b) => a - b)
+    const mid = sorted[Math.floor(sorted.length / 2)] ?? 0
+    console.log(`  지금 순위 — 제일 높은 ★${Math.min(...ranks)}등★ · 중간값 ${mid}등 · 30등 안 ${ranks.filter((r) => r <= 30).length}명`)
   }
 
   /* 보정을 얼마 줬을 때 몇 명이 30등 안에 드나 */
@@ -494,7 +499,9 @@ async function main(): Promise<void> {
   }
 
   /* 상대 래더 구간별 평균 점수 — 기울기를 눈으로 본다 */
-  const bands = [[0, 3000], [3000, 3050], [3050, 3100], [3100, 3150], [3150, 9999]]
+  const bands: readonly (readonly [number, number])[] = [
+    [0, 3000], [3000, 3050], [3050, 3100], [3100, 3150], [3150, 9999],
+  ]
   console.log('\n  상대 래더별 경기당 점수 (래더 안에 든 선수만)')
   for (const [lo, hi] of bands) {
     const pts = perMatch.filter((r) => strong.has(r.usn) && r.foeRating >= lo && r.foeRating < hi)

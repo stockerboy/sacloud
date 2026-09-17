@@ -38,9 +38,13 @@ function axis(key: ClanHexV2AnyAxisKey, value: number, text: string) {
 function hexagon(text: string): ClanHexagonV2 {
   return {
     axes: CLAN_HEX_V2_MATCH_AXIS_KEYS.map((k, i) =>
-      /* ⚠ 2026-09-17 — 경기 육각에서 영향력 두 축이 빠졌다. 긴 글을 씨우는 자리를
-         그대로 지키려고 ★지금 축 둘★ 에 그 글을 붙인다 — 재는 것은 그대로다 */
-      axis(k, 20 + i * 13, k === 'aAttack' || k === 'bAttack' ? text : `${20 + i * 13}%`),
+      /*
+       * ⚠ 이 시험은 ★긴 글이 들어와도 육각이 안 찌그러지나★ 를 본다.
+       *   그러니 ★어느 축인지는 상관없다★ — 축 이름이 바뀔 때마다 여기를 고치면
+       *   시험이 사양을 따라다니는 꼴이 된다. ★앞 두 축★ 에 긴 글을 붙인다.
+       *   (2026-09-18 — 경기 육각이 점수제가 되면서 `aAttack`/`bAttack` 이 사라졌다)
+       */
+      axis(k, 20 + i * 13, i < 2 ? text : `${20 + i * 13}%`),
     ),
   } as unknown as ClanHexagonV2
 }
@@ -92,7 +96,9 @@ describe('★경기 육각 — 커진 그림이 판 밖으로 안 나간다★ (
 
 describe('★경기 여섯 축★ — 구역 셋으로 갈아탔다 (2026-09-17 사장님)', () => {
   it('여섯 축 이름이 다 그려진다', () => {
-    for (const name of ['스나싸움', 'A어택', 'B어택', '2층어택', '소수싸움', '세이브']) {
+    /* ⚠ ★2026-09-18 — 경기 육각이 점수제로 갈아탔다★ (사장님).
+         옛 이름(A어택·B어택·2층어택·세이브)은 `..._V6` 에 남아 있다 */
+    for (const name of ['스나싸움', '스나점수', '숏점수', '2층점수', '비리베점수', '소수싸움']) {
       expect(html, name).toContain(name)
     }
   })

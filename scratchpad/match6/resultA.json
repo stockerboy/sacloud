@@ -1,0 +1,4340 @@
+[
+ {
+  "key": "260907213538124001",
+  "kind": "클랜매치",
+  "at": "2026-09-07T21:53:40",
+  "result": "승",
+  "rounds": [
+   9,
+   5
+  ],
+  "score": [
+   {
+    "sniper": 27,
+    "short": 34,
+    "b": 19,
+    "f2": 10,
+    "spare": 5,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 19,
+    "short": 11,
+    "b": 22,
+    "f2": 13,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   95,
+   67
+  ],
+  "duel": [
+   5,
+   4
+  ],
+  "few": [
+   4,
+   2
+  ],
+  "names": [
+   [
+    "Peyz;",
+    "khvicha",
+    "miIkiss",
+    "★임소혜(현물)",
+    "1eeyhn"
+   ],
+   [
+    "uhrara",
+    "barely",
+    "isabel",
+    "joGGACHiHam",
+    "boolean"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 17,
+    "deaths": 7,
+    "saves": 2,
+    "bombs": 2,
+    "sniperKills": 5,
+    "bill": {
+     "rifle": {
+      "n": 12,
+      "pts": 12
+     },
+     "save1": {
+      "n": 2,
+      "pts": 2
+     },
+     "sniperVsSniperEarly": {
+      "n": 4,
+      "pts": 12
+     },
+     "bombWin": {
+      "n": 2,
+      "pts": 4
+     },
+     "sniperVsSniperLate": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 27,
+    "short": 2,
+    "b": 3,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 32
+   },
+   {
+    "usn": "234F3B6CB34CB705SA",
+    "nick": "khvicha",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 14,
+    "deaths": 8,
+    "saves": 2,
+    "bombs": 2,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 13,
+      "pts": 13
+     },
+     "bombWin": {
+      "n": 2,
+      "pts": 4
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     },
+     "save2": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 11,
+    "b": 8,
+    "f2": 3,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0,
+    "total": 24
+   },
+   {
+    "usn": "EAF30B319EA4AB0ASA",
+    "nick": "boolean",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 10,
+    "deaths": 10,
+    "saves": 1,
+    "bombs": 1,
+    "sniperKills": 4,
+    "bill": {
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     },
+     "sniperVsSniperEarly": {
+      "n": 4,
+      "pts": 12
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     },
+     "bombLossB": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 19,
+    "short": 0,
+    "b": 2,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 21
+   },
+   {
+    "usn": "1732043EEBF0971BSA",
+    "nick": "isabel",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 14,
+    "deaths": 11,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     },
+     "rifle": {
+      "n": 12,
+      "pts": 12
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 8,
+    "f2": 9,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 19
+   },
+   {
+    "usn": "7C313643067A5FCASA",
+    "nick": "1eeyhn",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 10,
+    "deaths": 10,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 11,
+    "b": 4,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 16
+   },
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 10,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 2,
+    "f2": 5,
+    "spare": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 12
+   },
+   {
+    "usn": "68680EFE62543A8BSA",
+    "nick": "barely",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 11,
+    "deaths": 12,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 11,
+      "pts": 11
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 7,
+    "f2": 1,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 11
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 12,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 8,
+    "b": 2,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 11
+   },
+   {
+    "usn": "795CBD47BF934356SA",
+    "nick": "uhrara",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 4,
+    "f2": 3,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "1AAD67C2ACD8A0F8SA",
+    "nick": "joGGACHiHam",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 4,
+    "deaths": 12,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 3,
+      "pts": 3
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 7,
+    "b": 1,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   }
+  ],
+  "bill": [
+   {
+    "rifle": {
+     "n": 46,
+     "pts": 46
+    },
+    "rifleVsSniperEarly": {
+     "n": 2,
+     "pts": 10
+    },
+    "bombWin": {
+     "n": 5,
+     "pts": 10
+    },
+    "save1": {
+     "n": 3,
+     "pts": 3
+    },
+    "rifleVsSniperLate": {
+     "n": 3,
+     "pts": 9
+    },
+    "sniperVsSniperEarly": {
+     "n": 4,
+     "pts": 12
+    },
+    "sniperVsSniperLate": {
+     "n": 1,
+     "pts": 2
+    },
+    "save2": {
+     "n": 1,
+     "pts": 3
+    }
+   },
+   {
+    "rifle": {
+     "n": 40,
+     "pts": 40
+    },
+    "rifleVsSniperLate": {
+     "n": 2,
+     "pts": 6
+    },
+    "sniperVsSniperEarly": {
+     "n": 4,
+     "pts": 12
+    },
+    "save1": {
+     "n": 2,
+     "pts": 2
+    },
+    "rifleVsSniperEarly": {
+     "n": 1,
+     "pts": 5
+    },
+    "bombLossB": {
+     "n": 1,
+     "pts": 2
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "17/7"
+ },
+ {
+  "key": "260907211107124001",
+  "kind": "용병매치",
+  "at": "2026-09-07T21:29:48",
+  "result": "승",
+  "rounds": [
+   7,
+   5
+  ],
+  "score": [
+   {
+    "sniper": 19,
+    "short": 15,
+    "b": 16,
+    "f2": 10,
+    "spare": 13,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 15,
+    "short": 26,
+    "b": 16,
+    "f2": 3,
+    "spare": 10,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   73,
+   70
+  ],
+  "duel": [
+   4,
+   4
+  ],
+  "few": [
+   2,
+   2
+  ],
+  "names": [
+   [
+    "Peyz;",
+    "길냥히",
+    "★임소혜(현물)",
+    "croffle",
+    "miIkiss"
+   ],
+   [
+    "메모어",
+    "wytysmore",
+    "리라몬모어",
+    "밍챙복희뽀쨕모어",
+    "으모어"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "2223212792E4A15CSA",
+    "nick": "wytysmore",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 16,
+    "deaths": 10,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 4,
+    "bill": {
+     "rifle": {
+      "n": 12,
+      "pts": 12
+     },
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     },
+     "rifleVsSniperEarly": {
+      "n": 2,
+      "pts": 10
+     },
+     "bombLoss": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 19,
+    "b": 1,
+    "f2": 1,
+    "spare": 8,
+    "bomb": 0,
+    "save": 0,
+    "total": 29
+   },
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 12,
+    "deaths": 7,
+    "saves": 2,
+    "bombs": 2,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 10,
+      "pts": 10
+     },
+     "bombLossB": {
+      "n": 1,
+      "pts": 2
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     },
+     "save1": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 8,
+    "b": 3,
+    "f2": 9,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0,
+    "total": 22
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 12,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 4,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "sniperVsSniperEarly": {
+      "n": 3,
+      "pts": 9
+     },
+     "sniperVsSniperLate": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 19,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 19
+   },
+   {
+    "usn": "4DD6196699A66779SA",
+    "nick": "밍챙복희뽀쨕모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 12,
+    "deaths": 9,
+    "saves": 2,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 11,
+      "pts": 11
+     },
+     "save2": {
+      "n": 1,
+      "pts": 3
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 7,
+    "b": 8,
+    "f2": 2,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 18
+   },
+   {
+    "usn": "D54B5CA2F3D49B39SA",
+    "nick": "리라몬모어",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 4,
+    "bill": {
+     "sniperVsSniperEarly": {
+      "n": 3,
+      "pts": 9
+     },
+     "rifle": {
+      "n": 4,
+      "pts": 4
+     },
+     "sniperVsSniperLate": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 15,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 15
+   },
+   {
+    "usn": "19E8063488EF95A2SA",
+    "nick": "croffle",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 11,
+    "deaths": 10,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 10,
+      "pts": 10
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 8,
+    "f2": 0,
+    "spare": 6,
+    "bomb": 0,
+    "save": 0,
+    "total": 15
+   },
+   {
+    "usn": "D596137C144C183CSA",
+    "nick": "길냥히",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 5,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 3,
+      "pts": 3
+     },
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     }
+    },
+    "sniper": 0,
+    "short": 6,
+    "b": 0,
+    "f2": 0,
+    "spare": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 5,
+    "f2": 1,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "3C346DE0609480ACSA",
+    "nick": "메모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 7,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "03EB958C376621D9SA",
+    "nick": "으모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 1,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 1
+   }
+  ],
+  "bill": [
+   {
+    "rifle": {
+     "n": 39,
+     "pts": 39
+    },
+    "bombLossB": {
+     "n": 1,
+     "pts": 2
+    },
+    "sniperVsSniperEarly": {
+     "n": 3,
+     "pts": 9
+    },
+    "rifleVsSniperEarly": {
+     "n": 1,
+     "pts": 5
+    },
+    "rifleVsSniperLate": {
+     "n": 4,
+     "pts": 12
+    },
+    "bombWin": {
+     "n": 1,
+     "pts": 2
+    },
+    "save1": {
+     "n": 2,
+     "pts": 2
+    },
+    "sniperVsSniperLate": {
+     "n": 1,
+     "pts": 2
+    }
+   },
+   {
+    "sniperVsSniperEarly": {
+     "n": 3,
+     "pts": 9
+    },
+    "rifle": {
+     "n": 35,
+     "pts": 35
+    },
+    "save2": {
+     "n": 1,
+     "pts": 3
+    },
+    "sniperVsSniperLate": {
+     "n": 1,
+     "pts": 2
+    },
+    "rifleVsSniperLate": {
+     "n": 3,
+     "pts": 9
+    },
+    "rifleVsSniperEarly": {
+     "n": 2,
+     "pts": 10
+    },
+    "save1": {
+     "n": 1,
+     "pts": 1
+    },
+    "bombLoss": {
+     "n": 1,
+     "pts": 1
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "12/9"
+ },
+ {
+  "key": "260907204949124001",
+  "kind": "용병매치",
+  "at": "2026-09-07T21:07:33",
+  "result": "승",
+  "rounds": [
+   7,
+   5
+  ],
+  "score": [
+   {
+    "sniper": 16,
+    "short": 22,
+    "b": 23,
+    "f2": 5,
+    "spare": 6,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 23,
+    "short": 14,
+    "b": 25,
+    "f2": 4,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   72,
+   68
+  ],
+  "duel": [
+   4,
+   5
+  ],
+  "few": [
+   4,
+   1
+  ],
+  "names": [
+   [
+    "Peyz;",
+    "길냥히",
+    "miIkiss",
+    "croffle",
+    "★tailwind(현물)"
+   ],
+   [
+    "메모어",
+    "리라몬모어",
+    "으모어",
+    "밍챙복희뽀쨕모어",
+    "wytysmore"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "2223212792E4A15CSA",
+    "nick": "wytysmore",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 13,
+    "deaths": 9,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 5,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "sniperVsSniperEarly": {
+      "n": 4,
+      "pts": 12
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     },
+     "sniperVsSniperLate": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 23,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 23
+   },
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 13,
+    "deaths": 8,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 3,
+    "bill": {
+     "rifle": {
+      "n": 10,
+      "pts": 10
+     },
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 11,
+    "b": 8,
+    "f2": 2,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 22
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "tailwind",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 11,
+    "deaths": 8,
+    "saves": 2,
+    "bombs": 1,
+    "sniperKills": 4,
+    "bill": {
+     "sniperVsSniperLate": {
+      "n": 4,
+      "pts": 8
+     },
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "save2": {
+      "n": 1,
+      "pts": 3
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 16,
+    "short": 3,
+    "b": 2,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 21
+   },
+   {
+    "usn": "19E8063488EF95A2SA",
+    "nick": "croffle",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 9,
+    "deaths": 9,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "rifleVsSniperEarly": {
+      "n": 2,
+      "pts": 10
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 5,
+    "b": 6,
+    "f2": 2,
+    "spare": 5,
+    "bomb": 0,
+    "save": 0,
+    "total": 18
+   },
+   {
+    "usn": "03EB958C376621D9SA",
+    "nick": "으모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 6,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 4,
+      "pts": 4
+     },
+     "rifleVsSniperEarly": {
+      "n": 2,
+      "pts": 10
+     }
+    },
+    "sniper": 0,
+    "short": 8,
+    "b": 6,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 14
+   },
+   {
+    "usn": "3C346DE0609480ACSA",
+    "nick": "메모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 11,
+    "f2": 0,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 12
+   },
+   {
+    "usn": "D54B5CA2F3D49B39SA",
+    "nick": "리라몬모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 10,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 10,
+      "pts": 10
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 6,
+    "f2": 0,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 10
+   },
+   {
+    "usn": "4DD6196699A66779SA",
+    "nick": "밍챙복희뽀쨕모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "bombLoss": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 2,
+    "f2": 4,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 7,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "D596137C144C183CSA",
+    "nick": "길냥히",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 4,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 4,
+      "pts": 4
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 0,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 4
+   }
+  ],
+  "bill": [
+   {
+    "rifle": {
+     "n": 35,
+     "pts": 35
+    },
+    "sniperVsSniperLate": {
+     "n": 4,
+     "pts": 8
+    },
+    "save2": {
+     "n": 1,
+     "pts": 3
+    },
+    "rifleVsSniperLate": {
+     "n": 2,
+     "pts": 6
+    },
+    "rifleVsSniperEarly": {
+     "n": 3,
+     "pts": 15
+    },
+    "save1": {
+     "n": 3,
+     "pts": 3
+    },
+    "bombWin": {
+     "n": 1,
+     "pts": 2
+    }
+   },
+   {
+    "rifle": {
+     "n": 37,
+     "pts": 37
+    },
+    "sniperVsSniperEarly": {
+     "n": 4,
+     "pts": 12
+    },
+    "save1": {
+     "n": 1,
+     "pts": 1
+    },
+    "rifleVsSniperEarly": {
+     "n": 3,
+     "pts": 15
+    },
+    "bombLoss": {
+     "n": 1,
+     "pts": 1
+    },
+    "sniperVsSniperLate": {
+     "n": 1,
+     "pts": 2
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "11/8"
+ },
+ {
+  "key": "260907203819124001",
+  "kind": "용병매치",
+  "at": "2026-09-07T20:44:11",
+  "result": "승",
+  "rounds": [
+   5,
+   0
+  ],
+  "score": [
+   {
+    "sniper": 10,
+    "short": 11,
+    "b": 9,
+    "f2": 5,
+    "spare": 3,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 0,
+    "short": 1,
+    "b": 5,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   38,
+   7
+  ],
+  "duel": [
+   2,
+   0
+  ],
+  "few": [
+   2,
+   0
+  ],
+  "names": [
+   [
+    "★tailwind(현물)",
+    "길냥히",
+    "miIkiss",
+    "croffle",
+    "Peyz;"
+   ],
+   [
+    "JL♡",
+    "볼텍",
+    "병택",
+    "카롱",
+    "황사슴"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "tailwind",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 7,
+    "deaths": 0,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 5,
+      "pts": 5
+     },
+     "sniperVsSniperLate": {
+      "n": 1,
+      "pts": 2
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     },
+     "sniperVsSniperEarly": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 10,
+    "short": 1,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 11
+   },
+   {
+    "usn": "19E8063488EF95A2SA",
+    "nick": "croffle",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 1,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 5,
+    "b": 1,
+    "f2": 3,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 6,
+    "deaths": 1,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 5,
+    "f2": 2,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 4,
+    "deaths": 3,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 3,
+      "pts": 3
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 3,
+    "f2": 0,
+    "spare": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 6
+   },
+   {
+    "usn": "D596137C144C183CSA",
+    "nick": "길냥히",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 1,
+    "deaths": 2,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 5,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 5
+   },
+   {
+    "usn": "D12547E920260DD3SA",
+    "nick": "카롱",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 2,
+    "deaths": 5,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 2,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   },
+   {
+    "usn": "10BA533DA9276357SA",
+    "nick": "JL♡",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 2,
+    "deaths": 5,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 1,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   },
+   {
+    "usn": "DE7853A8C273BACFSA",
+    "nick": "황사슴",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 2,
+    "deaths": 5,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 1,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   },
+   {
+    "usn": "C4B11841812FE8FFSA",
+    "nick": "병택",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 1,
+    "deaths": 5,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 1,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 1
+   },
+   {
+    "usn": "9053D72F38712597SA",
+    "nick": "볼텍",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 0,
+    "deaths": 5,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {},
+    "sniper": 0,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 0
+   }
+  ],
+  "bill": [
+   {
+    "rifle": {
+     "n": 20,
+     "pts": 20
+    },
+    "rifleVsSniperEarly": {
+     "n": 1,
+     "pts": 5
+    },
+    "sniperVsSniperLate": {
+     "n": 1,
+     "pts": 2
+    },
+    "save1": {
+     "n": 2,
+     "pts": 2
+    },
+    "rifleVsSniperLate": {
+     "n": 2,
+     "pts": 6
+    },
+    "sniperVsSniperEarly": {
+     "n": 1,
+     "pts": 3
+    }
+   },
+   {
+    "rifle": {
+     "n": 7,
+     "pts": 7
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "7/0"
+ },
+ {
+  "key": "260907202929124001",
+  "kind": "용병매치",
+  "at": "2026-09-07T20:38:01",
+  "result": "승",
+  "rounds": [
+   5,
+   1
+  ],
+  "score": [
+   {
+    "sniper": 8,
+    "short": 9,
+    "b": 18,
+    "f2": 12,
+    "spare": 5,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 2,
+    "short": 13,
+    "b": 12,
+    "f2": 1,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   52,
+   30
+  ],
+  "duel": [
+   1,
+   0
+  ],
+  "few": [
+   2,
+   0
+  ],
+  "names": [
+   [
+    "croffle",
+    "miIkiss",
+    "★tailwind(현물)",
+    "길냥히",
+    "Peyz;"
+   ],
+   [
+    "병택",
+    "JL♡",
+    "황사슴",
+    "카롱",
+    "볼텍"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 10,
+    "deaths": 2,
+    "saves": 2,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 9,
+      "pts": 9
+     },
+     "save1": {
+      "n": 2,
+      "pts": 2
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 4,
+    "f2": 10,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 14
+   },
+   {
+    "usn": "D12547E920260DD3SA",
+    "nick": "카롱",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 6,
+    "deaths": 6,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 4,
+      "pts": 4
+     },
+     "rifleVsSniperEarly": {
+      "n": 2,
+      "pts": 10
+     }
+    },
+    "sniper": 0,
+    "short": 12,
+    "b": 1,
+    "f2": 0,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 14
+   },
+   {
+    "usn": "19E8063488EF95A2SA",
+    "nick": "croffle",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 3,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 5,
+    "f2": 1,
+    "spare": 5,
+    "bomb": 0,
+    "save": 0,
+    "total": 13
+   },
+   {
+    "usn": "D596137C144C183CSA",
+    "nick": "길냥히",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 4,
+    "deaths": 4,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 7,
+    "b": 4,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 12
+   },
+   {
+    "usn": "C4B11841812FE8FFSA",
+    "nick": "병택",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 5,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 7,
+    "f2": 0,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "tailwind",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 6,
+    "deaths": 4,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 5,
+      "pts": 5
+     },
+     "sniperVsSniperEarly": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 8,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "10BA533DA9276357SA",
+    "nick": "JL♡",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 3,
+    "deaths": 5,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 4,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 5
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 1,
+    "deaths": 5,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 5,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 5
+   },
+   {
+    "usn": "9053D72F38712597SA",
+    "nick": "볼텍",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 2,
+    "deaths": 6,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 2,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   },
+   {
+    "usn": "DE7853A8C273BACFSA",
+    "nick": "황사슴",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 0,
+    "deaths": 6,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {},
+    "sniper": 0,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 0
+   }
+  ],
+  "bill": [
+   {
+    "rifle": {
+     "n": 22,
+     "pts": 22
+    },
+    "rifleVsSniperLate": {
+     "n": 2,
+     "pts": 6
+    },
+    "rifleVsSniperEarly": {
+     "n": 3,
+     "pts": 15
+    },
+    "save1": {
+     "n": 2,
+     "pts": 2
+    },
+    "sniperVsSniperEarly": {
+     "n": 1,
+     "pts": 3
+    },
+    "bombWin": {
+     "n": 2,
+     "pts": 4
+    }
+   },
+   {
+    "rifle": {
+     "n": 14,
+     "pts": 14
+    },
+    "rifleVsSniperLate": {
+     "n": 2,
+     "pts": 6
+    },
+    "rifleVsSniperEarly": {
+     "n": 2,
+     "pts": 10
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "6/4"
+ },
+ {
+  "key": "260817002232124001",
+  "kind": "용병매치",
+  "at": "2026-08-17T00:34:23",
+  "result": "승",
+  "rounds": [
+   6,
+   3
+  ],
+  "score": [
+   {
+    "sniper": 13,
+    "short": 14,
+    "b": 8,
+    "f2": 8,
+    "spare": 17,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 13,
+    "short": 7,
+    "b": 9,
+    "f2": 3,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   60,
+   33
+  ],
+  "duel": [
+   2,
+   2
+  ],
+  "few": [
+   3,
+   0
+  ],
+  "names": [
+   [
+    "우ㅡ끼끼끼",
+    "cutehoon",
+    "산툐리",
+    "sodxia",
+    "★임소혜(현물)"
+   ],
+   [
+    "이단♡",
+    "쏭주",
+    "멍먕망",
+    "잭프루트",
+    "lLOVEY♡U"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "04CF01097258A3AASA",
+    "nick": "cutehoon",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 5,
+      "pts": 5
+     },
+     "rifleVsSniperEarly": {
+      "n": 2,
+      "pts": 10
+     }
+    },
+    "sniper": 0,
+    "short": 7,
+    "b": 1,
+    "f2": 0,
+    "spare": 7,
+    "bomb": 0,
+    "save": 0,
+    "total": 15
+   },
+   {
+    "usn": "33E3C3811E687010SA",
+    "nick": "이단♡",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 9,
+    "deaths": 7,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "sniperVsSniperEarly": {
+      "n": 2,
+      "pts": 6
+     }
+    },
+    "sniper": 13,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 13
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 9,
+    "deaths": 2,
+    "saves": 2,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "sniperVsSniperLate": {
+      "n": 2,
+      "pts": 4
+     },
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "save1": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 13,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 13
+   },
+   {
+    "usn": "A430F1D2708F6F8DSA",
+    "nick": "우ㅡ끼끼끼",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 4,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifleVsSniperEarly": {
+      "n": 2,
+      "pts": 10
+     },
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 0,
+    "f2": 0,
+    "spare": 10,
+    "bomb": 0,
+    "save": 0,
+    "total": 12
+   },
+   {
+    "usn": "C5DBA6264389E68ESA",
+    "nick": "산툐리",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 10,
+    "deaths": 6,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 9,
+      "pts": 9
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 4,
+    "b": 6,
+    "f2": 2,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 12
+   },
+   {
+    "usn": "CCFB20FD03EF0E8DSA",
+    "nick": "sodxia",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 4,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 1,
+    "f2": 6,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "EE95D45D10DEFCECSA",
+    "nick": "멍먕망",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 4,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "03BBD84AFBDFA62FSA",
+    "nick": "lLOVEY♡U",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 5,
+    "deaths": 7,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 5,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 1,
+    "f2": 2,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 5
+   },
+   {
+    "usn": "802188CE281F5101SA",
+    "nick": "쏭주",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 4,
+    "deaths": 7,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 4,
+      "pts": 4
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 1,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 4
+   },
+   {
+    "usn": "2C6894CB792CC342SA",
+    "nick": "잭프루트",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 4,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 4,
+      "pts": 4
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 3,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 4
+   }
+  ],
+  "bill": [
+   {
+    "rifleVsSniperEarly": {
+     "n": 4,
+     "pts": 20
+    },
+    "rifle": {
+     "n": 30,
+     "pts": 30
+    },
+    "sniperVsSniperLate": {
+     "n": 2,
+     "pts": 4
+    },
+    "save1": {
+     "n": 3,
+     "pts": 3
+    },
+    "rifleVsSniperLate": {
+     "n": 1,
+     "pts": 3
+    }
+   },
+   {
+    "rifle": {
+     "n": 27,
+     "pts": 27
+    },
+    "sniperVsSniperEarly": {
+     "n": 2,
+     "pts": 6
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "9/2"
+ },
+ {
+  "key": "260814202759124001",
+  "kind": "클랜매치",
+  "at": "2026-08-14T20:47:05",
+  "result": "패",
+  "rounds": [
+   6,
+   7
+  ],
+  "score": [
+   {
+    "sniper": 15,
+    "short": 18,
+    "b": 10,
+    "f2": 9,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 22,
+    "short": 21,
+    "b": 21,
+    "f2": 7,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   53,
+   71
+  ],
+  "duel": [
+   4,
+   4
+  ],
+  "few": [
+   1,
+   1
+  ],
+  "names": [
+   [
+    "′ω′vt",
+    "★임소혜(현물)",
+    "상진이",
+    "차코",
+    "앵글냑하.."
+   ],
+   [
+    "하연둥이'-'",
+    "끼룩?",
+    "태환둥이'-'",
+    "부리둥이'-'",
+    "fea"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "C05C6D947456081CSA",
+    "nick": "태환둥이'-'",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 15,
+    "deaths": 7,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 4,
+    "bill": {
+     "rifle": {
+      "n": 11,
+      "pts": 11
+     },
+     "sniperVsSniperEarly": {
+      "n": 3,
+      "pts": 9
+     },
+     "sniperVsSniperLate": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 22,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 22
+   },
+   {
+    "usn": "5BB1EBBED2AF0850SA",
+    "nick": "부리둥이'-'",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 9,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 3,
+    "bill": {
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     },
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 4,
+    "b": 11,
+    "f2": 2,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 17
+   },
+   {
+    "usn": "FBD6DA3C1C1526C4SA",
+    "nick": "차코",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 10,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 6,
+    "f2": 7,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 16
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 10,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 4,
+    "bill": {
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     },
+     "sniperVsSniperLate": {
+      "n": 3,
+      "pts": 6
+     },
+     "sniperVsSniperEarly": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 15,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 15
+   },
+   {
+    "usn": "5BA2852A887686A8SA",
+    "nick": "하연둥이'-'",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 7,
+    "saves": 1,
+    "bombs": 1,
+    "sniperKills": 1,
+    "bill": {
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 9,
+    "b": 2,
+    "f2": 2,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 13
+   },
+   {
+    "usn": "95ED5BDBB18CDA27SA",
+    "nick": "앵글냑하..",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 9,
+    "deaths": 10,
+    "saves": 1,
+    "bombs": 1,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 9,
+      "pts": 9
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 8,
+    "b": 1,
+    "f2": 2,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 12
+   },
+   {
+    "usn": "6F4FE1CDDE82E4CFSA",
+    "nick": "끼룩?",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 9,
+    "deaths": 7,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 9,
+      "pts": 9
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 6,
+    "b": 5,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 11
+   },
+   {
+    "usn": "EE2652585F2568B0SA",
+    "nick": "상진이",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 6,
+    "deaths": 10,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 5,
+      "pts": 5
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 5,
+    "b": 3,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "F0BB03E0F4771644SA",
+    "nick": "fea",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 3,
+    "f2": 3,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "E16C2D896D65CFC1SA",
+    "nick": "′ω′vt",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 2,
+    "deaths": 12,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   }
+  ],
+  "bill": [
+   {
+    "rifle": {
+     "n": 30,
+     "pts": 30
+    },
+    "rifleVsSniperLate": {
+     "n": 2,
+     "pts": 6
+    },
+    "sniperVsSniperLate": {
+     "n": 3,
+     "pts": 6
+    },
+    "rifleVsSniperEarly": {
+     "n": 1,
+     "pts": 5
+    },
+    "sniperVsSniperEarly": {
+     "n": 1,
+     "pts": 3
+    },
+    "bombWin": {
+     "n": 1,
+     "pts": 2
+    },
+    "save1": {
+     "n": 1,
+     "pts": 1
+    }
+   },
+   {
+    "rifle": {
+     "n": 41,
+     "pts": 41
+    },
+    "rifleVsSniperLate": {
+     "n": 3,
+     "pts": 9
+    },
+    "bombWin": {
+     "n": 2,
+     "pts": 4
+    },
+    "sniperVsSniperEarly": {
+     "n": 3,
+     "pts": 9
+    },
+    "rifleVsSniperEarly": {
+     "n": 1,
+     "pts": 5
+    },
+    "sniperVsSniperLate": {
+     "n": 1,
+     "pts": 2
+    },
+    "save1": {
+     "n": 1,
+     "pts": 1
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "10/8"
+ },
+ {
+  "key": "260814195349124001",
+  "kind": "클랜매치",
+  "at": "2026-08-14T20:07:33",
+  "result": "승",
+  "rounds": [
+   8,
+   3
+  ],
+  "score": [
+   {
+    "sniper": 18,
+    "short": 25,
+    "b": 16,
+    "f2": 4,
+    "spare": 17,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 10,
+    "short": 10,
+    "b": 7,
+    "f2": 10,
+    "spare": 11,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   80,
+   48
+  ],
+  "duel": [
+   3,
+   2
+  ],
+  "few": [
+   3,
+   1
+  ],
+  "names": [
+   [
+    "★임소혜(현물)",
+    "차코",
+    "상진이",
+    "부리둥이'-'",
+    "앵글냑하.."
+   ],
+   [
+    "레헤미트",
+    "JaeHyun.re",
+    "레쟈몽",
+    "레이지아리",
+    "나스티카28FT"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "95ED5BDBB18CDA27SA",
+    "nick": "앵글냑하..",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 12,
+    "deaths": 4,
+    "saves": 2,
+    "bombs": 0,
+    "sniperKills": 3,
+    "bill": {
+     "rifle": {
+      "n": 9,
+      "pts": 9
+     },
+     "rifleVsSniperLate": {
+      "n": 3,
+      "pts": 9
+     },
+     "save2": {
+      "n": 2,
+      "pts": 6
+     }
+    },
+    "sniper": 0,
+    "short": 6,
+    "b": 7,
+    "f2": 2,
+    "spare": 9,
+    "bomb": 0,
+    "save": 0,
+    "total": 24
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 11,
+    "deaths": 5,
+    "saves": 1,
+    "bombs": 1,
+    "sniperKills": 3,
+    "bill": {
+     "sniperVsSniperEarly": {
+      "n": 3,
+      "pts": 9
+     },
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 18,
+    "short": 2,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 20
+   },
+   {
+    "usn": "FBD6DA3C1C1526C4SA",
+    "nick": "차코",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 13,
+    "deaths": 7,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 12,
+      "pts": 12
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 10,
+    "b": 1,
+    "f2": 0,
+    "spare": 6,
+    "bomb": 0,
+    "save": 0,
+    "total": 17
+   },
+   {
+    "usn": "5D16317DCCC747E9SA",
+    "nick": "나스티카28FT",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 5,
+    "deaths": 10,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 3,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     },
+     "rifleVsSniperEarly": {
+      "n": 2,
+      "pts": 10
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 0,
+    "f2": 5,
+    "spare": 7,
+    "bomb": 0,
+    "save": 0,
+    "total": 15
+   },
+   {
+    "usn": "F34D5EBE69187225SA",
+    "nick": "레이지아리",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 9,
+    "saves": 1,
+    "bombs": 1,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "save2": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 6,
+    "f2": 4,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 13
+   },
+   {
+    "usn": "5BB1EBBED2AF0850SA",
+    "nick": "부리둥이'-'",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 6,
+    "deaths": 7,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 5,
+      "pts": 5
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 7,
+    "b": 0,
+    "f2": 1,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0,
+    "total": 10
+   },
+   {
+    "usn": "A2D525A25A33B7D0SA",
+    "nick": "레헤미트",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 5,
+      "pts": 5
+     },
+     "sniperVsSniperLate": {
+      "n": 1,
+      "pts": 2
+     },
+     "sniperVsSniperEarly": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 10,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 10
+   },
+   {
+    "usn": "EE2652585F2568B0SA",
+    "nick": "상진이",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 5,
+    "deaths": 7,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 4,
+      "pts": 4
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 8,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "457C59B189835DC9SA",
+    "nick": "레쟈몽",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 8,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 1,
+    "f2": 1,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "ADC9C41420228171SA",
+    "nick": "JaeHyun.re",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 3,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 3,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 2,
+    "b": 0,
+    "f2": 0,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 3
+   }
+  ],
+  "bill": [
+   {
+    "sniperVsSniperEarly": {
+     "n": 3,
+     "pts": 9
+    },
+    "rifle": {
+     "n": 38,
+     "pts": 38
+    },
+    "bombWin": {
+     "n": 3,
+     "pts": 6
+    },
+    "save1": {
+     "n": 1,
+     "pts": 1
+    },
+    "rifleVsSniperLate": {
+     "n": 5,
+     "pts": 15
+    },
+    "save2": {
+     "n": 2,
+     "pts": 6
+    },
+    "rifleVsSniperEarly": {
+     "n": 1,
+     "pts": 5
+    }
+   },
+   {
+    "rifle": {
+     "n": 25,
+     "pts": 25
+    },
+    "rifleVsSniperEarly": {
+     "n": 2,
+     "pts": 10
+    },
+    "sniperVsSniperLate": {
+     "n": 1,
+     "pts": 2
+    },
+    "rifleVsSniperLate": {
+     "n": 1,
+     "pts": 3
+    },
+    "bombWin": {
+     "n": 1,
+     "pts": 2
+    },
+    "save2": {
+     "n": 1,
+     "pts": 3
+    },
+    "sniperVsSniperEarly": {
+     "n": 1,
+     "pts": 3
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "11/5"
+ },
+ {
+  "key": "260814192416124002",
+  "kind": "클랜매치",
+  "at": "2026-08-14T19:47:17",
+  "result": "승",
+  "rounds": [
+   8,
+   7
+  ],
+  "score": [
+   {
+    "sniper": 0,
+    "short": 34,
+    "b": 29,
+    "f2": 11,
+    "spare": 16,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 26,
+    "short": 11,
+    "b": 15,
+    "f2": 6,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   90,
+   60
+  ],
+  "duel": [
+   0,
+   0
+  ],
+  "few": [
+   3,
+   4
+  ],
+  "names": [
+   [
+    "상진이",
+    "차코",
+    "부리둥이'-'",
+    "★임소혜(현물)",
+    "앵글냑하.."
+   ],
+   [
+    "간고등어",
+    "라플젤",
+    "깨혐",
+    "터치마빠레",
+    "apizel"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "310DE1BA9FABB55DSA",
+    "nick": "라플젤",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 21,
+    "deaths": 10,
+    "saves": 3,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 21,
+      "pts": 21
+     },
+     "save1": {
+      "n": 2,
+      "pts": 2
+     },
+     "save2": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 26,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 26
+   },
+   {
+    "usn": "EE2652585F2568B0SA",
+    "nick": "상진이",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 11,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 3,
+    "sniperKills": 3,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "rifleVsSniperLate": {
+      "n": 3,
+      "pts": 9
+     },
+     "bombLossB": {
+      "n": 1,
+      "pts": 2
+     },
+     "bombLoss": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 16,
+    "f2": 1,
+    "spare": 4,
+    "bomb": 0,
+    "save": 0,
+    "total": 22
+   },
+   {
+    "usn": "95ED5BDBB18CDA27SA",
+    "nick": "앵글냑하..",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 15,
+    "deaths": 10,
+    "saves": 2,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 14,
+      "pts": 14
+     },
+     "save1": {
+      "n": 2,
+      "pts": 2
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 8,
+    "b": 6,
+    "f2": 3,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0,
+    "total": 19
+   },
+   {
+    "usn": "FBD6DA3C1C1526C4SA",
+    "nick": "차코",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 13,
+    "deaths": 10,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 11,
+      "pts": 11
+     },
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 13,
+    "b": 1,
+    "f2": 1,
+    "spare": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 18
+   },
+   {
+    "usn": "5BB1EBBED2AF0850SA",
+    "nick": "부리둥이'-'",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 12,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 10,
+      "pts": 10
+     },
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     }
+    },
+    "sniper": 0,
+    "short": 5,
+    "b": 5,
+    "f2": 2,
+    "spare": 4,
+    "bomb": 0,
+    "save": 0,
+    "total": 16
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": false,
+    "isMe": true,
+    "kills": 9,
+    "deaths": 10,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "rifleVsSniperEarly": {
+      "n": 1,
+      "pts": 5
+     }
+    },
+    "sniper": 0,
+    "short": 7,
+    "b": 1,
+    "f2": 4,
+    "spare": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 15
+   },
+   {
+    "usn": "45136E1095368304SA",
+    "nick": "터치마빠레",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 11,
+    "deaths": 12,
+    "saves": 1,
+    "bombs": 1,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 11,
+      "pts": 11
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 8,
+    "f2": 3,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 14
+   },
+   {
+    "usn": "E2D3D0A0DF270425SA",
+    "nick": "깨혐",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 6,
+    "f2": 2,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 10
+   },
+   {
+    "usn": "4EFDA70E658490DASA",
+    "nick": "apizel",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 13,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     }
+    },
+    "sniper": 0,
+    "short": 7,
+    "b": 1,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "591911816521312FSA",
+    "nick": "간고등어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 2,
+    "deaths": 14,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 2,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 0,
+    "b": 0,
+    "f2": 1,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   }
+  ],
+  "bill": [
+   {
+    "rifle": {
+     "n": 50,
+     "pts": 50
+    },
+    "rifleVsSniperLate": {
+     "n": 9,
+     "pts": 27
+    },
+    "save1": {
+     "n": 3,
+     "pts": 3
+    },
+    "bombWin": {
+     "n": 1,
+     "pts": 2
+    },
+    "bombLossB": {
+     "n": 1,
+     "pts": 2
+    },
+    "bombLoss": {
+     "n": 1,
+     "pts": 1
+    },
+    "rifleVsSniperEarly": {
+     "n": 1,
+     "pts": 5
+    }
+   },
+   {
+    "rifle": {
+     "n": 50,
+     "pts": 50
+    },
+    "save1": {
+     "n": 3,
+     "pts": 3
+    },
+    "bombWin": {
+     "n": 2,
+     "pts": 4
+    },
+    "save2": {
+     "n": 1,
+     "pts": 3
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "9/10"
+ },
+ {
+  "key": "260814190206124001",
+  "kind": "클랜매치",
+  "at": "2026-08-14T19:23:54",
+  "result": "승",
+  "rounds": [
+   8,
+   6
+  ],
+  "score": [
+   {
+    "sniper": 27,
+    "short": 23,
+    "b": 16,
+    "f2": 7,
+    "spare": 6,
+    "bomb": 0,
+    "save": 0
+   },
+   {
+    "sniper": 29,
+    "short": 20,
+    "b": 12,
+    "f2": 7,
+    "spare": 5,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   79,
+   73
+  ],
+  "duel": [
+   6,
+   6
+  ],
+  "few": [
+   3,
+   4
+  ],
+  "names": [
+   [
+    "★임소혜(현물)",
+    "부리둥이'-'",
+    "차코",
+    "앵글냑하..",
+    "상진이"
+   ],
+   [
+    "라플젤",
+    "간고등어",
+    "깨혐",
+    "터치마빠레",
+    "apizel"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "310DE1BA9FABB55DSA",
+    "nick": "라플젤",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "kills": 17,
+    "deaths": 9,
+    "saves": 3,
+    "bombs": 1,
+    "sniperKills": 6,
+    "bill": {
+     "sniperVsSniperEarly": {
+      "n": 5,
+      "pts": 15
+     },
+     "rifle": {
+      "n": 11,
+      "pts": 11
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     },
+     "save1": {
+      "n": 2,
+      "pts": 2
+     },
+     "sniperVsSniperLate": {
+      "n": 1,
+      "pts": 2
+     },
+     "save2": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 29,
+    "short": 2,
+    "b": 0,
+    "f2": 3,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 35
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "kills": 17,
+    "deaths": 9,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 6,
+    "bill": {
+     "sniperVsSniperEarly": {
+      "n": 4,
+      "pts": 12
+     },
+     "rifle": {
+      "n": 11,
+      "pts": 11
+     },
+     "sniperVsSniperLate": {
+      "n": 2,
+      "pts": 4
+     }
+    },
+    "sniper": 27,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 27
+   },
+   {
+    "usn": "5BB1EBBED2AF0850SA",
+    "nick": "부리둥이'-'",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 14,
+    "deaths": 8,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 2,
+    "bill": {
+     "rifle": {
+      "n": 12,
+      "pts": 12
+     },
+     "rifleVsSniperLate": {
+      "n": 2,
+      "pts": 6
+     },
+     "save2": {
+      "n": 1,
+      "pts": 3
+     }
+    },
+    "sniper": 0,
+    "short": 10,
+    "b": 5,
+    "f2": 3,
+    "spare": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 21
+   },
+   {
+    "usn": "E2D3D0A0DF270425SA",
+    "nick": "깨혐",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 10,
+    "deaths": 10,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 3,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "rifleVsSniperLate": {
+      "n": 3,
+      "pts": 9
+     }
+    },
+    "sniper": 0,
+    "short": 11,
+    "b": 4,
+    "f2": 1,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 16
+   },
+   {
+    "usn": "95ED5BDBB18CDA27SA",
+    "nick": "앵글냑하..",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 9,
+    "deaths": 8,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 1,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     },
+     "rifleVsSniperLate": {
+      "n": 1,
+      "pts": 3
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 8,
+    "b": 2,
+    "f2": 2,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 12
+   },
+   {
+    "usn": "EE2652585F2568B0SA",
+    "nick": "상진이",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 10,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 1,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 10,
+      "pts": 10
+     },
+     "bombWin": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 6,
+    "f2": 2,
+    "spare": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 12
+   },
+   {
+    "usn": "45136E1095368304SA",
+    "nick": "터치마빠레",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 8,
+    "deaths": 12,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 8,
+      "pts": 8
+     }
+    },
+    "sniper": 0,
+    "short": 1,
+    "b": 3,
+    "f2": 2,
+    "spare": 2,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "4EFDA70E658490DASA",
+    "nick": "apizel",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 7,
+    "deaths": 12,
+    "saves": 1,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 7,
+      "pts": 7
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 3,
+    "f2": 1,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "FBD6DA3C1C1526C4SA",
+    "nick": "차코",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 4,
+    "deaths": 12,
+    "saves": 1,
+    "bombs": 1,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 4,
+      "pts": 4
+     },
+     "save1": {
+      "n": 1,
+      "pts": 1
+     },
+     "bombLossB": {
+      "n": 1,
+      "pts": 2
+     }
+    },
+    "sniper": 0,
+    "short": 4,
+    "b": 3,
+    "f2": 0,
+    "spare": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "591911816521312FSA",
+    "nick": "간고등어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "kills": 6,
+    "deaths": 11,
+    "saves": 0,
+    "bombs": 0,
+    "sniperKills": 0,
+    "bill": {
+     "rifle": {
+      "n": 6,
+      "pts": 6
+     }
+    },
+    "sniper": 0,
+    "short": 3,
+    "b": 2,
+    "f2": 0,
+    "spare": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 6
+   }
+  ],
+  "bill": [
+   {
+    "sniperVsSniperEarly": {
+     "n": 4,
+     "pts": 12
+    },
+    "rifle": {
+     "n": 45,
+     "pts": 45
+    },
+    "sniperVsSniperLate": {
+     "n": 2,
+     "pts": 4
+    },
+    "save1": {
+     "n": 2,
+     "pts": 2
+    },
+    "rifleVsSniperLate": {
+     "n": 3,
+     "pts": 9
+    },
+    "bombLossB": {
+     "n": 1,
+     "pts": 2
+    },
+    "bombWin": {
+     "n": 1,
+     "pts": 2
+    },
+    "save2": {
+     "n": 1,
+     "pts": 3
+    }
+   },
+   {
+    "rifle": {
+     "n": 39,
+     "pts": 39
+    },
+    "sniperVsSniperEarly": {
+     "n": 5,
+     "pts": 15
+    },
+    "bombWin": {
+     "n": 1,
+     "pts": 2
+    },
+    "save1": {
+     "n": 3,
+     "pts": 3
+    },
+    "rifleVsSniperLate": {
+     "n": 3,
+     "pts": 9
+    },
+    "sniperVsSniperLate": {
+     "n": 1,
+     "pts": 2
+    },
+    "save2": {
+     "n": 1,
+     "pts": 3
+    }
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  },
+  "check": "17/9"
+ }
+]

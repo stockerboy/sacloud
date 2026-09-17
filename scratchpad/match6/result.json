@@ -1,0 +1,975 @@
+[
+ {
+  "key": "260907213538124001",
+  "kind": "클랜매치",
+  "at": "2026-09-07T21:53:40",
+  "result": "승",
+  "rounds": [
+   9,
+   5
+  ],
+  "score": [
+   {
+    "sniper": 18,
+    "short": 25,
+    "b": 16,
+    "f2": 10,
+    "bomb": 2,
+    "save": 6
+   },
+   {
+    "sniper": 13,
+    "short": 9,
+    "b": 19,
+    "f2": 11,
+    "bomb": 0,
+    "save": 2
+   }
+  ],
+  "total": [
+   77,
+   54
+  ],
+  "duel": [
+   5,
+   4
+  ],
+  "few": [
+   4,
+   2
+  ],
+  "names": [
+   [
+    "Peyz;",
+    "khvicha",
+    "miIkiss",
+    "★임소혜(현물)",
+    "1eeyhn"
+   ],
+   [
+    "uhrara",
+    "barely",
+    "isabel",
+    "joGGACHiHam",
+    "boolean"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "sniper": 18,
+    "short": 4,
+    "b": 3,
+    "f2": 0,
+    "bomb": 0,
+    "save": 2,
+    "total": 27
+   },
+   {
+    "usn": "234F3B6CB34CB705SA",
+    "nick": "khvicha",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 6,
+    "b": 7,
+    "f2": 3,
+    "bomb": 2,
+    "save": 4,
+    "total": 22
+   },
+   {
+    "usn": "EAF30B319EA4AB0ASA",
+    "nick": "boolean",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "sniper": 13,
+    "short": 1,
+    "b": 2,
+    "f2": 0,
+    "bomb": 0,
+    "save": 1,
+    "total": 17
+   },
+   {
+    "usn": "1732043EEBF0971BSA",
+    "nick": "isabel",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 2,
+    "b": 5,
+    "f2": 7,
+    "bomb": 0,
+    "save": 1,
+    "total": 15
+   },
+   {
+    "usn": "7C313643067A5FCASA",
+    "nick": "1eeyhn",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 8,
+    "b": 2,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 11
+   },
+   {
+    "usn": "68680EFE62543A8BSA",
+    "nick": "barely",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 2,
+    "b": 7,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 10
+   },
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 2,
+    "b": 2,
+    "f2": 5,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 5,
+    "b": 2,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "795CBD47BF934356SA",
+    "nick": "uhrara",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 4,
+    "f2": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "1AAD67C2ACD8A0F8SA",
+    "nick": "joGGACHiHam",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 4,
+    "b": 1,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 5
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  }
+ },
+ {
+  "key": "260907211107124001",
+  "kind": "용병매치",
+  "at": "2026-09-07T21:29:48",
+  "result": "승",
+  "rounds": [
+   8,
+   5
+  ],
+  "score": [
+   {
+    "sniper": 14,
+    "short": 11,
+    "b": 16,
+    "f2": 7,
+    "bomb": 0,
+    "save": 7
+   },
+   {
+    "sniper": 10,
+    "short": 17,
+    "b": 14,
+    "f2": 3,
+    "bomb": 0,
+    "save": 4
+   }
+  ],
+  "total": [
+   55,
+   48
+  ],
+  "duel": [
+   4,
+   4
+  ],
+  "few": [
+   3,
+   2
+  ],
+  "names": [
+   [
+    "Peyz;",
+    "길냥히",
+    "★임소혜(현물)",
+    "croffle",
+    "miIkiss"
+   ],
+   [
+    "메모어",
+    "wytysmore",
+    "리라몬모어",
+    "밍챙복희뽀쨕모어",
+    "으모어"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 5,
+    "b": 3,
+    "f2": 6,
+    "bomb": 0,
+    "save": 7,
+    "total": 21
+   },
+   {
+    "usn": "4DD6196699A66779SA",
+    "nick": "밍챙복희뽀쨕모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 3,
+    "b": 6,
+    "f2": 2,
+    "bomb": 0,
+    "save": 4,
+    "total": 15
+   },
+   {
+    "usn": "2223212792E4A15CSA",
+    "nick": "wytysmore",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 13,
+    "b": 1,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 15
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "임소혜",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "sniper": 14,
+    "short": 1,
+    "b": 0,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 15
+   },
+   {
+    "usn": "D54B5CA2F3D49B39SA",
+    "nick": "리라몬모어",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "sniper": 10,
+    "short": 1,
+    "b": 0,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 11
+   },
+   {
+    "usn": "19E8063488EF95A2SA",
+    "nick": "croffle",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 1,
+    "b": 8,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "3C346DE0609480ACSA",
+    "nick": "메모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 7,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 5,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 6
+   },
+   {
+    "usn": "D596137C144C183CSA",
+    "nick": "길냥히",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 4,
+    "b": 0,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 4
+   }
+  ],
+  "note": {
+   "size": 11,
+   "spare": 1,
+   "bad": 2
+  }
+ },
+ {
+  "key": "260907204949124001",
+  "kind": "용병매치",
+  "at": "2026-09-07T21:07:33",
+  "result": "승",
+  "rounds": [
+   7,
+   5
+  ],
+  "score": [
+   {
+    "sniper": 6,
+    "short": 15,
+    "b": 19,
+    "f2": 5,
+    "bomb": 0,
+    "save": 6
+   },
+   {
+    "sniper": 16,
+    "short": 11,
+    "b": 20,
+    "f2": 4,
+    "bomb": 0,
+    "save": 1
+   }
+  ],
+  "total": [
+   51,
+   52
+  ],
+  "duel": [
+   4,
+   5
+  ],
+  "few": [
+   4,
+   1
+  ],
+  "names": [
+   [
+    "Peyz;",
+    "길냥히",
+    "miIkiss",
+    "croffle",
+    "★tailwind(현물)"
+   ],
+   [
+    "메모어",
+    "리라몬모어",
+    "으모어",
+    "밍챙복희뽀쨕모어",
+    "wytysmore"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "2223212792E4A15CSA",
+    "nick": "wytysmore",
+    "team": 1,
+    "isSniper": true,
+    "isMe": false,
+    "sniper": 16,
+    "short": 0,
+    "b": 1,
+    "f2": 0,
+    "bomb": 0,
+    "save": 1,
+    "total": 18
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "tailwind",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "sniper": 6,
+    "short": 4,
+    "b": 2,
+    "f2": 0,
+    "bomb": 0,
+    "save": 4,
+    "total": 16
+   },
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 6,
+    "b": 5,
+    "f2": 2,
+    "bomb": 0,
+    "save": 1,
+    "total": 14
+   },
+   {
+    "usn": "19E8063488EF95A2SA",
+    "nick": "croffle",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 2,
+    "b": 5,
+    "f2": 2,
+    "bomb": 0,
+    "save": 1,
+    "total": 10
+   },
+   {
+    "usn": "D54B5CA2F3D49B39SA",
+    "nick": "리라몬모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 3,
+    "b": 6,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "4DD6196699A66779SA",
+    "nick": "밍챙복희뽀쨕모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 3,
+    "b": 2,
+    "f2": 4,
+    "bomb": 0,
+    "save": 0,
+    "total": 9
+   },
+   {
+    "usn": "03EB958C376621D9SA",
+    "nick": "으모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 5,
+    "b": 3,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "3C346DE0609480ACSA",
+    "nick": "메모어",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 8,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 7,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "D596137C144C183CSA",
+    "nick": "길냥히",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 3,
+    "b": 0,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 4
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  }
+ },
+ {
+  "key": "260907203819124001",
+  "kind": "용병매치",
+  "at": "2026-09-07T20:44:11",
+  "result": "승",
+  "rounds": [
+   5,
+   0
+  ],
+  "score": [
+   {
+    "sniper": 4,
+    "short": 7,
+    "b": 9,
+    "f2": 4,
+    "bomb": 0,
+    "save": 2
+   },
+   {
+    "sniper": 0,
+    "short": 1,
+    "b": 5,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   26,
+   7
+  ],
+  "duel": [
+   0,
+   0
+  ],
+  "few": [
+   2,
+   0
+  ],
+  "names": [
+   [
+    "★tailwind(현물)",
+    "길냥히",
+    "miIkiss",
+    "croffle",
+    "Peyz;"
+   ],
+   [
+    "JL♡",
+    "볼텍",
+    "병택",
+    "카롱",
+    "황사슴"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "tailwind",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "sniper": 4,
+    "short": 3,
+    "b": 0,
+    "f2": 0,
+    "bomb": 0,
+    "save": 1,
+    "total": 8
+   },
+   {
+    "usn": "19E8063488EF95A2SA",
+    "nick": "croffle",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 3,
+    "b": 1,
+    "f2": 3,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 5,
+    "f2": 1,
+    "bomb": 0,
+    "save": 1,
+    "total": 7
+   },
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 3,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 3
+   },
+   {
+    "usn": "D12547E920260DD3SA",
+    "nick": "카롱",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 2,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   },
+   {
+    "usn": "10BA533DA9276357SA",
+    "nick": "JL♡",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 1,
+    "b": 1,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   },
+   {
+    "usn": "DE7853A8C273BACFSA",
+    "nick": "황사슴",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 1,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   },
+   {
+    "usn": "D596137C144C183CSA",
+    "nick": "길냥히",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 1,
+    "b": 0,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 1
+   },
+   {
+    "usn": "C4B11841812FE8FFSA",
+    "nick": "병택",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 1,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 1
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  }
+ },
+ {
+  "key": "260907202929124001",
+  "kind": "용병매치",
+  "at": "2026-09-07T20:38:01",
+  "result": "승",
+  "rounds": [
+   5,
+   1
+  ],
+  "score": [
+   {
+    "sniper": 5,
+    "short": 5,
+    "b": 11,
+    "f2": 10,
+    "bomb": 0,
+    "save": 2
+   },
+   {
+    "sniper": 2,
+    "short": 7,
+    "b": 8,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0
+   }
+  ],
+  "total": [
+   33,
+   18
+  ],
+  "duel": [
+   0,
+   0
+  ],
+  "few": [
+   2,
+   0
+  ],
+  "names": [
+   [
+    "croffle",
+    "miIkiss",
+    "★tailwind(현물)",
+    "길냥히",
+    "Peyz;"
+   ],
+   [
+    "병택",
+    "JL♡",
+    "황사슴",
+    "카롱",
+    "볼텍"
+   ]
+  ],
+  "men": [
+   {
+    "usn": "C9B57B4C96C1CBE6SA",
+    "nick": "miIkiss",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 2,
+    "f2": 8,
+    "bomb": 0,
+    "save": 2,
+    "total": 12
+   },
+   {
+    "usn": "19E8063488EF95A2SA",
+    "nick": "croffle",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 2,
+    "b": 5,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 8
+   },
+   {
+    "usn": "D12547E920260DD3SA",
+    "nick": "카롱",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 6,
+    "b": 1,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 7
+   },
+   {
+    "usn": "13E45F9A4508A92ESA",
+    "nick": "tailwind",
+    "team": 0,
+    "isSniper": true,
+    "isMe": true,
+    "sniper": 5,
+    "short": 0,
+    "b": 1,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 6
+   },
+   {
+    "usn": "D596137C144C183CSA",
+    "nick": "길냥히",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 3,
+    "b": 2,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 6
+   },
+   {
+    "usn": "C4B11841812FE8FFSA",
+    "nick": "병택",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 1,
+    "b": 5,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 6
+   },
+   {
+    "usn": "10BA533DA9276357SA",
+    "nick": "JL♡",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 2,
+    "f2": 1,
+    "bomb": 0,
+    "save": 0,
+    "total": 3
+   },
+   {
+    "usn": "9053D72F38712597SA",
+    "nick": "볼텍",
+    "team": 1,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 2,
+    "short": 0,
+    "b": 0,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 2
+   },
+   {
+    "usn": "D8B3C973C06BB0FESA",
+    "nick": "Peyz;",
+    "team": 0,
+    "isSniper": false,
+    "isMe": false,
+    "sniper": 0,
+    "short": 0,
+    "b": 1,
+    "f2": 0,
+    "bomb": 0,
+    "save": 0,
+    "total": 1
+   }
+  ],
+  "note": {
+   "size": 10,
+   "spare": 0,
+   "bad": 0
+  }
+ }
+]

@@ -57,8 +57,9 @@ describe('폭탄 근거 뽑기', () => {
   it('설치와 해체만 근거로 삼는다 — 킬은 아니다', () => {
     const rows = bombEvidenceOf([KILL, bomb(4, '1', 'dismantle'), bomb(10, '1', 'install')])
     expect(rows).toEqual([
-      { round: 4, team: '1', action: 'dismantle' },
-      { round: 10, team: '1', action: 'install' },
+      /* ★좌표 칸이 늘었다★ (2026-09-18) — 폭탄 점수가 「어디에 심었나」 를 본다 */
+      { round: 4, team: '1', action: 'dismantle', x: null, y: null },
+      { round: 10, team: '1', action: 'install', x: null, y: null },
     ])
   })
 
@@ -67,7 +68,7 @@ describe('폭탄 근거 뽑기', () => {
     const rows = bombEvidenceOf([
       { round: '7', weapon: 'c4-install', team_no: '0', target_weapon: '', target_team_no: '1' },
     ])
-    expect(rows).toEqual([{ round: 7, team: '0', action: 'install' }])
+    expect(rows).toEqual([{ round: 7, team: '0', action: 'install', x: null, y: null }])
   })
 
   it('라운드를 모르는 줄은 버린다', () => {

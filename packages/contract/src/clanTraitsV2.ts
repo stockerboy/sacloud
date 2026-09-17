@@ -1118,7 +1118,9 @@ export const ClanHexagonV2Axis = z.object({
   key: z.enum([
     'sniperDuel', 'sniperInfluence', 'rifleInfluence', 'blockChance', 'openChance',
     'outnumbered', 'save',
-    /* ★경기 육각의 새 셋★ (2026-09-17 사장님) */
+    /* ★경기 육각의 점수 넷★ (2026-09-18 사장님) */
+    'sniperScore', 'shortScore', 'f2Score', 'bScore',
+    /* ⚠ 옛 판 — 구역 어택 셋 (2026-09-17). 지우지 않는다 (`CLAUDE.md` 1-4) */
     'aAttack', 'bAttack', 'f2Attack',
     /* ★옛 이름들★ — 예전 행이 화면으로 올 수 있다 (`CLAUDE.md` 1-4) */
     'riflePower', 'firstBloodless', 'firstBlood', 'trade',
