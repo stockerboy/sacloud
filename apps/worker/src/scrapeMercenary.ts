@@ -51,18 +51,46 @@ async function usnOf(nick: string): Promise<string> {
 const usn = await usnOf(NICK)
 console.log(`${NICK} usn 확인 (길이 ${usn.length})`)
 
-/* ── ① 사람 경기 목록. `mode_flag:"ALL"` · 빈 문자열을 보내면 -999 다 */
-const listRes = await call('POST', '/api/Match/GetMatchList/', JSON.stringify({ user_nexon_sn: usn, mode_flag: 'ALL' }))
-console.log(`목록 HTTP ${listRes.status} · ${listRes.body.length}바이트`)
-const list = JSON.parse(listRes.body) as {
-  rtnCode?: number
-  message?: string
-  result?: Record<string, unknown>[]
+/*
+ * ── ① 사람 경기 목록.
+ *
+ * ⚠ ★팀전만 쓴다★ — `일반매치`(3보급-개인전)는 5:5 가 아니라 육각을 못 만든다.
+ *   실제로 최근 20경기 중 ★일곱이 개인전★ 이었고, 그 로그는 ★빈 몸통★ 으로 온다.
+ * ⚠ `mode_flag:"ALL"` · 빈 문자열을 보내면 -999 다. 다음 쪽은 `seq_no` 로 넘긴다.
+ */
+const TEAM_KINDS = ['클랜매치', '용병매치']
+const SKIP = Number(process.argv[5] ?? 0)
+
+async function listPage(seqNo: string | null) {
+  const body: Record<string, string> = { user_nexon_sn: usn, mode_flag: 'ALL' }
+  if (seqNo) {
+    body.seq_no = seqNo
+    body.min_seq_no = '0'
+  }
+  const r = await call('POST', '/api/Match/GetMatchList/', JSON.stringify(body))
+  if (r.status !== 200 || r.body.trim() === '') return { rows: [], next: null as string | null }
+  const parsed = JSON.parse(r.body) as {
+    message?: string
+    result?: Record<string, unknown>[]
+  }
+  return { rows: parsed.result ?? [], next: parsed.message ?? null }
 }
-const matches = list.result ?? []
-console.log(`rtnCode ${list.rtnCode} · ${matches.length}경기`)
-for (const m of matches.slice(0, 12)) {
-  console.log(`  ${m.match_key}  ${m.match_type}  ${m.match_name}  ${m.map_name}  ${m.match_time_date}`)
+
+const matches: Record<string, unknown>[] = []
+let cursor: string | null = null
+for (let page = 0; page < 8 && matches.length < SKIP + TAKE; page += 1) {
+  const { rows, next }: { rows: Record<string, unknown>[]; next: string | null } = await listPage(cursor)
+  if (rows.length === 0) break
+  for (const row of rows) {
+    if (TEAM_KINDS.includes(String(row.match_name))) matches.push(row)
+  }
+  console.log(`  ${page + 1}쪽 ${rows.length}건 → 팀전 누적 ${matches.length}건`)
+  if (!next || next === cursor) break
+  cursor = next
+}
+console.log(`팀전 ${matches.length}경기 (앞 ${SKIP}건 건너뜀)`)
+for (const m of matches.slice(SKIP, SKIP + TAKE)) {
+  console.log(`  ${m.match_key}  ${m.match_name}  ${m.map_name}  ${m.match_time_date}  ${m.result_wdl}`)
 }
 
 /* ── ② 경기마다 배틀로그.
@@ -94,12 +122,17 @@ interface Ev {
 
 async function logOf(key: string, usn: string): Promise<Ev[]> {
   const r = await call('POST', `/api/BattleLog/GetBattleLog/${key}/${usn}`, '{}')
-  if (r.status !== 200) return []
-  const body = JSON.parse(r.body) as { battleLog?: Ev[] }
-  return body.battleLog ?? []
+  /* ⚠ ★빈 몸통이 온다★ (2026-09-18 실측) — 개인전 등 로그가 없는 경기다. 터지면 안 된다 */
+  if (r.status !== 200 || r.body.trim() === '') return []
+  try {
+    const body = JSON.parse(r.body) as { battleLog?: Ev[] }
+    return body.battleLog ?? []
+  } catch {
+    return []
+  }
 }
 
-const picked = matches.slice(0, TAKE)
+const picked = matches.slice(SKIP, SKIP + TAKE)
 const out: Record<string, unknown>[] = []
 
 for (const m of picked) {
