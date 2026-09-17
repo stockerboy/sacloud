@@ -109,7 +109,16 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const barracksHref = barracksPlayerUrl(data.player.barracks_usn)
   const hex = data.hex
   /* ★특성 배지★ — 열 위 안에 든 축 (2026-09-12 사장님). STRENGTH POINT 카드와 같은 값이다 */
-  const badges = hex ? hex.axes.filter((a) => a.badge !== null && a.rank !== null) : []
+  /*
+   * ★배지는 여섯을 다 진열한다★ (2026-09-17 사장님: «개인기록실에 뱃지 진열도 안돼있어»).
+   *
+   * ⚠ 옛 판은 `a.badge !== null` 로 ★딴 것만★ 골랐다 (5위 컷 · 스나싸움 3위).
+   *   그러면 대부분의 선수에게 줄 자체가 안 그려진다 — 사장님 계정이 11위/938명이라
+   *   여섯 중 하나도 안 떴다. 버그가 아니라 사양이었지만 「진열」 이 안 된다.
+   *   여섯을 다 걸고 ★딴 것만 빛낸다.★ 못 딴 것은 흐리게 두고 등수를 적는다.
+   * ⚠ ★잴 수 없는 축은 안 그린다★ — `rank` 가 없으면 없는 등수를 지어낼 수 없다.
+   */
+  const badges = hex ? hex.axes.filter((a) => a.rank !== null) : []
   /**
    * ★통합 순위★ (2026-09-12 사장님: «이거 통합 순위 맞아? 왜 140명? 통합 순위로 넣어»).
    * 옛 판은 score_rank — ★그 무기 안에서만★ 의 등수라 «15위 / 140명» 이 떴다.
@@ -360,11 +369,12 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             */}
           {badges.map((a) => {
             const art = hex?.weapon === null || hex?.weapon === undefined ? null : badgeOfAxis(a.key, hex.weapon)
+            const got = a.badge !== null
             return (
-              <span key={a.key} title={a.desc ?? undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 6px', borderRadius: 999, whiteSpace: 'nowrap', background: 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))', border: '1px solid rgba(255,216,61,.5)' }}>
-                {art === null ? null : <img src={badgeArtSmallPath(art)} alt="" width={28} height={28} style={{ width: 28, height: 28, display: 'block' }} />}
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#ffe89a' }}>{art?.label ?? a.badge}</span>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: '#c9a94a' }}>{a.rank}위</span>
+              <span key={a.key} title={a.desc ?? undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 6px', borderRadius: 999, whiteSpace: 'nowrap', background: got ? 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))' : 'rgba(255,255,255,.035)', border: got ? '1px solid rgba(255,216,61,.5)' : '1px solid rgba(255,255,255,.09)' }}>
+                {art === null ? null : <img src={badgeArtSmallPath(art)} alt="" width={28} height={28} style={{ width: 28, height: 28, display: 'block', filter: got ? 'drop-shadow(0 0 3px rgba(255,216,61,.8))' : 'grayscale(1) opacity(.55)' }} />}
+                <span style={{ fontSize: 11, fontWeight: 700, color: got ? '#ffe89a' : '#93a0b8' }}>{art?.label ?? a.badge ?? a.label}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 700, color: got ? '#c9a94a' : '#6b7285' }}>{a.rank}위</span>
               </span>
             )
           })}
