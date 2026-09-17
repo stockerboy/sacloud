@@ -53,7 +53,25 @@ const zonesAt = (x, y) => {
  *   옛 목록은 숏을 넣은 아홉이었다 — `A_ZONES_V1` 로 남겨 둔다 (`CLAUDE.md` 1-4).
  */
 const A_ZONES_V1 = new Set(['SHORT', 'NIEUN', 'JUNGGIL', 'SEOLDAEAP', 'THREEKKANG', 'MERI', 'NOKDWI', 'CONDWI', 'SEOLDAE'])
-const A_ZONES = new Set(['NIEUN', 'JUNGGIL', 'SEOLDAEAP', 'THREEKKANG', 'MERI', 'NOKDWI', 'CONDWI', 'SEOLDAE'])
+/**
+ * ⚠ ★컨뒤도 뺐다★ (2026-09-17 사장님: «컨뒤 빼자»). 아홉 → 여덟 → ★일곱★.
+ *
+ * ── 왜
+ *   컨뒤는 ★스나싸움 구역(A롱)에도 들어 있다★ — `A_LONG_ZONE_LABELS` 는
+ *   컨뒤·녹뒤·머리·홀정면·ㄱ자다. 컨뒤에서 스나가 스나를 잡으면 스나싸움 1승이 되고
+ *   같은 사건이 A 교전도 이긴 것이 되어 ★한 사건이 두 축을 동시에 올린다★.
+ *
+ *   실측(25,783판) — A 와 스나싸움이 같은 팀을 가리키는 비율:
+ *     여덟 그대로  67%      머리 빼면 66%      녹뒤 빼면 65%      ★컨뒤 빼면 59%★
+ *   컨뒤만 범인이다. 컨뒤 23칸이 A 안에서 가장 큰 스나 자리라서다 (머리 9칸 · 녹뒤 6칸).
+ *
+ *   값어치: 앞선팀승률 72.3 → 70.5% (−1.8%p) 를 내주고
+ *          납득 안 가는 371판 설명력 80.8 → ★82.1%★ 를 얻는다.
+ *
+ * 여덟 판은 `A_ZONES_V2` 로 남긴다 (`CLAUDE.md` 1-4).
+ */
+const A_ZONES_V2 = new Set(['NIEUN', 'JUNGGIL', 'SEOLDAEAP', 'THREEKKANG', 'MERI', 'NOKDWI', 'CONDWI', 'SEOLDAE'])
+const A_ZONES = new Set(['NIEUN', 'JUNGGIL', 'SEOLDAEAP', 'THREEKKANG', 'MERI', 'NOKDWI', 'SEOLDAE'])
 const B_ZONES = new Set(['BIRONG', 'BUNKER', 'BADAK', 'ILMUN'])
 const F2_ZONES = new Set(['ICHUNG'])
 const inSet = (zs, set) => zs.some((z) => set.has(z))
@@ -330,6 +348,57 @@ for (const r of ordered) {
   }
 
   /*
+   * ★B·2층도 A와 같은 「교전 차」 로 통일★ (2026-09-17 실측).
+   *
+   *   그 구역 교전에서 수비가 더 많이 죽었으면 뚫림 · 비기면 막음 · 교전 0건이면 판정 없음.
+   *
+   *   잣대를 하나로 맞췄더니 세 축이 전부 세졌다 (25,783판):
+   *     B    「7번째 이내 죽음 두 번」 64.3%  →  「교전 차」 ★77.0%★  (여섯 축 중 제일 세다)
+   *     2층  「B보다 먼저 데스」      66.4%  →  「교전 차」 ★71.7%★
+   *   판정 못 하는 라운드도 B 는 10.0% 뿐이다.
+   *
+   *   확정 여섯이 ★처음으로 지금 여섯을 이겼다★:
+   *     「진 팀이 4축 이겨버린」 비율   5.7% → ★4.6%★
+   *     납득 안 가는 371판 설명력     70.1% → ★80.8%★
+   *
+   * ⚠ 옛 규칙은 사장님이 직접 정하신 것이라 지우지 않는다 (`CLAUDE.md` 1-4) —
+   *   `B_RULE = 'twoDeaths'` · `F2_RULE = 'beforeB'` 로 두면 그대로 돌아온다.
+   */
+  const B_RULE = 'exchange'    // 'exchange' | 'twoDeaths'
+  const F2_RULE = 'exchange'   // 'exchange' | 'beforeB'
+
+  /** 한 구역 묶음의 교전 차 — A 와 똑같은 셈이다 */
+  const exchangeOf = (zoneSet) => {
+    const ks = r.kills.filter((k) => inSet(k.killZones, zoneSet) || inSet(k.deathZones, zoneSet))
+    const defDead = ks.filter((k) => k.victimTeam === D).length
+    const attDead = ks.filter((k) => k.victimTeam !== D && k.victimTeam !== '').length
+    return { engagements: ks.length, defDead, attDead }
+  }
+
+  if (B_RULE === 'exchange') {
+    const f = exchangeOf(B_ZONES)
+    r.bFight = f
+    if (f.engagements > 0 && f.defDead > f.attDead) {
+      r.breach.B = true
+      r.why.push(`B 뚫림 — B쪽 교전 ${f.engagements}건에서 수비가 ${f.defDead} 잃고 ${f.attDead} 잡음 (교환에서 짐)`)
+    } else if (f.engagements > 0) {
+      r.why.push(`B 막음 — B쪽 교전 ${f.engagements}건에서 수비가 ${f.defDead} 잃고 ${f.attDead} 잡음`)
+    }
+  }
+  if (F2_RULE === 'exchange') {
+    const f = exchangeOf(F2_ZONES)
+    r.f2Fight = f
+    if (f.engagements > 0 && f.defDead > f.attDead) {
+      r.breach.F2 = true
+      r.why.push(`2층 뚫림 — 2층 교전 ${f.engagements}건에서 수비가 ${f.defDead} 잃고 ${f.attDead} 잡음 (교환에서 짐)`)
+    } else if (f.engagements > 0) {
+      r.why.push(`2층 막음 — 2층 교전 ${f.engagements}건에서 수비가 ${f.defDead} 잃고 ${f.attDead} 잡음`)
+    }
+  }
+
+  /*
+   * ── 아래는 ★옛 규칙★ 이다 (사장님 원안). `B_RULE`/`F2_RULE` 을 되돌리면 이게 돈다.
+   *
    * B — B구역에서 3번째 이내 죽음이 두 번
    *
    * ⚠ ★죽은 쪽이 수비 팀일 때만 센다★ (2026-09-17 정정). 처음엔 양 팀 죽음을 다 셌는데
@@ -347,14 +416,16 @@ for (const r of ordered) {
   let bHits = 0
   const bWho = []
   r.kills.forEach((k, i) => {
+    if (B_RULE !== 'twoDeaths') return
     if (i >= B_WINDOW) return
     if (k.victimTeam !== D) return
     if (inSet(k.deathZones, B_ZONES)) { bHits += 1; bWho.push(`${nameOf.get(k.victim) ?? '?'}(${i + 1}번째)`) }
   })
-  if (bHits >= 2) { r.breach.B = true; r.why.push(`B 뚫림 — ${bWho.join(' · ')} 가 B쪽에서 죽음 (${B_WINDOW}번째 이내)`) }
+  if (B_RULE === 'twoDeaths' && bHits >= 2) { r.breach.B = true; r.why.push(`B 뚫림 — ${bWho.join(' · ')} 가 B쪽에서 죽음 (${B_WINDOW}번째 이내)`) }
 
   /* 2층 — B쪽보다 먼저 2층에서 데스 (여기도 ★수비 팀 죽음★ 만) */
-  const f2 = r.kills.findIndex((k) => k.victimTeam === D && inSet(k.deathZones, F2_ZONES))
+  const f2 = F2_RULE !== 'beforeB' ? -1
+    : r.kills.findIndex((k) => k.victimTeam === D && inSet(k.deathZones, F2_ZONES))
   const bIdx = r.kills.findIndex((k) => k.victimTeam === D && inSet(k.deathZones, B_ZONES))
   if (f2 >= 0 && (bIdx < 0 || f2 < bIdx)) {
     r.breach.F2 = true
@@ -400,13 +471,15 @@ const rate = (ok, n) => (n === 0 ? null : Math.round((ok / n) * 1000) / 10)
 const attackOf = (team) => {
   const mine = ordered.filter((r) => r.attackTeam === team)
   const n = mine.length
-  const aJudged = mine.filter((r) => (r.aFight?.engagements ?? 0) > 0)
+  /* 셋 다 ★교전이 있었던 라운드★ 만 분모다 — 안 간 곳을 실패로 적지 않는다 */
+  const aJ = mine.filter((r) => (r.aFight?.engagements ?? 0) > 0)
+  const bJ = mine.filter((r) => (r.bFight?.engagements ?? 0) > 0)
+  const fJ = mine.filter((r) => (r.f2Fight?.engagements ?? 0) > 0)
   return {
     attackRounds: n,
-    A: rate(aJudged.filter((r) => r.breach.A).length, aJudged.length),
-    aRounds: aJudged.length,
-    B: rate(mine.filter((r) => r.breach.B).length, n),
-    F2: rate(mine.filter((r) => r.breach.F2).length, n),
+    A: rate(aJ.filter((r) => r.breach.A).length, aJ.length), aRounds: aJ.length,
+    B: rate(bJ.filter((r) => r.breach.B).length, bJ.length), bRounds: bJ.length,
+    F2: rate(fJ.filter((r) => r.breach.F2).length, fJ.length), f2Rounds: fJ.length,
   }
 }
 
@@ -414,13 +487,15 @@ const axesOf = (team) => {
   const mine = ordered.filter((r) => r.defenceTeam === team)
   const n = mine.length
   /* A 는 교전이 있었던 라운드만 분모다 (`aFight` 가 0건이면 판정 없음) */
-  const aJudged = mine.filter((r) => (r.aFight?.engagements ?? 0) > 0)
+  const aJ = mine.filter((r) => (r.aFight?.engagements ?? 0) > 0)
+  const bJ = mine.filter((r) => (r.bFight?.engagements ?? 0) > 0)
+  const fJ = mine.filter((r) => (r.f2Fight?.engagements ?? 0) > 0)
   return {
     defenceRounds: n,
-    aRounds: aJudged.length,
-    A: rate(aJudged.filter((r) => !r.breach.A).length, aJudged.length),
-    B: rate(mine.filter((r) => !r.breach.B).length, n),
-    F2: rate(mine.filter((r) => !r.breach.F2).length, n),
+    aRounds: aJ.length, bRounds: bJ.length, f2Rounds: fJ.length,
+    A: rate(aJ.filter((r) => !r.breach.A).length, aJ.length),
+    B: rate(bJ.filter((r) => !r.breach.B).length, bJ.length),
+    F2: rate(fJ.filter((r) => !r.breach.F2).length, fJ.length),
     few: pick(team, 'outnumbered', (o) => Number(o.rounds ?? 0)),
     duel: pick(team, 'sniperDuel', (o) => Number(o.won ?? 0) + Number(o.lost ?? 0)),
     save: pick(team, 'save', (o) => Number(o.rounds ?? 0)),
@@ -448,7 +523,8 @@ const out = {
   rounds: ordered.map((r) => ({
     no: r.no, half: halfOf(r.no), winTeam: r.winTeam, winSrc: r.winSrc,
     attackTeam: r.attackTeam, defenceTeam: r.defenceTeam,
-    breach: r.breach, why: r.why, aFight: r.aFight ?? null,
+    breach: r.breach, why: r.why,
+    aFight: r.aFight ?? null, bFight: r.bFight ?? null, f2Fight: r.f2Fight ?? null,
     bombs: r.bombs.map((b) => `${b.kind}:${b.team}`),
     kills: r.kills.map((k, i) => ({
       n: i + 1, t: k.t,
