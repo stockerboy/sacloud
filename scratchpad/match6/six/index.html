@@ -65,8 +65,10 @@ td:first-child{font-weight:700}
 <header>
   <h1>새 여섯 축 첫 판</h1>
   <p class="sub">오늘 정한 축과 배지로 실제 값을 뽑았습니다. 스나 둘 · 라플 넷 · 클랜 둘 · 경기 둘.</p>
-  <div class="warn"><b>모든 값에 분모를 같이 적었습니다.</b> 「62% (18라운드 중 11)」처럼요 —
-    분모가 얇으면 숫자를 믿지 마시라는 뜻입니다. <b>10라운드 미만이면 아예 「측정중」</b>으로 비웁니다.</div>
+  <div class="warn"><b>육각형 높이는 등수입니다.</b> 리그 안에서 줄을 세운 백분위라
+    100에 가까울수록 위쪽입니다 — 단위가 다른 축(크랙은 「판당 횟수」)도 같은 자로 잽니다.
+    표에는 <b>원값 · 분모 · 등수</b>를 같이 적었습니다. <b>분모가 10라운드 미만이면
+    아예 「측정중」</b>으로 비웁니다 — 0%로 우기지 않습니다.</div>
 </header>
 
 <h2>선수 여섯</h2>
@@ -109,10 +111,17 @@ function hex(axes, color) {
     const [x, y] = pt(i, 1)
     g += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`
   })
-  const vs = axes.map((a, i) => [i, a.v == null ? 0 : Math.max(0, Math.min(100, a.v)) / 100])
+  /*
+   * ★그래프 높이는 «값» 이 아니라 «등수(백분위)» 다★ (2026-09-17 사장님:
+   *   «줄세우고 높은 순위일 수록 그래프가 높으면 되지 않아?»).
+   *   사이트는 원래 이렇게 그리고 있었다 (`playerHexAxes.ts` 가 `a.percentile` 을 쓴다).
+   *   이 아티팩트만 원값으로 그려서 크랙 축이 혼자 낮게 깔렸다 — 크랙은 «판당 횟수» 라
+   *   14% 같은 값이 나오는데 그게 나쁜 게 아니라 ★단위가 다른 것★ 이었다.
+   */
+  const vs = axes.map((a, i) => [i, a.p == null ? 0 : Math.max(0, Math.min(100, a.p)) / 100])
   g += `<polygon points="${vs.map(([i, f]) => pt(i, Math.max(f, 0.012)).map((n) => n.toFixed(1)).join(',')).join(' ')}" fill="${color}" fill-opacity=".16" stroke="${color}" stroke-width="2.2" stroke-linejoin="round"/>`
   vs.forEach(([i, f]) => {
-    if (axes[i].v == null) return
+    if (axes[i].p == null) return
     const [x, y] = pt(i, Math.max(f, 0.012))
     g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${color}"/>`
   })
@@ -140,9 +149,10 @@ function axisRows(axes, badgeCut) {
     const got = a.r != null && a.r <= (a.n === '스나싸움' || a.n === '샷싸움' ? 3 : 5)
     const img = art ? `<img class="badge${got ? ' gold' : ''}" src="${ART[art]}" alt="">` : ''
     const rank = a.r != null && a.t != null ? `${a.r}위 / ${a.t}명` : ''
+    /* 그래프는 등수로 그리고, 표에는 ★원값과 등수를 같이★ 적는다 */
     return `<tr><td>${img}${a.n}</td>`
-      + `<td class="val mono">${a.v == null ? '<span class="dash">측정중</span>' : a.v + '%'}</td>`
-      + `<td class="den mono">${a.d}${rank ? ' · ' + rank : ''}</td></tr>`
+      + `<td class="val mono">${a.p == null ? '<span class="dash">측정중</span>' : Math.round(a.p) + '<span class="den mono" style="padding:0">등급</span>'}</td>`
+      + `<td class="den mono">${a.v == null ? '' : a.v + '% · '}${a.d}${rank ? ' · ' + rank : ''}</td></tr>`
   }).join('')
 }
 

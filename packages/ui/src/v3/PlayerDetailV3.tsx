@@ -343,7 +343,7 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
             const pill = (
               <span title={a.desc} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))', border: '1px solid rgba(255,216,61,.5)', boxShadow: '0 0 14px rgba(255,216,61,.18)' }}>
                 {art === null ? <BadgeIcon kind={a.key === 'save' ? 'shield' : 'trend'} />
-                  : <img src={badgeArtSmallPath(art)} alt="" width={20} height={20} style={{ width: 20, height: 20, display: 'block' }} />}
+                  : <img src={badgeArtSmallPath(art)} alt="" width={30} height={30} style={{ width: 30, height: 30, display: 'block' }} />}
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: '#ffe89a' }}>{art?.label ?? a.badge}</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#c9a94a' }}>{a.rank}위</span>
               </span>

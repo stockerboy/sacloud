@@ -15,6 +15,8 @@ const players = await p.$queryRawUnsafe(`
   SELECT pl."name" nick, c."name" clan, c."slug" cslug, h."weapon" w, h."games" g,
          h."seat" seat, h."seatRatio" ratio,
          h."save" sv, h."duel" du, h."carry" ch, h."opening" sf, h."burst" gp, h."outnumbered" ou,
+         h."savePct" svp, h."duelPct" dup, h."carryPct" chp, h."openingPct" sfp,
+         h."burstPct" gpp, h."outnumberedPct" oup,
          h."saveRank" svr, h."duelRank" dur, h."carryRank" chr, h."openingRank" sfr,
          h."burstRank" gpr, h."outnumberedRank" our,
          h."saveTotal" svt, h."duelTotal" dut, h."carryTotal" cht, h."openingTotal" sft,

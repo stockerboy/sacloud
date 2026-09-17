@@ -98,19 +98,21 @@ export async function badgeOwnersOf(
         g: number
       }[]
     >`
-      SELECT p."id" AS pid, lp."id" AS lpid, p."nickname" AS nick,
+      SELECT p."id" AS pid, lp."id" AS lpid, p."name" AS nick,
              c."name" AS clan, c."slug" AS slug, c."markBgUrl" AS bg, c."markFrontUrl" AS front,
              h.${valueCol} AS v, h."games" AS g
         FROM "LeaguePlayerHex" h
         JOIN "LeaguePlayer" lp ON lp."id" = h."leaguePlayerId"
         JOIN "Player" p ON p."id" = lp."playerId"
-        LEFT JOIN "LeagueClan" lc ON lc."id" = lp."leagueClanId"
-        LEFT JOIN "Clan" c ON c."id" = lc."clanId"
+        /* ⚠ LeaguePlayer 의 클랜 칸은 ★clanId★ 다 — leagueClanId 가 아니다.
+           백틱은 이 SQL 템플릿 안에 쓸 수 없다 — 문장이 거기서 끝난다.
+           2026-09-17 에 이 조인 하나로 배지 페이지가 통째로 500 이었다 */
+        LEFT JOIN "Clan" c ON c."id" = lp."clanId"
        WHERE lp."leagueId" = ${league.id}
          AND h."weapon" = ${weapon}
          /* ★못 잰 사람은 안 넣는다★ — 0% 로 줄 세우지 않는다 */
          AND h.${valueCol} IS NOT NULL
-       ORDER BY h.${valueCol} DESC, p."nickname" ASC
+       ORDER BY h.${valueCol} DESC, p."name" ASC
        LIMIT ${limit}`
     for (const r of got) {
       rows.push({

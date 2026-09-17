@@ -858,7 +858,15 @@ export function PlayerRankTable({
                     <MarkCircle clan={row.clan} size={24} title={row.clan?.name ?? ''} />
                   </Egg>
                 </Link>
-                <div className="min-w-0">
+                {/*
+                  * ★이름 칸을 PC 에서 고정폭으로★ (2026-09-17 사장님: «줄도 안맞아»).
+                  *   배지가 이름 바로 뒤에 붙는데 이름 길이가 제각각이라 배지 시작점이 흔들렸다.
+                  *   ⚠ `mx-auto` 로 가운데를 맞추려 했던 것이 원인이다 — 남는 자리를 반씩 나누니
+                  *     이름이 길면 배지가 오른쪽으로 밀렸다. 사장님이 두 번 짚으신 그 함정이다.
+                  *   이름 칸을 고정하고 배지는 그 뒤에서 ★왼쪽부터★ 채운다. 그래야
+                  *   첫째끼리 · 둘째끼리 세로로 맞는다. 폰은 자리가 좁아 그대로 둔다.
+                  */}
+                <div className="min-w-0 md:w-[210px] md:shrink-0">
                   <div className="flex min-w-0 items-center gap-1.5">
                     {/* ★누름 영역★ — 글자 높이가 19px 라 손가락으로 집기 어려웠다
                         (2026-09-15 · 무한 QA). 위아래 여백을 주고 같은 만큼 당겨
@@ -925,7 +933,7 @@ export function PlayerRankTable({
                   *   세 개를 놓을 자리가 없다. 폰은 그림만, 뜻은 누르면 뜨는 이름이 말한다.
                   */}
                 {(row.trait_emblems ?? []).length > 0 ? (
-                  <span className="flex shrink-0 items-start justify-start gap-1.5 max-md:ml-2 max-md:w-[78px] md:mx-auto md:w-[186px] md:gap-2">
+                  <span className="flex shrink-0 items-start justify-start gap-1.5 max-md:ml-2 max-md:w-[104px] md:ml-3 md:w-[200px] md:gap-2">
                     {/*
                       * ⚠ ★2026-09-17 — 손으로 그리던 SVG 배지를 사장님 그림으로 바꿨다★.
                       *   옛 판(`TraitEmblem`)은 지우지 않았다 — 파일이 그대로 있고 이 줄만
@@ -939,15 +947,16 @@ export function PlayerRankTable({
                       return (
                         <span
                           key={`${e.axis}-${e.weapon}`}
-                          className="flex flex-col items-center gap-[3px] max-md:w-[24px] md:w-[58px]"
+                          className="flex flex-col items-center gap-[3px] max-md:w-[32px] md:w-[58px]"
                         >
+                          {/* ★2026-09-17 사장님 — «크기를 좀 키워줘 잘 안보여»★ 22 → 30 (PC 40) */}
                           <AxisBadge
                             axis={axis}
                             weapon={e.weapon}
                             tier={e.tier}
-                            size={22}
+                            size={30}
                             leagueSlug={leagueSlug}
-                            className="md:[&_img]:!h-[30px] md:[&_img]:!w-[30px]"
+                            className="md:[&_img]:!h-[40px] md:[&_img]:!w-[40px]"
                           />
                           <span className="hidden truncate text-center text-[9.5px] leading-none text-faint md:block md:w-full">
                             {name}
@@ -958,7 +967,7 @@ export function PlayerRankTable({
                   </span>
                 ) : (
                   /* ★앨블럼이 없어도 자리를 비워 둔다★ — 그래야 아래윗줄 수치가 같은 자리에 선다 */
-                  <span aria-hidden className="shrink-0 max-md:w-0 md:mx-auto md:w-[186px]" />
+                  <span aria-hidden className="shrink-0 max-md:w-0 md:ml-3 md:w-[200px]" />
                 )}
               </div>
             ) : (

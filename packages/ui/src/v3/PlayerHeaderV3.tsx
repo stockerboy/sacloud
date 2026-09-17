@@ -362,7 +362,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             const art = hex?.weapon === null || hex?.weapon === undefined ? null : badgeOfAxis(a.key, hex.weapon)
             return (
               <span key={a.key} title={a.desc ?? undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 6px', borderRadius: 999, whiteSpace: 'nowrap', background: 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))', border: '1px solid rgba(255,216,61,.5)' }}>
-                {art === null ? null : <img src={badgeArtSmallPath(art)} alt="" width={18} height={18} style={{ width: 18, height: 18, display: 'block' }} />}
+                {art === null ? null : <img src={badgeArtSmallPath(art)} alt="" width={28} height={28} style={{ width: 28, height: 28, display: 'block' }} />}
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#ffe89a' }}>{art?.label ?? a.badge}</span>
                 <span style={{ fontSize: 9.5, fontWeight: 700, color: '#c9a94a' }}>{a.rank}위</span>
               </span>
