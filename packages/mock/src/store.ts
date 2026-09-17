@@ -884,6 +884,10 @@ export function getPlayerRanks(leagueId: string, cursor: string | null, size: nu
         kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
         kill_per_match: killPerMatch(leaguePlayer.kill, matchCount),
         rating: leaguePlayer.rating,
+        /* ★점수 래더★ (2026-09-18) — 픽스처는 래더에서 만들어 ★결정적★ 으로 둔다 */
+        score_rating: Math.round((leaguePlayer.rating / 150) * 10) / 10,
+        score_games: 20 + (index % 30),
+        score_bonus: index < 3 ? 1 : 0,
         weapon: 'all',
         rating_delta: null,
         hex: null,
@@ -946,6 +950,10 @@ export function getPlayerRanksByWeapon(
       kd_rate: kdRate(bucket.kill, bucket.death),
       kill_per_match: killPerMatch(bucket.kill, bucket.games),
       rating: leaguePlayer.rating,
+        /* ★점수 래더★ (2026-09-18) — 픽스처는 래더에서 만들어 ★결정적★ 으로 둔다 */
+        score_rating: Math.round((leaguePlayer.rating / 150) * 10) / 10,
+        score_games: 20 + (index % 30),
+        score_bonus: index < 3 ? 1 : 0,
       weapon,
       rating_delta: bucket.ratingDelta,
       hex: null,
@@ -2681,6 +2689,10 @@ export function getLeagueClanPlayers(
         kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
         kill_per_match: killPerMatch(leaguePlayer.kill, matchCount),
         rating: leaguePlayer.rating,
+        /* ★점수 래더★ (2026-09-18) — 픽스처는 래더에서 만들어 ★결정적★ 으로 둔다 */
+        score_rating: Math.round((leaguePlayer.rating / 150) * 10) / 10,
+        score_games: 20 + (index % 30),
+        score_bonus: index < 3 ? 1 : 0,
         hex: null,
         score: null,
         score_weapon: null,

@@ -684,6 +684,10 @@ export async function getLeagueClanPlayers(
   const page = await cursorPage<{
     id: string
     rating: number
+    /* ★점수 래더★ (2026-09-18) — DB 는 ×100 한 정수다 */
+    scoreRating: number | null
+    scoreGames: number
+    scoreBonus: number
     win: number
     lose: number
     kill: number
@@ -705,6 +709,10 @@ export async function getLeagueClanPlayers(
         select: {
           id: true,
           rating: true,
+          /* ★점수 래더★ (2026-09-18) — 클랜별 선수 목록도 값을 들고 나간다 */
+          scoreRating: true,
+          scoreGames: true,
+          scoreBonus: true,
           win: true,
           lose: true,
           kill: true,
@@ -765,6 +773,13 @@ export async function getLeagueClanPlayers(
       kd_rate: row.kill + row.death > 0 ? kdRate(row.kill, row.death) : null,
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
+      /*
+       * ★점수 래더★ (2026-09-18) — 이 목록은 ★점수 순이 아니다★ (지난시즌·기록실 등).
+       *   순서를 바꾸지 않으려고 값만 그대로 내보낸다. 안 잰 선수는 `null` 이다.
+       */
+      score_rating: row.scoreRating === null ? null : Math.round(row.scoreRating / 10) / 10,
+      score_games: row.scoreGames,
+      score_bonus: Math.round(row.scoreBonus / 10) / 10,
       activity_penalty: 0,
       hex: row.hex?.hex ?? null,
       score: row.hex?.score ?? null,

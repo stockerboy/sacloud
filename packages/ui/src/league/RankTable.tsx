@@ -791,6 +791,15 @@ export function PlayerRankTable({
   const keptStat = columns.winRate ? 'winRate' : columns.kd ? 'kd' : null
   /* 점수 표인가 — 한 줄이라도 점수가 있으면 점수 표. 점수 없는 줄은 래더로 채우지 않고 «측정 중» (QA 교차검토 · 기록 없음 선수가 «3,000점» 으로 보였다) */
   const scoreTable = !byWeapon && (leagueScreen(leagueSlug).scoreLeague || (rows ?? []).some((row) => row.score !== null && row.score !== undefined))
+  /*
+   * ★점수 래더★ (2026-09-18 사장님: «래더점수도 이걸로 계산해»).
+   *
+   * 한 줄이라도 값이 오면 이 칸은 ★경기당 점수★ 다 — 머리글도 바뀐다.
+   * ⚠ ★층수 색을 쓰지 않는다★ — 그 색은 래더 3000 근처를 가정하고 나뉜다
+   *   (45층~ 빨강 …). 점수는 20 근처라 전부 한 색으로 주저앉는다.
+   *   없는 색을 지어내지 않고 ★기본 글자색★ 으로 둔다 (D-106).
+   */
+  const scoreLadder = !byWeapon && (rows ?? []).some((row) => row.score_rating !== null && row.score_rating !== undefined)
   const winRateHidden = keptStat === 'winRate' ? '' : COL_HIDDEN
   /* 2026-09-11 QA 교차검토 8번: 킬뎃도 폰에 남긴다 (옛 규칙: keptStat === 'kd' ? '' : COL_HIDDEN) */
   const kdHidden = ''
@@ -809,7 +818,7 @@ export function PlayerRankTable({
             머리글도 «실력 점수» 다. 점수 표가 아직 비어 옛 래더 순으로 왔으면 «래더» 그대로다 */}
         {columns.rating ? (
           <div className={COL_RATING}>
-            {byWeapon ? '래더증감' : scoreTable ? '실력 점수' : '래더'}
+            {byWeapon ? '래더증감' : scoreLadder ? '점수' : scoreTable ? '실력 점수' : '래더'}
           </div>
         ) : null}
       </div>
@@ -1045,13 +1054,25 @@ export function PlayerRankTable({
                  옛 모양은 한 색(청록 `text-accent`)이었다 — 자리·크기는 그대로다 */
               <div
                 className={`${COL_RATING} ${NUM}`}
-                style={byWeapon ? undefined : { color: floorColor(row.score ?? row.rating) }}
+                style={byWeapon || scoreLadder ? undefined : { color: floorColor(row.score ?? row.rating) }}
               >
                 {byWeapon
                   ? formatRatingDelta(row.rating_delta ?? 0)
-                  : scoreTable && (row.score === null || row.score === undefined)
-                    ? <span className="text-[11px] font-normal text-faint">측정 중</span>
-                    : formatRating(row.score ?? row.rating)}
+                  : scoreLadder
+                    ? (row.score_rating === null || row.score_rating === undefined
+                        ? <span className="text-[11px] font-normal text-faint">측정 중</span>
+                        : <>
+                            {row.score_rating.toFixed(1)}
+                            {/* ★상위권 보정★ 을 숨기지 않는다 — 얼마를 더 받았는지 적는다 */}
+                            {(row.score_bonus ?? 0) > 0 ? (
+                              <span className="ml-1 text-[10px] font-bold text-[#d9b44a]">
+                                +{row.score_bonus}
+                              </span>
+                            ) : null}
+                          </>)
+                    : scoreTable && (row.score === null || row.score === undefined)
+                      ? <span className="text-[11px] font-normal text-faint">측정 중</span>
+                      : formatRating(row.score ?? row.rating)}
                 {/* 2026-09-11 사장님: 점수 뒤 포지션 글자는 뺀다 — 스나이퍼만 닉네임 옆에 스코프를 단다 */}
                 {/* ★미참여 감점★ — 오래 안 뛰어 깎였으면 적는다 (2026-09-11 사장님) */}
                 {(row.activity_penalty ?? 0) > 0 ? (

@@ -105,6 +105,10 @@ interface WeaponRankRow {
   death: number
   leaguePlayer: {
     rating: number
+    /* ★점수 래더★ (2026-09-18) — DB 는 ×100 한 정수다 */
+    scoreRating: number | null
+    scoreGames: number
+    scoreBonus: number
     activityPenalty: number
     player: { id: string; name: string }
     clan: {
@@ -196,6 +200,10 @@ export async function getPlayerRanksByWeapon(
           leaguePlayer: {
             select: {
               rating: true,
+              /* ★점수 래더★ (2026-09-18) — 화면이 이 값을 숫자로 보여 준다 */
+              scoreRating: true,
+              scoreGames: true,
+              scoreBonus: true,
               player: { select: PLAYER_SUMMARY_SELECT },
               clan: { select: CLAN_SUMMARY_SELECT },
             },
@@ -222,6 +230,13 @@ export async function getPlayerRanksByWeapon(
       kill_per_match: killPerMatch(row.kill, row.knownStatGames),
       /* 통합 래더는 무기 탭에서도 통합 래더 그대로다 (3-B 2번) */
       rating: row.leaguePlayer.rating,
+      /*
+       * ★점수 래더★ (2026-09-18) — 이 목록은 ★점수 순이 아니다★ (지난시즌·기록실 등).
+       *   순서를 바꾸지 않으려고 값만 그대로 내보낸다. 안 잰 선수는 `null` 이다.
+       */
+      score_rating: row.leaguePlayer.scoreRating === null ? null : Math.round(row.leaguePlayer.scoreRating / 10) / 10,
+      score_games: row.leaguePlayer.scoreGames,
+      score_bonus: Math.round(row.leaguePlayer.scoreBonus / 10) / 10,
       weapon,
       rating_delta: row.ratingDelta,
       hex: null,
@@ -595,6 +610,13 @@ export async function getPlayerRanksByScore(
         kd_rate: kill + death > 0 ? kdRate(kill, death) : null,
         kill_per_match: killPerMatch(kill, games),
         rating: lp.rating,
+      /*
+       * ★점수 래더★ (2026-09-18) — 이 목록은 ★점수 순이 아니다★ (지난시즌·기록실 등).
+       *   순서를 바꾸지 않으려고 값만 그대로 내보낸다. 안 잰 선수는 `null` 이다.
+       */
+        score_rating: lp.scoreRating === null ? null : Math.round(lp.scoreRating / 10) / 10,
+        score_games: lp.scoreGames,
+        score_bonus: Math.round(lp.scoreBonus / 10) / 10,
         activity_penalty: lp.activityPenalty ?? 0,
         home_tier: row.homeTier ?? null,
         /* ★1·2·3위만★ 여섯 축을 싣는다 (2026-09-12 사장님) */
@@ -703,6 +725,10 @@ interface ScoreRankRow {
   outnumberedPct: number | null; outnumberedRank: number | null; outnumberedTotal: number | null
   leaguePlayer: {
     rating: number
+    /* ★점수 래더★ (2026-09-18) — DB 는 ×100 한 정수다 */
+    scoreRating: number | null
+    scoreGames: number
+    scoreBonus: number
     activityPenalty: number
     win: number
     lose: number

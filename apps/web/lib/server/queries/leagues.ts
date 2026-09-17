@@ -986,6 +986,10 @@ export async function getPlayerRanks(
   const RANK_SELECT = {
     id: true,
     rating: true,
+    /* ★점수 래더★ (2026-09-18) — 줄 세우기와 화면 숫자가 이 값이다 */
+    scoreRating: true,
+    scoreGames: true,
+    scoreBonus: true,
     win: true,
     lose: true,
     kill: true,
@@ -998,6 +1002,9 @@ export async function getPlayerRanks(
   type RankRowShape = {
     id: string
     rating: number
+    scoreRating: number | null
+    scoreGames: number
+    scoreBonus: number
     win: number
     lose: number
     kill: number
@@ -1075,6 +1082,13 @@ export async function getPlayerRanks(
         knownGamesOf(row.weaponStats) || (counts.get(row.player.id) ?? 0),
       ),
       rating: row.rating,
+      /*
+       * ★점수 래더★ (2026-09-18 사장님) — DB 는 ×100 한 정수, 화면은 ★소수 한 자리★ 다.
+       * ⚠ 나누는 곳은 ★여기 하나뿐★ 이다. 다른 데서 또 나누면 값이 100배 작아진다.
+       */
+      score_rating: row.scoreRating === null ? null : Math.round(row.scoreRating / 10) / 10,
+      score_games: row.scoreGames,
+      score_bonus: Math.round(row.scoreBonus / 10) / 10,
       /* 옛 래더 순 목록에는 실력 점수가 없다 (2026-09-10) */
       hex: null,
       score: null,
