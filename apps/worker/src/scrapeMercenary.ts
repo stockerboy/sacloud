@@ -13,7 +13,6 @@
  */
 import { writeFileSync } from 'node:fs'
 import { barracksBrowser, closeBarracksBrowser, useChromeFetch } from './nexon/browserFetch'
-import { prisma } from '@sacloud/db'
 
 const NICK = process.argv[2] ?? '현물'
 const TAKE = Number(process.argv[3] ?? 5)
@@ -25,17 +24,28 @@ async function call(method: 'GET' | 'POST', path: string, body: string | null) {
 }
 
 /**
- * 병영수첩의 사람 식별자(`str_usn`). ★클랜원 명단에 관측해 둔 값★ 을 쓴다 —
- * `Player` 에는 그 칸이 없다 (`name`·`clanId` 뿐이다).
- * ⚠ 위장닉이 섞이므로 ★가장 최근 관측★ 을 고른다 (D-221).
+ * ★닉 → `str_usn`★. 병영수첩의 통합검색이 준다 (2026-09-18 실측).
+ *
+ * ```
+ * POST /api/Search/GetSearchAll/<encodeURIComponent(닉)>/1
+ *   → { result: { characterInfo: [{ user_nexon_sn, str_usn, user_nick }], clanInfo: [...] } }
+ * ```
+ *
+ * ⚠ `GetSearchUserAll` · `GetSearchUser` 는 ★404★ 다. 클랜 전용(`GetSearchClanAll`)과 달리
+ *   사람 전용 길은 없고 ★통합검색 하나★ 뿐이다.
+ * ⚠ ★같은 닉이 여럿 온다.★ 위장닉이 섞이므로 ★정확히 일치하는 첫 줄★ 만 쓴다.
  */
 async function usnOf(nick: string): Promise<string> {
-  const rows = await prisma.$queryRaw<{ strUsn: string; clanSlug: string }[]>`
-    SELECT "strUsn", "clanSlug" FROM "BarracksClanMember"
-     WHERE "userNick" = ${nick} ORDER BY "observedAt" DESC LIMIT 5`
-  if (rows.length === 0) throw new Error(`${nick} 을 BarracksClanMember 에서 못 찾았다`)
-  console.log(`  ${nick} → ${rows.length}건 관측 · 최근 클랜 ${rows[0].clanSlug}`)
-  return rows[0].strUsn
+  const r = await call('POST', `/api/Search/GetSearchAll/${encodeURIComponent(nick)}/1`, '{}')
+  if (r.status !== 200) throw new Error(`검색 HTTP ${r.status}`)
+  const body = JSON.parse(r.body) as {
+    result?: { characterInfo?: { user_nexon_sn: number; str_usn: string; user_nick: string }[] }
+  }
+  const hits = body.result?.characterInfo ?? []
+  const hit = hits.find((h) => h.user_nick === nick)
+  if (!hit) throw new Error(`${nick} 을 못 찾았다 (검색결과 ${hits.length}건)`)
+  console.log(`  ${nick} → ${hit.str_usn} (nexon_sn ${hit.user_nexon_sn}) · 동명 ${hits.length}건`)
+  return hit.str_usn
 }
 
 const usn = await usnOf(NICK)
@@ -77,4 +87,3 @@ for (const m of picked) {
 writeFileSync(OUT, JSON.stringify({ nick: NICK, usn, matches: out }, null, 1), 'utf-8')
 console.log(`saved ${OUT} · ${out.length}경기`)
 closeBarracksBrowser()
-await prisma.$disconnect()
