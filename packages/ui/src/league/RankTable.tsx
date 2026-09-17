@@ -848,7 +848,20 @@ export function PlayerRankTable({
                   *   ★숨는다★ — 줄 높이가 틀어지면 표 리듬이 깨진다.
                   */}
                 {(row.trait_emblems ?? []).length > 0 ? (
-                  <span className="ml-2 flex shrink-0 items-center gap-1 overflow-hidden">
+                  /*
+                   * ★PC 는 크게 · 가운데쪽에★ (2026-09-17 사장님:
+                   *   «Pc에서는 조금 더 크게 만들어줘 앨블럼
+                   *    그리고 앨블럼 가운데쪽에 진열해줘라»).
+                   *
+                   *   `mx-auto` — 이름 칸이 `flex-1` 이라 양쪽 여백을 같이 밀어
+                   *   닉네임 덩어리와 수치 사이 ★한가운데★ 에 선다.
+                   *   폰은 자리가 없으니 예전대로 이름 바로 뒤다 (`max-md:ml-2`).
+                   *
+                   *   ★크기는 CSS 로 바꾼다★ — `size` 는 SVG 속성이라 화면 폭에 따라
+                   *   못 바뀜다. 높이만 주면 속성 폭이 남아 찌그러지므로
+                   *   `w-auto` 를 같이 준다. 그려야 비율이 산다.
+                   */
+                  <span className="flex shrink-0 items-center gap-1.5 overflow-hidden max-md:ml-2 md:mx-auto">
                     {(row.trait_emblems ?? []).slice(0, 3).map((e) => (
                       <TraitEmblem
                         key={`${e.axis}-${e.weapon}`}
@@ -856,6 +869,7 @@ export function PlayerRankTable({
                         weapon={e.weapon}
                         tier={e.tier}
                         size={22}
+                        className="h-[22px] w-auto md:h-[30px]"
                       />
                     ))}
                   </span>
