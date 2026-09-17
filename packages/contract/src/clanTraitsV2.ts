@@ -78,6 +78,24 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
 ] as const
 
 /**
+ * ★클랜 육각 — 점수제 여섯★ (2026-09-18 사장님: «클랜 점수도 이걸로 하면 되려나»).
+ *
+ * 경기 육각과 ★똑같은 여섯★ 이다. 재는 것도 같고, ★접는 법만★ 다르다 —
+ *   경기 … 두 팀 점수의 몫 (합이 100%)
+ *   클랜 … 경기당 평균 점수의 ★리그 백분위★
+ *
+ * ⚠ 옛 여섯(`CLAN_HEX_V2_AXIS_KEYS`)은 지우지 않는다 (`CLAUDE.md` 1-4).
+ */
+export const CLAN_HEX_V2_CLAN_AXIS_KEYS = [
+  'sniperDuel',
+  'sniperScore',
+  'shortScore',
+  'f2Score',
+  'bScore',
+  'outnumbered',
+] as const
+
+/**
  * ★경기 육각만 다른 여섯★ (2026-09-17 사장님:
  * «기회차단 대신 유리한기회를 넣어(경기6축만)»).
  *
@@ -1214,6 +1232,8 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
     sniperFight: null,
     lastSniper: null,
     attackZone: null,
+    score: null,
+    zoneAttack: null,
   }
 
   for (const tally of tallies) {
@@ -1252,6 +1272,38 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
       into.aliveWon = (into.aliveWon ?? 0) + (from.aliveWon ?? 0)
       into.deadEarlyRounds = (into.deadEarlyRounds ?? 0) + (from.deadEarlyRounds ?? 0)
       into.deadEarlyWon = (into.deadEarlyWon ?? 0) + (from.deadEarlyWon ?? 0)
+    },
+  )
+
+  /*
+   * ★점수★ — 칸마다 그대로 더한다 (2026-09-18 사장님).
+   *
+   * ⚠ ★평균을 평균 내지 않는다★ — 점수 합을 쌓고 경기 수로 마지막에 한 번만 나눈다.
+   *   클랜 육각은 `buildClanHexV2Raw` 가 `matches` 를 분모로 잡아 ★경기당 평균★ 을 만든다.
+   */
+  sum.score = sumParts(
+    tallies.map((tally) => tally.score ?? null),
+    () => ({ sniper: 0, short: 0, b: 0, f2: 0, spare: 0 }),
+    (into, from) => {
+      into.sniper += from.sniper
+      into.short += from.short
+      into.b += from.b
+      into.f2 += from.f2
+      into.spare += from.spare
+    },
+  )
+
+  /*
+   * ★구역 어택★ — 옛 축이지만 계속 쌓는다 (`CLAUDE.md` 1-4).
+   */
+  sum.zoneAttack = sumParts(
+    tallies.map((tally) => tally.zoneAttack ?? null),
+    () => ({ aN: 0, aOk: 0, bN: 0, bOk: 0, f2N: 0, f2Ok: 0, shortN: 0, shortOk: 0 }),
+    (into, from) => {
+      into.aN += from.aN; into.aOk += from.aOk
+      into.bN += from.bN; into.bOk += from.bOk
+      into.f2N += from.f2N; into.f2Ok += from.f2Ok
+      into.shortN += from.shortN; into.shortOk += from.shortOk
     },
   )
 
@@ -1811,8 +1863,16 @@ export function buildClanHexV2Raw(input: {
               : key === 'f2Score'
                 ? part.f2
                 : part.b
+        /*
+         * ⚠ ★분모는 「경기 수」★ 다 — 그래야 클랜 육각이 ★경기당 평균 점수★ 가 되고
+         *   리그 백분위가 뜻을 갖는다. ★경기 육각★ 은 `normalizeAgainstFoe` 가
+         *   ★두 팀 점수의 몫★ 으로 이 값을 덮어쓴다 (`ZONE_SHARE_AXES`).
+         * ⚠ 점수가 0 이면 「측정중」 이 아니라 ★0점★ 이다 — 다만 두 팀 다 0 이면
+         *   그 칸에서 아무 일도 없었다는 뜻이라 `normalizeAgainstFoe` 가 되돌린다.
+         */
+        const games = Math.max(1, input.matches)
         if (points === 0) return pendingAxis(key, 'sample', { numerator: 0 })
-        return measuredAxis(key, points, points)
+        return measuredAxis(key, points, games)
       }
       case 'sniperDuel': {
         const part = tally.sniperDuel ?? null
