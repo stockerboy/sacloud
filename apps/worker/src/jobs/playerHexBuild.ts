@@ -598,7 +598,32 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         if (!bombs || !teams || teams.size !== 2) continue
         const [tA, tB] = [...teams.keys()]
         if (!tA || !tB) continue
-        const sides = roundSidesOf(bombs, tA, Math.max(...rounds))
+        /*
+         * ★5승 규칙을 같이 넘긴다★ (2026-09-17 사장님: «전반 후반 구분할 줄 아는거지?»).
+         *
+         * 진영을 가르는 근거는 둘이다 — ① C4(설치한 팀이 공격) ② 한 팀이 5승에 닿은
+         * 라운드까지가 전반 (D-208 · 29,176판 반례 0건).
+         * ①만 주면 ★폭탄이 한쪽 반에만 있는 경기★ 에서 그 근거가 전반인지 후반인지
+         * 못 가르고 (`roundSidesOf` 가 후보 둘을 놓고 «모름» 을 낸다) 그 라운드가 통째로 빠진다.
+         * 둘을 겹쳐야 한쪽이 떨어지고 나머지 라운드까지 채워진다.
+         *
+         * `roundWinner` 값은 «이긴 팀» 이거나 «!진 팀» 이다 (`win_flag` 두 벌을 겹쳐 읽은 결과).
+         * 팀이 둘뿐이라 «!상대» 는 «우리 승» 이다.
+         */
+        const wonRound = (round: number): boolean | null => {
+          const v = roundWinner.get(`${mk}|${round}`)
+          if (v === undefined || v === null) return null
+          if (v.startsWith('!')) {
+            const loser = v.slice(1)
+            if (loser === tA) return false
+            if (loser === tB) return true
+            return null
+          }
+          if (v === tA) return true
+          if (v === tB) return false
+          return null
+        }
+        const sides = roundSidesOf(bombs, tA, Math.max(...rounds), wonRound)
         if (sides.side.size === 0) continue
         const map = new Map<number, string>()
         for (const [round, side] of sides.side) map.set(round, side === 'defense' ? tA : tB)
