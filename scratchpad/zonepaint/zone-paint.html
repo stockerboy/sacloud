@@ -91,7 +91,7 @@
   </div>
 
   <div class="bar">
-    <div class="row mini" id="zonepick"></div>
+    <div class="row mini" id="zonepick" style="flex-wrap:wrap"></div>
     <div class="row">
       <button id="paint" aria-pressed="true">칠하기</button>
       <button id="erase" class="erase" aria-pressed="false">지우개</button>
@@ -112,10 +112,12 @@
   </div>
 
   <div class="note" id="note">
-    <b>바닥</b>과 <b>2층</b>을 따로 칠할 수 있습니다 — 위 두 칸으로 바꿔 가며 칠하세요.
+    <b>중길 · 숏 · 니은자 · 쓰리깡 · 설대앞</b>을 칠해 주세요.
+    바닥·2층은 ★이미 칠하신 그대로★ 깔려 있습니다.
+    위 칸으로 구역을 바꿔 가며 칠하세요.
     좁은 데는 <b>2배·3배·4배</b>로 키우고 지도를 밀어 움직이면 됩니다.
-    <b>벙커는 이미 바닥으로 칠해 뒀습니다</b> — 「생각해보니 벙커도 바닥임」이라 하셔서
-    27칸을 미리 넣었습니다. 빼시려면 지우개로 지우면 됩니다.
+    <b>중길</b>이 제일 급합니다 — A방어율 판정에 씁니다
+    (「상대가 중길이나 머리 넘어서까지 와서 우리팀 스나 혹은 라플을 잡으면 A방어 실패」).
     저장을 누르면 제 세션이 바로 받습니다.
   </div>
 
@@ -134,15 +136,34 @@
   const NEW_ZONES = [
     { key: 'BADAK', label: '바닥', color: '#ffc94d' },
     { key: 'ICHUNG', label: '2층', color: '#5ce6a8' },
+    /* ★2026-09-17 추가★ — 사장님: 「중길이랑 숏 니은자까지 내가 칠해줄 수 있어」 */
+    { key: 'JUNGGIL', label: '중길', color: '#ff8fb1' },
+    { key: 'SHORT', label: '숏', color: '#7ab8ff' },
+    { key: 'NIEUN', label: '니은자', color: '#c79bff' },
+    /* ★사장님: 「쓰리깡이랑 설대앞도 어딘지 알려줄게」 (2026-09-17) */
+    { key: 'THREEKKANG', label: '쓰리깡', color: '#ffa04d' },
+    { key: 'SEOLDAEAP', label: '설대앞', color: '#4de0d8' },
   ]
-  const painted = { BADAK: new Set(), ICHUNG: new Set() }
+  const painted = {
+    BADAK: new Set(), ICHUNG: new Set(),
+    JUNGGIL: new Set(), SHORT: new Set(), NIEUN: new Set(),
+    THREEKKANG: new Set(), SEOLDAEAP: new Set(),
+  }
   /*
    * ★벙커도 바닥이다★ (2026-09-17 사장님: 「생각해보니 벙커도 바닥임」).
    *   처음에는 「바닥(벙커x)」 이셔서 빼라고 적어 둥다. 정정하셨다.
    *   그래서 벙커 27칸을 ★미리 칠해 둔 상태로★ 시작한다 — 그만큼 덜 칠하시면 된다.
    *   빼고 싶으시면 지우개로 지우시면 된다.
    */
-  for (const k in D.zone) { if (D.zone[k] === 'BUNKER') painted.BADAK.add(k) }
+  /*
+   * ★사장님이 이미 칠하신 바닥·2층을 그대로 깔아 둔다★ (2026-09-17 저장본).
+   *   다시 칠하시지 않아도 되고, 고치고 싶으면 지우개로 고치시면 된다.
+   *   벙커는 바닥에 들어 있다 — 「생각해보니 벙커도 바닥임」.
+   */
+  for (const k in (D.saved || {})) {
+    const z = D.saved[k]
+    if (painted[z] !== undefined) painted[z].add(k)
+  }
   let cur = 'BADAK'
   const history = []
 
