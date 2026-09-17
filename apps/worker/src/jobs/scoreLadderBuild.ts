@@ -72,15 +72,34 @@ export async function buildScoreLadder(options: {
   if (!league) throw new Error(`리그 ${options.leagueSlug} 이 없다`)
 
   /* ── ① 보정을 받을 클랜 — 그 리그 래더 위 열한 개 */
+  /*
+   * ⚠ ★화면의 클랜 랭킹과 ★똑같은 조건★ 이어야 한다★ (2026-09-18).
+   *
+   *   처음에 조건 없이 `rating` 만 보고 뽑았더니 ★화면에 없는 클랜★ 다섯이 섞였다
+   *   (배치 미완료 · 감춘 클랜 · 이번 시즌 한 판도 안 뛴 클랜). 사장님이 말씀하신
+   *   「현시각 기준 IPL 1등부터 11등」 은 ★화면에 보이는 그 열한 줄★ 이다.
+   *
+   *   `apps/web/lib/server/queries/leagues.ts` 의 클랜 랭킹 `where` 와 짝이다 —
+   *   거기가 바뀌면 여기도 바뀌어야 한다.
+   */
   const top = await prisma.leagueClan.findMany({
-    where: { leagueId: league.id },
-    orderBy: { rating: 'desc' },
+    where: {
+      leagueId: league.id,
+      /* 배치가 안 끝난 클랜은 랭킹에 안 나온다 */
+      placement: false,
+      /* 감춘 클랜·내보낸 클랜은 랭킹에 안 나온다 (O-044) */
+      clan: { active: true },
+      expelledAt: null,
+      /* 이번 시즌 한 판도 안 뛴 클랜도 뺀다 (2026-09-15) */
+      NOT: { win: 0, lose: 0 },
+    },
+    orderBy: [{ rating: 'desc' }, { id: 'asc' }],
     take: TOP_CLAN_COUNT,
-    select: { clanId: true, clan: { select: { name: true } } },
+    select: { clanId: true, rating: true, clan: { select: { name: true } } },
   })
   const topClanIds = new Set(top.map((t) => t.clanId))
   const topNames = top.map((t) => t.clan?.name ?? '?')
-  log(`★상위권 ${top.length}클랜★ — ${topNames.join(' · ')}`)
+  log(`★상위권 ${top.length}클랜★ — ${top.map((t) => `${t.clan?.name ?? '?'}(${t.rating})`).join(' · ')}`)
 
   /*
    * ── ② 선수별 점수 합계.
