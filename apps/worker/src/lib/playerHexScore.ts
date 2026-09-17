@@ -77,7 +77,14 @@ import { TIER_WEIGHT, type TierNo } from './iplTiers.js'
  *   그 전에는 «그 라운드의 첫 킬» 을 무조건 셌다. 40초쯤 지나 슬쩍 잡은 것도
  *   «선짤» 이 됐다. 실측 25초 안이 58.9% 라 절반 조금 넘는 좋은 자리다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.7'
+/*
+ * ⚠ ★v1.8 — 구역별 어택/방어를 쌓기 시작했다★ (2026-09-17 사장님).
+ *   A·B·2층·숏 넷을 라운드마다 판정해 선수마다 쌓는다. 옇 줄(v1.7)은 그 칸이 0 이라
+ *   화면이 «측정중» 이라 적는다 — 0% 로 우기지 않는다. 다시 돌려야 값이 찬다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.8'
+/** ⚠ 옇 판 — 구역 축이 없던 때 */
+export const PLAYER_HEX_FORMULA_VERSION_V17 = 'player-hex-v1.7'
 
 export const HEX_BASE = 3000
 export const HEX_SPREAD = 700
@@ -197,6 +204,34 @@ export interface PlayerHexInput {
    * 이 칸이 없던 옛 줄은 0 이고, 그때는 축이 `null` 이다 (0회라고 우기지 않는다).
    */
   crackKills?: number
+  /**
+   * ★구역별 어택/방어 · 자리 재료★ (2026-09-17 사장님) — 시즌 합.
+   * 점수 공식은 이걸 ★안 본다★. 화면이 읽어 개인 육각 ④⑤ 를 그린다.
+   */
+  aAtkN?: number
+  aAtkOk?: number
+  aDefN?: number
+  aDefOk?: number
+  bAtkN?: number
+  bAtkOk?: number
+  bDefN?: number
+  bDefOk?: number
+  f2AtkN?: number
+  f2AtkOk?: number
+  f2DefN?: number
+  f2DefOk?: number
+  shortAtkN?: number
+  shortAtkOk?: number
+  shortDefN?: number
+  shortDefOk?: number
+  seatSpots?: number
+  seatBSpots?: number
+  seatF2Spots?: number
+  seatShortSpots?: number
+  sniperKills?: number
+  /** 그 선수의 자리 — 30경기 미만이거나 1·2위가 1.1배 안쪽이면 붙지 않는다 */
+  seat?: string | null
+  seatRatio?: number | null
   /**
    * ★게임템포의 재료★ (2026-09-16 사장님) — 라운드마다 «먼저 겪은 일» 까지의 초, 합.
    * 값은 이걸 `tempoCount` 로 나눈 ★평균★ 이다. 이 칸이 없던 옛 줄은 `undefined` 고,

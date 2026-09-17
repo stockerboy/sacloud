@@ -35,6 +35,22 @@ import {
      게임템포와 ★같은 상수★ 를 쓴다. 두 곳이 어긋나면 안 된다 */
   MATCH_TO_FIRST_ROUND_SECONDS,
   ROUND_GAP_SECONDS,
+  /* ★구역별 어택/방어★ — 규칙은 저쪽 하나뿐이다 (2026-09-17 사장님) */
+  A_ZONE_LABELS,
+  B_ZONE_LABELS,
+  F2_ZONE_LABELS,
+  SHORT_KILL_ZONE_LABELS,
+  SHORT_ZONE_LABELS,
+  judgeExchange,
+  judgeShort,
+  zoneCellsOfAnyLabels,
+  type AnyZoneFile,
+  type SideKill,
+  /* 진영 — 폭탄이 정한다. 없으면 그 라운드는 판정하지 않는다 */
+  roundSidesOf,
+  type RoundSideEvent,
+  /* 자리 — 시즌 합으로 한 번만 정한다 */
+  positionOf,
 } from '@sacloud/nexon'
 import { CLAN_HEX_V2_FORMULA_VERSION } from '../lib/clanHexV2Version.js'
 import { REPO_ROOT } from '../lib/env.js'
@@ -74,6 +90,12 @@ const ZONE_FILE = join(REPO_ROOT, 'data/barracks/style-zones.json')
  * ★한 칸도 구역 밖으로 안 나갔다★ — 격자가 맵과 맞다는 확인이기도 하다.
  */
 const CRACK_ZONE_FILE = join(REPO_ROOT, 'data/barracks/crack-zone.json')
+/**
+ * ★사장님이 손으로 칠하신 바닥 구역★ — 2026-09-17. 한 칸이 여러 구역일 수 있어 값이 배열이다
+ * (숏·쓰리깡·설대앞은 넓은 구역 위에 겹쳐 그은 좁은 자리다).
+ * `style-zones.json` 과 합쳐야 A·B·2층·숏 넷이 다 나온다.
+ */
+const FLOOR_ZONE_FILE = join(REPO_ROOT, 'data/barracks/floor-zones.json')
 /** 배틀로그를 한 번에 읽는 경기 수 — 운영 풀러의 문장 시간제한 안에 든다 (실측 150) */
 const LOG_BATCH = 150
 
@@ -191,6 +213,24 @@ interface MatchTally {
   outWon: number
   duelWon: number
   duelLost: number
+
+  /**
+   * ★구역별 어택/방어★ (2026-09-17 사장님) — 한 칸 = (낀 라운드 × 한 구역).
+   * `N` 은 그 구역에서 ★킬이나 데스를 낸★ 라운드 수, `Ok` 는 어택이면 뚫은 · 방어면 막은 수.
+   * 판정은 `sideAxes.ts` 가 한다 — 여기서 셈을 다시 적지 않는다.
+   */
+  aAtkN: number; aAtkOk: number; aDefN: number; aDefOk: number
+  bAtkN: number; bAtkOk: number; bDefN: number; bDefOk: number
+  f2AtkN: number; f2AtkOk: number; f2DefN: number; f2DefOk: number
+  shortAtkN: number; shortAtkOk: number; shortDefN: number; shortDefOk: number
+
+  /** ★자리 재료★ — 그 선수 ★자기★ 자리 (킬이면 잡은 자리 · 데스면 죽은 자리) */
+  seatSpots: number
+  seatBSpots: number
+  seatF2Spots: number
+  seatShortSpots: number
+  /** 스나로 잡은 킬 — 자리 판정의 스나 문턱에 쓴다 */
+  sniperKills: number
 }
 
 const emptyTally = (): MatchTally => ({
@@ -198,7 +238,54 @@ const emptyTally = (): MatchTally => ({
   deathSeconds: 0, deathCount: 0, tempoSeconds: 0, tempoCount: 0,
   openRounds: 0, foeOpenRounds: 0, cutRounds: 0, aliveRounds: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
+  aAtkN: 0, aAtkOk: 0, aDefN: 0, aDefOk: 0,
+  bAtkN: 0, bAtkOk: 0, bDefN: 0, bDefOk: 0,
+  f2AtkN: 0, f2AtkOk: 0, f2DefN: 0, f2DefOk: 0,
+  shortAtkN: 0, shortAtkOk: 0, shortDefN: 0, shortDefOk: 0,
+  seatSpots: 0, seatBSpots: 0, seatF2Spots: 0, seatShortSpots: 0, sniperKills: 0,
 })
+
+/** 좌표 → 점. ★(0,0) 은 «없음» 이다★ — 맵 구석이 아니라 결측이다 */
+const ptOf = (x: number | null, y: number | null): { x: number; y: number } | null =>
+  x == null || y == null || (x === 0 && y === 0) ? null : { x, y }
+
+/**
+ * ★자리 재료★ — 그 선수 ★자기★ 자리 한 건을 쌓는다.
+ * 한 칸이 여러 구역일 수 있어 ★겹치면 둘 다 센다★ (숏은 홀정면 위에 겹쳐 그은 자리다).
+ * 어느 구역도 아니면 분모(`seatSpots`)만 올라간다 — 그 사람이 거기 있었던 건 사실이니까.
+ */
+const addSeat = (
+  t: MatchTally,
+  p: { x: number; y: number } | null,
+  z: { b: ZoneCells | null; f2: ZoneCells | null; shortSeat: ZoneCells | null },
+): void => {
+  if (p === null) return
+  t.seatSpots += 1
+  if (z.b && inZone(z.b, p)) t.seatBSpots += 1
+  if (z.f2 && inZone(z.f2, p)) t.seatF2Spots += 1
+  if (z.shortSeat && inZone(z.shortSeat, p)) t.seatShortSpots += 1
+}
+
+/**
+ * ★그 선수의 자리★ — 시즌 합으로 한 번만 정한다 (`sideAxes.ts` 의 `positionOf`).
+ * 셈을 여기서 다시 적지 않는다. 못 정하면 두 칸 다 `null` 이다 — 지어내지 않는다.
+ */
+const seatOf = (
+  p: { games: number },
+  h: { seatspots?: unknown; seatbspots?: unknown; seatf2spots?: unknown; seatshortspots?: unknown; sniperkills?: unknown } | undefined,
+): { seat: string | null; seatRatio: number | null } => {
+  const n = (v: unknown): number => Number(v ?? 0)
+  const v = positionOf({
+    games: p.games,
+    kills: 0,
+    sniperKills: n(h?.sniperkills),
+    bSpots: n(h?.seatbspots),
+    f2Spots: n(h?.seatf2spots),
+    shortSpots: n(h?.seatshortspots),
+    spots: n(h?.seatspots),
+  })
+  return { seat: v.key, seatRatio: v.ratio }
+}
 
 const secondsOf = (t: string | null): number => {
   const [m, s] = String(t ?? '0:0').split(':')
@@ -213,6 +300,31 @@ function loadCrackZone(): ZoneCells | null {
   if (!existsSync(CRACK_ZONE_FILE)) return null
   const parsed = JSON.parse(readFileSync(CRACK_ZONE_FILE, 'utf8')) as ZoneCells
   return parsed.cells.length > 0 ? { cell: parsed.cell, cells: parsed.cells } : null
+}
+
+/**
+ * ★구역 넷★ — 사장님 규칙(`sideAxes.ts`)이 쓰는 칸 집합.
+ * 파일이 없으면 전부 `null` 이고, 그러면 그 축은 ★안 쌓인다★ (0 으로 남는다).
+ * 구역을 모르면서 «뚫렸다» 고 적지 않는다.
+ */
+function loadSideZones(): {
+  a: ZoneCells | null; b: ZoneCells | null; f2: ZoneCells | null
+  shortKill: ZoneCells | null; shortSeat: ZoneCells | null
+} {
+  const files: AnyZoneFile[] = []
+  for (const path of [ZONE_FILE, FLOOR_ZONE_FILE]) {
+    if (!existsSync(path)) continue
+    files.push(JSON.parse(readFileSync(path, 'utf8')) as AnyZoneFile)
+  }
+  if (files.length === 0) return { a: null, b: null, f2: null, shortKill: null, shortSeat: null }
+  return {
+    a: zoneCellsOfAnyLabels(files, A_ZONE_LABELS),
+    b: zoneCellsOfAnyLabels(files, B_ZONE_LABELS),
+    f2: zoneCellsOfAnyLabels(files, F2_ZONE_LABELS),
+    /* 숏은 ★어택 판정★ 과 ★자리 판정★ 이 다른 구역을 쓴다 (`sideAxes.ts` 주석) */
+    shortKill: zoneCellsOfAnyLabels(files, SHORT_KILL_ZONE_LABELS),
+    shortSeat: zoneCellsOfAnyLabels(files, SHORT_ZONE_LABELS),
+  }
 }
 
 function loadLongZones(): { file: string | null; aLong: ZoneCells | null; bLong: ZoneCells | null } {
@@ -240,6 +352,16 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
   if (longZones.length === 0) warn('구역 파일이 없다 — 스나싸움을 못 잰다 (null 로 남는다)')
   const inLong = (x: number | null, y: number | null): boolean =>
     x !== null && y !== null && longZones.some((zone) => inZone(zone, { x, y }))
+
+  /**
+   * ★구역 넷★ — A · B · 2층 · 숏 (2026-09-17 사장님).
+   * 없으면 그 축이 0 으로 남는다 — 구역을 모르면서 «뚫렸다» 고 적지 않는다.
+   */
+  const sideZones = loadSideZones()
+  if (sideZones.b === null) warn('구역 파일이 없다 — 어택/방어를 못 잰다 (0 으로 남는다)')
+  else log(`구역 — A ${sideZones.a?.cells.length ?? 0}칸 · B ${sideZones.b.cells.length}칸 · `
+    + `2층 ${sideZones.f2?.cells.length ?? 0}칸 · 숏(어택) ${sideZones.shortKill?.cells.length ?? 0}칸 · `
+    + `숏(자리) ${sideZones.shortSeat?.cells.length ?? 0}칸`)
 
   /* ★크랙 구역★ — 사장님이 칠하신 칸. 없으면 `crackKills` 가 0으로 남는다 (2026-09-16) */
   const crackZone = loadCrackZone()
@@ -317,6 +439,34 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
        WHERE r."matchKey" IN (${Prisma.join(keys)}) AND r."status" = 'ok'
          AND jsonb_typeof(r."payload"->'battleLog') = 'array'
          AND e->>'event_type' IN ('kill', 'death')`
+    /**
+     * ★폭탄 줄★ — 진영을 정하는 유일한 근거다 (D-208).
+     *
+     * 위 질의는 `event_type IN ('kill','death')` 라 C4 줄을 안 담아 온다. 따로 읽는다.
+     * 행위자가 `team_no` 에 실릴 때도 `target_team_no` 에 실릴 때도 있어 ★네 칸을 다 가져온다★ —
+     * 무기 칸과 팀 칸을 짝지어 읽는 것은 `bombEvidenceOf` 가 한다.
+     */
+    const bombRaw = await prisma.$queryRaw<{
+      k: string; rd: string | null; w: string | null; tw: string | null
+      tn: string | null; ttn: string | null
+    }[]>`
+      SELECT r."matchKey" AS k, e->>'round' AS rd,
+             e->>'weapon' AS w, e->>'target_weapon' AS tw,
+             e->>'team_no' AS tn, e->>'target_team_no' AS ttn
+        FROM "BarracksBattleLogRaw" r, jsonb_array_elements(r."payload"->'battleLog') e
+       WHERE r."matchKey" IN (${Prisma.join(keys)}) AND r."status" = 'ok'
+         AND jsonb_typeof(r."payload"->'battleLog') = 'array'
+         AND (e->>'weapon' LIKE 'c4-%' OR e->>'target_weapon' LIKE 'c4-%')`
+    const bombByMatch = new Map<string, RoundSideEvent[]>()
+    for (const b of bombRaw) {
+      const arr = bombByMatch.get(b.k)
+      const row: RoundSideEvent = {
+        round: b.rd, weapon: b.w, target_weapon: b.tw, team_no: b.tn, target_team_no: b.ttn,
+      }
+      if (arr) arr.push(row)
+      else bombByMatch.set(b.k, [row])
+    }
+
     /**
      * ★교환★ 의 창 — 동료가 죽고 이 안에 그 킬러를 잡으면 «되갚았다» 로 센다 (2026-09-15).
      * 5초는 클랜 육각 6번 축에서 사장님이 확정한 값이다 (D-256). 둘을 같은 값으로 둔다.
@@ -425,6 +575,37 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       }
     }
 
+    /**
+     * ★라운드마다 누가 수비인가★ — 폭탄이 아는 라운드만 담는다.
+     *
+     * 모르는 라운드는 ★담지 않는다★. 그러면 그 라운드의 구역 판정도 통째로 건너뛴다 —
+     * 진영을 틀리면 어택과 방어가 뒤집혀 조용히 거짓이 된다 (D-208 주석과 같은 이유).
+     */
+    const defenceOf = new Map<string, Map<number, string>>()
+    {
+      const roundsOfMatch = new Map<string, Set<number>>()
+      for (const key of byRound.keys()) {
+        const [mk, rd] = key.split('|')
+        const n = Number(rd)
+        if (!mk || !Number.isInteger(n)) continue
+        const got = roundsOfMatch.get(mk)
+        if (got) got.add(n)
+        else roundsOfMatch.set(mk, new Set([n]))
+      }
+      for (const [mk, rounds] of roundsOfMatch) {
+        const bombs = bombByMatch.get(mk)
+        const teams = roster.get(mk)
+        if (!bombs || !teams || teams.size !== 2) continue
+        const [tA, tB] = [...teams.keys()]
+        if (!tA || !tB) continue
+        const sides = roundSidesOf(bombs, tA, Math.max(...rounds))
+        if (sides.side.size === 0) continue
+        const map = new Map<number, string>()
+        for (const [round, side] of sides.side) map.set(round, side === 'defense' ? tA : tB)
+        defenceOf.set(mk, map)
+      }
+    }
+
     for (const [roundKey, arr] of byRound) {
       arr.sort((a, b) => a.t - b.t)
       const mk = (arr[0] as Kill).k
@@ -459,6 +640,68 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           }
         }
       }
+      /*
+       * ★구역 넷 판정★ (2026-09-17 사장님). 판정은 `sideAxes.ts` 가 한다 — 여기서 셈을 다시 적지 않는다.
+       *
+       * 분모는 ★그 선수가 그 구역에서 킬이나 데스를 낸 라운드★ 다 («낀 라운드» 의 좁은 정의).
+       * 넓은 정의(«그 라운드에 총을 쐈다») 는 B 근처에 안 갔던 라운드까지 들어와 뜻이 흐려진다.
+       * 좁게 잡아도 구역 셋을 합치면 선수 분모 중앙이 87 이다 (실측) — 넉넉하다.
+       */
+      {
+        const rdNum = Number(roundKey.split('|')[1])
+        const defTeam = Number.isInteger(rdNum) ? defenceOf.get(mk)?.get(rdNum) : undefined
+        if (defTeam !== undefined) {
+          const sideKills: SideKill[] = arr.map((e) => ({
+            killAt: { x: e.kx, y: e.ky },
+            deathAt: { x: e.dx, y: e.dy },
+            victimIsDefence: e.vt === defTeam,
+            killerIsDefence: e.kt === defTeam,
+          }))
+          const verdicts = [
+            { zone: sideZones.a, seatZone: sideZones.a, v: judgeExchange(sideKills, sideZones.a), atkN: 'aAtkN', atkOk: 'aAtkOk', defN: 'aDefN', defOk: 'aDefOk' },
+            { zone: sideZones.b, seatZone: sideZones.b, v: judgeExchange(sideKills, sideZones.b), atkN: 'bAtkN', atkOk: 'bAtkOk', defN: 'bDefN', defOk: 'bDefOk' },
+            { zone: sideZones.f2, seatZone: sideZones.f2, v: judgeExchange(sideKills, sideZones.f2), atkN: 'f2AtkN', atkOk: 'f2AtkOk', defN: 'f2DefN', defOk: 'f2DefOk' },
+            { zone: sideZones.shortKill, seatZone: sideZones.shortKill, v: judgeShort(sideKills, sideZones.shortKill), atkN: 'shortAtkN', atkOk: 'shortAtkOk', defN: 'shortDefN', defOk: 'shortDefOk' },
+          ] as const
+          for (const row of verdicts) {
+            if (row.zone === null || !row.v.judged) continue
+            /*
+             * ★그 구역에 낀 사람★ — 잡았든 죽었든 그 구역이면 낀 것이다.
+             * ⚠ `teams` 는 ★pid 가 아니라 usn★ 을 담는다. 팀은 그 줄의 `kt`/`vt` 로 직접 읽는다 —
+             *   `teams` 로 되짚으면 조용히 빗나간다.
+             */
+            const here = new Map<string, boolean>()
+            for (const e of arr) {
+              const K = whoOf(mk, e.killer)
+              const V = whoOf(mk, e.victim)
+              if (K && e.kt !== null && inZone(row.zone, ptOf(e.kx, e.ky))) here.set(K.pid, e.kt === defTeam)
+              if (V && e.vt !== null && inZone(row.zone, ptOf(e.dx, e.dy))) here.set(V.pid, e.vt === defTeam)
+            }
+            for (const [pid, mineIsDefence] of here) {
+              const t = tallyOf(mk, pid)
+              if (mineIsDefence) {
+                t[row.defN] += 1
+                if (!row.v.breached) t[row.defOk] += 1
+              } else {
+                t[row.atkN] += 1
+                if (row.v.breached) t[row.atkOk] += 1
+              }
+            }
+          }
+        }
+
+        /* ★자리 재료★ — 그 선수 자기 자리. 킬이면 잡은 자리 · 데스면 죽은 자리 */
+        for (const e of arr) {
+          const K = whoOf(mk, e.killer)
+          const V = whoOf(mk, e.victim)
+          if (K) {
+            addSeat(tallyOf(mk, K.pid), ptOf(e.kx, e.ky), sideZones)
+            if (e.gun === 'sniper') tallyOf(mk, K.pid).sniperKills += 1
+          }
+          if (V) addSeat(tallyOf(mk, V.pid), ptOf(e.dx, e.dy), sideZones)
+        }
+      }
+
       for (const pid of seen) tallyOf(mk, pid).rounds += 1
       for (const pid of burstHere) tallyOf(mk, pid).burstRounds += 1
 
@@ -904,6 +1147,27 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         foeopenrounds: number
         cutrounds: number
         aliverounds: number
+        aatkn: number
+        aatkok: number
+        adefn: number
+        adefok: number
+        batkn: number
+        batkok: number
+        bdefn: number
+        bdefok: number
+        f2atkn: number
+        f2atkok: number
+        f2defn: number
+        f2defok: number
+        shortatkn: number
+        shortatkok: number
+        shortdefn: number
+        shortdefok: number
+        seatspots: number
+        seatbspots: number
+        seatf2spots: number
+        seatshortspots: number
+        sniperkills: number
       }[]
     >`
       WITH mw AS (
@@ -953,7 +1217,36 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              SUM(CASE WHEN h."weapon" = 1 THEN h."duelWon" * mw.w ELSE 0 END) AS sduelwon,
              SUM(CASE WHEN h."weapon" = 1 THEN h."duelLost" * mw.w ELSE 0 END) AS sduellost,
              SUM(CASE WHEN h."weapon" = 0 THEN h."duelWon" * mw.w ELSE 0 END) AS rduelwon,
-             SUM(CASE WHEN h."weapon" = 0 THEN h."duelLost" * mw.w ELSE 0 END) AS rduellost
+             SUM(CASE WHEN h."weapon" = 0 THEN h."duelLost" * mw.w ELSE 0 END) AS rduellost,
+             /*
+              * ★구역별 어택/방어 · 자리 재료★ (2026-09-17 사장님).
+              *
+              * ⚠ ★티어 가중치 mw.w 를 안 곱한다★ — 다른 축과 다르다. 일부러다.
+              *   이 칸들은 «몇 라운드를 쟀나» 라 화면이 ★분모가 10 미만이면 «측정중»★ 으로
+              *   거른다. 가중치를 곱하면 그 수가 소수가 되어 «몇 라운드» 가 아니게 된다.
+              *   구역을 뚫었나 못 뚫었나는 상대 티어와도 상관이 없다.
+              */
+             SUM(h."aAtkN") AS aatkn,
+             SUM(h."aAtkOk") AS aatkok,
+             SUM(h."aDefN") AS adefn,
+             SUM(h."aDefOk") AS adefok,
+             SUM(h."bAtkN") AS batkn,
+             SUM(h."bAtkOk") AS batkok,
+             SUM(h."bDefN") AS bdefn,
+             SUM(h."bDefOk") AS bdefok,
+             SUM(h."f2AtkN") AS f2atkn,
+             SUM(h."f2AtkOk") AS f2atkok,
+             SUM(h."f2DefN") AS f2defn,
+             SUM(h."f2DefOk") AS f2defok,
+             SUM(h."shortAtkN") AS shortatkn,
+             SUM(h."shortAtkOk") AS shortatkok,
+             SUM(h."shortDefN") AS shortdefn,
+             SUM(h."shortDefOk") AS shortdefok,
+             SUM(h."seatSpots") AS seatspots,
+             SUM(h."seatBSpots") AS seatbspots,
+             SUM(h."seatF2Spots") AS seatf2spots,
+             SUM(h."seatShortSpots") AS seatshortspots,
+             SUM(h."sniperKills") AS sniperkills
         FROM "LeaguePlayer" lp
         JOIN "MatchPlayerHex" h ON h."playerId" = lp."playerId"
         JOIN "Match" m ON m."id" = h."matchId" AND m."leagueId" = lp."leagueId"
@@ -1073,6 +1366,29 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rounds: h?.rounds ?? 0,
         firstKills: h?.firstkills ?? 0,
         crackKills: h?.crackkills ?? 0,
+        /* ★구역별 어택/방어 · 자리 재료★ (2026-09-17 사장님) */
+        aAtkN: Number(h?.aatkn ?? 0),
+        aAtkOk: Number(h?.aatkok ?? 0),
+        aDefN: Number(h?.adefn ?? 0),
+        aDefOk: Number(h?.adefok ?? 0),
+        bAtkN: Number(h?.batkn ?? 0),
+        bAtkOk: Number(h?.batkok ?? 0),
+        bDefN: Number(h?.bdefn ?? 0),
+        bDefOk: Number(h?.bdefok ?? 0),
+        f2AtkN: Number(h?.f2atkn ?? 0),
+        f2AtkOk: Number(h?.f2atkok ?? 0),
+        f2DefN: Number(h?.f2defn ?? 0),
+        f2DefOk: Number(h?.f2defok ?? 0),
+        shortAtkN: Number(h?.shortatkn ?? 0),
+        shortAtkOk: Number(h?.shortatkok ?? 0),
+        shortDefN: Number(h?.shortdefn ?? 0),
+        shortDefOk: Number(h?.shortdefok ?? 0),
+        seatSpots: Number(h?.seatspots ?? 0),
+        seatBSpots: Number(h?.seatbspots ?? 0),
+        seatF2Spots: Number(h?.seatf2spots ?? 0),
+        seatShortSpots: Number(h?.seatshortspots ?? 0),
+        sniperKills: Number(h?.sniperkills ?? 0),
+        ...seatOf(b, h),
         /*
          * ★스나차이 · 라플차이★ — 그 선수 무기 쪽이 앞선 판 수 (2026-09-16 밤).
          *   무기를 모르면 셀 수 없다 — 그때는 `undefined` 라 축이 `null` 이 된다.
@@ -1156,6 +1472,35 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         firstKills: p.firstKills,
         crackKills: p.crackKills,
         gapWinGames: p.gapWinGames ?? 0,
+        /* ★구역별 어택/방어 · 자리 재료★ (2026-09-17 사장님) */
+        aAtkN: p.aAtkN ?? 0,
+        aAtkOk: p.aAtkOk ?? 0,
+        aDefN: p.aDefN ?? 0,
+        aDefOk: p.aDefOk ?? 0,
+        bAtkN: p.bAtkN ?? 0,
+        bAtkOk: p.bAtkOk ?? 0,
+        bDefN: p.bDefN ?? 0,
+        bDefOk: p.bDefOk ?? 0,
+        f2AtkN: p.f2AtkN ?? 0,
+        f2AtkOk: p.f2AtkOk ?? 0,
+        f2DefN: p.f2DefN ?? 0,
+        f2DefOk: p.f2DefOk ?? 0,
+        shortAtkN: p.shortAtkN ?? 0,
+        shortAtkOk: p.shortAtkOk ?? 0,
+        shortDefN: p.shortDefN ?? 0,
+        shortDefOk: p.shortDefOk ?? 0,
+        seatSpots: p.seatSpots ?? 0,
+        seatBSpots: p.seatBSpots ?? 0,
+        seatF2Spots: p.seatF2Spots ?? 0,
+        seatShortSpots: p.seatShortSpots ?? 0,
+        sniperKills: p.sniperKills ?? 0,
+        /*
+         * ★그 선수의 자리★ — 시즌 합으로 한 번만 정한다. 경기 하나로 정하면 흔들린다 (최빈 69.8%).
+         * 30경기 미만이거나 1·2위가 1.1배 안쪽이면 ★이름을 안 붙인다★ (null / all).
+         * 개인 육각은 이 칸을 안 본다 — 화면 이름표용이다.
+         */
+        seat: p.seat ?? null,
+        seatRatio: p.seatRatio ?? null,
         /* 게임템포의 재료 — 화면은 접힌 값(`opening`)을 읽지만 원시 합도 남겨 둔다 */
         tempoSeconds: p.tempoSeconds,
         tempoCount: p.tempoCount,
