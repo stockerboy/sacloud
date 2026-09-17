@@ -355,13 +355,60 @@ async function main(): Promise<void> {
 
   /* 가중치를 정하려면 ★점수 차이가 얼마나 촘촘한지★ 를 알아야 한다 */
   const at = (n: number): string => (list[n - 1] ? list[n - 1].avg.toFixed(2) : '—')
-  console.log(`\n경기당 점수 분포 — 1위 ${at(1)} · 5위 ${at(5)} · 10위 ${at(10)} · 20위 ${at(20)} · 30위 ${at(30)} · 50위 ${at(50)} · 100위 ${at(100)}`)
-  const gaps = [1, 5, 10, 20, 30].map((n) => {
-    const a = list[n - 1]?.avg ?? 0
-    const b = list[n]?.avg ?? 0
-    return `${n}↔${n + 1}위 ${(a - b).toFixed(3)}`
-  })
-  console.log('이웃 등수 차이 — ' + gaps.join(' · '))
+  console.log(`
+경기당 점수 분포 — 1위 ${at(1)} · 5위 ${at(5)} · 10위 ${at(10)} · 20위 ${at(20)} · 30위 ${at(30)} · 50위 ${at(50)} · 100위 ${at(100)}`)
+
+  /*
+   * ── ★상위권 보정★ 을 얼마로 줄까 (2026-09-18 사장님: «ㄱ보고 몇점 가중치를 줄지 결정하자»)
+   *
+   * 보정 대상은 ★현 시각 IPL 1~11등★ 이다 — 그게 곧 ★1부 전부★ 다.
+   */
+  const top = await prisma.$queryRawUnsafe<{ slug: string; name: string; rating: number }[]>(`
+    SELECT c."slug", c."name", lc."rating"
+      FROM "LeagueClan" lc
+      JOIN "League" l ON l."id" = lc."leagueId"
+      JOIN "Clan" c ON c."id" = lc."clanId"
+     WHERE l."slug" = '${SLUG}'
+     ORDER BY lc."rating" DESC NULLS LAST
+     LIMIT 11`)
+  const topSlugs = new Set(top.map((t) => t.slug))
+  console.log(`
+★상위권 클랜 11★ — ${top.map((t) => t.name).join(' · ')}`)
+
+  const inTop = list.filter((t) => topSlugs.has(t.clan))
+  const ranks = inTop.map((t) => list.indexOf(t) + 1)
+  console.log(`  그 클랜 선수 ${inTop.length}명 (${MIN_GAMES}경기 이상)`)
+  if (ranks.length > 0) {
+    console.log(`  지금 순위 — 제일 높은 ★${Math.min(...ranks)}등★ · 중간값 ${ranks.sort((a, b) => a - b)[Math.floor(ranks.length / 2)]}등 · 30등 안 ${ranks.filter((r) => r <= 30).length}명`)
+  }
+
+  /* 보정을 얼마 줬을 때 몇 명이 30등 안에 드나 */
+  console.log('
+  보정   30등 안 상위권  1등 클랜        최고 등수 변화')
+  for (const bonus of [0, 0.5, 1, 1.5, 2, 3]) {
+    const bumped = list
+      .map((t) => ({ ...t, adj: t.avg + (topSlugs.has(t.clan) ? bonus : 0) }))
+      .sort((a, b) => b.adj - a.adj)
+    const n30 = bumped.slice(0, 30).filter((t) => topSlugs.has(t.clan)).length
+    const best = bumped.findIndex((t) => topSlugs.has(t.clan)) + 1
+    console.log(
+      '  ' + String(bonus).padStart(4) + '점' +
+      String(n30).padStart(12) + '명' +
+      '   ' + (bumped[0]?.clan ?? '?').padEnd(14) +
+      '  ' + String(best) + '등',
+    )
+  }
+
+  /* 보정이 ★몇 등짜리★ 인지 — 이웃 등수 차이로 환산 */
+  const gaps: string[] = []
+  for (const n of [10, 30, 100, 300]) {
+    const a = list[n - 1]?.avg
+    if (a === undefined) continue
+    const moved = list.filter((t) => t.avg >= a + 0.5).length
+    gaps.push(`${n}등 → 0.5점 주면 ${moved + 1}등`)
+  }
+  console.log('
+  0.5점이 몇 등짜리인가 — ' + gaps.join(' · '))
 
   await prisma.$disconnect()
 }
