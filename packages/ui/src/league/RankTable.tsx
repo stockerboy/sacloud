@@ -30,6 +30,7 @@ import {
 } from '../common/format'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 import { ClanBadges } from './ClanBadges'
+import { TraitEmblem } from './TraitEmblem'
 
 /**
  * ★클랜 줄에 배지를 그릴 것인가★ (2026-09-17 사장님:
@@ -834,6 +835,31 @@ export function PlayerRankTable({
                     </span>
                   )}
                 </div>
+                {/*
+                  * ★특성 앨블럼★ (2026-09-17 사장님:
+                  *   «상위 10프로 안에 드는 특성들은 앨블럼을 줘
+                  *    피파 그 파워헤더 같은 특성들처럼 육각형 모양 앨블럼 특징에 맞게 넣어줘»).
+                  *
+                  *   닉네임과 수치 사이가 비어 보였던 그 자리다 —
+                  *   ★빈 자리를 없애는 것이 아니라 채우는 것이 답이다.★
+                  *
+                  *   서버가 이미 갈라 보낸다 (`traitTierOf`) — 화면은 그리기만 한다.
+                  *   보통 0~2개라 줄이 안 부푸다. 폰에서 자리가 모자라면 줄바꿈하지 않고
+                  *   ★숨는다★ — 줄 높이가 틀어지면 표 리듬이 깨진다.
+                  */}
+                {(row.trait_emblems ?? []).length > 0 ? (
+                  <span className="ml-2 flex shrink-0 items-center gap-1 overflow-hidden">
+                    {(row.trait_emblems ?? []).slice(0, 3).map((e) => (
+                      <TraitEmblem
+                        key={`${e.axis}-${e.weapon}`}
+                        axis={e.axis as Parameters<typeof TraitEmblem>[0]['axis']}
+                        weapon={e.weapon}
+                        tier={e.tier}
+                        size={22}
+                      />
+                    ))}
+                  </span>
+                ) : null}
               </div>
             ) : (
             <div className={COL_NAME}>

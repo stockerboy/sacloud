@@ -406,6 +406,35 @@ export const PlayerRankRow = z.object({
    * 못 잰 선수(주무기 10판 미만)는 `null` 이고 카드는 그림 자리를 비운다 — 지어내지 않는다.
    */
   hex_axes: z.array(PlayerRankHexAxis).nullable().optional(),
+  /**
+   * ★특성 앰블럼★ — 그 선수가 ★최상위권·상위권★ 인 축들 (2026-09-17 사장님:
+   * 「상위10프로 안에 드는 특성들은 앰블럼을 줘」).
+   *
+   * ── `hex_axes` 와 무엇이 다른가
+   *   `hex_axes` 는 ★1~3위 세 줄에만★ 실리는 ★여섯 축 전부★ 다 (카드를 그리려고).
+   *   이건 ★스무 줄 모두★ 에 실리는 ★자랑할 축만★ 이다. 보통 0~2개라 응답이 안 붓는다.
+   *
+   * ── 등급 판정은 화면이 안 한다
+   *   몇 위·몇 % 가 어느 등급인지는 `traitTierOf()` 한 곳이 정한다 (`traitTier.ts`).
+   *   서버가 이미 갈라서 보내고 화면은 그리기만 한다 — 화면마다 경계가 갈리지 않게.
+   */
+  trait_emblems: z
+    .array(
+      z.object({
+        /** 축 열쇠 — `save` · `duel` · `chance` · `safe` · `gap` · `outnumbered` */
+        axis: z.string(),
+        /** ★0 라이플 · 1 스나이퍼★ — 같은 축도 무기에 따라 이름과 그림이 다르다 */
+        weapon: z.union([z.literal(0), z.literal(1)]),
+        /** `best` 최상위권(5위 이내) · `high` 상위권(10% 이내) */
+        tier: z.union([z.literal('best'), z.literal('high')]),
+      }),
+    )
+    /*
+     * ★있으면 그리고 없으면 안 그린다★ — `hex_axes` 와 같은 꼴이다.
+     *   랭킹 줄을 만드는 곳이 여럿(개인랭킹 · 무기별 · 클랜원 목록 · 기록실)이라
+     *   필수로 두면 그 전부가 빈 배열을 적어 넣어야 한다. 뜻도 없는 손질이다.
+     */
+    .optional(),
 })
 export type PlayerRankRow = z.infer<typeof PlayerRankRow>
 

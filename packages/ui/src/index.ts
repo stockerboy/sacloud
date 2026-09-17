@@ -392,3 +392,5 @@ export * from './league/FlagMountain'
 export * from './league/FormTopCard'
 /** ★리그 탭을 본문 맨 위로★ — 고정 띠를 하나로 (2026-09-16 사장님) */
 export * from './league/LeagueTabsInline'
+/** ★특성 앰블럼★ — 배지 하나를 육각형 딱지로 (2026-09-17 사장님) */
+export * from './league/TraitEmblem'

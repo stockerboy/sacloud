@@ -34,6 +34,9 @@ import {
   FORM_TOP_MIN_GAMES,
   FORM_TOP_SIZE,
   PLAYER_HEX_AXIS_ORDER,
+  traitTierGetsEmblem,
+  traitTierOf,
+  type TraitAxisKey,
   RANK_WEAPON_CODE,
   playerHexLabelOf,
   kdRate,
@@ -56,6 +59,7 @@ import { cumulativeKdRate } from './visibility'
 import { ladderMatchWhere } from './ladderScope'
 import { rankTierStatsOf, weaponSliceOf } from './rankTierStats'
 import { SEASON0_ORIGINS, seasonWindowWhere } from './season0Scope'
+import { AXIS_COLUMNS } from './playerHex'
 
 /** 한 무기 축(스나·라플)만 가리키는 좁은 타입 — `all` 은 여기 오지 않는다 */
 export type WeaponAxis = Exclude<RankWeapon, 'all'>
@@ -595,6 +599,8 @@ export async function getPlayerRanksByScore(
         home_tier: row.homeTier ?? null,
         /* ★1·2·3위만★ 여섯 축을 싣는다 (2026-09-12 사장님) */
         hex_axes: rank <= PODIUM_SIZE ? hexAxesOf(row) : null,
+        /* ★스무 줄 모두★ 에 싣는다 — 보통 0~2개라 응답이 안 붓는다 */
+        trait_emblems: traitEmblemsOf(row),
         weapon: 'all' as const,
         score: row.score,
         score_weapon: row.weapon === 0 || row.weapon === 1 ? row.weapon : null,
@@ -613,9 +619,54 @@ export async function getPlayerRanksByScore(
 const PODIUM_SIZE = 3
 
 /** 축 차례는 선수 상세와 ★같다★ — 12시부터 시계 방향 (`PLAYER_HEX_AXIS_ORDER`) */
-/** 축 키 → DB 칸 이름. `survival` 만 옛 이름(`opening`)을 쓴다 (2026-09-16) */
-type HexDbKey = 'save' | 'duel' | 'carry' | 'opening' | 'burst' | 'outnumbered'
-const dbKeyOf = (key: string): HexDbKey => (key === 'survival' ? 'opening' : (key as HexDbKey))
+/**
+ * 축 키 → DB 칸 이름.
+ *
+ * ⚠ ★2026-09-17 — 여기가 틀려서 세 축이 조용히 `null` 이었다★.
+ *
+ *   옛 줄은 `survival → opening` 한 가지만 갈아 주고 나머지는 축 키를 그대로 칸 이름으로
+ *   썼다. 그런데 2026-09-16 밤에 축 이름이 셋 바뀌었다 —
+ *
+ *   ```
+ *   축 키        DB 칸        옛 줄이 찾던 칸    결과
+ *   chance   →   carry*       chance*            없음 → null
+ *   safe     →   opening*     safe*              없음 → null
+ *   gap      →   burst*       gap*               없음 → null
+ *   ```
+ *
+ *   ★그림은 멀쩡해 보인다★ — 포디움 카드가 여섯 축 중 셋만 그리고 나머지는 「측정중」
+ *   이라 적었다. 자료가 없는 줄 알았지 잘못 찾는 줄은 몰랐다.
+ *
+ *   ★표를 새로 만들지 않는다★ — 선수 화면이 쓰는 `AXIS_COLUMNS` 가 이미 옳은 짝을
+ *   담고 있다. 두 곳이 갈리면 또 같은 일이 난다. 그 표 하나를 같이 본다.
+ */
+const dbKeyOf = (key: TraitAxisKey): string => AXIS_COLUMNS[key].value
+
+/* 줄에서 그 축의 값을 꺼낸다 — 칸 이름은 `AXIS_COLUMNS` 한 곳이 정한다 */
+const numOrNull = (v: unknown): number | null => (typeof v === 'number' ? v : null)
+const pctOf = (row: ScoreRankRow, key: TraitAxisKey): number | null =>
+  numOrNull((row as unknown as Record<string, unknown>)[`${dbKeyOf(key)}Pct`])
+const rankOf = (row: ScoreRankRow, key: TraitAxisKey): number | null =>
+  numOrNull((row as unknown as Record<string, unknown>)[`${dbKeyOf(key)}Rank`])
+const totalOf = (row: ScoreRankRow, key: TraitAxisKey): number | null =>
+  numOrNull((row as unknown as Record<string, unknown>)[`${dbKeyOf(key)}Total`])
+
+/**
+ * ★자랑할 축만 골라 낸다★ (2026-09-17 사장님) — 최상위권·상위권.
+ *
+ * 무기를 모르면 안 준다 — 같은 축도 무기에 따라 이름과 그림이 다르다
+ * (`duel` 은 스나면 「롱 마스터」, 라플이면 「라이플화력」). 지어내지 않는다.
+ */
+function traitEmblemsOf(row: ScoreRankRow): { axis: string; weapon: 0 | 1; tier: 'best' | 'high' }[] {
+  const weapon = row.weapon === 0 || row.weapon === 1 ? row.weapon : null
+  if (weapon === null) return []
+  const out: { axis: string; weapon: 0 | 1; tier: 'best' | 'high' }[] = []
+  for (const key of PLAYER_HEX_AXIS_ORDER) {
+    const tier = traitTierOf(rankOf(row, key), totalOf(row, key))
+    if (traitTierGetsEmblem(tier)) out.push({ axis: key, weapon, tier })
+  }
+  return out
+}
 
 function hexAxesOf(row: ScoreRankRow): PlayerRankHexAxis[] {
   const weapon = row.weapon === 0 || row.weapon === 1 ? row.weapon : null
@@ -626,9 +677,9 @@ function hexAxesOf(row: ScoreRankRow): PlayerRankHexAxis[] {
      * ⚠ ★DB 칸은 아직 `opening*` 이다★ — 2026-09-16 에 축 키만 `survival` 로 바꿨다.
      *   칸을 갈면 마이그레이션이 커지고, 어느 판의 값인지는 `formulaVersion` 이 가른다.
      */
-    percentile: row[`${dbKeyOf(key)}Pct`] ?? null,
-    rank: row[`${dbKeyOf(key)}Rank`] ?? null,
-    total: row[`${dbKeyOf(key)}Total`] ?? null,
+    percentile: pctOf(row, key),
+    rank: rankOf(row, key),
+    total: totalOf(row, key),
   }))
 }
 

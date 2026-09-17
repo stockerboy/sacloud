@@ -821,6 +821,25 @@ export function getOverallClanRanks(leagueId: string, limit?: number): ClanRankR
   return limit === undefined ? rows : rows.slice(0, limit)
 }
 
+
+/**
+ * ★가짜 특성 앰블럼★ (2026-09-17) — 화면을 눈으로 보려고 둔 것이다.
+ *
+ * 등수로 정해진 값을 돌려준다(무작위가 아니다) — 같은 줄이 늘 같은 앰블럼을 단다.
+ * 실제 값은 서버가 `traitTierOf()` 로 가른다. 여기서는 ★모양만★ 만든다.
+ */
+const MOCK_EMBLEM_AXES = ['save', 'duel', 'chance', 'safe', 'gap', 'outnumbered'] as const
+function mockTraitEmblems(rank: number, weapon: 0 | 1): PlayerRankRow['trait_emblems'] {
+  /* 1~3위는 둘, 4~10위는 하나, 그 아래는 없다 — 실제 분포와 비슷하게 */
+  const count = rank <= 3 ? 2 : rank <= 10 ? 1 : 0
+  const out: PlayerRankRow['trait_emblems'] = []
+  for (let i = 0; i < count; i += 1) {
+    const axis = MOCK_EMBLEM_AXES[(rank + i * 2) % MOCK_EMBLEM_AXES.length] ?? 'save'
+    out.push({ axis, weapon, tier: rank <= 5 ? 'best' : 'high' })
+  }
+  return out
+}
+
 export function getPlayerRanks(leagueId: string, cursor: string | null, size: number): Page<PlayerRankRow> | null {
   if (!leagueById.has(leagueId)) return null
   const rows: PlayerRankRow[] = rankedPlayers(leagueId)
@@ -831,6 +850,7 @@ export function getPlayerRanks(leagueId: string, cursor: string | null, size: nu
       const matchCount = matchCountByLeaguePlayer.get(`${leaguePlayer.leagueId}:${leaguePlayer.playerId}`) ?? 0
       return {
         rank: index + 1,
+        trait_emblems: mockTraitEmblems(index + 1, index % 2 === 0 ? 1 : 0),
         league_player_id: leaguePlayer.id,
         player: { id: player.id, name: player.name },
         clan: clanSummaryOf(leagueClan.clanId),
@@ -892,6 +912,7 @@ export function getPlayerRanksByWeapon(
     )
     .map(({ leaguePlayer, bucket, player, leagueClan }, index) => ({
       rank: index + 1,
+      trait_emblems: mockTraitEmblems(index + 1, code === 1 ? 1 : 0),
       league_player_id: leaguePlayer.id,
       player: { id: player.id, name: player.name },
       clan: clanSummaryOf(leagueClan.clanId),
@@ -2626,6 +2647,7 @@ export function getLeagueClanPlayers(
       const matchCount = matchCountByLeaguePlayer.get(`${league.id}:${leaguePlayer.playerId}`) ?? 0
       return {
         rank: index + 1,
+        trait_emblems: mockTraitEmblems(index + 1, index % 2 === 0 ? 1 : 0),
         league_player_id: leaguePlayer.id,
         player: { id: player.id, name: player.name },
         clan: clanSummaryOf(leagueClan.clanId),
