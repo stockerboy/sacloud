@@ -22,6 +22,10 @@ import {
   positionOf,
   sideAxisOfPosition,
   zoneCellsOfAnyLabels,
+  HOME_FLOOR_LABELS,
+  HOME_SNIPE_LABELS,
+  defenceByHomeRule,
+  type HomeRuleKill,
   type AnyZoneFile,
   type PlayerSeatTally,
   type SideKill,
@@ -212,5 +216,69 @@ describe('자리(포지션)', () => {
     const v = positionOf({ ...base, spots: 0 })
     expect(v.key).toBeNull()
     expect(v.pending).toBe('spots')
+  })
+})
+
+describe('★C4 가 없을 때 진영★ — 사장님 규칙 (2026-09-17)', () => {
+  const floor = zoneCellsOfAnyLabels(FILES, HOME_FLOOR_LABELS)
+  const snipe = zoneCellsOfAnyLabels(FILES, HOME_SNIPE_LABELS)
+  const hk = (
+    kx: number, ky: number, dx: number, dy: number,
+    kt: string, vt: string, ks = false, vs = false,
+  ): HomeRuleKill => ({
+    killAt: { x: kx, y: ky }, deathAt: { x: dx, y: dy },
+    killerTeam: kt, victimTeam: vt, killerIsSniper: ks, victimIsSniper: vs,
+  })
+
+  it('바닥에서 두 번 이상 싸운 팀이 수비(블루)다', () => {
+    /* 227,440 = 바닥. 0팀이 거기서 두 번 잡았다 */
+    const v = defenceByHomeRule([
+      hk(227, 440, 100, 100, '0', '1'),
+      hk(227, 440, 100, 100, '0', '1'),
+    ], floor, snipe)
+    expect(v.defence).toBe('0')
+  })
+
+  it('★스나일 때만★ 머리·녹뒤·컨뒤를 센다', () => {
+    /* 347,271 = 머리. 라플이면 안 센다 */
+    const rifle = defenceByHomeRule([
+      hk(347, 271, 100, 100, '0', '1', false),
+      hk(347, 271, 100, 100, '0', '1', false),
+    ], floor, snipe)
+    expect(rifle.defence).toBeNull()
+    const sniper = defenceByHomeRule([
+      hk(347, 271, 100, 100, '0', '1', true),
+      hk(347, 271, 100, 100, '0', '1', true),
+    ], floor, snipe)
+    expect(sniper.defence).toBe('0')
+  })
+
+  it('★한 번뿐이면 안 정한다★ — 사장님이 「2회 이상」 이라 하셨다', () => {
+    expect(defenceByHomeRule([hk(227, 440, 100, 100, '0', '1')], floor, snipe).defence).toBeNull()
+  })
+
+  it('★비기면 안 정한다★ — 억지로 다수결하지 않는다', () => {
+    const v = defenceByHomeRule([
+      hk(227, 440, 100, 100, '0', '1'),
+      hk(227, 440, 100, 100, '0', '1'),
+      hk(100, 100, 227, 440, '0', '1'),
+      hk(100, 100, 227, 440, '0', '1'),
+    ], floor, snipe)
+    /* 0팀 2점 · 1팀 2점 */
+    expect(v.score['0']).toBe(2)
+    expect(v.score['1']).toBe(2)
+    expect(v.defence).toBeNull()
+  })
+
+  it('죽어도 센다 — 「죽거나 잡은」 이다', () => {
+    const v = defenceByHomeRule([
+      hk(100, 100, 227, 440, '1', '0'),
+      hk(100, 100, 227, 440, '1', '0'),
+    ], floor, snipe)
+    expect(v.defence).toBe('0')
+  })
+
+  it('구역을 모르면 안 정한다', () => {
+    expect(defenceByHomeRule([hk(227, 440, 227, 440, '0', '1')], null, null).defence).toBeNull()
   })
 })

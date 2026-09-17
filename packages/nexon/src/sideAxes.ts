@@ -240,6 +240,87 @@ const pointOf = (p: { x: number | null; y: number | null }): { x: number; y: num
   p.x == null || p.y == null || (p.x === 0 && p.y === 0) ? null : { x: p.x, y: p.y }
 
 /* -------------------------------------------------------------------------- */
+/* 진영 — C4 가 없을 때                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * ★사장님 진영 규칙★ (2026-09-17). C4 가 한 반에 하나도 없을 때 쓴다.
+ *
+ * > «우리 바닥이 바닥에서(벙커x)죽거나 잡은게 2회이상이면 그 팀은 무조건 블루 진영이야
+ * >  또는 우리스나가 상대를 잡거나 죽은 위치가 머리 녹뒤 컨뒤 셋중하나인게 2회이상
+ * >  이것도 블루팀의 신호야»
+ * > «생각해보니 벙커도 바닥임»
+ * > «여기서 스나가 2번이상잡거나 죽으면 무조건 그 스나가 있는 팀이 블루
+ * >  여기서 라플이 2번이상잡거나 죽으면 그 라플이 있는곳이 무조간 블루»
+ *
+ * ★블루 = 수비★ 다. 자기 집에서 싸운 쪽이 수비다 — 바닥·벙커는 라플(바닥 포지)의 집이고,
+ * 머리·녹뒤·컨뒤는 스나의 집이다. 공격이 거기까지 들어와 죽는 일은 드물다.
+ *
+ * ── 실측 (2026-09-17 · 시즌0)
+ *   규칙②(스나) 하나만    99.56% 맞음 · 적용 82.1%
+ *   ①+② 합이 많은 쪽      99.66% 맞음 · 적용 99.7%
+ *   이 규칙으로 채운 경기   13.2% (나머지 86.8% 는 C4 가 정했다)
+ *
+ * ⚠ ★C4 가 있으면 C4 가 이긴다.★ 이건 «없을 때만» 쓰는 후퇴값이다.
+ * ⚠ 비기면 `null` 이다 — 억지로 다수결하지 않는다. 진영을 틀리면 어택과 방어가
+ *   통째로 뒤집혀 조용히 거짓이 된다.
+ */
+export const HOME_FLOOR_LABELS = ['BADAK', 'BUNKER'] as const
+export const HOME_SNIPE_LABELS = ['MERI', 'NOKDWI', 'CONDWI'] as const
+/** 「2회 이상」 — 사장님이 못 박으신 수 */
+export const HOME_RULE_MIN_HITS = 2
+
+export interface HomeRuleKill {
+  killAt: { x: number | null; y: number | null }
+  deathAt: { x: number | null; y: number | null }
+  killerTeam: string | null
+  victimTeam: string | null
+  /** 그 경기에서 스나로 뛰었나 */
+  killerIsSniper: boolean
+  victimIsSniper: boolean
+}
+
+export interface HomeRuleVerdict {
+  /** 수비(블루)로 본 팀. 못 정하면 `null` */
+  defence: string | null
+  /** 팀별 점수 — 왜 그렇게 봤는지 되짚을 근거 */
+  score: Record<string, number>
+}
+
+export function defenceByHomeRule(
+  kills: readonly HomeRuleKill[],
+  floorZone: ZoneCells | null,
+  snipeZone: ZoneCells | null,
+): HomeRuleVerdict {
+  const score: Record<string, number> = {}
+  const bump = (team: string | null) => {
+    if (team === null || team === '') return
+    score[team] = (score[team] ?? 0) + 1
+  }
+  for (const k of kills) {
+    const kp = pointOf(k.killAt)
+    const dp = pointOf(k.deathAt)
+    /* ① 바닥·벙커 — 거기서 ★잡았든 죽었든★ 그 사람 팀에 한 점 */
+    if (floorZone !== null) {
+      if (inZone(floorZone, kp)) bump(k.killerTeam)
+      if (inZone(floorZone, dp)) bump(k.victimTeam)
+    }
+    /* ② 머리·녹뒤·컨뒤 — ★스나일 때만★ */
+    if (snipeZone !== null) {
+      if (k.killerIsSniper && inZone(snipeZone, kp)) bump(k.killerTeam)
+      if (k.victimIsSniper && inZone(snipeZone, dp)) bump(k.victimTeam)
+    }
+  }
+  const ranked = Object.entries(score).sort((a, b) => b[1] - a[1])
+  const first = ranked[0]
+  const second = ranked[1]
+  /* 상대 쪽 점수가 아예 없으면 견줄 수가 없다 — 그래도 2회를 넘겼으면 그 팀이 블루다 */
+  if (!first || first[1] < HOME_RULE_MIN_HITS) return { defence: null, score }
+  if (second && second[1] === first[1]) return { defence: null, score }
+  return { defence: first[0], score }
+}
+
+/* -------------------------------------------------------------------------- */
 /* 자리(포지션)                                                                 */
 /* -------------------------------------------------------------------------- */
 

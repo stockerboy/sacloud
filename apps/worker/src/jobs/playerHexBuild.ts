@@ -49,6 +49,11 @@ import {
   /* 진영 — 폭탄이 정한다. 없으면 그 라운드는 판정하지 않는다 */
   roundSidesOf,
   type RoundSideEvent,
+  /* C4 가 없는 반은 사장님 규칙으로 채운다 */
+  defenceByHomeRule,
+  HOME_FLOOR_LABELS,
+  HOME_SNIPE_LABELS,
+  type HomeRuleKill,
   /* 자리 — 시즌 합으로 한 번만 정한다 */
   positionOf,
 } from '@sacloud/nexon'
@@ -310,13 +315,16 @@ function loadCrackZone(): ZoneCells | null {
 function loadSideZones(): {
   a: ZoneCells | null; b: ZoneCells | null; f2: ZoneCells | null
   shortKill: ZoneCells | null; shortSeat: ZoneCells | null
+  homeFloor: ZoneCells | null; homeSnipe: ZoneCells | null
 } {
   const files: AnyZoneFile[] = []
   for (const path of [ZONE_FILE, FLOOR_ZONE_FILE]) {
     if (!existsSync(path)) continue
     files.push(JSON.parse(readFileSync(path, 'utf8')) as AnyZoneFile)
   }
-  if (files.length === 0) return { a: null, b: null, f2: null, shortKill: null, shortSeat: null }
+  if (files.length === 0) {
+    return { a: null, b: null, f2: null, shortKill: null, shortSeat: null, homeFloor: null, homeSnipe: null }
+  }
   return {
     a: zoneCellsOfAnyLabels(files, A_ZONE_LABELS),
     b: zoneCellsOfAnyLabels(files, B_ZONE_LABELS),
@@ -324,6 +332,9 @@ function loadSideZones(): {
     /* 숏은 ★어택 판정★ 과 ★자리 판정★ 이 다른 구역을 쓴다 (`sideAxes.ts` 주석) */
     shortKill: zoneCellsOfAnyLabels(files, SHORT_KILL_ZONE_LABELS),
     shortSeat: zoneCellsOfAnyLabels(files, SHORT_ZONE_LABELS),
+    /* ★C4 가 없는 반★ 을 채우는 근거 — 바닥·벙커(라플의 집) · 머리·녹뒤·컨뒤(스나의 집) */
+    homeFloor: zoneCellsOfAnyLabels(files, HOME_FLOOR_LABELS),
+    homeSnipe: zoneCellsOfAnyLabels(files, HOME_SNIPE_LABELS),
   }
 }
 
@@ -628,6 +639,78 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         const map = new Map<number, string>()
         for (const [round, side] of sides.side) map.set(round, side === 'defense' ? tA : tB)
         defenceOf.set(mk, map)
+      }
+
+      /*
+       * ★C4 가 없는 반을 사장님 규칙으로 채운다★ (2026-09-17 사장님:
+       *   «너 여태 폭탄설치 없었던 판의 전반 후반 구분을 할 줄 모르면
+       *    어택성공률 어택방어율은 어케잰거야? 누가 어택차례고 누가 방어차례인줄 알고?»).
+       *
+       * 실측 — C4 가 정한 경기 86.8% · 이 규칙이 채운 경기 ★13.2%★. 안 넣으면 그만큼이 통째로 빈다.
+       * 규칙과 셈은 `sideAxes.ts` 의 `defenceByHomeRule` 하나뿐이다.
+       *
+       * ★전·후반은 서로 반대다★ — 한 반을 알면 다른 반이 정해진다. 그래서
+       *   ① 아는 반이 있으면 뒤집어 채우고
+       *   ② 둘 다 모르면 그 반의 교전으로 규칙을 돌린다
+       * 그래도 못 정하면 ★안 채운다★ — 진영을 틀리면 어택과 방어가 통째로 뒤집힌다.
+       */
+      for (const [mk, rounds] of roundsOfMatch) {
+        const teams = roster.get(mk)
+        if (!teams || teams.size !== 2) continue
+        const [tA, tB] = [...teams.keys()]
+        if (!tA || !tB) continue
+        const known = defenceOf.get(mk) ?? new Map<number, string>()
+        const sorted = [...rounds].sort((a, b) => a - b)
+        /* 전반의 끝 — 아는 라운드에서 수비가 바뀌는 자리. 모르면 5승 규칙이 정한 자리 */
+        let switchAt: number | null = null
+        for (let i = 1; i < sorted.length; i += 1) {
+          const prev = known.get(sorted[i - 1] as number)
+          const here = known.get(sorted[i] as number)
+          if (prev !== undefined && here !== undefined && prev !== here) { switchAt = sorted[i] as number; break }
+        }
+        if (switchAt === null) {
+          /* 승수로 전반의 끝을 찾는다 — 한 팀이 5승에 닿은 라운드 다음이 후반이다 */
+          const acc: Record<string, number> = {}
+          for (const r of sorted) {
+            const v = roundWinner.get(`${mk}|${r}`)
+            if (v === undefined || v === null) continue
+            const winner = v.startsWith('!') ? (v.slice(1) === tA ? tB : v.slice(1) === tB ? tA : null) : v
+            if (winner === null) continue
+            acc[winner] = (acc[winner] ?? 0) + 1
+            if (acc[winner] >= 5) { switchAt = r + 1; break }
+          }
+        }
+        if (switchAt === null) continue
+        const halves: number[][] = [sorted.filter((r) => r < switchAt), sorted.filter((r) => r >= switchAt)]
+        if (halves[0]?.length === 0 || halves[1]?.length === 0) continue
+        const filled = new Map(known)
+        for (let i = 0; i < 2; i += 1) {
+          const half = halves[i] as number[]
+          if (half.some((r) => filled.has(r))) continue
+          const other = halves[1 - i] as number[]
+          const otherDef = other.map((r) => filled.get(r)).find((v) => v !== undefined)
+          let def: string | null = otherDef !== undefined ? (otherDef === tA ? tB : tA) : null
+          if (def === null) {
+            const hk: HomeRuleKill[] = []
+            for (const r of half) {
+              for (const e of byRound.get(`${mk}|${r}`) ?? []) {
+                hk.push({
+                  killAt: { x: e.kx, y: e.ky },
+                  deathAt: { x: e.dx, y: e.dy },
+                  killerTeam: e.kt,
+                  victimTeam: e.vt,
+                  /* 무기는 ★그 경기 기록★ 으로 본다 (`MatchPlayerStat.weapon` · 1 이 스나) */
+                  killerIsSniper: whoOf(mk, e.killer)?.weapon === 1,
+                  victimIsSniper: whoOf(mk, e.victim)?.weapon === 1,
+                })
+              }
+            }
+            def = defenceByHomeRule(hk, sideZones.homeFloor, sideZones.homeSnipe).defence
+          }
+          if (def === null) continue
+          for (const r of half) filled.set(r, def)
+        }
+        if (filled.size > known.size) defenceOf.set(mk, filled)
       }
     }
 
