@@ -24,13 +24,18 @@ async function call(method: 'GET' | 'POST', path: string, body: string | null) {
   return barracksBrowser().call(method, path, body)
 }
 
-/** 병영수첩의 사람 식별자(`str_usn`). 우리 `Player.externalId` 가 `SUP-<숫자>` 꼴이라 뒷부분만 쓴다 */
+/**
+ * 병영수첩의 사람 식별자(`str_usn`). ★클랜원 명단에 관측해 둔 값★ 을 쓴다 —
+ * `Player` 에는 그 칸이 없다 (`name`·`clanId` 뿐이다).
+ * ⚠ 위장닉이 섞이므로 ★가장 최근 관측★ 을 고른다 (D-221).
+ */
 async function usnOf(nick: string): Promise<string> {
-  const rows = await prisma.$queryRaw<{ externalId: string; name: string }[]>`
-    SELECT "externalId", "name" FROM "Player" WHERE "name" = ${nick} LIMIT 5`
-  if (rows.length === 0) throw new Error(`${nick} 이 Player 에 없다`)
-  const raw = rows[0].externalId
-  return raw.includes('-') ? raw.slice(raw.indexOf('-') + 1) : raw
+  const rows = await prisma.$queryRaw<{ strUsn: string; clanSlug: string }[]>`
+    SELECT "strUsn", "clanSlug" FROM "BarracksClanMember"
+     WHERE "userNick" = ${nick} ORDER BY "observedAt" DESC LIMIT 5`
+  if (rows.length === 0) throw new Error(`${nick} 을 BarracksClanMember 에서 못 찾았다`)
+  console.log(`  ${nick} → ${rows.length}건 관측 · 최근 클랜 ${rows[0].clanSlug}`)
+  return rows[0].strUsn
 }
 
 const usn = await usnOf(NICK)
