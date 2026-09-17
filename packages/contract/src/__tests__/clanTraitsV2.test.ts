@@ -136,6 +136,11 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
      *   같이 담아 두므로 합산이 그것도 지켜야 한다.
      */
     blockChance: { foeOpenRounds: 10, cutRounds: 3, openRounds: 6, heldRounds: 2 },
+    /*
+     * ★구역별 어택★ (2026-09-17 사장님) — 경기 육각 ④⑤⑥ 이 쓴다.
+     *   공격 8라운드 중 A 는 6에서 교전이 있었고 3을 뚫었다 → 50%.
+     */
+    zoneAttack: { aN: 6, aOk: 3, bN: 8, bOk: 5, f2N: 5, f2Ok: 2, shortN: 8, shortOk: 4 },
     /* ★스나·라플 영향력★ (2026-09-16 밤) — `games` 가 없으니 ★한 판★ 이다 */
     gapScore: gapTally(),
     firstBlood: { rounds: 12, won: 7, tiedRounds: 2 },
@@ -1230,10 +1235,15 @@ describe('★상대와 견주기★ — 경기 여섯 축이 다 값을 받는�
     expect(red.axes.map((a) => a.key)).toEqual([...CLAN_HEX_V2_MATCH_AXIS_KEYS])
   })
 
-  it('★유리한 기회도 값을 받는다★ — 이 줄이 깨지면 화면에 「없었음」 이 뜬다', () => {
+  /*
+   * ⚠ ★2026-09-17 — 경기 육각이 구역 축으로 갈아탔다★ (사장님: «경기분석이 아직도 옛날거야»).
+   *   옛 기대값은 `openChance`(유리한 기회) 였다. 같은 함정을 다시 밟지 않으려고
+   *   ★지금 축★ 으로 갈아 끼웠다 — 새 축이 목록에 없으면 여기서 먼저 빨개진다.
+   */
+  it('★A어택도 값을 받는다★ — 이 줄이 깨지면 화면에 「없었음」 이 뜬다', () => {
     const [red, blue] = pair()
     for (const hex of [red, blue]) {
-      const axis = hex.axes.find((a) => a.key === 'openChance')
+      const axis = hex.axes.find((a) => a.key === 'aAttack')
       expect(axis).toBeDefined()
       expect(axis?.pending, '측정중으로 떨어졌다').toBeNull()
       expect(axis?.value, '값이 안 매겨졌다').not.toBeNull()

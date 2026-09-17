@@ -82,7 +82,15 @@ const MHEX_LABELS: [number, number, 'start' | 'middle' | 'end'][] = [
  * 영향력 둘은 값이 «60% : 40% (20%p 차이)» 라 한 줄에 두 팀이 다 들어 있다.
  * 그걸 양쪽 이름으로 두 번 적으면 같은 말이 네 번 나온다 — 한 번만 적는다.
  */
-const SINGLE_TEXT_AXES: readonly string[] = ['sniperInfluence', 'rifleInfluence']
+/*
+ * ★값을 한 번만 적는 축★ — 「60% · 40% (20%p 차이)」처럼 두 팀 몫을 한 줄에 담는 축이다.
+ * ⚠ 2026-09-17 에 경기 육각이 구역 축으로 갈아탔고 ★그런 축이 없어졌다★ —
+ *   A어택·B어택·2층어택은 팀마다 제 값을 갖는다. 목록은 비워 두되 지우지 않는다
+ *   (영향력 축이 되살아나면 그대로 쓴다 · `CLAUDE.md` 1-4).
+ */
+const SINGLE_TEXT_AXES: readonly string[] = []
+/** ⚠ 2026-09-17 낮까지 쓰던 목록 — 내보내 둔다. 이름만 남기면 tsc 가 «안 쓴다» 고 한다 */
+export const SINGLE_TEXT_AXES_V1: readonly string[] = ['sniperInfluence', 'rifleInfluence']
 
 /**
  * ★육각 밑 설명 글을 그릴 것인가★ (2026-09-17 사장님: «밑에 멘트 필요없어 전부 없애»).
@@ -101,6 +109,10 @@ const LABEL: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
   rifleInfluence: '라플영향력',
   blockChance: '기회차단',
   openChance: '유리한 기회',
+  /* ★2026-09-17 사장님 — 경기 육각의 새 셋★ */
+  aAttack: 'A어택',
+  bAttack: 'B어택',
+  f2Attack: '2층어택',
   firstBloodless: '크랙 성공',
 }
 

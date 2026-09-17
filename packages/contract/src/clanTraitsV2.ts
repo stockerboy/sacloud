@@ -86,7 +86,33 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
  *   유리한 기회는 분모가 ★전체 라운드★ 라 두 배 넓다.
  *   클랜 육각은 판이 쌓이므로 기회차단을 그대로 쓴다.
  */
+/**
+ * ⚠ ★2026-09-17 — 경기 육각의 셋이 구역 축으로 바뀌었다★ (사장님: «경기분석이 아직도 옛날거야»).
+ *
+ * ```
+ *   바뀌기 전   스나싸움 · 스나영향력 · 라플영향력 · 유리한 기회 · 소수싸움 · 세이브
+ *   지금        스나싸움 · ★A어택★ · ★B어택★ · ★2층어택★ · 소수싸움 · 세이브
+ * ```
+ *
+ * 사장님이 «소수싸움 스나싸움 세이브 a방어율 b방어율 2층방어율 이게 진짜 완벽한 경기6축이야»
+ * 라 하셨고, 그 뒤 «경기6축은 어택으로» 로 방향을 뒤집으셨다.
+ * 한 경기 안에서는 ★어택성공(우리) + 방어율(상대) = 항상 100★ 이라 (27칸 실측 · 어긋남 0)
+ * 두 팀을 견준 결과가 한 칸도 안 바뀐다 — 바뀌는 건 읽는 방향뿐이다.
+ *
+ * 옛 셋(스나영향력·라플영향력·유리한 기회)은 ★지우지 않는다★ — 재료도 셈도 그대로 쌓이고
+ * `CLAN_HEX_V2_MATCH_AXIS_KEYS_V5` 에 목록을 남긴다 (`CLAUDE.md` 1-4).
+ */
 export const CLAN_HEX_V2_MATCH_AXIS_KEYS = [
+  'sniperDuel',
+  'aAttack',
+  'bAttack',
+  'f2Attack',
+  'outnumbered',
+  'save',
+] as const
+
+/** ⚠ 2026-09-17 낮까지 쓰던 경기 여섯 */
+export const CLAN_HEX_V2_MATCH_AXIS_KEYS_V5 = [
   'sniperDuel',
   'sniperInfluence',
   'rifleInfluence',
@@ -128,6 +154,7 @@ export type ClanHexV2AxisKey = (typeof CLAN_HEX_V2_AXIS_KEYS)[number]
 export type ClanHexV2AnyAxisKey =
   | ClanHexV2AxisKey
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS)[number]
+  | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V5)[number]
   | (typeof CLAN_HEX_V2_AXIS_KEYS_V4)[number]
   | (typeof CLAN_HEX_V2_AXIS_KEYS_V3)[number]
 
@@ -146,6 +173,10 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AnyAxisKey, string> = {
   rifleInfluence: '라플영향력',
   /* ★2026-09-17 사장님 — 경기 육각은 이걸 쓴다★ */
   openChance: '유리한 기회',
+  /* ★2026-09-17 사장님 — 경기 육각의 새 셋★ */
+  aAttack: 'A어택',
+  bAttack: 'B어택',
+  f2Attack: '2층어택',
   blockChance: '기회차단',
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
@@ -202,6 +233,10 @@ export const CLAN_HEX_V2_AXIS_LABELS_V1: Record<
  */
 export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AnyAxisKey, boolean> = {
   sniperDuel: false,
+  /* ★구역 어택 셋★ — 많이 뚫을수록 좋다 (2026-09-17) */
+  aAttack: false,
+  bAttack: false,
+  f2Attack: false,
   /* 점수 차가 클수록 좋다 — 우리 쪽이 상대보다 앞섰다는 뜻이다 */
   rifleInfluence: false,
   openChance: false,
@@ -234,6 +269,10 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
   /* ★`diff` 가 2026-09-16 에 늘었다★ — 스나영향력이 «두 승률의 차(%p)» 다 (사장님) */
   'ratio' | 'seconds' | 'perRound' | 'perGame' | 'diff'
 > = {
+  /* ★구역 어택 셋★ — 뚫은 라운드 / 판정된 라운드 라 비율이다 (2026-09-17) */
+  aAttack: 'ratio',
+  bAttack: 'ratio',
+  f2Attack: 'ratio',
   sniperDuel: 'ratio',
   outnumbered: 'ratio',
   save: 'ratio',
@@ -879,6 +918,18 @@ export interface ClanHexTallyLike {
   redRounds: number
   foeSnipers: number
 
+  /**
+   * ★구역별 어택★ (2026-09-17 사장님) — 경기 육각 ④⑤⑥ 가 쓴다.
+   *  은 우리가 공격한 라운드 중 그 구역에서 교전이 있었던 수 ·  는 그중 뚫은 수.
+   * 구역 파일이 없거나 진영을 모르면  이다 — 0% 로 우기지 않는다.
+   */
+  zoneAttack?: {
+    aN: number; aOk: number
+    bN: number; bOk: number
+    f2N: number; f2Ok: number
+    shortN: number; shortOk: number
+  } | null
+
   /* ── 지금 화면이 쓰는 축 (D-256) ── */
   sniperDuel: SniperDuelTallyLike | null
   /** ⑤ **지금 쓰는 것** — 스나영향력 (2026-09-16 사장님) */
@@ -1006,6 +1057,8 @@ export const ClanHexagonV2Axis = z.object({
   key: z.enum([
     'sniperDuel', 'sniperInfluence', 'rifleInfluence', 'blockChance', 'openChance',
     'outnumbered', 'save',
+    /* ★경기 육각의 새 셋★ (2026-09-17 사장님) */
+    'aAttack', 'bAttack', 'f2Attack',
     /* ★옛 이름들★ — 예전 행이 화면으로 올 수 있다 (`CLAUDE.md` 1-4) */
     'riflePower', 'firstBloodless', 'firstBlood', 'trade',
   ]),
@@ -1646,6 +1699,30 @@ export function buildClanHexV2Raw(input: {
        * 분모는 사용자가 `won + lost` 를 골랐다. 둘 다 0 이면 **교전이 한 번도 없었다**는
        * 뜻이지 «못 했다» 가 아니다. 그래서 0 이 아니라 `sample` 이다 (D-106).
        */
+      /*
+       * ★A어택 · B어택 · 2층어택★ (2026-09-17 사장님) — 경기 육각의 새 셋.
+       *
+       *   분모  우리가 ★공격한★ 라운드 중 그 구역에서 교전이 있었던 수
+       *   분자  그중 ★뚫은★ 수
+       *
+       * 판정은 `packages/nexon/src/sideAxes.ts` 하나가 한다 — 여기서 셈을 다시 적지 않는다.
+       * ⚠ 교전이 0건이면 ★분모에서 뺀다★ — 안 간 곳을 «못 뚫었다» 로 적지 않는다.
+       *   그래서 분모가 0 이면 «측정중» 이다 (0% 가 아니다 · D-106).
+       */
+      case 'aAttack':
+      case 'bAttack':
+      case 'f2Attack': {
+        const part = tally.zoneAttack ?? null
+        if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
+        const pick =
+          key === 'aAttack'
+            ? { ok: part.aOk, n: part.aN }
+            : key === 'bAttack'
+              ? { ok: part.bOk, n: part.bN }
+              : { ok: part.f2Ok, n: part.f2N }
+        if (pick.n === 0) return pendingAxis(key, 'sample', { numerator: pick.ok })
+        return measuredAxis(key, pick.ok, pick.n)
+      }
       case 'sniperDuel': {
         const part = tally.sniperDuel ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, true))

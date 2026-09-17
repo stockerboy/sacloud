@@ -85,6 +85,13 @@ import {
   clanByTeamNo,
   clanHexV2Of,
   zoneCellsOfLabels,
+  /* ★구역 넷★ — 경기 육각 ④⑤⑥ (2026-09-17 사장님) */
+  A_ZONE_LABELS,
+  B_ZONE_LABELS,
+  F2_ZONE_LABELS,
+  SHORT_KILL_ZONE_LABELS,
+  zoneCellsOfAnyLabels,
+  type AnyZoneFile,
   type ClanHexEvent,
   type ClanHexTally,
   type ClanHexZones,
@@ -179,6 +186,21 @@ export function loadClanHexZones(file: string | null): ZoneLoad {
     return { zones: {}, file: null, cells: {} }
   }
   const parsed = JSON.parse(readFileSync(file, 'utf8')) as LabeledZoneFile
+  /*
+   * ★구역 넷★ (2026-09-17 사장님) — 경기 육각 ④⑤⑥ 이 쓴다.
+   *
+   * ⚠ `style-zones.json` 만으로는 모자란다 — 바닥·2층·일문·중길·ㄴ자·설대앞·쓰리깡·숏은
+   *   사장님이 따로 칠하신 `floor-zones.json` 에 있다. ★두 파일을 합쳐야★ 넷이 다 나온다.
+   *   그 파일은 한 칸이 여러 구역일 수 있어 값이 배열이라 `zoneCellsOfAnyLabels` 로 읽는다.
+   */
+  const floorFile = join(REPO_ROOT, 'data/barracks/floor-zones.json')
+  const sideFiles: AnyZoneFile[] = [parsed as unknown as AnyZoneFile]
+  if (existsSync(floorFile)) sideFiles.push(JSON.parse(readFileSync(floorFile, 'utf8')) as AnyZoneFile)
+  const sideA = zoneCellsOfAnyLabels(sideFiles, A_ZONE_LABELS)
+  const sideB = zoneCellsOfAnyLabels(sideFiles, B_ZONE_LABELS)
+  const sideF2 = zoneCellsOfAnyLabels(sideFiles, F2_ZONE_LABELS)
+  const sideShort = zoneCellsOfAnyLabels(sideFiles, SHORT_KILL_ZONE_LABELS)
+
   const aSide = zoneCellsOfLabels(parsed, A_SIDE_ZONE_LABELS)
   const bLong = zoneCellsOfLabels(parsed, [B_LONG_ZONE_LABEL])
   /* ★A롱 5구역★ — 스나싸움(①) 이 여기서만 센다 (2026-09-10 · clan-hex-v2.4) */
@@ -202,6 +224,11 @@ export function loadClanHexZones(file: string | null): ZoneLoad {
       aLong: aLong.cells.length > 0 ? aLong : null,
       attack: attack.cells.length > 0 ? attack : null,
       attackLabels: attackLabelsPresent,
+      /* ★구역 넷★ — 없으면 `null` 이고 그 축이 「측정중」 이 된다 */
+      sideA,
+      sideB,
+      sideF2,
+      sideShort,
     },
     file,
     cells: {
@@ -209,6 +236,10 @@ export function loadClanHexZones(file: string | null): ZoneLoad {
       [`B롱(${B_LONG_ZONE_LABEL})`]: bLong.cells.length,
       [`A롱(${A_LONG_ZONE_LABELS.join('+')})`]: aLong.cells.length,
       [`⑥구역(${attackLabelsPresent.join('+')})`]: attack.cells.length,
+      'A어택': sideA?.cells.length ?? 0,
+      'B어택': sideB?.cells.length ?? 0,
+      '2층어택': sideF2?.cells.length ?? 0,
+      '숏어택': sideShort?.cells.length ?? 0,
       ...attackCellsByLabel,
     },
   }

@@ -38,7 +38,9 @@ function axis(key: ClanHexV2AnyAxisKey, value: number, text: string) {
 function hexagon(text: string): ClanHexagonV2 {
   return {
     axes: CLAN_HEX_V2_MATCH_AXIS_KEYS.map((k, i) =>
-      axis(k, 20 + i * 13, k === 'sniperInfluence' || k === 'rifleInfluence' ? text : `${20 + i * 13}%`),
+      /* ⚠ 2026-09-17 — 경기 육각에서 영향력 두 축이 빠졌다. 긴 글을 씨우는 자리를
+         그대로 지키려고 ★지금 축 둘★ 에 그 글을 붙인다 — 재는 것은 그대로다 */
+      axis(k, 20 + i * 13, k === 'aAttack' || k === 'bAttack' ? text : `${20 + i * 13}%`),
     ),
   } as unknown as ClanHexagonV2
 }
@@ -88,9 +90,9 @@ describe('★경기 육각 — 커진 그림이 판 밖으로 안 나간다★ (
   })
 })
 
-describe('★경기 여섯 축★ — 유리한 기회가 들어오고 기회차단은 빠졌다 (2026-09-17)', () => {
+describe('★경기 여섯 축★ — 구역 셋으로 갈아탔다 (2026-09-17 사장님)', () => {
   it('여섯 축 이름이 다 그려진다', () => {
-    for (const name of ['스나싸움', '스나영향력', '라플영향력', '유리한 기회', '소수싸움', '세이브']) {
+    for (const name of ['스나싸움', 'A어택', 'B어택', '2층어택', '소수싸움', '세이브']) {
       expect(html, name).toContain(name)
     }
   })
@@ -115,11 +117,22 @@ describe('★멘트를 안 그린다★ (2026-09-17 사장님: «밑에 멘트 �
   })
 })
 
-describe('★영향력 값은 한 번만 적는다★ (2026-09-17)', () => {
-  it('«63% : 37% (26%p 차이)» 가 한 축에 두 번 나오지 않는다', () => {
-    /* 스나·라플 두 축이 같은 글을 쓰므로 정확히 두 번이다 — 네 번이면 양쪽을 다 적은 것이다 */
+/*
+ * ⚠ ★2026-09-17 — 「한 번만 적는 축」 이 없어졌다★ (경기 육각이 구역 셋으로 갈아탐).
+ *   A어택·B어택·2층어택은 팀마다 제 값을 가져서 양쪽에 다 적는 게 맞다.
+ *   옛 셈(`SINGLE_TEXT_AXES_V1`)과 그 시험 기대값은 아래에 주석으로 남긴다 —
+ *   영향력 축이 되살아나면 그대로 되돌리면 된다 (`CLAUDE.md` 1-4).
+ *
+ *   ```
+ *   옛 기대값 — 두 축이 같은 글을 쓰므로 정확히 두 번
+ *     const hits = html.split('26%p 차이').length - 1
+ *     expect(hits).toBe(2)
+ *   ```
+ */
+describe('★긴 글이 들어와도 카드 밖으로 안 나간다★ (2026-09-17)', () => {
+  it('두 팀이 제 값을 다 적는다 — 네 번이다 (축 둘 × 팀 둘)', () => {
     const hits = html.split('26%p 차이').length - 1
-    expect(hits).toBe(2)
+    expect(hits).toBe(4)
   })
 
   it('괄호 앞에서 줄을 끊는다 — 한 줄로 두면 카드 밖으로 나간다', () => {

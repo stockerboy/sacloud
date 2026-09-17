@@ -125,4 +125,13 @@
  *   ⚠ 판을 올리면 ★재계산 전까지 육각이 통째로 사라진다.★ 그래서 가지로 VPS 만
  *     먼저 올리고 재계산이 끝난 뒤 main 에 병합한다.
  */
-export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v5'
+/*
+ * ⚠ ★v6 — 경기 육각의 셋이 구역 축으로 바뀌었다★ (2026-09-17 사장님:
+ *   «경기분석이 아직도 옛날거야»).
+ *     스나영향력 · 라플영향력 · 유리한 기회   →   ★A어택 · B어택 · 2층어택★
+ *   재료()가 새로 쌓인다 — 옇 줄(v5)은 그 칸이 없어 «측정중» 이다.
+ *   다시 돌려야 값이 찬다. 옇 축의 재료는 하나도 안 지웠다.
+ */
+export const CLAN_HEX_V2_FORMULA_VERSION = 'clan-hex-v6'
+/** ⚠ 옇 판 — 경기 육각에 영향력 두 축이 있던 때 */
+export const CLAN_HEX_V2_FORMULA_VERSION_V5 = 'clan-hex-v5'

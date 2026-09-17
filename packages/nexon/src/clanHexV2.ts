@@ -90,6 +90,7 @@
  *   센다 (`isRestorable` · 실측 복원율 99.7%). `①⑥` 은 킬을 세는 축이라 빠진 이벤트가
  *   값을 **낮추는** 쪽으로만 틀리므로 표본을 버리지 않는다.
  */
+import { judgeExchange, judgeShort, type SideKill, type SideVerdict } from './sideAxes'
 import {
   outnumberedRound,
   roundClocksOf,
@@ -200,6 +201,14 @@ export interface ClanHexEvent
  * 파일을 읽지 않는다. 이 모듈은 순수 함수라 `data/barracks/*.json` 을 모른다.
  * 부르는 쪽이 `zoneCellsOfLabels()` 로 만들어 넘긴다.
  */
+/** ★구역별 어택★ 의 그릇 — 넷을 한 덩어리로 담는다 (2026-09-17) */
+export interface ZoneAttackTally {
+  aN: number; aOk: number
+  bN: number; bOk: number
+  f2N: number; f2Ok: number
+  shortN: number; shortOk: number
+}
+
 export interface ClanHexZones {
   /** ① `A쪽` — **확정된 구역 이름이 아니다** (①-2). 안 주면 `aSideKills` 가 `null` */
   aSide?: ZoneCells | null
@@ -216,6 +225,14 @@ export interface ClanHexZones {
   attack?: ZoneCells | null
   /** ⑥ 에 실제로 쓴 구역 이름 — 값의 출처를 함께 남기려는 것뿐이다 */
   attackLabels?: readonly string[]
+  /**
+   * ★구역별 어택★ 넷 (2026-09-17 사장님). 규칙은 `sideAxes.ts` 하나뿐이다.
+   * 안 주면 `zoneAttack` 이 `null` 이고 화면이 «측정중» 이라 적는다.
+   */
+  sideA?: ZoneCells | null
+  sideB?: ZoneCells | null
+  sideF2?: ZoneCells | null
+  sideShort?: ZoneCells | null
 }
 
 /* -------------------------------------------------------------------------- */
@@ -828,6 +845,17 @@ export interface ClanHexTally {
   firstBlood: FirstBloodTally | null
   /** ⑥ **지금 쓰는 것** — 교환 (D-256) */ trade: TradeTally | null
 
+  /**
+   * ★구역별 어택★ (2026-09-17 사장님) — 경기 육각 ④⑤⑥ 이 쓴다.
+   *
+   *   `n`  우리가 ★공격한★ 라운드 중 그 구역에서 교전이 있었던 수 (판정된 라운드)
+   *   `ok` 그중 ★뚫은★ 수
+   *
+   * 판정은 `sideAxes.ts` 가 한다 — 여기서 셈을 다시 적지 않는다.
+   * 구역 파일이 없거나 진영을 모르면 `null` 이다 — 0% 로 우기지 않는다.
+   */
+  zoneAttack: ZoneAttackTally | null
+
   /** ★새 축 — 기회차단★ (2026-09-16 밤 사장님). 경기·클랜 둘 다 쓴다 */
   blockChance: BlockChanceTally | null
   /** ★새 축 — 스나차이·라플차이★ (2026-09-16 밤 사장님). 경기는 점수차, 클랜은 앞선 판 비율 */
@@ -894,6 +922,7 @@ const emptyTally = (teamNo: string, foeTeamNo: string | null): ClanHexTally => (
   trade: null,
   /* ★새 축 둘★ (2026-09-16 밤 사장님) */
   blockChance: null,
+  zoneAttack: null,
   gapScore: null,
   outnumbered: null,
   save: null,
@@ -1087,6 +1116,47 @@ function tallyFor(input: {
   wonRound: (round: number) => boolean | null
 }): ClanHexTally {
   const tally = emptyTally(input.teamNo, input.foeTeamNo)
+
+  /*
+   * ★구역별 어택★ (2026-09-17 사장님) — 우리가 ★공격한★ 라운드만 센다.
+   *
+   * 판정은 `sideAxes.ts` 의 `judgeExchange` / `judgeShort` 가 한다 — 셈을 여기서 다시 적지 않는다.
+   * 구역 파일이 없으면 그 칸이 안 쌓이고, 넷 다 0 이면 `zoneAttack` 을 `null` 로 둔다
+   * (0% 로 우기지 않는다 · D-106).
+   */
+  {
+    const z = input.zones
+    const anyZone = z.sideA ?? z.sideB ?? z.sideF2 ?? z.sideShort ?? null
+    if (anyZone !== null) {
+      const zt: ZoneAttackTally = { aN: 0, aOk: 0, bN: 0, bOk: 0, f2N: 0, f2Ok: 0, shortN: 0, shortOk: 0 }
+      for (const round of input.roundNumbers) {
+        /* 진영을 모르는 라운드는 통째로 건너뛴다 — 뒤집히면 조용히 거짓이 된다 */
+        if (input.sideOf.get(round) !== 'attack') continue
+        const kills = input.killsByRound.get(round) ?? []
+        const side: SideKill[] = kills.map((k) => ({
+          killAt: { x: k.killerX, y: k.killerY },
+          deathAt: { x: k.victimX, y: k.victimY },
+          /* ★수비는 상대다★ — 우리가 공격하는 라운드만 세고 있다 */
+          victimIsDefence: (input.roster.teamOf.get(k.victim) ?? null) === input.foeTeamNo,
+          killerIsDefence: (input.roster.teamOf.get(k.killer) ?? null) === input.foeTeamNo,
+        }))
+        const add = (
+          v: SideVerdict,
+          nk: 'aN' | 'bN' | 'f2N' | 'shortN',
+          ok: 'aOk' | 'bOk' | 'f2Ok' | 'shortOk',
+        ): void => {
+          if (!v.judged) return
+          zt[nk] += 1
+          if (v.breached) zt[ok] += 1
+        }
+        add(judgeExchange(side, z.sideA ?? null), 'aN', 'aOk')
+        add(judgeExchange(side, z.sideB ?? null), 'bN', 'bOk')
+        add(judgeExchange(side, z.sideF2 ?? null), 'f2N', 'f2Ok')
+        add(judgeShort(side, z.sideShort ?? null), 'shortN', 'shortOk')
+      }
+      if (zt.aN + zt.bN + zt.f2N + zt.shortN > 0) tally.zoneAttack = zt
+    }
+  }
 
   /** 상대 팀에서 **스나로 확정된** 선수들 */
   const foeSnipers = new Set<string>()
