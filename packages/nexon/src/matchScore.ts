@@ -32,14 +32,25 @@
 
 /* ------------------------------------------------------------------ 상수 --- */
 
-/** 라플을 잡으면 1점. 사장님: «킬 많이 한건 일단 잘한거긴해» */
+/** 라플을 잡으면 1점 — 누가 잡든. 사장님: «킬 많이 한건 일단 잘한거긴해» */
 export const SCORE_RIFLE_KILL = 1
-/** 스나를 ★그 라운드 1·2번째 킬★ 로 잡으면 2점 — 5:4 를 만드는 값이 다르다 */
-export const SCORE_SNIPER_KILL_EARLY = 2
-/** 3번째 킬부터는 스나를 잡아도 1점 — 이미 기운 판이다 */
-export const SCORE_SNIPER_KILL_LATE = 1
-/** 스나 킬에 2점을 주는 ★순번 문턱★ */
+/**
+ * ★라플이 스나를 잡으면★ (2026-09-18 사장님):
+ *
+ * > «라플이 스나를 1,2번째에 잡으면 5점 주고 3,4,5번째에 잡으면 3점 주라
+ * >  라플이 스나 잡는건 진짜 대단한거야»
+ */
+export const SCORE_RIFLE_KILLS_SNIPER_EARLY = 5
+export const SCORE_RIFLE_KILLS_SNIPER_LATE = 3
+/** ★스나가 스나를 잡으면★ (2026-09-18 사장님이 2·1 에서 한 칸씩 올림) */
+export const SCORE_SNIPER_KILLS_SNIPER_EARLY = 3
+export const SCORE_SNIPER_KILLS_SNIPER_LATE = 2
+/** 값이 큰 쪽을 주는 ★순번 문턱★ — 우리 팀이 그 라운드에서 몇 번째로 잡았나 */
 export const SCORE_SNIPER_EARLY_RANK = 2
+
+/* ⚠ 옛 값 — 2026-09-18 낮까지 쓰던 판 (`CLAUDE.md` 1-4) */
+export const SCORE_SNIPER_KILL_EARLY_V1 = 2
+export const SCORE_SNIPER_KILL_LATE_V1 = 1
 
 /** 폭탄을 심고 이기면 2점 */
 export const SCORE_BOMB_WIN = 2
@@ -86,15 +97,44 @@ export type ScoreSlot = 'sniper' | 'short' | 'b' | 'f2' | 'spare'
 
 /* ---------------------------------------------------------------- 판정 --- */
 
+/** 한 킬의 값이 어느 항목인가 — 화면이 «라플이 스나 잡음 ×3 +15점» 으로 적는다 */
+export type KillScoreKind =
+  | 'rifle'
+  | 'rifleVsSniperEarly'
+  | 'rifleVsSniperLate'
+  | 'sniperVsSniperEarly'
+  | 'sniperVsSniperLate'
+
 /**
- * 한 킬이 ★몇 점★ 인가.
+ * 한 킬이 ★몇 점★ 인가 — ★잡은 사람의 총★ 에 따라 값이 다르다 (2026-09-18 사장님).
  *
- * @param victimIsSniper 죽은 사람이 스나인가
+ * @param who  잡은 사람·죽은 사람이 스나인가
  * @param rank 그 팀이 ★그 라운드에서 몇 번째로 잡은 킬★ 인가 (1부터)
  */
-export function killScore(victimIsSniper: boolean, rank: number): number {
-  if (!victimIsSniper) return SCORE_RIFLE_KILL
-  return rank <= SCORE_SNIPER_EARLY_RANK ? SCORE_SNIPER_KILL_EARLY : SCORE_SNIPER_KILL_LATE
+export function killScoreKind(
+  who: { killerIsSniper: boolean; victimIsSniper: boolean | undefined },
+  rank: number,
+): KillScoreKind {
+  if (who.victimIsSniper !== true) return 'rifle'
+  const early = rank <= SCORE_SNIPER_EARLY_RANK
+  if (who.killerIsSniper) return early ? 'sniperVsSniperEarly' : 'sniperVsSniperLate'
+  return early ? 'rifleVsSniperEarly' : 'rifleVsSniperLate'
+}
+
+/** 항목별 값 — 한 곳에서만 적는다 */
+export const KILL_SCORE_POINTS: Record<KillScoreKind, number> = {
+  rifle: SCORE_RIFLE_KILL,
+  rifleVsSniperEarly: SCORE_RIFLE_KILLS_SNIPER_EARLY,
+  rifleVsSniperLate: SCORE_RIFLE_KILLS_SNIPER_LATE,
+  sniperVsSniperEarly: SCORE_SNIPER_KILLS_SNIPER_EARLY,
+  sniperVsSniperLate: SCORE_SNIPER_KILLS_SNIPER_LATE,
+}
+
+export function killScore(
+  who: { killerIsSniper: boolean; victimIsSniper: boolean | undefined },
+  rank: number,
+): number {
+  return KILL_SCORE_POINTS[killScoreKind(who, rank)]
 }
 
 /**
@@ -103,6 +143,14 @@ export function killScore(victimIsSniper: boolean, rank: number): number {
  * @param won  심은 팀이 그 라운드를 이겼나
  * @param onB  ★B쪽★ 에 심었나 — 지더라도 2점인 자리다
  */
+/**
+ * 세이브가 ★몇 점★ 인가 — 몇 명 열세를 뒤집었나 (2n−1).
+ * 1명 1점 · 2명 3점 · 3명 5점 (사장님 확정)
+ */
+export function saveScore(shortBy: number): number {
+  return shortBy <= 0 ? 0 : 2 * shortBy - 1
+}
+
 export function bombScore(won: boolean, onB: boolean): number {
   if (won) return SCORE_BOMB_WIN
   return onB ? SCORE_BOMB_LOSS_B : SCORE_BOMB_LOSS

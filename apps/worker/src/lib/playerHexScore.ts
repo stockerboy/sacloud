@@ -104,7 +104,14 @@ const sumSide = (
  *   A·B·2층·숏 넷을 라운드마다 판정해 선수마다 쌓는다. 옇 줄(v1.7)은 그 칸이 0 이라
  *   화면이 «측정중» 이라 적는다 — 0% 로 우기지 않는다. 다시 돌려야 값이 찬다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.8'
+/*
+ * ⚠ ★v1.9 — 점수제가 들어왔다★ (2026-09-18 사장님: «엠브이피도 이 점수 젤 높은애로»).
+ *   `MatchPlayerHex.score` 가 새로 쌓인다. 옛 줄(v1.8)은 그 칸이 0 이라
+ *   MVP 가 ★옛 규칙★(세이브→킬→데스)으로 떨어진다 — 다시 돌려야 점수로 정해진다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.9'
+/** ⚠ 옛 판 — MVP 가 세이브·킬·데스로 정해지던 때 */
+export const PLAYER_HEX_FORMULA_VERSION_V18 = 'player-hex-v1.8'
 /** ⚠ 옇 판 — 구역 축이 없던 때 */
 export const PLAYER_HEX_FORMULA_VERSION_V17 = 'player-hex-v1.7'
 

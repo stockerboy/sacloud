@@ -24,6 +24,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { prisma, Prisma } from '@sacloud/db'
+import { killScore, saveScore } from '@sacloud/nexon'
 import {
   A_LONG_ZONE_LABELS,
   B_LONG_ZONE_LABEL,
@@ -168,6 +169,15 @@ interface Who {
 interface MatchTally {
   rounds: number
   kills: number
+  /**
+   * ★그 경기에서 번 점수★ (2026-09-18 사장님) — ★MVP 를 이걸로 정한다.★
+   *
+   * > «이제 엠브이피도 이 점수 젤 높은애로 주고»
+   *
+   * 값은 `packages/nexon/src/matchScore.ts` 하나가 정한다.
+   * ⚠ 옛 MVP 규칙(세이브→킬→데스)은 `pickMvpV1` 에 남긴다 (`CLAUDE.md` 1-4).
+   */
+  score: number
   firstKills: number
   /** ★크랙 성공★ — 위 첫 킬 중 ★칠한 구역 안★ 에서 잡은 것만 (2026-09-16 사장님) */
   crackKills: number
@@ -239,7 +249,7 @@ interface MatchTally {
 }
 
 const emptyTally = (): MatchTally => ({
-  rounds: 0, kills: 0, firstKills: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
+  rounds: 0, kills: 0, score: 0, firstKills: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
   deathSeconds: 0, deathCount: 0, tempoSeconds: 0, tempoCount: 0,
   openRounds: 0, foeOpenRounds: 0, cutRounds: 0, aliveRounds: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
@@ -728,6 +738,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       const seen = new Set<string>()
       const lastKillAt = new Map<string, number>()
       const burstHere = new Set<string>()
+      /** ★그 팀이 이 라운드에서 몇 번째로 잡았나★ — 스나 킬 값이 순번으로 갈린다 */
+      const killSeq = new Map<string, number>()
       for (const e of arr) {
         const K = whoOf(mk, e.killer)
         const V = whoOf(mk, e.victim)
@@ -737,6 +749,19 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           if (prev !== undefined && e.t - prev <= BURST_GAP_SECONDS) burstHere.add(K.pid)
           lastKillAt.set(K.pid, e.t)
           tallyOf(mk, K.pid).kills += 1
+          /*
+           * ★점수제★ (2026-09-18 사장님). 값은 `matchScore.ts` 가 정한다 —
+           * 여기서 점수표를 다시 적지 않는다.
+           * ⚠ 무기는 ★그 경기 기록★(`MatchPlayerStat.weapon` · 1 이 스나)으로 본다.
+           */
+          /* 팀을 모르는 줄은 ★순번을 못 센다★ — 빈 열쇠로 묶어 한 덩어리로 본다 */
+          const team = e.kt ?? ''
+          const rank = (killSeq.get(team) ?? 0) + 1
+          killSeq.set(team, rank)
+          tallyOf(mk, K.pid).score += killScore(
+            { killerIsSniper: K.weapon === 1, victimIsSniper: V?.weapon === 1 },
+            rank,
+          )
         }
         if (V) seen.add(V.pid)
 
@@ -1090,6 +1115,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       for (const [t, s] of teams) for (const u of s) teamOf.set(u, t)
       const sawOut = new Set<string>()
       const sawAlone = new Set<string>()
+      /** 그 라운드에 ★몇 명 모자랐나★ — 세이브 점수(2n−1)의 재료 */
+      const shortBy = new Map<string, number>()
       for (const e of arr) {
         const vt = teamOf.get(e.victim)
         if (vt !== undefined) alive.get(vt)?.delete(e.victim)
@@ -1108,8 +1135,22 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
          *
          * 혼자 남았으면 ★양 팀 다 따로★ 센다 — 1대1 이면 두 사람 다 세이브 상황이다.
          */
-        if (na === 1) for (const u of alive.get(tA) as Set<string>) sawAlone.add(u)
-        if (nb === 1) for (const u of alive.get(tB) as Set<string>) sawAlone.add(u)
+        /*
+         * ★몇 명 열세였나★ 를 같이 기억한다 — 세이브 점수가 2n−1 이라 인원이 필요하다
+         * (2026-09-18 사장님). 더 나쁜 상황을 만났으면 그 값으로 덮는다.
+         */
+        if (na === 1) {
+          for (const u of alive.get(tA) as Set<string>) {
+            sawAlone.add(u)
+            shortBy.set(u, Math.max(shortBy.get(u) ?? 0, nb - na))
+          }
+        }
+        if (nb === 1) {
+          for (const u of alive.get(tB) as Set<string>) {
+            sawAlone.add(u)
+            shortBy.set(u, Math.max(shortBy.get(u) ?? 0, na - nb))
+          }
+        }
 
         /* 소수싸움은 ★밀릴 때만★ 이다 — 수가 같으면 우리가 밀린 게 아니다 */
         if (na === nb) continue
@@ -1128,7 +1169,11 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         if (!W) continue
         const t = tallyOf(mk, W.pid)
         t.aloneRounds += 1
-        if (teamOf.get(u) === win) t.aloneWon += 1
+        if (teamOf.get(u) === win) {
+          t.aloneWon += 1
+          /* ★세이브 점수★ — 1명 열세 1점 · 2명 3점 · 3명 5점 (2026-09-18 사장님) */
+          t.score += saveScore(shortBy.get(u) ?? 1)
+        }
       }
     }
 
@@ -1673,10 +1718,44 @@ export interface MvpCandidate {
   saves: number
   kill: number | null
   death: number | null
+  /** ★그 경기에서 번 점수★ (2026-09-18). 모르면 `null` — 그때는 옛 규칙으로 떨어진다 */
+  score?: number | null
 }
 
-/** 순수 규칙 — 테스트가 이 함수를 본다 */
+/**
+ * ★MVP 는 그 경기 점수 1등★ (2026-09-18 사장님).
+ *
+ * > «이제 엠브이피도 이 점수 젤 높은애로 주고»
+ *
+ * 점수는 `matchScore.ts` 가 정한 값을 `MatchPlayerHex.score` 에 쌓아 둔 것이다.
+ * ⚠ ★점수를 모르는 경기는 옛 규칙으로 떨어진다★ — 배틀로그가 없으면 점수가 없다.
+ *   그런 경기까지 MVP 를 비워 두면 화면에서 칸이 사라진다. 옛 규칙은 `pickMvpV1` 이다.
+ * ⚠ 같은 점수면 ★킬 많은 쪽 → 덜 죽은 쪽 → 붙박이 해시★ 로 가른다 (같은 입력이면 같은 답).
+ */
 export function pickMvp(matchId: string, candidates: readonly MvpCandidate[]): string | null {
+  if (candidates.length === 0) return null
+  const anyScore = candidates.some((c) => typeof c.score === 'number')
+  if (!anyScore) return pickMvpV1(matchId, candidates)
+  const sorted = [...candidates].sort((a, b) => {
+    const as = a.score ?? -1
+    const bs = b.score ?? -1
+    if (as !== bs) return bs - as
+    const ak = a.kill ?? -1
+    const bk = b.kill ?? -1
+    if (ak !== bk) return bk - ak
+    const ad = a.death ?? Number.MAX_SAFE_INTEGER
+    const bd = b.death ?? Number.MAX_SAFE_INTEGER
+    if (ad !== bd) return ad - bd
+    return stableHash(`${matchId}|${a.playerId}`) - stableHash(`${matchId}|${b.playerId}`)
+  })
+  return (sorted[0] as MvpCandidate).playerId
+}
+
+/**
+ * ⚠ ★옛 MVP 규칙★ — 2026-09-18 까지 쓰던 판 (`CLAUDE.md` 1-4).
+ *   세이브(문턱 이상) → 킬 → 데스 → 해시. ★점수를 모르는 경기가 이걸 쓴다.★
+ */
+export function pickMvpV1(matchId: string, candidates: readonly MvpCandidate[]): string | null {
   if (candidates.length === 0) return null
   const sorted = [...candidates].sort((a, b) => {
     const aSave = a.saves >= MVP_SAVE_THRESHOLD ? a.saves : 0
@@ -1695,7 +1774,7 @@ export function pickMvp(matchId: string, candidates: readonly MvpCandidate[]): s
 
 async function pickMvps(
   matchIds: readonly string[],
-  hexRows: readonly { matchId: string; playerId: string; aloneWon: number }[],
+  hexRows: readonly { matchId: string; playerId: string; aloneWon: number; score: number }[],
 ): Promise<{ matchId: string; playerId: string }[]> {
   if (matchIds.length === 0) return []
   const matches = await prisma.match.findMany({
@@ -1707,6 +1786,8 @@ async function pickMvps(
     },
   })
   const savesOf = new Map(hexRows.map((r) => [`${r.matchId}|${r.playerId}`, r.aloneWon]))
+  /* ★점수★ — MVP 를 이걸로 정한다 (2026-09-18 사장님) */
+  const scoreOf = new Map(hexRows.map((r) => [`${r.matchId}|${r.playerId}`, r.score]))
   const out: { matchId: string; playerId: string }[] = []
   for (const m of matches) {
     if (m.winnerSide !== 'red' && m.winnerSide !== 'blue') continue
@@ -1714,7 +1795,13 @@ async function pickMvps(
     const hasSourceMvp = m.stats.some((s) => s.mvp === true) && !RULE_MVP_LEAGUES_REPICK
     if (hasSourceMvp) continue
     const winners = m.stats.filter((s) => s.side === m.winnerSide)
-    const pick = pickMvp(m.id, winners.map((s) => ({ playerId: s.playerId, saves: savesOf.get(`${m.id}|${s.playerId}`) ?? 0, kill: s.kill, death: s.death })))
+    const pick = pickMvp(m.id, winners.map((s) => ({
+      playerId: s.playerId,
+      saves: savesOf.get(`${m.id}|${s.playerId}`) ?? 0,
+      kill: s.kill,
+      death: s.death,
+      score: scoreOf.get(`${m.id}|${s.playerId}`) ?? null,
+    })))
     if (pick) out.push({ matchId: m.id, playerId: pick })
   }
   return out

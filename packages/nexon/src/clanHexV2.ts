@@ -1211,7 +1211,10 @@ function tallyFor(input: {
         for (const kill of kills) {
           if ((input.roster.teamOf.get(kill.killer) ?? null) !== input.teamNo) continue
           rank += 1
-          const points = killScore(isSniper(kill.victim), rank)
+          const points = killScore(
+            { killerIsSniper: isSniper(kill.killer), victimIsSniper: isSniper(kill.victim) },
+            rank,
+          )
           touched = true
           /* 스나가 번 점수는 ★구역을 안 보고★ 스나칸으로 간다 (사장님) */
           if (isSniper(kill.killer)) {
