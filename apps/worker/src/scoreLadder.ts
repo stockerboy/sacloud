@@ -127,7 +127,13 @@ function of(usn: string, nick: string): Tally {
 
 /* --------------------------------------------------------- 경기 하나 --- */
 
-function runMatch(rows: Row[]): void {
+/**
+ * 한 경기에서 선수별로 ★몇 점★ 을 벌었나. 경기 밖(누적)에는 안 쓴다 —
+ * ★상대 세기별로 견주려면★ 경기 단위 값이 있어야 한다 (2026-09-18 사장님: «보정이 얼마나 필요할지»).
+ */
+const perMatch: { usn: string; points: number; foeRating: number; ourRating: number }[] = []
+
+function runMatch(rows: Row[], ratingByTeam: Map<string, number> | null): void {
   /* ── ① 무기. ★그 경기에서 실제로 든 총★ 으로 본다 (자리표를 안 쓴다) */
   const wt = new Map<string, { s: number; n: number }>()
   for (const r of rows) {
@@ -201,6 +207,15 @@ function runMatch(rows: Row[]): void {
 
   /* 이 경기에 나온 사람 — 경기 수를 센다 */
   const seen = new Set<string>()
+  /** 경기 시작 시점의 누적 점수 — 빼면 ★이 경기에서 번 점수★ 다 */
+  const matchStart = new Map<string, number>()
+  for (const [, kills] of byRound) {
+    for (const k of kills.values()) {
+      for (const u of [k.killer, k.victim]) {
+        if (!matchStart.has(u)) matchStart.set(u, tally.get(u)?.points ?? 0)
+      }
+    }
+  }
 
   /* ── ③ 라운드마다 점수 */
   for (const [round, kills] of [...byRound.entries()].sort((a, b) => a[0] - b[0])) {
@@ -279,6 +294,31 @@ function runMatch(rows: Row[]): void {
     t.games += 1
     if (snipers.has(u)) t.sniperGames += 1
   }
+
+  /*
+   * ★상대 세기별로 견주려고★ 이 경기에서 번 점수만 따로 적어 둔다.
+   * 두 팀의 `team_no` 에 클랜 래더를 붙일 수 있을 때만 남긴다.
+   */
+  if (ratingByTeam !== null && ratingByTeam.size === 2) {
+    const teams = [...ratingByTeam.keys()]
+    const before = new Map<string, number>()
+    for (const u of seen) before.set(u, 0)
+    for (const u of seen) {
+      const t = tally.get(u)
+      if (!t) continue
+      const my = teamOf.get(u)
+      if (my === undefined) continue
+      const foe = teams.find((x) => x !== my)
+      if (foe === undefined) continue
+      perMatch.push({
+        usn: u,
+        points: t.points - (matchStart.get(u) ?? 0),
+        ourRating: ratingByTeam.get(my) ?? 0,
+        foeRating: ratingByTeam.get(foe) ?? 0,
+      })
+    }
+    void before
+  }
 }
 
 /* ------------------------------------------------------------- 본체 --- */
@@ -286,27 +326,49 @@ function runMatch(rows: Row[]): void {
 async function main(): Promise<void> {
   await prisma.$executeRawUnsafe('SET statement_timeout = 120000')
 
-  const keys = await prisma.$queryRawUnsafe<{ matchKey: string }[]>(`
-    SELECT DISTINCT m."sourceMatchId" AS "matchKey"
-      FROM "Match" m JOIN "League" l ON l."id" = m."leagueId"
+  const keys = await prisma.$queryRawUnsafe<{
+    matchKey: string; redRating: number | null; blueRating: number | null
+  }[]>(`
+    SELECT DISTINCT ON (m."sourceMatchId")
+           m."sourceMatchId" AS "matchKey",
+           r."rating" AS "redRating",
+           b."rating" AS "blueRating"
+      FROM "Match" m
+      JOIN "League" l ON l."id" = m."leagueId"
+      LEFT JOIN "LeagueClan" r ON r."id" = m."redLeagueClanId"
+      LEFT JOIN "LeagueClan" b ON b."id" = m."blueLeagueClanId"
      WHERE l."slug" = '${SLUG}'
        AND m."sourceMatchId" IS NOT NULL
        AND m."startAt" > NOW() - INTERVAL '${DAYS} days'`)
+  const ratingOf = new Map(keys.map((k) => [k.matchKey, [k.redRating, k.blueRating] as const]))
   console.log(`${SLUG} 최근 ${DAYS}일 경기 ${keys.length}건`)
 
   let done = 0
   let withLog = 0
   for (let i = 0; i < keys.length; i += BATCH) {
     const chunk = keys.slice(i, i + BATCH).map((k) => k.matchKey)
-    const rows = await prisma.$queryRawUnsafe<{ payload: { battleLog?: Row[] } }[]>(`
-      SELECT DISTINCT ON (r."matchKey") r."payload"
+    const rows = await prisma.$queryRawUnsafe<{ matchKey: string; payload: { battleLog?: Row[] } }[]>(`
+      SELECT DISTINCT ON (r."matchKey") r."matchKey", r."payload"
         FROM "BarracksBattleLogRaw" r
        WHERE r."matchKey" = ANY($1::text[]) AND r."subject" <> 'player'`, chunk)
     for (const r of rows) {
       const log = r.payload?.battleLog
       if (!Array.isArray(log) || log.length === 0) continue
       withLog += 1
-      runMatch(log)
+      /*
+       * ★두 팀의 래더를 붙인다★ — `team_no` 가 어느 슬롯인지는 모른다.
+       *   그래서 ★두 값을 짝으로만★ 넘기고, 선수의 `team_no` 로 «내 편/상대» 를 가른다.
+       *   둘 중 어느 쪽이 red 인지 몰라도 ★상대 래더★ 는 «내 것이 아닌 쪽» 으로 정해진다.
+       */
+      const pair = ratingOf.get(r.matchKey)
+      let byTeam: Map<string, number> | null = null
+      if (pair && pair[0] !== null && pair[1] !== null) {
+        const teams = [...new Set(log.map((x) => (x.team_no == null ? '' : String(x.team_no))).filter(Boolean))]
+        if (teams.length === 2) {
+          byTeam = new Map([[teams[0] as string, pair[0]], [teams[1] as string, pair[1]]])
+        }
+      }
+      runMatch(log, byTeam)
     }
     done += chunk.length
     if (i % (BATCH * 10) === 0) console.log(`  ${done}/${keys.length} · 로그 ${withLog}건 · 사람 ${tally.size}명`)
@@ -396,6 +458,49 @@ async function main(): Promise<void> {
       '   ' + (bumped[0]?.clan ?? '?').padEnd(14) +
       '  ' + String(best) + '등',
     )
+  }
+
+  /*
+   * ── ★보정이 얼마나 필요한가★ (2026-09-18 사장님)
+   *
+   * ★같은 선수가 강한 상대와 붙을 때 점수가 얼마나 깎이나★ — 그 깎인 만큼이 보정값이다.
+   * 선수를 고정하고 견주므로 ★잘하는 선수가 센 클랜에 몰린 효과★ 가 섞이지 않는다.
+   */
+  const strong = new Set(list.map((t) => t.usn))
+  const byPlayer = new Map<string, { hi: number[]; lo: number[] }>()
+  /* 「센 상대」 의 경계 — 상위 11클랜의 가장 낮은 래더 */
+  const cut = top[top.length - 1]?.rating ?? 3100
+  for (const r of perMatch) {
+    if (!strong.has(r.usn)) continue
+    const e = byPlayer.get(r.usn) ?? { hi: [], lo: [] }
+    if (r.foeRating >= cut) e.hi.push(r.points)
+    else e.lo.push(r.points)
+    byPlayer.set(r.usn, e)
+  }
+  const mean = (a: number[]): number => (a.length === 0 ? 0 : a.reduce((x, y) => x + y, 0) / a.length)
+  const pairs: number[] = []
+  for (const [, e] of byPlayer) {
+    if (e.hi.length < 5 || e.lo.length < 5) continue
+    pairs.push(mean(e.lo) - mean(e.hi))
+  }
+  pairs.sort((a, b) => a - b)
+  console.log(`
+★센 상대와 붙으면 점수가 얼마나 깎이나★ (경계 래더 ${cut} 이상 = 상위 11클랜)`)
+  console.log(`  양쪽 다 5경기 이상인 선수 ${pairs.length}명`)
+  if (pairs.length > 0) {
+    const q = (f: number): string => (pairs[Math.floor(pairs.length * f)] ?? 0).toFixed(2)
+    console.log(`  깎이는 점수 — 중간값 ★${q(0.5)}점★ · 평균 ${mean(pairs).toFixed(2)}점`)
+    console.log(`  분포 — 아래 25% ${q(0.25)} · 위 25% ${q(0.75)} · 위 10% ${q(0.9)}`)
+  }
+
+  /* 상대 래더 구간별 평균 점수 — 기울기를 눈으로 본다 */
+  const bands = [[0, 3000], [3000, 3050], [3050, 3100], [3100, 3150], [3150, 9999]]
+  console.log('
+  상대 래더별 경기당 점수 (래더 안에 든 선수만)')
+  for (const [lo, hi] of bands) {
+    const pts = perMatch.filter((r) => strong.has(r.usn) && r.foeRating >= lo && r.foeRating < hi)
+    if (pts.length === 0) continue
+    console.log(`    ${String(lo).padStart(4)}~${String(hi === 9999 ? '' : hi).padEnd(4)}  ${mean(pts.map((r) => r.points)).toFixed(2)}점  (${pts.length}경기)`)
   }
 
   /* 보정이 ★몇 등짜리★ 인지 — 이웃 등수 차이로 환산 */
