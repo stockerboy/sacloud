@@ -166,8 +166,8 @@ export const badgeArtPath = (b: BadgeDef): string => `/badges/${b.art}.png`
  * ⚠ ★이름은 클랜 것을 쓴다.★ 그림만 빌린다 — 클랜의 «기회차단» 을 «디펜딩챔피언» 이라
  *   부르지 않는다. 두 육각이 같은 낱말을 쓰면 뜻이 섞인다 (2026-09-15 에 한 번 겪었다).
  */
-export const CLAN_AXIS_BADGE_ART: Record<string, BadgeDef['art']> = {
-  sniperDuel: 'snipeduel',
+export const CLAN_AXIS_BADGE: Record<string, BadgeKey> = {
+  sniperDuel: 'snipeDuel',
   outnumbered: 'outnumber',
   save: 'save',
   /* «기회차단» — 상대가 연 판을 끊는다. 막는 쪽이라 방패다 */
@@ -176,6 +176,11 @@ export const CLAN_AXIS_BADGE_ART: Record<string, BadgeDef['art']> = {
 
 /** 클랜 축의 배지 그림 경로. 짝이 없으면 `null` — 글자로만 적는다 */
 export function clanAxisBadgeArt(axisKey: string): string | null {
-  const art = CLAN_AXIS_BADGE_ART[axisKey]
-  return art === undefined ? null : `/badges/${art}.png`
+  const key = CLAN_AXIS_BADGE[axisKey]
+  return key === undefined ? null : badgeArtPath(BADGES[key])
+}
+
+/** 클랜 축이 어느 배지인가 — 누르면 갈 곳을 정한다. 짝이 없으면 `null` */
+export function clanAxisBadgeKey(axisKey: string): BadgeKey | null {
+  return CLAN_AXIS_BADGE[axisKey] ?? null
 }

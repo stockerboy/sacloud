@@ -614,7 +614,7 @@ export function ClanRankTable({
                 ) : null}
                 {/* ★뱃지★ — 육각 축 중 리그 5위 안에 든 것 (2026-09-14 사장님).
                     ⚠ 2026-09-17 사장님이 「다 없애」 하셔서 안 그린다. 셈은 그대로다 */}
-                {CLAN_ROW_BADGES ? <ClanBadges badges={row.badges} /> : null}
+                {CLAN_ROW_BADGES ? <ClanBadges badges={row.badges} leagueSlug={leagueSlug} /> : null}
                 {/* 티어 라벨 — IPL 만 (지시 #23). 순서는 래더 순이라 경계선 대신 행마다 적는다 */}
                 {showTierLabel ? (
                   <span className="ml-2 shrink-0 text-xs text-faint">

@@ -70,6 +70,8 @@ export function LeagueSubNav({
     { label: '리그홈', href: `${base}/home`, icon: <HomeIcon /> },
     { label: '클랜랭킹', href: `${base}/rank/clan`, icon: <SortIcon /> },
     { label: '개인랭킹', href: `${base}/rank/player`, icon: <SortIcon /> },
+    /* ★배지★ (2026-09-17 사장님) — 일곱 그림을 걸고 누르면 가진 선수 전부가 나온다 */
+    { label: '배지', href: `${base}/badge`, icon: <BadgeIcon /> },
   ]
 
   return (
@@ -148,6 +150,16 @@ function HomeIcon() {
 }
 
 /** 정렬 아이콘 — 클랜랭킹·개인랭킹이 같은 아이콘을 쓴다 */
+/** 배지 — 육각 테두리 하나. ★사장님 그림을 여기 쓰지 않는다★ (탭에는 너무 무겁다) */
+function BadgeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M12 2.6 20.2 7v10L12 21.4 3.8 17V7z" strokeLinejoin="round" />
+      <path d="M12 8.2 13.4 11l3.1.3-2.3 2.1.7 3-2.9-1.6-2.9 1.6.7-3-2.3-2.1 3.1-.3z" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function SortIcon() {
   return (
     <svg viewBox="0 0 18 14" className="h-[14px] w-[18px]" fill="currentColor" aria-hidden>

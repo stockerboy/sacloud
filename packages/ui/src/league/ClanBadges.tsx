@@ -21,7 +21,9 @@
  *   5위 컷도 ASTRA 보정도 `packages/contract/src/clanBadge.ts` 가 이미 끝냈다.
  *   이 부품은 받은 이름을 그리기만 한다.
  */
-import { clanAxisBadgeArt } from '@sacloud/contract'
+import { clanAxisBadgeArt, clanAxisBadgeKey } from '@sacloud/contract'
+import Link from 'next/link'
+import { leagueBadgePath } from '../common/paths'
 import { CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, type ClanHexV2AxisKey } from '@sacloud/contract'
 
 /** 폰 / PC 에서 나란히 적는 최대 개수 */
@@ -70,7 +72,7 @@ const TONE = {
 const CHIP = 'rounded px-1 py-[2px] text-[10px] font-bold leading-none'
 const MORE = 'text-[10px] font-bold leading-none'
 
-export function ClanBadges({ badges }: { badges?: readonly string[] }) {
+export function ClanBadges({ badges, leagueSlug }: { badges?: readonly string[]; leagueSlug?: string | null }) {
   if (badges === undefined || badges.length === 0) return null
 
   const keys = badges as readonly ClanHexV2AxisKey[]
@@ -93,20 +95,31 @@ export function ClanBadges({ badges }: { badges?: readonly string[] }) {
       {keys.slice(0, MAX_PC).map((key, i) => {
         const art = clanAxisBadgeArt(key)
         const hide = i < MAX_PHONE ? '' : ' max-md:hidden'
-        return art === null ? (
-          <span key={key} className={`${CHIP}${hide}`} style={TONE}>
-            {shortOf(key)}
-          </span>
-        ) : (
+        if (art === null) {
+          return (
+            <span key={key} className={`${CHIP}${hide}`} style={TONE}>
+              {shortOf(key)}
+            </span>
+          )
+        }
+        const img = (
           <img
-            key={key}
             src={art}
             alt={longOf(key)}
             title={longOf(key)}
             width={18}
             height={18}
-            className={`block h-[18px] w-[18px] select-none md:h-[22px] md:w-[22px]${hide}`}
+            className="block h-[18px] w-[18px] select-none md:h-[22px] md:w-[22px]"
           />
+        )
+        const badgeKey = clanAxisBadgeKey(key)
+        /* 리그를 모르면 ★링크를 안 건다★ — 없는 슬러그를 지어내지 않는다 */
+        return badgeKey === null || !leagueSlug ? (
+          <span key={key} className={hide}>{img}</span>
+        ) : (
+          <Link key={key} href={leagueBadgePath(leagueSlug, badgeKey)} className={`inline-flex hover:opacity-80${hide}`}>
+            {img}
+          </Link>
         )
       })}
       {/* 접힌 개수는 폰·PC 가 다르다. 두 벌을 그리고 화면 크기가 하나만 고른다 */}
