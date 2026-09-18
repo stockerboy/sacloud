@@ -74,6 +74,21 @@ export const SCORE_BOMB_LOSS = 1
 export interface MatchScoreTally {
   /** 스나로 번 점수 ★전부★. 구역을 안 본다 — 스나는 어디서든 스나다 */
   sniper: number
+  /**
+   * ★스나싸움 점수★ — 스나가 ★스나를★ 잡아 번 점수 (2026-09-18 사장님:
+   * «스나싸움도 점수로 계산 1,2번째에 더 많은 점수 주기»).
+   *
+   * ⚠ ★`sniper` 의 부분집합이다★ — 합계에 또 더하면 두 번 센다.
+   *   육각의 한 칸으로만 쓴다.
+   */
+  duel: number
+  /**
+   * ★소수싸움 점수★ — 수적 열세를 뒤집어 번 점수 (2n−1).
+   *
+   * ⚠ ★이미 구역 칸에 들어가 있다★ (세이브는 마지막 킬이 난 자리로 귀속한다).
+   *   합계에 또 더하면 두 번 센다. 육각의 한 칸으로만 쓴다.
+   */
+  save: number
   /** 라플이 ★숏·홀정면 + A쪽 전부★ 에서 번 점수 */
   short: number
   /** 라플이 ★비롱·벙커·바닥·일문★ 에서 번 점수 */
@@ -85,9 +100,13 @@ export interface MatchScoreTally {
 }
 
 export function emptyMatchScore(): MatchScoreTally {
-  return { sniper: 0, short: 0, b: 0, f2: 0, spare: 0 }
+  return { sniper: 0, duel: 0, save: 0, short: 0, b: 0, f2: 0, spare: 0 }
 }
 
+/**
+ * 합계. ⚠ ★`duel` 과 `save` 는 안 더한다★ — 둘 다 다른 칸의 부분집합이라
+ * 더하면 두 번 센다 (스나싸움은 `sniper` 안, 소수싸움은 구역 칸 안).
+ */
 export function matchScoreTotal(t: MatchScoreTally): number {
   return t.sniper + t.short + t.b + t.f2 + t.spare
 }

@@ -109,7 +109,24 @@ const sumSide = (
  *   `MatchPlayerHex.score` 가 새로 쌓인다. 옛 줄(v1.8)은 그 칸이 0 이라
  *   MVP 가 ★옛 규칙★(세이브→킬→데스)으로 떨어진다 — 다시 돌려야 점수로 정해진다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v1.9'
+/*
+ * ⚠ ★v2.0 — 개인 육각도 점수제★ (2026-09-18 사장님:
+ *   「개인육각도 점수제로 줄세워서 다시 측정해」).
+ *
+ *   어택성공률  공격진영일 때 딴 점수 · 평균
+ *   방어율      수비진영일 때 딴 점수 · 평균
+ *   크랙        칠한 구역 안 25초 안에 딴 점수 · 평균
+ *   소수싸움    뒤집어 딴 점수 · 평균
+ *   세이브      같은 재료 · ★총합★
+ *   샷싸움      ★안 바꿨다★
+ *
+ *   재료(`atkScore`·`defScore`·`crackScore`·`fewScore`)가 새로 쌓인다 —
+ *   옛 줄(v1.9)은 그 칸이 0 이라 네 축이 0 으로 보인다. ★다시 돌려야 찬다.★
+ *   옛 셈은 `axisValuesV4Of` 에 남겼다.
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v2.0'
+/** ⚠ 옛 판 — 구역 뚫은 비율로 재던 때 */
+export const PLAYER_HEX_FORMULA_VERSION_V19 = 'player-hex-v1.9'
 /** ⚠ 옛 판 — MVP 가 세이브·킬·데스로 정해지던 때 */
 export const PLAYER_HEX_FORMULA_VERSION_V18 = 'player-hex-v1.8'
 /** ⚠ 옇 판 — 구역 축이 없던 때 */
@@ -209,6 +226,17 @@ export const AXIS_WEIGHT_V1: Readonly<Record<HexAxisKey, number>> = {
 export interface PlayerHexInput {
   leaguePlayerId: string
   games: number
+  /* ── ★점수제 재료★ (2026-09-18 사장님: 「개인육각도 점수제로 줄세워서 다시 측정해」) ── */
+  /** 공격(레드진영) 라운드에서 딴 점수 · 그 라운드 수 */
+  atkScore?: number
+  atkRounds?: number
+  /** 수비(블루진영) 라운드에서 딴 점수 · 그 라운드 수 */
+  defScore?: number
+  defRounds?: number
+  /** ★크랙★ — 칠한 구역 안에서 25초 안에 딴 점수 */
+  crackScore?: number
+  /** ★소수싸움·세이브★ — 수적 열세를 뒤집어 딴 점수 */
+  fewScore?: number
   wins: number
   sniperGames: number
   rifleGames: number
@@ -346,6 +374,15 @@ export function mainWeaponOf(input: { sniperGames: number; rifleGames: number })
 }
 
 /** 축 원값 — 표본이 모자라면 null. 0 으로 채우지 않는다 (D-106) */
+/**
+ * ★점수 평균★ — 점수 합 ÷ 라운드 수. 화면 눈금이 0~100 이라 ×10 해서 올린다.
+ * ⚠ 라운드가 없으면 `null` 이다 — 0 으로 우기지 않는다 (D-106).
+ */
+function scoreRate(total: number | undefined, rounds: number | undefined): number | null {
+  if (total === undefined || rounds === undefined || rounds <= 0) return null
+  return round1((total / rounds) * 10)
+}
+
 export function axisValuesOf(
   input: PlayerHexInput,
   weapon: 0 | 1,
@@ -354,7 +391,12 @@ export function axisValuesOf(
   const duelLost = weapon === 1 ? input.sniperDuelLost : input.rifleDuelLost
   const duels = duelWon + duelLost
   return {
-    save: input.aloneRounds >= MIN_SITUATION_ROUNDS ? round1((input.aloneWon / input.aloneRounds) * 100) : null,
+    /*
+     * ★세이브 — 몇 대 몇 세이브냐에 따라 받은 점수들의 ★총합★★ (2026-09-18 사장님).
+     * > 「세이브는 몇대몇 세이브냐에 따라 다르게 받은 점수들의 총합 줄세우기」
+     * ⚠ 여섯 중 ★이 축만 총합★ 이다 — 많이 뛴 사람이 위로 가는 것이 사장님 뜻이다.
+     */
+    save: input.games > 0 ? (input.fewScore ?? 0) : null,
     duel: duels >= MIN_DUELS ? round1((duelWon / duels) * 100) : null,
     /*
      * ★게임영향력 — 매 판 한 라운드에 적 다섯 중 몇 명을 지웠나★ (2026-09-15 사장님:
@@ -389,13 +431,16 @@ export function axisValuesOf(
      *   ⚠ 옛 축 «기회창출 / 기회차단» 은 ★지우지 않았다★ — 재료(`openRounds`·`cutRounds`·
      *     `foeOpenRounds`)가 그대로 쌓이고 있고, 아래 `chanceV3` 가 그 셈이다.
      */
-    chance:
-      weapon === 1
-        ? sideRate(input.aAtkOk, input.aAtkN)
-        : sideRate(
-            sumSide(input, ['bAtkOk', 'f2AtkOk', 'shortAtkOk']),
-            sumSide(input, ['bAtkN', 'f2AtkN', 'shortAtkN']),
-          ),
+    /*
+     * ★어택성공률 — 공격(레드진영)일 때 딴 점수의 평균★ (2026-09-18 사장님).
+     *
+     * > 「어택성공률:이건 그냥 공격(레드진영)진영일때의 점수만 시즌전체 평균점수 줄 세우기」
+     *
+     * ⚠ ★진영을 아는 라운드만★ 분모에 들어간다 (D-106).
+     * ⚠ 스나·라플이 ★같은 셈★ 이다 — 이름만 A어택 / 어택성공률로 다르다 (사장님이 그대로 두라 하심).
+     * ⚠ 옛 셈(구역 뚫은 비율)은 `axisValuesV4Of` 에 남는다 (`CLAUDE.md` 1-4).
+     */
+    chance: scoreRate(input.atkScore, input.atkRounds),
     /*
      * ★안전함(스나) / 크랙(라플)★ (2026-09-16 밤 사장님).
      *
@@ -410,12 +455,16 @@ export function axisValuesOf(
      *   라플 쪽 «크랙» 은 ★그대로다★ — 사장님 사양에 그 이름이 그대로 있다.
      *   스나 쪽만 «안전함» 에서 A방어로 바뀌었다. 옛 셈은 `safeV3` 에 남는다.
      */
-    safe:
-      weapon === 1
-        ? sideRate(input.aDefOk, input.aDefN)
-        : (input.games > 0 && input.crackKills !== undefined
-            ? round1((input.crackKills / input.games) * 100)
-            : null),
+    /*
+     * ★크랙 — 칠한 구역 안에서 25초 안에 딴 점수의 평균★ (2026-09-18 사장님).
+     *
+     * > 「내가 칠한 구역 안에서 잡아야 크랙이야 거기서 이제 누굴 잡았냐
+     * >  몇명 잡았냐에 따른 점수 차등지급」
+     *
+     * ⚠ 옛 판은 ★첫 킬 하나만★ 0/1 로 셌다 (`crackKills`). 이제 25초 안의 킬을
+     *   전부 세고 스나를 잡았으면 그 값(5·3점)이 그대로 들어간다.
+     */
+    safe: input.games > 0 ? round1(((input.crackScore ?? 0) / input.games) * 10) : null,
     /*
      * ★스나차이 / 라플차이★ (2026-09-16 밤 사장님) —
      *   그 선수가 뛴 경기 중 «우리 무기 쪽이 상대보다 앞선» 판의 비율.
@@ -431,14 +480,17 @@ export function axisValuesOf(
      *     그런데 ★시즌으로 모으면 갈린다★ — 선수 단위 순서 겹침 64.0%,
      *     「막기는 잘 하는데 못 뚫는 선수」가 821명 중 112명(13.6%)이다. 두 칸 다 쓴다.
      */
-    gap:
-      weapon === 1
-        ? sideRate(input.bAtkOk, input.bAtkN)
-        : sideRate(
-            sumSide(input, ['bDefOk', 'f2DefOk', 'shortDefOk']),
-            sumSide(input, ['bDefN', 'f2DefN', 'shortDefN']),
-          ),
-    outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
+    /*
+     * ★방어율 — 수비(블루진영)일 때 딴 점수의 평균★ (2026-09-18 사장님).
+     * > 「방어율은 수지진영일때의 딴 점수만 시즌 전체 평균점수 줄세우기」
+     */
+    /* ⚠ 옛 셈(구역 뚫은 비율)은 `axisValuesV4Of` 에 그대로 있다 (`CLAUDE.md` 1-4) */
+    gap: scoreRate(input.defScore, input.defRounds),
+    /*
+     * ★소수싸움 — 뒤집어 딴 점수의 ★평균★★ (2026-09-18 사장님).
+     * > 「소수싸움은 경기6각에서 받은 소수싸움 점수들의 평균 줄세우기」
+     */
+    outnumbered: input.games > 0 ? round1(((input.fewScore ?? 0) / input.games) * 10) : null,
   }
 }
 
@@ -952,6 +1004,48 @@ function rankBy<T>(
  * ★그대로 쌓고 있다★. 되살리려면 `axisValuesOf` 의 세 칸을 이 값으로 바꾸면 된다.
  * 이름표는 `TRAIT_AXIS_LABEL_V3` 에 있다.
  */
+/**
+ * ⚠ ★2026-09-18 새벽까지 쓰던 셈★ — 구역을 «뚫은 비율» 로 재던 판 (`CLAUDE.md` 1-4).
+ *
+ *   그날 사장님이 「개인육각도 점수제로 줄세워서 다시 측정해」 라고 하셔서
+ *   네 축(어택성공률·방어율·크랙·소수싸움)이 ★점수★ 로 바뀌었다.
+ *   재료(`aAtkOk` · `bDefN` · `crackKills` …)는 ★그대로 쌓고 있으므로★
+ *   되돌릴 때 재수집이 필요 없다.
+ */
+export function axisValuesV4Of(
+  input: PlayerHexInput,
+  weapon: 0 | 1,
+): Record<HexAxisKey, number | null> {
+  const duelWon = weapon === 1 ? input.sniperDuelWon : input.rifleDuelWon
+  const duelLost = weapon === 1 ? input.sniperDuelLost : input.rifleDuelLost
+  const duels = duelWon + duelLost
+  return {
+    save: input.aloneRounds >= MIN_SITUATION_ROUNDS ? round1((input.aloneWon / input.aloneRounds) * 100) : null,
+    duel: duels >= MIN_DUELS ? round1((duelWon / duels) * 100) : null,
+    chance:
+      weapon === 1
+        ? sideRate(input.aAtkOk, input.aAtkN)
+        : sideRate(
+            sumSide(input, ['bAtkOk', 'f2AtkOk', 'shortAtkOk']),
+            sumSide(input, ['bAtkN', 'f2AtkN', 'shortAtkN']),
+          ),
+    safe:
+      weapon === 1
+        ? sideRate(input.aDefOk, input.aDefN)
+        : (input.games > 0 && input.crackKills !== undefined
+            ? round1((input.crackKills / input.games) * 100)
+            : null),
+    gap:
+      weapon === 1
+        ? sideRate(input.bAtkOk, input.bAtkN)
+        : sideRate(
+            sumSide(input, ['bDefOk', 'f2DefOk', 'shortDefOk']),
+            sumSide(input, ['bDefN', 'f2DefN', 'shortDefN']),
+          ),
+    outnumbered: input.outRounds >= MIN_SITUATION_ROUNDS ? round1((input.outWon / input.outRounds) * 100) : null,
+  }
+}
+
 export function axisValuesV3Of(
   input: PlayerHexInput,
   weapon: 0 | 1 | null,

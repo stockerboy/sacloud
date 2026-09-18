@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   axisValuesOf,
+  axisValuesV4Of,
   crackValueV1,
   foldPlayerHex,
   mainWeaponOf,
@@ -46,7 +47,13 @@ describe('주무기', () => {
 describe('축 원값', () => {
   it('표본이 모자라면 null 이다 — 0 이 아니다', () => {
     const v = axisValuesOf(player({ leaguePlayerId: 'a', aloneRounds: 9, aloneWon: 9, rifleDuelWon: 10, rifleDuelLost: 9 }), 0)
-    expect(v.save).toBeNull()
+    /*
+     * ⚠ ★2026-09-18 — 세이브가 「비율」 에서 「점수 총합」 이 됐다★ (사장님).
+     *   그래서 ★한 판이라도 뛰었으면 0점도 0으로 적는다★ —
+     *   「유의미한 차이 아니면 불 끄는 것」 을 하지 말라고 하셨다.
+     *   한 판도 안 뛰었을 때만 `null` 이다.
+     */
+    expect(v.save).toBe(0)
     expect(v.duel).toBeNull()
     /*
      * ⚠ ★2026-09-15 에 세 축의 뜻이 바뀌었다★ (사장님).
@@ -62,7 +69,11 @@ describe('축 원값', () => {
      *   이 픽스처에는 죽은 시각 재료가 없으므로 ★null★ 이다 — 0 이라 우기지 않는다.
      *   옛 기대값은 2 였다 (선짤 40회/20판).
      */
-    expect(v.safe).toBeNull()
+    /*
+     * ⚠ ★2026-09-18 — 크랙이 「칠한 구역 안 25초 점수」 가 됐다★ (사장님).
+     *   한 판이라도 뛰었으면 0점도 0으로 적는다 — 「불 끄지 마라」 는 지시다.
+     */
+    expect(v.safe).toBe(0)
     /*
      * ⚠ ★5번 축이 «크랙 성공» 이 됐다★ (2026-09-16 사장님) — 칠한 구역 안 25초 첫 킬 ÷ 판수.
      *
@@ -75,11 +86,17 @@ describe('축 원값', () => {
     /* 구역을 안 보던 옛 셈은 그대로 살아 있다 (`CLAUDE.md` 1-4) */
     expect(crackValueV1(player({ leaguePlayerId: 'a', games: 20, firstKills: 40 }))).toBe(2)
     /*
-     * ⚠ ★2026-09-16 밤 — «크랙» 이 라플 ★안전함★ 자리로 옮겨 갔다★ (사장님).
-     *   `gap` 은 이제 «스나차이 / 라플차이» 다 — 앞선 판 비율.
-     *   9회 / 20판 = 45% 가 ★라플 안전함★ 으로 간다.
+     * ⚠ ★2026-09-18 — 크랙이 「횟수」 에서 「점수」 가 됐다★ (사장님:
+     *   「내가 칠한 구역 안에서 잡아야 크랙이야 거기서 이제 누굴 잡았냐
+     *    몇명 잡았냐에 따른 점수 차등지급」).
+     *
+     *   옛 셈   `crackKills` 9회 / 20판 = 45%
+     *   지금    `crackScore` 36점 / 20판 = 1.8점 → 눈금에 올려 18
+     *
+     *   ⚠ 옛 셈은 `axisValuesV4Of` 에 그대로 있다 (`CLAUDE.md` 1-4) — 바로 아래에서 확인한다.
      */
-    expect(axisValuesOf(player({ leaguePlayerId: 'a', games: 20, crackKills: 9 }), 0).safe).toBe(45)
+    expect(axisValuesOf(player({ leaguePlayerId: 'a', games: 20, crackScore: 36 }), 0).safe).toBe(18)
+    expect(axisValuesV4Of(player({ leaguePlayerId: 'a', games: 20, crackKills: 9 }), 0).safe).toBe(45)
     /*
      * ⚠ ★2026-09-16 밤 — ③가 «기회창출 / 기회차단» 이 됐다★ (사장님).
      *   이 픽스처는 라플(weapon 0)라 «기회차단» 이고, 그 재료(`foeOpenRounds`)가
@@ -88,7 +105,15 @@ describe('축 원값', () => {
      *   옛 셈은 `carryValueV4()` 에 그대로 살아 있다.
      */
     expect(v.chance).toBeNull()
-    expect(v.outnumbered).toBeCloseTo(33.3)
+    /*
+     * ⚠ ★2026-09-18 — 소수싸움이 「뒤집은 비율」 에서 「뒤집어 딴 점수의 평균」 이 됐다★
+     *   (사장님: 「소수싸움은 경기6각에서 받은 소수싸움 점수들의 평균 줄세우기」).
+     *   이 픽스처에는 `fewScore` 가 없으니 ★0★ 이다 — 한 판이라도 뛰었으면 0으로 적는다.
+     *   옛 셈(뒤집은 라운드 비율 33.3%)은 `axisValuesV4Of` 에 그대로 있다.
+     */
+    expect(v.outnumbered).toBe(0)
+    expect(axisValuesV4Of(player({ leaguePlayerId: 'a', outRounds: 30, outWon: 10 }), 0).outnumbered)
+      .toBeCloseTo(33.3)
   })
 
   it('싸움은 주무기 쪽 잡음·당함만 본다', () => {

@@ -95,6 +95,7 @@ import {
   bombScore,
   emptyMatchScore,
   killScore,
+  saveScore,
   scoreSlotOf,
   type MatchScoreTally,
 } from './matchScore'
@@ -1219,6 +1220,11 @@ function tallyFor(input: {
           /* 스나가 번 점수는 ★구역을 안 보고★ 스나칸으로 간다 (사장님) */
           if (isSniper(kill.killer)) {
             sc.sniper += points
+            /*
+             * ★스나싸움 점수★ (2026-09-18 사장님: «스나싸움도 점수로 계산»).
+             * ⚠ `sniper` 의 ★부분집합★ 이다 — 합계에 또 더하면 두 번 센다.
+             */
+            if (isSniper(kill.victim)) sc.duel += points
             continue
           }
           const at = { x: kill.victimX, y: kill.victimY }
@@ -1280,6 +1286,8 @@ function tallyFor(input: {
     unzonedKills: input.zones.aSide && input.zones.bLong ? zeroZone() : null,
   }
   const outnumbered: OutnumberedTally = { rounds: 0, won: 0 }
+  /** ★소수싸움 점수★ 합 — 라운드를 돌며 쌓아 마지막에 `tally.score` 로 옮긴다 */
+  let scoreSave = 0
   const save: SaveTally = { rounds: 0, won: 0 }
   const tempo: TempoTally = {
     redRounds: 0,
@@ -1411,6 +1419,31 @@ function tallyFor(input: {
     if (input.restorable && countable && won !== null && ours.length >= input.teamSize - 1) {
       save.rounds += 1
       if (won) save.won += 1
+    }
+
+    /*
+     * ★소수싸움 점수★ (2026-09-18 사장님: 여섯 축을 전부 점수로).
+     *
+     * ★몇 명 모자란 걸 뒤집었나★ 로 값이 갈린다 — 1명 1점 · 2명 3점 · 3명 5점 (2n−1).
+     * 죽은 순서대로 따라가며 ★가장 나빴던 순간★ 의 인원 차를 찾는다.
+     *
+     * ⚠ ★진 라운드는 안 센다★ — 밀리기만 하고 못 뒤집었으면 세이브가 아니다.
+     * ⚠ 이 점수는 ★합계에 안 더한다★ (`matchScoreTotal`) — 육각의 한 칸으로만 쓴다.
+     */
+    if (input.restorable && countable && won === true) {
+      const alive = new Map<string, number>([
+        [input.teamNo, input.teamSize],
+        [input.foeTeamNo, input.teamSize],
+      ])
+      let worst = 0
+      for (const death of [...deaths].sort((a, b) => a.at - b.at)) {
+        const left = alive.get(death.team)
+        if (left === undefined) continue
+        alive.set(death.team, left - 1)
+        const gap = (alive.get(input.teamNo) ?? 0) - (alive.get(input.foeTeamNo) ?? 0)
+        if (gap < worst) worst = gap
+      }
+      if (worst < 0) scoreSave += saveScore(-worst)
     }
 
     /* ───────── ⑤ 의 진영 안 보는 판(⑤-1 대안) ───────── */
@@ -1958,6 +1991,15 @@ function tallyFor(input: {
 
   tally.outnumbered = input.restorable ? outnumbered : null
   tally.save = input.restorable ? save : null
+  /*
+   * ★소수싸움 점수★ 를 점수 그릇에 옮긴다 (2026-09-18).
+   * 점수 블록은 구역 파일이 있어야 돌지만 ★소수싸움은 구역과 무관★ 하다 —
+   * 그래서 `tally.score` 가 아직 `null` 이면 여기서 만든다.
+   */
+  if (scoreSave > 0) {
+    if (tally.score === null) tally.score = emptyMatchScore()
+    tally.score.save = scoreSave
+  }
   tally.tempo = input.restorable ? tempo : null
 
   /* 아래 셋은 **옛 축**이다. 화면이 안 보지만 계속 센다 (`CLAUDE.md` 10-4) */

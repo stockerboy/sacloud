@@ -178,6 +178,17 @@ interface MatchTally {
    * ⚠ 옛 MVP 규칙(세이브→킬→데스)은 `pickMvpV1` 에 남긴다 (`CLAUDE.md` 1-4).
    */
   score: number
+  /* ── ★개인 육각도 점수제★ (2026-09-18 사장님) ── */
+  /** 공격(레드진영) 라운드에서 딴 점수 */
+  atkScore: number
+  atkRounds: number
+  /** 수비(블루진영) 라운드에서 딴 점수 */
+  defScore: number
+  defRounds: number
+  /** ★크랙★ — 칠한 구역 안에서 25초 안에 딴 점수 */
+  crackScore: number
+  /** ★소수싸움·세이브★ — 수적 열세를 뒤집어 딴 점수 (2n−1 의 합) */
+  fewScore: number
   firstKills: number
   /** ★크랙 성공★ — 위 첫 킬 중 ★칠한 구역 안★ 에서 잡은 것만 (2026-09-16 사장님) */
   crackKills: number
@@ -249,7 +260,8 @@ interface MatchTally {
 }
 
 const emptyTally = (): MatchTally => ({
-  rounds: 0, kills: 0, score: 0, firstKills: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
+  rounds: 0, kills: 0, score: 0, firstKills: 0,
+  atkScore: 0, atkRounds: 0, defScore: 0, defRounds: 0, crackScore: 0, fewScore: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
   deathSeconds: 0, deathCount: 0, tempoSeconds: 0, tempoCount: 0,
   openRounds: 0, foeOpenRounds: 0, cutRounds: 0, aliveRounds: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
@@ -758,10 +770,47 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           const team = e.kt ?? ''
           const rank = (killSeq.get(team) ?? 0) + 1
           killSeq.set(team, rank)
-          tallyOf(mk, K.pid).score += killScore(
+          const pts = killScore(
             { killerIsSniper: K.weapon === 1, victimIsSniper: V?.weapon === 1 },
             rank,
           )
+          const t = tallyOf(mk, K.pid)
+          t.score += pts
+
+          /*
+           * ★크랙★ (2026-09-18 사장님) — ★칠한 구역 안★ 에서 ★25초 안★ 에 딴 점수.
+           *
+           * > 「내가 칠한 구역 안에서 잡아야 크랙이야 거기서 이제 누굴 잡았냐
+           * >  몇명 잡았냐에 따른 점수 차등지급」
+           *
+           * ⚠ 옛 판은 ★그 라운드 첫 킬 하나만★ 0/1 로 셌다. 이제 25초 안의 킬을
+           *   ★전부★ 세고, 스나를 잡았으면 그 값(5·3점)이 그대로 들어간다.
+           * ⚠ 자리는 ★죽은 사람★ 기준이다 — 「어디서 잡혔나」 가 크랙이지
+           *   「어디서 쐈나」 가 아니다 (스나싸움에서 정한 약속과 같다).
+           * ⚠ 좌표나 라운드 시작을 모르면 ★안 센다★ (D-106).
+           */
+          const roundStart = roundStartAt.get(roundKey)
+          if (
+            roundStart !== undefined &&
+            e.t - roundStart <= OPENING_WINDOW_SECONDS &&
+            crackZone &&
+            inZone(crackZone, e.dx !== null && e.dy !== null ? { x: e.dx, y: e.dy } : null)
+          ) {
+            t.crackScore += pts
+          }
+
+          /*
+           * ★어택성공률 / 방어율★ (2026-09-18 사장님) —
+           *   공격(레드)진영일 때 딴 점수 · 수비(블루)진영일 때 딴 점수를 따로 쌓는다.
+           * ⚠ ★진영을 모르는 라운드는 어느 쪽에도 안 넣는다★ (D-106) —
+           *   그래서 `atkScore + defScore` 가 `score` 보다 작을 수 있다.
+           */
+          const rdNo = Number(roundKey.split('|')[1])
+          const defendingTeam = Number.isInteger(rdNo) ? defenceOf.get(mk)?.get(rdNo) : undefined
+          if (defendingTeam !== undefined && e.kt !== null) {
+            if (e.kt === defendingTeam) t.defScore += pts
+            else t.atkScore += pts
+          }
         }
         if (V) seen.add(V.pid)
 
@@ -1164,6 +1213,24 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         t.outRounds += 1
         if (teamOf.get(u) === win) t.outWon += 1
       }
+      /*
+       * ★공격·수비 라운드 수★ — 평균의 뜻을 지키려면 «몇 판 중» 을 알아야 한다.
+       * ⚠ 점수를 못 딴 라운드도 센다 — 0점도 그 판의 성적이다.
+       */
+      {
+        const rdNo2 = Number(roundKey.split('|')[1])
+        const defTeam2 = Number.isInteger(rdNo2) ? defenceOf.get(mk)?.get(rdNo2) : undefined
+        if (defTeam2 !== undefined) {
+          for (const pid of seen) {
+            const t2 = tallyOf(mk, pid)
+            const myTeam = [...teamOf.entries()].find(([usn]) => whoOf(mk, usn)?.pid === pid)?.[1]
+            if (myTeam === undefined) continue
+            if (myTeam === defTeam2) t2.defRounds += 1
+            else t2.atkRounds += 1
+          }
+        }
+      }
+
       for (const u of sawAlone) {
         const W = whoOf(mk, u)
         if (!W) continue
@@ -1171,8 +1238,14 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         t.aloneRounds += 1
         if (teamOf.get(u) === win) {
           t.aloneWon += 1
-          /* ★세이브 점수★ — 1명 열세 1점 · 2명 3점 · 3명 5점 (2026-09-18 사장님) */
-          t.score += saveScore(shortBy.get(u) ?? 1)
+          /*
+           * ★세이브 점수★ — 1명 열세 1점 · 2명 3점 · 3명 5점 (2026-09-18 사장님).
+           * ⚠ `fewScore` 에도 같이 담는다 — ★소수싸움은 평균★ · ★세이브는 총합★ 으로
+           *   줄을 세우기 때문에 같은 재료를 두 축이 다르게 접는다.
+           */
+          const sp = saveScore(shortBy.get(u) ?? 1)
+          t.score += sp
+          t.fewScore += sp
         }
       }
     }
@@ -1284,6 +1357,13 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rounds: number
         firstkills: number
         crackkills: number
+        /* ★점수제 재료★ (2026-09-18) */
+        atkscore: number
+        atkrounds: number
+        defscore: number
+        defrounds: number
+        crackscore: number
+        fewscore: number
         burstrounds: number
         alonerounds: number
         alonewon: number
@@ -1348,6 +1428,13 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
              SUM(h."firstKills" * mw.w) AS firstkills,
              -- ★크랙 성공★ — 칠한 구역 안 25초 첫 킬 (2026-09-16). 값은 판수로 나눈다
              SUM(h."crackKills" * mw.w) AS crackkills,
+             -- ★점수제 재료★ (2026-09-18 사장님: 「개인육각도 점수제로 줄세워서 다시 측정해」)
+             SUM(h."atkScore" * mw.w) AS atkscore,
+             SUM(h."atkRounds" * mw.w) AS atkrounds,
+             SUM(h."defScore" * mw.w) AS defscore,
+             SUM(h."defRounds" * mw.w) AS defrounds,
+             SUM(h."crackScore" * mw.w) AS crackscore,
+             SUM(h."fewScore" * mw.w) AS fewscore,
              SUM(h."burstRounds" * mw.w) AS burstrounds,
              -- ★게임영향력★ (2026-09-15 사장님) — 경기마다의 «한 라운드 최대 킬» 을 더한다.
              -- 시즌 값은 이걸 판수로 나눈 ★평균★ 이다. 시즌 최대를 쓰면 거의 전원이
@@ -1524,6 +1611,13 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rounds: h?.rounds ?? 0,
         firstKills: h?.firstkills ?? 0,
         crackKills: h?.crackkills ?? 0,
+        /* ★점수제 재료★ (2026-09-18 사장님) */
+        atkScore: h?.atkscore ?? 0,
+        atkRounds: h?.atkrounds ?? 0,
+        defScore: h?.defscore ?? 0,
+        defRounds: h?.defrounds ?? 0,
+        crackScore: h?.crackscore ?? 0,
+        fewScore: h?.fewscore ?? 0,
         /* ★구역별 어택/방어 · 자리 재료★ (2026-09-17 사장님) */
         aAtkN: Number(h?.aatkn ?? 0),
         aAtkOk: Number(h?.aatkok ?? 0),

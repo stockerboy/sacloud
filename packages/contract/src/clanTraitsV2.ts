@@ -87,12 +87,12 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
  * ⚠ 옛 여섯(`CLAN_HEX_V2_AXIS_KEYS`)은 지우지 않는다 (`CLAUDE.md` 1-4).
  */
 export const CLAN_HEX_V2_CLAN_AXIS_KEYS = [
-  'sniperDuel',
+  'duelScore',
   'sniperScore',
   'shortScore',
   'f2Score',
   'bScore',
-  'outnumbered',
+  'fewScore',
 ] as const
 
 /**
@@ -133,6 +133,16 @@ export const CLAN_HEX_V2_CLAN_AXIS_KEYS = [
  * ⚠ 옛 여섯(구역 어택)은 ★지우지 않는다★ — `..._V6` 에 남고 재료도 계속 쌓인다.
  */
 export const CLAN_HEX_V2_MATCH_AXIS_KEYS = [
+  'duelScore',
+  'sniperScore',
+  'shortScore',
+  'f2Score',
+  'bScore',
+  'fewScore',
+] as const
+
+/** ⚠ 2026-09-18 새벽까지 — 스나싸움·소수싸움이 아직 «횟수» 이던 판 */
+export const CLAN_HEX_V2_MATCH_AXIS_KEYS_V7 = [
   'sniperDuel',
   'sniperScore',
   'shortScore',
@@ -195,6 +205,8 @@ export type ClanHexV2AnyAxisKey =
   | ClanHexV2AxisKey
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS)[number]
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V6)[number]
+  | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V7)[number]
+  | (typeof CLAN_HEX_V2_CLAN_AXIS_KEYS)[number]
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS)[number]
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V5)[number]
   | (typeof CLAN_HEX_V2_AXIS_KEYS_V4)[number]
@@ -220,6 +232,9 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AnyAxisKey, string> = {
   bAttack: 'B어택',
   f2Attack: '2층어택',
   /* ★2026-09-18 사장님 — 점수제 넷★ */
+  /* ★2026-09-18 사장님 — 스나싸움·소수싸움도 점수다★ */
+  duelScore: '스나싸움',
+  fewScore: '소수싸움',
   sniperScore: '스나점수',
   shortScore: '숏점수',
   f2Score: '2층점수',
@@ -285,6 +300,8 @@ export const CLAN_HEX_V2_LOWER_IS_BETTER: Record<ClanHexV2AnyAxisKey, boolean> =
   bAttack: false,
   f2Attack: false,
   /* ★점수제 넷★ — 많이 벌수록 좋다 (2026-09-18) */
+  duelScore: false,
+  fewScore: false,
   sniperScore: false,
   shortScore: false,
   f2Score: false,
@@ -326,6 +343,8 @@ export const CLAN_HEX_V2_AXIS_UNITS: Record<
   bAttack: 'ratio',
   f2Attack: 'ratio',
   /* ★점수제 넷★ — 두 팀 점수의 몫이라 비율이다 (2026-09-18) */
+  duelScore: 'ratio',
+  fewScore: 'ratio',
   sniperScore: 'ratio',
   shortScore: 'ratio',
   f2Score: 'ratio',
@@ -1003,6 +1022,10 @@ export interface ClanHexTallyLike {
    */
   score?: {
     sniper: number
+    /** ★스나싸움 점수★ — `sniper` 의 부분집합 (2026-09-18) */
+    duel?: number
+    /** ★소수싸움 점수★ — 구역 칸의 부분집합 (2026-09-18) */
+    save?: number
     short: number
     b: number
     f2: number
@@ -1137,7 +1160,7 @@ export const ClanHexagonV2Axis = z.object({
     'sniperDuel', 'sniperInfluence', 'rifleInfluence', 'blockChance', 'openChance',
     'outnumbered', 'save',
     /* ★경기 육각의 점수 넷★ (2026-09-18 사장님) */
-    'sniperScore', 'shortScore', 'f2Score', 'bScore',
+    'duelScore', 'fewScore', 'sniperScore', 'shortScore', 'f2Score', 'bScore',
     /* ⚠ 옛 판 — 구역 어택 셋 (2026-09-17). 지우지 않는다 (`CLAUDE.md` 1-4) */
     'aAttack', 'bAttack', 'f2Attack',
     /* ★옛 이름들★ — 예전 행이 화면으로 올 수 있다 (`CLAUDE.md` 1-4) */
@@ -1283,9 +1306,11 @@ export function sumClanHexTallies(tallies: readonly ClanHexTallyLike[]): ClanHex
    */
   sum.score = sumParts(
     tallies.map((tally) => tally.score ?? null),
-    () => ({ sniper: 0, short: 0, b: 0, f2: 0, spare: 0 }),
+    () => ({ sniper: 0, duel: 0, save: 0, short: 0, b: 0, f2: 0, spare: 0 }),
     (into, from) => {
       into.sniper += from.sniper
+      into.duel = (into.duel ?? 0) + (from.duel ?? 0)
+      into.save = (into.save ?? 0) + (from.save ?? 0)
       into.short += from.short
       into.b += from.b
       into.f2 += from.f2
@@ -1849,6 +1874,8 @@ export function buildClanHexV2Raw(input: {
        * ⚠ 점수가 0 이면 «측정중» 이 아니라 ★0점★ 이다 — 다만 ★둘 다 0★ 이면
        *   그 칸에서 아무 일도 없었다는 뜻이라 `normalizeAgainstFoe` 가 «측정중» 으로 돌린다.
        */
+      case 'duelScore':
+      case 'fewScore':
       case 'sniperScore':
       case 'shortScore':
       case 'f2Score':
@@ -1856,13 +1883,17 @@ export function buildClanHexV2Raw(input: {
         const part = tally.score ?? null
         if (part === null) return pendingAxis(key, tallyMissingReason(tally, false))
         const points =
-          key === 'sniperScore'
-            ? part.sniper
-            : key === 'shortScore'
-              ? part.short
-              : key === 'f2Score'
-                ? part.f2
-                : part.b
+          key === 'duelScore'
+            ? (part.duel ?? 0)
+            : key === 'fewScore'
+              ? (part.save ?? 0)
+              : key === 'sniperScore'
+                ? part.sniper
+                : key === 'shortScore'
+                  ? part.short
+                  : key === 'f2Score'
+                    ? part.f2
+                    : part.b
         /*
          * ⚠ ★분모는 「경기 수」★ 다 — 그래야 클랜 육각이 ★경기당 평균 점수★ 가 되고
          *   리그 백분위가 뜻을 갖는다. ★경기 육각★ 은 `normalizeAgainstFoe` 가
@@ -1870,8 +1901,15 @@ export function buildClanHexV2Raw(input: {
          * ⚠ 점수가 0 이면 「측정중」 이 아니라 ★0점★ 이다 — 다만 두 팀 다 0 이면
          *   그 칸에서 아무 일도 없었다는 뜻이라 `normalizeAgainstFoe` 가 되돌린다.
          */
+        /*
+         * ⚠ ★「유의미한 차이가 아니면 불 끄는 것」 을 하지 않는다★
+         *   (2026-09-18 사장님: «그 유의미한 차이 아니면 불끄는거 하지마»).
+         *
+         *   옛 판은 점수가 0 이면 «측정중» 으로 흐려 놨다. 그러면 한 칸이 주저앉아
+         *   ★그림이 거짓말★ 을 한다 — 0점은 «못 쟀다» 가 아니라 ★못 땄다★ 는 뜻이다.
+         *   0 도 그대로 적는다. 두 팀이 다 0 이면 `normalizeAgainstFoe` 가 가른다.
+         */
         const games = Math.max(1, input.matches)
-        if (points === 0) return pendingAxis(key, 'sample', { numerator: 0 })
         return measuredAxis(key, points, games)
       }
       case 'sniperDuel': {
@@ -2122,6 +2160,8 @@ const ZONE_SHARE_AXES: readonly ClanHexV2AnyAxisKey[] = [
   'bAttack',
   'f2Attack',
   /* ★점수제 넷도 두 팀의 몫이다★ (2026-09-18) — 합이 100% 가 된다 */
+  'duelScore',
+  'fewScore',
   'sniperScore',
   'shortScore',
   'f2Score',
@@ -2172,6 +2212,10 @@ export function normalizeAgainstFoe(
       const an = a.numerator ?? 0
       const bn = b.numerator ?? 0
       const sum = an + bn
+      /*
+       * ⚠ ★둘 다 0 이면 그 칸에서 아무 일도 없었다★ — 그때만 «없었음» 이다.
+       *   한쪽이라도 점수를 땄으면 ★불을 끄지 않는다★ (2026-09-18 사장님).
+       */
       if (sum <= 0) {
         for (const axis of [a, b]) {
           axis.value = null
@@ -2185,8 +2229,14 @@ export function normalizeAgainstFoe(
       /* 화면에 적는 글도 몫으로 — 분모는 「둘이 뚫은 횟수의 합」 이다 */
       a.denominator = sum
       b.denominator = sum
-      a.text = `${Math.round(share(an) * 100)}%`
-      b.text = `${Math.round(share(bn) * 100)}%`
+      /*
+       * ★글자는 점수다★ (2026-09-18 사장님: «경기육각 저거 점수로 해 26점 : 37점 이런식로»).
+       *
+       * 그림(육각 크기)은 몫 그대로 두고 ★글자만★ 점수로 적는다.
+       * ⚠ 되돌리려면 이 두 줄만 `${Math.round(share(n) * 100)}%` 로 바꾸면 된다.
+       */
+      a.text = `${an}점 : ${bn}점`
+      b.text = `${bn}점 : ${an}점`
       a.pending = null
       b.pending = null
       continue

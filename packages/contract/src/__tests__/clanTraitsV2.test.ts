@@ -143,7 +143,8 @@ function fullTally(over: Partial<ClanHexTallyLike> = {}): ClanHexTallyLike {
      */
     zoneAttack: { aN: 6, aOk: 3, bN: 8, bOk: 5, f2N: 5, f2Ok: 2, shortN: 8, shortOk: 4 },
     /* ★점수제★ (2026-09-18 사장님) — 경기 육각의 점수 축 넷이 쓴다 */
-    score: { sniper: 18, short: 25, b: 16, f2: 10, spare: 3 },
+    /* ★스나싸움·소수싸움도 점수다★ (2026-09-18) — `duel` 은 `sniper` 의, `save` 는 구역의 부분집합 */
+    score: { sniper: 18, duel: 9, save: 4, short: 25, b: 16, f2: 10, spare: 3 },
     /* ★스나·라플 영향력★ (2026-09-16 밤) — `games` 가 없으니 ★한 판★ 이다 */
     gapScore: gapTally(),
     firstBlood: { rounds: 12, won: 7, tiedRounds: 2 },
@@ -1246,7 +1247,7 @@ describe('★상대와 견주기★ — 경기 여섯 축이 다 값을 받는�
   it('★점수 축 넷이 다 값을 받는다★ — 이 줄이 깨지면 화면에 「없었음」 이 뜬다', () => {
     const [red, blue] = pair()
     for (const hex of [red, blue]) {
-      for (const key of ['sniperScore', 'shortScore', 'f2Score', 'bScore'] as const) {
+      for (const key of ['duelScore', 'fewScore', 'sniperScore', 'shortScore', 'f2Score', 'bScore'] as const) {
         const axis = hex.axes.find((a) => a.key === key)
         expect(axis, `${key} 축이 없다`).toBeDefined()
         expect(axis?.pending, `${key} 가 측정중으로 떨어졌다`).toBeNull()
