@@ -18,7 +18,12 @@ import { CLAN_HEX_V2_MATCH_AXIS_KEYS } from '@sacloud/contract'
 import { MatchHexagonV3 } from '../v3/MatchHexagonV3'
 
 /** 그림판 — `MatchHexagonV3` 의 `MHEX` 와 같은 값이어야 한다 */
-const VB = { x: -18, w: 338, h: 300 }
+/*
+ * ⚠ ★2026-09-18 — 좌우를 더 넓혔다★ (사장님: 「압도적 차이라는 글씨가 가려져있어」).
+ *   왼쪽 라벨이 「압도적 10점 차이」 로 길어져 카드 밖으로 잘렸다.
+ *   ★그림 크기는 그대로다★ — 글자가 놓일 여백만 늘렸다.
+ */
+const VB = { x: -48, w: 398, h: 306 }
 
 function axis(key: ClanHexV2AnyAxisKey, value: number, text: string) {
   return {

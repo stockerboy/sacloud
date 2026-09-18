@@ -10,12 +10,13 @@
  * 라운드 점수는 경기 원본에 없다 — «ROUND SCORE» 칸은 그리지 않는다. 지어내지 않는다.
  * 옛 화면(`LeagueClanRecordScreen`)의 부품들은 지우지 않았다 (`CLAUDE.md` 1-4).
  */
-import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
 import { showsTier } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
+import { MvpWhy } from './MvpWhy'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 /* 육각형은 2026-09-12 부터 머리 카드(ClanCardV3)가 그린다 — 여기서는 안 쓴다 */
@@ -508,70 +509,6 @@ function Scoreboard({
           <MvpWhy detail={detail} />
         </div>
       ) : null}
-    </div>
-  )
-}
-
-/**
- * ★MVP 가 MVP 인 이유★ (2026-09-18 사장님:
- *   「MVP가 mvp인 이유를 설명해줘 (…) 라운드마다 콕콕 찝어서 다넣어」).
- *
- * ⚠ ★평범한 1점짜리 라플킬은 안 적는다★ — 워커가 애초에 안 담는다.
- * ⚠ 줄이 하나도 없으면 ★아무것도 안 그린다★ — 「없다」 고 적는 것보다 조용한 편이 낫다.
- */
-const MVP_WHY_LABEL: Record<string, string> = {
-  rifleVsSniperEarly: '경기초반 스나 다운',
-  rifleVsSniperLate: '스나 다운',
-  sniperVsSniperEarly: '경기초반 스나싸움 승',
-  sniperVsSniperLate: '스나싸움 승',
-  bombWin: '폭탄설치 후 승리',
-  bombLossB: '폭탄설치(B) 후 패배',
-  bombLoss: '폭탄설치(A) 후 패배',
-  save1: '1대1 세이브',
-  save2: '1대2 세이브',
-  save3: '1대3 세이브',
-  save4: '1대4 세이브',
-}
-/** 값이 큰 것부터 위에 둔다 — 눈이 먼저 가는 자리에 굵직한 장면이 온다 */
-const MVP_WHY_ORDER = [
-  'rifleVsSniperEarly', 'rifleVsSniperLate',
-  'sniperVsSniperEarly', 'sniperVsSniperLate',
-  'save4', 'save3', 'save2', 'save1',
-  'bombWin', 'bombLossB', 'bombLoss',
-]
-
-function MvpWhy({ detail }: { detail: MatchDetail }) {
-  const why = detail.mvp_why ?? []
-  if (why.length === 0) return null
-  const name = [...detail.red, ...detail.blue].find((e) => e.player_id === detail.mvp_player_id)?.name ?? null
-  if (name === null) return null
-  const rows = MVP_WHY_ORDER.filter((k) => why.some((w) => w.kind === k)).map((k) => {
-    const hit = why.find((w) => w.kind === k) as { rounds: number[]; points: number }
-    return { key: k, rounds: hit.rounds, points: hit.points }
-  })
-  return (
-    <div style={{ margin: '10px 14px 14px', border: `1px solid ${V3.gold}`, borderRadius: 3, background: 'linear-gradient(180deg, rgba(255,216,61,.08), rgba(255,216,61,.02))', padding: '11px 13px' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.1em', color: V3.gold }}>MVP</span>
-        <span style={{ fontSize: 15, fontWeight: 800, color: '#ffe89a' }}>{name}</span>
-        <span style={{ fontSize: 11, color: '#6b7794' }}>왜 MVP 인가</span>
-      </div>
-      <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '3px 12px', fontSize: 12 }}>
-        {rows.map((r) => (
-          <Fragment key={r.key}>
-            <span style={{ color: V3.gold, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              {r.rounds.join(',')}라운드
-            </span>
-            <span style={{ color: '#9aa6bf' }}>{MVP_WHY_LABEL[r.key] ?? r.key}</span>
-            <span style={{ color: '#e2e5ee', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-              +{r.points}점
-            </span>
-          </Fragment>
-        ))}
-      </div>
-      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#6b7794' }}>
-        평범한 1점짜리 라플킬은 빼고, 값이 큰 것만 적었습니다.
-      </p>
     </div>
   )
 }

@@ -48,6 +48,31 @@ export const SCORE_SNIPER_KILLS_SNIPER_LATE = 2
 /** 값이 큰 쪽을 주는 ★순번 문턱★ — 우리 팀이 그 라운드에서 몇 번째로 잡았나 */
 export const SCORE_SNIPER_EARLY_RANK = 2
 
+/**
+ * ★롱에서 난 스나 대 스나에는 +1점★ (2026-09-18 사장님).
+ *
+ * > 「스나싸움이 에롱이나 비롱에서 스나가 스나를 잡은건데 이 경우에 보너스1점을 주라는건데」
+ * > 「에롱이나 비롱에서 잡은건 정말 값진 스나싸움 그 자체이기 때문」
+ *
+ * ── 왜 「스나 대 스나」 에만인가
+ *   라플이 롱에서 스나를 잡은 것은 ★이미 5점·3점★ 을 받는다. 거기에 또 얹으면 두 번 준다.
+ *   ★스나끼리 롱에서 붙은 것★ 이 사장님이 말씀하신 「스나싸움 그 자체」 다 —
+ *   육각의 `A,B롱 스나싸움` 축이 재는 것과 ★같은 사건★ 이다.
+ *
+ * ── 얼마나 커지나 (현물 5경기 실측)
+ *   ```
+ *     스나를 잡은 킬 128건
+ *       라플이 잡음        72건   ← 이미 5·3점. 보너스 없음
+ *       스나가 잡음        56건
+ *         그중 둘 다 롱 안 47건   → ★+47점★
+ *     5경기 전체 1,219점 대비 ★3.9%★
+ *   ```
+ *   ⚠ 처음에 「자리만 롱이면 전부 +1점」 으로 재 봤더니 ★73%(93건)★ 가 걸려
+ *     스나 킬 값을 통째로 올리는 꼴이었다. 사장님이 뜻을 다시 짚어 주셔서 좁혔다.
+ *     폭탄 점수를 빼서 상쇄하는 안(−12점)은 ★필요 없어졌다.★
+ */
+export const SCORE_SNIPER_DUEL_LONG_BONUS = 1
+
 /* ⚠ 옛 값 — 2026-09-18 낮까지 쓰던 판 (`CLAUDE.md` 1-4) */
 export const SCORE_SNIPER_KILL_EARLY_V1 = 2
 export const SCORE_SNIPER_KILL_LATE_V1 = 1
@@ -152,8 +177,16 @@ export const KILL_SCORE_POINTS: Record<KillScoreKind, number> = {
 export function killScore(
   who: { killerIsSniper: boolean; victimIsSniper: boolean | undefined },
   rank: number,
+  /**
+   * ★둘 다 롱(A롱·B롱) 안이었나★ — 스나 대 스나일 때만 +1점 (2026-09-18 사장님).
+   * ⚠ 잡는 순서를 안 본다 — 1번째든 5번째든 같은 1점이다.
+   */
+  bothInLong = false,
 ): number {
-  return KILL_SCORE_POINTS[killScoreKind(who, rank)]
+  const kind = killScoreKind(who, rank)
+  const base = KILL_SCORE_POINTS[kind]
+  const isSniperDuel = kind === 'sniperVsSniperEarly' || kind === 'sniperVsSniperLate'
+  return base + (isSniperDuel && bothInLong ? SCORE_SNIPER_DUEL_LONG_BONUS : 0)
 }
 
 /**

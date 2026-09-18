@@ -1200,6 +1200,17 @@ function tallyFor(input: {
   {
     const z = input.zones
     const anyZone = z.sideA ?? z.sideB ?? z.sideF2 ?? z.sideShort ?? null
+    /*
+     * ★롱에서 난 스나 대 스나에는 +1점★ (2026-09-18 사장님).
+     * 판정은 스나싸움 축과 ★같은 자★ 다 — 잡은 쪽·죽은 쪽이 둘 다 A롱·B롱 안.
+     */
+    const longs = [z.aLong, z.bLong].filter((zone): zone is ZoneCells => !!zone)
+    const bothLong = (kx: number | null, ky: number | null, dx: number | null, dy: number | null): boolean => {
+      if (longs.length === 0) return false
+      const hit = (x: number | null, y: number | null): boolean =>
+        x !== null && y !== null && longs.some((zone) => inZone(zone, { x, y }))
+      return hit(kx, ky) && hit(dx, dy)
+    }
     if (anyZone !== null) {
       const sc = emptyMatchScore()
       let touched = false
@@ -1215,6 +1226,7 @@ function tallyFor(input: {
           const points = killScore(
             { killerIsSniper: isSniper(kill.killer), victimIsSniper: isSniper(kill.victim) },
             rank,
+            bothLong(kill.killerX, kill.killerY, kill.victimX, kill.victimY),
           )
           touched = true
           /* 스나가 번 점수는 ★구역을 안 보고★ 스나칸으로 간다 (사장님) */

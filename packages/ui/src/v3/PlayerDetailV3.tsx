@@ -23,6 +23,7 @@ import { CompareSearchV3, type CompareCandidate } from './CompareSearchV3'
 import { strengthAxes } from './playerHexAxes'
 import { AnalysisPanelV3 } from './AnalysisPanelV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
+import { MvpWhy } from './MvpWhy'
 import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
 import { WIN_LOSS, V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
@@ -746,6 +747,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
                 only={pick === 'both' ? null : pick}
                 id={`mhex-${detail.id}-${t.side}-${pick}`}
               />
+              <MvpWhy detail={detail} />
             </div>
           ) : (
           <>
@@ -770,6 +772,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             lostName={lostTeam?.snap.clan.name ?? '패배'}
             id={`mhexPc-${detail.id}`}
           />
+          <MvpWhy detail={detail} />
         </div>
       ) : null}
     </div>

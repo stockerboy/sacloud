@@ -1247,7 +1247,8 @@ describe('★상대와 견주기★ — 경기 여섯 축이 다 값을 받는�
   it('★점수 축 넷이 다 값을 받는다★ — 이 줄이 깨지면 화면에 「없었음」 이 뜬다', () => {
     const [red, blue] = pair()
     for (const hex of [red, blue]) {
-      for (const key of ['duelScore', 'fewScore', 'sniperScore', 'shortScore', 'f2Score', 'bScore'] as const) {
+      /* ⚠ ★스나싸움은 점수가 아니다★ (2026-09-18 사장님) — 「2:1」 처럼 ★이긴 횟수★ 다 */
+      for (const key of ['fewScore', 'sniperScore', 'shortScore', 'f2Score', 'bScore'] as const) {
         const axis = hex.axes.find((a) => a.key === key)
         expect(axis, `${key} 축이 없다`).toBeDefined()
         expect(axis?.pending, `${key} 가 측정중으로 떨어졌다`).toBeNull()
@@ -1338,9 +1339,14 @@ describe('★경기 육각 — 구역 축은 합이 100%★ (2026-09-17 사장�
     }
   })
 
-  it('구역 셋만 몫으로 읽는다 — 스나싸움·소수싸움·세이브는 그대로다', () => {
+  /*
+   * ⚠ ★2026-09-18 — 스나싸움도 몫으로 읽는다★ (사장님: 「걍 1:1 4:1 이런식으로」).
+   *   그 칸은 점수가 아니라 ★이긴 횟수★ 라, 두 팀 합이 100% 가 되는 편이 맞다.
+   *   소수싸움·세이브는 그대로 각자 비율이다.
+   */
+  it('소수싸움·세이브는 몫이 아니다 — 각자 비율 그대로다', () => {
     const [red, blue] = pairOf(2, 1)
-    for (const key of ['sniperDuel', 'outnumbered', 'save'] as const) {
+    for (const key of ['outnumbered', 'save'] as const) {
       const sum = (red.axes.find((x) => x.key === key)?.value ?? 0)
         + (blue.axes.find((x) => x.key === key)?.value ?? 0)
       /* 둘이 똑같은 재료라 서로 1.0 이 된다 — 합이 1 이 아니어야 「몫이 아니다」 가 지켜진다 */

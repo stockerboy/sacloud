@@ -87,7 +87,7 @@ export const CLAN_HEX_V2_AXIS_KEYS = [
  * ⚠ 옛 여섯(`CLAN_HEX_V2_AXIS_KEYS`)은 지우지 않는다 (`CLAUDE.md` 1-4).
  */
 export const CLAN_HEX_V2_CLAN_AXIS_KEYS = [
-  'duelScore',
+  'sniperDuel',
   'sniperScore',
   'shortScore',
   'f2Score',
@@ -133,6 +133,27 @@ export const CLAN_HEX_V2_CLAN_AXIS_KEYS = [
  * ⚠ 옛 여섯(구역 어택)은 ★지우지 않는다★ — `..._V6` 에 남고 재료도 계속 쌓인다.
  */
 export const CLAN_HEX_V2_MATCH_AXIS_KEYS = [
+  /*
+   * ★스나싸움만 「몇 대 몇」 이다★ (2026-09-18 사장님):
+   *
+   * > 「스나싸움은 점수 말고 2:1 이런식으로 하자 이것도 점수로 하니까
+   * >  스나점수에 포함돼 있는 점수인데 사람들이 이 차이까지 더해서 생각할거같아」
+   *
+   * ★스나싸움 점수는 스나점수 안에 이미 들어 있다.★ 두 칸에 같은 점수가 보이면
+   *   보는 사람이 ★두 번 더해서★ 읽는다. 그래서 이 칸만 ★이긴 횟수★ 로 적는다.
+   * ⚠ ★개인 랭킹의 스나싸움은 점수 그대로다★ (사장님) — 거기는 줄 세우는 자리라
+   *   점수가 더 촘촘하다. 두 화면이 다른 것이 맞다.
+   */
+  'sniperDuel',
+  'sniperScore',
+  'shortScore',
+  'f2Score',
+  'bScore',
+  'fewScore',
+] as const
+
+/** ⚠ 2026-09-18 낮 — 스나싸움까지 점수로 적던 짧은 판 */
+export const CLAN_HEX_V2_MATCH_AXIS_KEYS_V8 = [
   'duelScore',
   'sniperScore',
   'shortScore',
@@ -206,6 +227,7 @@ export type ClanHexV2AnyAxisKey =
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS)[number]
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V6)[number]
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V7)[number]
+  | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V8)[number]
   | (typeof CLAN_HEX_V2_CLAN_AXIS_KEYS)[number]
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS)[number]
   | (typeof CLAN_HEX_V2_MATCH_AXIS_KEYS_V5)[number]
@@ -240,7 +262,15 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AnyAxisKey, string> = {
   f2Score: '2층점수',
   bScore: '비리베점수',
   blockChance: '기회차단',
-  sniperDuel: '스나싸움',
+  /*
+   * ★어디서 재는지 이름에 적는다★ (2026-09-18 사장님:
+   *   「스나싸움 카텍은 A,B롱 스나싸움이라고 적어줘」).
+   *
+   * 이 축은 ★A롱·B롱 안★ 에서 스나끼리 붙은 것만 센다 (`SNIPER_DUEL_ZONE_RULE = 'long-only'`).
+   * MVP 이유의 「스나 다운」 은 ★자리를 안 본다★ — 이름이 같으면 같은 것으로 읽힌다.
+   * ⚠ 옛 이름(«스나싸움»)은 `CLAN_HEX_V2_AXIS_LABELS_V1` 에 그대로 있다.
+   */
+  sniperDuel: 'A,B롱 스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
   /* ★사장님이 직접 고른 말이다★ (2026-09-15) — 「라이플파워」·「소총화력」이 아니다 */
@@ -2159,8 +2189,9 @@ const ZONE_SHARE_AXES: readonly ClanHexV2AnyAxisKey[] = [
   'aAttack',
   'bAttack',
   'f2Attack',
+  /* ★스나싸움은 「몇 대 몇」★ (2026-09-18 사장님) — 점수가 아니라 ★이긴 횟수★ 다 */
+  'sniperDuel',
   /* ★점수제 넷도 두 팀의 몫이다★ (2026-09-18) — 합이 100% 가 된다 */
-  'duelScore',
   'fewScore',
   'sniperScore',
   'shortScore',
@@ -2209,6 +2240,22 @@ export function normalizeAgainstFoe(
      * ⚠ 둘 다 0이면 ★«없었음»★ 이다 — 0 대 0 을 50:50 으로 적지 않는다.
      */
     if (ZONE_SHARE_AXES.includes(key)) {
+      /*
+       * ⚠ ★한쪽이 아예 못 잰 축은 몫으로 읽지 않는다★ (D-235 Q7).
+       *
+       *   상대를 못 잰 채로 나누면 우리 쪽이 ★언제나 100%★ 가 된다 —
+       *   「상대가 0점이었다」 가 아니라 「상대를 못 쟀다」 인데 화면은 압승으로 읽는다.
+       *   그때는 ★양쪽 다 «견줄 수 없음»★ 이다. 아래 일반 규칙이 그렇게 처리한다.
+       */
+      if (a.raw === null || b.raw === null) {
+        for (const axis of [a, b]) {
+          if (axis.raw !== null) {
+            axis.value = null
+            axis.pending = 'compare'
+          }
+        }
+        continue
+      }
       const an = a.numerator ?? 0
       const bn = b.numerator ?? 0
       const sum = an + bn
@@ -2243,8 +2290,13 @@ export function normalizeAgainstFoe(
        *   나란히 이어 붙이니 ★«19점:20점 · 20점:19점»★ 이 됐다 — 겹쳐 보였다.
        *   한쪽은 자기 점수만 들고, ★잇는 일은 화면이★ 한다 (가운데 « : »).
        */
-      a.text = `${an}점`
-      b.text = `${bn}점`
+      /*
+       * ⚠ ★스나싸움만 「번」 이다★ (2026-09-18 사장님: 「걍 1:1 4:1 이런식으로」).
+       *   그 점수는 스나점수 안에 이미 들어 있어서, 점수로 또 적으면 ★두 번 더해 읽힌다.★
+       */
+      const unit = key === 'sniperDuel' ? '번' : '점'
+      a.text = `${an}${unit}`
+      b.text = `${bn}${unit}`
       a.pending = null
       b.pending = null
       continue

@@ -56,7 +56,12 @@ const ORDER = CLAN_HEX_V2_MATCH_AXIS_KEYS
  *   `tokens.ts` 의 `HEX` 는 선수 화면과 클랜 카드가 같이 쓴다.
  *   여기서 바꾸면 세 화면이 한꺼번에 틀어진다 — 경기용만 따로 둔다.
  */
-const MHEX = { cx: 150, cy: 138, r: 92, vbX: -18, vbW: 338, vbH: 300 } as const
+/*
+ * ⚠ ★좌우 여백을 넓혔다★ (2026-09-18 사장님: 「압도적 차이라는 글씨가 가려져있어」).
+ *   왼쪽 라벨이 길어져(「압도적 10점 차이」) 카드 밖으로 잘렸다.
+ *   `vbX` 를 더 왼쪽으로, `vbW` 를 그만큼 넓힌다 — 그림 크기는 그대로다.
+ */
+const MHEX = { cx: 150, cy: 138, r: 92, vbX: -48, vbW: 398, vbH: 306 } as const
 
 function mhexPoint(i: number, f: number): [number, number] {
   const a = -Math.PI / 2 + (Math.PI * 2 * i) / 6
@@ -214,9 +219,15 @@ function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] 
     const l = lost?.axes.find((a) => a.key === key) ?? null
     return {
       label: LABEL[key] ?? CLAN_HEX_V2_AXIS_LABELS[key],
-      /* ★점수★ — 그림 크기의 재료다. 아래에서 「가장 큰 점수」 로 나눈다 */
-      wonScore: w && w.value !== null ? (w.numerator ?? null) : null,
-      lostScore: l && l.value !== null ? (l.numerator ?? null) : null,
+      /*
+       * ★점수★ — 그림 크기의 재료다. 아래에서 「가장 큰 점수」 로 나눈다.
+       *
+       * ⚠ ★스나싸움만 뺀다★ (2026-09-18 사장님) — 그 칸은 ★이긴 횟수★(2:1)라
+       *   점수(21점)와 같은 자로 재면 언제나 중심에 붙어 버린다.
+       *   그 칸은 옛 방식대로 ★두 팀의 몫★ 으로 그린다.
+       */
+      wonScore: key === 'sniperDuel' ? null : (w && w.value !== null ? (w.numerator ?? null) : null),
+      lostScore: key === 'sniperDuel' ? null : (l && l.value !== null ? (l.numerator ?? null) : null),
       wonValue: w?.value ?? null,
       lostValue: l?.value ?? null,
       /* ★없었음★ (2026-09-11 사장님) — 그 판에 그 일이 한 번도 안 일어났다는 뜻이다.
@@ -380,7 +391,8 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
         {RINGS.filter((v) => v % 20 === 0).map((v) => {
           const [x, y] = mhexPoint(0, v / 100)
           return (
-            <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="700" fill="#c7d0e6" textAnchor="start">
+            /* ⚠ ★눈금이 맨 위 라벨을 가렸다★ (2026-09-18 사장님) — 오른쪽으로 더 민다 */
+            <text key={v} x={x + 11} y={y + 3} fontSize="7" fontWeight="700" fill="#5c6a88" textAnchor="start">
               {v}
             </text>
           )
@@ -481,7 +493,8 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                             fontWeight={p.hot ? 800 : 600}
                             fill={p.hot ? '#ff4d4d' : '#7f8db0'}
                           >
-                            {p.hot ? `압도적 차이 ${p.gapText}` : p.gapText}
+                            {/* ⚠ 옛 판은 「압도적 차이 10점 차이」 로 ★차이가 두 번★ 나왔다 */}
+                            {p.hot ? `압도적 ${p.gapText}` : p.gapText}
                           </tspan>
                         )}
                       </>

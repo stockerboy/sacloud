@@ -799,6 +799,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           const pts = killScore(
             { killerIsSniper: K.weapon === 1, victimIsSniper: V?.weapon === 1 },
             rank,
+            /* ★롱에서 난 스나 대 스나에는 +1점★ (2026-09-18 사장님) — 스나싸움 축과 같은 자다 */
+            inLong(e.kx, e.ky) && inLong(e.dx, e.dy),
           )
           const t = tallyOf(mk, K.pid)
           t.score += pts
