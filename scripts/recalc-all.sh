@@ -18,10 +18,14 @@ cd /root/sacloud
 #   `--max-old-space-size` 로 힙도 눌러 둔다 — 넘치면 GC 가 돌지 OOM 으로 안 죽는다.
 export NODE_OPTIONS="--max-old-space-size=900"
 
-for L in nolink supply sanply; do
-  echo "[$(date +%H:%M)] ① 경기 육각 — $L"
-  pnpm --filter @sacloud/worker nexon clan-hex-v2-build --league "$L" --rebuild --confirm 2>&1 | tail -2
-done
+# ⚠ ★`ONLY=player` 면 개인 육각만 돈다★ — 점수표만 바뀌었을 때 경기 육각을 다시
+#   돌릴 까닭이 없다 (61,900행 · 15분). 세이브 규칙처럼 개인 쪽만 바뀐 날에 쓴다.
+if [ "${ONLY:-}" != "player" ]; then
+  for L in nolink supply sanply; do
+    echo "[$(date +%H:%M)] ① 경기 육각 — $L"
+    pnpm --filter @sacloud/worker nexon clan-hex-v2-build --league "$L" --rebuild --confirm 2>&1 | tail -2
+  done
+fi
 
 for L in nolink supply sanply; do
   echo "[$(date +%H:%M)] ② 개인 육각 — $L"
