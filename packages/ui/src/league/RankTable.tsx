@@ -944,7 +944,7 @@ export function PlayerRankTable({
                 {(row.trait_emblems ?? []).length > 0 ? (
                   /* ⚠ ★폰 104 → 112px★ (2026-09-18) — 한 칸을 32 → 36 으로 넓혀
                      ★배지 밑 이름★ 이 두 줄로 들어가게 했다 (사장님: 「배찌밑에 이름 달아줘」) */
-                  <span className="flex shrink-0 items-start justify-start gap-1 max-md:ml-1 max-md:w-[112px] md:ml-3 md:w-[200px] md:gap-2">
+                  <span className="flex shrink-0 items-start justify-start gap-1 max-md:ml-1 max-md:w-[116px] md:ml-3 md:w-[200px] md:gap-2">
                     {/*
                       * ⚠ ★2026-09-17 — 손으로 그리던 SVG 배지를 사장님 그림으로 바꿨다★.
                       *   옛 판(`TraitEmblem`)은 지우지 않았다 — 파일이 그대로 있고 이 줄만

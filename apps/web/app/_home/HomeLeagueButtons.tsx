@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { leagueScreen } from '@sacloud/contract'
 import { FEATURED_LEAGUES, LEAGUE_LOGO, isLeaguePreparing } from '@sacloud/ui'
 
 /**
@@ -46,10 +47,21 @@ const TONE: Readonly<Record<string, string>> = {
   sanply: '#9fc4ff',
 }
 
+/*
+ * ⚠ ★리그마다 있는 화면이 다르다★ (2026-09-19 검수에서 잡았다).
+ *
+ *   열산리그(`sanply`)는 ★클랜 기록을 제공하지 않는다.★ 그런데 첫 판은 세 단추를
+ *   모든 리그에 똑같이 걸어서 ★없는 화면으로 보내고 있었다.★
+ *   같은 홈 안의 `HomeSitemap` 은 그걸 알고 일부러 안 걸고 있었다 — 두 곳이 어긋났다.
+ *
+ *   ★리그가 무엇을 보여 주는가는 `leagueScreen()` 한 자리가 정한다★
+ *   (`packages/contract/src/leagueScreen.ts`). 여기에 `if (slug === 'sanply')` 를
+ *   적지 않는다 — 그 파일이 「분기를 화면마다 흩뿌리지 말라」고 못 박아 뒀다.
+ */
 const VIEWS = [
-  { label: '개인랭킹', path: 'rank/player' },
-  { label: '클랜랭킹', path: 'rank/clan' },
-  { label: '최근경기', path: 'match' },
+  { label: '개인랭킹', path: 'rank/player', needsClanRank: false },
+  { label: '클랜랭킹', path: 'rank/clan', needsClanRank: true },
+  { label: '최근경기', path: 'match', needsClanRank: false },
 ] as const
 
 /*
@@ -73,6 +85,9 @@ export function HomeLeagueButtons() {
 
   if (!picked) return null
 
+  /* 그 리그에 ★실제로 있는 화면★ 만 남긴다 */
+  const views = VIEWS.filter((v) => !v.needsClanRank || leagueScreen(picked.slug).clanRank)
+
   return (
     <section aria-label="리그별 바로가기" className="mt-[26px] w-full max-w-[720px] max-md:mt-[20px]">
       {/* ── 리그 단추 셋 ─────────────────────────────────────────────── */}
@@ -86,6 +101,8 @@ export function HomeLeagueButtons() {
               type="button"
               onClick={() => setOpen(league.slug)}
               aria-pressed={on}
+              /* ★어느 칸이 바뀌는지 읽는 기계에 알려 준다★ (2026-09-19 검수) */
+              aria-controls="home-league-views"
               className="group flex flex-1 flex-col items-center justify-center gap-[7px] rounded-[14px] border px-[10px] py-[14px] transition-all duration-150 max-md:gap-[5px] max-md:rounded-[11px] max-md:px-[6px] max-md:py-[11px]"
               style={{
                 borderColor: on ? color : 'rgba(146,174,233,.18)',
@@ -121,12 +138,17 @@ export function HomeLeagueButtons() {
       </div>
 
       {/* ── 고른 리그의 화면 셋 ───────────────────────────────────────── */}
-      <div className="mt-[10px] flex items-stretch gap-[10px] max-md:mt-[7px] max-md:gap-[7px]">
-        {VIEWS.map((view) => (
+      <div
+        id="home-league-views"
+        /* 단추를 누르면 이 칸의 세 링크가 바뀐다 — 바뀌었다고 말해 준다 */
+        aria-live="polite"
+        className="mt-[10px] flex items-stretch gap-[10px] max-md:mt-[7px] max-md:gap-[7px]"
+      >
+        {views.map((view) => (
           <Link
             key={view.path}
             href={`/league/${picked.slug}/${view.path}`}
-            className="flex flex-1 items-center justify-center rounded-[12px] border py-[13px] text-[14px] font-bold transition-all duration-150 max-md:rounded-[10px] max-md:py-[11px] max-md:text-[12.5px]"
+            className="flex flex-1 items-center justify-center rounded-[12px] border py-[13px] text-[14px] font-bold transition-all duration-150 max-md:rounded-[10px] max-md:py-[13px] max-md:text-[12.5px]"
             style={{ borderColor: `${tone}3d`, background: 'rgba(255,255,255,.02)' }}
           >
             {/* `a { color: inherit }` — 색은 안쪽 span 에 준다 (D-231) */}

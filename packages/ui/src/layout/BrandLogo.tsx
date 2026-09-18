@@ -279,6 +279,21 @@ const CAT_SRC_LIGHT = '/brand/mark-light.webp'
 const CAT_W = 934
 const CAT_H = 360
 
+/*
+ * ⚠ ★상단바용 작은 판★ (2026-09-19 검수에서 잡았다).
+ *
+ *   상단바 로고는 ★34px(폰 28px)★ 로만 그린다. 그런데 934px 짜리 62KB 를
+ *   ★모든 페이지가★ 받고 있었다 — 옛 상단바(`tri`)는 인라인 SVG 라 0바이트였으니
+ *   ★0 → 62KB 회귀★ 였다. 96px 판(12KB)을 따로 두어 5분의 1로 줄인다.
+ *   (96px 은 34px 을 고해상도 화면에서 3배로 그려도 남는 크기다)
+ *
+ *   ⚠ 큰 판은 ★홈 대문★ 이 그대로 쓴다 — 거기는 150px 라 작은 판이면 뭉개진다.
+ */
+const CAT_SRC_DARK_SM = '/brand/mark-dark-sm.webp'
+const CAT_SRC_LIGHT_SM = '/brand/mark-light-sm.webp'
+const CAT_W_SM = 249
+const CAT_H_SM = 96
+
 /**
  * 새 로고 본체.
  *
@@ -289,19 +304,32 @@ function CatMark({
   className,
   height,
   tone = 'light',
+  small = false,
 }: {
   className?: string
   height?: number
   /** `light` = 어두운 배경에 얹는다(기본) · `dark` = 밝은 배경에 얹는다 */
   tone?: 'light' | 'dark'
+  /** 상단바처럼 ★작게 그리는 자리★ — 96px 판을 쓴다 (12KB) */
+  small?: boolean
 }) {
   const h = height ?? 32
+  const dark = tone !== 'dark'
+  const src = small
+    ? dark
+      ? CAT_SRC_DARK_SM
+      : CAT_SRC_LIGHT_SM
+    : dark
+      ? CAT_SRC_DARK
+      : CAT_SRC_LIGHT
+  const w = small ? CAT_W_SM : CAT_W
+  const hh = small ? CAT_H_SM : CAT_H
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={tone === 'dark' ? CAT_SRC_LIGHT : CAT_SRC_DARK}
+      src={src}
       alt={MARK_LABEL}
-      width={Math.round((h * CAT_W) / CAT_H)}
+      width={Math.round((h * w) / hh)}
       height={h}
       className={className ? `${className} shrink-0` : 'shrink-0'}
     />
@@ -472,8 +500,9 @@ export function NavLogo({
 
   const resolved = resolveVariant(variant, wordmark, NAV_VARIANT)
   if (resolved === 'cat') {
-    /* 상단바. 로그인 카드처럼 밝은 바탕이면 `tone='dark'` 로 원본 색을 쓴다 */
-    return <CatMark className={className} height={34} tone={tone} />
+    /* 상단바. 로그인 카드처럼 밝은 바탕이면 `tone='dark'` 로 원본 색을 쓴다.
+       ★작은 판★ 을 쓴다 — 여기는 34px 라 934px 판이 필요 없다 (12KB 대 62KB) */
+    return <CatMark className={className} height={34} tone={tone} small />
   }
   if (resolved === 'tri') {
     /*

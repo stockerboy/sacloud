@@ -54,7 +54,12 @@ export interface LeagueLogo {
 export const LEAGUE_LOGO: Readonly<Record<string, LeagueLogo>> = {
   nolink: { src: '/brand/league-ipl.webp', w: 673, h: 200 },
   supply: { src: '/brand/league-pl.webp', w: 630, h: 200 },
-  sanply: { src: '/assets/league-ysl.png', w: 431, h: 320 },
+  /*
+   * ⚠ ★2026-09-19 — PNG 186KB → webp 23KB★ (성능 검수에서 잡았다).
+   *   431×320 PNG 를 ★높이 30px★(폰 22px)로 줄여 쓰고 있었다. 그림은 그대로고
+   *   담는 그릇만 바꿨다. 옛 파일은 `/assets/league-ysl.png` 에 그대로 있다.
+   */
+  sanply: { src: '/brand/league-ysl.webp', w: 269, h: 200 },
 }
 
 /**

@@ -864,7 +864,17 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         /* 싸움 — 둘 다 스나(롱 안) 또는 둘 다 라플(맵 전체). 무기는 그 경기 기록으로 판정한다 */
         if (K && V) {
           if (K.weapon === 1 && V.weapon === 1 && e.gun === 'sniper') {
-            if (inLong(e.kx, e.ky) && inLong(e.dx, e.dy)) {
+            /*
+             * ⚠ ★한쪽이라도 롱 안이면 센다★ (2026-09-18 사장님:
+             *   「벙커>비롱 / 비롱>벙커 비롱>비롱 다 스나싸움으로 해」).
+             *
+             *   ★여기만 `&&` 로 남아 있었다★ — 2026-09-19 검수에서 찾았다.
+             *   경기 육각(`clanHexV2`)과 점수 보너스(`+1점`)는 그날 `||` 로 바꿨는데
+             *   ★개인 스나싸움 축★ 만 옛 규칙이라, 같은 화면 안에서
+             *   점수는 「한쪽이라도」 로 주고 횟수는 「둘 다」 로 세고 있었다.
+             *   분모가 줄어 문턱(`MIN_DUELS`)을 못 넘는 사람도 늘었다.
+             */
+            if (inLong(e.kx, e.ky) || inLong(e.dx, e.dy)) {
               tallyOf(mk, K.pid).duelWon += 1
               tallyOf(mk, V.pid).duelLost += 1
             }

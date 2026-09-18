@@ -674,6 +674,17 @@ export function toMatchListItem(
     mvp_player_id: mvpPlayerIdOf(match),
     /* ★목록에는 이유를 안 담는다★ — 상세에서만 채운다 (2026-09-18) */
     mvp_why: null,
+    /*
+     * ★몇 라운드까지 갔나★ (2026-09-19) — 목록에도 싣는다. `MatchDetail` 이
+     * `MatchListItem` 을 물려받아서다. 접힌 줄에서는 안 쓰지만 형이 요구한다.
+     * ⚠ `roundsWon` 을 더해서 구하면 ★승패를 모르는 라운드가 빠진다.★
+     */
+    total_rounds: (() => {
+      const seen = match.clanHexV2
+        .map((r) => (r.tally as { rounds?: unknown } | null | undefined)?.rounds)
+        .filter((n): n is number => typeof n === 'number' && n > 0)
+      return seen.length > 0 ? Math.max(...seen) : null
+    })(),
     red_rounds: roundsWonInList(match, match.redLeagueClanId),
     blue_rounds: roundsWonInList(match, match.blueLeagueClanId),
     league_clan_side: viewerSide,
@@ -1103,6 +1114,19 @@ export async function getMatch(
   const chancesOf = new Map(saveRows.map((row) => [row.playerId, row.aloneRounds]))
   /* ★한 판 육각★ — 그 판에 뛴 사람들 안에서 백분위를 낸다 (2026-09-15) */
   const hexOf = matchHexOf(saveRows, match.stats, match.winnerSide)
+  /*
+   * ★그 경기가 몇 라운드까지 갔나★ (2026-09-19) — 「(매치)」 표시의 재료다.
+   * ⚠ ★`roundsWon` 을 더해서 구하면 안 된다★ — 승패를 모르는 라운드가 빠진다.
+   *   `tally.rounds` 는 ★이벤트로 확인된 라운드 수★ 라 그런 라운드도 센다.
+   *   양 팀 값이 다르면 ★큰 쪽★ 을 쓴다 — 한쪽 로그만 짧을 수 있다.
+   */
+  const totalRoundsOf = (): number | null => {
+    const seen = hexRows
+      .map((entry) => (entry.tally as { rounds?: unknown } | null | undefined)?.rounds)
+      .filter((n): n is number => typeof n === 'number' && n > 0)
+    return seen.length > 0 ? Math.max(...seen) : null
+  }
+
   const roundsWonOf = (leagueClanId: string): number | null => {
     const row = hexRows.find((entry) => entry.leagueClanId === leagueClanId)
     const tally = row?.tally as { roundsWon?: unknown } | null | undefined
@@ -1132,6 +1156,7 @@ export async function getMatch(
     viewer_side: viewerSide,
     red_rounds: roundsWonOf(match.redLeagueClanId),
     blue_rounds: roundsWonOf(match.blueLeagueClanId),
+    total_rounds: totalRoundsOf(),
     red_hexagon_v2: hexV2?.red
       ? { league_clan_id: hexV2.red.leagueClanId, hexagon: hexV2.red.hexagon }
       : null,

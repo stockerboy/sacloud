@@ -44,11 +44,22 @@ export function HomeCatHero() {
         ⚠ ★`aria-hidden` 이다★ — 읽는 기계에게는 아무 뜻도 없는 그림이다.
           `alt=""` 만으로는 부족하다 (무대 자체가 읽히면 빈 칸이 하나 늘어난다).
       */}
-      <div className="cat-stage mt-[10px] w-full max-w-[720px] max-md:mt-[6px]" aria-hidden>
+      {/*
+        ⚠ ★무대를 화면 끝까지 넓힌다★ (2026-09-19 검수).
+          720px 로 묶어 뒀더니 ★무대 왼쪽 경계가 화면 한가운데★ 라,
+          고양이가 «허공에서 세로로 잘린 채» 튀어나왔다 (실측: 몸의 35px 만 보임).
+          무대만 넓히고 ★구름과 고양이는 여전히 가운데★ 다 — 보이는 자리는 안 바뀐다.
+        ⚠ `w-screen` 은 쓰지 않는다 — 세로 스크롤바 폭만큼 넘쳐 가로 스크롤이 생긴다.
+      */}
+      <div
+        className="cat-stage mt-[10px] max-md:mt-[6px]"
+        style={{ width: '100vw', maxWidth: '100%' }}
+        aria-hidden
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/cat.webp" alt="" width={404} height={220} className="cat-stage__cat" />
+        <img src="/brand/cat.webp" alt="" width={396} height={220} className="cat-stage__cat" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/cloud.webp" alt="" width={361} height={260} className="cat-stage__cloud" />
+        <img src="/brand/cloud.webp" alt="" width={396} height={260} className="cat-stage__cloud" />
       </div>
     </div>
   )

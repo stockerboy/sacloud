@@ -85,7 +85,11 @@ const OPTIONS: readonly SearchOption[] = [
 
 export interface SearchBarProps {
   /** 제출(엔터 또는 돋보기 클릭) 시 호출된다. 조회·이동은 호출한 쪽이 담당한다. */
-  onSubmit: (type: SearchType, query: string) => void
+  /**
+   * 제출. ★약속(Promise)을 돌려주면★ 그동안 「찾는 중입니다…」 를 띄운다
+   * (2026-09-19). 안 돌려줘도 그대로 동작한다 — 표시만 안 뜬다.
+   */
+  onSubmit: (type: SearchType, query: string) => void | Promise<unknown>
   /**
    * 못 찾았을 때 입력창 밑에 띄울 한 줄 (D-254).
    *
@@ -187,11 +191,34 @@ export function SearchBar({
     setActive(-1)
   }, [suggestions])
 
+  /*
+   * ★찾는 중이라고 말한다★ (2026-09-19 검수에서 잡았다).
+   *
+   *   여태 엔터를 누르면 ★결과가 올 때까지 화면이 한 픽셀도 안 바뀌었다.★
+   *   실측으로 응답이 120초 걸린 적이 있는데, 그 2분 동안 사용자는
+   *   「멈춘 건가」 와 「찾는 중인가」 를 구별할 수 없었다.
+   *   D-254 가 고쳤다던 바로 그 상태로 ★느려지면 되돌아갔다.★
+   */
+  const [busy, setBusy] = useState(false)
+  /* 빈 값으로 엔터를 쳤을 때 한 줄 — 이것도 «아무 일도 안 일어남» 이었다 */
+  const [selfNotice, setSelfNotice] = useState<string | null>(null)
+
   const submit = () => {
     const query = text.trim()
-    if (!query) return
+    if (!query) {
+      setSelfNotice('닉네임이나 클랜명을 먼저 적어 주세요.')
+      return
+    }
+    setSelfNotice(null)
     setDismissed(true)
-    onSubmit(type, query)
+    setBusy(true)
+    /* `onSubmit` 이 약속을 돌려주면 끝날 때 풀고, 아니면 곧바로 푼다 */
+    const done = onSubmit(type, query) as unknown
+    if (done && typeof (done as Promise<unknown>).finally === 'function') {
+      void (done as Promise<unknown>).finally(() => setBusy(false))
+    } else {
+      setBusy(false)
+    }
   }
 
   const pick = (suggestion: SearchSuggestion) => {
@@ -516,7 +543,15 @@ export function SearchBar({
              예전에는 **아무 일도 일어나지 않았다.** 엔터를 쳐도 화면이 그대로라
              사용자는 사이트가 멈춘 것인지 없는 것인지 구별할 수 없었다.
              진홍은 쓰지 않는다 — 「없음」은 오류가 아니다. 흐린 글자 한 줄이면 된다. */}
-      {notice ? (
+      {busy ? (
+        <p
+          role="status"
+          className="mt-2 bg-page px-1 py-1 text-[12px] leading-relaxed text-[var(--color-meta,#9a8080)]"
+        >
+          찾는 중입니다…
+        </p>
+      ) : null}
+      {(notice ?? selfNotice) ? (
         <p
           role="status"
           /*
@@ -526,7 +561,7 @@ export function SearchBar({
            */
           className="mt-2 bg-page px-1 py-1 text-[12px] leading-relaxed text-[var(--color-meta,#9a8080)]"
         >
-          {notice}
+          {notice ?? selfNotice}
         </p>
       ) : null}
     </div>

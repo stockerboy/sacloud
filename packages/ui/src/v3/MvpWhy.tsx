@@ -81,11 +81,15 @@ function RoundsText({ rounds, last }: { rounds: readonly number[]; last: number 
 
 export function MvpWhy({ detail }: { detail: MatchDetail }) {
   const why = detail.mvp_why ?? []
-  /* 두 팀 라운드를 더하면 ★그 경기의 마지막 라운드 번호★ 다 */
-  const lastRound =
-    detail.red_rounds === null || detail.blue_rounds === null
-      ? null
-      : detail.red_rounds + detail.blue_rounds
+  /*
+   * ⚠ ★두 팀 라운드를 더하면 안 된다★ (2026-09-19 검수에서 잡았다).
+   *   `red_rounds`·`blue_rounds` 는 «이긴 라운드» 수인데 ★승패를 모르는 라운드는
+   *   어느 쪽도 안 센다.★ 13라운드 경기에서 둘을 모르면 합이 11 이 되어
+   *   ★11라운드에 「(매치)」 가 찍힌다.★
+   *   `total_rounds` 는 ★이벤트로 확인된 라운드 수★ 라 그런 라운드도 센다.
+   * ⚠ 모르면 `null` — ★아무 라운드도 안 칠한다.★ 없는 말을 지어내지 않는다 (D-106).
+   */
+  const lastRound = detail.total_rounds
   if (why.length === 0) return null
   const name = [...detail.red, ...detail.blue].find((e) => e.player_id === detail.mvp_player_id)?.name ?? null
   if (name === null) return null

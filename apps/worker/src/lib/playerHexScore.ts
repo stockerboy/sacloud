@@ -124,7 +124,22 @@ const sumSide = (
  *   옛 줄(v1.9)은 그 칸이 0 이라 네 축이 0 으로 보인다. ★다시 돌려야 찬다.★
  *   옛 셈은 `axisValuesV4Of` 에 남겼다.
  */
-export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v2.0'
+/*
+ * ⚠ ★규칙을 바꿨으면 이 줄을 올린다★ — 2026-09-19 검수에서 안 올린 것이 드러났다.
+ *
+ *   `playerHexBuild` 는 ★같은 버전의 줄이 있으면 그 경기를 건너뛴다.★ 그래서
+ *   버전을 안 올리면 예약 잡(`--rebuild` 없음)이 ★옛 규칙 점수를 그대로 둔다.★
+ *   DB 가 «옛 규칙 + 새 규칙» 이 섞인 값이 되고 래더가 그걸 그대로 더한다.
+ *
+ *   v2.0 이후 점수 규칙이 세 번 바뀌었는데 버전이 그대로였다:
+ *   ```
+ *     롱에서 난 스나 대 스나 +1점
+ *     스나싸움 — 한쪽이라도 롱 안이면 센다
+ *     1대1 세이브도 1점 (Math.max(1, …))
+ *     개인 스나싸움 축도 «한쪽이라도 롱» 으로   ← 2026-09-19
+ *   ```
+ */
+export const PLAYER_HEX_FORMULA_VERSION = 'player-hex-v2.1'
 /** ⚠ 옛 판 — 구역 뚫은 비율로 재던 때 */
 export const PLAYER_HEX_FORMULA_VERSION_V19 = 'player-hex-v1.9'
 /** ⚠ 옛 판 — MVP 가 세이브·킬·데스로 정해지던 때 */

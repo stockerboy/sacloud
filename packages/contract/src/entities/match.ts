@@ -294,6 +294,16 @@ export const MatchListItem = z.object({
   /** 라운드 점수(진영 기준) — 병영 로그 집계(MatchClanHexV2.tally.roundsWon). 모르면 null (2026-09-11 · 접힌 줄에서도 보이게) */
   red_rounds: Count.nullable().default(null),
   blue_rounds: Count.nullable().default(null),
+  /**
+   * ★그 경기가 몇 라운드까지 갔나★ (2026-09-19).
+   *
+   * ⚠ ★`red_rounds + blue_rounds` 로 구하면 틀린다.★ 그 둘은 «이긴 라운드» 수인데
+   *   ★승패를 모르는 라운드는 어느 쪽도 안 센다.★ 13라운드 경기에서 두 라운드의
+   *   승패를 모르면 합이 11 이 되고, MVP 이유의 「(매치)」 표시가
+   *   ★11라운드에 찍힌다.★ 실제로 그렇게 될 뻔한 것을 검수에서 잡았다.
+   *   이 값은 `MatchClanHexV2.tally.rounds` — ★이벤트로 확인된 라운드 수★ 다.
+   */
+  total_rounds: Count.nullable().default(null),
   /** `league_clan` 이 선 진영 — 수집기의 red/blueLeagueClanId 로 안다. 명단으로 짐작하지 않는다 (2026-09-11 QA: 용병 경기에서 진영이 뒤집혔다) */
   league_clan_side: z.enum(['red', 'blue']).nullable().default(null),
   /**

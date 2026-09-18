@@ -1195,6 +1195,8 @@ function toMatchListItem(
     ],
     red_rounds: null,
     blue_rounds: null,
+    /* ★몇 라운드까지 갔나★ — 「(매치)」 표시의 재료 (2026-09-19) */
+    total_rounds: null,
     league_clan_side: null,
     league_clan: own,
     opponent,
@@ -1297,6 +1299,8 @@ export function getMatch(
     viewer_side: null,
     red_rounds: null,
     blue_rounds: null,
+    /* ★몇 라운드까지 갔나★ — 「(매치)」 표시의 재료 (2026-09-19) */
+    total_rounds: null,
     red_hexagon_v2: hexV2.red
       ? { league_clan_id: match.redLeagueClanId, hexagon: hexV2.red }
       : null,

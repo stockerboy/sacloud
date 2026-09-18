@@ -79,8 +79,13 @@ export const RANK_TOP = 'text-accent font-bold'
 /* ------------------------------------------------------------------ 칸 --- */
 
 /** 순위 칸 */
-/* ⚠ 폰 28 → 22px (2026-09-18) — 세 자리(999위)까지는 그대로 들어간다 */
-export const COL_RANK = 'w-16 shrink-0 text-center max-md:w-[22px]'
+/*
+ * ⚠ ★폰 22px 은 너무 좁았다★ (2026-09-19 검수) — 머리글 「순위」 가
+ *   ★두 줄로 쪼개져★ 「순/위」 가 됐고, 머리글 줄만 3px 높아져 표 리듬이 어긋났다.
+ *   26px 으로 되돌리고 ★줄바꿈을 막는다★ — 이게 진짜 원인이다.
+ *   (28 → 22 는 2026-09-18 에 이름칸을 넓히려고 줄인 값이다. 4px 만 돌려준다)
+ */
+export const COL_RANK = 'w-16 shrink-0 text-center max-md:w-[26px] max-md:whitespace-nowrap'
 /**
  * 이름 칸 — 남는 폭을 다 쓴다.
  *

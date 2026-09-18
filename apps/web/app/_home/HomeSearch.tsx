@@ -28,10 +28,27 @@ import {
   type SearchType,
 } from '@sacloud/ui'
 import { ApiError, apiGet } from '@/lib/api'
+import dynamic from 'next/dynamic'
 import { HomeLeagueTiles } from './HomeLeagueTiles'
 import { HomeTopPlayers } from './HomeTopPlayers'
-import { HomeAnalyzedMatches } from './HomeAnalyzedMatches'
-import { HomeLeagueFeatures } from './HomeLeagueFeatures'
+/*
+ * ⚠ ★안 그리는 화면을 번들에서 뺀다★ (2026-09-19 성능 검수).
+ *
+ *   `HERO_V3` 가 켜져 있으면 이 둘은 ★한 번도 안 그려진다.★ 그런데 위에서
+ *   그냥 `import` 하고 있어서 ★홈 번들에 통째로 들어갔다.★ 특히
+ *   `HomeLeagueFeatures → HomeFeatureExample → PlayerRankTable` 이
+ *   ★랭킹 표(RankTable.tsx · 소스 57KB)★ 를 홈까지 끌고 왔다 — 홈엔 안 보이는데도.
+ *   `@tanstack/react-query` 도 같이 딸려 왔다.
+ *
+ *   ★`next/dynamic` 으로 미룬다★ — 옛 화면으로 되돌릴 때만 받아 온다.
+ *   `ssr: false` 를 주지 않는다 — 되돌렸을 때 첫 그림이 비면 안 된다.
+ */
+const HomeAnalyzedMatches = dynamic(() =>
+  import('./HomeAnalyzedMatches').then((m) => m.HomeAnalyzedMatches),
+)
+const HomeLeagueFeatures = dynamic(() =>
+  import('./HomeLeagueFeatures').then((m) => m.HomeLeagueFeatures),
+)
 import { HomeHeroHead } from './HomeHeroHead'
 import { HERO_V2, HERO_V3 } from './heroV2'
 import { HomeCatHero } from './HomeCatHero'
