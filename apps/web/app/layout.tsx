@@ -123,12 +123,16 @@ const fontTier = Bebas_Neue({
  * 뜨고 무엇인지 아무도 모른다. 천 명에게 뿌리는 그 한 줄이 가장 값싼 홍보인데
  * **그 자리가 비어 있었다.**
  *
- * ══ 이미지가 없다 ══
+ * ══ 이미지 ══
  *
- * ⚠ **`og:image` 를 안 넣었다.** 저장소에 쓸 만한 그림이 없다
- * (`public/hero/creation-source.png` 는 히어로 원본이라 미리보기용이 아니다).
- * **그림은 사장님이 주셔야 한다** — 없는 그림을 CSS 로 만들어 내지 않는다.
- * 이미지가 없어도 **제목 · 설명 · 사이트 이름은 뜬다.**
+ * ⚠ **2026-09-18 — 드디어 그림이 생겼다.** 사장님이 새 로고(구름 위의 고양이)를
+ *   주셔서 그것으로 `app/opengraph-image.png`(1200×630)를 만들었다.
+ *   ★파일 이름이 곧 규칙이다★ — Next 가 `app/opengraph-image.*` 를 보면
+ *   `og:image` 를 저절로 넣는다. 여기 주소를 적지 않는다.
+ *   같은 규칙으로 `app/icon.png`(파비콘) · `app/apple-icon.png` 도 놓았다.
+ *
+ * ⚠ 옛 파비콘(`icon.svg`)은 ★지우지 않았다★ — `public/brand/icon-v1.svg` 에 있다
+ *   (`CLAUDE.md` 1-4). `app/` 안에 두 개가 같이 있으면 둘 다 나가므로 옮긴 것이다.
  *
  * ⚠ `metadataBase` 가 있어야 상대 주소가 절대 주소로 풀린다. 없으면 Next 가 경고만
  *   찍고 넘어가고, **미리보기에서 이미지가 조용히 빠진다.**
@@ -147,8 +151,8 @@ export const metadata: Metadata = {
     url: 'https://3rdcloud.my',
   },
   twitter: {
-    /* 이미지가 없으니 `summary` 다. `summary_large_image` 는 그림이 있을 때 쓴다 */
-    card: 'summary',
+    /* ⚠ 2026-09-18 — 그림이 생겨서 큰 카드로 바꿨다 (`app/opengraph-image.png`) */
+    card: 'summary_large_image',
     title: '3rd cloud - 서든어택 클랜전 전적검색',
     description: '닉네임이나 클랜명으로 클랜전 기록을 찾아보세요. 래더 · 랭킹 · 경기 기록.',
   },
