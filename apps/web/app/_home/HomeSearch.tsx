@@ -33,7 +33,9 @@ import { HomeTopPlayers } from './HomeTopPlayers'
 import { HomeAnalyzedMatches } from './HomeAnalyzedMatches'
 import { HomeLeagueFeatures } from './HomeLeagueFeatures'
 import { HomeHeroHead } from './HomeHeroHead'
-import { HERO_V2 } from './heroV2'
+import { HERO_V2, HERO_V3 } from './heroV2'
+import { HomeCatHero } from './HomeCatHero'
+import { HomeLeagueButtons } from './HomeLeagueButtons'
 
 /**
  * 홈 윗머리 — `0 로고 · 1 통합검색 · 2 리그 바로가기`.
@@ -272,7 +274,13 @@ export function HomeSearch() {
           ★지우지 않았다★ — `heroV2.ts` 의 `HERO_V2` 를 `false` 로 두면 그대로 돌아온다
           (`CLAUDE.md` 1-4). 상단바의 작은 로고는 건드리지 않았다.
       */}
-      {HERO_V2 ? (
+      {/*
+        ★2026-09-18 — 「구름 홈」★ (사장님). 로고 하나 + 고양이 애니메이션.
+        ⚠ 여백을 안 준다 — 고양이 무대가 검색창에 ★딱 붙어야★ 구름이 검색창 위에 얹힌다.
+      */}
+      {HERO_V3 ? (
+        <HomeCatHero />
+      ) : HERO_V2 ? (
         <div className="mb-[18px] w-full max-w-[940px] max-md:mb-[14px]">
           <HomeHeroHead />
         </div>
@@ -287,12 +295,18 @@ export function HomeSearch() {
              옛 값은 `mt-6 w-full` — 본문 폭을 다 썼다 */}
       {/* ★코드 배경 시안에서는 검색창이 아래 리그 칸과 ★같은 폭★ 이다 (940px).
              옛 값 720 은 아래 `maxWidth` 에 그대로 살아 있다 (`CLAUDE.md` 1-4) */}
-      <div className={HERO_V2 ? 'w-full max-w-[940px]' : 'w-full max-w-[720px]'}>
+      <div
+        className={
+          HERO_V3 ? 'w-full max-w-[720px]' : HERO_V2 ? 'w-full max-w-[940px]' : 'w-full max-w-[720px]'
+        }
+      >
         <SearchBar
           /* ★시안 홈 검색창은 720px★ (`width: 720`). 기본값 560 은 그대로 살아 있다 */
-          maxWidth={HERO_V2 ? 940 : 720}
+          maxWidth={HERO_V3 ? 720 : HERO_V2 ? 940 : 720}
+          /* ★구름 껍데기★ (2026-09-18) — 둥근 유리. 동작은 한 줄도 안 건드렸다 */
+          cloud={HERO_V3}
           /* ★터미널 껍데기★ — 껍데기만 바뀐다. 동작은 한 줄도 안 건드렸다 */
-          terminal={HERO_V2}
+          terminal={!HERO_V3 && HERO_V2}
           sweep
           onSubmit={handleSearch}
           notice={notice}
@@ -326,7 +340,22 @@ export function HomeSearch() {
           ★지우지 않는다★ (`CLAUDE.md` 1-4) — `HOME_RECENT_ON` 을 `true` 로 두면
           최근 경기가 그대로 돌아온다. 파일도 import 도 남아 있다.
       */}
-      {HOME_RECENT_ON ? <HomeAnalyzedMatches /> : <HomeLeagueFeatures />}
+      {/*
+        ⚠ ★2026-09-18 — 「리그 참가신청 3장」을 걷어 냈다★ (사장님:
+          「메인에 저거 밑에 리그 참가신청 저거 3장 전부 없애고 IPL PL 열산리그
+           이렇게 버튼 세개 만들고 누르면 개인랭킹 , 클랜랭킹 , 최근경기 이렇게 나오고
+           누를 수 있게 해줘」).
+
+          ★`HomeLeagueFeatures` 는 지우지 않았다★ (`CLAUDE.md` 1-4) — `HERO_V3` 를
+          `false` 로 두면 기능 소개와 참가 신청 단추가 그대로 돌아온다.
+      */}
+      {HERO_V3 ? (
+        <HomeLeagueButtons />
+      ) : HOME_RECENT_ON ? (
+        <HomeAnalyzedMatches />
+      ) : (
+        <HomeLeagueFeatures />
+      )}
     </section>
   )
 }

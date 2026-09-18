@@ -214,7 +214,7 @@ export type BrandWordmark = '3rdcloud' | 'sacloud'
  * - `mark`     2026-09-01 ~ 09-15 의 벡터 로고(구름 + 두 줄 글자). 안 지웠다
  * - `wordmark` 2026-09-01 오전까지 쓰던 한 줄 글자 로고. 안 지웠다
  */
-export type BrandLogoVariant = 'tri' | 'art' | 'mark' | 'wordmark'
+export type BrandLogoVariant = 'cat' | 'tri' | 'art' | 'mark' | 'wordmark'
 
 /**
  * ★★되돌리는 스위치 — 이 한 줄★★
@@ -222,7 +222,14 @@ export type BrandLogoVariant = 'tri' | 'art' | 'mark' | 'wordmark'
  * `'art'` → `'mark'` 로 바꾸면 사이트 전체 로고가 2026-09-15 모습으로 돌아간다.
  * `variant` 를 직접 넘긴 호출은 이 값을 무시한다 (그런 호출은 지금 없다).
  */
-const DEFAULT_VARIANT: BrandLogoVariant = 'art'
+/*
+ * ⚠ ★2026-09-18 — 사장님이 새 로고를 주셨다★:
+ *   「우리 사이트 대문 로고랑 다른 로고들 이걸로 다 바꿔줘」
+ *
+ *   구름 위에 고양이가 올라앉은 ★SA CLOUD★ 그림이다. 옛 값 `'art'` 는
+ *   그대로 살아 있다 (`CLAUDE.md` 1-4) — 이 한 줄을 되돌리면 옛 로고로 돌아간다.
+ */
+const DEFAULT_VARIANT: BrandLogoVariant = 'cat'
 
 /**
  * ★★상단바만 따로 도는 스위치★★ (2026-09-17)
@@ -233,7 +240,11 @@ const DEFAULT_VARIANT: BrandLogoVariant = 'art'
  *   110px 이라 그림이 또렷하게 보이고 ★다른 사람이 지금 손대는 중★ 이다.
  *   한 스위치로 묶으면 상단바를 고치면서 홈 히어로까지 같이 바뀐다.
  */
-const NAV_VARIANT: BrandLogoVariant = 'tri'
+/*
+ * ⚠ ★2026-09-18 — 상단바도 새 로고로★ (사장님: 「대문 로고랑 ★다른 로고들★ 이걸로 다 바꿔줘」).
+ *   옛 값 `'tri'`(직접 그린 세 색 로고)는 그대로 살아 있다 (`CLAUDE.md` 1-4).
+ */
+const NAV_VARIANT: BrandLogoVariant = 'cat'
 
 /**
  * 그림 로고의 크기.
@@ -245,6 +256,57 @@ const NAV_VARIANT: BrandLogoVariant = 'tri'
 const ART_SRC = '/brand/sa-cloud-logo.webp'
 const ART_W = 640
 const ART_H = 354
+
+/**
+ * ★2026-09-18 사장님 로고★ — 구름에 올라앉은 고양이 + `SA CLOUD`.
+ *
+ * ── 왜 두 장인가
+ *   `CLOUD` 글자가 ★속이 빈 테두리 글자★ 다. 원본은 흰 바탕에 ★어두운★ 테두리라
+ *   어두운 배경에 얹으면 ★그 다섯 글자가 통째로 사라진다.★ 그래서 어두운 배경용으로
+ *   ★그 획만★ 밝게 칠한 판을 따로 만들었다. 고양이 눈·코는 ★어두운 채로 뒀다★ —
+ *   같이 밝게 하면 얼굴이 지워진다 (실제로 한 번 그렇게 만들어 봤다).
+ *
+ * ── 어떻게 만들었나 (되만들 일이 있을 때를 위해)
+ *   ```
+ *   ① 가장자리에서 흰색을 타고 들어가 ★바깥 바탕★ 만 투명하게 (floodfill)
+ *   ② 구름 속 · 고양이 몸 · 두 발에 ★씨앗★ 을 주어 그 흰색만 남긴다
+ *      — 씨앗을 안 준 흰색(= CLOUD 글자 속)은 저절로 투명해진다
+ *   ③ y ≥ 448 아래의 어두운 획만 밝게 (고양이 어두운 선은 y 449 위에서 끝난다 · 실측)
+ *   ```
+ */
+const CAT_SRC_DARK = '/brand/mark-dark.webp'
+const CAT_SRC_LIGHT = '/brand/mark-light.webp'
+const CAT_W = 934
+const CAT_H = 360
+
+/**
+ * 새 로고 본체.
+ *
+ * ⚠ ★`width`·`height` 를 반드시 준다★ — `flex` 안에서 치수가 없으면 세로가 눌린다
+ *   (`ArtMark` 가 이미 같은 함정을 적어 뒀다).
+ */
+function CatMark({
+  className,
+  height,
+  tone = 'light',
+}: {
+  className?: string
+  height?: number
+  /** `light` = 어두운 배경에 얹는다(기본) · `dark` = 밝은 배경에 얹는다 */
+  tone?: 'light' | 'dark'
+}) {
+  const h = height ?? 32
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={tone === 'dark' ? CAT_SRC_LIGHT : CAT_SRC_DARK}
+      alt={MARK_LABEL}
+      width={Math.round((h * CAT_W) / CAT_H)}
+      height={h}
+      className={className ? `${className} shrink-0` : 'shrink-0'}
+    />
+  )
+}
 
 /**
  * 그림 로고 본체.
@@ -341,6 +403,10 @@ export function MainLogo({
   variant?: BrandLogoVariant
 }) {
   const resolved = resolveVariant(variant, wordmark)
+  if (resolved === 'cat') {
+    /* 홈 큰 로고. 높이는 부모가 정한다 — 어두운 히어로 위라 `tone` 은 기본값(light) */
+    return <CatMark className={className} height={150} />
+  }
   if (resolved === 'tri') {
     /*
      * 홈 큰 로고를 세 색 로고로 부르면 여기로 온다. ★기본값은 아니다★ —
@@ -405,6 +471,10 @@ export function NavLogo({
     tone === 'dark' ? 'var(--color-ink, #060505)' : 'var(--color-text-strong, #f6eded)'
 
   const resolved = resolveVariant(variant, wordmark, NAV_VARIANT)
+  if (resolved === 'cat') {
+    /* 상단바. 로그인 카드처럼 밝은 바탕이면 `tone='dark'` 로 원본 색을 쓴다 */
+    return <CatMark className={className} height={34} tone={tone} />
+  }
   if (resolved === 'tri') {
     /*
      * ★지금 상단바가 쓰는 로고★ — 흰 구름 + 빨강 `SA` + 파랑 `CLOUD`.

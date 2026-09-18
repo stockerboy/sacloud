@@ -26,13 +26,34 @@ export interface LeagueLogo {
 }
 
 /**
- * ★지금 쓰는 로고★ (2026-09-14).
+ * ★지금 쓰는 로고★ (2026-09-18 IPL·PL 만 새 그림으로 바꿨다).
  *
- * 열쇠는 ★슬러그★ 다 — 리그 이름이 바뀌어도(SPL→LLM · 10🏔→YSL) 슬러그는 안 바뀐다.
+ * > «IPL PL로고 저걸로 바꿔» — 사장님, 2026-09-18
+ *
+ * 사장님이 주신 그림 한 장을 둘로 갈라 `public/brand/` 에 넣었다
+ * (파란 IPL 673×200 · 빨간 PL 630×200).
+ *
+ * ── ★`sanply`(열산리그)는 건드리지 않았다★
+ *   사장님이 IPL·PL 둘만 바꾸라 하셨다. 그래서 2026-09-14 판 값 그대로다.
+ *
+ * ── ⚠ 높이가 섞였다
+ *   새 둘은 h=200, `sanply` 는 h=320 이다. 화면은 높이를 CSS 로 고정해 쓰므로
+ *   ★가로만 비율대로 달라진다★ — 새 둘이 옛 판보다 가로로 길다 (673/200 vs 435/320).
+ *   상단바가 들쭉날쭉해 보이면 여기 수치가 아니라 화면 쪽 높이를 조정해라.
+ *
+ * ── ⚠ ★크기를 반드시 실제 그림 크기로 적어라★
+ *   `next/image` 가 이 수치로 자리를 잡는다. 어긋나면 폰에서 가로가 0 이 되어
+ *   ★로고가 통째로 사라진다.★
+ *
+ * ── ⚠ 새 그림에는 «IPL» · «PL» ★글자가 들어 있다★
+ *   위 `LEAGUE_LOGO_FULL` 주석에 적힌 «상단바는 문양만 쓴다» 는 이유가 여기서는 깨진다.
+ *   상단바에서 글자가 두 번 적혀 보이면 그건 이 그림 탓이다 — 사장님 지시대로 둔 것이다.
+ *
+ * 열쇠는 ★슬러그★ 다 — 리그 이름이 바뀌어도(SPL→LLM→PL · 10🏔→YSL) 슬러그는 안 바뀐다.
  */
 export const LEAGUE_LOGO: Readonly<Record<string, LeagueLogo>> = {
-  nolink: { src: '/assets/league-ipl.png', w: 435, h: 320 },
-  supply: { src: '/assets/league-llm.png', w: 434, h: 320 },
+  nolink: { src: '/brand/league-ipl.webp', w: 673, h: 200 },
+  supply: { src: '/brand/league-pl.webp', w: 630, h: 200 },
   sanply: { src: '/assets/league-ysl.png', w: 431, h: 320 },
 }
 
@@ -49,7 +70,20 @@ export const LEAGUE_LOGO_FULL: Readonly<Record<string, LeagueLogo>> = {
 }
 
 /**
- * ⚠ ★옛 로고★ (2026-09-14 이전). 지우지 않는다 — 되돌릴 때 쓴다.
+ * ⚠ ★한 판 전 로고★ (2026-09-14 ~ 2026-09-18). 지우지 않는다 (`CLAUDE.md` 1-4) — 되돌릴 때 쓴다.
+ *
+ * 2026-09-18 에 사장님이 «IPL PL로고 저걸로 바꿔» 하셔서 `nolink`·`supply` 만
+ * `public/brand/` 의 새 그림으로 넘어갔다. ★그림 파일은 그대로 `public/assets/` 에 남아 있다★ —
+ * 되돌리려면 `LEAGUE_LOGO` 대신 이것을 쓰면 된다.
+ */
+export const LEAGUE_LOGO_V2: Readonly<Record<string, LeagueLogo>> = {
+  nolink: { src: '/assets/league-ipl.png', w: 435, h: 320 },
+  supply: { src: '/assets/league-llm.png', w: 434, h: 320 },
+  sanply: { src: '/assets/league-ysl.png', w: 431, h: 320 },
+}
+
+/**
+ * ⚠ ★맨 처음 로고★ (2026-09-14 이전). 지우지 않는다 — 되돌릴 때 쓴다.
  * 파일은 `public/assets/legacy/` 에 있다.
  */
 export const LEAGUE_LOGO_V1: Readonly<Record<string, LeagueLogo>> = {

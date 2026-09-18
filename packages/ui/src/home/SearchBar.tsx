@@ -132,6 +132,14 @@ export interface SearchBarProps {
    * 「검색 종류」 드롭다운은 ★사라지지 않았다★ — `> findPlayer(` 가 그 단추다.
    */
   terminal?: boolean
+  /**
+   * ★구름 껍데기★ (2026-09-18 사장님: 「검색창을 다르게 다시 만들고」).
+   *
+   * 새 로고가 «구름 위의 고양이» 라 검색창도 ★구름 한 조각★ 처럼 둥글게 만든다.
+   * 모서리를 크게 굴리고 유리처럼 비치는 바탕을 쓴다. 동작은 ★한 줄도 안 바뀐다★ —
+   * 껍데기만 갈아끼운다 (`terminal` 이 그랬던 것처럼).
+   */
+  cloud?: boolean
 }
 
 export function SearchBar({
@@ -144,6 +152,7 @@ export function SearchBar({
   maxWidth = 560,
   sweep = false,
   terminal = false,
+  cloud = false,
 }: SearchBarProps) {
   const [type, setType] = useState<SearchType>('player')
   const [text, setText] = useState('')
@@ -225,9 +234,17 @@ export function SearchBar({
          * ★터미널 껍데기는 두 줄짜리 상자다★ (2026-09-17). 그래서 세로로 쌓는다.
          * 옛 껍데기는 한 줄이라 `items-stretch` 그대로다 — 아래 `contents` 참고.
          */
-        className={`relative rounded-[var(--radius,2px)] border bg-page transition-colors duration-100 ${
-          terminal ? 'flex flex-col' : 'flex items-stretch'
-        } ${focused || open ? 'border-accent' : 'border-line'}`}
+        /*
+         * ⚠ ★구름 껍데기는 `bg-page` 를 안 쓴다★ — 유리처럼 살짝 비쳐야 구름 같다.
+         *   대신 ★불투명에 가까운 어두운 판★ 을 깔아 글자 대비를 지킨다 (위 O-041 규칙과 같은 뜻).
+         */
+        className={
+          cloud
+            ? `sb-cloud relative flex items-stretch ${focused || open ? 'sb-cloud--on' : ''}`
+            : `relative rounded-[var(--radius,2px)] border bg-page transition-colors duration-100 ${
+                terminal ? 'flex flex-col' : 'flex items-stretch'
+              } ${focused || open ? 'border-accent' : 'border-line'}`
+        }
       >
         {/* 시안의 빛 — 없으면 ★요소 자체를 안 만든다★ */}
         {/*
