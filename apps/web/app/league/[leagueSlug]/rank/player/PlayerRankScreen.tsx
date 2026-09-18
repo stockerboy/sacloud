@@ -163,8 +163,18 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
   const lastPage = total === null ? 1 : Math.max(1, Math.ceil(total / RANK_PER_PAGE))
   const ranks = {
     items: rows,
-    loading: !ready || ranksQuery.isPending,
-    error: ranksQuery.isError,
+    /*
+     * ⚠ ★`isPending` 하나로는 모자라다★ (2026-09-19 검수 · 클랜 화면이 이미 겪은 함정).
+     *
+     *   `isPending` 은 「멈춰 있는 것」도 참이다. 조회가 실패해 다음 재시도를
+     *   ★기다리는 동안★ 도 참이라, 느린 API(실측 120초) 앞에서 화면이
+     *   ★몇 분째 스켈레톤만 반짝인다.★ 사용자는 「느린 건지 고장인지」 를 모른다.
+     *
+     *   ★지금 실제로 물어보고 있을 때만★ 스켈레톤을 그린다 (`fetchStatus`).
+     *   기다리는 중이면 아래 `error` 가 켜져 「다시 시도」 를 내민다.
+     */
+    loading: !ready || (ranksQuery.isPending && ranksQuery.fetchStatus === 'fetching'),
+    error: ranksQuery.isError || (ranksQuery.isPending && ranksQuery.fetchStatus === 'paused'),
     retry: () => void ranksQuery.refetch(),
   }
 
