@@ -799,8 +799,12 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           const pts = killScore(
             { killerIsSniper: K.weapon === 1, victimIsSniper: V?.weapon === 1 },
             rank,
-            /* ★롱에서 난 스나 대 스나에는 +1점★ (2026-09-18 사장님) — 스나싸움 축과 같은 자다 */
-            inLong(e.kx, e.ky) && inLong(e.dx, e.dy),
+            /*
+             * ★롱에서 난 스나 대 스나에는 +1점★ (2026-09-18 사장님).
+             * ⚠ ★한쪽이라도 롱 안★ 이면 센다 — 비롱→벙커 · 벙커→비롱 · 비롱→비롱 전부다.
+             *   스나싸움 축과 ★같은 자★ 여야 화면의 횟수와 점수가 안 어긋난다.
+             */
+            inLong(e.kx, e.ky) || inLong(e.dx, e.dy),
           )
           const t = tallyOf(mk, K.pid)
           t.score += pts

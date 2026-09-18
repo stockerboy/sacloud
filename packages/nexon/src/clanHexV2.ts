@@ -1205,11 +1205,18 @@ function tallyFor(input: {
      * 판정은 스나싸움 축과 ★같은 자★ 다 — 잡은 쪽·죽은 쪽이 둘 다 A롱·B롱 안.
      */
     const longs = [z.aLong, z.bLong].filter((zone): zone is ZoneCells => !!zone)
+    /*
+     * ⚠ ★스나싸움 축과 ★같은 자★ 로 잰다★ (2026-09-18 사장님) —
+     *   「한쪽이라도 롱 안」 이면 스나싸움이다. 축은 이렇게 세는데 보너스만
+     *   「둘 다 롱」 으로 두면 ★화면의 스나싸움 횟수와 점수가 어긋난다.★
+     *
+     *   비롱→벙커 · 벙커→비롱 · 비롱→비롱 전부 스나싸움이다 (사장님).
+     */
     const bothLong = (kx: number | null, ky: number | null, dx: number | null, dy: number | null): boolean => {
       if (longs.length === 0) return false
       const hit = (x: number | null, y: number | null): boolean =>
         x !== null && y !== null && longs.some((zone) => inZone(zone, { x, y }))
-      return hit(kx, ky) && hit(dx, dy)
+      return hit(kx, ky) || hit(dx, dy)
     }
     if (anyZone !== null) {
       const sc = emptyMatchScore()
@@ -1643,7 +1650,25 @@ function tallyFor(input: {
     for (const kill of kills) {
       if (input.weaponByPlayer.get(kill.killer) !== 1) continue
       if (input.weaponByPlayer.get(kill.victim) !== 1) continue
-      if (!inLong(kill.killerX, kill.killerY) || !inLong(kill.victimX, kill.victimY)) continue
+      /*
+       * ★한쪽만 롱 안이어도 스나싸움이다★ (2026-09-18 사장님).
+       *
+       * ⚠ 옛 규칙은 ★둘 다 롱 안★ 이었다 (2026-09-10). 그때는 뜻이 맞았지만
+       *   실측에서 ★네 건이 새어 나갔다★ — 사장님이 손으로 세신 7:1 이 4:0 으로 찍혔다:
+       *   ```
+       *     r1   비롱(158,427→벙커) …  한쪽이 벙커라 안 셌다
+       *     r8   비롱(174,207)→벙커
+       *     r13  비롱(168,173)→벙커
+       *     r12  벙커→비롱(172,206)
+       *   ```
+       *   비롱 칸은 y 160~400 인데 그 라인 ★바로 아래(y 427~436)가 벙커★ 로 칠해져 있다.
+       *   같은 비롱 라인을 두고 벌인 싸움인데 한쪽 끝이 벙커라 빠진 것이다.
+       *
+       * ★스나싸움은 「롱 라인을 두고 벌어지는 싸움」★ 이다 — 한쪽이 롱에 있으면 그 싸움이다.
+       * ⚠ 칠한 칸은 안 건드린다 — 벙커를 비롱으로 바꾸면 비리베 점수와 폭탄 B쪽 판정이 같이 흔들린다.
+       * ⚠ 옛 규칙으로 되돌리려면 `||` 를 `&&` 로 바꾸면 된다.
+       */
+      if (!inLong(kill.killerX, kill.killerY) && !inLong(kill.victimX, kill.victimY)) continue
       if (isOurs(kill.killer) && !isOurs(kill.victim)) sniperDuel.won += 1
       else if (!isOurs(kill.killer) && isOurs(kill.victim)) sniperDuel.lost += 1
     }

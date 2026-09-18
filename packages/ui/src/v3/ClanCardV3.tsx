@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 import type { CSSProperties, ReactNode } from 'react'
-import { CLAN_HEX_V2_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
+import { CLAN_HEX_V2_CLAN_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
 import { floorColor, rankColor, statColor } from './rankColors'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
@@ -109,7 +109,7 @@ export function tempoTier(pct: number): string {
 export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
   /* ⚠ 2026-09-16 — ⑤ 가 선짤에서 스나영향력으로 (사장님) */
   /* ⚠ 축 목록은 계약이 정한다 (2026-09-16 밤) */
-  const order = CLAN_HEX_V2_AXIS_KEYS
+  const order = CLAN_HEX_V2_CLAN_AXIS_KEYS
   /* ⚠ 열쇠를 넓혀 ★옛 축 이름도 남긴다★ (2026-09-16 밤 · `CLAUDE.md` 1-4) */
   const label: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
     sniperDuel: '스나싸움', outnumbered: '소수싸움', save: '세이브', riflePower: '라이플화력',

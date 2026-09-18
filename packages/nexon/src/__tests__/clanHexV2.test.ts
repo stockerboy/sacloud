@@ -884,14 +884,22 @@ describe('① 스나싸움은 롱에서만 센다 (`SNIPER_DUEL_ZONE_RULE` = lon
     expect(match.byTeam.get(US)?.sniperDuel).toEqual({ rounds: 4, won: 3, lost: 1 })
   })
 
-  it('한쪽이라도 롱 밖이면 스나싸움이 아니다', () => {
+  /*
+   * ⚠ ★2026-09-18 — 「한쪽이라도 롱 안」 이면 센다★ (사장님:
+   *   「벙커>비롱 / 비롱>벙커 비롱>비롱 다 스나싸움으로 해」).
+   *
+   *   옛 규칙(★둘 다★ 롱)은 실측에서 네 건을 흘렸다 — 비롱 라인 바로 아래가
+   *   벙커로 칠해져 있어 같은 라인 싸움이 빠졌다. 사장님이 손으로 센 7:1 이 4:0 이었다.
+   */
+  it('한쪽만 롱 안이어도 스나싸움이다 — 둘 다 롱 밖일 때만 뺀다', () => {
     const match = run(sniperGame([[inA, outside], [outside, inB], [outside, outside]]), US, ourWins, LONG_ZONES)
-    expect(match.byTeam.get(US)?.sniperDuel).toEqual({ rounds: 4, won: 0, lost: 1 })
+    expect(match.byTeam.get(US)?.sniperDuel).toEqual({ rounds: 4, won: 2, lost: 1 })
   })
 
-  it('좌표가 없는 킬은 세지 않는다', () => {
+  it('좌표가 아예 없는 킬은 세지 않는다 — 한쪽이라도 롱 안이면 센다', () => {
     const match = run(sniperGame([[undefined, undefined], [inA, undefined]]), US, ourWins, LONG_ZONES)
-    expect(match.byTeam.get(US)?.sniperDuel).toEqual({ rounds: 4, won: 0, lost: 1 })
+    /* 둘째 킬은 ★잡은 자리가 롱 안★ 이라 센다. 첫째는 좌표가 둘 다 없어 못 센다 */
+    expect(match.byTeam.get(US)?.sniperDuel).toEqual({ rounds: 4, won: 1, lost: 1 })
   })
 
   it('롱 구역이 하나도 없으면 못 잰 것(null)이다 — 맵 전체를 세어 놓고 스나싸움이라 부르지 않는다', () => {

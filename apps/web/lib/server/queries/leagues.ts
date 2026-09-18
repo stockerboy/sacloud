@@ -35,7 +35,7 @@ import { cumulativeKdRate } from './visibility'
 import { publicOriginWhere } from './publicScope'
 import { ladderMatchWhere } from './ladderScope'
 /* 화면 표기는 계약이 정한다 — 베타는 `시즌0` (D-178) */
-import { CLAN_HEX_V2_AXIS_KEYS, hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
+import { CLAN_HEX_V2_CLAN_AXIS_KEYS, hiddenClanSlugsIn, seasonDisplayLabel as seasonLabel } from '@sacloud/contract'
 import { SEASON0_FROM, seasonWindowWhere } from './season0Scope'
 import { leagueClanHexV2, leagueClanBadges } from './clanHexV2'
 import { softFail } from '../softFail'
@@ -883,7 +883,14 @@ const CLAN_PODIUM_SIZE = 3
  *   계약이 정한 여섯을 그대로 따른다 — 화면마다 적어 둔 탓에
  *   축이 갈릴 때 한 곳이 빠지는 일을 오늘만 세 번 걱었다.
  */
-const CLAN_HEX_ORDER = CLAN_HEX_V2_AXIS_KEYS
+/*
+ * ⚠ ★클랜 육각도 점수제다★ (2026-09-18 사장님: 「클랜 6각이 바꼈어
+ *   저게 비리베 숏 이층 으로 바뀌어야하는데」).
+ *
+ *   옛 `CLAN_HEX_V2_AXIS_KEYS`(스나영향력·라플영향력·기회차단…)를 보고 있어서
+ *   화면만 옛 축 그대로였다. ★`CLAN_HEX_V2_CLAN_AXIS_KEYS` 가 지금 여섯이다.★
+ */
+const CLAN_HEX_ORDER = CLAN_HEX_V2_CLAN_AXIS_KEYS
 const CLAN_HEX_LABEL: Readonly<Record<string, string>> = {
   sniperDuel: '스나싸움',
   outnumbered: '소수싸움',

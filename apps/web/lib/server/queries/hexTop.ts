@@ -17,7 +17,7 @@
  */
 import { prisma } from '@sacloud/db'
 import {
-  CLAN_HEX_V2_AXIS_KEYS,
+  CLAN_HEX_V2_CLAN_AXIS_KEYS,
   CLAN_HEX_V2_AXIS_LABELS,
   CLAN_HEX_V2_CONFIG,
   HEX_TOP_SIZE,
@@ -206,8 +206,8 @@ async function clanTop(leagueId: string): Promise<HexTopAxis[]> {
   for (const [id, hex] of raw) norm.set(id, normalizeByPercentile(hex, pool))
 
   const out: HexTopAxis[] = []
-  for (let i = 0; i < CLAN_HEX_V2_AXIS_KEYS.length; i += 1) {
-    const key = CLAN_HEX_V2_AXIS_KEYS[i] as (typeof CLAN_HEX_V2_AXIS_KEYS)[number]
+  for (let i = 0; i < CLAN_HEX_V2_CLAN_AXIS_KEYS.length; i += 1) {
+    const key = CLAN_HEX_V2_CLAN_AXIS_KEYS[i] as (typeof CLAN_HEX_V2_CLAN_AXIS_KEYS)[number]
     const picked = [...norm.entries()]
       .map(([id, hex]) => ({ id, axis: hex.axes[i] ?? null }))
       .filter((x) => x.axis !== null && x.axis.rank !== null && x.axis.rank <= HEX_TOP_SIZE)

@@ -272,7 +272,14 @@ function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] 
     ...rows.map((r) => Math.max(r.wonScore ?? 0, r.lostScore ?? 0)),
   )
   if (top <= 0) return rows
-  const scaled = (v: number | null): number | null => (v === null ? null : (v / top) * 100)
+  /*
+   * ⚠ ★`value` 는 0~1 이다★ — `areaOf` 가 `Math.min(1, v)` 로 자른다.
+   *   처음에 100 을 곱해 넣었더니 전부 1 로 잘려 ★여섯 칸이 다 바깥 테두리★ 에 붙었다.
+   *   사장님이 「그래프상으로 전혀 차이가 안보이고」 라고 잡아 주신 게 이것이다.
+   * ⚠ ★0 도 조금은 보이게★ 바닥을 둔다 — 0점인 칸이 중심에 박히면 도형이 찌그러진다.
+   */
+  const scaled = (v: number | null): number | null =>
+    v === null ? null : Math.max(0.04, v / top)
   return rows.map((r) => ({
     ...r,
     wonValue: r.wonScore === null ? r.wonValue : scaled(r.wonScore),
