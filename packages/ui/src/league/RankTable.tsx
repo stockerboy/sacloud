@@ -942,7 +942,9 @@ export function PlayerRankTable({
                   *   세 개를 놓을 자리가 없다. 폰은 그림만, 뜻은 누르면 뜨는 이름이 말한다.
                   */}
                 {(row.trait_emblems ?? []).length > 0 ? (
-                  <span className="flex shrink-0 items-start justify-start gap-1.5 max-md:ml-2 max-md:w-[104px] md:ml-3 md:w-[200px] md:gap-2">
+                  /* ⚠ ★폰 104 → 112px★ (2026-09-18) — 한 칸을 32 → 36 으로 넓혀
+                     ★배지 밑 이름★ 이 두 줄로 들어가게 했다 (사장님: 「배찌밑에 이름 달아줘」) */
+                  <span className="flex shrink-0 items-start justify-start gap-1 max-md:ml-1 max-md:w-[112px] md:ml-3 md:w-[200px] md:gap-2">
                     {/*
                       * ⚠ ★2026-09-17 — 손으로 그리던 SVG 배지를 사장님 그림으로 바꿨다★.
                       *   옛 판(`TraitEmblem`)은 지우지 않았다 — 파일이 그대로 있고 이 줄만
@@ -956,7 +958,7 @@ export function PlayerRankTable({
                       return (
                         <span
                           key={`${e.axis}-${e.weapon}`}
-                          className="flex flex-col items-center gap-[3px] max-md:w-[32px] md:w-[58px]"
+                          className="flex flex-col items-center gap-[3px] max-md:w-[36px] md:w-[58px]"
                         >
                           {/* ★2026-09-17 사장님 — «크기를 좀 키워줘 잘 안보여»★ 22 → 30 (PC 40) */}
                           <AxisBadge
@@ -967,7 +969,16 @@ export function PlayerRankTable({
                             leagueSlug={leagueSlug}
                             className="md:[&_img]:!h-[40px] md:[&_img]:!w-[40px]"
                           />
-                          <span className="hidden truncate text-center text-[9.5px] leading-none text-faint md:block md:w-full">
+                          {/*
+                            * ★배지 밑에 이름★ (2026-09-18 사장님: 「배찌밑에 이름 달아줘」).
+                            *
+                            * ⚠ 폰에서는 ★잘라서는 안 된다★ — 「스나싸움마스터」 일곱 자가
+                            *   36px 한 줄에 안 들어간다. `truncate` 를 빼고 ★두 줄로 접는다★.
+                            *   `break-keep` 이라야 한글이 낱자로 안 쪼개진다.
+                            * ⚠ 줄 높이를 1.15 로 눌러 두 줄이 되어도 줄 리듬이 덜 흔들린다.
+                            *   PC 는 한 줄로 충분해 그대로 잘라 쓴다.
+                            */}
+                          <span className="block w-full break-keep text-center text-[8px] leading-[1.15] text-faint md:truncate md:text-[9.5px] md:leading-none">
                             {name}
                           </span>
                         </span>

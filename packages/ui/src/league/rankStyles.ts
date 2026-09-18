@@ -49,7 +49,19 @@ export const ROW =
    *   폰 위아래 여백을 0.55 → 0.9rem 으로. 줄 높이가 약 36 → 45px 가 된다.
    *   PC 는 그대로다 (`py-3`).
    */
-  'flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-3 max-md:py-[0.9rem] max-md:text-[1.02rem]'
+  /*
+   * ⚠ ★2026-09-18 — 폰에서 닉네임이 잘렸다★ (사장님: 「두개 전부 글씨를 줄이던지
+   *   해서 좀 지금 너무 답답하게 껴있고 글씨도 다 안보임 좀 가로로 넓혀줘」).
+   *
+   *   390px 실측으로 ★이름칸에 106px★ 밖에 안 남았다:
+   *   ```
+   *     화면 390 − 줄여백 24 − 순위 28 − 배지 112 − 승률 60 − 킬뎃 60 = 106
+   *   ```
+   *   그래서 «cho⋯» «sayl⋯» «갑오⋯» 로 잘렸다. ★줄 좌우 여백을 12 → 8px★ 로 줄인다
+   *   (`px-3` → `px-2`). 순위·지표 칸도 같이 좁혀 ★132px★ 로 넓혔다 (+25%).
+   *   ⚠ PC 는 안 건드린다 — 거기는 자리가 남는다.
+   */
+  'flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-2 max-md:py-[0.9rem] max-md:text-[1.02rem]'
 
 /** 표 안의 클랜마크 — 좁은 화면에서만 줄인다 (모바일 행 높이 36px 계산의 기준) */
 export const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'
@@ -58,7 +70,8 @@ export const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'
 export const NUM = 'font-num tabular-nums'
 
 /** 칸 안에서 한 단계 접은 보조 수치 (승/패 · 평균킬 등) */
-export const SUB = 'mt-0.5 block text-[0.72rem] leading-none text-faint'
+/* ⚠ 폰에서 한 단 더 줄인다 (2026-09-18) — 「51승 29패」 가 52px 칸에 들어가야 한다 */
+export const SUB = 'mt-0.5 block text-[0.72rem] leading-none text-faint max-md:text-[0.64rem]'
 
 /** 1위 표시 — 표에서 빨강을 쓰는 거의 유일한 자리다 */
 export const RANK_TOP = 'text-accent font-bold'
@@ -66,7 +79,8 @@ export const RANK_TOP = 'text-accent font-bold'
 /* ------------------------------------------------------------------ 칸 --- */
 
 /** 순위 칸 */
-export const COL_RANK = 'w-16 shrink-0 text-center max-md:w-7'
+/* ⚠ 폰 28 → 22px (2026-09-18) — 세 자리(999위)까지는 그대로 들어간다 */
+export const COL_RANK = 'w-16 shrink-0 text-center max-md:w-[22px]'
 /**
  * 이름 칸 — 남는 폭을 다 쓴다.
  *
@@ -82,7 +96,11 @@ export const COL_RANK = 'w-16 shrink-0 text-center max-md:w-7'
  */
 export const COL_NAME = 'flex min-w-0 flex-1 items-center'
 /** 지표 칸 (승률 · 킬뎃) */
-export const COL_STAT = 'w-28 shrink-0 text-right max-md:w-[60px]'
+/*
+ * ⚠ ★폰 60 → 52px★ (2026-09-18) — 이름칸에 8px 씩 두 번, 16px 을 넘긴다.
+ *   「63.8%」 는 52px 에 들어가고, 아래 「51승 29패」 는 글자를 한 단 줄여 맞춘다.
+ */
+export const COL_STAT = 'w-28 shrink-0 text-right max-md:w-[52px]'
 /**
  * 소속 클랜명 칸 (2026-09-02 사장님 지시 #10 — "순위닉네임, 래더 사이에 소속클랜명을 적어라").
  * 홈 미리보기가 켜서 쓴다 (`PlayerRankTable` 의 `clanColumn`). 폰에서도 남긴다 — 길면 말줄임.

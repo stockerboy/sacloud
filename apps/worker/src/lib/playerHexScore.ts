@@ -753,7 +753,18 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
     }))
     /* ⚠ 2026-09-16 — 무기별로 견주는 축이 둘이 됐다 (싸움 · 평균 사망 시간) */
     /* ⚠ 2026-09-16 — 무기별로 견주는 축이 셋이 됐다 (싸움 · 평균 사망 시간 · 크랙 성공) */
-    const dist = { duel: [] as number[], safe: [] as number[], gap: [] as number[], winRate: [] as number[], kd: [] as number[] }
+    /*
+     * ⚠ ★2026-09-18 — `chance` 통이 없어서 축이 통째로 «측정중» 이었다★ (사장님 화면).
+     *
+     *   2026-09-17 에 `chance` 를 ★무기별로 견주는 축★ 목록에 넣었는데
+     *   ★여기 분포 통을 안 만들었다.★ 그러면 아래 `scoped` 가 `null` 이 되어
+     *   ★통합 분포(`uni`)★ 로 넘어가는데, `uni` 는 ★무기별 축을 아예 안 담는다★
+     *   (`HEX_UNIFIED_AXIS_KEYS` 가 걸러 낸다). 그래서 빈 배열로 백분위를 재고
+     *   ★전원 `null`★ 이 됐다 — 실측 `carryRank` 0 / 3,662행.
+     *
+     *   ⚠ ★무기별 목록에 축을 넣을 때는 여기 통도 같이 만든다.★ 두 곳이다.
+     */
+    const dist = { duel: [] as number[], chance: [] as number[], safe: [] as number[], gap: [] as number[], winRate: [] as number[], kd: [] as number[] }
     /*
      * ⚠ ★분포도 «잣대»(`sc`)로 만든다★ — 통합 분포(`uni`)가 이미 그렇게 한다.
      *
@@ -763,12 +774,14 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
      */
     for (const { p, sc, wr } of values) {
       if (sc.duel !== null) dist.duel.push(sc.duel)
+      if (sc.chance !== null) dist.chance.push(sc.chance)
       if (sc.safe !== null) dist.safe.push(sc.safe)
       if (sc.gap !== null) dist.gap.push(sc.gap)
       if (wr !== null) dist.winRate.push(wr)
       if (p.kdRate !== null && p.kdRate !== undefined) dist.kd.push(p.kdRate)
     }
     dist.duel.sort((a, b) => a - b)
+    dist.chance.sort((a, b) => a - b)
     dist.safe.sort((a, b) => a - b)
     dist.gap.sort((a, b) => a - b)
     dist.winRate.sort((a, b) => a - b)
@@ -784,7 +797,15 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
         /* 무기별 축은 그 무기 분포로, 나머지는 통합 분포로 (2026-09-16) */
         /* 무기별 축은 그 무기 분포로, 나머지는 통합 분포로 (2026-09-16) */
         const scoped =
-          key === 'duel' ? dist.duel : key === 'safe' ? dist.safe : key === 'gap' ? dist.gap : null
+          key === 'duel'
+            ? dist.duel
+            : key === 'chance'
+              ? dist.chance
+              : key === 'safe'
+                ? dist.safe
+                : key === 'gap'
+                  ? dist.gap
+                  : null
         const pct = percentileOf(scoped ?? uni[key], sc[key])
         axes[key] = { value: v[key], pct, rank: null, total: null }
         if (pct !== null) {
