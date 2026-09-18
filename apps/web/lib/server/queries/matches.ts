@@ -553,6 +553,44 @@ function snapshotOf(match: MatchRow, side: TeamSide, clans: LeagueClanContext) {
  * 1순위(세이브 2회 이상)는 병영 로그 집계가 있어야 알 수 있어 여기서는 못 본다 —
  * 그래서 집계가 돌면 세이브를 본 값으로 ★덮인다.★ 지어낸 값이 아니라 같은 규칙의 앞부분이다.
  */
+/**
+ * ★MVP 가 MVP 인 이유★ (2026-09-18 사장님) — 라운드마다 무엇으로 몇 점.
+ *
+ * 워커가 `MatchPlayerHex.scoreLog` 에 쌓아 둔 줄을 ★같은 종류끼리 묶는다★ —
+ * 「4,7라운드 · 경기초반 스나 다운 · +10점」 처럼 한 줄이 된다.
+ *
+ * ⚠ 아직 안 잰 경기는 ★빈 배열★ 이다 (`null` 이 아니다) —
+ *   「MVP 가 없다」 와 「굵직한 장면이 없었다」 는 다른 말이다.
+ */
+function mvpWhyOf(
+  match: MatchRow,
+  hexRows: readonly { playerId: string; scoreLog?: unknown }[],
+): { rounds: number[]; kind: string; points: number }[] | null {
+  const mvp = mvpPlayerIdOf(match)
+  if (mvp === null) return null
+  const row = hexRows.find((h) => h.playerId === mvp)
+  const log = row?.scoreLog
+  if (!Array.isArray(log)) return []
+  const byKind = new Map<string, { rounds: number[]; points: number }>()
+  for (const raw of log) {
+    if (typeof raw !== 'object' || raw === null) continue
+    const item = raw as { r?: unknown; k?: unknown; p?: unknown }
+    const round = typeof item.r === 'number' ? item.r : null
+    const kind = typeof item.k === 'string' ? item.k : null
+    const points = typeof item.p === 'number' ? item.p : null
+    if (round === null || kind === null || points === null) continue
+    const hit = byKind.get(kind) ?? { rounds: [], points: 0 }
+    if (!hit.rounds.includes(round)) hit.rounds.push(round)
+    hit.points += points
+    byKind.set(kind, hit)
+  }
+  return [...byKind.entries()].map(([kind, v]) => ({
+    kind,
+    rounds: v.rounds.sort((a, b) => a - b),
+    points: v.points,
+  }))
+}
+
 function mvpPlayerIdOf(match: MatchRow): string | null {
   if (match.mvpPlayerId !== null) return match.mvpPlayerId
   const stamped = match.stats.find((stat) => stat.mvp === true)
@@ -634,6 +672,8 @@ export function toMatchListItem(
         ? (match.redRatingUpdate ?? match.redSourceRatingUpdate)
         : (match.blueRatingUpdate ?? match.blueSourceRatingUpdate)),
     mvp_player_id: mvpPlayerIdOf(match),
+    /* ★목록에는 이유를 안 담는다★ — 상세에서만 채운다 (2026-09-18) */
+    mvp_why: null,
     red_rounds: roundsWonInList(match, match.redLeagueClanId),
     blue_rounds: roundsWonInList(match, match.blueLeagueClanId),
     league_clan_side: viewerSide,
@@ -1084,6 +1124,9 @@ export async function getMatch(
 
   return {
     ...base,
+    /* ★MVP 가 MVP 인 이유★ (2026-09-18 사장님) — 상세에서만 채운다 */
+    /* ⚠ 선수 육각은 `saveRows` 다 — `hexRows` 는 클랜 육각(`MatchClanHexV2`)이다 */
+    mvp_why: mvpWhyOf(match, saveRows),
     red_stats: statsOf('red'),
     blue_stats: statsOf('blue'),
     viewer_side: viewerSide,

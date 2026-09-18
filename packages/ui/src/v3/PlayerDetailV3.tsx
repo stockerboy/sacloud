@@ -348,11 +348,17 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
           {badges.map((a) => {
             const art = hex?.weapon === null || hex?.weapon === undefined ? null : badgeOfAxis(a.key, hex.weapon)
             /* ★딴 배지★ — 계약이 이름을 채워 준 것만이다 (5위 컷 · 스나싸움 3위) */
+            /*
+             * ★배지는 상위 2% 안에만★ · ★그중 TOP 5 는 금빛으로 빛난다★ (2026-09-18 사장님).
+             *   got  배지를 땄나 (계약이 이름을 채워 준 것)
+             *   glow 그중에서도 TOP 5 인가 — 테두리와 그림자가 한 단계 더 세진다
+             */
             const got = a.badge !== null
+            const glow = got && a.badge_glow === true
             const pill = (
-              <span title={a.desc} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: got ? 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))' : 'rgba(255,255,255,.035)', border: got ? '1px solid rgba(255,216,61,.5)' : '1px solid rgba(255,255,255,.09)', boxShadow: got ? '0 0 14px rgba(255,216,61,.18)' : 'none' }}>
+              <span title={a.desc} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: got ? 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))' : 'rgba(255,255,255,.035)', border: glow ? '1px solid rgba(255,216,61,.95)' : got ? '1px solid rgba(255,216,61,.5)' : '1px solid rgba(255,255,255,.09)', boxShadow: glow ? '0 0 22px rgba(255,216,61,.55), inset 0 0 12px rgba(255,216,61,.16)' : got ? '0 0 14px rgba(255,216,61,.18)' : 'none' }}>
                 {art === null ? <BadgeIcon kind={a.key === 'save' ? 'shield' : 'trend'} />
-                  : <img src={badgeArtSmallPath(art)} alt="" width={30} height={30} style={{ width: 30, height: 30, display: 'block', filter: got ? 'drop-shadow(0 0 3px rgba(255,216,61,.8))' : 'grayscale(1) opacity(.55)' }} />}
+                  : <img src={badgeArtSmallPath(art)} alt="" width={30} height={30} style={{ width: 30, height: 30, display: 'block', filter: glow ? 'drop-shadow(0 0 7px rgba(255,216,61,1))' : got ? 'drop-shadow(0 0 3px rgba(255,216,61,.8))' : 'grayscale(1) opacity(.55)' }} />}
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: got ? '#ffe89a' : '#93a0b8' }}>{art?.label ?? a.badge ?? a.label}</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: got ? '#c9a94a' : '#6b7285' }}>{a.rank}위</span>
               </span>

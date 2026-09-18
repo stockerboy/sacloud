@@ -263,6 +263,29 @@ export const MatchListItem = z.object({
   placement: z.boolean(),
   rating_update: RatingUpdate.nullable(),
   mvp_player_id: Id.nullable(),
+  /**
+   * ★MVP 가 MVP 인 이유★ (2026-09-18 사장님:
+   *   「MVP가 mvp인 이유를 설명해줘 (…) 라운드마다 콕콕 찝어서 다넣어」).
+   *
+   * ```
+   *   [{ rounds: [4, 7], kind: 'rifleVsSniperEarly', points: 10 }, …]
+   * ```
+   * 같은 종류는 ★라운드를 묶어★ 한 줄로 온다 — 「4,7라운드 경기초반 스나 다운 +10점」.
+   *
+   * ⚠ ★평범한 1점짜리 라플킬은 안 담는다★ — 줄만 길어지고 뜻이 없다 (사장님).
+   * ⚠ 아직 안 잰 경기는 ★빈 배열★ 이다. `null` 과 구별한다 —
+   *   빈 배열은 「굵직한 장면이 없었다」, `null` 은 「MVP 가 없다」 는 뜻이다.
+   */
+  mvp_why: z
+    .array(
+      z.object({
+        rounds: z.array(Count),
+        kind: z.string(),
+        points: z.number(),
+      }),
+    )
+    .nullable()
+    .default(null),
   league_clan: MatchClanSnapshot,
   opponent: MatchClanSnapshot,
   red: z.array(MatchLineupEntry),

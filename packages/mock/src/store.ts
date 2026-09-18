@@ -1187,6 +1187,12 @@ function toMatchListItem(
     placement: viewerSide === 'red' ? match.redPlacement : match.bluePlacement,
     rating_update: viewerSide === 'red' ? match.redRatingUpdate : match.blueRatingUpdate,
     mvp_player_id: match.mvpPlayerId,
+    /* ★MVP 가 MVP 인 이유★ (2026-09-18) — 픽스처는 ★결정적★ 으로 둔다 */
+    mvp_why: match.mvpPlayerId === null ? null : [
+      { rounds: [4, 7], kind: 'rifleVsSniperEarly', points: 10 },
+      { rounds: [10], kind: 'save2', points: 3 },
+      { rounds: [13], kind: 'bombWin', points: 2 },
+    ],
     red_rounds: null,
     blue_rounds: null,
     league_clan_side: null,

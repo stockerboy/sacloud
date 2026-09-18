@@ -38,6 +38,8 @@ import {
 export const MATCH_HEX_SELECT = {
   playerId: true,
   weapon: true,
+  /* ★MVP 가 MVP 인 이유★ (2026-09-18) — 같은 줄에서 받아 오므로 왕복이 안 늘어난다 */
+  scoreLog: true,
   rounds: true,
   kills: true,
   firstKills: true,
