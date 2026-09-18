@@ -13,11 +13,20 @@ set -e
 cd /root/sacloud
 . /root/sacloud.env
 
-echo "[$(date +%H:%M)] ① 경기 육각 — 전부 다시"
-pnpm --filter @sacloud/worker nexon clan-hex-v2-build --rebuild --confirm 2>&1 | tail -3
+# ⚠ ★리그별로 나눠 돈다★ (2026-09-18) — VPS 메모리가 2GB 뿐이라
+#   세 리그를 한 번에 `--rebuild` 하면 ★OOM 으로 죽는다★ (실측: 15:40 에 Killed).
+#   `--max-old-space-size` 로 힙도 눌러 둔다 — 넘치면 GC 가 돌지 OOM 으로 안 죽는다.
+export NODE_OPTIONS="--max-old-space-size=900"
 
-echo "[$(date +%H:%M)] ② 개인 육각 — 전부 다시"
-pnpm --filter @sacloud/worker nexon player-hex-build --rebuild --confirm 2>&1 | tail -3
+for L in nolink supply sanply; do
+  echo "[$(date +%H:%M)] ① 경기 육각 — $L"
+  pnpm --filter @sacloud/worker nexon clan-hex-v2-build --league "$L" --rebuild --confirm 2>&1 | tail -2
+done
+
+for L in nolink supply sanply; do
+  echo "[$(date +%H:%M)] ② 개인 육각 — $L"
+  pnpm --filter @sacloud/worker nexon player-hex-build --league "$L" --rebuild --confirm 2>&1 | tail -2
+done
 
 echo "[$(date +%H:%M)] ③ 클랜 요약"
 pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --confirm 2>&1 | tail -2
