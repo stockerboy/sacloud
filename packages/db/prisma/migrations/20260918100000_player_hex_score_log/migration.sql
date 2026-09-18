@@ -1,0 +1,1 @@
+ALTER TABLE "MatchPlayerHex" ADD COLUMN IF NOT EXISTS "scoreLog" JSONB;

@@ -24,7 +24,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { prisma, Prisma } from '@sacloud/db'
-import { killScore, saveScore } from '@sacloud/nexon'
+import { killScore, saveScore, bombScore } from '@sacloud/nexon'
 import {
   A_LONG_ZONE_LABELS,
   B_LONG_ZONE_LABEL,
@@ -189,6 +189,11 @@ interface MatchTally {
   crackScore: number
   /** ★소수싸움·세이브★ — 수적 열세를 뒤집어 딴 점수 (2n−1 의 합) */
   fewScore: number
+  /**
+   * ★MVP 가 MVP 인 이유★ — 라운드마다 무엇으로 몇 점 (2026-09-18 사장님).
+   * ⚠ ★1점짜리 라플킬은 안 담는다★ — 줄만 길어지고 뜻이 없다.
+   */
+  scoreLog: { r: number; k: string; p: number }[]
   firstKills: number
   /** ★크랙 성공★ — 위 첫 킬 중 ★칠한 구역 안★ 에서 잡은 것만 (2026-09-16 사장님) */
   crackKills: number
@@ -261,7 +266,7 @@ interface MatchTally {
 
 const emptyTally = (): MatchTally => ({
   rounds: 0, kills: 0, score: 0, firstKills: 0,
-  atkScore: 0, atkRounds: 0, defScore: 0, defRounds: 0, crackScore: 0, fewScore: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
+  atkScore: 0, atkRounds: 0, defScore: 0, defRounds: 0, crackScore: 0, fewScore: 0, scoreLog: [], crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
   deathSeconds: 0, deathCount: 0, tempoSeconds: 0, tempoCount: 0,
   openRounds: 0, foeOpenRounds: 0, cutRounds: 0, aliveRounds: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
@@ -487,10 +492,15 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
     const bombRaw = await prisma.$queryRaw<{
       k: string; rd: string | null; w: string | null; tw: string | null
       tn: string | null; ttn: string | null
+      su: string | null; tsu: string | null; kx: string | null; ky: string | null
     }[]>`
       SELECT r."matchKey" AS k, e->>'round' AS rd,
              e->>'weapon' AS w, e->>'target_weapon' AS tw,
-             e->>'team_no' AS tn, e->>'target_team_no' AS ttn
+             e->>'team_no' AS tn, e->>'target_team_no' AS ttn,
+             -- ★누가 심었나·어디에 심었나★ (2026-09-18) — 폭탄 점수와 MVP 설명이 쓴다
+             -- ⚠ 설치 자리는 kill_x/kill_y 다. death_* 는 0,0 이다 (실측)
+             e->>'str_usn' AS su, e->>'target_str_usn' AS tsu,
+             e->>'kill_x' AS kx, e->>'kill_y' AS ky
         FROM "BarracksBattleLogRaw" r, jsonb_array_elements(r."payload"->'battleLog') e
        WHERE r."matchKey" IN (${Prisma.join(keys)}) AND r."status" = 'ok'
          AND jsonb_typeof(r."payload"->'battleLog') = 'array'
@@ -500,9 +510,25 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       const arr = bombByMatch.get(b.k)
       const row: RoundSideEvent = {
         round: b.rd, weapon: b.w, target_weapon: b.tw, team_no: b.tn, target_team_no: b.ttn,
+        kill_x: b.kx, kill_y: b.ky,
       }
       if (arr) arr.push(row)
       else bombByMatch.set(b.k, [row])
+    }
+
+    /*
+     * ★폭탄을 심은 사람★ (2026-09-18) — 점수와 MVP 설명이 쓴다.
+     * ⚠ C4 줄은 심은 사람이 ★앞칸에도 뒷칸에도★ 온다. 무기 칸과 짝지어 읽는다.
+     */
+    const plantsByMatch = new Map<string, { round: number; usn: string; x: number | null; y: number | null }[]>()
+    for (const b of bombRaw) {
+      const round = Number(b.rd)
+      if (!Number.isFinite(round)) continue
+      const usn = b.w === 'c4-install' ? b.su : (b.tw === 'c4-install' ? b.tsu : null)
+      if (usn === null || usn === '') continue
+      const list = plantsByMatch.get(b.k) ?? []
+      list.push({ round, usn, x: b.kx === null ? null : Number(b.kx), y: b.ky === null ? null : Number(b.ky) })
+      plantsByMatch.set(b.k, list)
     }
 
     /**
@@ -776,6 +802,21 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           )
           const t = tallyOf(mk, K.pid)
           t.score += pts
+          /*
+           * ★MVP 설명 재료★ — ★스나를 잡은 것만★ 담는다 (사장님:
+           *   「평범한 1점짜리 라플킬은 세지마, 스나수면 스나싸움 이긴건
+           *    라운드마다 콕콕 찝어서 다넣어」).
+           */
+          if (V?.weapon === 1) {
+            const early = rank <= 2
+            t.scoreLog.push({
+              r: Number(roundKey.split('|')[1]) || 0,
+              k: K.weapon === 1
+                ? (early ? 'sniperVsSniperEarly' : 'sniperVsSniperLate')
+                : (early ? 'rifleVsSniperEarly' : 'rifleVsSniperLate'),
+              p: pts,
+            })
+          }
 
           /*
            * ★크랙★ (2026-09-18 사장님) — ★칠한 구역 안★ 에서 ★25초 안★ 에 딴 점수.
@@ -1162,6 +1203,36 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       const alive = new Map<string, Set<string>>([[tA, new Set(teams.get(tA))], [tB, new Set(teams.get(tB))]])
       const teamOf = new Map<string, string>()
       for (const [t, s] of teams) for (const u of s) teamOf.set(u, t)
+
+      /*
+       * ★폭탄 점수★ (2026-09-18 사장님) — 심고 이기면 2점 · 져도 B쪽이면 2점 · A쪽이면 1점.
+       * MVP 설명에도 「13라운드 폭탄설치(B) 후 승리 +2점」 으로 들어간다.
+       *
+       * ⚠ 어느 쪽에 심었는지는 ★설치 자리★ 로 본다 — B묶음(비롱·벙커·바닥·일문) 안이면 B쪽이다.
+       * ⚠ 라운드 승패를 모르면 안 센다 (D-106) — 이겼는지 모르면서 2점을 줄 수 없다.
+       */
+      if (win !== null) {
+        const rdNo = Number((arr[0] as Kill).rd)
+        for (const plant of plantsByMatch.get(mk) ?? []) {
+          if (plant.round !== rdNo) continue
+          const P = whoOf(mk, plant.usn)
+          if (!P) continue
+          const onB = sideZones.b !== null && inZone(
+            sideZones.b,
+            plant.x === null || plant.y === null ? null : { x: plant.x, y: plant.y },
+          )
+          const mine = teamOf.get(plant.usn) ?? null
+          const bp = bombScore(mine !== null && mine === win, onB)
+          const t = tallyOf(mk, P.pid)
+          t.score += bp
+          t.scoreLog.push({
+            r: rdNo,
+            k: mine !== null && mine === win ? 'bombWin' : (onB ? 'bombLossB' : 'bombLoss'),
+            p: bp,
+          })
+        }
+      }
+
       const sawOut = new Set<string>()
       const sawAlone = new Set<string>()
       /** 그 라운드에 ★몇 명 모자랐나★ — 세이브 점수(2n−1)의 재료 */
@@ -1243,9 +1314,11 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
            * ⚠ `fewScore` 에도 같이 담는다 — ★소수싸움은 평균★ · ★세이브는 총합★ 으로
            *   줄을 세우기 때문에 같은 재료를 두 축이 다르게 접는다.
            */
-          const sp = saveScore(shortBy.get(u) ?? 1)
+          const n = shortBy.get(u) ?? 1
+          const sp = saveScore(n)
           t.score += sp
           t.fewScore += sp
+          t.scoreLog.push({ r: Number(roundKey.split('|')[1]) || 0, k: 'save' + n, p: sp })
         }
       }
     }
