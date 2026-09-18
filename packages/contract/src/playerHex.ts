@@ -75,9 +75,51 @@ export const PLAYER_HEX_BADGE_RANK_DUEL = 3
 /** ★옛 값★ (2026-09-10 ~ 2026-09-12) — 모든 축 10위 (`CLAUDE.md` 1-4) */
 export const PLAYER_HEX_BADGE_RANK_V1 = 10
 
-/** 이 축에서 배지를 주는 등수 경계 */
+/** 이 축에서 배지를 주는 등수 경계 ⚠ 2026-09-18 부터 ★쓰지 않는다★ — `playerHexBadgeCut` 이 대신한다 */
 export function playerHexBadgeRank(key: string): number {
   return key === 'duel' ? PLAYER_HEX_BADGE_RANK_DUEL : PLAYER_HEX_BADGE_RANK
+}
+
+/* ------------------------------------------------------------ 2% 컷 --- */
+
+/**
+ * ★배지는 상위 2% 안에만 준다★ (2026-09-18 사장님).
+ *
+ * > 「좀 기준을 빡세게 잡아 상위 5퍼센트 이내 들었을때만 뱃지를 주고
+ * >  탑5안에드는 애들은 황금색 글로우」
+ * > 「5퍼센트면 너무 많음?」 → 「2퍼센트로 가자」
+ *
+ * ── 왜 등수가 아니라 비율인가
+ *   옛 컷은 ★고정 등수(5위)★ 였다. 리그가 커지면 5위가 상위 0.6% 라 너무 귀하고,
+ *   작으면 상위 10% 라 흔해진다. ★비율은 리그 크기를 안 탄다.★
+ *
+ * ── 왜 2% 인가 (실측으로 골랐다)
+ *   IPL 에서 20경기 이상 뛴 810명 기준:
+ *   ```
+ *     1%    8명   ← 옛 컷(5명)과 비슷. 화면에 배지가 거의 안 뜬다
+ *    ★2%   16명★ ← 눈에 띄면서도 희소하다
+ *     3%   24명
+ *     5%   40명   ← 옛 컷의 8배. 「빡세게」 와 반대다
+ *   ```
+ *
+ * ⚠ ★모집단이 작으면 최소 한 명은 준다★ — 50명짜리 리그에서 2% 는 1명이다.
+ *   0명이 되면 그 축의 배지가 영영 안 나온다.
+ */
+export const PLAYER_HEX_BADGE_TOP_PCT = 2
+/** ★황금 글로우★ — 이 등수 안이면 배지가 빛난다 */
+export const PLAYER_HEX_BADGE_GLOW_RANK = 5
+
+/**
+ * 그 축에서 배지를 주는 ★등수 경계★ — 모집단의 2% (올림, 최소 1).
+ *
+ * @param total 그 축을 잰 사람 수. 모르면 `null` 을 넘긴다 — 그때는 옛 고정 컷으로 떨어진다
+ */
+export function playerHexBadgeCut(key: string, total: number | null | undefined): number {
+  if (total === null || total === undefined || !Number.isFinite(total) || total < 1) {
+    /* 모집단을 모르면 ★옛 고정 컷★ 으로 — 아무에게도 안 주는 것보다 낫다 */
+    return playerHexBadgeRank(key)
+  }
+  return Math.max(1, Math.ceil((total * PLAYER_HEX_BADGE_TOP_PCT) / 100))
 }
 
 /**
@@ -256,6 +298,11 @@ export const PlayerHexAxis = z.object({
   total: Count.nullable(),
   /** 10위 이내면 배지 이름, 아니면 null */
   badge: z.string().nullable(),
+  /**
+   * ★황금 글로우★ — 그 축 ★TOP 5★ 안이면 `true` (2026-09-18 사장님).
+   * 배지를 ★받은 사람 중에서★ 또 한 번 가른다 — 2% 안에 들면 배지, 그중 5위 안이면 빛난다.
+   */
+  badge_glow: z.boolean().default(false),
   /** «47:23» 같은 원시 표기 — 없으면 null */
   numerator: Count.nullable(),
   denominator: Count.nullable(),

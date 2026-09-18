@@ -201,14 +201,43 @@ interface HealthCounts {
  * 임계값은 `@sacloud/contract` 에 있다 — **워커의 `sync-freshness` 와 같은 자**다.
  * 한쪽만 고치면 또 갈라진다.
  */
+/*
+ * ⚠ ★이 함수가 DB 를 가장 오래 붙잡고 있었다★ (2026-09-18 실측).
+ *
+ * ```
+ *   33,723회 × 1,526ms = ★14시간★    ← 전체 2위
+ * ```
+ *
+ * ── 왜 느렸나
+ *   `LEFT JOIN "Match" … GROUP BY l."slug"` 는 플래너가 ★39만 행을 통째로 훑는다.★
+ *   `Match_leagueId_startAt_idx` 가 이미 있는데도 못 쓴다 — 여러 리그를 한 번에
+ *   묶느라 인덱스의 «리그별 가장 큰 startAt» 을 짚지 못하기 때문이다.
+ *
+ * ── 어떻게 고쳤나
+ *   ★리그마다 따로 묻는다.★ 리그는 셋뿐이고, 한 건은 인덱스 뒤에서 ★맨 끝 한 행★ 만
+ *   읽으면 끝난다 (`ORDER BY startAt DESC LIMIT 1`). 1.5초 → 수 밀리초다.
+ *
+ * ⚠ ★값은 한 글자도 안 바뀐다★ — 같은 «리그별 가장 최근 경기» 다.
+ *   세 번 묻는 것이 한 번 묶는 것보다 빠른 자리다.
+ *
+ * ⚠ 이게 ★사이트가 503 으로 내려간 원인★ 이기도 했다 (2026-09-18 새벽) —
+ *   집계 잡이 도는 동안 이 쿼리가 11초를 넘겨 헬스체크가 «DB 죽음» 으로 읽었다.
+ */
 async function readLeagueFreshness(now: Date): Promise<LeagueFreshness[]> {
-  const rows = await prisma.$queryRaw<{ slug: string; newest: Date | null }[]>`
-    SELECT l."slug" AS slug, max(m."startAt") AS newest
-      FROM "League" l
-      LEFT JOIN "Match" m ON m."leagueId" = l."id"
-     WHERE l."slug" = ANY(${[...COLLECTED_LEAGUE_SLUGS]})
-     GROUP BY l."slug"
-  `
+  const slugs = [...COLLECTED_LEAGUE_SLUGS]
+  const rows = await Promise.all(
+    slugs.map(async (slug) => {
+      const hit = await prisma.$queryRaw<{ newest: Date | null }[]>`
+        SELECT m."startAt" AS newest
+          FROM "Match" m
+          JOIN "League" l ON l."id" = m."leagueId"
+         WHERE l."slug" = ${slug}
+         ORDER BY m."leagueId", m."startAt" DESC
+         LIMIT 1
+      `
+      return { slug, newest: hit[0]?.newest ?? null }
+    }),
+  )
   return rows.map((row) => ({
     league: row.slug,
     newestStartAt: row.newest ? row.newest.toISOString() : null,

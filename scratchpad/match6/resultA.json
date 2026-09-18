@@ -33,11 +33,11 @@
    67
   ],
   "duel": [
-   5,
-   4
+   14,
+   12
   ],
   "few": [
-   4,
+   6,
    2
   ],
   "names": [
@@ -90,6 +90,113 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 9,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 10,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 27,
     "short": 2,
     "b": 3,
@@ -132,6 +239,98 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "save2",
+      "pts": 3
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 11,
     "b": 8,
@@ -170,6 +369,68 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "bombLossB",
+      "pts": 2
+     },
+     {
+      "round": 11,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 12,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     }
+    ],
     "sniper": 19,
     "short": 0,
     "b": 2,
@@ -204,6 +465,83 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 8,
@@ -238,6 +576,58 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 13,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     }
+    ],
     "sniper": 0,
     "short": 11,
     "b": 4,
@@ -272,6 +662,53 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 2,
@@ -298,6 +735,63 @@
       "pts": 11
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 7,
@@ -328,6 +822,43 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 8,
     "b": 2,
@@ -354,6 +885,48 @@
       "pts": 8
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 4,
@@ -384,6 +957,28 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 7,
     "b": 1,
@@ -497,12 +1092,12 @@
    70
   ],
   "duel": [
-   4,
-   4
+   11,
+   11
   ],
   "few": [
    2,
-   2
+   4
   ],
   "names": [
    [
@@ -550,6 +1145,93 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 11,
+      "key": "bombLoss",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 19,
     "b": 1,
@@ -592,6 +1274,88 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "bombLossB",
+      "pts": 2
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 9,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 8,
     "b": 3,
@@ -626,6 +1390,68 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     }
+    ],
     "sniper": 19,
     "short": 0,
     "b": 0,
@@ -664,6 +1490,78 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "save2",
+      "pts": 3
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 7,
     "b": 8,
@@ -698,6 +1596,48 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 5,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 11,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 15,
     "short": 0,
     "b": 0,
@@ -728,6 +1668,63 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 8,
@@ -758,6 +1755,33 @@
       "pts": 6
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     }
+    ],
     "sniper": 0,
     "short": 6,
     "b": 0,
@@ -784,6 +1808,48 @@
       "pts": 8
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 5,
@@ -810,6 +1876,43 @@
       "pts": 7
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 7,
@@ -836,6 +1939,13 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 0,
@@ -957,11 +2067,11 @@
    68
   ],
   "duel": [
-   4,
-   5
+   8,
+   14
   ],
   "few": [
-   4,
+   6,
    1
   ],
   "names": [
@@ -1010,6 +2120,78 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 3,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 23,
     "short": 0,
     "b": 0,
@@ -1048,6 +2230,78 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 12,
+      "key": "save1",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 11,
     "b": 8,
@@ -1090,6 +2344,78 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 4,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "save2",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 10,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 10,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 16,
     "short": 3,
     "b": 2,
@@ -1124,6 +2450,58 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 5,
     "b": 6,
@@ -1154,6 +2532,38 @@
       "pts": 10
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     }
+    ],
     "sniper": 0,
     "short": 8,
     "b": 6,
@@ -1184,6 +2594,48 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 11,
@@ -1210,6 +2662,58 @@
       "pts": 10
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 6,
@@ -1240,6 +2744,53 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "bombLoss",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 2,
@@ -1266,6 +2817,43 @@
       "pts": 7
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 7,
@@ -1292,6 +2880,28 @@
       "pts": 4
      }
     },
+    "log": [
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 0,
@@ -1401,7 +3011,7 @@
    7
   ],
   "duel": [
-   2,
+   5,
    0
   ],
   "few": [
@@ -1454,6 +3064,48 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 10,
     "short": 1,
     "b": 0,
@@ -1484,6 +3136,43 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 5,
     "b": 1,
@@ -1514,6 +3203,43 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 5,
@@ -1544,6 +3270,28 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 3,
@@ -1570,6 +3318,13 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     }
+    ],
     "sniper": 0,
     "short": 5,
     "b": 0,
@@ -1596,6 +3351,18 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 2,
@@ -1622,6 +3389,18 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 1,
@@ -1648,6 +3427,18 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 1,
@@ -1674,6 +3465,13 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 1,
@@ -1695,6 +3493,7 @@
     "bombs": 0,
     "sniperKills": 0,
     "bill": {},
+    "log": [],
     "sniper": 0,
     "short": 0,
     "b": 0,
@@ -1780,7 +3579,7 @@
    30
   ],
   "duel": [
-   1,
+   3,
    0
   ],
   "few": [
@@ -1829,6 +3628,68 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "save1",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 4,
@@ -1859,6 +3720,38 @@
       "pts": 10
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 12,
     "b": 1,
@@ -1893,6 +3786,48 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "bombWin",
+      "pts": 2
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 5,
@@ -1931,6 +3866,33 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 6,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     }
+    ],
     "sniper": 0,
     "short": 7,
     "b": 4,
@@ -1961,6 +3923,43 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 7,
@@ -1991,6 +3990,38 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 8,
     "short": 0,
     "b": 0,
@@ -2021,6 +4052,23 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 4,
@@ -2047,6 +4095,13 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 5,
@@ -2073,6 +4128,18 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 2,
     "short": 0,
     "b": 0,
@@ -2094,6 +4161,7 @@
     "bombs": 0,
     "sniperKills": 0,
     "bill": {},
+    "log": [],
     "sniper": 0,
     "short": 0,
     "b": 0,
@@ -2187,8 +4255,8 @@
    33
   ],
   "duel": [
-   2,
-   2
+   4,
+   6
   ],
   "few": [
    3,
@@ -2232,6 +4300,43 @@
       "pts": 10
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 7,
     "b": 1,
@@ -2262,6 +4367,53 @@
       "pts": 6
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 13,
     "short": 0,
     "b": 0,
@@ -2296,6 +4448,63 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 4,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "save1",
+      "pts": 1
+     }
+    ],
     "sniper": 13,
     "short": 0,
     "b": 0,
@@ -2326,6 +4535,28 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 0,
@@ -2356,6 +4587,58 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     }
+    ],
     "sniper": 0,
     "short": 4,
     "b": 6,
@@ -2386,6 +4669,48 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 1,
@@ -2412,6 +4737,43 @@
       "pts": 7
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 4,
@@ -2438,6 +4800,33 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 1,
@@ -2464,6 +4853,28 @@
       "pts": 4
      }
     },
+    "log": [
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 1,
@@ -2490,6 +4901,28 @@
       "pts": 4
      }
     },
+    "log": [
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 3,
@@ -2575,8 +5008,8 @@
    71
   ],
   "duel": [
-   4,
-   4
+   9,
+   11
   ],
   "few": [
    1,
@@ -2624,6 +5057,83 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 13,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 22,
     "short": 0,
     "b": 0,
@@ -2658,6 +5168,53 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 4,
     "b": 11,
@@ -2692,6 +5249,58 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 6,
@@ -2726,6 +5335,58 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 7,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     }
+    ],
     "sniper": 15,
     "short": 0,
     "b": 0,
@@ -2764,6 +5425,58 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 5,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "save1",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 9,
     "b": 2,
@@ -2798,6 +5511,63 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 8,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 8,
     "b": 1,
@@ -2828,6 +5598,58 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 6,
     "b": 5,
@@ -2858,6 +5680,38 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 5,
     "b": 3,
@@ -2884,6 +5738,48 @@
       "pts": 8
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 3,
@@ -2910,6 +5806,18 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 0,
@@ -3023,12 +5931,12 @@
    48
   ],
   "duel": [
-   3,
-   2
+   9,
+   5
   ],
   "few": [
-   3,
-   1
+   7,
+   3
   ],
   "names": [
    [
@@ -3072,6 +5980,78 @@
       "pts": 6
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 2,
+      "key": "save2",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 9,
+      "key": "save2",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 6,
     "b": 7,
@@ -3110,6 +6090,73 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 1,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 18,
     "short": 2,
     "b": 0,
@@ -3144,6 +6191,78 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 10,
     "b": 1,
@@ -3178,6 +6297,33 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 3,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 7,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 0,
@@ -3212,6 +6358,58 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 8,
+      "key": "save2",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 6,
@@ -3242,6 +6440,38 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 7,
     "b": 0,
@@ -3276,6 +6506,43 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 10,
     "short": 0,
     "b": 0,
@@ -3310,6 +6577,38 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 8,
@@ -3336,6 +6635,43 @@
       "pts": 7
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 1,
@@ -3362,6 +6698,23 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 2,
     "b": 0,
@@ -3480,7 +6833,7 @@
   ],
   "few": [
    3,
-   4
+   6
   ],
   "names": [
    [
@@ -3524,6 +6877,128 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "save2",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 26,
     "short": 0,
     "b": 0,
@@ -3566,6 +7041,78 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 6,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "bombLossB",
+      "pts": 2
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "bombLoss",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 15,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 16,
@@ -3600,6 +7147,93 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 13,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 15,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 8,
     "b": 6,
@@ -3634,6 +7268,78 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 15,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 15,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 15,
+      "key": "save1",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 13,
     "b": 1,
@@ -3664,6 +7370,68 @@
       "pts": 6
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 15,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 5,
     "b": 5,
@@ -3698,6 +7466,53 @@
       "pts": 5
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifleVsSniperEarly",
+      "pts": 5
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 7,
     "b": 1,
@@ -3732,6 +7547,73 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 15,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 8,
@@ -3762,6 +7644,53 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "bombWin",
+      "pts": 2
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 6,
@@ -3788,6 +7717,48 @@
       "pts": 8
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 7,
     "b": 1,
@@ -3814,6 +7785,18 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 0,
     "b": 0,
@@ -3915,12 +7898,12 @@
    73
   ],
   "duel": [
-   6,
-   6
+   16,
+   17
   ],
   "few": [
-   3,
-   4
+   5,
+   6
   ],
   "names": [
    [
@@ -3976,6 +7959,113 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 4,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "bombWin",
+      "pts": 2
+     },
+     {
+      "round": 4,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 11,
+      "key": "save2",
+      "pts": 3
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 29,
     "short": 2,
     "b": 0,
@@ -4010,6 +8100,93 @@
       "pts": 4
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 3,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "sniperVsSniperLate",
+      "pts": 2
+     },
+     {
+      "round": 14,
+      "key": "sniperVsSniperEarly",
+      "pts": 3
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 27,
     "short": 0,
     "b": 0,
@@ -4044,6 +8221,83 @@
       "pts": 3
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "save2",
+      "pts": 3
+     }
+    ],
     "sniper": 0,
     "short": 10,
     "b": 5,
@@ -4074,6 +8328,58 @@
       "pts": 9
      }
     },
+    "log": [
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 14,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     }
+    ],
     "sniper": 0,
     "short": 11,
     "b": 4,
@@ -4108,6 +8414,58 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifleVsSniperLate",
+      "pts": 3
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 8,
     "b": 2,
@@ -4138,6 +8496,63 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 3,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 7,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "bombWin",
+      "pts": 2
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 6,
@@ -4164,6 +8579,48 @@
       "pts": 8
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 6,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 1,
     "b": 3,
@@ -4194,6 +8651,48 @@
       "pts": 1
      }
     },
+    "log": [
+     {
+      "round": 1,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 9,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 12,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 13,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 3,
@@ -4228,6 +8727,38 @@
       "pts": 2
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 2,
+      "key": "save1",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 10,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 11,
+      "key": "bombLossB",
+      "pts": 2
+     }
+    ],
     "sniper": 0,
     "short": 4,
     "b": 3,
@@ -4254,6 +8785,38 @@
       "pts": 6
      }
     },
+    "log": [
+     {
+      "round": 2,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 4,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 5,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 8,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     },
+     {
+      "round": 14,
+      "key": "rifle",
+      "pts": 1
+     }
+    ],
     "sniper": 0,
     "short": 3,
     "b": 2,

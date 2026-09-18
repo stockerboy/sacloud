@@ -11,7 +11,8 @@ import { prisma } from '@sacloud/db'
 import {
   PLAYER_HEX_AXIS_ORDER,
   PLAYER_HEX_BADGE,
-  playerHexBadgeRank,
+  playerHexBadgeCut,
+  PLAYER_HEX_BADGE_GLOW_RANK,
   PLAYER_HEX_DESC,
   playerHexLabelOf,
   type PlayerHex,
@@ -110,11 +111,17 @@ export function toPlayerHex(row: HexRow): PlayerHex {
       percentile: num(row[col.pct]),
       rank,
       total: num(row[col.total]),
-      /* ★싸움은 3위 · 나머지는 5위★ (2026-09-12 사장님). 까닭은 `playerHexBadgeRank` 주석에 */
+      /*
+       * ★배지는 상위 2% 안에만★ (2026-09-18 사장님: 「좀 기준을 빡세게 잡아」).
+       * 옛 컷(싸움 3위·나머지 5위)은 `playerHexBadgeRank` 에 남아 있고,
+       * 모집단을 모를 때만 그쪽으로 떨어진다.
+       */
       badge:
-        rank !== null && rank <= playerHexBadgeRank(key) && badgePair !== undefined
+        rank !== null && rank <= playerHexBadgeCut(key, num(row[col.total])) && badgePair !== undefined
           ? (weapon === 0 ? badgePair.rifle : badgePair.sniper)
           : null,
+      /* ★그중 TOP 5 는 금빛으로 빛난다★ */
+      badge_glow: rank !== null && rank <= PLAYER_HEX_BADGE_GLOW_RANK,
       ...partsOf(row, key),
     }
   })

@@ -248,7 +248,13 @@ function analyze(m) {
   const bill = [{}, {}]
   /* ★사람별 내역★ (2026-09-18 사장님: «선수 별로 이 점수가 어케 나왔는지를 설명하라고») */
   const manBill = new Map()
-  const charge = (t, key, points, who) => {
+  /*
+   * ★MVP 설명 재료★ (2026-09-18 사장님:
+   *   «MVP가 mvp인 이유를 설명해줘 (…) 라운드마다 콕콕 찝어서 다넣어»).
+   * 사람마다 ★어느 라운드에 무엇으로 몇 점★ 을 땄는지 줄줄이 적는다.
+   */
+  const manLog = new Map()
+  const charge = (t, key, points, who, round) => {
     const row = bill[t][key] ?? { n: 0, pts: 0 }
     row.n += 1
     row.pts += points
@@ -260,6 +266,10 @@ function analyze(m) {
     r2.n += 1
     r2.pts += points
     mine[key] = r2
+    if (round !== undefined) {
+      if (!manLog.has(who)) manLog.set(who, [])
+      manLog.get(who).push({ round, key, pts: points })
+    }
   }
   const score = [blank(), blank()]
   /* ★사람별로도 따로 센다★ — 구역 귀속과 별개다. 「누가 벌었나」 를 보려는 것 */
@@ -279,7 +289,7 @@ function analyze(m) {
   const few = [0, 0]
   const roundsWon = [0, 0]
 
-  for (const [, raw] of [...rounds.entries()].sort((a, b) => a[0] - b[0])) {
+  for (const [rno, raw] of [...rounds.entries()].sort((a, b) => a[0] - b[0])) {
     const kills = raw.filter(
       (e) => e.type !== 'bomb' && e.killer && e.victim && e.killer !== BOMB_USN && e.victim !== BOMB_USN,
     )
@@ -336,7 +346,7 @@ function analyze(m) {
           kind = early ? 'rifleVsSniperEarly' : 'rifleVsSniperLate'
         }
       }
-      charge(t, kind, pts, k.killer)
+      charge(t, kind, pts, k.killer, rno)
       if (killerIsSniper) {
         score[t].sniper += pts
         add(k.killer, 'sniper', pts)
@@ -350,7 +360,8 @@ function analyze(m) {
         score[t][b] += pts
         add(k.killer, b, pts)
       }
-      if (killerIsSniper && victimIsSniper) duel[t] += 1
+      /* ★스나싸움도 점수다★ (2026-09-18 사장님) — 잡은 값을 그대로 쌓는다 */
+      if (killerIsSniper && victimIsSniper) duel[t] += pts
     }
 
     /* ── 폭탄. ★B쪽 설치는 져도 2점★ */
@@ -361,7 +372,7 @@ function analyze(m) {
       const zs = zonesAt(b.killX, b.killY)
       const onB = [...zs].some((z) => B_ZONE.includes(z))
       const bp = winner === t ? 2 : onB ? 2 : 1
-      charge(t, winner === t ? 'bombWin' : onB ? 'bombLossB' : 'bombLoss', bp, planter)
+      charge(t, winner === t ? 'bombWin' : onB ? 'bombLossB' : 'bombLoss', bp, planter, rno)
       /*
        * ★폭탄 점수도 「어디에 심었나」 로 간다★ (사장님 설계).
        *   사장님 표에서 폭탄은 ★자리마다★ 있었다 (비리베 2점 · 2층 2점 · 숏 2점).
@@ -384,12 +395,13 @@ function analyze(m) {
         if (gap < minGap) minGap = gap
       }
       if (minGap < 0) {
-        few[winner] += 1
+        /* ★소수싸움도 점수다★ (2026-09-18 사장님) — 2n−1 을 그대로 쌓는다 */
+        few[winner] += 2 * -minGap - 1
         const n = -minGap
         const sp = 2 * n - 1
         /* 세이브는 ★마지막까지 살아 이긴 사람★ 것이다 — 그 라운드 마지막 킬의 주인 */
         const last = kills.filter((k) => teamOf(k.killer) === winner).pop()
-        charge(winner, 'save' + n, sp, last ? last.killer : null)
+        charge(winner, 'save' + n, sp, last ? last.killer : null, rno)
         /*
          * ★세이브 점수를 따로 빼두지 않는다★ (2026-09-18 사장님:
          *   «세이브도 그냥 점수에 중복으로 넣어 세이브점수 빼지마»).
@@ -426,6 +438,7 @@ function analyze(m) {
     isMe: u === data.usn,
     ...(kd.get(u) ?? { kills: 0, deaths: 0, saves: 0, bombs: 0, sniperKills: 0 }),
     bill: manBill.get(u) ?? {},
+    log: manLog.get(u) ?? [],
     ...sc,
     total: sc.sniper + sc.short + sc.b + sc.f2 + sc.spare + sc.bomb + sc.save,
   })).sort((a, b) => b.total - a.total)

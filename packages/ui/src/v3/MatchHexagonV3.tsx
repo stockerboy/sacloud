@@ -124,6 +124,13 @@ interface Pair {
   label: string
   wonValue: number | null
   lostValue: number | null
+  /** ★점수 그대로★ — 그림 크기와 「n점 차이」 가 이걸 쓴다 (2026-09-18) */
+  wonScore: number | null
+  lostScore: number | null
+  /** «8점 차이» — 값이 없으면 `null` */
+  gapText: string | null
+  /** ★압도적 차이★ 인가 — 여섯 중 ★가장 크게 갈린 한 칸★ 만 `true` */
+  hot: boolean
   wonText: string
   lostText: string
   /** «몇 번 중 몇 번» — 없으면 안 적는다 */
@@ -157,12 +164,59 @@ const THIN_SAMPLE = 10
 const THIN_SAMPLE_ZONE = 5
 const ZONE_AXES: readonly string[] = ['aAttack', 'bAttack', 'f2Attack']
 
+/*
+ * ★그림 크기는 「점수 크기」 로 잡는다★ (2026-09-18 사장님:
+ *   「점수차가 가장 큰 그래프가 가장 많이 벌어져야하는데 그렇지 않아
+ *    스나차이가 8점인데 차이가 별로 안커」).
+ *
+ * ── 왜 바꿨나
+ *   옛 판은 ★두 팀의 몫(%)★ 으로 반지름을 잡았다. 그러면
+ *   ```
+ *     스나 16 : 8   →  67% : 33%   (8점 차이인데 그림은 두 배)
+ *     2층   2 : 6   →  25% : 75%   (4점 차이인데 그림은 세 배)
+ *   ```
+ *   ★점수차가 더 큰 칸이 덜 벌어진다.★ 그림이 거짓말을 한다.
+ *
+ * ── 어떻게 바꿨나
+ *   여섯 축을 통틀어 ★가장 큰 점수★ 를 바깥 테두리(100)로 삼고 거기 견준다.
+ *   여섯이 ★같은 자★ 로 재지므로 큰 판과 작은 판, 큰 차이와 작은 차이가 다 보인다.
+ *
+ * ⚠ 값(`numerator`)은 ★점수 그대로★ 다 — 보정하지 않는다 (사장님 확인).
+ */
+/**
+ * ★압도적 차이★ 의 문턱 (2026-09-18 사장님).
+ *
+ * ★10점 이상 벌어지고 ★동시에★ 두 배 이상★ 일 때만 붙인다.
+ * 두 조건을 같이 거는 까닭 — 실측(20경기 × 4칸)에서
+ * ```
+ *   10점 이상 차이  25%   ← 네 칸 중 한 칸. 「압도적」 이라 부르기엔 흔하다
+ *   30점 : 20점     10점 차이지만 1.5배 — 압도적이 아니다
+ *   2층 14점 : 4점  10점 차이에 3.5배 — 작은 칸도 이러면 압도적이다
+ * ```
+ * 배수를 같이 봐야 ★점수가 작은 칸도 공평하게 기회★ 를 갖는다.
+ */
+export const HEX_HOT_GAP = 10
+export const HEX_HOT_RATIO = 2
+
+/** 그 칸이 「압도적 차이」 인가 */
+function isHotGap(a: number | null, b: number | null): boolean {
+  if (a === null || b === null) return false
+  const hi = Math.max(a, b)
+  const lo = Math.min(a, b)
+  if (hi - lo < HEX_HOT_GAP) return false
+  if (lo > 0 && hi / lo < HEX_HOT_RATIO) return false
+  return true
+}
+
 function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] {
-  return ORDER.map((key) => {
+  const rows = ORDER.map((key) => {
     const w = won?.axes.find((a) => a.key === key) ?? null
     const l = lost?.axes.find((a) => a.key === key) ?? null
     return {
       label: LABEL[key] ?? CLAN_HEX_V2_AXIS_LABELS[key],
+      /* ★점수★ — 그림 크기의 재료다. 아래에서 「가장 큰 점수」 로 나눈다 */
+      wonScore: w && w.value !== null ? (w.numerator ?? null) : null,
+      lostScore: l && l.value !== null ? (l.numerator ?? null) : null,
       wonValue: w?.value ?? null,
       lostValue: l?.value ?? null,
       /* ★없었음★ (2026-09-11 사장님) — 그 판에 그 일이 한 번도 안 일어났다는 뜻이다.
@@ -177,8 +231,42 @@ function pairsOf(won: ClanHexagonV2 | null, lost: ClanHexagonV2 | null): Pair[] 
         Math.max(w?.denominator ?? 0, l?.denominator ?? 0) <
         (ZONE_AXES.includes(key) ? THIN_SAMPLE_ZONE : THIN_SAMPLE),
       single: SINGLE_TEXT_AXES.includes(key),
+      gapText: null as string | null,
+      hot: false,
     }
   })
+
+  /*
+   * ★점수 차이★ 를 적고, 조건을 넘긴 것 중 ★차이가 가장 큰 하나★ 만 빨갛게 한다.
+   */
+  let hotIdx = -1
+  let hotGap = -1
+  rows.forEach((r, i) => {
+    if (r.wonScore === null || r.lostScore === null) return
+    const gap = Math.abs(r.wonScore - r.lostScore)
+    r.gapText = gap === 0 ? '같음' : `${Math.round(gap * 10) / 10}점 차이`
+    if (isHotGap(r.wonScore, r.lostScore) && gap > hotGap) {
+      hotGap = gap
+      hotIdx = i
+    }
+  })
+  if (hotIdx >= 0) (rows[hotIdx] as Pair).hot = true
+
+  /*
+   * ★여섯을 같은 자로 잰다★ — 가장 큰 점수가 바깥 테두리(100)다.
+   * ⚠ 점수를 하나도 못 읽으면 ★옛 방식(몫)★ 그대로 둔다 — 그림이 사라지면 안 된다.
+   */
+  const top = Math.max(
+    0,
+    ...rows.map((r) => Math.max(r.wonScore ?? 0, r.lostScore ?? 0)),
+  )
+  if (top <= 0) return rows
+  const scaled = (v: number | null): number | null => (v === null ? null : (v / top) * 100)
+  return rows.map((r) => ({
+    ...r,
+    wonValue: r.wonScore === null ? r.wonValue : scaled(r.wonScore),
+    lostValue: r.lostScore === null ? r.lostValue : scaled(r.lostScore),
+  }))
 }
 
 const areaOf = (values: readonly (number | null)[]): string =>
@@ -371,9 +459,31 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                     }
                     return (
                       <>
+                        {/*
+                          ★가운데는 « : » 다★ (2026-09-18 사장님:
+                            「그냥 7:3 이렇게 하고 왼쪽 파란색 오른쪽 빨간색」).
+                          옛 구분자는 가운뎃점(·)이었는데, 점수 두 개를 견주는 자리라
+                          ★쌍점이 「몇 대 몇」 으로 바로 읽힌다.★
+                        */}
                         {showWon ? <tspan fill={WON.line}>{p.wonText}</tspan> : null}
-                        {showWon && showLost ? <tspan fill="#44506c"> · </tspan> : null}
+                        {showWon && showLost ? <tspan fill="#44506c"> : </tspan> : null}
                         {showLost ? <tspan fill={LOST.line}>{p.lostText}</tspan> : null}
+                        {/*
+                          ★점수 차이를 꼭 적는다★ (2026-09-18 사장님:
+                            「점수차이 무조건 써줘야해 5점차이 3점차이 이런식으로」).
+                          그중 ★가장 크게 갈린 칸★ 은 빨갛게 「압도적 차이」 라 적는다.
+                        */}
+                        {p.gapText === null ? null : (
+                          <tspan
+                            x={x}
+                            dy={12}
+                            fontSize={10}
+                            fontWeight={p.hot ? 800 : 600}
+                            fill={p.hot ? '#ff4d4d' : '#7f8db0'}
+                          >
+                            {p.hot ? `압도적 차이 ${p.gapText}` : p.gapText}
+                          </tspan>
+                        )}
                       </>
                     )
                   })()}

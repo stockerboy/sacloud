@@ -2322,6 +2322,14 @@ model BarracksClanMatchRaw {
   @@index([matchKey])
   @@index([subject])
   @@index([fetchedAt])
+  /// ★DB 를 가장 오래 붙잡던 쿼리★ 를 위한 것 (2026-09-18 실측)
+  ///
+  ///   478,929회 × 549ms = ★73시간★    ← 전체 1위
+  ///   `WHERE "status" = ? AND "matchKey" > ? ORDER BY "matchKey" LIMIT ?`
+  ///
+  /// `matchKey` 단독 인덱스는 있었지만 `status` 가 안 붙어 플래너가
+  /// ★1.4GB 를 통째로 훑었다★ (EXPLAIN 으로 확인). 둘을 묶으면 커서 자리부터 읽는다.
+  @@index([status, matchKey])
 }
 
 /// 선수의 **자리 분포와 포지션 판정** (D-174).
