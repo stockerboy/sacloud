@@ -451,18 +451,32 @@ export async function buildClanHexV2(input: {
 
   for (; !stop; ) {
     const batchAt = Date.now()
-    const rows = await prisma.barracksBattleLogRaw.findMany({
+    /*
+     * ⚠ ★`payload` 를 여기서 읽지 않는다★ (2026-09-19 · 예약이 안 끝나서 찾았다).
+     *
+     *   여태 이 줄이 ★거대한 JSON 까지 통째로★ 올린 다음, 아래에서 «이미 만들었네»
+     *   하고 버렸다. 경기 하나에 이벤트가 3,000여 개다. 실측:
+     *   ```
+     *     배치 20 · 원문 4,000줄 · ★만든 경기 0★ · 누적 197초 · alreadyBuilt 2,415
+     *   ```
+     *   예약은 15분에 끊기는데 ①경기 육각이 그 안에 못 끝나서
+     *   ★②개인 육각과 ③클랜 요약이 한 번도 안 돌았다★ (로그에서 ① 3회 · ② 0회).
+     *   MVP 와 점수 래더가 예약으로는 갱신되지 않고 있었다.
+     *
+     *   ★가벼운 칸만 먼저 읽고, 진짜로 만들 것만 골라 그때 `payload` 를 가져온다.★
+     */
+    const heads = await prisma.barracksBattleLogRaw.findMany({
       where: { subjectKind: 'clan', status: 'ok' },
-      select: { id: true, subject: true, matchKey: true, payload: true },
+      select: { id: true, subject: true, matchKey: true },
       orderBy: { id: 'asc' },
       take: BATCH,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     })
-    if (rows.length === 0) break
-    cursor = rows[rows.length - 1]?.id
+    if (heads.length === 0) break
+    cursor = heads[heads.length - 1]?.id
 
     /* 이 배치가 건드리는 경기들만 읽는다. 같은 물리 경기가 여러 리그에 있다 (D-155) */
-    const keys = [...new Set(rows.map((row) => row.matchKey))]
+    const keys = [...new Set(heads.map((row) => row.matchKey))]
     const matches = await prisma.match.findMany({
       where: {
         sourceMatchId: { in: keys },
@@ -500,6 +514,29 @@ export async function buildClanHexV2(input: {
         built.add(row.matchId)
       }
     }
+
+    /*
+     * ★여기서 걸러 낸 뒤에야 `payload` 를 가져온다.★
+     *   `--rebuild` 면 전부 가져온다 (그때는 어차피 다 만든다).
+     */
+    const needIds = heads
+      .filter((row) => {
+        if (rebuild) return true
+        const group = byKey.get(row.matchKey)
+        if (group === undefined) return false /* 경기가 없으면 payload 도 필요 없다 */
+        return !group.every((match) => built.has(match.id))
+      })
+      .map((row) => row.id)
+    const payloadById = new Map<string, unknown>()
+    if (needIds.length > 0) {
+      for (const row of await prisma.barracksBattleLogRaw.findMany({
+        where: { id: { in: needIds } },
+        select: { id: true, payload: true },
+      })) {
+        payloadById.set(row.id, row.payload)
+      }
+    }
+    const rows = heads.map((row) => ({ ...row, payload: payloadById.get(row.id) ?? null }))
 
     for (const row of rows) {
       result.rows += 1
