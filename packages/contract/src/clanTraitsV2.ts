@@ -257,10 +257,16 @@ export const CLAN_HEX_V2_AXIS_LABELS: Record<ClanHexV2AnyAxisKey, string> = {
   /* ★2026-09-18 사장님 — 스나싸움·소수싸움도 점수다★ */
   duelScore: '스나싸움',
   fewScore: '소수싸움',
+  /*
+   * ★이름은 사장님이 직접 고르신 말이다★ (2026-09-18) —
+   *   비리베점수 → ★비이층점수★ · 2층점수 → ★이층원개점수★ · 숏점수 → ★숏원개점수★
+   * ⚠ 열쇠(`bScore`·`f2Score`·`shortScore`)는 ★안 바꾼다★ — 바꾸면 쌓인 값을
+   *   다시 만들어야 한다. 바뀐 것은 ★화면에 적는 말★ 뿐이다.
+   */
   sniperScore: '스나점수',
-  shortScore: '숏점수',
-  f2Score: '2층점수',
-  bScore: '비리베점수',
+  shortScore: '숏원개점수',
+  f2Score: '이층원개점수',
+  bScore: '비이층점수',
   blockChance: '기회차단',
   /*
    * ★어디서 재는지 이름에 적는다★ (2026-09-18 사장님:

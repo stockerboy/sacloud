@@ -43,8 +43,26 @@ const MVP_WHY_ORDER = [
   'bombWin', 'bombLossB', 'bombLoss',
 ]
 
+export /**
+ * ★마지막 라운드는 「매치라운드」 라 적는다★ (2026-09-18 사장님:
+ *   「마지막 라운드에 스나잡은 사람은 (…) 매치라운드 스나다운 이라고 적어줘
+ *    어차피 라운드 순으로 적잖아」).
+ *
+ * > 「그냥 게임이 끝난 라운드=매치라운드(맨마지막라운드)」
+ *
+ * ⚠ 라운드 수를 모르면 ★숫자 그대로★ 둔다 — 없는 말을 지어내지 않는다 (D-106).
+ */
+function roundsText(rounds: readonly number[], last: number | null): string {
+  return rounds.map((r) => (last !== null && r === last ? '매치' : String(r))).join(',') + '라운드'
+}
+
 export function MvpWhy({ detail }: { detail: MatchDetail }) {
   const why = detail.mvp_why ?? []
+  /* 두 팀 라운드를 더하면 ★그 경기의 마지막 라운드 번호★ 다 */
+  const lastRound =
+    detail.red_rounds === null || detail.blue_rounds === null
+      ? null
+      : detail.red_rounds + detail.blue_rounds
   if (why.length === 0) return null
   const name = [...detail.red, ...detail.blue].find((e) => e.player_id === detail.mvp_player_id)?.name ?? null
   if (name === null) return null
@@ -63,7 +81,7 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
         {rows.map((r) => (
           <Fragment key={r.key}>
             <span style={{ color: V3.gold, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              {r.rounds.join(',')}라운드
+              {roundsText(r.rounds, lastRound)}
             </span>
             <span style={{ color: '#9aa6bf' }}>{MVP_WHY_LABEL[r.key] ?? r.key}</span>
             <span style={{ color: '#e2e5ee', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>

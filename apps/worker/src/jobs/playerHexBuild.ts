@@ -1265,16 +1265,27 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
          * ★몇 명 열세였나★ 를 같이 기억한다 — 세이브 점수가 2n−1 이라 인원이 필요하다
          * (2026-09-18 사장님). 더 나쁜 상황을 만났으면 그 값으로 덮는다.
          */
+        /*
+         * ⚠ ★1대1 도 1점이다★ (2026-09-18 사장님: 「어떤건 세이브했는데도 아예 안뜲」).
+         *
+         *   옛 판은 `nb - na` 를 그대로 썼다. 1대1 이면 ★0★ 이라 `saveScore(0) = 0` 이 되어
+         *   ★MVP 설명에 한 줄도 안 남았다.★ 그런데 명단에는 「1/1」 로 세어져 있었다 —
+         *   ★같은 세이브를 두 곳이 다르게 세고 있었다.★
+         *
+         *   세이브 점수는 ★1명 열세 1점 · 2명 3점 · 3명 5점★ (사장님 확정)이고,
+         *   1대1 은 «상대보다 한 명 적지는 않지만 혼자 남은» 자리라 ★1점★ 이 맞다.
+         *   그래서 ★최소 1★ 로 둔다 — 명단의 `aloneWon` 과 정확히 짝이 맞는다.
+         */
         if (na === 1) {
           for (const u of alive.get(tA) as Set<string>) {
             sawAlone.add(u)
-            shortBy.set(u, Math.max(shortBy.get(u) ?? 0, nb - na))
+            shortBy.set(u, Math.max(shortBy.get(u) ?? 0, Math.max(1, nb - na)))
           }
         }
         if (nb === 1) {
           for (const u of alive.get(tB) as Set<string>) {
             sawAlone.add(u)
-            shortBy.set(u, Math.max(shortBy.get(u) ?? 0, na - nb))
+            shortBy.set(u, Math.max(shortBy.get(u) ?? 0, Math.max(1, na - nb)))
           }
         }
 

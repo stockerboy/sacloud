@@ -105,8 +105,13 @@ export const SINGLE_TEXT_AXES_V1: readonly string[] = ['sniperInfluence', 'rifle
  */
 const NOTES_ON = false
 /* ⚠ 열쇠를 넓혀 ★옛 축 이름도 남긴다★ (2026-09-16 밤 · `CLAUDE.md` 1-4) */
+/*
+ * ⚠ ★여기 적힌 이름이 계약을 덮는다★ — 계약에서 이름을 바꿔도 이 표에 있으면 안 바뀐다.
+ *   2026-09-18 에 `sniperDuel` 이 ★A,B롱 스나싸움★ 으로 바뀌었는데 여기가 옛 이름을
+ *   들고 있어 화면만 «스나싸움» 이었다. ★계약에 있는 축은 여기 적지 않는다.★
+ *   아래 남은 것들은 ★옛 축★ 이라 계약의 «지금 여섯» 에 없다 — 그래서 여기 있어야 한다.
+ */
 const LABEL: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
-  sniperDuel: '스나싸움',
   outnumbered: '소수싸움',
   save: '세이브',
   riflePower: '라이플화력',

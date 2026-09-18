@@ -44,6 +44,7 @@ import { prisma } from '@sacloud/db'
 import {
   CLAN_HEX_V2_CONFIG,
   buildClanHexV2Raw,
+  CLAN_HEX_V2_CLAN_AXIS_KEYS,
   CLAN_HEX_V2_MATCH_AXIS_KEYS,
   normalizeAgainstFoe,
   normalizeByPercentile,
@@ -147,7 +148,17 @@ async function buildDistribution(leagueId: string): Promise<LeagueHexV2Distribut
     for (const row of rows) {
       hexagons.set(
         row.leagueClanId,
-        buildClanHexV2Raw({ tally: tallyOf(row.tally), matches: row.matches }),
+        /*
+         * ⚠ ★축 목록을 꼭 넘긴다★ (2026-09-18 사장님: 「클랜 6각은 측정중이라고 뜸」).
+         *   안 넘기면 `CLAN_HEX_V2_AXIS_KEYS`(옛 여섯 — 스나영향력·라플영향력·기회차단)로
+         *   만들어진다. 이름은 새것으로 바뀌었는데 ★값을 옛 축에서 찾으니 전부 «측정중»★ 이었다.
+         *   요약 tally 에는 점수가 멀쩡히 들어 있었다 (209행 전부).
+         */
+        buildClanHexV2Raw({
+          tally: tallyOf(row.tally),
+          matches: row.matches,
+          axisKeys: CLAN_HEX_V2_CLAN_AXIS_KEYS,
+        }),
       )
     }
 
