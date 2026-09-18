@@ -37,14 +37,57 @@ import { log } from '../lib/log.js'
 /** 순위를 매길 최소 경기 수 — 얇은 표본이 1등을 하면 래더가 아니다 */
 export const SCORE_LADDER_MIN_GAMES = 20
 /** 보정을 받는 클랜 수 — 그 리그 래더 위에서부터 (사장님: «IPL 1등부터 11등») */
-export const TOP_CLAN_COUNT = 11
+/*
+ * ⚠ ★11 → 10★ (2026-09-18 사장님: 「무조건 10등까지만 보정 줘」).
+ *   10등 amaryllis 3136 · 11등 grave 3132 로 4점 차였지만 사장님이 10 으로 못 박으셨다.
+ */
+export const TOP_CLAN_COUNT = 10
 /**
  * ★상위권 보정★ — 경기당 몇 점을 더하나.
  *
  * 0.5 는 30등 안 인원을 하나도 못 늘렸고, 1.5 는 1등을 바꿔 버렸다.
  * 1.0 이 «밀린 만큼 메우되 뒤집지는 않는» 자리다 (2026-09-18 실측).
  */
-export const TOP_CLAN_BONUS = 1.0
+/*
+ * ⚠ ★1.0 → 2.0★ (2026-09-18 사장님: 「지금 하위권 클랜원들이 너무 많아 순위권에」).
+ *
+ *   상위 30명 안에 상위클랜이 몇 명인가 (825명 실측):
+ *   ```
+ *     +1.0 · 수축 없음    8명   ← 옛 판
+ *     +1.0 · 수축 40     10명
+ *     +2.0 · 수축 40    ★15명★  ← 채택
+ *     +2.5 · 수축 60     17명   (순위가 거의 안 바뀌어 실익 없음)
+ *   ```
+ */
+export const TOP_CLAN_BONUS = 2.0
+
+/**
+ * ★판수가 적으면 평균 쪽으로 끌어당긴다★ (2026-09-18 사장님:
+ *   「판수가 일단 많아야돼 상위권 오려면 적을 수록 유리하면 절대 안돼」).
+ *
+ * ── 왜 필요한가
+ *   그냥 «총점 ÷ 판수» 면 ★20판만 뛴 사람이 운 좋은 20판으로 1등★ 할 수 있다.
+ *   실제로 옛 상위 20명 중 다섯이 20~28경기였다.
+ *
+ *   그런데 실측은 ★판수가 많을수록 진짜로 더 잘한다★ 고 말한다 (IPL 825명):
+ *   ```
+ *     20~29경기  219명  평균 12.67점
+ *     30~49경기  300명  평균 12.47점
+ *     50~79경기  210명  평균 12.92점
+ *     80경기~     96명  평균 13.19점   ← 가장 높다
+ *   ```
+ *   적은 판수가 유리해 보인 것은 실력이 아니라 ★들쭉날쭉함★ 이었다.
+ *
+ * ── 어떻게 누르나
+ *   ```
+ *     점수 = (총점 + 리그평균 × C) ÷ (판수 + C)
+ *   ```
+ *   판수가 적으면 «리그평균» 쪽으로 끌려 내려가고, 판수가 쌓이면 제 실력이 드러난다.
+ *   C=40 이면 40판을 뛰어야 자기 점수의 절반이 제 몫이 된다.
+ *
+ * ⚠ 0 으로 두면 ★옛 셈 그대로★ 다 (`CLAUDE.md` 1-4).
+ */
+export const SCORE_SHRINK_GAMES = 40
 
 /** 소수 두 자리를 정수 칸에 담는다 — 22.83점 → 2283 */
 const SCALE = 100
@@ -127,13 +170,23 @@ export async function buildScoreLadder(options: {
   let bonused = 0
   const updates: { id: string; rating: number | null; games: number; total: number; bonus: number }[] = []
 
+  /*
+   * ★리그 평균★ — 수축이 끌어당길 자리다. ★순위 대상(`minGames` 이상)만★ 으로 잰다:
+   * 한두 판 뛴 사람까지 넣으면 평균이 흔들려 기준이 해마다 달라진다.
+   */
+  const pool = rows.filter((r) => r.games >= minGames)
+  const poolGames = pool.reduce((s, r) => s + r.games, 0)
+  const leagueMean = poolGames > 0 ? pool.reduce((s, r) => s + r.total, 0) / poolGames : 0
+
   for (const r of rows) {
     const seat = seatOf.get(r.playerId)
     if (!seat) continue
     const bonus = seat.clanId !== null && topClanIds.has(seat.clanId) ? TOP_CLAN_BONUS : 0
     if (bonus > 0) bonused += 1
     /* 표본이 얇으면 ★순위를 안 매긴다★ — 값은 `null` 이고 경기 수만 남긴다 (D-106) */
-    const avg = r.games > 0 ? r.total / r.games + bonus : null
+    const C = SCORE_SHRINK_GAMES
+    const avg =
+      r.games > 0 ? (r.total + leagueMean * C) / (r.games + C) + bonus : null
     const rating = r.games >= minGames && avg !== null ? Math.round(avg * SCALE) : null
     if (rating !== null) ranked += 1
     updates.push({
