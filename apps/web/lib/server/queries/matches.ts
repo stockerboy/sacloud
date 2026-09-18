@@ -557,7 +557,7 @@ function snapshotOf(match: MatchRow, side: TeamSide, clans: LeagueClanContext) {
  * ★MVP 가 MVP 인 이유★ (2026-09-18 사장님) — 라운드마다 무엇으로 몇 점.
  *
  * 워커가 `MatchPlayerHex.scoreLog` 에 쌓아 둔 줄을 ★같은 종류끼리 묶는다★ —
- * 「4,7라운드 · 경기초반 스나 다운 · +10점」 처럼 한 줄이 된다.
+ * 「4,7라운드 · 라운드초반 스나 다운 · +10점」 처럼 한 줄이 된다.
  *
  * ⚠ 아직 안 잰 경기는 ★빈 배열★ 이다 (`null` 이 아니다) —
  *   「MVP 가 없다」 와 「굵직한 장면이 없었다」 는 다른 말이다.

@@ -23,9 +23,14 @@ import { V3 } from './tokens'
  *   하나의 사건이다. 값이 다른 것은 점수가 말해 준다.
  */
 const MVP_WHY_LABEL: Record<string, string> = {
-  rifleVsSniperEarly: '경기초반 스나 다운',
+  /*
+   * ⚠ ★「경기초반」 이 아니라 「라운드초반」 이다★ (2026-09-18 사장님).
+   *   순번(`rank`)은 ★그 라운드에서 우리 팀이 몇 번째로 잡았나★ 다 — 경기 전체가 아니다.
+   *   13라운드에 난 킬도 그 라운드의 첫 킬이면 `Early` 라, 「경기초반」 은 거짓말이었다.
+   */
+  rifleVsSniperEarly: '라운드초반 스나 다운',
   rifleVsSniperLate: '스나 다운',
-  sniperVsSniperEarly: '경기초반 스나 다운',
+  sniperVsSniperEarly: '라운드초반 스나 다운',
   sniperVsSniperLate: '스나 다운',
   bombWin: '폭탄설치 후 승리',
   bombLossB: '폭탄설치(B) 후 패배',
@@ -43,17 +48,35 @@ const MVP_WHY_ORDER = [
   'bombWin', 'bombLossB', 'bombLoss',
 ]
 
-export /**
- * ★마지막 라운드는 「매치라운드」 라 적는다★ (2026-09-18 사장님:
- *   「마지막 라운드에 스나잡은 사람은 (…) 매치라운드 스나다운 이라고 적어줘
- *    어차피 라운드 순으로 적잖아」).
+/**
+ * ★마지막 라운드는 「12(매치)」 로 적고 빨갛게 칠한다★ (2026-09-18 사장님:
+ *   「매치라운드라고만 적지 말고 빨간색으로 만약 매치라운드가 12라운드였으면
+ *    12(매치)라운드 이렇게 적아줘」).
  *
  * > 「그냥 게임이 끝난 라운드=매치라운드(맨마지막라운드)」
  *
+ * ⚠ 처음에는 숫자를 통째로 「매치」 로 바꿨는데 ★몇 라운드였는지가 사라졌다.★
+ *   숫자를 남기고 괄호로 덧붙인다.
  * ⚠ 라운드 수를 모르면 ★숫자 그대로★ 둔다 — 없는 말을 지어내지 않는다 (D-106).
  */
-function roundsText(rounds: readonly number[], last: number | null): string {
-  return rounds.map((r) => (last !== null && r === last ? '매치' : String(r))).join(',') + '라운드'
+const MATCH_ROUND_COLOR = '#ff6b72'
+
+function RoundsText({ rounds, last }: { rounds: readonly number[]; last: number | null }) {
+  return (
+    <>
+      {rounds.map((r, i) => (
+        <Fragment key={r}>
+          {i > 0 ? ',' : null}
+          {last !== null && r === last ? (
+            <span style={{ color: MATCH_ROUND_COLOR }}>{r}(매치)</span>
+          ) : (
+            r
+          )}
+        </Fragment>
+      ))}
+      라운드
+    </>
+  )
 }
 
 export function MvpWhy({ detail }: { detail: MatchDetail }) {
@@ -81,7 +104,7 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
         {rows.map((r) => (
           <Fragment key={r.key}>
             <span style={{ color: V3.gold, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              {roundsText(r.rounds, lastRound)}
+              <RoundsText rounds={r.rounds} last={lastRound} />
             </span>
             <span style={{ color: '#9aa6bf' }}>{MVP_WHY_LABEL[r.key] ?? r.key}</span>
             <span style={{ color: '#e2e5ee', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
