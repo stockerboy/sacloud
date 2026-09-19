@@ -115,7 +115,6 @@ export function HomeLeagueButtons() {
                   (`HomeLeagueTiles` 가 같은 함정을 적어 뒀다).
               */}
               {league.logo ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={league.logo.src}
                   width={league.logo.w}

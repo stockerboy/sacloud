@@ -56,9 +56,7 @@ export function HomeCatHero() {
         style={{ width: '100vw', maxWidth: '100%' }}
         aria-hidden
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/cat.webp" alt="" width={396} height={220} className="cat-stage__cat" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/cloud.webp" alt="" width={396} height={260} className="cat-stage__cloud" />
       </div>
     </div>
