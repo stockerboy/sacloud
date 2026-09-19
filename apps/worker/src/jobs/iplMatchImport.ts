@@ -30,6 +30,23 @@ const SOURCE = 'nexon_barracks'
 const DEFAULT_ENDPOINT = '/api/ClanHome/GetClanMatchList/'
 
 /** 우리가 받은 리그 경기는 이 맵 하나다. 판별은 `map_name` 으로 한다 */
+
+/**
+ * ★원문에서 클랜 이름 한 칸을 꺼낸다★ (2026-09-20).
+ *
+ * 적재할 때 칸으로 같이 적어 두려고 쓴다 — 나중에 JSON 을 뒤지면
+ * ★행을 통째로 읽어야 해서★ 초당 500행밖에 안 나온다 (그것이 사이트를 멈춰 세웠다).
+ *
+ * ⚠ ★없으면 `null` 이다★ — 빈 문자열로 만들지 않는다 (`CLAUDE.md` 2-1).
+ */
+function clanNameOf(payload: unknown, key: 'red_clan_name' | 'blue_clan_name'): string | null {
+  if (typeof payload !== 'object' || payload === null) return null
+  const v = (payload as Record<string, unknown>)[key]
+  if (typeof v !== 'string') return null
+  const t = v.trim()
+  return t.length > 0 ? t : null
+}
+
 export const LEAGUE_MAP_NAME = '제3보급창고'
 
 /* ============================================================ 파일 찾기 === */
@@ -454,6 +471,13 @@ export async function importIplMatches(input: {
                 payload: item.payload as object,
                 payloadHash: item.payloadHash,
                 status: 'ok',
+                /*
+                 * ★적재할 때 이름을 칸으로도 적어 둔다★ (2026-09-20).
+                 *   나중에 JSON 을 뒤지지 않으려고다 — 그것이 사이트를 멈춰 세웠다.
+                 * ⚠ 없으면 `null` 이다. ★빈 문자열로 만들지 않는다★ (지어내지 않는다).
+                 */
+                redClanName: clanNameOf(item.payload, 'red_clan_name'),
+                blueClanName: clanNameOf(item.payload, 'blue_clan_name'),
               })),
               /* 유일키가 막아 준다. 중단 후 재개해도 안전하다 */
               skipDuplicates: true,

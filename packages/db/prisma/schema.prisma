@@ -2318,10 +2318,25 @@ model BarracksClanMatchRaw {
   /// 같은 내용이면 다시 저장하지 않고 이 값만 올린다
   fetchCount Int      @default(1)
 
+  /// ★클랜 이름을 칸으로 뺀다★ (2026-09-20 · 사이트가 멈춘 원인을 고치며)
+  ///
+  /// ⚠ ★JSON(`payload`)이 행 안에 그대로 들어 있다★ — toast 로 안 나가고 본체가
+  ///   1,378MB 다. `payload->>'red_clan_name'` 을 꺼내려면 ★행을 통째로 읽어야★ 하고,
+  ///   실측으로 ★초당 500행★ 밖에 못 읽는다 (760,000행이면 25분).
+  ///   `unifiedProject` 가 그걸 5분마다 하다 2분 벽에 걸려 죽었고,
+  ///   정규화 → 명단 → 경기분석 → 수집 게이트가 줄줄이 무너졌다 (09-19 16:43 이후 0건).
+  ///
+  /// 이름만 칸으로 빼면 ★JSON 을 안 읽고★ 셀 수 있다.
+  /// ⚠ 옛 줄은 `null` 이다 — 채우는 것은 backfill 이 천천히 한다.
+  redClanName  String?
+  blueClanName String?
+
   @@unique([matchKey, subject, payloadHash])
   @@index([matchKey])
   @@index([subject])
   @@index([fetchedAt])
+  /// 이름 칸만 읽는 질의를 위해 (위 설명 참고)
+  @@index([status, redClanName])
   /// ★DB 를 가장 오래 붙잡던 쿼리★ 를 위한 것 (2026-09-18 실측)
   ///
   ///   478,929회 × 549ms = ★73시간★    ← 전체 1위

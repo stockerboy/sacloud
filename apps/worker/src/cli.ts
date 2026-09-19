@@ -29,6 +29,7 @@ import {
 } from '@sacloud/db/ops'
 import { countLocalCollectors } from './lib/localCollectors.js'
 /* ★통합 투영★ (Part 3 · 2026-09-05) */
+import { runClanNameBackfill } from './jobs/clanNameBackfill'
 import { runUnifiedProject } from './jobs/unifiedProject.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
 import {
@@ -1018,6 +1019,33 @@ async function main(): Promise<number> {
         })),
       )
       table([result.skipped as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'clan-name-backfill': {
+      /*
+       * ★원문의 클랜 이름을 칸으로 옮긴다★ (2026-09-20 · 사이트가 멈춘 원인을 고치며)
+       *
+       *   nexon clan-name-backfill                 미리보기 (몇 줄 남았나만)
+       *   nexon clan-name-backfill --confirm       2,000줄 채운다
+       *   nexon clan-name-backfill --confirm --limit 500
+       *
+       * ⚠ ★한 번에 다 하지 마라★ — 760,000행을 한 번에 읽는 짓이 사이트를 멈춰 세웠다.
+       *   예약으로 조금씩 여러 번 돌린다.
+       */
+      const out = await runClanNameBackfill({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          읽음: out.read,
+          채움: out.filled,
+          이름없음: out.empty,
+          '남은 줄': out.remaining,
+          걸린ms: out.ms,
+        },
+      ])
       return 0
     }
 

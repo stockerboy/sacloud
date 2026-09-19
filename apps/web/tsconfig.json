@@ -26,6 +26,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-trendfix/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
     ".next-verify/types/**/*.ts"

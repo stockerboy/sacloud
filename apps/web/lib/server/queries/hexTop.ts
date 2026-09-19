@@ -93,6 +93,30 @@ function playerValueText(unit: 'percent' | 'per_game' | 'seconds', raw: number |
  *   무기를 안 갈라 부르니 스나 1~5위와 라플 1~5위가 섞여 열 줄이 나오고
  *   앞에서 다섯 줄만 잘려 나갔다.
  */
+/**
+ * ★「n번 중 n번」 의 분자·분모★ (2026-09-19 사장님).
+ *
+ *   «이거 퍼센트말고 n번중n번 이런식으로 해줘 마지막 개인top5»
+ *
+ * ⚠ ★여섯 중 하나만 있다.★ 2026-09-18 에 사장님이 「개인육각도 점수제로 줄세워서 다시
+ *   측정해」 라고 하셔서 다섯 축이 ★점수의 평균·총합★ 이 됐다 —
+ *   ```
+ *   save         fewScore 총합              ← 점수. 횟수가 아니다
+ *   chance       atkScore ÷ atkRounds       ← 점수 평균
+ *   safe         crackScore ÷ games         ← 점수 평균
+ *   gap          defScore ÷ defRounds       ← 점수 평균
+ *   outnumbered  fewScore ÷ games           ← 점수 평균
+ *   duel         duelWon ÷ (이김+짐)        ← ★이것만 진짜 횟수다★
+ *   ```
+ *   `aloneWon/aloneRounds` · `outWon/outRounds` 같은 원시 횟수가 DB 에 ★그대로 쌓여 있지만★
+ *   지금 줄을 세우는 값이 그게 아니다. 그걸 적으면 ★1위 줄의 수가 2위보다 작아 보이는★
+ *   일이 난다 (2026-09-14 에 싸움 축에서 «2위가 1위보다 높다» 로 이미 겪었다).
+ *   ★그래서 없는 축은 비워 둔다.★ 어림값을 만들지 않는다 (`CLAUDE.md` 2-1).
+ */
+const PARTS_COLUMNS: Partial<Record<TraitAxisKey, { won: 'duelWon'; lost: 'duelLost' }>> = {
+  duel: { won: 'duelWon', lost: 'duelLost' },
+}
+
 const WEAPON_SPLIT: readonly TraitAxisKey[] = ['duel', 'safe', 'gap', 'chance']
 const WEAPONS: readonly (0 | 1)[] = [1, 0] /* 스나 먼저 — 사장님이 늘 스나를 앞에 두신다 */
 
@@ -119,6 +143,8 @@ async function playerAxis(
    *   ★같은 표★(`AXIS_COLUMNS`)를 본다 — 두 곳이 어긋나면 한 곳만 빈다.
    */
   const col = AXIS_COLUMNS[key]
+  /* ★「n번 중 n번」 을 낼 수 있는 축인가★ — 없는 축은 아래에서 `null` 로 나간다 */
+  const parts = PARTS_COLUMNS[key] ?? null
   {
     /*
      * ★저장된 등수를 그대로 믿는다.★ 워커가 잰 값이고, 선수 상세·랭킹 배지가
@@ -137,6 +163,8 @@ async function playerAxis(
         [col.rank]: true,
         [col.pct]: true,
         [col.total]: true,
+        /* ★「n번 중 n번」★ — 있는 축만 (2026-09-19 사장님). 없으면 아예 안 불러온다 */
+        ...(parts === null ? {} : { [parts.won]: true, [parts.lost]: true }),
         leaguePlayer: {
           select: { id: true, player: true, clan: true },
         },
@@ -152,21 +180,41 @@ async function playerAxis(
       [k: string]: unknown
     }[]
 
-    const built: HexTopRow[] = list.map((row) => ({
-      rank: Number(row[col.rank] ?? 0),
-      player: toPlayerSummary(row.leaguePlayer.player),
-      clan: toClanSummaryOrNull(row.leaguePlayer.clan),
-      league_player_id: row.leaguePlayerId,
-      league_clan_id: null,
-      value: playerValueText(col.unit, (row[col.value] as number | null) ?? null),
-      percentile: (row[col.pct] as number | null) ?? null,
-    }))
+    const built: HexTopRow[] = list.map((row) => {
+      /*
+       * ★「n번 중 n번」★ — 싸움은 «붙은 판 중 이긴 판» 이다 (2026-09-19 사장님).
+       *   분모는 `duelLost` 가 아니라 ★이김 + 짐★ 이다 — 워커가 값을 낼 때 쓰는 분모와
+       *   같아야 한다 (`playerHexScore.ts`: `duels = duelWon + duelLost`).
+       *   두 곳이 어긋나면 화면의 «n중n» 과 옆의 % 가 다른 말을 한다.
+       */
+      const won = parts === null ? null : ((row[parts.won] as number | null) ?? null)
+      const lost = parts === null ? null : ((row[parts.lost] as number | null) ?? null)
+      return {
+        rank: Number(row[col.rank] ?? 0),
+        player: toPlayerSummary(row.leaguePlayer.player),
+        clan: toClanSummaryOrNull(row.leaguePlayer.clan),
+        league_player_id: row.leaguePlayerId,
+        league_clan_id: null,
+        value: playerValueText(col.unit, (row[col.value] as number | null) ?? null),
+        percentile: (row[col.pct] as number | null) ?? null,
+        numerator: won,
+        denominator: won === null || lost === null ? null : won + lost,
+      }
+    })
 
     return {
       /* 무기로 나눈 축은 열쇠도 나눈다 — 화면이 두 카드를 같은 것으로 보면 안 된다 */
       key: weapon === null ? key : `${key}:${weapon}`,
       /* 이름은 무기가 정한다. 안 나눈 축은 첫 줄의 무기를 따르고, 모르면 스나 쪽 이름이다 */
       label: playerHexLabelOf(key, weapon ?? firstWeaponOf(list)),
+      /*
+       * ★배지를 고르는 두 값★ (2026-09-19 사장님: «그냥 뱃지를 보여주고 누르면 top5를 보여줘»).
+       *   화면이 `key` 를 `:` 로 쪼개게 두지 않는다 — 서버가 아는 것을 그대로 내린다.
+       *   무기로 안 나눈 축(세이브·소수싸움)은 배지가 ★두 무기 공용★ 이라(`BADGES`)
+       *   첫 줄의 무기로 떨어지고, 그마저 모르면 스나(`1`)로 친다.
+       */
+      axis_key: key,
+      weapon: weapon ?? firstWeaponOf(list) ?? 1,
       total: (list[0]?.[col.total] as number | null) ?? null,
       rows: built,
     }
@@ -235,12 +283,26 @@ async function clanTop(leagueId: string): Promise<HexTopAxis[]> {
          */
         value: axis.text,
         percentile: axis.value === null ? null : axis.value * 100,
+        /*
+         * ★클랜은 «n번 중 n번» 을 안 싣는다★ (2026-09-19).
+         *   사장님 말씀은 «마지막 개인top5» 였고, 클랜 칸은 같은 날 숨겼다.
+         *   `ClanHexV2` 축이 분자·분모를 들고 있긴 하나 ★쓰는 화면이 없는 값을 미리 싣지 않는다★.
+         */
+        numerator: null,
+        denominator: null,
       })
     }
 
     out.push({
       key,
       label: CLAN_HEX_V2_AXIS_LABELS[key],
+      /*
+       * ★클랜 축 키는 개인 축 키가 아니다★ — `badgeOfAxis` 에 넣으면 안 된다.
+       *   클랜에는 따로 `clanAxisBadgeKey` 가 있고, 그마저 ★뜻이 확실한 넷★ 만 있다
+       *   (`badges.ts`). 없는 짝을 지어내지 않으려고 여기서는 비워 둔다.
+       */
+      axis_key: null,
+      weapon: null,
       total: picked[0]?.axis?.total ?? null,
       rows,
     })

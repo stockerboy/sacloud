@@ -143,6 +143,12 @@ function Body({
         leagueSlug={leagueSlug}
         matches={matches.items}
         matchesLoading={matches.loading}
+        /* ★「불러오는 중…」 에서 멈추지 않게★ (2026-09-19 · 사장님:
+           «이거 개인페이지 들어가서 최근경기 보면 스코어가 안떠»).
+           까닭은 `apps/web/lib/useCursorQuery.ts` 의 긴 주석에 한 번만 적어 두었다 */
+        matchesError={matches.error}
+        matchesStalled={matches.stalled}
+        onRetryMatches={matches.retry}
         hasMore={matches.hasMore ?? false}
         loadingMore={matches.loadingMore}
         onLoadMore={matches.loadMore}

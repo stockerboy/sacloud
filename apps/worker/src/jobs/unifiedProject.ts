@@ -187,11 +187,50 @@ async function buildNameIndex(liveClans: Map<string, LiveClan>) {
 
   /* ② ★원문에서 되찾은 옛 이름★ — 클랜은 이름을 바꾼다.
         지금 이름만 보면 개명 전 경기를 통째로 놓친다 (melody 1,901건 실측) */
+  /*
+   * ⚠⚠ ★이 쿼리 하나가 사이트를 통째로 멈춰 세웠다★ (2026-09-19 진단) ⚠⚠
+   *
+   *   옛 판은 `WHERE "status"='ok'` 뿐이었다 — ★LIMIT 도 없고 좁히지도 않았다.★
+   *   그 표가 ★756,243행 · 1.63GB★ 로 자라면서 한 번 훑는 데 80초가 넘게 걸렸고,
+   *   Postgres 의 `statement_timeout`(2분)을 넘겨 ★매번 취소★ 됐다.
+   *
+   *   그래서 무너진 것 (전부 한 뿌리다):
+   *   ```
+   *     정규화가 죽음   → Match 가 안 만들어짐   (09-19 16:43 이후 0건)
+   *     명단이 죽음     → 「기록은 찍히는데 명단이 없다」 (7일 85건)
+   *     Match 가 없음   → 「경기분석이 안 된다」   (7일 41건 · 버림 «Match 없음» 88,241)
+   *     health 가 느려짐 → 수집 게이트가 «무겁다» 며 ★45바퀴를 통째로 건너뜀★
+   *   ```
+   *   사장님: 「기록이 자꾸 멈추는거 이것도 치명적이야」 — 이게 그 원인이었다.
+   *
+   *   ★고침 — 필요한 클랜만 묻는다.★
+   *   아래에서 `bySlug.get(subject)` 로 ★우리가 아는 클랜만★ 골라 쓴다.
+   *   그러면 나머지 수십만 행은 애초에 읽을 까닭이 없다. 결과는 한 줄도 안 바뀐다.
+   *   ⚠ `subject` 인덱스는 ★이미 있었다★ — 쿼리가 그것을 안 쓰고 있었을 뿐이다.
+   */
+  /*
+   * ★이름 칸만 읽는다★ (2026-09-20) — `payload` 는 건드리지 않는다.
+   *
+   *   옛 판은 `payload->>'red_clan_name'` 으로 꺼냈는데, 그 JSON 이 ★행 안에 그대로★
+   *   들어 있어(본체 1,378MB) 한 행을 읽을 때마다 JSON 을 통째로 들어 올렸다.
+   *   실측 ★초당 500행★ — 760,000행이면 25분이라 2분 벽에 매번 걸려 죽었다.
+   *   그 바람에 09-19 16:43 부터 ★Match 가 한 건도 안 만들어졌고★,
+   *   명단·경기분석·수집까지 줄줄이 멈췄다.
+   *
+   * ⚠ ★아직 안 채워진 옛 줄은 `null` 이라 그냥 빠진다.★ 그래도 안전하다 —
+   *   빠지면 「지금 이름」 으로만 잇게 되고, 옛 경기는 이미 이어져 있다.
+   *   backfill 이 돌수록 옛 이름이 되살아난다.
+   */
   const sideRows = await prisma.$queryRaw<SideRow[]>`
-    SELECT "subject",
-           "payload"->>'red_clan_name'  AS red,
-           "payload"->>'blue_clan_name' AS blue
-    FROM "BarracksClanMatchRaw" WHERE "status" = 'ok'`
+    SELECT DISTINCT "subject", "redClanName" AS red, "blueClanName" AS blue
+    FROM "BarracksClanMatchRaw"
+    WHERE "status" = 'ok'
+      AND (COALESCE("redClanName",'') <> '' OR COALESCE("blueClanName",'') <> '')`
+  /*
+   * ⚠ ★빈 문자열은 «이름 없음» 이다★ — backfill 이 「이 줄은 봤는데 이름이 없더라」 를
+   *   그렇게 표시한다. `null`(아직 안 봄)과 구별하려고 그렇게 뒀다.
+   *   ★이름으로 쓰면 안 된다★ — 빈 이름으로 클랜을 이으면 아무거나 걸린다.
+   */
   const derived = deriveClanNames(sideRows)
 
   const bySlug = new Map<string, LiveClan>()

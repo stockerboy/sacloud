@@ -11,7 +11,9 @@
  *     폭은 ±1.2% 안쪽, 선수마다 정해진 패턴(새로고침해도 같다). 마커·탐색 값은 진짜 값이다
  *   - 미래(지금 이후)는 안 그린다. 선 끝 = 지금
  *   - 선 두 개 (승률 파랑 · 킬뎃 빨강) — 헤일로 → 중간 → 코어 세 겹 네온
- *   - 끝 마커: 승률 = 클랜마크 원 · 킬뎃 = K/D 원 + 값. 바를 옮기면 그 날짜 값으로 따라온다
+ *   - 끝 마커: 승률 = 클랜마크 원 · 킬뎃 = K/D 원 + 값. 바를 옮기면 그 날짜 값으로 따라온다.
+ *     ★동그라미는 늘 제 선 위에 앉는다★ — 킬뎃 원은 빨간 선의 펜 끝을, 승률 원은 파란 선의
+ *     펜 끝을 따른다 (2026-09-19 · 아래 «동그라미 자리» 주석에 실측값이 있다)
  *   - 탐색: 마우스 이동/드래그 · 손가락 드래그
  *   - 판은 카드 폭을 다 쓰고, 높이도 크게 (PC 520 · 폰은 폭에 맞춰)
  */
@@ -72,6 +74,26 @@ function seedOf(text: string): number {
   let h = 2166136261
   for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619) >>> 0
   return h
+}
+
+/**
+ * ★그 x 에서 선이 지나는 y★ — 동그라미를 선 위에 앉히려고 잰다. 밖이면 `null`.
+ *
+ * 2026-09-19 사장님: «킬뎃뱃지가 그래프보다 더 앞서 나가거나 더 느리거나 이래»
+ * 선은 흔들림(WIGGLE)이 얹힌 자리에 그려지는데 동그라미는 ★진짜 값★ 자리에 놓여서
+ * 판 세로 304px 기준 최대 3.6px 어긋났다. 여기서 읽은 y 로 끌어당긴다.
+ */
+function yOnLine(pts: readonly (readonly [number, number])[], x: number): number | null {
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const a = pts[i] as readonly [number, number]
+    const b = pts[i + 1] as readonly [number, number]
+    const lo = Math.min(a[0], b[0])
+    const hi = Math.max(a[0], b[0])
+    if (x < lo - 1e-6 || x > hi + 1e-6) continue
+    const f = b[0] === a[0] ? 0 : (x - a[0]) / (b[0] - a[0])
+    return a[1] + (b[1] - a[1]) * f
+  }
+  return null
 }
 
 /**
@@ -161,9 +183,46 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
   const shown = drawing
     ? { t: 0, wr: vOf(wrTip[1]), kd: vOf(kdTip[1]) }
     : last
-  const lblGap = (drawing ? kdTip[1] : yOf(shown.kd)) - (drawing ? wrTip[1] : yOf(shown.wr))
+
+  /*
+   * ★동그라미 자리★ — 2026-09-19 사장님: «킬뎃뱃지가 그래프보다 더 앞서 나가거나 더 느리거나 이래»
+   *
+   * ── 무엇이 어긋났나 (실측 · PC 폭 1088 · 판 세로 304px)
+   *   ① ★그리는 중★ — 킬뎃 동그라미의 x 를 ★승률 선★ 의 펜 끝(`wrTip[0]`)에서 가져왔다.
+   *      두 선은 ★길이가 다르다.★ `penDash` 는 길이 비율로 선을 내보내므로 같은 `draw` 에서도
+   *      파란 펜 끝과 빨간 펜 끝의 x 가 다르다. 재 보니 draw=0.40 에서 ★Δx = 152px★ —
+   *      배지가 빨간 선 끝보다 그만큼 뒤처져 있었다 (draw 0.20 → 93px · 0.60 → 101px · 0.95 → 15px).
+   *      그래서 «앞서 나가거나 느리거나» 로 보인다.
+   *   ② ★탐색(hover)★ — 동그라미는 진짜 값 자리인데 선에는 흔들림(WIGGLE 1.2%)이 얹혀 있어
+   *      최대 3.6px 떴다 (측정: 승률 3.6px · 킬뎃 2.9px).
+   *
+   * ── 지금 규칙
+   *   ① 킬뎃 동그라미는 ★제 선(kdPts)의 펜 끝★ 을 쓴다
+   *   ② 다 그린 뒤에는 ★그 x 에서 선이 지나는 y★ 로 끌어당긴다. 단 ★흔들림 폭 안에서만★ —
+   *      그보다 멀면 값이 진짜로 다른 것이니 건드리지 않는다 (값을 지어내지 않는다)
+   *
+   * ⚠ ★옛 판★ 은 지우지 않는다 (`CLAUDE.md` 1-4). 아래 `V1` 주석이 그때 쓰던 식이다.
+   *     const kdCxV1 = drawing ? wrTip[0] : xOf(shown.t)   // 킬뎃 x 를 ★승률★ 펜 끝에서 가져왔다
+   *     const wrCyV1 = drawing ? wrTip[1] : yOf(shown.wr)  // 선이 아니라 값 자리에 두었다
+   *     const kdCyV1 = drawing ? kdTip[1] : yOf(shown.kd)
+   */
+  /** 흔들림이 만드는 세로 흔들림 폭(px) — 이 안쪽이면 «같은 자리» 로 본다 */
+  const wiggleY = (WIGGLE / 100) * (Y_BOTTOM - Y_TOP)
+  const snapY = (pts: readonly (readonly [number, number])[], x: number, trueY: number): number => {
+    const onLine = yOnLine(pts, x)
+    return onLine !== null && Math.abs(onLine - trueY) <= wiggleY + 0.5 ? onLine : trueY
+  }
+  const wrCx = drawing ? wrTip[0] : xOf(shown.t)
+  const wrCy = drawing ? wrTip[1] : snapY(wrPts, wrCx, yOf(shown.wr))
+  const kdCx = drawing ? kdTip[0] : xOf(shown.t)
+  const kdCy = drawing ? kdTip[1] : snapY(kdPts, kdCx, yOf(shown.kd))
+
+  const lblGap = kdCy - wrCy
   const lblNeed = 46
-  const wrShift = Math.abs(lblGap) < lblNeed ? (lblGap >= 0 ? -(lblNeed - lblGap) / 2 : (lblNeed + lblGap) / 2) : 0
+  /* 두 배지가 ★가로로도 겹칠 때만★ 위·아래로 벌린다 — 이제 그리는 중엔 x 가 서로 다를 수 있다.
+     (옛 판은 x 가 늘 같다고 보고 세로 간격만 봤다 — 그래서 멀리 떨어진 배지도 덩달아 밀렸다) */
+  const lblOverlapX = Math.abs(kdCx - wrCx) < PLOT.markerR * 2 + 60
+  const wrShift = lblOverlapX && Math.abs(lblGap) < lblNeed ? (lblGap >= 0 ? -(lblNeed - lblGap) / 2 : (lblNeed + lblGap) / 2) : 0
   const kdShift = -wrShift
   const ticks = days.length > 0 ? [0, Math.floor(span / 2), span] : []
 
@@ -223,19 +282,19 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         ) : null}
         {days.length > 0 ? (
           <g pointerEvents="none">
-            <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? wrTip[1] : yOf(shown.wr))} r={PLOT.markerR + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter="url(#trendGlow)" opacity={0.55} />
-            <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? wrTip[1] : yOf(shown.wr))} r={PLOT.markerR} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
+            <circle cx={wrCx} cy={wrCy} r={PLOT.markerR + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter="url(#trendGlow)" opacity={0.55} />
+            <circle cx={wrCx} cy={wrCy} r={PLOT.markerR} fill={V3.chip} stroke="#7fa9ff" strokeWidth={2} />
             {markSlug && hasFitMark(markSlug) ? (
-              <image href={fitMarkUrl(markSlug)} x={(drawing ? wrTip[0] : xOf(shown.t)) - PLOT.markerR} y={(drawing ? wrTip[1] : yOf(shown.wr)) - PLOT.markerR} width={PLOT.markerR * 2} height={PLOT.markerR * 2} clipPath={`circle(${PLOT.markerR}px at ${PLOT.markerR}px ${PLOT.markerR}px)`} />
+              <image href={fitMarkUrl(markSlug)} x={wrCx - PLOT.markerR} y={wrCy - PLOT.markerR} width={PLOT.markerR * 2} height={PLOT.markerR * 2} clipPath={`circle(${PLOT.markerR}px at ${PLOT.markerR}px ${PLOT.markerR}px)`} />
             ) : null}
-            <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? wrTip[1] : yOf(shown.wr)) + 5 + wrShift} textAnchor="start" fill="#dbe8ff" fontSize={PLOT.valueFont} fontWeight="700">{shown.wr.toFixed(1)}%</text>
-            <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? wrTip[1] : yOf(shown.wr)) + 20 + wrShift} textAnchor="start" fill="#8fa9d8" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
+            <text x={wrCx + PLOT.markerR + 8} y={wrCy + 5 + wrShift} textAnchor="start" fill="#dbe8ff" fontSize={PLOT.valueFont} fontWeight="700">{shown.wr.toFixed(1)}%</text>
+            <text x={wrCx + PLOT.markerR + 8} y={wrCy + 20 + wrShift} textAnchor="start" fill="#8fa9d8" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
             {showsKd ? (<>
-            <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? kdTip[1] : yOf(shown.kd))} r={PLOT.markerR + 4} fill="none" stroke={V3.red} strokeWidth={6} filter="url(#trendGlow)" opacity={0.5} />
-            <circle cx={(drawing ? wrTip[0] : xOf(shown.t))} cy={(drawing ? kdTip[1] : yOf(shown.kd))} r={PLOT.markerR} fill={V3.chip} stroke="#ff5a63" strokeWidth={2} />
-            <text x={(drawing ? wrTip[0] : xOf(shown.t))} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 4} textAnchor="middle" fill="#ffd7da" fontSize="10" fontWeight="700">K/D</text>
-            <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 5 + kdShift} textAnchor="start" fill="#ffd7da" fontSize={PLOT.valueFont} fontWeight="700">{shown.kd.toFixed(1)}%</text>
-            <text x={(drawing ? wrTip[0] : xOf(shown.t)) + PLOT.markerR + 8} y={(drawing ? kdTip[1] : yOf(shown.kd)) + 20 + kdShift} textAnchor="start" fill="#c98f95" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
+            <circle cx={kdCx} cy={kdCy} r={PLOT.markerR + 4} fill="none" stroke={V3.red} strokeWidth={6} filter="url(#trendGlow)" opacity={0.5} />
+            <circle cx={kdCx} cy={kdCy} r={PLOT.markerR} fill={V3.chip} stroke="#ff5a63" strokeWidth={2} />
+            <text x={kdCx} y={kdCy + 4} textAnchor="middle" fill="#ffd7da" fontSize="10" fontWeight="700">K/D</text>
+            <text x={kdCx + PLOT.markerR + 8} y={kdCy + 5 + kdShift} textAnchor="start" fill="#ffd7da" fontSize={PLOT.valueFont} fontWeight="700">{shown.kd.toFixed(1)}%</text>
+            <text x={kdCx + PLOT.markerR + 8} y={kdCy + 20 + kdShift} textAnchor="start" fill="#c98f95" fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
             </>) : null}
           </g>
         ) : null}

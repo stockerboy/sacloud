@@ -62,6 +62,22 @@ export interface PlayerDetailV3Props {
   leagueSlug: string
   matches: readonly MatchListItem[]
   matchesLoading: boolean
+  /**
+   * ★최근 경기를 못 불러왔다★ (2026-09-19 · 사장님: «이거 개인페이지 들어가서 최근경기 보면 스코어가 안떠»)
+   *
+   * 그전에는 이 칸이 할 수 있는 말이 ★둘뿐★ 이었다 —
+   * 「불러오는 중…」 과 「아직 경기가 없습니다」. 그래서
+   *   · 조회가 ★실패★ 하면 → 경기가 있는데도 ★「아직 경기가 없습니다」★ 라고 거짓말을 했고
+   *   · 재시도가 ★멈춰 서면★ → ★영원히 「불러오는 중…」★ 이었다.
+   * 둘 다 사람에게 ★아무것도 알려 주지 않는다.★ 못 불러왔으면 못 불러왔다고 적는다.
+   *
+   * 안 넘기면 지금까지와 ★똑같이★ 동작한다 (`CLAUDE.md` 1-4).
+   */
+  matchesError?: boolean
+  /** 재시도가 멈춰 선 상태 (연결 끊김 등) — `useCursorQuery` 의 `stalled` */
+  matchesStalled?: boolean
+  /** 「다시 시도」 단추. 안 주면 단추가 안 뜬다 */
+  onRetryMatches?: () => void
   hasMore: boolean
   loadingMore: boolean
   onLoadMore: () => void
@@ -1125,7 +1141,31 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
       ) : null}
       {tab === 'clan' ? <ClanVsCard data={data} /> : null}
       <SectionBar title="최근 경기" />
-      {matchesLoading ? (
+      {/*
+        * ★못 불러온 것을 「불러오는 중」 보다 ★먼저★ 본다★ (2026-09-19).
+        *
+        *   재시도가 멈춰 선(`stalled`) 동안에는 react-query 의 `isPending` 이 ★그대로 참★ 이라
+        *   `matchesLoading` 도 참이다. 그래서 「불러오는 중…」 을 먼저 보면 ★영영 그 글자★ 다.
+        *   ★이 순서가 고침의 핵심이다.★ 순서를 되돌리면 버그가 그대로 돌아온다.
+        */}
+      {(props.matchesError || props.matchesStalled) && matches.length === 0 ? (
+        /*
+         * ★못 불러왔으면 못 불러왔다고 적는다★ (2026-09-19 · 위 `matchesError` 주석 참조).
+         * 「아직 경기가 없습니다」 로 덮지 않는다 — 경기는 있는데 우리가 못 받아온 것이다.
+         */
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', ...cardStyle }}>
+          <span>최근 경기를 불러오지 못했습니다.</span>
+          {props.onRetryMatches ? (
+            <button
+              type="button"
+              onClick={props.onRetryMatches}
+              style={{ padding: '7px 14px', fontFamily: 'inherit', fontSize: 12, color: '#a9c3ff', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.35)', borderRadius: V3.radiusCard, cursor: 'pointer' }}
+            >
+              다시 시도
+            </button>
+          ) : null}
+        </div>
+      ) : matchesLoading ? (
         <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
       ) : matches.length === 0 ? (
         <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>아직 경기가 없습니다.</div>

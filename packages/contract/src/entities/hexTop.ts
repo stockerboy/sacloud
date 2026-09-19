@@ -35,6 +35,21 @@ export const HexTopRow = z.object({
   value: z.string(),
   /** 백분위 0~100. 색을 정하는 데 쓴다. 못 재면 null */
   percentile: z.number().nullable().default(null),
+  /**
+   * ★「n번 중 n번」★ 의 분자·분모 (2026-09-19 사장님).
+   *
+   *   «이거 퍼센트말고 n번중n번 이런식으로 해줘 마지막 개인top5»
+   *
+   * ⚠ ★없는 축이 더 많다.★ 2026-09-18 에 사장님이 「개인육각도 점수제로 줄세워서 다시
+   *   측정해」 라고 하셔서 여섯 축 중 ★다섯★ 이 «센 횟수» 가 아니라 ★점수의 평균·총합★ 이
+   *   됐다 (`playerHexScore.ts` 의 `axisValuesOf`). 점수 평균에는 분자·분모가 없다.
+   *   ★진짜 횟수가 있는 축은 싸움(`duel`) 하나★ 다 — 이긴 판 / 붙은 판.
+   *
+   *   그래서 여기는 ★있는 축만★ 채운다. 없는 축은 `null` 이고 화면은 지금 글자를
+   *   그대로 적는다. ★어림값을 만들지 않는다★ (`CLAUDE.md` 2-1).
+   */
+  numerator: z.number().nullable().default(null),
+  denominator: z.number().nullable().default(null),
 })
 export type HexTopRow = z.infer<typeof HexTopRow>
 
@@ -42,6 +57,17 @@ export const HexTopAxis = z.object({
   key: z.string(),
   /** 화면에 쓰는 축 이름 — 사장님이 고른 말이다 (`선짤` · `교환`) */
   label: z.string(),
+  /**
+   * ★배지를 고를 때 쓰는 맨 축 키★ (2026-09-19 사장님: «그냥 뱃지를 보여주고 누르면 top5를 보여줘»).
+   *
+   * `key` 는 무기까지 붙은 열쇠(`duel:1`)라 그대로는 `badgeOfAxis` 에 못 넣는다.
+   * ★화면이 문자열을 쪼개게 두지 않는다★ — 서버가 이미 아는 값을 그대로 내린다
+   * (`badges.ts` 머리말: «화면에서 문자열을 만들지 않는다»).
+   * 클랜 축은 개인 축 키가 아니라 `null` 이다 — 없는 짝을 지어내지 않는다.
+   */
+  axis_key: z.string().nullable().default(null),
+  /** 그 카드의 무기 (`1` 스나 · `0` 라플). 배지가 무기마다 다르다 (`badgeOfAxis`) */
+  weapon: z.union([z.literal(0), z.literal(1)]).nullable().default(null),
   /** 그 축을 잴 수 있었던 모집단 크기. «42곳 중» 처럼 적는다 */
   total: z.number().int().nullable().default(null),
   rows: z.array(HexTopRow),

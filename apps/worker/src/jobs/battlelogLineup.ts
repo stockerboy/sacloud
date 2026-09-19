@@ -97,6 +97,8 @@ export interface BattlelogLineupResult {
   playersCreated: number
   /** 이미 있던 선수에 붙인 참가 기록 */
   playersReused: number
+  /** ★병영수첩을 따라 이름을 고친 사람 수★ (2026-09-19) */
+  namesRenamed: number
   /** `NexonIdentity` 가 이어 준 선수 */
   playersFromIdentity: number
   /**
@@ -422,6 +424,7 @@ export async function runBattlelogLineup(
     matched: 0,
     planned: 0,
     statsCreated: 0,
+    namesRenamed: 0,
     statsUpdated: 0,
     playersCreated: 0,
     playersReused: 0,
@@ -790,7 +793,13 @@ export async function runBattlelogLineup(
           /* 3순위 — 새로 만든다. 닉을 모르면 계정값을 이름으로 둔다(지어내지 않는다) */
           const created = await prisma.player.upsert({
             where: { sourcePlayerId: BARRACKS_PLAYER_PREFIX + player.usn },
-            update: {},
+            /*
+             * ⚠ ★`update: {}` 였다★ — 한 번 만들어진 이름이 ★영영 안 바뀌었다.★
+             *   위장닉을 쓰거나 본닉으로 돌아와도 우리는 몰랐다 (2026-09-19 사장님:
+             *   「무조건 닉네임이든 소속 클랜이든 무조건 병영수첩기준으로 해」).
+             * ⚠ 닉을 모르면(`null`) ★안 건드린다★ — 계정값으로 덮어쓰면 이름이 망가진다.
+             */
+            update: player.nickname ? { name: player.nickname } : {},
             create: {
               name: player.nickname ?? player.usn,
               origin: BARRACKS_PLAYER_ORIGIN,
@@ -853,6 +862,45 @@ export async function runBattlelogLineup(
         } else {
           result.statsCreated += 1
           bump(plan.info.leagueSlug, 'statsCreated')
+        }
+      }
+    }
+
+    /*
+     * ── 6. ★이름을 병영수첩에 맞춘다★ (2026-09-19 사장님) ────────────────
+     *
+     * > 「무조건 닉네임이든 소속 클랜이든 무조건 병영수첩기준으로 해.
+     * >  (…) 반영된 변경사항이 우리사이트에도 바로 반영되게해줘」
+     *
+     * ★위에서 새로 만든 사람만 이름이 맞았다.★ 이미 있던 사람은 이름을 한 번도
+     * 안 고쳤다 — 그래서 「현물」 이 「임소혜」 로 위장닉을 쓰면 우리는 영영 몰랐고,
+     * 「임소혜」 로 검색하면 아무것도 안 나왔다.
+     *
+     * ⚠ ★닉을 모르는 줄은 건너뛴다★ — 계정값(`usn`)으로 덮어쓰면 이름이 망가진다.
+     * ⚠ ★같은 이름이면 안 쓴다★ — 쓸모없는 쓰기가 DB 를 때린다 (경기마다 열 명이다).
+     * ⚠ 소속 클랜(`Player.clanId`)은 ★여기서 안 건드린다★ — 배틀로그의 팀은
+     *   «그 경기에서 뛴 팀» 이라 용병일 수 있다. 등록 소속의 근거는 클랜 명단이다
+     *   (`rosterSync`). 이 파일 위쪽 주석이 그 함정을 이미 적어 뒀다.
+     */
+    if (options.confirm) {
+      const wantName = new Map<string, string>()
+      for (const plan of plans) {
+        for (const player of plan.players) {
+          const id = playerOfUsn.get(player.usn)
+          if (id && player.nickname) wantName.set(id, player.nickname)
+        }
+      }
+      const ids = [...wantName.keys()]
+      for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500)
+        for (const row of await prisma.player.findMany({
+          where: { id: { in: chunk } },
+          select: { id: true, name: true },
+        })) {
+          const next = wantName.get(row.id)
+          if (!next || next === row.name) continue
+          await prisma.player.update({ where: { id: row.id }, data: { name: next } })
+          result.namesRenamed += 1
         }
       }
     }
