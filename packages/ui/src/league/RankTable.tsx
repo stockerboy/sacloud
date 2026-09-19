@@ -2,6 +2,22 @@
 
 import { Fragment } from 'react'
 import { rankColorByRatio } from '../record/playerHeadCopy'
+
+/**
+ * ★등수별로 닉네임·클랜명 색을 바꾸지 않는다★ (2026-09-20 사장님)
+ *
+ * > 「그 등수별로 닉네임이나 클랜명 색 다르게 하는 기능은 없애자」
+ *
+ * ⚠ ★코드를 지우지 않는다★ (`CLAUDE.md` 1-4) — 이 한 줄을 `true` 로 두면
+ *   옛 모습이 그대로 돌아온다. 색을 계산하는 `rankColorByRatio` 도 그대로 있다.
+ *   (순위 ★숫자★ 의 색은 이것과 별개다 — 거기는 그대로 둔다)
+ */
+const RANK_TINTS_NAMES = false
+
+/** 스위치가 꺼져 있으면 «색 없음» 을 돌려준다 */
+function nameTint(color: string | null | undefined): string | undefined {
+  return RANK_TINTS_NAMES ? (color ?? undefined) : undefined
+}
 import Link from 'next/link'
 import type { ClanMainPlayer, ClanRankRow, PlayerRankRow, RankColumns, RankWeapon } from '@sacloud/contract'
 import { showsTier, leagueScreen } from '@sacloud/contract'
@@ -568,7 +584,7 @@ export function ClanRankTable({
                 style={
                   rankTotal === null
                     ? undefined
-                    : { color: rankColorByRatio(row.rank ?? 0, rankTotal) ?? undefined }
+                    : { color: nameTint(rankColorByRatio(row.rank ?? 0, rankTotal)) }
                 }
               >
                 {row.rank ?? '-'}
@@ -588,7 +604,7 @@ export function ClanRankTable({
                   style={
                     rankTotal === null
                       ? undefined
-                      : { color: rankColorByRatio(row.rank ?? 0, rankTotal) ?? undefined }
+                      : { color: nameTint(rankColorByRatio(row.rank ?? 0, rankTotal)) }
                   }
                 >
                   {row.clan.name}
@@ -844,9 +860,9 @@ export function PlayerRankTable({
                 /* ★모집단을 알면 «비율» 로 칠한다★ (2026-09-16 사장님) */
                 style={
                   rankTotal !== null
-                    ? { color: rankColorByRatio(row.rank, rankTotal) ?? undefined }
+                    ? { color: nameTint(rankColorByRatio(row.rank, rankTotal)) }
                     : rankTone
-                      ? { color: rankColor(row.rank) ?? undefined }
+                      ? { color: nameTint(rankColor(row.rank)) }
                       : undefined
                 }
               >
@@ -888,9 +904,9 @@ export function PlayerRankTable({
                       <span
                         style={
                           rankTotal !== null
-                            ? { color: rankColorByRatio(row.rank, rankTotal) ?? undefined }
+                            ? { color: nameTint(rankColorByRatio(row.rank, rankTotal)) }
                             : rankTone
-                              ? { color: rankColor(row.rank) ?? undefined }
+                              ? { color: nameTint(rankColor(row.rank)) }
                               : undefined
                         }
                       >

@@ -8,8 +8,10 @@
  */
 import { PLAYER_HEX_WEAPON_POOL_AXIS_KEYS, type LeaguePlayerDetail } from '@sacloud/contract'
 import type { HexAxisView } from './Hexagon'
-import { playerHexSteps, rankColorPlayerHexAxis } from './rankColors'
-import { V3, fmt } from './tokens'
+import { hexTierOf } from './hexTierLabel'
+/* ⚠ `playerHexSteps` 는 2026-09-20 에 등급으로 바뀌며 안 쓰게 됐다 — 되돌릴 때 필요하다 */
+import { rankColorPlayerHexAxis } from './rankColors'
+import { V3 } from './tokens'
 
 /**
  * ★축마다 모집단이 다르다★ (2026-09-12 사장님).
@@ -37,14 +39,29 @@ export function strengthAxes(data: LeaguePlayerDetail): HexAxisView[] {
   return hex.axes.map((a) => ({
     label: a.label,
     value: a.percentile,
-    note: a.rank === null ? '측정중' : `${a.rank}위`,
+    /*
+     * ★「n위」 가 아니라 「등급」★ (2026-09-20 사장님:
+     *   「N명중 n위 이렇게 쓰지말고 최하위권 … 최상위권 3,2,1위 이렇게 해줘」)
+     * ⚠ 1·2·3위만 숫자로 남는다. 옛 판은 `${a.rank}위` 였다.
+     */
+    note: a.rank === null ? '측정중' : (hexTierOf(a.rank, a.total)?.label ?? `${a.rank}위`),
     /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 배지와 같은 경계다 */
     /* ★경계는 리그마다 다르다★ (2026-09-13 사장님) —
        IPL 10/50/100 (749명) · SPL·열산 5/10/20 (117명 · 171명).
        옛 판들: `rankColorHexAxis(rank, key === 'duel')`(싸움 3위·나머지 5위) → 10/50/100 한 벌 */
-    noteColor: a.rank === null ? V3.textGhost : rankColorPlayerHexAxis(a.rank, data.league.slug),
-    note2: a.rank === null || a.total === null ? null : `${poolNameOf(a.key, hex.weapon)} ${fmt(a.total)}명중`,
+    /* ★상위권부터 더 잘 보이는 색★ (2026-09-20 사장님). 옛 색은 `rankColorPlayerHexAxis` 다 */
+    noteColor:
+      a.rank === null
+        ? V3.textGhost
+        : (hexTierOf(a.rank, a.total)?.color ?? rankColorPlayerHexAxis(a.rank, data.league.slug)),
+    /*
+     * ⚠ ★「1,161명 중」 을 뗐다★ (2026-09-20 사장님). 등급이 이미 자리를 말해 준다.
+     *   모집단 이름(«스나수» · «라플수»)은 남긴다 — ★누구와 견줬는지★ 는 알아야 한다.
+     *   옛 줄: `${poolNameOf(a.key, hex.weapon)} ${fmt(a.total)}명중`
+     */
+    note2: a.rank === null || a.total === null ? null : poolNameOf(a.key, hex.weapon),
     /* ★맨 윗칸(빨강)만 더 세게★ — 경계가 리그마다 다르니 숫자를 여기 또 적지 않는다 */
-    strong: a.rank !== null && a.rank <= (playerHexSteps(data.league.slug)[0]?.[0] ?? 10),
+    /* ★상위권(상위 5%) 위로만 강하게★ — 등급과 같은 자를 쓴다 */
+    strong: hexTierOf(a.rank, a.total)?.strong ?? false,
   }))
 }

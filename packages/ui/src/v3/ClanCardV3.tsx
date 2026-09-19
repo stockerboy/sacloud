@@ -12,6 +12,7 @@ import { rankColorByRatio } from '../record/playerHeadCopy'
 import type { CSSProperties, ReactNode } from 'react'
 import { CLAN_HEX_V2_CLAN_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
 import { floorColor, rankColor, statColor } from './rankColors'
+import { hexTierOf } from './hexTierLabel'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
 import { markAccentOf, markColorsOf, markRailOf } from './clanMarkColors'
@@ -125,8 +126,22 @@ export function clanHexAxes(hex: ClanHexagonV2 | null): HexAxisView[] {
      * 모집단을 못 세면 등수만 적는다 — 지어내지 않는다.
      */
     /* ★싸움 3위 · 나머지 5위★ (2026-09-12 사장님). 까닭은 `rankColorHexAxis` 주석에 */
-    if (axis.rank !== null) return { label: label[key] ?? CLAN_HEX_V2_AXIS_LABELS[key], value: axis.value * 100, note: `${axis.rank}위`, /* ★비율★ (2026-09-16 사장님) — 옛 값 `rankColorHexAxis(axis.rank, key === 'sniperDuel')` */
-      noteColor: rankColorByRatio(axis.rank, axis.total) ?? V3.textMuted, note2: axis.total === null ? null : `${fmt(axis.total)}개중` }
+    /*
+     * ★「n위 / n개중」 이 아니라 「등급」★ (2026-09-20 사장님:
+     *   「개인6각이랑 클랜6각 N명중 n위 이렇게 쓰지말고 (…) 최상위권 3,2,1위 이렇게」)
+     * ⚠ 1·2·3위만 숫자로 남는다. 옛 값은 `${axis.rank}위` + `${fmt(axis.total)}개중` 이고
+     *   옛 색은 `rankColorByRatio(axis.rank, axis.total)` 다.
+     */
+    if (axis.rank !== null) {
+      const tier = hexTierOf(axis.rank, axis.total)
+      return {
+        label: label[key] ?? CLAN_HEX_V2_AXIS_LABELS[key],
+        value: axis.value * 100,
+        note: tier?.label ?? `${axis.rank}위`,
+        noteColor: tier?.color ?? rankColorByRatio(axis.rank, axis.total) ?? V3.textMuted,
+        note2: null,
+      }
+    }
     return { label: label[key] ?? CLAN_HEX_V2_AXIS_LABELS[key], value: axis.value * 100, note: axis.text, noteColor: V3.textMuted }
   })
 }
