@@ -267,8 +267,22 @@ async function readCounts(since: Date): Promise<HealthCounts> {
       (SELECT count(*)::int FROM "NexonIdentity" WHERE "status" = 'unresolved') AS unresolved_identities,
       (SELECT count(*)::int FROM "League" WHERE "origin" <> 'mock') AS public_leagues,
       (SELECT count(*)::int FROM "Clan" WHERE "origin" <> 'mock' AND "active") AS public_clans,
-      (SELECT count(*)::int FROM "Player" WHERE "origin" <> 'mock') AS public_players,
-      (SELECT count(*)::int FROM "Match" WHERE "origin" <> 'mock') AS public_matches
+      /*
+       * ⚠ ★count(*) 가 health 를 18초짜리로 만들었다★ (2026-09-20 실측).
+       *
+       *   Postgres 의 count(*) 는 ★표를 통째로 훑는다.★ Player 26,000행 ·
+       *   Match 400,000행 · 500MB 다. health 는 ★10분마다 수집이 부르는 문지기★ 인데
+       *   그게 18초가 걸리니 수집이 매번 「무겁다」 며 물러났고,
+       *   ★19시간 동안 원문이 한 건도 안 들어왔다.★
+       *
+       *   ★어림수로 바꾼다.★ 이 값은 「살아 있나」 를 보는 것이지 ★정확한 수를 보는
+       *   자리가 아니다.★ pg_class 의 reltuples 는 VACUUM 이 갱신하는 추정치라 ★즉시★ 나온다.
+       *   ⚠ 아직 한 번도 분석 안 된 표는 -1 이다 — 그때는 0 으로 본다 (거짓말은 안 한다).
+       *   ⚠ ★이 주석에 백틱을 쓰지 마라★ — 이 블록은 SQL 템플릿 리터럴 안이다.
+       *     백틱 하나로 문장이 끊긴다 (이 저장소에서 네 번째로 밟았다).
+       */
+      GREATEST(0, (SELECT reltuples::int FROM pg_class WHERE relname = 'Player'))  AS public_players,
+      GREATEST(0, (SELECT reltuples::int FROM pg_class WHERE relname = 'Match'))   AS public_matches
   `
   // 스칼라 서브쿼리만 있는 SELECT 는 항상 1행이다. 비면 DB가 정상이 아니라는 뜻이다
   const row = rows[0]
