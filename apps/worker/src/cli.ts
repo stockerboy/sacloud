@@ -30,6 +30,7 @@ import {
 import { countLocalCollectors } from './lib/localCollectors.js'
 /* ★통합 투영★ (Part 3 · 2026-09-05) */
 import { runClanNameBackfill } from './jobs/clanNameBackfill'
+import { runBarracksIdentityMerge } from './jobs/barracksIdentityMerge'
 import { runUnifiedProject } from './jobs/unifiedProject.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
 import {
@@ -1019,6 +1020,35 @@ async function main(): Promise<number> {
         })),
       )
       table([result.skipped as unknown as Record<string, unknown>])
+      return 0
+    }
+
+    case 'barracks-identity-merge': {
+      /*
+       * ★한 계정이 여러 명으로 쪼개진 것을 합친다★ (2026-09-20 사장님:
+       *   「게임한 아이디는 하나인데 (…) 여러개의 분신이 생성되는거 같아」)
+       *
+       *   nexon barracks-identity-merge                    ★미리보기★ — 한 줄도 안 쓴다
+       *   nexon player-merge --confirm          합친다
+       *   nexon player-merge --confirm --limit 100
+       *
+       * ⚠ ★반드시 미리보기부터★ — 사람을 합치는 일은 되돌리기 어렵다.
+       */
+      const out = await runBarracksIdentityMerge({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      table([
+        {
+          다리: out.bridges,
+          쪼개진사람: out.split,
+          옮긴경기: out.movedStats,
+          옮긴참가: out.movedSeats,
+          껍데기: out.retired,
+          이름고침: out.renamed,
+          걸린ms: out.ms,
+        },
+      ])
       return 0
     }
 
