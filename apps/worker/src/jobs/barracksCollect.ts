@@ -392,6 +392,15 @@ export interface PendingRange {
  */
 export const GIVE_UP_TRIES = 3
 
+/**
+ * ★대기열 질의에 주는 시간★ (2026-09-20).
+ *
+ * 기본 2분으로는 ★한 번도 못 끝냈다★ — 실측 428초. 그래서 ★10분★ 을 준다.
+ * ⚠ 넉넉해 보이지만 ★이건 임시다.★ `rawClanNo` 를 다 채우면 이 질의는
+ *   인덱스만 읽어 몇 초로 떨어진다. 그때 이 값을 되돌리면 된다.
+ */
+export const PENDING_TIMEOUT_MS = 600_000
+
 export async function pendingPairs(
   limit: number,
   range: PendingRange = {},
@@ -399,15 +408,35 @@ export async function pendingPairs(
   /* 안 주면 전 기간이다. 경기키가 `YYMMDD…` 로 시작하므로 앞 여섯 자리로 자른다 */
   const from = range.from ?? '000000'
   const to = range.to ?? '999999'
+
+  /*
+   * ★이 한 질의가 배틀로그를 11시간 멈춰 세웠다★ (2026-09-20 실측).
+   *
+   *   `payload->>'clan_no'` 는 ★행 안에 인라인된 1.38GB★ 를 들어 올린다.
+   *   실측 ★428초★ 였고, 기본 2분 벽에 걸려 ★57014(statement timeout)★ 로 죽었다.
+   *   ②단계가 통째로 날아가 ★배틀로그 원문이 09-19 09:58 에서 멈췄다.★
+   *   그 바람에 명단도 경기분석도 새 경기에 안 붙었다.
+   *
+   * ── 두 갈래로 고친다
+   *   ① ★`rawClanNo` 칸을 먼저 본다★ — 채워진 줄은 부분 인덱스(`BCMR_queue_idx`)로
+   *     읽어 ★payload 를 아예 안 만진다.★ `clan-name-backfill` 이 채운다.
+   *   ② 아직 안 채운 줄은 옛 길(payload)로 간다 — ★그래서 시간을 넉넉히 준다.★
+   *     다 채우면 ②는 0건이 되고 이 연장도 쓸모가 없어진다.
+   *
+   * ⚠ ★이 연결에만★ 준다 (`SET LOCAL`). 사이트가 쓰는 연결과 무관하다.
+   */
+  await prisma.$executeRawUnsafe(`SET statement_timeout = ${PENDING_TIMEOUT_MS}`)
+
   return prisma.$queryRaw<{ matchKey: string; clanNo: string }[]>`
     /*
      * ── ① 매치목록에서 알게 된 경기 (새로 들어오는 것)
      */
     SELECT DISTINCT c."matchKey"                        AS "matchKey",
-           c."payload"->>'clan_no'                      AS "clanNo"
+           /* ★칸이 있으면 칸을 쓴다★ — payload 를 안 들어 올린다 */
+           COALESCE(c."rawClanNo", c."payload"->>'clan_no') AS "clanNo"
       FROM "BarracksClanMatchRaw" c
      WHERE c."status" = 'ok'
-       AND c."payload"->>'clan_no' IS NOT NULL
+       AND COALESCE(c."rawClanNo", c."payload"->>'clan_no') IS NOT NULL
        AND substr(c."matchKey", 1, 6) >= ${from}
        AND substr(c."matchKey", 1, 6) < ${to}
        AND NOT EXISTS (
@@ -432,12 +461,12 @@ export async function pendingPairs(
      * 클랜번호는 매치목록 원문에서 ★그 클랜이 주인이었던 행★ 으로 찾는다.
      */
     SELECT DISTINCT m."sourceMatchId"                   AS "matchKey",
-           (SELECT c2."payload"->>'clan_no'
+           (SELECT COALESCE(c2."rawClanNo", c2."payload"->>'clan_no')
               FROM "BarracksClanMatchRaw" c2
               JOIN "LeagueClan" lc2 ON lc2."id" = m."redLeagueClanId"
               JOIN "Clan" cl2 ON cl2."id" = lc2."clanId"
              WHERE c2."subject" = cl2."slug"
-               AND c2."payload"->>'clan_no' IS NOT NULL
+               AND COALESCE(c2."rawClanNo", c2."payload"->>'clan_no') IS NOT NULL
              LIMIT 1)                                   AS "clanNo"
       FROM "Match" m
       JOIN "League" l ON l."id" = m."leagueId" AND l."slug" = 'nolink'
@@ -453,7 +482,8 @@ export async function pendingPairs(
          SELECT 1 FROM "BarracksClanMatchRaw" c3
           JOIN "LeagueClan" lc3 ON lc3."id" = m."redLeagueClanId"
           JOIN "Clan" cl3 ON cl3."id" = lc3."clanId"
-         WHERE c3."subject" = cl3."slug" AND c3."payload"->>'clan_no' IS NOT NULL
+         WHERE c3."subject" = cl3."slug"
+           AND COALESCE(c3."rawClanNo", c3."payload"->>'clan_no') IS NOT NULL
        )
 
      /* ★최근 것부터★ — 밤새 돌다 멈춰도 새 기록이 먼저 채워진다 */
@@ -1094,7 +1124,21 @@ export async function collectBarracks(opts: CollectOptions): Promise<CollectResu
   }
 
   /* ── ★②단계 · 배틀로그★ */
-  const pairs = await pendingPairs(opts.limit, { from: opts.from, to: opts.to })
+  /*
+   * ⚠ ★여기서 터지면 ①단계까지 같이 날아갔다★ (2026-09-20).
+   *   대기열 질의가 57014 로 죽으면 프로세스가 통째로 끝나
+   *   ★목록을 1,600건 받아 놓고도 그 바퀴가 실패로 찍혔다.★
+   *   ①은 이미 저장을 마쳤으니 ★②만 접고 돌아간다.★
+   * ⚠ ★조용히 넘기지 않는다★ — 로그에 남겨야 다음에 또 밟지 않는다.
+   */
+  let pairs: { matchKey: string; clanNo: string }[]
+  try {
+    pairs = await pendingPairs(opts.limit, { from: opts.from, to: opts.to })
+  } catch (e) {
+    log(`★★대기열을 못 뽑았다 — ②배틀로그는 이번 바퀴 건너뛴다★★ ${(e as Error).message.slice(0, 160)}`)
+    result.stop = 'error'
+    return result
+  }
   result.planned = pairs.length
   log(`받을 것 ★${pairs.length}건★ · 간격 ${delay}ms · ${opts.dryRun ? '★미리보기(요청 0건)★' : opts.confirm ? '★쓰기★' : '받기만(안 넣는다)'}`)
 
