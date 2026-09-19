@@ -103,9 +103,9 @@ export async function buildSubjectIndex(leagueId: string): Promise<{
  */
 export async function loadSubjectClanNoPairs(): Promise<SubjectClanNoRow[]> {
   return prisma.$queryRaw<SubjectClanNoRow[]>`
-    SELECT DISTINCT "subject", "payload"->>'clan_no' AS "clanNo"
+    SELECT DISTINCT "subject", "rawClanNo" AS "clanNo"
     FROM "BarracksClanMatchRaw"
-    WHERE "status" = 'ok' AND "payload"->>'clan_no' IS NOT NULL
+    WHERE "status" = 'ok' AND "rawClanNo" IS NOT NULL AND "rawClanNo" <> ''
   `
 }
 

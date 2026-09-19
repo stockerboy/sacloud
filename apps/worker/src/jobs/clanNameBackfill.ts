@@ -56,6 +56,16 @@ function nameOf(payload: unknown, key: 'red_clan_name' | 'blue_clan_name'): stri
   return t.length > 0 ? t : null
 }
 
+/** ★클랜 번호★ — 라인업 잡이 이걸로 «어느 클랜의 응답인가» 를 푼다 */
+function clanNoOf(payload: unknown): string | null {
+  if (typeof payload !== 'object' || payload === null) return null
+  const v = (payload as Record<string, unknown>).clan_no
+  if (typeof v === 'number') return String(v)
+  if (typeof v !== 'string') return null
+  const t = v.trim()
+  return t.length > 0 ? t : null
+}
+
 export async function runClanNameBackfill(
   options: ClanNameBackfillOptions = {},
 ): Promise<ClanNameBackfillResult> {
@@ -68,7 +78,7 @@ export async function runClanNameBackfill(
    *   읽는 행은 `limit` 만큼이다. 전체를 훑지 않는다.
    */
   const rows = await prisma.barracksClanMatchRaw.findMany({
-    where: { status: 'ok', redClanName: null, blueClanName: null },
+    where: { status: 'ok', redClanName: null, blueClanName: null, rawClanNo: null },
     select: { id: true, payload: true },
     orderBy: { id: 'desc' },
     take: limit,
@@ -80,31 +90,42 @@ export async function runClanNameBackfill(
     return out
   }
 
+  /*
+   * ★한 줄씩 쓰면 너무 느리다★ — 실측 2,000줄에 78초(= 39ms/줄)였다.
+   *   756,000줄이면 ★8시간★ 이다. 한 문장으로 묶어 쓴다.
+   *
+   * ⚠ `UPDATE ... FROM (VALUES ...)` 한 방이면 왕복이 1번이다.
+   *   ⚠ 값에 작은따옴표가 섞일 수 있어 ★매개변수★ 로 넘긴다 (문자열을 잇지 않는다).
+   */
+  const ids: string[] = []
+  const reds: string[] = []
+  const blues: string[] = []
+  const nos: string[] = []
   for (const row of rows) {
     const red = nameOf(row.payload, 'red_clan_name')
     const blue = nameOf(row.payload, 'blue_clan_name')
-    if (red === null && blue === null) {
-      /*
-       * ★이름이 아예 없는 줄★ — 그냥 두면 다음 판에 또 읽는다.
-       *   빈 문자열로 표시해 ★다시 안 읽게★ 한다.
-       *   ⚠ 읽는 쪽(`unifiedProject`)은 빈 문자열을 이름으로 안 쓴다 — 아래를 보라.
-       */
-      await prisma.barracksClanMatchRaw.update({
-        where: { id: row.id },
-        data: { redClanName: '', blueClanName: '' },
-      })
-      out.empty += 1
-      continue
-    }
-    await prisma.barracksClanMatchRaw.update({
-      where: { id: row.id },
-      data: { redClanName: red ?? '', blueClanName: blue ?? '' },
-    })
-    out.filled += 1
+    ids.push(row.id)
+    reds.push(red ?? '')
+    blues.push(blue ?? '')
+    nos.push(clanNoOf(row.payload) ?? '')
+    if (red === null && blue === null) out.empty += 1
+    else out.filled += 1
+  }
+  if (ids.length > 0) {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "BarracksClanMatchRaw" AS t
+          SET "redClanName" = v.red, "blueClanName" = v.blue, "rawClanNo" = v.no
+         FROM (SELECT UNNEST($1::text[]) AS id,
+                      UNNEST($2::text[]) AS red,
+                      UNNEST($3::text[]) AS blue,
+                      UNNEST($4::text[]) AS no) AS v
+        WHERE t."id" = v.id`,
+      ids, reds, blues, nos,
+    )
   }
 
   out.remaining = await prisma.barracksClanMatchRaw.count({
-    where: { status: 'ok', redClanName: null, blueClanName: null },
+    where: { status: 'ok', redClanName: null, blueClanName: null, rawClanNo: null },
   })
   out.ms = Date.now() - startedAt
   return out

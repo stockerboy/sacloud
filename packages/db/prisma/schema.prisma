@@ -2330,6 +2330,10 @@ model BarracksClanMatchRaw {
   /// ⚠ 옛 줄은 `null` 이다 — 채우는 것은 backfill 이 천천히 한다.
   redClanName  String?
   blueClanName String?
+  /// ★클랜 번호도 칸으로★ (2026-09-20) — 이름과 같은 이유다.
+  /// `payload->>'clan_no'` 에 DISTINCT 를 걸던 질의가 라인업 잡을 통째로 죽였다
+  /// (이 파일 위 설명 참고 · `battlelogLineup.ts:325` 가 그 사고를 적어 뒀다).
+  rawClanNo    String?
 
   @@unique([matchKey, subject, payloadHash])
   @@index([matchKey])

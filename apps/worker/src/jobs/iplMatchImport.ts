@@ -39,6 +39,19 @@ const DEFAULT_ENDPOINT = '/api/ClanHome/GetClanMatchList/'
  *
  * ⚠ ★없으면 `null` 이다★ — 빈 문자열로 만들지 않는다 (`CLAUDE.md` 2-1).
  */
+/**
+ * ★클랜 번호 한 칸을 꺼낸다★ (2026-09-20) — 이름과 같은 이유다.
+ * `payload->>'clan_no'` 에 DISTINCT 를 걸던 질의가 ★라인업 잡을 통째로 죽였다.★
+ */
+function rawClanNoOf(payload: unknown): string | null {
+  if (typeof payload !== 'object' || payload === null) return null
+  const v = (payload as Record<string, unknown>).clan_no
+  if (typeof v === 'number') return String(v)
+  if (typeof v !== 'string') return null
+  const t = v.trim()
+  return t.length > 0 ? t : null
+}
+
 function clanNameOf(payload: unknown, key: 'red_clan_name' | 'blue_clan_name'): string | null {
   if (typeof payload !== 'object' || payload === null) return null
   const v = (payload as Record<string, unknown>)[key]
@@ -478,6 +491,7 @@ export async function importIplMatches(input: {
                  */
                 redClanName: clanNameOf(item.payload, 'red_clan_name'),
                 blueClanName: clanNameOf(item.payload, 'blue_clan_name'),
+                rawClanNo: rawClanNoOf(item.payload),
               })),
               /* 유일키가 막아 준다. 중단 후 재개해도 안전하다 */
               skipDuplicates: true,
