@@ -997,7 +997,17 @@ async function main(): Promise<number> {
         leagueSlug: stringFlag(args, 'league') ?? undefined,
         leagueSlugs: boolFlag(args, 'all-leagues') ? ALL_LEAGUE_SLUGS : undefined,
         fromCutoff: boolFlag(args, 'from-cutoff'),
-        onlyPending: boolFlag(args, 'only-pending'),
+        /*
+         * ⚠ ★「손볼 것만」 이 기본이다★ (2026-09-20).
+         *
+         *   옛 기본은 ★배틀로그 전체에 DISTINCT★ 를 거는 질의였다 (135,472행 · 1.14GB).
+         *   그것이 2분 벽에 걸려 죽어서 ★명단이 하나도 안 만들어졌다★ —
+         *   실측 최근 24시간 경기 306건 중 ★235건(76.8%)★ 이 명단 없음이었다.
+         *   파일 주석이 이미 «실측 2,191 → 64건» 이라고 적어 뒀는데 기본이 아니었다.
+         *
+         *   ⚠ 전체를 다시 훑고 싶으면 `--all` 을 준다 (되메우기용).
+         */
+        onlyPending: !boolFlag(args, 'all'),
         limit: numberFlag(args, 'limit') ?? undefined,
       })
       table([
