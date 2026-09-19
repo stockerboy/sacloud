@@ -13,6 +13,7 @@ import {
   TRAIT_TIER_LABEL,
   TRAIT_TIER_PCT_MAX,
   traitTierGetsEmblem,
+  traitEmblemOf,
   traitTierOf,
 } from '../traitTier'
 
@@ -108,5 +109,35 @@ describe('표가 서로 맞는다', () => {
       last = TRAIT_TIER_PCT_MAX[k]
     }
     expect(last).toBe(100)
+  })
+})
+
+/**
+ * ★배지는 극소수만★ (2026-09-19 사장님:
+ *   「뱃지가 너무 흔해빠졌어 진짜 극소수만 줘봐 1등만 황금글로우 해주고」)
+ */
+describe('배지 — 상위 1% · 황금은 1등만', () => {
+  it('1등만 황금이다', () => {
+    expect(traitEmblemOf(1, 1000)).toBe('best')
+    expect(traitEmblemOf(2, 1000)).toBe('high')
+    expect(traitEmblemOf(5, 1000)).toBe('high')
+  })
+
+  it('상위 1% 까지만 배지를 받는다', () => {
+    expect(traitEmblemOf(10, 1000)).toBe('high')
+    expect(traitEmblemOf(11, 1000)).toBeNull()
+    expect(traitEmblemOf(100, 1000)).toBeNull()
+  })
+
+  it('★작은 리그에서도 1등은 받는다★ — 1% 가 한 명도 안 될 때', () => {
+    expect(traitEmblemOf(1, 60)).toBe('best')
+    expect(traitEmblemOf(2, 60)).toBeNull()
+  })
+
+  it('모르는 값은 안 준다 — 지어내지 않는다', () => {
+    expect(traitEmblemOf(null, 1000)).toBeNull()
+    expect(traitEmblemOf(1, null)).toBeNull()
+    expect(traitEmblemOf(0, 1000)).toBeNull()
+    expect(traitEmblemOf(1001, 1000)).toBeNull()
   })
 })

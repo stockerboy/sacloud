@@ -1257,9 +1257,14 @@
   .v3-analysis { display: flex }
 }
 
-/* 플레이분석 — PC 만 두 칸 (왼쪽 설명 · 오른쪽 육각형) */
+/*
+ * 플레이분석 — PC 만 두 칸.
+ * ⚠ ★2026-09-19 — 좌우가 바뀌었다★ (사장님: 「육각먼저 보여주고 저걸 보여줘」).
+ *   ★왼쪽이 육각형 · 오른쪽이 설명★ 이다. 그래서 너비 비율도 뒤집었다 —
+ *   옛 값은 `1.15fr 1fr`(설명이 넓었다) 였다.
+ */
 @media (min-width: 900px) {
-  .v3-play-split { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) !important; gap: 20px !important; }
+  .v3-play-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) !important; gap: 20px !important; }
 }
 
 

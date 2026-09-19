@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { CompetitiveMark } from '../v3/primitives'
 import { LEAGUE_LOGO } from '../layout/leagueLogo'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { GNB_LEAGUES, MOBILE_NAV_GROUPS, PRIMARY_NAV, type NavGroup, type NavLink } from '../site-config'
 import { NavLogo } from '../layout/BrandLogo'
+import { SiteMapNav } from '../layout/SiteMapNav'
 import { LeagueLabel } from '../layout/LeagueLabel'
 import { v2Class } from './leagueAccent'
 
@@ -134,7 +134,9 @@ export function SiteHeaderV2({
   /* 상단바 순서는 홈과 다르다 (IPL 먼저 · 지시 #14). 목록은 한 곳(`FEATURED_LEAGUES`) */
   featuredLeagues = GNB_LEAGUES,
   primaryNav = PRIMARY_NAV,
-  navGroups = MOBILE_NAV_GROUPS,
+  /* ⚠ ★옛 서랍 목록★ — 2026-09-19 에 서랍이 사이트맵으로 바뀌어 지금은 안 쓴다.
+     지우지 않는다 (`CLAUDE.md` 1-4) — 되돌릴 때 이 값을 그대로 쓴다 */
+  navGroups: _navGroups = MOBILE_NAV_GROUPS,
   user = null,
   onLogout,
 }: SiteHeaderV2Props) {
@@ -341,50 +343,22 @@ export function SiteHeaderV2({
          *   배경은 ★불투명★ 이어야 한다 — `--v2-panel` 은 반투명(0.58)이라
          *   서랍 글자와 본문 글자가 겹쳐 읽혔다 (폰 실측).
          */
+        /*
+         * ⚠ ★2026-09-19 — 서랍 내용을 ★사이트맵★ 으로 갈았다★ (사장님:
+         *   「햄버거 메뉴 기존거 없애고 밑에걸로 바꿔주고 기존의 밑애 것들은 없애버려」).
+         *
+         *   옛 서랍은 «경쟁전 / 일반전 / 게시판 / 참가신청» 네 묶음이었다.
+         *   ★지우지 않았다★ (`CLAUDE.md` 1-4) — `navGroups` 가 그대로 살아 있고,
+         *   아래 한 줄을 옛 코드로 되돌리면 그대로 돌아온다
+         *   (`git show 031ec539 -- packages/ui/src/v2/SiteHeaderV2.tsx`).
+         */
         <div className="v2-drawer border-b border-[var(--v2-bar-border)] pb-2">
-          {navGroups.map((group) => (
-            <div key={group.label} className="border-b border-[var(--v2-row-divider)]">
-              {/*
-                ★«경쟁전» 에만 엠블럼★ (2026-09-16 사장님: «모든 경쟁전글씨 옆에
-                  저 로고 장착(경쟁전만)»). 일반전·게시판·참가신청에는 안 붙는다.
-              */}
-              <div className="flex items-center gap-[6px] px-6 pb-1 pt-4 text-[11px] tracking-widest text-[var(--v2-text-ghost)]">
-                {group.label}
-                {/* ★글씨 오른쪽★ (2026-09-16 사장님: «로고를 오른쪽으로 옮겨 전부») */}
-                {group.label === '경쟁전' ? <CompetitiveMark size={14} /> : null}
-              </div>
-              {group.items.map((item) =>
-                /* ★아직 없는 화면은 링크를 안 건다★ — 404 로 보내지 않는다 (D-106) */
-                item.href === '' ? (
-                  <span
-                    key={`${group.label}:${item.label}`}
-                    className="block px-6 py-3 text-[14px] text-[var(--v2-text-ghost)]"
-                  >
-                    {item.label}
-                  </span>
-                ) : (
-                  <Link
-                    key={`${group.label}:${item.href}`}
-                    href={item.href}
-                    className={`flex items-center gap-[6px] px-6 py-3 text-[14px] ${
-                      isActive(pathname, item.href)
-                        ? 'font-bold text-[var(--v2-text-strong)]'
-                        : 'text-[var(--v2-text-dim)]'
-                    }`}
-                  >
-                    {/* 참가신청 안의 «경쟁전» 에도 붙는다 — 같은 말이니 같은 표시다 */}
-                    <LeagueLabel name={item.label} />
-                    {item.label === '경쟁전' ? <CompetitiveMark size={14} /> : null}
-                  </Link>
-                ),
-              )}
-            </div>
-          ))}
+          <SiteMapNav inDrawer />
           {user ? (
             <button
               type="button"
               onClick={onLogout}
-              className="block w-full px-6 py-3 text-left text-[14px] text-[var(--v2-text-dim)]"
+              className="block w-full border-t border-[var(--v2-row-divider)] px-6 py-3 text-left text-[14px] text-[var(--v2-text-dim)]"
             >
               로그아웃
             </button>

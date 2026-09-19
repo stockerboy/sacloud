@@ -34,8 +34,7 @@ import {
   FORM_TOP_MIN_GAMES,
   FORM_TOP_SIZE,
   PLAYER_HEX_AXIS_ORDER,
-  traitTierGetsEmblem,
-  traitTierOf,
+  traitEmblemOf,
   type TraitAxisKey,
   RANK_WEAPON_CODE,
   playerHexLabelOf,
@@ -694,8 +693,13 @@ function traitEmblemsOf(row: ScoreRankRow): { axis: string; weapon: 0 | 1; tier:
   if (weapon === null) return []
   const out: { axis: string; weapon: 0 | 1; tier: 'best' | 'high' }[] = []
   for (const key of PLAYER_HEX_AXIS_ORDER) {
-    const tier = traitTierOf(rankOf(row, key), totalOf(row, key))
-    if (traitTierGetsEmblem(tier)) out.push({ axis: key, weapon, tier })
+    /*
+     * ⚠ ★배지는 등급과 따로 센다★ (2026-09-19 사장님: 「진짜 극소수만 줘봐
+     *   1등만 황금글로우」). 옛 판은 «상위권(10%)» 이면 줬는데, 축이 여섯이라
+     *   ★절반이 하나씩 달고 있었다.★ 이제 ★그 축 상위 1%★ 만, 황금은 ★1등만★.
+     */
+    const tier = traitEmblemOf(rankOf(row, key), totalOf(row, key))
+    if (tier !== null) out.push({ axis: key, weapon, tier })
   }
   return out
 }

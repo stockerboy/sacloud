@@ -99,3 +99,47 @@ export function traitTierOf(
 export function traitTierGetsEmblem(tier: TraitTierKey | null): tier is 'best' | 'high' {
   return tier === 'best' || tier === 'high'
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★배지는 ★등급 이름과 따로★ 센다★ (2026-09-19 사장님)
+
+   > 「뱃지가 너무 흔해빠졌어 진짜 극소수만 줘봐 1등만 황금글로우 해주고」
+
+   ── 왜 흔했나
+     배지를 «상위권(`high`)» 에 줬는데 그 경계가 ★상위 10%★ 다. 축이 여섯이라
+     ```
+       한 축에 10%  ×  축 여섯  →  대충 절반이 배지를 하나는 받는다
+     ```
+     실제로 사장님 화면의 상위 열 명이 전부 두세 개씩 달고 있었다.
+
+   ── 왜 등급 경계를 안 건드리나
+     `TRAIT_TIER_PCT_MAX` 는 화면 곳곳의 ★말★ 도 정한다 (상위권 · 중상위권 …).
+     배지 하나 때문에 그 말들이 통째로 바뀌면 안 된다. ★배지만 따로 잰다.★
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** ★배지를 받는 자리★ — 그 축 상위 몇 %까지인가 (이 값 «이하») */
+export const TRAIT_EMBLEM_PCT_MAX = 1
+
+/** ★황금 글로우★ — 등수가 이 이하일 때. 사장님: 「1등만 황금글로우」 */
+export const TRAIT_EMBLEM_GOLD_RANK = 1
+
+/**
+ * 이 등수가 ★배지를 받는가★, 받는다면 ★황금인가★.
+ *
+ * @returns `'best'` 황금 · `'high'` 보통 배지 · `null` 못 받음
+ */
+export function traitEmblemOf(
+  rank: number | null | undefined,
+  total: number | null | undefined,
+): 'best' | 'high' | null {
+  if (rank === null || rank === undefined) return null
+  if (total === null || total === undefined) return null
+  if (!Number.isFinite(rank) || !Number.isFinite(total)) return null
+  if (rank < 1 || total < 2 || rank > total) return null
+  if (rank <= TRAIT_EMBLEM_GOLD_RANK) return 'best'
+  /* ⚠ ★작은 리그에서도 최소 한 자리는 연다★ — 60명뿐인 리그에서 1% 는 0.6명이라
+       올림하지 않으면 ★아무도 못 받는다.★ */
+  const slots = Math.max(1, Math.floor((total * TRAIT_EMBLEM_PCT_MAX) / 100))
+  return rank <= slots ? 'high' : null
+}

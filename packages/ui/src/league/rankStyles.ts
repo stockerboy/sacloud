@@ -61,7 +61,13 @@ export const ROW =
    *   (`px-3` → `px-2`). 순위·지표 칸도 같이 좁혀 ★132px★ 로 넓혔다 (+25%).
    *   ⚠ PC 는 안 건드린다 — 거기는 자리가 남는다.
    */
-  'flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-2 max-md:py-[0.9rem] max-md:text-[1.02rem]'
+  /*
+   * ⚠ ★2026-09-19 — 폰 줄이 답답하다★ (사장님: 「모바일인데 간격좀 더 늘려봐
+   *   글씨크기를 줄이던지 너무 가깝고 답답해」).
+   *   글자를 한 단 줄이고(16.3 → 15.2px) 위아래 여백을 늘린다(0.9 → 1.15rem).
+   *   줄 높이가 약 45 → ★52px★ 가 된다. 글자는 작아지는데 줄은 넓어져 숨통이 트인다.
+   */
+  'flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-2 max-md:py-[1.15rem] max-md:text-[0.95rem]'
 
 /** 표 안의 클랜마크 — 좁은 화면에서만 줄인다 (모바일 행 높이 36px 계산의 기준) */
 export const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'

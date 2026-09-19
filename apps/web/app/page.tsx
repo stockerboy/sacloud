@@ -3,7 +3,6 @@
 import { HomeCodeBackdrop } from './_home/HomeCodeBackdrop'
 import { HomeSearch } from './_home/HomeSearch'
 import { HomeSeasonLine } from './_home/HomeSeasonLine'
-import { HomeSitemap } from './_home/HomeSitemap'
 import { HERO_V2, HERO_V3 } from './_home/heroV2'
 
 /**
@@ -219,8 +218,11 @@ export default function HomePage() {
         {/* 0 로고 · 1 검색 · 2 리그 타일 — 클라이언트. 동작은 그대로다 */}
         <HomeSearch />
 
-        {/* ★사이트맵 다섯 칸★ (2026-09-07 · Part 10 ④) — 실제로 있는 곳만 건다 */}
-        <HomeSitemap />
+        {/*
+          ⚠ ★2026-09-19 — 사이트맵을 홈 아래에서 뺐다★ (사장님:
+            「기존의 밑애 것들은 없애버려」). 같은 것이 ★햄버거 서랍★ 안으로 갔다.
+            컴포넌트는 `packages/ui/src/layout/SiteMapNav.tsx` 로 ★옮겼을 뿐★ 안 지웠다.
+        */}
       </div>
 
       {/* 3 사이트 소개 · 4 사용법 — 랭킹 미리보기와 최근 경기가 있던 자리.

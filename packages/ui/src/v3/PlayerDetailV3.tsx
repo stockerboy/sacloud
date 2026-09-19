@@ -1109,10 +1109,18 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
       </div>
       {tab === 'graph' ? <TrendCard data={data} showsKd={props.showsKd ?? true} /> : null}
       {tab === 'play' ? (
-        /* PC 는 왼쪽에 «어떻게 재는가», 오른쪽에 육각형 (2026-09-11 사장님). 폰은 육각형만 */
+        /*
+         * ⚠ ★육각형을 먼저, 설명을 뒤로★ (2026-09-19 사장님:
+         *   「플레이분석 파트 이렇게 잽니다 저거 밑으로 내려 육각먼저 보여주고 저걸 보여줘」).
+         *
+         *   보러 온 사람은 ★제 기록★ 을 보러 온 것이지 «어떻게 쟀는지» 를 먼저
+         *   읽으러 온 것이 아니다. 폰에서는 설명이 한 화면을 통째로 먹어
+         *   ★스크롤을 한참 내려야 육각형이 나왔다.★
+         *   ⚠ 순서만 바꿨다 — 두 칸 다 그대로 있다.
+         */
         <div className="v3-play-split" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
-          <AnalysisPanelV3 />
           <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
+          <AnalysisPanelV3 />
         </div>
       ) : null}
       {tab === 'clan' ? <ClanVsCard data={data} /> : null}

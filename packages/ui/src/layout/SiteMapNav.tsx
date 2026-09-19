@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { leagueLandingPath } from '@sacloud/contract'
-import { FEATURED_LEAGUES, isLeaguePreparing } from '@sacloud/ui'
+import { FEATURED_LEAGUES, isLeaguePreparing } from '../site-config'
 
 /**
  * ★★홈 사이트맵 다섯 칸★★ — 2026-09-16 에 ★접이식★ 으로 줄였다 (사장님).
@@ -183,14 +183,34 @@ function Leaf({ link }: { link: SiteLink }) {
   )
 }
 
-export function HomeSitemap() {
+/**
+ * ★★사이트맵 — 이제 ★햄버거 서랍★ 이 쓴다★★ (2026-09-19 사장님)
+ *
+ * > 「햄버거 메뉴 기존거 없애고 밑에걸로 바꿔주고 기존의 밑애 것들은 없애버려」
+ *
+ * 홈 맨 아래에 있던 C-L-O-U-D 다섯 칸을 ★서랍 안으로 옮겼다.★ 홈 아래에서는 뺐다.
+ * ⚠ 그래서 `apps/web/app/_home/` 에서 `packages/ui/src/layout/` 로 ★옮겼다★ —
+ *   상단바(`SiteHeaderV2`)는 `packages/ui` 에 있어서 `apps/web` 을 못 가져온다.
+ *   파일 이름도 «홈» 을 뗐다 (`HomeSitemap` → `SiteMapNav`).
+ */
+export function SiteMapNav({ inDrawer = false }: { inDrawer?: boolean }) {
   return (
     <nav
       aria-label="사이트맵"
-      className="mx-auto mt-[30px] w-full max-w-[940px] border-t border-[var(--v2-head-divider)] pt-[22px]"
+      className={
+        inDrawer
+          ? 'w-full px-6 pb-5 pt-4'
+          : 'mx-auto mt-[30px] w-full max-w-[940px] border-t border-[var(--v2-head-divider)] pt-[22px]'
+      }
     >
       {/* PC — 다섯 칸. 폰 — 칸이 세로로 쌓인다 (접혀 있어 길지 않다) */}
-      <div className="grid grid-cols-5 gap-[26px] max-md:flex max-md:flex-col max-md:gap-[18px]">
+      <div
+        className={
+          inDrawer
+            ? 'flex flex-col gap-[18px]'
+            : 'grid grid-cols-5 gap-[26px] max-md:flex max-md:flex-col max-md:gap-[18px]'
+        }
+      >
         {COLUMNS.map((column) => (
           <div key={column.title} className="flex flex-col gap-[12px]">
             {/* 첫 글자만 파랑 — 세로로 읽으면 C-L-O-U-D */}
