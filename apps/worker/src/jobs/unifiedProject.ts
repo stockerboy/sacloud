@@ -221,16 +221,24 @@ async function buildNameIndex(liveClans: Map<string, LiveClan>) {
    *   빠지면 「지금 이름」 으로만 잇게 되고, 옛 경기는 이미 이어져 있다.
    *   backfill 이 돌수록 옛 이름이 되살아난다.
    */
-  const sideRows = await prisma.$queryRaw<SideRow[]>`
-    SELECT DISTINCT "subject", "redClanName" AS red, "blueClanName" AS blue
-    FROM "BarracksClanMatchRaw"
-    WHERE "status" = 'ok'
-      AND (COALESCE("redClanName",'') <> '' OR COALESCE("blueClanName",'') <> '')`
   /*
-   * ⚠ ★빈 문자열은 «이름 없음» 이다★ — backfill 이 「이 줄은 봤는데 이름이 없더라」 를
-   *   그렇게 표시한다. `null`(아직 안 봄)과 구별하려고 그렇게 뒀다.
-   *   ★이름으로 쓰면 안 된다★ — 빈 이름으로 클랜을 이으면 아무거나 걸린다.
+   * ★이름표만 읽는다★ (2026-09-20) — 원문 표는 건드리지 않는다.
+   *
+   *   원문(`BarracksClanMatchRaw`)은 758,851행 · 1.63GB 이고 `payload` 가
+   *   ★행 안에 그대로★ 있어(행당 1.8KB) ★어느 칸을 읽든★ 1.38GB 를 통째로 훑는다.
+   *   이름 칸을 따로 빼 봤지만 EXPLAIN 이 여전히 `Parallel Seq Scan` 이었다 —
+   *   칸을 빼도 «행을 읽는 값» 이 안 줄기 때문이다. 그래서 ★표를 따로★ 뒀다.
+   *
+   *   `BarracksClanAlias` 는 클랜 수백 곳 × 이름 몇 개 = ★수천 행★ 이다.
+   *   `clan-name-backfill` 이 원문을 훑으며 한 번만 채운다.
+   *
+   * ⚠ 아직 안 채워진 동안에는 이름표가 비어 있다 — 그러면 ★지금 이름★ 으로만 잇는다.
+   *   옛 경기는 이미 이어져 있으니 안전하다. 채워질수록 옛 이름이 되살아난다.
    */
+  const sideRows: SideRow[] = (
+    await prisma.barracksClanAlias.findMany({ select: { subject: true, name: true } })
+  ).map((r) => ({ subject: r.subject, red: r.name, blue: null }))
+
   const derived = deriveClanNames(sideRows)
 
   const bySlug = new Map<string, LiveClan>()

@@ -44,6 +44,13 @@ export interface BarracksIdentityMergeOptions {
   confirm?: boolean
   /** 한 번에 볼 계정 수. 기본 500 */
   limit?: number
+  /**
+   * ★이 계정번호 뒤부터★ 본다 (커서).
+   *
+   * ⚠ 없으면 ★늘 같은 앞 300명★ 만 돈다 — 실제로 그렇게 만들었다가 잡았다.
+   *   껍데기에 «(합쳐짐→…)» 를 남기므로 다시 돌아도 안전하지만, ★앞으로 못 나간다.★
+   */
+  after?: string
 }
 
 export interface BarracksIdentityMergeResult {
@@ -59,6 +66,8 @@ export interface BarracksIdentityMergeResult {
   retired: number
   /** 이름을 병영수첩에 맞춘 사람 */
   renamed: number
+  /** ★다음 판에 넘길 커서★ — 이번에 본 마지막 계정번호. 더 없으면 `null` */
+  nextAfter: string | null
   ms: number
 }
 
@@ -88,7 +97,8 @@ export async function runBarracksIdentityMerge(
   const limit = options.limit ?? DEFAULT_LIMIT
   const startedAt = Date.now()
   const out: BarracksIdentityMergeResult = {
-    bridges: 0, split: 0, movedStats: 0, movedSeats: 0, retired: 0, renamed: 0, ms: 0,
+    bridges: 0, split: 0, movedStats: 0, movedSeats: 0, retired: 0, renamed: 0,
+    nextAfter: null, ms: 0,
   }
 
   /*
@@ -102,11 +112,14 @@ export async function runBarracksIdentityMerge(
             "userNexonSn" AS sn, "strUsn" AS usn, "userNick" AS nick
        FROM "BarracksClanMember"
       WHERE "strUsn" IS NOT NULL AND "userNexonSn" IS NOT NULL
+        AND ($2::text IS NULL OR "userNexonSn" > $2::text)
       ORDER BY "userNexonSn", "observedAt" DESC
       LIMIT $1`,
     limit,
+    options.after ?? null,
   )
   out.bridges = bridges.length
+  out.nextAfter = bridges.length > 0 ? (bridges[bridges.length - 1]?.sn ?? null) : null
 
   for (const b of bridges) {
     const found = await playersOf(b.sn, b.usn)

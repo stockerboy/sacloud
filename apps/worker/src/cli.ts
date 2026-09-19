@@ -61,7 +61,9 @@ import { runIdentities } from './jobs/identities.js'
 import { runIdentityWatch } from './jobs/identityWatch.js'
 import { runBarracksLink } from './jobs/barracksLink.js'
 import { collectBarracks, DEFAULT_DELAY_MS, MIN_DELAY_MS } from './jobs/barracksCollect.js'
-import { checkLoad, guardLine, newGuardState } from './jobs/loadGuard.js'
+import { checkLoad, guardLine, newGuardState,
+  BLIND_MAX,
+} from './jobs/loadGuard.js'
 import { runIplProject } from './jobs/iplProject.js'
 import { runIplClanRollup } from './jobs/iplClanRollup.js'
 import { runPlayerCurrentClan } from './jobs/playerCurrentClan.js'
@@ -1037,6 +1039,7 @@ async function main(): Promise<number> {
       const out = await runBarracksIdentityMerge({
         confirm: boolFlag(args, 'confirm'),
         limit: numberFlag(args, 'limit') ?? undefined,
+        after: stringFlag(args, 'after') ?? undefined,
       })
       table([
         {
@@ -1047,6 +1050,7 @@ async function main(): Promise<number> {
           껍데기: out.retired,
           이름고침: out.renamed,
           걸린ms: out.ms,
+          다음커서: out.nextAfter ?? '끝',
         },
       ])
       return 0
@@ -1384,9 +1388,29 @@ async function main(): Promise<number> {
         const before = await checkLoad(healthUrl, state)
         log(`★부하(시작 전)★ ${guardLine(state)}`)
         if (before === 'stop') {
-          log('★시작 전부터 무겁다 — 이번 판은 돌지 않는다★')
-          /* ★차단이 아니라 무거운 것이다★ — 쉬었다 다시 걸어도 된다 (코드 3) */
-          return 3
+          /*
+           * ⚠ ★「못 쟀다」 와 「무겁다」 를 가른다★ (2026-09-20).
+           *
+           *   `measureOnce` 는 health 를 ★못 재면★ 도 `stop` 을 돌려준다. 그 규칙 자체는
+           *   맞지만, 그 바람에 ★수집이 12시간 동안 한 번도 안 돌았다.★ 실측 —
+           *   09-19 14:35 이후 새 원문 0건, 매 회차 「시작 전부터 무겁다」.
+           *   그때 health 는 ★DB 가 눌려 느렸을 뿐★ 이고 넥슨은 한 번도 안 막았다.
+           *
+           *   ★모르면 물러나되, 영영 물러나지는 않는다.★ 연속으로 물러난 횟수가
+           *   `BLIND_MAX` 를 넘으면 ★한 번은 돌아 본다★ — 안 돌면 데이터가 영영 안 들어온다.
+           *   ⚠ 진짜로 무거우면(`lastMs` 를 쟀는데 느림) 그대로 물러난다. 여기서 뚫는 것은
+           *     ★잰 값이 아예 없을 때★ 뿐이다.
+           */
+          const blind = state.lastMs === null && state.lastDbStatus === null
+          if (!blind || state.retreatStreak <= BLIND_MAX) {
+            log('★시작 전부터 무겁다 — 이번 판은 돌지 않는다★')
+            /* ★차단이 아니라 무거운 것이다★ — 쉬었다 다시 걸어도 된다 (코드 3) */
+            return 3
+          }
+          log(
+            `★health 를 ${state.retreatStreak}번 연속 못 쟀다 — 한 번은 돌아 본다★ ` +
+              '(모른다고 영영 안 도는 것이 더 나쁘다)',
+          )
         }
         /*
          * ★시작 전 한 번 잰 것을 「연속 느림」에 세지 않는다★ (2026-09-10).

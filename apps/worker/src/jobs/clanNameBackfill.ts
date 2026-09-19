@@ -39,6 +39,8 @@ export interface ClanNameBackfillResult {
   read: number
   /** 이름을 채운 줄 */
   filled: number
+  /** ★이름표★ 에 넣어 본 쌍 (겹치면 안 들어간다) */
+  aliases: number
   /** 원문에 이름이 아예 없던 줄 (그런 줄도 다시 안 읽게 표시한다) */
   empty: number
   /** 아직 남은 줄 (대략) */
@@ -71,7 +73,7 @@ export async function runClanNameBackfill(
 ): Promise<ClanNameBackfillResult> {
   const limit = options.limit ?? DEFAULT_LIMIT
   const startedAt = Date.now()
-  const out: ClanNameBackfillResult = { read: 0, filled: 0, empty: 0, remaining: 0, ms: 0 }
+  const out: ClanNameBackfillResult = { read: 0, filled: 0, aliases: 0, empty: 0, remaining: 0, ms: 0 }
 
   /*
    * ⚠ ★`payload` 를 고른 뒤에야 읽는다★ — `WHERE` 가 먼저 좁혀 주므로
@@ -79,7 +81,7 @@ export async function runClanNameBackfill(
    */
   const rows = await prisma.barracksClanMatchRaw.findMany({
     where: { status: 'ok', redClanName: null, blueClanName: null, rawClanNo: null },
-    select: { id: true, payload: true },
+    select: { id: true, subject: true, payload: true },
     orderBy: { id: 'desc' },
     take: limit,
   })
@@ -111,6 +113,30 @@ export async function runClanNameBackfill(
     if (red === null && blue === null) out.empty += 1
     else out.filled += 1
   }
+  /*
+   * ★이름표를 따로 쌓는다★ (2026-09-20) — 정규화가 이것만 읽는다.
+   *
+   *   원문 표는 758,851행 · 1.63GB 라 ★어느 칸을 읽든★ 1.38GB 를 훑는다
+   *   (`payload` 가 행 안에 그대로 있어서다 — 칸을 빼도 안 줄었다 · EXPLAIN 확인).
+   *   이름만 모으면 ★수천 행★ 이라 정규화가 몇백 KB 만 읽는다.
+   */
+  const aliases = new Map<string, Set<string>>()
+  for (const row of rows) {
+    for (const n of [nameOf(row.payload, 'red_clan_name'), nameOf(row.payload, 'blue_clan_name')]) {
+      if (n === null) continue
+      const set = aliases.get(row.subject) ?? new Set<string>()
+      set.add(n)
+      aliases.set(row.subject, set)
+    }
+  }
+  const aliasRows: { subject: string; name: string }[] = []
+  for (const [subject, names] of aliases) for (const name of names) aliasRows.push({ subject, name })
+  if (aliasRows.length > 0) {
+    /* ⚠ 같은 쌍이 또 와도 괜찮다 — 유일키가 막고 `skipDuplicates` 가 넘긴다 */
+    await prisma.barracksClanAlias.createMany({ data: aliasRows, skipDuplicates: true })
+    out.aliases += aliasRows.length
+  }
+
   if (ids.length > 0) {
     await prisma.$executeRawUnsafe(
       `UPDATE "BarracksClanMatchRaw" AS t
