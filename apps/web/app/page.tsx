@@ -4,6 +4,7 @@ import { HomeCodeBackdrop } from './_home/HomeCodeBackdrop'
 import { HomeSearch } from './_home/HomeSearch'
 import { HomeSeasonLine } from './_home/HomeSeasonLine'
 import { HERO_V2, HERO_V3 } from './_home/heroV2'
+import { HomeBadgeWall } from './_home/HomeBadgeWall'
 
 /**
  * 홈.
@@ -223,6 +224,10 @@ export default function HomePage() {
             「기존의 밑애 것들은 없애버려」). 같은 것이 ★햄버거 서랍★ 안으로 갔다.
             컴포넌트는 `packages/ui/src/layout/SiteMapNav.tsx` 로 ★옮겼을 뿐★ 안 지웠다.
         */}
+
+        {/* ★배지 진열장★ (2026-09-20 사장님: 「뱃지를 전부 다 메인화면에 이쁘게 진열하고
+            누르면 뱃지 페이지로 가게해줘」) — 상태가 없어 서버에서 그린다 */}
+        <HomeBadgeWall />
       </div>
 
       {/* 3 사이트 소개 · 4 사용법 — 랭킹 미리보기와 최근 경기가 있던 자리.

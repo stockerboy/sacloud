@@ -29,6 +29,7 @@ import {
 } from '@sacloud/db/ops'
 import { countLocalCollectors } from './lib/localCollectors.js'
 /* ★통합 투영★ (Part 3 · 2026-09-05) */
+import { clearBlind, noteBlind } from './lib/blindStreak'
 import { runClanNameBackfill } from './jobs/clanNameBackfill'
 import { runBarracksIdentityMerge } from './jobs/barracksIdentityMerge'
 import { runUnifiedProject } from './jobs/unifiedProject.js'
@@ -1414,15 +1415,28 @@ async function main(): Promise<number> {
            *     ★잰 값이 아예 없을 때★ 뿐이다.
            */
           const blind = state.lastMs === null && state.lastDbStatus === null
-          if (!blind || state.retreatStreak <= BLIND_MAX) {
-            log('★시작 전부터 무겁다 — 이번 판은 돌지 않는다★')
+          /*
+           * ⚠ ★프로세스 안에서 세면 안 된다★ (2026-09-20 검수에서 잡았다).
+           *   `state.retreatStreak` 은 ★cron 이 새 프로세스를 띄울 때마다 0★ 이고
+           *   한 판에서 최대 2 까지만 오른다. 그래서 이 우회로가 ★한 번도 안 열렸고★
+           *   수집이 ★19시간째 원문 0건★ 이었다. ★바퀴를 건너 세려면 파일이 필요하다.★
+           */
+          const streak = blind ? noteBlind() : (clearBlind(), 0)
+          if (!blind || streak <= BLIND_MAX) {
+            log(
+              blind
+                ? `★health 를 못 쟀다 (${streak}/${BLIND_MAX + 1}바퀴) — 이번 판은 돌지 않는다★`
+                : '★시작 전부터 무겁다 — 이번 판은 돌지 않는다★',
+            )
             /* ★차단이 아니라 무거운 것이다★ — 쉬었다 다시 걸어도 된다 (코드 3) */
             return 3
           }
           log(
-            `★health 를 ${state.retreatStreak}번 연속 못 쟀다 — 한 번은 돌아 본다★ ` +
+            `★health 를 ${streak}바퀴 연속 못 쟀다 — 한 번은 돌아 본다★ ` +
               '(모른다고 영영 안 도는 것이 더 나쁘다)',
           )
+          /* 한 번 뚫었으면 셈을 되돌린다 — 매 바퀴 뚫으면 문이 없는 것과 같다 */
+          clearBlind()
         }
         /*
          * ★시작 전 한 번 잰 것을 「연속 느림」에 세지 않는다★ (2026-09-10).

@@ -12,13 +12,23 @@ set -e
 cd /root/sacloud
 . /root/sacloud.env
 
+# ⚠ ★비키기만 하다 아무것도 못 했다★ (2026-09-20 검수) — 40분 동안 채운 줄이 ★0★ 이었다.
+#   예약이 5분마다 뜨니 «다른 잡이 하나라도 돌면 비킨다» 로는 ★영영 자리가 안 난다.★
+#   그래서 ★무거운 잡(정규화·명단)만 피한다.★ 가벼운 잡과는 같이 돈다.
+# ⚠ 그래도 10번 연속 비키면 ★한 번은 끼어든다★ — 안 그러면 이름표가 영영 안 채워진다.
+SKIPPED=0
 for i in $(seq 1 400); do
-  n=$(pgrep -cf "tsx src/cli.ts" || true)
-  if [ "${n:-0}" -gt 1 ]; then
-    echo "[$(date +%H:%M)] 다른 잡이 도는 중($n) — 60초 쉰다"
-    sleep 60
+  busy=$(pgrep -fc "unified-project|battlelog-lineup" || true)
+  if [ "${busy:-0}" -gt 0 ] && [ "$SKIPPED" -lt 10 ]; then
+    SKIPPED=$((SKIPPED + 1))
+    echo "[$(date +%H:%M)] 무거운 잡이 도는 중 — 40초 쉰다 ($SKIPPED/10)"
+    sleep 40
     continue
   fi
+  if [ "$SKIPPED" -ge 10 ]; then
+    echo "[$(date +%H:%M)] ★10번 연속 비켰다 — 한 번은 끼어든다★"
+  fi
+  SKIPPED=0
   out=$(pnpm --filter @sacloud/worker nexon clan-name-backfill --confirm --limit 5000 2>&1 | grep "남은 줄" || true)
   echo "[$(date +%H:%M)] $out"
   case "$out" in

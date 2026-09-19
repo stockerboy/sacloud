@@ -392,20 +392,52 @@ export async function runUnifiedProject(
   outer: for (;;) {
     /* ★subject 를 같이 가져온다★ — 이름이 아니라 이것으로 자리를 정한다.
        한 경기를 여러 클랜이 봤으면 그만큼 증거가 늘어난다 (실측: 880경기가 2개) */
-    const rows = await prisma.$queryRaw<
-      Array<{ matchKey: string; payload: Record<string, unknown>; subjects: string[] }>
-    >`
-      SELECT "matchKey",
-             (ARRAY_AGG("payload" ORDER BY "id"))[1] AS "payload",
-             ARRAY_AGG(DISTINCT "subject") AS "subjects"
+    /*
+     * ⚠⚠ ★`ARRAY_AGG("payload")` 가 DB 를 79초씩 붙잡고 있었다★ (2026-09-20 검수) ⚠⚠
+     *
+     *   `GROUP BY` 를 하려면 Postgres 가 ★묶는 동안 payload 를 전부 메모리에 든다.★
+     *   그 JSON 이 행당 1.8KB 라 500묶음이어도 원문 수천 줄을 통째로 들어 올린다.
+     *   실측으로 그 질의 하나가 ★79초★ 째 돌고 있었고 `statement_timeout` 을 넘겨
+     *   정규화가 매 회차 3/3 실패했다.
+     *
+     *   ★두 단계로 나눈다.★
+     *     ① 키와 subject 만 묶는다 — ★payload 를 안 든다★ (가볍다)
+     *     ② 그 키들의 payload 를 ★따로★ 가져온다 (`DISTINCT ON` · 키가 정해져 있어 빠르다)
+     *   결과는 한 줄도 안 바뀐다.
+     */
+    const heads = await prisma.$queryRaw<Array<{ matchKey: string; subjects: string[] }>>`
+      SELECT "matchKey", ARRAY_AGG(DISTINCT "subject") AS "subjects"
       FROM "BarracksClanMatchRaw"
       WHERE "matchKey" > ${after} AND "status" = 'ok'
       GROUP BY "matchKey"
       ORDER BY "matchKey" ASC
       LIMIT ${BATCH}
     `
-    if (rows.length === 0) break
-    after = rows[rows.length - 1]!.matchKey
+    const wantKeys = heads.map((h) => h.matchKey)
+    const payloadByKey = new Map<string, Record<string, unknown>>()
+    if (wantKeys.length > 0) {
+      for (const r of await prisma.$queryRaw<
+        Array<{ matchKey: string; payload: Record<string, unknown> }>
+      >`
+        SELECT DISTINCT ON ("matchKey") "matchKey", "payload"
+        FROM "BarracksClanMatchRaw"
+        WHERE "status" = 'ok' AND "matchKey" = ANY(${wantKeys}::text[])
+        ORDER BY "matchKey" ASC, "id" ASC
+      `) {
+        payloadByKey.set(r.matchKey, r.payload)
+      }
+    }
+    const rows = heads.flatMap((h) => {
+      const payload = payloadByKey.get(h.matchKey)
+      /* ⚠ 원문이 사라진 키는 ★건너뛴다★ — 없는 것을 지어내지 않는다 */
+      return payload === undefined ? [] : [{ matchKey: h.matchKey, payload, subjects: h.subjects }]
+    })
+    /*
+     * ⚠ ★커서는 `heads` 로 옮긴다★ — `rows` 는 원문이 사라진 키를 걸러 낸 뒤라
+     *   전부 걸러지면 빈 배열이 되고, 그것으로 커서를 잡으면 ★같은 자리에서 멈춘다.★
+     */
+    if (heads.length === 0) break
+    after = heads[heads.length - 1]!.matchKey
 
     for (const row of rows) {
       if (result.seen >= limit) break outer
