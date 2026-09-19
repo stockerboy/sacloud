@@ -270,7 +270,12 @@ async function buildNameIndex(liveClans: Map<string, LiveClan>) {
 }
 
 export async function runUnifiedProject(
-  options: { confirm?: boolean; limit?: number } = {},
+  options: {
+    confirm?: boolean
+    limit?: number
+    /** ★처음부터 다시 훑는다★ — 되메우기용. 기본은 «이미 만든 곳부터» 다 */
+    fromStart?: boolean
+  } = {},
 ): Promise<UnifiedProjectResult> {
   const confirm = options.confirm === true
 
@@ -346,7 +351,42 @@ export async function runUnifiedProject(
   }
 
   const BATCH = 500
+  /*
+   * ★이미 만든 곳부터 이어간다★ (2026-09-20 — 사이트가 멈춘 것을 고치며).
+   *
+   *   옛 판은 `after = ''` 라 ★매번 758,851행을 처음부터★ 훑었다. 이미 만든
+   *   7,628건을 다시 세어 보느라 5분을 넘겼고, 5분 예약과 겹쳐 ★끊임없이 도는 중★
+   *   이 됐다. 그 바람에 backfill 도 계속 비켜서 아무것도 앞으로 못 갔다.
+   *
+   *   `matchKey` 는 ★YYMMDDHHMMSS…★ 라 시간순이다. 우리가 이미 만든 경기 중
+   *   ★가장 큰 키★ 에서 ★하루치만큼 뒤로★ 물러나 거기서 시작한다.
+   *   ⚠ 하루를 무르는 이유 — 원문이 늦게 들어오는 경기가 있다. 그만큼은 다시 본다.
+   *   ⚠ `--from-start` 를 주면 옛 판처럼 처음부터 훑는다 (되메우기용).
+   */
   let after = ''
+  if (options.fromStart !== true) {
+    const newest = await prisma.match.findFirst({
+      where: { origin: UNIFIED_ORIGIN, sourceMatchId: { not: null } },
+      orderBy: { sourceMatchId: 'desc' },
+      select: { sourceMatchId: true },
+    })
+    const key = newest?.sourceMatchId ?? ''
+    if (key.length >= 12) {
+      /* 앞 12자리가 YYMMDDHHMMSS 다. 하루를 무른다 */
+      const t = Date.UTC(
+        2000 + Number(key.slice(0, 2)), Number(key.slice(2, 4)) - 1, Number(key.slice(4, 6)),
+        Number(key.slice(6, 8)), Number(key.slice(8, 10)), Number(key.slice(10, 12)),
+      )
+      if (Number.isFinite(t)) {
+        const d = new Date(t - 24 * 60 * 60 * 1000)
+        const p2 = (n: number) => String(n).padStart(2, '0')
+        after =
+          p2(d.getUTCFullYear() % 100) + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) +
+          p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + p2(d.getUTCSeconds())
+        log(`★이미 만든 곳부터 이어간다★ — ${after} 뒤부터 (하루 무름)`)
+      }
+    }
+  }
   const limit = options.limit ?? Number.POSITIVE_INFINITY
 
   outer: for (;;) {

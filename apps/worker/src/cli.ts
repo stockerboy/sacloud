@@ -1097,6 +1097,8 @@ async function main(): Promise<number> {
       const out = await runUnifiedProject({
         confirm: boolFlag(args, 'confirm'),
         limit: numberFlag(args, 'limit') ?? undefined,
+        /* ★처음부터 다시★ — 되메우기용. 평소에는 이미 만든 곳부터 이어간다 */
+        fromStart: boolFlag(args, 'from-start'),
       })
       table([
         {
