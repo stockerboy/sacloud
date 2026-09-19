@@ -2740,91 +2740,18 @@ body.sac-sky:has(.home-code) .sac-shell {
     var(--v2-bg, #0b0f1a);
 }
 
-/* ── 고양이 무대 ──────────────────────────────────────────────────────────
-   검색창 ★바로 위★ 에 구름이 놓이고, 고양이가 그 위를 걷다가 뒤로 숨는다.
-   ⚠ 무대는 `overflow: hidden` 이다 — 고양이가 왼쪽 바깥에서 들어오기 때문이다.
-     자르지 않으면 가로 스크롤이 생긴다 (`CLAUDE.md` 4 «가로 스크롤이 없는가»).      */
-.cat-stage {
-  position: relative;
-  width: 100%;
-  /*
-   * ⚠ ★위쪽을 자르면 안 된다★ (2026-09-19 검수) — 걷는 동안 몸이 14~15px 위로
-   *   흔들리는데 무대가 딱 맞으면 ★귀가 잘린다.★ 실측으로 위쪽 16~23px 이 먹혔다.
-   *   높이를 키우고 고양이를 그만큼 올려 여유를 둔다.
-   */
-  height: 156px;
-  overflow: hidden;
-  pointer-events: none;
-}
-@media (max-width: 767px) {
-  .cat-stage { height: 108px; }
-}
-
-/* 구름 — 무대 가운데. ★고양이보다 앞에 선다★ (뒤로 숨으려면 앞을 가려야 한다) */
-.cat-stage__cloud {
-  position: absolute;
-  left: 50%;
-  bottom: -2px;
-  z-index: 2;
-  height: 80px;
-  width: auto;
-  transform: translateX(-50%);
-  /* 구름은 늘 바닥에 붙어 있다 — 무대가 커져도 검색창 바로 위다 */
-  filter: drop-shadow(0 6px 18px rgba(91, 141, 255, 0.22));
-}
-@media (max-width: 767px) {
-  .cat-stage__cloud { height: 56px; }
-}
-
-/* 고양이 — 구름 ★뒤★ 에서 논다 */
-.cat-stage__cat {
-  position: absolute;
-  left: 50%;
-  /*
-   * ⚠ ★고양이 얼굴이 다 보여야 한다★ — 낮게 두면 귀만 나온다 (첫 판이 그랬다).
-   *   구름 꼭대기가 바닥에서 64px 다. 발이 그 위에 얹히도록 50px 에 세운다.
-   */
-  bottom: 62px;
-  z-index: 1;
-  height: 78px;
-  width: auto;
-  transform-origin: 50% 100%;
-  /* ★첫 그림부터 제자리에 있다★ — 애니메이션이 끝난 모습이 기본값이다.
-     그래야 움직임을 끈 사람(`prefers-reduced-motion`)도 «구름 뒤에서 보는 고양이» 를 본다 */
-  transform: translateX(-46%) translateY(0);
-  animation: cat-stroll 4.6s cubic-bezier(0.33, 0.02, 0.29, 1) 0.25s both;
-}
-@media (max-width: 767px) {
-  .cat-stage__cat { height: 54px; bottom: 44px; }
-}
-
-/*
- * ★요염하게 걷다가 쏙 숨는다★ — 네 마디다.
- *   ① 왼쪽 바깥에서 들어온다          (0 → 26%)
- *   ② 구름 위를 걷는다 — 몸을 살짝 흔든다 (26 → 58%)
- *   ③ 구름 뒤로 쏙 내려간다            (58 → 76%)
- *   ④ 빼꼼 올라와 자리를 잡는다         (76 → 100%)
- * ⚠ 걷는 느낌은 ★위아래 흔들림★ 이 만든다 — 다리가 없는 그림이라 옆걸음만으로는 미끄러진다.
- */
-@keyframes cat-stroll {
-  0%   { transform: translateX(-560%) translateY(-10px) rotate(-3deg); opacity: 0; }
-  8%   { transform: translateX(-430%) translateY(-14px) rotate(-2deg); opacity: 1; }
-  16%  { transform: translateX(-330%) translateY(-8px)  rotate(2deg); }
-  26%  { transform: translateX(-240%) translateY(-14px) rotate(-2deg); }
-  36%  { transform: translateX(-166%) translateY(-8px)  rotate(2deg); }
-  46%  { transform: translateX(-104%) translateY(-15px) rotate(-2deg); }
-  58%  { transform: translateX(-46%)  translateY(-9px)  rotate(0deg); }
-  /* ③ 쏙 — 구름 뒤로 내려간다 */
-  70%  { transform: translateX(-46%)  translateY(70px)  rotate(0deg); }
-  76%  { transform: translateX(-46%)  translateY(72px)  rotate(0deg); }
-  /* ④ 빼꼼 — 살짝 넘겼다가 제자리 */
-  90%  { transform: translateX(-46%)  translateY(-5px)  rotate(0deg); }
-  100% { transform: translateX(-46%)  translateY(0)     rotate(0deg); }
-}
-
-/* ⚠ ★움직임을 꺼 둔 사람에게는 안 움직인다★ — 마지막 모습만 보인다 */
-@media (prefers-reduced-motion: reduce) {
-  .cat-stage__cat { animation: none; }
+/* ── 대문 로고의 빛 ────────────────────────────────────────────────────────
+   ★2026-09-19 — 사장님이 ★빛나는 새 로고★ 를 주시면서 고양이를 빼셨다.★
+   > 「너무 별로야 애미메이트도 그렇고 이상하게 짤렸어」
+   빛을 그림에 구워 넣으면 ★배경색이 바뀔 때 테두리가 드러난다★ (실제로 민트색이
+   배어 나왔다). CSS 로 주면 배경을 따라가고 파일도 안 무겁다.
+   ⚠ 옛 고양이 애니메이션(`@keyframes cat-stroll` · `.cat-stage`)은 이 커밋에서 지웠다.
+     되살리려면 `git show bdbf4c45 -- packages/ui/src/styles.css` 를 보면 된다.       */
+.home-mark {
+  display: block;
+  filter:
+    drop-shadow(0 0 18px rgba(91, 141, 255, 0.34))
+    drop-shadow(0 0 46px rgba(91, 141, 255, 0.18));
 }
 
 /* ── 구름 검색창 ──────────────────────────────────────────────────────────

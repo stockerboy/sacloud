@@ -276,8 +276,8 @@ const ART_H = 354
  */
 const CAT_SRC_DARK = '/brand/mark-dark.webp'
 const CAT_SRC_LIGHT = '/brand/mark-light.webp'
-const CAT_W = 934
-const CAT_H = 360
+const CAT_W = 952
+const CAT_H = 201
 
 /*
  * ⚠ ★상단바용 작은 판★ (2026-09-19 검수에서 잡았다).
@@ -291,7 +291,7 @@ const CAT_H = 360
  */
 const CAT_SRC_DARK_SM = '/brand/mark-dark-sm.webp'
 const CAT_SRC_LIGHT_SM = '/brand/mark-light-sm.webp'
-const CAT_W_SM = 249
+const CAT_W_SM = 454
 const CAT_H_SM = 96
 
 /**

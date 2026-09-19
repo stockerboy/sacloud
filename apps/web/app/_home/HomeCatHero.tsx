@@ -2,7 +2,15 @@ import Link from 'next/link'
 import { MainLogo } from '@sacloud/ui'
 
 /**
- * ★★구름 홈 대문★★ (2026-09-18 사장님)
+ * ★★구름 홈 대문★★ (2026-09-18 → ★2026-09-19 고양이를 걷어냄★)
+ *
+ * ⚠ ★고양이 애니메이션은 지웠다★ — 사장님: 「너무 별로야 애미메이트도 그렇고
+ *   이상하게 짤렸어」. 같은 메시지로 ★고양이 없는 새 로고★ 를 주셨다.
+ *   되살릴 일이 있으면 `git show bdbf4c45 -- apps/web/app/_home/HomeCatHero.tsx` 와
+ *   `packages/ui/src/styles.css` 의 `@keyframes cat-stroll` 을 보면 된다.
+ *   `cat.webp` · `cloud.webp` 는 ★지우지 않았다★ (`CLAUDE.md` 1-4).
+ *
+ * ── 옛 설명 (2026-09-18)
  *
  * > 「우리 사이트 대문 로고랑 다른 로고들 이걸로 다 바꿔줘
  * >  (메인홈배경도 깔끔하게 어두운 톤 배경에 이 로고만 올려줘
@@ -35,30 +43,13 @@ export function HomeCatHero() {
   return (
     <div className="flex w-full flex-col items-center">
       {/* ── 로고 하나 ─────────────────────────────────────────────────── */}
-      <Link href="/" aria-label="SA CLOUD 홈" className="block">
-        <MainLogo className="h-[150px] w-auto max-md:h-[84px]" />
+      {/*
+        ★로고에 빛을 준다★ — 사장님 새 로고가 네온처럼 빛난다. 그림에 구워 넣는 대신
+        CSS 로 주면 ★배경색이 바뀌어도 따라온다★ 하고 파일도 안 무거워진다.
+      */}
+      <Link href="/" aria-label="SA CLOUD 홈" className="home-mark block">
+        <MainLogo className="h-[128px] w-auto max-md:h-[74px]" />
       </Link>
-
-      {/* ── 고양이 무대 ───────────────────────────────────────────────── */}
-      {/*
-        ⚠ ★`aria-hidden` 이다★ — 읽는 기계에게는 아무 뜻도 없는 그림이다.
-          `alt=""` 만으로는 부족하다 (무대 자체가 읽히면 빈 칸이 하나 늘어난다).
-      */}
-      {/*
-        ⚠ ★무대를 화면 끝까지 넓힌다★ (2026-09-19 검수).
-          720px 로 묶어 뒀더니 ★무대 왼쪽 경계가 화면 한가운데★ 라,
-          고양이가 «허공에서 세로로 잘린 채» 튀어나왔다 (실측: 몸의 35px 만 보임).
-          무대만 넓히고 ★구름과 고양이는 여전히 가운데★ 다 — 보이는 자리는 안 바뀐다.
-        ⚠ `w-screen` 은 쓰지 않는다 — 세로 스크롤바 폭만큼 넘쳐 가로 스크롤이 생긴다.
-      */}
-      <div
-        className="cat-stage mt-[10px] max-md:mt-[6px]"
-        style={{ width: '100vw', maxWidth: '100%' }}
-        aria-hidden
-      >
-        <img src="/brand/cat.webp" alt="" width={396} height={220} className="cat-stage__cat" />
-        <img src="/brand/cloud.webp" alt="" width={396} height={260} className="cat-stage__cloud" />
-      </div>
     </div>
   )
 }
