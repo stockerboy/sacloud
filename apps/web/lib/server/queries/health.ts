@@ -225,17 +225,36 @@ interface HealthCounts {
  */
 async function readLeagueFreshness(now: Date): Promise<LeagueFreshness[]> {
   const slugs = [...COLLECTED_LEAGUE_SLUGS]
+
+  /*
+   * ⚠ ★이 한 줄이 health 를 23초짜리로 만들었다★ (2026-09-20 실측 — 리그 하나에 7.6초).
+   *
+   *   옛 판은 Match 에 League 를 JOIN 해서 slug 로 걸렀다. Match 에는
+   *   (leagueId, startAt DESC) 인덱스가 ★있는데도 못 썼다★ — 플래너가 JOIN 을 먼저
+   *   풀어야 해서 400,000행을 훑었다. ORDER BY 에 leagueId 가 남아 있던 것도 거들었다.
+   *
+   *   health 는 ★10분마다 수집이 부르는 문지기★ 다. 그게 느려서 수집이
+   *   「무겁다」 며 물러났고 ★19시간 동안 원문이 한 건도 안 들어왔다.★
+   *
+   *   ★리그 id 를 먼저 찾고(작은 표) 그 id 로 바로 묻는다.★ 그러면 인덱스를 쓴다.
+   */
+  const leagues = await prisma.league.findMany({
+    where: { slug: { in: slugs } },
+    select: { id: true, slug: true },
+  })
+  const idOf = new Map(leagues.map((l) => [l.slug, l.id]))
+
   const rows = await Promise.all(
     slugs.map(async (slug) => {
-      const hit = await prisma.$queryRaw<{ newest: Date | null }[]>`
-        SELECT m."startAt" AS newest
-          FROM "Match" m
-          JOIN "League" l ON l."id" = m."leagueId"
-         WHERE l."slug" = ${slug}
-         ORDER BY m."leagueId", m."startAt" DESC
-         LIMIT 1
-      `
-      return { slug, newest: hit[0]?.newest ?? null }
+      const leagueId = idOf.get(slug)
+      /* ★없는 리그는 «모름» 이다★ — 0 으로 채우지 않는다 */
+      if (leagueId === undefined) return { slug, newest: null }
+      const hit = await prisma.match.findFirst({
+        where: { leagueId },
+        orderBy: { startAt: 'desc' },
+        select: { startAt: true },
+      })
+      return { slug, newest: hit?.startAt ?? null }
     }),
   )
   return rows.map((row) => ({
