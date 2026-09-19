@@ -1116,6 +1116,9 @@ model Match {
   @@index([redLeagueClanId, startAt(sort: Desc)])
   @@index([blueLeagueClanId, startAt(sort: Desc)])
   @@index([seasonId])
+  /// ★언제 들어왔나로 찾는 질의★ — 이것이 없어 `MAX("ingestedAt")` 이 ★32초★ 였다
+  /// (2026-09-20 실측). 400,000행 · 500MB 를 통째로 훑었다.
+  @@index([ingestedAt(sort: Desc)])
 }
 
 /// 경기 참가자 한 명의 기록 + 래더 계산 재현 정보.
