@@ -62,7 +62,25 @@ void matchRowStyle
  * 이름 칸을 넓히고 MVP 는 ★줄 맨 오른쪽★ 으로 뺐다 — 사장님이 경기카드에서도
  * «배지가 제일 오른쪽 끝» 이라고 하신 것과 같은 규칙이다.
  */
-const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 96px 66px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
+/*
+ * ★★이름 칸에 최소 폭을 준다★★ (2026-09-20 사장님: 「닉네임 또 이렇게 된다 좀 고쳐줘」)
+ *
+ * ── 무엇이 문제였나
+ *   이름 칸이 `minmax(0,1fr)` 이었다. ★최소 0★ 이라는 뜻이라, 옆 칸(K/D/A ·
+ *   세이브 · 포지션)이 고정폭으로 자리를 차지하면 ★이름이 한 글자까지 줄어든다.★
+ *   화면에 「오」 「마」 「임」 「라」 처럼 ★첫 글자만★ 남았다.
+ *
+ * ── 어떻게 고쳤나
+ *   ★이름에 최소 96px 을 보장한다★ (`minmax(96px,1fr)`). 한글 일곱 자쯤 들어간다.
+ *   대신 옆 칸을 조금씩 줄였다 — 숫자와 짧은 말이라 줄여도 안 잘린다.
+ *   ```
+ *     K/D/A   94~96px → 86px      「19 / 9 / 0」 이 넉넉히 들어간다
+ *     세이브   50~52px → 44px      「0/3」
+ *     포지션   64~66px → 58px      「라플수」
+ *   ```
+ * ⚠ 그래도 긴 닉은 ★말줄임(…)★ 으로 끝난다 — 칸을 넘겨 줄을 깨뜨리지 않는다.
+ */
+const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 86px 58px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
 
 export interface ClanDetailV3Props {
   data: LeagueClanShow
@@ -222,7 +240,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
   const clan = row.match_time_clan
   return (
     <>
-    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(0,1fr) 96px 52px 66px 22px' } : {}), background: 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(96px,1fr) 86px 44px 58px 22px' } : {}), background: 'transparent', boxShadow: mvp ? 'inset 3px 0 0 #ffd83d, inset 0 0 26px rgba(255,216,61,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
@@ -487,7 +505,7 @@ function Scoreboard({
             </div>
           ) : (
           <>
-          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(0,1fr) 108px 64px 78px' : 'minmax(0,1fr) 108px 78px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 86px 44px 58px' : 'minmax(96px,1fr) 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
