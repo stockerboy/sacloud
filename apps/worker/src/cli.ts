@@ -178,6 +178,7 @@ import {
 import { runSupplyPlayerProfilesImport } from './jobs/supplyPlayerProfilesImport.js'
 import { applyBatchTimeout } from './lib/batchTimeout.js'
 import { runRestampWrongClan } from './jobs/restampWrongClan.js'
+import { runIntroVerify } from './jobs/introVerify.js'
 
 interface Args {
   command: string
@@ -748,6 +749,12 @@ async function main(): Promise<number> {
       return result.blocked ? 1 : 0
     }
 
+    case 'intro-verify': {
+      /* ★자기소개 인증 — 워커가 대신 읽어 준다★ (2026-09-20 사장님) */
+      const out = await runIntroVerify({ confirm: boolFlag(args, 'confirm') })
+      console.log(JSON.stringify(out))
+      return 0
+    }
     case 'restamp-wrong-clan': {
       /* ★상대 팀 마크를 달고 있는 참가 기록을 고친다★ (2026-09-20 사장님) */
       const out = await runRestampWrongClan({ confirm: boolFlag(args, 'confirm') })

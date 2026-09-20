@@ -162,6 +162,17 @@ model IntroChallenge {
   lastCheckedAt DateTime?
   /// 마지막으로 읽은 자기소개 — 왜 실패했는지 사람이 볼 수 있어야 한다
   lastSeenIntro String?
+  /**
+   * ★「확인」 을 눌러 달라고 부탁한 시각★ (2026-09-20)
+   *
+   * ⚠ ★사이트는 병영수첩을 직접 못 읽는다★ — 서버에서 부르면 403 이다
+   *   (`app/api/ingest/barracks/route.ts` 에 그 실측이 적혀 있다).
+   *   진짜 브라우저를 띄울 수 있는 것은 ★워커(VPS)★ 뿐이다.
+   *
+   *   그래서 사람이 「확인」 을 누르면 여기 시각만 찍고, ★워커가 와서 읽는다.★
+   *   화면은 그동안 「확인하는 중」 을 보여 주고 결과를 기다린다.
+   */
+  checkRequestedAt DateTime?
   verifiedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
