@@ -240,6 +240,37 @@ export function HomeSearch() {
   const handleSearch = async (type: SearchType, query: string) => {
     setNotice(null)
     setSuggestions([])
+
+    /*
+     * ★★이미 받아 둔 답이 있으면 기다리지 않는다★★ (2026-09-20 사장님 QA)
+     *
+     * ── 무슨 일이 있었나
+     *   사장님이 「임소혜」 를 치고 엔터를 눌렀는데 화면이 ★「찾는 중입니다…」 에서
+     *   멈춰 있었다.★ 재 봤더니 —
+     *   ```
+     *     DB 질의        0.1 ~ 1.1초     ← 빠르다
+     *     제출 API       ★19.3초★        ← 느리다
+     *   ```
+     *   느린 것은 우리 질의가 아니라 ★서버 함수가 새로 뜨는 시간★ 이다
+     *   (Vercel 이 잠자던 함수를 깨우고 DB 에 새로 붙는다).
+     *
+     * ── 그런데 그 답은 ★이미 손에 있다★
+     *   글자를 치는 동안 자동완성이 ★같은 이름을 이미 받아 뒀다.★ 그 안에
+     *   ★정확히 같은 이름★ 이 있으면 ★한 번 더 물어볼 이유가 없다.★
+     *   곧바로 그 선수 페이지로 보낸다 — 기다림이 ★0초★ 가 된다.
+     *
+     * ⚠ ★정확히 같은 이름일 때만★ 이다. 비슷한 이름으로 보내면
+     *   ★엉뚱한 사람 페이지★ 로 데려가는 셈이고, 그건 느린 것보다 나쁘다.
+     * ⚠ 못 찾으면 ★지금까지와 똑같이★ 서버에 물어본다 — 길이 하나 더 생긴 것이지
+     *   바뀐 것이 아니다 (CLAUDE.md 1-4).
+     */
+    const ready = cacheRef.current.get(`${type}:${query}`)
+    const exact = ready?.find((row) => row.name.toLowerCase() === query.toLowerCase())
+    if (exact) {
+      router.push(SUGGEST_SOURCE[type].href(exact.key))
+      return
+    }
+
     try {
       if (type === 'player') {
         const found = await apiGet('playersByName', { params: { name: query } })
