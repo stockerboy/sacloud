@@ -91,23 +91,34 @@ const COLUMNS: readonly { title: string; nodes: readonly SiteNode[] }[] = [
   },
   {
     title: 'Leagues',
+    /*
+     * ★★경쟁/일반 구분을 없앴다★★ (2026-09-20 사장님)
+     *
+     * > 「경쟁전 일반전 구분 다 없애 / IPL PL 열산 큰 카테고리 세개로 분류해
+     * >  경쟁전 일반전 이라는 구분은 이제 없다」
+     *
+     *   옛 판은 ★경쟁리그(PL) · 일반리그(IPL·열산)★ 두 갈래였다.
+     *   이제 ★세 리그가 나란히★ 선다 — 위아래가 없다.
+     * ⚠ 옛 묶음을 지우지 않고 갈래 이름만 리그 이름으로 바꿨다 (CLAUDE.md 1-4).
+     */
     nodes: [
       {
-        label: '경쟁리그',
+        label: nameOf('supply'),
         links: live('supply')
-          ? [{ label: nameOf('supply'), href: leagueLandingPath('supply'), sub: '기록게임' }]
+          ? [{ label: nameOf('supply'), href: leagueLandingPath('supply') }]
           : [],
       },
       {
-        label: '일반리그',
-        links: [
-          ...(live('nolink')
-            ? [{ label: nameOf('nolink'), href: leagueLandingPath('nolink'), sub: '무소속' }]
-            : []),
-          ...(live('sanply')
-            ? [{ label: nameOf('sanply'), href: leagueLandingPath('sanply') }]
-            : []),
-        ],
+        label: nameOf('nolink'),
+        links: live('nolink')
+          ? [{ label: nameOf('nolink'), href: leagueLandingPath('nolink') }]
+          : [],
+      },
+      {
+        label: nameOf('sanply'),
+        links: live('sanply')
+          ? [{ label: nameOf('sanply'), href: leagueLandingPath('sanply') }]
+          : [],
       },
     ],
   },
@@ -137,14 +148,21 @@ const COLUMNS: readonly { title: string; nodes: readonly SiteNode[] }[] = [
   {
     title: 'Data',
     nodes: [
+      /*
+       * ★경기 기록도 리그별로 나란히★ (2026-09-20 사장님) —
+       * 「경쟁전데이터 / 일반전데이터」 두 갈래였던 것을 리그 이름으로 바꾼다.
+       */
       {
-        label: '경쟁전데이터',
-        /* 공식 토너먼트는 ★아직 없는 화면★ 이라 걸지 않는다 (D-106) */
+        label: `${nameOf('supply')} 경기`,
         links: leaf('supply', '/match'),
       },
       {
-        label: '일반전데이터',
-        links: [...leaf('nolink', '/match'), ...leaf('sanply', '/match')],
+        label: `${nameOf('nolink')} 경기`,
+        links: leaf('nolink', '/match'),
+      },
+      {
+        label: `${nameOf('sanply')} 경기`,
+        links: leaf('sanply', '/match'),
       },
     ],
   },

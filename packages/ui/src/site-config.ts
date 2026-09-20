@@ -178,18 +178,23 @@ export interface NavGroup {
  *   옛 서랍은 아래 `MOBILE_NAV_GROUPS_V2` 에 남긴다.
  */
 export const MOBILE_NAV_GROUPS: readonly NavGroup[] = [
-  {
-    label: '경쟁전',
-    items: [
-      { label: 'PL', href: '/league/supply' },
-      /* 아직 없는 화면이다. `href` 가 비면 화면이 «준비중» 으로 그리고 링크를 안 건다 */
-      { label: '공식 토너먼트 (준비중)', href: '' },
-    ],
-  },
-  { label: '일반전', items: [
-    { label: 'IPL', href: '/league/nolink' },
-    { label: '열산리그', href: '/league/sanply' },
-  ] },
+  /*
+   * ★★경쟁전 / 일반전 구분을 없앴다★★ (2026-09-20 사장님)
+   *
+   * > 「경쟁전 일반전 구분 다 없애 / IPL PL 열산 큰 카테고리 세개로 분류해
+   * >  경쟁전 일반전 이라는 구분은 이제 없다」
+   *
+   *   옛 판 —
+   *     경쟁전  PL · 공식 토너먼트(준비중)
+   *     일반전  IPL · 열산리그
+   *   ★리그 셋이 나란히 선다.★ 위아래가 없다.
+   *
+   * ⚠ 「공식 토너먼트(준비중)」 은 ★아직 없는 화면★ 이라 여기서 뺐다.
+   *   만들면 리그 하나로 나란히 더하면 된다.
+   */
+  { label: 'IPL', items: [{ label: '리그 홈', href: '/league/nolink' }] },
+  { label: 'PL', items: [{ label: '리그 홈', href: '/league/supply' }] },
+  { label: '열산리그', items: [{ label: '리그 홈', href: '/league/sanply' }] },
   { label: '게시판', items: [
     { label: 'HOT', href: '/board/hot' },
     { label: '자유', href: '/board/free' },
@@ -198,9 +203,11 @@ export const MOBILE_NAV_GROUPS: readonly NavGroup[] = [
    * 참가신청은 한 화면(`/about`)이 리그를 골라 보여 준다. 어느 쪽으로 들어왔는지를
    * 물음표 뒤에 실어 그 화면이 알맞은 칸을 편다.
    */
+  /* ★참가신청도 리그별로★ (2026-09-20 사장님) — 경쟁전/일반전이라는 구분은 없다 */
   { label: '참가신청', items: [
-    { label: '경쟁전', href: '/about?kind=competitive' },
-    { label: '일반전', href: '/about?kind=casual' },
+    { label: 'IPL', href: '/about?kind=casual' },
+    { label: 'PL', href: '/about?kind=competitive' },
+    { label: '열산리그', href: '/about?kind=casual' },
   ] },
 ]
 

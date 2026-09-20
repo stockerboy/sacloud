@@ -69,7 +69,16 @@ export function LeagueCenter({ name, season }: { name: string; season: string })
   )
 }
 
+/**
+ * ★★「공식」 알약도 껐다★★ (2026-09-20 사장님: 「모든 공식 표시 다 없애」)
+ *
+ * 리그가 IPL · PL · 열산 셋뿐이고 셋 다 우리 리그다 — 따로 표를 붙일 대상이 없다.
+ * ⚠ 부품과 부르는 쪽을 ★지우지 않았다★. 이 한 줄만 `true` 로 되돌리면 돌아온다.
+ */
+const OFFICIAL_PILL_ON = false
+
 export function OfficialPill({ theme }: { theme: ClanTheme }) {
+  if (!OFFICIAL_PILL_ON) return null
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#cfeeff', border: `1px solid ${theme.main}8c`, borderRadius: 999, background: `${theme.main}1f`, boxShadow: `0 0 14px ${theme.main}38`, padding: '5px 11px', whiteSpace: 'nowrap' }}>
       <span style={{ width: 5, height: 5, background: theme.edge }} />공식

@@ -22,7 +22,6 @@ import {
   ProfileSkeleton,
   SectionTitle,
   Stat,
-  WinBar,
 } from './profileKit'
 
 /**
@@ -225,12 +224,14 @@ function PlayerLeagueRow({
         </div>
       </div>
 
-      {/* 승/패 비율 막대도 N승N패를 그대로 보여 주는 그림이라 알이 덮는다 */}
-      {sealed ? null : (
-        <div className="mt-4">
-          <WinBar win={entry.win} lose={entry.lose} />
-        </div>
-      )}
+      {/*
+        ⚠ ★막대(WinBar)는 뺐다★ (2026-09-20 사장님: 「이상한 바 같은거 집어치우고」).
+          승률은 바로 아래 숫자로 적혀 있다 — 같은 값을 두 번 그릴 이유가 없었고,
+          카드 높이만 먹었다.
+          ★부품은 안 지웠다★ (`WinBar` · CLAUDE.md 1-4) — 이 블록을 되살리면 돌아온다:
+
+            {sealed ? null : (<div className="mt-4"><WinBar win={entry.win} lose={entry.lose} /></div>)}
+      */}
 
       {/*
         * ★값을 왼쪽에 모은다★ (2026-09-20 사장님: 「가독성도 떨어지고」)
@@ -239,7 +240,17 @@ function PlayerLeagueRow({
         * 「전적」 과 「킬뎃」 사이가 한 뼘이라 ★한눈에 안 읽혔다.★
         * 흐르는 배치로 바꿔 ★값끼리 붙여 놓는다.★ 폰에서는 두 줄로 접힌다.
         */}
-      <div className="mt-3.5 flex flex-wrap gap-x-7 gap-y-3 max-md:gap-x-5">
+      {/*
+        ★★칸으로 나눈다★★ (2026-09-20 사장님 — 선수 기록실 머리카드와 같은 모양으로)
+        > 「기본정보에 있는 리그별 카드 오른쪽 사진처럼 만들어 이상한 바 같은거 집어치우고」
+
+        ── 왜 칸인가
+          흐르는 배치는 값이 ★몇 개인지에 따라 자리가 달라진다.★ 카드가 여럿 쌓이면
+          같은 「승률」 이 카드마다 다른 자리에 서서 ★위아래로 눈이 흔들린다.★
+          칸을 고정하면 여러 카드를 훑을 때 ★같은 값이 같은 자리★ 에 온다.
+        ⚠ 폰에서는 두 줄로 접힌다 — 네 칸을 390px 에 넣으면 숫자가 붙는다.
+      */}
+      <div className="mt-3.5 grid grid-cols-4 gap-x-3 gap-y-3 border-t border-line-soft pt-3.5 max-md:grid-cols-2">
         {/* 판수는 **가리지 않는다** — 있다는 것은 보여 주고 얼마나 잘하는지를 가린다 (사양 2장) */}
         <Stat label="전적" value={`${formatCount(games)}전`} />
         {sealed ? (

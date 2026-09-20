@@ -302,6 +302,51 @@ export function SniperMark({ size = 15 }: { size?: number }) {
  * «pc에서는 mvp카드를 좀 더 가로로 길게 잘 보이게 배치해줘»). 늘리는 값은 CSS 쪽
  * `.v3-mvp-wide` 에 있다 — 폰은 한 픽셀도 안 바뀐다.
  */
+/**
+ * ★★MVP 표 — 빨간 원 안에 흰 별★★ (2026-09-20 사장님)
+ *
+ * > 「mvp 표시를 통일해 일단 그 내가 만든 로고인것도 있고 별인것도 있는데
+ * >  그냥 빨강색 원안에 하얀색 별이 들어간걸로(경기카드에 써진 엠비피도 이걸로) 통일해
+ * >  그리고 닉네임 오른쪽에 넣어 만약에 스나가 엠비피면 스나표시 오른쪽에 하고」
+ *
+ * ── 무엇이 섞여 있었나
+ *   ```
+ *     명단 줄        ★ (금색 별 한 글자)
+ *     경기 카드      /assets/mvp-emblem.webp (사장님이 만드신 로고)
+ *     선수 화면      ★ + 「MVP」 글자 (MvpBadge)
+ *   ```
+ *   ★같은 뜻인데 셋이 다 달랐다.★ 하나로 모은다.
+ *
+ * ⚠ ★글자를 넣지 않는다★ — 닉네임 옆에 붙는 표라 자리가 좁다.
+ *   빨간 원과 흰 별만으로 충분히 읽힌다. 뜻은 `title` 로 알린다.
+ * ⚠ 옛 부품(`MvpBadge`)은 ★지우지 않았다★ — 바로 아래 그대로 있다 (CLAUDE.md 1-4).
+ */
+export function MvpMark({ size = 16, className }: { size?: number; className?: string }) {
+  return (
+    <span
+      className={className}
+      title="MVP"
+      aria-label="MVP"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 'none',
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: '#e0342f',
+        boxShadow: '0 0 0 1px rgba(255,255,255,.22), 0 0 10px rgba(224,52,47,.45)',
+        lineHeight: 1,
+      }}
+    >
+      <svg viewBox="0 0 24 24" width={size * 0.66} height={size * 0.66} aria-hidden fill="#fff">
+        <path d="M12 2.6l2.9 6.05 6.6.9-4.8 4.6 1.2 6.55L12 17.6l-5.9 3.1 1.2-6.55-4.8-4.6 6.6-.9L12 2.6z" />
+      </svg>
+    </span>
+  )
+}
+
 export function MvpBadge({ size = 10, className }: { size?: number; className?: string }) {
   return (
     <span

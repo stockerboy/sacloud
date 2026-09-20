@@ -13,7 +13,7 @@
 import { useState, type CSSProperties } from 'react'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { ClanScoreboardV3, listRoundsOf, ourSideOf } from './ClanDetailV3'
-import { MarkCircle, MvpBadge, TierText, relativeKst } from './primitives'
+import { MarkCircle, MvpMark, TierText, relativeKst } from './primitives'
 import { WIN_LOSS, V3, cardStyle } from './tokens'
 
 export interface MatchListV3Props {
@@ -154,7 +154,7 @@ export function MatchListV3(props: MatchListV3Props) {
                       <>
                         <MarkCircle clan={mvp.match_time_clan ? { slug: mvp.match_time_clan.slug, mark: mvp.match_time_clan.mark } : null} size={16} />
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.name}</span>
-                        <MvpBadge size={8.5} />
+                        <MvpMark size={15} />
                       </>
                     ) : <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>{perSide === 5 ? '' : `${perSide} vs ${perSide}`}</span>}
                   </span>

@@ -24,7 +24,7 @@ import { strengthAxes } from './playerHexAxes'
 import { AnalysisPanelV3 } from './AnalysisPanelV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { MvpWhy } from './MvpWhy'
-import { Card, CardHead, Kda, MarkCircle, MvpBadge, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
+import { Card, CardHead, Kda, MarkCircle, MvpMark, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
 import { WIN_LOSS, V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
@@ -643,6 +643,13 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { 
           <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
         )}
         {sniper ? <SniperMark /> : null}
+        {/*
+          ★MVP 는 닉네임 오른쪽★ (2026-09-20 사장님).
+          ⚠ ★스나 표시가 있으면 그 오른쪽★ 이다 — 사장님이 그렇게 정하셨다.
+            그래서 `SniperMark` 바로 뒤에 둔다.
+          ⚠ 옛 자리(줄 맨 오른쪽 금색 ★)는 아래에서 지웠다 — 두 군데에 뜨면 지저분하다.
+        */}
+        {mvp ? <MvpMark size={15} /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
       {showSaves ? (
@@ -653,8 +660,12 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { 
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', color: row.main_weapon === null || row.main_weapon === undefined ? '#4e5b76' : '#c3cbdb' }}>
         {row.main_weapon === 1 ? '스나수' : row.main_weapon === 0 ? '라플수' : '알수없음'}
       </span>
-      {/* ★MVP 는 줄 맨 오른쪽★ — 별 하나라 이름을 안 가린다 (2026-09-12 사장님) */}
-      <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, lineHeight: 1, color: mvp ? V3.gold : 'transparent' }} title={mvp ? 'MVP' : undefined}>★</span>
+      {/*
+        ⚠ ★옛 자리★ — 여기 금색 ★ 이 있었다 (2026-09-12). 2026-09-20 에 사장님이
+          「닉네임 오른쪽에 넣어」 라고 하셔서 위로 옮겼다. ★칸은 남긴다★ —
+          격자가 5칸이라 하나를 빼면 줄이 어긋난다.
+      */}
+      <span aria-hidden style={{ position: 'relative' }} />
     </div>
     {openHex ? (
       <PlayerMatchHexV3 axes={hex} name={row.name} side={side} href={`/league/${leagueSlug}/player/${row.player_id}`} />
@@ -857,7 +868,7 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                 1줄 오른쪽은 알약 하나뿐이라 자리가 남는다 — 거기로 옮긴다.
               */}
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7 }}>
-                {mvpIsMe ? <MvpBadge size={10} className="v3-mvp-wide" /> : null}
+                {mvpIsMe ? <MvpMark size={16} className="v3-mvp-wide" /> : null}
                 {my?.participant_role ? (
                   <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', padding: '3px 8px', borderRadius: 5, color: my.participant_role === 'mercenary' ? '#c9a35b' : V3.textMuted, background: my.participant_role === 'mercenary' ? 'rgba(201,163,91,.10)' : V3.chip, border: `1px solid ${my.participant_role === 'mercenary' ? 'rgba(201,163,91,.45)' : V3.chipBorder}` }}>
                     {my.participant_role === 'mercenary' ? '용병' : '클랜전'}

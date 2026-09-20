@@ -110,7 +110,21 @@ export function WinBar({ win, lose }: { win: number; lose: number }) {
  * 원본의 검은 알약 + 노란 점을 쓰지 않는다 — 노랑은 팔레트에 없다.
  * 진홍 테두리 + 진홍 글자의 각진 배지로 바꾼다.
  */
+/**
+ * ★★「공식」 딱지는 껐다★★ (2026-09-20 사장님: 「모든 공식 표시 다 없애」)
+ *
+ * ── 왜 껐나
+ *   리그가 ★IPL · PL · 열산 셋뿐★ 이 됐다 (같은 날 지시). 셋 다 우리 리그이므로
+ *   ★「공식」 이라고 따로 표를 붙일 대상이 없다.★ 붙이면 나머지가
+ *   비공식처럼 읽히는데, 그런 구분은 이제 없다.
+ *
+ * ⚠ ★부품을 지우지 않았다★ (CLAUDE.md 1-4) — 부르는 쪽도 그대로 두고
+ *   ★이 한 줄만★ 껐다. `OFFICIAL_TAG_ON` 을 `true` 로 되돌리면 그날로 돌아온다.
+ */
+const OFFICIAL_TAG_ON = false
+
 export function OfficialTag() {
+  if (!OFFICIAL_TAG_ON) return null
   return (
     <span className="inline-flex select-none items-center rounded-[2px] border border-accent px-1.5 py-0.5 text-[11px] leading-none text-accent">
       공식

@@ -17,7 +17,7 @@ import { rankColor, statColor } from './rankColors'
 import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { MvpWhy } from './MvpWhy'
-import { Card, CardHead, Kda, MarkCircle, MvpBadge, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
+import { Card, CardHead, Kda, MarkCircle, MvpMark, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 /* 육각형은 2026-09-12 부터 머리 카드(ClanCardV3)가 그린다 — 여기서는 안 쓴다 */
 import { H2HChartV3 } from './H2HChartV3'
@@ -262,6 +262,8 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
           <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: 500, color: mvp ? '#ffe89a' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
         )}
         {sniper ? <SniperMark /> : null}
+        {/* ★MVP 는 닉네임 오른쪽★ · ★스나 표시가 있으면 그 오른쪽★ (2026-09-20 사장님) */}
+        {mvp ? <MvpMark size={15} /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
       {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves === null ? '-' : `${row.saves}/${row.save_chances ?? 0}`}</span> : null}
@@ -275,18 +277,13 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
         ⚠ ★2026-09-16 — 별(★) 을 금색 엠블럼으로 바꿨다★ (사장님이 그림을 주심).
           MVP 가 아닌 줄은 ★자리를 비워 둔다★ — 칸이 사라지면 줄이 어긋난다.
       */}
-      <span style={{ position: 'relative', textAlign: 'right', lineHeight: 0 }} title={mvp ? 'MVP' : undefined}>
-        {mvp ? (
-          <img
-            src="/assets/mvp-emblem.webp"
-            srcSet="/assets/mvp-emblem.webp 1x, /assets/mvp-emblem@2x.webp 2x"
-            alt="MVP"
-            width={22}
-            height={15}
-            style={{ display: 'inline-block', verticalAlign: 'middle' }}
-          />
-        ) : null}
-      </span>
+      {/*
+        ⚠ ★옛 자리★ — 여기 금색 엠블럼(`mvp-emblem.webp`)이 있었다 (2026-09-16).
+          2026-09-20 에 사장님이 「닉네임 오른쪽에 넣어」 「빨강 원 안에 흰 별로 통일」
+          이라고 하셔서 위로 옮겼다. ★그림 파일은 안 지웠다★ (CLAUDE.md 1-4).
+          ★칸은 남긴다★ — 격자가 정해진 수라 하나를 빼면 줄이 어긋난다.
+      */}
+      <span aria-hidden style={{ position: 'relative' }} />
     </div>
     {openHex ? (
       <PlayerMatchHexV3 axes={hex} name={row.name} side={side} href={`/league/${leagueSlug}/player/${row.player_id}`} />
@@ -668,7 +665,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
                       {/* ★마크 · 닉네임 · MVP배지★ 순 (2026-09-11 사장님: 모든 경기카드 통일) */}
                       <MarkCircle clan={mvpEntry?.match_time_clan ? { slug: mvpEntry.match_time_clan.slug, mark: mvpEntry.match_time_clan.mark } : null} size={16} />
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvpName}</span>
-                      <MvpBadge size={8.5} />
+                      <MvpMark size={15} />
                     </span>
                   ) : null}
                 </span>
@@ -750,7 +747,7 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
                 <>
                   <MarkCircle clan={mvp.match_time_clan ? { slug: mvp.match_time_clan.slug, mark: mvp.match_time_clan.mark } : null} size={16} />
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.name}</span>
-                  <MvpBadge size={8.5} />
+                  <MvpMark size={15} />
                 </>
               ) : null}
             </span>
