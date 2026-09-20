@@ -111,6 +111,9 @@ const HEAD_ART = false
  */
 const DIM = '#4a5670'
 
+/** ★「통합」 을 나타내는 구간 번호★ — 진짜 구간은 1부터라 0을 쓴다 (2026-09-20) */
+const ALL_TIER = 0
+
 export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
   /* 이어 붙은 병영수첩 계정이 없으면 null — 아래에서 단추를 안 그린다 */
@@ -132,7 +135,64 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
    */
   const rank = hex?.score_rank_all ?? (hex ? hex.score_rank : data.rank)
   const rankTotal = hex?.score_total_all ?? (hex ? hex.score_total : data.rank_count)
-  const rows = data.tier_breakdown
+  /*
+   * ★★「통합」 을 맨 앞에 두고 기본으로 삼는다★★ (2026-09-20 사장님)
+   *
+   * > 「얘는 5승1패인데 왜 가로카드엔느 저렇게 찍히니또」
+   *
+   * ── 무엇이 문제였나 (실측 · 현물님 IPL)
+   *     명부       ★5승 1패★ · 64킬 37뎃
+   *     화면 상단   2승 1패 66.7%      ← ★1구간 3판만★
+   *
+   *   화면은 ★가장 많이 뛴 구간 하나★ 만 골라 보여 줬다. 여섯 판이 구간별로
+   *   쪼개지면 그중 큰 덩이만 나온다. ★사람은 그 숫자를 「전체 기록」 으로 읽는다.★
+   *
+   * ── 그래서 통합을 만든다
+   *   구간 기록을 다 더해 ★통합 한 줄★ 을 만들고 ★그것을 기본★ 으로 둔다.
+   *   ⚠ 구간별 보기를 ★없애지 않았다★ — 칩을 누르면 그대로 나온다
+   *     (2026-09-11 사장님 지시는 그대로 산다 · CLAUDE.md 1-4).
+   *   ⚠ 구간이 하나뿐이면 통합과 같으므로 ★만들지 않는다★ — 똑같은 칩 두 개는 군더더기다.
+   *
+   * ── ⚠ ★애초에 구간은 화면에서 쓰지 않기로 했다★ (사장님: 「구간없앴잖아 우리 아니야?」)
+   *   세 리그 전부 `showsTier: false` 다. 칩은 안 그려지는데 ★뒤에서는 구간으로
+   *   쪼개고 있었다.★ 그래서 아무도 고를 수 없는 구간 하나의 숫자가 화면에 나갔다.
+   *   ★칩을 안 그리는 리그에서는 언제나 통합★ 이다 — 아래 `tiered` 가 그것을 막는다.
+   */
+  const rows = useMemo(() => {
+    const src = data.tier_breakdown
+    const played = src.filter((r) => r.games > 0)
+    if (played.length <= 1) return src
+    const sum = (pick: (r: (typeof src)[number]) => number) =>
+      played.reduce((a, r) => a + pick(r), 0)
+    const rate = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 10 : null)
+    const win = sum((r) => r.win)
+    const lose = sum((r) => r.lose)
+    const sk = sum((r) => r.sniper_kill)
+    const sd = sum((r) => r.sniper_death)
+    const rk = sum((r) => r.rifle_kill)
+    const rd = sum((r) => r.rifle_death)
+    const all: (typeof src)[number] = {
+      ...played[0]!,
+      /* ★0 은 「통합」 이라는 뜻★ — 진짜 구간 번호는 1부터다 */
+      tier: ALL_TIER,
+      games: sum((r) => r.games),
+      win,
+      lose,
+      win_rate: rate(win, win + lose),
+      known_games: sum((r) => r.known_games),
+      kd: rate(sk + rk, sk + rk + sd + rd),
+      sniper_games: sum((r) => r.sniper_games),
+      sniper_kill: sk,
+      sniper_death: sd,
+      sniper_kd: rate(sk, sk + sd),
+      rifle_games: sum((r) => r.rifle_games),
+      rifle_kill: rk,
+      rifle_death: rd,
+      rifle_kd: rate(rk, rk + rd),
+      mvp: sum((r) => r.mvp),
+    }
+    return [all, ...src]
+  }, [data.tier_breakdown])
   /* ★머리 카드가 그리는 여섯 축★ (2026-09-12). STRENGTH POINT 카드와 ★같은 함수★ 다 */
   const axes = strengthAxes(data)
   /*
@@ -151,11 +211,21 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const [pickedTier, setPickedTier] = useState<number | null>(null)
   const [open, setOpen] = useState(false)
   const mostPlayed = useMemo(() => {
+    /* ★통합이 있으면 그것이 기본★ — 사람이 먼저 보는 숫자는 「내 전체 기록」 이다 */
+    const all = rows.find((r) => r.tier === ALL_TIER)
+    if (all) return ALL_TIER
     const played = rows.filter((r) => r.games > 0)
     if (played.length === 0) return rows[0]?.tier ?? 1
     return played.reduce((a, b) => (b.games > a.games ? b : a)).tier
   }, [rows])
-  const tier = pickedTier ?? mostPlayed
+  /*
+   * ★★구간을 안 쓰는 리그는 언제나 통합★★ (2026-09-20 사장님)
+   *
+   *   `tiered` 가 거짓이면 ★구간 칩을 아예 안 그린다.★ 고를 수 없는데도
+   *   뒤에서 구간 하나를 골라 그 숫자를 보여 주면 ★사람은 전체 기록으로 읽는다.★
+   *   실측 — 5승 1패인 선수가 2승 1패로 나왔다.
+   */
+  const tier = tiered ? (pickedTier ?? mostPlayed) : (rows.some((r) => r.tier === ALL_TIER) ? ALL_TIER : mostPlayed)
   const sel: Row | null = rows.find((r) => r.tier === tier) ?? null
 
   /* ★무기★ — 그 구간에서 뛴 무기만 고를 수 있다. 주무기부터, 없으면 많이 뛴 쪽 */
