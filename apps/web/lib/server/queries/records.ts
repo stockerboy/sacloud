@@ -837,6 +837,8 @@ export async function getLeaguePlayerDetail(
       leagueId: true,
       clanId: true,
       rating: true,
+      /* ★순위는 점수 래더로 센다★ — 랭킹 목록과 같은 규칙 (2026-09-20) */
+      scoreRating: true,
       win: true,
       lose: true,
       kill: true,
@@ -892,6 +894,7 @@ export async function getLeaguePlayerDetail(
           id: effective.id,
           leagueId: effective.leagueId,
           rating: effective.rating,
+          scoreRating: effective.scoreRating,
           placement: effective.placement,
         })
       : Promise.resolve({ rank: null, rankCount: null }),

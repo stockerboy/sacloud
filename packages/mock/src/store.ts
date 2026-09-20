@@ -565,6 +565,10 @@ export function getPlayerLeagues(playerId: string): PlayerLeagueEntry[] {
       league_player_id: leaguePlayer.id,
       clan: clanSummaryOf(leagueClan.clanId),
       rating: leaguePlayer.rating,
+      /* ★점수 래더★ (2026-09-20) — 랭킹 픽스처와 ★같은 셈★ 이라야 두 화면이 안 어긋난다 */
+      score_rating: Math.round((leaguePlayer.rating / 150) * 10) / 10,
+      score_bonus: 0,
+      score_games: 20,
       win: leaguePlayer.win,
       lose: leaguePlayer.lose,
       win_rate: winRate(leaguePlayer.win, leaguePlayer.lose),

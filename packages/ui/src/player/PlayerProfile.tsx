@@ -10,7 +10,7 @@ import { Egg } from '../egg/Egg'
 import { useClanEgg, usePlayerEgg } from '../egg/EggContext'
 import { EggVeil } from '../egg/EggVeil'
 import { RelativeTime } from '../common/RelativeTime'
-import { formatCount, formatLadder, formatRate } from '../common/format'
+import { formatCount, formatScoreLadder, formatRate } from '../common/format'
 import { leaguePlayerPath } from '../common/paths'
 import type { RefreshState } from '../profile/ProfileHeader'
 import {
@@ -215,13 +215,33 @@ function PlayerLeagueRow({
               배치고사는 폐지됐다 (2026-09-01) — `placement` 플래그의 뜻만 바뀌었다 */}
           {entry.placement ? (
             <div className="mt-1.5 text-[15px] leading-none text-meta">기록 없음</div>
+          ) : entry.score_rating === null ? (
+            /*
+             * ★아직 안 잰 사람은 「측정 중」★ — 점수를 지어내지 않는다 (D-106).
+             *   문턱(20경기)을 못 넘겼거나 재계산이 아직 안 닿은 사람이다.
+             * ⚠ ★옛 Elo 를 대신 적지 않는다★ — 그 값은 33,567명 중 29,533명이
+             *   ★아무도 안 건드린 3000★ 이라, 적으면 「다들 3,000점」 이 된다.
+             */
+            <div className="mt-1.5 text-[15px] leading-none text-meta">측정 중</div>
           ) : (
             <div className="mt-1 font-num text-[26px] leading-none tabular-nums text-text-strong">
-              {/* ★0점 기준★ (2026-09-20 사장님) — 기준점은 `formatLadder` 한 곳이 안다 */}
-              {formatLadder(entry.rating)}
+              {formatScoreLadder(entry.score_rating)}
               <span className="ml-1 text-[12px] text-meta">점</span>
             </div>
           )}
+          {/*
+            ★★보정 받은 사람은 그렇다고 적는다★★ (2026-09-20 사장님:
+              「★보정대상은 보정후의 점수로 써줘★」)
+
+              위 숫자에 ★보정이 이미 들어 있다.★ 그런데 아무 말도 없으면
+              ★보정을 받았는지 알 수 없고★, 사장님이 「보정 후 점수로 쓰라」 고
+              하신 뜻이 화면에 안 드러난다. ★얼마를 받았는지 한 줄로 적는다.★
+          */}
+          {!entry.placement && entry.score_rating !== null && entry.score_bonus > 0 ? (
+            <div className="mt-1 text-[10.5px] leading-none text-accent">
+              상위권 보정 +{entry.score_bonus}
+            </div>
+          ) : null}
         </div>
       </div>
 

@@ -31,6 +31,25 @@ export const PlayerLeagueEntry = z.object({
   death: Count.nullable(),
   /** 킬뎃 % — `킬 / (킬 + 데스) × 100` (원본 실측 확정) */
   kd_rate: Percent.nullable(),
+  /**
+   * ★점수 래더★ — 경기당 평균 점수 (2026-09-20 사장님: 「래더 총점만 기본정보에 써줘
+   * ★보정대상은 보정후의 점수로★ 써줘 그리고 ★래더 3000점 부터 하지말고 0점부터★」).
+   *
+   *   값은 ★소수 한 자리★ 다 (22.1). DB 는 ×100 정수 칸에 담고 서버가 나눈다 —
+   *   `LeagueRankEntry.score_rating` 과 ★같은 값·같은 규칙★ 이다.
+   *
+   * ⚠ ★상위권 보정이 이미 들어 있다★ — 얼마인지는 `score_bonus` 가 따로 안다.
+   * ⚠ ★못 잰 사람은 `null`★ 이다 (D-106). `score_games` 가 문턱에 못 미치면 그렇다.
+   * ⚠ ★`rating`(옛 Elo)을 지우지 않는다★ (CLAUDE.md 1-4) — 되돌릴 때 재계산이 없어야 한다.
+   *
+   * ⚠ ★`.default(null)` 을 둔다★ — 이 칸을 안 채우는 자리가 있다(mock·지난시즌).
+   *   기본값이 없으면 그 자리마다 손으로 적어야 하고 하나만 빠뜨려도 통째로 깨진다.
+   */
+  score_rating: z.number().nullable().default(null),
+  /** ★상위권 보정★ 으로 더해진 점수 (경기당). 안 받았으면 0 */
+  score_bonus: z.number().default(0),
+  /** 그 평균에 들어간 경기 수 */
+  score_games: Count.default(0),
   /** 배치고사 진행중이면 true (랭킹·래더 대신 `배치고사` 표기) */
   placement: z.boolean(),
   rank: Count.nullable(),

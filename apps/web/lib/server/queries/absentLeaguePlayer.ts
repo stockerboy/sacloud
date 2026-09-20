@@ -52,6 +52,8 @@ export async function absentLeaguePlayer(leagueId: string, playerId: string) {
     clanId: null as string | null,
     /* 래더가 없다. 0 으로 두고 화면이 「기록 없음」으로 그린다 */
     rating: 0,
+    /* ★명부에 없는 사람은 점수를 잰 적이 없다★ — 0으로 우기지 않는다 (D-106) */
+    scoreRating: null,
     win: 0,
     lose: 0,
     kill: 0,

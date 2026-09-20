@@ -1396,17 +1396,54 @@ export async function playerRankOf(leaguePlayer: {
   id: string
   leagueId: string
   rating: number
+  scoreRating: number | null
   placement: boolean
 }): Promise<{ rank: number | null; rankCount: number | null }> {
   /* **왕복 두 번을 한 번으로 줄였다** (2026-09-01 · D-239 후속) — `clanRankOf` 와 같은 이유다.
      모집단(`placement: false`)도 `rankOfFirstPlayer` 의 조건도 그대로다.
      여기에 `ACTIVE_CLAN` 을 넣지 않는 이유는 위 `rankOfFirstPlayer` 주석에 있다 —
      개인 랭킹 목록은 클랜으로 거르지 않는다 (D-107). 무소속 선수가 통째로 빠진다 */
+  /*
+   * ★★랭킹 목록과 ★같은 규칙★ 으로 센다★★ (2026-09-20)
+   *
+   * ── 무엇이 어긋나 있었나
+   *
+   *   목록(`PLAYER_RANK_ORDER`)은 ★점수 래더 먼저, 없으면 Elo★ 로 줄을 세우는데
+   *   이 함수는 ★Elo 만★ 봤다. 그래서 ★같은 선수가 두 등수★ 를 가졌다 —
+   *   기본정보에 「2207명중 517위」, 랭킹 화면에 가면 다른 자리.
+   *   ★화면의 두 숫자가 서로를 설명하지 못했다.★
+   *
+   * ── 규칙 (`PLAYER_RANK_ORDER` 와 한 글자도 다르지 않아야 한다)
+   *
+   *     ① 점수 래더 높은 순 — ★단, 못 잰 사람(`null`)은 맨 뒤★
+   *     ② 같으면 옛 Elo 래더 높은 순
+   *     ③ 그래도 같으면 `id` 작은 순
+   *
+   *   ⚠ ★「점수가 있는 사람은 없는 사람보다 무조건 앞」★ 이 `nulls: 'last'` 의 뜻이다.
+   *     SQL 로 옮기면 ★내 점수가 null 이면 점수 있는 사람이 전부 위★ 라는 뜻이 된다.
+   */
+  const myScore = leaguePlayer.scoreRating
   const [row] = await prisma.$queryRaw<{ rankCount: number; above: number }[]>`
     SELECT COUNT(*)::int AS "rankCount",
            COUNT(*) FILTER (
-             WHERE lp."rating" > ${leaguePlayer.rating}
-                OR (lp."rating" = ${leaguePlayer.rating} AND lp."id" < ${leaguePlayer.id})
+             WHERE
+               CASE
+                 /* 내가 점수를 못 쟀으면 — 점수 있는 사람은 전부 위다 */
+                 WHEN ${myScore}::int IS NULL THEN
+                   lp."scoreRating" IS NOT NULL
+                   OR lp."rating" > ${leaguePlayer.rating}
+                   OR (lp."rating" = ${leaguePlayer.rating} AND lp."id" < ${leaguePlayer.id})
+                 /* 점수를 쟀으면 — 점수 없는 사람은 전부 아래다 */
+                 ELSE
+                   lp."scoreRating" > ${myScore}::int
+                   OR (
+                     lp."scoreRating" = ${myScore}::int
+                     AND (
+                       lp."rating" > ${leaguePlayer.rating}
+                       OR (lp."rating" = ${leaguePlayer.rating} AND lp."id" < ${leaguePlayer.id})
+                     )
+                   )
+               END
            )::int AS "above"
       FROM "LeaguePlayer" lp
      WHERE lp."leagueId" = ${leaguePlayer.leagueId}

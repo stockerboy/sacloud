@@ -96,6 +96,24 @@ export async function getPlayerLeagues(playerId: string): Promise<PlayerLeagueEn
       id: true,
       leagueId: true,
       rating: true,
+      /*
+       * ★★기본정보의 래더는 ★점수 래더★ 다★★ (2026-09-20 사장님)
+       *
+       * > 「래더 총점만 기본정보에 써줘 ★보정대상은 보정후의 점수로 써줘★
+       * >  그리고 ★래더 3000점 부터 하지말고 그냥 0점부터★ 계산해」
+       *
+       *   두 마디가 ★같은 값★ 을 가리킨다 —
+       *   ・상위권 보정은 ★`scoreRating` 에만★ 들어 있다 (`scoreLadderBuild`)
+       *   ・`scoreRating` 은 ★0부터★ 다. 3000에서 시작하는 것은 옛 Elo(`rating`)다
+       *
+       *   그리고 실측으로 확인했다 — 33,567명 중 ★Elo 가 3000 아닌 사람은 4,034명★ 뿐이라
+       *   기본정보의 「래더 3,000점」 은 ★계산된 값이 아니라 아무도 안 건드린 초기값★ 이었다.
+       *
+       * ⚠ ★못 잰 사람은 `null` 이다★ — 0점으로 우기지 않는다 (D-106).
+       */
+      scoreRating: true,
+      scoreBonus: true,
+      scoreGames: true,
       win: true,
       lose: true,
       kill: true,
@@ -115,6 +133,10 @@ export async function getPlayerLeagues(playerId: string): Promise<PlayerLeagueEn
         league_player_id: row.id,
         clan: toClanSummaryOrNull(row.clan),
         rating: row.rating,
+        /* DB 는 ×100 정수다 — ★나누는 곳은 여기 하나★ (계약 주석과 같은 규칙) */
+        score_rating: row.scoreRating === null ? null : Math.round(row.scoreRating / 10) / 10,
+        score_bonus: Math.round(row.scoreBonus / 10) / 10,
+        score_games: row.scoreGames,
         win: row.win,
         lose: row.lose,
         win_rate: winRate(row.win, row.lose),

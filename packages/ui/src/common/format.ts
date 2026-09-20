@@ -120,10 +120,36 @@ export function formatTeamCounts(redCount: number, blueCount: number): string {
  *
  * ⚠ ★기준점을 여기 한 곳에만 적는다★ — 화면마다 3000을 적어 두면
  *   나중에 기준이 바뀔 때 한 곳만 고쳐지고 나머지가 남는다.
+ *
+ * ── ⚠ ★★이 함수는 옛 Elo(`rating`) 전용이다★★ (2026-09-20)
+ *
+ *   ★점수 래더(`score_rating`)에 쓰면 안 된다.★ 그 값은 ★경기당 평균 점수★ 라
+ *   애초에 0부터 시작한다(22.1 같은 값). 여기다 3000을 빼면 ★−2,977.9★ 가 된다.
+ *
+ *   점수 래더는 ★`formatScoreLadder`★ 가 적는다 — 바로 아래에 있다.
  */
 export const LADDER_BASE = 3000
 
 export function formatLadder(value: number): string {
   const v = Math.round(value) - LADDER_BASE
   return `${v > 0 ? '+' : ''}${NF.format(v)}`
+}
+
+/**
+ * ★★점수 래더를 적는다★★ (2026-09-20 사장님)
+ *
+ * > 「래더 총점만 기본정보에 써줘 ★보정대상은 보정후의 점수로 써줘★
+ * >  그리고 ★래더 3000점 부터 하지말고 그냥 0점부터★ 계산해」
+ *
+ *   사장님의 두 마디가 ★같은 값★ 을 가리킨다 —
+ *   ・상위권 보정은 ★`scoreRating` 에만★ 들어 있다
+ *   ・`scoreRating` 은 ★이미 0부터★ 다. 3000에서 시작하는 건 옛 Elo 쪽이다
+ *
+ *   그래서 ★뺄 기준점이 없다.★ 소수 한 자리 그대로 적는다.
+ *
+ * ⚠ ★`formatRating`(「32.9층」)을 쓰지 않는다★ — 층수는 Elo 를 100으로 나눈 표기라
+ *   경기당 평균 점수에는 뜻이 안 맞는다.
+ */
+export function formatScoreLadder(value: number): string {
+  return value.toFixed(1)
 }
