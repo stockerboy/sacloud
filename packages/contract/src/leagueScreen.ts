@@ -37,6 +37,19 @@ export interface LeagueScreenSpec {
   /** 클랜랭킹 화면이 있는가. 없으면 탭에서도 빠진다 */
   clanRank: boolean
   /**
+   * ★고용 가능 클랜 화면이 있는가★ (2026-09-20 사장님:
+   *   「지금 열산클랜으로 등록 돼있는 클랜목록 열산리그에 세번째파트로
+   *    고용가능클랜 으로 넣어」).
+   *
+   * 10산은 ★클랜 기록을 안 재는 리그★ 라 클랜랭킹이 없다. 대신 그 자리에
+   * 「고용 가능 클랜으로 진행하는 리그입니다」 라는 공지만 떠 있었는데,
+   * ★정작 그 클랜이 어디 있는지 볼 자리가 없었다.★ 이 칸이 그 자리를 연다.
+   *
+   * ⚠ ★순위가 아니다★ — 가나다순으로 늘어놓기만 한다. 이 리그는 클랜 기록을
+   *   안 재므로 줄을 세울 근거가 없다.
+   */
+  hireClans: boolean
+  /**
    * ★클랜랭킹 대신 띄울 공지★ (2026-09-12 사장님).
    *
    * > «SPL은 클랜 랭킹이 없다. 승격유력도 없다 그래서 이것을 공지하라»
@@ -142,6 +155,7 @@ export interface LeagueScreenSpec {
  */
 const WITH_LADDER: LeagueScreenSpec = {
   clanRank: true,
+  hireClans: false,
   clanRankNotice: null,
   scoreLeague: true,
   playerColumns: { rank: true, winRate: true, kd: true, rating: false },
@@ -199,6 +213,7 @@ export const WITH_TIERS: LeagueScreenSpec = { ...WITH_LADDER, showsTier: true }
  */
 export const NO_LADDER: LeagueScreenSpec = {
   clanRank: false,
+  hireClans: false,
   clanRankNotice: null,
   scoreLeague: false,
   playerColumns: { rank: false, winRate: true, kd: true, rating: false },
@@ -295,6 +310,8 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
     official: false,
     boardCategory: null,
     clanRank: false,
+    /* ★세 번째 탭 — 고용 가능 클랜★ (2026-09-20 사장님). 이 리그에만 있다 */
+    hireClans: true,
     clanRankNotice:
       '10산은 클랜 기록을 제공하지 않습니다 — 고용 가능 클랜으로 진행하는 리그입니다. 개인 기록·플레이 분석·경기 분석은 그대로 제공됩니다.',
   },

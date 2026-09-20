@@ -147,6 +147,18 @@ export function leagueTabs(leagueSlug: string) {
   // tabs.push({ label: '경기', href: leagueMatchListPath(leagueSlug) })
   /* 위 두 줄을 주석으로 두는 동안 쓰이지 않는다 — 되살릴 때 그대로 쓴다 */
   void leagueMatchListPath
+  /*
+   * ★고용 가능 클랜★ (2026-09-20 사장님:
+   *   「지금 열산클랜으로 등록 돼있는 클랜목록 열산리그에 세번째파트로
+   *    고용가능클랜 으로 넣어」).
+   *
+   * 10산은 클랜랭킹이 없어 탭이 ★최근경기 · 개인랭킹 둘뿐★ 이었다.
+   * 그래서 이 탭이 ★세 번째 자리★ 에 선다.
+   * ⚠ 리그마다 `if (slug === …)` 를 뿌리지 않는다 — `leagueScreen` 표 한 곳이 정한다.
+   */
+  if (leagueScreen(leagueSlug).hireClans) {
+    tabs.push({ label: '고용가능클랜', href: `${base}/hire` })
+  }
   /* 리그 안 게시판 (2026-09-02 지시 #14-2 — "게시판은 SPL메뉴 안에 있는거다").
      카테고리가 있는 리그에만 셋째 탭이 붙는다. 10mountain 은 없다 (`leagueScreen` 표가 정한다) */
   if (leagueBoardCategory(leagueSlug) !== null) {
