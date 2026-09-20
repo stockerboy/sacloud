@@ -528,7 +528,12 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
     /* 누가 누구인가 — 병영 usn → 우리 선수 · 그 경기 무기 */
     const who = new Map<string, Who>()
     for (const r of await prisma.$queryRaw<{ k: string; usn: string; w: number | null; pid: string }[]>`
-      SELECT m."sourceMatchId" AS k, substring(p."sourcePlayerId" from 5) AS usn,
+      SELECT
+             -- C1 경기는 sourceMatchId 앞에 접두가 붙어 있다. 열쇠는 원본 번호다
+             CASE WHEN m."sourceMatchId" LIKE 'c1-%'
+                  THEN substring(m."sourceMatchId" from 4)
+                  ELSE m."sourceMatchId" END AS k,
+             substring(p."sourcePlayerId" from 5) AS usn,
              s."weapon" AS w, p."id" AS pid
         FROM "MatchPlayerStat" s
         JOIN "Match" m ON m."id" = s."matchId"
