@@ -382,6 +382,14 @@ function loadLongZones(): { file: string | null; aLong: ZoneCells | null; bLong:
   }
 }
 
+/**
+ * ★한 라운드 몇 킬부터 «굵직한 장면» 인가★ (2026-09-20).
+ *
+ * 둘은 흔하다 — 라운드 6,975개에서 늘 나온다. ★셋★ 부터가 판을 뒤집은 장면이다.
+ * ⚠ 이 값을 낮추면 MVP 설명이 ★평범한 킬로 도배된다.★ 사장님이 싫어하시는 그 모양이다.
+ */
+const MVP_WHY_MULTI_KILLS = 3
+
 export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<PlayerHexBuildResult> {
   /*
    * ★★이 잡이 2분 벽에 걸려 죽고 있었다★★ (2026-09-20 실측)
@@ -979,6 +987,23 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           t.maxRoundTimes = 1
         } else if (n === t.maxRoundKills) {
           t.maxRoundTimes += 1
+        }
+        /*
+         * ★MVP 설명에 «한 라운드 몇 킬» 을 담는다★ (2026-09-20 사장님: 「mvp설명 없는 판도 있네」)
+         *
+         * ── 왜 이걸 담나
+         *   실측 — MVP 가 있는 경기 ★757건 중 31건(4.1%)★ 에 설명이 한 줄도 없었다.
+         *   그중 ★89%★ 가 ★라플킬만 쌓은 MVP★ 였다. 표본 하나는 ★13킬★ 을 했는데
+         *   전부 1점짜리 라플킬이라 담길 줄이 ★하나도 없었다.★
+         *
+         * ⚠ ★평범한 라플킬을 담는 것이 아니다★ — 사장님이 그건 세지 말라 하셨다
+         *   (「평범한 1점짜리 라플킬은 세지마」). ★한 라운드에 셋 이상★ 은
+         *   평범한 킬이 아니라 ★판을 뒤집은 장면★ 이라 담는다.
+         * ⚠ 점수(`p`)는 ★0★ 이다 — 이건 «무슨 일이 있었나» 를 적는 줄이지
+         *   점수를 더하는 줄이 아니다. 점수를 두 번 세면 안 된다.
+         */
+        if (n >= MVP_WHY_MULTI_KILLS) {
+          t.scoreLog.push({ r: Number(roundKey.split('|')[1]) || 0, k: `multi${n}`, p: 0 })
         }
       }
       /*

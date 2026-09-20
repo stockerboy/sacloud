@@ -39,12 +39,27 @@ const MVP_WHY_LABEL: Record<string, string> = {
   save2: '1대2 세이브',
   save3: '1대3 세이브',
   save4: '1대4 세이브',
+  /*
+   * ★한 라운드에 셋 이상 잡은 장면★ (2026-09-20 사장님: 「mvp설명 없는 판도 있네」).
+   *
+   *   실측 — MVP 가 있는 경기 ★757건 중 31건★ 에 설명이 한 줄도 없었고,
+   *   그중 ★89%★ 가 ★라플킬만 쌓은 MVP★ 였다 (13킬을 하고도 빈 판이 있었다).
+   * ⚠ ★평범한 라플킬을 적는 것이 아니다★ — 사장님이 그건 세지 말라 하셨다.
+   *   ★한 라운드 셋 이상★ 만 «굵직한 장면» 으로 본다.
+   */
+  multi3: '한 라운드 3킬',
+  multi4: '한 라운드 4킬',
+  multi5: '한 라운드 5킬',
 }
 /** 값이 큰 것부터 위에 둔다 — 눈이 먼저 가는 자리에 굵직한 장면이 온다 */
 const MVP_WHY_ORDER = [
+  /* ★한 라운드 5킬은 어떤 스나 다운보다 굵다★ — 맨 위에 둔다 */
+  'multi5', 'multi4',
   'rifleVsSniperEarly', 'rifleVsSniperLate',
   'sniperVsSniperEarly', 'sniperVsSniperLate',
   'save4', 'save3', 'save2', 'save1',
+  /* 3킬은 흔한 축이라 스나 다운·세이브 아래에 둔다 */
+  'multi3',
   'bombWin', 'bombLossB', 'bombLoss',
 ]
 
