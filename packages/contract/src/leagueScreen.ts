@@ -167,8 +167,13 @@ const WITH_LADDER: LeagueScreenSpec = {
   /* 모르는 리그에는 게시판이 없다 — 카테고리 행을 지어내지 않는다 */
   boardCategory: null,
   listed: true,
-  /* 모르는 리그는 옛 모습(깃발)으로 — 새 카드는 사장님이 IPL·PL 둘만 지정하셨다 */
-  homeHero: 'flag',
+  /*
+   * ⚠ ★깃발은 껐다★ (2026-09-20 사장님: 「깃발시스템 전부 지워 필요없어이제」).
+   *   옛값은 `'flag'` 였다 — ★코드도 화면도 지우지 않았다★ (CLAUDE.md 1-4).
+   *   `FlagMountain` · `flagPlant` 잡 · 깃발 API 는 그대로 있고,
+   *   ★이 한 글자만 `'flag'` 로 되돌리면 그날로 다시 나온다.★
+   */
+  homeHero: 'none',
 }
 
 /**
@@ -225,7 +230,8 @@ export const NO_LADDER: LeagueScreenSpec = {
   /* 10mountain 에는 게시판 탭이 없다 (지시 #14 · #16) */
   boardCategory: null,
   listed: true,
-  homeHero: 'flag',
+  /* ⚠ ★깃발은 껐다★ (2026-09-20 사장님). 옛값 `'flag'` — 되돌리려면 이 한 글자 */
+  homeHero: 'none',
 }
 
 const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {

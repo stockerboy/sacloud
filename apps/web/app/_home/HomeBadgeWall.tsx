@@ -105,6 +105,28 @@ export function HomeBadgeWall() {
                   <span className="block w-full break-keep text-center text-[10.5px] leading-[1.2] text-[var(--v2-text-dim)] max-md:text-[9.5px]">
                     {badge.label}
                   </span>
+                  {/*
+                    ★★무기 전용 배지는 그렇다고 적는다★★ (2026-09-20 사장님:
+                      「뱃지들중에 스나전용인거랑 라플전용인 뱃지는 표시해줘」)
+
+                    배지마다 받을 수 있는 무기가 정해져 있다 (`BADGES[].weapons`).
+                    ★둘 다 받을 수 있는 배지는 아무 말도 안 적는다★ — 그게 기본이라
+                    적으면 줄만 늘어난다. ★한쪽 전용일 때만★ 한 마디 붙인다.
+
+                    무기 값은 `1` 스나 · `0` 라플이다 (CLAUDE.md 5장).
+                  */}
+                  {badge.weapons.length === 1 ? (
+                    <span
+                      className={
+                        'mt-[1px] block rounded-[3px] px-[4px] py-[1px] text-center text-[9px] leading-[1.3] max-md:text-[8.5px] ' +
+                        (badge.weapons[0] === 1
+                          ? 'bg-[rgba(143,240,255,.12)] text-[#8ff0ff]'
+                          : 'bg-[rgba(255,154,61,.12)] text-[#ff9a3d]')
+                      }
+                    >
+                      {badge.weapons[0] === 1 ? '스나 전용' : '라플 전용'}
+                    </span>
+                  ) : null}
                 </Link>
               ))}
             </div>
