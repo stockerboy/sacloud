@@ -72,6 +72,8 @@ model User {
   linkClaims       PlayerLinkClaim[]
   /// 칭호 소유권 증명 (2026-09-01) — 게임 칭호를 `[용병]` 으로 바꾸면 승인된다
   titleChallenges  TitleChallenge[]
+  /// ★자기소개 인증★ (2026-09-20 사장님) — 칭호 인증과 나란히 산다
+  introChallenges  IntroChallenge[]
   /// 클랜 마스터 인증 신청 (2026-09-01 · D-253) — 스크린샷 1장을 사람이 본다
   clanMasterClaims ClanMasterClaim[]
   ownedLeagues     League[]
@@ -114,6 +116,67 @@ model UserPlayerLink {
 /// ── 기준은 `ouid` 다 (D-220)
 ///   닉네임으로 잇지 않는다. 닉은 식별자가 아니고 옛 닉은 남이 물려받는다.
 ///   `nickname` 은 **신청 당시 무엇을 넣었는지**를 남기는 증거일 뿐 판정 기준이 아니다.
+/**
+ * ★★자기소개 인증★★ — 병영수첩 프로필 자기소개란에 한 번 쓰는 문구를 적어 증명한다
+ * (2026-09-20 사장님)
+ *
+ * > 「여기 병영수첩에 자기아이디로 로그인하면 프로필들어와서 자기소개 바꿀 수있는데
+ * >  여기다가 3분안에 sacloud 라고 쓰면 인증성공하고 그 아이디 연동되고
+ * >  아이디 만들어지는 그런 인증 방법못하나」
+ *
+ * ── 왜 칭호 인증보다 나은가
+ *   ```
+ *     칭호 인증    게임을 켜야 한다 · 가진 칭호 중에서만 고를 수 있다 · 닉→ouid 조회 2번
+ *     자기소개     ★브라우저만 있으면 된다★ · ★아무 글자나 쓸 수 있다★ · 조회 1번
+ *   ```
+ *   그리고 우리는 그 선수의 계정번호(`Player.sourcePlayerId` = `BRK-<str_usn>`)를
+ *   ★이미 알고 있다.★ 닉네임으로 사람을 찾는 단계가 통째로 없어진다.
+ *
+ * ── 어떻게 안전한가
+ *   · 문구는 ★그때 한 번 만드는 임의값★ 이다. 남이 미리 써 둘 수 없다
+ *   · ★3분★ 이 지나면 죽는다 (사장님이 정하신 시간)
+ *   · 한 계정은 ★한 사람만★ 가져간다 (`usn` 유일)
+ *   · 시도 횟수를 센다 — 무한정 두드릴 수 없다
+ *
+ * ⚠ ★칭호 인증을 지우지 않았다★ (CLAUDE.md 1-4). 둘 다 살아 있고,
+ *   사람이 편한 쪽을 고르면 된다.
+ */
+model IntroChallenge {
+  id String @id @default(cuid())
+  userId String
+  /// 병영수첩 계정번호 (`str_usn`) — 우리가 이미 아는 값이다
+  usn String
+  /// 그 계정이 우리 표에서 가리키는 선수
+  playerId String?
+  /// 인증 당시 그 계정의 닉 — 다툼이 생기면 근거가 된다
+  nickname String?
+  /// ★이번에 적어야 하는 문구★ — 사람마다 다르다
+  expectedIntro String
+  /// 도전을 시작할 때 이미 적혀 있던 자기소개. 되돌릴 때 알려 준다
+  baselineIntro String?
+  /// pending | verified | expired
+  status String @default("pending")
+  issuedAt  DateTime @default(now())
+  expiresAt DateTime
+  attempts      Int       @default(0)
+  lastCheckedAt DateTime?
+  /// 마지막으로 읽은 자기소개 — 왜 실패했는지 사람이 볼 수 있어야 한다
+  lastSeenIntro String?
+  verifiedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /*
+   * ⚠ ★유일키를 걸지 않는다★ — 「한 계정은 한 사람만」 은 ★코드가 검사한다★
+   *   (칭호 인증도 같은 방식이다 · `takenBySomeoneElse`).
+   *   `(usn, status)` 에 유일키를 걸면 ★같은 계정의 만료된 도전이 두 번째부터 못 들어간다.★
+   *   사람은 인증을 여러 번 시도할 수 있어야 한다.
+   */
+  @@index([usn, status])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model TitleChallenge {
   id String @id @default(cuid())
 
