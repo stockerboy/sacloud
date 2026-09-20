@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ThumbIcon } from './ThumbIcon'
 import type { BoardListItem } from '@sacloud/contract'
 import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
@@ -32,17 +33,9 @@ const NUM = 'num'
 const ROW =
   'flex items-center gap-3 border-b border-b-line-soft py-3 transition-colors duration-100 hover:bg-card-2'
 
+/* ★따봉은 공용 부품이다★ — 목록·글상세·댓글이 같은 그림을 쓴다 (`ThumbIcon.tsx`) */
 function VoteIcon({ up }: { up: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 14 12"
-      className={`mr-1 h-2.5 w-3 self-center ${up ? 'text-meta' : 'text-faint'}`}
-      fill="currentColor"
-      aria-hidden
-    >
-      {up ? <path d="M7 0 14 9H0z" /> : <path d="M7 12 0 3h14z" />}
-    </svg>
-  )
+  return <ThumbIcon up={up} size={14} className={`mr-1 self-center ${up ? 'text-meta' : 'text-faint'}`} />
 }
 
 function Row({ item, basePath }: { item: BoardListItem; basePath?: string }) {

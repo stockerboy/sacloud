@@ -42,7 +42,16 @@ export function PostForm({
 }) {
   const [title, setTitle] = useState(initialTitle)
   const [content, setContent] = useState(initialContent)
-  const [anonymous, setAnonymous] = useState(false)
+  /*
+   * ★★기본은 익명이다★★ (2026-09-20 사장님)
+   *
+   * > 「기본적으로 무조건 익명으로 써지게(글이든 댓글이든) 하고
+   * >  자기가 원하면 익명 풀고 쓸 수 있게 만들어」
+   *
+   *   옛 기본값은 ★실명(false)★ 이었다 — 체크를 안 하면 닉네임이 그대로 나갔다.
+   *   에브리타임도 익명이 기본이다. ★밝히고 싶은 사람이 체크를 푼다.★
+   */
+  const [anonymous, setAnonymous] = useState(true)
   const [password, setPassword] = useState('')
 
   const canSubmit =

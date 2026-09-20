@@ -44,14 +44,31 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
     onSuccess: invalidate,
   })
 
+  /*
+   * ★★댓글도 기본이 익명이다★★ (2026-09-20 사장님)
+   *
+   * > 「댓글이 익명으로 안써져 기본적으로 무조건 익명으로 써지게(글이든 댓글이든)
+   * >  하고 자기가 원하면 익명 풀고 쓸 수 있게 만들어」
+   *
+   *   옛 판은 ★`disclose_type: 0` 을 고정★ 으로 보냈다 — 체크를 하든 말든 실명이었다.
+   *   부품(`CommentForm`)은 체크값을 넘길 준비가 이미 되어 있었는데 ★호출부가 버렸다.★
+   *   `CommentList.tsx` 주석에도 「지금 호출부가 0 을 고정으로 보낸다」 고 적혀 있었다.
+   *
+   * ⚠ `disclose_type` — ★1 이 익명, 0 이 실명★ 이다 (`packages/contract` 의 `DiscloseType`).
+   */
   const addComment = useMutation({
-    mutationFn: (input: { parent_id: string | null; content: string; password: string | null }) =>
+    mutationFn: (input: {
+      parent_id: string | null
+      content: string
+      password: string | null
+      anonymous: boolean
+    }) =>
       apiSend('commentCreate', {
         body: {
           board_id: id,
           parent_id: input.parent_id,
           content: input.content,
-          disclose_type: 0,
+          disclose_type: input.anonymous ? 1 : 0,
           password: input.password,
         },
       }),
@@ -71,13 +88,16 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
           loading={!comments.data}
           onVote={(commentId, type) => commentVote.mutate({ commentId, type })}
           onReply={(parentId, content) =>
-            addComment.mutate({ parent_id: parentId, content, password: null })
+            /* ★답글도 익명이 기본★ — 답글 칸에는 체크가 없다 (2026-09-20 사장님) */
+            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: true })
           }
         />
         <CommentForm
           requirePassword={!post.data.data.login}
-          onSubmit={(content, password) =>
-            addComment.mutate({ parent_id: null, content, password })
+          /* ★체크를 보여 준다★ — 이제 값을 실제로 보내므로 화면이 거짓말하지 않는다 */
+          showAnonymousToggle
+          onSubmit={(content, password, anonymous) =>
+            addComment.mutate({ parent_id: null, content, password, anonymous })
           }
         />
       </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ThumbIcon } from './ThumbIcon'
 import type { Comment, CommentReply } from '@sacloud/contract'
 import { RelativeTime } from '../common/RelativeTime'
 import { EmptyState } from '../common/EmptyState'
@@ -76,7 +77,7 @@ function VoteRow({
         aria-pressed={comment.like_type === 1}
         className={`${base} ${comment.like_type === 1 ? 'text-accent' : 'text-faint'}`}
       >
-        <span aria-hidden>▲</span> {formatCount(comment.like_count)}
+        <ThumbIcon up size={13} /> {formatCount(comment.like_count)}
       </button>
       <button
         type="button"
@@ -84,7 +85,7 @@ function VoteRow({
         aria-pressed={comment.like_type === -1}
         className={`${base} ${comment.like_type === -1 ? 'text-accent' : 'text-faint'}`}
       >
-        <span aria-hidden>▼</span> {formatCount(comment.dislike_count)}
+        <ThumbIcon up={false} size={13} /> {formatCount(comment.dislike_count)}
       </button>
     </div>
   )

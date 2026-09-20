@@ -557,20 +557,41 @@ async function findBoardRow(boardId: string): Promise<BoardDetailRow | null> {
 /**
  * 글 상세.
  *
- * 조회 시 `viewCount`를 올린다. **같은 요청자가 연속으로 올리는 것을 막는 규칙은 원본 [미확인]**
- * 이라 지금은 단순 증가로 둔다 (새로고침할 때마다 오른다).
+ * ── ★★새로고침만 해도 조회수가 오르던 것★★ (2026-09-20 사장님)
+ *
+ * > 「게시판에서 새로고침만 계속 해도 조회수가 오르는 문제도 해결해줘」
+ *
+ *   옛 판은 ★들어올 때마다 무조건 +1★ 이었다 (원본 규칙이 [미확인]이라 단순하게 뒀다).
+ *   그러면 ★글쓴이가 새로고침 몇 번으로 조회수를 만들 수 있다.★ Hot 점수에도
+ *   조회수가 들어가므로 인기글까지 만들어진다.
+ *
+ *   ★같은 사람이 같은 글을 다시 열면 한동안 안 올린다.★ 쓰기 제한에 쓰던
+ *   그 장치(`consumeWriteQuota`)를 그대로 쓴다 — 창이 지나면 다시 한 번 오른다.
+ * ⚠ ★막는 것이 아니라 세지 않는 것이다.★ 글은 언제나 정상으로 보인다.
  */
+
+/**
+ * ★같은 사람의 같은 글은 이 시간 안에 한 번만 센다★ (2026-09-20).
+ *
+ * 30분으로 둔다 — 댓글을 보러 몇 번 오가는 동안은 한 번이고,
+ * 한참 뒤 다시 들어오면 그건 ★새 방문★ 이라고 볼 만하다.
+ */
+const VIEW_COUNT_WINDOW_SECONDS = 30 * 60
+
 export async function getBoard(boardId: string, request: Request): Promise<Board | null> {
   const row = await findBoardRow(boardId)
   if (!row) return null
 
-  await prisma.board.update({ where: { id: boardId }, data: { viewCount: { increment: 1 } } })
-
   const [userId, key] = await Promise.all([currentUserId(request), voterKey(request)])
+  const counted = await consumeWriteQuota(`board:view:${boardId}:${key}`, VIEW_COUNT_WINDOW_SECONDS)
+  if (counted) {
+    await prisma.board.update({ where: { id: boardId }, data: { viewCount: { increment: 1 } } })
+  }
+
   const likeType = await voteTypeOf('board', boardId, key)
 
   return toBoard(
-    { ...row, viewCount: row.viewCount + 1 },
+    { ...row, viewCount: row.viewCount + (counted ? 1 : 0) },
     isOwner(row, userId),
     likeType,
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { ThumbIcon } from './ThumbIcon'
 import type { Board } from '@sacloud/contract'
 import { sanitizePostContent } from './sanitize'
 import { formatCount } from '../common/format'
@@ -59,7 +60,7 @@ function VoteButton({
           : 'border-line text-meta hover:border-meta hover:text-text-strong'
       }`}
     >
-      <span aria-hidden>{up ? '▲' : '▼'}</span>
+      <ThumbIcon up={up} size={15} />
       <span className="num">{formatCount(count)}</span>
       <span className="sr-only">{up ? '추천' : '비추천'}</span>
     </button>
