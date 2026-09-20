@@ -1216,6 +1216,17 @@ export async function clanRankOf(leagueClan: {
   /* ★판수 문턱을 넘겼나★ 를 여기서 본다 (2026-09-20) — 목록과 같은 조건이어야 한다 */
   win: number
   lose: number
+  /**
+   * ★감춘 클랜을 빼려면 리그 slug 가 필요하다★ (2026-09-20 비판 검수에서 잡았다).
+   *
+   *   목록(`getClanRanks`)은 `activeClanIn(slug)` 으로 ★그 리그에서 감춘 클랜★ 을 뺀다.
+   *   그런데 이 분모는 그 조건이 ★없었다.★ 그래서 목록에 없는 클랜이 분모에 섞여
+   *   「3위 / 7팀」 인데 목록에는 여섯 팀뿐인 일이 생긴다 (D-147 과 같은 병).
+   *
+   * ⚠ 안 주면 ★감춘 클랜을 못 뺀다★ — 옛 호출부가 깨지지 않게 선택 칸으로 둔다.
+   *   새로 부르는 곳은 반드시 준다.
+   */
+  leagueSlug?: string
 }): Promise<{ rank: number | null; rankCount: number | null }> {
   /* `rankCount` 는 클랜랭킹의 **모집단 크기**다. 랭킹 목록(`getClanRanks`)이
      비활성 클랜을 빼고 내보내므로 분모도 같은 집합이어야 한다.
@@ -1232,6 +1243,12 @@ export async function clanRankOf(leagueClan: {
    *
    *   ⚠ 배치고사면 예전에도 `rankCount` 를 **읽고 나서** 버렸다. 지금도 읽고 버린다 —
    *     한 질의라 버리는 값이 공짜다. 밖으로 나가는 값은 그대로 `null` 이다. */
+  /*
+   * ★감춘 클랜 목록★ — 리그 slug 를 줬을 때만 뺄 수 있다 (2026-09-20 비판 검수).
+   * ⚠ 빈 배열이면 SQL 의 그 줄이 아무도 안 막는다 — 옛 호출부가 그대로 돈다.
+   */
+  const hiddenSlugs = leagueClan.leagueSlug === undefined ? [] : [...hiddenClanSlugsIn(leagueClan.leagueSlug)]
+
   /*
    * ★판수 문턱을 목록과 같이 건다★ (2026-09-20 사장님: 「판수 없는 클랜 진짜 싫어해」)
    *
@@ -1254,8 +1271,10 @@ export async function clanRankOf(leagueClan: {
        AND lc."placement" = false
        AND lc."expelledAt" IS NULL
        AND c."active" = true
-       /* ★판수 문턱★ — 목록(getClanRanks)과 같은 조건이다. 아래 주석을 보라 */
+       /* ★판수 문턱★ — 목록(getClanRanks)과 같은 조건이다. 위 주석을 보라 */
        AND lc."win" + lc."lose" >= ${CLAN_RANK_MIN_GAMES}
+       /* ★감춘 클랜★ — 목록도 뺀다 (O-044). 빈 목록이면 이 줄이 아무도 안 막는다 */
+       AND (${hiddenSlugs.length} = 0 OR c."slug" <> ALL(${hiddenSlugs}::text[]))
   `
   const rankCount = row?.rankCount ?? 0
   if (leagueClan.placement) return { rank: null, rankCount: null }

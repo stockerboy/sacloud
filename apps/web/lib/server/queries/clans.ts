@@ -134,7 +134,8 @@ export async function getClanLeagues(clanSlug: string): Promise<ClanLeagueEntry[
 
   return Promise.all(
     rows.map(async (row) => {
-      const rank = await clanRankOf(row)
+      /* ★감춘 클랜을 분모에서 뺀다★ — 목록과 같은 조건 (2026-09-20 비판 검수) */
+      const rank = await clanRankOf({ ...row, leagueSlug: row.league.slug })
       return {
         league: toLeagueSummary(row.league),
         league_clan_id: row.id,

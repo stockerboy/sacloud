@@ -481,6 +481,8 @@ export async function getLeagueClanShow(
       /* ★판수 문턱★ (2026-09-20) — 목록과 같은 조건으로 판정해야 한다 */
       win: leagueClan.win,
       lose: leagueClan.lose,
+      /* ★감춘 클랜을 분모에서 뺀다★ — 목록과 같은 조건 (2026-09-20 비판 검수) */
+      leagueSlug,
     }),
     buildRecordSummary(leagueClan.leagueId, where, leagueClan.id, null),
     /* 클랜 지표(SITE_SPEC_V2 5절). 요약과 **같은 모집단**을 쓴다 — 규칙은 그 파일에 있다 */
