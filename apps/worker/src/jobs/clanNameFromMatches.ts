@@ -40,6 +40,16 @@ import { log } from '../lib/log.js'
  *   ⚠ ★빈 이름으로 덮지 않는다.★
  */
 
+/** 마크를 안 단 클랜이 쓰는 그림 — ★이것으로 덮지 않는다★ */
+const EMPTY_MARK = 'empty-clanmark'
+const isEmptyMark = (url: string): boolean => url.includes(EMPTY_MARK)
+
+const str = (v: unknown): string | null => {
+  if (typeof v !== 'string') return null
+  const s = v.trim()
+  return s === '' ? null : s
+}
+
 /** 클랜마다 최근 몇 경기를 보나 — 많을수록 확실하지만 느리다 */
 const LOOK_BACK = 8
 
@@ -58,18 +68,20 @@ export interface ClanNameFromMatchesResult {
   renamed: number
   /** 이름을 못 고른 수 (원문이 없거나 갈렸다) */
   unsure: number
+  /** 마크가 달라 고친 수 */
+  marked: number
   samples: { slug: string; before: string; after: string }[]
 }
 
 export async function runClanNameFromMatches(input: {
   confirm: boolean
 }): Promise<ClanNameFromMatchesResult> {
-  const result: ClanNameFromMatchesResult = { clans: 0, renamed: 0, unsure: 0, samples: [] }
+  const result: ClanNameFromMatchesResult = { clans: 0, renamed: 0, unsure: 0, marked: 0, samples: [] }
 
   /* 살아 있는 클랜만 — 리그에 등록된 곳이다 */
   const clans = await prisma.clan.findMany({
     where: { active: true, leagueClans: { some: {} } },
-    select: { id: true, slug: true, name: true },
+    select: { id: true, slug: true, name: true, markBgUrl: true, markFrontUrl: true },
   })
   result.clans = clans.length
 
@@ -92,12 +104,21 @@ export async function runClanNameFromMatches(input: {
 
     /* 나온 횟수를 센다 — ★그 클랜은 늘 나오고 상대는 바뀐다★ */
     const hits = new Map<string, number>()
+    /** 이름 → 그 이름과 같은 줄에 있던 마크 (가장 최근 것) */
+    const markOf = new Map<string, { bg: string; front: string }>()
     for (const row of rows) {
-      const p = row.payload as { red_clan_name?: unknown; blue_clan_name?: unknown } | null
-      for (const raw of [p?.red_clan_name, p?.blue_clan_name]) {
+      const p = row.payload as Record<string, unknown> | null
+      for (const side of ['red', 'blue'] as const) {
+        const raw = p?.[`${side}_clan_name`]
         const name = typeof raw === 'string' ? raw.trim() : ''
         if (name === '') continue
         hits.set(name, (hits.get(name) ?? 0) + 1)
+        if (markOf.has(name)) continue
+        const bg = str(p?.[`${side}_clan_mark1`])
+        const front = str(p?.[`${side}_clan_mark2`])
+        /* ⚠ ★빈 마크는 안 담는다★ — 마크를 안 단 클랜이 그 자리일 수 있다 */
+        if (bg === null || front === null || isEmptyMark(bg) || isEmptyMark(front)) continue
+        markOf.set(name, { bg, front })
       }
     }
 
@@ -119,27 +140,46 @@ export async function runClanNameFromMatches(input: {
       result.unsure += 1
       continue
     }
-    if (best === clan.name) continue
 
-    result.renamed += 1
+    /* ★마크★ — 이름이 그대로여도 마크만 바뀌었을 수 있다 */
+    const mark = markOf.get(best) ?? null
+    const markChanged =
+      mark !== null && (mark.bg !== clan.markBgUrl || mark.front !== clan.markFrontUrl)
+    const nameChanged = best !== clan.name
+    if (!nameChanged && !markChanged) continue
+
+    if (nameChanged) result.renamed += 1
+    if (markChanged) result.marked += 1
     if (result.samples.length < 20) {
-      result.samples.push({ slug: clan.slug, before: clan.name, after: best })
+      result.samples.push({
+        slug: clan.slug,
+        before: clan.name,
+        after: nameChanged ? best : `${best} (마크만)`,
+      })
     }
     if (input.confirm) {
-      await prisma.clan.update({ where: { id: clan.id }, data: { name: best } })
+      await prisma.clan.update({
+        where: { id: clan.id },
+        data: {
+          ...(nameChanged ? { name: best } : {}),
+          ...(markChanged && mark !== null ? { markBgUrl: mark.bg, markFrontUrl: mark.front } : {}),
+        },
+      })
       /*
        * ★명부에 적힌 이름도 같이 고친다★ — 안 고치면 `clanAffiliation` 이
        * ★옛 이름으로 되돌린다.★ 그쪽은 명부를 진실로 보기 때문이다.
        */
-      await prisma.barracksClanMember.updateMany({
-        where: { clanSlug: clan.slug },
-        data: { clanName: best },
-      })
+      if (nameChanged) {
+        await prisma.barracksClanMember.updateMany({
+          where: { clanSlug: clan.slug },
+          data: { clanName: best },
+        })
+      }
     }
   }
 
   log(
-    `클랜 이름 — 살펴봄 ${result.clans} · 고침 ${result.renamed} · 못 고름 ${result.unsure}` +
+    `클랜 이름 — 살펴봄 ${result.clans} · 이름 ${result.renamed} · 마크 ${result.marked} · 못 고름 ${result.unsure}` +
       (input.confirm ? '' : ' (미리보기)'),
   )
   for (const s of result.samples) log(`  ${s.before} → ${s.after} (${s.slug})`)
