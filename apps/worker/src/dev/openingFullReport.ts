@@ -124,7 +124,9 @@ const hexRows = await prisma.matchPlayerHex.findMany({
     fewScore: true,
     crackScore: true,
     atkScore: true,
+    atkRounds: true,
     defScore: true,
+    defRounds: true,
     firstKills: true,
     burstRounds: true,
     tradeKills: true,
@@ -185,7 +187,7 @@ interface Person {
   tally: Record<string, number>
 }
 
-const out: unknown[] = []
+const out: Record<string, unknown>[] = []
 
 for (const key of KEYS) {
   const m = matches.find((x) => x.sourceMatchId === key)
@@ -405,5 +407,47 @@ for (const key of KEYS) {
   })
 }
 
-console.info(JSON.stringify({ usn: USN, matches: out }, null, 1))
+/* ── ★여섯 축★ — 6경기 합으로 낸다 ──────────────────────────
+ *
+ * ⚠ ★시즌 육각은 못 쓴다★ — 사장님은 5경기뿐이라 문턱을 못 넘어 전부 `null` 이다
+ *   (백분위는 모집단이 있어야 나온다). 그래서 ★이 6경기 안에서의 원값★ 을 그린다.
+ *
+ * ⚠ ★식은 `playerHexScore.axisValuesOf` 와 같다.★ 새로 짜지 않았다 —
+ *   두 곳이 어긋나면 화면의 같은 이름이 두 뜻이 된다.
+ */
+const myId = idOfUsn.get(USN) ?? null
+const myHexes = myId === null ? [] : hexRows.filter((h) => h.playerId === myId)
+const sum = (f: (h: (typeof myHexes)[number]) => number): number => myHexes.reduce((s, h) => s + f(h), 0)
+const round1 = (n: number): number => Math.round(n * 10) / 10
+const rate = (total: number, rounds: number): number | null => (rounds <= 0 ? null : round1((total / rounds) * 10))
+const games = myHexes.length
+
+const axes = games === 0 ? null : {
+  /* 세이브 — 받은 점수의 ★총합★ (여섯 중 이 축만 총합이다) */
+  save: sum((h) => h.fewScore),
+  /* 스나싸움 — 롱 안 스나 대 스나 승률. 재료가 경기별로 안 쌓여 여기선 못 낸다 */
+  duel: null as number | null,
+  /* A어택 — 공격(레드) 라운드에서 딴 점수의 평균 */
+  chance: rate(sum((h) => h.atkScore), sum((h) => h.atkRounds)),
+  /* 크랙 — 판당 크랙 점수 */
+  safe: round1((sum((h) => h.crackScore) / games) * 10),
+  /* 방어율 — 수비(블루) 라운드에서 딴 점수의 평균 */
+  gap: rate(sum((h) => h.defScore), sum((h) => h.defRounds)),
+  /* 소수싸움 — 판당 소수싸움 점수 */
+  outnumbered: round1((sum((h) => h.fewScore) / games) * 10),
+  /* ★선짤 — 새 축★. 판당 선짤 점수 */
+  opening: round1(out.reduce((acc: number, m) => acc + ((m.me as { opening?: number } | null)?.opening ?? 0), 0) / games),
+  /* 되짚을 재료 */
+  raw: {
+    atkScore: sum((h) => h.atkScore), atkRounds: sum((h) => h.atkRounds),
+    defScore: sum((h) => h.defScore), defRounds: sum((h) => h.defRounds),
+    crackScore: sum((h) => h.crackScore), fewScore: sum((h) => h.fewScore),
+    aloneWon: sum((h) => h.aloneWon), aloneRounds: sum((h) => h.aloneRounds),
+    outRounds: sum((h) => h.outRounds), firstKills: sum((h) => h.firstKills),
+    kills: sum((h) => h.kills), rounds: sum((h) => h.rounds),
+    score: sum((h) => h.score),
+  },
+}
+
+console.info(JSON.stringify({ usn: USN, matches: out, axes, games }, null, 1))
 await prisma.$disconnect()
