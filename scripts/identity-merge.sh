@@ -15,11 +15,20 @@ cd /root/sacloud
 
 # ⚠ ★커서를 들고 간다★ — 없으면 늘 같은 앞 300명만 돈다 (실제로 그렇게 만들었다가 잡았다)
 AFTER=""
-for i in $(seq 1 60); do
-  n=$(pgrep -cf "tsx src/cli.ts" || true)
-  if [ "${n:-0}" -gt 1 ]; then
-    echo "[$(date +%H:%M)] 다른 잡이 도는 중($n) — 90초 쉰다"
-    sleep 90
+# ── ⚠ ★아래가 옛 판이다★ — 지우지 않는다 (CLAUDE.md 1-4).
+#      「다른 잡이 도나」 로 비켰는데, 예약이 5분마다 뜨니 ★거의 항상 무언가 돈다.★
+#      이름표 채우기에서 같은 함정을 ★두 번★ 밟았다 (30분 동안 한 줄도 못 채웠다).
+#
+#        n=$(pgrep -cf "tsx src/cli.ts" || true)
+#        if [ "${n:-0}" -gt 1 ]; then … 90초 쉰다 … fi
+#
+#   ★봐야 할 것은 「누가 도나」 가 아니라 「사이트가 느린가」 다.★
+for i in $(seq 1 200); do
+  secs=$(curl -s -o /dev/null -m 12 -w '%{time_total}' https://3rdcloud.my/api/health 2>/dev/null)
+  ms=$(echo "${secs:-0}" | awk '{printf "%d", $1 * 1000}')
+  if [ "${ms:-0}" -gt 3000 ]; then
+    echo "[$(date +%H:%M)] ★사이트가 느리다 (${ms}ms) — 60초 비킨다★"
+    sleep 60
     continue
   fi
   if [ -z "$AFTER" ]; then
@@ -27,7 +36,7 @@ for i in $(seq 1 60); do
   else
     line=$(pnpm --filter @sacloud/worker nexon barracks-identity-merge --confirm --limit 300 --after "$AFTER" 2>&1 | grep "쪼개진사람" || true)
   fi
-  echo "[$(date +%H:%M)] $line"
+  echo "[$(date +%H:%M)] ${ms}ms · $line"
   case "$line" in
     *"다음커서=끝"*) echo "[$(date +%H:%M)] ★전부 훑었다★"; break ;;
   esac
