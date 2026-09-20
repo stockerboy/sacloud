@@ -36,6 +36,7 @@ import { runUnifiedProject } from './jobs/unifiedProject.js'
 import { rateLimitSweep } from './jobs/rateLimitSweep.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runIdentityFromBattlelog } from './jobs/identityFromBattlelog.js'
+import { runC1LeagueBuild } from './jobs/c1LeagueBuild.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
 import {
   countSharedPasswordAccounts,
@@ -3875,6 +3876,15 @@ async function main(): Promise<number> {
      *   병영수첩에서 ★안 바뀌는 것은 계정 하나★ 다. 그걸 알아야 닉·클랜을 따라간다.
      *   실측 — 선수 26,497명 중 계정을 아는 사람이 4,347명(16%)뿐이었다.
      */
+    /*
+     * ★C1 — 개고수 전용 리그★ (2026-09-20 밤 사장님)
+     *   그 10곳끼리 한 경기만 골라 ★독립된 리그★ 로 담는다. IPL 은 안 건드린다.
+     */
+    case 'c1-build': {
+      const r = await runC1LeagueBuild({ confirm: boolFlag(args, 'confirm') })
+      return r.missing.length === 0 ? 0 : 1
+    }
+
     case 'identity-from-battlelog': {
       const r = await runIdentityFromBattlelog({
         confirm: boolFlag(args, 'confirm'),
