@@ -112,8 +112,21 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
   const hex = data.hex
   /* 점수 리그(hex 가 오는 리그)는 ★래더 등수를 안 쓴다★ — 10판 미만이면 등수 없음. 옛 판(래더로 떨어짐)은 아래 주석 (QA 회차 2 · 2026-09-11)
      const rank = hex?.score_rank ?? data.rank */
-  const rank = hex ? hex.score_rank : data.rank
-  const rankTotal = hex ? hex.score_total : data.rank_count
+  /*
+   * ★★통합 순위를 쓴다★★ (2026-09-20 비판 검수에서 잡았다)
+   *
+   *   `score_rank` 는 ★그 무기 안에서만★ 의 등수이고, 게다가 ★판수 문턱(15판)을
+   *   안 거른 모집단★ 의 등수다 (워커의 `rankBy` 가 판수를 안 본다).
+   *   `score_rank_all` 은 서버가 ★문턱을 걸어 다시 센★ 값이다 (`records.ts`).
+   *
+   *   그래서 같은 선수 화면에서 ★머리 카드는 「38위 / 750명」, 이 띠는 「15위 / 140명」★
+   *   이 나왔다. 2026-09-12 에 사장님이 「★통합 순위로 넣어★」 하셔서 머리 카드만
+   *   고쳤고 ★이 파일은 안 닿았다.★
+   *
+   * ⚠ 없으면 옛 값으로 떨어진다 — 빈 칸을 만들지 않는다.
+   */
+  const rank = hex?.score_rank_all ?? (hex ? hex.score_rank : data.rank)
+  const rankTotal = hex?.score_total_all ?? (hex ? hex.score_total : data.rank_count)
   const ink = rank === null ? V3.textMuted : rankColor(rank)
   const scoreShown = hex?.score !== null && hex?.score !== undefined
   const weaponLabel = mainWeapon === null ? null : (WEAPON_LABEL[mainWeapon] ?? null)

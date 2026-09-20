@@ -17,8 +17,12 @@
 import { prisma, Prisma } from '@sacloud/db'
 import {
   BADGES,
-  PLAYER_HEX_BADGE_RANK,
-  PLAYER_HEX_BADGE_RANK_DUEL,
+  /*
+   * ★지금 쓰는 문턱★ — 모집단의 2% (`playerHex.ts` 한 곳이 정한다).
+   * ⚠ 옛 고정 컷(`PLAYER_HEX_BADGE_RANK`·`..._DUEL`)은 ★계약에 그대로 살아 있다★
+   *   (CLAUDE.md 1-4). 되돌리려면 그 둘을 다시 들여와 쓰면 된다.
+   */
+  playerHexBadgeCut,
   type BadgeKey,
   type BadgeWeapon,
   type TraitAxisKey,
@@ -141,11 +145,38 @@ export async function badgeOwnersOf(
   rows.sort((a, b) => b.value - a.value || a.nickname.localeCompare(b.nickname))
   rows.forEach((r, i) => { r.rank = i + 1 })
 
-  const cut = key === 'snipeDuel' || key === 'shotter' ? PLAYER_HEX_BADGE_RANK_DUEL : PLAYER_HEX_BADGE_RANK
+  /*
+   * ★★배지 문턱은 `playerHexBadgeCut` 하나가 정한다★★ (2026-09-20 비판 검수에서 잡았다)
+   *
+   * ── 무엇이 어긋나 있었나
+   *
+   *   2026-09-18 에 배지 기준이 ★상위 2%★ 로 바뀌었는데 ★이 파일에 안 닿았다.★
+   *   여기는 옛 고정값(5위/3위)을 그대로 쓰고 있었다.
+   *
+   *   그래서 IPL 통합축 12위 선수가 —
+   *     선수 페이지  배지 ★달림★ (2% = 18위까지)
+   *     배지 목록    ★배지 없는 사람★ (12 > 5)
+   *
+   *   `rankColors.ts` 주석이 이 실패를 미리 적어 뒀다 —
+   *   「두 곳이 갈라지면 «노란데 배지가 없네» 가 된다」. ★그대로 됐었다.★
+   *
+   * ⚠ ★무기마다 따로 센다★ — 배지는 무기 안에서의 등수로 달린다.
+   *   그래서 문턱도 ★그 무기의 사람 수★ 로 낸다.
+   * ⚠ ★`key` 는 축 이름으로 넘긴다★ — 계약은 축 이름(`duel`)으로 짝짓는데
+   *   여기는 배지 이름(`snipeDuel`·`shotter`)으로 짝지어 왔다. 배지가 하나 더 생기면
+   *   목록 쪽만 모른다.
+   */
+  const perWeapon: Record<number, number> = { 0: 0, 1: 0 }
+  for (const r of rows) perWeapon[r.weapon] = (perWeapon[r.weapon] ?? 0) + 1
+  /* ⚠ ★축은 무기마다 다를 수 있다★ (`axisOf(key, weapon)`) — 그래서 무기별로 구한다 */
+  const cutOf: Record<number, number> = {
+    0: playerHexBadgeCut(axisOf(key, 0) ?? key, perWeapon[0] ?? 0),
+    1: playerHexBadgeCut(axisOf(key, 1) ?? key, perWeapon[1] ?? 0),
+  }
   const seen: Record<number, number> = { 0: 0, 1: 0 }
   for (const r of rows) {
     seen[r.weapon] = (seen[r.weapon] ?? 0) + 1
-    r.hasBadge = (seen[r.weapon] as number) <= cut
+    r.hasBadge = (seen[r.weapon] as number) <= (cutOf[r.weapon] ?? 0)
   }
 
   return {

@@ -130,7 +130,11 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
   const sel = rows.find((r) => r.tier === tier) ?? null
   const hex = data.hex
   const score = hex?.score ?? null
-  const scoreRank = hex?.score_rank ?? null
+  /*
+   * ★통합 순위★ (2026-09-20 비판 검수) — `score_rank` 는 무기 안에서만의 등수이고
+   * ★판수 문턱을 안 거른★ 값이다. 머리 카드와 어긋나던 자리다.
+   */
+  const scoreRank = hex?.score_rank_all ?? hex?.score_rank ?? null
   const games = sel?.games ?? 0
   const hasData = games >= 10
   const mvpRate = sel && games > 0 ? (sel.mvp / games) * 100 : null
