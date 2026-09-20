@@ -50,6 +50,19 @@ const MVP_WHY_LABEL: Record<string, string> = {
   multi3: '한 라운드 3킬',
   multi4: '한 라운드 4킬',
   multi5: '한 라운드 5킬',
+  /*
+   * ★선짤 점수★ (2026-09-20 사장님) — 레드/블루마다 상벌이 다르다.
+   *
+   * ⚠ ★「선짤」 이라는 말만으로는 뜻이 안 통한다★ — 같은 선짤이라도 레드에서 낸 것과
+   *   블루에서 스나를 잡은 것은 ★받는 점수가 다르다.★ 그래서 진영을 함께 적는다.
+   * ⚠ ★0점짜리는 애초에 안 담긴다★ (워커) — 22초를 넘겼거나 라플을 잡아 상이 없는 줄은
+   *   적어 봐야 줄만 길어진다. 「평범한 1점짜리 라플킬은 세지 마라」 와 같은 규칙이다.
+   */
+  openRedKill: '레드 라운드초반 선짤',
+  openRedDeath: '레드 라운드초반 선짤당함',
+  openBlueSniperKill: '블루 상대 스나 선짤',
+  openBlueSniperDeath: '블루 스나가 선짤당함',
+  openBlueRifleDeath: '블루 라플이 선짤당함',
 }
 /** 값이 큰 것부터 위에 둔다 — 눈이 먼저 가는 자리에 굵직한 장면이 온다 */
 const MVP_WHY_ORDER = [
@@ -61,6 +74,9 @@ const MVP_WHY_ORDER = [
   /* 3킬은 흔한 축이라 스나 다운·세이브 아래에 둔다 */
   'multi3',
   'bombWin', 'bombLossB', 'bombLoss',
+  /* ★선짤★ (2026-09-20) — 벌점이 먼저 눈에 띄게 아래쪽에 둔다 */
+  'openBlueSniperKill', 'openRedKill',
+  'openBlueSniperDeath', 'openRedDeath', 'openBlueRifleDeath',
 ]
 
 /**
@@ -76,9 +92,37 @@ const MVP_WHY_ORDER = [
  */
 const MATCH_ROUND_COLOR = '#ff6b72'
 
-function RoundsText({ rounds, last }: { rounds: readonly number[]; last: number | null }) {
+/**
+ * ★전반/후반을 앞에 적는다★ (2026-09-20 사장님:
+ *   「전반1라운드 후반12라운드 이런식으로 ★전반전인지 후반전인지★ 써줘」).
+ *
+ *   `secondHalfFrom` 이 8 이면 ★1~7이 전반, 8부터 후반★ 이다.
+ *
+ * ⚠ ★모르면 안 적는다★ (D-106) — 틀린 반을 적느니 숫자만 적는 편이 낫다.
+ * ⚠ ★한 줄에 전·후반이 섞이면 반을 안 적는다★ — 「전반 5,12라운드」 는 거짓이다.
+ *   그런 줄은 숫자만 적는다.
+ */
+export function halfLabelOf(rounds: readonly number[], from: number | null): string | null {
+  if (from === null || rounds.length === 0) return null
+  const firsts = rounds.filter((r) => r < from).length
+  if (firsts === rounds.length) return '전반'
+  if (firsts === 0) return '후반'
+  return null
+}
+
+function RoundsText({
+  rounds,
+  last,
+  secondHalfFrom,
+}: {
+  rounds: readonly number[]
+  last: number | null
+  secondHalfFrom: number | null
+}) {
+  const half = halfLabelOf(rounds, secondHalfFrom)
   return (
     <>
+      {half === null ? null : <span style={{ color: HALF_COLOR }}>{half} </span>}
       {rounds.map((r, i) => (
         <Fragment key={r}>
           {i > 0 ? ',' : null}
@@ -93,6 +137,9 @@ function RoundsText({ rounds, last }: { rounds: readonly number[]; last: number 
     </>
   )
 }
+
+/** 전반/후반 글자색 — 금색(라운드 숫자)보다 조용하게 둔다 */
+const HALF_COLOR = '#9aa6bf'
 
 export function MvpWhy({ detail }: { detail: MatchDetail }) {
   const why = detail.mvp_why ?? []
@@ -123,7 +170,7 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
         {rows.map((r) => (
           <Fragment key={r.key}>
             <span style={{ color: V3.gold, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              <RoundsText rounds={r.rounds} last={lastRound} />
+              <RoundsText rounds={r.rounds} last={lastRound} secondHalfFrom={detail.second_half_from ?? null} />
             </span>
             <span style={{ color: '#9aa6bf' }}>{MVP_WHY_LABEL[r.key] ?? r.key}</span>
             <span style={{ color: '#e2e5ee', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>

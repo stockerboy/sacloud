@@ -440,6 +440,31 @@ function Scoreboard({
             <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, color: t.won ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>{t.snap.clan.name}</span>
             {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
             <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
+            {/*
+              ★★선레드 · 선블루★★ (2026-09-20 사장님:
+                「상세기록에 ★누가 선블루였고 누가 선레드였는지★ 써주고」)
+
+              `first_attack_side` 는 ★전반에 레드(공격)를 맡은 슬롯★ 이다 (D-207).
+              그 슬롯이면 「선레드」, 아니면 「선블루」 다.
+
+              ⚠ ★슬롯 이름을 그대로 진영으로 읽으면 안 된다★ — red 슬롯은 수집할 때
+                `team_id` 순서로 정한 내부 자리이고, 실측 3,750경기 중 3,745경기에서
+                그 슬롯이 ★전반 수비★ 였다. 그래서 이 칸이 따로 있다.
+              ⚠ ★모르면 안 적는다★ (D-106) — 근거가 없는 경기가 아직 많다.
+            */}
+            {detail.first_attack_side === null ? null : (
+              <span
+                style={{
+                  fontSize: 10, fontWeight: 800, whiteSpace: 'nowrap', flex: 'none',
+                  padding: '2px 7px', borderRadius: V3.radiusChip,
+                  color: detail.first_attack_side === t.side ? '#ff9a9e' : '#8fb6ff',
+                  border: `1px solid ${detail.first_attack_side === t.side ? 'rgba(255,107,114,.45)' : 'rgba(111,154,245,.45)'}`,
+                  background: detail.first_attack_side === t.side ? 'rgba(255,107,114,.10)' : 'rgba(111,154,245,.10)',
+                }}
+              >
+                {detail.first_attack_side === t.side ? '선레드' : '선블루'}
+              </span>
+            )}
             <div style={spacerStyle} />
             {/*
               ★아직 못 잰 경기는 «경기분석중»★ (2026-09-12 사장님: «아직 경기분석 안된 경기는

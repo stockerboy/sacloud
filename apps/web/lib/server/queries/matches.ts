@@ -72,6 +72,8 @@ export const MATCH_SELECT = {
   /* 전반 공수 (D-207). 옛 `blueFirst` 는 **읽지 않는다** — 뜻이 `[미확인]` 인 채였고
      실제로 값이 든 것은 mock 시드뿐이었다. 근거로 정해진 값은 이쪽이다 */
   firstHalfAttackSide: true,
+  /* ★전반이 어디서 끝나나★ (2026-09-20) — MVP 설명이 「전반 5라운드」 로 적는다 */
+  secondHalfFrom: true,
   winnerSide: true,
   mvpPlayerId: true,
   redLeagueClanId: true,
@@ -687,6 +689,20 @@ export function toMatchListItem(
     })(),
     red_rounds: roundsWonInList(match, match.redLeagueClanId),
     blue_rounds: roundsWonInList(match, match.blueLeagueClanId),
+    /*
+     * ★전반/후반★ · ★선레드★ (2026-09-20 사장님)
+     *
+     * > 「상세기록에 ★누가 선블루였고 누가 선레드였는지★ 써주고」
+     * > 「mvp설명에 들어가는 라운드에는 ★전반1라운드 후반12라운드★ 이런식으로」
+     *
+     * ⚠ ★둘 다 모르면 `null` 이고 화면은 안 적는다★ (D-106) —
+     *   `firstHalfAttackSide` 는 슬롯 이름이 아니라 ★진영★ 이다 (D-207).
+     */
+    second_half_from: match.secondHalfFrom ?? null,
+    first_attack_side:
+      match.firstHalfAttackSide === 'red' || match.firstHalfAttackSide === 'blue'
+        ? match.firstHalfAttackSide
+        : null,
     league_clan_side: viewerSide,
     league_clan: snapshotOf(match, viewerSide, clans),
     opponent: snapshotOf(match, opponentSide, clans),
@@ -1157,6 +1173,20 @@ export async function getMatch(
     red_rounds: roundsWonOf(match.redLeagueClanId),
     blue_rounds: roundsWonOf(match.blueLeagueClanId),
     total_rounds: totalRoundsOf(),
+    /*
+     * ★전반/후반★ · ★선레드★ (2026-09-20 사장님)
+     *
+     * > 「상세기록에 ★누가 선블루였고 누가 선레드였는지★ 써주고」
+     * > 「mvp설명에 들어가는 라운드에는 ★전반1라운드 후반12라운드★ 이런식으로」
+     *
+     * ⚠ ★둘 다 모르면 `null` 이고 화면은 안 적는다★ (D-106) —
+     *   `firstHalfAttackSide` 는 슬롯 이름이 아니라 ★진영★ 이다 (D-207).
+     */
+    second_half_from: match.secondHalfFrom ?? null,
+    first_attack_side:
+      match.firstHalfAttackSide === 'red' || match.firstHalfAttackSide === 'blue'
+        ? match.firstHalfAttackSide
+        : null,
     red_hexagon_v2: hexV2?.red
       ? { league_clan_id: hexV2.red.leagueClanId, hexagon: hexV2.red.hexagon }
       : null,

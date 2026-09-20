@@ -667,6 +667,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
      *   그 뒤    직전 라운드 ★마지막 킬★ + 8.45초
      * 두 곳이 어긋나면 안 되므로 `@sacloud/nexon` 의 같은 상수를 가져다 쓴다.
      */
+    /** 경기 → ★후반이 시작하는 라운드★ (2026-09-20). 화면의 「전반/후반」 이 쓴다 */
+    const secondHalfFromOf = new Map<string, number>()
     const roundStartAt = new Map<string, number>()
     {
       const byMatch = new Map<string, { rd: number; key: string; last: number }[]>()
@@ -783,6 +785,11 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           }
         }
         if (switchAt === null) continue
+        /*
+         * ★후반이 어디서 시작하나★ (2026-09-20 사장님: 「전반1라운드 후반12라운드
+         *   이런식으로」). ★이미 여기서 구했으니 기억만 해 둔다★ — 다시 세지 않는다.
+         */
+        secondHalfFromOf.set(mk, switchAt)
         const halves: number[][] = [sorted.filter((r) => r < switchAt), sorted.filter((r) => r >= switchAt)]
         if (halves[0]?.length === 0 || halves[1]?.length === 0) continue
         const filled = new Map(known)
@@ -1541,6 +1548,25 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         prisma.matchPlayerHex.deleteMany({ where: { matchId: { in: ids } } }),
         prisma.matchPlayerHex.createMany({ data: rows, skipDuplicates: true }),
       ])
+    }
+    /*
+     * ★후반이 시작하는 라운드를 경기에 적는다★ (2026-09-20 사장님:
+     *   「mvp설명에 들어가는 라운드에는 ★전반1라운드 후반12라운드★ 이런식으로」).
+     *
+     *   여기서 이미 구한 값이다 (`switchAt`) — ★화면이 다시 세지 않게★ 저장한다.
+     *   둘이 따로 세면 조용히 갈라진다.
+     *
+     * ⚠ ★못 구한 경기는 안 건드린다★ — `null` 로 덮으면 예전에 채운 값이 지워진다.
+     */
+    if (options.confirm && secondHalfFromOf.size > 0) {
+      for (const [key, from] of secondHalfFromOf) {
+        const matchId = matchIdOfKey.get(key)
+        if (matchId === undefined) continue
+        await prisma.match.update({ where: { id: matchId }, data: { secondHalfFrom: from } }).catch(() => {
+          /* 한 경기를 못 써도 집계를 멈추지 않는다 */
+        })
+      }
+      secondHalfFromOf.clear()
     }
     result.matchRows += rows.length
     if ((i / LOG_BATCH) % 5 === 0) log(`  ${Math.min(i + LOG_BATCH, todo.length)} / ${todo.length} 경기 · 킬 ${result.events}`)

@@ -1201,6 +1201,10 @@ function toMatchListItem(
     blue_rounds: null,
     /* ★몇 라운드까지 갔나★ — 「(매치)」 표시의 재료 (2026-09-19) */
     total_rounds: null,
+    /* ★전반/후반★ · ★선레드★ (2026-09-20) — 픽스처는 「모른다」 로 둔다.
+       화면이 «모르면 안 적는다» 를 지키는지 이 값으로 확인한다 */
+    second_half_from: null,
+    first_attack_side: null,
     league_clan_side: null,
     league_clan: own,
     opponent,
@@ -1305,6 +1309,10 @@ export function getMatch(
     blue_rounds: null,
     /* ★몇 라운드까지 갔나★ — 「(매치)」 표시의 재료 (2026-09-19) */
     total_rounds: null,
+    /* ★전반/후반★ · ★선레드★ (2026-09-20) — 픽스처는 「모른다」 로 둔다.
+       화면이 «모르면 안 적는다» 를 지키는지 이 값으로 확인한다 */
+    second_half_from: null,
+    first_attack_side: null,
     red_hexagon_v2: hexV2.red
       ? { league_clan_id: match.redLeagueClanId, hexagon: hexV2.red }
       : null,
