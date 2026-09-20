@@ -134,15 +134,28 @@ export function openingSidesOf(input: OpeningSideInput): OpeningSides {
       }
     }
   }
-  if (switchAt === null) return { defenceOf, by, teams: roster.teams }
+  /*
+   * ★★전반만 있고 후반이 없는 경기가 있다★★ (2026-09-20 실측에서 잡았다)
+   *
+   *   한 팀이 ★5:0 으로 끝내면★ 5라운드에서 경기가 끝난다. 그러면 `switchAt` 이
+   *   6이 되어 후반이 ★빈 목록★ 이 되고, 「반이 둘 다 있어야 한다」 는 검사에 걸려
+   *   ★좌표 규칙이 한 번도 안 돌았다.★
+   *
+   *   사장님 6경기 중 20:38 경기가 그랬다 — C4 가 없는 5라운드 경기라
+   *   ★좌표 규칙만이 유일한 근거★ 였는데 그 검사 때문에 통째로 비었다.
+   *
+   * ⚠ ★빈 반은 그냥 건너뛴다.★ 반이 하나뿐이어도 그 반은 채울 수 있다.
+   */
+  if (switchAt === null) switchAt = rounds[rounds.length - 1] as number + 1
 
-  const halves = [rounds.filter((r) => r < switchAt), rounds.filter((r) => r >= (switchAt as number))]
-  if ((halves[0] as number[]).length === 0 || (halves[1] as number[]).length === 0) {
+  const halves = [rounds.filter((r) => r < (switchAt as number)), rounds.filter((r) => r >= (switchAt as number))]
+  if ((halves[0] as number[]).length === 0 && (halves[1] as number[]).length === 0) {
     return { defenceOf, by, teams: roster.teams }
   }
 
   for (let i = 0; i < 2; i += 1) {
     const half = halves[i] as number[]
+    if (half.length === 0) continue
     /* 이 반에 이미 아는 라운드가 있으면 ③을 안 쓴다 — ①②가 이긴다 */
     if (half.some((r) => defenceOf.has(r))) continue
 
