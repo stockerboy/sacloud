@@ -50,6 +50,14 @@ export interface ClanNameBackfillResult {
 
 const DEFAULT_LIMIT = 2000
 
+/**
+ * ★한 판에 주는 시간★ (2026-09-20).
+ *
+ * 기본 2분으로는 ★한 판도 못 끝냈다.★ 디스크가 느린 날엔 300줄에 72초가 걸린다.
+ * ⚠ 한 판이 끝나야 그만큼이 ★영영 채워진다★ — 중간에 끊기면 아무것도 안 남는다.
+ */
+const BACKFILL_TIMEOUT_MS = 600_000
+
 function nameOf(payload: unknown, key: 'red_clan_name' | 'blue_clan_name'): string | null {
   if (typeof payload !== 'object' || payload === null) return null
   const v = (payload as Record<string, unknown>)[key]
@@ -79,8 +87,26 @@ export async function runClanNameBackfill(
    * ⚠ ★`payload` 를 고른 뒤에야 읽는다★ — `WHERE` 가 먼저 좁혀 주므로
    *   읽는 행은 `limit` 만큼이다. 전체를 훑지 않는다.
    */
+  /*
+   * ⚠ ★`rawClanNo IS NULL` 하나만 본다★ (2026-09-20 정정).
+   *
+   *   전에는 `redClanName`·`blueClanName` 도 `null` 이어야 골랐다. 그런데
+   *   ★이름은 채웠고 번호만 빈 줄★ 이 앞쪽에 잔뜩 있어서, 인덱스를 타고도
+   *   그 줄들을 ★하나씩 집어 올렸다 버렸다.★ EXPLAIN 실측 —
+   *   ```
+   *   Index Scan using "BCMR_backfill_idx"
+   *     Filter: (redClanName IS NULL AND blueClanName IS NULL)
+   *     Rows Removed by Filter: ★2000★        ← 300줄 뽑자고 2,300줄을 읽었다
+   *     Execution Time: ★72,140 ms★
+   *   ```
+   *   그래서 2분 벽에 걸려 ★한 줄도 못 채웠다.★
+   *
+   *   ★부분 인덱스(`BCMR_backfill_idx`)의 조건과 글자 그대로 같게 맞춘다.★
+   *   이름이 이미 있으면 아래에서 그 값을 그대로 다시 쓴다 — 덮어써도 같은 값이다.
+   */
+  await prisma.$executeRawUnsafe(`SET statement_timeout = ${BACKFILL_TIMEOUT_MS}`)
   const rows = await prisma.barracksClanMatchRaw.findMany({
-    where: { status: 'ok', redClanName: null, blueClanName: null, rawClanNo: null },
+    where: { status: 'ok', rawClanNo: null },
     select: { id: true, subject: true, payload: true },
     orderBy: { id: 'desc' },
     take: limit,
