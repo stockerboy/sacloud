@@ -116,6 +116,14 @@ export interface MatchFirstSideBuildResult {
 
 export async function buildMatchFirstSide(input: {
   confirm: boolean
+  /**
+   * ★최근 며칠 것만★ 돌린다 (2026-09-20). 안 주면 전부다.
+   *
+   *   전부 돌리면 원문 141,592줄을 훑어 ★한 시간 넘게★ 걸린다. 그런데 화면에
+   *   ★선레드/선블루★ 를 띄우려면 ★새 경기가 바로바로★ 채워져야 한다.
+   *   그래서 예약은 ★며칠치만★ 자주 돌리고, 전체는 아침 창에 가끔 돌린다.
+   */
+  days?: number
 }): Promise<MatchFirstSideBuildResult> {
   const result: MatchFirstSideBuildResult = {
     rows: 0,
@@ -138,7 +146,14 @@ export async function buildMatchFirstSide(input: {
      **가벼운 목록을 먼저 읽고 payload 만 나눠 가져온다.** */
   const index = await withRetry('원문 목록', () =>
     prisma.barracksBattleLogRaw.findMany({
-      where: { subjectKind: 'clan', status: 'ok' },
+      where: {
+        subjectKind: 'clan',
+        status: 'ok',
+        /* ★며칠치만★ — 원문을 받은 시각으로 자른다 (경기 시각이 아니라 수집 시각이다) */
+        ...(input.days === undefined
+          ? {}
+          : { fetchedAt: { gte: new Date(Date.now() - input.days * 24 * 60 * 60 * 1000) } }),
+      },
       select: { id: true, matchKey: true, subject: true },
     }),
   )
@@ -320,7 +335,9 @@ export async function buildMatchFirstSide(input: {
 const isMain = process.argv[1]?.replace(/\\/g, '/').endsWith('matchFirstSideBuild.ts')
 if (isMain) {
   const confirm = process.argv.includes('--confirm')
-  buildMatchFirstSide({ confirm })
+  const daysArg = process.argv.find((a) => a.startsWith('--days='))
+  const days = daysArg === undefined ? undefined : Number(daysArg.slice('--days='.length))
+  buildMatchFirstSide({ confirm, days: Number.isFinite(days) && (days as number) > 0 ? days : undefined })
     .then(async (built) => {
       console.info(JSON.stringify(built, null, 2))
       if (!confirm) console.info('\n미리보기다. 저장하려면 --confirm 을 붙인다.')

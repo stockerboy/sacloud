@@ -101,25 +101,43 @@ const COLUMNS: readonly { title: string; nodes: readonly SiteNode[] }[] = [
      *   이제 ★세 리그가 나란히★ 선다 — 위아래가 없다.
      * ⚠ 옛 묶음을 지우지 않고 갈래 이름만 리그 이름으로 바꿨다 (CLAUDE.md 1-4).
      */
+    /*
+     * ⚠ ★★한 겹을 없앴다★★ (2026-09-20 사장님: 「지금 햄버거 메뉴 좀 답답해
+     *   ★PL 누르면 또 PL 나오고★ 이래」)
+     *
+     *   갈래 안에 ★같은 이름의 꼬리 하나★ 뿐이었다 —
+     *
+     *       PL  ▸        ← 누르면
+     *         └ PL       ← 또 PL 하나
+     *
+     *   눌러야 할 일이 ★두 번★ 인데 얻는 것이 없다. ★`href` 로 바로 보낸다.★
+     *   `SiteNode` 는 원래 `href` 만 있으면 바로 가는 꼴을 지원한다 (위 주석).
+     *
+     * ⚠ 옛 꼴을 지우지 않는다 (CLAUDE.md 1-4) — 리그마다 갈 곳이 여럿 생기면
+     *   `links` 를 다시 채우면 된다. 그 틀은 그대로 산다.
+     */
     nodes: [
-      {
-        label: nameOf('supply'),
-        links: live('supply')
-          ? [{ label: nameOf('supply'), href: leagueLandingPath('supply') }]
-          : [],
-      },
-      {
-        label: nameOf('nolink'),
-        links: live('nolink')
-          ? [{ label: nameOf('nolink'), href: leagueLandingPath('nolink') }]
-          : [],
-      },
-      {
-        label: nameOf('sanply'),
-        links: live('sanply')
-          ? [{ label: nameOf('sanply'), href: leagueLandingPath('sanply') }]
-          : [],
-      },
+      ...(live('supply') ? [{ label: nameOf('supply'), href: leagueLandingPath('supply') }] : []),
+      ...(live('nolink') ? [{ label: nameOf('nolink'), href: leagueLandingPath('nolink') }] : []),
+      ...(live('sanply') ? [{ label: nameOf('sanply'), href: leagueLandingPath('sanply') }] : []),
+    ],
+  },
+  {
+    /*
+     * ★★배지★★ (2026-09-20 사장님: 「뱃지 메뉴를 따로 만들어줘 햄버거탭에」)
+     *
+     *   배지 페이지 주소가 `/league/{slug}/badge/{key}` 라 ★리그가 있어야★ 간다.
+     *   그래서 리그마다 한 줄씩 둔다 — 메인의 배지 진열장과 ★같은 규칙★ 이다
+     *   (`HomeBadgeWall`).
+     *
+     * ⚠ 어느 배지로 보낼까 — ★진열장으로 보낸다★ (`/league/{slug}/badge`).
+     *   특정 배지를 골라 보내면 「왜 하필 그것」 이 된다.
+     */
+    title: 'Badges',
+    nodes: [
+      ...(live('supply') ? [{ label: `${nameOf('supply')} 배지`, href: `/league/supply/badge` }] : []),
+      ...(live('nolink') ? [{ label: `${nameOf('nolink')} 배지`, href: `/league/nolink/badge` }] : []),
+      ...(live('sanply') ? [{ label: `${nameOf('sanply')} 배지`, href: `/league/sanply/badge` }] : []),
     ],
   },
   {

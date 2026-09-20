@@ -141,6 +141,16 @@ function RoundsText({
 /** 전반/후반 글자색 — 금색(라운드 숫자)보다 조용하게 둔다 */
 const HALF_COLOR = '#9aa6bf'
 
+/**
+ * ★부호를 한 번만 붙인다★ (2026-09-20 사장님: 「왜 +-로 돼있어 선짤이」).
+ *
+ * 옛 판은 `+{점수}점` 이라 값이 `-1` 이면 ★「+-1점」★ 이 됐다.
+ * 선짤이 들어오기 전에는 점수가 늘 양수라 안 드러났다.
+ */
+function signed(n: number): string {
+  return n > 0 ? `+${n}` : String(n)
+}
+
 export function MvpWhy({ detail }: { detail: MatchDetail }) {
   const why = detail.mvp_why ?? []
   /*
@@ -155,10 +165,40 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
   if (why.length === 0) return null
   const name = [...detail.red, ...detail.blue].find((e) => e.player_id === detail.mvp_player_id)?.name ?? null
   if (name === null) return null
-  const rows = MVP_WHY_ORDER.filter((k) => why.some((w) => w.kind === k)).map((k) => {
+  /*
+   * ★★점수 큰 것부터 · 0점은 한 줄로 몰아서★★ (2026-09-20 사장님: 「가) 로 하고」)
+   *
+   * ── 무엇이 부산스러웠나 (사장님이 화면을 보고 짚으셨다)
+   *
+   *     전반 8라운드     한 라운드 4킬             ★+0점★
+   *     전반 6,8라운드   라운드초반 스나 다운       +10점
+   *     후반 11라운드    스나 다운                  +3점
+   *     전반 2라운드     한 라운드 3킬             ★+0점★
+   *     전반 1라운드     레드 라운드초반 선짤당함   ★+-1점★
+   *
+   *   ① 다섯 줄이 ★같은 무게★ 로 보여 무엇이 중요한지 안 보였다
+   *   ② ★「+0점」 이 세 줄★ — 「한 라운드 4킬」 은 점수가 아니라 ★장면★ 인데
+   *      점수 칸에 앉아 있었다
+   *   ③ 「전반」 이 ★네 번★ 반복됐다
+   *   ④ 라운드·설명·점수가 ★세 칸으로 흩어져★ 눈이 좌우로 오갔다
+   *
+   * ── (가) 안
+   *
+   *     ★점수를 왼쪽★ 에 둔다 — 눈이 ★세로로만★ 움직인다
+   *     ★큰 것부터★ — 위 두 줄만 봐도 왜 MVP 인지 안다
+   *     ★0점짜리는 맨 아래 한 줄★ 로 몬다 (「·」 로 표시)
+   *     라운드는 ★오른쪽 작은 글씨★ — 궁금할 때만 본다
+   */
+  const all = MVP_WHY_ORDER.filter((k) => why.some((w) => w.kind === k)).map((k) => {
     const hit = why.find((w) => w.kind === k) as { rounds: number[]; points: number }
     return { key: k, rounds: hit.rounds, points: hit.points }
   })
+  /* 점수가 있는 줄 — ★큰 것부터★. 같으면 원래 차례(값의 무게순)를 지킨다 */
+  const scored = all.filter((r) => r.points !== 0).sort((a, b) => Math.abs(b.points) - Math.abs(a.points))
+  /* 점수가 0인 줄 — ★굵직한 장면★ 이지 점수가 아니다. 맨 아래 한 줄로 몬다 */
+  const scenes = all.filter((r) => r.points === 0)
+  const total = scored.reduce((sum, r) => sum + r.points, 0)
+
   return (
     <div style={{ margin: '10px 14px 14px', border: `1px solid ${V3.gold}`, borderRadius: 3, background: 'linear-gradient(180deg, rgba(255,216,61,.08), rgba(255,216,61,.02))', padding: '11px 13px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -166,18 +206,56 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
         <span style={{ fontSize: 15, fontWeight: 800, color: '#ffe89a' }}>{name}</span>
         <span style={{ fontSize: 11, color: '#6b7794' }}>왜 MVP 인가</span>
       </div>
-      <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '3px 12px', fontSize: 12 }}>
-        {rows.map((r) => (
+
+      {/*
+        ★한 문장 먼저★ — 줄을 읽기 전에 「무엇으로 벌었나」 를 먼저 안다.
+        ⚠ ★없는 말을 지어내지 않는다★ — 가장 크게 번 줄의 이름을 그대로 쓴다.
+      */}
+      {scored.length > 0 && scored[0] !== undefined ? (
+        <p style={{ margin: '5px 0 0', fontSize: 13, fontWeight: 700, color: '#ffe89a' }}>
+          {MVP_WHY_LABEL[scored[0].key] ?? scored[0].key}
+          {scored[0].rounds.length > 1 ? ` ${scored[0].rounds.length}회` : ''}
+          <span style={{ color: '#9aa6bf', fontWeight: 400 }}> · 합 {signed(total)}점</span>
+        </p>
+      ) : null}
+
+      {/* ★점수를 왼쪽에★ — 눈이 세로로만 움직인다 */}
+      <div style={{ marginTop: 7, display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '4px 10px', fontSize: 12, alignItems: 'baseline' }}>
+        {scored.map((r) => (
           <Fragment key={r.key}>
-            <span style={{ color: V3.gold, fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              <RoundsText rounds={r.rounds} last={lastRound} secondHalfFrom={detail.second_half_from ?? null} />
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 800,
+                textAlign: 'right',
+                whiteSpace: 'nowrap',
+                fontVariantNumeric: 'tabular-nums',
+                color: r.points < 0 ? MATCH_ROUND_COLOR : '#e2e5ee',
+              }}
+            >
+              {signed(r.points)}
             </span>
-            <span style={{ color: '#9aa6bf' }}>{MVP_WHY_LABEL[r.key] ?? r.key}</span>
-            <span style={{ color: '#e2e5ee', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-              +{r.points}점
+            <span style={{ color: '#9aa6bf', wordBreak: 'keep-all' }}>{MVP_WHY_LABEL[r.key] ?? r.key}</span>
+            <span style={{ fontSize: 10.5, color: '#6b7794', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              <RoundsText rounds={r.rounds} last={lastRound} secondHalfFrom={detail.second_half_from ?? null} />
             </span>
           </Fragment>
         ))}
+        {scenes.length > 0 ? (
+          <Fragment>
+            <span style={{ fontSize: 13, fontWeight: 800, textAlign: 'right', color: '#4a5878' }}>·</span>
+            <span style={{ color: '#6b7794', wordBreak: 'keep-all' }}>
+              {scenes.map((r) => MVP_WHY_LABEL[r.key] ?? r.key).join(' · ')}
+            </span>
+            <span style={{ fontSize: 10.5, color: '#4a5878', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              <RoundsText
+                rounds={[...new Set(scenes.flatMap((r) => r.rounds))].sort((a, b) => a - b)}
+                last={lastRound}
+                secondHalfFrom={detail.second_half_from ?? null}
+              />
+            </span>
+          </Fragment>
+        ) : null}
       </div>
       <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#6b7794' }}>
         평범한 1점짜리 라플킬은 빼고, 값이 큰 것만 적었습니다.
