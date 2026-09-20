@@ -74,6 +74,15 @@ export interface NavLink {
  *   옛 이름은 아래 `FEATURED_LEAGUES_V1` 에 남긴다 (`CLAUDE.md` 1-4).
  */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
+  /*
+   * ★★C1 을 맨 앞에 둔다★★ (2026-09-20 밤 사장님)
+   *
+   * > 「C1이라는 ★개고수 전용 기록판★ 을 만드는 것이다 (…) IPL과 다른 ★독립적인 하나의 리그★」
+   *
+   *   IPL 상위 열 클랜이 ★서로 붙은 경기만★ 모은 리그다. 「진짜 실력자들의
+   *   실력싸움은 c1에 기록된다」 는 것이 사장님 뜻이라 ★맨 앞★ 에 둔다.
+   */
+  { label: 'C1', href: '/league/c1' },
   /* ⚠ 2026-09-16 — «LLM» → «PL» (사장님). 주소는 그대로 `supply` 다 */
   { label: 'PL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },

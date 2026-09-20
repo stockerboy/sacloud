@@ -98,7 +98,11 @@ export { PLAYER_HEX_FORMULA_VERSION }
  *   옛 값은 `['nolink', 'supply']` 였고, 그때 근거는 2026-09-10 «열산은 클랜도 개인도
  *   육각형 제공x» 였다. 사장님이 뒤집으셨다.
  */
-export const HEX_LEAGUE_SLUGS = ['nolink', 'supply', 'sanply'] as const
+/*
+ * ⚠ ★C1 을 넣었다★ (2026-09-20 밤 사장님) — 「개인랭킹과 클랜랭킹을 만들어 줄세워라」.
+ *   C1 은 ★독립된 리그★ 라 제 육각·제 점수를 갖는다. IPL 것을 빌려 쓰지 않는다.
+ */
+export const HEX_LEAGUE_SLUGS = ['nolink', 'supply', 'sanply', 'c1'] as const
 
 const ZONE_FILE = join(REPO_ROOT, 'data/barracks/style-zones.json')
 /**
