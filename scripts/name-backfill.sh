@@ -17,7 +17,7 @@ cd /root/sacloud
 #   그래서 ★무거운 잡(정규화·명단)만 피한다.★ 가벼운 잡과는 같이 돈다.
 # ⚠ 그래도 10번 연속 비키면 ★한 번은 끼어든다★ — 안 그러면 이름표가 영영 안 채워진다.
 SKIPPED=0
-for i in $(seq 1 400); do
+for i in $(seq 1 2000); do
   busy=$(pgrep -fc "unified-project|battlelog-lineup" || true)
   if [ "${busy:-0}" -gt 0 ] && [ "$SKIPPED" -lt 10 ]; then
     SKIPPED=$((SKIPPED + 1))
@@ -29,13 +29,32 @@ for i in $(seq 1 400); do
     echo "[$(date +%H:%M)] ★10번 연속 비켰다 — 한 번은 끼어든다★"
   fi
   SKIPPED=0
-  out=$(pnpm --filter @sacloud/worker nexon clan-name-backfill --confirm --limit 5000 2>&1 | grep "읽음=" || true)
-  echo "[$(date +%H:%M)] $out"
+
+  # ── ★★사이트를 먼저 본다★★ (2026-09-20 · 사장님 「사이트 중간중간 버벅대고 느린거」)
+  #
+  #   실측으로 잡았다 — 이 잡이 도는 동안 ★검색 첫 요청이 22초★ 였고,
+  #   잡을 멈추자 ★0.45초★ 로 돌아왔다. 즉 ★이 잡이 사이트를 느리게 만든다.★
+  #
+  #   ⚠ 「무거운 잡이 도나」 만 봐서는 못 잡는다 — 이 잡 ★자신★ 이 무거운 것이라
+  #     남이 안 돌아도 사이트는 느려진다. ★사이트 응답을 직접 잰다.★
+  #   ⚠ 사람이 쓰는 시간이 ★기록을 채우는 것보다 먼저다.★ 기록은 다음 판에 채우면 된다.
+  ms=$(curl -s -o /dev/null -m 12 -w '%{time_total}' https://3rdcloud.my/api/health 2>/dev/null        | awk '{printf "%d", $1 * 1000}')
+  if [ "${ms:-0}" -gt 3000 ]; then
+    echo "[$(date +%H:%M)] ★사이트가 느리다 (${ms}ms) — 60초 비킨다★"
+    sleep 60
+    continue
+  fi
+
+  # ⚠ ★한 판을 작게 끊는다★ — 5,000줄은 한 판이 5분이라 그동안 사이트가 붐볐다.
+  #   1,000줄이면 한 판이 ★1분 남짓★ 이고, 그 사이사이 사이트가 숨을 쉰다.
+  out=$(pnpm --filter @sacloud/worker nexon clan-name-backfill --confirm --limit 1000 2>&1 | grep "읽음=" || true)
+  echo "[$(date +%H:%M)] ${ms}ms · $out"
   # ⚠ ★「남은 줄」 로 끝을 판단하지 않는다★ (2026-09-20) — 그 셈이 2분 벽에
   #   걸리면 `-1` 이 오는데, 그걸 0 과 헷갈리면 ★다 채우기 전에 멈춘다.★
   #   ★「읽음=0」 하나만 본다★ — 더 고칠 줄이 없다는 뜻이고, 이건 틀릴 수가 없다.
   case "$out" in
     *"읽음=0"*) echo "[$(date +%H:%M)] ★다 채웠다 — 더 고칠 줄이 없다★"; break ;;
   esac
-  sleep 5
+  # ★한 판이 끝날 때마다 쉰다★ — 사이트가 밀린 요청을 처리할 틈을 준다
+  sleep 15
 done
