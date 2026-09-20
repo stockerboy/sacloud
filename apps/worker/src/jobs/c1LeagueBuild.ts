@@ -224,7 +224,7 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
   for (const [key, m] of bySource) {
     /* ★멱등★ — 이미 담았으면 건너뛴다 */
     const already = await prisma.match.findFirst({
-      where: { leagueId: league.id, sourceMatchId: key },
+      where: { leagueId: league.id, sourceMatchId: `c1-${key}` },
       select: { id: true },
     })
     if (already !== null) {
@@ -245,7 +245,19 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
          */
         id: `c1-${key}`,
         leagueId: league.id,
-        sourceMatchId: key,
+        /*
+         * ⚠ ★`sourceMatchId` 에도 접두를 붙인다★ (2026-09-20 실측에서 막혔다)
+         *
+         *   DB 에 ★`Match_new_sourceMatchId_key`★ 라는 유니크 인덱스가 있다 —
+         *   ★9/3 이후 경기는 `sourceMatchId` 가 전체에서 유일★ 해야 한다.
+         *   (스키마의 `@@unique([leagueId, origin, sourceMatchId])` 와 ★별개★ 다)
+         *
+         *   그래서 같은 원본 번호를 두 리그에 담을 수 없다. C1 은 ★파생★ 이므로
+         *   접두를 붙여 유일하게 만든다. ★원본은 접두를 떼면 나온다.★
+         *
+         * ⚠ 그 인덱스를 건드리지 않는다 — ★중복 투영을 막던 장치★ 다.
+         */
+        sourceMatchId: `c1-${key}`,
         mapId: m.mapId,
         playerCount: m.playerCount,
         playTime: m.playTime,
