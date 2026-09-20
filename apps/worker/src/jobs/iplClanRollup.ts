@@ -59,10 +59,17 @@ export interface IplClanRollupResult {
 }
 
 export async function runIplClanRollup(
-  options: { confirm?: boolean } = {},
+  options: {
+    confirm?: boolean
+    /**
+     * 어느 리그를 셀까. 안 주면 IPL (2026-09-20 밤 — C1 도 이 셈이 필요하다).
+     * ⚠ 안 주면 옛 동작 그대로라 기존 호출부가 안 깨진다.
+     */
+    leagueSlug?: string
+  } = {},
 ): Promise<IplClanRollupResult> {
   const league = await prisma.league.findUnique({
-    where: { slug: IPL_SLUG },
+    where: { slug: options.leagueSlug ?? IPL_SLUG },
     select: { id: true, name: true },
   })
   if (!league) throw new Error(`리그 ${IPL_SLUG} 이 없다`)

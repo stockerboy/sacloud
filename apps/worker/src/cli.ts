@@ -835,7 +835,7 @@ async function main(): Promise<number> {
         IPL 경기 결과로 `LeagueClan.{win, lose, rating, placement}` 를 채운다.
         클랜랭킹 화면이 이 네 칸을 직접 읽는다. `--confirm` 없이는 한 줄도 쓰지 않는다.
       */
-      const result = await runIplClanRollup({ confirm: boolFlag(args, 'confirm') })
+      const result = await runIplClanRollup({ confirm: boolFlag(args, 'confirm'), leagueSlug: stringFlag(args, 'league') ?? undefined })
       table([
         {
           경기: result.matches,

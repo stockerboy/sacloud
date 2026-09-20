@@ -42,6 +42,14 @@ export const RANK_MIN_GAMES_DEFAULT = 40
  */
 const BY_LEAGUE: Readonly<Record<string, number>> = {
   supply: 25,
+  /*
+   * ★C1★ (2026-09-20 밤) — 열 클랜끼리 한 경기만 모은 리그라 판이 적다.
+   *
+   *   실측 — 40판+ ★58명★ · 25판+ ★120명★.
+   *   58명이면 ★세 쪽★ 이라 PL 과 같은 병(옛 Elo 로 떨어짐)이 난다.
+   *   PL 과 같은 25 로 둔다.
+   */
+  c1: 25,
 }
 
 /** 그 리그에서 랭킹에 올리는 최소 판수 */
