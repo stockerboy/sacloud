@@ -42,6 +42,29 @@ export default tseslint.config(
       '**/next-env.d.ts',
       // prisma generate 산출물 — 우리가 작성한 코드가 아니다
       'packages/db/generated/**',
+      /*
+       * ── ★★2026-09-20 — 「lint 는 원래 빨갛다」를 끝낸다★★
+       *
+       *   `pnpm verify` 가 ★오류 93건★ 으로 빨갰다. 그래서 ★배포 관문이 꺼져 있었다★ —
+       *   `CLAUDE.md` 5절이 「초록일 때만 민다」 라고 적어 뒀는데 지킬 수가 없었다.
+       *
+       *   ⚠ 93건 중 ★87건이 「우리가 쓴 운영 코드가 아닌 자리」★ 였다.
+       *     위 `__*` · `.tmp-scripts/` 주석이 2026-09-01 에 적어 둔 것과 ★같은 병★ 이다 —
+       *     ★진짜 오류 6건이 그 밑에 묻혀 있었다.★ 그 여섯은 이 판에서 고쳤다.
+       *
+       *   아래 넷은 ★지우는 게 아니라 안 보는 것★ 이다. 파일은 그대로 있다.
+       */
+      /* 일회성 실험 자리. 손으로 돌려 보고 버리는 코드라 `any`·안 쓰는 변수가 그대로다 */
+      'scratchpad/**',
+      /* ★받은 시안 코드★ — 우리가 쓴 것이 아니다 (`CLAUDE.md` 2-4 와 같은 뜻) */
+      'handoff_in/**',
+      /* 크롬 확장 — `chrome.*` 같은 ★확장 전역★ 을 쓴다. 여기 규칙으로 볼 코드가 아니다 */
+      'scripts/barracks-autocollect/extension/**',
+      /* `_` 한 글자 접두도 「커밋하지 않는 일회성」 표시다 (`__*` 와 같은 뜻) */
+      '**/packages/db/_*.ts',
+      '**/packages/db/.tmp_*.ts',
+      /* 같은 표시가 앱 뿌리에도 있다 (`apps/worker/_bulkimport.ts` — 추적 안 되는 파일) */
+      'apps/*/_*.ts',
     ],
   },
   js.configs.recommended,

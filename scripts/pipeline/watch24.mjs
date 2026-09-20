@@ -137,7 +137,8 @@ const VPS_SCRIPT = [
   `echo "guard $(wc -l < /root/log/memguard.log)"`,
 ].join('; ')
 
-let vps = null
+/* 초깃값을 안 둔다 — 아래 `try`/`catch` 가 둘 다 채운다 */
+let vps
 try {
   const out = execFileSync(
     'ssh',

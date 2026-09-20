@@ -1,6 +1,5 @@
 /* ★시간이 지나면 터지는 조건★ 을 적극적으로 찾는다 (읽기만) */
 import { prisma, t } from './q.mjs'
-const now = new Date()
 console.log('★① 임대 — TTL 대비 timeout 이 더 길면 공백이 생긴다★')
 const l = await prisma.$queryRaw`SELECT "name","host","releasedAt","expiresAt","heartbeatAt" FROM "CollectorLease" ORDER BY "name"`
 const TTL = { 'barracks-collect': [1200, 3300], 'unified-project': [600, 540], 'battlelog-lineup': [1800, 900], 'season0-apply': [900, 1500] }

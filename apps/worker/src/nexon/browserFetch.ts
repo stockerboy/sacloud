@@ -79,10 +79,23 @@ function findChrome(): string {
  *   우리 → 크롬 : fd 3 에 `JSON + \0`
  *   크롬 → 우리 : fd 4 에서 `JSON + \0`
  */
+/**
+ * CDP 가 주고받는 한 통. ★모양이 정해져 있지 않다★ — 그래서 아는 칸만 적고
+ * 나머지는 색인으로 열어 둔다. ★`any` 를 쓰면 `msg.reslt` 같은 오타를 아무도 안 잡는다.★
+ * (2026-09-20 — `any` 넷을 걷어 내며 붙였다)
+ */
+interface CdpFrame {
+  id?: number
+  method?: string
+  error?: { message?: string }
+  result?: unknown
+  [key: string]: unknown
+}
+
 class CdpPipe {
   private nextId = 1
-  private pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>()
-  private listeners = new Set<(msg: any) => void>()
+  private pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
+  private listeners = new Set<(msg: CdpFrame) => void>()
   private closed = false
   private tx: NodeJS.WritableStream
   private rx: NodeJS.ReadableStream
@@ -99,7 +112,7 @@ class CdpPipe {
         const raw = buffer.slice(0, cut)
         buffer = buffer.slice(cut + 1)
         if (!raw) continue
-        let msg: any
+        let msg: CdpFrame
         try {
           msg = JSON.parse(raw)
         } catch {
@@ -133,12 +146,13 @@ class CdpPipe {
     return this.closed
   }
 
-  send(
+  /** ★부르는 쪽이 답의 모양을 말한다★ — 안 말하면 「아는 칸 없는 JSON」 이다 */
+  send<T = CdpFrame>(
     method: string,
     params: Record<string, unknown> = {},
     sessionId?: string,
     timeoutMs = REQUEST_TIMEOUT_MS,
-  ): Promise<any> {
+  ): Promise<T> {
     if (this.closed) return Promise.reject(new Error('크롬 연결이 없다'))
     const id = this.nextId++
     const msg: Record<string, unknown> = { id, method, params }
@@ -151,7 +165,7 @@ class CdpPipe {
       this.pending.set(id, {
         resolve: (v) => {
           clearTimeout(timer)
-          resolve(v)
+          resolve(v as T)
         },
         reject: (e) => {
           clearTimeout(timer)
@@ -247,8 +261,11 @@ export class BarracksBrowser {
     this.cdp = cdp
 
     /* 탭 하나를 잡고 그 탭에 붙는다 */
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' })
-    const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true })
+    const { targetId } = await cdp.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' })
+    const { sessionId } = await cdp.send<{ sessionId: string }>('Target.attachToTarget', {
+      targetId,
+      flatten: true,
+    })
     this.sessionId = sessionId
     await cdp.send('Page.enable', {}, sessionId)
 
@@ -282,12 +299,12 @@ export class BarracksBrowser {
     for (;;) {
       let origin: string | null = null
       try {
-        const res = (await cdp.send(
+        const res = await cdp.send<{ result?: { value?: unknown } }>(
           'Runtime.evaluate',
           { expression: 'location.origin', returnByValue: true },
           sessionId,
           REQUEST_TIMEOUT_MS,
-        )) as { result?: { value?: unknown } }
+        )
         origin = typeof res.result?.value === 'string' ? res.result.value : null
       } catch {
         /* 물어보다 실패하면 다시 물어본다 */
@@ -365,7 +382,9 @@ export class BarracksBrowser {
       }
     })(${spec})`
 
-    const r = await this.cdp!.send(
+    const r = await this.cdp!.send<{
+      result?: { value?: { status?: number; text?: string; error?: string } }
+    }>(
       'Runtime.evaluate',
       { expression, awaitPromise: true, returnByValue: true },
       this.sessionId!,

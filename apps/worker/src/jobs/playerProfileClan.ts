@@ -221,8 +221,9 @@ export async function runPlayerProfileClan(input: {
       continue
     }
 
-    let clanName: string | null = null
-    let clanSlug: string | null = null
+    /* 초깃값을 안 둔다 — 아래 `try` 가 바로 채우고, 실패하면 `catch` 가 다음 사람으로 넘어간다 */
+    let clanName: string | null
+    let clanSlug: string | null
     try {
       const doc = JSON.parse(res.body) as {
         result?: { characterInfo?: { clan_name?: string | null; clan_id?: string | null } }

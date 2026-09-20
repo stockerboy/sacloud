@@ -169,6 +169,8 @@ async function loadPuppeteer() {
       `puppeteer 를 못 찾았다 (NODE_PATH=${process.env.NODE_PATH ?? '없음'}). ` +
         '워크플로가 임시 폴더에 설치하고 NODE_PATH 로 알려 줘야 한다. ' +
         `원인: ${error?.message ?? error}`,
+      /* ★원래 오류를 달아 둔다★ — 안 달면 스택이 여기서 끊겨 왜 못 찾았는지가 사라진다 */
+      { cause: error },
     )
   }
   const mod = await import(pathToFileURL(resolved).href)
@@ -231,7 +233,8 @@ async function runNavigate(page, step) {
     return { status: null, bytes: null, head: null, ms, error: 'goto 가 응답을 돌려주지 않았다' }
   }
   let bytes = null
-  let text = ''
+  /* 초깃값을 안 둔다 — 아래 `try`/`catch` 가 둘 다 채운다 */
+  let text
   try {
     const buf = await response.buffer()
     bytes = buf.length

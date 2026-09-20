@@ -1,5 +1,5 @@
 /* ★경기 종료 → 사이트 반영 까지 실제 지연★ — 오늘 저녁 경기 표본 */
-import { prisma, t } from './q.mjs'
+import { prisma } from './q.mjs'
 const rows = await prisma.$queryRaw`
   SELECT l."slug" lg, m."sourceMatchId" key, m."startAt", m."ingestedAt", m."lineupCheckedAt", m."lineupStatus",
          (SELECT MIN(r."fetchedAt") FROM "BarracksBattleLogRaw" r

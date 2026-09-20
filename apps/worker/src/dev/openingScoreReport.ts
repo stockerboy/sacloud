@@ -208,7 +208,8 @@ for (let i = 0; i < index.length && reports.length < WANT; i += PAYLOAD_CHUNK) {
       const revenged = killerDeath !== null && killerDeath - blood.at <= OPENING_REVENGE_SECONDS
 
       let points = 0
-      let why = ''
+      /* 아래 갈래가 ★빠짐없이★ 채운다 — 빈 글자를 먼저 넣어 두면 그걸 아무도 안 읽는다 */
+    let why: string
       const victimSide = sideOf(round, blood.victimTeam)
 
       if (blood.victim === me) {

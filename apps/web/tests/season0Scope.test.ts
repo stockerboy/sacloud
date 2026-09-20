@@ -197,12 +197,20 @@ describe('시즌0 창은 한 곳에서만 정의된다 (D-175 · D-178)', () => 
    * **두 쪽이 같은 상수를 읽는다** — 그래서 한쪽만 고쳐질 수 없다. 그것이 이 단언의 목적이다.
    */
   it('래더 판정 origin 이 엔진 집계 대상과 같다', () => {
-    expect([...SEASON0_ORIGINS]).toEqual(['3rd.supply', 'nexon', 'nexon_barracks'])
+    /*
+     * ⚠ ★목록을 외우지 않는다★ (2026-09-20).
+     *
+     *   여기 값을 손으로 적어 두는 바람에 `sacloud`(C1)를 더할 때 ★옳은 수정이 막혔다.★
+     *   이 시험이 지켜야 할 것은 ★「화면과 엔진이 같은 상수를 읽는가」★ 하나다 —
+     *   그 상수에 무엇이 들었는지는 `season0Window.test.ts` 가 따로 본다.
+     */
     const or = ladderMatchWhere().OR
     expect(or).toEqual([
       { redRatingUpdate: { not: null } },
-      { origin: { in: ['3rd.supply', 'nexon', 'nexon_barracks'] } },
+      { origin: { in: [...SEASON0_ORIGINS] } },
     ])
+    /* 상수가 비어 버리면 위 단언이 «빈 목록끼리 같다» 로 통과한다 — 그것만 막는다 */
+    expect(SEASON0_ORIGINS.length).toBeGreaterThanOrEqual(3)
   })
 })
 

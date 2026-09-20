@@ -108,7 +108,19 @@ export const FEATURED_LEAGUES_V1: readonly NavLink[] = [
  * ⚠ ★2026-09-16 — PL 을 맨 앞으로★ (사장님: «pl을 맨앞으로 옮겨»).
  *   옛 차례: IPL · PL · 열산리그 (`/league/nolink` 이 먼저였다).
  */
-export const GNB_LEAGUE_ORDER: readonly string[] = ['/league/supply', '/league/nolink', '/league/sanply']
+/*
+ * ⚠ ★2026-09-20 밤 — C1 을 맨 앞에 더했다★ (사장님).
+ *
+ *   `FEATURED_LEAGUES` 에만 더하고 여기를 빠뜨리면 ★상단바에서만 C1 이 사라진다.★
+ *   실제로 그렇게 될 뻔했고, `preparing-league.test.ts` 의
+ *   「두 목록이 같은 리그를 담는다」 단언이 그것을 잡았다.
+ */
+export const GNB_LEAGUE_ORDER: readonly string[] = [
+  '/league/c1',
+  '/league/supply',
+  '/league/nolink',
+  '/league/sanply',
+]
 
 /** 목록에서 주어진 순서대로 골라낸다. 순서표에 없는 리그는 빠진다 — 지어내지 않는다 */
 export function orderLeagues(order: readonly string[]): readonly NavLink[] {

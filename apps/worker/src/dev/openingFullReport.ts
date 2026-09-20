@@ -290,7 +290,8 @@ for (const key of KEYS) {
     const victimSide = sideOf(round, blood.victimTeam)
 
     let points = 0
-    let why = ''
+    /* 아래 갈래가 ★빠짐없이★ 채운다 — 빈 글자를 먼저 넣어 두면 그걸 아무도 안 읽는다 */
+    let why: string
     if (blood.victim === USN) {
       if (victimSide === 'attack') {
         if (!early) why = `${elapsed}초 — 22초를 넘어 안 깎음`

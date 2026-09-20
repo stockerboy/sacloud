@@ -237,7 +237,8 @@ async function fillClanNumber(clanId: string, slug: string): Promise<'saved' | '
     return 'fail'
   }
   if (res.status !== 200) return 'fail'
-  let clanNo: string | null = null
+  /* 초깃값을 안 둔다 — 아래 `try` 가 바로 채우고, 실패하면 `catch` 가 되돌아 나간다 */
+  let clanNo: string | null
   try {
     clanNo = (JSON.parse(res.body) as { clan_no?: string | null }).clan_no ?? null
   } catch {
@@ -417,7 +418,8 @@ export async function runBarracksRoster(input: {
       continue
     }
 
-    let list: RawMember[] = []
+    /* 초깃값을 안 둔다 — 아래 `try` 가 바로 채우고, 실패하면 `catch` 가 되돌아 나간다 */
+    let list: RawMember[]
     try {
       const doc = JSON.parse(res.body) as {
         rtnCode?: number

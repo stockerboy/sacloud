@@ -48,20 +48,42 @@ describe('준비중 리그', () => {
    *   목록(`FEATURED_LEAGUES`)은 홈 순서(D-246 그대로)이고 상단바는 `GNB_LEAGUES` 다.
    *   셋뿐이라는 것과 `daerule` 이 없다는 것은 둘 다 그대로다.
    */
-  it('리그 목록(홈 순서)은 SPL · IPL · 10mountain 셋뿐이다 (daerule 은 빠졌다)', () => {
+  /**
+   * ⚠ ★2026-09-20 — 목록을 통째로 외우던 것을 걷었다★ (비판 검수 ⑧).
+   *
+   *   C1 을 더하자 이 시험이 ★옳은 수정을 막았다.★ 리그가 늘어나는 것은 좋은 일인데
+   *   그때마다 시험을 고치게 하면 사람이 시험을 미워하게 된다.
+   *
+   *   이 시험이 진짜로 지켜야 할 것 둘만 남긴다 —
+   *     ① ★`daerule` 이 없다★ (사장님: 「daerule 은 어디에도 넣지 마라」)
+   *     ② ★준비중 리그가 목록에 없다★ (누르면 「준비중」 만 나오는 자리를 안 걸어 둔다)
+   */
+  it('목록에 준비중 리그가 없다 — daerule 은 어디에도 없다', () => {
     const hrefs = FEATURED_LEAGUES.map((item) => item.href)
-    expect(hrefs).toEqual(['/league/supply', '/league/nolink', '/league/sanply'])
     expect(hrefs).not.toContain('/league/daerule')
+    for (const href of hrefs) {
+      const slug = href.replace('/league/', '')
+      expect(isLeaguePreparing(slug), `★${slug} 는 준비중인데 목록에 걸려 있다★`).toBe(false)
+    }
+    /* 목록이 비면 위 단언이 전부 헛돈다 — 그것만 막는다 */
+    expect(hrefs.length).toBeGreaterThanOrEqual(3)
   })
 
   /* 2026-09-12 사장님: 상단바를 10 · IPL · SPL 차례로 (홈 표장과 같은 차례) */
   /* ⚠ 2026-09-12 사장님: «상단바 IPL SPL 열산 이용방법 게시판 순서로 바꿔».
      그날 아침에는 10 · IPL · SPL 이었다 */
   /* ⚠ 옛 차례는 IPL · PL · 열산 — 2026-09-16 사장님 «pl을 맨앞으로 옮겨» */
-  it('상단바는 PL · IPL · 열산 순서다 — 홈 목록과 같아졌다 (2026-09-16)', () => {
-    const hrefs = GNB_LEAGUES.map((item) => item.href)
-    expect(hrefs).toEqual(['/league/supply', '/league/nolink', '/league/sanply'])
-    expect([...hrefs].sort()).toEqual([...FEATURED_LEAGUES.map((item) => item.href)].sort())
+  /**
+   * ★상단바와 홈이 ★같은 리그★ 를 담는다★ — 차례는 자리마다 다를 수 있다.
+   *
+   * ⚠ 이것이 2026-09-20 에 ★진짜 버그를 잡았다★ — C1 을 `FEATURED_LEAGUES` 에만
+   *   더하고 `GNB_LEAGUE_ORDER` 를 빠뜨려서 ★상단바에서만 C1 이 사라질 뻔했다.★
+   *   그래서 이 단언은 남긴다. 대신 ★차례를 외우던 줄은 걷었다.★
+   */
+  it('상단바와 홈이 같은 리그를 담는다 (차례만 다르다)', () => {
+    const gnb = GNB_LEAGUES.map((item) => item.href)
+    const home = FEATURED_LEAGUES.map((item) => item.href)
+    expect([...gnb].sort()).toEqual([...home].sort())
   })
 
   it('안내 문구가 `서비스 준비중` 이다', () => {

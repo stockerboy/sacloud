@@ -63,6 +63,15 @@ const KNOWN_MATCH_WRITERS: Record<string, string> = {
   'apps/worker/src/jobs/reconstruct.ts': 'nexon (넥슨 Open API · 세워 둔 것)',
   'apps/worker/src/jobs/project.ts': 'nexon (넥슨 Open API · 세워 둔 것)',
   'apps/worker/src/dev/iplProjectPush.ts': 'nexon_barracks (dev 도구)',
+  /*
+   * ★2026-09-20 밤에 새로 생긴 길★ — 이 검사가 잡아냈다 (의도대로다).
+   *
+   *   C1 리그는 ★이미 들어와 있는 IPL 경기를 베껴★ 다른 리그에 담는다.
+   *   ★미러(`3rd.supply`)를 건드리지 않는다★ — origin 은 `sacloud` 이고
+   *   `sourceMatchId` 에는 `c1-` 접두가 붙어 원본과 부딪히지 않는다.
+   *   그래서 동결 대상이 아니다. ★새 경기를 밖에서 들여오는 길이 아니기 때문이다.★
+   */
+  'apps/worker/src/jobs/c1LeagueBuild.ts': 'sacloud (C1 — 이미 있는 경기를 베껴 담는다 · 동결 대상 아님)',
   'packages/db/seed/seed.ts': 'mock (개발 시드)',
 }
 

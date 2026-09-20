@@ -208,7 +208,15 @@ export function useDrawIn(
       io.disconnect()
       window.clearTimeout(timer)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    /*
+     * ⚠ ★`restartKey` 하나만 본다★ — 안에서 쓰는 `fire` 를 넣으면 매번 다시 붙는다.
+     *
+     *   여기 있던 `eslint-disable-next-line react-hooks/exhaustive-deps` 를 걷었다
+     *   (2026-09-20). ★그 규칙이 이 저장소에 아예 없어서★ eslint 가 「그런 규칙 없다」 로
+     *   ★오류를 냈고, 그 오류가 `pnpm verify` 를 빨갛게 만들고 있었다.★
+     *   `eslint-plugin-react-hooks` 를 들이는 일은 `docs/ORDERS.md` 대기 칸에 적어 뒀다 —
+     *   규칙을 켜면 다른 자리도 같이 빨개질 수 있어 밤에 혼자 할 일이 아니다.
+     */
   }, [restartKey])
 
   useEffect(() => {

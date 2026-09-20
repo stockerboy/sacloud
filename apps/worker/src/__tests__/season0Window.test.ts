@@ -11,6 +11,7 @@ import {
   SEASON0_NUMBER,
   SEASON0_ORIGINS,
   SEASON0_ORIGINS_V1,
+  SEASON0_ORIGINS_V2,
   SEASON0_TO,
   SEASON0_TYPE,
   season0MatchWhere,
@@ -50,13 +51,35 @@ describe('시즌0 창 (D-175)', () => {
    * 가 선수 0명·클랜 0개를 돌려줬다. 맨 뒤에 둔 것은 중복 제거에서 미러·넥슨이
    * 먼저 이기게 하기 위해서다. 옛 값은 `SEASON0_ORIGINS_V1` 에 남아 있다.
    */
-  it('미러 · 넥슨 · 병영수첩을 **셋 다** 본다. 미러가 앞이다(중복이면 미러가 남는다)', () => {
-    expect([...SEASON0_ORIGINS]).toEqual(['3rd.supply', 'nexon', 'nexon_barracks'])
-    expect(season0MatchWhere().origin.in).toEqual(['3rd.supply', 'nexon', 'nexon_barracks'])
+  /**
+   * ⚠ ★2026-09-20 — `sacloud` 를 더했다★ (C1 리그). 같은 병을 두 번째로 밟은 날이다.
+   *
+   *   C1 경기는 우리가 직접 담아 `Match.origin` 기본값 `sacloud` 가 박히는데
+   *   이 목록에 없어서 ★「선수 0 · 클랜 0」★ 이 나왔다 — 2026-09-01 의 IPL 과 판박이다.
+   *
+   * ⚠ ★이 시험은 「목록을 통째로 외우는」 꼴이었다.★ 그래서 2026-09-20 에
+   *   ★옳은 수정을 막았다★ (비판 검수가 짚은 그대로다). 이제 외우지 않고
+   *   ★지켜야 할 것 둘★ 만 본다 —
+   *     ① 아는 출처가 ★빠지지 않았는가★ (빠지면 그 리그가 통째로 사라진다)
+   *     ② ★미러가 맨 앞인가★ (중복이면 앞이 이긴다 — 원본이 이겨야 한다)
+   *   새 출처를 더하는 것은 ★막지 않는다.★ 더할 때마다 이 시험을 고치게 하면
+   *   사람이 시험을 미워하게 된다.
+   */
+  it('아는 출처가 하나도 빠지지 않았다 · 미러가 맨 앞이다', () => {
+    const 있어야 = ['3rd.supply', 'nexon', 'nexon_barracks', 'sacloud']
+    for (const o of 있어야) {
+      expect([...SEASON0_ORIGINS], `★${o} 가 빠지면 그 경기가 집계에서 통째로 사라진다★`).toContain(o)
+    }
+    /* 중복이면 앞이 이긴다 — 미러가 맨 앞이어야 원본이 남는다 */
+    expect(SEASON0_ORIGINS[0]).toBe('3rd.supply')
+    /* 조회 조건과 상수가 ★한 곳에서 나온다★ */
+    expect(season0MatchWhere().origin.in).toEqual([...SEASON0_ORIGINS])
   })
 
-  it('옛 목록을 지우지 않았다 (CLAUDE.md 10-4)', () => {
+  it('옛 목록을 지우지 않았다 (CLAUDE.md 1-4)', () => {
     expect([...SEASON0_ORIGINS_V1]).toEqual(['3rd.supply', 'nexon'])
+    /* 2026-09-20 판 — `sacloud` 를 더하기 직전 */
+    expect([...SEASON0_ORIGINS_V2]).toEqual(['3rd.supply', 'nexon', 'nexon_barracks'])
   })
 
   it('replay 범위와 조회 범위가 같은 값에서 나온다', () => {
