@@ -56,42 +56,22 @@ import { log } from '../lib/log.js'
 export const SCORE_LADDER_MIN_GAMES = 40
 
 /**
- * ★★리그마다 문턱이 다르다★★ (2026-09-20 사장님이 화면을 보고 잡으셨다)
+ * ★★리그마다 문턱이 다르다 — 계약 한 곳이 정한다★★ (2026-09-20)
  *
- * > 「이건 아니잖아 진짜 말이되냐 ★DF가 저 등수인게..?★」
- *   — PL 개인랭킹 15위에 ★17판에 승률 35%★ 인 선수가 서 있었다.
+ * > 「이건 아니잖아 진짜 말이되냐 ★DF가 저 등수인게..?★」 (사장님)
+ *   PL 개인랭킹 15위에 ★17판에 승률 35%★ 인 선수가 서 있었다.
  *
- * ── 왜 그랬나
+ *   ★이 값이 워커와 화면 두 곳에 따로 적혀 있었다.★ 워커는 40, 화면은 15 라
+ *   ★점수를 못 매긴 사람이 목록에는 들어왔다.★
  *
- *   PL 은 판이 적어 ★40판을 넘긴 사람이 69명★ 뿐이었다. 목록이 얇으면 화면이
- *   ★옛 Elo 래더로 떨어지게★ 돼 있고 (`ranks/players` 의 `scoreOrLadder`),
- *   Elo 는 ★판수를 안 본다.★ 그래서 17판짜리가 15위에 섰다.
+ *   그래서 ★`packages/contract/src/rankMinGames.ts` 한 곳★ 으로 옮겼다.
+ *   왜 리그마다 다른지도 그 파일에 적혀 있다.
  *
- *   ── 리그별 실측 (2026-09-20)
- *   ```
- *              40판+   30판+   25판+   20판+   15판+
- *     PL       ★69★    100     110     127     154
- *     IPL       528     691     820     932    1109
- *   ```
- *   ★PL 은 IPL 의 8분의 1★ 이다. ★한 값으로는 한쪽이 늘 망가진다.★
- *
- * ── 왜 PL 을 25 로 두나
- *
- *   110명이면 ★다섯 쪽짜리 목록★ 이라 옛 래더로 안 떨어진다.
- *   20 으로 내리면 127명이지만 ★20판은 사장님이 싫어하신 그 자리★ 다
- *   (「몇판 하지도 않은 애들이 100위 안에」). 25 가 그 사이다.
- *
- * ⚠ ★IPL 은 40 그대로★ 다 — 528명이라 넉넉하다. 내릴 이유가 없다.
- * ⚠ 여기 없는 리그는 위 기본값(40)을 쓴다.
+ * ⚠ 옛 기본값(`SCORE_LADDER_MIN_GAMES`)은 지우지 않는다 (CLAUDE.md 1-4) —
+ *   `--min-games` 로 손수 줄 때의 기준이다.
  */
-const MIN_GAMES_BY_LEAGUE: Readonly<Record<string, number>> = {
-  supply: 25,
-}
-
-/** 그 리그의 최소 경기 수 */
-export function minGamesOf(leagueSlug: string): number {
-  return MIN_GAMES_BY_LEAGUE[leagueSlug] ?? SCORE_LADDER_MIN_GAMES
-}
+export { rankMinGamesOf as minGamesOf } from '@sacloud/contract'
+import { rankMinGamesOf } from '@sacloud/contract'
 /** 보정을 받는 클랜 수 — 그 리그 래더 위에서부터 (사장님: «IPL 1등부터 11등») */
 /*
  * ⚠ ★11 → 10★ (2026-09-18 사장님: 「무조건 10등까지만 보정 줘」).
@@ -138,7 +118,22 @@ export const TOP_CLAN_EXCLUDE_SLUGS: readonly string[] = ['clanhanul']
  *   3.0 은 그 표의 바깥이라 ★재계산 뒤에 실제로 몇 명이 되는지 재서 보고한다.★
  *   너무 세면 ★상위클랜 하위권 선수가 다른 클랜 상위권을 밀어낸다★ — 그때는 내린다.
  */
-export const TOP_CLAN_BONUS = 3.0
+/*
+ * ⚠ ★★3.0 → 0 (보정을 끈다)★★ (2026-09-20 밤 사장님)
+ *
+ * > 「IPL은 이제 ★모든 상위권 클랜보정을 제거★ 하라 이제 그딴거 필요없다
+ * >  어차피 ★진짜 실력자들의 실력싸움은 c1에 기록★ 된다.
+ * >  그냥 ★기록순으로만★ 랭킹내기고 c1에서도 기록순으로 매기면 된다」
+ *
+ *   보정은 ★강한 클랜과 붙어 점수를 못 낸 사람★ 을 메우려던 장치였다.
+ *   이제 그 사람들의 진짜 싸움은 ★C1 이라는 따로 된 리그★ 에 기록되므로
+ *   IPL 에서 보정을 줄 이유가 없다.
+ *
+ * ⚠ ★0 으로 두면 클랜을 고르는 일도 무의미해진다★ — 그래도 `TOP_CLAN_COUNT` 와
+ *   `TOP_CLAN_EXCLUDE_SLUGS` 는 ★지우지 않는다★ (CLAUDE.md 1-4).
+ *   되돌리려면 이 한 줄만 3.0 으로. 재계산하면 바로 돌아온다.
+ */
+export const TOP_CLAN_BONUS = 0
 
 /**
  * ★판수가 적으면 평균 쪽으로 끌어당긴다★ (2026-09-18 사장님:
@@ -185,7 +180,7 @@ export async function buildScoreLadder(options: {
   minGames?: number
 }): Promise<ScoreLadderResult> {
   /* ★리그마다 다르다★ (2026-09-20) — PL 은 판이 적어 40 이면 목록이 얇아진다 */
-  const minGames = options.minGames ?? minGamesOf(options.leagueSlug)
+  const minGames = options.minGames ?? rankMinGamesOf(options.leagueSlug)
   await prisma.$executeRawUnsafe('SET statement_timeout = 180000')
 
   const league = await prisma.league.findFirst({

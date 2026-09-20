@@ -45,6 +45,8 @@ import {
   type PlayerRankHexAxis,
   type PlayerRankRow,
   type RankWeapon,
+  /* ★랭킹 문턱은 계약 한 곳이 정한다★ — 워커와 같은 값을 본다 (2026-09-20) */
+  rankMinGamesOf,
 } from '@sacloud/contract'
 import { cursorPage, type CursorPage } from '../cursorPage'
 import { toKstDate } from '../format'
@@ -160,7 +162,7 @@ export async function getPlayerRanksByWeapon(
 ): Promise<CursorPage<PlayerRankRow> | null> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
-    select: { id: true, category: true },
+    select: { id: true, category: true, slug: true },
   })
   if (!league) return null
 
@@ -467,12 +469,18 @@ export async function getPlayerRanksByScore(
 ): Promise<(CursorPage<PlayerRankRow> & { total?: number }) | null> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
-    select: { id: true, category: true },
+    select: { id: true, category: true, slug: true },
   })
   if (!league) return null
   /* ★스나·라플을 섞어 점수 순 한 줄★ (2026-09-10 · 사장님 확정). 무기별 등수(`scoreRank`)는 상세 화면 몫이다.
      ★무기 칩은 「거르개」지 「다른 순위」가 아니다★ (2026-09-11 사장님) — 래더는 스나·라플 점수를 합친 하나뿐이고
      순위는 그 하나로 매긴다. 무기마다 다시 줄 세우면 통합 1등 스나와 스나 탭 1등이 달라진다 (실측: lximmore vs 모어젤) */
+  /*
+   * ★점수를 매긴 문턱과 같은 값★ — 갈라지면 「점수 없는 사람이 목록에」 선다 (2026-09-20).
+   * ⚠ 워커와 화면이 ★같은 함수★ 를 봐야 한다. 여기서 숫자를 다시 적지 않는다.
+   */
+  const minGames = rankMinGamesOf(league.slug)
+
   const where = {
     weapon: onlyWeapon === null ? { not: null } : onlyWeapon,
     score: { not: null },
@@ -481,7 +489,19 @@ export async function getPlayerRanksByScore(
      * 조절판에서 15판으로 고르셨다. 점수 자체는 그대로 계산되고 ★줄 세우기에서만 뺀다★ —
      * 선수 페이지에는 점수가 그대로 뜬다. 0 으로 두면 규칙이 꺼진다 (CLAUDE.md 1-4).
      */
-    ...(RANK_MIN_GAMES > 0 ? { games: { gte: RANK_MIN_GAMES } } : {}),
+    /*
+     * ⚠ ★★리그마다 다르다★★ (2026-09-20 사장님이 화면을 보고 잡으셨다)
+     *
+     * > 「이건 아니잖아 진짜 말이되냐 ★DF가 저 등수인게..?★」
+     *   — PL 개인랭킹 15위에 ★17판에 승률 35%★ 인 선수가 서 있었다.
+     *
+     *   문턱이 ★15판 고정★ 이라 17판짜리가 목록에 들어왔다. 그런데 점수를 매기는
+     *   쪽(`scoreLadderBuild`)은 ★PL 25판 · IPL 40판★ 을 쓴다.
+     *   ★두 문턱이 갈라져 있으면 「점수도 없는 사람이 목록에」 선다.★
+     *
+     *   ★점수를 매긴 문턱과 목록 문턱을 같게 한다.★
+     */
+    ...(minGames > 0 ? { games: { gte: minGames } } : {}),
     /*
      * 구간 고르개 — 안 고르면 칸을 아예 안 넣는다 (homeTier 가 빈 줄도 전체에는 남는다).
      *
