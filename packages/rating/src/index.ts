@@ -28,7 +28,7 @@ export {
   type SeasonPolicyFlags,
   type SuppressionRange,
   type WinRateBand,
-} from './constants.js'
+} from './constants'
 
 export {
   applyRating,
@@ -49,7 +49,7 @@ export {
   type Outcome,
   type RatingUpdateInput,
   type RatingUpdateResult,
-} from './formula.js'
+} from './formula'
 
 export {
   OFFICIAL_LABEL_MIN_MEMBERS,
@@ -66,7 +66,7 @@ export {
   type ParticipantRole,
   type ReconstructionStatus,
   type SideSummary,
-} from './eligibility.js'
+} from './eligibility'
 
 export {
   rateMatch,
@@ -74,4 +74,4 @@ export {
   type MatchRatingInput,
   type MatchRatingResult,
   type PlayerRatingResult,
-} from './match.js'
+} from './match'

@@ -13,7 +13,7 @@ import {
   personalKFor,
   roundHalfUp,
   type RatingConstants,
-} from './constants.js'
+} from './constants'
 
 export type Outcome = 'win' | 'lose'
 

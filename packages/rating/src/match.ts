@@ -21,8 +21,8 @@ import {
   DEFAULT_RATING_CONSTANTS,
   PERSONAL_FORMULA_VERSION,
   type RatingConstants,
-} from './constants.js'
-import { clanRatingUpdate, personalRatingUpdate } from './formula.js'
+} from './constants'
+import { clanRatingUpdate, personalRatingUpdate } from './formula'
 import {
   evaluateEligibility,
   lineupConfidence,
@@ -32,7 +32,7 @@ import {
   type LineupConfidence,
   type ParticipantRole,
   type SideEvidence,
-} from './eligibility.js'
+} from './eligibility'
 
 export interface MatchRatingInput {
   /** 확인된 참가자 전원 (양 팀) — 확인되지 않은 사람은 **여기에 없어야 한다** */

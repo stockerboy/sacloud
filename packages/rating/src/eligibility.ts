@@ -31,7 +31,7 @@
  *     3명 이상 100% · 2명 70% · 1명 40% · 0명 0%
  *   개인 래더에는 이 차등을 적용하지 않는다 (D-082).
  */
-import type { RatingConstants } from './constants.js'
+import type { RatingConstants } from './constants'
 
 /** 확인 근거 */
 export type EvidenceSource = 'player_match_list' | 'match_detail'
