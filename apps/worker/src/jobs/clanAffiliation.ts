@@ -78,6 +78,9 @@ export interface ClanAffiliationResult {
   samples: Array<{ nick: string; before: string; after: string }>
 }
 
+/** 신원 합치기가 남긴 껍데기의 이름표 — `barracksIdentityMerge` 가 이 꼴로 적는다 */
+const SHELL_NAME = /^\(합쳐짐→/
+
 interface Row {
   leaguePlayerId: string
   /** ★그 선수 자신★ — 이름을 고치려면 `LeaguePlayer` 가 아니라 이쪽을 짚어야 한다 */
@@ -209,7 +212,15 @@ export async function runClanAffiliation(input: {
   for (const row of rows) {
     if (row.usn) result.linkable += 1
 
-    const wanted = row.rosterNick?.trim()
+    /*
+     * ⚠ ★합쳐진 껍데기는 되살리지 않는다★ (2026-09-20 미리보기에서 잡았다).
+     *
+     *   신원 합치기가 남긴 껍데기는 이름이 «(합쳐짐→…)» 다. 여기에 명부 닉을
+     *   다시 써 넣으면 ★그 분신이 검색에 부활한다.★ 한 사람이 다시 둘이 된다 —
+     *   사장님이 없애 달라고 하신 바로 그 모양이다.
+     *   실측 미리보기에서 «(합쳐짐→SUP-906537322) → 곤란» 같은 줄이 나왔다.
+     */
+    const wanted = SHELL_NAME.test(row.nick) ? null : row.rosterNick?.trim()
     if (wanted && wanted !== row.nick) {
       renames.push({ playerId: row.playerId, name: wanted })
       if (result.samples.length < 15)
