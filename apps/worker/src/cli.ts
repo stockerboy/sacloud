@@ -34,6 +34,7 @@ import { runClanNameBackfill } from './jobs/clanNameBackfill'
 import { runBarracksIdentityMerge } from './jobs/barracksIdentityMerge'
 import { runUnifiedProject } from './jobs/unifiedProject.js'
 import { rateLimitSweep } from './jobs/rateLimitSweep.js'
+import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
 import {
   countSharedPasswordAccounts,
@@ -3863,6 +3864,16 @@ async function main(): Promise<number> {
      *   `RateLimit` 은 ★지우는 곳이 한 곳도 없었다★ — 실측 1,330줄 중 1,328줄이
      *   이미 지난 것이었다. 게시판 조회수가 이 표를 쓰기 시작해서 더 빨리 큰다.
      */
+    /*
+     * ★클랜 이름을 최근 경기로 맞춘다★ (2026-09-20 사장님: 「클랜명 바뀐거였네」)
+     *   클랜 이름이 들어오는 곳은 ★경기 목록 원문 하나뿐★ 이다 —
+     *   명부 API 는 회원만, 클랜정보 API 는 번호만 준다.
+     */
+    case 'clan-name-from-matches': {
+      const r = await runClanNameFromMatches({ confirm: boolFlag(args, 'confirm') })
+      return r.renamed >= 0 ? 0 : 1
+    }
+
     case 'rate-limit-sweep': {
       const result = await rateLimitSweep()
       console.log(`지운 줄=${result.deleted} · 더 있나=${result.more ? '예' : '아니오'}`)
