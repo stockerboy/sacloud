@@ -14,6 +14,7 @@
  *   축 값이 `null` 인 선수는 ★목록에 안 넣는다★. 표본이 모자라 못 잰 것을 0% 로 줄 세우면
  *   맨 아래가 전부 «측정중» 인 사람으로 찬다 (D-106).
  */
+import { RANK_MIN_GAMES } from './rankings'
 import { prisma, Prisma } from '@sacloud/db'
 import {
   BADGES,
@@ -84,11 +85,35 @@ export async function badgeOwnersOf(
    * 한 번에 읽으려면 칸 이름이 행마다 달라져야 해서 SQL 이 지저분해진다.
    */
   const rows: BadgeOwnerRow[] = []
+  /*
+   * ★★「몇 명 중」 은 ★자른 수★ 가 아니라 ★잰 사람 전부★ 다★★ (2026-09-20 비판 검수)
+   *
+   *   아래 질의는 `LIMIT 200` 으로 자른다. 그런데 그 잘린 수를 그대로 분모로 썼다.
+   *
+   *     배지 페이지    「17위 / ★200명★ 중」
+   *     선수 페이지    「17위 / ★876명★ 중」   ← 같은 축, 같은 선수
+   *
+   *   ★같은 이름의 숫자가 두 화면에서 다른 뜻★ 이었다. 그래서 ★센 수를 따로 둔다.★
+   *
+   * ⚠ 보이는 목록은 200명까지 그대로다 — ★분모만★ 바로잡는다.
+   */
+  let measured = 0
   for (const weapon of badge.weapons) {
     const axis = axisOf(key, weapon)
     if (axis === null) continue
     const col = AXIS_COLUMNS[axis]
     const valueCol = Prisma.raw(`"${String(col.value)}"`)
+    /* ★잰 사람 전부★ — 자르기 전의 수다. 분모는 이것이어야 한다 */
+    const counted = await prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*)::bigint AS n
+        FROM "LeaguePlayerHex" h
+        JOIN "LeaguePlayer" lp ON lp."id" = h."leaguePlayerId"
+       WHERE lp."leagueId" = ${league.id}
+         AND h."weapon" = ${weapon}
+         AND h.${valueCol} IS NOT NULL
+         AND h."games" >= ${RANK_MIN_GAMES}`
+    measured += Number(counted[0]?.n ?? 0)
+
     const got = await prisma.$queryRaw<
       {
         pid: string
@@ -116,6 +141,8 @@ export async function badgeOwnersOf(
          AND h."weapon" = ${weapon}
          /* ★못 잰 사람은 안 넣는다★ — 0% 로 줄 세우지 않는다 */
          AND h.${valueCol} IS NOT NULL
+         /* ★판수 문턱★ — 2판 뛰고 100% 인 선수가 1위에 서면 안 된다 (2026-09-20) */
+         AND h."games" >= ${RANK_MIN_GAMES}
        ORDER BY h.${valueCol} DESC, p."name" ASC
        LIMIT ${limit}`
     for (const r of got) {
@@ -184,7 +211,11 @@ export async function badgeOwnersOf(
     label: badge.label,
     note: badge.note,
     art: badge.art,
-    total: rows.length,
+    /*
+     * ★분모는 「잰 사람 전부」★ — `rows.length` 는 `LIMIT 200` 으로 자른 수다 (2026-09-20).
+     * ⚠ 못 세면 자른 수로 떨어진다 — 빈 칸을 만들지 않는다.
+     */
+    total: measured > 0 ? measured : rows.length,
     rows,
   }
 }
