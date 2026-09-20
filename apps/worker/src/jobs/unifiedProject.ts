@@ -266,7 +266,21 @@ async function buildNameIndex(liveClans: Map<string, LiveClan>) {
   }
 
   const built = buildClanIndex(entries)
-  return { ...built, recovered, namesByClanId, clanBySlug: bySlug }
+  /*
+   * ★★클랜번호 → 클랜★★ (2026-09-20) — 이름 대신 쓸 확실한 열쇠.
+   *
+   *   `BarracksClanNumber` 는 우리가 병영수첩에 물어서 저장해 둔 표다.
+   *   ⚠ ★우리 세 리그에 살아 있는 클랜만★ 담는다 — 남의 클랜을 앉히면 안 된다.
+   */
+  const rows = await prisma.barracksClanNumber.findMany({ select: { clanNo: true, clanId: true } })
+  const clanById = new Map([...liveClans.values()].map((c) => [c.clanId, c]))
+  const byNo = new Map<string, LiveClan>()
+  for (const r of rows) {
+    const clan = clanById.get(r.clanId)
+    if (clan) byNo.set(r.clanNo, clan)
+  }
+
+  return { ...built, recovered, namesByClanId, clanBySlug: bySlug, clanByNo: byNo }
 }
 
 export async function runUnifiedProject(
@@ -281,7 +295,7 @@ export async function runUnifiedProject(
 
   const liveClans = await loadLiveClans()
   const leagueMaps = await loadLeagueMaps()
-  const { index, ambiguous, recovered, namesByClanId, clanBySlug } =
+  const { index, ambiguous, recovered, namesByClanId, clanBySlug, clanByNo } =
     await buildNameIndex(liveClans)
 
   const leagueRows = await prisma.league.findMany({
@@ -405,8 +419,17 @@ export async function runUnifiedProject(
      *     ② 그 키들의 payload 를 ★따로★ 가져온다 (`DISTINCT ON` · 키가 정해져 있어 빠르다)
      *   결과는 한 줄도 안 바뀐다.
      */
-    const heads = await prisma.$queryRaw<Array<{ matchKey: string; subjects: string[] }>>`
-      SELECT "matchKey", ARRAY_AGG(DISTINCT "subject") AS "subjects"
+    const heads = await prisma.$queryRaw<
+      Array<{ matchKey: string; subjects: string[]; clanNos: string[] }>
+    >`
+      SELECT "matchKey",
+             ARRAY_AGG(DISTINCT "subject") AS "subjects",
+             /*
+              * ★★그 경기에 나온 클랜번호★★ (2026-09-20) — 이름보다 확실한 열쇠다.
+              *   클랜은 이름을 바꾸고, 버린 이름을 남이 쓴다. 번호는 안 바뀐다.
+              *   비어 있는 값은 「없음」 이라는 뜻이라 뺀다.
+              */
+             ARRAY_REMOVE(ARRAY_AGG(DISTINCT NULLIF("rawClanNo", '')), NULL) AS "clanNos"
       FROM "BarracksClanMatchRaw"
       WHERE "matchKey" > ${after} AND "status" = 'ok'
       GROUP BY "matchKey"
@@ -430,7 +453,7 @@ export async function runUnifiedProject(
     const rows = heads.flatMap((h) => {
       const payload = payloadByKey.get(h.matchKey)
       /* ⚠ 원문이 사라진 키는 ★건너뛴다★ — 없는 것을 지어내지 않는다 */
-      return payload === undefined ? [] : [{ matchKey: h.matchKey, payload, subjects: h.subjects }]
+      return payload === undefined ? [] : [{ matchKey: h.matchKey, payload, subjects: h.subjects, clanNos: h.clanNos }]
     })
     /*
      * ⚠ ★커서는 `heads` 로 옮긴다★ — `rows` 는 원문이 사라진 키를 걸러 낸 뒤라
@@ -472,6 +495,9 @@ export async function runUnifiedProject(
         clanBySlug,
         namesByClanId,
         nameIndex: index,
+        /* ★번호로 먼저 앉힌다★ — 이름이 바뀌어도 안 틀린다 (2026-09-20) */
+        clanByNo,
+        matchClanNos: row.clanNos,
       })
       const verdict = verdictFromSides(m.redClanName, m.blueClanName, sides)
       if (!verdict.ok) {
@@ -487,9 +513,9 @@ export async function runUnifiedProject(
       /* ── ④ 그 리그가 인정하는 맵인가 ─────────────────────────────
              ★리그마다 다르다.★ 표가 없으면 안 거른다 */
       const maps = leagueMaps.get(verdict.league) ?? null
-      let mapId: string | null = null
+      /* ★표가 없으면 안 거른다★ — 맵을 모르는 리그에서 경기를 버리지 않는다 */
+      let mapId: string | null = maps === null ? null : (m.mapName && maps.get(m.mapName)) || null
       if (maps !== null) {
-        mapId = (m.mapName && maps.get(m.mapName)) || null
         if (mapId === null) {
           noteUnclassified(
             m.matchKey,

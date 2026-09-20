@@ -175,7 +175,14 @@ export function decideLeague(
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /** 한 자리를 무엇으로 정했나 — ★근거가 남아야 나중에 따질 수 있다★ */
-export type SideEvidence = 'subject_slug' | 'clan_name' | 'none'
+/**
+ * 그 자리를 ★무엇으로 증명했나★.
+ *
+ * ★`clan_no` 가 가장 세다★ (2026-09-20 추가) — 번호는 안 바뀐다.
+ * `subject_slug` 는 원본이 「이 클랜이 나왔다」고 말한 것,
+ * `clan_name` 은 이름으로 맞춘 것이라 ★이름이 바뀌면 틀릴 수 있다.★
+ */
+export type SideEvidence = 'clan_no' | 'subject_slug' | 'clan_name' | 'none'
 
 export interface SideResolution {
   red: ClanLeague | null
@@ -195,6 +202,14 @@ export interface ResolveSidesInput {
   namesByClanId: ReadonlyMap<string, ReadonlySet<string>>
   /** 모호하지 않은 이름만 담긴 표 */
   nameIndex: ClanIndex
+  /**
+   * ★★클랜번호 → 클랜★★ (2026-09-20) — ★이름보다 확실한 열쇠★
+   *
+   * 없으면 지금까지와 똑같이 동작한다 (선택값).
+   */
+  clanByNo?: ReadonlyMap<string, ClanLeague>
+  /** 이 경기의 배틀로그가 말한 두 클랜번호 — `[red, blue]` 가 아니라 ★순서 모름★ */
+  matchClanNos?: readonly string[]
 }
 
 /**
@@ -202,6 +217,50 @@ export interface ResolveSidesInput {
  */
 export function resolveSides(input: ResolveSidesInput): SideResolution {
   const out: SideResolution = { red: null, blue: null, redBy: 'none', blueBy: 'none' }
+
+  /*
+   * ── ⓪ ★★클랜번호로 앉힌다★★ (2026-09-20 · 이름 때문에 생긴 사고를 막는다)
+   *
+   * ── 왜 번호가 먼저인가
+   *   ★클랜은 이름을 바꾼다.★ A가 이름을 버리면 B가 그 이름을 쓸 수 있고,
+   *   그러면 우리는 ★B의 경기를 A의 경기로 만든다.★
+   *
+   *   실측 (2026-09-20 · 경기 260920025705124001)
+   *   ```
+   *     우리가 만든 경기   베이직 vs vuvuzela      ← 이름으로 찾았다
+   *     배틀로그가 말한 번호  101107000814(베이직)
+   *                         260428000035 (우리 표에 없음)
+   *     우리 표의 vuvuzela   091224000022          ← ★다른 클랜이다★
+   *   ```
+   *   그 바람에 명단이 번호로 안 맞아 ★1,052건이 통째로 버려졌다.★
+   *
+   * ── ★번호는 안 바뀐다★
+   *   병영수첩 클랜번호는 클랜이 만들어질 때 정해지고 그대로다.
+   *   그러니 번호로 앉힌 자리는 ★이름이 어떻게 바뀌어도 안 틀린다.★
+   *
+   * ⚠ ★두 번호의 순서는 모른다★ — 배틀로그 `teamList` 의 차례는 red/blue 가 아니다.
+   *   그래서 ★한쪽이 확실할 때만★ 쓴다: 두 번호 중 우리 표에 있는 것이 ★하나뿐★ 이고
+   *   그 클랜의 이름이 red·blue 중 ★한쪽에만★ 맞을 때. 둘 다 맞거나 둘 다 아니면
+   *   ★앉히지 않는다.★ 모르면 비워 두는 것이 우리 규칙이다.
+   */
+  if (input.clanByNo && input.matchClanNos && input.matchClanNos.length > 0) {
+    for (const no of input.matchClanNos) {
+      const clan = input.clanByNo.get(no)
+      if (!clan) continue
+      const names = input.namesByClanId.get(clan.clanId)
+      if (!names) continue
+      const fitsRed = names.has(input.redClanName)
+      const fitsBlue = names.has(input.blueClanName)
+      if (fitsRed === fitsBlue) continue
+      if (fitsRed && out.red === null) {
+        out.red = clan
+        out.redBy = 'clan_no'
+      } else if (fitsBlue && out.blue === null) {
+        out.blue = clan
+        out.blueBy = 'clan_no'
+      }
+    }
+  }
 
   /* ── ① subject(slug) 로 앉힌다 — 원본이 「이 클랜이 나왔다」고 말한 것이다 */
   for (const slug of input.subjects) {
