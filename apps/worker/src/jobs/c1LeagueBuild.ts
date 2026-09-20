@@ -75,6 +75,8 @@ export interface C1BuildResult {
   skipped: number
   /** 새로 담은 참가 기록 줄 */
   stats: number
+  /** 명부에 새로 올린 선수 */
+  players: number
 }
 
 export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1BuildResult> {
@@ -85,6 +87,7 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
     created: 0,
     skipped: 0,
     stats: 0,
+    players: 0,
   }
 
   /* ── ① 리그 ─────────────────────────────────────────── */
@@ -305,5 +308,61 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
   log(
     `C1 경기 — 새로 담음 ${result.created} · 이미있음 ${result.skipped} · 참가기록 ${result.stats}줄`,
   )
+
+  /* ── ④ 명부 ─────────────────────────────────────────── */
+  /*
+   * ★★C1 경기에 나온 사람을 명부에 올린다★★ (2026-09-20 밤)
+   *
+   *   육각·점수·랭킹이 전부 `LeaguePlayer` 한 줄을 기준으로 돈다.
+   *   ★명부가 없으면 킬을 6만 개 읽어도 선수 줄이 0★ 이다 — 실제로 그랬다.
+   *
+   *   보통은 `battlelog-lineup` 이 만드는데 ★C1 은 수집 대상이 아니다★
+   *   (파생 리그라 원문을 따로 안 받는다). 그래서 여기서 만든다.
+   *
+   * ⚠ ★소속 클랜은 그 경기에서 선 쪽★ 으로 둔다 — C1 은 열 클랜뿐이라
+   *   그중 하나다. 용병으로 뛴 사람도 ★그 판의 팀★ 에 붙는다.
+   * ⚠ ★승·패는 여기서 안 센다★ — `clan-summary`·`score-ladder` 가 제 규칙으로 센다.
+   *   두 곳에서 세면 갈라진다.
+   */
+  const played = await prisma.matchPlayerStat.findMany({
+    where: { match: { leagueId: league.id } },
+    select: {
+      playerId: true,
+      side: true,
+      match: { select: { redLeagueClanId: true, blueLeagueClanId: true } },
+    },
+  })
+  /** playerId → 가장 마지막으로 선 팀의 clanId */
+  const clanOfPlayer = new Map<string, string>()
+  const lcToClan = new Map([...leagueClanOf.entries()].map(([clanId, lcId]) => [lcId, clanId]))
+  for (const row of played) {
+    const lcId = row.side === 'red' ? row.match.redLeagueClanId : row.match.blueLeagueClanId
+    const clanId = lcToClan.get(lcId)
+    if (clanId === undefined) continue
+    clanOfPlayer.set(row.playerId, clanId)
+  }
+
+  const already = await prisma.leaguePlayer.findMany({
+    where: { leagueId: league.id },
+    select: { playerId: true },
+  })
+  const have = new Set(already.map((r) => r.playerId))
+  let made = 0
+  for (const [playerId, clanId] of clanOfPlayer) {
+    if (have.has(playerId)) continue
+    await prisma.leaguePlayer.create({
+      data: {
+        leagueId: league.id,
+        playerId,
+        clanId,
+        /* ★배치고사는 폐지됐다★ — 처음부터 순위를 받는다 */
+        placement: false,
+      },
+    })
+    made += 1
+  }
+  log(`C1 명부 — 새로 올림 ${made}명 · 이미있음 ${have.size}명`)
+  result.players = made
+
   return result
 }
