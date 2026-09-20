@@ -66,6 +66,8 @@ export interface ClanAffiliationResult {
   corrected: number
   /** 무소속으로 비운 사람 */
   cleared: number
+  /** ★이름을 병영수첩에 맞춘 사람★ (2026-09-20) */
+  renamed: number
   /** 이미 맞아서 손대지 않은 사람 */
   unchanged: number
   /** 명부에 없어서 무소속으로 남는 사람 (구름) */
@@ -78,7 +80,11 @@ export interface ClanAffiliationResult {
 
 interface Row {
   leaguePlayerId: string
+  /** ★그 선수 자신★ — 이름을 고치려면 `LeaguePlayer` 가 아니라 이쪽을 짚어야 한다 */
+  playerId: string
   nick: string
+  /** ★병영수첩 명부가 부르는 지금 이름★ — 우리 이름과 다르면 이쪽이 이긴다 */
+  rosterNick: string | null
   usn: string | null
   nowClanId: string | null
   nowClanName: string | null
@@ -111,6 +117,7 @@ export async function runClanAffiliation(input: {
     filled: 0,
     corrected: 0,
     cleared: 0,
+    renamed: 0,
     unchanged: 0,
     noClan: 0,
     clearEnabled,
@@ -135,7 +142,8 @@ export async function runClanAffiliation(input: {
    */
   const rows = await prisma.$queryRaw<Row[]>`
     WITH roster AS (
-      SELECT DISTINCT ON (b."strUsn") b."strUsn" AS usn, c."id" AS "clanId", c."name" AS "clanName"
+      SELECT DISTINCT ON (b."strUsn") b."strUsn" AS usn, c."id" AS "clanId", c."name" AS "clanName",
+             b."userNick" AS nick
         FROM "BarracksClanMember" b
         JOIN "Clan" c ON c."slug" = b."clanSlug"
        WHERE b."observedAt" = ${observedAt}
@@ -147,7 +155,9 @@ export async function runClanAffiliation(input: {
        WHERE b."observedAt" = ${observedAt}
     )
     SELECT lp."id" AS "leaguePlayerId",
+           p."id" AS "playerId",
            p."name" AS nick,
+           r."nick" AS "rosterNick",
            CASE WHEN p."sourcePlayerId" LIKE 'BRK-%'
                 THEN substring(p."sourcePlayerId" from 5) END AS usn,
            lp."clanId" AS "nowClanId",
@@ -168,9 +178,43 @@ export async function runClanAffiliation(input: {
 
   const fills: Array<{ id: string; clanId: string }> = []
   const clears: string[] = []
+  /*
+   * ★★이름도 병영수첩이 이긴다★★ (2026-09-20 사장님)
+   *
+   * > 「무조건 닉네임이든 소속 클랜이든 무조건 병영수첩기준으로」
+   * > 「임소혜 닉넴은 이제 서든에 없는데 왜 우리사이트에서는 임소혜 치면 나오냐고」
+   *
+   * ── 왜 이름이 옛것으로 굳었나
+   *   우리 이름은 ★배틀로그★ 에서 온다. 그런데 배틀로그에 박힌 것은
+   *   ★그 경기를 뛸 때 달고 있던 이름★ 이다. 위장닉으로 뛴 판이 하나라도 있으면
+   *   ★그 위장닉이 그대로 굳는다.★ 위장닉이 끝나 본닉으로 돌아와도 모른다.
+   *
+   *   실측 — 계정 2114574636 은
+   *   ```
+   *     명부 08-31  「임소혜」   ← 위장닉 쓰던 때
+   *     명부 09-09  「임소혜」
+   *     명부 09-20  ★「현물」★   ← 위장닉이 끝났다
+   *     우리 화면              「임소혜」  ← 11일째 옛 이름
+   *   ```
+   *
+   * ── 그래서 명부가 이긴다
+   *   ★클랜원 명부는 「지금 이 계정을 뭐라고 부르나」 를 말한다.★ 위장닉을 쓰는
+   *   동안에는 명부도 위장닉을 보여 주므로, ★명부를 그대로 따라가면 늘 맞다.★
+   *
+   * ⚠ ★명부에 없는 사람은 손대지 않는다★ — 이름을 지어내지 않는다.
+   * ⚠ ★빈 이름으로 덮지 않는다★ — 명부 닉이 비면 지금 이름을 그대로 둔다.
+   */
+  const renames: Array<{ playerId: string; name: string }> = []
 
   for (const row of rows) {
     if (row.usn) result.linkable += 1
+
+    const wanted = row.rosterNick?.trim()
+    if (wanted && wanted !== row.nick) {
+      renames.push({ playerId: row.playerId, name: wanted })
+      if (result.samples.length < 15)
+        result.samples.push({ nick: row.nick, before: row.nick, after: `이름→${wanted}` })
+    }
 
     if (row.rosterClanId) {
       if (row.nowClanId === row.rosterClanId) {
@@ -220,6 +264,17 @@ export async function runClanAffiliation(input: {
   }
 
   if (input.confirm) {
+    /*
+     * ★이름부터 맞춘다★ — 같은 선수가 여러 리그에 있으면 같은 이름이 여러 번 온다.
+     *   `Map` 으로 접어 ★선수 하나당 한 번만★ 쓴다.
+     */
+    const byPlayer = new Map<string, string>()
+    for (const r of renames) byPlayer.set(r.playerId, r.name)
+    for (const [playerId, name] of byPlayer) {
+      await prisma.player.update({ where: { id: playerId }, data: { name } })
+      result.renamed += 1
+    }
+
     /* 같은 클랜으로 가는 사람끼리 묶어 한 번에 쓴다 */
     const byClan = new Map<string, string[]>()
     for (const f of fills) {
