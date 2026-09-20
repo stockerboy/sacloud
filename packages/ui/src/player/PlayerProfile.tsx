@@ -10,7 +10,7 @@ import { Egg } from '../egg/Egg'
 import { useClanEgg, usePlayerEgg } from '../egg/EggContext'
 import { EggVeil } from '../egg/EggVeil'
 import { RelativeTime } from '../common/RelativeTime'
-import { formatCount, formatRate } from '../common/format'
+import { formatCount, formatLadder, formatRate } from '../common/format'
 import { leaguePlayerPath } from '../common/paths'
 import type { RefreshState } from '../profile/ProfileHeader'
 import {
@@ -217,7 +217,8 @@ function PlayerLeagueRow({
             <div className="mt-1.5 text-[15px] leading-none text-meta">기록 없음</div>
           ) : (
             <div className="mt-1 font-num text-[26px] leading-none tabular-nums text-text-strong">
-              {formatCount(entry.rating)}
+              {/* ★0점 기준★ (2026-09-20 사장님) — 기준점은 `formatLadder` 한 곳이 안다 */}
+              {formatLadder(entry.rating)}
               <span className="ml-1 text-[12px] text-meta">점</span>
             </div>
           )}

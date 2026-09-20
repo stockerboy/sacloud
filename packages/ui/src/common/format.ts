@@ -97,3 +97,33 @@ export function formatDate(value: string): string {
 export function formatTeamCounts(redCount: number, blueCount: number): string {
   return `${redCount} vs ${blueCount}`
 }
+
+/**
+ * ★★래더를 0점 기준으로 적는다★★ (2026-09-20 사장님)
+ *
+ * > 「래더 3000점 부터 하지말고 그냥 0점부터 계산해」
+ *
+ * ── 왜 화면에서 빼나
+ *   저장된 래더(`LeaguePlayer.rating`)는 ★Elo 계열★ 이라 3000에서 시작한다.
+ *   그 저장값을 0 기준으로 바꾸면 ★기준점 하나 옮기자고 모든 선수의 점수와
+ *   과거 증감 기록을 다시 계산★ 해야 하고, 되돌릴 때도 같은 일을 또 해야 한다.
+ *
+ *   ★보이는 숫자만 바꾸면 뜻은 똑같다.★ 3,058점과 +58점은 같은 말이다.
+ *   계산은 한 톨도 안 건드리고, 되돌리려면 이 함수를 안 쓰면 된다.
+ *
+ * ── 어떻게 읽히나
+ *   ```
+ *     +58점   평균보다 잘한다
+ *       0점   딱 평균
+ *     −41점   평균보다 못한다
+ *   ```
+ *
+ * ⚠ ★기준점을 여기 한 곳에만 적는다★ — 화면마다 3000을 적어 두면
+ *   나중에 기준이 바뀔 때 한 곳만 고쳐지고 나머지가 남는다.
+ */
+export const LADDER_BASE = 3000
+
+export function formatLadder(value: number): string {
+  const v = Math.round(value) - LADDER_BASE
+  return `${v > 0 ? '+' : ''}${NF.format(v)}`
+}
