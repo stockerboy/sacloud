@@ -383,6 +383,20 @@ function loadLongZones(): { file: string | null; aLong: ZoneCells | null; bLong:
 }
 
 export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<PlayerHexBuildResult> {
+  /*
+   * ★★이 잡이 2분 벽에 걸려 죽고 있었다★★ (2026-09-20 실측)
+   *
+   *   마지막 「접기」 단계의 차이 질의(`gapRows`)가 한가할 때도 ★nolink 43초★ 다.
+   *   거기에 다른 배치가 겹치면 ★120초★ 를 넘겨 `57014` 로 잘렸고,
+   *   어제 하루 144회 중 ★15회★ 가 그렇게 실패했다.
+   *   ⚠ 실패해도 ★경기별 육각과 MVP 는 앞 루프에서 이미 저장된다★ —
+   *     못 갱신되는 것은 ★선수별 종합 육각★ 이다. 그래서 눈에 안 띄고 오래 갔다.
+   *
+   * ★이 연결에만 5분을 준다.★ 사이트가 쓰는 연결과는 무관하다.
+   * ⚠ 진짜 해결은 `gapRows` 를 가볍게 하는 것이다 — `docs/ORDERS.md` 에 남긴다.
+   */
+  await prisma.$executeRawUnsafe('SET statement_timeout = 300000')
+
   const slugs = options.leagueSlug ? [options.leagueSlug] : [...HEX_LEAGUE_SLUGS]
   const leagues = await prisma.league.findMany({
     where: { slug: { in: slugs } },

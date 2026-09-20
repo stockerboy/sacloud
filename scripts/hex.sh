@@ -44,14 +44,22 @@ if [ "${RUNNING:-0}" -gt 1 ]; then
   exit 0
 fi
 
+# ── ★전문을 따로 남긴다★ (2026-09-20)
+#
+#   `| tail -3` 이 pnpm 껍데기 세 줄만 남기고 ★진짜 오류를 잘라 버렸다.★
+#   `player-hex-build` 가 어제 15번 실패했는데 로그에는 「Exit status 1」 만 있었고,
+#   원인(`57014`)을 찾으려고 ★VPS 에서 네 번 재현해야 했다.★
+#   요약은 지금처럼 짧게 남기되, ★전문은 이 파일에 통째로 쌓는다.★
+HEXLOG="${HEXLOG:-/root/log/hex.log}"
+
 echo "[$(date +%H:%M)] ① 경기 육각"
-pnpm --filter @sacloud/worker nexon clan-hex-v2-build --confirm 2>&1 | tail -3
+pnpm --filter @sacloud/worker nexon clan-hex-v2-build --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
 
 echo "[$(date +%H:%M)] ② 개인 육각 (MVP 도 여기서 정해진다)"
-pnpm --filter @sacloud/worker nexon player-hex-build --confirm 2>&1 | tail -3
+pnpm --filter @sacloud/worker nexon player-hex-build --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
 
 echo "[$(date +%H:%M)] ③ 클랜 요약"
-pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --confirm 2>&1 | tail -3
+pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
 
 echo "[$(date +%H:%M)] ④ 점수 래더 (상위 10클랜 보정은 ★지금 순위★ 로 다시 박는다)"
 for L in nolink supply sanply; do
