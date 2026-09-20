@@ -108,7 +108,45 @@ function activeClanIn(leagueSlug: string) {
  *   랭킹 표는 이 파일, 래더는 그쪽이다. 끄려면 ★두 곳을 같이★ 끈다.
  */
 const HIDE_NO_GAME_CLANS = true
-const PLAYED_THIS_SEASON = HIDE_NO_GAME_CLANS ? { NOT: { win: 0, lose: 0 } } : {}
+
+/**
+ * ★★클랜랭킹 최소 판수★★ (2026-09-20 사장님)
+ *
+ * > 「클랜도 마찬가지로 나는 ★판수 없는 클랜 진짜 싫어하는거★ 알지」
+ *
+ * ── 무엇이 문제였나 (실측 2026-09-20)
+ *
+ *     SPL    ★4위  <#ever_wC>   2판 · 100%★   ← 두 판 이겨서 4위
+ *            ★6위  멘토르        2판 ·   0%★   ← 두 판 지고 6위
+ *            아홉 팀 중 ★여섯 팀이 20판 미만★
+ *     열산   ★7위  dearblue      6판 · 100%★
+ *
+ *   ★두 판으로 4위가 되는 것은 랭킹이 아니다.★ 개인 랭킹에는 이미
+ *   `RANK_MIN_GAMES = 15` 문턱이 있는데 ★클랜에는 없었다.★
+ *
+ * ── 왜 20판인가
+ *
+ *   개인(15판)보다 조금 높다. 클랜전은 ★다섯 명이 함께★ 뛰므로 한 판의 무게가
+ *   개인보다 가볍고, 클랜 수가 적어(9~20곳) 문턱이 낮으면 거의 안 걸러진다.
+ *
+ * ⚠ ★지우는 것이 아니라 랭킹에서만 뺀다★ — 클랜 화면·경기 기록은 그대로다.
+ *   한 판이라도 더 뛰면 ★저절로 돌아온다.★ 손댈 것이 없다.
+ * ⚠ ★0 으로 두면 문턱이 사라진다★ (`CLAUDE.md` 1-4) — 되돌릴 때 재계산이 없다.
+ */
+export const CLAN_RANK_MIN_GAMES = 20
+
+/**
+ * 랭킹에 올릴 클랜인가.
+ *
+ * ⚠ 문턱을 켜면 ★승·패 합★ 으로 거른다. 「한 판도 안 뛴 클랜」 규칙(위)을
+ *   삼키므로 조건을 따로 두지 않는다 — 20판 문턱이 0판을 이미 막는다.
+ */
+const PLAYED_THIS_SEASON: { NOT?: { win: number; lose: number } } =
+  CLAN_RANK_MIN_GAMES > 0
+    ? {}
+    : HIDE_NO_GAME_CLANS
+      ? { NOT: { win: 0, lose: 0 } }
+      : {}
 
 /* -------------------------------- 리그 목록 ------------------------------- */
 
@@ -709,6 +747,29 @@ export async function getClanRanks(
   const order = byTier ? TIER_ORDER : RANK_ORDER
   const orderReversed = byTier ? TIER_ORDER_REVERSED : RANK_ORDER_REVERSED
 
+  /*
+   * ★★판수가 모자란 클랜은 랭킹에서 뺀다★★ (2026-09-20 사장님:
+   *   「나는 ★판수 없는 클랜 진짜 싫어하는거★ 알지」)
+   *
+   *   실측 — SPL 아홉 팀 중 ★여섯 팀이 20판 미만★ 이었고,
+   *   ★두 판 이겨서 4위★ · ★두 판 지고 6위★ 가 나란히 서 있었다.
+   *
+   * ⚠ ★`win + lose` 는 Prisma 의 `where` 로 못 거른다★ — 칸끼리 더하는 조건이
+   *   없다. `LeagueClan` 에는 `games` 칸도 없다. 그래서 ★id 를 먼저 골라★ 넣는다.
+   *   클랜은 리그마다 수십 곳이라 이 왕복이 싸다.
+   * ⚠ 문턱이 0 이면 질의를 아예 안 한다 — 되돌릴 때 값이 안 든다.
+   */
+  const enoughIds =
+    CLAN_RANK_MIN_GAMES > 0
+      ? (
+          await prisma.$queryRaw<{ id: string }[]>`
+            SELECT "id" FROM "LeagueClan"
+             WHERE "leagueId" = ${leagueId}
+               AND "win" + "lose" >= ${CLAN_RANK_MIN_GAMES}
+          `
+        ).map((r) => r.id)
+      : null
+
   const where = {
     leagueId,
     ...(division > 0 ? { division } : {}),
@@ -717,6 +778,7 @@ export async function getClanRanks(
     ...activeClanIn(league.slug),
     /* 이번 시즌 한 판도 안 뛴 클랜도 뺀다 (2026-09-15) */
     ...PLAYED_THIS_SEASON,
+    ...(enoughIds === null ? {} : { id: { in: enoughIds } }),
   }
 
   /*
@@ -1151,6 +1213,9 @@ export async function clanRankOf(leagueClan: {
   division: number
   rating: number
   placement: boolean
+  /* ★판수 문턱을 넘겼나★ 를 여기서 본다 (2026-09-20) — 목록과 같은 조건이어야 한다 */
+  win: number
+  lose: number
 }): Promise<{ rank: number | null; rankCount: number | null }> {
   /* `rankCount` 는 클랜랭킹의 **모집단 크기**다. 랭킹 목록(`getClanRanks`)이
      비활성 클랜을 빼고 내보내므로 분모도 같은 집합이어야 한다.
@@ -1167,6 +1232,15 @@ export async function clanRankOf(leagueClan: {
    *
    *   ⚠ 배치고사면 예전에도 `rankCount` 를 **읽고 나서** 버렸다. 지금도 읽고 버린다 —
    *     한 질의라 버리는 값이 공짜다. 밖으로 나가는 값은 그대로 `null` 이다. */
+  /*
+   * ★판수 문턱을 목록과 같이 건다★ (2026-09-20 사장님: 「판수 없는 클랜 진짜 싫어해」)
+   *
+   *   `getClanRanks` 가 `win + lose >= CLAN_RANK_MIN_GAMES` 로 거르므로
+   *   ★여기 빠뜨리면 「목록에 없는 분모」 가 그대로 생긴다★ — 위 주석이 경고한 그것이다.
+   *
+   * ⚠ ★SQL 템플릿 안에 백틱을 쓰지 않는다★ — 템플릿이 거기서 끊긴다.
+   *   그래서 설명은 ★템플릿 밖★ 인 여기에 적는다. (이 세션에서 일곱 번 밟았다)
+   */
   const [row] = await prisma.$queryRaw<{ rankCount: number; above: number }[]>`
     SELECT COUNT(*)::int AS "rankCount",
            COUNT(*) FILTER (
@@ -1180,9 +1254,17 @@ export async function clanRankOf(leagueClan: {
        AND lc."placement" = false
        AND lc."expelledAt" IS NULL
        AND c."active" = true
+       /* ★판수 문턱★ — 목록(getClanRanks)과 같은 조건이다. 아래 주석을 보라 */
+       AND lc."win" + lc."lose" >= ${CLAN_RANK_MIN_GAMES}
   `
   const rankCount = row?.rankCount ?? 0
   if (leagueClan.placement) return { rank: null, rankCount: null }
+  /*
+   * ★문턱을 못 넘긴 클랜은 순위가 없다★ (2026-09-20) — 목록에 없는데 「n위」 라고
+   *   적으면 눌러도 그 자리에 없다. ★모르는 것이 아니라 「아직 아니다」★ 이므로
+   *   화면은 「기록 부족」 으로 적는다.
+   */
+  if (leagueClan.win + leagueClan.lose < CLAN_RANK_MIN_GAMES) return { rank: null, rankCount }
   return { rank: (row?.above ?? 0) + 1, rankCount }
 }
 

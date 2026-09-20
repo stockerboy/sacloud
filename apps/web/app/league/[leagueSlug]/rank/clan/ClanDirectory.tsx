@@ -15,6 +15,15 @@ import { ClanDirectoryV1 } from './ClanDirectoryV1'
 import { ClanPodiumCards } from './ClanPodiumCards'
 
 /**
+ * ★클랜랭킹 숫자를 구간으로 자르나★ (2026-09-20 사장님이 끄심).
+ *
+ * `false` 면 ★클랜 상세와 같은 통합 승패★ 를 쓴다 — 두 화면이 한 숫자도 안 어긋난다.
+ * `true` 로 되돌리면 2026-09-11~09-20 에 쓰던 「내 구간 승률」 이 그대로 돌아온다.
+ */
+const CLAN_RANK_BY_TIER = false
+
+
+/**
  * ★시즌 누적 1·2·3위 카드를 그리나★ — 지금은 ★아니다★ (2026-09-15 사장님 지시).
  * 그날 1·2·3위 육각은 「오늘의 클랜」이 그린다. 부품은 지우지 않았다.
  */
@@ -225,11 +234,30 @@ function ClanRankDirectory({
         league_clan_id: row.id,
         clan: row.clan,
         division: row.division,
-        /* ★내 구간에서의 승률★ (2026-09-11 사장님) — 같은 티어 상대와 붙은 판만.
-           같은 티어 경기가 아직 없으면 통합으로 떨어진다 (빈 칸을 만들지 않는다) */
-        win: row.tier_win_rate === null ? row.win : row.tier_win,
-        lose: row.tier_win_rate === null ? row.lose : row.tier_lose,
-        win_rate: row.tier_win_rate ?? row.win_rate,
+        /*
+         * ★★구간으로 자르지 않는다★★ (2026-09-20 사장님)
+         *
+         * > 「클랜도 랭킹에 보이는 승률이랑 판수랑 다른 클랜들 엄청 많음」
+         *
+         * ── 무엇이 어긋나 있었나 (실측)
+         *
+         *     supernova^   클랜 상세 ★241/260 · 48.1%★  ·  랭킹 ★117/94 · 55.5%★
+         *     amaryllis    클랜 상세 ★143/201 · 41.6%★  ·  랭킹 ★93/159 · 36.9%★
+         *
+         *   랭킹이 ★같은 티어끼리 붙은 판만★ 세고 있었다 (`tier_win_rate`).
+         *
+         * ── 왜 그랬나
+         *
+         *   2026-09-11 에 사장님이 「내 구간에서의 승률」 을 쓰라 하셨고 그대로 만들었다.
+         *   그 뒤 ★사장님이 구간을 없애셨는데★ (「구간없앴잖아 우리 아니야?」)
+         *   ★그 지시가 여기까지 안 닿았다.★ ★선수 랭킹과 똑같은 병이다.★
+         *
+         * ⚠ ★옛 판을 지우지 않는다★ (CLAUDE.md 1-4) — `CLAN_RANK_BY_TIER` 를 `true` 로
+         *   되돌리면 구간 판이 그대로 돌아온다. 계약의 `tier_*` 칸도 살려 둔다.
+         */
+        win: CLAN_RANK_BY_TIER && row.tier_win_rate !== null ? row.tier_win : row.win,
+        lose: CLAN_RANK_BY_TIER && row.tier_win_rate !== null ? row.tier_lose : row.lose,
+        win_rate: CLAN_RANK_BY_TIER ? (row.tier_win_rate ?? row.win_rate) : row.win_rate,
         rating: row.rating,
         /* ★뱃지★ (2026-09-14 사장님) — 판정은 서버가 이미 끝냈다. 여기는 나른다 */
         badges: row.badges,

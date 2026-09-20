@@ -85,8 +85,11 @@ beforeAll(async () => {
         division: 1,
         rating,
         placement: opts.placement ?? false,
-        win: 1,
-        lose: 0,
+        /* ★판수 문턱(CLAN_RANK_MIN_GAMES)을 넉넉히 넘긴다★ (2026-09-20) —
+           이 시험이 보는 것은 ★모집단★ 이지 판수가 아니다. 문턱에 걸리면
+           모집단 시험이 판수 시험으로 바뀌어 뜻이 흐려진다 */
+        win: 30,
+        lose: 20,
       },
     })
   }
@@ -162,6 +165,8 @@ describe.runIf(up)('클랜랭킹 모집단', () => {
       division: 1,
       rating: 3050,
       placement: false,
+      win: 30,
+      lose: 20,
     })
     expect(middle.rankCount).toBe(page!.items.length)
     expect(middle.rank).toBe(2)
@@ -187,6 +192,8 @@ describe.runIf(up)('클랜랭킹 모집단', () => {
       division: 1,
       rating: 3200,
       placement: true,
+      win: 30,
+      lose: 20,
     })
     expect(placing.rank).toBeNull()
     expect(placing.rankCount).toBeNull()
