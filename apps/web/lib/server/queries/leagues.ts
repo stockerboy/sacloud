@@ -630,8 +630,7 @@ const MERGE_CAP = 300
  * "앞에 오는 행" 의 뜻도 함께 바뀐다 — **목록과 같은 정렬로 세지 않으면 순위가 어긋난다.**
  */
 async function rankOfFirstClan(
-  leagueId: string,
-  division: number,
+  listWhere: Record<string, unknown>,
   first: { rating: number; id: string; division: number } | undefined,
   byTier: boolean,
 ): Promise<number> {
@@ -645,17 +644,29 @@ async function rankOfFirstClan(
     : [{ rating: { gt: first.rating } }, { rating: first.rating, id: { lt: first.id } }]
 
   const before = await prisma.leagueClan.count({
-    /* **목록과 같은 조건으로 센다** (D-147 과 같은 이유).
-       `getClanRanks` 는 `ACTIVE_CLAN` 으로 비활성 클랜을 빼고 보여 주는데
-       여기서 빼지 않으면, 앞자리에 놓인 비활성 클랜이 순위에만 더해져
-       "1위인데 rank=2" 처럼 목록에 없는 자리가 생긴다. */
-    where: {
-      leagueId,
-      ...(division > 0 ? { division } : {}),
-      placement: false,
-      ...ACTIVE_CLAN,
-      OR: ahead,
-    },
+    /*
+     * ★★목록이 쓰는 조건을 그대로 받아 센다★★ (2026-09-21 · 비판 검수가 짚은 자리)
+     *
+     * ── 여기서 조건을 다시 짜다가 ★진짜 어긋났다★
+     *
+     *   옛 판은 `ACTIVE_CLAN` 하나만 걸고 다시 짰다. 그 사이 목록에는
+     *   ★조건 셋★ 이 더 붙었는데 여기는 안 따라왔다 —
+     *     ① `activeClanIn(slug)` 의 ★그 리그에서 감춘 클랜★ (O-044 · 43곳)
+     *     ② `PLAYED_THIS_SEASON` ★이번 시즌 한 판도 안 뛴 클랜★
+     *     ③ `win + lose >= CLAN_RANK_MIN_GAMES` ★판수 문턱★
+     *
+     *   ★실측 (2026-09-21 운영)★ — 열산리그 클랜랭킹
+     *   ```
+     *   1쪽  1 ~ 20위
+     *   2쪽  ★59위★        ← 21위여야 한다. 38곳이 순위에만 더해졌다
+     *   ```
+     *   IPL·PL 은 마침 어긋나지 않아 ★아무도 못 보고 지나갔다.★
+     *
+     * ── 그래서 조건을 ★다시 짜지 않는다.★ 목록이 쓰던 것을 그대로 받는다.
+     *   앞으로 목록에 조건이 붙어도 여기가 저절로 따라온다 —
+     *   ★두 벌을 손으로 맞추는 일을 없애는 것이 이 고침의 전부다.★
+     */
+    where: { ...listWhere, OR: ahead },
   })
   return before + 1
 }
@@ -835,7 +846,7 @@ export async function getClanRanks(
   const startRank =
     merged !== null || cursor === null
       ? 1
-      : await rankOfFirstClan(leagueId, division, page.items[0], byTier)
+      : await rankOfFirstClan(where, page.items[0], byTier)
 
   /**
    * ★1·2·3위만 여섯 축을 싣는다★ (2026-09-12 사장님: «클랜도 탑3는 플레이스타일 6각형»).
