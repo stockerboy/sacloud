@@ -3,7 +3,64 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-18 새벽** · 갱신한 사람 B(실행 세션)
+> 마지막 갱신 **2026-09-20 밤** · 갱신한 사람 B(실행 세션)
+
+---
+
+## 0-C1. ★2026-09-20 밤 — C1 리그를 만들었다★
+
+사장님: 「IPL을 두 구간으로 나눈다 (…) C1이라는 개고수 전용 기록판을 만드는것이다」
+
+### 무엇인가
+
+**IPL 클랜순위 1~10등 열 곳끼리 한 경기만** 모은 **독립 리그**다.
+IPL 은 **한 글자도 안 건드렸다** — C1 은 그 옆에 따로 선다.
+
+```
+slug      c1          (화면 이름 C1 · category=independent · divisionCount=1)
+언제부터   9/3 부터
+경기       804건 · 참가기록 7,970줄 · 명부 499명
+개인랭킹   120명 (25판 이상 — PL 과 같은 문턱)
+클랜랭킹   10곳
+육각형     C1 안에서만 줄 세운다 (모집단 213명 / 182명)
+```
+
+열 클랜 — igloo · sometimes · vuvuzela · deluxe · 〃veritas ·
+luvme · grave · hardcores · methodcrew · amaryllis
+(명부는 `apps/worker/src/jobs/c1LeagueBuild.ts` 의 `C1_CLAN_SLUGS` 하나뿐이다)
+
+**다른 IPL·PL·열산 클랜과 한 경기는 한 줄도 안 들어간다.** 킬뎃도 마찬가지다.
+
+### 만드는 순서 (이 차례를 지켜야 한다)
+
+```bash
+pnpm exec tsx src/cli.ts c1-league-build --confirm      # 경기·명부를 담는다
+pnpm exec tsx src/jobs/season0Apply.ts --leagues c1 --confirm   # 개인 승패·킬뎃
+pnpm exec tsx src/cli.ts ipl-clan-rollup --league c1 --confirm  # 클랜 승패
+pnpm exec tsx src/cli.ts score-ladder-build --league c1 --confirm
+```
+
+⚠ **`season0Apply` 가 `LeagueClan` 승패를 0 으로 되돌린다.** 그래서
+`ipl-clan-rollup` 은 **반드시 그 뒤**에 돌린다. 순서를 바꾸면 클랜랭킹이 빈다.
+
+### ⚠ 오늘 밟은 지뢰 — 집계가 우리 경기를 안 봤다
+
+C1 개인 승패·킬뎃이 **전부 0/0** 으로 화면에 나갔다.
+`season0Apply` 는 **`origin` 이 `SEASON0_ORIGINS` 에 있는 경기만** 센다.
+C1 경기는 우리가 직접 담아 `Match.origin` 스키마 기본값 **`sacloud`** 가 박혔는데
+그 목록에 없었다 → 「선수 0 · 클랜 0 · 되돌린 선수 499」. **에러가 한 줄도 없다.**
+
+**2026-09-01 에 IPL(`nexon_barracks`)로 똑같이 당했다.** 두 번 다 사장님이
+화면에서 먼저 봤다. 그래서 시험을 뒀다 —
+`apps/worker/src/__tests__/season0Origins.test.ts`
+(보는 것은 「`Match.origin` 기본값이 목록 안에 있는가」 하나뿐이다)
+
+### 같이 한 것 — 상위클랜 보정을 전부 걷었다
+
+사장님: 「IPL은 이제 모든 상위권 클랜보정을 제거하라 (…) 그냥 기록순으로만」
+
+`TOP_CLAN_BONUS = 0`. 실측 — IPL 533명 중 0명 · C1 120명 중 0명 ·
+PL 110명 중 0명(2명 남아 있어 다시 돌렸다). 세 리그 다 **기록순**이다.
 
 ---
 
