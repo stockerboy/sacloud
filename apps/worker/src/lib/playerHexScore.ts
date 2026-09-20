@@ -864,7 +864,21 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
         const wperf = wrPct === null ? perf : (wrPct - 50) / 50
         const kperf = kdPct === null ? perf : (kdPct - 50) / 50
         const mixed = HEX_W_HEX * perf + HEX_W_WR * wperf + HEX_W_KD * kperf
-        score = Math.round(HEX_BASE + HEX_SPREAD * mixed * tierFactor * shrink + clanBonus)
+        /*
+         * ★★클랜 보정도 판수를 따라 줄인다★★ (2026-09-20 사장님: 「ㅇㅇ줄여줘」)
+         *
+         *   옛 판은 `clanBonus` 가 ★수축 바깥★ 에 있었다. 그래서
+         *   ★두 판만 뛴 1구간 선수도 +40 을 온전히 받았다.★
+         *   성적은 판수만큼 깎이는데 「어느 구간에서 뛰었나」 는 안 깎이니,
+         *   ★적게 뛴 상위 구간 선수가 공짜로 40점을 얹고 올라왔다.★
+         *
+         *   ★같은 수축을 곱한다.★ 적게 뛰었으면 보정도 적게 받는다 —
+         *   많이 뛰면 온전히 받는다. 규칙이 하나로 맞는다.
+         *
+         * ⚠ 3구간의 −40 도 같이 줄어든다. ★벌도 판수만큼만★ 받는 것이 옳다 —
+         *   두 판 뛰고 −40 을 다 받으면 그것도 근거가 없다.
+         */
+        score = Math.round(HEX_BASE + (HEX_SPREAD * mixed * tierFactor + clanBonus) * shrink)
       }
       return {
         leaguePlayerId: p.leaguePlayerId,
@@ -980,7 +994,21 @@ export function foldPlayerHexV1(players: readonly PlayerHexInput[]): PlayerHexRe
         const wperf = wrPct === null ? perf : (wrPct - 50) / 50
         const kperf = kdPct === null ? perf : (kdPct - 50) / 50
         const mixed = HEX_W_HEX * perf + HEX_W_WR * wperf + HEX_W_KD * kperf
-        score = Math.round(HEX_BASE + HEX_SPREAD * mixed * tierFactor * shrink + clanBonus)
+        /*
+         * ★★클랜 보정도 판수를 따라 줄인다★★ (2026-09-20 사장님: 「ㅇㅇ줄여줘」)
+         *
+         *   옛 판은 `clanBonus` 가 ★수축 바깥★ 에 있었다. 그래서
+         *   ★두 판만 뛴 1구간 선수도 +40 을 온전히 받았다.★
+         *   성적은 판수만큼 깎이는데 「어느 구간에서 뛰었나」 는 안 깎이니,
+         *   ★적게 뛴 상위 구간 선수가 공짜로 40점을 얹고 올라왔다.★
+         *
+         *   ★같은 수축을 곱한다.★ 적게 뛰었으면 보정도 적게 받는다 —
+         *   많이 뛰면 온전히 받는다. 규칙이 하나로 맞는다.
+         *
+         * ⚠ 3구간의 −40 도 같이 줄어든다. ★벌도 판수만큼만★ 받는 것이 옳다 —
+         *   두 판 뛰고 −40 을 다 받으면 그것도 근거가 없다.
+         */
+        score = Math.round(HEX_BASE + (HEX_SPREAD * mixed * tierFactor + clanBonus) * shrink)
       }
       return {
         leaguePlayerId: p.leaguePlayerId,
