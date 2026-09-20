@@ -54,6 +54,44 @@ import { log } from '../lib/log.js'
  *   ⚠ 되돌리려면 이 한 줄만 20 으로. 재계산하면 바로 돌아온다.
  */
 export const SCORE_LADDER_MIN_GAMES = 40
+
+/**
+ * ★★리그마다 문턱이 다르다★★ (2026-09-20 사장님이 화면을 보고 잡으셨다)
+ *
+ * > 「이건 아니잖아 진짜 말이되냐 ★DF가 저 등수인게..?★」
+ *   — PL 개인랭킹 15위에 ★17판에 승률 35%★ 인 선수가 서 있었다.
+ *
+ * ── 왜 그랬나
+ *
+ *   PL 은 판이 적어 ★40판을 넘긴 사람이 69명★ 뿐이었다. 목록이 얇으면 화면이
+ *   ★옛 Elo 래더로 떨어지게★ 돼 있고 (`ranks/players` 의 `scoreOrLadder`),
+ *   Elo 는 ★판수를 안 본다.★ 그래서 17판짜리가 15위에 섰다.
+ *
+ *   ── 리그별 실측 (2026-09-20)
+ *   ```
+ *              40판+   30판+   25판+   20판+   15판+
+ *     PL       ★69★    100     110     127     154
+ *     IPL       528     691     820     932    1109
+ *   ```
+ *   ★PL 은 IPL 의 8분의 1★ 이다. ★한 값으로는 한쪽이 늘 망가진다.★
+ *
+ * ── 왜 PL 을 25 로 두나
+ *
+ *   110명이면 ★다섯 쪽짜리 목록★ 이라 옛 래더로 안 떨어진다.
+ *   20 으로 내리면 127명이지만 ★20판은 사장님이 싫어하신 그 자리★ 다
+ *   (「몇판 하지도 않은 애들이 100위 안에」). 25 가 그 사이다.
+ *
+ * ⚠ ★IPL 은 40 그대로★ 다 — 528명이라 넉넉하다. 내릴 이유가 없다.
+ * ⚠ 여기 없는 리그는 위 기본값(40)을 쓴다.
+ */
+const MIN_GAMES_BY_LEAGUE: Readonly<Record<string, number>> = {
+  supply: 25,
+}
+
+/** 그 리그의 최소 경기 수 */
+export function minGamesOf(leagueSlug: string): number {
+  return MIN_GAMES_BY_LEAGUE[leagueSlug] ?? SCORE_LADDER_MIN_GAMES
+}
 /** 보정을 받는 클랜 수 — 그 리그 래더 위에서부터 (사장님: «IPL 1등부터 11등») */
 /*
  * ⚠ ★11 → 10★ (2026-09-18 사장님: 「무조건 10등까지만 보정 줘」).
@@ -146,7 +184,8 @@ export async function buildScoreLadder(options: {
   confirm: boolean
   minGames?: number
 }): Promise<ScoreLadderResult> {
-  const minGames = options.minGames ?? SCORE_LADDER_MIN_GAMES
+  /* ★리그마다 다르다★ (2026-09-20) — PL 은 판이 적어 40 이면 목록이 얇아진다 */
+  const minGames = options.minGames ?? minGamesOf(options.leagueSlug)
   await prisma.$executeRawUnsafe('SET statement_timeout = 180000')
 
   const league = await prisma.league.findFirst({
