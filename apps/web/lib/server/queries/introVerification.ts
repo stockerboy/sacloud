@@ -210,3 +210,78 @@ export async function isIntroVerified(userId: string, usn: string): Promise<bool
     return false
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* 화면이 묻는 것                                                                */
+/* -------------------------------------------------------------------------- */
+
+export interface IntroState {
+  /** idle | waiting | checking | verified | expired */
+  status: 'idle' | 'waiting' | 'checking' | 'verified' | 'expired'
+  /** 적어야 하는 문구 (없으면 `null`) */
+  phrase: string | null
+  /** 언제까지 (ISO) */
+  expiresAt: string | null
+  /** 인증된 계정의 닉 — 끝난 뒤 「누구로 인증됐나」 를 보여 준다 */
+  nickname: string | null
+  /** 마지막으로 읽은 자기소개 — 안 맞을 때 사람이 고칠 수 있어야 한다 */
+  seen: string | null
+  attempts: number
+}
+
+/**
+ * ★지금 내 인증이 어디까지 왔나★
+ *
+ * ⚠ ★「확인하는 중」 을 따로 둔다★ — 워커가 읽어 줄 때까지 최대 1분이 걸린다.
+ *   그 사이 화면이 「아직 안 됐다」 라고만 하면 ★사람이 문구를 다시 적는다.★
+ */
+export async function introVerificationState(userId: string, usn?: string): Promise<IntroState> {
+  const now = new Date()
+  const row = await prisma.introChallenge.findFirst({
+    where: { userId, ...(usn ? { usn } : {}) },
+    orderBy: [{ status: 'asc' }, { issuedAt: 'desc' }],
+  })
+  /* `verified` 가 있으면 그게 우선이다 — 위 정렬로는 보장이 안 된다 */
+  const done = await prisma.introChallenge.findFirst({
+    where: { userId, status: 'verified', ...(usn ? { usn } : {}) },
+    orderBy: { verifiedAt: 'desc' },
+  })
+  const pick = done ?? row
+  if (!pick) {
+    return { status: 'idle', phrase: null, expiresAt: null, nickname: null, seen: null, attempts: 0 }
+  }
+  const base = {
+    phrase: pick.expectedIntro,
+    expiresAt: pick.expiresAt.toISOString(),
+    nickname: pick.nickname,
+    seen: pick.lastSeenIntro,
+    attempts: pick.attempts,
+  }
+  if (pick.status === 'verified') return { ...base, status: 'verified' }
+  if (pick.status !== 'pending' || pick.expiresAt.getTime() <= now.getTime()) {
+    return { ...base, status: 'expired' }
+  }
+  return { ...base, status: pick.checkRequestedAt ? 'checking' : 'waiting' }
+}
+
+/**
+ * ★「확인해 주세요」 표시만 남긴다★ — 읽는 것은 워커다.
+ *
+ * 사이트는 병영수첩을 직접 못 읽는다 (서버에서 부르면 403).
+ * 그래서 여기서는 ★시각만 찍고★ 화면은 「확인하는 중」 으로 기다린다.
+ */
+export async function requestIntroCheck(userId: string, usn: string): Promise<IntroState> {
+  await prisma.introChallenge.updateMany({
+    where: { userId, usn, status: 'pending', expiresAt: { gt: new Date() } },
+    data: { checkRequestedAt: new Date() },
+  })
+  return introVerificationState(userId, usn)
+}
+
+/** ★진행 중인 도전을 접는다★ — 지우지 않고 만료로 닫는다 */
+export async function cancelIntroChallenge(userId: string): Promise<void> {
+  await prisma.introChallenge.updateMany({
+    where: { userId, status: 'pending' },
+    data: { status: 'expired' },
+  })
+}

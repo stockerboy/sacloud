@@ -9,6 +9,7 @@ import { apiSend } from '@/lib/apiSend'
 import { useApiReady } from '@/app/providers'
 import { MeButton, MeError, MeHeading, MeInput, MePanel } from '../ui'
 import { TitleVerify } from './TitleVerify'
+import { IntroVerify } from './IntroVerify'
 
 /**
  * 서든어택 계정 연동 `/me/link`.
@@ -44,6 +45,12 @@ export default function MeLinkPage() {
   return (
     <div className="section-stack">
       {/* ① 정식 경로 — 게임 칭호로 소유권을 증명한다 */}
+      {/*
+        ★자기소개 인증을 먼저 보여 준다★ (2026-09-20 사장님 아이디어)
+        ★게임을 안 켜도 되는 쪽★ 이라 대부분의 사람에게 이게 더 쉽다.
+        ⚠ 칭호 인증을 지우지 않았다 — 바로 아래 그대로 있다 (CLAUDE.md 1-4).
+      */}
+      <IntroVerify />
       <TitleVerify />
 
       {/* ② 옛 경로 — 운영자 수동 승인 */}
