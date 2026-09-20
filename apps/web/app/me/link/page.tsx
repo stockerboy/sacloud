@@ -42,35 +42,71 @@ export default function MeLinkPage() {
   if (!link.data) return <Skeleton className="h-[200px] w-full" />
   const state = link.data.data
 
+  /*
+   * ★★인증이 끝났으면 방법들을 보여 주지 않는다★★ (2026-09-20 사장님)
+   *
+   * > 「저기 attacker 베리타스 저거 빼버려」
+   * > 「인증되면 인증된계정이라고 확실하게 문구띄워줘 안헷갈리게」
+   *
+   *   인증을 마친 뒤에도 ★칭호 인증 칸과 운영자 신청 칸이 그대로 떠 있었다.★
+   *   자동완성 목록(「attacker · 베리타스」)까지 보여서 ★아직 안 된 줄 알게 된다.★
+   *   ★끝났으면 끝났다고만 말한다.★
+   */
+  const done = state.linked && state.player
+
   return (
     <div className="section-stack">
-      {/* ① 정식 경로 — 게임 칭호로 소유권을 증명한다 */}
-      {/*
-        ★자기소개 인증을 먼저 보여 준다★ (2026-09-20 사장님 아이디어)
-        ★게임을 안 켜도 되는 쪽★ 이라 대부분의 사람에게 이게 더 쉽다.
-        ⚠ 칭호 인증을 지우지 않았다 — 바로 아래 그대로 있다 (CLAUDE.md 1-4).
-      */}
-      <IntroVerify />
-      <TitleVerify />
+      {done ? (
+        <MePanel className="max-w-[560px]">
+          <p className="text-[12px] tracking-[.12em] text-accent">SUDDEN ATTACK</p>
+          <h2 className="mt-1.5 text-[20px] text-text-strong">인증된 계정입니다</h2>
+          <div className="mt-3 flex items-baseline gap-3">
+            <Link
+              href={`/player/${state.player!.id}`}
+              className="text-[17px] text-text-strong underline underline-offset-4"
+            >
+              {state.player!.name}
+            </Link>
+            {state.linked_at ? (
+              <span className="num text-[12px] text-meta">{formatDate(state.linked_at)} 연동</span>
+            ) : null}
+          </div>
+          <p className="mt-3 text-[13px] leading-relaxed text-meta">
+            이 아이디가 사장님 것임이 확인되었습니다. 병영수첩 자기소개나 게임 칭호는
+            이제 원래대로 되돌리셔도 됩니다.
+          </p>
+        </MePanel>
+      ) : (
+        <>
+          {/*
+            ★세 가지 중 하나만 하면 된다★ (2026-09-20 사장님:
+              「이거 3가지 방법중 하나를 선택 할 수있다고 설명해주고」)
+            어느 것을 골라도 결과는 같다 — 그 말을 먼저 해 줘야 사람이 셋을 다 하지 않는다.
+          */}
+          <MePanel className="max-w-[560px]">
+            <MeHeading>서든어택 계정 인증</MeHeading>
+            <p className="text-[13px] leading-relaxed text-meta">
+              아래 <b className="text-text">세 가지 중 하나만</b> 하시면 됩니다. 어느 것을 고르셔도
+              결과는 같습니다.
+            </p>
+            <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[13px] leading-relaxed text-meta">
+              <li>
+                <b className="text-text">자기소개 인증</b> — 게임을 안 켜도 됩니다. 가장 빠릅니다
+              </li>
+              <li>
+                <b className="text-text">칭호 인증</b> — 게임에서 칭호를 바꿀 수 있는 분
+              </li>
+              <li>
+                <b className="text-text">운영자 승인</b> — 위 둘이 안 될 때
+              </li>
+            </ol>
+          </MePanel>
 
-      {/* ② 옛 경로 — 운영자 수동 승인 */}
-      <MePanel className="max-w-[560px]">
-        {state.linked && state.player ? (
-          <>
-            <MeHeading>연동된 계정</MeHeading>
-            <div className="flex items-baseline gap-3">
-              <Link
-                href={`/player/${state.player.id}`}
-                className="text-text-strong underline underline-offset-4"
-              >
-                {state.player.name}
-              </Link>
-              {state.linked_at ? (
-                <span className="num text-sm text-meta">{formatDate(state.linked_at)} 연동</span>
-              ) : null}
-            </div>
-          </>
-        ) : (
+          <IntroVerify />
+          <TitleVerify />
+
+          {/* ③ 옛 경로 — 운영자 수동 승인 */}
+          <MePanel className="max-w-[560px]">
           <>
             <MeHeading hint="칭호를 바꿀 수 없다면 이쪽으로 신청해 주세요. 운영자가 근거를 보고 승인합니다.">
               운영자 승인으로 연동
@@ -91,8 +127,9 @@ export default function MeLinkPage() {
             </div>
             {save.isError ? <MeError>신청하지 못했습니다. 닉네임을 확인해 주세요.</MeError> : null}
           </>
-        )}
-      </MePanel>
+          </MePanel>
+        </>
+      )}
     </div>
   )
 }

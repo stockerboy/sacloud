@@ -25,10 +25,17 @@ export default function MePage() {
     <MePanel className="max-w-[720px]">
       <Row label="이메일" value={user.email} />
       <Row label="닉네임" value={user.nickname} />
-      <Row
-        label="이메일 인증"
-        value={user.email_verified_at ? `완료 (${formatDate(user.email_verified_at)})` : '미완료'}
-      />
+      {/*
+        ⚠ ★이메일 인증 줄은 뺐다★ (2026-09-20 사장님: 「이거 이메일 인증없애」).
+          ★기능을 지운 것이 아니다★ — `email_verified_at` 은 그대로 오고, 값도 그대로 있다.
+          ★이 화면에서만★ 안 보인다. 우리는 메일을 보내지 않으므로 늘 「미완료」 였고,
+          그러면 ★뭔가 덜 된 계정처럼 보인다.★ 되살리려면 이 주석을 지우고 아래를 켠다:
+
+            <Row
+              label="이메일 인증"
+              value={user.email_verified_at ? `완료 (${formatDate(user.email_verified_at)})` : '미완료'}
+            />
+      */}
       <Row
         label="서든어택 계정"
         value={
