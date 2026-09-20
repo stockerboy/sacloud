@@ -1,7 +1,7 @@
-import { rosterOf, roundStatesOf, secondsOf, type RoundStateEvent } from './roundState.js'
-import type { RoundSide } from './roundSide.js'
-import { MATCH_TO_FIRST_ROUND_SECONDS, ROUND_GAP_SECONDS } from './clanHexV2.js'
-import { killsOf, weaponByPlayerOf, type DuelEvent } from './duel.js'
+import { rosterOf, roundStatesOf, secondsOf, type RoundStateEvent } from './roundState'
+import type { RoundSide } from './roundSide'
+import { MATCH_TO_FIRST_ROUND_SECONDS, ROUND_GAP_SECONDS } from './clanHexV2'
+import { killsOf, weaponByPlayerOf, type DuelEvent } from './duel'
 
 /**
  * ★★선짤 점수★★ (2026-09-20 사장님)

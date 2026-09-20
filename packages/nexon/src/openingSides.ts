@@ -1,7 +1,7 @@
-import { defenceByHomeRule, type HomeRuleKill } from './sideAxes.js'
-import type { ZoneCells } from './duel.js'
-import { roundResultsOf, roundSidesOf, type RoundSide, type RoundSideEvent } from './roundSide.js'
-import { rosterOf, secondsOf } from './roundState.js'
+import { defenceByHomeRule, type HomeRuleKill } from './sideAxes'
+import type { ZoneCells } from './duel'
+import { roundResultsOf, roundSidesOf, type RoundSide, type RoundSideEvent } from './roundSide'
+import { rosterOf, secondsOf } from './roundState'
 
 /**
  * ★★라운드별 진영을 ★세 겹★ 으로 정한다★★ (2026-09-20)
