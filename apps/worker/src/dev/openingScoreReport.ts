@@ -41,6 +41,17 @@ const WANT = Number(process.argv[3] ?? '6')
  */
 const KEYS = (process.argv.find((a) => a.startsWith('--keys=')) ?? '').slice('--keys='.length)
 const WANT_KEYS = KEYS === '' ? null : new Set(KEYS.split(','))
+/**
+ * ★계정(`str_usn`)으로 찾는다★ — 닉으로 찾으면 못 찾는다 (2026-09-20 실측).
+ *
+ *   배틀로그는 ★그때 닉★ 을 적고 우리 DB 는 ★지금 닉★ 을 든다. 실측 —
+ *   사장님 경기의 로그 닉 열 개 중 ★「현물」이 아예 없었고★, DB 명단과
+ *   겹치는 사람이 여섯뿐이었다. 넷은 그 뒤로 닉을 바꾼 것이다.
+ *
+ *   ★계정은 안 바뀐다.★ `Player.sourcePlayerId` 가 `BRK-<str_usn>` 이고
+ *   `BarracksClanMember.strUsn` 에도 같은 값이 있다.
+ */
+const USN = (process.argv.find((a) => a.startsWith('--usn=')) ?? '').slice('--usn='.length)
 
 interface RawShape {
   battleLog?: (OpeningEvent & { user_nick?: string | null; target_user_nick?: string | null })[]
@@ -122,7 +133,12 @@ for (let i = 0; i < index.length && reports.length < WANT; i += PAYLOAD_CHUNK) {
       const bn = String(e.target_user_nick ?? '').trim()
       if (b !== '' && bn !== '') nickOf.set(b, bn)
     }
-    const me = [...nickOf.entries()].find(([, nick]) => nick === NICK)?.[0]
+    /* ★계정이 있으면 그걸로★, 없으면 닉으로 (닉은 바뀌었을 수 있다) */
+    const me =
+      USN !== ''
+        ? (nickOf.has(USN) ? USN : undefined) ??
+          (events.some((e) => e.str_usn === USN || e.target_str_usn === USN) ? USN : undefined)
+        : [...nickOf.entries()].find(([, nick]) => nick === NICK)?.[0]
     if (me === undefined) continue
 
     const roster = rosterOf(events as RoundSideEvent[])
