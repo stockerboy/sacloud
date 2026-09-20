@@ -8,6 +8,7 @@ import {
   HEX_SHRINK_K,
   mainWeaponOf,
   percentileOf,
+  HEX_CLAN_BONUS,
   tierFactorOf,
   type PlayerHexInput,
   homeTierOf,
@@ -187,7 +188,13 @@ describe('접기', () => {
     expect(r?.hex).toBe(0)
     expect(r?.tierFactor).toBe(1)
     expect(r?.shrink).toBe(0.5)
-    expect(r?.clanBonus).toBe(40)
+    /*
+     * ⚠ ★상수를 외우지 않는다★ (2026-09-20, 위와 같은 이유).
+     *   그날 밤 사장님이 ★클랜보정을 0 으로 걷으라★ 하셨고, 40 을 박아 둔 이 줄이
+     *   ★옳은 수정을 막았다.★ 시험할 것은 ★「1구간이면 표가 말하는 값을 받는다」★ 이지
+     *   그 값이 40 인지가 아니다. 옛 값은 `HEX_CLAN_BONUS_V1` 이 지킨다.
+     */
+    expect(r?.clanBonus).toBe(HEX_CLAN_BONUS[1])
     /*
      * ⚠ ★2026-09-20 — 클랜 보정이 수축 안으로 들어왔다★ (사장님: 「ㅇㅇ줄여줘」).
      *   옛 식: 3000 + 700×성적×티어계수×수축 ★+ 보정★   ← 보정이 수축 밖
@@ -198,7 +205,7 @@ describe('접기', () => {
      * ⚠ ★기준점을 시험에 박지 않는다★ (2026-09-20) — 3000 → 0 으로 바꾸자 깨졌다.
      *   시험할 것은 ★식의 모양★ 이지 기준점 숫자가 아니다.
      */
-    expect(r?.score).toBe(HEX_BASE + (-700 + 40) * 0.5)
+    expect(r?.score).toBe(HEX_BASE + (-700 + HEX_CLAN_BONUS[1]) * 0.5)
   })
 
   it('부리그가 셋이 아닌 리그(SPL)는 티어계수 1 · 클랜보정 0 이다', () => {

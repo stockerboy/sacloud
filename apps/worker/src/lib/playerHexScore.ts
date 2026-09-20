@@ -211,8 +211,29 @@ export const HEX_W_HEX_V1 = 0.8
 export const HEX_W_WR_V1 = 0.2
 export const HEX_W_HEX_V2 = 0.5
 export const HEX_W_WR_V2 = 0.5
-/** 소속 클랜 티어 보정 — ASTRA / CHALLENGER1 / CHALLENGER2 */
-export const HEX_CLAN_BONUS: Readonly<Record<TierNo, number>> = { 1: 40, 2: 0, 3: -40 }
+/**
+ * ★★소속 클랜 티어 보정 — 2026-09-20 밤에 걷었다★★ (사장님)
+ *
+ * > 「IPL은 이제 ★모든 상위권 클랜보정을 제거하라★ 이제 그딴거 필요없다
+ * >  어차피 진짜 실력자들의 실력싸움은 c1에 기록된다. ★그냥 기록순으로만★ 랭킹내기고」
+ *
+ * ── ⚠ 여기를 못 보고 하마터면 넘어갈 뻔했다
+ *
+ *   그날 밤 `scoreLadderBuild` 의 `TOP_CLAN_BONUS` 만 0 으로 두고 「끝났다」 고 했는데,
+ *   ★화면의 순서를 정하는 것은 이 점수(`LeaguePlayerHex.score`)★ 였다.
+ *   `scoreRating` 은 ★옆에 적히는 숫자★ 일 뿐 줄을 세우지 않는다.
+ *   실측 (2026-09-20 운영) — IPL 2,235줄 중 ★1,197줄★ 이 아직 ±40 을 달고 있었다.
+ *   C1·PL 은 부리그가 없어 처음부터 0 이다.
+ *
+ *   ★교훈★ — 「보정을 껐다」 를 말하려면 ★줄을 세우는 값★ 에서 껐는지 세어 봐야 한다.
+ *
+ * ── 옛 값은 `HEX_CLAN_BONUS_V1` 에 그대로 있다 (`CLAUDE.md` 1-4).
+ *   되돌리려면 아래 한 줄을 그쪽으로 바꾸면 된다.
+ */
+export const HEX_CLAN_BONUS: Readonly<Record<TierNo, number>> = { 1: 0, 2: 0, 3: 0 }
+
+/** ★옛 판★ (2026-09-10 ~ 2026-09-20) — ASTRA +40 / CHALLENGER1 0 / CHALLENGER2 −40 */
+export const HEX_CLAN_BONUS_V1: Readonly<Record<TierNo, number>> = { 1: 40, 2: 0, 3: -40 }
 /** 주무기로 인정하는 최소 판수 */
 export const MIN_WEAPON_GAMES = 10
 /** 싸움 축 최소 표본 — 잡음 + 당함 */
