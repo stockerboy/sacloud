@@ -132,5 +132,13 @@ else
   say "★★소속 반영 실패 (코드 ${code})★★ — 다음 회차에 다시 해 본다"
 fi
 
+# ── ④ ★상대 팀 마크를 달고 있는 참가 기록을 고친다★ (2026-09-20 사장님) ──
+#   명부가 낡았을 때 찍힌 도장은 ★상대 팀★ 을 가리킨다. 실측 1,133줄이 그랬다.
+#   ⚠ 용병(제3 클랜)은 한 줄도 안 건드린다 — 판정 기준이 「상대 팀인가」 하나다.
+#   ★명부를 받은 직후에 돌려야 한다★ — ③ 이 소속을 고친 뒤라야 값이 맞다.
+# shellcheck disable=SC2086
+pnpm --filter @sacloud/worker nexon restamp-wrong-clan $CONFIRM >> "$LOG" 2>&1
+say "  도장 손질 — $(grep -E '^상대팀 도장' "$LOG" | tail -1)"
+
 pnpm --filter @sacloud/worker nexon collect-lease release --name barracks-roster --owner "$OWNER" >> "$LOG" 2>&1
 exit 0
