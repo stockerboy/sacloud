@@ -963,7 +963,16 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
         now.lose += o.lose
         now.rifle_games += o.rifle_games
         now.sniper_games += o.sniper_games
-        /* 킬뎃은 판수로 무게를 준다. 한쪽만 알면 그쪽 값을 쓴다 */
+        /*
+         * 킬뎃은 판수로 무게를 준다. 한쪽만 알면 그쪽 값을 쓴다.
+         *
+         * ⚠ ★이것은 근사값이다★ (2026-09-20에 적어 둔다). 킬뎃은 킬÷(킬+뎃)이라
+         *   ★퍼센트를 평균 내면 참값이 아니다.★ 상대별 기록(`PlayerTierOpponent`)에
+         *   ★킬·데스 원본이 없어서★ 지금은 이렇게 섞을 수밖에 없다.
+         *   제대로 고치려면 서버가 상대별 킬·데스를 같이 내보내야 한다 —
+         *   `docs/ORDERS.md` 에 남긴다.
+         *   ⚠ ★합계 줄(`merged`)은 원재료로 다시 계산한다★ — 아래를 보라.
+         */
         const mix = (a: number | null, an: number, b: number | null, bn: number): number | null => {
           if (a === null && b === null) return null
           if (a === null) return b
@@ -979,6 +988,26 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
     }
     const games = sum((r) => r.games)
     const win = sum((r) => r.win)
+    /*
+     * ★★킬뎃은 「킬과 데스를 더해서」 다시 센다★★ (2026-09-20 사장님: 「에는 뭐야 킬뎃이」)
+     *
+     * ── 무엇이 틀렸나 (실측 · 플옴뭉 IPL)
+     *     명부 계산      킬 1241 · 뎃 851 → ★59.3%★
+     *     이 카드        ★48.0%★
+     *
+     *   `...first` 로 ★첫 구간의 킬뎃을 그대로 물려받고 있었다.★ 승·패는 더하면서
+     *   킬뎃만 한 구간 것을 썼으니 ★같은 카드 안에서 승패와 킬뎃이 다른 판을 가리켰다.★
+     *
+     * ── ⚠ ★퍼센트를 평균 내면 안 된다★
+     *   윗줄의 `mix` 도 판수로 무게를 준 ★퍼센트의 평균★ 이다. 그건 근사값이지
+     *   참값이 아니다 — 킬뎃은 ★킬÷(킬+뎃)★ 이라 분모가 판마다 다르다.
+     *   ★원재료(킬·데스)를 더해서 나누는 것★ 만이 맞다.
+     */
+    const kdOf = (k: number, d: number) => (k + d === 0 ? null : Math.round((k / (k + d)) * 1000) / 10)
+    const rk = sum((r) => r.rifle_kill)
+    const rd = sum((r) => r.rifle_death)
+    const sk = sum((r) => r.sniper_kill)
+    const sd = sum((r) => r.sniper_death)
     const merged: (typeof live)[number] = {
       ...first,
       /* 구간을 안 나눌 때의 단 하나뿐인 열쇠. 실제 `tier`(1부터)와 안 겹친다 */
@@ -990,6 +1019,13 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
       known_games: sum((r) => r.known_games),
       rifle_games: sum((r) => r.rifle_games),
       sniper_games: sum((r) => r.sniper_games),
+      rifle_kill: rk,
+      rifle_death: rd,
+      sniper_kill: sk,
+      sniper_death: sd,
+      kd: kdOf(rk + sk, rd + sd),
+      rifle_kd: kdOf(rk, rd),
+      sniper_kd: kdOf(sk, sd),
       opponents: [...byFoe.values()].sort((a, b) => b.games - a.games),
     }
     return [merged]
