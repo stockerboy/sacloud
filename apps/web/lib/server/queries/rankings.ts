@@ -386,8 +386,39 @@ export async function getFormTop(leagueId: string, weapon: RankWeapon): Promise<
 /** ★개인랭킹에 올리는 최소 판수★ (2026-09-12 사장님) — 0 이면 전부 올린다 */
 export const RANK_MIN_GAMES = 15
 
-/** `false` 로 두면 옛 판 — 통합 승률 + 무기별 «전 구간» 킬뎃 (`CLAUDE.md` 1-4) */
-const RANK_STATS_BY_HOME_TIER = true
+/**
+ * ★★구간으로 자르지 않는다★★ (2026-09-20 사장님)
+ *
+ * > 「랭킹에 써있는 킬뎃은 그 사람의 ★주무기 포지션 킬뎃★ 을 적는다.
+ * >  예를 들어 라플수면 라플로 한 킬데스를 대표로 적고 스나수면 스나를 한
+ * >  킬데스를 대표로 적어 ★통합을 적지 말고★」
+ *
+ * ── 무엇이 어긋나 있었나 (사장님이 화면 셋을 나란히 놓고 잡으셨다)
+ *
+ *     선수 프로필 「라플 킬뎃」   ★54.1%★   라플만 — 맞다
+ *     승률·킬뎃 그래프           ★54.6%★   통합 — 맞다
+ *     개인랭킹 「킬뎃」          ★53.4%★   ← ★자기 구간 안에서만★ 센 값
+ *
+ *   실측(불개미321) — 전체 89승 40패(129판)인데 랭킹은 68승 34패(102판)를 썼다.
+ *   ★27판이 구간 밖이라 빠져 있었다.★
+ *
+ * ── 왜 그랬나
+ *
+ *   2026-09-11 에 사장님이 「본인이 해당하는 구간의 킬뎃」 을 적으라 하셨고 그대로 만들었다.
+ *   그 뒤 ★사장님이 구간을 없애셨는데★ (「구간없앴잖아 우리 아니야?」) ★그 지시가
+ *   여기까지 안 닿았다.★ 화면에서는 구간이 사라졌는데 숫자는 여전히 구간으로 잘려 있었다.
+ *
+ * ── 끄면 어떻게 되나
+ *
+ *     승률   통합 (`LeaguePlayer.win/lose`)          89승 40패 · 69.0%
+ *     킬뎃   ★주무기★ (`weaponStats` 의 isMain)      라플 54.1%
+ *
+ *   ★선수 프로필 머리 카드와 한 숫자도 안 어긋난다.★ 그게 사장님이 원하신 것이다.
+ *
+ * ⚠ ★옛 판을 지우지 않는다★ (CLAUDE.md 1-4) — `true` 로 되돌리면 구간 판이 그대로 돌아온다.
+ *   `rankTierStatsOf` 도 살려 둔다. 되돌릴 때 재계산이 없어야 한다.
+ */
+const RANK_STATS_BY_HOME_TIER = false
 
 /**
  * ★모집단 수를 기억해 둔다★ (2026-09-13 · 사장님: «버튼 누를때마다 너무 오래걸려»).
@@ -555,7 +586,13 @@ export async function getPlayerRanksByScore(
    * (실측 lximmore — 선수 페이지 ASTRA 48.0%, 랭킹 51.4%). 여기서 맞춘다.
    * 한 페이지를 ★한 번에★ 읽는다 (줄마다 부르면 20번이 된다).
    */
-  const tierStats = await rankTierStatsOf(leagueId, page.items.map((row) => row.leaguePlayer.player.id))
+  /*
+   * ⚠ ★스위치가 꺼져 있으면 질의를 아예 안 한다★ (2026-09-20) — 안 쓸 값을
+   *   20명분 읽어 오면 랭킹이 그만큼 느려진다. 켜면 그대로 돌아온다.
+   */
+  const tierStats = RANK_STATS_BY_HOME_TIER
+    ? await rankTierStatsOf(leagueId, page.items.map((row) => row.leaguePlayer.player.id))
+    : new Map()
 
   const first = page.items[0]
   /* 자리로 떠 왔으면 등수는 이미 안다 — 세러 가지 않는다 */

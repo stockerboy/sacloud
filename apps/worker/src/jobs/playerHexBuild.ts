@@ -57,11 +57,25 @@ import {
   type HomeRuleKill,
   /* 자리 — 시즌 합으로 한 번만 정한다 */
   positionOf,
+  /*
+   * ★선짤 점수★ (2026-09-20 사장님) — ★값은 저쪽 하나가 정한다.★
+   * 여기서 점수표를 다시 적지 않는다 (`matchScore.ts` 를 쓰는 킬 점수와 같은 규칙).
+   */
+  OPENING_PENALTY_WINDOW_SECONDS,
+  OPENING_REVENGE_SECONDS,
+  OPENING_SURVIVE_SECONDS,
+  FULL_TEAM_SIZE as OPENING_TEAM_SIZE,
+  RED_OPENING_KILL_POINT,
+  RED_OPENING_DEATH_POINT,
+  BLUE_SNIPER_KILL_POINT,
+  BLUE_SNIPER_DEATH_POINT,
+  BLUE_RIFLE_DEATH_POINT,
 } from '@sacloud/nexon'
 import { CLAN_HEX_V2_FORMULA_VERSION } from '../lib/clanHexV2Version.js'
 import { REPO_ROOT } from '../lib/env.js'
 import { log, warn } from '../lib/log.js'
 import { SEASON0_FROM } from '../lib/season0Window.js'
+import { scoresOpening } from '../lib/openingScoreWindow.js'
 import type { TierNo } from '../lib/iplTiers.js'
 import { MIN_MEMBERS, SHORT_MEMBER_WEIGHT } from '../lib/iplTiers.js'
 import {
@@ -194,6 +208,13 @@ interface MatchTally {
    * ⚠ ★1점짜리 라플킬은 안 담는다★ — 줄만 길어지고 뜻이 없다.
    */
   scoreLog: { r: number; k: string; p: number }[]
+  /**
+   * ★선짤로 번(잃은) 점수★ (2026-09-20 사장님). `score` 에 이미 들어 있고,
+   * 이 칸은 ★얼마가 선짤 몫인지★ 를 따로 들고 있다 — 화면의 「점수판」 이 쓴다.
+   */
+  openingScore: number
+  /** 선짤당했지만 ★팀이 3초 안에 되잡아 면제★ 된 횟수 (설명용 · 점수는 0) */
+  openingRevenged: number
   firstKills: number
   /** ★크랙 성공★ — 위 첫 킬 중 ★칠한 구역 안★ 에서 잡은 것만 (2026-09-16 사장님) */
   crackKills: number
@@ -266,7 +287,7 @@ interface MatchTally {
 
 const emptyTally = (): MatchTally => ({
   rounds: 0, kills: 0, score: 0, firstKills: 0,
-  atkScore: 0, atkRounds: 0, defScore: 0, defRounds: 0, crackScore: 0, fewScore: 0, scoreLog: [], crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
+  atkScore: 0, atkRounds: 0, defScore: 0, defRounds: 0, crackScore: 0, fewScore: 0, scoreLog: [], openingScore: 0, openingRevenged: 0, crackKills: 0, burstRounds: 0, maxRoundKills: 0, maxRoundTimes: 0, evenKills: 0, tradeKills: 0, mateDeaths: 0,
   deathSeconds: 0, deathCount: 0, tempoSeconds: 0, tempoCount: 0,
   openRounds: 0, foeOpenRounds: 0, cutRounds: 0, aliveRounds: 0,
   aloneRounds: 0, aloneWon: 0, outRounds: 0, outWon: 0, duelWon: 0, duelLost: 0,
@@ -453,10 +474,16 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       startAt: { gte: SEASON0_FROM },
       sourceMatchId: { not: null },
     },
-    select: { id: true, sourceMatchId: true },
+    select: { id: true, sourceMatchId: true, startAt: true },
   })
   const matchIdOfKey = new Map<string, string>()
-  for (const m of matches) if (m.sourceMatchId) matchIdOfKey.set(m.sourceMatchId, m.id)
+  /** ★선짤 점수를 매기는 경기★ — 사장님: 「이 점수 방식은 오늘 경기부터 계산해」 */
+  const opensScore = new Set<string>()
+  for (const m of matches) {
+    if (!m.sourceMatchId) continue
+    matchIdOfKey.set(m.sourceMatchId, m.id)
+    if (scoresOpening(m.startAt)) opensScore.add(m.sourceMatchId)
+  }
 
   let todo = [...matchIdOfKey.entries()]
   if (!options.rebuild) {
@@ -1033,6 +1060,99 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
            */
           if (crackZone && inZone(crackZone, opener.dx !== null && opener.dy !== null ? { x: opener.dx, y: opener.dy } : null)) {
             tallyOf(mk, firstK.pid).crackKills += 1
+          }
+        }
+      }
+
+      /*
+       * ★★선짤 점수★★ (2026-09-20 사장님)
+       *
+       * > 「레드는 ★22초 이내에 5:5에서 선짤당해서 죽은 사람만★ -1점」
+       * > 「블루때 스나가 가장 먼저 죽는다? 이건 ★무조건 마이너스요소★ -2점
+       * >  스나는 더 깎아야해 ★중요한 포지션★ 이라」
+       * > 「★첫사망자의 기준은 5:5일때만이다★」
+       *
+       *   ```
+       *            상                              벌
+       *   ─────────────────────────────────────────────────────────
+       *   레드   22초 안 · 선짤 + 3초 생존      22초 안 · 첫 사망자 → -1
+       *          → +1                           (팀이 3초 안에 되잡으면 면제)
+       *
+       *   블루   22초 안 · ★스나를★ 선짤        스나가 첫 사망자 → -2
+       *          + 3초 생존 → +1                라플이 첫 사망자 → -1
+       *          (라플 잡은 건 상 없음)         (면제 없음 · 22초 없음)
+       *   ```
+       *
+       * ⚠ ★값은 `openingScore.ts` 하나가 정한다★ — 여기서 점수표를 다시 적지 않는다
+       *   (`matchScore.ts` 를 쓰는 킬 점수와 같은 규칙이다).
+       *
+       * ⚠ ★모르면 안 센다★ (D-106) — 5:5 가 아니거나 · 진영을 모르거나 ·
+       *   라운드 시작을 모르거나 · 같은 초에 둘이 죽었으면 그 라운드를 건너뛴다.
+       *
+       * ⚠ ★`scoreLog` 에는 0점짜리를 안 담는다★ — 사장님이 「평범한 1킬은 넣지 마라」
+       *   하신 것과 같은 규칙이다. 22초를 넘겼거나 라플을 잡아 상이 없는 줄은
+       *   ★적어 봐야 줄만 길어진다.★
+       */
+      /*
+       * ⚠ ★오늘(2026-09-20) 이후 경기만★ (사장님) — 옛 경기를 다시 돌리지 않는다.
+       *   날짜는 `openingScoreWindow.ts` 하나가 안다.
+       * ⚠ ★5:5 일 때만★ (사장님: 「첫사망자의 기준은 5:5일때만이다」) —
+       *   명부에 양 팀 다섯씩 확인된 경기만 센다.
+       */
+      const teamsHere = roster.get(mk)
+      const isFull =
+        teamsHere !== undefined &&
+        teamsHere.size === 2 &&
+        [...teamsHere.values()].every((set) => set.size === OPENING_TEAM_SIZE)
+      if (startedAt !== undefined && isFull && opensScore.has(mk)) {
+        const defTeamHere = defenceOf.get(mk)?.get(Number(roundKey.split('|')[1]) || 0)
+        /* 같은 초에 둘이 죽었으면 누가 먼저인지 모른다 — 그 라운드는 버린다 */
+        const tied = arr.length >= 2 && (arr[1] as Kill).t === (arr[0] as Kill).t
+        if (defTeamHere !== undefined && !tied) {
+          const first = arr[0] as Kill
+          const K = whoOf(mk, first.killer)
+          const V = whoOf(mk, first.victim)
+          const rdNo = Number(roundKey.split('|')[1]) || 0
+          const early = first.t - startedAt <= OPENING_PENALTY_WINDOW_SECONDS
+          /* 죽인 사람이 3초 이상 살았나 (맞트레이드는 상을 안 준다) */
+          const killerDeath = arr.find((x) => x.victim === first.killer)
+          const survived = killerDeath === undefined || killerDeath.t - first.t >= OPENING_SURVIVE_SECONDS
+          /* 팀이 그 킬러를 3초 안에 되잡았나 */
+          const revenged = killerDeath !== undefined && killerDeath.t - first.t <= OPENING_REVENGE_SECONDS
+          /* 죽은 쪽이 수비(블루)인가 */
+          const victimIsDefence = first.vt !== null && first.vt === defTeamHere
+
+          const add = (pid: string, kind: string, points: number): void => {
+            const t = tallyOf(mk, pid)
+            t.score += points
+            t.openingScore += points
+            /* 0점짜리는 «무슨 일이 있었나» 도 아니다 — 안 담는다 */
+            if (points !== 0) t.scoreLog.push({ r: rdNo, k: kind, p: points })
+          }
+
+          if (!victimIsDefence) {
+            /* ★죽은 쪽이 레드(공격)★ — 22초 규칙이 걸린다 */
+            if (early && V) {
+              if (revenged) {
+                /* 면제 — 점수는 0 이지만 횟수는 남긴다 (설명에 쓸 수 있다) */
+                tallyOf(mk, V.pid).openingRevenged += 1
+              } else {
+                add(V.pid, 'openRedDeath', RED_OPENING_DEATH_POINT)
+              }
+            }
+            /* 블루 상점 — ★상대 스나를 잡았을 때만★ */
+            if (early && survived && K && V?.weapon === 1) {
+              add(K.pid, 'openBlueSniperKill', BLUE_SNIPER_KILL_POINT)
+            }
+          } else {
+            /* ★죽은 쪽이 블루(수비)★ — 벌점에 22초도 면제도 없다 */
+            if (V) {
+              if (V.weapon === 1) add(V.pid, 'openBlueSniperDeath', BLUE_SNIPER_DEATH_POINT)
+              else if (V.weapon === 0) add(V.pid, 'openBlueRifleDeath', BLUE_RIFLE_DEATH_POINT)
+              /* ⚠ 무기를 모르면 안 깎는다 — 스나는 -2, 라플은 -1 이라 틀리면 두 배로 틀린다 */
+            }
+            /* 레드 상점 — 22초 안 + 3초 생존 */
+            if (early && survived && K) add(K.pid, 'openRedKill', RED_OPENING_KILL_POINT)
           }
         }
       }
