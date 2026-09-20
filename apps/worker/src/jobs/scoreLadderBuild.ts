@@ -59,7 +59,23 @@ export const SCORE_LADDER_MIN_GAMES = 40
  * ⚠ ★11 → 10★ (2026-09-18 사장님: 「무조건 10등까지만 보정 줘」).
  *   10등 amaryllis 3136 · 11등 grave 3132 로 4점 차였지만 사장님이 10 으로 못 박으셨다.
  */
-export const TOP_CLAN_COUNT = 10
+export const TOP_CLAN_COUNT = 13
+
+/**
+ * ★★상위권에서 빼는 클랜★★ (2026-09-20 사장님)
+ *
+ * > 「내가 말하는 상위클랜은 지금 클랜순위 ★1등부터 13등까지에서 ASTERISK 뺀 게★
+ * >  상위클랜이야」
+ *
+ *   래더 순으로 13등까지 자른 뒤 ★여기 적힌 클랜을 뺀다.★ 그래서 ★12곳★ 이 남는다.
+ *
+ * ⚠ ★이름이 아니라 slug 로 짝짓는다★ — 클랜 이름은 바뀐다.
+ *   실측 (2026-09-20) — 하루에 94곳이 이름을 바꿨다. 이름으로 적어 두면
+ *   ★이름이 바뀌는 순간 조용히 안 빠진다.★
+ * ⚠ 순위가 바뀌어 그 클랜이 13등 밖으로 나가면 ★이 줄이 아무 일도 안 한다.★
+ *   그때는 13등까지가 그대로 상위권이다.
+ */
+export const TOP_CLAN_EXCLUDE_SLUGS: readonly string[] = ['clanhanul']
 /**
  * ★상위권 보정★ — 경기당 몇 점을 더하나.
  *
@@ -77,7 +93,14 @@ export const TOP_CLAN_COUNT = 10
  *     +2.5 · 수축 60     17명   (순위가 거의 안 바뀌어 실익 없음)
  *   ```
  */
-export const TOP_CLAN_BONUS = 2.0
+/*
+ * ⚠ ★2.0 → 3.0★ (2026-09-20 사장님: 「상위 클랜 보정을 ★지금보다 더 세게★ 줄 수 있게」).
+ *
+ *   ★0.5 씩 올릴 때마다 상위 30명 안의 상위클랜이 두 명쯤 는다★ (2026-09-18 실측표).
+ *   3.0 은 그 표의 바깥이라 ★재계산 뒤에 실제로 몇 명이 되는지 재서 보고한다.★
+ *   너무 세면 ★상위클랜 하위권 선수가 다른 클랜 상위권을 밀어낸다★ — 그때는 내린다.
+ */
+export const TOP_CLAN_BONUS = 3.0
 
 /**
  * ★판수가 적으면 평균 쪽으로 끌어당긴다★ (2026-09-18 사장님:
@@ -156,11 +179,21 @@ export async function buildScoreLadder(options: {
     },
     orderBy: [{ rating: 'desc' }, { id: 'asc' }],
     take: TOP_CLAN_COUNT,
-    select: { clanId: true, rating: true, clan: { select: { name: true } } },
+    select: { clanId: true, rating: true, clan: { select: { name: true, slug: true } } },
   })
-  const topClanIds = new Set(top.map((t) => t.clanId))
-  const topNames = top.map((t) => t.clan?.name ?? '?')
-  log(`★상위권 ${top.length}클랜★ — ${top.map((t) => `${t.clan?.name ?? '?'}(${t.rating})`).join(' · ')}`)
+  /*
+   * ★사장님이 빼라고 하신 클랜을 뺀다★ (2026-09-20) —
+   * 「1등부터 13등까지에서 ASTERISK 뺀 게 상위클랜이야」.
+   * ⚠ ★slug 로 짝짓는다★ — 이름은 바뀐다 (하루에 94곳이 바뀐 날이 있다).
+   */
+  const kept = top.filter((t) => !TOP_CLAN_EXCLUDE_SLUGS.includes(t.clan?.slug ?? ''))
+  const dropped = top.filter((t) => TOP_CLAN_EXCLUDE_SLUGS.includes(t.clan?.slug ?? ''))
+  const topClanIds = new Set(kept.map((t) => t.clanId))
+  const topNames = kept.map((t) => t.clan?.name ?? '?')
+  log(`★상위권 ${kept.length}클랜★ (경기당 +${TOP_CLAN_BONUS}) — ${kept.map((t) => `${t.clan?.name ?? '?'}(${t.rating})`).join(' · ')}`)
+  if (dropped.length > 0) {
+    log(`  ★뺀 클랜★ — ${dropped.map((t) => `${t.clan?.name ?? '?'}(${t.clan?.slug ?? '?'})`).join(' · ')}`)
+  }
 
   /*
    * ── ② 선수별 점수 합계.
