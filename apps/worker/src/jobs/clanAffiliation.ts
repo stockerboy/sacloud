@@ -175,11 +175,25 @@ export async function runClanAffiliation(input: {
         FROM "BarracksClanMember" b
         JOIN latest t ON t."clanSlug" = b."clanSlug" AND t."at" = b."observedAt"
     ), roster AS (
+      /*
+       * ★★사람 단위로 「마지막에 본 클랜」 을 쓴다★★ (2026-09-20 세 번째 정정)
+       *
+       *   클랜 단위(latest/fresh)로 잡았더니 ★또 빠지는 사람이 나왔다.★
+       *   같은 클랜을 이어받기 중에 두 번 받으면 ★뒷판이 반쪽★ 일 수 있고,
+       *   그 반쪽이 「그 클랜의 마지막 명단」 이 되어 앞판에만 있던 사람이 사라진다.
+       *   실측 — chococake 는 앞판 deluxe 명단에 있었는데 뒷판에 없어 ★무소속★ 이 됐다.
+       *
+       *   ★그 사람을 마지막으로 본 클랜이 그의 소속이다.★ 이 한 줄이면 충분하다.
+       *   판을 어떻게 쪼개 받든, 이적을 몇 번 했든 늘 맞는다.
+       *
+       * ⚠ 우리 표에 없는 주소로 저장된 줄은 조인에서 빠진다 — 같은 클랜이 병영수첩
+       *   주소로도 저장된 적이 있어서다. 그건 ★무시하는 것이 맞다.★
+       */
       SELECT DISTINCT ON (b."strUsn") b."strUsn" AS usn, c."id" AS "clanId", c."name" AS "clanName",
              b."userNick" AS nick
-        FROM fresh b
+        FROM "BarracksClanMember" b
         JOIN "Clan" c ON c."slug" = b."clanSlug"
-       ORDER BY b."strUsn", b."observedAt" DESC, b."clanSlug"
+       ORDER BY b."strUsn", b."observedAt" DESC
     ), observed AS (
       SELECT DISTINCT c."id" AS "clanId"
         FROM fresh b
