@@ -58,7 +58,14 @@ const DEFAULT_LIMIT = 2000
  */
 const BACKFILL_TIMEOUT_MS = 600_000
 
-function nameOf(payload: unknown, key: 'red_clan_name' | 'blue_clan_name'): string | null {
+/**
+ * ★옛 방식이 쓰던 자★ (2026-09-20 이전) — ★지우지 않는다★ (CLAUDE.md 1-4).
+ *
+ * 옛 방식은 `payload` 를 ★여기로 실어 와★ 자바스크립트로 이름을 꺼냈다.
+ * 그 길이 2,000줄에 8분 20초가 걸려 지금은 ★서버 안에서 끝낸다.★
+ * 다시 그 길로 돌아가야 할 날이 오면 이 두 자가 그대로 있다.
+ */
+export function nameOf(payload: unknown, key: 'red_clan_name' | 'blue_clan_name'): string | null {
   if (typeof payload !== 'object' || payload === null) return null
   const v = (payload as Record<string, unknown>)[key]
   if (typeof v !== 'string') return null
@@ -66,8 +73,11 @@ function nameOf(payload: unknown, key: 'red_clan_name' | 'blue_clan_name'): stri
   return t.length > 0 ? t : null
 }
 
-/** ★클랜 번호★ — 라인업 잡이 이걸로 «어느 클랜의 응답인가» 를 푼다 */
-function clanNoOf(payload: unknown): string | null {
+/**
+ * ★클랜 번호★ — 라인업 잡이 이걸로 «어느 클랜의 응답인가» 를 푼다.
+ * ⚠ 옛 방식이 쓰던 자다 — `nameOf` 와 같이 ★남겨 둔다.★
+ */
+export function clanNoOf(payload: unknown): string | null {
   if (typeof payload !== 'object' || payload === null) return null
   const v = (payload as Record<string, unknown>).clan_no
   if (typeof v === 'number') return String(v)
@@ -83,75 +93,68 @@ export async function runClanNameBackfill(
   const startedAt = Date.now()
   const out: ClanNameBackfillResult = { read: 0, filled: 0, aliases: 0, empty: 0, remaining: 0, ms: 0 }
 
-  /*
-   * ⚠ ★`payload` 를 고른 뒤에야 읽는다★ — `WHERE` 가 먼저 좁혀 주므로
-   *   읽는 행은 `limit` 만큼이다. 전체를 훑지 않는다.
-   */
-  /*
-   * ⚠ ★`rawClanNo IS NULL` 하나만 본다★ (2026-09-20 정정).
-   *
-   *   전에는 `redClanName`·`blueClanName` 도 `null` 이어야 골랐다. 그런데
-   *   ★이름은 채웠고 번호만 빈 줄★ 이 앞쪽에 잔뜩 있어서, 인덱스를 타고도
-   *   그 줄들을 ★하나씩 집어 올렸다 버렸다.★ EXPLAIN 실측 —
-   *   ```
-   *   Index Scan using "BCMR_backfill_idx"
-   *     Filter: (redClanName IS NULL AND blueClanName IS NULL)
-   *     Rows Removed by Filter: ★2000★        ← 300줄 뽑자고 2,300줄을 읽었다
-   *     Execution Time: ★72,140 ms★
-   *   ```
-   *   그래서 2분 벽에 걸려 ★한 줄도 못 채웠다.★
-   *
-   *   ★부분 인덱스(`BCMR_backfill_idx`)의 조건과 글자 그대로 같게 맞춘다.★
-   *   이름이 이미 있으면 아래에서 그 값을 그대로 다시 쓴다 — 덮어써도 같은 값이다.
-   */
-  await prisma.$executeRawUnsafe(`SET statement_timeout = ${BACKFILL_TIMEOUT_MS}`)
-  const rows = await prisma.barracksClanMatchRaw.findMany({
-    where: { status: 'ok', rawClanNo: null },
-    select: { id: true, subject: true, payload: true },
-    orderBy: { id: 'desc' },
-    take: limit,
-  })
-  out.read = rows.length
-
   if (!options.confirm) {
+    /* 미리보기 — 몇 줄이 남았는지만 센다 (인덱스만 읽는다) */
+    out.remaining = await remainingRows()
+    out.read = Math.min(limit, out.remaining)
     out.ms = Date.now() - startedAt
     return out
   }
 
   /*
-   * ★한 줄씩 쓰면 너무 느리다★ — 실측 2,000줄에 78초(= 39ms/줄)였다.
-   *   756,000줄이면 ★8시간★ 이다. 한 문장으로 묶어 쓴다.
+   * ★★payload 를 여기로 실어 오지 않는다★★ (2026-09-20 두 번째 정정)
    *
-   * ⚠ `UPDATE ... FROM (VALUES ...)` 한 방이면 왕복이 1번이다.
-   *   ⚠ 값에 작은따옴표가 섞일 수 있어 ★매개변수★ 로 넘긴다 (문자열을 잇지 않는다).
+   * ── 옛 방식이 왜 느렸나 (실측)
+   *   `findMany({ select: { payload } })` 로 2,000줄을 받아 와서 자바스크립트로
+   *   이름을 꺼내고 다시 `UPDATE` 로 돌려보냈다. 그런데 한 줄이 ★1.8KB★ 라
+   *   2,000줄이면 ★3.6MB★ 가 오가고, 디스크가 붐비는 시간대엔 ★8분 20초★ 가
+   *   걸려 ★한 판도 못 끝냈다★ (끊기면 아무것도 안 남는다).
+   *
+   * ── 지금 방식
+   *   ★골라서 · 고치고 · 이름만 돌려받는다★ — 한 문장, 왕복 1번.
+   *   `payload` 는 ★서버 안에서만★ 읽히고 우리 쪽으로 오지 않는다.
+   *   돌려받는 것은 `subject` 와 클랜 이름뿐이라 몇 KB 다.
+   *
+   * ⚠ ★`rawClanNo` 를 반드시 비우지 않는다★ — 번호가 없는 줄은 빈 문자열을 넣는다.
+   *   그래야 ★다음 판에서 또 안 고른다.★ 읽는 쪽은 `NULLIF(…, '')` 로 본다.
+   * ⚠ ★이름 칸은 덮어쓰지 않는다★ — 이미 채운 값이 있으면 그대로 둔다.
    */
-  const ids: string[] = []
-  const reds: string[] = []
-  const blues: string[] = []
-  const nos: string[] = []
-  for (const row of rows) {
-    const red = nameOf(row.payload, 'red_clan_name')
-    const blue = nameOf(row.payload, 'blue_clan_name')
-    ids.push(row.id)
-    reds.push(red ?? '')
-    blues.push(blue ?? '')
-    nos.push(clanNoOf(row.payload) ?? '')
-    if (red === null && blue === null) out.empty += 1
-    else out.filled += 1
-  }
+  await prisma.$executeRawUnsafe(`SET statement_timeout = ${BACKFILL_TIMEOUT_MS}`)
+  const touched = await prisma.$queryRawUnsafe<
+    { subject: string; red: string | null; blue: string | null; no: string }[]
+  >(
+    `WITH picked AS (
+       SELECT "id" FROM "BarracksClanMatchRaw"
+        WHERE "rawClanNo" IS NULL AND "status" = 'ok'
+        ORDER BY "id" DESC
+        LIMIT $1
+     )
+     UPDATE "BarracksClanMatchRaw" AS t
+        SET "rawClanNo"    = COALESCE(t."payload"->>'clan_no', ''),
+            "redClanName"  = COALESCE(t."redClanName",  t."payload"->>'red_clan_name'),
+            "blueClanName" = COALESCE(t."blueClanName", t."payload"->>'blue_clan_name')
+       FROM picked p
+      WHERE t."id" = p."id"
+     RETURNING t."subject" AS "subject",
+               t."redClanName" AS "red",
+               t."blueClanName" AS "blue",
+               t."rawClanNo" AS "no"`,
+    limit,
+  )
+  out.read = touched.length
+
   /*
-   * ★이름표를 따로 쌓는다★ (2026-09-20) — 정규화가 이것만 읽는다.
-   *
-   *   원문 표는 758,851행 · 1.63GB 라 ★어느 칸을 읽든★ 1.38GB 를 훑는다
-   *   (`payload` 가 행 안에 그대로 있어서다 — 칸을 빼도 안 줄었다 · EXPLAIN 확인).
-   *   이름만 모으면 ★수천 행★ 이라 정규화가 몇백 KB 만 읽는다.
+   * ★이름표를 따로 쌓는다★ — 정규화(`unifiedProject`)가 이것만 읽는다.
+   *   원문 표는 어느 칸을 읽든 1.38GB 를 훑지만, 이름표는 수천 줄이라 몇백 KB 다.
    */
   const aliases = new Map<string, Set<string>>()
-  for (const row of rows) {
-    for (const n of [nameOf(row.payload, 'red_clan_name'), nameOf(row.payload, 'blue_clan_name')]) {
-      if (n === null) continue
+  for (const row of touched) {
+    const names = [row.red, row.blue].filter((n): n is string => n !== null && n.trim() !== '')
+    if (names.length === 0) out.empty += 1
+    else out.filled += 1
+    for (const name of names) {
       const set = aliases.get(row.subject) ?? new Set<string>()
-      set.add(n)
+      set.add(name)
       aliases.set(row.subject, set)
     }
   }
@@ -163,22 +166,26 @@ export async function runClanNameBackfill(
     out.aliases += aliasRows.length
   }
 
-  if (ids.length > 0) {
-    await prisma.$executeRawUnsafe(
-      `UPDATE "BarracksClanMatchRaw" AS t
-          SET "redClanName" = v.red, "blueClanName" = v.blue, "rawClanNo" = v.no
-         FROM (SELECT UNNEST($1::text[]) AS id,
-                      UNNEST($2::text[]) AS red,
-                      UNNEST($3::text[]) AS blue,
-                      UNNEST($4::text[]) AS no) AS v
-        WHERE t."id" = v.id`,
-      ids, reds, blues, nos,
-    )
-  }
-
-  out.remaining = await prisma.barracksClanMatchRaw.count({
-    where: { status: 'ok', redClanName: null, blueClanName: null, rawClanNo: null },
-  })
+  out.remaining = await remainingRows()
   out.ms = Date.now() - startedAt
   return out
+}
+
+/**
+ * ★몇 줄이 남았나★ — 부분 인덱스(`BCMR_backfill_idx`)만 읽는다.
+ *
+ * ⚠ ★`count(*)` 를 그냥 부르면 안 된다★ — 옛 판은 `redClanName IS NULL` 까지 봐서
+ *   인덱스를 못 타고 2분 벽에 걸렸다. 조건을 ★인덱스와 글자 그대로★ 맞춘다.
+ */
+async function remainingRows(): Promise<number> {
+  try {
+    const r = await prisma.$queryRawUnsafe<{ n: bigint }[]>(
+      `SELECT COUNT(*) AS n FROM "BarracksClanMatchRaw"
+        WHERE "rawClanNo" IS NULL AND "status" = 'ok'`,
+    )
+    return Number(r[0]?.n ?? 0)
+  } catch {
+    /* 못 세도 채우는 일은 계속한다 — 셈 때문에 본 작업이 멈추면 본말이 뒤집힌다 */
+    return -1
+  }
 }

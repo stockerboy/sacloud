@@ -432,11 +432,16 @@ export async function pendingPairs(
      * ── ① 매치목록에서 알게 된 경기 (새로 들어오는 것)
      */
     SELECT DISTINCT c."matchKey"                        AS "matchKey",
-           /* ★칸이 있으면 칸을 쓴다★ — payload 를 안 들어 올린다 */
-           COALESCE(c."rawClanNo", c."payload"->>'clan_no') AS "clanNo"
+           /*
+            * ★칸이 있으면 칸을 쓴다★ — payload 를 안 들어 올린다.
+            * ⚠ ★빈 문자열은 «번호 없음» 이다★ — 채우기 잡이 「다시 고르지 마라」 는
+            *   뜻으로 빈 문자열을 넣는다. 그걸 번호로 착각하면 넥슨에 헛것을 물어본다.
+            * ⚠ 이 주석은 템플릿 리터럴 안 이다 — 백틱을 쓰지 마라 (다섯 번 밟았다).
+            */
+           COALESCE(NULLIF(c."rawClanNo", ''), c."payload"->>'clan_no') AS "clanNo"
       FROM "BarracksClanMatchRaw" c
      WHERE c."status" = 'ok'
-       AND COALESCE(c."rawClanNo", c."payload"->>'clan_no') IS NOT NULL
+       AND COALESCE(NULLIF(c."rawClanNo", ''), c."payload"->>'clan_no') IS NOT NULL
        AND substr(c."matchKey", 1, 6) >= ${from}
        AND substr(c."matchKey", 1, 6) < ${to}
        AND NOT EXISTS (
@@ -461,12 +466,12 @@ export async function pendingPairs(
      * 클랜번호는 매치목록 원문에서 ★그 클랜이 주인이었던 행★ 으로 찾는다.
      */
     SELECT DISTINCT m."sourceMatchId"                   AS "matchKey",
-           (SELECT COALESCE(c2."rawClanNo", c2."payload"->>'clan_no')
+           (SELECT COALESCE(NULLIF(c2."rawClanNo", ''), c2."payload"->>'clan_no')
               FROM "BarracksClanMatchRaw" c2
               JOIN "LeagueClan" lc2 ON lc2."id" = m."redLeagueClanId"
               JOIN "Clan" cl2 ON cl2."id" = lc2."clanId"
              WHERE c2."subject" = cl2."slug"
-               AND COALESCE(c2."rawClanNo", c2."payload"->>'clan_no') IS NOT NULL
+               AND COALESCE(NULLIF(c2."rawClanNo", ''), c2."payload"->>'clan_no') IS NOT NULL
              LIMIT 1)                                   AS "clanNo"
       FROM "Match" m
       JOIN "League" l ON l."id" = m."leagueId" AND l."slug" = 'nolink'
@@ -483,7 +488,7 @@ export async function pendingPairs(
           JOIN "LeagueClan" lc3 ON lc3."id" = m."redLeagueClanId"
           JOIN "Clan" cl3 ON cl3."id" = lc3."clanId"
          WHERE c3."subject" = cl3."slug"
-           AND COALESCE(c3."rawClanNo", c3."payload"->>'clan_no') IS NOT NULL
+           AND COALESCE(NULLIF(c3."rawClanNo", ''), c3."payload"->>'clan_no') IS NOT NULL
        )
 
      /* ★최근 것부터★ — 밤새 돌다 멈춰도 새 기록이 먼저 채워진다 */
