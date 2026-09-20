@@ -35,6 +35,7 @@ import { runBarracksIdentityMerge } from './jobs/barracksIdentityMerge'
 import { runUnifiedProject } from './jobs/unifiedProject.js'
 import { rateLimitSweep } from './jobs/rateLimitSweep.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
+import { runIdentityFromBattlelog } from './jobs/identityFromBattlelog.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
 import {
   countSharedPasswordAccounts,
@@ -3869,6 +3870,19 @@ async function main(): Promise<number> {
      *   클랜 이름이 들어오는 곳은 ★경기 목록 원문 하나뿐★ 이다 —
      *   명부 API 는 회원만, 클랜정보 API 는 번호만 준다.
      */
+    /*
+     * ★계정을 배틀로그로 잇는다★ (2026-09-20 사장님: 「급한 불 끄는 식 말고」)
+     *   병영수첩에서 ★안 바뀌는 것은 계정 하나★ 다. 그걸 알아야 닉·클랜을 따라간다.
+     *   실측 — 선수 26,497명 중 계정을 아는 사람이 4,347명(16%)뿐이었다.
+     */
+    case 'identity-from-battlelog': {
+      const r = await runIdentityFromBattlelog({
+        confirm: boolFlag(args, 'confirm'),
+        limit: Number(stringFlag(args, 'limit') ?? '') || undefined,
+      })
+      return r.pairs >= 0 ? 0 : 1
+    }
+
     case 'clan-name-from-matches': {
       const r = await runClanNameFromMatches({ confirm: boolFlag(args, 'confirm') })
       return r.renamed >= 0 ? 0 : 1
