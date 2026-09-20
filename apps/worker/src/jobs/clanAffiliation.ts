@@ -144,18 +144,46 @@ export async function runClanAffiliation(input: {
    *   `observed`    이번 관측에서 명부를 받아 온 클랜들 — ★비우기의 안전장치★
    */
   const rows = await prisma.$queryRaw<Row[]>`
-    WITH roster AS (
+    /*
+     * ★★클랜마다 「그 클랜의 마지막 명단」 을 본다★★ (2026-09-20 두 번째 정정)
+     *
+     * ── 무엇이 문제였나 (사장님: 「초코케잌 디럭스 클랜원 맞는데 무소속이라고 뜨네」)
+     *   옛 판은 ★관측 시각이 제일 늦은 한 벌★ 만 봤다 (observedAt = MAX 하나).
+     *   그런데 명단 받기는 ★409곳을 한 판에 못 끝낸다.★ 여러 판에 나눠 받으므로
+     *   ★앞판에 받은 클랜은 그 「한 벌」 에 없다.★ 그래서 —
+     *
+     *     앞판    deluxe 127명 받음   ← chococake 가 여기 있다
+     *     뒷판    다른 클랜들
+     *     반영    뒷판만 봄           → deluxe 는 「명부에 없는 클랜」
+     *                                 → chococake ★무소속★
+     *
+     *
+     * ── 그래서 클랜마다 따로 본다
+     *   latest 가 ★클랜별 마지막 관측 시각★ 을 잡고, 그 줄만 쓴다.
+     *   ⚠ 한 사람이 두 클랜의 마지막 명단에 다 있으면 ★더 최근에 본 쪽★ 이 이긴다
+     *     (관측 시각 내림차순으로 고른다). 이적 중인 사람이 그 모양이다.
+     * ⚠ 바깥의 observedAt 값은 ★로그에 찍는 용도★ 로만 남는다 — 판정에는 안 쓴다.
+     * ⚠ ★★이 주석은 SQL 템플릿 리터럴 안이다★★ — 백틱과 달러-중괄호를 쓰지 마라.
+     *   이 저장소에서 ★여섯 번째★ 밟은 함정이다. 백틱 세 개짜리 코드블록을 넣는
+     *   순간 템플릿이 그 자리에서 끝나고, 뒤의 글이 전부 ★코드로 읽힌다.★
+     */
+    WITH latest AS (
+      SELECT "clanSlug", MAX("observedAt") AS "at"
+        FROM "BarracksClanMember" GROUP BY "clanSlug"
+    ), fresh AS (
+      SELECT b.*
+        FROM "BarracksClanMember" b
+        JOIN latest t ON t."clanSlug" = b."clanSlug" AND t."at" = b."observedAt"
+    ), roster AS (
       SELECT DISTINCT ON (b."strUsn") b."strUsn" AS usn, c."id" AS "clanId", c."name" AS "clanName",
              b."userNick" AS nick
-        FROM "BarracksClanMember" b
+        FROM fresh b
         JOIN "Clan" c ON c."slug" = b."clanSlug"
-       WHERE b."observedAt" = ${observedAt}
-       ORDER BY b."strUsn", b."clanSlug"
+       ORDER BY b."strUsn", b."observedAt" DESC, b."clanSlug"
     ), observed AS (
       SELECT DISTINCT c."id" AS "clanId"
-        FROM "BarracksClanMember" b
+        FROM fresh b
         JOIN "Clan" c ON c."slug" = b."clanSlug"
-       WHERE b."observedAt" = ${observedAt}
     )
     SELECT lp."id" AS "leaguePlayerId",
            p."id" AS "playerId",
