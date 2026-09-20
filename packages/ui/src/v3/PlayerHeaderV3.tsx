@@ -103,6 +103,14 @@ const RANK_ON_NAME_LINE: boolean = false
  */
 const HEAD_ART = false
 
+/**
+ * ★불 꺼진 색★ (2026-09-20 사장님: 「라플킬뎃은 어둡게(불꺼진것처럼)」)
+ *
+ * 주무기가 아닌 쪽에 쓴다. ★값은 그대로 보인다★ — 감추는 것이 아니라
+ * ★어느 쪽이 본업인지★ 를 밝히는 것이다.
+ */
+const DIM = '#4a5670'
+
 export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
   /* 이어 붙은 병영수첩 계정이 없으면 null — 아래에서 단추를 안 그린다 */
@@ -178,6 +186,14 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   const kill = sel === null ? 0 : rifle ? sel.rifle_kill : sel.sniper_kill
   const death = sel === null ? 0 : rifle ? sel.rifle_death : sel.sniper_death
   const mvpRate = sel && sel.games > 0 ? (sel.mvp / sel.games) * 100 : null
+  /*
+   * ⚠ ★옛 판이 쓰던 값들★ — 2026-09-20 에 킬뎃 칸이 스나·라플 두 칸으로 갈리면서
+   *   안 쓰게 됐다. ★지우지 않는다★ (CLAUDE.md 1-4) — 한 칸으로 되돌릴 때 그대로 쓴다.
+   */
+  void rifle
+  void kd
+  void kill
+  void death
 
   /*
    * ⚠ ★고를 게 하나뿐이면 안 그린다★ (2026-09-15 · 무한 QA).
@@ -399,8 +415,22 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         </div>
       ) : null}
       <div className="v3-phead-stats">
-      {/* 3 · 승률 · 킬뎃 · 판킬 — 고른 구간 · 고른 무기 */}
-      <div className="v3-phead-kpi" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', borderTop: '1px solid #18233a' }}>
+      {/*
+        ★★3 · 승률 · 스나킬뎃 · 라플킬뎃 · 순위★★ (2026-09-20 사장님)
+        > 「여기 오른쪽에 승률 스나 라플 이렇게 만들고 스나수는 스나킬뎃은 원래대로
+        >  라플킬뎃은 어둡게(불꺼진것처럼) 그리고 킬뎃밑에 판킬을 적지말고
+        >  판수를 각각 적어줘 50.8%밑에 18판 이런식으로」
+
+        ── 왜 둘 다 보여 주나
+          옛 판은 ★고른 무기의 킬뎃 하나★ 만 보여 줬다. 그래서 선수 페이지의
+          통합 킬뎃과 숫자가 달라 ★「왜 자꾸 다르냐」★ 는 말이 나왔다.
+          ★둘을 나란히 놓으면 무엇을 보고 있는지가 저절로 드러난다.★
+
+        ── ★주무기가 밝고 나머지는 어둡다★
+          이 선수가 ★무엇으로 싸우는 사람인지★ 를 색으로 말한다. 값은 둘 다 있다 —
+          감추는 것이 아니라 ★어느 쪽이 본업인지★ 를 밝히는 것이다.
+      */}
+      <div className="v3-phead-kpi" style={{ position: 'relative', display: 'grid', gridTemplateColumns: showsKd ? 'repeat(4,minmax(0,1fr))' : 'repeat(3,minmax(0,1fr))', borderTop: '1px solid #18233a' }}>
         <Kpi
           label="승률"
           value={pct1(winRate)}
@@ -409,22 +439,34 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         />
         {/* 킬데스를 안 주는 리그는 ★판수★ 가 이 자리를 받는다 — 칸을 비우면 3열 격자가 무너진다 (2026-09-14) */}
         {showsKd ? (
-          /*
-           * ★★어느 무기 기준인지 이름에 적는다★★ (2026-09-20 사장님: 「왜 킬뎃이 자꾸 다 다르냐」)
-           *
-           *   이 화면의 킬뎃은 ★고른 무기의 킬뎃★ 이다 — 2026-09-11 에 사장님이
-           *   「라플수이면 그 구간 라플킬뎃 스나수이면 그 구간 스나킬뎃」 이라 하셨다.
-           *   계산은 그대로 맞다. 그런데 ★화면이 그 사실을 말하지 않아서★
-           *   선수 페이지(무기 안 가린 통합)와 숫자가 달라 보였다.
-           *
-           *   ★「킬뎃 (스나)」 처럼 적으면 두 숫자가 왜 다른지 한눈에 풀린다.★
-           */
-          <Kpi
-            label={weapon === 1 ? '킬뎃 (스나)' : weapon === 0 ? '킬뎃 (라플)' : '킬뎃'}
-            value={pct1(kd)}
-            sub={weapon === null ? null : `${fmt(kill)} / ${fmt(death)}`}
-            color={kd === null ? V3.textMuted : statColor(kd)}
-          />
+          <>
+            {/* ★스나★ — 주무기면 밝게, 아니면 불 꺼진 것처럼 */}
+            <Kpi
+              label="스나 킬뎃"
+              value={pct1(sel?.sniper_kd ?? null)}
+              sub={sel === null ? null : `${fmt(sel.sniper_games)}판`}
+              color={
+                sel?.sniper_kd === null || sel?.sniper_kd === undefined
+                  ? DIM
+                  : weapon === 1
+                    ? statColor(sel.sniper_kd)
+                    : DIM
+              }
+            />
+            {/* ★라플★ — 같은 규칙 */}
+            <Kpi
+              label="라플 킬뎃"
+              value={pct1(sel?.rifle_kd ?? null)}
+              sub={sel === null ? null : `${fmt(sel.rifle_games)}판`}
+              color={
+                sel?.rifle_kd === null || sel?.rifle_kd === undefined
+                  ? DIM
+                  : weapon === 0
+                    ? statColor(sel.rifle_kd)
+                    : DIM
+              }
+            />
+          </>
         ) : (
           <Kpi
             label="판수"
