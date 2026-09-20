@@ -308,6 +308,21 @@ const nextConfig: NextConfig = {
   // 서버 종류(Next 버전·런타임)를 광고하지 않는다
   poweredByHeader: false,
   /**
+   * ★★배럴을 자동으로 풀게 한다★★ (2026-09-20 · 사장님 「사람들 많이 들어오면 어쩌려고」)
+   *
+   * ── 왜 필요한가 (실측)
+   *   `import { RankTable } from '@sacloud/ui'` 한 줄이 ★그 꾸러미 전부★ 를 끌어왔다.
+   *   그래서 ★글만 있는 `/guide` 페이지가 1,258KB★ 를 받았다.
+   *   배럴을 무는 파일이 ★77개★ 라 손으로 다 고치는 것은 위험하다.
+   *
+   *   이 설정은 Next 가 ★쓰는 것만 골라★ 가져오게 한다 — 코드를 한 줄도 안 고친다.
+   *
+   * ⚠ ★배럴을 지운 것이 아니다★ — `import` 문은 그대로고, 묶는 방식만 바뀐다.
+   */
+  experimental: {
+    optimizePackageImports: ['@sacloud/ui', '@sacloud/contract'],
+  },
+  /**
    * 서버리스 번들에 **Prisma 쿼리 엔진을 같이 넣는다** (D-151).
    *
    * 생성된 Prisma 클라이언트는 `packages/db/generated/client` 에 있고 Next 가 그걸 번들하면
