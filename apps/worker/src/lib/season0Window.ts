@@ -124,7 +124,30 @@ export const SEASON0_ORIGINS_V1 = ['3rd.supply', 'nexon'] as const
  * (2026-09-01 로컬 실측: sanply·supply·daerule 은 전부 `3rd.supply`).
  * 맨 뒤에 둔 것은 중복 제거에서 **미러와 넥슨이 먼저 이기게** 하기 위해서다.
  */
-export const SEASON0_ORIGINS = ['3rd.supply', 'nexon', 'nexon_barracks'] as const
+/**
+ * **옛 대상 origin 2판 (미러 + 넥슨 + 병영).** 지우지 않는다 (`CLAUDE.md` 1-4).
+ *
+ * 2026-09-20 에 `sacloud` 를 더했다. 그 전의 집계 결과를 대조할 일이 생기면 이 값을 쓴다.
+ */
+export const SEASON0_ORIGINS_V2 = ['3rd.supply', 'nexon', 'nexon_barracks'] as const
+
+/**
+ * ── ⚠ `sacloud` 를 더했다 (2026-09-20) — ★2026-09-01 과 똑같은 병을 또 밟았다★
+ *
+ * C1 리그(`c1`)의 경기는 IPL 경기를 ★베껴 담은 것★ 이라 `origin='sacloud'` 다
+ * (`jobs/c1LeagueBuild.ts`). 그런데 이 목록에 없어서 ★시즌0 집계에서 통째로 빠졌다★ —
+ * `season0Apply --leagues c1` 이 «선수 0 · 클랜 0 · 시즌0 경기 없어 되돌린 선수 499»
+ * 를 돌려줬다 (2026-09-20 실측). 개인 승패·킬뎃이 전부 0/0 이던 원인이 이것이다.
+ *
+ * ★2026-09-01 에 `nexon_barracks` 로 똑같이 당했다.★ 새 origin 을 만들 때마다
+ * 이 목록을 손대야 한다 — 그것이 이 파일이 잊히는 자리라는 뜻이다.
+ *
+ * 다른 리그에는 영향이 없다. `sacloud` 경기가 있는 리그는 `c1` 뿐이다
+ * (2026-09-20 운영 실측: 804건 전부 c1 · 나머지는 3rd.supply·nexon_barracks·nexon).
+ * 맨 뒤에 둔 것은 중복 제거에서 ★원본이 먼저 이기게★ 하기 위해서다
+ * (C1 은 `sourceMatchId` 에 `c1-` 접두가 붙어 애초에 부딪히지 않는다).
+ */
+export const SEASON0_ORIGINS = ['3rd.supply', 'nexon', 'nexon_barracks', 'sacloud'] as const
 
 /** 시즌0 은 리그 `Season` 표에서 번호 0 · `beta` 다 (D-098 · D-175) */
 export const SEASON0_NUMBER = 0
