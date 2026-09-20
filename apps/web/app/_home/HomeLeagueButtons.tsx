@@ -131,7 +131,15 @@ export function HomeLeagueButtons() {
                   height={league.logo.h}
                   alt=""
                   aria-hidden
-                  className="block h-[30px] w-auto max-w-none transition-transform duration-150 group-hover:scale-[1.05] max-md:h-[22px]"
+                  /*
+                   * ⚠ ★폰에서 22px → 19px★ (2026-09-20 · 단추가 넷이 되면서 실측).
+                   *   360px 폰에서 한 칸이 ★75px★ 인데 IPL 로고는 세로 22px 일 때
+                   *   가로가 ★74px★ 이다. 여백까지 빼면 ★5px 를 넘친다.★
+                   *   19px 로 낮추면 64px 라 들어간다.
+                   * ⚠ ★`max-w-none` 을 `max-w-full` 로 바꿨다★ — 앞으로 더 긴 로고가
+                   *   들어와도 ★넘치는 대신 줄어든다.★ 그림이 잘리거나 가로 스크롤이 생기지 않는다.
+                   */
+                  className="block h-[30px] w-auto max-w-full object-contain transition-transform duration-150 group-hover:scale-[1.05] max-md:h-[19px]"
                   style={{ opacity: on ? 1 : 0.62 }}
                 />
               ) : null}
