@@ -55,11 +55,23 @@ export const MATCH_HEX_SELECT = {
   outWon: true,
   duelWon: true,
   duelLost: true,
+  /*
+   * ★점수판★ (2026-09-20 사장님) — 「점수판보기」 가 쓰는 네 칸의 재료다.
+   * ⚠ 같은 줄에서 받아 오므로 ★왕복이 안 늘어난다.★
+   */
+  score: true,
+  openingScore: true,
 } as const
 
 export interface MatchHexRow {
   playerId: string
   weapon: number | null
+  /** 그 경기 실력 점수 (킬+세이브+폭탄+선짤의 합) */
+  score?: number
+  /** 그중 선짤 몫 — 2026-09-20 이전 경기는 0 */
+  openingScore?: number
+  /** MVP 이유·점수판의 재료 (`[{r, k, p}, …]`). 못 잰 경기는 `null` */
+  scoreLog?: unknown
   rounds: number
   kills: number
   firstKills: number

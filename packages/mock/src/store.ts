@@ -1103,6 +1103,9 @@ function toMatchPlayerStat(
     participant_role: null,
     saves: null,
     save_chances: null,
+    /* ★점수판★ (2026-09-20) — 픽스처는 「못 쟀다」 로 둔다.
+       화면이 «모르면 단추를 안 그린다» 를 지키는지 이 값으로 확인한다 */
+    score_parts: null,
     /* 한 판 육각은 배틀로그가 있어야 한다 — 픽스처에는 없다 (2026-09-15) */
     hexagon: [],
     kill: stat.kill,

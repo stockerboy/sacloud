@@ -479,6 +479,8 @@ function toMatchPlayerStat(
     position_label: positions?.get(stat.playerId) ?? null,
     /* 세이브는 경기 상세가 배틀로그 표를 읽어 덮어쓴다. 목록에서는 모른다 (2026-09-10) */
     saves: null,
+    /* ★점수판★ — 목록 매퍼는 점수를 안 읽는다. 상세에서만 채운다 (D-106) */
+    score_parts: null,
     save_chances: null,
     /* 한 판 육각도 경기 상세에서만 채운다 — 목록은 빈 배열이다 (2026-09-15) */
     hexagon: [],
@@ -1148,6 +1150,35 @@ export async function getMatch(
     const tally = row?.tally as { roundsWon?: unknown } | null | undefined
     return typeof tally?.roundsWon === 'number' ? tally.roundsWon : null
   }
+  /*
+   * ★★점수판★★ (2026-09-20 사장님: 「점수의 구성을 전부 해부해서 볼 수 있게」)
+   *
+   *   ```
+   *   킬 + 세이브 + 폭탄 + 선짤 = 총점
+   *   ```
+   *
+   * ⚠ ★킬 점수는 「나머지」 다★ — 평범한 1점짜리 라플킬은 `scoreLog` 에 안 담긴다
+   *   (사장님이 세지 말라 하셨다). 그래서 총점에서 나머지 셋을 빼서 구한다.
+   *   ★이렇게 해야 네 칸의 합이 총점과 언제나 맞는다.★
+   * ⚠ 점수를 못 잰 경기는 ★통째로 `null`★ — 0으로 우기지 않는다 (D-106).
+   */
+  const scorePartsOf = (playerId: string): MatchPlayerStat['score_parts'] => {
+    const row = saveRows.find((r) => r.playerId === playerId)
+    if (row === undefined || typeof row.score !== 'number') return null
+    const log = Array.isArray(row.scoreLog) ? (row.scoreLog as { k?: unknown; p?: unknown }[]) : []
+    let save = 0
+    let bomb = 0
+    for (const e of log) {
+      const kind = String(e.k ?? '')
+      const point = Number(e.p ?? 0)
+      if (!Number.isFinite(point)) continue
+      if (kind.startsWith('save')) save += point
+      else if (kind.startsWith('bomb')) bomb += point
+    }
+    const opening = typeof row.openingScore === 'number' ? row.openingScore : 0
+    return { kill: row.score - save - bomb - opening, save, bomb, opening, total: row.score }
+  }
+
   const statsOf = (side: TeamSide): MatchPlayerStat[] =>
     match.stats
       .filter((stat) => stat.side === side)
@@ -1155,6 +1186,7 @@ export async function getMatch(
         ...toMatchPlayerStat(match, stat, side === viewerSide, clans, positions),
         saves: saveRows.length > 0 ? (savesOf.get(stat.playerId) ?? 0) : null,
         save_chances: saveRows.length > 0 ? (chancesOf.get(stat.playerId) ?? 0) : null,
+        score_parts: scorePartsOf(stat.playerId),
         nameplate: plateByPlayer.get(stat.playerId) ?? null,
         main_weapon: mainWeaponOfPlayer.get(stat.playerId) ?? null,
         hexagon: hexOf.get(stat.playerId) ?? [],

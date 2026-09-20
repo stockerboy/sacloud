@@ -17,6 +17,7 @@ import { rankColor, statColor } from './rankColors'
 import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { MvpWhy } from './MvpWhy'
+import { ScoreBoard } from './ScoreBoard'
 import { Card, CardHead, Kda, MarkCircle, MvpMark, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
 import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 /* 육각형은 2026-09-12 부터 머리 카드(ClanCardV3)가 그린다 — 여기서는 안 쓴다 */
@@ -524,6 +525,8 @@ function Scoreboard({
                 id={`mhex-${detail.id}-${t.side}-${pick}`}
               />
               <MvpWhy detail={detail} />
+          <ScoreBoard detail={detail} side={wonTeam?.side ?? 'red'} />
+              <ScoreBoard detail={detail} side={t.side} />
             </div>
           ) : (
           <>
@@ -547,6 +550,7 @@ function Scoreboard({
             id={`mhexPc-${detail.id}`}
           />
           <MvpWhy detail={detail} />
+          <ScoreBoard detail={detail} side={wonTeam?.side ?? 'red'} />
         </div>
       ) : null}
     </div>

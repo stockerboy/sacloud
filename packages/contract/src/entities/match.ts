@@ -107,6 +107,34 @@ export const MatchPlayerStat = z.object({
   main_weapon: z.union([z.literal(0), z.literal(1)]).nullable().optional(),
   /** 이 경기에서 혼자 남아 이긴 라운드 수 (세이브) — 배틀로그가 없으면 null (2026-09-10) */
   saves: Count.nullable().default(null),
+  /**
+   * ★★점수판★★ — 그 경기 실력 점수를 무엇으로 벌었나 (2026-09-20 사장님)
+   *
+   * > 「세이브점수 킬점수 폭탄설치점수 선짤추가점수 선짤감점 (…)
+   * >  ★점수의 구성을 전부 해부해서 볼 수 있게★ 하고싶은데」
+   * > 「★점수판보기★ 라는 버튼을 눌러서 (…) 10명 다 보여주는건 어떰」
+   *
+   *   ```
+   *   킬 + 세이브 + 폭탄 + 선짤 = 총점
+   *   ```
+   *
+   * ⚠ ★킬 점수는 「나머지」 다★ — 평범한 1점짜리 라플킬은 근거 기록(`scoreLog`)에
+   *   안 담긴다(사장님이 세지 말라 하셨다). 그래서 총점에서 세이브·폭탄·선짤을 빼서
+   *   구한다. ★이렇게 해야 네 칸의 합이 총점과 언제나 맞는다.★
+   * ⚠ 점수를 못 잰 경기는 ★통째로 `null`★ 이다 — 0으로 우기지 않는다 (D-106).
+   * ⚠ ★선짤은 2026-09-20 이후 경기만★ 값이 있다 (사장님: 「오늘 경기부터 계산해」).
+   *   그 전 경기는 0 이다.
+   */
+  score_parts: z
+    .object({
+      kill: z.number(),
+      save: z.number(),
+      bomb: z.number(),
+      opening: z.number(),
+      total: z.number(),
+    })
+    .nullable()
+    .default(null),
   /** 혼자 남았던 라운드 수 (세이브 시도) — «성공/시도» 표기용 (2026-09-11) */
   save_chances: Count.nullable().default(null),
   /**
