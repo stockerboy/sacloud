@@ -785,6 +785,7 @@ async function main(): Promise<number> {
           교정: result.corrected,
           비움: result.cleared,
           이름고침: result.renamed,
+          클랜명고침: result.clanRenamed,
           그대로: result.unchanged,
           무소속: result.noClan,
           비우기: result.clearEnabled ? '켬' : '끔',

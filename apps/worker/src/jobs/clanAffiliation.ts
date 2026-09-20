@@ -68,6 +68,8 @@ export interface ClanAffiliationResult {
   cleared: number
   /** ★이름을 병영수첩에 맞춘 사람★ (2026-09-20) */
   renamed: number
+  /** ★이름을 병영수첩에 맞춘 클랜★ (2026-09-20) — 클랜도 이름을 바꾼다 */
+  clanRenamed: number
   /** 이미 맞아서 손대지 않은 사람 */
   unchanged: number
   /** 명부에 없어서 무소속으로 남는 사람 (구름) */
@@ -121,6 +123,7 @@ export async function runClanAffiliation(input: {
     corrected: 0,
     cleared: 0,
     renamed: 0,
+    clanRenamed: 0,
     unchanged: 0,
     noClan: 0,
     clearEnabled,
@@ -251,6 +254,30 @@ export async function runClanAffiliation(input: {
    */
   const renames: Array<{ playerId: string; name: string }> = []
 
+  /*
+   * ★★클랜 이름도 병영수첩이 이긴다★★ (2026-09-20 사장님)
+   *
+   * > 「애초에 maybe 저기클랜명도 바꼈더만 yesul로 왤케 최신화가 안되냐」
+   *
+   *   클랜은 ★이름을 바꾼다.★ 그런데 우리는 처음 본 이름을 그대로 들고 있었다.
+   *   명부를 받을 때마다 ★그 클랜이 지금 뭐라고 불리는지★ 가 같이 온다(`clanName`).
+   *   그 값으로 맞춘다 — 선수 닉을 맞추는 것과 똑같은 이치다.
+   *
+   * ⚠ ★빈 이름으로 덮지 않는다.★
+   * ⚠ ★slug 는 안 건드린다★ — 주소가 바뀌면 옛 링크가 전부 깨진다.
+   */
+  const clanRenames = await prisma.$queryRawUnsafe<{ id: string; now: string; want: string }[]>(
+    `WITH fresh AS (
+       SELECT DISTINCT ON (b."clanSlug") b."clanSlug", b."clanName"
+         FROM "BarracksClanMember" b
+        WHERE b."clanName" IS NOT NULL AND b."clanName" <> ''
+        ORDER BY b."clanSlug", b."observedAt" DESC
+     )
+     SELECT c."id" AS id, c."name" AS now, f."clanName" AS want
+       FROM fresh f JOIN "Clan" c ON c."slug" = f."clanSlug"
+      WHERE c."name" <> f."clanName"`,
+  )
+
   for (const row of rows) {
     if (row.usn) result.linkable += 1
 
@@ -317,6 +344,14 @@ export async function runClanAffiliation(input: {
   }
 
   if (input.confirm) {
+    /* ★클랜 이름을 먼저 맞춘다★ — 선수 소속을 고치기 전에 해야 로그가 새 이름으로 찍힌다 */
+    for (const c of clanRenames) {
+      await prisma.clan.update({ where: { id: c.id }, data: { name: c.want } })
+      result.clanRenamed += 1
+      if (result.samples.length < 15)
+        result.samples.push({ nick: '(클랜)', before: c.now, after: `클랜명→${c.want}` })
+    }
+
     /*
      * ★이름부터 맞춘다★ — 같은 선수가 여러 리그에 있으면 같은 이름이 여러 번 온다.
      *   `Map` 으로 접어 ★선수 하나당 한 번만★ 쓴다.

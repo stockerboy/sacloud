@@ -110,7 +110,14 @@ say "★소속 갱신 시작★ (임대 ${OWNER}${LEAGUES:+ · 리그 ${LEAGUES}
 # ★스스로 시간을 재고 멈춘다★ — 밖에서 끊기면 끊긴 자리를 알 수 없다.
 # 남은 곳은 다음 회차가 `--resume` 으로 그대로 잇는다 (같은 관측 시각을 이어 쓴다)
 MAXMIN="${ROSTER_MAX_MIN:-20}"
-pnpm --filter @sacloud/worker nexon barracks-roster $LEAGUE_ARG --max-min "$MAXMIN" $CONFIRM >> "$LOG" 2>&1
+# ★★이어받기 창을 예약 주기보다 길게 준다★★ (2026-09-20 사장님: 「왤케 최신화가 안되냐」)
+#
+#   ⚠ 옛 판은 `--resume` 을 ★안 줬다.★ 그러면 기본 90분이 쓰이는데 예약은 그보다
+#     드물게 온다. 그래서 ★매번 처음부터★ 받고, 앞 150곳만 받다 끝났다.
+#     실측 — 409곳 중 ★29곳★ 만 들어 있던 판이 있었다.
+#   ★120분★ 이면 1시간 주기에서 다음 판이 확실히 이어받는다. 세 바퀴면 완주한다.
+RESUME="${ROSTER_RESUME_MIN:-120}"
+pnpm --filter @sacloud/worker nexon barracks-roster $LEAGUE_ARG --max-min "$MAXMIN" --resume "$RESUME" $CONFIRM >> "$LOG" 2>&1
 code=$?
 
 if [ "$code" != "0" ]; then
