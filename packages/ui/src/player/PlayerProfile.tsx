@@ -232,7 +232,14 @@ function PlayerLeagueRow({
         </div>
       )}
 
-      <div className="mt-3.5 grid grid-cols-4 gap-4 max-md:grid-cols-2 max-md:gap-y-3">
+      {/*
+        * ★값을 왼쪽에 모은다★ (2026-09-20 사장님: 「가독성도 떨어지고」)
+        *
+        * 옛 판은 `grid-cols-4` 라 넓은 화면에서 네 값이 ★화면 끝까지 벌어졌다.★
+        * 「전적」 과 「킬뎃」 사이가 한 뼘이라 ★한눈에 안 읽혔다.★
+        * 흐르는 배치로 바꿔 ★값끼리 붙여 놓는다.★ 폰에서는 두 줄로 접힌다.
+        */}
+      <div className="mt-3.5 flex flex-wrap gap-x-7 gap-y-3 max-md:gap-x-5">
         {/* 판수는 **가리지 않는다** — 있다는 것은 보여 주고 얼마나 잘하는지를 가린다 (사양 2장) */}
         <Stat label="전적" value={`${formatCount(games)}전`} />
         {sealed ? (
@@ -275,6 +282,49 @@ function PlayerLeagueRow({
   )
 }
 
+/**
+ * ★아직 안 뛴 리그 — 한 줄로 접는다★ (2026-09-20 사장님)
+ *
+ * 큰 카드에 「기록 없음」 을 네 번 적는 대신 ★이름만 한 줄★ 로 적는다.
+ * ⚠ ★감추는 것이 아니다★ — 눌러서 펼치면 지금까지와 똑같은 카드가 나온다.
+ *   그 리그에 참가해 있다는 사실 자체는 ★언제나 보인다.★
+ */
+function IdleLeagues({
+  entries,
+  playerId,
+}: {
+  entries: readonly PlayerLeagueEntry[]
+  playerId: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 rounded-[2px] border border-line-soft px-5 py-3 text-left transition-colors hover:border-accent"
+      >
+        <span className="min-w-0 truncate text-[13px] text-meta">
+          아직 기록이 없는 리그
+          <span className="ml-2 text-text-strong">
+            {entries.map((e) => e.league.name).join(' · ')}
+          </span>
+        </span>
+        <span aria-hidden className="shrink-0 text-[11px] text-faint">
+          {open ? '접기' : '펼치기'}
+        </span>
+      </button>
+      {open ? (
+        <div className="mt-3 flex flex-col gap-3">
+          {entries.map((entry) => (
+            <PlayerLeagueRow key={entry.league.id} entry={entry} playerId={playerId} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function PlayerLeagueList({
   playerId,
   entries,
@@ -311,8 +361,30 @@ export function PlayerLeagueList({
     )
   }
 
-  const hidden = listed.length - VISIBLE_LEAGUES
-  const shown = expanded ? listed : listed.slice(0, VISIBLE_LEAGUES)
+  /*
+   * ★★뛴 리그를 먼저 보여 준다★★ (2026-09-20 사장님: 「이 카드들 너무 별로야 가독성도 떨어지고」)
+   *
+   * ── 무엇이 문제였나
+   *   한 판도 안 뛴 리그가 ★큰 카드를 그대로 차지★ 했다. 실제 화면에서 —
+   *   ```
+   *     PL      0전 · 기록없음 · 기록없음 · 기록없음   ← 큰 카드
+   *     열산    0전 · 기록없음 · 기록없음 · 기록없음   ← 큰 카드
+   *     IPL     34전 · 25승9패 · 73.5% · 3,058점      ← ★볼 것이 맨 아래★
+   *   ```
+   *   「기록 없음」 이 ★여섯 번★ 나오고, 정작 볼 기록은 두 화면 밑에 있었다.
+   *
+   * ── 어떻게 고쳤나
+   *   ★뛴 리그만 카드로 그린다★ (판수 많은 순). 안 뛴 리그는 ★맨 아래 한 줄★ 로 접는다.
+   *   ⚠ ★지우는 것이 아니다★ — 한 줄에 이름을 다 적고, 눌러서 펼치면 카드가 나온다.
+   *     «참여중인 리그 3개» 라는 셈도 그대로다 (CLAUDE.md 1-4).
+   */
+  const played = listed.filter((e) => e.win + e.lose > 0)
+  const idle = listed.filter((e) => e.win + e.lose === 0)
+  /* 판수 많은 리그가 위로 — 그 사람의 «주 무대» 가 먼저 온다 */
+  const sorted = [...played].sort((a, b) => b.win + b.lose - (a.win + a.lose))
+
+  const hidden = sorted.length - VISIBLE_LEAGUES
+  const shown = expanded ? sorted : sorted.slice(0, VISIBLE_LEAGUES)
 
   return (
     <section className="mt-[40px]">
@@ -335,7 +407,13 @@ export function PlayerLeagueList({
         {shown.map((entry) => (
           <PlayerLeagueRow key={entry.league.id} entry={entry} playerId={playerId} />
         ))}
+        {sorted.length === 0 ? (
+          <ProfileEmpty message="아직 기록이 쌓인 리그가 없습니다." />
+        ) : null}
       </div>
+
+      {/* ★안 뛴 리그는 한 줄★ — 이름은 다 적는다. 누르면 카드가 펼쳐진다 */}
+      {idle.length > 0 ? <IdleLeagues entries={idle} playerId={playerId} /> : null}
       <p className="mt-4 text-[12px] text-faint">
         리그를 누르면 그 리그의 기록실로 갑니다 — 전투력 육각형 · 플레이스타일 · 오늘 기록은
         리그마다 따로 쌓입니다.
