@@ -33,6 +33,14 @@ import {
 
 const NICK = process.argv[2] ?? '현물'
 const WANT = Number(process.argv[3] ?? '6')
+/**
+ * 경기를 ★직접 지정★ 할 수 있다 (`--keys=a,b,c`).
+ *
+ * ⚠ 안 주면 최근 원문을 훑어 그 닉이 낀 경기를 찾는데, ★최근이 아니면 못 찾는다.★
+ *   실측 — 사장님 경기는 9/7 것이라 최근 6,000건에 없었다.
+ */
+const KEYS = (process.argv.find((a) => a.startsWith('--keys=')) ?? '').slice('--keys='.length)
+const WANT_KEYS = KEYS === '' ? null : new Set(KEYS.split(','))
 
 interface RawShape {
   battleLog?: (OpeningEvent & { user_nick?: string | null; target_user_nick?: string | null })[]
@@ -52,10 +60,14 @@ const PAYLOAD_CHUNK = 100
 const SCAN_LIMIT = 6000
 
 const index = await prisma.barracksBattleLogRaw.findMany({
-  where: { subjectKind: 'clan', status: 'ok' },
+  where: {
+    subjectKind: 'clan',
+    status: 'ok',
+    ...(WANT_KEYS === null ? {} : { matchKey: { in: [...WANT_KEYS] } }),
+  },
   select: { id: true, matchKey: true },
   orderBy: { fetchedAt: 'desc' },
-  take: SCAN_LIMIT,
+  take: WANT_KEYS === null ? SCAN_LIMIT : WANT_KEYS.size * 4,
 })
 
 interface RoundLine {
@@ -143,8 +155,9 @@ for (let i = 0; i < index.length && reports.length < WANT; i += PAYLOAD_CHUNK) {
 
     const tallies = openingTalliesOf({ events, sideOf })
     const mine = tallies.get(me)
-    /* 그 사람이 선짤에 한 번도 안 얽힌 경기는 보여 줄 게 없다 */
-    if (mine === undefined || openingPointsOf(mine) === 0) continue
+    /* 그 사람이 선짤에 한 번도 안 얽힌 경기는 보여 줄 게 없다 — 단, ★직접 지정했으면 보여 준다★ */
+    if (mine === undefined && WANT_KEYS === null) continue
+    if (mine !== undefined && openingPointsOf(mine) === 0 && WANT_KEYS === null) continue
 
     seen.add(row.matchKey)
 
@@ -245,8 +258,8 @@ for (let i = 0; i < index.length && reports.length < WANT; i += PAYLOAD_CHUNK) {
       matchKey: row.matchKey,
       myTeam,
       rounds: lines,
-      points: openingPointsOf(mine),
-      tally: { ...mine },
+      points: mine === undefined ? 0 : openingPointsOf(mine),
+      tally: mine === undefined ? {} : { ...mine },
       best,
     })
   }
