@@ -90,13 +90,32 @@ function Row({ item, basePath }: { item: BoardListItem; basePath?: string }) {
           ) : null}
           {item.has_image ? <ImageIcon /> : null}
         </Link>
+
+        {/*
+          ★★폰에서는 제목 아래로 내린다★★ (2026-09-20 사장님: 「소속클랜도 안뜨고」)
+
+          ── 무엇이 문제였나
+            한 줄에 ★투표 · 제목 · 시각 · 조회 · 작성자★ 를 늘어놓았는데,
+            제목 말고는 전부 고정 폭이라 ★합이 360px 을 넘는다.★
+            폰(390px)에서는 ★오른쪽 두 칸이 화면 밖으로 밀려 안 보였다.★
+            그래서 사장님 화면에 작성자·소속이 통째로 없었다.
+
+          ── 고친 것
+            폰에서는 ★제목 아래 한 줄★ 로 내린다 — 「익명 · veritas · 13분 전」.
+            넓은 화면은 ★지금까지와 똑같다★ (오른쪽 칸들이 그대로 산다).
+        */}
+        <div className="mt-1 flex items-center gap-2 text-[12px] text-faint md:hidden">
+          <span className="min-w-0 truncate"><WriterName writer={item.writer} /></span>
+          <span aria-hidden className="text-line">·</span>
+          <span className={`shrink-0 ${NUM}`}><RelativeTime value={item.created_at} /></span>
+        </div>
       </div>
 
-      <div className={`text-sm text-faint ${COL_TIME} ${NUM}`}>
+      <div className={`text-sm text-faint max-md:hidden ${COL_TIME} ${NUM}`}>
         <RelativeTime value={item.created_at} />
       </div>
-      <div className={`text-sm text-faint ${COL_VIEW} ${NUM}`}>{formatCount(item.view_count)}</div>
-      <div className={`min-w-0 truncate text-sm ${COL_WRITER}`}>
+      <div className={`text-sm text-faint max-md:hidden ${COL_VIEW} ${NUM}`}>{formatCount(item.view_count)}</div>
+      <div className={`min-w-0 truncate text-sm max-md:hidden ${COL_WRITER}`}>
         {/* 반익명 — 소속(`veritas 소속`) + 이름. 익명 글은 목록에서 번호 없이 `익명` 이다
             (번호는 글 안에서만 뜻이 있다 · SITE_SPEC_V2 2절) */}
         <WriterName writer={item.writer} />
@@ -151,9 +170,9 @@ export function BoardTable({
           <div className={COL_VOTE} aria-hidden />
 
           <div className="min-w-0 flex-1">제목</div>
-          <div className={COL_TIME}>작성시간</div>
-          <div className={COL_VIEW}>조회수</div>
-          <div className={COL_WRITER}>작성자</div>
+          <div className={`max-md:hidden ${COL_TIME}`}>작성시간</div>
+          <div className={`max-md:hidden ${COL_VIEW}`}>조회수</div>
+          <div className={`max-md:hidden ${COL_WRITER}`}>작성자</div>
         </div>
 
         {error ? (
