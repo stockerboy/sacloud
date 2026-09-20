@@ -4,6 +4,7 @@ import {
   axisValuesV4Of,
   crackValueV1,
   foldPlayerHex,
+  HEX_SHRINK_K,
   mainWeaponOf,
   percentileOf,
   tierFactorOf,
@@ -173,7 +174,15 @@ describe('접기', () => {
   /* 2026-09-12 사장님이 비중을 19:35:46 · 판수무게 300 으로 바꿨다. 혼자면 셋 다 백분위 0 이라 합은 그대로 −1 이다 */
   it('점수 = 3000 + 700 × (여섯축 + 승률 + 킬뎃) × 티어계수 × 신뢰 + 클랜보정', () => {
     /* 혼자면 모든 백분위가 0 → perf −1 → 3000 − 700 × 티어계수 × 신뢰 + 보정 */
-    const [r] = foldPlayerHex([player({ leaguePlayerId: 'a', tierGames: { 1: 20, 2: 0, 3: 0 }, clanTier: 1, rounds: 300 })])
+    /*
+     * ⚠ ★상수를 시험에 박아 두지 않는다★ (2026-09-20).
+     *   `HEX_SHRINK_K` 를 300 → 600 으로 올렸더니 이 시험이 깨졌다 —
+     *   ★식이 틀린 게 아니라 시험이 옛 숫자를 외우고 있었다.★
+     *   「라운드가 K 면 수축이 0.5」 라는 ★규칙★ 을 시험한다. 숫자가 아니라.
+     */
+    const [r] = foldPlayerHex([
+      player({ leaguePlayerId: 'a', tierGames: { 1: 20, 2: 0, 3: 0 }, clanTier: 1, rounds: HEX_SHRINK_K }),
+    ])
     expect(r?.hex).toBe(0)
     expect(r?.tierFactor).toBe(1)
     expect(r?.shrink).toBe(0.5)
