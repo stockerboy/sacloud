@@ -129,6 +129,7 @@ const hexRows = await prisma.matchPlayerHex.findMany({
     defRounds: true,
     firstKills: true,
     burstRounds: true,
+    scoreLog: true,
     tradeKills: true,
     mateDeaths: true,
   },
@@ -395,11 +396,41 @@ for (const key of KEYS) {
     },
     rounds: lines,
     people: people
-      .map((p) => ({
-        nick: p.nick, name: p.name, team: p.team, isMe: p.isMe, weapon: p.weapon,
-        kill: p.kill, death: p.death, baseScore: p.baseScore, opening: p.opening, total: p.total,
-        side: p.playerId === null ? null : (statOfPlayer.get(p.playerId)?.side ?? null),
-      }))
+      .map((p) => {
+        /*
+         * ★★점수를 갈라서 보여 준다★★ (2026-09-20 사장님:
+         *   「세이브점수 킬점수 폭탄설치점수 선짤추가점수 선짤감점 (…)
+         *    점수의 구성을 전부 해부해서 볼 수 있게 하고싶은데」)
+         *
+         * ⚠ ★평범한 1점짜리 라플킬은 `scoreLog` 에 안 담긴다★ — 워커가 안 담는다
+         *   (사장님이 「그건 세지 말라」 하셨다). 그래서 ★킬 점수는 나머지로 구한다★ —
+         *   `score` 에서 세이브·폭탄을 빼면 남는 것이 킬 몫이다.
+         *   ★이렇게 해야 칸의 합이 총점과 항상 맞는다.★
+         */
+        const hex2 = p.playerId === null ? undefined : hexOfPlayer.get(p.playerId)
+        const rawLog = hex2?.scoreLog
+        const log = Array.isArray(rawLog) ? (rawLog as { k?: unknown; p?: unknown }[]) : []
+        let save = 0
+        let bomb = 0
+        for (const e of log) {
+          const k = String(e.k ?? '')
+          const pt = Number(e.p ?? 0)
+          if (!Number.isFinite(pt)) continue
+          if (k.startsWith('save')) save += pt
+          else if (k.startsWith('bomb')) bomb += pt
+        }
+        return {
+          nick: p.nick, name: p.name, team: p.team, isMe: p.isMe, weapon: p.weapon,
+          kill: p.kill, death: p.death, baseScore: p.baseScore, opening: p.opening, total: p.total,
+          side: p.playerId === null ? null : (statOfPlayer.get(p.playerId)?.side ?? null),
+          parts: {
+            kill: p.baseScore === null ? null : p.baseScore - save - bomb,
+            save,
+            bomb,
+            opening: p.opening,
+          },
+        }
+      })
       .sort((a, b) => (b.total ?? -999) - (a.total ?? -999)),
     mvpNow: m.mvpPlayerId ? (nameOfId.get(m.mvpPlayerId) ?? null) : null,
     mvpByScore: mvpOf(false),
