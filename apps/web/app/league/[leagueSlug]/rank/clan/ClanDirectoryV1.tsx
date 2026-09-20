@@ -72,10 +72,34 @@ export function ClanDirectoryV1({ leagueSlug }: { leagueSlug: string }) {
 
   const complete = !clans.loading && !hasMore
 
+  /*
+   * ★★한 판도 안 뛴 클랜은 고용 목록에서 뺀다★★ (2026-09-20 사장님)
+   *
+   * > 「고용가능 클랜중에서 최근 3개월간 3보급창고 기록이 아예 없는 클랜들은
+   * >  전부 지워버려 지금 너무 많아 (…) 클랜 한 50개 정도만 선별해서」
+   *
+   * ── 실측으로 고른 기준 (2026-09-20 · 열산 등록 356곳)
+   *
+   *     최근 3개월 제3보급창고 0경기   ★246곳(69%)★   ← 이게 지금 목록의 대부분이었다
+   *     이번 시즌 한 판이라도 뜀       ★57곳★          ← 사장님이 말한 「50개 정도」
+   *
+   *   ★「이번 시즌에 뛰었나」 하나만 본다.★ 3개월·경기 수 같은 값을 더 얹어 봤지만
+   *   결과가 거의 같았고, 규칙이 복잡해질수록 ★왜 빠졌는지 설명하기 어려워진다.★
+   *
+   * ⚠ ★지우는 것이 아니다★ — DB 는 그대로고 화면에서만 거른다 (CLAUDE.md 2-2).
+   *   한 판이라도 뛰면 집계가 승패를 채우고 ★저절로 목록에 돌아온다.★ 손댈 것이 없다.
+   * ⚠ 같은 규칙이 랭킹 표에도 있다 (`leagues.ts` 의 `PLAYED_THIS_SEASON`).
+   *   거기는 서버가 거르고 여기는 화면이 거른다 — 이 끝점은 관리자 화면도 쓰기 때문이다.
+   */
+  const played = useMemo(
+    () => clans.items.filter((row) => row.win + row.lose > 0),
+    [clans.items],
+  )
+
   /* 이름 가나다순. 한글·영문·기호가 섞여 있어 `localeCompare('ko')` 로 맞춘다 */
   const sorted = useMemo(
-    () => [...clans.items].sort((a, b) => a.clan.name.localeCompare(b.clan.name, 'ko')),
-    [clans.items],
+    () => [...played].sort((a, b) => a.clan.name.localeCompare(b.clan.name, 'ko')),
+    [played],
   )
 
   const filtered = useMemo(() => sorted.filter(matches(query)), [sorted, query])
