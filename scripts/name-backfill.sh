@@ -29,11 +29,13 @@ for i in $(seq 1 400); do
     echo "[$(date +%H:%M)] ★10번 연속 비켰다 — 한 번은 끼어든다★"
   fi
   SKIPPED=0
-  out=$(pnpm --filter @sacloud/worker nexon clan-name-backfill --confirm --limit 5000 2>&1 | grep "남은 줄" || true)
+  out=$(pnpm --filter @sacloud/worker nexon clan-name-backfill --confirm --limit 5000 2>&1 | grep "읽음=" || true)
   echo "[$(date +%H:%M)] $out"
+  # ⚠ ★「남은 줄」 로 끝을 판단하지 않는다★ (2026-09-20) — 그 셈이 2분 벽에
+  #   걸리면 `-1` 이 오는데, 그걸 0 과 헷갈리면 ★다 채우기 전에 멈춘다.★
+  #   ★「읽음=0」 하나만 본다★ — 더 고칠 줄이 없다는 뜻이고, 이건 틀릴 수가 없다.
   case "$out" in
-    *"남은 줄=0"*) echo "[$(date +%H:%M)] ★다 채웠다★"; break ;;
-    *"읽음=0"*)    echo "[$(date +%H:%M)] ★더 채울 줄이 없다★"; break ;;
+    *"읽음=0"*) echo "[$(date +%H:%M)] ★다 채웠다 — 더 고칠 줄이 없다★"; break ;;
   esac
   sleep 5
 done
