@@ -2,7 +2,24 @@
 
 import { usePathname } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { SiteShell } from '@sacloud/ui'
+/*
+ * ★★배럴(`@sacloud/ui`)을 물지 않는다★★ (2026-09-20 · 사장님 「사람들 많이 들어오면 어쩌려고」)
+ *
+ * ── 무엇이 문제였나 (실측)
+ *   이 파일은 ★루트 레이아웃★ 이 쓰는 클라이언트 경계다. 여기서 배럴을 물면
+ *   그 배럴이 내보내는 ★`'use client'` 59개가 전부★ 한 덩어리로 묶인다.
+ *   그래서 ★글만 있는 `/guide` 페이지조차 1,258KB★ 를 받았다 —
+ *   랭킹 페이지 1,260KB 중 ★1,255KB 가 랭킹과 무관★ 했다.
+ *
+ *   딸려오던 것: 게시판 뷰어(sanitize-html 188KB) · 경기 카드 62KB ·
+ *   선수 상세 79KB · 클랜 상세 82KB … 그 화면에 그려지지도 않는 것들이다.
+ *
+ * ── 그래서 ★부품 하나만★ 가져온다
+ *   `packages/ui/package.json` 의 `exports` 에 이 길을 열어 뒀다.
+ *   ⚠ ★배럴을 지운 것이 아니다★ — 다른 화면은 지금까지처럼 배럴을 쓴다
+ *     (CLAUDE.md 1-4). 무거워지는 자리인 ★레이아웃만★ 끊는다.
+ */
+import { SiteShell } from '@sacloud/ui/layout/SiteShell'
 import { resolveApiMode } from '@sacloud/contract'
 import { apiGet } from '@/lib/api'
 import { apiSend } from '@/lib/apiSend'

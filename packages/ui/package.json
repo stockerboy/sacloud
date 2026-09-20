@@ -15,7 +15,9 @@
     "./v2": "./src/v2/index.ts",
     "./v2/tokens.css": "./src/v2/tokens.css",
     "./sanitize": "./src/sanitize.ts",
-    "./adminPost": "./src/board/adminPost.ts"
+    "./adminPost": "./src/board/adminPost.ts",
+    "./layout/SiteShell": "./src/layout/SiteShell.tsx",
+    "./league/LeagueLabel": "./src/league/LeagueLabel.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"
