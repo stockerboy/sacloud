@@ -30,7 +30,12 @@ const mm = (s: number): string => {
   return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
 }
 
-/** 한 죽음을 두 줄이 아니라 한 줄로 적는다 — 주인이 죽인 쪽이다 */
+/**
+ * 한 죽음을 한 줄로 적는다 — 주인이 죽인 쪽이다.
+ *
+ * ⚠ ★`weapon` 은 「죽인 도구」다★ — 죽은 사람 무기가 아니다 (실측).
+ *   그래서 ★누가 스나인지는 「그 사람이 스나로 낸 킬」★ 로 정해진다.
+ */
 function kill(o: {
   round: number
   at: number
@@ -38,7 +43,8 @@ function kill(o: {
   killerTeam: string
   victim: string
   victimTeam: string
-  victimWeapon?: string
+  /** ★죽인 사람★ 이 쓴 무기 */
+  weapon?: string
 }): OpeningEvent {
   return {
     round: String(o.round),
@@ -49,17 +55,43 @@ function kill(o: {
     target_str_usn: o.victim,
     team_no: o.killerTeam,
     target_team_no: o.victimTeam,
-    weapon: 'riple',
-    target_weapon: o.victimWeapon ?? 'riple',
+    weapon: o.weapon ?? 'riple',
+    target_weapon: '',
   }
 }
 
-/** 5:5 를 채운다 — 명부는 이벤트에서 읽으므로 열 명이 한 번씩 얽혀야 한다 */
-function fillRoster(): OpeningEvent[] {
+/**
+ * 5:5 를 채우고 ★각자의 무기를 정한다★.
+ *
+ * 명부도 무기도 ★이벤트에서 읽는다★ — 열 명이 한 번씩 킬을 내야 둘 다 채워진다.
+ * `snipers` 에 적은 사람만 스나로 잡힌다.
+ */
+function fillRoster(snipers: readonly string[] = []): OpeningEvent[] {
   const out: OpeningEvent[] = []
-  /* 라운드 90 은 판정 대상이 아니다 (진영을 안 준다) — 명부만 채운다 */
+  /* 라운드 90 은 판정 대상이 아니다 (진영을 안 준다) — 명부와 무기만 채운다 */
   for (let i = 0; i < 5; i += 1) {
-    out.push(kill({ round: 90, at: 3000 + i, killer: `a${i}`, killerTeam: 'A', victim: `b${i}`, victimTeam: 'B' }))
+    out.push(
+      kill({
+        round: 90,
+        at: 3000 + i * 2,
+        killer: `a${i}`,
+        killerTeam: 'A',
+        victim: `b${i}`,
+        victimTeam: 'B',
+        weapon: snipers.includes(`a${i}`) ? 'sniper' : 'riple',
+      }),
+    )
+    out.push(
+      kill({
+        round: 91,
+        at: 3100 + i * 2,
+        killer: `b${i}`,
+        killerTeam: 'B',
+        victim: `a${i}`,
+        victimTeam: 'A',
+        weapon: snipers.includes(`b${i}`) ? 'sniper' : 'riple',
+      }),
+    )
   }
   return out
 }
@@ -188,17 +220,10 @@ describe('레드 (밀고 들어가는 쪽)', () => {
 describe('블루 (지키는 쪽)', () => {
   it('★스나가 첫 사망자면 -2★', () => {
     const events = [
-      ...fillRoster(),
+      /* b1 이 그 경기에서 스나로 뛰었다 */
+      ...fillRoster(['b1']),
       endRound1,
-      kill({
-        round: 2,
-        at: ROUND2_START + 10,
-        killer: 'a1',
-        killerTeam: 'A',
-        victim: 'b1',
-        victimTeam: 'B',
-        victimWeapon: 'sniper',
-      }),
+      kill({ round: 2, at: ROUND2_START + 10, killer: 'a1', killerTeam: 'A', victim: 'b1', victimTeam: 'B' }),
     ]
     const tallies = openingTalliesOf({ events, sideOf })
     expect(tallies.get('b1')?.blueSniperDeaths).toBe(1)
@@ -218,7 +243,7 @@ describe('블루 (지키는 쪽)', () => {
 
   it('★22초를 넘어도 깎는다★ — 블루 벌점에는 시간 조건이 없다', () => {
     const events = [
-      ...fillRoster(),
+      ...fillRoster(['b1']),
       endRound1,
       kill({
         round: 2,
@@ -227,7 +252,6 @@ describe('블루 (지키는 쪽)', () => {
         killerTeam: 'A',
         victim: 'b1',
         victimTeam: 'B',
-        victimWeapon: 'sniper',
       }),
     ]
     const tallies = openingTalliesOf({ events, sideOf })
@@ -247,18 +271,11 @@ describe('블루 (지키는 쪽)', () => {
 
   it('★상대 스나를 22초 안에 잡으면 +1★', () => {
     const events = [
-      ...fillRoster(),
+      /* a1 이 그 경기에서 스나로 뛰었다 */
+      ...fillRoster(['a1']),
       endRound1,
       /* B(블루)가 A(레드)의 스나를 잡았다 */
-      kill({
-        round: 2,
-        at: ROUND2_START + 10,
-        killer: 'b1',
-        killerTeam: 'B',
-        victim: 'a1',
-        victimTeam: 'A',
-        victimWeapon: 'sniper',
-      }),
+      kill({ round: 2, at: ROUND2_START + 10, killer: 'b1', killerTeam: 'B', victim: 'a1', victimTeam: 'A' }),
     ]
     const tallies = openingTalliesOf({ events, sideOf })
     expect(tallies.get('b1')?.blueSniperKills).toBe(1)
@@ -280,9 +297,9 @@ describe('모르면 세지 않는다 (D-106)', () => {
     /* A 가 넷뿐이다 */
     const roster: OpeningEvent[] = []
     for (let i = 0; i < 4; i += 1) {
-      roster.push(kill({ round: 90, at: 3000 + i, killer: `a${i}`, killerTeam: 'A', victim: `b${i}`, victimTeam: 'B' }))
+      roster.push(kill({ round: 90, at: 3000 + i * 2, killer: `a${i}`, killerTeam: 'A', victim: `b${i}`, victimTeam: 'B' }))
     }
-    roster.push(kill({ round: 90, at: 3010, killer: 'a0', killerTeam: 'A', victim: 'b4', victimTeam: 'B' }))
+    roster.push(kill({ round: 90, at: 3020, killer: 'a0', killerTeam: 'A', victim: 'b4', victimTeam: 'B' }))
     const events = [
       ...roster,
       endRound1,
@@ -299,6 +316,29 @@ describe('모르면 세지 않는다 (D-106)', () => {
     ]
     const tallies = openingTalliesOf({ events, sideOf: () => null })
     expect(tallies.size).toBe(0)
+  })
+
+  it('★무기를 모르면 블루 벌점을 안 매긴다★ — 스나는 -2, 라플은 -1 이라 틀리면 두 배로 틀린다', () => {
+    /*
+     * b4 는 ★한 번도 못 죽였다★ — 그래서 스나인지 라플인지 모른다.
+     * 「모르니까 라플이겠지」 로 -1 을 매기면 안 된다 (D-106).
+     */
+    const roster: OpeningEvent[] = []
+    for (let i = 0; i < 5; i += 1) {
+      roster.push(kill({ round: 90, at: 3000 + i * 2, killer: `a${i}`, killerTeam: 'A', victim: `b${i}`, victimTeam: 'B' }))
+    }
+    /* b0~b3 만 킬을 낸다. b4 는 안 낸다 */
+    for (let i = 0; i < 4; i += 1) {
+      roster.push(kill({ round: 91, at: 3100 + i * 2, killer: `b${i}`, killerTeam: 'B', victim: `a${i}`, victimTeam: 'A' }))
+    }
+    const events = [
+      ...roster,
+      endRound1,
+      kill({ round: 2, at: ROUND2_START + 10, killer: 'a1', killerTeam: 'A', victim: 'b4', victimTeam: 'B' }),
+    ]
+    const tallies = openingTalliesOf({ events, sideOf })
+    expect(tallies.get('b4')?.blueRifleDeaths ?? 0).toBe(0)
+    expect(tallies.get('b4')?.blueSniperDeaths ?? 0).toBe(0)
   })
 
   it('★같은 초에 둘이 죽으면 그 라운드를 버린다★ — 누가 먼저인지 모른다', () => {

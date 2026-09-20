@@ -1,6 +1,7 @@
 import { rosterOf, roundStatesOf, secondsOf, type RoundStateEvent } from './roundState.js'
 import type { RoundSide } from './roundSide.js'
 import { MATCH_TO_FIRST_ROUND_SECONDS, ROUND_GAP_SECONDS } from './clanHexV2.js'
+import { killsOf, weaponByPlayerOf, type DuelEvent } from './duel.js'
 
 /**
  * ★★선짤 점수★★ (2026-09-20 사장님)
@@ -77,8 +78,28 @@ export const BLUE_SNIPER_DEATH_POINT = -2
 /** 블루에서 우리 라플이 첫 사망 */
 export const BLUE_RIFLE_DEATH_POINT = -1
 
-/** 원문이 쓰는 무기 이름 — `weapon` / `target_weapon` 칸 (라플은 `riple` 이다) */
-const SNIPER = 'sniper'
+/**
+ * ★★죽은 사람의 무기는 원문에 ★없다★★★ (2026-09-20 실측에서 잡았다)
+ *
+ *   `weapon` / `target_weapon` 은 언제나 ★죽인 도구★ 다 —
+ *
+ *   ```
+ *   kill 줄    weapon="sniper"   target_weapon=""        ← 주인이 죽인 쪽
+ *   death 줄   weapon=""         target_weapon="sniper"  ← 상대가 죽인 쪽
+ *   ```
+ *
+ *   ★죽은 사람이 뭘 들고 있었는지는 어느 칸에도 안 적힌다.★ 처음에 그 칸을
+ *   읽도록 짰다가 ★스나 판정이 0건★ 으로 나와서 알았다.
+ *
+ * ── 그래서 ★그 경기에서 그 사람이 쓴 무기★ 로 본다
+ *
+ *   `weaponByPlayerOf` 가 ★그 사람이 낸 킬의 무기★ 를 모아 정한다.
+ *   이미 클랜 육각이 쓰는 방법이고 실측 ★97.8%★ 판정이다.
+ *
+ * ⚠ ★한 번도 못 죽인 사람은 무기를 모른다★ — 그때는 세지 않는다 (D-106).
+ *   스나인지 라플인지 모르는데 「라플이겠지」 로 -1 을 매기면 안 된다.
+ */
+const SNIPER_WEAPON = 1
 
 /**
  * 이 모듈이 보는 칸. `RoundStateEvent` 에 무기를 더한 것이다.
@@ -147,8 +168,11 @@ export interface FirstBlood {
   killerTeam: string
   victim: string
   victimTeam: string
-  /** 죽은 사람이 들고 있던 무기 */
-  victimWeapon: string | null
+  /**
+   * ⚠ ★쓰지 않는다★ — 이 칸은 ★죽인 도구★ 다. 죽은 사람 무기가 아니다.
+   *   남겨 두는 이유는 다음 사람이 같은 함정을 다시 밟지 않게 하려는 것이다.
+   */
+  killWeapon: string | null
 }
 
 /**
@@ -210,8 +234,8 @@ export function firstBloodsOf(events: readonly OpeningEvent[]): Map<number, Firs
     const victim = subjectKilled ? str(event.target_str_usn) : str(event.str_usn)
     const killerTeam = subjectKilled ? str(event.team_no) : str(event.target_team_no)
     const victimTeam = subjectKilled ? str(event.target_team_no) : str(event.team_no)
-    /* 죽은 사람의 무기 — 주인이 죽인 쪽이면 `target_weapon`, 아니면 `weapon` */
-    const victimWeapon = subjectKilled ? str(event.target_weapon) : str(event.weapon)
+    /* ★죽인 도구★ — 죽은 사람 무기가 아니다 (위 `SNIPER_WEAPON` 주석) */
+    const killWeapon = subjectKilled ? str(event.weapon) : str(event.target_weapon)
     if (killer === null || victim === null || killerTeam === null || victimTeam === null) continue
 
     let perRound = byRound.get(round)
@@ -221,7 +245,7 @@ export function firstBloodsOf(events: readonly OpeningEvent[]): Map<number, Firs
     }
     const before = perRound.get(victim)
     if (before === undefined || at < before.at) {
-      perRound.set(victim, { at, killer, killerTeam, victim, victimTeam, victimWeapon })
+      perRound.set(victim, { at, killer, killerTeam, victim, victimTeam, killWeapon })
     }
   }
 
@@ -278,6 +302,15 @@ export function openingTalliesOf(input: OpeningScoreInput): Map<string, OpeningT
   const states = roundStatesOf(events)
   const starts = roundStartsOf(events)
   const firstBloods = firstBloodsOf(events)
+  /*
+   * ★그 경기에서 누가 스나였나★ — 죽은 사람의 무기가 원문에 없어서 되짚는다.
+   * ⚠ 한 번도 못 죽인 사람은 ★여기 안 담긴다★ — 그때는 무기를 모른다 (D-106).
+   */
+  const weaponOf = weaponByPlayerOf(killsOf(events as readonly DuelEvent[]))
+  const isSniper = (usn: string): boolean | null => {
+    const w = weaponOf.get(usn)
+    return w === undefined ? null : w === SNIPER_WEAPON
+  }
 
   const out = new Map<string, OpeningTally>()
   const tallyOf = (usn: string): OpeningTally => {
@@ -324,8 +357,8 @@ export function openingTalliesOf(input: OpeningScoreInput): Map<string, OpeningT
       if (revenged(states, round, blood)) victimTally.redOpeningDeathsRevenged += 1
       else victimTally.redOpeningDeaths += 1
 
-      /* 블루 상점 — ★스나를 잡았을 때만★ */
-      if (survived && blood.victimWeapon === SNIPER) killerTally.blueSniperKills += 1
+      /* 블루 상점 — ★상대 스나를 잡았을 때만★. 무기를 모르면 안 준다 */
+      if (survived && isSniper(blood.victim) === true) killerTally.blueSniperKills += 1
       continue
     }
 
@@ -333,8 +366,13 @@ export function openingTalliesOf(input: OpeningScoreInput): Map<string, OpeningT
      * ★죽은 쪽이 블루(수비)★ — 벌점에는 22초도 면제도 없다.
      *   죽인 쪽은 ★레드★ 이고, 레드의 상은 ★22초 안 + 3초 생존★ 이다.
      */
-    if (blood.victimWeapon === SNIPER) victimTally.blueSniperDeaths += 1
-    else victimTally.blueRifleDeaths += 1
+    /*
+     * ⚠ ★무기를 모르면 세지 않는다★ — 스나는 -2, 라플은 -1 이라 ★틀리면 두 배로 틀린다.★
+     *   「모르니까 라플이겠지」 로 -1 을 매기면 안 된다 (D-106).
+     */
+    const sniper = isSniper(blood.victim)
+    if (sniper === true) victimTally.blueSniperDeaths += 1
+    else if (sniper === false) victimTally.blueRifleDeaths += 1
 
     if (early && survived) killerTally.redOpeningKills += 1
   }
