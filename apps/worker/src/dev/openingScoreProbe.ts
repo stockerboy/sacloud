@@ -40,11 +40,28 @@ const rawOf = (payload: unknown): RawShape => {
   return raw as RawShape
 }
 
-const rows = await prisma.barracksBattleLogRaw.findMany({
+/*
+ * ⚠ ★원문은 한 줄이 수 MB 다★ — 한 번에 읽으면 연결이 끊긴다
+ *   (실측: 3,000건에서 `P1017 Server has closed the connection`).
+ *   `matchFirstSideBuild` 와 같은 규칙으로 ★가벼운 목록을 먼저, payload 는 나눠★ 읽는다.
+ */
+const PAYLOAD_CHUNK = 100
+
+const index = await prisma.barracksBattleLogRaw.findMany({
   where: { subjectKind: 'clan', status: 'ok' },
-  select: { matchKey: true, subject: true, payload: true },
+  select: { id: true },
   take: LIMIT,
 })
+
+async function* payloads() {
+  for (let i = 0; i < index.length; i += PAYLOAD_CHUNK) {
+    const part = await prisma.barracksBattleLogRaw.findMany({
+      where: { id: { in: index.slice(i, i + PAYLOAD_CHUNK).map((r) => r.id) } },
+      select: { matchKey: true, subject: true, payload: true },
+    })
+    for (const row of part) yield row
+  }
+}
 
 let matches = 0
 let judged = 0
@@ -64,7 +81,7 @@ const pointsOf = new Map<string, number>()
 /** usn → 블루에서 선짤당한 수 (사장님: 「블루때 선짤 3번 이상 당한 사람」) */
 const blueDeathsOf = new Map<string, number>()
 
-for (const row of rows) {
+for await (const row of payloads()) {
   const raw = rawOf(row.payload)
   const events = raw.battleLog ?? []
   if (events.length === 0) continue
@@ -134,7 +151,7 @@ people.sort((a, b) => a[1] - b[1])
 console.info('')
 console.info('★선짤 점수 실측★')
 console.info('─'.repeat(52))
-console.info(`원문 ${rows.length}건 · 경기 ${matches}건`)
+console.info(`원문 ${index.length}건 · 경기 ${matches}건`)
 console.info(`  진영을 알아 판정한 경기  ${judged}건 (${Math.round((judged / Math.max(matches, 1)) * 100)}%)`)
 console.info(`  진영을 몰라 건너뛴 경기  ${noSide}건`)
 console.info(`  팀이 둘이 아닌 경기      ${notFull}건`)
