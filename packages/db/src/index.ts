@@ -187,8 +187,13 @@ function sessionPoolerUrl(url: string | undefined): string | undefined {
    *
    * ⚠ ★무한정은 아니다★ — 10분이다. 그보다 오래 걸리는 질의는 ★고쳐야 할 질의★ 다.
    *   0(무제한)으로 두면 잘못 짠 질의가 DB 를 영영 붙들 수 있다.
+   *
+   * ── ⚠ ★주소에 붙이는 길은 막혔다★ (2026-09-20 실측)
+   *   `?options=-c statement_timeout=600000` 을 붙여 봤는데 ★풀러가 무시했다★ —
+   *   붙인 뒤에도 `SHOW statement_timeout` 이 ★2min★ 이었다.
+   *   그래서 ★워커가 뜰 때 직접 건다★ (`apps/worker/src/db.ts` · `applyBatchTimeout`).
+   *   ★이 자리에는 아무것도 안 붙인다★ — 안 먹는 설정을 남기면 다음 사람이 속는다.
    */
-  parsed.searchParams.set('options', '-c statement_timeout=600000')
 
   /* URL 은 절대 찍지 않는다 (비밀번호가 들어 있다). 옮겼다는 사실만 남긴다 */
   console.info('[db] 세션 풀러(5432)로 붙는다 — 긴 배치 잡용(질의 한도 10분). 사이트는 6543 을 쓴다 (D-249)')

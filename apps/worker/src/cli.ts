@@ -176,6 +176,7 @@ import {
   supplyPlayerProfilesPaths,
 } from './jobs/supplyPlayerProfiles.js'
 import { runSupplyPlayerProfilesImport } from './jobs/supplyPlayerProfilesImport.js'
+import { applyBatchTimeout } from './lib/batchTimeout.js'
 
 interface Args {
   command: string
@@ -512,6 +513,12 @@ function usage(): void {
 }
 
 async function main(): Promise<number> {
+  /*
+   * ★배치 연결의 질의 한도를 늘린다★ — 기본 2분이 파이프라인을 세웠다.
+   *   자세한 사정은 `lib/batchTimeout.ts` 에 적어 뒀다. 사이트와는 무관하다.
+   */
+  await applyBatchTimeout()
+
   const args = parseArgs(process.argv.slice(2))
   loadEnvFiles()
 
