@@ -6,7 +6,25 @@
  *  1) rankColor(rank)  — 등수(순위 숫자)와 닉네임에 적용
  *  2) statColor(value) — 등수를 제외한 모든 0~100 스케일 수치
  *                        (승률, 킬뎃, 헤드샷 등)에 적용
+ *
+ * ── ★★2026-09-20 — 경계를 여기서 지웠다★★ (비판 검수가 찾았다)
+ *
+ *   이 파일은 시안에서 온 것이라 ★경계 숫자를 스스로 갖고 있었다.★ 그래서
+ *   같은 규칙이 ★두 곳★ 에 살았다 —
+ *     · 등수   `@sacloud/contract` 의 `rankTone` / `rankToneOf`
+ *     · 승률   `../common/rate` 의 `rateTone`
+ *
+ *   `CLAUDE.md` 4절이 ★«화면마다 rankColor 를 복사해 두지 않는다 — 우리는
+ *   한 곳뿐이다»★ 라고 적어 뒀는데 ★이 파일이 그 둘째 곳이었다.★
+ *   사장님이 경계를 바꿀 때마다 ★한쪽만 고쳐질 위험★ 이 있었다.
+ *
+ *   이제 ★판단은 전부 위 두 곳에서 받아 오고, 여기는 색만 고른다.★
+ *   ⚠ 오늘 기준으로 ★색이 한 픽셀도 안 바뀐다★ — 두 곳의 경계가 같았다.
+ *   ⚠ 옛 판(`rankColorV2`)은 지우지 않았다 (`CLAUDE.md` 1-4).
  */
+import { rankTone, rankToneOf, type RankTone } from '@sacloud/contract'
+
+import { type RateTone, rateTone } from '../common/rate'
 
 /* ── 1) 등수 · 닉네임 색상 ───────────────────────────── */
 
@@ -18,14 +36,26 @@ export const RANK_COLORS = {
   rest:   '#ffffff', // 101위~     하양
 } as const;
 
+/** 등수 색 이름 → 이 파일의 색. ★경계는 여기 없다★ — 계약이 이름을 정해 준다 */
+const RANK_BY_TONE: Record<RankTone, string> = {
+  red: RANK_COLORS.top3,
+  gold: RANK_COLORS.top20,
+  blue: RANK_COLORS.top40,
+  green: RANK_COLORS.top100,
+  /* ★지금 규칙에서는 안 나온다★ — 옛 판(`rankToneV1`)만 쓴다 */
+  brown: '#c08a5a',
+  plain: RANK_COLORS.rest,
+}
+
 /**
  * 등수에 따른 색.
  * **순위 숫자와 닉네임 모두 이 함수 하나를 쓴다** (두 값이 항상 같은 색).
+ *
+ * ⚠ ★경계는 `@sacloud/contract` 의 `rankTone` 에만 있다.★ 여기서 다시 세지 않는다.
  */
 export function rankColor(rank: number): string {
-  /* ★1~100위는 한 색★ — 밝은 노랑 (2026-09-11 사장님) */
-  if (rank <= 100) return RANK_COLORS.top20;
-  return RANK_COLORS.rest;
+  const tone = rankTone(rank)
+  return tone === null ? RANK_COLORS.rest : RANK_BY_TONE[tone]
 }
 
 /**
@@ -55,12 +85,10 @@ export const RANK_RATIO_STEPS: readonly (readonly [number, string])[] = [
   [20, RANK_COLORS.top100], // 상위 20%  초록
 ] as const
 
+/** ⚠ ★경계는 `@sacloud/contract` 의 `rankToneOf` 에만 있다.★ 여기서 다시 세지 않는다 */
 export function rankColorOf(rank: number, total: number | null | undefined): string {
-  if (rank === 1) return RANK_COLORS.top20
-  if (total === null || total === undefined || total <= 0) return RANK_COLORS.rest
-  const pct = (rank / total) * 100
-  for (const [limit, color] of RANK_RATIO_STEPS) if (pct <= limit) return color
-  return RANK_COLORS.rest
+  const tone = rankToneOf(rank, total)
+  return tone === null ? RANK_COLORS.rest : RANK_BY_TONE[tone]
 }
 
 /** ★옛 방식★ — 3 / 20 / 40 / 100 네 단계. 지우지 않는다 (`CLAUDE.md` 1-4) */
@@ -171,14 +199,21 @@ export const STAT_COLORS = {
  * 등수에는 절대 쓰지 않는다 (등수는 rankColor).
  * 래더 점수(3,800점)처럼 0~100 스케일이 아닌 값도 대상이 아니다 → 흰색으로 둔다.
  */
+/** 승률 색 이름 → 이 파일의 색. ★경계는 여기 없다★ — `rateTone` 이 이름을 정해 준다 */
+const STAT_BY_TONE: Record<RateTone, string> = {
+  low: STAT_COLORS.red,
+  base: STAT_COLORS.white,
+  r1: STAT_COLORS.green,
+  r2: STAT_COLORS.brown,
+  r3: STAT_COLORS.blue,
+  r4: STAT_COLORS.yellow,
+}
+
+/** ⚠ ★경계는 `../common/rate` 의 `rateTone` 에만 있다.★ 여기서 다시 세지 않는다 */
 export function statColor(value: number): string {
+  /* ★숫자가 아니면 색을 지어내지 않는다★ — 회색 (D-106). `rateTone` 은 여기까지 안 본다 */
   if (Number.isNaN(value)) return '#8a8a93';
-  if (value < 40)  return STAT_COLORS.red;
-  if (value < 50)  return STAT_COLORS.white;
-  if (value < 55)  return STAT_COLORS.green;
-  if (value < 60)  return STAT_COLORS.brown;
-  if (value < 65)  return STAT_COLORS.blue;
-  return STAT_COLORS.yellow;
+  return STAT_BY_TONE[rateTone(value)]
 }
 
 /* ── 사용 예 ─────────────────────────────────────────── */

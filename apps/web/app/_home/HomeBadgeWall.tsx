@@ -40,10 +40,11 @@ const WALL: readonly BadgeDef[] = (() => {
 })()
 
 /*
- * ★차례는 IPL · PL · 열산리그★ — 사장님이 그렇게 적으셨다 (「ipl pl 열산 나눠서」).
- * ⚠ `FEATURED_LEAGUES` 의 차례(PL 먼저)는 ★안 건드린다★ — 상단바가 같이 쓴다.
+ * ★차례는 C1 · IPL · PL · 열산리그★ — 사장님이 적으신 「ipl pl 열산 나눠서」 앞에
+ * ★C1 을 붙였다★ (2026-09-20 밤). 홈 리그 단추(`HomeLeagueButtons`)와 같은 차례다.
+ * ⚠ `FEATURED_LEAGUES` 의 차례는 ★안 건드린다★ — 상단바가 같이 쓴다.
  */
-const HOME_ORDER = ['nolink', 'supply', 'sanply'] as const
+const HOME_ORDER = ['c1', 'nolink', 'supply', 'sanply'] as const
 
 const LEAGUES = HOME_ORDER.flatMap((slug) => {
   const found = FEATURED_LEAGUES.find((league) => league.href === `/league/${slug}`)

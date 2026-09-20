@@ -42,6 +42,8 @@ import { FEATURED_LEAGUES, LEAGUE_LOGO, isLeaguePreparing } from '@sacloud/ui'
 
 /** 리그마다의 강조색 — 로고 색을 따른다 */
 const TONE: Readonly<Record<string, string>> = {
+  /* ★C1 은 금색★ (2026-09-20) — 로고와 같은 색이다 (`league-c1.svg`) */
+  c1: '#ffd83d',
   nolink: '#5b8dff',
   supply: '#ff5a63',
   sanply: '#9fc4ff',
@@ -69,7 +71,15 @@ const VIEWS = [
  * ⚠ `FEATURED_LEAGUES` 의 차례(PL · IPL · 열산리그)는 ★안 건드린다★ —
  *   그건 상단바가 같이 쓴다. 여기서만 다시 세운다.
  */
-const HOME_ORDER = ['nolink', 'supply', 'sanply'] as const
+/*
+ * ⚠ ★2026-09-20 밤 — C1 을 맨 앞에 더했다★ (사장님).
+ *
+ *   > 「진짜 실력자들의 실력싸움은 c1에 기록된다」
+ *
+ *   단추가 셋에서 ★넷★ 이 됐다. 폰에서 한 칸이 좁아지므로 아래 단추의
+ *   가로 여백(`px`)과 글자 크기를 ★같이★ 줄였다 — 안 줄이면 「열산리그」 가 접힌다.
+ */
+const HOME_ORDER = ['c1', 'nolink', 'supply', 'sanply'] as const
 
 const LEAGUES = HOME_ORDER.flatMap((slug) => {
   const found = FEATURED_LEAGUES.find((league) => league.href === `/league/${slug}`)
@@ -103,7 +113,7 @@ export function HomeLeagueButtons() {
               aria-pressed={on}
               /* ★어느 칸이 바뀌는지 읽는 기계에 알려 준다★ (2026-09-19 검수) */
               aria-controls="home-league-views"
-              className="group flex flex-1 flex-col items-center justify-center gap-[7px] rounded-[14px] border px-[10px] py-[14px] transition-all duration-150 max-md:gap-[5px] max-md:rounded-[11px] max-md:px-[6px] max-md:py-[11px]"
+              className="group flex min-w-0 flex-1 flex-col items-center justify-center gap-[7px] rounded-[14px] border px-[10px] py-[14px] transition-all duration-150 max-md:gap-[5px] max-md:rounded-[11px] max-md:px-[3px] max-md:py-[10px]"
               style={{
                 borderColor: on ? color : 'rgba(146,174,233,.18)',
                 background: on ? `${color}14` : 'rgba(255,255,255,.02)',
@@ -126,7 +136,7 @@ export function HomeLeagueButtons() {
                 />
               ) : null}
               <span
-                className="block text-[13px] font-bold tracking-[.10em] transition-colors duration-150 max-md:text-[11.5px]"
+                className="block whitespace-nowrap text-[13px] font-bold tracking-[.10em] transition-colors duration-150 max-md:text-[10.5px] max-md:tracking-[.02em]"
                 style={{ color: on ? color : 'var(--v2-text-dim,#8b96b5)' }}
               >
                 {league.label}

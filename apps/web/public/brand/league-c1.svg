@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200" role="img" aria-label="C1">
+  <title>C1</title>
+  <!--
+    ★C1 로고★ (2026-09-20 밤 · 사장님 「C1로고도 만들어서 넣어줘」)
+
+    · 색은 ★금색★ 이다 — IPL 은 파랑, PL 은 빨강, 열산은 흰파랑이라 겹치지 않고
+      「개고수 전용 기록판」 이라는 자리와도 맞는다.
+    · 기울기 -10도 는 IPL·PL 로고와 같다. 네 단추가 한 줄에 설 때 어긋나지 않는다.
+    · ★글꼴을 안 쓴다★ — 글꼴은 보는 사람 기계에 없으면 딴 모양이 된다.
+      C 는 고리(바깥 80 · 안쪽 46 · 오른쪽 ±38도 열림), 1 은 꺾은 막대다.
+    · 그림자(glow)는 ★필터 하나★ 뿐이라 30px 로 줄여도 뭉개지지 않는다.
+  -->
+  <defs>
+    <linearGradient id="c1-face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#fff7d4"/>
+      <stop offset="30%"  stop-color="#ffd83d"/>
+      <stop offset="51%"  stop-color="#e79c14"/>
+      <stop offset="53%"  stop-color="#ffe479"/>
+      <stop offset="100%" stop-color="#c9860f"/>
+    </linearGradient>
+    <linearGradient id="c1-edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#7a5507"/>
+      <stop offset="100%" stop-color="#2a1b00"/>
+    </linearGradient>
+    <filter id="c1-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#ffc21a" flood-opacity=".5"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(16,0) skewX(-10)" filter="url(#c1-glow)"
+     fill="url(#c1-face)" stroke="url(#c1-edge)" stroke-width="7" stroke-linejoin="round">
+    <path d="M168 50.7 A80 80 0 1 0 168 149.3 L141.2 128.3 A46 46 0 1 1 141.2 71.7 Z"/>
+    <path d="M246 30 L290 30 L290 170 L244 170 L244 72 L210 84 L200 50 Z"/>
+  </g>
+</svg>

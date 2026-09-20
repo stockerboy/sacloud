@@ -52,6 +52,20 @@ export interface LeagueLogo {
  * 열쇠는 ★슬러그★ 다 — 리그 이름이 바뀌어도(SPL→LLM→PL · 10🏔→YSL) 슬러그는 안 바뀐다.
  */
 export const LEAGUE_LOGO: Readonly<Record<string, LeagueLogo>> = {
+  /*
+   * ★★C1 로고★★ (2026-09-20 밤 · 사장님 「C1로고도 만들어서 넣어줘」)
+   *
+   *   ⚠ ★혼자 SVG 다★ — 나머지 셋은 사장님이 주신 그림(webp)이다.
+   *     글자 둘뿐이라 그림 없이 그릴 수 있었고, SVG 는 ★1.9KB★ 에 어느 크기든
+   *     또렷하다 (webp 셋은 23~60KB). 사장님이 그림을 주시면 그때 바꾼다.
+   *
+   *   ⚠ ★글꼴을 안 썼다★ — 글꼴은 보는 사람 기계에 없으면 딴 모양이 된다.
+   *     C 는 고리, 1 은 꺾은 막대로 ★직접 그렸다.★
+   *
+   *   색은 ★금색★ 이다 — IPL 파랑 · PL 빨강 · 열산 흰파랑과 겹치지 않고,
+   *   「개고수 전용 기록판」 이라는 자리와도 맞는다.
+   */
+  c1: { src: '/brand/league-c1.svg', w: 320, h: 200 },
   nolink: { src: '/brand/league-ipl.webp', w: 673, h: 200 },
   supply: { src: '/brand/league-pl.webp', w: 630, h: 200 },
   /*
