@@ -409,8 +409,18 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         />
         {/* 킬데스를 안 주는 리그는 ★판수★ 가 이 자리를 받는다 — 칸을 비우면 3열 격자가 무너진다 (2026-09-14) */}
         {showsKd ? (
+          /*
+           * ★★어느 무기 기준인지 이름에 적는다★★ (2026-09-20 사장님: 「왜 킬뎃이 자꾸 다 다르냐」)
+           *
+           *   이 화면의 킬뎃은 ★고른 무기의 킬뎃★ 이다 — 2026-09-11 에 사장님이
+           *   「라플수이면 그 구간 라플킬뎃 스나수이면 그 구간 스나킬뎃」 이라 하셨다.
+           *   계산은 그대로 맞다. 그런데 ★화면이 그 사실을 말하지 않아서★
+           *   선수 페이지(무기 안 가린 통합)와 숫자가 달라 보였다.
+           *
+           *   ★「킬뎃 (스나)」 처럼 적으면 두 숫자가 왜 다른지 한눈에 풀린다.★
+           */
           <Kpi
-            label="킬뎃"
+            label={weapon === 1 ? '킬뎃 (스나)' : weapon === 0 ? '킬뎃 (라플)' : '킬뎃'}
             value={pct1(kd)}
             sub={weapon === null ? null : `${fmt(kill)} / ${fmt(death)}`}
             color={kd === null ? V3.textMuted : statColor(kd)}
