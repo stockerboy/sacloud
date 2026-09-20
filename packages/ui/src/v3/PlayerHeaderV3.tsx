@@ -26,7 +26,15 @@
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail } from '@sacloud/contract'
-import { barracksPlayerUrl, leagueScreen, showsTier, badgeArtSmallPath, badgeOfAxis } from '@sacloud/contract'
+import {
+  barracksPlayerUrl,
+  leagueScreen,
+  showsTier,
+  badgeArtSmallPath,
+  badgeOfAxis,
+  tierKdOrNull,
+  tierWinRateOrNull,
+} from '@sacloud/contract'
 import { rankColorOf, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { strengthAxes } from './playerHexAxes'
@@ -164,13 +172,15 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
     if (played.length <= 1) return src
     const sum = (pick: (r: (typeof src)[number]) => number) =>
       played.reduce((a, r) => a + pick(r), 0)
-    const rate = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 10 : null)
     const win = sum((r) => r.win)
     const lose = sum((r) => r.lose)
     const sk = sum((r) => r.sniper_kill)
     const sd = sum((r) => r.sniper_death)
     const rk = sum((r) => r.rifle_kill)
     const rd = sum((r) => r.rifle_death)
+    const knownGames = sum((r) => r.known_games)
+    const sniperGames = sum((r) => r.sniper_games)
+    const rifleGames = sum((r) => r.rifle_games)
     const all: (typeof src)[number] = {
       ...played[0]!,
       /* ★0 은 「통합」 이라는 뜻★ — 진짜 구간 번호는 1부터다 */
@@ -178,18 +188,56 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
       games: sum((r) => r.games),
       win,
       lose,
-      win_rate: rate(win, win + lose),
-      known_games: sum((r) => r.known_games),
-      kd: rate(sk + rk, sk + rk + sd + rd),
+      /*
+       * ★★구간 행과 ★똑같은 함수★ 로 잰다★★ (2026-09-20 비판 검수에서 잡았다)
+       *
+       *   구간 행의 킬뎃·승률은 `tierKdOrNull`·`tierWinRateOrNull` 을 타서
+       *   ★판수가 모자라면 `null`★ 이 되고 화면이 «—» 를 적는다 (D-106).
+       *
+       *   그런데 이 「통합」 행은 `rate()` 로 ★직접 계산★ 하고 있었다. 그래서
+       *   6판 뛴 선수가 ★통합 칸에는 「62.5%」, 구간 칩을 누르면 「—」★ 가 떴다.
+       *   ★같은 카드 안에서 같은 이름의 숫자가 두 뜻★ 이 된 것이다.
+       *
+       * ⚠ 합쳐서 판수가 차면 값이 나온다 — 그게 맞다. 「통합」 은 ★더 많은 판★ 을
+       *   본 것이므로 구간 하나보다 ★더 믿을 만하다.★ 막으려는 것은 판수가
+       *   ★모자란데도★ 숫자를 적는 것뿐이다.
+       */
+      win_rate: tierWinRateOrNull(win + lose, win, lose),
+      known_games: knownGames,
+      kd: tierKdOrNull(knownGames, sk + rk, sd + rd),
       sniper_games: sum((r) => r.sniper_games),
       sniper_kill: sk,
       sniper_death: sd,
-      sniper_kd: rate(sk, sk + sd),
+      sniper_kd: tierKdOrNull(knownGames, sk, sd),
       rifle_games: sum((r) => r.rifle_games),
       rifle_kill: rk,
       rifle_death: rd,
-      rifle_kd: rate(rk, rk + rd),
+      rifle_kd: tierKdOrNull(knownGames, rk, rd),
       mvp: sum((r) => r.mvp),
+      /*
+       * ★★여기부터는 ★반드시★ 다시 센다★★ (2026-09-20 비판 검수에서 잡았다)
+       *
+       *   위에서 `...played[0]!` 로 시작하므로, ★여기 안 적은 칸은 1구간 값을
+       *   그대로 물려받는다.★ 「통합」 이라고 적힌 줄에 1구간 숫자가 앉는 것이다.
+       *   ★오늘 이미 한 번 겪은 사고다★ (클랜별 전적 48.0% · 커밋 7dfb7fe4).
+       *
+       *   ⚠ ★판킬 두 칸은 실제로 화면에 나간다★ — 머리 카드가 `sel.sniper_kill_per_match`
+       *     를 그대로 적는다. 물려받은 채로 두면 ★통합 판킬이 1구간 판킬★ 이 된다.
+       */
+      sniper_kill_per_match: sniperGames > 0 ? sk / sniperGames : null,
+      rifle_kill_per_match: rifleGames > 0 ? rk / rifleGames : null,
+      sniper_win: sum((r) => r.sniper_win),
+      sniper_lose: sum((r) => r.sniper_lose),
+      rifle_win: sum((r) => r.rifle_win),
+      rifle_lose: sum((r) => r.rifle_lose),
+      /*
+       * ⚠ ★상대 목록은 합치지 않고 ★비운다★.★ 구간마다 상대가 다르고, 같은 클랜이
+       *   여러 구간에 걸치면 ★합치는 규칙★ 이 따로 필요하다 (`PlayerDetailV3` 가
+       *   `byFoe` 로 그 일을 한다). 머리 카드는 이 두 칸을 ★읽지 않으므로★
+       *   ★1구간 것을 물려받는 것보다 비어 있는 편이 정직하다.★
+       */
+      nemeses: [],
+      opponents: [],
     }
     return [all, ...src]
   }, [data.tier_breakdown])

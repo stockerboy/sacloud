@@ -155,6 +155,25 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
   const clan = player === null ? null : toClanSummaryOrNull(playerClanOf(player))
 
   if (isAnonymousDisclose(source.discloseType)) {
+    /*
+     * ★★익명이어도 클랜은 나간다 — 이건 버그가 아니다★★ (2026-09-20 사장님)
+     *
+     * > 「우리게시판 에타처럼하기로 했잖아 ★클랜마크랑 클랜명만 뜨고 익명1★ 이런식으로」
+     * > 「빨간색에 글쓴이 소속 클랜마크 / 옆에 형광펜에 ★클랜명+익명★ 표시」
+     *
+     *   에브리타임이 학교를 띄우는 것과 같다. ★어느 클랜 사람이 썼나★ 가 보여야
+     *   글이 읽을 만해진다는 것이 사장님 판단이다.
+     *
+     * ⚠ ★그래서 클랜만 남기고 나머지는 전부 지운다.★ `id`·`avatar_url`·`role`·
+     *   `player` 는 ★사람을 집어낼 수 있는 것★ 이라 여기서 끊는다.
+     *   ★클랜을 지우러 오지 마라★ — 지우면 사장님 지시를 되돌리는 것이다.
+     *
+     * ⚠ ★한계를 알고 쓴다★ (2026-09-20 비판 검수가 짚었다)
+     *   사람이 적은 클랜이면 ★클랜 하나로 누군지 좁혀진다.★ 다섯 명짜리 클랜에서
+     *   「〃xx · 익명1」 은 사실상 실명에 가깝다. 이건 ★사장님이 알고 고른 값★ 이고,
+     *   숨기고 싶은 사람에게는 ★클랜 없는 계정으로 쓰는 길★ 이 남아 있다.
+     *   나중에 「작은 클랜은 클랜도 감춘다」 로 바꾸려면 ★여기 한 줄★ 만 고치면 된다.
+     */
     return {
       id: null,
       nickname: anonLabel,

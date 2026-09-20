@@ -21,6 +21,7 @@ const FIELD =
 export function PostForm({
   initialTitle = '',
   initialContent = '',
+  initialAnonymous,
   requirePassword,
   submitting,
   error,
@@ -29,6 +30,16 @@ export function PostForm({
 }: {
   initialTitle?: string
   initialContent?: string
+  /**
+   * ★★수정할 때는 그 글이 원래 어땠는지를 받는다★★ (2026-09-20 비판 검수에서 잡았다)
+   *
+   *   안 받으면 ★새 글 기본값★ 이 그대로 켜진다. 기본값을 익명으로 바꾼 뒤로는
+   *   ★실명으로 쓴 글을 오타 하나 고치려고 열면 체크가 켜진 채로 뜨고,
+   *   저장하면 익명으로 바뀐다.★ (뒤집기 전에는 반대 방향으로 같은 버그였다)
+   *
+   * ⚠ 새 글에서는 안 넘긴다 — 그때는 아래 기본값(익명)이 맞다.
+   */
+  initialAnonymous?: boolean
   requirePassword: boolean
   submitting?: boolean
   error?: string | null
@@ -51,7 +62,7 @@ export function PostForm({
    *   옛 기본값은 ★실명(false)★ 이었다 — 체크를 안 하면 닉네임이 그대로 나갔다.
    *   에브리타임도 익명이 기본이다. ★밝히고 싶은 사람이 체크를 푼다.★
    */
-  const [anonymous, setAnonymous] = useState(true)
+  const [anonymous, setAnonymous] = useState(initialAnonymous ?? true)
   const [password, setPassword] = useState('')
 
   const canSubmit =

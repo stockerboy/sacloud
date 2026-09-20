@@ -1038,6 +1038,23 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
       rifle_kd: kdOf(rk, rd),
       sniper_kd: kdOf(sk, sd),
       opponents: [...byFoe.values()].sort((a, b) => b.games - a.games),
+      /*
+       * ★★`...first` 가 물려주는 칸은 ★남김없이★ 다시 센다★★ (2026-09-20 비판 검수)
+       *
+       *   바로 위 주석이 「`...first` 로 첫 구간 킬뎃을 물려받고 있었다」 고 적어 뒀는데,
+       *   ★고친 것은 킬뎃뿐★ 이었다. 판킬·무기별 승패·MVP 는 ★여전히 1구간 값★ 이다.
+       *   지금은 이 카드가 그 칸들을 안 읽어서 안 보일 뿐이고, ★누가 한 줄 읽는 순간
+       *   같은 사고가 그대로 난다.★ 그래서 지금 막는다.
+       */
+      mvp: sum((r) => r.mvp),
+      sniper_win: sum((r) => r.sniper_win),
+      sniper_lose: sum((r) => r.sniper_lose),
+      rifle_win: sum((r) => r.rifle_win),
+      rifle_lose: sum((r) => r.rifle_lose),
+      sniper_kill_per_match: sum((r) => r.sniper_games) > 0 ? sk / sum((r) => r.sniper_games) : null,
+      rifle_kill_per_match: sum((r) => r.rifle_games) > 0 ? rk / sum((r) => r.rifle_games) : null,
+      /* 구간마다 천적이 다르다 — 합치는 규칙이 없으므로 ★물려받지 않고 비운다★ */
+      nemeses: [],
     }
     return [merged]
   }, [data.tier_breakdown, tieredCard])

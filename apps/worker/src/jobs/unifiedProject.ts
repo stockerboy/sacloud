@@ -275,12 +275,21 @@ async function buildNameIndex(liveClans: Map<string, LiveClan>) {
   const rows = await prisma.barracksClanNumber.findMany({ select: { clanNo: true, clanId: true } })
   const clanById = new Map([...liveClans.values()].map((c) => [c.clanId, c]))
   const byNo = new Map<string, LiveClan>()
+  /*
+   * ★거꾸로도 만든다★ (2026-09-20) — ⓪-B 거부권이 「이 클랜의 번호가 이 경기에 있나」
+   *   를 물으려면 ★클랜 → 번호들★ 이 필요하다. 한 클랜이 번호를 여럿 가질 수 있다.
+   */
+  const noByClanId = new Map<string, string[]>()
   for (const r of rows) {
     const clan = clanById.get(r.clanId)
-    if (clan) byNo.set(r.clanNo, clan)
+    if (!clan) continue
+    byNo.set(r.clanNo, clan)
+    const now = noByClanId.get(r.clanId)
+    if (now) now.push(r.clanNo)
+    else noByClanId.set(r.clanId, [r.clanNo])
   }
 
-  return { ...built, recovered, namesByClanId, clanBySlug: bySlug, clanByNo: byNo }
+  return { ...built, recovered, namesByClanId, clanBySlug: bySlug, clanByNo: byNo, noByClanId }
 }
 
 export async function runUnifiedProject(
@@ -295,7 +304,7 @@ export async function runUnifiedProject(
 
   const liveClans = await loadLiveClans()
   const leagueMaps = await loadLeagueMaps()
-  const { index, ambiguous, recovered, namesByClanId, clanBySlug, clanByNo } =
+  const { index, ambiguous, recovered, namesByClanId, clanBySlug, clanByNo, noByClanId } =
     await buildNameIndex(liveClans)
 
   const leagueRows = await prisma.league.findMany({
@@ -497,6 +506,7 @@ export async function runUnifiedProject(
         nameIndex: index,
         /* ★번호로 먼저 앉힌다★ — 이름이 바뀌어도 안 틀린다 (2026-09-20) */
         clanByNo,
+        noByClanId,
         matchClanNos: row.clanNos,
       })
       const verdict = verdictFromSides(m.redClanName, m.blueClanName, sides)

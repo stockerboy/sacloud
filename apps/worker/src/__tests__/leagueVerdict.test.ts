@@ -261,3 +261,95 @@ describe('slug 로 앉히기', () => {
     if (!v.ok) expect(v.reason).toBe('cross_league')
   })
 })
+
+/**
+ * ★★클랜번호의 거부권★★ (2026-09-20 비판 검수에서 잡았다)
+ *
+ *   번호로 ⓪ 가 앉히는 것만으로는 부족했다 — ★한 자리만 앉고 남은 자리는
+ *   옛날처럼 이름으로 엉뚱한 클랜이 앉았다.★ 번호를 알고도 못 막은 것이다.
+ *
+ * ⚠ 그래서 ⓪-B 를 붙였다: ★「이 클랜의 번호가 이 경기에 없다」 면 이름이 맞아도 아니다.★
+ */
+describe('클랜번호가 거부권을 갖는다', () => {
+  /* 세 클랜 모두 번호를 안다 */
+  const noByClanId = new Map<string, readonly string[]>([
+    ['c-ipl', ['111111111111']],
+    ['c-san', ['222222222222']],
+    ['c-spl', ['333333333333']],
+  ])
+  const clanByNo = new Map<string, ClanLeague>([
+    ['111111111111', IPL],
+    ['222222222222', SAN],
+    ['333333333333', SPL],
+  ])
+
+  it('★이름이 맞아도 번호가 이 경기에 없으면 안 앉는다★', () => {
+    const r = resolveSides({
+      redClanName: 'recent.wct-',
+      blueClanName: 'saint',
+      subjects: [],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+      clanByNo,
+      noByClanId,
+      /* 나온 번호는 IPL 과 ★우리가 모르는 남의 클랜★ 이다 — saint(c-spl)는 안 나왔다 */
+      matchClanNos: ['111111111111', '999999999999'],
+    })
+    expect(r.red?.clanId).toBe('c-ipl')
+    expect(r.redBy).toBe('clan_no')
+    /* ★여기가 핵심★ — 옛날에는 이름으로 c-spl 이 앉았다 */
+    expect(r.blue).toBeNull()
+    expect(r.blueBy).toBe('none')
+  })
+
+  it('★subject 가 가리켜도 번호가 막는다★ — 원문이 틀릴 수 있다', () => {
+    const r = resolveSides({
+      redClanName: 'recent.wct-',
+      blueClanName: 'saint',
+      subjects: ['someSpl'],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+      clanByNo,
+      noByClanId,
+      matchClanNos: ['111111111111', '999999999999'],
+    })
+    expect(r.blue).toBeNull()
+  })
+
+  it('★번호를 모르는 클랜은 막지 않는다★ — 우리 표가 아직 다 안 찼다', () => {
+    const r = resolveSides({
+      redClanName: 'recent.wct-',
+      blueClanName: 'saint',
+      subjects: [],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+      clanByNo,
+      /* c-spl 의 번호를 ★아직 못 받았다★ */
+      noByClanId: new Map([['c-ipl', ['111111111111']]]),
+      matchClanNos: ['111111111111', '999999999999'],
+    })
+    expect(r.red?.clanId).toBe('c-ipl')
+    /* 모르는 것으로 막으면 멀쩡한 경기를 버린다 — 이름으로 앉는다 */
+    expect(r.blue?.clanId).toBe('c-spl')
+    expect(r.blueBy).toBe('clan_name')
+  })
+
+  it('★번호가 맞으면 그대로 앉는다★ — 거부권이 정상 경기를 막지 않는다', () => {
+    const r = resolveSides({
+      redClanName: 'recent.wct-',
+      blueClanName: 'saint',
+      subjects: [],
+      clanBySlug,
+      namesByClanId,
+      nameIndex,
+      clanByNo,
+      noByClanId,
+      matchClanNos: ['111111111111', '333333333333'],
+    })
+    expect(r.red?.clanId).toBe('c-ipl')
+    expect(r.blue?.clanId).toBe('c-spl')
+  })
+})

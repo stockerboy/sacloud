@@ -208,6 +208,13 @@ export interface ResolveSidesInput {
    * 없으면 지금까지와 똑같이 동작한다 (선택값).
    */
   clanByNo?: ReadonlyMap<string, ClanLeague>
+  /**
+   * 클랜 → 그 클랜이 가진 병영수첩 번호들 (⓪-B 거부권이 쓴다).
+   *
+   * ⚠ 한 클랜이 번호를 ★여럿★ 가질 수 있다 — 같은 병영수첩 클랜이 우리 DB 에
+   *   두 행인 경우가 있다(EVOA → melody / idylic). 그래서 배열이다.
+   */
+  noByClanId?: ReadonlyMap<string, readonly string[]>
   /** 이 경기의 배틀로그가 말한 두 클랜번호 — `[red, blue]` 가 아니라 ★순서 모름★ */
   matchClanNos?: readonly string[]
 }
@@ -262,10 +269,42 @@ export function resolveSides(input: ResolveSidesInput): SideResolution {
     }
   }
 
+  /*
+   * ── ⓪-B ★★번호가 ★거부권★ 을 갖는다★★ (2026-09-20 비판 검수에서 잡았다)
+   *
+   * ── 무엇을 못 막고 있었나
+   *
+   *   위 ⓪ 는 「앉힐 수 있으면 앉히고」 못 앉히면 ★그냥 빠진다.★ 그래서 실측 사례
+   *   (번호 둘 중 하나만 우리 표에 있는 경기)에서 ★한 자리만 번호로 앉고, 남은 자리는
+   *   아래 ②(이름)가 ★옛날처럼 엉뚱한 클랜★ 을 앉혔다. 번호를 알고도 못 막은 것이다.
+   *
+   * ── 무엇을 막나
+   *
+   *   ★「이 경기에 나온 번호」 를 아는데, 앉히려는 클랜의 번호가 그 안에 없다」★
+   *   이 경우 그 클랜은 ★이 경기에 안 나왔다.★ 이름이 같아도 아니다 —
+   *   ★클랜 이름은 바뀌고 번호는 안 바뀐다.★ 이것이 번호를 쓰는 이유 전부다.
+   *
+   * ⚠ ★번호를 모르는 클랜은 막지 않는다.★ 우리 표는 아직 다 안 찼다(실측 375곳).
+   *   「번호를 못 받았다」 와 「이 경기에 안 나왔다」 는 다른 말이다.
+   *   ★아는 것만으로 막는다★ — 모르는 것으로 막으면 멀쩡한 경기를 버린다.
+   */
+  const blocked = new Set<string>()
+  if (input.noByClanId && input.matchClanNos && input.matchClanNos.length > 0) {
+    const here = new Set(input.matchClanNos)
+    for (const [clanId, nos] of input.noByClanId) {
+      if (nos.length === 0) continue
+      /* 이 클랜의 번호 중 ★하나라도★ 이 경기에 있으면 나온 것이다 */
+      if (nos.some((no) => here.has(no))) continue
+      blocked.add(clanId)
+    }
+  }
+
   /* ── ① subject(slug) 로 앉힌다 — 원본이 「이 클랜이 나왔다」고 말한 것이다 */
   for (const slug of input.subjects) {
     const clan = input.clanBySlug.get(slug)
     if (!clan) continue
+    /* ⓪-B — 번호로 「이 경기에 안 나왔다」 가 밝혀진 클랜은 앉히지 않는다 */
+    if (blocked.has(clan.clanId)) continue
     const names = input.namesByClanId.get(clan.clanId)
     if (!names) continue
 
@@ -286,14 +325,18 @@ export function resolveSides(input: ResolveSidesInput): SideResolution {
   /* ── ② 남은 자리는 ★모호하지 않은 이름★ 으로만 */
   if (out.red === null) {
     const byName = input.nameIndex.get(input.redClanName) ?? null
-    if (byName) {
+    /*
+     * ⚠ ★여기가 옛날에 엉뚱한 클랜을 앉히던 자리다.★ 이름은 바뀌고 돌려 쓰인다 —
+     *   번호가 「이 경기에 안 나왔다」 고 말하면 ★이름이 맞아도 아니다.★
+     */
+    if (byName && !blocked.has(byName.clanId)) {
       out.red = byName
       out.redBy = 'clan_name'
     }
   }
   if (out.blue === null) {
     const byName = input.nameIndex.get(input.blueClanName) ?? null
-    if (byName) {
+    if (byName && !blocked.has(byName.clanId)) {
       out.blue = byName
       out.blueBy = 'clan_name'
     }

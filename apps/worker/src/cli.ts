@@ -33,6 +33,7 @@ import { clearBlind, noteBlind } from './lib/blindStreak'
 import { runClanNameBackfill } from './jobs/clanNameBackfill'
 import { runBarracksIdentityMerge } from './jobs/barracksIdentityMerge'
 import { runUnifiedProject } from './jobs/unifiedProject.js'
+import { rateLimitSweep } from './jobs/rateLimitSweep.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
 import {
   countSharedPasswordAccounts,
@@ -3854,6 +3855,17 @@ async function main(): Promise<number> {
       })
       /* 백업을 못 떠서 아무것도 안 지운 경우를 성공으로 보고하지 않는다 */
       if (result.notes.length > 0 && boolFlag(args, 'confirm')) return 1
+      return 0
+    }
+
+    /*
+     * ★지난 rate-limit 기록 쓸어내기★ (2026-09-20 비판 검수)
+     *   `RateLimit` 은 ★지우는 곳이 한 곳도 없었다★ — 실측 1,330줄 중 1,328줄이
+     *   이미 지난 것이었다. 게시판 조회수가 이 표를 쓰기 시작해서 더 빨리 큰다.
+     */
+    case 'rate-limit-sweep': {
+      const result = await rateLimitSweep()
+      console.log(`지운 줄=${result.deleted} · 더 있나=${result.more ? '예' : '아니오'}`)
       return 0
     }
 
