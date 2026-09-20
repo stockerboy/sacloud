@@ -24,7 +24,12 @@ import {
 import { sanitizePostContent } from '@sacloud/ui/sanitize'
 import type { CursorPage } from '../cursorPage'
 import { toKstIso, toKstIsoOrNull } from '../format'
-import { toClanSummaryOrNull, toPlayerSummaryOrNull } from '../mappers'
+import {
+  PLAYER_CLAN_FALLBACK_SELECT,
+  playerClanOf,
+  toClanSummaryOrNull,
+  toPlayerSummaryOrNull,
+} from '../mappers'
 import { BOARD_WRITE_INTERVAL } from '../configs'
 import { currentUserId, voterKey } from '../session'
 
@@ -90,6 +95,18 @@ const BOARD_USER_SELECT = {
               tier: true,
             },
           },
+          /*
+           * ★★소속은 `Player.clan` 에만 있는 게 아니다★★ (2026-09-20 사장님:
+           *   「소속클랜도 안뜨고」)
+           *
+           *   우리 자료에서 소속은 ★리그 명부(`LeaguePlayer.clan`)★ 에 들어 있는 줄이
+           *   훨씬 많다. `Player.clan` 만 보면 ★대부분 무소속★ 으로 나온다 —
+           *   실측으로 chococake 가 그랬다(명부엔 deluxe, `Player.clan` 은 비어 있음).
+           *
+           *   ★검색 화면이 쓰는 그 함수(`playerClanOf`)를 게시판도 똑같이 쓴다.★
+           *   두 화면이 같은 눈으로 봐야 「여기선 소속이 있고 저기선 없는」 일이 안 생긴다.
+           */
+          ...PLAYER_CLAN_FALLBACK_SELECT,
         },
       },
     },
@@ -134,7 +151,8 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
   }
 
   const player = user.playerLink?.player ?? null
-  const clan = toClanSummaryOrNull(player?.clan)
+  /* ★`Player.clan` 이 먼저, 없으면 리그 명부★ — 검색과 같은 규칙이다 */
+  const clan = player === null ? null : toClanSummaryOrNull(playerClanOf(player))
 
   if (isAnonymousDisclose(source.discloseType)) {
     return {
@@ -319,6 +337,18 @@ async function voteTypesOf(
 const HOT_SORT =
   '(("Board"."likeCount" * 3 + "Board"."commentCount" * 2 + "Board"."viewCount" / 100.0))::double precision'
 
+/**
+ * ★Hot 에 오르는 최소 점수★ (2026-09-20 사장님).
+ *
+ * 점수 = 추천×3 + 댓글×2 + 조회÷100. 그러니 ★3★ 은
+ *   추천 한 개  ·  댓글 두 개  ·  조회 300회
+ * 중 하나면 닿는다. ★사람이 반응한 글★ 이라는 뜻이다.
+ *
+ * ⚠ 0 으로 두면 방금 쓴 글이 바로 Hot 1위가 된다 — 그게 옛 판이었다.
+ * ⚠ 너무 높이면 Hot 이 계속 비어 보인다. 글이 쌓이면 올릴 수 있다.
+ */
+const HOT_MIN_SCORE = 3
+
 /** 최신순 정렬키. Mock의 숫자 id 내림차순 대신 작성시각을 쓴다 (상단 주석 1번). */
 const RECENT_SORT = '(extract(epoch from "Board"."createdAt"))::double precision'
 
@@ -367,7 +397,22 @@ function boardFilter(query: BoardListQuery, params: SqlParams): string {
   if (hidesSeedData()) parts.push(`"Board"."origin" <> ${params.bind(SEED_ORIGIN)}`)
 
   if (query.category === 'hot') {
+    /*
+     * ★★Hot 은 「인기 있는 글」 이다★★ (2026-09-20 사장님: 「글이 바로 hot게시판으로 가는데」)
+     *
+     *   옛 판은 ★공지가 아닌 글 전부★ 를 인기순으로 늘어놓기만 했다. 그래서
+     *   방금 쓴 글(추천 0 · 댓글 0 · 조회 1)이 ★바로 Hot 1위★ 가 됐다.
+     *   Hot 이 그냥 「최신글」 이 되어 버려 ★자유 게시판과 구별이 안 된다.★
+     *
+     *   ★문턱을 둔다★ — 추천·댓글·조회를 섞은 점수가 이만큼은 돼야 올라온다.
+     *   에브리타임도 일정 추천을 넘어야 Hot 에 간다.
+     *
+     * ⚠ 문턱이 높으면 Hot 이 계속 비어 보인다. 그래서 ★낮게 잡았다★ —
+     *   추천 한 개(3점)나 댓글 두 개(4점)면 올라온다. 사람이 반응한 글이다.
+     * ⚠ 글이 사라지는 게 아니다. 원래 카테고리(자유·공지)에는 그대로 있다.
+     */
     parts.push('"Board"."notice" = false')
+    parts.push(`${HOT_SORT} >= ${HOT_MIN_SCORE}`)
   } else if (query.category === 'notice') {
     parts.push('"Board"."notice" = true')
   } else {
