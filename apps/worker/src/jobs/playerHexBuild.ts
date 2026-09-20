@@ -104,6 +104,9 @@ export { PLAYER_HEX_FORMULA_VERSION }
  */
 export const HEX_LEAGUE_SLUGS = ['nolink', 'supply', 'sanply', 'c1'] as const
 
+/** C1 경기의 `sourceMatchId` 앞에 붙는 접두 — 원문을 찾을 때 뗀다 */
+const C1_KEY_PREFIX = 'c1-'
+
 const ZONE_FILE = join(REPO_ROOT, 'data/barracks/style-zones.json')
 /**
  * ★크랙 구역★ — 2026-09-16 19:03 에 사장님이 아티팩트로 직접 칠하신 116칸.
@@ -485,8 +488,20 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
   const opensScore = new Set<string>()
   for (const m of matches) {
     if (!m.sourceMatchId) continue
-    matchIdOfKey.set(m.sourceMatchId, m.id)
-    if (scoresOpening(m.startAt)) opensScore.add(m.sourceMatchId)
+    /*
+     * ★★C1 경기는 원본 번호 앞에 접두가 붙어 있다★★ (2026-09-20 밤)
+     *
+     *   9/3 이후 경기는 `sourceMatchId` 가 ★전체에서 유일★ 해야 하는 인덱스가 있어서
+     *   (`Match_new_sourceMatchId_key`) C1 에 담을 때 `c1-` 을 붙였다.
+     *
+     *   그런데 ★배틀로그 원문은 원본 번호로 저장돼 있다.★ 접두를 안 떼면
+     *   ★원문을 하나도 못 찾아 킬이 0 이 된다★ — 실제로 그랬다.
+     */
+    const key = m.sourceMatchId.startsWith(C1_KEY_PREFIX)
+      ? m.sourceMatchId.slice(C1_KEY_PREFIX.length)
+      : m.sourceMatchId
+    matchIdOfKey.set(key, m.id)
+    if (scoresOpening(m.startAt)) opensScore.add(key)
   }
 
   let todo = [...matchIdOfKey.entries()]
