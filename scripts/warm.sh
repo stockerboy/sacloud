@@ -133,11 +133,34 @@ else
   echo "  (node 가 없어 1위 상세는 건너뛴다)"
 fi
 
-# ⚠ ★화면(HTML)은 데우지 않는다★ (2026-09-16 실측).
-#   사이트가 아직 비공개라 로그인 없는 접속은 503 을 받는다.
-#   그 503 이 엣지에 얹히면 ★열고 나서도 모두가 «비공개» 를 본다.★
-#   화면은 어차피 0.2초로 빠르다 — 느린 것은 자료 쪽이다.
-#   사이트를 공개로 돌린 뒤에 이 줄을 되살린다:
-#     for p in / /league/supply/home /board/hot; do hit "$BASE$p"; done
+# ── ★화면(HTML)도 데운다★ (2026-09-20 · 사장님 「아직도 느린데… 왜이래 진짜」)
+#
+#   ⚠ ★옛 판은 화면을 안 데웠다★ (2026-09-16) — 지우지 않는다 (CLAUDE.md 1-4).
+#     그때 이유는 «비공개라 503 이 엣지에 얹힌다» 였다. 맞는 걱정이었다.
+#
+#   ★쿠키 한 줄로 풀린다.★ 문지기(`middleware.ts`)는 ★세션 쿠키가 있는지만★ 본다
+#   (서명을 검사하지 않는다 — 그 파일에 그렇게 적혀 있다). 그러니 쿠키를 붙이면
+#   ★200 을 받아 화면 캐시가 채워지고★, 쿠키 없는 손님은 여전히 503 을 받는다.
+#   ★503 이 얹힐 일이 없다.★
+#
+#   ── 왜 필요한가 (실측 2026-09-20)
+#   ```
+#     캐시가 식었을 때   선수 화면 ★2.9초★ · 랭킹 ★1.7초★
+#     데워져 있을 때     둘 다 ★0.2초★
+#   ```
+#   사장님이 겪은 느림이 ★이 식은 순간★ 이었다. 5분마다 데우면 그 순간이 사라진다.
+WARM_COOKIE="${WARM_COOKIE:-sacloud_session=warm}"
+page() {
+  out=$(curl -s -o /dev/null -m "$TIMEOUT" -w '%{time_total} %{http_code}'         -H "Cookie: $WARM_COOKIE" "$1" 2>/dev/null)
+  echo "  $out  $1"
+  sleep "${GAP:-1}"
+}
+echo "-- 화면 데우기"
+page "$BASE/"
+for lg in $LEAGUES; do
+  for p in home rank/player rank/clan match; do
+    page "$BASE/league/$lg/$p"
+  done
+done
 
 echo "== 끝 $(date '+%F %T')"
