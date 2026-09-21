@@ -872,7 +872,21 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                 1줄 오른쪽은 알약 하나뿐이라 자리가 남는다 — 거기로 옮긴다.
               */}
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7 }}>
-                {mvpIsMe ? <MvpMark size={16} className="v3-mvp-wide" /> : null}
+                {/*
+                  ⚠ ★2026-09-21 — `v3-mvp-wide` 를 뗐다★ (사장님: 「MVP고쳐라 뭐냐 저게..」)
+
+                    그 CSS(`padding: 4px 16px !important`)는 ★옛 알약★(`MvpBadge` — ★ + 「MVP」 글자)
+                    을 PC 에서 가로로 늘이려고 만든 것이다. 2026-09-20 에 표를 ★16px 원★
+                    (`MvpMark`)으로 바꿨는데 ★클래스만 그대로 남았다.★
+
+                    `box-sizing: border-box` 라 ★16px 안에 좌우 16px 패딩★ 이 들어가면서
+                    안쪽 폭이 ★0★ 이 됐다 — ★흰 별이 사라지고 빨간 타원만★ 남았다.
+                    (사장님 화면: 경기 줄 오른쪽에 속 빈 빨간 알약)
+
+                  ⚠ CSS 규칙 자체는 ★안 지웠다★ — 옛 `MvpBadge` 를 되살리면 그대로 쓴다
+                    (`CLAUDE.md` 1-4).
+                */}
+                {mvpIsMe ? <MvpMark size={16} /> : null}
                 {my?.participant_role ? (
                   <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', padding: '3px 8px', borderRadius: 5, color: my.participant_role === 'mercenary' ? '#c9a35b' : V3.textMuted, background: my.participant_role === 'mercenary' ? 'rgba(201,163,91,.10)' : V3.chip, border: `1px solid ${my.participant_role === 'mercenary' ? 'rgba(201,163,91,.45)' : V3.chipBorder}` }}>
                     {my.participant_role === 'mercenary' ? '용병' : '클랜전'}

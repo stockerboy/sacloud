@@ -1306,6 +1306,10 @@
    ★폰은 손대지 않는다★ — 900px 이상에서만 켜진다. 폰에서 늘리면 1줄이 밀린다.
    ────────────────────────────────────────────────────────────────────────── */
 @media (min-width: 900px) {
+  /* ⚠ ★2026-09-21 — 지금 아무도 안 쓴다★ (사장님: 「MVP고쳐라 뭐냐 저게..」).
+       옛 알약(`MvpBadge` — ★ + 「MVP」 글자)을 PC 에서 늘이던 규칙이다.
+       지금 표는 16px 원(`MvpMark`)이라 이 패딩이 걸리면 `border-box` 때문에
+       ★안쪽 폭이 0 이 되어 별이 사라진다.★ 되살릴 때를 위해 규칙은 남긴다 (1-4). */
   .v3-mvp-wide { padding: 4px 16px !important; gap: 8px !important; }
   .v3-mvp-wide > span:last-child { font-size: 11.5px !important; letter-spacing: .18em !important; }
 }
