@@ -427,6 +427,14 @@ export async function runBattlelogLineup(
                         *   이 둘은 새 배틀로그가 와야 또는 클랜을 등록해야 풀린다.
                         *   ⚠ 이 주석은 SQL 템플릿 안이라 백틱을 한 글자도 쓰면 안 된다
                         */
+                       /*
+                        * ⚠ ★NULL 을 빠뜨리면 안 된다★ (2026-09-22 실측으로 잡았다)
+                        *   SQL 에서 NULL NOT IN (...) 은 ★참이 아니라 NULL★ 이다.
+                        *   그래서 사유를 지워 «다시 보라» 고 풀어 준 경기가
+                        *   ★오히려 영영 안 뽑혔다★ — 클랜 22곳을 새로 만들고 막힘을
+                        *   110건 풀었는데 명단이 ★신규 0★ 이었던 까닭이 이것이다.
+                        */
+                    OR m."lineupSkipReason" IS NULL
                     OR m."lineupSkipReason" NOT IN ('roster_incomplete', 'clan_unmapped')
                        /* ③ 마지막으로 본 뒤에 새 배틀로그가 왔다 */
                     OR m."lineupCheckedAt" IS NULL
