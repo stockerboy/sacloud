@@ -24,6 +24,7 @@ import {
   averageMembers,
   clanDailyDecay,
   compositionScore,
+  confidenceFor,
   constantsForSeason,
   DEFAULT_RATING_CONSTANTS,
   dailyDecay,
@@ -773,8 +774,31 @@ export async function runRate(
     const members = averageMembers(clanRecentMembers.get(leagueClanId) ?? [], constants)
     const composition = compositionScore(members, constants)
     const penalty = clanPenalty.get(leagueClanId) ?? 0
+    /*
+     * ★★판수 신뢰를 클랜에도 건다★★ (2026-09-21 사장님: 「판수신뢰 키고」)
+     *
+     * ── 개인에만 걸려 있었다 (실측)
+     *   개인은 `displayScore` 를 지나며 신뢰가 곱해지는데, ★클랜은 이 줄 하나로
+     *   내부 Elo 를 그대로 썼다.★ 그래서 —
+     *   ```
+     *   PL 클랜랭킹 6위  respects-  ★6판★ 83.3%
+     *   PL 클랜랭킹 3위  CeIebrity  ★32판★ 81.3%
+     *   ```
+     *   사장님이 늘 싫어하신 그림이 ★클랜 쪽에만 남아 있었다.★
+     *
+     * ── ★보정이 아니다★
+     *   판이 적으면 ★아직 못 믿는다★ 는 뜻이라 기준점 쪽으로 눌러 두고,
+     *   판을 채우면 제 점수를 다 준다. 아무도 목록에서 빼지 않는다.
+     *
+     * ⚠ 개인과 ★같은 스위치★ 를 본다 — 되돌리려면 `disableDisplayConfidence` 하나면 된다.
+     */
+    const played = clanMatches.get(leagueClanId) ?? 0
+    const trust = constants.v2?.disableDisplayConfidence
+      ? 1
+      : confidenceFor(played, constants)
+    const trusted = constants.initialRating + (internal - constants.initialRating) * trust
     clanFinal.set(leagueClanId, {
-      display: roundHalfUp(internal + composition - penalty),
+      display: roundHalfUp(trusted + composition - penalty),
       composition,
       penalty,
       members,
