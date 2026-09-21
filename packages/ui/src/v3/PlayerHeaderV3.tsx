@@ -846,8 +846,9 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           label="판킬"
           value={perMatch === null ? '-' : perMatch.toFixed(1)}
           sub={null}
-          /* 판당 10킬이면 잘하는 것이다 — 10 을 50% 자리로 놓고 색을 고른다 */
-          color={perMatch === null ? V3.textMuted : statColor(Math.min(100, perMatch * 5))}
+          /* ⚠ ★판킬에는 색을 넣지 않는다★ (2026-09-21 사장님: 「판킬에는 색깔 넣지마」).
+               킬뎃·승률과 달리 ★잘하고 못하고의 기준이 없다★ — 라플수는 원래 판킬이 높다 */
+          color={perMatch === null ? V3.textMuted : V3.textStrong}
         />
         <Kpi
           label="순위"

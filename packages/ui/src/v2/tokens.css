@@ -1481,11 +1481,23 @@
 .v3-kpi-pconly { display: none !important; }
 
 @media (min-width: 900px) {
+  /*
+   * ⚠ ★2026-09-21 — 가운데가 텅 비었다★ (사장님: 「★진짜 간격봐라.. 가운데 빈공간
+   *   진짜 에바잖아★ 좀 잘 모아봐 비율 이상하지 않게 ★너무 횡해보이지 않게★」)
+   *
+   *   오른쪽 칸이 `1fr` 이라 ★남은 폭을 전부 먹었다.★ 그 안의 값은 오른쪽 끝에 붙으니
+   *   1440px 화면에서 육각형과 숫자 사이가 ★400px 넘게★ 벌어졌다.
+   *
+   *   ★오른쪽 칸에 폭을 정해 주고 둘을 가운데로 모은다.★
+   *   육각 392 + 값 420 = 812px 이 카드 가운데 선다 — 사이도 안 벌어지고
+   *   양옆도 허전하지 않다.
+   */
   .v3-phead-body {
     display: grid;
-    /* ⚠ ★2026-09-21 — 육각을 키웠다★ (사장님: 「왼쪽에 더 크게 육각그래프」) */
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 420px);
+    justify-content: center;
     align-items: stretch;
+    gap: 0;
     border-top: 1px solid #18233a;
   }
   .v3-phead-body > .v3-phead-hex {

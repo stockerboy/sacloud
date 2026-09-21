@@ -44,34 +44,65 @@ export const CPL_NAME = 'CPL'
  * 앞 14곳은 2026-09-21 에 사장님이 직접 주신 목록이고,
  * 뒤 10곳은 옛 C1 리그에 있던 곳이다. ★그 둘을 합쳐 24곳★ 이다.
  */
+/**
+ * ★★CPL 참가 클랜 — 무소속 14곳★★ (2026-09-21 사장님이 직접 주신 목록)
+ *
+ * > 「sometimes grave deluxe igloo luvme hardcores vuvuzela veritas methodcrew
+ * >  evermore amarilys hing valentina 레트로폭탄 — ★CPL 참가하는 무소속 클랜들이야★」
+ *
+ * ⚠ ★이름이 아니라 slug 로 박는다★ — 위장문자가 섞여 있어 이름으로는 못 찾는다
+ *   (`hing` → `hingˇ` · `valentina` → `vaIentina`(대문자 I) · `amarilys` → `amaryllis`).
+ * ⚠ ★옛 24곳 판은 아래 `CPL_CLAN_SLUGS_V1` 에 남겼다★ (`CLAUDE.md` 1-4).
+ */
 export const CPL_CLAN_SLUGS: readonly string[] = [
-  /* ── 사장님이 주신 14곳 (2026-09-21) ────────────────────────────── */
-  'sorentolove', //  -tsAr.nTc
-  'Onepoint', //     One.PoinT
-  'Ensemble', //     isyour
-  'aksrrzi', //      rNtwo-
-  'susucom', //      unfair
-  'suddenalexia', // afterpray
-  'DOKKIMAMA', //    Mentalist-
-  'LaonJN', //       PokerFace.
-  'luminouszzang', //ctrI      ← 사장님 표기 「ctrl」 (위장문자 I)
-  'inpum', //        respects-
-  'Akillclass', //   ThelVub   ← 사장님 표기 「The vub」
-  'footmania2', //   stylecIan ← 사장님 표기 「styleclan」
-  'adfafasf', //     ＃chaseplay
-  'e2stro2017', //   e2stro-
-  /* ── 옛 C1 열 곳 (2026-09-20 밤에 뽑았던 상위 열 클랜) ──────────── */
-  '01025606089', //  〃veritas
-  'fdd8', //         amaryllis
-  'ferwfwfwfwf', //  deluxe
-  'saffggaaz', //    grave
-  'ckdals2457', //   hardcores
-  'luverduck12', //  igloo
-  'hanbi0302', //    luvme
-  'ssdko', //        methodcrew
-  'minjihun', //     sometimes
-  'uava01', //       vuvuzela
+  'minjihun', //       sometimes
+  'ajwjdjwuwuei5', //  grave (클랜원 35명 쪽)
+  'ferwfwfwfwf', //    deluxe
+  'luverduck12', //    igloo
+  'hanbi0302', //      luvme
+  'ckdals2457', //     hardcores
+  'uava01', //         vuvuzela
+  '01025606089', //    〃veritas
+  'ssdko', //          methodcrew
+  '4473', //           evermore
+  'fdd8', //           amaryllis
+  'adgeodud20', //     hingˇ
+  'valentina2', //     vaIentina
+  'wdasdw', //         레트로폭탄
 ]
+
+/**
+ * ★★맞은편 — 서플라이(PL) 14곳★★ (2026-09-21 사장님)
+ *
+ * > 「CPL 14개 PL14개니까 ★둘이 대결구도 존나 간지나게★ 만들어 마크를 양쪽에 두고
+ * >  vs 이런식으로 ★무소속은 무소속섹터에 서플라이는 서플라이 섹터에★ 따로 두고」
+ */
+export const PL_RIVAL_SLUGS: readonly string[] = [
+  'sorentolove', //    -tsAr.nTc
+  'Onepoint', //       One.PoinT
+  'Ensemble', //       isyour
+  'aksrrzi', //        rNtwo-
+  'susucom', //        unfair
+  'suddenalexia', //   afterpray
+  'DOKKIMAMA', //      Mentalist-
+  'LaonJN', //         PokerFace.
+  'luminouszzang', //  ctrI    ← 사장님 표기 「ctrl」
+  'inpum', //          respects-
+  'Akillclass', //     ThelVub ← 사장님 표기 「The vub」
+  'footmania2', //     stylecIan ← 사장님 표기 「styleclan」
+  'adfafasf', //       ＃chaseplay
+  'e2stro2017', //     e2stro-
+]
+
+/** ⚠ 옛 24곳 판 (2026-09-21 낮). 지우지 않는다 — 되돌릴 때 쓴다 */
+export const CPL_CLAN_SLUGS_V1: readonly string[] = [
+  'sorentolove', 'Onepoint', 'Ensemble', 'aksrrzi', 'susucom', 'suddenalexia',
+  'DOKKIMAMA', 'LaonJN', 'luminouszzang', 'inpum', 'Akillclass', 'footmania2',
+  'adfafasf', 'e2stro2017',
+  '01025606089', 'fdd8', 'ferwfwfwfwf', 'saffggaaz', 'ckdals2457',
+  'luverduck12', 'hanbi0302', 'ssdko', 'minjihun', 'uava01',
+]
+
 
 export interface CplSetupResult {
   /** 리그를 새로 만들었나 */

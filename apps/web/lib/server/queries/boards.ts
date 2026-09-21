@@ -357,6 +357,8 @@ const HOT_SORT =
   '(("Board"."likeCount" * 3 + "Board"."commentCount" * 2 + "Board"."viewCount" / 100.0))::double precision'
 
 /**
+ * ⚠ ★옛 기준★ (2026-09-20 ~ 2026-09-21). 지우지 않는다 — 되돌릴 때 쓴다.
+ *
  * ★Hot 에 오르는 최소 점수★ (2026-09-20 사장님).
  *
  * 점수 = 추천×3 + 댓글×2 + 조회÷100. 그러니 ★3★ 은
@@ -366,7 +368,18 @@ const HOT_SORT =
  * ⚠ 0 으로 두면 방금 쓴 글이 바로 Hot 1위가 된다 — 그게 옛 판이었다.
  * ⚠ 너무 높이면 Hot 이 계속 비어 보인다. 글이 쌓이면 올릴 수 있다.
  */
-const HOT_MIN_SCORE = 3
+export const HOT_MIN_SCORE_V1 = 3
+
+/**
+ * ★★Hot 에 오르는 기준 — 사장님이 정하셨다★★ (2026-09-21)
+ *
+ * > 「hot 게시판에 올라오는 기준: ★공지사항, 좋아요10개 댓글10개이상의 글★」
+ *
+ * 옛 기준(`HOT_MIN_SCORE` 3점)은 ★추천 하나면 올라왔다.★ 그래서 「나 송뚱인데」
+ * 같은 글이 메인에 걸렸다. ★옛 값은 위에 그대로 남겼다★ (`CLAUDE.md` 1-4).
+ */
+const HOT_MIN_LIKES = 10
+const HOT_MIN_COMMENTS = 10
 
 /** 최신순 정렬키. Mock의 숫자 id 내림차순 대신 작성시각을 쓴다 (상단 주석 1번). */
 const RECENT_SORT = '(extract(epoch from "Board"."createdAt"))::double precision'
@@ -431,7 +444,17 @@ function boardFilter(query: BoardListQuery, params: SqlParams): string {
      * ⚠ 글이 사라지는 게 아니다. 원래 카테고리(자유·공지)에는 그대로 있다.
      */
     parts.push('"Board"."notice" = false')
-    parts.push(`${HOT_SORT} >= ${HOT_MIN_SCORE}`)
+    /*
+     * ⚠ ★2026-09-21 — 사장님이 기준을 직접 정하셨다★
+     *
+     * > 「hot 게시판에 올라오는 기준: ★공지사항, 좋아요10개 댓글10개이상의 글★
+     * >  ★송뚱인데 저딴글은 올라오면 안되지★」
+     *
+     *   옛 기준은 ★추천 한 개면 올라왔다★ (점수 3). 그래서 「나 송뚱인데」 같은
+     *   글이 메인 Hot 에 걸렸다.
+     *   이제 ★좋아요 10 이상★ 또는 ★댓글 10 이상★ 이라야 한다. 공지는 따로 얹는다.
+     */
+    parts.push(`("Board"."likeCount" >= ${HOT_MIN_LIKES} OR "Board"."commentCount" >= ${HOT_MIN_COMMENTS})`)
   } else if (query.category === 'notice') {
     parts.push('"Board"."notice" = true')
   } else {
