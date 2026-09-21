@@ -86,6 +86,8 @@ model User {
 
   @@index([createdAt])
   @@index([nickname])
+  /// ★관리자가 고친 화면 글★ (2026-09-21)
+  siteTexts SiteText[] @relation("SiteTextEditor")
 }
 
 /// 서든어택 계정 연동. 연동해야 리그 생성이 가능하다(관측).
@@ -1379,6 +1381,38 @@ model RankSnapshot {
 /**
  * ==========================================================================
  */
+
+/// ★★화면에 적히는 글 — 관리자가 사이트에서 고친다★★ (2026-09-21 사장님)
+///
+/// > 「아니 글을 왜 이렇게 써놨어 이거 ★내가 관리자 권한으로 수정 할 수 있게 해줘★ 글」
+///
+/// ── 왜 필요한가
+///   리그 안내문이 ★코드에 박혀 있었다★ (`ClanDirectory.tsx` 의 `SPL_NOTES`).
+///   글자 하나 고치려면 배포를 해야 했다 — 사장님이 직접 못 고친다.
+///
+/// ── ★코드의 글을 지우지 않는다★ (`CLAUDE.md` 1-4)
+///   이 표에 줄이 ★없으면 코드에 박힌 글★ 이 그대로 나온다. 있으면 이것이 이긴다.
+///   그래서 이 표가 비어 있어도 화면은 지금과 똑같다.
+model SiteText {
+  /// 어느 글인가 — 예: `league.nolink.clanRankNotes`
+  key String @id
+
+  /// 제목 줄. 없으면 화면이 제목을 안 그린다
+  title String?
+  /// 본문. ★줄바꿈 한 번이 한 항목★ 이다 (화면이 `·` 를 붙여 늘어놓는다)
+  body String
+
+  /// 감춰 두기 — 지우지 않고 잠깐 내릴 때 쓴다
+  hidden Boolean @default(false)
+
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  updatedBy User? @relation("SiteTextEditor", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([hidden])
+}
 
 model BoardCategory {
   slug   String  @id

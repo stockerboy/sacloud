@@ -110,8 +110,15 @@ const SPL_NOTES: readonly { title: string; lines: readonly string[] }[] = [
   },
 ]
 
+/** 관리자가 고친 안내문 한 덩어리 — 없으면 `null` 이고 코드 기본값이 나온다 */
+export interface DirectoryNotes {
+  title: string | null
+  lines: string[]
+}
+
 export function ClanDirectory({
   leagueSlug,
+  notes = null,
   /**
    * ★서버가 미리 알려 준 리그 구분★ (2026-09-10). 없으면 예전 그대로 브라우저가 물어본다.
    * 이게 없으면 첫 그림에서 티어 이름이 `1티어` 로 잠깐 나왔다가 `ASTRA` 로 바뀐다 —
@@ -121,17 +128,26 @@ export function ClanDirectory({
 }: {
   leagueSlug: string
   leagueCategory?: string | null
+  /*
+   * ★관리자가 고친 안내문★ (2026-09-21). 서버가 DB 에서 읽어 실어 준다.
+   * `null` 이면 ★코드에 박힌 기본 글★ 이 나온다 — 이 칸이 비어도 화면은 그대로다.
+   */
+  notes?: DirectoryNotes | null
 }) {
   if (!RANKED) return <ClanDirectoryV1 leagueSlug={leagueSlug} />
-  return <ClanRankDirectory leagueSlug={leagueSlug} leagueCategory={leagueCategory} />
+  return (
+    <ClanRankDirectory leagueSlug={leagueSlug} leagueCategory={leagueCategory} notes={notes} />
+  )
 }
 
 function ClanRankDirectory({
   leagueSlug,
   leagueCategory,
+  notes,
 }: {
   leagueSlug: string
   leagueCategory?: string | null
+  notes: DirectoryNotes | null
 }) {
   const [query, setQuery] = useState('')
   const ready = useApiReady()
@@ -294,6 +310,21 @@ function ClanRankDirectory({
    */
   const notice = leagueScreen(leagueSlug).clanRankNotice
 
+  /*
+   * ★★어떤 안내문을 그릴까★★ (2026-09-21)
+   *
+   *   ① 관리자가 고친 글이 있으면 ★그것★ 이 이긴다 (`notes`)
+   *   ② 없으면 ★코드에 박힌 기본 글★ — 다만 ★PL 에서만★ 이다.
+   *      그 글은 「PL → IPL 전환 안내」 라 ★CPL·열산리그에 나오면 안 된다.★
+   *      (실제로 CPL 에 클랜랭킹 안내를 켜자마자 그 글이 따라붙을 뻔했다)
+   */
+  const noteBlocks: DirectoryNotes[] =
+    notes !== null
+      ? [notes]
+      : leagueSlug === 'supply'
+        ? SPL_NOTES.map((b) => ({ title: b.title, lines: [...b.lines] }))
+        : []
+
   /**
    * ★번호 없이 무작위로 늘어놓는다★ (2026-09-12 사장님:
    * «그냥 내가 지우라고 한 클랜을 제외한 클랜들을 무작위로 나열해 번호 붙이지 말고»).
@@ -337,9 +368,9 @@ function ClanRankDirectory({
 
           {/* ★리그 참가 · 전환 안내★ — 사장님 지시로 이 자리에 붙인다 (2026-09-12) */}
           <div className="mx-auto mt-[14px] w-full max-w-[900px]">
-            {SPL_NOTES.map((block) => (
+            {noteBlocks.map((block) => (
               <div
-                key={block.title}
+                key={block.title ?? 'note'}
                 className="mb-[10px] px-[18px] py-[15px]"
                 style={{
                   borderRadius: 10,
@@ -347,7 +378,9 @@ function ClanRankDirectory({
                   background: 'var(--v2-card)',
                 }}
               >
-                <p className="mb-[7px] text-[13px] font-bold text-[#9cc0ff]">{block.title}</p>
+                {block.title === null ? null : (
+                  <p className="mb-[7px] text-[13px] font-bold text-[#9cc0ff]">{block.title}</p>
+                )}
                 {block.lines.map((line) => (
                   <p
                     key={line}

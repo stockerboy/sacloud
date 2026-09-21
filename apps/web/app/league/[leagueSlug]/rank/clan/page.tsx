@@ -2,6 +2,7 @@ import { HydrationBoundary } from '@tanstack/react-query'
 import { redirect } from 'next/navigation'
 import { leagueLandingPath, leagueScreen } from '@sacloud/contract'
 import { ClanDirectory } from './ClanDirectory'
+import { clanRankNotesKey, siteTextOf } from '@/lib/server/queries/siteText'
 import { prefetchClanRank } from './prefetchClanRank'
 
 /**
@@ -74,9 +75,15 @@ export default async function ClanIndex({
   /* 목록을 서버에서 미리 받아 화면에 실어 보낸다 — 첫 그림에 클랜이 들어 있게 된다 */
   const { state, category } = await prefetchClanRank(leagueSlug)
 
+  /*
+   * ★관리자가 고친 안내문★ (2026-09-21 사장님: 「내가 관리자 권한으로 수정 할 수 있게 해줘 글」).
+   * ★없으면 `null` 이다★ — 그러면 화면이 코드에 박힌 기본 글을 쓴다 (`CLAUDE.md` 1-4).
+   */
+  const notes = await siteTextOf(clanRankNotesKey(leagueSlug))
+
   return (
     <HydrationBoundary state={state}>
-      <ClanDirectory leagueSlug={leagueSlug} leagueCategory={category} />
+      <ClanDirectory leagueSlug={leagueSlug} leagueCategory={category} notes={notes} />
     </HydrationBoundary>
   )
 }
