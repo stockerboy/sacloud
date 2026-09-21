@@ -112,13 +112,32 @@ export const CLAN_HIDDEN_IN_LEAGUE: readonly HiddenInLeague[] = [
   },
 ]
 
+/**
+ * ★★2026-09-21 — 겸업 금지를 껐다★★ (사장님 지시)
+ *
+ * > 「PL IPL 모두 ★중복으로 두가지 이상의 리그에 겸할 수 있음★
+ * >  예전에 그건 안된다고 했는데 ★상관없어 다 되게해★」
+ *
+ * ── 무엇이 바뀌나
+ *   위 표는 2026-09-03 에 사장님이 43곳을 직접 나눠 ★한 클랜은 한 리그에만★
+ *   보이게 하려고 만든 것이다. 오늘 그 규칙을 거두신다.
+ *   ★이제 한 클랜이 여러 리그에 동시에 보인다.★
+ *
+ * ── ★표를 지우지 않았다★ (`CLAUDE.md` 1-4)
+ *   43곳의 분류는 사장님이 직접 하신 것이라 ★지우면 되살릴 수 없다.★
+ *   아래 스위치를 `true` 로 되돌리면 그 분류가 그대로 다시 산다.
+ */
+export const CLAN_LEAGUE_EXCLUSIVE = false as boolean
+
 /** 그 클랜이 그 리그에서 감춰져 있는가 */
 export function isClanHiddenInLeague(clanSlug: string, leagueSlug: string): boolean {
+  if (!CLAN_LEAGUE_EXCLUSIVE) return false
   const row = CLAN_HIDDEN_IN_LEAGUE.find((r) => r.league === leagueSlug)
   return row ? row.clanSlugs.includes(clanSlug) : false
 }
 
 /** 그 리그에서 감춰진 클랜 slug 들 (질의 필터에 그대로 넣는다) */
 export function hiddenClanSlugsIn(leagueSlug: string): readonly string[] {
+  if (!CLAN_LEAGUE_EXCLUSIVE) return []
   return CLAN_HIDDEN_IN_LEAGUE.find((r) => r.league === leagueSlug)?.clanSlugs ?? []
 }

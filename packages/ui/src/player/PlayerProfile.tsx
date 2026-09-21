@@ -265,11 +265,11 @@ function PlayerLeagueRow({
        */
       href={leaguePlayerPath(entry.league.slug, playerId)}
       /* ★절반 크기★ (2026-09-21) — 두 장이 한 줄에 서므로 여백과 글자를 줄인다 */
-      className={`${PANEL} block px-4 py-3 transition-colors hover:border-accent`}
+      className={`${PANEL} block px-3 py-2.5 transition-colors hover:border-accent md:px-4 md:py-3`}
     >
       {/* ── 머리 — 리그 이름 + 공식 표 ───────────────────────────────── */}
       <div className="flex items-center gap-2">
-        <span className="truncate text-[15px] font-extrabold tracking-[-.01em] text-text-strong">
+        <span className="truncate text-[14px] font-extrabold tracking-[-.01em] text-text-strong md:text-[15px]">
           {entry.league.name}
         </span>
         {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
@@ -391,7 +391,17 @@ function CardLine({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="min-w-0 truncate font-num text-[12px] tabular-nums text-meta">
+      {/*
+        ⚠ ★폰에서는 원자료를 감춘다★ (2026-09-21 사장님: 「카드 새로 배열한거
+          ★모바일에서도 그렇게 보여야한다 깔끔하게★」)
+
+          폰 390px 에서 두 장을 놓으면 카드 하나가 ★164px★ 다.
+          「236전 103승 133패」(약 130px) 와 「승률 43.6%」(약 75px) 를 한 줄에 넣으면
+          ★205px★ 이라 넘친다 — 글자가 잘리거나 줄이 밀린다.
+          ★라벨과 값만 남기면 깔끔하게 두 장이 선다.★ 원자료는 PC 에서 그대로 나오고,
+          폰에서도 ★카드를 누르면★ 기록실에서 다 보인다.
+      */}
+      <span className="min-w-0 truncate font-num text-[12px] tabular-nums text-meta max-md:hidden">
         {raw ?? ' '}
       </span>
       <span className="flex shrink-0 items-baseline gap-2">
@@ -443,7 +453,7 @@ function IdleLeagues({
       </button>
       {open ? (
         /* ★한 줄에 두 장★ (2026-09-21) — 까닭은 위 목록 쪽 주석에 적었다 */
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="mt-3 grid grid-cols-2 gap-2.5 md:gap-3">
           {entries.map((entry) => (
             <PlayerLeagueRow key={entry.league.id} entry={entry} playerId={playerId} />
           ))}
@@ -538,7 +548,7 @@ export function PlayerLeagueList({
           카드 하나가 화면 폭을 통째로 먹어 ★PC 에서 오른쪽 절반이 비어 있었다.★
         ⚠ ★폰은 한 줄에 한 장★ — 390px 에 두 장을 넣으면 숫자가 붙는다
       */}
-      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-2 gap-2.5 md:gap-3">
         {shown.map((entry) => (
           <PlayerLeagueRow key={entry.league.id} entry={entry} playerId={playerId} />
         ))}
