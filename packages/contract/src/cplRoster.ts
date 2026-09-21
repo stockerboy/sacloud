@@ -19,7 +19,14 @@
 /** ★무소속 14곳★ — 2026-09-21 사장님이 직접 주신 목록 */
 export const CPL_INDEPENDENT_SLUGS: readonly string[] = [
   'minjihun', //       sometimes
-  'ajwjdjwuwuei5', //  grave
+  /*
+   * ★grave 는 남는 쪽으로★ (2026-09-22 사장님: 「판수적은 쪽 내리라고」)
+   *   같은 이름 다른 클랜이 둘이었다 — 클랜원이 한 명도 안 겹친다.
+   *     ajwjdjwuwuei5   7승 6패   ← ★내렸다★ (Clan.active=false)
+   *     saffggaaz      41승 20패  ← 남는다
+   *   ⚠ 옛 값은 지우지 않는다 (`CLAUDE.md` 1-4) — 되돌리려면 이 줄을 바꾼다.
+   */
+  'saffggaaz', //      grave  (옛 값: 'ajwjdjwuwuei5')
   'ferwfwfwfwf', //    deluxe
   'luverduck12', //    igloo
   'hanbi0302', //      luvme
