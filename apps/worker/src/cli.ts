@@ -39,6 +39,7 @@ import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runRenewRequests } from './jobs/renewRequests.js'
 import { runCplSetup } from './jobs/cplSetup.js'
 import { runNickFromBarracks } from './jobs/nickFromBarracks.js'
+import { runSanplyClanFill } from './jobs/sanplyClanFill.js'
 import { runIdentityFromBattlelog } from './jobs/identityFromBattlelog.js'
 import { runC1LeagueBuild } from './jobs/c1LeagueBuild.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
@@ -3903,6 +3904,19 @@ async function main(): Promise<number> {
         days: Number(stringFlag(args, 'days') ?? '') || undefined,
       })
       return r.seen >= 0 ? 0 : 1
+    }
+
+    case 'sanply-clan-fill': {
+      /*
+       * ★열산에 빠진 클랜을 채운다★ (2026-09-21 사장님: 「모든 3부 클랜들 다
+       *   열산고용가능클랜에 때려박고 9/3부터 기록 다시 주워서 채워넣어」)
+       *   실측 — 경기 90건이 ★클랜이 없어서★ 버려지고 있었다.
+       */
+      const r = await runSanplyClanFill({
+        confirm: boolFlag(args, 'confirm'),
+        leagueSlug: stringFlag(args, 'league') ?? undefined,
+      })
+      return r.seenClans >= 0 ? 0 : 1
     }
 
     case 'nick-from-barracks': {
