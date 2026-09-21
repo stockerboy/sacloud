@@ -38,6 +38,7 @@ import { runClanMarkFresh } from './jobs/clanMarkFresh.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runRenewRequests } from './jobs/renewRequests.js'
 import { runRenewServer } from './renewServer.js'
+import { runClanFindMissing } from './jobs/clanFindMissing.js'
 import { runCplSetup } from './jobs/cplSetup.js'
 import { runNickFromBarracks } from './jobs/nickFromBarracks.js'
 import { runSanplyClanFill } from './jobs/sanplyClanFill.js'
@@ -3943,6 +3944,19 @@ async function main(): Promise<number> {
         limit: numberFlag(args, 'limit') ?? undefined,
       })
       return r.stale >= 0 ? 0 : 1
+    }
+
+    case 'clan-find-missing': {
+      /*
+       * ★모르는 클랜의 주소를 병영 검색에서 찾아온다★ (2026-09-22 사장님:
+       *   「경기 40분 후에도 킬데스 수집조차 안 된 이런 경기들 ★싹다 명단채우고★」)
+       *   ⚠ 이름만 보고 만들지 않는다 — ★마크까지 같아야★ 만든다 (D-221).
+       */
+      const r = await runClanFindMissing({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      return r.blocked ? 2 : 0
     }
 
     case 'cpl-setup': {
