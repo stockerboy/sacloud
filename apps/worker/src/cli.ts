@@ -38,6 +38,7 @@ import { runClanMarkFresh } from './jobs/clanMarkFresh.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runRenewRequests } from './jobs/renewRequests.js'
 import { runCplSetup } from './jobs/cplSetup.js'
+import { runNickFromBarracks } from './jobs/nickFromBarracks.js'
 import { runIdentityFromBattlelog } from './jobs/identityFromBattlelog.js'
 import { runC1LeagueBuild } from './jobs/c1LeagueBuild.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
@@ -3902,6 +3903,18 @@ async function main(): Promise<number> {
         days: Number(stringFlag(args, 'days') ?? '') || undefined,
       })
       return r.seen >= 0 ? 0 : 1
+    }
+
+    case 'nick-from-barracks': {
+      /*
+       * ★닉네임을 병영 명부로 맞춘다★ (2026-09-21 사장님: 「정보갱신 최신화 좀
+       *   제대로 안되냐」). 실측 — 계정으로 이은 3,969명 중 ★1,740명★ 이 어긋나 있었다.
+       */
+      const r = await runNickFromBarracks({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      return r.stale >= 0 ? 0 : 1
     }
 
     case 'cpl-setup': {
