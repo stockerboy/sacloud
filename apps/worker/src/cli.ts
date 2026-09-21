@@ -34,6 +34,7 @@ import { runClanNameBackfill } from './jobs/clanNameBackfill'
 import { runBarracksIdentityMerge } from './jobs/barracksIdentityMerge'
 import { runUnifiedProject } from './jobs/unifiedProject.js'
 import { rateLimitSweep } from './jobs/rateLimitSweep.js'
+import { runClanMarkFresh } from './jobs/clanMarkFresh.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runIdentityFromBattlelog } from './jobs/identityFromBattlelog.js'
 import { runC1LeagueBuild } from './jobs/c1LeagueBuild.js'
@@ -3891,6 +3892,14 @@ async function main(): Promise<number> {
         limit: Number(stringFlag(args, 'limit') ?? '') || undefined,
       })
       return r.pairs >= 0 ? 0 : 1
+    }
+
+    case 'clan-mark-fresh': {
+      const r = await runClanMarkFresh({
+        confirm: boolFlag(args, 'confirm'),
+        days: Number(stringFlag(args, 'days') ?? '') || undefined,
+      })
+      return r.seen >= 0 ? 0 : 1
     }
 
     case 'clan-name-from-matches': {
