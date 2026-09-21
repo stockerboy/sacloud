@@ -819,6 +819,29 @@ export function PlayerRankTable({
   const keptStat = columns.winRate ? 'winRate' : columns.kd ? 'kd' : null
   /* 점수 표인가 — 한 줄이라도 점수가 있으면 점수 표. 점수 없는 줄은 래더로 채우지 않고 «측정 중» (QA 교차검토 · 기록 없음 선수가 «3,000점» 으로 보였다) */
   const scoreTable = !byWeapon && (leagueScreen(leagueSlug).scoreLeague || (rows ?? []).some((row) => row.score !== null && row.score !== undefined))
+/**
+ * ★★순위 칸에 무엇을 적나★★ (2026-09-21 사장님: 「★실력점수로 세워라★」)
+ *
+ * ── 왜 정해야 했나
+ *
+ *   ★줄을 세우는 값과 적히는 값이 달랐다.★
+ *   ```
+ *   줄 세움   LeaguePlayerHex.score     3397 · 3392 · 3374 …   (9/10 확정 공식)
+ *   적힘      LeaguePlayer.scoreRating  13.4 · 13.6 · 12.9 …   (9/18 경기당 평균)
+ *   ```
+ *   그래서 사장님 화면에 «13.4가 1등인데 20.2가 16등» 이 떴고,
+ *   「도대체 순위 어케 측정하는거냐」 가 여기서 나왔다.
+ *
+ * ── 고른 답 — ★줄을 세우는 값을 적는다★
+ *   `'skill'`   실력점수를 ★층수★ 로 적는다 (3397 → 34.0층). ★지금 이것★
+ *   `'average'` 경기당 점수(13.4). 2026-09-18 ~ 09-21 아침까지 쓰던 판 (`CLAUDE.md` 1-4)
+ *
+ * ⚠ 경기당 점수는 ★사라지지 않는다★ — 점수판·MVP 설명은 그대로 그 값을 쓴다.
+ *   여기서 정하는 것은 ★랭킹 표의 그 한 칸★ 뿐이다.
+ */
+type ScoreColumn = 'skill' | 'average'
+const SCORE_COLUMN = 'skill' as ScoreColumn
+
   /*
    * ★점수 래더★ (2026-09-18 사장님: «래더점수도 이걸로 계산해»).
    *
@@ -827,7 +850,10 @@ export function PlayerRankTable({
    *   (45층~ 빨강 …). 점수는 20 근처라 전부 한 색으로 주저앉는다.
    *   없는 색을 지어내지 않고 ★기본 글자색★ 으로 둔다 (D-106).
    */
-  const scoreLadder = !byWeapon && (rows ?? []).some((row) => row.score_rating !== null && row.score_rating !== undefined)
+  const scoreLadder =
+    SCORE_COLUMN === 'average' &&
+    !byWeapon &&
+    (rows ?? []).some((row) => row.score_rating !== null && row.score_rating !== undefined)
   const winRateHidden = keptStat === 'winRate' ? '' : COL_HIDDEN
   /* 2026-09-11 QA 교차검토 8번: 킬뎃도 폰에 남긴다 (옛 규칙: keptStat === 'kd' ? '' : COL_HIDDEN) */
   const kdHidden = ''

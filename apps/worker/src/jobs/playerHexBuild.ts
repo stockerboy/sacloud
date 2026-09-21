@@ -104,8 +104,13 @@ export { PLAYER_HEX_FORMULA_VERSION }
  */
 export const HEX_LEAGUE_SLUGS = ['nolink', 'supply', 'sanply', 'c1'] as const
 
-/** C1 경기의 `sourceMatchId` 앞에 붙는 접두 — 원문을 찾을 때 뗀다 */
-const C1_KEY_PREFIX = 'c1-'
+/**
+ * ★옛 접두★ — 2026-09-20 밤 하루 동안 C1 의 `sourceMatchId` 앞에 이것이 붙어 있었다.
+ * 그 값이 그대로 화면으로 나가 ★경기 목록을 죽여서★ 되돌렸다 (2026-09-21).
+ * 지금은 C1 도 원본 번호를 그대로 쓴다. ★지우지 않는다★ (`CLAUDE.md` 1-4) —
+ * 그때 담긴 행을 되짚을 일이 생기면 이 값으로 찾는다.
+ */
+export const C1_KEY_PREFIX_V1 = 'c1-'
 
 const ZONE_FILE = join(REPO_ROOT, 'data/barracks/style-zones.json')
 /**
@@ -489,17 +494,14 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
   for (const m of matches) {
     if (!m.sourceMatchId) continue
     /*
-     * ★★C1 경기는 원본 번호 앞에 접두가 붙어 있다★★ (2026-09-20 밤)
+     * ⚠ ★2026-09-21 — 접두를 떼던 줄을 걷었다★
      *
-     *   9/3 이후 경기는 `sourceMatchId` 가 ★전체에서 유일★ 해야 하는 인덱스가 있어서
-     *   (`Match_new_sourceMatchId_key`) C1 에 담을 때 `c1-` 을 붙였다.
-     *
-     *   그런데 ★배틀로그 원문은 원본 번호로 저장돼 있다.★ 접두를 안 떼면
-     *   ★원문을 하나도 못 찾아 킬이 0 이 된다★ — 실제로 그랬다.
+     *   하루 동안 C1 의 `sourceMatchId` 에 `c1-` 접두가 붙어 있었고 여기서 떼 줬다.
+     *   그 접두가 ★그대로 화면으로 나가 경기 목록을 죽여서★ 규칙을 되돌렸다 —
+     *   이제 C1 도 `sourceMatchId` 가 ★원본 번호 그대로★ 다 (리그는 `id` 뒤에 붙는다).
+     *   그래서 뗄 것이 없다. 옛 접두 상수는 `C1_KEY_PREFIX_V1` 에 남겨 뒀다.
      */
-    const key = m.sourceMatchId.startsWith(C1_KEY_PREFIX)
-      ? m.sourceMatchId.slice(C1_KEY_PREFIX.length)
-      : m.sourceMatchId
+    const key = m.sourceMatchId
     matchIdOfKey.set(key, m.id)
     if (scoresOpening(m.startAt)) opensScore.add(key)
   }
@@ -529,10 +531,7 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
     const who = new Map<string, Who>()
     for (const r of await prisma.$queryRaw<{ k: string; usn: string; w: number | null; pid: string }[]>`
       SELECT
-             -- C1 경기는 sourceMatchId 앞에 접두가 붙어 있다. 열쇠는 원본 번호다
-             CASE WHEN m."sourceMatchId" LIKE 'c1-%'
-                  THEN substring(m."sourceMatchId" from 4)
-                  ELSE m."sourceMatchId" END AS k,
+             m."sourceMatchId" AS k,
              substring(p."sourcePlayerId" from 5) AS usn,
              s."weapon" AS w, p."id" AS pid
         FROM "MatchPlayerStat" s

@@ -227,7 +227,7 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
   for (const [key, m] of bySource) {
     /* ★멱등★ — 이미 담았으면 건너뛴다 */
     const already = await prisma.match.findFirst({
-      where: { leagueId: league.id, sourceMatchId: `c1-${key}` },
+      where: { leagueId: league.id, sourceMatchId: key },
       select: { id: true },
     })
     if (already !== null) {
@@ -242,25 +242,29 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
     const made = await prisma.match.create({
       data: {
         /*
-         * ★`Match.id` 는 우리가 직접 준다★ — 자동 생성이 없다.
-         *   IPL 쪽 id 는 `260907215557000001` 꼴이라 ★겹치지 않게 접두를 붙인다.★
-         *   ⚠ 접두를 바꾸면 이미 담은 경기를 ★다시 담는다★ — 바꾸지 않는다.
+         * ★★경기 번호는 원본 그대로, 리그는 뒤에 붙인다★★ (2026-09-21 · 고침)
+         *
+         *   ```
+         *   id             2609...@c1     ← 리그마다 다른 행 (우리 저장 사정)
+         *   sourceMatchId  2609...        ← ★원본 경기 번호. 밖으로 나가는 값★
+         *   ```
+         *   이것이 미러가 2026-06 부터 쓰던 규칙이다 (`packages/db/ops/supplyMirrorImport.ts`
+         *   의 `supplyMatchRowId`). `apps/web` 은 `sourceMatchId ?? id` 를 id 로 내보낸다.
+         *
+         * ── ⚠ ★앞에 `c1-` 을 붙였다가 경기 목록이 통째로 죽었다★ (2026-09-20 밤 → 21 아침)
+         *
+         *   계약의 `MatchId` 는 ★18자리 숫자★ 다 (`/^\d{18}$/`). `c1-2609...` 가
+         *   그대로 화면으로 나가 ★Zod 가 목록 전체를 버렸고★, 사장님 화면에는
+         *   ★「최근 경기를 불러오지 못했습니다」★ 만 떴다.
+         *   ★규칙이 이미 있었는데 내가 새로 지어냈다.★ 그것이 원인이다.
+         *
+         *   `sourceMatchId` 를 원본 그대로 둘 수 있게 된 것은
+         *   `20260921090000_derived_league_source_id` 에서 부분 유니크 인덱스가
+         *   ★파생 경기(`origin='sacloud'`)를 빼 주기★ 때문이다.
          */
-        id: `c1-${key}`,
+        id: `${key}@${C1_SLUG}`,
         leagueId: league.id,
-        /*
-         * ⚠ ★`sourceMatchId` 에도 접두를 붙인다★ (2026-09-20 실측에서 막혔다)
-         *
-         *   DB 에 ★`Match_new_sourceMatchId_key`★ 라는 유니크 인덱스가 있다 —
-         *   ★9/3 이후 경기는 `sourceMatchId` 가 전체에서 유일★ 해야 한다.
-         *   (스키마의 `@@unique([leagueId, origin, sourceMatchId])` 와 ★별개★ 다)
-         *
-         *   그래서 같은 원본 번호를 두 리그에 담을 수 없다. C1 은 ★파생★ 이므로
-         *   접두를 붙여 유일하게 만든다. ★원본은 접두를 떼면 나온다.★
-         *
-         * ⚠ 그 인덱스를 건드리지 않는다 — ★중복 투영을 막던 장치★ 다.
-         */
-        sourceMatchId: `c1-${key}`,
+        sourceMatchId: key,
         mapId: m.mapId,
         playerCount: m.playerCount,
         playTime: m.playTime,
@@ -332,24 +336,98 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
       match: { select: { redLeagueClanId: true, blueLeagueClanId: true } },
     },
   })
-  /** playerId → 가장 마지막으로 선 팀의 clanId */
-  const clanOfPlayer = new Map<string, string>()
+  /*
+   * ★★소속 클랜은 「지금 소속」 이다★★ (2026-09-21 · 사장님: 「애들클랜은 자기 소속도
+   * 아닌 클랜 달고 있고 걍 난리도 아님」)
+   *
+   * ── ⚠ 하루 동안 ★163명이 엉뚱한 클랜★ 을 달고 있었다
+   *
+   *   옛 판은 ★`played` 를 훑으며 매번 덮어썼다★ — 「가장 마지막으로 선 팀」 이라고
+   *   적어 뒀지만 그 목록에는 ★차례가 없다.★ 그래서 ★용병으로 한 판 뛴 클랜★ 이
+   *   그 사람의 소속이 돼 버렸다. 실측 —
+   *   ```
+   *   sayIove    C1엔 deluxe     · 실제 sometimes
+   *   불개미321  C1엔 sometimes  · 실제 igloo
+   *   황인정     C1엔 methodcrew · 실제 grave
+   *   ```
+   *
+   * ── 이제 이 차례로 고른다
+   *   ① ★IPL 명부의 소속★ — 그것이 「지금 소속」 이다 (수집이 계속 갱신한다)
+   *      ⚠ 단 ★C1 열 클랜일 때만★ 쓴다. IPL 소속이 C1 밖 클랜이면 ②로 간다
+   *   ② ★C1 에서 가장 많이 뛴 클랜★ — 용병 한 판이 소속을 못 바꾼다
+   *      판수가 같으면 ★클랜 id 가 앞선 쪽★ 으로 굳힌다 (돌릴 때마다 안 바뀌게)
+   */
   const lcToClan = new Map([...leagueClanOf.entries()].map(([clanId, lcId]) => [lcId, clanId]))
+
+  /** playerId → clanId → 그 클랜으로 뛴 판수 */
+  const gamesByClan = new Map<string, Map<string, number>>()
   for (const row of played) {
     const lcId = row.side === 'red' ? row.match.redLeagueClanId : row.match.blueLeagueClanId
     const clanId = lcToClan.get(lcId)
     if (clanId === undefined) continue
-    clanOfPlayer.set(row.playerId, clanId)
+    let per = gamesByClan.get(row.playerId)
+    if (per === undefined) {
+      per = new Map()
+      gamesByClan.set(row.playerId, per)
+    }
+    per.set(clanId, (per.get(clanId) ?? 0) + 1)
+  }
+
+  /* ① IPL 명부의 «지금 소속» — C1 열 클랜 안일 때만 쓴다 */
+  const iplClanOf = new Map<string, string>()
+  const iplLeague = await prisma.league.findUnique({ where: { slug: 'nolink' }, select: { id: true } })
+  if (iplLeague !== null) {
+    const rows = await prisma.leaguePlayer.findMany({
+      where: {
+        leagueId: iplLeague.id,
+        playerId: { in: [...gamesByClan.keys()] },
+        clanId: { in: [...clanIdOf.values()] },
+      },
+      select: { playerId: true, clanId: true },
+    })
+    for (const r of rows) if (r.clanId !== null) iplClanOf.set(r.playerId, r.clanId)
+  }
+
+  const clanOfPlayer = new Map<string, string>()
+  for (const [playerId, per] of gamesByClan) {
+    const now = iplClanOf.get(playerId)
+    if (now !== undefined) {
+      clanOfPlayer.set(playerId, now)
+      continue
+    }
+    /* ② 가장 많이 뛴 클랜. 같으면 id 가 앞선 쪽 */
+    let best: string | null = null
+    let bestGames = -1
+    for (const [clanId, n] of [...per.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+      if (n > bestGames) {
+        best = clanId
+        bestGames = n
+      }
+    }
+    if (best !== null) clanOfPlayer.set(playerId, best)
   }
 
   const already = await prisma.leaguePlayer.findMany({
     where: { leagueId: league.id },
-    select: { playerId: true },
+    select: { id: true, playerId: true, clanId: true },
   })
-  const have = new Set(already.map((r) => r.playerId))
+  const have = new Map(already.map((r) => [r.playerId, r]))
   let made = 0
+  let moved = 0
   for (const [playerId, clanId] of clanOfPlayer) {
-    if (have.has(playerId)) continue
+    const row = have.get(playerId)
+    if (row !== undefined) {
+      /*
+       * ⚠ ★이미 있는 사람도 소속을 고친다★ (2026-09-21)
+       *   옛 판은 ★건너뛰기만★ 했다. 그래서 한 번 잘못 박힌 클랜이
+       *   ★다시 돌려도 영영 안 고쳐졌다★ — 163명이 그렇게 남아 있었다.
+       */
+      if (row.clanId !== clanId) {
+        await prisma.leaguePlayer.update({ where: { id: row.id }, data: { clanId } })
+        moved += 1
+      }
+      continue
+    }
     await prisma.leaguePlayer.create({
       data: {
         leagueId: league.id,
@@ -361,7 +439,7 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
     })
     made += 1
   }
-  log(`C1 명부 — 새로 올림 ${made}명 · 이미있음 ${have.size}명`)
+  log(`C1 명부 — 새로 올림 ${made}명 · 이미있음 ${have.size}명 · ★소속 고침 ${moved}명★`)
   result.players = made
 
   return result

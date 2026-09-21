@@ -145,7 +145,8 @@ export const SEASON0_ORIGINS_V2 = ['3rd.supply', 'nexon', 'nexon_barracks'] as c
  * 다른 리그에는 영향이 없다. `sacloud` 경기가 있는 리그는 `c1` 뿐이다
  * (2026-09-20 운영 실측: 804건 전부 c1 · 나머지는 3rd.supply·nexon_barracks·nexon).
  * 맨 뒤에 둔 것은 중복 제거에서 ★원본이 먼저 이기게★ 하기 위해서다
- * (C1 은 `sourceMatchId` 에 `c1-` 접두가 붙어 애초에 부딪히지 않는다).
+ * (C1 은 `sourceMatchId` 가 원본 그대로라, 부분 유니크 인덱스가 `origin='sacloud'` 를
+ * 빼 주는 것으로 부딪히지 않는다 — `20260921090000_derived_league_source_id`).
  */
 export const SEASON0_ORIGINS = ['3rd.supply', 'nexon', 'nexon_barracks', 'sacloud'] as const
 
