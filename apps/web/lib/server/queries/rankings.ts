@@ -616,8 +616,28 @@ export async function getPlayerRanksByScore(
 
   const first = page.items[0]
   /* 자리로 떠 왔으면 등수는 이미 안다 — 세러 가지 않는다 */
+  /*
+   * ⚠ ★2026-09-21 — 번호도 줄 세운 잣대로 센다★
+   *
+   *   정렬만 래더(Elo)로 바꾸고 ★번호는 옛 공식(`score`)으로 세고 있었다.★
+   *   그래서 첫 쪽인데 ★12위부터★ 시작했다 (실측 — rating 4488 인 줄이 12위).
+   *   ★두 잣대가 갈리면 번호가 목록과 어긋난다.★
+   */
+  const firstRating = first?.leaguePlayer?.rating ?? null
   const startRank = byOffset
     ? (offset as number) + 1
+    : PLAYER_RANK_BY === 'elo'
+      ? first && firstRating !== null
+        ? (await prisma.leaguePlayerHex.count({
+            where: {
+              ...where,
+              OR: [
+                { leaguePlayer: { rating: { gt: firstRating } } },
+                { leaguePlayer: { rating: firstRating }, leaguePlayerId: { lt: first.leaguePlayerId } },
+              ],
+            },
+          })) + 1
+        : 1
     : first && first.score !== null
       ? (await prisma.leaguePlayerHex.count({
           where: {
