@@ -787,7 +787,34 @@ export function homeTierOf(tierGames: Readonly<Record<TierNo, number>>): TierNo 
  */
 export const TIER_FACTOR_WEIGHTED = false
 
+/**
+ * ★★2026-09-21 — 티어계수도 걷었다★★ (사장님: 「IPL 상위권 보정 없애고 랭킹매기라고」)
+ *
+ * ── 내가 두 번 틀렸다
+ *
+ *   9/20 밤: `TOP_CLAN_BONUS` 만 0 으로 두고 「보정 0」 이라고 보고했다.
+ *   9/21 새벽: `HEX_CLAN_BONUS` 도 걷고 다시 「보정 0」 이라고 보고했다.
+ *   ★그런데 세 번째가 남아 있었다★ — 이 티어계수다. 실측(2026-09-21 오전) —
+ *   ```
+ *   IPL 2,243줄 중 ★1,639줄★ 이 1 이 아니었다 (0.347 ~ 1.0)
+ *   ```
+ *   ASTRA 에서 뛴 사람은 1.0, 아래 구간은 ★0.347 까지 깎였다★ —
+ *   ★상위 구간에서 뛴 사람이 유리한 보정★ 이다. 사장님이 없애라 하신 바로 그것이다.
+ *
+ *   ★「보정을 껐다」 를 말하려면 점수식의 곱셈·덧셈을 ★전부★ 세어야 한다.★
+ *   두 번 다 한 곳만 보고 보고했다.
+ *
+ * ── 지금
+ *
+ *   `TIER_FACTOR_ON = false` 라 ★언제나 1★ 이다. 어느 구간에서 뛰든 점수가 같다.
+ *   ⚠ 옛 동작은 그 상수를 `true` 로 두면 그대로 돌아온다 (`CLAUDE.md` 1-4) —
+ *     아래 계산은 한 줄도 안 지웠다.
+ */
+export const TIER_FACTOR_ON = false as boolean
+
 export function tierFactorOf(tierGames: Readonly<Record<TierNo, number>>): number {
+  /* ★상위권 보정 없음★ — 사장님 지시 (2026-09-21) */
+  if (!TIER_FACTOR_ON) return 1
   const n = tierGames[1] + tierGames[2] + tierGames[3]
   if (n === 0) return 1
   if (!TIER_FACTOR_WEIGHTED) {

@@ -1261,6 +1261,24 @@ export async function clanRankOf(leagueClan: {
   const hiddenSlugs = leagueClan.leagueSlug === undefined ? [] : [...hiddenClanSlugsIn(leagueClan.leagueSlug)]
 
   /*
+   * ★★부리그를 안 쓰는 리그는 분모도 전체다★★ (2026-09-21 사장님)
+   *
+   * > 「IPL 랭킹인데 IPL 클랜이 40개가 넘는데 ★뭔 12팀중★ 이야
+   * >  ★여기선 티어 구분없다니까★」
+   *
+   *   맞는 말씀이다. 화면은 이미 부리그를 안 보여 주는데(`showsTier` 가 거짓)
+   *   ★분모만 부리그별로 세고 있었다.★ 그래서 43곳짜리 리그에서 「12팀 중」 이 나왔다.
+   *
+   *   ★화면이 부리그를 보여 주는 리그에서만 부리그로 센다.★ 스위치는 화면과 같은 표다
+   *   (`leagueScreen` 의 `showsTier`) — 두 곳이 갈리지 않는다.
+   *
+   * ⚠ slug 를 안 준 옛 호출부는 ★옛 동작 그대로★ 다 (부리그별로 센다).
+   */
+  const sameDivisionOnly =
+    leagueClan.leagueSlug === undefined ? true : showsTier(leagueClan.leagueSlug)
+
+
+  /*
    * ★판수 문턱을 목록과 같이 건다★ (2026-09-20 사장님: 「판수 없는 클랜 진짜 싫어해」)
    *
    *   `getClanRanks` 가 `win + lose >= CLAN_RANK_MIN_GAMES` 로 거르므로
@@ -1278,7 +1296,7 @@ export async function clanRankOf(leagueClan: {
       FROM "LeagueClan" lc
       JOIN "Clan" c ON c."id" = lc."clanId"
      WHERE lc."leagueId" = ${leagueClan.leagueId}
-       AND lc."division" = ${leagueClan.division}
+       AND (${sameDivisionOnly} = false OR lc."division" = ${leagueClan.division})
        AND lc."placement" = false
        AND lc."expelledAt" IS NULL
        AND c."active" = true

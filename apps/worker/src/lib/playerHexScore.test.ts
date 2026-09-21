@@ -9,6 +9,7 @@ import {
   mainWeaponOf,
   percentileOf,
   HEX_CLAN_BONUS,
+  TIER_FACTOR_ON,
   tierFactorOf,
   type PlayerHexInput,
   homeTierOf,
@@ -137,7 +138,12 @@ describe('백분위 · 티어계수', () => {
 
   /* ⚠ 정정 (2026-09-11 사장님) — 옛 판은 «상대 티어별 판수의 가중 평균» 이었다.
      지금은 ★가장 많이 뛴 구간 하나★ 의 무게를 쓴다. 옛 판은 TIER_FACTOR_WEIGHTED 로 되돌린다 */
-  it('티어계수는 가장 많이 뛴 구간의 무게다 (ASTRA 1 · CH1 0.367 · CH2 0.347)', () => {
+  /*
+   * ⚠ ★2026-09-21 — 티어계수를 걷었다★ (사장님: 「IPL 상위권 보정 없애고 랭킹매기라고」)
+   *   이 시험은 ★보정이 켜져 있을 때의 성질★ 이다. ★지우지 않는다★ (`CLAUDE.md` 1-4) —
+   *   `TIER_FACTOR_ON` 을 다시 켜면 그대로 지켜져야 한다.
+   */
+  it.runIf(TIER_FACTOR_ON)('티어계수는 가장 많이 뛴 구간의 무게다 (ASTRA 1 · CH1 0.367 · CH2 0.347)', () => {
     expect(tierFactorOf({ 1: 10, 2: 0, 3: 0 })).toBe(1)
     expect(tierFactorOf({ 1: 0, 2: 10, 3: 0 })).toBe(0.367)
     /* 5:5 면 높은 구간(ASTRA)을 준다 — 용병으로 아래 티어를 뛰어도 깎이지 않는다 */
@@ -206,6 +212,12 @@ describe('접기', () => {
      *   시험할 것은 ★식의 모양★ 이지 기준점 숫자가 아니다.
      */
     expect(r?.score).toBe(HEX_BASE + (-700 + HEX_CLAN_BONUS[1]) * 0.5)
+  })
+
+  it.runIf(!TIER_FACTOR_ON)('★어느 구간에서 뛰든 점수가 같다★ — 상위권 보정 없음 (2026-09-21 사장님)', () => {
+    /* ASTRA 만 뛴 사람과 CH2 만 뛴 사람의 계수가 같아야 한다 */
+    expect(tierFactorOf({ 1: 30, 2: 0, 3: 0 })).toBe(tierFactorOf({ 1: 0, 2: 0, 3: 30 }))
+    expect(tierFactorOf({ 1: 30, 2: 0, 3: 0 })).toBe(1)
   })
 
   it('부리그가 셋이 아닌 리그(SPL)는 티어계수 1 · 클랜보정 0 이다', () => {
