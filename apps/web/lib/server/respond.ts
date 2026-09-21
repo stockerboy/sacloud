@@ -73,8 +73,31 @@ export function okPage<T>(page: { items: T[]; cursor: CursorMetadata; total?: nu
  */
 const PUBLIC_CACHE_SECONDS = 300
 
-/** 만료된 값을 그대로 내주면서 뒤에서 갱신하는 창 */
-const PUBLIC_STALE_SECONDS = 86400
+/**
+ * 만료된 값을 그대로 내주면서 뒤에서 갱신하는 창.
+ *
+ * ── ⚠ ★86400(하루) → 900(15분)★ (2026-09-22 · 사장님 QA)
+ *
+ *   > 「이규셕이랑 캔디걸 ★1,2페이지 쪽에 있는데 여기 또잇네★ ㅋㅋ 진짜머냐?」
+ *
+ *   ★같은 사람이 19등에도 있고 111등에도 있었다.★ 둘 다 3,163점으로 똑같았다.
+ *   DB 에는 ★한 줄뿐★ 이다 — 갈라진 계정이 아니었다.
+ *
+ *   ── 무엇이 일어났나
+ *   ```
+ *   랭킹 1·2쪽   5분마다 데워진다 (warm.sh)      → ★새 순위★
+ *   랭킹 6쪽     아무도 안 밟는다                → ★하루 전 순위★
+ *   ```
+ *   ★쪽마다 캐시 나이가 달랐다.★ 순위는 30분마다 통째로 다시 매겨지는데,
+ *   1쪽은 오늘 것 · 6쪽은 어제 것이라 ★같은 사람이 두 번 보였다.★
+ *
+ *   하루는 너무 길다. 15분이면 순위 한 판(30분)을 넘지 않는다.
+ *   ⚠ 옛 값은 아래에 남긴다 (`CLAUDE.md` 1-4) — DB 가 수집에 눌려 무너지면
+ *     이 값을 다시 키워 「빈 화면 대신 낡은 값」 으로 버틴다.
+ */
+const PUBLIC_STALE_SECONDS_V1 = 86400
+const PUBLIC_STALE_SECONDS = 900
+void PUBLIC_STALE_SECONDS_V1
 
 function withPublicCache(response: NextResponse, seconds: number): NextResponse {
   response.headers.set(

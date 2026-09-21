@@ -55,6 +55,12 @@ TIMEOUT="${TIMEOUT:-30}"
 LEAGUES="supply nolink sanply"
 
 # 리그마다 밟을 자리. 자주 보는 것부터 — 중간에 끊겨도 중요한 것은 이미 데워진다
+# ⚠ ★랭킹은 열 쪽까지 데운다★ (2026-09-22 · 사장님 QA)
+#
+#   > 「이규셕이랑 캔디걸 ★1,2페이지 쪽에 있는데 여기 또잇네★」
+#
+#   1·2쪽만 데우고 있었다. 3쪽부터는 아무도 안 밟아 ★하루 전 순위★ 를 내줬고,
+#   순위는 30분마다 다시 매겨지므로 ★같은 사람이 19등에도 111등에도★ 보였다.
 LEAGUE_PATHS="
 ranks/players?page=1&weapon=all
 ranks/clans
@@ -66,6 +72,16 @@ ranks/form
 ranks/players?page=1&weapon=sniper
 ranks/players?page=1&weapon=rifle
 ranks/players?page=2&weapon=all
+ranks/players?page=3&weapon=all
+ranks/players?page=4&weapon=all
+ranks/players?page=5&weapon=all
+ranks/players?page=6&weapon=all
+ranks/players?page=7&weapon=all
+ranks/players?page=8&weapon=all
+ranks/players?page=9&weapon=all
+ranks/players?page=10&weapon=all
+ranks/players?page=2&weapon=sniper
+ranks/players?page=2&weapon=rifle
 "
 
 # 리그와 상관없는 자리
