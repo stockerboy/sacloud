@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_RATING_CONSTANTS, V2_RATING_CONSTANTS } from '@sacloud/rating'
 import {
+  CLAN_RANK_BY,
   computeClanStandings,
   IPL_START_RATING,
   type StandingMatch,
@@ -50,7 +51,17 @@ describe('computeClanStandings — 승패', () => {
   })
 })
 
-describe('배치고사 — 10판을 채울 때까지 래더가 움직이지 않는다', () => {
+/*
+ * ⚠ ★2026-09-21 — 아래 두 시험은 「옛 Elo 방식의 성질」 이다★
+ *
+ *   사장님이 「★그냥 기록순으로만★ 랭킹내기고」 라 하셔서 `CLAN_RANK_BY = 'record'`
+ *   (승률을 판수로 누른 값)로 바꿨다. 기록순에서는 ★배치고사 중에도 점수가 움직이고★
+ *   ★`startRating` 이 쓰이지 않는다★ — 그래서 이 둘이 깨진다.
+ *
+ *   ★지우지 않는다★ (`CLAUDE.md` 1-4). Elo 로 되돌리면 그대로 다시 지켜져야 한다.
+ *   기록순의 성질은 아래 「기록순」 묶음이 따로 본다.
+ */
+describe.runIf(CLAN_RANK_BY === 'elo')('배치고사 — 10판을 채울 때까지 래더가 움직이지 않는다 (옛 Elo)', () => {
   it('배치고사 중에는 래더가 시작값 그대로다', () => {
     const games = Array.from({ length: PLACEMENT - 1 }, () => m('red'))
     const s = computeClanStandings(games)
@@ -111,9 +122,49 @@ describe('래더', () => {
     for (const [id, v] of a) expect(b.get(id)).toEqual(v)
   })
 
-  it('시작 래더를 바꿀 수 있다', () => {
+  it.runIf(CLAN_RANK_BY === 'elo')('시작 래더를 바꿀 수 있다 (옛 Elo)', () => {
     const s = computeClanStandings([m('red')], { startRating: 2500 })
     expect(s.get('A')!.rating).toBe(2500)
+  })
+})
+
+/**
+ * ★★기록순 — 사장님이 보시는 순서가 승률과 맞는가★★ (2026-09-21)
+ *
+ * > 「순위 이거 맞냐 진심」 — 48% 가 1위이고 63% 가 2위이던 화면을 보시고.
+ *
+ * 여기서 보는 것은 ★숫자가 아니라 성질★ 이다 — 상수를 바꿔도 그대로 통과한다.
+ */
+describe.runIf(CLAN_RANK_BY === 'record')('기록순 — 승률이 순서를 정한다', () => {
+  /** A 가 n 번 이기고 B 가 m 번 이긴 판들 */
+  function games(aWins: number, bWins: number): StandingMatch[] {
+    return [
+      ...Array.from({ length: aWins }, () => m('red')),
+      ...Array.from({ length: bWins }, () => m('blue')),
+    ]
+  }
+
+  it('★같은 판수면 많이 이긴 쪽이 위다★', () => {
+    const s = computeClanStandings(games(30, 10))
+    expect(s.get('A')!.rating).toBeGreaterThan(s.get('B')!.rating)
+  })
+
+  it('★48% 가 63% 를 못 넘는다★ — 그 화면이 다시 나오면 안 된다', () => {
+    /* 판수를 실제 C1 만큼 벌려 둔다 — 많이 뛴 쪽이 유리하더라도 넘지는 못한다 */
+    const many = computeClanStandings(games(72, 78)).get('A')!   // 48.0% · 150판
+    const few = computeClanStandings(games(26, 15)).get('A')!    // 63.4% · 41판
+    expect(many.rating).toBeLessThan(few.rating)
+  })
+
+  it('★판이 적으면 가운데로 눌린다★ — 두 판 이겨서 1등이 안 된다', () => {
+    const tiny = computeClanStandings(games(2, 0)).get('A')!     // 100% · 2판
+    const solid = computeClanStandings(games(120, 80)).get('A')! // 60% · 200판
+    expect(tiny.rating).toBeLessThan(solid.rating)
+  })
+
+  it('★전부 이겨도 전부 진 쪽보다는 위다★ — 방향이 뒤집히지 않는다', () => {
+    const all = computeClanStandings(games(20, 0))
+    expect(all.get('A')!.rating).toBeGreaterThan(all.get('B')!.rating)
   })
 })
 

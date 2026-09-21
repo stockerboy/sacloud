@@ -40,6 +40,31 @@ export interface StandingMatch {
   winnerSide: string
 }
 
+/**
+ * ★클랜 순위를 무엇으로 세우나★ (2026-09-21 사장님: 「그냥 기록순으로만」)
+ *
+ *   `'record'`  ★승률을 판수로 누른 값★ — 지금 이것
+ *   `'elo'`     옛 방식. 상대가 세면 더 받는다 (`CLAUDE.md` 1-4 · 한 글자로 돌아온다)
+ */
+type ClanRankBy = 'record' | 'elo'
+export const CLAN_RANK_BY = 'record' as ClanRankBy
+
+/**
+ * ★판수 수축★ — 판이 이만큼일 때 「제 승률 반, 리그 평균 반」 이 된다.
+ *
+ * 실측(C1 2026-09-21)으로 고른 값이다. 클랜 판수가 ★41 ~ 320판★ 으로 벌어져 있어서
+ * 수축이 없으면 ★41판짜리가 320판짜리를 넘는다.★ 40 이면 —
+ * ```
+ * grave   26승15패(41판)  63.4% → 56.8%
+ * igloo  131승89패(220판) 59.5% → 58.1%   ← 많이 뛴 쪽이 덜 깎인다
+ * ```
+ */
+export const CLAN_SHRINK_GAMES = 40
+/** 승률 50% 가 받는 점수. 화면은 100 으로 나눠 «30.0층» 으로 적는다 */
+export const CLAN_RATING_BASE = 3000
+/** 승률 1.0 과 0.0 의 거리. 65% → 3300 · 35% → 2700 */
+export const CLAN_RATING_SPREAD = 2000
+
 export interface ClanStanding {
   leagueClanId: string
   win: number
@@ -135,14 +160,49 @@ export function computeClanStandings(
     }
   }
 
+  /*
+   * ★★클랜 순위를 「기록순」 으로 센다★★ (2026-09-21 사장님)
+   *
+   * > 「★그냥 기록순으로만★ 랭킹내기고 c1에서도 기록순으로 매기면 된다」
+   * > 「순위 이거 맞냐 진심 그리고 어케 이렇게 되는거야」  ← 48% 가 1위인 화면을 보시고
+   *
+   * ── 무엇이 문제였나
+   *   클랜 점수는 ★Elo★ 였다 — 상대가 세면 더 받고 약하면 덜 받는다.
+   *   그래서 ★승률과 순서가 따로 놀았다.★ 실측(C1 2026-09-21) —
+   *   ```
+   *   1위 methodcrew 48.0% (72승78패)      6위 amaryllis 35.6%
+   *   2위 grave      63.4% (26승15패)      5위 vuvuzela  44.4%
+   *   ```
+   *   ★1위가 2위보다 승률이 15%p 낮다.★ 사람이 볼 수 있는 순서가 아니다.
+   *
+   * ── 새 셈 — 개인과 ★같은 원리★ 다 (승률을 판수로 누른다)
+   *   ```
+   *   눌린승률 = (승 + 리그평균승률 × C) / (판 + C)      C = CLAN_SHRINK_GAMES
+   *   점수     = 기준점 + (눌린승률 − 0.5) × SPREAD
+   *   ```
+   *   판이 적으면 리그 평균 쪽으로 끌려온다 — ★두 판 이겨서 1위★ 가 안 나온다.
+   *   (그 위에 랭킹 목록이 20판 문턱을 따로 건다 — 사장님: 「판수 없는 클랜 싫어해」)
+   *
+   * ⚠ ★옛 Elo 를 지우지 않았다★ (`CLAUDE.md` 1-4) — 위 루프가 그대로 돌고 있고,
+   *   `CLAN_RANK_BY = 'elo'` 한 글자로 돌아온다. DB 값도 다시 돌리면 복구된다.
+   */
+  const ranked = [...state.values()].filter((s) => s.games >= placementMatches)
+  const totalGames = ranked.reduce((n, s) => n + s.games, 0)
+  const leagueWinRate = totalGames > 0 ? ranked.reduce((n, s) => n + s.win, 0) / totalGames : 0.5
+
   const out = new Map<string, ClanStanding>()
   for (const [leagueClanId, s] of state) {
+    const shrunk =
+      s.games > 0
+        ? (s.win + leagueWinRate * CLAN_SHRINK_GAMES) / (s.games + CLAN_SHRINK_GAMES)
+        : leagueWinRate
+    const record = CLAN_RATING_BASE + (shrunk - 0.5) * CLAN_RATING_SPREAD
     out.set(leagueClanId, {
       leagueClanId,
       win: s.win,
       lose: s.lose,
       games: s.games,
-      rating: roundHalfUp(s.rating),
+      rating: roundHalfUp(CLAN_RANK_BY === 'record' ? record : s.rating),
       placement: s.games < placementMatches,
       placementPlayed: Math.min(s.games, placementMatches),
     })
