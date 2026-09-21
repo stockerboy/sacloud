@@ -48,6 +48,13 @@ const WEAPON_LABEL: Readonly<Record<number, string>> = { 0: '라플', 1: '스나
 export interface PlayerHeaderV3Props {
   data: LeaguePlayerDetail
   infoHref: string
+  /**
+   * ★정보갱신 손잡이★ (2026-09-21 사장님: 「정보갱신 버튼을 여기에도 만들어」).
+   * 안 주면 단추를 ★안 그린다★ — 눌러도 아무 일 없는 단추를 두지 않는다.
+   */
+  onRenew?: () => void
+  /** 갱신이 도는 중인가 — 단추가 「갱신중…」 으로 바뀐다 */
+  renewing?: boolean
   seasonLabel: string
   /** 주무기 (0 라플 · 1 스나) — 첫 화면의 무기 칩이 이것부터 선다 */
   mainWeapon: number | null
@@ -243,7 +250,7 @@ const DIM = '#4a5670'
 /** ★「통합」 을 나타내는 구간 번호★ — 진짜 구간은 1부터라 0을 쓴다 (2026-09-20) */
 const ALL_TIER = 0
 
-export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true }: PlayerHeaderV3Props) {
+export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true, onRenew, renewing }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
   /* 이어 붙은 병영수첩 계정이 없으면 null — 아래에서 단추를 안 그린다 */
   const barracksHref = barracksPlayerUrl(data.player.barracks_usn)
@@ -640,6 +647,31 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             </a>
           )}
           <GhostButton href={infoHref}>기본정보</GhostButton>
+          {/*
+            ★정보갱신★ (2026-09-21 사장님: 「그리규 ★정보갱신 버튼을 여기에도★ 만들어」)
+            누르면 그 자리에서 병영을 읽어 ★닉네임과 소속★ 을 고친다.
+            ⚠ 손잡이를 안 주면 안 그린다 — 있는 척하지 않는다.
+          */}
+          {onRenew === undefined ? null : (
+            <button
+              type="button"
+              onClick={onRenew}
+              disabled={renewing === true}
+              style={{
+                fontSize: 11.5,
+                color: renewing === true ? '#6b7794' : '#a4b6c8',
+                border: '1px solid #24384c',
+                borderRadius: V3.radiusCtl,
+                background: '#0e1a28',
+                padding: '6px 13px',
+                whiteSpace: 'nowrap',
+                cursor: renewing === true ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {renewing === true ? '갱신중…' : '정보갱신'}
+            </button>
+          )}
         </span>
       </div>
 

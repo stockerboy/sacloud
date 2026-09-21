@@ -10,7 +10,8 @@
  */
 import { use } from 'react'
 import { usePathname } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRefresh } from '@/lib/useRefresh'
 import { PillTabs, PlayerHeaderV3, ProfileEmpty, ProfileSkeleton, mainWeaponFromStats, useSeasonLabel } from '@sacloud/ui'
 import { leagueScreen } from '@sacloud/contract'
 import { apiGet } from '@/lib/api'
@@ -42,6 +43,23 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
   const season = useSeasonLabel()
   /* 핵의심은 머리 카드 안에 있다 (2026-09-11 목업) — 훅은 조건 없이 부른다 */
   const report = usePlayerReport(playerId, data?.report_count ?? 0)
+  /*
+   * ★정보갱신★ (2026-09-21 사장님: 「정보갱신 버튼을 여기에도 만들어」).
+   *
+   *   누르면 병영을 읽어 ★닉네임과 소속★ 을 고친다. 고친 값이 화면에 바로 보이도록
+   *   ★몇 번 나눠 다시 읽는다★ — 서버가 병영을 읽는 데 2~3초가 걸리기 때문이다.
+   *   한 번만 읽으면 ★아직 안 고쳐진 값★ 을 받아 「안 됐네」 로 보인다.
+   */
+  const refresh = useRefresh('playerRenew', { playerId })
+  const queryClient = useQueryClient()
+  const onRenew = () => {
+    refresh.run()
+    for (const wait of [2500, 5000, 9000]) {
+      window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ['league', leagueSlug, 'player', playerId] })
+      }, wait)
+    }
+  }
   return (
     <div>
       {data ? (
@@ -54,6 +72,8 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
             seasonLabel={`SEASON ${(season ?? 'CLOUD 0').toUpperCase()}`}
             mainWeapon={data.hex?.weapon ?? mainWeaponFromStats(data.weapon_stats)}
             report={report}
+            onRenew={onRenew}
+            renewing={refresh.state === 'pending'}
           />
           <PillTabs tabs={leaguePlayerTabs(leagueSlug, playerId)} current={pathname} />
         </div>

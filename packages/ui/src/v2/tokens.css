@@ -1477,8 +1477,78 @@
    ────────────────────────────────────────────────────────────────────────── */
 .v3-phead-hex { display: none; }
 
-/* ★PC 전용 칸★ — 폰에서는 안 그린다 (2026-09-21) */
+/* ★PC 전용 칸★ — 폰에서는 안 그린다 (2026-09-21 낮) */
 .v3-kpi-pconly { display: none !important; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ★★폰에서도 세로 일렬★★ (2026-09-21 밤 사장님)
+
+   > 「개인정보를 ★모바일에서도 오른쪽같이 세로로 일열로 깔끔하고 큼직하게★ 보이게 바꿔」
+
+   ── 무엇이 문제였나
+     폰은 네 칸 가로 격자라 ★한 칸이 90px★ 이었다. 「승률 154승 1…」 처럼
+     ★보조 숫자가 잘리고★, 값 글자도 작아 한눈에 안 들어왔다.
+
+   ── 이제
+     PC 와 ★같은 꼴★ 이다 — 한 줄에 「라벨 → 값」 하나. 값은 22px 로 큼직하다.
+     ★PC 전용 칸(래더·포지션·판킬)도 폰에서 같이 보인다★ — 세로라 자리가 넉넉하다.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 899px) {
+  .v3-phead-kpi {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .v3-phead-kpi > .v3-phead-cell {
+    border-right: 0 !important;
+    border-bottom: 1px solid #18233a;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    padding: 9px 16px !important;
+    gap: 10px !important;
+  }
+  /* 라벨을 값 왼쪽에 붙인다 */
+  .v3-phead-kpi > .v3-phead-cell > span:first-child {
+    flex-direction: row-reverse !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+  }
+  .v3-phead-kpi > .v3-phead-cell > span:first-child > span:first-child {
+    font-size: 14px !important;
+    letter-spacing: 0 !important;
+    color: #9aa6bf !important;
+  }
+  .v3-phead-kpi > .v3-phead-cell > span:first-child > span:nth-child(2) {
+    font-size: 12px !important;
+    color: #8e99ba !important;
+  }
+  .v3-phead-kpi > .v3-phead-cell > span:last-child {
+    min-width: 104px !important;
+    justify-content: flex-end !important;
+    flex: none !important;
+  }
+  .v3-phead-kpi > .v3-phead-cell > span:last-child > span:first-child {
+    font-size: 22px !important;
+  }
+  /* ★PC 전용 칸도 폰에서 보인다★ — 세로라 자리가 있다 */
+  .v3-phead-kpi > .v3-kpi-pconly {
+    display: flex !important;
+  }
+  /* MVP · 핵의심도 같은 줄 모양으로 */
+  .v3-phead-foot {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .v3-phead-foot > div {
+    border-right: 0 !important;
+    border-bottom: 1px solid #18233a;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    padding: 9px 16px !important;
+  }
+  .v3-phead-foot > div > span:last-child {
+    min-width: 104px !important;
+    justify-content: flex-end !important;
+  }
+}
 
 @media (min-width: 900px) {
   /*
