@@ -331,23 +331,18 @@ export async function runRenewRequests(
       done.push(job.id)
       continue
     }
-    const no = await prisma.barracksClanNumber.findFirst({
-      where: { clanId: clan.id },
-      orderBy: { linkedAt: 'desc' },
-      select: { clanNo: true },
-    })
-    if (no === null) {
-      /* ★번호를 모르면 명부를 못 받는다★ — 매시 도는 `barracks-roster` 가 채워 준다 */
-      result.noAccount += 1
-      done.push(job.id)
-      continue
-    }
-
+    /*
+     * ⚠ ★명부는 `clan_id`(주소) 로 부른다★ — 2026-09-21 실측으로 고쳤다.
+     *
+     *   처음에 `clan_no`(클랜 번호) 로 보냈더니 ★클랜 다섯 건이 전부 실패★ 했다.
+     *   매시 도는 `barracks-roster` 는 ★`{ clan_id: slug }`★ 로 보내고 잘 받는다.
+     *   ★도는 것과 같은 모양으로 맞춘다.★ 번호도 필요 없어졌다.
+     */
     let res: CurlResult
     try {
       res = await callBarracks(
         '/api/ClanHome/GetClanUserList',
-        JSON.stringify({ clan_no: no.clanNo }),
+        JSON.stringify({ clan_id: clan.slug }),
       )
     } catch {
       result.failed += 1
