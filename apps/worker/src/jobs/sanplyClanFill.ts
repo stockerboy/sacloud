@@ -18,19 +18,27 @@ import { log } from '../lib/log.js'
  *   ```
  *   ★경기는 받아 놓고 클랜이 없어서 통째로 버리고 있었다.★
  *
- * ── ★3rd.supply 를 안 봐도 된다★
+ * ── ⚠ ★원문에는 클랜 주소가 없다★ (2026-09-21 실측으로 알았다)
  *
- *   병영 경기 원문(`BarracksClanMatchRaw`)이 ★클랜 이름 · 주소 · 마크★ 를 다 준다.
- *   원본 사이트를 긁지 않고 ★우리가 이미 받아 둔 것★ 으로 채운다.
+ *   ```
+ *   red_clan_name · red_clan_mark1/2   ← 있다
+ *   red_clan_id                        ← ★없다★
+ *   clan_no                            ← 그 경기를 ★가져온 클랜★ 것 하나뿐
+ *   ```
+ *   그래서 ★상대 클랜의 주소를 모른다.★ 이름만 안다.
+ *
+ * ── 그래서 이 잡이 하는 일은 딱 여기까지다
+ *
+ *   ★이미 우리가 아는 클랜★ 을 그 리그 명단에 올린다. 그뿐이다.
+ *   ★모르는 클랜은 만들지 않고 세어서 알린다★ — `＃chasepIay`(대문자 I)와
+ *   `＃chaseplay`(소문자 l)처럼 눈으로 구별이 안 되는 이름이 있어서, 이름만 보고
+ *   만들면 ★가짜 클랜이 하나 더 생긴다.★ (D-221 의 정신)
+ *   그 클랜들의 주소는 ★병영에서 따로 찾아와야 한다.★
  *
  * ── 지키는 것
  *
- *   ⚠ ★이름으로 클랜을 잇지 않는다★ — 주소(`clan_id`)로 찾고, 없을 때만 만든다.
- *     `＃chasepIay`(대문자 I)와 `＃chaseplay`(소문자 l) 처럼 눈으로 구별이 안 되는
- *     이름이 있다 (`clanLeagueHidden.ts` 의 경고).
- *   ⚠ ★빈 마크로 덮지 않는다★ (D-106).
  *   ⚠ ★이미 있는 클랜의 이름·마크를 여기서 고치지 않는다★ — 그 일은
- *     `clan-mark-fresh` · `clan-name-from-matches` 가 한다. 여기는 ★없는 것만 만든다.★
+ *     `clan-mark-fresh` · `clan-name-from-matches` 가 한다.
  *   ⚠ ★기록을 만들지 않는다★ — 명단(`LeagueClan`)만 채운다. 경기 기록은
  *     `battlelog-lineup` 이 다음 판에 알아서 만든다.
  *
@@ -41,9 +49,6 @@ import { log } from '../lib/log.js'
  * ```
  */
 
-/** 마크를 안 단 클랜이 쓰는 그림 — ★이것으로 채우지 않는다★ */
-const EMPTY_MARK = 'empty-clanmark'
-
 export interface SanplyClanFillResult {
   /** 어느 리그에 채웠나 */
   league: string
@@ -51,7 +56,7 @@ export interface SanplyClanFillResult {
   strandedMatches: number
   /** 그 경기들에 나온 클랜 수 */
   seenClans: number
-  /** 새로 만든 클랜 */
+  /** ★우리가 모르는 클랜★ — 이름만 보고 만들지 않는다. 병영에서 주소를 찾아와야 한다 */
   createdClans: number
   /** 리그 명단에 새로 올린 클랜 */
   joined: number
@@ -62,7 +67,6 @@ export interface SanplyClanFillResult {
 }
 
 interface RawSide {
-  slug: string | null
   name: string | null
   bg: string | null
   front: string | null
@@ -73,9 +77,6 @@ const trimmed = (v: unknown): string | null => {
   const s = v.trim()
   return s === '' ? null : s
 }
-
-const usableMark = (url: string | null): url is string =>
-  url !== null && url.trim() !== '' && !url.includes(EMPTY_MARK)
 
 export async function runSanplyClanFill(
   options: { confirm?: boolean; leagueSlug?: string } = {},
@@ -110,7 +111,6 @@ export async function runSanplyClanFill(
    */
   const rows = await prisma.$queryRaw<RawSide[]>`
     SELECT DISTINCT
-           r."payload"->>'red_clan_id'     AS slug,
            r."payload"->>'red_clan_name'   AS name,
            r."payload"->>'red_clan_mark1'  AS bg,
            r."payload"->>'red_clan_mark2'  AS front
@@ -122,7 +122,6 @@ export async function runSanplyClanFill(
        AND m."lineupSkipReason" = 'clan_unmapped'
     UNION
     SELECT DISTINCT
-           r."payload"->>'blue_clan_id'    AS slug,
            r."payload"->>'blue_clan_name'  AS name,
            r."payload"->>'blue_clan_mark1' AS bg,
            r."payload"->>'blue_clan_mark2' AS front
@@ -144,43 +143,37 @@ export async function runSanplyClanFill(
   `
   result.strandedMatches = stranded[0]?.n ?? 0
 
-  /* 주소가 있는 것만 쓴다 — ★이름으로 잇지 않는다★ */
+  /*
+   * ⚠ ★원문에는 클랜 주소(`clan_id`)가 없다★ — 2026-09-21 실측으로 알았다.
+   *   `red_clan_name` · `red_clan_mark1/2` 뿐이고, 주소는 ★그 경기를 가져온 클랜★
+   *   (`subject`) 것 하나만 안다. 상대 클랜의 주소는 원문이 안 준다.
+   *
+   *   그래서 이 잡은 ★이미 우리가 아는 클랜을 명단에 올리는 데까지★ 만 한다.
+   *   ★없는 클랜을 이름만 보고 만들지 않는다★ — `＃chasepIay`(대문자 I)와
+   *   `＃chaseplay`(소문자 l)처럼 눈으로 구별이 안 되는 이름이 있어서,
+   *   이름으로 만들면 ★가짜 클랜이 하나 더 생긴다.★ (D-221 의 정신)
+   *
+   *   모르는 클랜은 ★세어서 알린다★ — 병영에서 주소를 찾아오는 일은 따로 해야 한다.
+   */
   const sides = rows
-    .map((r) => ({
-      slug: trimmed(r.slug),
-      name: trimmed(r.name),
-      bg: trimmed(r.bg),
-      front: trimmed(r.front),
-    }))
-    .filter((r): r is { slug: string; name: string; bg: string | null; front: string | null } =>
-      r.slug !== null && r.name !== null,
-    )
+    .map((r) => ({ name: trimmed(r.name), bg: trimmed(r.bg), front: trimmed(r.front) }))
+    .filter((r): r is { name: string; bg: string | null; front: string | null } => r.name !== null)
 
-  /* 같은 클랜이 여러 경기에 나온다 — 주소로 한 번만 담는다 */
-  const bySlug = new Map<string, (typeof sides)[number]>()
-  for (const s of sides) if (!bySlug.has(s.slug)) bySlug.set(s.slug, s)
-  result.seenClans = bySlug.size
+  /* 같은 클랜이 여러 경기에 나온다 — 이름으로 한 번만 담는다 */
+  const byName = new Map<string, (typeof sides)[number]>()
+  for (const s of sides) if (!byName.has(s.name)) byName.set(s.name, s)
+  result.seenClans = byName.size
 
-  for (const [slug, side] of bySlug) {
-    let clan = await prisma.clan.findUnique({ where: { slug }, select: { id: true, name: true } })
+  for (const [name, side] of byName) {
+    void side
+    const clan = await prisma.clan.findFirst({ where: { name }, select: { id: true, name: true } })
 
     if (clan === null) {
+      /* ★우리가 모르는 클랜★ — 이름만 보고 만들지 않는다. 세어서 알린다 */
       result.createdClans += 1
-      if (result.samples.length < 25) result.samples.push(`새 클랜 ${side.name} (${slug})`)
-      if (confirm) {
-        clan = await prisma.clan.create({
-          data: {
-            slug,
-            name: side.name,
-            /* ⚠ ★빈 마크로 채우지 않는다★ — 모르면 `null` 이고 화면이 구름을 그린다 */
-            markBgUrl: usableMark(side.bg) && usableMark(side.front) ? side.bg : null,
-            markFrontUrl: usableMark(side.bg) && usableMark(side.front) ? side.front : null,
-          },
-          select: { id: true, name: true },
-        })
-      }
+      if (result.samples.length < 25) result.samples.push(`★모르는 클랜★ ${name}`)
+      continue
     }
-    if (clan === null) continue
 
     const has = await prisma.leagueClan.findFirst({
       where: { leagueId: league.id, clanId: clan.id },
@@ -202,7 +195,7 @@ export async function runSanplyClanFill(
 
   log(
     `${leagueSlug} 클랜 채움 — 버려진 경기 ${result.strandedMatches} · 나온 클랜 ${result.seenClans} · ` +
-      `새로 만듦 ${result.createdClans} · 명단에 올림 ${result.joined} · 이미있음 ${result.already}` +
+      `★모르는 클랜 ${result.createdClans}★ · 명단에 올림 ${result.joined} · 이미있음 ${result.already}` +
       (confirm ? '' : ' (미리보기)'),
   )
   for (const s of result.samples) log(`  ${s}`)
