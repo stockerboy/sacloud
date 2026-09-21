@@ -70,9 +70,13 @@ type Row = LeaguePlayerDetail['tier_breakdown'][number]
 
 const cellStyle: CSSProperties = { position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: '14px 20px', minWidth: 0 }
 
-function Kpi({ label, value, sub, color, extra }: { label: string; value: string; sub?: ReactNode; color: string; extra?: ReactNode }) {
+function Kpi({ label, value, sub, color, extra, className }: { label: string; value: string; sub?: ReactNode; color: string; extra?: ReactNode; className?: string }) {
   return (
-    <div style={{ ...cellStyle, borderRight: `1px solid ${V3.rowDivider}` }} className="v3-phead-cell">
+    <div
+      style={{ ...cellStyle, borderRight: `1px solid ${V3.rowDivider}` }}
+      /* ★`v3-kpi-pconly`★ 는 900px 미만에서 이 칸을 감춘다 (2026-09-21) */
+      className={className ? `v3-phead-cell ${className}` : 'v3-phead-cell'}
+    >
       <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
         <span style={{ fontSize: 10.5, color: V3.textGhost, letterSpacing: '.08em', whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
         {sub ? <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</span> : null}
@@ -571,7 +575,12 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
       <div className="v3-phead-body">
       {axes.length > 0 ? (
         <div className="v3-phead-hex">
-          <Hexagon axes={axes} id={`pheadHex-${data.player.id}`} />
+          {/*
+            ★크게★ (2026-09-21 사장님: 「왼쪽에 ★더 크게★ 육각그래프」).
+            ⚠ 이 칸은 ★900px 이상에서만 보인다★ (`.v3-phead-hex` 가 폰에서 `display:none`) —
+              그래서 폰 걱정 없이 키울 수 있다.
+          */}
+          <Hexagon axes={axes} id={`pheadHex-${data.player.id}`} size={392} />
         </div>
       ) : null}
       <div className="v3-phead-stats">
@@ -591,6 +600,38 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           감추는 것이 아니라 ★어느 쪽이 본업인지★ 를 밝히는 것이다.
       */}
       <div className="v3-phead-kpi" style={{ position: 'relative', display: 'grid', gridTemplateColumns: showsKd ? 'repeat(4,minmax(0,1fr))' : 'repeat(3,minmax(0,1fr))', borderTop: '1px solid #18233a' }}>
+        {/*
+          ★★PC 는 세로 배열★★ (2026-09-21 사장님: 「오른쪽에 ★래더 포지션 승률 킬뎃
+            판킬 mvp 순위 핵의심★ 이 순서로 세로 배열 해줘 좀 잘 보이고 한눈에 들어오게」)
+
+          ── ★폰은 지금 그대로다★
+            육각형이 폰에서는 안 나오므로 「왼쪽 그림 · 오른쪽 세로」 는 ★PC 이야기★ 다.
+            아래 세 칸(`v3-kpi-pconly`)은 ★900px 이상에서만★ 나온다 — 폰의 네 칸 격자를
+            일곱 칸으로 만들면 줄이 어긋난다.
+          ── 세로로 눕히는 일은 CSS 가 한다 (`tokens.css` 의 `.v3-phead-body .v3-phead-kpi`).
+        */}
+        <Kpi
+          className="v3-kpi-pconly"
+          label="래더"
+          value={showsRating ? formatRatingPoint(data.rating) : '-'}
+          sub={null}
+          color={V3.textStrong}
+        />
+        <Kpi
+          className="v3-kpi-pconly"
+          label="포지션"
+          value={weapon === null ? '-' : weapon === 1 ? '스나' : '라플'}
+          sub={
+            sel === null
+              ? null
+              : weapon === 1
+                ? `${fmt(sel.sniper_games)}판`
+                : weapon === 0
+                  ? `${fmt(sel.rifle_games)}판`
+                  : null
+          }
+          color={weapon === null ? V3.textMuted : V3.textStrong}
+        />
         <Kpi
           label="승률"
           value={pct1(winRate)}
@@ -643,6 +684,13 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
          *   ★숫자는 한 글자도 안 바뀐다★ — 138 은 그대로다.
          *   옛 문구가 필요하면 아래 `RANK_SUB_V1` 을 쓴다 (`CLAUDE.md` 1-4).
          */}
+        <Kpi
+          className="v3-kpi-pconly"
+          label="판킬"
+          value={perMatch === null ? '-' : perMatch.toFixed(1)}
+          sub={null}
+          color={perMatch === null ? V3.textMuted : V3.textStrong}
+        />
         <Kpi
           label="순위"
           value={rank === null ? '-' : `${fmt(rank)}위`}

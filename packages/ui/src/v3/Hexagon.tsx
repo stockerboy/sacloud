@@ -55,10 +55,19 @@ export function Hexagon({
   axes,
   id = 'hex',
   overlay = null,
+  size,
 }: {
   axes: readonly HexAxisView[]
   id?: string
   overlay?: HexOverlay | null
+  /**
+   * ★가로 폭★ (2026-09-21 사장님: 「★왼쪽에 더 크게 육각그래프★」).
+   *
+   *   없으면 지금까지와 같은 300px 다. 주면 그 폭에 맞춰 ★통째로★ 늘어난다 —
+   *   `viewBox` 가 함께 늘어나므로 ★글자도 같은 비율로 커진다.★
+   *   ⚠ ★줄이지는 마라★ — 파일 머리에 적힌 대로 8px 글자가 안 읽히게 된다.
+   */
+  size?: number
 }) {
   /* ★가운데에서 바깥으로 자라난다★ (2026-09-11 사장님: «비슷한 느낌으로 육각그래프도 그려지게») */
   const svgRef = useRef<SVGSVGElement>(null)
@@ -79,7 +88,16 @@ export function Hexagon({
           hexPoint(i, Math.max(0, Math.min(100, overlay.values[i] ?? 0)) / 100).join(','),
         ).join(' ')
   return (
-    <svg ref={svgRef} viewBox={`0 0 ${HEX.w} ${HEX.h}`} style={{ width: HEX.w, height: HEX.h, flex: `0 0 ${HEX.w}px`, display: 'block' }}>
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${HEX.w} ${HEX.h}`}
+      style={{
+        width: size ?? HEX.w,
+        height: (size ?? HEX.w) * (HEX.h / HEX.w),
+        flex: `0 0 ${size ?? HEX.w}px`,
+        display: 'block',
+      }}
+    >
       <defs>
         {/* 보라 → 파랑 → 분홍 (사장님 참고 «Dual Tone») */}
         <linearGradient id={`${id}Fill`} x1="0%" y1="0%" x2="100%" y2="100%">
