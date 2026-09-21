@@ -37,6 +37,7 @@ import { rateLimitSweep } from './jobs/rateLimitSweep.js'
 import { runClanMarkFresh } from './jobs/clanMarkFresh.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runRenewRequests } from './jobs/renewRequests.js'
+import { runRenewServer } from './renewServer.js'
 import { runCplSetup } from './jobs/cplSetup.js'
 import { runNickFromBarracks } from './jobs/nickFromBarracks.js'
 import { runSanplyClanFill } from './jobs/sanplyClanFill.js'
@@ -3948,6 +3949,15 @@ async function main(): Promise<number> {
       /* ★CPL 리그와 참가 클랜 24곳★ (2026-09-21 사장님). 기록은 한 줄도 안 만든다 */
       const r = await runCplSetup({ confirm: boolFlag(args, 'confirm') })
       return r.missing.length > 0 ? 1 : 0
+    }
+
+    case 'renew-server': {
+      /*
+       * ★「정보갱신」 수신구★ (2026-09-21 사장님: 「정보갱신하면 좀 ★바로바로★
+       *   정보 바꿔줘 병영대로 한참뒤에 바뀌니까 짜증나네」).
+       *   웹이 여기에 한 번 물어보면 그 자리에서 병영을 읽고 고치고 답한다.
+       */
+      return runRenewServer()
     }
 
     case 'renew-requests': {

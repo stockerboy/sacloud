@@ -225,8 +225,9 @@ export async function runRenewRequests(
   }
 
   /* 병영수첩 주소 → 우리 클랜. ★우리에게 없는 클랜은 만들지 않는다★ (D-106) */
-  const clanRows = await prisma.clan.findMany({ select: { id: true, slug: true, name: true } })
-  const clanBySlug = new Map(clanRows.map((c) => [c.slug, c]))
+  const clanRows = await prisma.clan.findMany({
+    select: { id: true, slug: true, name: true, markBgUrl: true, markFrontUrl: true },
+  })
 
   /* 집계하는 리그 — 소속은 이 리그들에만 적는다 */
   const leagues = await prisma.league.findMany({
@@ -296,8 +297,9 @@ export async function runRenewRequests(
       }
 
       let nick: string | null
-      let clanSlug: string | null
       let clanName: string | null
+      let markBg: string | null
+      let markFront: string | null
       try {
         const doc = JSON.parse(res.body) as {
           result?: {
@@ -305,13 +307,16 @@ export async function runRenewRequests(
               user_nick?: string | null
               clan_name?: string | null
               clan_id?: string | null
+              clan_mark1?: string | null
+              clan_mark2?: string | null
             }
           }
         }
         const info = doc.result?.characterInfo
         nick = trimmed(info?.user_nick)
         clanName = trimmed(info?.clan_name)
-        clanSlug = trimmed(info?.clan_id)
+        markBg = trimmed(info?.clan_mark1)
+        markFront = trimmed(info?.clan_mark2)
       } catch {
         await noteFailure(job, '병영수첩을 못 불렀다')
         await sleep(delay)
@@ -333,11 +338,42 @@ export async function runRenewRequests(
        *   ⚠ 병영수첩이 ★무소속이라고 답하면 비운다★ — 클랜을 나간 것이 사실이다.
        *     「모르면 그대로」 와 다르다. 이건 ★없다고 말한 것★ 이다.
        */
-      const clan = clanSlug === null ? null : (clanBySlug.get(clanSlug) ?? null)
+      /*
+       * ★★클랜은 ★이름★ 으로 찾는다★★ (2026-09-21 실측으로 알았다)
+       *
+       * ── 왜 여태 안 됐나
+       *   병영 프로필의 `clan_id` 를 ★우리 주소(slug)★ 로 알고 찾고 있었다. 그런데 —
+       *   ```
+       *   clan_id   "042222741"        ← ★병영 안에서만 쓰는 번호★
+       *   우리 slug  "ferwfwfwfwf"      ← 전혀 다른 값
+       *   clanNo    "150531000663"     ← 이것도 아니다
+       *   ```
+       *   ★못 찾으니 「리그밖 클랜」 으로 넘기고 소속을 영영 안 고쳤다.★
+       *   사장님이 「정보갱신 안된다」 고 하신 까닭이 이것이다.
+       *
+       * ── 이제
+       *   ★`clan_name` 으로 찾는다.★ 우리 이름도 병영에서 온 값이라 그대로 맞는다.
+       *   ⚠ 같은 이름 클랜이 ★아홉 쌍★ 있다 (grave 둘 등). 그때는 ★마크로 가린다★ —
+       *     병영이 `clan_mark1/2` 를 같이 주기 때문이다.
+       *   ⚠ 마크로도 못 가리면 ★안 고친다★ — 틀린 클랜에 넣느니 그대로 둔다 (D-106).
+       */
+      let clan: { id: string; slug: string; name: string } | null = null
+      if (clanName !== null) {
+        const sameName = clanRows.filter((c) => c.name === clanName)
+        if (sameName.length === 1) {
+          clan = sameName[0] ?? null
+        } else if (sameName.length > 1) {
+          const byMark = sameName.filter(
+            (c) => c.markBgUrl === markBg && c.markFrontUrl === markFront,
+          )
+          clan = byMark.length === 1 ? (byMark[0] ?? null) : null
+          if (clan === null) changes.push(`같은 이름 ${sameName.length}곳 — 못 가림`)
+        }
+      }
       const nextClanId = clan === null ? null : clan.id
-      if (clanSlug !== null && clan === null) {
+      if (clanName !== null && clan === null) {
         /* 우리 리그 밖 클랜이다 — ★없는 클랜을 지어내지 않는다★ */
-        changes.push(`리그밖 클랜 ${clanName ?? clanSlug}`)
+        changes.push(`리그밖 클랜 ${clanName}`)
       } else if (leagueIds.length > 0) {
         const mine = await prisma.leaguePlayer.findMany({
           where: { playerId: player.id, leagueId: { in: leagueIds } },

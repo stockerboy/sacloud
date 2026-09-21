@@ -66,4 +66,35 @@ export async function enqueueRenewJob(input: {
       nextRetryAt: null,
     },
   })
+
+  /* ★큐에 넣자마자 바로 치워 달라고 부탁한다★ — 실패해도 예약이 뒤에서 한다 */
+  await pokeRenewServer()
+}
+
+/**
+ * ★★VPS 수신구를 콕 찔러 본다★★ (2026-09-21 사장님: 「정보갱신하면 좀 ★바로바로★
+ * 정보 바꿔줘 병영대로 한참뒤에 바뀌니까 짜증나네」)
+ *
+ * ── 왜 이 길인가
+ *   병영수첩은 ★여기(Vercel)에서 부르면 403★ 이다. VPS 안에서만 열린다.
+ *   그래서 ★VPS 에 작은 수신구★ 를 두고 여기서 한 번 찔러 준다 —
+ *   그 자리에서 병영을 읽고 고치므로 ★누르면 2~3초★ 다.
+ *
+ * ── ★실패해도 조용히 넘어간다★
+ *   수신구가 꺼져 있거나 느려도 ★큐는 이미 들어가 있다★ — 1분 예약이 뒤에서 한다.
+ *   빠른 길이 막혔다고 ★사용자에게 오류를 보이지 않는다.★
+ *
+ * ⚠ 주소·암호가 없으면 ★아무것도 안 한다★ (`RENEW_HOOK_URL` · `RENEW_TOKEN`).
+ */
+async function pokeRenewServer(): Promise<void> {
+  const url = process.env.RENEW_HOOK_URL?.trim()
+  const token = process.env.RENEW_TOKEN?.trim()
+  if (!url || !token) return
+  try {
+    /* ★오래 기다리지 않는다★ — 화면이 단추 하나에 묶이면 안 된다 */
+    const stop = AbortSignal.timeout(2500)
+    await fetch(url, { method: 'POST', headers: { 'x-renew-token': token }, signal: stop })
+  } catch {
+    /* 조용히 넘어간다 — 예약이 뒤에서 한다 */
+  }
 }
