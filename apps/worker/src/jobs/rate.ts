@@ -23,6 +23,7 @@ import {
   CLAN_FORMULA_VERSION,
   averageMembers,
   clanDailyDecay,
+  CLAN_CONFIDENCE_FULL_AT,
   compositionScore,
   confidenceFor,
   constantsForSeason,
@@ -795,7 +796,10 @@ export async function runRate(
     const played = clanMatches.get(leagueClanId) ?? 0
     const trust = constants.v2?.disableDisplayConfidence
       ? 1
-      : confidenceFor(played, constants)
+      : /* ★클랜은 판수가 개인의 십분의 일이라 기준을 따로 둔다★ (2026-09-21).
+           개인 기준(150판)을 그대로 쓰면 PL 클랜 절반이 눌려 ★2승2패도 80승40패도
+           다 3,000점★ 으로 뭉친다 — 사장님 화면에서 그렇게 보였다 */
+        confidenceFor(played, { ...constants, confidenceFullAt: CLAN_CONFIDENCE_FULL_AT })
     const trusted = constants.initialRating + (internal - constants.initialRating) * trust
     clanFinal.set(leagueClanId, {
       display: roundHalfUp(trusted + composition - penalty),

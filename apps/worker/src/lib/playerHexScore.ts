@@ -484,6 +484,44 @@ export function mainWeaponOf(input: { sniperGames: number; rifleGames: number })
   return null
 }
 
+/**
+ * ★★주무기 문턱을 못 넘겨도 점수를 매긴다★★ (2026-09-21 사장님이 «가» 를 고르심)
+ *
+ * > 「(가) 주무기를 못 정해도 ★통합 기준으로 점수를 매겨★ 전부 랭킹에 올린다」
+ *
+ * ── 무엇이 문제였나 (실측 2026-09-21)
+ *
+ *   랭킹은 ★주무기가 정해진 사람만★ 줄을 세운다 (`weapon IS NOT NULL`).
+ *   그런데 `mainWeaponOf` 는 ★10판(`MIN_WEAPON_GAMES`) 넘게 한 무기★ 라야 정한다.
+ *   그래서 판이 적은 사람은 ★점수가 아예 안 만들어지고 랭킹에서 통째로 빠졌다.★
+ *   ```
+ *   IPL  2,257명 중 ★1,002명(44%)★ 이 이래서 없었다
+ *   열산 1,069명 중 ★  809명(76%)★
+ *   PL     662명 중 ★  463명(70%)★
+ *   C1     499명 중 ★  286명(57%)★
+ *   ```
+ *   사장님이 「순위 전부 다 공개해」 하셨는데 ★앞단에서 절반이 막혀 있었다.★
+ *   (문턱 `rankMinGames` 는 걷었지만 그건 ★그다음 관문★ 이었다)
+ *
+ * ── 이제
+ *
+ *   문턱을 못 넘기면 ★판이 더 많은 쪽★ 으로 잰다. 1판이라도 라플로 뛰었으면 라플수다 —
+ *   ★지어내는 것이 아니라 사실 그대로★ 다.
+ *   ⚠ ★둘 다 0판이면 여전히 `null`★ 이다 — 무기를 아예 모르는 사람까지 정하지 않는다 (D-106).
+ *   ⚠ 판이 적으면 ★판수 신뢰★ 가 점수를 기준점 쪽으로 누른다. 위로는 못 올라온다.
+ *
+ * ⚠ 되돌리려면 `WEAPON_FALLBACK_ON` 을 `false` 로 (`CLAUDE.md` 1-4).
+ */
+export const WEAPON_FALLBACK_ON = true as boolean
+
+export function scoringWeaponOf(input: { sniperGames: number; rifleGames: number }): 0 | 1 | null {
+  const main = mainWeaponOf(input)
+  if (main !== null) return main
+  if (!WEAPON_FALLBACK_ON) return null
+  if (input.sniperGames === 0 && input.rifleGames === 0) return null
+  return input.sniperGames > input.rifleGames ? 1 : 0
+}
+
 /** 축 원값 — 표본이 모자라면 null. 0 으로 채우지 않는다 (D-106) */
 /**
  * ★점수 평균★ — 점수 합 ÷ 라운드 수. 화면 눈금이 0~100 이라 ×10 해서 올린다.
@@ -874,7 +912,7 @@ export function foldPlayerHex(
     save: [], duel: [], chance: [], safe: [], gap: [], outnumbered: [],
   }
   for (const p of players) {
-    const w = mainWeaponOf(p)
+    const w = scoringWeaponOf(p)
     if (w === null) continue
     /* ★모집단은 «잣대» 로 만든다★ — 적는 값으로 만들면 선짤 편향이 그대로 남는다 */
     const v = axisScoresOf(p, w)
@@ -885,7 +923,7 @@ export function foldPlayerHex(
   /* ── ② 무기별로 접는다. 싸움·승률·킬뎃만 무기 안에서 견준다 ── */
   const measured: PlayerHexResult[] = []
   for (const weapon of [0, 1] as const) {
-    const pool = players.filter((p) => mainWeaponOf(p) === weapon)
+    const pool = players.filter((p) => scoringWeaponOf(p) === weapon)
     const values = pool.map((p) => ({
       p,
       v: axisValuesOf(p, weapon),
@@ -1031,7 +1069,7 @@ export function foldPlayerHex(
 
   /* ── ④ 주무기가 없는 사람 — 못 잰 채로 돌려준다 ── */
   for (const p of players) {
-    if (mainWeaponOf(p) !== null) continue
+    if (scoringWeaponOf(p) !== null) continue
     const empty = (): AxisResult => ({ value: null, pct: null, rank: null, total: null })
     out.push({
       leaguePlayerId: p.leaguePlayerId,

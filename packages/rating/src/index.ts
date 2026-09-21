@@ -16,6 +16,8 @@ export {
   CLAN_FORMULA_VERSION,
   FORMULA_VERSION,
   CONFIDENCE_FULL_AT,
+  /* ★클랜은 판수가 개인의 십분의 일이라 따로 센다★ (2026-09-21) */
+  CLAN_CONFIDENCE_FULL_AT,
   /* 배치고사 — 지금은 0(폐지)이고, 옛 10경기 값도 함께 내보낸다 (`CLAUDE.md` 10-4) */
   PLACEMENT_MATCHES,
   PLACEMENT_MATCHES_V1,
