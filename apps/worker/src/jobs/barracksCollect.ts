@@ -852,10 +852,56 @@ export const LEAGUE_STALE_CAP = 5
  * ★리그 몫을 먼저 떼고 나머지를 옛 규칙대로 채운다★ (2026-09-10).
  * 근거와 숫자는 바로 위 `LEAGUE_MIN_SLOTS` 주석에 있다.
  */
+
+/**
+ * ★★시간대마다 먼저 볼 리그가 다르다★★ (2026-09-22 · 사장님 지시)
+ *
+ * > 「내가 진짜 빨리 캐치하는 법 알려줘? 시간대를 알려줄테니까
+ * >  ★돌리는순서를 시간대별로 다르게해★
+ * >  ★오전 5시-오후5시까지 열산>PL>IPL★
+ * >  ★오후 5시부터 IPL>PL>열산★」
+ *
+ * ── 왜 이게 빠른가
+ *   한 바퀴는 앞에서부터 돈다. ★그 시간에 경기가 많이 열리는 리그를 앞에 두면★
+ *   그 경기가 ★같은 바퀴 안에서★ 잡힌다. 뒤에 있으면 다음 바퀴를 기다린다.
+ *   ★사장님이 실제로 언제 어디서 경기가 도는지 아신다.★ 그 지식을 순서에 넣는다.
+ *
+ * ⚠ ★시각은 한국 시간으로 본다★ — 서버는 UTC 로 돌 수 있다.
+ * ⚠ ★빼는 리그는 없다★ — 순서만 바꾼다. 어느 리그도 굶지 않는다.
+ * ⚠ 되돌리려면 `COLLECT_LEAGUE_ORDER=0` — 예전처럼 순서를 안 건드린다.
+ */
+export const LEAGUE_ORDER_DAY: readonly string[] = ['sanply', 'supply', 'nolink']
+export const LEAGUE_ORDER_NIGHT: readonly string[] = ['nolink', 'supply', 'sanply']
+
+/** 낮이 시작하는 시각(KST) — 이때부터 열산이 앞이다 */
+export const DAY_FROM_HOUR = 5
+/** 낮이 끝나는 시각(KST) — 이때부터 IPL 이 앞이다 */
+export const DAY_TO_HOUR = 17
+
+export function leagueOrderAt(at: Date = new Date()): readonly string[] {
+  /* ★한국 시간의 «시»★ — 서버가 UTC 여도 같은 답이 나온다 */
+  const kstHour = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Seoul',
+    }).format(at),
+  )
+  return kstHour >= DAY_FROM_HOUR && kstHour < DAY_TO_HOUR
+    ? LEAGUE_ORDER_DAY
+    : LEAGUE_ORDER_NIGHT
+}
+
+function leagueOrderEnabled(): boolean {
+  return process.env.COLLECT_LEAGUE_ORDER !== '0'
+}
+
 async function pendingClansPriorityV2(
   limit: number,
   slugs: string[],
 ): Promise<{ slug: string; name: string }[]> {
+  /* ★그 시간대에 먼저 볼 리그 순서★ — 꺼 두면 지금 도는 목록 그대로다 (순서 영향 없음) */
+  const order = leagueOrderEnabled() ? [...leagueOrderAt()] : [...slugs]
   return prisma.$queryRaw<{ slug: string; name: string }[]>`
     WITH act AS (
       /* ★한 번만 훑는다★ — 클랜마다 따로 세면 질의가 시간 초과로 죽는다 (2026-09-08 실측) */
@@ -930,6 +976,12 @@ async function pendingClansPriorityV2(
        CASE WHEN s.leagueRn <= ${LEAGUE_MIN_SLOTS} THEN 0 ELSE 1 END,
        /* ② ★예약석은 라운드로빈★ — 각 리그 1등끼리, 2등끼리… ★뭉쳐 두면 뒤 리그가 굶는다★ */
        CASE WHEN s.leagueRn <= ${LEAGUE_MIN_SLOTS} THEN s.leagueRn ELSE NULL END,
+       /*
+        * ②-b ★같은 등수끼리는 그 시간대에 경기가 많은 리그부터★ (2026-09-22 사장님)
+        *   낮(05~17시 KST) 열산 · 밤 IPL 이 앞이다. ★빼는 리그는 없다 — 순서만 바꾼다.★
+        *   목록에 없는 리그는 맨 뒤로 (array_position 이 NULL 이라 NULLS LAST)
+        */
+       array_position(${order}::text[], s.lg) NULLS LAST,
        /* ③ 그 뒤는 ★V1 과 같은 규칙★ — 예약석 안에서 리그끼리 겨룰 때도 이 순서다 */
        CASE WHEN s.starving AND s.starveRn <= ${STALE_BAND_CAP} THEN 0 ELSE 1 END,
        s.band,

@@ -244,8 +244,11 @@ while :; do
   if [ "${CHAIN_HEX:-1}" = "1" ] && grep -qE '^계획 ' "$LOG" 2>/dev/null; then
     # ★순서에 뜻이 있다★ — 정규화가 Match 를 만들고, 명단이 그 안을 채우고, 분석이 접는다.
     #   셋을 한 줄로 이어 붙인다. 각자 자기 잠금을 쥐므로 예약작업과 겹치지 않는다.
+    # ⚠ ★끝 시각은 정규화 바로 뒤★ — 원문의 상대시간(「3분 전」)이 ★식기 전에★ 읽어야 한다.
+    #   한 시간만 지나도 「1시간 전」 이 되어 분 단위를 잃는다 (2026-09-22 사장님 지시).
     CHAIN_CMD='
       flock -n /var/lock/sac-project.lock timeout -k 30 540 sh /root/sacloud/scripts/project.sh
+      flock -n /var/lock/sac-endfill.lock timeout -k 30 300 sh -c "cd /root/sacloud && pnpm --filter @sacloud/worker nexon match-end-fill --limit 400 --confirm"
       flock -n /var/lock/sac-lineup.lock  timeout -k 30 540 sh /root/sacloud/scripts/lineup.sh
       flock -n /var/lock/sac-hex.lock     timeout -k 60 900 sh /root/sacloud/scripts/hex.sh
     '
