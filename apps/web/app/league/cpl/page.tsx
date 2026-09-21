@@ -42,7 +42,8 @@ interface Entry {
 
 async function loadClans(): Promise<Entry[]> {
   const rows = await prisma.leagueClan.findMany({
-    where: { league: { slug: 'cpl' } },
+    /* ★내린 클랜은 안 보인다★ — 지운 게 아니라 `expelledAt` 만 찍힌 것이다 */
+    where: { league: { slug: 'cpl' }, expelledAt: null, clan: { active: true } },
     select: {
       clan: { select: { slug: true, name: true, markBgUrl: true, markFrontUrl: true } },
     },

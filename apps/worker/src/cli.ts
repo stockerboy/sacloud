@@ -3946,8 +3946,17 @@ async function main(): Promise<number> {
     }
 
     case 'cpl-setup': {
-      /* ★CPL 리그와 참가 클랜 24곳★ (2026-09-21 사장님). 기록은 한 줄도 안 만든다 */
-      const r = await runCplSetup({ confirm: boolFlag(args, 'confirm') })
+      /*
+       * ★CPL 리그와 참가 클랜★ (2026-09-21 사장님). 기록은 한 줄도 안 만든다.
+       *
+       * ⚠ `--sync` 를 주면 ★목록(무소속 14 + 서플라이 14)과 똑같이 맞춘다★ —
+       *   목록에 없는 곳은 ★지우지 않고 내린다★ (`expelledAt`).
+       *   `--sync` 없이는 여태처럼 ★더하기만★ 한다 (`CLAUDE.md` 1-4).
+       */
+      const r = await runCplSetup({
+        confirm: boolFlag(args, 'confirm'),
+        sync: boolFlag(args, 'sync'),
+      })
       return r.missing.length > 0 ? 1 : 0
     }
 

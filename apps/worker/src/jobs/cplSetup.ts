@@ -113,16 +113,45 @@ export interface CplSetupResult {
   already: number
   /** slug 로 못 찾은 클랜 */
   missing: string[]
-  /** 지금 명단에 있는 클랜 수 */
+  /** 지금 명단에 있는 클랜 수 (내린 곳은 안 센다) */
   total: number
+  /** ★목록에 없어서 내린 곳★ — 지운 것이 아니라 `expelledAt` 만 찍었다 */
+  expelled: number
+  expelledNames: string[]
+  /** 목록에 다시 들어와 내림표를 지운 곳 */
+  restored: number
   confirmed: boolean
 }
 
+/**
+ * ★★명단을 목록과 똑같이 맞춘다★★ (2026-09-22 사장님)
+ *
+ * > 「참가 클랜 목록 보여달라니까」 · 「pl 14군데 목록:…」
+ * > 「vaIentina 클랜마크 안보여?」
+ *
+ * ── 왜 안 보였나 (실측 2026-09-22)
+ *
+ *   ```
+ *   CPL 명단  ★옛 24곳 그대로★
+ *   빠진 곳   valentina2 · 4473 · adgeodud20 · wdasdw · ajwjdjwuwuei5 …
+ *   ```
+ *   `vaIentina` 의 마크는 ★DB 에도 맞게 들어 있었고 주소도 살아 있었다★
+ *   (`0_12_082.png` · 200). ★그 클랜이 CPL 명단에 아예 없어서★ 화면에 한 줄도
+ *   안 그려진 것이다 — 마크가 깨진 게 아니라 ★클랜이 없었다.★
+ *
+ * ── `sync` 가 하는 일
+ *
+ *   ★목록에 있으면 넣고, 없으면 내린다.★ 내릴 때 ★지우지 않는다★ —
+ *   `expelledAt` 만 찍는다 (`CLAUDE.md` 1-4). 되돌리려면 그 칸만 비우면 된다.
+ */
+export const CPL_ALL_SLUGS: readonly string[] = [...CPL_CLAN_SLUGS, ...PL_RIVAL_SLUGS]
+
 export async function runCplSetup(
-  options: { confirm?: boolean; slugs?: readonly string[] } = {},
+  options: { confirm?: boolean; slugs?: readonly string[]; sync?: boolean } = {},
 ): Promise<CplSetupResult> {
   const confirm = options.confirm ?? false
-  const slugs = options.slugs ?? CPL_CLAN_SLUGS
+  const sync = options.sync ?? false
+  const slugs = options.slugs ?? (sync ? CPL_ALL_SLUGS : CPL_CLAN_SLUGS)
 
   const result: CplSetupResult = {
     createdLeague: false,
@@ -130,6 +159,9 @@ export async function runCplSetup(
     already: 0,
     missing: [],
     total: 0,
+    expelled: 0,
+    expelledNames: [],
+    restored: 0,
     confirmed: confirm,
   }
 
@@ -184,13 +216,45 @@ export async function runCplSetup(
         })
       }
     }
-    result.total = await prisma.leagueClan.count({ where: { leagueId: league.id } })
+    /*
+     * ★목록에 없는 곳은 내린다★ — 지우지 않고 `expelledAt` 만 찍는다.
+     *   되돌리려면 그 칸을 비우면 그대로 돌아온다 (`CLAUDE.md` 1-4).
+     */
+    if (sync) {
+      const keep = new Set(clans.map((c) => c.id))
+      const rows = await prisma.leagueClan.findMany({
+        where: { leagueId: league.id, expelledAt: null },
+        select: { id: true, clanId: true, clan: { select: { name: true, slug: true } } },
+      })
+      const drop = rows.filter((r) => !keep.has(r.clanId))
+      result.expelled = drop.length
+      result.expelledNames = drop.map((r) => `${r.clan?.name ?? '?'}(${r.clan?.slug ?? '?'})`)
+      if (confirm && drop.length > 0) {
+        await prisma.leagueClan.updateMany({
+          where: { id: { in: drop.map((r) => r.id) } },
+          data: { expelledAt: new Date() },
+        })
+      }
+      /* ★되돌아온 곳은 다시 올린다★ — 목록에 다시 들어오면 내림표를 지운다 */
+      const back = await prisma.leagueClan.updateMany({
+        where: { leagueId: league.id, clanId: { in: [...keep] }, expelledAt: { not: null } },
+        data: { expelledAt: null },
+      })
+      result.restored = confirm ? back.count : 0
+    }
+
+    result.total = await prisma.leagueClan.count({
+      where: { leagueId: league.id, expelledAt: null },
+    })
   }
 
   log(
     `CPL — 리그 ${result.createdLeague ? '새로 만듦' : '이미 있음'} · ` +
       `명단에 더함 ${result.added} · 이미있음 ${result.already} · ` +
-      `지금 ${result.total}곳${result.missing.length > 0 ? ` · ★못 찾음 ${result.missing.join(', ')}★` : ''}` +
+      `지금 ${result.total}곳` +
+      (result.expelled > 0 ? ` · ★내림 ${result.expelled}★` : '') +
+      (result.restored > 0 ? ` · 되올림 ${result.restored}` : '') +
+      (result.missing.length > 0 ? ` · ★못 찾음 ${result.missing.join(', ')}★` : '') +
       (confirm ? '' : ' (미리보기)'),
   )
   return result
