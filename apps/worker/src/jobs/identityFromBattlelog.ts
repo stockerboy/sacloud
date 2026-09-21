@@ -66,6 +66,8 @@ export interface IdentityFromBattlelogResult {
   ambiguous: number
   /** 그 닉을 가진 선수가 없어 못 이은 계정 */
   noPlayer: number
+  /** ★다음 판이 이어받을 자리★ — 이번에 본 것 중 가장 오래된 원문 시각 */
+  oldest: Date | null
   samples: { usn: string; before: string; after: string; how: 'link' | 'rename' }[]
 }
 
@@ -73,6 +75,23 @@ export async function runIdentityFromBattlelog(input: {
   confirm: boolean
   /** 최근 몇 건의 원문을 볼까. 안 주면 2,000건 */
   limit?: number
+  /**
+   * ★★이 시각보다 ★오래된★ 원문부터 본다★★ (2026-09-21 · 커서)
+   *
+   * ── 왜 필요한가 (실측)
+   *   옛 판은 ★늘 최신 2만 건★ 만 봤다 (`orderBy: fetchedAt desc` + `take`).
+   *   배틀로그 원문은 ★166,137건★ 이라 ★나머지 14만 건은 영영 안 봤다.★
+   *   그래서 매시 돌아도 「새로 이음」 이 ★27~120건★ 에서 멈춰 있었다 —
+   *   같은 앞부분을 몇 번이고 다시 읽고 있었던 것이다.
+   *
+   *   (`barracksIdentityMerge` 가 이미 같은 함정을 적어 두었다:
+   *    「없으면 ★늘 같은 앞 300명★ 만 돈다 — 실제로 그렇게 만들었다가 잡았다」)
+   *
+   * ── 쓰는 법
+   *   결과의 `oldest` 를 다음 판의 `before` 로 넘기면 ★뒤로 계속 나아간다.★
+   *   안 주면 지금까지와 똑같이 최신부터 본다.
+   */
+  before?: Date
 }): Promise<IdentityFromBattlelogResult> {
   const limit = input.limit ?? 2000
   const result: IdentityFromBattlelogResult = {
@@ -82,17 +101,24 @@ export async function runIdentityFromBattlelog(input: {
     renamed: 0,
     ambiguous: 0,
     noPlayer: 0,
+    oldest: null,
     samples: [],
   }
 
   /* ── ① 원문에서 (계정 → 지금 닉) 을 모은다 ───────────── */
   const index = await prisma.barracksBattleLogRaw.findMany({
-    where: { subjectKind: 'clan', status: 'ok' },
-    select: { id: true },
+    where: {
+      subjectKind: 'clan',
+      status: 'ok',
+      ...(input.before === undefined ? {} : { fetchedAt: { lt: input.before } }),
+    },
+    select: { id: true, fetchedAt: true },
     orderBy: { fetchedAt: 'desc' },
     take: limit,
   })
   result.rows = index.length
+  /* ★다음 판이 이어받을 자리★ — 이번에 본 것 중 가장 오래된 시각 */
+  result.oldest = index.length > 0 ? (index[index.length - 1]?.fetchedAt ?? null) : null
 
   /** usn → 가장 최근에 본 닉 */
   const nickOf = new Map<string, string>()

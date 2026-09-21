@@ -3891,10 +3891,23 @@ async function main(): Promise<number> {
     }
 
     case 'identity-from-battlelog': {
+      /*
+       * ⚠ ★`--before` 를 주면 그보다 오래된 원문부터 본다★ (2026-09-21).
+       *   안 주면 ★늘 최신 2만 건★ 만 보다 끝난다 — 원문이 166,137건이라
+       *   나머지 14만 건은 영영 안 봤다.
+       */
+      const beforeRaw = stringFlag(args, 'before')
+      const before = beforeRaw ? new Date(beforeRaw) : undefined
+      if (before !== undefined && Number.isNaN(before.getTime())) {
+        fail('--before 는 날짜여야 한다 (ISO 8601)')
+        return 1
+      }
       const r = await runIdentityFromBattlelog({
         confirm: boolFlag(args, 'confirm'),
         limit: Number(stringFlag(args, 'limit') ?? '') || undefined,
+        before,
       })
+      if (r.oldest !== null) log(`다음커서=${r.oldest.toISOString()}`)
       return r.pairs >= 0 ? 0 : 1
     }
 
