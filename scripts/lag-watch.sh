@@ -37,6 +37,10 @@ STATE="${LAG_STATE:-/root/log/lag-watch.state}"
 # 몇 분부터 「밀렸다」 로 보나 — 사장님이 정하신 값이다
 THRESHOLD="${LAG_THRESHOLD:-20}"
 
+# ★「영영 수집중」 이 몇 건부터 고장인가★ — 사장님: 「경기 40분 후에도 킬데스
+#   수집조차 안 된 이런 경기들 ★싹다 명단채우고 분석 끝내놔★」
+PEND_LIMIT="${LAG_PEND_LIMIT:-5}"
+
 mkdir -p /root/log
 ts()  { date '+%m-%d %H:%M'; }
 say() { echo "$(ts) | $*" >> "$LOG"; }
@@ -97,7 +101,7 @@ say "수집 ${raw} · 정규화 ${proj} · 명단 ${line} · 수집중 ${pend} �
 WAS=$(cat "$STATE" 2>/dev/null || echo ok)
 
 # ── 괜찮다 ───────────────────────────────────────────────────────
-if [ "$WORST" -ge 0 ] && [ "$WORST" -lt "$THRESHOLD" ]; then
+if [ "$WORST" -ge 0 ] && [ "$WORST" -lt "$THRESHOLD" ] && [ "$pend" -lt "$PEND_LIMIT" ]; then
   if [ "$WAS" != "ok" ]; then
     led "- **풀림** \`$(ts)\` — ${WORST}분까지 내려왔다 (수집 ${raw} · 정규화 ${proj} · 명단 ${line} · 수집중 ${pend} · 막힘 ${stuck})"
     say "★풀렸다★"
@@ -129,6 +133,9 @@ avail=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || e
 #   적었더니 ★멀쩡한데 장부가 거짓 원인으로 찼다.★ 그래서 ★세지 않는다.★
 #   («없는 것을 지어내지 않는다» — CLAUDE.md 2-1)
 
+if [ -z "$WHY" ] && [ "$pend" -ge "$PEND_LIMIT" ]; then
+  WHY="40분이 지나도 킬데스가 안 채워진 경기 ${pend}건 · "
+fi
 [ -z "$WHY" ] && WHY="겉으로는 멀쩡하다 — 더 봐야 한다 · "
 
 # ── 할 수 있는 것을 고친다 ───────────────────────────────────────
