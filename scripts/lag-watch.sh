@@ -9,10 +9,14 @@
 #
 # ── 무엇을 보나 (2분마다)
 #   ```
-#   raw    마지막 원문 수집이 몇 분 전인가   ← 수집이 도는가
-#   match  마지막 경기가 몇 분 전인가        ← 정규화가 도는가
-#   stat   마지막 «킬데스 채워진» 경기       ← 명단이 도는가
-#   pend   40분 넘게 킬데스 없는 경기 수     ← 「영영 수집중」
+#   raw    마지막 원문 수집이 몇 분 전인가       ← 수집이 도는가
+#   proj   아직 Match 가 안 된 원문 중 제일 묵은 것 ← 정규화가 밀렸나
+#   line   참가행이 없는 경기 중 제일 묵은 것       ← 명단이 밀렸나
+#   pend   40분 넘게 킬데스 없는 경기 수           ← 「영영 수집중」
+#
+# ⚠ ★「마지막 경기가 몇 분 전인가」 로 재지 않는다★ — 경기 한 판이 20분이라
+#   멀쩡한데도 밀린 것처럼 잡힌다 (2026-09-22 실측으로 한 번 잘못 쟀다).
+#   ★우리 손에 들어온 뒤로 묵은 만큼만★ 센다.
 #   ```
 #
 # ── ★20분을 넘으면★
@@ -57,22 +61,23 @@ case "$OUT" in
   raw=*) : ;;
   *) say "★값을 못 읽었다★ — 이번 판은 판단하지 않는다 ($OUT)"; exit 0 ;;
 esac
+raw=0; proj=0; line=0; pend=0
 eval "$OUT"
 
 # 가장 늦은 단계가 곧 사장님이 겪는 지연이다
 WORST=$raw
 STAGE=수집
-[ "$match" -gt "$WORST" ] 2>/dev/null && { WORST=$match; STAGE=정규화; }
-[ "$stat"  -gt "$WORST" ] 2>/dev/null && { WORST=$stat;  STAGE=명단; }
+[ "$proj" -gt "$WORST" ] 2>/dev/null && { WORST=$proj; STAGE=정규화; }
+[ "$line" -gt "$WORST" ] 2>/dev/null && { WORST=$line; STAGE=명단; }
 
-say "raw=${raw} match=${match} stat=${stat} pend=${pend} → 최악 ${WORST}분(${STAGE})"
+say "raw=${raw} proj=${proj} line=${line} pend=${pend} → 최악 ${WORST}분(${STAGE})"
 
 WAS=$(cat "$STATE" 2>/dev/null || echo ok)
 
 # ── 괜찮다 ───────────────────────────────────────────────────────
 if [ "$WORST" -ge 0 ] && [ "$WORST" -lt "$THRESHOLD" ]; then
   if [ "$WAS" != "ok" ]; then
-    led "- **풀림** \`$(ts)\` — ${WORST}분까지 내려왔다 (raw ${raw} · 경기 ${match} · 명단 ${stat} · 수집중 ${pend})"
+    led "- **풀림** \`$(ts)\` — ${WORST}분까지 내려왔다 (수집 ${raw} · 정규화 ${proj} · 명단 ${line} · 수집중 ${pend})"
     say "★풀렸다★"
   fi
   echo ok > "$STATE"
@@ -97,12 +102,10 @@ fi
 avail=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo -1)
 [ "$avail" -ge 0 ] && [ "$avail" -lt 200 ] && WHY="${WHY}남은 메모리 ${avail}MB · "
 
-for L in sac-collect sac-project sac-lineup sac-hex; do
-  if [ -f "/var/lock/$L.lock" ] && ! fuser "/var/lock/$L.lock" >/dev/null 2>&1; then
-    age=$(( $(date +%s) - $(stat -c %Y "/var/lock/$L.lock" 2>/dev/null || date +%s) ))
-    [ "$age" -gt 3600 ] && WHY="${WHY}${L} 잠금이 ${age}초째 주인 없이 남아 있다 · "
-  fi
-done
+# ⚠ ★잠금 파일이 남아 있는 것은 고장이 아니다★ (2026-09-22 실측으로 알았다).
+#   `flock` 은 안 쓸 때도 파일을 그대로 둔다. 처음에 이것을 「주인 없이 굳었다」 로
+#   적었더니 ★멀쩡한데 장부가 거짓 원인으로 찼다.★ 그래서 ★세지 않는다.★
+#   («없는 것을 지어내지 않는다» — CLAUDE.md 2-1)
 
 [ -z "$WHY" ] && WHY="겉으로는 멀쩡하다 — 더 봐야 한다 · "
 
@@ -111,7 +114,7 @@ if [ "$BLOCKED" = "1" ]; then
   FIX="아무것도 되살리지 않았다 (막힌 동안 다시 두드리지 않는다)"
 else
   # 멈춘 뒷일(정규화·명단·분석)을 다시 건다 — 각자 잠금이 있어 겹치지 않는다
-  if [ "$match" -ge "$THRESHOLD" ] || [ "$stat" -ge "$THRESHOLD" ] || [ "$pend" -gt 0 ]; then
+  if [ "$proj" -ge "$THRESHOLD" ] || [ "$line" -ge "$THRESHOLD" ] || [ "$pend" -gt 0 ]; then
     setsid sh -c "
       flock -n /var/lock/sac-project.lock timeout -k 30 540 sh $ROOT/scripts/project.sh >> '$LOG' 2>&1
       flock -n /var/lock/sac-lineup.lock  timeout -k 30 540 sh $ROOT/scripts/lineup.sh  >> '$LOG' 2>&1
@@ -131,7 +134,7 @@ fi
 
 if [ "$WAS" = "ok" ]; then
   led ""
-  led "- **밀림** \`$(ts)\` — 최악 **${WORST}분**(${STAGE})  ·  raw ${raw} · 경기 ${match} · 명단 ${stat} · 수집중 ${pend}"
+  led "- **밀림** \`$(ts)\` — 최악 **${WORST}분**(${STAGE})  ·  수집 ${raw} · 정규화 ${proj} · 명단 ${line} · 수집중 ${pend}"
   led "    - 왜: ${WHY%· }"
   led "    - 한 것: ${FIX%· }"
 else

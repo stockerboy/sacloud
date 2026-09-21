@@ -1,38 +1,58 @@
 /**
  * ★기록이 얼마나 밀렸나★ — 숫자 한 줄로 찍는다 (2026-09-22 · 사장님 지시)
  *
- * > 「기록 ★20분이상 지체될때마다★ 왜그런지 확인하고 원인파악하고 문제해결해
- * >  내가 자는동안 ★멈춘시간과 고친시간 등을 전부 기록★ 하고」
+ * > 「기록 ★20분이상 지체될때마다★ 왜그런지 확인하고 원인파악하고 문제해결해」
  *
- * ── 무엇을 재나 (넷 다 「지금으로부터 몇 분 전」 이다)
- *   ```
- *   raw    마지막으로 병영에서 원문을 주워 온 때     ← 수집이 도는가
- *   match  마지막으로 Match 한 줄이 생긴 때          ← 정규화가 도는가
- *   stat   마지막으로 참가행이 채워진 경기의 시각    ← 명단이 도는가
- *   pend   시작한 지 40분 넘었는데 아직 킬데스가 없는 경기 수
- *   ```
+ * ── ⚠ ★「마지막 경기가 몇 분 전인가」 로 재면 안 된다★ (2026-09-22 실측으로 알았다)
  *
- * ⚠ ★한 줄로만 찍는다★ — 셸이 그대로 읽는다. 꾸미지 않는다.
- *   `raw=3 match=5 stat=8 pend=2`
+ *   처음에 그렇게 쟀더니 ★멀쩡한데도 23분 밀렸다★ 고 나왔다.
+ *   ★경기 한 판이 20분쯤 걸리기 때문★ 이다 — 시작한 지 23분 된 경기가 가장 최근인 것은
+ *   ★정상★ 이다. 그걸 고장으로 세면 장부가 거짓말로 찬다.
+ *
+ *   그래서 ★우리 손에 들어온 뒤로 얼마나 묵었나★ 만 잰다:
+ *   ```
+ *   raw   마지막으로 원문을 주워 온 때           ← 수집이 도는가
+ *   proj  ★아직 Match 가 안 된 원문★ 중 가장 오래된 것  ← 정규화가 밀렸나
+ *   line  ★참가행이 없는 경기★ 중 가장 오래된 것       ← 명단이 밀렸나
+ *   pend  40분 넘게 킬데스가 없는 경기 수              ← 「영영 수집중」
+ *   ```
+ *   셋 다 ★우리가 늦은 만큼만★ 센다. 경기 길이는 안 들어간다.
+ *
+ * ⚠ ★한 줄로만 찍는다★ — 셸이 그대로 읽는다.
  */
 import { PrismaClient } from '../packages/db/generated/client/index.js'
 
 const p = new PrismaClient()
-const min = (v) => (v === null || v === undefined ? -1 : Math.round(Number(v)))
+const min = (v) => (v === null || v === undefined ? 0 : Math.max(0, Math.round(Number(v))))
 
 try {
   const [raw] = await p.$queryRaw`
     SELECT EXTRACT(EPOCH FROM (NOW() - MAX("fetchedAt")))/60 AS m
       FROM "BarracksClanMatchRaw"`
-  const [match] = await p.$queryRaw`
-    SELECT EXTRACT(EPOCH FROM (NOW() - MAX("startAt")))/60 AS m
-      FROM "Match" WHERE "supersededAt" IS NULL`
-  const [stat] = await p.$queryRaw`
-    SELECT EXTRACT(EPOCH FROM (NOW() - MAX(m."startAt")))/60 AS m
+
+  /*
+   * ★주워는 왔는데 아직 Match 가 안 된 원문★ 중 가장 오래된 것.
+   * ⚠ 하루보다 오래된 것은 안 본다 — 못 만드는 까닭이 따로 있는 옛 줄이다
+   *   (클랜을 모르는 경기 등). 그건 지연이 아니라 다른 문제다.
+   */
+  const [proj] = await p.$queryRaw`
+    SELECT EXTRACT(EPOCH FROM (NOW() - MIN(r."fetchedAt")))/60 AS m
+      FROM "BarracksClanMatchRaw" r
+     WHERE r."fetchedAt" > NOW() - INTERVAL '24 hours'
+       AND r."status" = 'ok'
+       AND NOT EXISTS (
+             SELECT 1 FROM "Match" m
+              WHERE m."sourceMatchId" = r."matchKey" AND m."supersededAt" IS NULL)`
+
+  /* ★Match 는 생겼는데 참가행이 한 줄도 없는 경기★ 중 가장 오래된 것 */
+  const [line] = await p.$queryRaw`
+    SELECT EXTRACT(EPOCH FROM (NOW() - MIN(m."startAt")))/60 AS m
       FROM "Match" m
      WHERE m."supersededAt" IS NULL
-       AND EXISTS (SELECT 1 FROM "MatchPlayerStat" s WHERE s."matchId" = m.id)`
-  /* ★40분이 지났는데 아직 킬데스가 없는 경기★ — 사장님이 「영영 수집중」 이라 부르신 것 */
+       AND m."startAt" > NOW() - INTERVAL '24 hours'
+       AND m."startAt" < NOW() - INTERVAL '40 minutes'
+       AND NOT EXISTS (SELECT 1 FROM "MatchPlayerStat" s WHERE s."matchId" = m.id)`
+
   const [pend] = await p.$queryRaw`
     SELECT COUNT(*)::int AS n
       FROM "Match" m
@@ -40,12 +60,13 @@ try {
        AND m."startAt" < NOW() - INTERVAL '40 minutes'
        AND m."startAt" > NOW() - INTERVAL '24 hours'
        AND NOT EXISTS (SELECT 1 FROM "MatchPlayerStat" s WHERE s."matchId" = m.id)`
+
   process.stdout.write(
-    `raw=${min(raw?.m)} match=${min(match?.m)} stat=${min(stat?.m)} pend=${pend?.n ?? -1}\n`,
+    `raw=${min(raw?.m)} proj=${min(proj?.m)} line=${min(line?.m)} pend=${pend?.n ?? 0}\n`,
   )
 } catch (error) {
   /* ★모르면 모른다고 찍는다★ — 0 으로 우기지 않는다 (D-106) */
-  process.stdout.write(`raw=-1 match=-1 stat=-1 pend=-1 err=${String(error).slice(0, 80)}\n`)
+  process.stdout.write(`err=${String(error).slice(0, 120)}\n`)
 } finally {
   await p.$disconnect()
 }
