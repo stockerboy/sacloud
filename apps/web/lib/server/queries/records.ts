@@ -865,6 +865,9 @@ export async function getLeaguePlayerDetail(
           ...PLAYER_SUMMARY_SELECT,
           position: true,
           note: true,
+          /* ★병영수첩 단추★ — `BRK-<str_usn>` 이면 그대로 주소가 된다 (2026-09-21).
+             닉으로 다시 찾지 않는다 — 닉이 겹치거나 바뀐 사람은 단추가 사라졌다 */
+          sourcePlayerId: true,
         },
       },
       clan: { select: CLAN_SUMMARY_SELECT },
@@ -1029,7 +1032,7 @@ export async function getLeaguePlayerDetail(
    * ★병영수첩 주소를 찾는다★ (2026-09-16 사장님 «병영수첩 바로가기»).
    *   겹치는 닉이면 누구인지 알 수 없으므로 `null` 이다 — 단추가 안 뜬다.
    */
-  const barracksUsn = await barracksUsnOfNick(effective.player.name)
+  const barracksUsn = await barracksUsnOf(effective.player)
   return {
     id: effective.id,
     league_id: league.id,
@@ -1300,16 +1303,42 @@ export async function getLeagueClanSeasons(
 }
 
 /**
- * ★닉으로 병영수첩 계정값을 찾는다★ (2026-09-16).
+ * ★★병영수첩 계정값을 찾는다★★ (2026-09-16 · ★2026-09-21 고침★)
  *
- * 병영수첩 클랜 페이지를 훑어 모은 관측(`BarracksClanMember`)이 유일한 다리다 —
- * `NexonIdentity.barracksUsn` 은 아직 선수와 이어져 있지 않다 (실측 0줄).
+ * > 「병영수첩이 ★누구는 뜨고 왜 누구는 안뜨고★ 이러냐고」 — 사장님, 2026-09-21
  *
- * ★겹치는 닉은 버린다★ — 실측 8,875개 중 셋뿐이다. 그 셋은 누구인지 알 수 없으니
- * 엉뚱한 사람에게 보내느니 단추를 안 그린다 (`CLAUDE.md` 2-1 «지어내지 않는다»).
+ * ── 왜 어떤 사람은 단추가 없었나
  *
- * ★두 줄만 읽는다★ — 「둘 이상인가」만 알면 되므로 `take: 2` 로 끊는다.
+ *   ★닉네임으로만 찾고 있었다.★ 그런데 —
+ *   ```
+ *   우리가 계정(BRK-…)을 아는 사람    ★6,160명★   ← Player.sourcePlayerId
+ *   닉으로 찾아지는 사람              그보다 훨씬 적다
+ *   ```
+ *   ★이미 손에 쥔 계정을 안 쓰고 닉으로 다시 찾고 있었다.★ 닉을 바꿨거나
+ *   클랜 명부에 아직 안 들어온 사람은 ★단추가 통째로 사라졌다★
+ *   (사장님 화면의 `하츠뱀송이` — IPL 1,251명 중 ★7위★ 인데 단추가 없었다).
+ *
+ * ── 이제
+ *
+ *   ① ★`Player.sourcePlayerId`(`BRK-<str_usn>`)★ 가 있으면 그것이 답이다. 질의도 없다
+ *   ② 없으면 옛 길 — 클랜 명부에서 닉으로 찾는다
+ *
+ * ★겹치는 닉은 그대로 버린다★ — 누구인지 알 수 없으니 엉뚱한 사람에게 보내느니
+ * 단추를 안 그린다 (`CLAUDE.md` 2-1 «지어내지 않는다»).
  */
+async function barracksUsnOf(player: {
+  name: string
+  sourcePlayerId?: string | null
+}): Promise<string | null> {
+  const src = player.sourcePlayerId ?? null
+  if (src !== null && src.startsWith('BRK-')) {
+    const usn = src.slice(4)
+    if (usn !== '') return usn
+  }
+  return barracksUsnOfNick(player.name)
+}
+
+/** 옛 길 — 클랜 명부의 닉으로 찾는다. ★두 줄만 읽는다★ (「둘 이상인가」만 알면 된다) */
 async function barracksUsnOfNick(name: string): Promise<string | null> {
   const seen = await prisma.barracksClanMember.findMany({
     where: { userNick: name },

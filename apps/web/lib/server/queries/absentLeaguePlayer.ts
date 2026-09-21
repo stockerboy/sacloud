@@ -41,7 +41,8 @@ export async function absentLeaguePlayer(leagueId: string, playerId: string) {
 
   const player = await prisma.player.findUnique({
     where: { id: playerId },
-    select: { ...PLAYER_SUMMARY_SELECT, position: true, note: true },
+    /* ★`sourcePlayerId` 는 병영수첩 단추가 쓴다★ (2026-09-21) — 위 줄과 같은 칸이어야 한다 */
+    select: { ...PLAYER_SUMMARY_SELECT, position: true, note: true, sourcePlayerId: true },
   })
   if (!player) return null
 

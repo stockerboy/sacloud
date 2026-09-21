@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import type { PlayerLeagueEntry } from '@sacloud/contract'
 import { isLeagueListed, isOfficialLeague } from '@sacloud/contract'
@@ -12,7 +12,6 @@ import { EggVeil } from '../egg/EggVeil'
 import { RelativeTime } from '../common/RelativeTime'
 import { formatCount, formatRate } from '../common/format'
 import {
-  SHOW_SCORE_BONUS,
   formatPlayerScore,
   playerScoreOf,
 } from '../common/scoreDisplay'
@@ -26,7 +25,6 @@ import {
   ProfileEmpty,
   ProfileSkeleton,
   SectionTitle,
-  Stat,
 } from './profileKit'
 
 /**
@@ -188,8 +186,39 @@ function PlayerLeagueRow({
   const egg = usePlayerEgg(playerId)
   const sealed = egg === 'sealed'
 
+  /*
+   * ★★2026-09-21 — 원본(3rd.supply) 개인기록 카드와 같은 꼴로 바꿨다★★
+   *   (사장님: 「개인기록 카드 이거랑 ★똑같은 폰트크기 같은 카드 크기★ 로 바꿔 똑같이 바꿔」)
+   *
+   * ── 원본은 이렇게 생겼다 (사장님이 보내신 화면 실측)
+   *   ```
+   *   3부리그  ● 공식
+   *
+   *                          래더  2028점
+   *   236전 103승 133패      승률   43.6%
+   *   1,405킬 2,219데스      킬뎃   38.8%
+   *   ```
+   *   ★왼쪽은 원자료 · 오른쪽은 라벨 + 큰 값★ 두 칸이다.
+   *   우리 옛 판은 「래더를 오른쪽 위에 크게(26px)」 + 「2×3 격자」 라 ★줄이 따로 놀았다.★
+   *
+   * ── 글자 크기 (원본 화면에서 재서 맞췄다)
+   *   리그 이름 17px/800 · 라벨 13px · 값 19px/800 · 왼쪽 원자료 13px
+   *
+   * ── 원본에 없지만 우리가 더한 두 줄 (사장님이 따로 시키신 것)
+   *   ★무기★ 스나 N판 라플 N판   ★순위★ N명중 N위
+   *   원본의 첫 줄 왼쪽이 비어 있듯, 남는 칸은 비워 둔다.
+   *
+   * ⚠ ★옛 꼴을 지우지 않았다★ (`CLAUDE.md` 1-4) — 아래 `CARD_SHAPE` 를 `'grid'` 로
+   *   두면 격자 판이 그대로 돌아온다.
+   */
+  const kdShown =
+    hasKd && !sealed
+      ? `${formatCount(entry.kill as number)}킬 ${formatCount(entry.death as number)}데스`
+      : null
+
   return (
-    <Link prefetch={false}
+    <Link
+      prefetch={false}
       /**
        * 기록실 경로에는 **`playerId`** 를 넣는다 (`common/paths.ts`).
        * `league_player_id` 를 넣으면 API 가 404 를 돌려주고 빈 화면이 된다 — 실제 버그였다.
@@ -197,159 +226,145 @@ function PlayerLeagueRow({
       href={leaguePlayerPath(entry.league.slug, playerId)}
       className={`${PANEL} block px-5 py-4 transition-colors hover:border-accent`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-[15px] text-text-strong">{entry.league.name}</span>
-            {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
-            {isOfficialLeague(entry.league.slug) ? <OfficialTag /> : null}
-          </div>
-          <div className="mt-1.5 text-[12px] text-meta">
-            {entry.rank !== null && entry.rank_count !== null ? (
-              <span className="font-num tabular-nums">
-                {formatCount(entry.rank_count)}명중 {formatCount(entry.rank)}위
-              </span>
-            ) : (
-              <span className="text-faint">순위 없음</span>
-            )}
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-[12px] leading-none text-meta">래더</div>
-          {/* 이 시즌 창에 0판이면 래더 자리에 `기록 없음`. 점수를 지어내지 않는다.
-              배치고사는 폐지됐다 (2026-09-01) — `placement` 플래그의 뜻만 바뀌었다 */}
-          {entry.placement ? (
-            <div className="mt-1.5 text-[15px] leading-none text-meta">기록 없음</div>
-          ) : playerScoreOf(entry) === null ? (
-            /*
-             * ★아직 안 잰 사람은 「측정 중」★ — 점수를 지어내지 않는다 (D-106).
-             *   문턱(20경기)을 못 넘겼거나 재계산이 아직 안 닿은 사람이다.
-             * ⚠ ★옛 Elo 를 대신 적지 않는다★ — 그 값은 33,567명 중 29,533명이
-             *   ★아무도 안 건드린 3000★ 이라, 적으면 「다들 3,000점」 이 된다.
-             */
-            <div className="mt-1.5 text-[15px] leading-none text-meta">측정 중</div>
-          ) : (
-            /*
-             * ⚠ ★2026-09-21 — 랭킹과 같은 값을 적는다★ (사장님: 「랭킹에 있는 점수로」).
-             *   옛 판은 `formatScoreLadder(entry.score_rating)` 라 ★13.4점★ 이 나왔다.
-             *   잣대는 `scoreDisplay.ts` 한 곳이 정한다 — 화면마다 고르지 않는다.
-             */
-            <div className="mt-1 font-num text-[26px] leading-none tabular-nums text-text-strong">
-              {formatPlayerScore(playerScoreOf(entry) as number)}
-            </div>
-          )}
-          {/*
-            ★★보정 받은 사람은 그렇다고 적는다★★ (2026-09-20 사장님:
-              「★보정대상은 보정후의 점수로 써줘★」)
-
-              위 숫자에 ★보정이 이미 들어 있다.★ 그런데 아무 말도 없으면
-              ★보정을 받았는지 알 수 없고★, 사장님이 「보정 후 점수로 쓰라」 고
-              하신 뜻이 화면에 안 드러난다. ★얼마를 받았는지 한 줄로 적는다.★
-          */}
-          {SHOW_SCORE_BONUS && !entry.placement && entry.score_rating !== null && entry.score_bonus > 0 ? (
-            <div className="mt-1 text-[10.5px] leading-none text-accent">
-              상위권 보정 +{entry.score_bonus}
-            </div>
-          ) : null}
-        </div>
+      {/* ── 머리 — 리그 이름 + 공식 표 ───────────────────────────────── */}
+      <div className="flex items-center gap-2">
+        <span className="truncate text-[17px] font-extrabold tracking-[-.01em] text-text-strong">
+          {entry.league.name}
+        </span>
+        {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
+        {isOfficialLeague(entry.league.slug) ? <OfficialTag /> : null}
       </div>
 
-      {/*
-        ⚠ ★막대(WinBar)는 뺐다★ (2026-09-20 사장님: 「이상한 바 같은거 집어치우고」).
-          승률은 바로 아래 숫자로 적혀 있다 — 같은 값을 두 번 그릴 이유가 없었고,
-          카드 높이만 먹었다.
-          ★부품은 안 지웠다★ (`WinBar` · CLAUDE.md 1-4) — 이 블록을 되살리면 돌아온다:
-
-            {sealed ? null : (<div className="mt-4"><WinBar win={entry.win} lose={entry.lose} /></div>)}
-      */}
-
-      {/*
-        * ★값을 왼쪽에 모은다★ (2026-09-20 사장님: 「가독성도 떨어지고」)
-        *
-        * 옛 판은 `grid-cols-4` 라 넓은 화면에서 네 값이 ★화면 끝까지 벌어졌다.★
-        * 「전적」 과 「킬뎃」 사이가 한 뼘이라 ★한눈에 안 읽혔다.★
-        * 흐르는 배치로 바꿔 ★값끼리 붙여 놓는다.★ 폰에서는 두 줄로 접힌다.
+      {/* ── 본문 — 왼쪽 원자료 · 오른쪽 라벨+값 ──────────────────────── */}
+      <div className="mt-3 flex flex-col gap-2">
+        <CardLine
+          raw={null}
+          label="래더"
+          value={
+            entry.placement ? (
+              '기록 없음'
+            ) : playerScoreOf(entry) === null ? (
+              '측정 중'
+            ) : (
+              formatPlayerScore(playerScoreOf(entry) as number)
+            )
+          }
+          muted={entry.placement || playerScoreOf(entry) === null}
+        />
+        <CardLine
+          raw={`${formatCount(games)}전 ${formatCount(entry.win)}승 ${formatCount(entry.lose)}패`}
+          label="승률"
+          value={
+            sealed ? (
+              <EggVeil state={egg}>{null}</EggVeil>
+            ) : rated ? (
+              `${formatRate(entry.win_rate)}%`
+            ) : (
+              '기록 없음'
+            )
+          }
+          muted={!sealed && !rated}
+        />
+        <CardLine
+          raw={kdShown}
+          label="킬뎃"
+          value={
+            sealed ? (
+              <EggVeil state={egg}>{null}</EggVeil>
+            ) : hasKd ? (
+              `${formatRate(entry.kd_rate as number)}%`
+            ) : entry.kill === null ? (
+              /*
+               * ⚠ ★「집계 안함」 은 거짓말이었다★ (2026-09-20 사장님: 「킬뎃 집계안함은 뭐고」)
+               *   ★집계는 한다. 안 보여 줄 뿐이다.★ 사실대로 적는다.
+               *   ⚠ 2026-09-21 에 상한을 걷어서 이 자리는 거의 안 나온다 (사장님: 「전부 다 공개해」)
+               */
+              '비공개'
+            ) : (
+              '기록 없음'
+            )
+          }
+          muted={!sealed && !hasKd}
+        />
+        {/*
+          ★무기 판수★ (2026-09-21 사장님: 「기본정보에 스나수인지 라플수인지 써주고」).
+          ⚠ ★둘 다 0 이면 줄을 안 그린다★ — 「스나 0판 · 라플 0판」 은 기록이 아니라
+            ★안 재어졌다는 뜻★ 이다 (D-106).
         */}
-      {/*
-        ★★칸으로 나눈다★★ (2026-09-20 사장님 — 선수 기록실 머리카드와 같은 모양으로)
-        > 「기본정보에 있는 리그별 카드 오른쪽 사진처럼 만들어 이상한 바 같은거 집어치우고」
-
-        ── 왜 칸인가
-          흐르는 배치는 값이 ★몇 개인지에 따라 자리가 달라진다.★ 카드가 여럿 쌓이면
-          같은 「승률」 이 카드마다 다른 자리에 서서 ★위아래로 눈이 흔들린다.★
-          칸을 고정하면 여러 카드를 훑을 때 ★같은 값이 같은 자리★ 에 온다.
-        ⚠ 폰에서는 두 줄로 접힌다 — 네 칸을 390px 에 넣으면 숫자가 붙는다.
-      */}
-      {/*
-        ★★무기 칸을 하나 더 둔다★★ (2026-09-21 사장님: 「★스나수인지 라플수인지★ 써주고」)
-
-          선수 머리 카드가 「스나 킬뎃 ★11판★」 으로 적는 것과 ★같은 값★ 이다.
-        ⚠ ★둘 다 0 이면 칸을 안 그린다★ — 「스나 0판 · 라플 0판」 은 기록이 아니라
-          ★안 재어졌다는 뜻★ 이라 0 으로 적지 않는다 (D-106).
-      */}
-      <div className="mt-3.5 grid grid-cols-4 gap-x-3 gap-y-3 border-t border-line-soft pt-3.5 max-md:grid-cols-2">
-        {/* 판수는 **가리지 않는다** — 있다는 것은 보여 주고 얼마나 잘하는지를 가린다 (사양 2장) */}
-        <Stat label="전적" value={`${formatCount(games)}전`} />
-        {sealed ? (
-          <Stat label="승 · 패" value={<EggVeil state={egg}>{null}</EggVeil>} />
-        ) : (
-          <Stat
-            label="승 · 패"
-            value={`${formatCount(entry.win)} · ${formatCount(entry.lose)}`}
-          />
-        )}
-        {sealed ? (
-          <Stat label="승률" value={<EggVeil state={egg}>{null}</EggVeil>} />
-        ) : rated ? (
-          <Stat label="승률" value={`${formatRate(entry.win_rate)}%`} strong />
-        ) : (
-          <Stat label="승률" value="기록 없음" muted />
-        )}
-        {sealed ? (
-          <Stat label="킬뎃" value={<EggVeil state={egg}>{null}</EggVeil>} />
-        ) : hasKd ? (
-          <Stat
-            label="킬뎃"
-            value={
-              <>
-                {formatRate(entry.kd_rate as number)}%
-                <span className="ml-2 text-[12px] text-meta">
-                  {formatCount(entry.kill as number)} / {formatCount(entry.death as number)}
-                </span>
-              </>
-            }
-          />
-        ) : entry.kill === null ? (
-          /*
-           * ⚠ ★「집계 안함」 은 거짓말이었다★ (2026-09-20 사장님: 「킬뎃 집계안함은 뭐고」)
-           *
-           *   IPL 은 ★개인랭킹 100위까지만★ 누적 킬뎃을 보여 준다
-           *   (2026-09-02 사장님: 「IPL은 top100만 킬뎃이 보인다고」).
-           *   ★집계는 한다. 안 보여 줄 뿐이다.★ 그런데 화면이 「집계 안함」 이라고 적어
-           *   ★기록이 없는 것처럼★ 읽혔다.
-           *
-           *   ★사실대로 적는다.★ 왜 안 보이는지 알면 사람이 납득한다.
-           * ⚠ 옛 문구는 「집계 안함」 이었다 — 되돌리려면 이 줄만 바꾼다 (CLAUDE.md 1-4).
-           */
-          <Stat label="킬뎃" value="100위까지만 공개" muted />
-        ) : (
-          <Stat label="킬뎃" value="기록 없음" muted />
-        )}
         {entry.sniper_games + entry.rifle_games > 0 ? (
-          <Stat
-            label="무기"
+          <CardLine
+            raw={`스나 ${formatCount(entry.sniper_games)}판 라플 ${formatCount(entry.rifle_games)}판`}
+            label="순위"
             value={
-              <>
-                <span className="text-[15px]">스나 {formatCount(entry.sniper_games)}판</span>
-                <span className="ml-2 text-[15px] text-meta">
-                  라플 {formatCount(entry.rifle_games)}판
-                </span>
-              </>
+              entry.rank !== null && entry.rank_count !== null
+                ? `${formatCount(entry.rank)}위`
+                : '순위 없음'
+            }
+            muted={entry.rank === null}
+            sub={
+              entry.rank !== null && entry.rank_count !== null
+                ? `${formatCount(entry.rank_count)}명중`
+                : null
             }
           />
-        ) : null}
+        ) : (
+          <CardLine
+            raw={null}
+            label="순위"
+            value={
+              entry.rank !== null && entry.rank_count !== null
+                ? `${formatCount(entry.rank)}위`
+                : '순위 없음'
+            }
+            muted={entry.rank === null}
+            sub={
+              entry.rank !== null && entry.rank_count !== null
+                ? `${formatCount(entry.rank_count)}명중`
+                : null
+            }
+          />
+        )}
       </div>
     </Link>
+  )
+}
+
+/**
+ * 카드 한 줄 — ★왼쪽 원자료 · 오른쪽 라벨 + 큰 값★ (원본 3rd.supply 와 같은 꼴).
+ *
+ * ⚠ ★왼쪽이 비어도 줄은 그린다★ — 원본의 첫 줄(래더)이 그렇다. 오른쪽 값들이
+ *   같은 자리에 세로로 줄지어야 읽힌다.
+ */
+function CardLine({
+  raw,
+  label,
+  value,
+  muted = false,
+  sub = null,
+}: {
+  raw: string | null
+  label: string
+  value: ReactNode
+  muted?: boolean
+  sub?: string | null
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="min-w-0 truncate font-num text-[13px] tabular-nums text-meta">
+        {raw ?? ' '}
+      </span>
+      <span className="flex shrink-0 items-baseline gap-2">
+        {sub ? <span className="font-num text-[12px] tabular-nums text-faint">{sub}</span> : null}
+        <span className="text-[13px] text-meta">{label}</span>
+        <span
+          className={`font-num text-[19px] font-extrabold leading-none tabular-nums ${
+            muted ? 'text-faint' : 'text-text-strong'
+          }`}
+        >
+          {value}
+        </span>
+      </span>
+    </div>
   )
 }
 
