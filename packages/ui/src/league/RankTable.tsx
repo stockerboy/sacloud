@@ -687,9 +687,12 @@ export function ClanRankTable({
               }
             />
             )}
+            {/* ⚠ ★2026-09-21 — 클랜도 「점」 이다★ (개인과 같은 말 · 3부와 같은 표기).
+                「32.5층」 은 ★같은 층이 둘 나와 순서가 안 보였고★, 사장님이 9/15 에
+                「티어의 흔적」 이라 부르신 바로 그 말이다 */}
             {columns.rating ? (
               <div className={`${COL_RATING} ${NUM} text-text-strong`}>
-                {formatRating(row.rating)}
+                {formatRatingPoint(row.rating)}
               </div>
             ) : null}
           </div>
@@ -876,9 +879,19 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
             머리글을 그대로 `래더` 로 두면 같은 자리에 다른 뜻의 숫자가 들어가 거짓말이 된다. */}
         {/* ★통합 개인랭킹은 실력 점수 순★ (2026-09-10 · 사장님 확정). 점수가 온 줄이 하나라도 있으면
             머리글도 «실력 점수» 다. 점수 표가 아직 비어 옛 래더 순으로 왔으면 «래더» 그대로다 */}
+        {/* ⚠ ★2026-09-21 — `ladder` 면 머리글도 「래더」다★ (3부와 같은 말).
+            그 칸에 적히는 값이 ★래더 점수★ 이므로 「실력 점수」 라 적으면 거짓말이 된다 */}
         {columns.rating ? (
           <div className={COL_RATING}>
-            {byWeapon ? '래더증감' : scoreLadder ? '점수' : scoreTable ? '실력 점수' : '래더'}
+            {byWeapon
+              ? '래더증감'
+              : SCORE_COLUMN === 'ladder'
+                ? '래더'
+                : scoreLadder
+                  ? '점수'
+                  : scoreTable
+                    ? '실력 점수'
+                    : '래더'}
           </div>
         ) : null}
       </div>
