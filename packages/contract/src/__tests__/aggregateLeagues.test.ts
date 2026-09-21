@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { AGGREGATE_LEAGUE_SLUGS } from '../aggregateLeagues'
+import { HOME_LEAGUES } from '../entities/home'
 import { FEATURED_LEAGUES, PREPARING_LEAGUE_SLUGS } from '../../../ui/src/site-config'
 
 /**
@@ -50,6 +51,43 @@ describe('화면에 올린 리그는 집계도 돈다', () => {
       extra,
       `\n★${extra.join(', ')} 가 집계에는 있는데 화면에는 없다★\n` +
         `접은 리그면 집계에서도 빼라. 쓸데없이 무거워진다.\n`,
+    ).toEqual([])
+  })
+
+  /**
+   * ★★홈에도 같은 리그가 서야 한다★★ (2026-09-21 사장님: 「★C1은 리그에 없는문제★」)
+   *
+   *   C1 을 `FEATURED_LEAGUES`(상단바·서랍)와 집계에는 더했는데 ★`HOME_LEAGUES` 만
+   *   빠뜨렸다.★ 그래서 홈의 리그 단추 · 랭킹 미리보기 · 최근 경기에서 C1 이
+   *   통째로 안 보였다 — 사장님이 또 화면에서 먼저 보셨다.
+   *
+   *   ★목록이 셋이면 셋이 다 갈라진다.★ 이 시험이 그걸 막는다.
+   */
+  it('★상단바에 있는데 홈에 없는 리그가 없다★', () => {
+    const home = new Set(HOME_LEAGUES.map((l) => l.slug))
+    const missing = shownSlugs().filter((slug) => !home.has(slug))
+    expect(
+      missing,
+      `
+★${missing.join(', ')} 가 상단바에는 있는데 홈에는 없다★
+` +
+        `홈의 리그 단추 · 랭킹 미리보기 · 최근 경기에서 그 리그가 통째로 사라진다.
+` +
+        `packages/contract/src/entities/home.ts 의 HOME_LEAGUES 에 더하라.
+`,
+    ).toEqual([])
+  })
+
+  it('★홈에 있는데 상단바에 없는 리그가 없다★', () => {
+    const shown = new Set(shownSlugs())
+    const extra = HOME_LEAGUES.map((l) => l.slug).filter((slug) => !shown.has(slug))
+    expect(
+      extra,
+      `
+★${extra.join(', ')} 가 홈에는 있는데 상단바에는 없다★
+` +
+        `홈에서 들어간 사람이 다른 화면에서 그 리그로 못 돌아온다.
+`,
     ).toEqual([])
   })
 

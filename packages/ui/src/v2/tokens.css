@@ -322,8 +322,24 @@
   pointer-events: auto;
   /* 카드 바깥으로 흘러도 띠 안에 얌전히 눕는다 — 둥근 카드와 결을 맞춘다 */
   border-radius: 14px;
-  overflow: hidden;
   margin-top: 8px;
+  /*
+   * ⚠ ★2026-09-21 — 서랍이 화면 밖으로 잘려 밑이 안 보였다★
+   *   (사장님: 「★햄버거 메뉴 드래그 안돼서 밑에까지 안보이는거★」)
+   *
+   *   머리띠가 `fixed top-0` 이라 서랍도 같이 고정된다. 거기에 `overflow: hidden`
+   *   이라 ★화면 높이를 넘는 부분은 아예 닿을 수가 없었다★ — 손가락으로 끌어도
+   *   본문만 밀렸다. 폰에서 메뉴 아래쪽 항목이 통째로 사라진 이유다.
+   *
+   *   ★서랍 스스로 스크롤하게 한다.★ 띠 높이(68 + 위아래 여백)를 뺀 만큼만 쓰고,
+   *   넘치면 안에서 굴린다. `dvh` 라 폰 주소창이 접혀도 어긋나지 않는다.
+   *   가로는 그대로 숨긴다 — 둥근 모서리가 깨지면 안 된다.
+   */
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: calc(100dvh - 104px);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /** ★햄버거★ — 선 셋. 누름칸은 44px 로 손가락 크기를 지킨다 */

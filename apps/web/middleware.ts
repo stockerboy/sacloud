@@ -32,6 +32,14 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const SESSION_COOKIE = 'sacloud_session'
 
+/**
+ * ★사이트를 잠그나★ (2026-09-21 사장님: 「공개로 돌려」).
+ *
+ * `false` 면 ★누구나 들어온다.★ `true` 면 로그인한 사람만 들어온다.
+ * 환경변수 `SACLOUD_PRIVATE=1` 로도 잠글 수 있다 — 둘 중 하나만 켜도 잠긴다.
+ */
+const SITE_PRIVATE = false as boolean
+
 /** 문 밖에서도 열리는 길 */
 const OPEN_PREFIX = [
   '/auth', // 로그인 · 회원가입 · 비밀번호
@@ -110,6 +118,22 @@ export function middleware(request: NextRequest) {
    *   이 줄을 `process.env.SACLOUD_PRIVATE !== '1'` 로 되돌린다.
    *   잠긴 동안에도 로그인하면 사이트 전체가 그대로 보인다.
    */
+  /*
+   * ⚠ ★2026-09-21 — 다시 열었다★ (사장님: 「★공개로 돌려★ 빨리 돌려」).
+   *
+   *   ④ ★지금★ «공개로 돌려» → ★기본이 열림★. 환경변수가 없어도 열린다.
+   *
+   *   ★Vercel 대시보드 없이 배포만으로 열 수 있어야 한다★ — 그것이 ②에서
+   *   스위치를 뒤집은 이유였고, ③에서 기본값을 잠금으로 되돌리면서 그 장점을
+   *   잃었다. 이제 ★문을 코드에서 끈다.★
+   *
+   * ⚠ ★문 자체는 한 줄도 안 지웠다★ (`CLAUDE.md` 1-4) —
+   *   아래 `SITE_PRIVATE` 를 `true` 로 두면 즉시 잠기고,
+   *   `SACLOUD_PRIVATE=1` 환경변수로도 잠근다. 잠긴 동안에도 로그인하면 다 보인다.
+   */
+  if (!SITE_PRIVATE && process.env.SACLOUD_PRIVATE !== '1') {
+    return NextResponse.next()
+  }
   if (process.env.SACLOUD_PUBLIC === '1') {
     return NextResponse.next()
   }

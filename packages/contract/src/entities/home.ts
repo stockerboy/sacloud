@@ -72,7 +72,27 @@ export const HOME_TOP_SIZE = 3
  *   약칭과 이름이 같아졌지만 계약의 두 칸은 그대로 둔다 — 화면이 이미 둘을
  *   다르게 쓰고 있고(약칭은 배지, 이름은 제목), 나중에 다시 갈릴 수 있다.
  */
+/**
+ * ⚠ ★2026-09-21 — C1 이 빠져 있었다★ (사장님: 「★C1은 리그에 없는문제★」)
+ *
+ *   C1 은 9/20 밤에 열었고 `FEATURED_LEAGUES`(상단바·서랍)와 `HomeBadgeWall` 에는
+ *   바로 더했는데 ★이 목록만 빠졌다.★ 그래서 홈의 리그 단추 · 랭킹 미리보기 ·
+ *   최근 경기에서 ★C1 이 통째로 안 보였다.★
+ *
+ *   차례는 ★`FEATURED_LEAGUES` 와 같게★ C1 을 맨 앞에 둔다 — 사장님이
+ *   「진짜 실력자들의 실력싸움은 c1에 기록된다」 고 하셨다.
+ *
+ * ⚠ 옛 목록은 아래 `HOME_LEAGUES_V1` 로 남겼다 (`CLAUDE.md` 1-4).
+ */
 export const HOME_LEAGUES: readonly { slug: string; abbr: string; name: string }[] = [
+  { slug: 'c1', abbr: 'C1', name: 'C1' },
+  { slug: 'supply', abbr: 'PL', name: 'PL' },
+  { slug: 'nolink', abbr: 'IPL', name: 'IPL' },
+  { slug: 'sanply', abbr: '열산리그', name: '열산리그' },
+]
+
+/** ⚠ 옛 목록 (C1 을 더하기 전). 지우지 않는다 — 되돌릴 때 쓴다 */
+export const HOME_LEAGUES_V1: readonly { slug: string; abbr: string; name: string }[] = [
   { slug: 'supply', abbr: 'PL', name: 'PL' },
   { slug: 'nolink', abbr: 'IPL', name: 'IPL' },
   { slug: 'sanply', abbr: '열산리그', name: '열산리그' },
