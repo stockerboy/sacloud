@@ -24,6 +24,40 @@ import { enqueueRenewJob } from './ingestQueue'
 
 /* --------------------------------- 기본정보 -------------------------------- */
 
+/**
+ * ★★클랜원 수는 병영 명부가 말한다★★ (2026-09-21 · 무한 QA에서 잡았다)
+ *
+ * ── 무엇이 틀렸나 (실측)
+ *
+ *   `Clan._count.members` 는 ★`Player.clanId`★ 를 센다. 그런데 그 칸은
+ *   26,518명 중 ★3,768명만★ 차 있다 — 그래서 —
+ *   ```
+ *   igloo     클랜원 ★0명★   (C1 1위 · 220판을 뛴 클랜)
+ *   vuvuzela  클랜원 ★0명★
+ *   ```
+ *   ★경기를 수백 판 뛴 클랜이 「클랜원 0명」★ 으로 보였다.
+ *
+ * ── 이제
+ *
+ *   ★병영 클랜원 명부의 가장 최근 관측★ 을 센다 (2시간마다 받아온다).
+ *   실측 — igloo ★76명★ · vuvuzela ★99명★ · sometimes 39명 · deluxe 32명.
+ *
+ * ⚠ ★명부를 한 번도 못 받은 클랜은 옛 값으로 떨어진다★ — 0 으로 덮지 않는다 (D-106).
+ * ⚠ ★SQL 템플릿 안에 백틱을 쓰지 않는다★ — 설명은 전부 템플릿 밖인 여기에 적는다.
+ */
+export async function barracksMemberCountOf(slug: string, fallback: number): Promise<number> {
+  const [row] = await prisma.$queryRaw<{ n: number }[]>`
+    SELECT COUNT(DISTINCT b."strUsn")::int AS n
+      FROM "BarracksClanMember" b
+     WHERE b."clanSlug" = ${slug}
+       AND b."observedAt" = (
+         SELECT MAX(b2."observedAt") FROM "BarracksClanMember" b2 WHERE b2."clanSlug" = ${slug}
+       )
+  `
+  const n = row?.n ?? 0
+  return n > 0 ? n : fallback
+}
+
 export async function getClan(clanSlug: string): Promise<Clan | null> {
   const clan = await prisma.clan.findFirst({
     // 시드 클랜은 공개 화면에서 없는 것으로 다룬다 (D-116)
@@ -43,6 +77,8 @@ export async function getClan(clanSlug: string): Promise<Clan | null> {
   })
   if (!clan) return null
 
+  const memberCount = await barracksMemberCountOf(clan.slug, clan._count.members)
+
   return {
     id: clan.id,
     slug: clan.slug,
@@ -54,7 +90,7 @@ export async function getClan(clanSlug: string): Promise<Clan | null> {
     established_at: toKstDateOrNull(clan.establishedAt),
     notice: clan.notice,
     renewed_at: toKstIsoOrNull(clan.renewedAt),
-    member_count: clan._count.members,
+    member_count: memberCount,
   }
 }
 

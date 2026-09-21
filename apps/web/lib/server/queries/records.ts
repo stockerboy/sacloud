@@ -1,3 +1,4 @@
+import { barracksMemberCountOf } from './clans'
 import { prisma, type Prisma } from '@sacloud/db'
 import { softFail } from '../softFail'
 import { absentLeaguePlayer } from './absentLeaguePlayer'
@@ -571,6 +572,8 @@ export async function getLeagueClanShow(
       }),
     )) ?? new Map<string, string[]>()
 
+  const memberCount = await barracksMemberCountOf(clan.slug, clan._count.members)
+
   return {
     id: leagueClan.id,
     league_id: leagueClan.leagueId,
@@ -590,7 +593,8 @@ export async function getLeagueClanShow(
     league: toLeagueSummary(league),
     rank: rank.rank,
     rank_count: rank.rankCount,
-    member_count: clan._count.members,
+    /* ★클랜원 수는 병영 명부가 말한다★ (2026-09-21 · 무한 QA) — `clans.ts` 와 같은 이유 */
+    member_count: memberCount,
     match_summary: record.summary,
     teammates: record.teammates,
     /* 지표와 주간 승률은 **같은 경기 배열**에서 나온다 (`clanMetrics.ts`).
