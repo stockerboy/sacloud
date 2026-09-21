@@ -70,6 +70,8 @@ export interface ClanFindMissingResult {
   ambiguous: number
   /** 검색에 한 곳도 안 나온 수 */
   notFound: number
+  /** 클랜 번호까지 받아 적은 수 — ★이게 있어야 명단이 이어진다★ */
+  numbered: number
   blocked: boolean
   confirmed: boolean
   samples: string[]
@@ -120,6 +122,39 @@ export function candidatesOf(doc: unknown): Candidate[] {
   return out
 }
 
+/**
+ * ★★클랜 번호를 같이 받아 적는다★★ (2026-09-22 실측으로 알았다)
+ *
+ * 클랜 22곳을 만들고 명단을 돌렸더니 ★그래도 clan_unmapped★ 였다.
+ * 명단 잡은 클랜을 ★이름이 아니라 번호(`clanNo`)로 잇기 때문★ 이다 —
+ * 새로 만든 클랜에는 번호가 없어서 여전히 못 이었다.
+ *
+ * ```
+ * POST /api/ClanHome/GetClanInfo/{slug}  {}  →  { clan_no }
+ * ```
+ * ⚠ ★한 번호에 한 클랜★ 이다 (기본키). 이미 남의 것이면 ★덮지 않는다★ —
+ *   같은 병영 클랜이 우리 DB 에 두 줄인 경우가 있다 (`barracksRoster.ts` 와 같은 규칙).
+ */
+async function fillClanNumber(clanId: string, slug: string): Promise<boolean> {
+  try {
+    const res = await barracksBrowser().call(
+      'POST',
+      `/api/ClanHome/GetClanInfo/${encodeURIComponent(slug)}`,
+      '{}',
+    )
+    if (res.status !== 200) return false
+    const clanNo = trimmed((JSON.parse(res.body) as { clan_no?: unknown }).clan_no)
+    if (clanNo === null) return false
+    await prisma.$executeRaw`
+      INSERT INTO "BarracksClanNumber" ("clanNo","clanId","source","votes","linkedAt")
+      VALUES (${clanNo}, ${clanId}, 'clanhome', 1, NOW())
+      ON CONFLICT ("clanNo") DO NOTHING`
+    return true
+  } catch {
+    return false
+  }
+}
+
 interface Missing {
   name: string
   bg: string | null
@@ -141,6 +176,7 @@ export async function runClanFindMissing(
     joined: 0,
     ambiguous: 0,
     notFound: 0,
+    numbered: 0,
     blocked: false,
     confirmed: confirm,
     samples: [],
@@ -285,6 +321,10 @@ export async function runClanFindMissing(
       } else {
         clanId = existing.id
       }
+      /* ★번호가 없으면 명단이 못 잇는다★ — 만들자마자 같이 받아 적는다 */
+      if (await fillClanNumber(clanId, slug)) result.numbered += 1
+      await sleep(DELAY_MS)
+
       for (const leagueId of item.leagueIds) {
         const has = await prisma.leagueClan.findFirst({
           where: { leagueId, clanId },
@@ -296,6 +336,35 @@ export async function runClanFindMissing(
       }
     }
     await sleep(DELAY_MS)
+  }
+
+  /*
+   * ── ★★②단계 — 번호가 없는 클랜에 번호를 채운다★★ (2026-09-22)
+   *
+   *   ①단계에서 만든 클랜뿐 아니라, ★전에 만들어 두고 번호가 없던 클랜★ 도 있다.
+   *   명단 잡은 ★번호로만★ 클랜을 이으므로, 번호가 없으면 아무리 등록해도 못 잇는다.
+   *
+   *   ⚠ ★리그에 올라 있는 클랜만★ 본다 — 우리 화면에 안 나오는 클랜까지 물어볼 까닭이 없다.
+   *   ⚠ 한 판에 `limit` 곳까지만. 병영을 몰아치지 않는다.
+   */
+  if (confirm && !result.blocked) {
+    const needNumber = await prisma.$queryRaw<{ id: string; slug: string; name: string }[]>`
+      SELECT DISTINCT c."id", c."slug", c."name"
+        FROM "Clan" c
+        JOIN "LeagueClan" lc ON lc."clanId" = c."id"
+       WHERE c."active" = true
+         AND NOT EXISTS (SELECT 1 FROM "BarracksClanNumber" n WHERE n."clanId" = c."id")
+       LIMIT ${limit}
+    `
+    for (const clan of needNumber) {
+      if (result.blocked) break
+      if (await fillClanNumber(clan.id, clan.slug)) {
+        result.numbered += 1
+        if (result.samples.length < 40) result.samples.push(`번호 채움 ${clan.name}`)
+      }
+      await sleep(DELAY_MS)
+    }
+    log(`②번호 없는 클랜 ${needNumber.length}곳 중 ${result.numbered}곳에 번호를 적었다`)
   }
 
   /*
@@ -315,7 +384,7 @@ export async function runClanFindMissing(
   log(
     `모르는 클랜 찾기 — 막힌 경기 ${result.strandedMatches} · 모르는 클랜 ${result.unknownClans} · ` +
       `찾음 ${result.found} · 만듦 ${result.created} · 명단에 올림 ${result.joined} · ` +
-      `못 가림 ${result.ambiguous} · 검색에 없음 ${result.notFound}` +
+      `번호받음 ${result.numbered} · 못 가림 ${result.ambiguous} · 검색에 없음 ${result.notFound}` +
       (result.blocked ? ' · ★막힘★' : '') +
       (confirm ? '' : ' (미리보기)'),
   )
