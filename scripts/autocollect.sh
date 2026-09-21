@@ -219,9 +219,43 @@ while :; do
   # ⚠ ★잠금을 나눠 쥔다★ — `hex.sh` 예약도 같은 잠금(`sac-hex.lock`)을 쓰므로
   #   둘이 겹쳐 돌지 않는다. 겹치면 DB 가 밀려 사이트가 느려진다.
   # ⚠ ★실패해도 수집 바퀴를 멈추지 않는다★ — 분석이 안 돼도 결과·명단은 떠야 한다.
+  #
+  # ── ⚠ ★★뒤에 붙이되 ★기다리지 않는다★★★ (2026-09-22 · 사장님)
+  #
+  #   > 「기록이 너무 느려 이 문제 꼭 해결해야한다 무슨 경기끝나고 30분뒤에 들어오니
+  #   >  ★서플라이는 10분이면 들어오는데★ 꼭 해결해」
+  #
+  #   ── 실측 (2026-09-22 · 한 바퀴 618초)
+  #   ```
+  #   ① 목록      120곳 × 1.5s  →  ★3분★
+  #   ② 배틀로그   105건        →  ★4분★
+  #   ④ 분석(hex)                 →  ★3분★   ← 이 동안 ★넥슨에 한 번도 안 물어본다★
+  #   ```
+  #   ★한 바퀴의 3할을 분석을 기다리는 데 쓰고 있었다.★ 그만큼 다음 수집이 밀리고,
+  #   그만큼 경기가 늦게 들어온다. ★라인업이 수집을 잡아먹던 2026-09-08 과 같은 병★ 이다.
+  #
+  #   분석은 ★수집과 아무 상관이 없다★ — DB 만 읽고 쓴다. 그러니 ★뒤에 떼어 보내고★
+  #   수집은 곧바로 다음 바퀴로 간다.
+  #
+  #   ⚠ ★겹치지 않는다★ — `flock -n` 이 그대로 있다. 이미 돌고 있으면 그냥 안 돈다.
+  #   ⚠ ★셸이 죽어도 살아남게★ `setsid` 로 떼어 낸다 (SSH·cron 이 끊겨도 끝까지 돈다).
+  #   ⚠ 되돌리려면 `CHAIN_WAIT=1` — 예전처럼 끝날 때까지 기다린다 (`CLAUDE.md` 1-4).
+  CHAIN_WAIT="${CHAIN_WAIT:-0}"
   if [ "${CHAIN_HEX:-1}" = "1" ] && grep -qE '^계획 ' "$LOG" 2>/dev/null; then
-    say "  ④분석을 곧바로 잇는다 (기다리지 않는다)"
-    flock -n /var/lock/sac-hex.lock timeout -k 60 900 sh /root/sacloud/scripts/hex.sh >> "$LOG" 2>&1       || say "  ⚠ 분석을 건너뛰었다 (다른 분석이 도는 중이거나 실패했다) — 수집은 계속한다"
+    # ★순서에 뜻이 있다★ — 정규화가 Match 를 만들고, 명단이 그 안을 채우고, 분석이 접는다.
+    #   셋을 한 줄로 이어 붙인다. 각자 자기 잠금을 쥐므로 예약작업과 겹치지 않는다.
+    CHAIN_CMD='
+      flock -n /var/lock/sac-project.lock timeout -k 30 540 sh /root/sacloud/scripts/project.sh
+      flock -n /var/lock/sac-lineup.lock  timeout -k 30 540 sh /root/sacloud/scripts/lineup.sh
+      flock -n /var/lock/sac-hex.lock     timeout -k 60 900 sh /root/sacloud/scripts/hex.sh
+    '
+    if [ "$CHAIN_WAIT" = "1" ]; then
+      say "  ④정규화·명단·분석 — ★끝날 때까지 기다린다★ (옛 방식)"
+      sh -c "$CHAIN_CMD" >> "$LOG" 2>&1 || say "  ⚠ 뒷일 일부를 건너뛰었다 — 수집은 계속한다"
+    else
+      say "  ④정규화·명단·분석을 ★뒤에 떼어 보낸다★ — 수집은 안 기다린다"
+      setsid sh -c "$CHAIN_CMD >> '$LOG' 2>&1" </dev/null >/dev/null 2>&1 &
+    fi
     collect_lock_renew || exit 0
   fi
 
