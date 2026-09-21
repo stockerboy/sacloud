@@ -78,7 +78,7 @@ maps
 
 hit() {
   # 시간과 캐시 상태를 같이 남긴다 — 로그만 보고 «데워졌나» 를 알 수 있어야 한다
-  out=$(curl -s -o /dev/null -m "$TIMEOUT" \
+  out=$(curl -sL -o /dev/null -m "$TIMEOUT" \
         -w '%{time_total} %{http_code}' \
         -H 'Accept: application/json' \
         "$1" 2>/dev/null)
@@ -111,7 +111,7 @@ done
 #   뽑아내는 데 node 를 쓴다 (VPS 에 이미 있다). 없으면 조용히 건너뛴다.
 first_of() {
   # $1 주소 · $2 꺼낼 길 (예: data.0.player.id)
-  curl -s -m "$TIMEOUT" "$1" 2>/dev/null | node -e '
+  curl -sL -m "$TIMEOUT" "$1" 2>/dev/null | node -e '
     let raw = ""
     process.stdin.on("data", (d) => (raw += d))
     process.stdin.on("end", () => {
@@ -163,9 +163,11 @@ fi
 #     데워져 있을 때     둘 다 ★0.2초★
 #   ```
 #   사장님이 겪은 느림이 ★이 식은 순간★ 이었다. 5분마다 데우면 그 순간이 사라진다.
+# ★-L 로 따라간다★ (2026-09-22) — /rank/clan 은 /rank/clan/1 로 307 한다.
+#   따라가지 않으면 ★정작 사람이 보는 쪽이 안 데워진다★ (실측).
 WARM_COOKIE="${WARM_COOKIE:-sacloud_session=warm}"
 page() {
-  out=$(curl -s -o /dev/null -m "$TIMEOUT" -w '%{time_total} %{http_code}'         -H "Cookie: $WARM_COOKIE" "$1" 2>/dev/null)
+  out=$(curl -sL -o /dev/null -m "$TIMEOUT" -w '%{time_total} %{http_code}'         -H "Cookie: $WARM_COOKIE" "$1" 2>/dev/null)
   echo "  $out  $1"
   sleep "${GAP:-1}"
 }
