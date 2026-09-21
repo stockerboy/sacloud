@@ -39,6 +39,7 @@ import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runRenewRequests } from './jobs/renewRequests.js'
 import { runRenewServer } from './renewServer.js'
 import { runClanFindMissing } from './jobs/clanFindMissing.js'
+import { runMatchSideFix } from './jobs/matchSideFix.js'
 import { runCplSetup } from './jobs/cplSetup.js'
 import { runNickFromBarracks } from './jobs/nickFromBarracks.js'
 import { runSanplyClanFill } from './jobs/sanplyClanFill.js'
@@ -3944,6 +3945,18 @@ async function main(): Promise<number> {
         limit: numberFlag(args, 'limit') ?? undefined,
       })
       return r.stale >= 0 ? 0 : 1
+    }
+
+    case 'match-side-fix': {
+      /*
+       * ★경기의 양 진영이 잘못 박힌 것을 바로잡는다★ (2026-09-22)
+       *   ⚠ ★배틀로그(누구누구)와 원문(어느 편)이 같은 말을 할 때만★ 고친다.
+       */
+      const r = await runMatchSideFix({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      return r.unsure > 0 && r.fixed === 0 ? 1 : 0
     }
 
     case 'clan-find-missing': {
