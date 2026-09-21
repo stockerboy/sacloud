@@ -38,10 +38,16 @@
  * pnpm --filter @sacloud/worker nexon stamp-player-clan --all         # 시즌0 밖도
  * ```
  */
+import { AGGREGATE_LEAGUE_SLUGS } from '@sacloud/contract'
 import { prisma } from '@sacloud/db'
 import { log } from '../lib/log.js'
 
-const DEFAULT_LEAGUES = ['nolink', 'supply', 'sanply'] as const
+/*
+ * ⚠ ★2026-09-21 — 목록을 스스로 갖지 않는다★ (사장님: 「근본적인 문제를 해결해」)
+ *   `['nolink', 'supply', 'sanply']` 가 박혀 있어서 ★C1 이 안 따라왔다.★
+ *   같은 병을 잡들이 제각기 앓고 있었다 — 이제 ★계약 한 곳★ 에서 읽는다.
+ */
+const DEFAULT_LEAGUES = AGGREGATE_LEAGUE_SLUGS
 
 /** 시즌0 시작 (KST 2026-09-03 07:00) */
 const SEASON0_START = new Date('2026-09-02T22:00:00.000Z')
