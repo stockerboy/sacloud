@@ -38,6 +38,7 @@ import { prisma } from '@sacloud/db'
 import { V2_RATING_CONSTANTS } from '@sacloud/rating'
 import { log, warn } from '../lib/log.js'
 import {
+  clanRankByOf,
   computeClanStandings,
   IPL_START_RATING,
   type ClanStanding,
@@ -70,7 +71,7 @@ export async function runIplClanRollup(
 ): Promise<IplClanRollupResult> {
   const league = await prisma.league.findUnique({
     where: { slug: options.leagueSlug ?? IPL_SLUG },
-    select: { id: true, name: true },
+    select: { id: true, name: true, slug: true },
   })
   if (!league) throw new Error(`리그 ${IPL_SLUG} 이 없다`)
 
@@ -97,7 +98,11 @@ export async function runIplClanRollup(
 
      `DEFAULT` 는 건드리지 않는다 — 그 상수를 쓰는 다른 경로까지 같이 움직인다.
      부르는 쪽에서 v2 를 넘긴다. 이 잡은 결정적 replay 라 다시 돌리면 값이 바로잡힌다 */
-  const standings = computeClanStandings(matches, { constants: V2_RATING_CONSTANTS })
+  /* ★그 리그의 잣대로 센다★ — C1 만 승률+판수, 나머지는 Elo (2026-09-21 사장님) */
+  const standings = computeClanStandings(matches, {
+    constants: V2_RATING_CONSTANTS,
+    rankBy: clanRankByOf(league.slug),
+  })
 
   const regs = await prisma.leagueClan.findMany({
     where: { leagueId: league.id },

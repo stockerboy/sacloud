@@ -70,6 +70,33 @@ type ClanRankBy = 'record' | 'elo'
 export const CLAN_RANK_BY = 'elo' as ClanRankBy
 
 /**
+ * ★★리그마다 잣대가 다르다★★ (2026-09-21 사장님이 화면을 보고 «b» 로 고르심)
+ *
+ * ── 왜 C1 만 다른가 (실측으로 밝혔다)
+ *
+ *   Elo 는 ★서로 점수를 뺏고 주는 제로섬★ 이다. C1 은 ★열 클랜이 자기들끼리만★
+ *   809경기를 했다 — 뺏은 만큼 뺏겨서 ★전체가 시작점 근처를 못 벗어난다.★
+ *   ```
+ *   C1 열 곳 전체  2,898 ~ 3,075  (177점 안에 뭉침)
+ *   3부 원본 95곳    899 ~ 2,093  (1,194점 벌어짐)
+ *   ```
+ *   그래서 남는 것이 ★누구를 언제 이겼나★ 하는 순서 효과뿐이고 승률이 뒤집혔다 —
+ *   ★48% 가 1위, 59.5% 가 8위★ 가 됐다.
+ *
+ *   IPL·PL 은 판이 많아(igloo 1,525승) Elo 가 뜻을 갖는다. ★C1 만 다르다.★
+ *
+ * ⚠ 모르는 리그는 ★Elo★ 다 — 옛 동작 그대로라 새 리그가 조용히 안 바뀐다.
+ */
+const CLAN_RANK_BY_LEAGUE: Readonly<Record<string, ClanRankBy>> = {
+  c1: 'record',
+}
+
+export function clanRankByOf(leagueSlug: string | null | undefined): ClanRankBy {
+  if (leagueSlug === null || leagueSlug === undefined) return CLAN_RANK_BY
+  return CLAN_RANK_BY_LEAGUE[leagueSlug] ?? CLAN_RANK_BY
+}
+
+/**
  * ★판수 수축★ — 판이 이만큼일 때 「제 승률 반, 리그 평균 반」 이 된다.
  *
  * 실측(C1 2026-09-21)으로 고른 값이다. 클랜 판수가 ★41 ~ 320판★ 으로 벌어져 있어서
@@ -146,6 +173,8 @@ interface Running {
 
 export interface StandingOptions {
   constants?: RatingConstants
+  /** ★그 리그의 잣대★ — 안 주면 기본(Elo). `clanRankByOf(slug)` 로 고른다 */
+  rankBy?: ClanRankBy
   /** 시작 래더. `LeagueClan.rating` 의 기본값과 같아야 한다 */
   startRating?: number
 }
@@ -164,6 +193,7 @@ export function computeClanStandings(
   const constants = options.constants ?? DEFAULT_RATING_CONSTANTS
   const startRating = options.startRating ?? IPL_START_RATING
   const placementMatches = constants.placementMatches
+  const rankBy = options.rankBy ?? CLAN_RANK_BY
 
   const state = new Map<string, Running>()
   const of = (id: string): Running => {
@@ -262,7 +292,7 @@ export function computeClanStandings(
       win: s.win,
       lose: s.lose,
       games: s.games,
-      rating: roundHalfUp(CLAN_RANK_BY === 'record' ? record : s.rating),
+      rating: roundHalfUp(rankBy === 'record' ? record : s.rating),
       placement: s.games < placementMatches,
       placementPlayed: Math.min(s.games, placementMatches),
     })
