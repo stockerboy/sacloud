@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import type { PlayerLeagueEntry } from '@sacloud/contract'
 import { isLeagueListed, isOfficialLeague } from '@sacloud/contract'
@@ -137,6 +137,34 @@ export function RenewControl({
   state: RefreshState
   onClick: () => void
 }) {
+  /*
+   * ★★얼마나 됐는지 보여 준다★★ (2026-09-21 사장님: 「정보갱신 눌렀을때 좀 걸리면
+   *   ★0퍼센트 10퍼센트 이렇게 알려줘★ 갱신중인걸」)
+   *
+   * ── 왜 필요한가
+   *   누르면 ★큐에 담기고 서버가 병영수첩을 읽으러 간다.★ 그 사이 화면은
+   *   「갱신중」 석 자뿐이라 ★멈춘 것인지 도는 것인지 알 수 없었다.★
+   *
+   * ── ★거짓말을 하지 않는다★
+   *   진짜 진행률을 알 길이 없다 — 서버가 몇 %까지 했는지 말해 주지 않는다.
+   *   그래서 ★시간으로 센다.★ 예약이 1분마다 도니 ★60초를 100%로★ 잡고,
+   *   ★95%에서 멈춰 선다★ — 끝나지 않았는데 100%라고 적지 않는다.
+   *   실제로 끝나면 화면이 새 이름으로 바뀌면서 이 자리가 사라진다.
+   */
+  const [pct, setPct] = useState(0)
+  useEffect(() => {
+    if (state !== 'pending') {
+      setPct(0)
+      return
+    }
+    const startedAt = Date.now()
+    const id = setInterval(() => {
+      const sec = (Date.now() - startedAt) / 1000
+      setPct(Math.min(95, Math.round((sec / 60) * 100)))
+    }, 500)
+    return () => clearInterval(id)
+  }, [state])
+
   return (
     <div className="text-right max-md:text-left">
       <button
@@ -145,8 +173,20 @@ export function RenewControl({
         onClick={onClick}
         className="h-9 rounded-[2px] border border-line px-4 text-[13px] text-text transition-colors hover:border-accent hover:text-accent focus:outline-none disabled:opacity-50"
       >
-        {state === 'pending' ? '갱신중' : label}
+        {state === 'pending' ? `갱신중 ${pct}%` : label}
       </button>
+      {state === 'pending' ? (
+        <>
+          {/* 가는 막대 하나 — 글자만으로는 도는지 안 도는지 안 보인다 */}
+          <div className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-line-soft">
+            <div
+              className="h-full bg-accent transition-[width] duration-500 ease-linear"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="mt-1 text-[11px] text-faint">병영수첩에서 읽어 오는 중입니다</div>
+        </>
+      ) : null}
       {state === 'failed' ? (
         <div className="mt-1.5 text-[12px] text-accent">갱신에 실패했습니다</div>
       ) : null}

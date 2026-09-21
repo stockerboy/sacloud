@@ -143,6 +143,7 @@ interface Job {
   id: string
   kind: 'player' | 'clan'
   targetId: string
+  attempts: number
 }
 
 /** `nexon:renew:player:cku…` → `{ kind, targetId }`. 모르는 꼴은 버린다 */
@@ -180,18 +181,42 @@ export async function runRenewRequests(
     samples: [],
   }
 
+  /*
+   * ★★실패한 건이 큐 앞을 막지 않게★★ (2026-09-21 사장님: 「★갱신안된다니까★」)
+   *
+   * ── 무엇이 막고 있었나 (실측)
+   *
+   *   ```
+   *   09-21 18:00  정보갱신 — 꺼냄 3 · 선수 0 · 클랜 0 · ★실패 3★
+   *   09-21 18:05  정보갱신 — 꺼냄 4 · 선수 1 · 클랜 0 · ★실패 3★
+   *   ```
+   *   ★9월 11일부터 열흘째 실패하는 세 건★ 이 있었다 —
+   *   `ipl-backspace00` 처럼 ★병영수첩에 없는 가짜 주소★ 다.
+   *   실패해도 `pending` 인 채 `updatedAt` 이 옛날이라 ★매번 맨 앞에 다시 뽑혔다.★
+   *   사장님이 방금 누른 건은 ★그 뒤에서 기다렸다.★
+   *
+   * ── 이제
+   *
+   *   실패하면 `attempts` 를 세고 ★뒤로 미룬다★(`nextRetryAt`). 그동안은 안 뽑힌다.
+   *   ★다섯 번 실패하면 접는다★ — 병영수첩에 없는 것을 백 번 물어도 없다.
+   *   ⚠ 접어도 ★지우지 않는다★ (`status: 'failed'`) — 왜 못 했는지가 남는다.
+   */
   const pending = await prisma.importJob.findMany({
-    where: { jobKey: { startsWith: KEY_PREFIX }, status: 'pending' },
+    where: {
+      jobKey: { startsWith: KEY_PREFIX },
+      status: 'pending',
+      OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: new Date() } }],
+    },
     orderBy: { updatedAt: 'asc' },
     take: limit,
-    select: { id: true, jobKey: true },
+    select: { id: true, jobKey: true, attempts: true },
   })
 
   const jobs: Job[] = []
   for (const row of pending) {
     const parsed = parseRenewKey(row.jobKey)
     if (parsed === null) continue
-    jobs.push({ id: row.id, kind: parsed.kind, targetId: parsed.targetId })
+    jobs.push({ id: row.id, kind: parsed.kind, targetId: parsed.targetId, attempts: row.attempts })
   }
   result.taken = jobs.length
   if (jobs.length === 0) {
@@ -211,6 +236,24 @@ export async function runRenewRequests(
   const leagueIds = leagues.map((l) => l.id)
 
   const done: string[] = []
+  /** ★몇 번까지 다시 해 보나★ — 병영수첩에 없는 것을 백 번 물어도 없다 */
+  const MAX_ATTEMPTS = 5
+  /** 다음에 다시 해 볼 때까지 얼마나 미루나 — 시도할수록 길어진다 */
+  const backoffMs = (n: number): number => Math.min(6 * 60 * 60_000, 5 * 60_000 * 2 ** n)
+
+  /** 실패를 적고 뒤로 미룬다. 다섯 번이면 접는다 */
+  async function noteFailure(job: Job, why: string): Promise<void> {
+    result.failed += 1
+    if (!confirm) return
+    const next = job.attempts + 1
+    await prisma.importJob.update({
+      where: { id: job.id },
+      data:
+        next >= MAX_ATTEMPTS
+          ? { status: 'failed', attempts: next, lastError: why, finishedAt: new Date() }
+          : { attempts: next, lastError: why, nextRetryAt: new Date(Date.now() + backoffMs(next)) },
+    })
+  }
 
   for (const job of jobs) {
     if (result.blocked) break
@@ -237,7 +280,7 @@ export async function runRenewRequests(
       try {
         res = await callBarracks(`/api/Profile/GetProfileMain/${encodeURIComponent(usn)}`, '{}')
       } catch {
-        result.failed += 1
+        await noteFailure(job, '병영수첩을 못 불렀다')
         await sleep(delay)
         continue
       }
@@ -247,7 +290,7 @@ export async function runRenewRequests(
         break
       }
       if (res.status !== 200) {
-        result.failed += 1
+        await noteFailure(job, '병영수첩을 못 불렀다')
         await sleep(delay)
         continue
       }
@@ -270,7 +313,7 @@ export async function runRenewRequests(
         clanName = trimmed(info?.clan_name)
         clanSlug = trimmed(info?.clan_id)
       } catch {
-        result.failed += 1
+        await noteFailure(job, '병영수첩을 못 불렀다')
         await sleep(delay)
         continue
       }
@@ -345,7 +388,7 @@ export async function runRenewRequests(
         JSON.stringify({ clan_id: clan.slug }),
       )
     } catch {
-      result.failed += 1
+      await noteFailure(job, '병영수첩을 못 불렀다')
       await sleep(delay)
       continue
     }
@@ -355,7 +398,7 @@ export async function runRenewRequests(
       break
     }
     if (res.status !== 200) {
-      result.failed += 1
+      await noteFailure(job, '병영수첩을 못 불렀다')
       await sleep(delay)
       continue
     }
@@ -367,13 +410,13 @@ export async function runRenewRequests(
         resultClanUserList?: Array<{ str_usn?: string; user_nick?: string }> | null
       }
       if (doc.rtnCode !== 0) {
-        result.failed += 1
+        await noteFailure(job, '병영수첩을 못 불렀다')
         await sleep(delay)
         continue
       }
       members = doc.resultClanUserList ?? []
     } catch {
-      result.failed += 1
+      await noteFailure(job, '병영수첩을 못 불렀다')
       await sleep(delay)
       continue
     }
