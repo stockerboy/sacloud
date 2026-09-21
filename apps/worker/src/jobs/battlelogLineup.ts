@@ -416,8 +416,21 @@ export async function runBattlelogLineup(
                  AND b."status" = 'ok'
                  AND (
                        m."lineupStatus" IS NULL
-                       /* ② 우리가 고칠 수 있는 사유 — 클랜을 등록하면 살아난다 */
-                    OR m."lineupSkipReason" IS DISTINCT FROM 'roster_incomplete'
+                       /*
+                        * ② ★우리가 손봐야 풀리는 사유는 다시 안 본다★
+                        *
+                        * ⚠ ★2026-09-21 — `clan_unmapped` 를 여기 넣었다★ (사장님:
+                        *   「40분 후에도 킬데스 수집조차 안 된 경기들 싹다 명단채워」)
+                        *
+                        *   옛 조건은 `roster_incomplete` 하나만 뺐다. 그래서
+                        *   ★「클랜을 못 찾음」 100건이 매 판 다시 뽑혀 큐 앞을 막았다★ —
+                        *   드레인을 25판 돌려도 ★같은 60건만 계속 보고★ 뒤로 못 갔다.
+                        *   (실측: 「배틀로그경기=60 · 라인업가능=0」 이 스물다섯 번)
+                        *
+                        *   이 둘은 ★새 배틀로그가 와야★ 또는 ★클랜을 등록해야★ 풀린다.
+                        *   그때는 아래 ③(`b.fetchedAt > m.lineupCheckedAt`)이 다시 데려온다.
+                        */
+                    OR m."lineupSkipReason" NOT IN ('roster_incomplete', 'clan_unmapped')
                        /* ③ 마지막으로 본 뒤에 새 배틀로그가 왔다 */
                     OR m."lineupCheckedAt" IS NULL
                     OR b."fetchedAt" > m."lineupCheckedAt"
