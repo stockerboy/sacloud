@@ -401,12 +401,31 @@ export async function runUnifiedProject(
         Number(key.slice(6, 8)), Number(key.slice(8, 10)), Number(key.slice(10, 12)),
       )
       if (Number.isFinite(t)) {
-        const d = new Date(t - 24 * 60 * 60 * 1000)
+        /*
+         * ── ⚠ ★하루를 무르니 매번 2,640건을 다시 봤다★ (2026-09-22 실측)
+         *
+         *   ```
+         *   09-22 07:48  끝 (230초) — 본경기=2640 · ★만듦합=0★
+         *   09-22 08:12  끝 (436초) — 본경기=2647 · ★만듦합=0★
+         *   ```
+         *   ★한 건도 안 만들면서 7분을 썼다.★ 그동안 명단·분석이 뒤에서 기다렸고,
+         *   라인업이 ★58분째 못 돌았다★ (2026-09-22 08:43 감시 장부).
+         *   라인업이 2026-09-08 에 겪은 것과 ★똑같은 병★ 이다 — 끝난 일을 매번 다시 한다.
+         *
+         *   ★무르는 폭을 시간 단위로 줄인다.★ 수집이 10분 안에 들어오는 지금,
+         *   두 시간이면 늦게 오는 원문도 넉넉히 덮는다.
+         *   ⚠ 그보다 늦게 오는 원문은 ★하루 한 번 깊게 훑는 판★ 이 줍는다
+         *     (`PROJECT_REWIND_HOURS=24 sh scripts/project.sh`).
+         *   ⚠ 옛 값(24시간)은 ★지우지 않는다★ — 환경변수 하나로 돌아온다 (`CLAUDE.md` 1-4).
+         */
+        const rewindHours = Number(process.env.PROJECT_REWIND_HOURS ?? '2')
+        const hours = Number.isFinite(rewindHours) && rewindHours > 0 ? rewindHours : 2
+        const d = new Date(t - hours * 60 * 60 * 1000)
         const p2 = (n: number) => String(n).padStart(2, '0')
         after =
           p2(d.getUTCFullYear() % 100) + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) +
           p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + p2(d.getUTCSeconds())
-        log(`★이미 만든 곳부터 이어간다★ — ${after} 뒤부터 (하루 무름)`)
+        log(`★이미 만든 곳부터 이어간다★ — ${after} 뒤부터 (${hours}시간 무름)`)
       }
     }
   }

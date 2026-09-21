@@ -312,13 +312,29 @@ export async function runClanFindMissing(
       const existing = await prisma.clan.findUnique({ where: { slug }, select: { id: true } })
       let clanId: string
       if (existing === null) {
+        /*
+         * ── ⚠ ★랭킹에는 올리지 않는다★ (2026-09-22 사장님)
+         *
+         *   > 「얘넨 또 뭐야 ★이상한애들 IPL에 왜 들어와있아★」
+         *
+         *   이 클랜들은 ★우리 리그에 등록한 곳이 아니다.★ 우리 클랜의 ★상대★ 로
+         *   경기에 나왔을 뿐이다. 명단(누가 몇 킬 했나)을 만들려면 리그에 있어야 해서
+         *   넣은 것인데, 그러자 ★클랜랭킹에도 같이 올라갔다★ — 1승 0패짜리가 22등에.
+         *
+         *   ★`active=false` 로 만든다.★ 그러면 —
+         *     · 랭킹·목록에는 ★안 나온다★ (화면 질의가 `clan.active = true` 를 본다)
+         *     · 명단 잡은 ★그대로 이 클랜을 푼다★ (거기선 active 를 안 본다)
+         *   즉 ★기록은 다 남고 순위표만 깨끗하다.★
+         *
+         *   ⚠ ★지우지 않았다★ — 사장님이 「얘는 올려」 하시면 한 칸만 true 로.
+         */
         const made = await prisma.clan.create({
           data: {
             slug,
             name: item.name,
             markBgUrl: item.bg,
             markFrontUrl: item.front,
-            active: true,
+            active: false,
           },
           select: { id: true },
         })
