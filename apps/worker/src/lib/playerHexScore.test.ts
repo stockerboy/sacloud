@@ -159,24 +159,43 @@ describe('백분위 · 티어계수', () => {
 })
 
 describe('접기', () => {
-  it('무기별 모집단으로 나눠 등수를 매기고, 주무기가 없는 사람은 weapon null 로 남는다', () => {
+  /**
+   * ⚠ ★2026-09-21 — 주무기 문턱을 못 넘겨도 점수를 매긴다★ (사장님이 «가» 를 고르심).
+   *
+   *   옛 규칙은 「10판(`MIN_WEAPON_GAMES`) 넘게 한 무기가 있어야 잰다」 였고,
+   *   그래서 ★판이 적은 사람은 랭킹에서 통째로 빠졌다★ (IPL 2,257명 중 1,002명).
+   *   이제 문턱을 못 넘기면 ★판이 더 많은 쪽★ 으로 잰다. 동률이면 라플이다.
+   *   ★둘 다 0판이면 여전히 못 잰다★ — 무기를 아예 모르는 사람까지 정하지 않는다 (D-106).
+   */
+  it('무기별 모집단으로 나눠 등수를 매긴다 — 문턱을 못 넘겨도 판 많은 쪽으로 잰다', () => {
     const rows = foldPlayerHex([
       player({ leaguePlayerId: 'r1', rifleDuelWon: 80, rifleDuelLost: 20, firstKills: 60 }),
       player({ leaguePlayerId: 'r2' }),
       player({ leaguePlayerId: 'r3', rifleDuelWon: 20, rifleDuelLost: 80, firstKills: 10 }),
       player({ leaguePlayerId: 's1', sniperGames: 15, rifleGames: 2, sniperDuelWon: 30, sniperDuelLost: 10 }),
+      /* 스나4·라플4 — 문턱(10판)은 못 넘겼지만 ★동률이라 라플로 잰다★ */
       player({ leaguePlayerId: 'n1', sniperGames: 4, rifleGames: 4 }),
     ])
     const byId = new Map(rows.map((r) => [r.leaguePlayerId, r]))
     expect(byId.get('r1')?.weapon).toBe(0)
     expect(byId.get('r1')?.scoreRank).toBe(1)
-    expect(byId.get('r1')?.scoreTotal).toBe(3)
-    expect(byId.get('r3')?.scoreRank).toBe(3)
+    /* ★n1 이 라플 모집단에 들어와 넷이 됐다★ (옛 규칙에서는 셋이었다) */
+    expect(byId.get('r1')?.scoreTotal).toBe(4)
     expect(byId.get('s1')?.weapon).toBe(1)
     expect(byId.get('s1')?.scoreTotal).toBe(1)
-    expect(byId.get('n1')?.weapon).toBeNull()
-    expect(byId.get('n1')?.score).toBeNull()
-    expect(byId.get('n1')?.scoreRank).toBeNull()
+    expect(byId.get('n1')?.weapon).toBe(0)
+    expect(byId.get('n1')?.score).not.toBeNull()
+  })
+
+  it('★무기를 아예 모르면 그때는 못 잰다★ — 0으로 우기지 않는다 (D-106)', () => {
+    const rows = foldPlayerHex([
+      player({ leaguePlayerId: 'ok', rifleGames: 12 }),
+      player({ leaguePlayerId: 'none', sniperGames: 0, rifleGames: 0 }),
+    ])
+    const byId = new Map(rows.map((r) => [r.leaguePlayerId, r]))
+    expect(byId.get('none')?.weapon).toBeNull()
+    expect(byId.get('none')?.score).toBeNull()
+    expect(byId.get('none')?.scoreRank).toBeNull()
   })
 
   /* 2026-09-12 사장님이 비중을 19:35:46 · 판수무게 300 으로 바꿨다. 혼자면 셋 다 백분위 0 이라 합은 그대로 −1 이다 */
