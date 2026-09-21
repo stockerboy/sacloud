@@ -388,9 +388,15 @@ export async function runBattlelogLineup(
          *   그래서 사장님 화면에서 ★한두 시간 전 경기가 계속 「킬데스 수집중」★ 이었다.
          *
          *   ★최신부터 본다.★ 사람이 보는 것은 방금 한 경기다. 옛 경기는 뒤에서 따라온다.
+         *
+         *   ⚠ ★`DISTINCT` 가 아니라 `GROUP BY` 다★ — 2026-09-21 에 한 번 틀렸다.
+         *     `SELECT DISTINCT` 는 ★정렬 기준이 고른 칸 안에 있어야 한다★
+         *     (`ERROR: for SELECT DISTINCT, ORDER BY expressions must appear in select list`).
+         *     같은 경기가 리그마다 한 줄씩이라 묶어야 하는데, ★묶는 일은 `GROUP BY` 가 하고
+         *     정렬은 `MAX(startAt)` 이 한다.★
          */
         await prisma.$queryRaw<Array<{ matchKey: string }>>`
-          SELECT DISTINCT m."sourceMatchId" AS "matchKey"
+          SELECT m."sourceMatchId" AS "matchKey"
           FROM "Match" m
           WHERE m."origin"       = ${MATCH_ORIGIN}
             AND m."supersededAt" IS NULL
@@ -417,7 +423,8 @@ export async function runBattlelogLineup(
                     OR b."fetchedAt" > m."lineupCheckedAt"
                  )
             )
-          ORDER BY m."startAt" DESC
+          GROUP BY m."sourceMatchId"
+          ORDER BY MAX(m."startAt") DESC
         `
       : await prisma.$queryRaw<Array<{ matchKey: string }>>`
           SELECT DISTINCT "matchKey"
