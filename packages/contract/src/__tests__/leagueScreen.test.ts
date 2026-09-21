@@ -117,7 +117,7 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
     expect(spec.clanRank).toBe(false)
     expect(spec.clanRankNotice).not.toBeNull()
     /* 개인 킬데스·승률·순위는 그대로. ⚠ 옛 기대값 `rating: true` — 2026-09-15 밤에 층을 뺐다 */
-    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: false })
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: true })
     expect(spec.showsTier).toBe(false)
     expect(spec.official).toBe(false)
   })
@@ -141,9 +141,9 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
    */
   it('IPL — 티어만 없다. 킬뎃도 순위도 다 있다 (2026-09-16)', () => {
     const spec = leagueScreen('nolink')
-    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: false })
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: true })
     expect(spec.clanColumns.rank).toBe(true)
-    expect(spec.clanColumns.rating).toBe(false)
+    expect(spec.clanColumns.rating).toBe(true)
     expect(spec.clanRank).toBe(true)
     /* 티어 글자는 화면에서 사라진다 */
     expect(spec.showsTier).toBe(false)
@@ -164,7 +164,7 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
     const spec = leagueScreen('supply')
     /* ⚠ 옛 기대값 `rating: true` — 2026-09-15 밤 «티어의 흔적» 지시로 층 칸을 뺐다.
        점수 계산과 순위는 그대로다. 화면에서 칸만 사라진다 */
-    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: false })
+    expect(spec.playerColumns).toEqual({ rank: true, winRate: true, kd: true, rating: true })
     expect(spec.clanRank).toBe(true)
     expect(spec.clanRankNotice).toBeNull()
   })
@@ -182,12 +182,12 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
   })
 
   it('SPL 은 다섯 칸 그대로다', () => {
-    /* ⚠ 옛 기대값 `rating: true` (2026-09-15 밤에 층을 뺐다) */
+    /* ⚠ 2026-09-21 — 래더 칸을 도로 켰다 (3부와 같은 표기 「3,697점」) */
     expect(leagueScreen('supply').playerColumns).toEqual({
       rank: true,
       winRate: true,
       kd: true,
-      rating: false,
+      rating: true,
     })
   })
 
@@ -195,15 +195,29 @@ describe('leagueScreen — 기존 규칙이 흔들리지 않는다', () => {
    * ★세 리그가 같은 표를 쓴다★ (2026-09-15 밤 사장님: «티어의 흔적들이 아직도 많이
    * 남아있어 (…) 같은 폼인데 글씨 다른것들 통일성있게 좀 맞춰주고»).
    *
-   * 2026-09-14 에 IPL 만 껐던 탓에 SPL·열산에는 «33.1층» «31.1층» 이 남아 있었다.
+   * ── ⚠ ★2026-09-21 — 래더 칸을 도로 켰다★ (사장님이 3rd.supply 3부를 학습하라 하심)
+   *
+   *   9/15 에 끈 이유는 ★「34층」 이 등급처럼 보여서★ 였다.
+   *   ★숫자가 문제가 아니라 「층」 이라는 말이 문제였다.★
+   *   3부 원본은 같은 값을 ★「3,697점」★ 으로 적는다 — 등급으로 안 읽힌다.
+   *
+   *   그리고 2026-09-21 부터 ★이 값이 줄을 세운다.★ 안 보여 주면 화면을 보고
+   *   「왜 이 순서냐」 를 알 수 없다 — 사장님이 실제로 그렇게 물으셨다.
+   *
+   *   ★지금 지키는 것은 「세 리그가 같은 표를 쓴다」 하나다.★
+   *   칸을 켜고 끄는 것은 사장님이 정하고, 이 시험은 ★리그끼리 갈리지 않는 것★ 만 본다.
    */
-  it('★어느 리그도 「층」 칸을 그리지 않는다★ — 세 리그가 같은 표다', () => {
-    for (const slug of ['supply', 'nolink', 'sanply']) {
-      const spec = leagueScreen(slug)
-      expect(spec.playerColumns.rating).toBe(false)
-      expect(spec.clanColumns.rating).toBe(false)
-      /* ⚠ 2026-09-16 — 클랜 순위 번호는 도로 켰다 (사장님: «랭킹 전부 살려») */
-      expect(spec.clanColumns.rank).toBe(true)
+  it('★세 리그가 같은 표를 쓴다★ — 칸이 리그마다 갈리지 않는다', () => {
+    const specs = ['supply', 'nolink', 'sanply'].map((slug) => leagueScreen(slug))
+    const first = specs[0]
+    if (!first) throw new Error('리그를 못 찾았다')
+    for (const spec of specs) {
+      expect(spec.playerColumns).toEqual(first.playerColumns)
+      expect(spec.clanColumns).toEqual(first.clanColumns)
     }
+    /* ⚠ 2026-09-16 — 클랜 순위 번호는 켜 둔다 (사장님: «랭킹 전부 살려») */
+    expect(first.clanColumns.rank).toBe(true)
+    /* ⚠ 2026-09-21 — 래더 칸은 켜 둔다 (줄을 세우는 값이라 보여야 한다) */
+    expect(first.playerColumns.rating).toBe(true)
   })
 })

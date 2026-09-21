@@ -42,6 +42,7 @@ import {
   formatAverage,
   formatRate,
   formatRating,
+  formatRatingPoint,
   formatRatingDelta,
 } from '../common/format'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
@@ -1129,8 +1130,10 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                 {byWeapon
                   ? formatRatingDelta(row.rating_delta ?? 0)
                   : SCORE_COLUMN === 'ladder'
-                    ? /* ★래더 점수★ — 3부와 같은 잣대 (2026-09-21) */
-                      formatRating(row.rating)
+                    ? /* ★래더 점수★ — 3부와 같은 잣대·같은 표기 (2026-09-21).
+                         ⚠ 「34층」 이 아니라 ★「3,462점」★ 이다 — 층은 등급처럼 읽혀
+                         사장님이 9/15 에 「티어의 흔적」 이라 부르신 그 말이다 */
+                      formatRatingPoint(row.rating)
                   : scoreLadder
                     ? (row.score_rating === null || row.score_rating === undefined
                         ? <span className="text-[11px] font-normal text-faint">측정 중</span>

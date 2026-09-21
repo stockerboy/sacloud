@@ -158,9 +158,20 @@ const WITH_LADDER: LeagueScreenSpec = {
   hireClans: false,
   clanRankNotice: null,
   scoreLeague: true,
-  playerColumns: { rank: true, winRate: true, kd: true, rating: false },
+  /*
+   * ⚠ ★2026-09-21 — 래더 칸을 도로 켰다★ (사장님이 3rd.supply 3부를 학습하라 하심)
+   *
+   *   9/15 에 끈 이유는 ★「34층」 이 등급처럼 보여서★ 였다 (「티어의 흔적」).
+   *   ★숫자가 문제가 아니라 「층」 이라는 말이 문제였다.★
+   *   3부 원본은 같은 값을 ★「3,697점」★ 으로 적는다 — 등급으로 안 읽힌다.
+   *
+   *   지금은 ★이 값이 줄을 세운다.★ 안 보여 주면 사장님이 화면을 보고
+   *   「왜 이 순서냐」 를 알 수 없다 — 실제로 그렇게 물으셨다.
+   *   그래서 ★말만 「점」 으로 바꾸고 칸을 켠다.★
+   */
+  playerColumns: { rank: true, winRate: true, kd: true, rating: true },
   /* 클랜랭킹에는 킬뎃 칸이 원래 없다 */
-  clanColumns: { rank: true, winRate: true, kd: false, rating: false },
+  clanColumns: { rank: true, winRate: true, kd: false, rating: true },
   /* 티어는 IPL 만 쓴다 (지시 #23). 모르는 리그는 등급 개념 없이 그린다 */
   showsTier: false,
   official: true,
