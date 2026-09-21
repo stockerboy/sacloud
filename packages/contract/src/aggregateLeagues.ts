@@ -30,7 +30,20 @@
  * ⚠ `daerule` 은 없다 — 화면에서 접은 리그다 (`PREPARING_LEAGUE_SLUGS`).
  *   집계도 안 돈다. 두 곳이 같은 뜻으로 빠져 있다.
  */
-export const AGGREGATE_LEAGUE_SLUGS: readonly string[] = ['nolink', 'supply', 'sanply', 'c1']
+/*
+ * ⚠ ★2026-09-21 — C1 을 뺐다★ (사장님: 「c1리그 화면에서 없애버리고 전부 다 지워」).
+ *   CPL 은 ★개막 전★ 이라 아직 집계할 기록이 없다 — 10/1 에 여기 넣는다.
+ *   ★옛 목록은 아래 `_WITH_C1` 로 남겼다★ (`CLAUDE.md` 1-4).
+ */
+export const AGGREGATE_LEAGUE_SLUGS: readonly string[] = ['nolink', 'supply', 'sanply']
+
+/** ⚠ C1 이 집계에 있던 판. 지우지 않는다 — 되돌릴 때 쓴다 */
+export const AGGREGATE_LEAGUE_SLUGS_WITH_C1: readonly string[] = [
+  'nolink',
+  'supply',
+  'sanply',
+  'c1',
+]
 
 /** 그 리그에 집계가 도는가 */
 export function aggregatesLeague(slug: string): boolean {

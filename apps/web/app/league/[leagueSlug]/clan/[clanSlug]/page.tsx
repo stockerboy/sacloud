@@ -1,6 +1,10 @@
 /* ★v3 로 덮었다★ (2026-09-10 · 사장님 "바로덮기"). 옛 판은 './LeagueClanRecordScreen' 에 그대로 있다 */
 import LeagueClanRecordPage from './LeagueClanRecordScreenV3'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 /**
  * `/league/{leagueSlug}/clan/{clanSlug}` **껍데기를 굳힌다** (2026-09-03 · O-016).
  *

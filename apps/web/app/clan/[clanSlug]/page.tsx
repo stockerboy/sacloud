@@ -1,5 +1,9 @@
 import ClanLeaguesPage from './ClanLeaguesScreen'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 /**
  * `/clan/{clanSlug}` **껍데기를 굳힌다** (2026-09-03 · O-016).
  *

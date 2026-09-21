@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation'
 import MatchListPage from './MatchListScreen'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 /**
  * `/league/{leagueSlug}/match` — ★홈으로 보낸다★ (2026-09-15 사장님:
  * «그리고 top5랑 경기페이지는 없애버려»).

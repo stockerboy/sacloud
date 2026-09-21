@@ -37,6 +37,7 @@ import { rateLimitSweep } from './jobs/rateLimitSweep.js'
 import { runClanMarkFresh } from './jobs/clanMarkFresh.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runRenewRequests } from './jobs/renewRequests.js'
+import { runCplSetup } from './jobs/cplSetup.js'
 import { runIdentityFromBattlelog } from './jobs/identityFromBattlelog.js'
 import { runC1LeagueBuild } from './jobs/c1LeagueBuild.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
@@ -3901,6 +3902,12 @@ async function main(): Promise<number> {
         days: Number(stringFlag(args, 'days') ?? '') || undefined,
       })
       return r.seen >= 0 ? 0 : 1
+    }
+
+    case 'cpl-setup': {
+      /* ★CPL 리그와 참가 클랜 24곳★ (2026-09-21 사장님). 기록은 한 줄도 안 만든다 */
+      const r = await runCplSetup({ confirm: boolFlag(args, 'confirm') })
+      return r.missing.length > 0 ? 1 : 0
     }
 
     case 'renew-requests': {

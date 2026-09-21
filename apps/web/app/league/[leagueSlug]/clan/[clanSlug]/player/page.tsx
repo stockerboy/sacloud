@@ -5,6 +5,10 @@ import type { PlayerRankRow } from '@sacloud/contract'
 import { LoadMoreButton, PlayerRankTable, RankBox } from '@sacloud/ui'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 /** 리그 참여 클랜원 `/league/{slug}/clan/{slug}/player`. */
 export default function LeagueClanPlayersPage({
   params,

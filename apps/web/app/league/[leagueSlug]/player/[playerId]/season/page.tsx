@@ -7,6 +7,10 @@ import { leagueScreen } from '@sacloud/contract'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 /** 지난시즌 `/league/{slug}/player/{id}/season`. */
 export default function LeaguePlayerSeasonPage({
   params,

@@ -73,8 +73,14 @@ export {
   MOBILE_NAV_GROUPS,
   PRIMARY_NAV,
   PREPARING_LEAGUE_SLUGS,
+  /* ★모집중 리그★ (2026-09-21 · CPL) — 화면은 열려 있고 기록만 없다 */
+  UPCOMING_LEAGUE_SLUGS,
+  UPCOMING_LABEL,
+  /* ⚠ C1 이 있던 판 — 되돌릴 때 쓴다 */
+  FEATURED_LEAGUES_WITH_C1,
   SITE_BRAND,
   isLeaguePreparing,
+  isLeagueUpcoming,
   type NavGroup,
   type NavLink,
 } from './site-config'

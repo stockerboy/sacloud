@@ -85,7 +85,8 @@ export const HOME_TOP_SIZE = 3
  * ⚠ 옛 목록은 아래 `HOME_LEAGUES_V1` 로 남겼다 (`CLAUDE.md` 1-4).
  */
 export const HOME_LEAGUES: readonly { slug: string; abbr: string; name: string }[] = [
-  { slug: 'c1', abbr: 'C1', name: 'C1' },
+  /* ⚠ ★2026-09-21 — C1 → CPL★ (사장님). 개막 전이라 기록은 없고 소개와 명단만 있다 */
+  { slug: 'cpl', abbr: 'CPL', name: 'CPL' },
   { slug: 'supply', abbr: 'PL', name: 'PL' },
   { slug: 'nolink', abbr: 'IPL', name: 'IPL' },
   { slug: 'sanply', abbr: '열산리그', name: '열산리그' },

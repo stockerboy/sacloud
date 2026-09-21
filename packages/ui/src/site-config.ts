@@ -75,18 +75,31 @@ export interface NavLink {
  */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
   /*
-   * ★★C1 을 맨 앞에 둔다★★ (2026-09-20 밤 사장님)
+   * ★★2026-09-21 — C1 을 빼고 CPL 을 넣었다★★ (사장님)
    *
-   * > 「C1이라는 ★개고수 전용 기록판★ 을 만드는 것이다 (…) IPL과 다른 ★독립적인 하나의 리그★」
+   * > 「24개클랜으로 ★cpl 이라는 리그★ 따로 만들어줘 지금 있는 c1리그 화면에서
+   * >  ★없애버리고 전부 다 지워 사이트에서 흔적도 없이 지워.★ 그리고 cpl 이라는
+   * >  리그로 대체해 ★아직 아무런 기록도 하지마★ 10/1일부터 기록 시작할거야」
    *
-   *   IPL 상위 열 클랜이 ★서로 붙은 경기만★ 모은 리그다. 「진짜 실력자들의
-   *   실력싸움은 c1에 기록된다」 는 것이 사장님 뜻이라 ★맨 앞★ 에 둔다.
+   *   C1 은 IPL 상위 열 클랜의 경기만 모은 기록판이었다. CPL 은 ★24곳이 참가하는
+   *   독립 리그★ 이고 10/1 에 배치시즌(cloud1)으로 출범한다.
+   *
+   * ⚠ ★C1 을 지우지 않았다★ (`CLAUDE.md` 1-4) — 리그 행도 경기도 DB 에 그대로 있고,
+   *   아래 `FEATURED_LEAGUES_WITH_C1` 로 되돌리면 화면에 그대로 돌아온다.
    */
-  { label: 'C1', href: '/league/c1' },
+  { label: 'CPL', href: '/league/cpl' },
   /* ⚠ 2026-09-16 — «LLM» → «PL» (사장님). 주소는 그대로 `supply` 다 */
   { label: 'PL', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
   /* ⚠ 2026-09-16 — «YSL» → «열산리그» (사장님). 주소는 그대로 `sanply` 다 */
+  { label: '열산리그', href: '/league/sanply' },
+]
+
+/** ⚠ ★C1 이 있던 판★ (2026-09-21 이전). 지우지 않는다 — 되돌릴 때 이 줄을 쓴다 */
+export const FEATURED_LEAGUES_WITH_C1: readonly NavLink[] = [
+  { label: 'C1', href: '/league/c1' },
+  { label: 'PL', href: '/league/supply' },
+  { label: 'IPL', href: '/league/nolink' },
   { label: '열산리그', href: '/league/sanply' },
 ]
 
@@ -116,7 +129,8 @@ export const FEATURED_LEAGUES_V1: readonly NavLink[] = [
  *   「두 목록이 같은 리그를 담는다」 단언이 그것을 잡았다.
  */
 export const GNB_LEAGUE_ORDER: readonly string[] = [
-  '/league/c1',
+  /* ⚠ ★2026-09-21 — C1 → CPL★ (사장님). `FEATURED_LEAGUES` 와 같이 바꿔야 한다 */
+  '/league/cpl',
   '/league/supply',
   '/league/nolink',
   '/league/sanply',
@@ -145,6 +159,36 @@ export const GNB_LEAGUES: readonly NavLink[] = orderLeagues(GNB_LEAGUE_ORDER)
  * - 다시 열 때는 이 배열에서 slug 하나를 빼면 된다. 화면 코드에는 slug 가 없다.
  */
 export const PREPARING_LEAGUE_SLUGS: readonly string[] = ['daerule']
+
+/**
+ * ★★모집중 리그★★ (2026-09-21 · CPL)
+ *
+ * > 「★아직 아무런 기록도 하지마★ 10/1일부터 기록 시작할거야 (…) 사람들이 cpl 들어가면
+ * >  ★참여하는 클랜 명단★ 볼 수 있고 ★리그에 대한 설명★ 을 좀 해줘」
+ *
+ * ── ★준비중(`PREPARING`)과 다르다★
+ *
+ *   ```
+ *   준비중   화면이 통째로 막힌다 — 「준비 중입니다」 한 장
+ *   ★모집중★ ★화면은 열려 있다★ — 소개와 참가 클랜 명단을 보여 준다.
+ *            다만 ★기록이 한 줄도 없다★ — 랭킹·경기·통계가 없다
+ *   ```
+ *
+ * ── 그래서 ★집계에서도 뺀다★
+ *
+ *   집계할 기록이 없다. `aggregateLeagues.test.ts` 의 「화면에 있는데 집계에 없는
+ *   리그가 없다」 는 ★모집중 리그를 빼고★ 센다 — 없는 기록을 집계하라고 조를 수 없다.
+ *   10/1 에 첫 경기가 들어오면 ★여기서 빼고 `AGGREGATE_LEAGUE_SLUGS` 에 넣는다.★
+ */
+/** 화면에 적는 말 — 사장님이 정하신 표현이다 */
+export const UPCOMING_LABEL = '모집중'
+
+export const UPCOMING_LEAGUE_SLUGS: readonly string[] = ['cpl']
+
+/** 그 리그가 ★모집중★ 인가 — 화면은 열려 있고 기록만 없다 (사장님: 「개막전 이라고 하지말고 ★모집중★ 이라고 써」) */
+export function isLeagueUpcoming(leagueSlug: string): boolean {
+  return UPCOMING_LEAGUE_SLUGS.includes(leagueSlug)
+}
 
 /** 그 리그가 준비중인가 */
 export function isLeaguePreparing(leagueSlug: string): boolean {

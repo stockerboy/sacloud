@@ -11,6 +11,10 @@ import Link from 'next/link'
 import { BADGE_KEYS, BADGES, badgeArtPath } from '@sacloud/contract'
 import { leagueBadgePath } from '@sacloud/ui'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 export const dynamic = 'force-static'
 
 export default async function BadgeListPage({

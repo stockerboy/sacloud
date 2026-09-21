@@ -5,6 +5,10 @@ import type { ClanPlayer } from '@sacloud/contract'
 import { ClanRosterByPosition, ProfileLoadMore } from '@sacloud/ui'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 /**
  * 클랜원 탭 `/clan/{slug}/player` — 커서 무한스크롤.
  *

@@ -224,11 +224,12 @@ function PlayerLeagueRow({
        * `league_player_id` 를 넣으면 API 가 404 를 돌려주고 빈 화면이 된다 — 실제 버그였다.
        */
       href={leaguePlayerPath(entry.league.slug, playerId)}
-      className={`${PANEL} block px-5 py-4 transition-colors hover:border-accent`}
+      /* ★절반 크기★ (2026-09-21) — 두 장이 한 줄에 서므로 여백과 글자를 줄인다 */
+      className={`${PANEL} block px-4 py-3 transition-colors hover:border-accent`}
     >
       {/* ── 머리 — 리그 이름 + 공식 표 ───────────────────────────────── */}
       <div className="flex items-center gap-2">
-        <span className="truncate text-[17px] font-extrabold tracking-[-.01em] text-text-strong">
+        <span className="truncate text-[15px] font-extrabold tracking-[-.01em] text-text-strong">
           {entry.league.name}
         </span>
         {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
@@ -236,7 +237,7 @@ function PlayerLeagueRow({
       </div>
 
       {/* ── 본문 — 왼쪽 원자료 · 오른쪽 라벨+값 ──────────────────────── */}
-      <div className="mt-3 flex flex-col gap-2">
+      <div className="mt-2.5 flex flex-col gap-1.5">
         <CardLine
           raw={null}
           label="래더"
@@ -350,14 +351,14 @@ function CardLine({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="min-w-0 truncate font-num text-[13px] tabular-nums text-meta">
+      <span className="min-w-0 truncate font-num text-[12px] tabular-nums text-meta">
         {raw ?? ' '}
       </span>
       <span className="flex shrink-0 items-baseline gap-2">
-        {sub ? <span className="font-num text-[12px] tabular-nums text-faint">{sub}</span> : null}
-        <span className="text-[13px] text-meta">{label}</span>
+        {sub ? <span className="font-num text-[11px] tabular-nums text-faint">{sub}</span> : null}
+        <span className="text-[12px] text-meta">{label}</span>
         <span
-          className={`font-num text-[19px] font-extrabold leading-none tabular-nums ${
+          className={`font-num text-[16px] font-extrabold leading-none tabular-nums ${
             muted ? 'text-faint' : 'text-text-strong'
           }`}
         >
@@ -401,7 +402,8 @@ function IdleLeagues({
         </span>
       </button>
       {open ? (
-        <div className="mt-3 flex flex-col gap-3">
+        /* ★한 줄에 두 장★ (2026-09-21) — 까닭은 위 목록 쪽 주석에 적었다 */
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
           {entries.map((entry) => (
             <PlayerLeagueRow key={entry.league.id} entry={entry} playerId={playerId} />
           ))}
@@ -489,7 +491,14 @@ export function PlayerLeagueList({
           ) : null
         }
       />
-      <div className="mt-4 flex flex-col gap-3">
+{/*
+        ★★한 줄에 두 장★★ (2026-09-21 사장님: 「카드 절반크기로 줄이고
+          ★한칸에 두장씩★ 놓도록만들어」)
+
+          카드 하나가 화면 폭을 통째로 먹어 ★PC 에서 오른쪽 절반이 비어 있었다.★
+        ⚠ ★폰은 한 줄에 한 장★ — 390px 에 두 장을 넣으면 숫자가 붙는다
+      */}
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         {shown.map((entry) => (
           <PlayerLeagueRow key={entry.league.id} entry={entry} playerId={playerId} />
         ))}

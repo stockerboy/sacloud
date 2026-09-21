@@ -44,6 +44,8 @@ import { FEATURED_LEAGUES, LEAGUE_LOGO, isLeaguePreparing } from '@sacloud/ui'
 const TONE: Readonly<Record<string, string>> = {
   /* ★C1 은 금색★ (2026-09-20) — 로고와 같은 색이다 (`league-c1.svg`) */
   c1: '#ffd83d',
+  /* ★CPL 도 금색★ (2026-09-21) — 로고의 금색 C 를 따른다 */
+  cpl: '#ffd83d',
   nolink: '#5b8dff',
   supply: '#ff5a63',
   sanply: '#9fc4ff',

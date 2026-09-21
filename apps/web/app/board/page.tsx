@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation'
 import { DEFAULT_BOARD_SLUG } from '@sacloud/ui'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 /**
  * 게시판 홈 — `/board` 로 들어오면 기본 게시판으로 보낸다.
  *

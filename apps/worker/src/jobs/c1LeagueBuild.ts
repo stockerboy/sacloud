@@ -73,6 +73,8 @@ export interface C1BuildResult {
   created: number
   /** 이미 담겨 있던 경기 */
   skipped: number
+  /** 이미 있던 경기 중 ★라인업 상태를 원본에 맞춘★ 건수 */
+  lineupSynced: number
   /** 새로 담은 참가 기록 줄 */
   stats: number
   /** 명부에 새로 올린 선수 */
@@ -86,6 +88,7 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
     matches: 0,
     created: 0,
     skipped: 0,
+    lineupSynced: 0,
     stats: 0,
     players: 0,
   }
@@ -187,6 +190,26 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
       firstHalfAttackSide: true,
       firstSideEvidence: true,
       secondHalfFrom: true,
+      /*
+       * ★★라인업 상태도 같이 옮긴다★★ (2026-09-21 · 무한 QA 에서 잡았다)
+       *
+       *   C1 경기는 ★원본 경기의 복사본★ 이고 명단(`MatchPlayerStat`)도 같이 복사한다.
+       *   그런데 ★`lineupStatus` 만 안 옮겼다.★ 그래서 —
+       *   ```
+       *   C1 경기 271건  ·  명단 있음 268건  ·  ★라인업 완료 0건★
+       *   ```
+       *   화면은 `lineupStatus` 를 보고 「킬데스 수집중」 을 적는다.
+       *   ★명단이 다 있는데 영원히 수집중★ 이라고 말하고 있었다
+       *   (사장님이 IPL 에서 같은 증상을 「16시간전인데 수집중은 뭐야」 로 잡으신 적이 있다).
+       *
+       *   ⚠ ★명단 잡(`battlelog-lineup`)이 C1 을 채워 주지 못한다★ —
+       *     그 잡은 `origin = 'nexon_barracks'` 만 본다. C1 은 `sacloud` 다.
+       *     그래서 ★원본에서 같이 옮기는 것이 맞다.★
+       */
+      lineupStatus: true,
+      lineupSkipReason: true,
+      lineupSeen: true,
+      lineupCheckedAt: true,
       redClan: { select: { clanId: true } },
       blueClan: { select: { clanId: true } },
       stats: {
@@ -228,9 +251,33 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
     /* ★멱등★ — 이미 담았으면 건너뛴다 */
     const already = await prisma.match.findFirst({
       where: { leagueId: league.id, sourceMatchId: key },
-      select: { id: true },
+      select: { id: true, lineupStatus: true, lineupSeen: true },
     })
     if (already !== null) {
+      /*
+       * ★★이미 담은 경기도 라인업 상태는 따라가게 한다★★ (2026-09-21)
+       *
+       *   원본은 나중에 배틀로그가 들어와 `incomplete → complete` 로 바뀐다.
+       *   한 번 담고 건너뛰기만 하면 C1 쪽은 ★처음 담았을 때의 상태로 굳는다★ —
+       *   실측 ★C1 271건 중 라인업 완료 0건★ 이었고, 화면은 전부 「킬데스 수집중」 이었다.
+       *
+       *   ⚠ ★달라졌을 때만 쓴다★ — 매 판 271번 쓰지 않는다.
+       */
+      if (
+        already.lineupStatus !== m.lineupStatus ||
+        already.lineupSeen !== m.lineupSeen
+      ) {
+        await prisma.match.update({
+          where: { id: already.id },
+          data: {
+            lineupStatus: m.lineupStatus,
+            lineupSkipReason: m.lineupSkipReason,
+            lineupSeen: m.lineupSeen,
+            lineupCheckedAt: m.lineupCheckedAt,
+          },
+        })
+        result.lineupSynced += 1
+      }
       result.skipped += 1
       continue
     }
@@ -279,6 +326,11 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
         blueLeagueClanId: blueLc,
         redDivisionAtMatch: 1,
         blueDivisionAtMatch: 1,
+        /* ★라인업 상태★ — 원본 그대로. 안 옮기면 화면이 영영 「수집중」 이다 */
+        lineupStatus: m.lineupStatus,
+        lineupSkipReason: m.lineupSkipReason,
+        lineupSeen: m.lineupSeen,
+        lineupCheckedAt: m.lineupCheckedAt,
       },
       select: { id: true },
     })
@@ -310,7 +362,7 @@ export async function runC1LeagueBuild(input: { confirm: boolean }): Promise<C1B
   }
 
   log(
-    `C1 경기 — 새로 담음 ${result.created} · 이미있음 ${result.skipped} · 참가기록 ${result.stats}줄`,
+    `C1 경기 — 새로 담음 ${result.created} · 이미있음 ${result.skipped} · ★라인업 맞춤 ${result.lineupSynced}★ · 참가기록 ${result.stats}줄`,
   )
 
   /* ── ④ 명부 ─────────────────────────────────────────── */

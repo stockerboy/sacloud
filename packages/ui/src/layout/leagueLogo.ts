@@ -68,6 +68,15 @@ export const LEAGUE_LOGO: Readonly<Record<string, LeagueLogo>> = {
    *     되돌리려면 아래 한 줄의 src·w 를 `'/brand/league-c1.svg'` · `320` 으로 바꾼다.
    */
   c1: { src: '/brand/league-c1.webp', w: 517, h: 200 },
+  /*
+   * ★★CPL 로고 — 사장님이 주신 그림★★ (2026-09-21 「Cpl로고」)
+   *
+   *   금색 C + 은색 PL. C1·IPL·PL 과 ★같은 기울기·같은 금속 느낌★ 이다.
+   *   받은 그림은 ★검은 배경이 픽셀로 박혀 있었다★ — 아주 어두운 점(26 미만)만
+   *   투명으로 돌리고 잘라 냈다. 로고가 금·은이라 ★글자는 한 점도 안 지워진다.★
+   *   2172×724 → 잘라서 2030×410 → 너비 640 webp ★34KB★.
+   */
+  cpl: { src: '/brand/league-cpl.webp', w: 640, h: 129 },
   nolink: { src: '/brand/league-ipl.webp', w: 673, h: 200 },
   supply: { src: '/brand/league-pl.webp', w: 630, h: 200 },
   /*

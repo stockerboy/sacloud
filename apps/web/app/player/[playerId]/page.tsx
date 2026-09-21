@@ -3,6 +3,27 @@ import { fetchForMetadata, pageMetadata } from '@/lib/server/pageMetadata'
 import PlayerPage from './PlayerProfileScreen'
 
 /**
+ * ★★갱신 주기★★ (2026-09-21 사장님: 「★정보갱신안된다★ 그리고 언제적 닉네임이야
+ * 이건 이 사람 이 닉네임 거의 ★6개월전에★ 쓰던건데」)
+ *
+ * ── 무엇이었나 (실측)
+ *
+ *   ```
+ *   API   /api/players/{id}  →  「[d].skenes」   ← ★DB 는 이미 바뀌어 있었다★
+ *   화면  /player/{id}       →  「hearts♡」     ← ★옛 이름이 12군데 박혀 있었다★
+ *   ```
+ *   정보갱신은 ★제대로 돌고 있었다.★ 화면이 안 따라온 것이다.
+ *
+ *   App Router 는 `revalidate` 가 없으면 ★한 번 만든 화면을 배포 때까지 그대로 쓴다.★
+ *   그래서 닉네임을 바꿔도, 클랜을 옮겨도, 마크를 갈아도 ★영영 옛 화면★ 이었다.
+ *
+ * ⚠ ★60초다★ — 첫 사람만 새로 만들고 나머지는 만들어 둔 것을 받는다.
+ *   더 짧게 하면 람다가 자주 깨어 느려지고, 길게 하면 사장님이 또 옛 이름을 보신다.
+ */
+export const revalidate = 60
+
+
+/**
  * `/player/{playerId}` **껍데기를 굳힌다** (2026-09-03 · O-016).
  *
  * ══ 무엇을 바꾼 것인가 ══

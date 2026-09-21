@@ -3,6 +3,10 @@ import { leagueMatchPath } from '@sacloud/ui'
 import { fetchForMetadata, pageMetadata } from '@/lib/server/pageMetadata'
 import MatchDetailPage from './MatchDetailScreen'
 
+/* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
+export const revalidate = 60
+
+
 /**
  * `/league/{leagueSlug}/match/{matchId}` **껍데기를 굳힌다** (2026-09-03 · O-014 · O-016).
  *

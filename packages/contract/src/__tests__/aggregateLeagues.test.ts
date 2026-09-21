@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import { AGGREGATE_LEAGUE_SLUGS } from '../aggregateLeagues'
 import { HOME_LEAGUES } from '../entities/home'
-import { FEATURED_LEAGUES, PREPARING_LEAGUE_SLUGS } from '../../../ui/src/site-config'
+import {
+  FEATURED_LEAGUES,
+  PREPARING_LEAGUE_SLUGS,
+  UPCOMING_LEAGUE_SLUGS,
+} from '../../../ui/src/site-config'
 
 /**
  * ★★화면에 올린 리그는 집계도 돌아야 한다★★ (2026-09-21 · 사장님 지시)
@@ -34,8 +38,19 @@ describe('화면에 올린 리그는 집계도 돈다', () => {
     )
   }
 
+  /**
+   * 집계를 요구할 수 있는 리그 — ★모집중은 뺀다★ (2026-09-21 · CPL).
+   *
+   * 모집중 리그는 ★기록이 한 줄도 없다.★ 없는 기록을 집계하라고 조를 수 없다.
+   * 10/1 에 첫 경기가 들어오면 `UPCOMING_LEAGUE_SLUGS` 에서 빼고
+   * `AGGREGATE_LEAGUE_SLUGS` 에 넣는다 — 그때 이 시험이 그것을 확인해 준다.
+   */
+  function countedSlugs(): string[] {
+    return shownSlugs().filter((slug) => !UPCOMING_LEAGUE_SLUGS.includes(slug))
+  }
+
   it('★화면에 있는데 집계에 없는 리그가 없다★', () => {
-    const missing = shownSlugs().filter((slug) => !AGGREGATE_LEAGUE_SLUGS.includes(slug))
+    const missing = countedSlugs().filter((slug) => !AGGREGATE_LEAGUE_SLUGS.includes(slug))
     expect(
       missing,
       `\n★${missing.join(', ')} 가 화면에는 있는데 집계에는 없다★\n` +
@@ -45,7 +60,7 @@ describe('화면에 올린 리그는 집계도 돈다', () => {
   })
 
   it('★집계에 있는데 화면에 없는 리그가 없다★ — 보이지도 않는 리그를 세지 않는다', () => {
-    const shown = new Set(shownSlugs())
+    const shown = new Set(countedSlugs())
     const extra = AGGREGATE_LEAGUE_SLUGS.filter((slug) => !shown.has(slug))
     expect(
       extra,
@@ -89,6 +104,12 @@ describe('화면에 올린 리그는 집계도 돈다', () => {
         `홈에서 들어간 사람이 다른 화면에서 그 리그로 못 돌아온다.
 `,
     ).toEqual([])
+  })
+
+  it('★모집중 리그는 집계에 없다★ — 기록이 한 줄도 없다', () => {
+    for (const slug of UPCOMING_LEAGUE_SLUGS) {
+      expect(AGGREGATE_LEAGUE_SLUGS, `★${slug} 는 모집중인데 집계가 돈다★`).not.toContain(slug)
+    }
   })
 
   it('★준비중 리그는 집계도 안 돈다★', () => {
