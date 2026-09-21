@@ -64,13 +64,27 @@ esac
 raw=0; proj=0; line=0; pend=0; stuck=0
 eval "$OUT"
 
-# 가장 늦은 단계가 곧 사장님이 겪는 지연이다
-WORST=$raw
-STAGE=수집
-[ "$proj" -gt "$WORST" ] 2>/dev/null && { WORST=$proj; STAGE=정규화; }
-[ "$line" -gt "$WORST" ] 2>/dev/null && { WORST=$line; STAGE=명단; }
-
-say "raw=${raw} proj=${proj} line=${line} pend=${pend} stuck=${stuck} → 최악 ${WORST}분(${STAGE})"
+# ── ⚠ ★정규화·명단은 「잡이 언제 돌았나」 로 잰다★ (2026-09-22 실측으로 고쳤다)
+#
+#   데이터로 재려다 두 번 틀렸다:
+#     ① 「마지막 경기가 몇 분 전」 → 경기 길이(20분)가 지연으로 잡혔다
+#     ② 「Match 가 안 된 원문」    → ★일부러 경기로 안 만드는 원문★ 이 섞인다
+#        (열명게임·일반매치는 거르고, 클랜을 모르는 경기도 안 만든다)
+#   둘 다 ★멀쩡한데 밀렸다고 우기는★ 값이었다.
+#
+#   잡이 도는지는 ★잡의 로그가 사실대로 말해 준다.★ 그걸 쓴다.
+CRON=/root/log/cron.log
+since() {
+  # $1 = 찾을 글자. 그 줄이 마지막으로 찍힌 지 몇 분 됐나. 못 찾으면 999
+  last=$(grep -F "$1" "$CRON" 2>/dev/null | tail -1 | cut -d' ' -f1-2)
+  [ -z "$last" ] && { echo 999; return; }
+  y=$(date +%Y)
+  t=$(date -d "$y-$(echo "$last" | tr '|' ' ' | sed 's#-# #' | awk '{printf "%s-%s %s", $1, $2, $3}')" +%s 2>/dev/null)
+  [ -z "$t" ] && { echo 999; return; }
+  echo $(( ( $(date +%s) - t ) / 60 ))
+}
+proj=$(since "★정규화 시작★")
+line=$(since "★라인업 시작★")
 
 WAS=$(cat "$STATE" 2>/dev/null || echo ok)
 
