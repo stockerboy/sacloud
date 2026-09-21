@@ -901,6 +901,8 @@ export async function getLeaguePlayerDetail(
           rating: effective.rating,
           scoreRating: effective.scoreRating,
           placement: effective.placement,
+          /* ★랭킹 목록과 같은 모집단으로 센다★ (2026-09-21 · 무한 QA) */
+          leagueSlug,
         })
       : Promise.resolve({ rank: null, rankCount: null }),
     /* 무기별 버킷 — **한 번만 읽는다.** `weapon_stats`(기록)와 무기별 순위가 같은 줄을 쓴다.

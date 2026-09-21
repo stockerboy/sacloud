@@ -17,6 +17,7 @@ import {
   type PlayerRankRow,
   type PlayerLimit,
   type SeasonType,
+  rankMinGamesOf,
 } from '@sacloud/contract'
 import { cursorPage, paginateArray, type CursorPage } from '../cursorPage'
 import { toKstIso } from '../format'
@@ -1528,7 +1529,66 @@ export async function playerRankOf(leaguePlayer: {
   rating: number
   scoreRating: number | null
   placement: boolean
+  /**
+   * ★랭킹 목록과 같은 모집단을 쓰려면 리그 slug 가 필요하다★ (2026-09-21 · 무한 QA).
+   * ⚠ 안 주면 ★옛 동작★ 이다 (전원을 센다) — 기존 호출부가 안 깨진다.
+   */
+  leagueSlug?: string
 }): Promise<{ rank: number | null; rankCount: number | null }> {
+  /*
+   * ★★랭킹 목록과 ★같은 사람들★ 을 센다★★ (2026-09-21 · 무한 QA에서 잡았다)
+   *
+   * ── 무엇이 어긋나 있었나 (실측)
+   *
+   *   ```
+   *   C1   랭킹 1위인 선수가 이 셈에서는 ★21위 / 499명★
+   *   IPL  랭킹 1위인 선수가            ★157위 / 2,240명★
+   *   PL   랭킹 1위인 선수가            ★19위 / 658명★
+   *   ```
+   *   ★같은 사람이 두 화면에서 다른 등수★ 였다.
+   *
+   *   랭킹 목록은 `LeaguePlayerHex` 에서 ★점수를 잰 사람 + 판수 문턱★ 만 본다
+   *   (C1 은 120명). 그런데 이 셈은 ★`placement: false` 인 전원★ 을 셌다 (499명).
+   *   위에 있던 스무 명은 ★문턱을 못 넘어 랭킹에 아예 안 나오는 사람들★ 이다.
+   *
+   * ── 이제
+   *
+   *   같은 표(`LeaguePlayerHex`) · 같은 조건(점수 있음 + 판수 문턱) ·
+   *   같은 정렬(★래더 내림차순★) 로 센다. 그래서 랭킹 1위는 여기서도 1위다.
+   *
+   * ⚠ slug 를 안 주면 옛 셈으로 떨어진다 — 그때는 예전처럼 전원을 센다.
+   */
+  if (leaguePlayer.leagueSlug !== undefined) {
+    const minGames = rankMinGamesOf(leaguePlayer.leagueSlug)
+    const [row] = await prisma.$queryRaw<{ rankCount: number; above: number }[]>`
+      SELECT COUNT(*)::int AS "rankCount",
+             COUNT(*) FILTER (
+               WHERE lp."rating" > ${leaguePlayer.rating}
+                  OR (lp."rating" = ${leaguePlayer.rating} AND h."leaguePlayerId" < ${leaguePlayer.id})
+             )::int AS "above"
+        FROM "LeaguePlayerHex" h
+        JOIN "LeaguePlayer" lp ON lp."id" = h."leaguePlayerId"
+       WHERE lp."leagueId" = ${leaguePlayer.leagueId}
+         AND h."weapon" IS NOT NULL
+         AND h."score" IS NOT NULL
+         AND h."games" >= ${minGames}
+    `
+    const rankCount = row?.rankCount ?? 0
+    if (leaguePlayer.placement) return { rank: null, rankCount: null }
+    /* ★문턱을 못 넘긴 사람은 등수가 없다★ — 목록에 없는데 「n위」 라 적으면 안 된다 (D-106) */
+    const mine = await prisma.leaguePlayerHex.findFirst({
+      where: {
+        leaguePlayerId: leaguePlayer.id,
+        weapon: { not: null },
+        score: { not: null },
+        games: { gte: minGames },
+      },
+      select: { leaguePlayerId: true },
+    })
+    if (mine === null) return { rank: null, rankCount }
+    return { rank: (row?.above ?? 0) + 1, rankCount }
+  }
+
   /* **왕복 두 번을 한 번으로 줄였다** (2026-09-01 · D-239 후속) — `clanRankOf` 와 같은 이유다.
      모집단(`placement: false`)도 `rankOfFirstPlayer` 의 조건도 그대로다.
      여기에 `ACTIVE_CLAN` 을 넣지 않는 이유는 위 `rankOfFirstPlayer` 주석에 있다 —

@@ -127,7 +127,8 @@ export async function getPlayerLeagues(playerId: string): Promise<PlayerLeagueEn
 
   return Promise.all(
     rows.map(async (row) => {
-      const rank = await playerRankOf(row)
+      /* ★랭킹 목록과 같은 모집단으로 센다★ (2026-09-21 · 무한 QA) */
+      const rank = await playerRankOf({ ...row, leagueSlug: row.league.slug })
       return {
         league: toLeagueSummary(row.league),
         league_player_id: row.id,
