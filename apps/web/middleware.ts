@@ -38,7 +38,12 @@ const SESSION_COOKIE = 'sacloud_session'
  * `false` 면 ★누구나 들어온다.★ `true` 면 로그인한 사람만 들어온다.
  * 환경변수 `SACLOUD_PRIVATE=1` 로도 잠글 수 있다 — 둘 중 하나만 켜도 잠긴다.
  */
-const SITE_PRIVATE = false as boolean
+/*
+ * ⚠ ★2026-09-21 저녁 — 다시 잠갔다★ (사장님: 「★비공개로 돌려★ 사람들이 보겠다
+ *   이런 부끄러운 꼴」). 닉네임·명단이 낡은 채로 열려 있었다.
+ *   다 고친 뒤 이 줄을 `false` 로 되돌리면 다시 열린다.
+ */
+const SITE_PRIVATE = true as boolean
 
 /** 문 밖에서도 열리는 길 */
 const OPEN_PREFIX = [
