@@ -776,8 +776,35 @@ function hexAxesOf(row: ScoreRankRow): PlayerRankHexAxis[] {
   }))
 }
 
-const SCORE_ORDER = [{ score: 'desc' as const }, { leaguePlayerId: 'asc' as const }]
-const SCORE_ORDER_REVERSED = [{ score: 'asc' as const }, { leaguePlayerId: 'desc' as const }]
+/**
+ * ★★개인랭킹을 무엇으로 줄 세우나★★ (2026-09-21 · 사장님: 3rd.supply 3부를 학습하라)
+ *
+ * ── 3부 화면을 직접 읽고 정했다
+ *
+ *   ```
+ *    2위 [h].robot   71.0%  3,696점
+ *    3위 [h].wpfl    73.4%  3,651점   ← ★승률이 더 높은데 아래★
+ *   19위 Jaehyunpark 킬뎃 46.3%       ← ★킬뎃 꼴찌급인데 19위★
+ *   ```
+ *   화면에 승률·킬뎃·평균킬을 적지만 ★줄은 래더 점수가 세운다.★
+ *
+ *   `'elo'`   `LeaguePlayer.rating` — 원본과 같은 방식. ★지금 이것★
+ *   `'hex'`   `LeaguePlayerHex.score` — 육각·승률·킬뎃을 섞은 우리 공식
+ *             (2026-09-10 ~ 09-21. ★지우지 않는다★ — `CLAUDE.md` 1-4)
+ *
+ * ⚠ 티어보정은 ★이미 전부 꺼져 있다★ (`TIER_FACTOR_ON` · `HEX_CLAN_BONUS` · `TOP_CLAN_BONUS`).
+ */
+type PlayerRankBy = 'elo' | 'hex'
+const PLAYER_RANK_BY = 'elo' as PlayerRankBy
+
+const SCORE_ORDER =
+  PLAYER_RANK_BY === 'elo'
+    ? [{ leaguePlayer: { rating: 'desc' as const } }, { leaguePlayerId: 'asc' as const }]
+    : [{ score: 'desc' as const }, { leaguePlayerId: 'asc' as const }]
+const SCORE_ORDER_REVERSED =
+  PLAYER_RANK_BY === 'elo'
+    ? [{ leaguePlayer: { rating: 'asc' as const } }, { leaguePlayerId: 'desc' as const }]
+    : [{ score: 'asc' as const }, { leaguePlayerId: 'desc' as const }]
 
 interface ScoreRankRow {
   leaguePlayerId: string

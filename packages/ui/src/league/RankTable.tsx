@@ -839,8 +839,13 @@ export function PlayerRankTable({
  * ⚠ 경기당 점수는 ★사라지지 않는다★ — 점수판·MVP 설명은 그대로 그 값을 쓴다.
  *   여기서 정하는 것은 ★랭킹 표의 그 한 칸★ 뿐이다.
  */
-type ScoreColumn = 'skill' | 'average'
-const SCORE_COLUMN = 'skill' as ScoreColumn
+type ScoreColumn = 'ladder' | 'skill' | 'average'
+/**
+ * ⚠ ★2026-09-21 낮 — `ladder` 로 바꿨다★ (사장님: 3rd.supply 3부를 학습하라)
+ *   3부 개인랭킹은 ★래더 점수★ 로 줄을 세우고 그 값을 적는다.
+ *   `skill`(육각+승률+킬뎃)은 우리가 만든 공식이라 ★원본과 다르다.★
+ */
+const SCORE_COLUMN = 'ladder' as ScoreColumn
 
   /*
    * ★점수 래더★ (2026-09-18 사장님: «래더점수도 이걸로 계산해»).
@@ -1123,6 +1128,9 @@ const SCORE_COLUMN = 'skill' as ScoreColumn
               >
                 {byWeapon
                   ? formatRatingDelta(row.rating_delta ?? 0)
+                  : SCORE_COLUMN === 'ladder'
+                    ? /* ★래더 점수★ — 3부와 같은 잣대 (2026-09-21) */
+                      formatRating(row.rating)
                   : scoreLadder
                     ? (row.score_rating === null || row.score_rating === undefined
                         ? <span className="text-[11px] font-normal text-faint">측정 중</span>
