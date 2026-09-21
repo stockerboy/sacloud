@@ -92,7 +92,23 @@ export async function runIdentityFromBattlelog(input: {
    *   안 주면 지금까지와 똑같이 최신부터 본다.
    */
   before?: Date
+  /**
+   * ★★뒤로 훑을 때는 닉을 고치지 않는다★★ (2026-09-21 — ★내가 되돌려 놓고 알았다★)
+   *
+   * ── 무슨 일이 있었나
+   *   커서(`before`)를 만들어 ★옛 원문까지 훑게★ 했더니, 옛 원문의 ★옛 닉★ 으로
+   *   이름을 덮었다. 명부와 어긋난 사람이 ★107명 → 1,715명★ 으로 늘었다.
+   *   ★계정을 잇는 일★ 과 ★닉을 맞추는 일★ 은 보는 시점이 달라야 한다 —
+   *   계정은 옛 원문에도 있지만 ★이름은 최신만 옳다.★
+   *
+   * ── 규칙
+   *   `before` 를 주면(= 뒤로 훑는 중이면) ★계정만 잇고 이름은 안 건드린다.★
+   *   안 주면(= 최신부터 보는 중이면) 지금까지처럼 이름도 맞춘다.
+   */
+  renameToo?: boolean
 }): Promise<IdentityFromBattlelogResult> {
+  /* ★뒤로 훑을 때는 기본이 「이름 안 건드림」★ — 옛 닉으로 덮지 않는다 */
+  const renameToo = input.renameToo ?? input.before === undefined
   const limit = input.limit ?? 2000
   const result: IdentityFromBattlelogResult = {
     rows: 0,
@@ -165,6 +181,8 @@ export async function runIdentityFromBattlelog(input: {
   }
 
   for (const [usn, nick] of nickOf) {
+    /* ★뒤로 훑는 중이면 이름을 안 건드린다★ — 옛 원문의 옛 닉으로 덮지 않는다 */
+    if (!renameToo) break
     const mine = playerOfUsn.get(usn)
     if (mine === undefined) continue
     if (mine.name === nick) continue
