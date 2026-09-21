@@ -35,6 +35,7 @@ import { V2_RATING_CONSTANTS } from '@sacloud/rating'
 import { REPO_ROOT } from '../lib/env.js'
 import { log } from '../lib/log.js'
 import { runSeason0 } from './season0.js'
+import { applyMatchDeltas, type MatchDeltaPlayer, type MatchDeltaStat } from './matchDeltaApply.js'
 import { season0MatchWhere } from '../lib/season0Window.js'
 /* ★집계 임대★ — 한 판만 돌고, 옛 판이 새 결과를 못 덮게 한다 (2026-09-06 · Part 9) */
 import {
@@ -96,6 +97,13 @@ export async function applySeason0(leagueSlugs: string[], confirm: boolean): Pro
       sniper: { delta: number; games: number; win: number; lose: number; kill: number; death: number; assist: number; headshot: number; known: number }
       rifle: { delta: number; games: number; win: number; lose: number; kill: number; death: number; assist: number; headshot: number; known: number }
     }[]
+    /**
+     * ★경기별 증감★ (2026-09-21 사장님: 「증감 미기록 다 없애고 ★다 기록남겨★」)
+     * 계산은 이미 돼 있었는데 ★dryRun 이라 버려지던★ 값이다. 여기까지 들고 와서 받아 적는다.
+     */
+    stats: MatchDeltaStat[]
+    /** 증감을 화면 눈금으로 줄일 때 쓰는 비율의 재료 */
+    scalePlayers: MatchDeltaPlayer[]
     clans: {
       leagueClanId: string
       rating: number
@@ -279,7 +287,19 @@ export async function applySeason0(leagueSlugs: string[], confirm: boolean): Pro
       placementPlayed: c.games,
     }))
 
-    plans.push({ leagueId: league.id, slug, players, clans })
+    plans.push({
+      leagueId: league.id,
+      slug,
+      players,
+      clans,
+      /* ★버리지 않는다★ — 아래 반영 단계가 이 값을 `MatchPlayerStat` 에 적는다 */
+      stats: result.raw.stats ?? [],
+      scalePlayers: result.raw.players.map((p) => ({
+        playerId: p.playerId,
+        display: p.display,
+        internal: p.internal,
+      })),
+    })
     log(`[${slug}] 반영 대상 — 선수 ${players.length} · 클랜 ${clans.length}`)
   }
 
@@ -429,6 +449,20 @@ export async function applySeason0(leagueSlugs: string[], confirm: boolean): Pro
       }
       written += 1
     }
+
+    /*
+     * ★★경기별 증감을 받아 적는다★★ (2026-09-21 사장님)
+     *
+     *   선수 점수를 다 쓴 ★뒤★ 에 한다 — 줄이는 비율(`shrink`)이 그 점수에서 나오므로
+     *   ★같은 판의 값★ 으로 적어야 더해서 래더가 된다.
+     *   ⚠ 여기서 터져도 위에 쓴 점수는 살린다 — 증감은 다음 판이 다시 적는다.
+     */
+    try {
+      await applyMatchDeltas(plan.stats, plan.scalePlayers, { confirm: true })
+    } catch (error) {
+      log(`[${plan.slug}] ★경기별 증감을 못 썼다★ — ${String(error)} (다음 판에 다시 한다)`)
+    }
+
     for (const c of plan.clans) {
       await prisma.leagueClan.update({
         where: { id: c.leagueClanId },

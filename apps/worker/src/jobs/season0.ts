@@ -144,6 +144,34 @@ export interface Season0LeagueResult {
       rifleGames: number
     }[]
     statKeys: { matchId: string; playerId: string }[]
+    /**
+     * ★★경기별 증감★★ (2026-09-21 사장님: 「★증감 미기록★ 이 왜있어 … 다 기록남겨」)
+     *
+     * ── 여태 무엇을 버리고 있었나 (실측 2026-09-21)
+     *
+     *   ```
+     *   IPL   61,141줄 중 증감 있는 줄  ★0★ (100% 미기록)
+     *   열산  11,070줄 중              ★0★
+     *   PL     8,846줄 중              ★0★
+     *   ```
+     *   ★증감은 30분마다 이미 계산되고 있었다.★ 그런데 `runSeason0` 이
+     *   `runRate` 를 ★dryRun 으로★ 부르기 때문에 ―
+     *   ```
+     *   if (ctx.dryRun) { … return result }   ← 받아 적는 줄 앞에서 돌아간다
+     *   ```
+     *   ★계산해 놓고 합계만 쓰고 경기별 증감은 그대로 버렸다.★
+     *   화면에 「증감 미기록」 이라 적힌 것은 그래서다.
+     *
+     *   ⚠ 옛 칸(`statKeys`)은 ★지우지 않는다★ (`CLAUDE.md` 1-4) — 참가행을 세는 데 쓴다.
+     *     이 칸은 그 옆에 ★새로★ 붙인 것이다.
+     */
+    stats: {
+      matchId: string
+      playerId: string
+      ratingBefore: number
+      ratingUpdate: number
+      ratingAfter: number
+    }[]
   }
 }
 
@@ -328,6 +356,14 @@ export async function runSeason0(
         rifleGames: rifleGames.get(playerId) ?? 0,
       })),
       statKeys: (rated.stats ?? []).map((s) => ({ matchId: s.matchId, playerId: s.playerId })),
+      /* ★증감을 버리지 않는다★ — 여기까지 들고 와야 `season0Apply` 가 받아 적을 수 있다 */
+      stats: (rated.stats ?? []).map((s) => ({
+        matchId: s.matchId,
+        playerId: s.playerId,
+        ratingBefore: s.ratingBefore,
+        ratingUpdate: s.ratingUpdate,
+        ratingAfter: s.ratingAfter,
+      })),
     },
     league: leagueSlug,
     matchesConsidered: rated.matchesConsidered,
