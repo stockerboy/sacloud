@@ -10,7 +10,12 @@ import { Egg } from '../egg/Egg'
 import { useClanEgg, usePlayerEgg } from '../egg/EggContext'
 import { EggVeil } from '../egg/EggVeil'
 import { RelativeTime } from '../common/RelativeTime'
-import { formatCount, formatScoreLadder, formatRate } from '../common/format'
+import { formatCount, formatRate } from '../common/format'
+import {
+  SHOW_SCORE_BONUS,
+  formatPlayerScore,
+  playerScoreOf,
+} from '../common/scoreDisplay'
 import { leaguePlayerPath } from '../common/paths'
 import type { RefreshState } from '../profile/ProfileHeader'
 import {
@@ -215,7 +220,7 @@ function PlayerLeagueRow({
               배치고사는 폐지됐다 (2026-09-01) — `placement` 플래그의 뜻만 바뀌었다 */}
           {entry.placement ? (
             <div className="mt-1.5 text-[15px] leading-none text-meta">기록 없음</div>
-          ) : entry.score_rating === null ? (
+          ) : playerScoreOf(entry) === null ? (
             /*
              * ★아직 안 잰 사람은 「측정 중」★ — 점수를 지어내지 않는다 (D-106).
              *   문턱(20경기)을 못 넘겼거나 재계산이 아직 안 닿은 사람이다.
@@ -224,9 +229,13 @@ function PlayerLeagueRow({
              */
             <div className="mt-1.5 text-[15px] leading-none text-meta">측정 중</div>
           ) : (
+            /*
+             * ⚠ ★2026-09-21 — 랭킹과 같은 값을 적는다★ (사장님: 「랭킹에 있는 점수로」).
+             *   옛 판은 `formatScoreLadder(entry.score_rating)` 라 ★13.4점★ 이 나왔다.
+             *   잣대는 `scoreDisplay.ts` 한 곳이 정한다 — 화면마다 고르지 않는다.
+             */
             <div className="mt-1 font-num text-[26px] leading-none tabular-nums text-text-strong">
-              {formatScoreLadder(entry.score_rating)}
-              <span className="ml-1 text-[12px] text-meta">점</span>
+              {formatPlayerScore(playerScoreOf(entry) as number)}
             </div>
           )}
           {/*
@@ -237,7 +246,7 @@ function PlayerLeagueRow({
               ★보정을 받았는지 알 수 없고★, 사장님이 「보정 후 점수로 쓰라」 고
               하신 뜻이 화면에 안 드러난다. ★얼마를 받았는지 한 줄로 적는다.★
           */}
-          {!entry.placement && entry.score_rating !== null && entry.score_bonus > 0 ? (
+          {SHOW_SCORE_BONUS && !entry.placement && entry.score_rating !== null && entry.score_bonus > 0 ? (
             <div className="mt-1 text-[10.5px] leading-none text-accent">
               상위권 보정 +{entry.score_bonus}
             </div>
@@ -270,6 +279,13 @@ function PlayerLeagueRow({
           같은 「승률」 이 카드마다 다른 자리에 서서 ★위아래로 눈이 흔들린다.★
           칸을 고정하면 여러 카드를 훑을 때 ★같은 값이 같은 자리★ 에 온다.
         ⚠ 폰에서는 두 줄로 접힌다 — 네 칸을 390px 에 넣으면 숫자가 붙는다.
+      */}
+      {/*
+        ★★무기 칸을 하나 더 둔다★★ (2026-09-21 사장님: 「★스나수인지 라플수인지★ 써주고」)
+
+          선수 머리 카드가 「스나 킬뎃 ★11판★」 으로 적는 것과 ★같은 값★ 이다.
+        ⚠ ★둘 다 0 이면 칸을 안 그린다★ — 「스나 0판 · 라플 0판」 은 기록이 아니라
+          ★안 재어졌다는 뜻★ 이라 0 으로 적지 않는다 (D-106).
       */}
       <div className="mt-3.5 grid grid-cols-4 gap-x-3 gap-y-3 border-t border-line-soft pt-3.5 max-md:grid-cols-2">
         {/* 판수는 **가리지 않는다** — 있다는 것은 보여 주고 얼마나 잘하는지를 가린다 (사양 2장) */}
@@ -319,6 +335,19 @@ function PlayerLeagueRow({
         ) : (
           <Stat label="킬뎃" value="기록 없음" muted />
         )}
+        {entry.sniper_games + entry.rifle_games > 0 ? (
+          <Stat
+            label="무기"
+            value={
+              <>
+                <span className="text-[15px]">스나 {formatCount(entry.sniper_games)}판</span>
+                <span className="ml-2 text-[15px] text-meta">
+                  라플 {formatCount(entry.rifle_games)}판
+                </span>
+              </>
+            }
+          />
+        ) : null}
       </div>
     </Link>
   )

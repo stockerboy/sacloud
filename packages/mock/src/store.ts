@@ -575,6 +575,9 @@ export function getPlayerLeagues(playerId: string): PlayerLeagueEntry[] {
       kill: leaguePlayer.kill,
       death: leaguePlayer.death,
       kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
+      /* ★무기별 판수★ (2026-09-21) — 픽스처는 ★결정적★ 이라야 하므로 승패에서 뽑는다 */
+      sniper_games: Math.round((leaguePlayer.win + leaguePlayer.lose) * 0.3),
+      rifle_games: (leaguePlayer.win + leaguePlayer.lose) - Math.round((leaguePlayer.win + leaguePlayer.lose) * 0.3),
       placement: leaguePlayer.placement,
       rank: rank.rank,
       rank_count: rank.rankCount,

@@ -1017,7 +1017,13 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                 {(row.trait_emblems ?? []).length > 0 ? (
                   /* ⚠ ★폰 104 → 112px★ (2026-09-18) — 한 칸을 32 → 36 으로 넓혀
                      ★배지 밑 이름★ 이 두 줄로 들어가게 했다 (사장님: 「배찌밑에 이름 달아줘」) */
-                  <span className="flex shrink-0 items-start justify-start gap-1 max-md:ml-1 max-md:w-[116px] md:ml-3 md:w-[200px] md:gap-2">
+                  /*
+                   * ⚠ ★2026-09-21 — 폰 폭을 116 → 76px 로 줄였다★ (사장님: 「가려지네 닉네임」)
+                   *   390px 폰에서 ★배지 칸이 116px 를 고정으로 먹어★ 이름 칸(`min-w-0`)이
+                   *   0 까지 눌렸다 — ★배지가 있는 줄만 닉네임이 통째로 사라졌다.★
+                   *   배지 밑 이름은 PC 에만 적고(원래 주석의 의도였다), 폰은 그림만 둔다.
+                   */
+                  <span className="flex shrink-0 items-start justify-start gap-1 max-md:ml-1 max-md:w-[76px] md:ml-3 md:w-[200px] md:gap-2">
                     {/*
                       * ⚠ ★2026-09-17 — 손으로 그리던 SVG 배지를 사장님 그림으로 바꿨다★.
                       *   옛 판(`TraitEmblem`)은 지우지 않았다 — 파일이 그대로 있고 이 줄만
@@ -1031,7 +1037,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                       return (
                         <span
                           key={`${e.axis}-${e.weapon}`}
-                          className="flex flex-col items-center gap-[3px] max-md:w-[36px] md:w-[58px]"
+                          className="flex flex-col items-center gap-[3px] max-md:w-[34px] md:w-[58px]"
                         >
                           {/* ★2026-09-17 사장님 — «크기를 좀 키워줘 잘 안보여»★ 22 → 30 (PC 40) */}
                           <AxisBadge
@@ -1051,7 +1057,10 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                             * ⚠ 줄 높이를 1.15 로 눌러 두 줄이 되어도 줄 리듬이 덜 흔들린다.
                             *   PC 는 한 줄로 충분해 그대로 잘라 쓴다.
                             */}
-                          <span className="block w-full break-keep text-center text-[8px] leading-[1.15] text-faint md:truncate md:text-[9.5px] md:leading-none">
+                          {/* ⚠ ★폰에서는 이름을 숨긴다★ (2026-09-21) — 「스나싸움마스터」 일곱 자가
+                              자리를 먹어 ★닉네임을 밀어냈다.★ 배지 그림만으로도 무엇인지 보이고,
+                              눌러 들어가면 이름이 나온다. PC 는 자리가 넉넉해 그대로 적는다 */}
+                          <span className="hidden w-full break-keep text-center text-faint md:block md:truncate md:text-[9.5px] md:leading-none">
                             {name}
                           </span>
                         </span>

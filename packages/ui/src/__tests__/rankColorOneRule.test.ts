@@ -85,7 +85,10 @@ describe('색 규칙은 한 곳뿐이다', () => {
 
   it('★숫자가 아니면 색을 지어내지 않는다★ — 회색 (D-106)', () => {
     expect(statColor(Number.NaN)).toBe('#8a8a93')
-    /* 이 줄은 계약이 실제로 붙어 있는지 확인하는 겸사겸사다 */
-    expect(RANK_MIN_GAMES_DEFAULT).toBeGreaterThan(0)
+    /* 이 줄은 계약이 실제로 붙어 있는지 확인하는 겸사겸사다.
+       ⚠ ★2026-09-21 문턱을 0 으로 걷었다★ (사장님: 「순위 전부 다 공개해」).
+         그래서 「0 보다 크다」 가 아니라 ★숫자다★ 만 본다 */
+    expect(Number.isFinite(RANK_MIN_GAMES_DEFAULT)).toBe(true)
+    expect(RANK_MIN_GAMES_DEFAULT).toBeGreaterThanOrEqual(0)
   })
 })

@@ -31,8 +31,20 @@
  * ⚠ 여기 없는 리그는 기본값을 쓴다.
  */
 
-/** 기본 문턱 — 사장님: 「몇판 하지도 않은 애들이 100위 안에 있는 게 젤 싫어」 */
-export const RANK_MIN_GAMES_DEFAULT = 40
+/** 옛 기본 문턱 — 사장님: 「몇판 하지도 않은 애들이 100위 안에 있는 게 젤 싫어」 */
+export const RANK_MIN_GAMES_DEFAULT_V1 = 40
+
+/**
+ * ★★2026-09-21 — 문턱을 걷었다★★ (사장님: 「★순위 전부 다 공개해★」)
+ *
+ *   기본정보 카드에 IPL 이 ★「순위 없음」★ 으로 떠 있었다 — 39전이라
+ *   문턱(40판)을 한 판 차이로 못 넘겨서였다. ★기록이 있는데 등수가 없었다.★
+ *
+ * ⚠ ★옛 값은 위에 `_V1` 로 남겼다★ (`CLAUDE.md` 1-4).
+ *   되돌리려면 아래를 `RANK_MIN_GAMES_DEFAULT_V1` 로 바꾸고 `BY_LEAGUE_V1` 을
+ *   `BY_LEAGUE` 자리에 도로 쓰면 된다.
+ */
+export const RANK_MIN_GAMES_DEFAULT = 0
 
 /**
  * 리그마다 다른 문턱.
@@ -40,7 +52,7 @@ export const RANK_MIN_GAMES_DEFAULT = 40
  * `supply`(PL) 를 25 로 둔 이유 — 110명이면 다섯 쪽짜리 목록이라 옛 래더로
  * 안 떨어진다. 20 이면 127명이지만 ★20판은 사장님이 싫어하신 그 자리★ 다.
  */
-const BY_LEAGUE: Readonly<Record<string, number>> = {
+export const BY_LEAGUE_V1: Readonly<Record<string, number>> = {
   supply: 25,
   /*
    * ★C1★ (2026-09-20 밤) — 열 클랜끼리 한 경기만 모은 리그라 판이 적다.
@@ -52,7 +64,10 @@ const BY_LEAGUE: Readonly<Record<string, number>> = {
   c1: 25,
 }
 
-/** 그 리그에서 랭킹에 올리는 최소 판수 */
+/** ★지금은 리그마다 다른 문턱을 두지 않는다★ — 전부 공개다 (2026-09-21) */
+const BY_LEAGUE: Readonly<Record<string, number>> = {}
+
+/** 그 리그에서 랭킹에 올리는 최소 판수. ★0 이면 문턱이 없다★ */
 export function rankMinGamesOf(leagueSlug: string | null | undefined): number {
   if (leagueSlug === null || leagueSlug === undefined) return RANK_MIN_GAMES_DEFAULT
   return BY_LEAGUE[leagueSlug] ?? RANK_MIN_GAMES_DEFAULT

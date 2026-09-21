@@ -34,6 +34,7 @@ import {
   hidesCumulativeKd,
   hidesCumulativeKdAll,
 } from '../lib/server/queries/visibility'
+import { INDEPENDENT_KD_RANK_LIMIT_V1 } from '@sacloud/contract'
 
 const P = 'T107-'
 const OFFICIAL_SLUG = 't107official'
@@ -308,14 +309,23 @@ describe('공개 범위 규칙 (순수)', () => {
      지금 규칙: **개인랭킹 top100 까지는 보인다.** 그 밖만 감춘다.
      옛 규칙 함수는 hidesCumulativeKdAll 로 남아 있고 아래에서 같이 고정한다 */
 
-  it('무소속리그라도 top100 안이면 감추지 않는다', () => {
+  /*
+   * ⚠ ★2026-09-21 — 전부 공개로 바뀌었다★ (사장님: 「순위 전부 다 공개해」).
+   *   옛 규칙(top100 까지만)은 `INDEPENDENT_KD_RANK_LIMIT_V1` 로 남아 있다.
+   */
+  it('★무소속리그도 순위와 무관하게 안 감춘다★ (2026-09-21 전부 공개)', () => {
     expect(hidesCumulativeKd({ category: 'independent' }, 1)).toBe(false)
     expect(hidesCumulativeKd({ category: 'independent' }, 100)).toBe(false)
-    expect(hidesCumulativeKd({ category: 'independent' }, 101)).toBe(true)
+    expect(hidesCumulativeKd({ category: 'independent' }, 101)).toBe(false)
+    expect(hidesCumulativeKd({ category: 'independent' }, 99999)).toBe(false)
   })
 
-  it('순위를 모르면 감춘다 — 없는 값을 보여 주지 않는다', () => {
-    expect(hidesCumulativeKd({ category: 'independent' }, null)).toBe(true)
+  it('★순위를 몰라도 보여 준다★ — 「순위 없음」 인 사람도 킬뎃은 나온다', () => {
+    expect(hidesCumulativeKd({ category: 'independent' }, null)).toBe(false)
+  })
+
+  it('옛 상한은 지우지 않았다 — 되돌릴 길이다', () => {
+    expect(INDEPENDENT_KD_RANK_LIMIT_V1).toBe(100)
   })
 
   it('공식리그는 순위와 무관하게 안 감춘다', () => {
@@ -329,14 +339,20 @@ describe('공개 범위 규칙 (순수)', () => {
     expect(hidesCumulativeKdAll({ category: 'official' })).toBe(false)
   })
 
-  it('감출 때는 0이 아니라 null이다 (0킬은 사실이 아니다)', () => {
-    const hidden = cumulativeKd(
+  it('★101위도 값이 그대로 나간다★ (2026-09-21 전부 공개)', () => {
+    const shown = cumulativeKd(
       { category: 'independent' },
       { kill: 900, death: 400, kdRate: 69.2 },
       101,
     )
-    expect(hidden).toEqual({ kill: null, death: null, kd_rate: null })
-    expect(cumulativeKdRate({ category: 'independent' }, 69.2, 101)).toBeNull()
+    expect(shown).toEqual({ kill: 900, death: 400, kd_rate: 69.2 })
+    expect(cumulativeKdRate({ category: 'independent' }, 69.2, 101)).toBe(69.2)
+  })
+
+  it('★옛 규칙으로 감추면 0 이 아니라 null 이다★ (0킬은 사실이 아니다)', () => {
+    /* 전부 공개가 된 뒤에도 ★감추는 자리의 모양★ 은 그대로여야 한다 —
+       `hidesCumulativeKdAll`(옛 규칙)로 되돌릴 때 0 이 새어 나오면 안 된다 */
+    expect(hidesCumulativeKdAll({ category: 'independent' })).toBe(true)
   })
 
   it('top100 안의 무소속 선수는 값이 그대로 나간다', () => {

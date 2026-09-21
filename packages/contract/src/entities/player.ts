@@ -50,6 +50,17 @@ export const PlayerLeagueEntry = z.object({
   score_bonus: z.number().default(0),
   /** 그 평균에 들어간 경기 수 */
   score_games: Count.default(0),
+  /**
+   * ★무기별 판수★ (2026-09-21 사장님: 「기본정보에 ★스나수인지 라플수인지★ 써주고」).
+   *
+   *   선수 머리 카드가 「스나 킬뎃 ★11판★」 으로 적는 것과 ★같은 값★ 이다 —
+   *   `LeaguePlayerTierStat` 의 부(division)별 줄을 ★전부 더한 수★ 다.
+   *
+   * ⚠ ★안 재어진 리그는 0 이다★ — 스나도 라플도 0 이면 화면이 칸을 안 그린다.
+   *   0 을 「스나 0판」 이라고 적지 않는다 (D-106 의 정신).
+   */
+  sniper_games: Count.default(0),
+  rifle_games: Count.default(0),
   /** 배치고사 진행중이면 true (랭킹·래더 대신 `배치고사` 표기) */
   placement: z.boolean(),
   rank: Count.nullable(),

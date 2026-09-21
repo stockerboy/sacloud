@@ -442,13 +442,28 @@ export function rankToneV1(rank: number | null | undefined): RankTone | null {
  *   **전원 감췄다.** 이제는 상위 100위까지 보인다. 나머지는 여전히 감추고,
  *   화면이 그 이유를 한 줄로 적는다 — 없는 값이 아니라 **안 보여 주는 값**이다.
  */
-export const INDEPENDENT_KD_RANK_LIMIT = 100
+export const INDEPENDENT_KD_RANK_LIMIT_V1 = 100
 
-/** 그 문구. 한 곳에서만 온다 */
-export const INDEPENDENT_KD_NOTE = `IPL은 top${INDEPENDENT_KD_RANK_LIMIT}만 킬뎃이 보입니다`
+/**
+ * ★★2026-09-21 — 전부 공개한다★★ (사장님: 「★순위 전부 다 공개해★」)
+ *
+ *   IPL 카드에 ★「100위까지만 공개」★ 가 뜨고 킬뎃이 비어 있었다.
+ *   ★값은 있는데 안 보여 주고 있었다.★ 사장님이 전부 열라고 하셨다.
+ *
+ * ⚠ ★옛 상한은 위에 `_V1` 로 남겼다★ (`CLAUDE.md` 1-4) — 되돌리려면
+ *   아래 줄을 `INDEPENDENT_KD_RANK_LIMIT_V1` 로 바꾸면 그대로 돌아온다.
+ */
+export const INDEPENDENT_KD_RANK_LIMIT = Number.POSITIVE_INFINITY
+
+/** 그 문구. 한 곳에서만 온다. ★상한이 없으면 적을 말도 없다★ */
+export const INDEPENDENT_KD_NOTE = Number.isFinite(INDEPENDENT_KD_RANK_LIMIT)
+  ? `IPL은 top${INDEPENDENT_KD_RANK_LIMIT}만 킬뎃이 보입니다`
+  : ''
 
 /** 이 순위면 무소속리그에서도 킬뎃을 보여 주나 */
 export function independentKdVisible(rank: number | null | undefined): boolean {
+  /* ★상한이 없으면 순위를 몰라도 보여 준다★ — 「순위 없음」 인 사람도 킬뎃은 나온다 */
+  if (!Number.isFinite(INDEPENDENT_KD_RANK_LIMIT)) return true
   return rank != null && rank > 0 && rank <= INDEPENDENT_KD_RANK_LIMIT
 }
 

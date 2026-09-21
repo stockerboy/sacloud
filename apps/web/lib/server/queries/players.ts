@@ -119,6 +119,13 @@ export async function getPlayerLeagues(playerId: string): Promise<PlayerLeagueEn
       kill: true,
       death: true,
       placement: true,
+      /*
+       * ★무기별 판수★ (2026-09-21 사장님: 「기본정보에 ★스나수인지 라플수인지★ 써주고」).
+       *
+       *   부(division)별로 줄이 나뉘어 있어 ★전부 더해야★ 그 리그의 판수가 된다.
+       *   선수 머리 카드(`PlayerHeaderV3`)가 쓰는 값과 ★같은 표·같은 셈★ 이다.
+       */
+      tierStats: { select: { sniperGames: true, rifleGames: true } },
       league: { select: LEAGUE_SUMMARY_SELECT },
       // 경기 당시가 아니라 리그 참가 시점의 소속 클랜 (Mock의 leagueClan.clanId와 같은 값)
       clan: { select: CLAN_SUMMARY_SELECT },
@@ -148,6 +155,8 @@ export async function getPlayerLeagues(playerId: string): Promise<PlayerLeagueEn
           { kill: row.kill, death: row.death, kdRate: kdRate(row.kill, row.death) },
           rank.rank,
         ),
+        sniper_games: row.tierStats.reduce((n, t) => n + t.sniperGames, 0),
+        rifle_games: row.tierStats.reduce((n, t) => n + t.rifleGames, 0),
         placement: row.placement,
         rank: rank.rank,
         rank_count: rank.rankCount,
