@@ -1,6 +1,12 @@
 #!/bin/sh
 # ★깃발 꽂기★ — 매일 새벽 3시 마감 (2026-09-15 사장님)
 #
+# ⚠ ★2026-09-21 — 예약에서 뺐다★ (사장님: 「깃발지워 필요없어」)
+#   `crontab` 의 `sac-flag` 줄을 지웠다. ★이 파일은 안 지웠다★ (`CLAUDE.md` 1-4) —
+#   되살리려면 crontab 에 아래 한 줄을 다시 넣으면 된다:
+#     5 3 * * * flock -n /var/lock/sac-flag.lock timeout -k 60 900 sh -c #       ". /root/sacloud.env; cd /root/sacloud && exec sh scripts/flag-plant.sh" >> /root/log/cron.log 2>&1
+#   (실측 — 3분 걸렸다. 무거워서 뺀 것이 아니라 필요 없어서 뺐다)
+#
 #   «17시부터 03시까지의 1,2,3등을 라이브로 보여주고 3시에 마감치는거야.»
 #   «막 경쟁해서 새벽 3시에 1등인 사람이 깃발 꽂고»
 #

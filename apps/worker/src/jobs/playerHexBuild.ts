@@ -21,6 +21,7 @@
  * 스크래치 실측 스크립트(`axes.mjs` · `rounds2.mjs` · `rifleduel.mjs` · `snipe5.mjs` ·
  * `score3.mjs`, 2026-09-10)를 그대로 옮긴 것이다. 규칙을 바꾸지 않았다.
  */
+import { AGGREGATE_LEAGUE_SLUGS } from '@sacloud/contract'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { prisma, Prisma } from '@sacloud/db'
@@ -103,7 +104,11 @@ export { PLAYER_HEX_FORMULA_VERSION }
  * ⚠ ★C1 을 넣었다★ (2026-09-20 밤 사장님) — 「개인랭킹과 클랜랭킹을 만들어 줄세워라」.
  *   C1 은 ★독립된 리그★ 라 제 육각·제 점수를 갖는다. IPL 것을 빌려 쓰지 않는다.
  */
-export const HEX_LEAGUE_SLUGS = ['nolink', 'supply', 'sanply', 'c1'] as const
+/*
+ * ⚠ ★2026-09-21 — 목록을 스스로 갖지 않는다★ — `clanAffiliation` 과 같은 이유다.
+ *   여기는 마침 C1 이 들어 있었지만, ★두 곳이 따로 있으면 언젠가 갈린다.★
+ */
+export const HEX_LEAGUE_SLUGS = AGGREGATE_LEAGUE_SLUGS
 
 /**
  * ★옛 접두★ — 2026-09-20 밤 하루 동안 C1 의 `sourceMatchId` 앞에 이것이 붙어 있었다.

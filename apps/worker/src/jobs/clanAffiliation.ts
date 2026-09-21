@@ -43,11 +43,19 @@
  * pnpm --filter @sacloud/worker nexon clan-affiliation --no-clear       # 비우기는 안 한다
  * ```
  */
+import { AGGREGATE_LEAGUE_SLUGS } from '@sacloud/contract'
 import { prisma } from '@sacloud/db'
 import { log } from '../lib/log.js'
 
 /** 기본 대상 — 사장님: «IPL 이나 SPL 열산 셋 다» */
-const DEFAULT_LEAGUES = ['nolink', 'supply', 'sanply'] as const
+/*
+ * ⚠ ★2026-09-21 — 목록을 스스로 갖지 않는다★ (사장님: 「근본적인 문제를 해결해」)
+ *
+ *   여기 `['nolink', 'supply', 'sanply']` 가 박혀 있어서 ★C1 이 안 따라왔다.★
+ *   애망. 이 병영·IPL·PL·열산에서는 grave 인데 ★C1 만 hardcores★ 로 남은 원인이다.
+ *   이제 ★계약 한 곳★(`AGGREGATE_LEAGUE_SLUGS`)에서 읽는다 — 리그를 더하면 저절로 따라온다.
+ */
+const DEFAULT_LEAGUES = AGGREGATE_LEAGUE_SLUGS
 
 export interface ClanAffiliationResult {
   leagues: string[]
