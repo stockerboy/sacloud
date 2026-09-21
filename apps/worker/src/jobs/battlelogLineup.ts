@@ -378,6 +378,16 @@ export async function runBattlelogLineup(
          *   ★고르는 집합은 한 건도 안 바뀌었다★ — 같은 조건을 방향만 바꿔 적었다.
          *
          *   옛 질의는 아래 `PENDING_KEYS_V1` 에 남겼다 (`CLAUDE.md` 1-4).
+         *
+         * ── ⚠ ★2026-09-21 — 최신 경기부터 본다★ (사장님: 「아직도 킬데스 수집중이고」)
+         *
+         *   옛 차례는 `ORDER BY 1 ASC` — ★경기번호 오름차순, 즉 오래된 것부터★ 였다.
+         *   그런데 이 잡은 ★9분 제한에 걸려 매번 SIGTERM 으로 죽고 있었다★ (실측 로그:
+         *   `Command failed with signal "SIGTERM"` 이 매 판 반복).
+         *   ★밀린 옛 경기 수백 건을 붙들다 죽으니 방금 끝난 경기는 영영 차례가 안 왔다.★
+         *   그래서 사장님 화면에서 ★한두 시간 전 경기가 계속 「킬데스 수집중」★ 이었다.
+         *
+         *   ★최신부터 본다.★ 사람이 보는 것은 방금 한 경기다. 옛 경기는 뒤에서 따라온다.
          */
         await prisma.$queryRaw<Array<{ matchKey: string }>>`
           SELECT DISTINCT m."sourceMatchId" AS "matchKey"
@@ -407,7 +417,7 @@ export async function runBattlelogLineup(
                     OR b."fetchedAt" > m."lineupCheckedAt"
                  )
             )
-          ORDER BY 1 ASC
+          ORDER BY m."startAt" DESC
         `
       : await prisma.$queryRaw<Array<{ matchKey: string }>>`
           SELECT DISTINCT "matchKey"

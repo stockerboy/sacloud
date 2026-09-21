@@ -160,12 +160,34 @@ fi
 #   우리가 못 고치는 원인이라 ★다시 해 보는 것 말고는 길이 없다.★
 #   ⚠ ★무한히 하지 않는다★ (세 번) · ★같은 것을 두 번 만들지 않는다★ —
 #     이 잡은 멱등이다. 이미 있는 참가 기록은 「갱신」 으로 세고 넘어간다
+# ★★한 판에 몇 경기까지★★ (2026-09-21 사장님: 「아직도 킬데스 수집중이고」)
+#
+# ── 무엇이 문제였나 (실측 로그)
+#   ```
+#   09-21 18:40  ★라인업 시작★
+#   Command failed with signal "SIGTERM"        ← ★9분 제한에 걸려 강제 종료★
+#   09-21 18:50  건너뜀 — 앞 판이 아직 돈다
+#   ```
+#   ★매 판 죽고 있었다.★ 죽으면 아무것도 못 쓰고 끝나서 lineupCheckedAt 이
+#   ★영원히 비어 있었다★ — 최근 경기 열두 건이 전부 「한 번도 안 봄」 이었다.
+#   사장님 화면의 ★「킬데스 수집중」 이 한두 시간 가던 이유★ 가 이것이다.
+#
+# ── 고침 둘
+#   ① ★최신 경기부터 본다★ (battlelogLineup.ts 의 ORDER BY startAt DESC)
+#   ② ★한 판에 120건만★ — 끝내고 ★저장하고★ 끝난다. 남은 것은 다음 판이 잇는다.
+#      끝까지 가려다 죽어 한 줄도 못 쓰느니, 조금씩이라도 쓰는 편이 낫다.
+#
+# ⚠ 되돌리려면 LINEUP_LIMIT=0 — 예전처럼 끝까지 간다 (CLAUDE.md 1-4)
+LINEUP_LIMIT="${LINEUP_LIMIT:-120}"
+LIMIT_ARG=""
+if [ "$LINEUP_LIMIT" != "0" ]; then LIMIT_ARG="--limit $LINEUP_LIMIT"; fi
+
 TRIES=3
 try=1
 while : ; do
   # shellcheck disable=SC2086
   pnpm --filter @sacloud/worker nexon battlelog-lineup \
-       --all-leagues $WINDOW $PENDING --confirm >> "$LOG" 2>&1
+       --all-leagues $WINDOW $PENDING $LIMIT_ARG --confirm >> "$LOG" 2>&1
   code=$?
   [ "$code" = "0" ] && break
   if [ "$try" -ge "$TRIES" ]; then
