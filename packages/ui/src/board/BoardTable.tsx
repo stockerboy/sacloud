@@ -24,7 +24,11 @@ import { WriterName } from './WriterName'
  */
 
 /* 컬럼 폭 — 머리글과 행이 같은 값을 쓴다 */
-const COL_VOTE = 'w-24 shrink-0'
+/*
+ * ⚠ ★폰에서는 추천칸을 좁힌다★ (2026-09-21) — 96px 은 390px 화면의 ★4분의 1★ 이다.
+ *   숫자 두 개와 화살표 둘이면 64px 로 충분하고, 그만큼 ★제목이 길게 보인다.★
+ */
+const COL_VOTE = 'w-24 shrink-0 max-md:w-16'
 const COL_TIME = 'w-24 shrink-0 text-right'
 const COL_VIEW = 'w-16 shrink-0 text-right'
 const COL_WRITER = 'w-44 shrink-0 pl-6'
@@ -49,11 +53,11 @@ function Row({ item, basePath }: { item: BoardListItem; basePath?: string }) {
           </span>
         ) : (
           <>
-            <span className={`flex w-12 items-center text-sm text-meta ${NUM}`}>
+            <span className={`flex w-12 items-center text-sm text-meta max-md:w-8 ${NUM}`}>
               <VoteIcon up />
               {formatCount(item.like_count)}
             </span>
-            <span className={`flex w-12 items-center text-sm text-faint ${NUM}`}>
+            <span className={`flex w-12 items-center text-sm text-faint max-md:w-8 ${NUM}`}>
               <VoteIcon up={false} />
               {formatCount(item.dislike_count)}
             </span>
@@ -157,7 +161,25 @@ export function BoardTable({
      * 본문(body)에는 가로 스크롤이 생기지 않게 한다.
      */
     <div className="mobile-scroll-x">
-      <div className="flex flex-col max-md:min-w-[38rem]">
+      {/*
+        ⚠ ★2026-09-21 — 폰 최소폭 38rem 을 걷었다★ (사장님: 「★게시판 배치이상한거★」)
+
+          위 주석은 「모바일 — 컬럼을 하나도 감추지 않는다」 라고 적혀 있는데
+          ★지금 코드는 셋을 감춘다★ (`max-md:hidden` — 작성시간·조회수·작성자).
+          2026-09-20 에 「폰에서는 제목 아래로 내린다」 로 바꾸면서 그렇게 됐고
+          ★38rem(608px) 최소폭만 그대로 남았다.★
+
+          그래서 390px 폰에서 —
+          ```
+          표 폭 608px · 실제로 쓰는 폭 390px  →  ★오른쪽 218px 이 텅 빈 채★
+          가로 스크롤만 생긴다
+          ```
+          ★감춘 칸의 자리를 계속 비워 두고 있었다.★ 최소폭을 걷으면 화면에 딱 맞는다.
+
+        ⚠ 바깥의 `mobile-scroll-x` 는 남긴다 — 제목이 아주 긴 글이 와도 본문(body)에는
+          가로 스크롤이 안 생기게 막아 주는 울타리다.
+      */}
+      <div className="flex flex-col">
         <div className="flex items-center gap-3 border-b border-b-line pb-2 text-xs tracking-[0.12em] text-faint">
           {/* 추천·비추천 칸에는 머리글을 두지 않는다 (아이콘이 곧 이름이다) */}
           <div className={COL_VOTE} aria-hidden />
