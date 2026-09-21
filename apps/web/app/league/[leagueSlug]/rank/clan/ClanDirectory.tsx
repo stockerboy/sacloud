@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { LeagueClan } from '@sacloud/contract'
 import { leagueScreen, showsTier } from '@sacloud/contract'
 import type { ClanRankTableRow } from '@sacloud/ui'
-import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, LeagueTabsInline, RankBox, RankHeader, leagueClanPath, type ClanRankNote } from '@sacloud/ui'
+import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, LeagueTabsInline, RankBox, RankHeader, leagueClanPath, type ClanRankNote, isLeagueUpcoming } from '@sacloud/ui'
 import Link from 'next/link'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -207,9 +207,20 @@ function ClanRankDirectory({
    * ★지금 값★ 으로 거른다. 한 판이라도 뛰면 ★저절로 돌아온다.★
    * 되돌리려면 `HIDE_NO_GAME_CLANS` 를 `false` 로.
    */
+  /*
+   * ⚠ ★2026-09-21 — 모집중 리그는 거르지 않는다★ (사장님 화면에 「참가 클랜 ★0곳★」)
+   *
+   *   CPL 은 ★10/1 에 출발★ 이라 스물네 곳이 전부 0판이다. 「안 뛴 클랜은 감춘다」
+   *   규칙에 걸려 ★명단이 통째로 비었다.★ 참가 클랜을 보여 주려고 만든 화면인데
+   *   보여 줄 것이 하나도 없었다.
+   *   ★모집중 리그에서는 0판이 정상★ 이다 — 그 리그만 안 거른다.
+   */
   const played = useMemo(
-    () => (HIDE_NO_GAME_CLANS ? clans.items.filter((c) => c.win + c.lose > 0) : clans.items),
-    [clans.items],
+    () =>
+      HIDE_NO_GAME_CLANS && !isLeagueUpcoming(leagueSlug)
+        ? clans.items.filter((c) => c.win + c.lose > 0)
+        : clans.items,
+    [clans.items, leagueSlug],
   )
 
   /* 줄 세우기 + 번호 붙이기. 규칙은 `@/lib/clanRanking` 한 곳에 있다 */

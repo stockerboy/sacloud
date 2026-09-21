@@ -70,6 +70,111 @@ type Row = LeaguePlayerDetail['tier_breakdown'][number]
 
 const cellStyle: CSSProperties = { position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: '14px 20px', minWidth: 0 }
 
+/**
+ * ★★킬뎃 한 줄 — 누르면 스나·라플로 갈라진다★★ (2026-09-21 사장님)
+ *
+ * > 「킬뎃을 ★통합킬뎃★ 으로 라플 스나 합친거 써놓고 ★누르면 스나킬뎃 라플킬뎃
+ * >  분리해서 볼 수 있게끔★ 설계해줘」
+ *
+ * ⚠ ★값을 감추는 것이 아니다★ — 접었을 때는 통합 하나, 펴면 둘이 그대로 나온다.
+ * ⚠ ★주무기를 밝게★ 그린다 (옛 두 줄 판의 규칙을 그대로 가져왔다).
+ */
+function KdCell({
+  kd,
+  kill,
+  death,
+  games,
+  sniper,
+  rifle,
+  weapon,
+}: {
+  kd: number | null
+  kill: number | null
+  death: number | null
+  games: number | null
+  sniper: { kd: number | null; games: number; kill: number; death: number } | null
+  rifle: { kd: number | null; games: number; kill: number; death: number } | null
+  weapon: 0 | 1 | null
+}) {
+  const [open, setOpen] = useState(false)
+  const sub =
+    kill === null || death === null
+      ? games === null
+        ? null
+        : `${fmt(games)}판`
+      : `${fmt(games ?? 0)}판 · ${fmt(kill)}킬 ${fmt(death)}데스`
+
+  return (
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen((v) => !v)
+          }
+        }}
+        style={{ ...cellStyle, borderRight: `1px solid ${V3.rowDivider}`, cursor: 'pointer' }}
+        className="v3-phead-cell"
+      >
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 10.5, color: V3.textGhost, letterSpacing: '.08em', whiteSpace: 'nowrap', flex: 'none' }}>
+            킬뎃 <span style={{ fontSize: 9 }}>{open ? '▲' : '▼'}</span>
+          </span>
+          {sub ? (
+            <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {sub}
+            </span>
+          ) : null}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span
+            style={{
+              fontSize: 26,
+              fontWeight: 600,
+              lineHeight: 1,
+              whiteSpace: 'nowrap',
+              color: kd === null ? V3.textMuted : statColor(kd),
+            }}
+          >
+            {pct1(kd)}
+          </span>
+        </span>
+      </div>
+      {open ? (
+        <>
+          <Kpi
+            label="스나 킬뎃"
+            value={pct1(sniper?.kd ?? null)}
+            sub={sniper === null ? null : `${fmt(sniper.games)}판 · ${fmt(sniper.kill)}킬 ${fmt(sniper.death)}데스`}
+            color={
+              sniper?.kd === null || sniper?.kd === undefined
+                ? DIM
+                : weapon === 1
+                  ? statColor(sniper.kd)
+                  : DIM
+            }
+          />
+          <Kpi
+            label="라플 킬뎃"
+            value={pct1(rifle?.kd ?? null)}
+            sub={rifle === null ? null : `${fmt(rifle.games)}판 · ${fmt(rifle.kill)}킬 ${fmt(rifle.death)}데스`}
+            color={
+              rifle?.kd === null || rifle?.kd === undefined
+                ? DIM
+                : weapon === 0
+                  ? statColor(rifle.kd)
+                  : DIM
+            }
+          />
+        </>
+      ) : null}
+    </>
+  )
+}
+
 function Kpi({ label, value, sub, color, extra, className }: { label: string; value: string; sub?: ReactNode; color: string; extra?: ReactNode; className?: string }) {
   return (
     <div
@@ -101,6 +206,12 @@ const FOOT_SPREAD: boolean = false
  *   `'hex'`     우리 실력점수 (2026-09-12 ~ 09-21 · `CLAUDE.md` 1-4)
  */
 const PLAYER_CARD_RANK_BY = 'ladder' as 'ladder' | 'hex'
+
+/**
+ * ★킬뎃을 늘 두 줄로 펼쳐 둘까★ (2026-09-21 사장님: 「통합킬뎃으로 (…) 누르면 분리」).
+ * `true` 면 옛 모습(스나·라플 두 줄이 늘 보임)이 그대로 돌아온다 (`CLAUDE.md` 1-4).
+ */
+const KD_SPLIT_ALWAYS = false as boolean
 
 /** 옛 순위 보조 문구 — 지우지 않는다 (`CLAUDE.md` 1-4) */
 export const RANK_SUB_V1 = (total: number): string => `/ ${fmt(total)}명`
@@ -615,7 +726,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           label="래더"
           value={showsRating ? formatRatingPoint(data.rating) : '-'}
           sub={null}
-          color={V3.textStrong}
+          /* ★숫자에 색★ (2026-09-21 사장님) — 등수 색을 따른다. 잘하는 사람은 눈에 띈다 */
+          color={(rank === null ? null : rankColorOf(rank, rankTotal)) ?? V3.textStrong}
         />
         <Kpi
           className="v3-kpi-pconly"
@@ -639,13 +751,61 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           color={winRate === null ? V3.textMuted : statColor(winRate)}
         />
         {/* 킬데스를 안 주는 리그는 ★판수★ 가 이 자리를 받는다 — 칸을 비우면 3열 격자가 무너진다 (2026-09-14) */}
+        {/*
+          ★★킬뎃은 통합 한 줄 · 누르면 갈라진다★★ (2026-09-21 사장님:
+            「★킬뎃을 통합킬뎃으로 라플 스나 합친거 써놓고 누르면 스나킬뎃 라플킬뎃
+             분리해서 볼 수 있게끔★ 설계해줘」)
+
+          ── 왜 합치나
+            옛 판은 ★스나·라플 두 줄★ 이 늘 펼쳐져 있었다. 한 무기만 쓰는 사람에게는
+            ★빈 줄 하나가 늘 자리를 먹었고★, 통합 킬뎃은 ★어디에도 없었다★ —
+            선수 페이지의 통합 킬뎃과 숫자가 달라 보이는 까닭이 그것이었다.
+
+          ── ★값을 감추는 것이 아니다★
+            눌러서 펼치면 스나·라플이 그대로 나온다. 접었을 때는 ★통합★ 하나다.
+        */}
         {showsKd ? (
+          <KdCell
+            kd={sel === null ? null : sel.kd}
+            /* ★통합 킬/데스는 스나+라플 합★ — 합계 칸이 따로 없다 */
+            kill={sel === null ? null : sel.sniper_kill + sel.rifle_kill}
+            death={sel === null ? null : sel.sniper_death + sel.rifle_death}
+            games={sel === null ? null : sel.games}
+            sniper={
+              sel === null
+                ? null
+                : { kd: sel.sniper_kd, games: sel.sniper_games, kill: sel.sniper_kill, death: sel.sniper_death }
+            }
+            rifle={
+              sel === null
+                ? null
+                : { kd: sel.rifle_kd, games: sel.rifle_games, kill: sel.rifle_kill, death: sel.rifle_death }
+            }
+            weapon={weapon === 0 || weapon === 1 ? weapon : null}
+          />
+        ) : (
+          <Kpi
+            label="판수"
+            value={sel === null ? '-' : `${fmt(sel.games)}판`}
+            sub={win === null || lose === null ? null : `${fmt(win)}승 ${fmt(lose)}패`}
+            color={sel === null ? V3.textMuted : V3.textStrong}
+          />
+        )}
+        {/* ⚠ ★옛 두 줄 판은 지우지 않았다★ (`CLAUDE.md` 1-4) — `KD_SPLIT_ALWAYS` 를
+            `true` 로 두면 아래가 그대로 돌아온다 */}
+        {KD_SPLIT_ALWAYS && showsKd ? (
           <>
             {/* ★스나★ — 주무기면 밝게, 아니면 불 꺼진 것처럼 */}
             <Kpi
               label="스나 킬뎃"
               value={pct1(sel?.sniper_kd ?? null)}
-              sub={sel === null ? null : `${fmt(sel.sniper_games)}판`}
+              /* ★킬/데스를 작게 같이 적는다★ (2026-09-21 사장님: 「킬/데스 승/패 숫자도
+                 아예 안들어감 ★작게 들어가야하는데★」). 원본 3부 카드가 그렇게 적는다 */
+              sub={
+                sel === null
+                  ? null
+                  : `${fmt(sel.sniper_games)}판 · ${fmt(sel.sniper_kill)}킬 ${fmt(sel.sniper_death)}데스`
+              }
               color={
                 sel?.sniper_kd === null || sel?.sniper_kd === undefined
                   ? DIM
@@ -658,7 +818,11 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             <Kpi
               label="라플 킬뎃"
               value={pct1(sel?.rifle_kd ?? null)}
-              sub={sel === null ? null : `${fmt(sel.rifle_games)}판`}
+              sub={
+                sel === null
+                  ? null
+                  : `${fmt(sel.rifle_games)}판 · ${fmt(sel.rifle_kill)}킬 ${fmt(sel.rifle_death)}데스`
+              }
               color={
                 sel?.rifle_kd === null || sel?.rifle_kd === undefined
                   ? DIM
@@ -668,14 +832,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               }
             />
           </>
-        ) : (
-          <Kpi
-            label="판수"
-            value={sel === null ? '-' : `${fmt(sel.games)}판`}
-            sub={win === null || lose === null ? null : `${fmt(win)}승 ${fmt(lose)}패`}
-            color={sel === null ? V3.textMuted : V3.textStrong}
-          />
-        )}
+        ) : null}
         {/* 2026-09-11 사장님: 판킬 자리에 ★순위★ */}
         {/*
          * ⚠ ★2026-09-17 — 보조 문구를 「/ 138명」 에서 「138명 중」 으로★ (무한 QA).
@@ -689,7 +846,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           label="판킬"
           value={perMatch === null ? '-' : perMatch.toFixed(1)}
           sub={null}
-          color={perMatch === null ? V3.textMuted : V3.textStrong}
+          /* 판당 10킬이면 잘하는 것이다 — 10 을 50% 자리로 놓고 색을 고른다 */
+          color={perMatch === null ? V3.textMuted : statColor(Math.min(100, perMatch * 5))}
         />
         <Kpi
           label="순위"
