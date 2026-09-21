@@ -19,7 +19,7 @@ import { GuidePipeline, type PipelineStep } from './GuidePipeline'
  * ── 리그 참가 신청 · SPL→IPL 전환 안내는 ★여기 없다★
  *   사장님 지시로 SPL 클랜랭킹 자리에 붙였다 («이 내용은 SPL 클랜랭킹파트에»).
  */
-export const metadata: Metadata = { title: '이용방법 - 3rd cloud' }
+export const metadata: Metadata = { title: '이용방법 - log in SA CLOUD' }
 
 /** 실측 기준일 — 아래 숫자들을 센 날 */
 const MEASURED_ON = '2026-09-12'

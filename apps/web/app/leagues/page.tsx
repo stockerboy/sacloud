@@ -32,7 +32,7 @@ const LEAGUES_INDEX_ENABLED: boolean = false
 
 const GUIDE = [
   {
-    title: '3rd cloud 리그란?',
+    title: 'log in SA CLOUD 리그란?',
     body: '원하는 클랜들을 모아 직접 리그를 만들고, 그 안에서 치른 클랜전만 따로 집계해 순위를 매기는 기능입니다. 리그마다 맵과 대전인원을 정할 수 있고, 조건에 맞는 경기만 기록됩니다.',
   },
   {
@@ -56,7 +56,7 @@ export default function LeaguesPage() {
       <div className="flex gap-16 max-md:flex-col max-md:gap-10">
         <div className="w-1/2 shrink-0 max-md:w-full">
           <h1 className="font-display text-5xl leading-tight tracking-wide text-text-strong max-md:text-4xl">
-            3rd cloud 리그에
+            log in SA CLOUD 리그에
             <br />
             오신 걸 환영합니다.
           </h1>
@@ -93,7 +93,7 @@ export default function LeaguesPage() {
       </div>
 
       <div className="mt-[var(--section-gap)]">
-        <h2 className="font-display text-2xl tracking-wide text-text-strong">3rd cloud 대표리그</h2>
+        <h2 className="font-display text-2xl tracking-wide text-text-strong">log in SA CLOUD 대표리그</h2>
         <LeagueListTable
           items={leagues.items}
           loading={leagues.loading}

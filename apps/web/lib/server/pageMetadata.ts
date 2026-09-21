@@ -8,7 +8,7 @@ import type { Metadata } from 'next'
  * `O-014` 로 경기 한 판에 주소를 줬다. 그런데 강민재가 링크를 실제로 보내 보니
  * **받는 쪽에는 사이트 이름만 뜬다.**
  * ```
- * <title>   3rd cloud - 서든어택 클랜전 전적검색   ← ★모든 화면이 같다★
+ * <title>   log in SA CLOUD - 서든어택 클랜전 전적검색   ← ★모든 화면이 같다★
  * og:url    https://3rdcloud.my                   ← ★전부 홈으로 고정★
  * ```
  * > 강민재 — *"「이 판 봐라」 하고 보내는 게 클랜전 문화인데
@@ -31,7 +31,7 @@ import type { Metadata } from 'next'
  * 그 API 는 이미 엣지가 받아 낸다 (`okPublic`).
  */
 
-const SITE = '3rd cloud'
+const SITE = 'log in SA CLOUD'
 const BASE = 'https://3rdcloud.my'
 
 /**

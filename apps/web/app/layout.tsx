@@ -138,22 +138,26 @@ const fontTier = Bebas_Neue({
  *   찍고 넘어가고, **미리보기에서 이미지가 조용히 빠진다.**
  */
 export const metadata: Metadata = {
-  metadataBase: new URL('https://3rdcloud.my'),
-  title: '3rd cloud - 서든어택 클랜전 전적검색',
+  /*
+   * ⚠ ★2026-09-21 — 대문 주소는 `loginsa.cloud` 다★ (사장님이 도메인을 옮기셨다).
+   *   `3rdcloud.my` 도 같은 사이트지만 ★링크 미리보기에 적히는 주소★ 는 하나여야 한다.
+   */
+  metadataBase: new URL('https://loginsa.cloud'),
+  title: 'log in SA CLOUD - 서든어택 클랜전 전적검색',
   description: '서든어택 클랜전 기록 · 리그 · 래더',
   openGraph: {
     type: 'website',
     locale: 'ko_KR',
-    siteName: '3rd cloud',
-    title: '3rd cloud - 서든어택 클랜전 전적검색',
+    siteName: 'log in SA CLOUD',
+    title: 'log in SA CLOUD - 서든어택 클랜전 전적검색',
     /* 링크를 받은 사람이 **무엇을 볼 수 있는지**를 한 줄로. 기능 나열이 아니다 */
     description: '닉네임이나 클랜명으로 클랜전 기록을 찾아보세요. 래더 · 랭킹 · 경기 기록.',
-    url: 'https://3rdcloud.my',
+    url: 'https://loginsa.cloud',
   },
   twitter: {
     /* ⚠ 2026-09-18 — 그림이 생겨서 큰 카드로 바꿨다 (`app/opengraph-image.png`) */
     card: 'summary_large_image',
-    title: '3rd cloud - 서든어택 클랜전 전적검색',
+    title: 'log in SA CLOUD - 서든어택 클랜전 전적검색',
     description: '닉네임이나 클랜명으로 클랜전 기록을 찾아보세요. 래더 · 랭킹 · 경기 기록.',
   },
 }

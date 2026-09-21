@@ -39,7 +39,7 @@ export const NAME_MEANING = 'CLOUD — Connected League Operations & User Data'
  * <details><summary>옛 소개 (우리가 쓴 글 · 2026-09-02 낮까지)</summary>
  *
  * ```
- * 3rd cloud 는 서든어택 클랜전 기록을 모아 두는 곳입니다. 리그별 클랜·개인 랭킹이 있고,
+ * log in SA CLOUD 는 서든어택 클랜전 기록을 모아 두는 곳입니다. 리그별 클랜·개인 랭킹이 있고,
  * 선수와 클랜의 기록실에서 지나간 경기를 하나씩 펼쳐 볼 수 있습니다.
  * 기록은 넥슨이 공개한 API 와 공개된 전적 페이지에서 가져옵니다.
  * 아직 채워지지 않은 값은 지어내지 않고 비워 둡니다.

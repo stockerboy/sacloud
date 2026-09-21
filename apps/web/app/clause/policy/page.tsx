@@ -20,7 +20,7 @@ import type { Metadata } from 'next'
  * **없는 절차를 있다고 쓰지 않았고, 법률 의견도 쓰지 않았다.**
  * 책임자 이름은 **비워 두었다** — 사장님이 정할 일이다 (`O-013` · A 에게 알렸다).
  */
-export const metadata: Metadata = { title: '개인정보 취급방침 - 3rd cloud' }
+export const metadata: Metadata = { title: '개인정보 취급방침 - log in SA CLOUD' }
 
 const SECTIONS: ReadonlyArray<{ title: string; body: readonly string[] }> = [
   {

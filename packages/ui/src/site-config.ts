@@ -268,8 +268,8 @@ export const PRIMARY_NAV_LEGACY: readonly NavLink[] = [
  * 레이아웃(약관 링크 2개 → 저작권 → 문의 메일)만 동일하게 재현하고 값은 우리 것으로 채운다.
  */
 export const SITE_BRAND = {
-  name: '3rd cloud',
-  copyright: '© 2026 3rd cloud',
+  name: 'log in SA CLOUD',
+  copyright: '© 2026 log in SA CLOUD',
   contactLabel: 'Terms of Service | 문의 :',
   /**
    * 문의 주소.

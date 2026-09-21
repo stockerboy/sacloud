@@ -333,7 +333,7 @@ export function HomeSearch() {
           <HomeHeroHead />
         </div>
       ) : (
-        <Link href="/" aria-label="3rd cloud 홈" className="v2-brand mb-[38px] block max-md:mb-[18px]">
+        <Link href="/" aria-label="log in SA CLOUD 홈" className="v2-brand mb-[38px] block max-md:mb-[18px]">
           <MainLogo className="h-[110px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[56px]" />
         </Link>
       )}

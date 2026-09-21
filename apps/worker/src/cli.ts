@@ -36,6 +36,7 @@ import { runUnifiedProject } from './jobs/unifiedProject.js'
 import { rateLimitSweep } from './jobs/rateLimitSweep.js'
 import { runClanMarkFresh } from './jobs/clanMarkFresh.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
+import { runRenewRequests } from './jobs/renewRequests.js'
 import { runIdentityFromBattlelog } from './jobs/identityFromBattlelog.js'
 import { runC1LeagueBuild } from './jobs/c1LeagueBuild.js'
 import { LEAGUE_LABEL, LIVE_LEAGUE_SLUGS } from './lib/leagueVerdict.js'
@@ -3900,6 +3901,19 @@ async function main(): Promise<number> {
         days: Number(stringFlag(args, 'days') ?? '') || undefined,
       })
       return r.seen >= 0 ? 0 : 1
+    }
+
+    case 'renew-requests': {
+      /*
+       * ★「정보갱신」 단추가 넣은 큐를 비운다★ (2026-09-21 사장님:
+       *   「정보갱신 누르면 현재 병영수첩상 닉네임과 클랜으로 최신화 되는 기능
+       *    탑재한거야? ★안되는데?★」)
+       */
+      const r = await runRenewRequests({
+        confirm: boolFlag(args, 'confirm'),
+        limit: Number(stringFlag(args, 'limit') ?? '') || undefined,
+      })
+      return r.blocked ? 1 : 0
     }
 
     case 'clan-name-from-matches': {
