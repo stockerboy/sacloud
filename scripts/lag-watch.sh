@@ -61,7 +61,7 @@ case "$OUT" in
   raw=*) : ;;
   *) say "★값을 못 읽었다★ — 이번 판은 판단하지 않는다 ($OUT)"; exit 0 ;;
 esac
-raw=0; proj=0; line=0; pend=0
+raw=0; proj=0; line=0; pend=0; stuck=0
 eval "$OUT"
 
 # 가장 늦은 단계가 곧 사장님이 겪는 지연이다
@@ -70,14 +70,14 @@ STAGE=수집
 [ "$proj" -gt "$WORST" ] 2>/dev/null && { WORST=$proj; STAGE=정규화; }
 [ "$line" -gt "$WORST" ] 2>/dev/null && { WORST=$line; STAGE=명단; }
 
-say "raw=${raw} proj=${proj} line=${line} pend=${pend} → 최악 ${WORST}분(${STAGE})"
+say "raw=${raw} proj=${proj} line=${line} pend=${pend} stuck=${stuck} → 최악 ${WORST}분(${STAGE})"
 
 WAS=$(cat "$STATE" 2>/dev/null || echo ok)
 
 # ── 괜찮다 ───────────────────────────────────────────────────────
 if [ "$WORST" -ge 0 ] && [ "$WORST" -lt "$THRESHOLD" ]; then
   if [ "$WAS" != "ok" ]; then
-    led "- **풀림** \`$(ts)\` — ${WORST}분까지 내려왔다 (수집 ${raw} · 정규화 ${proj} · 명단 ${line} · 수집중 ${pend})"
+    led "- **풀림** \`$(ts)\` — ${WORST}분까지 내려왔다 (수집 ${raw} · 정규화 ${proj} · 명단 ${line} · 수집중 ${pend} · 막힘 ${stuck})"
     say "★풀렸다★"
   fi
   echo ok > "$STATE"
@@ -134,7 +134,7 @@ fi
 
 if [ "$WAS" = "ok" ]; then
   led ""
-  led "- **밀림** \`$(ts)\` — 최악 **${WORST}분**(${STAGE})  ·  수집 ${raw} · 정규화 ${proj} · 명단 ${line} · 수집중 ${pend}"
+  led "- **밀림** \`$(ts)\` — 최악 **${WORST}분**(${STAGE})  ·  수집 ${raw} · 정규화 ${proj} · 명단 ${line} · 수집중 ${pend} · 막힘 ${stuck}"
   led "    - 왜: ${WHY%· }"
   led "    - 한 것: ${FIX%· }"
 else
