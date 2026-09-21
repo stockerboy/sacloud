@@ -72,6 +72,8 @@ export interface ClanFindMissingResult {
   notFound: number
   /** 클랜 번호까지 받아 적은 수 — ★이게 있어야 명단이 이어진다★ */
   numbered: number
+  /** ③ 번호는 아는데 그 리그 명단에 없어서 막히던 클랜을 올린 수 */
+  joinedByNumber: number
   blocked: boolean
   confirmed: boolean
   samples: string[]
@@ -177,6 +179,7 @@ export async function runClanFindMissing(
     ambiguous: 0,
     notFound: 0,
     numbered: 0,
+    joinedByNumber: 0,
     blocked: false,
     confirmed: confirm,
     samples: [],
@@ -368,10 +371,54 @@ export async function runClanFindMissing(
   }
 
   /*
+   * ── ★★③단계 — 「번호는 아는데 그 리그 명단에 없다」 를 푼다★★ (2026-09-22)
+   *
+   *   ①②를 하고도 111건이 그대로 막혀 있었다. 파 보니 —
+   *   ```
+   *   배틀로그 teamList 의 clan_no  →  번호표에는 있다
+   *   그런데 ★그 경기의 리그 명단에는 그 클랜이 없다★
+   *   ```
+   *   명단 잡은 ★그 리그에 등록된 클랜만★ 번호표에 담는다 (같은 병영 클랜이 우리 DB 에
+   *   두 줄인 경우를 막으려는 장치다). 그래서 ★등록만 안 돼 있으면 영영 못 푼다.★
+   *
+   *   ★그 클랜은 그 리그 경기에 실제로 나왔다.★ 그러니 그 리그 명단에 올리는 것이 맞다
+   *   (`sanply-clan-fill` 이 이름으로 하던 일을 ★번호로★ 하는 것이다 — 더 안전하다).
+   *
+   *   ⚠ ★기록을 만들지 않는다★ — 명단 한 줄뿐이다.
+   *   ⚠ 번호조차 모르는 클랜은 ★여기서 만들지 않는다★ — ①단계가 이름으로 찾는다.
+   */
+  if (confirm && !result.blocked) {
+    const pairs = await prisma.$queryRaw<{ leagueid: string; clanid: string; name: string }[]>`
+      SELECT DISTINCT m."leagueId" AS leagueid, n."clanId" AS clanid, c."name"
+        FROM "Match" m
+        JOIN "BarracksBattleLogRaw" b
+          ON b."matchKey" = m."sourceMatchId" AND b."subjectKind" = 'clan'
+        CROSS JOIN LATERAL jsonb_array_elements(
+          COALESCE(b."payload"->'teamList', '[]'::jsonb)) AS e(v)
+        JOIN "BarracksClanNumber" n ON n."clanNo" = e.v->>'clan_no'
+        JOIN "Clan" c ON c."id" = n."clanId"
+       WHERE m."supersededAt" IS NULL
+         AND m."lineupStatus" = 'incomplete'
+         AND c."active" = true
+         AND NOT EXISTS (
+               SELECT 1 FROM "LeagueClan" lc
+                WHERE lc."clanId" = n."clanId" AND lc."leagueId" = m."leagueId")
+    `
+    for (const pair of pairs) {
+      await prisma.leagueClan.create({
+        data: { leagueId: pair.leagueid, clanId: pair.clanid, division: 1 },
+      })
+      result.joinedByNumber += 1
+      if (result.samples.length < 60) result.samples.push(`번호로 명단에 올림 ${pair.name}`)
+    }
+    log(`③번호로 리그 명단에 올린 클랜 ${result.joinedByNumber}곳`)
+  }
+
+  /*
    * ★막힌 표시를 지운다★ — 클랜이 생겼으니 명단 잡이 다시 봐야 한다.
    *   지우지 않으면 `battlelog-lineup` 이 「다시 안 볼 사유」 로 걸러 영영 건너뛴다.
    */
-  if (confirm && (result.created > 0 || result.joined > 0)) {
+  if (confirm && (result.created > 0 || result.joined > 0 || result.joinedByNumber > 0)) {
     const cleared = await prisma.match.updateMany({
       where: { supersededAt: null, lineupSkipReason: 'clan_unmapped' },
       data: { lineupSkipReason: null },
@@ -384,7 +431,7 @@ export async function runClanFindMissing(
   log(
     `모르는 클랜 찾기 — 막힌 경기 ${result.strandedMatches} · 모르는 클랜 ${result.unknownClans} · ` +
       `찾음 ${result.found} · 만듦 ${result.created} · 명단에 올림 ${result.joined} · ` +
-      `번호받음 ${result.numbered} · 못 가림 ${result.ambiguous} · 검색에 없음 ${result.notFound}` +
+      `번호받음 ${result.numbered} · 번호로올림 ${result.joinedByNumber} · 못 가림 ${result.ambiguous} · 검색에 없음 ${result.notFound}` +
       (result.blocked ? ' · ★막힘★' : '') +
       (confirm ? '' : ' (미리보기)'),
   )
