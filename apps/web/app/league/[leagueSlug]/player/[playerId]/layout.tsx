@@ -50,7 +50,12 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
    *   ★몇 번 나눠 다시 읽는다★ — 서버가 병영을 읽는 데 2~3초가 걸리기 때문이다.
    *   한 번만 읽으면 ★아직 안 고쳐진 값★ 을 받아 「안 됐네」 로 보인다.
    */
-  const refresh = useRefresh('playerRenew', { playerId })
+  /* ★끝날 때까지 기다렸다가 화면을 다시 그린다★ — 「되는 척」 을 없앤다 (2026-09-22) */
+  const refresh = useRefresh(
+    'playerRenew',
+    { playerId },
+    { statusPath: `/api/players/${playerId}/renew-status` },
+  )
   const queryClient = useQueryClient()
   const onRenew = () => {
     refresh.run()
