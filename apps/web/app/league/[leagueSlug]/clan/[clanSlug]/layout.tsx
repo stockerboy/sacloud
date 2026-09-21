@@ -69,7 +69,12 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
     return () => window.removeEventListener('pageshow', toTop)
   }, [clanSlug])
 
-  const refresh = useRefresh('clanRenew', { clanSlug })
+  /* ★끝날 때까지 기다렸다가 화면을 다시 그린다★ (2026-09-22 사장님) */
+  const refresh = useRefresh(
+    'clanRenew',
+    { clanSlug },
+    { statusPath: `/api/clans/${clanSlug}/renew-status` },
+  )
   const season = useSeasonLabel()
   const renewedAt = refresh.renewedAt ?? clan.data?.data.renewed_at ?? null
   const data = detail.data?.data

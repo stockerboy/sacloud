@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 
 import { prisma } from '@sacloud/db'
-import { restoreClanMark } from '@sacloud/contract'
-import { ClanMark } from '@sacloud/ui'
+import { cplSectorOf } from '@sacloud/contract'
+import { VersusWall } from './VersusWall'
 
 /**
  * ★★CPL 소개 화면★★ (2026-09-21 · 사장님 지시)
@@ -118,26 +118,12 @@ export default async function CplPage() {
         </Line>
       </Section>
 
-      {/* ── 참가 클랜 명단 ────────────────────────────────────── */}
-      <section className="mt-10">
-        <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-line-soft pb-2">
-          <h2 className="text-[16px] font-bold text-text-strong">참가 클랜</h2>
-          <span className="font-num text-[13px] tabular-nums text-meta">{clans.length}곳</span>
-        </div>
-        {clans.length === 0 ? (
-          <p className="py-8 text-center text-[13px] text-faint">아직 명단이 없습니다.</p>
-        ) : (
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4">
-            {clans.map((c) => (
-              <li key={c.slug} className="flex min-w-0 items-center gap-2">
-                {/* ★클랜명 앞에는 반드시 마크★ — 모르면 구름 (사장님 상시 지시) */}
-                <ClanMark mark={restoreClanMark({ bg: c.bg, front: c.front })} size="sm" />
-                <span className="min-w-0 truncate text-[14px] text-text">{c.name}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* ── 참가 클랜 — ★두 진영이 마주 본다★ ──────────────────── */}
+      <VersusWall
+        left={clans.filter((c) => cplSectorOf(c.slug) === 'independent')}
+        right={clans.filter((c) => cplSectorOf(c.slug) === 'supply')}
+        other={clans.filter((c) => cplSectorOf(c.slug) === null)}
+      />
 
       {/* ── 알림 ──────────────────────────────────────────────── */}
       <Section title="알려드립니다">

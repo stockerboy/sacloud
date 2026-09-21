@@ -50,3 +50,6 @@ export * from './rankMinGames'
 export * from './aggregateLeagues'
 /* 리그 권위·통합 순위 (O-043 · 2026-09-03) */
 export * from './leagueAuthority'
+
+/* CPL 두 진영 — 무소속 14 vs 서플라이 14 (2026-09-22) */
+export * from './cplRoster'

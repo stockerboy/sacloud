@@ -1,3 +1,4 @@
+import { CPL_ALL_SLUGS, CPL_INDEPENDENT_SLUGS, CPL_SUPPLY_SLUGS } from '@sacloud/contract'
 import { prisma } from '@sacloud/db'
 
 import { log } from '../lib/log.js'
@@ -54,22 +55,13 @@ export const CPL_NAME = 'CPL'
  *   (`hing` → `hingˇ` · `valentina` → `vaIentina`(대문자 I) · `amarilys` → `amaryllis`).
  * ⚠ ★옛 24곳 판은 아래 `CPL_CLAN_SLUGS_V1` 에 남겼다★ (`CLAUDE.md` 1-4).
  */
-export const CPL_CLAN_SLUGS: readonly string[] = [
-  'minjihun', //       sometimes
-  'ajwjdjwuwuei5', //  grave (클랜원 35명 쪽)
-  'ferwfwfwfwf', //    deluxe
-  'luverduck12', //    igloo
-  'hanbi0302', //      luvme
-  'ckdals2457', //     hardcores
-  'uava01', //         vuvuzela
-  '01025606089', //    〃veritas
-  'ssdko', //          methodcrew
-  '4473', //           evermore
-  'fdd8', //           amaryllis
-  'adgeodud20', //     hingˇ
-  'valentina2', //     vaIentina
-  'wdasdw', //         레트로폭탄
-]
+/**
+ * ⚠ ★목록은 계약 한 곳에 있다★ (2026-09-22) — `packages/contract/src/cplRoster.ts`.
+ *   명단을 세우는 여기와 그리는 화면이 ★같은 목록★ 을 봐야 한다. 두 곳에 적어 두면
+ *   한쪽만 고쳐져서 ★화면에 없는 클랜★ 이 생긴다 (랭킹 문턱 40/15 사건과 같은 병).
+ *   ★옛 이름은 그대로 둔다★ — 이 파일을 부르는 데가 있다 (`CLAUDE.md` 1-4).
+ */
+export const CPL_CLAN_SLUGS: readonly string[] = CPL_INDEPENDENT_SLUGS
 
 /**
  * ★★맞은편 — 서플라이(PL) 14곳★★ (2026-09-21 사장님)
@@ -77,22 +69,7 @@ export const CPL_CLAN_SLUGS: readonly string[] = [
  * > 「CPL 14개 PL14개니까 ★둘이 대결구도 존나 간지나게★ 만들어 마크를 양쪽에 두고
  * >  vs 이런식으로 ★무소속은 무소속섹터에 서플라이는 서플라이 섹터에★ 따로 두고」
  */
-export const PL_RIVAL_SLUGS: readonly string[] = [
-  'sorentolove', //    -tsAr.nTc
-  'Onepoint', //       One.PoinT
-  'Ensemble', //       isyour
-  'aksrrzi', //        rNtwo-
-  'susucom', //        unfair
-  'suddenalexia', //   afterpray
-  'DOKKIMAMA', //      Mentalist-
-  'LaonJN', //         PokerFace.
-  'luminouszzang', //  ctrI    ← 사장님 표기 「ctrl」
-  'inpum', //          respects-
-  'Akillclass', //     ThelVub ← 사장님 표기 「The vub」
-  'footmania2', //     stylecIan ← 사장님 표기 「styleclan」
-  'adfafasf', //       ＃chaseplay
-  'e2stro2017', //     e2stro-
-]
+export const PL_RIVAL_SLUGS: readonly string[] = CPL_SUPPLY_SLUGS
 
 /** ⚠ 옛 24곳 판 (2026-09-21 낮). 지우지 않는다 — 되돌릴 때 쓴다 */
 export const CPL_CLAN_SLUGS_V1: readonly string[] = [
@@ -144,7 +121,7 @@ export interface CplSetupResult {
  *   ★목록에 있으면 넣고, 없으면 내린다.★ 내릴 때 ★지우지 않는다★ —
  *   `expelledAt` 만 찍는다 (`CLAUDE.md` 1-4). 되돌리려면 그 칸만 비우면 된다.
  */
-export const CPL_ALL_SLUGS: readonly string[] = [...CPL_CLAN_SLUGS, ...PL_RIVAL_SLUGS]
+export { CPL_ALL_SLUGS }
 
 export async function runCplSetup(
   options: { confirm?: boolean; slugs?: readonly string[]; sync?: boolean } = {},

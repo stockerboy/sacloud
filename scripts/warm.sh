@@ -25,7 +25,7 @@
 #   캐시가 있는 동안 나머지 접속은 DB 에 닿지 않는다. 총량은 오히려 준다.
 #
 # ── 쓰는 법
-#   sh scripts/warm.sh              # 운영(3rdcloud.my)
+#   sh scripts/warm.sh              # 운영(loginsa.cloud)
 #   BASE=http://localhost:3000 sh scripts/warm.sh
 #
 #   크론 (VPS):
@@ -33,7 +33,21 @@
 
 set -u
 
-BASE="${BASE:-https://3rdcloud.my}"
+# ── ⚠ ★도메인이 바뀐 줄 모르고 옛 주소를 데우고 있었다★ (2026-09-22 실측)
+#
+#   사장님: 「IPL 클랜랭킹에서는 ★왜 자꾸 반영이 안돼★」
+#
+#   ```
+#   warm 로그   https://3rdcloud.my/league/nolink/rank/clan   ← 옛 주소
+#   사람이 보는 곳  https://loginsa.cloud/league/nolink/rank/clan
+#   ```
+#   ★엣지 캐시는 주소마다 따로다.★ 옛 주소를 아무리 데워도 ★사람이 보는 쪽은
+#   한 번도 안 데워졌다.★ 그래서 랭킹을 여는 사람이 늘 ★첫 방문자★ 가 되어
+#   ★식은 옛 화면★ 을 받았다 — 마크를 고쳐도 반영이 안 되던 까닭이 이것이다.
+#
+#   ⚠ 옛 기본값은 ★지우지 않는다★ (`CLAUDE.md` 1-4) — 아래 `BASE_V1`.
+BASE_V1="https://3rdcloud.my"
+BASE="${BASE:-https://loginsa.cloud}"
 # 한 주소가 오래 걸려도 전체가 멈추지 않게 — 차가운 개인랭킹이 13초였다
 TIMEOUT="${TIMEOUT:-30}"
 
