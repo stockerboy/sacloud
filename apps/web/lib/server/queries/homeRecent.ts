@@ -9,6 +9,9 @@ import {
   loadLeagueClanContext,
   resolveLeagueId,
   toMatchListItem,
+  loadCurrentClanContext,
+  playerIdsOf,
+  type CurrentClanContext,
 } from './matches'
 import { withSeasonWindow } from './season0Scope'
 
@@ -72,7 +75,7 @@ function mvpOf(item: MatchListItem): LeagueRecentRow['mvp'] {
 async function fetchRecent(
   leagueSlug: string,
   size: number,
-): Promise<{ rows: MatchRow[]; clans: LeagueClanContext } | null> {
+): Promise<{ rows: MatchRow[]; clans: LeagueClanContext; now: CurrentClanContext } | null> {
   const leagueId = await resolveLeagueId(leagueSlug)
   if (!leagueId) return null
 
@@ -86,8 +89,12 @@ async function fetchRecent(
   })
 
   /* 카드에 등장하는 리그클랜을 **한 번에** 읽는다 (등록 클랜 판정 포함, D-146) */
-  const clans = await loadLeagueClanContext(leagueId, leagueClanIdsOf(rows))
-  return { rows, clans }
+  /* ★지금 소속도 같이★ — 홈 카드도 명단에 지금 클랜을 적는다 (2026-09-21 사장님) */
+  const [clans, now] = await Promise.all([
+    loadLeagueClanContext(leagueId, leagueClanIdsOf(rows)),
+    loadCurrentClanContext(leagueId, playerIdsOf(rows)),
+  ])
+  return { rows, clans, now }
 }
 
 /** 승자를 아는가 · 보는 쪽(승자, 모르면 레드 슬롯) */
@@ -110,7 +117,7 @@ export async function getLeagueRecentRows(
   return fetched.rows.flatMap((match) => {
     const viewer = viewerOf(match)
     /* 클랜 스냅샷은 카드와 같은 함수로 만든다 — 마크 복원·등록 판정 규칙이 갈라지지 않게 */
-    const item = toMatchListItem(match, viewer.leagueClanId, null, fetched.clans)
+    const item = toMatchListItem(match, viewer.leagueClanId, null, fetched.clans, fetched.now)
     if (!item) return []
     return [
       {
@@ -134,7 +141,7 @@ export async function getLeagueRecentMatches(
   if (!fetched) return null
 
   return fetched.rows.flatMap((match) => {
-    const item = toMatchListItem(match, viewerOf(match).leagueClanId, null, fetched.clans)
+    const item = toMatchListItem(match, viewerOf(match).leagueClanId, null, fetched.clans, fetched.now)
     return item ? [item] : []
   })
 }

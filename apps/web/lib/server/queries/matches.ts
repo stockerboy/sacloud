@@ -229,6 +229,79 @@ export async function loadLeagueClanContext(
   return new Map(rows.map((row) => [row.id, row]))
 }
 
+/**
+ * ★★경기 명단에 「지금 소속」 을 적는다★★ (2026-09-21 · 사장님 지시)
+ *
+ * > 「도장은 찍지 말고 ★옛날 경기도 그냥 지금 소속으로 떠야한다고★ 명단이
+ * >  예를들어 옛날에 메쏘드클랜원으로 메쏘드에서 게임을 했어
+ * >  그러고 이주뒤에 발렌티나로 클랜을 옮겻어
+ * >  그러면 ★메쏘드에서 했던 경기명단에서도 발렌티나 소속 선수로 찍혀 있어야한다고★」
+ *
+ * ── 무엇이 달라지나
+ *
+ *   여태 명단은 ★경기 당시 소속★(`matchTime*`)을 적었다. 스키마 주석도
+ *   「현재 소속을 join 하지 않는다 — 이적해도 과거 화면이 바뀌면 안 된다」 였다.
+ *   ★사장님 뜻은 그 반대다.★ 전적 사이트에서 알고 싶은 것은
+ *   「이 사람 ★지금★ 어디 클랜이냐」 이기 때문이다.
+ *
+ * ── ⚠ DB 는 한 칸도 안 건드린다
+ *
+ *   `matchTime*` 스냅샷은 ★그대로 둔다★ — 바꾸는 것은 ★내보내는 값★ 뿐이다
+ *   (D-227 이 넥슨 마크로 같은 일을 이미 하고 있다).
+ *   그래서 `SHOW_CURRENT_CLAN` 한 글자로 옛 화면이 돌아온다 (`CLAUDE.md` 1-4).
+ *
+ * ── 왜 이것이 마크 문제까지 푸는가
+ *
+ *   지금 소속을 보면 ★마크도 언제나 지금 마크★ 다. 경기마다 박제된 옛 마크를
+ *   따라다니며 고칠 필요가 없다. 사장님이 「도장 찍지 마라」 하신 뜻이 이것이다.
+ *
+ * ⚠ `LeaguePlayer.clanId` 를 쓴다 — ★매시 병영 명부로 맞춰지는 값★ 이다.
+ *   `Player.clanId` 는 26,518명 중 3,768명만 차 있어 못 쓴다 (2026-09-21 실측).
+ */
+export type CurrentClanContext = ReadonlyMap<string, LeagueClanInfo>
+
+export async function loadCurrentClanContext(
+  leagueId: string,
+  playerIds: Iterable<string>,
+): Promise<CurrentClanContext> {
+  const wanted = [...new Set(playerIds)]
+  if (wanted.length === 0) return new Map()
+  /* ⚠ `LeaguePlayer` 는 `Clan` 만 가리킨다 — 리그클랜 줄은 따로 찾아야 한다 */
+  const members = await prisma.leaguePlayer.findMany({
+    where: { leagueId, playerId: { in: wanted }, clanId: { not: null } },
+    select: { playerId: true, clanId: true },
+  })
+  if (members.length === 0) return new Map()
+
+  const clanIds = [...new Set(members.map((m) => m.clanId as string))]
+  const leagueClans = await prisma.leagueClan.findMany({
+    where: { leagueId, clanId: { in: clanIds } },
+    select: {
+      id: true,
+      clanId: true,
+      division: true,
+      compositionScore: true,
+      compositionMembers: true,
+      clan: { select: CLAN_SUMMARY_SELECT },
+    },
+  })
+  const byClan = new Map(leagueClans.map((lc) => [lc.clanId, lc]))
+
+  const out = new Map<string, LeagueClanInfo>()
+  for (const m of members) {
+    const lc = byClan.get(m.clanId as string)
+    if (lc) out.set(m.playerId, lc)
+  }
+  return out
+}
+
+/** 이 페이지에 나오는 모든 선수 id */
+export function playerIdsOf(matches: readonly MatchRow[]): string[] {
+  const ids: string[] = []
+  for (const match of matches) for (const stat of match.stats) ids.push(stat.playerId)
+  return ids
+}
+
 /** 매치 목록/상세가 참조하는 모든 리그클랜 id (양 진영 + 참가자의 경기 당시 소속) */
 export function leagueClanIdsOf(matches: readonly MatchRow[]): string[] {
   const ids: string[] = []
@@ -318,7 +391,38 @@ function completenessOf(match: { participantCompleteness: string | null; lineupS
   return match.lineupStatus === 'complete' ? '5v5' : null
 }
 
-function matchTimeClanOf(stat: StatRow, clans: LeagueClanContext): MatchTimeClan | null {
+/**
+ * ★명단에 적는 클랜★ — 2026-09-21 부터 ★지금 소속★ 이다 (사장님 지시).
+ *
+ * > 「메쏘드에서 했던 경기명단에서도 ★발렌티나 소속 선수로 찍혀 있어야한다고★」
+ *
+ * `false` 로 두면 옛 동작(경기 당시 소속)으로 돌아온다 (`CLAUDE.md` 1-4).
+ */
+const SHOW_CURRENT_CLAN: boolean = true
+
+function matchTimeClanOf(
+  stat: StatRow,
+  clans: LeagueClanContext,
+  now?: CurrentClanContext,
+): MatchTimeClan | null {
+  /*
+   * ★지금 소속을 먼저 본다★ — 이적했으면 옛 경기 명단도 새 클랜으로 적는다.
+   *   ⚠ 모르는 사람은 ★아래 옛 길로 떨어진다★ — 빈 값으로 덮지 않는다 (D-106).
+   *   ⚠ 여기서 나가는 마크는 ★지금 마크★ 라 「마크 바꿨는데 안 바뀐다」 가 사라진다.
+   */
+  if (SHOW_CURRENT_CLAN && now) {
+    const mine = now.get(stat.playerId)
+    if (mine) {
+      return {
+        league_clan_id: mine.id,
+        slug: mine.clan.slug,
+        name: mine.clan.name,
+        mark: restoreClanMark({ bg: mine.clan.markBgUrl, front: mine.clan.markFrontUrl }),
+        is_official_clan: isOfficialLeagueClan(mine.clan),
+      }
+    }
+  }
+
   /*
    * ★도장이 있으면 도장이 이긴다★ (2026-09-09).
    *
@@ -398,6 +502,7 @@ function lineupOf(
   match: MatchRow,
   side: TeamSide,
   clans: LeagueClanContext,
+  now?: CurrentClanContext,
 ): MatchLineupEntry[] {
   return match.stats
     .filter((stat) => stat.side === side)
@@ -406,7 +511,7 @@ function lineupOf(
       name: stat.player.name,
       weapon: stat.weapon as Weapon | null,
       dropout: stat.dropout,
-      match_time_clan: matchTimeClanOf(stat, clans),
+      match_time_clan: matchTimeClanOf(stat, clans, now),
     }))
 }
 
@@ -432,6 +537,8 @@ function toMatchPlayerStat(
    * 목록에서는 비어 있고(`null`) 화면은 이름만 적는다. 계약 주석 참조.
    */
   positions?: Map<string, string | null>,
+  /** ★지금 소속★ — 있으면 명단에 그 클랜을 적는다 (2026-09-21 사장님) */
+  now?: CurrentClanContext,
 ): MatchPlayerStat {
   const damage = visible ? stat.damage : null
   const headshot = visible ? stat.headshot : null
@@ -471,7 +578,7 @@ function toMatchPlayerStat(
       if (stat.playerClan && teamSlug) return stat.playerClan.slug === teamSlug ? ('member' as const) : ('mercenary' as const)
       return stat.participantRole === 'mercenary' ? ('mercenary' as const) : stat.participantRole === 'member' ? ('member' as const) : null
     })(),
-    match_time_clan: matchTimeClanOf(stat, clans),
+    match_time_clan: matchTimeClanOf(stat, clans, now),
     /* 포지션은 이 경기의 사실이 아니라 **그 선수의 고유 자리**다 (D-199).
        바로 위 `weapon` 과 나란히 놓으면 `숏 · 스나` 처럼 읽힌다 —
        "스나수가 무조건 스나를 드는것만은 아니야" 를 화면이 그대로 말할 수 있다.
@@ -629,6 +736,8 @@ export function toMatchListItem(
   viewerLeagueClanId: string,
   viewerPlayerId: string | null,
   clans: LeagueClanContext,
+  /** ★지금 소속★ — 명단·참가자 줄이 이 값을 먼저 본다 (2026-09-21 사장님) */
+  now?: CurrentClanContext,
 ): MatchListItem | null {
   const viewerSide = sideOfLeagueClan(match, viewerLeagueClanId)
   if (!viewerSide) return null
@@ -708,9 +817,9 @@ export function toMatchListItem(
     league_clan_side: viewerSide,
     league_clan: snapshotOf(match, viewerSide, clans),
     opponent: snapshotOf(match, opponentSide, clans),
-    red: lineupOf(match, 'red', clans),
-    blue: lineupOf(match, 'blue', clans),
-    player_stat: viewerStat ? toMatchPlayerStat(match, viewerStat, true, clans) : null,
+    red: lineupOf(match, 'red', clans, now),
+    blue: lineupOf(match, 'blue', clans, now),
+    player_stat: viewerStat ? toMatchPlayerStat(match, viewerStat, true, clans, undefined, now) : null,
     // 재구성 경기만 값이 있다 (D-068). 우리가 몇 명을 확인했는지 숨기지 않는다
     participant_completeness: completenessOf(match),
     evidence_confidence: toConfidence(match.evidenceConfidence),
@@ -762,13 +871,17 @@ async function matchPage(
   })
 
   /* 페이지에 등장하는 리그클랜을 한 번에 읽는다 (공식 등록 판정 포함, D-146) */
-  const clans = await loadLeagueClanContext(leagueId, leagueClanIdsOf(page.items))
+  /* ★지금 소속도 한 번에★ — 명단에 옛 클랜 대신 지금 클랜을 적는다 (2026-09-21 사장님) */
+  const [clans, now] = await Promise.all([
+    loadLeagueClanContext(leagueId, leagueClanIdsOf(page.items)),
+    loadCurrentClanContext(leagueId, playerIdsOf(page.items)),
+  ])
 
   return {
     cursor: page.cursor,
     items: page.items.flatMap((match) => {
       const viewer = viewerOf(match)
-      const item = toMatchListItem(match, viewer.leagueClanId, viewer.playerId, clans)
+      const item = toMatchListItem(match, viewer.leagueClanId, viewer.playerId, clans, now)
       return item ? [item] : []
     }),
   }
@@ -1006,8 +1119,10 @@ export async function getMatch(
    *   그건 주소를 손으로 고쳐야 나오는 경우라 드물고, 대신 정상 요청 전부가 빨라진다.
    */
   const playerIds = match.stats.map((stat) => stat.playerId)
-  const [clans, positionsResolved, saveRows, hexRows, plateRows, plateCuts, weaponRows, hexV2] = await Promise.all([
+  const [clans, now, positionsResolved, saveRows, hexRows, plateRows, plateCuts, weaponRows, hexV2] = await Promise.all([
     loadLeagueClanContext(leagueId, leagueClanIdsOf([match])),
+    /* ★지금 소속★ — 명단에 옛 클랜 대신 지금 클랜을 적는다 (2026-09-21 사장님) */
+    loadCurrentClanContext(leagueId, playerIds),
     /* 참가자 포지션 — **여기서만** 읽는다 (D-199). 목록에서는 읽지 않는다.
        실패해도 경기 상세를 죽이지 않는다 — 그때는 포지션 없이 그린다 */
     softFail('match-positions', new Map<string, { label: string | null }>(), { leagueId, matchId: match.id })(
@@ -1054,7 +1169,7 @@ export async function getMatch(
   ])
 
   const viewerId = viewerLeagueClanId ?? match.redLeagueClanId
-  const base = toMatchListItem(match, viewerId, null, clans)
+  const base = toMatchListItem(match, viewerId, null, clans, now)
   if (!base) return null
   const viewerSide = sideOfLeagueClan(match, viewerId)
   if (!viewerSide) return null
@@ -1183,7 +1298,7 @@ export async function getMatch(
     match.stats
       .filter((stat) => stat.side === side)
       .map((stat) => ({
-        ...toMatchPlayerStat(match, stat, side === viewerSide, clans, positions),
+        ...toMatchPlayerStat(match, stat, side === viewerSide, clans, positions, now),
         saves: saveRows.length > 0 ? (savesOf.get(stat.playerId) ?? 0) : null,
         save_chances: saveRows.length > 0 ? (chancesOf.get(stat.playerId) ?? 0) : null,
         score_parts: scorePartsOf(stat.playerId),
