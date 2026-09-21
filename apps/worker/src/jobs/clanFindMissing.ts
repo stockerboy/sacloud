@@ -74,6 +74,8 @@ export interface ClanFindMissingResult {
   numbered: number
   /** ③ 번호는 아는데 그 리그 명단에 없어서 막히던 클랜을 올린 수 */
   joinedByNumber: number
+  /** ④ 경기 원문으로 «이 번호는 저 클랜» 을 알아내 적은 수 */
+  inferredNumbers: number
   blocked: boolean
   confirmed: boolean
   samples: string[]
@@ -180,6 +182,7 @@ export async function runClanFindMissing(
     notFound: 0,
     numbered: 0,
     joinedByNumber: 0,
+    inferredNumbers: 0,
     blocked: false,
     confirmed: confirm,
     samples: [],
@@ -415,10 +418,112 @@ export async function runClanFindMissing(
   }
 
   /*
+   * ── ★★④단계 — 경기 원문으로 «이 번호는 저 클랜» 을 알아낸다★★ (2026-09-22)
+   *
+   *   ③이 0 이었다. 막고 있던 것은 ★번호 자체를 모르는 클랜★ 이었다.
+   *   `GetClanInfo` 는 주소를 줘야 번호를 준다 — ★번호에서 거꾸로는 못 간다.★
+   *
+   *   ── 그런데 한 경기 안에 답이 다 있다
+   *   ```
+   *   경기 원문   red_clan_name · blue_clan_name        ← 두 클랜의 ★이름★
+   *   배틀로그    teamList 의 clan_no 두 개 · subject   ← 두 클랜의 ★번호★
+   *   ```
+   *   ★subject 는 우리가 아는 번호★ 다 (그 클랜에서 받아 온 배틀로그다).
+   *   그러면 ★나머지 번호는 나머지 이름의 클랜★ 이다. 추측이 아니라 소거다.
+   *
+   *   ⚠ ★한 군데라도 흔들리면 안 적는다★ —
+   *     · 번호가 정확히 둘이어야 한다
+   *     · 그중 하나만 알아야 한다 (둘 다 알면 할 일이 없고, 둘 다 모르면 못 가린다)
+   *     · 아는 쪽 클랜 이름이 원문의 두 이름 중 하나와 ★똑같아야★ 한다
+   *     · 나머지 이름을 가진 ★활성 클랜이 정확히 하나★ 여야 한다
+   *     하나라도 어긋나면 ★건너뛴다★ (D-106 · D-221)
+   *   ⚠ ★한 번호에 한 클랜★ — 이미 남의 것이면 덮지 않는다
+   */
+  if (confirm && !result.blocked) {
+    const guesses = await prisma.$queryRaw<
+      { clanno: string; clanid: string; name: string; leagueid: string }[]
+    >`
+      WITH cand AS (
+        SELECT m."id"        AS match_id,
+               m."leagueId"  AS leagueid,
+               b."subject"   AS subject,
+               r."payload"->>'red_clan_name'   AS red_name,
+               r."payload"->>'blue_clan_name'  AS blue_name,
+               ARRAY(
+                 SELECT DISTINCT e.v->>'clan_no'
+                   FROM jsonb_array_elements(
+                          COALESCE(b."payload"->'teamList', '[]'::jsonb)) AS e(v)
+                  WHERE e.v->>'clan_no' IS NOT NULL
+               ) AS nos
+          FROM "Match" m
+          JOIN "BarracksBattleLogRaw" b
+            ON b."matchKey" = m."sourceMatchId" AND b."subjectKind" = 'clan'
+          JOIN "BarracksClanMatchRaw" r ON r."matchKey" = m."sourceMatchId"
+         WHERE m."supersededAt" IS NULL
+           AND m."lineupStatus" = 'incomplete'
+           AND m."startAt" > NOW() - INTERVAL '30 days'
+      ),
+      two AS (
+        SELECT * FROM cand
+         WHERE array_length(nos, 1) = 2
+           AND subject = ANY(nos)
+           AND red_name IS NOT NULL AND blue_name IS NOT NULL
+      ),
+      solved AS (
+        SELECT t.leagueid,
+               (SELECT x FROM unnest(t.nos) AS x WHERE x <> t.subject) AS other_no,
+               known.name AS known_name,
+               t.red_name, t.blue_name
+          FROM two t
+          JOIN "BarracksClanNumber" n ON n."clanNo" = t.subject
+          JOIN "Clan" known ON known."id" = n."clanId"
+         WHERE NOT EXISTS (
+                 SELECT 1 FROM "BarracksClanNumber" n2
+                  WHERE n2."clanNo" = (SELECT x FROM unnest(t.nos) AS x WHERE x <> t.subject))
+      )
+      SELECT DISTINCT s.other_no AS clanno, c."id" AS clanid, c."name", s.leagueid
+        FROM solved s
+        JOIN "Clan" c
+          ON c."name" = CASE WHEN s.known_name = s.red_name THEN s.blue_name
+                             WHEN s.known_name = s.blue_name THEN s.red_name
+                             ELSE NULL END
+       WHERE c."active" = true
+         AND (SELECT COUNT(*) FROM "Clan" d WHERE d."name" = c."name" AND d."active" = true) = 1
+    `
+    for (const g of guesses) {
+      const wrote = await prisma.$executeRaw`
+        INSERT INTO "BarracksClanNumber" ("clanNo","clanId","source","votes","linkedAt")
+        VALUES (${g.clanno}, ${g.clanid}, 'match-raw', 1, NOW())
+        ON CONFLICT ("clanNo") DO NOTHING`
+      if (wrote > 0) {
+        result.inferredNumbers += 1
+        if (result.samples.length < 80) result.samples.push(`번호 알아냄 ${g.name} → ${g.clanno}`)
+      }
+      const has = await prisma.leagueClan.findFirst({
+        where: { leagueId: g.leagueid, clanId: g.clanid },
+        select: { id: true },
+      })
+      if (has === null) {
+        await prisma.leagueClan.create({
+          data: { leagueId: g.leagueid, clanId: g.clanid, division: 1 },
+        })
+        result.joinedByNumber += 1
+      }
+    }
+    log(`④경기 원문으로 알아낸 번호 ${result.inferredNumbers}개`)
+  }
+
+  /*
    * ★막힌 표시를 지운다★ — 클랜이 생겼으니 명단 잡이 다시 봐야 한다.
    *   지우지 않으면 `battlelog-lineup` 이 「다시 안 볼 사유」 로 걸러 영영 건너뛴다.
    */
-  if (confirm && (result.created > 0 || result.joined > 0 || result.joinedByNumber > 0)) {
+  if (
+    confirm &&
+    (result.created > 0 ||
+      result.joined > 0 ||
+      result.joinedByNumber > 0 ||
+      result.inferredNumbers > 0)
+  ) {
     const cleared = await prisma.match.updateMany({
       where: { supersededAt: null, lineupSkipReason: 'clan_unmapped' },
       data: { lineupSkipReason: null },
@@ -431,7 +536,8 @@ export async function runClanFindMissing(
   log(
     `모르는 클랜 찾기 — 막힌 경기 ${result.strandedMatches} · 모르는 클랜 ${result.unknownClans} · ` +
       `찾음 ${result.found} · 만듦 ${result.created} · 명단에 올림 ${result.joined} · ` +
-      `번호받음 ${result.numbered} · 번호로올림 ${result.joinedByNumber} · 못 가림 ${result.ambiguous} · 검색에 없음 ${result.notFound}` +
+      `번호받음 ${result.numbered} · 알아낸번호 ${result.inferredNumbers} · ` +
+      `번호로올림 ${result.joinedByNumber} · 못 가림 ${result.ambiguous} · 검색에 없음 ${result.notFound}` +
       (result.blocked ? ' · ★막힘★' : '') +
       (confirm ? '' : ' (미리보기)'),
   )
