@@ -6,6 +6,7 @@ import {
   FEATURED_LEAGUES,
   PREPARING_LEAGUE_SLUGS,
   UPCOMING_LEAGUE_SLUGS,
+  homeLeagues,
 } from '../../../ui/src/site-config'
 
 /**
@@ -104,6 +105,27 @@ describe('화면에 올린 리그는 집계도 돈다', () => {
         `홈에서 들어간 사람이 다른 화면에서 그 리그로 못 돌아온다.
 `,
     ).toEqual([])
+  })
+
+  /**
+   * ★★홈이 그리는 목록도 같아야 한다★★ (2026-09-21 · 세 번째로 같은 병을 앓았다)
+   *
+   *   ```
+   *   2026-09-20  C1 을 더하면서 `HOME_LEAGUES` 를 빠뜨렸다
+   *   2026-09-21  C1 을 빼면서 `HomeLeagueButtons.HOME_ORDER` 를 빠뜨렸다 → ★홈에 CPL 단추가 없었다★
+   *   ```
+   *   ★목록이 다섯 군데 흩어져 있던 것이 원인★ 이라 홈 쪽은 이제 `homeLeagues()` 가 만든다.
+   *   이 시험이 그것을 굳힌다 — 어느 한 곳만 고치면 여기가 빨개진다.
+   */
+  it('★홈이 그리는 리그가 상단바와 같다★', () => {
+    const shown = shownSlugs().sort()
+    const home = homeLeagues()
+      .map((l) => l.href.replace('/league/', ''))
+      .sort()
+    expect(
+      home,
+      `★홈과 상단바가 다른 리그를 그린다★ — 홈 [${home.join(', ')}] · 상단바 [${shown.join(', ')}] · 홈 쪽은 homeLeagues() 가 만든다`,
+    ).toEqual(shown)
   })
 
   it('★모집중 리그는 집계에 없다★ — 기록이 한 줄도 없다', () => {

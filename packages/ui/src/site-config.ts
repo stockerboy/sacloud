@@ -144,6 +144,43 @@ export function orderLeagues(order: readonly string[]): readonly NavLink[] {
   })
 }
 
+/**
+ * ★★홈 차례로 세운 리그 목록★★ (2026-09-21 — 목록이 또 갈라져서 만들었다)
+ *
+ * ── 무엇이 문제였나
+ *
+ *   리그 목록이 ★다섯 군데★ 에 흩어져 있었다 —
+ *   ```
+ *   FEATURED_LEAGUES          상단바 · 서랍
+ *   HOME_LEAGUES              홈 랭킹 미리보기 · 최근경기
+ *   HomeLeagueButtons.HOME_ORDER   홈 리그 단추      ← ★여기가 안 따라왔다★
+ *   HomeBadgeWall.HOME_ORDER       홈 배지 진열장     ← ★여기도★
+ *   AGGREGATE_LEAGUE_SLUGS    집계 잡
+ *   ```
+ *   C1 을 뺐는데 앞 둘만 고쳐서, 사장님 홈 화면에 ★CPL 단추가 안 나왔다.★
+ *   (그 전에는 반대로 C1 을 더했는데 `HOME_LEAGUES` 만 빠뜨렸다)
+ *
+ * ── 이제
+ *
+ *   ★차례만 여기 적고, 무엇이 있는지는 `FEATURED_LEAGUES` 가 정한다.★
+ *   차례표에 없는 리그는 ★뒤에 붙는다★ — 새 리그를 더해도 ★사라지지 않는다.★
+ *   준비중 리그는 빠진다.
+ */
+export const HOME_LEAGUE_ORDER: readonly string[] = ['nolink', 'supply', 'sanply']
+
+/** 홈이 그리는 리그 — 차례는 위 표, 있고 없고는 `FEATURED_LEAGUES` 가 정한다 */
+export function homeLeagues(): readonly NavLink[] {
+  const all = FEATURED_LEAGUES.filter(
+    (l) => !PREPARING_LEAGUE_SLUGS.includes(l.href.replace('/league/', '')),
+  )
+  const rank = (href: string): number => {
+    const at = HOME_LEAGUE_ORDER.indexOf(href.replace('/league/', ''))
+    /* ★차례표에 없으면 맨 앞★ — 새 리그를 놓치지 않는다 */
+    return at < 0 ? -1 : at
+  }
+  return [...all].sort((a, b) => rank(a.href) - rank(b.href))
+}
+
 /** 상단바 · 모바일 서랍이 쓰는 대표 리그 — **IPL · SPL · 10mountain** (지시 #14 ①) */
 export const GNB_LEAGUES: readonly NavLink[] = orderLeagues(GNB_LEAGUE_ORDER)
 

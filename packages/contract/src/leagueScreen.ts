@@ -58,6 +58,15 @@ export interface LeagueScreenSpec {
    * 그래서 탭은 두고 표 자리에 이 글을 대신 그린다. `null` 이면 여느 때처럼 표를 그린다.
    */
   clanRankNotice: string | null
+  /**
+   * ★개인랭킹 대신 띄울 공지★ (2026-09-21 · CPL)
+   *
+   * > 「개인랭킹은 ★10/1부터 생성★ 되고 클랜랭킹에는 ★참가 클랜 목록★ 보여달라니까」
+   *
+   * `clanRankNotice` 와 같은 장치다 — ★탭은 그대로 두고★ 표 자리에 이 글을 그린다.
+   * 탭을 없애면 ★왜 없는지를 말할 자리가 사라진다.★
+   */
+  playerRankNotice: string | null
   /** 개인 순위가 ★실력 점수★ 인 리그 (2026-09-10 사장님 확정 · SPL·IPL). 표에 점수가 한 줄도 없어도 «측정 중» 이지 래더가 아니다 */
   scoreLeague: boolean
   /** 개인랭킹 표의 칸 */
@@ -157,6 +166,7 @@ const WITH_LADDER: LeagueScreenSpec = {
   clanRank: true,
   hireClans: false,
   clanRankNotice: null,
+  playerRankNotice: null,
   scoreLeague: true,
   /*
    * ⚠ ★2026-09-21 — 래더 칸을 도로 켰다★ (사장님이 3rd.supply 3부를 학습하라 하심)
@@ -231,6 +241,7 @@ export const NO_LADDER: LeagueScreenSpec = {
   clanRank: false,
   hireClans: false,
   clanRankNotice: null,
+  playerRankNotice: null,
   scoreLeague: false,
   playerColumns: { rank: false, winRate: true, kd: true, rating: false },
   clanColumns: { rank: false, winRate: true, kd: false, rating: false },
@@ -331,6 +342,35 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
     hireClans: true,
     clanRankNotice:
       '10산은 클랜 기록을 제공하지 않습니다 — 고용 가능 클랜으로 진행하는 리그입니다. 개인 기록·플레이 분석·경기 분석은 그대로 제공됩니다.',
+  },
+  /**
+   * ★★CPL — 모집중★★ (2026-09-21 사장님)
+   *
+   * > 「단추 추가하고 ★개인랭킹 클랜랭킹 이런거 똑같이 만들고★ 개인랭킹은
+   * >  ★10/1부터 생성★ 되고 클랜랭킹에는 ★참가 클랜 목록★ 보여달라니까」
+   *
+   * ── 다른 리그와 ★같은 탭★ 을 쓴다
+   *   탭을 없애면 ★왜 비었는지 말할 자리가 사라진다.★ 그래서 탭은 그대로 두고
+   *   표 자리에만 글을 대신 그린다 — 열산리그가 이미 쓰는 장치다.
+   *
+   *   ```
+   *   개인랭킹   「10월 1일부터 기록이 쌓입니다」        ← playerRankNotice
+   *   클랜랭킹   참가 클랜 24곳을 번호 없이 늘어놓는다   ← clanRankNotice
+   *   ```
+   *
+   * ⚠ ★점수를 매기지 않는다★ — 기록이 한 줄도 없다. 칸을 전부 끈다.
+   */
+  cpl: {
+    ...WITH_LADDER,
+    boardCategory: null,
+    showsTier: false,
+    scoreLeague: false,
+    playerColumns: { rank: false, winRate: false, kd: false, rating: false },
+    clanColumns: { rank: false, winRate: false, kd: false, rating: false },
+    playerRankNotice:
+      'CPL 개인랭킹은 2026년 10월 1일부터 쌓입니다. 첫 시즌 cloud1 은 배치시즌이며, 한 달 동안의 성적으로 C1·C2 가 나뉩니다.',
+    clanRankNotice:
+      'CPL 은 2026년 10월 1일에 출발합니다. 지금은 참가 클랜을 모으는 중이며, 아래가 지금까지 참가를 확정한 클랜입니다.',
   },
   /* 2026-09-02 지시 #22 — 목록에서 뺀다. 그전에는 표에 없었다(= 기본값 · 목록에 보였다) */
   daerule: CLOSED,

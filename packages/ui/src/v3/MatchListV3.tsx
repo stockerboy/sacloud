@@ -39,7 +39,21 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
    *   쓸 일이 없어진다 — 대신 부모의 `overflow: hidden` 이 ★말줄임 없이 싹둑★ 자른다.
    *   실측(폰 390px 홈): «plenilune» 이 «plenilun» 으로 잘렸다. 점 세 개도 없었다.
    */
-  const name = <span style={{ fontSize: 13, fontWeight: won ? 700 : 600, color: won ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{clan.name}</span>
+  /*
+   * ★★클랜마크·클랜명을 1.5배로★★ (2026-09-21 사장님: 「경기카드에 ★클랜마크랑
+   *   클랜명 크기 1.5배★ 더 키워」)
+   *
+   *   경기 한 줄에서 ★제일 먼저 읽는 것이 누가 누구와 붙었나★ 인데,
+   *   이름 13px · 마크 22px 는 지도 이름(12px)과 거의 같아 ★눈에 안 걸렸다.★
+   *   13 → 19.5 · 22 → 33 (둘 다 정확히 1.5배).
+   *
+   * ⚠ ★폰에서는 조금 줄인다★ — 390px 한 줄은 326px 뿐인데 마크 둘(66px)과
+   *   WIN 배지가 먼저 자리를 가져간다. 1.5배를 그대로 두면 ★이름이 잘린다★
+   *   (사장님이 랭킹에서 「가려지네 닉네임」 으로 잡으신 그 병이다).
+   *   폰은 ★16px · 27px★ 로 둔다 — 그래도 옛 13px·22px 보다 크다.
+   *   그 값은 `tokens.css` 의 `.v3-match-clan*` 에 있다.
+   */
+  const name = <span className="v3-match-clanname" style={{ fontSize: 19.5, fontWeight: won ? 700 : 600, color: won ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{clan.name}</span>
   const tier = <TierText division={division} leagueCategory={leagueCategory} size={10} />
   return (
     /*
@@ -54,7 +68,7 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
      */
     <span className="v3-match-side" style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
       {align === 'left' ? <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', color: '#dbe8ff', background: 'rgba(91,141,255,.22)', border: '1px solid rgba(91,141,255,.45)', borderRadius: 3, padding: '1px 4px' }}>WIN</span> : null}
-      {align === 'left' ? <MarkCircle clan={clan} size={22} /> : null}
+      {align === 'left' ? <MarkCircle clan={clan} size={33} className="v3-match-clanmark" /> : null}
       {/*
         ★`overflow: hidden` 이 반드시 있어야 한다★ (2026-09-13 QA).
           `TierText` 는 `whiteSpace: nowrap` 이고 `overflow` 가 없다. 이 칸이 `minWidth: 0` 이라
@@ -68,7 +82,7 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
         {name}
         {tier}
       </span>
-      {align === 'right' ? <MarkCircle clan={clan} size={22} /> : null}
+      {align === 'right' ? <MarkCircle clan={clan} size={33} className="v3-match-clanmark" /> : null}
     </span>
   )
 }

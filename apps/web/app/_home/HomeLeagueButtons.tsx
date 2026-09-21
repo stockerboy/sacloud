@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { leagueScreen } from '@sacloud/contract'
-import { FEATURED_LEAGUES, LEAGUE_LOGO, isLeaguePreparing } from '@sacloud/ui'
+import { FEATURED_LEAGUES, LEAGUE_LOGO, homeLeagues, isLeaguePreparing } from '@sacloud/ui'
 
 /**
  * ★★홈 리그 단추 셋★★ (2026-09-18 사장님)
@@ -81,7 +81,14 @@ const VIEWS = [
  *   단추가 셋에서 ★넷★ 이 됐다. 폰에서 한 칸이 좁아지므로 아래 단추의
  *   가로 여백(`px`)과 글자 크기를 ★같이★ 줄였다 — 안 줄이면 「열산리그」 가 접힌다.
  */
-const HOME_ORDER = ['c1', 'nolink', 'supply', 'sanply'] as const
+/*
+ * ⚠ ★2026-09-21 — 제 목록을 갖지 않는다★ (사장님: 홈에 CPL 단추가 안 나왔다).
+ *
+ *   여기 `['c1', …]` 가 박혀 있어서 ★C1 을 뺐는데도 그대로 남고 CPL 은 안 나왔다.★
+ *   같은 병을 2026-09-20 에 `HOME_LEAGUES` 가 앓았고, 그때도 한 곳만 고쳤다.
+ *   ★있고 없고는 `FEATURED_LEAGUES` 한 곳★ 이 정한다 — 차례만 거기 표가 정한다.
+ */
+const HOME_ORDER = homeLeagues().map((l) => l.href.replace('/league/', ''))
 
 const LEAGUES = HOME_ORDER.flatMap((slug) => {
   const found = FEATURED_LEAGUES.find((league) => league.href === `/league/${slug}`)

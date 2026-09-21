@@ -75,6 +75,9 @@ export {
   PREPARING_LEAGUE_SLUGS,
   /* ★모집중 리그★ (2026-09-21 · CPL) — 화면은 열려 있고 기록만 없다 */
   UPCOMING_LEAGUE_SLUGS,
+  /* ★홈이 그리는 리그★ — 목록이 갈라지지 않게 한 곳에서 만든다 (2026-09-21) */
+  homeLeagues,
+  HOME_LEAGUE_ORDER,
   UPCOMING_LABEL,
   /* ⚠ C1 이 있던 판 — 되돌릴 때 쓴다 */
   FEATURED_LEAGUES_WITH_C1,
