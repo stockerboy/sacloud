@@ -74,7 +74,7 @@ export async function runClanMarkFresh(
              s."matchTimeClanMarkFrontUrl"  AS front
         FROM "MatchPlayerStat" s
         JOIN "Match" m ON m."id" = s."matchId"
-       WHERE m."startAt" > now() - make_interval(days => ${days})
+       WHERE m."startAt" > now() - (${days} || ' days')::interval
          AND s."matchTimeClanSlug" IS NOT NULL
          AND s."matchTimeClanMarkBgUrl" IS NOT NULL
          AND s."matchTimeClanMarkFrontUrl" IS NOT NULL
@@ -91,7 +91,7 @@ export async function runClanMarkFresh(
     SELECT COUNT(DISTINCT s."matchTimeClanSlug")::int AS n
       FROM "MatchPlayerStat" s
       JOIN "Match" m ON m."id" = s."matchId"
-     WHERE m."startAt" > now() - make_interval(days => ${days})
+     WHERE m."startAt" > now() - (${days} || ' days')::interval
        AND s."matchTimeClanSlug" IS NOT NULL
   `
   result.seen = seen[0]?.n ?? 0
