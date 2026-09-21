@@ -41,8 +41,7 @@ import { strengthAxes } from './playerHexAxes'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, RankText, TierText, clanThemeOf } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
-import { formatRating } from '../common/format'
-import { floorColor } from './rankColors'
+import { formatRating, formatRatingPoint } from '../common/format'
 
 const WEAPON_LABEL: Readonly<Record<number, string>> = { 0: '라플', 1: '스나' }
 
@@ -91,6 +90,13 @@ function Kpi({ label, value, sub, color, extra }: { label: string; value: string
  * `true` 면 옛 모습 — 라벨은 왼쪽 끝, 값은 오른쪽 끝.
  */
 const FOOT_SPREAD: boolean = false
+
+/**
+ * ★선수 카드가 무엇으로 등수·점수를 말하나★ (2026-09-21 · 무한 QA)
+ *   `'ladder'`  랭킹 화면과 ★같은 래더★. ★지금 이것★
+ *   `'hex'`     우리 실력점수 (2026-09-12 ~ 09-21 · `CLAUDE.md` 1-4)
+ */
+const PLAYER_CARD_RANK_BY = 'ladder' as 'ladder' | 'hex'
 
 /** 옛 순위 보조 문구 — 지우지 않는다 (`CLAUDE.md` 1-4) */
 export const RANK_SUB_V1 = (total: number): string => `/ ${fmt(total)}명`
@@ -141,8 +147,27 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
    * 옛 판은 score_rank — ★그 무기 안에서만★ 의 등수라 «15위 / 140명» 이 떴다.
    * 이제 스나·라플을 섞은 등수를 먼저 쓰고, 그게 없을 때만 옛 값으로 떨어진다.
    */
-  const rank = hex?.score_rank_all ?? (hex ? hex.score_rank : data.rank)
-  const rankTotal = hex?.score_total_all ?? (hex ? hex.score_total : data.rank_count)
+  /*
+   * ⚠ ★2026-09-21 — 랭킹 화면과 ★같은 값★ 을 본다★ (무한 QA에서 잡았다)
+   *
+   *   랭킹은 2026-09-21 부터 ★래더(Elo)★ 로 줄을 세우는데 이 카드만
+   *   ★우리 실력점수(`hex.score_rank_all`)★ 로 등수를 적고 있었다. 실측 —
+   *   ```
+   *   랭킹 화면   다홍 ★1위★ / 120명
+   *   이 카드     다홍 ★7위★ / 180명
+   *   ```
+   *   ★같은 사람이 두 화면에서 다른 등수★ 였다. 사장님이 보시면 못 믿는다.
+   *
+   *   `data.rank` 는 서버가 ★랭킹과 같은 잣대로★ 세어 준 값이다
+   *   (`rankOfFirstPlayer` — 래더 기준). 그것을 먼저 쓴다.
+   *
+   * ⚠ 옛 판은 지우지 않았다 — `PLAYER_CARD_RANK_BY = 'hex'` 로 되돌린다.
+   */
+  const rank = PLAYER_CARD_RANK_BY === 'ladder' ? data.rank : (hex?.score_rank_all ?? (hex ? hex.score_rank : data.rank))
+  const rankTotal =
+    PLAYER_CARD_RANK_BY === 'ladder'
+      ? data.rank_count
+      : (hex?.score_total_all ?? (hex ? hex.score_total : data.rank_count))
   /*
    * ★★「통합」 을 맨 앞에 두고 기본으로 삼는다★★ (2026-09-20 사장님)
    *
@@ -443,10 +468,27 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           {!showsRating ? null : (
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, minWidth: 0 }}>
             {/* ★층수마다 색★ (2026-09-11 사장님). 아직 못 잰 «측정 중» 은 흐린 글자 그대로 */}
-            <span style={{ fontSize: 21, fontWeight: 700, color: hex?.score !== null && hex?.score !== undefined ? floorColor(hex.score) : '#fff', whiteSpace: 'nowrap' }}>
-              {hex?.score !== null && hex?.score !== undefined ? formatRating(hex.score) : hex ? '측정 중' : formatRating(data.rating)}
+            {/* ⚠ ★2026-09-21 — 랭킹과 같은 값·같은 말★ — 「31.2층 / 실력 점수」 가 아니라
+                ★「3,864점 / 래더」★ 다. 3부 원본과 같은 표기이고, 「층」 은 사장님이
+                9/15 에 「티어의 흔적」 이라 부르신 말이다 */}
+            <span style={{ fontSize: 21, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+              {PLAYER_CARD_RANK_BY === 'ladder'
+                ? formatRatingPoint(data.rating)
+                : hex?.score !== null && hex?.score !== undefined
+                  ? formatRating(hex.score)
+                  : hex
+                    ? '측정 중'
+                    : formatRating(data.rating)}
             </span>
-            <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{hex?.score !== null && hex?.score !== undefined ? '실력 점수' : hex ? `${fmt(hex.games)}판` : '래더'}</span>
+            <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+              {PLAYER_CARD_RANK_BY === 'ladder'
+                ? '래더'
+                : hex?.score !== null && hex?.score !== undefined
+                  ? '실력 점수'
+                  : hex
+                    ? `${fmt(hex.games)}판`
+                    : '래더'}
+            </span>
             {/* ★미참여 감점★ (2026-09-11 사장님) */}
             {(data.activity_penalty ?? 0) > 0 ? (
               <span style={{ fontSize: 10, fontWeight: 700, color: '#ff8a90', whiteSpace: 'nowrap' }}>미참여 −{Math.round(data.activity_penalty as number)}점</span>
