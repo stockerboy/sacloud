@@ -60,10 +60,48 @@ export const CLAN_RANK_BY = 'record' as ClanRankBy
  * ```
  */
 export const CLAN_SHRINK_GAMES = 40
+/**
+ * ★★판수를 한 번 더 곱한다★★ (2026-09-21 사장님: 「클랜랭킹 grave ★5등이랑 6등 사이★ 에
+ * 넣는 점수 시스템 생각해봐」)
+ *
+ * ── 수축만으로는 안 됐다 (실측)
+ *
+ *   grave 는 ★41판에 63.4%★ 다. 수축(`CLAN_SHRINK_GAMES`)을 40 → 400 까지 올려 봤지만
+ *   ★4위에서 더 안 내려갔다.★ 승률이 워낙 높아 눌려도 위에 남는다.
+ *   ```
+ *   C=40   grave 3위      C=150  grave 4위
+ *   C=100  grave 4위      C=400  grave 4위   ← 더 올려도 그대로
+ *   ```
+ *
+ * ── 그래서 ★신뢰★ 를 곱한다 — 개인 점수와 ★같은 모양★ 이다
+ *
+ *   ```
+ *   신뢰 = 판 / (판 + CLAN_TRUST_GAMES)
+ *   점수 = 기준점 + (눌린승률 − 0.5) × SPREAD × ★신뢰★
+ *   ```
+ *   판이 적으면 ★평균(기준점) 쪽으로 끌려온다.★ 승률이 높아도 적게 뛰었으면 못 올라간다.
+ *
+ *   ★실측 — 160 에서 사장님이 말씀하신 자리가 나온다★
+ *   ```
+ *   4위 〃veritas 53.8% (160판)
+ *   5위 grave     63.4% ( 41판)   ← 5등과 6등 사이
+ *   6위 hardcores 53.2% ( 62판)
+ *   ```
+ *
+ * ⚠ IPL·PL 은 클랜 판수가 ★수천 판★ 이라 신뢰가 0.98 을 넘는다 — 사실상 안 바뀐다.
+ *   이 값이 실제로 일하는 곳은 ★판수가 41~320 으로 벌어진 C1★ 이다.
+ */
+export const CLAN_TRUST_GAMES = 160
+
 /** 승률 50% 가 받는 점수. 화면은 100 으로 나눠 «30.0층» 으로 적는다 */
 export const CLAN_RATING_BASE = 3000
-/** 승률 1.0 과 0.0 의 거리. 65% → 3300 · 35% → 2700 */
-export const CLAN_RATING_SPREAD = 2000
+/**
+ * 승률 1.0 과 0.0 의 거리.
+ * ⚠ ★2026-09-21 — 2000 → 4000★ 으로 키웠다. 위 「신뢰」 가 점수를 가운데로 끌어당겨
+ *   ★열 클랜이 28.6~30.9층 안에 다 몰렸다.★ 사람이 차이를 못 읽는다.
+ *   키우니 27.2~31.9층으로 벌어진다 — ★순서는 그대로고 간격만 넓어진다.★
+ */
+export const CLAN_RATING_SPREAD = 4000
 
 export interface ClanStanding {
   leagueClanId: string
@@ -196,7 +234,9 @@ export function computeClanStandings(
       s.games > 0
         ? (s.win + leagueWinRate * CLAN_SHRINK_GAMES) / (s.games + CLAN_SHRINK_GAMES)
         : leagueWinRate
-    const record = CLAN_RATING_BASE + (shrunk - 0.5) * CLAN_RATING_SPREAD
+    /* ★판이 적으면 평균 쪽으로 끌려온다★ — 개인 점수의 `shrink` 와 같은 모양이다 */
+    const trust = s.games > 0 ? s.games / (s.games + CLAN_TRUST_GAMES) : 0
+    const record = CLAN_RATING_BASE + (shrunk - 0.5) * CLAN_RATING_SPREAD * trust
     out.set(leagueClanId, {
       leagueClanId,
       win: s.win,

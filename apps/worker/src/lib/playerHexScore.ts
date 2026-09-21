@@ -206,6 +206,51 @@ export const HEX_W_WR = 0.35
  * 실측 (872명) — 구간·무기 645명 · 구간 40명 · 전체 187명.
  */
 export const HEX_W_KD = 0.46
+
+/**
+ * ★★리그마다 무게가 다를 수 있다★★ (2026-09-21 · 사장님이 조절판에서 직접 고르심)
+ *
+ * > 「C1 ★승률이랑 판수를 제일 빡세게★ 넣고 ★육각형을 조금만★ 넣어줘
+ * >  아티팩트 줘봐 내가 조절해볼게」
+ *
+ * 사장님이 막대를 밀어 고르신 값이다. ★지어낸 것이 아니다.★
+ * ```
+ * C1    승률 0.81 · 육각 0.10 · 킬뎃 0.09 · 판수문턱 1700라운드
+ * 나머지 승률 0.35 · 육각 0.19 · 킬뎃 0.46 · 판수문턱  600라운드   ← 안 건드렸다
+ * ```
+ *
+ * ── 왜 C1 만인가
+ *   C1 은 ★열 클랜이 서로만 붙는 리그★ 라 실력 차가 좁다. 그래서 육각·킬뎃보다
+ *   ★이겼느냐★ 가 더 크게 갈린다는 것이 사장님 판단이다.
+ *   IPL·PL·열산은 ★한 글자도 안 바꿨다★ — 그 리그를 보시고 정한 값이 아니다.
+ *
+ * ⚠ 무게 셋의 합이 1 이 아니어도 된다 — 아래에서 ★합으로 나눠★ 쓴다.
+ *   (조절판이 화면에 %로 보여 주던 것과 같은 셈이다)
+ */
+export interface HexWeights {
+  hex: number
+  wr: number
+  kd: number
+  /** 이만큼 라운드를 뛰어야 제 실력의 절반이 반영된다 */
+  shrinkK: number
+}
+
+const HEX_WEIGHTS_DEFAULT: HexWeights = {
+  hex: HEX_W_HEX,
+  wr: HEX_W_WR,
+  kd: HEX_W_KD,
+  shrinkK: HEX_SHRINK_K,
+}
+
+const HEX_WEIGHTS_BY_LEAGUE: Readonly<Record<string, HexWeights>> = {
+  c1: { hex: 0.1, wr: 0.81, kd: 0.09, shrinkK: 1700 },
+}
+
+/** 그 리그가 쓰는 무게. 모르는 리그는 ★기본값 그대로★ 다 */
+export function hexWeightsOf(leagueSlug: string | null | undefined): HexWeights {
+  if (leagueSlug === null || leagueSlug === undefined) return HEX_WEIGHTS_DEFAULT
+  return HEX_WEIGHTS_BY_LEAGUE[leagueSlug] ?? HEX_WEIGHTS_DEFAULT
+}
 /** ★옛 판★ — 여섯 축 8 : 승률 2 (2026-09-10 ~ 2026-09-11) · 5 대 5 (2026-09-12 반나절) */
 export const HEX_W_HEX_V1 = 0.8
 export const HEX_W_WR_V1 = 0.2
@@ -790,7 +835,11 @@ export const HEX_UNIFIED_AXIS_KEYS: readonly HexAxisKey[] = HEX_AXIS_KEYS.filter
  *
  * ⚠ 여섯 축 백분위가 바뀌므로 ★점수도 조금 움직인다.★ 옛 판은 `foldPlayerHexV1` 이다.
  */
-export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResult[] {
+export function foldPlayerHex(
+  players: readonly PlayerHexInput[],
+  /** 그 리그의 무게. 안 주면 ★옛 동작 그대로★ 다 — 기존 호출부가 안 깨진다 */
+  weights: HexWeights = HEX_WEIGHTS_DEFAULT,
+): PlayerHexResult[] {
   const out: PlayerHexResult[] = []
 
   /* ── ① 통합 분포 — 다섯 축은 무기를 안 가린다 ── */
@@ -884,7 +933,7 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
       const kdPct = percentileOf(dist.kd, p.kdRate ?? null)
       const hex = den > 0 ? round1(num / den) : null
       const tierFactor = tierFactorOf(p.tierGames)
-      const shrink = Math.round((p.rounds / (p.rounds + HEX_SHRINK_K)) * 1000) / 1000
+      const shrink = Math.round((p.rounds / (p.rounds + weights.shrinkK)) * 1000) / 1000
       /* ★소속 클랜의 티어가 아니라 「내 구간」★ (2026-09-11 사장님) */
       const homeTier = homeTierOf(p.tierGames) ?? p.clanTier
       const clanBonus = homeTier === null ? 0 : HEX_CLAN_BONUS[homeTier]
@@ -893,7 +942,9 @@ export function foldPlayerHex(players: readonly PlayerHexInput[]): PlayerHexResu
         const perf = (hex - 50) / 50
         const wperf = wrPct === null ? perf : (wrPct - 50) / 50
         const kperf = kdPct === null ? perf : (kdPct - 50) / 50
-        const mixed = HEX_W_HEX * perf + HEX_W_WR * wperf + HEX_W_KD * kperf
+        /* ★합으로 나눈다★ — 조절판이 화면에 %로 보여 주던 것과 같은 셈이다 */
+        const wsum = weights.hex + weights.wr + weights.kd || 1
+        const mixed = (weights.hex * perf + weights.wr * wperf + weights.kd * kperf) / wsum
         /*
          * ★★클랜 보정도 판수를 따라 줄인다★★ (2026-09-20 사장님: 「ㅇㅇ줄여줘」)
          *

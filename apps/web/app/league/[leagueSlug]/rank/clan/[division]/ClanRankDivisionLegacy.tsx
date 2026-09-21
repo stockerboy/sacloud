@@ -56,7 +56,7 @@ export function ClanRankDivisionLegacy({
       <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
           title="클랜랭킹"
-          notice="랭킹 숫자는 약 1시간마다 다시 계산됩니다. 한 경기부터 바로 반영됩니다."
+          notice="랭킹 숫자는 약 1시간마다 다시 계산됩니다. 20경기부터 랭킹에 오릅니다."
         />
         {/* 무소속리그는 같은 탭을 `1티어 … 5티어` 로 표기한다 (D-165). 값은 division 그대로다 */}
         <DivisionTabs

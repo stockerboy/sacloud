@@ -166,6 +166,31 @@ describe.runIf(CLAN_RANK_BY === 'record')('기록순 — 승률이 순서를 정
     const all = computeClanStandings(games(20, 0))
     expect(all.get('A')!.rating).toBeGreaterThan(all.get('B')!.rating)
   })
+
+  /**
+   * ★★승률이 훨씬 높아도 적게 뛰었으면 못 넘는다★★ (2026-09-21 사장님:
+   * 「클랜랭킹 grave 5등이랑 6등 사이에 넣는 점수 시스템 생각해봐」)
+   *
+   * 실제로 있던 두 클랜이다 —
+   * ```
+   * grave     26승15패 (41판)  63.4%
+   * 〃veritas  86승74패 (160판) 53.8%
+   * ```
+   * ★수축만으로는 grave 가 4위에서 안 내려갔다.★ 그래서 「신뢰」 를 곱했다.
+   * 이 시험이 그 성질을 붙잡는다 — ★숫자가 아니라 두 팀의 순서★ 를 본다.
+   */
+  it('★41판 63% 가 160판 54% 를 못 넘는다★ — 사장님이 짚으신 자리', () => {
+    const few = computeClanStandings(games(26, 15)).get('A')!
+    const many = computeClanStandings(games(86, 74)).get('A')!
+    expect(few.rating).toBeLessThan(many.rating)
+  })
+
+  it('많이 뛸수록 제 승률에 가까워진다 — 신뢰가 커진다', () => {
+    const short = computeClanStandings(games(30, 10)).get('A')!.rating
+    const long = computeClanStandings(games(300, 100)).get('A')!.rating
+    /* 같은 75% 인데 많이 뛴 쪽이 더 높다 */
+    expect(long).toBeGreaterThan(short)
+  })
 })
 
 /** 위 테스트에서 쓰는 짧은 도우미 */
@@ -195,7 +220,13 @@ describe('배치고사 폐지 — V2 상수를 넘겼을 때 (D-258)', () => {
     expect(computeClanStandings([m('red')], v2).get('B')!.placement).toBe(false)
   })
 
-  it('첫 판부터 래더가 움직인다 — 보류 구간이 없다', () => {
+  /*
+   * ⚠ ★2026-09-21 — 이것도 「옛 Elo 의 성질」 이 됐다★
+   *   기록순은 ★판이 적으면 거의 안 움직인다★ (신뢰 = 판/(판+160)).
+   *   한 판이면 0.6% 만 반영돼 반올림하면 기준점 그대로다 — ★그게 뜻한 바다.★
+   *   어차피 20판 문턱(`CLAN_RANK_MIN_GAMES`)이 있어 랭킹에 나오지도 않는다.
+   */
+  it.runIf(CLAN_RANK_BY === 'elo')('첫 판부터 래더가 움직인다 — 보류 구간이 없다 (옛 Elo)', () => {
     const s = computeClanStandings([m('red')], v2)
     expect(s.get('A')!.rating).toBeGreaterThan(IPL_START_RATING)
     expect(s.get('B')!.rating).toBeLessThan(IPL_START_RATING)

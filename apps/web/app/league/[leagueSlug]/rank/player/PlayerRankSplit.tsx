@@ -107,7 +107,7 @@ export function PlayerRankSplit() {
         {/* O-040 ③ — 옛 제목 「플레이어 개인랭킹」. 상단 탭·한리그 화면과 셋이 갈렸었다 */}
         <RankHeader
           title="개인랭킹"
-          notice="랭킹 숫자는 약 1시간마다 다시 계산됩니다. 한 경기부터 바로 반영됩니다."
+          notice="랭킹 숫자는 약 1시간마다 다시 계산됩니다. 20경기부터 랭킹에 오릅니다."
         />
         <RankWeaponTabs current={weapon} onChange={setWeapon} />
         {/* 순서가 곧 좌우다 — 계약의 `RANK_SPLIT_LEAGUES` 가 SPL · IPL 순으로 들고 있다 */}

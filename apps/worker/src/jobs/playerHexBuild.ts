@@ -81,6 +81,7 @@ import { MIN_MEMBERS, SHORT_MEMBER_WEIGHT } from '../lib/iplTiers.js'
 import {
   BURST_GAP_SECONDS,
   foldPlayerHex,
+  hexWeightsOf,
   PLAYER_HEX_FORMULA_VERSION,
   type PlayerHexInput,
   homeTierOf,
@@ -1984,7 +1985,8 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         rifleDuelLost: h?.rduellost ?? 0,
       }
     })
-    const folded = foldPlayerHex(inputs)
+    /* ★그 리그의 무게로 접는다★ (2026-09-21 사장님이 조절판에서 고르심) */
+    const folded = foldPlayerHex(inputs, hexWeightsOf(league.slug))
     const inputOf = new Map(inputs.map((p) => [p.leaguePlayerId, p]))
     result.pools[league.slug] = {
       sniper: folded.filter((r) => r.weapon === 1).length,
