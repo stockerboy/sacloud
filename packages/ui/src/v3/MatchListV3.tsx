@@ -13,7 +13,7 @@
 import { useState, type CSSProperties } from 'react'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { ClanScoreboardV3, listRoundsOf, ourSideOf } from './ClanDetailV3'
-import { MarkCircle, MvpMark, TierText, relativeKst } from './primitives'
+import { MarkCircle, MvpMark, TierText, relativeKst, matchShownAt } from './primitives'
 import { WIN_LOSS, V3, cardStyle } from './tokens'
 
 export interface MatchListV3Props {
@@ -145,7 +145,7 @@ export function MatchListV3(props: MatchListV3Props) {
                 <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...rowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-match-row v3-match-row--list">
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                     <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{m.map.name}</span>
-                    <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
+                    <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(matchShownAt(m))}</span>
                   </span>
                   {/*
                     ⚠ ★2026-09-15 밤 — PC 에서 두 이름이 화면 양끝으로 벌어졌다★ (무한 QA).

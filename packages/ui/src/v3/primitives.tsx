@@ -418,3 +418,23 @@ export function monthDay(iso: string): string {
   const kst = new Date(at.getTime() + 9 * 3_600_000)
   return `${kst.getUTCMonth() + 1}/${kst.getUTCDate()}`
 }
+
+/**
+ * ★★경기 카드에 찍는 시각 — ★끝난 때★ 다★★ (2026-09-22 · 사장님 지시)
+ *
+ * > 「우리사이트에 찍힌 시간은 ★경기 시작시간★ 이야 ★경기 종료시간으로 맞춰★
+ * >  병영수첩에 1시39분에 끝났다고 돼있잖아 저 시간으로 맞춰서 1시39분이라고 쓰고
+ * >  지금 1시 57분이니까 ★18분전★ 으로 표시해야해」
+ *
+ * 병영수첩이 보여 주는 시각은 ★끝난 때★ 이고, 우리가 쓰던 값은 ★시작한 때★ 였다
+ * (경기 열쇠에 시작 시각이 들어 있다). 한 경기가 20분쯤이라 ★20분씩 어긋나 보였다.★
+ *
+ * ⚠ ★끝난 때를 모르면 시작한 때로 되돌아간다★ — 빈 자리를 지어내지 않는다 (D-106).
+ *   옛 경기(상대시간이 「2시간 전」 처럼 성기게 들어온 것)는 끝 시각이 비어 있다.
+ */
+export function matchShownAt(match: {
+  start_at: string
+  end_at?: string | null
+}): string {
+  return match.end_at ?? match.start_at
+}

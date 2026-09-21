@@ -18,7 +18,7 @@ import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { MvpWhy } from './MvpWhy'
 import { ScoreBoard } from './ScoreBoard'
-import { Card, CardHead, Kda, MarkCircle, MvpMark, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme } from './primitives'
+import { Card, CardHead, Kda, MarkCircle, MvpMark, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme, matchShownAt } from './primitives'
 import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 /* 육각형은 2026-09-12 부터 머리 카드(ClanCardV3)가 그린다 — 여기서는 안 쓴다 */
 import { H2HChartV3 } from './H2HChartV3'
@@ -679,7 +679,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
                 <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                   <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{m.map.name}</span>
-                  <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
+                  <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(matchShownAt(m))}</span>
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                   <MarkCircle clan={data.clan} size={20} />
@@ -768,7 +768,7 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
               <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
               <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{m.map.name}</span>
-              <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
+              <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(matchShownAt(m))}</span>
             </span>
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, minWidth: 0, overflow: 'hidden' }}>
               {mvp ? (
@@ -1123,7 +1123,7 @@ const [tier] = useState<number>(() => {
             <span>통합 기록실</span>
             {matches.length > 0 && matches[0] ? (
               <span style={{ fontSize: 11, fontWeight: 500, color: V3.textGhost2, whiteSpace: 'nowrap' }}>
-                (마지막경기 {fullKst(matches[0].start_at)})
+                (마지막경기 {fullKst(matchShownAt(matches[0]))})
               </span>
             ) : null}
           </span>

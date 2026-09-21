@@ -39,6 +39,7 @@ import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runRenewRequests } from './jobs/renewRequests.js'
 import { runRenewServer } from './renewServer.js'
 import { runClanFindMissing } from './jobs/clanFindMissing.js'
+import { runMatchEndFill } from './jobs/matchEndFill.js'
 import { runMatchSideFix } from './jobs/matchSideFix.js'
 import { runCplSetup } from './jobs/cplSetup.js'
 import { runNickFromBarracks } from './jobs/nickFromBarracks.js'
@@ -3945,6 +3946,19 @@ async function main(): Promise<number> {
         limit: numberFlag(args, 'limit') ?? undefined,
       })
       return r.stale >= 0 ? 0 : 1
+    }
+
+    case 'match-end-fill': {
+      /*
+       * ★경기가 끝난 시각을 채운다★ (2026-09-22 사장님: 「경기 종료시간으로 맞춰」)
+       *   원문의 상대시간(「31분 전」)이 ★끝난 시각 기준★ 이다 — 주운 때에서 뺀다.
+       *   ⚠ 분 단위로 말해 줄 때만 쓴다. 시간·일은 너무 성기다
+       */
+      const r = await runMatchEndFill({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      return r.missing > 0 && r.readable === 0 ? 1 : 0
     }
 
     case 'match-side-fix': {

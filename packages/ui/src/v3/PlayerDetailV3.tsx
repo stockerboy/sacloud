@@ -24,7 +24,7 @@ import { strengthAxes } from './playerHexAxes'
 import { AnalysisPanelV3 } from './AnalysisPanelV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { MvpWhy } from './MvpWhy'
-import { Card, CardHead, Kda, MarkCircle, MvpMark, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst } from './primitives'
+import { Card, CardHead, Kda, MarkCircle, MvpMark, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst, matchShownAt } from './primitives'
 import { WIN_LOSS, V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
@@ -861,7 +861,7 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
               <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
                 <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
-                <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(m.start_at)}</span>
+                <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{relativeKst(matchShownAt(m))}</span>
               </span>
               {/*
                 ★MVP 는 1줄 · 「클랜전」 알약 왼쪽★ (2026-09-12 사장님:

@@ -40,6 +40,7 @@ import {
   lineupPlayerHref,
   usedSniper,
 } from './lineupCopy'
+import { matchShownAt } from '../v3/primitives'
 import {
   UNKNOWN,
   teamFirstSideLabel,
@@ -438,7 +439,7 @@ export function MatchCard({
                 {' - '}
                 {/* 시각까지 적는다 — 같은 맵에서 같은 날 여러 판을 하면
                     「7일 전」만으로는 어느 판인지 알 수 없다 (O-038 ④) */}
-                <RelativeTime value={match.start_at} withClock />
+                <RelativeTime value={matchShownAt(match)} withClock />
               </Link>
             </div>
             <div className="ml-auto shrink-0 pl-2 font-semibold">
@@ -1165,7 +1166,7 @@ function MatchDetailPanel({
 
       {/* 2행 — 게임시작 + `자세히` 토글 */}
       <div className="mt-1 flex items-center text-sm text-faint">
-        <div className="num min-w-0 truncate">게임시작 - {formatMatchStartAt(match.start_at)}</div>
+        <div className="num min-w-0 truncate">경기종료 - {formatMatchStartAt(matchShownAt(match))}</div>
         {detail ? (
           <button
             type="button"
