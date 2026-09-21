@@ -31,45 +31,23 @@ try {
       FROM "BarracksClanMatchRaw"`
 
   /*
-   * ★주워는 왔는데 아직 Match 가 안 된 원문★ 중 가장 오래된 것.
+   * ── ⚠ ★무거운 질의를 뺐다★ (2026-09-22 08:41 실측으로 잡았다)
    *
-   * ⚠ ★두 시간 창 안에서만 본다★ (2026-09-22 실측으로 고쳤다).
-   *   처음에 24시간으로 쟀더니 ★1,435분(=창의 끝) 밀렸다★ 고 나왔다.
-   *   ★영영 Match 가 안 되는 옛 원문★ 이 창 끝에 눌러앉아 있었기 때문이다
-   *   (클랜을 모르는 경기 등). 그건 ★지연이 아니라 막힘★ 이다 — 아래 `stuck` 으로 따로 센다.
-   *   지연은 ★지금 흐름이 늦는가★ 만 묻는 값이어야 한다.
+   *   `proj`(아직 Match 가 안 된 원문)·`stuck` 을 여기서 세고 있었는데,
+   *   그 둘이 ★BarracksClanMatchRaw 56만 줄★ 에 `NOT EXISTS` 를 걸어
+   *   ★DB 시간초과(57014)★ 를 냈다. 그 바람에 ★감시가 10분 동안 눈이 멀었다★ —
+   *   「값을 못 읽었다」 가 08:33부터 줄줄이 찍혔다.
+   *
+   *   ★감시를 하려다 감시를 죽이면 안 된다.★ 게다가 `lag-watch.sh` 는
+   *   정규화·명단을 ★잡의 로그★ 로 이미 재고 있어서 이 값들을 쓰지도 않았다.
+   *   ★안 쓰는 값을 비싸게 세고 있었다.★ 뺀다.
+   *
+   *   옛 판은 `docs/archive` 가 아니라 git 이력에 있다 — 되살릴 일이 있으면
+   *   ★반드시 색인부터 깔고★ 되살린다.
    */
-  const [proj] = await p.$queryRaw`
-    SELECT EXTRACT(EPOCH FROM (NOW() - MIN(r."fetchedAt")))/60 AS m
-      FROM "BarracksClanMatchRaw" r
-     WHERE r."fetchedAt" > NOW() - INTERVAL '2 hours'
-       AND r."status" = 'ok'
-       AND NOT EXISTS (
-             SELECT 1 FROM "Match" m
-              WHERE m."sourceMatchId" = r."matchKey" AND m."supersededAt" IS NULL)`
-
-  /* ★막힌 것★ — 두 시간이 넘도록 Match 가 안 된 원문. 지연과 다른 문제다 */
-  const [stuck] = await p.$queryRaw`
-    SELECT COUNT(*)::int AS n
-      FROM "BarracksClanMatchRaw" r
-     WHERE r."fetchedAt" < NOW() - INTERVAL '2 hours'
-       AND r."fetchedAt" > NOW() - INTERVAL '24 hours'
-       AND r."status" = 'ok'
-       AND NOT EXISTS (
-             SELECT 1 FROM "Match" m
-              WHERE m."sourceMatchId" = r."matchKey" AND m."supersededAt" IS NULL)`
-
-  /*
-   * ★Match 는 생겼는데 참가행이 한 줄도 없는 경기★ 중 가장 오래된 것.
-   * 여기도 ★세 시간 창★ 안만 본다 — 그보다 묵은 것은 `pend` 가 센다.
-   */
-  const [line] = await p.$queryRaw`
-    SELECT EXTRACT(EPOCH FROM (NOW() - MIN(m."startAt")))/60 AS m
-      FROM "Match" m
-     WHERE m."supersededAt" IS NULL
-       AND m."startAt" > NOW() - INTERVAL '3 hours'
-       AND m."startAt" < NOW() - INTERVAL '40 minutes'
-       AND NOT EXISTS (SELECT 1 FROM "MatchPlayerStat" s WHERE s."matchId" = m.id)`
+  const proj = { m: 0 }
+  const stuck = { n: 0 }
+  const line = { m: 0 }
 
   const [pend] = await p.$queryRaw`
     SELECT COUNT(*)::int AS n
