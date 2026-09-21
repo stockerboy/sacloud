@@ -33,7 +33,7 @@ export default async function BadgeListPage({
           const b = BADGES[key]
           return (
             <li key={key}>
-              <Link
+              <Link prefetch={false}
                 href={leagueBadgePath(leagueSlug, key)}
                 className="flex h-full flex-col items-center gap-2 rounded-[2px] border border-line bg-card p-4 transition-colors hover:border-line-soft hover:bg-card-2"
               >

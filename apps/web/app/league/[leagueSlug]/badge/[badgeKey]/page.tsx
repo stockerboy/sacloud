@@ -29,7 +29,7 @@ export default async function BadgePage({
 
   return (
     <main className="section-stack mx-auto w-full max-w-[--layout-max] px-4 py-6">
-      <Link
+      <Link prefetch={false}
         href={leagueBadgeListPath(leagueSlug)}
         className="text-[0.78rem] text-meta hover:text-text-strong"
       >
@@ -80,7 +80,7 @@ export default async function BadgePage({
                   />
                 ) : null}
               </span>
-              <Link
+              <Link prefetch={false}
                 href={leaguePlayerPath(leagueSlug, r.playerId)}
                 className="flex min-w-0 flex-1 items-center gap-2 hover:text-text-strong"
               >
@@ -98,7 +98,7 @@ export default async function BadgePage({
                 <span className="shrink-0 text-[0.7rem] text-faint">{r.weapon === 1 ? '[S]' : ''}</span>
               </Link>
               {r.clanSlug ? (
-                <Link
+                <Link prefetch={false}
                   href={leagueClanPath(leagueSlug, r.clanSlug)}
                   className="hidden w-[9rem] shrink-0 truncate text-[0.8rem] text-meta hover:text-text-strong md:block"
                 >

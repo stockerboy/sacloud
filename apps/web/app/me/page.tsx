@@ -40,14 +40,14 @@ export default function MePage() {
         label="서든어택 계정"
         value={
           user.player ? (
-            <Link
+            <Link prefetch={false}
               href={`/player/${user.player.id}`}
               className="text-text-strong underline underline-offset-4"
             >
               {user.player.name}
             </Link>
           ) : CLAIM_DOORS_OPEN ? (
-            <Link href="/me/link">
+            <Link prefetch={false} href="/me/link">
               {/* 색·밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
               <span className="text-text-strong underline underline-offset-4">연동하기</span>
             </Link>

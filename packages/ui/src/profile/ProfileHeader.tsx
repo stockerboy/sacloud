@@ -120,7 +120,7 @@ export function PlayerHeader({
           <div className="flex items-center">
             소속:
             {clan ? (
-              <Link href={`/clan/${clan.slug}`} className="ml-5 inline-flex items-center">
+              <Link prefetch={false} href={`/clan/${clan.slug}`} className="ml-5 inline-flex items-center">
                 <ClanMark clan={clan} size="sm" className="mr-2" alt={clan.name} />
                 {clan.name}
               </Link>
@@ -161,7 +161,7 @@ export function ClanHeader({
         <div className="mt-10 flex items-center text-lg text-nav-fg max-md:mt-4 max-md:flex-col max-md:items-start max-md:text-base">
           <div className="border-r border-r-clan-header-line px-4 max-md:border-r-0 max-md:px-0">
             클랜마스터:{' '}
-            {master ? <Link href={`/player/${master.id}`}>{master.name}</Link> : '-'}
+            {master ? <Link prefetch={false} href={`/player/${master.id}`}>{master.name}</Link> : '-'}
           </div>
           <div className="px-4 max-md:mt-1 max-md:px-0">
             클랜설립일: {establishedAt ? formatDate(establishedAt) : '-'}

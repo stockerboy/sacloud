@@ -120,7 +120,7 @@ function EggRow({ items, className = '' }: { items: EggGalleryItem[]; className?
 
 function EggCell({ item }: { item: EggGalleryItem }) {
   return (
-    <Link href={item.href} className={`group flex ${CELL} flex-col items-center gap-1.5`}>
+    <Link prefetch={false} href={item.href} className={`group flex ${CELL} flex-col items-center gap-1.5`}>
       <Egg state={item.state} size="md" label={item.name}>
         <ClanMark clan={item.clan} size="lg" alt={item.name} />
       </Egg>

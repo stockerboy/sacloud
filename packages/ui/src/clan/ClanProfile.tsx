@@ -76,7 +76,7 @@ export function ClanIdentity({
             <span className="text-faint">클랜마스터</span>
             {master ? (
               /* 색은 안쪽 `<span>` 에 준다 — `a { color: inherit }` 가 레이어 밖이다 */
-              <Link href={`/player/${master.id}`} className="group">
+              <Link prefetch={false} href={`/player/${master.id}`} className="group">
                 <span className="text-text transition-colors group-hover:text-accent">
                   {master.name}
                 </span>
@@ -130,7 +130,7 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
   const egg = useClanEgg(clanSlug)
   const sealed = egg === 'sealed'
   return (
-    <Link
+    <Link prefetch={false}
       href={leagueClanPath(entry.league.slug, clanSlug)}
       className={`${PANEL} block px-5 py-4 transition-colors hover:border-accent`}
     >
@@ -287,7 +287,7 @@ export function groupByPosition(
 
 function MemberChip({ member }: { member: ClanPlayer }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={`/player/${member.id}`}
       className="group flex items-center gap-2 rounded-[2px] border border-line-soft px-3 py-2 text-[14px] transition-colors hover:border-accent"
     >

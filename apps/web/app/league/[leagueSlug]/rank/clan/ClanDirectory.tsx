@@ -374,7 +374,7 @@ function ClanRankDirectory({
             <ul className="flex flex-wrap gap-[7px]">
               {scattered.map((row) => (
                 <li key={row.clan.id}>
-                  <Link
+                  <Link prefetch={false}
                     href={leagueClanPath(leagueSlug, row.clan.slug)}
                     className="flex items-center gap-[7px] px-[10px] py-[7px]"
                     style={{

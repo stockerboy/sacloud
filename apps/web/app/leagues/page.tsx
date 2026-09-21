@@ -70,7 +70,7 @@ export default function LeaguesPage() {
               ⚠ `/leagues/create` 라우트는 그대로 산다. 주소를 치면 열린다.
                 `SETTING_DOORS_OPEN` 을 `true` 로 되돌리면 이 버튼이 그대로 돌아온다 */}
           {SETTING_DOORS_OPEN ? (
-            <Link
+            <Link prefetch={false}
               href="/leagues/create"
               className="mt-10 inline-flex h-12 items-center rounded-[var(--radius)] bg-accent px-8 font-semibold tracking-wide text-text-strong"
             >

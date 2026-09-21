@@ -60,7 +60,7 @@ export function LeagueListTable({
         <EmptyState message="리그가 없습니다." />
       ) : (
         listed.map((league) => (
-          <Link
+          <Link prefetch={false}
             key={league.id}
             /* ★2026-09-03 (O-024) — 리그홈 대신 그 리그의 첫 화면으로★
                `/home/info` 는 2026-09-01 지시(D-245)로 이미 랭킹으로 리다이렉트된다.

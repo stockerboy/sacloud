@@ -65,7 +65,7 @@ function PasswordForgetPreparing() {
   return (
     <AuthCard
       footer={
-        <Link href="/auth/login">
+        <Link prefetch={false} href="/auth/login">
           <span className="text-text-strong underline underline-offset-4">로그인으로 돌아가기</span>
         </Link>
       }
@@ -98,7 +98,7 @@ function PasswordForgetForm() {
   return (
     <AuthCard
       footer={
-        <Link href="/auth/login">
+        <Link prefetch={false} href="/auth/login">
           {/* 색·밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
           <span className="text-text-strong underline underline-offset-4">로그인으로 돌아가기</span>
         </Link>

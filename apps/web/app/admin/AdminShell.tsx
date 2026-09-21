@@ -55,7 +55,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           const active =
             item.href === '/admin' ? pathname === item.href : pathname.startsWith(item.href)
           return (
-            <Link
+            <Link prefetch={false}
               key={item.href}
               href={item.href}
               className={`-mb-px border-b px-4 py-3 transition-colors duration-100 ${

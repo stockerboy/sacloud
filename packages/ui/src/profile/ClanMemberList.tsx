@@ -45,7 +45,7 @@ export function ClanMemberList({
             className="flex items-center border-b border-b-line bg-row py-3 text-lg text-meta last:border-b-0"
           >
             <div className="w-96 px-6 max-md:w-1/2 max-md:min-w-0 max-md:truncate max-md:px-3">
-              <Link href={`/player/${member.id}`}>{member.name}</Link>
+              <Link prefetch={false} href={`/player/${member.id}`}>{member.name}</Link>
               {member.master ? <span className="ml-2 text-sm">클랜마스터</span> : null}
             </div>
             <div className="flex-grow px-6 max-md:min-w-0 max-md:truncate max-md:px-3">

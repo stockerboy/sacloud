@@ -90,7 +90,7 @@ export function BadgeArt({
 
   if (leagueSlug === null) return <span className={className}>{body}</span>
   return (
-    <Link
+    <Link prefetch={false}
       href={leagueBadgePath(leagueSlug, badge.key)}
       className={`inline-flex transition-opacity hover:opacity-80 ${className ?? ''}`}
       aria-label={`${badge.label} 가진 선수 보기`}

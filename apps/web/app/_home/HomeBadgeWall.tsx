@@ -84,7 +84,7 @@ export function HomeBadgeWall() {
 
             <div className="grid grid-cols-5 gap-[10px] px-[14px] pb-[14px] max-md:grid-cols-3">
               {WALL.map((badge) => (
-                <Link
+                <Link prefetch={false}
                   key={badge.key}
                   href={`/league/${league.slug}/badge/${badge.key}`}
                   title={`${badge.label} — ${badge.note}`}

@@ -80,7 +80,7 @@ export function FormTop3({
               {row.rank}
             </div>
             <div className={COL_NAME}>
-              <Link
+              <Link prefetch={false}
                 className="flex min-w-0 items-center hover:text-text-strong"
                 href={leaguePlayerPath(leagueSlug, row.player.id)}
               >

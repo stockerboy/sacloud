@@ -90,7 +90,7 @@ export function PlayerIdentity({
             {clan ? (
               /* 색은 안쪽 `<span>` 에 준다 — `a { color: inherit }` 가 레이어 밖이라
                  `<a>` 에 직접 준 색 유틸리티를 눌러 버린다 */
-              <Link href={`/clan/${clan.slug}`} className="group flex items-center gap-1.5">
+              <Link prefetch={false} href={`/clan/${clan.slug}`} className="group flex items-center gap-1.5">
                 <ClanMark clan={clan} size="xs" alt={clan.name} />
                 <span className="text-text transition-colors group-hover:text-accent">
                   {clan.name}
@@ -189,7 +189,7 @@ function PlayerLeagueRow({
   const sealed = egg === 'sealed'
 
   return (
-    <Link
+    <Link prefetch={false}
       /**
        * 기록실 경로에는 **`playerId`** 를 넣는다 (`common/paths.ts`).
        * `league_player_id` 를 넣으면 API 가 404 를 돌려주고 빈 화면이 된다 — 실제 버그였다.

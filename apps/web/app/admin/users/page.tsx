@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
                     <td className="py-2 pr-3 text-text">{row.nickname}</td>
                     <td className="py-2 pr-3 text-meta">
                       {row.player ? (
-                        <Link href={`/player/${row.player.id}`}>
+                        <Link prefetch={false} href={`/player/${row.player.id}`}>
                           {/* 색은 안쪽 span 이 가진다 — `a { color: inherit }` 가 유틸리티를 누른다 */}
                           <span className="text-text underline underline-offset-4">
                             {row.player.name}

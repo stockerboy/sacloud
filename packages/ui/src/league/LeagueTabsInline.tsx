@@ -64,7 +64,7 @@ export function LeagueTabsInline({ leagueSlug }: { leagueSlug: string }) {
       {items.map((item) => {
         const on = pathname.startsWith(item.href)
         return (
-          <Link
+          <Link prefetch={false}
             key={item.href}
             href={item.href}
             aria-current={on ? 'page' : undefined}

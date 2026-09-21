@@ -117,7 +117,7 @@ export function ClanBadges({ badges, leagueSlug }: { badges?: readonly string[];
         return badgeKey === null || !leagueSlug ? (
           <span key={key} className={hide}>{img}</span>
         ) : (
-          <Link key={key} href={leagueBadgePath(leagueSlug, badgeKey)} className={`inline-flex hover:opacity-80${hide}`}>
+          <Link prefetch={false} key={key} href={leagueBadgePath(leagueSlug, badgeKey)} className={`inline-flex hover:opacity-80${hide}`}>
             {img}
           </Link>
         )

@@ -538,7 +538,7 @@ function PlayerShowcase({
               clan={data.clan === null ? null : { slug: data.clan.slug, mark: data.clan.mark }}
               size={24}
             />
-            <Link
+            <Link prefetch={false}
               href={`/league/${leagueSlug}/player/${playerId}`}
               style={{
                 fontSize: 15,
@@ -906,7 +906,7 @@ function ClanShowcase({
         <div className="about-hexover">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px 6px', minWidth: 0 }}>
             <MarkCircle clan={{ slug: data.clan.slug, mark: data.clan.mark }} size={24} />
-            <Link
+            <Link prefetch={false}
               href={`/league/${leagueSlug}/clan/${clanSlug}`}
               style={{
                 fontSize: 15,
@@ -1113,7 +1113,7 @@ function Closing() {
         <br />
         <b style={{ color: '#9cc0ff' }}>로그인 없이</b> 신청하실 수 있습니다.
       </p>
-      <Link
+      <Link prefetch={false}
         href="/apply"
         style={{
           display: 'inline-block',

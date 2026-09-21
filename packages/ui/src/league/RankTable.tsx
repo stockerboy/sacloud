@@ -381,7 +381,7 @@ function RivalCell({ rival, leagueSlug }: {
   /* 아직 한 판도 안 붙었으면 ★자리를 그냥 비운다★ — 「없음」 을 적지 않는다 */
   if (!rival) return null
   return (
-    <Link
+    <Link prefetch={false}
       className="flex min-w-0 items-center gap-2 hover:text-text-strong"
       href={leagueClanPath(leagueSlug, rival.clan.slug)}
       title={`라이벌 ${rival.clan.name} · ${rival.games}판`}
@@ -604,7 +604,7 @@ export function ClanRankTable({
               </div>
             ) : null}
             <div className={COL_NAME}>
-              <Link
+              <Link prefetch={false}
                 className="flex min-w-0 items-center hover:text-text-strong"
                 href={`/league/${leagueSlug}/clan/${row.clan.slug}`}
               >
@@ -927,10 +927,10 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
               </div>
             ) : null}
             {clanLine ? (
-              /* 닉네임 + 그 아래 클랜명 줄 (#10-2). 링크가 둘이라 한 `<Link>` 로 감싸지 못한다 —
+              /* 닉네임 + 그 아래 클랜명 줄 (#10-2). 링크가 둘이라 한 `<Link prefetch={false}>` 로 감싸지 못한다 —
                  마크·닉네임은 선수 기록실로, 클랜명 줄은 클랜 기록실로 간다 */
               <div className={COL_NAME}>
-                <Link
+                <Link prefetch={false}
                   className="flex shrink-0 items-center"
                   href={leaguePlayerPath(leagueSlug, row.player.id)}
                   tabIndex={-1}
@@ -953,7 +953,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                     {/* ★누름 영역★ — 글자 높이가 19px 라 손가락으로 집기 어려웠다
                         (2026-09-15 · 무한 QA). 위아래 여백을 주고 같은 만큼 당겨
                         ★보이는 크기는 그대로★ 두면서 누를 면만 넓힌다 */}
-                    <Link
+                    <Link prefetch={false}
                       className="-my-2 block truncate py-2 hover:text-text-strong"
                       href={leaguePlayerPath(leagueSlug, row.player.id)}
                     >
@@ -974,7 +974,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                     {row.score_weapon === 1 ? <SniperMark size={12} /> : null}
                   </div>
                   {row.clan ? (
-                    <Link
+                    <Link prefetch={false}
                       /* ⚠ 2026-09-16 — 10.8 → 11.7px (사장님: 랭킹 글씨를 키움). 옛 값 `text-[0.72rem]` */
                       className="-my-1.5 mt-0.5 block truncate py-1.5 text-[0.78rem] leading-none text-meta hover:text-text-strong"
                       href={leagueClanPath(leagueSlug, row.clan.slug)}
@@ -1074,7 +1074,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
               </div>
             ) : (
             <div className={COL_NAME}>
-              <Link
+              <Link prefetch={false}
                 className="flex min-w-0 items-center hover:text-text-strong"
                 href={leaguePlayerPath(leagueSlug, row.player.id)}
               >
@@ -1092,7 +1092,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
             {clanColumn ? (
               <div className={COL_CLAN}>
                 {row.clan ? (
-                  <Link
+                  <Link prefetch={false}
                     className="block truncate hover:text-text-strong"
                     href={leagueClanPath(leagueSlug, row.clan.slug)}
                     title={row.clan.name}

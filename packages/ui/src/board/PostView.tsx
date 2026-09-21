@@ -125,10 +125,10 @@ export function PostView({
       {/* 본인 글일 때만 수정/삭제가 보인다. 비로그인 글은 비밀번호로 삭제한다. */}
       {post.me || !post.login ? (
         <div className="mt-6 flex select-none flex-row-reverse gap-2">
-          <Link href={`${base}/${post.id}/delete`} className="btn-line px-3 py-1.5 text-sm">
+          <Link prefetch={false} href={`${base}/${post.id}/delete`} className="btn-line px-3 py-1.5 text-sm">
             삭제
           </Link>
-          <Link href={`${base}/${post.id}/update`} className="btn-line px-3 py-1.5 text-sm">
+          <Link prefetch={false} href={`${base}/${post.id}/update`} className="btn-line px-3 py-1.5 text-sm">
             수정
           </Link>
         </div>

@@ -50,7 +50,7 @@ export function BoardNav({
         {items.map((category) => {
           const active = category.slug === current
           return (
-            <Link
+            <Link prefetch={false}
               key={category.slug}
               href={`/board/${category.slug}`}
               aria-current={active ? 'page' : undefined}

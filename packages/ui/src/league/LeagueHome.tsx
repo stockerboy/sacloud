@@ -58,7 +58,7 @@ export function LeagueHomeTabs({ leagueSlug, current }: { leagueSlug: string; cu
     /* 랭킹 화면의 탭과 같은 상수를 쓴다 — 한 사이트에 두 가지 탭 디자인을 만들지 않는다 */
     <div className="flex items-stretch gap-1 border-b border-line px-8 max-md:px-4">
       {LEAGUE_HOME_TABS.map((tab) => (
-        <Link
+        <Link prefetch={false}
           key={tab.segment}
           href={`/league/${leagueSlug}/home/${tab.segment}`}
           className={`${TAB} ${tab.segment === current ? TAB_ACTIVE : TAB_IDLE}`}
@@ -139,7 +139,7 @@ export function LeagueInfoPanel({
             <EmptyState message="참여중인 클랜이 없습니다." />
           ) : (
             clans.map((entry) => (
-              <Link
+              <Link prefetch={false}
                 key={entry.id}
                 href={`/league/${league.slug}/clan/${entry.clan.slug}`}
                 className="flex items-center border-b border-b-line-soft px-8 py-3 text-text last:border-b-0 hover:text-text-strong max-md:px-4"

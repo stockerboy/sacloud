@@ -74,7 +74,7 @@ export function HomeHeroHead() {
             {item.href === null ? (
               <span className="text-[var(--v2-text-ghost)]">{item.label}</span>
             ) : (
-              <Link
+              <Link prefetch={false}
                 href={item.href}
                 className="whitespace-nowrap text-[var(--v2-text-dim)] transition-colors duration-100 hover:text-[var(--v2-blue)]"
               >

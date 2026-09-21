@@ -113,7 +113,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="mt-4 text-sm text-meta">
           시즌 전환은{' '}
-          <Link href="/admin/seasons">
+          <Link prefetch={false} href="/admin/seasons">
             {/* 색·밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
             <span className="text-text-strong underline underline-offset-4">시즌 화면</span>
           </Link>

@@ -79,7 +79,7 @@ export default function MatchDetailPage({
               ★디자인·배치는 건드리지 않았다.★ 글자만이다 */}
         <ProfileEmpty message="Cloud 0(9/3 07:00 이후) 경기만 볼 수 있습니다." />
         <div className="mt-6 text-center text-sm text-meta">
-          <Link href={`/league/${leagueSlug}`}>
+          <Link prefetch={false} href={`/league/${leagueSlug}`}>
             <span className="underline underline-offset-4">리그로 돌아가기</span>
           </Link>
         </div>

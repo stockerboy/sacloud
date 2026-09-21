@@ -139,7 +139,7 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
             style={podiumCardStyle(ink)}
           >
             <div className="relative flex items-start gap-4">
-              <Link
+              <Link prefetch={false}
                 href={leagueClanPath(leagueSlug, row.clan.slug)}
                 tabIndex={-1}
                 aria-hidden="true"
@@ -150,7 +150,7 @@ export function ClanPodiumCards({ leagueSlug, rows }: { leagueSlug: string; rows
               </Link>
 
               <span className="flex min-w-0 flex-col gap-[5px] pt-1">
-                <Link href={leagueClanPath(leagueSlug, row.clan.slug)} className="min-w-0">
+                <Link prefetch={false} href={leagueClanPath(leagueSlug, row.clan.slug)} className="min-w-0">
                   {/* `a { color: inherit }` — 색은 안쪽 span 에 (D-231) */}
                   <span className="block truncate text-[19px] font-bold" style={{ color: ink }} title={row.clan.name}>
                     {row.clan.name}

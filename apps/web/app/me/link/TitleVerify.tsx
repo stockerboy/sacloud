@@ -101,12 +101,12 @@ export function TitleVerify() {
         </div>
         {data.player ? (
           <div className="mt-5 flex flex-wrap items-center gap-4">
-            <Link href={`/player/${data.player.id}`}>
+            <Link prefetch={false} href={`/player/${data.player.id}`}>
               <span className="text-text-strong underline underline-offset-4">
                 {data.player.name}
               </span>
             </Link>
-            <Link href={`/player/${data.player.id}/setting`} className="btn-line h-9 px-5 text-sm leading-9">
+            <Link prefetch={false} href={`/player/${data.player.id}/setting`} className="btn-line h-9 px-5 text-sm leading-9">
               <span>프로필 관리</span>
             </Link>
           </div>

@@ -29,7 +29,7 @@ export function AuthCard({
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-page px-4 py-16">
       <div className="w-full max-w-[420px]">
-        <Link href="/" className="mb-8 flex items-center justify-center">
+        <Link prefetch={false} href="/" className="mb-8 flex items-center justify-center">
           {/*
             ⚠ 여기에는 `tone="dark"`(= `--color-ink` #060505) 가 붙어 있었다.
             원본 재현 때 카드가 **흰색**이었을 때의 값인데, `적진`(D-204)으로 갈아 끼우면서

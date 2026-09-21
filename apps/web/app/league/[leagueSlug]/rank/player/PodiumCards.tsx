@@ -159,7 +159,7 @@ function PodiumCard({
       {/* 금·은·동 띠 (2026-09-13) */}
       <span aria-hidden style={medalBarStyle(row.rank)} />
       <div ref={cardRef} className="relative flex items-start gap-4">
-        <Link
+        <Link prefetch={false}
           href={leaguePlayerPath(leagueSlug, row.player.id)}
           tabIndex={-1}
           aria-hidden="true"
@@ -170,7 +170,7 @@ function PodiumCard({
         </Link>
 
         <span className="flex min-w-0 flex-col gap-[5px] pt-1">
-          <Link href={leaguePlayerPath(leagueSlug, row.player.id)} className="min-w-0">
+          <Link prefetch={false} href={leaguePlayerPath(leagueSlug, row.player.id)} className="min-w-0">
             {/* `a { color: inherit }` — 색은 안쪽 span 에 준다 (D-231) */}
             <span
               className="block truncate text-[19px] font-bold"
@@ -181,7 +181,7 @@ function PodiumCard({
             </span>
           </Link>
           {row.clan ? (
-            <Link href={leagueClanPath(leagueSlug, row.clan.slug)} className="min-w-0">
+            <Link prefetch={false} href={leagueClanPath(leagueSlug, row.clan.slug)} className="min-w-0">
               <span className="block truncate text-[11.5px] text-[var(--v2-text-faint)]">
                 {row.clan.name}
               </span>

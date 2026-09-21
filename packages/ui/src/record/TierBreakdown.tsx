@@ -242,7 +242,7 @@ export function TierBreakdown({
               {row.nemeses.map((nemesis, index) => (
                 <span key={nemesis.slug}>
                   {index === 0 ? null : <span className="text-side-meta"> · </span>}
-                  <Link href={`/league/${leagueSlug}/clan/${nemesis.slug}`}>{nemesis.name}</Link>
+                  <Link prefetch={false} href={`/league/${leagueSlug}/clan/${nemesis.slug}`}>{nemesis.name}</Link>
                   <span className="num text-side-meta">
                     {' '}
                     {formatCount(nemesis.games)}판 {formatRate(nemesis.win_rate)}%

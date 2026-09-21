@@ -40,7 +40,7 @@ export function DivisionTabs({
       {Array.from({ length: divisionCount }, (_, index) => {
         const division = index + 1
         return (
-          <Link
+          <Link prefetch={false}
             key={division}
             href={`/league/${leagueSlug}/rank/clan/${division}`}
             className={`${TAB} ${division === current ? TAB_ACTIVE : TAB_IDLE}`}

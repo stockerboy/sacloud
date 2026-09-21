@@ -27,7 +27,7 @@ export default function ClauseLayout({ children }: { children: React.ReactNode }
         {TABS.map((tab) => {
           const active = pathname === tab.href
           return (
-            <Link
+            <Link prefetch={false}
               key={tab.href}
               href={tab.href}
               className={`-mb-px flex items-center justify-center border-b px-4 py-3 transition-colors duration-100 ${

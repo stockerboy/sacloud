@@ -138,7 +138,7 @@ export function PlayerIdentityCard({
         </>
       }
       action={
-        <Link
+        <Link prefetch={false}
           href={infoHref}
           className="shrink-0 border border-[var(--v2-chip-border)] bg-[var(--v2-chip)] px-[18px] py-[9px] text-[12.5px]"
         >

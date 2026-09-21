@@ -132,7 +132,7 @@ function ClanMasterBody({ clanSlug }: { clanSlug: string }) {
             <p className="text-[13px] leading-relaxed text-meta">
               이 클랜의 마스터로 인증됐습니다. 클랜 공지와 리그 초대 설정을 바꿀 수 있습니다.
             </p>
-            <Link
+            <Link prefetch={false}
               href={`/clan/${clanSlug}/setting`}
               className="btn-line mt-5 inline-flex h-10 items-center px-5 text-[13px]"
             >

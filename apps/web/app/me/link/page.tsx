@@ -61,7 +61,7 @@ export default function MeLinkPage() {
           <p className="text-[12px] tracking-[.12em] text-accent">SUDDEN ATTACK</p>
           <h2 className="mt-1.5 text-[20px] text-text-strong">인증된 계정입니다</h2>
           <div className="mt-3 flex items-baseline gap-3">
-            <Link
+            <Link prefetch={false}
               href={`/player/${state.player!.id}`}
               className="text-[17px] text-text-strong underline underline-offset-4"
             >

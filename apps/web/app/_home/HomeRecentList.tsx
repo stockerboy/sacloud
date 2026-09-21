@@ -60,7 +60,7 @@ function ClanCell({
   align: 'left' | 'right'
 }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={`/league/${leagueSlug}/clan/${clan.slug}`}
       className={`group flex min-w-0 flex-1 items-center gap-1.5 ${
         align === 'right' ? 'flex-row-reverse text-right' : ''
@@ -83,7 +83,7 @@ function MvpCell({ mvp, leagueSlug }: { mvp: HomeRecentRow['mvp']; leagueSlug: s
       {/* 폰에서는 둘째 줄이라 무엇인지 앞에 적는다. PC 는 머리 줄의 「MVP」 가 이 열 위에 있다 */}
       <span className="hidden shrink-0 text-[10px] tracking-[0.14em] text-faint max-md:inline">MVP</span>
       {mvp ? (
-        <Link
+        <Link prefetch={false}
           href={`/league/${leagueSlug}/player/${mvp.player_id}`}
           className="group flex min-w-0 items-center gap-1.5"
           title={mvp.name}

@@ -70,7 +70,7 @@ export function WriterName({
       {!writer.anonymous && writer.player ? (
         /* 색은 안쪽 `span` 이 가진다 — `a { color: inherit }` 가 유틸리티를 누른다.
            가리켰을 때 진홍이 켜지는 것은 전역 `a:hover` 가 아니라 이 `group-hover` 다 */
-        <Link href={`/player/${writer.player.id}`} className="group min-w-0 truncate">
+        <Link prefetch={false} href={`/player/${writer.player.id}`} className="group min-w-0 truncate">
           <span className={`${tone} transition-colors duration-100 group-hover:text-accent`}>
             {namePrefix}
             {writer.nickname}

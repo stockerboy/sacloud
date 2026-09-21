@@ -226,7 +226,7 @@ function WinStreak({
           {streak.members.map((member) => (
             <div key={member.player.id} className="flex items-center py-0.5">
               {/* 닉네임을 누르면 그 선수 기록실로 간다 (SITE_SPEC_V2 2절과 같은 규칙) */}
-              <Link
+              <Link prefetch={false}
                 href={leaguePlayerPath(leagueSlug, member.player.id)}
                 className="flex-grow hover:underline"
               >

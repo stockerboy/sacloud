@@ -90,7 +90,7 @@ export function GhostButton({ children, href, onClick, disabled, theme }: { chil
   const style: CSSProperties = theme
     ? { fontSize: 11.5, color: '#cfeeff', border: `1px solid ${theme.main}73`, borderRadius: V3.radiusCtl, background: `${theme.main}1a`, padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
     : { fontSize: 11.5, color: '#a4b6c8', border: '1px solid #24384c', borderRadius: V3.radiusCtl, background: '#0e1a28', padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
-  if (href) return <Link href={href} style={style}>{children}</Link>
+  if (href) return <Link prefetch={false} href={href} style={style}>{children}</Link>
   return (
     <button type="button" onClick={onClick} disabled={disabled} style={{ ...style, fontFamily: 'inherit' }}>
       {children}

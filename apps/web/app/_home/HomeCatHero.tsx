@@ -47,7 +47,7 @@ export function HomeCatHero() {
         ★로고에 빛을 준다★ — 사장님 새 로고가 네온처럼 빛난다. 그림에 구워 넣는 대신
         CSS 로 주면 ★배경색이 바뀌어도 따라온다★ 하고 파일도 안 무거워진다.
       */}
-      <Link href="/" aria-label="SA CLOUD 홈" className="home-mark block">
+      <Link prefetch={false} href="/" aria-label="SA CLOUD 홈" className="home-mark block">
         <MainLogo className="h-[128px] w-auto max-md:h-[74px]" />
       </Link>
     </div>

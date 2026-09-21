@@ -47,7 +47,7 @@ export function HomeLeagueHead({
   action: string
 }) {
   return (
-    <Link href={href} className="group flex items-baseline">
+    <Link prefetch={false} href={href} className="group flex items-baseline">
       <span className="text-lg font-bold tracking-wide text-text-strong transition-colors duration-100 group-hover:text-accent">
         <LeagueLabel name={name} />
       </span>

@@ -491,7 +491,7 @@ function TopRow({ row, leagueSlug }: { row: HexTopRow; leagueSlug: string }) {
       {href === null ? (
         body
       ) : (
-        <Link href={href} style={{ color: 'inherit', textDecoration: 'none', display: 'block' }}>
+        <Link prefetch={false} href={href} style={{ color: 'inherit', textDecoration: 'none', display: 'block' }}>
           {body}
         </Link>
       )}

@@ -23,7 +23,7 @@ export function SiteFooter() {
     <footer className="mt-[var(--section-gap,40px)] border-t border-line bg-ink">
       <div className="mx-auto flex w-full max-w-[var(--layout-max,1120px)] flex-wrap items-center gap-x-6 gap-y-2 px-5 py-8 text-[12px] text-[var(--color-faint,#6b5555)] max-md:px-3">
         {CLAUSE_LINKS.map((link) => (
-          <Link
+          <Link prefetch={false}
             key={link.href}
             href={link.href}
             target="_blank"

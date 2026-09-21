@@ -69,14 +69,14 @@ function LoginForm() {
       footer={
         <>
           회원이 아니신가요?{' '}
-          <Link href="/auth/signup">
+          <Link prefetch={false} href="/auth/signup">
             {/* 색·밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
             <span className="text-text-strong underline underline-offset-4">회원가입</span>
           </Link>
           {/* ⑥ 나갈 길 (O-032). 인증 화면에는 전역 GNB 가 없어서 **사이트로 돌아갈 길이
               로고 하나뿐**이었다. 로고가 링크인 줄 모르는 사람이 더 많다 */}
           <div className="mt-2">
-            <Link href="/">
+            <Link prefetch={false} href="/">
               <span className="underline underline-offset-4">둘러보기로 돌아가기</span>
             </Link>
           </div>
@@ -113,7 +113,7 @@ function LoginForm() {
       {/* 원본은 이 링크를 입력칸에 겹쳐 절대배치했다. 겹치면 좁은 카드에서 글자가 붙는다 —
           같은 자리에 흐름대로 놓는다. 가는 링크라 회색으로 두고 hover 에서만 진홍이 켜진다 */}
       <div className="text-right text-sm text-meta">
-        <Link href="/auth/password/forget">
+        <Link prefetch={false} href="/auth/password/forget">
           {/* 밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
           <span className="underline underline-offset-4">비밀번호를 잊으셨나요?</span>
         </Link>

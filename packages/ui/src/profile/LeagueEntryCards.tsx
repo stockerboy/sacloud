@@ -54,7 +54,7 @@ export function ProfileTabs({
       {/* 탭이 3개면 좁은 화면에서 넘친다 — 탭 줄 안에서만 가로로 밀리게 한다 */}
       <div className="pc-container flex items-center text-xl max-md:overflow-x-auto">
         {tabs.map((tab) => (
-          <Link
+          <Link prefetch={false}
             key={tab.href}
             href={tab.href}
             className={`${NAV_TAB} max-md:whitespace-nowrap ${
@@ -84,7 +84,7 @@ function CardTitle({ name, official }: { name: string; official: boolean }) {
 
 function PlayerEntryCard({ entry, playerId }: { entry: PlayerLeagueEntry; playerId: string }) {
   return (
-    <Link
+    <Link prefetch={false}
       /**
        * 기록실 경로에는 **`playerId`** 를 넣는다 (`common/paths.ts` 참조).
        * `league_player_id`를 넣으면 API가 404를 돌려주고 화면이 빈 페이지가 된다 — 실제 버그였다.
@@ -176,7 +176,7 @@ export function PlayerLeagueCards({
 
 function ClanEntryCard({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: string }) {
   return (
-    <Link href={leagueClanPath(entry.league.slug, clanSlug)} className={CARD_BASE}>
+    <Link prefetch={false} href={leagueClanPath(entry.league.slug, clanSlug)} className={CARD_BASE}>
       {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
       <CardTitle name={entry.league.name} official={isOfficialLeague(entry.league.slug)} />
       <div className="mt-2">

@@ -179,7 +179,7 @@ export function ProfileNav({
         {tabs.map((tab) => {
           const active = tab.href === current
           return (
-            <Link
+            <Link prefetch={false}
               key={tab.href}
               href={tab.href}
               className={`group -mb-px whitespace-nowrap border-b-2 py-3.5 text-[14px] ${

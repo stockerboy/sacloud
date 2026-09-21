@@ -63,7 +63,7 @@ function Row({ item, basePath }: { item: BoardListItem; basePath?: string }) {
 
       <div className="min-w-0 flex-1">
         {/* 리그 안 게시판(지시 #14-2)은 `basePath` 아래로 간다. 없으면 예전 주소 그대로 */}
-        <Link
+        <Link prefetch={false}
           href={basePath ? `${basePath}/${item.id}` : `/board/${item.category}/${item.id}`}
           className="group flex items-center gap-1"
         >
@@ -219,12 +219,12 @@ export function BoardPager({
   return (
     <div className="flex items-center justify-center gap-2 py-10">
       {prev ? (
-        <Link href={`${list}?cursor=${encodeURIComponent(prev)}`} className={button}>
+        <Link prefetch={false} href={`${list}?cursor=${encodeURIComponent(prev)}`} className={button}>
           <span aria-hidden>‹</span> 이전
         </Link>
       ) : null}
       {next ? (
-        <Link href={`${list}?cursor=${encodeURIComponent(next)}`} className={button}>
+        <Link prefetch={false} href={`${list}?cursor=${encodeURIComponent(next)}`} className={button}>
           다음 <span aria-hidden>›</span>
         </Link>
       ) : null}

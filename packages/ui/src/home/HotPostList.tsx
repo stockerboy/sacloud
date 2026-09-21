@@ -57,7 +57,7 @@ export function HotPostList({ items, loading, error, onRetry }: HotPostListProps
 
 function HotPostRow({ item }: { item: BoardListItem }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={`/board/hot/${item.id}`}
       className="group flex items-baseline gap-3 border-b border-[var(--color-line-soft,#1a1010)] py-3.5"
     >

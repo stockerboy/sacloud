@@ -140,7 +140,7 @@ export default function SignupPage() {
     return (
       <AuthCard
         footer={
-          <Link href="/">
+          <Link prefetch={false} href="/">
             <span className="underline underline-offset-4">나중에 하기 · 둘러보기</span>
           </Link>
         }
@@ -161,7 +161,7 @@ export default function SignupPage() {
         <p className="mb-4 text-xs leading-[1.8] text-faint">
           확인이 끝나면 칭호는 다시 바꿔도 됩니다. 30분 안에 하지 않으면 다시 신청하면 됩니다.
         </p>
-        <Link href="/me">
+        <Link prefetch={false} href="/me">
           <span className="btn-line block w-full py-3 text-center text-sm text-text-strong">
             확인하러 가기
           </span>
@@ -174,7 +174,7 @@ export default function SignupPage() {
     <AuthCard
       footer={
         <>
-          <Link href="/auth/login">
+          <Link prefetch={false} href="/auth/login">
             {/* 색·밑줄은 안쪽 span 이 가진다 (레이어 밖 `a` 규칙이 `<a>` 유틸리티를 누른다) */}
             <span className="text-text-strong underline underline-offset-4">
               로그인으로 돌아가기
@@ -183,7 +183,7 @@ export default function SignupPage() {
           {/* ⑥ 나갈 길 (O-032). 인증 화면에는 전역 GNB 가 없어서 **사이트로 돌아갈 길이
               로고 하나뿐**이었다. 로고가 링크인 줄 모르는 사람이 더 많다 */}
           <div className="mt-2">
-            <Link href="/">
+            <Link prefetch={false} href="/">
               <span className="underline underline-offset-4">둘러보기로 돌아가기</span>
             </Link>
           </div>
@@ -299,7 +299,7 @@ export default function SignupPage() {
           className="mr-2 mt-0.5 accent-accent"
         />
         <span>
-          <Link
+          <Link prefetch={false}
             href="/clause/service"
             target="_blank"
             className="text-text underline underline-offset-4"
@@ -307,7 +307,7 @@ export default function SignupPage() {
             이용약관
           </Link>
           과{' '}
-          <Link
+          <Link prefetch={false}
             href="/clause/policy"
             target="_blank"
             className="text-text underline underline-offset-4"

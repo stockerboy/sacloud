@@ -86,7 +86,7 @@ export function HomeLeagueTiles() {
               정렬하면 ★가운데 칸의 한가운데가 줄의 한가운데가 아니다★ — IPL 로고가
               첨탑에서 몇 px 밀린다. 칸을 같은 폭으로 잡으면 저절로 맞는다.
             */}
-            <Link
+            <Link prefetch={false}
               href={tile.href}
               aria-label={tile.label}
               className="group flex w-[92px] flex-col items-center gap-[5px] max-md:w-[76px]"

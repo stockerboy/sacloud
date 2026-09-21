@@ -95,7 +95,7 @@ export default function ClanLayout({
               `CLAIM_DOORS_OPEN` 을 `true` 로 되돌리면 이 줄이 그대로 돌아온다 */}
       {CLAIM_DOORS_OPEN ? (
         <div className="pc-container mt-3 flex justify-end">
-          <Link href={`/clan/${clanSlug}/master`} className="text-[12px] text-meta hover:text-text">
+          <Link prefetch={false} href={`/clan/${clanSlug}/master`} className="text-[12px] text-meta hover:text-text">
             <span>마스터 인증하기</span>
           </Link>
         </div>

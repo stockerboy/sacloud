@@ -335,7 +335,7 @@ export function HomeLeagueFeatures() {
             같은 기록을 <b style={{ color: TONE.supply }}>PL</b> 에서는 계속 보실 수 있습니다.
             래더 점수와 클랜 랭킹도 <b style={{ color: TONE.supply }}>PL</b> 에만 있습니다.
           </div>
-          <Link
+          <Link prefetch={false}
             href="/apply?kind=llm-new"
             className="mt-[11px] inline-flex items-center border px-[13px] py-[8px] text-[12.5px] font-bold max-md:text-[12px]"
             style={{ borderColor: TONE.supply, color: TONE.supply }}
@@ -350,7 +350,7 @@ export function HomeLeagueFeatures() {
        *   사장님: «마지막에 리그참가신청버튼을 줘 ★각 리그별로★».
        *   `?kind=` 로 종류를 실어 보내면 신청 화면이 그 칸을 미리 골라 둔다.
        */}
-      <Link
+      <Link prefetch={false}
         href={`/apply?kind=${pick.applyKind}`}
         className="mt-[14px] flex items-center justify-center border py-[11px] text-[15px] font-bold transition-opacity duration-100 max-md:mt-[12px] max-md:py-[10px] max-md:text-[14px]"
         style={{ borderColor: tone, color: tone }}

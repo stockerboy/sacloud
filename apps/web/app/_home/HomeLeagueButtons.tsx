@@ -162,7 +162,7 @@ export function HomeLeagueButtons() {
         className="mt-[10px] flex items-stretch gap-[10px] max-md:mt-[7px] max-md:gap-[7px]"
       >
         {views.map((view) => (
-          <Link
+          <Link prefetch={false}
             key={view.path}
             href={`/league/${picked.slug}/${view.path}`}
             className="flex flex-1 items-center justify-center rounded-[12px] border py-[13px] text-[14px] font-bold transition-all duration-150 max-md:rounded-[10px] max-md:py-[13px] max-md:text-[12.5px]"

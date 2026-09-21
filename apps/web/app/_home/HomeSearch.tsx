@@ -333,7 +333,7 @@ export function HomeSearch() {
           <HomeHeroHead />
         </div>
       ) : (
-        <Link href="/" aria-label="log in SA CLOUD 홈" className="v2-brand mb-[38px] block max-md:mb-[18px]">
+        <Link prefetch={false} href="/" aria-label="log in SA CLOUD 홈" className="v2-brand mb-[38px] block max-md:mb-[18px]">
           <MainLogo className="h-[110px] w-auto text-[var(--color-text-strong,#f6eded)] max-md:h-[56px]" />
         </Link>
       )}
@@ -448,7 +448,7 @@ export function LeagueShortcutButtons() {
       <ul className="flex flex-wrap items-center justify-center gap-3 max-md:flex-nowrap max-md:gap-2">
         {LEAGUE_SHORTCUTS.map((league) => (
           <li key={league.href} className="max-md:min-w-0 max-md:flex-1">
-            <Link
+            <Link prefetch={false}
               href={league.href}
               className="btn-line group h-12 min-w-[132px] px-6 text-[15px] font-bold tracking-wide hover:border-accent max-md:h-11 max-md:w-full max-md:min-w-0 max-md:px-2"
             >

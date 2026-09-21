@@ -317,7 +317,7 @@ export function RecentMatchSummary({
                   className="flex items-center py-0.5 text-sm max-md:flex-wrap"
                 >
                   <span className="mr-1 text-meta">vs</span>
-                  <Link
+                  <Link prefetch={false}
                     href={`/league/${leagueSlug}/clan/${entry.clan.slug}`}
                     className="inline-flex items-center"
                   >
@@ -630,7 +630,7 @@ export function PlayerStatSidebar(props: PlayerStatSidebarProps) {
               <span className="ml-1 text-xs text-faint">미등록</span>
             </>
           ) : (
-            <Link href={`/clan/${props.clan.slug}`}>{props.clan.name}</Link>
+            <Link prefetch={false} href={`/clan/${props.clan.slug}`}>{props.clan.name}</Link>
           )}
         </span>
       </Stat>
@@ -745,7 +745,7 @@ export function TeammateTable({
             className="flex items-center border-b border-b-line px-3 py-1 text-sm last:border-b-0"
           >
             <div className="flex-grow truncate">
-              <Link href={`/player/${entry.player.id}`}>{entry.player.name}</Link>
+              <Link prefetch={false} href={`/player/${entry.player.id}`}>{entry.player.name}</Link>
             </div>
             <div className="w-14 text-right">{formatCount(entry.win)}승</div>
             <div className="w-14 text-right">{formatCount(entry.lose)}패</div>

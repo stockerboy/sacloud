@@ -364,7 +364,7 @@ function TopClan({ top, href }: { top: TempleHeroTop; href?: string }) {
   /* 링크가 있으면 블록 전체가 클랜 페이지로 간다. 없으면 그냥 그린다.
      `a { color: inherit }` 함정(D-231)을 피하려고 색은 전부 안쪽 `span` 이 갖는다 */
   return href ? (
-    <Link href={href} className="absolute" aria-label={`IPL 현재 1등 ${top.name}`}>
+    <Link prefetch={false} href={href} className="absolute" aria-label={`IPL 현재 1등 ${top.name}`}>
       {body}
     </Link>
   ) : (

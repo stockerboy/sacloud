@@ -250,7 +250,7 @@ function PlayerLink({
   const href = lineupPlayerHref(leagueSlug, playerId)
   if (href === null) return <span className="inline-block">{children}</span>
   return (
-    <Link className="inline-block cursor-pointer hover:underline" href={href}>
+    <Link prefetch={false} className="inline-block cursor-pointer hover:underline" href={href}>
       {children}
     </Link>
   )
@@ -286,7 +286,7 @@ function ClanSide({
           align === 'right' ? 'text-right' : ''
         }`}
       >
-        <Link
+        <Link prefetch={false}
           className="inline-block max-md:flex max-md:min-w-0 max-md:items-center"
           href={leagueClanPath(leagueSlug, snapshot.clan.slug)}
         >
@@ -429,7 +429,7 @@ export function MatchCard({
                 카드가 같이 펼쳐졌다 접힌다.
             */}
             <div className="min-w-0 truncate">
-              <Link
+              <Link prefetch={false}
                 href={leagueMatchPath(leagueSlug, match.id)}
                 onClick={(event) => event.stopPropagation()}
                 className="hover:underline"
@@ -677,7 +677,7 @@ function TeamCompare({
 
             <div className="flex min-w-0 flex-1 items-center">
               {row.snapshot ? (
-                <Link
+                <Link prefetch={false}
                   className="group flex min-w-0 items-center"
                   href={leagueClanPath(leagueSlug, row.snapshot.clan.slug)}
                 >
@@ -780,7 +780,7 @@ function TeamBlock({
         */}
         <div className="flex items-center px-3 py-1.5 text-sm">
           {snapshot ? (
-            <Link
+            <Link prefetch={false}
               className="group flex min-w-0 items-center"
               href={leagueClanPath(leagueSlug, snapshot.clan.slug)}
             >

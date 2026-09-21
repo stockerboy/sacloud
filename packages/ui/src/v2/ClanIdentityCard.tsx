@@ -112,7 +112,7 @@ export function ClanIdentityCard({
       action={
         <div className="flex shrink-0 items-center gap-2">
           {action ?? null}
-          <Link
+          <Link prefetch={false}
             href={infoHref}
             className="border border-[var(--v2-chip-border)] bg-[var(--v2-chip)] px-[18px] py-[9px] text-[12.5px]"
           >

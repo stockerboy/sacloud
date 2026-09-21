@@ -159,7 +159,7 @@ function Row({
     <div className="flex items-baseline gap-3 border-b border-b-line-soft py-1.5 last:border-b-0">
       <span className="num w-6 shrink-0 text-right text-xs text-faint">{rank}</span>
 
-      <Link
+      <Link prefetch={false}
         href={leaguePlayerPath(leagueSlug, member.player.id)}
         className="min-w-0 flex-grow truncate text-sm"
       >
@@ -211,7 +211,7 @@ function Member({
   const ownLabel = showLabel ? member.position_label?.trim() : undefined
   return (
     <span className="mr-3 inline-block whitespace-nowrap">
-      <Link href={leaguePlayerPath(leagueSlug, member.player.id)} className="mr-1 hover:underline">
+      <Link prefetch={false} href={leaguePlayerPath(leagueSlug, member.player.id)} className="mr-1 hover:underline">
         {member.player.name}
       </Link>
       {ownLabel ? <span className="mr-1 text-xs text-meta">{ownLabel}</span> : null}

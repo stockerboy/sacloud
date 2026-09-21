@@ -142,7 +142,7 @@ export function LeaguePlayerRecordHeader({
       }
       action={
         <div className="flex items-center gap-2">
-          <Link href={infoHref} className={HEADER_BTN}>
+          <Link prefetch={false} href={infoHref} className={HEADER_BTN}>
             <span className={HEADER_BTN_LABEL}>기본정보</span>
           </Link>
           <FavoriteButton />
@@ -218,7 +218,7 @@ export function LeagueClanRecordHeader({
           >
             {refreshState === 'pending' ? '갱신중' : '전적갱신'}
           </button>
-          <Link href={infoHref} className={HEADER_BTN}>
+          <Link prefetch={false} href={infoHref} className={HEADER_BTN}>
             <span className={HEADER_BTN_LABEL}>기본정보</span>
           </Link>
           <FavoriteButton />

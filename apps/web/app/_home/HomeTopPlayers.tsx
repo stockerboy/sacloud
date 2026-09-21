@@ -62,7 +62,7 @@ export function HomeTopPlayers() {
               </span>
 
               {row.clan ? (
-                <Link
+                <Link prefetch={false}
                   href={leagueClanPath(HOME_TOP_LEAGUE, row.clan.slug)}
                   aria-label={row.clan.name}
                   className="flex h-[18px] w-[18px] items-center justify-center"
@@ -74,7 +74,7 @@ export function HomeTopPlayers() {
               )}
 
               {/* 닉네임을 누르면 그 선수로 간다. `a { color: inherit }` 이라 색은 안쪽 span 에 (D-231) */}
-              <Link href={leaguePlayerPath(HOME_TOP_LEAGUE, row.player.id)} className="min-w-0">
+              <Link prefetch={false} href={leaguePlayerPath(HOME_TOP_LEAGUE, row.player.id)} className="min-w-0">
                 <span className="block truncate text-[12px] font-bold text-[var(--v2-text-strong)]">
                   {row.player.name}
                 </span>

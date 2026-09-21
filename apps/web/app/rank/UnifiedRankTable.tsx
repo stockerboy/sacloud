@@ -36,7 +36,7 @@ export function UnifiedRankTable({ rows }: { rows: UnifiedRankRow[] }) {
                 {row.rank}
               </span>
               <span className="min-w-0 flex-1">
-                <Link
+                <Link prefetch={false}
                   href={`/player/${row.playerId}`}
                   className="block truncate text-[15px] leading-6 text-[var(--color-text-strong,#f2f4f8)] hover:text-accent"
                 >
