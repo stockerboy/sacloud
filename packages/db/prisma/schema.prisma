@@ -2368,6 +2368,13 @@ model BarracksBattleLogRaw {
   @@unique([matchKey, subject, payloadHash])
   @@index([matchKey])
   @@index([subject])
+  /// ★「그 클랜의 최근 몇 줄」 을 싸게 뽑는 색인★ (2026-09-21).
+  ///
+  /// `subject` 하나만으로는 ★그 클랜의 1만 줄을 전부 읽어 정렬★ 해야 했다
+  /// (`valentina2` 10,526줄). 그래서 마크를 원문에서 읽는 잡이 ★매번 시간초과로 죽었고★,
+  /// 죽으니까 ★우리 DB 를 베낀 도장★ 만 남아 마크가 영영 안 바뀌었다.
+  /// 이 색인 하나로 클랜 464곳이 ★8초★ 다.
+  @@index([subject, fetchedAt(sort: Desc)])
   @@index([fetchedAt])
 }
 
