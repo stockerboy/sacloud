@@ -44,8 +44,10 @@ import { z } from 'zod'
 export const APPLICATION_POSITIONS = ['숏', '이층', '비리베', '바리베', '스나'] as const
 export type ApplicationPosition = (typeof APPLICATION_POSITIONS)[number]
 
-/** 신청할 수 있는 리그 — 셋이다 */
-export const APPLICATION_LEAGUES = ['nolink', 'supply', 'sanply'] as const
+/** ⚠ 옛 판 — 셋이던 때 (2026-09-22 이전). 지우지 않는다 (`CLAUDE.md` 1-4) */
+export const APPLICATION_LEAGUES_V1 = ['nolink', 'supply', 'sanply'] as const
+/** 신청할 수 있는 리그 — ★CPL 을 더했다★ (2026-09-22 사장님 「CPL 모집」) */
+export const APPLICATION_LEAGUES = ['nolink', 'supply', 'sanply', 'cpl'] as const
 export type ApplicationLeague = (typeof APPLICATION_LEAGUES)[number]
 
 /**
@@ -83,6 +85,44 @@ export const APPLICATION_KINDS = [
     to: 'nolink',
     label: 'IPL 신규등록',
     benefit: '등록책임비용 — 10/1까지 전원 무료',
+  },
+  /*
+   * ── ★★CPL 모집★★ (2026-09-21~22 사장님)
+   *
+   *   > 「CPL 모집 신청서 만들고 ★관리자 대시보드★ 에서 볼 수 있게」
+   *   > 「칸: ★클랜명 · 클랜 병영수첩 · 마스터 카톡/디코 · 소속★」
+   *
+   *   소속 네 가지를 ★등록 종류★ 로 받는다 — 표를 새로 만들지 않고
+   *   이미 있는 신청서 표(`LeagueApplication`)를 그대로 쓴다.
+   *   ⚠ ★값(`key`)을 바꾸지 마라★ — 들어온 신청서가 이 글자를 들고 있다.
+   */
+  {
+    key: 'cpl-independent',
+    from: null,
+    to: 'cpl',
+    label: 'CPL 참가 — 무소속',
+    benefit: '10/1 전까지 등록 무료',
+  },
+  {
+    key: 'cpl-supply',
+    from: null,
+    to: 'cpl',
+    label: 'CPL 참가 — 서플라이',
+    benefit: '10/1 전까지 등록 무료',
+  },
+  {
+    key: 'cpl-third',
+    from: null,
+    to: 'cpl',
+    label: 'CPL 참가 — 3부',
+    benefit: '10/1 전까지 등록 무료',
+  },
+  {
+    key: 'cpl-new',
+    from: null,
+    to: 'cpl',
+    label: 'CPL 참가 — 신규',
+    benefit: '10/1 전까지 등록 무료',
   },
 ] as const
 export type ApplicationKindKey = (typeof APPLICATION_KINDS)[number]['key']

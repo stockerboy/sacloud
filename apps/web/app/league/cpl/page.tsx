@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
+import Link from 'next/link'
 
 import { prisma } from '@sacloud/db'
 import { cplSectorOf } from '@sacloud/contract'
@@ -107,6 +108,16 @@ export default async function CplPage() {
         <Line label="누구나 신청할 수 있습니다">
           참가 신청을 하시면 <b className="text-text-strong">10월 1일 전까지는 무료</b> 로
           등록해 드립니다.
+          {/* ★신청서로 가는 문★ (2026-09-22 사장님 「CPL 모집 신청서 만들고」) */}
+          <span className="mt-3 block">
+            <Link
+              prefetch={false}
+              href="/apply?kind=cpl-independent"
+              className="inline-flex items-center rounded-[var(--radius)] border border-accent px-4 py-2 text-[14px] font-semibold text-accent transition-colors hover:bg-accent hover:text-white"
+            >
+              CPL 참가 신청하기
+            </Link>
+          </span>
         </Line>
         <Line label="다만 자격은 봅니다">
           클랜의 체계와 일퀵 참여도를 봅니다. 열산만 하는 클랜, 열빡만 하는 클랜,
