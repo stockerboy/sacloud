@@ -5,6 +5,13 @@ import { HomeSearch } from './_home/HomeSearch'
 import { HomeSeasonLine } from './_home/HomeSeasonLine'
 import { HERO_V2, HERO_V3 } from './_home/heroV2'
 import { HomeBadgeWall } from './_home/HomeBadgeWall'
+import { HomeHotBoard } from './_home/HomeHotBoard'
+
+/**
+ * ★메인에 배지 진열장을 그릴까★ (2026-09-21 사장님: 「뱃지는 메인화면에서 숨겨버려」).
+ * 배지 때문에 폰에서 닉네임이 가려진다는 것이 까닭이다. `true` 면 돌아온다.
+ */
+const HOME_BADGE_WALL = false as boolean
 
 /**
  * 홈.
@@ -225,9 +232,23 @@ export default function HomePage() {
             컴포넌트는 `packages/ui/src/layout/SiteMapNav.tsx` 로 ★옮겼을 뿐★ 안 지웠다.
         */}
 
-        {/* ★배지 진열장★ (2026-09-20 사장님: 「뱃지를 전부 다 메인화면에 이쁘게 진열하고
-            누르면 뱃지 페이지로 가게해줘」) — 상태가 없어 서버에서 그린다 */}
-        <HomeBadgeWall />
+        {/*
+          ★배지 진열장★ (2026-09-20 사장님: 「뱃지를 전부 다 메인화면에 이쁘게 진열하고
+          누르면 뱃지 페이지로 가게해줘」) — 상태가 없어 서버에서 그린다.
+
+          ⚠ ★2026-09-21 — 메인에서 감췄다★ (사장님: 「★뱃지는 메인화면에서 숨겨버려★
+            (그리고 ★뱃지때문에 또 모바일에서 닉네임이 다 안보여★)」)
+
+            ★지우지 않았다★ (`CLAUDE.md` 1-4) — `HOME_BADGE_WALL` 을 `true` 로 두면
+            그대로 돌아오고, 배지 화면(`/league/{slug}/badge`)도 그대로 열린다.
+        */}
+        {HOME_BADGE_WALL ? <HomeBadgeWall /> : null}
+
+        {/*
+          ★Hot게시판★ (2026-09-21 사장님: 「메인화면에 ★HOT게시판을 걸어★」).
+          공지가 먼저, 그다음 Hot 글이다. 글이 없으면 이 구역을 통째로 안 그린다.
+        */}
+        <HomeHotBoard />
       </div>
 
       {/* 3 사이트 소개 · 4 사용법 — 랭킹 미리보기와 최근 경기가 있던 자리.
