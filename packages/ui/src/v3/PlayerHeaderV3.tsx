@@ -37,6 +37,7 @@ import {
 } from '@sacloud/contract'
 import { rankColorOf, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
+import { PlayerHexTrend } from './PlayerHexTrend'
 import { strengthAxes } from './playerHexAxes'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, RankText, TierText, clanThemeOf } from './primitives'
@@ -717,13 +718,23 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
       */}
       <div className="v3-phead-body">
       {axes.length > 0 ? (
-        <div className="v3-phead-hex">
+        <div className="v3-phead-hex" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 340 }}>
           {/*
-            ★크게★ (2026-09-21 사장님: 「왼쪽에 ★더 크게★ 육각그래프」).
+            ⚠ ★2026-09-22 — 위에 그래프, 아래에 육각형★ (사장님, 서플라이 실측 사진).
+            서플라이는 이 자리에 세로 광고를 쌓는다 — 우리는 그 자리에 우리 기능을 쌓는다.
+            ★옛 판(육각형 하나 · 392px)은 지우지 않는다★ (`CLAUDE.md` 1-4) — 되돌리려면
+            아래 두 줄만 걷어내고 `size={392}` 로 되돌리면 된다.
+              <Hexagon axes={axes} id={`pheadHex-${data.player.id}`} size={392} />
+            ⚠ 광고 자리 폭을 넘지 않는다는 지시라 ★칸 폭을 340px 로 줄였다★ (옛 392px).
+          */}
+          <PlayerHexTrend data={data} />
+          {/*
+            ★크게★ (2026-09-21 사장님: 「왼쪽에 ★더 크게★ 육각그래프」) — 그래프가 새로
+            생긴 만큼 340px 로 한 단만 줄였다. 옛 값 392.
             ⚠ 이 칸은 ★900px 이상에서만 보인다★ (`.v3-phead-hex` 가 폰에서 `display:none`) —
               그래서 폰 걱정 없이 키울 수 있다.
           */}
-          <Hexagon axes={axes} id={`pheadHex-${data.player.id}`} size={392} />
+          <Hexagon axes={axes} id={`pheadHex-${data.player.id}`} size={340} />
         </div>
       ) : null}
       <div className="v3-phead-stats">

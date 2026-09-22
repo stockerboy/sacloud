@@ -30,6 +30,7 @@ import { formatRating } from '../common/format'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
 import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
+import { ClanTop3PanelV3 } from './ClanTop3PanelV3'
 
 const MVP_LEGACY_UNKNOWN_NOTICE = false
 /* 2026-09-11 사장님 목업: 구간 카드(승률·킬뎃·MVP·핵의심)는 ★머리 카드★(PlayerHeaderV3 · 레이아웃)로 올라갔다.
@@ -1204,6 +1205,13 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
         </div>
       ) : null}
+      {/*
+        ★클랜별 전적 TOP3★ (2026-09-22 사장님 — 서플라이 「최근매치」 자리와 같은
+        위치, 「가장 많이 한 클랜 순」 3개 + 더보기). 탭 상태(`setTab`)를 이 파일
+        안에서 그대로 공유하므로 새 데이터 왕복 없이 「클랜별전적」 탭으로 바로 연결한다.
+      */}
+      <ClanTop3PanelV3 data={data} onMore={() => setTab('clan')} />
+
       {/* ★탭 셋★ (2026-09-11 사장님 목업) — 그래프 · 플레이분석 · 클랜별전적 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 10, marginTop: 16 }}>
         {([['graph', '그래프'], ['play', '플레이분석'], ['clan', '클랜별전적']] as const).map(([key, label]) => (
