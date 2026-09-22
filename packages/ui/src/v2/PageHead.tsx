@@ -98,7 +98,9 @@ export function PageHead({
 }: PageHeadProps) {
   return (
     <div
-      className={className}
+      /* ⚠ 2026-09-23 새벽 — 루트에 `v2-pagehead` 가 없어서 폰 `.sac-v3-page .v2-pagehead` 여백 규칙이 허공을 쳤다.
+         경기 상세 폰에서 「경기」 제목이 x=0 에 붙었다 (찍어서 잡았다). 옛 판은 className 만 */
+      className={`v2-pagehead ${className}`.trim()}
       style={{
         ...(title === '' ? wrapNoTitle : wrap),
         ...(divider ? { borderBottom: '1px solid var(--v2-head-divider)' } : {}),

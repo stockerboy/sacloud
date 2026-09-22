@@ -152,7 +152,8 @@ function MvpChip({ entry }: { entry: MatchLineupEntry }) {
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
       <MarkCircle clan={entry.match_time_clan ? { slug: entry.match_time_clan.slug, mark: entry.match_time_clan.mark } : null} size={16} />
-      <span style={{ fontSize: 12, fontWeight: 700, color: '#8a6a12', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{entry.name}</span>
+      {/* ⚠ 2026-09-23 새벽 — MVP 이름이 금색('#8a6a12')이었다. MVP 는 빨강 배지 하나로 말한다 (사장님: 노랑→빨강 통일) · 이름은 본문색 */}
+      <span style={{ fontSize: 12, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{entry.name}</span>
       <MvpMark size={15} />
     </span>
   )
