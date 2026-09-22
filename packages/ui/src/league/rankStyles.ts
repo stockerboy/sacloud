@@ -173,3 +173,28 @@ export const TAB =
   'shrink-0 whitespace-nowrap border-b-2 px-5 py-2.5 text-base tracking-wide max-md:px-3.5 max-md:py-2 max-md:text-sm'
 export const TAB_ACTIVE = 'border-b-accent font-bold text-text-strong'
 export const TAB_IDLE = 'border-b-transparent text-meta hover:text-text'
+
+/* ────────────────────────────────────────────────────────────────────────
+   ★개인랭킹 전용 칸 폭★ (2026-09-22 밤 · 서플라이 실측)
+
+   서플라이는 클랜랭킹과 개인랭킹의 칸 폭이 ★다르다★ —
+   ```
+   클랜랭킹  순위 140 · 클랜 336 · 승리 154 · 패배 154 · 승률 154 · 래더 136   = 1074
+   개인랭킹  순위 140 · 닉네임 252 · 승리 126 · 패배 126 · 승률 126
+                                   · 킬뎃 126 · 평균킬 126 · 래더 52        = 1074
+   ```
+   그래서 이름을 따로 둔다. 한 상수를 둘이 나눠 쓰면 한쪽이 반드시 어긋난다.
+
+   ⚠ 래더는 서플라이가 52px 이라 「3,092점」 이 칸을 넘는다. 우리는 ★104px★ 로
+     둔다 — 넘치는 것까지 베끼지 않는다 (`CLAUDE.md` 2-4 는 «관찰한 동작» 을 베끼는
+     것이지 «흠» 까지 베끼라는 뜻이 아니다). 그만큼 닉네임 칸이 넓어진다.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/** 개인랭킹 지표 칸 (승률 · 킬뎃) — 폰은 옛 52px 그대로 */
+export const COL_PSTAT = 'w-[126px] shrink-0 text-right max-md:w-[52px]'
+/** 개인랭킹의 ★PC 전용★ 칸 (승리 · 패배 · 평균킬) — 폰에서는 칸째로 사라지고 접힌 판이 선다 */
+export const COL_PWL = 'w-[126px] shrink-0 text-right max-md:hidden'
+/** 개인랭킹 래더 칸 */
+export const COL_PRATING = 'w-[104px] shrink-0 text-right max-md:w-[76px]'
+/** PC 에서는 접힌 보조 수치를 감춘다 — 제 칸이 따로 섰기 때문이다 */
+export const SUB_PHONE_ONLY = 'hidden max-md:block'

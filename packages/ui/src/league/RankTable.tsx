@@ -97,6 +97,10 @@ import {
   COL_WL,
   COL_RATING,
   COL_STAT,
+  COL_PSTAT,
+  COL_PWL,
+  COL_PRATING,
+  SUB_PHONE_ONLY,
   HEAD,
   MARK,
   NUM,
@@ -985,8 +989,18 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
         {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>닉네임</div>
         {clanColumn ? <div className={COL_CLAN}>클랜</div> : null}
-        {columns.winRate ? <div className={`${COL_STAT} ${winRateHidden}`}>승률</div> : null}
-        {columns.kd ? <div className={`${COL_STAT} ${kdHidden}`}>킬뎃</div> : null}
+        {/*
+          ★서플라이 칸 여덟★ (2026-09-22 밤 · 실측) —
+          순위 · 닉네임 · ★승리 · 패배★ · 승률 · 킬덩 · ★평균킬★ · 래더
+          2026-08-30 에 우리가 「승률·킬덩 아래 작게」 접어 둔 칸들이다.
+          사장님 지시가 ★서플라이와 똑같이★ 라 다시 펴다.
+          ★폰에서는 그대로 접힌 판★ 이다 — `COL_PWL` 이 `max-md:hidden` 이다.
+        */}
+        {columns.winRate ? <div className={COL_PWL}>승리</div> : null}
+        {columns.winRate ? <div className={COL_PWL}>패배</div> : null}
+        {columns.winRate ? <div className={`${COL_PSTAT} ${winRateHidden}`}>승률</div> : null}
+        {columns.kd ? <div className={`${COL_PSTAT} ${kdHidden}`}>킬뎃</div> : null}
+        {columns.kd ? <div className={COL_PWL}>평균킬</div> : null}
         {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
             머리글을 그대로 `래더` 로 두면 같은 자리에 다른 뜻의 숫자가 들어가 거짓말이 된다. */}
         {/* ★통합 개인랭킹은 실력 점수 순★ (2026-09-10 · 사장님 확정). 점수가 온 줄이 하나라도 있으면
@@ -994,7 +1008,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
         {/* ⚠ ★2026-09-21 — `ladder` 면 머리글도 「래더」다★ (3부와 같은 말).
             그 칸에 적히는 값이 ★래더 점수★ 이므로 「실력 점수」 라 적으면 거짓말이 된다 */}
         {columns.rating ? (
-          <div className={COL_RATING}>
+          <div className={COL_PRATING}>
             {byWeapon
               ? '래더증감'
               : SCORE_COLUMN === 'ladder'
@@ -1060,7 +1074,13 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   *   이름 칸을 고정하고 배지는 그 뒤에서 ★왼쪽부터★ 채운다. 그래야
                   *   첫째끼리 · 둘째끼리 세로로 맞는다. 폰은 자리가 좁아 그대로 둔다.
                   */}
-                <div className="min-w-0 md:w-[210px] md:shrink-0">
+                {/*
+                  * ⚠ ★2026-09-22 밤 — PC 에서는 ★한 줄★ 로 둔다★ (서플라이 줄 높이 49px)
+                  *   닉네임 밑에 소속 클러명을 두 줄로 쌓으면 줄이 ★65px★ 으로 부풀어
+                  *   서플라이(49px)와 한 눈에 다르게 보였다. ★값을 없애지 않고 옆으로 옮긴다.★
+                  *   폰은 그대로 두 줄이다 — 거기는 자리가 없고, 사장님이 따로 맞추신 판이다.
+                  */}
+                <div className="min-w-0 md:flex md:w-[210px] md:shrink-0 md:items-baseline md:gap-2">
                   <div className="flex min-w-0 items-center gap-1.5">
                     {/* ★누름 영역★ — 글자 높이가 19px 라 손가락으로 집기 어려웠다
                         (2026-09-15 · 무한 QA). 위아래 여백을 주고 같은 만큼 당겨
@@ -1088,14 +1108,14 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   {row.clan ? (
                     <Link prefetch={false}
                       /* ⚠ 2026-09-16 — 10.8 → 11.7px (사장님: 랭킹 글씨를 키움). 옛 값 `text-[0.72rem]` */
-                      className="-my-1.5 mt-0.5 block truncate py-1.5 text-[0.78rem] leading-none text-meta hover:text-text-strong"
+                      className="-my-1.5 mt-0.5 block truncate py-1.5 text-[0.78rem] leading-none text-meta hover:text-text-strong md:mt-0 md:shrink"
                       href={leagueClanPath(leagueSlug, row.clan.slug)}
                       title={row.clan.name}
                     >
                       {row.clan.name}
                     </Link>
                   ) : (
-                    <span className="mt-0.5 block truncate text-[0.78rem] leading-none text-faint">
+                    <span className="mt-0.5 block truncate text-[0.78rem] leading-none text-faint md:mt-0 md:shrink">
                       무소속
                     </span>
                   )}
@@ -1224,49 +1244,74 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                 )}
               </div>
             ) : null}
+            {/*
+              ★승리 · 패배 칸★ (2026-09-22 밤) — 서플라이와 같은 자리다.
+                값은 이미 있던 것(`row.win` · `row.lose`)이다 — ★새로 세지 않았다.★
+                아래 승률 칸의 접힌 판(`sub`)과 ★같은 숫자★ 이고, PC 에서는 그쪽이 숨는다.
+                폰에서는 이 칸이 사라지고 접힌 판이 선다 — 값이 없어지는 순간은 없다.
+            */}
+            {columns.winRate ? (
+              <div className={`${COL_PWL} ${NUM}`}>
+                {row.win + row.lose === 0 ? <span className="text-faint">-</span> : <>{formatCount(row.win)}승</>}
+              </div>
+            ) : null}
+            {columns.winRate ? (
+              <div className={`${COL_PWL} ${NUM}`}>
+                {row.win + row.lose === 0 ? <span className="text-faint">-</span> : <>{formatCount(row.lose)}패</>}
+              </div>
+            ) : null}
             {!columns.winRate ? null : egg === 'sealed' ? (
-              <div className={`${COL_STAT} ${winRateHidden}`}>
+              <div className={`${COL_PSTAT} ${winRateHidden}`}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
             ) : row.win + row.lose === 0 ? (
               /* 한 판도 안 뛰었다 — 클랜 표와 같은 규칙이다 (O-033) */
-              <NoRecordStat className={`${COL_STAT} ${winRateHidden}`} />
+              <NoRecordStat className={`${COL_PSTAT} ${winRateHidden}`} />
             ) : (
             <Stat
-              className={`${COL_STAT} ${winRateHidden}`}
+              className={`${COL_PSTAT} ${winRateHidden}`}
               value={formatRate(row.win_rate)}
               tone={rateClass(row.win_rate)}
               unit="%"
               sub={
-                <>
+                <span className={SUB_PHONE_ONLY}>
                   {formatCount(row.win)}승 {formatCount(row.lose)}패
-                </>
+                </span>
               }
             />
             )}
             {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107).
                 IPL 은 원래 킬뎃이 없어 알과 무관하다 (사양 2장) */}
             {!columns.kd ? null : row.kd_rate === null ? (
-              <div className={`${COL_STAT} ${kdHidden} text-faint`}>-</div>
+              <div className={`${COL_PSTAT} ${kdHidden} text-faint`}>-</div>
             ) : egg === 'sealed' ? (
-              <div className={`${COL_STAT} ${kdHidden}`}>
+              <div className={`${COL_PSTAT} ${kdHidden}`}>
                 <EggVeil state={egg}>{null}</EggVeil>
               </div>
             ) : (
               /* 평균킬은 킬뎃 아래로 접었다 */
               <Stat
-                className={`${COL_STAT} ${kdHidden}`}
+                className={`${COL_PSTAT} ${kdHidden}`}
                 value={formatRate(row.kd_rate)}
                 tone={rateClass(row.kd_rate)}
                 unit="%"
-                sub={<>{formatAverage(row.kill_per_match)}킬</>}
+                sub={<span className={SUB_PHONE_ONLY}>{formatAverage(row.kill_per_match)}킬</span>}
               />
             )}
+            {/*
+              ★평균킬 칸★ (2026-09-22 밤) — 서플라이의 여덟째 칸이다 (「7.7킬」).
+                이 값도 바로 위 칸 아래에 접혀 있던 것이다 — ★자리만 바뀜다.★
+            */}
+            {columns.kd ? (
+              <div className={`${COL_PWL} ${NUM}`}>
+                {row.kd_rate === null ? <span className="text-faint">-</span> : <>{formatAverage(row.kill_per_match)}킬</>}
+              </div>
+            ) : null}
             {columns.rating ? (
               /* ★층수마다 색이 다르다★ (2026-09-11 사장님: 45층~ 빨강 · 40 노랑 · 35 하늘 · 30 초록 · 그 아래 하양).
                  옛 모양은 한 색(청록 `text-accent`)이었다 — 자리·크기는 그대로다 */
               <div
-                className={`${COL_RATING} ${NUM}`}
+                className={`${COL_PRATING} ${NUM}`}
                 style={byWeapon || scoreLadder ? undefined : { color: floorColor(row.score ?? row.rating) }}
               >
                 {byWeapon

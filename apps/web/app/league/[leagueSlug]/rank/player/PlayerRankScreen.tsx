@@ -41,7 +41,15 @@ const SEASON_PODIUM_ON = false
  *   후보는 `PlayerRankRow` 의 `score`·`hex` 둘인데 둘 다 이 리그가
  *   일부러 칸을 내린 값이라 사장님 판단이 필요하다.
  */
-const TABLE_FULL_WIDTH: boolean = false
+/*
+ * ⚠ ★2026-09-22 밤 — 다시 ★true★★ (사장님: 「서플라이랑 똑같이」)
+ *   위 ⚠ 가 「폈더니 빈칸이 늘었다」 고 적은 까닭은 ★칸이 다섯개뿐이어서★ 였다.
+ *   오늘 서플라이와 같이 ★여덟 칸★ (순위·닉네임·승리·패배·승률·킬덩·평균킬·래더)
+ *   을 세우면서 빈칸을 ★메울 값이 생겼다.★ 그때 적은 조건(「메울 값을 세우기 전까지」)이
+ *   풀렸다. 표 폭은 서플라이와 같은 ★1076px★ 가 된다.
+ *   ★`false` 로 두면 옛 900px 판이 그대로 돌아온다.★
+ */
+const TABLE_FULL_WIDTH: boolean = true
 
 /**
  * 「개인랭킹」 `/league/{slug}/rank/player`.
@@ -403,7 +411,10 @@ function SingleLeaguePlayerRank({ leagueSlug }: { leagueSlug: string }) {
         */}
         <div
           ref={tableRef}
-          className={`mx-auto mt-[30px] w-full scroll-mt-[120px] ${TABLE_FULL_WIDTH ? '' : 'max-w-[900px]'}`}
+          /* ★서플라이는 개인랭킹 표도 테두리 상자 안에 넣는다★ (2026-09-22 밤 실측:
+             1076 · 1px #d1d5db · 둥글기 0). 클러랭킹과 같은 상자를 쓴다 —
+             두 표가 같은 자리에서 다르게 생기면 그게 곰 눈에 띄는 차이다. */
+          className={`sac-board sac-rank-board mobile-bleed mx-auto mt-[30px] w-full scroll-mt-[120px] ${TABLE_FULL_WIDTH ? '' : 'max-w-[900px]'}`}
         >
           <PlayerRankTable
             leagueSlug={leagueSlug}
