@@ -73,7 +73,8 @@ export function ClanTraitBackdrop({ theme, markSlug }: { theme: ClanTheme; markS
   return (
     <>
       {markSlug && hasFitMark(markSlug) ? (
-        <span aria-hidden style={{ position: 'absolute', left: '-4%', top: '8%', width: '58%', height: '112%', backgroundImage: `url(${fitMarkUrl(markSlug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'left center', opacity: 0.05, filter: 'grayscale(1)', pointerEvents: 'none' }} />
+        {/* 2026-09-23 — left -4% 가 폰에서 화면 왼쪽 밖으로 2px 나갔다(운영 실측). 상자는 0 에 두고 그림만 -4% 로 민다 */}
+        <span aria-hidden style={{ position: 'absolute', left: 0, top: '8%', width: '58%', height: '112%', backgroundImage: `url(${fitMarkUrl(markSlug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: '-4% center', opacity: 0.05, filter: 'grayscale(1)', pointerEvents: 'none' }} />
       ) : null}
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '62%', background: `linear-gradient(180deg, ${theme.light}14, ${theme.main}0a 55%, transparent)`, pointerEvents: 'none' }} />
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '48%', background: `linear-gradient(0deg, ${theme.deep}1f, ${theme.main}0a 60%, transparent)`, pointerEvents: 'none' }} />

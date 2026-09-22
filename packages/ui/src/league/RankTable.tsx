@@ -1085,7 +1085,8 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   *   서플라이(49px)와 한 눈에 다르게 보였다. ★값을 없애지 않고 옆으로 옮긴다.★
                   *   폰은 그대로 두 줄이다 — 거기는 자리가 없고, 사장님이 따로 맞추신 판이다.
                   */}
-                <div className="min-w-0 md:flex md:w-[210px] md:shrink-0 md:items-baseline md:gap-2">
+                {/* 2026-09-23 새벽 — 폰도 한 줄 (서플라이 폰 줄 36px). 클랜명은 닉네임 옆에 작게 */}
+                <div className="flex min-w-0 items-baseline gap-2 md:w-[210px] md:shrink-0">
                   <div className="flex min-w-0 items-center gap-1.5">
                     {/* ★누름 영역★ — 글자 높이가 19px 라 손가락으로 집기 어려웠다
                         (2026-09-15 · 무한 QA). 위아래 여백을 주고 같은 만큼 당겨
@@ -1113,14 +1114,14 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   {row.clan ? (
                     <Link prefetch={false}
                       /* ⚠ 2026-09-16 — 10.8 → 11.7px (사장님: 랭킹 글씨를 키움). 옛 값 `text-[0.72rem]` */
-                      className="-my-1.5 mt-0.5 block truncate py-1.5 text-[0.78rem] leading-none text-meta hover:text-text-strong md:mt-0 md:shrink"
+                      className="-my-1.5 block shrink truncate py-1.5 text-[0.78rem] leading-none text-meta hover:text-text-strong"
                       href={leagueClanPath(leagueSlug, row.clan.slug)}
                       title={row.clan.name}
                     >
                       {row.clan.name}
                     </Link>
                   ) : (
-                    <span className="mt-0.5 block truncate text-[0.78rem] leading-none text-faint md:mt-0 md:shrink">
+                    <span className="block shrink truncate text-[0.78rem] leading-none text-faint">
                       무소속
                     </span>
                   )}
