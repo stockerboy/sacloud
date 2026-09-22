@@ -83,6 +83,17 @@ import { HomeLeagueButtons } from './HomeLeagueButtons'
  */
 const HOME_RECENT_ON: boolean = false
 
+/**
+ * ★리그 타일 + 개인랭킹·클랜랭킹·최근경기 3버튼★ (2026-09-22 사장님 — 폰 사진에 X).
+ *
+ * > 「이것도 없애야겠지 똑같이 하려면」 — 서플라이 홈에는 이 칸이 없다. 「UI를
+ * >  전부 똑같이 '똑같이'」 지시를 따라 끈다.
+ *
+ * ⚠ 지우지 않는다 (`CLAUDE.md` 1-4) — `HomeLeagueButtons` 컴포넌트도, 아래 렌더
+ *   분기도 그대로 있다. 이 한 줄만 `true` 로 돌리면 원래대로 돌아온다.
+ */
+const HOME_LEAGUE_TILES_ON: boolean = false
+
 const LEAGUE_SHORTCUTS = FEATURED_LEAGUES.filter(
   (league) => !isLeaguePreparing(league.href.split('/')[2] ?? ''),
 ).map((league) => ({ label: league.label, href: `${league.href}/rank/player` }))
@@ -398,7 +409,7 @@ export function HomeSearch() {
           `false` 로 두면 기능 소개와 참가 신청 단추가 그대로 돌아온다.
       */}
       {HERO_V3 ? (
-        <HomeLeagueButtons />
+        HOME_LEAGUE_TILES_ON ? <HomeLeagueButtons /> : null
       ) : HOME_RECENT_ON ? (
         <HomeAnalyzedMatches />
       ) : (
