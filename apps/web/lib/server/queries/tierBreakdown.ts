@@ -329,6 +329,9 @@ async function tiersOf(
             lose: c.lose,
             win_rate: pct(c.win, c.lose),
             kd: pct(c.kill, c.death),
+            /* ★원값도 같이★ (2026-09-22) — 화면이 「N킬 N데스」 를 적는다 */
+            kill: c.kill,
+            death: c.death,
             rifle_games: c.rifleGames,
             rifle_kd: pct(c.rifleKill, c.rifleDeath),
             sniper_games: c.sniperGames,

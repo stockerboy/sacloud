@@ -324,7 +324,17 @@ export function listRoundsOf(m: MatchListItem): [number, number] | null {
 /** 진영의 팀 정보 — 그 진영 명단 다수의 «경기 당시 클랜». 스냅샷 둘 중 하나와 맞으면 그 스냅샷(티어까지),
  *  아니면 명단에서 읽은 클랜(티어 모름 → null). 2026-09-11 QA 교차검토 4번: 용병으로 뛴 선수 페이지에서
  *  «sometimes» 라벨 아래 igloo 명단이 붙었다 — 보는 쪽 스냅샷을 진영에 그대로 씌운 탓 */
-export interface TeamSnap { clan: { id: string; slug: string; name: string; mark: { bg: string | null; front: string | null } }; division: number | null; league_clan_id: string | null }
+/**
+ * ⚠ ★2026-09-22 — `rating` · `placement` 를 더했다★ (선수 상세 경기카드를 서플라이와
+ *   맞추면서). 서플라이는 팀 줄에 「1부리그 ★1,508점★」 이라고 ★클랜 래더★ 까지 적는다.
+ *
+ *   값은 새로 만든 것이 아니다 — `MatchClanSnapshot`(`contract/entities/match.ts`)에
+ *   이미 `rating` · `placement` 로 실려 온다. 여기까지 ★안 날라오고 있었을 뿐★ 이다.
+ *
+ *   ★모르면 `null` 이다.★ 명단 다수로 지어낸 클랜(아래 마지막 갈래)은 그 클랜의
+ *   스냅샷이 없어 래더를 알 수 없다 — 0 으로 채우면 「0점이다」 라는 거짓이 된다 (D-106).
+ */
+export interface TeamSnap { clan: { id: string; slug: string; name: string; mark: { bg: string | null; front: string | null } }; division: number | null; league_clan_id: string | null; rating: number | null; placement: boolean }
 const majorityClanOf = (stats: readonly MatchPlayerStat[]) => {
   const tally = new Map<string, { n: number; c: NonNullable<MatchPlayerStat['match_time_clan']> }>()
   const keyOf = (c: NonNullable<MatchPlayerStat['match_time_clan']>) => c.league_clan_id ?? c.slug ?? c.name
@@ -348,15 +358,16 @@ const H2H_CHART_LEGACY = false
 const SCORE_WATERMARKS = false
 
 export function teamSnapOf(detail: MatchDetail, side: 'red' | 'blue', fallback: MatchDetail['league_clan']): TeamSnap {
-  if (!TEAM_NAME_FROM_LINEUP) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id }
+  if (!TEAM_NAME_FROM_LINEUP) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id, rating: fallback.rating, placement: fallback.placement }
   const top = majorityClanOf(side === 'red' ? detail.red_stats : detail.blue_stats)
   const other = majorityClanOf(side === 'red' ? detail.blue_stats : detail.red_stats)
   const snaps = [detail.league_clan, detail.opponent]
   /* 양쪽 다수가 같은 클랜(한 클랜이 용병으로 양쪽에 섰거나 자체 경기)이면 명단으로 못 가른다 → 수집기의 팀 라벨 그대로 */
-  if (!top || (other && other.key === top.key)) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id }
+  if (!top || (other && other.key === top.key)) return { clan: fallback.clan, division: fallback.division, league_clan_id: fallback.league_clan_id, rating: fallback.rating, placement: fallback.placement }
   const hit = snaps.find((s) => (top.c.league_clan_id && s.league_clan_id === top.c.league_clan_id) || (top.c.slug && s.clan.slug === top.c.slug) || s.clan.name === top.c.name)
-  if (hit) return { clan: hit.clan, division: hit.division, league_clan_id: hit.league_clan_id }
-  return { clan: { id: top.c.league_clan_id ?? fallback.clan.id, slug: top.c.slug ?? fallback.clan.slug, name: top.c.name, mark: top.c.mark }, division: null, league_clan_id: top.c.league_clan_id }
+  if (hit) return { clan: hit.clan, division: hit.division, league_clan_id: hit.league_clan_id, rating: hit.rating, placement: hit.placement }
+  /* ★명단에서 지어낸 클랜★ — 스냅샷이 없으니 티어도 래더도 모른다. 지어내지 않는다 (D-106) */
+  return { clan: { id: top.c.league_clan_id ?? fallback.clan.id, slug: top.c.slug ?? fallback.clan.slug, name: top.c.name, mark: top.c.mark }, division: null, league_clan_id: top.c.league_clan_id, rating: null, placement: false }
 }
 
 export function ourSideOf(detail: MatchDetail): 'red' | 'blue' {

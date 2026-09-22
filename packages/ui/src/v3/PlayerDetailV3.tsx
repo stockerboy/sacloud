@@ -14,10 +14,10 @@
  * 지우지 않았다 — 부르지 않을 뿐이다 (`CLAUDE.md` 1-4).
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import type { LeaguePlayerDetail, MatchDetail, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
+import type { LeaguePlayerDetail, MatchDetail, MatchLineupEntry, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
 import { showsTier, badgeArtSmallPath, badgeOfAxis } from '@sacloud/contract'
 import { leagueBadgePath } from '../common/paths'
-import { rankColor, statColor } from './rankColors'
+import { floorColor, rankColor, rankColorOf, statColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { CompareSearchV3, type CompareCandidate } from './CompareSearchV3'
 import { strengthAxes } from './playerHexAxes'
@@ -25,12 +25,35 @@ import { AnalysisPanelV3 } from './AnalysisPanelV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { MvpWhy } from './MvpWhy'
 import { Card, CardHead, Kda, MarkCircle, MvpMark, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst, matchShownAt } from './primitives'
-import { WIN_LOSS, V3, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
+import { teamFirstSideLabel } from '../record/matchDetailView'
+import { WIN_LOSS, V3, V3_DARK, type V3Tone, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
 import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 import { ClanTop3PanelV3 } from './ClanTop3PanelV3'
+
+/**
+ * ★★본문 탭 셋을 껐다★★ (2026-09-22 사장님)
+ *
+ * > 「우리 원래 페이지에있던 ★세개의 섹터로 나뉜 그래프/플레이스타일/클랜별전적
+ * >   이건 전부 없애★ 그것들을 서플라이 원본에 녹인다고 생각하면 돼」
+ *
+ * 세 칸이 어디로 녹아 들어갔는가 —
+ *   · 그래프      → ★맨 위★ 남색 추이 카드 (서플라이의 광고 자리)
+ *   · 플레이분석  → ★오른쪽 칸★ 기록카드 밑 육각형
+ *   · 클랜별전적  → ★최근매치 카드★ 안 (`ClanTop3PanelV3`)
+ *
+ * ★코드는 지우지 않는다★ (`CLAUDE.md` 1-4) — 이 상수를 `true` 로 되돌리면 탭이
+ * 그대로 돌아온다. `AnalysisPanelV3`(플레이분석 설명 칸)도 그때 같이 살아난다.
+ */
+const BODY_TABS = false
+
+/**
+ * ★추이 그래프는 남색 판★ (2026-09-22 사장님: 「하얀색버전말고 ★남색버전★」).
+ * 값은 `tokens.ts` 가 살려 둔 흰 UI 이전 팔레트 그대로다 — 새로 지은 색이 없다.
+ */
+const TREND_TONE = V3_DARK
 
 const MVP_LEGACY_UNKNOWN_NOTICE = false
 /* 2026-09-11 사장님 목업: 구간 카드(승률·킬뎃·MVP·핵의심)는 ★머리 카드★(PlayerHeaderV3 · 레이아웃)로 올라갔다.
@@ -553,25 +576,36 @@ function weekPoints(points: readonly WeeklyPoint[]): TrendPoint[] {
 }
 
 /** ⚠ 옛 추이 카드(`TrendChart` · 최근 3일/주간)는 아래에 그대로 있다. 2026-09-10 부터는 사장님 지시서대로 `TrendChartV3` 가 그린다 */
-function TrendCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: boolean }) {
+function TrendCard({ data, showsKd, tone = V3 }: { data: LeaguePlayerDetail; showsKd: boolean; tone?: V3Tone }) {
   const [mode, setMode] = useState<TrendMode>('day')
   const today = data.trend.find((d) => d.today) ?? null
   /* DAY 마커는 «경기가 있던 마지막 날» 값을 잇는다 — 오늘 0판이면 «오늘 0승 0패 83%» 처럼 읽혀 헷갈렸다 (QA 교차검토 16번)
      → 오늘 판이 있으면 «오늘», 없으면 그 날짜를 적는다 */
   const lastPlayed = [...data.trend].reverse().find((d) => !d.future && d.win + d.lose > 0) ?? null
   const dayRef = today && today.win + today.lose > 0 ? { d: today, name: '오늘' } : lastPlayed ? { d: lastPlayed, name: lastPlayed.label } : null
+  const T = tone
+  const chip = (on: boolean): CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', padding: '5px 11px', borderRadius: V3.radiusCtl,
+    cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 11.5,
+    color: on ? T.textStrong : T.textDim,
+    background: on ? T.chip : 'transparent',
+    border: `1px solid ${on ? T.chipBorder : 'transparent'}`,
+  })
   return (
-    <Card style={{ marginTop: 16 }}>
-      <CardHead title={showsKd ? '승률 및 킬뎃 추이' : '승률 추이'} ribbon={V3.red} right={
+    <section style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderTop: `2px solid ${V3.red}`, borderRadius: V3.radiusCard, overflow: 'hidden', fontFamily: V3.font }}>
+      {/* 머리줄 — `CardHead` 와 같은 꼴을 색판만 바꿔 손으로 적었다 (공용 `CardHead` 는 흰 카드 전용이다) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px', borderBottom: `1px solid ${T.divider}`, flexWrap: 'wrap' }}>
+        <span style={{ width: 22, height: 2, background: V3.red, flex: 'none' }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: T.textStrong, whiteSpace: 'nowrap' }}>{showsKd ? '승률 및 킬뎃 추이' : '승률 추이'}</span>
+        {showsKd ? <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}><span style={{ width: 15, height: 2, background: '#ff5a63' }} /><span style={{ fontSize: 11, color: T.textFaint }}>킬뎃</span></span> : null}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: showsKd ? 0 : 4 }}><span style={{ width: 15, height: 2, background: '#7fa9ff' }} /><span style={{ fontSize: 11, color: T.textFaint }}>승률</span></span>
+        <span style={{ fontSize: 10.5, color: T.textGhost2, minWidth: 0 }}>오늘은 경기가 끝날 때마다 바로 움직입니다 · 지난 날은 2판 미만이면 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
+        <div style={spacerStyle} />
         <span style={{ display: 'flex', gap: 5 }}>
-          <span onClick={() => setMode('day')} style={chipStyle(mode === 'day')}>DAY</span>
-          <span onClick={() => setMode('cum')} style={chipStyle(mode === 'cum')}>누적</span>
+          <span onClick={() => setMode('day')} style={chip(mode === 'day')}>DAY</span>
+          <span onClick={() => setMode('cum')} style={chip(mode === 'cum')}>누적</span>
         </span>
-      }>
-        {showsKd ? <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}><span style={{ width: 15, height: 2, background: '#ff5a63' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>킬뎃</span></span> : null}
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: showsKd ? 0 : 4 }}><span style={{ width: 15, height: 2, background: '#7fa9ff' }} /><span style={{ fontSize: 11, color: V3.textFaint }}>승률</span></span>
-        <span style={{ fontSize: 10.5, color: V3.textGhost2, minWidth: 0 }}>오늘은 경기가 끝날 때마다 바로 움직입니다 · 지난 날은 2판 미만이면 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
-      </CardHead>
+      </div>
       <TrendChartV3
         days={data.trend}
         mode={mode}
@@ -580,8 +614,9 @@ function TrendCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: boole
         winLabel={mode === 'day' ? (dayRef ? `${dayRef.name} ${dayRef.d.win}승 ${dayRef.d.lose}패` : '아직 경기 없음') : `누적 ${data.win}승 ${data.lose}패`}
         kdLabel={mode === 'day' ? (dayRef ? `${dayRef.name} ${dayRef.d.kill}킬 ${dayRef.d.death}데스` : '') : data.kill !== null && data.death !== null ? `누적 ${fmt(data.kill)}킬 ${fmt(data.death)}데스` : ''}
         showsKd={showsKd}
+        tone={T}
       />
-    </Card>
+    </section>
   )
 }
 
@@ -615,7 +650,215 @@ export { TrendCardLegacy }
 
 /* ── 최근 경기 · 스코어보드 ───────────────────────────────────── */
 
-function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; showSaves: boolean; leagueSlug: string; side: 'red' | 'blue' }) {
+/* ── 경기 상세 스코어보드 — 서플라이 대조 (2026-09-22) ─────────── */
+
+/**
+ * ★★경기상세카드를 서플라이와 똑같이★★ (2026-09-22 사장님:
+ *   「경기상세카드도 서플라이랑 똑같이 고쳐 ★정확하게 꼼꼼하게 하나하나 대조하면서★ 만들어」
+ *    「경기상세 카드 ★모바일★ 은 앞쪽 두장 ★피씨★ 는 뒤쪽두장 처럼 생겼음」)
+ *
+ * ★★폰과 PC 가 다르다.★★ 사장님이 넉 장을 보내 주셔서 둘을 따로 쟀다.
+ *
+ * ── PC (사진 4 · `3rd.supply/league/supply/player/1074574325`)
+ * ```
+ *  제3보급창고  5 vs 5            게임시작시간: 2026년 6월 5일 오전 12시 6분
+ *  승리 ◉ des`per@do.   (선레드)  -  1부리그 1,508점
+ *  플레이어      래더      kda        무기      딜량       헤드샷
+ *  ◉ 성쉴       배치고사   6 / 5 / 1  스나이퍼  ▮1,088     0
+ *                         (54.5%)                        (0%)
+ * ```
+ *
+ * ── 폰 (사진 2)
+ * ```
+ *  제3보급창고  5 vs 5                                22분 10초
+ *               게임시작 - 2026년 4월 13일 오전 12시 21분
+ *  패배 ◉ saint                                        선레드
+ *  플레이어        kda         무기   딜량
+ *  ◉ 부리♡        7 / 8 / 1   스나   ▮1,272
+ *    2,565점      (46.7%)
+ * ```
+ *
+ * ── ★폰에서 달라지는 것 넷★ (그래서 칸을 CSS 로 갈아 끼운다)
+ *   ① ★래더 칸이 없다.★ 점수가 ★닉네임 바로 밑★ 작은 글씨로 내려간다
+ *   ② ★헤드샷 칸이 없다.★ 폭이 모자라 서플라이도 뺐다 (값은 계약에 그대로 있다)
+ *   ③ 무기가 ★「스나」·「라플」★ 로 줄어든다 (PC 는 「스나이퍼」·「라이플」)
+ *   ④ 선레드/선블루가 ★팀줄 오른쪽 끝★ 이다. PC 는 클랜명 바로 뒤 `(선레드)` 다
+ *   ⑤ 머리줄이 ★두 줄★ 이다 — 위에 맵·NvN·경기시간, 아래에 게임시작
+ *
+ * ── 대조표 (PC 여섯 칸)
+ *   | 서플라이 | 우리 값 | 비고 |
+ *   |---|---|---|
+ *   | 플레이어 | `row.name` + 마크 | 마크는 ★이름 앞★ · 스나는 `[S]` |
+ *   | 래더     | `row.rating` / `row.placement` | 배치고사면 「배치고사」 · 색은 `floorColor` |
+ *   | kda      | `kill/death/assist` + `kd_rate` | 두 줄 · 퍼센트에 ★색깔시스템★ |
+ *   | 무기     | `row.weapon` (0 라이플 · 1 스나이퍼) | 그 판에 든 총이다 |
+ *   | 딜량     | `row.damage` + 막대 | ★숫자가 막대 안★ · 그 경기 최대값이 100% |
+ *   | 헤드샷   | `row.headshot` + `headshot_percent` | 두 줄 |
+ *
+ * ── 우리가 ★더 하는 것★ 둘 (지우면 이미 있던 기능이 죽는다)
+ *   ① 닉네임을 누르면 ★그 판 육각★ 이 펼쳐진다 (2026-09-15 사장님)
+ *   ② 내 줄에 하늘색 띠 — 열 명 중 나를 찾는 표시 (서플라이도 같은 띠를 쓴다)
+ *
+ * ── ★없는 값은 「알수없음」★ (D-034 · D-106)
+ *   3rd.supply 라인업으로 명단만 복원한 참가자는 넥슨 상세가 없어 KDA·딜량·헤드샷이
+ *   `null` 이다. 0 으로 채우면 「0킬을 했다」는 ★거짓★ 이다. 서플라이도 「알수없음」이라 적는다.
+ */
+const SUPPLY_SCORE_COLUMNS = true
+
+/** 폰/PC 칸 갈아 끼우기 — 한 군데에만 적는다 (머리줄과 줄이 같은 격자를 써야 칸이 맞는다) */
+const SB_COLS_PC = 'minmax(92px,1fr) 66px 92px 64px 104px 66px'
+const SB_COLS_PHONE = 'minmax(84px,1fr) 88px 46px 88px'
+/** 폰에서 칸이 바뀌는 지점 — 서플라이 폰 실측(390px)과 태블릿 사이 */
+const SB_PHONE_MAX = 700
+
+/**
+ * ★스코어보드 전용 CSS★ — 폰/PC 를 갈아 끼운다.
+ *
+ * ⚠ ★왜 `v2/tokens.css` 가 아니라 여기인가★ — 이 규칙은 스코어보드 한 곳에서만 쓴다.
+ *   공용 CSS 에 넣으면 다른 세션과 같은 파일을 동시에 고치게 되고, 규칙이 어느 화면에
+ *   걸리는지 추적이 어려워진다. 이 컴포넌트가 죽으면 이 규칙도 같이 사라지는 편이 낫다.
+ */
+const SCOREBOARD_CSS = `
+.sac-sb-row { display: grid; grid-template-columns: ${SB_COLS_PC}; gap: 8px; align-items: center; }
+.sac-sb-phone-only { display: none; }
+@media (max-width: ${SB_PHONE_MAX}px) {
+  .sac-sb-row { grid-template-columns: ${SB_COLS_PHONE}; gap: 6px; }
+  .sac-sb-pc-only { display: none !important; }
+  .sac-sb-phone-only { display: block; }
+  .sac-sb-phone-only.sac-sb-inline { display: inline; }
+}
+`
+
+/** 「알수없음」 한 칸 — 값이 없을 때만 쓴다. 0 으로 채우지 않는다 (D-106) */
+function Unknown() {
+  return <span style={{ fontSize: 10.5, color: V3.textGhost, whiteSpace: 'nowrap' }}>알수없음</span>
+}
+
+/**
+ * ★게임시작 시각★ — 서플라이는 ★오전/오후 12시간제★ 다 («오전 12시 6분»).
+ *
+ * ⚠ 공용 `fullKst` 는 24시간제(«0시 6분»)이고 다른 화면이 그걸 쓴다. ★거기는 안 건드린다★ —
+ *   이 카드만 서플라이 말씨를 따른다 (`CLAUDE.md` 1-4). 시각 자체는 같은 값이다.
+ */
+function gameStartKst(iso: string): string {
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return iso
+  const kst = new Date(at.getTime() + 9 * 3_600_000)
+  const h24 = kst.getUTCHours()
+  const ampm = h24 < 12 ? '오전' : '오후'
+  /* 0시 → 「오전 12시」 · 12시 → 「오후 12시」 · 13시 → 「오후 1시」 (서플라이 표기 그대로) */
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+  const mm = String(kst.getUTCMinutes()).padStart(2, '0')
+  return `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일 ${ampm} ${h12}시 ${Number(mm)}분`
+}
+
+function ScoreRow({ row, me, mvp, weaponKnown, leagueSlug, side, maxDamage }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; leagueSlug: string; side: 'red' | 'blue'; maxDamage: number }) {
+  /* ★열림은 줄마다 따로★ — 다른 줄을 눌러도 안 접힌다 (2026-09-15 사장님) */
+  const [openHex, setOpenHex] = useState(false)
+  const hex = row.hexagon ?? []
+  const sniper = weaponKnown && row.weapon === 1
+  const clan = row.match_time_clan
+  /* 딜량 막대는 ★그 경기 스무 명 중 최대★ 를 100% 로 잡는다 (서플라이와 같은 모양).
+     분모가 0 이면 막대를 안 그린다 — 0 으로 나누지 않는다 */
+  const damageBar = row.damage !== null && maxDamage > 0 ? Math.max(6, Math.round((row.damage / maxDamage) * 100)) : 0
+  /* 래더 — 배치고사 중이면 점수가 없다. 색은 사이트 공통 층수 색(`floorColor`) */
+  const ratingNode = row.placement || row.rating === null
+    ? <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>배치고사</span>
+    : <span style={{ fontSize: 11.5, fontWeight: 600, color: floorColor(row.rating), whiteSpace: 'nowrap' }}>{formatRating(row.rating)}</span>
+
+  return (
+    <>
+    <div className="v3-score-row sac-sb-row" style={{ position: 'relative', overflow: 'hidden', padding: '8px 12px', borderBottom: `1px solid ${V3.rowDivider2}`, background: me ? 'linear-gradient(100deg,rgba(143,240,255,.14),rgba(143,240,255,.04) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2' : 'none' }}>
+      {/* ★인식표★ — 지금은 안 그린다 (`SCORE_PLATE_ON`). 자리는 남긴다 */}
+      {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
+
+      {/* ① 플레이어 — ★클랜마크는 이름 앞에 항상★. 폰에서는 밑에 래더가 붙는다 */}
+      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <MarkCircle clan={clan ? { slug: clan.slug, mark: clan.mark } : null} size={20} />
+        <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 1 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+            {/* 닉네임을 누르면 그 판 육각이 펼쳐진다 (2026-09-15). 잴 재료가 없으면 옛날처럼 링크다 */}
+            {hex.length > 0 ? (
+              <button
+                type="button"
+                aria-expanded={openHex}
+                onClick={(e) => { e.stopPropagation(); setOpenHex((v) => !v) }}
+                style={{ all: 'unset', cursor: 'pointer', fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#124a56' : V3.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: `1px dotted ${openHex ? V3.blueSoft : 'rgba(120,136,170,.35)'}` }}
+              >{row.name}</button>
+            ) : (
+              <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ color: me ? '#124a56' : V3.text }}>{row.name}</span>
+              </a>
+            )}
+            {sniper ? <SniperMark /> : null}
+            {mvp ? <MvpMark size={15} /> : null}
+          </span>
+          {/* ★폰에서만★ — 래더가 닉네임 밑으로 내려온다 (사진 2) */}
+          <span className="sac-sb-phone-only">{ratingNode}</span>
+        </span>
+      </span>
+
+      {/* ② 래더 — ★PC 에서만★ 따로 한 칸 (사진 4) */}
+      <span className="sac-sb-pc-only" style={{ position: 'relative', textAlign: 'right', whiteSpace: 'nowrap' }}>{ratingNode}</span>
+
+      {/* ③ kda — 「7 / 5 / 4」 밑에 「(58.3%)」. 퍼센트는 색깔시스템 */}
+      <span style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.25 }}>
+        <Kda kill={row.kill} death={row.death} assist={row.assist} size={13} />
+        {row.kd_rate === null ? null : (
+          <span style={{ fontSize: 10, fontWeight: 600, color: statColor(row.kd_rate), whiteSpace: 'nowrap' }}>({row.kd_rate.toFixed(1)}%)</span>
+        )}
+      </span>
+
+      {/* ④ 무기 — ★그 판에 든 총★ 이다 (주무기 `main_weapon` 과 다르다). 폰은 줄여 쓴다 */}
+      <span style={{ position: 'relative', textAlign: 'center', fontSize: 11.5, whiteSpace: 'nowrap', color: row.weapon === null ? V3.textGhost : V3.textDim }}>
+        {row.weapon === null ? '알수없음' : (
+          <>
+            <span className="sac-sb-pc-only">{row.weapon === 1 ? '스나이퍼' : '라이플'}</span>
+            <span className="sac-sb-phone-only sac-sb-inline">{row.weapon === 1 ? '스나' : '라플'}</span>
+          </>
+        )}
+      </span>
+
+      {/* ⑤ 딜량 — ★숫자가 막대 안★ (서플라이와 같은 모양). 트랙은 회색, 채움은 빨강 */}
+      <span style={{ position: 'relative', minWidth: 0 }}>
+        {row.damage === null ? <span style={{ display: 'block', textAlign: 'center' }}><Unknown /></span> : (
+          <span style={{ position: 'relative', display: 'block', width: '100%', height: 18, borderRadius: 3, background: '#8d94a8', overflow: 'hidden' }}>
+            <span aria-hidden style={{ position: 'absolute', inset: 0, width: `${damageBar}%`, background: '#f2727c' }} />
+            <span style={{ position: 'relative', display: 'block', lineHeight: '18px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#ffffff' }}>{fmt(row.damage)}</span>
+          </span>
+        )}
+      </span>
+
+      {/* ⑥ 헤드샷 — ★PC 에서만★. 「1」 밑에 「(14.3%)」 */}
+      <span className="sac-sb-pc-only" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.25, whiteSpace: 'nowrap' }}>
+        {row.headshot === null ? <Unknown /> : (
+          <>
+            <span style={{ fontSize: 12, fontWeight: 600, color: V3.text }}>{fmt(row.headshot)}</span>
+            {row.headshot_percent === null ? null : (
+              <span style={{ fontSize: 10, color: V3.textFaint }}>({row.headshot_percent.toFixed(1)}%)</span>
+            )}
+          </>
+        )}
+      </span>
+    </div>
+    {openHex ? (
+      <PlayerMatchHexV3 axes={hex} name={row.name} side={side} href={`/league/${leagueSlug}/player/${row.player_id}`} />
+    ) : null}
+    </>
+  )
+}
+
+/**
+ * ★옛 줄★ — 플레이어 · K/D/A · 세이브 · 포지션 (2026-09-12 ~ 2026-09-22).
+ *
+ * 2026-09-22 에 서플라이 여섯 칸으로 갈아 끼우면서 ★이름만 바꿔 남겼다★ (`CLAUDE.md` 1-4).
+ * `SUPPLY_SCORE_COLUMNS` 를 `false` 로 되돌리면 이 줄이 다시 그려진다.
+ *
+ * ⚠ ★세이브 칸과 포지션 칸은 여기에만 있다.★ 둘 다 서플라이 원본에 없는 칸이라
+ *   새 줄에서 뺐다. ★값은 계약에 그대로 실려 온다★ (`row.saves` · `row.main_weapon`) —
+ *   주무기는 새 줄에서도 스나 표시(`[S]`)로 남아 있고, 세이브만 화면에서 쉰다.
+ */
+function ScoreRowLegacy({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; showSaves: boolean; leagueSlug: string; side: 'red' | 'blue' }) {
   /* ★열림은 줄마다 따로★ — 다른 줄을 눌러도 안 접힌다 (2026-09-15 사장님) */
   const [openHex, setOpenHex] = useState(false)
   const hex = row.hexagon ?? []
@@ -727,19 +970,71 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
   const canAnalyze = hexOf('red') !== null && hexOf('blue') !== null
   const wonTeam = teams.find((t) => t.won) ?? teams[0]
   const lostTeam = teams.find((t) => !t.won) ?? teams[1]
+  /* 딜량 막대의 분모 — ★그 경기 스무 명 중 최대★. 한쪽 팀만으로 재면 팀끼리 길이가 안 맞는다 */
+  const maxDamage = Math.max(0, ...[...detail.red_stats, ...detail.blue_stats].map((r) => r.damage ?? 0))
+  /* ★경기 길이★ — 폰 머리줄의 「22분 10초」. 끝난 때를 모르면 안 적는다 (지어내지 않는다).
+     접힌 줄(PC)도 ★같은 함수★ 를 쓴다 — 두 곳이 다른 수를 적을 일이 없다 */
+  const duration = durationOf(detail.start_at, detail.end_at)
   return (
     <div className="v3-board" style={{ background: V3.plot, borderTop: `1px solid ${V3.divider}`, padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <style>{SCOREBOARD_CSS}</style>
+      {/*
+        ★머리줄★ — 서플라이 실측: 「제3보급창고  5 vs 5 ... 게임시작시간: 2026년 6월 4일 오후 9시 59분」.
+        ⚠ 우리 `fullKst` 는 24시간 표기(「21시 59분」)다. 서플라이는 「오후 9시 59분」 이다 —
+          ★같은 시각★ 이고 말씨만 다르다. 사이트 전체가 24시간 표기라 여기만 바꾸지 않는다.
+      */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '0 2px 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>{detail.map.name}</span>
+          <span style={{ fontSize: 11.5, color: V3.textDim, whiteSpace: 'nowrap' }}>{Math.round(detail.player_count / 2)} vs {Math.round(detail.player_count / 2)}</span>
+          <div style={spacerStyle} />
+          {/* ★폰은 여기에 경기 길이★ (사진 2 의 「22분 10초」). PC 는 접힌 줄에 이미 있다 */}
+          {duration === null ? null : <span className="sac-sb-phone-only sac-sb-inline" style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap' }}>{duration}</span>}
+          {/* ★PC 는 한 줄 오른쪽 끝★ (사진 4) */}
+          <span className="sac-sb-pc-only" style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap' }}>게임시작시간: {gameStartKst(detail.start_at)}</span>
+        </div>
+        {/* ★폰은 둘째 줄★ (사진 2 의 「게임시작 - 2026년 4월 13일 오전 12시 21분」) */}
+        <span className="sac-sb-phone-only" style={{ fontSize: 11, color: V3.textFaint, textAlign: 'right' }}>게임시작 - {gameStartKst(detail.start_at)}</span>
+      </div>
       {teams.map((t) => (
         /* ★이긴 팀 하늘색 · 진 팀 빨강★ (2026-09-12 사장님) */
         <div key={t.side} className={t.won ? 'v3-board-win' : 'v3-board-lose'} style={{ border: `1px solid ${t.won ? WIN_LOSS.winLine : WIN_LOSS.loseLine}`, borderRadius: 8, background: t.won ? WIN_LOSS.winBg : WIN_LOSS.loseBg }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, overflow: 'hidden', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.deep}` }}>
+            {/*
+              ★서플라이 차례★ (2026-09-22) — 「패배  ◉ des`per@do.  (선레드)  -  1부리그 1,508점」.
+              ⚠ 옛 차례는 «마크 · 이름 · 티어 · 승패» 였다. 값은 하나도 안 없앴다 —
+                ★승패를 맨 앞으로★ 옮기고 ★(선레드/선블루)★ 와 ★클랜 점수★ 를 더했다.
+            */}
+            <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', color: t.won ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>{t.won ? '승리' : '패배'}</span>
             <MarkCircle clan={t.snap.clan} size={22} />
             {/* ★넘치면 이름이 줄어든다★ (2026-09-12 사장님: «저 버튼이 튀어나가지 않게해줘»).
                 minWidth:0 이 없으면 flex 칸이 안 줄어들어 단추가 화면 밖으로 밀린다 */}
             <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, color: t.won ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>{t.snap.clan.name}</span>
-            {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
-            <span style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: t.won ? V3.blueSoft : V3.redSoft }}>{t.won ? '승리' : '패배'}</span>
+            {/*
+              ★선레드 / 선블루★ — ★슬롯 이름으로 적지 않는다.★ 우리 red/blue 는 수집 때
+              `team_id` 오름차순으로 정한 내부 슬롯이라 진영이 아니다 (D-207). 근거인
+              `first_side`(보는 쪽 기준)에서 만든다 — 이미 있는 `teamFirstSideLabel` 을 쓴다.
+              화면마다 다시 세지 않는다.
+            */}
+            {/* ★PC 는 클랜명 바로 뒤 괄호★ (사진 4). 폰은 줄 오른쪽 끝이라 아래에서 그린다 */}
+            {teamFirstSideLabel(t.side === mySide, detail.first_side) ? (
+              <span className="sac-sb-pc-only" style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap', flex: 'none' }}>({teamFirstSideLabel(t.side === mySide, detail.first_side)})</span>
+            ) : null}
+            {/* ★PC 만★ — 「- 1부리그 1,508점」. 폰 사진(2)의 팀줄에는 티어도 점수도 없다 */}
+            <span className="sac-sb-pc-only" style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+              {t.snap.division !== null || t.snap.rating !== null ? <span style={{ fontSize: 10.5, color: V3.textGhost }}>-</span> : null}
+              {t.snap.division !== null ? <TierText division={t.snap.division} leagueCategory={leagueCategory} size={10} /> : null}
+              {t.snap.rating !== null ? (
+                <span style={{ fontSize: 11.5, fontWeight: 600, color: V3.textMuted, whiteSpace: 'nowrap' }}>{formatRating(t.snap.rating)}</span>
+              ) : t.snap.placement ? (
+                <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>배치고사</span>
+              ) : null}
+            </span>
             <div style={spacerStyle} />
+            {/* ★폰은 선레드/선블루가 줄 오른쪽 끝★ · 괄호 없음 (사진 2) */}
+            {teamFirstSideLabel(t.side === mySide, detail.first_side) ? (
+              <span className="sac-sb-phone-only sac-sb-inline" style={{ fontSize: 11.5, fontWeight: 600, color: V3.textDim, whiteSpace: 'nowrap', flex: 'none' }}>{teamFirstSideLabel(t.side === mySide, detail.first_side)}</span>
+            ) : null}
             {/*
               ★아직 못 잰 경기는 «경기분석중»★ (2026-09-12 사장님: «아직 경기분석 안된 경기는
               경기분석중 이라고 표시해줘»). 배틀로그가 안 들어오면 육각형을 못 그린다 —
@@ -801,12 +1096,29 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             </div>
           ) : (
           <>
-          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 86px 44px 58px' : 'minmax(96px,1fr) 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
-          </div>
+          {/* ★칸 이름★ — 서플라이 여섯 칸. 옛 넉 칸(플레이어·K/D/A·세이브·포지션)은 밑에 남겼다 */}
+          {SUPPLY_SCORE_COLUMNS ? (
+            /* ★줄과 ★같은 격자★(`sac-sb-row`)를 써야 칸이 어긋나지 않는다 */
+            <div className="v3-score-row sac-sb-row" style={{ padding: '7px 12px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 10, color: '#98a1b5', whiteSpace: 'nowrap' }}>
+              <span>플레이어</span>
+              <span className="sac-sb-pc-only" style={{ textAlign: 'right' }}>래더</span>
+              <span style={{ textAlign: 'center' }}>kda</span>
+              <span style={{ textAlign: 'center' }}>무기</span>
+              <span style={{ textAlign: 'center' }}>딜량</span>
+              <span className="sac-sb-pc-only" style={{ textAlign: 'center' }}>헤드샷</span>
+            </div>
+          ) : (
+            <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 86px 44px 58px' : 'minmax(96px,1fr) 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+              <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
+            </div>
+          )}
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => (
-            <ScoreRow key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} showSaves={showSaves} leagueSlug={leagueSlug} side={t.side} />
+            SUPPLY_SCORE_COLUMNS ? (
+              <ScoreRow key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} leagueSlug={leagueSlug} side={t.side} maxDamage={maxDamage} />
+            ) : (
+              <ScoreRowLegacy key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} showSaves={showSaves} leagueSlug={leagueSlug} side={t.side} />
+            )
           ))}
           </>
           )}
@@ -829,7 +1141,232 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
   )
 }
 
+/**
+ * ★★접힌 경기 줄 — 폰과 PC 가 다르다★★ (2026-09-22 사장님:
+ *   「경기상세 카드 ★모바일★ 은 앞쪽 두장 ★피씨★ 는 뒤쪽두장 처럼 생겼음」)
+ *
+ * ── 폰 (사진 1)
+ * ```
+ *  ┌ 제3보급창고  -  5달 전                        -14점 ┐  ← 머리줄
+ *  │▌ 패배   3 / 10 / 4      ◉ galactico-           ⌄  │
+ *  │▌       (23.1%)           vs                       │
+ *  │▌                        ◉ saint                   │
+ *  └───────────────────────────────────────────────────┘
+ *     ↑ 왼쪽 굵은 세로 바 (승 파랑 · 패 빨강) · 카드 전체가 연한 승패색
+ * ```
+ *
+ * ── PC (사진 3)
+ * ```
+ *  ▌제3보급창고 │ 래더 │ 7 / 5 / 4 │ ◉des`per@do. vs ◉saint    │ 성쉴[S] 갱욱      │ 상세
+ *  ▌10분 36초  │ +9점 │ (58.3%)   │ 1부리그1,508점 1부리그1,484점│ flare  울산KKW[S] │ 보기
+ *  ▌승리       │      │           │                            │ 근면   규엉       │  ⌄
+ *  ▌3달 전     │      │           │                            │ palry  vddv       │
+ *  ▌           │      │           │                            │ igoya  bok        │
+ * ```
+ *
+ * ── ★두 판을 따로 그린다★ (한 격자를 접는 대신)
+ *   폰과 PC 는 ★칸 수도 차례도 다르다.★ 한 격자를 미디어쿼리로 접으면 규칙이 열 줄을
+ *   넘고, 2026-09-17 무한 QA 때 이미 그 방식으로 ★이름이 한 글자까지 눌린 사고★ 가 났다
+ *   (아래 `matchRowStyle` 주석). 그래서 markup 을 둘로 나누고 CSS 로 하나만 보인다.
+ *   ⚠ 값은 ★같은 곳★ 에서 읽는다 — 두 판이 다른 수를 적을 일이 없다.
+ *
+ * ⚠ ★옛 판(한 격자 · 세 줄)은 `MatchRowsLegacy` 로 남겼다★ (`CLAUDE.md` 1-4).
+ *   `SUPPLY_MATCH_ROWS` 를 `false` 로 되돌리면 그대로 돌아온다.
+ */
+const SUPPLY_MATCH_ROWS = true
+
+/** 폰/PC 갈림목 — 스코어보드(`SB_PHONE_MAX`)와 ★같은 값★ 이다. 두 곳이 갈라지면 카드가 반쪽씩 바뀐다 */
+const MATCH_ROW_CSS = `
+.sac-pm-phone { display: none; }
+@media (max-width: ${SB_PHONE_MAX}px) {
+  .sac-pm-pc { display: none !important; }
+  .sac-pm-phone { display: block; }
+}
+`
+
+/**
+ * ★「5달 전」★ — 서플라이는 달까지 센다. 공용 `relativeKst` 는 「N일 전 HH:MM」 이라
+ * 150일이 넘으면 「152일 전」 이 된다. ★거기는 안 건드린다★ — 다른 화면이 그 꼴을 쓴다.
+ */
+function shortAgo(iso: string): string {
+  const at = Date.parse(iso)
+  if (!Number.isFinite(at)) return ''
+  const min = Math.floor((Date.now() - at) / 60_000)
+  if (min < 1) return '방금'
+  if (min < 60) return `${min}분 전`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h}시간 전`
+  const d = Math.floor(h / 24)
+  if (d < 31) return `${d}일 전`
+  const mo = Math.floor(d / 30)
+  return mo < 12 ? `${mo}달 전` : `${Math.floor(mo / 12)}년 전`
+}
+
+/** 래더 증감 — 「+9점」 파랑 · 「-14점」 빨강. 0 이나 모르면 안 적는다 (지어내지 않는다) */
+function RatingDelta({ value, size = 12 }: { value: number | null | undefined; size?: number }) {
+  if (value === null || value === undefined || value === 0) return null
+  return (
+    <span style={{ fontSize: size, fontWeight: 700, whiteSpace: 'nowrap', color: value > 0 ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>
+      {value > 0 ? '+' : ''}{fmt(value)}점
+    </span>
+  )
+}
+
+/** 명단 한 칸 — PC 접힌 줄의 오른쪽 두 열 (사진 3). 내 이름은 굵게 */
+function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: string }) {
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+      {rows.map((r) => (
+        <span key={r.player_id} style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+          <MarkCircle clan={r.match_time_clan ? { slug: r.match_time_clan.slug, mark: r.match_time_clan.mark } : null} size={15} />
+          <span style={{ fontSize: 11, fontWeight: r.player_id === meId ? 700 : 400, color: r.player_id === meId ? V3.textStrong : V3.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{r.name}</span>
+          {r.weapon === 1 ? <span style={{ fontSize: 9, fontWeight: 700, color: V3.red, flex: 'none' }}>[S]</span> : null}
+        </span>
+      ))}
+    </span>
+  )
+}
+
 function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<PlayerDetailV3Props, 'data' | 'leagueSlug' | 'matches' | 'expanded' | 'onExpand'>) {
+  const [open, setOpen] = useState<string | null>(null)
+  if (!SUPPLY_MATCH_ROWS) return <MatchRowsLegacy data={data} leagueSlug={leagueSlug} matches={matches} expanded={expanded} onExpand={onExpand} />
+  return (
+    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <style>{MATCH_ROW_CSS}</style>
+      {matches.map((m) => {
+        const isOpen = open === m.id
+        const edge = m.win ? V3.blue : V3.red
+        const my = m.player_stat
+        const mvpIsMe = m.mvp_player_id !== null && m.mvp_player_id === data.player.id
+        const detail = expanded[m.id]
+        /* 명단이 아직 안 들어온 경기 — 펼치지 않는다 (2026-09-10 사장님: «킬데스 수집중») */
+        const pending = m.red.length === 0 && m.blue.length === 0
+        const toggle = () => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }
+        /* 내 팀이 어느 쪽인가 — 명단 두 열의 왼쪽이 ★내 팀★ 이다 (사진 3) */
+        const mySide = my?.side ?? 'red'
+        const mine = mySide === 'red' ? m.red : m.blue
+        const theirs = mySide === 'red' ? m.blue : m.red
+        const kda = my ? <Kda kill={my.kill} death={my.death} assist={my.assist} size={16} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>
+        const kdPct = my && my.kd_rate !== null
+          ? <span style={{ fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>({my.kd_rate.toFixed(1)}%)</span>
+          : null
+        const chevron = <span style={{ fontSize: 13, color: pending ? '#b6bece' : edge }}>{isOpen ? '⌃' : '⌄'}</span>
+
+        return (
+          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `4px solid ${edge}`, background: m.win ? 'rgba(91,141,255,.07)' : 'rgba(224,27,36,.05)', opacity: pending ? 0.75 : 1 }}>
+
+            {/* ══ 폰 (사진 1) ══ */}
+            <div className="sac-pm-phone" onClick={toggle} style={{ cursor: pending ? 'default' : 'pointer' }}>
+              {/* 머리줄 — 맵 · N달 전 / 오른쪽에 래더 증감 */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '9px 13px', borderBottom: `1px solid ${m.win ? 'rgba(91,141,255,.22)' : 'rgba(224,27,36,.18)'}`, background: m.win ? 'rgba(91,141,255,.06)' : 'rgba(224,27,36,.05)' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.map.name}</span>
+                <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>- {shortAgo(matchShownAt(m))}</span>
+                <div style={spacerStyle} />
+                <RatingDelta value={m.rating_update} size={12.5} />
+              </div>
+              {/* 본문 — 승패 / K·D·A / 양 팀 세로 / 펼치기 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto 30px', alignItems: 'center', gap: 8, padding: '12px 4px 12px 13px' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
+                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                  {pending ? <span style={{ fontSize: 11.5, color: V3.textFaint }}>킬데스 수집중</span> : kda}
+                  {kdPct}
+                </span>
+                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <MarkCircle clan={m.league_clan.clan} size={20} />
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.league_clan.clan.name}</span>
+                  </span>
+                  <span style={{ fontSize: 10, color: V3.textGhost, paddingLeft: 26 }}>vs</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <MarkCircle clan={m.opponent.clan} size={20} />
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.opponent.clan.name}</span>
+                  </span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderLeft: `1px solid ${m.win ? 'rgba(91,141,255,.22)' : 'rgba(224,27,36,.18)'}` }}>{chevron}</span>
+              </div>
+            </div>
+
+            {/* ══ PC (사진 3) ══ */}
+            <div className="sac-pm-pc" onClick={toggle} style={{ display: 'grid', gridTemplateColumns: '108px 62px 92px minmax(180px,1fr) minmax(210px,260px) 52px', alignItems: 'center', gap: 12, padding: '11px 14px', cursor: pending ? 'default' : 'pointer' }}>
+              {/* ① 맵 · 경기길이 · 승패 · N달 전 */}
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
+                {m.end_at ? <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{durationOf(m.start_at, m.end_at) ?? ''}</span> : null}
+                <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
+                <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{shortAgo(matchShownAt(m))}</span>
+              </span>
+              {/* ② 래더 증감 */}
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>래더</span>
+                <RatingDelta value={m.rating_update} size={12.5} />
+              </span>
+              {/* ③ 내 K/D/A */}
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                {pending ? <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>킬데스 수집중</span> : kda}
+                {kdPct}
+                {mvpIsMe ? <MvpMark size={15} /> : null}
+              </span>
+              {/* ④ 양 팀 — 이름 밑에 티어·점수 (사진 3) */}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <ClanSide snap={m.league_clan} ink={m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk} league={data.league} />
+                <span style={{ fontSize: 10.5, color: V3.textGhost, flex: 'none' }}>vs</span>
+                <ClanSide snap={m.opponent} ink={m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk} league={data.league} />
+              </span>
+              {/* ⑤ 명단 두 열 — 왼쪽이 내 팀 */}
+              {pending ? <span style={{ fontSize: 10.5, color: V3.textGhost }}>명단 수집중</span> : (
+                <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 10, minWidth: 0 }}>
+                  <LineupCol rows={mine} meId={data.player.id} />
+                  <LineupCol rows={theirs} meId={data.player.id} />
+                </span>
+              )}
+              {/* ⑥ 상세보기 */}
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#b6bece' : isOpen ? '#1d4fd6' : V3.textDim }}>
+                {pending ? <span>수집중</span> : <><span>상세</span><span>보기</span>{chevron}</>}
+              </span>
+            </div>
+
+            {isOpen ? (
+              detail ? <Scoreboard detail={detail} me={data.player.id} leagueCategory={data.league.category} leagueSlug={data.league.slug} /> : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
+            ) : null}
+          </div>
+        )
+      })}
+      <span style={{ display: 'none' }}>{leagueSlug}</span>
+    </div>
+  )
+}
+
+/** 경기 길이 — 「10분 36초」. 끝난 때를 모르면 `null` (지어내지 않는다) */
+function durationOf(startAt: string, endAt: string | null): string | null {
+  if (!endAt) return null
+  const ms = Date.parse(endAt) - Date.parse(startAt)
+  if (!Number.isFinite(ms) || ms <= 0) return null
+  const sec = Math.round(ms / 1000)
+  return `${Math.floor(sec / 60)}분 ${sec % 60}초`
+}
+
+/** 접힌 줄의 한쪽 클랜 — 마크 + 이름, 그 밑에 「1부리그 1,508점」 (사진 3) */
+function ClanSide({ snap, ink, league }: { snap: MatchListItem['league_clan']; ink: string; league: LeaguePlayerDetail['league'] }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0' }}>
+      <MarkCircle clan={snap.clan} size={20} />
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{snap.clan.name}</span>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
+          {snap.division !== null ? <TierText division={snap.division} leagueCategory={league.category} leagueSlug={league.slug} size={10} /> : null}
+          {snap.rating !== null ? <span style={{ fontSize: 10.5, color: V3.textFaint }}>{formatRating(snap.rating)}</span> : null}
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/**
+ * ★옛 접힌 줄★ — 한 격자 · 세 줄 (2026-09-11 ~ 2026-09-22).
+ * 2026-09-22 에 서플라이 폰/PC 두 판으로 갈아 끼우면서 ★이름만 바꿔 남겼다★ (`CLAUDE.md` 1-4).
+ * `SUPPLY_MATCH_ROWS` 를 `false` 로 되돌리면 이 줄이 다시 그려진다.
+ */
+function MatchRowsLegacy({ data, leagueSlug, matches, expanded, onExpand }: Pick<PlayerDetailV3Props, 'data' | 'leagueSlug' | 'matches' | 'expanded' | 'onExpand'>) {
   const [open, setOpen] = useState<string | null>(null)
   /* 클랜 색은 이제 승패 색이 대신한다 (2026-09-12 사장님) — 지우지 않고 void 로 남긴다 */
   const theme = clanThemeOf(data.clan?.slug)
@@ -1194,60 +1731,151 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
 
 /* ── 페이지 본문 ──────────────────────────────────────────────── */
 
+/* ── 상세정보 (오른쪽 칸) ─────────────────────────────────────── */
+
+/**
+ * ★상세정보★ — 서플라이 오른쪽 카드를 그대로 옮긴 것 (2026-09-22 사장님:
+ * 「오른쪽 카드랑 ★최대한 더 비슷하게★ 개인기록정보 저렇게 달아줘」).
+ *
+ * 서플라이 실측(사장님 사진 · `3rd.supply/league/supply/player/1074574325`) —
+ * ```
+ *   상세정보
+ *   래더      3432점
+ *   승률      1,302승 851패      60.5%
+ *   킬뎃      17,855킬 17,422데스 50.6%
+ *   평균킬    판당              8.3킬
+ *   MVP                        213회
+ *   랭킹      5,646명중          1위
+ *   소속      ◉ des`per@do.
+ * ```
+ * 줄 이름 · 줄 차례 · 「N명중 N위」 같은 말씨까지 그대로다. ★다른 점 하나★ —
+ * 승률·킬뎃 숫자에 우리 ★색깔시스템★(`statColor`)이, 등수에 `rankColorOf` 가 붙는다.
+ *
+ * ⚠ 없는 값은 ★지어내지 않는다.★ 무소속리그는 킬·데스가 `null` 로 온다(D-107) —
+ *   그때는 그 줄을 안 그린다. 0 으로 채우면 「0킬을 했다」는 거짓이 된다.
+ */
+function SideInfoCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: boolean }) {
+  const kdKnown = showsKd && data.kill !== null && data.death !== null
+  return (
+    <section style={{ ...cardStyle, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
+        <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>상세정보</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <InfoRow label="래더">
+          <span style={{ fontSize: 22, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>{formatRating(data.rating)}</span>
+        </InfoRow>
+        <InfoRow label="승률" sub={`${fmt(data.win)}승 ${fmt(data.lose)}패`}>
+          <span style={{ fontSize: 22, fontWeight: 700, color: statColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</span>
+        </InfoRow>
+        {kdKnown ? (
+          <InfoRow label="킬뎃" sub={`${fmt(data.kill as number)}킬 ${fmt(data.death as number)}데스`}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: data.kd_rate === null ? V3.textMuted : statColor(data.kd_rate), whiteSpace: 'nowrap' }}>{pct1(data.kd_rate)}</span>
+          </InfoRow>
+        ) : null}
+        <InfoRow label="평균킬" sub="판당">
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: V3.text }}>{data.kill_per_match.toFixed(1)}</span>
+            <span style={{ fontSize: 12, color: V3.textDim }}>킬</span>
+          </span>
+        </InfoRow>
+        <InfoRow label="MVP">
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 22, fontWeight: 700, color: V3.gold }}>{fmt(data.mvp_count)}</span>
+            <span style={{ fontSize: 12, color: '#8a6a12' }}>회</span>
+          </span>
+        </InfoRow>
+        {/* ★등수는 모르면 안 적는다★ — 배치고사 중이거나 판이 모자라면 `rank` 가 null 이다 */}
+        <InfoRow label="랭킹" sub={data.rank_count === null ? '' : `${fmt(data.rank_count)}명중`}>
+          {data.rank === null ? (
+            <span style={{ fontSize: 13, color: V3.textGhost, whiteSpace: 'nowrap' }}>{data.placement ? '배치고사' : '집계 없음'}</span>
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 22, fontWeight: 700, color: rankColorOf(data.rank, data.rank_count) }}>{fmt(data.rank)}</span>
+              <span style={{ fontSize: 12, color: V3.textDim }}>위</span>
+            </span>
+          )}
+        </InfoRow>
+        {/* ★클랜마크는 이름 앞에 항상★ */}
+        <InfoRow label="소속" last>
+          {data.clan === null ? (
+            <span style={{ fontSize: 13, color: V3.textGhost, whiteSpace: 'nowrap' }}>무소속</span>
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+              <MarkCircle clan={data.clan} size={22} />
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: V3.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{data.clan.name}</span>
+            </span>
+          )}
+        </InfoRow>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * ★최근 같이한 플레이어★ — 서플라이 오른쪽 칸의 마지막 표 (2026-09-22).
+ *
+ * 서플라이 실측 — 「닉네임 / 승 / 패 / 승률」 네 칸, 승률에 색이 붙는다.
+ * 자료는 이미 `data.teammates` 로 온다(옛 화면 `LeaguePlayerRecordScreen` 의
+ * `TeammateTable` 이 쓰던 것과 같은 원천) — ★새 API 를 만들지 않았다.★
+ *
+ * ⚠ 빈 배열이면 카드를 ★안 그린다★ — 빈 표를 만들지 않는다.
+ */
+function TeammatesCard({ data }: { data: LeaguePlayerDetail }) {
+  const rows = data.teammates.slice(0, 10)
+  if (rows.length === 0) return null
+  return (
+    <section style={{ ...cardStyle, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
+        <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>최근 같이한 플레이어</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 42px 42px 56px', gap: 6, padding: '8px 16px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+        <span>닉네임</span>
+        <span style={{ textAlign: 'right' }}>승</span>
+        <span style={{ textAlign: 'right' }}>패</span>
+        <span style={{ textAlign: 'right' }}>승률</span>
+      </div>
+      {rows.map((t, i) => (
+        <div key={t.player.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 42px 42px 56px', gap: 6, alignItems: 'center', padding: '8px 16px', borderBottom: i === rows.length - 1 ? 'none' : `1px solid ${V3.rowDivider2}` }}>
+          {/*
+            ★클랜마크는 이름 앞에 항상★ — 모르면 `MarkCircle` 이 구름을 깐다.
+            ⚠ `TeammateStat.player` 는 `PlayerSummary`(id·name)뿐이라 ★클랜을 모른다.★
+              서플라이는 여기에 마크를 그리는데 우리는 자료가 없다 — ★지어내지 않고★
+              구름을 깐다 (D-106). 마크를 띄우려면 계약에 클랜을 실어야 한다.
+          */}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+            <MarkCircle clan={null} size={18} />
+            <span style={{ fontSize: 12, color: V3.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{t.player.name}</span>
+          </span>
+          <span style={{ textAlign: 'right', fontSize: 11.5, color: V3.textDim, whiteSpace: 'nowrap' }}>{fmt(t.win)}승</span>
+          <span style={{ textAlign: 'right', fontSize: 11.5, color: V3.textDim, whiteSpace: 'nowrap' }}>{fmt(t.lose)}패</span>
+          <span style={{ textAlign: 'right', fontSize: 12.5, fontWeight: 700, color: statColor(t.win_rate), whiteSpace: 'nowrap' }}>{pct1(t.win_rate)}</span>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+function InfoRow({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 46 }}>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textDim, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
+      <div style={spacerStyle} />
+      {sub ? <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
+      {children}
+    </div>
+  )
+}
+
 export function PlayerDetailV3(props: PlayerDetailV3Props) {
   const { data, matches, matchesLoading, hasMore, loadingMore, onLoadMore } = props
+  /* ★탭은 껐다★ (`BODY_TABS`) — 상태는 남긴다. 되살리면 그대로 돈다 (`CLAUDE.md` 1-4) */
   const [tab, setTab] = useState<'graph' | 'play' | 'clan'>('graph')
-  return (
-    <div>
-      {TIER_CARD_IN_BODY ? (
-        <div style={halfStyle}>
-          <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} showsKd={props.showsKd ?? true} />
-          <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
-        </div>
-      ) : null}
-      {/*
-        ★클랜별 전적 TOP3★ (2026-09-22 사장님 — 서플라이 「최근매치」 자리와 같은
-        위치, 「가장 많이 한 클랜 순」 3개 + 더보기). 탭 상태(`setTab`)를 이 파일
-        안에서 그대로 공유하므로 새 데이터 왕복 없이 「클랜별전적」 탭으로 바로 연결한다.
-      */}
-      <ClanTop3PanelV3 data={data} onMore={() => setTab('clan')} />
-
-      {/* ★탭 셋★ (2026-09-11 사장님 목업) — 그래프 · 플레이분석 · 클랜별전적 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 10, marginTop: 16 }}>
-        {([['graph', '그래프'], ['play', '플레이분석'], ['clan', '클랜별전적']] as const).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            style={{
-              padding: '12px 0', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              borderRadius: V3.radiusCard, whiteSpace: 'nowrap',
-              color: tab === key ? '#1c2f6b' : V3.textMuted,
-              background: tab === key ? 'rgba(91,141,255,.12)' : V3.card,
-              border: `1px solid ${tab === key ? 'rgba(127,169,255,.7)' : V3.cardBorder}`,
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === 'graph' ? <TrendCard data={data} showsKd={props.showsKd ?? true} /> : null}
-      {tab === 'play' ? (
-        /*
-         * ⚠ ★육각형을 먼저, 설명을 뒤로★ (2026-09-19 사장님:
-         *   「플레이분석 파트 이렇게 잽니다 저거 밑으로 내려 육각먼저 보여주고 저걸 보여줘」).
-         *
-         *   보러 온 사람은 ★제 기록★ 을 보러 온 것이지 «어떻게 쟀는지» 를 먼저
-         *   읽으러 온 것이 아니다. 폰에서는 설명이 한 화면을 통째로 먹어
-         *   ★스크롤을 한참 내려야 육각형이 나왔다.★
-         *   ⚠ 순서만 바꿨다 — 두 칸 다 그대로 있다.
-         */
-        <div className="v3-play-split" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
-          <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
-          <AnalysisPanelV3 />
-        </div>
-      ) : null}
-      {tab === 'clan' ? <ClanVsCard data={data} /> : null}
+  const showsKd = props.showsKd ?? true
+  const matchList = (
+    <>
       <SectionBar title="최근 경기" />
       {/*
         * ★못 불러온 것을 「불러오는 중」 보다 ★먼저★ 본다★ (2026-09-19).
@@ -1284,6 +1912,96 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
         <button type="button" onClick={onLoadMore} disabled={loadingMore} style={{ marginTop: 10, width: '100%', padding: '11px 0', fontFamily: 'inherit', fontSize: 12.5, color: '#1d4fd6', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.35)', borderRadius: V3.radiusCard, cursor: 'pointer' }}>
           {loadingMore ? '불러오는 중…' : '더 불러오기'}
         </button>
+      ) : null}
+    </>
+  )
+  return (
+    <div>
+      {/*
+        ★★2026-09-22 — 서플라이 기록실 배치로 갈아 끼웠다★★ (사장님)
+
+          ┌ 승률 및 킬뎃 추이 (★남색★) ───────────────────────────┐  ← 서플라이의 광고 자리
+          ├───────────────────────────────┬──────────────────────┤
+          │ 최근매치 (클랜별 전적 TOP3)     │ 상세정보              │
+          │ 최근 경기 목록 · 더 불러오기     │ 플레이분석 육각형      │
+          └───────────────────────────────┴──────────────────────┘
+
+        ⚠ 서플라이는 맨 위와 좌우 구석에 ★광고★ 를 깐다. 우리는 광고를 만들지 않는다
+          (`CLAUDE.md` 2장 3번) — 그 자리를 ★값이 있는 카드★ 로 채운다.
+      */}
+      <style>{`
+        .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 16px; align-items: start; margin-top: 16px; }
+        .sac-prr-main { min-width: 0; display: flex; flex-direction: column; }
+        .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 12px; }
+        @media (max-width: 980px) {
+          .sac-prr-grid { grid-template-columns: minmax(0,1fr); }
+          .sac-prr-aside { position: static; }
+        }
+      `}</style>
+
+      {TIER_CARD_IN_BODY ? (
+        <div style={halfStyle}>
+          <TierRecordCard data={data} report={props.report} ownTier={matches.find((m) => m.league_clan.clan.id === data.clan?.id)?.league_clan.division ?? null} showsKd={showsKd} />
+          <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
+        </div>
+      ) : null}
+
+      {/* ① 서플라이의 상단 광고 자리 — 이 선수의 추이 그래프 (남색 판) */}
+      <TrendCard data={data} showsKd={showsKd} tone={TREND_TONE} />
+
+      {/* ② 2단 — 왼쪽 본문 · 오른쪽 기록카드 */}
+      <div className="sac-prr-grid">
+        <div className="sac-prr-main">
+          {/* 서플라이 「최근매치」 자리. 원그래프 대신 클랜별 전적이 들어간다 */}
+          <ClanTop3PanelV3 data={data} onMore={() => setTab('clan')} />
+          {matchList}
+        </div>
+        <aside className="sac-prr-aside">
+          <SideInfoCard data={data} showsKd={showsKd} />
+          {/* 기록카드 밑에 플레이분석 육각 (사장님 지시) */}
+          <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
+          {/* 서플라이 오른쪽 칸의 마지막 표. 자료는 이미 있었는데 v3 화면에서는 안 그리고 있었다 */}
+          <TeammatesCard data={data} />
+        </aside>
+      </div>
+
+      {/*
+        ★옛 판 — 본문 탭 셋★ (2026-09-11 사장님 목업 · 2026-09-22 에 껐다).
+        `BODY_TABS` 를 `true` 로 되돌리면 그대로 돌아온다 (`CLAUDE.md` 1-4).
+      */}
+      {BODY_TABS ? (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 10, marginTop: 16 }}>
+            {([['graph', '그래프'], ['play', '플레이분석'], ['clan', '클랜별전적']] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                style={{
+                  padding: '12px 0', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  borderRadius: V3.radiusCard, whiteSpace: 'nowrap',
+                  color: tab === key ? '#1c2f6b' : V3.textMuted,
+                  background: tab === key ? 'rgba(91,141,255,.12)' : V3.card,
+                  border: `1px solid ${tab === key ? 'rgba(127,169,255,.7)' : V3.cardBorder}`,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {tab === 'graph' ? <TrendCard data={data} showsKd={showsKd} /> : null}
+          {tab === 'play' ? (
+            /*
+             * ⚠ ★육각형을 먼저, 설명을 뒤로★ (2026-09-19 사장님:
+             *   「플레이분석 파트 이렇게 잽니다 저거 밑으로 내려 육각먼저 보여주고 저걸 보여줘」).
+             */
+            <div className="v3-play-split" style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
+              <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
+              <AnalysisPanelV3 />
+            </div>
+          ) : null}
+          {tab === 'clan' ? <ClanVsCard data={data} /> : null}
+        </>
       ) : null}
     </div>
   )

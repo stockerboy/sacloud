@@ -197,6 +197,13 @@ export const PlayerTierOpponent = z.object({
   lose: Count,
   win_rate: Percent.nullable(),
   kd: Percent.nullable(),
+  /**
+   * ★그 상대와의 킬·데스 원값★ (2026-09-22 사장님: 「몇킬 몇데스로 몇퍼 쏘고 있는지」).
+   * 퍼센트(`kd`)만으로는 「17,855킬 17,422데스」 같은 줄을 적을 수 없다.
+   * 이 칸이 없던 응답과도 맞도록 기본값 0 이다 — 픽스처를 안 고쳐도 통과한다.
+   */
+  kill: Count.default(0),
+  death: Count.default(0),
   rifle_games: Count,
   rifle_kd: Percent.nullable(),
   sniper_games: Count,
