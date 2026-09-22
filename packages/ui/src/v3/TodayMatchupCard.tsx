@@ -190,7 +190,7 @@ export function TodayMatchupCard({ matchup }: { matchup: TodayMatchup | null }) 
         />
 
         <span className="v3-setscore-team" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span style={{ fontSize: 28, fontWeight: 900, color: aTheme.light, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>
+          <span className="sac-h2h-name" style={{ fontSize: 28, fontWeight: 900, color: aTheme.light, letterSpacing: '-.01em', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {a.name}
           </span>
           <MarkCircle clan={aClan} size={52} className="v3-setscore-mark" />
@@ -216,7 +216,7 @@ export function TodayMatchupCard({ matchup }: { matchup: TodayMatchup | null }) 
         </span>
         <span className="v3-setscore-team" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
           <MarkCircle clan={bClan} size={52} className="v3-setscore-mark" />
-          <span style={{ fontSize: 28, fontWeight: 900, color: bTheme.light, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>
+          <span className="sac-h2h-name" style={{ fontSize: 28, fontWeight: 900, color: bTheme.light, letterSpacing: '-.01em', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {b.name}
           </span>
         </span>
