@@ -162,7 +162,8 @@ const pcGrid: CSSProperties = {
   display: 'grid',
   /* ⚠ 2026-09-22 밤 — ④ 를 넓혔다. 옛 값 '108px 62px 92px minmax(180px,1fr) minmax(210px,260px) 52px' 에서는
      840 카드에서 ④ 가 ~180 이라 클랜명이 「Celebr…」 로 잘렸다 (운영 화면을 찍어서 잡았다) */
-  gridTemplateColumns: '96px 52px 110px minmax(200px,1fr) minmax(180px,220px) 44px',
+  /* 2026-09-22 밤 두 번째 — 경기 상세(840)에서도 「Celebri…」 가 잘렸다. ④ 에 288px 이 가도록 ③·⑤ 를 한 단 더 양보 */
+  gridTemplateColumns: '96px 52px 100px minmax(240px,1fr) minmax(170px,200px) 44px',
   alignItems: 'center',
   gap: 12,
   padding: '11px 14px',
