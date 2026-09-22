@@ -901,3 +901,33 @@ body.antialiased {
   --radius-xl: 0px;
   --radius-2xl: 0px;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★랭킹 제목 줄★★ — 서플라이 실측 (2026-09-22 밤)
+
+   ```
+   제목  「클랜랭킹」 21px / 400 · 검정 · x=219 (표와 같은 왼쪽)
+   안내  12.25px / 400 · rgb(55,65,81) · 제목에서 10px 뒤
+   줄 높이 28px
+   ```
+   우리 옛 판은 `font-display text-3xl`(28px · 굵은 장식 글꼴)이라
+   ★서플라이보다 훨씬 크고 다른 글꼴★ 이었다. 글꼴 클래스는 ★지우지 않고★
+   여기서 값만 덮는다 — @import 한 줄을 빼면 옛 제목이 그대로 돌아온다.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.sac-rank-title {
+  font-family: inherit;
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: #000000;
+}
+.sac-rank-note {
+  font-size: 12.25px;
+  color: #374151;
+  margin-left: 10px;
+}
+@media (max-width: 767px) {
+  .sac-rank-title { font-size: 18px; }
+  .sac-rank-note { margin-left: 0; }
+}

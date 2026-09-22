@@ -227,12 +227,12 @@ export function RankHeader({ title, notice }: { title: string; notice: string })
       }`}
     >
       {title === '' ? null : (
-        <h1 className="font-display text-3xl tracking-wide text-text-strong max-md:whitespace-nowrap max-md:text-2xl">
+        <h1 className="sac-rank-title font-display text-3xl tracking-wide text-text-strong max-md:whitespace-nowrap max-md:text-2xl">
           {title}
         </h1>
       )}
       <div
-        className={`text-sm text-faint ${title === '' ? '' : 'ml-4 max-md:ml-0 max-md:mt-1.5'}`}
+        className={`sac-rank-note text-sm text-faint ${title === '' ? '' : 'ml-4 max-md:ml-0 max-md:mt-1.5'}`}
       >
         {notice}
       </div>
