@@ -153,7 +153,7 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
     { label: '판킬', value: data.kill_per_match.toFixed(1), sub: '킬 / 판', color: V3.text },
   ]
   return (
-    <section style={{ ...cardStyle, marginTop: 22, borderTop: `2px solid ${theme.edge}` }}>
+    <section style={{ ...cardStyle, marginTop: 22 }}>
       <div style={bandStyle} className="v3-band">
         <span style={{ display: 'flex', alignItems: 'center', gap: 13, minWidth: 0 }}>
           <MarkCircle clan={data.clan} size={46} ring={theme} />

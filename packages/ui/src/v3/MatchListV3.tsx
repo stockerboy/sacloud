@@ -136,12 +136,17 @@ export function MatchListV3(props: MatchListV3Props) {
             const rounds = viewerRounds && detail
               ? (left.league_clan_id === detail.league_clan.league_clan_id ? viewerRounds : [viewerRounds[1], viewerRounds[0]])
               : listRounds ? (left.league_clan_id === m.league_clan.league_clan_id ? listRounds : [listRounds[1], listRounds[0]]) : null
-            /* 카드 왼쪽 세로선 — 이긴 팀 색 (2026-09-12 사장님: 승패 색으로 통일) */
-            const edge = WIN_LOSS.winInk
+            /*
+             * ⚠ ★2026-09-22 밤 — 왼쪽 세로선을 뗐다★ (사장님: 「모든 카드 디자인, 색
+             *   전부 서플라이랑 똑같이」). 서플라이 경기 카드에는 ★왼쪽 막대가 없다★ —
+             *   면 전체를 하늘/분홍으로 칠해서 승패를 말한다 (`docs/SUPPLY_MEASURED.md` §4).
+             *   ★값은 남긴다★ — `WIN_LOSS.winInk` 는 그대로 있고, 되돌리려면
+             *   카드 style 에 `borderLeft: 2px solid ${edge}` 한 조각을 되살리면 된다.
+             */
             /* player_count 는 양 팀 합(10) — 한쪽은 반 (QA 회차 2: «10v10» 으로 찍혔다) */
             const perSide = Math.max(1, Math.round(m.player_count / 2))
             return (
-              <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: isOpen ? 'rgba(91,141,255,.04)' : V3.card, opacity: pending ? 0.75 : 1 }}>
+              <div key={m.id} style={{ border: `1px solid ${m.win ? V3.winFaceLine : V3.loseFaceLine}`, borderRadius: V3.radiusCard, overflow: 'hidden', background: m.win ? V3.winFace : V3.loseFace, opacity: pending ? 0.75 : 1 }}>
                 <div onClick={() => { if (pending) return; setOpen(isOpen ? null : m.id); if (!isOpen) onExpand(m) }} style={{ ...rowStyle, cursor: pending ? 'default' : 'pointer' }} className="v3-match-row v3-match-row--list">
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                     <span style={{ fontSize: 12, color: V3.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{m.map.name}</span>

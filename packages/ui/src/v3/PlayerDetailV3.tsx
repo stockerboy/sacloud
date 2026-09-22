@@ -592,7 +592,7 @@ function TrendCard({ data, showsKd, tone = V3 }: { data: LeaguePlayerDetail; sho
     border: `1px solid ${on ? T.chipBorder : 'transparent'}`,
   })
   return (
-    <section style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderTop: `2px solid ${V3.red}`, borderRadius: V3.radiusCard, overflow: 'hidden', fontFamily: V3.font }}>
+    <section style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', fontFamily: V3.font }}>
       {/* 머리줄 — `CardHead` 와 같은 꼴을 색판만 바꿔 손으로 적었다 (공용 `CardHead` 는 흰 카드 전용이다) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px', borderBottom: `1px solid ${T.divider}`, flexWrap: 'wrap' }}>
         <span style={{ width: 22, height: 2, background: V3.red, flex: 'none' }} />
@@ -1382,7 +1382,7 @@ function MatchRowsLegacy({ data, leagueSlug, matches, expanded, onExpand }: Pick
         /* 명단이 아직 안 들어온 경기 — 펼치지 않는다 (2026-09-10 사장님: «킬데스 수집중») */
         const pending = m.red.length === 0 && m.blue.length === 0
         return (
-          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `2px solid ${edge}`, background: (m.win ? 'rgba(91,141,255,.13)' : 'rgba(255,90,99,.13)'), opacity: pending ? 0.75 : 1 }}>
+          <div key={m.id} style={{ border: `1px solid ${m.win ? V3.winFaceLine : V3.loseFaceLine}`, borderRadius: V3.radiusCard, overflow: 'hidden', background: (m.win ? V3.winFace : V3.loseFace), opacity: pending ? 0.75 : 1 }}>
             {/*
               ★`v3-prow--stack` — 폰에서 여섯 칸을 쌓는다★ (2026-09-17 무한 QA).
 

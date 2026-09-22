@@ -48,7 +48,8 @@ export const V3 = {
    *   옛 값 `#e3e6ee` 는 페이지 바탕(#f2f2f2)과 대비가 ★1.06:1★ 이었다 — 사실상 선이 없다.
    *   흰 면 위에서도, 회색 바탕 위에서도 보이는 값으로 올린다.
    */
-  cardBorder: '#d9dee9',
+  /* ⚠ ★2026-09-22 밤 — 서플라이 테두리 값으로★. 옛 값 '#d9dee9' */
+  cardBorder: '#d1d5db',
   divider: '#edeff4',
   rowDivider: '#edeff4',
   rowDivider2: '#f5f6f9',
@@ -69,10 +70,29 @@ export const V3 = {
   gold: '#ffd83d',
   cyan: '#8ff0ff',
   green: '#22c55e',
-  radiusCard: 10,
-  radiusBlock: 8,
-  radiusCtl: 7,
-  radiusChip: 5,
+  /*
+   * ⚠ ★2026-09-22 밤 — 둥글기를 전부 0 으로★ (사장님: 「모든 카드 디자인, 색
+   *   전부 서플라이랑 똑같이 한다는거 꼭 명심하고」).
+   *
+   *   서플라이를 재 보니 카드가 ★전부 각졌다★ — 표 상자 · 경기 카드 · 상세정보
+   *   카드 전부 `border-radius: 0` 이다 (`docs/SUPPLY_MEASURED.md`).
+   *   둥근 모서리는 우리가 올린 것이고, 그것만으로도 「다른 사이트」로 보였다.
+   *
+   *   ★옛 값은 RADIUS_V1 에 남긴다★ (`CLAUDE.md` 1-4) — 되돌리려면 그 값을 쓴다.
+   */
+  /*
+   * ★경기 카드의 면★ — 서플라이 실측 (`docs/SUPPLY_MEASURED.md` §4).
+   *   이긴 판 #e0f2fe / 테두리 #bae6fd · 진 판 #fee2e2 / 테두리 #fecaca
+   *   우리 옛 값은 rgba(91,141,255,.13) / rgba(255,90,99,.13) 이었다 — 아래 V1 에 남긴다.
+   */
+  winFace: '#e0f2fe',
+  winFaceLine: '#bae6fd',
+  loseFace: '#fee2e2',
+  loseFaceLine: '#fecaca',
+  radiusCard: 0,
+  radiusBlock: 0,
+  radiusCtl: 0,
+  radiusChip: 0,
   font: "var(--font-chakra, 'Chakra Petch'), var(--font-body, 'Noto Sans KR'), system-ui, sans-serif",
 } as const
 
@@ -168,12 +188,24 @@ export const CHAL_NUM_COLOR = '#c2a07a'
  *   `supply-skin.css` 의 `.sac-board` 와 ★같은 값★ 이다. 두 층이 다른 그림자를 쓰면
  *   같은 화면 안에서 카드마다 떠 있는 높이가 달라 보인다.
  */
+/**
+ * ★옛 둥글기·그림자★ — 지우지 않는다 (`CLAUDE.md` 1-4).
+ * 되돌리려면 `V3.radiusCard` 자리에 `RADIUS_V1.card` 를, 그림자에 `SHADOW_V1` 을 쓴다.
+ */
+export const RADIUS_V1 = { card: 10, block: 8, ctl: 7, chip: 5 } as const
+export const SHADOW_V1 = '0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06)'
+
+/*
+ * ⚠ ★2026-09-22 밤 — 그림자를 없앴다★. 서플라이 카드는 ★테두리 1px 만★ 있고
+ *   바탕에서 떠 있지 않다. 9/22 낮에 「보드 위에 올라와 있는 것처럼」 을 그림자로
+ *   풀었는데, 서플라이는 그 일을 ★면의 색 차이★ 로 한다.
+ */
 export const cardStyle: CSSProperties = {
   background: V3.card,
   backgroundClip: 'padding-box',
   border: `1px solid ${V3.cardBorder}`,
   borderRadius: V3.radiusCard,
-  boxShadow: '0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06)',
+  boxShadow: 'none',
 }
 export const cardHeadStyle: CSSProperties = {
   display: 'flex',
