@@ -528,3 +528,15 @@ body.antialiased {
     overflow: hidden;
   }
 }
+
+/* ── 폰 3회차 — Hot게시판이 320px 로 쪼그라들어 있었다 ─────────────────────
+   `.home-cloud + div` 는 `flex-col items-center` 라 Hot 구역이 ★내용 폭★ 으로
+   줄어든다 (실측 x37 w320). 카드에만 `width:100%` 를 줘 봐야 그 320 의 100% 다.
+   ★구역 자체를 화면 끝까지 펴야 한다.★ 서플라이 폰은 x0 w393 전체폭이다.
+*/
+@media (max-width: 767px) {
+  .home-cloud + div > section {
+    width: 100%;
+    align-self: stretch;
+  }
+}
