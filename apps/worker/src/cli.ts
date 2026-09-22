@@ -37,6 +37,7 @@ import { rateLimitSweep } from './jobs/rateLimitSweep.js'
 import { runClanMarkFresh } from './jobs/clanMarkFresh.js'
 import { runClanNameFromMatches } from './jobs/clanNameFromMatches.js'
 import { runRenewRequests } from './jobs/renewRequests.js'
+import { runHotClanServer } from './hotClanServer.js'
 import { runRenewServer } from './renewServer.js'
 import { runClanFindMissing } from './jobs/clanFindMissing.js'
 import { runMatchEndFill } from './jobs/matchEndFill.js'
@@ -4013,6 +4014,15 @@ async function main(): Promise<number> {
         sync: boolFlag(args, 'sync'),
       })
       return r.missing.length > 0 ? 1 : 0
+    }
+
+    case 'hot-clan-server': {
+      /*
+       * ★뜨거운 클랜 상시 수신구★ (2026-09-22 사장님: 「기록 지연 3분내로 줄여줘」)
+       *   크롬 한 대를 계속 띄운 채 최근에 뛴 클랜만 90초마다 짧게 훑는다.
+       *   경기를 만들거나 명단을 채우지 않는다 — 그 예약들이 알아서 뒤이어 찾는다.
+       */
+      return runHotClanServer()
     }
 
     case 'renew-server': {
