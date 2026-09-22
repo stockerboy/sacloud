@@ -440,3 +440,20 @@ export const LEAGUE_NAME_V2: Readonly<Record<string, string>> = {
 export function leagueNameOf(slug: string): string {
   return LEAGUE_NAME[slug] ?? slug
 }
+
+
+/**
+ * ★띠에 적을 리그 이름★ (2026-09-22 밤)
+ *
+ * DB 의 `League.name` 을 그대로 쓰면 `supply` 가 ★「PL」★ 로 나온다 — 옛 이름이다.
+ * 상단 메뉴에는 사장님이 정하신 ★「Supply1.0」★ 이 적혀 있는데, 바로 아래 띠에는
+ * 다른 말이 적혀 ★같은 리그가 두 이름으로★ 보였다 (운영 화면에서 찍어 확인).
+ *
+ * ★DB 를 고치지 않는다★ — `League.name` 은 정렬 키이자 검색 대상이라(D-246)
+ * 화면 사정으로 바꾸면 안 된다. ★화면에서만★ 상단 메뉴와 같은 말을 쓴다.
+ * 표에 없는 리그는 DB 이름을 그대로 쓴다 — 없는 이름을 지어내지 않는다.
+ */
+export function leagueDisplayName(leagueSlug: string, fallback: string): string {
+  const hit = FEATURED_LEAGUES.find((l) => l.href === `/league/${leagueSlug}`)
+  return hit?.label ?? fallback
+}

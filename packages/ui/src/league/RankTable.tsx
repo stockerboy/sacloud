@@ -461,21 +461,26 @@ function MainDuo({ members, leagueSlug }: { members: readonly ClanMainPlayer[]; 
   const sniper = members.find((m) => m.weapon === 1) ?? null
   const rifle = members.find((m) => m.weapon === 0) ?? null
   if (sniper === null && rifle === null) return null
+  /*
+   * ⚠ ★2026-09-22 밤 — 옆으로 나란히에서 ★두 줄★ 로★ (운영 화면을 찍어서 잡았다)
+   *   한 줄로 놓으니 이 칸이 229px 을 먹어 ★클랜명이 잘렸다.★ 두 줄로 쌓으면
+   *   160px 에 들어가고, 줄 높이 22px(11 + 11)은 ★그대로★ 라 표의 리듬이 안 흔들린다.
+   */
   const one = (label: string, m: ClanMainPlayer | null) =>
     m === null ? null : (
-      <span className="flex shrink-0 items-baseline gap-[5px] whitespace-nowrap">
-        <span className="text-[0.68rem] leading-none text-faint">{label}</span>
+      <span className="flex min-w-0 items-baseline gap-[5px] whitespace-nowrap leading-[11px]">
+        <span className="shrink-0 text-[0.62rem] leading-[11px] text-faint">{label}</span>
         <Link
           prefetch={false}
           href={leaguePlayerPath(leagueSlug, m.player.id)}
-          className="text-[0.8rem] leading-none text-meta hover:text-text-strong"
+          className="truncate text-[0.72rem] leading-[11px] text-meta hover:text-text-strong"
         >
           {m.player.name}
         </Link>
       </span>
     )
   return (
-    <span aria-label="메인스나 메인라플" className="flex h-[22px] flex-wrap content-start items-center gap-x-[14px] gap-y-1 overflow-hidden">
+    <span aria-label="메인스나 메인라플" className="flex h-[22px] min-w-0 flex-col justify-center gap-0 overflow-hidden">
       {one('스나', sniper)}
       {one('라플', rifle)}
     </span>

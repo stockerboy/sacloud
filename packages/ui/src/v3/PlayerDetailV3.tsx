@@ -1930,9 +1930,12 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           (`CLAUDE.md` 2장 3번) — 그 자리를 ★값이 있는 카드★ 로 채운다.
       */}
       <style>{`
-        .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 16px; align-items: start; margin-top: 16px; }
+        /* ★서플라이 실측★ — 본문 840 · 틈 7 · 오른쪽 271 (docs/SUPPLY_MEASURED.md §4).
+           옛 값은 330px 에 틈 16px 이었다 — 오른쪽이 넓어 본문이 좁았다.
+           ⚠ 이 블록은 템플릿 리터럴 안이다 — 백틱 기호를 쓰면 문자열이 끊긴다. */
+        .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 271px; gap: 7px; align-items: start; margin-top: 16px; }
         .sac-prr-main { min-width: 0; display: flex; flex-direction: column; }
-        .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 12px; }
+        .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 7px; position: sticky; top: 12px; }
         @media (max-width: 980px) {
           .sac-prr-grid { grid-template-columns: minmax(0,1fr); }
           .sac-prr-aside { position: static; }

@@ -84,6 +84,8 @@ export {
   SITE_BRAND,
   isLeaguePreparing,
   isLeagueUpcoming,
+  /* ★띠에 적을 리그 이름★ — 상단 메뉴와 같은 말을 쓴다 (2026-09-22 밤) */
+  leagueDisplayName,
   type NavGroup,
   type NavLink,
 } from './site-config'

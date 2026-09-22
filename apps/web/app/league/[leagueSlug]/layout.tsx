@@ -10,6 +10,7 @@ import {
   LeaguePreparing,
   LeagueTopBarV2 as LeagueTopBar,
   isLeaguePreparing,
+  leagueDisplayName,
 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -100,7 +101,7 @@ export default function LeagueLayout({
           `true` 로 두면 옛 모습이 그대로 돌아온다. 본문 밀림도 같이 돌아온다.
       */}
       {LEAGUE_TOPBAR_FIXED ? (
-        <LeagueTopBar leagueSlug={leagueSlug} leagueName={data?.name ?? ''} />
+        <LeagueTopBar leagueSlug={leagueSlug} leagueName={leagueDisplayName(leagueSlug, data?.name ?? '')} />
       ) : null}
       <div
         className={
