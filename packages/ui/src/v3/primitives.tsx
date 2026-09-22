@@ -330,7 +330,46 @@ export function SniperMark({ size = 15 }: { size?: number }) {
  *   빨간 원과 흰 별만으로 충분히 읽힌다. 뜻은 `title` 로 알린다.
  * ⚠ 옛 부품(`MvpBadge`)은 ★지우지 않았다★ — 바로 아래 그대로 있다 (CLAUDE.md 1-4).
  */
+/**
+ * ★★MVP 표시 — 하나로★★ (2026-09-22 밤 · 사장님)
+ *
+ * > 「모든 mvp표시 여기서 노란색을 빨간색으로 바꾼걸로 통일해 빨간별 원모양 말고」
+ *   (사진: 노란 사각 배지 「★ MVP」)
+ *
+ *   모양은 그 사각 배지 그대로 — 별 + 「MVP」 글자, 각진 모서리.
+ *   색만 노랑 → ★빨강★. 글자는 흰색(빨강 위 검정은 안 읽힌다).
+ *   카드 11곳 · 스코어보드 전부 이 하나를 부른다 — 여기만 바꾸면 전부 바뀐다.
+ *
+ * ⚠ 옛 「빨강 원 안 흰 별」 은 아래 `MvpMarkCircle` 로 남겼다 (`CLAUDE.md` 1-4).
+ */
 export function MvpMark({ size = 16, className }: { size?: number; className?: string }) {
+  const fs = Math.max(9, Math.round(size * 0.66))
+  return (
+    <span
+      className={className}
+      title="MVP"
+      aria-label="MVP"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 3,
+        flex: 'none',
+        padding: '2px 6px',
+        borderRadius: 0,
+        background: '#e0342f',
+        color: '#ffffff',
+        lineHeight: 1,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span aria-hidden style={{ fontSize: fs }}>&#9733;</span>
+      <span style={{ fontSize: fs, fontWeight: 900, letterSpacing: '.06em' }}>MVP</span>
+    </span>
+  )
+}
+
+/** ★옛 판★ — 빨강 원 안 흰 별 (2026-09-20 ~ 2026-09-22). 지우지 않는다 */
+export function MvpMarkCircle({ size = 16, className }: { size?: number; className?: string }) {
   return (
     <span
       className={className}
@@ -368,13 +407,14 @@ export function MvpBadge({ size = 10, className }: { size?: number; className?: 
         padding: '3px 7px',
         borderRadius: V3.radiusChip,
         whiteSpace: 'nowrap',
-        background: 'rgba(255,216,61,.10)',
-        border: '1px solid rgba(255,216,61,.55)',
-        boxShadow: '0 0 12px rgba(255,216,61,.22)',
+        /* 2026-09-22 밤 — 노랑 → 빨강 (사장님). 옛 값 rgba(255,216,61,.10)/.55/.22 · 글자 V3.gold */
+        background: '#e0342f',
+        border: '1px solid #e0342f',
+        boxShadow: 'none',
       }}
     >
-      <span style={{ fontSize: size + 0.5, color: V3.gold }}>★</span>
-      <span style={{ fontSize: size, fontWeight: 900, letterSpacing: '.08em', color: V3.gold }}>MVP</span>
+      <span style={{ fontSize: size + 0.5, color: '#ffffff' }}>★</span>
+      <span style={{ fontSize: size, fontWeight: 900, letterSpacing: '.08em', color: '#ffffff' }}>MVP</span>
     </span>
   )
 }

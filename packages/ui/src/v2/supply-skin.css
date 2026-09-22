@@ -1088,3 +1088,9 @@ body.antialiased {
   font-weight: 400;
   letter-spacing: normal;
 }
+
+/* MVP 색 토큰 — 옛 record/MatchCard 알약(`text-mvp`·`border-mvp`)도 같은 빨강 (2026-09-22 밤 · 사장님) */
+:root,
+.sac-v2 {
+  --color-mvp: #e0342f;
+}
