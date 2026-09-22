@@ -115,6 +115,7 @@ UNIFIED_MATCH_CARD ? (
           style={{ marginTop: 12 }}
           matches={matches}
           league={{ category: leagueCategory, slug: props.leagueSlug }}
+          neutral
           expanded={expanded}
           onExpand={onExpand}
           renderDetail={(d) => <ClanScoreboardV3 detail={d} leagueCategory={leagueCategory} leagueSlug={props.leagueSlug} winnerFirst />}

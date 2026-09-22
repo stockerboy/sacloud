@@ -57,6 +57,12 @@ export interface MatchCardV3Props {
   match: MatchListItem
   league: MatchCardLeague
   viewer?: MatchCardViewer | null
+  /**
+   * ★기준 클랜이 없는 목록★ (리그홈 · 경기목록 · 홈). 거기서는 「승리/패배」 라는 말이
+   * 거짓이다 — 누구 편에서 본 승리인가가 없다. 대신 ★이긴 클랜을 왼쪽에 WIN 표★ 로 둔다.
+   * 선수·클랜 상세는 보는 쪽이 있으니 그대로 승리/패배다. 배치는 두 경우 ★똑같다★ — 칸 ①의 말만 다르다.
+   */
+  neutral?: boolean
   open: boolean
   onToggle: () => void
   /** 펼친 상세 — 아직 안 왔으면 `undefined` */
@@ -154,13 +160,15 @@ function MvpChip({ entry }: { entry: MatchLineupEntry }) {
 
 const pcGrid: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '108px 62px 92px minmax(180px,1fr) minmax(210px,260px) 52px',
+  /* ⚠ 2026-09-22 밤 — ④ 를 넓혔다. 옛 값 '108px 62px 92px minmax(180px,1fr) minmax(210px,260px) 52px' 에서는
+     840 카드에서 ④ 가 ~180 이라 클랜명이 「Celebr…」 로 잘렸다 (운영 화면을 찍어서 잡았다) */
+  gridTemplateColumns: '96px 52px 84px minmax(200px,1fr) minmax(190px,220px) 44px',
   alignItems: 'center',
   gap: 12,
   padding: '11px 14px',
 }
 
-export function MatchCardV3({ match: m, league, viewer = null, open, onToggle, detail, renderDetail }: MatchCardV3Props) {
+export function MatchCardV3({ match: m, league, viewer = null, neutral = false, open, onToggle, detail, renderDetail }: MatchCardV3Props) {
   const edge = m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk
   const my = viewer ? m.player_stat : null
   /* 명단이 아직 안 들어온 경기 — 펼치지 않는다 (2026-09-10 사장님: «킬데스 수집중») */
@@ -172,7 +180,14 @@ export function MatchCardV3({ match: m, league, viewer = null, open, onToggle, d
   const theirs = ourSide === 'red' ? m.blue : m.red
   const mvpEntry = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id) ?? null
   const mvpIsViewer = viewer !== null && m.mvp_player_id !== null && m.mvp_player_id === viewer.playerId
-  const line = m.win ? V3.winFaceLine : V3.loseFaceLine
+  const line = neutral ? V3.cardBorder : m.win ? V3.winFaceLine : V3.loseFaceLine
+  const face = neutral ? V3.card : m.win ? V3.winFace : V3.loseFace
+  /* 기준이 없는 목록은 ★이긴 클랜을 왼쪽★ 에 (옛 MatchListV3 규칙 그대로) */
+  const leftSnap = neutral && !m.win ? m.opponent : m.league_clan
+  const rightSnap = neutral && !m.win ? m.league_clan : m.opponent
+  const leftInk = neutral ? WIN_LOSS.winInk : m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk
+  const rightInk = neutral ? WIN_LOSS.loseInk : m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk
+  const winChip = <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', color: WIN_LOSS.winInk, background: 'rgba(91,141,255,.22)', border: '1px solid rgba(91,141,255,.45)', borderRadius: 3, padding: '1px 4px' }}>WIN</span>
 
   const kda = my
     ? <Kda kill={my.kill} death={my.death} assist={my.assist} size={16} />
@@ -191,7 +206,7 @@ export function MatchCardV3({ match: m, league, viewer = null, open, onToggle, d
   const chevron = <span style={{ fontSize: 13, color: pending ? V3.textGhost : edge }}>{open ? '⌃' : '⌄'}</span>
 
   return (
-    <div style={{ border: `1px solid ${line}`, borderRadius: V3.radiusCard, overflow: 'hidden', background: m.win ? V3.winFace : V3.loseFace, opacity: pending ? 0.75 : 1, maxWidth: MATCH_CARD_MAX_WIDTH }}>
+    <div style={{ border: `1px solid ${line}`, borderRadius: V3.radiusCard, overflow: 'hidden', background: face, opacity: pending ? 0.75 : 1, maxWidth: MATCH_CARD_MAX_WIDTH }}>
       <style>{CSS}</style>
 
       {/* ══ 폰 ══ */}
@@ -203,20 +218,20 @@ export function MatchCardV3({ match: m, league, viewer = null, open, onToggle, d
           <RatingDelta value={m.rating_update} size={12.5} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto 30px', alignItems: 'center', gap: 8, padding: '12px 4px 12px 13px' }}>
-          <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
+          {neutral ? winChip : <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>}
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>{middle}</span>
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <MarkCircle clan={m.league_clan.clan} size={20} />
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.league_clan.clan.name}</span>
+              <MarkCircle clan={leftSnap.clan} size={20} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: leftInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{leftSnap.clan.name}</span>
             </span>
             <span style={{ fontSize: 10, color: V3.textGhost, paddingLeft: 26 }}>vs</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <MarkCircle clan={m.opponent.clan} size={20} />
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.opponent.clan.name}</span>
+              <MarkCircle clan={rightSnap.clan} size={20} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: rightInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{rightSnap.clan.name}</span>
             </span>
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderLeft: `1px solid ${line}` }}>{chevron}</span>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderLeft: `1px solid ${line}` }}>{pending ? null : chevron}</span>
         </div>
       </div>
 
@@ -226,7 +241,7 @@ export function MatchCardV3({ match: m, league, viewer = null, open, onToggle, d
         <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
           {m.end_at ? <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{durationOf(m.start_at, m.end_at) ?? ''}</span> : null}
-          <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
+          {neutral ? null : <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>}
           <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{shortAgo(matchShownAt(m))}</span>
         </span>
         {/* ② 래더 증감 */}
@@ -238,12 +253,14 @@ export function MatchCardV3({ match: m, league, viewer = null, open, onToggle, d
         <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>{middle}</span>
         {/* ④ 양 팀 — 이름 밑에 티어·점수 */}
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <ClanSide snap={m.league_clan} ink={m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk} league={league} />
+          {neutral ? winChip : null}
+          <ClanSide snap={leftSnap} ink={leftInk} league={league} />
           <span style={{ fontSize: 10.5, color: V3.textGhost, flex: 'none' }}>vs</span>
-          <ClanSide snap={m.opponent} ink={m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk} league={league} />
+          <ClanSide snap={rightSnap} ink={rightInk} league={league} />
         </span>
         {/* ⑤ 명단 두 열 — 왼쪽이 보는 쪽 */}
-        {pending ? <span style={{ fontSize: 10.5, color: V3.textGhost }}>명단 수집중</span> : (
+        {/* ⚠ 「수집중」 은 ③ 이 한 번만 말한다 — 여기와 ⑥ 은 비운다 (한 줄에 같은 말 세 번이었다) */}
+        {pending ? <span /> : (
           <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 10, minWidth: 0 }}>
             <LineupCol rows={ours} meId={viewer?.playerId ?? null} />
             <LineupCol rows={theirs} meId={viewer?.playerId ?? null} />
@@ -251,7 +268,7 @@ export function MatchCardV3({ match: m, league, viewer = null, open, onToggle, d
         )}
         {/* ⑥ 상세보기 */}
         <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? V3.textGhost : open ? WIN_LOSS.winInk : V3.textDim }}>
-          {pending ? <span>수집중</span> : <><span>상세</span><span>보기</span>{chevron}</>}
+          {pending ? null : <><span>상세</span><span>보기</span>{chevron}</>}
         </span>
       </div>
 
@@ -266,6 +283,7 @@ export interface MatchCardListV3Props {
   matches: readonly MatchListItem[]
   league: MatchCardLeague
   viewer?: MatchCardViewer | null
+  neutral?: boolean
   expanded: Readonly<Record<string, MatchDetail>>
   onExpand: (match: MatchListItem) => void
   renderDetail: (detail: MatchDetail) => ReactNode
@@ -273,7 +291,7 @@ export interface MatchCardListV3Props {
 }
 
 /** 카드 목록 — 펼침 상태를 여기서 하나만 쥔다 (한 번에 한 장) */
-export function MatchCardListV3({ matches, league, viewer = null, expanded, onExpand, renderDetail, style }: MatchCardListV3Props) {
+export function MatchCardListV3({ matches, league, viewer = null, neutral = false, expanded, onExpand, renderDetail, style }: MatchCardListV3Props) {
   const [open, setOpen] = useState<string | null>(null)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, ...style }}>
@@ -283,6 +301,7 @@ export function MatchCardListV3({ matches, league, viewer = null, expanded, onEx
           match={m}
           league={league}
           viewer={viewer}
+          neutral={neutral}
           open={open === m.id}
           onToggle={() => { const next = open === m.id ? null : m.id; setOpen(next); if (next !== null) onExpand(m) }}
           detail={expanded[m.id]}
