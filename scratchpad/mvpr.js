@@ -1,0 +1,1 @@
+(() => { const m = document.querySelector('[aria-label="MVP"]'); if (!m) return 'mvp 없음'; const cs = getComputedStyle(m); return 'radius=' + cs.borderRadius + ' bg=' + cs.backgroundColor + ' cards=' + document.querySelectorAll('.mc-phone').length })()
