@@ -87,6 +87,20 @@ await send('Page.setWebLifecycleState', { state: 'active' }).catch(() => {})
 await send('Emulation.setDeviceMetricsOverride', {
   width, height, deviceScaleFactor: 2, mobile: width < 700,
 })
+/*
+ * ★UA 도 폰으로 바꾼다★ (2026-09-22) — 뷰포트만 줄이면 ★서버가 PC 판을 내준다.★
+ *   서플라이를 393px 로 찍었더니 `scrollW 1120` 짜리 PC 화면이 나왔다.
+ *   이걸 모르고 「서플라이 폰은 이렇구나」 하면 ★처음부터 틀린 것을 베낀다.★
+ */
+if (width < 700) {
+  await send('Emulation.setUserAgentOverride', {
+    userAgent:
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 ' +
+      '(KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+    platform: 'iPhone',
+  }).catch(() => {})
+  await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }).catch(() => {})
+}
 await send('Page.navigate', { url })
 await sleep(3500)
 
