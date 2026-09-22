@@ -1094,3 +1094,53 @@ body.antialiased {
 .sac-v2 {
   --color-mvp: #e0342f;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★홈도 우리 톤★ (2026-09-22 밤 · 사장님: 「서플라이에서 하얀색인 부분은 우리가
+   원래 쓰던 색으로 전부 칠해줘」)
+
+   운영 홈을 재 보니 흰 면이 둘 남아 있었다 — 검색창(546×60) · Hot게시판 카드(672).
+   서플라이 실측으로 흰색을 박아 둔 §5·§7 을 ★모양은 그대로 두고 색만★ 덮는다.
+   (폰 서랍 `.v2-drawer-supply` 도 흰색이라 같이)
+   ══════════════════════════════════════════════════════════════════════════ */
+.home-cloud .sb-cloud,
+.home-cloud .sb-cloud.sb-cloud--on {
+  background: #121c2f;
+  border: 1px solid #1e2a42;
+}
+.home-cloud .sb-cloud input {
+  color: #e8eaf2;
+}
+.home-cloud .sb-cloud input::placeholder {
+  color: #7b8199;
+}
+.home-cloud .sb-cloud button[aria-label='검색'] {
+  color: #a4b0c8;
+}
+.home-cloud + div > section > div {
+  background: #121c2f;
+  border: 1px solid #1e2a42;
+  box-shadow: none;
+}
+.home-cloud + div > section > div > div:first-child {
+  border-bottom: 4px solid #5b8dff;
+}
+.home-cloud + div > section > div > div:first-child h2 {
+  color: #e8eaf2;
+}
+.home-cloud + div > section > div > div:first-child a {
+  color: #a4b0c8;
+}
+.home-cloud + div > section > div li {
+  border-bottom: 0.8px solid #18233a;
+}
+.home-cloud + div > section > div li > a > span:first-child {
+  color: #e8eaf2;
+}
+.home-cloud + div > section > div li > a > span:not(:first-child) {
+  color: #7c88a4;
+}
+.v2-drawer-supply {
+  background: #121c2f;
+  color: #e8eaf2;
+}
