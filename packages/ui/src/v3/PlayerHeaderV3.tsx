@@ -489,7 +489,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   )
 
   return (
-    <section style={{ ...cardStyle, position: 'relative', overflow: 'hidden', marginTop: 22, borderTop: `2px solid ${theme.edge}` }} className="v3-phead">
+    <section style={{ ...cardStyle, position: 'relative', overflow: 'hidden', marginTop: 22 }} className="v3-phead">
       {/*
         * ⚠ ★구름·건물 그림을 뜼다★ (2026-09-17 사장님:
         *   «개인기록카드 뒤에 구름이랑 건물 인식표 희미하게 있는거 없애버려 개구려»).

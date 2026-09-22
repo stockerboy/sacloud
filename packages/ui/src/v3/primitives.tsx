@@ -194,9 +194,16 @@ export function TierText({
   )
 }
 
+/*
+ * ⚠ ★2026-09-22 밤 — 위쪽 색 띠(2px)를 안 그린다★ (사장님: 「서플라이랑 똑같이」).
+ *   서플라이 카드에는 색 띠가 없다 — 테두리 1px 만 있다.
+ *   ★`edge` 는 그대로 받는다★ — 되살리려면 아래 style 에
+ *   `...(edge ? { borderTop: ... } : {})` 한 조각만 넣으면 된다 (`CLAUDE.md` 1-4).
+ */
 export function Card({ children, style, edge }: { children: ReactNode; style?: CSSProperties; edge?: string }) {
+  void edge
   return (
-    <section style={{ ...cardStyle, ...(edge ? { borderTop: `2px solid ${edge}` } : {}), ...style }}>
+    <section style={{ ...cardStyle, ...style }}>
       {children}
     </section>
   )
