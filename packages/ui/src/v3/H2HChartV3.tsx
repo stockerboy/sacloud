@@ -158,7 +158,7 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
             <polyline points={oppLine} fill="none" stroke={oppTheme.deep} strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} {...penDash(draw)} />
             <polyline points={mineLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
             <polyline points={oppLine} fill="none" stroke={oppTheme.main} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
-            <polyline points={mineLine} fill="none" stroke="#1c2f6b" strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            <polyline points={mineLine} fill="none" stroke={tone === V3 ? "#1c2f6b" : "#bcd2ff"} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
           </g>
         ) : null}
         {hover !== null ? (
@@ -174,16 +174,16 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
             <circle cx={nowX} cy={oppEndY} r={R + 4} fill="none" stroke={oppTheme.deep} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#h2hGlowR)'} opacity={0.55} />
             <circle cx={nowX} cy={oppEndY} r={R} fill={tone.chip} stroke={oppTheme.main} strokeWidth={2} />
             {oppSlug && hasFitMark(oppSlug) ? <image href={fitMarkUrl(oppSlug)} x={nowX - R} y={oppEndY - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={oppEndY + (close ? 22 : 6)} fill="#05070d" fontSize={PLOT.valueFont} fontWeight="700">{(100 - shownShare).toFixed(1)}%</text>
+            <text x={labelX} y={oppEndY + (close ? 22 : 6)} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - shownShare).toFixed(1)}%</text>
             <circle cx={nowX} cy={endY} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#h2hGlowB)'} opacity={0.55} />
             <circle cx={nowX} cy={endY} r={R} fill={tone.chip} stroke="#7fa9ff" strokeWidth={2} />
             {mineSlug && hasFitMark(mineSlug) ? <image href={fitMarkUrl(mineSlug)} x={nowX - R} y={endY - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={endY + (close ? -14 : 6)} fill="#05070d" fontSize={PLOT.valueFont} fontWeight="700">{shownShare.toFixed(1)}%</text>
+            <text x={labelX} y={endY + (close ? -14 : 6)} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{shownShare.toFixed(1)}%</text>
           </g>
         ) : null}
         <g>
           <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke="#7fa9ff" strokeWidth={3} filter={draw < 1 ? undefined : 'url(#h2hGlowB)'} />
-          <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke="#1c2f6b" strokeWidth={1.6} />
+          <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke={tone === V3 ? "#1c2f6b" : "#bcd2ff"} strokeWidth={1.6} />
           <text x={X0 + 22} y={H - 3} fill={theme.deep} fontSize={PLOT.tickFont}>{mineName}</text>
           <line x1={X0 + (phone ? 130 : 190)} y1={H - 8} x2={X0 + (phone ? 146 : 206)} y2={H - 8} stroke={oppTheme.deep} strokeWidth={3} filter={draw < 1 ? undefined : 'url(#h2hGlowR)'} />
           <line x1={X0 + (phone ? 130 : 190)} y1={H - 8} x2={X0 + (phone ? 146 : 206)} y2={H - 8} stroke={oppTheme.main} strokeWidth={1.6} />

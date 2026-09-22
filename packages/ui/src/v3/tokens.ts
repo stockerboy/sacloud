@@ -86,13 +86,24 @@ export const V3 = {
 export const V3_DARK = {
   ...V3,
   pageBg: 'radial-gradient(1200px 700px at 50% -8%,#142238 0%,#0c1526 42%,#070d1c 100%)',
+  /*
+   * ⚠ ★반투명을 불투명으로 바꿨다★ (2026-09-22 실측).
+   *
+   *   옛 값은 `rgba(46,65,107,.58)` 이었다. ★그때는 페이지 바탕이 어두웠으니까★
+   *   뒤에 `#0c1526` 이 비쳐 남색이 됐다. 지금 바탕은 ★흰색★ 이라 그대로 두면
+   *   흰빛이 비쳐 ★희뿌연 회색 카드★ 가 된다 (화면을 찍어서 봤다).
+   *
+   *   그래서 ★옛 판에서 눈에 보이던 그 색★ 을 불투명 값으로 적는다 —
+   *   `rgba(46,65,107,.58)` 를 `#0c1526` 위에 얹은 결과가 `#202f4e`,
+   *   `rgba(32,48,82,.58)` 는 `#182540` 이다. ★새 색을 고른 게 아니라 옛 색을 계산한 것★ 이다.
+   */
   card:
     'radial-gradient(120% 90% at 0% 0%,rgba(122,162,255,.10),transparent 58%),' +
     'radial-gradient(95% 75% at 100% 0%,rgba(196,132,252,.075),transparent 52%),' +
-    'linear-gradient(160deg,rgba(46,65,107,.58) 0%,rgba(32,48,82,.58) 58%)',
+    'linear-gradient(160deg,#202f4e 0%,#182540 58%)',
   cardFlat:
     'radial-gradient(120% 90% at 0% 0%,rgba(122,162,255,.08),transparent 58%),' +
-    'linear-gradient(160deg,rgba(40,57,95,.58),rgba(36,52,88,.58))',
+    'linear-gradient(160deg,#1d2a47,#1b2743)',
   cardBorder: '#3a4870',
   divider: '#1b2537',
   rowDivider: '#18233a',

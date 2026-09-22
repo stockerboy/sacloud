@@ -64,12 +64,21 @@ export const SEASON_AXIS: PlotAxis = {
  * 눈금은 시즌축과 ★같이 셋★ 이다: 시작 · 한가운데 · 끝.
  */
 export function dayAxis(fromMs: number): PlotAxis {
-  const hh = (offsetDays: number): string =>
-    new Date(fromMs + offsetDays * DAY_MS).toLocaleTimeString('ko-KR', {
-      hour: 'numeric',
+  /*
+   * ⚠ ★«15시시» 가 나왔다★ (2026-09-22 실측) — ko-KR 의 `hour:'numeric'` 은
+   *   이미 ★«15시»★ 를 돌려준다. 거기에 '시' 를 또 붙였다.
+   *   숫자만 뽑아 쓴다 — 로케일이 바뀌어도 «시» 가 두 번 붙지 않는다.
+   */
+  const hh = (offsetDays: number): string => {
+    const at = new Date(fromMs + offsetDays * DAY_MS)
+    const parts = new Intl.DateTimeFormat('ko-KR', {
+      hour: '2-digit',
       hour12: false,
       timeZone: KST,
-    }) + '시'
+    }).formatToParts(at)
+    const hour = parts.find((x) => x.type === 'hour')?.value ?? ''
+    return `${Number(hour)}시`
+  }
   return {
     originMs: fromMs,
     spanDays: 1,
