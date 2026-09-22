@@ -135,7 +135,7 @@ function Body({
   const report = usePlayerReport(playerId, data.report_count)
   const compare = useCompare(leagueSlug, playerId)
   return (
-    <div className="pc-container pb-[40px]">
+    <div className="pc-container sac-v3-page pb-[40px]">
       {/* ★킬데스는 리그가 정한다★ (2026-09-14) — IPL 은 화면에서만 가린다. 값은 그대로 온다 */}
       <PlayerDetailV3
         showsKd={leagueScreen(leagueSlug).playerColumns.kd}
