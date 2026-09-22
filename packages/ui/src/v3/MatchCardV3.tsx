@@ -162,7 +162,7 @@ const pcGrid: CSSProperties = {
   display: 'grid',
   /* ⚠ 2026-09-22 밤 — ④ 를 넓혔다. 옛 값 '108px 62px 92px minmax(180px,1fr) minmax(210px,260px) 52px' 에서는
      840 카드에서 ④ 가 ~180 이라 클랜명이 「Celebr…」 로 잘렸다 (운영 화면을 찍어서 잡았다) */
-  gridTemplateColumns: '96px 52px 84px minmax(200px,1fr) minmax(190px,220px) 44px',
+  gridTemplateColumns: '96px 52px 110px minmax(200px,1fr) minmax(180px,220px) 44px',
   alignItems: 'center',
   gap: 12,
   padding: '11px 14px',
@@ -245,12 +245,13 @@ export function MatchCardV3({ match: m, league, viewer = null, neutral = false, 
           <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{shortAgo(matchShownAt(m))}</span>
         </span>
         {/* ② 래더 증감 */}
+        {/* 값이 없으면 「래더」 라벨도 안 적는다 — 라벨만 덩그러니 남던 것 (운영 리그홈 사진) */}
         <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, whiteSpace: 'nowrap' }}>
-          <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>래더</span>
+          {m.rating_update ? <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>래더</span> : null}
           <RatingDelta value={m.rating_update} size={12.5} />
         </span>
         {/* ③ 내 K/D/A 또는 MVP */}
-        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>{middle}</span>
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0, overflow: 'hidden' }}>{middle}</span>
         {/* ④ 양 팀 — 이름 밑에 티어·점수 */}
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           {neutral ? winChip : null}
