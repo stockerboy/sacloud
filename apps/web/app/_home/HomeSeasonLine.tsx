@@ -62,7 +62,10 @@ export function HomeSeasonLine() {
   const period = now.endedAt ? `(${shortDate(now.startedAt)}~${shortDate(now.endedAt)})` : null
 
   return (
-    <div className="mb-[26px] flex flex-col items-center gap-[7px]">
+    /* ⚠ ★2026-09-22 — `data-home-season` 을 붙였다★. 서플라이 히어로에는 이 줄이
+         없어서 `supply-skin.css` 가 이 표를 보고 감춘다. ★컴포넌트는 그대로 산다★ —
+         껍데기 한 규칙만 빼면 다시 보인다 (`CLAUDE.md` 1-4) */
+    <div data-home-season className="mb-[26px] flex flex-col items-center gap-[7px]">
       <div className="flex items-center gap-[9px]">
         <span className="h-[2px] w-[26px] bg-[var(--v2-red)]" aria-hidden />
         <span className="h-[2px] w-[9px] bg-[var(--v2-sky)]" aria-hidden />

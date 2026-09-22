@@ -24,6 +24,27 @@ B 가 하는 일   맨 위 「대기」 칸을 읽는다 → 만든다 → 검�
 
 > 상태 **사장님 손이 필요함**. 제가 못 하는 것 하나뿐입니다.
 
+### 0. ★흰 카드에 흰 글자★ — 빨간 시험 둘 (2026-09-22 저녁 · B 가 적음)
+
+```
+packages/ui/src/__tests__/v2-match.test.ts        --color-win-bg 가 var(--v2-panel) 이다
+packages/ui/src/__tests__/jeokjin-contrast.test.ts  color-text-strong 이 흰 카드에서 1.08:1
+```
+
+9/22 낮 「서플라이 투톤」 커밋들(`7c147958` · `4d0a789d` · `66b43b5a` · `87aabd95`)이
+본문을 흰 바탕으로 뒤집으면서 ★글자색 토큰은 어두운 바탕 시절 값 그대로★ 남았다.
+1.08:1 은 ★사실상 안 보인다★ 는 뜻이다.
+
+★홈에는 안 나온다★ — 홈 글자색은 `supply-skin.css` 가 직접 정한다.
+나오는 곳은 아직 ★안 세어 봤다★. 홈 다음 Part 에서 화면을 하나씩 열어 센다.
+
+**어떻게 확인하나**
+1. `pnpm vitest run --no-file-parallelism packages/ui/src/__tests__/jeokjin-contrast.test.ts` 가 초록
+2. 선수상세·클랜상세·경기상세·랭킹을 브라우저로 열어 ★글자가 묻힌 칸이 0개★
+3. 그 숫자를 여기 적는다 (「몇 곳이었고 몇 곳이 됐다」)
+
+---
+
 ### 1. 가비아에서 DNS 두 줄 — `loginsa.cloud`
 
 사장님 지시 — 「가비아 로그인도 해놓고 다 해놨거든? (…) loginsa.cloud 로 도메인 바꾸자」

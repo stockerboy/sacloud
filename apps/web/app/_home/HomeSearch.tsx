@@ -356,12 +356,15 @@ export function HomeSearch() {
              옛 값 720 은 아래 `maxWidth` 에 그대로 살아 있다 (`CLAUDE.md` 1-4) */}
       <div
         className={
-          HERO_V3 ? 'w-full max-w-[720px]' : HERO_V2 ? 'w-full max-w-[940px]' : 'w-full max-w-[720px]'
+          /* ⚠ ★2026-09-22 — 서플라이 실측 546px★ (드롭다운 154 + 입력 392).
+             옛 값 720 은 아래 두 갈래에 그대로 살아 있다 (`CLAUDE.md` 1-4) */
+          HERO_V3 ? 'w-full max-w-[546px]' : HERO_V2 ? 'w-full max-w-[940px]' : 'w-full max-w-[720px]'
         }
       >
         <SearchBar
           /* ★시안 홈 검색창은 720px★ (`width: 720`). 기본값 560 은 그대로 살아 있다 */
-          maxWidth={HERO_V3 ? 720 : HERO_V2 ? 940 : 720}
+          /* ⚠ ★2026-09-22 — 서플라이 실측 546★. 옛 값 720 은 나머지 갈래에 그대로 있다 */
+          maxWidth={HERO_V3 ? 546 : HERO_V2 ? 940 : 720}
           /* ★구름 껍데기★ (2026-09-18) — 둥근 유리. 동작은 한 줄도 안 건드렸다 */
           cloud={HERO_V3}
           /* ★터미널 껍데기★ — 껍데기만 바뀐다. 동작은 한 줄도 안 건드렸다 */

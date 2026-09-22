@@ -82,6 +82,21 @@ const GNB_MARK_ON: boolean = false
  */
 const GNB_ROW_ON: boolean = true
 
+/**
+ * ★PC 상단바에 로고를 그릴 것인가★
+ *
+ * ⚠ ★2026-09-22 — 끈다★ (사장님: 「그거외에는 ★서플라이랑 전부 똑같이★ 만들어」).
+ *   서플라이 PC 상단바를 실측했더니 ★로고가 없다★ (`nav img` 의 폭이 0px 이고
+ *   메뉴가 1120px 칸의 ★왼쪽 끝에서 바로★ 시작한다). 히어로 한가운데에 큰 로고가
+ *   있어서 위에 또 두지 않는 것이다.
+ *
+ *   ⚠ 이것은 2026-09-12 지시(「메인홈에 상단에 로고 넣어줘」)와 ★어긋난다.★
+ *     오늘 지시가 더 뒤이고 「전부 똑같이」 라고 못박으셔서 오늘 것을 따랐다.
+ *     ★로고를 도로 세우시려면 이 값을 `true` 로 두면 된다 — 한 글자다.★
+ *   ★폰에서는 그대로 보인다★ (서플라이도 폰에는 로고가 있다).
+ */
+const GNB_BRAND_ON: boolean = false
+
 const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> = {
   /**
    * ★본디 크기를 같이 적는다★ (2026-09-12).
@@ -120,10 +135,29 @@ const GNB_LINKS: readonly { icon: string; label: string; aria: string; href: str
    *   바뀐 것은 ★그 자리에 적는 말★ 뿐이다.
    *   옛 글자: ✨about · 📌notice · 📋board
    */
+  /*
+   * ⚠ ★★2026-09-22 — 사장님이 상단 메뉴를 직접 정하셨다★★
+   *
+   * > 「상단 메뉴는 내가 지금정할게 ★Supply2.0(옛cpl)/IPL/Supply1.0(옛pl)/열산/게시판★
+   * >  이렇게 만들어」
+   *
+   *   다섯 자리 중 앞 넷은 리그(`GNB_LEAGUES`)이고, 여기 남는 것은 ★게시판 하나★ 다.
+   *   ★`참가신청`(/about) 과 `ABOUT`(/guide) 을 상단바에서 내렸다.★
+   *
+   *   ⚠ ★두 화면을 지우지 않았다★ (`CLAUDE.md` 1-4) — 주소도 화면도 그대로 살아 있고
+   *     ★햄버거 서랍(사이트맵)에도 그대로 있다.★ 아래 `GNB_LINKS_20260921` 로
+   *     되돌리면 상단바에 그대로 돌아온다.
+   */
+  { icon: '', label: '게시판', aria: '게시판', href: '/board/hot', match: '/board' },
+]
+
+/** ⚠ ★2026-09-22 이전 판★ — 참가신청·ABOUT 이 상단바에 있던 시절. 지우지 않는다 */
+const GNB_LINKS_20260921: readonly { icon: string; label: string; aria: string; href: string; match: string }[] = [
   { icon: '', label: '참가신청', aria: '참가신청', href: '/about', match: '/about' },
   { icon: '', label: 'ABOUT', aria: '이용방법', href: '/guide', match: '/guide' },
   { icon: '', label: '게시판', aria: '게시판', href: '/board/hot', match: '/board' },
 ]
+void GNB_LINKS_20260921
 
 /** `/league/nolink` → `nolink`. 주소가 리그가 아니면 빈 글자다 */
 function leagueSlugOfHref(href: string): string {
@@ -228,7 +262,9 @@ export function SiteHeaderV2({
         <Link
           href="/"
           aria-label="홈"
-          className={`v2-brand flex items-center ${GNB_ROW_ON ? '' : 'v2-brand--center'}`}
+          className={`v2-brand flex items-center ${GNB_ROW_ON ? '' : 'v2-brand--center'} ${
+            GNB_BRAND_ON ? '' : 'v2-brand--pc-off'
+          }`}
         >
           <NavLogo className="h-[34px] w-auto max-md:h-[28px]" />
         </Link>

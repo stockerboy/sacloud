@@ -332,7 +332,20 @@ export function SearchBar({
              *   (`CLAUDE.md` 1-4) — 옛 클래스: `border-r border-line text-meta
              *   hover:text-[var(--color-text-strong,#f6eded)]`.
              */
-            style={terminal ? undefined : { background: '#0c1526', borderRadius: '999px 0 0 999px' }}
+            /*
+             * ⚠ ★2026-09-22 저녁 — 값을 토큰으로 뺐다★ (서플라이 껍데기).
+             *   ★기본값은 한 픽셀도 안 바뀐다★ — `--sb-kind-*` 를 아무도 안 주면
+             *   위 2026-09-22 낮의 값(`#0c1526` · 알약)이 그대로 나온다.
+             *   `supply-skin.css` 가 이 두 칸만 서플라이 실측값으로 갈아끼운다.
+             */
+            style={
+              terminal
+                ? undefined
+                : {
+                    background: 'var(--sb-kind-bg, #0c1526)',
+                    borderRadius: 'var(--sb-kind-radius, 999px 0 0 999px)',
+                  }
+            }
           >
             {terminal ? (
               <>

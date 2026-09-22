@@ -48,7 +48,8 @@ export function HomeCatHero() {
         CSS 로 주면 ★배경색이 바뀌어도 따라온다★ 하고 파일도 안 무거워진다.
       */}
       <Link prefetch={false} href="/" aria-label="SA CLOUD 홈" className="home-mark block">
-        <MainLogo className="h-[128px] w-auto max-md:h-[74px]" />
+        {/* ⚠ ★2026-09-22 — 서플라이 실측 로고 높이 144px★ (616×144). 옛 값 128 */}
+        <MainLogo className="h-[144px] w-auto max-md:h-[74px]" />
       </Link>
     </div>
   )

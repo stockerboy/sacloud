@@ -73,6 +73,23 @@ export interface NavLink {
  *
  *   옛 이름은 아래 `FEATURED_LEAGUES_V1` 에 남긴다 (`CLAUDE.md` 1-4).
  */
+/**
+ * ⚠ ★★2026-09-22 — 사장님이 상단 메뉴를 직접 정하셨다★★
+ *
+ * > 「상단 메뉴는 내가 지금정할게 ★Supply2.0(옛cpl)/IPL/Supply1.0(옛pl)/열산/게시판★
+ * >  이렇게 만들어」
+ *
+ *   ```
+ *   Supply2.0   ← 옛 CPL      주소 /league/cpl     (그대로)
+ *   IPL         ← 그대로      주소 /league/nolink  (그대로)
+ *   Supply1.0   ← 옛 PL       주소 /league/supply  (그대로)
+ *   열산        ← 옛 열산리그 주소 /league/sanply   (그대로)
+ *   게시판      ← 그대로      주소 /board/hot      (그대로)
+ *   ```
+ *
+ *   ★주소는 한 글자도 안 바뀐다.★ 바뀐 것은 ★그 자리에 적는 말★ 뿐이다.
+ *   옛 이름은 아래 `FEATURED_LEAGUES_20260921` 에 남긴다 (`CLAUDE.md` 1-4).
+ */
 export const FEATURED_LEAGUES: readonly NavLink[] = [
   /*
    * ★★2026-09-21 — C1 을 빼고 CPL 을 넣었다★★ (사장님)
@@ -87,11 +104,19 @@ export const FEATURED_LEAGUES: readonly NavLink[] = [
    * ⚠ ★C1 을 지우지 않았다★ (`CLAUDE.md` 1-4) — 리그 행도 경기도 DB 에 그대로 있고,
    *   아래 `FEATURED_LEAGUES_WITH_C1` 로 되돌리면 화면에 그대로 돌아온다.
    */
-  { label: 'CPL', href: '/league/cpl' },
+  { label: 'Supply2.0', href: '/league/cpl' },
   /* ⚠ 2026-09-16 — «LLM» → «PL» (사장님). 주소는 그대로 `supply` 다 */
-  { label: 'PL', href: '/league/supply' },
+  { label: 'Supply1.0', href: '/league/supply' },
   { label: 'IPL', href: '/league/nolink' },
   /* ⚠ 2026-09-16 — «YSL» → «열산리그» (사장님). 주소는 그대로 `sanply` 다 */
+  { label: '열산', href: '/league/sanply' },
+]
+
+/** ⚠ ★2026-09-22 이전 이름★. 지우지 않는다 — 되돌릴 때 이 줄을 쓴다 (`CLAUDE.md` 1-4) */
+export const FEATURED_LEAGUES_20260921: readonly NavLink[] = [
+  { label: 'CPL', href: '/league/cpl' },
+  { label: 'PL', href: '/league/supply' },
+  { label: 'IPL', href: '/league/nolink' },
   { label: '열산리그', href: '/league/sanply' },
 ]
 
@@ -128,11 +153,15 @@ export const FEATURED_LEAGUES_V1: readonly NavLink[] = [
  *   실제로 그렇게 될 뻔했고, `preparing-league.test.ts` 의
  *   「두 목록이 같은 리그를 담는다」 단언이 그것을 잡았다.
  */
+/*
+ * ⚠ ★2026-09-22 — 사장님이 직접 정하신 차례★
+ *   「Supply2.0(옛cpl)/IPL/Supply1.0(옛pl)/열산/게시판」
+ *   옛 차례: cpl · supply · nolink · sanply (2026-09-21)
+ */
 export const GNB_LEAGUE_ORDER: readonly string[] = [
-  /* ⚠ ★2026-09-21 — C1 → CPL★ (사장님). `FEATURED_LEAGUES` 와 같이 바꿔야 한다 */
   '/league/cpl',
-  '/league/supply',
   '/league/nolink',
+  '/league/supply',
   '/league/sanply',
 ]
 

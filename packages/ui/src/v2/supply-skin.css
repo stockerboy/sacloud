@@ -1,0 +1,343 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★서플라이 껍데기★★ — 2026-09-22 · 사장님 지시
+
+   > 「광고는 없애고 바로 hot게를 붙여 ★그거외에는 서플라이랑 전부 똑같이 만들어★」
+
+   ── 왜 파일을 따로 두는가
+     `styles.css`(2814줄) 와 `tokens.css`(2636줄) 에는 지난 한 달의 판이 층층이
+     쌓여 있다. 그 안을 헤집으면 ★어느 줄이 이기는지★ 를 매번 다시 찾아야 하고,
+     실제로 그래서 9/22 에 다섯 번 고치고도 화면이 안 맞았다.
+     ★이 파일은 맨 마지막에 읽힌다★ (`apps/web/app/globals.css`).
+     같은 선택자면 뒤가 이기므로, 여기 적힌 값이 ★언제나 마지막 말★ 이다.
+
+   ── ★지우지 않았다★ (`CLAUDE.md` 1-4)
+     위 두 파일은 한 줄도 안 지웠다. `globals.css` 에서 이 파일 `@import` 한 줄만
+     빼면 2026-09-22 아침의 화면이 그대로 돌아온다.
+
+   ── ★값의 출처★ — 전부 `https://3rd.supply` 를 크롬에서 직접 잰 숫자다
+     (`getComputedStyle` · 2026-09-22 · 뷰포트 1513px). 지어낸 값이 하나도 없다.
+     ┌──────────────┬───────────────────────────────────────────────┐
+     │ 바탕          │ #f2f2f2                                       │
+     │ 글자          │ #000000 · 14px · 시스템 글꼴                   │
+     │ 칸 폭         │ 1120px                                        │
+     │ 상단바        │ #000 · 63px · 링크 14px/400 #e5e7eb · pad 0 14│
+     │ 히어로        │ #000 · padding 70px 0 35px (총 343px)         │
+     │ 로고          │ 616 × 144                                     │
+     │ 검색창        │ 546 × 60 (드롭다운 154 + 입력 392)             │
+     │ 입력          │ #fff · 15.75px · #4a4a4a · radius 0 7 7 0     │
+     │ Hot게시판     │ 흰 카드 672px · radius 3.5px                   │
+     │  └ 머리       │ 15.75px/600 #1e3a8a · 아래선 4px #1e3a8a       │
+     │  └ 줄         │ padding 14px · 아래선 0.8px #e5e7eb            │
+     │  └ 제목       │ 15.75px/700 #000                              │
+     │ 푸터          │ #000 · 글자 #e5e7eb                            │
+     └──────────────┴───────────────────────────────────────────────┘
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 바탕·글자·칸 폭 ──────────────────────────────────────────────────── */
+:root,
+.sac-v2 {
+  --layout-max: 1120px;
+  --v2-max: 1120px;
+  --v2-pad: 0px;
+  --v2-nav-h: 63px;
+  --spacing-nav: 63px;
+  --v2-bar: #000000;
+}
+
+body.sac-sky,
+body.antialiased {
+  background: #f2f2f2;
+  background-image: none;
+  color: #000000;
+  font-size: 14px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+/* 셸이 화면 전체를 덮는 칸이다 — 여기도 같은 바탕이어야 한다 */
+.sac-shell,
+.sac-shell.bg-page {
+  background: #f2f2f2;
+}
+
+/* ── 2. 상단바 — 전체폭 검정 띠 63px (둥근 알약을 푼다) ──────────────────── */
+/*
+ * ⚠ `tokens.css:861` 의 ★v3 껍데기★ 가 상단바를 「떠 있는 둥근 알약」으로 만든다.
+ *   그 블록을 지우지 않고 ★여기서 되돌린다★ — 같은 선택자, 더 뒤.
+ */
+.sac-v2.v2-topbar,
+.sac-v2 .v2-topbar {
+  background: #000000;
+  border-bottom: 0;
+  padding: 0;
+  pointer-events: auto;
+}
+.sac-v2 .v2-topbar__inner {
+  max-width: 1120px;
+  height: 63px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  gap: 0;
+}
+.sac-v2 .v2-topbar__inner--home {
+  height: 63px;
+}
+.sac-v2 .v2-topbar__inner--gnb {
+  padding: 0;
+  gap: 0;
+}
+
+/* PC 상단바에는 로고가 없다 — 메뉴가 칸의 왼쪽 끝에서 바로 시작한다 (서플라이 실측) */
+@media (min-width: 768px) {
+  .sac-v2 .v2-brand--pc-off {
+    display: none;
+  }
+  .sac-v2 .v2-topbar__inner--gnb > .v2-brand--pc-off {
+    margin-right: 0;
+  }
+}
+
+/* 메뉴 글자 — 14px / 400 / #e5e7eb · 좌우 14px */
+.sac-v2 .v2-gnb {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: 100%;
+}
+.sac-v2 .v2-gnb__item {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  color: #e5e7eb;
+  letter-spacing: 0;
+  border: 0;
+}
+.sac-v2 .v2-gnb__item:hover {
+  color: #ffffff;
+}
+.sac-v2 .v2-gnb__item.is-on {
+  color: #ffffff;
+}
+.sac-v2 .v2-gnb__cell {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  white-space: nowrap;
+}
+.sac-v2 .v2-gnb__name {
+  font-size: 14px;
+  font-weight: 400;
+}
+.sac-v2 .v2-login {
+  font-size: 14px;
+  font-weight: 400;
+  color: #e5e7eb;
+}
+
+/* ── 3. 히어로 — 순검정 · padding 70px 0 35px ───────────────────────────── */
+.home-cloud,
+.home-code,
+.home-night {
+  background: #000000;
+  background-image: none;
+  padding: 70px 0 35px;
+}
+/* 배경 장식(빛·코드·밤하늘)은 서플라이에 없다. 파일은 그대로 두고 그리지만 않는다 */
+.home-cloud::before,
+.home-cloud::after,
+.home-night::before,
+.home-night::after {
+  content: none !important;
+}
+
+/* ── 4. 푸터 — 검정 · 글자 #e5e7eb ──────────────────────────────────────── */
+.sac-shell > footer {
+  background: #000000;
+  color: #e5e7eb;
+  border-top: 0;
+}
+.sac-shell > footer a {
+  color: #e5e7eb;
+}
+
+/* ── 5. 히어로 속 — 로고 · 검색창 (서플라이 실측) ──────────────────────────
+   ```
+   히어로 위 70px → 로고 616×144 → 35px → 검색창 546×60 → 아래 35px
+   ```
+   ⚠ 서플라이 히어로에는 ★로고와 검색창 둘뿐★ 이다. 우리 「시즌 한 줄」은 없다.
+     ★지우지 않는다★ — 아래 한 규칙만 빼면 그대로 돌아온다.
+*/
+.home-cloud .v2-container > div:has(> [data-home-season]),
+.home-cloud [data-home-season] {
+  display: none;
+}
+
+/* 로고 밑 여백 35px — 고양이 무대(`home-mark`)의 여백을 서플라이 값으로 */
+.home-cloud .home-mark {
+  margin-bottom: 35px;
+}
+.home-cloud .home-mark::before,
+.home-cloud .home-mark::after {
+  content: none !important;
+}
+
+/* ── 검색창 — 546×60 · 드롭다운 154 + 입력 392 ─────────────────────────── */
+.home-cloud .sb-cloud {
+  /* 드롭다운 칩 (SearchBar 의 인라인 style 이 이 두 토큰을 읽는다) */
+  --sb-kind-bg: #4a5568;
+  --sb-kind-radius: 7px 0 0 7px;
+
+  height: 60px;
+  background: #ffffff;
+  border: 0;
+  border-radius: 7px;
+  box-shadow: none;
+  backdrop-filter: none;
+  overflow: visible;
+}
+.home-cloud .sb-cloud.sb-cloud--on {
+  background: #ffffff;
+  box-shadow: none;
+}
+/* 종류 단추 — 154px · 흰 글자 */
+.home-cloud .sb-cloud > div:first-of-type > button,
+.home-cloud .sb-cloud button[aria-haspopup='listbox'] {
+  width: 154px;
+  height: 60px;
+  padding: 0 17.5px;
+  font-size: 15.75px;
+  color: #ffffff;
+}
+/* 입력 — 흰 바탕 · 15.75px · #4a4a4a */
+.home-cloud .sb-cloud input {
+  height: 60px;
+  padding: 17.5px;
+  font-size: 15.75px;
+  color: #4a4a4a;
+  background: transparent;
+}
+.home-cloud .sb-cloud input::placeholder {
+  color: #9aa0a6;
+}
+/* 돋보기 — 입력칸 오른쪽 안쪽 */
+.home-cloud .sb-cloud > div > button[aria-label='검색'],
+.home-cloud .sb-cloud button[aria-label='검색'] {
+  padding: 0 17.5px;
+  color: #4a4a4a;
+}
+
+/* ── 6. 광고 자리 없음 → 히어로 끝나고 바로 Hot게시판 ─────────────────────
+   사장님: 「광고는 없애고 ★바로 hot게를 붙여★」
+   서플라이는 히어로 뒤 `my-2`(8px) → 광고 1120×280 → `mt-10`(40px) → Hot게시판.
+   광고 칸을 통째로 들어내면 남는 것은 ★8px + 40px = 48px★ 이다.
+*/
+.home-cloud + div {
+  margin-top: 48px;
+}
+.home-cloud + div > section {
+  margin-top: 0;
+}
+
+/* ── 7. Hot게시판 — 흰 카드 672px (서플라이 실측) ─────────────────────── */
+.home-cloud + div > section > div {
+  width: 672px;
+  max-width: 100%;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 0;
+  border-radius: 3.5px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.06);
+  overflow: hidden;
+}
+/* 머리 — "Hot게시판" · 15.75px/600 · #1e3a8a · 아래선 4px */
+.home-cloud + div > section > div > div:first-child {
+  padding: 7px 14px;
+  border-bottom: 4px solid #1e3a8a;
+  align-items: center;
+}
+.home-cloud + div > section > div > div:first-child h2 {
+  font-size: 15.75px;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+.home-cloud + div > section > div > div:first-child a {
+  font-size: 13px;
+  color: #6b7280;
+}
+/* 줄 — padding 14px · 아래선 0.8px · 제목 15.75px/700 검정 */
+.home-cloud + div > section > div li {
+  border-bottom: 0.8px solid #e5e7eb;
+}
+.home-cloud + div > section > div li:last-child {
+  border-bottom: 0;
+}
+.home-cloud + div > section > div li > a {
+  padding: 14px;
+  gap: 8px;
+}
+/* 제목 — 15.75px / 700 / 검정 */
+.home-cloud + div > section > div li > a > span:first-child {
+  font-size: 15.75px;
+  font-weight: 700;
+  color: #000000;
+}
+/*
+ * 오른쪽 ♥ 추천수 — 서플라이에는 없는 ★우리 것★ 이다. 지우지 않는다
+ * (`CLAUDE.md` 1-4 · 「기능을 디자인에 맞춘다고 삭제하지 않는다」).
+ * ⚠ 서플라이의 빨강은 ★댓글 수★ 라 뜻이 다르다 — 빨강을 빌려 쓰지 않는다.
+ *   제목이 주인공이 되도록 한 단 작고 흐리게만 둔다.
+ */
+.home-cloud + div > section > div li > a > span:not(:first-child) {
+  font-size: 13px;
+  font-weight: 400;
+  color: #6b7280;
+}
+/* 구역 제목("Hot게시판") 위 여백은 카드가 대신한다 */
+.home-cloud + div > section {
+  margin-bottom: 40px;
+}
+
+/* ── 8. ★1회차 실측으로 잡은 세 곳★ (2026-09-22 · localhost:3001 대조) ──────
+   ```
+              서플라이   1회차 우리   무엇이 밀었나
+   히어로 시작   y63        y56        머리띠 여백 토큰이 56 으로 남아 있었다
+   히어로 높이   343        410        ① 로고 위 26px ② 검색창 밑 40px
+   ```
+*/
+/* ① 히어로는 머리띠(63px) 바로 밑에서 시작한다.
+     ⚠ 여백은 `--spacing-nav` 토큰이 정한다 (위 1절에서 63px 로 맞췄다).
+       한때 여기 `div[class*='pt-[']` 라고 적었는데 ★대괄호가 든 속성 선택자가
+       Lightning CSS 를 막아 이 아래 규칙이 통째로 죽었다.★ 다시 쓰지 않는다.
+       `--spacing-nav` 만으로는 안 된다 — 본문 칸이 그 토큰을 홈에서 56 으로 읽는다.
+       ★셸의 본문 칸을 바로 짚는다★ (대괄호 없는 선택자). */
+.sac-shell > div.flex-1 {
+  padding-top: 63px;
+}
+/* ② 로고 위 여백 — 서플라이는 히어로 padding 70px 하나뿐이다
+     ⚠ 이 칸은 `v2-container` 가 아니라 `mx-auto ...` 유틸리티 묶음이다 (1회차에 헛짚음) */
+.home-cloud > div > div:first-child {
+  padding-top: 0;
+}
+/* ③ 검색창 밑 — 서플라이는 히어로 padding-bottom 35px 하나뿐이다 */
+.home-cloud > div {
+  padding-bottom: 0;
+}
+.home-cloud section {
+  padding-bottom: 0;
+}
+
+/* ④ 입력칸 — 서플라이는 392px (돋보기가 그 안에 들어간다) */
+.home-cloud .sb-cloud button[aria-label='검색'] {
+  width: 52px;
+  padding: 0;
+  justify-content: center;
+}
+.home-cloud .sb-cloud input {
+  flex: 1 1 auto;
+}
