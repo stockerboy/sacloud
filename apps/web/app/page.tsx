@@ -8,6 +8,18 @@ import { HomeBadgeWall } from './_home/HomeBadgeWall'
 import { HomeHotBoard } from './_home/HomeHotBoard'
 
 /**
+ * ★★홈이 정적으로 굳어 있었다★★ (2026-09-22 실측)
+ *
+ * `revalidate` 를 안 주면 Next 가 이 화면을 ★빌드 시점에 한 번★ 그리고
+ * 그 뒤로는 재배포 전까지 그대로 굳힌다. Hot게시판에 글 10개를 넣었는데도
+ * 화면에는 «글 없음» 시절 스냅샷이 그대로 떴다 (`X-Vercel-Cache: HIT` ·
+ * `Age: 344`). API(`/api/boards?category=hot`)는 정확했다 — 화면만 안 읽었다.
+ *
+ * 다른 화면들과 같은 값(`PUBLIC_CACHE_SECONDS`)으로 맞춘다 — 최대 5분 늦게 보인다.
+ */
+export const revalidate = 300
+
+/**
  * ★메인에 배지 진열장을 그릴까★ (2026-09-21 사장님: 「뱃지는 메인화면에서 숨겨버려」).
  * 배지 때문에 폰에서 닉네임이 가려진다는 것이 까닭이다. `true` 면 돌아온다.
  */
