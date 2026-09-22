@@ -122,13 +122,13 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
         <rect x="0" y="0" width={width} height={H} fill={V3.plot} />
         {[0, 25, 50, 75, 100].map((g) => (
           <g key={g}>
-            <line x1={X0} y1={yOf(g)} x2={X1} y2={yOf(g)} stroke="#eef0f5" />
+            <line x1={X0} y1={yOf(g)} x2={X1} y2={yOf(g)} stroke="#e5e7ec" />
             <text x={X0 - 7} y={yOf(g) + 4} textAnchor="end" fill={V3.textDim} fontSize={PLOT.axisFont}>{g}%</text>
           </g>
         ))}
         {TICK_LABELS.map(([t, label], k) => (
           <g key={label}>
-            {k === 1 ? <line x1={xOf(t)} y1={Y_TOP} x2={xOf(t)} y2={Y_BOTTOM} stroke="#eef0f5" strokeDasharray="3 5" /> : null}
+            {k === 1 ? <line x1={xOf(t)} y1={Y_TOP} x2={xOf(t)} y2={Y_BOTTOM} stroke="#e5e7ec" strokeDasharray="3 5" /> : null}
             <text x={xOf(t)} y={Y_BOTTOM + 26} textAnchor={k === 0 ? 'start' : k === 2 ? 'end' : 'middle'} fill={V3.textDim} fontSize={PLOT.tickFont}>{label}</text>
           </g>
         ))}

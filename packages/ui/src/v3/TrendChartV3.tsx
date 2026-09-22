@@ -249,13 +249,13 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         <text x={(X0 + X1) / 2} y={H / 2} textAnchor="middle" fontSize="62" fontWeight="900" fill="#124a56" opacity="0.05" letterSpacing="6">CLOUD 0</text>
         {[0, 20, 40, 60, 80, 100].map((g) => (
           <g key={g}>
-            <line x1={X0} y1={yOf(g)} x2={X1} y2={yOf(g)} stroke="#eef0f5" />
+            <line x1={X0} y1={yOf(g)} x2={X1} y2={yOf(g)} stroke="#e5e7ec" />
             <text x={X0 - 8} y={yOf(g) + 4} textAnchor="end" fill={V3.textDim} fontSize={PLOT.axisFont}>{g}</text>
           </g>
         ))}
         {ticks.map((i, k) => (
           <g key={i}>
-            {k === 1 ? <line x1={xOf(i)} y1={Y_TOP} x2={xOf(i)} y2={Y_BOTTOM} stroke="#eef0f5" strokeDasharray="3 5" /> : null}
+            {k === 1 ? <line x1={xOf(i)} y1={Y_TOP} x2={xOf(i)} y2={Y_BOTTOM} stroke="#e5e7ec" strokeDasharray="3 5" /> : null}
             <text x={xOf(i)} y={Y_BOTTOM + 26} textAnchor={k === 0 ? 'start' : k === 2 ? 'end' : 'middle'} fill={V3.textDim} fontSize={PLOT.tickFont}>{days[i]?.label ?? ''}</text>
           </g>
         ))}

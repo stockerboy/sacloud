@@ -31,7 +31,7 @@ import type { CSSProperties } from 'react'
  *   textFaint #6b7690 · textGhost #5c6a84 · textGhost2 #4e5b74
  */
 export const V3 = {
-  pageBg: 'radial-gradient(1200px 700px at 50% -8%, #ffffff 0%, #f4f5f8 42%, #eef0f5 100%)',
+  pageBg: 'radial-gradient(1200px 700px at 50% -8%, #f7f8f9 0%, #e9ebef 42%, #e0e2e7 100%)',
   bar: 'linear-gradient(160deg,#0d1524,#080d18)',
   barBorder: '#16202e',
   /**
@@ -47,8 +47,8 @@ export const V3 = {
   divider: '#edeff4',
   rowDivider: '#edeff4',
   rowDivider2: '#f5f6f9',
-  plot: '#eef0f5',
-  chip: '#eef0f5',
+  plot: '#e5e7ec',
+  chip: '#e5e7ec',
   chipBorder: '#dde1eb',
   text: '#1c2233',
   textStrong: '#05070d',

@@ -28,7 +28,7 @@ body {
  *   radial-gradient(1200px 700px at 50% -8%, #142238 0%, #0c1526 42%, #070d1c 100%)
  */
 body {
-  background-image: radial-gradient(1200px 700px at 50% -8%, #ffffff 0%, #f4f5f8 42%, #eef0f5 100%);
+  background-image: radial-gradient(1200px 700px at 50% -8%, #f7f8f9 0%, #e9ebef 42%, #e0e2e7 100%);
   background-attachment: fixed;
 }
 
@@ -53,12 +53,12 @@ body {
   }
 
   ::-webkit-scrollbar-track {
-    background-color: #f4f5f8;
+    background-color: #e9ebef;
   }
 
   ::-webkit-scrollbar-thumb {
     background-color: #c4cbdd;
-    border: 2px solid #f4f5f8;
+    border: 2px solid #e9ebef;
     border-radius: var(--radius);
   }
 

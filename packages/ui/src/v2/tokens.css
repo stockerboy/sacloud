@@ -78,11 +78,11 @@
    *   chip #1a2440 · chip-on #222d4a · chip-border #27324f · chip-border-on #364167
    *   menu-border #323d5c
    */
-  --v2-bg: #f4f5f8;
+  --v2-bg: #e9ebef;
   --v2-bar: #0e1a2f;
   --v2-tabbar: #0a1121;
   --v2-panel: #ffffff;
-  --v2-plot: #eef0f5;
+  --v2-plot: #e5e7ec;
   --v2-card: #ffffff;
 
   /* ── 선 ────────────────────────────────────────────────── */
@@ -103,7 +103,7 @@
   --v2-text-ghost2: #ccd2e0;
 
   /* ── 칩·입력 ───────────────────────────────────────────── */
-  --v2-chip: #eef0f5;
+  --v2-chip: #e5e7ec;
   --v2-chip-on: #e4e8f2;
   --v2-chip-border: #dde1eb;
   --v2-chip-border-on: #c4cbdd;
@@ -733,7 +733,7 @@
   /* ⚠ ★2026-09-22 — 흰 카드용으로★. 옛 값(남색 판, 2026-09-10): card #14151c → 남색 시절
      card-2 #0e1731 (그 앞은 #1a1c24) — 지우지 않고 여기 남긴다 (`CLAUDE.md` 1-4) */
   --color-card: var(--v2-card);
-  --color-card-2: #eef0f5;
+  --color-card-2: #e5e7ec;
 
   /* ── 선 ── */
   --color-line: var(--v2-card-border);
@@ -2186,7 +2186,7 @@
     /* ⚠ 2026-09-22 흰 카드용. 옛 값(다크): border #18222f · bg rgba(13,21,36,.42) — 1-4 */
     border: 1px solid var(--v2-card-border, #e3e6ee);
     border-radius: 10px;
-    background: var(--v2-chip, #eef0f5);
+    background: var(--v2-chip, #e5e7ec);
   }
   /*
    * 값 줄은 왼쪽으로.
