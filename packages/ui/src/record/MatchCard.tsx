@@ -550,7 +550,7 @@ export function MatchCard({
                           이미 일치했다 — 루트 폰트와 `text-sm` 은 맞다는 뜻이다. */}
                       <div className="num text-xl font-semibold text-text-strong max-md:text-base">
                         {stat.kill ?? '-'} / <span className="text-num-lose">{stat.death ?? '-'}</span>{' '}
-                        / {stat.assist ?? '-'}
+                        / {/* 2026-09-22 사장님: 「어시스트 모르면 0으로 표시, - 표시 ㄴㄴ」 */ stat.assist ?? 0}
                       </div>
                       {stat.kd_rate === null ? null : (
                         <div
@@ -991,7 +991,7 @@ function StatRow({
           <>
             <div className="num text-text-strong">
               {kda.kill ?? '-'} / <span className="text-num-lose">{kda.death ?? '-'}</span> /{' '}
-              {kda.assist ?? '-'}
+              {kda.assist ?? 0}
             </div>
             {kda.rate === null ? null : (
               <div className={`num text-xs ${rateClass(kda.rate)}`}>({formatRate(kda.rate)}%)</div>
