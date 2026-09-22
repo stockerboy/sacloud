@@ -60,7 +60,13 @@ export function LeagueTabsInline({ leagueSlug }: { leagueSlug: string }) {
   const items = leagueTabs(leagueSlug)
   if (items.length === 0) return null
   return (
-    <nav style={wrapStyle} aria-label="리그 메뉴">
+    /*
+     * ★`sac-league-tabs-inline`★ — 이름만 달아 둔다 (2026-09-22 밤).
+     *   서플라이 PC 화면에는 본문 탭이 없고 ★고정 띄★ 만 있다. 그래서
+     *   `supply-skin.css` 가 이 이름으로 ★감춘다.★ ★지우지 않았다★ (`CLAUDE.md` 1-4) —
+     *   그 껅데기를 벗기면(`globals.css` 의 @import 한 줄) 이 탭이 그대로 돌아온다.
+     */
+    <nav className="sac-league-tabs-inline" style={wrapStyle} aria-label="리그 메뉴">
       {items.map((item) => {
         const on = pathname.startsWith(item.href)
         return (

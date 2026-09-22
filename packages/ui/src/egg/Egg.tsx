@@ -31,7 +31,10 @@ export type EggSize = 'xs' | 'sm' | 'md'
  * 여기를 바꾸면 모바일 행 높이 36px 이 무너진다.
  */
 const SIZE: Record<EggSize, string> = {
-  xs: 'w-8 h-8 max-md:w-[1.4rem] max-md:h-[1.4rem]',
+  /* ⚠ ★2026-09-22 밤 — 32 → ★28px★ (서플라이 실측)★
+     서플라이 랭킹 표의 마크는 ★28x28★ 이고 줄 높이가 49px 이다.
+     32 이면 줄이 52px 로 부풀어 ★줄마다 3px 씩 밀린다.★ 폰은 그대로 1.4rem */
+  xs: 'w-[28px] h-[28px] max-md:w-[1.4rem] max-md:h-[1.4rem]',
   sm: 'w-12 h-12',
   md: 'w-[60px] h-[60px]',
 }

@@ -13,6 +13,8 @@ import { isV2Route } from '../v2/migrated'
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8')
 
+const tokensCss = read('../v2/tokens.css')
+
 describe('경기 상세가 v2 로 옮겨졌다', () => {
   it('세 리그의 경기 상세', () => {
     expect(isV2Route('/league/nolink/match/260907051005000001')).toBe(true)
@@ -83,5 +85,34 @@ describe('경기 상세 화면 — 지어내지 않는다', () => {
 
   it('창 밖 경기는 왜 안 보이는지 말한다 — 「없다」로 끝내지 않는다', () => {
     expect(screen).toContain('Cloud 0(9/3 07:00 이후) 경기만 볼 수 있습니다.')
+  })
+})
+
+/*
+ * ★★2026-09-22 밤 — 면을 다시 칠한다★★ (사장님: 「모든 카드 디자인, 색 전부
+ *   서플라이랑 똑같이 한다는거 꼭 명심하고」).
+ *
+ *   위 「같은 중립색」 은 `적진`/sleeper ★시안★ 의 규칙이었다. 그런데
+ *   서플라이를 ★찍어 보니 면을 칠한다★ — 이긴 판 하늘 #e0f2fe · 진 판 분홍 #fee2e2
+ *   (`docs/SUPPLY_MEASURED.md` §4). 지시가 시안보다 위라 ★마지막 층★ 인
+ *   `supply-skin.css` 가 그 값을 다시 씬운다.
+ *
+ *   ★위 시험을 지우지 않았다.★ `tokens.css` 는 여전히 「둘이 같은 중립색」 이고,
+ *   껅데기를 벗기면(`globals.css` 의 @import 한 줄) 그 판이 그대로 돌아온다.
+ */
+describe('껅데기가 마지막에 면을 칠한다 (서플라이)', () => {
+  const skin = read('../v2/supply-skin.css')
+
+  it('★이긴 면은 하늘 · 진 면은 분홍★ — 서플라이를 재서 적은 값이다', () => {
+    expect(skin).toContain('--color-win-bg: #e0f2fe')
+    expect(skin).toContain('--color-win-line: #bae6fd')
+    expect(skin).toContain('--color-lose-bg: #fee2e2')
+    expect(skin).toContain('--color-lose-line: #fecaca')
+  })
+
+  it('★칠하는 일은 껅데기가 한다★ — `tokens.css` 는 그대로 중립이다', () => {
+    /* 이 줄이 깨지면 「옛 판을 고쳤다」 는 뜻이다 — 되돌리기가 막힌다 */
+    expect(tokensCss).toContain('--color-win-bg: var(--v2-panel)')
+    expect(tokensCss).toContain('--color-lose-bg: var(--v2-panel)')
   })
 })

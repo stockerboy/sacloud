@@ -248,8 +248,12 @@ export function RankBox({ children }: { children: React.ReactNode }) {
      *   ★흰 바탕(#f2f2f2)에서는 흰 표와 거의 같은 색★ 이라 테두리가 사라졌다.
      *   흰 면 + 또렷한 테두리 + 얕은 그림자 — 서플라이의 흰 카드와 같은 결이다.
      *   ★되돌리려면 이 줄을 `border border-line` 한 줄로 되돌린다★ (`CLAUDE.md` 1-4).
+     *
+     * ★`sac-rank-board`★ (2026-09-22 밤) — 서플라이 표는 판이 ★투명★ 이고
+     *   줄 자체가 회색(#ececec)이다. 줄 사이 1px 틈으로 바탕이 비치면서
+     *   그게 구분선 구실을 한다 (값은 `supply-skin.css`).
      */
-    <div className="sac-board mobile-bleed mt-6 max-md:mt-4">
+    <div className="sac-board sac-rank-board mobile-bleed mt-6 max-md:mt-4">
       {children}
     </div>
   )
@@ -695,7 +699,7 @@ export function ClanRankTable({
               >
                 {/* 알이 마크를 덮는다. 깨졌으면 마크가 그대로 나오고 은은하게 빛난다 */}
                 <Egg state={egg} size="xs" label={row.clan.name} className={MARK}>
-                  <MarkCircle clan={row.clan} size={24} title={row.clan.name} />
+                  <MarkCircle clan={row.clan} size={28} title={row.clan.name} />
                 </Egg>
                 <span
                   className="truncate"
@@ -1045,7 +1049,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   aria-hidden="true"
                 >
                   <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
-                    <MarkCircle clan={row.clan} size={24} title={row.clan?.name ?? ''} />
+                    <MarkCircle clan={row.clan} size={28} title={row.clan?.name ?? ''} />
                   </Egg>
                 </Link>
                 {/*
@@ -1198,7 +1202,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                     `clan ? ... : null` 로 감싸면 소속 없는 선수 옆이 통째로 빈다.
                     그 위를 알이 덮는다 — 닉네임은 그대로 보인다 (사양 5-2). */}
                 <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
-                  <MarkCircle clan={row.clan} size={24} title={row.clan?.name ?? ''} />
+                  <MarkCircle clan={row.clan} size={28} title={row.clan?.name ?? ''} />
                 </Egg>
                 <span className="truncate">{row.player.name}</span>
               </Link>

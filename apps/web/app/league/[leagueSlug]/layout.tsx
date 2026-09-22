@@ -38,7 +38,20 @@ const SHOW_HERO_BAND: boolean = false
  * `false` 면 탭이 본문 맨 위(`LeagueTabsInline`)로 내려가 스크롤과 함께 올라간다.
  * `true` 로 두면 옛 모습(고정 띠 둘)이 그대로 돌아온다.
  */
-const LEAGUE_TOPBAR_FIXED: boolean = false
+/*
+ * ⚠ ★2026-09-22 밤 — 다시 ★true★ 로 올렸다★ (사장님: 「껍데기는 서플라이랑 똑같은데
+ *   몇 가지 기능이 추가된 그런 사이트 / 모든 카드 디자인·색 전부 서플라이랑 똑같이」).
+ *
+ *   서플라이를 재어 보니 리그 화면 맨 위에 ★고정된 어두운 띄(42px · #292929)★ 가 있고
+ *   그 안에 리그이름과 탭 셋이 들어 있다. 우리는 9/16 에 그 띄를 내렸었다 —
+ *   그때의 까닭(폰에서 띄 둘이 150px 을 먹음)은 ★띄 높이를 서플라이 값으로
+ *   낮춰서★ 푼 간다 — PC 54→42 · 폰 47→35 (`supply-skin.css`).
+ *
+ *   재본 값: `docs/SUPPLY_MEASURED.md` §1.
+ *   ★되돌리려면 이 값을 `false` 로 두면 된다.★ 본문 맨 위 탭(`LeagueTabsInline`)도
+ *   그대로 있다 — 지금은 `supply-skin.css` 가 감추고 있을 뿐이다 (`CLAUDE.md` 1-4).
+ */
+const LEAGUE_TOPBAR_FIXED: boolean = true
 
 export default function LeagueLayout({
   children,

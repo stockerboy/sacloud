@@ -23,7 +23,7 @@
 
 /** 표 머리글 줄 */
 export const HEAD =
-  'flex items-center border-b border-b-line px-4 py-2.5 text-xs tracking-[0.14em] text-faint max-md:px-3'
+  'sac-rank-head flex items-center border-b border-b-line px-4 py-2.5 text-xs tracking-[0.14em] text-faint max-md:px-3'
 
 /** 표 본문 한 줄. 배경 없음 — 행 구분은 아래 실선 1px 뿐이다 */
 export const ROW =
@@ -67,10 +67,16 @@ export const ROW =
    *   글자를 한 단 줄이고(16.3 → 15.2px) 위아래 여백을 늘린다(0.9 → 1.15rem).
    *   줄 높이가 약 45 → ★52px★ 가 된다. 글자는 작아지는데 줄은 넓어져 숨통이 트인다.
    */
-  'flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-2 max-md:py-[1.15rem] max-md:text-[0.95rem]'
+  'sac-rank-row flex items-center border-b border-b-line-soft px-4 py-3 text-[1.08rem] text-text last:border-b-0 max-md:px-2 max-md:py-[1.15rem] max-md:text-[0.95rem]'
 
 /** 표 안의 클랜마크 — 좁은 화면에서만 줄인다 (모바일 행 높이 36px 계산의 기준) */
-export const MARK = 'mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'
+/*
+ * ⚠ ★2026-09-22 밤 — 오른쪽 틈을 8 → ★7px★ (서플라이 실측)★
+ *   서플라이는 마크 28x28 · `margin-right: 7px` · 이름이 마크에서 7px 떨어져 시작한다.
+ *   사장님이 「글자 마크 간격 조금씩 다르다」 하신 그 한 퐹이다.
+ *   폰은 그대로 1.4rem — 거기는 사장님이 따로 맞추신 값이다.
+ */
+export const MARK = 'mr-[7px] max-md:mr-2 max-md:h-[1.4rem] max-md:w-[1.4rem]'
 
 /** 숫자 칸 공통 — 자릿수가 흔들리지 않게 고정폭 숫자를 쓴다 */
 export const NUM = 'font-num tabular-nums'
@@ -91,7 +97,13 @@ export const RANK_TOP = 'text-accent font-bold'
  *   26px 으로 되돌리고 ★줄바꿈을 막는다★ — 이게 진짜 원인이다.
  *   (28 → 22 는 2026-09-18 에 이름칸을 넓히려고 줄인 값이다. 4px 만 돌려준다)
  */
-export const COL_RANK = 'w-16 shrink-0 text-center max-md:w-[26px] max-md:whitespace-nowrap'
+/*
+ * ⚠ ★2026-09-22 밤 — PC 에서 64 → ★140px★ (서플라이 실측)★
+ *   서플라이는 줄에 좌우 여백을 안 준다 — ★순위 칸이 140px 이라서★ 그게 여백을 격한다.
+ *   (`docs/SUPPLY_MEASURED.md` §2 · 순위 140 / 클러 336 / 승리·패배·승률 154 / 래더 136)
+ *   폰은 그대로 26px — 사장님이 9/19 에 세 번 손보신 값이다.
+ */
+export const COL_RANK = 'w-[140px] shrink-0 text-center max-md:w-[26px] max-md:whitespace-nowrap'
 /**
  * 이름 칸 — 남는 폭을 다 쓴다.
  *
@@ -111,7 +123,8 @@ export const COL_NAME = 'flex min-w-0 flex-1 items-center'
  * ⚠ ★폰 60 → 52px★ (2026-09-18) — 이름칸에 8px 씩 두 번, 16px 을 넘긴다.
  *   「63.8%」 는 52px 에 들어가고, 아래 「51승 29패」 는 글자를 한 단 줄여 맞춘다.
  */
-export const COL_STAT = 'w-28 shrink-0 text-right max-md:w-[52px]'
+/* ⚠ ★2026-09-22 밤 — PC 112 → ★154px★ (서플라이 실측)★. 폰은 52px 그대로 */
+export const COL_STAT = 'w-[154px] shrink-0 text-right max-md:w-[52px]'
 /**
  * ★승리 · 패배 칸★ (2026-09-22 사장님: 「몇승 몇패인지 적어줘 저렇게 노란표시 된곳처럼」).
  *
@@ -119,7 +132,8 @@ export const COL_STAT = 'w-28 shrink-0 text-right max-md:w-[52px]'
  * ★폰에서는 칸째로 사라진다★ — 390px 에 여섯 칸은 안 들어가고, 가로 스크롤은 절대 안 만든다.
  * 폰에서는 승률 아래 접힌 판(`WL_SUB`)이 대신 선다.
  */
-export const COL_WL = 'w-24 shrink-0 text-right max-md:hidden'
+/* ⚠ ★2026-09-22 밤 — PC 96 → ★154px★ (서플라이 승리·패배 칸과 같은 폭)★ */
+export const COL_WL = 'w-[154px] shrink-0 text-right max-md:hidden'
 /**
  * 소속 클랜명 칸 (2026-09-02 사장님 지시 #10 — "순위닉네임, 래더 사이에 소속클랜명을 적어라").
  * 홈 미리보기가 켜서 쓴다 (`PlayerRankTable` 의 `clanColumn`). 폰에서도 남긴다 — 길면 말줄임.
@@ -139,7 +153,8 @@ export const COL_CLAN = 'w-36 shrink-0 pr-3 max-md:w-24 max-md:pr-2'
 export const COL_MAIN = 'hidden min-[1120px]:flex min-w-0 flex-[2_1_0] max-w-[560px] items-center pr-4'
 
 /** 래더 칸 — 표에서 가장 무거운 숫자 */
-export const COL_RATING = 'w-32 shrink-0 text-right max-md:w-[76px]'
+/* ⚠ ★2026-09-22 밤 — PC 128 → ★136px★ (서플라이 래더 칸)★. 폰은 76px 그대로 */
+export const COL_RATING = 'w-[136px] shrink-0 text-right max-md:w-[76px]'
 /** 좁은 화면에서 감추는 칸 */
 export const COL_HIDDEN = 'max-md:hidden'
 
