@@ -1238,9 +1238,10 @@ body.antialiased {
     padding-right: 0;
   }
   /* 페이지 머리(경기 · CLOUD 0)만 안쪽 여백 */
+  /* ⚠ 2026-09-23 새벽 — PageHead 가 padding 을 인라인('38px 0 26px')으로 쓰므로 !important 없이는 눌린다 (운영 실측 pl 0) */
   .sac-v3-page .v2-pagehead {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
   }
   .sac-pilltabs {
     padding-top: 0 !important;
