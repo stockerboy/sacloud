@@ -205,8 +205,14 @@ body.antialiased {
   background: #ffffff;
   box-shadow: none;
 }
-/* 종류 단추 — 154px · 흰 글자 */
-.home-cloud .sb-cloud > div:first-of-type > button,
+/*
+ * 종류 단추 — 154px · 흰 글자
+ * ⚠ ★2026-09-22 저녁 사고★ — 여기 `.sb-cloud > div:first-of-type > button` 가
+ *   같이 적혀 있었다. 그 `div` 는 `display:contents` 라 ★돋보기 단추까지★ 자식으로
+ *   걸려서 ★돋보기가 154×60★ 이 됐다 (폰 실측). 입력칸이 89px 로 쪼그라들고
+ *   돋보기가 한가운데에 떠 보였다 — 사장님이 「검색창이 이상해」로 잡으신 것.
+ *   ★`aria-haspopup` 하나로만 짚는다.★
+ */
 .home-cloud .sb-cloud button[aria-haspopup='listbox'] {
   width: 154px;
   height: 60px;
@@ -226,7 +232,6 @@ body.antialiased {
   color: #9aa0a6;
 }
 /* 돋보기 — 입력칸 오른쪽 안쪽 */
-.home-cloud .sb-cloud > div > button[aria-label='검색'],
 .home-cloud .sb-cloud button[aria-label='검색'] {
   padding: 0 17.5px;
   color: #4a4a4a;
@@ -419,8 +424,12 @@ body.antialiased {
   .sac-v2 .v2-topbar__inner > div:last-child {
     padding-right: 0;
   }
+  /*
+   * ⚠ ★`display` 를 주지 않는다★ — 여기에 `display:inline-flex` 를 적었더니
+   *   로그아웃 단추의 Tailwind `max-md:hidden` 을 덮어서 ★폰 상단바에 «로그아웃»
+   *   글자가 튀어나왔다★ (사장님 사진 4:36). 서플라이 폰은 아이콘 하나뿐이다.
+   */
   .sac-v2 .v2-login {
-    display: inline-flex;
     width: 49px;
     height: 49px;
     padding: 0;
@@ -538,5 +547,33 @@ body.antialiased {
   .home-cloud + div > section {
     width: 100%;
     align-self: stretch;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★서랍(햄버거) — 서플라이 판★★ (2026-09-22 · 사장님)
+
+   > 「지금 햄버거 메뉴 cloud로 진열된거 전부 삭제하고 서플라이처럼 (…) 이렇게 만들어」
+
+   서플라이 폰 실측 — ★왼쪽에서 밀려나오는 흰 패널 210px★ (화면 높이 전체).
+   옛 서랍(`.v2-drawer` · 어두운 판)은 ★지우지 않았다★ — 규칙도 그대로 있다.
+   ══════════════════════════════════════════════════════════════════════════ */
+.v2-drawer-supply {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 210px;
+  max-width: 82vw;
+  z-index: 60;
+  background: #ffffff;
+  box-shadow: 0 0 24px rgb(0 0 0 / 0.28);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* PC 에서도 같은 서랍을 쓴다 — 서플라이 PC 는 햄버거가 없어 열릴 일이 거의 없다 */
+@media (min-width: 768px) {
+  .v2-drawer-supply {
+    width: 260px;
   }
 }

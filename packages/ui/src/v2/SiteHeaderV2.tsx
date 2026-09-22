@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { GNB_LEAGUES, MOBILE_NAV_GROUPS, PRIMARY_NAV, type NavGroup, type NavLink } from '../site-config'
 import { NavLogo } from '../layout/BrandLogo'
 import { SiteMapNav } from '../layout/SiteMapNav'
+import { DrawerNavSupply } from '../layout/DrawerNavSupply'
 import { LeagueLabel } from '../layout/LeagueLabel'
 import { v2Class } from './leagueAccent'
 
@@ -165,6 +166,8 @@ function leagueSlugOfHref(href: string): string {
 }
 
 void MenuIcon
+/* 옛 서랍 — 지우지 않는다 (`CLAUDE.md` 1-4). 되돌릴 때 이 이름을 쓴다 */
+void SiteMapNav
 
 export function SiteHeaderV2({
   variant = 'default',
@@ -405,17 +408,23 @@ export function SiteHeaderV2({
          *   아래 한 줄을 옛 코드로 되돌리면 그대로 돌아온다
          *   (`git show 031ec539 -- packages/ui/src/v2/SiteHeaderV2.tsx`).
          */
-        <div className="v2-drawer border-b border-[var(--v2-bar-border)] pb-2">
-          <SiteMapNav inDrawer />
-          {user ? (
-            <button
-              type="button"
-              onClick={onLogout}
-              className="block w-full border-t border-[var(--v2-row-divider)] px-6 py-3 text-left text-[14px] text-[var(--v2-text-dim)]"
-            >
-              로그아웃
-            </button>
-          ) : null}
+        /*
+         * ⚠ ★2026-09-22 — 서랍을 서플라이 판으로 갈았다★ (사장님:
+         *   「지금 햄버거 메뉴 cloud로 진열된거 ★전부 삭제하고 서플라이처럼★
+         *    리그 / supply2.0 / supply1.0 / IPL / 열산 /
+         *    게시판 / Hot게시판 / 자유게시판 / 로그인 이렇게 만들어」).
+         *
+         *   ★`SiteMapNav` 를 지우지 않았다★ (`CLAUDE.md` 1-4) — 파일도 export 도
+         *   그대로다. 아래를 `<SiteMapNav inDrawer />` 로 되돌리면 여섯 칸짜리
+         *   사이트맵 서랍이 그대로 돌아온다.
+         */
+        <div className="v2-drawer-supply">
+          <DrawerNavSupply
+            user={user}
+            onLogout={onLogout}
+            onClose={() => setOpen(false)}
+            loginHref={loginHref}
+          />
         </div>
       ) : null}
     </header>
