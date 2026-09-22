@@ -73,11 +73,14 @@ export interface SiteHeaderV2Props {
 const GNB_MARK_ON: boolean = false
 
 /**
- * ★상단바에 리그·메뉴 줄을 둘 것인가★ (2026-09-16 사장님이 내리심:
- * «모든 카테고리를 지워»). 길은 전부 왼쪽 햄버거 서랍으로 모였다.
- * `true` 로 두면 옛 줄이 그대로 돌아온다.
+ * ★상단바에 리그·메뉴 줄을 둘 것인가★
+ *
+ * ⚠ ★2026-09-22 — 다시 켠다★ (사장님: 「상단 바 배치나 이런것도 전부 서플라이에서
+ *   영감받아서 디자인해 (…) 서플라이 유저들이 사용하기에 익숙하게끔」).
+ *   2026-09-16 에는 «모든 카테고리를 지워» 라고 하셔서 껐었다 — 이번에 뒤집으셨다.
+ *   `false` 로 두면 그날의 판(로고 가운데 + 서랍만)이 그대로 돌아온다.
  */
-const GNB_ROW_ON: boolean = false
+const GNB_ROW_ON: boolean = true
 
 const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> = {
   /**
@@ -190,17 +193,20 @@ export function SiteHeaderV2({
       /* 강조색은 ★지금 보고 있는 리그★ 를 따른다 — 주소에서 읽는다 */
       className={`${v2Class(leagueSlugOf(pathname), 'v2-topbar')} fixed top-0 z-50 w-full`}
     >
-      <div className="v2-container v2-topbar__inner v2-topbar__inner--menu">
+      <div
+        className={`v2-container v2-topbar__inner ${
+          GNB_ROW_ON ? 'v2-topbar__inner--gnb' : 'v2-topbar__inner--menu'
+        }`}
+      >
         {/*
-          ⚠ ★2026-09-16 — 햄버거가 돌아오고 카테고리가 통째로 사라졌다★ (사장님:
-            «최상단바에 써클로고를 가운데에 배치하고 ★모든 카테고리를 지워★ 그리고
-             왼쪽에 햄버거메뉴 (…) 로 만들어줘»).
+          ★햄버거★ — ★2026-09-22 — PC 에서는 숨는다★ (카테고리가 이미 보이니
+            필요 없다 — 서플라이도 PC 에 햄버거가 없다). ★폰에서는 그대로 있다★ —
+            2줄로 넘치는 것까지는 안 보여 주고 서랍(사이트맵)으로 마저 보여 준다.
+            (CSS 가 나눈다 — `.v2-topbar__inner--gnb .v2-burger`)
 
-            2026-09-12 에 «햄버거 없애고 그 자리에 로고 넣어» 로 단추를 뺐었고,
-            그때 ★서랍 코드는 남겨 뒀다.★ 그래서 단추만 도로 놓으면 된다.
-
-            ★서랍이 이제 사이트의 유일한 메뉴다★ — 폰에서만 열리면 PC 사용자는
-            갈 곳이 없어지므로 `md:hidden` 을 뗐다.
+          ⚠ ★2026-09-16 옛 사연 — 지우지 않는다★ 「최상단바에 써클로고를 가운데에
+            배치하고 모든 카테고리를 지워 그리고 왼쪽에 햄버거메뉴」로 만들었던 판.
+            `GNB_ROW_ON=false` 로 되돌리면 이 버튼이 PC 에서도 다시 보인다.
         */}
         <button
           type="button"
@@ -214,8 +220,16 @@ export function SiteHeaderV2({
           <span aria-hidden className="v2-burger__bar" />
         </button>
 
-        {/* `v2-brand` — 로고의 `.my` 만 언제나 빨강으로 되돌린다 (리그색을 안 따라간다) */}
-        <Link href="/" aria-label="홈" className="v2-brand v2-brand--center flex items-center">
+        {/*
+          `v2-brand` — 로고의 `.my` 만 언제나 빨강으로 되돌린다 (리그색을 안 따라간다).
+          ★2026-09-22 — 서플라이처럼 왼쪽 정렬★ (`GNB_ROW_ON` 일 때만).
+          가운데 정렬(`v2-brand--center`)은 옛 판(햄버거만 있던 시절)의 몫이다.
+        */}
+        <Link
+          href="/"
+          aria-label="홈"
+          className={`v2-brand flex items-center ${GNB_ROW_ON ? '' : 'v2-brand--center'}`}
+        >
           <NavLogo className="h-[34px] w-auto max-md:h-[28px]" />
         </Link>
 
@@ -231,12 +245,15 @@ export function SiteHeaderV2({
           서랍은 ★그대로★ 다 — 없앤 길은 하나도 없다.
         */}
         {/*
-          ⚠ ★2026-09-16 — 이 줄을 통째로 내렸다★ (사장님: «모든 카테고리를 지워»).
-            길은 전부 왼쪽 햄버거 서랍으로 모였다.
-            ★지우지 않는다★ — `GNB_ROW_ON` 을 `true` 로 두면 그대로 돌아온다.
+          ⚠ ★2026-09-16 — 이 줄을 통째로 내렸다가 2026-09-22 — 다시 세웠다★
+            (사장님: 처음엔 «모든 카테고리를 지워», 이번엔 «상단 바 배치나
+             이런것도 전부 서플라이에서 영감받아서»).
+            ★폰에서는 이 줄이 숨는다★(`max-md:hidden`) — 서플라이도 폰에서는
+            카테고리를 안 보여 주고 햄버거 서랍으로만 연다. 길은 서랍에도 그대로 있다.
+            ★지우지 않는다★ — `GNB_ROW_ON` 을 `false` 로 두면 그대로 내려간다.
         */}
         {GNB_ROW_ON ? (
-        <nav className="v2-gnb">
+        <nav className="v2-gnb max-md:hidden">
           {featuredLeagues.map((item) => {
             const mark = GNB_MARK[leagueSlugOfHref(item.href)]
             return (

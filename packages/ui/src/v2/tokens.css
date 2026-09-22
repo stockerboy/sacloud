@@ -319,6 +319,50 @@
   justify-self: end;
 }
 
+/*
+ * ★★서플라이 배치★★ (2026-09-22 사장님: 「상단 바 배치나 이런것도 전부 서플라이에서
+ *   영감받아서 디자인해 배치만 바꾼다고 생각하면 돼 (…) 서플라이 유저들이
+ *   사용하기에 익숙하게끔」).
+ *
+ * ── 무엇이 다른가
+ *   서플라이는 ★로고 왼쪽 + 카테고리 가로 줄 + 오른쪽 로그인★ 이다 (햄버거 없음).
+ *   지금 우리(`--menu`)는 2026-09-16 지시로 ★로고 가운데 + 카테고리 전부 서랍★ 인데,
+ *   그 지시를 이번에 뒤집으신 것이다. `--menu` 는 지우지 않는다 — `GNB_ROW_ON` 을
+ *   `false` 로 되돌리면 그 판이 그대로 돌아온다 (`CLAUDE.md` 1-4).
+ *
+ * ── ★PC 만 카테고리를 보여 준다 — 폰은 서플라이처럼 햄버거만★
+ *   서플라이 폰 화면은 상단바에 카테고리가 없다 — 햄버거를 눌러야 나온다.
+ *   그래서 `<nav className="v2-gnb max-md:hidden">` 으로 폰에서 숨겼다.
+ *   ⚠ ★지우지 않는다★ — 폰에서 카테고리를 2번째 줄로 그대로 보여 주던
+ *   2026-09-13 QA 규칙(`.v2-topbar__inner > .v2-brand` 등 아래 미디어쿼리)은
+ *   ★코드에 그대로 있다.★ `max-md:hidden` 한 곳만 지우면 그 판이 돌아온다.
+ *
+ *   로고·로그인의 폰 배치(첫 줄에 나란히)는 그 QA 규칙이 그대로 맡는다 —
+ *   variant 접미사 없이 `.v2-topbar__inner` 에 걸려 있어서 `--gnb` 를 얹어도
+ *   ★그대로 적용된다.★
+ */
+.sac-v2 .v2-topbar__inner--gnb {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 20px;
+}
+/* PC 에는 카테고리가 이미 보이니 햄버거가 필요 없다 — 서랍(사이트맵)은 폰 전용 길로 남긴다 */
+.sac-v2 .v2-topbar__inner--gnb > .v2-burger {
+  display: none;
+}
+.sac-v2 .v2-topbar__inner--gnb > .v2-brand {
+  margin-right: 40px;
+}
+@media (max-width: 767px) {
+  .sac-v2 .v2-topbar__inner--gnb > .v2-burger {
+    display: inline-flex;
+  }
+  .sac-v2 .v2-topbar__inner--gnb > .v2-brand {
+    margin-right: 0;
+  }
+}
+
 /**
  * ★서랍★ — 불투명해야 한다 (2026-09-16).
  *   `--v2-panel` 은 반투명(0.58)이라 서랍 글자와 본문 글자가 ★겹쳐 읽혔다★ (폰 실측).
