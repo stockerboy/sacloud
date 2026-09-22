@@ -1285,3 +1285,26 @@ body.antialiased {
     margin-right: 8px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★PC 스코어보드 — 3단(명단│육각형│명단)을 2+1 로★ (2026-09-23 새벽)
+   카드가 서플라이 폭 840 이 되면서 tokens.css 의 3단(minmax(0,1fr) auto minmax(0,1fr))이
+   218 / 300 / 218 로 눌렸다 (운영 PC 실측). 명단 한 줄은 96+86+44+58+22+간격 32+여백 28 = 366 이
+   필요해 「세이브」 머리와 MVP 이름이 잘렸다. 이제 ★명단 둘을 나란히(각 ~412) · 육각형은 그 아래 가운데★.
+   ⚠ 옛 3단 규칙은 tokens.css 에 그대로 있다 (CLAUDE.md 1-4) — 이 블록을 지우면 돌아온다.
+   폰(<900)은 한 글자도 안 바뀐다.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 900px) {
+  .v3-board {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .v3-board > .v3-board-win { grid-column: 1; grid-row: 1; }
+  .v3-board > .v3-board-lose { grid-column: 2; grid-row: 1; }
+  .v3-board > .v3-board-hex {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+    width: min(100%, 420px);
+  }
+}

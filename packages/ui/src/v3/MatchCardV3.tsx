@@ -164,7 +164,11 @@ const pcGrid: CSSProperties = {
   /* ⚠ 2026-09-22 밤 — ④ 를 넓혔다. 옛 값 '108px 62px 92px minmax(180px,1fr) minmax(210px,260px) 52px' 에서는
      840 카드에서 ④ 가 ~180 이라 클랜명이 「Celebr…」 로 잘렸다 (운영 화면을 찍어서 잡았다) */
   /* 2026-09-22 밤 두 번째 — 경기 상세(840)에서도 「Celebri…」 가 잘렸다. ④ 에 288px 이 가도록 ③·⑤ 를 한 단 더 양보 */
-  gridTemplateColumns: '96px 52px 100px minmax(240px,1fr) minmax(170px,200px) 44px',
+  /* ⚠ 2026-09-23 새벽 세 번째 — 운영 PC(840)를 재 보니 ③ 100px 에 「중정백기턔 ★MVP」 칩이 잘리고(「★MV」),
+     ⑤ 명단 이름칸이 46px 라 「온몸던찌기」「육덕미시애호가」 가 «…» 였다. ③ 은 내용만큼(최대 140) ·
+     ⑤ 200~230 · ④ 는 그만큼 양보(최소 220). 840 = 28 여백 + 60 간격 + 96+52+③+④+⑤+44 → ③+④+⑤ ≤ 560.
+     옛 값 '96px 52px 100px minmax(240px,1fr) minmax(170px,200px) 44px' */
+  gridTemplateColumns: '96px 52px minmax(100px,140px) minmax(220px,1fr) minmax(200px,230px) 44px',
   alignItems: 'center',
   gap: 12,
   padding: '11px 14px',
