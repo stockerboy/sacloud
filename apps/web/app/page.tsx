@@ -216,50 +216,67 @@ export default function HomePage() {
        `HERO_V2` 한 줄로 옛 밤하늘 히어로가 그대로 돌아온다 (`_home/heroV2.ts`). */
     /* ★2026-09-18 — 「구름 홈」★ (사장님: 「메인홈배경도 깔끔하게 어두운 톤 배경에
        이 로고만 올려줘」). `HERO_V3` 한 줄로 코드 배경이 그대로 돌아온다 */
-    <div className={HERO_V3 ? 'home-cloud' : HERO_V2 ? 'home-code' : 'home-night'}>
-      {/* 배경 코드 — 읽는 기계는 안 만난다(`aria-hidden`). 글자는 전부 실제 파일에서 온다 */}
-      {/* ⚠ 구름 홈은 ★배경에 아무것도 안 깐다★ — 사장님이 「깔끔하게」 라고 하셨다 */}
-      {!HERO_V3 && HERO_V2 ? <HomeCodeBackdrop /> : null}
-      <div className="mx-auto flex w-full max-w-[var(--layout-max,1180px)] flex-col items-center px-6 max-md:px-3">
-        {/* ★시즌 한 줄★ (2026-09-07 · Part 10 ④) — 시안 맨 위. 날짜는 계약에서 온다 */}
-        {/* 코드 배경에서는 위 여백을 줄인다 — 시안의 히어로는 머리띠 바로 밑에서 시작한다 */}
-        <div
-          className={
-            HERO_V3
-              ? 'pt-[26px] max-md:pt-[14px]'
-              : HERO_V2
-                ? 'pt-[30px] max-md:pt-[18px]'
-                : 'pt-[74px] max-md:pt-[36px]'
-          }
-        >
-          <HomeSeasonLine />
+    <div>
+      {/*
+        ⚠ ★2026-09-22 — 히어로(검정/남색)와 본문(흰색)을 갈랐다★ (사장님: 서플라이
+        투톤 지시 — 「형광펜 칠한곳 위로는 남색이어야하는데」).
+
+        옛 판은 `.home-cloud` 를 ★바깥 div 하나★ 에 둘러서 히어로부터 Hot게시판까지
+        한 배경으로 이어붙였다 — 원래 이 페이지 전체가 한 가지 남색이던 시절엔 문제가
+        없었지만, 투톤으로 본문만 흰색으로 뒤집으면서 ★Hot게시판이 남색 위에 남고
+        글자만 흰바탕용 어두운색이라 안 보이는★ 사고가 났다.
+
+        이제 `.home-cloud` 는 ★히어로 칸(로고·검색)만★ 두른다 — 그 아래 Hot게시판은
+        바깥 div(별도 클래스 없음 → `body` 의 흰 배경)에 얹혀 항상 흰 바탕이다.
+      */}
+      <div className={HERO_V3 ? 'home-cloud' : HERO_V2 ? 'home-code' : 'home-night'}>
+        {/* 배경 코드 — 읽는 기계는 안 만난다(`aria-hidden`). 글자는 전부 실제 파일에서 온다 */}
+        {/* ⚠ 구름 홈은 ★배경에 아무것도 안 깐다★ — 사장님이 「깔끔하게」 라고 하셨다 */}
+        {!HERO_V3 && HERO_V2 ? <HomeCodeBackdrop /> : null}
+        <div className="mx-auto flex w-full max-w-[var(--layout-max,1180px)] flex-col items-center px-6 pb-[28px] max-md:px-3">
+          {/* ★시즌 한 줄★ (2026-09-07 · Part 10 ④) — 시안 맨 위. 날짜는 계약에서 온다 */}
+          {/* 코드 배경에서는 위 여백을 줄인다 — 시안의 히어로는 머리띠 바로 밑에서 시작한다 */}
+          <div
+            className={
+              HERO_V3
+                ? 'pt-[26px] max-md:pt-[14px]'
+                : HERO_V2
+                  ? 'pt-[30px] max-md:pt-[18px]'
+                  : 'pt-[74px] max-md:pt-[36px]'
+            }
+          >
+            <HomeSeasonLine />
+          </div>
+
+          {/* 0 로고 · 1 검색 · 2 리그 타일 — 클라이언트. 동작은 그대로다 */}
+          <HomeSearch />
+
+          {/*
+            ⚠ ★2026-09-19 — 사이트맵을 홈 아래에서 뺐다★ (사장님:
+              「기존의 밑애 것들은 없애버려」). 같은 것이 ★햄버거 서랍★ 안으로 갔다.
+              컴포넌트는 `packages/ui/src/layout/SiteMapNav.tsx` 로 ★옮겼을 뿐★ 안 지웠다.
+          */}
+
+          {/*
+            ★배지 진열장★ (2026-09-20 사장님: 「뱃지를 전부 다 메인화면에 이쁘게 진열하고
+            누르면 뱃지 페이지로 가게해줘」) — 상태가 없어 서버에서 그린다.
+
+            ⚠ ★2026-09-21 — 메인에서 감췄다★ (사장님: 「★뱃지는 메인화면에서 숨겨버려★
+              (그리고 ★뱃지때문에 또 모바일에서 닉네임이 다 안보여★)」)
+
+              ★지우지 않았다★ (`CLAUDE.md` 1-4) — `HOME_BADGE_WALL` 을 `true` 로 두면
+              그대로 돌아오고, 배지 화면(`/league/{slug}/badge`)도 그대로 열린다.
+          */}
+          {HOME_BADGE_WALL ? <HomeBadgeWall /> : null}
         </div>
+      </div>
 
-        {/* 0 로고 · 1 검색 · 2 리그 타일 — 클라이언트. 동작은 그대로다 */}
-        <HomeSearch />
-
-        {/*
-          ⚠ ★2026-09-19 — 사이트맵을 홈 아래에서 뺐다★ (사장님:
-            「기존의 밑애 것들은 없애버려」). 같은 것이 ★햄버거 서랍★ 안으로 갔다.
-            컴포넌트는 `packages/ui/src/layout/SiteMapNav.tsx` 로 ★옮겼을 뿐★ 안 지웠다.
-        */}
-
-        {/*
-          ★배지 진열장★ (2026-09-20 사장님: 「뱃지를 전부 다 메인화면에 이쁘게 진열하고
-          누르면 뱃지 페이지로 가게해줘」) — 상태가 없어 서버에서 그린다.
-
-          ⚠ ★2026-09-21 — 메인에서 감췄다★ (사장님: 「★뱃지는 메인화면에서 숨겨버려★
-            (그리고 ★뱃지때문에 또 모바일에서 닉네임이 다 안보여★)」)
-
-            ★지우지 않았다★ (`CLAUDE.md` 1-4) — `HOME_BADGE_WALL` 을 `true` 로 두면
-            그대로 돌아오고, 배지 화면(`/league/{slug}/badge`)도 그대로 열린다.
-        */}
-        {HOME_BADGE_WALL ? <HomeBadgeWall /> : null}
-
-        {/*
-          ★Hot게시판★ (2026-09-21 사장님: 「메인화면에 ★HOT게시판을 걸어★」).
-          공지가 먼저, 그다음 Hot 글이다. 글이 없으면 이 구역을 통째로 안 그린다.
-        */}
+      {/*
+        ★Hot게시판★ (2026-09-21 사장님: 「메인화면에 ★HOT게시판을 걸어★」).
+        공지가 먼저, 그다음 Hot 글이다. 글이 없으면 이 구역을 통째로 안 그린다.
+        ⚠ ★히어로 바깥★ — 항상 흰 본문 위에 앉는다 (위 2026-09-22 설명 참고).
+      */}
+      <div className="mx-auto flex w-full max-w-[var(--layout-max,1180px)] flex-col items-center px-6 max-md:px-3">
         <HomeHotBoard />
       </div>
 

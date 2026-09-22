@@ -324,8 +324,15 @@ export function SearchBar({
               terminal
                 ? /* ★시안의 `> findPlayer(`★ — 이 글자가 곧 옛 「검색 종류」 단추다 */
                   'flex h-full cursor-pointer select-none items-center gap-[4px] py-[11px] pl-[2px] pr-[8px] font-[var(--font-num)] text-[14px] text-[var(--v2-blue,#5b8dff)] transition-opacity duration-100 hover:opacity-80 max-md:text-[12px] max-md:pr-[6px]'
-                : 'flex h-full w-[112px] cursor-pointer select-none items-center justify-between gap-2 border-r border-line px-4 text-[13px] text-meta transition-colors duration-100 hover:text-[var(--color-text-strong,#f6eded)] max-md:w-[92px] max-md:px-3'
+                : 'flex h-full w-[112px] cursor-pointer select-none items-center justify-between gap-2 px-4 text-[13px] text-white/90 transition-colors duration-100 hover:text-white max-md:w-[92px] max-md:px-3'
             }
+            /*
+             * ⚠ ★2026-09-22 — 서플라이 실측: 이 조각만 남색 칩, 나머지(입력창)는 흰색★.
+             *   옛 값은 조각 전체가 흰 알약 안에서 투명(구분선만)이었다. 지우지 않는다
+             *   (`CLAUDE.md` 1-4) — 옛 클래스: `border-r border-line text-meta
+             *   hover:text-[var(--color-text-strong,#f6eded)]`.
+             */
+            style={terminal ? undefined : { background: '#0c1526', borderRadius: '999px 0 0 999px' }}
           >
             {terminal ? (
               <>

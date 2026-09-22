@@ -2787,6 +2787,9 @@ body.sac-sky:has(.home-code) .sac-shell {
  */
 .sb-cloud {
   border-radius: 999px;
+  /* ⚠ 2026-09-22 — 왼쪽 「검색종류」 칩이 남색 사각으로 배경을 갖게 되어 알약 밖으로
+     모서리가 삐져나온다. 알약 테두리에서 잘라낸다 */
+  overflow: hidden;
   border: 1px solid #e3e6ee;
   background: #ffffff;
   box-shadow: 0 4px 16px rgba(16, 24, 40, 0.08);
