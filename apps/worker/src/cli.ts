@@ -40,6 +40,7 @@ import { runRenewRequests } from './jobs/renewRequests.js'
 import { runRenewServer } from './renewServer.js'
 import { runClanFindMissing } from './jobs/clanFindMissing.js'
 import { runMatchEndFill } from './jobs/matchEndFill.js'
+import { runSanplyRosterRegister } from './jobs/sanplyRosterRegister.js'
 import { runMatchSideFix } from './jobs/matchSideFix.js'
 import { runCplSetup } from './jobs/cplSetup.js'
 import { runNickFromBarracks } from './jobs/nickFromBarracks.js'
@@ -3946,6 +3947,19 @@ async function main(): Promise<number> {
         limit: numberFlag(args, 'limit') ?? undefined,
       })
       return r.stale >= 0 ? 0 : 1
+    }
+
+    case 'sanply-roster-register': {
+      /*
+       * ★서플라이 3부리그 명단을 병영수첩으로 대조해 열산에 등록한다★ (2026-09-22)
+       *   이름은 3rd.supply 화면에서 옮겼다. 주소·마크·번호는 ★병영수첩에서 직접★ 딴다.
+       *   ⚠ 이름이 정확히 같은 후보가 하나일 때만 등록한다 — 어긋나면 손대지 않는다.
+       */
+      const r = await runSanplyRosterRegister({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+      })
+      return r.blocked ? 2 : 0
     }
 
     case 'match-end-fill': {
