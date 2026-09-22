@@ -1,0 +1,294 @@
+'use client'
+
+/**
+ * ★★경기 카드 — 하나★★ (2026-09-22 밤 · 사장님)
+ *
+ * > 「경기카드는 무조건 통일이다 / Pc에서도 한가지 형식 / 모바일에서도 한가지 형식 /
+ * >  총 두가지 형식으로 통일이다」
+ *
+ * ── 왜 이 파일이 있나
+ *   같은 「경기 한 판」 을 세 화면이 ★각자 다른 카드★ 로 그리고 있었다 —
+ *   리그홈·경기목록(`MatchListV3` · 한 줄 4칸) · 선수 상세(`PlayerDetailV3.MatchRows` ·
+ *   6칸) · 클랜 상세(`ClanDetailV3.RecentRows` · 2칸×3줄). 화면을 옮길 때마다 카드가
+ *   달라져 「같은 사이트가 맞나」 가 됐다. ★여기 하나로 모은다.★
+ *
+ * ── 두 판뿐이다
+ *   PC   `mc-pc`    ① 맵·길이·승패·시각 ② 래더 ③ 내 K/D/A(선수) 또는 MVP(리그홈·클랜)
+ *                   ④ 양 팀(마크·이름·티어·점수) ⑤ 명단 두 열 ⑥ 상세
+ *   폰   `mc-phone` 머리줄(맵·시각·래더) / 승패 · K/D/A 또는 MVP · 양 팀 세로 · 펼치기
+ *   갈림목은 `SB_PHONE_MAX`(700px) — 스코어보드와 ★같은 값★ 이다.
+ *
+ * ── 화면마다 다른 것은 「보는 사람」 뿐이다
+ *   선수 상세는 ★보는 선수★ 가 있어 K/D/A 를 적고 명단에서 굵게 한다.
+ *   리그홈·클랜 상세는 보는 선수가 없다 — 그 자리에 ★MVP★ 를 적는다.
+ *   펼쳤을 때 무엇을 그릴지는 호출부가 `renderDetail` 로 준다 (스코어보드·경기분석 단추 포함).
+ *
+ * ── ★옛 카드 셋은 지우지 않았다★ (`CLAUDE.md` 1-4)
+ *   각 화면의 `UNIFIED_MATCH_CARD` 를 `false` 로 두면 그 화면의 옛 카드가 돌아온다.
+ *
+ * ── 오른쪽이 비면 비워 둔다
+ *   사장님: 「최근경기 경기카드 삽입할때 오른쪽 공간이 비면 일단 비워놔 내가 뭐 넣을지
+ *   결정해줄게」. 카드는 제 폭(840 기준)만 쓰고 남는 자리를 ★안 채운다.★
+ */
+import { useState, type CSSProperties, type ReactNode } from 'react'
+import type { MatchDetail, MatchLineupEntry, MatchListItem } from '@sacloud/contract'
+import { formatRating } from '../common/format'
+import { Kda, MarkCircle, MvpMark, TierText, matchShownAt } from './primitives'
+import { statColor } from './rankColors'
+import { WIN_LOSS, V3, fmt } from './tokens'
+
+/** 폰/PC 갈림목 — `PlayerDetailV3.SB_PHONE_MAX` 와 같은 값. 두 곳이 갈라지면 카드가 반쪽씩 바뀐다 */
+export const MATCH_CARD_PHONE_MAX = 700
+
+/** 카드가 쓰는 최대 폭 — 서플라이 본문 칸(840). 더 넓은 자리에서는 오른쪽을 비운다 */
+export const MATCH_CARD_MAX_WIDTH = 840
+
+export interface MatchCardLeague {
+  category: string
+  slug: string
+}
+
+export interface MatchCardViewer {
+  /** 보는 선수 — 있으면 K/D/A 를 적고 명단에서 굵게 한다 */
+  playerId: string
+}
+
+export interface MatchCardV3Props {
+  match: MatchListItem
+  league: MatchCardLeague
+  viewer?: MatchCardViewer | null
+  open: boolean
+  onToggle: () => void
+  /** 펼친 상세 — 아직 안 왔으면 `undefined` */
+  detail: MatchDetail | undefined
+  /** 펼쳤을 때 그릴 것 (스코어보드 · 경기분석 단추). 호출부가 준다 */
+  renderDetail: (detail: MatchDetail) => ReactNode
+}
+
+const CSS = `
+.mc-phone { display: none; }
+@media (max-width: ${MATCH_CARD_PHONE_MAX}px) {
+  .mc-pc { display: none !important; }
+  .mc-phone { display: block; }
+}
+`
+
+/** 「5달 전」 — 서플라이는 달까지 센다 (`relativeKst` 는 다른 화면이 쓰므로 안 건드린다) */
+export function shortAgo(iso: string): string {
+  const at = Date.parse(iso)
+  if (!Number.isFinite(at)) return ''
+  const min = Math.floor((Date.now() - at) / 60_000)
+  if (min < 1) return '방금'
+  if (min < 60) return `${min}분 전`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `${h}시간 전`
+  const d = Math.floor(h / 24)
+  if (d < 31) return `${d}일 전`
+  const mo = Math.floor(d / 30)
+  return mo < 12 ? `${mo}달 전` : `${Math.floor(mo / 12)}년 전`
+}
+
+/** 경기 길이 — 「10분 36초」. 끝난 때를 모르면 `null` (지어내지 않는다) */
+function durationOf(startAt: string, endAt: string | null): string | null {
+  if (!endAt) return null
+  const ms = Date.parse(endAt) - Date.parse(startAt)
+  if (!Number.isFinite(ms) || ms <= 0) return null
+  const sec = Math.round(ms / 1000)
+  return `${Math.floor(sec / 60)}분 ${sec % 60}초`
+}
+
+/** 래더 증감 — 「+9점」 파랑 · 「-14점」 빨강. 0 이나 모르면 안 적는다 */
+function RatingDelta({ value, size = 12 }: { value: number | null | undefined; size?: number }) {
+  if (value === null || value === undefined || value === 0) return null
+  return (
+    <span style={{ fontSize: size, fontWeight: 700, whiteSpace: 'nowrap', color: value > 0 ? WIN_LOSS.winInk : WIN_LOSS.loseInk }}>
+      {value > 0 ? '+' : ''}{fmt(value)}점
+    </span>
+  )
+}
+
+/** 접힌 줄의 한쪽 클랜 — 마크 + 이름, 그 밑에 「1부리그 1,508점」 */
+function ClanSide({ snap, ink, league }: { snap: MatchListItem['league_clan']; ink: string; league: MatchCardLeague }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0' }}>
+      <MarkCircle clan={snap.clan} size={20} />
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{snap.clan.name}</span>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
+          {snap.division !== null ? <TierText division={snap.division} leagueCategory={league.category} leagueSlug={league.slug} size={10} /> : null}
+          {snap.rating !== null ? <span style={{ fontSize: 10.5, color: V3.textFaint }}>{formatRating(snap.rating)}</span> : null}
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/** 명단 한 열 — 보는 선수는 굵게. 스나이퍼는 `[S]` */
+function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: string | null }) {
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+      {rows.map((r) => {
+        const me = meId !== null && r.player_id === meId
+        return (
+          <span key={r.player_id} style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+            <MarkCircle clan={r.match_time_clan ? { slug: r.match_time_clan.slug, mark: r.match_time_clan.mark } : null} size={15} />
+            <span style={{ fontSize: 11, fontWeight: me ? 700 : 400, color: me ? V3.textStrong : V3.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{r.name}</span>
+            {r.weapon === 1 ? <span style={{ fontSize: 9, fontWeight: 700, color: V3.red, flex: 'none' }}>[S]</span> : null}
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
+/** MVP 한 조각 — 마크 · 닉네임 · 배지 (배지가 제일 오른쪽 · 2026-09-11 사장님) */
+function MvpChip({ entry }: { entry: MatchLineupEntry }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+      <MarkCircle clan={entry.match_time_clan ? { slug: entry.match_time_clan.slug, mark: entry.match_time_clan.mark } : null} size={16} />
+      <span style={{ fontSize: 12, fontWeight: 700, color: '#8a6a12', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{entry.name}</span>
+      <MvpMark size={15} />
+    </span>
+  )
+}
+
+const pcGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '108px 62px 92px minmax(180px,1fr) minmax(210px,260px) 52px',
+  alignItems: 'center',
+  gap: 12,
+  padding: '11px 14px',
+}
+
+export function MatchCardV3({ match: m, league, viewer = null, open, onToggle, detail, renderDetail }: MatchCardV3Props) {
+  const edge = m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk
+  const my = viewer ? m.player_stat : null
+  /* 명단이 아직 안 들어온 경기 — 펼치지 않는다 (2026-09-10 사장님: «킬데스 수집중») */
+  const pending = m.red.length === 0 && m.blue.length === 0
+  const toggle = () => { if (pending) return; onToggle() }
+  /* 명단 두 열 — 왼쪽이 ★보는 쪽★ (선수면 내 팀 · 아니면 league_clan 쪽) */
+  const ourSide = my?.side ?? m.league_clan_side ?? 'red'
+  const ours = ourSide === 'red' ? m.red : m.blue
+  const theirs = ourSide === 'red' ? m.blue : m.red
+  const mvpEntry = m.mvp_player_id === null ? null : [...m.red, ...m.blue].find((p) => p.player_id === m.mvp_player_id) ?? null
+  const mvpIsViewer = viewer !== null && m.mvp_player_id !== null && m.mvp_player_id === viewer.playerId
+  const line = m.win ? V3.winFaceLine : V3.loseFaceLine
+
+  const kda = my
+    ? <Kda kill={my.kill} death={my.death} assist={my.assist} size={16} />
+    : null
+  const kdPct = my && my.kd_rate !== null
+    ? <span style={{ fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>({my.kd_rate.toFixed(1)}%)</span>
+    : null
+  /* ③ 칸 — 보는 선수가 있으면 K/D/A, 없으면 MVP. 둘 다 없으면 비운다 (지어내지 않는다) */
+  const middle = pending
+    ? <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>킬데스 수집중</span>
+    : viewer
+      ? <>{kda ?? <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}{kdPct}{mvpIsViewer ? <MvpMark size={15} /> : null}</>
+      : mvpEntry
+        ? <MvpChip entry={mvpEntry} />
+        : null
+  const chevron = <span style={{ fontSize: 13, color: pending ? V3.textGhost : edge }}>{open ? '⌃' : '⌄'}</span>
+
+  return (
+    <div style={{ border: `1px solid ${line}`, borderRadius: V3.radiusCard, overflow: 'hidden', background: m.win ? V3.winFace : V3.loseFace, opacity: pending ? 0.75 : 1, maxWidth: MATCH_CARD_MAX_WIDTH }}>
+      <style>{CSS}</style>
+
+      {/* ══ 폰 ══ */}
+      <div className="mc-phone" onClick={toggle} style={{ cursor: pending ? 'default' : 'pointer' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '9px 13px', borderBottom: `1px solid ${line}` }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.map.name}</span>
+          <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>- {shortAgo(matchShownAt(m))}</span>
+          <span style={{ flex: 1 }} />
+          <RatingDelta value={m.rating_update} size={12.5} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto 30px', alignItems: 'center', gap: 8, padding: '12px 4px 12px 13px' }}>
+          <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>{middle}</span>
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <MarkCircle clan={m.league_clan.clan} size={20} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.league_clan.clan.name}</span>
+            </span>
+            <span style={{ fontSize: 10, color: V3.textGhost, paddingLeft: 26 }}>vs</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <MarkCircle clan={m.opponent.clan} size={20} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.opponent.clan.name}</span>
+            </span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderLeft: `1px solid ${line}` }}>{chevron}</span>
+        </div>
+      </div>
+
+      {/* ══ PC ══ */}
+      <div className="mc-pc" onClick={toggle} style={{ ...pcGrid, cursor: pending ? 'default' : 'pointer' }}>
+        {/* ① 맵 · 경기길이 · 승패 · N달 전 */}
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.map.name}</span>
+          {m.end_at ? <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{durationOf(m.start_at, m.end_at) ?? ''}</span> : null}
+          <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>
+          <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>{shortAgo(matchShownAt(m))}</span>
+        </span>
+        {/* ② 래더 증감 */}
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>래더</span>
+          <RatingDelta value={m.rating_update} size={12.5} />
+        </span>
+        {/* ③ 내 K/D/A 또는 MVP */}
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>{middle}</span>
+        {/* ④ 양 팀 — 이름 밑에 티어·점수 */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <ClanSide snap={m.league_clan} ink={m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk} league={league} />
+          <span style={{ fontSize: 10.5, color: V3.textGhost, flex: 'none' }}>vs</span>
+          <ClanSide snap={m.opponent} ink={m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk} league={league} />
+        </span>
+        {/* ⑤ 명단 두 열 — 왼쪽이 보는 쪽 */}
+        {pending ? <span style={{ fontSize: 10.5, color: V3.textGhost }}>명단 수집중</span> : (
+          <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 10, minWidth: 0 }}>
+            <LineupCol rows={ours} meId={viewer?.playerId ?? null} />
+            <LineupCol rows={theirs} meId={viewer?.playerId ?? null} />
+          </span>
+        )}
+        {/* ⑥ 상세보기 */}
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? V3.textGhost : open ? WIN_LOSS.winInk : V3.textDim }}>
+          {pending ? <span>수집중</span> : <><span>상세</span><span>보기</span>{chevron}</>}
+        </span>
+      </div>
+
+      {open ? (
+        detail ? renderDetail(detail) : <div style={{ padding: '14px 16px', fontSize: 11.5, color: V3.textGhost, borderTop: `1px solid ${V3.divider}` }}>불러오는 중…</div>
+      ) : null}
+    </div>
+  )
+}
+
+export interface MatchCardListV3Props {
+  matches: readonly MatchListItem[]
+  league: MatchCardLeague
+  viewer?: MatchCardViewer | null
+  expanded: Readonly<Record<string, MatchDetail>>
+  onExpand: (match: MatchListItem) => void
+  renderDetail: (detail: MatchDetail) => ReactNode
+  style?: CSSProperties
+}
+
+/** 카드 목록 — 펼침 상태를 여기서 하나만 쥔다 (한 번에 한 장) */
+export function MatchCardListV3({ matches, league, viewer = null, expanded, onExpand, renderDetail, style }: MatchCardListV3Props) {
+  const [open, setOpen] = useState<string | null>(null)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, ...style }}>
+      {matches.map((m) => (
+        <MatchCardV3
+          key={m.id}
+          match={m}
+          league={league}
+          viewer={viewer}
+          open={open === m.id}
+          onToggle={() => { const next = open === m.id ? null : m.id; setOpen(next); if (next !== null) onExpand(m) }}
+          detail={expanded[m.id]}
+          renderDetail={renderDetail}
+        />
+      ))}
+    </div>
+  )
+}

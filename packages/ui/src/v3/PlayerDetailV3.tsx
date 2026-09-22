@@ -32,6 +32,7 @@ import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
 import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 import { ClanTop3PanelV3 } from './ClanTop3PanelV3'
+import { MatchCardListV3 } from './MatchCardV3'
 
 /**
  * ★★본문 탭 셋을 껐다★★ (2026-09-22 사장님)
@@ -1181,6 +1182,12 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
  * ⚠ ★옛 판(한 격자 · 세 줄)은 `MatchRowsLegacy` 로 남겼다★ (`CLAUDE.md` 1-4).
  *   `SUPPLY_MATCH_ROWS` 를 `false` 로 되돌리면 그대로 돌아온다.
  */
+/**
+ * ★★경기 카드를 하나로★★ (2026-09-22 밤 · 사장님: 「경기카드는 무조건 통일이다 /
+ * Pc에서도 한가지 형식 / 모바일에서도 한가지 형식」).
+ * `true` 면 공용 `MatchCardV3` 를 그린다. `false` 로 두면 이 화면의 옛 카드가 그대로 돌아온다 (`CLAUDE.md` 1-4).
+ */
+const UNIFIED_MATCH_CARD: boolean = true
 const SUPPLY_MATCH_ROWS = true
 
 /** 폰/PC 갈림목 — 스코어보드(`SB_PHONE_MAX`)와 ★같은 값★ 이다. 두 곳이 갈라지면 카드가 반쪽씩 바뀐다 */
@@ -1237,6 +1244,20 @@ function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: st
 
 function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<PlayerDetailV3Props, 'data' | 'leagueSlug' | 'matches' | 'expanded' | 'onExpand'>) {
   const [open, setOpen] = useState<string | null>(null)
+  if (UNIFIED_MATCH_CARD) {
+    return (
+      <MatchCardListV3
+        style={{ marginTop: 12 }}
+        matches={matches}
+        league={{ category: data.league.category, slug: data.league.slug }}
+        viewer={{ playerId: data.player.id }}
+        expanded={expanded}
+        onExpand={onExpand}
+        /* 펼치면 스코어보드 — 경기분석 단추도 그 안에 있다 */
+        renderDetail={(d) => <Scoreboard detail={d} me={data.player.id} leagueCategory={data.league.category} leagueSlug={leagueSlug} />}
+      />
+    )
+  }
   if (!SUPPLY_MATCH_ROWS) return <MatchRowsLegacy data={data} leagueSlug={leagueSlug} matches={matches} expanded={expanded} onExpand={onExpand} />
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>

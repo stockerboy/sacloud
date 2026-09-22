@@ -24,6 +24,8 @@ export * from './PlayerDetailV3'
 export * from './ClanDetailV3'
 export * from './TrendChartV3'
 export * from './MatchListV3'
+/* ★경기 카드 — 하나★ (2026-09-22 밤 · 사장님: 「경기카드는 무조건 통일」) */
+export * from './MatchCardV3'
 export * from './seasonPlot'
 export * from './H2HChartV3'
 export * from './TodayMatchupCard'

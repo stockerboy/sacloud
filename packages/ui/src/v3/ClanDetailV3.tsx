@@ -11,6 +11,7 @@
  * 옛 화면(`LeagueClanRecordScreen`)의 부품들은 지우지 않았다 (`CLAUDE.md` 1-4).
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { MatchCardListV3 } from './MatchCardV3'
 import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
 import { showsTier } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
@@ -353,6 +354,12 @@ const majorityClanOf = (stats: readonly MatchPlayerStat[]) => {
    등록 클랜(수집기 라벨)과 어긋난다. ★팀 이름은 등록 클랜★, 선수 옆 마크가 소속을 말한다. 명단 다수 방식은 스위치로 남긴다 */
 const TEAM_NAME_FROM_LINEUP = false
 /* 상대전적 그래프 — 옛 판(판 순서 X축)으로 되돌리려면 true */
+/**
+ * ★★경기 카드를 하나로★★ (2026-09-22 밤 · 사장님: 「경기카드는 무조건 통일이다 /
+ * Pc에서도 한가지 형식 / 모바일에서도 한가지 형식」).
+ * `true` 면 공용 `MatchCardV3` 를 그린다. `false` 로 두면 이 화면의 옛 카드가 그대로 돌아온다 (`CLAUDE.md` 1-4).
+ */
+const UNIFIED_MATCH_CARD: boolean = true
 const H2H_CHART_LEGACY = false
 /* 2026-09-11 사장님: 워터마크 폐지, 스나이퍼는 닉 옆 빨간 (S) */
 const SCORE_WATERMARKS = false
@@ -754,6 +761,18 @@ function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanSho
   const theme = clanThemeOf(data.clan.slug)
   void theme
   const [open, setOpen] = useState<string | null>(null)
+  if (UNIFIED_MATCH_CARD) {
+    return (
+      <MatchCardListV3
+        style={{ marginTop: 12 }}
+        matches={matches}
+        league={{ category: data.league.category, slug: data.league.slug }}
+        expanded={expanded}
+        onExpand={onExpand}
+        renderDetail={(d) => <Scoreboard detail={d} leagueCategory={data.league.category} leagueSlug={data.league.slug} />}
+      />
+    )
+  }
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {matches.map((m) => {

@@ -15,6 +15,7 @@ import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { ClanScoreboardV3, listRoundsOf, ourSideOf } from './ClanDetailV3'
 import { MarkCircle, MvpMark, TierText, relativeKst, matchShownAt } from './primitives'
 import { WIN_LOSS, V3, cardStyle } from './tokens'
+import { MatchCardListV3 } from './MatchCardV3'
 
 export interface MatchListV3Props {
   leagueSlug: string
@@ -91,6 +92,12 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
  * 이 시간을 넘겨도 명단이 비어 있으면 ★기다리는 척을 그만둔다★ (2026-09-13 QA).
  * 수집 잡은 5분마다 돈다 — 6시간이면 72번 돌고도 남는다. 0 으로 두면 규칙이 꺼진다.
  */
+/**
+ * ★★경기 카드를 하나로★★ (2026-09-22 밤 · 사장님: 「경기카드는 무조건 통일이다 /
+ * Pc에서도 한가지 형식 / 모바일에서도 한가지 형식」).
+ * `true` 면 공용 `MatchCardV3` 를 그린다. `false` 로 두면 이 화면의 옛 카드가 그대로 돌아온다 (`CLAUDE.md` 1-4).
+ */
+const UNIFIED_MATCH_CARD: boolean = true
 const STALE_HOURS = 6
 
 export function MatchListV3(props: MatchListV3Props) {
@@ -102,6 +109,16 @@ export function MatchListV3(props: MatchListV3Props) {
         <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
       ) : matches.length === 0 ? (
         <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>아직 경기가 없습니다.</div>
+      ) : (
+UNIFIED_MATCH_CARD ? (
+        <MatchCardListV3
+          style={{ marginTop: 12 }}
+          matches={matches}
+          league={{ category: leagueCategory, slug: props.leagueSlug }}
+          expanded={expanded}
+          onExpand={onExpand}
+          renderDetail={(d) => <ClanScoreboardV3 detail={d} leagueCategory={leagueCategory} leagueSlug={props.leagueSlug} winnerFirst />}
+        />
       ) : (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {matches.map((m) => {
@@ -194,7 +211,7 @@ export function MatchListV3(props: MatchListV3Props) {
             )
           })}
         </div>
-      )}
+      ))}
       {hasMore ? (
         <button type="button" onClick={onLoadMore} disabled={loadingMore} style={{ marginTop: 10, width: '100%', padding: '11px 0', fontFamily: 'inherit', fontSize: 12.5, color: '#1d4fd6', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.25)', borderRadius: V3.radiusCard, cursor: loadingMore ? 'default' : 'pointer' }}>
           {loadingMore ? '불러오는 중…' : '더 불러오기'}
