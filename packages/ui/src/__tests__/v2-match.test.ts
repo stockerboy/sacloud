@@ -29,9 +29,26 @@ describe('경기 상세가 v2 로 옮겨졌다', () => {
 describe('승패를 면에 칠하지 않는다 (시안)', () => {
   const tokens = read('../v2/tokens.css')
 
+  /*
+   * ⚠ ★2026-09-22 정정★ — 이 시험은 색 값을 그대로 박아 두고 있었다(`#0f1015`).
+   *   그 값은 ★다크 남색 시절★ 의 것이고, 「서플라이 투톤」 으로 본문이 흰 바탕이 되면서
+   *   `var(--v2-panel)` 로 바뀜다 (`v2/tokens.css` 의 ⚠ 주석에 옛 값이 남아 있다).
+   *
+   *   ★못 박을 것은 색 이름이 아니라 「둘이 같은 중립색」 이다.★ 바탕이 흰색이든
+   *   남색이든, 이긴 면과 진 면이 같아야 ★펼친 라인업이 한 팀 색으로 안 물든다.★
+   *   그래서 값을 박지 않고 ★둘이 같은가★ 와 ★팀 색이 아닌가★ 를 묻는다.
+   */
   it('이긴 면과 진 면이 ★같은 중립색★ 이다', () => {
-    expect(tokens).toContain('--color-win-bg: #0f1015')
-    expect(tokens).toContain('--color-lose-bg: #0f1015')
+    const valueOf = (name: string) => {
+      const hit = tokens.match(new RegExp(`--${name}:\\s*([^;]+);`))
+      expect(hit, `${name} 이 tokens.css 에 없다`).not.toBeNull()
+      return hit![1]!.trim()
+    }
+    const win = valueOf('color-win-bg')
+    const lose = valueOf('color-lose-bg')
+    expect(win).toBe(lose)
+    /* 팀 색을 넣으면 다시 면이 물든다 — 파랑·빨강 토큰을 쓰면 안 된다 */
+    expect(win).not.toMatch(/v2-blue|v2-red/)
   })
 
   it('가르는 것은 막대와 글자다 — 색은 남아 있다', () => {
