@@ -37,8 +37,14 @@ say() { printf '%s | %s\n' "$(date '+%m-%d %H:%M')" "$1" >> "$LOG"; }
 say "★막힌 경기 풀기 시작★"
 
 # ① ~ ④ — 모르는 클랜 찾기 · 번호 받기 · 번호 알아내기
-timeout 540 pnpm --filter @sacloud/worker nexon clan-find-missing \
-  --limit "${UNSTICK_CLAN_LIMIT:-10}" --confirm >> "$LOG" 2>&1 || true
+#
+# ⚠ ★크롬을 쓰는 잡이라 자물쇠를 쥔다★ (2026-09-22 실측) — 이 잡과 손으로 돌리는
+#   `sanply-roster.sh` 가 같은 자물쇠를 쓴다. 겹치면 크롬이 여러 개 뜨고
+#   부하가 치솟는다 (실측: load 37.57 · 병영 요청이 실패해 답이 줄었다).
+flock /var/lock/sac-manual-chrome.lock -c "
+  timeout 540 pnpm --filter @sacloud/worker nexon clan-find-missing \
+    --limit ${UNSTICK_CLAN_LIMIT:-10} --confirm
+" >> "$LOG" 2>&1 || true
 
 # ⑤ — 진영 바로잡기 (병영에 한 번도 안 물어본다. DB 만 본다)
 timeout 300 pnpm --filter @sacloud/worker nexon match-side-fix --confirm >> "$LOG" 2>&1 || true
