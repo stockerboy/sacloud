@@ -246,8 +246,9 @@ body.antialiased {
 
 /* ── 7. Hot게시판 — 흰 카드 672px (서플라이 실측) ─────────────────────── */
 .home-cloud + div > section > div {
-  width: 672px;
-  max-width: 100%;
+  /* ⚠ `width:672px; max-width:100%` 는 폰에서 ★안 먹었다★ (실측 x-139 w672 · 140px 넘침).
+       `min()` 은 한 값이라 확실하다. */
+  width: min(672px, 100%);
   margin: 0 auto;
   background: #ffffff;
   border: 0;
@@ -340,4 +341,190 @@ body.antialiased {
 }
 .home-cloud .sb-cloud input {
   flex: 1 1 auto;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★폰 (≤767px)★★ — 2026-09-22 · 사장님: 「모바일 최적화까지 끝난게 아니면
+   넘어가면 안돼 / 서플라이 모바일버전은 어떤지 실측 똑바로 하고 정확하게 구사해」
+
+   ── ★값의 출처★ — `3rd.supply` 를 ★아이폰 UA + 뷰포트 393px★ 로 열어 쟀다
+     (`scratchpad/measure.mjs`). ⚠ UA 를 안 바꾸면 서플라이가 ★PC 판을 내준다★ —
+     처음에 그렇게 재서 `vw=1120` 이 나왔다. 폰 판은 `sp-mobile-*` 로 아예 다른 화면이다.
+
+     ┌────────────┬──────────────────┬──────────────────────────────┐
+     │            │ PC (1513)        │ 폰 (393)                     │
+     ├────────────┼──────────────────┼──────────────────────────────┤
+     │ 상단바      │ 63px · 메뉴 5개   │ ★49px · 아이콘 둘뿐★          │
+     │            │                  │ 햄버거 49×49 · 로그인 49×49   │
+     │            │                  │ ★로고 없음 · 메뉴 글자 없음★   │
+     │ 본문 글자색 │ #000000          │ ★#4a4a4a★                    │
+     │ 히어로 여백 │ 70px 0 35px      │ ★21px 0 35px★                │
+     │ 로고        │ 616×144          │ ★w-10/12 (83.3%) · 328×76★   │
+     │ 검색창      │ 546×60           │ ★328×39 (10/12)★             │
+     │  └ 종류칸   │ 154 · #4a5568    │ ★84 · #334155 · 12.25px★     │
+     │  └ 입력     │ 15.75px          │ ★12.25px★                    │
+     │ Hot카드     │ 672 가운데·rad3.5 │ ★393 전체폭 · rad 0 · 여백0★  │
+     │ Hot줄       │ padding 14px     │ ★10.5px 14px · 아래선 1px★    │
+     │ Hot제목     │ 15.75px/700 #000 │ ★14px/700 #4a4a4a★           │
+     └────────────┴──────────────────┴──────────────────────────────┘
+
+   ── ★고친 사고★ — 폰에서 ★가로로 140px 넘쳤다★ (사장님 폰 사진에서 잡히심)
+     ① Hot카드 `width:672px` 가 393px 화면을 뚫었다 → `min(672px, 100%)`
+     ② 내 PC 규칙 `.v2-gnb { display:flex }` 가 Tailwind `max-md:hidden` 을 ★덮어서★
+        폰에서 메뉴줄이 살아났다. `tokens.css:959` 의 폰 규칙(`min-height:88px` ·
+        `flex-wrap:wrap`)과 합쳐져 ★상단바가 2줄 88px★ 이 됐다.
+        → PC 규칙을 `min-width:768px` 안으로 가뒀고, 폰은 아래에서 따로 정한다.
+
+   ⚠ `tokens.css:959` 의 폰 규칙은 ★한 줄도 안 지웠다★ (`CLAUDE.md` 1-4).
+     이 블록만 빼면 그 2줄 띠가 그대로 돌아온다.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* PC 전용으로 가둔다 — 폰에서 Tailwind `max-md:hidden` 을 덮지 않게 */
+@media (max-width: 767px) {
+  .sac-v2 .v2-gnb {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  /* ── 상단바 49px · 한 줄 · 아이콘 둘 ─────────────────────────────────── */
+  .sac-v2 .v2-topbar__inner,
+  .sac-v2 .v2-topbar__inner--home,
+  .sac-v2 .v2-topbar__inner--gnb {
+    height: 49px;
+    min-height: 0;
+    padding: 0;
+    flex-wrap: nowrap;
+    row-gap: 0;
+    border-radius: 0;
+  }
+  /* 서플라이 폰 상단바에는 로고가 없다 (햄버거와 로그인 아이콘 둘뿐) */
+  .sac-v2 .v2-topbar__inner > .v2-brand,
+  .sac-v2 .v2-topbar__inner--gnb > .v2-brand {
+    display: none;
+  }
+  /* 햄버거 — 49×49 · 왼쪽 끝 */
+  .sac-v2 .v2-topbar__inner--gnb > .v2-burger,
+  .sac-v2 .v2-burger {
+    display: inline-flex;
+    width: 49px;
+    height: 49px;
+    padding: 0;
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+    color: #e5e7eb;
+  }
+  /* 로그인 — 49×49 · 오른쪽 끝 */
+  .sac-v2 .v2-topbar__inner > div:last-child {
+    padding-right: 0;
+  }
+  .sac-v2 .v2-login {
+    display: inline-flex;
+    width: 49px;
+    height: 49px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    color: #e5e7eb;
+  }
+
+  /* ── 본문 — 띠 밑 49px · 글자 #4a4a4a ──────────────────────────────── */
+  .sac-shell > div.flex-1 {
+    padding-top: 49px;
+  }
+  body.sac-sky,
+  body.antialiased {
+    color: #4a4a4a;
+  }
+
+  /* ── 히어로 — padding 21px 0 35px · 로고/검색 폭 10/12 ────────────── */
+  .home-cloud,
+  .home-code,
+  .home-night {
+    padding: 21px 0 35px;
+  }
+  .home-cloud .home-mark {
+    display: block;
+    width: 83.3333%;
+    margin: 0 auto 35px;
+  }
+  .home-cloud .home-mark img,
+  .home-cloud .home-mark svg {
+    width: 100%;
+    height: auto;
+  }
+  /* 검색창 328×39 — 화면의 10/12 */
+  .home-cloud .sb-cloud {
+    height: 39px;
+  }
+  .home-cloud .sb-cloud button[aria-haspopup='listbox'] {
+    --sb-kind-bg: #334155;
+    width: 84px;
+    height: 39px;
+    padding: 0 10.5px;
+    font-size: 12.25px;
+  }
+  .home-cloud .sb-cloud input {
+    height: 39px;
+    padding: 10.5px;
+    font-size: 12.25px;
+  }
+  .home-cloud .sb-cloud button[aria-label='검색'] {
+    width: 35px;
+  }
+
+  /* ── Hot게시판 — 전체폭 · 모서리 없음 · 좌우 여백 없음 ──────────────── */
+  .home-cloud + div {
+    padding-left: 0;
+    padding-right: 0;
+    margin-top: 8px;
+  }
+  .home-cloud + div > section > div {
+    width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .home-cloud + div > section > div li > a {
+    padding: 10.5px 14px;
+  }
+  .home-cloud + div > section > div li {
+    border-bottom-width: 1px;
+  }
+  .home-cloud + div > section > div li > a > span:first-child {
+    font-size: 14px;
+    font-weight: 700;
+    color: #4a4a4a;
+  }
+  .home-cloud + div > section > div li > a > span:not(:first-child) {
+    font-size: 12.25px;
+    color: #374151;
+  }
+}
+
+/* ── 폰 2회차 실측으로 잡은 것 (2026-09-22 · localhost 393px) ──────────────
+   ```
+              서플라이   2회차 우리   까닭
+   로고 폭      328        309       히어로 안쪽 칸의 좌우 여백(px-3)이 먼저 먹었다
+   검색창 폭    328        371       같은 까닭 — 10/12 가 «화면» 이 아니라 «칸» 의 10/12 였다
+   ```
+   서플라이의 `w-10/12` 는 ★화면 폭★ 의 10/12 다. 그래서 히어로 안쪽 칸의
+   좌우 여백을 폰에서는 0 으로 두고, 로고와 검색창이 각각 83.3333% 를 갖게 한다.
+*/
+@media (max-width: 767px) {
+  .home-cloud > div {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .home-cloud .home-mark,
+  .home-cloud section > div:has(> div > .sb-cloud) {
+    width: 83.3333%;
+    max-width: 83.3333%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* 시안의 «빛»(sweep)이 상자 밖으로 새어 화면을 넓히던 것 — 제 칸 안에서 자른다 */
+  .home-cloud .sb-cloud {
+    overflow: hidden;
+  }
 }
