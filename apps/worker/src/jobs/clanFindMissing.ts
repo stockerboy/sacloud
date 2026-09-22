@@ -52,6 +52,30 @@ import { barracksBrowser, closeBarracksBrowser, useChromeFetch } from '../nexon/
  * ```
  */
 
+/**
+ * ── ⚠⚠ ★★2026-09-22 — 이 잡은 기본으로 꺼져 있다★★ ⚠⚠
+ *
+ * > 「리그에 등록된 클랜끼리(IPL vs IPL · pl vs pl · 열산vs열산) 이런 퀵매치만
+ * >  기록해야지 ★뭔 개잡사들이랑 한걸 다 기록하고 있어★」 — 사장님
+ *
+ * ★내가 방향을 잘못 잡았다.★ 「킬데스 수집중이 안 풀린다」 를 고치려고
+ * ★상대 클랜을 만들어 리그에 등록★ 했는데, 그것이 ★기록하면 안 되는 경기를
+ * 기록하게 만드는 문★ 이었다.
+ *
+ *   규칙은 원래 맞았다 — `verdictFromSides` 는 ★양쪽 다 등록 + 같은 리그★ 일 때만
+ *   경기를 만든다. 등록 안 된 클랜과 한 경기는 ★안 만드는 것이 정답★ 이고,
+ *   그래서 「킬데스 수집중」 으로 남는 것도 ★정답★ 이었다.
+ *
+ *   실측 — 내가 올린 등록 23줄 때문에 ★115경기★ 가 기록됐다 (되돌렸다).
+ *
+ * ★그래서 ①③④(클랜 만들기·리그에 올리기)는 꺼 둔다.★
+ * ②(번호 받아 적기)만 남긴다 — 번호는 ★이미 등록된 클랜★ 의 것이라 문을 안 연다.
+ *
+ * ⚠ 지우지 않는다 (`CLAUDE.md` 1-4). 사장님이 「이 클랜은 등록해」 하시면
+ *   `CLAN_FIND_CREATE=1` 로 한 판 돌리면 된다.
+ */
+export const CREATE_MISSING_CLANS = process.env.CLAN_FIND_CREATE === '1'
+
 /** 병영에 물어보는 간격 — 수집과 같은 약속이다 */
 const DELAY_MS = 1500
 
@@ -307,7 +331,7 @@ export async function runClanFindMissing(
     const slug = pick.clanId
     if (result.samples.length < 25) result.samples.push(`찾음 ${item.name} → ${slug}`)
 
-    if (confirm) {
+    if (confirm && CREATE_MISSING_CLANS) {
       /* ★이미 그 주소로 있으면 안 건드린다★ — 이름만 다를 수 있다 */
       const existing = await prisma.clan.findUnique({ where: { slug }, select: { id: true } })
       let clanId: string
@@ -406,7 +430,7 @@ export async function runClanFindMissing(
    *   ⚠ ★기록을 만들지 않는다★ — 명단 한 줄뿐이다.
    *   ⚠ 번호조차 모르는 클랜은 ★여기서 만들지 않는다★ — ①단계가 이름으로 찾는다.
    */
-  if (confirm && !result.blocked) {
+  if (confirm && !result.blocked && CREATE_MISSING_CLANS) {
     const pairs = await prisma.$queryRaw<{ leagueid: string; clanid: string; name: string }[]>`
       SELECT DISTINCT m."leagueId" AS leagueid, n."clanId" AS clanid, c."name"
         FROM "Match" m
@@ -515,15 +539,23 @@ export async function runClanFindMissing(
         result.inferredNumbers += 1
         if (result.samples.length < 80) result.samples.push(`번호 알아냄 ${g.name} → ${g.clanno}`)
       }
-      const has = await prisma.leagueClan.findFirst({
-        where: { leagueId: g.leagueid, clanId: g.clanid },
-        select: { id: true },
-      })
-      if (has === null) {
-        await prisma.leagueClan.create({
-          data: { leagueId: g.leagueid, clanId: g.clanid, division: 1 },
+      /*
+       * ⚠ ★리그에 올리지 않는다★ (2026-09-22) — 번호만 적는다.
+       *   등록은 ★사장님이 정하는 것★ 이고, 우리가 올리면 등록 안 된 클랜과 한 경기가
+       *   기록돼 버린다. 번호는 적어 둬도 문을 안 연다 — 이미 등록된 클랜의 경기를
+       *   풀 때만 쓰인다.
+       */
+      if (CREATE_MISSING_CLANS) {
+        const has = await prisma.leagueClan.findFirst({
+          where: { leagueId: g.leagueid, clanId: g.clanid },
+          select: { id: true },
         })
-        result.joinedByNumber += 1
+        if (has === null) {
+          await prisma.leagueClan.create({
+            data: { leagueId: g.leagueid, clanId: g.clanid, division: 1 },
+          })
+          result.joinedByNumber += 1
+        }
       }
     }
     log(`④경기 원문으로 알아낸 번호 ${result.inferredNumbers}개`)
