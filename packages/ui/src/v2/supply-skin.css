@@ -1274,3 +1274,13 @@ body.antialiased {
     width: calc(100% + 1.5rem);
   }
 }
+
+/* ★폰 6차★ — 표 머리 「순위」 가 「닉네임」 에 붙어 「순위닉네임」 으로 읽혔다 (운영 393 찍어서 잡았다).
+   폰 순위 칸은 26px 인데 12px 글자 두 자가 딱 24px 라 사이가 0 이다. 머리·행 첫 칸 뒤에 8px.
+   행은 마크가 mr-7 을 갖고 있어 티가 안 났지만 같이 줘서 머리와 세로줄이 맞는다 (2026-09-23) */
+@media (max-width: 767px) {
+  .sac-rank-head > :first-child,
+  .sac-rank-row > :first-child {
+    margin-right: 8px;
+  }
+}
