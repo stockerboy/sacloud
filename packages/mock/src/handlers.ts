@@ -243,6 +243,13 @@ const resolvers: Record<EndpointKey, Resolver> = {
    */
   leagueHexTop: () => ok({ clan: [], player: [] }),
   /* 오늘의 셋 — 픽스처에는 «그날» 이 없다. 빈 목록이면 화면이 그 칸을 안 그린다 */
+  /*
+   * ★오늘의 상대전적★ — 픽스처에는 「오늘 15:00 이후」에 든 경기가 없다.
+   * `null` 이면 화면이 «오늘 아직 집계된 클랜 상대전적이 없습니다» 를 그린다 —
+   * ★가짜 매치업을 지어내지 않는다★ (`CLAUDE.md` 2장 1번).
+   * ⚠ 그래서 ★이 카드는 mock 모드에서 확인할 수 없다.★ `live` 로 봐야 한다.
+   */
+  leagueTodayMatchup: () => ok({ matchup: null }),
   leagueDailyPodium: () => ok({ day: null, players: [], clans: [] }),
   /*
    * ★깃발판★ — 픽스처에는 하루 창(17:00~03:00)에 든 경기가 없다.

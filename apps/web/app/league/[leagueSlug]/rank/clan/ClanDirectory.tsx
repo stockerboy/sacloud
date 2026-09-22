@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { LeagueClan } from '@sacloud/contract'
 import { leagueScreen, showsTier } from '@sacloud/contract'
 import type { ClanRankTableRow } from '@sacloud/ui'
-import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, LeagueTabsInline, RankBox, RankHeader, leagueClanPath, type ClanRankNote, isLeagueUpcoming } from '@sacloud/ui'
+import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, LeagueTabsInline, RankBox, RankHeader, TodayMatchupCard, leagueClanPath, type ClanRankNote, isLeagueUpcoming } from '@sacloud/ui'
 import Link from 'next/link'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -140,6 +140,17 @@ export function ClanDirectory({
   )
 }
 
+/**
+ * ★오늘의 상대전적을 붙이는 리그★ (2026-09-22 사장님이 직접 지정).
+ *
+ * > 「이 시스템은 ★supply1,2 IPL★ 클랜랭킹에 들어간다
+ * >  ★열산리그에는 들어갈 기능을 따로 알려줄게 나중에★」
+ *
+ *   supply = Supply1.0 · cpl = Supply2.0 · nolink = IPL.
+ *   ★열산(`sanply`)은 일부러 뺐다.★ 사장님이 나중에 따로 정하신다.
+ */
+const TODAY_MATCHUP_LEAGUES: readonly string[] = ['supply', 'cpl', 'nolink']
+
 function ClanRankDirectory({
   leagueSlug,
   leagueCategory,
@@ -151,6 +162,29 @@ function ClanRankDirectory({
 }) {
   const [query, setQuery] = useState('')
   const ready = useApiReady()
+
+  /*
+   * ★★오늘의 상대전적★★ (2026-09-22 사장님: 「광고자리에 그래프 넣기」).
+   *
+   *   「매일 15:00 KST 구간에서 ★등록 클랜끼리 가장 많이 맞붙은 조합★ 1개를
+   *     클랜랭킹 상단에 실시간으로」
+   *
+   * ── ★열산(`sanply`)에는 안 넣는다★ — 사장님: 「이 시스템은 supply1,2 IPL 클랜랭킹에
+   *   들어간다 ★열산리그에는 들어갈 기능을 따로 알려줄게 나중에★」.
+   *   ⚠ 리그별 분기를 화면에 뿌리지 않는 것이 원칙(D-204)인데 여기는 ★사장님이
+   *     리그를 직접 지정하신 것★ 이라 예외다. 목록을 한 줄로 모아 둔다.
+   *
+   * ── ★60초마다 다시 묻는다★ (사장님: 「새로고침 없이 가능하면 실시간으로」).
+   *   웹소켓은 안 쓴다 — Vercel 에서 끊기고 비싸다. 60초면 한 판이 끝나기 전에 들어온다.
+   *   창을 떠나 있는 동안은 안 묻는다(`refetchIntervalInBackground` 기본 false).
+   */
+  const todayMatchupOn = TODAY_MATCHUP_LEAGUES.includes(leagueSlug)
+  const todayMatchup = useQuery({
+    queryKey: ['league', leagueSlug, 'today-matchup'],
+    queryFn: () => apiGet('leagueTodayMatchup', { params: { leagueId: leagueSlug } }),
+    enabled: ready && todayMatchupOn,
+    refetchInterval: 60_000,
+  })
 
   /* 티어 이름(`ASTRA` · `CHALLENGER1` · `CHALLENGER2`)은 리그 구분(`independent`)을 봐야 나온다.
      이름은 `divisionLabel` 이 만든다 — ★여기서 티어 이름을 지어내지 않는다★ */
@@ -520,6 +554,18 @@ function ClanRankDirectory({
                 : '센 상대를 이길수록 더 큰 점수를 받는 우리 점수로 세운 순서입니다. 승률과 함께 보시면 됩니다.'
           }
         />
+        {/*
+          ★오늘의 상대전적★ — 서플라이가 광고를 두는 자리다 (2026-09-22 사장님).
+          ★광고를 만들지 않는다★ (`CLAUDE.md` 2장 3번) — 그 자리를 이 카드가 쓴다.
+          검색 중에는 안 그린다 — 걸러 낸 화면에 «오늘» 이 끼어들면 헷갈린다
+          (바로 아래 「오늘의 셋」과 같은 규칙).
+          ⚠ 아직 못 받았으면 ★아무것도 안 그린다★ — 빈 카드가 깜빡이지 않게.
+        */}
+        {todayMatchupOn && !searching && todayMatchup.data ? (
+          <div style={{ marginBottom: 14 }}>
+            <TodayMatchupCard matchup={todayMatchup.data.data.matchup} />
+          </div>
+        ) : null}
         {/*
           ★오늘의 셋★ (2026-09-14 사장님: «그 날 클랜전한 인원들을 일열로 세워서
           육각축이 고르게 전부 잘한 사람 + 승률도 좋아야함 3명 그리고 3개씩»).

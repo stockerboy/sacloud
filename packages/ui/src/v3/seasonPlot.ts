@@ -22,6 +22,72 @@ export const TICK_LABELS: readonly (readonly [number, string])[] = [[0, '9/3'], 
 /** 밀리초 → 시즌 날짜(0~28, 소수 포함) */
 export const dayOf = (ms: number): number => (ms - ORIGIN_MS) / DAY_MS
 
+/**
+ * ★★시간축을 갈아끼울 수 있게 했다★★ (2026-09-22 · 「오늘의 상대전적」)
+ *
+ * 위 세 상수(`ORIGIN_MS` · `SPAN_DAYS` · `TICK_LABELS`)는 ★시즌 28일★ 로 못 박힌 값이다.
+ * 클랜랭킹의 새 카드는 ★오늘 하루(15:00~15:00)★ 를 그려야 해서 같은 그래프를 쓰되
+ * 축만 다른 것이 필요했다.
+ *
+ * ★기본값은 시즌축이다★ — `axis` 를 안 넘기면 지금까지와 ★한 픽셀도 다르지 않다★
+ * (`CLAUDE.md` 1-4). 선수 추이·클랜 상세는 아무것도 안 바뀐다.
+ */
+export interface PlotAxis {
+  /** 축의 0 지점 (밀리초) */
+  originMs: number
+  /** 축의 길이 (날. 하루 창이면 1) */
+  spanDays: number
+  /** 눈금 — [축 위치(날), 글자] */
+  tickLabels: readonly (readonly [number, string])[]
+  /** 짚었을 때 보여 줄 글자 — 시즌축은 «9/17», 하루축은 «21:30» */
+  formatAt: (ms: number) => string
+}
+
+const KST = 'Asia/Seoul'
+
+/** 지금까지 쓰던 축 — 시즌 0 의 28일 */
+export const SEASON_AXIS: PlotAxis = {
+  originMs: ORIGIN_MS,
+  spanDays: SPAN_DAYS,
+  tickLabels: TICK_LABELS,
+  formatAt: (ms) =>
+    new Date(ms)
+      .toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', timeZone: KST })
+      .replace(/\.$/, '')
+      .replace(/\. /, '/'),
+}
+
+/**
+ * ★하루 창★ — 「오늘의 상대전적」이 쓰는 축.
+ *
+ * `fromMs` 는 그날 15:00 KST 다 (값은 서버가 준다 — 화면이 다시 계산하지 않는다).
+ * 눈금은 시즌축과 ★같이 셋★ 이다: 시작 · 한가운데 · 끝.
+ */
+export function dayAxis(fromMs: number): PlotAxis {
+  const hh = (offsetDays: number): string =>
+    new Date(fromMs + offsetDays * DAY_MS).toLocaleTimeString('ko-KR', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: KST,
+    }) + '시'
+  return {
+    originMs: fromMs,
+    spanDays: 1,
+    tickLabels: [
+      [0, hh(0)],
+      [0.5, hh(0.5)],
+      [1, hh(1)],
+    ],
+    formatAt: (ms) =>
+      new Date(ms).toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: KST,
+      }),
+  }
+}
+
 /** 선 두께 · 마커 · 글자 — 두 그래프가 똑같이 쓴다 (2026-09-11 사장님: 두께와 원 마크를 키워라) */
 export const PLOT = {
   glowW: 14,

@@ -71,6 +71,54 @@ export const V3 = {
   font: "var(--font-chakra, 'Chakra Petch'), var(--font-body, 'Noto Sans KR'), system-ui, sans-serif",
 } as const
 
+/**
+ * ★★옛 다크 남색 판 — 되살렸다★★ (2026-09-22 · 「오늘의 상대전적」)
+ *
+ * 사장님: 「현재 사이트가 흰색 UI로 변경되기 전 사용했던 ★기존 상대전적 그래프 카드의
+ *   디자인/컴포넌트를 최대한 그대로 재사용해. 새로운 디자인을 임의로 만들지 마」
+ *
+ * 값은 ★위 주석에 남겨 둔 그 값 그대로★ 다 (`CLAUDE.md` 1-4 가 살려 둔 것을 쓴다).
+ * 새로 지어낸 색이 하나도 없다.
+ *
+ * ⚠ ★`V3` 는 안 건드린다.★ 이 객체를 쓰는 화면은 ★오늘의 상대전적 카드 하나뿐★ 이다.
+ *   선수·클랜 상세는 지금처럼 흰 카드로 남는다.
+ */
+export const V3_DARK = {
+  ...V3,
+  pageBg: 'radial-gradient(1200px 700px at 50% -8%,#142238 0%,#0c1526 42%,#070d1c 100%)',
+  card:
+    'radial-gradient(120% 90% at 0% 0%,rgba(122,162,255,.10),transparent 58%),' +
+    'radial-gradient(95% 75% at 100% 0%,rgba(196,132,252,.075),transparent 52%),' +
+    'linear-gradient(160deg,rgba(46,65,107,.58) 0%,rgba(32,48,82,.58) 58%)',
+  cardFlat:
+    'radial-gradient(120% 90% at 0% 0%,rgba(122,162,255,.08),transparent 58%),' +
+    'linear-gradient(160deg,rgba(40,57,95,.58),rgba(36,52,88,.58))',
+  cardBorder: '#3a4870',
+  divider: '#1b2537',
+  rowDivider: '#18233a',
+  rowDivider2: '#141d2c',
+  plot: '#0a1220',
+  chip: '#0e1728',
+  chipBorder: '#24314c',
+  text: '#e8eaf2',
+  textStrong: '#ffffff',
+  textMuted: '#a4b0c8',
+  textDim: '#7c88a4',
+  textFaint: '#6b7690',
+  textGhost: '#5c6a84',
+  textGhost2: '#4e5b74',
+} as const
+
+/**
+ * 그래프·카드가 받는 색판 — `V3`(흰) 또는 `V3_DARK`(남색).
+ *
+ * ⚠ `typeof V3` 를 그대로 쓰면 안 된다 — `as const` 라 값이 ★글자 그대로의 타입★ 이라서
+ *   `V3_DARK` 처럼 ★다른 색★ 을 넣으면 「'#3a4870' 은 '#e3e6ee' 가 아니다」로 막힌다.
+ *   그래서 글자는 `string`, 숫자는 `number` 로 ★넓혀서★ 받는다.
+ */
+type Widen<T> = T extends string ? string : T extends number ? number : T
+export type V3Tone = { readonly [K in keyof typeof V3]: Widen<(typeof V3)[K]> }
+
 /** ASTRA 는 무조건 영롱하게 — 홀로그램 그라데이션 + 글로우 + 5.5s 시머 (시안 규칙) */
 export const ASTRA_STYLE: CSSProperties = {
   background: 'linear-gradient(92deg,#8ff0ff 0%,#c9b6ff 34%,#ffd6f2 58%,#8ff0ff 100%)',

@@ -39,6 +39,7 @@ import {
   ClanRankRow,
   ApplicationWaiting,
   DailyPodium,
+  TodayMatchupResponse,
   LeagueHexTop,
   ClanSummary,
   Comment,
@@ -557,6 +558,21 @@ export const endpoints = {
    *   육각축이 고르게 전부 잘한 사람 + 승률도 좋아야함 3명 그리고 3개씩»).
    *   개인 셋 · 클랜 셋을 한 번에 준다 — 두 화면이 같은 응답을 나눠 쓴다.
    */
+  /**
+   * ★오늘의 상대전적★ (2026-09-22 사장님: 「매일 특정 시간 구간 동안 등록된 클랜끼리
+   *   서로 가장 많은 경기를 치른 매치업 1개를 자동으로 찾아 클랜랭킹 상단에」).
+   *
+   *   하루의 경계는 ★15:00 KST★ 다. 고정하지 않고 ★부를 때마다 다시 센다★ —
+   *   경기가 하나 들어와 1위가 바뀌면 카드 전체가 그 매치업으로 갈린다.
+   *   오늘 경기가 없으면 `matchup` 이 `null` 이다 (가짜를 만들지 않는다).
+   */
+  leagueTodayMatchup: {
+    method: 'GET',
+    path: '/leagues/:leagueId/today-matchup',
+    origin: 'designed',
+    description: '오늘의 상대전적 — 15:00 KST 창에서 가장 많이 맞붙은 등록클랜 한 쌍',
+    response: apiResponse(TodayMatchupResponse),
+  },
   leagueDailyPodium: {
     method: 'GET',
     path: '/leagues/:leagueId/daily-podium',
