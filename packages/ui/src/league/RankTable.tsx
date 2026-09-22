@@ -177,7 +177,7 @@ function Stat({
     <div className={className}>
       <span className={`${NUM} ${tone === '' ? 'text-text-strong' : tone}`}>{value}</span>
       {unit ? <Unit>{unit}</Unit> : null}
-      {sub ? <span className={SUB}>{sub}</span> : null}
+      {sub ? <span className={`${SUB} sac-sub-phone`}>{sub}</span> : null}
     </div>
   )
 }
