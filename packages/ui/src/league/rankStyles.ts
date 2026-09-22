@@ -211,4 +211,5 @@ export const COL_PWL = 'w-[126px] shrink-0 text-right max-md:hidden'
 /** 개인랭킹 래더 칸 */
 export const COL_PRATING = 'w-[104px] shrink-0 text-right max-md:w-[76px]'
 /** PC 에서는 접힌 보조 수치를 감춘다 — 제 칸이 따로 섰기 때문이다 */
-export const SUB_PHONE_ONLY = 'hidden max-md:block'
+/* `sac-sub-phone` — 서플라이 폰 표는 한 줄(36px)이라 접힌 보조 수치를 폰에서도 감춘다 (supply-skin.css · 2026-09-23) */
+export const SUB_PHONE_ONLY = 'sac-sub-phone hidden max-md:block'

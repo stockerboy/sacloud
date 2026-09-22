@@ -270,7 +270,8 @@ export function pillStyle(on: boolean): CSSProperties {
     display: 'flex',
     alignItems: 'center',
     padding: '9px 20px',
-    borderRadius: 9,
+    /* 2026-09-23 새벽 — 둥글기 0 (서플라이 탭 줄은 각지다). 옛 값 9 */
+    borderRadius: 0,
     fontSize: 13.5,
     cursor: 'pointer',
     whiteSpace: 'nowrap',

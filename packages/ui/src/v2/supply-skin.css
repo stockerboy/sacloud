@@ -1144,3 +1144,54 @@ body.antialiased {
   background: #121c2f;
   color: #e8eaf2;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★폰 1차 — 서플라이 폰 실측으로★★ (2026-09-23 새벽 · 사장님: 「PC 끝나면 모바일」)
+
+   재서 적은 값 (`docs/SUPPLY_MEASURED.md` §1 폰 · 뷰포트 393 · iPhone UA)
+   ```
+   상단바      393×49   (우리는 63)
+   리그 띠     393×35   ✔ 같다
+   표          ★전체폭 393★ · 머리행 26 · 줄 ★36★ · 한 줄 (우리는 371 · 36 · 68~76)
+   경기 카드   전체폭 393
+   ```
+   줄 36px 한 줄로 가려고 접힌 보조 수치(승패·평균킬)를 폰에서 감춘다 —
+   서플라이 폰 표는 순위·이름·래더 셋뿐이다. 우리는 승률 한 칸을 더 둔다.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  :root,
+  .sac-v2 {
+    --spacing-nav: 49px;
+    --v2-nav-h: 49px;
+  }
+  .sac-v2 .v2-topbar__inner,
+  .sac-v2 .v2-topbar__inner--home {
+    height: 49px;
+    min-height: 49px;
+  }
+  /* 표를 화면 끝까지 — 가터(22)를 되빼야 393 이 된다 (옛 -0.75rem 은 12 뿐이라 371 이었다) */
+  .sac-board.mobile-bleed,
+  .sac-rank-board.mobile-bleed {
+    margin-left: calc(-1 * var(--layout-gutter, 22px));
+    margin-right: calc(-1 * var(--layout-gutter, 22px));
+    width: auto;
+  }
+  .sac-rank-head {
+    min-height: 26px;
+    padding: 0 0.5rem;
+    font-size: 12px;
+  }
+  .sac-rank-row {
+    min-height: 36px;
+    padding: 0 0.5rem;
+    font-size: 14px;
+  }
+  .sac-sub-phone {
+    display: none !important;
+  }
+  /* 둥근 것 마저 — 클랜 KPI 타일 · 안내 카드 */
+  .v3-clankpi,
+  .guide-flow__item {
+    border-radius: 0 !important;
+  }
+}
