@@ -245,7 +245,7 @@ const HEAD_ART = false
  * 주무기가 아닌 쪽에 쓴다. ★값은 그대로 보인다★ — 감추는 것이 아니라
  * ★어느 쪽이 본업인지★ 를 밝히는 것이다.
  */
-const DIM = '#4a5670'
+const DIM = '#96a0b5'
 
 /** ★「통합」 을 나타내는 구간 번호★ — 진짜 구간은 1부터라 0을 쓴다 (2026-09-20) */
 const ALL_TIER = 0
@@ -476,7 +476,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           onClick={() => setPickedWeapon(w)}
           style={{
             fontSize: 11, fontWeight: 700, letterSpacing: '.02em', padding: '3px 10px', borderRadius: 5, lineHeight: 1.45, cursor: 'pointer', whiteSpace: 'nowrap',
-            color: w === weapon ? '#dbe8ff' : V3.textGhost,
+            color: w === weapon ? '#1c2f6b' : V3.textGhost,
             background: w === weapon ? 'rgba(91,141,255,.18)' : 'transparent',
             border: `1px solid ${w === weapon ? 'rgba(91,141,255,.5)' : V3.chipBorder}`,
           }}
@@ -503,7 +503,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
       {/* 1 · 플레이구간 · 무기 — 카드의 모든 숫자가 이 둘을 따른다 */}
       {tiered || weapons.length > 0 ? (
         <div className="v3-phead-tier" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, padding: '11px 16px 9px', flexWrap: 'wrap' }}>
-          {tiered ? <span style={{ fontSize: 11, color: '#b9c6de', letterSpacing: '.06em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,.85)' }}>플레이구간</span> : null}
+          {tiered ? <span style={{ fontSize: 11, color: '#5c6479', letterSpacing: '.06em', whiteSpace: 'nowrap', textShadow: '0 1px 6px rgba(0,0,0,.85)' }}>플레이구간</span> : null}
           <span style={{ position: 'relative', display: tiered ? 'inline-block' : 'none' }}>
             <span
               onClick={() => setOpen((v) => !v)}
@@ -513,7 +513,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               <span style={{ fontSize: 8, color: V3.textGhost }}>▼</span>
             </span>
             {open ? (
-              <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 5, zIndex: 30, display: 'flex', flexDirection: 'column', minWidth: 132, padding: 4, gap: 2, borderRadius: 7, background: '#0d1524', border: `1px solid ${V3.cardBorder}`, boxShadow: '0 10px 26px rgba(0,0,0,.5)' }}>
+              <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 5, zIndex: 30, display: 'flex', flexDirection: 'column', minWidth: 132, padding: 4, gap: 2, borderRadius: 7, background: '#ffffff', border: `1px solid ${V3.cardBorder}`, boxShadow: '0 10px 26px rgba(16,24,40,.14)' }}>
                 {rows.map((r) => (
                   <span
                     key={r.tier}
@@ -522,7 +522,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
                   >
                     <TierText division={r.tier} leagueCategory={data.league.category} size={12} />
                     <div style={spacerStyle} />
-                    <span style={{ fontSize: 11, color: r.games > 0 ? V3.textFaint : '#3f4c66' }}>{fmt(r.games)}판</span>
+                    <span style={{ fontSize: 11, color: r.games > 0 ? V3.textFaint : '#b6bece' }}>{fmt(r.games)}판</span>
                   </span>
                 ))}
               </span>
@@ -558,7 +558,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
                 </span>
               )}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5, color: '#6f93b4', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5, color: '#767f96', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
               <span style={{ color: theme.deep, fontWeight: 500 }}>{data.clan?.name ?? '무소속'}</span>
               {/*
                 ⚠ ★2026-09-15 밤 — 순위를 여기서 뺐다★ (무한 QA).
@@ -569,7 +569,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               */}
               {RANK_ON_NAME_LINE && rank !== null ? (
                 <>
-                  <span style={{ color: '#3a4560' }}>·</span>
+                  <span style={{ color: '#b6bece' }}>·</span>
                   {/* ★비율 색★ — 표와 같은 규칙 (2026-09-17 무한 QA) */}
                   <RankText rank={rank} color={rankColorOf(rank, rankTotal) ?? V3.textMuted} />
                   {rankTotal !== null ? <span style={{ color: V3.textGhost2, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>/ {fmt(rankTotal)}명</span> : null}
@@ -593,7 +593,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             {/* ⚠ ★2026-09-21 — 랭킹과 같은 값·같은 말★ — 「31.2층 / 실력 점수」 가 아니라
                 ★「3,864점 / 래더」★ 다. 3부 원본과 같은 표기이고, 「층」 은 사장님이
                 9/15 에 「티어의 흔적」 이라 부르신 말이다 */}
-            <span style={{ fontSize: 21, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 21, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>
               {PLAYER_CARD_RANK_BY === 'ladder'
                 ? formatRatingPoint(data.rating)
                 : hex?.score !== null && hex?.score !== undefined
@@ -613,7 +613,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             </span>
             {/* ★미참여 감점★ (2026-09-11 사장님) */}
             {(data.activity_penalty ?? 0) > 0 ? (
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#ff8a90', whiteSpace: 'nowrap' }}>미참여 −{Math.round(data.activity_penalty as number)}점</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#c81e28', whiteSpace: 'nowrap' }}>미참여 −{Math.round(data.activity_penalty as number)}점</span>
             ) : null}
           </span>
           )}
@@ -634,10 +634,10 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               title="넥슨 병영수첩에서 이 선수 보기"
               style={{
                 fontSize: 11.5,
-                color: '#a4b6c8',
-                border: '1px solid #24384c',
+                color: '#5c6479',
+                border: '1px solid #dde1eb',
                 borderRadius: V3.radiusCtl,
-                background: '#0e1a28',
+                background: '#eef0f5',
                 padding: '6px 13px',
                 whiteSpace: 'nowrap',
                 textDecoration: 'none',
@@ -659,10 +659,10 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               disabled={renewing === true}
               style={{
                 fontSize: 11.5,
-                color: renewing === true ? '#6b7794' : '#a4b6c8',
-                border: '1px solid #24384c',
+                color: renewing === true ? '#5c6479' : '#5c6479',
+                border: '1px solid #dde1eb',
                 borderRadius: V3.radiusCtl,
-                background: '#0e1a28',
+                background: '#eef0f5',
                 padding: '6px 13px',
                 whiteSpace: 'nowrap',
                 cursor: renewing === true ? 'wait' : 'pointer',
@@ -698,10 +698,10 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             const got = a.badge !== null
             const glow = got && a.badge_glow === true
             return (
-              <span key={a.key} title={a.desc ?? undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 6px', borderRadius: 999, whiteSpace: 'nowrap', background: got ? 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))' : 'rgba(255,255,255,.035)', border: got ? '1px solid rgba(255,216,61,.5)' : '1px solid rgba(255,255,255,.09)' }}>
+              <span key={a.key} title={a.desc ?? undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 6px', borderRadius: 999, whiteSpace: 'nowrap', background: got ? 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))' : 'rgba(16,24,40,.03)', border: got ? '1px solid rgba(255,216,61,.5)' : '1px solid rgba(16,24,40,.08)' }}>
                 {art === null ? null : <img src={badgeArtSmallPath(art)} alt="" width={28} height={28} style={{ width: 28, height: 28, display: 'block', filter: glow ? 'drop-shadow(0 0 7px rgba(255,216,61,1))' : got ? 'drop-shadow(0 0 3px rgba(255,216,61,.8))' : 'grayscale(1) opacity(.55)' }} />}
-                <span style={{ fontSize: 11, fontWeight: 700, color: got ? '#ffe89a' : '#93a0b8' }}>{art?.label ?? a.badge ?? a.label}</span>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: got ? '#c9a94a' : '#6b7285' }}>{a.rank}위</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: got ? '#8a6a12' : '#767f96' }}>{art?.label ?? a.badge ?? a.label}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 700, color: got ? '#8a6a12' : '#96a0b5' }}>{a.rank}위</span>
               </span>
             )
           })}
@@ -742,7 +742,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           이 선수가 ★무엇으로 싸우는 사람인지★ 를 색으로 말한다. 값은 둘 다 있다 —
           감추는 것이 아니라 ★어느 쪽이 본업인지★ 를 밝히는 것이다.
       */}
-      <div className="v3-phead-kpi" style={{ position: 'relative', display: 'grid', gridTemplateColumns: showsKd ? 'repeat(4,minmax(0,1fr))' : 'repeat(3,minmax(0,1fr))', borderTop: '1px solid #18233a' }}>
+      <div className="v3-phead-kpi" style={{ position: 'relative', display: 'grid', gridTemplateColumns: showsKd ? 'repeat(4,minmax(0,1fr))' : 'repeat(3,minmax(0,1fr))', borderTop: '1px solid #edeff4' }}>
         {/*
           ★★PC 는 세로 배열★★ (2026-09-21 사장님: 「오른쪽에 ★래더 포지션 승률 킬뎃
             판킬 mvp 순위 핵의심★ 이 순서로 세로 배열 해줘 좀 잘 보이고 한눈에 들어오게」)
@@ -908,16 +908,16 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           <span style={{ fontSize: 11, fontWeight: 700, color: V3.textFaint, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>MVP</span>
           {FOOT_SPREAD ? <div style={spacerStyle} /> : null}
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 17, fontWeight: 700, color: (sel?.mvp ?? 0) > 0 ? '#ffe89a' : V3.textGhost }}>{fmt(sel?.mvp ?? 0)}</span>
+            <span style={{ fontSize: 17, fontWeight: 700, color: (sel?.mvp ?? 0) > 0 ? '#8a6a12' : V3.textGhost }}>{fmt(sel?.mvp ?? 0)}</span>
             <span style={{ fontSize: 10.5, color: V3.textDim }}>회</span>
-            <span style={{ fontSize: 11.5, color: mvpRate === null || mvpRate === 0 ? V3.textGhost : '#ffd166' }}>{mvpRate === null ? '-' : `${mvpRate.toFixed(1)}%`}</span>
+            <span style={{ fontSize: 11.5, color: mvpRate === null || mvpRate === 0 ? V3.textGhost : '#8a6a12' }}>{mvpRate === null ? '-' : `${mvpRate.toFixed(1)}%`}</span>
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', minWidth: 0 }}>
           <span style={{ fontSize: 13, lineHeight: 1, flex: 'none' }}>🚨</span>
           <span
             onClick={report && !report.pending ? report.onReport : undefined}
-            style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: report?.reported ? '#ff6b6b' : '#c98f95', cursor: report ? (report.pending ? 'wait' : 'pointer') : 'default' }}
+            style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', color: report?.reported ? '#ff6b6b' : '#b3555c', cursor: report ? (report.pending ? 'wait' : 'pointer') : 'default' }}
           >
             핵의심
           </span>

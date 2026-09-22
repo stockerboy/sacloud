@@ -157,7 +157,7 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, whiteSpace: 'nowrap' }}>
           {score !== null ? (
             <>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{formatRating(score)}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: V3.textStrong }}>{formatRating(score)}</span>
               {scoreRank !== null ? <RankText rank={scoreRank} color={rankColor(scoreRank)} /> : null}
             </>
           ) : hex ? (
@@ -165,7 +165,7 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
             <span style={{ fontSize: 13, fontWeight: 700, color: V3.textMuted }}>실력 점수 측정 중 · {fmt(hex.games)}판</span>
           ) : (
             <>
-              <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{formatRating(data.rating)}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: V3.textStrong }}>{formatRating(data.rating)}</span>
               {data.rank !== null ? <RankText rank={data.rank} color={rankColor(data.rank)} /> : null}
             </>
           )}
@@ -186,7 +186,7 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
           {tieredLeague && sel ? <TierText division={sel.tier} leagueCategory={data.league.category} size={16} /> : <span style={{ fontSize: 15, color: V3.textMuted }}>전체</span>}
         </span>
         <div style={spacerStyle} />
-        <span style={{ fontSize: 11.5, color: games === 0 ? '#3f4c66' : hasData ? V3.textMuted : V3.textFaint, whiteSpace: 'nowrap' }}>{fmt(games)}판</span>
+        <span style={{ fontSize: 11.5, color: games === 0 ? '#b6bece' : hasData ? V3.textMuted : V3.textFaint, whiteSpace: 'nowrap' }}>{fmt(games)}판</span>
       </div>
       {sel && hasData ? (
         <div style={{ display: 'flex', flexDirection: 'column', padding: '0 18px 6px' }}>
@@ -222,7 +222,7 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
               <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{fmt(games)}판 중</span>
               <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
                 <span style={{ fontSize: 17, fontWeight: 700, color: V3.gold }}>{sel?.mvp ?? 0}</span>
-                <span style={{ fontSize: 10.5, fontWeight: 600, color: '#c9a94a' }}>회</span>
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: '#8a6a12' }}>회</span>
               </span>
               <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap' }}>{pct1(mvpRate)}</span>
             </span>
@@ -266,11 +266,11 @@ function ReportButton({ report }: { report: PlayerDetailV3Props['report'] }) {
         style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', borderRadius: 8, cursor: report.pending ? 'wait' : 'pointer', fontFamily: 'inherit', background: on ? 'rgba(224,27,36,.12)' : 'rgba(224,27,36,.05)', border: `1px solid ${on ? 'rgba(255,90,99,.55)' : 'rgba(224,27,36,.3)'}`, boxShadow: on ? '0 0 16px rgba(224,27,36,.22)' : 'none', width: '100%' }}
       >
         <span style={{ fontSize: 16, lineHeight: 1, flex: 'none' }}>🚨</span>
-        <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: on ? '#ff6b6b' : '#c98f95' }}>핵의심</span>
+        <span style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', color: on ? '#ff6b6b' : '#b3555c' }}>핵의심</span>
         <div style={spacerStyle} />
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: on ? '#ff6b6b' : '#c98f95' }}>{fmt(report.count)}</span>
-          <span style={{ fontSize: 10.5, fontWeight: 600, color: on ? '#c96b6b' : V3.textDim }}>회</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: on ? '#ff6b6b' : '#b3555c' }}>{fmt(report.count)}</span>
+          <span style={{ fontSize: 10.5, fontWeight: 600, color: on ? '#c9575f' : V3.textDim }}>회</span>
         </span>
       </button>
       {report.message ? <span style={{ fontSize: 10.5, color: V3.textDim }}>{report.message}</span> : null}
@@ -362,12 +362,12 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
       {overlay !== null ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap', padding: '0 18px 10px' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            <span aria-hidden style={{ width: 12, height: 3, borderRadius: 2, background: '#b98bff', flex: 'none' }} />
+            <span aria-hidden style={{ width: 12, height: 3, borderRadius: 2, background: '#7c3aed', flex: 'none' }} />
             <span style={{ fontSize: 11.5, fontWeight: 700, color: V3.text, whiteSpace: 'nowrap' }}>{data.player.name}</span>
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            <span aria-hidden style={{ width: 12, height: 3, borderRadius: 2, background: '#8ff0ff', flex: 'none' }} />
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: '#8ff0ff', whiteSpace: 'nowrap' }}>{overlay.label}</span>
+            <span aria-hidden style={{ width: 12, height: 3, borderRadius: 2, background: '#0891b2', flex: 'none' }} />
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: '#0891b2', whiteSpace: 'nowrap' }}>{overlay.label}</span>
           </span>
           {/* 잣대가 다른 축이 하나 있다 — 숨기지 않고 적어 둔다 */}
           <span style={{ fontSize: 10, color: V3.textGhost2, whiteSpace: 'nowrap' }}>
@@ -395,11 +395,11 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
             const got = a.badge !== null
             const glow = got && a.badge_glow === true
             const pill = (
-              <span title={a.desc} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: got ? 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))' : 'rgba(255,255,255,.035)', border: glow ? '1px solid rgba(255,216,61,.95)' : got ? '1px solid rgba(255,216,61,.5)' : '1px solid rgba(255,255,255,.09)', boxShadow: glow ? '0 0 22px rgba(255,216,61,.55), inset 0 0 12px rgba(255,216,61,.16)' : got ? '0 0 14px rgba(255,216,61,.18)' : 'none' }}>
+              <span title={a.desc} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 11px 5px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: got ? 'linear-gradient(100deg,rgba(255,216,61,.16),rgba(255,216,61,.04))' : 'rgba(16,24,40,.03)', border: glow ? '1px solid rgba(255,216,61,.95)' : got ? '1px solid rgba(255,216,61,.5)' : '1px solid rgba(16,24,40,.08)', boxShadow: glow ? '0 0 22px rgba(255,216,61,.55), inset 0 0 12px rgba(255,216,61,.16)' : got ? '0 0 14px rgba(255,216,61,.18)' : 'none' }}>
                 {art === null ? <BadgeIcon kind={a.key === 'save' ? 'shield' : 'trend'} />
                   : <img src={badgeArtSmallPath(art)} alt="" width={30} height={30} style={{ width: 30, height: 30, display: 'block', filter: glow ? 'drop-shadow(0 0 7px rgba(255,216,61,1))' : got ? 'drop-shadow(0 0 3px rgba(255,216,61,.8))' : 'grayscale(1) opacity(.55)' }} />}
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: got ? '#ffe89a' : '#93a0b8' }}>{art?.label ?? a.badge ?? a.label}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: got ? '#c9a94a' : '#6b7285' }}>{a.rank}위</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: got ? '#8a6a12' : '#767f96' }}>{art?.label ?? a.badge ?? a.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: got ? '#8a6a12' : '#96a0b5' }}>{a.rank}위</span>
               </span>
             )
             return art === null ? <span key={a.key}>{pill}</span> : (
@@ -482,34 +482,34 @@ function TrendChart({ points, markSlug, clan, winLabel, kdLabel }: { points: Tre
           </filter>
         </defs>
         <rect x="0" y="0" width="640" height="300" fill={V3.plot} />
-        <text x="272" y="150" textAnchor="middle" fontSize="62" fontWeight="900" fill="#dff2ff" opacity="0.05" letterSpacing="6">CLOUD 0</text>
+        <text x="272" y="150" textAnchor="middle" fontSize="62" fontWeight="900" fill="#124a56" opacity="0.05" letterSpacing="6">CLOUD 0</text>
         {scale.ticks.map((g) => (
           <g key={g}>
-            <line x1={KX0} y1={ky(g)} x2={KX1} y2={ky(g)} stroke="#111826" />
+            <line x1={KX0} y1={ky(g)} x2={KX1} y2={ky(g)} stroke="#eef0f5" />
             <text x={KX0 - 8} y={ky(g) + 4} textAnchor="end" fill={V3.textDim} fontSize="11">{g}</text>
           </g>
         ))}
         {labelIdx.map((i, k) => (
           <g key={`${i}-${k}`}>
-            {k > 0 && k < labelIdx.length - 1 ? <line x1={xOf(i)} y1={26} x2={xOf(i)} y2={236} stroke="#111826" strokeDasharray="3 5" /> : null}
+            {k > 0 && k < labelIdx.length - 1 ? <line x1={xOf(i)} y1={26} x2={xOf(i)} y2={236} stroke="#eef0f5" strokeDasharray="3 5" /> : null}
             <text x={xOf(i)} y={264} textAnchor={k === 0 ? 'start' : k === labelIdx.length - 1 ? 'end' : 'middle'} fill={V3.textDim} fontSize="11">{points[i]?.label ?? ''}</text>
           </g>
         ))}
-        <line x1={KX1} y1={20} x2={KX1} y2={242} stroke="#2b3a58" />
-        <text x={KX1} y={16} textAnchor="middle" fill="#8f9bb5" fontSize="13" fontWeight="700">today</text>
+        <line x1={KX1} y1={20} x2={KX1} y2={242} stroke="#e3e6ee" />
+        <text x={KX1} y={16} textAnchor="middle" fill="#5c6479" fontSize="13" fontWeight="700">today</text>
         {n === 0 ? <text x="272" y="140" textAnchor="middle" fill={V3.textGhost} fontSize="13">아직 찍힌 날이 없습니다</text> : null}
         {wr.map((p, i) => (
           <g key={`w${i}`}>
             <polyline points={p} fill="none" stroke={V3.blue} strokeWidth={11} strokeLinejoin="round" strokeLinecap="round" filter="url(#kdGlow)" opacity={0.42} />
             <polyline points={p} fill="none" stroke="#7fa9ff" strokeWidth={6} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
-            <polyline points={p} fill="none" stroke="#dbe8ff" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
+            <polyline points={p} fill="none" stroke="#1c2f6b" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
           </g>
         ))}
         {kd.map((p, i) => (
           <g key={`k${i}`}>
             <polyline points={p} fill="none" stroke={V3.red} strokeWidth={12} strokeLinejoin="round" strokeLinecap="round" filter="url(#kdGlow)" opacity={0.5} />
             <polyline points={p} fill="none" stroke="#ff5a63" strokeWidth={6.5} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
-            <polyline points={p} fill="none" stroke="#ffd7da" strokeWidth={3.2} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
+            <polyline points={p} fill="none" stroke="#c81e28" strokeWidth={3.2} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
           </g>
         ))}
         {lastWr !== null ? (
@@ -519,16 +519,16 @@ function TrendChart({ points, markSlug, clan, winLabel, kdLabel }: { points: Tre
             ) : (
               <circle cx={KX1} cy={ky(lastWr)} r={10} fill={V3.chip} stroke="#7fa9ff" strokeWidth={1.6} />
             )}
-            <text x={KX1 + 16} y={ky(lastWr) + 5} textAnchor="start" fill="#dbe8ff" fontSize="15" fontWeight="700">{lastWr.toFixed(1)}%</text>
-            <text x={KX1 + 16} y={ky(lastWr) + 19} textAnchor="start" fill="#8fa9d8" fontSize="9.5" fontWeight="700">{winLabel}</text>
+            <text x={KX1 + 16} y={ky(lastWr) + 5} textAnchor="start" fill="#1c2f6b" fontSize="15" fontWeight="700">{lastWr.toFixed(1)}%</text>
+            <text x={KX1 + 16} y={ky(lastWr) + 19} textAnchor="start" fill="#5c6479" fontSize="9.5" fontWeight="700">{winLabel}</text>
           </>
         ) : null}
         {lastKd !== null ? (
           <>
             <circle cx={KX1} cy={ky(lastKd)} r={10} fill={V3.chip} stroke="#ff5a63" strokeWidth={1.6} />
-            <text x={KX1} y={ky(lastKd) + 3} textAnchor="middle" fill="#ffd7da" fontSize="8.5" fontWeight="700">K/D</text>
-            <text x={KX1 + 16} y={ky(lastKd) + 5} textAnchor="start" fill="#ffd7da" fontSize="15" fontWeight="700">{lastKd.toFixed(1)}%</text>
-            <text x={KX1 + 16} y={ky(lastKd) + 19} textAnchor="start" fill="#c98f95" fontSize="9.5" fontWeight="700">{kdLabel}</text>
+            <text x={KX1} y={ky(lastKd) + 3} textAnchor="middle" fill="#c81e28" fontSize="8.5" fontWeight="700">K/D</text>
+            <text x={KX1 + 16} y={ky(lastKd) + 5} textAnchor="start" fill="#c81e28" fontSize="15" fontWeight="700">{lastKd.toFixed(1)}%</text>
+            <text x={KX1 + 16} y={ky(lastKd) + 19} textAnchor="start" fill="#b3555c" fontSize="9.5" fontWeight="700">{kdLabel}</text>
           </>
         ) : null}
         {clan === null ? null : null}
@@ -625,11 +625,11 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { 
   const clan = row.match_time_clan
   return (
     <>
-    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #8ff0ff, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
-      {SCORE_WATERMARKS && me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#8ff0ff', opacity: 0.14, WebkitTextStroke: '2.2px #8ff0ff', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
+      {SCORE_WATERMARKS && me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#0891b2', opacity: 0.14, WebkitTextStroke: '2.2px #0891b2', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <MarkCircle clan={clan ? { slug: clan.slug, mark: clan.mark } : null} size={20} />
         {/* ★닉네임을 누르면 그 판 육각이 펼쳐진다★ (2026-09-15 사장님).
@@ -641,10 +641,10 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { 
             type="button"
             aria-expanded={openHex}
             onClick={(e) => { e.stopPropagation(); setOpenHex((v) => !v) }}
-            style={{ all: 'unset', cursor: 'pointer', fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: `1px dotted ${openHex ? V3.blueSoft : 'rgba(255,255,255,.22)'}` }}
+            style={{ all: 'unset', cursor: 'pointer', fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#124a56' : '#96a0b5', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: `1px dotted ${openHex ? V3.blueSoft : 'rgba(255,255,255,.22)'}` }}
           >{row.name}</button>
         ) : (
-          <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#dff2ff' : '#c3cbdb' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
+          <a href={`/league/${leagueSlug}/player/${row.player_id}`} onClick={(e) => e.stopPropagation()} style={{ ...{ fontSize: 12.5, fontWeight: me ? 700 : 500, color: me ? '#124a56' : '#96a0b5' }, ...{ color: 'inherit', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>{row.name}</a>
         )}
         {sniper ? <SniperMark /> : null}
         {/*
@@ -657,11 +657,11 @@ function ScoreRow({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { 
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
       {showSaves ? (
-        <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#3f4c66' }}>{row.saves === null ? '-' : `${row.saves}/${row.save_chances ?? 0}`}</span>
+        <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#b6bece' }}>{row.saves === null ? '-' : `${row.saves}/${row.save_chances ?? 0}`}</span>
       ) : null}
       {/* ★포지션★ (2026-09-12 사장님) — 킬뎃 % 대신 스나수 / 라플수. 아직 못 잰 선수는 «알수없음».
           그 판에 든 총이 아니라 ★주무기★ 다. 판수가 차면 옛 경기 화면에도 소급해서 뜬다 */}
-      <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', color: row.main_weapon === null || row.main_weapon === undefined ? '#4e5b76' : '#c3cbdb' }}>
+      <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', color: row.main_weapon === null || row.main_weapon === undefined ? '#96a0b5' : '#96a0b5' }}>
         {row.main_weapon === 1 ? '스나수' : row.main_weapon === 0 ? '라플수' : '알수없음'}
       </span>
       {/*
@@ -727,7 +727,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
   const wonTeam = teams.find((t) => t.won) ?? teams[0]
   const lostTeam = teams.find((t) => !t.won) ?? teams[1]
   return (
-    <div className="v3-board" style={{ background: '#0a0f1a', borderTop: `1px solid ${V3.divider}`, padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="v3-board" style={{ background: V3.plot, borderTop: `1px solid ${V3.divider}`, padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {teams.map((t) => (
         /* ★이긴 팀 하늘색 · 진 팀 빨강★ (2026-09-12 사장님) */
         <div key={t.side} className={t.won ? 'v3-board-win' : 'v3-board-lose'} style={{ border: `1px solid ${t.won ? WIN_LOSS.winLine : WIN_LOSS.loseLine}`, borderRadius: 8, background: t.won ? WIN_LOSS.winBg : WIN_LOSS.loseBg }}>
@@ -745,14 +745,14 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
               단추가 그냥 사라지면 «이 경기는 원래 없는 기능» 처럼 보인다. 그래서 자리를 남긴다.
             */}
             {!canAnalyze ? (
-              <span style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', padding: '3px 9px', borderRadius: V3.radiusChip, color: '#5d6b8a', border: '1px dashed rgba(93,107,138,.45)' }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', padding: '3px 9px', borderRadius: V3.radiusChip, color: '#767f96', border: '1px dashed rgba(93,107,138,.45)' }}>
                 경기분석중
               </span>
             ) : null}
             {canAnalyze ? (
               <span
                 onClick={(e) => { e.stopPropagation(); setPick(t.won ? 'won' : 'lost'); setAnalysis((now) => (now === t.side ? null : t.side)) }}
-                style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', cursor: 'pointer', padding: '3px 9px', borderRadius: V3.radiusChip, color: analysis === t.side ? '#cfe0ff' : '#8fa9d8', border: `1px solid ${analysis === t.side ? 'rgba(159,192,255,.55)' : 'rgba(143,169,216,.32)'}`, background: analysis === t.side ? 'rgba(91,141,255,.16)' : 'transparent' }}
+                style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', cursor: 'pointer', padding: '3px 9px', borderRadius: V3.radiusChip, color: analysis === t.side ? '#1d4fd6' : '#5c6479', border: `1px solid ${analysis === t.side ? 'rgba(159,192,255,.55)' : 'rgba(143,169,216,.32)'}`, background: analysis === t.side ? 'rgba(91,141,255,.16)' : 'transparent' }}
               >
                 {analysis === t.side ? '명단' : '경기분석'}
               </span>
@@ -800,7 +800,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             </div>
           ) : (
           <>
-          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 86px 44px 58px' : 'minmax(96px,1fr) 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#3f4c66', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 86px 44px 58px' : 'minmax(96px,1fr) 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
@@ -888,7 +888,7 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                 */}
                 {mvpIsMe ? <MvpMark size={16} /> : null}
                 {my?.participant_role ? (
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', padding: '3px 8px', borderRadius: 5, color: my.participant_role === 'mercenary' ? '#c9a35b' : V3.textMuted, background: my.participant_role === 'mercenary' ? 'rgba(201,163,91,.10)' : V3.chip, border: `1px solid ${my.participant_role === 'mercenary' ? 'rgba(201,163,91,.45)' : V3.chipBorder}` }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', padding: '3px 8px', borderRadius: 5, color: my.participant_role === 'mercenary' ? '#8a6a12' : V3.textMuted, background: my.participant_role === 'mercenary' ? 'rgba(201,163,91,.10)' : V3.chip, border: `1px solid ${my.participant_role === 'mercenary' ? 'rgba(201,163,91,.45)' : V3.chipBorder}` }}>
                     {my.participant_role === 'mercenary' ? '용병' : '클랜전'}
                   </span>
                 ) : null}
@@ -916,12 +916,12 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                   */}
                 <MarkCircle clan={m.league_clan.clan} size={20} />
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '1 1 0', minWidth: 0 }}>{m.league_clan.clan.name}</span>
-                <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                <span style={{ fontSize: 10.5, color: '#b6bece', flex: 'none' }}>VS</span>
                 <MarkCircle clan={m.opponent.clan} size={20} />
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '1 1 0', minWidth: 0 }}>{m.opponent.clan.name}</span>
               </span>
               <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
-                {pending ? <span style={{ fontSize: 11.5, color: '#8fa9d8', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}
+                {pending ? <span style={{ fontSize: 11.5, color: '#5c6479', whiteSpace: 'nowrap' }}>킬데스 수집중</span> : my ? <Kda kill={my.kill} death={my.death} assist={my.assist} /> : <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}
                 {my && my.kd_rate !== null ? <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>{my.kd_rate.toFixed(1)}%</span> : null}
               </span>
               {/* 3줄 — 상대 티어 / 오른쪽엔 펼치기 */}
@@ -936,7 +936,7 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                   prefix="vs"
                 />
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#b6bece' : isOpen ? '#1d4fd6' : V3.textGhost }}>
                 {pending ? '수집중' : <>상세 <span style={{ fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span></>}
               </span>
             </div>
@@ -1113,7 +1113,7 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
               >
                 <MarkCircle clan={data.clan} size={18} />
                 <span style={{ fontSize: 12, fontWeight: 700, color: theme.deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.player.name}</span>
-                <span style={{ fontSize: 9.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                <span style={{ fontSize: 9.5, color: '#b6bece', flex: 'none' }}>VS</span>
                 {tiered ? (
                   <TierText division={r.tier} leagueCategory={data.league.category} size={11} />
                 ) : (
@@ -1142,7 +1142,7 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <MarkCircle clan={data.clan} size={22} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: theme.deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.player.name}</span>
-                <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
+                <span style={{ fontSize: 10.5, color: '#b6bece', flex: 'none' }}>VS</span>
                 {opp ? (
                   <>
                     <span style={{ fontSize: 13, fontWeight: 700, color: clanThemeOf(opp.clan.slug).deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opp.clan.name}</span>
@@ -1214,7 +1214,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
             style={{
               padding: '12px 0', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               borderRadius: V3.radiusCard, whiteSpace: 'nowrap',
-              color: tab === key ? '#dbe8ff' : V3.textMuted,
+              color: tab === key ? '#1c2f6b' : V3.textMuted,
               background: tab === key ? 'rgba(91,141,255,.12)' : V3.card,
               border: `1px solid ${tab === key ? 'rgba(127,169,255,.7)' : V3.cardBorder}`,
             }}
@@ -1259,7 +1259,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
             <button
               type="button"
               onClick={props.onRetryMatches}
-              style={{ padding: '7px 14px', fontFamily: 'inherit', fontSize: 12, color: '#a9c3ff', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.35)', borderRadius: V3.radiusCard, cursor: 'pointer' }}
+              style={{ padding: '7px 14px', fontFamily: 'inherit', fontSize: 12, color: '#1d4fd6', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.35)', borderRadius: V3.radiusCard, cursor: 'pointer' }}
             >
               다시 시도
             </button>
@@ -1273,7 +1273,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
         <MatchRows data={data} leagueSlug={props.leagueSlug} matches={matches} expanded={props.expanded} onExpand={props.onExpand} />
       )}
       {hasMore ? (
-        <button type="button" onClick={onLoadMore} disabled={loadingMore} style={{ marginTop: 10, width: '100%', padding: '11px 0', fontFamily: 'inherit', fontSize: 12.5, color: '#a9c3ff', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.35)', borderRadius: V3.radiusCard, cursor: 'pointer' }}>
+        <button type="button" onClick={onLoadMore} disabled={loadingMore} style={{ marginTop: 10, width: '100%', padding: '11px 0', fontFamily: 'inherit', fontSize: 12.5, color: '#1d4fd6', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.35)', borderRadius: V3.radiusCard, cursor: 'pointer' }}>
           {loadingMore ? '불러오는 중…' : '더 불러오기'}
         </button>
       ) : null}

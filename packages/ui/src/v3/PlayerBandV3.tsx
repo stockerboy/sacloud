@@ -31,7 +31,7 @@ const kpiRowStyle: CSSProperties = {
   overflow: 'hidden',
   display: 'grid',
   gridTemplateColumns: 'repeat(4,minmax(0,1fr))',
-  borderTop: '1px solid #18233a',
+  borderTop: '1px solid #edeff4',
 }
 
 /** 소속 클랜 테마 배경 — 선수 카드 KPI 줄에 깔린다 (시안 §2) */
@@ -46,7 +46,7 @@ export function ClanBackdrop({ theme, markSlug, watermark }: { theme: ClanTheme;
       ) : null}
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '62%', background: `linear-gradient(180deg,${theme.light}14,${theme.main}08 60%,transparent)`, pointerEvents: 'none' }} />
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '44%', background: `linear-gradient(0deg,${theme.deep}1a,transparent)`, pointerEvents: 'none' }} />
-      <span aria-hidden className="v3-watermark" style={{ position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)', fontSize: 34, fontWeight: 900, color: '#dff2ff', opacity: 0.12, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+      <span aria-hidden className="v3-watermark" style={{ position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)', fontSize: 34, fontWeight: 900, color: '#124a56', opacity: 0.12, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
         {watermark}
       </span>
     </>
@@ -59,7 +59,7 @@ export function LeagueCenter({ name, season }: { name: string; season: string })
     <span className="v3-center" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, pointerEvents: 'none' }}>
       <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ width: 26, height: 1, background: 'linear-gradient(90deg,rgba(91,141,255,0),#5b8dff)' }} />
-        <span style={{ fontSize: 26, fontWeight: 900, letterSpacing: '.2em', color: '#fff', lineHeight: 1, textShadow: '0 0 18px rgba(91,141,255,.55),0 0 40px rgba(91,141,255,.22)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 26, fontWeight: 900, letterSpacing: '.2em', color: V3.textStrong, lineHeight: 1, textShadow: '0 0 18px rgba(91,141,255,.55),0 0 40px rgba(91,141,255,.22)', whiteSpace: 'nowrap' }}>
           {name}
         </span>
         <span style={{ width: 26, height: 1, background: 'linear-gradient(90deg,#5b8dff,rgba(91,141,255,0))' }} />
@@ -80,7 +80,7 @@ const OFFICIAL_PILL_ON = false
 export function OfficialPill({ theme }: { theme: ClanTheme }) {
   if (!OFFICIAL_PILL_ON) return null
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#cfeeff', border: `1px solid ${theme.main}8c`, borderRadius: 999, background: `${theme.main}1f`, boxShadow: `0 0 14px ${theme.main}38`, padding: '5px 11px', whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#124a56', border: `1px solid ${theme.main}8c`, borderRadius: 999, background: `${theme.main}1f`, boxShadow: `0 0 14px ${theme.main}38`, padding: '5px 11px', whiteSpace: 'nowrap' }}>
       <span style={{ width: 5, height: 5, background: theme.edge }} />공식
     </span>
   )
@@ -88,8 +88,8 @@ export function OfficialPill({ theme }: { theme: ClanTheme }) {
 
 export function GhostButton({ children, href, onClick, disabled, theme }: { children: ReactNode; href?: string; onClick?: () => void; disabled?: boolean; theme?: ClanTheme }) {
   const style: CSSProperties = theme
-    ? { fontSize: 11.5, color: '#cfeeff', border: `1px solid ${theme.main}73`, borderRadius: V3.radiusCtl, background: `${theme.main}1a`, padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
-    : { fontSize: 11.5, color: '#a4b6c8', border: '1px solid #24384c', borderRadius: V3.radiusCtl, background: '#0e1a28', padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
+    ? { fontSize: 11.5, color: '#124a56', border: `1px solid ${theme.main}73`, borderRadius: V3.radiusCtl, background: `${theme.main}1a`, padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
+    : { fontSize: 11.5, color: '#5c6479', border: '1px solid #dde1eb', borderRadius: V3.radiusCtl, background: '#eef0f5', padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
   if (href) return <Link prefetch={false} href={href} style={style}>{children}</Link>
   return (
     <button type="button" onClick={onClick} disabled={disabled} style={{ ...style, fontFamily: 'inherit' }}>
@@ -140,13 +140,13 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
   })()
   const kpis: { label: string; value: string; sub: string; color: string }[] = [
     scoreShown
-      ? { label: '실력 점수', value: formatRating(hex.score as number), sub: hex.measuring ? '측정 중' : '', color: '#ffffff' }
+      ? { label: '실력 점수', value: formatRating(hex.score as number), sub: hex.measuring ? '측정 중' : '', color: V3.textStrong }
       : hex
         ? { label: '실력 점수', value: '측정 중', sub: `${fmt(hex.games)}판 · 한 무기 10판부터`, color: V3.textMuted }
         : /* ★래더를 안 쓰는 리그면 그 자리에 전적을 놓는다★ (2026-09-15) —
              육각 점수가 아직 없는 IPL 선수에게 「래더」가 뜬다 */
           leagueScreen(data.league.slug).playerColumns.rating
-          ? { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: '#ffffff' }
+          ? { label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: V3.textStrong }
           : { label: '전적', value: `${fmt(data.win + data.lose)}전`, sub: `${data.win}승 ${data.lose}패`, color: V3.text },
     { label: '승률', value: pct1(data.win_rate), sub: `${data.win}승 ${data.lose}패`, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate) },
     { label: '킬뎃', value: pct1(kdRate), sub: kdLabel, color: kdRate === null ? V3.textMuted : statColor(kdRate) },
@@ -168,11 +168,11 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
                 </span>
               ) : null}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5, color: '#6f93b4', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5, color: '#767f96', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
               <span style={{ color: theme.deep, fontWeight: 500 }}>{data.clan?.name ?? '무소속'}</span>
               {rank !== null ? (
                 <>
-                  <span style={{ color: '#3a4560' }}>·</span>
+                  <span style={{ color: '#b6bece' }}>·</span>
                   <RankText rank={rank} color={ink} />
                   {rankTotal !== null ? (
                     <span style={{ color: V3.textGhost2, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>/ {fmt(rankTotal)}명</span>

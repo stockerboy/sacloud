@@ -67,7 +67,7 @@ function Side({ clan, division, leagueCategory, won, align }: { clan: MatchListI
      *   ★PC 는 한 픽셀도 안 바뀐다★ (규칙은 `tokens.css` 의 767px 아래에만 있다).
      */
     <span className="v3-match-side" style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
-      {align === 'left' ? <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', color: '#dbe8ff', background: 'rgba(91,141,255,.22)', border: '1px solid rgba(91,141,255,.45)', borderRadius: 3, padding: '1px 4px' }}>WIN</span> : null}
+      {align === 'left' ? <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', color: '#1c2f6b', background: 'rgba(91,141,255,.22)', border: '1px solid rgba(91,141,255,.45)', borderRadius: 3, padding: '1px 4px' }}>WIN</span> : null}
       {align === 'left' ? <MarkCircle clan={clan} size={33} className="v3-match-clanmark" /> : null}
       {/*
         ★`overflow: hidden` 이 반드시 있어야 한다★ (2026-09-13 QA).
@@ -157,22 +157,22 @@ export function MatchListV3(props: MatchListV3Props) {
                   <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, width: '100%', maxWidth: 520, marginInline: 'auto' }}>
                     <Side clan={left.clan} division={left.division} leagueCategory={leagueCategory} won align="left" />
                     <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 'none', minWidth: 44 }}>
-                      {rounds ? <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', color: V3.textStrong }}>{rounds[0]}:{rounds[1]}</span> : <span style={{ fontSize: 10.5, color: '#3a4560' }}>VS</span>}
-                      <span style={{ fontSize: 9, color: '#4e5b76', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{rounds ? 'ROUND' : `${perSide}v${perSide}`}</span>
+                      {rounds ? <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap', color: V3.textStrong }}>{rounds[0]}:{rounds[1]}</span> : <span style={{ fontSize: 10.5, color: '#b6bece' }}>VS</span>}
+                      <span style={{ fontSize: 9, color: '#96a0b5', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{rounds ? 'ROUND' : `${perSide}v${perSide}`}</span>
                     </span>
                     <Side clan={right.clan} division={right.division} leagueCategory={leagueCategory} won={false} align="right" />
                   </span>
                   <span className="v3-match-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
-                    {pending ? <span style={{ fontSize: 11.5, color: stale ? V3.textGhost : '#8fa9d8', whiteSpace: 'nowrap' }}>{stale ? '기록 없음' : '킬데스 수집중'}</span> : mvp ? (
+                    {pending ? <span style={{ fontSize: 11.5, color: stale ? V3.textGhost : '#5c6479', whiteSpace: 'nowrap' }}>{stale ? '기록 없음' : '킬데스 수집중'}</span> : mvp ? (
                       /* ★마크 · 닉네임 · MVP배지★ 순 — 배지가 제일 오른쪽 끝이다 (2026-09-11 사장님: 모든 경기카드 통일) */
                       <>
                         <MarkCircle clan={mvp.match_time_clan ? { slug: mvp.match_time_clan.slug, mark: mvp.match_time_clan.mark } : null} size={16} />
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#ffe89a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.name}</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#8a6a12', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.name}</span>
                         <MvpMark size={15} />
                       </>
                     ) : <span style={{ fontSize: 11, color: V3.textGhost, whiteSpace: 'nowrap' }}>{perSide === 5 ? '' : `${perSide} vs ${perSide}`}</span>}
                   </span>
-                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#3f4c66' : isOpen ? '#a9c3ff' : V3.textGhost }}>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, whiteSpace: 'nowrap', fontSize: 10.5, color: pending ? '#b6bece' : isOpen ? '#1d4fd6' : V3.textGhost }}>
                     {/*
                       ⚠ ★2026-09-15 밤 — 같은 말을 두 번 하고 있었다★ (무한 QA).
                         바로 왼쪽 칸이 이미 «킬데스 수집중» / «기록 없음» 이라고 말하는데
@@ -191,7 +191,7 @@ export function MatchListV3(props: MatchListV3Props) {
         </div>
       )}
       {hasMore ? (
-        <button type="button" onClick={onLoadMore} disabled={loadingMore} style={{ marginTop: 10, width: '100%', padding: '11px 0', fontFamily: 'inherit', fontSize: 12.5, color: '#a9c3ff', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.25)', borderRadius: V3.radiusCard, cursor: loadingMore ? 'default' : 'pointer' }}>
+        <button type="button" onClick={onLoadMore} disabled={loadingMore} style={{ marginTop: 10, width: '100%', padding: '11px 0', fontFamily: 'inherit', fontSize: 12.5, color: '#1d4fd6', background: 'rgba(91,141,255,.08)', border: '1px solid rgba(91,141,255,.25)', borderRadius: V3.radiusCard, cursor: loadingMore ? 'default' : 'pointer' }}>
           {loadingMore ? '불러오는 중…' : '더 불러오기'}
         </button>
       ) : null}

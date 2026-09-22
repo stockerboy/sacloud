@@ -127,8 +127,8 @@ const LABEL: Partial<Record<ClanHexV2AnyAxisKey, string>> = {
 }
 
 /** 이긴 팀 파랑 · 진 팀 빨강 (사장님) */
-const WON = { fill: '#5b8dff', line: '#9cc0ff' }
-const LOST = { fill: '#ff5a63', line: '#ff9aa0' }
+const WON = { fill: '#5b8dff', line: '#1d4fd6' }
+const LOST = { fill: '#ff5a63', line: '#c81e28' }
 
 interface Pair {
   label: string
@@ -363,12 +363,12 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
             key={v}
             points={Array.from({ length: 6 }, (_, i) => mhexPoint(i, v / 100).join(',')).join(' ')}
             fill="none"
-            stroke={v % 50 === 0 ? '#4a5c88' : '#2c3a5c'}
+            stroke={v % 50 === 0 ? '#c4cbdd' : '#e3e6ee'}
             strokeWidth={v % 50 === 0 ? 1.2 : 0.9}
           />
         ))}
         {MHEX_SPOKES.map(([x, y], i) => (
-          <line key={i} x1={MHEX.cx} y1={MHEX.cy} x2={x} y2={y} stroke="#2c3a5c" strokeWidth={0.9} />
+          <line key={i} x1={MHEX.cx} y1={MHEX.cy} x2={x} y2={y} stroke="#e3e6ee" strokeWidth={0.9} />
         ))}
 
         {/* 진 팀이 밑 · 이긴 팀이 위 — 겹쳐도 이긴 쪽이 보인다. `only` 면 한 쪽만 */}
@@ -404,7 +404,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
           const [x, y] = mhexPoint(0, v / 100)
           return (
             /* ⚠ ★눈금이 맨 위 라벨을 가렸다★ (2026-09-18 사장님) — 오른쪽으로 더 민다 */
-            <text key={v} x={x + 11} y={y + 3} fontSize="7" fontWeight="700" fill="#5c6a88" textAnchor="start">
+            <text key={v} x={x + 11} y={y + 3} fontSize="7" fontWeight="700" fill="#767f96" textAnchor="start">
               {v}
             </text>
           )
@@ -467,7 +467,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                         parts.length === 2 ? (
                           <>
                             <tspan fill={tone}>{parts[0]}</tspan>
-                            <tspan fill="#44506c"> · </tspan>
+                            <tspan fill="#96a0b5"> · </tspan>
                             <tspan fill={foeTone}>{parts[1]}</tspan>
                           </>
                         ) : (
@@ -477,7 +477,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                       return (
                         <>
                           <tspan x={x}>{pair}</tspan>
-                          <tspan x={x} dy={12} fill="#7f8db0" fontSize={10}>{tail}</tspan>
+                          <tspan x={x} dy={12} fill="#96a0b5" fontSize={10}>{tail}</tspan>
                         </>
                       )
                     }
@@ -490,7 +490,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                           ★쌍점이 「몇 대 몇」 으로 바로 읽힌다.★
                         */}
                         {showWon ? <tspan fill={WON.line}>{p.wonText}</tspan> : null}
-                        {showWon && showLost ? <tspan fill="#44506c"> : </tspan> : null}
+                        {showWon && showLost ? <tspan fill="#96a0b5"> : </tspan> : null}
                         {showLost ? <tspan fill={LOST.line}>{p.lostText}</tspan> : null}
                         {/*
                           ★점수 차이를 꼭 적는다★ (2026-09-18 사장님:
@@ -503,7 +503,7 @@ export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', 
                             dy={12}
                             fontSize={10}
                             fontWeight={p.hot ? 800 : 600}
-                            fill={p.hot ? '#ff4d4d' : '#7f8db0'}
+                            fill={p.hot ? '#ff4d4d' : '#96a0b5'}
                           >
                             {/* ⚠ 옛 판은 「압도적 차이 10점 차이」 로 ★차이가 두 번★ 나왔다 */}
                             {p.hot ? `압도적 ${p.gapText}` : p.gapText}

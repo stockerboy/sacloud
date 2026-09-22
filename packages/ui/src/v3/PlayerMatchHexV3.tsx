@@ -116,7 +116,7 @@ export function PlayerMatchHexV3({
   href: string
   side: 'red' | 'blue'
 }) {
-  const stroke = side === 'red' ? '#ff9aa0' : '#8fb2ff'
+  const stroke = side === 'red' ? '#c81e28' : '#1d4fd6'
   const fill = side === 'red' ? 'rgba(255,120,128,.26)' : 'rgba(124,160,255,.3)'
   return (
     <div className="v3-phex" style={panelStyle}>

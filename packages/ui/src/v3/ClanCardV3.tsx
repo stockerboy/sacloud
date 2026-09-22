@@ -64,7 +64,7 @@ const kpiRowStyle: CSSProperties = {
   alignItems: 'baseline',
   gap: 12,
   padding: '13px 4px',
-  borderBottom: '1px solid #18222f',
+  borderBottom: '1px solid #e3e6ee',
 }
 
 /** (A) 클랜 테마 배경 레이어 — 마크 워터마크 + 위 밝음/아래 짙음 + 능선 */
@@ -246,7 +246,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
             <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${accent ?? theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
               {data.clan.name}
             </span>
-            <span style={{ fontSize: 11, color: '#6f93b4', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 11, color: '#767f96', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
               시즌 Cloud 0 · {fmt(games)}전 기준
             </span>
           </span>
@@ -300,7 +300,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
         {/* ★주전 다섯★ — 카드 남는 자리 (2026-09-12 사장님) */}
         <MainLineup data={data} theme={theme} />
         <div className="v3-clankpis" style={{ position: 'relative', flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-          <div className="v3-clankpis__chips" style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 4px 12px', borderBottom: '1px solid #18222f' }}>
+          <div className="v3-clankpis__chips" style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 4px 12px', borderBottom: '1px solid #e3e6ee' }}>
             {tiered ? (
               <>
                 {data.division === 1 && data.league.category === 'independent' ? (
@@ -380,8 +380,8 @@ function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme })
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
           width: '100%', padding: '6px 8px', fontFamily: 'inherit', cursor: 'pointer',
           fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', whiteSpace: 'nowrap',
-          color: open ? '#cfe0ff' : V3.textDim,
-          background: open ? 'rgba(91,141,255,.12)' : 'rgba(255,255,255,.03)',
+          color: open ? '#1d4fd6' : V3.textDim,
+          background: open ? 'rgba(91,141,255,.12)' : 'rgba(16,24,40,.03)',
           border: `1px solid ${open ? 'rgba(159,192,255,.45)' : V3.cardBorder}`,
           borderRadius: V3.radiusChip,
         }}
@@ -394,7 +394,7 @@ function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme })
         return (
           <span
             key={`${weapon}-${index}`}
-            style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', alignItems: 'center', gap: 7, padding: '5px 2px', borderTop: index === 0 ? 'none' : '1px solid #18222f' }}
+            style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', alignItems: 'center', gap: 7, padding: '5px 2px', borderTop: index === 0 ? 'none' : '1px solid #e3e6ee' }}
           >
             {row ? <MarkCircle clan={data.clan} size={18} /> : <span aria-hidden style={{ width: 18, height: 18 }} />}
             <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: row ? theme.deep : V3.textGhost2 }}>
@@ -424,13 +424,13 @@ function ClanStyleLine({ hex }: { hex: ClanHexagonV2 | null }) {
       {/* ★폰에서는 알약이 윗줄★ (2026-09-12 사장님: «모바일 버전 줄 맞춰줘») —
           알약과 설명이 한 줄에 있으면 좁은 화면에서 설명만 두 줄로 접혀 줄이 어긋난다 */}
       <span className="v3-clanstyle__head">
-        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.04em', color: '#cfe0ff', padding: '3px 10px', borderRadius: 999, background: 'rgba(91,141,255,.14)', border: '1px solid rgba(159,192,255,.4)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.04em', color: '#1d4fd6', padding: '3px 10px', borderRadius: 999, background: 'rgba(91,141,255,.14)', border: '1px solid rgba(159,192,255,.4)', whiteSpace: 'nowrap' }}>
           {note.type}
         </span>
         <span style={{ fontSize: 10.5, color: V3.textDim }}>{note.typeNote}</span>
       </span>
       <span style={{ fontSize: 10.5, color: V3.textFaint, lineHeight: 1.5 }}>{note.tempo}</span>
-      <span style={{ fontSize: 10.5, color: '#c9a94a', lineHeight: 1.5 }}>{note.praise}</span>
+      <span style={{ fontSize: 10.5, color: '#8a6a12', lineHeight: 1.5 }}>{note.praise}</span>
     </div>
   )
 }
@@ -440,7 +440,7 @@ function StepButton({ children, onClick }: { children: ReactNode; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, flex: 'none', fontSize: 10, color: '#8fa2c4', background: V3.chip, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, cursor: 'pointer', fontFamily: 'inherit' }}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, flex: 'none', fontSize: 10, color: '#96a0b5', background: V3.chip, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, cursor: 'pointer', fontFamily: 'inherit' }}
     >
       {children}
     </button>

@@ -60,7 +60,7 @@ export function CompareSearchV3({ picked, results, loading = false, onQueryChang
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
         <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>비교</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#8ff0ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#0891b2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {picked.name}
         </span>
         <button
@@ -79,7 +79,7 @@ export function CompareSearchV3({ picked, results, loading = false, onQueryChang
       <button
         type="button"
         onClick={() => setOpen(true)}
-        style={{ fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', color: '#a9c3ff', background: 'rgba(91,141,255,.12)', border: '1px solid rgba(127,169,255,.5)', borderRadius: V3.radiusChip, padding: '5px 11px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+        style={{ fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', color: '#1d4fd6', background: 'rgba(91,141,255,.12)', border: '1px solid rgba(127,169,255,.5)', borderRadius: V3.radiusChip, padding: '5px 11px', cursor: 'pointer', whiteSpace: 'nowrap' }}
       >
         비교분석하기
       </button>
@@ -108,7 +108,7 @@ export function CompareSearchV3({ picked, results, loading = false, onQueryChang
 
       {text.trim().length > 0 ? (
         <span
-          style={{ position: 'absolute', top: '100%', right: 0, zIndex: 40, marginTop: 5, minWidth: 190, maxHeight: 232, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 4, gap: 2, borderRadius: 7, background: '#0d1524', border: `1px solid ${V3.cardBorder}`, boxShadow: '0 10px 26px rgba(0,0,0,.5)' }}
+          style={{ position: 'absolute', top: '100%', right: 0, zIndex: 40, marginTop: 5, minWidth: 190, maxHeight: 232, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: 4, gap: 2, borderRadius: 7, background: '#ffffff', border: `1px solid ${V3.cardBorder}`, boxShadow: '0 10px 26px rgba(16,24,40,.14)' }}
         >
           {loading ? (
             <span style={{ padding: '8px 9px', fontSize: 11.5, color: V3.textGhost }}>찾는 중…</span>
