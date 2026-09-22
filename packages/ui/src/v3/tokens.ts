@@ -41,28 +41,28 @@ export const V3 = {
    *   보이고, `backdrop-filter` 도 뒤가 이미 불투명 흰색이라 할 일이 없다
    *   (`v2/tokens.css` 의 `.v2-panel` 과 같은 결정 — 2026-09-21 성능 이유로 걷었다).
    */
-  card: '#ffffff',
-  cardFlat: '#ffffff',
+  card: '#121c2f',
+  cardFlat: '#152036',
   /*
    * ⚠ ★2026-09-22 — 한 단 진하게★ (사장님: 「전체적으로 보드의 경계가 너무 잘 안보여」).
    *   옛 값 `#e3e6ee` 는 페이지 바탕(#f2f2f2)과 대비가 ★1.06:1★ 이었다 — 사실상 선이 없다.
    *   흰 면 위에서도, 회색 바탕 위에서도 보이는 값으로 올린다.
    */
   /* ⚠ ★2026-09-22 밤 — 서플라이 테두리 값으로★. 옛 값 '#d9dee9' */
-  cardBorder: '#d1d5db',
-  divider: '#edeff4',
-  rowDivider: '#edeff4',
-  rowDivider2: '#f5f6f9',
-  plot: '#e5e7ec',
-  chip: '#e5e7ec',
-  chipBorder: '#dde1eb',
-  text: '#1c2233',
-  textStrong: '#05070d',
-  textMuted: '#5c6479',
-  textDim: '#767f96',
-  textFaint: '#96a0b5',
-  textGhost: '#b6bece',
-  textGhost2: '#ccd2e0',
+  cardBorder: '#1e2a42',
+  divider: '#1b2537',
+  rowDivider: '#18233a',
+  rowDivider2: '#141d2c',
+  plot: '#0a1220',
+  chip: '#0e1728',
+  chipBorder: '#24314c',
+  text: '#e8eaf2',
+  textStrong: '#ffffff',
+  textMuted: '#a4b0c8',
+  textDim: '#8f95af',
+  textFaint: '#7c88a4',
+  textGhost: '#6b7ba0',
+  textGhost2: '#5a6a8f',
   blue: '#5b8dff',
   blueSoft: '#7fa9ff',
   red: '#e01b24',
@@ -85,10 +85,10 @@ export const V3 = {
    *   이긴 판 #e0f2fe / 테두리 #bae6fd · 진 판 #fee2e2 / 테두리 #fecaca
    *   우리 옛 값은 rgba(91,141,255,.13) / rgba(255,90,99,.13) 이었다 — 아래 V1 에 남긴다.
    */
-  winFace: '#e0f2fe',
-  winFaceLine: '#bae6fd',
-  loseFace: '#fee2e2',
-  loseFaceLine: '#fecaca',
+  winFace: 'rgba(91,141,255,.13)',
+  winFaceLine: 'rgba(91,141,255,.30)',
+  loseFace: 'rgba(255,90,99,.13)',
+  loseFaceLine: 'rgba(224,27,36,.26)',
   radiusCard: 0,
   radiusBlock: 0,
   radiusCtl: 0,
@@ -108,6 +108,43 @@ export const V3 = {
  * ⚠ ★`V3` 는 안 건드린다.★ 이 객체를 쓰는 화면은 ★오늘의 상대전적 카드 하나뿐★ 이다.
  *   선수·클랜 상세는 지금처럼 흰 카드로 남는다.
  */
+/**
+ * ★★2026-09-22 밤 — 색을 우리 톤으로 되돌렸다★★ (사장님)
+ *
+ * > 「톤 맞춰줘 맨위는 검정 하얀부분은 전부 우리가 원래 쓰던 톤과 색으로」
+ * > 「그냥 서플라이에서 하얀색인 부분은 우리가 원래 쓰던 색으로 전부 칠해줘 보드도 맘에 들어」
+ *
+ * ★모양은 서플라이, 색은 우리 것★ 이다 —
+ *   유지  검정 상단바 · 회색 리그 띠(#292929) · 각진 보드 · 줄 49px · 글자 15.75px
+ *         칸 자리(순위140 / 클랜140 / 승리476 …) · 마크 28px
+ *   되돌림 흰 면 → ★다크 남색★ (`styles.css` 의 ⚠ 주석에 「옛값」 으로 적혀 있던 그 값)
+ *
+ * ★새로 지어낸 색이 하나도 없다.★ 전부 9/22 낮에 흰색으로 덮기 전의 값이다.
+ * 흰 판이 필요하면 아래 `V3_LIGHT_20260922` 를 쓰면 된다 (`CLAUDE.md` 1-4).
+ */
+export const V3_LIGHT_20260922 = {
+  card: '#ffffff',
+  cardFlat: '#ffffff',
+  cardBorder: '#d1d5db',
+  divider: '#edeff4',
+  rowDivider: '#edeff4',
+  rowDivider2: '#f5f6f9',
+  plot: '#e5e7ec',
+  chip: '#e5e7ec',
+  chipBorder: '#dde1eb',
+  text: '#1c2233',
+  textStrong: '#05070d',
+  textMuted: '#5c6479',
+  textDim: '#767f96',
+  textFaint: '#96a0b5',
+  textGhost: '#b6bece',
+  textGhost2: '#ccd2e0',
+  winFace: '#e0f2fe',
+  winFaceLine: '#bae6fd',
+  loseFace: '#fee2e2',
+  loseFaceLine: '#fecaca',
+} as const
+
 export const V3_DARK = {
   ...V3,
   pageBg: 'radial-gradient(1200px 700px at 50% -8%,#142238 0%,#0c1526 42%,#070d1c 100%)',

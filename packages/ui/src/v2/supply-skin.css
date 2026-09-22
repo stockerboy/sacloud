@@ -931,3 +931,119 @@ body.antialiased {
   .sac-rank-title { font-size: 18px; }
   .sac-rank-note { margin-left: 0; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★★톤을 우리 것으로 되돌린다★★★ (2026-09-22 밤 · 사장님)
+
+   > 「톤 맞춰줘 ★맨위는 검정★ 하얀부분은 ★전부 우리가 원래 쓰던 톤과 색으로★」
+   > 「최근경기 클랜랭킹 개인랭킹 저 최상단바 밑에 바는 너무 맘에 들어
+   >  그냥 ★서플라이에서 하얀색인 부분은 우리가 원래 쓰던 색으로 전부 칠해줘★ 보드도 맘에 들어」
+   > (사진에 ★초록=서플라이 그대로 · 빨강=우리 톤★ 으로 칠해 주셨다)
+
+   ── ★모양은 서플라이 · 색은 우리 것★
+     그대로 둔다   검정 상단바 63px · 회색 리그 띠 42px(#292929) · 주황 활성 탭
+                   각진 보드 · 줄 49px · 글자 15.75px · 마크 28px · 칸 자리
+     되돌린다      ★흰 면 전부★ → 9/22 낮 이전의 다크 남색
+
+   ── ★새로 지어낸 색이 하나도 없다★
+     아래 값은 전부 `styles.css` 의 ⚠ 주석에 「옛값」 으로 적혀 있던 것이다
+     (`CLAUDE.md` 1-4 가 살려 둔 기록). 한 줄도 안 지웠고, 여기서 덮을 뿐이다.
+     ★흰 판으로 돌아가려면★ 이 블록만 지우면 된다.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root,
+.sac-v2 {
+  /* ---- 면 ---- */
+  --color-page: #0c1526;
+  --color-card: #121c2f;
+  --color-card-2: #152036;
+  --color-row: #121c2f;
+  --color-badge: #16203a;
+  --color-selector: #0e1728;
+  --color-selector-hover: #16203a;
+  --color-league-header: #121c2f;
+  --color-player-header: #121c2f;
+  --color-clan-header: #121c2f;
+  --color-refresh: #0e1a28;
+  --color-btn-neutral: #0e1a28;
+  --color-btn-fav: #0e1728;
+  --color-btn-fav-dark: #0e1728;
+  --color-tab-active: #16203a;
+
+  /* ---- 선 ---- */
+  --color-line: #1e2a42;
+  --color-line-soft: #18233a;
+  --color-divider: #1b2537;
+  --color-clan-header-line: #1e2a42;
+  --color-btn-neutral-border: #24384c;
+  --color-btn-fav-border: #24314c;
+  --color-btn-fav-dark-border: #24314c;
+  --color-lamp-off: #3a4067;
+
+  /* ---- 글자 ---- */
+  --color-text: #e8eaf2;
+  --color-text-strong: #ffffff;
+  --color-meta: #a4b0c8;
+  --color-faint: #7c88a4;
+  --color-card-text: #e8eaf2;
+  --color-nav-fg: #d9dbe4;
+  --color-selector-fg: #d9dbe4;
+  --color-input-fg: #d9dbe4;
+  --color-input-placeholder: #7b8199;
+  --color-tab-active-fg: #f2f4f8;
+  --color-tab-idle: #a8aec2;
+  --color-lede: #a8aec2;
+  --color-rank-gold: #ffd83d;
+  --color-rank-plain: #f2f4f8;
+  --color-tier-1: #8ff0ff;
+  --color-tier-2: #a8aec2;
+  --color-tier-3: #8f95af;
+
+  /* ---- 승패 면 ---- (우리 원래 값. 서플라이의 하늘·분홍은 흰 바탕용이었다) */
+  --color-win-bg: rgba(91,141,255,.08);
+  --color-win-line: rgba(91,141,255,.30);
+  --color-lose-bg: rgba(224,27,36,.06);
+  --color-lose-line: rgba(224,27,36,.26);
+}
+
+/* 셸·바탕 — 서플라이 껍데기가 흰색으로 박아 둔 것을 되돌린다 */
+body.sac-sky,
+body.antialiased {
+  background: #0c1526;
+  color: #e8eaf2;
+}
+.sac-shell,
+.sac-shell.bg-page {
+  background: #0c1526;
+}
+
+/* ── 보드와 표 — ★모양은 그대로, 색만 우리 것★ ───────────────────────── */
+.sac-board {
+  background: #121c2f;
+  border-color: #1e2a42;
+}
+.sac-rank-board {
+  background: transparent;
+}
+.sac-rank-head {
+  border-bottom-color: #1e2a42;
+}
+/*
+ * 서플라이는 바탕(#f2f2f2)보다 ★한 단 어두운★ 줄(#ececec)을 쓰고 1px 틈으로 가른다.
+ * 우리 톤에서는 방향이 반대다 — 바탕(#0c1526)보다 ★한 단 밝은★ 줄(#121c2f).
+ * ★틈은 바탕색★ 이라 구분선 구실을 그대로 한다.
+ */
+.sac-rank-row {
+  background: #121c2f;
+  color: #e8eaf2;
+  border-bottom: 1px solid #0c1526;
+}
+.sac-rank-row:last-child {
+  border-bottom: 1px solid #0c1526;
+}
+.sac-rank-title {
+  color: #ffffff;
+}
+.sac-rank-note {
+  color: #a4b0c8;
+}

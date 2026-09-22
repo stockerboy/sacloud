@@ -1253,12 +1253,12 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
         const chevron = <span style={{ fontSize: 13, color: pending ? '#b6bece' : edge }}>{isOpen ? '⌃' : '⌄'}</span>
 
         return (
-          <div key={m.id} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, overflow: 'hidden', borderLeft: `4px solid ${edge}`, background: m.win ? 'rgba(91,141,255,.07)' : 'rgba(224,27,36,.05)', opacity: pending ? 0.75 : 1 }}>
+          <div key={m.id} style={{ border: `1px solid ${m.win ? V3.winFaceLine : V3.loseFaceLine}`, borderRadius: V3.radiusCard, overflow: 'hidden', background: m.win ? V3.winFace : V3.loseFace, opacity: pending ? 0.75 : 1 }}>
 
             {/* ══ 폰 (사진 1) ══ */}
             <div className="sac-pm-phone" onClick={toggle} style={{ cursor: pending ? 'default' : 'pointer' }}>
               {/* 머리줄 — 맵 · N달 전 / 오른쪽에 래더 증감 */}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '9px 13px', borderBottom: `1px solid ${m.win ? 'rgba(91,141,255,.22)' : 'rgba(224,27,36,.18)'}`, background: m.win ? 'rgba(91,141,255,.06)' : 'rgba(224,27,36,.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '9px 13px', borderBottom: `1px solid ${m.win ? V3.winFaceLine : V3.loseFaceLine}`, background: 'transparent' }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.map.name}</span>
                 <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>- {shortAgo(matchShownAt(m))}</span>
                 <div style={spacerStyle} />
@@ -1282,7 +1282,7 @@ function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<Playe
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: m.win ? WIN_LOSS.loseInk : WIN_LOSS.winInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.opponent.clan.name}</span>
                   </span>
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderLeft: `1px solid ${m.win ? 'rgba(91,141,255,.22)' : 'rgba(224,27,36,.18)'}` }}>{chevron}</span>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderLeft: `1px solid ${m.win ? V3.winFaceLine : V3.loseFaceLine}` }}>{chevron}</span>
               </div>
             </div>
 
