@@ -41,7 +41,7 @@ export function ClanBackdrop({ theme, markSlug, watermark }: { theme: ClanTheme;
       {markSlug && hasFitMark(markSlug) ? (
         <span
           aria-hidden
-          style={{ position: 'absolute', left: '-3%', top: '-10%', width: '34%', height: '130%', backgroundImage: `url(${fitMarkUrl(markSlug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'left center', opacity: 0.11, pointerEvents: 'none' }}
+          style={{ position: 'absolute', left: '-3%', top: '-10%', width: '34%', height: '130%', backgroundImage: `url(${fitMarkUrl(markSlug)})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'left center', opacity: 0.06, filter: 'grayscale(1)', pointerEvents: 'none' }}
         />
       ) : null}
       <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '62%', background: `linear-gradient(180deg,${theme.light}14,${theme.main}08 60%,transparent)`, pointerEvents: 'none' }} />
