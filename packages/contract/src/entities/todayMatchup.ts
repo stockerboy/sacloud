@@ -55,3 +55,37 @@ export type TodayMatchupClan = z.infer<typeof TodayMatchupClan>
 export type TodayMatchupGame = z.infer<typeof TodayMatchupGame>
 export type TodayMatchup = z.infer<typeof TodayMatchup>
 export type TodayMatchupResponse = z.infer<typeof TodayMatchupResponse>
+
+/**
+ * ★★오늘의 최다연승 · 최다연패 클랜★★ — 클랜랭킹 맨 위 (2026-09-22 사장님).
+ *
+ *   «클랜랭킹에 비워지게된 자리는 ★그날 하루 최다연승클랜이랑 최다연패클랜 박제★ 해줘
+ *     (실시간) 15시~다음날15시»
+ *
+ * 창은 ★「오늘의 상대전적」과 같은 것★ 이다 (`todayWindow`). 세는 법은
+ * `apps/web/lib/server/queries/todayStreaks.ts` 머리글에 있다. 여기는 모양만 정한다.
+ *
+ * ⚠ 창 안에 경기가 없으면 `best`·`worst` 가 `null` 이다. 가짜 클랜을 만들지 않는다.
+ */
+export const TodayStreakClan = z.object({
+  league_clan_id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  mark_bg_url: z.string().nullable().default(null),
+  mark_front_url: z.string().nullable().default(null),
+  /** 그 창 안에서 이어 간 판 수 */
+  streak: z.number().int().min(0),
+  /** 그 창 안의 전적 — 연승/연패가 몇 판 중에 나온 것인지 보인다 */
+  win: z.number().int().min(0),
+  lose: z.number().int().min(0),
+})
+
+export const TodayStreaksResponse = z.object({
+  from: z.string(),
+  to: z.string(),
+  best: TodayStreakClan.nullable().default(null),
+  worst: TodayStreakClan.nullable().default(null),
+})
+
+export type TodayStreakClan = z.infer<typeof TodayStreakClan>
+export type TodayStreaksResponse = z.infer<typeof TodayStreaksResponse>

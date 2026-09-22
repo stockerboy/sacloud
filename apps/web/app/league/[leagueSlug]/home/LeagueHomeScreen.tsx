@@ -22,7 +22,7 @@ import { use, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { leagueScreen } from '@sacloud/contract'
-import { FlagMountain, FormTopCard, LeagueTabsInline, SectionTitle, type FormTopEntry } from '@sacloud/ui'
+import { FlagMountain, FormTopCard, LeagueTabsInline, SectionTitle, TodayMatchupCard, type FormTopEntry } from '@sacloud/ui'
 import { MatchListV3 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
@@ -34,6 +34,17 @@ const HOME_MATCHES = 8
 
 /** 깃발판을 얼마나 자주 다시 묻나 — 경쟁 중에는 순위가 계속 바뀐다 */
 const FLAG_REFRESH_MS = 60_000
+
+/**
+ * ★「최근 폼 1위」 카드를 그릴 것인가★
+ *
+ * ⚠ ★2026-09-22 — 껐다★ (사장님: 「이거 실시간 상대전적 카드 그냥 최근경기에
+ *   ★최근폼 1위 클랜 대신★ 이걸 넣어줘」). 그 자리에 「오늘의 상대전적」이 선다.
+ *
+ * ★`FormTopCard` 를 지우지 않았다★ (`CLAUDE.md` 1-4) — 컴포넌트도 `formEntries` 계산도
+ * 그대로 살아 있다. 이 값을 `true` 로 두면 한 글자로 옛 화면이 돌아온다.
+ */
+const FORM_TOP_CARD = false as boolean
 
 export default function LeagueHomeScreen({
   params,
@@ -63,6 +74,24 @@ export default function LeagueHomeScreen({
    *   따로 다르게할거야»). 화면에서 slug 를 비교하지 않고 계약이 정한다 (D-204).
    */
   const hero = leagueScreen(leagueSlug).homeHero
+
+  /*
+   * ★★오늘의 상대전적 — 여기로 옮겨 왔다★★ (2026-09-22 사장님:
+   *   「이거 실시간 상대전적 카드 그냥 ★최근경기에 최근폼 1위 클랜 대신★ 이걸 넣어줘」).
+   *
+   *   원래 자리는 클랜랭킹 맨 위였다. 그 자리는 ★오늘의 연승·연패★ 가 이어받았다.
+   *   ★`FormTopCard` 를 지우지 않았다★ (`CLAUDE.md` 1-4) — `FORM_TOP_CARD` 를
+   *   `true` 로 두면 「최근 폼 1위」 가 그대로 돌아온다.
+   *
+   *   ★60초마다 다시 묻는다★ (사장님: 「새로고침 없이 가능하면 실시간으로」).
+   *   열산은 여기 해당이 없다 — 이 리그는 `hero` 가 `form` 이 아니라 깃발이다.
+   */
+  const todayMatchup = useQuery({
+    queryKey: ['league', leagueSlug, 'today-matchup'],
+    queryFn: () => apiGet('leagueTodayMatchup', { params: { leagueId: leagueSlug } }),
+    enabled: ready && hero === 'form',
+    refetchInterval: 60_000,
+  })
 
   const daily = useQuery({
     queryKey: ['league', leagueSlug, 'daily-podium'],
@@ -137,11 +166,15 @@ export default function LeagueHomeScreen({
       */}
       {hero === 'form' ? (
         <div className="mb-[22px]">
-          <FormTopCard
-            leagueSlug={leagueSlug}
-            day={daily.data?.data.day ?? null}
-            entries={formEntries}
-          />
+          {FORM_TOP_CARD ? (
+            <FormTopCard
+              leagueSlug={leagueSlug}
+              day={daily.data?.data.day ?? null}
+              entries={formEntries}
+            />
+          ) : todayMatchup.data ? (
+            <TodayMatchupCard matchup={todayMatchup.data.data.matchup} />
+          ) : null}
         </div>
       ) : hero === 'none' || board === null ? null : (
         <div className="mb-[22px]">

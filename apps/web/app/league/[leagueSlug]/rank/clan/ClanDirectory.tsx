@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { LeagueClan } from '@sacloud/contract'
 import { leagueScreen, showsTier } from '@sacloud/contract'
 import type { ClanRankTableRow } from '@sacloud/ui'
-import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, LeagueTabsInline, RankBox, RankHeader, TodayMatchupCard, leagueClanPath, type ClanRankNote, isLeagueUpcoming } from '@sacloud/ui'
+import { ClanMark, ClanRankTable, ClanSearchBox, DailyPodium, EmptyState, LeagueTabsInline, RankBox, RankHeader, TodayStreakCard, leagueClanPath, type ClanRankNote, isLeagueUpcoming } from '@sacloud/ui'
 import Link from 'next/link'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -178,10 +178,18 @@ function ClanRankDirectory({
    *   웹소켓은 안 쓴다 — Vercel 에서 끊기고 비싸다. 60초면 한 판이 끝나기 전에 들어온다.
    *   창을 떠나 있는 동안은 안 묻는다(`refetchIntervalInBackground` 기본 false).
    */
+  /*
+   * ⚠ ★2026-09-22 — 이 자리가 바뀌었다★ (사장님: 「이거 실시간 상대전적 카드 그냥
+   *   ★최근경기에 최근폼 1위 클랜 대신★ 이걸 넣어줘 그리고 ★클랜랭킹에 비워지게된
+   *   자리는 그날 하루 최다연승클랜이랑 최다연패클랜 박제★ 해줘 (실시간) 15시~다음날15시」).
+   *
+   *   상대전적 카드는 ★리그홈(최근경기)★ 으로 갔다 — `LeagueHomeScreen.tsx`.
+   *   ★`TodayMatchupCard` 를 지우지 않았다★ — 그대로 살아 있고 그 화면이 쓴다.
+   */
   const todayMatchupOn = TODAY_MATCHUP_LEAGUES.includes(leagueSlug)
-  const todayMatchup = useQuery({
-    queryKey: ['league', leagueSlug, 'today-matchup'],
-    queryFn: () => apiGet('leagueTodayMatchup', { params: { leagueId: leagueSlug } }),
+  const todayStreaks = useQuery({
+    queryKey: ['league', leagueSlug, 'today-streaks'],
+    queryFn: () => apiGet('leagueTodayStreaks', { params: { leagueId: leagueSlug } }),
     enabled: ready && todayMatchupOn,
     refetchInterval: 60_000,
   })
@@ -555,15 +563,15 @@ function ClanRankDirectory({
           }
         />
         {/*
-          ★오늘의 상대전적★ — 서플라이가 광고를 두는 자리다 (2026-09-22 사장님).
+          ★오늘의 연승·연패★ — 서플라이가 광고를 두는 자리다 (2026-09-22 사장님).
           ★광고를 만들지 않는다★ (`CLAUDE.md` 2장 3번) — 그 자리를 이 카드가 쓴다.
           검색 중에는 안 그린다 — 걸러 낸 화면에 «오늘» 이 끼어들면 헷갈린다
           (바로 아래 「오늘의 셋」과 같은 규칙).
           ⚠ 아직 못 받았으면 ★아무것도 안 그린다★ — 빈 카드가 깜빡이지 않게.
         */}
-        {todayMatchupOn && !searching && todayMatchup.data ? (
+        {todayMatchupOn && !searching && todayStreaks.data ? (
           <div style={{ marginBottom: 14 }}>
-            <TodayMatchupCard matchup={todayMatchup.data.data.matchup} />
+            <TodayStreakCard best={todayStreaks.data.data.best} worst={todayStreaks.data.data.worst} />
           </div>
         ) : null}
         {/*

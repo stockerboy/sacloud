@@ -40,6 +40,7 @@ import {
   ApplicationWaiting,
   DailyPodium,
   TodayMatchupResponse,
+  TodayStreaksResponse,
   LeagueHexTop,
   ClanSummary,
   Comment,
@@ -572,6 +573,18 @@ export const endpoints = {
     origin: 'designed',
     description: '오늘의 상대전적 — 15:00 KST 창에서 가장 많이 맞붙은 등록클랜 한 쌍',
     response: apiResponse(TodayMatchupResponse),
+  },
+  /**
+   * ★오늘의 최다연승 · 최다연패★ (2026-09-22 사장님: 「클랜랭킹에 비워지게된 자리는
+   *   그날 하루 최다연승클랜이랑 최다연패클랜 박제해줘 (실시간) 15시~다음날15시」).
+   *   창은 「오늘의 상대전적」과 같다. 경기가 없으면 둘 다 `null` 이다.
+   */
+  leagueTodayStreaks: {
+    method: 'GET',
+    path: '/leagues/:leagueId/today-streaks',
+    origin: 'designed',
+    description: '오늘의 최다연승·최다연패 클랜 (15:00 KST 창)',
+    response: apiResponse(TodayStreaksResponse),
   },
   leagueDailyPodium: {
     method: 'GET',

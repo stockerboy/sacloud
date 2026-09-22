@@ -250,6 +250,9 @@ const resolvers: Record<EndpointKey, Resolver> = {
    * ⚠ 그래서 ★이 카드는 mock 모드에서 확인할 수 없다.★ `live` 로 봐야 한다.
    */
   leagueTodayMatchup: () => ok({ matchup: null }),
+  /* 오늘의 최다연승·최다연패 — 픽스처에 오늘 경기가 없다. ★가짜 클랜을 만들지 않는다★ */
+  leagueTodayStreaks: () =>
+    ok({ from: '2026-09-22T15:00:00+09:00', to: '2026-09-23T15:00:00+09:00', best: null, worst: null }),
   leagueDailyPodium: () => ok({ day: null, players: [], clans: [] }),
   /*
    * ★깃발판★ — 픽스처에는 하루 창(17:00~03:00)에 든 경기가 없다.
