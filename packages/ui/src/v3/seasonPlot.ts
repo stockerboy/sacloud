@@ -117,7 +117,7 @@ export const HOLD = 0.3
  * 판 크기 — 폭에 따라 정한다.
  * 2026-09-11 사장님: «판 길이를 더 늘리고 세로길이도 조금 늘려라» → 가로 여백을 줄이고 세로를 키웠다.
  */
-export function plotBox(width: number): {
+export function plotBox(width: number, compact = false): {
   H: number
   X0: number
   X1: number
@@ -127,7 +127,17 @@ export function plotBox(width: number): {
 } {
   const phone = width < 700
   /* PC 세로는 낮게 — 가로로 길쭉한 판이 보기 좋다 (2026-09-11 사장님: «PC 그래프 카드 세로가 너무 크다»). 옛 값 560 */
-  const H = phone ? Math.round(width * 0.78) : 400
+  /*
+   * ★`compact` — 더 낮은 판★ (2026-09-22 사장님: 「카드 세로 길이 좀 줄여줘 너무 큰거같아」).
+   *   클랜랭킹 맨 위 카드만 쓴다. ★기본값은 옛 값 그대로★ 다.
+   */
+  const H = compact
+    ? phone
+      ? Math.round(width * 0.46)
+      : 210
+    : phone
+      ? Math.round(width * 0.78)
+      : 400
   const X0 = phone ? 36 : 46
   const right = phone ? 34 : 46
   return { H, X0, X1: width - right, Y_TOP: 30, Y_BOTTOM: H - (phone ? 52 : 66), phone }

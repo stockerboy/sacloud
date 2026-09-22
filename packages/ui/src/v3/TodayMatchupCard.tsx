@@ -266,6 +266,7 @@ export function TodayMatchupCard({ matchup }: { matchup: TodayMatchup | null }) 
         oppSlug={b.slug}
         axis={axis}
         tone={T}
+        compact
       />
     </section>
   )

@@ -94,6 +94,7 @@ import {
   COL_MAIN,
   COL_NAME,
   COL_RANK,
+  COL_WL,
   COL_RATING,
   COL_STAT,
   HEAD,
@@ -239,7 +240,16 @@ export function RankHeader({ title, notice }: { title: string; notice: string })
 export function RankBox({ children }: { children: React.ReactNode }) {
   /* 좁은 화면에서는 표가 화면 끝까지 찬다 (`.mobile-bleed` — 컨테이너 좌우 여백을 음수 마진으로 되뺀다) */
   return (
-    <div className="mobile-bleed mt-6 rounded-[var(--radius)] border border-line max-md:mt-4">
+    /*
+     * ⚠ ★2026-09-22 — 경계를 보이게 했다★ (사장님: 「랭킹카드의 경계가 너무 안보여
+     *   ★보드위에 올라와있는것처럼★ 해줘」).
+     *
+     *   옛 판은 `border border-line` 하나였다. 바탕이 어두울 때는 그 선이 보였지만
+     *   ★흰 바탕(#f2f2f2)에서는 흰 표와 거의 같은 색★ 이라 테두리가 사라졌다.
+     *   흰 면 + 또렷한 테두리 + 얕은 그림자 — 서플라이의 흰 카드와 같은 결이다.
+     *   ★되돌리려면 이 줄을 `border border-line` 한 줄로 되돌린다★ (`CLAUDE.md` 1-4).
+     */
+    <div className="mobile-bleed mt-6 overflow-hidden rounded-[var(--radius)] border border-[#dfe3ec] bg-white shadow-[0_1px_3px_rgb(0_0_0/0.10),0_1px_2px_rgb(0_0_0/0.06)] max-md:mt-4">
       {children}
     </div>
   )
@@ -311,6 +321,14 @@ function rankToneClass(rank: number): string {
  * (2026-09-01). D-204 의 «리그별 분기를 흩뿌리지 마라» 를 지키는 방법이다 —
  * 분기가 없는 게 아니라 **한 곳에 모여 있다.**
  */
+/**
+ * ★승리·패배를 따로 칸으로★ (2026-09-22 사장님: 「몇승 몇패인지 적어줘」).
+ * `false` 로 두면 옛 판 — 승률 아래 작은 글씨 — 으로 돌아간다 (`CLAUDE.md` 1-4).
+ */
+const WL_COL = true as boolean
+/** 승률 아래에 「N승 N패」 를 접어 두던 옛 판. 칸을 따로 세운 지금은 끈다 */
+const WL_SUB = false as boolean
+
 const ALL_COLUMNS: RankColumns = { rank: true, winRate: true, kd: true, rating: true }
 
 /** 실제로 그리는 칸 수 — 뼈대(skeleton)의 막대 개수를 맞춘다 */
@@ -546,9 +564,19 @@ export function ClanRankTable({
    *   `false` 로 두면 옛 「메인멤버 다섯」 으로 돌아간다 (`CLAUDE.md` 1-4).
    */
   const RIVAL_COL = true
+  /**
+   * ★옆 칸(라이벌·메인)을 세울 것인가★
+   *
+   * ⚠ ★2026-09-22 — 껐다★ (사장님: 「★라이벌 저거 그냥 없애줘★」).
+   *   그 자리는 아래 ★승리·패배 칸★ 이 가져간다 (사장님: 「몇승 몇패인지 적어줘」).
+   *
+   *   ★지우지 않았다★ (`CLAUDE.md` 1-4) — `RivalCell` 도 `MainMembers` 도 그대로 있고
+   *   이 값을 `true` 로 두면 라이벌 칸이 그대로 돌아온다. 계약의 `rival` 도 그대로 온다.
+   */
+  const SIDE_COL = false as boolean
   const anyRivals = (rows ?? []).some((row) => row.rival != null)
   const anyMembers = (rows ?? []).some((row) => (row.main_members?.length ?? 0) > 0)
-  const showSide = RIVAL_COL ? anyRivals : anyMembers
+  const showSide = SIDE_COL && (RIVAL_COL ? anyRivals : anyMembers)
   /* 바로 앞 행과 부리그가 다르면 그 위에 선을 긋는다. 첫 행에도 긋는다 —
      맨 위 묶음이 어느 티어인지 이름이 없으면 아래 묶음들만 이름이 붙어 이상해진다 */
   let lastDivision: number | null = null
@@ -559,6 +587,18 @@ export function ClanRankTable({
         <div className={COL_NAME}>클랜</div>
         {/* 「메인」 머리글 — 한 줄이라도 멤버가 오면 세운다. 폰에서는 칸째로 없다 */}
         {showSide ? <div className={COL_MAIN}>{RIVAL_COL ? '라이벌' : '메인'}</div> : null}
+        {/*
+          ★승리 · 패배 두 칸★ (2026-09-22 사장님: 「몇승 몇패인지 적어줘 저렇게
+          노란표시 된곳처럼」 — 서플라이 클랜랭킹의 「승리 / 패배」 칸을 가리키셨다).
+          옛 판은 승률 아래에 작게 접혀 있었다 (`WL_SUB` 로 되돌린다).
+          ★폰에서는 칸째로 사라진다★ — 390px 에 여섯 칸은 안 들어간다. 그때는 접힌 판이 선다.
+        */}
+        {columns.winRate && WL_COL ? (
+          <>
+            <div className={COL_WL}>승리</div>
+            <div className={COL_WL}>패배</div>
+          </>
+        ) : null}
         {columns.winRate ? <div className={COL_STAT}>승률</div> : null}
         {columns.rating ? <div className={COL_RATING}>래더</div> : null}
       </div>
@@ -566,7 +606,7 @@ export function ClanRankTable({
         loading={loading}
         error={error}
         onRetry={onRetry}
-        columns={visibleCount(columns, false)}
+        columns={visibleCount(columns, false) + (columns.winRate && WL_COL ? 2 : 0)}
         isEmpty={!rows || rows.length === 0}
         emptyMessage="아직 기록된 클랜이 없습니다."
       >
@@ -675,17 +715,38 @@ export function ClanRankTable({
               /* 한 판도 안 뛰었다 — `0%  0승 0패` 로 그리지 않는다 (O-033 · 위 NoRecordStat) */
               <NoRecordStat className={COL_STAT} />
             ) : (
-            <Stat
-              className={COL_STAT}
-              value={formatRate(row.win_rate)}
-              tone={rateClass(row.win_rate)}
-              unit="%"
-              sub={
+            <>
+              {WL_COL ? (
                 <>
-                  {formatCount(row.win)}승 {formatCount(row.lose)}패
+                  <div className={`${COL_WL} ${NUM} text-text`}>{formatCount(row.win)}승</div>
+                  <div className={`${COL_WL} ${NUM} text-text`}>{formatCount(row.lose)}패</div>
                 </>
-              }
-            />
+              ) : null}
+              <Stat
+                className={COL_STAT}
+                value={formatRate(row.win_rate)}
+                tone={rateClass(row.win_rate)}
+                unit="%"
+                /*
+                 * ★PC 는 칸으로, 폰은 접어서★
+                 *   PC 에서는 바로 왼쪽에 「승리 / 패배」 칸이 서 있으므로 ★여기 또 적지 않는다★
+                 *   (같은 값이 두 번 보인다). 폰에서는 그 칸이 `max-md:hidden` 으로 사라지니
+                 *   ★여기가 유일한 자리★ 다 — 그래서 `md:hidden` 으로 폰에서만 남긴다.
+                 *   `WL_COL` 을 끄면 옛 판대로 PC 에서도 이 줄이 보인다.
+                 */
+                sub={
+                  WL_SUB || !WL_COL ? (
+                    <>
+                      {formatCount(row.win)}승 {formatCount(row.lose)}패
+                    </>
+                  ) : (
+                    <span className="md:hidden">
+                      {formatCount(row.win)}승 {formatCount(row.lose)}패
+                    </span>
+                  )
+                }
+              />
+            </>
             )}
             {/* ⚠ ★2026-09-21 — 클랜도 「점」 이다★ (개인과 같은 말 · 3부와 같은 표기).
                 「32.5층」 은 ★같은 층이 둘 나와 순서가 안 보였고★, 사장님이 9/15 에

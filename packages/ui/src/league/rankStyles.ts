@@ -113,6 +113,14 @@ export const COL_NAME = 'flex min-w-0 flex-1 items-center'
  */
 export const COL_STAT = 'w-28 shrink-0 text-right max-md:w-[52px]'
 /**
+ * ★승리 · 패배 칸★ (2026-09-22 사장님: 「몇승 몇패인지 적어줘 저렇게 노란표시 된곳처럼」).
+ *
+ * 서플라이 클랜랭킹의 「승리 / 패배」 두 칸과 같은 자리다.
+ * ★폰에서는 칸째로 사라진다★ — 390px 에 여섯 칸은 안 들어가고, 가로 스크롤은 절대 안 만든다.
+ * 폰에서는 승률 아래 접힌 판(`WL_SUB`)이 대신 선다.
+ */
+export const COL_WL = 'w-24 shrink-0 text-right max-md:hidden'
+/**
  * 소속 클랜명 칸 (2026-09-02 사장님 지시 #10 — "순위닉네임, 래더 사이에 소속클랜명을 적어라").
  * 홈 미리보기가 켜서 쓴다 (`PlayerRankTable` 의 `clanColumn`). 폰에서도 남긴다 — 길면 말줄임.
  */

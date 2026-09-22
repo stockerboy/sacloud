@@ -26,7 +26,7 @@ export interface H2HGame {
   won: boolean
 }
 
-export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName, oppSlug, axis = SEASON_AXIS, tone = V3 }: {
+export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName, oppSlug, axis = SEASON_AXIS, tone = V3, compact = false }: {
   games: readonly H2HGame[]
   theme: ClanTheme
   oppTheme: ClanTheme
@@ -47,6 +47,13 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
    * ★기본값이 지금 값이라 다른 화면은 한 픽셀도 안 바뀐다★ (`CLAUDE.md` 1-4).
    */
   tone?: V3Tone
+  /**
+   * ★낮은 판★ (2026-09-22 사장님: 「이거 카드 세로 길이 좀 줄여줘 너무 큰거같아」).
+   * 클랜랭킹 맨 위 카드만 켠다 — 그 화면은 ★표를 보러 오는 곳★ 이라 카드가 높으면
+   * 정작 순위표가 화면 밖으로 밀린다.
+   * ★기본값이 꺼짐★ 이라 선수 추이·클랜 상세는 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
+   */
+  compact?: boolean
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(900)
@@ -60,7 +67,7 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
     return () => ro.disconnect()
   }, [])
   const draw = useDrawIn(3600, oppSlug ?? oppName, boxRef)
-  const box = plotBox(width)
+  const box = plotBox(width, compact)
   const { H, X0, X1, Y_TOP, Y_BOTTOM, phone } = box
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)
   /* 축의 0 지점과 길이는 `axis` 가 정한다 — 기본값은 시즌 28일 */
