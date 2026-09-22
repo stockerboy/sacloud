@@ -389,8 +389,8 @@ export type ClanRankNote = 'promote' | 'relegate' | null
  *   사장님이 원하신 것은 ★마크★ 다 (`CLAUDE.md` — 클랜명 앞에 항상 마크).
  *   이름은 좁은 화면에서 접고 마크만 남긴다. 몇 판 붙었는지는 뒤에 작게.
  *
- * 옛 판(주요멤버 다섯)은 `MainMembers` 로 그대로 살아 있다 — `RIVAL_COL` 을
- * `false` 로 두면 돌아온다 (`CLAUDE.md` 1-4).
+ * 옛 판(주요멤버 다섯)은 `MainMembers` 로 그대로 살아 있다 — `SIDE_MODE` 를
+ * `'members'` 로 두면 돌아오고, 이 라이벌 칸은 `'rival'` 로 돌아온다 (`CLAUDE.md` 1-4).
  */
 function RivalCell({ rival, leagueSlug }: {
   rival: ClanRankTableRow['rival']
@@ -432,6 +432,48 @@ function RivalCell({ rival, leagueSlug }: {
  *   · ★클랜마크는 이름 앞에 항상★ (이 저장소 규칙). 모르면 `MarkCircle` 이 구름을 그린다
  *   · 스나는 `[S]` 로 표시한다 — 클랜 상세 카드가 「스나수」 라고 적는 것과 같은 사실이다
  */
+/**
+ * ★★메인스나 · 메인라플★★ (2026-09-22 사장님)
+ *
+ * > 「메인스나 메인라플 닉네임을 ★라이벌 자리★ 에 적어줘(★마크없이 닉네임만★,
+ * >  누르면 기본정보로 가지게끔) 메인스나 메인라플 ★각 클랜에서 점수 젤 높은 스나수1명
+ * >  점수젤 높은 라플수한명★ 골라서 넣어줘」
+ *
+ * ── ★새로 셈하지 않는다★
+ *   `main_members` 가 이미 ★그 리그 안의 실력 점수 순★ 으로 온다 (계약 `ClanMainPlayer`).
+ *   IPL 클랜이면 IPL 점수, Supply1.0 클랜이면 Supply1.0 점수다 —
+ *   `LeaguePlayer` 자체가 리그별이라 ★경계가 저절로 맞는다.★
+ *   여기서는 ★무기별 첫 사람★ 만 고른다 (이미 점수 내림차순이다).
+ *
+ * ── ★마크를 안 그린다★ — 사장님이 못박으신 것. 옆의 클랜 칸에 이미 마크가 있다.
+ * ── 무기가 없는 클랜은 그 줄을 ★안 만든다★ — 「없음」 을 적지 않는다 (D-106).
+ */
+function MainDuo({ members, leagueSlug }: { members: readonly ClanMainPlayer[]; leagueSlug: string }) {
+  /* 계약이 점수 내림차순으로 준다 — 무기별 ★첫 사람★ 이 곧 1등이다 */
+  const sniper = members.find((m) => m.weapon === 1) ?? null
+  const rifle = members.find((m) => m.weapon === 0) ?? null
+  if (sniper === null && rifle === null) return null
+  const one = (label: string, m: ClanMainPlayer | null) =>
+    m === null ? null : (
+      <span className="flex shrink-0 items-baseline gap-[5px] whitespace-nowrap">
+        <span className="text-[0.68rem] leading-none text-faint">{label}</span>
+        <Link
+          prefetch={false}
+          href={leaguePlayerPath(leagueSlug, m.player.id)}
+          className="text-[0.8rem] leading-none text-meta hover:text-text-strong"
+        >
+          {m.player.name}
+        </Link>
+      </span>
+    )
+  return (
+    <span aria-label="메인스나 메인라플" className="flex h-[22px] flex-wrap content-start items-center gap-x-[14px] gap-y-1 overflow-hidden">
+      {one('스나', sniper)}
+      {one('라플', rifle)}
+    </span>
+  )
+}
+
 function MainMembers({ members, clan }: { members: readonly ClanMainPlayer[]; clan: ClanRankTableRow['clan'] }) {
   if (members.length === 0) return null
   return (
@@ -559,24 +601,23 @@ export function ClanRankTable({
      규칙은 `@sacloud/contract` 의 `leagueScreen` 한 곳이다. 행의 `division` 값 자체는 그대로 온다 */
   const divideByDivision = groupByDivision && showsTier(leagueSlug)
   /* 「메인」 칸은 ★자료가 온 표에만★ 선다 — 안 넘기는 화면은 칸 자체가 안 생긴다 (`CLAUDE.md` 1-4) */
-  /**
-   * ★그 자리에 무엇을 그릴까★ (2026-09-17 사장님) — 라이벌이 기본이다.
-   *   `false` 로 두면 옛 「메인멤버 다섯」 으로 돌아간다 (`CLAUDE.md` 1-4).
+  /*
+   * ⚠ ★2026-09-22 — 이 칸이 세 번 바뀌었다★
+   *   ① 라이벌 (9/17) → ② 통째로 껐다 (사장님: 「라이벌 저거 그냥 없애줘」)
+   *   → ③ ★지금★ — 같은 자리에 ★메인스나·메인라플★ (사장님이 이어서 지정하심)
+   *   `SIDE_MODE` 를 `'rival'` 이나 `'members'` 로 두면 ①·옛 「메인 다섯」이 돌아온다.
+   *   ★`RivalCell` 도 `MainMembers` 도 안 지웠다★ (`CLAUDE.md` 1-4).
    */
-  const RIVAL_COL = true
-  /**
-   * ★옆 칸(라이벌·메인)을 세울 것인가★
-   *
-   * ⚠ ★2026-09-22 — 껐다★ (사장님: 「★라이벌 저거 그냥 없애줘★」).
-   *   그 자리는 아래 ★승리·패배 칸★ 이 가져간다 (사장님: 「몇승 몇패인지 적어줘」).
-   *
-   *   ★지우지 않았다★ (`CLAUDE.md` 1-4) — `RivalCell` 도 `MainMembers` 도 그대로 있고
-   *   이 값을 `true` 로 두면 라이벌 칸이 그대로 돌아온다. 계약의 `rival` 도 그대로 온다.
-   */
-  const SIDE_COL = false as boolean
+  /* `as` 로 넓혀 둔다 — 안 그러면 TS 가 `'duo'` 하나로 좁혀서 나머지 갈래를 «닿지 않는 코드» 라고 막는다 */
+  const SIDE_MODE = 'duo' as 'duo' | 'rival' | 'members' | 'off'
   const anyRivals = (rows ?? []).some((row) => row.rival != null)
   const anyMembers = (rows ?? []).some((row) => (row.main_members?.length ?? 0) > 0)
-  const showSide = SIDE_COL && (RIVAL_COL ? anyRivals : anyMembers)
+  const showSide =
+    SIDE_MODE === 'off'
+      ? false
+      : SIDE_MODE === 'rival'
+        ? anyRivals
+        : anyMembers
   /* 바로 앞 행과 부리그가 다르면 그 위에 선을 긋는다. 첫 행에도 긋는다 —
      맨 위 묶음이 어느 티어인지 이름이 없으면 아래 묶음들만 이름이 붙어 이상해진다 */
   let lastDivision: number | null = null
@@ -586,7 +627,11 @@ export function ClanRankTable({
         {columns.rank ? <div className={COL_RANK}>순위</div> : null}
         <div className={COL_NAME}>클랜</div>
         {/* 「메인」 머리글 — 한 줄이라도 멤버가 오면 세운다. 폰에서는 칸째로 없다 */}
-        {showSide ? <div className={COL_MAIN}>{RIVAL_COL ? '라이벌' : '메인'}</div> : null}
+        {showSide ? (
+          <div className={COL_MAIN}>
+            {SIDE_MODE === 'duo' ? '메인스나 · 메인라플' : SIDE_MODE === 'rival' ? '라이벌' : '메인'}
+          </div>
+        ) : null}
         {/*
           ★승리 · 패배 두 칸★ (2026-09-22 사장님: 「몇승 몇패인지 적어줘 저렇게
           노란표시 된곳처럼」 — 서플라이 클랜랭킹의 「승리 / 패배」 칸을 가리키셨다).
@@ -699,7 +744,9 @@ export function ClanRankTable({
             */}
             {showSide ? (
               <div className={COL_MAIN}>
-                {egg === 'sealed' ? null : RIVAL_COL ? (
+                {egg === 'sealed' ? null : SIDE_MODE === 'duo' ? (
+                  <MainDuo members={row.main_members ?? []} leagueSlug={leagueSlug} />
+                ) : SIDE_MODE === 'rival' ? (
                   <RivalCell rival={row.rival} leagueSlug={leagueSlug} />
                 ) : (
                   <MainMembers members={row.main_members ?? []} clan={row.clan} />
