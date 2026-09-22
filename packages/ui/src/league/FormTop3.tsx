@@ -68,7 +68,7 @@ export function FormTop3({
           {form.is_today ? ' (오늘)' : ''} 하루 동안 얻은 래더 증감 합계 · 3경기 이상
         </div>
       </div>
-      <div className="mobile-bleed rounded-[var(--radius)] border border-line">
+      <div className="sac-board mobile-bleed">
         <div className={HEAD}>
           <div className={COL_RANK}>순위</div>
           <div className={COL_NAME}>닉네임</div>

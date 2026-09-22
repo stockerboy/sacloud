@@ -38,7 +38,7 @@ export function LeagueListTable({
   /* 닫힌 리그(대룰리그 · 지시 #22)는 목록에서 뺀다. 데이터는 그대로다 — 화면에서만 거른다 */
   const listed = items?.filter((league) => isLeagueListed(league.slug))
   return (
-    <div className="mt-6 rounded-[var(--radius)] border border-line">
+    <div className="sac-board mt-6">
       <div className={HEAD}>
         <div className="min-w-0 flex-1">리그명</div>
         <div className="w-40 shrink-0 text-right max-md:hidden">참여 클랜</div>

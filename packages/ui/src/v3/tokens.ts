@@ -43,7 +43,12 @@ export const V3 = {
    */
   card: '#ffffff',
   cardFlat: '#ffffff',
-  cardBorder: '#e3e6ee',
+  /*
+   * ⚠ ★2026-09-22 — 한 단 진하게★ (사장님: 「전체적으로 보드의 경계가 너무 잘 안보여」).
+   *   옛 값 `#e3e6ee` 는 페이지 바탕(#f2f2f2)과 대비가 ★1.06:1★ 이었다 — 사실상 선이 없다.
+   *   흰 면 위에서도, 회색 바탕 위에서도 보이는 값으로 올린다.
+   */
+  cardBorder: '#d9dee9',
   divider: '#edeff4',
   rowDivider: '#edeff4',
   rowDivider2: '#f5f6f9',
@@ -157,12 +162,18 @@ export const CHAL_NUM_COLOR = '#c2a07a'
  *     backdropFilter/WebkitBackdropFilter: 'blur(12px) saturate(1.2)'
  *     boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.35)'
  */
+/*
+ * ⚠ ★2026-09-22 — 그림자를 또렷하게★ (사장님: 「보드위에 올라와있는것처럼 해줘」).
+ *   옛 값은 `0 1px 2px rgba(16,24,40,.06)` — 거의 안 보였다.
+ *   `supply-skin.css` 의 `.sac-board` 와 ★같은 값★ 이다. 두 층이 다른 그림자를 쓰면
+ *   같은 화면 안에서 카드마다 떠 있는 높이가 달라 보인다.
+ */
 export const cardStyle: CSSProperties = {
   background: V3.card,
   backgroundClip: 'padding-box',
   border: `1px solid ${V3.cardBorder}`,
   borderRadius: V3.radiusCard,
-  boxShadow: '0 1px 2px rgba(16,24,40,.06)',
+  boxShadow: '0 1px 3px rgba(0,0,0,.10), 0 1px 2px rgba(0,0,0,.06)',
 }
 export const cardHeadStyle: CSSProperties = {
   display: 'flex',

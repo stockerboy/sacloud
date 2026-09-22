@@ -249,7 +249,7 @@ export function RankBox({ children }: { children: React.ReactNode }) {
      *   흰 면 + 또렷한 테두리 + 얕은 그림자 — 서플라이의 흰 카드와 같은 결이다.
      *   ★되돌리려면 이 줄을 `border border-line` 한 줄로 되돌린다★ (`CLAUDE.md` 1-4).
      */
-    <div className="mobile-bleed mt-6 overflow-hidden rounded-[var(--radius)] border border-[#dfe3ec] bg-white shadow-[0_1px_3px_rgb(0_0_0/0.10),0_1px_2px_rgb(0_0_0/0.06)] max-md:mt-4">
+    <div className="sac-board mobile-bleed mt-6 max-md:mt-4">
       {children}
     </div>
   )
