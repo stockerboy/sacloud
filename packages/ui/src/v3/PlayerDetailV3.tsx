@@ -241,12 +241,12 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
             <Pair sub="시즌 전체" value={data.kill_per_match.toFixed(1)} color={V3.text} />
           )}
         </StatRow>
-        <StatRow label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 10.5, color: V3.gold }}>★</span><span>MVP</span></span>}>
+        <StatRow label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 10.5, color: V3.mvp }}>★</span><span>MVP</span></span>}>
           {mvpKnown ? (
             <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 9, minWidth: 0 }}>
               <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>{fmt(games)}판 중</span>
               <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
-                <span style={{ fontSize: 17, fontWeight: 700, color: V3.gold }}>{sel?.mvp ?? 0}</span>
+                <span style={{ fontSize: 17, fontWeight: 700, color: V3.mvp /* ⚠ 옛값 V3.gold */ }}>{sel?.mvp ?? 0}</span>
                 <span style={{ fontSize: 10.5, fontWeight: 600, color: '#8a6a12' }}>회</span>
               </span>
               <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap' }}>{pct1(mvpRate)}</span>
@@ -1811,8 +1811,8 @@ function SideInfoCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: bo
         </InfoRow>
         <InfoRow label="MVP">
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: V3.gold }}>{fmt(data.mvp_count)}</span>
-            <span style={{ fontSize: 12, color: '#8a6a12' }}>회</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: V3.mvp /* ⚠ 옛값 V3.gold */ }}>{fmt(data.mvp_count)}</span>
+            <span style={{ fontSize: 12, color: V3.textDim /* ⚠ 옛값 '#8a6a12' */ }}>회</span>
           </span>
         </InfoRow>
         {/* ★등수는 모르면 안 적는다★ — 배치고사 중이거나 판이 모자라면 `rank` 가 null 이다 */}

@@ -246,7 +246,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
-      {SCORE_WATERMARKS && mvp ? <span aria-hidden style={{ position: 'absolute', left: '64%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: V3.gold, opacity: 0.15, WebkitTextStroke: `2.4px ${V3.gold}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>MVP</span> : null}
+      {SCORE_WATERMARKS && mvp ? <span aria-hidden style={{ position: 'absolute', left: '64%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: V3.mvp, opacity: 0.15, WebkitTextStroke: `2.4px ${V3.mvp}` /* ⚠ 옛값 V3.gold */, whiteSpace: 'nowrap', pointerEvents: 'none' }}>MVP</span> : null}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <MarkCircle clan={clan ? { slug: clan.slug ?? clanSlug, mark: clan.mark } : clanSlug ? { slug: clanSlug } : null} size={20} />
         {/* ★닉네임을 누르면 그 판 육각이 펼쳐진다★ (2026-09-15 사장님).
@@ -1114,7 +1114,7 @@ const [tier] = useState<number>(() => {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           width: '100%', marginTop: 18, padding: '13px 16px', fontFamily: 'inherit',
           fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
-          borderRadius: V3.radiusCard, color: vsOpen ? '#1c2f6b' : V3.textMuted,
+          borderRadius: V3.radiusCard, color: vsOpen ? '#8fb4ff' /* ⚠ 옛값 '#1c2f6b' — 어두운 톤에서 묻혔다 (2026-09-23) */ : V3.textMuted,
           background: vsOpen ? 'rgba(91,141,255,.12)' : V3.card,
           border: `1px solid ${vsOpen ? 'rgba(127,169,255,.7)' : V3.cardBorder}`,
         }}

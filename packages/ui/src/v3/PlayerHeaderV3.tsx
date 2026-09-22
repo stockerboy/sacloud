@@ -962,13 +962,14 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
        */}
       <div className="v3-phead-foot" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', borderTop: `1px solid ${V3.rowDivider}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRight: `1px solid ${V3.rowDivider}`, minWidth: 0 }}>
-          <span style={{ fontSize: 11, color: V3.gold, whiteSpace: 'nowrap' }}>★</span>
+          {/* ⚠ 2026-09-23 새벽 — MVP 는 빨강 하나로 (옛 값: 별 V3.gold · 숫자 '#8a6a12'). 폰 선수 상세를 찍어서 잡았다 */}
+          <span style={{ fontSize: 11, color: V3.mvp, whiteSpace: 'nowrap' }}>★</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: V3.textFaint, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>MVP</span>
           {FOOT_SPREAD ? <div style={spacerStyle} /> : null}
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
-            <span style={{ fontSize: 17, fontWeight: 700, color: (sel?.mvp ?? 0) > 0 ? '#8a6a12' : V3.textGhost }}>{fmt(sel?.mvp ?? 0)}</span>
+            <span style={{ fontSize: 17, fontWeight: 700, color: (sel?.mvp ?? 0) > 0 ? V3.mvp : V3.textGhost }}>{fmt(sel?.mvp ?? 0)}</span>
             <span style={{ fontSize: 10.5, color: V3.textDim }}>회</span>
-            <span style={{ fontSize: 11.5, color: mvpRate === null || mvpRate === 0 ? V3.textGhost : '#8a6a12' }}>{mvpRate === null ? '-' : `${mvpRate.toFixed(1)}%`}</span>
+            <span style={{ fontSize: 11.5, color: mvpRate === null || mvpRate === 0 ? V3.textGhost : V3.mvp }}>{mvpRate === null ? '-' : `${mvpRate.toFixed(1)}%`}</span>
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', minWidth: 0 }}>

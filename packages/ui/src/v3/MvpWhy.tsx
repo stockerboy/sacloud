@@ -202,7 +202,7 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
   return (
     <div style={{ margin: '10px 14px 14px', border: `1px solid ${V3.gold}`, borderRadius: 3, background: 'linear-gradient(180deg, rgba(255,216,61,.08), rgba(255,216,61,.02))', padding: '11px 13px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.1em', color: V3.gold }}>MVP</span>
+        <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.1em', color: V3.mvp /* ⚠ 옛값 V3.gold */ }}>MVP</span>
         <span style={{ fontSize: 15, fontWeight: 800, color: '#8a6a12' }}>{name}</span>
         <span style={{ fontSize: 11, color: V3.textMuted }}>왜 MVP 인가</span>
       </div>

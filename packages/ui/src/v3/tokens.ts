@@ -68,6 +68,8 @@ export const V3 = {
   red: '#e01b24',
   redSoft: '#ff5a63',
   gold: '#ffd83d',
+  /** ★MVP 표시는 전부 이 빨강★ (2026-09-22 밤 사장님: 「모든 mvp표시 … 노란색을 빨간색으로 바꾼걸로 통일」). 옛 값은 gold 였다 */
+  mvp: '#e0342f',
   cyan: '#8ff0ff',
   green: '#22c55e',
   /*
