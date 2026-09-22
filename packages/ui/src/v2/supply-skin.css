@@ -1169,12 +1169,18 @@ body.antialiased {
     height: 49px;
     min-height: 49px;
   }
-  /* 표를 화면 끝까지 — 가터(22)를 되빼야 393 이 된다 (옛 -0.75rem 은 12 뿐이라 371 이었다) */
+  /*
+   * 표를 화면 끝까지 — ⚠ ★2026-09-23 새벽 정정★
+   *   처음엔 가터를 22 로 보고 -22 를 뺐다가 ★11px 가로 넘침★ 이 났다 (운영 폰 실측 scrollW 404).
+   *   폰 가터는 0.75rem(10.5px) 이고 옛 `.mobile-bleed` 의 -0.75rem 이 맞았다.
+   *   진짜 원인은 개인랭킹 표가 `w-full` 이라 ★음수 마진을 줘도 폭이 안 늘어★ 371 에 머문 것.
+   *   그래서 폭을 `100% + 1.5rem` 으로 같이 늘린다. 클랜랭킹 표(auto 폭)는 전과 같다.
+   */
   .sac-board.mobile-bleed,
   .sac-rank-board.mobile-bleed {
-    margin-left: calc(-1 * var(--layout-gutter, 22px));
-    margin-right: calc(-1 * var(--layout-gutter, 22px));
-    width: auto;
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+    width: calc(100% + 1.5rem);
   }
   .sac-rank-head {
     min-height: 26px;
