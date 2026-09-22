@@ -367,8 +367,16 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
       <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', padding: '8px 18px 14px', flexWrap: 'wrap', gap: 12 }}>
         {hex && !hex.measuring ? (
           /* 2026-09-11: 머리 카드가 빠져 이 카드가 한 줄을 다 쓴다 → 육각형을 키운다 (300px 고정 그림을 배율로) */
-          <span className="v3-hex-zoom" style={{ display: 'block', width: 300 * 1.55, height: 262 * 1.55 }}>
-            <span style={{ display: 'block', transform: 'scale(1.55)', transformOrigin: 'top left' }}>
+          /*
+           * ⚠ ★2026-09-22 밤 — 배율을 칸에 맡긴다★
+           *   본문 2단으로 바꾸면서 오른쪽 칸이 ★271px★ 이 됐는데 이 그림은 1.55배라
+           *   ★465px★ 이었다 — 축 이름(세이브·스나싸움…)이 칸 밖으로 잘려 나갔다
+           *   (운영 화면을 재서 잡았다: svg 가 x=1009 에서 1474 까지 뻗어 있었다).
+           *   배율을 `--hex-zoom` 으로 빼고 좁은 칸에서만 줄인다 —
+           *   넓은 자리(옛 탭 판)는 기본값 1.55 그대로다.
+           */
+          <span className="v3-hex-zoom" style={{ display: 'block', width: 'calc(300px * var(--hex-zoom, 1.55))', height: 'calc(262px * var(--hex-zoom, 1.55))' }}>
+            <span style={{ display: 'block', transform: 'scale(var(--hex-zoom, 1.55))', transformOrigin: 'top left' }}>
               <Hexagon axes={axes} id="playerHex" overlay={overlay} />
             </span>
           </span>
@@ -1935,7 +1943,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
            ⚠ 이 블록은 템플릿 리터럴 안이다 — 백틱 기호를 쓰면 문자열이 끊긴다. */
         .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 271px; gap: 7px; align-items: start; margin-top: 16px; }
         .sac-prr-main { min-width: 0; display: flex; flex-direction: column; }
-        .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 7px; position: sticky; top: 12px; }
+        .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 7px; position: sticky; top: 12px; --hex-zoom: .78; }
         @media (max-width: 980px) {
           .sac-prr-grid { grid-template-columns: minmax(0,1fr); }
           .sac-prr-aside { position: static; }
