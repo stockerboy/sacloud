@@ -1225,3 +1225,42 @@ body.antialiased {
     overflow: hidden;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★폰 5차 — 상세 화면 카드를 화면 끝까지 · 탭을 46px 띠로★ (2026-09-23)
+   서플라이 폰 실측: 선수/클랜/경기 상세의 카드가 ★전부 393 전체폭★ (배너 393×137·166,
+   탭 줄 393×46, 상세정보 393, 경기 카드 393×94/72). 우리는 가터 10.5px 안에서 371 이었다.
+   탭도 알약(77×38)이 아니라 ★전체폭 46px 띠★ (기록실 70 / 지난시즌 84 · 아래선).
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .sac-v3-page {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  /* 페이지 머리(경기 · CLOUD 0)만 안쪽 여백 */
+  .sac-v3-page .v2-pagehead {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .sac-pilltabs {
+    padding-top: 0 !important;
+    gap: 0 !important;
+    flex-wrap: nowrap !important;
+    background: #121c2f;
+    border-bottom: 1px solid #1e2a42;
+  }
+  .sac-pilltab {
+    flex: 1 1 0;
+    justify-content: center;
+    height: 46px;
+    padding: 0 8px !important;
+    font-size: 14px !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .sac-pilltab.is-on {
+    box-shadow: inset 0 -2px 0 0 #f59e0b !important;
+    color: #f59e0b !important;
+  }
+}

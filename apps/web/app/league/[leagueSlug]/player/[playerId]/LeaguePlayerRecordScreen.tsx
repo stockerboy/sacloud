@@ -154,7 +154,7 @@ export default function LeaguePlayerRecordPage({
   return (
     /* ★껍데기(`sa-skin`)는 `layout.tsx` 가 씌운다★ — 머리띠·탭까지 한 톤이어야 해서다.
        여기만 씌웠더니 ★위는 적진 파랑, 아래는 검정 무광★ 으로 갈렸다 */
-    <div className="pc-container pb-[40px]">
+    <div className="pc-container sac-v3-page pb-[40px]">
       {/*
         ── ★0. 티어별 전적 — 이 화면의 첫 칸★ (2026-09-10 · 사장님 지시)
 

@@ -89,7 +89,7 @@ export default function MatchDetailPage({
   const leagueCategory = league.data?.data.category ?? 'independent'
 
   return (
-    <div className="pc-container pb-[40px]">
+    <div className="pc-container sac-v3-page pb-[40px]">
       {/* ★2026-09-07 (Part 10 ⑧)★ — 시안의 화면 머리. ★Cloud 표기가 여기 붙는다★ */}
       <PageHead
         kicker={season?.toUpperCase() ?? null}

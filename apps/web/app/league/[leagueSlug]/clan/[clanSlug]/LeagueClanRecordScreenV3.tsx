@@ -95,7 +95,7 @@ export default function LeagueClanRecordPageV3({
     )
   }
   return (
-    <div className="pc-container pb-[40px]">
+    <div className="pc-container sac-v3-page pb-[40px]">
       <ClanDetailV3
         data={detail.data.data}
         leagueSlug={leagueSlug}
