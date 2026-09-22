@@ -57,52 +57,57 @@
    *   bar-border #131c33 · card-border #1b2542 · card-divider #16203a
    *   row-divider #121a30 · head-divider #1b2542 · emblem-border #26304d
    */
-  --v2-bg: #0c1526;
+  /**
+   * ⚠ ★2026-09-22 — 서플라이 투톤으로★ (사장님).
+   *
+   * > 「서플라이처럼 투톤으로 가 우리는 서플라이가 검정색인곳은 지금쓰는 남색 계열 색깔
+   * >  서플라이가 흰색인곳은 우리도 똑같이 흰색 (…) 딱봤을때 어 서플라이아니야? 하면서
+   * >  볼 수 잇게끔」
+   *
+   * 서플라이는 머리띠·탭바만 검정이고 본문은 흰 바탕이다. 우리는 그 "검정" 자리를
+   * 지금 쓰던 남색으로 바꾸고(★머리띠·탭바만★ — 아래 `.v2-topbar`/`.v2-tabbar` 오버라이드
+   * 블록에서 따로 고정한다) 나머지 본문은 서플라이와 똑같이 흰 바탕+검정 글자로 뒤집는다.
+   *
+   * ⚠ ★옛 값(2026-09-12 다크 남색 판)은 지우지 않고 여기 남긴다★ (`CLAUDE.md` 1-4) —
+   *   되돌리려면 이 블록만 되돌리면 된다.
+   *   bg #0c1526 · bar #0e1a2f · tabbar #0a1121 · panel/card rgba(40,58,96,.58) · plot #0e1a2f
+   *   bar-border #1f2942 · card-border #3a4870 · card-divider #222d4a
+   *   row-divider #1e283f · head-divider #27324f · emblem-border #323d5c
+   *   text #e9eefc · text-strong #fff · text-muted #8b97ba · text-dim #7f8cb0
+   *   text-faint #6b7ba0 · text-ghost #4a577c · text-ghost2 #3d4869
+   *   chip #1a2440 · chip-on #222d4a · chip-border #27324f · chip-border-on #364167
+   *   menu-border #323d5c
+   */
+  --v2-bg: #f4f5f8;
   --v2-bar: #0e1a2f;
   --v2-tabbar: #0a1121;
-  /**
-   * ⚠ ★2026-09-12 — 카드를 반투명으로★ (사장님: «모든 카드색을 반투명 네온으로 해
-   *   완전 무광 불투명이니까 뭔가 촌스러»).
-   *   옛 값은 단색 `#17223b` 였다. 이제 뒤가 살짝 비친다 —
-   *   홈 히어로 사진 위에서는 구름이, 본문에서는 바탕색이 은은하게 올라온다.
-   *   흐림(`backdrop-filter`)은 `.v2-panel` 쪽에 건다.
-   */
-  /**
-   * ⚠ ★2026-09-13 두 번째 손질★ (사장님: «카드가 없어서 벽에 칠해진 느낌이야»).
-   *   어제 반투명으로 바꿀 때 카드 색을 바탕(#0c1526)과 거의 같게 잡아서
-   *   카드가 통째로 사라져 보였다. ★바탕보다 확실히 밝게★ 올린다.
-   *   옛 값: rgba(24, 36, 62, 0.6) → 그 앞은 단색 #17223b
-   */
-  --v2-panel: rgba(40, 58, 96, 0.58);
-  --v2-plot: #0e1a2f;
-  /* ★그라디언트를 뺐다★ — 사장님이 고른 화면은 카드가 단색이다 */
-  --v2-card: rgba(40, 58, 96, 0.58);
+  --v2-panel: #ffffff;
+  --v2-plot: #eef0f5;
+  --v2-card: #ffffff;
 
   /* ── 선 ────────────────────────────────────────────────── */
   --v2-bar-border: #1f2942;
-  /* 유리 테두리는 조금 더 밝아야 가장자리가 보인다 (2026-09-13). 옛 값 #27324f */
-  --v2-card-border: #3a4870;
-  --v2-card-divider: #222d4a;
-  --v2-row-divider: #1e283f;
-  --v2-head-divider: #27324f;
-  --v2-emblem-border: #323d5c;
+  --v2-card-border: #e3e6ee;
+  --v2-card-divider: #edeff4;
+  --v2-row-divider: #edeff4;
+  --v2-head-divider: #e3e6ee;
+  --v2-emblem-border: #d9dce6;
 
   /* ── 글자 7단계 ────────────────────────────────────────── */
-  --v2-text: #e9eefc;
-  --v2-text-strong: #ffffff;
-  --v2-text-muted: #8b97ba;
-  --v2-text-dim: #7f8cb0;
-  --v2-text-faint: #6b7ba0;
-  --v2-text-ghost: #4a577c;
-  --v2-text-ghost2: #3d4869;
+  --v2-text: #1c2233;
+  --v2-text-strong: #05070d;
+  --v2-text-muted: #5c6479;
+  --v2-text-dim: #767f96;
+  --v2-text-faint: #96a0b5;
+  --v2-text-ghost: #b6bece;
+  --v2-text-ghost2: #ccd2e0;
 
   /* ── 칩·입력 ───────────────────────────────────────────── */
-  /* ⚠ 2026-09-12 바탕과 같이 올렸다. 옛 값: #0e1731 · #16203a · #1b2542 · #2a3557 · #26304d */
-  --v2-chip: #1a2440;
-  --v2-chip-on: #222d4a;
-  --v2-chip-border: #27324f;
-  --v2-chip-border-on: #364167;
-  --v2-menu-border: #323d5c;
+  --v2-chip: #eef0f5;
+  --v2-chip-on: #e4e8f2;
+  --v2-chip-border: #dde1eb;
+  --v2-chip-border-on: #c4cbdd;
+  --v2-menu-border: #d9dce6;
 
   /* ── 뜻이 있는 색 ──────────────────────────────────────── */
   --v2-blue: #5b8dff;
@@ -148,6 +153,36 @@
   --v2-accent: var(--v2-green);
 }
 
+/**
+ * ★머리띠·탭바만 남색으로 고정★ (2026-09-22 · 투톤 전환의 안전장치).
+ *
+ * 위에서 본문 전역 글자·칩 변수를 흰 바탕용(어두운 글자)으로 뒤집었다. 머리띠와
+ * 탭바는 `--v2-bar`/`--v2-tabbar` 배경(남색)을 그대로 쓰므로, 손대지 않으면
+ * 어두운 글자가 남색 위에 그대로 앉아 ★안 보이게 된다.★
+ *
+ * CSS 캐스케이드로 이 두 구역 ★안에서만★ 옛 다크용 글자·칩 값을 다시 선언한다 —
+ * 이 블록의 자손은 전역값이 아니라 이 오버라이드를 상속받는다. 본문은 그대로 흰
+ * 바탕으로 바뀌고, 머리띠·탭바는 지금 모습(남색+흰 글자) 그대로 유지된다.
+ */
+.sac-v2.v2-topbar,
+.sac-v2 .v2-topbar,
+.sac-v2.v2-tabbar,
+.sac-v2 .v2-tabbar {
+  --v2-text: #e9eefc;
+  --v2-text-strong: #ffffff;
+  --v2-text-muted: #8b97ba;
+  --v2-text-dim: #7f8cb0;
+  --v2-text-faint: #6b7ba0;
+  --v2-text-ghost: #4a577c;
+  --v2-text-ghost2: #3d4869;
+  --v2-chip: #1a2440;
+  --v2-chip-on: #222d4a;
+  --v2-chip-border: #27324f;
+  --v2-chip-border-on: #364167;
+  --v2-menu-border: #323d5c;
+  --v2-card-border: #3a4870;
+}
+
 /* ══ 공통 조각 ═══════════════════════════════════════════ */
 
 /** 본문 폭 — 시안 1180px */
@@ -165,15 +200,14 @@
   position: relative;
   overflow: hidden;
   /*
-   * ★2026-09-13 — 카드 바탕에 빛무리★ (사장님: «카드 배경 디자인 이쁜걸로 바꿔봐»).
-   *   v3 카드(`v3/tokens.ts`의 `V3.card`)와 ★같은 두 겹★ 을 쓴다 —
-   *   왼쪽 위 푸른 빛 · 오른쪽 위 보랏빛. 두 층이 다른 얼굴을 하면 안 된다.
-   *   옛 값은 `background: var(--v2-card)` 한 줄이었다.
+   * ⚠ ★2026-09-22 — 투톤 전환. 빛무리를 걷고 서플라이처럼 납작한 흰 카드로★.
+   *   다크 남색 카드일 때는 왼쪽 위 푸른 빛·오른쪽 위 보랏빛 두 겹으로 «유리» 느낌을
+   *   냈다. 흰 카드 위에 그대로 두면 옅은 파랑·보라 얼룩으로 보여 서플라이의 납작한
+   *   흰 카드와 달라진다. ★옛 두 겹은 지우지 않고 여기 남긴다★ (`CLAUDE.md` 1-4) —
+   *     radial-gradient(120% 90% at 0% 0%, rgba(122,162,255,.1), transparent 58%),
+   *     radial-gradient(95% 75% at 100% 0%, rgba(196,132,252,.075), transparent 52%),
    */
-  background:
-    radial-gradient(120% 90% at 0% 0%, rgba(122, 162, 255, 0.1), transparent 58%),
-    radial-gradient(95% 75% at 100% 0%, rgba(196, 132, 252, 0.075), transparent 52%),
-    var(--v2-card);
+  background: var(--v2-card);
   /*
    * ⚠ ★2026-09-21 — 흐림을 걷었다★ (사장님: 「★사이트 렉부터 고쳐★」)
    *
@@ -193,12 +227,13 @@
   border: 1px solid var(--v2-card-border);
   border-radius: var(--v2-radius);
   /**
-   * ★떠 있게 보이게★ (2026-09-13 사장님: «벽에 칠해진 느낌»).
-   * 안쪽 윗선 한 줄이 유리의 두께를 만들고, 바깥 그림자가 카드를 띄운다.
+   * ⚠ ★2026-09-22 — 흰 카드용 옅은 그림자★. 다크 남색 카드일 때는 «벽이 아니라
+   *   떠 있게» 보이도록 짙은 그림자(0 10px 26px rgba(0,0,0,.35))를 썼다. 흰 바탕 위에
+   *   그 값을 그대로 두면 카드마다 짙은 먹구름이 진다 — 서플라이 흰 카드는 얇은
+   *   테두리 + 아주 옅은 그림자뿐이다. ★옛 값은 지우지 않고 여기 남긴다★ (`CLAUDE.md` 1-4):
+   *     inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.35)
    */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 10px 26px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
 }
 /** 위쪽 2px 강조선 — 시안이 카드를 구분하는 방식이다 */
 .sac-v2 .v2-panel--edge {
@@ -695,9 +730,10 @@
   --color-ink: var(--v2-bar);
   /* 카드는 시안에서 그라디언트지만 토큰은 색 하나만 담는다 — 윗색을 쓴다.
      그라디언트가 필요한 자리는 `.v2-panel` 을 직접 쓴다 */
-  /* ★2026-09-10 — 남색으로 갈아탔다★. 옛 값: card #14151c · card-2 #1a1c24 */
+  /* ⚠ ★2026-09-22 — 흰 카드용으로★. 옛 값(남색 판, 2026-09-10): card #14151c → 남색 시절
+     card-2 #0e1731 (그 앞은 #1a1c24) — 지우지 않고 여기 남긴다 (`CLAUDE.md` 1-4) */
   --color-card: var(--v2-card);
-  --color-card-2: #0e1731;
+  --color-card-2: #eef0f5;
 
   /* ── 선 ── */
   --color-line: var(--v2-card-border);
@@ -717,8 +753,9 @@
   /* ── 히어로 띠 ──
      시안에는 이 띠가 없다. ★지우지 않는다★ (리그명 · 공식 배지 · 클랜 수가 여기 있다).
      대신 파란 면을 카드 톤으로 낮춰 시안의 검정을 안 깨뜨리게 한다 */
-  /* ★2026-09-10★ 옛 값: #101119 */
-  --color-hero: #0b1225;
+  /* ⚠ ★2026-09-22 — 흰 바탕용★. 옛 값(다크 남색): #0b1225 (그 앞은 #101119).
+     지우지 않고 여기 남긴다 (`CLAUDE.md` 1-4) */
+  --color-hero: var(--v2-plot);
   --color-hero-line: var(--v2-card-border);
   --color-hero-fg: var(--v2-text-strong);
   --color-hero-meta: var(--v2-text-muted);
@@ -782,22 +819,31 @@
   /* ★면은 중립이다★ — 시안의 경기판은 팀 색을 넓은 면에 칠하지 않는다.
      둘을 가르는 것은 ★왼쪽 3px 막대 · 테두리 · 「승리/패배」 글자★ 뿐이다.
      (전에는 면이 파랑/자주여서 펼친 라인업 전체가 한 팀 색으로 물들었다) */
-  --color-win-bg: #0f1015;
-  --color-lose-bg: #0f1015;
-  --color-win-line: #24304a;
-  --color-lose-line: #3a2430;
+  /*
+   * ⚠ ★2026-09-22 — 흰 바탕용으로★. 옛 값(다크 남색 판)은 지우지 않고 여기 남긴다
+   *   (`CLAUDE.md` 1-4): win-bg/lose-bg #0f1015 · win-line #24304a · lose-line #3a2430 ·
+   *   lose #f26a6a
+   */
+  --color-win-bg: var(--v2-panel);
+  --color-lose-bg: var(--v2-panel);
+  --color-win-line: #cfe0ff;
+  --color-lose-line: #ffd6d8;
   --color-win: var(--v2-blue);
   --color-win-bar: var(--v2-blue);
-  --color-lose: #f26a6a;
+  --color-lose: #d6353f;
   --color-lose-bar: var(--v2-red);
   --color-mvp: var(--v2-gold);
 
-  /* ── 순위 등급 색 — 시안 `RANK_COLORS` 그대로 (경계는 `rankTone` 이 정한다) ── */
+  /*
+   * ── 순위 등급 색 — 시안 `RANK_COLORS` 그대로 (경계는 `rankTone` 이 정한다) ──
+   * ⚠ ★2026-09-22★ `plain`(등급 없음)은 다크 배경에서 흰 글자였다. 흰 바탕에서는
+   *   흰 글자가 사라지므로 어두운 글자로 뒤집는다. 옛 값 #ffffff — 지우지 않는다 (1-4)
+   */
   --color-rank-red: #ff4d4d;
   --color-rank-gold: #ffd83d;
   --color-rank-blue: #5b9dff;
   --color-rank-green: #22c55e;
-  --color-rank-plain: #ffffff;
+  --color-rank-plain: var(--v2-text-strong);
 }
 
 /**
@@ -1024,7 +1070,7 @@
   .v3-band .v3-center { display: none !important; }
   .v3-band > span:last-child { justify-content: flex-start !important; }
   .v3-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  .v3-kpi > div { border-bottom: 1px solid #18233a; padding: 12px 14px !important; }
+  .v3-kpi > div { border-bottom: 1px solid var(--v2-row-divider, #18233a); padding: 12px 14px !important; }
   .v3-kpi > div > span > span:first-child { font-size: 22px !important; }
   /*
    * ★칸이 홀수면 마지막 칸이 두 줄을 다 쓴다★ (2026-09-17 무한 QA).
@@ -1484,30 +1530,37 @@
   white-space: nowrap;
   padding: 5px 11px;
   border-radius: 999px;
-  border: 1px solid rgba(143, 169, 216, 0.28);
+  border: 1px solid var(--v2-chip-border, rgba(143, 169, 216, 0.28));
   background: transparent;
   font-size: 11.5px;
   font-weight: 700;
   line-height: 1;
-  color: #7f8cb0;
+  color: var(--v2-text-faint, #7f8cb0);
   cursor: pointer;
   transition: color 0.1s, border-color 0.1s, background 0.1s;
 }
-/** 고른 것만 색이 켜진다 — 이긴 팀 파랑 · 진 팀 빨강 (그래프와 같은 색) */
+/**
+ * ★고른 것만 색이 켜진다★ — 이긴 팀 파랑 · 진 팀 빨강 (그래프와 같은 색).
+ * ⚠ ★2026-09-22 — 흰 바탕용으로 뒤집었다★. 옛 값(다크용 — 옅은 파스텔 글자 + 옅은 배경)은
+ *   지우지 않고 여기 남긴다 (`CLAUDE.md` 1-4):
+ *     won  color #cfe0ff · border rgba(156,192,255,.6) · bg rgba(91,141,255,.16)
+ *     lost color #ffd3d6 · border rgba(255,154,160,.6) · bg rgba(255,90,99,.16)
+ *     both color #e8eeff · border rgba(200,210,235,.55) · bg rgba(200,210,235,.1)
+ */
 .v3-hexpick__chip--won.is-on {
-  color: #cfe0ff;
-  border-color: rgba(156, 192, 255, 0.6);
-  background: rgba(91, 141, 255, 0.16);
+  color: #1d4fd6;
+  border-color: rgba(91, 141, 255, 0.5);
+  background: rgba(91, 141, 255, 0.12);
 }
 .v3-hexpick__chip--lost.is-on {
-  color: #ffd3d6;
-  border-color: rgba(255, 154, 160, 0.6);
-  background: rgba(255, 90, 99, 0.16);
+  color: #c81e28;
+  border-color: rgba(224, 27, 36, 0.4);
+  background: rgba(224, 27, 36, 0.1);
 }
 .v3-hexpick__chip--both.is-on {
-  color: #e8eeff;
-  border-color: rgba(200, 210, 235, 0.55);
-  background: rgba(200, 210, 235, 0.1);
+  color: var(--v2-text-strong, #05070d);
+  border-color: var(--v2-chip-border-on, #c4cbdd);
+  background: var(--v2-chip-on, #e4e8f2);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -1543,7 +1596,7 @@
   }
   .v3-phead-kpi > .v3-phead-cell {
     border-right: 0 !important;
-    border-bottom: 1px solid #18233a;
+    border-bottom: 1px solid var(--v2-row-divider, #18233a);
     flex-direction: row !important;
     align-items: center !important;
     justify-content: flex-end !important;
@@ -1559,11 +1612,11 @@
   .v3-phead-kpi > .v3-phead-cell > span:first-child > span:first-child {
     font-size: 14px !important;
     letter-spacing: 0 !important;
-    color: #9aa6bf !important;
+    color: var(--v2-text-muted, #9aa6bf) !important;
   }
   .v3-phead-kpi > .v3-phead-cell > span:first-child > span:nth-child(2) {
     font-size: 12px !important;
-    color: #8e99ba !important;
+    color: var(--v2-text-dim, #8e99ba) !important;
   }
   .v3-phead-kpi > .v3-phead-cell > span:last-child {
     min-width: 104px !important;
@@ -1583,7 +1636,7 @@
   }
   .v3-phead-foot > div {
     border-right: 0 !important;
-    border-bottom: 1px solid #18233a;
+    border-bottom: 1px solid var(--v2-row-divider, #18233a);
     justify-content: flex-end !important;
     gap: 10px !important;
     padding: 9px 16px !important;
@@ -1612,12 +1665,12 @@
     justify-content: center;
     align-items: stretch;
     gap: 0;
-    border-top: 1px solid #18233a;
+    border-top: 1px solid var(--v2-row-divider, #18233a);
   }
   .v3-phead-body > .v3-phead-hex {
     display: block;
     padding: 10px 10px 12px 14px;
-    border-right: 1px solid #18233a;
+    border-right: 1px solid var(--v2-row-divider, #18233a);
     align-self: center;
   }
   /* 위 테두리는 바깥 상자가 그린다 — 두 줄이 겹치지 않게 */
@@ -1652,7 +1705,7 @@
    */
   .v3-phead-body .v3-phead-kpi > .v3-phead-cell {
     border-right: 0 !important;
-    border-bottom: 1px solid #18233a;
+    border-bottom: 1px solid var(--v2-row-divider, #18233a);
     /* 라벨과 값을 ★한 덩어리로★ 오른쪽에 모은다 */
     flex-direction: row !important;
     align-items: center !important;
@@ -1668,12 +1721,12 @@
   .v3-phead-body .v3-phead-kpi > .v3-phead-cell > span:first-child > span:first-child {
     font-size: 15px !important;
     letter-spacing: 0 !important;
-    color: #9aa6bf !important;
+    color: var(--v2-text-muted, #9aa6bf) !important;
   }
   /* 보조 숫자(95승 56패 · 131판 · 1,032킬 703데스) — ★작지만 읽히게★ */
   .v3-phead-body .v3-phead-kpi > .v3-phead-cell > span:first-child > span:nth-child(2) {
     font-size: 13px !important;
-    color: #8e99ba !important;
+    color: var(--v2-text-dim, #8e99ba) !important;
   }
   .v3-phead-body .v3-phead-kpi > .v3-phead-cell > span:last-child {
     /* 값은 ★폭을 정해 둔다★ — 줄마다 숫자 끝이 같은 자리에 선다 */
@@ -1693,7 +1746,7 @@
   /* MVP · 핵의심도 같은 규칙 — ★양끝으로 벌리지 않는다★ */
   .v3-phead-body .v3-phead-foot > div {
     border-right: 0 !important;
-    border-bottom: 1px solid #18233a;
+    border-bottom: 1px solid var(--v2-row-divider, #18233a);
     justify-content: flex-end !important;
     gap: 12px !important;
     padding: 9px 20px !important;
@@ -2130,9 +2183,10 @@
     align-items: flex-start !important;
     gap: 2px !important;
     padding: 8px 10px !important;
-    border: 1px solid #18222f;
+    /* ⚠ 2026-09-22 흰 카드용. 옛 값(다크): border #18222f · bg rgba(13,21,36,.42) — 1-4 */
+    border: 1px solid var(--v2-card-border, #e3e6ee);
     border-radius: 10px;
-    background: rgba(13, 21, 36, 0.42);
+    background: var(--v2-chip, #eef0f5);
   }
   /*
    * 값 줄은 왼쪽으로.
@@ -2232,12 +2286,13 @@
  */
 .daily-podium { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 @media (min-width: 860px) { .daily-podium { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } }
+/* ⚠ 2026-09-22 흰 카드용. 옛 값(다크): bg rgba(16,26,44,.62) · hover border rgba(255,217,138,.45) bg rgba(22,34,56,.72) — 1-4 */
 .daily-podium-card {
   display: block; min-width: 0; padding: 14px 15px 13px; border-radius: 12px;
-  background: rgba(16, 26, 44, .62); border: 1px solid var(--v2-card-border, #24314a);
+  background: var(--v2-panel, #fff); border: 1px solid var(--v2-card-border, #e3e6ee);
   transition: border-color .15s ease, background .15s ease;
 }
-.daily-podium-card:hover { border-color: rgba(255, 217, 138, .45); background: rgba(22, 34, 56, .72); }
+.daily-podium-card:hover { border-color: rgba(255, 184, 64, .55); background: #fff8ec; }
 
 /* ──────────────────────────────────────────────────────────────────────────
    ★깃발 산★ (2026-09-15 사장님이 파노라 화면을 주시며 «똑같이 만들어»)
@@ -2258,52 +2313,59 @@
   height: auto;
 }
 
+/*
+ * ⚠ ★2026-09-22 — 흰 카드용으로 뒤집었다★. 다크 카드일 때는 «흰 얇은 선» 이었지만
+ *   카드가 흰색이 되면 흰 선이 그대로 사라진다. ★옛 값(전부 흰색 계열)은 지우지
+ *   않고 여기 남긴다★ (`CLAUDE.md` 1-4) — big #fff · biglabel rgba(255,255,255,.62) ·
+ *   axis rgba(255,255,255,.45) · dash rgba(255,255,255,.4) · line #fff ·
+ *   nowline rgba(255,255,255,.8) · nowdot/peakdot/pole #fff
+ */
 /* 큰 숫자 — 얇은 산세리프. 사장님 화면의 「85」 */
 .sac-v2 .v2-flagmt__big {
   font-size: 46px;
   font-weight: 300;
   letter-spacing: -0.02em;
-  fill: #ffffff;
+  fill: var(--v2-text-strong, #05070d);
 }
 .sac-v2 .v2-flagmt__biglabel {
   font-size: 9.5px;
   letter-spacing: 0.06em;
-  fill: rgba(255, 255, 255, 0.62);
+  fill: var(--v2-text-muted, #5c6479);
 }
 /* 눈금 글자 */
 .sac-v2 .v2-flagmt__axis {
   font-size: 8.5px;
   letter-spacing: 0.04em;
-  fill: rgba(255, 255, 255, 0.45);
+  fill: var(--v2-text-faint, #96a0b5);
 }
 /* 기준선 — 가로 점선 */
 .sac-v2 .v2-flagmt__dash {
-  stroke: rgba(255, 255, 255, 0.4);
+  stroke: var(--v2-row-divider, #edeff4);
   stroke-width: 1;
   stroke-dasharray: 5 5;
 }
-/* 능선 — 흰 얇은 선 */
+/* 능선 — 짙은 선 */
 .sac-v2 .v2-flagmt__line {
   fill: none;
-  stroke: #ffffff;
+  stroke: var(--v2-text, #1c2233);
   stroke-width: 1.8;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 /* 지금 지점 */
 .sac-v2 .v2-flagmt__nowline {
-  stroke: rgba(255, 255, 255, 0.8);
+  stroke: var(--v2-accent, #5b8dff);
   stroke-width: 1.2;
 }
 .sac-v2 .v2-flagmt__nowdot {
-  fill: #ffffff;
+  fill: var(--v2-accent, #5b8dff);
 }
 /* 봉우리의 작은 점 */
 .sac-v2 .v2-flagmt__peakdot {
-  fill: #ffffff;
+  fill: var(--v2-text-strong, #05070d);
 }
 .sac-v2 .v2-flagmt__pole {
-  stroke: #ffffff;
+  stroke: var(--v2-text-strong, #05070d);
   stroke-width: 1.2;
   stroke-linecap: round;
 }

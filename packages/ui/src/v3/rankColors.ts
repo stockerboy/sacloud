@@ -28,12 +28,20 @@ import { type RateTone, rateTone } from '../common/rate'
 
 /* ── 1) 등수 · 닉네임 색상 ───────────────────────────── */
 
+/**
+ * ⚠ ★2026-09-22 — 흰 바탕 글자색으로★ (사장님: 서플라이 투톤 지시).
+ *   전부 ★글자색으로만★ 쓰인다(위 사용 예 참고) — 흰 카드 위에서 `top20`(노랑)과
+ *   `rest`(하양)는 그대로 두면 ★글자가 안 보인다.★ 색의 뜻(빨강·노랑·파랑·초록·«평범»)은
+ *   그대로 두고 ★글자로 읽히는 진하기★ 만 낮춘다. 옛 값(다크 배경용)은 지우지 않고
+ *   여기 남긴다 (`CLAUDE.md` 1-4): top3 #ff4d4d(그대로 둬도 읽힘) · top20 #ffd83d ·
+ *   top40 #5b9dff(그대로 둬도 읽힘) · top100 #22c55e(그대로 둬도 읽힘) · rest #ffffff
+ */
 export const RANK_COLORS = {
   top3:   '#ff4d4d', // 1~3위      빨강
-  top20:  '#ffd83d', // 4~20위     노랑
+  top20:  '#b8860b', // 4~20위     노랑(흰 바탕용 진한 금색)
   top40:  '#5b9dff', // 21~40위    파랑
   top100: '#22c55e', // 41~100위   초록
-  rest:   '#ffffff', // 101위~     하양
+  rest:   '#1c2233', // 101위~     — 흰 바탕 기본 글자색
 } as const;
 
 /** 등수 색 이름 → 이 파일의 색. ★경계는 여기 없다★ — 계약이 이름을 정해 준다 */
@@ -139,7 +147,7 @@ export function rankColorHexAxis(rank: number, isDuel = false): string {
  */
 export const PLAYER_HEX_STEPS: readonly (readonly [number, string])[] = [
   [10, '#ff0033'], //  1 ~  10위   강렬한 빨강
-  [50, '#ffd83d'], // 11 ~  50위   노랑
+  [50, '#b8860b'], // 11 ~  50위   ⚠2026-09-22 흰바탕용, 옛값 #ffd83d — 1-4
   [100, '#5b9dff'], // 51 ~ 100위   파랑
 ] as const
 
@@ -156,7 +164,7 @@ export const PLAYER_HEX_STEPS: readonly (readonly [number, string])[] = [
  */
 export const PLAYER_HEX_STEPS_SMALL: readonly (readonly [number, string])[] = [
   [5, '#ff0033'], //  1 ~  5위   강렬한 빨강
-  [10, '#ffd83d'], //  6 ~ 10위   노랑
+  [10, '#b8860b'], //  6 ~ 10위   ⚠2026-09-22 흰바탕용, 옛값 #ffd83d — 1-4
   [20, '#5b9dff'], // 11 ~ 20위   파랑
 ] as const
 
@@ -184,14 +192,15 @@ export const nameColor = rankColor;
 
 /* ── 2) 수치 색상 ────────────────────────────────────── */
 
+/* ⚠ 2026-09-22 흰 바탕용. 옛 값(다크): white #ffffff · yellow #f5c518 — 1-4 */
 export const STAT_COLORS = {
   red:    '#e01b24', // ~39.9
-  white:  '#ffffff', // 40 ~ 49.9
+  white:  '#1c2233', // 40 ~ 49.9 — 흰 바탕 기본 글자색
   green:  '#22c55e', // 50 ~ 54.9
   /* ★2026-09-11 사장님: «갈색 숫자색 좀 밝은 갈색으로»★. 옛 값 #a06a35 */
   brown:  '#c08a5a', // 55 ~ 59.9
   blue:   '#5b8dff', // 60 ~ 64.9
-  yellow: '#f5c518', // 65 ~ 100
+  yellow: '#b8860b', // 65 ~ 100 — 흰 바탕용 진한 금색
 } as const;
 
 /**
@@ -252,14 +261,14 @@ export const FLOOR_STEPS: readonly (readonly [number, string])[] = [
   [46, '#ff0033'], // 46층 ~      불빨강
   [44, '#ff2d2d'], // 44 ~ 45.9   빨강
   [42, '#ff8a3d'], // 42 ~ 43.9   주황
-  [40, '#ffd83d'], // 40 ~ 41.9   노랑
+  [40, '#b8860b'], // 40 ~ 41.9   ⚠2026-09-22 흰바탕용, 옛값 #ffd83d — 1-4
   [38, '#ff6fb5'], // 38 ~ 39.9   분홍
   [36, '#a78bfa'], // 36 ~ 37.9   보라
   [34, '#5b8dff'], // 34 ~ 35.9   파랑
   [32, '#63d9ff'], // 32 ~ 33.9   하늘
   [30, '#a3e635'], // 30 ~ 31.9   연두
   [28, '#22c55e'], // 28 ~ 29.9   초록
-  [26, '#ffffff'], // 26 ~ 27.9   하양
+  [26, '#1c2233'], // 26 ~ 27.9   ⚠2026-09-22 흰바탕용, 옛값(다크) #ffffff — 1-4
 ] as const;
 
 /** 26층 아래 — 아직 표본이 거의 없는 자리 */
@@ -279,10 +288,10 @@ export function floorColor(score: number | null | undefined): string {
 /** ★옛 판★ — 5층 단위 (45 빨강 · 40 노랑 · 35 하늘 · 30 초록 · 그 아래 하양). 지우지 않는다 */
 export const FLOOR_COLORS_V1 = {
   red:    '#ff2d2d',
-  yellow: '#ffd83d',
+  yellow: '#b8860b', // ⚠2026-09-22 흰바탕용, 옛값 #ffd83d — 1-4
   sky:    '#63d9ff',
   green:  '#22c55e',
-  plain:  '#ffffff',
+  plain:  '#1c2233', // ⚠2026-09-22 흰바탕용, 옛값(다크) #ffffff — 1-4
 } as const;
 
 export function floorColorV1(score: number | null | undefined): string {

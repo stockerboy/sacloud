@@ -5,6 +5,15 @@
  * 새 클랜이 들어오면 scratchpad/theme.mjs 를 다시 돌려 이 파일을 갱신한다.
  * 값의 뜻은 CLAN_THEME_GUIDE.md 와 같다 (light·main·deep·edge·ink·rgb).
  * ⚠ 마크가 없거나 색을 못 뽑은 클랜은 없다 — 화면은 기본색(FALLBACK)으로 떨어진다.
+ *
+ * ⚠ ★2026-09-22 — 클랜명 글자는 `.ink` 대신 `.deep` 을 쓴다★ (투톤 전환).
+ *   `.ink` 는 ★다크 남색 카드용 밝은 색★ 이다(403곳 전부 옅은 톤 — 예:
+ *   FALLBACK 의 ink #dbe3f7). 흰 카드에서 글자로 쓰면 안 보인다.
+ *   `.deep` 은 반대로 ★어떤 클랜이든 진한 색★ 이라 흰 바탕 글자에 맞는다.
+ *   ★이 파일(403개 데이터)은 한 글자도 안 고쳤다★ (`CLAUDE.md` 1-4) — 부르는 쪽
+ *   (`ClanCardV3` · `ClanDetailV3` · `H2HChartV3` · `PlayerBandV3` ·
+ *   `PlayerDetailV3` · `PlayerHeaderV3`)에서만 `.ink` → `.deep` 으로 바꿨다.
+ *   되돌리려면 그 여섯 파일의 `.deep` 을 `.ink` 로 되돌리면 된다.
  */
 
 export interface ClanTheme { light: string; main: string; deep: string; edge: string; ink: string; rgb: string }

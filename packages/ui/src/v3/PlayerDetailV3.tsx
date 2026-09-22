@@ -731,7 +731,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
       {teams.map((t) => (
         /* ★이긴 팀 하늘색 · 진 팀 빨강★ (2026-09-12 사장님) */
         <div key={t.side} className={t.won ? 'v3-board-win' : 'v3-board-lose'} style={{ border: `1px solid ${t.won ? WIN_LOSS.winLine : WIN_LOSS.loseLine}`, borderRadius: 8, background: t.won ? WIN_LOSS.winBg : WIN_LOSS.loseBg }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, overflow: 'hidden', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, overflow: 'hidden', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.deep}` }}>
             <MarkCircle clan={t.snap.clan} size={22} />
             {/* ★넘치면 이름이 줄어든다★ (2026-09-12 사장님: «저 버튼이 튀어나가지 않게해줘»).
                 minWidth:0 이 없으면 flex 칸이 안 줄어들어 단추가 화면 밖으로 밀린다 */}
@@ -1112,7 +1112,7 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
                 style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer', border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, background: V3.card, padding: '8px 12px' }}
               >
                 <MarkCircle clan={data.clan} size={18} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.player.name}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: theme.deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.player.name}</span>
                 <span style={{ fontSize: 9.5, color: '#3a4560', flex: 'none' }}>VS</span>
                 {tiered ? (
                   <TierText division={r.tier} leagueCategory={data.league.category} size={11} />
@@ -1141,11 +1141,11 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
             <div key={r.tier} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, background: V3.card, padding: '12px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <MarkCircle clan={data.clan} size={22} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.player.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: theme.deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.player.name}</span>
                 <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
                 {opp ? (
                   <>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: clanThemeOf(opp.clan.slug).ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opp.clan.name}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: clanThemeOf(opp.clan.slug).deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opp.clan.name}</span>
                     <MarkCircle clan={opp.clan} size={22} />
                     <div style={spacerStyle} />
                     <span onClick={() => setPicked((p) => ({ ...p, [r.tier]: null }))} style={{ fontSize: 10.5, color: V3.textGhost, cursor: 'pointer', whiteSpace: 'nowrap' }}>구간 전체</span>

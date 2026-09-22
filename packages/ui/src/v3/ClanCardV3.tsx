@@ -243,7 +243,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
         <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <MarkCircle clan={data.clan} size={42} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-            <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.ink, textShadow: `0 0 16px ${accent ?? theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+            <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${accent ?? theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
               {data.clan.name}
             </span>
             <span style={{ fontSize: 11, color: '#6f93b4', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
@@ -397,7 +397,7 @@ function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme })
             style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto', alignItems: 'center', gap: 7, padding: '5px 2px', borderTop: index === 0 ? 'none' : '1px solid #18222f' }}
           >
             {row ? <MarkCircle clan={data.clan} size={18} /> : <span aria-hidden style={{ width: 18, height: 18 }} />}
-            <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: row ? theme.ink : V3.textGhost2 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: row ? theme.deep : V3.textGhost2 }}>
               {row ? row.player.name : '없음'}
             </span>
             <span style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', color: row ? (weapon === 1 ? V3.redSoft : V3.textDim) : V3.textGhost2 }}>

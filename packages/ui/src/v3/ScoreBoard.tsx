@@ -74,7 +74,7 @@ export function ScoreBoard({ detail, side }: { detail: MatchDetail; side: 'red' 
           borderRadius: 6,
           fontSize: 12.5,
           fontWeight: 700,
-          color: open ? '#ffe89a' : V3.textDim,
+          color: open ? '#8a6a12' : V3.textDim, /* ⚠2026-09-22 흰카드용, 옛값(다크) #ffe89a — 1-4 */
           border: `1px solid ${open ? V3.gold : V3.rowDivider}`,
           background: open ? 'rgba(255,216,61,.10)' : 'transparent',
         }}
@@ -130,10 +130,10 @@ function Head() {
         gridTemplateColumns: COLUMNS,
         gap: 4,
         padding: '6px 11px',
-        background: 'rgba(255,255,255,.03)',
+        background: V3.rowDivider2, /* ⚠2026-09-22 흰카드용, 옛값(다크) rgba(255,255,255,.03) — 1-4 */
         fontSize: 9.5,
         fontWeight: 700,
-        color: '#3f4c66',
+        color: V3.textMuted,
         letterSpacing: '.04em',
         whiteSpace: 'nowrap',
       }}
@@ -171,8 +171,8 @@ function Group({
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: '.06em',
-          color: '#3f4c66',
-          background: 'rgba(255,255,255,.015)',
+          color: V3.textMuted,
+          background: V3.rowDivider2, /* ⚠2026-09-22 흰카드용, 옛값(다크) rgba(255,255,255,.015) — 1-4 */
         }}
       >
         {label}
@@ -188,7 +188,8 @@ function Row({ row, mvp, dim }: { row: MatchPlayerStat; mvp: boolean; dim: boole
   const p = row.score_parts
   if (p === null) return null
   /* 0 은 흐리게 — 눈이 ★값이 있는 칸★ 으로 가게 한다 */
-  const tone = (n: number): string => (n === 0 ? '#3f4c66' : n < 0 ? '#ff6b72' : V3.text)
+  /* ⚠ 2026-09-22 흰 카드용. 옛 값(다크, 0일 때 흐림) #3f4c66 — 1-4 */
+  const tone = (n: number): string => (n === 0 ? V3.textGhost : n < 0 ? '#ff6b72' : V3.text)
   const signed = (n: number): string => (n === 0 ? '0' : n > 0 ? `+${n}` : String(n))
   return (
     <div

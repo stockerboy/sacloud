@@ -118,7 +118,7 @@ function TierStrip({ data, h2h, division, selected, onSelect, tierClans }: { dat
       <div className="v3-tier-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', flexWrap: 'nowrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
           <MarkCircle clan={data.clan} size={30} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap' }}>{data.clan.name}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: theme.deep, whiteSpace: 'nowrap' }}>{data.clan.name}</span>
         </span>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, flex: 'none', whiteSpace: 'nowrap' }}>
           <span style={{ fontSize: 12, color: V3.textFaint }}>vs</span>
@@ -214,10 +214,10 @@ function H2HChartLegacy({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHead
         <g>
           <line x1={H2H_X0} y1={312} x2={H2H_X0 + 16} y2={312} stroke="#7fa9ff" strokeWidth={3} filter="url(#h2hGlowB)" />
           <line x1={H2H_X0} y1={312} x2={H2H_X0 + 16} y2={312} stroke="#dbe8ff" strokeWidth={1.6} />
-          <text x={H2H_X0 + 22} y={321} fill={theme.ink} fontSize="15">{mine.name}</text>
+          <text x={H2H_X0 + 22} y={321} fill={theme.deep} fontSize="15">{mine.name}</text>
           <line x1={H2H_X0 + 150} y1={312} x2={H2H_X0 + 166} y2={312} stroke={oppTheme.deep} strokeWidth={3} filter="url(#h2hGlowR)" />
           <line x1={H2H_X0 + 150} y1={312} x2={H2H_X0 + 166} y2={312} stroke={oppTheme.main} strokeWidth={1.6} />
-          <text x={H2H_X0 + 172} y={321} fill={oppTheme.ink} fontSize="15">{opp.clan.name}</text>
+          <text x={H2H_X0 + 172} y={321} fill={oppTheme.deep} fontSize="15">{opp.clan.name}</text>
         </g>
       </svg>
     </div>
@@ -434,7 +434,7 @@ function Scoreboard({
       {teams.map((t) => (
         /* ★이긴 팀 하늘색 · 진 팀 빨강★ (2026-09-12 사장님) — 경기분석 그래프와 같은 색 */
         <div key={t.side} className={t.won ? 'v3-board-win' : 'v3-board-lose'} style={{ border: `1px solid ${t.won ? WIN_LOSS.winLine : WIN_LOSS.loseLine}`, borderRadius: V3.radiusBlock, background: t.won ? WIN_LOSS.winBg : WIN_LOSS.loseBg }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, overflow: 'hidden', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.ink}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0, overflow: 'hidden', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider}`, borderLeft: `2px solid ${t.theme.deep}` }}>
             <MarkCircle clan={t.snap.clan} size={22} />
             {/* ★넘치면 이름이 줄어든다★ (2026-09-12 사장님: «저 버튼이 튀어나가지 않게해줘»).
                 minWidth:0 이 없으면 flex 칸이 안 줄어들어 단추가 화면 밖으로 밀린다 */}
@@ -610,21 +610,21 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
         <span aria-hidden style={{ position: 'absolute', left: `${share}%`, top: 0, bottom: 0, width: 1, background: 'linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,.04))', pointerEvents: 'none' }} />
         <span className="v3-setscore-team" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: theme.ink, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{data.clan.name}</span>
+            <span style={{ fontSize: 28, fontWeight: 900, color: theme.deep, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{data.clan.name}</span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}><TierText division={data.division} leagueCategory={data.league.category} size={11} />{data.rank !== null ? <span style={{ fontSize: 11, color: rankColor(data.rank) }}>{data.rank}위</span> : null}</span>
           </span>
           <MarkCircle clan={data.clan} size={52} className="v3-setscore-mark" />
         </span>
-        <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: theme.ink, letterSpacing: '-.02em' }}>{opp.win}</span>
+        <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: theme.deep, letterSpacing: '-.02em' }}>{opp.win}</span>
         <span className="v3-setscore-mid" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 88 }}>
           <span style={{ fontSize: 10.5, color: V3.textFaint, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>SET SCORE</span>
           <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>Cloud0 시즌</span>
         </span>
-        <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: oppTheme.ink, letterSpacing: '-.02em' }}>{opp.lose}</span>
+        <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: oppTheme.deep, letterSpacing: '-.02em' }}>{opp.lose}</span>
         <span className="v3-setscore-team" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
           <MarkCircle clan={oppClan} size={52} className="v3-setscore-mark" />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: oppTheme.ink, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{opp.clan.name}</span>
+            <span style={{ fontSize: 28, fontWeight: 900, color: oppTheme.deep, letterSpacing: '-.01em', whiteSpace: 'nowrap' }}>{opp.clan.name}</span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}><TierText division={opp.division} leagueCategory={data.league.category} size={11} /></span>
           </span>
         </span>
@@ -635,8 +635,8 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           <div style={{ width: `${100 - share}%`, borderTop: `2px solid ${oppTheme.edge}`, background: `linear-gradient(260deg, ${oppTheme.light}6b, ${oppTheme.main}3d 46%, ${oppTheme.deep}1a)` }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 7 }}>
-          <span style={{ fontSize: 11.5, color: '#8f9bb5', whiteSpace: 'nowrap' }}>SET WIN RATE <span style={{ fontWeight: 700, color: theme.ink }}>{total > 0 ? `${share.toFixed(1)}%` : '-'}</span></span>
-          <span style={{ fontSize: 11.5, color: '#8f9bb5', whiteSpace: 'nowrap' }}><span style={{ fontWeight: 700, color: oppTheme.ink }}>{total > 0 ? `${(100 - share).toFixed(1)}%` : '-'}</span> · {fmt(total)}전 기준</span>
+          <span style={{ fontSize: 11.5, color: '#8f9bb5', whiteSpace: 'nowrap' }}>SET WIN RATE <span style={{ fontWeight: 700, color: theme.deep }}>{total > 0 ? `${share.toFixed(1)}%` : '-'}</span></span>
+          <span style={{ fontSize: 11.5, color: '#8f9bb5', whiteSpace: 'nowrap' }}><span style={{ fontWeight: 700, color: oppTheme.deep }}>{total > 0 ? `${(100 - share).toFixed(1)}%` : '-'}</span> · {fmt(total)}전 기준</span>
         </div>
       </div>
       {H2H_CHART_LEGACY ? (
@@ -683,9 +683,9 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                   <MarkCircle clan={data.clan} size={20} />
-                  <span style={{ fontSize: 12.5, fontWeight: 500, color: theme.ink, whiteSpace: 'nowrap' }}>{data.clan.name}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 500, color: theme.deep, whiteSpace: 'nowrap' }}>{data.clan.name}</span>
                   <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
-                  <span style={{ fontSize: 12.5, fontWeight: 500, color: oppTheme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opp.clan.name}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 500, color: oppTheme.deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opp.clan.name}</span>
                   <MarkCircle clan={oppClan} size={20} />
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', minWidth: 0, overflow: 'hidden' }}>
@@ -940,7 +940,7 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
                 style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, cursor: 'pointer', border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, background: V3.card, padding: '8px 12px' }}
               >
                 <MarkCircle clan={data.clan} size={18} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: theme.deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
                 <span style={{ fontSize: 9.5, color: '#3a4560', flex: 'none' }}>VS</span>
                 {tiered ? (
                   <TierText division={t} leagueCategory={data.league.category} size={11} />
@@ -964,11 +964,11 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
             <div key={t} style={{ border: `1px solid ${V3.cardBorder}`, borderRadius: V3.radiusCard, background: V3.card, padding: '12px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <MarkCircle clan={data.clan} size={22} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: theme.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: theme.deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.clan.name}</span>
                 <span style={{ fontSize: 10.5, color: '#3a4560', flex: 'none' }}>VS</span>
                 {pickedClan ? (
                   <>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: clanThemeOf(pickedClan.clan.slug).ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pickedClan.clan.name}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: clanThemeOf(pickedClan.clan.slug).deep, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pickedClan.clan.name}</span>
                     <MarkCircle clan={pickedClan.clan} size={22} />
                     <div style={spacerStyle} />
                     <span onClick={() => onSelect(null)} style={{ fontSize: 10.5, color: V3.textGhost, cursor: 'pointer', whiteSpace: 'nowrap' }}>구간 전체</span>

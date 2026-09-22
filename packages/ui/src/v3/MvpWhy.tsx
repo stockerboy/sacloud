@@ -139,7 +139,7 @@ function RoundsText({
 }
 
 /** 전반/후반 글자색 — 금색(라운드 숫자)보다 조용하게 둔다 */
-const HALF_COLOR = '#9aa6bf'
+const HALF_COLOR = V3.textDim
 
 /**
  * ★부호를 한 번만 붙인다★ (2026-09-20 사장님: 「왜 +-로 돼있어 선짤이」).
@@ -203,8 +203,8 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
     <div style={{ margin: '10px 14px 14px', border: `1px solid ${V3.gold}`, borderRadius: 3, background: 'linear-gradient(180deg, rgba(255,216,61,.08), rgba(255,216,61,.02))', padding: '11px 13px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.1em', color: V3.gold }}>MVP</span>
-        <span style={{ fontSize: 15, fontWeight: 800, color: '#ffe89a' }}>{name}</span>
-        <span style={{ fontSize: 11, color: '#6b7794' }}>왜 MVP 인가</span>
+        <span style={{ fontSize: 15, fontWeight: 800, color: '#8a6a12' }}>{name}</span>
+        <span style={{ fontSize: 11, color: V3.textMuted }}>왜 MVP 인가</span>
       </div>
 
       {/*
@@ -212,10 +212,10 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
         ⚠ ★없는 말을 지어내지 않는다★ — 가장 크게 번 줄의 이름을 그대로 쓴다.
       */}
       {scored.length > 0 && scored[0] !== undefined ? (
-        <p style={{ margin: '5px 0 0', fontSize: 13, fontWeight: 700, color: '#ffe89a' }}>
+        <p style={{ margin: '5px 0 0', fontSize: 13, fontWeight: 700, color: '#8a6a12' }}>
           {MVP_WHY_LABEL[scored[0].key] ?? scored[0].key}
           {scored[0].rounds.length > 1 ? ` ${scored[0].rounds.length}회` : ''}
-          <span style={{ color: '#9aa6bf', fontWeight: 400 }}> · 합 {signed(total)}점</span>
+          <span style={{ color: V3.textDim, fontWeight: 400 }}> · 합 {signed(total)}점</span>
         </p>
       ) : null}
 
@@ -230,24 +230,24 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
                 textAlign: 'right',
                 whiteSpace: 'nowrap',
                 fontVariantNumeric: 'tabular-nums',
-                color: r.points < 0 ? MATCH_ROUND_COLOR : '#e2e5ee',
+                color: r.points < 0 ? MATCH_ROUND_COLOR : V3.textStrong,
               }}
             >
               {signed(r.points)}
             </span>
-            <span style={{ color: '#9aa6bf', wordBreak: 'keep-all' }}>{MVP_WHY_LABEL[r.key] ?? r.key}</span>
-            <span style={{ fontSize: 10.5, color: '#6b7794', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ color: V3.textDim, wordBreak: 'keep-all' }}>{MVP_WHY_LABEL[r.key] ?? r.key}</span>
+            <span style={{ fontSize: 10.5, color: V3.textMuted, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
               <RoundsText rounds={r.rounds} last={lastRound} secondHalfFrom={detail.second_half_from ?? null} />
             </span>
           </Fragment>
         ))}
         {scenes.length > 0 ? (
           <Fragment>
-            <span style={{ fontSize: 13, fontWeight: 800, textAlign: 'right', color: '#4a5878' }}>·</span>
-            <span style={{ color: '#6b7794', wordBreak: 'keep-all' }}>
+            <span style={{ fontSize: 13, fontWeight: 800, textAlign: 'right', color: V3.textFaint }}>·</span>
+            <span style={{ color: V3.textMuted, wordBreak: 'keep-all' }}>
               {scenes.map((r) => MVP_WHY_LABEL[r.key] ?? r.key).join(' · ')}
             </span>
-            <span style={{ fontSize: 10.5, color: '#4a5878', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
               <RoundsText
                 rounds={[...new Set(scenes.flatMap((r) => r.rounds))].sort((a, b) => a - b)}
                 last={lastRound}
@@ -257,7 +257,7 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
           </Fragment>
         ) : null}
       </div>
-      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: '#6b7794' }}>
+      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: V3.textMuted }}>
         평범한 1점짜리 라플킬은 빼고, 값이 큰 것만 적었습니다.
       </p>
     </div>

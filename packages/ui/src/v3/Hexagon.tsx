@@ -48,8 +48,11 @@ export interface HexOverlay {
   label: string
 }
 
-/** 겹쳐 그리는 선 색 — 주인은 보라 그라데이션, 상대는 ★청록 한 색★ 이라 헷갈리지 않는다 */
-const OVERLAY_INK = '#8ff0ff'
+/**
+ * 겹쳐 그리는 선 색 — 주인은 보라 그라데이션, 상대는 ★청록 한 색★ 이라 헷갈리지 않는다.
+ * ⚠ 2026-09-22 흰 카드용으로 진하게. 옛 값(다크 카드용 옅은 하늘빛) '#8ff0ff' — 지우지 않는다 (1-4)
+ */
+const OVERLAY_INK = '#0891b2'
 
 export function Hexagon({
   axes,
@@ -120,17 +123,18 @@ export function Hexagon({
           </feMerge>
         </filter>
       </defs>
+      {/* ⚠ 2026-09-22 흰 카드용 옅은 회색 눈금. 옛 값(다크): major #4a5c88 · minor/spoke #2c3a5c — 1-4 */}
       {RINGS.map((v) => (
         <polygon
           key={v}
           points={Array.from({ length: 6 }, (_, i) => hexPoint(i, v / 100).join(',')).join(' ')}
           fill="none"
-          stroke={v % 50 === 0 ? '#4a5c88' : '#2c3a5c'}
+          stroke={v % 50 === 0 ? '#c4cbdd' : '#e3e6ee'}
           strokeWidth={v % 50 === 0 ? 1.2 : 0.9}
         />
       ))}
       {HEX_SPOKES.map(([x, y], i) => (
-        <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#2c3a5c" strokeWidth={0.9} />
+        <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#e3e6ee" strokeWidth={0.9} />
       ))}
       {/* 채움은 테두리가 한 바퀴 돈 뒤에 스며든다 */}
       <polygon points={area} fill={`url(#${id}Fill)`} stroke="none" opacity={Math.max(0, (grow - 0.45) / 0.55)} />
@@ -149,7 +153,7 @@ export function Hexagon({
       {RINGS.filter((v) => v % 20 === 0).map((v) => {
         const [x, y] = hexPoint(0, v / 100)
         return (
-          <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="700" fill="#c7d0e6" textAnchor="start">
+          <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="700" fill={V3.textFaint} textAnchor="start">{/* ⚠ 2026-09-22 흰 카드용. 옛 값(다크) #c7d0e6 — 1-4 */}
             {v}
           </text>
         )
@@ -192,7 +196,8 @@ export function Hexagon({
         const drop = two ? 12 : 0
         return (
           <g key={`${a.label}-${i}`}>
-            <text x={x} y={y} textAnchor={anchor} fontSize={a.strong ? 13 : 12} fontWeight="700" fill={a.strong ? '#e8eeff' : V3.textMuted}>
+            {/* ⚠ 2026-09-22 흰 카드용. strong 옛 값(다크) #e8eeff — 1-4 */}
+            <text x={x} y={y} textAnchor={anchor} fontSize={a.strong ? 13 : 12} fontWeight="700" fill={a.strong ? V3.textStrong : V3.textMuted}>
               {two ? (
                 <>
                   {/* 첫 줄은 한 글자만큼 줄여 68px 안에 들인다 */}

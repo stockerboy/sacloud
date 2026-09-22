@@ -120,35 +120,35 @@
   /* ★2026-09-10 — 남색으로 갈아탔다★ (사장님: «기존 검정색 배경 아예 지워버리고»).
      값은 사장님이 사진으로 지목한 아티팩트(`시즌0 랭킹`)에서 그대로 가져왔다.
      ⚠ 옛 값: #303038 (그 앞은 #060505 «적진») */
-  --color-page: #0c1526;
+  --color-page: #f4f5f8; /* ⚠2026-09-22 흰바탕용, 옛값(다크남색) #0c1526 — 1-4 */
   /** 카드 · 표 면 */
   /* ⚠ 옛 값: #2c304c */
-  --color-card: #121c2f;
+  --color-card: #ffffff; /* ⚠2026-09-22 흰바탕용, 옛값 #121c2f — 1-4 */
   /** 한 단 올린 면 — 표 머리 · 강조 행 · hover 면 [신규] */
   /* ⚠ 옛 값: #3a4067 */
-  --color-card-2: #152036;
+  --color-card-2: #eef0f5; /* ⚠2026-09-22 흰바탕용, 옛값 #152036 — 1-4 */
 
   /* ------------------------------------------------------------------ 선 --- */
   /** 기본 선 */
   /* ⚠ 옛 값: #454b73 */
-  --color-line: #1e2a42;
+  --color-line: #e3e6ee; /* ⚠2026-09-22 흰바탕용, 옛값 #1e2a42 — 1-4 */
   /** 아주 옅은 선 — 표 행 구분 [신규] */
   /* ⚠ 옛 값: #3a4067 */
-  --color-line-soft: #18233a;
+  --color-line-soft: #edeff4; /* ⚠2026-09-22 흰바탕용, 옛값 #18233a — 1-4 */
   /** 옛 이름. `--color-line` 과 같은 값으로 수렴시켰다 */
   /* ⚠ 옛 값: #454b73 */
-  --color-divider: #1b2537;
+  --color-divider: #e3e6ee; /* ⚠2026-09-22 흰바탕용, 옛값 #1b2537 — 1-4 */
 
   /* ---------------------------------------------------------------- 글자 --- */
   /** 본문 글자 [신규] */
   /* ⚠ 옛 값: #d9dbe4 */
-  --color-text: #e8eaf2;
+  --color-text: #1c2233; /* ⚠2026-09-22 흰바탕용, 옛값 #e8eaf2 — 1-4 */
   /** 제목 */
   /* ⚠ 옛 값: #f2f4f8 */
-  --color-text-strong: #ffffff;
+  --color-text-strong: #05070d; /* ⚠2026-09-22 흰바탕용, 옛값 #ffffff — 1-4 */
   /** 보조 글자 */
   /* ⚠ 옛 값: #a8aec2 */
-  --color-meta: #a4b0c8;
+  --color-meta: #5c6479; /* ⚠2026-09-22 흰바탕용, 옛값 #a4b0c8 — 1-4 */
   /**
    * 더 옅은 글자 [신규]
    *
@@ -171,7 +171,7 @@
    *   구분자 · 단위 · 장식용 글자 전용이다.
    */
   /* ⚠ 옛 값: #8f95af */
-  --color-faint: #7c88a4;
+  --color-faint: #96a0b5; /* ⚠2026-09-22 흰바탕용, 옛값 #7c88a4 — 1-4 */
 
   /* ------------------------------------------------- 순위 색 (2026-09-02) ---
    *
@@ -199,7 +199,7 @@
    */
   --color-rank-red: #ff4d4d;
   /** 1~10위 (옛 규칙) → 지금은 4~20위 */
-  --color-rank-gold: #ffd83d;
+  --color-rank-gold: #b8860b; /* ⚠2026-09-22 흰바탕용 진한 금색, 옛값 #ffd83d — 1-4 */
   /** 11~50위 */
   --color-rank-blue: #5b9dff;
   /** 51~100위 */
@@ -208,7 +208,7 @@
   /** 101~200위 */
   --color-rank-green: #22c55e;
   /** 201위부터 */
-  --color-rank-plain: #f2f4f8;
+  --color-rank-plain: #1c2233; /* ⚠2026-09-22 흰바탕용, 옛값(다크용 흰글자) #f2f4f8 — 1-4 */
 
   /* ---------------------------------------------------------------- 강조 --- */
   /**
@@ -310,18 +310,18 @@
   --color-gold: #c9a24e;
 
   /* ------------------------------------------------------------ 상단 GNB --- */
-  --color-nav-fg: #d9dbe4;
+  --color-nav-fg: #1c2233; /* ⚠2026-09-22 흰바탕용(ProfileHeader 본문 글자), 옛값 #d9dbe4 — 1-4 */
   /** 대표 리그 항목이 현재 리그일 때의 배경 */
   --color-nav-active: #1a2438;
 
   /* -------------------------------------------------------------- 통합검색 --- */
-  --color-selector: #0e1728;
-  --color-selector-fg: #d9dbe4;
+  --color-selector: #ffffff; /* ⚠2026-09-22 흰바탕용, 옛값 #0e1728 — 1-4 */
+  --color-selector-fg: #1c2233; /* ⚠2026-09-22 흰바탕용, 옛값 #d9dbe4 — 1-4 */
   /** hover 는 면을 한 단 올리고, 가장자리에만 진홍을 준다 */
-  --color-selector-hover: #16203a;
+  --color-selector-hover: #eef0f5; /* ⚠2026-09-22 흰바탕용, 옛값 #16203a — 1-4 */
   --color-selector-hover-edge: #5b8dff;
-  --color-input-fg: #d9dbe4;
-  --color-input-placeholder: #7b8199;
+  --color-input-fg: #1c2233; /* ⚠2026-09-22 흰바탕용, 옛값 #d9dbe4 — 1-4 */
+  --color-input-placeholder: #96a0b5; /* ⚠2026-09-22 흰바탕용, 옛값 #7b8199 — 1-4 */
 
   /* ------------------------------------------------------- 리그 · 랭킹 --- */
   /** 리그 서브내비 띠 */
@@ -333,43 +333,43 @@
    * **얼룩무늬(zebra)를 만들지 않는다.** 카드 면과 같은 값이라 행이 줄무늬로 보이지 않고,
    * 구분은 `--color-line-soft` 1px 선이 한다.
    */
-  --color-row: #121c2f;
+  --color-row: #ffffff; /* ⚠2026-09-22 흰바탕용, 옛값 #121c2f — 1-4 */
   /** `더 불러오기` — 채우지 말고 테두리로 쓴다 */
   --color-more: #5b8dff;
   /** 배지 (`공식` 등) */
-  --color-badge: #16203a;
+  --color-badge: #eef0f5; /* ⚠2026-09-22 흰바탕용, 옛값 #16203a — 1-4 */
   --color-badge-dot: #5b8dff;
   /** 탭 선택 상태 */
-  --color-tab-active: #16203a;
-  --color-tab-active-fg: #f2f4f8;
+  --color-tab-active: #eef0f5; /* ⚠2026-09-22 흰바탕용, 옛값 #16203a — 1-4 */
+  --color-tab-active-fg: #05070d; /* ⚠2026-09-22 흰바탕용, 옛값(다크용 흰글자) #f2f4f8 — 1-4 */
   --color-tab-underline: #5b8dff;
-  --color-tab-idle: #a8aec2;
+  --color-tab-idle: #96a0b5; /* ⚠2026-09-22 흰바탕용, 옛값 #a8aec2 — 1-4 */
   /** 리그 소개 본문 */
-  --color-lede: #a8aec2;
+  --color-lede: #5c6479; /* ⚠2026-09-22 흰바탕용, 옛값 #a8aec2 — 1-4 */
   /** 리그홈 헤더 배경 */
-  --color-league-header: #121c2f;
+  --color-league-header: #ffffff; /* ⚠2026-09-22 흰바탕용, 옛값 #121c2f — 1-4 */
   /** 즐겨찾기 (별) */
   --color-favorite: #5b8dff;
 
   /* ------------------------------------------------- 프로필 · 기록실 헤더 --- */
-  --color-player-header: #121c2f;
-  --color-clan-header: #121c2f;
-  --color-clan-header-line: #1e2a42;
+  --color-player-header: #ffffff; /* ⚠2026-09-22 흰바탕용, 옛값 #121c2f — 1-4 */
+  --color-clan-header: #ffffff; /* ⚠2026-09-22 흰바탕용, 옛값 #121c2f — 1-4 */
+  --color-clan-header-line: #e3e6ee; /* ⚠2026-09-22 흰바탕용, 옛값 #1e2a42 — 1-4 */
   /**
    * 버튼들.
    * `적진` 의 버튼은 채우지 않는다 — 면은 카드보다 한 단 올린 정도까지만,
    * 성격은 **테두리 색**이 만든다. 주요 동작(정보갱신/전적갱신)만 진홍 테두리를 갖는다.
    */
-  --color-refresh: #0e1a28;
+  --color-refresh: #eef0f5; /* ⚠2026-09-22 흰바탕용, 옛값 #0e1a28 — 1-4 */
   --color-refresh-border: #5b8dff;
-  --color-btn-neutral: #0e1a28;
-  --color-btn-neutral-border: #24384c;
-  --color-btn-fav: #0e1728;
-  --color-btn-fav-border: #24314c;
-  --color-btn-fav-dark: #0e1728;
-  --color-btn-fav-dark-border: #24314c;
+  --color-btn-neutral: #eef0f5; /* ⚠2026-09-22 흰바탕용, 옛값 #0e1a28 — 1-4 */
+  --color-btn-neutral-border: #dde1eb; /* ⚠2026-09-22 흰바탕용, 옛값 #24384c — 1-4 */
+  --color-btn-fav: #eef0f5; /* ⚠2026-09-22 흰바탕용, 옛값 #0e1728 — 1-4 */
+  --color-btn-fav-border: #dde1eb; /* ⚠2026-09-22 흰바탕용, 옛값 #24314c — 1-4 */
+  --color-btn-fav-dark: #eef0f5; /* ⚠2026-09-22 흰바탕용, 옛값 #0e1728 — 1-4 */
+  --color-btn-fav-dark-border: #dde1eb; /* ⚠2026-09-22 흰바탕용, 옛값 #24314c — 1-4 */
   /** 리그 참여 카드 글자 */
-  --color-card-text: #e8eaf2;
+  --color-card-text: #1c2233; /* ⚠2026-09-22 흰바탕용, 옛값 #e8eaf2 — 1-4 */
 
   /* ---------------------------------------------------------- 성적 등급 --- */
   /**
@@ -396,15 +396,15 @@
    * 셋을 다 칠하지 않는다 — ★맨 위 한 칸만 색이고 아래로 흐려진다.★
    * 무지개로 칠하면 셋 다 강조라 아무것도 강조가 아니게 된다 (4장).
    */
-  --color-tier-1: #8ff0ff;
-  --color-tier-2: #a8aec2;
-  --color-tier-3: #8f95af;
+  --color-tier-1: #0891b2; /* ⚠2026-09-22 흰바탕용 진한 청록, 옛값(다크용 옅은 하늘빛) #8ff0ff — 1-4 */
+  --color-tier-2: #5c6479; /* ⚠2026-09-22 흰바탕용, 옛값 #a8aec2 — 1-4 */
+  --color-tier-3: #767f96; /* ⚠2026-09-22 흰바탕용, 옛값 #8f95af — 1-4 */
 
   --color-rate-low: #ff3d3d;
   --color-rate-1: #02ab18;
   --color-rate-2: #f2711c;
   --color-rate-3: #2185d0;
-  --color-rate-4: #ffe30b;
+  --color-rate-4: #ff3d3d; /* ⚠2026-09-22 흰바탕 복귀 — 서플라이 원본은 밝은배경에서 빨강을 쓴다(rate-4-light와 같은 값). 다크 전용이던 노랑 #ffe30b 은 지우지 않는다 — 1-4 */
   --color-rate-4-light: #ff3d3d;
 
   /**
@@ -457,7 +457,7 @@
    */
   --color-online: #2ea043;
   --color-offline: #7b8199;
-  --color-lamp-off: #3a4067;
+  --color-lamp-off: #e3e6ee; /* ⚠2026-09-22 흰바탕용, 옛값(다크 바탕에 묻히던 색) #3a4067 — 1-4 */
 
   /* ------------------------------------------------------- 승 · 패 · 매치 --- */
   /**
@@ -485,12 +485,12 @@
    *   원본의 빨강(#ff3d3d)을 글자로 쓰면 3.94 라 4.5 를 못 넘는다. 한 칸 밝힌 값을 쓴다.
    *   면끼리는 바탕과 1.0x 차이라 **밝기가 아니라 색으로** 갈린다 — 그게 의도다.
    */
-  --color-win-bg: #22304f;
-  --color-win-line: #3d5590;
+  --color-win-bg: rgba(91,141,255,.08); /* ⚠2026-09-22 흰바탕용, 옛값(다크남색) #22304f — 1-4 */
+  --color-win-line: rgba(91,141,255,.30); /* ⚠2026-09-22 흰바탕용, 옛값 #3d5590 — 1-4 */
   --color-win-bar: #5c80e0;
   --color-win: #5c80e0;
-  --color-lose-bg: #3a2733;
-  --color-lose-line: #5a3a44;
+  --color-lose-bg: rgba(224,27,36,.06); /* ⚠2026-09-22 흰바탕용, 옛값(다크자주) #3a2733 — 1-4 */
+  --color-lose-line: rgba(224,27,36,.26); /* ⚠2026-09-22 흰바탕용, 옛값 #5a3a44 — 1-4 */
   --color-lose-bar: #f26a6a;
   --color-lose: #f26a6a;
 
@@ -521,9 +521,9 @@
   --color-num-lose: #ef4444;
 
   /** 기록실 우측 사이드 패널 */
-  --color-side: #2c304c;
-  --color-side-line: #454b73;
-  --color-side-meta: #a8aec2;
+  --color-side: #ffffff; /* ⚠2026-09-22 흰바탕용, 옛값 #2c304c — 1-4 */
+  --color-side-line: #e3e6ee; /* ⚠2026-09-22 흰바탕용, 옛값 #454b73 — 1-4 */
+  --color-side-meta: #5c6479; /* ⚠2026-09-22 흰바탕용, 옛값 #a8aec2 — 1-4 */
 
   /** MVP */
   --color-mvp: #5c80e0;
@@ -565,14 +565,14 @@
    * 성능: `filter` · `backdrop-filter` · `box-shadow` 를 쓰지 않는다.
    * 카드 한 장은 **그라데이션 한 겹**(`.holo-panel` 의 background-image)뿐이다.
    */
-  --color-holo-edge: rgba(226, 252, 255, 0.5);
-  --color-holo-edge-soft: rgba(226, 252, 255, 0.26);
+  --color-holo-edge: #e3e6ee; /* ⚠2026-09-22 흰카드용, 옛값(다크유리 밝은 테두리) rgba(226,252,255,.5) — 1-4 */
+  --color-holo-edge-soft: #edeff4; /* ⚠2026-09-22 흰카드용, 옛값 rgba(226,252,255,.26) — 1-4 */
   /** 유리판 안쪽 행 구분선 — `--color-line-soft` 자리를 대신한다 */
-  --color-holo-line: rgba(226, 252, 255, 0.12);
+  --color-holo-line: #edeff4; /* ⚠2026-09-22 흰카드용, 옛값 rgba(226,252,255,.12) — 1-4 */
   /** 면 (위 → 가운데 → 아래). 값을 바꾸면 위 ①② 의 대비 측정을 다시 해야 한다 */
-  --color-holo-face-1: rgba(120, 205, 255, 0.055);
-  --color-holo-face-2: rgba(100, 180, 235, 0.032);
-  --color-holo-face-3: rgba(80, 150, 200, 0.016);
+  --color-holo-face-1: rgba(16,24,40,.02); /* ⚠2026-09-22 흰카드용, 옛값(다크유리 파란빛 면) rgba(120,205,255,.055) — 1-4 */
+  --color-holo-face-2: rgba(16,24,40,.012); /* ⚠2026-09-22 흰카드용, 옛값 rgba(100,180,235,.032) — 1-4 */
+  --color-holo-face-3: rgba(16,24,40,.006); /* ⚠2026-09-22 흰카드용, 옛값 rgba(80,150,200,.016) — 1-4 */
 
   /* -------------------------------------------------------------- 게시판 --- */
   --color-board-nav: #2c304c;
@@ -586,7 +586,7 @@
   --color-vote-up: #5c80e0;
   --color-vote-down: #7b8199;
   /** 로그인 작성자 닉네임 — 익명(meta)보다 한 단 밝게 */
-  --color-writer: #d9dbe4;
+  --color-writer: #1c2233; /* ⚠2026-09-22 흰바탕용, 옛값 #d9dbe4 — 1-4 */
   --color-like-active: #5c80e0;
   /** 게시글 제목 옆 댓글 수 */
   --color-comment: #5c80e0;
@@ -980,9 +980,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/** 브라우저 기본 UI(스크롤바 · 폼 컨트롤)도 어두운 쪽으로 맞춘다 */
+/**
+ * ⚠ ★2026-09-22 — 밝은 쪽으로★ (사장님: 서플라이 투톤 지시 — 본문은 흰 바탕).
+ *
+ * ★O-041 「라이트 모드는 만들지 않는다」와 다른 이야기다★ — O-041 은 «전환 단추가 있는
+ * 두 모드 유지»를 막은 지시였다. 지금은 모드 전환이 아니라 ★사이트의 고정 배색 자체★를
+ * 서플라이처럼 두 톤(머리띠·탭바는 남색, 본문은 흰색)으로 바꾸는 것이다 — 모드는 여전히
+ * 하나뿐이다. 옛 값(다크)은 지우지 않는다 (`CLAUDE.md` 1-4).
+ */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 /**
@@ -2754,23 +2761,29 @@ body.sac-sky:has(.home-code) .sac-shell {
     drop-shadow(0 0 46px rgba(91, 141, 255, 0.18));
 }
 
-/* ── 구름 검색창 ──────────────────────────────────────────────────────────
-   ★동작은 한 줄도 안 바뀐다★ — 모서리와 바탕만 갈아끼운다.                    */
+/*
+ * ── 구름 검색창 ──────────────────────────────────────────────────────────
+ * ★동작은 한 줄도 안 바뀐다★ — 모서리와 바탕만 갈아끼운다.
+ *
+ * ⚠ ★2026-09-22 — 흰 바탕용으로★ (사장님: 서플라이 투톤). 홈 본문이 흰 바탕이 된
+ *   뒤로 다크 남색 알약이 혼자 튀었다 — 검색창도 본문 콘텐츠라 흰 카드로 맞춘다.
+ *   안의 글자·placeholder 는 `--color-text-strong`/`--color-faint` 변수를 그대로
+ *   쓰고 있어 ★이미 다크 글자로 따라왔다★ — 이 배경만 고치면 된다.
+ *   옛 값(다크 유리 알약)은 지우지 않는다 (`CLAUDE.md` 1-4):
+ *     border rgba(146,174,233,.22) · background linear-gradient(180deg,
+ *     rgba(30,40,66,.92),rgba(18,24,42,.94)) · box-shadow 0 10px 30px rgba(0,0,0,.36),
+ *     inset 0 1px 0 rgba(255,255,255,.06)
+ */
 .sb-cloud {
   border-radius: 999px;
-  border: 1px solid rgba(146, 174, 233, 0.22);
-  background:
-    linear-gradient(180deg, rgba(30, 40, 66, 0.92), rgba(18, 24, 42, 0.94));
-  box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.36),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid #e3e6ee;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(16, 24, 40, 0.08);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
 .sb-cloud--on {
-  border-color: rgba(91, 141, 255, 0.62);
-  box-shadow:
-    0 10px 34px rgba(91, 141, 255, 0.20),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(91, 141, 255, 0.55);
+  box-shadow: 0 4px 20px rgba(91, 141, 255, 0.16);
 }
 /*
  * ⚠ ★안쪽 조각에 모서리를 주는 것은 소용없다★ (2026-09-19 검수).

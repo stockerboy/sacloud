@@ -9,60 +9,54 @@
  */
 import type { CSSProperties } from 'react'
 
+/**
+ * ⚠ ★2026-09-22 — 서플라이 투톤으로★ (사장님, `v2/tokens.css` 와 같은 지시).
+ *
+ * 선수·클랜 상세는 이 `V3` 객체를 CSS 변수가 아니라 ★JS 값★ 으로 직접 쓴다 —
+ * `v2/tokens.css` 의 `--v2-*` 변수를 아무리 바꿔도 여기는 안 따라온다. 그래서
+ * 이 파일도 ★따로★ 흰 바탕용으로 뒤집는다. 값은 `v2/tokens.css` 의 새 팔레트와
+ * 맞췄다 — 두 층이 다른 흰색·다른 회색을 쓰면 화면마다 톤이 미묘하게 갈라진다.
+ *
+ * ⚠ ★옛 다크 남색 판은 지우지 않고 여기 남긴다★ (`CLAUDE.md` 1-4) —
+ *   pageBg 'radial-gradient(1200px 700px at 50% -8%,#142238 0%,#0c1526 42%,#070d1c 100%)'
+ *   bar 'linear-gradient(160deg,#0d1524,#080d18)' · barBorder #16202e
+ *   card 'radial-gradient(120% 90% at 0% 0%,rgba(122,162,255,.10),transparent 58%),
+ *         radial-gradient(95% 75% at 100% 0%,rgba(196,132,252,.075),transparent 52%),
+ *         linear-gradient(160deg,rgba(46,65,107,.58) 0%,rgba(32,48,82,.58) 58%)'
+ *   cardFlat 'radial-gradient(120% 90% at 0% 0%,rgba(122,162,255,.08),transparent 58%),
+ *             linear-gradient(160deg,rgba(40,57,95,.58),rgba(36,52,88,.58))'
+ *   cardBorder #3a4870 · divider #1b2537 · rowDivider #18233a · rowDivider2 #141d2c
+ *   plot #0a1220 · chip #0e1728 · chipBorder #24314c
+ *   text #e8eaf2 · textStrong #fff · textMuted #a4b0c8 · textDim #7c88a4
+ *   textFaint #6b7690 · textGhost #5c6a84 · textGhost2 #4e5b74
+ */
 export const V3 = {
-  pageBg: 'radial-gradient(1200px 700px at 50% -8%, #142238 0%, #0c1526 42%, #070d1c 100%)',
+  pageBg: 'radial-gradient(1200px 700px at 50% -8%, #ffffff 0%, #f4f5f8 42%, #eef0f5 100%)',
   bar: 'linear-gradient(160deg,#0d1524,#080d18)',
   barBorder: '#16202e',
   /**
-   * ⚠ ★2026-09-12 — 반투명으로★ (사장님: «모든 카드색을 반투명 네온으로 해
-   *   완전 무광 불투명이니까 뭔가 촌스러»). 옛 값은 불투명이었다 —
-   *   card 'linear-gradient(160deg,#152036 0%,#101a2c 58%)' · cardFlat '#111a2c'
+   * ★2026-09-22 — 흰 카드로 뒤집으며 빛무리·반투명 유리도 걷었다★.
+   *   다크 카드에서는 «반투명 네온 유리» 가 컨셉이었지만, 서플라이의 흰 카드는
+   *   납작한 단색이다. 흰 바탕 위에 파랑·보라 빛무리를 그대로 두면 얼룩으로
+   *   보이고, `backdrop-filter` 도 뒤가 이미 불투명 흰색이라 할 일이 없다
+   *   (`v2/tokens.css` 의 `.v2-panel` 과 같은 결정 — 2026-09-21 성능 이유로 걷었다).
    */
-  /* ⚠ 2026-09-13 — 바탕보다 확실히 밝게 (사장님: «벽에 칠해진 느낌»).
-     옛 값: rgba(21,32,54,.62) → rgba(16,26,44,.62) · flat rgba(17,26,44,.62) */
-  /**
-   * ⚠ ★2026-09-13 — 카드 바탕에 빛을 넣었다★ (사장님: «배경 색깔 너무 밋밋하지 않아?
-   *   카드 배경 디자인 이쁜걸로 바꿔봐 잘어울리는걸로 자유롭게»).
-   *
-   *   옛 값은 ★한 방향 그라데이션 하나★ 뿐이라 어느 카드나 똑같은 판때기였다 —
-   *   'linear-gradient(160deg,rgba(44,62,102,.58) 0%,rgba(32,48,82,.58) 58%)'
-   *
-   * ── 무엇을 깔았나 (겹 셋 · 위에서부터)
-   *   ① 왼쪽 위 ★푸른 빛무리★ — 창으로 빛이 드는 느낌. 제목·마크가 있는 자리라
-   *     거기가 밝아야 눈이 먼저 간다
-   *   ② 오른쪽 위 ★보랏빛★ — 육각형의 보라→분홍 그라데이션과 같은 계열이다.
-   *     새 색을 지어내지 않고 ★이미 화면에 있는 색★ 을 옅게 되울린다
-   *   ③ 바닥의 짙은 남색 — 옛 값 그대로다. 글자 대비는 여기서 나온다
-   *
-   * ── 왜 이 정도로 옅은가 (.10 / .07)
-   *   카드 위에는 ★숫자와 작은 글자★ 가 올라간다. 바탕이 조금만 밝아도 대비가 깎인다.
-   *   빛은 ★카드의 모서리★ 에서만 느껴지고 글자가 앉는 가운데는 그대로 어둡게 뒀다.
-   *
-   * ⚠ 겹을 `background` 한 줄에 넣는 이유 — 이 값은 ★인라인 style★ 로 들어간다.
-   *   가상요소(::before)를 쓸 수 없으니 여러 겹을 한 속성에 쌓는다.
-   */
-  card:
-    'radial-gradient(120% 90% at 0% 0%, rgba(122,162,255,.10), transparent 58%),' +
-    'radial-gradient(95% 75% at 100% 0%, rgba(196,132,252,.075), transparent 52%),' +
-    'linear-gradient(160deg,rgba(46,65,107,.58) 0%,rgba(32,48,82,.58) 58%)',
-  cardFlat:
-    'radial-gradient(120% 90% at 0% 0%, rgba(122,162,255,.08), transparent 58%),' +
-    'linear-gradient(160deg,rgba(40,57,95,.58),rgba(36,52,88,.58))',
-  /* 유리 가장자리 — 조금 더 밝게 (2026-09-13). 옛 값 #1e2a42 */
-  cardBorder: '#3a4870',
-  divider: '#1b2537',
-  rowDivider: '#18233a',
-  rowDivider2: '#141d2c',
-  plot: '#0a1220',
-  chip: '#0e1728',
-  chipBorder: '#24314c',
-  text: '#e8eaf2',
-  textStrong: '#ffffff',
-  textMuted: '#a4b0c8',
-  textDim: '#7c88a4',
-  textFaint: '#6b7690',
-  textGhost: '#5c6a84',
-  textGhost2: '#4e5b74',
+  card: '#ffffff',
+  cardFlat: '#ffffff',
+  cardBorder: '#e3e6ee',
+  divider: '#edeff4',
+  rowDivider: '#edeff4',
+  rowDivider2: '#f5f6f9',
+  plot: '#eef0f5',
+  chip: '#eef0f5',
+  chipBorder: '#dde1eb',
+  text: '#1c2233',
+  textStrong: '#05070d',
+  textMuted: '#5c6479',
+  textDim: '#767f96',
+  textFaint: '#96a0b5',
+  textGhost: '#b6bece',
+  textGhost2: '#ccd2e0',
   blue: '#5b8dff',
   blueSoft: '#7fa9ff',
   red: '#e01b24',
@@ -95,18 +89,21 @@ export const ASTRA_STYLE: CSSProperties = {
 export const CHAL_STYLE: CSSProperties = { color: '#a98a64', fontWeight: 500, letterSpacing: '.12em' }
 export const CHAL_NUM_COLOR = '#c2a07a'
 
-/** 카드 · 카드 머리 · 리본 — 시안 `s.card` 등 */
+/**
+ * ★카드 · 카드 머리 · 리본★ — 시안 `s.card` 등.
+ *
+ * ⚠ ★2026-09-22 — 흰 카드로 뒤집으며 흐림·짙은 그림자를 걷었다★. 흰 카드는
+ *   뒤가 이미 불투명해 `backdrop-filter` 가 할 일이 없고(성능 낭비), 짙은
+ *   그림자는 흰 바탕에서 먹구름으로 보인다. 옛 값은 지우지 않는다 (`CLAUDE.md` 1-4):
+ *     backdropFilter/WebkitBackdropFilter: 'blur(12px) saturate(1.2)'
+ *     boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.35)'
+ */
 export const cardStyle: CSSProperties = {
   background: V3.card,
-  /* 빛무리가 모서리 밖으로 새지 않게 (2026-09-13) */
   backgroundClip: 'padding-box',
-  /* ★반투명 유리★ (2026-09-12 사장님) — 뒤를 흐려서 글자가 안 묻히게 한다 */
-  backdropFilter: 'blur(12px) saturate(1.2)',
-  WebkitBackdropFilter: 'blur(12px) saturate(1.2)',
   border: `1px solid ${V3.cardBorder}`,
   borderRadius: V3.radiusCard,
-  /* ★떠 있게★ (2026-09-13 사장님: «벽에 칠해진 느낌») */
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.35)',
+  boxShadow: '0 1px 2px rgba(16,24,40,.06)',
 }
 export const cardHeadStyle: CSSProperties = {
   display: 'flex',
@@ -125,7 +122,10 @@ export const cardTitleStyle: CSSProperties = {
 }
 export const spacerStyle: CSSProperties = { flex: 1 }
 
-/** 필 탭 (리그 탭 · 선수 탭 · 클랜 탭 공용) */
+/**
+ * ★필 탭★ (리그 탭 · 선수 탭 · 클랜 탭 공용).
+ * ⚠ 2026-09-22 흰 바탕용. 옛 값(다크 — 켠 글자 흰색): color '#fff'/'#7c8092' — 1-4
+ */
 export function pillStyle(on: boolean): CSSProperties {
   return {
     display: 'flex',
@@ -135,15 +135,19 @@ export function pillStyle(on: boolean): CSSProperties {
     fontSize: 13.5,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
-    color: on ? '#fff' : '#7c8092',
+    color: on ? V3.blue : V3.textDim,
     fontWeight: on ? 700 : 400,
-    background: on ? 'rgba(91,141,255,.14)' : 'transparent',
+    background: on ? 'rgba(91,141,255,.12)' : 'transparent',
     boxShadow: on ? 'inset 0 0 0 1px rgba(91,141,255,.42)' : 'none',
     textDecoration: 'none',
   }
 }
 
-/** 작은 선택 칩 (구간 선택 · DAY/누적) */
+/**
+ * ★작은 선택 칩★ (구간 선택 · DAY/누적).
+ * ⚠ 2026-09-22 흰 바탕용. 옛 값(다크): color '#fff'/'#7c8092' ·
+ *   bg '#1a1c24'/'#111218' · border '#3a3d4a'/'#24262f' — 지우지 않는다 (1-4)
+ */
 export function chipStyle(on: boolean): CSSProperties {
   return {
     display: 'inline-flex',
@@ -154,10 +158,10 @@ export function chipStyle(on: boolean): CSSProperties {
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     fontSize: 11.5,
-    color: on ? '#fff' : '#7c8092',
-    background: on ? '#1a1c24' : '#111218',
-    border: `1px solid ${on ? '#3a3d4a' : '#24262f'}`,
-    opacity: on ? 1 : 0.7,
+    color: on ? V3.textStrong : V3.textDim,
+    background: on ? '#e4e8f2' : 'transparent',
+    border: `1px solid ${on ? '#c4cbdd' : V3.chipBorder}`,
+    opacity: 1,
   }
 }
 
@@ -199,16 +203,24 @@ export const pct1 = (v: number | null | undefined): string =>
  * 경기분석 육각형(`MatchHexagonV3`)이 쓰는 값과 ★같은 색★ 이다. 두 곳이 갈라지지 않게 여기 한 곳에 둔다.
  * 클랜마다 다른 색(`clanThemeOf`)은 ★경기카드에서만★ 안 쓴다 — 다른 화면에서는 그대로다.
  */
+/**
+ * ⚠ 2026-09-22 흰 바탕용으로 뒤집었다 — 옛 값(다크용 파스텔 글자)은 흰 카드 위에서
+ *   거의 안 보였다. 지우지 않고 여기 남긴다 (`CLAUDE.md` 1-4):
+ *     winInk #9cc0ff · loseInk #ff9aa0 ·
+ *     winBg 'linear-gradient(160deg,rgba(91,141,255,.17),rgba(91,141,255,.05))' ·
+ *     loseBg 'linear-gradient(160deg,rgba(255,90,99,.16),rgba(255,90,99,.045))' ·
+ *     winLine rgba(91,141,255,.34) · loseLine rgba(255,90,99,.30)
+ */
 export const WIN_LOSS = {
   /** 이긴 팀 — 글자 */
-  winInk: '#9cc0ff',
+  winInk: '#1d4fd6',
   /** 진 팀 — 글자 */
-  loseInk: '#ff9aa0',
+  loseInk: '#c81e28',
   /** 이긴 팀 — 명단 바탕 */
-  winBg: 'linear-gradient(160deg,rgba(91,141,255,.17),rgba(91,141,255,.05))',
+  winBg: 'rgba(91,141,255,.08)',
   /** 진 팀 — 명단 바탕 */
-  loseBg: 'linear-gradient(160deg,rgba(255,90,99,.16),rgba(255,90,99,.045))',
+  loseBg: 'rgba(224,27,36,.06)',
   /** 명단 테두리 */
-  winLine: 'rgba(91,141,255,.34)',
-  loseLine: 'rgba(255,90,99,.30)',
+  winLine: 'rgba(91,141,255,.30)',
+  loseLine: 'rgba(224,27,36,.26)',
 } as const

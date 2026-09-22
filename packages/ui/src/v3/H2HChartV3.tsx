@@ -168,10 +168,10 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
         <g>
           <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke="#7fa9ff" strokeWidth={3} filter={draw < 1 ? undefined : 'url(#h2hGlowB)'} />
           <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke="#dbe8ff" strokeWidth={1.6} />
-          <text x={X0 + 22} y={H - 3} fill={theme.ink} fontSize={PLOT.tickFont}>{mineName}</text>
+          <text x={X0 + 22} y={H - 3} fill={theme.deep} fontSize={PLOT.tickFont}>{mineName}</text>
           <line x1={X0 + (phone ? 130 : 190)} y1={H - 8} x2={X0 + (phone ? 146 : 206)} y2={H - 8} stroke={oppTheme.deep} strokeWidth={3} filter={draw < 1 ? undefined : 'url(#h2hGlowR)'} />
           <line x1={X0 + (phone ? 130 : 190)} y1={H - 8} x2={X0 + (phone ? 146 : 206)} y2={H - 8} stroke={oppTheme.main} strokeWidth={1.6} />
-          <text x={X0 + (phone ? 152 : 212)} y={H - 3} fill={oppTheme.ink} fontSize={PLOT.tickFont}>{oppName}</text>
+          <text x={X0 + (phone ? 152 : 212)} y={H - 3} fill={oppTheme.deep} fontSize={PLOT.tickFont}>{oppName}</text>
         </g>
       </svg>
     </div>

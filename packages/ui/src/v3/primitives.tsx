@@ -231,8 +231,9 @@ export function SectionBar({ title, right }: { title: ReactNode; right?: ReactNo
   return (
     <div style={{ marginTop: 26, display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={ribbonStyle} />
-      <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{title}</span>
-      <div style={{ flex: 1, height: 1, background: '#1a2438' }} />
+      {/* ⚠ 2026-09-22 흰 카드용. 옛 값(다크) title #fff · line #1a2438 — 1-4 */}
+      <span style={{ fontSize: 16, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>{title}</span>
+      <div style={{ flex: 1, height: 1, background: V3.divider }} />
       {right}
     </div>
   )
@@ -253,11 +254,12 @@ export function Kda({
   const show = (v: number | null) => (v === null ? '-' : String(v))
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontSize: size, fontWeight: 700, whiteSpace: 'nowrap' }}>
-      <span style={{ color: '#eef4ff' }}>{show(kill)}</span>
-      <span style={{ color: '#3a4560' }}>/</span>
-      <span style={{ color: V3.redSoft }}>{show(death)}</span>
-      <span style={{ color: '#3a4560' }}>/</span>
-      <span style={{ color: '#eef4ff' }}>{assist ?? 0}</span>
+      {/* ⚠ 2026-09-22 흰 카드용. 옛 값(다크) kill/assist #eef4ff · 슬래시 #3a4560 — 1-4 */}
+      <span style={{ color: V3.textStrong }}>{show(kill)}</span>
+      <span style={{ color: V3.textGhost }}>/</span>
+      <span style={{ color: V3.red }}>{show(death)}</span>
+      <span style={{ color: V3.textGhost }}>/</span>
+      <span style={{ color: V3.textStrong }}>{assist ?? 0}</span>
     </span>
   )
 }
