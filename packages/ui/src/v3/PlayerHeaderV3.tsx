@@ -935,6 +935,19 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         />
       </div>
 
+      </div>
+      </div>
+      </>
+      ) : null}
+      {/*
+        ★★MVP · 핵의심 줄은 남긴다★★ (2026-09-22 밤 · 사장님:
+          「MVP 횟수랑 핵의심, 카드열었을때 경기분석 버튼 누르면 분석 등의
+           기능들도 다 들어가야한다 알지」)
+
+          위 블록을 끔 뒤 확인해 보니 ★핵의심은 이 줄에만 있었다★ —
+          오른쪽 「상세정보」 카드에는 MVP 만 있고 핵의심과 신고 단추가 없다.
+          그래서 이 한 줄만 ★밖으로 뺀다★ — 그림·기록 줄·육각형은 그대로 꺼 둔다.
+      */}
       {/*
        * 4 · MVP · 핵의심
        *
@@ -974,10 +987,6 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         </div>
       </div>
       {report?.message ? <div style={{ position: 'relative', padding: '0 20px 9px', fontSize: 10.5, color: V3.textDim }}>{report.message}</div> : null}
-      </div>
-      </div>
-      </>
-      ) : null}
     </section>
   )
 }

@@ -8,6 +8,7 @@
  * 게임템포만 글자(`text`) 다. 못 잰 축은 «측정중» 이고 면적은 0 이다.
  */
 import { useState } from 'react'
+import { leagueDisplayName } from '../site-config'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 import type { CSSProperties, ReactNode } from 'react'
 import { CLAN_HEX_V2_CLAN_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
@@ -251,7 +252,8 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
             </span>
           </span>
         </span>
-        <LeagueCenter name={data.league.name} season={seasonLabel} />
+        {/* 상단 메뉴와 같은 이름 — DB 이름(옛 「PL」)이 아니라 (2026-09-22 밤) */}
+        <LeagueCenter name={leagueDisplayName(data.league.slug, data.league.name)} season={seasonLabel} />
         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7, minWidth: 0, flexWrap: 'wrap' }}>
           {data.clan.is_official_clan ? <OfficialPill theme={theme} /> : null}
           {renewAction}

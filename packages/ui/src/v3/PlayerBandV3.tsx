@@ -8,6 +8,7 @@
  * 옛 래더를 «래더» 라벨로 그대로 보여 준다. 지어내지 않는다.
  */
 import Link from 'next/link'
+import { leagueDisplayName } from '../site-config'
 import type { CSSProperties, ReactNode } from 'react'
 import { leagueScreen, type LeaguePlayerDetail } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
@@ -182,7 +183,8 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
             </span>
           </span>
         </span>
-        <LeagueCenter name={data.league.name} season={seasonLabel} />
+        {/* 상단 메뉴와 같은 이름 — DB 이름(옛 「PL」)이 아니라 (2026-09-22 밤) */}
+        <LeagueCenter name={leagueDisplayName(data.league.slug, data.league.name)} season={seasonLabel} />
         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 7, minWidth: 0 }}>
           {data.clan?.is_official_clan ? <OfficialPill theme={theme} /> : null}
           <GhostButton href={infoHref}>기본정보</GhostButton>
