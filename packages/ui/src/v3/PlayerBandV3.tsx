@@ -89,7 +89,7 @@ export function OfficialPill({ theme }: { theme: ClanTheme }) {
 export function GhostButton({ children, href, onClick, disabled, theme }: { children: ReactNode; href?: string; onClick?: () => void; disabled?: boolean; theme?: ClanTheme }) {
   const style: CSSProperties = theme
     ? { fontSize: 11.5, color: '#124a56', border: `1px solid ${theme.main}73`, borderRadius: V3.radiusCtl, background: `${theme.main}1a`, padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
-    : { fontSize: 11.5, color: '#5c6479', border: '1px solid #dde1eb', borderRadius: V3.radiusCtl, background: '#e5e7ec', padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
+    : { fontSize: 11.5, color: V3.textMuted, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusCtl, background: V3.chip, padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
   if (href) return <Link prefetch={false} href={href} style={style}>{children}</Link>
   return (
     <button type="button" onClick={onClick} disabled={disabled} style={{ ...style, fontFamily: 'inherit' }}>

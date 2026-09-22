@@ -179,7 +179,7 @@ function H2HChartLegacy({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHead
         <rect x="0" y="0" width="700" height="330" fill={V3.plot} />
         {[0, 25, 50, 75, 100].map((g) => (
           <g key={g}>
-            <line x1={H2H_X0} y1={h2hY(g)} x2={H2H_X1} y2={h2hY(g)} stroke="#e5e7ec" />
+            <line x1={H2H_X0} y1={h2hY(g)} x2={H2H_X1} y2={h2hY(g)} stroke={V3.divider} />
             <text x={H2H_X0 - 8} y={h2hY(g) + 4} textAnchor="end" fill="#767f96" fontSize="13">{g}%</text>
           </g>
         ))}

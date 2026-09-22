@@ -509,13 +509,13 @@ function TrendChart({ points, markSlug, clan, winLabel, kdLabel }: { points: Tre
         <text x="272" y="150" textAnchor="middle" fontSize="62" fontWeight="900" fill="#124a56" opacity="0.05" letterSpacing="6">CLOUD 0</text>
         {scale.ticks.map((g) => (
           <g key={g}>
-            <line x1={KX0} y1={ky(g)} x2={KX1} y2={ky(g)} stroke="#e5e7ec" />
+            <line x1={KX0} y1={ky(g)} x2={KX1} y2={ky(g)} stroke={V3.divider} />
             <text x={KX0 - 8} y={ky(g) + 4} textAnchor="end" fill={V3.textDim} fontSize="11">{g}</text>
           </g>
         ))}
         {labelIdx.map((i, k) => (
           <g key={`${i}-${k}`}>
-            {k > 0 && k < labelIdx.length - 1 ? <line x1={xOf(i)} y1={26} x2={xOf(i)} y2={236} stroke="#e5e7ec" strokeDasharray="3 5" /> : null}
+            {k > 0 && k < labelIdx.length - 1 ? <line x1={xOf(i)} y1={26} x2={xOf(i)} y2={236} stroke={V3.divider} strokeDasharray="3 5" /> : null}
             <text x={xOf(i)} y={264} textAnchor={k === 0 ? 'start' : k === labelIdx.length - 1 ? 'end' : 'middle'} fill={V3.textDim} fontSize="11">{points[i]?.label ?? ''}</text>
           </g>
         ))}

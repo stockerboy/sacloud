@@ -25,6 +25,7 @@
  * 값이 없으면 `-` 다. 지어내지 않는다.
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { leagueDisplayName } from '../site-config'
 import type { LeaguePlayerDetail } from '@sacloud/contract'
 import {
   barracksPlayerUrl,
@@ -250,6 +251,15 @@ const DIM = '#96a0b5'
 
 /** ★「통합」 을 나타내는 구간 번호★ — 진짜 구간은 1부터라 0을 쓴다 (2026-09-20) */
 const ALL_TIER = 0
+
+/**
+ * ★머리 카드 아랫부분을 그릴 것인가★ (2026-09-22 밤 · 사장님)
+ *
+ * `false` 면 ★이름 줄과 배지 줄만★ 남는다 — 그래프·기록 줄·육각형·MVP 줄은
+ * 전부 화면 아래에 한 번씩 더 있어서, 켜 두면 같은 숫자를 두 번 보여 주게 된다.
+ * `true` 로 두면 2026-09-21 판이 그대로 돌아온다 (`CLAUDE.md` 1-4).
+ */
+const HEAD_BODY: boolean = false
 
 export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true, onRenew, renewing }: PlayerHeaderV3Props) {
   const theme = clanThemeOf(data.clan?.slug)
@@ -579,7 +589,13 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             </span>
           </span>
         </span>
-        <LeagueCenter name={data.league.name} season={seasonLabel} />
+        {/*
+          ⚠ ★2026-09-22 밤 — 상단 메뉴와 같은 이름을 쓴다★
+            `data.league.name` 은 DB 값이라 `supply` 가 ★「PL」★ 로 나온다 (옛 이름).
+            바로 위 메뉴·띠에는 ★「Supply1.0」★ 이 적혀 있어 ★한 화면에 두 이름★ 이었다.
+            ★DB 는 안 고친다★ — `League.name` 은 정렬 키이자 검색 대상이다 (D-246).
+        */}
+        <LeagueCenter name={leagueDisplayName(data.league.slug, data.league.name)} season={seasonLabel} />
         <span className="v3-phead-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
           {/*
             * ⚠ ★래더를 안 주는 리그는 점수 칸을 통째로 안 그린다★ (2026-09-14 사장님:
@@ -635,10 +651,10 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               title="넥슨 병영수첩에서 이 선수 보기"
               style={{
                 fontSize: 11.5,
-                color: '#5c6479',
-                border: '1px solid #dde1eb',
+                color: V3.textMuted,
+                border: `1px solid ${V3.chipBorder}`,
                 borderRadius: V3.radiusCtl,
-                background: '#e5e7ec',
+                background: V3.chip,
                 padding: '6px 13px',
                 whiteSpace: 'nowrap',
                 textDecoration: 'none',
@@ -660,10 +676,10 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               disabled={renewing === true}
               style={{
                 fontSize: 11.5,
-                color: renewing === true ? '#5c6479' : '#5c6479',
-                border: '1px solid #dde1eb',
+                color: V3.textMuted,
+                border: `1px solid ${V3.chipBorder}`,
                 borderRadius: V3.radiusCtl,
-                background: '#e5e7ec',
+                background: V3.chip,
                 padding: '6px 13px',
                 whiteSpace: 'nowrap',
                 cursor: renewing === true ? 'wait' : 'pointer',
@@ -708,6 +724,24 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           })}
         </div>
       ) : null}
+      {/*
+        ★★2026-09-22 밤 — 머리 카드의 아랫부분을 껐다★★ (사장님이 사진에 ★X★ 를 그으시며
+          「이것만 지우면 진짜 갓벽 그자체」)
+
+        끈 것 — ★래더 추이 그래프 · 기록 줄(래더·포지션·승률·킬뎃·판킬·순위) ·
+                육각형 · MVP/핵의심 줄★
+
+        ★값이 사라지는 게 아니다★ — 전부 같은 화면 아래에 이미 한 번씩 더 있다:
+          래더·승률·킬뎃·평균킬·MVP·랭킹·소속  →  오른쪽 ★상세정보★ 카드
+          승률/킬뎃 추이 그래프              →  바로 아래 ★추이★ 카드
+          육각형                             →  오른쪽 칸 ★플레이분석★
+        같은 것을 두 번 보여 주느라 첫 화면이 통째로 비슷한 숫자로 덮여 있었다.
+
+        ★부품은 한 줄도 안 지웠다★ (`CLAUDE.md` 1-4) —
+        `HEAD_BODY` 를 `true` 로 두면 그대로 돌아온다.
+      */}
+      {HEAD_BODY ? (
+      <>
       {/*
         ★PC 는 왼쪽에 그림 · 오른쪽에 숫자★ (2026-09-12 사장님:
         «Pc버전에서 왼쪽 정보들 오른쪽에 몰아넣고 공간 만들어서 저기도 플레이분석 그래프 만들어줘»).
@@ -942,6 +976,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
       {report?.message ? <div style={{ position: 'relative', padding: '0 20px 9px', fontSize: 10.5, color: V3.textDim }}>{report.message}</div> : null}
       </div>
       </div>
+      </>
+      ) : null}
     </section>
   )
 }
