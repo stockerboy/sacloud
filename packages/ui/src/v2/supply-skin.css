@@ -1218,7 +1218,8 @@ body.antialiased {
     grid-template-columns: minmax(0, 1fr) 56px 34px 0px !important;
   }
   .v3-score-row--saves {
-    grid-template-columns: minmax(0, 1fr) 56px 24px 34px 0px !important;
+    /* 세이브 머리글(9px)이 27px 라 24 에선 3px 잘렸다(운영 실측) → 28 */
+    grid-template-columns: minmax(0, 1fr) 56px 28px 34px 0px !important;
   }
   .v3-score-row > span:last-child {
     overflow: hidden;
