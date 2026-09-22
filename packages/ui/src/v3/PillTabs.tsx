@@ -10,8 +10,8 @@ export interface PillTab {
 }
 
 export function PillTabs({ tabs, current, top = 20 }: { tabs: readonly PillTab[]; current: string; top?: number }) {
+  /* `sac-pilltabs`·`sac-pilltab` — 폰에서는 서플라이처럼 46px 전체폭 띠로 (supply-skin.css · 2026-09-23) */
   return (
-    {/* `sac-pilltabs`·`sac-pilltab` — 폰에서는 서플라이처럼 46px 전체폭 띠로 (supply-skin.css · 2026-09-23) */}
     <div className="sac-pilltabs" style={{ paddingTop: top, display: 'flex', alignItems: 'stretch', gap: 6, flexWrap: 'wrap' }}>
       {tabs.map((tab) => {
         const on = current === tab.href || (tab.href !== '' && current.startsWith(`${tab.href}/`) && !tabs.some((t) => t !== tab && current.startsWith(t.href) && t.href.length > tab.href.length))
