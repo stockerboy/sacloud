@@ -21,6 +21,8 @@ import { usePlayerReport } from '@/lib/usePlayerReport'
 import LegacyLayout from './LayoutLegacy'
 
 const PROFILE_LAYOUT_V3: boolean = true
+/** 기록실/지난시즌 링크 탭 — 2026-09-23 저녁 사장님 「삭제하고 그래프판 바로 붙여」. true 로 되돌리면 다시 선다 (`CLAUDE.md` 1-4) */
+const PLAYER_LINK_TABS = false
 
 export default function LeaguePlayerLayout(props: {
   children: React.ReactNode
@@ -82,9 +84,11 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
             renewing={refresh.state === 'pending'}
           />
           {/* 폰은 본문 안 탭(기록실 | 플레이분석)이 대신한다 (2026-09-23 오후 사장님 「육각을 지난시즌 대신」) — supply-skin.css `.sac-pilltabs-pc` */}
-          <div className="sac-pilltabs-pc">
-            <PillTabs tabs={leaguePlayerTabs(leagueSlug, playerId)} current={pathname} />
-          </div>
+          {PLAYER_LINK_TABS ? (
+            <div className="sac-pilltabs-pc">
+              <PillTabs tabs={leaguePlayerTabs(leagueSlug, playerId)} current={pathname} />
+            </div>
+          ) : null}
         </div>
       ) : detail.isPending && detail.fetchStatus === 'fetching' ? (
         <div className="pc-container pt-[40px]">

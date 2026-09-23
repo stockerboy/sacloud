@@ -67,6 +67,8 @@ const METRIC_MATCH_SELECT = {
 export interface ClanMetricsResult {
   metrics: ClanMetrics | null
   weekly: WeeklyTrend | null
+  /** 시즌 창 안의 경기 줄(오름차순) — 추이 그래프 재료 (2026-09-23). 같은 모집단이라 따로 안 읽는다 */
+  rows: readonly ClanMatchRow[]
 }
 
 export async function leagueClanMetrics(
@@ -102,7 +104,7 @@ export async function leagueClanMetrics(
       select: { startAt: true },
     }),
   ])
-  if (matches.length === 0) return { metrics: null, weekly: null }
+  if (matches.length === 0) return { metrics: null, weekly: null, rows: [] }
 
   /* 상한보다 한 건 더 요청했다. 그 한 건이 왔다면 잘린 것이다 */
   const truncated = matches.length > SCAN_LIMIT
@@ -158,7 +160,7 @@ export async function leagueClanMetrics(
     truncated,
   })
 
-  return { metrics, weekly }
+  return { metrics, weekly, rows }
 }
 
 /**

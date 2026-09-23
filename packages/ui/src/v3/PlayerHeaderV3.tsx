@@ -544,12 +544,13 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
       ) : null}
 
       {/* 2 · 신원 */}
-      <div className="v3-phead-id" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 13, padding: '4px 18px 14px' }}>
+      <div className="v3-phead-id" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 13, padding: '6px 18px 16px' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 13, minWidth: 0 }}>
-          <MarkCircle clan={data.clan} size={46} ring={theme} />
-          <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+          {/* 2026-09-23 저녁 사장님 「닉네임이랑 마크 더 크게」 — 마크 46→64 · 이름 23→30 */}
+          <MarkCircle clan={data.clan} size={64} ring={theme} />
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-              <span style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.player.name}</span>
+              <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.player.name}</span>
               {weapon !== null ? (
                 <span style={{ fontSize: 11, color: V3.textMuted, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, background: V3.chip, padding: '3px 8px', whiteSpace: 'nowrap' }}>{WEAPON_LABEL[weapon]}</span>
               ) : null}
@@ -610,7 +611,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             {/* ⚠ ★2026-09-21 — 랭킹과 같은 값·같은 말★ — 「31.2층 / 실력 점수」 가 아니라
                 ★「3,864점 / 래더」★ 다. 3부 원본과 같은 표기이고, 「층」 은 사장님이
                 9/15 에 「티어의 흔적」 이라 부르신 말이다 */}
-            <span style={{ fontSize: 21, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>
+            {/* 2026-09-23 저녁 사장님 「래더는 오른쪽 상단에 조금 더 크게」 — 21→30 */}
+            <span style={{ fontSize: 30, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', lineHeight: 1.1 }}>
               {PLAYER_CARD_RANK_BY === 'ladder'
                 ? formatRatingPoint(data.rating)
                 : hex?.score !== null && hex?.score !== undefined
@@ -619,7 +621,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
                     ? '측정 중'
                     : formatRating(data.rating)}
             </span>
-            <span style={{ fontSize: 10, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 11, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
               {PLAYER_CARD_RANK_BY === 'ladder'
                 ? '래더'
                 : hex?.score !== null && hex?.score !== undefined

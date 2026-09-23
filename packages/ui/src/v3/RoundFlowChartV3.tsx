@@ -106,7 +106,7 @@ const CLEAN_W = 2.6
 const HALF_SUMMARY = false
 const CREW_ABOVE = false
 /** ★재생★ — 축이 왼쪽에서 오른쪽으로 천천히 훑는다 (2026-09-23 오후 사장님). 라운드 하나에 이만큼 걸린다 */
-const PLAY_MS_PER_ROUND = 1800
+const PLAY_MS_PER_ROUND = 5000 /* 2026-09-23 저녁 사장님 「훨씬 더 느리게 너무 빨라」 — 옛 값 1800 */
 
 export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   flow: RoundFlow
@@ -331,7 +331,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   }
   const startPlay = () => {
     stopPlay()
-    const total = Math.max(6000, flow.rounds.length * PLAY_MS_PER_ROUND)
+    const total = Math.max(20000, flow.rounds.length * PLAY_MS_PER_ROUND)
     const t0 = performance.now()
     setPlaying(true)
     const tick = (now: number) => {

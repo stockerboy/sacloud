@@ -575,5 +575,10 @@ export const LeagueClanShow = LeagueClanDetail.extend({
    * 여기서 가짜 줄을 만들지 않는다 (D-106).
    */
   main_lineup: z.array(ClanMainPlayer).default([]),
+  /**
+   * ★승률 추이★ — 선수 페이지와 같은 모양(`PlayerTrendDay`) (2026-09-23 저녁 사장님 「클랜 페이지도 개인페이지랑 똑같이」).
+   * 클랜은 킬·데스를 안 세므로 `kill`/`death`/`kd` 는 0 이고 화면은 승률 선만 그린다.
+   */
+  trend: z.array(PlayerTrendDay).default([]),
 })
 export type LeagueClanShow = z.infer<typeof LeagueClanShow>

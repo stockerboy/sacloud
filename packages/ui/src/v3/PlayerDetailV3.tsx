@@ -1939,13 +1939,15 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
  * ⚠ 없는 값은 ★지어내지 않는다.★ 무소속리그는 킬·데스가 `null` 로 온다(D-107) —
  *   그때는 그 줄을 안 그린다. 0 으로 채우면 「0킬을 했다」는 거짓이 된다.
  */
-function SideInfoCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: boolean }) {
+function SideInfoCard({ data, showsKd, report }: { data: LeaguePlayerDetail; showsKd: boolean; report?: PlayerDetailV3Props['report'] }) {
   const kdKnown = showsKd && data.kill !== null && data.death !== null
+  const reportCount = report?.reported ? report.count : data.report_count
   return (
     <section style={{ ...cardStyle, overflow: 'hidden' }}>
+      {/* 제목은 「상세정보」 가 아니라 ★선수 닉네임★ (인계서 ③-8 · 2026-09-23) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>상세정보</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{data.player.name}</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <InfoRow label="래더">
@@ -1959,13 +1961,15 @@ function SideInfoCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: bo
             <span style={{ fontSize: 22, fontWeight: 700, color: data.kd_rate === null ? V3.textMuted : statColor(data.kd_rate), whiteSpace: 'nowrap' }}>{pct1(data.kd_rate)}</span>
           </InfoRow>
         ) : null}
-        <InfoRow label="평균킬" sub="판당">
+        {/* 「평균킬 · 판당」 → ★「판킬」★ (인계서 ③-10) */}
+        <InfoRow label="판킬">
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
             <span style={{ fontSize: 22, fontWeight: 700, color: V3.text }}>{data.kill_per_match.toFixed(1)}</span>
             <span style={{ fontSize: 12, color: V3.textDim }}>킬</span>
           </span>
         </InfoRow>
-        <InfoRow label="MVP">
+        {/* MVP ★「n판 중 k회」★ (인계서 ③-10) */}
+        <InfoRow label="MVP" sub={`${fmt(data.win + data.lose)}판 중`}>
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
             <span style={{ fontSize: 22, fontWeight: 700, color: V3.mvp /* ⚠ 옛값 V3.gold */ }}>{fmt(data.mvp_count)}</span>
             <span style={{ fontSize: 12, color: V3.textDim /* ⚠ 옛값 '#8a6a12' */ }}>회</span>
@@ -1983,7 +1987,7 @@ function SideInfoCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: bo
           )}
         </InfoRow>
         {/* ★클랜마크는 이름 앞에 항상★ */}
-        <InfoRow label="소속" last>
+        <InfoRow label="소속">
           {data.clan === null ? (
             <span style={{ fontSize: 13, color: V3.textGhost, whiteSpace: 'nowrap' }}>무소속</span>
           ) : (
@@ -1993,6 +1997,25 @@ function SideInfoCard({ data, showsKd }: { data: LeaguePlayerDetail; showsKd: bo
             </span>
           )}
         </InfoRow>
+        {/* ★핵의심 n회 + 신고★ — 머리 카드 발 줄(MVP·핵의심)을 접으면서 여기로 (인계서 ③-10 · 2026-09-23 저녁 사장님 X) */}
+        <InfoRow label="핵의심" last>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+              <span style={{ fontSize: 22, fontWeight: 700, color: reportCount > 0 ? '#ff6b6b' : V3.textGhost }}>{fmt(reportCount)}</span>
+              <span style={{ fontSize: 12, color: V3.textDim }}>회</span>
+            </span>
+            {report ? (
+              <button
+                type="button"
+                onClick={report.pending ? undefined : report.onReport}
+                style={{ fontFamily: 'inherit', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: V3.radiusChip, cursor: report.pending ? 'wait' : 'pointer', color: report.reported ? '#ff6b6b' : '#b3555c', background: 'transparent', border: `1px solid ${report.reported ? 'rgba(255,107,107,.55)' : 'rgba(179,85,92,.45)'}` }}
+              >
+                {report.pending ? '…' : report.reported ? '신고함' : '신고'}
+              </button>
+            ) : null}
+          </span>
+        </InfoRow>
+        {report?.message ? <div style={{ padding: '0 16px 9px', fontSize: 10.5, color: V3.textDim }}>{report.message}</div> : null}
       </div>
     </section>
   )
@@ -2176,8 +2199,11 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
         </div>
       ) : null}
 
-      {/* ① 서플라이의 상단 광고 자리 — 이 선수의 추이 그래프 (남색 판) */}
-      <TrendCard data={data} showsKd={showsKd} tone={TREND_TONE} />
+      {/* ① 서플라이의 상단 광고 자리 — 이 선수의 추이 그래프 (남색 판).
+          2026-09-23 저녁 사장님 「기록실/지난시즌 버튼 삭제하고 그 사이 공간 없이 그래프판 바로 갖다 붙이고」 → 위 틈 0 (`.sac-trend-glued`) */}
+      <div className="sac-trend-glued">
+        <TrendCard data={data} showsKd={showsKd} tone={TREND_TONE} />
+      </div>
 
       {/* ② 2단 — 왼쪽 본문 · 오른쪽 기록카드 */}
       <div className="sac-prr-grid">
@@ -2187,7 +2213,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           {matchList}
         </div>
         <aside className="sac-prr-aside">
-          <SideInfoCard data={data} showsKd={showsKd} />
+          <SideInfoCard data={data} showsKd={showsKd} report={props.report} />
           {/* 기록카드 밑에 플레이분석 육각 (사장님 지시) */}
           <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
           {/* 서플라이 오른쪽 칸의 마지막 표. 2026-09-23 오후 사장님 「필요없어」 → SHOW_TEAMMATES=false */}

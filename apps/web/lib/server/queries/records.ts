@@ -608,6 +608,8 @@ export async function getLeagueClanShow(
     head_to_head: headToHead,
     max_win_streak: maxWinStreak,
     main_lineup: mainLineup ?? [],
+    /* ★승률 추이★ — 선수와 같은 접기(`buildPlayerTrend`). 클랜은 킬·데스가 없어 `null` 로 넘긴다 (2026-09-23) */
+    trend: buildPlayerTrend(clanMetrics.rows.map((row) => ({ startAt: row.startAt, winnerSide: row.won ? 'red' : 'blue', side: 'red', kill: null, death: null }))),
     /*
      * ★목록과 같은 값★ (2026-09-16 밤) — 클랜랭킹 빈칸을 메우려고
      *   `LeagueClan` 에 `main_members` 를 넣었다. 상세는 이미 같은 것을

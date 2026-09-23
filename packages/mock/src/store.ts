@@ -2682,6 +2682,7 @@ export function getLeagueClanShow(leagueSlug: string, clanSlug: string): LeagueC
     hexagon_v2: buildClanHexV2OfMock(leagueClan),
     head_to_head: [],
     max_win_streak: null,
+    trend: [],
     /* 주전 다섯 — 픽스처에는 실력 점수가 없어 빈 줄이다 (2026-09-12) */
     main_lineup: [],
     /* 클랜원 정리 (SITE_SPEC_V2 5-2 · D-199). 기존 클랜원 목록은 그대로 둔다 */

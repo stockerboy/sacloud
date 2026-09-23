@@ -101,7 +101,8 @@ function yOnLine(pts: readonly (readonly [number, number])[], x: number): number
  *   `showsKd` 기본값이 `true` 라 다른 리그 그래프는 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
  *   값 계산(`kdPts`)은 그대로 돈다 — 지우면 두 선을 떼어 놓는 눈금(`lblGap`)이 어긋난다.
  */
-const TREND_H_SCALE = 2 / 3
+/* 2026-09-23 저녁 사장님 「그래프 판 세로 크기 줄이기」(한 번 더) — 2/3 → 1/2 */
+const TREND_H_SCALE = 1 / 2
 
 export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '', showsKd = true, tone = V3 }: { days: readonly PlayerTrendDay[]; mode: TrendMode; markSlug: string | null; winLabel: string; kdLabel: string; seed?: string; showsKd?: boolean; tone?: V3Tone }) {
   /* ★색판★ — 기본은 흰 카드(`V3`). 남색 판(`V3_DARK`)을 넘기면 흰 UI 이전 판으로 그린다.

@@ -1266,6 +1266,14 @@ body.antialiased {
   }
 }
 
+/* ★머리 카드 발 줄(MVP·핵의심) 은 PC 에서도 접는다★ (2026-09-23 저녁 사장님이 X). MVP 는 오른쪽 카드에, 핵의심+신고도 거기로 옮겼다.
+   폰은 `.v3-phead-info-phone` 줄 안에 있다. DOM 은 남긴다 */
+.v3-phead-foot { display: none !important; }
+/* ★그래프판을 머리 카드에 바로 붙인다★ — 탭이 사라진 자리 (2026-09-23 저녁 사장님) */
+.sac-trend-glued { margin-top: 0; }
+.sac-trend-glued > section { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 0; }
+.v3-phead { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
 /* ★선수 페이지 컨테이너 1400★ (2026-09-23 저녁 사장님: 「카드의 전체적인 가로크기를 조금씩 더 늘려도 될거같아 —
    특히 경기상세카드랑 상세기록카드 너무 가로크기가 작아서 답답해」). 다른 화면은 1120 그대로. 옛 값 1120 */
 @media (min-width: 1200px) {

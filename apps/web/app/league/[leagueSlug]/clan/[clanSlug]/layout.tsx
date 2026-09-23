@@ -12,7 +12,7 @@ import { use, useEffect, useMemo, useState } from 'react'
 import { tierGroupOf } from '@sacloud/contract'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { ClanCardV3, GhostButton, PillTabs, ProfileEmpty, ProfileSkeleton, RelativeTime, clanThemeOf, useSeasonLabel } from '@sacloud/ui'
+import { ClanCardV3, ClanHeaderV3, GhostButton, PillTabs, ProfileEmpty, ProfileSkeleton, RelativeTime, clanThemeOf, useSeasonLabel } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useRefresh } from '@/lib/useRefresh'
@@ -20,6 +20,12 @@ import { leagueClanTabs } from '@/lib/profileTabs'
 import LegacyLayout from './LayoutLegacy'
 
 const PROFILE_LAYOUT_V3: boolean = true
+/**
+ * ★클랜 페이지를 선수 페이지와 같은 양식으로★ (2026-09-23 저녁 사장님 「토시 하나 다른 배치 없이」).
+ * true — 선수와 같은 머리 카드(`ClanHeaderV3`) · 링크 탭 없음 · 본문은 `ClanDetailV3` 가 선수 본문 배치로.
+ * false — 옛 판(필 탭 + `ClanCardV3` KPI·육각 카드). 코드는 그대로다 (`CLAUDE.md` 1-4).
+ */
+const CLAN_HEADER_LIKE_PLAYER = true
 
 export default function LeagueClanLayout(props: {
   children: React.ReactNode
@@ -105,7 +111,23 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
   const tierIndex = tierWins.length === 0 ? 0 : (ownTierAt + tierStep + tierWins.length * 64) % tierWins.length
   return (
     <>
-      {data ? (
+      {data && CLAN_HEADER_LIKE_PLAYER ? (
+        <div className="sac-player-page">
+          <div className="pc-container">
+            <ClanHeaderV3
+              data={data}
+              infoHref={`/clan/${clanSlug}`}
+              seasonLabel={`SEASON ${(season ?? 'CLOUD 0').toUpperCase()}`}
+              memberCount={data.member_count ?? null}
+              renewAction={
+                <GhostButton onClick={refresh.run} disabled={refresh.state === 'pending'} theme={clanThemeOf(data.clan.slug)}>
+                  {refresh.state === 'pending' ? '갱신중' : refresh.state === 'failed' ? '갱신 실패' : '전적갱신'}
+                </GhostButton>
+              }
+            />
+          </div>
+        </div>
+      ) : data ? (
         <div className="pc-container">
           <PillTabs tabs={leagueClanTabs(leagueSlug, clanSlug)} current={pathname} top={22} />
           <ClanCardV3
@@ -141,7 +163,7 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
           <ProfileEmpty message="클랜을 찾을 수 없습니다." />
         </div>
       )}
-      {children}
+      {CLAN_HEADER_LIKE_PLAYER ? <div className="sac-player-page">{children}</div> : children}
     </>
   )
 }
