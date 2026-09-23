@@ -136,8 +136,8 @@ function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: st
       {rows.map((r) => {
         const me = meId !== null && r.player_id === meId
         return (
-          <span key={r.player_id} style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-            <MarkCircle clan={r.match_time_clan ? { slug: r.match_time_clan.slug, mark: r.match_time_clan.mark } : null} size={15} />
+          <span key={r.player_id} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+            <MarkCircle clan={r.match_time_clan ? { slug: r.match_time_clan.slug, mark: r.match_time_clan.mark } : null} size={14} />
             <span style={{ fontSize: 11, fontWeight: me ? 700 : 400, color: me ? V3.textStrong : V3.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{r.name}</span>
             {r.weapon === 1 ? <span style={{ fontSize: 9, fontWeight: 700, color: V3.red, flex: 'none' }}>[S]</span> : null}
           </span>
@@ -168,10 +168,12 @@ const pcGrid: CSSProperties = {
      ⑤ 명단 이름칸이 46px 라 「온몸던찌기」「육덕미시애호가」 가 «…» 였다. ③ 은 내용만큼(최대 140) ·
      ⑤ 200~230 · ④ 는 그만큼 양보(최소 220). 840 = 28 여백 + 60 간격 + 96+52+③+④+⑤+44 → ③+④+⑤ ≤ 560.
      옛 값 '96px 52px 100px minmax(240px,1fr) minmax(170px,200px) 44px' */
-  gridTemplateColumns: '96px 52px minmax(100px,140px) minmax(220px,1fr) minmax(200px,230px) 44px',
+  /* 2026-09-23 네 번째 — 운영 재측정: 기준 없는 카드(WIN 칩)에서 ④ 클랜명 47px(「Poker…」), ③ MVP 칩 이름 38px.
+     ④ 250 · ③ 132 · ⑤ 190, 간격 12→10 · 여백 14→12 로 574 확보 (132+250+190 = 572) */
+  gridTemplateColumns: '96px 52px minmax(100px,132px) minmax(250px,1fr) minmax(190px,220px) 44px',
   alignItems: 'center',
-  gap: 12,
-  padding: '11px 14px',
+  gap: 10,
+  padding: '11px 12px',
 }
 
 export function MatchCardV3({ match: m, league, viewer = null, neutral = false, open, onToggle, detail, renderDetail }: MatchCardV3Props) {
