@@ -70,6 +70,13 @@ const PAGES = [
   ['leagues-create', '/leagues/create', '', null],
   ['pw-forget', '/auth/password/forget', '', null],
   ['clause-policy', '/clause/policy', '', null],
+  /* 8회차 — 다른 리그의 선수·경기 상세 · 관리자 입구 */
+  ['player-nolink', '/league/nolink/player/cmtlfmyyw02hmvld05faui3jt', '승률', null],
+  ['player-sanply', '/league/sanply/player/cmtokb15b0byzvlkg426j40mu', '승률', null],
+  ['match-nolink', '/league/nolink/match', '', null],
+  ['match-sanply', '/league/sanply/match', '', null],
+  ['admin', '/admin', '', null],
+  ['admin-texts', '/admin/texts', '', null],
   /* 5회차 — 눌러야 보이는 상태들 */
   ['match-list-open', '/league/supply/match', '플레이어', 'css:.mc-card .mc-pc', false, '점수판보기'],
   ['trend-day', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '승률', 'DAY', false],
