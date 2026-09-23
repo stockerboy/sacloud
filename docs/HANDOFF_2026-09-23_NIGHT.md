@@ -97,6 +97,11 @@ deluxe 의 Match 는 3,318건 있다 (최신 260923225353)   → 「전부 빠�
 > ⚠ **2026-09-24 새벽 정정 (코드를 읽었다).** `cplSetup.ts` 의 sync 는 이미 `leagueId: league.id`(CPL 리그 한 곳)로만 내린다 — nolink/sanply/supply 행을 건드릴 수 없다.
 > `expelledAt` 을 찍는 코드는 저장소에 둘뿐이고 다른 하나가 `apps/worker/src/dev/clanOneLeagueApply.ts:150` — **「한 클랜 = 한 리그」(사장님 2026-09-05)** 를 nolink·supply·sanply 에 적용해 두 리그에 활성인 클랜의 한쪽을 내리는 도구다. 되돌린 23행이 딱 그 세 리그였다.
 > → §0-G 의 「cplSetup 고치기」는 **할 일이 아니다.** 진짜 물음은 정책이다: 지금 26곳이 두 리그에 활성이다(되메우기 미리보기 로그 머리). **09-05 규칙(한 리그만)과 09-23 복구(둘 다 활성)가 서로 반대다 — 사장님 결정 필요.** 코드는 안 고쳤다.
+>
+> ⚠⚠ **2026-09-24 02:10 재정정 (이번엔 증거로).** 그 23줄은 clan-one-league 도 아니었다. **`657b0cd8` 「개잡사와 한 경기는 기록하지 않는다」가 09-22 00:15 에 숨긴 — clan-find-missing 이 잘못 등록한 미등록 클랜 23곳** 이었다
+> (Clan.createdAt 2026-09-21 16:35~16:36 · arcenciel · hiemis · legend1st …). probe22 가 그것을 되살렸고, 되메우기가 그 클랜들의 경기 193건을 다시 만들었다(76건은 새로 · 117건은 이미 supersededAt).
+> 사장님 「arcenciel 등록도 안 됐는데 왜 자꾸 떠」 로 드러났다. **`scratchpad/vps_fix_findmissing_revert.mjs` 로 다시 숨겼다** (등록 22 → expelledAt · 경기 76 → supersededAt · Clan.active=false · 백업 VPS `apps/worker/../data/findmissing-revert/`).
+> **원인 ③ 「활성 클랜 23곳이 수집 대상에서 빠졌다」는 틀린 진단이었다 — 빠진 게 맞았다.** 두 리그 활성 26곳 문제는 별개로 남는다.
 
 ### 원인 ④ — deluxe/crucialrz/NeedBackup 은 slug 로 200 을 받는데 경기가 0
 `ferwfwfwfwf`(deluxe) · `ipl-backspace00` · `ipl-yoonsh1971` — 병영 목록 API 가 빈 목록. 상대 클랜 원문으로 경기는 들어오니 급하진 않다. `BarracksClanNumber`(deluxe 150531000663) 로 번호 기반 수집이 답. 미해결.
