@@ -38,3 +38,11 @@ export const HERO_V2: boolean = true
  *   2026-09-17 의 화면이 그대로 돌아온다.
  */
 export const HERO_V3: boolean = true
+
+/**
+ * ★홈 히어로 그림★ (2026-09-23 밤 사장님: 「메인페이지 배경으로 이거 쓰자」 → 시안 A 「이걸로 하자」).
+ * 사장님이 주신 그림(투구 뒤 병사들 · 파란 안개)을 ★히어로 칸에만★ 깔고 아래로 갈수록 남색으로 녹인다.
+ * 파일 `/brand/home-hero.webp`(PC 1680) · `/brand/home-hero-m.webp`(폰 840). 규칙은 `supply-skin.css` 맨 끝.
+ * false 면 순검정 히어로 그대로 (`CLAUDE.md` 1-4).
+ */
+export const HOME_HERO_ART: boolean = true

@@ -3,7 +3,7 @@
 import { HomeCodeBackdrop } from './_home/HomeCodeBackdrop'
 import { HomeSearch } from './_home/HomeSearch'
 import { HomeSeasonLine } from './_home/HomeSeasonLine'
-import { HERO_V2, HERO_V3 } from './_home/heroV2'
+import { HERO_V2, HERO_V3, HOME_HERO_ART } from './_home/heroV2'
 import { HomeBadgeWall } from './_home/HomeBadgeWall'
 import { HomeHotBoard } from './_home/HomeHotBoard'
 
@@ -229,7 +229,7 @@ export default function HomePage() {
         이제 `.home-cloud` 는 ★히어로 칸(로고·검색)만★ 두른다 — 그 아래 Hot게시판은
         바깥 div(별도 클래스 없음 → `body` 의 흰 배경)에 얹혀 항상 흰 바탕이다.
       */}
-      <div className={HERO_V3 ? 'home-cloud' : HERO_V2 ? 'home-code' : 'home-night'}>
+      <div className={`${HERO_V3 ? 'home-cloud' : HERO_V2 ? 'home-code' : 'home-night'}${HOME_HERO_ART ? ' home-hero--art' : ''}`}>
         {/* 배경 코드 — 읽는 기계는 안 만난다(`aria-hidden`). 글자는 전부 실제 파일에서 온다 */}
         {/* ⚠ 구름 홈은 ★배경에 아무것도 안 깐다★ — 사장님이 「깔끔하게」 라고 하셨다 */}
         {!HERO_V3 && HERO_V2 ? <HomeCodeBackdrop /> : null}

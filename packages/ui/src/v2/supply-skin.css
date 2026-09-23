@@ -1463,3 +1463,43 @@ body.antialiased {
 @media (max-width: 899px) {
   .v3-board-list--closed { display: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★홈 히어로 그림★ (2026-09-23 밤 사장님 「메인페이지 배경으로 이거 쓰자」 → 시안 A)
+   그림은 ★히어로 칸(로고·검색)에만★ 선다. 위는 그림 그대로, 아래 끝은 본문 남색(#0c1526)으로 녹아
+   Hot게시판부터는 지금 바탕 그대로다. 초점은 세로 38%(투구). 폰은 840 짜리를 가운데 자르기.
+   검정(`background: #000`)은 위 3절 규칙이 먼저 깔아 두므로 그림이 못 와도 검정이 받친다.
+   끄는 자리: `apps/web/app/_home/heroV2.ts` 의 HOME_HERO_ART.
+   ══════════════════════════════════════════════════════════════════════════ */
+.home-hero--art {
+  position: relative;
+  background-color: #000000;
+  background-image:
+    linear-gradient(180deg, rgb(7 11 20 / 0.10) 0%, rgb(7 11 20 / 0.28) 55%, #0c1526 100%),
+    url('/brand/home-hero.webp');
+  background-repeat: no-repeat, no-repeat;
+  background-position: center top, center 38%;
+  background-size: 100% 100%, cover;
+  padding-top: 90px;
+  padding-bottom: 70px;
+}
+.home-hero--art .home-mark img,
+.home-hero--art .home-mark svg {
+  filter: drop-shadow(0 0 28px rgb(0 0 0 / 0.9)) drop-shadow(0 0 10px rgb(0 0 0 / 0.7));
+}
+/* 검색창은 그림 위라 반투명 남색 + 흐림 — 글자가 묻히지 않게 */
+.home-hero--art .sb-cloud {
+  background: rgb(10 18 32 / 0.72) !important;
+  backdrop-filter: blur(6px);
+  border-color: rgb(160 180 220 / 0.35) !important;
+}
+@media (max-width: 767px) {
+  .home-hero--art {
+    background-image:
+      linear-gradient(180deg, rgb(7 11 20 / 0.10) 0%, rgb(7 11 20 / 0.28) 55%, #0c1526 100%),
+      url('/brand/home-hero-m.webp');
+    background-position: center top, center 40%;
+    padding-top: 40px;
+    padding-bottom: 48px;
+  }
+}
