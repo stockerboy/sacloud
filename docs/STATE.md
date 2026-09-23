@@ -111,6 +111,13 @@ QA 도구     scratchpad/qa.js — 잘림(…)·칸 밖·글자 겹침. measure.
 옛 판    HEX_CENTER_PC=false → 낮 판(진 팀 명단 자리 육각 · 단추)
 ```
 
+### 밤 4차 (커밋 `171263e0`)
+```
+경기 카드   MVP 표를 K/D/A ★위★ 로 (PC·폰 · MatchCardV3 middle/middlePhone) · 폰 클랜명 13.5 · 마크 19
+추이 그래프 「CLOUD 0」 워터마크 끔 (TREND_WATERMARK=false)
+운영 확인   경기 PC 한 판 카드 반영됨(3rdcloud.my 캡쳐) · 폰 QA 가로넘침 0 · 잘림은 폰 죽은차례 긴 합성 이름뿐
+```
+
 ### 로컬 QA 길 (이제 운영 안 밀고 확인한다)
 ```
 로컬 DB 에 배틀로그가 없어 경기분석이 안 열렸다 → scratchpad/seed-flow.mjs 가 합성 배틀로그 한 판을 심는다
