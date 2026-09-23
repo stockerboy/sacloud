@@ -1291,11 +1291,12 @@ const [tier] = useState<number>(() => {
           ))}
         </div>
         {/* ① 추이 그래프 — 머리 카드에 바로 붙는다 (선수와 같다) */}
+        {/* 2026-09-23 밤 사장님 「플레이분석 누르면 그래프 대신 육각을」 — 추이는 기록실 탭에서만 */}
+        {phoneHex ? <div style={{ marginTop: 12 }}><ClanHexCard data={data} /></div> : null}
+        <div className={phoneHex ? 'sac-phone-hide' : undefined}>
         <div className="sac-trend-glued">
           <ClanTrendCard data={data} />
         </div>
-        {phoneHex ? <div style={{ marginTop: 12 }}><ClanHexCard data={data} /></div> : null}
-        <div className={phoneHex ? 'sac-phone-hide' : undefined}>
           {/* ② 2단 — 왼쪽 본문(클랜별전적 = 선수의 「최근매치」 자리 · 통합 기록실) · 오른쪽(상세정보 · 육각) */}
           <div className="sac-prr-grid">
             <div className="sac-prr-main">

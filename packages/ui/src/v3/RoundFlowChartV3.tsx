@@ -141,8 +141,21 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   const drawIn = useDrawIn(3600, `${winner.slug ?? winner.name}|${flow.rounds.length}`, boxRef)
   /* 붙자마자 긋기 — rAF 로 0→1. IO 를 안 타서 접힌 칸이 열릴 때도 처음부터 끝까지 간다 */
   const [mountDraw, setMountDraw] = useState(DRAW_ON_MOUNT_MS > 0 ? 0 : 1)
+  /*
+   * 2026-09-23 밤 사장님 「사용자가 육각 보고 있어서 밑은 아직 안 보면 미리 그리지 말고, 내려서 보이면 그때 그려 — 각 1회」
+   * → 보일 때(IntersectionObserver) 한 번만 arm. 안 보이는데 시간이 지나도 안 그린다 (옛 판은 붙자마자). 그려진 뒤엔 다시 안 그린다.
+   * ⚠ 헤드리스·IO 없는 환경은 바로 arm — 그래야 캡쳐·테스트에서 그림이 나온다.
+   */
+  const [armed, setArmed] = useState(false)
   useEffect(() => {
-    if (DRAW_ON_MOUNT_MS <= 0) return
+    const el = boxRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') { setArmed(true); return }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setArmed(true); io.disconnect() } }, { threshold: 0.15 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  useEffect(() => {
+    if (DRAW_ON_MOUNT_MS <= 0 || !armed) return
     let raf = 0
     const t0 = performance.now()
     const tick = (now: number) => {
@@ -155,7 +168,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     raf = requestAnimationFrame(tick)
     const safety = window.setTimeout(() => setMountDraw(1), DRAW_ON_MOUNT_MS + 400)
     return () => { cancelAnimationFrame(raf); window.clearTimeout(safety) }
-  }, [flow])
+  }, [flow, armed])
   const draw = DRAW_IN ? drawIn : mountDraw
   const box = plotBox(width)
   /* ⚠ 2026-09-23 낮 — 사장님: 「이 공간을 남기지 말고 다 쓰라는거임」. 옛 판은 마커 옆 「94%」 자리로 오른쪽 58~66px 을 비웠다.
@@ -328,13 +341,15 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     if (playRef.current) cancelAnimationFrame(playRef.current.raf)
     playRef.current = null
     setPlaying(false)
-    /* 멈추면 선은 끝까지 다 그려 둔다 — 반쯤 그려진 채 남지 않게 */
-    setMountDraw(1)
+    /* 2026-09-23 밤 사장님 「멈추면 그 자리에 딱 멈춰줘 — 그 라운드를 자세히 보고 싶어서」 → 축·선 그대로 둔다.
+       옛 판은 여기서 setMountDraw(1) 로 선을 끝까지 그렸다. 다시 ▶ 를 누르면 멈춘 자리부터 이어 간다 */
   }
   const startPlay = () => {
     stopPlay()
     const total = Math.max(20000, flow.rounds.length * PLAY_MS_PER_ROUND)
-    const t0 = performance.now()
+    /* 멈춘 자리(축)부터 이어 간다 — 끝까지 갔었으면 처음부터 */
+    const k0 = hover === null || hover >= X1 - 0.5 ? 0 : Math.max(0, Math.min(1, (hover - X0) / (X1 - X0)))
+    const t0 = performance.now() - k0 * total
     setPlaying(true)
     /* 2026-09-23 밤 사장님 「재생하면 그래프를 훑고 지나가지 말고 처음부터 끝까지 ★그리면서★ 지나가」
        → 선을 0 으로 지웠다가 축과 같은 속도로 다시 긋는다 (penDash 가 draw 를 읽는다). 옛 판은 축만 움직였다 */
@@ -343,7 +358,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
       const k = Math.min(1, (now - t0) / total)
       setHover(X0 + (X1 - X0) * k)
       setMountDraw(k)
-      if (k >= 1) { playRef.current = null; setPlaying(false); return }
+      if (k >= 1) { playRef.current = null; setPlaying(false); setHover(null); return }
       playRef.current = { raf: requestAnimationFrame(tick), t0 }
     }
     playRef.current = { raf: requestAnimationFrame(tick), t0 }
@@ -571,8 +586,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <g pointerEvents="none">
             {/* 옛 판은 여기 글자로 「n라운드 · 5:4 · 65%」 를 적었다 — 지금은 위 인원 줄이 말한다 */}
             <line x1={hover} y1={Y_TOP - 6} x2={hover} y2={Y_BOTTOM + 6} stroke="#0891b2" strokeWidth={1} opacity={0.7} />
-            <circle cx={hoverPt.x} cy={yOf(hoverPt.v)} r={5} fill={winInk} stroke={tone.plot} strokeWidth={1.5} />
-            <circle cx={hoverPt.x} cy={yOf(100 - hoverPt.v)} r={5} fill={loseInk} stroke={tone.plot} strokeWidth={1.5} />
+            {/* 2026-09-23 밤 사장님 「경기분석에서 빨간 점이랑 파란 점 없애줘」 — 옛 판은 축 위에 두 원(r=5)을 찍었다 */}
           </g>
         ) : null}
         {last ? (

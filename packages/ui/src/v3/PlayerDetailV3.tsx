@@ -2209,6 +2209,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           </button>
         ))}
       </div>
+      {/* 2026-09-23 밤 사장님 「플레이분석 누르면 그래프 대신 육각을」 — 그래프(추이)는 기록실 탭에만 */}
       {phoneHex ? (
         <div style={{ marginTop: 12 }}>
           <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
