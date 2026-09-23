@@ -45,7 +45,7 @@ export default async function HireClansPage({
 
   return (
     <HydrationBoundary state={state}>
-      <ClanDirectoryV1 leagueSlug={leagueSlug} />
+      <ClanDirectoryV1 leagueSlug={leagueSlug} title="고용가능클랜" />
     </HydrationBoundary>
   )
 }

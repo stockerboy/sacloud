@@ -53,7 +53,7 @@ import { useCursorQuery } from '@/lib/useCursorQuery'
  *   래더순으로 두면 순위 숫자만 지운 랭킹표가 된다 — 사용자가 없애라고 한 그것이다.
  *   찾으러 오는 화면이니 이름순이 맞다. 래더 값은 칸에 그대로 있다.
  */
-export function ClanDirectoryV1({ leagueSlug }: { leagueSlug: string }) {
+export function ClanDirectoryV1({ leagueSlug, title = '클랜랭킹' }: { leagueSlug: string; /** 2026-09-24 QA: 열산 「고용가능클랜」 탭이 제목은 「클랜랭킹」 이라 안 맞았다 → 부르는 쪽이 정한다 */ title?: string }) {
   const [query, setQuery] = useState('')
 
   /* 한 번에 다 받는다. 400 은 라우트의 상한과 같은 값이다 —
@@ -135,7 +135,7 @@ export function ClanDirectoryV1({ leagueSlug }: { leagueSlug: string }) {
       {/* 좁은 화면에서는 좌우 안쪽 여백을 없앤다 — `.mobile-bleed`(표)가 화면 끝까지 가도록 */}
       <div className="py-[var(--section-gap)] max-md:py-8">
         <RankHeader
-          title="클랜랭킹"
+          title={title}
           notice="이 리그에 소속된 클랜입니다. 순위가 아니라 이름순입니다."
         />
         <ClanSearchBox
