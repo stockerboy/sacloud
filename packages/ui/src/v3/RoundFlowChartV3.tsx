@@ -77,6 +77,8 @@ const WIGGLE = 0
 const DASH_ESTIMATED = false
 /** 3.6초 긋기 애니메이션 — 폰에서 중간에 멈춘 채 남아 껐다 (2026-09-23 사장님) */
 const DRAW_IN = false
+/** 진 팀 선을 클랜 테마 색으로 (지금은 빨강 고정) */
+const LOSER_CLAN_COLOR = false
 /** 깔끔한 판의 선 두께 (sleeper 참고) */
 const CLEAN_W = 2.6
 
@@ -279,12 +281,16 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   const R = PLOT.markerR
   const nowX = last ? last.x : X1
   const close = Math.abs(yOf(endW) - yOf(100 - endW)) < 52
+  /* 값이 같으면(50:50) 원 두 개가 포개진다 → 이긴 쪽 위·진 쪽 아래로 R 만큼 */
+  const tie = Math.abs(endW - 50) < 0.5
   const wAbove = yOf(endW) <= yOf(100 - endW)
   const wDy = close ? (wAbove ? -14 : 22) : 6
   const lDy = close ? (wAbove ? 22 : -14) : 6
   const labelX = nowX + R + 8
   const winInk = GLOW ? (tone === V3 ? '#1c2f6b' : '#bcd2ff') : '#8fb4ff'
-  const loseInk = loser.theme.main
+  /* 진 팀 색 — 육각형·위 범례와 같이 ★빨강★ 으로 고정한다. 클랜 테마(afterpray 파랑 · latency 회색)를 쓰니
+     두 선이 같은 색이거나 회색이 됐다 (운영 QA 4경기). 옛 판은 LOSER_CLAN_COLOR */
+  const loseInk = LOSER_CLAN_COLOR ? loser.theme.main : '#ff6b6b'
   /* 옛 판은 폰에서 홀수 라운드만 적었다(`every`). 지금은 매 라운드 — 좁으면 엇갈려 적는다 (사장님) */
 
   const dots = (n: number, total: number, color: string) => (
@@ -318,7 +324,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   return (
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: tone.plot }}>
       {/* ★전후반 요약★ — 라운드 수 · 설치 수 · 진영 (2026-09-23 사장님) */}
-      <div style={{ display: 'grid', gridTemplateColumns: phone ? '1fr' : '1fr 1fr', gap: 1, background: tone.cardBorder, border: `1px solid ${tone.cardBorder}`, marginBottom: 6 }}>
+      {/* 후반이 없는 경기(5:0)는 한 칸만 — 빈 칸을 남기지 않는다 (운영 QA) */}
+      <div style={{ display: 'grid', gridTemplateColumns: phone || model.second.rounds === 0 ? '1fr' : '1fr 1fr', gap: 1, background: tone.cardBorder, border: `1px solid ${tone.cardBorder}`, marginBottom: 6 }}>
         <div style={{ background: tone.plot }}>{halfRow('전반', model.first, 'first')}</div>
         {model.second.rounds > 0 ? <div style={{ background: tone.plot }}>{halfRow('후반', model.second, 'second')}</div> : null}
       </div>
@@ -424,12 +431,12 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         {last ? (
           <g pointerEvents="none">
             {GLOW ? <circle cx={nowX} cy={yOf(100 - endW)} r={R + 4} fill="none" stroke={loser.theme.deep} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.55} /> : null}
-            <circle cx={nowX} cy={yOf(100 - endW)} r={R} fill={tone.chip} stroke={loseInk} strokeWidth={2} />
-            {loser.slug && hasFitMark(loser.slug) ? <image href={fitMarkUrl(loser.slug)} x={nowX - R} y={yOf(100 - endW) - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
+            <circle cx={nowX} cy={yOf(100 - endW) + (tie ? R : 0)} r={R} fill={tone.chip} stroke={loseInk} strokeWidth={2} />
+            {loser.slug && hasFitMark(loser.slug) ? <image href={fitMarkUrl(loser.slug)} x={nowX - R} y={yOf(100 - endW) - R + (tie ? R : 0)} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
             <text x={labelX} y={yOf(100 - endW) + lDy} textAnchor="start" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - endW).toFixed(0)}%</text>
             {GLOW ? <circle cx={nowX} cy={yOf(endW)} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.55} /> : null}
-            <circle cx={nowX} cy={yOf(endW)} r={R} fill={tone.chip} stroke={winInk} strokeWidth={2} />
-            {winner.slug && hasFitMark(winner.slug) ? <image href={fitMarkUrl(winner.slug)} x={nowX - R} y={yOf(endW) - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
+            <circle cx={nowX} cy={yOf(endW) - (tie ? R : 0)} r={R} fill={tone.chip} stroke={winInk} strokeWidth={2} />
+            {winner.slug && hasFitMark(winner.slug) ? <image href={fitMarkUrl(winner.slug)} x={nowX - R} y={yOf(endW) - R - (tie ? R : 0)} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
             <text x={labelX} y={yOf(endW) + wDy} textAnchor="start" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{endW.toFixed(0)}%</text>
           </g>
         ) : null}

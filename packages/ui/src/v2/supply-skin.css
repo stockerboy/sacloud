@@ -1312,8 +1312,9 @@ body.antialiased {
 /* 스코어보드 PC 줄 — 맨 끝 22px 은 옛 MVP 자리(빈 칸). 폰에서는 이미 0 인데 PC 에서는 남아
    396 판에서 이름 칸이 148 이고 MVP 배지가 들어가면 「중정…」 (운영 실측 38px). PC 도 0 → 이름 +30 (2026-09-23) */
 @media (min-width: 701px) {
-  .v3-score-row { grid-template-columns: minmax(96px, 1fr) 86px 58px 0px !important; }
-  .v3-score-row--saves { grid-template-columns: minmax(96px, 1fr) 86px 44px 58px 0px !important; }
+  /* 2026-09-23 낮 — 396 판에서 「enanthate ★MVP」 가 37px 로 잘렸다 (운영 QA). K/D/A 86→84 · 세이브 44→38 · 포지션 58→46 → 이름 +20 */
+  .v3-score-row { grid-template-columns: minmax(96px, 1fr) 84px 46px 0px !important; }
+  .v3-score-row--saves { grid-template-columns: minmax(96px, 1fr) 84px 38px 46px 0px !important; }
   .v3-score-row > span:last-child { overflow: hidden; }
 }
 
