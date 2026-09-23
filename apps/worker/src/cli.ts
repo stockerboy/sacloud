@@ -1386,7 +1386,7 @@ async function main(): Promise<number> {
       const name = args.positional[0]
       if (!name) { console.error('쓰는 법: barracks-clan-search <클랜이름>'); return 1 }
       const { barracksBrowser, closeBarracksBrowser } = await import('./nexon/browserFetch.js')
-      const r = await barracksBrowser().call('POST', `/api/Search/GetSearchClanAll/${encodeURIComponent(name)}/1`, null)
+      const r = await barracksBrowser().call('POST', `/api/Search/GetSearchClanAll/${encodeURIComponent(name)}/1`, '{}')
       closeBarracksBrowser()
       console.log(`status=${r.status} ms=${r.ms}`)
       console.log(r.body.slice(0, 2500))
