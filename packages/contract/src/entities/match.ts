@@ -423,7 +423,7 @@ export const RoundFlowRound = z.object({
   defence: RoundFlowSide.nullable(),
   /** 라운드를 딴 슬롯. 모르면 null */
   winner: RoundFlowSide.nullable(),
-  /** C4 를 설치한 슬롯 (사장님 「몇 설」 · 2026-09-23 낮). 설치 줄이 없으면 null */
+  /** ★설점★ 을 가져간 슬롯 — 설치 뒤 해체되면 해체한 쪽, 아니면 설치한 쪽 (사장님 2026-09-23 낮). 설치 줄이 없으면 null */
   planted: RoundFlowSide.nullable().default(null),
   /** 시각순 죽음 — 죽은 사람의 슬롯 */
   /** 시각순 죽음 — 죽은 사람의 슬롯 · 닉네임(이벤트에 없으면 null · 사장님 「처음 죽은 사람」) */

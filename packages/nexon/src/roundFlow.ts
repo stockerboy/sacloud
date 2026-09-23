@@ -59,7 +59,12 @@ export interface RoundFlowRound {
   defence: FlowTeam | null
   /** 라운드를 딴 팀. 모르면 null */
   winner: FlowTeam | null
-  /** 이 라운드에 C4 를 ★설치★ 한 팀 (사장님 「몇 설」). 설치 줄이 없으면 null */
+  /**
+   * ★설점★ 을 가져간 팀 (사장님 2026-09-23 낮):
+   *   「폭탄을 설치했다고 무조건 레드가 설점을 가져가는 게 아니야 — 설치 > 해체 로그가 있으면 해체한 블루가 1점,
+   *    없으면 설치한 레드가 1점」
+   *   설치 줄이 아예 없으면 null. (옛 판은 「설치한 팀」 만 봤다 — 그래서 진 라운드에 설이 붙었다)
+   */
   planted: FlowTeam | null
   /** 시각순 죽음. 한 사람은 한 라운드에 한 번만 (roundStatesOf 규칙) */
   deaths: RoundFlowDeath[]
@@ -131,9 +136,15 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
     if (a && e.user_nick && !nickOf.has(a)) nickOf.set(a, String(e.user_nick).trim())
     if (b && e.target_user_nick && !nickOf.has(b)) nickOf.set(b, String(e.target_user_nick).trim())
   }
-  /* 설치 — 라운드마다 설치한 팀 (한 라운드에 설치는 한 팀뿐이다) */
+  /* 설점 — 라운드마다: 설치 줄이 있고 해체 줄도 있으면 해체한 팀 · 설치만 있으면 설치한 팀 (사장님 규칙) */
+  const installBy = new Map<number, string>()
+  const dismantleBy = new Map<number, string>()
+  for (const b of bombEvidenceOf(events)) {
+    if (b.action === 'install' && !installBy.has(b.round)) installBy.set(b.round, b.team)
+    if (b.action === 'dismantle' && !dismantleBy.has(b.round)) dismantleBy.set(b.round, b.team)
+  }
   const plantedBy = new Map<number, string>()
-  for (const b of bombEvidenceOf(events)) if (b.action === 'install' && !plantedBy.has(b.round)) plantedBy.set(b.round, b.team)
+  for (const [round, team] of installBy) plantedBy.set(round, dismantleBy.get(round) ?? team)
 
   const out: RoundFlowRound[] = []
   let prevEnd: number | null = null

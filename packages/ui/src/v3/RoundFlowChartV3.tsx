@@ -314,7 +314,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <span style={{ fontSize: 10.5, color: tone.textDim, whiteSpace: 'nowrap' }}>{sideWord(half, k, sum.attack) ? `(${sideWord(half, k, sum.attack)})` : ''}</span>
           <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
             <b style={{ color: tone.textStrong, fontSize: 14 }}>{sum.won[k]}</b>라운드
-            {sum.attack === k ? <> <b style={{ color: tone.textStrong, fontSize: 14 }}>{sum.planted[k]}</b>설</> : null}
+            {/* 설점 — 해체로 블루도 가져간다 (사장님 규칙) → 0 이어도 적는다 */}
+            {' '}<b style={{ color: tone.textStrong, fontSize: 14 }}>{sum.planted[k]}</b>설
           </span>
         </div>
       ))}

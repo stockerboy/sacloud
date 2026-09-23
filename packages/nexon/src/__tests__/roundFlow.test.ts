@@ -60,6 +60,16 @@ describe('roundFlowOf', () => {
     expect(r2.deaths.map((d) => d.name)).toEqual(['b1님', 'b2님'])
   })
 
+  it('설점 — 설치 뒤 해체가 있으면 해체한 팀이 가져간다 (사장님 규칙)', () => {
+    const events: RoundFlowEvent[] = [
+      ...roster(),
+      bomb(1, '00:40', '0', 'c4-install', 'lose'),
+      bomb(1, '00:48', '1', 'c4-dismantle', 'lose'),
+    ]
+    const flow = roundFlowOf({ events, teamNo: '0' })
+    expect(flow?.rounds[0]?.planted).toBe('foe')
+  })
+
   it('두 팀이 안 갈리면 null', () => {
     expect(roundFlowOf({ events: [death(1, '00:10', 'x', '0', 'y', '0', 'win')], teamNo: '0' })).toBeNull()
   })
