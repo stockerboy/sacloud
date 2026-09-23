@@ -272,7 +272,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
         )}
         {sniper ? <SniperMark /> : null}
         {/* ★MVP 는 닉네임 오른쪽★ · ★스나 표시가 있으면 그 오른쪽★ (2026-09-20 사장님) */}
-        {mvp ? <MvpMark size={15} /> : null}
+        {mvp ? <MvpMark size={15} compact /> : null}
       </span>
       {/* ★순위★ — 리그 개인랭킹 등수 (2026-09-23 사장님 「순위(래더x)」). 모르면 「-」 */}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: row.league_rank === null ? '#767f96' : '#96a0b5' }}>{row.league_rank === null ? '-' : `${row.league_rank}위`}</span>

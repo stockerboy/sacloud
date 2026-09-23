@@ -629,7 +629,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         const killedBy = (k: 'W' | 'L') => hud.fallen.filter((f) => f.side !== k)
         const firstAt = hud.fallen[0]?.at
         const killRow = (f: Pt['fallen'][number], i: number, align: 'left' | 'right') => (
-          <span key={`${f.at}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', minWidth: 0, justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
+          <span key={`${f.at}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: phone ? 3 : 4, fontSize: phone ? 11 : undefined, whiteSpace: 'nowrap', minWidth: 0, justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
             {f.at === firstAt ? <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: 11.5, flex: 'none' }}>선짤</span> : null}
             {f.by ? (<><span style={{ color: inkOf(f.side === 'W' ? 'L' : 'W'), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{f.by}</span><span style={{ color: tone.textGhost, fontSize: 11, flex: 'none' }}>▸</span></>) : null}
             <span style={{ color: inkOf(f.side), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{f.name ?? '—'}</span>

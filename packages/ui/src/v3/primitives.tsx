@@ -342,7 +342,7 @@ export function SniperMark({ size = 15 }: { size?: number }) {
  *
  * ⚠ 옛 「빨강 원 안 흰 별」 은 아래 `MvpMarkCircle` 로 남겼다 (`CLAUDE.md` 1-4).
  */
-export function MvpMark({ size = 16, className }: { size?: number; className?: string }) {
+export function MvpMark({ size = 16, className, compact = false }: { size?: number; className?: string; /** ★만 — 명단 줄처럼 자리가 없는 곳 (2026-09-23 밤 QA: 닉네임이 「거…」 로 눌렸다). 빨간 사각은 그대로 */ compact?: boolean }) {
   const fs = Math.max(9, Math.round(size * 0.66))
   return (
     <span
@@ -354,7 +354,7 @@ export function MvpMark({ size = 16, className }: { size?: number; className?: s
         alignItems: 'center',
         gap: 3,
         flex: 'none',
-        padding: '2px 6px',
+        padding: compact ? '2px 4px' : '2px 6px',
         borderRadius: 0,
         background: '#e0342f',
         color: '#ffffff',
@@ -363,7 +363,7 @@ export function MvpMark({ size = 16, className }: { size?: number; className?: s
       }}
     >
       <span aria-hidden style={{ fontSize: fs }}>&#9733;</span>
-      <span style={{ fontSize: fs, fontWeight: 900, letterSpacing: '.06em' }}>MVP</span>
+      {compact ? null : <span style={{ fontSize: fs, fontWeight: 900, letterSpacing: '.06em' }}>MVP</span>}
     </span>
   )
 }

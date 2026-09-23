@@ -15,6 +15,8 @@ const [url, wRaw, hRaw, exprFile, waitFor] = process.argv.slice(2)
 const width = Number(wRaw ?? 393)
 const height = Number(hRaw ?? 852)
 const expression = readFileSync(exprFile, 'utf8')
+/* 7번째 인자가 있으면 식 안에서 window.__QA_CLICK 으로 읽어 누른다 (qa.js) */
+const qaClick = process.argv[8]
 
 const CHROME = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -78,6 +80,7 @@ if (width < 700) {
   await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }).catch(() => {})
 }
 await send('Page.navigate', { url })
+if (qaClick) await send('Runtime.evaluate', { expression: `window.__QA_CLICK = ${JSON.stringify(qaClick)}` }).catch(() => {})
 await sleep(4000)
 if (waitFor) {
   for (let i = 0; i < 40; i += 1) {

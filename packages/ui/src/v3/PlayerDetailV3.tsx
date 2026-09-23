@@ -821,7 +821,7 @@ function ScoreRow({ row, me, mvp, weaponKnown, leagueSlug, side }: { row: MatchP
           </a>
         )}
         {sniper ? <SniperMark /> : null}
-        {mvp ? <MvpMark size={15} /> : null}
+        {mvp ? <MvpMark size={15} compact /> : null}
       </span>
       {/* ② 순위 — 리그 개인랭킹 등수. 문턱 미달·배치고사·집계 전이면 「-」 */}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: row.league_rank === null ? V3.textGhost : V3.textDim }}>{row.league_rank === null ? '-' : `${row.league_rank}위`}</span>
@@ -889,7 +889,7 @@ function ScoreRowSupplySix({ row, me, mvp, weaponKnown, leagueSlug, side, maxDam
               </a>
             )}
             {sniper ? <SniperMark /> : null}
-            {mvp ? <MvpMark size={15} /> : null}
+            {mvp ? <MvpMark size={15} compact /> : null}
           </span>
           {/* ★폰에서만★ — 래더가 닉네임 밑으로 내려온다 (사진 2) */}
           <span className="sac-sb-phone-only">{ratingNode}</span>
@@ -995,7 +995,7 @@ function ScoreRowLegacy({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side
             그래서 `SniperMark` 바로 뒤에 둔다.
           ⚠ 옛 자리(줄 맨 오른쪽 금색 ★)는 아래에서 지웠다 — 두 군데에 뜨면 지저분하다.
         */}
-        {mvp ? <MvpMark size={15} /> : null}
+        {mvp ? <MvpMark size={15} compact /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
       {showSaves ? (
