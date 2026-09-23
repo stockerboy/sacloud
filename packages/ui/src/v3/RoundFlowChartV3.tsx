@@ -368,14 +368,30 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: tone.plot }}>
       {/* ★전후반 요약★ — 가로 배열: [전반 공격 · 전반 수비] | [후반 공격 · 후반 수비] (2026-09-23 사장님) */}
       <div style={{ border: `1px solid ${tone.cardBorder}`, marginBottom: 6 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: model.second.rounds > 0 ? '1fr 1fr' : '1fr', fontSize: 10.5, color: tone.textDim, letterSpacing: '.06em', borderBottom: `1px solid ${tone.cardBorder}` }}>
-          <div style={{ padding: '4px 8px' }}>전반 · {model.first.rounds}라운드</div>
-          {model.second.rounds > 0 ? <div style={{ padding: '4px 8px', borderLeft: `2px solid ${tone.textMuted}` }}>후반 · {model.second.rounds}라운드</div> : null}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: model.second.rounds > 0 ? '1fr 1fr' : '1fr' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>{halfCells(model.first, 'first')}</div>
-          {model.second.rounds > 0 ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderLeft: `2px solid ${tone.textMuted}` }}>{halfCells(model.second, 'second')}</div> : null}
-        </div>
+        {/* 폰은 네 칸이 안 들어가 이름이 「Th…」 로 잘렸다 (운영 캡쳐) → 폰에서는 전반/후반을 위아래로 (각 반은 여전히 가로 두 칸) */}
+        {phone ? (
+          <>
+            <div style={{ padding: '4px 8px', fontSize: 10.5, color: tone.textDim, letterSpacing: '.06em', borderBottom: `1px solid ${tone.cardBorder}` }}>전반 · {model.first.rounds}라운드</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>{halfCells(model.first, 'first')}</div>
+            {model.second.rounds > 0 ? (
+              <>
+                <div style={{ padding: '4px 8px', fontSize: 10.5, color: tone.textDim, letterSpacing: '.06em', borderTop: `2px solid ${tone.textMuted}`, borderBottom: `1px solid ${tone.cardBorder}` }}>후반 · {model.second.rounds}라운드</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>{halfCells(model.second, 'second')}</div>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: model.second.rounds > 0 ? '1fr 1fr' : '1fr', fontSize: 10.5, color: tone.textDim, letterSpacing: '.06em', borderBottom: `1px solid ${tone.cardBorder}` }}>
+              <div style={{ padding: '4px 8px' }}>전반 · {model.first.rounds}라운드</div>
+              {model.second.rounds > 0 ? <div style={{ padding: '4px 8px', borderLeft: `2px solid ${tone.textMuted}` }}>후반 · {model.second.rounds}라운드</div> : null}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: model.second.rounds > 0 ? '1fr 1fr' : '1fr' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>{halfCells(model.first, 'first')}</div>
+              {model.second.rounds > 0 ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderLeft: `2px solid ${tone.textMuted}` }}>{halfCells(model.second, 'second')}</div> : null}
+            </div>
+          </>
+        )}
       </div>
       {/* ★인원 줄★ — 축을 옮기면 따라온다 (시안 A) */}
       {hud ? (
