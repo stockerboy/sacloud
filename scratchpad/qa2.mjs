@@ -36,7 +36,7 @@ const PAGES = [
   ['player', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '승률', null],
   ['player-analysis-m', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '', '플레이분석', true],
   ['clan', '/league/supply/clan/zxcvddr2', '클랜원', null],
-  ['clan-nolink', '/league/nolink/clan/happytogether', '', null],
+  ['clan-nolink', '/league/nolink/clan/01025606089', '클랜원', null], /* happytogether 는 PL 소속이었다 — IPL 진짜 클랜(veritas)으로 */
   ['badge', '/league/supply/badge', '', null],
   ['hire', '/league/supply/hire', '', null],
   ['league-board', '/league/supply/board', '', null],
