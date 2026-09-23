@@ -118,9 +118,14 @@ if (clickText) {
     if (clicked !== 'clicked') { await sleep(500); continue }
     /* 서버가 그린 글자는 있는데 React 가 아직 안 붙었으면 눌러도 아무 일 없다 → 기다릴 글자가 안 뜨면 다시 누른다 */
     if (waitFor) {
-      await sleep(900)
-      const ok = await send('Runtime.evaluate', { expression: `document.body.innerText.includes(${JSON.stringify(waitFor)})`, returnByValue: true })
-      if (ok.result?.value !== true) { clicked = 'clicked-but-nothing'; await sleep(600) }
+      /* ⚠ 단추는 토글이다 — 너무 빨리 「안 떴네」 하고 다시 누르면 도로 닫힌다. 4초까지 기다려 본다 */
+      let seen = false
+      for (let j = 0; j < 8 && !seen; j += 1) {
+        await sleep(500)
+        const ok = await send('Runtime.evaluate', { expression: `document.body.innerText.includes(${JSON.stringify(waitFor)})`, returnByValue: true })
+        seen = ok.result?.value === true
+      }
+      if (!seen) { clicked = 'clicked-but-nothing'; await sleep(600) }
     }
   }
   console.log('click', clickText, clicked)

@@ -161,7 +161,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   /* ⚠ 2026-09-23 낮 — 사장님: 「이 공간을 남기지 말고 다 쓰라는거임」. 옛 판은 마커 옆 「94%」 자리로 오른쪽 58~66px 을 비웠다.
      이제 판을 오른쪽 끝까지 쓰고, 마커는 선 끝에 얹고 % 는 마커 ★위/아래★ 에 적는다. 옛 값: box.X1 - (phone ? 58 : 66) */
   const { H, X0, Y_TOP, Y_BOTTOM, phone } = box
-  const X1 = box.X1 - (phone ? 16 : 18)
+  /* ⚠ 2026-09-23 오후 사장님 폰 캡쳐: 「오른쪽 공간이 안 남게 그래프를 끝까지 뻗어줘」 → 폰은 마커 반지름만큼만 남긴다.
+     plotBox 가 폰에 34 를 비워 두는데 그 위에 16 을 더 비웠었다 (옛 값). % 글자는 마커 왼쪽으로 옮겼다 */
+  const X1 = phone ? width - PLOT.markerR - 2 : box.X1 - 18
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)
 
   const model = useMemo(() => {
@@ -507,17 +509,20 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         {(() => {
           let lastX = -99
           let stagger = 0
+          const manyRounds = model.ticks.length > 18
           return model.ticks.map((t) => {
             const cx = (t.x + t.x1) / 2
             const tight = cx - lastX < (phone ? 16 : 22)
-            stagger = tight ? 1 - stagger : 0
+            /* ⚠ 2026-09-23 오후 사장님: 「라운드 1부터 14 숫자가 삐뚤빼뚤」 → 폰은 엇갈리지 않고 한 줄. 좁으면(18R 초과) 홀수만 적는다 */
+            stagger = phone ? 0 : tight ? 1 - stagger : 0
             lastX = cx
+            const skipNumber = phone && manyRounds && t.round % 2 === 0
             return (
               <g key={t.round}>
                 <line x1={t.x} y1={Y_TOP} x2={t.x} y2={Y_BOTTOM} stroke={tone.cardBorder} strokeDasharray="3 5" />
                 {t.winner ? <rect x={t.x} y={Y_TOP - 9} width={Math.max(1, t.x1 - t.x)} height={4} fill={t.winner === 'W' ? winInk : loseInk} opacity={0.7} /> : null}
                 {t.firstX !== null ? <text x={t.firstX} y={Y_TOP + 4} textAnchor="middle" fill={t.firstSide === 'W' ? winInk : loseInk} fontSize={9} opacity={0.85}>×</text> : null}
-                <text x={cx} y={Y_BOTTOM + (phone ? 20 : 24) + stagger * (phone ? 11 : 12)} textAnchor="middle" fill={tone.textDim} fontSize={phone ? 10.5 : PLOT.axisFont}>{t.round}</text>
+                {skipNumber ? null : <text x={cx} y={Y_BOTTOM + (phone ? 20 : 24) + stagger * (phone ? 11 : 12)} textAnchor="middle" fill={tone.textDim} fontSize={phone ? 10 : PLOT.axisFont}>{t.round}</text>}
               </g>
             )
           })
@@ -569,11 +574,11 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
             {GLOW ? <circle cx={nowX} cy={yOf(100 - endW)} r={R + 4} fill="none" stroke={loser.theme.deep} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.55} /> : null}
             <circle cx={nowX} cy={yOf(100 - endW) + (tie ? R : 0)} r={R} fill={tone.chip} stroke={loseInk} strokeWidth={2} />
             {loser.slug && hasFitMark(loser.slug) ? <image href={fitMarkUrl(loser.slug)} x={nowX - R} y={yOf(100 - endW) - R + (tie ? R : 0)} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={yL + lLabelDy} textAnchor="middle" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - endW).toFixed(0)}%</text>
+            <text x={phone ? nowX - R - 3 : labelX} y={phone ? yOf(100 - endW) + (tie ? R : 0) + 5 : yL + lLabelDy} textAnchor={phone ? 'end' : 'middle'} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - endW).toFixed(0)}%</text>
             {GLOW ? <circle cx={nowX} cy={yOf(endW)} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.55} /> : null}
             <circle cx={nowX} cy={yOf(endW) - (tie ? R : 0)} r={R} fill={tone.chip} stroke={winInk} strokeWidth={2} />
             {winner.slug && hasFitMark(winner.slug) ? <image href={fitMarkUrl(winner.slug)} x={nowX - R} y={yOf(endW) - R - (tie ? R : 0)} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={yW + wLabelDy} textAnchor="middle" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{endW.toFixed(0)}%</text>
+            <text x={phone ? nowX - R - 3 : labelX} y={phone ? yOf(endW) - (tie ? R : 0) + 5 : yW + wLabelDy} textAnchor={phone ? 'end' : 'middle'} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{endW.toFixed(0)}%</text>
           </g>
         ) : null}
         {/* 범례·각주 — 폰에서는 안 그린다: 인원 줄이 두 이름을 색으로 말하고, 엇갈린 라운드 번호와 겹쳤다 (2026-09-23 폰 캡쳐) */}

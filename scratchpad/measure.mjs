@@ -89,6 +89,31 @@ if (waitFor) {
   }
 }
 await sleep(1500)
+/* 6번째 인자 — 재기 전에 누를 글자. React 가 붙기 전에 누르면 아무 일 없으니 「기다릴글자」 가 뜰 때까지 다시 누른다 (2026-09-23) */
+const clickText = process.argv[7]
+if (clickText) {
+  let state = 'not found'
+  for (let i = 0; i < 40 && state !== 'clicked'; i += 1) {
+    const c = await send('Runtime.evaluate', {
+      expression: `(() => { const el = [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === ${JSON.stringify(clickText)}); if (el) { el.click(); return 'clicked' } return 'not found' })()`,
+      returnByValue: true,
+    })
+    state = c.result?.value
+    if (state !== 'clicked') { await sleep(500); continue }
+    if (waitFor) {
+      /* 단추는 토글 — 4초까지 기다렸다가 안 뜨면 다시 누른다 */
+      let seen = false
+      for (let j = 0; j < 8 && !seen; j += 1) {
+        await sleep(500)
+        const ok = await send('Runtime.evaluate', { expression: `document.body.innerText.includes(${JSON.stringify(waitFor)})`, returnByValue: true })
+        seen = ok.result?.value === true
+      }
+      if (!seen) { state = 'clicked-but-nothing'; await sleep(600) }
+    }
+  }
+  console.error('click', clickText, state)
+  await sleep(1200)
+}
 const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
 if (r.exceptionDetails) console.error('식이 터졌다:', JSON.stringify(r.exceptionDetails).slice(0, 400))
 console.log(r.result?.value ?? '(빈 결과)')

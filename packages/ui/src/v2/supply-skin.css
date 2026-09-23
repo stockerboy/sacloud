@@ -1402,7 +1402,15 @@ body.antialiased {
      (`CLAUDE.md` 1-4). DOM 에 `.v3-board-hex` 가 없으니 걸리지 않을 뿐이다.
    ══════════════════════════════════════════════════════════════════════════ */
 .v3-board-pillar { display: none; }
+/* 진 팀 명단 자리 육각 — PC(≥900)에서만. 폰은 명단 밑 육각(hexphone)이 있어 둘이 겹치면 안 된다 (2026-09-23 폰 캡쳐에서 겹쳤다) */
+.v3-board-hexin { display: none; }
 .v3-board-flow { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+/* ★폰 명단 다섯 칸★ (2026-09-23 오후 ①-4) — 순위 칸이 들어오며 393 에서 「알수없음」 이 잘렸다(캡쳐).
+   80+34+78+32+46 + 틈 30 + 여백 28 = 328 < 361. 선수 화면 `sac-sb-row` 도 같은 클래스라 같은 격자를 탄다 */
+@media (max-width: 700px) {
+  .v3-score-row { grid-template-columns: minmax(80px, 1fr) 34px 78px 46px 0px !important; gap: 6px !important; }
+  .v3-score-row--saves, .v3-score-row.sac-sb-row { grid-template-columns: minmax(80px, 1fr) 34px 78px 32px 46px 0px !important; gap: 6px !important; }
+}
 .v3-board-hexphone { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 
 @media (min-width: 900px) {
