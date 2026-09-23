@@ -19,7 +19,7 @@
 import type { ReactNode } from 'react'
 import { leagueDisplayName } from '../site-config'
 import { leagueScreen, showsTier, type LeagueClanShow } from '@sacloud/contract'
-import { rankColor, statColor } from './rankColors'
+import { SUPPLY_INFO, supplyRankColor, supplyRateColor } from './rankColors'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf } from './primitives'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
@@ -78,13 +78,13 @@ export function ClanHeaderV3({ data, infoHref, seasonLabel, memberCount, renewAc
       </div>
 
       {/* 2 · ★폰에서만★ — 선수 카드의 상세정보 줄과 같은 꼴 (supply-skin.css `.v3-phead-info-phone`) */}
-      <div className="v3-phead-info-phone" style={{ position: 'relative', borderTop: `1px solid ${V3.rowDivider}` }}>
+      <div className="v3-phead-info-phone sac-info-card" style={{ position: 'relative', borderTop: `1px solid ${V3.rowDivider}` }}>
         <Row label="승률" sub={`${fmt(data.win)}승 ${fmt(data.lose)}패`}>
-          <b style={{ fontSize: 21, fontWeight: 700, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</b>
+          <b style={{ fontSize: 21, fontWeight: 700, color: supplyRateColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</b>
         </Row>
         <Row label="랭킹" sub={data.rank_count === null ? '' : `${fmt(data.rank_count)}팀 중`}>
           {rank === null ? <span style={{ fontSize: 13, color: V3.textGhost }}>{data.placement ? '배치 중' : '집계 없음'}</span> : (
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}><b style={{ fontSize: 21, fontWeight: 700, color: rankColor(rank) }}>{fmt(rank)}</b><span style={{ fontSize: 12, color: V3.textDim }}>위</span></span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}><b style={{ fontSize: 21, fontWeight: 700, color: supplyRankColor(rank) }}>{fmt(rank)}</b><span style={{ fontSize: 12, color: V3.textDim }}>위</span></span>
           )}
         </Row>
         <Row label="최다연승" sub={`${fmt(games)}전 중`} last>
@@ -100,9 +100,9 @@ export function ClanHeaderV3({ data, infoHref, seasonLabel, memberCount, renewAc
 function Row({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 50 }}>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textDim, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
       <div style={spacerStyle} />
-      {sub ? <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
+      {sub ? <span style={{ fontSize: 11, color: SUPPLY_INFO.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
       {children}
     </div>
   )

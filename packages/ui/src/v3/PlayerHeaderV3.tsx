@@ -36,7 +36,7 @@ import {
   tierKdOrNull,
   tierWinRateOrNull,
 } from '@sacloud/contract'
-import { rankColorOf, statColor } from './rankColors'
+import { SUPPLY_INFO, rankColorOf, statColor, supplyRankColor, supplyRateColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { PlayerHexTrend } from './PlayerHexTrend'
 import { strengthAxes } from './playerHexAxes'
@@ -998,13 +998,13 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         MVP·핵의심이 이 줄 안에 다시 들어 있어서다. 래더·소속은 카드 위쪽(점수 · 이름 밑 클랜)에 이미 있어 안 되풀이한다.
         말씨는 인계서 ③-10 대로 — 「판킬」 · MVP 「n판 중 k회」 · 핵의심 옆 신고 단추.
       */}
-      <div className="v3-phead-info-phone" style={{ position: 'relative', borderTop: `1px solid ${V3.rowDivider}` }}>
+      <div className="v3-phead-info-phone sac-info-card" style={{ position: 'relative', borderTop: `1px solid ${V3.rowDivider}` }}>
         <PhoneInfoRow label="승률" sub={`${fmt(data.win)}승 ${fmt(data.lose)}패`}>
-          <b style={{ fontSize: 21, fontWeight: 700, color: statColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</b>
+          <b style={{ fontSize: 21, fontWeight: 700, color: supplyRateColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</b>
         </PhoneInfoRow>
         {showsKd && data.kill !== null && data.death !== null ? (
           <PhoneInfoRow label="킬뎃" sub={`${fmt(data.kill)}킬 ${fmt(data.death)}데스`}>
-            <b style={{ fontSize: 21, fontWeight: 700, color: data.kd_rate === null ? V3.textMuted : statColor(data.kd_rate), whiteSpace: 'nowrap' }}>{pct1(data.kd_rate)}</b>
+            <b style={{ fontSize: 21, fontWeight: 700, color: supplyRateColor(data.kd_rate), whiteSpace: 'nowrap' }}>{pct1(data.kd_rate)}</b>
           </PhoneInfoRow>
         ) : null}
         <PhoneInfoRow label="판킬">
@@ -1025,7 +1025,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             <span style={{ fontSize: 13, color: V3.textGhost, whiteSpace: 'nowrap' }}>{data.placement ? '배치고사' : '집계 없음'}</span>
           ) : (
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
-              <b style={{ fontSize: 21, fontWeight: 700, color: rankColorOf(data.rank, data.rank_count) }}>{fmt(data.rank)}</b>
+              <b style={{ fontSize: 21, fontWeight: 700, color: supplyRankColor(data.rank) }}>{fmt(data.rank)}</b>
               <span style={{ fontSize: 12, color: V3.textDim }}>위</span>
             </span>
           )}
@@ -1058,9 +1058,9 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
 function PhoneInfoRow({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 50 }}>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textDim, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
       <div style={spacerStyle} />
-      {sub ? <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
+      {sub ? <span style={{ fontSize: 11, color: SUPPLY_INFO.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
       {children}
     </div>
   )

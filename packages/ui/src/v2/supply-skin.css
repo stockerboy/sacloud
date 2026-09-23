@@ -1536,3 +1536,8 @@ body.antialiased {
 @media (max-width: 767px) {
   .home-hero--art { padding-top: 170px !important; padding-bottom: 18px !important; background-position: center 30%, center 30% !important; }
 }
+
+/* ★상세정보 카드 — 3rd.supply 스타일★ (2026-09-23 밤 사장님 명세). 판 #1E293B · 선 #35445A · Noto Sans KR · 라벨 600 · 값 700.
+   색 규칙은 rankColors.ts 의 supplyRateColor / supplyRankColor (공통 statColor·rankColor 는 안 건드림) */
+.sac-info-card { background: #1E293B !important; border-color: #35445A !important; font-family: "Noto Sans KR", "Noto Sans", sans-serif; }
+.sac-info-card > div > div { border-bottom-color: #35445A !important; }

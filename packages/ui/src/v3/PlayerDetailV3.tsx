@@ -17,7 +17,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail, MatchDetail, MatchLineupEntry, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
 import { showsTier, badgeArtSmallPath, badgeOfAxis } from '@sacloud/contract'
 import { leagueBadgePath } from '../common/paths'
-import { floorColor, rankColor, rankColorOf, statColor } from './rankColors'
+import { SUPPLY_INFO, floorColor, rankColor, statColor, supplyRankColor, supplyRateColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { CompareSearchV3, type CompareCandidate } from './CompareSearchV3'
 import { strengthAxes } from './playerHexAxes'
@@ -1944,7 +1944,7 @@ function SideInfoCard({ data, showsKd, report }: { data: LeaguePlayerDetail; sho
   const kdKnown = showsKd && data.kill !== null && data.death !== null
   const reportCount = report?.reported ? report.count : data.report_count
   return (
-    <section style={{ ...cardStyle, overflow: 'hidden' }}>
+    <section className="sac-info-card" style={{ ...cardStyle, overflow: 'hidden' }}>
       {/* 제목은 「상세정보」 가 아니라 ★선수 닉네임★ (인계서 ③-8 · 2026-09-23) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
@@ -1952,14 +1952,14 @@ function SideInfoCard({ data, showsKd, report }: { data: LeaguePlayerDetail; sho
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <InfoRow label="래더">
-          <span style={{ fontSize: 22, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>{formatRating(data.rating)}</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: SUPPLY_INFO.red, whiteSpace: 'nowrap' }}>{formatRating(data.rating)}</span>
         </InfoRow>
         <InfoRow label="승률" sub={`${fmt(data.win)}승 ${fmt(data.lose)}패`}>
-          <span style={{ fontSize: 22, fontWeight: 700, color: statColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: supplyRateColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</span>
         </InfoRow>
         {kdKnown ? (
           <InfoRow label="킬뎃" sub={`${fmt(data.kill as number)}킬 ${fmt(data.death as number)}데스`}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: data.kd_rate === null ? V3.textMuted : statColor(data.kd_rate), whiteSpace: 'nowrap' }}>{pct1(data.kd_rate)}</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: supplyRateColor(data.kd_rate), whiteSpace: 'nowrap' }}>{pct1(data.kd_rate)}</span>
           </InfoRow>
         ) : null}
         {/* 「평균킬 · 판당」 → ★「판킬」★ (인계서 ③-10) */}
@@ -1982,7 +1982,7 @@ function SideInfoCard({ data, showsKd, report }: { data: LeaguePlayerDetail; sho
             <span style={{ fontSize: 13, color: V3.textGhost, whiteSpace: 'nowrap' }}>{data.placement ? '배치고사' : '집계 없음'}</span>
           ) : (
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
-              <span style={{ fontSize: 22, fontWeight: 700, color: rankColorOf(data.rank, data.rank_count) }}>{fmt(data.rank)}</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color: supplyRankColor(data.rank) }}>{fmt(data.rank)}</span>
               <span style={{ fontSize: 12, color: V3.textDim }}>위</span>
             </span>
           )}
@@ -2070,9 +2070,9 @@ function TeammatesCard({ data }: { data: LeaguePlayerDetail }) {
 function InfoRow({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 46 }}>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textDim, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
       <div style={spacerStyle} />
-      {sub ? <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
+      {sub ? <span style={{ fontSize: 11, color: SUPPLY_INFO.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
       {children}
     </div>
   )

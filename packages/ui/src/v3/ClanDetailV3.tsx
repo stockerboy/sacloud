@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { MatchCardListV3 } from './MatchCardV3'
 import type { ClanHeadToHead, ClanRankRow, LeagueClanShow, MatchDetail, MatchListItem, MatchPlayerStat } from '@sacloud/contract'
 import { showsTier } from '@sacloud/contract'
-import { floorColor, rankColor, statColor } from './rankColors'
+import { SUPPLY_INFO, rankColor, statColor, supplyRankColor, supplyRateColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { clanHexAxes } from './ClanCardV3'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
@@ -1389,17 +1389,17 @@ function ClanSideInfoCard({ data, memberCount }: { data: LeagueClanShow; memberC
   const games = data.win + data.lose
   const rank = data.rank
   return (
-    <section style={{ ...cardStyle, overflow: 'hidden' }}>
+    <section className="sac-info-card" style={{ ...cardStyle, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
         <span style={{ fontSize: 14, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{data.clan.name}</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <ClanInfoRow label="래더" sub={data.placement ? '배치 중' : ''}>
-          <span style={{ fontSize: 22, fontWeight: 700, color: floorColor(data.rating), whiteSpace: 'nowrap' }}>{formatRating(data.rating)}</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: SUPPLY_INFO.red, whiteSpace: 'nowrap' }}>{formatRating(data.rating)}</span>
         </ClanInfoRow>
         <ClanInfoRow label="승률" sub={`${fmt(data.win)}승 ${fmt(data.lose)}패`}>
-          <span style={{ fontSize: 22, fontWeight: 700, color: data.win_rate === null ? V3.textMuted : statColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: supplyRateColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</span>
         </ClanInfoRow>
         <ClanInfoRow label="최다연승" sub={`${fmt(games)}전 중`}>
           {data.max_win_streak === null ? <span style={{ fontSize: 13, color: V3.textGhost }}>-</span> : (
@@ -1408,7 +1408,7 @@ function ClanSideInfoCard({ data, memberCount }: { data: LeagueClanShow; memberC
         </ClanInfoRow>
         <ClanInfoRow label="랭킹" sub={data.rank_count === null ? '' : `${fmt(data.rank_count)}팀 중`}>
           {rank === null ? <span style={{ fontSize: 13, color: V3.textGhost }}>{data.placement ? '배치 중' : '집계 없음'}</span> : (
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}><span style={{ fontSize: 22, fontWeight: 700, color: rankColor(rank) }}>{fmt(rank)}</span><span style={{ fontSize: 12, color: V3.textDim }}>위</span></span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}><span style={{ fontSize: 22, fontWeight: 700, color: supplyRankColor(rank) }}>{fmt(rank)}</span><span style={{ fontSize: 12, color: V3.textDim }}>위</span></span>
           )}
         </ClanInfoRow>
         <ClanInfoRow label="클랜원" last>
@@ -1424,9 +1424,9 @@ function ClanSideInfoCard({ data, memberCount }: { data: LeagueClanShow; memberC
 function ClanInfoRow({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 46 }}>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textDim, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
       <div style={spacerStyle} />
-      {sub ? <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
+      {sub ? <span style={{ fontSize: 11, color: SUPPLY_INFO.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
       {children}
     </div>
   )
