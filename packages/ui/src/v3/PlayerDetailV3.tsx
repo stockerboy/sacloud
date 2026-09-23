@@ -82,6 +82,11 @@ const PILLAR_HEX = false
  * 경기분석 단추는 폰에서만 뜻이 있다(CSS `.v3-analyze-btn` 이 PC 에서 숨긴다). false 면 낮 판(진 팀 명단 자리 육각 · 단추로 열기).
  */
 const HEX_CENTER_PC = true
+/**
+ * ★내 줄(자기 닉네임) 바탕 그라데이션★ — 사장님 2026-09-24 「이상한 그라데이션 굳이 넣지 말고」 → 끔.
+ * 「이 줄이 나」 는 왼쪽 청록 선(이미 있음)이 말한다. true 로 돌리면 옛 판 (CLAUDE.md 1-4)
+ */
+const ME_ROW_GRADIENT = false
 /* 2026-09-11 사장님 목업: 구간 카드(승률·킬뎃·MVP·핵의심)는 ★머리 카드★(PlayerHeaderV3 · 레이아웃)로 올라갔다.
    true 로 되돌리면 옛 두 장 배치가 그대로 돌아온다 (`CLAUDE.md` 1-4) */
 const TIER_CARD_IN_BODY = false
@@ -808,7 +813,7 @@ function ScoreRow({ row, me, mvp, weaponKnown, leagueSlug, side }: { row: MatchP
   const clan = row.match_time_clan
   return (
     <>
-    <div className="v3-score-row sac-sb-row" style={{ position: 'relative', overflow: 'hidden', padding: '8px 12px', minHeight: 44, borderBottom: `1px solid ${V3.rowDivider2}`, background: me ? 'linear-gradient(100deg,rgba(143,240,255,.14),rgba(143,240,255,.04) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2' : 'none' }}>
+    <div className="v3-score-row sac-sb-row" style={{ position: 'relative', overflow: 'hidden', padding: '8px 12px', minHeight: 44, borderBottom: `1px solid ${V3.rowDivider2}`, background: me && ME_ROW_GRADIENT ? 'linear-gradient(100deg,rgba(143,240,255,.14),rgba(143,240,255,.04) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2' : 'none' }}>
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {/* ① 플레이어 — ★클랜마크는 이름 앞에 항상★ */}
       <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -871,7 +876,7 @@ function ScoreRowSupplySix({ row, me, mvp, weaponKnown, leagueSlug, side, maxDam
 
   return (
     <>
-    <div className="v3-score-row sac-sb-row" style={{ position: 'relative', overflow: 'hidden', padding: '8px 12px', borderBottom: `1px solid ${V3.rowDivider2}`, background: me ? 'linear-gradient(100deg,rgba(143,240,255,.14),rgba(143,240,255,.04) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2' : 'none' }}>
+    <div className="v3-score-row sac-sb-row" style={{ position: 'relative', overflow: 'hidden', padding: '8px 12px', borderBottom: `1px solid ${V3.rowDivider2}`, background: me && ME_ROW_GRADIENT ? 'linear-gradient(100deg,rgba(143,240,255,.14),rgba(143,240,255,.04) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2' : 'none' }}>
       {/* ★인식표★ — 지금은 안 그린다 (`SCORE_PLATE_ON`). 자리는 남긴다 */}
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
 
@@ -972,7 +977,7 @@ function ScoreRowLegacy({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side
   const clan = row.match_time_clan
   return (
     <>
-    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me ? 'linear-gradient(100deg,rgba(143,240,255,.10),rgba(143,240,255,.02) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me && ME_ROW_GRADIENT ? 'linear-gradient(100deg,rgba(143,240,255,.14),rgba(143,240,255,.04) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
