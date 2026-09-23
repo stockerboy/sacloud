@@ -747,7 +747,8 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
    *   머리줄의 «접기 ▲» 로 언제든 접을 수 있다.
    */
   const [folded, setFolded] = useState(false)
-  const [showAll, setShowAll] = useState(false)
+  /* 2026-09-23 밤 사장님 「접혀 있다 펼쳐 놔」 — 경기 모음도 처음부터 다 편다. 옛 값 false(두 판만) */
+  const [showAll, setShowAll] = useState(true)
   const vsAll = vsMatches ?? []
   /**
    * ★기본은 두 판★ (2026-09-13 사장님: «기본 두경기만 보여주고 OOO과의 경기 모아보기 로 바꿔»).
