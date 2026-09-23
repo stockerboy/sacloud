@@ -88,6 +88,7 @@ import { runBarracksRoster } from './jobs/barracksRoster.js'
 import { runClanAffiliation } from './jobs/clanAffiliation.js'
 import { runPlayerProfileClan } from './jobs/playerProfileClan.js'
 import { runStampPlayerClan } from './jobs/stampPlayerClan.js'
+import { revertPlayerMergeSplit, runPlayerMergeSplit } from './jobs/playerMergeSplit.js'
 import { runAccountMerge } from './jobs/accountMerge.js'
 import { runIplRankApply } from './jobs/iplRankApply.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
@@ -700,6 +701,30 @@ async function main(): Promise<number> {
       return 0
     }
 
+    case 'player-merge-split': {
+      /*
+        ★두 갈래 난 선수 합치기★ (2026-09-24 사장님 「혜밤 · 차준성 같은 계정인데 두 갈래」).
+        3rd.supply 출신 줄과 병영 줄이 같은 이름·같은 리그클랜이면 병영 줄로 모은다. 백업 파일을 먼저 쓴다.
+      */
+      const revertPath = stringFlag(args, 'revert')
+      if (revertPath) {
+        const r = await revertPlayerMergeSplit(revertPath)
+        table([{ 되돌림: r.reverted }])
+        return 0
+      }
+      const namesFlag = stringFlag(args, 'names')
+      const result = await runPlayerMergeSplit({
+        confirm: boolFlag(args, 'confirm'),
+        names: namesFlag ? namesFlag.split(',').map((x) => x.trim()).filter(Boolean) : undefined,
+      })
+      table(result.pairs.map((p) => ({
+        이름: p.name, 리그: p.leagueSlug, 클랜: p.clanName, SUP참가: p.supStats, BRK참가: p.brkStats,
+        옮김: p.statsMove, 겹침: p.statsClash, 육각: p.hexMove, MVP: p.mvpMove, 명부: p.rosterMove,
+        LP옮김: p.leagueMove.length, LP지움: p.leagueDelete.length,
+      })))
+      table([{ 쌍: result.pairs.length, 후보둘이상: result.ambiguous.length, 무소속쌍_안건드림: result.clanlessPairs, 반영: result.confirmed ? '했다' : '안했다', 백업: result.backupPath ?? '-' }])
+      return 0
+    }
     case 'stamp-player-clan': {
       /*
         ★참가 기록에 「그 선수 본인의 소속」을 도장 찍는다★ (2026-09-09).

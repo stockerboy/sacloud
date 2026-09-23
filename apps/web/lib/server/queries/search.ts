@@ -133,11 +133,17 @@ export async function findPlayerByName(name: string): Promise<PlayerSearchItem |
  *   그래서 ★몇 줄 받아서 「마지막으로 뛴 날」로 고른다.★ 같은 사람의 여러 줄 중
  *   ★살아 있는 줄★ 을 집는다. 여전히 한 줄만 돌려준다 — 화면 모양은 안 바뀐다.
  */
+/** 두 갈래를 합친 뒤 남은 3rd.supply 그림자 줄 — note 가 `merged-into:` 로 시작한다 (worker `player-merge-split`). 줄은 남기고 화면에서만 숨긴다 */
+export function notMergedWhere(): { NOT: { note: { startsWith: string } } } {
+  return { NOT: { note: { startsWith: 'merged-into:' } } }
+}
+
 const EXACT_CANDIDATES = 8
 
 async function playerByName(name: string): Promise<PlayerSearchItem | null> {
   const players = await prisma.player.findMany({
-    where: { name: ciEquals(name), ...publicOriginWhere() },
+    /* ★합쳐진 그림자 줄은 안 보인다★ (2026-09-24 · player-merge-split 이 note 에 merged-into: 를 적는다) */
+    where: { name: ciEquals(name), ...publicOriginWhere(), ...notMergedWhere() },
     orderBy: [{ id: 'asc' }],
     take: EXACT_CANDIDATES,
     select: {
@@ -370,7 +376,7 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
   }
   const [prefixRows, containsOnlyRows] = await Promise.all([
     prisma.player.findMany({
-      where: { name: ciStarts(keyword), ...publicOriginWhere(), ...season0OnlyWhere() },
+      where: { name: ciStarts(keyword), ...publicOriginWhere(), ...season0OnlyWhere(), ...notMergedWhere() },
       orderBy: [{ id: 'asc' }],
       take: SEARCH_LIMIT * OVERFETCH,
       select,
