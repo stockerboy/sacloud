@@ -115,7 +115,7 @@ if (clickText) {
     }
   }
   console.error('click', clickText, state)
-  await sleep(1200)
+  await sleep(Number(process.env.MEASURE_AFTER_CLICK_MS ?? 1200))
 }
 const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
 if (r.exceptionDetails) console.error('식이 터졌다:', JSON.stringify(r.exceptionDetails).slice(0, 400))
