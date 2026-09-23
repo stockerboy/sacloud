@@ -458,6 +458,11 @@ function Scoreboard({
   const hexOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_hexagon_v2 : detail.blue_hexagon_v2)?.hexagon ?? null
   /* 배틀로그가 없는 옛 경기는 버튼을 아예 안 그린다 (지어내지 않는다) */
   const canAnalyze = hexOf('red') !== null && hexOf('blue') !== null
+  /* §7-8 그 경기에서 그 사람이 든 총 (스코어보드 weapon 칸 · 0 라플 · 1 스나) — 라운드 흐름의 킬 무기 이름이 이걸로 저격/돌격을 가른다 (사장님 규칙) */
+  const positionOf = (nick: string): 0 | 1 | null => {
+    const row = [...detail.red_stats, ...detail.blue_stats].find((s) => s.name === nick)
+    return row === undefined || row.weapon === null ? null : row.weapon === 1 ? 1 : 0
+  }
   const wonTeam = teams.find((t) => t.won) ?? teams[0]
   const lostTeam = teams.find((t) => !t.won) ?? teams[1]
   return (
@@ -567,6 +572,7 @@ function Scoreboard({
                     flow={detail.round_flow}
                     winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
                     loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
+                    positionOf={positionOf}
                   />
                 </div>
               ) : null}
@@ -679,6 +685,7 @@ function Scoreboard({
               flow={detail.round_flow}
               winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
               loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
+                    positionOf={positionOf}
             />
           ) : null}
           <ScoreBoard detail={detail} side={wonTeam?.side ?? 'red'} />

@@ -49,6 +49,23 @@ export interface RoundFlowDeath {
   name: string | null
   /** ★죽인 사람★ 닉네임 (사장님 「누가 누구를 다운시켰는지」 · 2026-09-23). 모르면 null */
   by: string | null
+  /**
+   * ★죽인 무기★ — 배틀로그 값 그대로 (사장님 2026-09-23 밤 「배틀로그에 다 나오는 정보들이니까」).
+   * 주체가 죽은 줄(`event_type: death`)이면 죽인 사람 무기는 `target_weapon` · 주체가 죽인 줄이면 `weapon`.
+   * 반대 칸을 대신 읽지 않는다 — 그건 죽은 사람이 들었던 총일 수 있다. 빈 문자열은 null
+   */
+  weapon: string | null
+}
+
+/** ★폭탄 설치/해체 한 줄★ (사장님 2026-09-23 밤 「폭탄설치, 해체 로그를 경기분석에 추가해줘」) */
+export interface RoundFlowBomb {
+  /** 경기 시작부터 초 */
+  at: number
+  /** 그 행동을 한 팀 */
+  team: FlowTeam
+  action: 'install' | 'dismantle'
+  /** 한 사람 닉네임. 모르면 null */
+  by: string | null
 }
 
 export interface RoundFlowRound {
@@ -70,6 +87,8 @@ export interface RoundFlowRound {
   planted: FlowTeam | null
   /** 시각순 죽음. 한 사람은 한 라운드에 한 번만 (roundStatesOf 규칙) */
   deaths: RoundFlowDeath[]
+  /** 시각순 폭탄 설치/해체. 없으면 [] */
+  bombs: RoundFlowBomb[]
 }
 
 export interface RoundFlow {
@@ -132,6 +151,13 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
   const states = roundStatesOf(events)
   /* 죽인 사람 — 죽음 줄(한쪽만 death)에서 반대쪽 usn. 키는 roundStatesOf 와 같은 「라운드:죽은 usn:시각」 */
   const killerOf = new Map<string, string>()
+  /* 죽인 무기 — 같은 키. 죽인 쪽 칸(`weapon`/`target_weapon`)만 읽는다 (§7-8) */
+  const weaponOf = new Map<string, string>()
+  const text = (v: unknown): string | null => {
+    if (v === null || v === undefined) return null
+    const s = String(v).trim()
+    return s === '' ? null : s
+  }
   for (const e of events) {
     const r = roundNo(e.round)
     const at = secondsOf(e.event_time)
@@ -144,6 +170,33 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
     if (victim === null || victim === undefined || killer === null || killer === undefined) continue
     const key = `${r}:${String(victim).trim()}:${at}`
     if (!killerOf.has(key)) killerOf.set(key, String(killer).trim())
+    const w = text(subjectDied ? e.target_weapon : e.weapon)
+    if (w !== null && !weaponOf.has(key)) weaponOf.set(key, w)
+  }
+  /*
+   * 폭탄 줄 — 누가 · 언제 · 설치/해체 (§7-6). `bombEvidenceOf` 는 진영 근거용이라 사람·시각이 없다 —
+   * 짝짓기 규칙(무기 칸과 팀 칸을 같은 쪽에서)은 그대로 따른다. 한 줄에 같은 행동이 양쪽 칸에 있으면 한 번만
+   */
+  const bombRows = new Map<number, { at: number; team: string; action: 'install' | 'dismantle'; usn: string | null }[]>()
+  for (const e of events) {
+    const r = roundNo(e.round)
+    const at = secondsOf(e.event_time)
+    if (r === null || at === null) continue
+    for (const [weaponKey, teamKey, usnKey] of [
+      ['weapon', 'team_no', 'str_usn'],
+      ['target_weapon', 'target_team_no', 'target_str_usn'],
+    ] as const) {
+      const w = text(e[weaponKey])
+      if (w !== 'c4-install' && w !== 'c4-dismantle') continue
+      const team = text(e[teamKey])
+      if (team === null) continue
+      const list = bombRows.get(r) ?? []
+      const action: 'install' | 'dismantle' = w === 'c4-install' ? 'install' : 'dismantle'
+      const usn = text(e[usnKey])
+      if (list.some((b) => b.at === at && b.action === action && b.team === team)) continue
+      list.push({ at, team, action, usn })
+      bombRows.set(r, list)
+    }
   }
   /* 닉네임 — usn → 닉. 죽음 줄의 주체/상대 어느 쪽이든 한 번 보이면 안다 */
   const nickOf = new Map<string, string>()
@@ -168,9 +221,13 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
   for (const r of rounds) {
     const end = lastAt.get(r) as number
     const deaths = (states.get(r)?.deaths ?? []).map((d) => {
-      const killer = killerOf.get(`${r}:${d.usn}:${d.at}`)
-      return { at: d.at, team: teamOf(d.team), name: nickOf.get(d.usn) ?? null, by: killer === undefined ? null : (nickOf.get(killer) ?? null) }
+      const key = `${r}:${d.usn}:${d.at}`
+      const killer = killerOf.get(key)
+      return { at: d.at, team: teamOf(d.team), name: nickOf.get(d.usn) ?? null, by: killer === undefined ? null : (nickOf.get(killer) ?? null), weapon: weaponOf.get(key) ?? null }
     })
+    const bombs = (bombRows.get(r) ?? [])
+      .sort((a, b) => a.at - b.at)
+      .map((b) => ({ at: b.at, team: teamOf(b.team), action: b.action, by: b.usn === null ? null : (nickOf.get(b.usn) ?? null) }))
     let start = prevEnd === null ? MATCH_TO_FIRST_ROUND_SECONDS : prevEnd + ROUND_GAP_SECONDS
     /* 이벤트가 계산한 시작보다 앞에 있으면 그 앞으로 — 시각이 거꾸로 가는 그림은 안 그린다 */
     const first = deaths[0]?.at ?? end
@@ -186,6 +243,7 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
       winner: v === null ? null : v ? 'mine' : 'foe',
       planted: plantedBy.has(r) ? teamOf(plantedBy.get(r) as string) : null,
       deaths,
+      bombs,
     })
     prevEnd = end
   }

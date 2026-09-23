@@ -48,16 +48,20 @@ async function main() {
   const CLAN = { '0': 'C100', '1': 'C200' }
 
   const events = []
+  /* 죽인 무기 — 실측 값 철자 그대로 (riple 은 넥슨 철자). 권총 값은 [미확인] 이라 안 넣는다 · 하나는 빈 값(모름) */
+  const WEAPONS = ['riple', 'riple', 'sniper', 'throw', 'riple', 'close', 'sniper', '']
+  let wi = 0
   const push = (round, at, victim, victimTeam, killer, killerTeam, winFlag) => {
+    const w = WEAPONS[wi++ % WEAPONS.length]
     events.push({
       round, event_time: mmss(at), event_type: 'death', target_event_type: 'kill',
       str_usn: victim.usn, team_no: victimTeam, target_str_usn: killer.usn, target_team_no: killerTeam,
-      win_flag: winFlag, weapon: 'ak47', user_nick: victim.nick, target_user_nick: killer.nick,
+      win_flag: winFlag, weapon: '', target_weapon: w, user_nick: victim.nick, target_user_nick: killer.nick,
       kill_x: 160 + ((round * 37) % 300), kill_y: 400 + ((round * 53) % 260),
     })
   }
   const bomb = (round, at, team, action, winFlag) => {
-    const who = team === '0' ? R[0] : B[0]
+    const who = team === '0' ? R[(round + 1) % 5] : B[(round + 2) % 5]
     events.push({
       round, event_time: mmss(at), event_type: 'kill', target_event_type: 'death',
       str_usn: who.usn, team_no: team, weapon: action, win_flag: winFlag, kill_x: 165, kill_y: 438,

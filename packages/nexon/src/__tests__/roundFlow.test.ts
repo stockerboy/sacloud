@@ -13,7 +13,9 @@ function death(round: number, at: string, victim: string, victimTeam: string, ki
     target_str_usn: killer,
     target_team_no: killerTeam,
     win_flag: winFlag,
+    /* 주체가 죽은 줄 — 죽인 사람 무기는 `target_weapon` 에 온다 (DECISIONS 실측). `weapon` 은 죽은 사람 쪽 칸이라 안 읽는다 */
     weapon: 'ak47',
+    target_weapon: 'riple',
     user_nick: victim + '님',
     target_user_nick: killer + '님',
   }
@@ -60,6 +62,38 @@ describe('roundFlowOf', () => {
     expect(r2.deaths.map((d) => d.at)).toEqual([55, 62])
     expect(r2.deaths.map((d) => d.name)).toEqual(['b1님', 'b2님'])
     expect(r2.deaths.map((d) => d.by)).toEqual(['a1님', 'a1님'])
+    /* §7-8 죽인 무기 — 죽인 쪽 칸(target_weapon)을 그대로. 죽은 쪽 칸(weapon: ak47)은 안 읽는다 */
+    expect(r2.deaths.map((d) => d.weapon)).toEqual(['riple', 'riple'])
+    /* §7-6 폭탄 줄 — 1라운드 우리(a1) 설치 한 줄 · 2라운드 없음 */
+    expect(r1.bombs).toEqual([{ at: 40, team: 'mine', action: 'install', by: 'a1님' }]) /* a1 의 닉은 명단 줄에서 이미 안다 */
+    expect(r2.bombs).toEqual([])
+  })
+
+  it('죽인 무기 — 주체가 죽인 줄(kill)이면 `weapon` 을, 빈 값이면 null', () => {
+    const events: RoundFlowEvent[] = [
+      ...roster(),
+      /* 주체 a1 이 b1 을 sniper 로 잡음 (kill 줄) */
+      { round: 2, event_time: '00:50', event_type: 'kill', target_event_type: 'death', str_usn: 'a1', team_no: '0', target_str_usn: 'b1', target_team_no: '1', win_flag: 'win', weapon: 'sniper', target_weapon: '', user_nick: 'a1님', target_user_nick: 'b1님' },
+      /* 무기 칸이 비어 있는 죽음 줄 */
+      { round: 2, event_time: '00:58', event_type: 'death', target_event_type: 'kill', str_usn: 'b2', team_no: '1', target_str_usn: 'a1', target_team_no: '0', win_flag: 'win', weapon: '', target_weapon: '', user_nick: 'b2님', target_user_nick: 'a1님' },
+    ]
+    const flow = roundFlowOf({ events, teamNo: '0' })
+    const r2 = flow?.rounds[1]
+    expect(r2?.deaths.map((d) => [d.name, d.weapon])).toEqual([['b1님', 'sniper'], ['b2님', null]])
+  })
+
+  it('폭탄 줄 — 설치·해체를 시각순으로 · 닉네임이 있으면 붙인다', () => {
+    const events: RoundFlowEvent[] = [
+      ...roster(),
+      { ...bomb(1, '00:40', '0', 'c4-install', 'lose'), user_nick: 'a1님' },
+      { ...bomb(1, '00:48', '1', 'c4-dismantle', 'lose'), user_nick: 'b1님' },
+    ]
+    const flow = roundFlowOf({ events, teamNo: '0' })
+    expect(flow?.rounds[0]?.bombs).toEqual([
+      { at: 40, team: 'mine', action: 'install', by: 'a1님' },
+      { at: 48, team: 'foe', action: 'dismantle', by: 'b1님' },
+    ])
+    expect(flow?.rounds[0]?.planted).toBe('foe')
   })
 
   it('설점 — 설치 뒤 해체가 있으면 해체한 팀이 가져간다 (사장님 규칙)', () => {

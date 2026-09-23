@@ -436,7 +436,30 @@ export const RoundFlowRound = z.object({
   planted: RoundFlowSide.nullable().default(null),
   /** 시각순 죽음 — 죽은 사람의 슬롯 */
   /** 시각순 죽음 — 죽은 사람의 슬롯 · 닉네임(이벤트에 없으면 null · 사장님 「처음 죽은 사람」) */
-  deaths: z.array(z.object({ at: z.number(), side: RoundFlowSide, name: z.string().nullable().default(null), /** 죽인 사람 (사장님 「누가 누구를」) */ by: z.string().nullable().default(null) })),
+  deaths: z.array(z.object({
+    at: z.number(),
+    side: RoundFlowSide,
+    name: z.string().nullable().default(null),
+    /** 죽인 사람 (사장님 「누가 누구를」) */
+    by: z.string().nullable().default(null),
+    /**
+     * ★죽인 무기★ (사장님 2026-09-23 밤 「보조무기로 죽인건지 투척인지 저격총인지 돌격소총인지 구분해서」).
+     * 배틀로그 `weapon` 값 ★그대로★ 다 — `riple`(넥슨 철자) · `sniper` · `throw` · `close` … 화면이 이름·그림으로 바꾼다.
+     * 모르는 값은 화면이 그림 없이 둔다. 여기서 분류하지 않는다 (지어내지 않는다). 없으면 null
+     */
+    weapon: z.string().nullable().default(null),
+  })),
+  /**
+   * ★폭탄 설치/해체 줄★ (사장님 2026-09-23 밤 「누가 설치했고 누가 해체했는지」) — 시각순.
+   * `side` 는 그 행동을 한 슬롯 · `by` 는 닉네임(모르면 null). 설점 판정(`planted`)과 재료가 같다.
+   * 이 칸이 없던 응답과도 맞도록 기본값 []
+   */
+  bombs: z.array(z.object({
+    at: z.number(),
+    side: RoundFlowSide,
+    action: z.enum(['install', 'dismantle']),
+    by: z.string().nullable().default(null),
+  })).default([]),
 })
 export const RoundFlow = z.object({
   team_size: z.object({ red: Count, blue: Count }),

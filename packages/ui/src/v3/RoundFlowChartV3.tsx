@@ -16,12 +16,12 @@
  * 판·선 두께·마커·흔들림은 상대전적 그래프(`H2HChartV3` · `seasonPlot`)와 같은 값을 쓴다.
  * 흔들림은 ★모양만★ 이다 — 두 선이 50 에서 정확히 포개지지 않게 하는 용도. 값은 안 바뀐다.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { RoundFlow } from '@sacloud/contract'
 import { matchOddsInRound, roundOddsPlain, roundOddsSided, scoreOdds } from '@sacloud/contract'
 import { V3, type V3Tone } from './tokens'
 import { fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
-import { PLOT, noise, penDash, plotBox, pointsToStr, seedOf, useDrawIn } from './seasonPlot'
+import { PLOT, noise, penDash, plotBox, pointAtLength, pointsToStr, seedOf, useDrawIn } from './seasonPlot'
 
 export interface RoundFlowTeam {
   side: 'red' | 'blue'
@@ -46,7 +46,12 @@ interface Pt {
   /** 이 라운드에서 처음 죽은 사람 — 아직 아무도 안 죽었으면 null (사장님 「원 하나가 줄어들 때 띄워줘」) */
   first: { name: string | null; side: 'W' | 'L'; at: number } | null
   /** 이 시점까지 이 라운드에서 죽은 사람들 — 죽은 차례대로 (사장님 「선짤 준성 · haeil 다운 · …」) */
-  fallen: { name: string | null; side: 'W' | 'L'; at: number; by: string | null }[]
+  fallen: { name: string | null; side: 'W' | 'L'; at: number; by: string | null; weapon: string | null }[]
+  /** §7-6 이 시점까지 이 라운드의 폭탄 줄 (누가 설치/해체) — 시각순 */
+  bombsSoFar: { at: number; side: 'W' | 'L'; action: 'install' | 'dismantle'; by: string | null }[]
+  /** §7-6 설점 — 그 반에서 ★끝난 라운드★ 까지 가져간 수. 지금 라운드 몫은 bombsSoFar 로 그때그때 (후반 넘어가면 0) */
+  halfPlantW: number
+  halfPlantL: number
   /** 이 라운드의 공격(레드) 팀. 모르면 null (사장님 「레드가 무조건 왼쪽 블루가 오른쪽」) */
   attack: 'W' | 'L' | null
   est: boolean
@@ -107,13 +112,43 @@ const HALF_SUMMARY = false
 const CREW_ABOVE = false
 /** ★재생★ — 축이 왼쪽에서 오른쪽으로 천천히 훑는다 (2026-09-23 오후 사장님). 라운드 하나에 이만큼 걸린다 */
 const PLAY_MS_PER_ROUND = 5000 /* 2026-09-23 저녁 사장님 「훨씬 더 느리게 너무 빨라」 — 옛 값 1800 */
+/*
+ * ★★2026-09-23 밤 — 진영판 2차★★ (사장님 요청 8건 · `docs/HANDOFF_2026-09-23_NIGHT.md` §7). 옛 판은 전부 스위치로 남긴다 (CLAUDE.md 1-4)
+ *   PLAY_BUTTON_BELOW  ▶ 재생을 판 ★아래★ 로 (위에 있으니 마우스를 내리다 그래프를 스치면 재생이 끊겼다)
+ *   HOVER_STOPS_PLAY   재생 중 마우스만 스쳐도 멈추던 옛 규칙 — 지금은 ★누르거나(클릭·터치) 단추★ 로만 멈춘다
+ *   MARK_FOLLOWS       클랜마크 단추(선 끝 원)가 축·펜 끝을 ★따라온다★ (옛 판은 오른쪽 끝 고정)
+ *   JAGGED             선을 ★찌글찌글★ — 값이 머무는 구간을 잘게 쪼개 흔든다. 사건 자리 값은 그대로다 (모양만)
+ *   HALF_LINE_BOLD     전후반 선을 굵고 밝게 + 후반 바탕 톤
+ *   KILL_ROWS_V2       죽은 차례 줄을 「[마크] 킬러 [무기 그림] 희생자」 로 · 레드킬 빨강 바탕 / 블루킬 연파랑 바탕 · 폭탄 줄(미션) · 설점
+ *   WEAPON_RULE        'position' = 사장님 규칙(투척이면 투척 · 아니면 ★그 사람 포지션★ 으로 저격/돌격 — 보조무기는 배틀로그가 못 가른다 · probe23~25)
+ *                      'raw'      = 배틀로그 값 우선(riple/sniper/throw/close/special…) · 못 읽으면 포지션
+ */
+const PLAY_BUTTON_BELOW = true
+const HOVER_STOPS_PLAY = false
+const MARK_FOLLOWS = true
+const JAGGED = true
+/** 찌글찌글 폭(%) · 간격(px) */
+const JAG_AMP = 2.2
+const JAG_STEP = 5
+const HALF_LINE_BOLD = true
+const KILL_ROWS_V2 = true
+const WEAPON_RULE: 'position' | 'raw' = 'position'
+/** 죽은 차례 칸 높이 — 설치 줄이 생겨 한 줄 더 (옛 값 폰 152 · PC 176) */
+const PANEL_H_PHONE = 178
+const PANEL_H_PC = 206
 
-export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
+export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }: {
   flow: RoundFlow
   /** 이긴 클랜 — 파란 선. 무승부·미상이면 red 슬롯을 넣는다 */
   winner: RoundFlowTeam
   loser: RoundFlowTeam
   tone?: V3Tone
+  /**
+   * ★그 경기에서 그 사람이 든 총★ (닉 → 0 라이플 · 1 스나이퍼 · 모르면 null) — 스코어보드 `weapon` 칸 그대로.
+   * 사장님 2026-09-23 밤: 「보조무기인지 주무기인지 구분 안되면 스나든 사람은 투척 아니면 저격소총 · 라플든 사람은 투척 아니면 돌격소총」.
+   * 안 주면 배틀로그 값(riple/sniper)만으로 적고 못 읽으면 그림 없이 둔다
+   */
+  positionOf?: (nick: string) => 0 | 1 | null
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(900)
@@ -152,7 +187,17 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     if (!el || typeof IntersectionObserver === 'undefined') { setArmed(true); return }
     const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setArmed(true); io.disconnect() } }, { threshold: 0.15 })
     io.observe(el)
-    return () => io.disconnect()
+    /* §0-D 안전판 (사장님 「육각 겹쳐서 칩 바꿀 때 가끔 그래프 안 그려지고 멈춤」) — 관찰자가 끝내 안 울리는 자리(접혔다 열리는 칸)에서
+       스크롤·리사이즈 때 화면 안에 있으면 직접 켠다. 「보일 때 한 번」 규칙은 그대로다 — 안 보이면 여전히 안 그린다 */
+    const check = () => {
+      const r = el.getBoundingClientRect()
+      const vh = window.innerHeight || document.documentElement.clientHeight
+      if (r.height > 0 && r.bottom > 0 && r.top < vh) { setArmed(true); io.disconnect(); window.removeEventListener('scroll', check); window.removeEventListener('resize', check) }
+    }
+    window.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    const late = window.setTimeout(check, 1200)
+    return () => { io.disconnect(); window.removeEventListener('scroll', check); window.removeEventListener('resize', check); window.clearTimeout(late) }
   }, [])
   useEffect(() => {
     if (DRAW_ON_MOUNT_MS <= 0 || !armed) return
@@ -214,13 +259,16 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     /* 그 반의 점수 — 후반 첫 라운드에서 0:0 으로 (사장님) */
     let halfScoreW = 0
     let halfScoreL = 0
+    /* §7-6 설점 — 그 반에서 끝난 라운드까지. 후반 첫 라운드에서 0 으로 (점수와 같은 규칙) */
+    let halfPlantW = 0
+    let halfPlantL = 0
     let lastHalf: 'A' | 'B' = 'A'
     /* 출발 — 옛 판은 이긴 클랜이 아래(0)에서 (상대전적 그래프와 같다). 지금은 1라운드 값에서 바로 시작 */
-    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, halfScoreW, halfScoreL, first: null, fallen: [], attack: null, est: false })
+    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, halfScoreW, halfScoreL, first: null, fallen: [], bombsSoFar: [], halfPlantW, halfPlantL, attack: null, est: false })
     for (const r of rounds) {
       const half: 'A' | 'B' = s !== null && r.round >= s ? 'B' : 'A'
       const halfKey: 'first' | 'second' = half === 'A' ? 'first' : 'second'
-      if (half !== lastHalf) { halfScoreW = 0; halfScoreL = 0; lastHalf = half }
+      if (half !== lastHalf) { halfScoreW = 0; halfScoreL = 0; halfPlantW = 0; halfPlantL = 0; lastHalf = half }
       let aliveW = sizeW
       let aliveL = sizeL
       /* 이 라운드를 딸 확률 — 인원 빈도표 */
@@ -255,33 +303,60 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
       anyEst = anyEst || o.est
       let firstSeen: Pt['first'] = null
       let fallen: Pt['fallen'] = []
+      let bombsSoFar: Pt['bombsSoFar'] = []
       const attack: Pt['attack'] = r.defence === null ? null : r.defence === W ? 'L' : 'W'
-      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: null, fallen, attack, est: o.est })
-      for (const d of r.deaths) {
+      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: null, fallen, bombsSoFar, halfPlantW, halfPlantL, attack, est: o.est })
+      /*
+       * §7-6 — 죽음과 폭탄 줄을 ★한 시간축★ 으로 합쳐 돈다. 폭탄 줄은 확률을 안 바꾸고 「누가 설치/해체」 만 쌓는다.
+       * 옛 판은 `for (const d of r.deaths)` 만 돌았고 한쪽이 0 이 되면 `break` 했다 — 그러면 다 잡은 뒤의 설치 줄이 빠진다.
+       * 지금은 끝난 뒤 사건도 목록에는 넣고(확률 점은 안 찍는다) 폭탄 줄도 끝까지 본다
+       */
+      type Ev = { at: number; kind: 'death'; d: (typeof r.deaths)[number] } | { at: number; kind: 'bomb'; b: (typeof r.bombs)[number] }
+      const evs: Ev[] = [
+        ...r.deaths.map((d): Ev => ({ at: d.at, kind: 'death', d })),
+        ...(r.bombs ?? []).map((b): Ev => ({ at: b.at, kind: 'bomb', b })),
+      ].sort((a, b) => a.at - b.at)
+      let ended = false
+      for (const ev of evs) {
+        const x = xOf(Math.min(ev.at, r.end), half)
+        const prev = pts[pts.length - 1] as Pt
+        if (ev.kind === 'bomb') {
+          bombsSoFar = [...bombsSoFar, { at: ev.b.at, side: ev.b.side === W ? 'W' : 'L', action: ev.b.action, by: ev.b.by }]
+          pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
+          pts.push({ ...prev, x: Math.max(prev.x, x), first: firstSeen, fallen, bombsSoFar })
+          continue
+        }
+        const d = ev.d
         if (d.side === W) aliveW = Math.max(0, aliveW - 1)
         else aliveL = Math.max(0, aliveL - 1)
         if (firstSeen === null) firstSeen = { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at }
-        fallen = [...fallen, { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at, by: d.by }]
+        fallen = [...fallen, { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at, by: d.by, weapon: d.weapon ?? null }]
         /* 한쪽이 0 이 되는 마지막 죽음은 안 찍는다 — 그 순간 확률이 100/0 으로 튀어 빗살이 된다 (운영 캡쳐).
            라운드가 끝난 것이라 「마지막 인원 상태 값」 을 그대로 끌고 간다 (JUMP_ON_ROUND_END 와 같은 뜻) */
-        if (aliveW === 0 || aliveL === 0) break
+        if (ended || aliveW === 0 || aliveL === 0) {
+          ended = true
+          pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
+          pts.push({ ...prev, x: Math.max(prev.x, x), aliveW, aliveL, first: firstSeen, fallen, bombsSoFar })
+          continue
+        }
         o = odds()
         anyEst = anyEst || o.est
-        const x = xOf(Math.min(d.at, r.end), half)
         /* 계단 — 죽기 직전까지는 앞 값 그대로 */
-        const prev = pts[pts.length - 1] as Pt
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: firstSeen, fallen, attack, est: o.est })
+        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: firstSeen, fallen, bombsSoFar, halfPlantW, halfPlantL, attack, est: o.est })
       }
       {
         /* 라운드 끝 — 마지막 상태 값을 라운드 끝까지 끌고 간다. 옛 판(JUMP_ON_ROUND_END)은 여기서 100/0 으로 튀었다 */
         const prev = pts[pts.length - 1] as Pt
         const x = xOf(r.end, half)
-        pts.push({ ...prev, x: Math.max(prev.x, x - 0.01), first: firstSeen, fallen })
-        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: firstSeen, fallen, attack, est: false })
+        pts.push({ ...prev, x: Math.max(prev.x, x - 0.01), first: firstSeen, fallen, bombsSoFar })
+        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: firstSeen, fallen, bombsSoFar, halfPlantW, halfPlantL, attack, est: false })
       }
       if (r.winner === W) { scoreW += 1; halfScoreW += 1 }
       else if (r.winner === L) { scoreL += 1; halfScoreL += 1 }
+      /* 설점 — 라운드가 끝나면 `planted`(설치 뒤 해체면 해체한 쪽) 로 확정 */
+      if (r.planted === W) halfPlantW += 1
+      else if (r.planted === L) halfPlantL += 1
     }
     /* 경기 끝 — 최종 스코어의 경기 승률 (이긴 쪽이 1 에 가깝다) */
     if (AXIS === 'match' && pts.length > 0) {
@@ -312,12 +387,37 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
 
   const salt = seedOf(`${winner.slug ?? winner.name}|${loser.slug ?? loser.name}`)
   const wig = (k: number, s: number) => (k === 0 ? 0 : noise(salt + s, k) * WIGGLE)
-  const winPts: [number, number][] = model.pts.map((p, k) => [p.x, yOf(p.v + wig(k, 0))])
-  const losePts: [number, number][] = model.pts.map((p, k) => [p.x, yOf(100 - p.v + wig(k, 7))])
+  /*
+   * §7-3 ★찌글찌글★ (사장님 「좀더 복잡하고 역동적으로 · 약간 찌글찌글 하게」) — 값이 머무는 가로 구간을 JAG_STEP 간격으로
+   * 쪼개고 사인 창(양 끝 0)을 씌운 잡음을 얹는다. ★사건 자리(계단 꼭짓점)의 값은 그대로★ 다 — 모양만이다.
+   * 옛 판(JAGGED=false)은 점을 그대로 이었다
+   */
+  const jag = (pick: (p: Pt) => number, s: number): [number, number][] => {
+    const out: [number, number][] = []
+    let k = 0
+    for (let i = 0; i < model.pts.length; i += 1) {
+      const a = model.pts[i] as Pt
+      out.push([a.x, yOf(pick(a) + wig(i, s))])
+      const b = model.pts[i + 1]
+      if (!b) break
+      const dx = b.x - a.x
+      if (!JAGGED || dx < JAG_STEP * 2) continue
+      const n = Math.floor(dx / JAG_STEP)
+      for (let j = 1; j < n; j += 1) {
+        const f = j / n
+        const w = noise(salt + s + 1, k) * JAG_AMP * Math.sin(Math.PI * f)
+        k += 1
+        out.push([a.x + dx * f, yOf(pick(a) + (pick(b) - pick(a)) * f + w)])
+      }
+    }
+    return out
+  }
+  const winPts: [number, number][] = jag((p) => p.v, 0)
+  const losePts: [number, number][] = jag((p) => 100 - p.v, 7)
   /* 점선 구간 — 어림한 점으로 들어가는 조각만 */
   const estSegs: [number, number, number, number][] = []
   const estSegsL: [number, number, number, number][] = []
-  for (let i = 1; i < model.pts.length; i += 1) {
+  for (let i = 1; i < model.pts.length && !JAGGED; i += 1) {
     if (!(model.pts[i] as Pt).est) continue
     const a = winPts[i - 1] as [number, number]
     const b = winPts[i] as [number, number]
@@ -364,23 +464,34 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     playRef.current = { raf: requestAnimationFrame(tick), t0 }
   }
   useEffect(() => () => { if (playRef.current) cancelAnimationFrame(playRef.current.raf) }, [])
-  const pickAt = (clientX: number) => {
+  const pickAt = (clientX: number, source: 'hover' | 'press' = 'press') => {
     const svg = svgRef.current
     if (!svg) return
-    if (playRef.current) stopPlay()
+    /* §7-1 재생 중에는 마우스가 스쳐도 안 멈춘다 — 누르거나(클릭·터치) 단추로만. 옛 판은 HOVER_STOPS_PLAY */
+    if (playRef.current) {
+      if (source === 'hover' && !HOVER_STOPS_PLAY) return
+      stopPlay()
+    }
     const rect = svg.getBoundingClientRect()
     const x = ((clientX - rect.left) / rect.width) * width
     setHover(Math.max(X0, Math.min(X1, x)))
   }
   const hoverPt: Pt | null = hover === null ? null : (model.pts.filter((p) => p.x <= hover).pop() ?? model.pts[0] ?? null)
   const last = model.pts[model.pts.length - 1] as Pt | undefined
-  /* ★인원 줄★ (시안 A · 사장님 「인원 우위가 어케 됐는지도 축 이동하면서」) — 축이 없으면 마지막 상태 */
-  const hud: Pt | null = hoverPt ?? last ?? null
+  /*
+   * §7-2 ★마크가 축을 따라온다★ (사장님 「클랜마크 단추가 그래프가 그려질 때든 축을 이동할 때든 따라와야 하는데 오른쪽 끝에 고정」)
+   *   축이 있으면 축 자리 · 그리는 중이면 ★펜 끝★(선 길이의 draw 지점) · 둘 다 아니면 끝. 옛 판(MARK_FOLLOWS=false)은 늘 끝
+   */
+  const tip = MARK_FOLLOWS && draw < 1 && hover === null && winPts.length > 1 ? pointAtLength(winPts, draw) : null
+  const tipPt: Pt | null = tip === null ? null : (model.pts.filter((p) => p.x <= tip[0] + 0.01).pop() ?? model.pts[0] ?? null)
+  const cur: Pt | null = MARK_FOLLOWS ? (hoverPt ?? tipPt ?? last ?? null) : (last ?? null)
+  /* ★인원 줄★ (시안 A · 사장님 「인원 우위가 어케 됐는지도 축 이동하면서」) — 축이 없으면 마지막 상태 (그리는 중엔 펜 끝) */
+  const hud: Pt | null = cur
   const sizeW = flow.team_size[winner.side]
   const sizeL = flow.team_size[loser.side]
-  const endW = last ? last.v : 50
+  const endW = cur ? cur.v : 50
   const R = PLOT.markerR
-  const nowX = last ? last.x : X1
+  const nowX = MARK_FOLLOWS ? (hover !== null ? hover : tip !== null ? tip[0] : last ? last.x : X1) : last ? last.x : X1
   const close = Math.abs(yOf(endW) - yOf(100 - endW)) < 52
   /* 값이 같으면(50:50) 원 두 개가 포개진다 → 이긴 쪽 위·진 쪽 아래로 R 만큼 */
   const tie = Math.abs(endW - 50) < 0.5
@@ -495,7 +606,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <span style={{ marginLeft: 'auto', color: tone.textDim, fontVariantNumeric: 'tabular-nums' }}>{hud.v.toFixed(0)}% : {(100 - hud.v).toFixed(0)}%{hud.est ? ' · 어림' : ''}</span>
         </div>
       ) : null}
-      {/* ★재생 단추★ — 그래프 바로 위 오른쪽. 누르면 축이 처음부터 끝까지 천천히 훑는다 · 다시 누르면 멈춘다 */}
+      {/* ★재생 단추★ — 옛 자리(그래프 위 오른쪽). §7-1 로 판 아래로 내렸다 (PLAY_BUTTON_BELOW) */}
+      {PLAY_BUTTON_BELOW ? null : (
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '2px 4px 4px' }}>
         <button
           type="button"
@@ -505,14 +617,16 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           {playing ? '❚❚ 멈춤' : '▶ 재생'}
         </button>
       </div>
+      )}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${H}`}
         style={{ width: '100%', height: H, display: 'block', cursor: 'crosshair' }}
-        onMouseMove={(e) => pickAt(e.clientX)}
+        onMouseMove={(e) => pickAt(e.clientX, 'hover')}
+        onClick={(e) => { e.stopPropagation(); pickAt(e.clientX, 'press') }}
         onMouseLeave={() => { if (!playRef.current) setHover(null) }}
-        onTouchStart={(e) => { const t = e.touches[0]; if (t) pickAt(t.clientX) }}
-        onTouchMove={(e) => { const t = e.touches[0]; if (t) pickAt(t.clientX) }}
+        onTouchStart={(e) => { const t = e.touches[0]; if (t) pickAt(t.clientX, 'press') }}
+        onTouchMove={(e) => { const t = e.touches[0]; if (t) pickAt(t.clientX, 'press') }}
         onTouchEnd={() => { if (!playRef.current) setHover(null) }}
       >
         <defs>
@@ -550,11 +664,23 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         })()}
         {/* 전후반 경계 — 굵은 선 하나 (사장님). 'real' 축이면 실제 바뀐 자리 */}
         {model.twoHalves ? (
+          HALF_LINE_BOLD ? (
+          /* §7-4 ★전후반 선을 확실하게★ (사장님) — 후반 바탕을 한 톤 밝게 · 굵은 호박색 선 · 「전반 | 후반」 굵게 */
+          <g>
+            <rect x={model.XM} y={Y_TOP - 22} width={Math.max(0, X1 - model.XM)} height={Y_BOTTOM - Y_TOP + 28} fill="rgba(255,255,255,.035)" />
+            <line x1={model.XM} y1={Y_TOP - 24} x2={model.XM} y2={Y_BOTTOM + 8} stroke="#f59e0b" strokeWidth={3} opacity={0.9} />
+            <rect x={model.XM - 30} y={Y_TOP - 34} width={60} height={16} rx={2} fill="#f59e0b" opacity={0.95} />
+            <text x={model.XM} y={Y_TOP - 22} textAnchor="middle" fill="#1a1204" fontSize={10.5} fontWeight="800" letterSpacing=".08em">진영교대</text>
+            <text x={(X0 + model.XM) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textStrong} fontSize={PLOT.tickFont + 1} fontWeight="800">전반</text>
+            <text x={(model.XM + X1) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textStrong} fontSize={PLOT.tickFont + 1} fontWeight="800">후반</text>
+          </g>
+          ) : (
           <g>
             <line x1={model.XM} y1={Y_TOP - 14} x2={model.XM} y2={Y_BOTTOM + 6} stroke={tone.textMuted} strokeWidth={2} />
             <text x={(X0 + model.XM) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">전반</text>
             <text x={(model.XM + X1) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">후반</text>
           </g>
+          )
         ) : (
           <text x={(X0 + X1) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">전반</text>
         )}
@@ -662,6 +788,78 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
             </div>
           )
         }
+        /*
+         * §7-5 · §7-6 · §7-8 ★죽은 차례 새 줄★ (사장님 2026-09-23 밤)
+         *   「haeil >>> 현물 화살표 말고 누가 봐도 이 사람이 얘 쏴 죽였다는 걸 알 수 있게 — 이 로고들을 그대로 이용해서」
+         *   → [클랜마크] 킬러  [무기 그림 + 이름]  희생자   · 레드가 잡은 줄은 빨강 바탕 · 블루가 잡은 줄은 연파랑 바탕
+         *   → 폭탄 줄은 「미션」: [클랜마크] 사람  [C4 그림]  설치/해체
+         *   무기 이름은 사장님 규칙(WEAPON_RULE) — 투척이면 투척무기 · 아니면 그 사람 포지션(스나=저격소총 · 라플=돌격소총)
+         *   그림은 우리가 그린 것이다 (CLAUDE.md 2-4 · 원본 그림 복사 안 함). 옛 줄(killRow/col)은 KILL_ROWS_V2=false 로
+         */
+        type FeedRow =
+          | { kind: 'kill'; at: number; f: Pt['fallen'][number] }
+          | { kind: 'bomb'; at: number; b: Pt['bombsSoFar'][number] }
+        const feedOf = (k: 'W' | 'L'): FeedRow[] =>
+          [
+            ...hud.fallen.filter((f) => f.side !== k).map((f): FeedRow => ({ kind: 'kill', at: f.at, f })),
+            ...hud.bombsSoFar.filter((b) => b.side === k).map((b): FeedRow => ({ kind: 'bomb', at: b.at, b })),
+          ].sort((a, b) => a.at - b.at)
+        const bgOf = (k: 'W' | 'L') => (k === leftKey ? 'rgba(255,107,107,.13)' : 'rgba(143,180,255,.15)')
+        const edgeOf = (k: 'W' | 'L') => (k === leftKey ? 'rgba(255,107,107,.45)' : 'rgba(143,180,255,.5)')
+        const markOf = (k: 'W' | 'L', size: number) => {
+          const slug = teamOf(k).slug
+          if (slug && hasFitMark(slug)) return <span style={{ width: size, height: size, flex: 'none', borderRadius: '50%', backgroundImage: `url(${fitMarkUrl(slug)})`, backgroundSize: '100% 100%', display: 'inline-block' }} />
+          return (
+            <svg viewBox="0 0 16 16" style={{ width: size, height: size, flex: 'none', display: 'inline-block' }} aria-hidden>
+              <path d={PERSON_PATH} fill={inkOf(k)} />
+            </svg>
+          )
+        }
+        const rowV2 = (row: FeedRow, k: 'W' | 'L', i: number) => {
+          const other: 'W' | 'L' = k === 'W' ? 'L' : 'W'
+          const base: CSSProperties = { display: 'flex', alignItems: 'center', gap: phone ? 4 : 6, whiteSpace: 'nowrap', minWidth: 0, height: phone ? 22 : 25, padding: phone ? '0 5px' : '0 8px', background: bgOf(k), borderLeft: `2px solid ${edgeOf(k)}`, borderRadius: 2, fontSize: phone ? 11.5 : 13.5 }
+          if (row.kind === 'bomb') {
+            return (
+              <div key={`b${row.at}-${i}`} style={base}>
+                {markOf(k, phone ? 13 : 15)}
+                <span style={{ color: inkOf(k), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{row.b.by ?? teamOf(k).name}</span>
+                <WeaponGlyph kind="c4" phone={phone} />
+                <span style={{ color: '#f59e0b', fontWeight: 800, flex: 'none' }}>{row.b.action === 'install' ? 'C4 설치' : 'C4 해체'}</span>
+              </div>
+            )
+          }
+          const f = row.f
+          const kind = weaponKindOf(f.weapon, f.by && positionOf ? positionOf(f.by) : null)
+          return (
+            <div key={`k${f.at}-${i}`} style={base}>
+              {f.at === firstAt ? <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: phone ? 10.5 : 11.5, flex: 'none' }}>선짤</span> : null}
+              {markOf(k, phone ? 13 : 15)}
+              <span style={{ color: inkOf(k), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{f.by ?? '—'}</span>
+              <WeaponGlyph kind={kind} phone={phone} />
+              <span style={{ color: inkOf(other), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, opacity: 0.9 }}>{f.name ?? '—'}</span>
+              {phone ? null : <span style={{ color: tone.textDim, fontSize: 11, flex: 'none', marginLeft: 'auto' }}>{WEAPON_NAME[kind]}</span>}
+            </div>
+          )
+        }
+        const colV2 = (k: 'W' | 'L', align: 'left' | 'right') => {
+          const list = feedOf(k)
+          return (
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: phone ? 10 : 11.5, letterSpacing: '.08em', color: tone.textGhost, marginBottom: 4, textAlign: align, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{teamOf(k).name}가 잡음</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: phone ? 3 : 4 }}>
+                {list.length === 0 ? <span style={{ color: tone.textGhost, fontSize: 12, textAlign: align }}>{hud.round > 0 ? '아직 없음' : ''}</span> : list.map((row, i) => rowV2(row, k, i))}
+              </div>
+            </div>
+          )
+        }
+        /* §7-6 설점 — 끝난 라운드 몫 + 지금 라운드 몫(해체가 지났으면 해체한 쪽 · 아니면 설치한 쪽) */
+        const plantOf = (k: 'W' | 'L'): number => {
+          const done = k === 'W' ? hud.halfPlantW : hud.halfPlantL
+          const dis = [...hud.bombsSoFar].reverse().find((b) => b.action === 'dismantle')
+          const ins = hud.bombsSoFar.find((b) => b.action === 'install')
+          const now = dis ? dis.side : ins ? ins.side : null
+          return done + (now === k ? 1 : 0)
+        }
         const secondFrom = flow.second_half_from
         const halfWord = secondFrom !== null && hud.round >= secondFrom ? '후반전' : '전반전'
         const leftPct = leftKey === 'W' ? hud.v : 100 - hud.v
@@ -682,8 +880,13 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
                 <SideTag red />
                 <span style={{ fontWeight: 800, fontSize: phone ? 13.5 : 17, color: RED_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(leftKey).name}</span>
               </div>
-              <div style={{ fontWeight: 800, fontSize: phone ? 20 : 26, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '0 8px', color: tone.textStrong }}>
-                <span style={{ color: RED_INK }}>{halfScoreOf(leftKey)}</span><span style={{ color: tone.textGhost, margin: '0 4px', fontWeight: 500 }}>:</span><span style={{ color: BLUE_INK }}>{halfScoreOf(rightKey)}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: phone ? 8 : 12, whiteSpace: 'nowrap', padding: '0 8px' }}>
+                {/* §7-6 설점 — 「설점:1  3:2  설점:0」 · 후반 넘어가면 0 부터 (KILL_ROWS_V2) */}
+                {KILL_ROWS_V2 ? <span style={{ fontSize: phone ? 10.5 : 12, fontWeight: 700, color: RED_INK, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>설점:{plantOf(leftKey)}</span> : null}
+                <span style={{ fontWeight: 800, fontSize: phone ? 20 : 26, fontVariantNumeric: 'tabular-nums', color: tone.textStrong }}>
+                  <span style={{ color: RED_INK }}>{halfScoreOf(leftKey)}</span><span style={{ color: tone.textGhost, margin: '0 4px', fontWeight: 500 }}>:</span><span style={{ color: BLUE_INK }}>{halfScoreOf(rightKey)}</span>
+                </span>
+                {KILL_ROWS_V2 ? <span style={{ fontSize: phone ? 10.5 : 12, fontWeight: 700, color: BLUE_INK, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>설점:{plantOf(rightKey)}</span> : null}
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0, justifyContent: 'flex-end' }}>
                 <span style={{ fontWeight: 800, fontSize: phone ? 13.5 : 17, color: BLUE_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(rightKey).name}</span>
@@ -691,10 +894,10 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
               </div>
             </div>
             {/* ③ 죽은 차례 — 두 칸. 판 높이는 고정해 그래프가 위아래로 안 움직인다 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 10px', borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, height: phone ? 152 : 176, overflow: 'hidden' /* 2026-09-23 밤 사장님 「세로폭 고정 — 5명 다 들어갈 크기」: 머리 17 + 줄 5×(20+3) = 132 + 여백. 옛 값 minHeight phone 96 / 72 */ }}>
-              {col(leftKey, 'left')}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 10px', borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, height: phone ? PANEL_H_PHONE : PANEL_H_PC, overflow: 'hidden' /* 2026-09-23 밤 사장님 「세로폭 고정 — 5명 다 들어갈 크기」: 머리 17 + 줄 5×(20+3) = 132 + 여백. 옛 값 minHeight phone 96 / 72 */ }}>
+              {KILL_ROWS_V2 ? colV2(leftKey, 'left') : col(leftKey, 'left')}
               <div style={{ background: tone.cardBorder }} />
-              {col(rightKey, 'right')}
+              {KILL_ROWS_V2 ? colV2(rightKey, 'right') : col(rightKey, 'right')}
             </div>
           </>
         )
@@ -738,7 +941,101 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           })}
         </div>
       ) : null}
+      {/* §7-1 ★재생 단추 — 판 아래★ (사장님 「재생버튼을 밑에 둬줘 — 위에 재생 누르고 마우스 내리다 그래프를 지나가면 멈춰버려」).
+          재생 중엔 스쳐도 안 멈춘다(HOVER_STOPS_PLAY) · 누르면 그 자리에서 멈춘다 */}
+      {PLAY_BUTTON_BELOW ? (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 4px 2px', borderTop: `1px solid ${tone.cardBorder}`, marginTop: 8 }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); if (playing) stopPlay(); else startPlay() }}
+          style={{ fontFamily: 'inherit', fontSize: phone ? 12 : 12.5, fontWeight: 800, padding: phone ? '6px 18px' : '7px 26px', cursor: 'pointer', color: playing ? '#1a1204' : '#f59e0b', background: playing ? '#f59e0b' : 'transparent', border: '1px solid rgba(245,158,11,.7)', borderRadius: 3, whiteSpace: 'nowrap', letterSpacing: '.04em' }}
+        >
+          {playing ? '❚❚ 멈춤' : '▶ 경기 재생'}
+        </button>
+      </div>
+      ) : null}
     </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * §7-8 ★무기 종류★ (사장님 2026-09-23 밤)
+ *
+ *   배틀로그 `weapon` 값(운영 600행 실측 · probe23~25): riple · sniper · throw · assist · special · close · c4-install · c4-dismantle.
+ *   ★권총(보조무기) 값은 없다.★ event_icon(user_img/skull/c4)·event_text(빈)로도 못 가른다.
+ *   → 사장님: 「구분 안되면 저격소총 · 돌격소총 · 투척무기 셋만 — 스나든 사람은 투척 아니면 저격 · 라플든 사람은 투척 아니면 돌격」
+ *
+ *   WEAPON_RULE='position'  throw → 투척무기 · 그 밖은 그 사람 포지션(스코어보드 weapon: 1 스나 → 저격소총 · 0 라플 → 돌격소총)
+ *                           포지션을 모르면 배틀로그 값(riple/sniper)으로 · 그것도 없으면 'unknown'(이름 없이 과녁 그림)
+ *   WEAPON_RULE='raw'       배틀로그 값 우선 — riple 돌격 · sniper 저격 · throw 투척 · close 근접 · special 특수 · 그 밖은 포지션
+ *   ★지어내지 않는다★ — 'unknown' 은 「모름」 이다. 보조무기라고 적는 일은 값이 생기기 전엔 없다
+ * ───────────────────────────────────────────────────────────────────────── */
+export type WeaponKind = 'rifle' | 'sniper' | 'throw' | 'close' | 'special' | 'pistol' | 'c4' | 'unknown'
+export const WEAPON_NAME: Record<WeaponKind, string> = {
+  rifle: '돌격소총',
+  sniper: '저격소총',
+  throw: '투척무기',
+  close: '근접',
+  special: '특수',
+  pistol: '보조무기',
+  c4: 'C4',
+  unknown: '',
+}
+export function weaponKindOf(raw: string | null | undefined, position: 0 | 1 | null): WeaponKind {
+  const w = (raw ?? '').trim().toLowerCase()
+  if (w === 'throw') return 'throw'
+  if (w === 'c4-install' || w === 'c4-dismantle') return 'c4'
+  const byPos: WeaponKind | null = position === 1 ? 'sniper' : position === 0 ? 'rifle' : null
+  const byRaw: WeaponKind | null = w === 'riple' || w === 'rifle' ? 'rifle' : w === 'sniper' ? 'sniper' : null
+  if (WEAPON_RULE === 'position') return byPos ?? byRaw ?? 'unknown'
+  if (byRaw) return byRaw
+  if (w === 'close') return 'close'
+  if (w === 'special') return 'special'
+  return byPos ?? 'unknown'
+}
+
+/**
+ * ★무기 그림★ — 우리가 그린 실루엣 (CLAUDE.md 2-4 · 원본 사이트 그림은 안 베낀다). 40×16 칸 · 왼쪽(킬러)에서 오른쪽(희생자)을 겨눈다.
+ * 회색 실루엣 + 총구 쪽에 작은 화살촉 — 「이 사람이 얘를 쐈다」 가 방향으로 읽힌다
+ */
+export function WeaponGlyph({ kind, phone = false }: { kind: WeaponKind; phone?: boolean }) {
+  const w = phone ? 30 : 40
+  const h = phone ? 12 : 16
+  const ink = '#c9cfdd'
+  const dim = '#8f95af'
+  const body = (() => {
+    switch (kind) {
+      case 'rifle':
+        /* 돌격소총 — 개머리판 · 몸통 · 굽은 탄창 · 긴 총열 */
+        return <path d="M2 8.5 L6 6.5 L6 10.5 Z M6 7 H20 V10 H6 Z M12 10 L11 14 H15 L16 10 Z M20 7.5 H33 V9 H20 Z M22 9 H24 V11 H22 Z" fill={ink} />
+      case 'sniper':
+        /* 저격소총 — 조준경 · 아주 긴 총열 · 양각대 */
+        return <path d="M1 9 L6 7 V11 Z M6 7.5 H18 V10.5 H6 Z M10 4.5 H17 V6.5 H10 Z M18 8 H36 V9.5 H18 Z M26 9.5 L24 14 H25.5 L27 11 L28.5 14 H30 L28 9.5 Z" fill={ink} />
+      case 'throw':
+        /* 투척무기 — 알 모양 · 안전핀 고리 */
+        return <><ellipse cx="20" cy="9.5" rx="5" ry="6" fill={ink} /><rect x="18" y="1.5" width="4" height="3" fill={dim} /><circle cx="24.5" cy="3" r="2" fill="none" stroke={dim} strokeWidth="1.2" /></>
+      case 'close':
+        /* 근접 — 칼 */
+        return <path d="M4 9 H14 L16 7 V11 L14 9 Z M16 8 H36 L38 8.5 L36 9.5 H16 Z" fill={ink} />
+      case 'special':
+        /* 특수 — 별 */
+        return <path d="M20 2 L22.4 7.2 L28 7.8 L23.8 11.6 L25.2 17 L20 14 L14.8 17 L16.2 11.6 L12 7.8 L17.6 7.2 Z" fill={ink} />
+      case 'pistol':
+        /* 보조무기 — 권총 (값이 생기면 쓴다) */
+        return <path d="M8 6 H28 V10 H16 L14 15 H9 L11 10 H8 Z M28 7 H32 V9 H28 Z" fill={ink} />
+      case 'c4':
+        /* C4 — 네모 + 타이머 창 */
+        return <><rect x="9" y="3.5" width="22" height="10" rx="1.5" fill={ink} /><rect x="14" y="6" width="12" height="4.5" fill="#1a1204" /><circle cx="11.5" cy="12" r="0.9" fill="#f59e0b" /></>
+      default:
+        /* 모름 — 과녁 */
+        return <><circle cx="20" cy="8.5" r="5" fill="none" stroke={dim} strokeWidth="1.4" /><circle cx="20" cy="8.5" r="1.4" fill={dim} /></>
+    }
+  })()
+  return (
+    <svg viewBox="0 0 40 16" style={{ width: w, height: h, flex: 'none', display: 'inline-block' }} aria-label={WEAPON_NAME[kind] || '무기 모름'} role="img">
+      {body}
+      {kind === 'c4' ? null : <path d="M36 5.5 L40 8.5 L36 11.5 Z" fill={kind === 'unknown' ? dim : '#f59e0b'} opacity={0.9} />}
+    </svg>
   )
 }
 
