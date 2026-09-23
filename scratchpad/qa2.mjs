@@ -82,7 +82,8 @@ const PAGES = [
   ['trend-day', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '승률', 'DAY', false],
   ['clan-record-tab-m', '/league/supply/clan/zxcvddr2', '클랜원', '기록실', true],
 ]
-const WIDTHS = which === 'pc' ? [[1440, 'pc']] : which === 'm' ? [[390, 'm']] : [[390, 'm'], [1440, 'pc']]
+/* 'tab' = 1024 (아이패드 가로 · 좁은 노트북) — 사장님 「비율 이상한 거」 는 중간 폭에서 자주 난다 (2026-09-24 8회차 뒤 추가) */
+const WIDTHS = which === 'pc' ? [[1440, 'pc']] : which === 'm' ? [[390, 'm']] : which === 'tab' ? [[1024, 'tab']] : which === 'all' ? [[390, 'm'], [1024, 'tab'], [1440, 'pc']] : [[390, 'm'], [1440, 'pc']]
 
 const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'].find((p) => existsSync(p))
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
