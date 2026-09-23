@@ -399,6 +399,42 @@ export const MatchClanHexagonV2 = z.object({
 })
 export type MatchClanHexagonV2 = z.infer<typeof MatchClanHexagonV2>
 
+/**
+ * ★라운드 흐름★ (2026-09-23 사장님) — 경기 상세 「라운드 흐름 그래프」 의 재료.
+ *
+ *   「라운드별로 쪼개고 전반 후반 경계를 가운데에 선 하나 · 클랜별 전적처럼 그래프 —
+ *    라운드 안에서 인원별로 쪼개고 라운드별로 쪼개고」
+ *
+ * 여기에는 ★사실만★ 있다 — 언제 누가 죽었나 · 누가 땄나 · 누가 수비였나 · 라운드 시각.
+ * 확률은 화면이 `roundOdds`(빈도표)로 낸다. 값은 `@sacloud/nexon` 의 `roundFlowOf` 가 한 응답에서 편 것이다.
+ *
+ * `red` / `blue` 는 ★슬롯 이름★ 이다 (`red_stats` 와 같은 기준 · D-184). 진영이 아니다 —
+ * 진영은 라운드마다 `defence` 가 말한다.
+ * 배틀로그가 없는 경기는 `null` 이고 화면은 그래프 자리를 ★비운다★ (사장님 답 ⑤).
+ */
+export const RoundFlowSide = z.enum(['red', 'blue'])
+export const RoundFlowRound = z.object({
+  round: Count,
+  /** 경기 시작부터 초. 1라운드는 10 · 그 뒤는 앞 라운드 끝 + 8.45 (사장님 실측) */
+  start: z.number(),
+  /** 그 라운드 마지막 이벤트 시각(초) */
+  end: z.number(),
+  /** 이 라운드에 수비(블루)였던 슬롯. 모르면 null */
+  defence: RoundFlowSide.nullable(),
+  /** 라운드를 딴 슬롯. 모르면 null */
+  winner: RoundFlowSide.nullable(),
+  /** 시각순 죽음 — 죽은 사람의 슬롯 */
+  deaths: z.array(z.object({ at: z.number(), side: RoundFlowSide })),
+})
+export const RoundFlow = z.object({
+  team_size: z.object({ red: Count, blue: Count }),
+  /** 후반이 시작되는 라운드. 모르면 null */
+  second_half_from: Count.nullable(),
+  rounds: z.array(RoundFlowRound),
+})
+export type RoundFlow = z.infer<typeof RoundFlow>
+export type RoundFlowRound = z.infer<typeof RoundFlowRound>
+
 /** GET /leagues/{leagueId}/matches/{matchId} — 아코디언 펼침 시 지연 로드 */
 export const MatchDetail = MatchListItem.extend({
   red_stats: z.array(MatchPlayerStat),
@@ -431,6 +467,8 @@ export const MatchDetail = MatchListItem.extend({
    */
   red_hexagon_v2: MatchClanHexagonV2.nullable().default(null),
   blue_hexagon_v2: MatchClanHexagonV2.nullable().default(null),
+  /** ★라운드 흐름★ (2026-09-23) — 배틀로그가 없으면 null. 이 필드가 없던 응답과도 맞도록 기본값 null */
+  round_flow: RoundFlow.nullable().default(null),
 })
 export type MatchDetail = z.infer<typeof MatchDetail>
 

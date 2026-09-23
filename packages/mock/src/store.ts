@@ -1325,6 +1325,8 @@ export function getMatch(
     blue_hexagon_v2: hexV2.blue
       ? { league_clan_id: match.blueLeagueClanId, hexagon: hexV2.blue }
       : null,
+    /* ★라운드 흐름★ (2026-09-23) — 픽스처에는 배틀로그가 없다. 화면은 자리를 비운다 */
+    round_flow: null,
   }
 }
 

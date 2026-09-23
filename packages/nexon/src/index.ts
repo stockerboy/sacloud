@@ -33,6 +33,8 @@ export {
 export * from './position'
 export * from './roundSide'
 export * from './roundState'
+/* ★라운드 흐름★ — 경기 상세 「라운드 흐름 그래프」 재료 (2026-09-23 사장님) */
+export * from './roundFlow'
 export * from './openingScore'
 export * from './openingSides'
 export * from './duel'

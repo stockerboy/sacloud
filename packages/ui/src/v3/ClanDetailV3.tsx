@@ -18,6 +18,8 @@ import { rankColor, statColor } from './rankColors'
 import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { MvpWhy } from './MvpWhy'
+/* ★라운드 흐름 그래프★ (2026-09-23 사장님) */
+import { RoundFlowChartV3 } from './RoundFlowChartV3'
 import { ScoreBoard } from './ScoreBoard'
 import { Card, CardHead, Kda, MarkCircle, MvpMark, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme, matchShownAt } from './primitives'
 import { WIN_LOSS, V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
@@ -543,6 +545,16 @@ function Scoreboard({
                 id={`mhex-${detail.id}-${t.side}-${pick}`}
               />
               <MvpWhy detail={detail} />
+              {/* ★라운드 흐름★ — 폰에도 (사장님 답 ④). 경기분석 단추 밑 */}
+              {detail.round_flow && wonTeam && lostTeam ? (
+                <div style={{ width: '100%' }}>
+                  <RoundFlowChartV3
+                    flow={detail.round_flow}
+                    winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
+                    loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
+                  />
+                </div>
+              ) : null}
           <ScoreBoard detail={detail} side={wonTeam?.side ?? 'red'} />
               <ScoreBoard detail={detail} side={t.side} />
             </div>
@@ -568,6 +580,14 @@ function Scoreboard({
             id={`mhexPc-${detail.id}`}
           />
           <MvpWhy detail={detail} />
+          {/* ★라운드 흐름★ — MVP 이유·육각 줄 아래 빈 자리 (2026-09-23 사장님). 배틀로그 없으면 자리를 비운다 */}
+          {detail.round_flow && wonTeam && lostTeam ? (
+            <RoundFlowChartV3
+              flow={detail.round_flow}
+              winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
+              loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
+            />
+          ) : null}
           <ScoreBoard detail={detail} side={wonTeam?.side ?? 'red'} />
         </div>
       ) : null}

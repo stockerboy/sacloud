@@ -24,6 +24,8 @@ import {
 import { publicOriginWhere } from './publicScope'
 import { resolvePositionsOf } from './playerPositionQuery'
 import { matchClanHexV2 } from './clanHexV2'
+/* ★라운드 흐름★ (2026-09-23 사장님) — 배틀로그 원문 한 응답을 그 자리에서 편다 */
+import { matchRoundFlow } from './roundFlow'
 import { withSeasonWindow } from './season0Scope'
 
 /**
@@ -1168,6 +1170,10 @@ export async function getMatch(
     ),
   ])
 
+  /* ★라운드 흐름★ — 두 육각 행(`hexRows`)의 teamNo 로 슬롯을 잇는다. 실패해도 상세를 죽이지 않는다 */
+  const roundFlow = await softFail('match-round-flow', null, { matchId: match.id })(
+    matchRoundFlow({ sourceMatchId: match.sourceMatchId, redLeagueClanId: match.redLeagueClanId, blueLeagueClanId: match.blueLeagueClanId, hexRows }),
+  )
   const viewerId = viewerLeagueClanId ?? match.redLeagueClanId
   const base = toMatchListItem(match, viewerId, null, clans, now)
   if (!base) return null
@@ -1340,5 +1346,7 @@ export async function getMatch(
     blue_hexagon_v2: hexV2?.blue
       ? { league_clan_id: hexV2.blue.leagueClanId, hexagon: hexV2.blue.hexagon }
       : null,
+    /* ★라운드 흐름★ (2026-09-23) — 배틀로그가 없으면 null · 화면은 자리를 비운다 */
+    round_flow: roundFlow,
   }
 }
