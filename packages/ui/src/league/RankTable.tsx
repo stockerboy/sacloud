@@ -1092,7 +1092,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   *   폰은 그대로 두 줄이다 — 거기는 자리가 없고, 사장님이 따로 맞추신 판이다.
                   */}
                 {/* 2026-09-23 새벽 — 폰도 한 줄 (서플라이 폰 줄 36px). 클랜명은 닉네임 옆에 작게 */}
-                <div className="flex min-w-0 items-baseline gap-2 md:w-[210px] md:shrink-0">
+                <div className="flex min-w-0 items-center gap-2 md:w-[210px] md:shrink-0">
                   <div className="flex min-w-0 items-center gap-1.5">
                     {/* ★누름 영역★ — 글자 높이가 19px 라 손가락으로 집기 어려웠다
                         (2026-09-15 · 무한 QA). 위아래 여백을 주고 같은 만큼 당겨
@@ -1132,6 +1132,72 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                       무소속
                     </span>
                   )}
+                  {/* 2026-09-24 QA: 배지를 210px 이름 상자 ★안★ 으로 — 밖(COL_NAME 너머)에 있어 승리 칸을 덮었다(운영 PC 14·19위). 이름이 길면 이름이 줄고 배지는 남는다. 옛 200px 자리표시자는 w-0 */}
+                  {(row.trait_emblems ?? []).length > 0 ? (
+                    /* ⚠ ★폰 104 → 112px★ (2026-09-18) — 한 칸을 32 → 36 으로 넓혀
+                       ★배지 밑 이름★ 이 두 줄로 들어가게 했다 (사장님: 「배찌밑에 이름 달아줘」) */
+                    /*
+                     * ⚠ ★2026-09-21 밤 — 폰에서는 배지를 통째로 감춘다★ (사장님: 「저 뱃지들
+   *   ★모바일에서는 전부 다 숨겨★ 닉네임이 안보이잖아」)
+   *
+   *   낮에 폭을 116 → 76px 로 줄였지만 ★그래도 닉네임이 잘렸다.★ 390px 한 줄에
+   *   클랜마크 · 닉네임 · 승률 · 킬뎃 · 래더까지 들어가야 해서 ★배지가 설 자리가 없다.★
+   *   ★PC 에서는 그대로 나온다★ — 자리가 넉넉하다.
+   *
+   * ⚠ 아래는 그 낮의 기록이다
+   *   ★2026-09-21 낮 — 폰 폭을 116 → 76px 로 줄였다★ (사장님: 「가려지네 닉네임」)
+                     *   390px 폰에서 ★배지 칸이 116px 를 고정으로 먹어★ 이름 칸(`min-w-0`)이
+                     *   0 까지 눌렸다 — ★배지가 있는 줄만 닉네임이 통째로 사라졌다.★
+                     *   배지 밑 이름은 PC 에만 적고(원래 주석의 의도였다), 폰은 그림만 둔다.
+                     */
+                    <span className="ml-auto flex shrink-0 items-start justify-end gap-1 max-md:hidden md:gap-1.5" /* 2026-09-24 QA(운영 PC): 배지 칸 200px 이 승리 칸을 덮었다(14위 swy · 19위 huwho) → 자기 칸 안에서만 · 넘치면 숨긴다 */>
+                      {/*
+                        * ⚠ ★2026-09-17 — 손으로 그리던 SVG 배지를 사장님 그림으로 바꿨다★.
+                        *   옛 판(`TraitEmblem`)은 지우지 않았다 — 파일이 그대로 있고 이 줄만
+                        *   `AxisBadge` 로 바뀌었다 (`CLAUDE.md` 1-4).
+                        *   그리고 ★누르면 배지 페이지로 간다★ (사장님: «뱃지 클릭하면 (…)
+                        *   누구누구가 이 뱃지 가지고있는지»).
+                        */}
+                      {(row.trait_emblems ?? []).slice(0, 2).map((e) => {
+                        const axis = e.axis as Parameters<typeof AxisBadge>[0]['axis']
+                        const name = badgeOfAxis(axis, e.weapon)?.label ?? ''
+                        return (
+                          <span
+                            key={`${e.axis}-${e.weapon}`}
+                            className="flex flex-col items-center gap-[3px] max-md:w-[34px] md:w-[54px]"
+                          >
+                            {/* ★2026-09-17 사장님 — «크기를 좀 키워줘 잘 안보여»★ 22 → 30 (PC 40) */}
+                            <AxisBadge
+                              axis={axis}
+                              weapon={e.weapon}
+                              tier={e.tier}
+                              size={30}
+                              leagueSlug={leagueSlug}
+                              className="md:[&_img]:!h-[40px] md:[&_img]:!w-[40px]"
+                            />
+                            {/*
+                              * ★배지 밑에 이름★ (2026-09-18 사장님: 「배찌밑에 이름 달아줘」).
+                              *
+                              * ⚠ 폰에서는 ★잘라서는 안 된다★ — 「스나싸움마스터」 일곱 자가
+                              *   36px 한 줄에 안 들어간다. `truncate` 를 빼고 ★두 줄로 접는다★.
+                              *   `break-keep` 이라야 한글이 낱자로 안 쪼개진다.
+                              * ⚠ 줄 높이를 1.15 로 눌러 두 줄이 되어도 줄 리듬이 덜 흔들린다.
+                              *   PC 는 한 줄로 충분해 그대로 잘라 쓴다.
+                              */}
+                            {/* ⚠ ★폰에서는 이름을 숨긴다★ (2026-09-21) — 「스나싸움마스터」 일곱 자가
+                                자리를 먹어 ★닉네임을 밀어냈다.★ 배지 그림만으로도 무엇인지 보이고,
+                                눌러 들어가면 이름이 나온다. PC 는 자리가 넉넉해 그대로 적는다 */}
+                            <span className="hidden w-full break-keep text-center text-faint md:block md:truncate md:text-[9.5px] md:leading-none">
+                              {name}
+                            </span>
+                          </span>
+                        )
+                      })}
+                    </span>
+                  ) : (
+                    /* ★앨블럼이 없어도 자리를 비워 둔다★ — 그래야 아래윗줄 수치가 같은 자리에 선다 */
+                    <span aria-hidden className="w-0 shrink-0" />
+                  )}
                 </div>
                 {/*
                   * ★특성 앨블럼★ (2026-09-17 사장님:
@@ -1159,71 +1225,6 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   *   이름은 PC 에만 적는다 — «세이브 머신» 이 여섯 자라 폰 390px 에서는
                   *   세 개를 놓을 자리가 없다. 폰은 그림만, 뜻은 누르면 뜨는 이름이 말한다.
                   */}
-                {(row.trait_emblems ?? []).length > 0 ? (
-                  /* ⚠ ★폰 104 → 112px★ (2026-09-18) — 한 칸을 32 → 36 으로 넓혀
-                     ★배지 밑 이름★ 이 두 줄로 들어가게 했다 (사장님: 「배찌밑에 이름 달아줘」) */
-                  /*
-                   * ⚠ ★2026-09-21 밤 — 폰에서는 배지를 통째로 감춘다★ (사장님: 「저 뱃지들
-   *   ★모바일에서는 전부 다 숨겨★ 닉네임이 안보이잖아」)
-   *
-   *   낮에 폭을 116 → 76px 로 줄였지만 ★그래도 닉네임이 잘렸다.★ 390px 한 줄에
-   *   클랜마크 · 닉네임 · 승률 · 킬뎃 · 래더까지 들어가야 해서 ★배지가 설 자리가 없다.★
-   *   ★PC 에서는 그대로 나온다★ — 자리가 넉넉하다.
-   *
-   * ⚠ 아래는 그 낮의 기록이다
-   *   ★2026-09-21 낮 — 폰 폭을 116 → 76px 로 줄였다★ (사장님: 「가려지네 닉네임」)
-                   *   390px 폰에서 ★배지 칸이 116px 를 고정으로 먹어★ 이름 칸(`min-w-0`)이
-                   *   0 까지 눌렸다 — ★배지가 있는 줄만 닉네임이 통째로 사라졌다.★
-                   *   배지 밑 이름은 PC 에만 적고(원래 주석의 의도였다), 폰은 그림만 둔다.
-                   */
-                  <span className="flex shrink-0 items-start justify-start gap-1 overflow-hidden max-md:hidden md:ml-2 md:max-w-[120px] md:gap-1.5" /* 2026-09-24 QA(운영 PC): 배지 칸 200px 이 승리 칸을 덮었다(14위 swy · 19위 huwho) → 자기 칸 안에서만 · 넘치면 숨긴다 */>
-                    {/*
-                      * ⚠ ★2026-09-17 — 손으로 그리던 SVG 배지를 사장님 그림으로 바꿨다★.
-                      *   옛 판(`TraitEmblem`)은 지우지 않았다 — 파일이 그대로 있고 이 줄만
-                      *   `AxisBadge` 로 바뀌었다 (`CLAUDE.md` 1-4).
-                      *   그리고 ★누르면 배지 페이지로 간다★ (사장님: «뱃지 클릭하면 (…)
-                      *   누구누구가 이 뱃지 가지고있는지»).
-                      */}
-                    {(row.trait_emblems ?? []).slice(0, 2).map((e) => {
-                      const axis = e.axis as Parameters<typeof AxisBadge>[0]['axis']
-                      const name = badgeOfAxis(axis, e.weapon)?.label ?? ''
-                      return (
-                        <span
-                          key={`${e.axis}-${e.weapon}`}
-                          className="flex flex-col items-center gap-[3px] max-md:w-[34px] md:w-[54px]"
-                        >
-                          {/* ★2026-09-17 사장님 — «크기를 좀 키워줘 잘 안보여»★ 22 → 30 (PC 40) */}
-                          <AxisBadge
-                            axis={axis}
-                            weapon={e.weapon}
-                            tier={e.tier}
-                            size={30}
-                            leagueSlug={leagueSlug}
-                            className="md:[&_img]:!h-[40px] md:[&_img]:!w-[40px]"
-                          />
-                          {/*
-                            * ★배지 밑에 이름★ (2026-09-18 사장님: 「배찌밑에 이름 달아줘」).
-                            *
-                            * ⚠ 폰에서는 ★잘라서는 안 된다★ — 「스나싸움마스터」 일곱 자가
-                            *   36px 한 줄에 안 들어간다. `truncate` 를 빼고 ★두 줄로 접는다★.
-                            *   `break-keep` 이라야 한글이 낱자로 안 쪼개진다.
-                            * ⚠ 줄 높이를 1.15 로 눌러 두 줄이 되어도 줄 리듬이 덜 흔들린다.
-                            *   PC 는 한 줄로 충분해 그대로 잘라 쓴다.
-                            */}
-                          {/* ⚠ ★폰에서는 이름을 숨긴다★ (2026-09-21) — 「스나싸움마스터」 일곱 자가
-                              자리를 먹어 ★닉네임을 밀어냈다.★ 배지 그림만으로도 무엇인지 보이고,
-                              눌러 들어가면 이름이 나온다. PC 는 자리가 넉넉해 그대로 적는다 */}
-                          <span className="hidden w-full break-keep text-center text-faint md:block md:truncate md:text-[9.5px] md:leading-none">
-                            {name}
-                          </span>
-                        </span>
-                      )
-                    })}
-                  </span>
-                ) : (
-                  /* ★앨블럼이 없어도 자리를 비워 둔다★ — 그래야 아래윗줄 수치가 같은 자리에 선다 */
-                  <span aria-hidden className="shrink-0 max-md:w-0 md:ml-3 md:w-[200px]" />
-                )}
               </div>
             ) : (
             <div className={COL_NAME}>
