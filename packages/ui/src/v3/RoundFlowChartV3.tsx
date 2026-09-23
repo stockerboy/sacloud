@@ -893,18 +893,18 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'baseline', gap: 8, padding: '4px 2px 8px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0 }}>
                 <SideTag red />
-                <span style={{ fontWeight: 800, fontSize: phone ? 13.5 : 17, color: RED_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(leftKey).name}</span>
+                <span style={{ fontWeight: 800, fontSize: phone ? 12.5 : 17, color: RED_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(leftKey).name}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: phone ? 8 : 12, whiteSpace: 'nowrap', padding: '0 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: phone ? 5 : 12, whiteSpace: 'nowrap', padding: phone ? '0 4px' : '0 8px' }}>
                 {/* §7-6 설점 — 「설점:1  3:2  설점:0」 · 후반 넘어가면 0 부터 (KILL_ROWS_V2) */}
-                {KILL_ROWS_V2 ? <span style={{ fontSize: phone ? 10.5 : 12, fontWeight: 700, color: RED_INK, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>설점:{plantOf(leftKey)}</span> : null}
+                {KILL_ROWS_V2 ? <span style={{ fontSize: phone ? 10 : 12, fontWeight: 700, color: RED_INK, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>설점:{plantOf(leftKey)}</span> : null}
                 <span style={{ fontWeight: 800, fontSize: phone ? 20 : 26, fontVariantNumeric: 'tabular-nums', color: tone.textStrong }}>
                   <span style={{ color: RED_INK }}>{halfScoreOf(leftKey)}</span><span style={{ color: tone.textGhost, margin: '0 4px', fontWeight: 500 }}>:</span><span style={{ color: BLUE_INK }}>{halfScoreOf(rightKey)}</span>
                 </span>
-                {KILL_ROWS_V2 ? <span style={{ fontSize: phone ? 10.5 : 12, fontWeight: 700, color: BLUE_INK, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>설점:{plantOf(rightKey)}</span> : null}
+                {KILL_ROWS_V2 ? <span style={{ fontSize: phone ? 10 : 12, fontWeight: 700, color: BLUE_INK, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>설점:{plantOf(rightKey)}</span> : null}
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0, justifyContent: 'flex-end' }}>
-                <span style={{ fontWeight: 800, fontSize: phone ? 13.5 : 17, color: BLUE_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(rightKey).name}</span>
+                <span style={{ fontWeight: 800, fontSize: phone ? 12.5 : 17, color: BLUE_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(rightKey).name}</span>
                 <SideTag red={false} />
               </div>
             </div>

@@ -56,7 +56,8 @@ export function ClanHeaderV3({ data, infoHref, seasonLabel, memberCount, renewAc
               <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap', ...nameStyle(theme), overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.clan.name}</span>
               {tiered ? <span style={{ padding: '3px 8px', border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, background: V3.chip, whiteSpace: 'nowrap' }}><TierText division={data.division} leagueCategory={data.league.category} size={11} /></span> : null}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13.5, color: '#767f96', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
+            {/* 2026-09-24 QA(운영 폰): 「클랜원 40명」 이 잘려 「4C」 로 보였다 → 줄바꿈 허용(폰에서 두 줄) · 조각은 안 잘린다 */}
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: '2px 8px', flexWrap: 'wrap', fontSize: 13.5, color: '#767f96', minWidth: 0 }}>
               <span style={{ ...nameStyle(theme), fontWeight: 600 }}>시즌 Cloud 0 · {fmt(games)}전</span>
               {memberCount !== null && memberCount > 0 ? <><span style={{ color: '#b6bece' }}>·</span><span>클랜원 {fmt(memberCount)}명</span></> : null}
             </span>

@@ -639,7 +639,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
                     : '래더'}
             </span>
             {/* ★미참여 감점★ (2026-09-11 사장님) */}
-            {(data.activity_penalty ?? 0) > 0 ? (
+            {Math.round(data.activity_penalty ?? 0) >= 1 ? (
               <span style={{ fontSize: 10, fontWeight: 700, color: '#c81e28', whiteSpace: 'nowrap' }}>미참여 −{Math.round(data.activity_penalty as number)}점</span>
             ) : null}
           </span>
