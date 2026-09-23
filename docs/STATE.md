@@ -3,9 +3,25 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-24 새벽 2차** · 갱신한 사람 B(실행 세션 · 홈 배경 · 래더 층수 · 상세정보 색 · 라운드 흐름 손질)
+> 마지막 갱신 **2026-09-24 새벽 3차** · 갱신한 사람 B(실행 세션 · 홈 배경 · 래더 층수 · 상세정보 색 · 라운드 흐름 손질)
 
 ---
+
+## 0-새벽3. ★2026-09-24 02:30~03:20 — 로고 · 검정 서랍 · 모름 마크 · 게시판 에타 UI · 홈 HOT 8★
+
+```
+서랍       DrawerNavSupply DRAWER_DARK=true — 검정 · 왼쪽 위 워드마크(홈) · Leagues · 아이콘 구름/문서/열쇠 (옛 번개/말풍선/사람은 코드에)
+상단띠     NavLogo NAV_VARIANT='word' (/brand/sacloud-wordmark.png · 사장님 그림) · 폰 가운데 (tokens.css 맨 끝 블록 · pc-off 폰 표시)
+모름 마크   FallbackClanMark UNKNOWN_MARK='photo' → /brand/mark-unknown.png (사장님 3번째 사진) · 옛 구름 윤곽선은 'cloud'
+게시판     BoardListEta — 머리 · 탭 인기/자유 · 공지 카드(에타 광고 자리 · notice 게시판 맨 위 글) · 줄: 👍💬 | 시각 | [마크]익명/닉 · 클랜명 · 떠 있는 글쓰기
+           BoardListScreen BOARD_ETA · BoardLayoutLegacy BOARD_LAYOUT_ETA (옆 메뉴 없음 · 720 한 칸) · 옛 표 스위치로 남김
+글쓴이     WriterName 마크 언제나 (소속 모르면 모름 마크)
+홈 HOT     HomeHotBoard HOME_HOT_ETA · 8줄 · 공지 최대 2 · 에타 카드(제목 · 날짜 · 👍💬)
+명단 MVP   MVP_IN_RANK_CELL (사장님 답) — 순위 칸에 ★
+```
+⚠ 관리자 대시보드(공지 쓰기 화면)는 ★아직 없다★ — 공지는 notice 게시판에 관리자 계정으로 쓰면 카드에 뜬다. 사장님 「도대체 언제 만들어지나」 → 다음 Part
+⚠ crucialrz 클랜 줄 둘(backspace00 · ipl-backspace00) 합치기 — 사장님 답 대기 (질문이 어려웠다 · 쉽게 다시 물을 것)
+★사장님 지시 03:15★ 「다 하고 자율 QA 20시간 — 모든 페이지 하나하나 열어 비율 이상한 거 맞추고 절대 멈추지 마」 → QA 로그는 이 절 아래 「QA 회차」에 쌓는다
 
 ## 0-새벽2. ★2026-09-24 새벽 2차 — 뿌연 이름 · 폰 죽은차례 한 칸 · 두 갈래 선수 · 되메우기 적재★
 
