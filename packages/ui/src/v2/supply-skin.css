@@ -1352,3 +1352,9 @@ body.antialiased {
   .v3-board > .v3-board-hex > :nth-child(3) { grid-column: 1 / -1; grid-row: 2; }
   .v3-board > .v3-board-hex > :nth-child(4) { grid-column: 1 / -1; grid-row: 3; }
 }
+
+/* 폰 경기 카드 왼쪽 색띠 — 서플라이 폰 카드는 왼쪽에 8px 실선(승 파랑 · 패 빨강). 사장님 사진 대조 (2026-09-23 낮) */
+@media (max-width: 700px) {
+  .mc-card--win { border-left: 6px solid #5b8dff !important; }
+  .mc-card--lose { border-left: 6px solid #e0342f !important; }
+}

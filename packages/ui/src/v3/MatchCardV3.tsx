@@ -207,6 +207,11 @@ export function MatchCardV3({ match: m, league, viewer = null, neutral = false, 
   const kdPct = my && my.kd_rate !== null
     ? <span style={{ fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', color: statColor(my.kd_rate) }}>({my.kd_rate.toFixed(1)}%)</span>
     : null
+  /* ★폰 가운데 칸★ — MVP 표를 ★머리줄 오른쪽(래더 점수 앞)★ 으로 옮겼다 (2026-09-23 사장님 사진 「엠브이피뱃지는 형광펜 친 곳으로」).
+     그래서 폰에서는 K/D/A 와 % 만 남는다. PC 는 `middle` 그대로 */
+  const middlePhone = !pending && my
+    ? <>{kda ?? <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}{kdPct}</>
+    : null
   /* ③ 칸 — 보는 선수가 있으면 K/D/A, 없으면 MVP. 둘 다 없으면 비운다 (지어내지 않는다) */
   const middle = pending
     ? <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>킬데스 수집중</span>
@@ -218,29 +223,36 @@ export function MatchCardV3({ match: m, league, viewer = null, neutral = false, 
   const chevron = <span style={{ fontSize: 13, color: pending ? V3.textGhost : edge }}>{open ? '⌃' : '⌄'}</span>
 
   return (
-    <div style={{ border: `1px solid ${line}`, borderRadius: V3.radiusCard, overflow: 'hidden', background: face, opacity: pending ? 0.75 : 1, maxWidth: MATCH_CARD_MAX_WIDTH }}>
+    <div className={neutral ? 'mc-card' : m.win ? 'mc-card mc-card--win' : 'mc-card mc-card--lose'} style={{ border: `1px solid ${line}`, borderRadius: V3.radiusCard, overflow: 'hidden', background: face, opacity: pending ? 0.75 : 1, maxWidth: MATCH_CARD_MAX_WIDTH }}>
       <style>{CSS}</style>
 
       {/* ══ 폰 ══ */}
       <div className="mc-phone" onClick={toggle} style={{ cursor: pending ? 'default' : 'pointer' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '9px 13px', borderBottom: `1px solid ${line}` }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.map.name}</span>
-          <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>- {shortAgo(matchShownAt(m))}</span>
+        {/*
+          2026-09-23 낮 — 서플라이 폰 카드와 대조 (사장님 사진 · 393px 기준 사진 배율 2.34 로 잰 것 · docs/SUPPLY_MEASURED.md 8절)
+            서플라이  카드 94 · 머리줄 ~20 (글자 16/700 · 시각 16/400 · 점수 16/700) · 몸통 ~75 · 승리 16 · K/D/A ~18/700 · % 13 · 클랜명 15 · 왼쪽 색띠 8px
+            우리(전)  카드 122 · 머리줄 39 (13/11.5/12.5) · 몸통 83 · 승리 14 · 클랜명 12.5
+          MVP 표는 머리줄 오른쪽(점수 앞)으로. 옛 값은 위 주석에 남긴다
+        */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px 3px 13px', borderBottom: `1px solid ${line}` }}>
+          <span style={{ fontSize: 15.5, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.map.name}</span>
+          <span style={{ fontSize: 14, color: V3.textFaint, whiteSpace: 'nowrap' }}>- {shortAgo(matchShownAt(m))}</span>
           <span style={{ flex: 1 }} />
-          <RatingDelta value={m.rating_update} size={12.5} />
+          {mvpIsViewer ? <span style={{ flex: 'none', display: 'inline-flex' }}><MvpMark size={13} /></span> : null}
+          <RatingDelta value={m.rating_update} size={15.5} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto 30px', alignItems: 'center', gap: 8, padding: '12px 4px 12px 13px' }}>
-          {neutral ? winChip : <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>}
-          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>{middle}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto 30px', alignItems: 'center', gap: 8, padding: '8px 4px 8px 13px' }}>
+          {neutral ? winChip : <span style={{ fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', color: edge }}>{m.win ? '승리' : '패배'}</span>}
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>{middlePhone ?? middle}</span>
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <MarkCircle clan={leftSnap.clan} size={20} />
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: leftInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{leftSnap.clan.name}</span>
+              <MarkCircle clan={leftSnap.clan} size={22} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: leftInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{leftSnap.clan.name}</span>
             </span>
-            <span style={{ fontSize: 10, color: V3.textGhost, paddingLeft: 26 }}>vs</span>
+            <span style={{ fontSize: 11.5, color: V3.textGhost, paddingLeft: 28 }}>vs</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <MarkCircle clan={rightSnap.clan} size={20} />
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: rightInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{rightSnap.clan.name}</span>
+              <MarkCircle clan={rightSnap.clan} size={22} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: rightInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{rightSnap.clan.name}</span>
             </span>
           </span>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderLeft: `1px solid ${line}` }}>{pending ? null : chevron}</span>
