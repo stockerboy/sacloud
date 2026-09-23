@@ -1327,7 +1327,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
               /* ★층수마다 색이 다르다★ (2026-09-11 사장님: 45층~ 빨강 · 40 노랑 · 35 하늘 · 30 초록 · 그 아래 하양).
                  옛 모양은 한 색(청록 `text-accent`)이었다 — 자리·크기는 그대로다 */
               <div
-                className={`${COL_PRATING} ${NUM}`}
+                className={`${COL_PRATING} ${NUM} relative`}
                 /* 2026-09-23 밤 사장님 「래더 색깔은 그냥 없애」 — 옛 판: floorColor(row.score ?? row.rating) */
                 style={undefined}
               >
@@ -1357,7 +1357,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                 {/* ★미참여 감점★ — 오래 안 뛰어 깎였으면 적는다 (2026-09-11 사장님) */}
                 {/* 2026-09-24 QA: 0.3점 같은 값이 「−0점」 으로 찍혔다 → 반올림해서 1점 이상일 때만 */}
                 {Math.round(row.activity_penalty ?? 0) >= 1 ? (
-                  <div className="mt-0.5 text-[10px] font-bold leading-none text-[#ff8a90] max-md:hidden" /* 2026-09-24 QA(운영 열산 폰): 36px 줄 밑으로 삐져나와 다음 줄에 걸쳤다 → 폰은 숨긴다 (선수 카드에서 본다) */>
+                  <div className="pointer-events-none absolute right-0 top-full -mt-1 whitespace-nowrap text-[10px] font-bold leading-none text-[#ff8a90] max-md:hidden" /* 2026-09-24 QA: 폰은 숨김(다음 줄에 걸침) · PC 는 ★흐름 밖(absolute)★ 으로 — 줄 안에 두면 「34층」 을 위로 밀어 옆 줄과 어긋났다 (운영 열산 PC 15위) */>
                     미참여 −{Math.round(row.activity_penalty as number)}점
                   </div>
                 ) : null}
