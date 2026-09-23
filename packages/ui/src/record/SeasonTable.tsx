@@ -1,6 +1,6 @@
 import type { LeagueClanSeason, LeaguePlayerSeason } from '@sacloud/contract'
 import { EmptyState } from '../common/EmptyState'
-import { formatCount, formatRate } from '../common/format'
+import { formatCount, formatRating, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 
 /**
@@ -161,7 +161,7 @@ export function SeasonTable({
             <StatLine
               raw={null}
               label="래더"
-              value={season.rating === null ? null : `${formatCount(season.rating)}점`}
+              value={season.rating === null ? null : `${formatRating(season.rating)}`}
             />
           </div>
         )

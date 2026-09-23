@@ -1,5 +1,5 @@
 import { ClanMark } from '../common/ClanMark'
-import { formatCount, formatRate } from '../common/format'
+import { formatCount, formatRating, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
 import { divisionLabel } from '../league/divisionLabel'
@@ -89,7 +89,7 @@ export function ClanHeadCard(props: ClanHeadCardProps) {
       <Row label="래더">
         <span className={ratingClass(props.rating)}>
           {/* 배치고사 폐지 (2026-09-01) — 이 창에 0판이라는 뜻이다 */}
-          {props.placement ? '기록 없음' : `${formatCount(props.rating)}점`}
+          {props.placement ? '기록 없음' : `${formatRating(props.rating)}`}
         </span>
       </Row>
       <Divider />

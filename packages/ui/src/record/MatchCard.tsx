@@ -24,7 +24,7 @@ export interface MatchTimeClan {
   mark: { bg: string | null; front: string | null }
 }
 import { RelativeTime } from '../common/RelativeTime'
-import { formatCount, formatRate, formatTeamCounts } from '../common/format'
+import { formatCount, formatRate, formatTeamCounts, formatRating } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
 import { leagueClanPath, leagueMatchPath } from '../common/paths'
@@ -328,7 +328,7 @@ function ClanSide({
               {UNKNOWN}
             </span>
           ) : (
-            <span className="num">{formatCount(snapshot.rating)}점</span>
+            <span className="num">{formatRating(snapshot.rating)}</span>
           )}
         </div>
       </div>
@@ -868,7 +868,7 @@ function SnapshotRating({ snapshot }: { snapshot: MatchClanSnapshot }) {
       </span>
     )
   }
-  return <span className="num">{formatCount(snapshot.rating)}점</span>
+  return <span className="num">{formatRating(snapshot.rating)}</span>
 }
 
 function StatRow({
@@ -971,7 +971,7 @@ function StatRow({
               <span className="text-faint">{PLACEMENT_LABEL}</span>
             ) : rating.kind === 'rating' ? (
               <span className={`num ${ratingClass(rating.value)}`}>
-                {formatCount(rating.value)}점
+                {formatRating(rating.value)}
               </span>
             ) : (
               <span className="text-faint">{UNKNOWN}</span>

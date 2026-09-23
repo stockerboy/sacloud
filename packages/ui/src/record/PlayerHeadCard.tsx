@@ -1,6 +1,6 @@
 import { INDEPENDENT_KD_NOTE } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
-import { formatAverage, formatCount, formatRate } from '../common/format'
+import { formatAverage, formatCount, formatRating, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { ratingClass } from '../common/rating'
 import { positionLine, rankColor } from './playerHeadCopy'
@@ -122,7 +122,7 @@ export function PlayerHeadCard(props: PlayerHeadCardProps) {
       <Row label="래더">
         <span className={ratingClass(props.rating)}>
           {/* 배치고사 폐지 (2026-09-01) — 이 창에 0판이라는 뜻이다 */}
-          {props.placement ? '기록 없음' : `${formatCount(props.rating)}점`}
+          {props.placement ? '기록 없음' : `${formatRating(props.rating)}`}
         </span>
       </Row>
       <Divider />

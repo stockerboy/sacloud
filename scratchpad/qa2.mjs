@@ -115,6 +115,9 @@ for (const [w, tag] of WIDTHS) {
     if (phoneOnly && tag !== 'm') continue
     const label = `${name}_${tag}`
     try {
+      /* 2026-09-24 3회차: 500 은 그림으로만 보였다 → 상태 코드를 먼저 잰다 (307 은 따라간 뒤 최종 코드) */
+      let status = 0
+      try { status = (await fetch(BASE + path, { redirect: 'follow', headers: { 'user-agent': tag === 'm' ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } })).status } catch { status = -1 }
       await send('Page.navigate', { url: BASE + path })
       await sleep(2500)
       if (waitFor) for (let i = 0; i < 40; i += 1) { if ((await evalStr(`document.body.innerText.includes(${JSON.stringify(waitFor)})`)) === true) break; await sleep(500) }
@@ -135,7 +138,7 @@ for (const [w, tag] of WIDTHS) {
       writeFileSync(join(OUT, `${label}.png`), Buffer.from(shot.data, 'base64'))
       const parsed = (() => { try { return JSON.parse(qa) } catch { return null } })()
       const line = parsed
-        ? `- ${label}  scrollW ${parsed.scrollW}${parsed.scrollW > w ? ' ★가로넘침★' : ''} · 잘림 ${parsed.clipped?.length ?? 0} · 칸밖 ${parsed.outside?.length ?? 0} · 겹침 ${parsed.overlap?.length ?? 0}` +
+        ? `- ${label}  ${status >= 400 || status <= 0 ? `★HTTP ${status}★ ` : ''}scrollW ${parsed.scrollW}${parsed.scrollW > w ? ' ★가로넘침★' : ''} · 잘림 ${parsed.clipped?.length ?? 0} · 칸밖 ${parsed.outside?.length ?? 0} · 겹침 ${parsed.overlap?.length ?? 0}` +
           (parsed.clipped?.length ? `\n    잘림: ${parsed.clipped.slice(0, 6).join(' | ')}` : '') +
           (parsed.outside?.length ? `\n    칸밖: ${parsed.outside.slice(0, 4).join(' | ')}` : '') +
           (parsed.overlap?.length ? `\n    겹침: ${parsed.overlap.slice(0, 4).join(' | ')}` : '')

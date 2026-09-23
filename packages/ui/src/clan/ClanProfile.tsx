@@ -8,7 +8,7 @@ import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 import { Egg } from '../egg/Egg'
 import { useClanEgg } from '../egg/EggContext'
 import { EggVeil } from '../egg/EggVeil'
-import { formatCount, formatDate, formatRate } from '../common/format'
+import { formatCount, formatRating, formatDate, formatRate } from '../common/format'
 import { divisionLabel } from '../league/divisionLabel'
 import { leagueClanPath } from '../common/paths'
 import {
@@ -157,8 +157,8 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
             <div className="mt-1.5 text-[15px] leading-none text-meta">기록 없음</div>
           ) : (
             <div className="mt-1 font-num text-[26px] leading-none tabular-nums text-text-strong">
-              {formatCount(entry.rating)}
-              <span className="ml-1 text-[12px] text-meta">점</span>
+              {/* 2026-09-24 QA(운영 /clan/<slug>): 「3,123 점」 옛 표기가 남아 있었다 → 사이트 통일 「31층」 */}
+              {formatRating(entry.rating)}
             </div>
           )}
         </div>

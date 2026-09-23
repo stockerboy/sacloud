@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { ClanRoster as ClanRosterData, ClanRosterGroup, ClanRosterMember } from '@sacloud/contract'
 import { CLAN_ROSTER_FIRST_SQUAD_SIZE } from '@sacloud/contract'
-import { formatCount } from '../common/format'
+import { formatCount, formatRating } from '../common/format'
 import { ratingClass } from '../common/rating'
 import { leaguePlayerPath } from '../common/paths'
 
@@ -174,7 +174,7 @@ function Row({
         </span>
       ) : (
         <span className={`num shrink-0 text-sm ${ratingClass(member.rating)}`}>
-          {formatCount(member.rating)}점
+          {formatRating(member.rating)}
         </span>
       )}
 
@@ -220,7 +220,7 @@ function Member({
         <span className="text-xs text-meta">{ratingLabel(member.placement, member.games)}</span>
       ) : (
         <span className={`num text-xs ${ratingClass(member.rating)}`}>
-          {formatCount(member.rating)}점
+          {formatRating(member.rating)}
         </span>
       )}
     </span>
