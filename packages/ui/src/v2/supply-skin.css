@@ -1524,7 +1524,8 @@ body.antialiased {
 .home-hero--art .home-mark { display: none !important; }
 /* 검색창을 판 바닥으로 — 위를 비워 투구·병사가 보이고, 아래는 게시판에 붙는다 */
 /* 2026-09-23 밤 사장님 「PC 투구가 안 보여 — 투구랑 덩치가 잘 보이게」 → 판을 560 으로 키우고 초점 45% (투구 꼭대기~어깨). 옛 값 250 / 30% */
-.home-hero--art { padding-top: 470px !important; padding-bottom: 26px !important; background-position: center 45%, center 45% !important; }
+/* 「어깨가 안 보여」 → 그림 바닥(어깨)에 맞추고 판을 736 으로 — 1513 폭에서 그림이 852 라 투구 꼭대기(14%)부터 어깨(100%)까지 들어온다. 옛 값 470 / 45% */
+.home-hero--art { padding-top: 650px !important; padding-bottom: 26px !important; background-position: center top, center bottom !important; }
 .home-hero--art + div { margin-top: 18px !important; }
 /* PC 게시판 폭 — 서플라이 게시판 표 폭 1076 (옛 672 는 서플라이 ★홈★ Hot카드 실측 · CLAUDE.md 1-4) */
 @media (min-width: 768px) {
