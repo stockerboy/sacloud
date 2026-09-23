@@ -176,6 +176,7 @@ MVP 표 → 머리줄 오른쪽(점수 앞) — 사장님 형광펜 자리. 서�
 ⚠ ★Vercel 이 커밋을 빠뜨린다★ — 69549563·b97f87e9 에 배포가 안 붙었다 (GitHub deployments 목록에 아예 없음).
    빈 커밋(94ee7f7f)은 「Skipped - Not affected」. ★실제 파일 변경이 있는 커밋★(1eee84a1 · 주석 한 줄)을 밀어야 빌드된다.
    확인법: curl https://api.github.com/repos/stockerboy/sacloud/deployments → sha 와 statuses (gh 없이 됨)
+상대전적 그래프(H2HChartV3) 폰 값 글자 「40.0%」 가 svg 오른쪽(373)을 넘어 잘림 → 폰은 마커 위/아래 가운데 (1b8649e0)
 
 ### ⚠ [미확인] · 다음
 - 모바일 1~6차 진행 중 (위). 상대전적 머리 겹침·스코어보드 이름 잘림은 잡았다
