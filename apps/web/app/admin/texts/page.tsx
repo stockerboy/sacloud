@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-import { clanRankNotesKey } from '@/lib/server/queries/siteText'
+import { boardNoticeKey, clanRankNotesKey } from '@/lib/server/queries/siteText'
 import { TextsEditor } from './TextsEditor'
 
 /**
@@ -23,6 +23,11 @@ export const dynamic = 'force-dynamic'
 
 /** 고칠 수 있는 자리 — ★어디에 나오는 글인지★ 를 같이 적는다 */
 const SLOTS: { key: string; where: string; hint: string }[] = [
+  {
+    key: boardNoticeKey(),
+    where: '게시판(인기·자유) 맨 위 공지 카드',
+    hint: '에타에서 광고가 있던 자리입니다. 제목 한 줄 + 본문. 비워 두면 공지 게시판의 맨 위 글이 대신 나옵니다.',
+  },
   {
     key: clanRankNotesKey('nolink'),
     where: 'IPL 클랜랭킹 맨 위',

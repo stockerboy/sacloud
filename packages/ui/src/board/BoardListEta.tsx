@@ -112,7 +112,24 @@ function ImageGlyph() {
  * ★공지 칸★ — 에타에서 광고가 앉던 자리. 관리자가 `notice` 게시판에 쓴 글의 ★맨 위 하나★ 를 카드로 보인다.
  * 없으면 칸을 안 그린다 (빈 자리표시자를 두지 않는다 · CLAUDE.md 2-3).
  */
-export function EtaNoticeCard({ notice }: { notice: BoardListItem | null | undefined }) {
+export function EtaNoticeCard({ notice, text }: { notice: BoardListItem | null | undefined; text?: { title: string | null; lines: string[] } | null }) {
+  /* ★관리자가 /admin/texts 에 쓴 글이 먼저★ — 제목 한 줄 + 본문 줄들. 링크 없이 그 자리에서 읽는다 */
+  if (text && (text.title || text.lines.length > 0)) {
+    return (
+      <div className="mx-4 my-3 rounded-md border border-[#2b3a5c] bg-[#121c2f] px-4 py-3">
+        <div className="flex items-center gap-2 text-[11px] font-bold tracking-[.08em] text-[#5c80e0]">
+          <span className="rounded-sm bg-[#5c80e0] px-1.5 py-0.5 text-[10px] text-[#0c1526]">공지</span>
+          SACLOUD
+        </div>
+        {text.title ? <div className="mt-1.5 text-[14.5px] font-bold text-[#f2f4f8]">{text.title}</div> : null}
+        {text.lines.length > 0 ? (
+          <ul className="mt-1 flex flex-col gap-0.5 text-[12.5px] leading-relaxed text-[#a4b0c8]">
+            {text.lines.map((l, i) => <li key={i}>{l}</li>)}
+          </ul>
+        ) : null}
+      </div>
+    )
+  }
   if (!notice) return null
   return (
     <Link prefetch={false} href={`/board/notice/${notice.id}`} className="mx-4 my-3 block rounded-md border border-[#2b3a5c] bg-[#121c2f] px-4 py-3 transition-colors hover:border-[#5c80e0]">
@@ -131,6 +148,7 @@ export function BoardListEta({
   title,
   subtitle = 'SACLOUD',
   notices,
+  noticeText,
   items,
   loading,
   error,
@@ -143,6 +161,8 @@ export function BoardListEta({
   title: string
   subtitle?: string
   notices?: readonly BoardListItem[]
+  /** 관리자 「화면 글」 공지 — 있으면 notice 글보다 먼저 */
+  noticeText?: { title: string | null; lines: string[] } | null
   items?: readonly BoardListItem[]
   loading?: boolean
   error?: boolean
@@ -186,7 +206,7 @@ export function BoardListEta({
         })}
       </div>
 
-      <EtaNoticeCard notice={notices?.[0] ?? null} />
+      <EtaNoticeCard notice={notices?.[0] ?? null} text={noticeText ?? null} />
 
       {error ? (
         <div className="px-4"><ErrorState message="글 목록을 불러오지 못했습니다." onRetry={onRetry} /></div>

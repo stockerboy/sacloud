@@ -32,6 +32,11 @@ export function clanRankNotesKey(leagueSlug: string): string {
   return `league.${leagueSlug}.clanRankNotes`
 }
 
+/** ★게시판 공지 카드★ (2026-09-24 사장님 「광고 자리에 내가 공지사항 써서 넣을 수 있게」) — 에타 꼴 게시판 맨 위 카드 */
+export function boardNoticeKey(): string {
+  return 'board.notice'
+}
+
 /** 본문 한 덩어리를 항목 여럿으로. ★빈 줄은 버린다★ */
 export function linesOf(body: string): string[] {
   return body

@@ -76,6 +76,19 @@ export function BoardListScreen({ category, basePath }: { category: string; base
   })
   const categoryName = infos.data?.data.categories.find((item) => item.slug === category)?.name
 
+  /* ★관리자 공지 카드 글★ (/admin/texts 「게시판 맨 위 공지 카드」). 없으면 notice 게시판 글이 대신 */
+  const noticeText = useQuery({
+    queryKey: ['site-text', 'board.notice'],
+    queryFn: async () => {
+      const res = await fetch('/api/site-texts/board.notice', { cache: 'no-store' })
+      if (!res.ok) return null
+      const json = (await res.json()) as { data: { title: string | null; lines: string[] } | null }
+      return json.data
+    },
+    enabled: BOARD_ETA && showNotice,
+    staleTime: 60_000,
+  })
+
   const writable = boardAllowsWriteAndSearch(category)
 
   const search = (nextType: BoardSearchType, query: string) => {
@@ -90,6 +103,7 @@ export function BoardListScreen({ category, basePath }: { category: string; base
           category={category}
           title={q ? `"${q}" 검색 결과` : name}
           notices={showNotice ? notices.data?.data : undefined}
+          noticeText={showNotice ? (noticeText.data ?? null) : null}
           items={list.data?.data}
           loading={!list.data}
           error={list.isError}
