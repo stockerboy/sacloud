@@ -77,6 +77,12 @@ const PAGES = [
   ['match-sanply', '/league/sanply/match', '', null],
   ['admin', '/admin', '', null],
   ['admin-texts', '/admin/texts', '', null],
+  /* 10회차 — 엣지 상태 */
+  ['rank-player-p2', '/league/supply/rank/player?page=2', '개인랭킹', null],
+  ['player-few', '/league/supply/player/cmtpaw2c30evrvltobr8gpux8', '승률', null],
+  ['clan-small', '/league/nolink/clan/zzim1', '', null],
+  ['match-sanply-detail', '/league/sanply/match/260924074138125001', '플레이어', null],
+  ['board-post-comments', '/board/free/cmuaxpu6c0001l004z311358o', '댓글', null],
   /* 5회차 — 눌러야 보이는 상태들 */
   ['match-list-open', '/league/supply/match', '플레이어', 'css:.mc-card .mc-pc', false, '점수판보기'],
   ['trend-day', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '승률', 'DAY', false],
