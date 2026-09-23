@@ -15,6 +15,7 @@ function death(round: number, at: string, victim: string, victimTeam: string, ki
     win_flag: winFlag,
     weapon: 'ak47',
     user_nick: victim + '님',
+    target_user_nick: killer + '님',
   }
 }
 function bomb(round: number, at: string, team: string, action: 'c4-install' | 'c4-dismantle', winFlag: 'win' | 'lose'): RoundFlowEvent {
@@ -58,6 +59,7 @@ describe('roundFlowOf', () => {
     expect(r2.deaths.map((d) => d.team)).toEqual(['foe', 'foe'])
     expect(r2.deaths.map((d) => d.at)).toEqual([55, 62])
     expect(r2.deaths.map((d) => d.name)).toEqual(['b1님', 'b2님'])
+    expect(r2.deaths.map((d) => d.by)).toEqual(['a1님', 'a1님'])
   })
 
   it('설점 — 설치 뒤 해체가 있으면 해체한 팀이 가져간다 (사장님 규칙)', () => {

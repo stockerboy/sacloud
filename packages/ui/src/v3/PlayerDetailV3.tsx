@@ -24,6 +24,7 @@ import { strengthAxes } from './playerHexAxes'
 import { AnalysisPanelV3 } from './AnalysisPanelV3'
 import { MatchHexagonV3 } from './MatchHexagonV3'
 import { MvpWhy } from './MvpWhy'
+import { RoundFlowChartV3 } from './RoundFlowChartV3'
 import { Card, CardHead, Kda, MarkCircle, MvpMark, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst, matchShownAt } from './primitives'
 import { teamFirstSideLabel } from '../record/matchDetailView'
 import { WIN_LOSS, V3, V3_DARK, type V3Tone, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
@@ -57,6 +58,8 @@ const BODY_TABS = false
 const TREND_TONE = V3_DARK
 
 const MVP_LEGACY_UNKNOWN_NOTICE = false
+/** 스코어보드 명단을 킬 순으로 (2026-09-23 사장님). false 면 원문 순서 */
+const LINEUP_BY_KILLS = true
 /* 2026-09-11 사장님 목업: 구간 카드(승률·킬뎃·MVP·핵의심)는 ★머리 카드★(PlayerHeaderV3 · 레이아웃)로 올라갔다.
    true 로 되돌리면 옛 두 장 배치가 그대로 돌아온다 (`CLAUDE.md` 1-4) */
 const TIER_CARD_IN_BODY = false
@@ -953,7 +956,9 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
   const roundsOf = (side: 'red' | 'blue') => (side === 'red' ? detail.red_rounds : detail.blue_rounds)
   void roundsOf
   const teams = ([mySide, mySide === 'red' ? 'blue' : 'red'] as const).map((side) => {
-    const stats = side === 'red' ? detail.red_stats : detail.blue_stats
+    const raw = side === 'red' ? detail.red_stats : detail.blue_stats
+    /* ★킬 많은 순★ 위→아래 (2026-09-23 사장님 「명단 킬 많이한 순서대로」). 같으면 데스 적은 쪽. 킬 모르면 맨 아래. 옛 순서는 LINEUP_BY_KILLS=false */
+    const stats = LINEUP_BY_KILLS ? [...raw].sort((a, b) => ((b.kill ?? -1) - (a.kill ?? -1)) || ((a.death ?? 999) - (b.death ?? 999))) : raw
     const ours = side === mySide
     const snap = teamSnapOf(detail, side, ours ? detail.league_clan : detail.opponent)
     const won = ours ? detail.win : !detail.win
@@ -1075,7 +1080,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             */}
           </div>
           {analysis === t.side ? (
-            <div style={{ padding: '14px 10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <div className="v3-board-inline" style={{ padding: '14px 10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               {/*
                 ★칩 셋★ — 승리팀 · 진팀 · 겹쳐서 (2026-09-12 사장님). 폰에서만 보인다.
                 `id` 에 고른 값을 넣어 갈아 끼울 때마다 ★다시 그려지게★ 한다.
@@ -1102,9 +1107,18 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
                 id={`mhex-${detail.id}-${t.side}-${pick}`}
               />
               <MvpWhy detail={detail} />
+              {detail.round_flow && wonTeam && lostTeam ? (
+                <div style={{ width: '100%' }}>
+                  <RoundFlowChartV3
+                    flow={detail.round_flow}
+                    winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
+                    loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
+                  />
+                </div>
+              ) : null}
             </div>
-          ) : (
-          <>
+          ) : null}
+          <div className={analysis === t.side ? 'v3-board-list v3-board-list--closed' : 'v3-board-list'}>
           {/* ★칸 이름★ — 서플라이 여섯 칸. 옛 넉 칸(플레이어·K/D/A·세이브·포지션)은 밑에 남겼다 */}
           {SUPPLY_SCORE_COLUMNS ? (
             /* ★줄과 ★같은 격자★(`sac-sb-row`)를 써야 칸이 어긋나지 않는다 */
@@ -1129,12 +1143,12 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
               <ScoreRowLegacy key={row.player_id} row={row} me={row.player_id === me} mvp={row.mvp === true} weaponKnown={row.weapon !== null} showSaves={showSaves} leagueSlug={leagueSlug} side={t.side} />
             )
           ))}
-          </>
-          )}
+          </div>
         </div>
       ))}
-      {/* ★PC 는 가운데에 경기분석 육각형이 늘 떠 있다★ (2026-09-12 사장님). 폰에서는 안 그린다 */}
-      {canAnalyze ? (
+      {/* ⚠ 2026-09-23 낮 — 옛 판은 「PC 는 가운데에 경기분석 육각형이 늘 떠 있다」(2026-09-12). 사장님: 「경기분석 누르기 전에는 육각이랑
+          mvp이유 보여주지마」 → 눌러야 아래 칸(육각 · MVP 이유 · 라운드 흐름)이 열린다. PC 는 명단 그대로 · 폰은 명단 자리(.v3-board-inline) */}
+      {canAnalyze && analysis !== null ? (
         <div className="v3-board-hex" style={{ padding: '4px 0 0' }}>
           <MatchHexagonV3
             won={wonTeam ? hexOf(wonTeam.side) : null}
@@ -1144,6 +1158,14 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             id={`mhexPc-${detail.id}`}
           />
           <MvpWhy detail={detail} />
+          {/* ★라운드 흐름★ — 선수 페이지 카드에도 (2026-09-23) */}
+          {detail.round_flow && wonTeam && lostTeam ? (
+            <RoundFlowChartV3
+              flow={detail.round_flow}
+              winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
+              loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>

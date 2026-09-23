@@ -43,7 +43,7 @@ interface Pt {
   /** 이 라운드에서 처음 죽은 사람 — 아직 아무도 안 죽었으면 null (사장님 「원 하나가 줄어들 때 띄워줘」) */
   first: { name: string | null; side: 'W' | 'L'; at: number } | null
   /** 이 시점까지 이 라운드에서 죽은 사람들 — 죽은 차례대로 (사장님 「선짤 준성 · haeil 다운 · …」) */
-  fallen: { name: string | null; side: 'W' | 'L'; at: number }[]
+  fallen: { name: string | null; side: 'W' | 'L'; at: number; by: string | null }[]
   est: boolean
 }
 
@@ -77,8 +77,12 @@ const JUMP_ON_ROUND_END = false
 const GLOW = false
 const WIGGLE = 0
 const DASH_ESTIMATED = false
-/** 3.6초 긋기 애니메이션 — 폰에서 중간에 멈춘 채 남아 껐다 (2026-09-23 사장님) */
+/** 3.6초 긋기 애니메이션(useDrawIn · 화면에 보일 때) — 폰에서 중간에 멈춘 채 남아 껐다 (2026-09-23 사장님) */
 const DRAW_IN = false
+/** ★붙자마자 1.8초 긋기★ (2026-09-23 낮 · 사장님 「그래프에 애니메이트 프레임 올려서」) — 보이든 말든 끝까지 간다 */
+const DRAW_ON_MOUNT_MS = 1800
+/** ★빛번짐★ (사장님 「우리가 만든 적 있음」) — 상대전적의 14px 광선보다 얇게(9px · 28%) · 가독성 (GLOW 는 옛 굵은 판) */
+const SOFT_GLOW = true
 /** 진 팀 선을 클랜 테마 색으로 (지금은 빨강 고정) */
 const LOSER_CLAN_COLOR = false
 /** 깔끔한 판의 선 두께 (sleeper 참고) */
@@ -115,7 +119,22 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
    *   옛 판(애니메이션)은 DRAW_IN 을 true 로.
    */
   const drawIn = useDrawIn(3600, `${winner.slug ?? winner.name}|${flow.rounds.length}`, boxRef)
-  const draw = DRAW_IN ? drawIn : 1
+  /* 붙자마자 긋기 — rAF 로 0→1. IO 를 안 타서 접힌 칸이 열릴 때도 처음부터 끝까지 간다 */
+  const [mountDraw, setMountDraw] = useState(DRAW_ON_MOUNT_MS > 0 ? 0 : 1)
+  useEffect(() => {
+    if (DRAW_ON_MOUNT_MS <= 0) return
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - t0) / DRAW_ON_MOUNT_MS)
+      setMountDraw(k)
+      if (k < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    const safety = window.setTimeout(() => setMountDraw(1), DRAW_ON_MOUNT_MS + 400)
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(safety) }
+  }, [flow])
+  const draw = DRAW_IN ? drawIn : mountDraw
   const box = plotBox(width)
   /* ⚠ 2026-09-23 낮 — 사장님: 「이 공간을 남기지 말고 다 쓰라는거임」. 옛 판은 마커 옆 「94%」 자리로 오른쪽 58~66px 을 비웠다.
      이제 판을 오른쪽 끝까지 쓰고, 마커는 선 끝에 얹고 % 는 마커 ★위/아래★ 에 적는다. 옛 값: box.X1 - (phone ? 58 : 66) */
@@ -199,7 +218,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         if (d.side === W) aliveW = Math.max(0, aliveW - 1)
         else aliveL = Math.max(0, aliveL - 1)
         if (firstSeen === null) firstSeen = { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at }
-        fallen = [...fallen, { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at }]
+        fallen = [...fallen, { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at, by: d.by }]
         /* 한쪽이 0 이 되는 마지막 죽음은 안 찍는다 — 그 순간 확률이 100/0 으로 튀어 빗살이 된다 (운영 캡쳐).
            라운드가 끝난 것이라 「마지막 인원 상태 값」 을 그대로 끌고 간다 (JUMP_ON_ROUND_END 와 같은 뜻) */
         if (aliveW === 0 || aliveL === 0) break
@@ -315,30 +334,45 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     const isAttack = team === attack
     return half === 'first' ? (isAttack ? '선레드' : '선블루') : isAttack ? '레드' : '블루'
   }
-  const halfRow = (label: string, sum: { rounds: number; won: { W: number; L: number }; planted: { W: number; L: number }; attack: 'W' | 'L' | null }, half: 'first' | 'second') => (
-    <div style={{ padding: '8px 12px', minWidth: 0 }}>
-      <div style={{ fontSize: 10.5, color: tone.textDim, letterSpacing: '.06em', marginBottom: 3 }}>{label} · {sum.rounds}라운드</div>
-      {([['W', winner, winInk], ['L', loser, loseInk]] as const).map(([k, team, color]) => (
-        <div key={k} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12.5, padding: '1px 0', minWidth: 0 }}>
-          <span style={{ fontWeight: 700, color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{team.name}</span>
-          <span style={{ fontSize: 10.5, color: tone.textDim, whiteSpace: 'nowrap' }}>{sideWord(half, k, sum.attack) ? `(${sideWord(half, k, sum.attack)})` : ''}</span>
-          <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-            <b style={{ color: tone.textStrong, fontSize: 14 }}>{sum.won[k]}</b>라운드
-            {/* 설점 — 해체로 블루도 가져간다 (사장님 규칙) → 0 이어도 적는다 */}
-            {' '}<b style={{ color: tone.textStrong, fontSize: 14 }}>{sum.planted[k]}</b>설
-          </span>
+  /*
+   * ★전후반 요약 — 가로 배열★ (2026-09-23 낮 · 사장님: 「처음시작(선레드자리) / hing(선블루자리) | hing / 처음시작(진영교체 후 블루)
+   *   이렇게 배열하고 각각 획득 라운드를 클랜명 밑에 써줘 … 세로배열은 한눈에 안 보여」).
+   *   반마다 [공격(레드) · 수비(블루)] 두 칸 · 반 사이 세로선 · 칸마다 「클랜명 (선레드)」 위 · 「5라운드 0설」 아래.
+   *   진영을 모르면 이긴 팀 · 진 팀 차례. 옛 세로 배열(halfRow)은 지웠다 — 이 블록이 그 자리다.
+   */
+  type HalfSum = { rounds: number; won: { W: number; L: number }; planted: { W: number; L: number }; attack: 'W' | 'L' | null }
+  const halfCells = (sum: HalfSum, half: 'first' | 'second') => {
+    const order: ('W' | 'L')[] = sum.attack === 'L' ? ['L', 'W'] : ['W', 'L']
+    return order.map((k) => {
+      const team = k === 'W' ? winner : loser
+      const color = k === 'W' ? winInk : loseInk
+      const word = sideWord(half, k, sum.attack)
+      return (
+        <div key={k} style={{ minWidth: 0, textAlign: 'center', padding: '6px 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4, minWidth: 0 }}>
+            <span style={{ fontWeight: 700, color, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{team.name}</span>
+            {word ? <span style={{ fontSize: 10.5, color: tone.textDim, whiteSpace: 'nowrap' }}>({word})</span> : null}
+          </div>
+          <div style={{ fontSize: 12.5, color: tone.textDim, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
+            <b style={{ color: tone.textStrong, fontSize: 15 }}>{sum.won[k]}</b>라운드 <b style={{ color: tone.textStrong, fontSize: 15 }}>{sum.planted[k]}</b>설
+          </div>
         </div>
-      ))}
-    </div>
-  )
+      )
+    })
+  }
 
   return (
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: tone.plot }}>
-      {/* ★전후반 요약★ — 라운드 수 · 설치 수 · 진영 (2026-09-23 사장님) */}
-      {/* 후반이 없는 경기(5:0)는 한 칸만 — 빈 칸을 남기지 않는다 (운영 QA) */}
-      <div style={{ display: 'grid', gridTemplateColumns: phone || model.second.rounds === 0 ? '1fr' : '1fr 1fr', gap: 1, background: tone.cardBorder, border: `1px solid ${tone.cardBorder}`, marginBottom: 6 }}>
-        <div style={{ background: tone.plot }}>{halfRow('전반', model.first, 'first')}</div>
-        {model.second.rounds > 0 ? <div style={{ background: tone.plot }}>{halfRow('후반', model.second, 'second')}</div> : null}
+      {/* ★전후반 요약★ — 가로 배열: [전반 공격 · 전반 수비] | [후반 공격 · 후반 수비] (2026-09-23 사장님) */}
+      <div style={{ border: `1px solid ${tone.cardBorder}`, marginBottom: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: model.second.rounds > 0 ? '1fr 1fr' : '1fr', fontSize: 10.5, color: tone.textDim, letterSpacing: '.06em', borderBottom: `1px solid ${tone.cardBorder}` }}>
+          <div style={{ padding: '4px 8px' }}>전반 · {model.first.rounds}라운드</div>
+          {model.second.rounds > 0 ? <div style={{ padding: '4px 8px', borderLeft: `2px solid ${tone.textMuted}` }}>후반 · {model.second.rounds}라운드</div> : null}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: model.second.rounds > 0 ? '1fr 1fr' : '1fr' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>{halfCells(model.first, 'first')}</div>
+          {model.second.rounds > 0 ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderLeft: `2px solid ${tone.textMuted}` }}>{halfCells(model.second, 'second')}</div> : null}
+        </div>
       </div>
       {/* ★인원 줄★ — 축을 옮기면 따라온다 (시안 A) */}
       {hud ? (
@@ -358,7 +392,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
             <span style={{ color: tone.textGhost }}>{hud.round > 0 ? '아직 아무도 안 죽음' : ''}</span>
           ) : hud.fallen.map((f, i) => (
             <span key={i} style={{ whiteSpace: 'nowrap' }}>
+              {/* 「킬러 ▸ 희생자」 — 죽인 쪽은 그 팀 색 · 죽은 쪽은 그 팀 색 (사장님 「누가 누구를 다운시켰는지」). 킬러를 모르면 희생자만 */}
               <span style={{ color: i === 0 ? '#f59e0b' : tone.textDim, fontWeight: i === 0 ? 700 : 400 }}>{i === 0 ? '선짤 ' : ''}</span>
+              {f.by ? <><span style={{ color: f.side === 'W' ? loseInk : winInk, fontWeight: 700 }}>{f.by}</span><span style={{ color: tone.textGhost, margin: '0 3px' }}>▸</span></> : null}
               <span style={{ color: f.side === 'W' ? winInk : loseInk, fontWeight: 700 }}>{f.name ?? '—'}</span>
               <span style={{ color: tone.textDim }}>{i === 0 ? '' : ' 다운'}</span>
               {i < hud.fallen.length - 1 ? <span style={{ color: tone.textGhost, marginLeft: 8 }}>·</span> : null}
@@ -428,9 +464,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
               </>
             ) : (
               <>
-                {/* 얇은 빛 — sleeper 의 은은한 광 */}
-                <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={0.16} {...penDash(draw)} />
-                <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={0.16} {...penDash(draw)} />
+                {/* 빛번짐 — 상대전적의 feGaussianBlur 필터를 얇게 (SOFT_GLOW) · 끄면 sleeper 식 은은한 광 */}
+                <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowR)' : undefined} {...penDash(draw)} />
+                <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowB)' : undefined} {...penDash(draw)} />
               </>
             )}
             <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />

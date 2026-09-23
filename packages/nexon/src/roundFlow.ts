@@ -47,6 +47,8 @@ export interface RoundFlowDeath {
   team: FlowTeam
   /** 죽은 사람 닉네임. 이벤트에 없으면 null */
   name: string | null
+  /** ★죽인 사람★ 닉네임 (사장님 「누가 누구를 다운시켰는지」 · 2026-09-23). 모르면 null */
+  by: string | null
 }
 
 export interface RoundFlowRound {
@@ -128,6 +130,21 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
   }
   const sides = roundSidesOf(events, teamNo, rounds[rounds.length - 1] as number, won)
   const states = roundStatesOf(events)
+  /* 죽인 사람 — 죽음 줄(한쪽만 death)에서 반대쪽 usn. 키는 roundStatesOf 와 같은 「라운드:죽은 usn:시각」 */
+  const killerOf = new Map<string, string>()
+  for (const e of events) {
+    const r = roundNo(e.round)
+    const at = secondsOf(e.event_time)
+    if (r === null || at === null) continue
+    const subjectDied = e.event_type === 'death'
+    const targetDied = e.target_event_type === 'death'
+    if (subjectDied === targetDied) continue
+    const victim = subjectDied ? e.str_usn : e.target_str_usn
+    const killer = subjectDied ? e.target_str_usn : e.str_usn
+    if (victim === null || victim === undefined || killer === null || killer === undefined) continue
+    const key = `${r}:${String(victim).trim()}:${at}`
+    if (!killerOf.has(key)) killerOf.set(key, String(killer).trim())
+  }
   /* 닉네임 — usn → 닉. 죽음 줄의 주체/상대 어느 쪽이든 한 번 보이면 안다 */
   const nickOf = new Map<string, string>()
   for (const e of events) {
@@ -150,7 +167,10 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
   let prevEnd: number | null = null
   for (const r of rounds) {
     const end = lastAt.get(r) as number
-    const deaths = (states.get(r)?.deaths ?? []).map((d) => ({ at: d.at, team: teamOf(d.team), name: nickOf.get(d.usn) ?? null }))
+    const deaths = (states.get(r)?.deaths ?? []).map((d) => {
+      const killer = killerOf.get(`${r}:${d.usn}:${d.at}`)
+      return { at: d.at, team: teamOf(d.team), name: nickOf.get(d.usn) ?? null, by: killer === undefined ? null : (nickOf.get(killer) ?? null) }
+    })
     let start = prevEnd === null ? MATCH_TO_FIRST_ROUND_SECONDS : prevEnd + ROUND_GAP_SECONDS
     /* 이벤트가 계산한 시작보다 앞에 있으면 그 앞으로 — 시각이 거꾸로 가는 그림은 안 그린다 */
     const first = deaths[0]?.at ?? end
