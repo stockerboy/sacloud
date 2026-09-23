@@ -173,6 +173,9 @@ MVP 표 → 머리줄 오른쪽(점수 앞) — 사장님 형광펜 자리. 서�
 붙자마자 1.8초 긋기(rAF · IO 안 탐 · 끝까지) + 얇은 빛번짐(9px 28% blur) — DRAW_ON_MOUNT_MS · SOFT_GLOW
 경기 육각(MatchHexagonV3) 원래 색(투톤 전 · TWO_TONE=false) · 여섯 축 전부 켬(DIM_THIN_AXES=false)
 폰 요약은 전반/후반 위아래 (네 칸이면 이름이 「Th…」) · 운영 확인: 킬 순 [17,11,10,9,6] · 경기분석 전 육각 없음 · 눌러야 열림 ✔
+⚠ ★Vercel 이 커밋을 빠뜨린다★ — 69549563·b97f87e9 에 배포가 안 붙었다 (GitHub deployments 목록에 아예 없음).
+   빈 커밋(94ee7f7f)은 「Skipped - Not affected」. ★실제 파일 변경이 있는 커밋★(1eee84a1 · 주석 한 줄)을 밀어야 빌드된다.
+   확인법: curl https://api.github.com/repos/stockerboy/sacloud/deployments → sha 와 statuses (gh 없이 됨)
 
 ### ⚠ [미확인] · 다음
 - 모바일 1~6차 진행 중 (위). 상대전적 머리 겹침·스코어보드 이름 잘림은 잡았다
