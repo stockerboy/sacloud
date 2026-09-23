@@ -79,6 +79,7 @@ const JUMP_ON_ROUND_END = false
 const GLOW = false
 const WIGGLE = 0
 const DASH_ESTIMATED = false
+/* ⚠ 2026-09-23 낮 — 69549563(폰 요약 위아래)이 Vercel 에 안 붙었고 빈 커밋은 「Not affected」 로 건너뛰었다. 실제 변경이 있어야 빌드된다 — 이 줄이 그 변경이다 */
 /** 3.6초 긋기 애니메이션(useDrawIn · 화면에 보일 때) — 폰에서 중간에 멈춘 채 남아 껐다 (2026-09-23 사장님) */
 const DRAW_IN = false
 /** ★붙자마자 1.8초 긋기★ (2026-09-23 낮 · 사장님 「그래프에 애니메이트 프레임 올려서」) — 보이든 말든 끝까지 간다 */
