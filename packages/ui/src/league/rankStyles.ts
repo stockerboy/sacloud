@@ -209,7 +209,8 @@ export const COL_PSTAT = 'w-[126px] shrink-0 text-right max-md:w-[52px]'
 /** 개인랭킹의 ★PC 전용★ 칸 (승리 · 패배 · 평균킬) — 폰에서는 칸째로 사라지고 접힌 판이 선다 */
 export const COL_PWL = 'w-[126px] shrink-0 text-right max-md:hidden'
 /** 개인랭킹 래더 칸 */
-export const COL_PRATING = 'w-[104px] shrink-0 text-right max-md:w-[76px]'
+/* ⚠ 2026-09-23 — 폰 76 → 70. 「3,895점」 은 14px 에 62px 이라 70 에 든다. 이름칸 +6 으로 클랜 태그(「One.PoinT」 53px) 3px 잘림이 사라진다 (운영 393 실측) */
+export const COL_PRATING = 'w-[104px] shrink-0 text-right max-md:w-[70px]'
 /** PC 에서는 접힌 보조 수치를 감춘다 — 제 칸이 따로 섰기 때문이다 */
 /* `sac-sub-phone` — 서플라이 폰 표는 한 줄(36px)이라 접힌 보조 수치를 폰에서도 감춘다 (supply-skin.css · 2026-09-23) */
 export const SUB_PHONE_ONLY = 'sac-sub-phone hidden max-md:block'
