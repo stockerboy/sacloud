@@ -1358,3 +1358,11 @@ body.antialiased {
   .mc-card--win { border-left: 6px solid #5b8dff !important; }
   .mc-card--lose { border-left: 6px solid #e0342f !important; }
 }
+
+/* 경기분석 — PC 는 명단을 두고 아래 칸을 연다 · 폰은 명단 자리에 분석이 들어온다 (2026-09-23 사장님) */
+@media (min-width: 900px) {
+  .v3-board-inline { display: none !important; }
+}
+@media (max-width: 899px) {
+  .v3-board-list--closed { display: none !important; }
+}

@@ -424,7 +424,10 @@ function Scoreboard({
    */
   const first = winnerFirst ? (detail.win ? ourSide : ourSide === 'red' ? 'blue' : 'red') : ourSide
   const teams = ([first, first === 'red' ? 'blue' : 'red'] as const).map((side) => {
-    const stats = side === 'red' ? detail.red_stats : detail.blue_stats
+    const raw = side === 'red' ? detail.red_stats : detail.blue_stats
+    /* ★킬 많은 순★ 위→아래 (2026-09-23 사장님 「명단 킬 많이한 순서대로」). 같으면 데스 적은 쪽 먼저. 옛 순서(원문 그대로)는 LINEUP_BY_KILLS=false */
+    /* 킬을 모르는 줄(null)은 맨 아래 — 지어내지 않는다 */
+    const stats = LINEUP_BY_KILLS ? [...raw].sort((a, b) => ((b.kill ?? -1) - (a.kill ?? -1)) || ((a.death ?? 999) - (b.death ?? 999))) : raw
     const ours = side === ourSide
     const snap = teamSnapOf(detail, side, ours ? detail.league_clan : detail.opponent)
     const won = ours ? detail.win : !detail.win
@@ -517,8 +520,9 @@ function Scoreboard({
                 {roundsOf(t.side) !== null && roundsOf(other) !== null ? `${roundsOf(t.side)}:${roundsOf(other)}` : null}
             */}
           </div>
+          {/* 폰: 경기분석을 누르면 명단 자리에 분석(칩·육각·MVP 이유·그래프)이 들어온다. PC: 명단은 그대로 두고 아래 큰 칸이 열린다 (2026-09-23 사장님) */}
           {analysis === t.side ? (
-            <div style={{ padding: '14px 10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <div className="v3-board-inline" style={{ padding: '14px 10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               {/*
                 ★칩 셋★ — 승리팀 · 진팀 · 겹쳐서 (2026-09-12 사장님). 폰에서만 보인다.
                 `id` 에 고른 값을 넣어 갈아 끼울 때마다 ★다시 그려지게★ 한다.
@@ -559,19 +563,20 @@ function Scoreboard({
                   옛 줄: ScoreBoard side={wonTeam?.side ?? 'red'} — 이 팀 기준 하나만 남긴다 */}
               <ScoreBoard detail={detail} side={t.side} />
             </div>
-          ) : (
-          <>
+          ) : null}
+          <div className={analysis === t.side ? 'v3-board-list v3-board-list--closed' : 'v3-board-list'}>
           <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 86px 44px 58px' : 'minmax(96px,1fr) 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} leagueSlug={leagueSlug} side={t.side} />)}
-          </>
-          )}
+          </div>
         </div>
       ))}
-      {/* ★PC 는 가운데에 경기분석 육각형이 늘 떠 있다★ (2026-09-12 사장님). 폰에서는 안 그린다 */}
-      {canAnalyze ? (
+      {/* ⚠ 2026-09-23 낮 — 옛 판은 「PC 는 가운데에 경기분석 육각형이 늘 떠 있다」(2026-09-12) 였다.
+          사장님: 「경기분석 누르기 전에는 육각이랑 mvp이유 보여주지마 누르면 그 그래프랑 육각이랑 mvp이유 보여줘」
+          → 이제 ★경기분석을 눌러야★ 아래 칸(육각 · MVP 이유 · 라운드 흐름)이 열린다. 폰에서는 이 칸을 안 그린다(tokens.css) */}
+      {canAnalyze && analysis !== null ? (
         <div className="v3-board-hex" style={{ padding: '4px 0 0' }}>
           <MatchHexagonV3
             won={wonTeam ? hexOf(wonTeam.side) : null}
@@ -598,6 +603,8 @@ function Scoreboard({
 
 /** 상대전적 카드가 접힌 채로 보여 주는 경기 수 (2026-09-13 사장님) */
 const VS_PREVIEW = 2
+/** 스코어보드 명단을 킬 순으로 (2026-09-23 사장님). false 면 원문 순서 */
+const LINEUP_BY_KILLS = true
 
 function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: LeagueClanShow; opp: ClanHeadToHead; vsMatches: readonly MatchListItem[] | null; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
   const theme = clanThemeOf(data.clan.slug)
