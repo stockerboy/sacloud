@@ -200,10 +200,10 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
   const total = scored.reduce((sum, r) => sum + r.points, 0)
 
   return (
-    <div style={{ margin: '10px 14px 14px', border: `1px solid ${V3.gold}`, borderRadius: 3, background: 'linear-gradient(180deg, rgba(255,216,61,.08), rgba(255,216,61,.02))', padding: '11px 13px' }}>
+    <div style={{ margin: '10px 14px 14px', border: `1px solid ${V3.mvp}`, borderRadius: 0, background: 'linear-gradient(180deg, rgba(224,52,47,.08), rgba(224,52,47,.02))' /* ⚠ 옛값 V3.gold 테두리 · 노란 그라데이션 · 둥글기 3 — MVP 는 빨강 (2026-09-23) */, padding: '11px 13px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: '.1em', color: V3.mvp /* ⚠ 옛값 V3.gold */ }}>MVP</span>
-        <span style={{ fontSize: 15, fontWeight: 800, color: '#8a6a12' }}>{name}</span>
+        <span style={{ fontSize: 15, fontWeight: 800, color: V3.textStrong /* ⚠ 옛값 '#8a6a12' — 어두운 면에서 묻혔다 */ }}>{name}</span>
         <span style={{ fontSize: 11, color: V3.textMuted }}>왜 MVP 인가</span>
       </div>
 
@@ -212,7 +212,7 @@ export function MvpWhy({ detail }: { detail: MatchDetail }) {
         ⚠ ★없는 말을 지어내지 않는다★ — 가장 크게 번 줄의 이름을 그대로 쓴다.
       */}
       {scored.length > 0 && scored[0] !== undefined ? (
-        <p style={{ margin: '5px 0 0', fontSize: 13, fontWeight: 700, color: '#8a6a12' }}>
+        <p style={{ margin: '5px 0 0', fontSize: 13, fontWeight: 700, color: V3.mvp /* ⚠ 옛값 '#8a6a12' */ }}>
           {MVP_WHY_LABEL[scored[0].key] ?? scored[0].key}
           {scored[0].rounds.length > 1 ? ` ${scored[0].rounds.length}회` : ''}
           <span style={{ color: V3.textDim, fontWeight: 400 }}> · 합 {signed(total)}점</span>
