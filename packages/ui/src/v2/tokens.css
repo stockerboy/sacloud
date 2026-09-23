@@ -2654,3 +2654,10 @@
     order: 0;
   }
 }
+
+/* 2026-09-24 사장님 「왼쪽 햄버거 탭이 너무 크고 로고도 너무 커」 (폰 실측: 햄버거 49×49 · 줄 49px 꽉 참 · 로고 195×28) → 햄버거 40×44 · 줄 22px · 로고 22px */
+@media (max-width: 767px) {
+  .sac-v2 .v2-topbar__inner--gnb > .v2-burger { width: 40px; height: 44px; padding: 0 9px; gap: 4px; }
+  .sac-v2 .v2-topbar__inner--gnb > .v2-burger .v2-burger__bar { width: 22px; }
+  .sac-v2 .v2-topbar__inner--gnb > .v2-brand img { height: 22px !important; width: auto !important; }
+}

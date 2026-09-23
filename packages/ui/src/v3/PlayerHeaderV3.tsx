@@ -580,6 +580,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 14, color: '#767f96', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
               {/* 2026-09-24 사장님 「마크 옆 클랜명 뿌예」 — deep → 마크 본색 · 11.5 → 14 */}
               <span style={{ ...nameStyle(theme), fontWeight: 600 }}>{data.clan?.name ?? '무소속'}</span>
+              {/* 2026-09-24 사장님 「스나이퍼인지 라이플인지 안 떠」(폰) — PC 는 오른쪽 상세정보 제목 옆에 있는데 폰은 그 카드가 접혀 안 보였다 → 폰에서만 클랜명 옆 칩 */}
+              {weapon !== null ? <span className="md:hidden" style={{ fontSize: 11, fontWeight: 700, color: '#c7d0e6', border: '1px solid #35445A', padding: '1px 7px', whiteSpace: 'nowrap', flex: 'none' }}>{weapon === 1 ? '스나이퍼' : '라이플'}</span> : null}
               {/*
                 ⚠ ★2026-09-15 밤 — 순위를 여기서 뺐다★ (무한 QA).
                   같은 카드 안에 «4위 / 137명» 이 ★두 번★ 있었다 — 이름 줄과 아래 KPI 칸.
