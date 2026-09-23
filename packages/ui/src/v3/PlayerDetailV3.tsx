@@ -29,6 +29,7 @@ import { Card, CardHead, Kda, MarkCircle, MvpMark, RankText, SectionBar, SniperM
 import { teamFirstSideLabel } from '../record/matchDetailView'
 import { WIN_LOSS, V3, V3_DARK, type V3Tone, cardStyle, chipStyle, fmt, pct1, pillStyle, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
+import { mainWeaponFromStats } from '../record/playerHeadCopy'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
 import { PlayerMatchHexV3 } from './PlayerMatchHexV3'
@@ -1949,6 +1950,10 @@ function SideInfoCard({ data, showsKd, report }: { data: LeaguePlayerDetail; sho
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
         <span style={{ fontSize: 14, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{data.player.name}</span>
+        {/* ★포지션★ — 「스나이퍼」 / 「라이플」 (2026-09-23 밤 사장님: 「스나x 스나이퍼가 맞음 · 라플x 라이플이 맞음」). 모르면 안 적는다 */}
+        {(() => { const w = data.hex?.weapon ?? mainWeaponFromStats(data.weapon_stats); return w === null || w === undefined ? null : (
+          <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: SUPPLY_INFO.sub, whiteSpace: 'nowrap', padding: '2px 8px', border: `1px solid ${SUPPLY_INFO.line}` }}>{w === 1 ? '스나이퍼' : '라이플'}</span>
+        ) })()}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <InfoRow label="래더">
@@ -2154,7 +2159,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
            ⚠ 이 블록은 템플릿 리터럴 안이다 — 백틱 기호를 쓰면 문자열이 끊긴다. */
         /* 2026-09-23 저녁 사장님: 「카드 가로를 조금씩 더 — 경기상세 카드랑 상세기록 카드 너무 작아 답답」
            → 선수 페이지 컨테이너를 1400 으로(supply-skin.css 의 sac-player-page) · 오른쪽 271→330. 옛 값 271 */
-        .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 10px; align-items: start; margin-top: 16px; }
+        .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 10px; align-items: start; margin-top: 0; } /* 추이가 안으로 들어와 머리 카드에 바로 붙는다 (2026-09-23 밤) */
         .sac-prr-main { min-width: 0; display: flex; flex-direction: column; }
         .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 7px; position: sticky; top: 105px; --hex-zoom: .78; } /* 105 = 상단바 63 + 리그 띠 42 — 래더를 안 가린다 (인계서 ③-12) */
         @media (max-width: 980px) {
@@ -2202,13 +2207,14 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
 
       {/* ① 서플라이의 상단 광고 자리 — 이 선수의 추이 그래프 (남색 판).
           2026-09-23 저녁 사장님 「기록실/지난시즌 버튼 삭제하고 그 사이 공간 없이 그래프판 바로 갖다 붙이고」 → 위 틈 0 (`.sac-trend-glued`) */}
-      <div className="sac-trend-glued">
-        <TrendCard data={data} showsKd={showsKd} tone={TREND_TONE} />
-      </div>
-
-      {/* ② 2단 — 왼쪽 본문 · 오른쪽 기록카드 */}
+      {/* ⚠ 2026-09-23 밤 사장님 — 추이 그래프를 ★2단 왼쪽 칸 안★ 으로 (「그래프판 가로를 줄이고 그 자리에 상세정보 카드를 박제」).
+          오른쪽 칸(상세정보 + 육각)은 sticky 라 스크롤을 내려도 따라온다. 옛 자리는 grid 위(전체 폭)였다 */}
+      {/* ② 2단 — 왼쪽 본문(추이 · 최근매치 · 최근 경기) · 오른쪽 기록카드(sticky) */}
       <div className="sac-prr-grid">
         <div className="sac-prr-main">
+          <div className="sac-trend-glued">
+            <TrendCard data={data} showsKd={showsKd} tone={TREND_TONE} />
+          </div>
           {/* 서플라이 「최근매치」 자리. 원그래프 대신 클랜별 전적이 들어간다 */}
           <ClanTop3PanelV3 data={data} onMore={() => setTab('clan')} />
           {matchList}

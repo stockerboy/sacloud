@@ -671,7 +671,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
               </div>
             </div>
             {/* ③ 죽은 차례 — 두 칸. 판 높이는 고정해 그래프가 위아래로 안 움직인다 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 10px', borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, minHeight: phone ? 96 : 72 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 10px', borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, height: 152, overflow: 'hidden' /* 2026-09-23 밤 사장님 「세로폭 고정 — 5명 다 들어갈 크기」: 머리 17 + 줄 5×(20+3) = 132 + 여백. 옛 값 minHeight phone 96 / 72 */ }}>
               {col(leftKey, 'left')}
               <div style={{ background: tone.cardBorder }} />
               {col(rightKey, 'right')}

@@ -46,6 +46,12 @@ import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating, formatRatingPoint } from '../common/format'
 
 const WEAPON_LABEL: Readonly<Record<number, string>> = { 0: '라플', 1: '스나' }
+/**
+ * ★머리 카드의 무기 표시 둘을 끈다★ (2026-09-23 밤 사장님 X — 이름 옆 「스나」 칩 · 카드 위 라플/스나 탭).
+ * 포지션은 오른쪽 상세정보 카드 제목 옆에 「스나이퍼 / 라이플」 로 적는다 (PlayerDetailV3 SideInfoCard).
+ * true 로 되돌리면 그대로 돌아온다 (`CLAUDE.md` 1-4).
+ */
+const HEAD_WEAPON_CHIPS = false
 
 export interface PlayerHeaderV3Props {
   data: LeaguePlayerDetail
@@ -539,7 +545,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
               </span>
             ) : null}
           </span>
-          {weaponChips}
+          {HEAD_WEAPON_CHIPS ? weaponChips : null}
         </div>
       ) : null}
 
@@ -551,7 +557,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
               <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.player.name}</span>
-              {weapon !== null ? (
+              {HEAD_WEAPON_CHIPS && weapon !== null ? (
                 <span style={{ fontSize: 11, color: V3.textMuted, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, background: V3.chip, padding: '3px 8px', whiteSpace: 'nowrap' }}>{WEAPON_LABEL[weapon]}</span>
               ) : null}
               {/*
