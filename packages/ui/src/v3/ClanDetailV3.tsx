@@ -272,10 +272,10 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
         )}
         {sniper ? <SniperMark /> : null}
         {/* ★MVP 는 닉네임 오른쪽★ · ★스나 표시가 있으면 그 오른쪽★ (2026-09-20 사장님) */}
-        {mvp ? <MvpMark size={15} compact /> : null}
+        {mvp && !MVP_IN_RANK_CELL ? <MvpMark size={15} compact /> : null}
       </span>
       {/* ★순위★ — 리그 개인랭킹 등수 (2026-09-23 사장님 「순위(래더x)」). 모르면 「-」 */}
-      <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: row.league_rank === null ? '#767f96' : '#96a0b5' }}>{row.league_rank === null ? '-' : `${row.league_rank}위`}</span>
+      <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: row.league_rank === null ? '#767f96' : '#96a0b5' }}>{mvp && MVP_IN_RANK_CELL ? <MvpMark size={15} compact /> : row.league_rank === null ? '-' : `${row.league_rank}위`}</span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
       {/* ★세이브 「2회」★ (2026-09-23 사장님 — 「2/4」 말고 「2회」 · 0 이면 「0회」). 옛 표기: `${row.saves}/${row.save_chances ?? 0}` */}
       {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#b6bece' }}>{row.saves === null ? '-' : `${row.saves}회`}</span> : null}
@@ -732,6 +732,11 @@ const PHONE_ANALYSIS_IN_LIST = false
 const PILLAR_HEX = false
 /** ★PC — 가운데 육각 · 그 밑 라운드 그래프 늘 보임★ (2026-09-23 밤 사장님). 설명은 PlayerDetailV3 의 같은 이름 */
 const HEX_CENTER_PC = true
+/**
+ * ★MVP 표시는 순위 칸에★ (사장님 2026-09-24 「MVP 는 순위 대신 MVP 표시를 넣어 · 나머지는 기존 것 유지」).
+ * 이름 옆 별이 닉네임을 잘라먹던 문제 — 별을 순위 자리로 옮기고 그 선수는 순위를 안 적는다. 과녁(저격)은 그대로. false 면 옛 자리
+ */
+const MVP_IN_RANK_CELL = true
 
 function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: LeagueClanShow; opp: ClanHeadToHead; vsMatches: readonly MatchListItem[] | null; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
   const theme = clanThemeOf(data.clan.slug)

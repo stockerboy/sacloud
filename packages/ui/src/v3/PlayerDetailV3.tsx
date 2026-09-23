@@ -83,6 +83,11 @@ const PILLAR_HEX = false
  */
 const HEX_CENTER_PC = true
 /**
+ * ★MVP 표시는 순위 칸에★ (사장님 2026-09-24 「MVP 는 순위 대신 MVP 표시를 넣어 · 나머지는 기존 것 유지」).
+ * 이름 옆 별이 닉네임을 잘라먹던 문제 — 별을 순위 자리로 옮기고 그 선수는 순위를 안 적는다. 과녁(저격)은 그대로. false 면 옛 자리
+ */
+const MVP_IN_RANK_CELL = true
+/**
  * ★내 줄(자기 닉네임) 바탕 그라데이션★ — 사장님 2026-09-24 「이상한 그라데이션 굳이 넣지 말고」 → 끔.
  * 「이 줄이 나」 는 왼쪽 청록 선(이미 있음)이 말한다. true 로 돌리면 옛 판 (CLAUDE.md 1-4)
  */
@@ -831,10 +836,10 @@ function ScoreRow({ row, me, mvp, weaponKnown, leagueSlug, side }: { row: MatchP
           </a>
         )}
         {sniper ? <SniperMark /> : null}
-        {mvp ? <MvpMark size={15} compact /> : null}
+        {mvp && !MVP_IN_RANK_CELL ? <MvpMark size={15} compact /> : null}
       </span>
       {/* ② 순위 — 리그 개인랭킹 등수. 문턱 미달·배치고사·집계 전이면 「-」 */}
-      <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: row.league_rank === null ? V3.textGhost : V3.textDim }}>{row.league_rank === null ? '-' : `${row.league_rank}위`}</span>
+      <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: row.league_rank === null ? V3.textGhost : V3.textDim }}>{mvp && MVP_IN_RANK_CELL ? <MvpMark size={15} compact /> : row.league_rank === null ? '-' : `${row.league_rank}위`}</span>
       {/* ③ kda — 「7 / 5 / 4」 밑에 「(58.3%)」 */}
       <span style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.25 }}>
         <Kda kill={row.kill} death={row.death} assist={row.assist} size={13} />
@@ -899,7 +904,7 @@ function ScoreRowSupplySix({ row, me, mvp, weaponKnown, leagueSlug, side, maxDam
               </a>
             )}
             {sniper ? <SniperMark /> : null}
-            {mvp ? <MvpMark size={15} compact /> : null}
+            {mvp && !MVP_IN_RANK_CELL ? <MvpMark size={15} compact /> : null}
           </span>
           {/* ★폰에서만★ — 래더가 닉네임 밑으로 내려온다 (사진 2) */}
           <span className="sac-sb-phone-only">{ratingNode}</span>
@@ -1005,7 +1010,7 @@ function ScoreRowLegacy({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side
             그래서 `SniperMark` 바로 뒤에 둔다.
           ⚠ 옛 자리(줄 맨 오른쪽 금색 ★)는 아래에서 지웠다 — 두 군데에 뜨면 지저분하다.
         */}
-        {mvp ? <MvpMark size={15} compact /> : null}
+        {mvp && !MVP_IN_RANK_CELL ? <MvpMark size={15} compact /> : null}
       </span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} /></span>
       {showSaves ? (
