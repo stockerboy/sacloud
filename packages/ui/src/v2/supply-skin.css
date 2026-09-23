@@ -1532,7 +1532,11 @@ body.antialiased {
 /* 「어깨가 안 보여」 → 그림 바닥(어깨)에 맞추고 판을 736 으로 — 1513 폭에서 그림이 852 라 투구 꼭대기(14%)부터 어깨(100%)까지 들어온다. 옛 값 470 / 45% */
 /* 2026-09-23 밤 사장님 「검색창을 이쯤(어깨 위) · 당긴 만큼 게시판도 당겨」 — 검색창 150 위로(650→500) · 판 높이는 그대로 두고
    게시판이 판 아래 150 을 덮는다(어깨 아래 어두운 몸통뿐이라 가려도 된다). 옛 값 650 / +18 */
-.home-hero--art { padding-top: 500px !important; padding-bottom: 176px !important; background-position: center top, center bottom !important; }
+/* 2026-09-23 밤 사장님 — 그림을 「깃발 도열 + 성 + 아가멤논 망토」(1536×1024) 로 바꿈 · 검색창은 ★망토 위(그림 세로 84%)★.
+   판 높이 = 그림을 폭에 맞춘 높이(100vw×2/3) 그대로 → 위 SA CLOUD 깃발부터 아래 망토까지 다 보인다.
+   검색창 top = 0.84×그림높이 − 60 = 56vw − 60px · 아래 = 나머지(0.667vw − 0.56vw = 10.7vw) · 게시판이 그 아래 132 를 덮는다.
+   옛 그림(아가멤논 뒷모습 클로즈업)은 /brand/home-hero-v1.webp · home-hero-m-v1.webp 로 남김. 옛 값 500 / 176 / center bottom */
+.home-hero--art { padding-top: calc(56vw - 60px) !important; padding-bottom: calc(10.7vw) !important; background-position: center top, center top !important; background-size: 100% 100%, cover !important; }
 @media (min-width: 768px) { .home-hero--art + div { margin-top: -132px !important; position: relative; z-index: 2; } }
 /* 폰은 판이 낮아 음수 마진을 주면 검색창을 덮는다 (2026-09-23 밤 폰 캡쳐) → 폰은 18 그대로 */
 @media (max-width: 767px) { .home-hero--art + div { margin-top: 18px !important; } }
@@ -1544,7 +1548,8 @@ body.antialiased {
   .home-hero--art + div > section > div { width: min(840px, 100%); }
 }
 @media (max-width: 767px) {
-  .home-hero--art { padding-top: 170px !important; padding-bottom: 18px !important; background-position: center 30%, center 30% !important; }
+  /* 폰 — 판 300 · 그림은 세로에 맞춰 좌우를 자른다(cover) · 망토가 84% 자리(≈250)에 오도록 검색창 230 */
+  .home-hero--art { padding-top: 230px !important; padding-bottom: 26px !important; background-position: center top, center top !important; background-size: 100% 100%, cover !important; }
 }
 
 /* ★상세정보 카드 — 3rd.supply 스타일★ (2026-09-23 밤 사장님 명세). 판 #1E293B · 선 #35445A · Noto Sans KR · 라벨 600 · 값 700.
