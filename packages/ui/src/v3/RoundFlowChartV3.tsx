@@ -40,8 +40,17 @@ interface Pt {
   /** 이 시점의 라운드 스코어 (이긴 클랜 : 진 클랜) */
   scoreW: number
   scoreL: number
+  /** 이 라운드에서 처음 죽은 사람 — 아직 아무도 안 죽었으면 null (사장님 「원 하나가 줄어들 때 띄워줘」) */
+  first: { name: string | null; side: 'W' | 'L'; at: number } | null
   est: boolean
 }
+
+/*
+ * ★가로축★ (2026-09-23 낮 · 사장님: 「A-1로 가자 확정」)
+ *   'real'    경기 전체를 실제 시간 그대로 — 긴 라운드는 길게. 전후반 선은 실제 바뀐 자리
+ *   'halves'  전반 왼쪽 반 · 후반 오른쪽 반 (반 안에서만 시간 비례) — 처음 판. 남긴다 (CLAUDE.md 1-4)
+ */
+const X_AXIS: 'real' | 'halves' = 'real'
 
 /*
  * ★세로축★ (2026-09-23 낮 · 사장님: 시안 5개 중 「시안 2 가 좋은데」)
@@ -105,11 +114,18 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     const first = s === null ? rounds : rounds.filter((r) => r.round < s)
     const second = s === null ? [] : rounds.filter((r) => r.round >= s)
     const twoHalves = first.length > 0 && second.length > 0
-    const XM = (X0 + X1) / 2
     /* 전반은 0초(경기 시작)부터 · 후반은 첫 후반 라운드 시작부터 */
     const spanA: [number, number] = [0, Math.max(1, (first[first.length - 1] ?? rounds[rounds.length - 1])?.end ?? 1)]
     const spanB: [number, number] = twoHalves ? [(second[0] as (typeof second)[number]).start, Math.max((second[0] as (typeof second)[number]).start + 1, (second[second.length - 1] as (typeof second)[number]).end)] : [0, 1]
+    /* 실제 시간 축 — 0초부터 마지막 라운드 끝까지 한 자로 */
+    const tEnd = Math.max(1, (rounds[rounds.length - 1] as (typeof rounds)[number]).end)
+    const xReal = (t: number): number => X0 + ((X1 - X0) * Math.max(0, Math.min(tEnd, t))) / tEnd
+    /* 전후반 선 — 'real' 이면 마지막 전반 라운드 끝과 첫 후반 라운드 시작의 가운데(실제 자리) · 'halves' 면 판 가운데 */
+    const XM = X_AXIS === 'real'
+      ? (twoHalves ? xReal((spanA[1] + spanB[0]) / 2) : X1)
+      : (X0 + X1) / 2
     const xOf = (t: number, half: 'A' | 'B'): number => {
+      if (X_AXIS === 'real') return xReal(t)
       if (!twoHalves) return X0 + ((X1 - X0) * (t - spanA[0])) / (spanA[1] - spanA[0])
       if (half === 'A') return X0 + ((XM - X0) * (t - spanA[0])) / (spanA[1] - spanA[0])
       return XM + ((X1 - XM) * (t - spanB[0])) / (spanB[1] - spanB[0])
@@ -119,12 +135,13 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     const sizeW = flow.team_size[W]
     const sizeL = flow.team_size[L]
     const pts: Pt[] = []
-    const ticks: { x: number; round: number }[] = []
+    /* 라운드 칸 — 시작·끝 x · 딴 팀 · 첫 희생 자리 (위 띠 · × 표 · 아래 번호에 쓴다) */
+    const ticks: { x: number; x1: number; round: number; winner: 'W' | 'L' | null; firstX: number | null; firstSide: 'W' | 'L' | null }[] = []
     let anyEst = false
     let scoreW = 0
     let scoreL = 0
     /* 출발 — 옛 판은 이긴 클랜이 아래(0)에서 (상대전적 그래프와 같다). 지금은 1라운드 값에서 바로 시작 */
-    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, est: false })
+    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, first: null, est: false })
     for (const r of rounds) {
       const half: 'A' | 'B' = s !== null && r.round >= s ? 'B' : 'A'
       const halfKey: 'first' | 'second' = half === 'A' ? 'first' : 'second'
@@ -149,13 +166,23 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         const mo = matchOddsInRound(scoreW, scoreL, ro.p, halfKey)
         return { p: mo.p, est: ro.est || mo.estimated }
       }
-      ticks.push({ x: xOf(r.start, half), round: r.round })
+      const firstDeath = r.deaths[0]
+      ticks.push({
+        x: xOf(r.start, half),
+        x1: xOf(r.end, half),
+        round: r.round,
+        winner: r.winner === W ? 'W' : r.winner === L ? 'L' : null,
+        firstX: firstDeath ? xOf(Math.min(firstDeath.at, r.end), half) : null,
+        firstSide: firstDeath ? (firstDeath.side === W ? 'W' : 'L') : null,
+      })
       let o = odds()
       anyEst = anyEst || o.est
-      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, est: o.est })
+      let firstSeen: Pt['first'] = null
+      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: null, est: o.est })
       for (const d of r.deaths) {
         if (d.side === W) aliveW = Math.max(0, aliveW - 1)
         else aliveL = Math.max(0, aliveL - 1)
+        if (firstSeen === null) firstSeen = { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at }
         /* 한쪽이 0 이 되는 마지막 죽음은 안 찍는다 — 그 순간 확률이 100/0 으로 튀어 빗살이 된다 (운영 캡쳐).
            라운드가 끝난 것이라 「마지막 인원 상태 값」 을 그대로 끌고 간다 (JUMP_ON_ROUND_END 와 같은 뜻) */
         if (aliveW === 0 || aliveL === 0) break
@@ -165,14 +192,14 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         /* 계단 — 죽기 직전까지는 앞 값 그대로 */
         const prev = pts[pts.length - 1] as Pt
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, est: o.est })
+        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, est: o.est })
       }
       {
         /* 라운드 끝 — 마지막 상태 값을 라운드 끝까지 끌고 간다. 옛 판(JUMP_ON_ROUND_END)은 여기서 100/0 으로 튀었다 */
         const prev = pts[pts.length - 1] as Pt
         const x = xOf(r.end, half)
-        pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, est: false })
+        pts.push({ ...prev, x: Math.max(prev.x, x - 0.01), first: firstSeen })
+        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, est: false })
       }
       if (r.winner === W) scoreW += 1
       else if (r.winner === L) scoreL += 1
@@ -248,7 +275,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   const labelX = nowX + R + 8
   const winInk = GLOW ? (tone === V3 ? '#1c2f6b' : '#bcd2ff') : '#8fb4ff'
   const loseInk = loser.theme.main
-  const every = phone && model.ticks.length > 10 ? 2 : 1
+  /* 옛 판은 폰에서 홀수 라운드만 적었다(`every`). 지금은 매 라운드 — 좁으면 엇갈려 적는다 (사장님) */
 
   const dots = (n: number, total: number, color: string) => (
     <span style={{ display: 'inline-flex', gap: 3, verticalAlign: 'middle', margin: '0 5px' }}>
@@ -292,6 +319,13 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <span style={{ fontWeight: 800, color: tone.textStrong, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{hud.scoreW} : {hud.scoreL}</span>
           <span style={{ color: winInk, whiteSpace: 'nowrap' }}>{phone ? '' : winner.name}{dots(hud.aliveW, sizeW, winInk)}<b>{hud.aliveW}</b></span>
           <span style={{ color: loseInk, whiteSpace: 'nowrap' }}>{phone ? '' : loser.name}{dots(hud.aliveL, sizeL, loseInk)}<b>{hud.aliveL}</b></span>
+          {/* ★첫 희생★ — 원 하나가 처음 빌 때 이름이 뜬다 (사장님 2026-09-23) */}
+          {hud.first ? (
+            <span style={{ whiteSpace: 'nowrap', color: '#f59e0b', fontWeight: 700 }}>
+              첫 희생 <span style={{ color: hud.first.side === 'W' ? winInk : loseInk }}>{hud.first.name ?? '—'}</span>
+              <span style={{ color: tone.textDim, fontWeight: 400, marginLeft: 4 }}>{Math.floor(hud.first.at / 60)}:{String(Math.floor(hud.first.at % 60)).padStart(2, '0')}</span>
+            </span>
+          ) : hud.round > 0 ? <span style={{ color: tone.textGhost, whiteSpace: 'nowrap' }}>아직 아무도 안 죽음</span> : null}
           <span style={{ marginLeft: 'auto', color: tone.textDim, fontVariantNumeric: 'tabular-nums' }}>{hud.v.toFixed(0)}% : {(100 - hud.v).toFixed(0)}%{hud.est ? ' · 어림' : ''}</span>
         </div>
       ) : null}
@@ -316,24 +350,36 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
             <text x={X0 - 7} y={yOf(g) + 4} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>{g}%</text>
           </g>
         ))}
-        {/* 라운드 경계 — 점선 · 아래 숫자 */}
-        {model.ticks.map((t, k) => (
-          <g key={t.round}>
-            <line x1={t.x} y1={Y_TOP} x2={t.x} y2={Y_BOTTOM} stroke={tone.cardBorder} strokeDasharray="3 5" />
-            {k % every === 0 ? <text x={t.x + 3} y={Y_BOTTOM + 26} textAnchor="start" fill={tone.textDim} fontSize={PLOT.axisFont}>{t.round}</text> : null}
-          </g>
-        ))}
-        {/* 전후반 경계 — 가운데 굵은 선 하나 (사장님) */}
+        {/* 라운드 칸 — 경계 점선 · 위 띠(딴 팀) · × (첫 희생 자리) · 아래 번호는 ★매 라운드★ (좁으면 위아래 엇갈림) */}
+        {(() => {
+          let lastX = -99
+          let stagger = 0
+          return model.ticks.map((t) => {
+            const cx = (t.x + t.x1) / 2
+            const tight = cx - lastX < (phone ? 16 : 22)
+            stagger = tight ? 1 - stagger : 0
+            lastX = cx
+            return (
+              <g key={t.round}>
+                <line x1={t.x} y1={Y_TOP} x2={t.x} y2={Y_BOTTOM} stroke={tone.cardBorder} strokeDasharray="3 5" />
+                {t.winner ? <rect x={t.x} y={Y_TOP - 9} width={Math.max(1, t.x1 - t.x)} height={4} fill={t.winner === 'W' ? winInk : loseInk} opacity={0.7} /> : null}
+                {t.firstX !== null ? <text x={t.firstX} y={Y_TOP + 4} textAnchor="middle" fill={t.firstSide === 'W' ? winInk : loseInk} fontSize={9} opacity={0.85}>×</text> : null}
+                <text x={cx} y={Y_BOTTOM + 24 + stagger * 12} textAnchor="middle" fill={tone.textDim} fontSize={PLOT.axisFont}>{t.round}</text>
+              </g>
+            )
+          })
+        })()}
+        {/* 전후반 경계 — 굵은 선 하나 (사장님). 'real' 축이면 실제 바뀐 자리 */}
         {model.twoHalves ? (
           <g>
-            <line x1={model.XM} y1={Y_TOP - 8} x2={model.XM} y2={Y_BOTTOM + 6} stroke={tone.textMuted} strokeWidth={2} />
-            <text x={(X0 + model.XM) / 2} y={Y_TOP - 12} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">전반</text>
-            <text x={(model.XM + X1) / 2} y={Y_TOP - 12} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">후반</text>
+            <line x1={model.XM} y1={Y_TOP - 14} x2={model.XM} y2={Y_BOTTOM + 6} stroke={tone.textMuted} strokeWidth={2} />
+            <text x={(X0 + model.XM) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">전반</text>
+            <text x={(model.XM + X1) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">후반</text>
           </g>
         ) : (
-          <text x={(X0 + X1) / 2} y={Y_TOP - 12} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">전반</text>
+          <text x={(X0 + X1) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">전반</text>
         )}
-        <text x={X0 - 7} y={Y_BOTTOM + 26} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>{phone ? 'R' : '라운드'}</text>
+        <text x={X0 - 7} y={Y_BOTTOM + 24} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>{phone ? 'R' : '라운드'}</text>
         {model.pts.length > 1 ? (
           <g>
             {GLOW ? (
@@ -382,7 +428,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <text x={X0 + 22} y={H - 3} fill={winner.theme.deep} fontSize={PLOT.tickFont}>{winner.name} 승</text>
           <line x1={X0 + (phone ? 130 : 190)} y1={H - 8} x2={X0 + (phone ? 146 : 206)} y2={H - 8} stroke={loseInk} strokeWidth={3} />
           <text x={X0 + (phone ? 152 : 212)} y={H - 3} fill={loser.theme.deep} fontSize={PLOT.tickFont}>{loser.name} 패</text>
-          {model.anyEst ? <text x={box.X1} y={H - 3} textAnchor="end" fill={tone.textGhost} fontSize={PLOT.axisFont}>{phone ? '일부 어림' : '표본 모자란 구간은 어림값'}</text> : null}
+          <text x={box.X1} y={H - 3} textAnchor="end" fill={tone.textGhost} fontSize={PLOT.axisFont}>{phone ? '띠 = 딴 팀 · × = 첫 희생' : `위 띠 = 라운드 딴 팀 · × = 첫 희생 자리${model.anyEst ? ' · 표본 모자란 구간은 어림값' : ''}`}</text>
         </g>
       </svg>
     </div>
