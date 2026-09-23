@@ -47,7 +47,8 @@ const SESSION_COOKIE = 'sacloud_session'
  * ⚠ ★2026-09-23 새벽 — 다시 잠갔다★ (사장님: 「사이트 비공개 돌려」).
  *   ⑤ 코드 스위치 `true`. 잠긴 동안에도 로그인하면 다 보인다.
  */
-const SITE_PRIVATE = true as boolean
+/* ⚠ ★2026-09-23 새벽 — 바로 다시 열었다★ (사장님: 「돌리지마 그냥 해 / 안 돌려도 돼」). ⑥ 기본 열림 */
+const SITE_PRIVATE = false as boolean
 
 /** 문 밖에서도 열리는 길 */
 const OPEN_PREFIX = [
