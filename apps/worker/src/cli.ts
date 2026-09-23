@@ -77,7 +77,7 @@ import { AbortCollection, type JobContext } from './jobs/context.js'
 import { runIdentities } from './jobs/identities.js'
 import { runIdentityWatch } from './jobs/identityWatch.js'
 import { runBarracksLink } from './jobs/barracksLink.js'
-import { collectBarracks, DEFAULT_DELAY_MS, MIN_DELAY_MS } from './jobs/barracksCollect.js'
+import { collectBarracks, DEFAULT_DELAY_MS, MIN_DELAY_MS, fetchClanMatchList } from './jobs/barracksCollect.js'
 import { checkLoad, guardLine, newGuardState,
   BLIND_MAX,
 } from './jobs/loadGuard.js'
@@ -1377,6 +1377,28 @@ async function main(): Promise<number> {
       return 0
     }
 
+    case 'barracks-clan-list': {
+      /*
+        ★병영 클랜 경기 목록을 그대로 한 번 불러 본다★ (2026-09-24 · HANDOFF §2-④ deluxe).
+        deluxe 는 slug(ferwfwfwfwf)로는 빈 목록이다 — 클랜번호(150531000663)를 clan_id 에 넣으면 오는지 본다.
+          nexon barracks-clan-list ferwfwfwfwf
+          nexon barracks-clan-list 150531000663
+        요청 한 번뿐이다. 저장하지 않는다.
+      */
+      const target = args.positional[0]
+      if (!target) { console.error('쓰는 법: barracks-clan-list <clan_id 또는 클랜번호> [--seq <seq_no>]'); return 1 }
+      const r = await fetchClanMatchList(target, stringFlag(args, 'seq') ?? undefined)
+      let count: number | null = null
+      let first = ''
+      try {
+        const j = JSON.parse(r.body) as { data?: unknown; message?: unknown }
+        const list = Array.isArray(j.data) ? j.data : Array.isArray((j.data as { list?: unknown })?.list) ? ((j.data as { list: unknown[] }).list) : null
+        count = list ? list.length : null
+        first = JSON.stringify(list?.[0] ?? j).slice(0, 400)
+      } catch { first = r.body.slice(0, 300) }
+      table([{ 대상: target, 상태: r.status, 걸림ms: r.ms, 경기수: count ?? '(JSON 아님)', 첫줄: first }])
+      return 0
+    }
     case 'barracks-collect': {
       /*
        * ★병영수첩을 사람 손 없이 긁는다★ (O-051 · D-268).
