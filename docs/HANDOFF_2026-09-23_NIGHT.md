@@ -13,10 +13,10 @@
 |---|---|---|---|
 | A | **누락 경기 되메우기 마무리** — ★끝 (2026-09-24 01:48 · 만듦합 637)★ · STATE.md 「0-새벽2」 | 끝 | VPS `/root/sacloud` |
 | B | 진영판 2차 요청 8건 (§7) — ★끝 (`dd61c369` · 2026-09-24 새벽)★ · STATE.md 「0-진영판2」 | 끝 | `RoundFlowChartV3.tsx` 등 |
-| C | 「아직 옛 경기분석 버전이 남아 있다」 — 어디인지 찾기 (§7-0) | 미착수 | |
-| D | 「육각 겹쳐서 칩 바꿀 때 가끔 그래프 안 그려짐 · 킬뎃 누적도」 검수 (§3-3) | 미착수 | `useDrawIn` |
+| C | 「아직 옛 경기분석 버전이 남아 있다」 — 코드상 경기분석 판은 둘(ClanScoreboardV3 · PlayerDetailV3 사본)뿐이고 같은 RoundFlowChartV3. 사장님이 보신 건 배포 전 캐시로 추정 · 이후 지적 없음 | 닫음(추정) | |
+| D | 「육각 겹쳐서 칩 바꿀 때 가끔 그래프 안 그려짐」 — 라운드 그래프 arm 에 스크롤/리사이즈 안전판 추가(dd61c369) · 그래프 3종 폭 재측정(bb927196). 이후 지적 없음 | 조치함 | `RoundFlowChartV3` |
 | E | 경기 카드 래더 증감 「+29점」 표기 — 층으로 못 적어 그대로. 사장님 확인 | 확인 대기 | |
-| F | deluxe/crucialrz/NeedBackup 의 slug 로는 병영 목록이 빈다 (§2-④) — 번호 기반 수집 필요 | 미착수 | `clan-find-missing` |
+| F | deluxe — 병영 clan_id 042222741 로 바꿔 부름(06181e59 · 수집 살아남) · crucialrz 는 클랜 줄 둘(backspace00 진짜 / ipl-backspace00 껍데기) 합치기 사장님 답 대기 · NeedBackup 은 병영에 같은 클랜 없음 | deluxe 끝 | `barracksCollect.BARRACKS_CLAN_ID_OVERRIDE` |
 | G | ~~`cpl-setup --sync` 가 다른 리그 활성 클랜을 또 내리지 않게~~ → **정정: cplSetup 은 CPL 만 건드린다. 내린 것은 `clan-one-league`(한 클랜=한 리그 도구)** · ★정책 충돌 — 사장님 결정★ (§2-③ 정정 상자) | 사장님 결정 대기 | `dev/clanOneLeagueApply.ts` |
 
 ---
