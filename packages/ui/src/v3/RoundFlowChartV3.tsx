@@ -177,9 +177,15 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
       if (w > 0) setWidth(Math.max(320, w))
     }
     update()
+    /* 2026-09-24 QA: 붙은 뒤 40프레임 다시 재고 창 크기에도 반응 (H2HChartV3 와 같은 규칙) */
+    let tries = 0
+    let raf = 0
+    const tick = () => { update(); if (++tries < 40) raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
     const ro = new ResizeObserver(update)
     ro.observe(el)
-    return () => ro.disconnect()
+    window.addEventListener('resize', update)
+    return () => { ro.disconnect(); cancelAnimationFrame(raf); window.removeEventListener('resize', update) }
   }, [])
   /*
    * ★그려지는 애니메이션을 끈다★ (2026-09-23 · 사장님 폰 캡쳐: 선이 3라운드에서 끊겨 보였다 —

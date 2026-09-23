@@ -119,11 +119,20 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
   useEffect(() => {
     const el = boxRef.current
     if (!el) return
-    const update = () => setWidth(Math.max(340, Math.round(el.getBoundingClientRect().width)))
+    /* 2026-09-24 QA: 처음 폭에 갇히지 않게 — 0 이면 안 받고 · 40프레임 다시 재기 · 창 크기 (H2HChartV3 와 같은 규칙) */
+    const update = () => {
+      const w = Math.round(el.getBoundingClientRect().width)
+      if (w > 0) setWidth(Math.max(340, w))
+    }
     update()
+    let tries = 0
+    let raf = 0
+    const tick = () => { update(); if (++tries < 40) raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
     const ro = new ResizeObserver(update)
     ro.observe(el)
-    return () => ro.disconnect()
+    window.addEventListener('resize', update)
+    return () => { ro.disconnect(); cancelAnimationFrame(raf); window.removeEventListener('resize', update) }
   }, [])
   /* 판 크기·선 두께·마커는 상대전적 그래프와 ★같은 자★ 를 쓴다 (seasonPlot.ts · 2026-09-11 사장님) */
   /* 판 세로 2/3 (2026-09-23 저녁 사장님 「세로로 너무 커」). 옛 값은 배율 1 (PC 400 · 폰 폭×0.78) */

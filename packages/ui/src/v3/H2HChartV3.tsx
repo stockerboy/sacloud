@@ -60,11 +60,21 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
   useEffect(() => {
     const el = boxRef.current
     if (!el) return
-    const update = () => setWidth(Math.max(320, Math.round(el.getBoundingClientRect().width)))
+    /* 2026-09-24 QA(운영 PC 최근경기): 처음 폭 320 에 갇혀 1074px 판 가운데 조그맣게 그려진 채 남았다 (viewBox 320 · meet 정렬).
+       0 이면 안 받고, 붙은 뒤 40프레임 동안 다시 재고, 창 크기 바뀔 때도 잰다. RO 는 그대로 */
+    const update = () => {
+      const w = Math.round(el.getBoundingClientRect().width)
+      if (w > 0) setWidth(Math.max(320, w))
+    }
     update()
+    let tries = 0
+    let raf = 0
+    const tick = () => { update(); if (++tries < 40) raf = requestAnimationFrame(tick) }
+    raf = requestAnimationFrame(tick)
     const ro = new ResizeObserver(update)
     ro.observe(el)
-    return () => ro.disconnect()
+    window.addEventListener('resize', update)
+    return () => { ro.disconnect(); cancelAnimationFrame(raf); window.removeEventListener('resize', update) }
   }, [])
   const draw = useDrawIn(3600, oppSlug ?? oppName, boxRef)
   const box = plotBox(width, compact)
