@@ -71,7 +71,12 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   useEffect(() => {
     const el = boxRef.current
     if (!el) return
-    const update = () => setWidth(Math.max(320, Math.round(el.getBoundingClientRect().width)))
+    /* ⚠ 폭이 0 으로 재지면(아직 안 보이는 순간) 값을 안 바꾼다 — 320 으로 떨어지면 ★폰 판★ 으로 그려져
+       PC 에서 그래프가 한 뼘짜리가 됐다 (운영 캡쳐 · 라운드 홀수만 찍힌 것이 증거) */
+    const update = () => {
+      const w = Math.round(el.getBoundingClientRect().width)
+      if (w > 0) setWidth(Math.max(320, w))
+    }
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
@@ -130,6 +135,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
       for (const d of r.deaths) {
         if (d.side === W) aliveW = Math.max(0, aliveW - 1)
         else aliveL = Math.max(0, aliveL - 1)
+        /* 한쪽이 0 이 되는 마지막 죽음은 안 찍는다 — 그 순간 확률이 100/0 으로 튀어 빗살이 된다 (운영 캡쳐).
+           라운드가 끝난 것이라 「마지막 인원 상태 값」 을 그대로 끌고 간다 (JUMP_ON_ROUND_END 와 같은 뜻) */
+        if (aliveW === 0 || aliveL === 0) break
         o = odds()
         anyEst = anyEst || o.est
         const x = xOf(Math.min(d.at, r.end), half)
