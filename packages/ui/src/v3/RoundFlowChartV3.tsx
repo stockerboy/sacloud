@@ -133,6 +133,12 @@ const JAG_STEP = 5
 const HALF_LINE_BOLD = true
 const KILL_ROWS_V2 = true
 const WEAPON_RULE: 'position' | 'raw' = 'position'
+/*
+ * ★무기 그림 출처★ (사장님 2026-09-24 새벽 「내가 준 사진 그대로 써 · 원본 복사해도 돼 · 저작권 없음 · 니가 만들지 마」)
+ *   'photo'  사장님 사진 5장(`docs/ref/board2/`)에서 무기 그림만 잘라 낸 `/brand/weapons/*.png` (돌격소총·저격소총·투척·C4·보조무기)
+ *   'svg'    옛 판 — 우리가 그린 실루엣 (근접·특수·모름은 사진이 없어 지금도 이걸 쓴다)
+ */
+const WEAPON_ICON: 'photo' | 'svg' = 'photo'
 /** 죽은 차례 칸 높이 — 설치 줄이 생겨 한 줄 더 (옛 값 폰 152 · PC 176) */
 const PANEL_H_PHONE = 178
 const PANEL_H_PC = 206
@@ -998,9 +1004,27 @@ export function weaponKindOf(raw: string | null | undefined, position: 0 | 1 | n
  * ★무기 그림★ — 우리가 그린 실루엣 (CLAUDE.md 2-4 · 원본 사이트 그림은 안 베낀다). 40×16 칸 · 왼쪽(킬러)에서 오른쪽(희생자)을 겨눈다.
  * 회색 실루엣 + 총구 쪽에 작은 화살촉 — 「이 사람이 얘를 쐈다」 가 방향으로 읽힌다
  */
+const WEAPON_PHOTO: Partial<Record<WeaponKind, { src: string; w: number; h: number }>> = {
+  rifle: { src: '/brand/weapons/rifle.png', w: 80, h: 26 },
+  sniper: { src: '/brand/weapons/sniper.png', w: 92, h: 27 },
+  throw: { src: '/brand/weapons/throw.png', w: 16, h: 27 },
+  c4: { src: '/brand/weapons/c4.png', w: 35, h: 25 },
+  pistol: { src: '/brand/weapons/pistol.png', w: 46, h: 26 },
+}
 export function WeaponGlyph({ kind, phone = false }: { kind: WeaponKind; phone?: boolean }) {
   const w = phone ? 30 : 40
   const h = phone ? 12 : 16
+  const photo = WEAPON_ICON === 'photo' ? WEAPON_PHOTO[kind] : undefined
+  if (photo) {
+    /* 사진은 높이를 맞추고 폭은 비율대로 — 저격총은 길고 투척물은 좁다. 회색 실루엣이라 어두운 판에서 잘 보이게 살짝 밝힌다 */
+    const ph = phone ? 12 : 18
+    const pw = Math.round((photo.w / photo.h) * ph)
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: Math.max(pw, phone ? 22 : 30), height: ph, flex: 'none' }}>
+        <img src={photo.src} alt={WEAPON_NAME[kind] || '무기'} width={pw} height={ph} style={{ width: pw, height: ph, display: 'block', filter: 'brightness(1.9) contrast(1.05)' }} />
+      </span>
+    )
+  }
   const ink = '#c9cfdd'
   const dim = '#8f95af'
   const body = (() => {
