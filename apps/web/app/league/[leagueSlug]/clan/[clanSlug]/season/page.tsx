@@ -7,7 +7,7 @@ import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
 /* ★갱신 주기 60초★ (2026-09-21) — 까닭은 `app/player/[playerId]/page.tsx` 에 한 번만 적었다 */
-export const revalidate = 60
+/* ⚠ 2026-09-24 QA: `'use client'` 페이지에 `export const revalidate` 를 두면 Next 가 「Invalid revalidate value」 로 ★500★ 을 낸다 (운영 실측 · 클랜원/시즌 페이지). 클라이언트 페이지는 react-query 가 갱신을 맡는다 — 이 줄은 뺐다 */
 
 
 /** 지난시즌 `/league/{slug}/clan/{slug}/season`. */
