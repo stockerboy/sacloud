@@ -135,16 +135,21 @@ export function plotBox(width: number, compact = false, hScale = 1): {
    * ★`compact` — 더 낮은 판★ (2026-09-22 사장님: 「카드 세로 길이 좀 줄여줘 너무 큰거같아」).
    *   클랜랭킹 맨 위 카드만 쓴다. ★기본값은 옛 값 그대로★ 다.
    */
-  const H = Math.round((compact
+  const baseH = compact
     ? phone
       ? Math.round(width * 0.46)
       : 210
     : phone
       ? Math.round(width * 0.78)
-      : 400) * hScale)
+      : 400
+  const bottom = phone ? 52 : 66
+  /* ⚠ 2026-09-23 밤 사장님 「그래프를 저 판에 꽉 채워」 — 배율은 ★선이 노는 띠★ 에만 준다.
+     옛 판은 H 전체에 곱해서 위 30·아래 52 여백은 그대로인 채 띠만 71px 로 쪼그라들었다 (폰 캡쳐) */
+  const band = Math.round((baseH - 30 - bottom) * hScale)
+  const H = 30 + bottom + band
   const X0 = phone ? 36 : 46
   const right = phone ? 34 : 46
-  return { H, X0, X1: width - right, Y_TOP: 30, Y_BOTTOM: H - (phone ? 52 : 66), phone }
+  return { H, X0, X1: width - right, Y_TOP: 30, Y_BOTTOM: H - bottom, phone }
 }
 
 /** 정해진 흔들림 — 같은 자리면 언제나 같은 값 (-1 ~ 1). 새로고침해도 안 바뀐다 */

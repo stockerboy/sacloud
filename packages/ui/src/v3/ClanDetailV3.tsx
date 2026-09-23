@@ -1467,11 +1467,12 @@ function ClanTrendCard({ data }: { data: LeagueClanShow }) {
         <span style={{ width: 22, height: 2, background: V3.red, flex: 'none' }} />
         <span style={{ fontSize: 13, fontWeight: 700, color: T.textStrong, whiteSpace: 'nowrap' }}>승률 추이</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}><span style={{ width: 15, height: 2, background: '#7fa9ff' }} /><span style={{ fontSize: 11, color: T.textFaint }}>승률</span></span>
-        <span style={{ fontSize: 10.5, color: T.textGhost2, minWidth: 0 }}>오늘은 경기가 끝날 때마다 바로 움직입니다 · 지난 날은 2판 미만이면 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
+        <span className="sac-trend-hint" style={{ fontSize: 10.5, color: T.textGhost2, minWidth: 0 }}>오늘은 경기가 끝날 때마다 바로 움직입니다 · 지난 날은 2판 미만이면 찍히지 않습니다 · 그래프를 움직여 날짜별 기록을 봅니다</span>
         <div style={spacerStyle} />
+        {/* 2026-09-23 밤 사장님 「누적/DAY 순서 바꾸고 저 위치로 올려」 — 누적이 먼저. 폰은 긴 문장을 숨겨 이 단추가 제목 줄로 올라온다 */}
         <span style={{ display: 'flex', gap: 5 }}>
-          <span onClick={() => setMode('day')} style={chip(mode === 'day')}>DAY</span>
           <span onClick={() => setMode('cum')} style={chip(mode === 'cum')}>누적</span>
+          <span onClick={() => setMode('day')} style={chip(mode === 'day')}>DAY</span>
         </span>
       </div>
       <TrendChartV3
