@@ -71,7 +71,7 @@ const PAGES = [
   ['pw-forget', '/auth/password/forget', '', null],
   ['clause-policy', '/clause/policy', '', null],
   /* 5회차 — 눌러야 보이는 상태들 */
-  ['match-list-open', '/league/supply/match', '플레이어', 'css:.mc-card', false],
+  ['match-list-open', '/league/supply/match', '플레이어', 'css:.mc-card .mc-pc', false],
   ['rank-player-sniper', '/league/supply/rank/player', '개인랭킹', '스나', false],
   ['trend-day', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '승률', 'DAY', false],
   ['clan-record-tab-m', '/league/supply/clan/zxcvddr2', '클랜원', '기록실', true],
