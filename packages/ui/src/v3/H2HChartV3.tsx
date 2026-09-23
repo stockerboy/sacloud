@@ -148,6 +148,16 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
   const oppLabelY = phone ? (mineAboveOpp ? oppEndY + R + 16 : oppEndY - R - 6) : oppEndY + oppLabelDy
   const valueAnchor = phone ? 'middle' : 'start'
   const valueX = phone ? nowX : labelX
+  /* 2026-09-24 QA(운영 폰): 5:0 처럼 100%/0% 면 위 글자가 「now」, 아래 글자가 「3시」 눈금과 포개졌다
+     → 판 위/아래 끝에 닿는 글자는 마커 ★왼쪽★ 에 적는다 (오른쪽은 svg 밖으로 나간다) */
+  const mineOut = phone && (mineLabelY < Y_TOP + 2 || mineLabelY > Y_BOTTOM + 8)
+  const oppOut = phone && (oppLabelY < Y_TOP + 2 || oppLabelY > Y_BOTTOM + 8)
+  const mineX = mineOut ? nowX - R - 4 : valueX
+  const mineY = mineOut ? endY + 6 : mineLabelY
+  const mineAnchor = mineOut ? 'end' : valueAnchor
+  const oppX = oppOut ? nowX - R - 4 : valueX
+  const oppY = oppOut ? oppEndY + 6 : oppLabelY
+  const oppAnchor = oppOut ? 'end' : valueAnchor
 
   return (
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: tone.plot }}>
@@ -204,11 +214,11 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
             <circle cx={nowX} cy={oppEndY} r={R + 4} fill="none" stroke={oppTheme.deep} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#h2hGlowR)'} opacity={0.55} />
             <circle cx={nowX} cy={oppEndY} r={R} fill={tone.chip} stroke={oppTheme.main} strokeWidth={2} />
             {oppSlug && hasFitMark(oppSlug) ? <image href={fitMarkUrl(oppSlug)} x={nowX - R} y={oppEndY - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={valueX} y={oppLabelY} textAnchor={valueAnchor} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - shownShare).toFixed(1)}%</text>
+            <text x={oppX} y={oppY} textAnchor={oppAnchor} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - shownShare).toFixed(1)}%</text>
             <circle cx={nowX} cy={endY} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#h2hGlowB)'} opacity={0.55} />
             <circle cx={nowX} cy={endY} r={R} fill={tone.chip} stroke="#7fa9ff" strokeWidth={2} />
             {mineSlug && hasFitMark(mineSlug) ? <image href={fitMarkUrl(mineSlug)} x={nowX - R} y={endY - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={valueX} y={mineLabelY} textAnchor={valueAnchor} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{shownShare.toFixed(1)}%</text>
+            <text x={mineX} y={mineY} textAnchor={mineAnchor} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{shownShare.toFixed(1)}%</text>
           </g>
         ) : null}
         <g>
