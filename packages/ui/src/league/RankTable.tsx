@@ -1176,7 +1176,8 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                    *   0 까지 눌렸다 — ★배지가 있는 줄만 닉네임이 통째로 사라졌다.★
                    *   배지 밑 이름은 PC 에만 적고(원래 주석의 의도였다), 폰은 그림만 둔다.
                    */
-                  <span className="flex shrink-0 items-start justify-start gap-1 max-md:hidden md:ml-3 md:w-[200px] md:gap-2">
+                  {/* 2026-09-24 QA(운영 PC): 배지 칸 200px 이 승리 칸을 덮었다(14위 swy · 19위 huwho) → 자기 칸 안에서만 · 넘치면 숨긴다 */}
+                  <span className="flex shrink-0 items-start justify-start gap-1 overflow-hidden max-md:hidden md:ml-2 md:max-w-[120px] md:gap-1.5">
                     {/*
                       * ⚠ ★2026-09-17 — 손으로 그리던 SVG 배지를 사장님 그림으로 바꿨다★.
                       *   옛 판(`TraitEmblem`)은 지우지 않았다 — 파일이 그대로 있고 이 줄만
@@ -1184,13 +1185,13 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                       *   그리고 ★누르면 배지 페이지로 간다★ (사장님: «뱃지 클릭하면 (…)
                       *   누구누구가 이 뱃지 가지고있는지»).
                       */}
-                    {(row.trait_emblems ?? []).slice(0, 3).map((e) => {
+                    {(row.trait_emblems ?? []).slice(0, 2).map((e) => {
                       const axis = e.axis as Parameters<typeof AxisBadge>[0]['axis']
                       const name = badgeOfAxis(axis, e.weapon)?.label ?? ''
                       return (
                         <span
                           key={`${e.axis}-${e.weapon}`}
-                          className="flex flex-col items-center gap-[3px] max-md:w-[34px] md:w-[58px]"
+                          className="flex flex-col items-center gap-[3px] max-md:w-[34px] md:w-[54px]"
                         >
                           {/* ★2026-09-17 사장님 — «크기를 좀 키워줘 잘 안보여»★ 22 → 30 (PC 40) */}
                           <AxisBadge

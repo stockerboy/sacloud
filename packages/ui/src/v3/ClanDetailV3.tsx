@@ -704,6 +704,8 @@ const VS_PREVIEW = 2
  * false 면 옛 본문(접이식 클랜별전적 + 통합 기록실 한 줄). 코드는 그대로다 (`CLAUDE.md` 1-4).
  */
 const BODY_LIKE_PLAYER = true
+/** PC 2단에서 육각을 왼쪽 칸(클랜별전적 밑)에 — 오른쪽 칸만 길어 생기던 빈 판을 없앤다 (2026-09-24 QA) */
+const CLAN_HEX_IN_MAIN = true
 /** 스코어보드 명단을 킬 순으로 (2026-09-23 사장님). false 면 원문 순서 */
 const LINEUP_BY_KILLS = true
 
@@ -1317,10 +1319,13 @@ const [tier] = useState<number>(() => {
               {opp ? (
                 <HeadToHeadCard key={opp.clan.slug} data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
               ) : null}
+              {/* 2026-09-24 QA(운영 PC): 통합 기록실이 2단 밖으로 나가면서 왼쪽 칸이 짧아져 오른쪽(상세정보+육각) 높이만큼 ★빈 판★ 이 생겼다
+                  → 육각을 왼쪽 칸 밑으로. 옛 자리(오른쪽)는 CLAN_HEX_IN_MAIN=false */}
+              {CLAN_HEX_IN_MAIN ? <div style={{ marginTop: 10 }}><ClanHexCard data={data} /></div> : null}
             </div>
             <aside className="sac-prr-aside">
               <ClanSideInfoCard data={data} memberCount={data.member_count ?? null} />
-              <ClanHexCard data={data} />
+              {CLAN_HEX_IN_MAIN ? null : <ClanHexCard data={data} />}
             </aside>
           </div>
           {/* ★통합 기록실은 2단 밖 전체 폭★ (2026-09-23 밤 사장님) */}
