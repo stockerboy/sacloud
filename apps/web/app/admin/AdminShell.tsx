@@ -61,7 +61,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <span className="rounded border border-line px-2 py-0.5 text-xs text-meta">관리자 전용</span>
       </div>
 
-      <nav className="mt-8 flex gap-1 border-b border-line text-sm">
+      {/* 2026-09-24 QA(운영 폰): 탭 10개가 390px 에 눌려 글자가 세로로 쪼개지고 가로넘침(479px) → 한 줄 · 가로 스크롤 · 줄바꿈 금지 */}
+      <nav className="mt-8 flex gap-1 overflow-x-auto whitespace-nowrap border-b border-line text-sm [scrollbar-width:none]">
         {MENU.map((item) => {
           const active =
             item.href === '/admin' ? pathname === item.href : pathname.startsWith(item.href)
@@ -69,7 +70,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Link prefetch={false}
               key={item.href}
               href={item.href}
-              className={`-mb-px border-b px-4 py-3 transition-colors duration-100 ${
+              className={`-mb-px shrink-0 border-b px-4 py-3 transition-colors duration-100 ${
                 active
                   ? 'border-accent font-bold text-text-strong'
                   : 'border-transparent text-meta hover:text-text'
