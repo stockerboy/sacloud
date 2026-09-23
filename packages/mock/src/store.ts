@@ -1402,6 +1402,9 @@ function buildMatchSummary(matches: MockMatch[], leagueClanId: string, playerId:
     win_rate: winRate(win, lose),
     streak: { type: streakType, count: streakCount },
     opponents,
+    kill: null,
+    death: null,
+    kd_rate: null,
   }
 }
 

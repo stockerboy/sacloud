@@ -209,6 +209,14 @@ export function ClanTop3PanelV3({ data, onMore }: { data: LeaguePlayerDetail; on
           <span style={{ fontSize: 10.5, color: V3.textGhost2, whiteSpace: 'nowrap' }}>최근 {fmt(s.recent_count)}전</span>
           <span style={{ fontSize: 26, fontWeight: 700, lineHeight: 1, color: statColor(s.win_rate) }}>{pct1(s.win_rate)}</span>
           <span style={{ fontSize: 12, color: V3.textDim, whiteSpace: 'nowrap' }}>{fmt(s.win)}승 {fmt(s.lose)}패</span>
+          {/* ★그 n전의 킬뎃★ (인계서 ③-11 · 2026-09-23). 킬을 모르는 판뿐이면 안 적는다 (D-106) */}
+          {s.kd_rate !== null && s.kill !== null && s.death !== null ? (
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 10.5, color: V3.textGhost2 }}>킬뎃</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: statColor(s.kd_rate) }}>{pct1(s.kd_rate)}</span>
+              <span style={{ fontSize: 10.5, color: V3.textFaint }}>{fmt(s.kill)}킬 {fmt(s.death)}데스</span>
+            </span>
+          ) : null}
           {streak ? (
             <span style={{ marginTop: 2, fontSize: 12.5, fontWeight: 700, color: streak.color, whiteSpace: 'nowrap' }}>{streak.text}</span>
           ) : null}

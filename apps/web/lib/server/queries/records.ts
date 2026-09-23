@@ -168,6 +168,10 @@ function buildMatchSummary(
 ): MatchSummary {
   let win = 0
   let lose = 0
+  /* 최근 n전 킬·데스 — 선수(playerId)면 그 사람, 클랜이면 우리 편 열 명 합 (인계서 ③-11) */
+  let kill = 0
+  let death = 0
+  let kdKnown = false
   const opponentMap = new Map<
     string,
     { clan: ClanFields; win: number; lose: number; kill: number; death: number }
@@ -198,6 +202,7 @@ function buildMatchSummary(
       /* KDA 를 모르는 참가자는 합계에서 뺀다. 0으로 더하면 평균이 거짓이 된다 (D-148) */
       entry.kill += stat.kill ?? 0
       entry.death += stat.death ?? 0
+      if (stat.kill !== null && stat.death !== null) { kill += stat.kill; death += stat.death; kdKnown = true }
     }
     opponentMap.set(opponentId, entry)
   }
@@ -221,6 +226,9 @@ function buildMatchSummary(
     win_rate: winRate(win, lose),
     streak,
     opponents,
+    kill: kdKnown ? kill : null,
+    death: kdKnown ? death : null,
+    kd_rate: kdKnown ? kdRate(kill, death) : null,
   }
 }
 

@@ -2155,7 +2155,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
            → 선수 페이지 컨테이너를 1400 으로(supply-skin.css 의 sac-player-page) · 오른쪽 271→330. 옛 값 271 */
         .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 10px; align-items: start; margin-top: 16px; }
         .sac-prr-main { min-width: 0; display: flex; flex-direction: column; }
-        .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 7px; position: sticky; top: 12px; --hex-zoom: .78; }
+        .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 7px; position: sticky; top: 105px; --hex-zoom: .78; } /* 105 = 상단바 63 + 리그 띠 42 — 래더를 안 가린다 (인계서 ③-12) */
         @media (max-width: 980px) {
           .sac-prr-grid { grid-template-columns: minmax(0,1fr); }
           .sac-prr-aside { position: static; }

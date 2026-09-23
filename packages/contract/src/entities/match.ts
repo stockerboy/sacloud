@@ -510,6 +510,14 @@ export const MatchSummary = z.object({
   win_rate: Percent,
   streak: Streak,
   opponents: z.array(OpponentSummaryEntry),
+  /**
+   * ★그 최근 n전의 킬·데스·킬뎃★ (인계서 ③-11 · 2026-09-23) — 선수 기록실 「최근매치」 오른쪽에
+   * 「20전 16승 4패 (80%) · 킬뎃 55.2%」. 킬뎃 = 킬/(킬+데스). 킬을 모르는 판은 안 더한다.
+   * 클랜 기록실은 팀 열 명의 합이라 ★뜻이 다르다★ — 화면이 선수에서만 적는다. 옛 응답과 호환되게 기본값 null.
+   */
+  kill: Count.nullable().default(null),
+  death: Count.nullable().default(null),
+  kd_rate: Percent.nullable().default(null),
 })
 export type MatchSummary = z.infer<typeof MatchSummary>
 
