@@ -44,6 +44,8 @@ interface Pt {
   first: { name: string | null; side: 'W' | 'L'; at: number } | null
   /** 이 시점까지 이 라운드에서 죽은 사람들 — 죽은 차례대로 (사장님 「선짤 준성 · haeil 다운 · …」) */
   fallen: { name: string | null; side: 'W' | 'L'; at: number; by: string | null }[]
+  /** 이 라운드의 공격(레드) 팀. 모르면 null (사장님 「레드가 무조건 왼쪽 블루가 오른쪽」) */
+  attack: 'W' | 'L' | null
   est: boolean
 }
 
@@ -175,7 +177,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     let scoreW = 0
     let scoreL = 0
     /* 출발 — 옛 판은 이긴 클랜이 아래(0)에서 (상대전적 그래프와 같다). 지금은 1라운드 값에서 바로 시작 */
-    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, first: null, fallen: [], est: false })
+    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, first: null, fallen: [], attack: null, est: false })
     for (const r of rounds) {
       const half: 'A' | 'B' = s !== null && r.round >= s ? 'B' : 'A'
       const halfKey: 'first' | 'second' = half === 'A' ? 'first' : 'second'
@@ -213,7 +215,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
       anyEst = anyEst || o.est
       let firstSeen: Pt['first'] = null
       let fallen: Pt['fallen'] = []
-      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: null, fallen, est: o.est })
+      const attack: Pt['attack'] = r.defence === null ? null : r.defence === W ? 'L' : 'W'
+      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: null, fallen, attack, est: o.est })
       for (const d of r.deaths) {
         if (d.side === W) aliveW = Math.max(0, aliveW - 1)
         else aliveL = Math.max(0, aliveL - 1)
@@ -228,14 +231,14 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         /* 계단 — 죽기 직전까지는 앞 값 그대로 */
         const prev = pts[pts.length - 1] as Pt
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, fallen, est: o.est })
+        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, fallen, attack, est: o.est })
       }
       {
         /* 라운드 끝 — 마지막 상태 값을 라운드 끝까지 끌고 간다. 옛 판(JUMP_ON_ROUND_END)은 여기서 100/0 으로 튀었다 */
         const prev = pts[pts.length - 1] as Pt
         const x = xOf(r.end, half)
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01), first: firstSeen, fallen })
-        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, fallen, est: false })
+        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, fallen, attack, est: false })
       }
       if (r.winner === W) scoreW += 1
       else if (r.winner === L) scoreL += 1
@@ -379,8 +382,20 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5, padding: '4px 6px 6px', minHeight: 26 }}>
           <span style={{ color: tone.textDim }}>{hud.round === 0 ? '시작' : `${hud.round}라운드`}</span>
           <span style={{ fontWeight: 800, color: tone.textStrong, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{hud.scoreW} : {hud.scoreL}</span>
-          <span style={{ color: winInk, whiteSpace: 'nowrap' }}>{phone ? '' : winner.name}{dots(hud.aliveW, sizeW, winInk)}<b>{hud.aliveW}</b></span>
-          <span style={{ color: loseInk, whiteSpace: 'nowrap' }}>{phone ? '' : loser.name}{dots(hud.aliveL, sizeL, loseInk)}<b>{hud.aliveL}</b></span>
+          {/* ★레드가 무조건 왼쪽 · 블루가 오른쪽★ — 전후반이 바뀌면 자리가 바뀐다 · 사이에 진영 표 (사장님 2026-09-23) */}
+          {(hud.attack === 'L' ? (['L', 'W'] as const) : (['W', 'L'] as const)).map((k, i) => {
+            const team = k === 'W' ? winner : loser
+            const color = k === 'W' ? winInk : loseInk
+            const alive = k === 'W' ? hud.aliveW : hud.aliveL
+            const size = k === 'W' ? sizeW : sizeL
+            const tag = hud.attack === null ? null : i === 0 ? '레드' : '블루'
+            return (
+              <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                {tag ? <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', padding: '1px 5px', border: `1px solid ${i === 0 ? 'rgba(255,107,107,.5)' : 'rgba(143,180,255,.5)'}`, color: i === 0 ? '#ff6b6b' : '#8fb4ff' }}>{tag}</span> : null}
+                <span style={{ color }}>{phone ? '' : team.name}{dots(alive, size, color)}<b>{alive}</b></span>
+              </span>
+            )
+          })}
           <span style={{ marginLeft: 'auto', color: tone.textDim, fontVariantNumeric: 'tabular-nums' }}>{hud.v.toFixed(0)}% : {(100 - hud.v).toFixed(0)}%{hud.est ? ' · 어림' : ''}</span>
         </div>
       ) : null}
