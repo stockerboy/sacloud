@@ -131,6 +131,13 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
   const nowX = tipX
   const R = PLOT.markerR
   const labelX = nowX + R + 10
+  /* ⚠ 2026-09-23 낮 — 폰(393)에서 「40.0%」 가 x 354~406 로 svg 오른쪽(373)을 넘어 잘렸다 (운영 실측).
+     폰에서는 마커 ★위/아래★ 가운데 정렬로 적는다 (라운드 흐름 그래프와 같은 법). PC 는 그대로 오른쪽 */
+  const mineAboveOpp = endY <= oppEndY
+  const mineLabelY = phone ? (mineAboveOpp ? endY - R - 6 : endY + R + 16) : endY + mineLabelDy
+  const oppLabelY = phone ? (mineAboveOpp ? oppEndY + R + 16 : oppEndY - R - 6) : oppEndY + oppLabelDy
+  const valueAnchor = phone ? 'middle' : 'start'
+  const valueX = phone ? nowX : labelX
 
   return (
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: tone.plot }}>
@@ -187,11 +194,11 @@ export function H2HChartV3({ games, theme, oppTheme, mineName, mineSlug, oppName
             <circle cx={nowX} cy={oppEndY} r={R + 4} fill="none" stroke={oppTheme.deep} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#h2hGlowR)'} opacity={0.55} />
             <circle cx={nowX} cy={oppEndY} r={R} fill={tone.chip} stroke={oppTheme.main} strokeWidth={2} />
             {oppSlug && hasFitMark(oppSlug) ? <image href={fitMarkUrl(oppSlug)} x={nowX - R} y={oppEndY - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={oppEndY + oppLabelDy} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - shownShare).toFixed(1)}%</text>
+            <text x={valueX} y={oppLabelY} textAnchor={valueAnchor} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - shownShare).toFixed(1)}%</text>
             <circle cx={nowX} cy={endY} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#h2hGlowB)'} opacity={0.55} />
             <circle cx={nowX} cy={endY} r={R} fill={tone.chip} stroke="#7fa9ff" strokeWidth={2} />
             {mineSlug && hasFitMark(mineSlug) ? <image href={fitMarkUrl(mineSlug)} x={nowX - R} y={endY - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={endY + mineLabelDy} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{shownShare.toFixed(1)}%</text>
+            <text x={valueX} y={mineLabelY} textAnchor={valueAnchor} fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{shownShare.toFixed(1)}%</text>
           </g>
         ) : null}
         <g>
