@@ -142,7 +142,7 @@ for (const [w, tag] of WIDTHS) {
       if (clickText) {
         let clicked = 'not found'
         for (let i = 0; i < 20 && clicked !== 'clicked'; i += 1) {
-          clicked = await evalStr(`(() => { const want = ${JSON.stringify(clickText)}; const el = want.startsWith('css:') ? document.querySelector(want.slice(4)) : want.startsWith('@') ? document.querySelector('[aria-label=' + JSON.stringify(want.slice(1)) + ']') : [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === want); if (el) { el.click(); return 'clicked' } return 'not found' })()`)
+          clicked = await evalStr(`(() => { const want = ${JSON.stringify(clickText)}; const el = want.startsWith('css:') ? [...document.querySelectorAll(want.slice(4))].find(e => !/수집중/.test(e.closest('.mc-card')?.textContent || '')) ?? document.querySelector(want.slice(4)) : want.startsWith('@') ? document.querySelector('[aria-label=' + JSON.stringify(want.slice(1)) + ']') : [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === want); if (el) { el.click(); return 'clicked' } return 'not found' })()`)
           if (clicked !== 'clicked') await sleep(500)
         }
         await sleep(2500)
@@ -150,7 +150,7 @@ for (const [w, tag] of WIDTHS) {
         if (expectText) for (let k = 0; k < 2; k += 1) {
           const ok = await evalStr(`document.body.innerText.includes(${JSON.stringify(expectText)})`)
           if (ok === true) break
-          await evalStr(`(() => { const want = ${JSON.stringify(clickText)}; const el = want.startsWith('css:') ? document.querySelector(want.slice(4)) : want.startsWith('@') ? document.querySelector('[aria-label=' + JSON.stringify(want.slice(1)) + ']') : [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === want); if (el) el.click(); return 1 })()`)
+          await evalStr(`(() => { const want = ${JSON.stringify(clickText)}; const el = want.startsWith('css:') ? [...document.querySelectorAll(want.slice(4))].find(e => !/수집중/.test(e.closest('.mc-card')?.textContent || '')) ?? document.querySelector(want.slice(4)) : want.startsWith('@') ? document.querySelector('[aria-label=' + JSON.stringify(want.slice(1)) + ']') : [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === want); if (el) el.click(); return 1 })()`)
           await sleep(2500)
         }
       }
