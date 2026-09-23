@@ -27,6 +27,18 @@
        병영 줄이 본줄 · 기록 옮김 · LeaguePlayer 겹치면 백업 후 지움 · SUP 줄은 note `merged-into:` (검색 notMergedWhere 가 숨김)
 자이언트 선수 줄은 하나. 마지막 경기 09-19 — deluxe 병영 목록 빈 문제(HANDOFF §2-④). 클랜번호 수집 필요
 ```
+### ★arcenciel — 등록 안 된 클랜 경기가 뜬 까닭★ (사장님 02:00 「등록도 안 됐는데 왜 자꾸 떠」)
+```
+경위   09-22 00:15  clan-find-missing 이 잘못 등록한 미등록 클랜 23곳을 657b0cd8 이 숨김(expelledAt · 경기 115 supersededAt · Clan.active=false)
+       09-23 밤     인계 세션 probe22 가 그 23줄을 「cpl-setup 이 잘못 내린 것」 으로 오판하고 되살림  ← HANDOFF §2-③ 진단이 틀렸다
+       09-24 01:48  되메우기(--from-start)가 그 클랜들 경기 193건을 만듦 (76 새로 · 117 은 이미 숨김 상태)
+조치   02:11  scratchpad/vps_fix_findmissing_revert.mjs --confirm — 등록 22 → expelledAt · 경기 76 → supersededAt · Clan 22 → active=false
+       백업   VPS /root/sacloud/data/findmissing-revert/2026-09-23T17-11-48-686Z.json (전부 되돌릴 수 있다)
+       arcenciel · hiemis · legend1st · o'ω'o · 하히 · 혼겜러 · Nineone: · IDentitу · ‘세일러문’ · 天使 (nolink) · lunaclan (supply) · 나머지 11곳 (sanply)
+남은 것  Clan 「Valiant」(09-22 01:55 만듦 · sanply · 경기 0) — 진짜 클랜 「VaIiant」(대문자 I)와 닮은 이름. 경기가 없어 그대로 둠 [미확인]
+       두 리그 활성 26곳(09-05 한 클랜=한 리그 규칙과 충돌)은 별개 — 사장님 결정 대기
+```
+
 ### 되메우기 적재 (HANDOFF §0-A)
 ```
 미리보기  backfill-preview3.log — 만듦합=858(IPL 605 · SPL 96 · 열산 157) · draw 208
