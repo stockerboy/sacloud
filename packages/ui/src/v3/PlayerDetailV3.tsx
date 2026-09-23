@@ -871,7 +871,7 @@ function ScoreRowSupplySix({ row, me, mvp, weaponKnown, leagueSlug, side, maxDam
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
 
       {/* ① 플레이어 — ★클랜마크는 이름 앞에 항상★. 폰에서는 밑에 래더가 붙는다 */}
-      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         <MarkCircle clan={clan ? { slug: clan.slug, mark: clan.mark } : null} size={20} />
         <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 1 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
@@ -972,7 +972,7 @@ function ScoreRowLegacy({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
       {SCORE_WATERMARKS && me ? <span aria-hidden style={{ position: 'absolute', left: '66%', top: '50%', transform: 'translateY(-50%) skewX(-12deg) scaleY(0.92)', fontSize: 24, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.24em', color: '#0891b2', opacity: 0.14, WebkitTextStroke: '2.2px #0891b2', whiteSpace: 'nowrap', pointerEvents: 'none' }}>ME</span> : null}
-      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+      <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
         <MarkCircle clan={clan ? { slug: clan.slug, mark: clan.mark } : null} size={20} />
         {/* ★닉네임을 누르면 그 판 육각이 펼쳐진다★ (2026-09-15 사장님).
             ⚠ 옛 판은 ★선수 화면으로 가는 링크★ 였다 (2026-09-11). 그 길은 없어지지 않았다 —

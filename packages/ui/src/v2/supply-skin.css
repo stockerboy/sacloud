@@ -1355,8 +1355,9 @@ body.antialiased {
 @media (min-width: 701px) {
   /* 2026-09-23 낮 — 396 판에서 「enanthate ★MVP」 가 37px 로 잘렸다 (운영 QA). K/D/A 86→84 · 세이브 44→38 · 포지션 58→46 → 이름 +20 */
   /* 2026-09-23 오후 — 「순위」 칸 40px 이 둘째로 들어왔다 (사장님 ①-4). 옛 값: 84 46 0 · 84 38 46 0 */
-  .v3-score-row { grid-template-columns: minmax(96px, 1fr) 40px 84px 46px 0px !important; }
-  .v3-score-row--saves { grid-template-columns: minmax(96px, 1fr) 40px 84px 38px 46px 0px !important; }
+  /* 2026-09-23 밤 QA — MVP 줄 닉네임이 17px 잘렸다(★+스나 표시) → 순위 38 · kda 78 · 세이브 34 · 포지션 44 (이름 +14). 옛 값 40/84/38/46 */
+  .v3-score-row { grid-template-columns: minmax(96px, 1fr) 38px 78px 44px 0px !important; }
+  .v3-score-row--saves { grid-template-columns: minmax(96px, 1fr) 38px 78px 34px 44px 0px !important; }
   .v3-score-row > span:last-child { overflow: hidden; }
 }
 
@@ -1436,8 +1437,9 @@ body.antialiased {
 /* ★폰 명단 다섯 칸★ (2026-09-23 오후 ①-4) — 순위 칸이 들어오며 393 에서 「알수없음」 이 잘렸다(캡쳐).
    80+34+78+32+46 + 틈 30 + 여백 28 = 328 < 361. 선수 화면 `sac-sb-row` 도 같은 클래스라 같은 격자를 탄다 */
 @media (max-width: 700px) {
-  .v3-score-row { grid-template-columns: minmax(80px, 1fr) 34px 78px 46px 0px !important; gap: 6px !important; }
-  .v3-score-row--saves, .v3-score-row.sac-sb-row { grid-template-columns: minmax(80px, 1fr) 34px 78px 32px 46px 0px !important; gap: 6px !important; }
+  /* 2026-09-23 밤 QA — 폰 MVP 줄 10px 잘림 → kda 72 · 포지션 44. 옛 값 78/46 */
+  .v3-score-row { grid-template-columns: minmax(80px, 1fr) 34px 72px 44px 0px !important; gap: 6px !important; }
+  .v3-score-row--saves, .v3-score-row.sac-sb-row { grid-template-columns: minmax(80px, 1fr) 34px 72px 32px 44px 0px !important; gap: 6px !important; }
 }
 .v3-board-hexphone { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 

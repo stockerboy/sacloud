@@ -86,6 +86,20 @@ MVP 이유 상자    내림 (SHOW_MVP_WHY=false)
 옛 판       CLAN_HEADER_LIKE_PLAYER=false → 필 탭 + ClanCardV3(KPI·육각·주전 다섯)
 ```
 
+### 밤 2차 (커밋 `e628c373` ~ )
+```
+홈 배경     2차 그림(깃발 도열·성·아가멤논 망토 · 1536×1024) → /brand/home-hero.webp · 옛 그림은 home-hero-v1
+            PC 판 = 100vw×2/3 · 검색창 top 56vw−60(망토 위) · 폰 판 300/검색창 230 · 게시판 폭 840
+선수 PC     추이 그래프를 2단 왼쪽 칸 안으로(sac-trend-glued 가 sac-prr-main 첫 자식) · 오른쪽 카드 박제 sticky 105
+            경기 카드 max-width 없음(칸 꽉) · mc-pc 상하 25 · 판 1360 · 추이 세로 배율 1.1
+            머리 카드 무기 칩/탭 끔(HEAD_WEAPON_CHIPS) · 상세정보 제목 옆 「라이플/스나이퍼」
+경기분석    죽은 차례 칸 높이 152 고정 · ▶ 재생은 선을 0 에서 다시 그리며 축과 같이 진행(setMountDraw)
+명단 줄     MvpMark compact(★만) — 닉네임 잘림 · 격자 PC 38/78/34/44 · 폰 34/72/32/44
+클랜랭킹 폰 「n승 n패 n%」(개인랭킹과 같은 lead)
+QA 도구     scratchpad/qa.js — 잘림(…)·칸 밖·글자 겹침. measure.mjs 6번째 인자로 누름
+```
+⚠ 래더 증감 「+29점」(경기 카드)은 층으로 못 적어 그대로 — 사장님 확인 안 받음
+
 ### 로컬 QA 길 (이제 운영 안 밀고 확인한다)
 ```
 로컬 DB 에 배틀로그가 없어 경기분석이 안 열렸다 → scratchpad/seed-flow.mjs 가 합성 배틀로그 한 판을 심는다
