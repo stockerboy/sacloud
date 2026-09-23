@@ -210,14 +210,15 @@ export function MatchCardV3({ match: m, league, viewer = null, neutral = false, 
     : null
   /* ★폰 가운데 칸★ — MVP 표를 ★머리줄 오른쪽(래더 점수 앞)★ 으로 옮겼다 (2026-09-23 사장님 사진 「엠브이피뱃지는 형광펜 친 곳으로」).
      그래서 폰에서는 K/D/A 와 % 만 남는다. PC 는 `middle` 그대로 */
+  /* 2026-09-23 밤 사장님 「MVP 킬데스 위로 올리고 (PC·폰 둘 다)」 — 표를 K/D/A ★위★ 에. 옛 판: PC 는 아래 · 폰은 머리줄 오른쪽 */
   const middlePhone = !pending && my
-    ? <>{kda ?? <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}{kdPct}</>
+    ? <>{mvpIsViewer ? <MvpMark size={13} /> : null}{kda ?? <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}{kdPct}</>
     : null
   /* ③ 칸 — 보는 선수가 있으면 K/D/A, 없으면 MVP. 둘 다 없으면 비운다 (지어내지 않는다) */
   const middle = pending
     ? <span style={{ fontSize: 11.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>킬데스 수집중</span>
     : viewer
-      ? <>{kda ?? <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}{kdPct}{mvpIsViewer ? <MvpMark size={15} /> : null}</>
+      ? <>{mvpIsViewer ? <MvpMark size={15} /> : null}{kda ?? <span style={{ fontSize: 11, color: V3.textGhost }}>기록 없음</span>}{kdPct}</>
       : mvpEntry
         ? <MvpChip entry={mvpEntry} />
         : null
@@ -239,7 +240,7 @@ export function MatchCardV3({ match: m, league, viewer = null, neutral = false, 
           <span style={{ fontSize: 15.5, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{m.map.name}</span>
           <span style={{ fontSize: 14, color: V3.textFaint, whiteSpace: 'nowrap' }}>- {shortAgo(matchShownAt(m))}</span>
           <span style={{ flex: 1 }} />
-          {mvpIsViewer ? <span style={{ flex: 'none', display: 'inline-flex' }}><MvpMark size={13} /></span> : null}
+          {/* MVP 표는 K/D/A 위로 옮겼다 (2026-09-23 밤) */}
           <RatingDelta value={m.rating_update} size={15.5} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr) auto 30px', alignItems: 'center', gap: 8, padding: '8px 4px 8px 13px' }}>
@@ -247,13 +248,13 @@ export function MatchCardV3({ match: m, league, viewer = null, neutral = false, 
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 0 }}>{middlePhone ?? middle}</span>
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <MarkCircle clan={leftSnap.clan} size={22} />
-              <span style={{ fontSize: 15, fontWeight: 600, color: leftInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{leftSnap.clan.name}</span>
+              <MarkCircle clan={leftSnap.clan} size={19} />
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: leftInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{leftSnap.clan.name}</span>
             </span>
-            <span style={{ fontSize: 11.5, color: V3.textGhost, paddingLeft: 28 }}>vs</span>
+            <span style={{ fontSize: 11.5, color: V3.textGhost, paddingLeft: 25 }}>vs</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              <MarkCircle clan={rightSnap.clan} size={22} />
-              <span style={{ fontSize: 15, fontWeight: 600, color: rightInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{rightSnap.clan.name}</span>
+              <MarkCircle clan={rightSnap.clan} size={19} />
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: rightInk, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{rightSnap.clan.name}</span>
             </span>
           </span>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', borderLeft: `1px solid ${line}` }}>{pending ? null : chevron}</span>

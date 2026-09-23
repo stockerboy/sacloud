@@ -102,6 +102,8 @@ function yOnLine(pts: readonly (readonly [number, number])[], x: number): number
  *   값 계산(`kdPts`)은 그대로 돈다 — 지우면 두 선을 떼어 놓는 눈금(`lblGap`)이 어긋난다.
  */
 /* 2026-09-23 저녁 사장님 「그래프 판 세로 크기 줄이기」(한 번 더) — 2/3 → 1/2 */
+/** 판 가운데 「CLOUD 0」 워터마크 — 2026-09-23 밤 사장님이 지우라 하심 */
+const TREND_WATERMARK = false
 const TREND_H_SCALE = 1.1 /* 2026-09-23 밤 사장님 「그래프판 세로 1.3배」 (0.85×1.3) · 2026-09-23 밤 사장님 「그래프 세로를 더 늘려 배경을 타이트하게」 — 판이 좁아진 만큼 세로를 되살림. 옛 값 1/2 */
 
 export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '', showsKd = true, tone = V3 }: { days: readonly PlayerTrendDay[]; mode: TrendMode; markSlug: string | null; winLabel: string; kdLabel: string; seed?: string; showsKd?: boolean; tone?: V3Tone }) {
@@ -256,7 +258,8 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
           </filter>
         </defs>
         <rect x="0" y="0" width={width} height={H} fill={tone.plot} />
-        <text x={(X0 + X1) / 2} y={H / 2} textAnchor="middle" fontSize="62" fontWeight="900" fill={dark ? "#7aa2ff" : "#124a56"} opacity="0.05" letterSpacing="6">CLOUD 0</text>
+        {/* 2026-09-23 밤 사장님 「cloud0 워터마크 지워」 — TREND_WATERMARK=true 로 되돌린다 */}
+        {TREND_WATERMARK ? <text x={(X0 + X1) / 2} y={H / 2} textAnchor="middle" fontSize="62" fontWeight="900" fill={dark ? "#7aa2ff" : "#124a56"} opacity="0.05" letterSpacing="6">CLOUD 0</text> : null}
         {[0, 20, 40, 60, 80, 100].map((g) => (
           <g key={g}>
             <line x1={X0} y1={yOf(g)} x2={X1} y2={yOf(g)} stroke={tone.cardBorder} />
