@@ -295,8 +295,25 @@ function curl(method: 'GET' | 'POST', path: string, body: string | null): Promis
  * 1,200경기를 받고도 ★아직 끝이 아니었다★
  * ```
  */
+/**
+ * ★우리 slug 가 병영 clan_id 와 다른 클랜★ (2026-09-24 · HANDOFF §2-④ · 사장님 「자이언트 기록 누락」)
+ *
+ *   deluxe — 우리 slug `ferwfwfwfwf`(3rd.supply 미러 값)로 부르면 rtnCode -999(없음). 병영 검색(`barracks-clan-search deluxe`)이
+ *   준 `042222741` 은 ★이름 · 마크 둘(0_12_016 / 1_24_344) · 응답의 clan_no 150531000663(BarracksClanNumber)★ 이 전부 우리 줄과 같다.
+ *   추측이 아니라 대조다 (STATE §8 「추측해서 slug 를 만들지 마라」 는 지킨다 — 근거 없는 것은 안 넣는다).
+ *
+ *   ⚠ ★slug 는 안 바꾼다★ — 주소(/clan/ferwfwfwfwf) · 테마 · 마크 파일이 slug 로 걸려 있다. 병영을 부를 때만 바꿔 부른다.
+ *     원문 행의 `subject` 도 그대로 slug 라 투영기는 아무것도 몰라도 된다.
+ */
+export const BARRACKS_CLAN_ID_OVERRIDE: Readonly<Record<string, string>> = {
+  ferwfwfwfwf: '042222741',
+}
+export function barracksClanIdOf(clanSlug: string): string {
+  return BARRACKS_CLAN_ID_OVERRIDE[clanSlug] ?? clanSlug
+}
+
 export function fetchClanMatchList(clanSlug: string, seqNo?: string): Promise<CurlResult> {
-  const body: Record<string, string> = { clan_id: clanSlug }
+  const body: Record<string, string> = { clan_id: barracksClanIdOf(clanSlug) }
   /* ★첫 페이지는 `seq_no` 를 아예 안 보낸다★ — 화면도 그렇게 시작한다 */
   if (seqNo) body.seq_no = seqNo
   return callBarracks('POST', '/api/ClanHome/GetClanMatchList/', JSON.stringify(body))
