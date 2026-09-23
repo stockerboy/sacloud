@@ -26,7 +26,9 @@
   `WEAPON_RULE='raw'` 로 바꾸면 배틀로그 값 우선(close 근접·special 특수도 적음).
 - 계약: `RoundFlowRound.deaths[].weapon`(배틀로그 값 그대로) · `RoundFlowRound.bombs[]{at,side,action,by}` — 기본값이라 옛 응답과 맞음.
   nexon `roundFlowOf` 가 죽인 쪽 칸만 읽는다(death 줄→`target_weapon` · kill 줄→`weapon`). 테스트 3건.
-- 무기 그림은 우리가 그린 SVG(`WeaponGlyph`) — 사장님 사진 5장(`docs/ref/board2/`)은 모양 참고만 (CLAUDE.md 2-4).
+- 무기 그림: ★사장님 사진 그대로★ (`212a3c50` · 사장님 2026-09-24 새벽 「내가 준 사진 그대로 써 · 원본 복사해도 돼 · 저작권 없음」 — CLAUDE.md 2-4 를 이 그림에 한해 풀어 주심).
+  `docs/ref/board2/` 5장에서 무기만 잘라 `/brand/weapons/{rifle,sniper,throw,c4,pistol}.png` · `WEAPON_ICON='photo'`. 옛 판(우리 SVG)은 `'svg'`. 근접·특수·모름은 사진이 없어 SVG 그대로.
+- 운영 확인(2026-09-24 00:35): 3rdcloud.my 클랜 페이지(Celebrity) 경기 카드에 8건 다 붙음 — 실제 클랜마크가 킬 줄에 나옴 · `scratchpad/prod_b2_board.png`. 무기 사진 배포는 그 뒤 커밋이라 확인 중.
 - §0-D 안전판: 라운드 그래프 arm 이 IO 로만 되던 것을 스크롤/리사이즈 때 화면 안이면 켠다 (보일 때 한 번 규칙 그대로).
 - **§7-0 「옛 경기분석이 남아 있다」** — 코드상 경기분석 판은 `ClanScoreboardV3`(경기상세·목록·클랜·홈·소개)와 `PlayerDetailV3` 내부 사본 둘뿐이고 둘 다 같은 `RoundFlowChartV3`. **[미확인]** 사장님이 어느 화면을 보셨는지 못 물었다 — 배포 전 캐시였을 가능성. 운영 캡쳐로 다시 본다.
 - 로컬 QA: `scratchpad/seed-flow.mjs` 가 무기 값(riple/sniper/throw/close/빈)·폭탄 닉을 섞어 심는다. 캡쳐 `scratchpad/b2_pc.png` · `b2_phone.png`.
