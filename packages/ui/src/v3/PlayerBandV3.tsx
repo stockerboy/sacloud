@@ -13,6 +13,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { leagueScreen, type LeaguePlayerDetail } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { MarkCircle, clanThemeOf, hasFitMark, fitMarkUrl, RankText, type ClanTheme } from './primitives'
+import { nameStyle } from './clanThemes'
 import { V3, cardStyle, fmt, pct1 } from './tokens'
 import { formatRating } from '../common/format'
 
@@ -160,7 +161,7 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
           <MarkCircle clan={data.clan} size={46} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-              <span style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+              <span style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', ...nameStyle(theme), overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                 {data.player.name}
               </span>
               {weaponLabel ? (

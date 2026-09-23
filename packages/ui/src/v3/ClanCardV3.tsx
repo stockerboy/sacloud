@@ -18,7 +18,8 @@ import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
 import { markAccentOf, markColorsOf, markRailOf } from './clanMarkColors'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
-import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
+import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
+import { nameStyle } from './clanThemes'
 import { ASTRA_STYLE, V3, cardStyle, fmt, pct1 } from './tokens'
 import { formatRating } from '../common/format'
 
@@ -244,7 +245,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
         <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <MarkCircle clan={data.clan} size={42} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-            <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${accent ?? theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+            <span style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', ...nameStyle(theme), ...(accent ? { color: accent } : {}), overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
               {data.clan.name}
             </span>
             <span style={{ fontSize: 11, color: '#767f96', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>

@@ -22,6 +22,7 @@ import { leagueScreen, showsTier, type LeagueClanShow } from '@sacloud/contract'
 import { SUPPLY_INFO, supplyRankColor, supplyRateColor } from './rankColors'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf } from './primitives'
+import { nameStyle } from './clanThemes'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
 
@@ -52,11 +53,11 @@ export function ClanHeaderV3({ data, infoHref, seasonLabel, memberCount, renewAc
           <MarkCircle clan={data.clan} size={64} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-              <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.clan.name}</span>
+              <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap', ...nameStyle(theme), overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.clan.name}</span>
               {tiered ? <span style={{ padding: '3px 8px', border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, background: V3.chip, whiteSpace: 'nowrap' }}><TierText division={data.division} leagueCategory={data.league.category} size={11} /></span> : null}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 12, color: '#767f96', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
-              <span style={{ color: theme.deep, fontWeight: 500 }}>시즌 Cloud 0 · {fmt(games)}전</span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13.5, color: '#767f96', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
+              <span style={{ ...nameStyle(theme), fontWeight: 600 }}>시즌 Cloud 0 · {fmt(games)}전</span>
               {memberCount !== null && memberCount > 0 ? <><span style={{ color: '#b6bece' }}>·</span><span>클랜원 {fmt(memberCount)}명</span></> : null}
             </span>
           </span>

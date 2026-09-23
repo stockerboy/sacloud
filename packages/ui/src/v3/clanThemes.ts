@@ -20,6 +20,17 @@ export interface ClanTheme { light: string; main: string; deep: string; edge: st
 
 export const FALLBACK_THEME: ClanTheme = { light: "#cfd8f0", main: "#8b97ba", deep: "#4a577c", ink: "#dbe3f7", edge: "#b9c4e0", rgb: "139,151,186" }
 
+/*
+ * ★이름 글자색 — 한 곳★ (사장님 2026-09-24 새벽 「닉넴이랑 클랜명 넘 뿌예 · 의미없는 그라데이션 없애고 · 클랜마크랑 비슷한 색은 남겨」)
+ *   옛 판은 `deep`(어두운 색) 위에 `main` 16px 광선을 얹어 뿌옇게 번졌다.
+ *   지금은 ★`main`(마크 본색) 그대로 · 광선 없음★. NAME_INK 를 'deep-glow' 로 돌리면 옛 판 (CLAUDE.md 1-4)
+ */
+export const NAME_INK: 'main' | 'ink' | 'deep-glow' = 'main'
+export function nameStyle(theme: ClanTheme): { color: string; textShadow?: string } {
+  if (NAME_INK === 'deep-glow') return { color: theme.deep, textShadow: `0 0 16px ${theme.main}80` }
+  return { color: NAME_INK === 'ink' ? theme.ink : theme.main }
+}
+
 /** 키는 Clan.slug */
 export const CLAN_THEMES: Readonly<Record<string, ClanTheme>> = {
   "4473": { light: "#cfd0d7", main: "#818396", deep: "#4c5064", edge: "#a7a8b6", ink: "#babbc5", rgb: "129,131,150" },

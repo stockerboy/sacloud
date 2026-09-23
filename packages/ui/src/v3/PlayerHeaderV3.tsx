@@ -42,6 +42,7 @@ import { PlayerHexTrend } from './PlayerHexTrend'
 import { strengthAxes } from './playerHexAxes'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, RankText, TierText, clanThemeOf } from './primitives'
+import { nameStyle } from './clanThemes'
 import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
 import { formatRating, formatRatingPoint } from '../common/format'
 
@@ -556,7 +557,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           <MarkCircle clan={data.clan} size={64} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-              <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: theme.deep, textShadow: `0 0 16px ${theme.main}80`, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.player.name}</span>
+              <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap', ...nameStyle(theme), overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.player.name}</span>
               {HEAD_WEAPON_CHIPS && weapon !== null ? (
                 <span style={{ fontSize: 11, color: V3.textMuted, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, background: V3.chip, padding: '3px 8px', whiteSpace: 'nowrap' }}>{WEAPON_LABEL[weapon]}</span>
               ) : null}
@@ -576,8 +577,9 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
                 </span>
               )}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11.5, color: '#767f96', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
-              <span style={{ color: theme.deep, fontWeight: 500 }}>{data.clan?.name ?? '무소속'}</span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 14, color: '#767f96', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
+              {/* 2026-09-24 사장님 「마크 옆 클랜명 뿌예」 — deep → 마크 본색 · 11.5 → 14 */}
+              <span style={{ ...nameStyle(theme), fontWeight: 600 }}>{data.clan?.name ?? '무소속'}</span>
               {/*
                 ⚠ ★2026-09-15 밤 — 순위를 여기서 뺐다★ (무한 QA).
                   같은 카드 안에 «4위 / 137명» 이 ★두 번★ 있었다 — 이름 줄과 아래 KPI 칸.
