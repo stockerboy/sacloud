@@ -3,7 +3,57 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-23 새벽** · 갱신한 사람 B(실행 세션 · 서플라이 재현)
+> 마지막 갱신 **2026-09-23 밤** · 갱신한 사람 B(실행 세션 · 경기분석 진영판 · 선수/클랜 페이지 개편)
+
+---
+
+## 0-진영판. ★2026-09-23 오후~밤 — 경기분석 진영판 · 명단 다섯 칸 · 선수/클랜 페이지 한 양식★
+
+사장님 손그림 3장 + 시안 아티팩트 2개(https://claude.ai/code/artifact/26a4980d-cade-45b0-a6d6-a2c3ac020494)로 확정. 전부 `origin/main` (커밋 `cdfe3cc3` ~ `d2d1c4e6`).
+
+### 경기분석 칸 (경기 상세 · 클랜/선수 기록실 카드 — `ClanDetailV3` · `PlayerDetailV3` 두 파일 같은 코드)
+```
+경기분석 누르면   PC  진 팀 명단 자리에 육각(명단 크기 · .v3-board-hexin)   폰  명단 밑에 칩+육각
+그 밑            라운드 흐름 그래프 → 인원(사람 아이콘 빨강/파랑 · 죽으면 윤곽만) · 전반전/후반전 · nR · %
+                 → [레드] 클랜 n:n 클랜 [블루]  (★그 반의 점수★ · 후반 0:0 부터 · 후반이면 좌우 바뀜)
+                 → 죽은 차례 두 칸: 왼쪽 = 레드가 잡은 것 · 오른쪽 = 블루가 잡은 것 · 이름 색 = 그 반의 진영
+▶ 재생           축이 왼→오 훑는다 · 라운드당 5초 · 만지면 멈춤
+명단 칸          플레이어 · 순위(리그 개인랭킹 · 계약 league_rank · playerRankOf 와 같은 모집단) · kda · 세이브 「n회」 · 포지션
+MVP 이유 상자    내림 (SHOW_MVP_WHY=false)
+```
+- 진영 = `hud.attack`(그 라운드 공격 팀). 공수 미상 라운드는 진영판을 못 그려 옛 세로 목록으로 떨어진다 (D-106).
+- 옛 판 스위치: `HALF_SUMMARY`(전후반 요약 상자) · `CREW_ABOVE`(○ 인원 줄) · `PILLAR_HEX`(왼쪽 여백 기둥 — 「너무 작아」) · `PHONE_ANALYSIS_IN_LIST` · `ScoreRowSupplySix`(여섯 칸 줄)
+
+### 선수 페이지 (`PlayerHeaderV3` · `PlayerDetailV3` · player layout)
+```
+머리 카드   마크 64 · 닉네임 30 · 래더 30(오른쪽 위) · MVP·핵의심 발 줄은 PC 도 접음(.v3-phead-foot)
+탭          기록실/지난시즌 링크 탭 삭제(PLAYER_LINK_TABS=false) · 그래프판이 카드에 바로 붙음(.sac-trend-glued)
+추이 그래프  세로 1/2 (plotBox hScale) · 기본 「누적」
+2단         본문 | 330  · 컨테이너 1400(.sac-player-page · 선수·클랜만)
+오른쪽 카드  제목 = 닉네임 · 래더·승률·킬뎃·판킬·MVP「n판 중 k회」·랭킹·소속·핵의심 n회+신고 · sticky top 105
+최근매치    오른쪽에 「최근 20전 승률 · 킬뎃 n% (n킬 n데스)」 (MatchSummary.kill/death/kd_rate)
+삭제        「최근 같이한 플레이어」 PC·폰 (SHOW_TEAMMATES=false)
+폰          상세정보 줄이 머리 카드 안(.v3-phead-info-phone) · 「기록실 | 플레이분석」 탭 · 육각은 플레이분석 탭
+```
+
+### 클랜 페이지 = 선수 페이지 (「토시 하나 다른 배치 없이」)
+```
+머리 카드   ClanHeaderV3 (새 파일) — 마크 64 · 클랜명 30 · 「시즌 Cloud 0 · n전 · 클랜원 n명」 · 래더 30 · 전적갱신/기본정보
+본문        BODY_LIKE_PLAYER: 승률 추이(남색 · 클랜은 킬뎃 없음) → [클랜별전적 · 통합 기록실 | 클랜명 카드(래더·승률·최다연승·랭킹·클랜원) · 플레이분석 육각]
+계약        LeagueClanShow.trend (PlayerTrendDay · clanMetrics.rows 로 접음)
+옛 판       CLAN_HEADER_LIKE_PLAYER=false → 필 탭 + ClanCardV3(KPI·육각·주전 다섯)
+```
+
+### 로컬 QA 길 (이제 운영 안 밀고 확인한다)
+```
+로컬 DB 에 배틀로그가 없어 경기분석이 안 열렸다 → scratchpad/seed-flow.mjs 가 합성 배틀로그 한 판을 심는다
+  + BarracksClanNumber(C100/C200) 연결 + nexon clan-hex-v2-build --league secondline --confirm
+  + 경기 startAt 을 시즌 창 안(9/20)으로 옮김.  QA 경기 /league/secondline/match/260820091557102998
+  선수 /league/secondline/player/500004181 · 클랜 /league/secondline/clan/bluestream01
+DB 안 뜨면   postmaster.pid 지우고 pg_ctl start (scratchpad 명령은 STATE 위 「DB」 절)
+캡쳐 도구    shot.mjs 가 단추(토글)를 두 번 눌러 도로 닫히던 것 → 4초 기다린 뒤 판단 · measure.mjs 도 6번째 인자로 누름
+```
+⚠ 로컬 화면은 ★합성 숫자★ 다 — 배치·잘림만 본다. 운영 값 검증은 3rdcloud.my 로.
 
 ---
 
