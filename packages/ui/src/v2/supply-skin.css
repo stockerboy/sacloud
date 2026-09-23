@@ -1316,3 +1316,18 @@ body.antialiased {
   .v3-score-row--saves { grid-template-columns: minmax(96px, 1fr) 86px 44px 58px 0px !important; }
   .v3-score-row > span:last-child { overflow: hidden; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★글씨체를 서플라이와 같게★ (2026-09-23 새벽 · 사장님: 「글씨체는 서플라이랑 똑같은지 … 다 확인해」)
+   서플라이 실측(사장님 크롬 · 1528px): body 와 모든 글자가
+     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif
+   = Tailwind 기본 sans 스택. 웹폰트를 하나도 안 받는다(document.fonts 비어 있음).
+   윈도우에서 한글은 이 스택을 타고 ★맑은 고딕★ 으로 떨어진다. 우리는 Noto Sans KR 웹폰트였다.
+   ⚠ 옛 값은 styles.css 의 --font-body 에 그대로 있다 (CLAUDE.md 1-4). 이 블록을 지우면 Noto 로 돌아온다.
+   v3 상세 화면의 큰 숫자(Chakra Petch)는 그대로 둔다 — 서플라이에 없는 「추가된 기능」 자리다.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
