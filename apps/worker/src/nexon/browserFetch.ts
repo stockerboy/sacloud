@@ -230,6 +230,19 @@ export class BarracksBrowser {
       '--no-first-run',
       '--no-default-browser-check',
       '--disable-dev-shm-usage',
+      /*
+       * ★2026-09-24 — 프로필 하나가 160MB★ (VPS /tmp tmpfs 982M 이 87% · load 46 · 09-09 P0 와 같은 병).
+       *   실측: optimization_guide_model_store 46M · component_crx_cache 38M · WasmTtsEngine 23M · Safe Browsing 19M —
+       *   ★새 프로필마다 크롬이 부품을 내려받는다.★ 페이지 캐시(6.8M)가 아니었다.
+       *   puppeteer 기본 인자와 같은 다섯 개로 부품 갱신·백그라운드 통신을 끈다. 병영 호출과는 무관하다
+       */
+      '--disable-background-networking',
+      '--disable-component-update',
+      '--disable-default-apps',
+      '--disable-sync',
+      '--disable-extensions',
+      '--disable-features=OptimizationHints,OptimizationGuideModelDownloading,OptimizationTargetPrediction,MediaRouter',
+      '--disk-cache-size=16777216',
       '--window-size=1280,900',
       '--lang=ko-KR',
       /* ⚠ `--enable-automation` 을 ★안 붙인다.★ 숨기는 것이 아니라 안 붙이는 것이다 —
