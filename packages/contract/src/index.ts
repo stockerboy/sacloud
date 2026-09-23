@@ -8,6 +8,8 @@ export * from './flagDay'
 export * from './flagScore'
 /* ★라운드 승률 빈도표★ (2026-09-23) — 라운드 흐름 그래프가 확률을 여기서 낸다 */
 export * from './roundOdds'
+/* ★스코어 → 경기 승률 빈도표★ (2026-09-23 · 시안 2) */
+export * from './scoreOdds'
 export * from './form'
 export * from './todayPerformance'
 export * from './tierBreakdown'

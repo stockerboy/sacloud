@@ -18,7 +18,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RoundFlow } from '@sacloud/contract'
-import { roundOddsPlain, roundOddsSided } from '@sacloud/contract'
+import { matchOddsInRound, roundOddsPlain, roundOddsSided, scoreOdds } from '@sacloud/contract'
 import { V3, type V3Tone } from './tokens'
 import { fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
 import { PLOT, noise, penDash, plotBox, pointsToStr, seedOf, useDrawIn } from './seasonPlot'
@@ -32,13 +32,23 @@ export interface RoundFlowTeam {
 
 interface Pt {
   x: number
-  /** 이긴 클랜이 이 라운드를 딸 확률 (0~100) */
+  /** 이긴 클랜의 값 (0~100) — AXIS 가 'match' 면 경기 승률 · 'round' 면 이 라운드를 딸 확률 */
   v: number
   round: number
   aliveW: number
   aliveL: number
+  /** 이 시점의 라운드 스코어 (이긴 클랜 : 진 클랜) */
+  scoreW: number
+  scoreL: number
   est: boolean
 }
+
+/*
+ * ★세로축★ (2026-09-23 낮 · 사장님: 시안 5개 중 「시안 2 가 좋은데」)
+ *   'match'  이 경기를 이길 확률 — 스코어 빈도표 × 인원 빈도표 (`matchOddsInRound`). sleeper 와 같은 축
+ *   'round'  이 라운드를 딸 확률 — 첫 답(회의 ①)이었다. 옛 판으로 남긴다 (CLAUDE.md 1-4)
+ */
+const AXIS: 'match' | 'round' = 'match'
 
 /*
  * ★2026-09-23 낮 — 「깔끔하게」 (사장님: 「그래프 가독성이 너무 떨어져 오른쪽 사진(sleeper)처럼 깔끔하면 좋겠어」).
@@ -111,13 +121,17 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     const pts: Pt[] = []
     const ticks: { x: number; round: number }[] = []
     let anyEst = false
-    /* 출발 — 옛 판은 이긴 클랜이 아래(0)에서 (상대전적 그래프와 같다). 지금은 1라운드 5:5 값에서 바로 시작 */
-    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, est: false })
+    let scoreW = 0
+    let scoreL = 0
+    /* 출발 — 옛 판은 이긴 클랜이 아래(0)에서 (상대전적 그래프와 같다). 지금은 1라운드 값에서 바로 시작 */
+    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, est: false })
     for (const r of rounds) {
       const half: 'A' | 'B' = s !== null && r.round >= s ? 'B' : 'A'
+      const halfKey: 'first' | 'second' = half === 'A' ? 'first' : 'second'
       let aliveW = sizeW
       let aliveL = sizeL
-      const odds = (): { p: number; est: boolean } => {
+      /* 이 라운드를 딸 확률 — 인원 빈도표 */
+      const roundOdds = (): { p: number; est: boolean } => {
         if (r.defence === null) {
           const o = roundOddsPlain(aliveW, aliveL)
           return { p: o.p, est: o.estimated }
@@ -128,10 +142,17 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         const o = roundOddsSided(att, def)
         return { p: wAttacks ? o.p : 1 - o.p, est: o.estimated }
       }
+      /* 축이 정하는 값 — 경기 승률이면 스코어 빈도표와 섞는다 */
+      const odds = (): { p: number; est: boolean } => {
+        const ro = roundOdds()
+        if (AXIS === 'round') return ro
+        const mo = matchOddsInRound(scoreW, scoreL, ro.p, halfKey)
+        return { p: mo.p, est: ro.est || mo.estimated }
+      }
       ticks.push({ x: xOf(r.start, half), round: r.round })
       let o = odds()
       anyEst = anyEst || o.est
-      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, est: o.est })
+      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, est: o.est })
       for (const d of r.deaths) {
         if (d.side === W) aliveW = Math.max(0, aliveW - 1)
         else aliveL = Math.max(0, aliveL - 1)
@@ -144,17 +165,43 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         /* 계단 — 죽기 직전까지는 앞 값 그대로 */
         const prev = pts[pts.length - 1] as Pt
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, est: o.est })
+        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, est: o.est })
       }
       {
         /* 라운드 끝 — 마지막 상태 값을 라운드 끝까지 끌고 간다. 옛 판(JUMP_ON_ROUND_END)은 여기서 100/0 으로 튀었다 */
         const prev = pts[pts.length - 1] as Pt
         const x = xOf(r.end, half)
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, est: false })
+        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, est: false })
       }
+      if (r.winner === W) scoreW += 1
+      else if (r.winner === L) scoreL += 1
     }
-    return { pts, ticks, twoHalves, XM, anyEst, rounds }
+    /* 경기 끝 — 최종 스코어의 경기 승률 (이긴 쪽이 1 에 가깝다) */
+    if (AXIS === 'match' && pts.length > 0) {
+      const so = scoreOdds(scoreW, scoreL, s !== null && second.length > 0 ? 'second' : 'first')
+      const prev = pts[pts.length - 1] as Pt
+      pts.push({ ...prev, v: so.p * 100, scoreW, scoreL, est: so.estimated })
+      anyEst = anyEst || so.estimated
+    }
+    /* 전후반 요약 — 사장님 형식 「더법(선레드) 4라운드 1설」 */
+    const summary = (list: typeof rounds) => {
+      const won = { W: 0, L: 0 }
+      const planted = { W: 0, L: 0 }
+      let defW = 0
+      let defL = 0
+      for (const r of list) {
+        if (r.winner === W) won.W += 1
+        else if (r.winner === L) won.L += 1
+        if (r.planted === W) planted.W += 1
+        else if (r.planted === L) planted.L += 1
+        if (r.defence === W) defW += 1
+        else if (r.defence === L) defL += 1
+      }
+      const attack: 'W' | 'L' | null = defW > defL ? 'L' : defL > defW ? 'W' : null
+      return { rounds: list.length, won, planted, attack }
+    }
+    return { pts, ticks, twoHalves, XM, anyEst, rounds, first: summary(first), second: summary(second), scoreW, scoreL }
   }, [flow, winner.side, loser.side, X0, X1])
 
   const salt = seedOf(`${winner.slug ?? winner.name}|${loser.slug ?? loser.name}`)
@@ -187,6 +234,10 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   }
   const hoverPt: Pt | null = hover === null ? null : (model.pts.filter((p) => p.x <= hover).pop() ?? model.pts[0] ?? null)
   const last = model.pts[model.pts.length - 1] as Pt | undefined
+  /* ★인원 줄★ (시안 A · 사장님 「인원 우위가 어케 됐는지도 축 이동하면서」) — 축이 없으면 마지막 상태 */
+  const hud: Pt | null = hoverPt ?? last ?? null
+  const sizeW = flow.team_size[winner.side]
+  const sizeL = flow.team_size[loser.side]
   const endW = last ? last.v : 50
   const R = PLOT.markerR
   const nowX = last ? last.x : X1
@@ -199,8 +250,51 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   const loseInk = loser.theme.main
   const every = phone && model.ticks.length > 10 ? 2 : 1
 
+  const dots = (n: number, total: number, color: string) => (
+    <span style={{ display: 'inline-flex', gap: 3, verticalAlign: 'middle', margin: '0 5px' }}>
+      {Array.from({ length: total }, (_, i) => (
+        <i key={i} style={{ width: 10, height: 10, borderRadius: '50%', border: `1.5px solid ${color}`, background: i < n ? color : 'transparent', opacity: i < n ? 1 : 0.35, display: 'inline-block' }} />
+      ))}
+    </span>
+  )
+  const sideWord = (half: 'first' | 'second', team: 'W' | 'L', attack: 'W' | 'L' | null): string => {
+    if (attack === null) return ''
+    const isAttack = team === attack
+    return half === 'first' ? (isAttack ? '선레드' : '선블루') : isAttack ? '레드' : '블루'
+  }
+  const halfRow = (label: string, sum: { rounds: number; won: { W: number; L: number }; planted: { W: number; L: number }; attack: 'W' | 'L' | null }, half: 'first' | 'second') => (
+    <div style={{ padding: '8px 12px', minWidth: 0 }}>
+      <div style={{ fontSize: 10.5, color: tone.textDim, letterSpacing: '.06em', marginBottom: 3 }}>{label} · {sum.rounds}라운드</div>
+      {([['W', winner, winInk], ['L', loser, loseInk]] as const).map(([k, team, color]) => (
+        <div key={k} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12.5, padding: '1px 0', minWidth: 0 }}>
+          <span style={{ fontWeight: 700, color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{team.name}</span>
+          <span style={{ fontSize: 10.5, color: tone.textDim, whiteSpace: 'nowrap' }}>{sideWord(half, k, sum.attack) ? `(${sideWord(half, k, sum.attack)})` : ''}</span>
+          <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+            <b style={{ color: tone.textStrong, fontSize: 14 }}>{sum.won[k]}</b>라운드
+            {sum.attack === k ? <> <b style={{ color: tone.textStrong, fontSize: 14 }}>{sum.planted[k]}</b>설</> : null}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+
   return (
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: tone.plot }}>
+      {/* ★전후반 요약★ — 라운드 수 · 설치 수 · 진영 (2026-09-23 사장님) */}
+      <div style={{ display: 'grid', gridTemplateColumns: phone ? '1fr' : '1fr 1fr', gap: 1, background: tone.cardBorder, border: `1px solid ${tone.cardBorder}`, marginBottom: 6 }}>
+        <div style={{ background: tone.plot }}>{halfRow('전반', model.first, 'first')}</div>
+        {model.second.rounds > 0 ? <div style={{ background: tone.plot }}>{halfRow('후반', model.second, 'second')}</div> : null}
+      </div>
+      {/* ★인원 줄★ — 축을 옮기면 따라온다 (시안 A) */}
+      {hud ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5, padding: '4px 6px 6px', minHeight: 26 }}>
+          <span style={{ color: tone.textDim }}>{hud.round === 0 ? '시작' : `${hud.round}라운드`}</span>
+          <span style={{ fontWeight: 800, color: tone.textStrong, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{hud.scoreW} : {hud.scoreL}</span>
+          <span style={{ color: winInk, whiteSpace: 'nowrap' }}>{phone ? '' : winner.name}{dots(hud.aliveW, sizeW, winInk)}<b>{hud.aliveW}</b></span>
+          <span style={{ color: loseInk, whiteSpace: 'nowrap' }}>{phone ? '' : loser.name}{dots(hud.aliveL, sizeL, loseInk)}<b>{hud.aliveL}</b></span>
+          <span style={{ marginLeft: 'auto', color: tone.textDim, fontVariantNumeric: 'tabular-nums' }}>{hud.v.toFixed(0)}% : {(100 - hud.v).toFixed(0)}%{hud.est ? ' · 어림' : ''}</span>
+        </div>
+      ) : null}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${H}`}
@@ -265,12 +359,10 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         ) : null}
         {hoverPt !== null && hover !== null ? (
           <g pointerEvents="none">
+            {/* 옛 판은 여기 글자로 「n라운드 · 5:4 · 65%」 를 적었다 — 지금은 위 인원 줄이 말한다 */}
             <line x1={hover} y1={Y_TOP - 6} x2={hover} y2={Y_BOTTOM + 6} stroke="#0891b2" strokeWidth={1} opacity={0.7} />
-            <text x={phone ? (X0 + X1) / 2 : Math.max(X0 + 160, Math.min(X1 - 160, hover))} y={Y_BOTTOM + 44} textAnchor="middle" fill="#0891b2" fontSize={PLOT.tickFont}>
-              {hoverPt.round === 0 ? '시작' : phone
-                ? `${hoverPt.round}R · ${hoverPt.aliveW}:${hoverPt.aliveL} · ${hoverPt.v.toFixed(0)}%${hoverPt.est ? ' [추정]' : ''}`
-                : `${hoverPt.round}라운드 · ${winner.name} ${hoverPt.aliveW} : ${hoverPt.aliveL} ${loser.name} · ${hoverPt.v.toFixed(0)}%${hoverPt.est ? ' [추정]' : ''}`}
-            </text>
+            <circle cx={hoverPt.x} cy={yOf(hoverPt.v)} r={5} fill={winInk} stroke={tone.plot} strokeWidth={1.5} />
+            <circle cx={hoverPt.x} cy={yOf(100 - hoverPt.v)} r={5} fill={loseInk} stroke={tone.plot} strokeWidth={1.5} />
           </g>
         ) : null}
         {last ? (
