@@ -75,6 +75,8 @@ const JUMP_ON_ROUND_END = false
 const GLOW = false
 const WIGGLE = 0
 const DASH_ESTIMATED = false
+/** 3.6초 긋기 애니메이션 — 폰에서 중간에 멈춘 채 남아 껐다 (2026-09-23 사장님) */
+const DRAW_IN = false
 /** 깔끔한 판의 선 두께 (sleeper 참고) */
 const CLEAN_W = 2.6
 
@@ -101,7 +103,15 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const draw = useDrawIn(3600, `${winner.slug ?? winner.name}|${flow.rounds.length}`, boxRef)
+  /*
+   * ★그려지는 애니메이션을 끈다★ (2026-09-23 · 사장님 폰 캡쳐: 선이 3라운드에서 끊겨 보였다 —
+   *   「몇 라운드를 했든 이 그래프 공간은 처음부터 끝까지 다 써라」).
+   *   상대전적 그래프의 `useDrawIn` 은 화면에 보일 때 3.6초에 걸쳐 긋는데, 폰에서 접혀 있다 펼쳐지는
+   *   이 자리에서는 중간에 멈춘 채 남았다. 경기는 끝난 것이니 처음부터 끝까지 한 번에 그린다.
+   *   옛 판(애니메이션)은 DRAW_IN 을 true 로.
+   */
+  const drawIn = useDrawIn(3600, `${winner.slug ?? winner.name}|${flow.rounds.length}`, boxRef)
+  const draw = DRAW_IN ? drawIn : 1
   const box = plotBox(width)
   /* 오른쪽 끝 마커 옆에 「100%」 를 적는다 (sleeper 처럼) — 그만큼 판을 안으로 */
   const { H, X0, Y_TOP, Y_BOTTOM, phone } = box
