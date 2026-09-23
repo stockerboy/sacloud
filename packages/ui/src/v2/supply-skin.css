@@ -1528,7 +1528,9 @@ body.antialiased {
 /* 2026-09-23 밤 사장님 「검색창을 이쯤(어깨 위) · 당긴 만큼 게시판도 당겨」 — 검색창 150 위로(650→500) · 판 높이는 그대로 두고
    게시판이 판 아래 150 을 덮는다(어깨 아래 어두운 몸통뿐이라 가려도 된다). 옛 값 650 / +18 */
 .home-hero--art { padding-top: 500px !important; padding-bottom: 176px !important; background-position: center top, center bottom !important; }
-.home-hero--art + div { margin-top: -132px !important; position: relative; z-index: 2; }
+@media (min-width: 768px) { .home-hero--art + div { margin-top: -132px !important; position: relative; z-index: 2; } }
+/* 폰은 판이 낮아 음수 마진을 주면 검색창을 덮는다 (2026-09-23 밤 폰 캡쳐) → 폰은 18 그대로 */
+@media (max-width: 767px) { .home-hero--art + div { margin-top: 18px !important; } }
 /* PC 게시판 폭 — 서플라이 게시판 표 폭 1076 (옛 672 는 서플라이 ★홈★ Hot카드 실측 · CLAUDE.md 1-4) */
 @media (min-width: 768px) {
   /* 섹션이 내용 폭으로 줄어(flex items-center) 안이 100% 를 못 받았다 → 섹션부터 100% */
