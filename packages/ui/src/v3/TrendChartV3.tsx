@@ -246,7 +246,8 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
   const wrShift = lblOverlapX && Math.abs(lblGap) < lblNeed ? (lblGap >= 0 ? -(lblNeed - lblGap) / 2 : (lblNeed + lblGap) / 2) : 0
   const kdShift = -wrShift
   /* 마커 밑 작은 글자 — 판 바닥에 닿으면(0% 근처) ★값 글자 위★ 로 올린다. 바닥에만 붙이면 값 글자(cy+5)와 포개졌다 (운영 실측 2026-09-24 06:40) */
-  const subYOf = (cy: number, shift: number) => (cy + 20 + shift > Y_BOTTOM - 3 ? cy - 12 + shift : cy + 20 + shift)
+  /* cy−12 는 값 글자(18px · 상자 cy−17..cy+5)와 5px 겹쳤다(운영 7회차 실측) → cy−18 */
+  const subYOf = (cy: number, shift: number) => (cy + 20 + shift > Y_BOTTOM - 3 ? cy - 18 + shift : cy + 20 + shift)
   const wrSubY = subYOf(wrCy, wrShift)
   const kdSubY = subYOf(kdCy, kdShift)
   /* 2026-09-24 QA(운영 폰 DAY): 값이 0% 면 마커 밑 작은 글자(「오늘 3승 3패」)가 x축 눈금 「10/1」 과 포개졌다 → 판 바닥 위로 붙잡는다 */
