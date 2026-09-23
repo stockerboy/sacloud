@@ -177,6 +177,9 @@ MVP 표 → 머리줄 오른쪽(점수 앞) — 사장님 형광펜 자리. 서�
    빈 커밋(94ee7f7f)은 「Skipped - Not affected」. ★실제 파일 변경이 있는 커밋★(1eee84a1 · 주석 한 줄)을 밀어야 빌드된다.
    확인법: curl https://api.github.com/repos/stockerboy/sacloud/deployments → sha 와 statuses (gh 없이 됨)
 상대전적 그래프(H2HChartV3) 폰 값 글자 「40.0%」 가 svg 오른쪽(373)을 넘어 잘림 → 폰은 마커 위/아래 가운데 (1b8649e0)
+죽은 차례 줄을 ★그래프 아래★ 로 (사장님: 「공간이 달라지니까 판이 위아래로 움직여 정신없어」) · 최소 높이(폰 64) · 긋기 4.2초 ease-in-out (「처음에 너무 빨리」)
+카드 ⑤ 194 (열산 methodcrew 71>67) · 개인랭킹 폰 지표 칸 52→50 (열산 너구리마을 태그 54>50)
+⚠ GitHub deployments API 는 익명 60회/시간 — 폴링을 오래 하면 err 0. 대신 DOM 을 재서 배포를 확인한다 (below.js 처럼)
 
 ### ⚠ [미확인] · 다음
 - 모바일 1~6차 진행 중 (위). 상대전적 머리 겹침·스코어보드 이름 잘림은 잡았다
