@@ -28,6 +28,13 @@
 상대전적 폰  5:0 이면 「100.0%」 가 「now」 위에, 「0.0%」 가 「3시」 눈금 위에 포개짐 → 판 끝에 닿는 글자는 마커 왼쪽   (29d37dca)
 게시판 PC   글보기/글쓰기가 상단바에 붙음 → pt-4/md:pt-8   (385a0281)
 ```
+### 3회차 (운영 · 04:20~05:10 · 49페이지 × PC·폰) — 고친 것
+```
+★500★      클랜원(/league/…/clan/…/player · /clan/…/player) · 클랜 시즌 · 선수 시즌 — 'use client' 페이지에 export const revalidate 가 있어 Next 가 500.
+           네 파일에서 그 줄을 뺐다 (4fcdbce1). 로컬 200 확인. qa2 가 이제 HTTP 상태도 잰다
+옛 점 표기   /clan/<slug> 「3,123 점」 등 9곳(ClanProfile · ClanHeadCard · ClanRoster ×2 · MatchCard ×2 · PlayerHeadCard · SeasonTable) → formatRating 「31층」 (94d13af9)
+열산 폰     폼 TOP3 「+241점 (10경기)」 줄바꿈 → nowrap · 「미참여 −11점」 이 다음 줄에 걸침 → 폰 숨김
+```
 3회차: 리그별 변주 17페이지 더해서(IPL/열산 랭킹 · 열산 고용 · 배지 상세 · 시즌/클랜원 페이지 · 리그 소개/정보 · /clan/<slug> · 비번찾기) 돌리는 중
 
 안 고친 것(정상/오탐): about 장식 SVG 칸밖 · 배지 페이지 각주 겹침(굵은 글자 span) · 서랍 겹침(서랍이 본문 위) · hire/league-board 는 supply 에서 클랜랭킹으로 감
