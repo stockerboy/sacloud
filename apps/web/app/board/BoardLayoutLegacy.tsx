@@ -37,7 +37,9 @@ export default function BoardLayoutLegacy({ children }: { children: React.ReactN
   /* ★에타 꼴★ (2026-09-24) — 옆 메뉴(BoardNav) 없이 한 칸. 탭은 목록 화면 안에 있다. 옛 판은 아래 그대로 */
   if (BOARD_LAYOUT_ETA) {
     void infos
-    return <div className="mx-auto w-full max-w-[720px] pb-10">{children}</div>
+    /* 목록(/board/<카테고리>)은 줄마다 제 여백이 있고, 글쓰기·글 보기는 없어서 폰에서 제목이 왼쪽 끝에 붙었다 (2026-09-24 QA) → 목록 아닌 화면만 좌우 12px */
+    const isList = /^\/board\/[^/]+\/?$/.test(pathname)
+    return <div className={`mx-auto w-full max-w-[720px] pb-10 ${isList ? '' : 'px-3'}`}>{children}</div>
   }
 
   return (
