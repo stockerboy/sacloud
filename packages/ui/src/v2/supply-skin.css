@@ -1326,8 +1326,9 @@ body.antialiased {
    396 판에서 이름 칸이 148 이고 MVP 배지가 들어가면 「중정…」 (운영 실측 38px). PC 도 0 → 이름 +30 (2026-09-23) */
 @media (min-width: 701px) {
   /* 2026-09-23 낮 — 396 판에서 「enanthate ★MVP」 가 37px 로 잘렸다 (운영 QA). K/D/A 86→84 · 세이브 44→38 · 포지션 58→46 → 이름 +20 */
-  .v3-score-row { grid-template-columns: minmax(96px, 1fr) 84px 46px 0px !important; }
-  .v3-score-row--saves { grid-template-columns: minmax(96px, 1fr) 84px 38px 46px 0px !important; }
+  /* 2026-09-23 오후 — 「순위」 칸 40px 이 둘째로 들어왔다 (사장님 ①-4). 옛 값: 84 46 0 · 84 38 46 0 */
+  .v3-score-row { grid-template-columns: minmax(96px, 1fr) 40px 84px 46px 0px !important; }
+  .v3-score-row--saves { grid-template-columns: minmax(96px, 1fr) 40px 84px 38px 46px 0px !important; }
   .v3-score-row > span:last-child { overflow: hidden; }
 }
 
@@ -1409,6 +1410,14 @@ body.antialiased {
   .v3-board > .v3-board-flow { grid-column: 1 / -1; grid-row: 2; }
   /* 명단 밑 육각은 ★가운데 420★ 까지만 (서플라이 판 폭) */
   .v3-board-hexphone > svg { max-width: 420px; }
+  /* ★★경기분석 → 진 팀 명단 자리에 육각★★ (2026-09-23 오후 사장님 「진팀 명단 위에 · 명단에 딱 들어가게」)
+     명단 줄(머리 + 5줄 ≈ 300px)만큼 판을 잡고 svg 를 그 높이에 맞춘다. 명단은 그동안 숨는다 · 폰은 명단 밑 육각(hexphone)이 그대로 */
+  .v3-board > .v3-board-lose:has(.v3-board-hexin) { display: flex; flex-direction: column; }
+  .v3-board-hexin { flex: 1; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 10px 10px; }
+  .v3-board-hexin > svg { width: auto !important; height: 232px; max-width: 100%; }
+  .v3-board-list--hexin { display: none; }
+  /* PC 는 진 팀 명단 자리에 육각이 있으니 명단 밑 육각은 안 그린다 */
+  .v3-board-hexphone { display: none; }
 }
 
 @media (min-width: 1400px) {

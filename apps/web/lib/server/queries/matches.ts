@@ -1,4 +1,4 @@
-import { prisma, type Prisma } from '@sacloud/db'
+import { prisma, Prisma } from '@sacloud/db'
 import { MATCH_HEX_SELECT, matchHexOf, type MatchHexRow } from './matchPlayerHex'
 import { softFail } from '../softFail'
 import {
@@ -27,6 +27,8 @@ import { matchClanHexV2 } from './clanHexV2'
 /* ★라운드 흐름★ (2026-09-23 사장님) — 배틀로그 원문 한 응답을 그 자리에서 편다 */
 import { matchRoundFlow } from './roundFlow'
 import { withSeasonWindow } from './season0Scope'
+/* 명단 「순위」 칸의 판수 문턱 — 랭킹 목록·`playerRankOf` 와 같은 값 (2026-09-23) */
+import { rankMinGamesOf } from '@sacloud/contract'
 
 /**
  * 매치 조회 (기록실 목록 · 매치 상세).
@@ -588,6 +590,7 @@ function toMatchPlayerStat(
     position_label: positions?.get(stat.playerId) ?? null,
     /* 세이브는 경기 상세가 배틀로그 표를 읽어 덮어쓴다. 목록에서는 모른다 (2026-09-10) */
     saves: null,
+    league_rank: null,
     /* ★점수판★ — 목록 매퍼는 점수를 안 읽는다. 상세에서만 채운다 (D-106) */
     score_parts: null,
     save_chances: null,
@@ -1121,7 +1124,7 @@ export async function getMatch(
    *   그건 주소를 손으로 고쳐야 나오는 경우라 드물고, 대신 정상 요청 전부가 빨라진다.
    */
   const playerIds = match.stats.map((stat) => stat.playerId)
-  const [clans, now, positionsResolved, saveRows, hexRows, plateRows, plateCuts, weaponRows, hexV2] = await Promise.all([
+  const [clans, now, positionsResolved, saveRows, hexRows, plateRows, plateCuts, weaponRows, hexV2, leagueRankRows] = await Promise.all([
     loadLeagueClanContext(leagueId, leagueClanIdsOf([match])),
     /* ★지금 소속★ — 명단에 옛 클랜 대신 지금 클랜을 적는다 (2026-09-21 사장님) */
     loadCurrentClanContext(leagueId, playerIds),
@@ -1168,7 +1171,33 @@ export async function getMatch(
         blueLeagueClanId: match.blueLeagueClanId,
       }),
     ),
+    /*
+     * ★명단 「순위」 칸★ (2026-09-23 사장님) — 열 명의 개인랭킹 등수를 ★한 질의★ 로.
+     * `playerRankOf`(leagues.ts) 와 ★같은 모집단·같은 정렬★ 이다 — 점수 있음 + 판수 문턱 · 래더 내림차순 · 동률은 id.
+     * 배치고사 중인 사람은 등수를 안 준다 (같은 규칙). 실패해도 상세를 죽이지 않는다 — 그때는 「-」.
+     */
+    playerIds.length === 0
+      ? Promise.resolve([] as { playerId: string; rank: number }[])
+      : softFail('match-league-rank', [] as { playerId: string; rank: number }[], { matchId: match.id })(
+          prisma.$queryRaw<{ playerId: string; rank: number }[]>`
+            SELECT r."playerId", r."rank"
+              FROM (
+                SELECT lp."playerId" AS "playerId",
+                       lp."placement" AS "placement",
+                       ROW_NUMBER() OVER (ORDER BY lp."rating" DESC, h."leaguePlayerId" ASC)::int AS "rank"
+                  FROM "LeaguePlayerHex" h
+                  JOIN "LeaguePlayer" lp ON lp."id" = h."leaguePlayerId"
+                 WHERE lp."leagueId" = ${leagueId}
+                   AND h."weapon" IS NOT NULL
+                   AND h."score" IS NOT NULL
+                   AND h."games" >= ${rankMinGamesOf(null)}
+              ) r
+             WHERE r."playerId" IN (${Prisma.join(playerIds)})
+               AND r."placement" = false
+          `,
+        ),
   ])
+  const leagueRankOf = new Map(leagueRankRows.map((row) => [row.playerId, row.rank]))
 
   /* ★라운드 흐름★ — 두 육각 행(`hexRows`)의 teamNo 로 슬롯을 잇는다. 실패해도 상세를 죽이지 않는다 */
   const roundFlow = await softFail('match-round-flow', null, { matchId: match.id })(
@@ -1309,6 +1338,7 @@ export async function getMatch(
         save_chances: saveRows.length > 0 ? (chancesOf.get(stat.playerId) ?? 0) : null,
         score_parts: scorePartsOf(stat.playerId),
         nameplate: plateByPlayer.get(stat.playerId) ?? null,
+        league_rank: leagueRankOf.get(stat.playerId) ?? null,
         main_weapon: mainWeaponOfPlayer.get(stat.playerId) ?? null,
         hexagon: hexOf.get(stat.playerId) ?? [],
       }))

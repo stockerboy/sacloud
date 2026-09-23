@@ -105,6 +105,8 @@ const CLEAN_W = 2.6
  */
 const HALF_SUMMARY = false
 const CREW_ABOVE = false
+/** ★재생★ — 축이 왼쪽에서 오른쪽으로 천천히 훑는다 (2026-09-23 오후 사장님). 라운드 하나에 이만큼 걸린다 */
+const PLAY_MS_PER_ROUND = 1800
 
 export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   flow: RoundFlow
@@ -314,9 +316,35 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
+  /*
+   * ★재생★ (2026-09-23 오후 사장님: 「재생 버튼 누르면 축이 쓱 훑고 지나가면서(천천히) 경기 흐름을 재생해줘 —
+   *   시안 아티팩트에서 만든 것처럼」). rAF 로 축(`hover`)을 X0→X1 로 옮긴다. 손으로 만지면 멈춘다.
+   */
+  const [playing, setPlaying] = useState(false)
+  const playRef = useRef<{ raf: number; t0: number } | null>(null)
+  const stopPlay = () => {
+    if (playRef.current) cancelAnimationFrame(playRef.current.raf)
+    playRef.current = null
+    setPlaying(false)
+  }
+  const startPlay = () => {
+    stopPlay()
+    const total = Math.max(6000, flow.rounds.length * PLAY_MS_PER_ROUND)
+    const t0 = performance.now()
+    setPlaying(true)
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - t0) / total)
+      setHover(X0 + (X1 - X0) * k)
+      if (k >= 1) { playRef.current = null; setPlaying(false); return }
+      playRef.current = { raf: requestAnimationFrame(tick), t0 }
+    }
+    playRef.current = { raf: requestAnimationFrame(tick), t0 }
+  }
+  useEffect(() => () => { if (playRef.current) cancelAnimationFrame(playRef.current.raf) }, [])
   const pickAt = (clientX: number) => {
     const svg = svgRef.current
     if (!svg) return
+    if (playRef.current) stopPlay()
     const rect = svg.getBoundingClientRect()
     const x = ((clientX - rect.left) / rect.width) * width
     setHover(Math.max(X0, Math.min(X1, x)))
@@ -444,15 +472,25 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <span style={{ marginLeft: 'auto', color: tone.textDim, fontVariantNumeric: 'tabular-nums' }}>{hud.v.toFixed(0)}% : {(100 - hud.v).toFixed(0)}%{hud.est ? ' · 어림' : ''}</span>
         </div>
       ) : null}
+      {/* ★재생 단추★ — 그래프 바로 위 오른쪽. 누르면 축이 처음부터 끝까지 천천히 훑는다 · 다시 누르면 멈춘다 */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '2px 4px 4px' }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); if (playing) stopPlay(); else startPlay() }}
+          style={{ fontFamily: 'inherit', fontSize: 11.5, fontWeight: 700, padding: '4px 11px', cursor: 'pointer', color: playing ? '#f59e0b' : tone.textDim, background: 'transparent', border: `1px solid ${playing ? 'rgba(245,158,11,.55)' : tone.cardBorder}`, borderRadius: 3, whiteSpace: 'nowrap' }}
+        >
+          {playing ? '❚❚ 멈춤' : '▶ 재생'}
+        </button>
+      </div>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${H}`}
         style={{ width: '100%', height: H, display: 'block', cursor: 'crosshair' }}
         onMouseMove={(e) => pickAt(e.clientX)}
-        onMouseLeave={() => setHover(null)}
+        onMouseLeave={() => { if (!playRef.current) setHover(null) }}
         onTouchStart={(e) => { const t = e.touches[0]; if (t) pickAt(t.clientX) }}
         onTouchMove={(e) => { const t = e.touches[0]; if (t) pickAt(t.clientX) }}
-        onTouchEnd={() => setHover(null)}
+        onTouchEnd={() => { if (!playRef.current) setHover(null) }}
       >
         <defs>
           <filter id="rfGlowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b1" /><feGaussianBlur stdDeviation="16" result="b2" /><feMerge><feMergeNode in="b2" /><feMergeNode in="b1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>

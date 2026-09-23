@@ -84,7 +84,8 @@ void matchRowStyle
  *   ```
  * ⚠ 그래도 긴 닉은 ★말줄임(…)★ 으로 끝난다 — 칸을 넘겨 줄을 깨뜨리지 않는다.
  */
-const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 86px 58px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
+/* 2026-09-23 사장님 ①-4 — 칸은 「플레이어 · 순위 · kda · 세이브 · 포지션」. 옛 칸(순위 없음): 'minmax(96px,1fr) 86px 58px 22px' */
+const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 44px 86px 58px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
 
 export interface ClanDetailV3Props {
   data: LeagueClanShow
@@ -244,7 +245,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
   const clan = row.match_time_clan
   return (
     <>
-    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(96px,1fr) 86px 44px 58px 22px' } : {}), background: 'transparent', boxShadow: mvp ? `inset 3px 0 0 ${V3.mvp}, inset 0 0 26px rgba(224,52,47,.10)` /* ⚠ 옛값 #ffd83d 노랑 — MVP 는 빨강 (2026-09-23) */ : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(96px,1fr) 44px 86px 44px 58px 22px' } : {}), background: 'transparent', boxShadow: mvp ? `inset 3px 0 0 ${V3.mvp}, inset 0 0 26px rgba(224,52,47,.10)` /* ⚠ 옛값 #ffd83d 노랑 — MVP 는 빨강 (2026-09-23) */ : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
@@ -269,8 +270,11 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
         {/* ★MVP 는 닉네임 오른쪽★ · ★스나 표시가 있으면 그 오른쪽★ (2026-09-20 사장님) */}
         {mvp ? <MvpMark size={15} /> : null}
       </span>
+      {/* ★순위★ — 리그 개인랭킹 등수 (2026-09-23 사장님 「순위(래더x)」). 모르면 「-」 */}
+      <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: row.league_rank === null ? '#767f96' : '#96a0b5' }}>{row.league_rank === null ? '-' : `${row.league_rank}위`}</span>
       <span style={{ position: 'relative' }}><Kda kill={row.kill} death={row.death} assist={row.assist} size={17} /></span>
-      {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#b6bece' }}>{row.saves === null ? '-' : `${row.saves}/${row.save_chances ?? 0}`}</span> : null}
+      {/* ★세이브 「2회」★ (2026-09-23 사장님 — 「2/4」 말고 「2회」 · 0 이면 「0회」). 옛 표기: `${row.saves}/${row.save_chances ?? 0}` */}
+      {showSaves ? <span style={{ position: 'relative', textAlign: 'right', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', color: (row.saves ?? 0) >= 3 ? V3.cyan : (row.saves ?? 0) > 0 ? V3.textMuted : '#b6bece' }}>{row.saves === null ? '-' : `${row.saves}회`}</span> : null}
       {/* ★포지션★ (2026-09-12 사장님) — 킬뎃 % 대신 스나수 / 라플수. 아직 못 잰 선수는 «알수없음».
           그 판에 든 총이 아니라 ★주무기★ 다. 판수가 차면 옛 경기 화면에도 소급해서 뜬다 */}
       <span style={{ position: 'relative', textAlign: 'right', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', color: row.main_weapon === null || row.main_weapon === undefined ? '#96a0b5' : '#96a0b5' }}>
@@ -568,9 +572,22 @@ function Scoreboard({
           ) : null}
           {/* ★명단은 늘 펴 둔다★ (2026-09-23 오후) — 경기분석은 명단을 접지 않고 ★밑으로★ 붙는다.
               옛 판은 폰에서 이 칸에 `v3-board-list--closed` 를 붙여 접었다 (`PHONE_ANALYSIS_IN_LIST`) */}
-          <div className={PHONE_ANALYSIS_IN_LIST && analysis === t.side ? 'v3-board-list v3-board-list--closed' : 'v3-board-list'}>
-          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 86px 44px 58px' : 'minmax(96px,1fr) 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-            <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
+          {/* ★PC — 경기분석을 누르면 ★진 팀 명단 자리★ 에 육각이 명단 크기로 들어온다★ (2026-09-23 오후 사장님:
+              「왼쪽 기둥은 너무 작아 · 진팀 명단 위에 넣어줘 · 육각이 명단에 딱 들어가게」). 폰(<900)은 안 그린다 — 명단 밑 육각이 있다 */}
+          {!t.won && canAnalyze && analysis !== null ? (
+            <div className="v3-board-hexin">
+              <MatchHexagonV3
+                won={wonTeam ? hexOf(wonTeam.side) : null}
+                lost={lostTeam ? hexOf(lostTeam.side) : null}
+                wonName={wonTeam?.snap.clan.name ?? '승리'}
+                lostName={lostTeam?.snap.clan.name ?? '패배'}
+                id={`mhexIn-${detail.id}`}
+              />
+            </div>
+          ) : null}
+          <div className={`v3-board-list${PHONE_ANALYSIS_IN_LIST && analysis === t.side ? ' v3-board-list--closed' : ''}${!t.won && canAnalyze && analysis !== null ? ' v3-board-list--hexin' : ''}`}>
+          <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 44px 86px 44px 58px' : 'minmax(96px,1fr) 44px 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+            <span>플레이어</span><span style={{ textAlign: 'right' }}>순위</span><span>kda</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
           {t.stats.length === 0 ? <div style={{ padding: '10px 14px', fontSize: 11, color: V3.textGhost }}>기록이 없습니다</div> : null}
           {t.stats.map((row) => <PlayerRow key={row.player_id} row={row} mvp={row.mvp === true && t.won} weaponKnown={row.weapon !== null} clanSlug={t.snap.clan.slug} showSaves={showSaves} leagueSlug={leagueSlug} side={t.side} />)}
@@ -599,7 +616,7 @@ function Scoreboard({
           좁은 PC 에서는 기둥이 안 뜨고 아래 `.v3-board-hexphone` 이 대신 그린다 —
           육각이 ★사라지는 폭★ 이 생기면 안 된다.
       */}
-      {canAnalyze && analysis !== null ? (
+      {PILLAR_HEX && canAnalyze && analysis !== null ? (
         <div className="v3-board-pillar">
           <div className="v3-board-pillar__in">
             <MatchHexagonV3
@@ -677,6 +694,11 @@ const SHOW_MVP_WHY = false
  * ★명단을 그대로 두고 아래로 붙인다.★ 옛 판은 이 값을 `true` 로 되돌리면 돌아온다.
  */
 const PHONE_ANALYSIS_IN_LIST = false
+/**
+ * ★왼쪽 여백 기둥 육각★ — 2026-09-23 오후 한때의 판. 사장님: 「너무 작아 · 진팀 명단 위에 넣어줘」 → 이제 진 팀 명단 자리(`.v3-board-hexin`).
+ * `true` 로 되돌리면 기둥이 다시 선다 (CSS 는 supply-skin.css 에 그대로).
+ */
+const PILLAR_HEX = false
 
 function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: LeagueClanShow; opp: ClanHeadToHead; vsMatches: readonly MatchListItem[] | null; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
   const theme = clanThemeOf(data.clan.slug)
