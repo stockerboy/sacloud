@@ -376,9 +376,21 @@ function guess(mine: number, foe: number): number {
 }
 
 /** 내 `mine`승 · 상대 `foe`승 인 상태 → 내가 경기를 이길 확률 */
+/**
+ * ★두 방향을 합쳐 본다★ — 표는 「응답한 클랜」 기준이라 한쪽으로 기울어 있다 (0:0 이 61% 였다 —
+ * 우리가 배틀로그를 받아 오는 클랜이 상대보다 자주 이긴다). a:b 칸과 b:a 칸의 반대를 합치면
+ * 그 기울기가 사라진다 (0:0 → 정확히 50%). 표의 숫자는 안 건드린다.
+ */
+function symmetric(table: Readonly<Record<string, OddsCell>>, a: number, b: number): OddsCell | null {
+  const ab = table[`${a}:${b}`]
+  const ba = table[`${b}:${a}`]
+  if (!ab && !ba) return null
+  return { n: (ab?.n ?? 0) + (ba?.n ?? 0), w: (ab?.w ?? 0) + ((ba?.n ?? 0) - (ba?.w ?? 0)) }
+}
+
 export function scoreOdds(mine: number, foe: number, half: 'first' | 'second' | null = null): ScoreOdds {
   const table = half === 'first' ? SCORE_ODDS_FIRST : half === 'second' ? SCORE_ODDS_SECOND : SCORE_ODDS_ALL
-  const cell = table[`${mine}:${foe}`] ?? SCORE_ODDS_ALL[`${mine}:${foe}`]
+  const cell = symmetric(table, mine, foe) ?? symmetric(SCORE_ODDS_ALL, mine, foe)
   if (cell && cell.n >= SCORE_ODDS_MIN_SAMPLE) return { p: cell.w / cell.n, estimated: false, n: cell.n }
   return { p: guess(mine, foe), estimated: true, n: cell?.n ?? 0 }
 }

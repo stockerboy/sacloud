@@ -183,7 +183,18 @@ export function roundOddsSided(att: number, def: number): RoundOdds {
   return fromTable(ROUND_ODDS_SIDED, att, def)
 }
 
-/** 진영을 모를 때 — 내 `a`명 · 상대 `b`명 → ★내★ 가 딸 확률 */
+/**
+ * 진영을 모를 때 — 내 `a`명 · 상대 `b`명 → ★내★ 가 딸 확률.
+ * ⚠ 이 표는 「응답한 클랜」 기준이라 한쪽으로 기울어 있다 (5:5 가 51.7%). a:b 와 b:a 의 반대를 합쳐 기울기를 없앤다.
+ *   `SIDED` 는 공격/수비 기준이라 기울기가 없다 — 그대로 쓴다.
+ */
 export function roundOddsPlain(a: number, b: number): RoundOdds {
-  return fromTable(ROUND_ODDS_PLAIN, a, b)
+  if (a <= 0) return { p: 0, estimated: false, n: 0 }
+  if (b <= 0) return { p: 1, estimated: false, n: 0 }
+  const ab = ROUND_ODDS_PLAIN[`${a}:${b}`]
+  const ba = ROUND_ODDS_PLAIN[`${b}:${a}`]
+  const n = (ab?.n ?? 0) + (ba?.n ?? 0)
+  const w = (ab?.w ?? 0) + ((ba?.n ?? 0) - (ba?.w ?? 0))
+  if (n >= ROUND_ODDS_MIN_SAMPLE) return { p: w / n, estimated: false, n }
+  return { p: a / (a + b), estimated: true, n }
 }
