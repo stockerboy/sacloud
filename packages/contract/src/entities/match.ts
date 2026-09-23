@@ -426,7 +426,8 @@ export const RoundFlowRound = z.object({
   /** C4 를 설치한 슬롯 (사장님 「몇 설」 · 2026-09-23 낮). 설치 줄이 없으면 null */
   planted: RoundFlowSide.nullable().default(null),
   /** 시각순 죽음 — 죽은 사람의 슬롯 */
-  deaths: z.array(z.object({ at: z.number(), side: RoundFlowSide })),
+  /** 시각순 죽음 — 죽은 사람의 슬롯 · 닉네임(이벤트에 없으면 null · 사장님 「처음 죽은 사람」) */
+  deaths: z.array(z.object({ at: z.number(), side: RoundFlowSide, name: z.string().nullable().default(null) })),
 })
 export const RoundFlow = z.object({
   team_size: z.object({ red: Count, blue: Count }),

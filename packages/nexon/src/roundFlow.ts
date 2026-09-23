@@ -32,6 +32,9 @@ import { rosterOf, roundStatesOf, secondsOf, type RoundStateEvent } from './roun
 
 export interface RoundFlowEvent extends RoundStateEvent, RoundSideEvent {
   win_flag?: string | null
+  /** 닉네임 — 주체 · 상대 (사장님 「가장 처음 죽은 사람이 누군지」 · 2026-09-23) */
+  user_nick?: string | null
+  target_user_nick?: string | null
 }
 
 /** 두 팀을 「응답 주인(`mine`)」 과 「상대(`foe`)」 로 부른다. 슬롯 이름(red/blue)은 부르는 쪽이 붙인다 */
@@ -42,6 +45,8 @@ export interface RoundFlowDeath {
   at: number
   /** 죽은 사람의 팀 */
   team: FlowTeam
+  /** 죽은 사람 닉네임. 이벤트에 없으면 null */
+  name: string | null
 }
 
 export interface RoundFlowRound {
@@ -118,6 +123,14 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
   }
   const sides = roundSidesOf(events, teamNo, rounds[rounds.length - 1] as number, won)
   const states = roundStatesOf(events)
+  /* 닉네임 — usn → 닉. 죽음 줄의 주체/상대 어느 쪽이든 한 번 보이면 안다 */
+  const nickOf = new Map<string, string>()
+  for (const e of events) {
+    const a = e.str_usn === null || e.str_usn === undefined ? '' : String(e.str_usn).trim()
+    const b = e.target_str_usn === null || e.target_str_usn === undefined ? '' : String(e.target_str_usn).trim()
+    if (a && e.user_nick && !nickOf.has(a)) nickOf.set(a, String(e.user_nick).trim())
+    if (b && e.target_user_nick && !nickOf.has(b)) nickOf.set(b, String(e.target_user_nick).trim())
+  }
   /* 설치 — 라운드마다 설치한 팀 (한 라운드에 설치는 한 팀뿐이다) */
   const plantedBy = new Map<number, string>()
   for (const b of bombEvidenceOf(events)) if (b.action === 'install' && !plantedBy.has(b.round)) plantedBy.set(b.round, b.team)
@@ -126,7 +139,7 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
   let prevEnd: number | null = null
   for (const r of rounds) {
     const end = lastAt.get(r) as number
-    const deaths = (states.get(r)?.deaths ?? []).map((d) => ({ at: d.at, team: teamOf(d.team) }))
+    const deaths = (states.get(r)?.deaths ?? []).map((d) => ({ at: d.at, team: teamOf(d.team), name: nickOf.get(d.usn) ?? null }))
     let start = prevEnd === null ? MATCH_TO_FIRST_ROUND_SECONDS : prevEnd + ROUND_GAP_SECONDS
     /* 이벤트가 계산한 시작보다 앞에 있으면 그 앞으로 — 시각이 거꾸로 가는 그림은 안 그린다 */
     const first = deaths[0]?.at ?? end

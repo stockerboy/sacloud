@@ -14,6 +14,7 @@ function death(round: number, at: string, victim: string, victimTeam: string, ki
     target_team_no: killerTeam,
     win_flag: winFlag,
     weapon: 'ak47',
+    user_nick: victim + '님',
   }
 }
 function bomb(round: number, at: string, team: string, action: 'c4-install' | 'c4-dismantle', winFlag: 'win' | 'lose'): RoundFlowEvent {
@@ -56,6 +57,7 @@ describe('roundFlowOf', () => {
     expect(r2.planted).toBeNull()
     expect(r2.deaths.map((d) => d.team)).toEqual(['foe', 'foe'])
     expect(r2.deaths.map((d) => d.at)).toEqual([55, 62])
+    expect(r2.deaths.map((d) => d.name)).toEqual(['b1님', 'b2님'])
   })
 
   it('두 팀이 안 갈리면 null', () => {
