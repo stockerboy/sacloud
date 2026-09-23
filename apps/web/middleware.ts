@@ -43,7 +43,11 @@ const SESSION_COOKIE = 'sacloud_session'
  * ⚠ ★2026-09-21 밤 — 다시 열었다★ (사장님: 「사이트 공개로 돌려봐 잠깐」).
  *   그사이 닉네임 1,600명 · 소속 · 클랜마크 · 명단을 병영 기준으로 맞췄다.
  */
-const SITE_PRIVATE = false as boolean
+/*
+ * ⚠ ★2026-09-23 새벽 — 다시 잠갔다★ (사장님: 「사이트 비공개 돌려」).
+ *   ⑤ 코드 스위치 `true`. 잠긴 동안에도 로그인하면 다 보인다.
+ */
+const SITE_PRIVATE = true as boolean
 
 /** 문 밖에서도 열리는 길 */
 const OPEN_PREFIX = [
@@ -139,7 +143,9 @@ export function middleware(request: NextRequest) {
   if (!SITE_PRIVATE && process.env.SACLOUD_PRIVATE !== '1') {
     return NextResponse.next()
   }
-  if (process.env.SACLOUD_PUBLIC === '1') {
+  /* ⚠ 2026-09-23 — 코드 스위치가 켜져 있으면 환경변수 `SACLOUD_PUBLIC=1` 이 남아 있어도 열지 않는다.
+     (Vercel 에 그 변수가 남아 있는지 여기서는 못 본다 — 코드가 이기게 해야 「배포만으로 잠근다」 가 참이다) */
+  if (!SITE_PRIVATE && process.env.SACLOUD_PUBLIC === '1') {
     return NextResponse.next()
   }
 
