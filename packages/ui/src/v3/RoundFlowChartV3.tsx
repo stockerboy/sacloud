@@ -40,8 +40,24 @@ interface Pt {
   est: boolean
 }
 
-/** 흔들림 폭 — 상대전적보다 작다. 계단이 보여야 해서 */
-const WIGGLE = 0.8
+/*
+ * ★2026-09-23 낮 — 「깔끔하게」 (사장님: 「그래프 가독성이 너무 떨어져 오른쪽 사진(sleeper)처럼 깔끔하면 좋겠어」).
+ *   1차는 상대전적 그래프의 굵은 광선·흔들림·점선을 그대로 썼고, 라운드가 끝날 때마다 100/0 으로 튀어
+ *   빗살 무늬가 됐다 (사장님 폰 캡쳐). 옛 모양은 아래 스위치로 남긴다 (CLAUDE.md 1-4) — 지금은 전부 끔.
+ *     START_AT_EDGES     경기 시작에 위/아래(100/0)에서 출발
+ *     JUMP_ON_ROUND_END  라운드가 끝나면 딴 쪽 100 · 진 쪽 0 으로 튐 → 지금은 마지막 인원 상태 값을 그대로 둔다
+ *                        (딴 쪽이 살아남은 쪽이라 저절로 위에 있다 — 사장님 「그래프가 블루팀보다 위에 있고」 는 그대로 참)
+ *     GLOW               14px 광선 + 8px 중간선 (상대전적과 같은 세 겹)
+ *     WIGGLE             흔들림 폭
+ *     DASH_ESTIMATED     어림 구간 점선 → 지금은 아래 각주 한 줄로만 말한다
+ */
+const START_AT_EDGES = false
+const JUMP_ON_ROUND_END = false
+const GLOW = false
+const WIGGLE = 0
+const DASH_ESTIMATED = false
+/** 깔끔한 판의 선 두께 (sleeper 참고) */
+const CLEAN_W = 2.6
 
 export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   flow: RoundFlow
@@ -63,7 +79,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   }, [])
   const draw = useDrawIn(3600, `${winner.slug ?? winner.name}|${flow.rounds.length}`, boxRef)
   const box = plotBox(width)
-  const { H, X0, X1, Y_TOP, Y_BOTTOM, phone } = box
+  /* 오른쪽 끝 마커 옆에 「100%」 를 적는다 (sleeper 처럼) — 그만큼 판을 안으로 */
+  const { H, X0, Y_TOP, Y_BOTTOM, phone } = box
+  const X1 = box.X1 - (phone ? 58 : 66)
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)
 
   const model = useMemo(() => {
@@ -88,8 +106,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     const pts: Pt[] = []
     const ticks: { x: number; round: number }[] = []
     let anyEst = false
-    /* 출발 — 이긴 클랜은 아래(0)에서 (상대전적 그래프와 같다) */
-    pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, est: false })
+    /* 출발 — 옛 판은 이긴 클랜이 아래(0)에서 (상대전적 그래프와 같다). 지금은 1라운드 5:5 값에서 바로 시작 */
+    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, est: false })
     for (const r of rounds) {
       const half: 'A' | 'B' = s !== null && r.round >= s ? 'B' : 'A'
       let aliveW = sizeW
@@ -120,11 +138,12 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
         pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, est: o.est })
       }
-      if (r.winner !== null) {
+      {
+        /* 라운드 끝 — 마지막 상태 값을 라운드 끝까지 끌고 간다. 옛 판(JUMP_ON_ROUND_END)은 여기서 100/0 으로 튀었다 */
         const prev = pts[pts.length - 1] as Pt
         const x = xOf(r.end, half)
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, est: false })
+        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, est: false })
       }
     }
     return { pts, ticks, twoHalves, XM, anyEst, rounds }
@@ -167,8 +186,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   const wAbove = yOf(endW) <= yOf(100 - endW)
   const wDy = close ? (wAbove ? -14 : 22) : 6
   const lDy = close ? (wAbove ? 22 : -14) : 6
-  const labelX = nowX - R - 8
-  const winInk = tone === V3 ? '#1c2f6b' : '#bcd2ff'
+  const labelX = nowX + R + 8
+  const winInk = GLOW ? (tone === V3 ? '#1c2f6b' : '#bcd2ff') : '#8fb4ff'
+  const loseInk = loser.theme.main
   const every = phone && model.ticks.length > 10 ? 2 : 1
 
   return (
@@ -214,15 +234,25 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         <text x={X0 - 7} y={Y_BOTTOM + 26} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>라운드</text>
         {model.pts.length > 1 ? (
           <g>
-            <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.5} {...penDash(draw)} />
-            <polyline points={winLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.5} {...penDash(draw)} />
-            <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} {...penDash(draw)} />
-            <polyline points={winLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
-            <polyline points={loseLine} fill="none" stroke={loser.theme.main} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
-            <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
-            {/* 어림한 구간 — 심지 위에 점선을 덧그린다 */}
-            {estSegsL.map(([x1, y1, x2, y2], k) => <line key={`l${k}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone.plot} strokeWidth={PLOT.coreW} strokeDasharray="4 4" opacity={0.85} />)}
-            {estSegs.map(([x1, y1, x2, y2], k) => <line key={`w${k}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone.plot} strokeWidth={PLOT.coreW} strokeDasharray="4 4" opacity={0.85} />)}
+            {GLOW ? (
+              <>
+                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.5} {...penDash(draw)} />
+                <polyline points={winLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.5} {...penDash(draw)} />
+                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} {...penDash(draw)} />
+                <polyline points={winLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
+              </>
+            ) : (
+              <>
+                {/* 얇은 빛 — sleeper 의 은은한 광 */}
+                <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={0.16} {...penDash(draw)} />
+                <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={0.16} {...penDash(draw)} />
+              </>
+            )}
+            <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            {/* 어림한 구간 — 옛 판은 심지 위에 점선을 덧그렸다 (DASH_ESTIMATED) */}
+            {DASH_ESTIMATED ? estSegsL.map(([x1, y1, x2, y2], k) => <line key={`l${k}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone.plot} strokeWidth={PLOT.coreW} strokeDasharray="4 4" opacity={0.85} />) : null}
+            {DASH_ESTIMATED ? estSegs.map(([x1, y1, x2, y2], k) => <line key={`w${k}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone.plot} strokeWidth={PLOT.coreW} strokeDasharray="4 4" opacity={0.85} />) : null}
           </g>
         ) : null}
         {hoverPt !== null && hover !== null ? (
@@ -235,24 +265,22 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         ) : null}
         {last ? (
           <g pointerEvents="none">
-            <circle cx={nowX} cy={yOf(100 - endW)} r={R + 4} fill="none" stroke={loser.theme.deep} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.55} />
-            <circle cx={nowX} cy={yOf(100 - endW)} r={R} fill={tone.chip} stroke={loser.theme.main} strokeWidth={2} />
+            {GLOW ? <circle cx={nowX} cy={yOf(100 - endW)} r={R + 4} fill="none" stroke={loser.theme.deep} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.55} /> : null}
+            <circle cx={nowX} cy={yOf(100 - endW)} r={R} fill={tone.chip} stroke={loseInk} strokeWidth={2} />
             {loser.slug && hasFitMark(loser.slug) ? <image href={fitMarkUrl(loser.slug)} x={nowX - R} y={yOf(100 - endW) - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={yOf(100 - endW) + lDy} textAnchor="end" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - endW).toFixed(0)}%</text>
-            <circle cx={nowX} cy={yOf(endW)} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.55} />
-            <circle cx={nowX} cy={yOf(endW)} r={R} fill={tone.chip} stroke="#7fa9ff" strokeWidth={2} />
+            <text x={labelX} y={yOf(100 - endW) + lDy} textAnchor="start" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - endW).toFixed(0)}%</text>
+            {GLOW ? <circle cx={nowX} cy={yOf(endW)} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.55} /> : null}
+            <circle cx={nowX} cy={yOf(endW)} r={R} fill={tone.chip} stroke={winInk} strokeWidth={2} />
             {winner.slug && hasFitMark(winner.slug) ? <image href={fitMarkUrl(winner.slug)} x={nowX - R} y={yOf(endW) - R} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={yOf(endW) + wDy} textAnchor="end" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{endW.toFixed(0)}%</text>
+            <text x={labelX} y={yOf(endW) + wDy} textAnchor="start" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{endW.toFixed(0)}%</text>
           </g>
         ) : null}
         <g>
-          <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke="#7fa9ff" strokeWidth={3} filter={draw < 1 ? undefined : 'url(#rfGlowB)'} />
-          <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke={winInk} strokeWidth={1.6} />
+          <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke={winInk} strokeWidth={3} />
           <text x={X0 + 22} y={H - 3} fill={winner.theme.deep} fontSize={PLOT.tickFont}>{winner.name} 승</text>
-          <line x1={X0 + (phone ? 130 : 190)} y1={H - 8} x2={X0 + (phone ? 146 : 206)} y2={H - 8} stroke={loser.theme.deep} strokeWidth={3} filter={draw < 1 ? undefined : 'url(#rfGlowR)'} />
-          <line x1={X0 + (phone ? 130 : 190)} y1={H - 8} x2={X0 + (phone ? 146 : 206)} y2={H - 8} stroke={loser.theme.main} strokeWidth={1.6} />
+          <line x1={X0 + (phone ? 130 : 190)} y1={H - 8} x2={X0 + (phone ? 146 : 206)} y2={H - 8} stroke={loseInk} strokeWidth={3} />
           <text x={X0 + (phone ? 152 : 212)} y={H - 3} fill={loser.theme.deep} fontSize={PLOT.tickFont}>{loser.name} 패</text>
-          {model.anyEst ? <text x={X1} y={H - 3} textAnchor="end" fill={tone.textGhost} fontSize={PLOT.axisFont}>점선 = 표본 부족 · 어림</text> : null}
+          {model.anyEst ? <text x={box.X1} y={H - 3} textAnchor="end" fill={tone.textGhost} fontSize={PLOT.axisFont}>{phone ? '일부 어림' : '표본 모자란 구간은 어림값'}</text> : null}
         </g>
       </svg>
     </div>

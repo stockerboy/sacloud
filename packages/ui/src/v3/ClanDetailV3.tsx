@@ -555,7 +555,8 @@ function Scoreboard({
                   />
                 </div>
               ) : null}
-          <ScoreBoard detail={detail} side={wonTeam?.side ?? 'red'} />
+              {/* 2026-09-23 — 폰에 「점수판보기」 가 두 개였다 (255cc35c 에서 한 줄이 잘못 들어감 · 사장님 폰 캡쳐).
+                  옛 줄: ScoreBoard side={wonTeam?.side ?? 'red'} — 이 팀 기준 하나만 남긴다 */}
               <ScoreBoard detail={detail} side={t.side} />
             </div>
           ) : (
