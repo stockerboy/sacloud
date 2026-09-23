@@ -42,6 +42,8 @@ interface Pt {
   scoreL: number
   /** 이 라운드에서 처음 죽은 사람 — 아직 아무도 안 죽었으면 null (사장님 「원 하나가 줄어들 때 띄워줘」) */
   first: { name: string | null; side: 'W' | 'L'; at: number } | null
+  /** 이 시점까지 이 라운드에서 죽은 사람들 — 죽은 차례대로 (사장님 「선짤 준성 · haeil 다운 · …」) */
+  fallen: { name: string | null; side: 'W' | 'L'; at: number }[]
   est: boolean
 }
 
@@ -153,7 +155,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     let scoreW = 0
     let scoreL = 0
     /* 출발 — 옛 판은 이긴 클랜이 아래(0)에서 (상대전적 그래프와 같다). 지금은 1라운드 값에서 바로 시작 */
-    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, first: null, est: false })
+    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, first: null, fallen: [], est: false })
     for (const r of rounds) {
       const half: 'A' | 'B' = s !== null && r.round >= s ? 'B' : 'A'
       const halfKey: 'first' | 'second' = half === 'A' ? 'first' : 'second'
@@ -190,11 +192,13 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
       let o = odds()
       anyEst = anyEst || o.est
       let firstSeen: Pt['first'] = null
-      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: null, est: o.est })
+      let fallen: Pt['fallen'] = []
+      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: null, fallen, est: o.est })
       for (const d of r.deaths) {
         if (d.side === W) aliveW = Math.max(0, aliveW - 1)
         else aliveL = Math.max(0, aliveL - 1)
         if (firstSeen === null) firstSeen = { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at }
+        fallen = [...fallen, { name: d.name, side: d.side === W ? 'W' : 'L', at: d.at }]
         /* 한쪽이 0 이 되는 마지막 죽음은 안 찍는다 — 그 순간 확률이 100/0 으로 튀어 빗살이 된다 (운영 캡쳐).
            라운드가 끝난 것이라 「마지막 인원 상태 값」 을 그대로 끌고 간다 (JUMP_ON_ROUND_END 와 같은 뜻) */
         if (aliveW === 0 || aliveL === 0) break
@@ -204,14 +208,14 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         /* 계단 — 죽기 직전까지는 앞 값 그대로 */
         const prev = pts[pts.length - 1] as Pt
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, est: o.est })
+        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, fallen, est: o.est })
       }
       {
         /* 라운드 끝 — 마지막 상태 값을 라운드 끝까지 끌고 간다. 옛 판(JUMP_ON_ROUND_END)은 여기서 100/0 으로 튀었다 */
         const prev = pts[pts.length - 1] as Pt
         const x = xOf(r.end, half)
-        pts.push({ ...prev, x: Math.max(prev.x, x - 0.01), first: firstSeen })
-        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, est: false })
+        pts.push({ ...prev, x: Math.max(prev.x, x - 0.01), first: firstSeen, fallen })
+        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, fallen, est: false })
       }
       if (r.winner === W) scoreW += 1
       else if (r.winner === L) scoreL += 1
@@ -337,14 +341,23 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <span style={{ fontWeight: 800, color: tone.textStrong, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{hud.scoreW} : {hud.scoreL}</span>
           <span style={{ color: winInk, whiteSpace: 'nowrap' }}>{phone ? '' : winner.name}{dots(hud.aliveW, sizeW, winInk)}<b>{hud.aliveW}</b></span>
           <span style={{ color: loseInk, whiteSpace: 'nowrap' }}>{phone ? '' : loser.name}{dots(hud.aliveL, sizeL, loseInk)}<b>{hud.aliveL}</b></span>
-          {/* ★첫 희생★ — 원 하나가 처음 빌 때 이름이 뜬다 (사장님 2026-09-23) */}
-          {hud.first ? (
-            <span style={{ whiteSpace: 'nowrap', color: '#f59e0b', fontWeight: 700 }}>
-              첫 희생 <span style={{ color: hud.first.side === 'W' ? winInk : loseInk }}>{hud.first.name ?? '—'}</span>
-              <span style={{ color: tone.textDim, fontWeight: 400, marginLeft: 4 }}>{Math.floor(hud.first.at / 60)}:{String(Math.floor(hud.first.at % 60)).padStart(2, '0')}</span>
-            </span>
-          ) : hud.round > 0 ? <span style={{ color: tone.textGhost, whiteSpace: 'nowrap' }}>아직 아무도 안 죽음</span> : null}
           <span style={{ marginLeft: 'auto', color: tone.textDim, fontVariantNumeric: 'tabular-nums' }}>{hud.v.toFixed(0)}% : {(100 - hud.v).toFixed(0)}%{hud.est ? ' · 어림' : ''}</span>
+        </div>
+      ) : null}
+      {/* ★죽은 차례★ — 축을 옮길 때마다 그 라운드에서 지금까지 죽은 사람을 차례대로
+          (사장님 2026-09-23: 「처음 죽은 사람은 선짤 준성 · 그 다음 haeil 다운 · enanthate 다운 …」). 옛 판은 첫 희생만 적었다 */}
+      {hud ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, padding: '0 6px 8px', minHeight: 20 }}>
+          {hud.fallen.length === 0 ? (
+            <span style={{ color: tone.textGhost }}>{hud.round > 0 ? '아직 아무도 안 죽음' : ''}</span>
+          ) : hud.fallen.map((f, i) => (
+            <span key={i} style={{ whiteSpace: 'nowrap' }}>
+              <span style={{ color: i === 0 ? '#f59e0b' : tone.textDim, fontWeight: i === 0 ? 700 : 400 }}>{i === 0 ? '선짤 ' : ''}</span>
+              <span style={{ color: f.side === 'W' ? winInk : loseInk, fontWeight: 700 }}>{f.name ?? '—'}</span>
+              <span style={{ color: tone.textDim }}>{i === 0 ? '' : ' 다운'}</span>
+              {i < hud.fallen.length - 1 ? <span style={{ color: tone.textGhost, marginLeft: 8 }}>·</span> : null}
+            </span>
+          ))}
         </div>
       ) : null}
       <svg
