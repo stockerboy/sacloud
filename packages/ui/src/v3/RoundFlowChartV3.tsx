@@ -83,7 +83,7 @@ const DASH_ESTIMATED = false
 /** 3.6초 긋기 애니메이션(useDrawIn · 화면에 보일 때) — 폰에서 중간에 멈춘 채 남아 껐다 (2026-09-23 사장님) */
 const DRAW_IN = false
 /** ★붙자마자 1.8초 긋기★ (2026-09-23 낮 · 사장님 「그래프에 애니메이트 프레임 올려서」) — 보이든 말든 끝까지 간다 */
-const DRAW_ON_MOUNT_MS = 1800
+const DRAW_ON_MOUNT_MS = 4200 /* 2026-09-23 오후 — 사장님 「조금 더 느리게 · 처음에 너무 빨리 그려지니까 맛이 없다」 (옛 값 1800 · 직선) */
 /** ★빛번짐★ (사장님 「우리가 만든 적 있음」) — 상대전적의 14px 광선보다 얇게(9px · 28%) · 가독성 (GLOW 는 옛 굵은 판) */
 const SOFT_GLOW = true
 /** 진 팀 선을 클랜 테마 색으로 (지금은 빨강 고정) */
@@ -129,7 +129,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     let raf = 0
     const t0 = performance.now()
     const tick = (now: number) => {
-      const k = Math.min(1, (now - t0) / DRAW_ON_MOUNT_MS)
+      const t = Math.min(1, (now - t0) / DRAW_ON_MOUNT_MS)
+      /* 천천히 시작해서 천천히 끝난다 (ease-in-out) */
+      const k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
       setMountDraw(k)
       if (k < 1) raf = requestAnimationFrame(tick)
     }
@@ -416,24 +418,6 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <span style={{ marginLeft: 'auto', color: tone.textDim, fontVariantNumeric: 'tabular-nums' }}>{hud.v.toFixed(0)}% : {(100 - hud.v).toFixed(0)}%{hud.est ? ' · 어림' : ''}</span>
         </div>
       ) : null}
-      {/* ★죽은 차례★ — 축을 옮길 때마다 그 라운드에서 지금까지 죽은 사람을 차례대로
-          (사장님 2026-09-23: 「처음 죽은 사람은 선짤 준성 · 그 다음 haeil 다운 · enanthate 다운 …」). 옛 판은 첫 희생만 적었다 */}
-      {hud ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, padding: '0 6px 8px', minHeight: 20 }}>
-          {hud.fallen.length === 0 ? (
-            <span style={{ color: tone.textGhost }}>{hud.round > 0 ? '아직 아무도 안 죽음' : ''}</span>
-          ) : hud.fallen.map((f, i) => (
-            <span key={i} style={{ whiteSpace: 'nowrap' }}>
-              {/* 「킬러 ▸ 희생자」 — 죽인 쪽은 그 팀 색 · 죽은 쪽은 그 팀 색 (사장님 「누가 누구를 다운시켰는지」). 킬러를 모르면 희생자만 */}
-              <span style={{ color: i === 0 ? '#f59e0b' : tone.textDim, fontWeight: i === 0 ? 700 : 400 }}>{i === 0 ? '선짤 ' : ''}</span>
-              {f.by ? <><span style={{ color: f.side === 'W' ? loseInk : winInk, fontWeight: 700 }}>{f.by}</span><span style={{ color: tone.textGhost, margin: '0 3px' }}>▸</span></> : null}
-              <span style={{ color: f.side === 'W' ? winInk : loseInk, fontWeight: 700 }}>{f.name ?? '—'}</span>
-              <span style={{ color: tone.textDim }}>{i === 0 ? '' : ' 다운'}</span>
-              {i < hud.fallen.length - 1 ? <span style={{ color: tone.textGhost, marginLeft: 8 }}>·</span> : null}
-            </span>
-          ))}
-        </div>
-      ) : null}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${H}`}
@@ -539,6 +523,26 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         </g>
         )}
       </svg>
+      {/* ★죽은 차례★ — 축을 옮길 때마다 그 라운드에서 지금까지 죽은 사람을 차례대로
+          (사장님 2026-09-23: 「처음 죽은 사람은 선짤 준성 · 그 다음 haeil 다운 · enanthate 다운 …」). 옛 판은 첫 희생만 적었다 */}
+      {/* ⚠ 2026-09-23 오후 — 사장님: 「누가 누구 죽였는지 나오면서 공간이 달라지니까 그래프 판 자체가 위아래로 움직이고 정신없어」
+          → 이 줄을 ★그래프 아래★ 로 내리고 최소 높이를 잡아 판이 안 움직인다 (JSX 주석은 표현식 자리에 못 둔다 — 위에 둔다) */}
+      {hud ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, padding: '8px 6px 2px', minHeight: phone ? 64 : 28, alignContent: 'flex-start', borderTop: `1px solid ${tone.cardBorder}`, marginTop: 4 }}>
+          {hud.fallen.length === 0 ? (
+            <span style={{ color: tone.textGhost }}>{hud.round > 0 ? '아직 아무도 안 죽음' : ''}</span>
+          ) : hud.fallen.map((f, i) => (
+            <span key={i} style={{ whiteSpace: 'nowrap' }}>
+              {/* 「킬러 ▸ 희생자」 — 죽인 쪽은 그 팀 색 · 죽은 쪽은 그 팀 색 (사장님 「누가 누구를 다운시켰는지」). 킬러를 모르면 희생자만 */}
+              <span style={{ color: i === 0 ? '#f59e0b' : tone.textDim, fontWeight: i === 0 ? 700 : 400 }}>{i === 0 ? '선짤 ' : ''}</span>
+              {f.by ? <><span style={{ color: f.side === 'W' ? loseInk : winInk, fontWeight: 700 }}>{f.by}</span><span style={{ color: tone.textGhost, margin: '0 3px' }}>▸</span></> : null}
+              <span style={{ color: f.side === 'W' ? winInk : loseInk, fontWeight: 700 }}>{f.name ?? '—'}</span>
+              <span style={{ color: tone.textDim }}>{i === 0 ? '' : ' 다운'}</span>
+              {i < hud.fallen.length - 1 ? <span style={{ color: tone.textGhost, marginLeft: 8 }}>·</span> : null}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
