@@ -3,7 +3,33 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-23 밤(5차)** · 갱신한 사람 B(실행 세션 · 홈 배경 · 래더 층수 · 상세정보 색 · 라운드 흐름 손질)
+> 마지막 갱신 **2026-09-24 새벽(진영판 2차)** · 갱신한 사람 B(실행 세션 · 홈 배경 · 래더 층수 · 상세정보 색 · 라운드 흐름 손질)
+
+---
+
+## 0-진영판2. ★2026-09-24 새벽 — 진영판 2차 8건 (커밋 `dd61c369`)★
+
+사장님 2026-09-23 밤 요청 8건(`docs/HANDOFF_2026-09-23_NIGHT.md` §7) 전부 `origin/main`. 옛 판은 `RoundFlowChartV3.tsx` 스위치로 남김.
+
+```
+1 ▶ 경기 재생   판 ★아래★ 가운데 (PLAY_BUTTON_BELOW) · 재생 중 마우스 스침으로 안 멈춤 · 클릭/터치/단추로 멈춤 (HOVER_STOPS_PLAY=false)
+2 마크 따라옴   선 끝 원·% 가 축(hover) 또는 펜 끝(pointAtLength)을 따라간다 (MARK_FOLLOWS) · 인원 줄·죽은 차례도 같은 시점
+3 찌글찌글     값이 머무는 구간을 5px 로 쪼개 ±2.2% 잡음(사인 창) — 사건 자리 값은 그대로 (JAGGED · JAG_AMP · JAG_STEP)
+4 전후반 선     호박색 3px + 「진영교대」 표 + 후반 바탕 톤 + 전반/후반 굵게 (HALF_LINE_BOLD)
+5 죽은 차례 줄  [마크] 킬러 [무기 그림 →] 희생자 [무기 이름(PC)] · 레드가 잡은 줄 빨강 바탕 · 블루가 잡은 줄 연파랑 바탕 (KILL_ROWS_V2)
+6 폭탄 줄      「C4 설치」「C4 해체」 줄이 그 팀 칸에 시각순으로 · 점수 옆 「설점:n  3:2  설점:n」 — 반마다 · 후반 0 부터 · 설치→해체면 해체한 쪽
+7 세로         죽은 차례 칸 폰 178 / PC 206 (옛 152/176)
+8 무기 종류     WEAPON_RULE='position' — 투척이면 투척무기 · 아니면 그 사람 포지션(스코어보드 weapon: 스나→저격소총 · 라플→돌격소총)
+```
+- **보조무기(권총) 값은 운영 배틀로그에 없다.** 600행 실측(`scratchpad/vps_probe23~25.mjs`): weapon = riple·sniper·throw·assist·special·close·c4-install·c4-dismantle 뿐.
+  `event_icon` 은 user_img/skull/c4 셋 · `event_text` 는 킬 줄에 비어 있음(C4 설치/해체·자살·낙사만 글자). → 사장님 지시대로 세 가지 + 포지션.
+  `WEAPON_RULE='raw'` 로 바꾸면 배틀로그 값 우선(close 근접·special 특수도 적음).
+- 계약: `RoundFlowRound.deaths[].weapon`(배틀로그 값 그대로) · `RoundFlowRound.bombs[]{at,side,action,by}` — 기본값이라 옛 응답과 맞음.
+  nexon `roundFlowOf` 가 죽인 쪽 칸만 읽는다(death 줄→`target_weapon` · kill 줄→`weapon`). 테스트 3건.
+- 무기 그림은 우리가 그린 SVG(`WeaponGlyph`) — 사장님 사진 5장(`docs/ref/board2/`)은 모양 참고만 (CLAUDE.md 2-4).
+- §0-D 안전판: 라운드 그래프 arm 이 IO 로만 되던 것을 스크롤/리사이즈 때 화면 안이면 켠다 (보일 때 한 번 규칙 그대로).
+- **§7-0 「옛 경기분석이 남아 있다」** — 코드상 경기분석 판은 `ClanScoreboardV3`(경기상세·목록·클랜·홈·소개)와 `PlayerDetailV3` 내부 사본 둘뿐이고 둘 다 같은 `RoundFlowChartV3`. **[미확인]** 사장님이 어느 화면을 보셨는지 못 물었다 — 배포 전 캐시였을 가능성. 운영 캡쳐로 다시 본다.
+- 로컬 QA: `scratchpad/seed-flow.mjs` 가 무기 값(riple/sniper/throw/close/빈)·폭탄 닉을 섞어 심는다. 캡쳐 `scratchpad/b2_pc.png` · `b2_phone.png`.
 
 ---
 
