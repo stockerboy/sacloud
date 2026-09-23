@@ -154,7 +154,8 @@ function MvpChip({ entry }: { entry: MatchLineupEntry }) {
       <MarkCircle clan={entry.match_time_clan ? { slug: entry.match_time_clan.slug, mark: entry.match_time_clan.mark } : null} size={16} />
       {/* ⚠ 2026-09-23 새벽 — MVP 이름이 금색('#8a6a12')이었다. MVP 는 빨강 배지 하나로 말한다 (사장님: 노랑→빨강 통일) · 이름은 본문색 */}
       <span style={{ fontSize: 12, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{entry.name}</span>
-      <MvpMark size={15} />
+      {/* ⚠ 2026-09-23 — 배지가 flex 로 줄어들어 「★MV」 가 됐다(리그홈 「enanthate」). 배지는 안 줄고 이름이 양보한다 */}
+      <span style={{ flex: 'none', display: 'inline-flex' }}><MvpMark size={15} /></span>
     </span>
   )
 }
@@ -170,7 +171,8 @@ const pcGrid: CSSProperties = {
      옛 값 '96px 52px 100px minmax(240px,1fr) minmax(170px,200px) 44px' */
   /* 2026-09-23 네 번째 — 운영 재측정: 기준 없는 카드(WIN 칩)에서 ④ 클랜명 47px(「Poker…」), ③ MVP 칩 이름 38px.
      ④ 250 · ③ 132 · ⑤ 190, 간격 12→10 · 여백 14→12 로 574 확보 (132+250+190 = 572) */
-  gridTemplateColumns: '96px 52px minmax(100px,132px) minmax(250px,1fr) minmax(190px,220px) 44px',
+  /* 다섯 번째 — 리그홈 「enanthate ★MVP」 가 132 를 넘어 배지가 잘렸다 → ③ 150 · ④ 244 · ⑤ 180 (합 574) */
+  gridTemplateColumns: '96px 52px minmax(100px,150px) minmax(244px,1fr) minmax(180px,220px) 44px',
   alignItems: 'center',
   gap: 10,
   padding: '11px 12px',
