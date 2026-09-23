@@ -364,7 +364,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
                 <line x1={t.x} y1={Y_TOP} x2={t.x} y2={Y_BOTTOM} stroke={tone.cardBorder} strokeDasharray="3 5" />
                 {t.winner ? <rect x={t.x} y={Y_TOP - 9} width={Math.max(1, t.x1 - t.x)} height={4} fill={t.winner === 'W' ? winInk : loseInk} opacity={0.7} /> : null}
                 {t.firstX !== null ? <text x={t.firstX} y={Y_TOP + 4} textAnchor="middle" fill={t.firstSide === 'W' ? winInk : loseInk} fontSize={9} opacity={0.85}>×</text> : null}
-                <text x={cx} y={Y_BOTTOM + 24 + stagger * 12} textAnchor="middle" fill={tone.textDim} fontSize={PLOT.axisFont}>{t.round}</text>
+                <text x={cx} y={Y_BOTTOM + (phone ? 20 : 24) + stagger * (phone ? 11 : 12)} textAnchor="middle" fill={tone.textDim} fontSize={phone ? 10.5 : PLOT.axisFont}>{t.round}</text>
               </g>
             )
           })
@@ -379,7 +379,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         ) : (
           <text x={(X0 + X1) / 2} y={Y_TOP - 16} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">전반</text>
         )}
-        <text x={X0 - 7} y={Y_BOTTOM + 24} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>{phone ? 'R' : '라운드'}</text>
+        <text x={X0 - 7} y={Y_BOTTOM + (phone ? 20 : 24)} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>{phone ? 'R' : '라운드'}</text>
         {model.pts.length > 1 ? (
           <g>
             {GLOW ? (
@@ -423,6 +423,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
             <text x={labelX} y={yOf(endW) + wDy} textAnchor="start" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{endW.toFixed(0)}%</text>
           </g>
         ) : null}
+        {/* 범례·각주 — 폰에서는 안 그린다: 인원 줄이 두 이름을 색으로 말하고, 엇갈린 라운드 번호와 겹쳤다 (2026-09-23 폰 캡쳐) */}
+        {phone ? null : (
         <g>
           <line x1={X0} y1={H - 8} x2={X0 + 16} y2={H - 8} stroke={winInk} strokeWidth={3} />
           <text x={X0 + 22} y={H - 3} fill={winner.theme.deep} fontSize={PLOT.tickFont}>{winner.name} 승</text>
@@ -430,6 +432,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <text x={X0 + (phone ? 152 : 212)} y={H - 3} fill={loser.theme.deep} fontSize={PLOT.tickFont}>{loser.name} 패</text>
           <text x={box.X1} y={H - 3} textAnchor="end" fill={tone.textGhost} fontSize={PLOT.axisFont}>{phone ? '띠 = 딴 팀 · × = 첫 희생' : `위 띠 = 라운드 딴 팀 · × = 첫 희생 자리${model.anyEst ? ' · 표본 모자란 구간은 어림값' : ''}`}</text>
         </g>
+        )}
       </svg>
     </div>
   )
