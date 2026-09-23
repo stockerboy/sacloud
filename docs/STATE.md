@@ -3,7 +3,34 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-24 새벽(진영판 2차)** · 갱신한 사람 B(실행 세션 · 홈 배경 · 래더 층수 · 상세정보 색 · 라운드 흐름 손질)
+> 마지막 갱신 **2026-09-24 새벽 2차** · 갱신한 사람 B(실행 세션 · 홈 배경 · 래더 층수 · 상세정보 색 · 라운드 흐름 손질)
+
+---
+
+## 0-새벽2. ★2026-09-24 새벽 2차 — 뿌연 이름 · 폰 죽은차례 한 칸 · 두 갈래 선수 · 되메우기 적재★
+
+```
+이름 또렷하게   clanThemes.nameStyle() 한 곳 — NAME_INK='main' (마크 본색 · 광선 없음). 머리 카드 34px/800 · 마크 옆 클랜명 14. 'deep-glow' 가 옛 판  (e25688b5)
+내 줄 바탕     PlayerDetailV3 ME_ROW_GRADIENT=false — 초록 그라데이션 끔  (bf089c98)
+폰 죽은차례    RoundFlowChartV3 PHONE_ONE_COLUMN=true — 한 칸 한 줄씩 시간순 · 바탕색 = 누가 잡았나 · 높이 226  (fb1740e4)
+명단 표시 시안  MVP·저격 때문에 닉네임 잘림 → 시안 4개 https://claude.ai/code/artifact/564eb6d4-a4d0-4469-8093-22d620bf37d6 · ★사장님 고르기 대기★
+```
+### 두 갈래 선수 (사장님 「혜밤 · 차준성 같은 계정인데 두 갈래」)
+```
+원인   미러 시절 선수(SUP-서플라이ID)와 병영 선수(BRK-usn)를 이을 다리가 없다 → battlelog-lineup 이 새 선수를 만든다
+규모   같은 이름·같은 리그클랜 쌍 114줄 · 이름만 같은 쌍 347 (probe26~27)
+도구   worker `nexon player-merge-split` [--names a,b] [--confirm] [--revert 파일]  (2ed78b6f · ★아직 운영에 안 돌림★)
+       병영 줄이 본줄 · 기록 옮김 · LeaguePlayer 겹치면 백업 후 지움 · SUP 줄은 note `merged-into:` (검색 notMergedWhere 가 숨김)
+자이언트 선수 줄은 하나. 마지막 경기 09-19 — deluxe 병영 목록 빈 문제(HANDOFF §2-④). 클랜번호 수집 필요
+```
+### 되메우기 적재 (HANDOFF §0-A)
+```
+미리보기  backfill-preview3.log — 만듦합=858(IPL 605 · SPL 96 · 열산 157) · draw 208
+1차 시도  01:16 — 첫 match.create 에서 연결풀 타임아웃(connection_limit=2 · 30s)으로 죽음 (backfill-confirm2.fail1.log)
+2차 시도  01:22 — 도는 중. 끝나면 여기 갱신
+⚠ 함정   ssh 한 줄에 「확인(pgrep -f) + 실행 문자열」 을 같이 넣으면 pgrep 이 자기 자신을 잡아 ALREADY 가 된다 — 50분을 잃었다.
+         실행은 /root/backfill-confirm2.sh 파일로, 확인은 ps 패턴 "[f]lock /var/lock/sac-project.lock pnpm" 으로
+```
 
 ---
 
