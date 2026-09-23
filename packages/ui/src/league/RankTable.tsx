@@ -1092,7 +1092,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   *   폰은 그대로 두 줄이다 — 거기는 자리가 없고, 사장님이 따로 맞추신 판이다.
                   */}
                 {/* 2026-09-23 새벽 — 폰도 한 줄 (서플라이 폰 줄 36px). 클랜명은 닉네임 옆에 작게 */}
-                <div className="flex min-w-0 items-center gap-2 md:w-[210px] md:shrink-0">
+                <div className="flex min-w-0 items-center gap-2 md:w-[210px] md:shrink-0 md:overflow-hidden" /* 2026-09-24 QA(1024 태블릿): 배지·클랜명이 상자를 넘어 「승리」 값을 덮었다 → 상자 밖으로 안 나가게 */>
                   <div className="flex min-w-0 items-center gap-1.5">
                     {/* ★누름 영역★ — 글자 높이가 19px 라 손가락으로 집기 어려웠다
                         (2026-09-15 · 무한 QA). 위아래 여백을 주고 같은 만큼 당겨
