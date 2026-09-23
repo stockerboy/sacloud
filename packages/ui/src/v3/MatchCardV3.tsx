@@ -173,7 +173,8 @@ const pcGrid: CSSProperties = {
      ④ 250 · ③ 132 · ⑤ 190, 간격 12→10 · 여백 14→12 로 574 확보 (132+250+190 = 572) */
   /* 다섯 번째 — 리그홈 「enanthate ★MVP」 가 132 를 넘어 배지가 잘렸다 → ③ 150 · ④ 244 · ⑤ 180 (합 574) */
   /* 여섯 번째 — ④ 244 에서 「PokerFa…」 (클랜명 55px). ①②⑥ 을 8·4·4 씩 줄여 ④ 260 (합 590) */
-  gridTemplateColumns: '88px 48px minmax(100px,150px) minmax(260px,1fr) minmax(180px,220px) 40px',
+  /* 일곱 번째 — 선수 상세 ⑤ 「육덕미시애호가」 71>69 (2px) → ⑤ 186 · ③ 144 (enanthate 칩 141 은 든다) */
+  gridTemplateColumns: '88px 48px minmax(100px,144px) minmax(260px,1fr) minmax(186px,220px) 40px',
   alignItems: 'center',
   gap: 10,
   padding: '11px 12px',
