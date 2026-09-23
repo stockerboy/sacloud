@@ -36,7 +36,7 @@
 고침   browserFetch.ts 크롬 인자 7개 추가(--disable-background-networking · --disable-component-update · --disable-default-apps · --disable-sync ·
        --disable-extensions · --disable-features=OptimizationHints,… · --disk-cache-size=16M) — puppeteer 기본과 같다 (053b5100 · VPS pull 됨)
 당장   살아 있는 프로필 셋에서 그 네 디렉터리만 지움 → /tmp 41% · load 10 으로 내려옴
-남은 것 renew-server · hot-clan-server 는 10시간째 옛 인자 크롬을 쥐고 있다 — 다시 띄워야 새 인자. 어떻게 띄우는지 확인 중 [미확인]
+서버 잡  renew-server · hot-clan-server 는 systemd(sac-renew.service · sac-hotclan.service) — 09:35 restart 로 새 인자 크롬으로 교체 (아래 확인)
 ```
 9회차 폰(57페이지): 새 지적 0 (admin 「칸밖」 은 가로 스크롤 탭 · 정상)
 ### 09:10 — 9회차 (폰→태블릿→PC 한 폭씩)
