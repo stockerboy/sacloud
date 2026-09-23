@@ -117,9 +117,10 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   const drawIn = useDrawIn(3600, `${winner.slug ?? winner.name}|${flow.rounds.length}`, boxRef)
   const draw = DRAW_IN ? drawIn : 1
   const box = plotBox(width)
-  /* 오른쪽 끝 마커 옆에 「100%」 를 적는다 (sleeper 처럼) — 그만큼 판을 안으로 */
+  /* ⚠ 2026-09-23 낮 — 사장님: 「이 공간을 남기지 말고 다 쓰라는거임」. 옛 판은 마커 옆 「94%」 자리로 오른쪽 58~66px 을 비웠다.
+     이제 판을 오른쪽 끝까지 쓰고, 마커는 선 끝에 얹고 % 는 마커 ★위/아래★ 에 적는다. 옛 값: box.X1 - (phone ? 58 : 66) */
   const { H, X0, Y_TOP, Y_BOTTOM, phone } = box
-  const X1 = box.X1 - (phone ? 58 : 66)
+  const X1 = box.X1 - (phone ? 16 : 18)
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)
 
   const model = useMemo(() => {
@@ -288,9 +289,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   /* 값이 같으면(50:50) 원 두 개가 포개진다 → 이긴 쪽 위·진 쪽 아래로 R 만큼 */
   const tie = Math.abs(endW - 50) < 0.5
   const wAbove = yOf(endW) <= yOf(100 - endW)
-  const wDy = close ? (wAbove ? -14 : 22) : 6
-  const lDy = close ? (wAbove ? 22 : -14) : 6
-  const labelX = nowX + R + 8
+  void close
+  /* % 글자 — 마커 위(이긴 쪽)·아래(진 쪽). 옛 판은 마커 오른쪽 */
+  const labelX = nowX
   const winInk = GLOW ? (tone === V3 ? '#1c2f6b' : '#bcd2ff') : '#8fb4ff'
   /* 진 팀 색 — 육각형·위 범례와 같이 ★빨강★ 으로 고정한다. 클랜 테마(afterpray 파랑 · latency 회색)를 쓰니
      두 선이 같은 색이거나 회색이 됐다 (운영 QA 4경기). 옛 판은 LOSER_CLAN_COLOR */
@@ -447,11 +448,11 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
             {GLOW ? <circle cx={nowX} cy={yOf(100 - endW)} r={R + 4} fill="none" stroke={loser.theme.deep} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.55} /> : null}
             <circle cx={nowX} cy={yOf(100 - endW) + (tie ? R : 0)} r={R} fill={tone.chip} stroke={loseInk} strokeWidth={2} />
             {loser.slug && hasFitMark(loser.slug) ? <image href={fitMarkUrl(loser.slug)} x={nowX - R} y={yOf(100 - endW) - R + (tie ? R : 0)} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={yOf(100 - endW) + lDy} textAnchor="start" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - endW).toFixed(0)}%</text>
+            <text x={labelX} y={yOf(100 - endW) + (tie ? R : 0) + (wAbove ? R + 16 : -(R + 6))} textAnchor="middle" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{(100 - endW).toFixed(0)}%</text>
             {GLOW ? <circle cx={nowX} cy={yOf(endW)} r={R + 4} fill="none" stroke={V3.blue} strokeWidth={6} filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.55} /> : null}
             <circle cx={nowX} cy={yOf(endW) - (tie ? R : 0)} r={R} fill={tone.chip} stroke={winInk} strokeWidth={2} />
             {winner.slug && hasFitMark(winner.slug) ? <image href={fitMarkUrl(winner.slug)} x={nowX - R} y={yOf(endW) - R - (tie ? R : 0)} width={R * 2} height={R * 2} clipPath={`circle(${R}px at ${R}px ${R}px)`} /> : null}
-            <text x={labelX} y={yOf(endW) + wDy} textAnchor="start" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{endW.toFixed(0)}%</text>
+            <text x={labelX} y={yOf(endW) - (tie ? R : 0) + (wAbove ? -(R + 6) : R + 16)} textAnchor="middle" fill={tone.textStrong} fontSize={PLOT.valueFont} fontWeight="700">{endW.toFixed(0)}%</text>
           </g>
         ) : null}
         {/* 범례·각주 — 폰에서는 안 그린다: 인원 줄이 두 이름을 색으로 말하고, 엇갈린 라운드 번호와 겹쳤다 (2026-09-23 폰 캡쳐) */}
