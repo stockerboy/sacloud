@@ -124,7 +124,19 @@ function asName(v: unknown): string | null {
  *
  * ★리그도 맵도 여기서 정하지 않는다.★ 읽을 수 있는 것만 읽는다.
  */
-export function normalizeBarracksMatch(raw: RawBarracksMatch): NormalizeResult {
+/**
+ * ★라운드 승수가 같을 때★ 밖에서 정해 준 승자 (2026-09-23 밤 · 사장님 「자이언트 기록 누락」).
+ *   원문의 `red_win_cnt`/`blue_win_cnt` 가 같은데 `result_wdl` 은 「승」/「패」 인 경기가
+ *   ★9/20~9/23 나흘에 867건 (전체의 7.6%)★ 이었다. deluxe–amaryllis 9/19 경기(5:5 · 패)가 그것이다.
+ *   승수 칸만 보면 무승부라 안 만들었고, 그래서 통째로 빠졌다.
+ *   승자는 `unifiedProject` 가 「이 원문을 긁은 클랜(subject)이 어느 편이고 승/패가 뭔가」 로 정해 넘긴다.
+ *   비워 두면 옛날처럼 `draw` 로 넘어간다 — ★무승부를 승리로 지어내지 않는다★ 는 원칙은 그대로다.
+ */
+export interface NormalizeOptions {
+  tieWinner?: 'red' | 'blue' | null
+}
+
+export function normalizeBarracksMatch(raw: RawBarracksMatch, options: NormalizeOptions = {}): NormalizeResult {
   const key = typeof raw.match_key === 'string' ? raw.match_key.trim() : String(raw.match_key ?? '')
   if (!/^\d{18}$/.test(key)) {
     return fail('bad_key', `경기키가 18자리 숫자가 아니다: ${key || '(없음)'}`)
@@ -145,7 +157,7 @@ export function normalizeBarracksMatch(raw: RawBarracksMatch): NormalizeResult {
   if (redWins === null || blueWins === null) {
     return fail('bad_score', `라운드 승수를 못 읽었다 (red=${String(raw.red_win_cnt)} · blue=${String(raw.blue_win_cnt)})`)
   }
-  if (redWins === blueWins) {
+  if (redWins === blueWins && !options.tieWinner) {
     /* ★무승부를 승리로 바꾸지 않는다.★ 원본에 무승부가 있으면 그건 우리가 모르는 상황이다 */
     return fail('draw', `라운드 승수가 같다 (${redWins}:${blueWins})`)
   }
@@ -161,7 +173,7 @@ export function normalizeBarracksMatch(raw: RawBarracksMatch): NormalizeResult {
       blueClanName: blue,
       redWins,
       blueWins,
-      winnerSide: redWins > blueWins ? 'red' : 'blue',
+      winnerSide: redWins === blueWins ? options.tieWinner! : redWins > blueWins ? 'red' : 'blue',
     },
   }
 }
