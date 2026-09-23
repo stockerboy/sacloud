@@ -19,7 +19,11 @@
 ```
 원인   미러 시절 선수(SUP-서플라이ID)와 병영 선수(BRK-usn)를 이을 다리가 없다 → battlelog-lineup 이 새 선수를 만든다
 규모   같은 이름·같은 리그클랜 쌍 114줄 · 이름만 같은 쌍 347 (probe26~27)
-도구   worker `nexon player-merge-split` [--names a,b] [--confirm] [--revert 파일]  (2ed78b6f · ★아직 운영에 안 돌림★)
+도구   worker `nexon player-merge-split` [--names a,b] [--confirm] [--revert 파일]  (2ed78b6f)
+반영   2026-09-24 01:54 ★운영 반영★ — 9쌍 합침 (혜밤 · 차준성 · museup · ozther · srium · 도인비 · 리예 · Nokpo · ♡Lethe) · 후보 둘 이상 0 · 무소속 쌍 75 안 건드림
+       되돌릴 파일 VPS `/root/sacloud/apps/worker/data/player-merge/2026-09-24.jsonl` (9줄 · cwd 가 apps/worker 라 거기 생겼다)
+       혜밤 BRK 줄 참가 7(2025 des`per@do. 1 + 09-23 블랙 6) · SUP 줄 참가 0 · 리그 0 · note merged-into → 검색에서 숨음
+명단 표시 사장님 답: 「MVP 는 순위 대신 MVP 표시 · 나머지 유지」 → MVP_IN_RANK_CELL=true (1038debb)
        병영 줄이 본줄 · 기록 옮김 · LeaguePlayer 겹치면 백업 후 지움 · SUP 줄은 note `merged-into:` (검색 notMergedWhere 가 숨김)
 자이언트 선수 줄은 하나. 마지막 경기 09-19 — deluxe 병영 목록 빈 문제(HANDOFF §2-④). 클랜번호 수집 필요
 ```
@@ -27,7 +31,11 @@
 ```
 미리보기  backfill-preview3.log — 만듦합=858(IPL 605 · SPL 96 · 열산 157) · draw 208
 1차 시도  01:16 — 첫 match.create 에서 연결풀 타임아웃(connection_limit=2 · 30s)으로 죽음 (backfill-confirm2.fail1.log)
-2차 시도  01:22 — 도는 중. 끝나면 여기 갱신
+2차 시도  01:22~01:48 — ★끝★ 만듦합=637 (IPL 397 · SPL 96→67 · 열산 173) · 이미있음 10,206 · draw 208 · unknown_clan 41,591
+          로그의 prisma:error 「Unique constraint (leagueId,origin,sourceMatchId)」 는 2차 방어(이미 있는 경기) — 정상. backfill-confirm2.log
+확인      deluxe 경기 3,327건 · 마지막 09-23 15:55 (되메우기로 09-19 이후가 채워짐) · 최근 2시간 만든 Match 2,464 중 라인업 아직 없음 1,344 → lineup 크론이 따라오는 중
+자이언트  참가 285 · 마지막 09-19 그대로 — 최근 7일 deluxe 경기 중 라인업 없는 건 5건뿐. ★09-20 이후 deluxe 명단에 안 보임★ (안 뛰었거나 미등록 클랜 용병) — [미확인]
+deluxe    barracks-clan-list ferwfwfwfwf 도 150531000663 도 rtnCode -999 (result null) → ★우리 slug 가 병영 clan_id 가 아니다★. barracks-clan-search 로 진짜 id 찾는 중
 ⚠ 함정   ssh 한 줄에 「확인(pgrep -f) + 실행 문자열」 을 같이 넣으면 pgrep 이 자기 자신을 잡아 ALREADY 가 된다 — 50분을 잃었다.
          실행은 /root/backfill-confirm2.sh 파일로, 확인은 ps 패턴 "[f]lock /var/lock/sac-project.lock pnpm" 으로
 ```
