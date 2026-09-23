@@ -91,7 +91,7 @@ export function FormTop3({
             </div>
             <div className={`${COL_RATING} ${NUM} text-text-strong`}>
               {formatRatingDelta(row.rating_delta)}
-              <span className="ml-1 text-xs text-faint">({formatCount(row.games)}경기)</span>
+              <span className="ml-1 whitespace-nowrap text-xs text-faint">({formatCount(row.games)}경기)</span>
             </div>
           </div>
         ))}

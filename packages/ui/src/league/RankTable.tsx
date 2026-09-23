@@ -1357,7 +1357,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                 {/* ★미참여 감점★ — 오래 안 뛰어 깎였으면 적는다 (2026-09-11 사장님) */}
                 {/* 2026-09-24 QA: 0.3점 같은 값이 「−0점」 으로 찍혔다 → 반올림해서 1점 이상일 때만 */}
                 {Math.round(row.activity_penalty ?? 0) >= 1 ? (
-                  <div className="mt-0.5 text-[10px] font-bold leading-none text-[#ff8a90]">
+                  <div className="mt-0.5 text-[10px] font-bold leading-none text-[#ff8a90] max-md:hidden" /* 2026-09-24 QA(운영 열산 폰): 36px 줄 밑으로 삐져나와 다음 줄에 걸쳤다 → 폰은 숨긴다 (선수 카드에서 본다) */>
                     미참여 −{Math.round(row.activity_penalty as number)}점
                   </div>
                 ) : null}
