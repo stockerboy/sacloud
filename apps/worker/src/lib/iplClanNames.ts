@@ -23,6 +23,12 @@ export interface SideRow {
   subject: string
   red: string | null
   blue: string | null
+  /**
+   * ★이 줄이 몇 줄을 대신하나★ (2026-09-23 · `clan-alias-rebuild`).
+   *   원문 76만 줄을 그대로 들고 오지 않고 `GROUP BY subject, red, blue` 로 뭉쳐 온다.
+   *   비워 두면 1 — 옛 호출은 한 글자도 안 바뀐다.
+   */
+  weight?: number
 }
 
 export interface DerivedName {
@@ -42,11 +48,12 @@ const MAX_NAMES_PER_SUBJECT = 8
  * @returns slug -> 이름들 (많이 덮은 순)
  */
 export function deriveClanNames(rows: readonly SideRow[]): Map<string, DerivedName[]> {
-  const bySubject = new Map<string, Array<{ red: string | null; blue: string | null }>>()
+  const bySubject = new Map<string, Array<{ red: string | null; blue: string | null; w: number }>>()
   for (const row of rows) {
+    const w = row.weight !== undefined && row.weight > 0 ? row.weight : 1
     const list = bySubject.get(row.subject)
-    if (list) list.push({ red: row.red, blue: row.blue })
-    else bySubject.set(row.subject, [{ red: row.red, blue: row.blue }])
+    if (list) list.push({ red: row.red, blue: row.blue, w })
+    else bySubject.set(row.subject, [{ red: row.red, blue: row.blue, w }])
   }
 
   const out = new Map<string, DerivedName[]>()
@@ -54,6 +61,7 @@ export function deriveClanNames(rows: readonly SideRow[]): Map<string, DerivedNa
   for (const [subject, subjectRows] of bySubject) {
     const uncovered = new Set(subjectRows.map((_, index) => index))
     const chosen: DerivedName[] = []
+    const total = subjectRows.reduce((a, r) => a + r.w, 0)
 
     while (uncovered.size > 0 && chosen.length < MAX_NAMES_PER_SUBJECT) {
       const tally = new Map<string, number>()
@@ -61,7 +69,7 @@ export function deriveClanNames(rows: readonly SideRow[]): Map<string, DerivedNa
         const row = subjectRows[index]
         if (!row) continue
         for (const name of [row.red, row.blue]) {
-          if (name) tally.set(name, (tally.get(name) ?? 0) + 1)
+          if (name) tally.set(name, (tally.get(name) ?? 0) + row.w)
         }
       }
 
@@ -83,7 +91,7 @@ export function deriveClanNames(rows: readonly SideRow[]): Map<string, DerivedNa
       chosen.push({
         name: best,
         rows: bestCount,
-        ratio: subjectRows.length === 0 ? 0 : bestCount / subjectRows.length,
+        ratio: total === 0 ? 0 : bestCount / total,
       })
     }
 

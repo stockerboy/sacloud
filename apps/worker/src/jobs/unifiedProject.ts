@@ -244,16 +244,43 @@ async function buildNameIndex(liveClans: Map<string, LiveClan>) {
   const bySlug = new Map<string, LiveClan>()
   for (const c of liveClans.values()) bySlug.set(c.clanSlug, c)
 
+  /*
+   * ★남의 지금 이름은 내 옛 이름이 될 수 없다★ (2026-09-23 밤 · 사장님 「자이언트 기록 누락」)
+   *   이름표가 한때 상대 이름까지 「내 옛 이름」 으로 담았다 (`clanNameBackfill` 의 옛 판).
+   *   그 이름들이 색인에서 「같은 이름 다른 클랜」 으로 ★310개★ 빠지며 deluxe · amaryllis 의
+   *   경기가 unknown_clan 으로 버려졌다. 이름표는 `clan-alias-rebuild` 가 다시 만들지만,
+   *   여기서도 한 번 더 거른다 — ★`Clan` 표에 그 이름을 지금 쓰는 다른 클랜이 있으면 뺀다.★
+   */
+  const clanNames = await prisma.clan.findMany({ select: { id: true, name: true } })
+  const ownersOfName = new Map<string, Set<string>>()
+  for (const c of clanNames) {
+    const set = ownersOfName.get(c.name) ?? new Set<string>()
+    set.add(c.id)
+    ownersOfName.set(c.name, set)
+  }
+  const isSomeoneElsesName = (name: string, clanId: string): boolean => {
+    const owners = ownersOfName.get(name)
+    if (!owners) return false
+    for (const id of owners) if (id !== clanId) return true
+    return false
+  }
+
   let recovered = 0
+  let foreignSkipped = 0
   for (const [subject, names] of derived) {
     const owner = bySlug.get(subject)
     if (!owner) continue
     for (const n of names) {
       if (n.name === owner.clanName) continue
+      if (isSomeoneElsesName(n.name, owner.clanId)) {
+        foreignSkipped += 1
+        continue
+      }
       entries.push({ name: n.name, clanId: owner.clanId, league: owner.league })
       recovered += 1
     }
   }
+  if (foreignSkipped > 0) log(`  이름표에서 남의 지금 이름 ${foreignSkipped}개를 옛 이름으로 안 쳤다`)
 
   /* ★클랜별로 「이 클랜이 써 온 이름들」을 따로 모은다★ (2026-09-05 · ⑤단계).
      이름표(`index`)는 모호한 이름을 빼지만, ★slug 로 앉힐 때는 그 이름도 써야 한다★ —

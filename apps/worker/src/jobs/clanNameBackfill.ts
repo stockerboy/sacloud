@@ -51,6 +51,18 @@ export interface ClanNameBackfillResult {
 const DEFAULT_LIMIT = 2000
 
 /**
+ * ★이름표를 여기서 쓰지 않는다★ (2026-09-23 밤 · 사장님 「자이언트 기록 누락」 원인)
+ *   옛 판은 한 줄의 red·blue 를 ★둘 다★ `subject` 의 옛 이름으로 적었다.
+ *   그러면 ★상대 클랜 이름이 전부 내 옛 이름이 된다★ — 실측 「afterpray」 가 12개 slug 의
+ *   이름표에, 「QuasaR-」 가 11개에 들어갔고, 이름표 66,063행 중 대부분이 남의 이름이었다.
+ *   투영은 그런 이름을 「같은 이름 다른 클랜」 으로 보고 ★310개 이름을 통째로 뺐다★ —
+ *   deluxe · amaryllis · afterpray 가 거기 들어가 ★그 클랜들의 경기가 unknown_clan 으로 버려졌다.★
+ *   이름표는 이제 `clan-alias-rebuild` 가 ★덮기(set cover)★ 로 만든다. 여기서는 칸만 채운다.
+ *   옛 동작은 이 스위치로 남긴다.
+ */
+const ALIAS_FROM_BACKFILL = false
+
+/**
  * ★한 판에 주는 시간★ (2026-09-20).
  *
  * 기본 2분으로는 ★한 판도 못 끝냈다.★ 디스크가 느린 날엔 300줄에 72초가 걸린다.
@@ -160,7 +172,7 @@ export async function runClanNameBackfill(
   }
   const aliasRows: { subject: string; name: string }[] = []
   for (const [subject, names] of aliases) for (const name of names) aliasRows.push({ subject, name })
-  if (aliasRows.length > 0) {
+  if (ALIAS_FROM_BACKFILL && aliasRows.length > 0) {
     /* ⚠ 같은 쌍이 또 와도 괜찮다 — 유일키가 막고 `skipDuplicates` 가 넘긴다 */
     await prisma.barracksClanAlias.createMany({ data: aliasRows, skipDuplicates: true })
     out.aliases += aliasRows.length

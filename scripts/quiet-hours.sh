@@ -70,6 +70,27 @@ for i in $(seq 1 400); do
   sleep 5
 done
 
+# ── ①-2 클랜 이름표 다시 만들기 (2026-09-23 밤 · 자이언트 누락 원인) ──────
+#   옛 이름표는 상대 이름까지 「내 옛 이름」 으로 담아 투영이 310개 이름을 버렸다.
+#   덮기(set cover)로 다시 쓴다. 원문 76만 줄을 한 번 훑으니 밤에만.
+if past_quiet; then
+  say "사람이 오는 시간이다 — ①-2 는 내일 같은 시간에 한다"
+else
+  out=$(pnpm --filter @sacloud/worker nexon clan-alias-rebuild --confirm 2>&1 | grep "이름표" | tail -1 || true)
+  say "  ①-2 이름표 다시 만듦 — ${out:-(출력을 못 읽었다)}"
+fi
+
+# ── ①-3 정규화 깊은 되감기 (2026-09-23 밤) ─────────────────────────
+#   2분 예약은 「이미 만든 곳 − 2시간」 부터만 본다. 그보다 늦게 도착한 원문(상대가 며칠 뒤에
+#   긁힌 경기)은 영영 안 만들어진다 — deluxe 5,944건이 그렇게 빠졌다. 하루 한 번 30시간을 되감는다.
+if past_quiet; then
+  say "사람이 오는 시간이다 — ①-3 은 내일 같은 시간에 한다"
+else
+  say "  ①-3 정규화 30시간 되감기 시작"
+  PROJECT_REWIND_HOURS=30 flock -w 600 /var/lock/sac-project.lock sh scripts/project.sh >> "$LOG" 2>&1
+  say "  ①-3 끝 (코드 $?)"
+fi
+
 # ── ② MVP 설명 다시 만들기 ────────────────────────────────────────
 #   ⚠ ★①이 끝난 뒤에만★ 한다. 둘이 겹치면 밤에도 사이트가 느려진다.
 if past_quiet; then

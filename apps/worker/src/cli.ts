@@ -31,6 +31,7 @@ import { countLocalCollectors } from './lib/localCollectors.js'
 /* ★통합 투영★ (Part 3 · 2026-09-05) */
 import { clearBlind, noteBlind } from './lib/blindStreak'
 import { runClanNameBackfill } from './jobs/clanNameBackfill'
+import { runClanAliasRebuild } from './jobs/clanAliasRebuild.js'
 import { runBarracksIdentityMerge } from './jobs/barracksIdentityMerge'
 import { runUnifiedProject } from './jobs/unifiedProject.js'
 import { rateLimitSweep } from './jobs/rateLimitSweep.js'
@@ -1129,6 +1130,32 @@ async function main(): Promise<number> {
           걸린ms: out.ms,
         },
       ])
+      return 0
+    }
+
+    case 'clan-alias-rebuild': {
+      /*
+       * ★클랜 이름표를 덮기(set cover)로 다시 만든다★ (2026-09-23 밤 · 자이언트 누락 원인)
+       *
+       *   nexon clan-alias-rebuild             미리보기 (몇 줄이 될지만)
+       *   nexon clan-alias-rebuild --confirm   이름표를 지우고 다시 쓴다
+       *
+       * ⚠ 원문 76만 줄을 한 번 훑는다 (GROUP BY) — ★밤에만★ (`scripts/quiet-hours.sh`).
+       */
+      const out = await runClanAliasRebuild({ confirm: boolFlag(args, 'confirm') })
+      table([
+        {
+          원문줄: out.rawRows,
+          뭉침: out.groups,
+          클랜: out.subjects,
+          '이름표(전)': out.before,
+          '이름표(후)': out.aliases,
+          남의이름뺌: out.foreignDropped,
+          얇아서뺌: out.thinDropped,
+          걸린ms: out.ms,
+        },
+      ])
+      if (!boolFlag(args, 'confirm')) log('미리보기다 — 한 줄도 안 썼다. --confirm 으로 다시 쓴다')
       return 0
     }
 

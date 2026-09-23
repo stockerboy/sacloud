@@ -95,3 +95,23 @@ describe('deriveClanNames — slug 가 써 온 이름들을 데이터에서 뽑�
     expect((deriveClanNames(rows).get('s') ?? []).length).toBeLessThanOrEqual(8)
   })
 })
+
+/* ★무게(weight)★ — 2026-09-23 `clan-alias-rebuild` 가 GROUP BY 로 뭉친 줄을 넘긴다 */
+describe('deriveClanNames — 무게', () => {
+  it('무게가 있으면 줄 수 대신 무게로 센다 (상대가 먼저 뽑히지 않는다)', () => {
+    const rows: SideRow[] = [
+      { subject: 'fdd8', red: 'amaryllis', blue: 'afterpray', weight: 30 },
+      { subject: 'fdd8', red: 'deluxe', blue: 'amaryllis', weight: 20 },
+      { subject: 'fdd8', red: 'amaryllis', blue: 'saint', weight: 5 },
+    ]
+    const got = deriveClanNames(rows).get('fdd8') ?? []
+    expect(got.map((x) => x.name)).toEqual(['amaryllis'])
+    expect(got[0]?.rows).toBe(55)
+    expect(got[0]?.ratio).toBeCloseTo(1)
+  })
+
+  it('무게를 안 주면 옛날과 똑같이 1로 센다', () => {
+    const a = deriveClanNames([{ subject: 's', red: 'A', blue: 'x' }, { subject: 's', red: 'B', blue: 'y' }]).get('s') ?? []
+    expect(a.map((x) => x.rows)).toEqual([1, 1])
+  })
+})
