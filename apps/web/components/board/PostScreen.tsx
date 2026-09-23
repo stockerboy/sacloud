@@ -82,7 +82,8 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
   return (
     <>
       <PostView post={post.data.data} onVote={(type) => vote.mutate(type)} basePath={basePath} />
-      <div className="mt-[var(--section-gap)] rounded-[var(--radius)] border border-line bg-card px-6 py-5 max-md:px-4">
+      {/* 2026-09-24 QA(운영 폰): 글 카드 밑 「댓글 n개」 와 댓글 카드 사이가 80px 넘게 비었다 → section-gap(40) 대신 12 */}
+      <div className="mt-3 rounded-[var(--radius)] border border-line bg-card px-6 py-5 max-md:px-4">
         <CommentList
           comments={comments.data?.data}
           loading={!comments.data}

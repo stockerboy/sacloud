@@ -245,6 +245,11 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
   const lblOverlapX = Math.abs(kdCx - wrCx) < PLOT.markerR * 2 + 60
   const wrShift = lblOverlapX && Math.abs(lblGap) < lblNeed ? (lblGap >= 0 ? -(lblNeed - lblGap) / 2 : (lblNeed + lblGap) / 2) : 0
   const kdShift = -wrShift
+  /* 2026-09-24 QA(운영 폰 · 경기 많은 선수): 마커가 오른쪽 끝(today)이면 「누적 1,799킬 1,624데스」 가 svg 밖(391>390)으로 나갔다
+     → 오른쪽에 자리(≈110px)가 없으면 마커 ★왼쪽★ 에 끝 정렬로 적는다. 마커 x 는 그대로다 */
+  const labelFlip = (cx: number) => cx + PLOT.markerR + 8 + 110 > width
+  const labelX = (cx: number) => (labelFlip(cx) ? cx - PLOT.markerR - 8 : cx + PLOT.markerR + 8)
+  const labelAnchor = (cx: number): 'start' | 'end' => (labelFlip(cx) ? 'end' : 'start')
   /* 마커 밑 작은 글자 — 판 바닥에 닿으면(0% 근처) ★값 글자 위★ 로 올린다. 바닥에만 붙이면 값 글자(cy+5)와 포개졌다 (운영 실측 2026-09-24 06:40) */
   /* cy−12 는 값 글자(18px · 상자 cy−17..cy+5)와 5px 겹쳤다(운영 7회차 실측) → cy−18 */
   const subYOf = (cy: number, shift: number) => (cy + 20 + shift > Y_BOTTOM - 3 ? cy - 18 + shift : cy + 20 + shift)
@@ -315,14 +320,14 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
             {markSlug && hasFitMark(markSlug) ? (
               <image href={fitMarkUrl(markSlug)} x={wrCx - PLOT.markerR} y={wrCy - PLOT.markerR} width={PLOT.markerR * 2} height={PLOT.markerR * 2} clipPath={`circle(${PLOT.markerR}px at ${PLOT.markerR}px ${PLOT.markerR}px)`} />
             ) : null}
-            <text x={wrCx + PLOT.markerR + 8} y={wrCy + 5 + wrShift} textAnchor="start" fill={wrInk} fontSize={PLOT.valueFont} fontWeight="700">{shown.wr.toFixed(1)}%</text>
-            <text x={wrCx + PLOT.markerR + 8} y={wrSubY} textAnchor="start" fill={tone.textMuted} fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
+            <text x={labelX(wrCx)} y={wrCy + 5 + wrShift} textAnchor={labelAnchor(wrCx)} fill={wrInk} fontSize={PLOT.valueFont} fontWeight="700">{shown.wr.toFixed(1)}%</text>
+            <text x={labelX(wrCx)} y={wrSubY} textAnchor={labelAnchor(wrCx)} fill={tone.textMuted} fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? winLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.win}승 ${hoverDay.lose}패` : `누적 ${hoverDay.cum_games}판`}` : '9/3 출발'}</text>
             {showsKd ? (<>
             <circle cx={kdCx} cy={kdCy} r={PLOT.markerR + 4} fill="none" stroke={V3.red} strokeWidth={6} filter="url(#trendGlow)" opacity={0.5} />
             <circle cx={kdCx} cy={kdCy} r={PLOT.markerR} fill={tone.chip} stroke="#ff5a63" strokeWidth={2} />
             <text x={kdCx} y={kdCy + 4} textAnchor="middle" fill={kdInk} fontSize="10" fontWeight="700">K/D</text>
-            <text x={kdCx + PLOT.markerR + 8} y={kdCy + 5 + kdShift} textAnchor="start" fill={kdInk} fontSize={PLOT.valueFont} fontWeight="700">{shown.kd.toFixed(1)}%</text>
-            <text x={kdCx + PLOT.markerR + 8} y={kdSubY} textAnchor="start" fill={kdSub} fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
+            <text x={labelX(kdCx)} y={kdCy + 5 + kdShift} textAnchor={labelAnchor(kdCx)} fill={kdInk} fontSize={PLOT.valueFont} fontWeight="700">{shown.kd.toFixed(1)}%</text>
+            <text x={labelX(kdCx)} y={kdSubY} textAnchor={labelAnchor(kdCx)} fill={kdSub} fontSize="10" fontWeight="700">{drawing ? '' : hover === null ? kdLabel : hoverDay ? `${hoverDay.label} 마감 · ${mode === 'day' ? `${hoverDay.kill}킬 ${hoverDay.death}데스` : ''}` : '9/3 출발'}</text>
             </>) : null}
           </g>
         ) : null}
