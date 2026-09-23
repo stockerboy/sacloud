@@ -70,6 +70,11 @@ const PAGES = [
   ['leagues-create', '/leagues/create', '', null],
   ['pw-forget', '/auth/password/forget', '', null],
   ['clause-policy', '/clause/policy', '', null],
+  /* 5회차 — 눌러야 보이는 상태들 */
+  ['match-list-open', '/league/supply/match', '플레이어', 'css:.mc-card', false],
+  ['rank-player-sniper', '/league/supply/rank/player', '개인랭킹', '스나', false],
+  ['trend-day', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '승률', 'DAY', false],
+  ['clan-record-tab-m', '/league/supply/clan/zxcvddr2', '클랜원', '기록실', true],
 ]
 const WIDTHS = which === 'pc' ? [[1440, 'pc']] : which === 'm' ? [[390, 'm']] : [[390, 'm'], [1440, 'pc']]
 
@@ -124,7 +129,7 @@ for (const [w, tag] of WIDTHS) {
       if (clickText) {
         let clicked = 'not found'
         for (let i = 0; i < 20 && clicked !== 'clicked'; i += 1) {
-          clicked = await evalStr(`(() => { const want = ${JSON.stringify(clickText)}; const el = want.startsWith('@') ? document.querySelector('[aria-label=' + JSON.stringify(want.slice(1)) + ']') : [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === want); if (el) { el.click(); return 'clicked' } return 'not found' })()`)
+          clicked = await evalStr(`(() => { const want = ${JSON.stringify(clickText)}; const el = want.startsWith('css:') ? document.querySelector(want.slice(4)) : want.startsWith('@') ? document.querySelector('[aria-label=' + JSON.stringify(want.slice(1)) + ']') : [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === want); if (el) { el.click(); return 'clicked' } return 'not found' })()`)
           if (clicked !== 'clicked') await sleep(500)
         }
         await sleep(2500)
