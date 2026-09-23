@@ -33,7 +33,7 @@ import type { EggState } from '../egg/eggState'
 /* 승률·킬뎃 두 칸만 서플라이 등급색을 쓴다 (2026-08-30 사용자 지시) */
 import { rateClass } from '../common/rate'
 import { rankColor } from '../record/playerHeadCopy'
-import { floorColor } from '../v3/rankColors'
+/* floorColor — 래더 색은 2026-09-23 밤에 뺐다 (옛 판 자리 · rankColors.ts 에 그대로) */
 import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
 import { Skeleton } from '../common/Skeleton'
@@ -1325,7 +1325,8 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                  옛 모양은 한 색(청록 `text-accent`)이었다 — 자리·크기는 그대로다 */
               <div
                 className={`${COL_PRATING} ${NUM}`}
-                style={byWeapon || scoreLadder ? undefined : { color: floorColor(row.score ?? row.rating) }}
+                /* 2026-09-23 밤 사장님 「래더 색깔은 그냥 없애」 — 옛 판: floorColor(row.score ?? row.rating) */
+                style={undefined}
               >
                 {byWeapon
                   ? formatRatingDelta(row.rating_delta ?? 0)

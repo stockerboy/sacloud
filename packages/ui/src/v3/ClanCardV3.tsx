@@ -12,7 +12,7 @@ import { leagueDisplayName } from '../site-config'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 import type { CSSProperties, ReactNode } from 'react'
 import { CLAN_HEX_V2_CLAN_AXIS_KEYS, CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, leagueScreen, showsTier, type ClanHexagonV2, type LeagueClanShow } from '@sacloud/contract'
-import { floorColor, rankColor, statColor } from './rankColors'
+import { rankColor, statColor } from './rankColors'
 import { hexTierOf } from './hexTierLabel'
 import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
@@ -211,7 +211,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
   const kpis: { label: string; value: string; sub: ReactNode; color: string; picker?: boolean }[] = [
     /* 같은 «층» 단위라 선수 점수와 ★같은 색 규칙★ 을 쓴다 (2026-09-11 사장님) */
     ...(showsLadder
-      ? [{ label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: floorColor(data.rating) }]
+      ? [{ label: '래더', value: formatRating(data.rating), sub: data.placement ? '배치 중' : '', color: V3.textStrong /* 래더 색 없앰 (2026-09-23 밤) · 옛값 floorColor(data.rating) */ }]
       : []),
     tier && showsBand
       ? { label: '구간 승률', value: pct1(tierRate), sub: <><TierText division={tier.division} leagueCategory={data.league.category} size={11} /> <span>{tier.win}승 {tier.lose}패</span></>, color: tierRate === null ? V3.textMuted : statColor(tierRate), picker: tierWins.length > 1 }

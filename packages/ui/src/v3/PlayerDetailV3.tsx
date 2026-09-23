@@ -17,7 +17,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail, MatchDetail, MatchLineupEntry, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
 import { showsTier, badgeArtSmallPath, badgeOfAxis } from '@sacloud/contract'
 import { leagueBadgePath } from '../common/paths'
-import { SUPPLY_INFO, floorColor, rankColor, statColor, supplyRankColor, supplyRateColor } from './rankColors'
+import { SUPPLY_INFO, rankColor, statColor, supplyRankColor, supplyRateColor } from './rankColors'
 import { Hexagon } from './Hexagon'
 import { CompareSearchV3, type CompareCandidate } from './CompareSearchV3'
 import { strengthAxes } from './playerHexAxes'
@@ -861,7 +861,7 @@ function ScoreRowSupplySix({ row, me, mvp, weaponKnown, leagueSlug, side, maxDam
   /* 래더 — 배치고사 중이면 점수가 없다. 색은 사이트 공통 층수 색(`floorColor`) */
   const ratingNode = row.placement || row.rating === null
     ? <span style={{ fontSize: 10.5, color: V3.textFaint, whiteSpace: 'nowrap' }}>배치고사</span>
-    : <span style={{ fontSize: 11.5, fontWeight: 600, color: floorColor(row.rating), whiteSpace: 'nowrap' }}>{formatRating(row.rating)}</span>
+    : <span style={{ fontSize: 11.5, fontWeight: 600, color: V3.textDim /* 래더 색 없앰 (2026-09-23 밤) · 옛값 floorColor(row.rating) */, whiteSpace: 'nowrap' }}>{formatRating(row.rating)}</span>
 
   return (
     <>
