@@ -101,6 +101,8 @@ function yOnLine(pts: readonly (readonly [number, number])[], x: number): number
  *   `showsKd` 기본값이 `true` 라 다른 리그 그래프는 한 픽셀도 안 바뀐다 (`CLAUDE.md` 1-4).
  *   값 계산(`kdPts`)은 그대로 돈다 — 지우면 두 선을 떼어 놓는 눈금(`lblGap`)이 어긋난다.
  */
+const TREND_H_SCALE = 2 / 3
+
 export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '', showsKd = true, tone = V3 }: { days: readonly PlayerTrendDay[]; mode: TrendMode; markSlug: string | null; winLabel: string; kdLabel: string; seed?: string; showsKd?: boolean; tone?: V3Tone }) {
   /* ★색판★ — 기본은 흰 카드(`V3`). 남색 판(`V3_DARK`)을 넘기면 흰 UI 이전 판으로 그린다.
      기본값이 `V3` 라 넘기지 않는 화면은 ★한 픽셀도 안 바뀐다★ (`CLAUDE.md` 1-4) */
@@ -121,7 +123,8 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
     return () => ro.disconnect()
   }, [])
   /* 판 크기·선 두께·마커는 상대전적 그래프와 ★같은 자★ 를 쓴다 (seasonPlot.ts · 2026-09-11 사장님) */
-  const { H, X0, X1, Y_TOP, Y_BOTTOM } = plotBox(width)
+  /* 판 세로 2/3 (2026-09-23 저녁 사장님 「세로로 너무 커」). 옛 값은 배율 1 (PC 400 · 폰 폭×0.78) */
+  const { H, X0, X1, Y_TOP, Y_BOTTOM } = plotBox(width, false, TREND_H_SCALE)
   /* DAY/누적을 누를 때마다, 화면에 다시 들어올 때마다 다시 그린다 (2026-09-11 사장님) */
   const draw = useDrawIn(3600, mode, boxRef)
   const yOf = (v: number) => Y_BOTTOM - (Math.max(0, Math.min(100, v)) / 100) * (Y_BOTTOM - Y_TOP)

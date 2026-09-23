@@ -610,7 +610,8 @@ function weekPoints(points: readonly WeeklyPoint[]): TrendPoint[] {
 
 /** ⚠ 옛 추이 카드(`TrendChart` · 최근 3일/주간)는 아래에 그대로 있다. 2026-09-10 부터는 사장님 지시서대로 `TrendChartV3` 가 그린다 */
 function TrendCard({ data, showsKd, tone = V3 }: { data: LeaguePlayerDetail; showsKd: boolean; tone?: V3Tone }) {
-  const [mode, setMode] = useState<TrendMode>('day')
+  /* 기본 탭 「누적」 (2026-09-23 저녁 사장님 「누적을 먼저 보여줘」 · 인계서 ②-6). 옛 기본값 'day' */
+  const [mode, setMode] = useState<TrendMode>('cum')
   const today = data.trend.find((d) => d.today) ?? null
   /* DAY 마커는 «경기가 있던 마지막 날» 값을 잇는다 — 오늘 0판이면 «오늘 0승 0패 83%» 처럼 읽혀 헷갈렸다 (QA 교차검토 16번)
      → 오늘 판이 있으면 «오늘», 없으면 그 날짜를 적는다 */
@@ -2127,7 +2128,9 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
         /* ★서플라이 실측★ — 본문 840 · 틈 7 · 오른쪽 271 (docs/SUPPLY_MEASURED.md §4).
            옛 값은 330px 에 틈 16px 이었다 — 오른쪽이 넓어 본문이 좁았다.
            ⚠ 이 블록은 템플릿 리터럴 안이다 — 백틱 기호를 쓰면 문자열이 끊긴다. */
-        .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 271px; gap: 7px; align-items: start; margin-top: 16px; }
+        /* 2026-09-23 저녁 사장님: 「카드 가로를 조금씩 더 — 경기상세 카드랑 상세기록 카드 너무 작아 답답」
+           → 선수 페이지 컨테이너를 1400 으로(supply-skin.css 의 sac-player-page) · 오른쪽 271→330. 옛 값 271 */
+        .sac-prr-grid { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 10px; align-items: start; margin-top: 16px; }
         .sac-prr-main { min-width: 0; display: flex; flex-direction: column; }
         .sac-prr-aside { min-width: 0; display: flex; flex-direction: column; gap: 7px; position: sticky; top: 12px; --hex-zoom: .78; }
         @media (max-width: 980px) {

@@ -66,7 +66,8 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
     }
   }
   return (
-    <div>
+    /* `sac-player-page` — 선수 페이지만 컨테이너를 넓힌다 (2026-09-23 저녁 사장님 「카드 가로 조금 더」 · supply-skin.css) */
+    <div className="sac-player-page">
       {data ? (
         <div className="pc-container">
           {/* ★킬데스는 리그가 정한다★ (2026-09-14) — 가리면 그 자리에 판수가 선다 */}

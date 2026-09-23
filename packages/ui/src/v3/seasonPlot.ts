@@ -117,7 +117,11 @@ export const HOLD = 0.3
  * 판 크기 — 폭에 따라 정한다.
  * 2026-09-11 사장님: «판 길이를 더 늘리고 세로길이도 조금 늘려라» → 가로 여백을 줄이고 세로를 키웠다.
  */
-export function plotBox(width: number, compact = false): {
+/**
+ * @param hScale 판 세로 배율 (2026-09-23 저녁 사장님: 「킬뎃 추이 그래프 판이 세로로 너무 커 — 3분의 2로」).
+ *   승률·킬뎃 추이만 2/3 을 준다. 기본 1 이라 상대전적·라운드 흐름은 그대로다. 폰도 같은 배율.
+ */
+export function plotBox(width: number, compact = false, hScale = 1): {
   H: number
   X0: number
   X1: number
@@ -131,13 +135,13 @@ export function plotBox(width: number, compact = false): {
    * ★`compact` — 더 낮은 판★ (2026-09-22 사장님: 「카드 세로 길이 좀 줄여줘 너무 큰거같아」).
    *   클랜랭킹 맨 위 카드만 쓴다. ★기본값은 옛 값 그대로★ 다.
    */
-  const H = compact
+  const H = Math.round((compact
     ? phone
       ? Math.round(width * 0.46)
       : 210
     : phone
       ? Math.round(width * 0.78)
-      : 400
+      : 400) * hScale)
   const X0 = phone ? 36 : 46
   const right = phone ? 34 : 46
   return { H, X0, X1: width - right, Y_TOP: 30, Y_BOTTOM: H - (phone ? 52 : 66), phone }
