@@ -142,6 +142,15 @@ const WEAPON_ICON: 'photo' | 'svg' = 'photo'
 /** 죽은 차례 칸 높이 — 설치 줄이 생겨 한 줄 더 (옛 값 폰 152 · PC 176) */
 const PANEL_H_PHONE = 178
 const PANEL_H_PC = 206
+/*
+ * ★폰은 한 칸★ (사장님 2026-09-24 새벽 「피시는 글자가 안 가려지는데 모바일은 가려지네 — 총 디자인 때문인가」 → 맞다).
+ *   폰 두 칸(칸 하나 170px)에 선짤+마크+킬러+총 사진+희생자가 다 들어가 이름이 「세…」 로 잘렸다.
+ *   이제 폰은 ★한 칸에 한 줄씩 시간순★ — 누가 잡았는지는 줄 바탕색(빨강 = 레드가 잡음 · 파랑 = 블루가 잡음)이 말한다. PC 는 두 칸 그대로.
+ *   옛 판(폰 두 칸)은 PHONE_ONE_COLUMN=false
+ */
+const PHONE_ONE_COLUMN = true
+/** 폰 한 칸일 때 칸 높이 — 머리 18 + 줄 8×(22+3) */
+const PANEL_H_PHONE_ONE = 226
 
 export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }: {
   flow: RoundFlow
@@ -843,7 +852,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
               <span style={{ color: inkOf(k), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{f.by ?? '—'}</span>
               <WeaponGlyph kind={kind} phone={phone} />
               <span style={{ color: inkOf(other), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, opacity: 0.9 }}>{f.name ?? '—'}</span>
-              {phone ? null : <span style={{ color: tone.textDim, fontSize: 11, flex: 'none', marginLeft: 'auto' }}>{WEAPON_NAME[kind]}</span>}
+              {phone && !PHONE_ONE_COLUMN ? null : <span style={{ color: tone.textDim, fontSize: phone ? 10 : 11, flex: 'none', marginLeft: 'auto' }}>{WEAPON_NAME[kind]}</span>}
             </div>
           )
         }
@@ -899,12 +908,30 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
                 <SideTag red={false} />
               </div>
             </div>
-            {/* ③ 죽은 차례 — 두 칸. 판 높이는 고정해 그래프가 위아래로 안 움직인다 */}
+            {/* ③ 죽은 차례 — PC 두 칸 · 폰 한 칸(PHONE_ONE_COLUMN). 판 높이는 고정해 그래프가 위아래로 안 움직인다 */}
+            {phone && PHONE_ONE_COLUMN && KILL_ROWS_V2 ? (() => {
+              const all = [
+                ...feedOf(leftKey).map((row) => ({ row, k: leftKey })),
+                ...feedOf(rightKey).map((row) => ({ row, k: rightKey })),
+              ].sort((a, b) => a.row.at - b.row.at)
+              return (
+                <div style={{ borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, height: PANEL_H_PHONE_ONE, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, letterSpacing: '.06em', color: tone.textGhost, marginBottom: 4, whiteSpace: 'nowrap' }}>
+                    <span><i style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(255,107,107,.55)', marginRight: 4, verticalAlign: 'middle' }} />{teamOf(leftKey).name}가 잡음</span>
+                    <span>{teamOf(rightKey).name}가 잡음<i style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(143,180,255,.6)', marginLeft: 4, verticalAlign: 'middle' }} /></span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {all.length === 0 ? <span style={{ color: tone.textGhost, fontSize: 12 }}>{hud.round > 0 ? '아직 없음' : ''}</span> : all.map(({ row, k }, i) => rowV2(row, k, i))}
+                  </div>
+                </div>
+              )
+            })() : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 10px', borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, height: phone ? PANEL_H_PHONE : PANEL_H_PC, overflow: 'hidden' /* 2026-09-23 밤 사장님 「세로폭 고정 — 5명 다 들어갈 크기」: 머리 17 + 줄 5×(20+3) = 132 + 여백. 옛 값 minHeight phone 96 / 72 */ }}>
               {KILL_ROWS_V2 ? colV2(leftKey, 'left') : col(leftKey, 'left')}
               <div style={{ background: tone.cardBorder }} />
               {KILL_ROWS_V2 ? colV2(rightKey, 'right') : col(rightKey, 'right')}
             </div>
+            )}
           </>
         )
       })() : null}
