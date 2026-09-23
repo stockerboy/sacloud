@@ -28,6 +28,17 @@
 상대전적 폰  5:0 이면 「100.0%」 가 「now」 위에, 「0.0%」 가 「3시」 눈금 위에 포개짐 → 판 끝에 닿는 글자는 마커 왼쪽   (29d37dca)
 게시판 PC   글보기/글쓰기가 상단바에 붙음 → pt-4/md:pt-8   (385a0281)
 ```
+### ★09:20 VPS 위험 — load 46 · /tmp 87% (두 번째)★ → 원인을 잡았다
+```
+증상   09:00 매시 스위퍼가 돌았는데도 40분 만에 /tmp 가 다시 87% · RAM 126MB · load 46 (renew-requests·match-side-fix·intro-verify 가 크롬 셋과 같이)
+원인   크롬 프로필 160MB 의 정체 = ★페이지 캐시(6.8M)가 아니라 크롬 부품 자동 내려받기★
+       optimization_guide_model_store 46M · component_crx_cache 38M · WasmTtsEngine 23M · Safe Browsing 19M — 새 프로필(mkdtemp)마다 반복
+고침   browserFetch.ts 크롬 인자 7개 추가(--disable-background-networking · --disable-component-update · --disable-default-apps · --disable-sync ·
+       --disable-extensions · --disable-features=OptimizationHints,… · --disk-cache-size=16M) — puppeteer 기본과 같다 (053b5100 · VPS pull 됨)
+당장   살아 있는 프로필 셋에서 그 네 디렉터리만 지움 → /tmp 41% · load 10 으로 내려옴
+남은 것 renew-server · hot-clan-server 는 10시간째 옛 인자 크롬을 쥐고 있다 — 다시 띄워야 새 인자. 어떻게 띄우는지 확인 중 [미확인]
+```
+9회차 폰(57페이지): 새 지적 0 (admin 「칸밖」 은 가로 스크롤 탭 · 정상)
 ### 09:10 — 9회차 (폰→태블릿→PC 한 폭씩)
 ```
 세 폭 한 번에(all) 돌린 러너가 5페이지 만에 죽었다(killed · 원인 [미확인] · RAM 1.2GB 여유) → 한 폭씩 차례로. 스윕은 ★동시에 하나★ 규칙 유지
