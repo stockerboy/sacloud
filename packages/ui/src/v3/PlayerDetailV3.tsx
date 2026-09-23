@@ -27,7 +27,7 @@ import { MvpWhy } from './MvpWhy'
 import { RoundFlowChartV3 } from './RoundFlowChartV3'
 import { Card, CardHead, Kda, MarkCircle, MvpMark, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst, matchShownAt } from './primitives'
 import { teamFirstSideLabel } from '../record/matchDetailView'
-import { WIN_LOSS, V3, V3_DARK, type V3Tone, cardStyle, chipStyle, fmt, pct1, spacerStyle } from './tokens'
+import { WIN_LOSS, V3, V3_DARK, type V3Tone, cardStyle, chipStyle, fmt, pct1, pillStyle, spacerStyle } from './tokens'
 import { formatRating } from '../common/format'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
 import { teamSnapOf } from './ClanDetailV3'
@@ -60,11 +60,27 @@ const TREND_TONE = V3_DARK
 const MVP_LEGACY_UNKNOWN_NOTICE = false
 /** 스코어보드 명단을 킬 순으로 (2026-09-23 사장님). false 면 원문 순서 */
 const LINEUP_BY_KILLS = true
+/**
+ * ★MVP 이유 상자를 화면에서 내린다★ (2026-09-23 오후 사장님 지시 ①-1).
+ * ⚠ 컴포넌트(`MvpWhy`)는 ★안 지웠다★ — `true` 로 되돌리면 옛 화면 그대로다 (`CLAUDE.md` 1-4).
+ * 클랜 화면(`ClanDetailV3`)에도 같은 이름의 스위치가 있다 — 두 파일에 같은 칸이 있다.
+ */
+const SHOW_MVP_WHY = false
+/**
+ * ★폰에서 경기분석을 「명단 자리」에 넣을까★ — 옛 판(2026-09-23 낮)이 `true` 였다.
+ * 오후 지시(「육각은 명단 밑 · 그래프는 명단 바로 밑」)로 ★명단을 그대로 두고 아래로★ 붙인다.
+ */
+const PHONE_ANALYSIS_IN_LIST = false
 /* 2026-09-11 사장님 목업: 구간 카드(승률·킬뎃·MVP·핵의심)는 ★머리 카드★(PlayerHeaderV3 · 레이아웃)로 올라갔다.
    true 로 되돌리면 옛 두 장 배치가 그대로 돌아온다 (`CLAUDE.md` 1-4) */
 const TIER_CARD_IN_BODY = false
 /* 2026-09-11 사장님: «누가 스나이퍼인지 안 떠 — 워터마크 폐지, 닉 옆에 빨간 (S)». 워터마크(SNIPER·ME)는 스위치로만 남긴다 */
 const SCORE_WATERMARKS = false
+/**
+ * ★「최근 같이한 플레이어」 표를 내린다★ (2026-09-23 오후 사장님: 「피시랑 모바일 둘 다에서 없애 필요없어」).
+ * 컴포넌트(`TeammatesCard`)와 자료(`data.teammates`)는 그대로다 — `true` 로 되돌리면 그대로 나온다 (`CLAUDE.md` 1-4).
+ */
+const SHOW_TEAMMATES = false
 
 /**
  * ★스코어보드 줄의 인식표★ — 지금은 안 그린다 (2026-09-16 사장님: «인식표 아직도 안없어졌네»).
@@ -1079,7 +1095,9 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
                 {roundsOf(t.side) !== null && roundsOf(other) !== null ? `${roundsOf(t.side)}:${roundsOf(other)}` : null}
             */}
           </div>
-          {analysis === t.side ? (
+          {/* ⚠ ★옛 판★ (2026-09-23 낮) — 폰에서 경기분석이 ★명단 자리★ 에 들어왔다.
+              오후 지시로 ★명단을 그대로 두고 아래로★ 옮겼다 (`PHONE_ANALYSIS_IN_LIST` 로 되돌린다) */}
+          {PHONE_ANALYSIS_IN_LIST && analysis === t.side ? (
             <div className="v3-board-inline" style={{ padding: '14px 10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               {/*
                 ★칩 셋★ — 승리팀 · 진팀 · 겹쳐서 (2026-09-12 사장님). 폰에서만 보인다.
@@ -1106,7 +1124,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
                 only={pick === 'both' ? null : pick}
                 id={`mhex-${detail.id}-${t.side}-${pick}`}
               />
-              <MvpWhy detail={detail} />
+              {SHOW_MVP_WHY ? <MvpWhy detail={detail} /> : null}
               {detail.round_flow && wonTeam && lostTeam ? (
                 <div style={{ width: '100%' }}>
                   <RoundFlowChartV3
@@ -1118,7 +1136,8 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
               ) : null}
             </div>
           ) : null}
-          <div className={analysis === t.side ? 'v3-board-list v3-board-list--closed' : 'v3-board-list'}>
+          {/* ★명단은 늘 펴 둔다★ (2026-09-23 오후) — 경기분석은 명단을 접지 않고 ★밑으로★ 붙는다 */}
+          <div className={PHONE_ANALYSIS_IN_LIST && analysis === t.side ? 'v3-board-list v3-board-list--closed' : 'v3-board-list'}>
           {/* ★칸 이름★ — 서플라이 여섯 칸. 옛 넉 칸(플레이어·K/D/A·세이브·포지션)은 밑에 남겼다 */}
           {SUPPLY_SCORE_COLUMNS ? (
             /* ★줄과 ★같은 격자★(`sac-sb-row`)를 써야 칸이 어긋나지 않는다 */
@@ -1146,19 +1165,51 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
           </div>
         </div>
       ))}
-      {/* ⚠ 2026-09-23 낮 — 옛 판은 「PC 는 가운데에 경기분석 육각형이 늘 떠 있다」(2026-09-12). 사장님: 「경기분석 누르기 전에는 육각이랑
-          mvp이유 보여주지마」 → 눌러야 아래 칸(육각 · MVP 이유 · 라운드 흐름)이 열린다. PC 는 명단 그대로 · 폰은 명단 자리(.v3-board-inline) */}
+      {/*
+        ★★2026-09-23 오후 — 경기분석 칸을 다시 앉혔다★★ (사장님 지시 ①-2 · ①-3).
+        육각은 ★본문 바깥 왼쪽 여백 기둥★ 에 sticky 로 · 라운드 흐름은 ★명단 바로 밑★.
+        자세한 그림과 옛 판 설명은 `ClanDetailV3.tsx` 의 같은 자리에 적어 뒀다 — 두 파일이 같은 칸이다.
+      */}
       {canAnalyze && analysis !== null ? (
-        <div className="v3-board-hex" style={{ padding: '4px 0 0' }}>
-          <MatchHexagonV3
-            won={wonTeam ? hexOf(wonTeam.side) : null}
-            lost={lostTeam ? hexOf(lostTeam.side) : null}
-            wonName={wonTeam?.snap.clan.name ?? '승리'}
-            lostName={lostTeam?.snap.clan.name ?? '패배'}
-            id={`mhexPc-${detail.id}`}
-          />
-          <MvpWhy detail={detail} />
-          {/* ★라운드 흐름★ — 선수 페이지 카드에도 (2026-09-23) */}
+        <div className="v3-board-pillar">
+          <div className="v3-board-pillar__in">
+            <MatchHexagonV3
+              won={wonTeam ? hexOf(wonTeam.side) : null}
+              lost={lostTeam ? hexOf(lostTeam.side) : null}
+              wonName={wonTeam?.snap.clan.name ?? '승리'}
+              lostName={lostTeam?.snap.clan.name ?? '패배'}
+              id={`mhexPc-${detail.id}`}
+            />
+          </div>
+        </div>
+      ) : null}
+      {canAnalyze && analysis !== null ? (
+        <div className="v3-board-flow">
+          {/* ★폰(과 좁은 PC)의 육각★ — 명단 밑 · 그래프 앞 */}
+          <div className="v3-board-hexphone">
+            <div className="v3-hexpick">
+              {([['won', wonTeam?.snap.clan.name ?? '승리'], ['lost', lostTeam?.snap.clan.name ?? '패배'], ['both', '겹쳐서']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setPick(key) }}
+                  className={`v3-hexpick__chip v3-hexpick__chip--${key} ${pick === key ? 'is-on' : ''}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <MatchHexagonV3
+              won={wonTeam ? hexOf(wonTeam.side) : null}
+              lost={lostTeam ? hexOf(lostTeam.side) : null}
+              wonName={wonTeam?.snap.clan.name ?? '승리'}
+              lostName={lostTeam?.snap.clan.name ?? '패배'}
+              only={pick === 'both' ? null : pick}
+              id={`mhexPhone-${detail.id}-${pick}`}
+            />
+          </div>
+          {SHOW_MVP_WHY ? <MvpWhy detail={detail} /> : null}
+          {/* ★라운드 흐름★ — 명단 바로 밑 (2026-09-23 오후) */}
           {detail.round_flow && wonTeam && lostTeam ? (
             <RoundFlowChartV3
               flow={detail.round_flow}
@@ -1924,6 +1975,13 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
   const { data, matches, matchesLoading, hasMore, loadingMore, onLoadMore } = props
   /* ★탭은 껐다★ (`BODY_TABS`) — 상태는 남긴다. 되살리면 그대로 돈다 (`CLAUDE.md` 1-4) */
   const [tab, setTab] = useState<'graph' | 'play' | 'clan'>('graph')
+  /*
+   * ★폰 탭 — 기록실 | 플레이분석★ (2026-09-23 오후 사장님: 「육각을 지난시즌 대신 넣어버려」).
+   * PC 는 레이아웃의 링크 탭(기록실/지난시즌)이 그대로고 이 탭은 ≤767px 에서만 보인다.
+   * 「플레이분석」 을 고르면 본문(추이 · 최근매치 · 경기 목록) 대신 ★육각(비교분석하기)★ 이 선다.
+   */
+  const [phoneTab, setPhoneTab] = useState<'record' | 'hex'>('record')
+  const phoneHex = phoneTab === 'hex'
   const showsKd = props.showsKd ?? true
   const matchList = (
     <>
@@ -1991,7 +2049,37 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           .sac-prr-grid { grid-template-columns: minmax(0,1fr); }
           .sac-prr-aside { position: static; }
         }
+        /* ★폰★ (2026-09-23 오후 사장님) — 오른쪽 칸(상세정보·육각·같이한 플레이어)은 안 그린다:
+           상세정보는 머리 카드로(PlayerHeaderV3) · 육각은 「플레이분석」 탭으로 옮겼다. 폰 탭은 여기서만 보인다 */
+        .sac-pilltabs-phone { display: none; }
+        @media (max-width: 767px) {
+          .sac-prr-aside { display: none; }
+          .sac-pilltabs-phone { display: flex; }
+          .sac-phone-hide { display: none; }
+        }
       `}</style>
+
+      {/* ★폰 탭★ — 기록실 | 플레이분석 (지난시즌 자리). 모양은 레이아웃의 `.sac-pilltabs` 폰 규칙(supply-skin.css)을 그대로 탄다 */}
+      <div className="sac-pilltabs sac-pilltabs-phone" style={{ alignItems: 'stretch', gap: 6, flexWrap: 'wrap' }}>
+        {([['record', '기록실'], ['hex', '플레이분석']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setPhoneTab(key)}
+            className={phoneTab === key ? 'sac-pilltab is-on' : 'sac-pilltab'}
+            style={{ ...pillStyle(phoneTab === key), fontFamily: 'inherit', cursor: 'pointer' }}
+            aria-current={phoneTab === key ? 'page' : undefined}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {phoneHex ? (
+        <div style={{ marginTop: 12 }}>
+          <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
+        </div>
+      ) : null}
+      <div className={phoneHex ? 'sac-phone-hide' : undefined}>
 
       {TIER_CARD_IN_BODY ? (
         <div style={halfStyle}>
@@ -2014,9 +2102,10 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           <SideInfoCard data={data} showsKd={showsKd} />
           {/* 기록카드 밑에 플레이분석 육각 (사장님 지시) */}
           <StrengthCard data={data} compare={props.compare} leagueSlug={props.leagueSlug} />
-          {/* 서플라이 오른쪽 칸의 마지막 표. 자료는 이미 있었는데 v3 화면에서는 안 그리고 있었다 */}
-          <TeammatesCard data={data} />
+          {/* 서플라이 오른쪽 칸의 마지막 표. 2026-09-23 오후 사장님 「필요없어」 → SHOW_TEAMMATES=false */}
+          {SHOW_TEAMMATES ? <TeammatesCard data={data} /> : null}
         </aside>
+      </div>
       </div>
 
       {/*

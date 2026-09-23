@@ -37,9 +37,12 @@ interface Pt {
   round: number
   aliveW: number
   aliveL: number
-  /** 이 시점의 라운드 스코어 (이긴 클랜 : 진 클랜) */
+  /** 이 시점의 라운드 스코어 (이긴 클랜 : 진 클랜) — 경기 누적 */
   scoreW: number
   scoreL: number
+  /** ★그 반의 점수★ (2026-09-23 오후 사장님: 「라운드 총스코어 X · 전반 끝나면 0:0 부터」). 후반 첫 라운드에서 0 으로 돌아간다 */
+  halfScoreW: number
+  halfScoreL: number
   /** 이 라운드에서 처음 죽은 사람 — 아직 아무도 안 죽었으면 null (사장님 「원 하나가 줄어들 때 띄워줘」) */
   first: { name: string | null; side: 'W' | 'L'; at: number } | null
   /** 이 시점까지 이 라운드에서 죽은 사람들 — 죽은 차례대로 (사장님 「선짤 준성 · haeil 다운 · …」) */
@@ -90,6 +93,18 @@ const SOFT_GLOW = true
 const LOSER_CLAN_COLOR = false
 /** 깔끔한 판의 선 두께 (sleeper 참고) */
 const CLEAN_W = 2.6
+/*
+ * ★★2026-09-23 오후 — 진영판★★ (사장님 손그림 3장 + 시안 아티팩트 확정)
+ *
+ *   그래프 → 인원(사람 아이콘 · 레드 왼쪽/블루 오른쪽 · 가운데 전반전/후반전) → 「레드 클랜 n:n 클랜 블루」
+ *   → 죽은 차례 두 칸(왼쪽 = 레드가 잡은 것 · 오른쪽 = 블루가 잡은 것)
+ *
+ *   HALF_SUMMARY   옛 「전후반 요약」 상자 (사장님 X) — false
+ *   CREW_ABOVE     옛 인원 줄(○ 동그라미 · 그래프 위) — false. 아래 사람 아이콘 줄이 대신한다
+ *   옛 판 코드는 그대로 두었다 (`CLAUDE.md` 1-4) — 두 값을 true 로 되돌리면 그대로 돌아온다.
+ */
+const HALF_SUMMARY = false
+const CREW_ABOVE = false
 
 export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   flow: RoundFlow
@@ -179,11 +194,16 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     let anyEst = false
     let scoreW = 0
     let scoreL = 0
+    /* 그 반의 점수 — 후반 첫 라운드에서 0:0 으로 (사장님) */
+    let halfScoreW = 0
+    let halfScoreL = 0
+    let lastHalf: 'A' | 'B' = 'A'
     /* 출발 — 옛 판은 이긴 클랜이 아래(0)에서 (상대전적 그래프와 같다). 지금은 1라운드 값에서 바로 시작 */
-    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, first: null, fallen: [], attack: null, est: false })
+    if (START_AT_EDGES) pts.push({ x: xOf(0, 'A'), v: 0, round: 0, aliveW: sizeW, aliveL: sizeL, scoreW, scoreL, halfScoreW, halfScoreL, first: null, fallen: [], attack: null, est: false })
     for (const r of rounds) {
       const half: 'A' | 'B' = s !== null && r.round >= s ? 'B' : 'A'
       const halfKey: 'first' | 'second' = half === 'A' ? 'first' : 'second'
+      if (half !== lastHalf) { halfScoreW = 0; halfScoreL = 0; lastHalf = half }
       let aliveW = sizeW
       let aliveL = sizeL
       /* 이 라운드를 딸 확률 — 인원 빈도표 */
@@ -219,7 +239,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
       let firstSeen: Pt['first'] = null
       let fallen: Pt['fallen'] = []
       const attack: Pt['attack'] = r.defence === null ? null : r.defence === W ? 'L' : 'W'
-      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: null, fallen, attack, est: o.est })
+      pts.push({ x: xOf(r.start, half), v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: null, fallen, attack, est: o.est })
       for (const d of r.deaths) {
         if (d.side === W) aliveW = Math.max(0, aliveW - 1)
         else aliveL = Math.max(0, aliveL - 1)
@@ -234,17 +254,17 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         /* 계단 — 죽기 직전까지는 앞 값 그대로 */
         const prev = pts[pts.length - 1] as Pt
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01) })
-        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, fallen, attack, est: o.est })
+        pts.push({ x, v: o.p * 100, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: firstSeen, fallen, attack, est: o.est })
       }
       {
         /* 라운드 끝 — 마지막 상태 값을 라운드 끝까지 끌고 간다. 옛 판(JUMP_ON_ROUND_END)은 여기서 100/0 으로 튀었다 */
         const prev = pts[pts.length - 1] as Pt
         const x = xOf(r.end, half)
         pts.push({ ...prev, x: Math.max(prev.x, x - 0.01), first: firstSeen, fallen })
-        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, first: firstSeen, fallen, attack, est: false })
+        if (JUMP_ON_ROUND_END && r.winner !== null) pts.push({ x, v: r.winner === W ? 100 : 0, round: r.round, aliveW, aliveL, scoreW, scoreL, halfScoreW, halfScoreL, first: firstSeen, fallen, attack, est: false })
       }
-      if (r.winner === W) scoreW += 1
-      else if (r.winner === L) scoreL += 1
+      if (r.winner === W) { scoreW += 1; halfScoreW += 1 }
+      else if (r.winner === L) { scoreL += 1; halfScoreL += 1 }
     }
     /* 경기 끝 — 최종 스코어의 경기 승률 (이긴 쪽이 1 에 가깝다) */
     if (AXIS === 'match' && pts.length > 0) {
@@ -326,6 +346,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
   /* 진 팀 색 — 육각형·위 범례와 같이 ★빨강★ 으로 고정한다. 클랜 테마(afterpray 파랑 · latency 회색)를 쓰니
      두 선이 같은 색이거나 회색이 됐다 (운영 QA 4경기). 옛 판은 LOSER_CLAN_COLOR */
   const loseInk = LOSER_CLAN_COLOR ? loser.theme.main : '#ff6b6b'
+  /* 진영판을 그릴 수 있나 — 그 라운드의 공격(레드) 팀을 알아야 한다 */
+  const sidesKnown = hud !== null && hud.attack !== null
   /* 옛 판은 폰에서 홀수 라운드만 적었다(`every`). 지금은 매 라운드 — 좁으면 엇갈려 적는다 (사장님) */
 
   const dots = (n: number, total: number, color: string) => (
@@ -369,7 +391,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
 
   return (
     <div ref={boxRef} style={{ padding: '6px 8px 8px', background: tone.plot }}>
-      {/* ★전후반 요약★ — 가로 배열: [전반 공격 · 전반 수비] | [후반 공격 · 후반 수비] (2026-09-23 사장님) */}
+      {/* ★전후반 요약★ — 가로 배열: [전반 공격 · 전반 수비] | [후반 공격 · 후반 수비] (2026-09-23 사장님)
+          ⚠ 2026-09-23 오후 — 사장님이 시안에서 X 치셨다. HALF_SUMMARY=false 로 안 그린다 (코드는 남긴다) */}
+      {HALF_SUMMARY ? (
       <div style={{ border: `1px solid ${tone.cardBorder}`, marginBottom: 6 }}>
         {/* 폰은 네 칸이 안 들어가 이름이 「Th…」 로 잘렸다 (운영 캡쳐) → 폰에서는 전반/후반을 위아래로 (각 반은 여전히 가로 두 칸) */}
         {phone ? (
@@ -396,8 +420,10 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           </>
         )}
       </div>
-      {/* ★인원 줄★ — 축을 옮기면 따라온다 (시안 A) */}
-      {hud ? (
+      ) : null}
+      {/* ★인원 줄★ — 축을 옮기면 따라온다 (시안 A)
+          ⚠ 2026-09-23 오후 — 옛 판(○ 동그라미 · 그래프 위). 지금은 그래프 ★아래★ 사람 아이콘 줄(CREW_ABOVE=false) */}
+      {CREW_ABOVE && hud ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12.5, padding: '4px 6px 6px', minHeight: 26 }}>
           <span style={{ color: tone.textDim }}>{hud.round === 0 ? '시작' : `${hud.round}라운드`}</span>
           <span style={{ fontWeight: 800, color: tone.textStrong, fontSize: 14, fontVariantNumeric: 'tabular-nums' }}>{hud.scoreW} : {hud.scoreL}</span>
@@ -527,22 +553,189 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           (사장님 2026-09-23: 「처음 죽은 사람은 선짤 준성 · 그 다음 haeil 다운 · enanthate 다운 …」). 옛 판은 첫 희생만 적었다 */}
       {/* ⚠ 2026-09-23 오후 — 사장님: 「누가 누구 죽였는지 나오면서 공간이 달라지니까 그래프 판 자체가 위아래로 움직이고 정신없어」
           → 이 줄을 ★그래프 아래★ 로 내리고 최소 높이를 잡아 판이 안 움직인다 (JSX 주석은 표현식 자리에 못 둔다 — 위에 둔다) */}
-      {hud ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, padding: '8px 6px 2px', minHeight: phone ? 64 : 28, alignContent: 'flex-start', borderTop: `1px solid ${tone.cardBorder}`, marginTop: 4 }}>
+      {/*
+        ★★2026-09-23 오후 — 진영판★★ (사장님 손그림 3장 · 시안 아티팩트 「그대로 넣어」)
+
+          ┌ 사람 아이콘 5 (레드)  │ 후반전 · 12R  │  사람 아이콘 5 (블루) ┐   ← 죽으면 흐린 윤곽만
+          │ [레드] evermore        1 : 2         hardcores [블루]      │   ← 그 반의 점수 (후반 0:0 부터)
+          ├───────────────────────────┬───────────────────────────────┤
+          │ evermore가 잡음            │              hardcores가 잡음  │
+          │ 선짤 wytysmore ▸ 임소혜    │      Peyz; ▸ 리라몬모어 다운   │   ← 왼쪽 = 레드가 잡은 것
+          └───────────────────────────┴───────────────────────────────┘
+
+        ── 진영은 `hud.attack`(그 라운드의 공격 팀)이 정한다 — 레드 = 공격. 이름 색은 ★승패가 아니라 진영★ 이라
+           같은 선수가 전반엔 파랑, 후반엔 빨강이 된다 (사장님 그림 2).
+        ── 공수를 모르는 라운드(`attack === null`)는 이 판을 못 그린다 → 아래 옛 세로 목록으로 떨어진다.
+           모르는 것을 블루라고 적지 않는다 (D-106).
+      */}
+      {hud && sidesKnown ? (() => {
+        const leftKey: 'W' | 'L' = hud.attack as 'W' | 'L'
+        const rightKey: 'W' | 'L' = leftKey === 'W' ? 'L' : 'W'
+        const teamOf = (k: 'W' | 'L') => (k === 'W' ? winner : loser)
+        const aliveOf = (k: 'W' | 'L') => (k === 'W' ? hud.aliveW : hud.aliveL)
+        const sizeOf = (k: 'W' | 'L') => (k === 'W' ? sizeW : sizeL)
+        const halfScoreOf = (k: 'W' | 'L') => (k === 'W' ? hud.halfScoreW : hud.halfScoreL)
+        const inkOf = (k: 'W' | 'L') => (k === leftKey ? RED_INK : BLUE_INK)
+        /* 왼쪽 칸 = 레드가 잡은 것(죽은 쪽이 블루) · 오른쪽 칸 = 블루가 잡은 것 */
+        const killedBy = (k: 'W' | 'L') => hud.fallen.filter((f) => f.side !== k)
+        const firstAt = hud.fallen[0]?.at
+        const killRow = (f: Pt['fallen'][number], i: number, align: 'left' | 'right') => (
+          <span key={`${f.at}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', minWidth: 0, justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
+            {f.at === firstAt ? <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: 11.5, flex: 'none' }}>선짤</span> : null}
+            {f.by ? (<><span style={{ color: inkOf(f.side === 'W' ? 'L' : 'W'), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{f.by}</span><span style={{ color: tone.textGhost, fontSize: 11, flex: 'none' }}>▸</span></>) : null}
+            <span style={{ color: inkOf(f.side), fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{f.name ?? '—'}</span>
+            {/* 폰은 두 칸이 좁아 「다운」 을 뺀다 — 이름이 「푸른살…」 로 잘리는 것보다 낫다 (2026-09-23 폰 캡쳐) */}
+            {f.at === firstAt || phone ? null : <span style={{ color: tone.textDim, fontSize: 11, flex: 'none' }}>다운</span>}
+          </span>
+        )
+        const col = (k: 'W' | 'L', align: 'left' | 'right') => {
+          const list = killedBy(k)
+          return (
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 10, letterSpacing: '.08em', color: tone.textGhost, marginBottom: 3, textAlign: align, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{teamOf(k).name}가 잡음</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12.5 }}>
+                {list.length === 0 ? <span style={{ color: tone.textGhost, fontSize: 12, textAlign: align }}>{hud.round > 0 ? '아직 없음' : ''}</span> : list.map((f, i) => killRow(f, i, align))}
+              </div>
+            </div>
+          )
+        }
+        const secondFrom = flow.second_half_from
+        const halfWord = secondFrom !== null && hud.round >= secondFrom ? '후반전' : '전반전'
+        const leftPct = leftKey === 'W' ? hud.v : 100 - hud.v
+        return (
+          <>
+            {/* ① 인원 — 사람 아이콘. 레드 왼쪽(가운데 쪽부터 꺼짐) · 블루 오른쪽(가운데 쪽부터 꺼짐) · 가운데 전반전/후반전 · 라운드 · 확률 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, padding: '9px 2px 5px', borderTop: `1px solid ${tone.cardBorder}`, marginTop: 4 }}>
+              <CrewIcons alive={aliveOf(leftKey)} size={sizeOf(leftKey)} ink={RED_INK} glow={RED_GLOW} fromRight={true} />
+              <div style={{ textAlign: 'center', padding: '0 9px', borderLeft: `1px solid ${tone.cardBorder}`, borderRight: `1px solid ${tone.cardBorder}`, whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: tone.textDim }}>{halfWord}{hud.round > 0 ? ` · ${hud.round}R` : ''}</div>
+                <div style={{ fontSize: 10.5, color: tone.textGhost, fontVariantNumeric: 'tabular-nums' }}>{leftPct.toFixed(0)}% : {(100 - leftPct).toFixed(0)}%{hud.est ? ' · 어림' : ''}</div>
+              </div>
+              <CrewIcons alive={aliveOf(rightKey)} size={sizeOf(rightKey)} ink={BLUE_INK} glow={BLUE_GLOW} fromRight={false} />
+            </div>
+            {/* ② 레드 클랜 · 그 반의 점수 · 클랜 블루 — 후반이면 자리가 바뀐다 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'baseline', gap: 8, padding: '4px 2px 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0 }}>
+                <SideTag red />
+                <span style={{ fontWeight: 800, fontSize: 13.5, color: RED_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(leftKey).name}</span>
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 20, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '0 8px', color: tone.textStrong }}>
+                <span style={{ color: RED_INK }}>{halfScoreOf(leftKey)}</span><span style={{ color: tone.textGhost, margin: '0 4px', fontWeight: 500 }}>:</span><span style={{ color: BLUE_INK }}>{halfScoreOf(rightKey)}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0, justifyContent: 'flex-end' }}>
+                <span style={{ fontWeight: 800, fontSize: 13.5, color: BLUE_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(rightKey).name}</span>
+                <SideTag red={false} />
+              </div>
+            </div>
+            {/* ③ 죽은 차례 — 두 칸. 판 높이는 고정해 그래프가 위아래로 안 움직인다 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 10px', borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, minHeight: phone ? 96 : 72 }}>
+              {col(leftKey, 'left')}
+              <div style={{ background: tone.cardBorder }} />
+              {col(rightKey, 'right')}
+            </div>
+          </>
+        )
+      })() : null}
+      {/*
+        ★★2026-09-23 오후 — 진영을 글자로 박는다★★ (사장님 지시 ①-5: 「헷갈려 죽겠어」)
+
+        옛 판은 ★색만★ 달랐다 (파랑 = 이긴 팀 · 빨강 = 진 팀). 그런데 이 판에서 묻는 것은
+        「이긴 팀/진 팀」이 아니라 ★그 라운드에 누가 레드(공격)였나★ 라서, 색으로는 답이 안 나왔다.
+        이제 이름 앞에 ★[레드] / [블루] 칩★ 을 붙이고 ★한 줄에 한 건씩 세로로★ 쌓는다.
+
+        ── 진영을 어떻게 아나
+          `hud.attack` 이 ★그 라운드의 공격(레드) 팀★ 이다 (위 인원 줄과 같은 재료).
+          죽은 사람의 팀이 `f.side` 이므로 ★킬러는 그 반대★ 다 (같은 팀을 죽이는 줄은 없다).
+          `hud.attack` 이 `null` — ★수비/공격을 모르는 라운드★ 면 칩을 ★안 붙인다★ (D-106).
+      */}
+      {hud && !sidesKnown ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12.5, padding: '8px 6px 2px', minHeight: phone ? 64 : 28, borderTop: `1px solid ${tone.cardBorder}`, marginTop: 4 }}>
           {hud.fallen.length === 0 ? (
             <span style={{ color: tone.textGhost }}>{hud.round > 0 ? '아직 아무도 안 죽음' : ''}</span>
-          ) : hud.fallen.map((f, i) => (
-            <span key={i} style={{ whiteSpace: 'nowrap' }}>
-              {/* 「킬러 ▸ 희생자」 — 죽인 쪽은 그 팀 색 · 죽은 쪽은 그 팀 색 (사장님 「누가 누구를 다운시켰는지」). 킬러를 모르면 희생자만 */}
-              <span style={{ color: i === 0 ? '#f59e0b' : tone.textDim, fontWeight: i === 0 ? 700 : 400 }}>{i === 0 ? '선짤 ' : ''}</span>
-              {f.by ? <><span style={{ color: f.side === 'W' ? loseInk : winInk, fontWeight: 700 }}>{f.by}</span><span style={{ color: tone.textGhost, margin: '0 3px' }}>▸</span></> : null}
-              <span style={{ color: f.side === 'W' ? winInk : loseInk, fontWeight: 700 }}>{f.name ?? '—'}</span>
-              <span style={{ color: tone.textDim }}>{i === 0 ? '' : ' 다운'}</span>
-              {i < hud.fallen.length - 1 ? <span style={{ color: tone.textGhost, marginLeft: 8 }}>·</span> : null}
-            </span>
-          ))}
+          ) : hud.fallen.map((f, i) => {
+            /* 죽은 쪽이 레드였나 — 공격 팀이 레드다. 모르면 둘 다 null 이라 칩을 안 그린다 */
+            const victimRed = hud.attack === null ? null : f.side === hud.attack
+            const killerRed = victimRed === null ? null : !victimRed
+            return (
+              <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', minWidth: 0 }}>
+                {i === 0 ? <span style={{ color: '#f59e0b', fontWeight: 700, flex: 'none' }}>선짤</span> : null}
+                {/* 「[진영] 킬러 ▸ [진영] 희생자」 — 킬러를 모르면 희생자만 */}
+                {f.by ? (
+                  <>
+                    <SideChip red={killerRed} />
+                    <span style={{ color: f.side === 'W' ? loseInk : winInk, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{f.by}</span>
+                    <span style={{ color: tone.textGhost, flex: 'none' }}>▸</span>
+                  </>
+                ) : null}
+                <SideChip red={victimRed} />
+                <span style={{ color: f.side === 'W' ? winInk : loseInk, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{f.name ?? '—'}</span>
+                <span style={{ color: tone.textDim, flex: 'none' }}>{i === 0 ? '' : '다운'}</span>
+              </span>
+            )
+          })}
         </div>
       ) : null}
     </div>
+  )
+}
+
+/* 진영 색 — 인원 줄 · 클랜 이름 · 죽은 차례가 전부 같은 두 색을 쓴다 (인원 줄 옛 칩과 같은 값) */
+const RED_INK = '#ff6b6b'
+const BLUE_INK = '#8fb4ff'
+const RED_GLOW = 'drop-shadow(0 0 2.5px rgba(255,80,80,.95)) drop-shadow(0 0 6px rgba(255,60,60,.55))'
+const BLUE_GLOW = 'drop-shadow(0 0 2.5px rgba(90,150,255,.95)) drop-shadow(0 0 6px rgba(60,120,255,.55))'
+const PERSON_PATH = 'M8 2.6a2.7 2.7 0 1 1 0 5.4 2.7 2.7 0 0 1 0-5.4Zm0 6.2c3 0 5.2 1.7 5.2 3.6V14H2.8v-1.6c0-1.9 2.2-3.6 5.2-3.6Z'
+
+/**
+ * ★인원 — 사람 아이콘★ (2026-09-23 오후 사장님 사진: 빨강·파랑 번지는 사람 모양).
+ * 살아 있으면 진영 색 + 번짐, 죽으면 흐린 윤곽만. `fromRight` 면 오른쪽 끝(가운데 쪽)부터 꺼진다 —
+ * 레드(왼쪽)도 블루(오른쪽)도 가운데 쪽부터 꺼져 양쪽이 대칭이다.
+ */
+function CrewIcons({ alive, size, ink, glow, fromRight }: { alive: number; size: number; ink: string; glow: string; fromRight: boolean }) {
+  return (
+    <span style={{ display: 'flex', gap: 5, alignItems: 'center', justifyContent: fromRight ? 'flex-start' : 'flex-end' }}>
+      {Array.from({ length: size }, (_, i) => {
+        const on = (fromRight ? i : size - 1 - i) < alive
+        return (
+          <svg key={i} viewBox="0 0 16 16" style={{ width: 16, height: 16, display: 'block', filter: on ? glow : undefined }} aria-hidden>
+            <path d={PERSON_PATH} fill={on ? ink : 'none'} stroke={on ? 'none' : '#33405f'} strokeWidth={on ? 0 : 1.6} />
+          </svg>
+        )
+      })}
+    </span>
+  )
+}
+
+/** 「레드」 / 「블루」 작은 표 — 클랜 이름 옆 */
+function SideTag({ red }: { red: boolean }) {
+  return (
+    <span style={{ flex: 'none', fontSize: 10, fontWeight: 800, letterSpacing: '.06em', padding: '1px 5px', border: `1px solid ${red ? 'rgba(255,107,107,.55)' : 'rgba(143,180,255,.55)'}`, color: red ? RED_INK : BLUE_INK }}>{red ? '레드' : '블루'}</span>
+  )
+}
+
+
+/**
+ * ★진영 칩★ — 「레드」(공격) 빨강 테두리 · 「블루」(수비) 파랑 테두리 (2026-09-23 오후 사장님).
+ *
+ * `red === null` 이면 ★아무것도 안 그린다★ — 그 라운드의 공수를 모르는 경기가 있고,
+ * 모르는 것을 「블루」 라고 적으면 거짓이다 (D-106). 인원 줄의 진영 표와 같은 색을 쓴다.
+ */
+function SideChip({ red }: { red: boolean | null }) {
+  if (red === null) return null
+  return (
+    <span
+      style={{
+        flex: 'none',
+        fontSize: 9.5,
+        fontWeight: 800,
+        letterSpacing: '.04em',
+        padding: '1px 4px',
+        lineHeight: 1.3,
+        border: `1px solid ${red ? 'rgba(255,107,107,.55)' : 'rgba(143,180,255,.55)'}`,
+        color: red ? '#ff6b6b' : '#8fb4ff',
+      }}
+    >
+      {red ? '레드' : '블루'}
+    </span>
   )
 }

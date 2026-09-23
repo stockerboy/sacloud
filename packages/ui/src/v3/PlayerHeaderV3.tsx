@@ -987,7 +987,79 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           </span>
         </div>
       </div>
-      {report?.message ? <div style={{ position: 'relative', padding: '0 20px 9px', fontSize: 10.5, color: V3.textDim }}>{report.message}</div> : null}
+      {/*
+        ★★폰 — 상세정보를 머리 카드에 합친다★★ (2026-09-23 오후 사장님:
+          「모바일버전에서 상세정보를 빨간원 친 곳(이 카드)에 넣어서 합쳐버리고 · 기존에 있던 상세정보는 없애버리고」)
+
+        PC 는 오른쪽 「상세정보」 카드(`PlayerDetailV3` 의 `SideInfoCard`)가 그대로다.
+        이 줄들은 ★≤767px 에서만★ 보이고(supply-skin.css `.v3-phead-info-phone`), 그때 위 MVP·핵의심 두 칸 줄은 숨는다 —
+        MVP·핵의심이 이 줄 안에 다시 들어 있어서다. 래더·소속은 카드 위쪽(점수 · 이름 밑 클랜)에 이미 있어 안 되풀이한다.
+        말씨는 인계서 ③-10 대로 — 「판킬」 · MVP 「n판 중 k회」 · 핵의심 옆 신고 단추.
+      */}
+      <div className="v3-phead-info-phone" style={{ position: 'relative', borderTop: `1px solid ${V3.rowDivider}` }}>
+        <PhoneInfoRow label="승률" sub={`${fmt(data.win)}승 ${fmt(data.lose)}패`}>
+          <b style={{ fontSize: 21, fontWeight: 700, color: statColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</b>
+        </PhoneInfoRow>
+        {showsKd && data.kill !== null && data.death !== null ? (
+          <PhoneInfoRow label="킬뎃" sub={`${fmt(data.kill)}킬 ${fmt(data.death)}데스`}>
+            <b style={{ fontSize: 21, fontWeight: 700, color: data.kd_rate === null ? V3.textMuted : statColor(data.kd_rate), whiteSpace: 'nowrap' }}>{pct1(data.kd_rate)}</b>
+          </PhoneInfoRow>
+        ) : null}
+        <PhoneInfoRow label="판킬">
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
+            <b style={{ fontSize: 21, fontWeight: 700, color: V3.text }}>{data.kill_per_match.toFixed(1)}</b>
+            <span style={{ fontSize: 12, color: V3.textDim }}>킬</span>
+          </span>
+        </PhoneInfoRow>
+        <PhoneInfoRow label="MVP" sub={`${fmt(data.win + data.lose)}판 중`}>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
+            <b style={{ fontSize: 21, fontWeight: 700, color: data.mvp_count > 0 ? V3.mvp : V3.textGhost }}>{fmt(data.mvp_count)}</b>
+            <span style={{ fontSize: 12, color: V3.textDim }}>회</span>
+          </span>
+        </PhoneInfoRow>
+        {/* 등수는 모르면 안 적는다 — 배치고사 중이거나 판이 모자라면 null */}
+        <PhoneInfoRow label="랭킹" sub={data.rank_count === null ? '' : `${fmt(data.rank_count)}명중`}>
+          {data.rank === null ? (
+            <span style={{ fontSize: 13, color: V3.textGhost, whiteSpace: 'nowrap' }}>{data.placement ? '배치고사' : '집계 없음'}</span>
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
+              <b style={{ fontSize: 21, fontWeight: 700, color: rankColorOf(data.rank, data.rank_count) }}>{fmt(data.rank)}</b>
+              <span style={{ fontSize: 12, color: V3.textDim }}>위</span>
+            </span>
+          )}
+        </PhoneInfoRow>
+        <PhoneInfoRow label="핵의심" last>
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+              <b style={{ fontSize: 21, fontWeight: 700, color: (report?.reported ? report.count : data.report_count) > 0 ? '#ff6b6b' : V3.textGhost }}>{fmt(report?.reported ? report.count : data.report_count)}</b>
+              <span style={{ fontSize: 12, color: V3.textDim }}>회</span>
+            </span>
+            {report ? (
+              <button
+                type="button"
+                onClick={report.pending ? undefined : report.onReport}
+                style={{ fontFamily: 'inherit', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: V3.radiusChip, cursor: report.pending ? 'wait' : 'pointer', color: report.reported ? '#ff6b6b' : '#b3555c', background: 'transparent', border: `1px solid ${report.reported ? 'rgba(255,107,107,.55)' : 'rgba(179,85,92,.45)'}` }}
+              >
+                {report.pending ? '…' : report.reported ? '신고함' : '신고'}
+              </button>
+            ) : null}
+          </span>
+        </PhoneInfoRow>
+        {report?.message ? <div style={{ padding: '0 20px 9px', fontSize: 10.5, color: V3.textDim }}>{report.message}</div> : null}
+      </div>
+      {report?.message ? <div className="v3-phead-foot" style={{ position: 'relative', padding: '0 20px 9px', fontSize: 10.5, color: V3.textDim }}>{report.message}</div> : null}
     </section>
+  )
+}
+
+/** 폰 상세정보 한 줄 — 서플라이 오른쪽 카드 줄과 같은 모양(라벨 · 보조 · 큰 값). PC 의 `InfoRow`(PlayerDetailV3)와 같은 뼈대다 */
+function PhoneInfoRow({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 50 }}>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: V3.textDim, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
+      <div style={spacerStyle} />
+      {sub ? <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{sub}</span> : null}
+      {children}
+    </div>
   )
 }

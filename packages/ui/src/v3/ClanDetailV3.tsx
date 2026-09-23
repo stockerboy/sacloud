@@ -520,8 +520,10 @@ function Scoreboard({
                 {roundsOf(t.side) !== null && roundsOf(other) !== null ? `${roundsOf(t.side)}:${roundsOf(other)}` : null}
             */}
           </div>
-          {/* 폰: 경기분석을 누르면 명단 자리에 분석(칩·육각·MVP 이유·그래프)이 들어온다. PC: 명단은 그대로 두고 아래 큰 칸이 열린다 (2026-09-23 사장님) */}
-          {analysis === t.side ? (
+          {/* ⚠ ★옛 판★ (2026-09-23 낮) — 폰에서 경기분석을 누르면 ★명단 자리★ 에 분석이 들어왔다.
+              오후 지시(「육각은 명단 밑 · 그래프는 명단 바로 밑」)로 ★명단을 그대로 두고 아래로★ 옮겼다.
+              `PHONE_ANALYSIS_IN_LIST = true` 로 되돌리면 이 칸이 다시 산다 (`CLAUDE.md` 1-4) */}
+          {PHONE_ANALYSIS_IN_LIST && analysis === t.side ? (
             <div className="v3-board-inline" style={{ padding: '14px 10px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               {/*
                 ★칩 셋★ — 승리팀 · 진팀 · 겹쳐서 (2026-09-12 사장님). 폰에서만 보인다.
@@ -548,7 +550,7 @@ function Scoreboard({
                 only={pick === 'both' ? null : pick}
                 id={`mhex-${detail.id}-${t.side}-${pick}`}
               />
-              <MvpWhy detail={detail} />
+              {SHOW_MVP_WHY ? <MvpWhy detail={detail} /> : null}
               {/* ★라운드 흐름★ — 폰에도 (사장님 답 ④). 경기분석 단추 밑 */}
               {detail.round_flow && wonTeam && lostTeam ? (
                 <div style={{ width: '100%' }}>
@@ -564,7 +566,9 @@ function Scoreboard({
               <ScoreBoard detail={detail} side={t.side} />
             </div>
           ) : null}
-          <div className={analysis === t.side ? 'v3-board-list v3-board-list--closed' : 'v3-board-list'}>
+          {/* ★명단은 늘 펴 둔다★ (2026-09-23 오후) — 경기분석은 명단을 접지 않고 ★밑으로★ 붙는다.
+              옛 판은 폰에서 이 칸에 `v3-board-list--closed` 를 붙여 접었다 (`PHONE_ANALYSIS_IN_LIST`) */}
+          <div className={PHONE_ANALYSIS_IN_LIST && analysis === t.side ? 'v3-board-list v3-board-list--closed' : 'v3-board-list'}>
           <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 86px 44px 58px' : 'minmax(96px,1fr) 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
             <span>플레이어</span><span>K / D / A</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
@@ -573,20 +577,69 @@ function Scoreboard({
           </div>
         </div>
       ))}
-      {/* ⚠ 2026-09-23 낮 — 옛 판은 「PC 는 가운데에 경기분석 육각형이 늘 떠 있다」(2026-09-12) 였다.
-          사장님: 「경기분석 누르기 전에는 육각이랑 mvp이유 보여주지마 누르면 그 그래프랑 육각이랑 mvp이유 보여줘」
-          → 이제 ★경기분석을 눌러야★ 아래 칸(육각 · MVP 이유 · 라운드 흐름)이 열린다. 폰에서는 이 칸을 안 그린다(tokens.css) */}
+      {/*
+        ★★2026-09-23 오후 — 경기분석 칸을 다시 앉혔다★★ (사장님 지시 ①-2 · ①-3)
+
+        > 「육각을 페이지 ★맨 왼쪽 빈 공간★ 으로 (MVP 이유 자리가 아니다 — 본문 바깥 여백 기둥)」
+        > 「라운드 추이 그래프를 ★명단 바로 밑★ 에」
+
+        ── 지금
+          ```
+          ┌ 왼쪽 여백 기둥 ┐ ┌────────── 본문 1120 ──────────┐
+          │   경기 육각    │ │  이긴팀 명단  │  진팀 명단     │
+          │  (sticky)      │ ├───────────────────────────────┤
+          └────────────────┘ │  라운드 흐름 (전후반 → 인원 →  │
+                             │   그래프 → 죽은 차례) · 점수판 │
+                             └───────────────────────────────┘
+          ```
+        ── ⚠ 옛 판 (2026-09-23 낮) — 한 칸(`.v3-board-hex`)에 육각 · MVP 이유 · 그래프를
+          전부 넣고 CSS 가 `nth-child` 로 자리를 잡았다. 그 규칙은 `supply-skin.css` 에
+          ★그대로 남겼다★ (`CLAUDE.md` 1-4) — DOM 에서 `.v3-board-hex` 가 사라지면 안 걸릴 뿐이다.
+        ── ⚠ ★기둥은 여백이 실제로 있을 때만★ 선다 (CSS `min-width: 1400px`).
+          좁은 PC 에서는 기둥이 안 뜨고 아래 `.v3-board-hexphone` 이 대신 그린다 —
+          육각이 ★사라지는 폭★ 이 생기면 안 된다.
+      */}
       {canAnalyze && analysis !== null ? (
-        <div className="v3-board-hex" style={{ padding: '4px 0 0' }}>
-          <MatchHexagonV3
-            won={wonTeam ? hexOf(wonTeam.side) : null}
-            lost={lostTeam ? hexOf(lostTeam.side) : null}
-            wonName={wonTeam?.snap.clan.name ?? '승리'}
-            lostName={lostTeam?.snap.clan.name ?? '패배'}
-            id={`mhexPc-${detail.id}`}
-          />
-          <MvpWhy detail={detail} />
-          {/* ★라운드 흐름★ — MVP 이유·육각 줄 아래 빈 자리 (2026-09-23 사장님). 배틀로그 없으면 자리를 비운다 */}
+        <div className="v3-board-pillar">
+          <div className="v3-board-pillar__in">
+            <MatchHexagonV3
+              won={wonTeam ? hexOf(wonTeam.side) : null}
+              lost={lostTeam ? hexOf(lostTeam.side) : null}
+              wonName={wonTeam?.snap.clan.name ?? '승리'}
+              lostName={lostTeam?.snap.clan.name ?? '패배'}
+              id={`mhexPc-${detail.id}`}
+            />
+          </div>
+        </div>
+      ) : null}
+      {canAnalyze && analysis !== null ? (
+        <div className="v3-board-flow">
+          {/* ★폰(과 좁은 PC)의 육각★ — 명단 밑 · 그래프 앞 (사장님 「폰은 여백이 없으니 명단 밑」).
+              칩 셋은 폰에서만 보인다(tokens.css `.v3-hexpick`) */}
+          <div className="v3-board-hexphone">
+            <div className="v3-hexpick">
+              {([['won', wonTeam?.snap.clan.name ?? '승리'], ['lost', lostTeam?.snap.clan.name ?? '패배'], ['both', '겹쳐서']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setPick(key) }}
+                  className={`v3-hexpick__chip v3-hexpick__chip--${key} ${pick === key ? 'is-on' : ''}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <MatchHexagonV3
+              won={wonTeam ? hexOf(wonTeam.side) : null}
+              lost={lostTeam ? hexOf(lostTeam.side) : null}
+              wonName={wonTeam?.snap.clan.name ?? '승리'}
+              lostName={lostTeam?.snap.clan.name ?? '패배'}
+              only={pick === 'both' ? null : pick}
+              id={`mhexPhone-${detail.id}-${pick}`}
+            />
+          </div>
+          {SHOW_MVP_WHY ? <MvpWhy detail={detail} /> : null}
+          {/* ★라운드 흐름★ — 명단 바로 밑 (2026-09-23 오후). 배틀로그 없으면 자리를 비운다 */}
           {detail.round_flow && wonTeam && lostTeam ? (
             <RoundFlowChartV3
               flow={detail.round_flow}
@@ -605,6 +658,25 @@ function Scoreboard({
 const VS_PREVIEW = 2
 /** 스코어보드 명단을 킬 순으로 (2026-09-23 사장님). false 면 원문 순서 */
 const LINEUP_BY_KILLS = true
+
+/**
+ * ★MVP 이유 상자를 화면에서 내린다★ (2026-09-23 오후 사장님 지시 ①-1).
+ *
+ * > 「MVP 이유 상자 없앤다 — 화면에서만」
+ *
+ * ⚠ ★컴포넌트(`MvpWhy`)는 안 지웠다★ (`CLAUDE.md` 1-4). 이 값을 `true` 로 되돌리면
+ *   옛 화면 그대로 다시 나온다. 계약·질의도 그대로다 — 자료는 계속 내려온다.
+ */
+const SHOW_MVP_WHY = false
+
+/**
+ * ★폰에서 경기분석을 「명단 자리」에 넣을까★ — 옛 판(2026-09-23 낮)이 `true` 였다.
+ *
+ * 옛 판은 폰에서 경기분석을 누르면 ★명단을 접고★ 그 자리에 칩·육각·그래프를 넣었다.
+ * 2026-09-23 오후 사장님이 「육각은 명단 밑 · 그래프는 명단 바로 밑」 이라 하셔서
+ * ★명단을 그대로 두고 아래로 붙인다.★ 옛 판은 이 값을 `true` 로 되돌리면 돌아온다.
+ */
+const PHONE_ANALYSIS_IN_LIST = false
 
 function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: LeagueClanShow; opp: ClanHeadToHead; vsMatches: readonly MatchListItem[] | null; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
   const theme = clanThemeOf(data.clan.slug)

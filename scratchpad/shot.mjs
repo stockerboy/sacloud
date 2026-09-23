@@ -107,10 +107,23 @@ await sleep(3500)
 /* 7번째 인자 — 찍기 전에 그 글자를 가진 요소를 누른다 (폰 「경기분석」 처럼 눌러야 나오는 것) */
 const clickText = process.argv[8]
 if (clickText) {
-  await send('Runtime.evaluate', {
-    expression: `(() => { const el = [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === ${JSON.stringify(clickText)}); if (el) { el.click(); return 'clicked' } return 'not found' })()`,
-    returnByValue: true,
-  }).then((r) => console.log('click', clickText, r.result?.value))
+  /* 2026-09-23 오후 — dev 서버가 느리면 3.5초 안에 단추가 안 떠서 「not found」 가 났다 → 최대 20초 기다리며 다시 찾는다 */
+  let clicked = 'not found'
+  for (let i = 0; i < 40 && clicked !== 'clicked'; i += 1) {
+    const r = await send('Runtime.evaluate', {
+      expression: `(() => { const el = [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === ${JSON.stringify(clickText)}); if (el) { el.click(); return 'clicked' } return 'not found' })()`,
+      returnByValue: true,
+    })
+    clicked = r.result?.value
+    if (clicked !== 'clicked') { await sleep(500); continue }
+    /* 서버가 그린 글자는 있는데 React 가 아직 안 붙었으면 눌러도 아무 일 없다 → 기다릴 글자가 안 뜨면 다시 누른다 */
+    if (waitFor) {
+      await sleep(900)
+      const ok = await send('Runtime.evaluate', { expression: `document.body.innerText.includes(${JSON.stringify(waitFor)})`, returnByValue: true })
+      if (ok.result?.value !== true) { clicked = 'clicked-but-nothing'; await sleep(600) }
+    }
+  }
+  console.log('click', clickText, clicked)
   await sleep(1500)
 }
 

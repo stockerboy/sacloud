@@ -80,7 +80,10 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
             onRenew={onRenew}
             renewing={refresh.state === 'pending'}
           />
-          <PillTabs tabs={leaguePlayerTabs(leagueSlug, playerId)} current={pathname} />
+          {/* 폰은 본문 안 탭(기록실 | 플레이분석)이 대신한다 (2026-09-23 오후 사장님 「육각을 지난시즌 대신」) — supply-skin.css `.sac-pilltabs-pc` */}
+          <div className="sac-pilltabs-pc">
+            <PillTabs tabs={leaguePlayerTabs(leagueSlug, playerId)} current={pathname} />
+          </div>
         </div>
       ) : detail.isPending && detail.fetchStatus === 'fetching' ? (
         <div className="pc-container pt-[40px]">
