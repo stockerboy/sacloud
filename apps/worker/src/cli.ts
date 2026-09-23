@@ -1377,6 +1377,21 @@ async function main(): Promise<number> {
       return 0
     }
 
+    case 'barracks-clan-search': {
+      /*
+        ★병영 클랜 검색을 그대로 한 번★ (2026-09-24 · deluxe 의 진짜 clan_id 찾기 — slug ferwfwfwfwf 도 번호도 rtnCode -999).
+          nexon barracks-clan-search deluxe
+        요청 한 번 · 저장 없음. 결과의 clan_id 가 곧 우리 slug 다 (clanFindMissing 머리글).
+      */
+      const name = args.positional[0]
+      if (!name) { console.error('쓰는 법: barracks-clan-search <클랜이름>'); return 1 }
+      const { barracksBrowser, closeBarracksBrowser } = await import('./nexon/browserFetch.js')
+      const r = await barracksBrowser().call('POST', `/api/Search/GetSearchClanAll/${encodeURIComponent(name)}/1`, null)
+      await closeBarracksBrowser().catch(() => {})
+      console.log(`status=${r.status} ms=${r.ms}`)
+      console.log(r.body.slice(0, 2500))
+      return 0
+    }
     case 'barracks-clan-list': {
       /*
         ★병영 클랜 경기 목록을 그대로 한 번 불러 본다★ (2026-09-24 · HANDOFF §2-④ deluxe).
