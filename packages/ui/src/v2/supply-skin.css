@@ -1549,7 +1549,9 @@ body.antialiased {
   /* 섹션이 내용 폭으로 줄어(flex items-center) 안이 100% 를 못 받았다 → 섹션부터 100% */
   .home-hero--art + div > section { width: 100%; }
   /* 서플라이 홈 인기게시글 판 — 사장님 크롬 1920 실측 840 (x 530→1370). 옛 값 1076 은 랭킹 표 폭이었다 */
-  .home-hero--art + div > section > div { width: min(840px, 100%); }
+  /* 2026-09-24 QA(운영 PC): 에타 카드로 바꾸면서 목록이 <ul> 이 되어 이 규칙을 안 받아 머리(840)와 목록(1076) 폭이 어긋났다 → ul 도 같은 폭 */
+  .home-hero--art + div > section > div,
+  .home-hero--art + div > section > ul { width: min(840px, 100%); }
 }
 @media (max-width: 767px) {
   /* 폰 — 판 300 · 그림은 세로에 맞춰 좌우를 자른다(cover) · 망토가 84% 자리(≈250)에 오도록 검색창 230 */
