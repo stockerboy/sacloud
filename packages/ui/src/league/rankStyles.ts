@@ -103,7 +103,9 @@ export const RANK_TOP = 'text-accent font-bold'
  *   (`docs/SUPPLY_MEASURED.md` §2 · 순위 140 / 클러 336 / 승리·패배·승률 154 / 래더 136)
  *   폰은 그대로 26px — 사장님이 9/19 에 세 번 손보신 값이다.
  */
-export const COL_RANK = 'w-[140px] shrink-0 text-center max-md:w-[26px] max-md:whitespace-nowrap'
+/* ★768~1279 (태블릿·좁은 노트북) 은 칸을 좁힌다★ (2026-09-24 QA 1024 실측: 고정 칸 합이 1000 이라 닉네임 칸이 69px 로 눌려 7자 이름이 잘렸다).
+   서플라이 실측값(1120 판)은 xl 이상에서 그대로다 */
+export const COL_RANK = 'w-[140px] shrink-0 text-center max-md:w-[26px] max-md:whitespace-nowrap md:max-xl:w-[72px]'
 /**
  * 이름 칸 — 남는 폭을 다 쓴다.
  *
@@ -124,7 +126,7 @@ export const COL_NAME = 'flex min-w-0 flex-1 items-center'
  *   「63.8%」 는 52px 에 들어가고, 아래 「51승 29패」 는 글자를 한 단 줄여 맞춘다.
  */
 /* ⚠ ★2026-09-22 밤 — PC 112 → ★154px★ (서플라이 실측)★. 폰은 52px 그대로 */
-export const COL_STAT = 'w-[154px] shrink-0 text-right max-md:w-[52px]'
+export const COL_STAT = 'w-[154px] shrink-0 text-right max-md:w-[52px] md:max-xl:w-[112px]'
 /**
  * ★승리 · 패배 칸★ (2026-09-22 사장님: 「몇승 몇패인지 적어줘 저렇게 노란표시 된곳처럼」).
  *
@@ -133,7 +135,7 @@ export const COL_STAT = 'w-[154px] shrink-0 text-right max-md:w-[52px]'
  * 폰에서는 승률 아래 접힌 판(`WL_SUB`)이 대신 선다.
  */
 /* ⚠ ★2026-09-22 밤 — PC 96 → ★154px★ (서플라이 승리·패배 칸과 같은 폭)★ */
-export const COL_WL = 'w-[154px] shrink-0 text-right max-md:hidden'
+export const COL_WL = 'w-[154px] shrink-0 text-right max-md:hidden md:max-xl:w-[112px]'
 /**
  * 소속 클랜명 칸 (2026-09-02 사장님 지시 #10 — "순위닉네임, 래더 사이에 소속클랜명을 적어라").
  * 홈 미리보기가 켜서 쓴다 (`PlayerRankTable` 의 `clanColumn`). 폰에서도 남긴다 — 길면 말줄임.
@@ -168,7 +170,7 @@ export const COL_MAIN = 'hidden min-[1120px]:flex w-[160px] shrink-0 items-cente
 
 /** 래더 칸 — 표에서 가장 무거운 숫자 */
 /* ⚠ ★2026-09-22 밤 — PC 128 → ★136px★ (서플라이 래더 칸)★. 폰은 76px 그대로 */
-export const COL_RATING = 'w-[136px] shrink-0 text-right max-md:w-[76px]'
+export const COL_RATING = 'w-[136px] shrink-0 text-right max-md:w-[76px] md:max-xl:w-[100px]'
 /** 좁은 화면에서 감추는 칸 */
 export const COL_HIDDEN = 'max-md:hidden'
 
@@ -206,12 +208,12 @@ export const TAB_IDLE = 'border-b-transparent text-meta hover:text-text'
 
 /** 개인랭킹 지표 칸 (승률 · 킬뎃) — 폰은 옛 52px 그대로 */
 /* ⚠ 2026-09-23 오후 — 폰 52 → 50. 열산 「너구리마을」 클랜 태그 54>50 (두 칸 합쳐 +4 가 이름칸으로) */
-export const COL_PSTAT = 'w-[126px] shrink-0 text-right max-md:w-[50px]'
+export const COL_PSTAT = 'w-[126px] shrink-0 text-right max-md:w-[50px] md:max-xl:w-[92px]'
 /** 개인랭킹의 ★PC 전용★ 칸 (승리 · 패배 · 평균킬) — 폰에서는 칸째로 사라지고 접힌 판이 선다 */
-export const COL_PWL = 'w-[126px] shrink-0 text-right max-md:hidden'
+export const COL_PWL = 'w-[126px] shrink-0 text-right max-md:hidden md:max-xl:w-[92px]'
 /** 개인랭킹 래더 칸 */
 /* ⚠ 2026-09-23 — 폰 76 → 70. 「3,895점」 은 14px 에 62px 이라 70 에 든다. 이름칸 +6 으로 클랜 태그(「One.PoinT」 53px) 3px 잘림이 사라진다 (운영 393 실측) */
-export const COL_PRATING = 'w-[104px] shrink-0 text-right max-md:w-[70px]'
+export const COL_PRATING = 'w-[104px] shrink-0 text-right max-md:w-[70px] md:max-xl:w-[84px]'
 /** PC 에서는 접힌 보조 수치를 감춘다 — 제 칸이 따로 섰기 때문이다 */
 /* `sac-sub-phone` — 서플라이 폰 표는 한 줄(36px)이라 접힌 보조 수치를 폰에서도 감춘다 (supply-skin.css · 2026-09-23) */
 export const SUB_PHONE_ONLY = 'sac-sub-phone hidden max-md:block'
