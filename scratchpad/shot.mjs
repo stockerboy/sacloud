@@ -104,6 +104,16 @@ if (width < 700) {
 await send('Page.navigate', { url })
 await sleep(3500)
 
+/* 7번째 인자 — 찍기 전에 그 글자를 가진 요소를 누른다 (폰 「경기분석」 처럼 눌러야 나오는 것) */
+const clickText = process.argv[8]
+if (clickText) {
+  await send('Runtime.evaluate', {
+    expression: `(() => { const el = [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === ${JSON.stringify(clickText)}); if (el) { el.click(); return 'clicked' } return 'not found' })()`,
+    returnByValue: true,
+  }).then((r) => console.log('click', clickText, r.result?.value))
+  await sleep(1500)
+}
+
 if (waitFor) {
   for (let i = 0; i < 40; i += 1) {
     const r = await send('Runtime.evaluate', {

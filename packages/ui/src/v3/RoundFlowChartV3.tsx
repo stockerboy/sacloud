@@ -239,7 +239,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         ) : (
           <text x={(X0 + X1) / 2} y={Y_TOP - 12} textAnchor="middle" fill={tone.textMuted} fontSize={PLOT.tickFont} fontWeight="700">전반</text>
         )}
-        <text x={X0 - 7} y={Y_BOTTOM + 26} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>라운드</text>
+        <text x={X0 - 7} y={Y_BOTTOM + 26} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>{phone ? 'R' : '라운드'}</text>
         {model.pts.length > 1 ? (
           <g>
             {GLOW ? (
@@ -266,8 +266,10 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
         {hoverPt !== null && hover !== null ? (
           <g pointerEvents="none">
             <line x1={hover} y1={Y_TOP - 6} x2={hover} y2={Y_BOTTOM + 6} stroke="#0891b2" strokeWidth={1} opacity={0.7} />
-            <text x={Math.max(X0 + 160, Math.min(X1 - 160, hover))} y={Y_BOTTOM + 44} textAnchor="middle" fill="#0891b2" fontSize={PLOT.tickFont}>
-              {hoverPt.round === 0 ? '시작' : `${hoverPt.round}라운드 · ${winner.name} ${hoverPt.aliveW} : ${hoverPt.aliveL} ${loser.name} · ${hoverPt.v.toFixed(0)}%${hoverPt.est ? ' [추정]' : ''}`}
+            <text x={phone ? (X0 + X1) / 2 : Math.max(X0 + 160, Math.min(X1 - 160, hover))} y={Y_BOTTOM + 44} textAnchor="middle" fill="#0891b2" fontSize={PLOT.tickFont}>
+              {hoverPt.round === 0 ? '시작' : phone
+                ? `${hoverPt.round}R · ${hoverPt.aliveW}:${hoverPt.aliveL} · ${hoverPt.v.toFixed(0)}%${hoverPt.est ? ' [추정]' : ''}`
+                : `${hoverPt.round}라운드 · ${winner.name} ${hoverPt.aliveW} : ${hoverPt.aliveL} ${loser.name} · ${hoverPt.v.toFixed(0)}%${hoverPt.est ? ' [추정]' : ''}`}
             </text>
           </g>
         ) : null}
