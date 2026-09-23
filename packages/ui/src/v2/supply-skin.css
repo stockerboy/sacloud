@@ -1311,7 +1311,14 @@ body.antialiased {
 @media (max-width: 767px) {
   .sac-rank-head > :first-child,
   .sac-rank-row > :first-child {
-    margin-right: 8px;
+    margin-right: 14px; /* 2026-09-23 밤 — 서플라이 폰 개인랭킹(순위→마크 ~32px) 참고. 옛 값 8 */
+  }
+  /* ★폰 클랜마크 20px★ (2026-09-23 밤 사장님 「클랜마크 크기 좀 줄이고 · 서플라이 모바일 마크 크기 참고」 — 실측 ~20px). PC 는 28 그대로 */
+  .sac-rank-mark,
+  .sac-rank-mark > * {
+    width: 20px !important;
+    height: 20px !important;
+    display: inline-flex;
   }
 }
 
@@ -1504,4 +1511,26 @@ body.antialiased {
     padding-top: 40px;
     padding-bottom: 48px;
   }
+}
+
+/* ── 홈 히어로 그림 · 2차 (2026-09-23 밤 사장님) ──────────────────────────
+   「로고를 왼쪽 상단에 홈버튼으로 · 로고 자리는 비워 둬 — 아가멤논의 압도감 · 검색창은 게시판 가까이 ·
+    PC 게시판은 서플라이 게시판 보드 폭(1076)」 */
+@media (min-width: 768px) {
+  /* 상단바 왼쪽 로고를 홈에서만 켠다 (다른 화면은 서플라이대로 로고 없음). 크기는 띠 63 에 맞춘 34 */
+  body:has(.home-hero--art) .sac-v2 .v2-brand--pc-off { display: flex !important; margin-right: 18px; }
+}
+/* 큰 로고를 비운다 — 투구가 그 자리에 선다. 파일·컴포넌트는 그대로 (HOME_HERO_ART=false 면 돌아온다) */
+.home-hero--art .home-mark { display: none !important; }
+/* 검색창을 판 바닥으로 — 위를 비워 투구·병사가 보이고, 아래는 게시판에 붙는다 */
+.home-hero--art { padding-top: 250px !important; padding-bottom: 26px !important; background-position: center 30%, center 30% !important; }
+.home-hero--art + div { margin-top: 18px !important; }
+/* PC 게시판 폭 — 서플라이 게시판 표 폭 1076 (옛 672 는 서플라이 ★홈★ Hot카드 실측 · CLAUDE.md 1-4) */
+@media (min-width: 768px) {
+  /* 섹션이 내용 폭으로 줄어(flex items-center) 안이 100% 를 못 받았다 → 섹션부터 100% */
+  .home-hero--art + div > section { width: 100%; }
+  .home-hero--art + div > section > div { width: min(1076px, 100%); }
+}
+@media (max-width: 767px) {
+  .home-hero--art { padding-top: 170px !important; padding-bottom: 18px !important; background-position: center 30%, center 30% !important; }
 }

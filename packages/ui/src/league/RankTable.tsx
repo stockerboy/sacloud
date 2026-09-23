@@ -166,15 +166,19 @@ function Stat({
    * 색 정의는 `packages/ui/src/common/rate.ts` 와 `styles.css` 의 `--color-rate-*` 다.
    */
   tone = '',
+  lead,
 }: {
   value: string
   unit?: string
   sub?: React.ReactNode
   className?: string
   tone?: string
+  /** ★폰에서만★ 큰 숫자 앞에 작게 붙는 말 — 「12승 8패」 (2026-09-23 밤 사장님 「n승n패n%」) */
+  lead?: React.ReactNode
 }) {
   return (
     <div className={className}>
+      {lead ? <span className="mr-1 text-[0.66rem] text-faint md:hidden">{lead}</span> : null}
       <span className={`${NUM} ${tone === '' ? 'text-text-strong' : tone}`}>{value}</span>
       {unit ? <Unit>{unit}</Unit> : null}
       {sub ? <span className={`${SUB} sac-sub-phone`}>{sub}</span> : null}
@@ -1003,7 +1007,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
         */}
         {columns.winRate ? <div className={COL_PWL}>승리</div> : null}
         {columns.winRate ? <div className={COL_PWL}>패배</div> : null}
-        {columns.winRate ? <div className={`${COL_PSTAT} ${winRateHidden}`}>승률</div> : null}
+        {columns.winRate ? <div className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[104px]`}>승률</div> : null}
         {columns.kd ? <div className={`${COL_PSTAT} ${kdHidden}`}>킬뎃</div> : null}
         {columns.kd ? <div className={COL_PWL}>평균킬</div> : null}
         {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
@@ -1068,7 +1072,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   aria-hidden="true"
                 >
                   <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
-                    <MarkCircle clan={row.clan} size={28} title={row.clan?.name ?? ''} />
+                    <span className="sac-rank-mark"><MarkCircle clan={row.clan} size={28} title={row.clan?.name ?? ''} /></span>
                   </Egg>
                 </Link>
                 {/*
@@ -1114,14 +1118,15 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                   {row.clan ? (
                     <Link prefetch={false}
                       /* ⚠ 2026-09-16 — 10.8 → 11.7px (사장님: 랭킹 글씨를 키움). 옛 값 `text-[0.72rem]` */
-                      className="-my-1.5 block shrink truncate py-1.5 text-[0.78rem] leading-none text-meta hover:text-text-strong"
+                      /* 2026-09-23 밤 사장님 「클랜명은 모바일에서는 굳이 쓰지 마」 — 마크가 소속을 말한다. PC 는 그대로 */
+                      className="-my-1.5 block shrink truncate py-1.5 text-[0.78rem] leading-none text-meta hover:text-text-strong max-md:hidden"
                       href={leagueClanPath(leagueSlug, row.clan.slug)}
                       title={row.clan.name}
                     >
                       {row.clan.name}
                     </Link>
                   ) : (
-                    <span className="block shrink truncate text-[0.78rem] leading-none text-faint">
+                    <span className="block shrink truncate text-[0.78rem] leading-none text-faint max-md:hidden">
                       무소속
                     </span>
                   )}
@@ -1228,7 +1233,7 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                     `clan ? ... : null` 로 감싸면 소속 없는 선수 옆이 통째로 빈다.
                     그 위를 알이 덮는다 — 닉네임은 그대로 보인다 (사양 5-2). */}
                 <Egg state={egg} size="xs" label={row.player.name} className={MARK}>
-                  <MarkCircle clan={row.clan} size={28} title={row.clan?.name ?? ''} />
+                  <span className="sac-rank-mark"><MarkCircle clan={row.clan} size={28} title={row.clan?.name ?? ''} /></span>
                 </Egg>
                 <span className="truncate">{row.player.name}</span>
               </Link>
@@ -1275,10 +1280,12 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
               <NoRecordStat className={`${COL_PSTAT} ${winRateHidden}`} />
             ) : (
             <Stat
-              className={`${COL_PSTAT} ${winRateHidden}`}
+              /* 2026-09-23 밤 사장님 — 폰은 한 칸에 「n승 n패 n%」. 폭 50 → 104 (킬뎃은 %만 · 래더 그대로) */
+              className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[104px]`}
               value={formatRate(row.win_rate)}
               tone={rateClass(row.win_rate)}
               unit="%"
+              lead={<>{formatCount(row.win)}승 {formatCount(row.lose)}패</>}
               sub={
                 <span className={SUB_PHONE_ONLY}>
                   {formatCount(row.win)}승 {formatCount(row.lose)}패
