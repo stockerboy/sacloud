@@ -3,7 +3,49 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-23 밤** · 갱신한 사람 B(실행 세션 · 경기분석 진영판 · 선수/클랜 페이지 개편)
+> 마지막 갱신 **2026-09-23 밤(2차)** · 갱신한 사람 B(실행 세션 · 홈 배경 · 래더 층수 · 상세정보 색)
+
+---
+
+## 0-밤. ★2026-09-23 밤 — 홈 아가멤논 배경 · 래더 「31층」 통일 · 상세정보 서플라이 색 · 개인랭킹 폰★
+
+전부 `origin/main` (`cdfe3cc3` ~ `4850860e`). 사장님이 세션을 안 옮기기로 하셔서 이 절이 인계서를 겸한다.
+
+### 홈 (`page.tsx` · `_home/heroV2.ts` HOME_HERO_ART · `supply-skin.css` 「홈 히어로 그림」 두 블록)
+```
+그림      /brand/home-hero.webp(1680) · home-hero-m.webp(840) — 사장님이 주신 png(아가멤논 뒷모습)
+PC        히어로 736 · 그림 바닥 맞춤(투구~어깨) · 큰 로고 비움 · 상단바 왼쪽 로고 34px 홈버튼(홈에서만)
+          검색창 padding-top 500(어깨 위) · 게시판이 판 아래 132 를 덮음 · Hot게시판 폭 840(서플라이 1920 실측)
+폰        판 170 · 검색창 · 게시판 18 (음수 마진 없음 — 넣으면 검색창을 덮는다)
+끄기      HOME_HERO_ART=false → 옛 검정 히어로 + 큰 로고
+```
+### 래더 표기 (`common/format.ts`)
+```
+formatRating · formatRatingPoint 둘 다 「31층」(3,128 → 31 · 버림). 소수점·점수 표기는 화면 어디에도 없음
+옛 판  formatRatingLegacyDecimal(31.2층) · formatRatingLegacyPoint(3,128점)
+래더 색(floorColor) 랭킹표·클랜카드·명단줄에서 뺌 (함수는 rankColors.ts 에 남김)
+⚠ 경기 카드의 래더 증감 「+29점」 은 그대로 — 증감을 층으로 못 적는다. 사장님께 확인 안 받음
+```
+### 상세정보 카드 색 (`rankColors.ts` SUPPLY_INFO · supplyRateColor · supplyRankColor · `.sac-info-card`)
+```
+선수·클랜 오른쪽 카드 + 폰 머리 카드 줄만. 판 #1E293B · 선 #35445A · Noto Sans KR · 라벨 600 · 값 700
+래더 빨강 #E84C44 · 승률/킬뎃 ≤39.9 빨강 / 40 흰 / 50 초록 / 55 주황 / 60 파랑 / ≥65 노랑
+랭킹 1~100 노랑 / ~200 파랑 / ~300 주황 / ~400 초록 / 401~ 흰
+⚠ 사이트 공통 statColor·rankColor(랭킹표·경기카드)는 안 건드렸다 — 두 체계가 공존한다
+```
+### 개인랭킹 폰 (`RankTable.tsx`)
+```
+마크 20(.sac-rank-mark) · 순위→마크 14 · 클랜명 안 적음(PC 는 적음) · 승률 칸 「n승 n패 n%」 104px · 킬뎃 %만
+```
+### 추이 그래프
+```
+판 세로 배율은 선이 노는 띠에만(plotBox hScale) · TREND_H_SCALE 1/2 · 누적/DAY 순서 · 폰은 설명 문장 숨김(.sac-trend-hint)
+```
+### 테스트 상태
+```
+ui 512 초록. apps/web DB 테스트 9건(health · independentLeague · independentTier · matchTimeAffiliation)은
+★이 밤 변경 전부터★ 깨져 있다 — 로컬 DB 에 합성 데이터(seed-flow.mjs · 경기 3000건)가 있어서. 운영 코드 문제 아님. 로컬 DB 를 reset 하면 돌아온다
+```
 
 ---
 
