@@ -510,6 +510,7 @@ function Scoreboard({
             ) : null}
             {canAnalyze ? (
               <span
+                className="v3-analyze-btn"
                 onClick={(e) => { e.stopPropagation(); setPick(t.won ? 'won' : 'lost'); setAnalysis((now) => (now === t.side ? null : t.side)) }}
                 style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', cursor: 'pointer', padding: '3px 9px', borderRadius: V3.radiusChip, color: analysis === t.side ? '#1d4fd6' : '#5c6479', border: `1px solid ${analysis === t.side ? 'rgba(159,192,255,.55)' : 'rgba(143,169,216,.32)'}`, background: analysis === t.side ? 'rgba(91,141,255,.16)' : 'transparent' }}
               >
@@ -578,7 +579,7 @@ function Scoreboard({
               옛 판은 폰에서 이 칸에 `v3-board-list--closed` 를 붙여 접었다 (`PHONE_ANALYSIS_IN_LIST`) */}
           {/* ★PC — 경기분석을 누르면 ★진 팀 명단 자리★ 에 육각이 명단 크기로 들어온다★ (2026-09-23 오후 사장님:
               「왼쪽 기둥은 너무 작아 · 진팀 명단 위에 넣어줘 · 육각이 명단에 딱 들어가게」). 폰(<900)은 안 그린다 — 명단 밑 육각이 있다 */}
-          {!t.won && canAnalyze && analysis !== null ? (
+          {!HEX_CENTER_PC && !t.won && canAnalyze && analysis !== null ? (
             <div className="v3-board-hexin">
               <MatchHexagonV3
                 won={wonTeam ? hexOf(wonTeam.side) : null}
@@ -589,7 +590,7 @@ function Scoreboard({
               />
             </div>
           ) : null}
-          <div className={`v3-board-list${PHONE_ANALYSIS_IN_LIST && analysis === t.side ? ' v3-board-list--closed' : ''}${!t.won && canAnalyze && analysis !== null ? ' v3-board-list--hexin' : ''}`}>
+          <div className={`v3-board-list${PHONE_ANALYSIS_IN_LIST && analysis === t.side ? ' v3-board-list--closed' : ''}${!HEX_CENTER_PC && !t.won && canAnalyze && analysis !== null ? ' v3-board-list--hexin' : ''}`}>
           <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ display: 'grid', gridTemplateColumns: showSaves ? 'minmax(96px,1fr) 44px 86px 44px 58px' : 'minmax(96px,1fr) 44px 86px 58px', gap: 10, padding: '8px 14px', borderBottom: `1px solid ${V3.rowDivider}`, fontSize: 9.5, color: '#b6bece', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
             <span>플레이어</span><span style={{ textAlign: 'right' }}>순위</span><span>kda</span>{showSaves ? <span style={{ textAlign: 'right' }}>세이브</span> : null}<span style={{ textAlign: 'right' }}>포지션</span><span />
           </div>
@@ -633,8 +634,20 @@ function Scoreboard({
           </div>
         </div>
       ) : null}
-      {canAnalyze && analysis !== null ? (
-        <div className="v3-board-flow">
+      {/* ★PC — 가운데 육각(예전 3단)★ (2026-09-23 밤 사장님). 폰(<900)은 안 그린다(tokens.css) */}
+      {HEX_CENTER_PC && canAnalyze ? (
+        <div className="v3-board-hex" style={{ padding: '4px 0 0' }}>
+          <MatchHexagonV3
+            won={wonTeam ? hexOf(wonTeam.side) : null}
+            lost={lostTeam ? hexOf(lostTeam.side) : null}
+            wonName={wonTeam?.snap.clan.name ?? '승리'}
+            lostName={lostTeam?.snap.clan.name ?? '패배'}
+            id={`mhexPc-${detail.id}`}
+          />
+        </div>
+      ) : null}
+      {canAnalyze && (analysis !== null || HEX_CENTER_PC) ? (
+        <div className={`v3-board-flow${analysis === null ? ' v3-board-flow--auto' : ''}`}>
           {/* ★폰(과 좁은 PC)의 육각★ — 명단 밑 · 그래프 앞 (사장님 「폰은 여백이 없으니 명단 밑」).
               칩 셋은 폰에서만 보인다(tokens.css `.v3-hexpick`) */}
           <div className="v3-board-hexphone">
@@ -710,6 +723,8 @@ const PHONE_ANALYSIS_IN_LIST = false
  * `true` 로 되돌리면 기둥이 다시 선다 (CSS 는 supply-skin.css 에 그대로).
  */
 const PILLAR_HEX = false
+/** ★PC — 가운데 육각 · 그 밑 라운드 그래프 늘 보임★ (2026-09-23 밤 사장님). 설명은 PlayerDetailV3 의 같은 이름 */
+const HEX_CENTER_PC = true
 
 function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: LeagueClanShow; opp: ClanHeadToHead; vsMatches: readonly MatchListItem[] | null; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
   const theme = clanThemeOf(data.clan.slug)
@@ -1288,13 +1303,14 @@ const [tier] = useState<number>(() => {
               {opp ? (
                 <HeadToHeadCard key={opp.clan.slug} data={data} opp={opp} vsMatches={props.vsMatches} expanded={props.expanded} onExpand={props.onExpand} />
               ) : null}
-              {recordList}
             </div>
             <aside className="sac-prr-aside">
               <ClanSideInfoCard data={data} memberCount={data.member_count ?? null} />
               <ClanHexCard data={data} />
             </aside>
           </div>
+          {/* ★통합 기록실은 2단 밖 전체 폭★ (2026-09-23 밤 사장님) */}
+          {recordList}
         </div>
       </div>
     )

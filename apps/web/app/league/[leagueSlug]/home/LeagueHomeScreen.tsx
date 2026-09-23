@@ -156,7 +156,7 @@ export default function LeagueHomeScreen({
   })()
 
   return (
-    <div className="pc-container pb-[40px] pt-[16px]">
+    <div className="sac-player-page"><div className="pc-container pb-[40px] pt-[16px]">
       {/* ★리그 탭★ — 상단 고정 띠에서 내려왔다 (2026-09-16 사장님) */}
       <LeagueTabsInline leagueSlug={leagueSlug} />
       {/*
@@ -223,6 +223,6 @@ export default function LeagueHomeScreen({
         <HexTopScreen leagueSlug={leagueSlug} embedded />
       </div>
 
-    </div>
+    </div></div>
   )
 }

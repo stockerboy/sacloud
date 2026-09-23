@@ -641,8 +641,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           const list = killedBy(k)
           return (
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, letterSpacing: '.08em', color: tone.textGhost, marginBottom: 3, textAlign: align, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{teamOf(k).name}가 잡음</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12.5 }}>
+              <div style={{ fontSize: phone ? 10 : 11.5, letterSpacing: '.08em', color: tone.textGhost, marginBottom: 3, textAlign: align, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{teamOf(k).name}가 잡음</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: phone ? 3 : 5, fontSize: phone ? 12.5 : 14.5 }}>
                 {list.length === 0 ? <span style={{ color: tone.textGhost, fontSize: 12, textAlign: align }}>{hud.round > 0 ? '아직 없음' : ''}</span> : list.map((f, i) => killRow(f, i, align))}
               </div>
             </div>
@@ -655,29 +655,29 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
           <>
             {/* ① 인원 — 사람 아이콘. 레드 왼쪽(가운데 쪽부터 꺼짐) · 블루 오른쪽(가운데 쪽부터 꺼짐) · 가운데 전반전/후반전 · 라운드 · 확률 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, padding: '9px 2px 5px', borderTop: `1px solid ${tone.cardBorder}`, marginTop: 4 }}>
-              <CrewIcons alive={aliveOf(leftKey)} size={sizeOf(leftKey)} ink={RED_INK} glow={RED_GLOW} fromRight={true} />
+              <CrewIcons alive={aliveOf(leftKey)} size={sizeOf(leftKey)} ink={RED_INK} glow={RED_GLOW} fromRight={true} size16={phone} />
               <div style={{ textAlign: 'center', padding: '0 9px', borderLeft: `1px solid ${tone.cardBorder}`, borderRight: `1px solid ${tone.cardBorder}`, whiteSpace: 'nowrap' }}>
                 <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: tone.textDim }}>{halfWord}{hud.round > 0 ? ` · ${hud.round}R` : ''}</div>
                 <div style={{ fontSize: 10.5, color: tone.textGhost, fontVariantNumeric: 'tabular-nums' }}>{leftPct.toFixed(0)}% : {(100 - leftPct).toFixed(0)}%{hud.est ? ' · 어림' : ''}</div>
               </div>
-              <CrewIcons alive={aliveOf(rightKey)} size={sizeOf(rightKey)} ink={BLUE_INK} glow={BLUE_GLOW} fromRight={false} />
+              <CrewIcons alive={aliveOf(rightKey)} size={sizeOf(rightKey)} ink={BLUE_INK} glow={BLUE_GLOW} fromRight={false} size16={phone} />
             </div>
             {/* ② 레드 클랜 · 그 반의 점수 · 클랜 블루 — 후반이면 자리가 바뀐다 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'baseline', gap: 8, padding: '4px 2px 8px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0 }}>
                 <SideTag red />
-                <span style={{ fontWeight: 800, fontSize: 13.5, color: RED_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(leftKey).name}</span>
+                <span style={{ fontWeight: 800, fontSize: phone ? 13.5 : 17, color: RED_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(leftKey).name}</span>
               </div>
-              <div style={{ fontWeight: 800, fontSize: 20, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '0 8px', color: tone.textStrong }}>
+              <div style={{ fontWeight: 800, fontSize: phone ? 20 : 26, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '0 8px', color: tone.textStrong }}>
                 <span style={{ color: RED_INK }}>{halfScoreOf(leftKey)}</span><span style={{ color: tone.textGhost, margin: '0 4px', fontWeight: 500 }}>:</span><span style={{ color: BLUE_INK }}>{halfScoreOf(rightKey)}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0, justifyContent: 'flex-end' }}>
-                <span style={{ fontWeight: 800, fontSize: 13.5, color: BLUE_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(rightKey).name}</span>
+                <span style={{ fontWeight: 800, fontSize: phone ? 13.5 : 17, color: BLUE_INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{teamOf(rightKey).name}</span>
                 <SideTag red={false} />
               </div>
             </div>
             {/* ③ 죽은 차례 — 두 칸. 판 높이는 고정해 그래프가 위아래로 안 움직인다 */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 10px', borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, height: 152, overflow: 'hidden' /* 2026-09-23 밤 사장님 「세로폭 고정 — 5명 다 들어갈 크기」: 머리 17 + 줄 5×(20+3) = 132 + 여백. 옛 값 minHeight phone 96 / 72 */ }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 10px', borderTop: `1px solid ${tone.cardBorder}`, paddingTop: 8, height: phone ? 152 : 176, overflow: 'hidden' /* 2026-09-23 밤 사장님 「세로폭 고정 — 5명 다 들어갈 크기」: 머리 17 + 줄 5×(20+3) = 132 + 여백. 옛 값 minHeight phone 96 / 72 */ }}>
               {col(leftKey, 'left')}
               <div style={{ background: tone.cardBorder }} />
               {col(rightKey, 'right')}
@@ -740,13 +740,13 @@ const PERSON_PATH = 'M8 2.6a2.7 2.7 0 1 1 0 5.4 2.7 2.7 0 0 1 0-5.4Zm0 6.2c3 0 5
  * 살아 있으면 진영 색 + 번짐, 죽으면 흐린 윤곽만. `fromRight` 면 오른쪽 끝(가운데 쪽)부터 꺼진다 —
  * 레드(왼쪽)도 블루(오른쪽)도 가운데 쪽부터 꺼져 양쪽이 대칭이다.
  */
-function CrewIcons({ alive, size, ink, glow, fromRight }: { alive: number; size: number; ink: string; glow: string; fromRight: boolean }) {
+function CrewIcons({ alive, size, ink, glow, fromRight, size16 = true }: { alive: number; size: number; ink: string; glow: string; fromRight: boolean; /** 폰 16 · PC 20 (2026-09-23 밤) */ size16?: boolean }) {
   return (
     <span style={{ display: 'flex', gap: 5, alignItems: 'center', justifyContent: fromRight ? 'flex-start' : 'flex-end' }}>
       {Array.from({ length: size }, (_, i) => {
         const on = (fromRight ? i : size - 1 - i) < alive
         return (
-          <svg key={i} viewBox="0 0 16 16" style={{ width: 16, height: 16, display: 'block', filter: on ? glow : undefined }} aria-hidden>
+          <svg key={i} viewBox="0 0 16 16" style={{ width: size16 ? 16 : 20, height: size16 ? 16 : 20, display: 'block', filter: on ? glow : undefined }} aria-hidden>
             <path d={PERSON_PATH} fill={on ? ink : 'none'} stroke={on ? 'none' : '#33405f'} strokeWidth={on ? 0 : 1.6} />
           </svg>
         )

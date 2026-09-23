@@ -77,6 +77,11 @@ const PHONE_ANALYSIS_IN_LIST = false
  * `true` 로 되돌리면 기둥이 다시 선다 (CSS 는 supply-skin.css 에 그대로).
  */
 const PILLAR_HEX = false
+/**
+ * ★PC — 가운데 육각 · 그 밑에 라운드 그래프 · 둘 다 ★늘★ 보인다★ (2026-09-23 밤 사장님 「예전에 쓰던 가운데 육각 + 양옆 명단 · 그 밑에 라운드볼 그래프」).
+ * 경기분석 단추는 폰에서만 뜻이 있다(CSS `.v3-analyze-btn` 이 PC 에서 숨긴다). false 면 낮 판(진 팀 명단 자리 육각 · 단추로 열기).
+ */
+const HEX_CENTER_PC = true
 /* 2026-09-11 사장님 목업: 구간 카드(승률·킬뎃·MVP·핵의심)는 ★머리 카드★(PlayerHeaderV3 · 레이아웃)로 올라갔다.
    true 로 되돌리면 옛 두 장 배치가 그대로 돌아온다 (`CLAUDE.md` 1-4) */
 const TIER_CARD_IN_BODY = false
@@ -1149,6 +1154,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
             ) : null}
             {canAnalyze ? (
               <span
+                className="v3-analyze-btn"
                 onClick={(e) => { e.stopPropagation(); setPick(t.won ? 'won' : 'lost'); setAnalysis((now) => (now === t.side ? null : t.side)) }}
                 style={{ fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none', cursor: 'pointer', padding: '3px 9px', borderRadius: V3.radiusChip, color: analysis === t.side ? '#1d4fd6' : '#5c6479', border: `1px solid ${analysis === t.side ? 'rgba(159,192,255,.55)' : 'rgba(143,169,216,.32)'}`, background: analysis === t.side ? 'rgba(91,141,255,.16)' : 'transparent' }}
               >
@@ -1211,7 +1217,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
           {/* ★명단은 늘 펴 둔다★ (2026-09-23 오후) — 경기분석은 명단을 접지 않고 ★밑으로★ 붙는다 */}
           {/* ★PC — 경기분석을 누르면 ★진 팀 명단 자리★ 에 육각이 명단 크기로 들어온다★ (2026-09-23 오후 사장님:
               「왼쪽 기둥은 너무 작아 · 진팀 명단 위에 넣어줘 · 육각이 명단에 딱 들어가게」). 폰(<900)은 안 그린다 — 명단 밑 육각이 있다 */}
-          {!t.won && canAnalyze && analysis !== null ? (
+          {!HEX_CENTER_PC && !t.won && canAnalyze && analysis !== null ? (
             <div className="v3-board-hexin">
               <MatchHexagonV3
                 won={wonTeam ? hexOf(wonTeam.side) : null}
@@ -1222,7 +1228,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
               />
             </div>
           ) : null}
-          <div className={`v3-board-list${PHONE_ANALYSIS_IN_LIST && analysis === t.side ? ' v3-board-list--closed' : ''}${!t.won && canAnalyze && analysis !== null ? ' v3-board-list--hexin' : ''}`}>
+          <div className={`v3-board-list${PHONE_ANALYSIS_IN_LIST && analysis === t.side ? ' v3-board-list--closed' : ''}${!HEX_CENTER_PC && !t.won && canAnalyze && analysis !== null ? ' v3-board-list--hexin' : ''}`}>
           {/* ★칸 이름★ — 서플라이 여섯 칸. 옛 넉 칸(플레이어·K/D/A·세이브·포지션)은 밑에 남겼다 */}
           {SUPPLY_SCORE_COLUMNS ? (
             /* ★줄과 ★같은 격자★(`sac-sb-row`)를 써야 칸이 어긋나지 않는다 */
@@ -1268,8 +1274,20 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
           </div>
         </div>
       ) : null}
-      {canAnalyze && analysis !== null ? (
-        <div className="v3-board-flow">
+      {/* ★PC — 가운데 육각(예전 3단)★ (2026-09-23 밤 사장님 「예전에 쓰던 가운데 육각 + 양옆 명단」). 폰(<900)은 안 그린다(tokens.css) */}
+      {HEX_CENTER_PC && canAnalyze ? (
+        <div className="v3-board-hex" style={{ padding: '4px 0 0' }}>
+          <MatchHexagonV3
+            won={wonTeam ? hexOf(wonTeam.side) : null}
+            lost={lostTeam ? hexOf(lostTeam.side) : null}
+            wonName={wonTeam?.snap.clan.name ?? '승리'}
+            lostName={lostTeam?.snap.clan.name ?? '패배'}
+            id={`mhexPc-${detail.id}`}
+          />
+        </div>
+      ) : null}
+      {canAnalyze && (analysis !== null || HEX_CENTER_PC) ? (
+        <div className={`v3-board-flow${analysis === null ? ' v3-board-flow--auto' : ''}`}>
           {/* ★폰(과 좁은 PC)의 육각★ — 명단 밑 · 그래프 앞 */}
           <div className="v3-board-hexphone">
             <div className="v3-hexpick">
@@ -2217,7 +2235,6 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           </div>
           {/* 서플라이 「최근매치」 자리. 원그래프 대신 클랜별 전적이 들어간다 */}
           <ClanTop3PanelV3 data={data} onMore={() => setTab('clan')} />
-          {matchList}
         </div>
         <aside className="sac-prr-aside">
           <SideInfoCard data={data} showsKd={showsKd} report={props.report} />
@@ -2227,6 +2244,8 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           {SHOW_TEAMMATES ? <TeammatesCard data={data} /> : null}
         </aside>
       </div>
+      {/* ★최근 경기는 2단 ★밖★ 전체 폭(1316)★ (2026-09-23 밤 사장님 「경기 카드 가로를 오른쪽 끝까지」). 옛 자리는 왼쪽 칸 안 */}
+      {matchList}
       </div>
 
       {/*

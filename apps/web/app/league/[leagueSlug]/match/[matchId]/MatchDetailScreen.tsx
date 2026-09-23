@@ -89,7 +89,8 @@ export default function MatchDetailPage({
   const leagueCategory = league.data?.data.category ?? 'independent'
 
   return (
-    <div className="pc-container sac-v3-page pb-[40px]">
+    /* `sac-player-page` — 경기 카드 폭을 선수 페이지와 같은 1360 으로 (2026-09-23 밤 사장님 「모든 경기카드는 이 크기로 통일」) */
+    <div className="sac-player-page"><div className="pc-container sac-v3-page pb-[40px]">
       {/* ★2026-09-07 (Part 10 ⑧)★ — 시안의 화면 머리. ★Cloud 표기가 여기 붙는다★ */}
       <PageHead
         kicker={season?.toUpperCase() ?? null}
@@ -118,6 +119,6 @@ export default function MatchDetailPage({
           defaultExpanded
         />
       )}
-    </div>
+    </div></div>
   )
 }

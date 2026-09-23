@@ -1284,7 +1284,8 @@ body.antialiased {
   .sac-player-page .pc-container { max-width: 1360px; } /* 2026-09-23 밤 사장님 「진짜 조금만 더 줄여」 1400→1360 */
   /* 경기 카드 — 왼쪽 칸을 꽉 채우고(옛 최대 840) 세로 1.2배 (2026-09-23 밤 사장님) */
   .sac-player-page .mc-card { max-width: none !important; }
-  .sac-player-page .mc-card > .mc-pc { padding-top: 25px !important; padding-bottom: 25px !important; }
+  /* (2026-09-23 밤 2차) 상하 25 는 아래 zoom 판으로 대체 — 옛 값 */
+  .sac-player-page .mc-card > .mc-pc { padding-top: 14px !important; padding-bottom: 14px !important; }
 }
 
 /* ★선수 페이지 폰 합치기★ (2026-09-23 오후 사장님)
@@ -1558,3 +1559,39 @@ body.antialiased {
    색 규칙은 rankColors.ts 의 supplyRateColor / supplyRankColor (공통 statColor·rankColor 는 안 건드림) */
 .sac-info-card { background: #1E293B !important; border-color: #35445A !important; font-family: "Noto Sans KR", "Noto Sans", sans-serif; }
 .sac-info-card > div > div { border-bottom-color: #35445A !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ★★PC 경기 카드 한 판으로 통일★★ (2026-09-23 밤 사장님)
+   「경기 카드 가로를 오른쪽 끝(1360)까지 · 예전 가운데 육각 + 양옆 명단 · 그 밑에 라운드 그래프 · 세로도 비율대로 · 글씨 키워 ·
+    폰은 그대로 · 모든 경기카드는 이 크기로 통일」
+   선수·클랜 페이지는 경기 목록이 2단 밖(전체 폭)으로 나갔고, 경기 상세 페이지도 1360 이다. 폰(<900)은 한 글자도 안 바뀐다.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 900px) {
+  .mc-card { max-width: none !important; }
+  .v3-analyze-btn { display: none !important; }                 /* PC 는 육각·그래프가 늘 떠 있다 */
+  .v3-board { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important; column-gap: 18px !important; }
+  .v3-board > .v3-board-win { grid-column: 1; grid-row: 1; }
+  .v3-board > .v3-board-hex { grid-column: 2; grid-row: 1; display: block !important; width: 360px; justify-self: center; } /* 440 이면 MVP 줄 닉네임이 16px 잘렸다(QA) */
+  .v3-board > .v3-board-hex > * { grid-column: auto !important; grid-row: auto !important; margin-top: 0 !important; }
+  .v3-board > .v3-board-hex svg { max-width: 360px !important; }
+  .v3-board > .v3-board-lose { grid-column: 3; grid-row: 1; }
+  .v3-board > .v3-board-flow { grid-column: 1 / -1; grid-row: 2; }
+  .v3-board-hexin { display: none !important; }
+  .v3-board-list--hexin { display: block !important; }
+  /* 명단 글자 키움 — 1316 카드에서 명단 한 칸이 ~410 이라 자리가 있다 */
+  .v3-board .v3-score-row { font-size: 14px !important; padding-top: 11px !important; padding-bottom: 11px !important; }
+  .v3-board .v3-score-row--saves { grid-template-columns: minmax(120px, 1fr) 40px 86px 40px 52px 0px !important; gap: 12px !important; }
+  .v3-board .v3-score-row button, .v3-board .v3-score-row a { font-size: 14px !important; }
+  .v3-board .v3-score-row > span:nth-child(2), .v3-board .v3-score-row > span:nth-child(4), .v3-board .v3-score-row > span:nth-child(5) { font-size: 13.5px !important; }
+}
+@media (max-width: 899px) {
+  /* 폰은 경기분석을 눌러야 그래프가 열린다 — PC 용 「늘 보임」 판은 폰에서 숨긴다 */
+  .v3-board-flow--auto { display: none !important; }
+}
+
+/* ★접힌 경기 카드 머리줄 — 서플라이 비율로 키움★ (2026-09-23 밤 사장님: 「클랜명·클랜마크·MVP 적당히 키워 · 카드가 허전하지 않게 · 서플라이 사진 비율로」)
+   카드가 840→1316 으로 넓어졌는데 글자·마크는 그대로라 비었다. 머리줄(.mc-pc)만 통째로 1.3배 — 격자 px 칸·마크·글자·명단이 같은 비율로 커진다.
+   펼친 명단·육각·그래프(.v3-board)는 이 안에 없어 안 변한다. 폰(.mc-phone)은 그대로 */
+@media (min-width: 900px) {
+  .mc-card > .mc-pc { zoom: 1.3; }
+}
