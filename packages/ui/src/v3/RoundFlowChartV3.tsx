@@ -142,6 +142,9 @@ const WEAPON_ICON: 'photo' | 'svg' = 'photo'
 /** 죽은 차례 칸 높이 — 설치 줄이 생겨 한 줄 더 (옛 값 폰 152 · PC 176) */
 const PANEL_H_PHONE = 178
 const PANEL_H_PC = 206
+/** 프레임마다 바뀌는 것은 DOM 에 직접(ref) · React 상태는 FRAME_STATE_MS 마다 (2026-09-24 사장님 「프레임 너무 낮아」). false 면 옛 판 */
+const FRAME_DIRECT = true
+const FRAME_STATE_MS = 66
 /*
  * ★폰은 한 칸★ (사장님 2026-09-24 새벽 「피시는 글자가 안 가려지는데 모바일은 가려지네 — 총 디자인 때문인가」 → 맞다).
  *   폰 두 칸(칸 하나 170px)에 선짤+마크+킬러+총 사진+희생자가 다 들어가 이름이 「세…」 로 잘렸다.
@@ -198,6 +201,29 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
   /* 붙자마자 긋기 — rAF 로 0→1. IO 를 안 타서 접힌 칸이 열릴 때도 처음부터 끝까지 간다 */
   const [mountDraw, setMountDraw] = useState(DRAW_ON_MOUNT_MS > 0 ? 0 : 1)
   /*
+   * ★2026-09-24 사장님 「그래프 프레임 너무 낮아 부드럽게 만들어줘」★
+   *   실측(로컬 헤드리스 폰 390): 가만히 60fps · 재생 중 26fps(최악 67ms) — 매 프레임 setState 로 판 전체(선·마커·인원 줄·죽은 차례)를 React 가 다시 그렸다.
+   *   이제 ★프레임마다 바뀌는 것(선 dashoffset · 축 x)은 ref 로 DOM 에 직접★ 쓰고, React 상태(마커·HUD·죽은 차례)는 ★66ms 마다(15Hz)★ 만 갱신한다.
+   *   값은 같다 — 그리는 길만 둘로 나눴다. 옛 판(프레임마다 setState)은 FRAME_DIRECT=false
+   */
+  const drawRef = useRef(DRAW_ON_MOUNT_MS > 0 ? 0 : 1)
+  const penEls = useRef(new Set<SVGPolylineElement>())
+  const penRef = (el: SVGPolylineElement | null) => { if (el) penEls.current.add(el) }
+  const applyDraw = (k: number) => {
+    drawRef.current = k
+    if (!FRAME_DIRECT) return
+    const off = String(1 - Math.max(0, Math.min(1, k)))
+    penEls.current.forEach((el) => { if (el.isConnected) el.setAttribute('stroke-dashoffset', off); else penEls.current.delete(el) })
+  }
+  const axisRef = useRef<SVGLineElement>(null)
+  const hoverLive = useRef<number | null>(null)
+  const applyAxis = (x: number | null) => {
+    hoverLive.current = x
+    if (!FRAME_DIRECT || x === null) return
+    const el = axisRef.current
+    if (el) { el.setAttribute('x1', String(x)); el.setAttribute('x2', String(x)) }
+  }
+  /*
    * 2026-09-23 밤 사장님 「사용자가 육각 보고 있어서 밑은 아직 안 보면 미리 그리지 말고, 내려서 보이면 그때 그려 — 각 1회」
    * → 보일 때(IntersectionObserver) 한 번만 arm. 안 보이는데 시간이 지나도 안 그린다 (옛 판은 붙자마자). 그려진 뒤엔 다시 안 그린다.
    * ⚠ 헤드리스·IO 없는 환경은 바로 arm — 그래야 캡쳐·테스트에서 그림이 나온다.
@@ -228,14 +254,17 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
       const t = Math.min(1, (now - t0) / DRAW_ON_MOUNT_MS)
       /* 천천히 시작해서 천천히 끝난다 (ease-in-out) */
       const k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-      setMountDraw(k)
+      applyDraw(k)
+      if (!FRAME_DIRECT || k >= 1 || now - lastPaint > FRAME_STATE_MS) { lastPaint = now; setMountDraw(k) }
       if (k < 1) raf = requestAnimationFrame(tick)
     }
+    let lastPaint = 0
     raf = requestAnimationFrame(tick)
-    const safety = window.setTimeout(() => setMountDraw(1), DRAW_ON_MOUNT_MS + 400)
+    const safety = window.setTimeout(() => { applyDraw(1); setMountDraw(1) }, DRAW_ON_MOUNT_MS + 400)
     return () => { cancelAnimationFrame(raf); window.clearTimeout(safety) }
   }, [flow, armed])
-  const draw = DRAW_IN ? drawIn : mountDraw
+  /* React 가 그릴 때도 ★최신 ref 값★ 을 쓴다 — 상태(15Hz)가 뒤처진 값으로 dashoffset 을 되돌리면 선이 깜빡인다 */
+  const draw = DRAW_IN ? drawIn : FRAME_DIRECT ? Math.max(mountDraw, drawRef.current) : mountDraw
   const box = plotBox(width)
   /* ⚠ 2026-09-23 낮 — 사장님: 「이 공간을 남기지 말고 다 쓰라는거임」. 옛 판은 마커 옆 「94%」 자리로 오른쪽 58~66px 을 비웠다.
      이제 판을 오른쪽 끝까지 쓰고, 마커는 선 끝에 얹고 % 는 마커 ★위/아래★ 에 적는다. 옛 값: box.X1 - (phone ? 58 : 66) */
@@ -407,48 +436,57 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
   }, [flow, winner.side, loser.side, X0, X1])
 
   const salt = seedOf(`${winner.slug ?? winner.name}|${loser.slug ?? loser.name}`)
-  const wig = (k: number, s: number) => (k === 0 ? 0 : noise(salt + s, k) * WIGGLE)
   /*
-   * §7-3 ★찌글찌글★ (사장님 「좀더 복잡하고 역동적으로 · 약간 찌글찌글 하게」) — 값이 머무는 가로 구간을 JAG_STEP 간격으로
-   * 쪼개고 사인 창(양 끝 0)을 씌운 잡음을 얹는다. ★사건 자리(계단 꼭짓점)의 값은 그대로★ 다 — 모양만이다.
-   * 옛 판(JAGGED=false)은 점을 그대로 이었다
+   * ★2026-09-24 사장님 「그래프 프레임 너무 낮아 부드럽게」 — 그리기(rAF 4.2초)·재생 중 매 프레임 setState 로 다시 그리는데,
+   *   그때마다 찌글 점(수백 개)·선 문자열을 새로 계산하고 있었다. 값은 model·폭·시드에만 달렸으니 ★한 번만★ 센다.
+   *   프레임마다 남는 일은 dashoffset 한 값과 축 자리뿐이다
    */
-  const jag = (pick: (p: Pt) => number, s: number): [number, number][] => {
-    const out: [number, number][] = []
-    let k = 0
-    for (let i = 0; i < model.pts.length; i += 1) {
-      const a = model.pts[i] as Pt
-      out.push([a.x, yOf(pick(a) + wig(i, s))])
-      const b = model.pts[i + 1]
-      if (!b) break
-      const dx = b.x - a.x
-      if (!JAGGED || dx < JAG_STEP * 2) continue
-      const n = Math.floor(dx / JAG_STEP)
-      for (let j = 1; j < n; j += 1) {
-        const f = j / n
-        const w = noise(salt + s + 1, k) * JAG_AMP * Math.sin(Math.PI * f)
-        k += 1
-        out.push([a.x + dx * f, yOf(pick(a) + (pick(b) - pick(a)) * f + w)])
+  const lines = useMemo(() => {
+    const wig = (k: number, s: number) => (k === 0 ? 0 : noise(salt + s, k) * WIGGLE)
+    /*
+     * §7-3 ★찌글찌글★ (사장님 「좀더 복잡하고 역동적으로 · 약간 찌글찌글 하게」) — 값이 머무는 가로 구간을 JAG_STEP 간격으로
+     * 쪼개고 사인 창(양 끝 0)을 씌운 잡음을 얹는다. ★사건 자리(계단 꼭짓점)의 값은 그대로★ 다 — 모양만이다.
+     * 옛 판(JAGGED=false)은 점을 그대로 이었다
+     */
+    const jag = (pick: (p: Pt) => number, s: number): [number, number][] => {
+      const out: [number, number][] = []
+      let k = 0
+      for (let i = 0; i < model.pts.length; i += 1) {
+        const a = model.pts[i] as Pt
+        out.push([a.x, yOf(pick(a) + wig(i, s))])
+        const b = model.pts[i + 1]
+        if (!b) break
+        const dx = b.x - a.x
+        if (!JAGGED || dx < JAG_STEP * 2) continue
+        const n = Math.floor(dx / JAG_STEP)
+        for (let j = 1; j < n; j += 1) {
+          const f = j / n
+          const w = noise(salt + s + 1, k) * JAG_AMP * Math.sin(Math.PI * f)
+          k += 1
+          out.push([a.x + dx * f, yOf(pick(a) + (pick(b) - pick(a)) * f + w)])
+        }
       }
+      return out
     }
-    return out
-  }
-  const winPts: [number, number][] = jag((p) => p.v, 0)
-  const losePts: [number, number][] = jag((p) => 100 - p.v, 7)
-  /* 점선 구간 — 어림한 점으로 들어가는 조각만 */
-  const estSegs: [number, number, number, number][] = []
-  const estSegsL: [number, number, number, number][] = []
-  for (let i = 1; i < model.pts.length && !JAGGED; i += 1) {
-    if (!(model.pts[i] as Pt).est) continue
-    const a = winPts[i - 1] as [number, number]
-    const b = winPts[i] as [number, number]
-    estSegs.push([a[0], a[1], b[0], b[1]])
-    const c = losePts[i - 1] as [number, number]
-    const d = losePts[i] as [number, number]
-    estSegsL.push([c[0], c[1], d[0], d[1]])
-  }
-  const winLine = pointsToStr(winPts)
-  const loseLine = pointsToStr(losePts)
+    const winPts: [number, number][] = jag((p) => p.v, 0)
+    const losePts: [number, number][] = jag((p) => 100 - p.v, 7)
+    /* 점선 구간 — 어림한 점으로 들어가는 조각만 */
+    const estSegs: [number, number, number, number][] = []
+    const estSegsL: [number, number, number, number][] = []
+    for (let i = 1; i < model.pts.length && !JAGGED; i += 1) {
+      if (!(model.pts[i] as Pt).est) continue
+      const a = winPts[i - 1] as [number, number]
+      const b = winPts[i] as [number, number]
+      estSegs.push([a[0], a[1], b[0], b[1]])
+      const c = losePts[i - 1] as [number, number]
+      const d = losePts[i] as [number, number]
+      estSegsL.push([c[0], c[1], d[0], d[1]])
+    }
+    const winLine = pointsToStr(winPts)
+    const loseLine = pointsToStr(losePts)
+    return { winPts, losePts, estSegs, estSegsL, winLine, loseLine }
+  }, [model, salt, Y_TOP, Y_BOTTOM])
+  const { winPts, estSegs, estSegsL, winLine, loseLine } = lines
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
@@ -462,6 +500,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
     if (playRef.current) cancelAnimationFrame(playRef.current.raf)
     playRef.current = null
     setPlaying(false)
+    /* 멈춘 자리를 상태에 맞춘다 — ref 로만 움직이던 축·선이 다음 렌더에서 뒤로 튀지 않게 */
+    if (hoverLive.current !== null) setHover(hoverLive.current)
+    setMountDraw(drawRef.current)
     /* 2026-09-23 밤 사장님 「멈추면 그 자리에 딱 멈춰줘 — 그 라운드를 자세히 보고 싶어서」 → 축·선 그대로 둔다.
        옛 판은 여기서 setMountDraw(1) 로 선을 끝까지 그렸다. 다시 ▶ 를 누르면 멈춘 자리부터 이어 간다 */
   }
@@ -475,11 +516,16 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
     /* 2026-09-23 밤 사장님 「재생하면 그래프를 훑고 지나가지 말고 처음부터 끝까지 ★그리면서★ 지나가」
        → 선을 0 으로 지웠다가 축과 같은 속도로 다시 긋는다 (penDash 가 draw 를 읽는다). 옛 판은 축만 움직였다 */
     setMountDraw(0)
+    applyDraw(0)
+    setHover(X0 + (X1 - X0) * k0)
+    let lastPaint = 0
     const tick = (now: number) => {
       const k = Math.min(1, (now - t0) / total)
-      setHover(X0 + (X1 - X0) * k)
-      setMountDraw(k)
-      if (k >= 1) { playRef.current = null; setPlaying(false); setHover(null); return }
+      const x = X0 + (X1 - X0) * k
+      applyDraw(k)
+      applyAxis(x)
+      if (!FRAME_DIRECT || k >= 1 || now - lastPaint > FRAME_STATE_MS) { lastPaint = now; setHover(x); setMountDraw(k) }
+      if (k >= 1) { playRef.current = null; setPlaying(false); setHover(null); hoverLive.current = null; return }
       playRef.current = { raf: requestAnimationFrame(tick), t0 }
     }
     playRef.current = { raf: requestAnimationFrame(tick), t0 }
@@ -495,6 +541,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
     }
     const rect = svg.getBoundingClientRect()
     const x = ((clientX - rect.left) / rect.width) * width
+    hoverLive.current = Math.max(X0, Math.min(X1, x))
     setHover(Math.max(X0, Math.min(X1, x)))
   }
   const hoverPt: Pt | null = hover === null ? null : (model.pts.filter((p) => p.x <= hover).pop() ?? model.pts[0] ?? null)
@@ -710,20 +757,20 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
           <g>
             {GLOW ? (
               <>
-                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.5} {...penDash(draw)} />
-                <polyline points={winLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.5} {...penDash(draw)} />
-                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} {...penDash(draw)} />
-                <polyline points={winLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
+                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.5} {...penDash(draw)} ref={penRef} />
+                <polyline points={winLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.5} {...penDash(draw)} ref={penRef} />
+                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} {...penDash(draw)} ref={penRef} />
+                <polyline points={winLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} ref={penRef} />
               </>
             ) : (
               <>
                 {/* 빛번짐 — 상대전적의 feGaussianBlur 필터를 얇게 (SOFT_GLOW) · 끄면 sleeper 식 은은한 광 */}
-                <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowR)' : undefined} {...penDash(draw)} />
-                <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowB)' : undefined} {...penDash(draw)} />
+                <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowR)' : undefined} {...penDash(draw)} ref={penRef} />
+                <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowB)' : undefined} {...penDash(draw)} ref={penRef} />
               </>
             )}
-            <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
-            <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} ref={penRef} />
+            <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} ref={penRef} />
             {/* 어림한 구간 — 옛 판은 심지 위에 점선을 덧그렸다 (DASH_ESTIMATED) */}
             {DASH_ESTIMATED ? estSegsL.map(([x1, y1, x2, y2], k) => <line key={`l${k}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone.plot} strokeWidth={PLOT.coreW} strokeDasharray="4 4" opacity={0.85} />) : null}
             {DASH_ESTIMATED ? estSegs.map(([x1, y1, x2, y2], k) => <line key={`w${k}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone.plot} strokeWidth={PLOT.coreW} strokeDasharray="4 4" opacity={0.85} />) : null}
@@ -732,7 +779,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
         {hoverPt !== null && hover !== null ? (
           <g pointerEvents="none">
             {/* 옛 판은 여기 글자로 「n라운드 · 5:4 · 65%」 를 적었다 — 지금은 위 인원 줄이 말한다 */}
-            <line x1={hover} y1={Y_TOP - 6} x2={hover} y2={Y_BOTTOM + 6} stroke="#0891b2" strokeWidth={1} opacity={0.7} />
+            <line ref={axisRef} x1={hoverLive.current ?? hover} y1={Y_TOP - 6} x2={hoverLive.current ?? hover} y2={Y_BOTTOM + 6} stroke="#0891b2" strokeWidth={1} opacity={0.7} />
             {/* 2026-09-23 밤 사장님 「경기분석에서 빨간 점이랑 파란 점 없애줘」 — 옛 판은 축 위에 두 원(r=5)을 찍었다 */}
           </g>
         ) : null}

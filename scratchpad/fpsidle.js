@@ -1,0 +1,1 @@
+(async () => { const t0=performance.now(); let n=0, worst=0, last=t0; await new Promise(res=>{ const tick=(now)=>{ n++; const d=now-last; if(d>worst) worst=d; last=now; if(now-t0<3000) requestAnimationFrame(tick); else res() }; requestAnimationFrame(tick) }); return `idle fps≈${(n/3).toFixed(0)} worst=${worst.toFixed(0)}ms` })()
