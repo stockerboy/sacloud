@@ -53,6 +53,23 @@ const PAGES = [
   ['me', '/me', '', null],
   ['clause', '/clause/service', '', null],
   ['drawer-m', '/league/supply/rank/clan', 'Leagues', '@메뉴 열기', true],
+  /* 2회차에 더한 화면 — 리그별 변주 · 상세 페이지들 */
+  ['rank-clan-nolink', '/league/nolink/rank/clan', '클랜랭킹', null],
+  ['rank-clan-nolink-div1', '/league/nolink/rank/clan/1', '', null],
+  ['rank-player-nolink', '/league/nolink/rank/player', '개인랭킹', null],
+  ['rank-player-sanply', '/league/sanply/rank/player', '개인랭킹', null],
+  ['hire-sanply', '/league/sanply/hire', '', null],
+  ['rank-clan-sanply', '/league/sanply/rank/clan', '', null],
+  ['badge-detail', '/league/supply/badge/save', '', null],
+  ['player-season', '/league/supply/player/cmtleu9y20111vleweqyrxpwf/season', '', null],
+  ['clan-season', '/league/supply/clan/zxcvddr2/season', '', null],
+  ['clan-players', '/league/supply/clan/zxcvddr2/player', '', null],
+  ['league-desc', '/league/supply/home/desc', '', null],
+  ['league-info', '/league/supply/home/info', '', null],
+  ['clan-global', '/clan/zxcvddr2', '', null],
+  ['leagues-create', '/leagues/create', '', null],
+  ['pw-forget', '/auth/password/forget', '', null],
+  ['clause-policy', '/clause/policy', '', null],
 ]
 const WIDTHS = which === 'pc' ? [[1440, 'pc']] : which === 'm' ? [[390, 'm']] : [[390, 'm'], [1440, 'pc']]
 
