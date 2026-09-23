@@ -2634,3 +2634,23 @@
     height: 27px !important;
   }
 }
+
+/*
+ * ★폰 상단띠 — 로고를 한가운데★ (사장님 2026-09-24 「상단띠 가운데에도 이 로고 넣어줘」)
+ *   PC 는 서플라이처럼 왼쪽 그대로. 폰(<768)에서만 절대 위치로 가운데. 옛 판은 이 블록만 지우면 된다
+ */
+@media (max-width: 767px) {
+  .sac-v2 .v2-topbar__inner--gnb { position: relative; }
+  /* `v2-brand--pc-off` 가 폰에서도 display:none 이었다 (2026-09-24 실측 · 로고가 안 그려졌다) → 폰에서는 켠다 */
+  .sac-v2 .v2-topbar__inner--gnb > .v2-brand,
+  .sac-v2 .v2-topbar__inner--gnb > .v2-brand.v2-brand--pc-off {
+    display: flex;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    padding-left: 0;
+    order: 0;
+  }
+}

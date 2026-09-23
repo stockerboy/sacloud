@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import {
+  BoardListEta,
   BoardPager,
   BoardSearch,
   BoardTable,
@@ -30,6 +31,11 @@ import { useApiReady } from '@/app/providers'
  *   원본 동작: 공지는 `category=notice` 로 따로 받아 위에 고정 · 페이지 이동은 `?cursor=` ·
  *   한 페이지 15건 · Hot게시판은 글쓰기·검색 없음 · 소제목은 `boardDisplayName`(`인기` → `Hot`).
  */
+/**
+ * ★에타 꼴 게시판★ (사장님 2026-09-24). false 면 옛 표(BoardTable + 검색줄 + 제목) 그대로 (CLAUDE.md 1-4)
+ */
+export const BOARD_ETA = true
+
 export function BoardListScreen({ category, basePath }: { category: string; basePath: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -74,6 +80,32 @@ export function BoardListScreen({ category, basePath }: { category: string; base
 
   const search = (nextType: BoardSearchType, query: string) => {
     router.push(`${basePath}?type=${nextType}&q=${encodeURIComponent(query)}`)
+  }
+
+  if (BOARD_ETA) {
+    const name = categoryName ? boardHeading(boardDisplayName(category, categoryName)) : (category === 'hot' ? 'Hot게시판' : category === 'free' ? '자유게시판' : '게시판')
+    return (
+      <>
+        <BoardListEta
+          category={category}
+          title={q ? `"${q}" 검색 결과` : name}
+          notices={showNotice ? notices.data?.data : undefined}
+          items={list.data?.data}
+          loading={!list.data}
+          error={list.isError}
+          onRetry={() => void list.refetch()}
+          basePath={basePath}
+          writeHref={writable ? `${basePath}/write` : null}
+          onSearch={() => { const query = window.prompt('검색어'); if (query && query.trim()) search('board', query.trim()) }}
+        />
+        <BoardPager
+          category={category}
+          prev={list.data?.metadata.cursor.prev ?? null}
+          next={list.data?.metadata.cursor.next ?? null}
+          basePath={basePath}
+        />
+      </>
+    )
   }
 
   return (

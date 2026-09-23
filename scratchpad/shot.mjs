@@ -111,7 +111,8 @@ if (clickText) {
   let clicked = 'not found'
   for (let i = 0; i < 40 && clicked !== 'clicked'; i += 1) {
     const r = await send('Runtime.evaluate', {
-      expression: `(() => { const el = [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === ${JSON.stringify(clickText)}); if (el) { el.click(); return 'clicked' } return 'not found' })()`,
+      /* 2026-09-24 — `@라벨` 이면 aria-label 로 찾는다 (햄버거처럼 글자가 없는 단추) */
+      expression: `(() => { const want = ${JSON.stringify(clickText)}; const el = want.startsWith('@') ? document.querySelector('[aria-label=' + JSON.stringify(want.slice(1)) + ']') : [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === want); if (el) { el.click(); return 'clicked' } return 'not found' })()`,
       returnByValue: true,
     })
     clicked = r.result?.value

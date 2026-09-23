@@ -214,7 +214,7 @@ export type BrandWordmark = '3rdcloud' | 'sacloud'
  * - `mark`     2026-09-01 ~ 09-15 의 벡터 로고(구름 + 두 줄 글자). 안 지웠다
  * - `wordmark` 2026-09-01 오전까지 쓰던 한 줄 글자 로고. 안 지웠다
  */
-export type BrandLogoVariant = 'cat' | 'tri' | 'art' | 'mark' | 'wordmark'
+export type BrandLogoVariant = 'cat' | 'tri' | 'art' | 'mark' | 'wordmark' | 'word'
 
 /**
  * ★★되돌리는 스위치 — 이 한 줄★★
@@ -244,7 +244,8 @@ const DEFAULT_VARIANT: BrandLogoVariant = 'cat'
  * ⚠ ★2026-09-18 — 상단바도 새 로고로★ (사장님: 「대문 로고랑 ★다른 로고들★ 이걸로 다 바꿔줘」).
  *   옛 값 `'tri'`(직접 그린 세 색 로고)는 그대로 살아 있다 (`CLAUDE.md` 1-4).
  */
-const NAV_VARIANT: BrandLogoVariant = 'cat'
+/* ★2026-09-24 사장님 「이 로고(빨강 SA · 파랑 CLOUD 워드마크)를 상단 가운데·서랍 왼쪽 위에」 → 'word'. 옛 판 'cat' */
+const NAV_VARIANT: BrandLogoVariant = 'word'
 
 /**
  * 그림 로고의 크기.
@@ -499,6 +500,13 @@ export function NavLogo({
     tone === 'dark' ? 'var(--color-ink, #060505)' : 'var(--color-text-strong, #f6eded)'
 
   const resolved = resolveVariant(variant, wordmark, NAV_VARIANT)
+  if (resolved === 'word') {
+    /* 사장님이 주신 워드마크 그림 그대로 (`/brand/sacloud-wordmark.png` · 864×91). 높이는 className 이 정한다 */
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src="/brand/sacloud-wordmark.png" alt="SACLOUD" width={864} height={91} className={className} style={{ display: 'block' }} draggable={false} />
+    )
+  }
   if (resolved === 'cat') {
     /* 상단바. 로그인 카드처럼 밝은 바탕이면 `tone='dark'` 로 원본 색을 쓴다.
        ★작은 판★ 을 쓴다 — 여기는 34px 라 934px 판이 필요 없다 (12KB 대 62KB) */

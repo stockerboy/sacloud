@@ -34,7 +34,26 @@ export interface FallbackClanMarkProps {
   alt?: string
 }
 
+/*
+ * ★소속을 모르는 클랜마크 = 사장님이 주신 그림★ (2026-09-24 「앞으로 소속이 어딘지 모르는 사람 클랜마크는 세번째 사진으로」)
+ *   검정 원 안에 빨강·파랑 두 쪽 구름 — `/brand/mark-unknown.png`. 옛 판(파란 구름 윤곽선)은 UNKNOWN_MARK='cloud'
+ */
+export const UNKNOWN_MARK: 'photo' | 'cloud' = 'photo'
+
 export function FallbackClanMark({ className, alt = '' }: FallbackClanMarkProps) {
+  if (UNKNOWN_MARK === 'photo') {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src="/brand/mark-unknown.png"
+        alt={alt}
+        aria-hidden={alt ? undefined : true}
+        className={className}
+        style={{ display: 'block', objectFit: 'contain' }}
+        draggable={false}
+      />
+    )
+  }
   return (
     <svg
       viewBox="0 0 32 32"

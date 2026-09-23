@@ -291,7 +291,8 @@ export {
   BOARD_PREPARING_MESSAGE,
 } from './board/boardPreparingText'
 export { BoardNav } from './board/BoardNav'
-export { BoardTable, BoardPager } from './board/BoardTable'
+export { BoardTable, BoardPager } from './board/BoardTable'
+export * from './board/BoardListEta'
 export { PostView, formatPostDate } from './board/PostView'
 export { CommentList, CommentForm } from './board/CommentList'
 export { BoardSearch, type BoardSearchType } from './board/BoardSearch'

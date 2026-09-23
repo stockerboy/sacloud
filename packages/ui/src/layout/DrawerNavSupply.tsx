@@ -45,6 +45,16 @@ const drawerLeagues = (): readonly NavLink[] =>
     return found ? [found] : []
   })
 
+/*
+ * ★검정 서랍★ (사장님 2026-09-24 「햄버거 메뉴 열면 하얀색 말고 검정색 · 글씨는 잘 보이게」)
+ *   + 왼쪽 위 로고(누르면 홈) · 「리그」→「Leagues」 · 번개/말풍선/사람 아이콘을 우리 것으로.
+ *   옛 흰 판은 DRAWER_DARK=false (CLAUDE.md 1-4)
+ */
+export const DRAWER_DARK = true
+const C = DRAWER_DARK
+  ? { bg: 'bg-[#0b0f18]', divide: 'divide-[#1e2a42]', text: 'text-[#e8eaf2]', dim: 'text-[#a4b0c8]', on: 'bg-[#1e2a42] text-white', close: 'text-[#e8eaf2]' }
+  : { bg: 'bg-white', divide: 'divide-[#e5e7eb]', text: 'text-[#4a4a4a]', dim: 'text-[#374151]', on: 'bg-[#374151] text-white', close: 'text-[#4b5563]' }
+
 const BOARD_LINKS: readonly NavLink[] = [
   { label: 'Hot게시판', href: '/board/hot' },
   { label: '자유게시판', href: '/board/free' },
@@ -61,7 +71,7 @@ function Row({ link, pathname }: { link: NavLink; pathname: string }) {
       <Link
         href={link.href}
         className={`flex flex-grow items-center rounded-[5.25px] py-[3.5px] pl-[21px] pr-0 text-[14px] ${
-          on ? 'bg-[#374151] text-white' : 'text-[#4a4a4a]'
+          on ? C.on : C.text
         }`}
       >
         {link.label}
@@ -81,7 +91,7 @@ function Section({
 }) {
   return (
     <div className="flex flex-col items-stretch px-[14px] py-[10.5px]">
-      <div className="flex shrink-0 items-center pb-[7px] text-[12.25px] text-[#374151]">
+      <div className={`flex shrink-0 items-center pb-[7px] text-[12.25px] ${C.dim}`}>
         <span className="mr-[7px] inline-flex w-[21px] justify-center">{icon}</span>
         {title}
       </div>
@@ -105,33 +115,38 @@ export function DrawerNavSupply({ user = null, onLogout, onClose, loginHref = '/
   const leagues = drawerLeagues()
 
   return (
-    <nav aria-label="메뉴" className="flex h-full flex-col divide-y divide-[#e5e7eb] bg-white text-[#4a4a4a]">
+    <nav aria-label="메뉴" className={`flex h-full flex-col divide-y ${C.divide} ${C.bg} ${C.text}`}>
       {onClose ? (
-        <div className="flex h-[56px] shrink-0 grow-0 items-center justify-end">
+        <div className="flex h-[56px] shrink-0 grow-0 items-center justify-between pl-[16px]">
+          {/* ★왼쪽 위 로고 — 누르면 홈★ (사장님 2026-09-24 「첫째 사진 왼쪽 상단에 이 로고 넣어서 누르면 홈으로」) */}
+          <Link href="/" aria-label="홈" onClick={onClose} className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/sacloud-wordmark.png" alt="SACLOUD" width={130} height={14} style={{ width: 130, height: 'auto', display: 'block' }} />
+          </Link>
           <button
             type="button"
             onClick={onClose}
             aria-label="메뉴 닫기"
-            className="flex h-[56px] w-[56px] items-center justify-center text-[#4b5563]"
+            className={`flex h-[56px] w-[56px] items-center justify-center ${C.close}`}
           >
             <CloseIcon />
           </button>
         </div>
       ) : null}
 
-      <Section title="리그" icon={<BoltIcon />}>
+      <Section title="Leagues" icon={<CloudIcon />}>
         {leagues.map((l) => (
           <Row key={l.href} link={l} pathname={pathname} />
         ))}
       </Section>
 
-      <Section title="게시판" icon={<ChatIcon />}>
+      <Section title="게시판" icon={<BoardIcon />}>
         {BOARD_LINKS.map((l) => (
           <Row key={l.href} link={l} pathname={pathname} />
         ))}
       </Section>
 
-      <Section title={user ? user.nickname : '로그인'} icon={<UserIcon />}>
+      <Section title={user ? user.nickname : '로그인'} icon={<KeyIcon />}>
         {user ? (
           <>
             <Row link={{ label: '내 정보', href: '/me' }} pathname={pathname} />
@@ -139,7 +154,7 @@ export function DrawerNavSupply({ user = null, onLogout, onClose, loginHref = '/
               <button
                 type="button"
                 onClick={onLogout}
-                className="flex flex-grow items-center rounded-[5.25px] py-[3.5px] pl-[21px] text-left text-[14px] text-[#4a4a4a]"
+                className={`flex flex-grow items-center rounded-[5.25px] py-[3.5px] pl-[21px] text-left text-[14px] ${C.text}`}
               >
                 로그아웃
               </button>
@@ -161,6 +176,34 @@ function CloseIcon() {
     </svg>
   )
 }
+/* ★우리 아이콘★ (사장님 2026-09-24 「번개 말고 다른 걸로 · 게시판·로그인 모양도 바꿔」) — 옛 것(Bolt/Chat/User)은 아래 그대로 남긴다 */
+function CloudIcon() {
+  /* 두 쪽 구름 — 로고의 심볼과 같은 꼴 (왼쪽 빨강 · 오른쪽 파랑) */
+  return (
+    <svg viewBox="0 0 24 14" className="h-[11px] w-[19px]" aria-hidden>
+      <path d="M0 8 L4 4 H7 V1 H11 V13 H2 L0 11 Z" fill="#e0342f" />
+      <path d="M13 1 H17 V4 H20 L24 8 V11 L22 13 H13 Z" fill="#2f8bff" />
+    </svg>
+  )
+}
+function BoardIcon() {
+  /* 글 목록 — 종이 한 장에 줄 셋 */
+  return (
+    <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+      <rect x="4" y="3" width="16" height="18" rx="1.5" />
+      <path d="M8 8h8M8 12h8M8 16h5" strokeLinecap="round" />
+    </svg>
+  )
+}
+function KeyIcon() {
+  /* 열쇠 — 로그인 */
+  return (
+    <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+      <circle cx="8" cy="12" r="4" />
+      <path d="M12 12h9M18 12v3M21 12v3" strokeLinecap="round" />
+    </svg>
+  )
+}
 function BoltIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="currentColor" aria-hidden>
@@ -168,6 +211,7 @@ function BoltIcon() {
     </svg>
   )
 }
+void BoltIcon
 function ChatIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="currentColor" aria-hidden>
@@ -175,6 +219,7 @@ function ChatIcon() {
     </svg>
   )
 }
+void ChatIcon
 function UserIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="currentColor" aria-hidden>
@@ -183,3 +228,4 @@ function UserIcon() {
     </svg>
   )
 }
+void UserIcon

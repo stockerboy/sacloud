@@ -21,6 +21,8 @@ import { useApiReady } from '@/app/providers'
  * `적진` — 본문 최대 폭 `--layout-max`(1120px). 사이드와 본문 사이는 선이 아니라
  * 여백으로 나눈다. 카테고리 목록은 `GET /infos` 의 `categories[]`.
  */
+export const BOARD_LAYOUT_ETA = true
+
 export default function BoardLayoutLegacy({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const ready = useApiReady()
@@ -31,6 +33,12 @@ export default function BoardLayoutLegacy({ children }: { children: React.ReactN
     queryFn: () => apiGet('infos'),
     enabled: ready,
   })
+
+  /* ★에타 꼴★ (2026-09-24) — 옆 메뉴(BoardNav) 없이 한 칸. 탭은 목록 화면 안에 있다. 옛 판은 아래 그대로 */
+  if (BOARD_LAYOUT_ETA) {
+    void infos
+    return <div className="mx-auto w-full max-w-[720px] pb-10">{children}</div>
+  }
 
   return (
     /*

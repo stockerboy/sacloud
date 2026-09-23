@@ -58,14 +58,12 @@ export function WriterName({
 
   return (
     <span className="inline-flex min-w-0 items-center gap-1">
+      {/* ★마크는 언제나★ (사장님 2026-09-24 「글마다 어느 클랜에서 쓴 건지 마크가 꼭 들어가야 해」) — 소속 모르면 모름 마크 */}
+      <ClanMark clan={clan} size="xxs" alt="" />
       {clanName ? (
-        <>
-          {/* 마크는 `xxs`(16px) — 한 줄 높이를 넘기지 않는다 */}
-          <ClanMark clan={clan} size="xxs" alt="" />
-          <span className="shrink-0 text-xs text-faint" title={clanName}>
-            {clanName}
-          </span>
-        </>
+        <span className="shrink-0 text-xs text-faint" title={clanName}>
+          {clanName}
+        </span>
       ) : null}
       {!writer.anonymous && writer.player ? (
         /* 색은 안쪽 `span` 이 가진다 — `a { color: inherit }` 가 유틸리티를 누른다.
