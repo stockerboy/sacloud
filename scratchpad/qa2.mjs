@@ -32,9 +32,9 @@ const PAGES = [
   ['rank-top5', '/league/supply/rank/top5', '', null],
   ['match-list', '/league/supply/match', '', null],
   ['match-detail', '/league/supply/match/260923223331124003', '플레이어', null],
-  ['match-detail-analysis', '/league/supply/match/260923223331124003', '가 잡음', '경기분석', true],
+  ['match-detail-analysis', '/league/supply/match/260923223331124003', '가 잡음', '경기분석', true, '가 잡음'],
   ['player', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '승률', null],
-  ['player-analysis-m', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '', '플레이분석', true],
+  ['player-analysis-m', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '', '플레이분석', true, '중위권'],
   ['clan', '/league/supply/clan/zxcvddr2', '클랜원', null],
   ['clan-nolink', '/league/nolink/clan/01025606089', '클랜원', null], /* happytogether 는 PL 소속이었다 — IPL 진짜 클랜(veritas)으로 */
   ['badge', '/league/supply/badge', '', null],
@@ -71,7 +71,7 @@ const PAGES = [
   ['pw-forget', '/auth/password/forget', '', null],
   ['clause-policy', '/clause/policy', '', null],
   /* 5회차 — 눌러야 보이는 상태들 */
-  ['match-list-open', '/league/supply/match', '플레이어', 'css:.mc-card .mc-pc', false],
+  ['match-list-open', '/league/supply/match', '플레이어', 'css:.mc-card .mc-pc', false, '점수판보기'],
   ['rank-player-sniper', '/league/supply/rank/player', '개인랭킹', '스나', false],
   ['trend-day', '/league/supply/player/cmtleu9y20111vleweqyrxpwf', '승률', 'DAY', false],
   ['clan-record-tab-m', '/league/supply/clan/zxcvddr2', '클랜원', '기록실', true],
@@ -115,7 +115,7 @@ for (const [w, tag] of WIDTHS) {
     await send('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36', platform: 'Win32' }).catch(() => {})
     await send('Emulation.setTouchEmulationEnabled', { enabled: false }).catch(() => {})
   }
-  for (const [name, path, waitFor, clickText, phoneOnly] of PAGES) {
+  for (const [name, path, waitFor, clickText, phoneOnly, expectText] of PAGES) {
     if (filter && !name.includes(filter)) continue
     if (phoneOnly && tag !== 'm') continue
     const label = `${name}_${tag}`
@@ -133,6 +133,13 @@ for (const [w, tag] of WIDTHS) {
           if (clicked !== 'clicked') await sleep(500)
         }
         await sleep(2500)
+        /* 2026-09-24 6회차: React 가 붙기 전에 눌러 아무 일도 안 나던 것 → 기대 글자(6번째 칸)가 안 뜨면 두 번 더 누른다 */
+        if (expectText) for (let k = 0; k < 2; k += 1) {
+          const ok = await evalStr(`document.body.innerText.includes(${JSON.stringify(expectText)})`)
+          if (ok === true) break
+          await evalStr(`(() => { const want = ${JSON.stringify(clickText)}; const el = want.startsWith('css:') ? document.querySelector(want.slice(4)) : want.startsWith('@') ? document.querySelector('[aria-label=' + JSON.stringify(want.slice(1)) + ']') : [...document.querySelectorAll('span,button,a,div')].find(e => e.children.length === 0 && e.textContent.trim() === want); if (el) el.click(); return 1 })()`)
+          await sleep(2500)
+        }
       }
       await sleep(1500)
       /* 그려지는 애니메이션이 끝나도록 살짝 더 · 그리고 맨 아래까지 한 번 훑어 지연 그림을 깨운다 */

@@ -1,0 +1,1 @@
+(() => { const out=[]; for (const t of document.querySelectorAll('svg text')) { const s=(t.textContent||'').trim(); if (/오늘|10\/1|누적/.test(s)) { const r=t.getBoundingClientRect(); out.push(`${s} [${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}]`) } } return out.join(' | ') })()
