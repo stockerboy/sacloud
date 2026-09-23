@@ -661,7 +661,7 @@ export function ClanRankTable({
             <div className={COL_WL}>패배</div>
           </>
         ) : null}
-        {columns.winRate ? <div className={COL_STAT}>승률</div> : null}
+        {columns.winRate ? <div className={`${COL_STAT} max-md:!w-[104px]`}>승률</div> : null}
         {columns.rating ? <div className={COL_RATING}>래더</div> : null}
       </div>
       <TableBody
@@ -787,9 +787,11 @@ export function ClanRankTable({
                 </>
               ) : null}
               <Stat
-                className={COL_STAT}
+                /* 2026-09-23 밤 사장님 「클랜랭킹에도 n승n패 앞에 붙여」 — 폰만 · 개인랭킹과 같은 104px */
+                className={`${COL_STAT} max-md:!w-[104px]`}
                 value={formatRate(row.win_rate)}
                 tone={rateClass(row.win_rate)}
+                lead={<>{formatCount(row.win)}승 {formatCount(row.lose)}패</>}
                 unit="%"
                 /*
                  * ★PC 는 칸으로, 폰은 접어서★

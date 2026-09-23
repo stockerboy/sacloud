@@ -328,15 +328,21 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3 }: {
     if (playRef.current) cancelAnimationFrame(playRef.current.raf)
     playRef.current = null
     setPlaying(false)
+    /* 멈추면 선은 끝까지 다 그려 둔다 — 반쯤 그려진 채 남지 않게 */
+    setMountDraw(1)
   }
   const startPlay = () => {
     stopPlay()
     const total = Math.max(20000, flow.rounds.length * PLAY_MS_PER_ROUND)
     const t0 = performance.now()
     setPlaying(true)
+    /* 2026-09-23 밤 사장님 「재생하면 그래프를 훑고 지나가지 말고 처음부터 끝까지 ★그리면서★ 지나가」
+       → 선을 0 으로 지웠다가 축과 같은 속도로 다시 긋는다 (penDash 가 draw 를 읽는다). 옛 판은 축만 움직였다 */
+    setMountDraw(0)
     const tick = (now: number) => {
       const k = Math.min(1, (now - t0) / total)
       setHover(X0 + (X1 - X0) * k)
+      setMountDraw(k)
       if (k >= 1) { playRef.current = null; setPlaying(false); return }
       playRef.current = { raf: requestAnimationFrame(tick), t0 }
     }
