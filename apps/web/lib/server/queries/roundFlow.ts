@@ -76,6 +76,7 @@ export async function matchRoundFlow(input: {
         end: r.end,
         defence: slot(r.defence),
         winner: slot(r.winner),
+        planted: slot(r.planted),
         deaths: r.deaths.map((d) => ({ at: d.at, side: slot(d.team) as 'red' | 'blue' })),
       })),
     }

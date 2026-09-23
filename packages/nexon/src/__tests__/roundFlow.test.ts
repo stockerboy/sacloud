@@ -48,10 +48,12 @@ describe('roundFlowOf', () => {
     expect(r1.end).toBe(40)
     expect(r1.winner).toBe('foe')
     expect(r1.defence).toBe('foe') /* 우리가 설치 → 우리 공격 → 상대 수비 */
+    expect(r1.planted).toBe('mine')
     expect(r1.deaths).toHaveLength(5)
     const r2 = f.rounds[1] as (typeof f.rounds)[number]
     expect(r2.start).toBeCloseTo(40 + 8.45, 2)
     expect(r2.winner).toBe('mine')
+    expect(r2.planted).toBeNull()
     expect(r2.deaths.map((d) => d.team)).toEqual(['foe', 'foe'])
     expect(r2.deaths.map((d) => d.at)).toEqual([55, 62])
   })

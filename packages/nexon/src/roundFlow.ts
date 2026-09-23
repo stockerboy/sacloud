@@ -27,7 +27,7 @@
  *   `openingSides.ts` 가 그 규칙을 갖고 있으니 워커에서 미리 접게 되면 그쪽으로 옮긴다.
  */
 import { MATCH_TO_FIRST_ROUND_SECONDS, ROUND_GAP_SECONDS } from './clanHexV2'
-import { roundResultsOf, roundSidesOf, type RoundSideEvent } from './roundSide'
+import { bombEvidenceOf, roundResultsOf, roundSidesOf, type RoundSideEvent } from './roundSide'
 import { rosterOf, roundStatesOf, secondsOf, type RoundStateEvent } from './roundState'
 
 export interface RoundFlowEvent extends RoundStateEvent, RoundSideEvent {
@@ -54,6 +54,8 @@ export interface RoundFlowRound {
   defence: FlowTeam | null
   /** 라운드를 딴 팀. 모르면 null */
   winner: FlowTeam | null
+  /** 이 라운드에 C4 를 ★설치★ 한 팀 (사장님 「몇 설」). 설치 줄이 없으면 null */
+  planted: FlowTeam | null
   /** 시각순 죽음. 한 사람은 한 라운드에 한 번만 (roundStatesOf 규칙) */
   deaths: RoundFlowDeath[]
 }
@@ -116,6 +118,9 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
   }
   const sides = roundSidesOf(events, teamNo, rounds[rounds.length - 1] as number, won)
   const states = roundStatesOf(events)
+  /* 설치 — 라운드마다 설치한 팀 (한 라운드에 설치는 한 팀뿐이다) */
+  const plantedBy = new Map<number, string>()
+  for (const b of bombEvidenceOf(events)) if (b.action === 'install' && !plantedBy.has(b.round)) plantedBy.set(b.round, b.team)
 
   const out: RoundFlowRound[] = []
   let prevEnd: number | null = null
@@ -135,6 +140,7 @@ export function roundFlowOf(input: { events: readonly RoundFlowEvent[]; teamNo: 
       end,
       defence: side === undefined ? null : side === 'defense' ? 'mine' : 'foe',
       winner: v === null ? null : v ? 'mine' : 'foe',
+      planted: plantedBy.has(r) ? teamOf(plantedBy.get(r) as string) : null,
       deaths,
     })
     prevEnd = end

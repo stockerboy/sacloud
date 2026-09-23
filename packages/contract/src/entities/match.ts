@@ -423,6 +423,8 @@ export const RoundFlowRound = z.object({
   defence: RoundFlowSide.nullable(),
   /** 라운드를 딴 슬롯. 모르면 null */
   winner: RoundFlowSide.nullable(),
+  /** C4 를 설치한 슬롯 (사장님 「몇 설」 · 2026-09-23 낮). 설치 줄이 없으면 null */
+  planted: RoundFlowSide.nullable().default(null),
   /** 시각순 죽음 — 죽은 사람의 슬롯 */
   deaths: z.array(z.object({ at: z.number(), side: RoundFlowSide })),
 })
