@@ -17,7 +17,7 @@
 | D | 「육각 겹쳐서 칩 바꿀 때 가끔 그래프 안 그려짐 · 킬뎃 누적도」 검수 (§3-3) | 미착수 | `useDrawIn` |
 | E | 경기 카드 래더 증감 「+29점」 표기 — 층으로 못 적어 그대로. 사장님 확인 | 확인 대기 | |
 | F | deluxe/crucialrz/NeedBackup 의 slug 로는 병영 목록이 빈다 (§2-④) — 번호 기반 수집 필요 | 미착수 | `clan-find-missing` |
-| G | `cpl-setup --sync` 가 다른 리그 활성 클랜을 또 내리지 않게 (§2-③) | 미착수 | `cplSetup.ts` L195-225 |
+| G | ~~`cpl-setup --sync` 가 다른 리그 활성 클랜을 또 내리지 않게~~ → **정정: cplSetup 은 CPL 만 건드린다. 내린 것은 `clan-one-league`(한 클랜=한 리그 도구)** · ★정책 충돌 — 사장님 결정★ (§2-③ 정정 상자) | 사장님 결정 대기 | `dev/clanOneLeagueApply.ts` |
 
 ---
 
@@ -93,6 +93,10 @@ deluxe 의 Match 는 3,318건 있다 (최신 260923225353)   → 「전부 빠�
 
 ### 원인 ③ — 활성 클랜 23곳이 `expelledAt` 로 수집 대상에서 빠졌다
 `cpl-setup --sync` 가 2026-09-22 00:15:56Z 에 CPL 명단에 없는 클랜을 내렸다. **복구 완료**(23행 · probe22). ⚠ `cpl-setup --sync` 를 다시 돌리면 또 내린다 — `cplSetup.ts` L195-225 를 cpl 리그에만 적용하도록 고쳐야 한다(§0-G).
+
+> ⚠ **2026-09-24 새벽 정정 (코드를 읽었다).** `cplSetup.ts` 의 sync 는 이미 `leagueId: league.id`(CPL 리그 한 곳)로만 내린다 — nolink/sanply/supply 행을 건드릴 수 없다.
+> `expelledAt` 을 찍는 코드는 저장소에 둘뿐이고 다른 하나가 `apps/worker/src/dev/clanOneLeagueApply.ts:150` — **「한 클랜 = 한 리그」(사장님 2026-09-05)** 를 nolink·supply·sanply 에 적용해 두 리그에 활성인 클랜의 한쪽을 내리는 도구다. 되돌린 23행이 딱 그 세 리그였다.
+> → §0-G 의 「cplSetup 고치기」는 **할 일이 아니다.** 진짜 물음은 정책이다: 지금 26곳이 두 리그에 활성이다(되메우기 미리보기 로그 머리). **09-05 규칙(한 리그만)과 09-23 복구(둘 다 활성)가 서로 반대다 — 사장님 결정 필요.** 코드는 안 고쳤다.
 
 ### 원인 ④ — deluxe/crucialrz/NeedBackup 은 slug 로 200 을 받는데 경기가 0
 `ferwfwfwfwf`(deluxe) · `ipl-backspace00` · `ipl-yoonsh1971` — 병영 목록 API 가 빈 목록. 상대 클랜 원문으로 경기는 들어오니 급하진 않다. `BarracksClanNumber`(deluxe 150531000663) 로 번호 기반 수집이 답. 미해결.
