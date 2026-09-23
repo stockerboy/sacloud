@@ -2,6 +2,7 @@
 
 > 사장님이 「압축하지 말고 전부 전달」 하라 하셨다. 빠짐없이 적는다. `CLAUDE.md` 규칙(허락 안 구함 · 옛 판 남김 · typecheck 초록일 때만 push · 항목마다 PC·폰 캡쳐)은 그대로.
 > 오늘 낮~밤 인계는 `docs/HANDOFF_2026-09-23.md`(오후) + `docs/STATE.md` 「0-진영판」「0-밤」 절에 있다. 이 파일은 ★그 뒤★ 다.
+> ★2차 갱신(23:40)★ — 누락 경기 원인이 ②·⑤ 로 바뀌었다(§2). 되메우기 코드는 다 밀었고 **VPS 반영·적재만 남았다**(§0-A). 사장님 진영판 2차 요청 8건은 §7 — **다음 세션이 한다.**
 
 ---
 
@@ -9,25 +10,28 @@
 
 | # | 무엇 | 상태 | 어디 |
 |---|---|---|---|
-| A | **누락 경기 되메우기** — deluxe/자이언트 건이 계기. 원인은 §2. 미리보기까지 돌렸고 **`--confirm` 은 아직 안 눌렀다** | ★진행 중★ | VPS `/root/log/backfill-preview.log` |
-| B | 되메우기 재발 방지 — 밤마다 깊은 훑기(`PROJECT_REWIND_HOURS=24`) 예약 | 미착수 | VPS crontab · `scripts/quiet-hours.sh` |
-| C | 만료(`expelledAt`) 찍힌 활성 클랜 21곳 복구 (§2-③) | 미착수 | `LeagueClan.expelledAt` |
-| D | 사장님 마지막 UI 요청 둘 — 클랜 페이지 상대전적 **펼쳐진 채로** · PC 보드 폭을 **클랜랭킹(1120) 과 통일**하고 카드는 Canva 대각선처럼 **비율로 줄임** | 미착수 | §3-마지막 |
-| E | 「경기 카드의 래더 증감 +29점」 층으로 못 적어 그대로 — 사장님 확인 필요 | 확인 대기 | |
+| A | **누락 경기 되메우기 마무리** — 코드는 `782f508c` 까지 main 에 있다. **VPS 가 SSH 끊겨(23:30~) `git pull` 과 `--from-start --confirm` 을 못 눌렀다.** §2-「실행 순서」 그대로 | ★VPS 반영 대기★ | VPS `/root/sacloud` |
+| B | 진영판 2차 요청 8건 (§7) — 사장님 「이 작업은 다음 세션에」 | 미착수 | `RoundFlowChartV3.tsx` 등 |
+| C | 「아직 옛 경기분석 버전이 남아 있다」 — 어디인지 찾기 (§7-0) | 미착수 | |
+| D | 「육각 겹쳐서 칩 바꿀 때 가끔 그래프 안 그려짐 · 킬뎃 누적도」 검수 (§3-3) | 미착수 | `useDrawIn` |
+| E | 경기 카드 래더 증감 「+29점」 표기 — 층으로 못 적어 그대로. 사장님 확인 | 확인 대기 | |
+| F | deluxe/crucialrz/NeedBackup 의 slug 로는 병영 목록이 빈다 (§2-④) — 번호 기반 수집 필요 | 미착수 | `clan-find-missing` |
+| G | `cpl-setup --sync` 가 다른 리그 활성 클랜을 또 내리지 않게 (§2-③) | 미착수 | `cplSetup.ts` L195-225 |
 
 ---
 
 ## 1. 오늘 밤 사장님 지시와 처리 결과 (시간순 · 전부)
 
-전부 `origin/main` (커밋 `cdfe3cc3` … `9bc75deb`). 로컬 QA 는 합성 데이터(`scratchpad/seed-flow.mjs`)로, 운영은 3rdcloud.my 캡쳐로 확인했다.
+전부 `origin/main` (커밋 `cdfe3cc3` … `782f508c`). 로컬 QA 는 합성 데이터(`scratchpad/seed-flow.mjs`)로, 운영은 3rdcloud.my 캡쳐로 확인했다.
 
 ### 경기분석 / 라운드 흐름 (`RoundFlowChartV3.tsx` · `ClanDetailV3.tsx` · `PlayerDetailV3.tsx`)
 - 진영판: 그래프 → 인원(사람 아이콘) · 전반전/후반전 · nR · % → 「레드 클랜 n:n 클랜 블루」(그 반의 점수 · 후반 0:0 · 좌우 바뀜) → 죽은 차례 두 칸(왼쪽 = 레드가 잡은 것) ✅
 - 죽은 차례 칸 높이 고정 152(PC 176) ✅ · 재생 라운드당 5초 ✅ · 재생하면 선을 **처음부터 그리며** 진행 ✅
 - ❚❚ 멈춤 → **그 자리에 딱 멈춤**(다시 ▶ 면 이어서) ✅ · 축 위 빨강/파랑 점 삭제 ✅
-- **보일 때 한 번만 그림** (IntersectionObserver · 안 보이면 안 그림 · 다시 안 그림) ✅ — ⚠ 「육각 겹쳐서 버튼 누르면 가끔 그래프가 안 그려지고 멈춘다」 는 **재현·검수 못 함** (§4)
+- **보일 때 한 번만 그림** (IntersectionObserver · 안 보이면 안 그림 · 다시 안 그림) ✅ — ⚠ 「육각 겹쳐서 버튼 누르면 가끔 그래프가 안 그려지고 멈춘다」 는 **재현·검수 못 함** (§3-3)
 - 명단 칸: 플레이어 · 순위(리그 개인랭킹 · 계약 `league_rank`) · kda · 세이브 「n회」 · 포지션 ✅ · MVP 줄 닉네임 잘림 → ★만(compact) ✅
-- PC 한 판 카드: 전체 폭(1316) · 명단|육각(360)|명단 · 밑에 라운드 그래프 **늘 보임**(HEX_CENTER_PC) · 접힌 머리줄 `zoom 1.3` · 경기분석 단추 PC 숨김 ✅ — ⚠ 사장님 「**너무 커서 한눈에 안 들어와**」 → §0-D 로 되돌리는 중
+- PC 한 판 카드: 명단|육각|명단 · 밑에 라운드 그래프 **늘 보임**(HEX_CENTER_PC) · 경기분석 단추 PC 숨김 ✅
+- ★`b6fa5285`★ 사장님 「너무 커 · 클랜랭킹(1120)과 보드 통일 · 대각선으로 비율 축소」 → `.sac-player-page .pc-container` 1360→**1120** · 접힌 카드 `zoom 1.05` · 펼친 한 판 `.v3-board zoom 0.82` ✅ (운영 캡쳐로 확인 · 명단 「거친수달19」 3px 잘림 하나 남음)
 
 ### 선수 페이지
 - 마크 64 · 닉네임 30 · 래더 30 오른쪽 위 ✅ · 기록실/지난시즌 탭 삭제 · 그래프판 바로 붙임 ✅
@@ -40,7 +44,7 @@
 
 ### 클랜 페이지 = 선수 페이지 양식 (`ClanHeaderV3.tsx` 새 파일 · `ClanDetailV3.tsx` BODY_LIKE_PLAYER)
 - 머리 카드 · 승률 추이(계약 `LeagueClanShow.trend`) · 2단 · 폰 탭 ✅ · 클랜 폰 플레이분석도 육각만 ✅
-- ⚠ 사장님: 「상대전적 접혀 있다 **펼쳐 놔**」 → §0-D
+- 상대전적 「접혀 있다 펼쳐 놔」 → `HeadToHeadCard` `showAll` 기본 **true** (`b6fa5285`) ✅
 
 ### 랭킹
 - 래더 **무조건 「31층」**(버림 · 소수점·점수 없음) · 래더 색 없앰 ✅ (`formatRating` · 옛 판 `formatRatingLegacyDecimal/Point`)
@@ -50,72 +54,85 @@
 - 배경 2차 그림(깃발·성·아가멤논 · `/brand/home-hero.webp` 1920 · 폰 900 · 옛 그림 `-v1`) · 검색창 **망토 위**(PC top 56vw−60 · 폰 230) · 로고 왼쪽 상단 홈버튼 · Hot게시판 840 ✅
 
 ### QA
-- `scratchpad/qa.js`(잘림·칸밖·겹침) + `measure.mjs` 6번째 인자 클릭. 7화면 × PC/폰 가로넘침 0. 남은 잘림: 폰 죽은차례 긴 합성 이름뿐.
+- `scratchpad/qa.js`(잘림·칸밖·겹침) + `measure.mjs` 6번째 인자 클릭. 7화면 × PC/폰 가로넘침 0. 남은 잘림: 폰 죽은차례 긴 합성 이름 · PC 명단 「거친수달19」 3px.
+
+### 데이터 (누락 경기) — §2 에 자세히
+- `a73877ce` 이름표 오염 수정 + `clan-alias-rebuild` 잡 + 밤 예약(①-2 이름표 · ①-3 30시간 되감기) ✅ **VPS 반영·실행 완료** (이름표 66,063 → 451 · 모호 이름 310 → 9)
+- `--from-start --confirm` 1차 적재 ✅ **765건 만듦** (IPL 338 · SPL 53 · 열산 374)
+- 만료(`expelledAt`) 찍힌 활성 클랜 **23곳 복구** ✅ (nolink 10 · sanply 12 · supply 1 — `probe22.mjs` · cpl 리그는 안 건드림)
+- `782f508c` 무승부 오인 수정(승수 같은데 승/패 있는 경기) — main 에 있음 · ⚠ **VPS 미반영 · 미적재** (SSH 끊김)
 
 ---
 
 ## 2. ★누락 경기 원인 조사 결과★ (사장님 「원인 조사하고 누락 싹 다 채워」)
 
 ### 계기
-자이언트(deluxe · playerId `cmtler9ah00lavlew9wb734vt`)의 9/19 이후 IPL 경기가 우리 기록실에 없다. 병영수첩엔 있다.
+자이언트(deluxe · playerId `cmtler9ah00lavlew9wb734vt`)의 9/19 아마릴리스전이 우리 기록실에 없다. 병영수첩엔 있다.
 
-### 실측 (운영 DB · VPS 에서 `node probe*.mjs` 로 잼 · 스크립트는 `scratchpad/vps_probe1~14.mjs`)
+### 실측 (운영 DB · VPS 에서 `node probe*.mjs` · 스크립트는 `scratchpad/vps_probe1~22.mjs`)
 ```
-deluxe 를 subject 로 긁은 원문(BarracksClanMatchRaw)  ★0건★  (요청은 1,210번 · 전부 200 · 새 경기 0)
-상대 클랜 원문에는 deluxe 경기가 들어 있다            9/19 하루 40건 중 ★7건 Match 없음★
-시즌 창(9/3~) 전체 — 양쪽 다 활성 등록 클랜인데 Match 없음   ★5,944건★  (매일 140~570건)
+deluxe 를 subject 로 긁은 원문(BarracksClanMatchRaw)   ★0건★  (요청 1,210번 · 전부 200 · 빈 목록)
+deluxe 의 Match 는 3,318건 있다 (최신 260923225353)   → 「전부 빠진 것」 이 아니라 ★특정 종류만★ 빠진다
+빠진 3건: 260919140127124001 deluxe–amaryllis 5:5 「패」 / 260919211033124002 deluxe–evermore 6:6 「승」 / 260919045247124001 hardcores–deluxe 6:6 「패」
+9/20~9/23 나흘: 승수 같은데 승/패 있는 경기 867건 / 전체 11,368건 (★7.6%★)
 ```
 
-### 원인 ① — 투영기 커서가 2시간만 뒤로 본다 (`apps/worker/src/jobs/unifiedProject.ts` ~L380)
-`unified-project` 는 「이미 만든 가장 큰 경기키 − 2시간」부터 이어간다(`PROJECT_REWIND_HOURS` 기본 2).
-누락 6건 중 4건은 **원문이 경기 시각보다 2~4.6시간 늦게 도착**했고 그때 커서는 이미 지나가 있었다 → 영영 안 본다.
-주석엔 「늦게 오는 건 밤에 24시간 깊게 훑는 판이 줍는다」 고 적혀 있는데 **그 예약이 crontab 에 없다** (`grep REWIND` 0건).
+### 원인 ⑤ ★진짜 원인★ — 「라운드 승수가 같으면 무승부」 라서 안 만들었다 (`matchNormalize.ts`)
+원문의 `red_win_cnt`/`blue_win_cnt` 가 같은데 `result_wdl` 은 「승」/「패」 인 경기가 7.6% 다. 투영기는 승수만 보고 `draw` 로 넘겼다(미리보기 무승부 9,931건 중 상당수가 이것).
+**고침 `782f508c`**: payload 를 준 subject(원문을 긁은 클랜)가 어느 편인지 이름으로 알고, 그 클랜의 승/패로 승자를 정한다. 스위치 `TIE_BREAK_BY_RESULT_WDL`(unifiedProject.ts). 모르면 옛날처럼 draw. CLI 요약에 「무승부풀림」 칸. 테스트 `matchNormalize.test.ts` 3건 추가(30/30 초록).
+⚠ 승수 5:5 로 저장되고 승자만 있다 — 화면에서 「5:5 승」 으로 보일 수 있다. 원문이 그렇다.
 
-### 원인 ② — 이름 충돌로 「모르는 클랜」 처리
-`--from-start` 미리보기 「넘어간 사유」: `unknown_clan 39,536` · `map_not_in_league 419` · `before_cutoff 77,404` · `already_exists 8,884`.
-「같은 이름 다른 클랜이라 뺀 이름」 목록에 deluxe · amaryllis · QuasaR- · Celebrity · afterpray … **주요 클랜이 거의 다** 들어 있다 — 옛 시드/미러 클랜과 이름이 겹쳐 `nameIndex` 가 모호로 보고 앉히지 않는다(`leagueVerdict.ts resolveSides` ②). subject(slug)로 앉히는 ①이 실패하면 ②도 막혀 `unknown_clan`.
-⚠ **`--from-start --confirm` 을 그냥 누르면 이 39,536건은 그대로 안 만들어진다.** 이름 충돌을 먼저 풀어야 한다(§0-A 의 핵심 판단 지점).
+### 원인 ② (정정) — 이름표(`BarracksClanAlias`)가 상대 이름까지 「내 옛 이름」 으로 담았다
+옛 `clan-name-backfill` 이 한 줄의 red·blue 를 **둘 다** subject 의 옛 이름으로 저장 → afterpray 가 12개 slug 의 이름표에, QuasaR- 가 11개에. 투영기가 그 이름을 「같은 이름 다른 클랜」 으로 **310개** 뺐다(deluxe · amaryllis 포함).
+어제 판단 「옛 시드/미러 클랜과 이름 겹침」 은 **틀렸다** — `Clan` 표엔 중복 이름이 9개뿐(probe15).
+**고침 `a73877ce`**: `clan-alias-rebuild`(덮기 set cover · 무게 GROUP BY · 남의 지금 이름 제외) → 이름표 66,063 → **451** · 모호 이름 310 → **9**(진짜 중복: Mentalist- · NeedΒackup · crucialrz · daytona · des'per@do · grave · hurricanewc · maybe · recent.wct-). `clanNameBackfill` 은 이름표를 안 쓴다(`ALIAS_FROM_BACKFILL=false`). `buildNameIndex` 도 한 번 더 거른다.
 
-### 원인 ③ — 활성 클랜 21곳이 `expelledAt` 로 수집 대상에서 빠졌다
-`cpl-setup --sync` 가 2026-09-22 00:15:56Z 에 **CPL 명단에 없는 클랜을 전부 내렸다** (nolink 10 · sanply 10 · supply 1). 최근 7일 경기가 있는 곳들이다:
-`SDFSD123451 wonju1 revivalcrew alsrmsgmlwn12 Cherish20 4and regg lllllr8 FEXPERT hhmk8299 20210223 thefirst100 sologame cutezzzz topGiJang yoonjae06 qwdklqhwkldq solbi0723 asdf2as Nineoneclan smilemiso`
-→ 수집기 `pendingClans` 가 `expelledAt IS NULL` 만 보므로 9/22 이후 이 클랜들 원문이 안 들어온다.
-복구: `UPDATE "LeagueClan" SET "expelledAt"=NULL WHERE "expelledAt"='2026-09-22 00:15:56.062' AND leagueId IN (nolink,sanply,supply)`. ⚠ CPL 리그(`cpl`) 것은 건드리지 말 것.
+### 원인 ① — 투영기 커서가 2시간만 뒤로 본다
+`PROJECT_REWIND_HOURS` 기본 2. 늦게 도착한 원문은 영영 안 본다. **고침**: `scripts/quiet-hours.sh` ①-3 이 매일 아침 `PROJECT_REWIND_HOURS=30` 으로 되감는다(VPS 에 반영됨 · 첫 실행은 내일 07:05).
+
+### 원인 ③ — 활성 클랜 23곳이 `expelledAt` 로 수집 대상에서 빠졌다
+`cpl-setup --sync` 가 2026-09-22 00:15:56Z 에 CPL 명단에 없는 클랜을 내렸다. **복구 완료**(23행 · probe22). ⚠ `cpl-setup --sync` 를 다시 돌리면 또 내린다 — `cplSetup.ts` L195-225 를 cpl 리그에만 적용하도록 고쳐야 한다(§0-G).
 
 ### 원인 ④ — deluxe/crucialrz/NeedBackup 은 slug 로 200 을 받는데 경기가 0
-`ferwfwfwfwf`(deluxe · origin 3rd.supply) · `ipl-backspace00` · `ipl-yoonsh1971` — 병영 목록 API 가 빈 목록을 준다. slug 가 실제 병영 주소가 아닐 가능성. `clan-find-missing` 으로 다시 찾거나 `BarracksClanNumber`(deluxe 는 150531000663 있음)로 번호 기반 수집이 필요. 미해결.
+`ferwfwfwfwf`(deluxe) · `ipl-backspace00` · `ipl-yoonsh1971` — 병영 목록 API 가 빈 목록. 상대 클랜 원문으로 경기는 들어오니 급하진 않다. `BarracksClanNumber`(deluxe 150531000663) 로 번호 기반 수집이 답. 미해결.
 
-### 되메우기 실행 방법 (아직 안 함)
+### 실행 순서 (다음 세션이 제일 먼저)
 ```
-ssh -i ~/.ssh/sacloud_vps root@49.247.203.71
-cd /root/sacloud && . /root/sacloud.env && export SACLOUD_DB_SESSION_POOLER=1
-# 1) 이름 충돌 먼저 확인 — 왜 deluxe 가 ambiguous 인지 (Clan 표에 같은 name 두 줄?)
-# 2) 미리보기:  pnpm --filter @sacloud/worker nexon unified-project --from-start        (4분 34초 · DB 세션 풀러)
-# 3) 적재:      … --from-start --confirm   ← 잠금: flock /var/lock/sac-project.lock 잡고
-# 4) 그 뒤 battlelog-lineup --all-leagues --confirm · player-hex-build · clan-hex-v2-build 가 크론으로 따라온다
+ssh -i ~/.ssh/sacloud_vps root@49.247.203.71          # 23:30 부터 kex 끊김/타임아웃 — 될 때까지 재시도
+cd /root/sacloud && git pull origin main && git log --oneline -1     # 782f508c 이상이어야 한다
+. /root/sacloud.env && export SACLOUD_DB_SESSION_POOLER=1
+pnpm --filter @sacloud/worker nexon unified-project --from-start > /root/log/backfill-preview3.log 2>&1
+grep -n "본경기=\|draw \|무승부풀림" /root/log/backfill-preview3.log   # 무승부풀림 이 수천 · draw 가 줄어야 한다
+nohup sh -c "flock /var/lock/sac-project.lock pnpm --filter @sacloud/worker nexon unified-project --from-start --confirm" > /root/log/backfill-confirm2.log 2>&1 &
+# 확인: node probe22.mjs 의 첫 줄(deluxe 3키가 Match 에 있나) — probe 파일은 /root/sacloud/probe*.mjs 에 그대로 있다
+# 그 뒤 battlelog-lineup · player-hex-build · clan-hex-v2-build 는 크론이 따라온다 (2분/5분)
 ```
-⚠ VPS 는 git pull 자동 아님(메모리 `vps-batch-server-manual-deploy`). 워커 코드를 고치면 잠금 4개 잡고 pull·install·generate.
-⚠ DB 질의 statement_timeout 이 짧다 — 긴 조사는 `SET statement_timeout='240s'` 먼저.
+⚠ VPS 는 git pull 자동 아님. `pnpm install`/`prisma generate` 는 이번엔 불필요(스키마·의존성 안 바뀜).
+⚠ DB 질의는 `SET statement_timeout='500s'` + 세션 풀러로. payload JSON 을 넓게 읽는 질의는 4일 범위도 240초를 넘긴다.
 
 ---
 
 ## 3. 사장님이 말한 것 중 아직 못 한 것 (전부)
 
-1. **클랜 페이지 상대전적 펼친 채로** (`ClanDetailV3.tsx` `HeadToHeadCard` `folded` 기본 false 인데 사장님 화면은 접혀 있음 → `ClanVsTiersCard`/`vsOpen` 쪽 확인)
-2. **PC 보드 크기 통일** — 「모든 페이지 보드 크기를 클랜랭킹 페이지(1120)와 통일」 + 「카드가 부담스럽게 커 · Canva 대각선처럼 비율로 줄여」 → `.sac-player-page .pc-container 1360`→1120 되돌리고, 한 판 카드의 `zoom 1.3` 을 빼거나 `.v3-board` 전체에 `zoom .85` 같은 비율 축소. 폰은 그대로.
-3. 「육각 겹쳐서 버튼 누를 때 가끔 그래프 안 그려지고 멈춤 · 킬뎃 누적 그래프도」 — 검수 요청. 지금 라운드 그래프는 IO 로 한 번만 arm 하므로 **칩(pick) 바꿔도 다시 안 그림** = 멈춘 것처럼 보일 수 있다. `MatchHexagonV3` 는 `useDrawIn(1800, id, svgRef)` 로 id(pick 포함)가 바뀌면 다시 그리는데, IO 가 이미 disconnect 된 뒤라 `armed` 가 false 로 리셋되어 안 그려질 수 있음 → `useDrawIn` 의 restartKey 변경 시 IO 재부착 로직 점검.
+1. §7 진영판 2차 요청 8건 (사장님: 다음 세션이)
+2. 「아직 옛 경기분석 버전이 남아 있다」 — 어느 화면인지 못 물어봤다. 후보: 경기 목록 페이지(`/league/*/match`)의 카드 · 폰 경기분석 · `AnalysisPanelV3`(선수 플레이분석 설명 칸 · about 페이지). `RoundFlowChartV3` 는 Clan/PlayerDetailV3 두 곳에서만 쓴다.
+3. 「육각 겹쳐서 버튼 누를 때 가끔 그래프 안 그려지고 멈춤 · 킬뎃 누적 그래프도」 — 검수 요청. 라운드 그래프는 IO 로 한 번만 arm 하므로 칩(pick) 바꿔도 다시 안 그림 = 멈춘 것처럼 보일 수 있다. `MatchHexagonV3` 는 `useDrawIn(1800, id, svgRef)` 로 id 가 바뀌면 다시 그리는데 IO 가 disconnect 된 뒤라 `armed` 가 false 로 리셋될 수 있음 → `useDrawIn` restartKey 시 IO 재부착 점검.
 4. 래더 증감 「+29점」 표기 확인(§0-E)
-5. 누락 되메우기 §2
+5. 되메우기 §2 실행 순서 · `cplSetup --sync` 재발 방지 · 원인 ④
 
 ---
 
 ## 4. 함정 (오늘 밤 새로 밟은 것)
 
-- 로컬 dev 의 캡쳐가 **뼈대(skeleton)** 로 찍힐 때가 있다 → `curl` 로 두세 번 데운 뒤 찍는다. `shot.mjs` 는 단추가 토글이라 4초 기다렸다 판단하게 고쳤다.
-- `measure.mjs`/`shot.mjs` 로 운영을 찍을 때 배포가 붙기 전 옛 화면이 나온다 → HTML 에 새 문자열(예: `라이플</span>`)이 있는지 curl 로 확인하고 찍는다.
-- 템플릿 리터럴 CSS 주석 안에 백틱을 쓰면 TS 가 깨진다(`.sac-player-page` 주석에서 한 번 당했다).
+- 로컬 dev 캡쳐가 **뼈대(skeleton)** 로 찍힐 때가 있다 → `curl` 로 두세 번 데운 뒤 찍는다. `shot.mjs` 는 단추가 토글이라 4초 기다렸다 판단하게 고쳤다.
+- 운영을 찍을 때 배포가 붙기 전 옛 화면이 나온다 → HTML 에 새 문자열이 있는지 curl 로 확인하고 찍는다.
+- 템플릿 리터럴 CSS 주석 안에 백틱 → TS 깨짐.
 - apps/web DB 테스트 9건은 로컬 합성 데이터 때문에 깨진다 — 운영 코드 문제 아님. `pnpm vitest run packages/ui` 로 본다.
 - 로컬 DB 안 뜨면 `postmaster.pid` 지우고 `pg_ctl start` (경로는 STATE.md 「로컬 QA 길」).
+- **Bash 히어독 안의 Python 에서 `\n` 이 먹힌다**(메모리 `bash-heredoc-eats-backslashes`) — 패치 스크립트는 Write 도구로 파일을 만들고 `python scratchpad/x.py` 로 돌린다. 오늘 두 번 당했다.
+- 워커 파일은 LF 인 것과 CRLF 인 것이 섞여 있다 — 패치 함수 `rep` 는 파일의 개행을 보고 맞춘다.
+- `pnpm --filter @sacloud/worker exec tsc` 가 exit 2 를 내며 아무 것도 안 보여줄 때가 있다 → `cd apps/worker && npx tsc --noEmit -p .`. vitest 는 **repo 루트에서** 경로를 주고 돌린다(worker 안에서 돌리면 「No test files」).
+- VPS SSH: `kex_exchange_identification: Software caused connection abort` / `banner exchange timed out` — 23:30 부터. KingsNET(메모리 `kingsnet-tdi-breaks-sockets`) 일 가능성. 몇 분 뒤 재시도.
 
 ---
 
@@ -130,8 +147,52 @@ cd /root/sacloud && . /root/sacloud.env && export SACLOUD_DB_SESSION_POOLER=1
 | `_home/heroV2.ts` | `HOME_HERO_ART` | 홈 배경 그림 |
 | player/clan `layout.tsx` | `PLAYER_LINK_TABS` · `CLAN_HEADER_LIKE_PLAYER` | 링크 탭 · 클랜 머리 카드 |
 | `common/format.ts` | `formatRatingLegacyDecimal/Point` | 옛 래더 표기 |
+| `supply-skin.css` | `.sac-player-page .pc-container{max-width:1120px}` · `.mc-card > .mc-pc{zoom:1.05}` · `.mc-card > .v3-board{zoom:.82}` | 보드 폭 · 카드 비율 |
+| `clanNameBackfill.ts` | `ALIAS_FROM_BACKFILL` (false) | 옛 이름표 쓰기 |
+| `unifiedProject.ts` | `TIE_BREAK_BY_RESULT_WDL` (true) | 승수 같은 경기 승/패 풀기 |
 
-## 6. 다음 세션 첫 줄
+---
+
+## 6. 다음 세션 첫 줄 (사장님이 칠 말)
 ```
-docs/HANDOFF_2026-09-23_NIGHT.md 읽고 0절 순서대로. 누락 되메우기는 2절 원인② 이름 충돌부터 풀고 --confirm.
+docs/HANDOFF_2026-09-23_NIGHT.md 읽고 0절 순서대로 이어서 해. A(되메우기 VPS 반영·적재)부터 하고, 7절 진영판 2차 요청 8건 만들어. 허락 묻지 말고 항목 하나 끝날 때마다 PC·폰 캡쳐 보내.
 ```
+
+---
+
+## 7. ★진영판 2차 요청★ (사장님 2026-09-23 23:2x · 원문 그대로 + 해석 · ★이 세션은 손대지 않았다★)
+
+원문:
+> 아직 옛 경기분석 버전이 남아있어
+> 그리고 재생버튼을 밑에 둬줘 위에 재생 누르고 마우스 밑으로 내리면서 그래프를 마우스로 실수로 지나가면 재생이 멈춰버려
+> 그리고 클랜마크 단추가 그래프가 그려질때든 아니면 축을 이동할때든 따라와야하는데 오른쪽 끝에 고정이 돼있어
+> 그리고 그래프를 좀더 복잡하고 역동적으로 그려줘 약간 찌글찌글 하게 더 복잡해보이게
+> 그리고 전반 후반 구분 선을 좀 더 잘보이게 확실하게 그어줘
+> 그리고 밑에 누가 누구를 죽였는지 표시해줄때 haeil >>> 현물 이 사이의 화살표말고 진짜 누가봐도 이 사람이 얘 쏴 죽였다는걸 알 수 있게끔 잘 보이고 직관적이게 이 로고들을 그대로 이용해서 표시해줘. 레드팀이 블루팀 죽인거면 이 색깔로 쓰고 블루팀이 레드팀 죽인거면 지금 이 빨간색 배경을 연한파란색으로 해줘
+> 그리고 하나 더 추가해야해 폭탄설치, 헤체 로그를 경기분석에 추가해줘 누가 설치했고 누가 해체했는지 그리고 설치에 성공하거나 헤체에 성공한 팀 라운드 옆에 설점:1 3:2 설점:0 이런식으로 써줘 설점2 4:2 설점1 후반넘어가면 이거 역시 초기화
+> 이제 설치칸이 하나 늘어날 수 있으니 세로길이를 한칸 더 늘려야할거야
+> 그리고 보조무기로 죽인건지 투척으로 죽인건지 저격총인지 돌격소총인지 구분해서 로그를 만들어줘 배틀로그에 다 나오는 정보들이니까
+> 이 작업은 너가 하지말고 다음 세션에 넘겨 사진도 다 첨부해서 넘겨
+
+사장님이 붙인 사진 5장 (채팅에만 있어 파일로는 못 받았다 — 모양을 적는다. ⚠ CLAUDE.md 2-4: 원본 사이트 그림은 복사하지 않는다 → **우리가 그린 아이콘**으로 같은 정보 구조를 낸다):
+```
+[킬] [돌격소총 그림(AK 실루엣)]   돌격소총      ← 연한 살구색 바탕 · 왼쪽 「킬」 빨강 글씨 · 오른쪽 무기명 빨강
+[킬] [수류탄 그림]                투척무기
+[킬] [저격총 그림(볼트액션)]      저격소총
+[미션] [C4 폭탄 그림(타이머)]     C4해체        ← 「미션」 줄은 킬이 아니라 설치/해체
+[킬] [권총 그림(리볼버)]          보조무기      ← 무기명이 보라색
+```
+공통: 가로로 긴 알약 모양 · 왼쪽 종류(킬/미션) · 가운데 무기 그림 · 오른쪽 무기 이름. 배틀로그의 무기 종류(돌격소총/저격소총/보조무기/투척무기)와 미션(C4 설치/해체)을 한 줄로.
+
+해석·할 일 (번호 = 사장님 순서):
+0. **옛 경기분석이 남아 있다** — 어디인지 먼저 찾는다(§3-2 후보). 찾으면 그 화면도 진영판(`RoundFlowChartV3`)으로. 옛 판은 스위치로 남긴다.
+1. **재생 단추를 판 아래로.** 지금은 위 HUD 줄에 있어 마우스를 내리다 그래프 위를 지나면 hover 가 재생을 끊는다 → 단추를 죽은 차례 칸 위/아래로 내리고, **재생 중엔 hover 로 안 끊기게**(재생 중 hover 무시 또는 hover 는 멈춤 상태에서만).
+2. **클랜마크 단추(축 위 커서)가 축을 따라와야 한다.** 지금은 오른쪽 끝에 고정 — 그리는 중이든 재생/hover 로 축이 움직이든 마크가 x 위치를 따라가게. `RoundFlowChartV3` 의 커서 x 와 마크 렌더 위치를 같은 값으로.
+3. **그래프를 더 찌글찌글·역동적으로.** 라운드 사이를 직선/부드러운 곡선으로 잇지 말고 라운드 안의 킬 하나하나(배틀로그 시각 순)를 점으로 찍어 꺾이게 — 데이터가 있으면 킬 단위, 없으면 라운드 안에서 킬 수만큼 계단. 옛 곡선은 스위치.
+4. **전반/후반 구분선을 확실하게** — 굵은 세로선 + 「전반 | 후반」 라벨 + 배경 톤 차이.
+5. **죽은 차례 칸**: `haeil >>> 현물` 화살표 대신 **[킬러 마크+닉] [무기 그림] [피해자 마크+닉]** 처럼 누가 봐도 「쐈다」 가 보이게. 배경색: **레드가 블루를 죽임 = 지금 빨강 톤 그대로**, **블루가 레드를 죽임 = 연한 파랑**. 마크는 지금 쓰는 클랜마크/사람 아이콘 그대로.
+6. **폭탄 설치/해체 로그 추가** — 누가 설치했고 누가 해체했는지 죽은 차례 칸에 「미션」 줄로. 배틀로그 이벤트 종류를 봐야 한다(`packages/nexon` battlelog → C4 plant/defuse 필드 확인 · `zone-means-victim-position` 메모리 참고). **라운드 점수 옆 「설점」 표기**: 설치 성공/해체 성공한 팀 쪽에 `설점:1  3:2  설점:0` → 다음 라운드 `설점:2  4:2  설점:1` 처럼 반마다 누적, **후반 넘어가면 0 으로 초기화**(half 점수와 같은 규칙).
+7. **세로 한 칸 더** — 설치 줄이 생기니 죽은 차례 칸 고정 높이(폰 152 · PC 176)를 한 줄 더(≈ +26/+30).
+8. **킬 로그에 무기 종류** — 보조무기 / 투척 / 저격소총 / 돌격소총 구분해서 줄마다 표시(위 사진 형식). 배틀로그에 무기 코드가 있다(`0=라이플 1=스나이퍼` 는 포지션용 — 킬 무기는 배틀로그 줄의 weapon 필드 · `packages/nexon` 스키마 확인).
+
+캡쳐 규칙: 항목 하나 끝날 때마다 PC·폰 캡쳐(`scratchpad/shot.mjs` · 로컬은 `seed-flow.mjs` 합성 데이터 · 운영은 배포 후).
