@@ -205,7 +205,8 @@ export const TAB_IDLE = 'border-b-transparent text-meta hover:text-text'
    ──────────────────────────────────────────────────────────────────────── */
 
 /** 개인랭킹 지표 칸 (승률 · 킬뎃) — 폰은 옛 52px 그대로 */
-export const COL_PSTAT = 'w-[126px] shrink-0 text-right max-md:w-[52px]'
+/* ⚠ 2026-09-23 오후 — 폰 52 → 50. 열산 「너구리마을」 클랜 태그 54>50 (두 칸 합쳐 +4 가 이름칸으로) */
+export const COL_PSTAT = 'w-[126px] shrink-0 text-right max-md:w-[50px]'
 /** 개인랭킹의 ★PC 전용★ 칸 (승리 · 패배 · 평균킬) — 폰에서는 칸째로 사라지고 접힌 판이 선다 */
 export const COL_PWL = 'w-[126px] shrink-0 text-right max-md:hidden'
 /** 개인랭킹 래더 칸 */
