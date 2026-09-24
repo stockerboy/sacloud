@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process'
 
 import { log, warn } from '../lib/log.js'
 import { barracksBrowser, closeBarracksBrowser, useChromeFetch } from '../nexon/browserFetch.js'
+import { barracksClanIdOf } from './barracksCollect.js'
 
 /**
  * ★★「정보갱신」 을 진짜로 만든다★★ (2026-09-21 · 사장님 지시)
@@ -421,7 +422,9 @@ export async function runRenewRequests(
     try {
       res = await callBarracks(
         '/api/ClanHome/GetClanUserList',
-        JSON.stringify({ clan_id: clan.slug }),
+        /* ★slug 와 병영 clan_id 가 다른 클랜(deluxe=ferwfwfwfwf→042222741)은 오버라이드로 부른다★
+           (2026-09-24 사장님 「정보갱신 안된다」 — 매시 barracks-roster 는 오버라이드를 쓰는데 갱신만 빠져 있었다) */
+        JSON.stringify({ clan_id: barracksClanIdOf(clan.slug) }),
       )
     } catch {
       await noteFailure(job, '병영수첩을 못 불렀다')
