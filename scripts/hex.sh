@@ -72,8 +72,17 @@ HEXLOG="${HEXLOG:-/root/log/hex.log}"
 echo "[$(date +%H:%M)] ① 경기 육각"
 nice -n 10 pnpm --filter @sacloud/worker nexon clan-hex-v2-build --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
 
+# ⚠ ★2026-09-25 03:2x — ② 개인 육각은 여기서 안 돌린다 (기본)★
+#   season0-apply(13,43분)가 이미 30분마다 player-hex-build 를 돌린다(01:49 · 03:03 완료 확인). 여기서 5분마다 또 띄우면
+#   같은 무거운 잡이 ★겹쳐★ 1.9GB 상자가 스왑 100% · load 48 (02:2x · 03:2x 두 번 실제 사고 — 메모리 게이트를 통과한 뒤
+#   도는 중에 차오른다). ① 경기 육각·③ 요약·④ 래더는 가볍다(셀 것 200건 · 몇 초). MVP 는 30분 안에 따라온다.
+#   되돌리려면 HEX_PLAYER_IN_HEX_SH=1 (CLAUDE.md 1-4).
+if [ "${HEX_PLAYER_IN_HEX_SH:-0}" = "1" ]; then
 echo "[$(date +%H:%M)] ② 개인 육각 (MVP 도 여기서 정해진다)"
 nice -n 10 pnpm --filter @sacloud/worker nexon player-hex-build --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
+else
+echo "[$(date +%H:%M)] ② 개인 육각은 season0-apply 가 30분마다 돌린다 — 여기서는 건너뛴다"
+fi
 
 echo "[$(date +%H:%M)] ③ 클랜 요약"
 pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
