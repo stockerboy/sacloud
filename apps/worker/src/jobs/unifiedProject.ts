@@ -641,26 +641,30 @@ export async function runUnifiedProject(
       })
       const verdict = verdictFromSides(m.redClanName, m.blueClanName, sides)
       if (dbg) log(`  [debug ${row.matchKey}] sides red=${sides.red ? `${sides.red.clanId}/${sides.red.league}(${sides.redBy})` : "null"} blue=${sides.blue ? `${sides.blue.clanId}/${sides.blue.league}(${sides.blueBy})` : "null"} → ${verdict.ok ? `OK ${verdict.league}` : `${verdict.reason}: ${verdict.detail}`}`)
-      if (!verdict.ok) {
-        noteUnclassified(m.matchKey, verdict.reason, verdict.detail)
-        if (verdict.reason === 'unknown_clan') {
-          for (const n of [m.redClanName, m.blueClanName]) {
-            if (!index.has(n)) unknown.set(n, (unknown.get(n) ?? 0) + 1)
-          }
+
+      /* ── ③ 한쪽이라도 클랜을 증명 못 하면 어느 리그에도 못 만든다 (unknown_clan 만 여기서 버린다) */
+      if (sides.red === null || sides.blue === null) {
+        noteUnclassified(m.matchKey, 'unknown_clan', verdict.ok ? '' : verdict.detail)
+        for (const n of [m.redClanName, m.blueClanName]) {
+          if (!index.has(n)) unknown.set(n, (unknown.get(n) ?? 0) + 1)
         }
         continue
       }
+      const redClanId = sides.red.clanId
+      const blueClanId = sides.blue.clanId
 
-      /* ── ④ 그 리그가 인정하는 맵인가 ─────────────────────────────
-             ★리그마다 다르다.★ 표가 없으면 안 거른다 */
       /*
        * ── ④⑤ 리그마다 한 번씩 ──
-       *   ★겸업★: 두 클랜이 공유한 리그마다 Match 를 하나씩. 옛 판(DUAL_LEAGUE_RECORD=false)은 verdict.league 하나뿐.
-       *   맵·시즌·이미있음은 ★리그마다 다르므로★ 이 안에서 각각 본다.
+       *   ★겸업★: 두 클랜이 ★공유한 리그마다★ Match 를 하나씩. 두 클랜의 첫 리그가 서로 달라도
+       *   (옛 cross_league) 공유 리그가 있으면 만든다 — 판정을 verdict.league 가 아니라 ★sides 의 clanId★
+       *   로 직접 한다. 공유 리그가 0 이면 그때 진짜 cross_league 다.
+       *   옛 판(DUAL_LEAGUE_RECORD=false)은 verdictFromSides 그대로 — 같은 리그 한 판만.
        */
       const targetLeagues: LiveLeagueSlug[] = DUAL_LEAGUE_RECORD
-        ? (leaguesByClanId.get(verdict.redClanId) ?? []).filter((l) => (leaguesByClanId.get(verdict.blueClanId) ?? []).includes(l))
-        : [verdict.league]
+        ? (leaguesByClanId.get(redClanId) ?? []).filter((l) => (leaguesByClanId.get(blueClanId) ?? []).includes(l))
+        : verdict.ok
+          ? [verdict.league]
+          : []
       if (targetLeagues.length === 0) {
         noteUnclassified(m.matchKey, 'cross_league', `공유 리그가 없다 — ${m.redClanName} vs ${m.blueClanName}`)
         if (dbg) log(`  [debug ${row.matchKey}] 공유 리그 0 → cross_league`)
@@ -669,8 +673,8 @@ export async function runUnifiedProject(
       if (dbg) log(`  [debug ${row.matchKey}] 만들 리그 ${targetLeagues.join(',')}`)
 
       for (const lg of targetLeagues) {
-        const red = liveByClanLeague.get(`${verdict.redClanId}|${lg}`) ?? liveClans.get(verdict.redClanId)!
-        const blue = liveByClanLeague.get(`${verdict.blueClanId}|${lg}`) ?? liveClans.get(verdict.blueClanId)!
+        const red = liveByClanLeague.get(`${redClanId}|${lg}`) ?? liveClans.get(redClanId)!
+        const blue = liveByClanLeague.get(`${blueClanId}|${lg}`) ?? liveClans.get(blueClanId)!
         const leagueId = leagueIdOf.get(lg)!
 
         const maps = leagueMaps.get(lg) ?? null
