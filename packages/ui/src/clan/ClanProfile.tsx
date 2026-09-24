@@ -11,6 +11,7 @@ import { EggVeil } from '../egg/EggVeil'
 import { formatCount, formatRating, formatDate, formatRate } from '../common/format'
 import { divisionLabel } from '../league/divisionLabel'
 import { leagueClanPath } from '../common/paths'
+import { leagueDisplayName } from '../site-config'
 import {
   IdentityBand,
   MetaDot,
@@ -137,7 +138,8 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="truncate text-[15px] text-text-strong">{entry.league.name}</span>
+            {/* 2026-09-25 — LeagueEntryCards 와 같은 누락(leagueDisplayName 안 거쳐 DB 원문 「PL」·「CPL」 그대로) */}
+            <span className="truncate text-[15px] text-text-strong">{leagueDisplayName(entry.league.slug, entry.league.name)}</span>
             {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
             {isOfficialLeague(entry.league.slug) ? <OfficialTag /> : null}
           </div>
