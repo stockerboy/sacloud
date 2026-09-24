@@ -162,7 +162,51 @@ export async function getPlayerLeagues(playerId: string): Promise<PlayerLeagueEn
         rank_count: rank.rankCount,
       }
     }),
-  )
+  ).then((entries) => withSupply2Card(playerId, entries))
+}
+
+/**
+ * ★Supply 2.0(cpl) 은 안 뛴 사람도 카드가 있다★ (2026-09-24 사장님 「Supply2.0 은 안뛴 사람도 전부 카드를 만들어줘 0전0킬0데스로」).
+ *
+ *   리그 참가 기록(LeaguePlayer)이 없어도 ★소속 클랜이 Supply 2.0 에 등록★ 돼 있으면 0전 카드를 하나 붙인다.
+ *   DB 에 줄을 만들지 않는다 — 읽을 때만 붙인다(가상 카드 · league_player_id 는 `virtual-cpl-<playerId>`).
+ *   실제로 뛰어 LeaguePlayer 가 생기면 그 줄이 대신 나온다(중복 안 됨). 옛 판은 SUPPLY2_ZERO_CARD=false.
+ */
+const SUPPLY2_ZERO_CARD = true
+async function withSupply2Card(playerId: string, entries: PlayerLeagueEntry[]): Promise<PlayerLeagueEntry[]> {
+  if (!SUPPLY2_ZERO_CARD) return entries
+  if (entries.some((e) => e.league.slug === 'cpl')) return entries
+  const me = await prisma.player.findUnique({ where: { id: playerId }, select: { clanId: true } })
+  if (!me?.clanId) return entries
+  const seat = await prisma.leagueClan.findFirst({
+    where: { clanId: me.clanId, expelledAt: null, league: { slug: 'cpl' } },
+    select: { league: { select: LEAGUE_SUMMARY_SELECT }, clan: { select: CLAN_SUMMARY_SELECT } },
+  })
+  if (!seat) return entries
+  return [
+    ...entries,
+    {
+      league: toLeagueSummary(seat.league),
+      league_player_id: `virtual-cpl-${playerId}`,
+      clan: toClanSummaryOrNull(seat.clan),
+      rating: 0,
+      score_rating: null,
+      score_bonus: 0,
+      score_games: 0,
+      win: 0,
+      lose: 0,
+      win_rate: 0,
+      kill: 0,
+      death: 0,
+      kd_rate: 0,
+      sniper_games: 0,
+      rifle_games: 0,
+      /* ★배치 중★ — 래더 자리에 「기록 없음」. 0층을 지어내지 않는다 */
+      placement: true,
+      rank: null,
+      rank_count: null,
+    },
+  ]
 }
 
 /* -------------------------------- 정보갱신 -------------------------------- */

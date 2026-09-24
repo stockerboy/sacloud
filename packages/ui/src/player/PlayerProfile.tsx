@@ -36,6 +36,8 @@ import {
 function leagueKindOf(slug: string): { label: string; color: string } | null {
   if (slug === 'nolink') return { label: '일반', color: '#5c80e0' }
   if (slug === 'supply') return { label: '경쟁', color: '#f59e0b' }
+  /* Supply 2.0(cpl) — 경쟁 · 금색 (2026-09-24 사장님 「2.0 은 좀 더 간지나게」) */
+  if (slug === 'cpl') return { label: '경쟁', color: '#ffd83d' }
   /* 2026-09-24 사장님 「열산도 일반이라고 달아줘」 */
   if (slug === 'sanply') return { label: '일반', color: '#5c80e0' }
   return null
@@ -265,10 +267,15 @@ function PlayerLeagueRow({
    * ⚠ ★옛 꼴을 지우지 않았다★ (`CLAUDE.md` 1-4) — 아래 `CARD_SHAPE` 를 `'grid'` 로
    *   두면 격자 판이 그대로 돌아온다.
    */
+  /* ★Supply 2.0★ — 안 뛴 사람도 카드가 있고(서버가 0전 가상 카드를 붙인다) 「0전 0킬 0데스」 로 적는다 (2026-09-24 사장님) */
+  const isSupply2 = entry.league.slug === 'cpl'
+  const zeroCard = isSupply2 && games === 0
   const kdShown =
     hasKd && !sealed
       ? `${formatCount(entry.kill as number)}킬 ${formatCount(entry.death as number)}데스`
-      : null
+      : zeroCard
+        ? '0킬 0데스'
+        : null
 
   return (
     <Link
@@ -279,7 +286,8 @@ function PlayerLeagueRow({
        */
       href={leaguePlayerPath(entry.league.slug, playerId)}
       /* ★절반 크기★ (2026-09-21) — 두 장이 한 줄에 서므로 여백과 글자를 줄인다 */
-      className={`${PANEL} relative block overflow-hidden px-3 py-2.5 transition-colors hover:border-accent md:px-4 md:py-3`}
+      className={`${PANEL} relative block overflow-hidden px-3 py-2.5 transition-colors hover:border-accent md:px-4 md:py-3 ${isSupply2 ? 'sac-supply2-card' : ''}`}
+      style={isSupply2 ? { borderColor: 'rgba(255,216,61,.55)', boxShadow: '0 0 0 1px rgba(255,216,61,.18), 0 8px 28px rgba(255,216,61,.10)', background: 'linear-gradient(135deg, rgba(255,216,61,.07), rgba(12,21,38,0) 55%)' } : undefined}
     >
       {/* ★리그 성격 색 띠★ (2026-09-24 사장님 「기본정보 카드 색도 채우고 · IPL=일반 · Supply=경쟁」) — 왼쪽 3px */}
       {leagueKindOf(entry.league.slug) ? (
@@ -334,11 +342,13 @@ function PlayerLeagueRow({
               <EggVeil state={egg}>{null}</EggVeil>
             ) : rated ? (
               `${formatRate(entry.win_rate)}%`
+            ) : zeroCard ? (
+              '0전'
             ) : (
               '기록 없음'
             )
           }
-          muted={!sealed && !rated}
+          muted={!sealed && !rated && !zeroCard}
           tone={!sealed && rated ? rateClass(entry.win_rate) : ''}
         />
         <CardLine
@@ -349,6 +359,8 @@ function PlayerLeagueRow({
               <EggVeil state={egg}>{null}</EggVeil>
             ) : hasKd ? (
               `${formatRate(entry.kd_rate as number)}%`
+            ) : zeroCard ? (
+              '0킬 0데스'
             ) : entry.kill === null ? (
               /*
                * ⚠ ★「집계 안함」 은 거짓말이었다★ (2026-09-20 사장님: 「킬뎃 집계안함은 뭐고」)
@@ -360,7 +372,7 @@ function PlayerLeagueRow({
               '기록 없음'
             )
           }
-          muted={!sealed && !hasKd}
+          muted={!sealed && !hasKd && !zeroCard}
           tone={!sealed && hasKd ? rateClass(entry.kd_rate as number) : ''}
         />
         {/*

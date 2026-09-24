@@ -46,7 +46,7 @@ export type ApplicationPosition = (typeof APPLICATION_POSITIONS)[number]
 
 /** ⚠ 옛 판 — 셋이던 때 (2026-09-22 이전). 지우지 않는다 (`CLAUDE.md` 1-4) */
 export const APPLICATION_LEAGUES_V1 = ['nolink', 'supply', 'sanply'] as const
-/** 신청할 수 있는 리그 — ★CPL 을 더했다★ (2026-09-22 사장님 「CPL 모집」) */
+/** 신청할 수 있는 리그 — ★CPL(=Supply 2.0) 을 더했다★ (2026-09-22 사장님 「CPL 모집」 · 2026-09-24 이름 Supply 2.0) */
 export const APPLICATION_LEAGUES = ['nolink', 'supply', 'sanply', 'cpl'] as const
 export type ApplicationLeague = (typeof APPLICATION_LEAGUES)[number]
 
@@ -100,29 +100,29 @@ export const APPLICATION_KINDS = [
     key: 'cpl-independent',
     from: null,
     to: 'cpl',
-    label: 'CPL 참가 — 무소속',
-    benefit: '10/1 전까지 등록 무료',
+    label: 'Supply 2.0 참가 — 무소속',
+    benefit: '자격제한 있음 · 심사 후 승인',
   },
   {
     key: 'cpl-supply',
     from: null,
     to: 'cpl',
-    label: 'CPL 참가 — 서플라이',
-    benefit: '10/1 전까지 등록 무료',
+    label: 'Supply 2.0 참가 — 서플라이 1부·2부',
+    benefit: '자격제한 있음 · 심사 후 승인',
   },
   {
     key: 'cpl-third',
     from: null,
     to: 'cpl',
-    label: 'CPL 참가 — 3부',
-    benefit: '10/1 전까지 등록 무료',
+    label: 'Supply 2.0 참가 — 3부',
+    benefit: '자격제한 있음 · 심사 후 승인',
   },
   {
     key: 'cpl-new',
     from: null,
     to: 'cpl',
-    label: 'CPL 참가 — 신규',
-    benefit: '10/1 전까지 등록 무료',
+    label: 'Supply 2.0 참가 신청서',
+    benefit: '자격제한 있음 · 무소속 · 3부 · 서플라이 1부·2부 상관없이 · 심사 후 승인',
   },
 ] as const
 export type ApplicationKindKey = (typeof APPLICATION_KINDS)[number]['key']
