@@ -33,6 +33,35 @@ import { NextResponse, type NextRequest } from 'next/server'
 const SESSION_COOKIE = 'sacloud_session'
 
 /**
+ * ★옛 주소(`3rdcloud.my`) 는 이제 못 들어간다★ (2026-09-24 사장님: 「3rdcloud.my 사이트는 못들어가게 해줘」).
+ *
+ * ── 왜 지금인가
+ *   `docs/ORDERS.md` 에 이미 이 순서가 적혀 있었다 — «`loginsa.cloud` 가 뜨는 것을 보신 뒤
+ *   ‘이제 3rdcloud.my 는 새 주소로 넘겨라’ 하시면 그때 돌리겠습니다». `layout.tsx` 의
+ *   `metadataBase` 도 2026-09-21 에 이미 `loginsa.cloud` 로 옮겨 놨다 — 대문 주소는 그때 정해졌다.
+ *
+ * ── 무엇을 하나 — ★막지 않고 새 주소로 넘긴다★
+ *   `3rdcloud.my` 로 들어오면 같은 경로 그대로 `loginsa.cloud` 로 308(영구 이동) 보낸다.
+ *   즐겨찾기·이미 퍼진 링크가 죽지 않는다 — 그냥 새 주소로 열린다.
+ *   로그인 여부 · `SITE_PRIVATE` 스위치보다 ★먼저★ 본다 — 옛 주소에서는 그 판단 자체가 필요 없다.
+ *
+ * 되돌리려면 — 아래 `OLD_HOSTS` 를 비우거나 이 블록을 지운다(`CLAUDE.md` 1-4: 정 지우기 싫으면
+ * `false &&` 로 꺼 둔다).
+ */
+const OLD_HOSTS = new Set(['3rdcloud.my', 'www.3rdcloud.my'])
+const NEW_HOST = 'loginsa.cloud'
+
+function oldHostRedirect(request: NextRequest): NextResponse | null {
+  const host = (request.headers.get('host') ?? '').split(':')[0] ?? ''
+  if (!OLD_HOSTS.has(host)) return null
+  const url = request.nextUrl.clone()
+  url.protocol = 'https'
+  url.host = NEW_HOST
+  url.port = ''
+  return NextResponse.redirect(url, 308)
+}
+
+/**
  * ★사이트를 잠그나★ (2026-09-21 사장님: 「공개로 돌려」).
  *
  * `false` 면 ★누구나 들어온다.★ `true` 면 로그인한 사람만 들어온다.
@@ -113,6 +142,9 @@ function noticePage(): string {
 }
 
 export function middleware(request: NextRequest) {
+  const redirect = oldHostRedirect(request)
+  if (redirect) return redirect
+
   /**
    * ⚠ ★2026-09-14 — 다시 잠갔다★ (사장님: «일단 사이트 비공개로 돌려»).
    *
