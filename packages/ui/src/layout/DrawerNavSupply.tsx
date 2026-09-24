@@ -100,9 +100,12 @@ function Section({
   )
 }
 
+/** 서버 `ADMIN_ROLE`(`apps/web/lib/server/session.ts`)과 같은 값 — 여기선 DB 를 못 봐서 그대로 박아 둔다 */
+const ADMIN_ROLE = 2
+
 export interface DrawerNavSupplyProps {
-  /** 로그인한 사용자. `null` 이면 맨 아래가 `로그인` 이다 */
-  user?: { nickname: string } | null
+  /** 로그인한 사용자. `null` 이면 맨 아래가 `로그인` 이다. `role` 이 있으면(관리자=2) 「관리자」 줄이 붙는다 */
+  user?: { nickname: string; role?: number } | null
   onLogout?: () => void
   /** 닫기(X) — 없으면 그 줄을 안 그린다 */
   onClose?: () => void
@@ -150,6 +153,9 @@ export function DrawerNavSupply({ user = null, onLogout, onClose, loginHref = '/
         {user ? (
           <>
             <Row link={{ label: '내 정보', href: '/me' }} pathname={pathname} />
+            {user.role === ADMIN_ROLE ? (
+              <Row link={{ label: '관리자', href: '/admin' }} pathname={pathname} />
+            ) : null}
             <div className="my-1 flex shrink-0">
               <button
                 type="button"

@@ -53,8 +53,8 @@ export interface SiteHeaderV2Props {
   featuredLeagues?: readonly NavLink[]
   primaryNav?: readonly NavLink[]
   navGroups?: readonly NavGroup[]
-  /** 로그인한 사용자. null 이면 `로그인` */
-  user?: { nickname: string } | null
+  /** 로그인한 사용자. null 이면 `로그인`. `role` 이 있으면 서랍에 「관리자」 줄이 붙는다 */
+  user?: { nickname: string; role?: number } | null
   onLogout?: () => void
 }
 

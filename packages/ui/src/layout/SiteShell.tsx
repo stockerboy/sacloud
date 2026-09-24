@@ -38,8 +38,8 @@ export function SiteShell({
   onLogout,
 }: {
   children: React.ReactNode
-  /** 로그인한 사용자 (없으면 비로그인) */
-  user?: { nickname: string } | null
+  /** 로그인한 사용자 (없으면 비로그인). `role` 이 있으면 서랍에 「관리자」 줄이 붙는다 */
+  user?: { nickname: string; role?: number } | null
   onLogout?: () => void
 }) {
   const pathname = usePathname() ?? '/'
