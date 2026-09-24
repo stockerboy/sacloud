@@ -300,7 +300,8 @@ function PlayerLeagueRow({
       {/* ── 머리 — 리그 이름 + 성격 라벨(일반/경쟁) ───────────────────── */}
       <div className="flex items-center gap-2">
         <span className="truncate text-[14px] font-extrabold tracking-[-.01em] text-text-strong md:text-[15px]">
-          {entry.league.name}
+          {/* DB 이름은 아직 CPL 이다 — 화면은 Supply 2.0 (2026-09-24 사장님) */}
+          {entry.league.slug === 'cpl' ? 'Supply 2.0' : entry.league.name}
         </span>
         {leagueKindOf(entry.league.slug) ? (
           <span
@@ -567,10 +568,12 @@ export function PlayerLeagueList({
    *   ⚠ ★지우는 것이 아니다★ — 한 줄에 이름을 다 적고, 눌러서 펼치면 카드가 나온다.
    *     «참여중인 리그 3개» 라는 셈도 그대로다 (CLAUDE.md 1-4).
    */
-  const played = listed.filter((e) => e.win + e.lose > 0)
-  const idle = listed.filter((e) => e.win + e.lose === 0)
-  /* 판수 많은 리그가 위로 — 그 사람의 «주 무대» 가 먼저 온다 */
-  const sorted = [...played].sort((a, b) => b.win + b.lose - (a.win + a.lose))
+  /* ★Supply 2.0(cpl) 은 0전이어도 접지 않는다★ (2026-09-24 사장님 「안 뛴 사람도 전부 카드」) — 맨 앞에 선다 */
+  const pinned = (e: PlayerLeagueEntry) => e.league.slug === 'cpl'
+  const played = listed.filter((e) => pinned(e) || e.win + e.lose > 0)
+  const idle = listed.filter((e) => !pinned(e) && e.win + e.lose === 0)
+  /* 판수 많은 리그가 위로 — 그 사람의 «주 무대» 가 먼저 온다 (Supply 2.0 은 그보다 앞) */
+  const sorted = [...played].sort((a, b) => Number(pinned(b)) - Number(pinned(a)) || b.win + b.lose - (a.win + a.lose))
 
   const hidden = sorted.length - VISIBLE_LEAGUES
   const shown = expanded ? sorted : sorted.slice(0, VISIBLE_LEAGUES)
