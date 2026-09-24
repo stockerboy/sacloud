@@ -167,6 +167,7 @@ function Stat({
    */
   tone = '',
   lead,
+  leadStack = false,
 }: {
   value: string
   unit?: string
@@ -175,7 +176,22 @@ function Stat({
   tone?: string
   /** ★폰에서만★ 큰 숫자 앞에 작게 붙는 말 — 「12승 8패」 (2026-09-23 밤 사장님 「n승n패n%」) */
   lead?: React.ReactNode
+  /** 2026-09-24 사장님 「줄 안맞음」 — 클랜은 「285승 193패」 가 길어 값과 한 줄에 안 들어가 제멋대로 줄바꿈됐다.
+      leadStack 이면 폰에서 lead 를 값 ★위 한 줄★ 로 세워(오른쪽 정렬) 모든 줄 높이가 같아진다. false 면 옛 판(앞에 붙음) */
+  leadStack?: boolean
 }) {
+  if (leadStack && lead) {
+    return (
+      <div className={`${className} flex flex-col items-end justify-center leading-tight md:block`}>
+        <span className="whitespace-nowrap text-[0.66rem] text-faint md:hidden">{lead}</span>
+        <span className="whitespace-nowrap">
+          <span className={`${NUM} ${tone === '' ? 'text-text-strong' : tone}`}>{value}</span>
+          {unit ? <Unit>{unit}</Unit> : null}
+        </span>
+        {sub ? <span className={`${SUB} sac-sub-phone`}>{sub}</span> : null}
+      </div>
+    )
+  }
   return (
     <div className={className}>
       {lead ? <span className="mr-1 text-[0.66rem] text-faint md:hidden">{lead}</span> : null}
@@ -788,10 +804,11 @@ export function ClanRankTable({
               ) : null}
               <Stat
                 /* 2026-09-23 밤 사장님 「클랜랭킹에도 n승n패 앞에 붙여」 — 폰만 · 개인랭킹과 같은 104px */
-                className={`${COL_STAT} max-md:!w-[104px]`}
+                className={`${COL_STAT} max-md:!w-[118px]`}
                 value={formatRate(row.win_rate)}
                 tone={rateClass(row.win_rate)}
                 lead={<>{formatCount(row.win)}승 {formatCount(row.lose)}패</>}
+                leadStack
                 unit="%"
                 /*
                  * ★PC 는 칸으로, 폰은 접어서★
