@@ -157,6 +157,9 @@ export function ApplyScreen({ initialKind = null }: { initialKind?: string | nul
         </h1>
         <p style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.8, color: V3.textFaint }}>
           <b style={{ color: '#9cc0ff' }}>로그인 없이</b> 신청하실 수 있습니다.
+          {/* 2026-09-25 사장님 「리그 시작은 10/1 이지만 참가 신청은 10/15 까지 받는다고 해줘」 */}
+          <br />
+          리그는 <b style={{ color: '#ffd83d' }}>10월 1일</b> 에 시작하지만 참가 신청은 <b style={{ color: '#ffd83d' }}>10월 15일까지</b> 받습니다.
         </p>
       </header>
 
@@ -259,8 +262,8 @@ export function ApplyScreen({ initialKind = null }: { initialKind?: string | nul
         )}
       </Step>
 
-      {/* ③ 연락처 */}
-      <Step no="3" title="관리자와 연락할 수 있는 ID">
+      {/* ③ 연락처 — 2026-09-25 사장님 「디스코드id or카톡id로 써줘」 — 처음 사양(위 머리말 13행)의 말 그대로 */}
+      <Step no="3" title="디스코드ID or 카톡ID">
         <p style={{ fontSize: 11.5, lineHeight: 1.7, color: V3.textGhost2, marginBottom: 10 }}>
           클랜 디스코드에 <b style={{ color: '#ffb9bd' }}>마스터 인증</b>이 되어 있어야 합니다.
         </p>

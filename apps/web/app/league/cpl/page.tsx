@@ -23,12 +23,22 @@ import { CplGuideLegacy } from './CplGuideLegacy'
  */
 const CPL_GUIDE_SHORT = true
 
+/**
+ * ★참가 클랜 「무소속 vs 서플라이」 벽을 껐다★ (2026-09-25 사장님 「이거 없애고」).
+ * `VersusWall` 컴포넌트·`loadClans` 는 그대로다 — `true` 로 두면 돌아온다 (`CLAUDE.md` 1-4).
+ * 꺼져 있으면 DB 도 안 읽는다(이 페이지가 빌드 때 DB 없이도 그려진다).
+ */
+const CPL_VERSUS_WALL = false
+
+/** 2026-09-25 사장님 「리그 시작은 10/1 이지만 참가 신청은 10/15 까지 받는다고 해줘」 */
+const APPLY_DEADLINE = '2026. 10. 15'
+
 export const revalidate = 300
 
 export const metadata: Metadata = {
   title: 'Supply 2.0 — 모집중 | log in SA CLOUD',
   description:
-    'Supply 2.0 시즌1 은 2026년 10월 1일 ~ 2027년 2월 1일. 10/1~11/1 배치고사. 무소속·3부·서플라이 1부·2부 상관없이 신청, 심사 후 승인.',
+    'Supply 2.0 시즌1 은 2026년 10월 1일 ~ 2027년 2월 1일. 참가 신청은 10월 15일까지. 10/1~11/1 배치고사. 무소속·3부·서플라이 1부·2부 상관없이 신청, 심사 후 승인.',
 }
 
 /** 참가 클랜 한 줄에 필요한 것만 */
@@ -58,9 +68,12 @@ async function loadClans(): Promise<Entry[]> {
 }
 
 export default async function CplPage() {
-  const clans = await loadClans()
+  const clans = CPL_VERSUS_WALL ? await loadClans() : []
 
   return (
+    /* ★뒷배경은 메인과 같다★ (2026-09-25 사장님 「이 페이지 뒷배경 메인페이지 배경이랑 똑같이」) —
+       홈 히어로가 쓰는 `.home-cloud`(supply-skin: 검정)를 그대로 두른다. 색을 따로 적지 않는다 */
+    <div className="home-cloud !pt-0 !pb-0">
     <div className="mx-auto w-full max-w-[var(--layout-max,1120px)] px-5 pb-16 pt-6">
       {/* ── 머리 — 로고와 상태 ─────────────────────────────────── */}
       <header className="flex flex-col gap-3 border-b border-line-soft pb-6">
@@ -85,7 +98,8 @@ export default async function CplPage() {
         <>
           {/* ── 사장님 여섯 줄 — 더 보태지 않는다 ─────────────────── */}
           <section className="mt-8 grid gap-3 md:grid-cols-2">
-            <Card k="시즌 1" v="2026. 10. 1 ~ 2027. 2. 1" />
+            <Card k="시즌 1" v="2026. 10. 1 ~ 2027. 2. 1" sub="리그 시작은 10/1" />
+            <Card k="참가 신청 접수" v={`~ ${APPLY_DEADLINE}`} sub="리그가 10/1 에 시작해도 신청은 10/15 까지 받습니다" />
             <Card k="배치고사" v="10. 1 ~ 11. 1" sub="자격미달 클랜은 탈락" />
             <Card k="참가 신청서" v="자격제한 있음" sub="무소속 · 3부 · 서플라이 1부 · 2부 상관없이 신청 가능" />
             <Card k="승인" v="심사 후 승인" />
@@ -105,12 +119,15 @@ export default async function CplPage() {
         <CplGuideLegacy />
       )}
 
-      {/* ── 참가 클랜 — ★두 진영이 마주 본다★ ──────────────────── */}
-      <VersusWall
-        left={clans.filter((c) => cplSectorOf(c.slug) === 'independent')}
-        right={clans.filter((c) => cplSectorOf(c.slug) === 'supply')}
-        other={clans.filter((c) => cplSectorOf(c.slug) === null)}
-      />
+      {/* ── 참가 클랜 — ★두 진영이 마주 본다★ (2026-09-25 껐다 · `CPL_VERSUS_WALL`) ── */}
+      {CPL_VERSUS_WALL ? (
+        <VersusWall
+          left={clans.filter((c) => cplSectorOf(c.slug) === 'independent')}
+          right={clans.filter((c) => cplSectorOf(c.slug) === 'supply')}
+          other={clans.filter((c) => cplSectorOf(c.slug) === null)}
+        />
+      ) : null}
+    </div>
     </div>
   )
 }

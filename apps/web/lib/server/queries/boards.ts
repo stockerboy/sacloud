@@ -931,7 +931,15 @@ export async function deleteBoard(
   if (!row) return missing('글을 찾을 수 없습니다')
 
   const userId = await currentUserId(request)
-  if (!canModify(row, userId, parsed.data.password)) return denied('삭제 권한이 없습니다')
+  /*
+   * ★관리자는 아무 글이나 지울 수 있다★ (2026-09-25 사장님 「관리자는 글 아무거나 다
+   * 삭제할 수 있게 해줘 기본권한으로」) — 본인 글·비밀번호 조건과 별개로, ★기본 권한★ 이다.
+   * 댓글도 같은 규칙(`deleteComment`) — 도배·욕설 같은 글은 대부분 남의 글이라 본인 확인만
+   * 있으면 관리자가 손 쓸 길이 없었다.
+   */
+  if (!canModify(row, userId, parsed.data.password) && !(await isAdmin(userId))) {
+    return denied('삭제 권한이 없습니다')
+  }
 
   await prisma.board.update({ where: { id: boardId }, data: { deletedAt: new Date() } })
   return { ok: true, value: { ok: true } }
@@ -1292,7 +1300,10 @@ export async function deleteComment(
   if (!row) return missing('댓글을 찾을 수 없습니다')
 
   const userId = await currentUserId(request)
-  if (!canModify(row, userId, parsed.data.password)) return denied('삭제 권한이 없습니다')
+  /* ★관리자는 아무 댓글이나 지울 수 있다★ — `deleteBoard` 와 같은 규칙 (2026-09-25) */
+  if (!canModify(row, userId, parsed.data.password) && !(await isAdmin(userId))) {
+    return denied('삭제 권한이 없습니다')
+  }
 
   await prisma.comment.update({ where: { id: commentId }, data: { deleted: true } })
   return { ok: true, value: { ok: true } }

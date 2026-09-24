@@ -28,10 +28,11 @@ describe('베타 시즌 번호 (D-098)', () => {
    *   우리 시즌 이름이 `시즌 N` → ★`Cloud N`★ 으로 바뀌었다 (사장님 지시).
    *   과거 카드(3rd.supply 시즌1~7)는 ★`시즌 N` 그대로★ 다 — 두 체계가 다르다.
    */
-  it('★우리 시즌은 Cloud N 이다★', () => {
-    expect(seasonLabel({ number: 0, seasonType: 'official' })).toBe('Cloud 0')
-    expect(seasonLabel({ number: 1, seasonType: 'official' })).toBe('Cloud 1')
-    expect(seasonLabel({ number: 8, seasonType: 'official' })).toBe('Cloud 8')
+  /* 2026-09-25 사장님 「클라우드 시즌이라는 단어를 안 쓴다 — 무조건 시즌 or Season」 */
+  it('★우리 시즌은 Season N 이다★', () => {
+    expect(seasonLabel({ number: 0, seasonType: 'official' })).toBe('Season 0')
+    expect(seasonLabel({ number: 1, seasonType: 'official' })).toBe('Season 1')
+    expect(seasonLabel({ number: 8, seasonType: 'official' })).toBe('Season 8')
   })
 
   it('★과거 카드는 원본 시즌 번호로 「시즌 N」 이다★ — 내부 번호는 안 나간다', () => {

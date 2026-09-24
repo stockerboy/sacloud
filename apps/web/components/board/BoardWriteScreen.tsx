@@ -22,6 +22,9 @@ export function BoardWriteScreen({ category, basePath }: { category: string; bas
     enabled: ready,
   })
   const loggedIn = !!infos.data?.data.user
+  /* ★관리자는 기본이 실명(SACLOUD)이다★ (2026-09-25 사장님 「관리자 아이디로 댓글 달았는데
+     베리타스로 달려」) — 새 글도 같은 규칙. 체크를 켜면 관리자도 익명으로 쓸 수 있다 */
+  const viewerIsAdmin = infos.data?.data.user?.role === 2
 
   const create = useMutation({
     mutationFn: (input: {
@@ -40,7 +43,10 @@ export function BoardWriteScreen({ category, basePath }: { category: string; bas
     <>
       <h1 className="mb-6 display text-2xl text-text-strong">글쓰기</h1>
       <PostForm
+        /* `infos` 가 늦게 오면(첫 렌더는 「모른다」) 관리자 여부가 확정된 뒤 한 번 다시 만든다 */
+        key={infos.isSuccess ? String(viewerIsAdmin) : 'pending'}
         requirePassword={!loggedIn}
+        initialAnonymous={viewerIsAdmin ? false : undefined}
         submitting={create.isPending}
         error={create.isError ? '글을 저장하지 못했습니다.' : null}
         submitLabel="등록"

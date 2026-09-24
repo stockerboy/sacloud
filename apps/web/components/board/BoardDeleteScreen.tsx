@@ -26,18 +26,26 @@ export function BoardDeleteScreen({ id, basePath }: { id: string; basePath: stri
     enabled: ready,
   })
 
+  /*
+   * ★관리자는 비밀번호 없이도 지운다★ (2026-09-25 사장님 「관리자는 글 아무거나 다
+   * 삭제할 수 있게 해줘 기본권한으로」) — 비로그인(익명) 글도 관리자면 비번칸을 안 물어본다.
+   * 서버(`deleteBoard`)는 이미 관리자를 통과시킨다 — 여기는 그 앞의 UI 장벽만 없앤다.
+   */
+  const infos = useQuery({ queryKey: ['infos'], queryFn: () => apiGet('infos'), enabled: ready })
+  const viewerIsAdmin = infos.data?.data.user?.role === 2
+
   const remove = useMutation({
     mutationFn: () =>
       apiSend('boardDelete', {
         params: { boardId: id },
-        body: { password: post.data?.data.login ? null : password },
+        body: { password: post.data?.data.login || viewerIsAdmin ? null : password },
       }),
     onSuccess: () => router.push(basePath),
   })
 
   if (!post.data) return <Skeleton className="h-[240px] w-full" />
 
-  const needsPassword = !post.data.data.login
+  const needsPassword = !post.data.data.login && !viewerIsAdmin
 
   return (
     <div className="rounded-[var(--radius)] border border-line bg-card px-6 py-6 text-text max-md:px-4">

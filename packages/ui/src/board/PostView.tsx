@@ -150,7 +150,11 @@ export function PostView({
         />
       </div>
 
-      {/* 본인 글일 때만 수정/삭제가 보인다. 비로그인 글은 비밀번호로 삭제한다. */}
+      {/*
+        본인 글일 때만 수정/삭제가 보인다. 비로그인 글은 비밀번호로 삭제한다.
+        ★관리자는 남의 글도 삭제할 수 있다★ (2026-09-25 사장님 「관리자는 글 아무거나 다
+        삭제할 수 있게 해줘 기본권한으로」) — 수정은 그대로 본인만(내용을 대신 고치면 안 된다).
+      */}
       {post.me || !post.login ? (
         <div className="mt-6 flex select-none flex-row-reverse gap-2">
           <Link prefetch={false} href={`${base}/${post.id}/delete`} className="btn-line px-3 py-1.5 text-sm">
@@ -158,6 +162,12 @@ export function PostView({
           </Link>
           <Link prefetch={false} href={`${base}/${post.id}/update`} className="btn-line px-3 py-1.5 text-sm">
             수정
+          </Link>
+        </div>
+      ) : admin ? (
+        <div className="mt-6 flex select-none flex-row-reverse gap-2">
+          <Link prefetch={false} href={`${base}/${post.id}/delete`} className="btn-line border-accent px-3 py-1.5 text-sm text-accent">
+            삭제 (관리자)
           </Link>
         </div>
       ) : null}

@@ -109,14 +109,26 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
           loading={!comments.data}
           onVote={(commentId, type) => commentVote.mutate({ commentId, type })}
           onReply={(parentId, content) =>
-            /* ★답글도 익명이 기본★ — 답글 칸에는 체크가 없다 (2026-09-20 사장님) */
-            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: true })
+            /*
+             * ★답글도 익명이 기본 — 단, 관리자는 아니다★ (2026-09-25 사장님 「관리자 아이디로
+             * 댓글 달았는데 베리타스로 달려」). 답글 칸에는 체크가 없어서(2026-09-20) 여기서
+             * 값을 정한다 — 관리자가 아니면 옛 규칙 그대로 익명이다.
+             */
+            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: !viewerIsAdmin })
           }
         />
         <CommentForm
+          /*
+           * ★관리자 여부가 늦게 도착해도 체크박스가 그 값을 따라가게★ — `defaultAnonymous` 는
+           * `useState` 초기값이라 한 번만 읽힌다. `/infos` 응답이 늦게 오면(첫 렌더는 항상
+           * 「모른다」) 관리자인데도 체크가 켜진 채 굳어 버린다. `key` 로 응답이 오면 한 번 다시 만든다.
+           */
+          key={infos.isSuccess ? String(viewerIsAdmin) : 'pending'}
           requirePassword={!post.data.data.login}
           /* ★체크를 보여 준다★ — 이제 값을 실제로 보내므로 화면이 거짓말하지 않는다 */
           showAnonymousToggle
+          /* ★관리자는 기본이 실명(SACLOUD)이다★ (2026-09-25) — 체크를 켜면 그때는 관리자도 익명이 된다 */
+          defaultAnonymous={!viewerIsAdmin}
           onSubmit={(content, password, anonymous) =>
             addComment.mutate({ parent_id: null, content, password, anonymous })
           }

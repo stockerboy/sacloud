@@ -24,6 +24,7 @@ import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { leagueScreen } from '@sacloud/contract'
 import { FlagMountain, FormTopCard, LeagueTabsInline, SectionTitle, TodayMatchupCard, type FormTopEntry } from '@sacloud/ui'
 import { ClanScoreboardV3, MatchCardListV3, MatchListV3 } from '@sacloud/ui'
+import Link from 'next/link'
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 import { useApiReady } from '@/app/providers'
@@ -191,6 +192,24 @@ export default function LeagueHomeScreen({
     <div className="sac-player-page"><div className="pc-container pb-[40px] pt-[16px]">
       {/* ★리그 탭★ — 상단 고정 띠에서 내려왔다 (2026-09-16 사장님) */}
       <LeagueTabsInline leagueSlug={leagueSlug} />
+      {/*
+        ★열산고용 등록하기★ (2026-09-25 사장님 「열산고용 등록하기 버튼도 만들어줘」).
+        열산리그는 「고용 클랜」 리그다(`FEATURED_LEAGUES` 주석) — 신청 종류는 이미 있었다(`ysl-new`)는데
+        들어갈 단추가 없었다. cpl 페이지의 「참가 신청서 쓰기」 단추와 같은 자리·같은 뜻이다.
+        ★신청 종류 목록(APPLICATION_KINDS_OFFERED)에는 안 넣는다★ — 그건 사장님이 감추기로
+        하신 종류들이고(2026-09-24), 이 단추는 그 목록을 거치지 않고 `kind` 를 미리 골라 보낸다.
+      */}
+      {leagueSlug === 'sanply' ? (
+        <div className="mb-[18px]">
+          <Link
+            prefetch={false}
+            href="/apply?kind=ysl-new"
+            className="inline-flex items-center rounded-[var(--radius)] border border-[#9fd3b4] bg-[#9fd3b4] px-5 py-2.5 text-[15px] font-bold text-[#0b1f14] transition-opacity hover:opacity-90"
+          >
+            열산고용 등록하기
+          </Link>
+        </div>
+      ) : null}
       {/*
         ⚠ ★2026-09-16 — 첫 칸이 리그마다 다르다★ (사장님: «최근경기 페이지에서 기존꺼
           지우고 최근 폼1위 파트를 만들어서 (…) IPL LLM 두개만 열산은 또 따로 다르게할거야»).
