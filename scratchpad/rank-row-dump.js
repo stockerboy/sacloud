@@ -1,0 +1,1 @@
+(() => { const rows = document.querySelectorAll('.sac-rank-row'); const links = document.querySelectorAll('a[href*="/player/"]'); const r = rows[0]; return 'rows=' + rows.length + ' links=' + links.length + ' width=' + innerWidth + '\n' + (r ? r.outerHTML.replace(/\s+/g, ' ').slice(0, 900) : '(row 없음) ' + document.body.innerText.replace(/\s+/g, ' ').slice(0, 300)) })()

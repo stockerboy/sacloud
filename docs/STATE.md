@@ -77,6 +77,8 @@
        단추 QA4: 더 불러오기·비교분석(입력칸 열림)·댓글 답글 폼(textarea) · 로그인 폼(id/pw/제출)·회원가입 링크 · 푸터 약관/개인정보(/clause/service · /clause/policy) — 모두 OK · 콘솔 에러 0
 06:11  9회차  사이트 200 · Vercel error 0 · DB 에 22s `SELECT DISTINCT subject, rawClanNo`(수집기) 한 번 · VPS load 2.3 · 스왈 여유 447(06:13 season0-apply 시작 직후)
        ★회귀 확인 전부 OK★ 랭킹 1·2쪽 중복 0(3회) · 공지 1건·자유목록 중복 0 · 추천 1→2→1(취소) · 청크에 clamp(5.6vw)·league-supply1 있음
+06:35 10회차  사이트 200 · 랭킹 중복 0 · Vercel error 0 · DB 에 25s `SELECT DISTINCT subject, rawClanNo`(수집기 · 매 회차 보임 — 최적화 후보)
+       ★VPS 안정★ 06:13 season0-apply → 선수 육각 06:21 완료(8분 · 새 질의) · load 2.5 · 여유 1238 · 스왈 여유 896 → ★roster 크론 되살림(06:36)★. hex 만 끔 상태.
 ```
 
 ## 0-새벽. ★2026-09-25 새벽 — 게시판 공지·고정 · 배지 전부 끔 · PL 잔재 · Season 표기 · 3rdcloud.my 이전★
