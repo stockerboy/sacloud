@@ -78,6 +78,12 @@ deluxe 의 Match 는 3,318건 있다 (최신 260923225353)   → 「전부 빠�
 9/20~9/23 나흘: 승수 같은데 승/패 있는 경기 867건 / 전체 11,368건 (★7.6%★)
 ```
 
+### 원인 ⑥ ★2026-09-24 — 클랜번호 차단이 「한쪽 목록만 온 경기」 의 상대를 잘못 막았다★ (`leagueVerdict.ts resolveSides`)
+사장님 「deluxe 자이언트 기록 아직도 누락」 → `PROJECT_ONLY_KEYS` 로 5경기 추적: 전부 「blue=deluxe 증명 못 했다(unknown_clan)」.
+`matchClanNos` 는 목록을 받은 쪽(subject) 의 `rawClanNo` 뿐인데 「번호가 이 경기에 없으면 안 나왔다」 로 읽어 상대를 막았다.
+제 목록이 안 오는 클랜(deluxe 는 slug 가 병영과 달랐다)의 경기가 통째로 빠지는 구조. → 번호가 둘 이상일 때만 막는다. 재적재(backfill-confirm3) 로 되메움.
+**보는 법**: `PROJECT_ONLY_KEYS=키,키 pnpm --filter @sacloud/worker nexon unified-project --from-start` — 갈림길마다 로그.
+
 ### 원인 ⑤ ★진짜 원인★ — 「라운드 승수가 같으면 무승부」 라서 안 만들었다 (`matchNormalize.ts`)
 원문의 `red_win_cnt`/`blue_win_cnt` 가 같은데 `result_wdl` 은 「승」/「패」 인 경기가 7.6% 다. 투영기는 승수만 보고 `draw` 로 넘겼다(미리보기 무승부 9,931건 중 상당수가 이것).
 **고침 `782f508c`**: payload 를 준 subject(원문을 긁은 클랜)가 어느 편인지 이름으로 알고, 그 클랜의 승/패로 승자를 정한다. 스위치 `TIE_BREAK_BY_RESULT_WDL`(unifiedProject.ts). 모르면 옛날처럼 draw. CLI 요약에 「무승부풀림」 칸. 테스트 `matchNormalize.test.ts` 3건 추가(30/30 초록).
