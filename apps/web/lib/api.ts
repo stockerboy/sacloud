@@ -84,6 +84,20 @@ export interface ApiGetOptions {
   signal?: AbortSignal
 }
 
+/**
+ * ★★정보갱신 뒤 엣지 캐시 우회★★ (2026-09-24 사장님 「정보갱신 눌러도 계속 안 돼 · 될 때까지 개발해」)
+ *
+ *   상세 API(선수 프로필·리그 선수·클랜)는 okPublic 으로 ★Vercel 엣지에 5~10분 캐시★ 된다.
+ *   실측: DB 는 자이언트 로 바뀌었는데 /api/players/…/profile 이 X-Vercel-Cache: HIT · Age 221 로
+ *   옛 giantslayer 를 계속 돌려줬다 — 화면이 아무리 다시 읽어도 소용없던 이유다.
+ *   갱신이 끝나면 `markRenewBust()` 로 표식을 세우고, 그 뒤 모든 GET 에 `_r=<시각>` 을 붙여
+ *   ★엣지 키를 바꿔 원본에서 새로 받는다★ (그 사용자 세션에서만 · 다른 사용자 캐시는 그대로).
+ */
+let renewBust = 0
+export function markRenewBust(): void {
+  renewBust = Date.now()
+}
+
 export async function apiGet<K extends EndpointKey>(
   key: K,
   options: ApiGetOptions = {},
@@ -95,6 +109,7 @@ export async function apiGet<K extends EndpointKey>(
   for (const [name, value] of Object.entries(options.search ?? {})) {
     if (value !== undefined) search.set(name, String(value))
   }
+  if (renewBust > 0) search.set('_r', String(renewBust))
   const queryString = search.toString()
 
   const response = await fetch(`${BASE_URL}${path}${queryString ? `?${queryString}` : ''}`, {

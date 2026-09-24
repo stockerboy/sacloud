@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { markRenewBust } from './api'
 import type { EndpointKey } from '@sacloud/contract'
 import type { RefreshState } from '@sacloud/ui'
 import { buildPath, endpoints } from '@sacloud/contract'
@@ -62,6 +64,7 @@ export function useRefresh(
   const [state, setState] = useState<RefreshState>('idle')
   const [renewedAt, setRenewedAt] = useState<string | null>(null)
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   /** 끝날 때까지 물어본다. 못 물어보면 조용히 접는다 — 화면은 어차피 다시 그린다 */
   const waitUntilDone = async (statusPath: string): Promise<void> => {
@@ -103,6 +106,9 @@ export function useRefresh(
 
         /* ★여기서 끝내지 않는다★ — 진짜로 바뀐 뒤에 화면을 다시 그린다 */
         if (options.statusPath !== undefined) await waitUntilDone(options.statusPath)
+        /* ★엣지 캐시를 우회해 다시 읽는다★ — 표식을 세운 뒤 클라이언트 쿼리를 전부 무효화 (api.ts markRenewBust 주석) */
+        markRenewBust()
+        void queryClient.invalidateQueries()
         router.refresh()
         setState('idle')
       } catch {
