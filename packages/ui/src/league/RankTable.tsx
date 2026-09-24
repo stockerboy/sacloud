@@ -168,6 +168,7 @@ function Stat({
   tone = '',
   lead,
   leadStack = false,
+  leadSide = false,
 }: {
   value: string
   unit?: string
@@ -179,7 +180,24 @@ function Stat({
   /** 2026-09-24 사장님 「줄 안맞음」 — 클랜은 「285승 193패」 가 길어 값과 한 줄에 안 들어가 제멋대로 줄바꿈됐다.
       leadStack 이면 폰에서 lead 를 값 ★위 한 줄★ 로 세워(오른쪽 정렬) 모든 줄 높이가 같아진다. false 면 옛 판(앞에 붙음) */
   leadStack?: boolean
+  /** 2026-09-25 사장님 「N전 · N승N패 둘다 퍼센트기준 왼쪽에 쓰고 줄을 맞춰」 —
+      폰에서 lead 를 값 ★왼쪽 같은 줄★ 에 놓고, 값 칸에 최소폭을 줘 퍼센트 시작점을 줄마다 맞춘다.
+      PC(`md:`)는 옛 모습 그대로다. 옛 판(값 위에 세우기)은 `leadStack` 으로 남아 있다 */
+  leadSide?: boolean
 }) {
+  if (leadSide && lead) {
+    return (
+      <div className={`${className} flex items-baseline justify-end gap-1.5 leading-tight md:block`}>
+        <span className="whitespace-nowrap text-[0.62rem] tabular-nums text-faint md:hidden">{lead}</span>
+        <span className="whitespace-nowrap max-md:min-w-[3.15rem] max-md:text-right">
+          <span className={`${NUM} ${tone === '' ? 'text-text-strong' : tone}`}>{value}</span>
+          {unit ? <Unit>{unit}</Unit> : null}
+        </span>
+        {/* 폰에서는 lead 와 같은 값이라 두 번 적지 않는다 — PC 에서만 옛 자리에 남긴다 */}
+        {sub ? <span className={`${SUB} sac-sub-phone hidden md:block`}>{sub}</span> : null}
+      </div>
+    )
+  }
   if (leadStack && lead) {
     return (
       <div className={`${className} flex flex-col items-end justify-center leading-tight md:block`}>
@@ -677,7 +695,8 @@ export function ClanRankTable({
             <div className={COL_WL}>패배</div>
           </>
         ) : null}
-        {columns.winRate ? <div className={`${COL_STAT} max-md:!w-[104px]`}>승률</div> : null}
+        {/* 2026-09-25 「줄을 맞춰」 — 머리글만 104px 이고 몸통은 118px 이라 폰에서 칸이 어긋나 있었다 */}
+        {columns.winRate ? <div className={`${COL_STAT} max-md:!w-[118px]`}>승률</div> : null}
         {columns.rating ? <div className={COL_RATING}>래더</div> : null}
       </div>
       <TableBody
@@ -808,7 +827,7 @@ export function ClanRankTable({
                 value={formatRate(row.win_rate)}
                 tone={rateClass(row.win_rate)}
                 lead={<>{formatCount(row.win)}승 {formatCount(row.lose)}패</>}
-                leadStack
+                leadSide
                 unit="%"
                 /*
                  * ★PC 는 칸으로, 폰은 접어서★
@@ -1026,7 +1045,8 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
         */}
         {columns.winRate ? <div className={COL_PWL}>승리</div> : null}
         {columns.winRate ? <div className={COL_PWL}>패배</div> : null}
-        {columns.winRate ? <div className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[104px]`}>승률</div> : null}
+        {/* 2026-09-25 「줄을 맞춰」 — 머리글 104px · 몸통 92px 로 어긋나 있었다 */}
+        {columns.winRate ? <div className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[92px]`}>승률</div> : null}
         {columns.kd ? <div className={`${COL_PSTAT} ${kdHidden}`}>킬뎃</div> : null}
         {columns.kd ? <div className={COL_PWL}>평균킬</div> : null}
         {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
@@ -1115,7 +1135,9 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                         (2026-09-15 · 무한 QA). 위아래 여백을 주고 같은 만큼 당겨
                         ★보이는 크기는 그대로★ 두면서 누를 면만 넓힌다 */}
                     <Link prefetch={false}
-                      className="-my-2 block truncate py-2 hover:text-text-strong"
+                      /* 2026-09-25 사장님 「모바일 버전 닉네임이 너무 커서 짤려 좀 줄이고」 —
+                         줄 글씨(0.95rem)를 그대로 물려받아 「Jaehyunp…」처럼 잘렸다. 폰에서만 0.86rem */
+                      className="-my-2 block truncate py-2 hover:text-text-strong max-md:text-[0.86rem]"
                       href={leaguePlayerPath(leagueSlug, row.player.id)}
                     >
                       {/* `a { color: inherit }` — 색은 안쪽 span 에 준다 (D-231) */}
@@ -1307,12 +1329,14 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                *   닉네임 칸이 짓눌려 잘렸다. ★총 전적 한 숫자★ 로 줄이면(최대 「1,234전」 7자) 칸을 줄일 수 있고
                *   그만큼 닉네임에 자리를 돌려준다. sub(같은 값 아래 중복 표기)도 없앤다 — 「몇전인지만」.
                */
-              className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[82px]`}
+              /* 2026-09-25 — 「N전」이 퍼센트 왼쪽 같은 줄로 오면서 82px 로는 「1,234전 60.7%」가 안 들어간다 → 92px.
+                 늘어난 10px 은 아래 닉네임 글자를 0.95 → 0.86rem 으로 줄여 돌려줬다 */
+              className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[92px]`}
               value={formatRate(row.win_rate)}
               tone={rateClass(row.win_rate)}
               unit="%"
               lead={<>{formatCount(row.win + row.lose)}전</>}
-              leadStack
+              leadSide
             />
             )}
             {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107).

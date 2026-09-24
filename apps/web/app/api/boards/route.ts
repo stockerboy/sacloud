@@ -24,8 +24,16 @@ export async function GET(request: Request) {
       type: query(request, 'type'),
       q: query(request, 'q'),
     })
-    /* 짧게(30초) — 목록은 세션과 무관하지만 사람이 방금 쓴 글이 곧 보여야 한다 (D-240) */
-    return okPagePublic(page, 30)
+    /*
+     * 짧게 — 목록은 세션과 무관하지만 사람이 방금 쓴 글이 곧 보여야 한다 (D-240).
+     *
+     * ⚠ ★2026-09-25 — 30초 → 5초★ (사장님 「하나 삭제했는데 삭제가 안돼」)
+     *   글을 지워도 ★같은 주소가 30초 동안 옛 목록을 그대로 돌려줬다.★ 관리자가 지우고
+     *   새로고침해도 그대로 있으니 ★삭제가 안 먹은 것처럼★ 보인다 (실제로는 DB 에서 지워져 있었다).
+     *   Board 는 15줄짜리 작은 표라 5초로 줄여도 원본 부담이 거의 없다.
+     *   옛 값 30 (`CLAUDE.md` 1-4).
+     */
+    return okPagePublic(page, 5)
   })
 }
 

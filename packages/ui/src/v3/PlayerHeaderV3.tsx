@@ -558,7 +558,11 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
           <MarkCircle clan={data.clan} size={64} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-              <span style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap', ...nameStyle(theme), overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.player.name}</span>
+              {/* 2026-09-25 사장님 (폰 사진) 「모바일 버전 닉네임이 너무 커서 짤려 좀 줄이고」 —
+                  34px 고정이라 폰 390px 에서 이름 자리가 140px 밖에 안 남아 「원포박...」 으로 잘렸다.
+                  ★PC 는 34px 그대로★ 두고 폰에서만 줄인다 (clamp: 390px 에서 약 22px · 20px 밑으로는 안 내려간다).
+                  옛 값은 34 고정 (`CLAUDE.md` 1-4) */}
+              <span style={{ fontSize: 'clamp(20px, 5.6vw, 34px)', fontWeight: 800, letterSpacing: '-.01em', whiteSpace: 'nowrap', ...nameStyle(theme), overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{data.player.name}</span>
               {HEAD_WEAPON_CHIPS && weapon !== null ? (
                 <span style={{ fontSize: 11, color: V3.textMuted, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusChip, background: V3.chip, padding: '3px 8px', whiteSpace: 'nowrap' }}>{WEAPON_LABEL[weapon]}</span>
               ) : null}

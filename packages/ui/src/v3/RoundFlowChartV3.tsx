@@ -126,6 +126,18 @@ const PLAY_MS_PER_ROUND = 5000 /* 2026-09-23 저녁 사장님 「훨씬 더 느�
 const PLAY_BUTTON_BELOW = true
 const HOVER_STOPS_PLAY = false
 const MARK_FOLLOWS = true
+/*
+ * ★2026-09-25 사장님★ 「원 마크 두개는 오른쪽 끝에 처음에는 고정시키고 그래프를 그려나가고
+ *  ★사용자가 직접 축을 이동할 때만★ 마크도 같이 움직이게 해둬 (2개다)」
+ *
+ *   그리는 동안 마크가 ★펜 끝★ 을 따라다니던 것을 끈다. 이제:
+ *     그리는 중   → 두 마크 모두 ★오른쪽 끝(마지막 값)에 붙박이★ · 선만 왼쪽부터 자라난다
+ *     축을 만지면 → 그때는 ★축을 따라 움직인다★ (`hover`)
+ *
+ *   ⚠ 옛 판(펜 끝을 따라오기)은 지우지 않았다 (`CLAUDE.md` 1-4) — 이 값을 `true` 로 되돌리면 된다.
+ *     2026-09-24 에 사장님이 「그래프가 그려질 때든 축을 이동할 때든 따라와야」 라고 하셔서 켰던 것이다.
+ */
+const MARK_FOLLOWS_DRAW = false
 const JAGGED = true
 /** 찌글찌글 폭(%) · 간격(px) */
 const JAG_AMP = 2.2
@@ -565,7 +577,9 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
    * §7-2 ★마크가 축을 따라온다★ (사장님 「클랜마크 단추가 그래프가 그려질 때든 축을 이동할 때든 따라와야 하는데 오른쪽 끝에 고정」)
    *   축이 있으면 축 자리 · 그리는 중이면 ★펜 끝★(선 길이의 draw 지점) · 둘 다 아니면 끝. 옛 판(MARK_FOLLOWS=false)은 늘 끝
    */
-  const tip = MARK_FOLLOWS && draw < 1 && hover === null && winPts.length > 1 ? pointAtLength(winPts, draw) : null
+  /* 2026-09-25 — `MARK_FOLLOWS_DRAW` 가 꺼져 있으면 펜 끝을 안 잡는다 → 마크는 끝(`last`)에 붙박이다.
+     선이 자라는 것(`revealW`)은 이것과 무관하게 그대로 돈다 */
+  const tip = MARK_FOLLOWS && MARK_FOLLOWS_DRAW && draw < 1 && hover === null && winPts.length > 1 ? pointAtLength(winPts, draw) : null
   /* 클립 사각형 폭 — 다 그렸으면 판 전체, 그리는 중이면 펜 끝 X 까지 (왼쪽부터 열린다) */
   const revealW = draw >= 1 ? width : winPts.length > 1 ? pointAtLength(winPts, Math.max(0, Math.min(1, draw)))[0] : 0
   const tipPt: Pt | null = tip === null ? null : (model.pts.filter((p) => p.x <= tip[0] + 0.01).pop() ?? model.pts[0] ?? null)

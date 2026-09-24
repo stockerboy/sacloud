@@ -444,7 +444,17 @@ function pinsApply(query: BoardListQuery): boolean {
 
 async function pinnedBoardIds(): Promise<string[]> {
   const rows = await prisma.board.findMany({
-    where: { pinnedAt: { not: null }, deletedAt: null, ...(hidesSeedData() ? { origin: { not: SEED_ORIGIN } } : {}) },
+    /*
+     * ⚠ ★2026-09-25 — 공지 글은 고정 줄에 얹지 않는다★ (사장님 「공지가 지금 두개라 하나 삭제했는데 삭제가 안돼」)
+     *
+     *   공지는 이미 목록 맨 위에 ★제 자리★ 가 있다 (`EtaNoticeCard` — `category=notice` 로 따로 받아 카드로 그린다).
+     *   그런데 `notice=true` 인 글에 `pinnedAt` 까지 찍히면 ★공지 카드에 한 번, 고정 줄에 또 한 번★ 나온다.
+     *   사장님 눈에는 ★공지가 두 개★ 로 보이고, 하나를 지워도 ★나머지 한 벌이 남아★ 「삭제가 안 된다」가 된다.
+     *   (실제 운영에서 `cmufogemb…` 「SA CLOUD 안내 및 서약」 이 notice=true · pinned 둘 다였다.)
+     *
+     *   고정 자체는 그대로 둔다 — 공지가 아닌 글은 예전처럼 얹힌다. 공지만 빠진다.
+     */
+    where: { pinnedAt: { not: null }, notice: false, deletedAt: null, ...(hidesSeedData() ? { origin: { not: SEED_ORIGIN } } : {}) },
     orderBy: [{ pinnedAt: 'desc' }, { id: 'desc' }],
     take: PIN_LIMIT,
     select: { id: true },
