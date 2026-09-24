@@ -250,6 +250,8 @@ const resolvers: Record<EndpointKey, Resolver> = {
    * ⚠ 그래서 ★이 카드는 mock 모드에서 확인할 수 없다.★ `live` 로 봐야 한다.
    */
   leagueTodayMatchup: () => ok({ matchup: null }),
+  /* 2026-09-24 — 「오늘 가장 치열했던 경기」. Mock 은 라운드 집계가 없으니 null 그대로(지어내지 않는다) */
+  leagueTodayHeatedMatch: () => ok({ match: null }),
   /* 오늘의 최다연승·최다연패 — 픽스처에 오늘 경기가 없다. ★가짜 클랜을 만들지 않는다★ */
   leagueTodayStreaks: () =>
     ok({ from: '2026-09-22T15:00:00+09:00', to: '2026-09-23T15:00:00+09:00', best: null, worst: null }),

@@ -18,12 +18,12 @@
  *   최근 경기        여덟 줄. 더 보려면 「경기」 탭으로
  *   ```
  */
-import { use, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { leagueScreen } from '@sacloud/contract'
 import { FlagMountain, FormTopCard, LeagueTabsInline, SectionTitle, TodayMatchupCard, type FormTopEntry } from '@sacloud/ui'
-import { MatchListV3 } from '@sacloud/ui'
+import { ClanScoreboardV3, MatchCardListV3, MatchListV3 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 import { useApiReady } from '@/app/providers'
@@ -45,6 +45,15 @@ const FLAG_REFRESH_MS = 60_000
  * 그대로 살아 있다. 이 값을 `true` 로 두면 한 글자로 옛 화면이 돌아온다.
  */
 const FORM_TOP_CARD = false as boolean
+
+/**
+ * ★맨 위 카드★ (2026-09-24 사장님 「이거(상대전적) 없애고 경기분석에서 라운드별 분석 그거를
+ * 여기 펼쳐놔줘(그 날 하루 가장 치열하게 경기한 게임 - 라운드가 많을수록 치열)」).
+ *
+ * `'heated'` — 오늘 라운드가 가장 많았던 경기를 ★처음부터 펼쳐서★ (경기분석 화면 그대로).
+ * `'matchup'` — 옛 「상대전적」(오늘 가장 많이 맞붙은 클랜 한 쌍). 지우지 않았다 — 되돌릴 때 이 값.
+ */
+const TOP_CARD: 'heated' | 'matchup' = 'heated'
 
 export default function LeagueHomeScreen({
   params,
@@ -89,8 +98,19 @@ export default function LeagueHomeScreen({
   const todayMatchup = useQuery({
     queryKey: ['league', leagueSlug, 'today-matchup'],
     queryFn: () => apiGet('leagueTodayMatchup', { params: { leagueId: leagueSlug } }),
-    enabled: ready && hero === 'form',
+    enabled: ready && hero === 'form' && TOP_CARD === 'matchup',
     refetchInterval: 60_000,
+  })
+
+  /**
+   * ★오늘 가장 치열했던 경기★ (2026-09-24 사장님) — 「상대전적」 자리를 대신한다.
+   * 라운드 집계(5분 주기)가 갱신될 때마다 순위가 바뀔 수 있어 같은 주기로 다시 묻는다.
+   */
+  const todayHeated = useQuery({
+    queryKey: ['league', leagueSlug, 'today-heated-match'],
+    queryFn: () => apiGet('leagueTodayHeatedMatch', { params: { leagueId: leagueSlug } }),
+    enabled: ready && hero === 'form' && TOP_CARD === 'heated',
+    refetchInterval: 5 * 60_000,
   })
 
   const daily = useQuery({
@@ -122,6 +142,18 @@ export default function LeagueHomeScreen({
       })
       .then((response) => setExpanded((prev) => ({ ...prev, [matchId]: response.data })))
   }
+
+  /*
+   * ★펼치는 손가락을 대신 눌러 준다★ — 치열했던 경기가 오면 클릭 없이 바로 상세를 받아 온다.
+   * ⚠ 이 저장소 next build 는 eslint-disable 주석이 「등록 안 된 규칙」 이면 그 자체로 빌드를 깬다
+   *   (2026-09-24 실측 — `react-hooks/exhaustive-deps` 를 껐다가 45분간 운영 배포가 멎었다).
+   *   그래서 dep 배열에 `loadDetail` 을 안 넣는 대신 ★안에서 매번 새로 안 만든다★ —
+   *   `loadDetail` 은 `expanded[matchId]` 가 있으면 그대로 반환하는 멱등 함수라 매 렌더 다시 불러도 안전하다.
+   */
+  const heatedMatch = todayHeated.data?.data.match ?? null
+  useEffect(() => {
+    if (heatedMatch) loadDetail(heatedMatch)
+  }, [heatedMatch])
 
   const board = flags.data?.data ?? null
 
@@ -172,6 +204,36 @@ export default function LeagueHomeScreen({
               day={daily.data?.data.day ?? null}
               entries={formEntries}
             />
+          ) : TOP_CARD === 'heated' ? (
+            heatedMatch ? (
+              <>
+                <SectionTitle
+                  title="오늘 가장 치열했던 경기"
+                  note="라운드가 많이 간 경기일수록 치열합니다."
+                />
+                <MatchCardListV3
+                  style={{ marginTop: 12 }}
+                  matches={[heatedMatch]}
+                  league={{ category: league.data?.data.category ?? 'independent', slug: leagueSlug }}
+                  neutral
+                  expanded={expanded}
+                  onExpand={loadDetail}
+                  initialOpenId={heatedMatch.id}
+                  renderDetail={(d) => (
+                    <ClanScoreboardV3
+                      detail={d}
+                      leagueCategory={league.data?.data.category ?? 'independent'}
+                      leagueSlug={leagueSlug}
+                      winnerFirst
+                    />
+                  )}
+                />
+              </>
+            ) : todayHeated.data ? (
+              <div className="rounded-[var(--radius)] border border-line-soft px-4 py-8 text-center text-[13px] text-meta">
+                오늘 아직 라운드 분석이 끝난 경기가 없습니다.
+              </div>
+            ) : null
           ) : todayMatchup.data ? (
             <TodayMatchupCard matchup={todayMatchup.data.data.matchup} />
           ) : null}

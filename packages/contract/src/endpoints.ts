@@ -40,6 +40,7 @@ import {
   ApplicationWaiting,
   DailyPodium,
   TodayMatchupResponse,
+  TodayHeatedMatchResponse,
   TodayStreaksResponse,
   LeagueHexTop,
   ClanSummary,
@@ -573,6 +574,17 @@ export const endpoints = {
     origin: 'designed',
     description: '오늘의 상대전적 — 15:00 KST 창에서 가장 많이 맞붙은 등록클랜 한 쌍',
     response: apiResponse(TodayMatchupResponse),
+  },
+  /**
+   * ★2026-09-24 사장님★ — 리그홈의 「상대전적」 자리를 대신한다. 「그 날 하루 가장 치열하게
+   * 경기한 게임 — 라운드가 많을수록 치열」. 라운드 수는 `MatchClanHexV2.rounds`(5분 주기 집계)를 본다.
+   */
+  leagueTodayHeatedMatch: {
+    method: 'GET',
+    path: '/leagues/:leagueId/today-heated-match',
+    origin: 'designed',
+    description: '오늘 가장 치열했던 경기 — 15:00 KST 창에서 라운드가 가장 많았던 한 판',
+    response: apiResponse(TodayHeatedMatchResponse),
   },
   /**
    * ★오늘의 최다연승 · 최다연패★ (2026-09-22 사장님: 「클랜랭킹에 비워지게된 자리는

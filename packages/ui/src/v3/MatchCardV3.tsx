@@ -321,11 +321,16 @@ export interface MatchCardListV3Props {
   onExpand: (match: MatchListItem) => void
   renderDetail: (detail: MatchDetail) => ReactNode
   style?: CSSProperties
+  /**
+   * ★처음부터 펼쳐 둘 경기 id★ (2026-09-24 사장님 「여기 펼쳐놔줘」 — 「오늘 가장 치열했던 경기」
+   * 카드는 눌러야 열리는 게 아니라 ★처음부터 펼쳐져 있어야★ 한다). 안 주면 옛 판(전부 접힘) 그대로.
+   */
+  initialOpenId?: string | null
 }
 
 /** 카드 목록 — 펼침 상태를 여기서 하나만 쥔다 (한 번에 한 장) */
-export function MatchCardListV3({ matches, league, viewer = null, neutral = false, expanded, onExpand, renderDetail, style }: MatchCardListV3Props) {
-  const [open, setOpen] = useState<string | null>(null)
+export function MatchCardListV3({ matches, league, viewer = null, neutral = false, expanded, onExpand, renderDetail, style, initialOpenId = null }: MatchCardListV3Props) {
+  const [open, setOpen] = useState<string | null>(initialOpenId)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, ...style }}>
       {matches.map((m) => (

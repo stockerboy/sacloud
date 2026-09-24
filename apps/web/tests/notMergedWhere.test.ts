@@ -8,12 +8,19 @@ import { notMergedWhere } from '../lib/server/queries/search'
  * `note IS NULL` 인 줄(26,738명 중 26,729명)을 WHERE 에서 뺐다. `note IS NULL` 을
  * 먼저 받아 주는 형태인지를 잠가 둔다 — 이 모양이 다시 `NOT: { note: {...} } }` 단독으로
  * 되돌아가면 검색이 다시 거의 다 죽는다.
+ *
+ * ⚠ 2026-09-24 저녁 추가 — 「병영수첩으로 검색하는 기능 안먹는거같아」 를 잡으며 한 겹 더 얹었다.
+ *   `barracks-identity-merge` 가 남기는 껍데기는 이름이 「(합쳐짐→…)」 다(note 가 아니라 name 이 표식이다) —
+ *   그 이름도 같이 걸러야 병영수첩 주소 검색이 옛 껍데기를 다시 안 물고 온다.
  */
 describe('notMergedWhere', () => {
-  it('note 가 NULL 인 줄도 통과시킨다 (SQL 세값논리 함정)', () => {
+  it('note 가 NULL 인 줄도 통과시키고, 「(합쳐짐→…)」 이름 줄은 뺀다', () => {
     const where = notMergedWhere()
     expect(where).toEqual({
-      OR: [{ note: null }, { NOT: { note: { startsWith: 'merged-into:' } } }],
+      AND: [
+        { OR: [{ note: null }, { NOT: { note: { startsWith: 'merged-into:' } } }] },
+        { NOT: { name: { startsWith: '(합쳐짐→' } } },
+      ],
     })
   })
 })

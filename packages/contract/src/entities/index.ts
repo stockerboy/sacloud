@@ -18,3 +18,5 @@ export * from './leagueApplication'
 /* 오늘의 셋 — 그날 고르게 잘한 사람·클랜 (2026-09-14 사장님) */
 export * from './dailyPodium'
 export * from './todayMatchup'
+/* 2026-09-24 사장님 — 「상대전적」 자리를 대신한다: 오늘 라운드 가장 많이 간(가장 치열했던) 경기 */
+export * from './todayHeatedMatch'
