@@ -133,9 +133,24 @@ export async function findPlayerByName(name: string): Promise<PlayerSearchItem |
  *   그래서 ★몇 줄 받아서 「마지막으로 뛴 날」로 고른다.★ 같은 사람의 여러 줄 중
  *   ★살아 있는 줄★ 을 집는다. 여전히 한 줄만 돌려준다 — 화면 모양은 안 바뀐다.
  */
-/** 두 갈래를 합친 뒤 남은 3rd.supply 그림자 줄 — note 가 `merged-into:` 로 시작한다 (worker `player-merge-split`). 줄은 남기고 화면에서만 숨긴다 */
-export function notMergedWhere(): { NOT: { note: { startsWith: string } } } {
-  return { NOT: { note: { startsWith: 'merged-into:' } } }
+/**
+ * 두 갈래를 합친 뒤 남은 3rd.supply 그림자 줄 — note 가 `merged-into:` 로 시작한다 (worker `player-merge-split`).
+ * 줄은 남기고 화면에서만 숨긴다.
+ *
+ * ⚠ ★★2026-09-24 사장님 「현물 검색창에 치면 안 나와」 — SQL 세값논리 함정★★
+ *
+ *   옛 판 `{ NOT: { note: { startsWith: 'merged-into:' } } }` 는 Postgres 에서
+ *   `NOT (note LIKE 'merged-into:%')` 가 된다. `note` 가 **NULL** 이면 `LIKE` 가 `NULL` 을 내고
+ *   `NOT NULL` 도 `NULL` 이다 — SQL 은 그것을 **거짓처럼** 다뤄 그 줄을 WHERE 에서 뺀다.
+ *
+ *   실측: `note` 가 있는 선수는 **26,738명 중 9명뿐** 이다. ★나머지 26,729명 전부★ 가
+ *   이 조건에 걸려 검색(정확검색 `playerByName` · 자동완성 접두 `prefixRows`)에서 빠지고 있었다.
+ *   병영수첩에서 갓 만들어진 「현물」(note: null) 도 그중 하나다.
+ *
+ *   ★NULL 을 먼저 받아 준다★ — `note IS NULL` 이면 무조건 통과, 아니면 옛 조건 그대로.
+ */
+export function notMergedWhere(): { OR: [{ note: null }, { NOT: { note: { startsWith: string } } }] } {
+  return { OR: [{ note: null }, { NOT: { note: { startsWith: 'merged-into:' } } }] }
 }
 
 const EXACT_CANDIDATES = 8
