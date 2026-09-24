@@ -1,6 +1,6 @@
 'use client'
 
-import { use } from 'react'
+import { use, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { PlayerIdentity, PlayerLeagueList, ProfileEmpty, ProfileSkeleton } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
@@ -40,21 +40,29 @@ export default function PlayerPage({ params }: { params: Promise<{ playerId: str
     enabled: ready,
   })
 
-  const refresh = useRefresh('playerRenew', { playerId })
   /*
-   * ★정보갱신 뒤 닉·소속을 다시 읽는다★ (2026-09-24 사장님 「병영수첩 닉이랑 우리 닉이 안 맞잖아 자이언트 · 정보갱신 눌러도」).
-   *   옛 판은 renewedAt 만 갱신해 「방금 전」 은 떴지만 ★이름은 그대로★ 였다 — 서버는 병영을 읽어
-   *   giantslayer→자이언트 로 이미 고쳤는데 화면만 옛 이름이었다. 병영 읽는 데 2~3초 걸려 나눠 다시 읽는다.
+   * ★정보갱신 = 병영수첩의 닉·소속으로 최신화★ (2026-09-24 사장님 「아직도 정보갱신 누르면 최신화 안돼 · 병영수첩상의 닉네임과 클랜으로 최신화 돼야하는데」).
+   *
+   *   두 가지가 겹쳐 안 됐다:
+   *   ① 이 화면은 statusPath 를 안 넘겨 ★병영 다 읽기 전에★ 끝나 버렸다 (리그 페이지는 넘긴다).
+   *   ② 프로필은 ★클라이언트 쿼리★ 인데 옛 코드는 router.refresh() 만 했다 — 그건 서버컴포넌트만 새로 그려 소용없었다.
+   *   → statusPath 를 넘겨 ★병영 완료를 기다리고★, 끝나면(state 가 pending→그외) 그 쿼리를 무효화해 다시 읽는다. 타이머는 보조.
    */
+  const refresh = useRefresh('playerRenew', { playerId }, { statusPath: `/api/players/${playerId}/renew-status` })
   const queryClient = useQueryClient()
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['player', playerId, 'profile'] })
+    void queryClient.invalidateQueries({ queryKey: ['player', playerId] })
+  }
+  const wasPending = useRef(false)
+  useEffect(() => {
+    if (wasPending.current && refresh.state !== 'pending') invalidate()
+    wasPending.current = refresh.state === 'pending'
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refresh.state])
   const onRefresh = () => {
     refresh.run()
-    for (const wait of [2500, 5000, 9000]) {
-      window.setTimeout(() => {
-        void queryClient.invalidateQueries({ queryKey: ['player', playerId, 'profile'] })
-        void queryClient.invalidateQueries({ queryKey: ['player', playerId] })
-      }, wait)
-    }
+    for (const wait of [3000, 6000, 10000, 15000]) window.setTimeout(invalidate, wait)
   }
 
   /*

@@ -28,6 +28,17 @@ import {
 } from './profileKit'
 
 /**
+ * ★리그 성격 라벨·색★ (2026-09-24 사장님 「IPL=일반 · Supply1.0/2.0=경쟁 · 색도 채우고」).
+ *   nolink=IPL → 일반(파랑) · supply=PL(=Supply1.0) → 경쟁(호박). 열산(sanply)은 사장님이 안 정해 라벨 없음.
+ *   Supply2.0 은 아직 우리 DB 에 없는 신규 리그다 — 만들어지면 여기 한 줄 추가한다.
+ */
+function leagueKindOf(slug: string): { label: string; color: string } | null {
+  if (slug === 'nolink') return { label: '일반', color: '#5c80e0' }
+  if (slug === 'supply') return { label: '경쟁', color: '#f59e0b' }
+  return null
+}
+
+/**
  * 플레이어 프로필 `/player/{playerId}` — `적진` 팔레트.
  *
  * 읽는 순서를 위에서 아래로 하나로 만들었다.
@@ -265,13 +276,33 @@ function PlayerLeagueRow({
        */
       href={leaguePlayerPath(entry.league.slug, playerId)}
       /* ★절반 크기★ (2026-09-21) — 두 장이 한 줄에 서므로 여백과 글자를 줄인다 */
-      className={`${PANEL} block px-3 py-2.5 transition-colors hover:border-accent md:px-4 md:py-3`}
+      className={`${PANEL} relative block overflow-hidden px-3 py-2.5 transition-colors hover:border-accent md:px-4 md:py-3`}
     >
-      {/* ── 머리 — 리그 이름 + 공식 표 ───────────────────────────────── */}
+      {/* ★리그 성격 색 띠★ (2026-09-24 사장님 「기본정보 카드 색도 채우고 · IPL=일반 · Supply=경쟁」) — 왼쪽 3px */}
+      {leagueKindOf(entry.league.slug) ? (
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-[3px]"
+          style={{ background: leagueKindOf(entry.league.slug)!.color }}
+        />
+      ) : null}
+      {/* ── 머리 — 리그 이름 + 성격 라벨(일반/경쟁) ───────────────────── */}
       <div className="flex items-center gap-2">
         <span className="truncate text-[14px] font-extrabold tracking-[-.01em] text-text-strong md:text-[15px]">
           {entry.league.name}
         </span>
+        {leagueKindOf(entry.league.slug) ? (
+          <span
+            className="inline-flex select-none items-center rounded-[3px] border px-1.5 py-0.5 text-[10px] font-bold leading-none"
+            style={{
+              borderColor: `${leagueKindOf(entry.league.slug)!.color}66`,
+              color: leagueKindOf(entry.league.slug)!.color,
+              background: `${leagueKindOf(entry.league.slug)!.color}1f`,
+            }}
+          >
+            {leagueKindOf(entry.league.slug)!.label}
+          </span>
+        ) : null}
         {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
         {isOfficialLeague(entry.league.slug) ? <OfficialTag /> : null}
       </div>
