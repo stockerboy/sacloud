@@ -474,16 +474,28 @@ export async function runRenewRequests(
         byUsn.set(src.slice(4), { id: person.id, name: person.name })
       }
 
-      for (const m of members) {
-        const usn = trimmed(m.str_usn)
-        const nick = trimmed(m.user_nick)
-        if (usn === null) continue
-        const person = byUsn.get(usn)
-        if (person === undefined) continue
-        if (nick !== null && nick !== person.name) {
-          result.renamed += 1
-          if (result.samples.length < 20) result.samples.push(`닉 ${person.name} → ${nick}`)
-          if (confirm) await prisma.player.update({ where: { id: person.id }, data: { name: nick } })
+      /*
+       * ⚠ ★★클랜 로스터 닉으로 이름을 덮어쓰지 않는다★★ (2026-09-24 사장님 「자이언트 정보갱신되니까 다른 애들은 옛날에 썼던 닉으로 다 돌아가는데 머야 이건?」)
+       *
+       *   `GetClanUserList` 의 `user_nick` 은 ★클랜 명부에 박힌 옛 닉★ 이라 개인 프로필(`GetProfileMain`)보다 늦다.
+       *   이걸로 player.name 을 고치면 ★방금 고쳐진 최신 닉이 옛 닉으로 되돌아간다.★ 실측: deluxe 클랜을 갱신하니
+       *   멤버 전원이 옛 닉으로 회귀했다(내가 barracksClanIdOf 로 클랜 갱신을 되살리자 이 잠복 버그가 드러났다).
+       *   ★이름의 진실은 개인 프로필 갱신(위 플레이어 경로)뿐이다.★ 클랜 로스터는 ★소속(clanId)만★ 맞춘다.
+       *   옛 판(로스터로 개명)은 CLAN_ROSTER_RENAMES 를 true 로. 켜지 마라 — 닉을 되돌린다.
+       */
+      const CLAN_ROSTER_RENAMES = false
+      if (CLAN_ROSTER_RENAMES) {
+        for (const m of members) {
+          const usn = trimmed(m.str_usn)
+          const nick = trimmed(m.user_nick)
+          if (usn === null) continue
+          const person = byUsn.get(usn)
+          if (person === undefined) continue
+          if (nick !== null && nick !== person.name) {
+            result.renamed += 1
+            if (result.samples.length < 20) result.samples.push(`닉 ${person.name} → ${nick}`)
+            if (confirm) await prisma.player.update({ where: { id: person.id }, data: { name: nick } })
+          }
         }
       }
 
