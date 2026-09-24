@@ -44,6 +44,18 @@ cd /root/sacloud
 #   그 사이 육각은 30분마다 season0-apply 가 대신 돌렸고, 그 시각마다 사이트가 렉이었다.
 #   옛 셈은 아래 주석에 남긴다 (CLAUDE.md 1-4): RUNNING=$(pgrep -cf "tsx src/cli.ts" || true)
 RUNNING=$(pgrep -f "tsx src/cli.ts" | xargs -r ps -o args= -p 2>/dev/null | grep -vcE "hot-clan-server|renew-server" || true)
+
+# ⚠ ★2026-09-25 02:2x — 메모리 게이트★ (위 셈을 고친 직후 실제 사고)
+#   9/24 부터 건너뛰기만 하던 이 스크립트가 진짜로 돌자 `player-hex-build`(RSS 787MB)가 로스터·수집 잡과
+#   겹쳐 ★1.9GB 상자의 스왑 2047/2047 · load 39★ 가 됐다 (ssh 도 안 붙었다). 손으로 죽여 회복시켰다.
+#   여유 메모리(MemAvailable)가 600MB 미만이거나 스왑 여유가 500MB 미만이면 이번 차례는 비킨다.
+#   자료가 5분 늦는 것보다 서버가 눕는 것이 훨씬 나쁘다. 옛 판은 이 게이트가 없다 (CLAUDE.md 1-4).
+AVAIL_MB=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
+SWAPFREE_MB=$(awk '/SwapFree/ {print int($2/1024)}' /proc/meminfo)
+if [ "${AVAIL_MB:-0}" -lt 600 ] || [ "${SWAPFREE_MB:-0}" -lt 500 ]; then
+  echo "[$(date +%H:%M)] 메모리 부족(여유 ${AVAIL_MB}MB · 스왑 여유 ${SWAPFREE_MB}MB) — 이번 차례는 건너뛴다"
+  exit 0
+fi
 if [ "${RUNNING:-0}" -gt 1 ]; then
   echo "[$(date +%H:%M)] 다른 잡이 도는 중($RUNNING) — 이번 차례는 건너뛴다"
   exit 0
@@ -58,10 +70,10 @@ fi
 HEXLOG="${HEXLOG:-/root/log/hex.log}"
 
 echo "[$(date +%H:%M)] ① 경기 육각"
-pnpm --filter @sacloud/worker nexon clan-hex-v2-build --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
+nice -n 10 pnpm --filter @sacloud/worker nexon clan-hex-v2-build --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
 
 echo "[$(date +%H:%M)] ② 개인 육각 (MVP 도 여기서 정해진다)"
-pnpm --filter @sacloud/worker nexon player-hex-build --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
+nice -n 10 pnpm --filter @sacloud/worker nexon player-hex-build --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
 
 echo "[$(date +%H:%M)] ③ 클랜 요약"
 pnpm --filter @sacloud/worker nexon clan-hex-v2-summary --confirm 2>&1 | tee -a "$HEXLOG" | tail -3
