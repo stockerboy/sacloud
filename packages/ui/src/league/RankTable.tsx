@@ -1300,19 +1300,18 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
               <NoRecordStat className={`${COL_PSTAT} ${winRateHidden}`} />
             ) : (
             <Stat
-              /* 2026-09-23 밤 사장님 — 폰은 한 칸에 「n승 n패 n%」. 폭 50 → 104 (킬뎃은 %만 · 래더 그대로) */
-              className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[118px]`}
+              /*
+               * 2026-09-24 사장님 「이거 총 몇전인지만 퍼센트 앞에 쓰고 글자 짤리는거 해결좀 줄 도 안맞음」
+               *   옛 판은 앞에 「190승 133패」(승패를 각각) 를 붙였다 — 폭이 길어(최대 10자) 118px 을 다 먹어
+               *   닉네임 칸이 짓눌려 잘렸다. ★총 전적 한 숫자★ 로 줄이면(최대 「1,234전」 7자) 칸을 줄일 수 있고
+               *   그만큼 닉네임에 자리를 돌려준다. sub(같은 값 아래 중복 표기)도 없앤다 — 「몇전인지만」.
+               */
+              className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[82px]`}
               value={formatRate(row.win_rate)}
               tone={rateClass(row.win_rate)}
               unit="%"
-              lead={<>{formatCount(row.win)}승 {formatCount(row.lose)}패</>}
-              /* 2026-09-24 사장님 「줄 안맞아」(개인랭킹 1위 190승133패) — 클랜 표와 같은 처방: 승패를 % 위 한 줄로 */
+              lead={<>{formatCount(row.win + row.lose)}전</>}
               leadStack
-              sub={
-                <span className={SUB_PHONE_ONLY}>
-                  {formatCount(row.win)}승 {formatCount(row.lose)}패
-                </span>
-              }
             />
             )}
             {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107).
