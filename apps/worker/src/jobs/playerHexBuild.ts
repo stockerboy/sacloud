@@ -1739,7 +1739,9 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         -- ★인원수 규칙★ (2026-09-12 사장님) — 양 팀 클랜원 합이 모자란 판은 10%만 센다.
         -- IPL 에만 먹인다. 다른 리그는 ${shortRule ? '' : '이 값이 늘 1 이라'} 그대로다
         -- ⚠ 2026-09-25 — 비IPL 은 서브쿼리를 아예 안 돌린다(위 base 질의와 같은 이유 · 답은 늘 1).
-        --   ★여기는 시즌 조건을 안 건다★ — 바깥 WHERE 에 startAt 조건이 없어(MatchPlayerHex 전체) 걸면 결과가 바뀐다.
+        --   시즌 조건도 건다 — 처음엔 「바깥에 startAt 조건이 없어 결과가 바뀔까」 안 걸었는데, 운영 실측으로
+        --   ★formulaVersion 이 지금 것인 MatchPlayerHex 중 시즌0 이전 경기는 0건★ (세 리그 모두) 이라 결과가 안 바뀐다.
+        --   대신 질의는 nolink 2,704 → 879ms · sanply 527 → 267ms (02:5x 실측 · 14초짜리가 이 질의였다).
         SELECT m."id" AS mid,
                ${shortRule
                  ? Prisma.sql`CASE WHEN COALESCE((
@@ -1752,7 +1754,7 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
           FROM "Match" m
           LEFT JOIN "LeagueClan" rl ON rl."id" = m."redLeagueClanId"
           LEFT JOIN "LeagueClan" bl ON bl."id" = m."blueLeagueClanId"
-         WHERE m."leagueId" = ${league.id} AND m."supersededAt" IS NULL
+         WHERE m."leagueId" = ${league.id} AND m."supersededAt" IS NULL AND m."startAt" >= ${SEASON0_FROM}
       )
       SELECT lp."id" AS lpid,
              SUM(h."rounds" * mw.w) AS rounds,
