@@ -1548,7 +1548,8 @@ body.antialiased {
 /* ★2026-09-24 오전 사장님 「들어왔을 때 두 번째 사진(그림 전체 높이 · 검색창·게시판이 첫 화면 밖)처럼 보인다 — 첫 번째 사진처럼」★
    옛 값(56vw−60 / 10.7vw / −132 · 그림 전체 높이 판)은 아래 주석에 남김. 이제 PC 판은 ★고정 띠★ — 검색창 560 아래 · 판 750 ·
    초점 세로 40%(투구·깃발 도열이 잘려 들어옴 · 위 SA CLOUD 깃발·성은 잘림) · 게시판이 판 아래 60 을 덮어 1920 에서 검색창(≈795)·HOT 머리(≈880)가 첫 화면에 다 선다 */
-.home-hero--art { padding-top: 560px !important; padding-bottom: 110px !important; background-position: center top, center 40% !important; background-size: 100% 100%, cover !important; }
+/* 2026-09-24 오후 사장님 「아가멤논 어깨가 안 보여 — 위(SA CLOUD 깃발·성)는 잘라내고 아가멤논을 위로 올려」 → 초점 40%→75%. 옛 값 40% */
+.home-hero--art { padding-top: 560px !important; padding-bottom: 110px !important; background-position: center top, center 75% !important; background-size: 100% 100%, cover !important; }
 @media (min-width: 768px) { .home-hero--art + div { margin-top: -60px !important; position: relative; z-index: 2; } }
 /* 옛 판(2026-09-23 밤 · 그림 전체 높이): .home-hero--art { padding-top: calc(56vw - 60px); padding-bottom: calc(10.7vw); background-position: center top, center top }
    @media (min-width:768px){ .home-hero--art + div { margin-top:-132px } }  @media (768~1279){ margin-top: calc(-10.7vw + 16px) } */
@@ -1616,3 +1617,11 @@ body.antialiased {
    옛 흰 카드 규칙(`.home-cloud + div > section > div` · 258줄)이 지금은 머리 div 에 걸려 ★남색 띠★ 로 보였다(PC·폰 캡쳐). 머리만 투명하게 */
 .home-hero--art + div > section > div { background: transparent !important; box-shadow: none !important; border: 0 !important; border-radius: 0 !important; }
 .home-hero--art + div > section > ul { border-radius: 18px; overflow: hidden; }
+
+/* ★2026-09-24 사장님 「래더 쪽이 뚝 짤려서 이상해」(PC 클랜랭킹)★
+   PC 데이터 줄은 좌우 여백 0 이다(816줄 — 왼쪽은 순위 칸 140px 이 대신한다). 오른쪽엔 그런 칸이 없어
+   마지막 칸(래더)이 테두리에 딱 붙었다. 머리행과 데이터행에 같은 오른쪽 여백을 줘 값과 제목이 함께 물러난다.
+   폰(<768)은 이미 0.5rem 을 가지므로 안 건드린다 */
+@media (min-width: 768px) {
+  .sac-rank-head, .sac-rank-row { padding-right: 20px; }
+}
