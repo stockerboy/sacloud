@@ -2659,5 +2659,7 @@
 @media (max-width: 767px) {
   .sac-v2 .v2-topbar__inner--gnb > .v2-burger { width: 40px; height: 44px; padding: 0 9px; gap: 4px; }
   .sac-v2 .v2-topbar__inner--gnb > .v2-burger .v2-burger__bar { width: 22px; }
-  .sac-v2 .v2-topbar__inner--gnb > .v2-brand img { height: 22px !important; width: auto !important; }
+  /* 운영 실측(11:45): 로고 상자가 195px 로 잡혀 있어 img 가 195×22 로 눌렸다(원본 864×91) → 상자도 auto · max-width 풀기 */
+  .sac-v2 .v2-topbar__inner--gnb > .v2-brand { width: auto !important; }
+  .sac-v2 .v2-topbar__inner--gnb > .v2-brand img { height: 22px !important; width: auto !important; max-width: none !important; }
 }
