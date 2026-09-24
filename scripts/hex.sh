@@ -38,7 +38,12 @@ set -e
 cd /root/sacloud
 
 # 다른 무거운 잡이 돌고 있으면 이번 차례는 건너뛴다 — 다음 10분에 다시 온다
-RUNNING=$(pgrep -cf "tsx src/cli.ts" || true)
+# ⚠ ★2026-09-25 — 상시 서버(hot-clan-server · renew-server)는 잡이 아니다★
+#   둘 다 `tsx src/cli.ts …` 로 떠 있어 옛 셈(`pgrep -cf "tsx src/cli.ts"`)이 늘 2 이상이었다 →
+#   ★이 스크립트가 9/24 부터 매 차례 「다른 잡이 도는 중(2)」 로 건너뛰기만 했다★ (cron.log 로 확인).
+#   그 사이 육각은 30분마다 season0-apply 가 대신 돌렸고, 그 시각마다 사이트가 렉이었다.
+#   옛 셈은 아래 주석에 남긴다 (CLAUDE.md 1-4): RUNNING=$(pgrep -cf "tsx src/cli.ts" || true)
+RUNNING=$(pgrep -f "tsx src/cli.ts" | xargs -r ps -o args= -p 2>/dev/null | grep -vcE "hot-clan-server|renew-server" || true)
 if [ "${RUNNING:-0}" -gt 1 ]; then
   echo "[$(date +%H:%M)] 다른 잡이 도는 중($RUNNING) — 이번 차례는 건너뛴다"
   exit 0

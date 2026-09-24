@@ -76,6 +76,9 @@ import { CLAN_HEX_V2_FORMULA_VERSION } from '../lib/clanHexV2Version.js'
 import { REPO_ROOT } from '../lib/env.js'
 import { log, warn } from '../lib/log.js'
 import { SEASON0_FROM } from '../lib/season0Window.js'
+
+/** 2026-09-25 — 리그 한 벌의 LeaguePlayerHex 를 한 트랜잭션으로 쓴다 (false 면 옛 판 · 줄마다 upsert) */
+const HEX_WRITE_ATOMIC = true
 import { scoresOpening } from '../lib/openingScoreWindow.js'
 import type { TierNo } from '../lib/iplTiers.js'
 import { MIN_MEMBERS, SHORT_MEMBER_WEIGHT } from '../lib/iplTiers.js'
@@ -2013,6 +2016,13 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       unmeasured: folded.filter((r) => r.weapon === null).length,
     }
     if (!options.confirm) continue
+    /*
+     * ⚠ ★2026-09-25 — 리그 한 벌을 ★한 트랜잭션★ 으로 쓴다★ (사장님 「개인랭킹 같은 사람이 1,2페이지에 두번」)
+     *   옛 판은 선수마다 upsert 를 따로 보냈다 — 1,500줄을 가는 몇 초 동안 ★반은 새 점수 · 반은 옛 점수★ 인
+     *   표가 노출됐고, 그때 1·2페이지를 나눠 읽으면 같은 사람이 두 쪽에 나왔다. 이제 한 번에 바뀐다.
+     *   옛 판(줄마다 upsert)은 HEX_WRITE_ATOMIC=false.
+     */
+    const ops: Prisma.PrismaPromise<unknown>[] = []
     for (const r of folded) {
       const p = inputOf.get(r.leaguePlayerId) as PlayerHexInput
       const data = {
@@ -2098,13 +2108,16 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
         tier3Games: p.tierGames[3],
         formulaVersion: PLAYER_HEX_FORMULA_VERSION,
       }
-      await prisma.leaguePlayerHex.upsert({
+      const op = prisma.leaguePlayerHex.upsert({
         where: { leaguePlayerId: r.leaguePlayerId },
         create: { leaguePlayerId: r.leaguePlayerId, ...data },
         update: data,
       })
+      if (HEX_WRITE_ATOMIC) ops.push(op)
+      else await op
       result.playerRows += 1
     }
+    if (HEX_WRITE_ATOMIC && ops.length > 0) await prisma.$transaction(ops)
     log(`${league.slug} — 스나 ${result.pools[league.slug]?.sniper} · 라플 ${result.pools[league.slug]?.rifle} · 미측정 ${result.pools[league.slug]?.unmeasured}`)
   }
   return result

@@ -39,7 +39,14 @@ export async function GET(request: Request, context: { params: Promise<Record<st
         ? await scoreOrLadder(leagueId, cursor, size, onlyWeapon, onlyTier, offset)
         : await getPlayerRanksByWeapon(leagueId, weapon, cursor, size)
     /* 랭킹은 로그인과 무관하다 — 엣지가 대신 답한다 (D-223) */
-    return page ? okPagePublic(page) : notFound('리그를 찾을 수 없습니다')
+    /*
+     * ⚠ ★2026-09-25 — 300초 → 20초★ (사장님 「같은 사람이 1,2페이지에 두번 나오고 … 계속 오류나」)
+     *   페이지마다 ★따로★ 엣지에 캐시된다. 1페이지는 5분 전 표, 2페이지는 방금 표 — 그 사이에 육각
+     *   빌드가 점수를 갈아 끼우면 같은 사람이 두 쪽에 다 나오거나 아무 쪽에도 안 나온다.
+     *   정렬(`score desc, leaguePlayerId asc`)은 유일해서 정렬 탓이 아니다 — ★시점★ 탓이다.
+     *   20초면 두 쪽이 거의 같은 표를 본다. 옛 값 300(기본) — `CLAUDE.md` 1-4.
+     */
+    return page ? okPagePublic(page, 20) : notFound('리그를 찾을 수 없습니다')
   })
 }
 
