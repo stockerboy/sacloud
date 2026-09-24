@@ -1,7 +1,7 @@
 'use client'
 
 import { use } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { PlayerIdentity, PlayerLeagueList, ProfileEmpty, ProfileSkeleton } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
@@ -41,6 +41,21 @@ export default function PlayerPage({ params }: { params: Promise<{ playerId: str
   })
 
   const refresh = useRefresh('playerRenew', { playerId })
+  /*
+   * ★정보갱신 뒤 닉·소속을 다시 읽는다★ (2026-09-24 사장님 「병영수첩 닉이랑 우리 닉이 안 맞잖아 자이언트 · 정보갱신 눌러도」).
+   *   옛 판은 renewedAt 만 갱신해 「방금 전」 은 떴지만 ★이름은 그대로★ 였다 — 서버는 병영을 읽어
+   *   giantslayer→자이언트 로 이미 고쳤는데 화면만 옛 이름이었다. 병영 읽는 데 2~3초 걸려 나눠 다시 읽는다.
+   */
+  const queryClient = useQueryClient()
+  const onRefresh = () => {
+    refresh.run()
+    for (const wait of [2500, 5000, 9000]) {
+      window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ['player', playerId, 'profile'] })
+        void queryClient.invalidateQueries({ queryKey: ['player', playerId] })
+      }, wait)
+    }
+  }
 
   /*
    * ★로딩과 「없음」을 구분한다★ (2026-09-03 · O-008 ④ · O-033 ② 와 같은 처방).
@@ -78,7 +93,7 @@ export default function PlayerPage({ params }: { params: Promise<{ playerId: str
         clan={data.clan}
         renewedAt={refresh.renewedAt ?? data.renewed_at}
         refreshState={refresh.state}
-        onRefresh={refresh.run}
+        onRefresh={onRefresh}
       />
       <div className="pc-container pb-[40px]">
         <PlayerLeagueList
