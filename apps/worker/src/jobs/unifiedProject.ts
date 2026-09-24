@@ -39,7 +39,7 @@
  * `MatchPlayerStat` 을 안 만든다   — 원문에 참가자가 없다. 라인업은 배틀로그가 채운다
  * ```
  */
-import { prisma } from '@sacloud/db'
+import { prisma, Prisma } from '@sacloud/db'
 import { log, warn } from '../lib/log.js'
 import { allocateInternalMatchId } from '../lib/internalMatchId.js'
 import { normalizeBarracksMatch, type NormalizeFailure } from '../lib/matchNormalize.js'
@@ -446,6 +446,16 @@ export async function runUnifiedProject(
    *   ⚠ 하루를 무르는 이유 — 원문이 늦게 들어오는 경기가 있다. 그만큼은 다시 본다.
    *   ⚠ `--from-start` 를 주면 옛 판처럼 처음부터 훑는다 (되메우기용).
    */
+  /*
+   * ★왜 이 경기가 안 만들어졌나★ (2026-09-24 사장님 「자이언트 기록 아직도 누락」).
+   *   PROJECT_ONLY_KEYS=키,키 로 부르면 그 경기만 훑고, 갈림길마다 판정을 로그에 적는다 (미리보기든 --confirm 이든).
+   *   지금까지는 unclassified 표본 몇 줄만 남겨서 특정 경기가 왜 빠졌는지 알 길이 없었다
+   */
+  const onlyKeys: Set<string> | null = (() => {
+    const raw = (process.env.PROJECT_ONLY_KEYS ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+    return raw.length > 0 ? new Set(raw) : null
+  })()
+  if (onlyKeys) log(`★PROJECT_ONLY_KEYS★ ${onlyKeys.size}건만 본다 — 갈림길마다 적는다`)
   let after = ''
   if (options.fromStart !== true) {
     const newest = await prisma.match.findFirst({
@@ -519,7 +529,7 @@ export async function runUnifiedProject(
               */
              ARRAY_REMOVE(ARRAY_AGG(DISTINCT NULLIF("rawClanNo", '')), NULL) AS "clanNos"
       FROM "BarracksClanMatchRaw"
-      WHERE "matchKey" > ${after} AND "status" = 'ok'
+      WHERE "matchKey" > ${after} AND "status" = 'ok' ${onlyKeys ? Prisma.sql`AND "matchKey" = ANY(${[...onlyKeys]}::text[])` : Prisma.empty}
       GROUP BY "matchKey"
       ORDER BY "matchKey" ASC
       LIMIT ${BATCH}
@@ -563,7 +573,9 @@ export async function runUnifiedProject(
         ? tieWinnerOf(row.payloadSubject, row.payload, clanBySlug, namesByClanId)
         : null
       const norm = normalizeBarracksMatch(row.payload, { tieWinner })
+      const dbg = onlyKeys?.has(row.matchKey) ?? false
       if (!norm.ok) {
+        if (dbg) log(`  [debug ${row.matchKey}] 정규화 실패 ${norm.code}: ${norm.reason}`)
         noteUnclassified(row.matchKey, norm.code, norm.reason)
         continue
       }
@@ -572,11 +584,14 @@ export async function runUnifiedProject(
 
       /* ── ② 기준시각 ───────────────────────────────────────────── */
       const canon = decideCanonical(m.startAt, m.matchKey, liveByKey)
+      if (dbg) log(`  [debug ${row.matchKey}] red=${m.redClanName} blue=${m.blueClanName} start=${m.startAt.toISOString()} subjects=${row.subjects.join('/')} clanNos=${row.clanNos.join('/')} canon=${canon.action}`)
       if (canon.action === 'out_of_scope') {
+        if (dbg) log(`  [debug ${row.matchKey}] 기준시각 이전 — 안 만든다`)
         result.skipped.before_cutoff += 1
         continue
       }
       if (canon.action === 'exists') {
+        if (dbg) log(`  [debug ${row.matchKey}] 이미 있음 ${'id' in canon ? String((canon as { id?: string }).id ?? '') : ''}`)
         result.skipped.already_exists += 1
         continue
       }
@@ -597,6 +612,7 @@ export async function runUnifiedProject(
         matchClanNos: row.clanNos,
       })
       const verdict = verdictFromSides(m.redClanName, m.blueClanName, sides)
+      if (dbg) log(`  [debug ${row.matchKey}] sides red=${sides.red ? `${sides.red.clanId}/${sides.red.league}(${sides.redBy})` : "null"} blue=${sides.blue ? `${sides.blue.clanId}/${sides.blue.league}(${sides.blueBy})` : "null"} → ${verdict.ok ? `OK ${verdict.league}` : `${verdict.reason}: ${verdict.detail}`}`)
       if (!verdict.ok) {
         noteUnclassified(m.matchKey, verdict.reason, verdict.detail)
         if (verdict.reason === 'unknown_clan') {
