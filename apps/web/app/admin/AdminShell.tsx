@@ -36,6 +36,8 @@ const MENU = [
    *   그래서 여기 한 줄을 낸다.
    */
   { href: '/board/notice/write', label: '공지쓰기' },
+  /* ★DB 관리★ (2026-09-24 사장님: 「db관리 이런것도 다 할 수 있는 전지전능 대시보드」) — 찾아보기 전용, 이유는 그 페이지에 */
+  { href: '/admin/db', label: 'DB' },
   { href: '/admin/legacy', label: '과거기록' },
 ]
 
