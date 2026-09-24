@@ -79,7 +79,7 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
   const refresh = useRefresh(
     'clanRenew',
     { clanSlug },
-    { statusPath: `/api/clans/${clanSlug}/renew-status` },
+    { statusPath: `/clans/${clanSlug}/renew-status` },
   )
   const season = useSeasonLabel()
   const renewedAt = refresh.renewedAt ?? clan.data?.data.renewed_at ?? null

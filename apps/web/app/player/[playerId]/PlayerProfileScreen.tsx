@@ -48,7 +48,7 @@ export default function PlayerPage({ params }: { params: Promise<{ playerId: str
    *   ② 프로필은 ★클라이언트 쿼리★ 인데 옛 코드는 router.refresh() 만 했다 — 그건 서버컴포넌트만 새로 그려 소용없었다.
    *   → statusPath 를 넘겨 ★병영 완료를 기다리고★, 끝나면(state 가 pending→그외) 그 쿼리를 무효화해 다시 읽는다. 타이머는 보조.
    */
-  const refresh = useRefresh('playerRenew', { playerId }, { statusPath: `/api/players/${playerId}/renew-status` })
+  const refresh = useRefresh('playerRenew', { playerId }, { statusPath: `/players/${playerId}/renew-status` })
   const queryClient = useQueryClient()
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['player', playerId, 'profile'] })

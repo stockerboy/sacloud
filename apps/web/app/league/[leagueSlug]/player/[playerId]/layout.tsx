@@ -56,7 +56,7 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
   const refresh = useRefresh(
     'playerRenew',
     { playerId },
-    { statusPath: `/api/players/${playerId}/renew-status` },
+    { statusPath: `/players/${playerId}/renew-status` },
   )
   const queryClient = useQueryClient()
   const onRenew = () => {
