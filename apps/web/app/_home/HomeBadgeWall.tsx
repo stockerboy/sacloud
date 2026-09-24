@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BADGES, badgeArtSmallPath, type BadgeDef } from '@sacloud/contract'
+import { BADGES, BADGE_SYSTEM_ENABLED, badgeArtSmallPath, type BadgeDef } from '@sacloud/contract'
 import { FEATURED_LEAGUES, homeLeagues, isLeaguePreparing } from '@sacloud/ui'
 
 /**
@@ -60,6 +60,8 @@ const LEAGUES = HOME_ORDER.flatMap((slug) => {
 })
 
 export function HomeBadgeWall() {
+  /* 2026-09-24 사장님 「7개뱃지는 일단 다 숨겨 필요없어 이제」 — `BADGE_SYSTEM_ENABLED` 하나로 끈다 */
+  if (!BADGE_SYSTEM_ENABLED) return null
   if (LEAGUES.length === 0) return null
 
   return (

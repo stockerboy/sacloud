@@ -237,9 +237,11 @@ export default function HomePage() {
           {/* ★시즌 한 줄★ (2026-09-07 · Part 10 ④) — 시안 맨 위. 날짜는 계약에서 온다 */}
           {/* 코드 배경에서는 위 여백을 줄인다 — 시안의 히어로는 머리띠 바로 밑에서 시작한다 */}
           <div
+            /* 2026-09-24 사장님 「검색창이랑 게시판 둘다 조금씩만 위로 더 올려줘(피씨온리)」 —
+               PC 위 여백만 26→16px. `max-md:` 가 이미 폰 값을 따로 잡고 있어 폰은 안 건드린다 */
             className={
               HERO_V3
-                ? 'pt-[26px] max-md:pt-[14px]'
+                ? 'pt-[16px] max-md:pt-[14px]'
                 : HERO_V2
                   ? 'pt-[30px] max-md:pt-[18px]'
                   : 'pt-[74px] max-md:pt-[36px]'

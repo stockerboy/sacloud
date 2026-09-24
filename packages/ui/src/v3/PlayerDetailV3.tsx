@@ -15,7 +15,7 @@
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { LeaguePlayerDetail, MatchDetail, MatchLineupEntry, MatchListItem, MatchPlayerStat, PlayerDayRecord, WeeklyPoint } from '@sacloud/contract'
-import { showsTier, badgeArtSmallPath, badgeOfAxis } from '@sacloud/contract'
+import { showsTier, badgeArtSmallPath, badgeOfAxis, BADGE_SYSTEM_ENABLED } from '@sacloud/contract'
 import { leagueBadgePath } from '../common/paths'
 import { SUPPLY_INFO, rankColor, statColor, supplyRankColor, supplyRateColor } from './rankColors'
 import { Hexagon } from './Hexagon'
@@ -448,7 +448,7 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
           </span>
         </div>
       ) : null}
-      {badges.length > 0 ? (
+      {BADGE_SYSTEM_ENABLED && badges.length > 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '0 18px 16px' }}>
           <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>특성</span>
           {/*

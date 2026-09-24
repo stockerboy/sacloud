@@ -30,8 +30,17 @@ import { LEAGUE_LOGO } from '@sacloud/ui'
    옛 판은 상단바(v1·v2)와 홈 타일 세 곳에 주소가 따로 박혀 있었다 — 바뀔 때마다
    하나를 빠뜨렸다. 이제 `leagueLogo.ts` 한 곳이 그림도 크기도 정한다.
    옛 로고는 `LEAGUE_LOGO_V1` 로 그대로 살아 있다 (`CLAUDE.md` 1-4). */
+/*
+ * ⚠ ★2026-09-24 — supply 그림만 뺀다★ (사장님: «아직도 pl이름이 남아서 돌아다녀
+ *   전부 다 없애고 Supply1.0으로»). `league-pl.webp` 그림 자체에 ★「PL」 글자가
+ *   박혀 있다★ (`leagueLogo.ts` 머리말) — 아래 글자 줄은 이미 「Supply1.0」 인데
+ *   그림만 옛 이름을 그대로 보여 주고 있었다. 새 그림을 받을 때까지 이 자리는
+ *   글자 줄만 남긴다 (`leagueLogo.ts` 의 `LEAGUE_LOGO` 자체는 안 건드린다).
+ */
 const MARK: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.entries(LEAGUE_LOGO).map(([slug, logo]) => [slug, logo.src]),
+  Object.entries(LEAGUE_LOGO)
+    .filter(([slug]) => slug !== 'supply')
+    .map(([slug, logo]) => [slug, logo.src]),
 )
 
 /** 표장 아래 글자에 얹는 빛 — 리그색 그대로 */
@@ -102,15 +111,17 @@ export function HomeLeagueTiles() {
                 ⚠ ★크기가 세 번 바뀌었다★ (같은 날) —
                   92px → 62px → 46px → 52px → 34px → ★40px★ (폰 40 → 34 → 28 → ★33px★)
               */}
-              <img
-                src={MARK[tile.slug]}
-                width={SIZE[tile.slug]?.w}
-                height={SIZE[tile.slug]?.h}
-                alt=""
-                aria-hidden
-                className="block h-[40px] w-auto max-w-none opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[33px]"
-                style={{ filter: `drop-shadow(0 0 14px ${GLOW[tile.slug] ?? 'transparent'})` }}
-              />
+              {MARK[tile.slug] ? (
+                <img
+                  src={MARK[tile.slug]}
+                  width={SIZE[tile.slug]?.w}
+                  height={SIZE[tile.slug]?.h}
+                  alt=""
+                  aria-hidden
+                  className="block h-[40px] w-auto max-w-none opacity-[.95] transition-all duration-150 group-hover:scale-[1.06] group-hover:opacity-100 max-md:h-[33px]"
+                  style={{ filter: `drop-shadow(0 0 14px ${GLOW[tile.slug] ?? 'transparent'})` }}
+                />
+              ) : null}
               {/*
                 ★로고 밑 이름 줄★ — 되살렸다 (2026-09-12 사장님: «로고밑에 IPL SPL 글씨를 써줘»).
 

@@ -56,11 +56,12 @@ export const ABOUT_LEAGUES: readonly AboutLeague[] = [
     tone: '#9cc0ff',
   },
   {
-    tab: 'PL',
+    tab: 'Supply1.0',
     slug: 'supply',
     sub: '기록게임',
-    /* ⚠ 2026-09-16 — 이름이 「PL」 이 되어 옛 약자 풀이(Limitless Leagues Matches)가 안 맞는다 */
-    full: 'Premier League',
+    /* ⚠ 2026-09-24 — 「PL」 은 옛 이름이다 (사장님: «전부 다 없애고 Supply1.0으로»).
+       「Supply1.0」 은 약자가 아니라 그 자체가 이름이라 풀어 쓸 말이 없다 — 지어내지 않는다 */
+    full: null,
     body: [
       '데이터를 기반으로 한 풀체인지 기록 게임입니다. 빈틈 없는 체계와 래더 관리를 바탕으로 운영합니다.',
       '모든 플레이어와 클랜의 킬데스·승률이 기록됩니다. 모든 랭킹 정보와 래더 시스템을 이용하실 수 있습니다.',

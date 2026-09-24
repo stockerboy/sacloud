@@ -74,7 +74,8 @@ export async function HomeHotBoard() {
   if (rows.length === 0) return null
 
   return (
-    <section className="mt-[var(--section-gap)]">
+    /* 2026-09-24 사장님 「게시판 위로 더 올려줘(피씨온리)」 — PC 만 --section-gap(40px)에서 28px 로. 폰은 그대로 */
+    <section className="mt-[var(--section-gap)] md:mt-[28px]">
       {/* ★에타 「HOT 게시물」 카드★ (사장님 2026-09-24 사진) — 제목 · 밑에 날짜 · 오른쪽 👍 💬. 옛 판(줄 목록)은 HOME_HOT_ETA=false */}
       {HOME_HOT_ETA ? (
         <>

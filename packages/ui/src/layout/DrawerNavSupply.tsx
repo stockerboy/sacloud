@@ -124,7 +124,8 @@ export function DrawerNavSupply({ user = null, onLogout, onClose, loginHref = '/
           {/* ★왼쪽 위 로고 — 누르면 홈★ (사장님 2026-09-24 「첫째 사진 왼쪽 상단에 이 로고 넣어서 누르면 홈으로」) */}
           <Link href="/" aria-label="홈" onClick={onClose} className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/sacloud-wordmark.png" alt="SACLOUD" width={130} height={14} style={{ width: 130, height: 'auto', display: 'block' }} />
+            {/* 2026-09-24 사장님 「로고 이걸로 바꿔줘」 — 같은 그림을 `BrandLogo.tsx` 의 `NavLogo` 도 쓴다 */}
+            <img src="/brand/sacloud-wordmark.webp" alt="SACLOUD" width={130} height={13.4} style={{ width: 130, height: 'auto', display: 'block' }} />
           </Link>
           <button
             type="button"

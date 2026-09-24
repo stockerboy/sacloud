@@ -68,7 +68,7 @@ interface Pick {
  */
 /* 튜플로 적는다 — 첫 칸이 ★반드시 있다★ 를 타입이 알아야 기본값에 물음표가 안 붙는다 */
 const PICKS: readonly [Pick, Pick, Pick] = [
-  { slug: 'supply', label: 'PL', sub: '경쟁전 · 기록게임', applyKind: 'llm-new' },
+  { slug: 'supply', label: 'Supply1.0', sub: '경쟁전 · 기록게임', applyKind: 'llm-new' },
   { slug: 'nolink', label: 'IPL', sub: '일반전 · 무소속 리그', applyKind: 'ipl-new' },
   { slug: 'sanply', label: '열산리그', sub: '일반전 · 고용 클랜', applyKind: 'ysl-new' },
 ]
@@ -332,8 +332,8 @@ export function HomeLeagueFeatures() {
             {endTitle(pick.label, leagueFeatureRemaining(pick.slug), ending)}
           </div>
           <div className="mt-[5px] text-[12px] leading-[1.6] text-[var(--v2-text-dim)] max-md:text-[11.5px]">
-            같은 기록을 <b style={{ color: TONE.supply }}>PL</b> 에서는 계속 보실 수 있습니다.
-            래더 점수와 클랜 랭킹도 <b style={{ color: TONE.supply }}>PL</b> 에만 있습니다.
+            같은 기록을 <b style={{ color: TONE.supply }}>Supply1.0</b> 에서는 계속 보실 수 있습니다.
+            래더 점수와 클랜 랭킹도 <b style={{ color: TONE.supply }}>Supply1.0</b> 에만 있습니다.
           </div>
           <Link prefetch={false}
             href="/apply?kind=llm-new"

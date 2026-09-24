@@ -501,10 +501,17 @@ export function NavLogo({
 
   const resolved = resolveVariant(variant, wordmark, NAV_VARIANT)
   if (resolved === 'word') {
-    /* 사장님이 주신 워드마크 그림 그대로 (`/brand/sacloud-wordmark.png` · 864×91). 높이는 className 이 정한다 */
+    /*
+     * 사장님이 주신 워드마크 그림 (`/brand/sacloud-wordmark.webp` · 872×90). 높이는 className 이 정한다.
+     *
+     * ⚠ ★2026-09-24 — 그림을 새로 받아 바꿨다★ (사장님 「로고 이걸로 바꿔줘」).
+     *   검정 배경이 픽셀로 박혀 있어서 명도로 알파를 먹였다(문턱 6~34) — 채색(파랑
+     *   CLOUD)은 밝기만 보면 되지만 색을 바꾸진 않는다. 잉크 있는 칸만 잘라 872×90.
+     *   옛 그림은 `public/brand/sacloud-wordmark.png` 에 그대로 남아 있다 (`CLAUDE.md` 1-4).
+     */
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src="/brand/sacloud-wordmark.png" alt="SACLOUD" width={864} height={91} className={className} style={{ display: 'block' }} draggable={false} />
+      <img src="/brand/sacloud-wordmark.webp" alt="SACLOUD" width={872} height={90} className={className} style={{ display: 'block' }} draggable={false} />
     )
   }
   if (resolved === 'cat') {

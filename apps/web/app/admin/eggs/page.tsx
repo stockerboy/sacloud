@@ -135,7 +135,7 @@ export default function AdminEggsPage() {
               className="w-36"
             >
               <option value="">전체</option>
-              <option value="supply">PL</option>
+              <option value="supply">Supply1.0</option>
               <option value="nolink">IPL</option>
               {/* `<option>` 안에는 SVG 를 못 넣는다. 산 표시 없이 글자만 (D-246) */}
               <option value="sanply">열산리그</option>

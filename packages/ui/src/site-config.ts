@@ -427,7 +427,11 @@ export const LEAGUE_NAME: Readonly<Record<string, string>> = {
   nolink: 'IPL',
   /* ⚠ ★2026-09-16 — 이름이 또 바뀌었다★ (사장님: «LLM을 PL로» · «YSL을 열산리그로»).
      옛 이름은 `LEAGUE_NAME_V2` 에 남긴다. 주소는 한 글자도 안 바뀐다 */
-  supply: 'PL',
+  /* ⚠ ★2026-09-24 — «PL» 이 또 옛 이름이 됐다★ (사장님: «아직도 pl이름이 남아서 돌아다녀
+     전부 다 없애고 Supply1.0으로»). `FEATURED_LEAGUES` 는 2026-09-22 에 이미
+     「Supply1.0」 으로 바뀌었는데 이 표만 안 따라와서 신청서·통합랭킹·관리자 목록에
+     「PL」 이 그대로 남아 있었다. 옛 이름은 `LEAGUE_NAME_V2` 에 그대로 있다 */
+  supply: 'Supply1.0',
   sanply: '열산리그',
 }
 

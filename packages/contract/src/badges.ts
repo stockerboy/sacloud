@@ -15,6 +15,17 @@
 
 import type { TraitAxisKey } from './traits'
 
+/**
+ * ★배지 시스템을 껐다★ (2026-09-24 사장님: 「7개뱃지는 일단 다 숨겨 필요없어 이제」).
+ *
+ * `EGG_SYSTEM_ENABLED`(`egg.ts`)와 같은 자리다 — 코드·그림·페이지는 그대로 두고
+ * ★보여 주는 자리만★ 끈다. `/league/{slug}/badge/{key}` 주소는 그대로 열린다
+ * (주소를 직접 치면 보인다) — 되돌릴 길을 막지 않기 위해서다.
+ *
+ * 되돌리려면 이 값을 `true` 로.
+ */
+export const BADGE_SYSTEM_ENABLED: boolean = false
+
 export const BADGE_KEYS = [
   'aHold',
   'bHold',

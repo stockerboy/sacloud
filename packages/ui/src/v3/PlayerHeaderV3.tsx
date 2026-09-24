@@ -33,6 +33,7 @@ import {
   showsTier,
   badgeArtSmallPath,
   badgeOfAxis,
+  BADGE_SYSTEM_ENABLED,
   tierKdOrNull,
   tierWinRateOrNull,
 } from '@sacloud/contract'
@@ -709,7 +710,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
        * 열 위 안에 든 축만 배지를 받는다 — 아래 STRENGTH POINT 카드가 쓰는 것과 ★같은 값★ 이다.
        * 배지가 없는 선수는 이 줄 자체가 안 그려져 카드가 길어지지 않는다.
        */}
-      {badges.length > 0 ? (
+      {BADGE_SYSTEM_ENABLED && badges.length > 0 ? (
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', padding: '0 18px 12px' }}>
           <span style={{ fontSize: 9.5, color: V3.textGhost2, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>특성</span>
           {/*

@@ -21,7 +21,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import type { HexTopAxis, HexTopRow, TraitAxisKey } from '@sacloud/contract'
-import { badgeOfAxis, leagueScreen } from '@sacloud/contract'
+import { badgeOfAxis, leagueScreen, BADGE_SYSTEM_ENABLED } from '@sacloud/contract'
 import {
   AxisBadge,
   Card,
@@ -54,8 +54,11 @@ const HEX_TOP_SHOWS_CLAN = false
  *
  * ★옛 판을 지우지 않았다★ (`CLAUDE.md` 1-4) — `'labels'` 로 바꾸면 2026-09-15 의
  * 「폰은 글자 탭 · PC 는 여섯 카드 전부」 판으로 그대로 돌아간다 (`LegacyAxisPicker`).
+ *
+ * ⚠ 2026-09-24 — 사장님이 배지를 전부 껐다(`BADGE_SYSTEM_ENABLED`). 배지 그림이
+ *   빠지면 여기도 ★자동으로★ 글자 판(`'labels'`)으로 내려간다 — 빈 자리가 안 생긴다.
  */
-const HEX_TOP_PICKER: 'badges' | 'labels' = 'badges'
+const HEX_TOP_PICKER: 'badges' | 'labels' = BADGE_SYSTEM_ENABLED ? 'badges' : 'labels'
 
 export function HexTopScreen({
   leagueSlug,
