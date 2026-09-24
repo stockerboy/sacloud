@@ -7,6 +7,22 @@
 
 ---
 
+## 0-밤. ★2026-09-24 밤 — 로고 · 게시판 글자 · 「오늘 가장 치열했던 경기」★
+
+- Supply 2.0 새 로고(사장님 제공)로 교체 — 검정 배경을 알파 램프로 투명화, `/brand/league-supply2.webp`.
+  `/league/cpl` 머리 + `leagueLogo.ts`(GNB·홈 타일). 게시판(홈 HOT·목록) 글자 폰에서만 축소(max-md:).
+- ★리그홈 「상대전적」→「오늘 가장 치열했던 경기」로 교체★(사장님 「이거 없애고 경기분석에서 라운드별
+  분석 그거를 여기 펼쳐놔줘 — 라운드가 많을수록 치열」). 「치열」= 라운드 수, `MatchClanHexV2.rounds`
+  (5분 주기 집계, 배틀로그 원문 재파싱 안 함)를 오늘(KST 15:00 창) 안에서 내림차순 — 새 쿼리
+  `todayHeatedMatch.ts` · 엔드포인트 `leagueTodayHeatedMatch` · `LeagueHomeScreen`(TOP_CARD 스위치,
+  기본 'heated' · 옛 'matchup' 보존).
+  카드 자체는 `MatchCardListV3` 에 새 `initialOpenId` 로 클릭 없이 펼치고, 라운드 그래프는
+  `ClanScoreboardV3` 에 새 `defaultAnalysis` 로 폰의 「경기분석」 탭 게이트까지 없앴다(양쪽 육각
+  자료가 다 있을 때만 · 빈 그래프 안 만듦). 운영에서 실제 18라운드(9:9) 경기로 확인.
+- ⚠ 확인된 함정: `eslint-disable-next-line react-hooks/exhaustive-deps` 는 이 저장소 ESLint 에
+  그 규칙이 등록돼 있지 않아 ★그 주석 자체가 next build 를 깬다★(9/24 오전에 45분 배포 막힘).
+  이번엔 그 주석을 안 쓰고 멱등 함수(`loadDetail`)를 매 렌더 다시 불러도 안전하게 짰다.
+
 ## 0-저녁. ★2026-09-24 저녁 — Supply 2.0 시작★
 
 - `/league/cpl` 설명서를 사장님 여섯 줄로 간략화(시즌1 10/1~2/1 · 배치고사 10/1~11/1 자격미달 탈락 · 신청서 자격제한 · 무소속·3부·서플라이 1부·2부 상관없이 · 심사 후 승인).
