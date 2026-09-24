@@ -71,3 +71,31 @@ export function isPublicRow(
   if (!row) return false
   return hidesSeedData(env) ? row.origin !== SEED_ORIGIN : true
 }
+
+/**
+ * ★껍데기 선수를 「없는 것처럼」★ (2026-09-24 사장님 「딥스롯 계정은 왜 남아있냐」).
+ *
+ * ── 왜 생기나
+ *   옛 미러(`3rd.supply`)·구관측(`nexon`) 시절 스크랩이 ★한 줄만 이름을 남기고★
+ *   실제 경기·리그 자리를 하나도 못 받은 채 남는다. 병영수첩과 이을 다리
+ *   (`BRK-` sourcePlayerId)도 없다 — 그 사람이 실제로 경기를 뛴 적이 있다는
+ *   증거가 ★단 하나도 없다.★ 실측(2026-09-24): 이런 줄이 3,112개.
+ *
+ *   합치기(`barracks-identity-merge`)는 ★확실한 다리(userNexonSn↔strUsn)가 있을 때만★
+ *   잇는다(CLAUDE.md 「이름만으로 절대 합치지 마라」) — 다리가 없는 이 껍데기들은
+ *   합칠 근거 자체가 없다. 그렇다고 화면에 「참여중인 리그가 없습니다」로 계속
+ *   보여 줄 이유도 없다 — ★있었다는 증거가 없으니 없는 것처럼★ 다룬다.
+ *
+ * ── 지우지 않는다(CLAUDE.md 2절) — 화면에서만 뺀다. `origin` · 관계 자체는 그대로 있다.
+ *
+ */
+export function notGhostPlayerWhere() {
+  return {
+    OR: [
+      { origin: { notIn: [MIRROR_ORIGIN, 'nexon'] } },
+      { sourcePlayerId: { startsWith: 'BRK-' } },
+      { matchStats: { some: {} } },
+      { leaguePlayers: { some: {} } },
+    ],
+  }
+}

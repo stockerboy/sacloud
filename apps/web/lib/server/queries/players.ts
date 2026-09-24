@@ -16,7 +16,7 @@ import {
   toClanSummaryOrNull,
   toLeagueSummary,
 } from '../mappers'
-import { publicOriginWhere } from './publicScope'
+import { notGhostPlayerWhere, publicOriginWhere } from './publicScope'
 import { playerRankOf } from './leagues'
 import { cumulativeKd } from './visibility'
 import { enqueueRenewJob } from './ingestQueue'
@@ -35,8 +35,8 @@ import { enqueueRenewJob } from './ingestQueue'
 
 export async function getPlayer(playerId: string): Promise<Player | null> {
   const player = await prisma.player.findFirst({
-    // 시드 선수는 공개 화면에서 없는 것으로 다룬다 (D-116)
-    where: { id: playerId, ...publicOriginWhere() },
+    // 시드 선수는 공개 화면에서 없는 것으로 다룬다 (D-116) · 껍데기 선수도 같은 대접 (2026-09-24)
+    where: { id: playerId, ...publicOriginWhere(), ...notGhostPlayerWhere() },
     select: {
       id: true,
       name: true,

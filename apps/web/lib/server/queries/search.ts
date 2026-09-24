@@ -22,7 +22,7 @@ import {
   toLeagueSummary,
   type ClanFields
 } from '../mappers'
-import { publicOriginWhere } from './publicScope'
+import { notGhostPlayerWhere, publicOriginWhere } from './publicScope'
 import { SEASON0_FROM } from './season0Scope'
 
 /**
@@ -157,8 +157,12 @@ const EXACT_CANDIDATES = 8
 
 async function playerByName(name: string): Promise<PlayerSearchItem | null> {
   const players = await prisma.player.findMany({
-    /* ★합쳐진 그림자 줄은 안 보인다★ (2026-09-24 · player-merge-split 이 note 에 merged-into: 를 적는다) */
-    where: { name: ciEquals(name), ...publicOriginWhere(), ...notMergedWhere() },
+    /*
+     * ★합쳐진 그림자 줄은 안 보인다★ (2026-09-24 · player-merge-split 이 note 에 merged-into: 를 적는다)
+     * ★껍데기(경기·리그·병영 다리가 전혀 없는 옛 미러 줄)도 안 보인다★ (2026-09-24 사장님 「딥스롯 계정은 왜 남아있냐」 —
+     *   같은 이름의 진짜 계정(병영수첩 최신 닉으로 이미 합쳐짐)과는 별개로, 증거 없는 빈 줄이 검색에 또 걸렸다)
+     */
+    where: { name: ciEquals(name), ...publicOriginWhere(), ...notMergedWhere(), ...notGhostPlayerWhere() },
     orderBy: [{ id: 'asc' }],
     take: EXACT_CANDIDATES,
     select: {
@@ -391,7 +395,14 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
   }
   const [prefixRows, containsOnlyRows] = await Promise.all([
     prisma.player.findMany({
-      where: { name: ciStarts(keyword), ...publicOriginWhere(), ...season0OnlyWhere(), ...notMergedWhere() },
+      /* ★껍데기(경기·리그·병영 다리가 전혀 없는 옛 미러 줄)는 자동완성에도 안 보인다★ (2026-09-24) */
+      where: {
+        name: ciStarts(keyword),
+        ...publicOriginWhere(),
+        ...season0OnlyWhere(),
+        ...notMergedWhere(),
+        ...notGhostPlayerWhere(),
+      },
       orderBy: [{ id: 'asc' }],
       take: SEARCH_LIMIT * OVERFETCH,
       select,
@@ -410,6 +421,7 @@ export async function searchPlayers(query: string): Promise<PlayerSearchItem[]> 
         NOT: { name: ciStarts(keyword) },
         ...publicOriginWhere(),
         ...season0OnlyWhere(),
+        ...notGhostPlayerWhere(),
       },
       orderBy: [{ id: 'asc' }],
       take: SEARCH_LIMIT * OVERFETCH,
