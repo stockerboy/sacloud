@@ -16,12 +16,12 @@
  * 판·선 두께·마커·흔들림은 상대전적 그래프(`H2HChartV3` · `seasonPlot`)와 같은 값을 쓴다.
  * 흔들림은 ★모양만★ 이다 — 두 선이 50 에서 정확히 포개지지 않게 하는 용도. 값은 안 바뀐다.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { RoundFlow } from '@sacloud/contract'
 import { matchOddsInRound, roundOddsPlain, roundOddsSided, scoreOdds } from '@sacloud/contract'
 import { V3, type V3Tone } from './tokens'
 import { fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
-import { PLOT, noise, penDash, plotBox, pointAtLength, pointsToStr, seedOf, useDrawIn } from './seasonPlot'
+import { PLOT, noise, plotBox, pointAtLength, pointsToStr, seedOf, useDrawIn } from './seasonPlot'
 
 export interface RoundFlowTeam {
   side: 'red' | 'blue'
@@ -144,7 +144,7 @@ const PANEL_H_PHONE = 178
 const PANEL_H_PC = 206
 /** 프레임마다 바뀌는 것은 DOM 에 직접(ref) · React 상태는 FRAME_STATE_MS 마다 (2026-09-24 사장님 「프레임 너무 낮아」). false 면 옛 판 */
 const FRAME_DIRECT = true
-const FRAME_STATE_MS = 66
+const FRAME_STATE_MS = 28
 /*
  * ★폰은 한 칸★ (사장님 2026-09-24 새벽 「피시는 글자가 안 가려지는데 모바일은 가려지네 — 총 디자인 때문인가」 → 맞다).
  *   폰 두 칸(칸 하나 170px)에 선짤+마크+킬러+총 사진+희생자가 다 들어가 이름이 「세…」 로 잘렸다.
@@ -207,13 +207,25 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
    *   값은 같다 — 그리는 길만 둘로 나눴다. 옛 판(프레임마다 setState)은 FRAME_DIRECT=false
    */
   const drawRef = useRef(DRAW_ON_MOUNT_MS > 0 ? 0 : 1)
-  const penEls = useRef(new Set<SVGPolylineElement>())
-  const penRef = (el: SVGPolylineElement | null) => { if (el) penEls.current.add(el) }
+  /*
+   * ★2026-09-24 사장님 「그래프가 처음부터 끝까지 매끄럽게 그려지는게 아니라 갑자기 중간에서부터 그려지고 이상해」★
+   *   옛 판은 선을 ★점선(stroke-dasharray) + pathLength=1★ 로 드러냈는데, iOS Safari 가 polyline 의 pathLength 정규화를
+   *   제멋대로 다뤄 ★가운데부터 드러나 보였다.★ 이제 ★클립 사각형★ 으로 왼쪽(X0)→오른쪽으로 판을 열어 드러낸다 —
+   *   브라우저와 무관하게 ★언제나 처음(왼쪽)부터★ 그려진다. 프레임마다 rect 폭만 ref 로 60Hz 로 늘린다.
+   */
+  const winPtsRef = useRef<[number, number][]>([])
+  const clipRectRef = useRef<SVGRectElement>(null)
+  const clipId = 'rfClip' + useId().replace(/:/g, '')
   const applyDraw = (k: number) => {
     drawRef.current = k
     if (!FRAME_DIRECT) return
-    const off = String(1 - Math.max(0, Math.min(1, k)))
-    penEls.current.forEach((el) => { if (el.isConnected) el.setAttribute('stroke-dashoffset', off); else penEls.current.delete(el) })
+    const kk = Math.max(0, Math.min(1, k))
+    const wp = winPtsRef.current
+    const rect = clipRectRef.current
+    if (rect && wp.length > 1) {
+      const tipX = kk >= 1 ? 1e5 : pointAtLength(wp, kk)[0]
+      rect.setAttribute('width', String(Math.max(0, tipX)))
+    }
   }
   const axisRef = useRef<SVGLineElement>(null)
   const hoverLive = useRef<number | null>(null)
@@ -249,6 +261,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
   useEffect(() => {
     if (DRAW_ON_MOUNT_MS <= 0 || !armed) return
     let raf = 0
+    applyDraw(0) /* 처음엔 반드시 0(왼쪽 끝)에서 시작 — 이전 재생·상태가 남긴 값으로 중간에서 시작하지 않게 */
     const t0 = performance.now()
     const tick = (now: number) => {
       const t = Math.min(1, (now - t0) / DRAW_ON_MOUNT_MS)
@@ -487,6 +500,7 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
     return { winPts, losePts, estSegs, estSegsL, winLine, loseLine }
   }, [model, salt, Y_TOP, Y_BOTTOM])
   const { winPts, estSegs, estSegsL, winLine, loseLine } = lines
+  winPtsRef.current = winPts
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
@@ -551,6 +565,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
    *   축이 있으면 축 자리 · 그리는 중이면 ★펜 끝★(선 길이의 draw 지점) · 둘 다 아니면 끝. 옛 판(MARK_FOLLOWS=false)은 늘 끝
    */
   const tip = MARK_FOLLOWS && draw < 1 && hover === null && winPts.length > 1 ? pointAtLength(winPts, draw) : null
+  /* 클립 사각형 폭 — 다 그렸으면 판 전체, 그리는 중이면 펜 끝 X 까지 (왼쪽부터 열린다) */
+  const revealW = draw >= 1 ? width : winPts.length > 1 ? pointAtLength(winPts, Math.max(0, Math.min(1, draw)))[0] : 0
   const tipPt: Pt | null = tip === null ? null : (model.pts.filter((p) => p.x <= tip[0] + 0.01).pop() ?? model.pts[0] ?? null)
   const cur: Pt | null = MARK_FOLLOWS ? (hoverPt ?? tipPt ?? last ?? null) : (last ?? null)
   /* ★인원 줄★ (시안 A · 사장님 「인원 우위가 어케 됐는지도 축 이동하면서」) — 축이 없으면 마지막 상태 (그리는 중엔 펜 끝) */
@@ -700,6 +716,8 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
         <defs>
           <filter id="rfGlowB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="b1" /><feGaussianBlur stdDeviation="16" result="b2" /><feMerge><feMergeNode in="b2" /><feMergeNode in="b1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
           <filter id="rfGlowR" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7" result="r1" /><feGaussianBlur stdDeviation="16" result="r2" /><feMerge><feMergeNode in="r2" /><feMergeNode in="r1" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+          {/* ★선을 왼쪽부터 드러내는 클립★ — rect 폭이 draw 만큼(펜 끝 X) 자란다. penDash 대신 이걸 쓴다 (2026-09-24) */}
+          <clipPath id={clipId}><rect ref={clipRectRef} x={0} y={0} width={revealW} height={H} /></clipPath>
         </defs>
         <rect x="0" y="0" width={width} height={H} fill={tone.plot} />
         {[0, 25, 50, 75, 100].map((g) => (
@@ -754,23 +772,23 @@ export function RoundFlowChartV3({ flow, winner, loser, tone = V3, positionOf }:
         )}
         <text x={X0 - 7} y={Y_BOTTOM + (phone ? 20 : 24)} textAnchor="end" fill={tone.textDim} fontSize={PLOT.axisFont}>{phone ? 'R' : '라운드'}</text>
         {model.pts.length > 1 ? (
-          <g>
+          <g clipPath={`url(#${clipId})`}>
             {GLOW ? (
               <>
-                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.5} {...penDash(draw)} ref={penRef} />
-                <polyline points={winLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.5} {...penDash(draw)} ref={penRef} />
-                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} {...penDash(draw)} ref={penRef} />
-                <polyline points={winLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} ref={penRef} />
+                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowR)'} opacity={0.5} />
+                <polyline points={winLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#rfGlowB)'} opacity={0.5} />
+                <polyline points={loseLine} fill="none" stroke={loser.theme.deep} strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.42} />
+                <polyline points={winLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} />
               </>
             ) : (
               <>
                 {/* 빛번짐 — 상대전적의 feGaussianBlur 필터를 얇게 (SOFT_GLOW) · 끄면 sleeper 식 은은한 광 */}
-                <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowR)' : undefined} {...penDash(draw)} ref={penRef} />
-                <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowB)' : undefined} {...penDash(draw)} ref={penRef} />
+                <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowR)' : undefined} />
+                <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={SOFT_GLOW ? 9 : CLEAN_W * 3} strokeLinejoin="round" strokeLinecap="round" opacity={SOFT_GLOW ? 0.28 : 0.16} filter={SOFT_GLOW && draw >= 1 ? 'url(#rfGlowB)' : undefined} />
               </>
             )}
-            <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} ref={penRef} />
-            <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} ref={penRef} />
+            <polyline points={loseLine} fill="none" stroke={loseInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
+            <polyline points={winLine} fill="none" stroke={winInk} strokeWidth={GLOW ? PLOT.coreW : CLEAN_W} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
             {/* 어림한 구간 — 옛 판은 심지 위에 점선을 덧그렸다 (DASH_ESTIMATED) */}
             {DASH_ESTIMATED ? estSegsL.map(([x1, y1, x2, y2], k) => <line key={`l${k}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone.plot} strokeWidth={PLOT.coreW} strokeDasharray="4 4" opacity={0.85} />) : null}
             {DASH_ESTIMATED ? estSegs.map(([x1, y1, x2, y2], k) => <line key={`w${k}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={tone.plot} strokeWidth={PLOT.coreW} strokeDasharray="4 4" opacity={0.85} />) : null}
