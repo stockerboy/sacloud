@@ -24,7 +24,8 @@ const AGGREGATE_BOARD = 'hot'
  * 서버 쪽 이름이 바뀌면 이 표에서 항목만 지우면 원래대로 돌아온다.
  */
 const DISPLAY_NAME: Readonly<Record<string, string>> = {
-  [AGGREGATE_BOARD]: 'Hot',
+  /* 2026-09-24 사장님 「Hot 을 다 대문자로」 — 옛 표기 'Hot' (CLAUDE.md 4절의 「Hot게시판」 은 이 날 HOT 으로 바뀜) */
+  [AGGREGATE_BOARD]: 'HOT',
   /* 2026-09-12 사장님: «게시판 Hot /자유 /공지사항 이렇게 세개만» */
   notice: '공지사항',
 }

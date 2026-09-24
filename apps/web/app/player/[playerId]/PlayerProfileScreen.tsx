@@ -58,7 +58,6 @@ export default function PlayerPage({ params }: { params: Promise<{ playerId: str
   useEffect(() => {
     if (wasPending.current && refresh.state !== 'pending') invalidate()
     wasPending.current = refresh.state === 'pending'
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh.state])
   const onRefresh = () => {
     refresh.run()

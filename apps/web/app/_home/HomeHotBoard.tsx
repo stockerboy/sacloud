@@ -102,7 +102,7 @@ export async function HomeHotBoard() {
       ) : (
       <div className="rounded-[var(--radius)] border border-line-soft">
         <div className="flex items-baseline justify-between gap-4 border-b border-line-soft px-4 py-3">
-          <h2 className="text-[17px] font-bold text-text-strong">Hot게시판</h2>
+          <h2 className="text-[17px] font-bold text-text-strong">HOT게시판</h2>
           <Link
             prefetch={false}
             href="/board/hot"

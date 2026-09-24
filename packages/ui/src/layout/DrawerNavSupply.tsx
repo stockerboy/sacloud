@@ -56,7 +56,7 @@ const C = DRAWER_DARK
   : { bg: 'bg-white', divide: 'divide-[#e5e7eb]', text: 'text-[#4a4a4a]', dim: 'text-[#374151]', on: 'bg-[#374151] text-white', close: 'text-[#4b5563]' }
 
 const BOARD_LINKS: readonly NavLink[] = [
-  { label: 'Hot게시판', href: '/board/hot' },
+  { label: 'HOT게시판', href: '/board/hot' },
   { label: '자유게시판', href: '/board/free' },
 ]
 
