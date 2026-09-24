@@ -7,6 +7,14 @@
 
 ---
 
+## 0-저녁. ★2026-09-24 저녁 — Supply 2.0 시작★
+
+- `/league/cpl` 설명서를 사장님 여섯 줄로 간략화(시즌1 10/1~2/1 · 배치고사 10/1~11/1 자격미달 탈락 · 신청서 자격제한 · 무소속·3부·서플라이 1부·2부 상관없이 · 심사 후 승인).
+  옛 긴 판은 `CplGuideLegacy.tsx` (`CPL_GUIDE_SHORT=false`). 신청 종류 이름 CPL→Supply 2.0 · 혜택 문구 「자격제한 있음 · 심사 후 승인」.
+- 기본정보 카드: 소속 클랜이 Supply 2.0 에 등록돼 있으면 LeaguePlayer 없어도 ★0전·0킬 0데스 가상 카드★(`withSupply2Card` · DB 안 씀 · league_player_id `virtual-cpl-<id>`).
+  카드 이름 Supply 2.0 · 경쟁(금색) 라벨 · 금색 테두리 · 0전이어도 안 접고 맨 앞. DB League.name 은 아직 'CPL'(화면에서만 바꿈).
+- 남은 것: League.name/로고를 Supply 2.0 으로(이미지 `/brand/league-cpl.webp` 는 CPL 글자) · 배치고사 로직(10/1~11/1) · 자격심사 흐름(관리자 승인).
+
 ## 0-오후. ★2026-09-24 오후 — 계정 쪼개짐 근본 조치 · 지시 12건★
 
 - ★쪼개짐 원인·조치★: 병영수첩이 같은 사람에게 계정번호를 두 꼴(명단 10진수 userNexonSn · 배틀로그 16진수 strUsn)로 준다. 잇는 잡
