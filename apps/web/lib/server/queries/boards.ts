@@ -438,6 +438,9 @@ export interface BoardListQuery {
  */
 const PIN_LIMIT = 5
 
+/** 2026-09-25 — 글 상세에서 조회수 세기가 실패해도 글은 보여 준다 (false 면 옛 판 · 그대로 500) */
+const VIEW_COUNT_BEST_EFFORT = true
+
 function pinsApply(query: BoardListQuery): boolean {
   return !query.cursor && !query.q?.trim() && query.category !== 'notice'
 }
@@ -703,9 +706,24 @@ export async function getBoard(boardId: string, request: Request): Promise<Board
   if (!row) return null
 
   const [userId, key] = await Promise.all([currentUserId(request), voterKey(request)])
-  const counted = await consumeWriteQuota(`board:view:${boardId}:${key}`, VIEW_COUNT_WINDOW_SECONDS)
-  if (counted) {
-    await prisma.board.update({ where: { id: boardId }, data: { viewCount: { increment: 1 } } })
+  /*
+   * ⚠ ★2026-09-25 — 조회수는 ★부수 작업★ 이다. 실패해도 글은 보여 준다★
+   *   (사장님 「따봉 눌러도 게시물에 따봉수가 안올라가」)
+   *   `consumeWriteQuota` 는 트랜잭션이라 DB 풀이 막힌 순간(육각 빌드 등) `Unable to start a transaction`
+   *   으로 던졌고, 그러면 ★글 상세 GET 전체가 500★ 이었다 (Vercel 로그로 확인). 화면은 추천 뒤 이 GET 으로
+   *   글을 다시 읽는데 그게 실패하면 옛 추천수가 그대로 남아 「안 올라간다」 로 보였다 (DB 엔 올라가 있었다).
+   *   조회수 하나 못 세는 것과 글을 못 보여 주는 것 중 후자가 훨씬 나쁘다 — 조회수 쪽만 삼킨다.
+   *   옛 판(그대로 던짐)은 VIEW_COUNT_BEST_EFFORT=false.
+   */
+  let counted = false
+  try {
+    counted = await consumeWriteQuota(`board:view:${boardId}:${key}`, VIEW_COUNT_WINDOW_SECONDS)
+    if (counted) {
+      await prisma.board.update({ where: { id: boardId }, data: { viewCount: { increment: 1 } } })
+    }
+  } catch (error) {
+    if (!VIEW_COUNT_BEST_EFFORT) throw error
+    console.warn('[board] 조회수 세기 실패 — 글은 그대로 보여 준다', error instanceof Error ? error.message : error)
   }
 
   const likeType = await voteTypeOf('board', boardId, key)

@@ -23,6 +23,14 @@
     뿌리: CTE 가 ★리그 전체 경기★(supply 13만 · sanply 20만)에 경기마다 상관 서브쿼리를 돌렸다. 바깥 질의는 시즌0 경기만 쓰고, IPL 이 아니면 가중치가 늘 1 이라 서브쿼리는 답에 영향이 없었다.
     운영 실측(sanply · 같은 1,534행): ★6,109ms → 328ms★. base CTE 는 시즌 조건 + 비IPL 상수 · hex CTE 는 비IPL 상수만(바깥에 시즌 조건이 없어 걸면 결과가 바뀜다).
     동시에 두 개 돌던 것은 `hex.sh`(2-59/5)와 `season0-apply`(13,43)가 겁친 것 — 서로 다른 flock. `iplRankApply` 쪽은 이미 시즌 조건이 있고 IPL 전용이라 그대로.
+- ★**따봉 안 올라감 = 글 상세 GET 이 간헐 500**★ (사장님 「따봉 눌러도 게시물에 따봉수가 안올라가」)
+  운영 재현: 추천 POST 는 200(1→2) · 그 앞뒤 상세 GET 이 「서버 오류」. Vercel 로그: `Transaction API error: Unable to start a transaction in the given time`.
+  화면은 추천 뒤 `invalidate` 로 글을 다시 읽는데 그 GET 이 실패하면 옛 숫자가 남는다. 뿌리는 육각 질의가 풀을 붙들던 것과 같다(위 렉). `getBoard` 의 조회수 쿠터가 트랜잭션이라 풀이 막히면 글 자체가 500.
+- **개인랭킹 같은 사람 두 쪽** — 정렬은 유일(`score desc, leaguePlayerId asc`). 원인은 시점: 쪽마다 따로 300초 엣지 캐시 + 육각 빌드가 줄마다 upsert.
+  → `ranks/players` 캐시 300 → 20초 · `LeaguePlayerHex` 리그 한 벌을 `$transaction` 으로(`HEX_WRITE_ATOMIC`).
+- ★**`hex.sh` 가 9/24 부터 매 차례 건너뛰고 있었다**★ — 「다른 잡이 도는 중」 셈이 상시 서버 둘(hot-clan-server · renew-server)을 잡으로 세어 늘 2 이상. cron.log 「(2) — 건너뛴다」.
+  육각은 30분마다 season0-apply 가 대신 돌렸고 그 시각(00:43→01:06 · 01:13→01:19)마다 렉. 서버 둘을 빼고 센다 — 5분 육각이 이제 진짜 돈다(새 질의라 0.3초).
+- **Supply1.0 로고** — 사장님이 주신 흰·파랑 날개 문양 → `/brand/league-supply1.webp`(277×200). 홈 단추는 `HomeLeagueButtons`(`HomeLeagueTiles` 는 import 만 되고 `void` — 안 쓴다).
 - **폰 닉네임** — 선수 머리 `PlayerHeaderV3` 이름이 34px 고정이라 「원포박…」 으로 잘렸다 → `clamp(20px, 5.6vw, 34px)`(PC 는 34 그대로).
   랭킹 목록 닉네임도 폰에서만 0.95 → 0.86rem.
 - **랭킹 승률 칸** (사장님 「N전 · N승 N패 둘다 퍼센트기준 왼쪽에 쓰고 줄을 맞추」)
