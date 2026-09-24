@@ -1611,3 +1611,8 @@ body.antialiased {
   .mc-card > .mc-pc { zoom: 1.05; }
   .mc-card > .v3-board { zoom: 0.82; }
 }
+
+/* ★2026-09-24 사장님 「게시판은 세련되게 · 에타처럼」★ — 에타 판(HOT 게시물)의 머리(제목·더 보기)는 카드 밖 맨바탕에 선다.
+   옛 흰 카드 규칙(`.home-cloud + div > section > div` · 258줄)이 지금은 머리 div 에 걸려 ★남색 띠★ 로 보였다(PC·폰 캡쳐). 머리만 투명하게 */
+.home-hero--art + div > section > div { background: transparent !important; box-shadow: none !important; border: 0 !important; border-radius: 0 !important; }
+.home-hero--art + div > section > ul { border-radius: 18px; overflow: hidden; }
