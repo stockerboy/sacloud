@@ -9,14 +9,14 @@ import { notGhostPlayerWhere } from '../lib/server/queries/publicScope'
  * ① 애초에 그 두 출처가 아니다 ② 병영수첩 다리(BRK-)가 있다 ③ 경기 기록이 있다 ④ 리그 자리가 있다.
  */
 describe('notGhostPlayerWhere', () => {
-  it('두 옛 출처 · 병영다리 없음 · 경기기록/리그자리 있음 여부로 판정하는 OR 조건이다', () => {
+  it('두 옛 출처 · 병영다리 없음 · 경기기록/★채점된★ 리그자리 있음 여부로 판정하는 OR 조건이다', () => {
     const where = notGhostPlayerWhere()
     expect(where).toEqual({
       OR: [
         { origin: { notIn: ['3rd.supply', 'nexon'] } },
         { sourcePlayerId: { startsWith: 'BRK-' } },
         { matchStats: { some: {} } },
-        { leaguePlayers: { some: {} } },
+        { leaguePlayers: { some: { lastRatedAt: { not: null } } } },
       ],
     })
   })

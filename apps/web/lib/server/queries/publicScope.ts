@@ -77,17 +77,22 @@ export function isPublicRow(
  *
  * ── 왜 생기나
  *   옛 미러(`3rd.supply`)·구관측(`nexon`) 시절 스크랩이 ★한 줄만 이름을 남기고★
- *   실제 경기·리그 자리를 하나도 못 받은 채 남는다. 병영수첩과 이을 다리
- *   (`BRK-` sourcePlayerId)도 없다 — 그 사람이 실제로 경기를 뛴 적이 있다는
- *   증거가 ★단 하나도 없다.★ 실측(2026-09-24): 이런 줄이 3,112개.
+ *   실제 경기를 하나도 못 받은 채 남는다. 병영수첩과 이을 다리(`BRK-` sourcePlayerId)도
+ *   없다 — 그 사람이 실제로 경기를 뛴 적이 있다는 증거가 ★단 하나도 없다.★
  *
  *   합치기(`barracks-identity-merge`)는 ★확실한 다리(userNexonSn↔strUsn)가 있을 때만★
  *   잇는다(CLAUDE.md 「이름만으로 절대 합치지 마라」) — 다리가 없는 이 껍데기들은
  *   합칠 근거 자체가 없다. 그렇다고 화면에 「참여중인 리그가 없습니다」로 계속
  *   보여 줄 이유도 없다 — ★있었다는 증거가 없으니 없는 것처럼★ 다룬다.
  *
- * ── 지우지 않는다(CLAUDE.md 2절) — 화면에서만 뺀다. `origin` · 관계 자체는 그대로 있다.
+ * ⚠ ★2026-09-24 정정 — 「리그 자리가 있다」 만으론 부족했다★
+ *   딥스롯을 합친 뒤에도 「딥스롯」이란 이름의 다른 줄(SUP-2014288795)이 남아 있었다.
+ *   그 줄은 `LeaguePlayer` 두 자리가 ★있었지만★ 둘 다 `lastRatedAt` 이 NULL —
+ *   ★한 번도 채점(경기 반영)되지 않은 등록뿐인 자리★ 였다. 옛 대량 임포트가 클랜
+ *   명단에 이름만 올랐던 사람에게도 자리를 만들어 둔 흔적이라 「자리가 있다」로는
+ *   실제 활동을 증명 못 한다. ★채점된 자리★(lastRatedAt NOT NULL)만 증거로 친다.
  *
+ * ── 지우지 않는다(CLAUDE.md 2절) — 화면에서만 뺀다. `origin` · 관계 자체는 그대로 있다.
  */
 export function notGhostPlayerWhere() {
   return {
@@ -95,7 +100,7 @@ export function notGhostPlayerWhere() {
       { origin: { notIn: [MIRROR_ORIGIN, 'nexon'] } },
       { sourcePlayerId: { startsWith: 'BRK-' } },
       { matchStats: { some: {} } },
-      { leaguePlayers: { some: {} } },
+      { leaguePlayers: { some: { lastRatedAt: { not: null } } } },
     ],
   }
 }
