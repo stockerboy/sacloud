@@ -396,7 +396,7 @@ export function ourSideOf(detail: MatchDetail): 'red' | 'blue' {
 }
 
 /** 경기 목록 v3(MatchListV3)도 같은 스코어보드를 쓴다 (2026-09-11) */
-export function ClanScoreboardV3(props: { detail: MatchDetail; leagueCategory: string; leagueSlug: string; winnerFirst?: boolean }) { return <Scoreboard {...props} /> }
+export function ClanScoreboardV3(props: { detail: MatchDetail; leagueCategory: string; leagueSlug: string; winnerFirst?: boolean; defaultAnalysis?: 'red' | 'blue' | null }) { return <Scoreboard {...props} /> }
 
 function Scoreboard({
   detail,
@@ -404,11 +404,20 @@ function Scoreboard({
   leagueSlug,
   /** 이긴 팀을 위에 세울까 — 경기 목록에서만 켠다 (2026-09-15 · 무한 QA) */
   winnerFirst = false,
+  /**
+   * ★처음부터 그 편의 라운드 분석을 펼쳐 둔다★ (2026-09-24 사장님 「경기분석에서 라운드별 분석
+   * 그거를 여기 펼쳐놔줘」 — 「오늘 가장 치열했던 경기」 카드는 폰에서도 「경기분석」 버튼을
+   * 또 눌러야 하면 안 된다). `analysis` 를 이 값으로 미리 채우면 폰의 `v3-board-flow--auto`
+   * 가림(§경기분석 전엔 숨김)도 같이 풀린다 — 그 클래스는 `analysis === null` 일 때만 붙는다.
+   * 안 주면(`undefined`/`null`) 옛 판(눌러야 펴짐) 그대로다.
+   */
+  defaultAnalysis = null,
 }: {
   detail: MatchDetail
   leagueCategory: string
   leagueSlug: string
   winnerFirst?: boolean
+  defaultAnalysis?: 'red' | 'blue' | null
 }) {
   const ourSide = ourSideOf(detail)
   /* 2026-09-11 사장님: 집계 전 경기라고 세이브 칸이 통째로 사라지면 «없는 화면» 처럼 보인다 →
@@ -444,7 +453,12 @@ function Scoreboard({
   /* ★경기분석★ (2026-09-11 사장님) — 누르면 그 팀 명단을 접고 그 자리에 이 판 육각형을 그린다.
      이긴 팀 파랑 · 진 팀 빨강 한 판 위에 겹쳐서. 버튼은 ★양 팀 다★ 달되 한 번에 하나만 펴진다.
      자료는 이미 이 응답에 실려 온다(`red_hexagon_v2`/`blue_hexagon_v2`) — 왕복이 늘지 않는다 */
-  const [analysis, setAnalysis] = useState<'red' | 'blue' | null>(null)
+  const [analysis, setAnalysis] = useState<'red' | 'blue' | null>(() => {
+    if (!defaultAnalysis) return null
+    /* 양쪽 육각이 다 있을 때만(=아래 canAnalyze 와 같은 조건) 미리 편다 — 한쪽만 있으면 빈 그래프가 보인다 */
+    const bothReady = detail.red_hexagon_v2?.hexagon != null && detail.blue_hexagon_v2?.hexagon != null
+    return bothReady ? defaultAnalysis : null
+  })
   /**
    * ★폰에서 무엇을 그릴지 고르개★ (2026-09-12 사장님).
    *

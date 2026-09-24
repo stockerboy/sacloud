@@ -225,6 +225,8 @@ export default function LeagueHomeScreen({
                       leagueCategory={league.data?.data.category ?? 'independent'}
                       leagueSlug={leagueSlug}
                       winnerFirst
+                      /* ★누르지 않아도 라운드 분석이 보인다★ — 폰도 (사장님 「여기 펼쳐놔줘」) */
+                      defaultAnalysis="red"
                     />
                   )}
                 />
