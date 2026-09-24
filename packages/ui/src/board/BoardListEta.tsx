@@ -83,12 +83,13 @@ export function EtaRow({ item, basePath }: { item: BoardListItem; basePath?: str
   const href = basePath ? `${basePath}/${item.id}` : `/board/${item.category}/${item.id}`
   return (
     <li className="border-b border-[#1e2a42]">
-      <Link prefetch={false} href={href} className="block px-4 py-3.5 transition-colors hover:bg-[#121c2f]">
+      {/* 2026-09-24 사장님 「게시판 글자 크기좀 줄여」 — 폰만(max-md:) */}
+      <Link prefetch={false} href={href} className="block px-4 py-3.5 transition-colors hover:bg-[#121c2f] max-md:px-3.5 max-md:py-3">
         <div className="flex items-start gap-2">
-          <span className="min-w-0 flex-1 text-[15.5px] font-bold leading-snug text-[#f2f4f8]">{item.title}</span>
+          <span className="min-w-0 flex-1 text-[15.5px] font-bold leading-snug text-[#f2f4f8] max-md:text-[13.5px]">{item.title}</span>
           {item.has_image ? <ImageGlyph /> : null}
         </div>
-        <div className="mt-2 flex min-w-0 items-center gap-2 text-[12px] text-[#8f95af]">
+        <div className="mt-2 flex min-w-0 items-center gap-2 text-[12px] text-[#8f95af] max-md:mt-1.5 max-md:text-[11px]">
           <Counts item={item} />
           {item.like_count > 0 || item.comment_count > 0 ? <span aria-hidden className="text-[#33405f]">|</span> : null}
           <span className="shrink-0 tabular-nums"><RelativeTime value={item.created_at} /></span>

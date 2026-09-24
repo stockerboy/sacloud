@@ -65,15 +65,15 @@ export default async function CplPage() {
       {/* ── 머리 — 로고와 상태 ─────────────────────────────────── */}
       <header className="flex flex-col gap-3 border-b border-line-soft pb-6">
         <div className="flex flex-wrap items-center gap-4">
+          {/* 2026-09-24 사장님이 새 로고를 주셨다 — 검정 배경을 투명 처리(league-supply2.webp). 글자 로고 자체가 「Supply 2.0」 이라 옆에 따로 글자를 안 적는다(옛 판은 CplGuideLegacy 근처 커밋 로그 참고) */}
           <Image
-            src="/brand/league-cpl.webp"
+            src="/brand/league-supply2.webp"
             alt="Supply 2.0"
             width={640}
-            height={129}
+            height={203}
             priority
-            className="h-[42px] w-auto md:h-[56px]"
+            className="h-[46px] w-auto md:h-[62px]"
           />
-          <span className="text-[22px] font-black tracking-[-.01em] text-text-strong md:text-[26px]">Supply 2.0</span>
           {/* ★사장님이 정하신 말★ — 「개막전」 이 아니라 「모집중」 이다 */}
           <span className="rounded-[var(--radius)] border border-[#ffd83d] px-2.5 py-1 text-[12px] font-bold tracking-[.08em] text-[#ffd83d]">
             모집중

@@ -78,19 +78,20 @@ export async function HomeHotBoard() {
       {/* ★에타 「HOT 게시물」 카드★ (사장님 2026-09-24 사진) — 제목 · 밑에 날짜 · 오른쪽 👍 💬. 옛 판(줄 목록)은 HOME_HOT_ETA=false */}
       {HOME_HOT_ETA ? (
         <>
+          {/* 2026-09-24 사장님 「게시판 글자 크기좀 줄여」(폰 캡쳐) — 폰만 줄인다(max-md:). PC 는 그대로 */}
           <div className="flex items-baseline justify-between px-1 pb-3">
-            <h2 className="text-[22px] font-black tracking-tight text-text-strong"><span className="mr-1.5">HOT</span><span className="font-bold">게시물</span></h2>
-            <Link prefetch={false} href="/board/hot" className="text-[13px] text-meta transition-colors hover:text-accent">더 보기 ›</Link>
+            <h2 className="text-[22px] font-black tracking-tight text-text-strong max-md:text-[18px]"><span className="mr-1.5">HOT</span><span className="font-bold">게시물</span></h2>
+            <Link prefetch={false} href="/board/hot" className="text-[13px] text-meta transition-colors hover:text-accent max-md:text-[12px]">더 보기 ›</Link>
           </div>
           <ul className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1c1c1c]">
             {rows.map((r) => (
               <li key={r.id} className="border-b border-[#2a2a2a] last:border-b-0">
-                <Link prefetch={false} href={`/board/${r.category}/${r.id}`} className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-[#242424]">
+                <Link prefetch={false} href={`/board/${r.category}/${r.id}`} className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-[#242424] max-md:px-4 max-md:py-3">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[16px] font-semibold text-[#f2f2f2]">{r.notice ? <span className="mr-1.5 text-[#5c80e0]">[공지]</span> : null}{r.title}</span>
-                    <span className="mt-1 block text-[13px] text-[#8a8a8a]">{r.date}</span>
+                    <span className="block truncate text-[16px] font-semibold text-[#f2f2f2] max-md:text-[13.5px]">{r.notice ? <span className="mr-1.5 text-[#5c80e0]">[공지]</span> : null}{r.title}</span>
+                    <span className="mt-1 block text-[13px] text-[#8a8a8a] max-md:text-[11px]">{r.date}</span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-3 text-[15px] font-bold tabular-nums">
+                  <span className="flex shrink-0 items-center gap-3 text-[15px] font-bold tabular-nums max-md:text-[12.5px] max-md:gap-2">
                     <span className="inline-flex items-center gap-1 text-[#ff5a4a]"><ThumbGlyph />{r.likeCount}</span>
                     <span className="inline-flex items-center gap-1 text-[#3cc6c6]"><BubbleGlyph />{r.commentCount}</span>
                   </span>

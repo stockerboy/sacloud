@@ -76,7 +76,8 @@ export const LEAGUE_LOGO: Readonly<Record<string, LeagueLogo>> = {
    *   투명으로 돌리고 잘라 냈다. 로고가 금·은이라 ★글자는 한 점도 안 지워진다.★
    *   2172×724 → 잘라서 2030×410 → 너비 640 webp ★34KB★.
    */
-  cpl: { src: '/brand/league-cpl.webp', w: 640, h: 129 },
+  /* 2026-09-24 사장님이 새 로고를 주셔서 Supply 2.0 으로 교체 (검정 배경은 투명 처리). 옛 CPL 글자 로고는 파일만 남김 */
+  cpl: { src: '/brand/league-supply2.webp', w: 640, h: 203 },
   nolink: { src: '/brand/league-ipl.webp', w: 673, h: 200 },
   supply: { src: '/brand/league-pl.webp', w: 630, h: 200 },
   /*
