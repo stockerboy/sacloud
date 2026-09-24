@@ -116,7 +116,7 @@ export function EtaNoticeCard({ notice, text }: { notice: BoardListItem | null |
   /* ★관리자가 /admin/texts 에 쓴 글이 먼저★ — 제목 한 줄 + 본문 줄들. 링크 없이 그 자리에서 읽는다 */
   if (text && (text.title || text.lines.length > 0)) {
     return (
-      <div className="mx-4 my-3 rounded-md border border-[#2b3a5c] bg-[#121c2f] px-4 py-3">
+      <div className="mx-3 my-3 rounded-[14px] border border-[#2b3a5c] bg-[#121c2f] px-4 py-3">
         <div className="flex items-center gap-2 text-[11px] font-bold tracking-[.08em] text-[#5c80e0]">
           <span className="rounded-sm bg-[#5c80e0] px-1.5 py-0.5 text-[10px] text-[#0c1526]">공지</span>
           SACLOUD
@@ -132,7 +132,7 @@ export function EtaNoticeCard({ notice, text }: { notice: BoardListItem | null |
   }
   if (!notice) return null
   return (
-    <Link prefetch={false} href={`/board/notice/${notice.id}`} className="mx-4 my-3 block rounded-md border border-[#2b3a5c] bg-[#121c2f] px-4 py-3 transition-colors hover:border-[#5c80e0]">
+    <Link prefetch={false} href={`/board/notice/${notice.id}`} className="mx-3 my-3 block rounded-[14px] border border-[#2b3a5c] bg-[#121c2f] px-4 py-3 transition-colors hover:border-[#5c80e0]">
       <div className="flex items-center gap-2 text-[11px] font-bold tracking-[.08em] text-[#5c80e0]">
         <span className="rounded-sm bg-[#5c80e0] px-1.5 py-0.5 text-[10px] text-[#0c1526]">공지</span>
         SACLOUD
@@ -211,7 +211,7 @@ export function BoardListEta({
       {error ? (
         <div className="px-4"><ErrorState message="글 목록을 불러오지 못했습니다." onRetry={onRetry} /></div>
       ) : loading ? (
-        <ul>
+        <ul /* 2026-09-24 사장님 「게시판 보드 너무 각져 — 에타처럼 모서리만 둥글게」: 좌우 12 띄운 둥근 카드(18). 옛 판은 맨몸 <ul> */ className="mx-3 mt-3 overflow-hidden rounded-[18px] border border-[#243250] bg-[#0f1729]">
           {Array.from({ length: 10 }, (_, i) => (
             <li key={i} className="border-b border-[#1e2a42] px-4 py-4"><Skeleton className="h-4 w-3/4" /><Skeleton className="mt-2 h-3 w-1/2" /></li>
           ))}
