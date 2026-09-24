@@ -289,7 +289,15 @@ export function resolveSides(input: ResolveSidesInput): SideResolution {
    *   ★아는 것만으로 막는다★ — 모르는 것으로 막으면 멀쩡한 경기를 버린다.
    */
   const blocked = new Set<string>()
-  if (input.noByClanId && input.matchClanNos && input.matchClanNos.length > 0) {
+  /*
+   * ⚠ ★2026-09-24 정정 — 번호가 「양쪽 다」 있을 때만 막는다★ (사장님 「deluxe 자이언트 기록 아직도 누락」)
+   *   `matchClanNos` 는 ★목록을 받은 쪽(subject)의 번호★ 만 모은 것이다 (BarracksClanMatchRaw.rawClanNo). 한쪽 목록만 들어온 경기는
+   *   번호가 하나뿐이라, 상대 클랜은 번호가 있어도 「이 경기에 안 나왔다」 로 ★잘못★ 막혔다.
+   *   deluxe 는 slug 가 병영과 달라 제 목록이 안 왔고 → 상대 목록에만 있는 모든 deluxe 경기가 unknown_clan 이 됐다
+   *   (PROJECT_ONLY_KEYS 로 실측 · 5건 전부 「blue=deluxe 증명 못 했다」).
+   *   번호 둘을 다 알 때만 「없는 클랜」 을 말할 수 있다. 하나만 알면 그 하나만 확실하고 나머지는 이름으로 간다
+   */
+  if (input.noByClanId && input.matchClanNos && input.matchClanNos.length >= 2) {
     const here = new Set(input.matchClanNos)
     for (const [clanId, nos] of input.noByClanId) {
       if (nos.length === 0) continue

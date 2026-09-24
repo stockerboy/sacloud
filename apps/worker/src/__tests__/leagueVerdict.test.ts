@@ -353,3 +353,40 @@ describe('클랜번호가 거부권을 갖는다', () => {
     expect(r.blue?.clanId).toBe('c-spl')
   })
 })
+
+/*
+ * ★2026-09-24 — 클랜번호 차단은 「양쪽 번호를 다 알 때만」★ (사장님 「deluxe 자이언트 기록 아직도 누락」)
+ *   `matchClanNos` 는 목록을 받은 쪽(subject)의 번호뿐이다. 한쪽 목록만 온 경기에서 상대(deluxe)를
+ *   「번호가 이 경기에 없으니 안 나왔다」 로 막아 unknown_clan 이 됐다 (운영 실측 5건 전부).
+ */
+describe('클랜번호 차단 — 양쪽 번호를 다 알 때만', () => {
+  const DLX = { clanId: 'c-dlx', league: 'nolink' as const }
+  const AMA = { clanId: 'c-ama', league: 'nolink' as const }
+  const bySlug = new Map<string, ClanLeague>([['fdd8', AMA], ['ferwfwfwfwf', DLX]])
+  const names = new Map<string, ReadonlySet<string>>([['c-ama', new Set(['amaryllis'])], ['c-dlx', new Set(['deluxe'])]])
+  const index = new Map<string, ClanLeague>([['amaryllis', AMA], ['deluxe', DLX]])
+  const clanByNo = new Map<string, ClanLeague>([['090517000298', AMA], ['150531000663', DLX]])
+  const noByClanId = new Map<string, string[]>([['c-ama', ['090517000298']], ['c-dlx', ['150531000663']]])
+
+  it('상대(amaryllis) 목록에만 있는 경기 — 번호가 하나뿐이면 deluxe 를 막지 않는다 → 이름으로 앉는다', () => {
+    const r = resolveSides({
+      redClanName: 'amaryllis', blueClanName: 'deluxe', subjects: ['fdd8'],
+      clanBySlug: bySlug, namesByClanId: names, nameIndex: index, clanByNo, noByClanId, matchClanNos: ['090517000298'],
+    })
+    expect(r.red?.clanId).toBe('c-ama')
+    expect(r.blue?.clanId).toBe('c-dlx')
+    expect(r.blueBy).toBe('clan_name')
+    const v = verdictFromSides('amaryllis', 'deluxe', r)
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.league).toBe('nolink')
+  })
+
+  it('양쪽 번호를 다 아는데 deluxe 번호가 없으면 — 그때는 막는다 (이름이 돌려 쓰인 경우)', () => {
+    const r = resolveSides({
+      redClanName: 'amaryllis', blueClanName: 'deluxe', subjects: ['fdd8'],
+      clanBySlug: bySlug, namesByClanId: names, nameIndex: index, clanByNo, noByClanId, matchClanNos: ['090517000298', '999999999999'],
+    })
+    expect(r.red?.clanId).toBe('c-ama')
+    expect(r.blue).toBeNull()
+  })
+})
