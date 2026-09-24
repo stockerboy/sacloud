@@ -1,50 +1,26 @@
 #!/bin/sh
-# ★병영수첩 계정이 두 꼴로 쪼개진 사람을 합친다★ (2026-09-20)
+# ★한 계정이 두 명으로 쪼개지는 것을 매시 자동으로 합친다★ (2026-09-24 사장님 「딥스롯 이 사람 병영수첩엔 저 사람인데
+#   기록 또 갈라지는데 뭐야」 → 「이런 계정 한두개가 아닌듯」 → 「반드시 갈라지는 기록들 한계정으로 모아」)
 #
-# 사장님: 「게임한 아이디는 하나인데 (…) 여러개의 분신이 생성되는거 같아」
+# ── 왜 갈라지나
+#   병영수첩이 같은 사람에게 계정번호를 ★두 꼴★ 로 준다 —
+#   클랜 명단 API 는 10진수(userNexonSn), 배틀로그 API 는 16진수(strUsn).
+#   둘을 안 이으면 클랜 명단에서 온 줄과 배틀로그에서 온 줄이 ★서로 다른 사람★ 이 된다.
+#   특히 ★닉네임을 바꾸면★(예: 딥스롯→씨２) 옛 3rd.supply 미러 줄은 이름이 안 따라오고,
+#   새 병영수첩 줄이 새 이름으로 따로 생겨 기록이 갈라진다.
 #
-# 실측 — 앞 300명 중 ★86명(29%)★ 이 쪼개져 있었다. 8,878명이면 약 2,500명이다.
+# ── 다리는 있다
+#   `BarracksClanMember` 한 줄이 두 꼴(strUsn·userNexonSn)을 같이 담는다.
+#   `barracks-identity-merge` 잡이 그 다리로 ★기록이 많은 쪽을 남기고★ 합친다(worker/src/jobs/barracksIdentityMerge.ts).
 #
-# ⚠ ★한 판에 300명씩★ 만 한다. 한 번에 다 하면 DB 가 밀린다.
-# ⚠ ★다른 잡이 돌면 비킨다★ — 겹치면 사이트가 503 이 된다.
-# ⚠ 이 잡은 ★멱등하다★ — 이미 합쳐진 사람은 `Player` 가 하나라 건너뛴다.
-#   그래서 처음부터 다시 돌려도 안전하다 (커서를 안 들고 있는 까닭이다).
+# ── 왜 이 파일이 필요한가
+#   그 잡은 2026-09-20 에 ★한 번★ 사람 손으로 돌았을 뿐 예약이 없었다.
+#   그날 뒤로 닉을 바꾼 사람마다 새 분신이 계속 쌓였다 — 실측(2026-09-24): 2,615명이 쪼개져 있었다.
+#   ★한 번 더 손으로 돌아 봤자 또 쌓인다.★ 매시(roster.sh 가 새 명부를 받은 뒤) 자동으로 돈다.
+#
+# 이미 합친 사람은 다시 돌려도 ★조용히 넘어간다★(찾은 사람이 하나뿐이면 이름만 다시 맞추고 끝) — 안전하다.
 set -e
 cd /root/sacloud
 . /root/sacloud.env
-
-# ⚠ ★커서를 들고 간다★ — 없으면 늘 같은 앞 300명만 돈다 (실제로 그렇게 만들었다가 잡았다)
-#
-# ⚠ ★멈췄던 자리에서 이어 갈 수 있다★ (2026-09-20) — `IDMERGE_AFTER` 로 넘긴다.
-#   중간에 멈추면 로그의 마지막 「다음커서=…」 를 그대로 넣으면 된다.
-#   안 넣으면 처음부터 돈다 — 이 잡은 멱등해서 그래도 안전하다. 다만 느릴 뿐이다.
-AFTER="${IDMERGE_AFTER:-}"
-# ── ⚠ ★아래가 옛 판이다★ — 지우지 않는다 (CLAUDE.md 1-4).
-#      「다른 잡이 도나」 로 비켰는데, 예약이 5분마다 뜨니 ★거의 항상 무언가 돈다.★
-#      이름표 채우기에서 같은 함정을 ★두 번★ 밟았다 (30분 동안 한 줄도 못 채웠다).
-#
-#        n=$(pgrep -cf "tsx src/cli.ts" || true)
-#        if [ "${n:-0}" -gt 1 ]; then … 90초 쉰다 … fi
-#
-#   ★봐야 할 것은 「누가 도나」 가 아니라 「사이트가 느린가」 다.★
-for i in $(seq 1 200); do
-  secs=$(curl -s -o /dev/null -m 12 -w '%{time_total}' https://3rdcloud.my/api/health 2>/dev/null)
-  ms=$(echo "${secs:-0}" | awk '{printf "%d", $1 * 1000}')
-  if [ "${ms:-0}" -gt 3000 ]; then
-    echo "[$(date +%H:%M)] ★사이트가 느리다 (${ms}ms) — 60초 비킨다★"
-    sleep 60
-    continue
-  fi
-  if [ -z "$AFTER" ]; then
-    line=$(pnpm --filter @sacloud/worker nexon barracks-identity-merge --confirm --limit 300 2>&1 | grep "쪼개진사람" || true)
-  else
-    line=$(pnpm --filter @sacloud/worker nexon barracks-identity-merge --confirm --limit 300 --after "$AFTER" 2>&1 | grep "쪼개진사람" || true)
-  fi
-  echo "[$(date +%H:%M)] ${ms}ms · $line"
-  case "$line" in
-    *"다음커서=끝"*) echo "[$(date +%H:%M)] ★전부 훑었다★"; break ;;
-  esac
-  AFTER=$(echo "$line" | grep -o "다음커서=[0-9]*" | grep -o "[0-9]*")
-  if [ -z "$AFTER" ]; then echo "[$(date +%H:%M)] 커서를 못 읽었다 — 멈춘다"; break; fi
-  sleep 10
-done
+export SACLOUD_DB_SESSION_POOLER=1
+pnpm --filter @sacloud/worker nexon barracks-identity-merge --limit 20000 --confirm
