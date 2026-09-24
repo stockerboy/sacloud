@@ -1158,6 +1158,10 @@ export async function getPlayerRanks(
       /* 무소속리그면 **top100 밖만** 누적 킬뎃을 비운다 (2026-09-02).
          순위·승패·평균킬은 언제나 그대로 나간다. 옛 규칙(전원 감춤)은 D-107 */
       kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death), startRank + index),
+      /* ★킬뎃 무기 토글은 점수 래더 목록(rankings.ts) 몫이다★ — 이 길(10🏔 등 점수 없는 리그)은
+         아직 무기별 kill/death 를 안 걷어 둔다. 지어내지 않는다(D-106) — 2026-09-25 */
+      sniper_kd_rate: null,
+      rifle_kd_rate: null,
       kill_per_match: killPerMatch(
         row.kill,
         knownGamesOf(row.weaponStats) || (counts.get(row.player.id) ?? 0),

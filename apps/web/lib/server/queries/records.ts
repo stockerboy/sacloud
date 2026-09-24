@@ -790,6 +790,9 @@ export async function getLeagueClanPlayers(
          클랜 안 순번을 넘기면 전원이 top100 으로 판정돼 규칙이 무너진다 */
       /* 2026-09-11: 클랜원 표에서는 킬뎃을 감추지 않는다 (사장님: 빈 칸 «-» 이상함). 옛 판: cumulativeKdRate(league, kdRate(...), null) */
       kd_rate: row.kill + row.death > 0 ? kdRate(row.kill, row.death) : null,
+      /* 클랜원 표는 무기별 kill/death 를 안 걷어 둔다 — 2026-09-25 (킬뎃 무기 토글은 rankings.ts 몫) */
+      sniper_kd_rate: null,
+      rifle_kd_rate: null,
       kill_per_match: killPerMatch(row.kill, counts.get(row.player.id) ?? 0),
       rating: row.rating,
       /*

@@ -228,6 +228,13 @@ export async function getPlayerRanksByWeapon(
       /* 무소속리그면 top100 밖만 비운다 (2026-09-02). 무기 축과는 다른 규칙이다.
          여기서 견주는 순위는 **이 목록의 순위**(무기 랭킹)다 — 그 목록의 위 100명이다 */
       kd_rate: cumulativeKdRate(league, kdRate(row.kill, row.death), startRank + index),
+      /*
+       * ★이 목록은 이미 한 무기로 걸러져 있다★ — `row` 자체가 그 무기의 줄이다.
+       * 그래서 그 무기 칸은 위 `kd_rate` 와 같은 값을 채우고, 다른 무기는 여기서 안 뒤진다(null).
+       * (킬뎃 무기 토글은 `getPlayerRanksByScore`(통합 목록)에서 쓰는 자리다 — 2026-09-25)
+       */
+      sniper_kd_rate: weapon === 'sniper' ? kdRate(row.kill, row.death) : null,
+      rifle_kd_rate: weapon === 'rifle' ? kdRate(row.kill, row.death) : null,
       kill_per_match: killPerMatch(row.kill, row.knownStatGames),
       /* 통합 래더는 무기 탭에서도 통합 래더 그대로다 (3-B 2번) */
       rating: row.leaguePlayer.rating,
@@ -694,6 +701,20 @@ export async function getPlayerRanksByScore(
         win_rate: winRate(win, lose),
         /* ★10판 미만이라고 감추지 않는다★ (2026-09-11 사장님). 옛 판: cumulativeKdRate(league, …, rank) */
         kd_rate: kill + death > 0 ? kdRate(kill, death) : null,
+        /*
+         * ★킬뎃 칸의 무기별 값★ (2026-09-25 사장님 「킬뎃 단추에 통합킬뎃이라고 쓰고 (…)
+         * 스나이퍼/라이플 골라서 그 킬뎃만 볼 수 있게」). 위 `kd_rate`(통합·구간 보정판)와
+         * 달리 ★그 무기로 뛴 판 전체★(구간 안 가림)를 본다 — `ws` 는 이미 이 줄에서
+         * 읽어 둔 두 무기 줄이라 왕복이 늘지 않는다. 그 무기로 안 뛰었으면 `null`.
+         */
+        sniper_kd_rate: (() => {
+          const w = ws.find((row) => row.weapon === 1)
+          return w && w.kill + w.death > 0 ? kdRate(w.kill, w.death) : null
+        })(),
+        rifle_kd_rate: (() => {
+          const w = ws.find((row) => row.weapon === 0)
+          return w && w.kill + w.death > 0 ? kdRate(w.kill, w.death) : null
+        })(),
         kill_per_match: killPerMatch(kill, games),
         rating: lp.rating,
       /*

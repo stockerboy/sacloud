@@ -889,6 +889,9 @@ export function getPlayerRanks(leagueId: string, cursor: string | null, size: nu
         lose: leaguePlayer.lose,
         win_rate: winRate(leaguePlayer.win, leaguePlayer.lose),
         kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
+        /* 통합 목록 픽스처 — 무기별 값은 안 지어낸다(2026-09-25). 실 서버 쪽은 rankings.ts 가 채운다 */
+        sniper_kd_rate: null,
+        rifle_kd_rate: null,
         kill_per_match: killPerMatch(leaguePlayer.kill, matchCount),
         rating: leaguePlayer.rating,
         /* ★점수 래더★ (2026-09-18) — 픽스처는 래더에서 만들어 ★결정적★ 으로 둔다 */
@@ -955,6 +958,9 @@ export function getPlayerRanksByWeapon(
       lose: bucket.lose,
       win_rate: winRate(bucket.win, bucket.lose),
       kd_rate: kdRate(bucket.kill, bucket.death),
+      /* 이 목록은 이미 한 무기로 걸러져 있다 — 실 서버(rankings.ts)와 같은 규칙, 2026-09-25 */
+      sniper_kd_rate: code === 1 ? kdRate(bucket.kill, bucket.death) : null,
+      rifle_kd_rate: code === 0 ? kdRate(bucket.kill, bucket.death) : null,
       kill_per_match: killPerMatch(bucket.kill, bucket.games),
       rating: leaguePlayer.rating,
         /* ★점수 래더★ (2026-09-18) — 픽스처는 래더에서 만들어 ★결정적★ 으로 둔다 */
@@ -2722,6 +2728,9 @@ export function getLeagueClanPlayers(
         lose: leaguePlayer.lose,
         win_rate: winRate(leaguePlayer.win, leaguePlayer.lose),
         kd_rate: kdRate(leaguePlayer.kill, leaguePlayer.death),
+        /* 통합 목록 픽스처 — 무기별 값은 안 지어낸다(2026-09-25). 실 서버 쪽은 rankings.ts 가 채운다 */
+        sniper_kd_rate: null,
+        rifle_kd_rate: null,
         kill_per_match: killPerMatch(leaguePlayer.kill, matchCount),
         rating: leaguePlayer.rating,
         /* ★점수 래더★ (2026-09-18) — 픽스처는 래더에서 만들어 ★결정적★ 으로 둔다 */

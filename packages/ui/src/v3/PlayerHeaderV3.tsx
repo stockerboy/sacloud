@@ -137,8 +137,9 @@ function KdCell({
         className="v3-phead-cell"
       >
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          {/* 2026-09-25 사장님 「킬뎃 단추에 통합킬뎃이라고 쓰고」 — 이미 누르면 스나/라플로 갈라지는 단추였다. 이름만 안 보였다 */}
           <span style={{ fontSize: 10.5, color: V3.textGhost, letterSpacing: '.08em', whiteSpace: 'nowrap', flex: 'none' }}>
-            킬뎃 <span style={{ fontSize: 9 }}>{open ? '▲' : '▼'}</span>
+            통합킬뎃 <span style={{ fontSize: 9 }}>{open ? '▲' : '▼'}</span>
           </span>
           {sub ? (
             <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>

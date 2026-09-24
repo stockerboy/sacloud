@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 
 /**
@@ -1030,6 +1030,25 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
   /* 2026-09-11 QA 교차검토 8번: 킬뎃도 폰에 남긴다 (옛 규칙: keptStat === 'kd' ? '' : COL_HIDDEN) */
   const kdHidden = ''
 
+  /*
+   * ★킬뎃 칸의 무기 토글★ (2026-09-25 사장님 「킬뎃 단추에 통합킬뎃이라고 쓰고 (…)
+   * 단추클릭하면 스나이퍼/라이플 골라서 그 킬뎃만 볼 수 있게」).
+   *
+   * ── 위 「무기 탭(전체/스나/라플)」과 ★다른 자리★ 다
+   *   그 탭은 등수·승리·패배·래더까지 통째로 다른 목록으로 바꾼다(그 무기가 주무기인
+   *   선수만 남는다). 이 토글은 ★한 줄 그대로 두고★ 킬뎃 칸 숫자만 바꾼다 — 「통합
+   *   랭킹은 그대로 보면서 스나 킬뎃만 보고 싶다」 는 요청이라 뜻이 다르다.
+   *
+   * ── 값이 없을 수 있다
+   *   그 무기로 안 뛰었으면(또는 이 목록이 아직 안 채우는 갈래면, `sniper_kd_rate`
+   *   /`rifle_kd_rate` 가 `null`) 그 줄은 「-」 다 — 통합 값으로 몰래 되돌리지 않는다.
+   */
+  const [kdWeapon, setKdWeapon] = useState<'all' | 1 | 0>('all')
+  const kdWeaponLabel = kdWeapon === 'all' ? '통합킬뎃' : kdWeapon === 1 ? '스나킬뎃' : '라플킬뎃'
+  const kdValueOf = (row: PlayerRankRow): number | null =>
+    kdWeapon === 'all' ? row.kd_rate : kdWeapon === 1 ? (row.sniper_kd_rate ?? null) : (row.rifle_kd_rate ?? null)
+  const cycleKdWeapon = () => setKdWeapon((w) => (w === 'all' ? 1 : w === 1 ? 0 : 'all'))
+
   return (
     <>
       <div className={HEAD}>
@@ -1047,7 +1066,16 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
         {columns.winRate ? <div className={COL_PWL}>패배</div> : null}
         {/* 2026-09-25 「줄을 맞춰」 — 머리글 104px · 몸통 92px 로 어긋나 있었다 */}
         {columns.winRate ? <div className={`${COL_PSTAT} ${winRateHidden} max-md:!w-[92px]`}>승률</div> : null}
-        {columns.kd ? <div className={`${COL_PSTAT} ${kdHidden}`}>킬뎃</div> : null}
+        {columns.kd ? (
+          <button
+            type="button"
+            onClick={cycleKdWeapon}
+            className={`${COL_PSTAT} ${kdHidden} cursor-pointer border-0 bg-transparent p-0 text-left`}
+            title="눌러서 스나/라플 킬뎃으로 바꿔 봅니다"
+          >
+            {kdWeaponLabel} <span style={{ fontSize: 9 }}>▾</span>
+          </button>
+        ) : null}
         {columns.kd ? <div className={COL_PWL}>평균킬</div> : null}
         {/* 무기 탭에서는 통합 래더가 아니라 **그 무기로 얻은 래더 증감의 합**이다 (D-169).
             머리글을 그대로 `래더` 로 두면 같은 자리에 다른 뜻의 숫자가 들어가 거짓말이 된다. */}
@@ -1340,23 +1368,31 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
             />
             )}
             {/* 무소속리그는 누적 킬뎃을 공개하지 않는다. 값이 없으면 칸을 비운다 (D-107).
-                IPL 은 원래 킬뎃이 없어 알과 무관하다 (사양 2장) */}
-            {!columns.kd ? null : row.kd_rate === null ? (
-              <div className={`${COL_PSTAT} ${kdHidden} text-faint`}>-</div>
-            ) : egg === 'sealed' ? (
-              <div className={`${COL_PSTAT} ${kdHidden}`}>
-                <EggVeil state={egg}>{null}</EggVeil>
-              </div>
-            ) : (
-              /* 평균킬은 킬뎃 아래로 접었다 */
-              <Stat
-                className={`${COL_PSTAT} ${kdHidden}`}
-                value={formatRate(row.kd_rate)}
-                tone={rateClass(row.kd_rate)}
-                unit="%"
-                sub={<span className={SUB_PHONE_ONLY}>{formatAverage(row.kill_per_match)}킬</span>}
-              />
-            )}
+                IPL 은 원래 킬뎃이 없어 알과 무관하다 (사양 2장).
+                ★무기 토글★ (2026-09-25) — 통합이 아니면 `kdValueOf` 가 그 무기 값을 본다.
+                그 무기로 안 뛴 선수는 여기서도 「-」 다(지어내지 않는다), 통합으로 안 돌아간다. */}
+            {!columns.kd
+              ? null
+              : (() => {
+                  /* TS 가 함수 호출까지 좁혀 주지 않아 한 번만 불러 지역변수로 둔다 */
+                  const kd = kdValueOf(row)
+                  return kd === null ? (
+                    <div className={`${COL_PSTAT} ${kdHidden} text-faint`}>-</div>
+                  ) : egg === 'sealed' ? (
+                    <div className={`${COL_PSTAT} ${kdHidden}`}>
+                      <EggVeil state={egg}>{null}</EggVeil>
+                    </div>
+                  ) : (
+                    /* 평균킬은 킬뎃 아래로 접었다 */
+                    <Stat
+                      className={`${COL_PSTAT} ${kdHidden}`}
+                      value={formatRate(kd)}
+                      tone={rateClass(kd)}
+                      unit="%"
+                      sub={<span className={SUB_PHONE_ONLY}>{formatAverage(row.kill_per_match)}킬</span>}
+                    />
+                  )
+                })()}
             {/*
               ★평균킬 칸★ (2026-09-22 밤) — 서플라이의 여덟째 칸이다 (「7.7킬」).
                 이 값도 바로 위 칸 아래에 접혀 있던 것이다 — ★자리만 바뀜다.★

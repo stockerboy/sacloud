@@ -390,6 +390,20 @@ export const PlayerRankRow = z.object({
   win_rate: Percent,
   /** 킬뎃 % — 무소속리그 개인랭킹에서는 `null`이다 (D-107) */
   kd_rate: Percent.nullable(),
+  /**
+   * ★킬뎃 칸의 무기별 값★ (2026-09-25 사장님 「킬뎃 단추에 통합킬뎃이라고 쓰고 (…)
+   * 단추클릭하면 스나이퍼/라이플 골라서 그 킬뎃만 볼 수 있게」).
+   *
+   * `kd_rate`(위 칸)는 그대로 「통합」이다 — 무기 탭(전체/스나/라플)을 바꾸면 등수까지
+   * 통째로 다른 목록이 되는 것과 달리, 이 칸은 ★같은 줄 안에서★ 킬뎃만 무기별로 보여 준다.
+   * `LeaguePlayer.sniper_kd_rate`/`rifle_kd_rate` 와 같은 이름·같은 정의(킬/(킬+데스)×100)다.
+   *
+   * ⚠ ★지금은 점수 래더 목록(`getPlayerRanksByScore`)에서만 채운다★ — 그 무기로 뛴 판이
+   *   없으면(또는 아직 이 목록이 채우지 않는 갈래면) `null` 이고, 화면은 그 무기 칸을 감춘다.
+   *   지어내지 않는다(D-106).
+   */
+  sniper_kd_rate: Percent.nullable().default(null),
+  rifle_kd_rate: Percent.nullable().default(null),
   kill_per_match: z.number().min(0),
   /**
    * 통합 개인 래더 (`LeaguePlayer.rating`).
