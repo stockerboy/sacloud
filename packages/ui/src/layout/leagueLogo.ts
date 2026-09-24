@@ -76,8 +76,13 @@ export const LEAGUE_LOGO: Readonly<Record<string, LeagueLogo>> = {
    *   투명으로 돌리고 잘라 냈다. 로고가 금·은이라 ★글자는 한 점도 안 지워진다.★
    *   2172×724 → 잘라서 2030×410 → 너비 640 webp ★34KB★.
    */
-  /* 2026-09-24 사장님이 새 로고를 주셔서 Supply 2.0 으로 교체 (검정 배경은 투명 처리). 옛 CPL 글자 로고는 파일만 남김 */
-  cpl: { src: '/brand/league-supply2.webp', w: 640, h: 203 },
+  /*
+   * ⚠ ★2026-09-25 — 상단바 CPL(Supply2.0) 단추도 Supply1.0 과 같은 날개 문양으로★
+   *   (사장님이 같은 그림을 다시 주며 「경쟁전 마크 이걸로 바꿔줘」). 「경쟁전」(Supply2.0·1.0)을
+   *   한 문양으로 통일한다 — 파일도 그대로 재사용(`league-supply1.webp`, 277×200).
+   *   옛 「깨진유리」 CPL 로고(2026-09-24 교체분)는 파일(`league-supply2.webp`)로 그대로 남는다 (`CLAUDE.md` 1-4).
+   */
+  cpl: { src: '/brand/league-supply1.webp', w: 277, h: 200 },
   nolink: { src: '/brand/league-ipl.webp', w: 673, h: 200 },
   /*
    * ★★Supply1.0 로고 — 사장님이 주신 그림★★ (2026-09-25 새벽 「경쟁전 로고 이걸로 바꿔줘」)

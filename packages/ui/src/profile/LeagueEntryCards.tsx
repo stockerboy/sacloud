@@ -8,6 +8,7 @@ import { formatCount, formatRate } from '../common/format'
 import { rateClass } from '../common/rate'
 import { NAV_TAB, NAV_TAB_ACTIVE, NAV_TAB_IDLE } from '../common/navTab'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
+import { leagueDisplayName } from '../site-config'
 
 /**
  * 참여중인 리그 카드.
@@ -93,7 +94,10 @@ function PlayerEntryCard({ entry, playerId }: { entry: PlayerLeagueEntry; player
       className={`${CARD_BASE} mt-4`}
     >
       {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
-      <CardTitle name={entry.league.name} official={isOfficialLeague(entry.league.slug)} />
+      {/* 2026-09-25 사장님 「PL이라고 돼있어 씨피엘도 남아있고」 — 이 카드만 leagueDisplayName 을 안 거치고
+          entry.league.name(DB 원문 「PL」·「CPL」)을 그대로 찍고 있었다. 다른 화면(PlayerProfile·ClanCardV3 등)은
+          전부 leagueDisplayName 을 거친다 — 여기만 빠져 있었다 */}
+      <CardTitle name={leagueDisplayName(entry.league.slug, entry.league.name)} official={isOfficialLeague(entry.league.slug)} />
       {/*
        * ★래더를 안 쓰는 리그에는 이 줄을 아예 안 그린다★ (2026-09-15 QA에서 잡았다).
        *
@@ -178,7 +182,8 @@ function ClanEntryCard({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
   return (
     <Link prefetch={false} href={leagueClanPath(entry.league.slug, clanSlug)} className={CARD_BASE}>
       {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
-      <CardTitle name={entry.league.name} official={isOfficialLeague(entry.league.slug)} />
+      {/* 2026-09-25 — 위 PlayerEntryCard 와 같은 누락(leagueDisplayName 안 거침) */}
+      <CardTitle name={leagueDisplayName(entry.league.slug, entry.league.name)} official={isOfficialLeague(entry.league.slug)} />
       <div className="mt-2">
         {/* 부리그를 화면에 내지 않는 리그(지시 #9)와 **단일리그**(부리그 1개 · 10mountain)는 «참여중» 만 적는다.
             단일리그에 「1부리그로 참여중」 이 떴었다 (#17-2 검수) — 헤더의 `divisionCount <= 1` 규칙과 같다 */}
