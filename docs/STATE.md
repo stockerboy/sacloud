@@ -7,6 +7,13 @@
 
 ---
 
+## 0-새벽5. ★2026-09-25 07:0x — 진짜 「경쟁전 마크」는 서랍 묶음 아이콘이었다★
+
+- 사장님이 서랍 스크린샷에 서 「경쟁전」 웉 아이콘을 동그라미 쳤서 「이거 바꿘라는거였는데 경쟁전 마크」 — 앞서 두 번(상단바 CPL 로고 · 참여리그 카드)는 다 메인 요청이 아니었다.
+  진짜 대상은 `DrawerNavSupply.tsx` 의 `CloudIcon`(사장님 로고를 흘내는 손그림 두 쪽 구름 아이콘 — memory user-brings-art-i-build 위반).
+- `SupplyWingIcon` 추가 — `/brand/league-supply1.webp` 를 15px 높이로. ★경쟁전 그룹만★ 바꿈 — 일반전은 `CloudIcon` 그대로(요청 없음).
+  이로써 이번 새벽의 「경쟁전 마크」 요청 3번째 시도가 정확한 자리를 찾았다.
+
 ## 0-새벽4. ★2026-09-25 06:4x — 클랜 참여리그 카드 「PL」「CPL」 원문 노출 · CPL 상단바 로고 통일★
 
 - 사장님이 e2stro- 클랜 페이지 사진을 보내 「PL이라고 돼있어 씨피엘도 남아있고」 — `LeagueEntryCards.tsx`(「참여중인 리그」 카드, 클랜·선수 공용)가 `entry.league.name`(DB 원문 「PL」·「CPL」)을 그대로 찍고 있었다 — 다른 모든 화면(PlayerProfile·ClanCardV3 등)은 `leagueDisplayName(slug, name)` 을 거치는데 이 파일만 빠져 있었다. 적용(두 곳 모두) — supply→Supply1.0 · cpl→Supply2.0.

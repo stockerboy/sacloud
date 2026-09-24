@@ -41,8 +41,14 @@ const DRAWER_LEAGUE_ORDER: readonly string[] = [
 
 /** 2026-09-25 사장님 — 서랍은 「경쟁전 / 일반전」 두 묶음. 옛 한 묶음은 `false` */
 export const DRAWER_GROUPED = true
-const DRAWER_GROUPS: readonly { title: string; hrefs: readonly string[] }[] = [
-  { title: '경쟁전', hrefs: ['/league/cpl', '/league/supply'] },
+const DRAWER_GROUPS: readonly { title: string; hrefs: readonly string[]; icon?: React.ReactNode }[] = [
+  /*
+   * 2026-09-25 사장님 — 서랍을 열어 놓고 「경쟁전」 옆 아이콘을 동그라미 쳐서 「이거 바꾸라는거였는데
+   * 경쟁전 마크」. 그 아이콘은 `CloudIcon`(로고를 흉내 낸 손그림 두 쪽 구름)이었다 — 사장님이 준 진짜
+   * 그림(날개 문양)을 두고 CSS 로 흉내 낸 것을 계속 쓰고 있었다 (memory user-brings-art-i-build 위반).
+   * ★경쟁전만★ 사장님이 준 그림으로 바꾼다 — 일반전은 그대로 `CloudIcon`(달리 요청 없음).
+   */
+  { title: '경쟁전', hrefs: ['/league/cpl', '/league/supply'], icon: <SupplyWingIcon /> },
   { title: '일반전', hrefs: ['/league/nolink', '/league/sanply'] },
 ]
 
@@ -155,7 +161,7 @@ export function DrawerNavSupply({ user = null, onLogout, onClose, loginHref = '/
           const rows = leagues.filter((l) => g.hrefs.includes(l.href))
           if (rows.length === 0) return null
           return (
-            <Section key={g.title} title={g.title} icon={<CloudIcon />}>
+            <Section key={g.title} title={g.title} icon={g.icon ?? <CloudIcon />}>
               {rows.map((l) => (
                 <Row key={l.href} link={l} pathname={pathname} />
               ))}
@@ -210,6 +216,19 @@ function CloseIcon() {
   )
 }
 /* ★우리 아이콘★ (사장님 2026-09-24 「번개 말고 다른 걸로 · 게시판·로그인 모양도 바꿔」) — 옛 것(Bolt/Chat/User)은 아래 그대로 남긴다 */
+/** ★경쟁전 마크★ — 사장님이 주신 날개 문양(Supply1.0·CPL 로고와 같은 파일). CloudIcon 처럼 손으로 그리지 않는다 */
+function SupplyWingIcon() {
+  return (
+    <img
+      src="/brand/league-supply1.webp"
+      width={277}
+      height={200}
+      alt=""
+      aria-hidden
+      className="h-[15px] w-auto max-w-none"
+    />
+  )
+}
 function CloudIcon() {
   /* 두 쪽 구름 — 로고의 심볼과 같은 꼴 (왼쪽 빨강 · 오른쪽 파랑) */
   return (
