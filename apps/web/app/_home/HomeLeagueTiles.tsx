@@ -37,10 +37,10 @@ import { LEAGUE_LOGO } from '@sacloud/ui'
  *   그림만 옛 이름을 그대로 보여 주고 있었다. 새 그림을 받을 때까지 이 자리는
  *   글자 줄만 남긴다 (`leagueLogo.ts` 의 `LEAGUE_LOGO` 자체는 안 건드린다).
  */
+/* 2026-09-25 새벽 — 사장님이 Supply1.0 로고(글자 없는 날개 문양)를 주셔서 위 제외를 풀었다.
+   되돌리려면 `.filter(([slug]) => slug !== 'supply')` 를 다시 끼운다 (`CLAUDE.md` 1-4) */
 const MARK: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.entries(LEAGUE_LOGO)
-    .filter(([slug]) => slug !== 'supply')
-    .map(([slug, logo]) => [slug, logo.src]),
+  Object.entries(LEAGUE_LOGO).map(([slug, logo]) => [slug, logo.src]),
 )
 
 /** 표장 아래 글자에 얹는 빛 — 리그색 그대로 */
@@ -58,7 +58,8 @@ const SIZE: Readonly<Record<string, { w: number; h: number }>> = {
   sanply: { w: 227, h: 160 },
   /* 2026-09-12 글자를 잘라 냈다. 옛 값: IPL 254 · SPL 300 */
   nolink: { w: 177, h: 160 },
-  supply: { w: 210, h: 160 },
+  /* 2026-09-25 새 Supply1.0 그림 실측 (옛 값 210×160 은 PL 시절) */
+  supply: { w: 277, h: 200 },
 }
 
 /**

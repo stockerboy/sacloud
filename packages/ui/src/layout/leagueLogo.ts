@@ -79,7 +79,18 @@ export const LEAGUE_LOGO: Readonly<Record<string, LeagueLogo>> = {
   /* 2026-09-24 사장님이 새 로고를 주셔서 Supply 2.0 으로 교체 (검정 배경은 투명 처리). 옛 CPL 글자 로고는 파일만 남김 */
   cpl: { src: '/brand/league-supply2.webp', w: 640, h: 203 },
   nolink: { src: '/brand/league-ipl.webp', w: 673, h: 200 },
-  supply: { src: '/brand/league-pl.webp', w: 630, h: 200 },
+  /*
+   * ★★Supply1.0 로고 — 사장님이 주신 그림★★ (2026-09-25 새벽 「경쟁전 로고 이걸로 바꿔줘」)
+   *
+   *   흰·파랑 날개 문양. 받은 그림은 검정 배경이 픽셀로 박힌 1536×1024 — Supply2.0 때와 같은 방법
+   *   (밝기 6~46 알파 램프)으로 배경만 걷어 내고 잘라(792×560) 높이 200 webp ★16KB★.
+   *   문양이 흰·파랑이라 글자·선은 한 점도 안 지워진다.
+   *
+   *   ⚠ 옛 「PL」 글자 로고는 파일(`/brand/league-pl.webp`)로 그대로 있다 (`CLAUDE.md` 1-4).
+   *     되돌리려면 아래 한 줄을 `'/brand/league-pl.webp'` · 630 으로.
+   *   이 그림에는 글자가 없다 — 홈 타일이 다시 supply 를 그린다 (`HomeLeagueTiles` 2026-09-24 제외를 풀었다).
+   */
+  supply: { src: '/brand/league-supply1.webp', w: 277, h: 200 },
   /*
    * ⚠ ★2026-09-19 — PNG 186KB → webp 23KB★ (성능 검수에서 잡았다).
    *   431×320 PNG 를 ★높이 30px★(폰 22px)로 줄여 쓰고 있었다. 그림은 그대로고
