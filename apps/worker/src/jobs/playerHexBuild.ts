@@ -1628,17 +1628,27 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       WITH mw AS (
         -- ★인원수 규칙★ (2026-09-12 사장님) — 양 팀 클랜원 합이 모자란 판은 10%만 센다.
         -- IPL 에만 먹인다. 다른 리그는 ${shortRule ? '' : '이 값이 늘 1 이라'} 그대로다
+        --
+        -- ⚠ ★2026-09-25 — 사이트 렉의 뿌리★ (사장님 「15분으로 늦추지 않고 렉 잡는법 반드시 알아내」)
+        --   이 CTE 가 ★리그의 모든 경기★(supply 13만 · sanply 20만 건)에 경기마다 상관 서브쿼리를 돌렸다.
+        --   바깥 질의는 어차피 시즌0(startAt >= SEASON0_FROM) 경기만 쓰는데 CTE 는 전 기간을 셌다.
+        --   게다가 IPL 이 아니면 minMembers=0 이라 count >= 0 은 ★늘 참★ — 서브쿼리는 답에 아무 영향이 없었다.
+        --   운영 실측(sanply · 같은 1,534행): 6,109ms → 시즌 조건 1,434ms → 비IPL 상수 328ms.
+        --   5분마다 ×2 질의 ×3 리그가 이걸 돌려 운영 DB 풀을 9초씩 붙들고 있었다 (hex.sh 머리말의 그 503 원인).
+        --   ★결과는 한 행도 안 바뀐다★ — 바깥 WHERE 와 같은 조건, 같은 값이다.
         SELECT m."id" AS mid,
-               CASE WHEN COALESCE((
+               ${shortRule
+                 ? Prisma.sql`CASE WHEN COALESCE((
                  SELECT count(*)::int FROM "MatchPlayerStat" st
                   WHERE st."matchId" = m."id"
                     AND st."playerClanId" IS NOT NULL
                     AND st."playerClanId" = CASE WHEN st."side" = 'red' THEN rl."clanId" ELSE bl."clanId" END
-               ), 0) >= ${minMembers} THEN 1::float ELSE ${shortWeight}::float END AS w
+               ), 0) >= ${minMembers} THEN 1::float ELSE ${shortWeight}::float END`
+                 : Prisma.sql`1::float`} AS w
           FROM "Match" m
           LEFT JOIN "LeagueClan" rl ON rl."id" = m."redLeagueClanId"
           LEFT JOIN "LeagueClan" bl ON bl."id" = m."blueLeagueClanId"
-         WHERE m."leagueId" = ${league.id} AND m."supersededAt" IS NULL
+         WHERE m."leagueId" = ${league.id} AND m."supersededAt" IS NULL AND m."startAt" >= ${SEASON0_FROM}
       )
       SELECT lp."id" AS lpid,
              SUM(mw.w) AS games,
@@ -1725,13 +1735,17 @@ export async function buildPlayerHex(options: PlayerHexBuildOptions): Promise<Pl
       WITH mw AS (
         -- ★인원수 규칙★ (2026-09-12 사장님) — 양 팀 클랜원 합이 모자란 판은 10%만 센다.
         -- IPL 에만 먹인다. 다른 리그는 ${shortRule ? '' : '이 값이 늘 1 이라'} 그대로다
+        -- ⚠ 2026-09-25 — 비IPL 은 서브쿼리를 아예 안 돌린다(위 base 질의와 같은 이유 · 답은 늘 1).
+        --   ★여기는 시즌 조건을 안 건다★ — 바깥 WHERE 에 startAt 조건이 없어(MatchPlayerHex 전체) 걸면 결과가 바뀐다.
         SELECT m."id" AS mid,
-               CASE WHEN COALESCE((
+               ${shortRule
+                 ? Prisma.sql`CASE WHEN COALESCE((
                  SELECT count(*)::int FROM "MatchPlayerStat" st
                   WHERE st."matchId" = m."id"
                     AND st."playerClanId" IS NOT NULL
                     AND st."playerClanId" = CASE WHEN st."side" = 'red' THEN rl."clanId" ELSE bl."clanId" END
-               ), 0) >= ${minMembers} THEN 1::float ELSE ${shortWeight}::float END AS w
+               ), 0) >= ${minMembers} THEN 1::float ELSE ${shortWeight}::float END`
+                 : Prisma.sql`1::float`} AS w
           FROM "Match" m
           LEFT JOIN "LeagueClan" rl ON rl."id" = m."redLeagueClanId"
           LEFT JOIN "LeagueClan" bl ON bl."id" = m."blueLeagueClanId"
