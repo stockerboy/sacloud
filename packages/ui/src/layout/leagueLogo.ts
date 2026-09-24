@@ -77,12 +77,12 @@ export const LEAGUE_LOGO: Readonly<Record<string, LeagueLogo>> = {
    *   2172×724 → 잘라서 2030×410 → 너비 640 webp ★34KB★.
    */
   /*
-   * ⚠ ★2026-09-25 — 상단바 CPL(Supply2.0) 단추도 Supply1.0 과 같은 날개 문양으로★
-   *   (사장님이 같은 그림을 다시 주며 「경쟁전 마크 이걸로 바꿔줘」). 「경쟁전」(Supply2.0·1.0)을
-   *   한 문양으로 통일한다 — 파일도 그대로 재사용(`league-supply1.webp`, 277×200).
-   *   옛 「깨진유리」 CPL 로고(2026-09-24 교체분)는 파일(`league-supply2.webp`)로 그대로 남는다 (`CLAUDE.md` 1-4).
+   * ⚠ 2026-09-25 새벽 수정 철회 — 상단바(맨 단추) CPL(Supply2.0) 로고를 예전으로 되돌렸다
+   *   (사장님 「마 상단에 Supply2.0 로고는 복구시켜 저건 햄버거 탭 메뉴에만 들어가는 경쟁전 로고임」) —
+   *   날개 문양은 ★서랍(햄버거)의 「경쟁전」 묶음 아이콘 자리에만★ 쓴다(`SupplyWingIcon` · `DrawerNavSupply.tsx`).
+   *   상단바는 2026-09-24 교체분 그대로(검정 배경 투명화한 「깨진유리」 CPL 로고).
    */
-  cpl: { src: '/brand/league-supply1.webp', w: 277, h: 200 },
+  cpl: { src: '/brand/league-supply2.webp', w: 640, h: 203 },
   nolink: { src: '/brand/league-ipl.webp', w: 673, h: 200 },
   /*
    * ★★Supply1.0 로고 — 사장님이 주신 그림★★ (2026-09-25 새벽 「경쟁전 로고 이걸로 바꿔줘」)
