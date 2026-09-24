@@ -99,6 +99,8 @@ export interface BattlelogLineupResult {
   playersReused: number
   /** ★병영수첩을 따라 이름을 고친 사람 수★ (2026-09-19) */
   namesRenamed: number
+  /** 옛 경기라 건너뛴 개명 수 (LINEUP_RENAME_LATEST_ONLY) */
+  namesSkippedOld?: number
   /** `NexonIdentity` 가 이어 준 선수 */
   playersFromIdentity: number
   /**
@@ -930,23 +932,44 @@ export async function runBattlelogLineup(
      *   (`rosterSync`). 이 파일 위쪽 주석이 그 함정을 이미 적어 뒀다.
      */
     if (options.confirm) {
-      const wantName = new Map<string, string>()
+      /*
+       * ★★배틀로그 닉으로 개명은 「그 선수의 가장 최근 경기」일 때만★★ (2026-09-24 사장님 「다른 애들 옛날 닉으로 다 돌아가는데 머야」)
+       *   옛 판은 방금 처리한 경기의 닉으로 무조건 덮었다 — 되메우기·겸업 사본처럼 ★옛 경기★ 를 처리하면
+       *   2024년 닉으로 되돌아갔고, 매시 명부 잡과 서로 밀고 당겨 이름이 계속 뒤집혔다(개인랭킹 1위가 한 시간에 세 번 바뀜).
+       *   이제 경기 시각(startAt)이 그 선수의 ★기존 최신 경기 이상★ 일 때만 개명한다. 옛 판은 LINEUP_RENAME_LATEST_ONLY=false
+       */
+      const LINEUP_RENAME_LATEST_ONLY = true
+      const wantName = new Map<string, { nick: string; at: Date }>()
       for (const plan of plans) {
         for (const player of plan.players) {
           const id = playerOfUsn.get(player.usn)
-          if (id && player.nickname) wantName.set(id, player.nickname)
+          if (!id || !player.nickname) continue
+          const prev = wantName.get(id)
+          if (!prev || prev.at < plan.info.startAt) wantName.set(id, { nick: player.nickname, at: plan.info.startAt })
         }
       }
       const ids = [...wantName.keys()]
       for (let i = 0; i < ids.length; i += 500) {
         const chunk = ids.slice(i, i + 500)
+        const latestOf = new Map<string, Date>()
+        if (LINEUP_RENAME_LATEST_ONLY && chunk.length > 0) {
+          for (const r of await prisma.$queryRaw<Array<{ playerId: string; latest: Date | null }>>`
+            SELECT s."playerId", MAX(m."startAt") AS latest
+              FROM "MatchPlayerStat" s JOIN "Match" m ON m."id" = s."matchId"
+             WHERE s."playerId" = ANY(${chunk}::text[]) AND m."supersededAt" IS NULL
+             GROUP BY s."playerId"`) {
+            if (r.latest) latestOf.set(r.playerId, r.latest)
+          }
+        }
         for (const row of await prisma.player.findMany({
           where: { id: { in: chunk } },
           select: { id: true, name: true },
         })) {
-          const next = wantName.get(row.id)
-          if (!next || next === row.name) continue
-          await prisma.player.update({ where: { id: row.id }, data: { name: next } })
+          const want = wantName.get(row.id)
+          if (!want || want.nick === row.name) continue
+          const latest = latestOf.get(row.id)
+          if (LINEUP_RENAME_LATEST_ONLY && latest && want.at < latest) { result.namesSkippedOld = (result.namesSkippedOld ?? 0) + 1; continue }
+          await prisma.player.update({ where: { id: row.id }, data: { name: want.nick } })
           result.namesRenamed += 1
         }
       }

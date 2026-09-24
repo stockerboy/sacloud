@@ -76,6 +76,8 @@ export interface ClanAffiliationResult {
   cleared: number
   /** ★이름을 병영수첩에 맞춘 사람★ (2026-09-20) */
   renamed: number
+  /** 최근 활동이 있어 명부 닉을 안 쓴 수 (ROSTER_NICK_ONLY_DORMANT) */
+  renameSkippedActive?: number
   /** ★이름을 병영수첩에 맞춘 클랜★ (2026-09-20) — 클랜도 이름을 바꾼다 */
   clanRenamed: number
   /** 이미 맞아서 손대지 않은 사람 */
@@ -366,7 +368,30 @@ export async function runClanAffiliation(input: {
      */
     const byPlayer = new Map<string, string>()
     for (const r of renames) byPlayer.set(r.playerId, r.name)
+    /*
+     * ★★명부(GetClanUserList) 닉은 ★쉬는 사람★ 에게만 쓴다★★ (2026-09-24 사장님 「다른 애들 옛날 닉으로 다 돌아가는데」)
+     *   명부 닉은 개인 프로필·배틀로그보다 늦다(실측: deluxe 명부가 최근 개명자를 옛 닉으로 되돌림).
+     *   최근 30일 안에 경기(배틀로그 닉이 더 최신)나 정보갱신(프로필 닉이 진실)이 있는 사람은 건드리지 않는다.
+     *   옛 판(전원 명부 닉으로)은 ROSTER_NICK_ONLY_DORMANT=false
+     */
+    const ROSTER_NICK_ONLY_DORMANT = true
+    const skipIds = new Set<string>()
+    if (ROSTER_NICK_ONLY_DORMANT && byPlayer.size > 0) {
+      const ids = [...byPlayer.keys()]
+      for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500)
+        for (const r of await prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT p."id" FROM "Player" p
+           WHERE p."id" = ANY(${chunk}::text[])
+             AND ( p."renewedAt" > now() - interval '30 days'
+                OR EXISTS (SELECT 1 FROM "MatchPlayerStat" s JOIN "Match" m ON m."id" = s."matchId"
+                            WHERE s."playerId" = p."id" AND m."supersededAt" IS NULL AND m."startAt" > now() - interval '30 days') )`) {
+          skipIds.add(r.id)
+        }
+      }
+    }
     for (const [playerId, name] of byPlayer) {
+      if (skipIds.has(playerId)) { result.renameSkippedActive = (result.renameSkippedActive ?? 0) + 1; continue }
       await prisma.player.update({ where: { id: playerId }, data: { name } })
       result.renamed += 1
     }
