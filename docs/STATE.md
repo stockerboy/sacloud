@@ -7,6 +7,11 @@
 
 ---
 
+## 0-새벽7. ★2026-09-25 07:5x — GNB·서랍 로고 분리 확인 · PL/CPL 두 번째 자리(클랜 리그정보 탭) 찾아 고침
+
+- 헤드리스로 직접 확인: PC 상단바 cpl 로고=`league-supply2.webp`(깨진유리) · 폰 서랍 「경쟁전」 아이콘=`league-supply1.webp`(날개) — 의도대로 분리됨.
+- 사장님이 보낸 클랜 스크린샷(/clan/ferwfwfwfwf)을 헤드리스로 직접 열어보니 「CPL」 원문이 아직 떠 있었다 — 이번에는 클랜 상세 「리그정보」 탭(`ClanProfile.tsx` 의 `ClanLeagueRow`)이라 앞서 고친 `LeagueEntryCards.tsx` 와 별개 파일이었다. 같은 방식으로 고침(c449589c) → 배포 후 재확인 OK(「CPL」 원문 사라짐).
+  추가 감사(grep `.league.name`): 홈페이지 컴포넌트(HomeRankPreview·HomeRecentMatches)는 서버가 이미 계약 `HOME_LEAGUES` 표로 바꿔 보내 정상 · 분할랑킹(ClanRankSplit·PlayerRankSplit)과 구로거스(LeagueHomeLayoutLegacy)는 사장님이 이미 폐지한 도로라 따로 안 쓴다 — 잔류 위험 별로 없음으로 판단.
 ## 0-새벽6. ★2026-09-25 07:0x~07:2x — 수집기 25초 질의 VACUUM 으로 해결 · GNB 로고 되돌림 · 「랭킹 중복」 재확인★
 
 - 감시에서 반복 잡히던 25~51초 질의(`iplClanNumber.ts` 「SELECT DISTINCT subject, rawClanNo」) 원인 확정 — 쿼리 사정이 아니라 ★이 테이블 last_vacuum 이 도대체 한 번도 안 돐★(자동백업 기준치를 안 넘는 dead tuple 11만줄)로 플래너가 맞는 부분인덱스(`BCMR_subject_clanno_idx`) 대신 더 큰 인덱스를 고르고 heap fetch 13만 번.
