@@ -788,7 +788,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
     <Card style={{ marginTop: 14 }} edge={V3.blue}>
       <CardHead title="상대전적" right={
         <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(total)}전</span>
+          <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap' }}>시즌 0 · {fmt(total)}전</span>
           <span onClick={() => setFolded((v) => !v)} style={{ fontSize: 11.5, fontWeight: 700, color: '#1d4fd6', cursor: 'pointer', whiteSpace: 'nowrap' }}>{folded ? '펼치기 ▼' : '접기 ▲'}</span>
         </span>
       }>
@@ -813,7 +813,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
         <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: theme.deep, letterSpacing: '-.02em' }}>{opp.win}</span>
         <span className="v3-setscore-mid" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 88 }}>
           <span style={{ fontSize: 10.5, color: V3.textFaint, letterSpacing: '.1em', whiteSpace: 'nowrap' }}>SET SCORE</span>
-          <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>Cloud0 시즌</span>
+          <span style={{ fontSize: 11, color: V3.textGhost2, whiteSpace: 'nowrap' }}>시즌 0</span>
         </span>
         <span className="v3-setscore-num" style={{ position: 'relative', fontSize: 40, fontWeight: 600, lineHeight: 1, color: oppTheme.deep, letterSpacing: '-.02em' }}>{opp.lose}</span>
         <span className="v3-setscore-team" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -1107,7 +1107,7 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
   return (
     <div style={{ marginTop: 14, ...cardStyle }}>
       <CardHead title="클랜별 전적" right={
-        <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(data.win + data.lose)}전 기준</span>
+        <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 0 · {fmt(data.win + data.lose)}전 기준</span>
       } />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 16px' }}>
         {tiers.map((t) => {
@@ -1489,7 +1489,7 @@ function ClanHexCard({ data }: { data: LeagueClanShow }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
         <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>플레이분석</span>
-        <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(data.win + data.lose)}전 기준</span>
+        <span style={{ fontSize: 11, color: V3.textFaint, whiteSpace: 'nowrap' }}>시즌 0 · {fmt(data.win + data.lose)}전 기준</span>
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 8px 16px' }}>
         <span className="v3-clanhex__box"><span className="v3-clanhex__inner"><Hexagon axes={clanHexAxes(data.hexagon_v2)} id="clanHexSide" /></span></span>

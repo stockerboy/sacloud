@@ -98,6 +98,14 @@ const GNB_ROW_ON: boolean = true
  */
 const GNB_BRAND_ON: boolean = false
 
+/**
+ * ★Supply2.0 단추는 글자 대신 로고★ (2026-09-25 사장님 「상단바에 밋밋하게 Supply2.0 쓴 버튼 빼고 이 로고를 버튼으로」).
+ * 다른 리그는 그대로 글자다. 그림은 `LEAGUE_LOGO.cpl`(사장님이 주신 Supply 2.0 로고 · 검정 배경 투명 처리본).
+ * `false` 면 글자 단추로 돌아온다 (`CLAUDE.md` 1-4).
+ */
+const GNB_CPL_LOGO: boolean = true
+const GNB_CPL_LOGO_H = 22
+
 const GNB_MARK: Readonly<Record<string, { src: string; w: number; h: number }>> = {
   /**
    * ★본디 크기를 같이 적는다★ (2026-09-12).
@@ -329,10 +337,23 @@ export function SiteHeaderV2({
                       ④ ★지금★ — 로고에서 글자를 잘라 내서 다시 적는다
                     PC 는 옆에, 폰은 밑에 (자리는 CSS `.v2-gnb__cell` 이 정한다).
                   */}
-                  <span className="v2-gnb__name">
-                    {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
-                    <LeagueLabel name={item.label} />
-                  </span>
+                  {GNB_CPL_LOGO && item.href === '/league/cpl' && LEAGUE_LOGO['cpl'] ? (
+                    /* ★Supply2.0 만 로고 단추★ (2026-09-25 사장님). 높이만 정하고 가로는 그림 비율대로 */
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={LEAGUE_LOGO['cpl'].src}
+                      width={Math.round((GNB_CPL_LOGO_H * LEAGUE_LOGO['cpl'].w) / LEAGUE_LOGO['cpl'].h)}
+                      height={GNB_CPL_LOGO_H}
+                      alt={item.label}
+                      style={{ height: GNB_CPL_LOGO_H, width: 'auto', display: 'block' }}
+                      draggable={false}
+                    />
+                  ) : (
+                    <span className="v2-gnb__name">
+                      {/* `10mountain` 에만 산 표시가 붙는다 — 이름이 아니라 화면 장식이다 */}
+                      <LeagueLabel name={item.label} />
+                    </span>
+                  )}
                 </span>
               </Link>
             )

@@ -38,6 +38,21 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
     onSuccess: invalidate,
   })
 
+  /*
+   * ★관리자 상단 고정★ (2026-09-25 사장님 「관리자 권한으로 아무글이나 상단 고정하고 내릴 수 있게」)
+   *   보는 사람이 관리자(role 2)인지는 `/infos` 의 user 로 안다 — 셸이 이미 받아 둔 값이라 추가 요청이 없다.
+   *   진짜 권한 검사는 서버(`setBoardPinned` → `isAdmin`)가 한다. 여기는 단추를 보일지만 정한다.
+   */
+  const infos = useQuery({ queryKey: ['infos'], queryFn: () => apiGet('infos'), enabled: ready })
+  const viewerIsAdmin = infos.data?.data.user?.role === 2
+  const pin = useMutation({
+    mutationFn: (pinned: boolean) => apiSend('boardPin', { params: { boardId: id }, body: { pinned } }),
+    onSuccess: () => {
+      invalidate()
+      void queryClient.invalidateQueries({ queryKey: ['boards'] })
+    },
+  })
+
   const commentVote = useMutation({
     mutationFn: ({ commentId, type }: { commentId: string; type: number }) =>
       apiSend('commentVote', { params: { commentId }, body: { type } }),
@@ -81,7 +96,12 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
 
   return (
     <>
-      <PostView post={post.data.data} onVote={(type) => vote.mutate(type)} basePath={basePath} />
+      <PostView
+        post={post.data.data}
+        onVote={(type) => vote.mutate(type)}
+        basePath={basePath}
+        admin={viewerIsAdmin ? { onTogglePin: () => pin.mutate(!post.data!.data.pinned), busy: pin.isPending } : null}
+      />
       {/* 2026-09-24 QA(운영 폰): 글 카드 밑 「댓글 n개」 와 댓글 카드 사이가 80px 넘게 비었다 → section-gap(40) 대신 12 */}
       <div className="mt-3 rounded-[var(--radius)] border border-line bg-card px-6 py-5 max-md:px-4">
         <CommentList

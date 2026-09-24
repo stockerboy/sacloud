@@ -368,7 +368,7 @@ const BY_SLUG: Readonly<Record<string, LeagueScreenSpec>> = {
     playerColumns: { rank: false, winRate: false, kd: false, rating: false },
     clanColumns: { rank: false, winRate: false, kd: false, rating: false },
     playerRankNotice:
-      'CPL 개인랭킹은 2026년 10월 1일부터 쌓입니다. 첫 시즌 cloud1 은 배치시즌이며, 한 달 동안의 성적으로 C1·C2 가 나뉩니다.',
+      'CPL 개인랭킹은 2026년 10월 1일부터 쌓입니다. 첫 시즌(시즌 1)은 배치시즌이며, 한 달 동안의 성적으로 C1·C2 가 나뉩니다.',
     clanRankNotice:
       'CPL 은 2026년 10월 1일에 출발합니다. 지금은 참가 클랜을 모으는 중이며, 아래가 지금까지 참가를 확정한 클랜입니다.',
   },

@@ -32,6 +32,7 @@ import {
   AuthSession,
   Board,
   BoardListItem,
+  BoardPinInput,
   Clan,
   ClanLeagueEntry,
   ClanMasterClaimState,
@@ -884,6 +885,16 @@ export const endpoints = {
     path: '/boards/:boardId/votes',
     origin: 'designed',
     description: '글 추천/비추천',
+    response: apiResponse(Board),
+  },
+  /* ★상단 고정/해제★ (2026-09-25 사장님 「관리자 권한으로 아무글이나 상단 고정하고 내릴 수 있게」) — 관리자만 */
+  boardPin: {
+    /* `HttpMethod` 에 PATCH 가 없어 POST 로 — 메서드 표를 늘리는 것보다 길이 하나 더 있는 편이 안전하다 */
+    method: 'POST',
+    path: '/boards/:boardId/pin',
+    origin: 'designed',
+    description: '글 상단 고정/해제 (관리자)',
+    request: BoardPinInput,
     response: apiResponse(Board),
   },
   commentList: {

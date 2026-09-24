@@ -27,7 +27,7 @@ import { ClanScoreboardV3, MatchCardListV3, MatchListV3 } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useCursorQuery } from '@/lib/useCursorQuery'
 import { useApiReady } from '@/app/providers'
-import { HexTopScreen } from '../rank/top5/HexTopScreen'
+import { HEX_TOP_ON, HexTopScreen } from '../rank/top5/HexTopScreen'
 
 /** 홈에 보여 주는 최근 경기 줄 수 — 더 보려면 「경기」 탭으로 간다 */
 const HOME_MATCHES = 8
@@ -282,10 +282,13 @@ export default function LeagueHomeScreen({
         *   깃발은 «지금 벌어지는 일», 최근 경기는 «방금 있었던 일»,
         *   TOP5 는 «더 파고들 사람» 용이라 뒤에 둔다.
         */}
-      <div className="mt-[26px]">
-        <SectionTitle title="분야별 TOP 5" note="축마다 가장 잘하는 다섯입니다." />
-        <HexTopScreen leagueSlug={leagueSlug} embedded />
-      </div>
+      {/* 2026-09-25 사장님 「분야별 탑5도 없애」 — `HEX_TOP_ON`(HexTopScreen.tsx) 하나로 끈다. 코드는 그대로 */}
+      {HEX_TOP_ON ? (
+        <div className="mt-[26px]">
+          <SectionTitle title="분야별 TOP 5" note="축마다 가장 잘하는 다섯입니다." />
+          <HexTopScreen leagueSlug={leagueSlug} embedded />
+        </div>
+      ) : null}
 
     </div></div>
   )

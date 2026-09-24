@@ -30,6 +30,17 @@ export const ADMIN_PIN_LIMIT = 3
 export const ADMIN_BADGE_LABEL = '운영자'
 
 /**
+ * ★관리자 글은 「SACLOUD」 이름으로★ (2026-09-25 사장님
+ * 「관리자가 쓰는 글은 SACLOUD 이름으로 글 써지게 해주고 클랜마크 대신 다른 로고 넣어줘」).
+ *
+ * 관리자가 ★공개로★ 쓴 글·댓글은 닉네임 대신 이 이름, 클랜마크 대신 이 그림이 나간다.
+ * 그림은 사장님이 주신 워드마크(`sacloud-wordmark.webp`)의 구름 부분만 잘라 정사각(128)으로 만든 것이다.
+ * 익명으로 쓴 관리자 글은 여기 오지 않는다 (`isAdminWriter` 가 false).
+ */
+export const ADMIN_DISPLAY_NAME = 'SACLOUD'
+export const ADMIN_MARK_SRC = '/brand/sacloud-symbol.webp'
+
+/**
  * 이 글을 **관리자가 썼는가**.
  *
  * 판정은 `writer.role` 하나뿐이다 — 운영자 판정을 새로 만들지 않고

@@ -6,7 +6,7 @@
  *
  * ```
  *   ◉ 클랜명                      IPL              3,096점
- *     시즌 Cloud 0 · 162전    SEASON CLOUD 0        래더     [전적갱신] [기본정보]
+ *     시즌 0 · 162전    SEASON CLOUD 0        래더     [전적갱신] [기본정보]
  *   ─────────────────────────────────────────────────────────  ← 폰에서만: 승률·순위·최다연승·클랜원 줄
  * ```
  *
@@ -58,7 +58,7 @@ export function ClanHeaderV3({ data, infoHref, seasonLabel, memberCount, renewAc
             </span>
             {/* 2026-09-24 QA(운영 폰): 「클랜원 40명」 이 잘려 「4C」 로 보였다 → 줄바꿈 허용(폰에서 두 줄) · 조각은 안 잘린다 */}
             <span style={{ display: 'flex', alignItems: 'baseline', gap: '2px 8px', flexWrap: 'wrap', fontSize: 13.5, color: '#767f96', minWidth: 0 }}>
-              <span style={{ ...nameStyle(theme), fontWeight: 600 }}>시즌 Cloud 0 · {fmt(games)}전</span>
+              <span style={{ ...nameStyle(theme), fontWeight: 600 }}>시즌 0 · {fmt(games)}전</span>
               {memberCount !== null && memberCount > 0 ? <><span style={{ color: '#b6bece' }}>·</span><span>클랜원 {fmt(memberCount)}명</span></> : null}
             </span>
           </span>

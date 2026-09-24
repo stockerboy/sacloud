@@ -3,9 +3,25 @@
 > **새로 오는 사람(과 새 세션)은 이 파일 하나만 읽고 시작한다.**
 > 다른 문서를 먼저 읽지 마라. 필요한 것만 아래에서 가리킨다.
 >
-> 마지막 갱신 **2026-09-24 정오** · 갱신한 사람 B(실행 세션 · 겸업 두 리그 · 정보갱신 닉 회귀 · 그래프 클립)
+> 마지막 갱신 **2026-09-25 새벽** · 갱신한 사람 B(실행 세션 · 게시판 고정/공지 · 배지 끔 · Season 표기 · 도메인 이전)
 
 ---
+
+## 0-새벽. ★2026-09-25 새벽 — 게시판 공지·고정 · 배지 전부 끔 · PL 잔재 · Season 표기 · 3rdcloud.my 이전★
+
+- **도메인** — `3rdcloud.my` → `loginsa.cloud` 308 리다이렉트(`apps/web/middleware.ts` `oldHostRedirect`, 로그인·SITE_PRIVATE 보다 먼저).
+- **서랍 「관리자」 줄** — `meShow` 가 이미 주던 `role` 을 `SiteShell→SiteHeaderV2→DrawerNavSupply` 로 흘려 role=2 면 `/admin` 링크. gwlove(현물이)는 role 2 확인.
+- **게시판**
+  - 상단 고정: `Board.pinnedAt`(운영 DB 에 `ALTER … IF NOT EXISTS` 로 직접 적용 · 파일 `20260925000000_board_pinned` — `_prisma_migrations` 기록은 2026-09-21 이후 뒤처져 있음, `migrate deploy` 쓰지 말 것).
+    `POST /api/boards/{id}/pin` `{pinned}` (관리자만 · `setBoardPinned`). 목록: 검색·공지 아닌 첫 쪽 맨 위에 최근 고정순 `PIN_LIMIT=5`, 평소 목록에서는 모든 쪽에서 뺀다(`boardFilter` NOT IN). 글 상세에 관리자만 「상단 고정/해제」 단추(`PostScreen` 이 `/infos` user.role 로 판정).
+    ⚠ 옛 D-261 「관리자 글 자동 고정」은 서버에 없었다(Mock 에만) — 이제 사람이 고르는 고정이다. Mock 은 그대로.
+  - 관리자 글쓴이 표시: `isAdminWriter` 면 「SACLOUD」 + `/brand/sacloud-symbol.webp`(워드마크 구름 128px) — `WriterName`·`EtaWriter`(목록·글·댓글 공통). 익명으로 쓴 관리자 글은 해당 없음.
+  - 문단: textarea 글을 저장할 때 `plainTextToHtml`(빈 줄→`<p>`, 줄바꿈→`<br>`), 수정할 때 `htmlToPlainText`(`@sacloud/ui/board/plainText`). 옛 글(태그 없음)은 `PostView` 가 `whitespace-pre-wrap`.
+  - 운영 데이터: `[테스트]` 글 10건 soft delete · 「SA CLOUD 안내 및 서약」 공지(notice · 고정 · gwlove) 생성 `cmufogemb0001tet7wkk2u76q`. 송뚱 글 1건은 실제 이용자 글이라 남김.
+- **배지 전부 끔** — `BADGE_SYSTEM_ENABLED=false`(`contract/badges.ts`): 홈 진열장 · 선수 헤더/상세 배지 줄 · 개인 랭킹 배지 칸 · 클랜 표 축 배지(`ClanBadges`, 세이브 포함) · 분야별 TOP5 는 `HEX_TOP_ON=false` 로 리그홈·`/rank/top5` 둘 다 숨김.
+- **PL 잔재** — `LEAGUE_NAME.supply='Supply1.0'`, 홈 리그 소개/`/about`/관리자 알 라벨, 선수 프로필 리그 카드(`leagueDisplayName`), 홈 리그 타일에서 supply 그림 제외(`league-pl.webp` 그림에 PL 글자가 박혀 있음 — ★새 Supply1.0 그림 필요★).
+- **표기** — `cloudSeasonLabel()` → `Season N`(과거 카드 `시즌 N` 과 글자 충돌 피함) · CLI `db/ops seasonLabel` 도 동일 · 하드코딩 「시즌 Cloud 0」 카드 문구 → 「시즌 0」. 옛 판 `cloudSeasonLabelV1`.
+- **그 밖에** — 상단바 Supply2.0 단추는 로고 그림(`GNB_CPL_LOGO`) · 서랍은 경쟁전(2.0·1.0)/일반전(IPL·열산) 두 묶음(`DRAWER_GROUPED`) · 새 SACLOUD 워드마크 `sacloud-wordmark.webp` · 라운드 그래프 React 갱신 28→16ms · 리그 최근경기는 `lineupStatus='complete'` 만(`RECENT_REQUIRES_LINEUP`) · 홈 검색창/게시판 PC 여백 축소.
 
 ## 0-밤. ★2026-09-24 밤 — 로고 · 게시판 글자 · 「오늘 가장 치열했던 경기」★
 

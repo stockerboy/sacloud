@@ -45,7 +45,7 @@ export function HomeTopPlayers() {
           <span className="text-[10px] font-bold tracking-[.16em] text-[var(--v2-text-ghost)]">
             부문별 1위
           </span>
-          <span className="text-[10px] text-[var(--v2-text-ghost)]">IPL · 시즌 Cloud 0</span>
+          <span className="text-[10px] text-[var(--v2-text-ghost)]">IPL · 시즌 0</span>
         </div>
 
         {/* PC 는 두 줄로 접어 담는다 — 일곱 줄이 세로로 늘어지지 않게 */}

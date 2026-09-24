@@ -279,7 +279,7 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         </defs>
         <rect x="0" y="0" width={width} height={H} fill={tone.plot} />
         {/* 2026-09-23 밤 사장님 「cloud0 워터마크 지워」 — TREND_WATERMARK=true 로 되돌린다 */}
-        {TREND_WATERMARK ? <text x={(X0 + X1) / 2} y={H / 2} textAnchor="middle" fontSize="62" fontWeight="900" fill={dark ? "#7aa2ff" : "#124a56"} opacity="0.05" letterSpacing="6">CLOUD 0</text> : null}
+        {TREND_WATERMARK ? <text x={(X0 + X1) / 2} y={H / 2} textAnchor="middle" fontSize="62" fontWeight="900" fill={dark ? "#7aa2ff" : "#124a56"} opacity="0.05" letterSpacing="6">SEASON 0</text> : null}
         {[0, 20, 40, 60, 80, 100].map((g) => (
           <g key={g}>
             <line x1={X0} y1={yOf(g)} x2={X1} y2={yOf(g)} stroke={tone.cardBorder} />

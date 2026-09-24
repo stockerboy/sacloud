@@ -47,7 +47,7 @@ import {
 } from '../common/format'
 import { leagueClanPath, leaguePlayerPath } from '../common/paths'
 import { ClanBadges } from './ClanBadges'
-import { badgeOfAxis } from '@sacloud/contract'
+import { BADGE_SYSTEM_ENABLED, badgeOfAxis } from '@sacloud/contract'
 /* ⚠ 옛 SVG 배지(`TraitEmblem.tsx`)는 그대로 있다 — 사장님 그림으로 바뀌었을 뿐이다 (`CLAUDE.md` 1-4) */
 import { AxisBadge } from './BadgeArt'
 
@@ -1175,7 +1175,8 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
                         *   그리고 ★누르면 배지 페이지로 간다★ (사장님: «뱃지 클릭하면 (…)
                         *   누구누구가 이 뱃지 가지고있는지»).
                         */}
-                      {(row.trait_emblems ?? []).slice(0, 2).map((e) => {
+                      {/* 2026-09-25 사장님 「세이브 뱃지 없애달라했는데 안없어졌음」 — 개인 표의 배지 칸도 `BADGE_SYSTEM_ENABLED` 로 끈다 */}
+                      {(BADGE_SYSTEM_ENABLED ? (row.trait_emblems ?? []) : []).slice(0, 2).map((e) => {
                         const axis = e.axis as Parameters<typeof AxisBadge>[0]['axis']
                         const name = badgeOfAxis(axis, e.weapon)?.label ?? ''
                         return (

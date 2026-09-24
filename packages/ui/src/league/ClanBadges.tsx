@@ -21,7 +21,7 @@
  *   5위 컷도 ASTRA 보정도 `packages/contract/src/clanBadge.ts` 가 이미 끝냈다.
  *   이 부품은 받은 이름을 그리기만 한다.
  */
-import { clanAxisBadgeArt, clanAxisBadgeKey } from '@sacloud/contract'
+import { BADGE_SYSTEM_ENABLED, clanAxisBadgeArt, clanAxisBadgeKey } from '@sacloud/contract'
 import Link from 'next/link'
 import { leagueBadgePath } from '../common/paths'
 import { CLAN_HEX_V2_AXIS_LABELS, type ClanHexV2AnyAxisKey, type ClanHexV2AxisKey } from '@sacloud/contract'
@@ -73,6 +73,8 @@ const CHIP = 'rounded px-1 py-[2px] text-[10px] font-bold leading-none'
 const MORE = 'text-[10px] font-bold leading-none'
 
 export function ClanBadges({ badges, leagueSlug }: { badges?: readonly string[]; leagueSlug?: string | null }) {
+  /* 2026-09-25 사장님 「세이브 뱃지 없애달라했는데 안없어졌음」 — 클랜 표의 축 배지(세이브·소수싸움…)도 같은 스위치로 끈다 */
+  if (!BADGE_SYSTEM_ENABLED) return null
   if (badges === undefined || badges.length === 0) return null
 
   const keys = badges as readonly ClanHexV2AxisKey[]

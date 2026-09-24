@@ -992,13 +992,21 @@ export async function getLeaguePlayerMatches(
  * ⚠ **선수·클랜 기록실은 안 건드렸다.** 거기서는 「내 편」이 있고 지금이 맞다.
  * ⚠ 편을 지어내지 않는다 — `red` 는 경기 자신이 들고 있는 값이다.
  */
+/**
+ * ★명단(라인업) 수집이 끝난 경기만 최근 경기에 올린다★ (2026-09-25 사장님
+ * 「킬데스 명단 수집도 못한 경기는 최근경기로 올리지마. 최소한 명단수집은 끝난 경기만 올려 경기분석은 안됐더라도」).
+ * `lineupStatus='complete'` 는 `battlelog-lineup` 잡이 판정해 둔 값이다 — 여기서 다시 세지 않는다.
+ * 클랜·선수 기록실은 그대로다(거기는 「내 기록」이라 명단 없는 경기도 결과는 보여야 한다). `false` 면 옛 판.
+ */
+const RECENT_REQUIRES_LINEUP = true
+
 export async function getLeagueMatches(
   leagueId: string,
   cursor: string | null,
   size: number,
 ): Promise<CursorPage<MatchListItem>> {
   return matchPage(
-    { leagueId },
+    { leagueId, ...(RECENT_REQUIRES_LINEUP ? { lineupStatus: 'complete' } : {}) },
     cursor,
     size,
     /* `red` 슬롯 고정. 승자를 보지 않는다 — 위 「한 번 틀렸다」 참조 */

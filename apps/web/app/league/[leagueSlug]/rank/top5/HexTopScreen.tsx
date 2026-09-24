@@ -47,6 +47,12 @@ type Side = 'clan' | 'player'
 const HEX_TOP_SHOWS_CLAN = false
 
 /**
+ * ★분야별 TOP5 전체를 숨긴다★ (2026-09-25 사장님 「분야별 탑5도 없애」).
+ * 리그 홈의 `embedded` 칸과 `/rank/top5` 페이지가 이 값을 본다. 코드·API 는 그대로 — `true` 로 되돌아온다 (`CLAUDE.md` 1-4).
+ */
+export const HEX_TOP_ON = false
+
+/**
  * ★배지를 늘어놓고, 누른 것만 편다★ (2026-09-19 사장님).
  *
  *   «그 분야 옆에 맞는 뱃지를 달아줘. 아니면 그냥 뱃지를 보여주고 누르면 top5를 보여줘»

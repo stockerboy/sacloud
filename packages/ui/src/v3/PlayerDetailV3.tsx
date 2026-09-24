@@ -402,7 +402,7 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
         }
         right={
         <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-          {hex ? `시즌 Cloud 0 · ${fmt(hex.games)}전 기준` : '시즌 Cloud 0'}
+          {hex ? `시즌 0 · ${fmt(hex.games)}전 기준` : '시즌 0'}
         </span>
       } />
       <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', padding: '8px 18px 14px', flexWrap: 'wrap', gap: 12 }}>
@@ -555,7 +555,7 @@ function TrendChart({ points, markSlug, clan, winLabel, kdLabel }: { points: Tre
           </filter>
         </defs>
         <rect x="0" y="0" width="640" height="300" fill={V3.plot} />
-        <text x="272" y="150" textAnchor="middle" fontSize="62" fontWeight="900" fill="#124a56" opacity="0.05" letterSpacing="6">CLOUD 0</text>
+        <text x="272" y="150" textAnchor="middle" fontSize="62" fontWeight="900" fill="#124a56" opacity="0.05" letterSpacing="6">SEASON 0</text>
         {scale.ticks.map((g) => (
           <g key={g}>
             <line x1={KX0} y1={ky(g)} x2={KX1} y2={ky(g)} stroke={V3.divider} />
@@ -1852,7 +1852,7 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
   return (
     <div style={{ marginTop: 16, ...cardStyle }}>
       <CardHead title="클랜별 전적" right={
-        <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 Cloud 0 · {fmt(data.win + data.lose)}전 기준</span>
+        <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 0 · {fmt(data.win + data.lose)}전 기준</span>
       } />
       {rows.length === 0 ? (
         <div style={{ padding: 18, fontSize: 12, color: V3.textGhost }}>아직 경기가 없습니다.</div>

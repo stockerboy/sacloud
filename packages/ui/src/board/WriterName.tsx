@@ -4,6 +4,21 @@ import Link from 'next/link'
 import type { BoardWriter } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { affiliationName } from './boardCopy'
+import { ADMIN_DISPLAY_NAME, ADMIN_MARK_SRC, isAdminWriter } from './adminPost'
+
+/**
+ * ★관리자 글쓴이★ (2026-09-25 사장님) — 닉네임 대신 「SACLOUD」, 클랜마크 대신 사이트 구름.
+ * 목록(`EtaWriter`)·글·댓글이 같은 조각을 쓴다. 판정은 `isAdminWriter` 하나다.
+ */
+export function AdminWriterName({ size = 16, className = '' }: { size?: number; className?: string }) {
+  return (
+    <span className={`inline-flex min-w-0 items-center gap-1 ${className}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={ADMIN_MARK_SRC} alt="" width={size} height={size} style={{ width: size, height: size, display: 'block' }} className="shrink-0" />
+      <span className="truncate font-bold text-[#5c80e0]">{ADMIN_DISPLAY_NAME}</span>
+    </span>
+  )
+}
 
 /**
  * 게시글·댓글 작성자 표시 — 반익명 (SITE_SPEC_V2 2절 · 에브리타임 방식).
@@ -41,6 +56,9 @@ export function WriterName({
   writer: BoardWriter
   showAffiliation?: boolean
 }) {
+  /* ★관리자가 공개로 쓴 글★ — 이름·마크 대신 SACLOUD (2026-09-25 사장님) */
+  if (isAdminWriter(writer)) return <AdminWriterName />
+
   const clan = showAffiliation ? (writer.clan ?? null) : null
   const clanName = affiliationName(clan?.name)
   /*

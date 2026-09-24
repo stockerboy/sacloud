@@ -144,7 +144,8 @@ const PANEL_H_PHONE = 178
 const PANEL_H_PC = 206
 /** 프레임마다 바뀌는 것은 DOM 에 직접(ref) · React 상태는 FRAME_STATE_MS 마다 (2026-09-24 사장님 「프레임 너무 낮아」). false 면 옛 판 */
 const FRAME_DIRECT = true
-const FRAME_STATE_MS = 28
+/* 2026-09-25 사장님 「프레임 훨씬 올려야해 너무 끊겨」 — React 갱신 간격 28 → 16ms(60fps). 옛 값 28 */
+const FRAME_STATE_MS = 16
 /*
  * ★폰은 한 칸★ (사장님 2026-09-24 새벽 「피시는 글자가 안 가려지는데 모바일은 가려지네 — 총 디자인 때문인가」 → 맞다).
  *   폰 두 칸(칸 하나 170px)에 선짤+마크+킬러+총 사진+희생자가 다 들어가 이름이 「세…」 로 잘렸다.

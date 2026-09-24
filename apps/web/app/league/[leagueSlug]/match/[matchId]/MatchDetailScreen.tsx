@@ -75,7 +75,8 @@ export default function MatchDetailPage({
             ★기록이 지워진 줄 안다★ — 왜 안 보이는지를 적는다. 행은 DB 에 그대로 있다.
             ⚠ ★2026-09-06 (Part 5)★ — 문구의 「시즌0」을 ★Cloud 0★ 으로 바꿨다 (사장님 지시).
               ★디자인·배치는 건드리지 않았다.★ 글자만이다 */}
-        <ProfileEmpty message="Cloud 0(9/3 07:00 이후) 경기만 볼 수 있습니다." />
+        {/* 2026-09-25 사장님 「cloud0 이라 돼 있는 거 시즌0 으로 — 무조건 시즌 or Season」 */}
+        <ProfileEmpty message="시즌 0(9/3 07:00 이후) 경기만 볼 수 있습니다." />
         <div className="mt-6 text-center text-sm text-meta">
           <Link prefetch={false} href={`/league/${leagueSlug}`}>
             <span className="underline underline-offset-4">리그로 돌아가기</span>

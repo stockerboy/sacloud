@@ -192,7 +192,7 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
         </span>
       </div>
       <div style={kpiRowStyle} className="v3-kpi">
-        <ClanBackdrop theme={theme} markSlug={data.clan?.slug ?? null} watermark="Cloud 0" />
+        <ClanBackdrop theme={theme} markSlug={data.clan?.slug ?? null} watermark="Season 0" />
         {kpis.map((k) => (
           <div key={k.label} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: '15px 20px', borderRight: `1px solid ${V3.rowDivider}`, minWidth: 0 }}>
             <span style={{ fontSize: 10.5, color: V3.textGhost, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>{k.label}</span>

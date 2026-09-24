@@ -446,6 +446,11 @@ const resolvers: Record<EndpointKey, Resolver> = {
     const board = store.getBoard(param(params['boardId']))
     return board ? ok(board) : notFound()
   },
+  /* 상단 고정 — Mock 은 상태를 안 바꾸고 그 글을 돌려준다 (관리자 판정은 실제 서버만) */
+  boardPin: ({ params }) => {
+    const board = store.getBoard(param(params['boardId']))
+    return board ? ok(board) : notFound()
+  },
   commentList: ({ request }) => ok(store.listComments(query(request, 'board_id') ?? '')),
   commentCreate: () => {
     const comment = firstComment()

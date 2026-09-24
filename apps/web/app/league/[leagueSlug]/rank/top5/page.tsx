@@ -1,5 +1,5 @@
 import { use } from 'react'
-import { HexTopScreen } from './HexTopScreen'
+import { HEX_TOP_ON, HexTopScreen } from './HexTopScreen'
 
 /**
  * `/league/{slug}/rank/top5` — ★분야별 TOP5★ (2026-09-14 사장님:
@@ -14,5 +14,7 @@ export default function LeagueHexTopPage({
   params: Promise<{ leagueSlug: string }>
 }) {
   const { leagueSlug } = use(params)
+  /* 2026-09-25 사장님 「분야별 탑5도 없애」 — 주소는 살려 두고 화면만 닫는다 (`HEX_TOP_ON`) */
+  if (!HEX_TOP_ON) return <div className="py-16 text-center text-sm text-meta">분야별 TOP5 는 지금 제공하지 않습니다.</div>
   return <HexTopScreen leagueSlug={leagueSlug} />
 }

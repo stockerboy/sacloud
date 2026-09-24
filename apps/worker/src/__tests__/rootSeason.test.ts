@@ -118,20 +118,22 @@ describe('★내부 번호가 화면에 새지 않는다★', () => {
     }
   })
 
-  it('★우리 시즌은 Cloud 다★ (2026-09-06 · Part 5 · 사장님 지시)', () => {
-    expect(seasonDisplayLabel({ number: 0, seasonType: 'official' })).toBe('Cloud 0')
-    expect(seasonDisplayLabel({ number: 1, seasonType: 'official' })).toBe('Cloud 1')
-    expect(seasonDisplayLabel({ number: 2, seasonType: 'official' })).toBe('Cloud 2')
+  /* ★2026-09-25 — 「Cloud N」 → 「Season N」★ (사장님: 「클라우드 시즌이라는 단어를 안 쓴다 · 무조건 시즌 or Season」).
+     한글 「시즌 N」 은 과거 카드 이름과 글자가 같아지므로 영문 Season 을 쓴다 (`season.ts` 주석) */
+  it('★우리 시즌은 Season 이다★ (2026-09-25 · 옛 Cloud 는 cloudSeasonLabelV1)', () => {
+    expect(seasonDisplayLabel({ number: 0, seasonType: 'official' })).toBe('Season 0')
+    expect(seasonDisplayLabel({ number: 1, seasonType: 'official' })).toBe('Season 1')
+    expect(seasonDisplayLabel({ number: 2, seasonType: 'official' })).toBe('Season 2')
     expect(seasonDisplayLabel({ number: -1, seasonType: 'beta' })).toBe('Beta')
   })
 
   it('★과거 카드와 우리 시즌이 절대 같은 이름이 될 수 없다★', () => {
-    /* 이게 갈라져 있어야 「시즌7」과 「Cloud 7」이 헷갈리지 않는다 */
+    /* 이게 갈라져 있어야 「시즌 7」과 「Season 7」이 헷갈리지 않는다 */
     const past = 사장님표.map(([source]) => `시즌 ${source}`)
     const ours = [0, 1, 2, 3, 7].map((n) =>
       seasonDisplayLabel({ number: n, seasonType: 'official' }),
     )
     for (const o of ours) expect(past).not.toContain(o)
-    for (const o of ours) expect(o.startsWith('Cloud ')).toBe(true)
+    for (const o of ours) expect(o.startsWith('Season ')).toBe(true)
   })
 })

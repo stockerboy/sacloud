@@ -24,6 +24,8 @@ import { Skeleton } from '../common/Skeleton'
 import { RelativeTime } from '../common/RelativeTime'
 import { formatCount } from '../common/format'
 import { affiliationName } from './boardCopy'
+import { isAdminWriter } from './adminPost'
+import { AdminWriterName } from './WriterName'
 
 /** 탭 — 사장님 순서: 인기 · 자유 (공지는 탭이 아니라 위 칸에 붙는다) */
 export const ETA_TABS: readonly { slug: string; label: string }[] = [
@@ -33,6 +35,8 @@ export const ETA_TABS: readonly { slug: string; label: string }[] = [
 
 /** 글쓴이 한 조각 — [마크] 익명 · 클랜명  /  [마크] 닉네임 · 클랜명. 마크는 언제나 있다 */
 export function EtaWriter({ writer }: { writer: BoardWriter }) {
+  /* ★관리자가 공개로 쓴 글★ — SACLOUD 이름 + 사이트 구름 (2026-09-25 사장님) */
+  if (isAdminWriter(writer)) return <AdminWriterName size={14} />
   const clan = writer.clan ?? null
   const clanName = affiliationName(clan?.name)
   const who = writer.anonymous || !writer.player ? '익명' : writer.nickname
@@ -86,7 +90,12 @@ export function EtaRow({ item, basePath }: { item: BoardListItem; basePath?: str
       {/* 2026-09-24 사장님 「게시판 글자 크기좀 줄여」 — 폰만(max-md:) */}
       <Link prefetch={false} href={href} className="block px-4 py-3.5 transition-colors hover:bg-[#121c2f] max-md:px-3.5 max-md:py-3">
         <div className="flex items-start gap-2">
-          <span className="min-w-0 flex-1 text-[15.5px] font-bold leading-snug text-[#f2f4f8] max-md:text-[13.5px]">{item.title}</span>
+          <span className="min-w-0 flex-1 text-[15.5px] font-bold leading-snug text-[#f2f4f8] max-md:text-[13.5px]">
+            {/* ★고정·공지 표식★ (2026-09-25) — 고정 글은 첫 쪽 맨 위에 얹히므로 왜 위에 있는지 보여 준다 */}
+            {item.pinned ? <span className="mr-1.5 inline-block rounded-sm bg-[#5c80e0] px-1.5 py-0.5 align-middle text-[10px] font-bold text-[#0c1526]">고정</span> : null}
+            {item.notice && !item.pinned ? <span className="mr-1.5 inline-block rounded-sm border border-[#5c80e0] px-1.5 py-0.5 align-middle text-[10px] font-bold text-[#5c80e0]">공지</span> : null}
+            {item.title}
+          </span>
           {item.has_image ? <ImageGlyph /> : null}
         </div>
         <div className="mt-2 flex min-w-0 items-center gap-2 text-[12px] text-[#8f95af] max-md:mt-1.5 max-md:text-[11px]">

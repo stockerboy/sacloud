@@ -53,6 +53,12 @@ export const BoardListItem = z.object({
   last_edited: IsoDateTime.nullable(),
   /** 공지 고정 행 여부 */
   notice: z.boolean(),
+  /**
+   * ★상단 고정★ (2026-09-25 사장님 「관리자 권한으로 아무글이나 상단 고정하고 내릴 수 있게」).
+   * 관리자가 고정한 글은 Hot·자유 목록 첫 쪽 맨 위에 얹힌다. `notice` 와 별개다.
+   * 옛 응답과 호환되도록 기본값이 있다.
+   */
+  pinned: z.boolean().default(false),
 })
 export type BoardListItem = z.infer<typeof BoardListItem>
 
@@ -111,6 +117,12 @@ export const BoardWriteInput = z.object({
   captcha_token: z.string().min(1),
 })
 export type BoardWriteInput = z.infer<typeof BoardWriteInput>
+
+/** ★상단 고정/해제 입력★ — 관리자만 (2026-09-25). `PATCH /boards/{id}/pin` */
+export const BoardPinInput = z.object({
+  pinned: z.boolean(),
+})
+export type BoardPinInput = z.infer<typeof BoardPinInput>
 
 /** 댓글 작성 입력 */
 export const CommentWriteInput = z.object({

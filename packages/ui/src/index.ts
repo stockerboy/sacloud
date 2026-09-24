@@ -291,7 +291,7 @@ export {
   BOARD_PREPARING_MESSAGE,
 } from './board/boardPreparingText'
 export { BoardNav } from './board/BoardNav'
-export { BoardTable, BoardPager } from './board/BoardTable'
+export { BoardTable, BoardPager } from './board/BoardTable'
 export * from './board/BoardListEta'
 export { PostView, formatPostDate } from './board/PostView'
 export { CommentList, CommentForm } from './board/CommentList'
@@ -306,10 +306,14 @@ export { sanitizePostContent } from './board/sanitize'
 /* 관리자 글 상단 고정 (2026-09-02 · D-261). 서버는 `@sacloud/ui/adminPost` 로 따로 가져간다 */
 export {
   ADMIN_BADGE_LABEL,
+  ADMIN_DISPLAY_NAME,
+  ADMIN_MARK_SRC,
   ADMIN_PIN_LIMIT,
   isAdminPost,
   isAdminWriter,
 } from './board/adminPost'
+/* 붙여 넣은 글의 문단을 살린다 (2026-09-25) — 글쓰기·수정 폼과 서버가 같은 함수를 쓴다 */
+export { plainTextToHtml, htmlToPlainText, looksLikeHtml } from './board/plainText'
 
 /* --- Phase 6: 인증 · 마이페이지 · 관리 --- */
 export {

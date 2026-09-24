@@ -32,10 +32,11 @@ const season7 = readFileSync(join(here, '..', 'jobs', 'season7Build.ts'), 'utf8'
 
 describe('이름 — 두 체계가 갈라져 있다', () => {
   it('★우리 시즌은 Cloud N★', () => {
-    expect(cloudSeasonLabel(0)).toBe('Cloud 0')
-    expect(cloudSeasonLabel(1)).toBe('Cloud 1')
-    expect(seasonDisplayLabel({ number: 0, seasonType: 'official' })).toBe('Cloud 0')
-    expect(seasonLabel({ number: 1, seasonType: 'official' })).toBe('Cloud 1')
+    /* 2026-09-25 사장님 「클라우드 시즌이라는 단어를 안 쓴다 — 무조건 시즌 or Season」 */
+    expect(cloudSeasonLabel(0)).toBe('Season 0')
+    expect(cloudSeasonLabel(1)).toBe('Season 1')
+    expect(seasonDisplayLabel({ number: 0, seasonType: 'official' })).toBe('Season 0')
+    expect(seasonLabel({ number: 1, seasonType: 'official' })).toBe('Season 1')
   })
 
   it('★과거 카드는 원본 시즌 번호로 시즌 N★', () => {
@@ -67,7 +68,7 @@ describe('이름 — 두 체계가 갈라져 있다', () => {
     const past = seasonDisplayLabel({ number: rootSeasonNumber(7), seasonType: 'legacy' })
     const ours = seasonDisplayLabel({ number: 7, seasonType: 'official' })
     expect(past).toBe('시즌 7')
-    expect(ours).toBe('Cloud 7')
+    expect(ours).toBe('Season 7')
     expect(past).not.toBe(ours)
   })
 })

@@ -117,7 +117,7 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
             <ClanHeaderV3
               data={data}
               infoHref={`/clan/${clanSlug}`}
-              seasonLabel={`SEASON ${(season ?? 'CLOUD 0').toUpperCase()}`}
+              seasonLabel={season ?? '시즌 0'}
               memberCount={data.member_count ?? null}
               renewAction={
                 <GhostButton onClick={refresh.run} disabled={refresh.state === 'pending'} theme={clanThemeOf(data.clan.slug)}>
@@ -133,7 +133,7 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
           <ClanCardV3
             data={data}
             infoHref={`/clan/${clanSlug}`}
-            seasonLabel={`SEASON ${(season ?? 'CLOUD 0').toUpperCase()}`}
+            seasonLabel={season ?? '시즌 0'}
             memberCount={data.member_count ?? null}
             renewedNote={
               <span style={{ display: 'inline-flex', gap: 4 }}>

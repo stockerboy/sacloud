@@ -57,8 +57,21 @@ export function officialSeasonLabel(number: number): string {
  *     번호를 건드리면 `@@unique(leagueId, number)` 와 과거 행이 전부 흔들린다.
  * ══════════════════════════════════════════════════════════════════════════ */
 
-/** SACLOUD 독자 시즌의 화면 표기 — `Cloud 0` · `Cloud 1` … */
+/**
+ * SACLOUD 독자 시즌의 화면 표기.
+ *
+ * ⚠ ★2026-09-25 — 「Cloud N」 을 버렸다★ (사장님: 「모든 페이지에 cloud0 이라 돼 있는 거 시즌0 으로 바꿔.
+ *   우린 이제 클라우드 시즌이라는 단어를 안 쓴다. 무조건 시즌 or Season 둘 중 하나」).
+ *   사장님이 「시즌 or Season」 둘을 허락하셨는데 ★영문 `Season N` 을 골랐다★ — 3rd.supply 과거 카드가
+ *   이미 `시즌 1 … 시즌 7` 이라(`seasonDisplayLabel` legacy 갈래) 우리 것도 `시즌 7` 이면 ★글자가 완전히 같아진다★
+ *   (`cloudSeasonNames.test.ts` 「시즌7 과 우리 7 은 절대 같은 글자가 아니다」). 함수 이름·내부 번호는 그대로다.
+ *   옛 표기는 `cloudSeasonLabelV1` 에 남긴다 (`CLAUDE.md` 1-4).
+ */
 export function cloudSeasonLabel(number: number): string {
+  return `Season ${number}`
+}
+/** 2026-09-25 이전 표기 — `Cloud 0` · `Cloud 1`. 되돌릴 때 쓴다 */
+export function cloudSeasonLabelV1(number: number): string {
   return `Cloud ${number}`
 }
 

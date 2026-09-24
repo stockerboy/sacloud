@@ -18,7 +18,7 @@ import { Hexagon, type HexAxisView } from './Hexagon'
 import { clanStyleNote } from './clanStyleNote'
 import { markAccentOf, markColorsOf, markRailOf } from './clanMarkColors'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
-import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
+import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
 import { nameStyle } from './clanThemes'
 import { ASTRA_STYLE, V3, cardStyle, fmt, pct1 } from './tokens'
 import { formatRating } from '../common/format'
@@ -249,7 +249,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
               {data.clan.name}
             </span>
             <span style={{ fontSize: 11, color: '#767f96', letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
-              시즌 Cloud 0 · {fmt(games)}전 기준
+              시즌 0 · {fmt(games)}전 기준
             </span>
           </span>
         </span>

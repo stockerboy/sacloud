@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { htmlToPlainText, plainTextToHtml } from '@sacloud/ui'
 
 /**
  * 글 작성 / 수정 폼.
@@ -52,7 +53,12 @@ export function PostForm({
   }) => void
 }) {
   const [title, setTitle] = useState(initialTitle)
-  const [content, setContent] = useState(initialContent)
+  /*
+   * ★문단을 살린다★ (2026-09-25 사장님 「그대로 갖다 붙이면 문단도 안나뉘고 이상하게 들어가」)
+   *   textarea 의 줄바꿈은 HTML 에서 빈칸이라 한 덩어리로 붙어 나왔다. 저장할 때 <p>·<br> 로
+   *   바꾸고(`plainTextToHtml`), 수정할 때는 되돌려 넣는다(`htmlToPlainText`). 순수 함수 · `@sacloud/ui/board/plainText`.
+   */
+  const [content, setContent] = useState(() => htmlToPlainText(initialContent))
   /*
    * ★★기본은 익명이다★★ (2026-09-20 사장님)
    *
@@ -117,7 +123,7 @@ export function PostForm({
           onClick={() =>
             onSubmit({
               title: title.trim(),
-              content: content.trim(),
+              content: plainTextToHtml(content.trim()),
               disclose_type: anonymous ? 1 : 0,
               password: requirePassword ? password : null,
             })

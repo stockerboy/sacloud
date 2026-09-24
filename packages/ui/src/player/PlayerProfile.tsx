@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import type { PlayerLeagueEntry } from '@sacloud/contract'
 import { isLeagueListed, isOfficialLeague } from '@sacloud/contract'
+/* 리그 이름은 상단 메뉴와 같은 표(`FEATURED_LEAGUES`)에서 — DB 의 `PL`/`CPL` 이 그대로 새지 않게 (2026-09-25 사장님 「pl로 돼있다 여기 아직」) */
+import { leagueDisplayName } from '../site-config'
 import { ClanMark, type ClanMarkSource } from '../common/ClanMark'
 /* 「알」 (`docs/EGG_SYSTEM_SPEC.md`) — 클랜마크는 클랜 알이, 기록은 개인 알이 덮는다 */
 import { Egg } from '../egg/Egg'
@@ -301,7 +303,7 @@ function PlayerLeagueRow({
       <div className="flex items-center gap-2">
         <span className="truncate text-[14px] font-extrabold tracking-[-.01em] text-text-strong md:text-[15px]">
           {/* DB 이름은 아직 CPL 이다 — 화면은 Supply 2.0 (2026-09-24 사장님) */}
-          {entry.league.slug === 'cpl' ? 'Supply 2.0' : entry.league.name}
+          {leagueDisplayName(entry.league.slug, entry.league.name)}
         </span>
         {leagueKindOf(entry.league.slug) ? (
           <span
@@ -496,7 +498,7 @@ function IdleLeagues({
         <span className="min-w-0 truncate text-[13px] text-meta">
           아직 기록이 없는 리그
           <span className="ml-2 text-text-strong">
-            {entries.map((e) => e.league.name).join(' · ')}
+            {entries.map((e) => leagueDisplayName(e.league.slug, e.league.name)).join(' · ')}
           </span>
         </span>
         <span aria-hidden className="shrink-0 text-[11px] text-faint">

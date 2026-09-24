@@ -39,6 +39,13 @@ const DRAWER_LEAGUE_ORDER: readonly string[] = [
   '/league/sanply', // 열산
 ]
 
+/** 2026-09-25 사장님 — 서랍은 「경쟁전 / 일반전」 두 묶음. 옛 한 묶음은 `false` */
+export const DRAWER_GROUPED = true
+const DRAWER_GROUPS: readonly { title: string; hrefs: readonly string[] }[] = [
+  { title: '경쟁전', hrefs: ['/league/cpl', '/league/supply'] },
+  { title: '일반전', hrefs: ['/league/nolink', '/league/sanply'] },
+]
+
 const drawerLeagues = (): readonly NavLink[] =>
   DRAWER_LEAGUE_ORDER.flatMap((href) => {
     const found = FEATURED_LEAGUES.find((l) => l.href === href)
@@ -138,11 +145,30 @@ export function DrawerNavSupply({ user = null, onLogout, onClose, loginHref = '/
         </div>
       ) : null}
 
-      <Section title="Leagues" icon={<CloudIcon />}>
-        {leagues.map((l) => (
-          <Row key={l.href} link={l} pathname={pathname} />
-        ))}
-      </Section>
+      {/*
+        ★경쟁전 / 일반전 두 묶음★ (2026-09-25 사장님 「Supply1.0 2.0 둘다 햄버거 메뉴에서 경쟁전으로 묶고
+        아이피엘 열산은 둘다 일반전으로 묶어」). 옛 한 묶음(「Leagues」)은 DRAWER_GROUPED=false.
+        어느 리그가 어느 묶음인지는 아래 표 하나가 정한다 — 목록 자체는 여전히 `FEATURED_LEAGUES` 에서 온다.
+      */}
+      {DRAWER_GROUPED ? (
+        DRAWER_GROUPS.map((g) => {
+          const rows = leagues.filter((l) => g.hrefs.includes(l.href))
+          if (rows.length === 0) return null
+          return (
+            <Section key={g.title} title={g.title} icon={<CloudIcon />}>
+              {rows.map((l) => (
+                <Row key={l.href} link={l} pathname={pathname} />
+              ))}
+            </Section>
+          )
+        })
+      ) : (
+        <Section title="Leagues" icon={<CloudIcon />}>
+          {leagues.map((l) => (
+            <Row key={l.href} link={l} pathname={pathname} />
+          ))}
+        </Section>
+      )}
 
       <Section title="게시판" icon={<BoardIcon />}>
         {BOARD_LINKS.map((l) => (

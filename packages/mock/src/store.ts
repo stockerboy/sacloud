@@ -2925,6 +2925,8 @@ function toBoardListItem(board: MockBoard, anonLabel: string = ANONYMOUS_LIST_LA
     created_at: board.createdAt,
     last_edited: board.lastEdited,
     notice: board.notice,
+    /* 상단 고정은 실제 서버(관리자)만 찍는다 — Mock 픽스처에는 없다 */
+    pinned: false,
   }
 }
 

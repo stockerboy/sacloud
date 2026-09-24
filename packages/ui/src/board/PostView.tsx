@@ -6,6 +6,7 @@ import type { Board } from '@sacloud/contract'
 import { sanitizePostContent } from './sanitize'
 import { formatCount } from '../common/format'
 import { WriterName } from './WriterName'
+import { looksLikeHtml } from './plainText'
 
 /**
  * 글 상세 — `적진`.
@@ -71,18 +72,29 @@ export function PostView({
   post,
   onVote,
   basePath,
+  admin,
 }: {
   post: Board
   /** 1 = 추천, -1 = 비추천 (계약의 `VoteType`) */
   onVote: (type: number) => void
   /** 수정·삭제 링크의 뿌리 (지시 #14-2 — 리그 안 게시판). 없으면 예전 그대로 `/board/{category}` */
   basePath?: string
+  /**
+   * ★관리자 단추★ (2026-09-25 사장님 「관리자 권한으로 아무글이나 상단 고정하고 내릴 수 있게」).
+   * 보는 사람이 관리자일 때만 호출부가 넘긴다. 없으면 아무것도 안 그린다.
+   */
+  admin?: { onTogglePin: () => void; busy?: boolean } | null
 }) {
   const base = basePath ?? `/board/${post.category}`
+  /* 태그 없는 옛 글(줄바꿈만 있는 글)은 줄바꿈을 살려 그린다 — 새 글은 저장할 때 <p> 로 바뀐다 */
+  const preWrap = !looksLikeHtml(post.content)
   return (
     <article className="rounded-[var(--radius)] border border-line bg-card px-6 py-6 text-text max-md:px-4">
       <header className="flex flex-col gap-3">
-        <h1 className="display text-3xl leading-snug text-text-strong">{post.title}</h1>
+        <h1 className="display text-3xl leading-snug text-text-strong">
+          {post.pinned ? <span className="mr-2 inline-block rounded-sm bg-[#5c80e0] px-2 py-0.5 align-middle text-xs font-bold text-[#0c1526]">고정</span> : null}
+          {post.title}
+        </h1>
 
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-sm text-faint">
           <div className="flex min-w-0 items-baseline gap-1">
@@ -102,10 +114,21 @@ export function PostView({
       <div className="my-6 border-b border-b-line" />
 
       <div
-        className="max-w-[68ch] break-words text-[1.05rem] leading-7"
+        className={`post-body max-w-[68ch] break-words text-[1.05rem] leading-7 ${preWrap ? 'whitespace-pre-wrap' : ''}`}
         // sanitizePostContent 를 거친 문자열만 들어온다
         dangerouslySetInnerHTML={{ __html: sanitizePostContent(post.content) }}
       />
+      {/* 문단 HTML(<p>·<h3>) 이 붙어 보이지 않게 — 글 본문 안에서만 산다 */}
+      <style>{`.post-body p{margin:0 0 1em}.post-body p:last-child{margin-bottom:0}.post-body h2,.post-body h3{margin:1.6em 0 .6em;font-weight:700;font-size:1.15em;color:var(--color-text-strong,#f2f4f8)}.post-body h2:first-child,.post-body h3:first-child{margin-top:0}`}</style>
+
+      {admin ? (
+        <div className="mt-6 flex items-center gap-2 text-sm">
+          <span className="text-faint">관리자</span>
+          <button type="button" disabled={admin.busy} onClick={admin.onTogglePin} className="btn-line px-3 py-1.5 text-sm disabled:opacity-50">
+            {post.pinned ? '상단 고정 해제' : '상단 고정'}
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt-10 flex select-none items-center justify-center gap-2">
         <VoteButton

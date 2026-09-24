@@ -5,6 +5,7 @@ import { hidesSeedData, SEED_ORIGIN } from './publicScope'
 import type { Prisma } from '@sacloud/db'
 import {
   ANONYMOUS_LIST_LABEL,
+  BoardPinInput,
   BoardWriteInput,
   CommentWriteInput,
   DeleteInput,
@@ -214,6 +215,7 @@ const BOARD_LIST_SELECT = {
   commentCount: true,
   hasImage: true,
   notice: true,
+  pinnedAt: true,
   createdAt: true,
   lastEdited: true,
   user: { select: BOARD_USER_SELECT },
@@ -248,6 +250,7 @@ function toBoardListItem(row: BoardListRow, anonLabel: string = ANONYMOUS_LIST_L
     created_at: toKstIso(row.createdAt),
     last_edited: toKstIsoOrNull(row.lastEdited),
     notice: row.notice,
+    pinned: row.pinnedAt !== null,
   }
 }
 
@@ -422,11 +425,44 @@ export interface BoardListQuery {
  * - 검색 3종은 Mock의 `listBoards`와 같다. Mock은 `String.includes`(대소문자 구분)이므로
  *   `ILIKE`가 아니라 `LIKE`를 쓴다.
  */
-function boardFilter(query: BoardListQuery, params: SqlParams): string {
+/**
+ * ★상단 고정★ (2026-09-25 사장님 「이 글은 일단 핫게시판 상단 고정, 자유게시판 상단 고정해줘.
+ * 관리자 권한으로 아무글이나 상단 고정하고 내릴 수 있게」).
+ *
+ * 관리자가 `pinnedAt` 을 찍은 글은 ★검색이 아닌 첫 쪽★ 에서 Hot·자유 어느 목록이든 맨 위에
+ * 최근 고정순으로 얹힌다(공지든 아니든 · 어느 카테고리든). 그 줄은 평소 목록에서 뺀다 —
+ * 같은 글이 위에 한 번, 아래에 또 한 번 나오지 않게. `notice` 목록에는 얹지 않는다(거기가 공지의 출처다).
+ *
+ * 몇 줄까지: `PIN_LIMIT`. 넘긴 글은 사라지지 않고 평소 목록에 그대로 남는다.
+ * (옛 D-261 「관리자 글 자동 고정」은 서버에 구현된 적이 없다 — Mock 에만 있다. 이제 ★사람이 고르는★ 고정이다.)
+ */
+const PIN_LIMIT = 5
+
+function pinsApply(query: BoardListQuery): boolean {
+  return !query.cursor && !query.q?.trim() && query.category !== 'notice'
+}
+
+async function pinnedBoardIds(): Promise<string[]> {
+  const rows = await prisma.board.findMany({
+    where: { pinnedAt: { not: null }, deletedAt: null, ...(hidesSeedData() ? { origin: { not: SEED_ORIGIN } } : {}) },
+    orderBy: [{ pinnedAt: 'desc' }, { id: 'desc' }],
+    take: PIN_LIMIT,
+    select: { id: true },
+  })
+  return rows.map((row) => row.id)
+}
+
+function boardFilter(query: BoardListQuery, params: SqlParams, excludeIds: readonly string[] = []): string {
   const parts: string[] = ['"Board"."deletedAt" IS NULL']
 
   // 개발용 시드 글은 공개 목록·인기글·검색에 넣지 않는다 (D-116)
   if (hidesSeedData()) parts.push(`"Board"."origin" <> ${params.bind(SEED_ORIGIN)}`)
+
+  /* 고정 줄(첫 쪽 맨 위에 따로 얹는 글)은 평소 목록에서 뺀다. ★모든 쪽★ 에서 뺀다 — 커서 목록은
+     첫 쪽과 같은 집합이어야 페이지가 안 밀린다. 상한을 넘긴 고정 글은 이 목록에 안 들어오므로 그대로 남는다 */
+  if (excludeIds.length > 0) {
+    parts.push(`"Board"."id" NOT IN (${excludeIds.map((id) => params.bind(id)).join(', ')})`)
+  }
 
   if (query.category === 'hot') {
     /*
@@ -499,10 +535,10 @@ async function anchorSortValue(sort: string, id: string): Promise<number | null>
  * (`lib/server/cursorPage.ts`의 `cursorPage`는 Prisma 컬럼 정렬 전용이고,
  *  `paginateArray`는 게시글처럼 큰 목록에 쓰지 말라고 되어 있다.)
  */
-async function boardIdPage(query: BoardListQuery): Promise<CursorPage<string>> {
+async function boardIdPage(query: BoardListQuery, excludeIds: readonly string[] = []): Promise<CursorPage<string>> {
   const sort = query.category === 'hot' ? HOT_SORT : RECENT_SORT
   const params = new SqlParams()
-  const where = boardFilter(query, params)
+  const where = boardFilter(query, params, excludeIds)
   const take = query.size + 1
   const decoded = query.cursor ? decodeCursor(query.cursor) : null
   const anchor = decoded ? await anchorSortValue(sort, decoded.id) : null
@@ -566,22 +602,54 @@ async function boardIdPage(query: BoardListQuery): Promise<CursorPage<string>> {
 }
 
 export async function listBoards(query: BoardListQuery): Promise<CursorPage<BoardListItem>> {
-  const page = await boardIdPage(query)
-  if (page.items.length === 0) return { items: [], cursor: page.cursor }
+  /* 고정 글은 검색·공지 목록이 아니면 어느 쪽에서든 뺀다(위 `boardFilter`) — 첫 쪽에만 맨 위에 얹는다 */
+  const excludes = !query.q?.trim() && query.category !== 'notice' ? await pinnedBoardIds() : []
+  const pinnedIds = pinsApply(query) ? excludes : []
+
+  const page = await boardIdPage(query, excludes)
+  const ids = [...pinnedIds, ...page.items]
+  if (ids.length === 0) return { items: [], cursor: page.cursor }
 
   const rows = await prisma.board.findMany({
-    where: { id: { in: page.items } },
+    where: { id: { in: ids } },
     select: BOARD_LIST_SELECT,
   })
   const byId = new Map(rows.map((row) => [row.id, row]))
 
   return {
-    items: page.items
+    items: ids
       .map((id) => byId.get(id))
       .filter((row): row is BoardListRow => row !== undefined)
       .map((row) => toBoardListItem(row)),
     cursor: page.cursor,
   }
+}
+
+/**
+ * ★상단 고정/해제★ — 관리자만 (2026-09-25). 어느 글이든(공지·자유·남의 글) 된다.
+ * 고정은 `pinnedAt` 을 지금으로, 해제는 null 로. 글 자체는 한 글자도 안 바뀐다.
+ */
+export async function setBoardPinned(
+  boardId: string,
+  request: Request,
+  body: unknown,
+): Promise<WriteResult<Board>> {
+  const parsed = BoardPinInput.safeParse(body)
+  if (!parsed.success) return invalid('입력값을 확인해주세요')
+
+  const userId = await currentUserId(request)
+  if (!(await isAdmin(userId))) return denied('관리자만 고정할 수 있습니다')
+
+  const row = await prisma.board.findUnique({ where: { id: boardId }, select: { id: true, deletedAt: true } })
+  if (!row || row.deletedAt) return missing('글을 찾을 수 없습니다')
+
+  await prisma.board.update({
+    where: { id: boardId },
+    data: { pinnedAt: parsed.data.pinned ? new Date() : null },
+  })
+
+  const board = await boardResponse(boardId, request)
+  return board ? { ok: true, value: board } : missing('글을 찾을 수 없습니다')
 }
 
 /* -------------------------------------------------------------------------- */

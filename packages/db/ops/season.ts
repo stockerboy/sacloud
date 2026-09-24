@@ -137,7 +137,9 @@ export function seasonLabel(season: { number: number; seasonType: string }): str
   if (season.seasonType === 'legacy') {
     return season.number > 0 ? `시즌 ${season.number}` : '이전 기록'
   }
-  return `Cloud ${season.number}`
+  /* ★2026-09-25 — 「Cloud N」 → 「Season N」★ (사장님: 「클라우드 시즌이라는 단어를 안 쓴다 · 무조건 시즌 or Season」).
+     한글 「시즌 N」 은 위 과거 카드와 글자가 같아지므로 영문. 화면 쪽 `contract/season.ts` 의 `cloudSeasonLabel` 과 같은 값 */
+  return `Season ${season.number}`
 }
 
 export interface SeasonOverview {

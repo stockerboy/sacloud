@@ -1452,6 +1452,10 @@ model Board {
   /// 공지 고정 행 여부. 카테고리의 `notice`와 별개로 **글 단위**로도 고정할 수 있다
   /// (계약 `BoardListItem.notice`가 행마다 내려온다).
   notice       Boolean @default(false)
+  /// ★상단 고정★ (2026-09-25 사장님 「관리자 권한으로 아무글이나 상단 고정하고 내릴 수 있게」).
+  /// null 이면 고정 아님. 값이 있으면 Hot·자유 목록 첫 쪽 맨 위에 최근 고정순으로 얹힌다.
+  /// `notice`(공지 여부)와 별개다 — 공지가 아닌 글도, 공지도 고정할 수 있다.
+  pinnedAt     DateTime?
 
   /// "sacloud" | "mock" — 이 행이 어디서 왔는가 (D-116).
   /// `mock`은 개발용 시드다. **공개 화면에 내보내지 않는다.**
@@ -1472,6 +1476,8 @@ model Board {
   @@index([likeCount(sort: Desc), createdAt(sort: Desc)])
   // 공개 목록: 시드 제외 + 최신순
   @@index([origin, createdAt(sort: Desc)])
+  // 상단 고정 글 — 몇 줄 안 되지만 목록 첫 쪽마다 읽는다
+  @@index([pinnedAt(sort: Desc)])
 }
 
 /// 댓글. 원본은 대댓글 1단계까지만 허용한다(관측).
