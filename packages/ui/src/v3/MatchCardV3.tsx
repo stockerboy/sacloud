@@ -30,7 +30,8 @@
  *   사장님: 「최근경기 경기카드 삽입할때 오른쪽 공간이 비면 일단 비워놔 내가 뭐 넣을지
  *   결정해줄게」. 카드는 제 폭(840 기준)만 쓰고 남는 자리를 ★안 채운다.★
  */
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
+import Link from 'next/link'
 import type { MatchDetail, MatchLineupEntry, MatchListItem } from '@sacloud/contract'
 import { formatRating } from '../common/format'
 import { Kda, MarkCircle, MvpMark, TierText, matchShownAt } from './primitives'
@@ -119,7 +120,8 @@ function ClanSide({ snap, ink, league }: { snap: MatchListItem['league_clan']; i
     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0' }}>
       <MarkCircle clan={snap.clan} size={20} />
       <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{snap.clan.name}</span>
+        {/* ★클랜명은 클랜 페이지로★ (2026-09-24 사장님 「클랜명 클릭해도 그 클랜페이지로 안가지는것들이 너무 많아」) — 줄 클릭(펼치기)로 안 번진다 */}
+        <Link prefetch={false} href={`/clan/${snap.clan.slug}`} onClick={stopRow} style={{ fontSize: 12.5, fontWeight: 600, color: ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, textDecoration: 'none' }}>{snap.clan.name}</Link>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}>
           {snap.division !== null ? <TierText division={snap.division} leagueCategory={league.category} leagueSlug={league.slug} size={10} /> : null}
           {snap.rating !== null ? <span style={{ fontSize: 10.5, color: V3.textFaint }}>{formatRating(snap.rating)}</span> : null}
@@ -128,6 +130,9 @@ function ClanSide({ snap, ink, league }: { snap: MatchListItem['league_clan']; i
     </span>
   )
 }
+
+/** 카드 줄의 onClick(펼치기)으로 안 번지게 — 링크는 링크만 한다 */
+const stopRow = (e: MouseEvent) => { e.stopPropagation() }
 
 /** 명단 한 열 — 보는 선수는 굵게. 스나이퍼는 `[S]` */
 function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: string | null }) {
@@ -138,7 +143,8 @@ function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: st
         return (
           <span key={r.player_id} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
             <MarkCircle clan={r.match_time_clan ? { slug: r.match_time_clan.slug, mark: r.match_time_clan.mark } : null} size={14} />
-            <span style={{ fontSize: 11, fontWeight: me ? 700 : 400, color: me ? V3.textStrong : V3.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{r.name}</span>
+            {/* ★명단 이름은 그 선수 페이지로★ (2026-09-24 사장님 「카드 안 펼치고 명단에서 바로 개인페이지로」) — 줄 클릭(펼치기)로 안 번진다 */}
+            <Link prefetch={false} href={`/player/${r.player_id}`} onClick={stopRow} title={r.name} style={{ fontSize: 11, fontWeight: me ? 700 : 400, color: me ? V3.textStrong : V3.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, textDecoration: 'none' }}>{r.name}</Link>
             {r.weapon === 1 ? <span style={{ fontSize: 9, fontWeight: 700, color: V3.red, flex: 'none' }}>[S]</span> : null}
           </span>
         )

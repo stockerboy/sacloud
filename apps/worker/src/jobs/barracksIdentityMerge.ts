@@ -198,6 +198,9 @@ export async function runBarracksIdentityMerge(
           out.movedSeats += moved.count
         }
         await prisma.leaguePlayer.deleteMany({ where: { playerId: d.id } })
+        /* ★계정표(nexonIdentity)도 주인으로★ (2026-09-24 사장님 「병영수첩으로 검색하는 기능 안먹는거같아」)
+           — 안 옮기면 병영수첩 주소 검색이 identityPlayerId 로 껍데기를 가리킨다 */
+        await prisma.nexonIdentity.updateMany({ where: { playerId: d.id }, data: { playerId: keep.id } })
 
         /*
          * ⚠ ★껍데기를 지우지 않는다★ — 다른 표가 가리키고 있을 수 있다.

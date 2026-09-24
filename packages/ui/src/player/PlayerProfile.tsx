@@ -11,6 +11,7 @@ import { useClanEgg, usePlayerEgg } from '../egg/EggContext'
 import { EggVeil } from '../egg/EggVeil'
 import { RelativeTime } from '../common/RelativeTime'
 import { formatCount, formatRate } from '../common/format'
+import { rateClass } from '../common/rate'
 import {
   formatPlayerScore,
   playerScoreOf,
@@ -35,6 +36,8 @@ import {
 function leagueKindOf(slug: string): { label: string; color: string } | null {
   if (slug === 'nolink') return { label: '일반', color: '#5c80e0' }
   if (slug === 'supply') return { label: '경쟁', color: '#f59e0b' }
+  /* 2026-09-24 사장님 「열산도 일반이라고 달아줘」 */
+  if (slug === 'sanply') return { label: '일반', color: '#5c80e0' }
   return null
 }
 
@@ -336,6 +339,7 @@ function PlayerLeagueRow({
             )
           }
           muted={!sealed && !rated}
+          tone={!sealed && rated ? rateClass(entry.win_rate) : ''}
         />
         <CardLine
           raw={kdShown}
@@ -357,6 +361,7 @@ function PlayerLeagueRow({
             )
           }
           muted={!sealed && !hasKd}
+          tone={!sealed && hasKd ? rateClass(entry.kd_rate as number) : ''}
         />
         {/*
           ★무기 판수★ (2026-09-21 사장님: 「기본정보에 스나수인지 라플수인지 써주고」).
@@ -413,12 +418,15 @@ function CardLine({
   value,
   muted = false,
   sub = null,
+  tone = '',
 }: {
   raw: string | null
   label: string
   value: ReactNode
   muted?: boolean
   sub?: string | null
+  /** 승률·킬뎃 등급색 (2026-09-24 사장님 「기본정보 기록카드에 숫자에 색이 안들어갔어」) — 랭킹 표와 같은 rateClass */
+  tone?: string
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
@@ -440,7 +448,7 @@ function CardLine({
         <span className="text-[12px] text-meta">{label}</span>
         <span
           className={`font-num text-[16px] font-extrabold leading-none tabular-nums ${
-            muted ? 'text-faint' : 'text-text-strong'
+            muted ? 'text-faint' : tone !== '' ? tone : 'text-text-strong'
           }`}
         >
           {value}

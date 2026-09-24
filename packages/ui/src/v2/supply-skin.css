@@ -538,8 +538,10 @@ body.antialiased {
     margin-left: auto;
     margin-right: auto;
   }
-  /* 시안의 «빛»(sweep)이 상자 밖으로 새어 화면을 넓히던 것 — 제 칸 안에서 자른다 */
-  .home-cloud .sb-cloud {
+  /* 시안의 «빛»(sweep)이 상자 밖으로 새어 화면을 넓히던 것 — 제 칸 안에서 자른다
+     ★2026-09-24 사장님 「플레이어검색에서 클랜검색으로 바꾸는게 안돼」(폰) — 이 overflow:hidden 이 검색 종류
+     드롭다운(absolute · top-full)까지 잘라 폰에서 목록이 아예 안 보였다. ★열려 있을 때(sb-cloud--on)는 안 자른다★ */
+  .home-cloud .sb-cloud:not(.sb-cloud--on) {
     overflow: hidden;
   }
 }
@@ -1624,4 +1626,12 @@ body.antialiased {
    폰(<768)은 이미 0.5rem 을 가지므로 안 건드린다 */
 @media (min-width: 768px) {
   .sac-rank-head, .sac-rank-row { padding-right: 20px; }
+}
+
+/* ★2026-09-24 사장님 「왼쪽 상단 여기에 로고랑 햄버거 탭 메뉴 넣어줘」(PC · 홈 아닌 화면)★
+   옛 판: PC 상단바는 로고 없음(서플라이 실측 · 99줄) · 햄버거는 폰 전용(tokens.css 386줄) · 홈에서만 로고(1535줄).
+   이제 PC 모든 화면에서 왼쪽에 햄버거 + 로고를 켠다. 서랍(DrawerNavSupply)은 PC 에서도 그대로 열린다 */
+@media (min-width: 768px) {
+  .sac-v2 .v2-topbar__inner--gnb > .v2-burger { display: inline-flex !important; margin-right: 10px; }
+  .sac-v2 .v2-brand--pc-off, .sac-v2 .v2-topbar__inner--gnb > .v2-brand--pc-off { display: flex !important; margin-right: 18px; }
 }

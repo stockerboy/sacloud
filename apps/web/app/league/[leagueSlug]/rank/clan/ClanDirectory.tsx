@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 import { useCursorQuery } from '@/lib/useCursorQuery'
-import { rankClans } from '@/lib/clanRanking'
+import { rankClans, CLAN_RANK_SINK_MIN_GAMES } from '@/lib/clanRanking'
 import { ClanDirectoryV1 } from './ClanDirectoryV1'
 import { ClanPodiumCards } from './ClanPodiumCards'
 
@@ -266,7 +266,8 @@ function ClanRankDirectory({
   )
 
   /* 줄 세우기 + 번호 붙이기. 규칙은 `@/lib/clanRanking` 한 곳에 있다 */
-  const ranked = useMemo(() => rankClans(played, { byTier }), [played, byTier])
+  /* ★50경기 미만 클랜은 맨 아래★ (2026-09-24 사장님) — `clanRanking.ts` 의 minGames 주석 */
+  const ranked = useMemo(() => rankClans(played, { byTier, minGames: CLAN_RANK_SINK_MIN_GAMES }), [played, byTier])
 
   /* ★검색은 순위를 매긴 뒤에 거른다.★ 걸러 놓고 번호를 매기면 3위가 1위로 보인다 */
   const filtered = useMemo(() => ranked.filter(matches(query)), [ranked, query])

@@ -87,3 +87,34 @@ describe('클랜랭킹 — 티어 리그 (지시 #24 ⑤ · 티어표를 넘나�
     expect(rankClans([], { byTier: true })).toEqual([])
   })
 })
+
+/* 2026-09-24 사장님 — 표본이 적은 클랜(50경기 미만)은 래더가 높아도 뒤로 (공식은 안 건드린다 · 정렬만) */
+describe('rankClans minGames', () => {
+  it('경기 수가 minGames 미만이면 충분히 뛴 클랜 뒤에 선다 · 그 안에서는 래더순', () => {
+    const rows = rankClans(
+      [
+        { id: 'fresh-high', division: 1, rating: 3300, win: 7, lose: 8 },
+        { id: 'vet-low', division: 1, rating: 3100, win: 250, lose: 180 },
+        { id: 'vet-high', division: 1, rating: 3200, win: 200, lose: 200 },
+        { id: 'fresh-low', division: 1, rating: 3250, win: 4, lose: 27 },
+      ],
+      { byTier: false, minGames: 50 },
+    )
+    expect(rows.map((r) => [r.id, r.rank])).toEqual([
+      ['vet-high', 1],
+      ['vet-low', 2],
+      ['fresh-high', 3],
+      ['fresh-low', 4],
+    ])
+  })
+  it('minGames 를 안 주면 옛 판 그대로(래더순)', () => {
+    const rows = rankClans(
+      [
+        { id: 'fresh', division: 1, rating: 3300, win: 1, lose: 0 },
+        { id: 'vet', division: 1, rating: 3200, win: 300, lose: 100 },
+      ],
+      { byTier: false },
+    )
+    expect(rows.map((r) => r.id)).toEqual(['fresh', 'vet'])
+  })
+})

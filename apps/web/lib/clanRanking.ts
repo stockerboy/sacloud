@@ -37,6 +37,9 @@ export interface ClanRankInput {
   readonly rating: number
   /** 배치 중(경기 없음) — 있으면 번호를 안 매기고 티어 맨 아래 (2026-09-11 QA 회차 2: 클랜 띠 «13위/13팀» 과 목록 «14위» 가 어긋났다) */
   readonly placement?: boolean
+  /** 승·패 (있으면 최소경기 가라앉히기에 쓴다) */
+  readonly win?: number
+  readonly lose?: number
 }
 
 export interface ClanRankOptions {
@@ -45,7 +48,16 @@ export interface ClanRankOptions {
    * ★화면에서 리그 slug 를 비교하지 않는다★ (D-204).
    */
   byTier: boolean
+  /**
+   * ★표본이 적은 클랜은 맨 아래로★ (2026-09-24 사장님 「DINGA·난다고래(15·31경기)가 dominator·Major(430·400경기·58%) 위에 있는 게 납득이 안 돼」).
+   *   래더 공식은 안 건드린다(CLAUDE.md 6절). ★정렬만★ — 경기 수가 이 값 미만인 클랜은 같은 티어 안에서
+   *   충분히 뛴 클랜들 ★뒤에★ 선다(그 안에서는 래더순). 번호는 이어서 매긴다. 0 이면 옛 판 그대로.
+   */
+  minGames?: number
 }
+
+/** 클랜랭킹 화면이 쓰는 값 — 50경기 (2026-09-24 사장님 · 난다고래 31경기도 가라앉히려면 30 으로는 모자랐다). 0 이면 옛 판 */
+export const CLAN_RANK_SINK_MIN_GAMES = 50
 
 /**
  * 점수순으로 세우고 순위 번호를 붙인다. ★원본 배열은 건드리지 않는다.★
@@ -55,11 +67,16 @@ export interface ClanRankOptions {
  */
 export function rankClans<T extends ClanRankInput>(
   clans: readonly T[],
-  { byTier }: ClanRankOptions,
+  { byTier, minGames = 0 }: ClanRankOptions,
 ): (T & { rank: number | null })[] {
   const sorted = [...clans].sort((a, b) => {
     if (byTier && a.division !== b.division) return a.division - b.division
     if ((a.placement ?? false) !== (b.placement ?? false)) return a.placement ? 1 : -1
+    if (minGames > 0) {
+      const ta = (a.win ?? 0) + (a.lose ?? 0) < minGames ? 1 : 0
+      const tb = (b.win ?? 0) + (b.lose ?? 0) < minGames ? 1 : 0
+      if (ta !== tb) return ta - tb
+    }
     if (a.rating !== b.rating) return b.rating - a.rating
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
   })

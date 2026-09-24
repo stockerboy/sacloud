@@ -149,8 +149,14 @@ export async function findPlayerByName(name: string): Promise<PlayerSearchItem |
  *
  *   ★NULL 을 먼저 받아 준다★ — `note IS NULL` 이면 무조건 통과, 아니면 옛 조건 그대로.
  */
-export function notMergedWhere(): { OR: [{ note: null }, { NOT: { note: { startsWith: string } } }] } {
-  return { OR: [{ note: null }, { NOT: { note: { startsWith: 'merged-into:' } } }] }
+export function notMergedWhere() {
+  return {
+    AND: [
+      { OR: [{ note: null }, { NOT: { note: { startsWith: 'merged-into:' } } }] },
+      /* barracks-identity-merge 가 남기는 껍데기는 ★이름★ 이 「(합쳐짐→…)」 다 (note 가 아니다). name 은 NOT NULL 이라 NOT 만으로 안전 */
+      { NOT: { name: { startsWith: '(합쳐짐→' } } },
+    ],
+  }
 }
 
 const EXACT_CANDIDATES = 8
@@ -198,10 +204,28 @@ async function playerByName(name: string): Promise<PlayerSearchItem | null> {
  *   적재해야 한다 (지금 운영의 `BarracksBattleLogRaw` · `BarracksClanMember` 는 0행이다).
  */
 async function playerByBarracksUsn(usn: string): Promise<PlayerSearchItem | null> {
-  const playerId =
+  /*
+   * ★2026-09-24 사장님 「병영수첩으로 검색하는 기능 안먹는거같아」★
+   *   실측: 자이언트 주소를 넣으니 「(합쳐짐→cmtler…)」 껍데기(SUP-1845950328)가 나왔다.
+   *   identityPlayerId 가 nexonIdentity.playerId 를 따라가는데, 합치기 전 껍데기를 가리키고 있었다.
+   *   ★병영 계정(BRK-<usn>)을 sourcePlayerId 로 가진 살아 있는 줄이 있으면 그게 주인★ — 그걸 먼저 본다.
+   *   그래도 껍데기가 잡히면 「(합쳐짐→X)」 의 X 로 따라간다(최대 3번).
+   */
+  const direct = await prisma.player.findFirst({
+    where: { sourcePlayerId: `BRK-${usn}`, ...publicOriginWhere(), ...notMergedWhere() },
+    select: { id: true },
+  })
+  let playerId: string | null =
+    direct?.id ??
     (await identityPlayerId(usn)) ??
     (await positionProfilePlayerId(usn)) ??
     (await clanMemberPlayerId(usn))
+  for (let hop = 0; playerId && hop < 3; hop += 1) {
+    const row = await prisma.player.findUnique({ where: { id: playerId }, select: { name: true } })
+    const m = row?.name.match(/^\(합쳐짐→(.+)\)$/)
+    if (!m) break
+    playerId = m[1] ?? null
+  }
   if (!playerId) return null
 
   const player = await prisma.player.findFirst({

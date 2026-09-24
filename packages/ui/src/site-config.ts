@@ -158,12 +158,14 @@ export const FEATURED_LEAGUES_V1: readonly NavLink[] = [
  *   「Supply2.0(옛cpl)/IPL/Supply1.0(옛pl)/열산/게시판」
  *   옛 차례: cpl · supply · nolink · sanply (2026-09-21)
  */
+/* 2026-09-24 사장님 「supply2.0 supply1.0 ipl 열산 게시판 순서로」. 옛 차례(cpl·nolink·supply·sanply)는 GNB_LEAGUE_ORDER_20260922 */
 export const GNB_LEAGUE_ORDER: readonly string[] = [
   '/league/cpl',
-  '/league/nolink',
   '/league/supply',
+  '/league/nolink',
   '/league/sanply',
 ]
+export const GNB_LEAGUE_ORDER_20260922: readonly string[] = ['/league/cpl', '/league/nolink', '/league/supply', '/league/sanply']
 
 /** 목록에서 주어진 순서대로 골라낸다. 순서표에 없는 리그는 빠진다 — 지어내지 않는다 */
 export function orderLeagues(order: readonly string[]): readonly NavLink[] {
