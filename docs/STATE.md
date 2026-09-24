@@ -46,6 +46,10 @@
        ★VPS 사고★ 스왈 2047/2047 · 여유 117MB · load 39 · ssh 배너 타임아웃. hex.sh 가 진짜로 돌면서 player-hex-build(RSS 787MB)가
        로스터(identity-from-battlelog)·수집·lineup 과 겹침. 02:28 손으로 죽임 → 여유 734MB · 스왈 1260. hex.sh 에 메모리 게이트(여유<600MB 또는 스왈여유<500MB 면 비킴)+nice 10 (f8c10d4b · VPS 반영)
        미확인: player-hex-build 가 왜 787MB 인가 (season0-apply 밑에서 돌 때도 같은지) · 새 mw 질의 실측은 다음 실행 때
+02:51  2회차  사이트 전부 200 · 랭킹 중복 0 · Vercel error 0 · 연결 28. VPS: 02:32 hex.sh 첫 실행(새 판정 OK) → 스왈 다시 1860 → 02:52 메모리 게이트가 막음(설계대로)
+       DB 에 14초 mw 질의 = 개인육각 hex CTE(시즌 조건 없던 쪽). 실측: 현재 formulaVersion 의 시즌前 행 0건 → 조건 추가(nolink 2.7s→0.9s · 1e8122dd · VPS 반영)
+       브라우저 QA: 게시판 공지 1건만 · 추천 3→4 즉시 · 비추천 전환 OK · ★같은 단추 재클릭 취소 안 됨★ → PostView 가 눌린 상태면 type 0 전송
+       qa2: 경기카드 명단 긴 닉네임 7~10px 잘림 = ScoreBoard 의 ellipsis(설계) ·about 수식 겹침은 미처리
 ```
 
 ## 0-새벽. ★2026-09-25 새벽 — 게시판 공지·고정 · 배지 전부 끔 · PL 잔재 · Season 표기 · 3rdcloud.my 이전★

@@ -131,17 +131,22 @@ export function PostView({
       ) : null}
 
       <div className="mt-10 flex select-none items-center justify-center gap-2">
+        {/*
+          ★2026-09-25 — 같은 단추를 다시 누르면 ★취소★★ (감시 QA 에서 잡음)
+            서버는 type 0(취소)을 받는데 화면이 늘 1/-1 만 보내서 한 번 누른 추천을 되돌릴 길이 없었다
+            (서버 `applyVote` 는 같은 값이면 아무것도 안 한다). 눌린 상태면 0 을 보낸다. 옛 판: 늘 1 / -1.
+        */}
         <VoteButton
           count={post.like_count}
           up
           active={post.like_type === 1}
-          onClick={() => onVote(1)}
+          onClick={() => onVote(post.like_type === 1 ? 0 : 1)}
         />
         <VoteButton
           count={post.dislike_count}
           up={false}
           active={post.like_type === -1}
-          onClick={() => onVote(-1)}
+          onClick={() => onVote(post.like_type === -1 ? 0 : -1)}
         />
       </div>
 

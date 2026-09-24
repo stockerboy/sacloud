@@ -71,9 +71,10 @@ function VoteRow({
   const base = 'num text-xs transition-colors duration-100 hover:text-text-strong'
   return (
     <div className="mt-1 flex items-center gap-3">
+      {/* 2026-09-25 — 눌린 단추를 다시 누르면 취소(type 0) · 글 추천과 같은 규칙 */}
       <button
         type="button"
-        onClick={() => onVote(comment.id, 1)}
+        onClick={() => onVote(comment.id, comment.like_type === 1 ? 0 : 1)}
         aria-pressed={comment.like_type === 1}
         className={`${base} ${comment.like_type === 1 ? 'text-accent' : 'text-faint'}`}
       >
@@ -81,7 +82,7 @@ function VoteRow({
       </button>
       <button
         type="button"
-        onClick={() => onVote(comment.id, -1)}
+        onClick={() => onVote(comment.id, comment.like_type === -1 ? 0 : -1)}
         aria-pressed={comment.like_type === -1}
         className={`${base} ${comment.like_type === -1 ? 'text-accent' : 'text-faint'}`}
       >
