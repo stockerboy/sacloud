@@ -152,6 +152,13 @@ interface LiveClan extends ClanLeague {
  * ⚠ ★활성만 본다★ (`expelledAt IS NULL`). 2026-09-05 에 겹친 등록 44개를 숨겼으므로
  *   ★한 클랜은 한 리그에만 활성★ 이다. 그것이 이 판정의 전제다.
  */
+/**
+ * ★겸업 클랜은 두 리그에 다 기록★ (2026-09-24 사장님: 「deluxe·methodcrew 처럼 IPL·열산 둘 다 겸하면 그 둘이 하면 양쪽에 기록」).
+ *   옛 판(false)은 한 클랜을 첫 리그 하나에만 앉혔다 — 겸업 클랜끼리 한 경기가 cross_league 로 버려졌다.
+ *   지금은 ★두 클랜이 공유한 리그마다 Match 를 하나씩★ (Match 는 leagueId 별로 한 줄 · sourceMatchId 는 같아도 된다).
+ */
+const DUAL_LEAGUE_RECORD = true
+
 async function loadLiveClans(): Promise<Map<string, LiveClan>> {
   const rows = await prisma.leagueClan.findMany({
     where: { expelledAt: null, league: { slug: { in: [...LIVE_LEAGUE_SLUGS] } } },
@@ -409,11 +416,32 @@ export async function runUnifiedProject(
   /* ★살아 있는 경기키★ — 숨긴 줄은 세지 않는다 (재분류가 가능해야 한다) */
   const liveRows = await prisma.match.findMany({
     where: { startAt: { gte: CANONICAL_FROM }, supersededAt: null, sourceMatchId: { not: null } },
-    select: { id: true, sourceMatchId: true },
+    select: { id: true, sourceMatchId: true, leagueId: true },
   })
   const liveByKey = new Map<string, string>()
-  for (const r of liveRows) if (r.sourceMatchId) liveByKey.set(r.sourceMatchId, r.id)
+  const liveByKeyLeague = new Set<string>()
+  for (const r of liveRows) {
+    if (!r.sourceMatchId) continue
+    liveByKey.set(r.sourceMatchId, r.id)
+    liveByKeyLeague.add(`${r.sourceMatchId}|${r.leagueId}`)
+  }
   log(`이미 있는 신규 경기 ${liveByKey.size}건`)
+
+  const leaguesByClanId = new Map<string, LiveLeagueSlug[]>()
+  const liveByClanLeague = new Map<string, LiveClan>()
+  {
+    const rows = await prisma.leagueClan.findMany({
+      where: { expelledAt: null, league: { slug: { in: [...LIVE_LEAGUE_SLUGS] } } },
+      select: { id: true, division: true, clanId: true, league: { select: { slug: true } }, clan: { select: { name: true, slug: true } } },
+    })
+    for (const r of rows) {
+      const lg = r.league.slug as LiveLeagueSlug
+      const arr = leaguesByClanId.get(r.clanId) ?? []
+      if (!arr.includes(lg)) arr.push(lg)
+      leaguesByClanId.set(r.clanId, arr)
+      liveByClanLeague.set(`${r.clanId}|${lg}`, { clanId: r.clanId, league: lg, leagueClanId: r.id, division: r.division, clanName: r.clan.name, clanSlug: r.clan.slug })
+    }
+  }
 
   const result: UnifiedProjectResult = {
     seen: 0,
@@ -590,7 +618,7 @@ export async function runUnifiedProject(
         result.skipped.before_cutoff += 1
         continue
       }
-      if (canon.action === 'exists') {
+      if (!DUAL_LEAGUE_RECORD && canon.action === 'exists') {
         if (dbg) log(`  [debug ${row.matchKey}] 이미 있음 ${'id' in canon ? String((canon as { id?: string }).id ?? '') : ''}`)
         result.skipped.already_exists += 1
         continue
@@ -625,91 +653,79 @@ export async function runUnifiedProject(
 
       /* ── ④ 그 리그가 인정하는 맵인가 ─────────────────────────────
              ★리그마다 다르다.★ 표가 없으면 안 거른다 */
-      const maps = leagueMaps.get(verdict.league) ?? null
-      /* ★표가 없으면 안 거른다★ — 맵을 모르는 리그에서 경기를 버리지 않는다 */
-      let mapId: string | null = maps === null ? null : (m.mapName && maps.get(m.mapName)) || null
-      if (maps !== null) {
-        if (mapId === null) {
-          noteUnclassified(
-            m.matchKey,
-            'map_not_in_league',
-            `${LEAGUE_LABEL[verdict.league]} 이 인정하지 않는 맵이다: ${m.mapName ?? '(없음)'}`,
-          )
-          continue
-        }
-      } else {
-        /* 표가 없는 리그다 — 맵 행만 찾아 쓴다. 없으면 만들지 않는다 */
-        const found = m.mapName
-          ? await prisma.gameMap.findUnique({ where: { name: m.mapName }, select: { id: true } })
-          : null
-        if (!found) {
-          noteUnclassified(m.matchKey, 'map_not_in_league', `맵 행이 없다: ${m.mapName ?? '(없음)'}`)
-          continue
-        }
-        mapId = found.id
-      }
-
-      /* ── ⑤ 만든다 ─────────────────────────────────────────────── */
-      const red = liveClans.get(verdict.redClanId)!
-      const blue = liveClans.get(verdict.blueClanId)!
-      const leagueId = leagueIdOf.get(verdict.league)!
-      if (confirm && seasonIdFor(leagueId, m.startAt) === null) {
-        /* ★조용히 넘어가지 않는다★ — 시즌을 못 찾으면 그 수를 센다 */
-        result.seasonUnresolved += 1
-      }
-
-      if (!confirm) {
-        result.created += 1
-        result.createdByLeague[verdict.league] += 1
-        liveByKey.set(m.matchKey, '(미리보기)')
+      /*
+       * ── ④⑤ 리그마다 한 번씩 ──
+       *   ★겸업★: 두 클랜이 공유한 리그마다 Match 를 하나씩. 옛 판(DUAL_LEAGUE_RECORD=false)은 verdict.league 하나뿐.
+       *   맵·시즌·이미있음은 ★리그마다 다르므로★ 이 안에서 각각 본다.
+       */
+      const targetLeagues: LiveLeagueSlug[] = DUAL_LEAGUE_RECORD
+        ? (leaguesByClanId.get(verdict.redClanId) ?? []).filter((l) => (leaguesByClanId.get(verdict.blueClanId) ?? []).includes(l))
+        : [verdict.league]
+      if (targetLeagues.length === 0) {
+        noteUnclassified(m.matchKey, 'cross_league', `공유 리그가 없다 — ${m.redClanName} vs ${m.blueClanName}`)
+        if (dbg) log(`  [debug ${row.matchKey}] 공유 리그 0 → cross_league`)
         continue
       }
+      if (dbg) log(`  [debug ${row.matchKey}] 만들 리그 ${targetLeagues.join(',')}`)
 
-      /* ★이미 쓰는 id 인지 물어보는 함수를 넘긴다★ — 같은 초에 여러 경기가 있을 수 있다 */
-      const id = await allocateInternalMatchId(
-        m.startAt,
-        async (candidate) =>
-          (await prisma.match.findUnique({ where: { id: candidate }, select: { id: true } })) !== null,
-      )
-      try {
-        await prisma.match.create({
-          data: {
-            id,
-            leagueId,
-            mapId,
-            playerCount: (m.playerLimit ?? 5) * 2,
-            startAt: m.startAt,
-            winnerSide: m.winnerSide,
-            redLeagueClanId: red.leagueClanId,
-            blueLeagueClanId: blue.leagueClanId,
-            redDivisionAtMatch: red.division,
-            blueDivisionAtMatch: blue.division,
-            origin: UNIFIED_ORIGIN,
-            sourceMatchId: m.matchKey,
-            /*
-             * ★★시즌을 처음부터 붙인다★★ (2026-09-06 · Part 5 · 사장님 지시).
-             *
-             * > «새 Collector 가 Match 를 만들 때 ★seasonId 를 비워 두지 않게 한다★»
-             * > «시즌 판정 로직을 ★여러 군데 하드코딩하지 말고 하나의 공통 규칙★ 으로»
-             *
-             * ★규칙은 `seasonWindowAt` 하나뿐이다★ — 화면이 쓰는 그 창과 같은 값이라
-             * DB 와 화면이 서로 다른 기준을 가질 수 없다.
-             * ★못 찾으면 null 이다.★ 엉뚱한 시즌에 넣느니 비워 두는 게 낫다.
-             */
-            seasonId: seasonIdFor(leagueId, m.startAt),
-          },
-        })
-        result.created += 1
-        result.createdByLeague[verdict.league] += 1
-        liveByKey.set(m.matchKey, id)
-      } catch (e) {
-        /* ★2차 방어가 걸린 것은 고장이 아니다★ — 그 한 건만 세고 넘어간다 */
-        if (isDuplicateMatchError(e)) {
-          result.skipped.already_exists += 1
-          liveByKey.set(m.matchKey, '(DB 가 막았다)')
+      for (const lg of targetLeagues) {
+        const red = liveByClanLeague.get(`${verdict.redClanId}|${lg}`) ?? liveClans.get(verdict.redClanId)!
+        const blue = liveByClanLeague.get(`${verdict.blueClanId}|${lg}`) ?? liveClans.get(verdict.blueClanId)!
+        const leagueId = leagueIdOf.get(lg)!
+
+        const maps = leagueMaps.get(lg) ?? null
+        let mapId: string | null = maps === null ? null : (m.mapName && maps.get(m.mapName)) || null
+        if (maps !== null) {
+          if (mapId === null) {
+            noteUnclassified(m.matchKey, 'map_not_in_league', `${LEAGUE_LABEL[lg]} 이 인정하지 않는 맵이다: ${m.mapName ?? '(없음)'}`)
+            continue
+          }
+        } else {
+          const found = m.mapName ? await prisma.gameMap.findUnique({ where: { name: m.mapName }, select: { id: true } }) : null
+          if (!found) { noteUnclassified(m.matchKey, 'map_not_in_league', `맵 행이 없다: ${m.mapName ?? '(없음)'}`); continue }
+          mapId = found.id
+        }
+
+        const keyLeague = `${m.matchKey}|${leagueId}`
+        if (liveByKeyLeague.has(keyLeague)) { result.skipped.already_exists += 1; continue }
+        if (confirm && seasonIdFor(leagueId, m.startAt) === null) result.seasonUnresolved += 1
+
+        if (!confirm) {
+          result.created += 1
+          result.createdByLeague[lg] += 1
+          liveByKeyLeague.add(keyLeague)
+          liveByKey.set(m.matchKey, '(미리보기)')
           continue
         }
-        throw e
+
+        const id = await allocateInternalMatchId(
+          m.startAt,
+          async (candidate) => (await prisma.match.findUnique({ where: { id: candidate }, select: { id: true } })) !== null,
+        )
+        try {
+          await prisma.match.create({
+            data: {
+              id, leagueId, mapId,
+              playerCount: (m.playerLimit ?? 5) * 2,
+              startAt: m.startAt,
+              winnerSide: m.winnerSide,
+              redLeagueClanId: red.leagueClanId,
+              blueLeagueClanId: blue.leagueClanId,
+              redDivisionAtMatch: red.division,
+              blueDivisionAtMatch: blue.division,
+              origin: UNIFIED_ORIGIN,
+              sourceMatchId: m.matchKey,
+              seasonId: seasonIdFor(leagueId, m.startAt),
+            },
+          })
+          result.created += 1
+          result.createdByLeague[lg] += 1
+          liveByKeyLeague.add(keyLeague)
+          liveByKey.set(m.matchKey, id)
+        } catch (e) {
+          if (isDuplicateMatchError(e)) { result.skipped.already_exists += 1; liveByKeyLeague.add(keyLeague); continue }
+          throw e
+        }
       }
     }
   }
