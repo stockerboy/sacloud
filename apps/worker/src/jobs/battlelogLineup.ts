@@ -539,7 +539,9 @@ export async function runBattlelogLineup(
       },
     })
 
-    const infoOf = new Map<string, MatchInfo>()
+    /* ★한 경기키(sourceMatchId)가 두 리그에 걸릴 수 있다★ (겸업 · 2026-09-24) — 그래서 배열이다.
+       옛 판은 Map<키,info> 라 겸업 사본 중 ★한 리그만★ 라인업이 찼다. 이제 사본마다 각각 채운다 */
+    const infoOf = new Map<string, MatchInfo[]>()
     for (const match of matches) {
       if (!match.sourceMatchId) continue
       const side = (
@@ -555,7 +557,8 @@ export async function runBattlelogLineup(
         markFrontUrl: leagueClan.clan.markFrontUrl,
         division,
       })
-      infoOf.set(match.sourceMatchId, {
+      const arr = infoOf.get(match.sourceMatchId) ?? []
+      arr.push({
         matchId: match.id,
         mark: {
           status: match.lineupStatus,
@@ -569,6 +572,7 @@ export async function runBattlelogLineup(
         red: side(match.redClan, match.redDivisionAtMatch),
         blue: side(match.blueClan, match.blueDivisionAtMatch),
       })
+      infoOf.set(match.sourceMatchId, arr)
     }
 
     /*
@@ -596,7 +600,7 @@ export async function runBattlelogLineup(
      */
     const mirrorFilled = new Set<string>()
     if (infoOf.size > 0) {
-      const ids = [...infoOf.values()].map((i) => i.matchId)
+      const ids = [...infoOf.values()].flat().map((i) => i.matchId)
       for (const row of await prisma.$queryRaw<Array<{ matchId: string }>>`
         SELECT DISTINCT s."matchId"
           FROM "MatchPlayerStat" s
@@ -606,12 +610,17 @@ export async function runBattlelogLineup(
       `) {
         mirrorFilled.add(row.matchId)
       }
-      for (const [key, info] of [...infoOf]) {
-        if (mirrorFilled.has(info.matchId)) {
-          infoOf.delete(key)
-          result.skippedMirrorLineup += 1
-          bump(info.leagueSlug, 'skippedMirrorLineup')
-        }
+      for (const [key, infos] of [...infoOf]) {
+        const kept = infos.filter((info) => {
+          if (mirrorFilled.has(info.matchId)) {
+            result.skippedMirrorLineup += 1
+            bump(info.leagueSlug, 'skippedMirrorLineup')
+            return false
+          }
+          return true
+        })
+        if (kept.length === 0) infoOf.delete(key)
+        else infoOf.set(key, kept)
       }
     }
 
@@ -636,11 +645,13 @@ export async function runBattlelogLineup(
       was: { status: string | null; reason: string | null; seen: number | null }
     }> = []
     for (const key of batch) {
-      const info = infoOf.get(key)
-      if (!info) {
+      const infos = infoOf.get(key)
+      if (!infos || infos.length === 0) {
         result.skipped.no_match += 1
         continue
       }
+      /* ★겸업 사본마다★ (보통 1개, 두 리그 겸업이면 2개) — 각 사본에 라인업을 넣는다 */
+      for (const info of infos) {
       result.matched += 1
       bump(info.leagueSlug, 'matched')
       const payload = payloadOfKey.get(key)
@@ -708,6 +719,7 @@ export async function runBattlelogLineup(
         was: info.mark,
       })
       plans.push({ info, players: planned.players })
+      }
     }
     /*
      * ── ★상태를 먼저 적는다★ — `plans` 가 비어도 적어야 한다.
