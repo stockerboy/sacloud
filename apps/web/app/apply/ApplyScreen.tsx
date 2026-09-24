@@ -33,6 +33,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   APPLICATION_KINDS,
+  APPLICATION_KINDS_OFFERED,
   CONTACT_KINDS,
   CONTACT_KIND_LABEL,
   LeagueApplicationInput,
@@ -162,7 +163,8 @@ export function ApplyScreen({ initialKind = null }: { initialKind?: string | nul
       {/* ① 등록 종류 */}
       <Step no="1" title="등록 종류를 골라 주세요">
         <div className="about-split" style={{ marginTop: 2 }}>
-          {APPLICATION_KINDS.map((k) => {
+          {/* ★신청 화면 목록만★ 줄인다 — 옛 종류 이름 찾기(picked·initialKind)는 APPLICATION_KINDS 전체를 그대로 쓴다 (2026-09-24 사장님 표시) */}
+          {APPLICATION_KINDS_OFFERED.map((k) => {
             const on = k.key === kind
             const tone = TONE[k.to] ?? '#9cc0ff'
             const w = waitingOf.get(k.to)

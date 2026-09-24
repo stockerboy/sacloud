@@ -55,6 +55,13 @@ export type ApplicationLeague = (typeof APPLICATION_LEAGUES)[number]
  *
  * ⚠ ★값(`key`)을 바꾸지 마라.★ 이미 들어온 신청서가 이 글자를 들고 있다.
  *   글에 보이는 말(`label`·`benefit`)만 고친다.
+ *
+ * ⚠ ★2026-09-24 밤 사장님 — 신청서 화면 사진에 빨간 줄로 지우실 것을 표시하셨다★
+ *   지운 것: IPL→PL 전환등록 · PL 신규등록 · 열산리그 신규등록 · Supply 2.0 참가(무소속/서플라이1·2부/3부 세 가지).
+ *   남긴 것: IPL 신규등록 · Supply 2.0 참가 신청서.
+ *   ★지우지 않는다★(CLAUDE.md 2절) — `hidden: true` 로 ★신청 화면 목록에서만★ 뺀다
+ *   (`APPLICATION_KINDS_OFFERED`, 아래). 이미 들어온 옛 신청서는 `applicationKindOf` 가
+ *   이 표 전체를 보므로 관리자 「참가신청」 목록엔 이름이 그대로 뜬다.
  */
 export const APPLICATION_KINDS = [
   {
@@ -64,6 +71,7 @@ export const APPLICATION_KINDS = [
     to: 'supply',
     label: 'IPL → PL 전환등록',
     benefit: '혜택 — 전환비 무료 · 자격심사 없음',
+    hidden: true,
   },
   {
     key: 'llm-new',
@@ -71,6 +79,7 @@ export const APPLICATION_KINDS = [
     to: 'supply',
     label: 'PL 신규등록',
     benefit: '등록책임비용 — 10/1까지 전원 무료',
+    hidden: true,
   },
   {
     key: 'ysl-new',
@@ -78,6 +87,7 @@ export const APPLICATION_KINDS = [
     to: 'sanply',
     label: '열산리그 신규등록',
     benefit: '등록책임비용 — 10/1까지 전원 무료',
+    hidden: true,
   },
   {
     key: 'ipl-new',
@@ -85,6 +95,7 @@ export const APPLICATION_KINDS = [
     to: 'nolink',
     label: 'IPL 신규등록',
     benefit: '등록책임비용 — 10/1까지 전원 무료',
+    hidden: false,
   },
   /*
    * ── ★★CPL 모집★★ (2026-09-21~22 사장님)
@@ -102,6 +113,7 @@ export const APPLICATION_KINDS = [
     to: 'cpl',
     label: 'Supply 2.0 참가 — 무소속',
     benefit: '자격제한 있음 · 심사 후 승인',
+    hidden: true,
   },
   {
     key: 'cpl-supply',
@@ -109,6 +121,7 @@ export const APPLICATION_KINDS = [
     to: 'cpl',
     label: 'Supply 2.0 참가 — 서플라이 1부·2부',
     benefit: '자격제한 있음 · 심사 후 승인',
+    hidden: true,
   },
   {
     key: 'cpl-third',
@@ -116,6 +129,7 @@ export const APPLICATION_KINDS = [
     to: 'cpl',
     label: 'Supply 2.0 참가 — 3부',
     benefit: '자격제한 있음 · 심사 후 승인',
+    hidden: true,
   },
   {
     key: 'cpl-new',
@@ -123,6 +137,7 @@ export const APPLICATION_KINDS = [
     to: 'cpl',
     label: 'Supply 2.0 참가 신청서',
     benefit: '자격제한 있음 · 무소속 · 3부 · 서플라이 1부·2부 상관없이 · 심사 후 승인',
+    hidden: false,
   },
 ] as const
 export type ApplicationKindKey = (typeof APPLICATION_KINDS)[number]['key']
@@ -130,6 +145,9 @@ export const APPLICATION_KIND_KEYS = APPLICATION_KINDS.map((k) => k.key) as [
   ApplicationKindKey,
   ...ApplicationKindKey[],
 ]
+
+/** ★신청 화면이 실제로 보여 주는 목록★ — `hidden` 인 종류는 뺀다. 옛 신청서 이름 찾기는 `applicationKindOf` 를 그대로 쓴다 */
+export const APPLICATION_KINDS_OFFERED = APPLICATION_KINDS.filter((k) => !k.hidden)
 
 /** 그 등록 종류의 설명. 모르는 값이면 `null` — 지어내지 않는다 */
 export function applicationKindOf(key: string) {
