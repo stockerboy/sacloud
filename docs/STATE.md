@@ -40,6 +40,14 @@
   `MARK_FOLLOWS_DRAW=false` — 그리는 동안에는 두 마크가 끝에 붙박이고, 축을 만져야(`hover`) 따라온다.
   9/24 에 「그려질 때든 따라와야」 라고 켜둔 것을 되돌린 것 — 옆 판은 그 값을 `true` 로.
 
+### 감시 장부 (2026-09-25 01:50 → 21:50 · 20분마다)
+```
+02:22  1회차  사이트 전부 200 (홈 0.16s · 게시판 0.28s · 랭킹 API 0.2s) · 개인랭킹 1·2쪽 중복 0 · DB 5초+ 질의 0 · 연결 25 · Vercel error 0
+       ★VPS 사고★ 스왈 2047/2047 · 여유 117MB · load 39 · ssh 배너 타임아웃. hex.sh 가 진짜로 돌면서 player-hex-build(RSS 787MB)가
+       로스터(identity-from-battlelog)·수집·lineup 과 겹침. 02:28 손으로 죽임 → 여유 734MB · 스왈 1260. hex.sh 에 메모리 게이트(여유<600MB 또는 스왈여유<500MB 면 비킴)+nice 10 (f8c10d4b · VPS 반영)
+       미확인: player-hex-build 가 왜 787MB 인가 (season0-apply 밑에서 돌 때도 같은지) · 새 mw 질의 실측은 다음 실행 때
+```
+
 ## 0-새벽. ★2026-09-25 새벽 — 게시판 공지·고정 · 배지 전부 끔 · PL 잔재 · Season 표기 · 3rdcloud.my 이전★
 
 - **도메인** — `3rdcloud.my` → `loginsa.cloud` 308 리다이렉트(`apps/web/middleware.ts` `oldHostRedirect`, 로그인·SITE_PRIVATE 보다 먼저).
