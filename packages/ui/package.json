@@ -17,7 +17,8 @@
     "./sanitize": "./src/sanitize.ts",
     "./adminPost": "./src/board/adminPost.ts",
     "./layout/SiteShell": "./src/layout/SiteShell.tsx",
-    "./league/LeagueLabel": "./src/league/LeagueLabel.tsx"
+    "./league/LeagueLabel": "./src/league/LeagueLabel.tsx",
+    "./v3/themeMode": "./src/v3/themeMode.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"

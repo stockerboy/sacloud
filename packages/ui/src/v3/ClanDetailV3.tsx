@@ -26,7 +26,7 @@ import { MvpWhy } from './MvpWhy'
 import { RoundFlowChartV3 } from './RoundFlowChartV3'
 import { ScoreBoard } from './ScoreBoard'
 import { Card, CardHead, Kda, MarkCircle, MvpMark, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, fullKst, hasFitMark, monthDay, relativeKst, type ClanTheme, matchShownAt } from './primitives'
-import { WIN_LOSS, V3, V3_DARK, cardStyle, fmt, pct1, pillStyle, spacerStyle } from './tokens'
+import { WIN_LOSS, V3, V3_DARK, type V3Tone, cardStyleOf, fmt, pct1, pillStyleOf, spacerStyle, useV3Tone } from './tokens'
 /* 육각형은 2026-09-12 부터 머리 카드(ClanCardV3)가 그린다 — 여기서는 안 쓴다 */
 import { H2HChartV3 } from './H2HChartV3'
 
@@ -89,7 +89,10 @@ void matchRowStyle
  * ⚠ 그래도 긴 닉은 ★말줄임(…)★ 으로 끝난다 — 칸을 넘겨 줄을 깨뜨리지 않는다.
  */
 /* 2026-09-23 사장님 ①-4 — 칸은 「플레이어 · 순위 · kda · 세이브 · 포지션」. 옛 칸(순위 없음): 'minmax(96px,1fr) 86px 58px 22px' */
-const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 44px 86px 58px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
+/* ⚠ 밝은 판 지원(2026-09-25) — 모듈 상수는 훅을 못 쓴다. 함수로 만들어 그때그때 톤을 받는다 */
+function playerRowStyleOf(tone: V3Tone): CSSProperties {
+  return { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 44px 86px 58px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${tone.rowDivider2}` }
+}
 
 export interface ClanDetailV3Props {
   data: LeagueClanShow
@@ -111,6 +114,7 @@ export interface ClanDetailV3Props {
 /* ── vs 티어 스트립 ────────────────────────────────────────────── */
 
 function TierStrip({ data, h2h, division, selected, onSelect, tierClans }: { data: LeagueClanShow; h2h: ClanHeadToHead[]; division: number; selected: string | null; onSelect: (id: string) => void; tierClans: readonly ClanRankRow[] | null }) {
+  const V3 = useV3Tone()
   const theme = clanThemeOf(data.clan.slug)
   const played = h2h.filter((r) => r.division === division)
   const win = played.reduce((a, r) => a + r.win, 0)
@@ -165,6 +169,7 @@ void h2hYLegacy
 /** 누적 세트 승률 추이 — 붙은 경기를 시간순으로 더해 간다 (지어내지 않는다 · 경기 수만큼 점) */
 /** ⚠ 옛 판(판 순서 X축) — 2026-09-11 부터는 H2HChartV3(시즌 시간축)가 그린다. 지우지 않았다 */
 function H2HChartLegacy({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHeadToHead; theme: ClanTheme; oppTheme: ClanTheme; mine: LeagueClanShow['clan']; oppSlug: string }) {
+  const V3 = useV3Tone()
   const games = [...opp.recent].filter((g) => g.won !== null).reverse()
   let w = 0
   const shares = games.map((g, i) => {
@@ -233,6 +238,7 @@ function H2HChartLegacy({ opp, theme, oppTheme, mine, oppSlug }: { opp: ClanHead
 }
 
 function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, side }: { row: MatchPlayerStat; mvp: boolean; weaponKnown: boolean; clanSlug: string | null; showSaves: boolean; leagueSlug: string; side: 'red' | 'blue' }) {
+  const V3 = useV3Tone()
   /**
    * ★열림은 줄마다 따로 갖는다★ (2026-09-15 사장님:
    *   «다른선수꺼 눌러도 다시 잡히면안됨 / 사용자가 접기전까지 자동으로 접히면 안됨»).
@@ -249,7 +255,7 @@ function PlayerRow({ row, mvp, weaponKnown, clanSlug, showSaves, leagueSlug, sid
   const clan = row.match_time_clan
   return (
     <>
-    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyle, ...(showSaves ? { gridTemplateColumns: 'minmax(96px,1fr) 44px 86px 44px 58px 22px' } : {}), background: 'transparent', boxShadow: mvp ? `inset 3px 0 0 ${V3.mvp}, inset 0 0 26px rgba(224,52,47,.10)` /* ⚠ 옛값 #ffd83d 노랑 — MVP 는 빨강 (2026-09-23) */ : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...playerRowStyleOf(V3), ...(showSaves ? { gridTemplateColumns: 'minmax(96px,1fr) 44px 86px 44px 58px 22px' } : {}), background: 'transparent', boxShadow: mvp ? `inset 3px 0 0 ${V3.mvp}, inset 0 0 26px rgba(224,52,47,.10)` /* ⚠ 옛값 #ffd83d 노랑 — MVP 는 빨강 (2026-09-23) */ : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 26, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
@@ -419,6 +425,7 @@ function Scoreboard({
   winnerFirst?: boolean
   defaultAnalysis?: 'red' | 'blue' | null
 }) {
+  const V3 = useV3Tone()
   const ourSide = ourSideOf(detail)
   /* 2026-09-11 사장님: 집계 전 경기라고 세이브 칸이 통째로 사라지면 «없는 화면» 처럼 보인다 →
      칸은 늘 두고 아직 모르는 값만 «-» 로 적는다 (0 으로 채우지 않는다). 옛 판: [...].some((s) => s.saves !== null) */
@@ -587,6 +594,7 @@ function Scoreboard({
                     winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
                     loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
                     positionOf={positionOf}
+                    tone={V3}
                   />
                 </div>
               ) : null}
@@ -700,6 +708,7 @@ function Scoreboard({
               winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
               loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
                     positionOf={positionOf}
+              tone={V3}
             />
           ) : null}
           <ScoreBoard detail={detail} side={wonTeam?.side ?? 'red'} />
@@ -755,6 +764,7 @@ const HEX_CENTER_PC = true
 const MVP_IN_RANK_CELL = true
 
 function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: LeagueClanShow; opp: ClanHeadToHead; vsMatches: readonly MatchListItem[] | null; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
+  const V3 = useV3Tone()
   const theme = clanThemeOf(data.clan.slug)
   const oppTheme = clanThemeOf(opp.clan.slug)
   const total = opp.win + opp.lose
@@ -846,6 +856,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
           mineSlug={data.clan.slug}
           oppName={opp.clan.name}
           oppSlug={opp.clan.slug}
+          tone={V3}
         />
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderTop: `1px solid ${V3.rowDivider}` }}>
@@ -934,6 +945,7 @@ function HeadToHeadCard({ data, opp, vsMatches, expanded, onExpand }: { data: Le
  * 옛 5칸 한 줄판은 `matchRowStyle` 그대로 두었다 — 맞대결 기록카드가 아직 쓴다 (`CLAUDE.md` 1-4).
  */
 function RecentRows({ data, matches, expanded, onExpand }: { data: LeagueClanShow; matches: readonly MatchListItem[]; expanded: Readonly<Record<string, MatchDetail>>; onExpand: (m: MatchListItem) => void }) {
+  const V3 = useV3Tone()
   /* 클랜 색은 이제 승패 색이 대신한다 (2026-09-12 사장님) — 지우지 않고 void 로 남긴다 */
   const theme = clanThemeOf(data.clan.slug)
   void theme
@@ -1068,6 +1080,7 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
   selected: string | null
   onSelect: (id: string | null) => void
 }) {
+  const V3 = useV3Tone()
   const theme = clanThemeOf(data.clan.slug)
   /*
    * ★티어는 리그가 정한다★ (2026-09-14 사장님: «아직도 IPL에 층수가 나와있고
@@ -1105,7 +1118,7 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
   /* 처음에는 ★자기 구간★ 만 펴 둔다. 구간이 하나뿐이면 그것을 편다 */
   const [open, setOpen] = useState<number | null>(tiered ? data.division ?? null : ALL_TIERS)
   return (
-    <div style={{ marginTop: 14, ...cardStyle }}>
+    <div style={{ marginTop: 14, ...cardStyleOf(V3) }}>
       <CardHead title="클랜별 전적" right={
         <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 0 · {fmt(data.win + data.lose)}전 기준</span>
       } />
@@ -1222,6 +1235,7 @@ function ClanVsTiersCard({ data, h2h, tierClansOf, selected, onSelect }: {
 void TierStrip
 
 export function ClanDetailV3(props: ClanDetailV3Props) {
+  const V3 = useV3Tone()
   const { data, matches, matchesLoading, hasMore, loadingMore, onLoadMore } = props
   const h2h = data.head_to_head
   const tiers = useMemo(() => {
@@ -1287,9 +1301,9 @@ const [tier] = useState<number>(() => {
         }
       />
       {matchesLoading ? (
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyleOf(V3) }}>불러오는 중…</div>
       ) : matches.length === 0 ? (
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>아직 경기가 없습니다.</div>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyleOf(V3) }}>아직 경기가 없습니다.</div>
       ) : (
         <RecentRows data={data} matches={matches} expanded={props.expanded} onExpand={props.onExpand} />
       )}
@@ -1314,7 +1328,7 @@ const [tier] = useState<number>(() => {
         {/* 폰 탭 — 기록실 | 플레이분석 (선수 페이지와 같은 자리 · 머리 카드 바로 밑) */}
         <div className="sac-pilltabs sac-pilltabs-phone" style={{ alignItems: 'stretch', gap: 6, flexWrap: 'wrap' }}>
           {([['record', '기록실'], ['hex', '플레이분석']] as const).map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setPhoneTab(key)} className={phoneTab === key ? 'sac-pilltab is-on' : 'sac-pilltab'} style={{ ...pillStyle(phoneTab === key), fontFamily: 'inherit', cursor: 'pointer' }} aria-current={phoneTab === key ? 'page' : undefined}>
+            <button key={key} type="button" onClick={() => setPhoneTab(key)} className={phoneTab === key ? 'sac-pilltab is-on' : 'sac-pilltab'} style={{ ...pillStyleOf(V3, phoneTab === key), fontFamily: 'inherit', cursor: 'pointer' }} aria-current={phoneTab === key ? 'page' : undefined}>
               {label}
             </button>
           ))}
@@ -1416,9 +1430,9 @@ const [tier] = useState<number>(() => {
         }
       />
       {matchesLoading ? (
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyleOf(V3) }}>불러오는 중…</div>
       ) : matches.length === 0 ? (
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>아직 경기가 없습니다.</div>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyleOf(V3) }}>아직 경기가 없습니다.</div>
       ) : (
         <RecentRows data={data} matches={matches} expanded={props.expanded} onExpand={props.onExpand} />
       )}
@@ -1435,10 +1449,11 @@ const [tier] = useState<number>(() => {
 
 /** 상세정보 — 선수의 `SideInfoCard` 와 같은 줄 꼴. 제목은 ★클랜명★. 클랜은 킬뎃이 없어 그 줄은 없다 */
 function ClanSideInfoCard({ data, memberCount }: { data: LeagueClanShow; memberCount: number | null }) {
+  const V3 = useV3Tone()
   const games = data.win + data.lose
   const rank = data.rank
   return (
-    <section className="sac-info-card" style={{ ...cardStyle, overflow: 'hidden' }}>
+    <section className="sac-info-card" style={{ ...cardStyleOf(V3), overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
         <span style={{ fontSize: 14, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{data.clan.name}</span>
@@ -1471,6 +1486,7 @@ function ClanSideInfoCard({ data, memberCount }: { data: LeagueClanShow; memberC
 }
 
 function ClanInfoRow({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: React.ReactNode }) {
+  const V3 = useV3Tone()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 46 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
@@ -1483,9 +1499,10 @@ function ClanInfoRow({ label, sub, last, children }: { label: string; sub?: stri
 
 /** 육각 — 선수의 STRENGTH POINT 카드 자리. 값은 `hexagon_v2`(`ClanCardV3` 와 같은 `clanHexAxes`). 없으면 카드를 안 그린다 (D-106) */
 function ClanHexCard({ data }: { data: LeagueClanShow }) {
+  const V3 = useV3Tone()
   if (data.hexagon_v2 === null) return null
   return (
-    <section style={{ ...cardStyle, overflow: 'hidden' }}>
+    <section style={{ ...cardStyleOf(V3), overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
         <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>플레이분석</span>

@@ -43,7 +43,7 @@ import { useState } from 'react'
 import type { LeaguePlayerDetail, PlayerTierOpponent } from '@sacloud/contract'
 import { MarkCircle } from './primitives'
 import { statColor } from './rankColors'
-import { V3, cardStyle, fmt, pct1 } from './tokens'
+import { cardStyleOf, fmt, pct1, useV3Tone } from './tokens'
 
 /** 구간을 넘어 합친 상대 한 줄 — `PlayerTierOpponent` 과 같은 모양이다 */
 type MergedOpponent = PlayerTierOpponent
@@ -102,6 +102,7 @@ function mergedOpponents(data: LeaguePlayerDetail): MergedOpponent[] {
 
 /** 한 줄 — 서플라이의 «vs saint  9전 7승 2패 (77.8%)  - 킬뎃: 55.2%» 를 우리 색으로 */
 function OpponentRow({ o, last }: { o: MergedOpponent; last: boolean }) {
+  const V3 = useV3Tone()
   const kdKnown = o.kill + o.death > 0
   return (
     <div
@@ -154,6 +155,7 @@ function OpponentRow({ o, last }: { o: MergedOpponent; last: boolean }) {
  * 자리는 남긴다 (`CLAUDE.md` 1-4) — 탭을 되살리면 그대로 쓴다.
  */
 export function ClanTop3PanelV3({ data, onMore }: { data: LeaguePlayerDetail; onMore?: () => void }) {
+  const V3 = useV3Tone()
   const [all, setAll] = useState(false)
   void onMore
   const opponents = mergedOpponents(data)
@@ -165,7 +167,7 @@ export function ClanTop3PanelV3({ data, onMore }: { data: LeaguePlayerDetail; on
     : null
 
   return (
-    <section style={{ ...cardStyle, overflow: 'hidden' }}>
+    <section style={{ ...cardStyleOf(V3), overflow: 'hidden' }}>
       <style>{`
         @media (max-width: 720px) {
           .sac-prr-recent { grid-template-columns: minmax(0,1fr) !important; }

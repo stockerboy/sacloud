@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { MatchDetail, MatchPlayerStat } from '@sacloud/contract'
-import { V3 } from './tokens'
+import { useV3Tone } from './tokens'
 
 /**
  * ★★점수판보기★★ (2026-09-20 사장님)
@@ -36,6 +36,7 @@ import { V3 } from './tokens'
 const OPEN_MS = 180
 
 export function ScoreBoard({ detail, side }: { detail: MatchDetail; side: 'red' | 'blue' }) {
+  const V3 = useV3Tone()
   const [open, setOpen] = useState(false)
 
   /*
@@ -123,6 +124,7 @@ export function ScoreBoard({ detail, side }: { detail: MatchDetail; side: 'red' 
 const COLUMNS = 'minmax(58px,1fr) 34px 44px 34px 38px 42px'
 
 function Head() {
+  const V3 = useV3Tone()
   return (
     <div
       style={{
@@ -159,6 +161,7 @@ function Group({
   mvpId: string | null
   dim: boolean
 }) {
+  const V3 = useV3Tone()
   const scored = rows.filter((r) => r.score_parts !== null)
   if (scored.length === 0) return null
   /* 점수 높은 순 — 표는 견주라고 있는 것이다 */
@@ -185,6 +188,7 @@ function Group({
 }
 
 function Row({ row, mvp, dim }: { row: MatchPlayerStat; mvp: boolean; dim: boolean }) {
+  const V3 = useV3Tone()
   const p = row.score_parts
   if (p === null) return null
   /* 0 은 흐리게 — 눈이 ★값이 있는 칸★ 으로 가게 한다 */

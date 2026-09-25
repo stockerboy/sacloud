@@ -14,7 +14,7 @@ import { useState, type CSSProperties } from 'react'
 import type { MatchDetail, MatchListItem } from '@sacloud/contract'
 import { ClanScoreboardV3, listRoundsOf, ourSideOf } from './ClanDetailV3'
 import { MarkCircle, MvpMark, TierText, relativeKst, matchShownAt } from './primitives'
-import { WIN_LOSS, V3, cardStyle } from './tokens'
+import { WIN_LOSS, cardStyleOf, useV3Tone } from './tokens'
 import { MatchCardListV3 } from './MatchCardV3'
 
 export interface MatchListV3Props {
@@ -101,14 +101,15 @@ const UNIFIED_MATCH_CARD: boolean = true
 const STALE_HOURS = 6
 
 export function MatchListV3(props: MatchListV3Props) {
+  const V3 = useV3Tone()
   const { matches, matchesLoading, hasMore, loadingMore, onLoadMore, expanded, onExpand, leagueCategory } = props
   const [open, setOpen] = useState<string | null>(null)
   return (
     <div>
       {matchesLoading ? (
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyleOf(V3) }}>불러오는 중…</div>
       ) : matches.length === 0 ? (
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>아직 경기가 없습니다.</div>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyleOf(V3) }}>아직 경기가 없습니다.</div>
       ) : (
 UNIFIED_MATCH_CARD ? (
         <MatchCardListV3

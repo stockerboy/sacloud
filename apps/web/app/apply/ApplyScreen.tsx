@@ -41,7 +41,7 @@ import {
   type ApplicationKindKey,
   type ApplicationWaitingLeague,
 } from '@sacloud/contract'
-import { LEAGUE_NAME, MarkCircle, V3 } from '@sacloud/ui'
+import { LEAGUE_NAME, MarkCircle, useV3Tone } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { useApiReady } from '@/app/providers'
 
@@ -60,6 +60,7 @@ type PickedClan = { slug: string; name: string; mark: { bg: string | null; front
  * ★지어내지 않는다★ — `APPLICATION_KINDS` 에 있는 key 만 받아들인다.
  */
 export function ApplyScreen({ initialKind = null }: { initialKind?: string | null }) {
+  const V3 = useV3Tone()
   const ready = useApiReady()
 
   const [kind, setKind] = useState<ApplicationKindKey | null>(
@@ -354,6 +355,7 @@ function ClanSearch({
   onPick: (c: PickedClan | null) => void
   ready: boolean
 }) {
+  const V3 = useV3Tone()
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -516,6 +518,7 @@ const linkButtonStyle: React.CSSProperties = {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const V3 = useV3Tone()
   return (
     <label style={{ display: 'block', marginBottom: 10 }}>
       <span style={{ display: 'block', marginBottom: 6, fontSize: 12, color: V3.textFaint }}>

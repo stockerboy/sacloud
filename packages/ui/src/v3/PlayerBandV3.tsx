@@ -14,19 +14,18 @@ import { leagueScreen, type LeaguePlayerDetail } from '@sacloud/contract'
 import { rankColor, statColor } from './rankColors'
 import { MarkCircle, clanThemeOf, hasFitMark, fitMarkUrl, RankText, type ClanTheme } from './primitives'
 import { nameStyle } from './clanThemes'
-import { V3, cardStyle, fmt, pct1 } from './tokens'
+import { cardStyleOf, fmt, pct1, useV3Tone } from './tokens'
 import { formatRating } from '../common/format'
 
 const WEAPON_LABEL: Readonly<Record<number, string>> = { 0: '라플', 1: '스나' }
 
-const bandStyle: CSSProperties = {
+const bandStyleBase: CSSProperties = {
   position: 'relative',
   display: 'grid',
   gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)',
   alignItems: 'center',
   gap: 13,
   padding: '14px 18px',
-  borderBottom: `1px solid ${V3.divider}`,
 }
 const kpiRowStyle: CSSProperties = {
   position: 'relative',
@@ -57,6 +56,7 @@ export function ClanBackdrop({ theme, markSlug, watermark }: { theme: ClanTheme;
 
 /** 리그 이름 중앙 열 — in-flow (absolute 로 두면 좌우와 겹친다 · 시안 함정 1번) */
 export function LeagueCenter({ name, season }: { name: string; season: string }) {
+  const V3 = useV3Tone()
   return (
     <span className="v3-center" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, pointerEvents: 'none' }}>
       <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -89,6 +89,7 @@ export function OfficialPill({ theme }: { theme: ClanTheme }) {
 }
 
 export function GhostButton({ children, href, onClick, disabled, theme }: { children: ReactNode; href?: string; onClick?: () => void; disabled?: boolean; theme?: ClanTheme }) {
+  const V3 = useV3Tone()
   const style: CSSProperties = theme
     ? { fontSize: 11.5, color: '#124a56', border: `1px solid ${theme.main}73`, borderRadius: V3.radiusCtl, background: `${theme.main}1a`, padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
     : { fontSize: 11.5, color: V3.textMuted, border: `1px solid ${V3.chipBorder}`, borderRadius: V3.radiusCtl, background: V3.chip, padding: '6px 13px', whiteSpace: 'nowrap', cursor: 'pointer', textDecoration: 'none', opacity: disabled ? 0.5 : 1 }
@@ -110,6 +111,7 @@ export interface PlayerBandV3Props {
 }
 
 export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: PlayerBandV3Props) {
+  const V3 = useV3Tone()
   const theme = clanThemeOf(data.clan?.slug)
   const hex = data.hex
   /* 점수 리그(hex 가 오는 리그)는 ★래더 등수를 안 쓴다★ — 10판 미만이면 등수 없음. 옛 판(래더로 떨어짐)은 아래 주석 (QA 회차 2 · 2026-09-11)
@@ -155,8 +157,8 @@ export function PlayerBandV3({ data, infoHref, seasonLabel, mainWeapon }: Player
     { label: '판킬', value: data.kill_per_match.toFixed(1), sub: '킬 / 판', color: V3.text },
   ]
   return (
-    <section style={{ ...cardStyle, marginTop: 22 }}>
-      <div style={bandStyle} className="v3-band">
+    <section style={{ ...cardStyleOf(V3), marginTop: 22 }}>
+      <div style={{ ...bandStyleBase, borderBottom: `1px solid ${V3.divider}` }} className="v3-band">
         <span style={{ display: 'flex', alignItems: 'center', gap: 13, minWidth: 0 }}>
           <MarkCircle clan={data.clan} size={46} ring={theme} />
           <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>

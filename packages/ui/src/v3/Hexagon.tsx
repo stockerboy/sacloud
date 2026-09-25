@@ -12,7 +12,7 @@
  * 2026-09-11 사장님: 채움은 보라 → 파랑 → 분홍 «영롱한» 그라데이션 + 글로우.
  * 눈금은 10 단위 열 줄 (값이 0~100 백분위) — 위쪽 축 옆에 숫자.
  */
-import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint } from './tokens'
+import { HEX, HEX_LABELS, HEX_SPOKES, V3, hexPoint, useV3Tone } from './tokens'
 import { useEffect, useRef, useState } from 'react'
 import { penDash, useDrawIn } from './seasonPlot'
 
@@ -85,6 +85,12 @@ export function Hexagon({
    */
   size?: number
 }) {
+  /*
+   * ★밝은 판 지원★ (2026-09-25) — 이 안에서만 `V3` 를 가려서 쓴다. 파일 머리의
+   * `RING_NUMBER_INK`/`LABEL_STRONG_INK` 는 `TWO_TONE` 스위치(지금 `false`)를 위한
+   * ★죽은 갈래★ 라 모듈 바깥의 고정 다크 `V3` 를 그대로 쓴다 — 건드리지 않는다.
+   */
+  const V3 = useV3Tone()
   /* ★가운데에서 바깥으로 자라난다★ (2026-09-11 사장님: «비슷한 느낌으로 육각그래프도 그려지게») */
   const svgRef = useRef<SVGSVGElement>(null)
   const grow = useDrawIn(1800, id, svgRef)

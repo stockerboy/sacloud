@@ -36,7 +36,7 @@ import type { MatchDetail, MatchLineupEntry, MatchListItem } from '@sacloud/cont
 import { formatRating } from '../common/format'
 import { Kda, MarkCircle, MvpMark, TierText, matchShownAt } from './primitives'
 import { statColor } from './rankColors'
-import { WIN_LOSS, V3, fmt } from './tokens'
+import { WIN_LOSS, fmt, useV3Tone } from './tokens'
 
 /** 폰/PC 갈림목 — `PlayerDetailV3.SB_PHONE_MAX` 와 같은 값. 두 곳이 갈라지면 카드가 반쪽씩 바뀐다 */
 export const MATCH_CARD_PHONE_MAX = 700
@@ -116,6 +116,7 @@ function RatingDelta({ value, size = 12 }: { value: number | null | undefined; s
 
 /** 접힌 줄의 한쪽 클랜 — 마크 + 이름, 그 밑에 「1부리그 1,508점」 */
 function ClanSide({ snap, ink, league }: { snap: MatchListItem['league_clan']; ink: string; league: MatchCardLeague }) {
+  const V3 = useV3Tone()
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0' }}>
       <MarkCircle clan={snap.clan} size={20} />
@@ -136,6 +137,7 @@ const stopRow = (e: MouseEvent) => { e.stopPropagation() }
 
 /** 명단 한 열 — 보는 선수는 굵게. 스나이퍼는 `[S]` */
 function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: string | null }) {
+  const V3 = useV3Tone()
   return (
     <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
       {rows.map((r) => {
@@ -155,6 +157,7 @@ function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: st
 
 /** MVP 한 조각 — 마크 · 닉네임 · 배지 (배지가 제일 오른쪽 · 2026-09-11 사장님) */
 function MvpChip({ entry }: { entry: MatchLineupEntry }) {
+  const V3 = useV3Tone()
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
       <MarkCircle clan={entry.match_time_clan ? { slug: entry.match_time_clan.slug, mark: entry.match_time_clan.mark } : null} size={16} />
@@ -188,6 +191,7 @@ const pcGrid: CSSProperties = {
 }
 
 export function MatchCardV3({ match: m, league, viewer = null, neutral = false, open, onToggle, detail, renderDetail }: MatchCardV3Props) {
+  const V3 = useV3Tone()
   const edge = m.win ? WIN_LOSS.winInk : WIN_LOSS.loseInk
   const my = viewer ? m.player_stat : null
   /* 명단이 아직 안 들어온 경기 — 펼치지 않는다 (2026-09-10 사장님: «킬데스 수집중») */

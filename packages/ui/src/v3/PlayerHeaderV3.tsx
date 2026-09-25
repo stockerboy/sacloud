@@ -44,7 +44,7 @@ import { strengthAxes } from './playerHexAxes'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, RankText, TierText, clanThemeOf } from './primitives'
 import { nameStyle } from './clanThemes'
-import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
+import { cardStyleOf, fmt, pct1, spacerStyle, useV3Tone } from './tokens'
 import { formatRating, formatRatingPoint } from '../common/format'
 
 const WEAPON_LABEL: Readonly<Record<number, string>> = { 0: '라플', 1: '스나' }
@@ -113,6 +113,7 @@ function KdCell({
   rifle: { kd: number | null; games: number; kill: number; death: number } | null
   weapon: 0 | 1 | null
 }) {
+  const V3 = useV3Tone()
   const [open, setOpen] = useState(false)
   const sub =
     kill === null || death === null
@@ -195,6 +196,7 @@ function KdCell({
 }
 
 function Kpi({ label, value, sub, color, extra, className }: { label: string; value: string; sub?: ReactNode; color: string; extra?: ReactNode; className?: string }) {
+  const V3 = useV3Tone()
   return (
     <div
       style={{ ...cellStyle, borderRight: `1px solid ${V3.rowDivider}` }}
@@ -272,6 +274,7 @@ const ALL_TIER = 0
 const HEAD_BODY: boolean = false
 
 export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report, showsKd = true, onRenew, renewing }: PlayerHeaderV3Props) {
+  const V3 = useV3Tone()
   const theme = clanThemeOf(data.clan?.slug)
   /* 이어 붙은 병영수첩 계정이 없으면 null — 아래에서 단추를 안 그린다 */
   const barracksHref = barracksPlayerUrl(data.player.barracks_usn)
@@ -518,7 +521,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   )
 
   return (
-    <section style={{ ...cardStyle, position: 'relative', overflow: 'hidden', marginTop: 22 }} className="v3-phead">
+    <section style={{ ...cardStyleOf(V3), position: 'relative', overflow: 'hidden', marginTop: 22 }} className="v3-phead">
       {/*
         * ⚠ ★구름·건물 그림을 뜼다★ (2026-09-17 사장님:
         *   «개인기록카드 뒤에 구름이랑 건물 인식표 희미하게 있는거 없애버려 개구려»).
@@ -1106,6 +1109,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
 
 /** 폰 상세정보 한 줄 — 서플라이 오른쪽 카드 줄과 같은 모양(라벨 · 보조 · 큰 값). PC 의 `InfoRow`(PlayerDetailV3)와 같은 뼈대다 */
 function PhoneInfoRow({ label, sub, last, children }: { label: ReactNode; sub?: string; last?: boolean; children: ReactNode }) {
+  const V3 = useV3Tone()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 50 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>

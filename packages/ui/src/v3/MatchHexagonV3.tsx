@@ -21,7 +21,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { CLAN_HEX_V2_AXIS_LABELS, CLAN_HEX_V2_MATCH_AXIS_KEYS, type ClanHexV2AnyAxisKey, type ClanHexagonV2 } from '@sacloud/contract'
-import { V3 } from './tokens'
+import { useV3Tone } from './tokens'
 import { penDash, useDrawIn } from './seasonPlot'
 import { matchVerdict, matchVerdictText } from './matchVerdict'
 
@@ -332,6 +332,9 @@ export interface MatchHexagonV3Props {
 }
 
 export function MatchHexagonV3({ won, lost, wonName, lostName, id = 'matchHex', only = null }: MatchHexagonV3Props) {
+  /* ★밝은 판 지원★ (2026-09-25) — 이 안에서만 `V3` 를 가린다. 위 TWO_TONE(=false) 판정에
+     쓰이는 모듈 상수(WON·LOST·GRID_*·TICK_INK 등)는 이 판 자체가 다크 고정이라 안 건드린다 */
+  const V3 = useV3Tone()
   const svgRef = useRef<SVGSVGElement>(null)
   const grow = useDrawIn(1800, id, svgRef)
   const labelIn = grow > 0.92 ? 1 : 0

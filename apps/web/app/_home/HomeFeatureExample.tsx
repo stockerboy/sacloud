@@ -13,6 +13,7 @@ import {
   mainWeaponFromStats,
   ourSideOf,
   strengthAxes,
+  useV3Tone,
 } from '@sacloud/ui'
 import { leagueScreen } from '@sacloud/contract'
 import { PlayerRankTable } from '@sacloud/ui'
@@ -108,6 +109,9 @@ export function HomeFeatureExample({
   featureKey: string
   tone: string
 }) {
+  /* ★밝은 판 지원★ (2026-09-25) — 이 컴포넌트의 `tone` prop(색 문자열)과 이름이 겹쳐서
+     `v3Tone` 으로 부른다. `TrendChartV3` 에 안 넘기면 항상 고정 dark 로 그려진다 */
+  const v3Tone = useV3Tone()
   const ready = useApiReady()
   const source = SOURCE[featureKey] ?? 'player'
 
@@ -301,6 +305,7 @@ export function HomeFeatureExample({
               kdLabel="킬뎃"
               seed={topPlayerId}
               showsKd={leagueScreen(leagueSlug).playerColumns.kd}
+              tone={v3Tone}
             />
           </div>
         </>,

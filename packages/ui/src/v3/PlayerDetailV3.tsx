@@ -27,7 +27,7 @@ import { MvpWhy } from './MvpWhy'
 import { RoundFlowChartV3 } from './RoundFlowChartV3'
 import { Card, CardHead, Kda, MarkCircle, MvpMark, RankText, SectionBar, SniperMark, TierText, clanThemeOf, fitMarkUrl, hasFitMark, relativeKst, matchShownAt } from './primitives'
 import { teamFirstSideLabel } from '../record/matchDetailView'
-import { WIN_LOSS, V3, V3_DARK, type V3Tone, cardStyle, chipStyle, fmt, pct1, pillStyle, spacerStyle } from './tokens'
+import { WIN_LOSS, V3, V3_DARK, type V3Tone, cardStyleOf, chipStyle, chipStyleOf, fmt, pct1, pillStyleOf, spacerStyle, useV3Tone } from './tokens'
 import { formatRating } from '../common/format'
 import { mainWeaponFromStats } from '../record/playerHeadCopy'
 import { TrendChartV3, type TrendMode } from './TrendChartV3'
@@ -113,8 +113,13 @@ const SHOW_TEAMMATES = false
 const SCORE_PLATE_ON: boolean = false
 
 const halfStyle: CSSProperties = { marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 16, alignItems: 'stretch' }
-const halfCardStyle: CSSProperties = { display: 'flex', flexDirection: 'column', ...cardStyle }
-const statRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr)', alignItems: 'baseline', gap: 12, padding: '9px 0', borderTop: `1px solid ${V3.rowDivider2}` }
+/* ⚠ 밝은 판 지원(2026-09-25) — 모듈 상수는 훅을 못 쓴다. 함수로 만들어 그때그때 톤을 받는다 */
+function halfCardStyleOf(tone: V3Tone): CSSProperties {
+  return { display: 'flex', flexDirection: 'column', ...cardStyleOf(tone) }
+}
+function statRowStyleOf(tone: V3Tone): CSSProperties {
+  return { display: 'grid', gridTemplateColumns: 'auto minmax(0,1fr)', alignItems: 'baseline', gap: 12, padding: '9px 0', borderTop: `1px solid ${tone.rowDivider2}` }
+}
 /* 2026-09-11 사장님: 경기 카드를 폰 모양 한 가지로 통일한다 — 두 칸 × 세 줄.
    1줄 승패·맵·시각 / 자리   2줄 양 팀 / MVP·킬뎃   3줄 상대 티어 / 펼치기 */
 const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center', rowGap: 7, columnGap: 12, padding: '13px 18px', cursor: 'pointer' }
@@ -137,8 +142,12 @@ const matchRowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'mi
  *   ```
  * ⚠ 그래도 긴 닉은 ★말줄임(…)★ 으로 끝난다 — 칸을 넘겨 줄을 깨뜨리지 않는다.
  */
-const playerRowStyle: CSSProperties = { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 86px 58px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${V3.rowDivider2}` }
-const playerRowSavesStyle: CSSProperties = { ...playerRowStyle, gridTemplateColumns: 'minmax(96px,1fr) 86px 44px 58px 22px' }
+function playerRowStyleOf(tone: V3Tone): CSSProperties {
+  return { position: 'relative', overflow: 'hidden', display: 'grid', gridTemplateColumns: 'minmax(96px,1fr) 86px 58px 22px', gap: 8, alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${tone.rowDivider2}` }
+}
+function playerRowSavesStyleOf(tone: V3Tone): CSSProperties {
+  return { ...playerRowStyleOf(tone), gridTemplateColumns: 'minmax(96px,1fr) 86px 44px 58px 22px' }
+}
 
 export interface PlayerDetailV3Props {
   data: LeaguePlayerDetail
@@ -185,6 +194,7 @@ export interface PlayerDetailV3Props {
 /* ── 구간별 전적 ─────────────────────────────────────────────── */
 
 function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayerDetail; report: PlayerDetailV3Props['report']; ownTier: number | null; showsKd: boolean }) {
+  const V3 = useV3Tone()
   const rows = data.tier_breakdown
   const played = rows.filter((r) => r.games > 0)
   /* 기본 칩 = ★내 클랜의 티어★(최근 경기에서 읽음 · QA 교차검토 9-14). 모르면 가장 많이 뛴 티어. 누르면 그것이 우선 */
@@ -217,7 +227,7 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
    */
   const tieredLeague = showsTier(data.league.slug) && data.league.division_count >= 2
   return (
-    <div style={halfCardStyle}>
+    <div style={halfCardStyleOf(V3)}>
       <CardHead>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 9, whiteSpace: 'nowrap' }}>
           {score !== null ? (
@@ -239,7 +249,7 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
       {tieredLeague ? (
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, padding: '10px 18px 12px', borderBottom: `1px solid ${V3.rowDivider}` }}>
           {rows.map((r) => (
-            <span key={r.tier} onClick={() => setTier(r.tier)} style={chipStyle(r.tier === tier)}>
+            <span key={r.tier} onClick={() => setTier(r.tier)} style={chipStyleOf(V3, r.tier === tier)}>
               <TierText division={r.tier} leagueCategory={data.league.category} size={11} />
             </span>
           ))}
@@ -302,8 +312,9 @@ function TierRecordCard({ data, report, ownTier, showsKd }: { data: LeaguePlayer
 }
 
 function StatRow({ label, children }: { label: ReactNode; children: ReactNode }) {
+  const V3 = useV3Tone()
   return (
-    <div style={statRowStyle}>
+    <div style={statRowStyleOf(V3)}>
       <span style={{ fontSize: 12, color: V3.textDim, whiteSpace: 'nowrap' }}>{label}</span>
       <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 10, minWidth: 0, flexWrap: 'nowrap' }}>{children}</span>
     </div>
@@ -311,6 +322,7 @@ function StatRow({ label, children }: { label: ReactNode; children: ReactNode })
 }
 
 function Pair({ tag, sub, value, color, small }: { tag?: string; sub: string; value: string; color: string; small?: boolean }) {
+  const V3 = useV3Tone()
   return (
     <span style={{ display: 'flex', alignItems: 'baseline', gap: small ? 5 : 9, whiteSpace: 'nowrap', flex: 'none' }}>
       {tag ? <span style={{ fontSize: 9.5, color: V3.textGhost, letterSpacing: '.06em' }}>{tag}</span> : null}
@@ -321,6 +333,7 @@ function Pair({ tag, sub, value, color, small }: { tag?: string; sub: string; va
 }
 
 function ReportButton({ report }: { report: PlayerDetailV3Props['report'] }) {
+  const V3 = useV3Tone()
   const on = report.reported
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}>
@@ -369,6 +382,7 @@ export interface StrengthCompare {
 }
 
 function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail; compare?: StrengthCompare; leagueSlug: string }) {
+  const V3 = useV3Tone()
   const hex = data.hex
   const axes = strengthAxes(data)
   /*
@@ -384,7 +398,7 @@ function StrengthCard({ data, compare, leagueSlug }: { data: LeaguePlayerDetail;
       ? { values: compare.values, label: compare.picked.name }
       : null
   return (
-    <div style={halfCardStyle}>
+    <div style={halfCardStyleOf(V3)}>
       <CardHead
         title={
           compare ? (
@@ -812,6 +826,7 @@ function gameStartKst(iso: string): string {
  * ⚠ 옛 여섯 칸 줄은 바로 아래 `ScoreRowSupplySix` 로 ★그대로 남겼다★ (`CLAUDE.md` 1-4).
  */
 function ScoreRow({ row, me, mvp, weaponKnown, leagueSlug, side }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; leagueSlug: string; side: 'red' | 'blue' }) {
+  const V3 = useV3Tone()
   const [openHex, setOpenHex] = useState(false)
   const hex = row.hexagon ?? []
   const sniper = weaponKnown && row.weapon === 1
@@ -866,6 +881,7 @@ function ScoreRow({ row, me, mvp, weaponKnown, leagueSlug, side }: { row: MatchP
  *   되살리려면 `t.stats.map` 에서 이 이름으로 바꾸고 `SB_COLS_*` 를 위 주석의 옛 격자로 (`CLAUDE.md` 1-4).
  */
 function ScoreRowSupplySix({ row, me, mvp, weaponKnown, leagueSlug, side, maxDamage }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; leagueSlug: string; side: 'red' | 'blue'; maxDamage: number }) {
+  const V3 = useV3Tone()
   /* ★열림은 줄마다 따로★ — 다른 줄을 눌러도 안 접힌다 (2026-09-15 사장님) */
   const [openHex, setOpenHex] = useState(false)
   const hex = row.hexagon ?? []
@@ -972,6 +988,7 @@ function ScoreRowSupplySix({ row, me, mvp, weaponKnown, leagueSlug, side, maxDam
  *   주무기는 새 줄에서도 스나 표시(`[S]`)로 남아 있고, 세이브만 화면에서 쉰다.
  */
 function ScoreRowLegacy({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side }: { row: MatchPlayerStat; me: boolean; mvp: boolean; weaponKnown: boolean; showSaves: boolean; leagueSlug: string; side: 'red' | 'blue' }) {
+  const V3 = useV3Tone()
   /* ★열림은 줄마다 따로★ — 다른 줄을 눌러도 안 접힌다 (2026-09-15 사장님) */
   const [openHex, setOpenHex] = useState(false)
   const hex = row.hexagon ?? []
@@ -982,7 +999,7 @@ function ScoreRowLegacy({ row, me, mvp, weaponKnown, showSaves, leagueSlug, side
   const clan = row.match_time_clan
   return (
     <>
-    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyle : playerRowStyle), background: me && ME_ROW_GRADIENT ? 'linear-gradient(100deg,rgba(143,240,255,.14),rgba(143,240,255,.04) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
+    <div className={showSaves ? 'v3-score-row v3-score-row--saves' : 'v3-score-row'} style={{ ...(showSaves ? playerRowSavesStyleOf(V3) : playerRowStyleOf(V3)), background: me && ME_ROW_GRADIENT ? 'linear-gradient(100deg,rgba(143,240,255,.14),rgba(143,240,255,.04) 55%,transparent)' : 'transparent', boxShadow: me ? 'inset 3px 0 0 #0891b2, inset 0 0 26px rgba(143,240,255,.10)' : 'none' }}>
       {/* ★인식표★ — ASTRA 1~3위 먹구름 · 4~100위 흰구름 (2026-09-11 사장님). 글자 뒤에 깐다 */}
       {SCORE_PLATE_ON && row.nameplate ? <span aria-hidden className={`v3-plate-row v3-plate-row--${row.nameplate}`} /> : null}
       {SCORE_WATERMARKS && sniper ? <span aria-hidden style={{ position: 'absolute', left: '34%', top: '50%', transform: 'translate(-50%,-50%) skewX(-16deg) scaleY(0.9) scaleX(1.16)', fontSize: 25, fontWeight: 900, fontStyle: 'italic', letterSpacing: '.5em', color: V3.red, opacity: 0.17, WebkitTextStroke: `3.4px ${V3.red}`, whiteSpace: 'nowrap', pointerEvents: 'none' }}>SNIPER</span> : null}
@@ -1046,6 +1063,7 @@ export function viewerSideOf(detail: MatchDetail): 'red' | 'blue' {
 }
 
 function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchDetail; me: string; leagueCategory: string; leagueSlug: string }) {
+  const V3 = useV3Tone()
   const mySide = viewerSideOf(detail)
   /* 2026-09-11 사장님: 집계 전 경기라고 세이브 칸이 통째로 사라지면 «없는 화면» 처럼 보인다 →
      칸은 늘 두고 아직 모르는 값만 «-» 로 적는다 (0 으로 채우지 않는다). 옛 판: [...].some((s) => s.saves !== null) */
@@ -1225,6 +1243,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
                     winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
                     loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
                     positionOf={positionOf}
+                    tone={V3}
                   />
                 </div>
               ) : null}
@@ -1335,6 +1354,7 @@ function Scoreboard({ detail, me, leagueCategory, leagueSlug }: { detail: MatchD
               winner={{ side: wonTeam.side, name: wonTeam.snap.clan.name, slug: wonTeam.snap.clan.slug, theme: wonTeam.theme }}
               loser={{ side: lostTeam.side, name: lostTeam.snap.clan.name, slug: lostTeam.snap.clan.slug, theme: lostTeam.theme }}
                     positionOf={positionOf}
+              tone={V3}
             />
           ) : null}
         </div>
@@ -1422,6 +1442,7 @@ function RatingDelta({ value, size = 12 }: { value: number | null | undefined; s
 
 /** 명단 한 칸 — PC 접힌 줄의 오른쪽 두 열 (사진 3). 내 이름은 굵게 */
 function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: string }) {
+  const V3 = useV3Tone()
   return (
     <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
       {rows.map((r) => (
@@ -1436,6 +1457,7 @@ function LineupCol({ rows, meId }: { rows: readonly MatchLineupEntry[]; meId: st
 }
 
 function MatchRows({ data, leagueSlug, matches, expanded, onExpand }: Pick<PlayerDetailV3Props, 'data' | 'leagueSlug' | 'matches' | 'expanded' | 'onExpand'>) {
+  const V3 = useV3Tone()
   const [open, setOpen] = useState<string | null>(null)
   if (UNIFIED_MATCH_CARD) {
     return (
@@ -1569,6 +1591,7 @@ function durationOf(startAt: string, endAt: string | null): string | null {
 
 /** 접힌 줄의 한쪽 클랜 — 마크 + 이름, 그 밑에 「1부리그 1,508점」 (사진 3) */
 function ClanSide({ snap, ink, league }: { snap: MatchListItem['league_clan']; ink: string; league: LeaguePlayerDetail['league'] }) {
+  const V3 = useV3Tone()
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: '1 1 0' }}>
       <MarkCircle clan={snap.clan} size={20} />
@@ -1589,6 +1612,7 @@ function ClanSide({ snap, ink, league }: { snap: MatchListItem['league_clan']; i
  * `SUPPLY_MATCH_ROWS` 를 `false` 로 되돌리면 이 줄이 다시 그려진다.
  */
 function MatchRowsLegacy({ data, leagueSlug, matches, expanded, onExpand }: Pick<PlayerDetailV3Props, 'data' | 'leagueSlug' | 'matches' | 'expanded' | 'onExpand'>) {
+  const V3 = useV3Tone()
   const [open, setOpen] = useState<string | null>(null)
   /* 클랜 색은 이제 승패 색이 대신한다 (2026-09-12 사장님) — 지우지 않고 void 로 남긴다 */
   const theme = clanThemeOf(data.clan?.slug)
@@ -1720,6 +1744,7 @@ function MatchRowsLegacy({ data, leagueSlug, matches, expanded, onExpand }: Pick
  * 킬뎃은 그 선수 무기 것 · 승률은 통합이다 (같은 날 확정).
  */
 function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
+  const V3 = useV3Tone()
   const tieredCard = showsTier(data.league.slug) && data.league.division_count >= 2
   /*
    * ⚠ ★2026-09-16 — 티어를 안 쓰면 구간을 안 나눈다★ (사장님: «두개 합쳐야지
@@ -1850,7 +1875,7 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
   /* 아직 아무것도 안 건드렸으면 자기 구간을 편다 */
   const openTier = open === null ? homeTier : open
   return (
-    <div style={{ marginTop: 16, ...cardStyle }}>
+    <div style={{ marginTop: 16, ...cardStyleOf(V3) }}>
       <CardHead title="클랜별 전적" right={
         <span style={{ fontSize: 10.5, color: V3.textGhost2, letterSpacing: '.06em', whiteSpace: 'nowrap' }}>시즌 0 · {fmt(data.win + data.lose)}전 기준</span>
       } />
@@ -1977,10 +2002,11 @@ function ClanVsCard({ data }: { data: LeaguePlayerDetail }) {
  *   그때는 그 줄을 안 그린다. 0 으로 채우면 「0킬을 했다」는 거짓이 된다.
  */
 function SideInfoCard({ data, showsKd, report }: { data: LeaguePlayerDetail; showsKd: boolean; report?: PlayerDetailV3Props['report'] }) {
+  const V3 = useV3Tone()
   const kdKnown = showsKd && data.kill !== null && data.death !== null
   const reportCount = report?.reported ? report.count : data.report_count
   return (
-    <section className="sac-info-card" style={{ ...cardStyle, overflow: 'hidden' }}>
+    <section className="sac-info-card" style={{ ...cardStyleOf(V3), overflow: 'hidden' }}>
       {/* 제목은 「상세정보」 가 아니라 ★선수 닉네임★ (인계서 ③-8 · 2026-09-23) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
@@ -2072,10 +2098,11 @@ function SideInfoCard({ data, showsKd, report }: { data: LeaguePlayerDetail; sho
  * ⚠ 빈 배열이면 카드를 ★안 그린다★ — 빈 표를 만들지 않는다.
  */
 function TeammatesCard({ data }: { data: LeaguePlayerDetail }) {
+  const V3 = useV3Tone()
   const rows = data.teammates.slice(0, 10)
   if (rows.length === 0) return null
   return (
-    <section style={{ ...cardStyle, overflow: 'hidden' }}>
+    <section style={{ ...cardStyleOf(V3), overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${V3.divider}` }}>
         <span style={{ width: 22, height: 2, background: V3.blue, flex: 'none' }} />
         <span style={{ fontSize: 13, fontWeight: 700, color: V3.textStrong, whiteSpace: 'nowrap' }}>최근 같이한 플레이어</span>
@@ -2108,6 +2135,7 @@ function TeammatesCard({ data }: { data: LeaguePlayerDetail }) {
 }
 
 function InfoRow({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: ReactNode }) {
+  const V3 = useV3Tone()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 46 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>
@@ -2122,6 +2150,7 @@ function InfoRow({ label, sub, last, children }: { label: string; sub?: string; 
 void ScoreRowSupplySix
 
 export function PlayerDetailV3(props: PlayerDetailV3Props) {
+  const V3 = useV3Tone()
   const { data, matches, matchesLoading, hasMore, loadingMore, onLoadMore } = props
   /* ★탭은 껐다★ (`BODY_TABS`) — 상태는 남긴다. 되살리면 그대로 돈다 (`CLAUDE.md` 1-4) */
   const [tab, setTab] = useState<'graph' | 'play' | 'clan'>('graph')
@@ -2148,7 +2177,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
          * ★못 불러왔으면 못 불러왔다고 적는다★ (2026-09-19 · 위 `matchesError` 주석 참조).
          * 「아직 경기가 없습니다」 로 덮지 않는다 — 경기는 있는데 우리가 못 받아온 것이다.
          */
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', ...cardStyle }}>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', ...cardStyleOf(V3) }}>
           <span>최근 경기를 불러오지 못했습니다.</span>
           {props.onRetryMatches ? (
             <button
@@ -2161,9 +2190,9 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
           ) : null}
         </div>
       ) : matchesLoading ? (
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>불러오는 중…</div>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyleOf(V3) }}>불러오는 중…</div>
       ) : matches.length === 0 ? (
-        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyle }}>아직 경기가 없습니다.</div>
+        <div style={{ marginTop: 12, padding: 18, fontSize: 12, color: V3.textGhost, ...cardStyleOf(V3) }}>아직 경기가 없습니다.</div>
       ) : (
         <MatchRows data={data} leagueSlug={props.leagueSlug} matches={matches} expanded={props.expanded} onExpand={props.onExpand} />
       )}
@@ -2219,7 +2248,7 @@ export function PlayerDetailV3(props: PlayerDetailV3Props) {
             type="button"
             onClick={() => setPhoneTab(key)}
             className={phoneTab === key ? 'sac-pilltab is-on' : 'sac-pilltab'}
-            style={{ ...pillStyle(phoneTab === key), fontFamily: 'inherit', cursor: 'pointer' }}
+            style={{ ...pillStyleOf(V3, phoneTab === key), fontFamily: 'inherit', cursor: 'pointer' }}
             aria-current={phoneTab === key ? 'page' : undefined}
           >
             {label}

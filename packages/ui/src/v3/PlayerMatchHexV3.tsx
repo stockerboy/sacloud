@@ -26,7 +26,7 @@
  */
 import type { CSSProperties } from 'react'
 import { playerHexValueText, type MatchPlayerStat } from '@sacloud/contract'
-import { V3 } from './tokens'
+import { type V3Tone, useV3Tone } from './tokens'
 
 type Axis = MatchPlayerStat['hexagon'][number]
 
@@ -94,14 +94,16 @@ const partsText = (a: Axis): string => {
   return `${a.numerator}/${a.denominator ?? 0}`
 }
 
-const panelStyle: CSSProperties = {
-  padding: '12px 14px 14px',
-  borderBottom: `1px solid ${V3.rowDivider}`,
-  background: 'rgba(8,14,26,.34)',
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'flex-start',
-  gap: 14,
+function panelStyleOf(tone: V3Tone): CSSProperties {
+  return {
+    padding: '12px 14px 14px',
+    borderBottom: `1px solid ${tone.rowDivider}`,
+    background: 'rgba(8,14,26,.34)',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 14,
+  }
 }
 
 export function PlayerMatchHexV3({
@@ -116,10 +118,11 @@ export function PlayerMatchHexV3({
   href: string
   side: 'red' | 'blue'
 }) {
+  const V3 = useV3Tone()
   const stroke = side === 'red' ? '#c81e28' : '#1d4fd6'
   const fill = side === 'red' ? 'rgba(255,120,128,.26)' : 'rgba(124,160,255,.3)'
   return (
-    <div className="v3-phex" style={panelStyle}>
+    <div className="v3-phex" style={panelStyleOf(V3)}>
       <svg
         viewBox={`0 0 ${VW} ${VH}`}
         role="img"

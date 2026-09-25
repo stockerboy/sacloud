@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import type { MatchDetail } from '@sacloud/contract'
-import { V3 } from './tokens'
+import { useV3Tone } from './tokens'
 
 /**
  * ★MVP 가 MVP 인 이유★ (2026-09-18 사장님:
@@ -119,10 +119,11 @@ function RoundsText({
   last: number | null
   secondHalfFrom: number | null
 }) {
+  const V3 = useV3Tone()
   const half = halfLabelOf(rounds, secondHalfFrom)
   return (
     <>
-      {half === null ? null : <span style={{ color: HALF_COLOR }}>{half} </span>}
+      {half === null ? null : <span style={{ color: V3.textDim }}>{half} </span>}
       {rounds.map((r, i) => (
         <Fragment key={r}>
           {i > 0 ? ',' : null}
@@ -138,9 +139,6 @@ function RoundsText({
   )
 }
 
-/** 전반/후반 글자색 — 금색(라운드 숫자)보다 조용하게 둔다 */
-const HALF_COLOR = V3.textDim
-
 /**
  * ★부호를 한 번만 붙인다★ (2026-09-20 사장님: 「왜 +-로 돼있어 선짤이」).
  *
@@ -152,6 +150,7 @@ function signed(n: number): string {
 }
 
 export function MvpWhy({ detail }: { detail: MatchDetail }) {
+  const V3 = useV3Tone()
   const why = detail.mvp_why ?? []
   /*
    * ⚠ ★두 팀 라운드를 더하면 안 된다★ (2026-09-19 검수에서 잡았다).

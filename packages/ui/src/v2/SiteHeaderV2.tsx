@@ -10,6 +10,14 @@ import { SiteMapNav } from '../layout/SiteMapNav'
 import { DrawerNavSupply } from '../layout/DrawerNavSupply'
 import { LeagueLabel } from '../layout/LeagueLabel'
 import { v2Class } from './leagueAccent'
+/*
+ * ★밝은/어두운 판 전환 단추★ (2026-09-25 사장님 「라이트 모드 만들 수 있나」).
+ * `../v3/tokens`(배럴 전체)가 아니라 ★이 좁은 길★ 로만 가져온다 — 이 파일은
+ * `SiteShell` 을 거쳐 ★모든 화면★ 에 붙으므로, v3 배럴을 물면 그 배럴이 내보내는
+ * `'use client'` 수십 개가 전부 여기 딸려 온다 (`AppShell.tsx` 머리말과 같은 이유).
+ * `themeMode.ts` 는 `react` 하나만 쓰는 아주 작은 파일이라 안전하다.
+ */
+import { toggleThemeMode, useThemeMode } from '../v3/themeMode'
 
 /**
  * ★★v2 전역 머리띠★★ — 68px (2026-09-07 · Part 10 ③ · 사장님 승인)
@@ -397,6 +405,7 @@ export function SiteHeaderV2({
         <div className="flex-1" />
 
         <div className="flex items-center gap-5">
+          <ThemeToggleButton />
           {user ? (
             <>
               <Link href="/me" className="v2-login">
@@ -478,6 +487,53 @@ function LoginIcon() {
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
       <path d="M12 3.2h7.2c.9 0 1.6.7 1.6 1.6v14.4c0 .9-.7 1.6-1.6 1.6H12v-2h6.8V5.2H12z" />
       <path d="M9.9 7.6 8.5 9l2 2H3.2v2h7.3l-2 2 1.4 1.4L14.3 12z" />
+    </svg>
+  )
+}
+
+/**
+ * ★밝은/어두운 판 전환 단추★ (2026-09-25) — 선수·클랜·경기 상세(`v3/tokens.ts` 의 `V3`)
+ * 카드가 다크 남색 / 흰 판 중 어느 쪽인지 여기서 고른다. `v2` 전역 CSS 톤(이 헤더 포함)은
+ * 안 바뀐다 — v3 카드만 바뀐다 (`themeMode.ts` 머리말 참고).
+ *
+ * 폰·PC 어디서나 보인다(`max-md:hidden` 없음) — 로그인 단추와 같은 자리 규칙이다.
+ */
+function ThemeToggleButton() {
+  const mode = useThemeMode()
+  const light = mode === 'light'
+  return (
+    <button
+      type="button"
+      onClick={toggleThemeMode}
+      className="v2-login"
+      aria-label={light ? '어두운 색 테마로 바꾸기' : '밝은 색 테마로 바꾸기'}
+      title={light ? '어두운 색 테마' : '밝은 색 테마'}
+    >
+      {light ? <SunIcon /> : <MoonIcon />}
+    </button>
+  )
+}
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+      <circle cx="12" cy="12" r="4.2" />
+      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="1.6" x2="12" y2="4.4" />
+        <line x1="12" y1="19.6" x2="12" y2="22.4" />
+        <line x1="1.6" y1="12" x2="4.4" y2="12" />
+        <line x1="19.6" y1="12" x2="22.4" y2="12" />
+        <line x1="4.5" y1="4.5" x2="6.4" y2="6.4" />
+        <line x1="17.6" y1="17.6" x2="19.5" y2="19.5" />
+        <line x1="4.5" y1="19.5" x2="6.4" y2="17.6" />
+        <line x1="17.6" y1="6.4" x2="19.5" y2="4.5" />
+      </g>
+    </svg>
+  )
+}
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+      <path d="M20.2 14.7A8.2 8.2 0 0 1 9.3 3.8a8.6 8.6 0 1 0 10.9 10.9z" />
     </svg>
   )
 }

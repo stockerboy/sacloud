@@ -15,7 +15,7 @@ import { ClanMark, type ClanMarkInput } from '../common/ClanMark'
 import { showsTier } from '@sacloud/contract'
 import { divisionLabel } from '../league/divisionLabel'
 import { CLAN_THEMES, FALLBACK_THEME, clanThemeOf, type ClanTheme } from './clanThemes'
-import { ASTRA_STYLE, CHAL_NUM_COLOR, CHAL_STYLE, V3, cardHeadStyle, cardStyle, cardTitleStyle, ribbonStyle, spacerStyle } from './tokens'
+import { ASTRA_STYLE, CHAL_NUM_COLOR, CHAL_STYLE, cardHeadStyleOf, cardStyleOf, cardTitleStyleOf, ribbonStyle, spacerStyle, useV3Tone } from './tokens'
 
 /**
  * ★slug 를 못 받은 티어 칩을 「카테고리로 판단」 하게 되돌리는 스위치★ (2026-09-14).
@@ -48,6 +48,7 @@ export interface MarkCircleProps {
 }
 
 export function MarkCircle({ clan, size = 20, ring, style, className, title }: MarkCircleProps) {
+  const V3 = useV3Tone()
   const slug = clan?.slug ?? null
   const box: CSSProperties = {
     width: size,
@@ -117,6 +118,7 @@ export function TierText({
   /** 앞말 크기 (안 주면 `size` 보다 한 단계 작게) */
   prefixSize?: number
 }) {
+  const V3 = useV3Tone()
   if (division === null || division === undefined) return null
   /**
    * ★티어를 안 쓰는 리그에는 안 그린다★ (2026-09-13 사장님: «SPL은 1티어 2티어 구분 없어»).
@@ -201,9 +203,10 @@ export function TierText({
  *   `...(edge ? { borderTop: ... } : {})` 한 조각만 넣으면 된다 (`CLAUDE.md` 1-4).
  */
 export function Card({ children, style, edge }: { children: ReactNode; style?: CSSProperties; edge?: string }) {
+  const V3 = useV3Tone()
   void edge
   return (
-    <section style={{ ...cardStyle, ...style }}>
+    <section style={{ ...cardStyleOf(V3), ...style }}>
       {children}
     </section>
   )
@@ -211,7 +214,7 @@ export function Card({ children, style, edge }: { children: ReactNode; style?: C
 
 export function CardHead({
   title,
-  ribbon = V3.blue,
+  ribbon,
   children,
   right,
   style,
@@ -222,10 +225,14 @@ export function CardHead({
   right?: ReactNode
   style?: CSSProperties
 }) {
+  /* ⚠ `V3.blue` 를 기본값 자리(파라미터)에서 못 읽는다 — 파라미터 기본값은 함수 본문의
+     `const V3 = useV3Tone()` 보다 바깥 스코프에서 평가된다. 본문 안에서 대신 정한다 */
+  const V3 = useV3Tone()
+  const ribbonColor = ribbon ?? V3.blue
   return (
-    <div style={{ ...cardHeadStyle, ...style }}>
-      <div style={{ ...ribbonStyle, background: ribbon }} />
-      {title !== undefined ? <span style={cardTitleStyle}>{title}</span> : null}
+    <div style={{ ...cardHeadStyleOf(V3), ...style }}>
+      <div style={{ ...ribbonStyle, background: ribbonColor }} />
+      {title !== undefined ? <span style={cardTitleStyleOf(V3)}>{title}</span> : null}
       {children}
       <div style={spacerStyle} />
       {right}
@@ -235,6 +242,7 @@ export function CardHead({
 
 /** 본문 사이의 섹션 줄 — «최근 경기» 같은 제목 + 가는 선 */
 export function SectionBar({ title, right }: { title: ReactNode; right?: ReactNode }) {
+  const V3 = useV3Tone()
   return (
     <div style={{ marginTop: 26, display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={ribbonStyle} />
@@ -258,6 +266,7 @@ export function Kda({
   assist: number | null
   size?: number
 }) {
+  const V3 = useV3Tone()
   const show = (v: number | null) => (v === null ? '-' : String(v))
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontSize: size, fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -296,6 +305,7 @@ export function CompetitiveMark({ size = 16 }: { size?: number }) {
 /** MVP 배지 (선수 화면 — 본인일 때만) */
 /** 스나이퍼 표시 — 사장님이 고른 «발광 스코프» (2026-09-11 · 시안 02). 워터마크·(S) 대신 닉 옆에 붙는다 */
 export function SniperMark({ size = 15 }: { size?: number }) {
+  const V3 = useV3Tone()
   return (
     <svg viewBox="0 0 16 16" width={size} height={size} style={{ flex: 'none', filter: 'drop-shadow(0 0 4px rgba(255,90,99,.55))' }} aria-label="스나이퍼">
       <title>스나이퍼</title>
@@ -396,6 +406,7 @@ export function MvpMarkCircle({ size = 16, className }: { size?: number; classNa
 }
 
 export function MvpBadge({ size = 10, className }: { size?: number; className?: string }) {
+  const V3 = useV3Tone()
   return (
     <span
       className={className}

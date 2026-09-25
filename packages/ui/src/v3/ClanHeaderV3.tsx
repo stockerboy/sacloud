@@ -23,7 +23,7 @@ import { SUPPLY_INFO, supplyRankColor, supplyRateColor } from './rankColors'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf } from './primitives'
 import { nameStyle } from './clanThemes'
-import { V3, cardStyle, fmt, pct1, spacerStyle } from './tokens'
+import { cardStyleOf, fmt, pct1, spacerStyle, useV3Tone } from './tokens'
 import { formatRating } from '../common/format'
 
 /* 「공식」 알약 — PlayerBandV3 와 같은 스위치 (2026-09-20 사장님 「모든 공식 표시 다 없애」) */
@@ -40,13 +40,14 @@ export interface ClanHeaderV3Props {
 }
 
 export function ClanHeaderV3({ data, infoHref, seasonLabel, memberCount, renewAction }: ClanHeaderV3Props) {
+  const V3 = useV3Tone()
   const theme = clanThemeOf(data.clan.slug)
   const games = data.win + data.lose
   const showsLadder = leagueScreen(data.league.slug).clanColumns.rating
   const tiered = showsTier(data.league.slug) && data.league.division_count >= 2
   const rank = data.rank
   return (
-    <section style={{ ...cardStyle, position: 'relative', overflow: 'hidden', marginTop: 22 }} className="v3-phead v3-phead--clan">
+    <section style={{ ...cardStyleOf(V3), position: 'relative', overflow: 'hidden', marginTop: 22 }} className="v3-phead v3-phead--clan">
       {/* 1 · 신원 — 선수 카드의 `.v3-phead-id` 와 같은 격자·같은 치수 (마크 64 · 이름 30 · 점수 30) */}
       <div className="v3-phead-id" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 13, padding: '16px 18px 16px' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
@@ -100,6 +101,7 @@ export function ClanHeaderV3({ data, infoHref, seasonLabel, memberCount, renewAc
 }
 
 function Row({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: ReactNode }) {
+  const V3 = useV3Tone()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 50 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>

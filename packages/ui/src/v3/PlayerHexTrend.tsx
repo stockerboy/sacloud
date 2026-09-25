@@ -20,9 +20,10 @@
  */
 import type { LeaguePlayerDetail } from '@sacloud/contract'
 import { TrendChartV3 } from './TrendChartV3'
-import { V3 } from './tokens'
+import { useV3Tone } from './tokens'
 
 export function PlayerHexTrend({ data }: { data: LeaguePlayerDetail }) {
+  const V3 = useV3Tone()
   /* ★오늘 판이 있으면 「오늘」, 없으면 마지막으로 뛴 날★ — `TrendCard`(PlayerDetailV3)와 같은 규칙 */
   const today = data.trend.find((d) => d.today) ?? null
   const lastPlayed = [...data.trend].reverse().find((d) => !d.future && d.win + d.lose > 0) ?? null
@@ -45,6 +46,7 @@ export function PlayerHexTrend({ data }: { data: LeaguePlayerDetail }) {
         winLabel={dayRef ? `${dayRef.name} ${dayRef.d.win}승 ${dayRef.d.lose}패` : '아직 경기 없음'}
         kdLabel={dayRef ? `${dayRef.name} ${dayRef.d.kill}킬 ${dayRef.d.death}데스` : ''}
         showsKd
+        tone={V3}
       />
     </div>
   )

@@ -16,7 +16,7 @@
  *   하셨다. 그래서 아무나 고를 수 있고, 대신 그림 밑에 그 말을 한 줄 적는다.
  */
 import { useState, type CSSProperties } from 'react'
-import { V3 } from './tokens'
+import { type V3Tone, useV3Tone } from './tokens'
 
 export interface CompareCandidate {
   id: string
@@ -35,18 +35,22 @@ export interface CompareSearchV3Props {
   onClear: () => void
 }
 
-const boxStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  minWidth: 0,
-  padding: '5px 9px',
-  borderRadius: V3.radiusCtl,
-  background: V3.chip,
-  border: `1px solid ${V3.chipBorder}`,
+/* ⚠ 밝은 판 지원(2026-09-25) — 모듈 상수는 훅을 못 쓴다. 함수로 만들어 그때그때 톤을 받는다 */
+function boxStyleOf(tone: V3Tone): CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 0,
+    padding: '5px 9px',
+    borderRadius: tone.radiusCtl,
+    background: tone.chip,
+    border: `1px solid ${tone.chipBorder}`,
+  }
 }
 
 export function CompareSearchV3({ picked, results, loading = false, onQueryChange, onPick, onClear }: CompareSearchV3Props) {
+  const V3 = useV3Tone()
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
 
@@ -88,7 +92,7 @@ export function CompareSearchV3({ picked, results, loading = false, onQueryChang
 
   return (
     <span style={{ position: 'relative', display: 'inline-flex', minWidth: 0 }}>
-      <span style={boxStyle}>
+      <span style={boxStyleOf(V3)}>
         <input
           autoFocus
           value={text}

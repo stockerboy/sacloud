@@ -8,6 +8,7 @@
  * 옛 v2 토큰(`v2/tokens.css`)은 지우지 않았다 (`CLAUDE.md` 1-4).
  */
 import type { CSSProperties } from 'react'
+import { useThemeMode } from './themeMode'
 
 /**
  * ⚠ ★2026-09-22 — 서플라이 투톤으로★ (사장님, `v2/tokens.css` 와 같은 지시).
@@ -194,6 +195,26 @@ export const V3_DARK = {
 type Widen<T> = T extends string ? string : T extends number ? number : T
 export type V3Tone = { readonly [K in keyof typeof V3]: Widen<(typeof V3)[K]> }
 
+/**
+ * ★밝은 판★ (2026-09-25 사장님 「라이트 모드 만들 수 있나」 → 「밝은 색 테마」).
+ *
+ * 새 색을 짓지 않았다 — `V3_LIGHT_20260922`(2026-09-22 사장님이 «흰 카드»로 뒤집었다가
+ * 밤에 다시 남색으로 되돌리며 남겨 둔 판)를 그대로 쓴다. 그 객체는 카드·글자·선 색만
+ * 담고 있어서(강조색·라운딩 등은 어차피 두 판이 같다) `V3` 위에 겹쳐 완전한 톤을 만든다.
+ */
+export const V3_LIGHT: V3Tone = { ...V3, ...V3_LIGHT_20260922 }
+
+/**
+ * ★지금 판에 맞는 톤★ — `useThemeMode()` 가 바뀌면 이 훅을 쓰는 컴포넌트가 다시 그려진다.
+ *
+ * 쓰는 법: 컴포넌트 맨 위에서 `const V3 = useV3Tone()` 로 ★import 이름을 그대로 가린다★.
+ * 그러면 그 함수 안의 기존 `V3.xxx` 코드를 한 줄도 안 고쳐도 전부 이 톤을 읽는다 —
+ * 색을 새로 짓지 않듯, 색을 읽는 코드도 새로 짓지 않는다.
+ */
+export function useV3Tone(): V3Tone {
+  return useThemeMode() === 'light' ? V3_LIGHT : V3
+}
+
 /** ASTRA 는 무조건 영롱하게 — 홀로그램 그라데이션 + 글로우 + 5.5s 시머 (시안 규칙) */
 export const ASTRA_STYLE: CSSProperties = {
   background: 'linear-gradient(92deg,#8ff0ff 0%,#c9b6ff 34%,#ffd6f2 58%,#8ff0ff 100%)',
@@ -264,6 +285,37 @@ export const cardTitleStyle: CSSProperties = {
 export const spacerStyle: CSSProperties = { flex: 1 }
 
 /**
+ * ★위 네 값의 톤 대응판★ (2026-09-25 — 밝은 판 지원).
+ *
+ * 위 `cardStyle`/`cardHeadStyle`/`cardTitleStyle` 는 모듈이 처음 읽힐 때 ★고정 dark `V3`★
+ * 로 한 번만 계산되는 상수라, 화면에서 판을 바꿔도 안 따라온다. 함수로 만들어 그때그때
+ * 읽는 톤(`useV3Tone()` 로 얻은 값)을 넣게 한다. `ribbonStyle`/`spacerStyle` 은 안 바뀌는
+ * 값(강조색·레이아웃)만 써서 그대로 둔다.
+ */
+export function cardStyleOf(tone: V3Tone): CSSProperties {
+  return {
+    background: tone.card,
+    backgroundClip: 'padding-box',
+    border: `1px solid ${tone.cardBorder}`,
+    borderRadius: tone.radiusCard,
+    boxShadow: 'none',
+  }
+}
+export function cardHeadStyleOf(tone: V3Tone): CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '13px 18px',
+    borderBottom: `1px solid ${tone.divider}`,
+    flexWrap: 'wrap',
+  }
+}
+export function cardTitleStyleOf(tone: V3Tone): CSSProperties {
+  return { fontSize: 13, fontWeight: 700, color: tone.textStrong, whiteSpace: 'nowrap' }
+}
+
+/**
  * ★필 탭★ (리그 탭 · 선수 탭 · 클랜 탭 공용).
  * ⚠ 2026-09-22 흰 바탕용. 옛 값(다크 — 켠 글자 흰색): color '#fff'/'#7c8092' — 1-4
  */
@@ -303,6 +355,44 @@ export function chipStyle(on: boolean): CSSProperties {
     color: on ? V3.textStrong : V3.textDim,
     background: on ? '#e4e8f2' : 'transparent',
     border: `1px solid ${on ? '#c4cbdd' : V3.chipBorder}`,
+    opacity: 1,
+  }
+}
+
+/**
+ * ★위 두 값의 톤 대응판★ (2026-09-25 — 밝은 판 지원).
+ * `pillStyle`/`chipStyle` 는 모듈이 처음 읽힐 때 ★고정 dark `V3`★ 로 판정된 색을 쓴다.
+ * 화면에서 판을 바꿔도 안 따라온다 — `cardStyleOf` 와 같은 이유로 함수를 나눈다.
+ */
+export function pillStyleOf(tone: V3Tone, on: boolean): CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '9px 20px',
+    borderRadius: 0,
+    fontSize: 13.5,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    color: on ? tone.blue : tone.textDim,
+    fontWeight: on ? 700 : 400,
+    background: on ? 'rgba(91,141,255,.12)' : 'transparent',
+    boxShadow: on ? 'inset 0 0 0 1px rgba(91,141,255,.42)' : 'none',
+    textDecoration: 'none',
+  }
+}
+export function chipStyleOf(tone: V3Tone, on: boolean): CSSProperties {
+  return {
+    display: 'inline-flex',
+    alignItems: 'baseline',
+    gap: 3,
+    padding: '5px 11px',
+    borderRadius: tone.radiusCtl,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    fontSize: 11.5,
+    color: on ? tone.textStrong : tone.textDim,
+    background: on ? '#e4e8f2' : 'transparent',
+    border: `1px solid ${on ? '#c4cbdd' : tone.chipBorder}`,
     opacity: 1,
   }
 }

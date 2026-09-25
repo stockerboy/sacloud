@@ -27,7 +27,7 @@
 import type { ReactNode } from 'react'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 import { MarkCircle } from '../v3/primitives'
-import { V3 } from '../v3/tokens'
+import { useV3Tone } from '../v3/tokens'
 import { Hexagon, type HexAxisView } from '../v3/Hexagon'
 import { playerHexValueText } from '@sacloud/contract'
 
@@ -78,6 +78,7 @@ export function DailyPodium({
   /** 줄을 누르면 갈 곳. `null` 이면 링크를 안 건다 */
   hrefOf: (row: DailyPodiumRowView) => string | null
 }) {
+  const V3 = useV3Tone()
   /* 그날 경기가 없거나 조건에 맞는 줄이 없으면 ★칸 자체를 안 만든다★ (빈 카드를 그리지 않는다) */
   if (day === null || rows.length === 0) return null
 
@@ -118,6 +119,7 @@ export function DailyPodium({
 }
 
 function Body({ row, kind }: { row: DailyPodiumRowView; kind: 'player' | 'clan' }) {
+  const V3 = useV3Tone()
   /*
    * 그날 육각 — 면적은 백분위, 글자는 원값.
    * ★못 잰 축이 하나라도 있으면 안 그린다★ — 반쪽짜리 육각은 거짓말을 한다.
@@ -269,6 +271,7 @@ function Stat({
   sub: string
   tone: string
 }) {
+  const V3 = useV3Tone()
   return (
     <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
       <span style={{ fontSize: 10, color: V3.textFaint, letterSpacing: '.04em' }}>{label}</span>

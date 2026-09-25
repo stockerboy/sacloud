@@ -41,7 +41,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 import { playerHexLabelOf, type TraitAxisKey } from '@sacloud/contract'
 import { Hexagon, type HexAxisView } from '../v3/Hexagon'
-import { V3 } from '../v3/tokens'
+import { useV3Tone } from '../v3/tokens'
 
 export interface FlagMountainRow {
   rank: number
@@ -119,6 +119,7 @@ export function FlagMountain({
   rows,
   previous = null,
 }: FlagMountainProps) {
+  const V3 = useV3Tone()
   const [mounted, setMounted] = useState(false)
   const [planted, setPlanted] = useState(false)
   const [pickedRank, setPickedRank] = useState(1)

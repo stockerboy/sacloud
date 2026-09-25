@@ -20,17 +20,18 @@ import { markAccentOf, markColorsOf, markRailOf } from './clanMarkColors'
 import { GhostButton, LeagueCenter, OfficialPill } from './PlayerBandV3'
 import { MarkCircle, TierText, clanThemeOf, fitMarkUrl, hasFitMark, type ClanTheme } from './primitives'
 import { nameStyle } from './clanThemes'
-import { ASTRA_STYLE, V3, cardStyle, fmt, pct1 } from './tokens'
+import { ASTRA_STYLE, V3, cardStyleOf, fmt, pct1, useV3Tone } from './tokens'
 import { formatRating } from '../common/format'
 
-const bandStyle: CSSProperties = {
+/* ⚠ 밝은 판 지원(2026-09-25) — `borderBottom` 은 테마마다 다르다. 컴포넌트 안에서
+   `{ ...bandStyleBase, borderBottom: ... }` 로 합친다 (모듈 상수는 훅을 못 쓴다) */
+const bandStyleBase: CSSProperties = {
   position: 'relative',
   display: 'grid',
   gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)',
   alignItems: 'center',
   gap: 13,
   padding: '14px 18px',
-  borderBottom: `1px solid ${V3.divider}`,
 }
 /**
  * ★둥근 문장 뒤 두째 색★ (2026-09-17 사장님) — 마크의 두째 색을
@@ -170,6 +171,7 @@ export interface ClanCardV3Props {
 const PLATE_ON = false
 
 export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNote, renewAction, tierWins = [], tierIndex = 0, onTierStep, showHexagon = true }: ClanCardV3Props) {
+  const V3 = useV3Tone()
   /* ★인식표★ (2026-09-11 사장님) — ASTRA 구간 클랜만 준다.
      ★1~3위 불 · 4~6위 먹구름 · 7위부터 흰구름★ (2026-09-12 사장님이 경계를 이렇게 확정). 다른 구간·SPL·열산 어디에도 안 준다 */
   const plateRank = data.rank ?? 999
@@ -230,7 +232,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
   return (
     <section
       style={{
-        ...cardStyle,
+        ...cardStyleOf(V3),
         marginTop: 16,
         /* 마크 색이 없으면 예전대로 한 줄 테두리다 */
         borderTop: rail === null ? `2px solid ${theme.edge}` : 'none',
@@ -240,7 +242,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
       {rail === null ? null : (
         <span aria-hidden style={{ display: 'block', height: 3, background: rail, borderRadius: '2px 2px 0 0' }} />
       )}
-      <div style={bandStyle} className="v3-band">
+      <div style={{ ...bandStyleBase, borderBottom: `1px solid ${V3.divider}` }} className="v3-band">
         {markWash(marks[1]) === null ? null : <span aria-hidden style={markWash(marks[1]) as CSSProperties} />}
         <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <MarkCircle clan={data.clan} size={42} ring={theme} />
@@ -356,6 +358,7 @@ export function ClanCardV3({ data, infoHref, seasonLabel, memberCount, renewedNo
  * 차례를 서버가 정해서 준다 (`main_lineup`) — 화면에서 다시 줄 세우지 않는다.
  */
 function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme }) {
+  const V3 = useV3Tone()
   const rows = data.main_lineup ?? []
   /* 라플 넷 · 스나 하나 — 자리마다 무엇이 와야 하는지 여기서 정한다 */
   const slots: (0 | 1)[] = [0, 0, 0, 0, 1]
@@ -420,6 +423,7 @@ function MainLineup({ data, theme }: { data: LeagueClanShow; theme: ClanTheme })
  * 한 축이라도 못 쟀으면 `null` 이라 아무것도 안 그린다 (반쪽 자료로 평하지 않는다).
  */
 function ClanStyleLine({ hex }: { hex: ClanHexagonV2 | null }) {
+  const V3 = useV3Tone()
   const note = clanStyleNote(hex)
   if (!note) return null
   return (
@@ -439,6 +443,7 @@ function ClanStyleLine({ hex }: { hex: ClanHexagonV2 | null }) {
 }
 
 function StepButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  const V3 = useV3Tone()
   return (
     <button
       type="button"

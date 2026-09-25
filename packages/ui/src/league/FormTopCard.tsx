@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { playerHexValueText } from '@sacloud/contract'
 import { Hexagon } from '../v3/Hexagon'
 import type { HexAxisView } from '../v3/Hexagon'
-import { V3 } from '../v3/tokens'
+import { type V3Tone, useV3Tone } from '../v3/tokens'
 import { MarkCircle } from '../v3/primitives'
 import { rankColorByRatio } from '../record/playerHeadCopy'
 
@@ -63,7 +63,7 @@ const TONE: Readonly<Record<FormTopEntry['key'], string>> = {
   rifle: '#b7a6ff',
 }
 
-function axesOf(row: FormTopRow): HexAxisView[] {
+function axesOf(row: FormTopRow, V3: V3Tone): HexAxisView[] {
   const axes = row.axes
   if (axes === undefined || axes.length === 0) return []
   /* ★못 잰 축이 하나라도 있으면 안 그린다★ — 반쪽짜리 육각은 거짓말을 한다 */
@@ -102,13 +102,14 @@ export function FormTopCard({
   day: string | null
   entries: readonly FormTopEntry[]
 }) {
+  const V3 = useV3Tone()
   /* 처음 펴는 줄 — 사장님이 «폼1위스나부터» 라고 하셨다. 스나가 없으면 첫 줄 */
   const first = entries.find((e) => e.key === 'sniper') ?? entries[0] ?? null
   const [pickedKey, setPickedKey] = useState<FormTopEntry['key'] | null>(null)
   const picked = entries.find((e) => e.key === (pickedKey ?? first?.key)) ?? first
 
   if (day === null || entries.length === 0 || picked === undefined || picked === null) return null
-  const hexAxes = axesOf(picked.row)
+  const hexAxes = axesOf(picked.row, V3)
   const href =
     picked.row.player_id != null
       ? `/league/${leagueSlug}/player/${picked.row.player_id}`
