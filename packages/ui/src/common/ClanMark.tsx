@@ -105,7 +105,23 @@ export function ClanMark({ clan, mark, size = 'md', className, alt = '' }: ClanM
     front: base.kind === 'official' && base.front !== null && brokenSrc.has(base.front),
   })
 
-  const box = `${SIZE[size]} shrink-0 ${className ?? ''}`
+  /*
+   * ★`inline-block` 이 반드시 있어야 한다★ (2026-09-25 사장님 「마크가 안떠」로 잡았다)
+   *
+   *   바깥 요소가 `<span>`(기본 `display: inline`)이면 인라인 요소에는 `width`/`height` 가
+   *   ★먹지 않는다★ — CSS 스펙이 그렇다. `fluid` 변형은 이미 알고 있어서 `block` 을 박아 뒀는데
+   *   (위 주석 참고), 고정 크기들(`xxs`~`max`)은 그 규칙에서 빠져 있었다 — 대부분의 호출부가
+   *   flex 컨테이너의 자식이라(자동 blockify) ★우연히★ 크기가 살아 있었을 뿐이다.
+   *
+   *   `EtaWriter` 가 클랜명을 누르면 클랜 페이지로 가게(2026-09-25) 마크를 `<Link>`(`<a>`)
+   *   로 감쌌는데, 그 `<a>` 는 flex 컨테이너가 아니라서 안쪽 마크 span 이 blockify 되지 않았다.
+   *   그래서 이미지는 정상 로드됐는데(`naturalWidth` 51) 렌더된 박스가 0×0 이 됐다 — 자리가
+   *   없으니 아예 안 보였다. `inline-block` 을 직접 박으면 어느 부모 밑에 있어도 항상 크기가 먹는다.
+   *
+   *   ⚠ `fluid` 는 뺀다 — 그쪽은 이미 `block` 이 있고(위 SIZE.fluid 주석), `inline-block` 을
+   *   같이 넣으면 어느 게 이기는지가 생성된 CSS 순서에 달려 있어 위태롭다. `fluid` 는 그대로 둔다.
+   */
+  const box = `${SIZE[size]} ${size === 'fluid' ? '' : 'inline-block'} shrink-0 ${className ?? ''}`
 
   /* 공식 등록 클랜이 아니면 **공통 fallback 마크**를 그린다 (D-146).
      외부 클랜의 emblem 을 우리 화면에서 공식 소속처럼 보여 주지 않기 위해서다.
