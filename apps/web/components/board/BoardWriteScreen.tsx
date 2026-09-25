@@ -32,6 +32,7 @@ export function BoardWriteScreen({ category, basePath }: { category: string; bas
       content: string
       disclose_type: number
       password: string | null
+      as_clan_slug: string | null
     }) =>
       apiSend('boardCreate', {
         body: { category, ...input, captcha_token: 'mock' },
@@ -47,6 +48,7 @@ export function BoardWriteScreen({ category, basePath }: { category: string; bas
         key={infos.isSuccess ? String(viewerIsAdmin) : 'pending'}
         requirePassword={!loggedIn}
         initialAnonymous={viewerIsAdmin ? false : undefined}
+        viewerIsAdmin={viewerIsAdmin}
         submitting={create.isPending}
         error={create.isError ? '글을 저장하지 못했습니다.' : null}
         submitLabel="등록"

@@ -480,6 +480,9 @@ model Clan {
   leaguePlayers   LeaguePlayer[]       @relation("LeaguePlayerClan")
   invitations     LeagueInvitation[]
   aliases         ClanAlias[]
+  /// 관리자가 이 클랜을 골라 대신 쓴 글·댓글 — `Board.adminAsClanId` 참고
+  adminAsBoards   Board[]              @relation("BoardAdminAsClan")
+  adminAsComments Comment[]            @relation("CommentAdminAsClan")
   masterClaims    ClanMasterClaim[]
   barracksNumbers BarracksClanNumber[]
 
@@ -1443,6 +1446,11 @@ model Board {
   discloseType     Int     @default(0)
   /// 0 = 웹, 1 = 앱
   writerApp        Int     @default(0)
+  /// ★관리자가 고른 대리 클랜★ (2026-09-25 사장님 「관리자는 클랜 아무거나 선택해서
+  /// 마음대로 글 쓸 수 있게 (…) 베리타스 고르고 쓰면 베리타스로 나오고(익명) 관리자 아닌것처럼」).
+  /// 값이 있으면 작성자의 실제 소속 대신 ★이 클랜★ 을 익명 표시에 쓴다. 운영자 글쓰기에서만 채운다
+  /// (서버가 `isAdmin` 을 확인한 뒤에만 쓴다 — 클라이언트 입력을 그대로 믿지 않는다).
+  adminAsClanId String?
 
   viewCount    Int     @default(0)
   likeCount    Int     @default(0)
@@ -1467,6 +1475,7 @@ model Board {
 
   category BoardCategory @relation(fields: [categorySlug], references: [slug])
   user     User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  adminAsClan Clan?      @relation("BoardAdminAsClan", fields: [adminAsClanId], references: [id], onDelete: SetNull)
   comments Comment[]
 
   // 목록: 카테고리별 최신순 (커서 페이지네이션)
@@ -1493,6 +1502,8 @@ model Comment {
   anonPasswordHash String?
   discloseType     Int     @default(0)
   writerApp        Int     @default(0)
+  /// ★관리자가 고른 대리 클랜★ — `Board.adminAsClanId` 와 같은 뜻·같은 규칙
+  adminAsClanId String?
 
   likeCount    Int @default(0)
   dislikeCount Int @default(0)
@@ -1506,6 +1517,7 @@ model Comment {
   parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies Comment[] @relation("CommentReplies")
   user    User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  adminAsClan Clan? @relation("CommentAdminAsClan", fields: [adminAsClanId], references: [id], onDelete: SetNull)
 
   @@index([boardId, createdAt])
   @@index([parentId])

@@ -116,10 +116,28 @@ const BOARD_USER_SELECT = {
 
 type BoardUserRow = Prisma.UserGetPayload<{ select: typeof BOARD_USER_SELECT }>
 
+/** `Board.adminAsClan`/`Comment.adminAsClan` 이 고르는 칸 — `PLAYER_CLAN_FALLBACK_SELECT` 의 클랜 칸과 같은 모양 */
+const ADMIN_AS_CLAN_SELECT = {
+  select: {
+    id: true,
+    slug: true,
+    name: true,
+    markBgUrl: true,
+    markFrontUrl: true,
+    sourceClanId: true,
+    category: true,
+    tier: true,
+  },
+} as const
+
+type AdminAsClanRow = Prisma.ClanGetPayload<typeof ADMIN_AS_CLAN_SELECT>
+
 interface WriterSource {
   user?: BoardUserRow | null
   anonAlias: string | null
   discloseType: number
+  /** ★관리자 대리 클랜★ — 있으면 실제 소속 대신 이 클랜으로, 무조건 익명으로 보여준다 */
+  adminAsClan?: AdminAsClanRow | null
 }
 
 /**
@@ -136,6 +154,27 @@ interface WriterSource {
  */
 function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
   const user = source.user ?? null
+
+  /*
+   * ★관리자 대리 클랜★ (2026-09-25 사장님 「관리자는 클랜 아무거나 선택해서 마음대로
+   *   글 쓸 수 있게 (…) 베리타스 고르고 쓰면 베리타스로 나오고(익명) 관리자 아닌것처럼」)
+   *
+   *   값이 있으면 ★그 글 전체가 완전 익명★ 이다 — 누가 썼는지 알 길이 없어야 하므로
+   *   로그인 여부·disclose_type 과 무관하게 여기서 끊는다. 클랜만 그 클랜으로 보여준다.
+   *   서버가 `isAdmin` 을 확인한 뒤에만 이 칸이 채워지므로(아래 `createBoard`/`createComment`),
+   *   여기서는 값이 있다는 사실 자체를 믿어도 된다.
+   */
+  if (source.adminAsClan) {
+    return {
+      id: null,
+      nickname: anonLabel,
+      avatar_url: null,
+      role: 0,
+      anonymous: true,
+      clan: toClanSummaryOrNull(source.adminAsClan),
+      player: null,
+    }
+  }
 
   // 비로그인 글 — 원본 3rd.supply 방식의 자동 별칭을 그대로 둔다 (앞 버전 보존).
   // 계정이 없으므로 소속도 개인기록도 없다.
@@ -219,6 +258,7 @@ const BOARD_LIST_SELECT = {
   createdAt: true,
   lastEdited: true,
   user: { select: BOARD_USER_SELECT },
+  adminAsClan: ADMIN_AS_CLAN_SELECT,
 } as const
 
 const BOARD_DETAIL_SELECT = {
@@ -825,6 +865,23 @@ async function isAdmin(userId: string | null): Promise<boolean> {
   return user?.role === ADMIN_ROLE
 }
 
+/**
+ * ★관리자 대리 클랜★ 을 푼다 (2026-09-25 사장님 「관리자는 클랜 아무거나 선택해서
+ * 마음대로 글 쓸 수 있게」). `as_clan_slug` 가 와도 ★요청자가 진짜 관리자일 때만★ 적용한다 —
+ * 비관리자가 이 값을 보내면 ★조용히 무시한다★ (에러로 「이 기능이 있다」는 힌트를 주지 않는다).
+ * 관리자인데 슬러그가 못 찾으면 그건 실수일 가능성이 커서 에러로 알린다.
+ */
+async function resolveAdminAsClanId(
+  userId: string | null,
+  asClanSlug: string | null,
+): Promise<{ ok: true; clanId: string | null } | { ok: false; message: string }> {
+  if (!asClanSlug) return { ok: true, clanId: null }
+  if (!(await isAdmin(userId))) return { ok: true, clanId: null }
+  const clan = await prisma.clan.findUnique({ where: { slug: asClanSlug }, select: { id: true } })
+  if (!clan) return { ok: false, message: '그 클랜을 찾을 수 없습니다' }
+  return { ok: true, clanId: clan.id }
+}
+
 export async function createBoard(request: Request, body: unknown): Promise<WriteResult<Board>> {
   const parsed = BoardWriteInput.safeParse(body)
   if (!parsed.success) return invalid('입력값을 확인해주세요')
@@ -858,6 +915,9 @@ export async function createBoard(request: Request, body: unknown): Promise<Writ
    */
   if (!userId && !input.password) return invalid('비로그인 글은 삭제용 비밀번호가 필요합니다')
 
+  const adminAsClan = await resolveAdminAsClanId(userId, input.as_clan_slug)
+  if (!adminAsClan.ok) return invalid(adminAsClan.message)
+
   const key = await voterKey(request)
   if (!(await consumeWriteQuota(`board:write:${key}`, BOARD_WRITE_INTERVAL))) {
     return { ok: false, status: 429, message: '잠시 후 다시 시도해주세요' }
@@ -881,6 +941,7 @@ export async function createBoard(request: Request, body: unknown): Promise<Writ
       writerApp: 0,
       hasImage: detectImage(content),
       notice: category.notice,
+      adminAsClanId: adminAsClan.clanId,
     },
     select: { id: true },
   })
@@ -1037,6 +1098,7 @@ const COMMENT_SELECT = {
   createdAt: true,
   lastEdited: true,
   user: { select: BOARD_USER_SELECT },
+  adminAsClan: ADMIN_AS_CLAN_SELECT,
 } as const
 
 type CommentRow = Prisma.CommentGetPayload<{ select: typeof COMMENT_SELECT }>
@@ -1229,6 +1291,9 @@ export async function createComment(
   const userId = await currentUserId(request)
   if (!userId && !input.password) return invalid('비로그인 댓글은 삭제용 비밀번호가 필요합니다')
 
+  const adminAsClan = await resolveAdminAsClanId(userId, input.as_clan_slug)
+  if (!adminAsClan.ok) return invalid(adminAsClan.message)
+
   const rateKey = await voterKey(request)
   if (!(await consumeWriteQuota(`comment:write:${rateKey}`, COMMENT_WRITE_INTERVAL))) {
     return { ok: false, status: 429, message: '잠시 후 다시 시도해주세요' }
@@ -1248,6 +1313,7 @@ export async function createComment(
         anonPasswordHash: userId || !input.password ? null : hashSync(input.password, 10),
         discloseType: input.disclose_type,
         writerApp: 0,
+        adminAsClanId: adminAsClan.clanId,
       },
       select: { id: true },
     })

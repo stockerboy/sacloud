@@ -1,7 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { htmlToPlainText, plainTextToHtml } from '@sacloud/ui'
+import { apiGet } from '@/lib/api'
+import { useApiReady } from '@/app/providers'
 
 /**
  * 글 작성 / 수정 폼.
@@ -27,6 +30,7 @@ export function PostForm({
   submitting,
   error,
   submitLabel,
+  viewerIsAdmin = false,
   onSubmit,
 }: {
   initialTitle?: string
@@ -45,11 +49,18 @@ export function PostForm({
   submitting?: boolean
   error?: string | null
   submitLabel: string
+  /**
+   * ★관리자 대리 클랜★ (2026-09-25 사장님 「관리자는 클랜 아무거나 선택해서 마음대로
+   * 글 쓸 수 있게 (…) 베리타스 고르고 쓰면 베리타스로 나오고(익명) 관리자 아닌것처럼」).
+   * true 면 클랜 고르는 칸을 보여준다. 실제 권한 검사는 서버가 한다 — 여기는 단추만 보일지 정한다.
+   */
+  viewerIsAdmin?: boolean
   onSubmit: (input: {
     title: string
     content: string
     disclose_type: number
     password: string | null
+    as_clan_slug: string | null
   }) => void
 }) {
   const [title, setTitle] = useState(initialTitle)
@@ -70,6 +81,8 @@ export function PostForm({
    */
   const [anonymous, setAnonymous] = useState(initialAnonymous ?? true)
   const [password, setPassword] = useState('')
+  /** ★관리자 대리 클랜★ — 고른 클랜의 slug. 안 고르면 null(평소처럼 관리자 본인 이름으로) */
+  const [asClan, setAsClan] = useState<{ slug: string; name: string } | null>(null)
 
   const canSubmit =
     title.trim().length > 0 &&
@@ -92,6 +105,12 @@ export function PostForm({
         placeholder="내용을 입력하세요."
         className={`mt-3 w-full leading-7 ${FIELD}`}
       />
+
+      {viewerIsAdmin ? (
+        <div className="mt-3">
+          <AdminAsClanPicker picked={asClan} onPick={setAsClan} />
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-4">
         <label className="flex cursor-pointer select-none items-center gap-1 text-sm text-meta">
@@ -126,6 +145,7 @@ export function PostForm({
               content: plainTextToHtml(content.trim()),
               disclose_type: anonymous ? 1 : 0,
               password: requirePassword ? password : null,
+              as_clan_slug: viewerIsAdmin ? (asClan?.slug ?? null) : null,
             })
           }
           className="inline-flex h-10 w-24 items-center justify-center rounded-[var(--radius)] border border-accent text-sm text-accent transition-colors duration-100 hover:bg-card-2 disabled:border-line disabled:text-faint"
@@ -133,6 +153,99 @@ export function PostForm({
           {submitting ? '저장중' : submitLabel}
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * ★관리자 대리 클랜 고르기★ (2026-09-25) — 이미 있는 통로(`clansSearch`)로 찾아 고른다.
+ * 고르면 그 클랜 소속 익명 글처럼 나가고, 안 고르면 평소처럼(관리자 본인 이름) 나간다.
+ * `/apply` 의 `ClanSearch` 와 같은 패턴 — 새 검색 API 를 만들지 않는다.
+ */
+function AdminAsClanPicker({
+  picked,
+  onPick,
+}: {
+  picked: { slug: string; name: string } | null
+  onPick: (c: { slug: string; name: string } | null) => void
+}) {
+  const ready = useApiReady()
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const boxRef = useRef<HTMLDivElement>(null)
+
+  const term = q.trim()
+  const hits = useQuery({
+    queryKey: ['clans', 'search', term],
+    queryFn: () => apiGet('clansSearch', { params: { q: term } }),
+    enabled: ready && term.length >= 2 && picked === null,
+  })
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  if (picked !== null) {
+    return (
+      <div className="flex items-center gap-2 rounded-[var(--radius)] border border-accent bg-card-2 px-3 py-2 text-sm">
+        <span className="text-faint">대리 클랜</span>
+        <span className="font-bold text-accent">{picked.name}</span>
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={() => {
+            onPick(null)
+            setQ('')
+          }}
+          className="text-xs text-meta underline"
+        >
+          해제
+        </button>
+      </div>
+    )
+  }
+
+  const rows = hits.data?.data ?? []
+
+  return (
+    <div ref={boxRef} className="relative">
+      <input
+        value={q}
+        onChange={(event) => {
+          setQ(event.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="관리자 대리 클랜 — 이 클랜 소속 익명으로 쓰기 (두 글자부터 검색)"
+        className={`h-10 w-full ${FIELD}`}
+      />
+      {!open || term.length < 2 ? null : (
+        <div className="absolute left-0 right-0 top-11 z-10 max-h-64 overflow-y-auto rounded-[var(--radius)] border border-line bg-card">
+          {hits.isLoading ? (
+            <div className="px-3 py-2 text-sm text-faint">찾는 중…</div>
+          ) : rows.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-faint">일치하는 클랜이 없습니다.</div>
+          ) : (
+            rows.map((c) => (
+              <button
+                key={c.slug}
+                type="button"
+                onClick={() => {
+                  onPick({ slug: c.slug, name: c.name })
+                  setOpen(false)
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text hover:bg-card-2"
+              >
+                {c.name}
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
 }

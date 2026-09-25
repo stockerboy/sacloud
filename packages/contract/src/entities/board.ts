@@ -115,6 +115,12 @@ export const BoardWriteInput = z.object({
   /** 비로그인 작성 시 삭제용 비밀번호 */
   password: z.string().min(1).nullable(),
   captcha_token: z.string().min(1),
+  /**
+   * ★관리자 대리 클랜★ (2026-09-25 사장님 「관리자는 클랜 아무거나 선택해서 마음대로
+   * 글 쓸 수 있게 (…) 베리타스 고르고 쓰면 베리타스로 나오고(익명) 관리자 아닌것처럼」).
+   * 값을 보내도 ★서버가 관리자인지 다시 확인한 뒤에만★ 적용한다 — 여기 값은 그냥 요청일 뿐이다.
+   */
+  as_clan_slug: Slug.nullable().default(null),
 })
 export type BoardWriteInput = z.infer<typeof BoardWriteInput>
 
@@ -131,6 +137,8 @@ export const CommentWriteInput = z.object({
   content: z.string().min(1),
   disclose_type: DiscloseType,
   password: z.string().min(1).nullable(),
+  /** ★관리자 대리 클랜★ — `BoardWriteInput.as_clan_slug` 와 같은 뜻·같은 규칙 */
+  as_clan_slug: Slug.nullable().default(null),
 })
 export type CommentWriteInput = z.infer<typeof CommentWriteInput>
 
