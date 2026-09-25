@@ -232,6 +232,15 @@ interface BackupLine {
   at: string
   pair: MergePair
   supNoteBefore: string | null
+  /**
+   * ★SUP 껍데기의 병합 전 소속★ (2026-09-25 비판검수 지적 · 반영).
+   *
+   * `applyMergePlan` 이 껍데기를 만들며 `clanId: null` 로 비우는데, 되돌리기가 이 값을
+   * 다시 안 채우면 되돌린 뒤에도 소속이 영구히 빈 채로 남는다 — SUP 는 대개 죽은 미러
+   * 선수라 `clanAffiliation` 이 다시 방문할 근거가 없다(옛 배틀로그가 없다). 옛 백업 줄
+   * (2026-09-24 이전)에는 이 칸이 없으니 읽을 때 `?? undefined` 로 받아 복원을 건너뛴다.
+   */
+  supClanIdBefore?: string | null
   ids: {
     stats: string[]
     /** 옮긴 육각의 matchId (MatchPlayerHex 는 id 가 없다) */
@@ -260,8 +269,8 @@ interface BackupLine {
 
 /** ★한 쌍을 실제로 옮긴다★ — 백업 한 줄을 먼저 쓰고, 한 트랜잭션으로 옮긴다. `runPlayerMergeSplit` 과 `accountSplitMerge` 가 같이 쓴다 */
 export async function applyMergePlan(pair: MergePair, ids: BackupLine['ids'], backupPath: string): Promise<void> {
-  const sup = await prisma.player.findUnique({ where: { id: pair.supId }, select: { note: true } })
-  const line: BackupLine = { at: new Date().toISOString(), pair, supNoteBefore: sup?.note ?? null, ids }
+  const sup = await prisma.player.findUnique({ where: { id: pair.supId }, select: { note: true, clanId: true } })
+  const line: BackupLine = { at: new Date().toISOString(), pair, supNoteBefore: sup?.note ?? null, supClanIdBefore: sup?.clanId ?? null, ids }
   /* ★되돌릴 파일을 먼저★ — 쓰다 죽어도 무엇을 건드리려 했는지 남는다 */
   mkdirSync(dirname(backupPath), { recursive: true })
   appendFileSync(backupPath, JSON.stringify(line) + '\n')
@@ -340,8 +349,16 @@ export async function revertPlayerMergeSplit(path: string): Promise<{ reverted: 
       if (ids.round?.length) await tx.playerRoundProfile.updateMany({ where: { id: { in: ids.round } }, data: { playerId: pair.supId } })
       if (ids.playstyle?.length) await tx.playerPlaystyleProfile.updateMany({ where: { id: { in: ids.playstyle } }, data: { playerId: pair.supId } })
       if (ids.intro?.length) await tx.introChallenge.updateMany({ where: { id: { in: ids.intro } }, data: { playerId: pair.supId } })
-      /* clanId 는 되돌리지 않는다 — 옛 소속은 이미 `clanAffiliation` 이 다시 정한다 */
-      await tx.player.update({ where: { id: pair.supId }, data: { note: line.supNoteBefore } })
+      /*
+       * ★clanId 도 되돌린다★ (2026-09-25 비판검수 지적 · 반영) — 이전엔 「옛 소속은
+       *   `clanAffiliation` 이 다시 정한다」고 넘겼는데, SUP 는 대개 죽은 미러 선수라
+       *   최근 배틀로그가 없어 그 잡이 다시 방문할 근거가 없다. 되돌려도 소속이 영구히
+       *   빈 채로 남는 반쪽짜리 롤백이었다. 옛 백업 줄(칸이 없는 것)은 `undefined` 라 안 건드린다.
+       */
+      await tx.player.update({
+        where: { id: pair.supId },
+        data: { note: line.supNoteBefore, ...(line.supClanIdBefore !== undefined ? { clanId: line.supClanIdBefore } : {}) },
+      })
     })
     reverted += 1
     log(`되돌림 ${pair.name} — ${pair.brkId} → ${pair.supId}`)
