@@ -77,7 +77,7 @@ function LayoutV3({ children, params }: { children: React.ReactNode; params: Pro
             showsKd={leagueScreen(leagueSlug).playerColumns.kd}
             data={data}
             infoHref={`/player/${playerId}`}
-            seasonLabel={`SEASON ${(season ?? 'CLOUD 0').toUpperCase()}`}
+            seasonLabel={season ?? '시즌 0'}
             mainWeapon={data.hex?.weapon ?? mainWeaponFromStats(data.weapon_stats)}
             report={report}
             onRenew={onRenew}
