@@ -49,10 +49,23 @@ export interface HexOverlay {
 }
 
 /**
- * 겹쳐 그리는 선 색 — 주인은 보라 그라데이션, 상대는 ★청록 한 색★ 이라 헷갈리지 않는다.
- * ⚠ 2026-09-22 흰 카드용으로 진하게. 옛 값(다크 카드용 옅은 하늘빛) '#8ff0ff' — 지우지 않는다 (1-4)
+ * ★2026-09-25 — 「경기육각과 같은 디자인으로」★ (사장님).
+ *
+ *   `MatchHexagonV3`(경기육각)는 2026-09-23 에 흰 카드 시안을 버리고 원래 다크
+ *   팔레트로 돌아갔는데(그 파일의 `TWO_TONE` 스위치), 이 파일(개인육각)은 2026-09-22
+ *   흰 카드 값에 그대로 남아 있었다 — 두 육각이 어두운 카드 위에서 서로 다르게 보였다
+ *   (눈금이 옅은 회색이라 흐리게 죽어 보임). 여기도 같은 스위치로 다크가 기본이다.
+ *   흰 카드 값은 지우지 않고 `TWO_TONE` 아래 남긴다 (`CLAUDE.md` 1-4).
  */
-const OVERLAY_INK = '#0891b2'
+const TWO_TONE = false
+/**
+ * 겹쳐 그리는 선 색 — 주인은 보라 그라데이션, 상대는 ★청록 한 색★ 이라 헷갈리지 않는다.
+ */
+const OVERLAY_INK = TWO_TONE ? '#0891b2' : '#8ff0ff'
+const GRID_MAJOR = TWO_TONE ? '#c4cbdd' : '#4a5c88'
+const GRID_MINOR = TWO_TONE ? '#e3e6ee' : '#2c3a5c'
+const RING_NUMBER_INK = TWO_TONE ? V3.textFaint : '#c7d0e6'
+const LABEL_STRONG_INK = TWO_TONE ? V3.textStrong : '#e8eeff'
 
 export function Hexagon({
   axes,
@@ -123,18 +136,17 @@ export function Hexagon({
           </feMerge>
         </filter>
       </defs>
-      {/* ⚠ 2026-09-22 흰 카드용 옅은 회색 눈금. 옛 값(다크): major #4a5c88 · minor/spoke #2c3a5c — 1-4 */}
       {RINGS.map((v) => (
         <polygon
           key={v}
           points={Array.from({ length: 6 }, (_, i) => hexPoint(i, v / 100).join(',')).join(' ')}
           fill="none"
-          stroke={v % 50 === 0 ? '#c4cbdd' : '#e3e6ee'}
+          stroke={v % 50 === 0 ? GRID_MAJOR : GRID_MINOR}
           strokeWidth={v % 50 === 0 ? 1.2 : 0.9}
         />
       ))}
       {HEX_SPOKES.map(([x, y], i) => (
-        <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke="#e3e6ee" strokeWidth={0.9} />
+        <line key={i} x1={HEX.cx} y1={HEX.cy} x2={x} y2={y} stroke={GRID_MINOR} strokeWidth={0.9} />
       ))}
       {/* 채움은 테두리가 한 바퀴 돈 뒤에 스며든다 */}
       <polygon points={area} fill={`url(#${id}Fill)`} stroke="none" opacity={Math.max(0, (grow - 0.45) / 0.55)} />
@@ -153,7 +165,7 @@ export function Hexagon({
       {RINGS.filter((v) => v % 20 === 0).map((v) => {
         const [x, y] = hexPoint(0, v / 100)
         return (
-          <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="700" fill={V3.textFaint} textAnchor="start">{/* ⚠ 2026-09-22 흰 카드용. 옛 값(다크) #c7d0e6 — 1-4 */}
+          <text key={v} x={x + 5} y={y + 3} fontSize="7.5" fontWeight="700" fill={RING_NUMBER_INK} textAnchor="start">
             {v}
           </text>
         )
@@ -196,8 +208,7 @@ export function Hexagon({
         const drop = two ? 12 : 0
         return (
           <g key={`${a.label}-${i}`}>
-            {/* ⚠ 2026-09-22 흰 카드용. strong 옛 값(다크) #e8eeff — 1-4 */}
-            <text x={x} y={y} textAnchor={anchor} fontSize={a.strong ? 13 : 12} fontWeight="700" fill={a.strong ? V3.textStrong : V3.textMuted}>
+            <text x={x} y={y} textAnchor={anchor} fontSize={a.strong ? 13 : 12} fontWeight="700" fill={a.strong ? LABEL_STRONG_INK : V3.textMuted}>
               {two ? (
                 <>
                   {/* 첫 줄은 한 글자만큼 줄여 68px 안에 들인다 */}

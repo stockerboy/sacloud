@@ -40,11 +40,23 @@ export function EtaWriter({ writer }: { writer: BoardWriter }) {
   const clan = writer.clan ?? null
   const clanName = affiliationName(clan?.name)
   const who = writer.anonymous || !writer.player ? '익명' : writer.nickname
+  /* ★클랜명은 눌러서 클랜 페이지로★ (2026-09-25 사장님 「모든 클랜명 누르면 바로 클랜페이지로」) */
+  const mark = <ClanMark clan={clan} size="xxs" alt="" />
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
-      <ClanMark clan={clan} size="xxs" alt="" />
+      {clan ? (
+        <Link prefetch={false} href={`/clan/${clan.slug}`} className="shrink-0 hover:opacity-80" onClick={(e) => e.stopPropagation()}>
+          {mark}
+        </Link>
+      ) : (
+        mark
+      )}
       <span className={`shrink-0 ${writer.anonymous ? 'text-[#a4b0c8]' : 'text-[#e8eaf2]'}`}>{who}</span>
-      {clanName ? <span className="min-w-0 truncate text-[#8f95af]">· {clanName}</span> : null}
+      {clanName ? (
+        <Link prefetch={false} href={clan ? `/clan/${clan.slug}` : '#'} className="min-w-0 truncate text-[#8f95af] hover:text-[#e8eaf2]" onClick={(e) => e.stopPropagation()}>
+          · {clanName}
+        </Link>
+      ) : null}
     </span>
   )
 }

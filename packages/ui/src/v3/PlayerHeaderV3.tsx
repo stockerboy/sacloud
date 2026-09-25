@@ -425,6 +425,15 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
   /* ★플레이구간★ — 가장 많이 뛴 구간이 기본. 누르면 그것이 우선 */
   const [pickedTier, setPickedTier] = useState<number | null>(null)
   const [open, setOpen] = useState(false)
+  /*
+   * ★폰의 킬뎃 줄도 눌러서 바꾼다★ (2026-09-25 사장님 「개인페이지에서도 누르면서
+   * 바꿔볼 수 있게 해줘」). PC 는 `KdCell`(위 91행)이 이미 하고 있었는데 ★폰 전용
+   * 상세정보 줄(아래 `.v3-phead-info-phone`)은 처음부터 고정 통합값만 보여 주는
+   * 다른 부품(`PhoneInfoRow`)이었다★ — 그래서 폰에서는 눌러도 아무 일도 안 났다.
+   * 값은 전 구간(시즌 전체) 통합 — PC 의 `KdCell` 은 「구간」(tier)을 보지만 이 줄은
+   * 원래도 구간을 안 보고 시즌 전체를 보여 주던 자리라 그 성격은 그대로 둔다.
+   */
+  const [phoneKdWeapon, setPhoneKdWeapon] = useState<'all' | 1 | 0>('all')
   const mostPlayed = useMemo(() => {
     /* ★통합이 있으면 그것이 기본★ — 사람이 먼저 보는 숫자는 「내 전체 기록」 이다 */
     const all = rows.find((r) => r.tier === ALL_TIER)
@@ -1018,11 +1027,34 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
         <PhoneInfoRow label="승률" sub={`${fmt(data.win)}승 ${fmt(data.lose)}패`}>
           <b style={{ fontSize: 21, fontWeight: 700, color: supplyRateColor(data.win_rate), whiteSpace: 'nowrap' }}>{pct1(data.win_rate)}</b>
         </PhoneInfoRow>
-        {showsKd && data.kill !== null && data.death !== null ? (
-          <PhoneInfoRow label="킬뎃" sub={`${fmt(data.kill)}킬 ${fmt(data.death)}데스`}>
-            <b style={{ fontSize: 21, fontWeight: 700, color: supplyRateColor(data.kd_rate), whiteSpace: 'nowrap' }}>{pct1(data.kd_rate)}</b>
-          </PhoneInfoRow>
-        ) : null}
+        {showsKd && data.kill !== null && data.death !== null
+          ? (() => {
+              const kill = phoneKdWeapon === 'all' ? data.kill : phoneKdWeapon === 1 ? data.sniper_kill : data.rifle_kill
+              const death = phoneKdWeapon === 'all' ? data.death : phoneKdWeapon === 1 ? data.sniper_death : data.rifle_death
+              const kd = phoneKdWeapon === 'all' ? data.kd_rate : phoneKdWeapon === 1 ? (data.sniper_kd_rate ?? null) : (data.rifle_kd_rate ?? null)
+              const label = phoneKdWeapon === 'all' ? '통합킬뎃' : phoneKdWeapon === 1 ? '스나킬뎃' : '라플킬뎃'
+              return (
+                <PhoneInfoRow
+                  label={
+                    <button
+                      type="button"
+                      onClick={() => setPhoneKdWeapon((w) => (w === 'all' ? 1 : w === 1 ? 0 : 'all'))}
+                      style={{ border: 0, background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+                    >
+                      {label} <span style={{ fontSize: 9 }}>▾</span>
+                    </button>
+                  }
+                  sub={kill === null || death === null ? undefined : `${fmt(kill)}킬 ${fmt(death)}데스`}
+                >
+                  {kd === null ? (
+                    <span style={{ fontSize: 15, color: V3.textGhost, whiteSpace: 'nowrap' }}>-</span>
+                  ) : (
+                    <b style={{ fontSize: 21, fontWeight: 700, color: supplyRateColor(kd), whiteSpace: 'nowrap' }}>{pct1(kd)}</b>
+                  )}
+                </PhoneInfoRow>
+              )
+            })()
+          : null}
         <PhoneInfoRow label="판킬">
           <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, whiteSpace: 'nowrap' }}>
             <b style={{ fontSize: 21, fontWeight: 700, color: V3.text }}>{data.kill_per_match.toFixed(1)}</b>
@@ -1071,7 +1103,7 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
 }
 
 /** 폰 상세정보 한 줄 — 서플라이 오른쪽 카드 줄과 같은 모양(라벨 · 보조 · 큰 값). PC 의 `InfoRow`(PlayerDetailV3)와 같은 뼈대다 */
-function PhoneInfoRow({ label, sub, last, children }: { label: string; sub?: string; last?: boolean; children: ReactNode }) {
+function PhoneInfoRow({ label, sub, last, children }: { label: ReactNode; sub?: string; last?: boolean; children: ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: last ? 'none' : `1px solid ${V3.rowDivider}`, minHeight: 50 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: SUPPLY_INFO.white, whiteSpace: 'nowrap', flex: 'none' }}>{label}</span>

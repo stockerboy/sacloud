@@ -87,7 +87,10 @@ export const APPLICATION_KINDS = [
     to: 'sanply',
     label: '열산리그 신규등록',
     benefit: '등록책임비용 — 10/1까지 전원 무료',
-    hidden: true,
+    /* ⚠ 2026-09-25 — 다시 보인다 (사장님 「열산고용클랜 등록신청은 없어」 · 「열산고용 등록하기
+       버튼도 만들어줘」). 2026-09-24 에 감췄던 것을 되돌린다 — 지우지 않고 숨겨 뒀던 덕에
+       한 줄만 고치면 된다 (`CLAUDE.md` 1-4). 리그홈 단추(`LeagueHomeScreen.tsx`)도 같은 kind 로 간다 */
+    hidden: false,
   },
   {
     key: 'ipl-new',

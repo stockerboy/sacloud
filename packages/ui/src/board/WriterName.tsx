@@ -74,8 +74,10 @@ export function WriterName({
    */
   const tone = writer.anonymous ? 'text-meta' : 'text-text-strong'
 
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1">
+  /* ★클랜명은 눌러서 클랜 페이지로★ (2026-09-25 사장님 「모든 클랜명 누르면 바로 클랜페이지로」).
+     익명 글이어도 클랜은 원래도 보이는 정보다(위 주석) — 눌러서 더 보인다고 신원이 새지 않는다 */
+  const markAndName = (
+    <>
       {/* ★마크는 언제나★ (사장님 2026-09-24 「글마다 어느 클랜에서 쓴 건지 마크가 꼭 들어가야 해」) — 소속 모르면 모름 마크 */}
       <ClanMark clan={clan} size="xxs" alt="" />
       {clanName ? (
@@ -83,6 +85,18 @@ export function WriterName({
           {clanName}
         </span>
       ) : null}
+    </>
+  )
+
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      {clan ? (
+        <Link prefetch={false} href={`/clan/${clan.slug}`} className="inline-flex shrink-0 items-center gap-1 hover:opacity-80" onClick={(e) => e.stopPropagation()}>
+          {markAndName}
+        </Link>
+      ) : (
+        markAndName
+      )}
       {!writer.anonymous && writer.player ? (
         /* 색은 안쪽 `span` 이 가진다 — `a { color: inherit }` 가 유틸리티를 누른다.
            가리켰을 때 진홍이 켜지는 것은 전역 `a:hover` 가 아니라 이 `group-hover` 다 */
