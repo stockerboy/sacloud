@@ -421,8 +421,12 @@ export const HOT_MIN_SCORE_V1 = 3
  * 옛 기준(`HOT_MIN_SCORE` 3점)은 ★추천 하나면 올라왔다.★ 그래서 「나 송뚱인데」
  * 같은 글이 메인에 걸렸다. ★옛 값은 위에 그대로 남겼다★ (`CLAUDE.md` 1-4).
  */
-const HOT_MIN_LIKES = 10
-const HOT_MIN_COMMENTS = 10
+/**
+ * ⚠ ★2026-09-25 정정★ — 사장님이 문턱을 낮췄다 (「인기글 기준은 좋아요 5개 이상 댓글 5개 이상」).
+ * 위 10/10(2026-09-21)은 Hot이 계속 비어 보였다. 값만 바꾼다 — OR 로직은 그대로다.
+ */
+const HOT_MIN_LIKES = 5
+const HOT_MIN_COMMENTS = 5
 
 /** 최신순 정렬키. Mock의 숫자 id 내림차순 대신 작성시각을 쓴다 (상단 주석 1번). */
 const RECENT_SORT = '(extract(epoch from "Board"."createdAt"))::double precision'
@@ -1028,7 +1032,22 @@ async function applyVote(
   targetId: string,
   key: string,
   type: VoteType,
+  unlimited: boolean = false,
 ): Promise<void> {
+  /*
+   * ★관리자는 좋아요를 무제한으로 누를 수 있다★ (2026-09-25 사장님 「관리자는 좋아요 제한 없이
+   * 누를 수 있게 해줘」). 평소엔 위 주석대로 voterKey 하나당 1표만 세지만, 관리자가 추천을
+   * 누르면 그 유일함(`(targetType, targetId, voterKey)` 유니크)을 건너뛰고 누를 때마다
+   * 그냥 집계만 +1 한다. 자기 투표 기록(`Vote` 행)은 남기지 않는다 — 그래서 admin 화면의
+   * 「내가 눌렀는지」 표시는 여기선 뜻이 없다. 비추천/취소는 이 지름길을 안 탄다(1이어야만).
+   */
+  if (unlimited && type === 1) {
+    const data = { likeCount: { increment: 1 } }
+    if (targetType === 'board') await prisma.board.update({ where: { id: targetId }, data })
+    else await prisma.comment.update({ where: { id: targetId }, data })
+    return
+  }
+
   await prisma.$transaction(async (tx) => {
     const where = { targetType_targetId_voterKey: { targetType, targetId, voterKey: key } }
     const existing = await tx.vote.findUnique({ where, select: { type: true } })
@@ -1071,8 +1090,8 @@ export async function voteBoard(
   const row = await findBoardRow(boardId)
   if (!row) return missing('글을 찾을 수 없습니다')
 
-  const key = await voterKey(request)
-  await applyVote('board', boardId, key, parsed.data.type)
+  const [userId, key] = await Promise.all([currentUserId(request), voterKey(request)])
+  await applyVote('board', boardId, key, parsed.data.type, await isAdmin(userId))
 
   const board = await boardResponse(boardId, request)
   return board ? { ok: true, value: board } : missing('글을 찾을 수 없습니다')
@@ -1397,8 +1416,8 @@ export async function voteComment(
   const row = await prisma.comment.findUnique({ where: { id: commentId }, select: { id: true } })
   if (!row) return missing('댓글을 찾을 수 없습니다')
 
-  const key = await voterKey(request)
-  await applyVote('comment', commentId, key, parsed.data.type)
+  const [userId, key] = await Promise.all([currentUserId(request), voterKey(request)])
+  await applyVote('comment', commentId, key, parsed.data.type, await isAdmin(userId))
 
   const comment = await commentResponse(commentId, request)
   return comment ? { ok: true, value: comment } : missing('댓글을 찾을 수 없습니다')

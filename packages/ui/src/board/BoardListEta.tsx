@@ -61,21 +61,19 @@ export function EtaWriter({ writer }: { writer: BoardWriter }) {
   )
 }
 
+/* ★0개도 뜬다★ (2026-09-25 사장님 「좋아요 몇개인지 댓글 몇개인지 안떠 0개여도 떠야하는데」)
+   옛 판은 0이면 통째로 숨겼다 — 그래서 0인지 안 온 것인지 구별이 안 됐다. 이제는 항상 그린다. */
 function Counts({ item }: { item: BoardListItem }) {
   return (
     <span className="inline-flex shrink-0 items-center gap-2.5 tabular-nums">
-      {item.like_count > 0 ? (
-        <span className="inline-flex items-center gap-1 text-[#ff6b6b]">
-          <ThumbGlyph />
-          {formatCount(item.like_count)}
-        </span>
-      ) : null}
-      {item.comment_count > 0 ? (
-        <span className="inline-flex items-center gap-1 text-[#38bdf8]">
-          <BubbleGlyph />
-          {formatCount(item.comment_count)}
-        </span>
-      ) : null}
+      <span className="inline-flex items-center gap-1 text-[#ff6b6b]">
+        <ThumbGlyph />
+        {formatCount(item.like_count)}
+      </span>
+      <span className="inline-flex items-center gap-1 text-[#38bdf8]">
+        <BubbleGlyph />
+        {formatCount(item.comment_count)}
+      </span>
     </span>
   )
 }
@@ -112,7 +110,7 @@ export function EtaRow({ item, basePath }: { item: BoardListItem; basePath?: str
         </div>
         <div className="mt-2 flex min-w-0 items-center gap-2 text-[12px] text-[#8f95af] max-md:mt-1.5 max-md:text-[11px]">
           <Counts item={item} />
-          {item.like_count > 0 || item.comment_count > 0 ? <span aria-hidden className="text-[#33405f]">|</span> : null}
+          <span aria-hidden className="text-[#33405f]">|</span>
           <span className="shrink-0 tabular-nums"><RelativeTime value={item.created_at} /></span>
           <span aria-hidden className="text-[#33405f]">|</span>
           <span className="min-w-0 truncate"><EtaWriter writer={item.writer} /></span>

@@ -5,6 +5,7 @@ import { CommentForm, CommentList, PostView, Skeleton, POST_ETA } from '@sacloud
 import { apiGet } from '@/lib/api'
 import { apiSend } from '@/lib/apiSend'
 import { useApiReady } from '@/app/providers'
+import { AdminAsClanPicker } from '@/components/AdminAsClanPicker'
 
 /**
  * 글 상세 **화면** — 본문 + 추천/비추천 + 댓글 목록 + 댓글 작성 (지시 #14-2 로 라우트에서 분리).
@@ -77,6 +78,7 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
       content: string
       password: string | null
       anonymous: boolean
+      as_clan_slug: string | null
     }) =>
       apiSend('commentCreate', {
         body: {
@@ -85,6 +87,7 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
           content: input.content,
           disclose_type: input.anonymous ? 1 : 0,
           password: input.password,
+          as_clan_slug: input.as_clan_slug,
         },
       }),
     onSuccess: invalidate,
@@ -117,7 +120,7 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
              * 댓글 달았는데 베리타스로 달려」). 답글 칸에는 체크가 없어서(2026-09-20) 여기서
              * 값을 정한다 — 관리자가 아니면 옛 규칙 그대로 익명이다.
              */
-            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: !viewerIsAdmin })
+            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: !viewerIsAdmin, as_clan_slug: null })
           }
         />
         <CommentForm
@@ -132,8 +135,11 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
           showAnonymousToggle
           /* ★관리자는 기본이 실명(SACLOUD)이다★ (2026-09-25) — 체크를 켜면 그때는 관리자도 익명이 된다 */
           defaultAnonymous={!viewerIsAdmin}
-          onSubmit={(content, password, anonymous) =>
-            addComment.mutate({ parent_id: null, content, password, anonymous })
+          /* ★관리자 대리 클랜★ (2026-09-25 사장님 「댓글 달때도 다른 클랜인척하면서 클랜 바꿔서 달 수 있게」) */
+          viewerIsAdmin={viewerIsAdmin}
+          renderAsClanPicker={(picked, onPick) => <AdminAsClanPicker picked={picked} onPick={onPick} />}
+          onSubmit={(content, password, anonymous, asClanSlug) =>
+            addComment.mutate({ parent_id: null, content, password, anonymous, as_clan_slug: asClanSlug })
           }
         />
       </div>

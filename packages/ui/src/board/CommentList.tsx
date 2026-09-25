@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ThumbIcon } from './ThumbIcon'
 import type { Comment, CommentReply } from '@sacloud/contract'
 import { RelativeTime } from '../common/RelativeTime'
@@ -249,19 +249,36 @@ export function CommentForm({
   requirePassword,
   showAnonymousToggle = false,
   defaultAnonymous = true,
+  viewerIsAdmin = false,
+  renderAsClanPicker,
 }: {
   /** `anonymous` 가 false 면 닉네임과 소속이 모두 공개된다 (SITE_SPEC_V2 2절) */
-  onSubmit: (content: string, password: string | null, anonymous: boolean) => void
+  onSubmit: (content: string, password: string | null, anonymous: boolean, asClanSlug: string | null) => void
   /** 비로그인 작성이면 삭제용 비밀번호를 받는다 */
   requirePassword: boolean
   /** 익명 체크박스를 보일지 */
   showAnonymousToggle?: boolean
   /** 체크박스 초기값. 에브리타임처럼 익명이 기본이다 */
   defaultAnonymous?: boolean
+  /**
+   * ★관리자 대리 클랜★ (2026-09-25 사장님 「댓글 달때도 다른 클랜인척하면서 클랜 바꿔서
+   * 달 수 있게」). true 면 대리 클랜 고르는 칸을 보여준다. 실제 권한 검사는 서버가 한다.
+   */
+  viewerIsAdmin?: boolean
+  /**
+   * ★고르는 UI 자체는 호출부(`apps/web`)가 그린다★ — 이 패키지(`@sacloud/ui`)는 API 를
+   * 모르는 순수 부품이라 클랜 검색(`clansSearch`)을 직접 부를 수 없다. 고른/고름 상태만
+   * 여기서 들고, 그리는 것은 `AdminAsClanPicker` (apps/web) 에 맡긴다.
+   */
+  renderAsClanPicker?: (
+    picked: { slug: string; name: string } | null,
+    onPick: (c: { slug: string; name: string } | null) => void,
+  ) => ReactNode
 }) {
   const [content, setContent] = useState('')
   const [password, setPassword] = useState('')
   const [anonymous, setAnonymous] = useState(defaultAnonymous)
+  const [asClan, setAsClan] = useState<{ slug: string; name: string } | null>(null)
 
   const canSubmit = content.trim().length > 0 && (!requirePassword || password.length > 0)
 
@@ -281,6 +298,9 @@ export function CommentForm({
         style={POST_ETA ? FIELD_ETA_STYLE : undefined}
         placeholder="댓글을 입력하세요."
       />
+      {viewerIsAdmin && renderAsClanPicker ? (
+        <div className="mt-3">{renderAsClanPicker(asClan, setAsClan)}</div>
+      ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {showAnonymousToggle ? (
           <label
@@ -310,7 +330,7 @@ export function CommentForm({
           type="button"
           disabled={!canSubmit}
           onClick={() => {
-            onSubmit(content.trim(), requirePassword ? password : null, anonymous)
+            onSubmit(content.trim(), requirePassword ? password : null, anonymous, viewerIsAdmin ? asClan?.slug ?? null : null)
             setContent('')
             setPassword('')
           }}
