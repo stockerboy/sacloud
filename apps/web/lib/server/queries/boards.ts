@@ -842,22 +842,21 @@ export async function createBoard(request: Request, body: unknown): Promise<Writ
   if (category.notice && !(await isAdmin(userId))) return denied('공지는 운영자만 작성할 수 있습니다')
 
   /*
-   * ★★로그인해야 쓴다★★ (2026-09-20 · 게시판을 열면서)
+   * ★2026-09-25 — 비로그인 글쓰기를 다시 연다★ (사장님 「게시판 글 로그인 안해도
+   *   쓸 수 있게 해줘」 → 「익명으로」).
    *
-   *   게시판을 닫아 둔 까닭이 바로 이것이었다 —
-   *   ★비로그인도 비밀번호만 있으면 글이 써졌다.★ 주소를 아는 사람은
-   *   계속 쓸 수 있었고, 관리자는 자리에 없다. 그 상태로 열면 도배가 시작된다.
-   *   (`packages/contract/src/boardOpen.ts` 에 그 실측이 적혀 있다)
+   *   2026-09-20 에는 「로그인해야 쓴다」로 막아 뒀다 — 그 근거(`packages/contract/src/boardOpen.ts`)는
+   *   ★실제로 도배를 겪은 게 아니라★ 2026-09-02 공개 전 「개폐 검사도 rate limit 도 아예 없던」
+   *   상태에서 «이대로 열면 위험하다» 고 미리 걸어 둔 안전장치였다.
+   *   그 뒤로 글쓰기에 진짜 도배 방지(`BOARD_WRITE_INTERVAL` 5분당 1글, IP·쿠키 열쇠 `voterKey`)가
+   *   생겼으니 지금은 그때와 사정이 다르다.
    *
-   *   사장님이 쓰신 정책이 원래 「로그인해야 쓴다 + 제재」 였다. 그대로 건다.
-   *
-   * ⚠ ★익명 글쓰기는 그대로 산다.★ 로그인한 사람이 ★익명으로★ 쓰는 것이고
-   *   (에브리타임과 같다), 우리는 누가 썼는지 안다 — 제재할 수 있다.
-   *   ★못 쓰게 된 것은 「누군지 모르는 사람의 글」 뿐이다.★
-   * ⚠ 옛 길은 지우지 않았다 — 아래 `password` 흐름이 그대로 있다.
-   *   다시 열려면 이 검사 한 덩이만 지우면 된다 (CLAUDE.md 1-4).
+   *   ★비로그인 글은 비밀번호를 반드시 받는다★ — 댓글(`createComment`)과 같은 규칙이다.
+   *   비밀번호가 있어야 나중에 본인이 수정·삭제할 수 있고, 관리자도 근거 없이 지우지 않는다.
+   *   ⚠ 옛 길(로그인 필수)은 지우지 않았다 (`CLAUDE.md` 1-4) — 되돌리려면 아래 검사를 되살린다:
+   *     `if (!userId) return denied('로그인이 필요합니다')`
    */
-  if (!userId) return denied('로그인이 필요합니다')
+  if (!userId && !input.password) return invalid('비로그인 글은 삭제용 비밀번호가 필요합니다')
 
   const key = await voterKey(request)
   if (!(await consumeWriteQuota(`board:write:${key}`, BOARD_WRITE_INTERVAL))) {
