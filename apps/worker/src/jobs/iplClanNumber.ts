@@ -99,14 +99,37 @@ export async function buildSubjectIndex(leagueId: string): Promise<{
  *
  * `payload` 를 통째로 끌어오지 않는다 — 20만 행 × 최대 8KB 면 로컬 PostgreSQL 이
  * `out of memory (printtup)` 로 죽는다 (`dev/battlelogWorklist.ts` 실측).
- * `DISTINCT` 로 짝만 뽑으면 39줄이다.
+ * `DISTINCT` 로 짝만 뽑으면 39줄이다 — ★단, 그 39줄을 뽑으려면 `BarracksClanMatchRaw`
+ * 110만 행을 인덱스로 훑어야 한다.★ `status='ok'` 인 행 거의 전부가 이제 `rawClanNo` 를
+ * 채우고 있어서(예전엔 드물었다) 부분 인덱스도 카디널리티를 거의 못 줄인다 — 이제는
+ * 사실상 전체 스캔이다.
+ *
+ * ⚠ ★2026-09-25 — 로그인이 500으로 죽던 진짜 원인★ (사장님 「로그인이 느려」)
+ *
+ *   운영 `pg_stat_activity` 를 직접 찍어서 잡았다 — 이 질의가 6분 45초째 `DataFileRead`
+ *   로 걸려 있었다. 호출부(`battlelogLineup.ts` 378줄)의 주석은 이미 2026-09-15 에
+ *   같은 증상(「DB 시간초과(57014)로 죽기 시작했고 라인업 잡이 통째로 멈췄다」)을
+ *   적어 뒀고 `try/catch` 로 ★라인업 잡 자체★ 는 지켰다 — 하지만 그 try/catch 는
+ *   질의가 ★끝난 뒤★ 에야 잡힌다. 끝나기 전까지는 Supavisor 의 기본 `statement_timeout`
+ *   (2분)까지 커넥션 하나를 붙들고 있었고, 그게 2분마다(`lineup.sh` 크론) 반복되면서
+ *   로그인 같은 사이트 요청이 쓸 풀을 갉아먹었다.
+ *
+ *   ★진짜 해결(표를 가볍게 만들기)은 아직 안 했다★ — `docs/ORDERS.md` 에 남아 있다.
+ *   그 전까지, 이 질의에만 ★짧은 statement_timeout(5초)★ 을 건다. 5초 안에 못 끝내면
+ *   Postgres 가 스스로 취소하고(57014), 호출부의 기존 catch 가 「보정 없이 간다」로
+ *   넘어간다 — 어차피 실패해도 괜찮게 설계된 보정 단계였다(위 호출부 주석). 커넥션을
+ *   몇 분이 아니라 최대 5초만 붙잡는 것만으로 이 회차의 부담이 없어진다.
  */
 export async function loadSubjectClanNoPairs(): Promise<SubjectClanNoRow[]> {
-  return prisma.$queryRaw<SubjectClanNoRow[]>`
-    SELECT DISTINCT "subject", "rawClanNo" AS "clanNo"
-    FROM "BarracksClanMatchRaw"
-    WHERE "status" = 'ok' AND "rawClanNo" IS NOT NULL AND "rawClanNo" <> ''
-  `
+  const [, rows] = await prisma.$transaction([
+    prisma.$executeRawUnsafe(`SET LOCAL statement_timeout = '5000'`),
+    prisma.$queryRaw<SubjectClanNoRow[]>`
+      SELECT DISTINCT "subject", "rawClanNo" AS "clanNo"
+      FROM "BarracksClanMatchRaw"
+      WHERE "status" = 'ok' AND "rawClanNo" IS NOT NULL AND "rawClanNo" <> ''
+    `,
+  ])
+  return rows
 }
 
 /**
