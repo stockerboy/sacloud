@@ -394,6 +394,33 @@ export function penDash(drawn: number): { pathLength: number; strokeDasharray: s
   return { pathLength: 1, strokeDasharray: `${1} ${1}`, strokeDashoffset: 1 - Math.max(0, Math.min(1, drawn)) }
 }
 
+/** 꺾은선의 실제 길이(px 합) — `pointAtLength` 와 같은 셈(선분 길이 합). 브라우저의 getTotalLength 와 같은 값이다 */
+export function polylineLength(pts: readonly (readonly [number, number])[]): number {
+  let total = 0
+  for (let i = 1; i < pts.length; i += 1) {
+    const a = pts[i - 1] as readonly [number, number]
+    const b = pts[i] as readonly [number, number]
+    total += Math.hypot(b[0] - a[0], b[1] - a[1])
+  }
+  return total
+}
+
+/**
+ * ★펜 점선 — `pathLength` 없이★ (2026-09-25 사장님 「그래프가 그려지는거처럼 안그려지고 그냥 가렸다가 생기는것처럼」).
+ *
+ * `penDash` 는 `pathLength=1` 로 길이를 정규화하는데 ★iOS Safari 가 polyline 의 pathLength 를 제멋대로 다뤄★ 선이 가운데부터
+ * 드러났다(2026-09-24). 그래서 라운드 그래프는 클립 가리개로 도망갔고, 그게 「커튼 걷히듯」 보였다.
+ * 여기서는 선의 ★실제 길이(px)★ 를 우리가 재서 절대값으로 민다 — 브라우저가 정규화할 일이 없다.
+ * 다 그렸으면(`drawn >= 1`) 점선을 아예 안 건다 — 브라우저가 잰 길이가 우리 계산보다 아주 조금 길어도 끝이 안 잘린다.
+ * ⚠ 옛 `penDash` 는 지우지 않았다 (`CLAUDE.md` 1-4).
+ */
+export function penDashPx(drawn: number, lengthPx: number): { strokeDasharray?: string; strokeDashoffset?: number } {
+  const k = Math.max(0, Math.min(1, drawn))
+  if (k >= 1 || lengthPx <= 0) return {}
+  const L2 = lengthPx * 1.02
+  return { strokeDasharray: `${L2} ${L2}`, strokeDashoffset: L2 - k * lengthPx }
+}
+
 /** 점 배열 → `points` 글자 */
 export function pointsToStr(pts: readonly (readonly [number, number])[]): string {
   return pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')

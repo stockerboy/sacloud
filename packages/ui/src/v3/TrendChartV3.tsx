@@ -21,7 +21,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { PlayerTrendDay } from '@sacloud/contract'
 import { fitMarkUrl, hasFitMark } from './primitives'
 import { V3, type V3Tone } from './tokens'
-import { PLOT, penDash, plotBox, pointAtLength, pointsToStr, useDrawIn } from './seasonPlot'
+import { PLOT, penDash, penDashPx, plotBox, pointAtLength, pointsToStr, polylineLength, useDrawIn } from './seasonPlot'
+
+/** 2026-09-25 — 점선을 실제 길이(px)로 민다 (iOS 가 pathLength 를 망가뜨려 가운데부터 나오던 것). 옛 판(`penDash`)은 false */
+const PEN_PX = true
 
 /** 흔들림 폭 (% 단위) — 모양만 */
 const WIGGLE = 1.2
@@ -201,6 +204,9 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
   const vOf = (y: number) => ((Y_BOTTOM - y) / (Y_BOTTOM - Y_TOP)) * 100
   const wrTip = pointAtLength(wrPts, draw)
   const kdTip = pointAtLength(kdPts, draw)
+  /* 펜 점선 — 선마다 제 실제 길이로 (PEN_PX). 옛 판은 pathLength=1 정규화(`penDash`) */
+  const wrPen = PEN_PX ? penDashPx(draw, polylineLength(wrPts)) : penDash(draw)
+  const kdPen = PEN_PX ? penDashPx(draw, polylineLength(kdPts)) : penDash(draw)
   const shown = drawing
     ? { t: 0, wr: vOf(wrTip[1]), kd: vOf(kdTip[1]) }
     : last
@@ -300,13 +306,13 @@ export function TrendChartV3({ days, mode, markSlug, winLabel, kdLabel, seed = '
         ) : null}
         {pts.length > 1 ? (
           <g>
-            <polyline points={wrLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#trendGlow)'} {...penDash(draw)} opacity={0.42} />
-            <polyline points={wrLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
-            <polyline points={wrLine} fill="none" stroke={wrInk} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            <polyline points={wrLine} fill="none" stroke={V3.blue} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#trendGlow)'} {...wrPen} opacity={0.42} />
+            <polyline points={wrLine} fill="none" stroke="#7fa9ff" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...wrPen} />
+            <polyline points={wrLine} fill="none" stroke={wrInk} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...wrPen} />
             {showsKd ? (<>
-            <polyline points={kdLine} fill="none" stroke={V3.red} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#trendGlow)'} {...penDash(draw)} opacity={0.5} />
-            <polyline points={kdLine} fill="none" stroke="#ff5a63" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...penDash(draw)} />
-            <polyline points={kdLine} fill="none" stroke={kdInk} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...penDash(draw)} />
+            <polyline points={kdLine} fill="none" stroke={V3.red} strokeWidth={PLOT.glowW} strokeLinejoin="round" strokeLinecap="round" filter={draw < 1 ? undefined : 'url(#trendGlow)'} {...kdPen} opacity={0.5} />
+            <polyline points={kdLine} fill="none" stroke="#ff5a63" strokeWidth={PLOT.midW} strokeLinejoin="round" strokeLinecap="round" opacity={0.45} {...kdPen} />
+            <polyline points={kdLine} fill="none" stroke={kdInk} strokeWidth={PLOT.coreW} strokeLinejoin="round" strokeLinecap="round" opacity={0.95} {...kdPen} />
             </>) : null}
           </g>
         ) : null}
