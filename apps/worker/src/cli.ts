@@ -2447,7 +2447,13 @@ async function main(): Promise<number> {
           return 1
         }
         const result = await mergeClans(ctx, { fromSlug, intoSlug })
-        table([{ 옮긴선수: result.movedPlayers, 옮긴로스터: result.movedMemberships }])
+        table([{
+          옮긴선수: result.movedPlayers,
+          옮긴개인랭킹: result.movedLeaguePlayers,
+          옮긴로스터: result.movedMemberships,
+          승패합친리그: result.mergedLeagueClans,
+          리그줄통째로옮김: result.movedLeagueClans,
+        }])
         return 0
       }
 
