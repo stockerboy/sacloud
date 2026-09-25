@@ -104,6 +104,7 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
         onVote={(type) => vote.mutate(type)}
         basePath={basePath}
         admin={viewerIsAdmin ? { onTogglePin: () => pin.mutate(!post.data!.data.pinned), busy: pin.isPending } : null}
+        adminUnlimitedLike={viewerIsAdmin}
       />
       {/* 2026-09-24 QA(운영 폰): 글 카드 밑 「댓글 n개」 와 댓글 카드 사이가 80px 넘게 비었다 → section-gap(40) 대신 12 */}
       <div
@@ -114,6 +115,7 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
           comments={comments.data?.data}
           loading={!comments.data}
           onVote={(commentId, type) => commentVote.mutate({ commentId, type })}
+          adminUnlimitedLike={viewerIsAdmin}
           onReply={(parentId, content) =>
             /*
              * ⚠ ★2026-09-25 재정정★ (사장님 「관리자가 답글 달면 글쓴이로 떠 이게 있으면 의미가

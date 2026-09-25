@@ -92,17 +92,21 @@ function CommentHead({ comment }: { comment: Comment | CommentReply }) {
 function VoteRow({
   comment,
   onVote,
+  adminUnlimitedLike = false,
 }: {
   comment: Comment | CommentReply
   onVote: (commentId: string, type: number) => void
+  /** `PostView.tsx` 의 같은 이름 prop과 같은 뜻 — 추천 단추는 토글 대신 항상 1을 보낸다 */
+  adminUnlimitedLike?: boolean
 }) {
   if (comment.deleted) return null
+  const likeType = () => (adminUnlimitedLike ? 1 : comment.like_type === 1 ? 0 : 1)
   const base = 'num text-xs transition-colors duration-100 hover:text-text-strong'
   if (POST_ETA) {
     const on = (active: boolean) => ({ color: active ? ETA.accent : ETA.faint })
     return (
       <div className="mt-1 flex items-center gap-3">
-        <button type="button" onClick={() => onVote(comment.id, comment.like_type === 1 ? 0 : 1)} aria-pressed={comment.like_type === 1} className="num flex items-center gap-1 text-xs" style={on(comment.like_type === 1)}>
+        <button type="button" onClick={() => onVote(comment.id, likeType())} aria-pressed={comment.like_type === 1} className="num flex items-center gap-1 text-xs" style={on(comment.like_type === 1)}>
           <ThumbIcon up size={13} /> {formatCount(comment.like_count)}
         </button>
         <button type="button" onClick={() => onVote(comment.id, comment.like_type === -1 ? 0 : -1)} aria-pressed={comment.like_type === -1} className="num flex items-center gap-1 text-xs" style={on(comment.like_type === -1)}>
@@ -116,7 +120,7 @@ function VoteRow({
       {/* 2026-09-25 — 눌린 단추를 다시 누르면 취소(type 0) · 글 추천과 같은 규칙 */}
       <button
         type="button"
-        onClick={() => onVote(comment.id, comment.like_type === 1 ? 0 : 1)}
+        onClick={() => onVote(comment.id, likeType())}
         aria-pressed={comment.like_type === 1}
         className={`${base} ${comment.like_type === 1 ? 'text-accent' : 'text-faint'}`}
       >
@@ -139,11 +143,14 @@ export function CommentList({
   loading,
   onVote,
   onReply,
+  adminUnlimitedLike = false,
 }: {
   comments?: readonly Comment[]
   loading?: boolean
   onVote: (commentId: string, type: number) => void
   onReply: (parentId: string, content: string) => void
+  /** `PostView.tsx` 의 같은 이름 prop과 같은 뜻 — 댓글·대댓글 추천 단추에도 똑같이 적용한다 */
+  adminUnlimitedLike?: boolean
 }) {
   const [replyTo, setReplyTo] = useState<string | null>(null)
 
@@ -168,7 +175,7 @@ export function CommentList({
           <CommentHead comment={comment} />
           <CommentBody comment={comment} />
           <div className="flex items-center gap-3">
-            <VoteRow comment={comment} onVote={onVote} />
+            <VoteRow comment={comment} onVote={onVote} adminUnlimitedLike={adminUnlimitedLike} />
             {!comment.deleted ? (
               <button
                 type="button"
@@ -197,7 +204,7 @@ export function CommentList({
                 <div key={reply.id} className="py-2">
                   <CommentHead comment={reply} />
                   <CommentBody comment={reply} />
-                  <VoteRow comment={reply} onVote={onVote} />
+                  <VoteRow comment={reply} onVote={onVote} adminUnlimitedLike={adminUnlimitedLike} />
                 </div>
               ))}
             </div>

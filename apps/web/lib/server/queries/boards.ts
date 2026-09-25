@@ -1041,15 +1041,26 @@ async function applyVote(
 ): Promise<void> {
   /*
    * ★관리자는 좋아요를 무제한으로 누를 수 있다★ (2026-09-25 사장님 「관리자는 좋아요 제한 없이
-   * 누를 수 있게 해줘」). 평소엔 위 주석대로 voterKey 하나당 1표만 세지만, 관리자가 추천을
-   * 누르면 그 유일함(`(targetType, targetId, voterKey)` 유니크)을 건너뛰고 누를 때마다
-   * 그냥 집계만 +1 한다. 자기 투표 기록(`Vote` 행)은 남기지 않는다 — 그래서 admin 화면의
-   * 「내가 눌렀는지」 표시는 여기선 뜻이 없다. 비추천/취소는 이 지름길을 안 탄다(1이어야만).
+   * 누를 수 있게 해줘」, 이어서 「내가 누른 좋아요는 바깥에 안떠」). 평소엔 위 주석대로
+   * voterKey 하나당 1표만 세지만, 관리자가 추천을 누르면 그 유일함을 건너뛰고 누를 때마다
+   * 그냥 집계만 +1 한다 — ★이전에 이미 눌렀었는지는 안 본다★ (그래서 토글 없이 계속 오른다).
+   *
+   * ⚠ ★2026-09-25 정정★ — 첫 판은 `Vote` 행을 아예 안 남겼다. 그러면 서버가 늘 `like_type: 0`
+   * 을 돌려줘서 화면의 추천 단추가 ★한 번도 안 눌린 것처럼★ 보였다(「내가 누른 좋아요는
+   * 바깥에 안떠」). 이제 `type:1` 로 행을 올려/갱신한다 — 단추는 계속 눌린(빨간) 채로 보이고,
+   * 그와 별개로 집계는 클릭마다 무조건 +1 이다. 프런트(`PostView`/`CommentList` 의
+   * `adminUnlimitedLike`)가 클릭마다 토글 대신 항상 1을 보내야 이 지름길을 계속 탄다.
+   * 비추천/취소는 이 지름길을 안 탄다(1이어야만).
    */
   if (unlimited && type === 1) {
+    const where = { targetType_targetId_voterKey: { targetType, targetId, voterKey: key } }
     const data = { likeCount: { increment: 1 } }
-    if (targetType === 'board') await prisma.board.update({ where: { id: targetId }, data })
-    else await prisma.comment.update({ where: { id: targetId }, data })
+    await prisma.$transaction([
+      targetType === 'board'
+        ? prisma.board.update({ where: { id: targetId }, data })
+        : prisma.comment.update({ where: { id: targetId }, data }),
+      prisma.vote.upsert({ where, create: { targetType, targetId, voterKey: key, type: 1 }, update: { type: 1 } }),
+    ])
     return
   }
 

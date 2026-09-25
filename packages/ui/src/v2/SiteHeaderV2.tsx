@@ -229,20 +229,29 @@ export function SiteHeaderV2({
             <NavLogo className="h-[24px] w-auto max-md:h-[20px]" />
           </Link>
           <div className="flex-1" />
-          {user ? (
-            <div className="flex items-center gap-5">
-              <Link href="/me" className="v2-login">
-                {user.nickname}
+          <div className="flex items-center gap-5">
+            {/*
+             * ★2026-09-25 재정정★ (사장님 스샷 「버튼이 숨겨져있어」) — 토글을 `default`
+             * 헤더(251번째 줄 아래)에만 달았다. 홈은 ★다른 띠★ 라 이 위 갈래(`variant === 'home'`)를
+             * 따로 타는데, 거기엔 빠져 있어서 홈에서는 토글 자체가 렌더되지 않았다(숨은 게
+             * 아니라 아예 없었다). 로그인/로그아웃과 같은 자리 규칙으로 여기도 넣는다.
+             */}
+            <ThemeToggleButton />
+            {user ? (
+              <>
+                <Link href="/me" className="v2-login">
+                  {user.nickname}
+                </Link>
+                <button type="button" onClick={onLogout} className="v2-login">
+                  로그아웃
+                </button>
+              </>
+            ) : (
+              <Link href={loginHref} className="v2-login">
+                로그인
               </Link>
-              <button type="button" onClick={onLogout} className="v2-login">
-                로그아웃
-              </button>
-            </div>
-          ) : (
-            <Link href={loginHref} className="v2-login">
-              로그인
-            </Link>
-          )}
+            )}
+          </div>
         </div>
       </header>
     )

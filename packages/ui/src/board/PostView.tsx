@@ -120,6 +120,7 @@ export function PostView({
   onVote,
   basePath,
   admin,
+  adminUnlimitedLike = false,
 }: {
   post: Board
   /** 1 = 추천, -1 = 비추천 (계약의 `VoteType`) */
@@ -131,6 +132,15 @@ export function PostView({
    * 보는 사람이 관리자일 때만 호출부가 넘긴다. 없으면 아무것도 안 그린다.
    */
   admin?: { onTogglePin: () => void; busy?: boolean } | null
+  /**
+   * ★관리자 좋아요 무제한★ (2026-09-25 사장님 「관리자는 좋아요 제한 없이 누를 수 있게」
+   * 다음에 「내가 누른 좋아요는 바깥에 안떠」). 평소엔 추천 버튼이 토글이라 두 번째 클릭부터
+   * 취소(0)로 뒤집힌다 — 그러면 관리자가 눌러도 순 증가가 안 된다. true 면 추천 버튼은
+   * ★항상 1을 보낸다★(토글하지 않는다) — 서버(`applyVote` unlimited 갈래)가 매번 +1 하면서도
+   * 투표 행을 `type:1` 로 남겨 두므로, 버튼은 계속 눌린(빨간) 채로 보이면서 셀 때마다 오른다.
+   * 비추천 단추는 그대로 토글이다 — 이건 추천 쪽에만 해당한다.
+   */
+  adminUnlimitedLike?: boolean
 }) {
   const base = basePath ?? `/board/${post.category}`
   /* 태그 없는 옛 글(줄바꿈만 있는 글)은 줄바꿈을 살려 그린다 — 새 글은 저장할 때 <p> 로 바뀐다 */
@@ -193,7 +203,7 @@ export function PostView({
               서버는 type 0(취소)을 받는데 화면이 늘 1/-1 만 보내서 한 번 누른 추천을 되돌릴 길이 없었다
               (서버 `applyVote` 는 같은 값이면 아무것도 안 한다). 눌린 상태면 0 을 보낸다. 옛 판: 늘 1 / -1.
           */}
-          <EtaVoteButton count={post.like_count} up active={post.like_type === 1} onClick={() => onVote(post.like_type === 1 ? 0 : 1)} />
+          <EtaVoteButton count={post.like_count} up active={post.like_type === 1} onClick={() => onVote(adminUnlimitedLike ? 1 : post.like_type === 1 ? 0 : 1)} />
           <EtaVoteButton count={post.dislike_count} up={false} active={post.like_type === -1} onClick={() => onVote(post.like_type === -1 ? 0 : -1)} />
         </div>
 
@@ -273,7 +283,7 @@ export function PostView({
           count={post.like_count}
           up
           active={post.like_type === 1}
-          onClick={() => onVote(post.like_type === 1 ? 0 : 1)}
+          onClick={() => onVote(adminUnlimitedLike ? 1 : post.like_type === 1 ? 0 : 1)}
         />
         <VoteButton
           count={post.dislike_count}
