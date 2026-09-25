@@ -1,5 +1,6 @@
 import { prisma } from '@sacloud/db'
 import { log } from '../lib/log.js'
+import { adoptLegacyPlayer } from './battlelogLineup.js'
 
 /**
  * ★★계정을 배틀로그로 잇고, 닉을 따라간다★★ (2026-09-20 사장님)
@@ -58,8 +59,12 @@ export interface IdentityFromBattlelogResult {
   rows: number
   /** 원문에서 모은 계정-닉 쌍 */
   pairs: number
-  /** 계정을 새로 박아 이은 선수 */
+  /** 계정을 새로 박아 이은 선수 (닉이 딱 하나여서) */
   linked: number
+  /** ★계정번호(user_nexon_sn)로 옛 줄을 찾아 이은 선수★ (2026-09-25) — 닉을 안 보고 잇는다 */
+  linkedBySn: number
+  /** 닉은 맞는데 그 줄의 계정번호가 원문의 계정번호와 달라 안 이은 계정 (2026-09-25) */
+  snMismatch: number
   /** 계정으로 찾아 닉을 고친 선수 */
   renamed: number
   /** 닉이 여럿이라 못 이은 계정 */
@@ -114,6 +119,8 @@ export async function runIdentityFromBattlelog(input: {
     rows: 0,
     pairs: 0,
     linked: 0,
+    linkedBySn: 0,
+    snMismatch: 0,
     renamed: 0,
     ambiguous: 0,
     noPlayer: 0,
@@ -138,6 +145,12 @@ export async function runIdentityFromBattlelog(input: {
 
   /** usn → 가장 최근에 본 닉 */
   const nickOf = new Map<string, string>()
+  /**
+   * usn → 10진수 계정번호(`user_nexon_sn`). 같은 원문 줄에 둘이 같이 온다 — ★닉보다 센 증거★ 다.
+   * 2026-09-25: 이 값을 안 보고 닉으로만 이어서, 옛 닉을 물려받은 ★다른 계정★ 이 3rd.supply 줄에 박히는 일이 17건 있었다
+   * (`accountSplitMerge` 실측 · 예: ifyourlove SUP-1795985018 에 BRK-F488… 이 박혔는데 원문은 그 번호를 BRK-5178… 과 짝지었다).
+   */
+  const snOf = new Map<string, string>()
   for (let i = 0; i < index.length; i += CHUNK) {
     const part = await prisma.barracksBattleLogRaw.findMany({
       where: { id: { in: index.slice(i, i + CHUNK).map((r) => r.id) } },
@@ -153,13 +166,15 @@ export async function runIdentityFromBattlelog(input: {
          * ⚠ ★최근 것을 먼저 읽으므로 먼저 본 닉이 최신★ 이다.
          *   이미 담았으면 덮지 않는다 — 덮으면 옛 닉으로 되돌아간다.
          */
-        for (const [u, n] of [
-          [e.str_usn, e.user_nick],
-          [e.target_str_usn, e.target_user_nick],
+        for (const [u, n, s] of [
+          [e.str_usn, e.user_nick, e.user_nexon_sn],
+          [e.target_str_usn, e.target_user_nick, e.target_user_nexon_sn],
         ] as const) {
           const usn = typeof u === 'string' ? u.trim() : ''
           const nick = typeof n === 'string' ? n.trim() : ''
           if (usn === '' || nick === '') continue
+          const sn = s === null || s === undefined ? '' : String(s).trim()
+          if (sn !== '' && !snOf.has(usn)) snOf.set(usn, sn)
           if (nickOf.has(usn)) continue
           nickOf.set(usn, nick)
         }
@@ -218,7 +233,42 @@ export async function runIdentityFromBattlelog(input: {
       }
     }
 
+    /** 그 줄의 10진수 계정번호 — `SUP-<번호>` id 나 숫자 `sourcePlayerId`. 모르면 null */
+    const snOfPlayer = new Map<string, string | null>()
+    for (const p of await prisma.player.findMany({
+      where: { id: { in: [...byNick.values()].flat().map((x) => x.id) } },
+      select: { id: true, sourcePlayerId: true },
+    })) {
+      const fromId = /^SUP(?:PLY)?-(\d+)$/.exec(p.id)?.[1]
+      snOfPlayer.set(p.id, fromId ?? (p.sourcePlayerId && /^\d+$/.test(p.sourcePlayerId) ? p.sourcePlayerId : null))
+    }
+
     for (const [usn, nick] of unknown) {
+      /*
+       * ★0순위 — 계정번호로 옛 줄을 찾는다★ (2026-09-25). 원문이 준 `user_nexon_sn` 으로 `SUP-<번호>` 줄을 바로 잇는다.
+       *   닉은 안 본다. 찾으면 그 줄이 곧 이 계정이다 (`battlelog-lineup` 의 새 2.5순위와 같은 규칙 · 같은 함수).
+       */
+      const sn = snOf.get(usn)
+      if (sn !== undefined) {
+        const adopted = input.confirm
+          ? await adoptLegacyPlayer(sn, usn, renameToo ? nick : null)
+          : (await prisma.player.count({
+              where: {
+                OR: [{ id: `SUP-${sn}` }, { id: `SUPPLY-${sn}` }, { sourcePlayerId: sn }],
+                NOT: { name: { startsWith: '(합쳐짐→' } },
+              },
+            })) === 1
+            ? 'preview'
+            : null
+        if (adopted !== null) {
+          result.linkedBySn += 1
+          if (result.samples.length < 25) result.samples.push({ usn, before: `sn ${sn}`, after: nick, how: 'link' })
+          /* 같은 닉의 다른 후보를 이 계정에 또 잇지 않는다 */
+          byNick.delete(nick)
+          continue
+        }
+      }
+
       const found = byNick.get(nick) ?? []
       if (found.length === 0) {
         result.noPlayer += 1
@@ -231,6 +281,15 @@ export async function runIdentityFromBattlelog(input: {
       }
       const one = found[0] as { id: string; name: string }
       if (one.name.includes(MERGED_MARK)) continue
+      /*
+       * ★닉은 같아도 계정번호가 다르면 남이다★ (2026-09-25). 그 줄이 3rd.supply 번호를 갖고 있고
+       *   원문이 이 usn 의 번호를 알려 줬는데 둘이 다르면 — 옛 닉을 물려받은 다른 계정이다. 안 잇는다.
+       */
+      const rowSn = snOfPlayer.get(one.id) ?? null
+      if (rowSn !== null && sn !== undefined && rowSn !== sn) {
+        result.snMismatch += 1
+        continue
+      }
       result.linked += 1
       if (result.samples.length < 25) {
         result.samples.push({ usn, before: one.name, after: nick, how: 'link' })
@@ -251,8 +310,8 @@ export async function runIdentityFromBattlelog(input: {
 
   log(
     `계정 잇기 — 원문 ${result.rows}건 · 계정 ${result.pairs}개 · ` +
-      `새로 이음 ${result.linked} · 닉 고침 ${result.renamed} · ` +
-      `닉 겹쳐 못 이음 ${result.ambiguous} · 선수 없음 ${result.noPlayer}` +
+      `새로 이음 ${result.linked} · 계정번호로 이음 ${result.linkedBySn} · 닉 고침 ${result.renamed} · ` +
+      `닉 겹쳐 못 이음 ${result.ambiguous} · 번호 달라 안 이음 ${result.snMismatch} · 선수 없음 ${result.noPlayer}` +
       (input.confirm ? '' : ' (미리보기)'),
   )
   for (const s of result.samples) {
