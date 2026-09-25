@@ -8,6 +8,16 @@ import { EmptyState } from '../common/EmptyState'
 import { formatCount } from '../common/format'
 import { sanitizePostContent } from './sanitize'
 import { WriterName } from './WriterName'
+import { POST_ETA } from './PostView'
+
+/** 글 상세와 같은 팔레트 (2026-09-25 「게시판 좀 더 에타처럼」) — `PostView.tsx` 의 `ETA` 와 값이 같다 */
+const ETA = {
+  divider: '#1e2a42',
+  strong: '#f2f4f8',
+  dim: '#8f95af',
+  faint: '#6f7b95',
+  accent: '#5c80e0',
+} as const
 
 /**
  * 댓글 목록 — `적진`.
@@ -22,20 +32,29 @@ import { WriterName } from './WriterName'
  * 들여쓰기 + 왼쪽 얇은 선으로 나눈다. 진홍은 **내가 누른 추천/비추천**에서만 나온다.
  */
 
-const FIELD =
-  'rounded-[var(--radius)] border border-line bg-card px-3 py-2 text-sm text-text placeholder:text-faint outline-none transition-colors duration-100 focus:border-accent'
+const FIELD = POST_ETA
+  ? 'rounded-[14px] border px-3 py-2 text-sm outline-none transition-colors duration-100'
+  : 'rounded-[var(--radius)] border border-line bg-card px-3 py-2 text-sm text-text placeholder:text-faint outline-none transition-colors duration-100 focus:border-accent'
 const INPUT = `w-full ${FIELD}`
+const FIELD_ETA_STYLE = { background: '#0b1220', borderColor: ETA.divider, color: ETA.strong } as const
 
-const SUBMIT =
-  'inline-flex h-9 shrink-0 items-center justify-center rounded-[var(--radius)] border border-accent px-4 text-sm text-accent transition-colors duration-100 hover:bg-card-2 disabled:border-line disabled:text-faint'
+const SUBMIT = POST_ETA
+  ? 'inline-flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-bold transition-colors duration-100 disabled:opacity-40'
+  : 'inline-flex h-9 shrink-0 items-center justify-center rounded-[var(--radius)] border border-accent px-4 text-sm text-accent transition-colors duration-100 hover:bg-card-2 disabled:border-line disabled:text-faint'
+const SUBMIT_ETA_STYLE = { background: ETA.accent, color: '#0c1526' } as const
 
 function CommentBody({ comment }: { comment: Comment | CommentReply }) {
   if (comment.deleted) {
-    return <div className="py-1 text-sm text-faint">삭제된 댓글입니다.</div>
+    return (
+      <div className="py-1 text-sm" style={POST_ETA ? { color: ETA.faint } : undefined}>
+        삭제된 댓글입니다.
+      </div>
+    )
   }
   return (
     <div
       className="max-w-[68ch] break-words py-1 text-[0.95rem] leading-6"
+      style={POST_ETA ? { color: '#dbe0ee' } : undefined}
       dangerouslySetInnerHTML={{ __html: sanitizePostContent(comment.content) }}
     />
   )
@@ -48,14 +67,24 @@ function CommentHead({ comment }: { comment: Comment | CommentReply }) {
       <WriterName writer={comment.writer} />
       {/* 익명 이름이 이미 `글쓴이` 면 배지를 겹쳐 달지 않는다 */}
       {comment.board_writer && !comment.writer.anonymous ? (
-        <span className="rounded-[var(--radius)] border border-line px-1.5 text-xs text-meta">
-          글쓴이
-        </span>
+        POST_ETA ? (
+          <span className="rounded-full border px-1.5 text-xs" style={{ borderColor: ETA.accent, color: ETA.accent }}>
+            글쓴이
+          </span>
+        ) : (
+          <span className="rounded-[var(--radius)] border border-line px-1.5 text-xs text-meta">
+            글쓴이
+          </span>
+        )
       ) : null}
-      <span className="num text-xs text-faint">
+      <span className="num text-xs" style={POST_ETA ? { color: ETA.faint } : undefined}>
         <RelativeTime value={comment.created_at} />
       </span>
-      {comment.last_edited ? <span className="text-xs text-faint">(수정됨)</span> : null}
+      {comment.last_edited ? (
+        <span className="text-xs" style={POST_ETA ? { color: ETA.faint } : undefined}>
+          (수정됨)
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -69,6 +98,19 @@ function VoteRow({
 }) {
   if (comment.deleted) return null
   const base = 'num text-xs transition-colors duration-100 hover:text-text-strong'
+  if (POST_ETA) {
+    const on = (active: boolean) => ({ color: active ? ETA.accent : ETA.faint })
+    return (
+      <div className="mt-1 flex items-center gap-3">
+        <button type="button" onClick={() => onVote(comment.id, comment.like_type === 1 ? 0 : 1)} aria-pressed={comment.like_type === 1} className="num flex items-center gap-1 text-xs" style={on(comment.like_type === 1)}>
+          <ThumbIcon up size={13} /> {formatCount(comment.like_count)}
+        </button>
+        <button type="button" onClick={() => onVote(comment.id, comment.like_type === -1 ? 0 : -1)} aria-pressed={comment.like_type === -1} className="num flex items-center gap-1 text-xs" style={on(comment.like_type === -1)}>
+          <ThumbIcon up={false} size={13} /> {formatCount(comment.dislike_count)}
+        </button>
+      </div>
+    )
+  }
   return (
     <div className="mt-1 flex items-center gap-3">
       {/* 2026-09-25 — 눌린 단추를 다시 누르면 취소(type 0) · 글 추천과 같은 규칙 */}
@@ -105,15 +147,24 @@ export function CommentList({
 }) {
   const [replyTo, setReplyTo] = useState<string | null>(null)
 
-  if (loading) return <div className="py-6 text-center text-sm text-faint">댓글을 불러오는 중…</div>
+  if (loading) {
+    return (
+      <div className="py-6 text-center text-sm" style={POST_ETA ? { color: ETA.dim } : undefined}>
+        댓글을 불러오는 중…
+      </div>
+    )
+  }
   if (!comments || comments.length === 0) {
     return <EmptyState message="첫 댓글을 남겨보세요." />
   }
 
+  const rowBorder = POST_ETA ? { borderColor: ETA.divider } : undefined
+  const replyLinkStyle = POST_ETA ? { color: ETA.faint } : undefined
+
   return (
     <div className="flex flex-col text-text">
       {comments.map((comment) => (
-        <div key={comment.id} className="border-b border-b-line-soft py-4 last:border-b-0">
+        <div key={comment.id} className={POST_ETA ? 'border-b py-4 last:border-b-0' : 'border-b border-b-line-soft py-4 last:border-b-0'} style={rowBorder}>
           <CommentHead comment={comment} />
           <CommentBody comment={comment} />
           <div className="flex items-center gap-3">
@@ -122,7 +173,8 @@ export function CommentList({
               <button
                 type="button"
                 onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
-                className="mt-1 text-xs text-faint transition-colors duration-100 hover:text-text-strong"
+                className="mt-1 text-xs transition-colors duration-100 hover:text-text-strong"
+                style={replyLinkStyle}
               >
                 답글
               </button>
@@ -140,7 +192,7 @@ export function CommentList({
 
           {/* 대댓글은 1단계까지만 — 여기서 더 중첩하지 않는다 */}
           {comment.comments.length > 0 ? (
-            <div className="mt-3 border-l border-l-line-soft pl-4">
+            <div className={POST_ETA ? 'mt-3 border-l pl-4' : 'mt-3 border-l border-l-line-soft pl-4'} style={POST_ETA ? { borderColor: ETA.divider } : undefined}>
               {comment.comments.map((reply) => (
                 <div key={reply.id} className="py-2">
                   <CommentHead comment={reply} />
@@ -165,6 +217,7 @@ function ReplyForm({ onSubmit }: { onSubmit: (content: string) => void }) {
         onChange={(event) => setValue(event.target.value)}
         rows={2}
         className={INPUT}
+        style={POST_ETA ? FIELD_ETA_STYLE : undefined}
         placeholder="답글을 입력하세요."
       />
       <button
@@ -175,6 +228,7 @@ function ReplyForm({ onSubmit }: { onSubmit: (content: string) => void }) {
           setValue('')
         }}
         className={SUBMIT}
+        style={POST_ETA && value.trim() ? SUBMIT_ETA_STYLE : undefined}
       >
         등록
       </button>
@@ -212,18 +266,27 @@ export function CommentForm({
   const canSubmit = content.trim().length > 0 && (!requirePassword || password.length > 0)
 
   return (
-    <div className="mt-8 flex flex-col border-t border-t-line pt-6">
-      <div className="mb-3 text-sm tracking-[0.12em] text-faint">댓글쓰기</div>
+    <div
+      className={POST_ETA ? 'mt-8 flex flex-col border-t pt-6' : 'mt-8 flex flex-col border-t border-t-line pt-6'}
+      style={POST_ETA ? { borderColor: ETA.divider } : undefined}
+    >
+      <div className="mb-3 text-sm tracking-[0.12em]" style={POST_ETA ? { color: ETA.faint } : undefined}>
+        댓글쓰기
+      </div>
       <textarea
         value={content}
         onChange={(event) => setContent(event.target.value)}
         rows={3}
         className={INPUT}
+        style={POST_ETA ? FIELD_ETA_STYLE : undefined}
         placeholder="댓글을 입력하세요."
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {showAnonymousToggle ? (
-          <label className="flex cursor-pointer select-none items-center gap-1 text-sm text-meta">
+          <label
+            className="flex cursor-pointer select-none items-center gap-1 text-sm"
+            style={POST_ETA ? { color: ETA.dim } : undefined}
+          >
             <input
               type="checkbox"
               checked={anonymous}
@@ -240,6 +303,7 @@ export function CommentForm({
             onChange={(event) => setPassword(event.target.value)}
             placeholder="삭제용 비밀번호"
             className={`h-9 w-48 ${FIELD}`}
+            style={POST_ETA ? FIELD_ETA_STYLE : undefined}
           />
         ) : null}
         <button
@@ -251,6 +315,7 @@ export function CommentForm({
             setPassword('')
           }}
           className={`${SUBMIT} ml-auto w-24`}
+          style={POST_ETA && canSubmit ? SUBMIT_ETA_STYLE : undefined}
         >
           등록
         </button>

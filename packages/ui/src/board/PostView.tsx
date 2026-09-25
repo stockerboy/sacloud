@@ -68,6 +68,53 @@ function VoteButton({
   )
 }
 
+/**
+ * ★글 상세도 에타 꼴로★ (2026-09-25 사장님 「게시판 좀 더 에타처럼 바꿔줘 (메인 말고
+ * 게시판 메뉴 내에서)」). 목록(`BoardListEta`)만 에타였고 눌러서 들어간 글 상세는
+ * 옛 적진 카드(얇은 선 · 밝은 카드) 그대로라 들어가는 순간 다른 사이트처럼 보였다.
+ * 색·둥근 모서리를 목록과 같은 값으로 맞춘다. 옛 판은 `POST_ETA=false` 로 돌아간다.
+ */
+export const POST_ETA = true
+const ETA = {
+  bg: '#0f1729',
+  border: '#243250',
+  divider: '#1e2a42',
+  strong: '#f2f4f8',
+  dim: '#8f95af',
+  faint: '#6f7b95',
+  accent: '#5c80e0',
+} as const
+
+function EtaVoteButton({
+  count,
+  up,
+  active,
+  onClick,
+}: {
+  count: number
+  up: boolean
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="inline-flex w-28 items-center justify-center gap-2 rounded-full border py-2 text-sm font-bold transition-colors duration-100"
+      style={{
+        borderColor: active ? ETA.accent : ETA.divider,
+        color: active ? ETA.accent : ETA.dim,
+        background: active ? 'rgba(92,128,224,.12)' : 'transparent',
+      }}
+    >
+      <ThumbIcon up={up} size={15} />
+      <span className="num">{formatCount(count)}</span>
+      <span className="sr-only">{up ? '추천' : '비추천'}</span>
+    </button>
+  )
+}
+
 export function PostView({
   post,
   onVote,
@@ -88,6 +135,97 @@ export function PostView({
   const base = basePath ?? `/board/${post.category}`
   /* 태그 없는 옛 글(줄바꿈만 있는 글)은 줄바꿈을 살려 그린다 — 새 글은 저장할 때 <p> 로 바뀐다 */
   const preWrap = !looksLikeHtml(post.content)
+
+  if (POST_ETA) {
+    return (
+      <article className="rounded-[18px] border px-5 py-5 max-md:px-4" style={{ background: ETA.bg, borderColor: ETA.border, color: ETA.strong }}>
+        <header className="flex flex-col gap-2.5">
+          <h1 className="text-[19px] font-extrabold leading-snug max-md:text-[17px]" style={{ color: ETA.strong }}>
+            {post.pinned ? (
+              <span className="mr-2 inline-block rounded-sm px-1.5 py-0.5 align-middle text-[10px] font-bold" style={{ background: ETA.accent, color: '#0c1526' }}>
+                고정
+              </span>
+            ) : null}
+            {post.title}
+          </h1>
+
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[12px]" style={{ color: ETA.dim }}>
+            <WriterName writer={post.writer} />
+            <span className="num" style={{ color: ETA.faint }}>{formatPostDate(post.created_at)}</span>
+          </div>
+
+          <div className="flex items-center gap-3 text-[11px]" style={{ color: ETA.faint }}>
+            <span className="num">조회 {formatCount(post.view_count)}</span>
+            <span className="num">추천 {formatCount(post.like_count)}</span>
+            <span className="num">비추천 {formatCount(post.dislike_count)}</span>
+          </div>
+        </header>
+
+        <div className="my-4 border-t" style={{ borderColor: ETA.divider }} />
+
+        <div
+          className={`post-body max-w-[68ch] break-words text-[14.5px] leading-7 ${preWrap ? 'whitespace-pre-wrap' : ''}`}
+          style={{ color: '#dbe0ee' }}
+          // sanitizePostContent 를 거친 문자열만 들어온다
+          dangerouslySetInnerHTML={{ __html: sanitizePostContent(post.content) }}
+        />
+        {/* 문단 HTML(<p>·<h3>) 이 붙어 보이지 않게 — 글 본문 안에서만 산다 */}
+        <style>{`.post-body p{margin:0 0 1em}.post-body p:last-child{margin-bottom:0}.post-body h2,.post-body h3{margin:1.6em 0 .6em;font-weight:700;font-size:1.15em;color:${ETA.strong}}.post-body h2:first-child,.post-body h3:first-child{margin-top:0}`}</style>
+
+        {admin ? (
+          <div className="mt-5 flex items-center gap-2 text-[12px]" style={{ color: ETA.dim }}>
+            관리자
+            <button
+              type="button"
+              disabled={admin.busy}
+              onClick={admin.onTogglePin}
+              className="rounded-full border px-3 py-1 text-[12px] font-bold disabled:opacity-50"
+              style={{ borderColor: ETA.accent, color: ETA.accent }}
+            >
+              {post.pinned ? '상단 고정 해제' : '상단 고정'}
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mt-8 flex select-none items-center justify-center gap-2">
+          {/*
+            ★2026-09-25 — 같은 단추를 다시 누르면 ★취소★★ (감시 QA 에서 잡음)
+              서버는 type 0(취소)을 받는데 화면이 늘 1/-1 만 보내서 한 번 누른 추천을 되돌릴 길이 없었다
+              (서버 `applyVote` 는 같은 값이면 아무것도 안 한다). 눌린 상태면 0 을 보낸다. 옛 판: 늘 1 / -1.
+          */}
+          <EtaVoteButton count={post.like_count} up active={post.like_type === 1} onClick={() => onVote(post.like_type === 1 ? 0 : 1)} />
+          <EtaVoteButton count={post.dislike_count} up={false} active={post.like_type === -1} onClick={() => onVote(post.like_type === -1 ? 0 : -1)} />
+        </div>
+
+        {/*
+          본인 글일 때만 수정/삭제가 보인다. 비로그인 글은 비밀번호로 삭제한다.
+          ★관리자는 남의 글도 삭제할 수 있다★ (2026-09-25 사장님 「관리자는 글 아무거나 다
+          삭제할 수 있게 해줘 기본권한으로」) — 수정은 그대로 본인만(내용을 대신 고치면 안 된다).
+        */}
+        {post.me || !post.login ? (
+          <div className="mt-5 flex select-none flex-row-reverse gap-2 text-[12px]">
+            <Link prefetch={false} href={`${base}/${post.id}/delete`} className="rounded-full border px-3 py-1.5 font-bold" style={{ borderColor: ETA.divider, color: ETA.dim }}>
+              삭제
+            </Link>
+            <Link prefetch={false} href={`${base}/${post.id}/update`} className="rounded-full border px-3 py-1.5 font-bold" style={{ borderColor: ETA.divider, color: ETA.dim }}>
+              수정
+            </Link>
+          </div>
+        ) : admin ? (
+          <div className="mt-5 flex select-none flex-row-reverse gap-2 text-[12px]">
+            <Link prefetch={false} href={`${base}/${post.id}/delete`} className="rounded-full border px-3 py-1.5 font-bold" style={{ borderColor: ETA.accent, color: ETA.accent }}>
+              삭제 (관리자)
+            </Link>
+          </div>
+        ) : null}
+
+        <div className="mt-7 border-t pt-4 text-[12px]" style={{ borderColor: ETA.divider, color: ETA.dim }}>
+          댓글 <span className="num">{formatCount(post.comment_count)}</span>개
+        </div>
+      </article>
+    )
+  }
+
   return (
     <article className="rounded-[var(--radius)] border border-line bg-card px-6 py-6 text-text max-md:px-4">
       <header className="flex flex-col gap-3">
@@ -131,11 +269,6 @@ export function PostView({
       ) : null}
 
       <div className="mt-10 flex select-none items-center justify-center gap-2">
-        {/*
-          ★2026-09-25 — 같은 단추를 다시 누르면 ★취소★★ (감시 QA 에서 잡음)
-            서버는 type 0(취소)을 받는데 화면이 늘 1/-1 만 보내서 한 번 누른 추천을 되돌릴 길이 없었다
-            (서버 `applyVote` 는 같은 값이면 아무것도 안 한다). 눌린 상태면 0 을 보낸다. 옛 판: 늘 1 / -1.
-        */}
         <VoteButton
           count={post.like_count}
           up
@@ -150,11 +283,6 @@ export function PostView({
         />
       </div>
 
-      {/*
-        본인 글일 때만 수정/삭제가 보인다. 비로그인 글은 비밀번호로 삭제한다.
-        ★관리자는 남의 글도 삭제할 수 있다★ (2026-09-25 사장님 「관리자는 글 아무거나 다
-        삭제할 수 있게 해줘 기본권한으로」) — 수정은 그대로 본인만(내용을 대신 고치면 안 된다).
-      */}
       {post.me || !post.login ? (
         <div className="mt-6 flex select-none flex-row-reverse gap-2">
           <Link prefetch={false} href={`${base}/${post.id}/delete`} className="btn-line px-3 py-1.5 text-sm">

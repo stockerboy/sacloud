@@ -293,7 +293,7 @@ export {
 export { BoardNav } from './board/BoardNav'
 export { BoardTable, BoardPager } from './board/BoardTable'
 export * from './board/BoardListEta'
-export { PostView, formatPostDate } from './board/PostView'
+export { PostView, formatPostDate, POST_ETA } from './board/PostView'
 export { CommentList, CommentForm } from './board/CommentList'
 export { BoardSearch, type BoardSearchType } from './board/BoardSearch'
 export {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CommentForm, CommentList, PostView, Skeleton } from '@sacloud/ui'
+import { CommentForm, CommentList, PostView, Skeleton, POST_ETA } from '@sacloud/ui'
 import { apiGet } from '@/lib/api'
 import { apiSend } from '@/lib/apiSend'
 import { useApiReady } from '@/app/providers'
@@ -103,7 +103,10 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
         admin={viewerIsAdmin ? { onTogglePin: () => pin.mutate(!post.data!.data.pinned), busy: pin.isPending } : null}
       />
       {/* 2026-09-24 QA(운영 폰): 글 카드 밑 「댓글 n개」 와 댓글 카드 사이가 80px 넘게 비었다 → section-gap(40) 대신 12 */}
-      <div className="mt-3 rounded-[var(--radius)] border border-line bg-card px-6 py-5 max-md:px-4">
+      <div
+        className={POST_ETA ? 'mt-3 rounded-[18px] border px-6 py-5 max-md:px-4' : 'mt-3 rounded-[var(--radius)] border border-line bg-card px-6 py-5 max-md:px-4'}
+        style={POST_ETA ? { background: '#0f1729', borderColor: '#243250' } : undefined}
+      >
         <CommentList
           comments={comments.data?.data}
           loading={!comments.data}
