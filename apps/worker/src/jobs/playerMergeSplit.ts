@@ -145,56 +145,47 @@ async function findPairs(names?: readonly string[]): Promise<{ pairs: MergePair[
  * 껍데기에 회원 연동이 남아 「내 선수」 가 기록 없는 줄을 가리키는 일이 있었다.
  */
 export async function planOf(pair: MergePair): Promise<MergePlan & { ids: BackupLine['ids'] }> {
-  const [supStats, brkStats] = await Promise.all([
-    prisma.matchPlayerStat.findMany({ where: { playerId: pair.supId }, select: { id: true, matchId: true } }),
-    prisma.matchPlayerStat.findMany({ where: { playerId: pair.brkId }, select: { matchId: true } }),
-  ])
+  /*
+   * ⚠ 2026-09-25 — ★질의를 나란히 던지지 않는다★ (`Promise.all` 이었다). 배치용 풀은 연결이 2개뿐이라
+   *   DB 가 밀리는 시각(season0-apply · hex 빌드)에 「Timed out fetching a new connection from the connection pool」 로
+   *   168쌍 만에 죽었다. 한 줄씩 차례로 읽는다 — 느려도 죽지 않는 쪽이 낫다.
+   */
+  const supStats = await prisma.matchPlayerStat.findMany({ where: { playerId: pair.supId }, select: { id: true, matchId: true } })
+  const brkStats = await prisma.matchPlayerStat.findMany({ where: { playerId: pair.brkId }, select: { matchId: true } })
   const brkMatches = new Set(brkStats.map((s) => s.matchId))
   const statsMove = supStats.filter((s) => !brkMatches.has(s.matchId)).map((s) => s.id)
-  const [supHex, brkHex] = await Promise.all([
-    /* MatchPlayerHex 는 id 가 없다 — (playerId, matchId) 가 키라 matchId 로 옮긴다 */
-    prisma.matchPlayerHex.findMany({ where: { playerId: pair.supId }, select: { matchId: true } }),
-    prisma.matchPlayerHex.findMany({ where: { playerId: pair.brkId }, select: { matchId: true } }),
-  ])
+  /* MatchPlayerHex 는 id 가 없다 — (playerId, matchId) 가 키라 matchId 로 옮긴다 */
+  const supHex = await prisma.matchPlayerHex.findMany({ where: { playerId: pair.supId }, select: { matchId: true } })
+  const brkHex = await prisma.matchPlayerHex.findMany({ where: { playerId: pair.brkId }, select: { matchId: true } })
   const brkHexMatches = new Set(brkHex.map((h) => h.matchId))
   const hexMove = supHex.filter((h) => !brkHexMatches.has(h.matchId)).map((h) => h.matchId)
   const weapon = await prisma.matchWeaponEvidence.findMany({ where: { playerId: pair.supId }, select: { id: true } })
   const mvp = await prisma.match.findMany({ where: { mvpPlayerId: pair.supId }, select: { id: true } })
-  const [supRoster, brkRoster] = await Promise.all([
-    prisma.leagueRosterMembership.findMany({ where: { playerId: pair.supId }, select: { id: true, leagueClanId: true, joinedAt: true } }),
-    prisma.leagueRosterMembership.findMany({ where: { playerId: pair.brkId }, select: { leagueClanId: true, joinedAt: true } }),
-  ])
+  const supRoster = await prisma.leagueRosterMembership.findMany({ where: { playerId: pair.supId }, select: { id: true, leagueClanId: true, joinedAt: true } })
+  const brkRoster = await prisma.leagueRosterMembership.findMany({ where: { playerId: pair.brkId }, select: { leagueClanId: true, joinedAt: true } })
   const brkRosterKeys = new Set(brkRoster.map((r) => `${r.leagueClanId}|${r.joinedAt.toISOString()}`))
   const rosterMove = supRoster.filter((r) => !brkRosterKeys.has(`${r.leagueClanId}|${r.joinedAt.toISOString()}`)).map((r) => r.id)
-  const [supLeague, brkLeague] = await Promise.all([
-    prisma.leaguePlayer.findMany({ where: { playerId: pair.supId } }),
-    prisma.leaguePlayer.findMany({ where: { playerId: pair.brkId }, select: { leagueId: true } }),
-  ])
+  const supLeague = await prisma.leaguePlayer.findMany({ where: { playerId: pair.supId } })
+  const brkLeague = await prisma.leaguePlayer.findMany({ where: { playerId: pair.brkId }, select: { leagueId: true } })
   const brkLeagues = new Set(brkLeague.map((l) => l.leagueId))
   const leagueDelete = supLeague.filter((l) => brkLeagues.has(l.leagueId))
   const leagueMove = supLeague.filter((l) => !brkLeagues.has(l.leagueId)).map((l) => l.id)
 
   /* ── 2026-09-25 추가 — 사람에 딸린 나머지 표 ── */
   /* 회원 연동은 선수당 하나(`playerId` unique) — BRK 가 이미 연동돼 있으면 SUP 것은 두고(껍데기에 남음) 센다 */
-  const [supLink, brkLink] = await Promise.all([
-    prisma.userPlayerLink.findUnique({ where: { playerId: pair.supId }, select: { userId: true } }),
-    prisma.userPlayerLink.findUnique({ where: { playerId: pair.brkId }, select: { userId: true } }),
-  ])
+  const supLink = await prisma.userPlayerLink.findUnique({ where: { playerId: pair.supId }, select: { userId: true } })
+  const brkLink = await prisma.userPlayerLink.findUnique({ where: { playerId: pair.brkId }, select: { userId: true } })
   const userLinkMove = supLink && !brkLink ? [supLink.userId] : []
   /* 신고: (playerId, userId, day) 유일 — BRK 에 같은 (userId, day) 가 있으면 그 줄은 안 옮긴다 */
-  const [supReports, brkReports] = await Promise.all([
-    prisma.playerReport.findMany({ where: { playerId: pair.supId }, select: { id: true, userId: true, day: true } }),
-    prisma.playerReport.findMany({ where: { playerId: pair.brkId }, select: { userId: true, day: true } }),
-  ])
+  const supReports = await prisma.playerReport.findMany({ where: { playerId: pair.supId }, select: { id: true, userId: true, day: true } })
+  const brkReports = await prisma.playerReport.findMany({ where: { playerId: pair.brkId }, select: { userId: true, day: true } })
   const brkReportKeys = new Set(brkReports.map((r) => `${r.userId}|${r.day}`))
   const reportMove = supReports.filter((r) => !brkReportKeys.has(`${r.userId}|${r.day}`)).map((r) => r.id)
   /* 깃발: 유일키가 (league, day, rank) 라 playerId 만 바꾸면 된다 */
   const flagMove = (await prisma.leagueFlag.findMany({ where: { playerId: pair.supId }, select: { id: true } })).map((f) => f.id)
   /* 연동 신청: (userId, playerId) 유일 — BRK 에 같은 userId 신청이 있으면 안 옮긴다 */
-  const [supClaims, brkClaims] = await Promise.all([
-    prisma.playerLinkClaim.findMany({ where: { playerId: pair.supId }, select: { id: true, userId: true } }),
-    prisma.playerLinkClaim.findMany({ where: { playerId: pair.brkId }, select: { userId: true } }),
-  ])
+  const supClaims = await prisma.playerLinkClaim.findMany({ where: { playerId: pair.supId }, select: { id: true, userId: true } })
+  const brkClaims = await prisma.playerLinkClaim.findMany({ where: { playerId: pair.brkId }, select: { userId: true } })
   const brkClaimUsers = new Set(brkClaims.map((c) => c.userId))
   const claimMove = supClaims.filter((c) => !brkClaimUsers.has(c.userId)).map((c) => c.id)
   const identityMove = (await prisma.nexonIdentity.findMany({ where: { playerId: pair.supId }, select: { id: true } })).map((r) => r.id)
@@ -295,6 +286,10 @@ export async function applyMergePlan(pair: MergePair, ids: BackupLine['ids'], ba
     const mark = `${MERGED_NOTE_PREFIX}${pair.brkId} ${kstDate()}`
     /* 껍데기는 소속도 비운다 — 클랜 명단·검색에서 옛 이름이 남지 않게 (`barracksIdentityMerge` 와 같은 규칙) */
     await tx.player.update({ where: { id: pair.supId }, data: { note: line.supNoteBefore ? `${mark} | ${line.supNoteBefore}` : mark, clanId: null } })
+  }, {
+    /* DB 가 밀리는 시각에도 죽지 않게 — 기본(5초)보다 넉넉히. 한 쌍은 많아야 수백 줄이다 */
+    maxWait: 30_000,
+    timeout: 120_000,
   })
 }
 

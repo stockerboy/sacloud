@@ -57,6 +57,8 @@ export interface AccountSplitMergeResult {
   pairs: number
   skipped: { size: number; usnSides: number; inconsistent: number }
   merged: number
+  /** 두 번 해도 안 된 쌍 — 다음 예약이 다시 집어 든다 */
+  failed: number
   movedStats: number
   movedLeagueRows: number
   deletedLeagueRows: number
@@ -226,6 +228,7 @@ export async function runAccountSplitMerge(
     ...info,
     pairs: all.length,
     merged: 0,
+    failed: 0,
     movedStats: 0,
     movedLeagueRows: 0,
     deletedLeagueRows: 0,
@@ -241,16 +244,34 @@ export async function runAccountSplitMerge(
       (confirm ? '' : ' (미리보기)'),
   )
   for (const pair of pairs) {
-    const plan = await planOf(pair)
-    out.movedStats += plan.statsMove
-    out.movedLeagueRows += plan.leagueMove.length
-    out.deletedLeagueRows += plan.leagueDelete.length
-    out.movedUserLinks += plan.ids.userLink?.length ?? 0
-    if (!confirm) continue
-    await applyMergePlan(pair, plan.ids, backupPath)
-    out.merged += 1
-    out.backupPath = backupPath
-    log(`합침 ${pair.supName} → ${pair.name} · 참가 ${plan.statsMove}(겹침 ${plan.statsClash}) · LeaguePlayer 옮김 ${plan.leagueMove.length} 지움 ${plan.leagueDelete.length}${plan.ids.userLink?.length ? ' · 회원연동 옮김' : ''}`)
+    /*
+     * ★한 쌍이 실패해도 멈추지 않는다★ (2026-09-25 실측 — 168쌍 만에 풀 시간초과로 죽었다).
+     *   한 번은 잠깐 쉬고 다시 해 보고, 그래도 안 되면 세어 두고 다음 쌍으로. 다음 시간 예약이 다시 집어 든다
+     *   (합쳐진 줄은 note 로 표시되므로 두 번 합치지 않는다).
+     */
+    let done = false
+    for (let attempt = 1; attempt <= 2 && !done; attempt += 1) {
+      try {
+        const plan = await planOf(pair)
+        if (attempt === 1) {
+          out.movedStats += plan.statsMove
+          out.movedLeagueRows += plan.leagueMove.length
+          out.deletedLeagueRows += plan.leagueDelete.length
+          out.movedUserLinks += plan.ids.userLink?.length ?? 0
+        }
+        if (!confirm) { done = true; break }
+        await applyMergePlan(pair, plan.ids, backupPath)
+        out.merged += 1
+        out.backupPath = backupPath
+        log(`합침 ${pair.supName} → ${pair.name} · 참가 ${plan.statsMove}(겹침 ${plan.statsClash}) · LeaguePlayer 옮김 ${plan.leagueMove.length} 지움 ${plan.leagueDelete.length}${plan.ids.userLink?.length ? ' · 회원연동 옮김' : ''}`)
+        done = true
+      } catch (error) {
+        const message = error instanceof Error ? error.message.split('\n')[0] : String(error)
+        warn(`쌍 ${pair.supName} → ${pair.name} ${attempt}번째 실패 — ${message}`)
+        if (attempt === 1) await new Promise((resolve) => setTimeout(resolve, 5_000))
+        else out.failed += 1
+      }
+    }
   }
   if (info.skipped.usnSides + info.skipped.inconsistent > 0) {
     warn(`사람 판단이 필요한 묶음 ${info.skipped.usnSides + info.skipped.inconsistent}건은 안 건드렸다 — 닉으로 잘못 이어졌거나 다리가 모순인 줄이다`)

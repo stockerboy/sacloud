@@ -745,7 +745,7 @@ async function main(): Promise<number> {
         건너뜀_셋이상: result.skipped.size, 건너뜀_usn양쪽: result.skipped.usnSides, 건너뜀_다리모순: result.skipped.inconsistent,
       }])
       table([{
-        합침: result.merged, 옮길참가: result.movedStats, LP옮김: result.movedLeagueRows, LP지움: result.deletedLeagueRows, 회원연동옮김: result.movedUserLinks,
+        합침: result.merged, 실패: result.failed, 옮길참가: result.movedStats, LP옮김: result.movedLeagueRows, LP지움: result.deletedLeagueRows, 회원연동옮김: result.movedUserLinks,
         반영: result.confirmed ? '했다' : '안했다(미리보기)', 백업: result.backupPath ?? '-', 걸린ms: result.ms,
       }])
       return 0
