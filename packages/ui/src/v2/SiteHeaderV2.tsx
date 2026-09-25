@@ -188,7 +188,14 @@ export function SiteHeaderV2({
   user = null,
   onLogout,
 }: SiteHeaderV2Props) {
-  const pathname = usePathname() ?? '/'
+  /*
+   * ★2026-09-25 검수에서 발견★ — 홈(「/」)의 정적 셸을 만들 때 `usePathname()` 이
+   * 「/index」를 내놓았다 (실측: 상단바 로그인 링크가 `returnUrl=%2Findex` 로 굳어 있었고,
+   * 하이드레이션으로도 안 고쳐졌다). 이 앱에 그런 라우트는 없다 — 로그인 뒤
+   * `router.push(returnUrl)` 이 그대로 404 로 보낸다. 홈으로 되돌린다.
+   */
+  const rawPathname = usePathname() ?? '/'
+  const pathname = rawPathname === '/index' ? '/' : rawPathname
   const loginHref = `/auth/login?returnUrl=${encodeURIComponent(pathname)}`
   const [open, setOpen] = useState(false)
 

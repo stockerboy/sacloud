@@ -756,7 +756,7 @@ async function clanNameIndex(): Promise<ClanIndexRow[]> {
 
   clanIndexInFlight = prisma.clan
     .findMany({
-      where: { ...publicOriginWhere() },
+      where: { active: true, ...publicOriginWhere() },
       orderBy: [{ id: 'asc' }],
       select: { id: true, slug: true, name: true },
     })
@@ -803,7 +803,7 @@ async function clansByReadingOrAlias(
 
   /* 색인에는 요약에 필요한 칸이 없다. 걸린 것만 제대로 조회한다 */
   const found = await prisma.clan.findMany({
-    where: { id: { in: hits.map((row) => row.id) }, ...publicOriginWhere() },
+    where: { id: { in: hits.map((row) => row.id) }, active: true, ...publicOriginWhere() },
     select: CLAN_SUMMARY_SELECT,
   })
   const byId = new Map(found.map((clan) => [clan.id, clan]))
@@ -836,7 +836,7 @@ export async function findClanByName(name: string): Promise<ClanSummary | null> 
   if (slug) return clanBySlug(slug)
 
   const clan = await prisma.clan.findFirst({
-    where: { name: ciEquals(keyword), ...publicOriginWhere() },
+    where: { name: ciEquals(keyword), active: true, ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     select: CLAN_SUMMARY_SELECT,
   })
@@ -849,7 +849,7 @@ export async function findClanByName(name: string): Promise<ClanSummary | null> 
 /** 병영수첩 slug 정확일치 1건 */
 async function clanBySlug(slug: string): Promise<ClanSummary | null> {
   const clan = await prisma.clan.findFirst({
-    where: { slug: ciEquals(slug), ...publicOriginWhere() },
+    where: { slug: ciEquals(slug), active: true, ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     select: CLAN_SUMMARY_SELECT,
   })
@@ -879,8 +879,15 @@ export async function searchClans(query: string): Promise<ClanSummary[]> {
     return found ? [found] : []
   }
 
+  /*
+   * ★2026-09-25 검수에서 발견★ — `active: false` (병합돼 없어진) 클랜이 자동완성에 그대로
+   * 나왔다. `/apply` 클랜 검색에 「grave (병합됨→ajwjdjwuwuei5)」 처럼 내부용 개명 문구가
+   * 그대로 떴다 — 신규 등록자가 죽은 클랜을 고를 수 있었다는 뜻이다.
+   * `Clan.active`는 다른 목록·랭킹 질의(`leagues.ts`의 `ACTIVE_CLAN` 등)에서 이미 걸러 온
+   * 값이라 여기만 빠져 있었다. 같은 규칙으로 맞춘다.
+   */
   const clans = await prisma.clan.findMany({
-    where: { OR: [{ name: ci(keyword) }, { slug: ci(keyword) }], ...publicOriginWhere() },
+    where: { OR: [{ name: ci(keyword) }, { slug: ci(keyword) }], active: true, ...publicOriginWhere() },
     orderBy: [{ id: 'asc' }],
     take: SEARCH_LIMIT,
     select: CLAN_SUMMARY_SELECT,

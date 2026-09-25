@@ -159,7 +159,7 @@ export function ApplyScreen({ initialKind = null }: { initialKind?: string | nul
           <b style={{ color: '#9cc0ff' }}>로그인 없이</b> 신청하실 수 있습니다.
           {/* 2026-09-25 사장님 「리그 시작은 10/1 이지만 참가 신청은 10/15 까지 받는다고 해줘」 */}
           <br />
-          리그는 <b style={{ color: '#ffd83d' }}>10월 1일</b> 에 시작하지만 참가 신청은 <b style={{ color: '#ffd83d' }}>10월 15일까지</b> 받습니다.
+          리그는 <b style={{ color: '#ffd83d' }}>10월 1일</b>에 시작하지만 참가 신청은 <b style={{ color: '#ffd83d' }}>10월 15일까지</b> 받습니다.
         </p>
       </header>
 
