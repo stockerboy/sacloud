@@ -81,7 +81,8 @@ export async function HomeHotBoard() {
         <>
           {/* 2026-09-24 사장님 「게시판 글자 크기좀 줄여」(폰 캡쳐) — 폰만 줄인다(max-md:). PC 는 그대로 */}
           <div className="flex items-baseline justify-between px-1 pb-3">
-            <h2 className="text-[22px] font-black tracking-tight text-text-strong max-md:text-[18px]"><span className="mr-1.5">HOT</span><span className="font-bold">게시물</span></h2>
+            {/* 2026-09-25 사장님 「이 임티 달아줘」(🔥) */}
+            <h2 className="text-[22px] font-black tracking-tight text-text-strong max-md:text-[18px]"><span className="mr-1.5">HOT</span><span className="font-bold">게시물</span><span className="ml-1.5">🔥</span></h2>
             <Link prefetch={false} href="/board/hot" className="text-[13px] text-meta transition-colors hover:text-accent max-md:text-[12px]">더 보기 ›</Link>
           </div>
           <ul className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1c1c1c]">

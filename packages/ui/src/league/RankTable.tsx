@@ -1075,12 +1075,15 @@ const SCORE_COLUMN = 'ladder' as ScoreColumn
           >
             {/*
               2026-09-25 QA — 폰(50px)에 「통합킬뎃」(4자)이 안 들어가 오른쪽 정렬 탓에
-              왼쪽 「승률」 칸을 침범해 「승률통합킬뎃」으로 붙어 보였다. 폰은 옛 길이(두 자)
-              그대로 두고, 자리가 있는 PC(md 이상)에서만 「통합/스나/라플」을 완전히 적는다.
+              왼쪽 「승률」 칸을 침범해 「승률통합킬뎃」으로 붙어 보였다. 폰은 두 자만
+              적되(옛 「킬뎃」 자리와 같은 길이) ★그냥 「킬뎃」이 아니라 「통합」★ 으로
+              적는다 — 사장님 「여기서 그냥 킬뎃일 때는 통합으로 보여줘야해」. 자리가
+              있는 PC(md 이상)에서만 「통합/스나/라플」을 완전히 적는다.
             */}
-            <span className="md:hidden">{kdWeapon === 'all' ? '킬뎃' : kdWeapon === 1 ? '스나' : '라플'}</span>
+            <span className="md:hidden">{kdWeapon === 'all' ? '통합' : kdWeapon === 1 ? '스나' : '라플'}</span>
             <span className="hidden md:inline">{kdWeaponLabel}</span>{' '}
-            <span style={{ fontSize: 9 }}>▾</span>
+            {/* 2026-09-25 사장님 「그 화살표 좀 키워 안보여」 — 9 → 13px */}
+            <span style={{ fontSize: 13 }}>▾</span>
           </button>
         ) : null}
         {columns.kd ? <div className={COL_PWL}>평균킬</div> : null}

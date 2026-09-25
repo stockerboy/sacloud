@@ -139,7 +139,8 @@ function KdCell({
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
           {/* 2026-09-25 사장님 「킬뎃 단추에 통합킬뎃이라고 쓰고」 — 이미 누르면 스나/라플로 갈라지는 단추였다. 이름만 안 보였다 */}
           <span style={{ fontSize: 10.5, color: V3.textGhost, letterSpacing: '.08em', whiteSpace: 'nowrap', flex: 'none' }}>
-            통합킬뎃 <span style={{ fontSize: 9 }}>{open ? '▲' : '▼'}</span>
+            통합킬뎃 {/* 2026-09-25 사장님 「그 화살표 좀 키워 안보여」 — 9 → 13px */}
+            <span style={{ fontSize: 13 }}>{open ? '▲' : '▼'}</span>
           </span>
           {sub ? (
             <span style={{ fontSize: 11, color: V3.textDim, whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1041,7 +1042,8 @@ export function PlayerHeaderV3({ data, infoHref, seasonLabel, mainWeapon, report
                       onClick={() => setPhoneKdWeapon((w) => (w === 'all' ? 1 : w === 1 ? 0 : 'all'))}
                       style={{ border: 0, background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
                     >
-                      {label} <span style={{ fontSize: 9 }}>▾</span>
+                      {label} {/* 2026-09-25 사장님 「그 화살표 좀 키워 안보여」 — 9 → 13px */}
+                      <span style={{ fontSize: 13 }}>▾</span>
                     </button>
                   }
                   sub={kill === null || death === null ? undefined : `${fmt(kill)}킬 ${fmt(death)}데스`}
