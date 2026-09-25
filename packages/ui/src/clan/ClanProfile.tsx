@@ -9,9 +9,11 @@ import { Egg } from '../egg/Egg'
 import { useClanEgg } from '../egg/EggContext'
 import { EggVeil } from '../egg/EggVeil'
 import { formatCount, formatRating, formatDate, formatRate } from '../common/format'
+import { rateClass } from '../common/rate'
 import { divisionLabel } from '../league/divisionLabel'
 import { leagueClanPath } from '../common/paths'
 import { leagueDisplayName } from '../site-config'
+import { CardLine, leagueKindOf } from '../player/PlayerProfile'
 import {
   IdentityBand,
   MetaDot,
@@ -20,8 +22,6 @@ import {
   ProfileEmpty,
   ProfileSkeleton,
   SectionTitle,
-  Stat,
-  WinBar,
 } from '../player/profileKit'
 
 /**
@@ -123,6 +123,15 @@ export { ProfileNav as ClanProfileNav } from '../player/profileKit'
 
 /* --------------------------------------------------------------- 리그 목록 --- */
 
+/**
+ * ★2026-09-25 — 개인 프로필 「참여중인 리그」 카드와 같은 꼴로★ (사장님
+ * 「참여중인리그 클랜카드도 개인카드랑 비슷하게 바꿔」).
+ *
+ * 왼쪽 리그 성격 색 띠 · 일반/경쟁 배지 · CardLine(원자료 왼쪽 · 라벨+값 오른쪽) —
+ * `PlayerLeagueRow`(`player/PlayerProfile.tsx`)와 같은 부품을 그대로 가져다 쓴다.
+ * 클랜은 킬·데스가 없으니 그 줄만 빼고 래더·승률·순위 셋을 쓴다.
+ * ⚠ 옛 격자 카드(전적·승패·승률·순위 4칸)는 지우지 않았다 — git 이력에 그대로 있다.
+ */
 function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: string }) {
   const games = entry.win + entry.lose
   /* 한 판도 안 치른 클랜에게 `승률 0%` 를 적지 않는다 — 표본이 없다는 뜻이지 전패가 아니다 */
@@ -130,74 +139,77 @@ function ClanLeagueRow({ entry, clanSlug }: { entry: ClanLeagueEntry; clanSlug: 
   /* 클랜 알 — 승률 · 승패를 가린다. **전적(판수) · 래더 · 순위는 가리지 않는다** (사양 2장) */
   const egg = useClanEgg(clanSlug)
   const sealed = egg === 'sealed'
+  const kind = leagueKindOf(entry.league.slug)
   return (
     <Link prefetch={false}
       href={leagueClanPath(entry.league.slug, clanSlug)}
-      className={`${PANEL} block px-5 py-4 transition-colors hover:border-accent`}
+      className={`${PANEL} relative block overflow-hidden px-4 py-3 transition-colors hover:border-accent`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            {/* 2026-09-25 — LeagueEntryCards 와 같은 누락(leagueDisplayName 안 거쳐 DB 원문 「PL」·「CPL」 그대로) */}
-            <span className="truncate text-[15px] text-text-strong">{leagueDisplayName(entry.league.slug, entry.league.name)}</span>
-            {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
-            {isOfficialLeague(entry.league.slug) ? <OfficialTag /> : null}
-          </div>
-          <div className="mt-1.5 text-[12px] text-meta">
-            {/* 무소속리그는 `1부리그` 가 아니라 `1티어` 로 적는다 (D-165).
-                부리그를 화면에 내지 않는 리그(지시 #9)는 «참여중» 만 적는다 */}
-            {showsTier(entry.league.slug) && entry.league.division_count > 1
-              ? `${divisionLabel(entry.division, entry.league.category)}로 참여중`
-              : /* 단일리그(부리그 1개)도 «참여중» 만 — 헤더의 `divisionCount <= 1` 규칙과 같다 (#17-2) */
-                '참여중'}
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-[12px] leading-none text-meta">래더</div>
-          {/* 배치고사 폐지 (2026-09-01) — `placement` 는 이제 「이 창에 0판」이라는 뜻이다 */}
-          {entry.placement ? (
-            <div className="mt-1.5 text-[15px] leading-none text-meta">기록 없음</div>
-          ) : (
-            <div className="mt-1 font-num text-[26px] leading-none tabular-nums text-text-strong">
-              {/* 2026-09-24 QA(운영 /clan/<slug>): 「3,123 점」 옛 표기가 남아 있었다 → 사이트 통일 「31층」 */}
-              {formatRating(entry.rating)}
-            </div>
-          )}
-        </div>
+      {/* ★리그 성격 색 띠★ — 개인 카드와 같은 자리(왼쪽 3px) */}
+      {kind ? <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: kind.color }} /> : null}
+
+      <div className="flex items-center gap-2">
+        <span className="truncate text-[15px] font-extrabold tracking-[-.01em] text-text-strong">
+          {leagueDisplayName(entry.league.slug, entry.league.name)}
+        </span>
+        {kind ? (
+          <span
+            className="inline-flex select-none items-center rounded-[3px] border px-1.5 py-0.5 text-[10px] font-bold leading-none"
+            style={{ borderColor: `${kind.color}66`, color: kind.color, background: `${kind.color}1f` }}
+          >
+            {kind.label}
+          </span>
+        ) : null}
+        {/* 공식 표기는 계약의 표가 정한다 (#17). 옛 값: `entry.league.official` */}
+        {isOfficialLeague(entry.league.slug) ? <OfficialTag /> : null}
+      </div>
+      <div className="mt-1 text-[12px] text-meta">
+        {/* 무소속리그는 `1부리그` 가 아니라 `1티어` 로 적는다 (D-165).
+            부리그를 화면에 내지 않는 리그(지시 #9)는 «참여중» 만 적는다 */}
+        {showsTier(entry.league.slug) && entry.league.division_count > 1
+          ? `${divisionLabel(entry.division, entry.league.category)}로 참여중`
+          : /* 단일리그(부리그 1개)도 «참여중» 만 — 헤더의 `divisionCount <= 1` 규칙과 같다 (#17-2) */
+            '참여중'}
       </div>
 
-      {sealed ? null : (
-        <div className="mt-4">
-          <WinBar win={entry.win} lose={entry.lose} />
-        </div>
-      )}
-
-      <div className="mt-3.5 grid grid-cols-4 gap-4 max-md:grid-cols-2 max-md:gap-y-3">
-        {/* 판수는 가리지 않는다 (사양 2장) */}
-        <Stat label="전적" value={`${formatCount(games)}전`} />
-        {sealed ? (
-          <Stat label="승 · 패" value={<EggVeil state={egg}>{null}</EggVeil>} />
-        ) : (
-          <Stat
-            label="승 · 패"
-            value={`${formatCount(entry.win)} · ${formatCount(entry.lose)}`}
-          />
-        )}
-        {sealed ? (
-          <Stat label="승률" value={<EggVeil state={egg}>{null}</EggVeil>} />
-        ) : rated ? (
-          <Stat label="승률" value={`${formatRate(entry.win_rate)}%`} strong />
-        ) : (
-          <Stat label="승률" value="기록 없음" muted />
-        )}
-        {entry.rank !== null && entry.rank_count !== null ? (
-          <Stat
-            label="순위"
-            value={`${formatCount(entry.rank_count)}팀중 ${formatCount(entry.rank)}위`}
-          />
-        ) : (
-          <Stat label="순위" value="없음" muted />
-        )}
+      <div className="mt-2.5 flex flex-col gap-1.5">
+        <CardLine
+          raw={null}
+          label="래더"
+          /* 배치고사 폐지 (2026-09-01) — `placement` 는 이제 「이 창에 0판」이라는 뜻이다 */
+          value={entry.placement ? '기록 없음' : formatRating(entry.rating)}
+          muted={entry.placement}
+        />
+        <CardLine
+          raw={`${formatCount(games)}전 ${formatCount(entry.win)}승 ${formatCount(entry.lose)}패`}
+          label="승률"
+          value={
+            sealed ? (
+              <EggVeil state={egg}>{null}</EggVeil>
+            ) : rated ? (
+              `${formatRate(entry.win_rate)}%`
+            ) : (
+              '기록 없음'
+            )
+          }
+          muted={!sealed && !rated}
+          tone={!sealed && rated ? rateClass(entry.win_rate) : ''}
+        />
+        <CardLine
+          raw={null}
+          label="순위"
+          value={
+            entry.rank !== null && entry.rank_count !== null
+              ? `${formatCount(entry.rank)}위`
+              : '순위 없음'
+          }
+          muted={entry.rank === null}
+          sub={
+            entry.rank !== null && entry.rank_count !== null
+              ? `${formatCount(entry.rank_count)}팀중`
+              : null
+          }
+        />
       </div>
     </Link>
   )

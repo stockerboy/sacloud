@@ -35,7 +35,8 @@ import {
  *   nolink=IPL → 일반(파랑) · supply=PL(=Supply1.0) → 경쟁(호박). 열산(sanply)은 사장님이 안 정해 라벨 없음.
  *   Supply2.0 은 아직 우리 DB 에 없는 신규 리그다 — 만들어지면 여기 한 줄 추가한다.
  */
-function leagueKindOf(slug: string): { label: string; color: string } | null {
+/** 클랜 프로필의 「참여중인 리그」 카드도 같은 색·라벨을 쓴다 (2026-09-25 사장님 「클랜카드도 개인카드랑 비슷하게」) */
+export function leagueKindOf(slug: string): { label: string; color: string } | null {
   if (slug === 'nolink') return { label: '일반', color: '#5c80e0' }
   if (slug === 'supply') return { label: '경쟁', color: '#f59e0b' }
   /* Supply 2.0(cpl) — 경쟁 · 금색 (2026-09-24 사장님 「2.0 은 좀 더 간지나게」) */
@@ -427,7 +428,8 @@ function PlayerLeagueRow({
  * ⚠ ★왼쪽이 비어도 줄은 그린다★ — 원본의 첫 줄(래더)이 그렇다. 오른쪽 값들이
  *   같은 자리에 세로로 줄지어야 읽힌다.
  */
-function CardLine({
+/** 클랜 프로필 카드도 같은 줄 모양을 쓴다 (2026-09-25) */
+export function CardLine({
   raw,
   label,
   value,
