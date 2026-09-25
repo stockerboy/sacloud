@@ -7,6 +7,22 @@
 
 ---
 
+## 0-낮1. ★2026-09-25 12:0x~13:2x — 계정 갈라짐 전수조사 · 645쌍 합침 · 재발 방지★
+
+- 사장님 「계정 갈라진거 엄청 많아 위장닉네임 하면 같은 병영수첩인데 사이트 내에서 기록이 두개생기는거 전수 조사해서 제발 고쳐줘」
+- ★왜 아직 갈라져 있었나★: 매시 `barracks-identity-merge` 는 ★클랜 명단(`BarracksClanMember`)에 있는 계정 10,207명★ 만 다리로 쓴다. 명단 밖 병영 선수(BRK) 3,352명은
+  옛 3rd.supply 줄(SUP-<번호>)과 이어 줄 다리가 없어 ★위장닉/개명한 채 병영수첩에 처음 보이면 새 줄이 생기고 그대로 둘★ 이 됐다.
+  전수조사(`scratchpad/vps_census2.mjs` · 읽기 전용): 갈라진 묶음 ★650(1,300명)★ · 445쌍은 양쪽 다 랭킹 줄이 있어 화면에 둘 다 떴고 · 439쌍은 닉이 서로 달랐다.
+  (identity-merge.log 실측: 매시 「쪼개진사람=2626 · 옮긴경기=0」 — 이미 합친 껍데기를 매시 다시 세는 헛일 5분씩)
+- ★다리는 배틀로그 원문에 있었다★ — 한 줄에 `str_usn`(16진수)과 `user_nexon_sn`(10진수)이 같이 온다. 다리 없는 BRK 선수의 최근 경기 2건씩만 서버쪽 jsonb 질의로 뽑으면(≈10초) 계정 짝이 다 나온다.
+- 새 잡 `account-split-merge`(`apps/worker/src/jobs/accountSplitMerge.ts`): 계정 열쇠(sn·usn·ouid)로 union-find → 살아있는 줄 정확히 둘 + usn 한쪽 + 다리 1:1 일 때만 ★병영 줄로★ 합친다. 닉은 안 본다.
+  옮기는 것은 `playerMergeSplit.applyMergePlan`(export 로 뺌) — 참가·육각·무기·MVP·명부·LeaguePlayer 에 더해 ★회원연동·신고·깃발·연동신청·계정표·클랜마스터·프로필들★ 도 옮긴다. 되돌리기 `player-merge-split --revert data/player-merge/account-2026-09-25.jsonl`.
+  운영 실행: 1차 168쌍 뒤 「connection pool timeout(연결 2개)」 로 죽음(season0-apply 와 겹친 12:43) → 질의 차례 읽기·트랜잭션 여유·쌍 단위 재시도 넣고 2차 477쌍 · 실패 0. ★합계 645쌍★. 재조사 결과 남은 묶음 4(아래).
+- ★닉으로 잘못 이어진 줄 17개★ 발견 — `identity-from-battlelog` 가 닉 하나로 SUP 줄에 BRK 계정을 박았는데 원문은 그 번호를 ★다른 usn★ 과 짝지었다(예: ifyourlove SUP-1795985018 ← BRK-F488…, 원문은 BRK-5178…).
+  기록 0인 15줄은 원래 번호로 되돌려(`scratchpad/vps_unlink17.mjs`) 이번 병합에 포함. ★기록 있는 2줄(정다희십년 SUP-1526995378 n=1 · nightfever SUP-1543761223 n=2)은 사람 판단 필요 — 안 건드림.★ 다리모순 2묶음도 남김.
+- ★재발 방지 3곳★: ① `battlelog-lineup` 이 새 병영 줄을 만들기 전에 옛 줄을 계정번호로 찾아 잇는다(`adoptLegacyPlayer` · 결과 「옛줄이음」 칸) ② `identity-from-battlelog` 도 닉보다 계정번호를 먼저 보고, 닉으로 이을 때 번호가 다르면 안 잇는다(「번호 달라 안 이음」) ③ `scripts/identity-merge.sh` 가 매시 `account-split-merge --confirm` 도 돌린다. `barracks-identity-merge` 는 껍데기를 후보에서 뺌.
+- 랭킹 숫자는 다음 `season0-apply`(매 13·43분)가 다시 세면 한 줄로 모인다. 웹 코드는 안 바꿈(검색은 이미 `merged-into:` 껍데기를 숨긴다).
+
 ## 0-새벽7. ★2026-09-25 07:5x — GNB·서랍 로고 분리 확인 · PL/CPL 두 번째 자리(클랜 리그정보 탭) 찾아 고침
 
 - 헤드리스로 직접 확인: PC 상단바 cpl 로고=`league-supply2.webp`(깨진유리) · 폰 서랍 「경쟁전」 아이콘=`league-supply1.webp`(날개) — 의도대로 분리됨.
