@@ -505,7 +505,12 @@ function LoginIcon() {
  * 카드가 다크 남색 / 흰 판 중 어느 쪽인지 여기서 고른다. `v2` 전역 CSS 톤(이 헤더 포함)은
  * 안 바뀐다 — v3 카드만 바뀐다 (`themeMode.ts` 머리말 참고).
  *
- * 폰·PC 어디서나 보인다(`max-md:hidden` 없음) — 로그인 단추와 같은 자리 규칙이다.
+ * ⚠ ★2026-09-26 정정 — 폰은 서랍으로★ (사장님 「라이트 모드 안돼 모바일에서 로고에
+ *   가려져서」). 폰(<768)에서는 상단바 가운데에 로고가 절대 위치로 뜨는데, 오른쪽
+ *   아이콘 칸을 넓히면 그 로고와 ★자리 자체가 물리적으로 겹쳤다★ — z-index 로 가려짐은
+ *   없앴지만 겹쳐 보이는 것 자체는 못 없앴다(자리가 좁아서). 그래서 폰에서는 이 단추를
+ *   숨기고 같은 토글을 서랍(`DrawerNavSupply.tsx` 의 `ThemeToggleDrawerButton`)에 둔다 —
+ *   거기는 자리가 넉넉해 겹칠 일이 없다. PC 는 그대로 여기(로그인 옆)에 보인다.
  */
 function ThemeToggleButton() {
   const mode = useThemeMode()
@@ -514,7 +519,7 @@ function ThemeToggleButton() {
     <button
       type="button"
       onClick={toggleThemeMode}
-      className="v2-login"
+      className="v2-login max-md:hidden"
       aria-label={light ? '어두운 색 테마로 바꾸기' : '밝은 색 테마로 바꾸기'}
       title={light ? '어두운 색 테마' : '밝은 색 테마'}
     >

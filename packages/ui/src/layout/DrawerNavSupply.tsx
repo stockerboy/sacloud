@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { FEATURED_LEAGUES, type NavLink } from '../site-config'
+import { toggleThemeMode, useThemeMode } from '../v3/themeMode'
 
 /**
  * ★★서랍(햄버거) — 서플라이 폰 판★★ (2026-09-22 · 사장님이 직접 적어 주심)
@@ -140,6 +141,17 @@ export function DrawerNavSupply({ user = null, onLogout, onClose, loginHref = '/
             {/* 2026-09-24 사장님 「로고 이걸로 바꿔줘」 — 같은 그림을 `BrandLogo.tsx` 의 `NavLogo` 도 쓴다 */}
             <img src="/brand/sacloud-wordmark.webp" alt="SACLOUD" width={130} height={13.4} style={{ width: 130, height: 'auto', display: 'block' }} />
           </Link>
+          <div className="flex shrink-0 items-center">
+            {/*
+             * ★밝은/어두운 판 토글 — 폰은 서랍으로★ (2026-09-26 사장님 「라이트 모드 안돼
+             * 모바일에서 로고에 가려져서」). 위 상단바 토글에 z-index 를 줘 봤지만 근본 원인은
+             * ★자리 자체가 좁았다★ — 폰(390px대)에서 가운데 로고(195px)와 오른쪽 아이콘 칸이
+             * 물리적으로 겹치는 폭이었다. z-index 로는 「가려짐」만 없앨 뿐 「겹쳐 보임」은
+             * 못 없앤다. 서랍은 훨씬 넓어서 겹칠 일이 없다 — 폰의 토글은 여기로 옮긴다.
+             * (상단바 쪽 토글은 PC 에서만 보이게 `max-md:hidden` 을 달았다 — `SiteHeaderV2.tsx`)
+             */}
+            <ThemeToggleDrawerButton className={C.close} />
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -212,6 +224,50 @@ function CloseIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-[28px] w-[28px]" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+    </svg>
+  )
+}
+/**
+ * ★밝은/어두운 판 전환 — 서랍 판★ (2026-09-26). `SiteHeaderV2.tsx` 의 `ThemeToggleButton`
+ * 과 같은 뜻(선수·클랜·경기 상세의 v3 카드만 바뀐다) — 여기는 폰에서 자리가 넉넉한
+ * 서랍 안에 놓는 판이다.
+ */
+function ThemeToggleDrawerButton({ className }: { className?: string }) {
+  const mode = useThemeMode()
+  const light = mode === 'light'
+  return (
+    <button
+      type="button"
+      onClick={toggleThemeMode}
+      aria-label={light ? '어두운 색 테마로 바꾸기' : '밝은 색 테마로 바꾸기'}
+      title={light ? '어두운 색 테마' : '밝은 색 테마'}
+      className={`flex h-[56px] w-[44px] items-center justify-center ${className ?? ''}`}
+    >
+      {light ? <ThemeSunIcon /> : <ThemeMoonIcon />}
+    </button>
+  )
+}
+function ThemeSunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+      <circle cx="12" cy="12" r="4.2" />
+      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+        <line x1="12" y1="1.6" x2="12" y2="4.4" />
+        <line x1="12" y1="19.6" x2="12" y2="22.4" />
+        <line x1="1.6" y1="12" x2="4.4" y2="12" />
+        <line x1="19.6" y1="12" x2="22.4" y2="12" />
+        <line x1="4.4" y1="4.4" x2="6.3" y2="6.3" />
+        <line x1="17.7" y1="17.7" x2="19.6" y2="19.6" />
+        <line x1="4.4" y1="19.6" x2="6.3" y2="17.7" />
+        <line x1="17.7" y1="6.3" x2="19.6" y2="4.4" />
+      </g>
+    </svg>
+  )
+}
+function ThemeMoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+      <path d="M20.2 14.7A8.2 8.2 0 0 1 9.3 3.8a8.6 8.6 0 1 0 10.9 10.9z" />
     </svg>
   )
 }
