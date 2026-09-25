@@ -761,7 +761,12 @@ export async function getBoard(boardId: string, request: Request): Promise<Board
    */
   let counted = false
   try {
-    counted = await consumeWriteQuota(`board:view:${boardId}:${key}`, VIEW_COUNT_WINDOW_SECONDS)
+    /*
+     * ★관리자는 조회수를 마음대로 올릴 수 있다★ (2026-09-25 사장님 「글 올린거 조회수도
+     * 관리자가 맘대로 올릴 수 잇게 해주라」) — 평소엔 위 주석대로 같은 사람이 30분 안에
+     * 다시 열어도 안 세지만, 관리자가 보면 그 창을 건너뛰고 열 때마다(=새로고침마다) 그냥 +1.
+     */
+    counted = (await isAdmin(userId)) || (await consumeWriteQuota(`board:view:${boardId}:${key}`, VIEW_COUNT_WINDOW_SECONDS))
     if (counted) {
       await prisma.board.update({ where: { id: boardId }, data: { viewCount: { increment: 1 } } })
     }

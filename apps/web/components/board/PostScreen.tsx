@@ -116,11 +116,19 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
           onVote={(commentId, type) => commentVote.mutate({ commentId, type })}
           onReply={(parentId, content) =>
             /*
-             * ★답글도 익명이 기본 — 단, 관리자는 아니다★ (2026-09-25 사장님 「관리자 아이디로
-             * 댓글 달았는데 베리타스로 달려」). 답글 칸에는 체크가 없어서(2026-09-20) 여기서
-             * 값을 정한다 — 관리자가 아니면 옛 규칙 그대로 익명이다.
+             * ⚠ ★2026-09-25 재정정★ (사장님 「관리자가 답글 달면 글쓴이로 떠 이게 있으면 의미가
+             * 없어 사용자가 쓴척해야해 내가 쓴글에 내가 댓글 달아도 익명으로 표시해줘」).
+             *
+             *   바로 위 옛 판단(「관리자는 실명이 기본」, 같은 날 오전)은 ★관리자가 체크박스가
+             *   실수로 익명에 걸려 있어서★ 잡은 것이었다 — 글쓴이 화면(`CommentForm`)은
+             *   체크를 관리자가 직접 볼 수 있으니 그걸로 충분하다.
+             *
+             *   ★답글(`ReplyForm`)은 체크가 아예 없다★ — 관리자가 고를 길이 없이 무조건
+             *   실명으로 나갔다. 관리자가 자기 글에 자기가 답글을 달면 `board_writer`(글쓴이
+             *   표식)까지 겹쳐서 「관리자 계정이 이 글 주인이다」가 그대로 드러났다 — 대리 클랜으로
+             *   위장하는 의미가 없어진다. 답글은 ★관리자든 아니든 항상 익명★ 으로 되돌린다.
              */
-            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: !viewerIsAdmin, as_clan_slug: null })
+            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: true, as_clan_slug: null })
           }
         />
         <CommentForm
