@@ -27,14 +27,14 @@
     "sanitize-html": "^2.17.7"
   },
   "peerDependencies": {
-    "next": "^15.1.0",
+    "next": "^15.5.26",
     "react": "^19.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/sanitize-html": "^2.16.1",
-    "next": "^15.1.0",
+    "next": "^15.5.26",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }

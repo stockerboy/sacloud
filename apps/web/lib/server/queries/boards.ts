@@ -32,7 +32,7 @@ import {
   toPlayerSummaryOrNull,
 } from '../mappers'
 import { BOARD_WRITE_INTERVAL } from '../configs'
-import { currentUserId, voterKey } from '../session'
+import { ADMIN_ROLE, currentUserId, voterKey } from '../session'
 
 /**
  * 게시판 · 댓글 조회/명령.
@@ -811,11 +811,11 @@ const invalid = (message: string) => ({ ok: false as const, status: 400 as const
 const denied = (message: string) => ({ ok: false as const, status: 403 as const, message })
 const missing = (message: string) => ({ ok: false as const, status: 404 as const, message })
 
-/** 운영자 권한. `ROLE.ADMIN = 2` (관측값). */
+/** 운영자 권한. 상수는 `session.ts` 의 `ADMIN_ROLE` 하나만 쓴다 — 여기 따로 2를 박아두면 어긋날 수 있다. */
 async function isAdmin(userId: string | null): Promise<boolean> {
   if (!userId) return false
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
-  return user?.role === 2
+  return user?.role === ADMIN_ROLE
 }
 
 export async function createBoard(request: Request, body: unknown): Promise<WriteResult<Board>> {

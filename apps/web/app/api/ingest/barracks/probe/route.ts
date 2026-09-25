@@ -31,6 +31,7 @@
  *   ★확정은 못 한다. 그 한계를 응답에 적어 돌려준다.★
  */
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'node:crypto'
 
 const ORIGIN = 'https://barracks.sa.nexon.com'
 
@@ -40,7 +41,11 @@ function deny(request: Request): NextResponse | null {
   if (!token || token.length < 16) {
     return NextResponse.json({ message: 'not found' }, { status: 404 })
   }
-  if (request.headers.get('authorization') !== `Bearer ${token}`) {
+  const givenBuf = Buffer.from(request.headers.get('authorization') ?? '')
+  const expectedBuf = Buffer.from(`Bearer ${token}`)
+  const matches =
+    givenBuf.length === expectedBuf.length && timingSafeEqual(givenBuf, expectedBuf)
+  if (!matches) {
     return NextResponse.json({ message: 'unauthorized' }, { status: 401 })
   }
   return null

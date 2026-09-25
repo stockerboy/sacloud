@@ -1,5 +1,5 @@
 import { prisma } from '@sacloud/db'
-import { currentUserId } from '../session'
+import { ADMIN_ROLE, currentUserId } from '../session'
 
 /**
  * 리그 관리 권한.
@@ -30,7 +30,7 @@ export async function requireLeagueAdmin(
   if (league.ownerUserId === userId) return { ok: true, leagueId: league.id, userId }
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
-  if (user?.role === 2) return { ok: true, leagueId: league.id, userId }
+  if (user?.role === ADMIN_ROLE) return { ok: true, leagueId: league.id, userId }
 
   return { ok: false, reason: 'forbidden' }
 }

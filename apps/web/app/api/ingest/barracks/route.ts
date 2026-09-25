@@ -45,6 +45,7 @@
  *   같은 응답을 두 번 보내도 행이 늘지 않는다. 두 번째부터는 `fetchCount` 만 올린다.
  */
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'node:crypto'
 import { prisma } from '@sacloud/db'
 /* ★적재 로직은 여기 없다★ — 창구와 CLI 가 **같은 함수**를 쓴다 (O-051 · 2026-09-03).
    복사하면 저장 모양이 갈리고, 갈리면 같은 응답이 두 행이 되거나 집계에서 통째로 빠진다 */
@@ -77,7 +78,14 @@ function deny(request: Request): NextResponse | null {
     return NextResponse.json({ message: 'not found' }, { status: 404 })
   }
   const given = request.headers.get('authorization') ?? ''
-  if (given !== `Bearer ${token}`) {
+  const expected = `Bearer ${token}`
+  /* ★타이밍 공격 방지★ — `!==` 는 앞에서부터 다르면 바로 끝나서 비교 시간으로 몇 글자가
+     맞았는지 추측할 수 있다. 길이가 같을 때만 `timingSafeEqual` 로 비교한다 */
+  const givenBuf = Buffer.from(given)
+  const expectedBuf = Buffer.from(expected)
+  const matches =
+    givenBuf.length === expectedBuf.length && timingSafeEqual(givenBuf, expectedBuf)
+  if (!matches) {
     return NextResponse.json({ message: 'unauthorized' }, { status: 401, headers: cors })
   }
   return null
