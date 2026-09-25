@@ -235,7 +235,33 @@ function isUnreachable(error: unknown): boolean {
   return holder.code === 'P1001' || holder.errorCode === 'P1001'
 }
 
+/**
+ * "우리 쪽 커넥션 풀에 자리가 없어 기다리다 포기했다"(`P2024`)인가.
+ *
+ * ⚠ **`P1001`(서버에 아예 못 닿음)과 ★다른 실패다★.** P2024 는 요청이 서버까지 가지도
+ * 못하고 Prisma 클라이언트가 `connection_limit` 자리를 못 얻어 자기 큐에서 기다리다
+ * 시간초과 난 것 — 진짜 DB 장애가 아니라 ★우리가 만든 좁은 문(운영은 함수당 1개)★ 에
+ * 순간적으로 요청이 몰린 것이다 (2026-09-25 실측: 배치 잡·집계가 겹친 36분 사이에만
+ * 500 이 23건 몰렸고, DB 질의 자체는 평균 1~7ms — DB 는 안 느렸다).
+ * 옆 자리가 밀리초 단위로 비므로 ★한 번만 잠깐 기다렸다 다시★ 하면 대개 된다.
+ */
+function isPoolTimeout(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false
+  const holder = error as { code?: unknown }
+  return holder.code === 'P2024'
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * ★운영에서도 P2024 는 재시도한다★ (2026-09-25 · 사장님 「사이트 속도 최적화 해 느린곳 생겨 자꾸」).
+ *
+ * 위 P1001 재시도는 "로컬에서만" 이라는 원칙이 있다 — 운영에서 서버 자체가 안 닿으면
+ * 그건 진짜 장애라 숨기면 안 된다. 하지만 P2024 는 ★서버가 아니라 우리 풀이 좁아서★
+ * 나는 것이고, 실측상 서버는 멀쩡했다(질의 자체는 몇 ms). 짧게 한두 번만 기다린다 —
+ * 길게 물고 있으면 서버리스 함수 자체의 실행시간 한도에 먼저 걸린다.
+ */
+const POOL_RETRY_DELAYS_MS = [30, 80, 150]
 
 function createClient(): PrismaClient {
   const base = new PrismaClient({
@@ -249,10 +275,13 @@ function createClient(): PrismaClient {
     errorFormat: 'minimal',
   })
 
-  /* 운영에서는 **재시도하지 않는다.** 거기서 P1001 이 나면 그건 진짜 장애이고,
-     조용히 덮으면 장애를 못 본다. 로컬의 깨진 소켓과 성격이 다르다 */
-  if (!localUrl) return base
-
+  /*
+   * 운영에서는 **P1001 을 재시도하지 않는다.** 거기서 P1001 이 나면 그건 진짜 장애이고,
+   * 조용히 덮으면 장애를 못 본다. 로컬의 깨진 소켓과 성격이 다르다.
+   *
+   * ⚠ 다만 ★P2024(풀 자리 없음)는 운영에서도★ 짧게 재시도한다 — `isPoolTimeout` 주석 참고.
+   *   그래서 운영 클라이언트도 여기서 그대로 리턴하지 않고 P2024 전용 확장을 건다.
+   */
   const extended = base.$extends({
     query: {
       async $allOperations({ args, query }) {
@@ -261,11 +290,21 @@ function createClient(): PrismaClient {
           try {
             return await query(args)
           } catch (error) {
-            if (!isUnreachable(error)) throw error
-            lastError = error
-            const delay = RETRY_DELAYS_MS[attempt]
-            if (delay === undefined) throw lastError
-            await sleep(delay)
+            if (localUrl && isUnreachable(error)) {
+              lastError = error
+              const delay = RETRY_DELAYS_MS[attempt]
+              if (delay === undefined) throw lastError
+              await sleep(delay)
+              continue
+            }
+            if (isPoolTimeout(error)) {
+              lastError = error
+              const delay = POOL_RETRY_DELAYS_MS[attempt]
+              if (delay === undefined) throw lastError
+              await sleep(delay)
+              continue
+            }
+            throw error
           }
         }
       },
