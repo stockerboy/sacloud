@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Bebas_Neue, Chakra_Petch, Cinzel, Noto_Sans_KR } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import { Providers } from './providers'
 import { EggBoot } from './_egg/EggBoot'
 import { AppShell } from '@/components/AppShell'
@@ -185,6 +186,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Mock 단계 전용 세션 전환 스위치 — 원본에 없는 개발 장치 */}
           <DevRoleSwitch />
         </Providers>
+        {/*
+          ★방문 통계★ (2026-09-25 사장님 「관리자 권한으로 접속량 같은거 볼 수 있나」)
+          Vercel Analytics — 페이지뷰·방문자를 Vercel 대시보드(Analytics 탭)로 보낸다.
+          우리 DB 를 안 건드린다 · 개인정보(IP·쿠키)를 직접 안 남기는 방식(Vercel 이 집계만 보관).
+          지금까지 이 패키지가 없어서 대시보드가 "No data" 였다 — 이제부터 쌓인다.
+        */}
+        <Analytics />
       </body>
     </html>
   )
