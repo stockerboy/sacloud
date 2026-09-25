@@ -24,3 +24,8 @@ cd /root/sacloud
 . /root/sacloud.env
 export SACLOUD_DB_SESSION_POOLER=1
 pnpm --filter @sacloud/worker nexon barracks-identity-merge --limit 20000 --confirm
+# ★2026-09-25 — 클랜 명단에 없는 계정도 합친다★ (사장님 「계정 갈라진거 엄청 많아 (…) 전수 조사해서 제발 고쳐줘」)
+#   위 잡은 명단(BarracksClanMember)에 있는 1만 명만 다리로 쓴다. 명단 밖 병영 선수 3,352명은 옛 3rd.supply 줄과 못 이어
+#   실측 649쌍이 갈라진 채였다. 이 잡은 배틀로그 원문에서 계정 짝(str_usn↔user_nexon_sn)을 뽑아 잇는다 (worker/src/jobs/accountSplitMerge.ts).
+#   되돌리기 파일: data/player-merge/account-<날짜>.jsonl
+pnpm --filter @sacloud/worker nexon account-split-merge --confirm

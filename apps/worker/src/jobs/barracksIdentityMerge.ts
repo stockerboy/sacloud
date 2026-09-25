@@ -75,7 +75,13 @@ const DEFAULT_LIMIT = 500
 const BRK = 'BRK-'
 const BRX = 'BRX-'
 
-/** 이 계정번호를 가리킬 수 있는 `Player` 를 전부 찾는다 (네 가지 열쇠 꼴) */
+/**
+ * 이 계정번호를 가리킬 수 있는 `Player` 를 전부 찾는다 (네 가지 열쇠 꼴).
+ *
+ * ⚠ 2026-09-25 — ★이미 합쳐진 껍데기는 뺀다★. 안 빼면 매시 같은 2,626명을 「쪼개진 사람」 으로 다시 세고
+ *   경기 0줄을 옮기는 헛일에 5분씩 썼다 (identity-merge.log 실측: 쪼개진사람=2626 · 옮긴경기=0 이 매시 반복).
+ *   껍데기 표시 두 가지 — 이 잡의 `(합쳐짐→…)` 이름과 `player-merge-split` 의 `merged-into:` note.
+ */
 async function playersOf(sn: string, usn: string) {
   return prisma.player.findMany({
     where: {
@@ -86,6 +92,8 @@ async function playersOf(sn: string, usn: string) {
         { sourcePlayerId: BRK + usn },
         { sourcePlayerId: BRX + usn },
       ],
+      NOT: { name: { startsWith: '(합쳐짐→' } },
+      AND: [{ OR: [{ note: null }, { NOT: { note: { startsWith: 'merged-into:' } } }] }],
     },
     select: { id: true, name: true, createdAt: true },
   })

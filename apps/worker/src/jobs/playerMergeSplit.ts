@@ -136,7 +136,15 @@ async function findPairs(names?: readonly string[]): Promise<{ pairs: MergePair[
   return { pairs, ambiguous, clanless: clanless[0]?.n ?? 0 }
 }
 
-async function planOf(pair: MergePair): Promise<MergePlan & { ids: BackupLine['ids'] }> {
+/**
+ * 한 쌍(SUP → BRK)을 옮길 계획. ★읽기만 한다.★
+ *
+ * 2026-09-25 — `accountSplitMerge`(계정번호 기준 병합)가 같은 계획·같은 적용을 쓰도록 export 했고,
+ * 옮기는 표를 넓혔다: 회원 연동(`UserPlayerLink`) · 신고 · 깃발 · 연동 신청 · 계정표(`NexonIdentity`) ·
+ * 클랜 마스터 · 자리/라운드/플레이스타일 프로필 · 자기소개 인증. 전에는 참가·육각·무기·MVP·명부·LeaguePlayer 만 옮겨서
+ * 껍데기에 회원 연동이 남아 「내 선수」 가 기록 없는 줄을 가리키는 일이 있었다.
+ */
+export async function planOf(pair: MergePair): Promise<MergePlan & { ids: BackupLine['ids'] }> {
   const [supStats, brkStats] = await Promise.all([
     prisma.matchPlayerStat.findMany({ where: { playerId: pair.supId }, select: { id: true, matchId: true } }),
     prisma.matchPlayerStat.findMany({ where: { playerId: pair.brkId }, select: { matchId: true } }),
@@ -165,6 +173,36 @@ async function planOf(pair: MergePair): Promise<MergePlan & { ids: BackupLine['i
   const brkLeagues = new Set(brkLeague.map((l) => l.leagueId))
   const leagueDelete = supLeague.filter((l) => brkLeagues.has(l.leagueId))
   const leagueMove = supLeague.filter((l) => !brkLeagues.has(l.leagueId)).map((l) => l.id)
+
+  /* ── 2026-09-25 추가 — 사람에 딸린 나머지 표 ── */
+  /* 회원 연동은 선수당 하나(`playerId` unique) — BRK 가 이미 연동돼 있으면 SUP 것은 두고(껍데기에 남음) 센다 */
+  const [supLink, brkLink] = await Promise.all([
+    prisma.userPlayerLink.findUnique({ where: { playerId: pair.supId }, select: { userId: true } }),
+    prisma.userPlayerLink.findUnique({ where: { playerId: pair.brkId }, select: { userId: true } }),
+  ])
+  const userLinkMove = supLink && !brkLink ? [supLink.userId] : []
+  /* 신고: (playerId, userId, day) 유일 — BRK 에 같은 (userId, day) 가 있으면 그 줄은 안 옮긴다 */
+  const [supReports, brkReports] = await Promise.all([
+    prisma.playerReport.findMany({ where: { playerId: pair.supId }, select: { id: true, userId: true, day: true } }),
+    prisma.playerReport.findMany({ where: { playerId: pair.brkId }, select: { userId: true, day: true } }),
+  ])
+  const brkReportKeys = new Set(brkReports.map((r) => `${r.userId}|${r.day}`))
+  const reportMove = supReports.filter((r) => !brkReportKeys.has(`${r.userId}|${r.day}`)).map((r) => r.id)
+  /* 깃발: 유일키가 (league, day, rank) 라 playerId 만 바꾸면 된다 */
+  const flagMove = (await prisma.leagueFlag.findMany({ where: { playerId: pair.supId }, select: { id: true } })).map((f) => f.id)
+  /* 연동 신청: (userId, playerId) 유일 — BRK 에 같은 userId 신청이 있으면 안 옮긴다 */
+  const [supClaims, brkClaims] = await Promise.all([
+    prisma.playerLinkClaim.findMany({ where: { playerId: pair.supId }, select: { id: true, userId: true } }),
+    prisma.playerLinkClaim.findMany({ where: { playerId: pair.brkId }, select: { userId: true } }),
+  ])
+  const brkClaimUsers = new Set(brkClaims.map((c) => c.userId))
+  const claimMove = supClaims.filter((c) => !brkClaimUsers.has(c.userId)).map((c) => c.id)
+  const identityMove = (await prisma.nexonIdentity.findMany({ where: { playerId: pair.supId }, select: { id: true } })).map((r) => r.id)
+  const masterMove = (await prisma.clan.findMany({ where: { masterPlayerId: pair.supId }, select: { id: true } })).map((c) => c.id)
+  const positionMove = (await prisma.playerPositionProfile.findMany({ where: { playerId: pair.supId }, select: { id: true } })).map((r) => r.id)
+  const roundMove = (await prisma.playerRoundProfile.findMany({ where: { playerId: pair.supId }, select: { id: true } })).map((r) => r.id)
+  const playstyleMove = (await prisma.playerPlaystyleProfile.findMany({ where: { playerId: pair.supId }, select: { id: true } })).map((r) => r.id)
+  const introMove = (await prisma.introChallenge.findMany({ where: { playerId: pair.supId }, select: { id: true } })).map((r) => r.id)
   return {
     ...pair,
     statsMove: statsMove.length,
@@ -185,6 +223,16 @@ async function planOf(pair: MergePair): Promise<MergePlan & { ids: BackupLine['i
       roster: rosterMove,
       leagueMove,
       leagueDeleted: leagueDelete,
+      userLink: userLinkMove,
+      report: reportMove,
+      flag: flagMove,
+      claim: claimMove,
+      identity: identityMove,
+      master: masterMove,
+      position: positionMove,
+      round: roundMove,
+      playstyle: playstyleMove,
+      intro: introMove,
     },
   }
 }
@@ -203,7 +251,51 @@ interface BackupLine {
     leagueMove: string[]
     /** 지운 LeaguePlayer 줄 전체 — 되돌릴 때 그대로 다시 만든다 */
     leagueDeleted: Prisma.LeaguePlayerGetPayload<Record<string, never>>[]
+    /* ── 2026-09-25 추가 — 옛 백업 줄에는 없다. 읽을 때 `?? []` 로 받는다 ── */
+    /** 옮긴 회원 연동의 userId (`UserPlayerLink` 는 userId 가 키다) */
+    userLink?: string[]
+    report?: string[]
+    flag?: string[]
+    claim?: string[]
+    identity?: string[]
+    /** 마스터를 옮긴 클랜 id */
+    master?: string[]
+    position?: string[]
+    round?: string[]
+    playstyle?: string[]
+    intro?: string[]
   }
+}
+
+/** ★한 쌍을 실제로 옮긴다★ — 백업 한 줄을 먼저 쓰고, 한 트랜잭션으로 옮긴다. `runPlayerMergeSplit` 과 `accountSplitMerge` 가 같이 쓴다 */
+export async function applyMergePlan(pair: MergePair, ids: BackupLine['ids'], backupPath: string): Promise<void> {
+  const sup = await prisma.player.findUnique({ where: { id: pair.supId }, select: { note: true } })
+  const line: BackupLine = { at: new Date().toISOString(), pair, supNoteBefore: sup?.note ?? null, ids }
+  /* ★되돌릴 파일을 먼저★ — 쓰다 죽어도 무엇을 건드리려 했는지 남는다 */
+  mkdirSync(dirname(backupPath), { recursive: true })
+  appendFileSync(backupPath, JSON.stringify(line) + '\n')
+  await prisma.$transaction(async (tx) => {
+    if (ids.stats.length) await tx.matchPlayerStat.updateMany({ where: { id: { in: ids.stats } }, data: { playerId: pair.brkId } })
+    if (ids.hex.length) await tx.matchPlayerHex.updateMany({ where: { playerId: pair.supId, matchId: { in: ids.hex } }, data: { playerId: pair.brkId } })
+    if (ids.weapon.length) await tx.matchWeaponEvidence.updateMany({ where: { id: { in: ids.weapon } }, data: { playerId: pair.brkId } })
+    if (ids.mvp.length) await tx.match.updateMany({ where: { id: { in: ids.mvp } }, data: { mvpPlayerId: pair.brkId } })
+    if (ids.roster.length) await tx.leagueRosterMembership.updateMany({ where: { id: { in: ids.roster } }, data: { playerId: pair.brkId } })
+    if (ids.leagueMove.length) await tx.leaguePlayer.updateMany({ where: { id: { in: ids.leagueMove } }, data: { playerId: pair.brkId } })
+    if (ids.leagueDeleted.length) await tx.leaguePlayer.deleteMany({ where: { id: { in: ids.leagueDeleted.map((l) => l.id) } } })
+    if (ids.userLink?.length) await tx.userPlayerLink.updateMany({ where: { userId: { in: ids.userLink } }, data: { playerId: pair.brkId } })
+    if (ids.report?.length) await tx.playerReport.updateMany({ where: { id: { in: ids.report } }, data: { playerId: pair.brkId } })
+    if (ids.flag?.length) await tx.leagueFlag.updateMany({ where: { id: { in: ids.flag } }, data: { playerId: pair.brkId } })
+    if (ids.claim?.length) await tx.playerLinkClaim.updateMany({ where: { id: { in: ids.claim } }, data: { playerId: pair.brkId } })
+    if (ids.identity?.length) await tx.nexonIdentity.updateMany({ where: { id: { in: ids.identity } }, data: { playerId: pair.brkId } })
+    if (ids.master?.length) await tx.clan.updateMany({ where: { id: { in: ids.master } }, data: { masterPlayerId: pair.brkId } })
+    if (ids.position?.length) await tx.playerPositionProfile.updateMany({ where: { id: { in: ids.position } }, data: { playerId: pair.brkId } })
+    if (ids.round?.length) await tx.playerRoundProfile.updateMany({ where: { id: { in: ids.round } }, data: { playerId: pair.brkId } })
+    if (ids.playstyle?.length) await tx.playerPlaystyleProfile.updateMany({ where: { id: { in: ids.playstyle } }, data: { playerId: pair.brkId } })
+    if (ids.intro?.length) await tx.introChallenge.updateMany({ where: { id: { in: ids.intro } }, data: { playerId: pair.brkId } })
+    const mark = `${MERGED_NOTE_PREFIX}${pair.brkId} ${kstDate()}`
+    /* 껍데기는 소속도 비운다 — 클랜 명단·검색에서 옛 이름이 남지 않게 (`barracksIdentityMerge` 와 같은 규칙) */
+    await tx.player.update({ where: { id: pair.supId }, data: { note: line.supNoteBefore ? `${mark} | ${line.supNoteBefore}` : mark, clanId: null } })
+  })
 }
 
 export async function runPlayerMergeSplit(options: { confirm?: boolean; names?: readonly string[]; backupPath?: string } = {}): Promise<MergeResult> {
@@ -217,21 +309,7 @@ export async function runPlayerMergeSplit(options: { confirm?: boolean; names?: 
     const { ids, ...rest } = plan
     plans.push(rest)
     if (!confirm) continue
-    const sup = await prisma.player.findUnique({ where: { id: pair.supId }, select: { note: true } })
-    const line: BackupLine = { at: new Date().toISOString(), pair, supNoteBefore: sup?.note ?? null, ids }
-    /* ★되돌릴 파일을 먼저★ — 쓰다 죽어도 무엇을 건드리려 했는지 남는다 */
-    appendFileSync(backupPath, JSON.stringify(line) + '\n')
-    await prisma.$transaction(async (tx) => {
-      if (ids.stats.length) await tx.matchPlayerStat.updateMany({ where: { id: { in: ids.stats } }, data: { playerId: pair.brkId } })
-      if (ids.hex.length) await tx.matchPlayerHex.updateMany({ where: { playerId: pair.supId, matchId: { in: ids.hex } }, data: { playerId: pair.brkId } })
-      if (ids.weapon.length) await tx.matchWeaponEvidence.updateMany({ where: { id: { in: ids.weapon } }, data: { playerId: pair.brkId } })
-      if (ids.mvp.length) await tx.match.updateMany({ where: { id: { in: ids.mvp } }, data: { mvpPlayerId: pair.brkId } })
-      if (ids.roster.length) await tx.leagueRosterMembership.updateMany({ where: { id: { in: ids.roster } }, data: { playerId: pair.brkId } })
-      if (ids.leagueMove.length) await tx.leaguePlayer.updateMany({ where: { id: { in: ids.leagueMove } }, data: { playerId: pair.brkId } })
-      if (ids.leagueDeleted.length) await tx.leaguePlayer.deleteMany({ where: { id: { in: ids.leagueDeleted.map((l) => l.id) } } })
-      const mark = `${MERGED_NOTE_PREFIX}${pair.brkId} ${kstDate()}`
-      await tx.player.update({ where: { id: pair.supId }, data: { note: line.supNoteBefore ? `${mark} | ${line.supNoteBefore}` : mark } })
-    })
+    await applyMergePlan(pair, ids, backupPath)
     log(`합침 ${pair.name} — ${pair.supId} → ${pair.brkId} · 참가 ${ids.stats.length}(겹침 ${plan.statsClash}) · 육각 ${ids.hex.length} · LeaguePlayer 옮김 ${ids.leagueMove.length} 지움 ${ids.leagueDeleted.length}`)
   }
   if (ambiguous.length) warn(`후보가 둘 이상이라 건너뜀: ${ambiguous.join(' · ')}`)
@@ -257,6 +335,17 @@ export async function revertPlayerMergeSplit(path: string): Promise<{ reverted: 
         const exists = await tx.leaguePlayer.findUnique({ where: { id: row.id }, select: { id: true } })
         if (!exists) await tx.leaguePlayer.create({ data: row as unknown as Prisma.LeaguePlayerUncheckedCreateInput })
       }
+      if (ids.userLink?.length) await tx.userPlayerLink.updateMany({ where: { userId: { in: ids.userLink } }, data: { playerId: pair.supId } })
+      if (ids.report?.length) await tx.playerReport.updateMany({ where: { id: { in: ids.report } }, data: { playerId: pair.supId } })
+      if (ids.flag?.length) await tx.leagueFlag.updateMany({ where: { id: { in: ids.flag } }, data: { playerId: pair.supId } })
+      if (ids.claim?.length) await tx.playerLinkClaim.updateMany({ where: { id: { in: ids.claim } }, data: { playerId: pair.supId } })
+      if (ids.identity?.length) await tx.nexonIdentity.updateMany({ where: { id: { in: ids.identity } }, data: { playerId: pair.supId } })
+      if (ids.master?.length) await tx.clan.updateMany({ where: { id: { in: ids.master } }, data: { masterPlayerId: pair.supId } })
+      if (ids.position?.length) await tx.playerPositionProfile.updateMany({ where: { id: { in: ids.position } }, data: { playerId: pair.supId } })
+      if (ids.round?.length) await tx.playerRoundProfile.updateMany({ where: { id: { in: ids.round } }, data: { playerId: pair.supId } })
+      if (ids.playstyle?.length) await tx.playerPlaystyleProfile.updateMany({ where: { id: { in: ids.playstyle } }, data: { playerId: pair.supId } })
+      if (ids.intro?.length) await tx.introChallenge.updateMany({ where: { id: { in: ids.intro } }, data: { playerId: pair.supId } })
+      /* clanId 는 되돌리지 않는다 — 옛 소속은 이미 `clanAffiliation` 이 다시 정한다 */
       await tx.player.update({ where: { id: pair.supId }, data: { note: line.supNoteBefore } })
     })
     reverted += 1

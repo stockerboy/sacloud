@@ -89,6 +89,7 @@ import { runClanAffiliation } from './jobs/clanAffiliation.js'
 import { runPlayerProfileClan } from './jobs/playerProfileClan.js'
 import { runStampPlayerClan } from './jobs/stampPlayerClan.js'
 import { revertPlayerMergeSplit, runPlayerMergeSplit } from './jobs/playerMergeSplit.js'
+import { runAccountSplitMerge } from './jobs/accountSplitMerge.js'
 import { runAccountMerge } from './jobs/accountMerge.js'
 import { runIplRankApply } from './jobs/iplRankApply.js'
 import { runIplClanNumber } from './jobs/iplClanNumber.js'
@@ -725,6 +726,30 @@ async function main(): Promise<number> {
       table([{ 쌍: result.pairs.length, 후보둘이상: result.ambiguous.length, 무소속쌍_안건드림: result.clanlessPairs, 반영: result.confirmed ? '했다' : '안했다', 백업: result.backupPath ?? '-' }])
       return 0
     }
+    case 'account-split-merge': {
+      /*
+        ★계정번호로 갈라진 선수 전수 병합★ (2026-09-25 사장님 「위장닉네임 하면 같은 병영수첩인데 기록이 두개 (…) 전수 조사해서 제발 고쳐줘」).
+        클랜 명단에 없는 병영 선수는 배틀로그 원문에서 계정 짝을 뽑아 잇는다. 닉네임은 안 본다. 미리보기가 기본.
+        되돌리기: player-merge-split --revert data/player-merge/account-<날짜>.jsonl
+      */
+      const result = await runAccountSplitMerge({
+        confirm: boolFlag(args, 'confirm'),
+        limit: numberFlag(args, 'limit') ?? undefined,
+        maxKeys: numberFlag(args, 'max-keys') ?? undefined,
+      })
+      table(result.samples.map((s) => ({ 쌍: s })))
+      table([{
+        선수: result.players, 살아있음: result.live,
+        다리_명단: result.bridges.clanMember, 다리_배틀로그: result.bridges.battlelog, 다리_계정표: result.bridges.identity,
+        갈라진묶음: result.groups, 합칠쌍: result.pairs,
+        건너뜀_셋이상: result.skipped.size, 건너뜀_usn양쪽: result.skipped.usnSides, 건너뜀_다리모순: result.skipped.inconsistent,
+      }])
+      table([{
+        합침: result.merged, 옮길참가: result.movedStats, LP옮김: result.movedLeagueRows, LP지움: result.deletedLeagueRows, 회원연동옮김: result.movedUserLinks,
+        반영: result.confirmed ? '했다' : '안했다(미리보기)', 백업: result.backupPath ?? '-', 걸린ms: result.ms,
+      }])
+      return 0
+    }
     case 'stamp-player-clan': {
       /*
         ★참가 기록에 「그 선수 본인의 소속」을 도장 찍는다★ (2026-09-09).
@@ -1084,6 +1109,7 @@ async function main(): Promise<number> {
           참가갱신: result.statsUpdated,
           선수신규: result.playersCreated,
           신원이음: result.playersFromIdentity,
+          옛줄이음: result.playersAdopted,
         },
       ])
       table(

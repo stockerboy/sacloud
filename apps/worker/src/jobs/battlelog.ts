@@ -596,8 +596,16 @@ export async function buildPositionProfiles(input: {
  * 닉네임으로 전역에서 합치지 않는다 (D-036). 못 찾으면 비워 두고 분포는 남긴다.
  */
 async function resolvePlayerId(userNexonSn: string): Promise<string | null> {
+  /*
+   * 2026-09-25 — `sourcePlayerId` 가 병영 계정(`BRK-…`)으로 덮인 3rd.supply 줄(id 는 `SUP-<계정번호>` 그대로)도 찾는다.
+   * 계정을 이은 뒤로 이 판정의 playerId 가 전부 null 이 되던 구멍이다. 합쳐진 껍데기는 고르지 않는다.
+   */
   const player = await prisma.player.findFirst({
-    where: { sourcePlayerId: userNexonSn },
+    where: {
+      OR: [{ sourcePlayerId: userNexonSn }, { id: `SUP-${userNexonSn}` }, { id: `SUPPLY-${userNexonSn}` }],
+      NOT: { name: { startsWith: '(합쳐짐→' } },
+      AND: [{ OR: [{ note: null }, { NOT: { note: { startsWith: 'merged-into:' } } }] }],
+    },
     select: { id: true },
   })
   return player?.id ?? null

@@ -77,6 +77,40 @@ export const BARRACKS_PLAYER_ORIGIN = 'nexon_barracks'
  * 를 남긴다 — 나중에 원본과 대조할 때 뒤섞이면 안 된다 (`CLAUDE.md` 3-A 3번).
  */
 export const BARRACKS_PLAYER_PREFIX = 'BRK-'
+
+/**
+ * ★옛 줄(3rd.supply · 관측)을 계정번호로 찾아 병영 계정을 박는다★ (2026-09-25).
+ *
+ * 돌려주는 값은 그 줄의 id. 못 이으면 null — 그때는 부르는 쪽이 새 줄을 만든다.
+ *   · 열쇠: `id = SUP-<sn>` · `id = SUPPLY-<sn>` · `sourcePlayerId = <sn>` (숫자)
+ *   · 이미 합쳐진 껍데기(`(합쳐짐→…)` · `merged-into:`)는 안 본다
+ *   · 이미 병영 계정(`BRK-`/`BRX-`)이 박힌 줄은 안 건드린다 — 다른 계정이면 남의 줄이다
+ *   · 후보가 둘 이상이면 안 잇는다 (D-106)
+ *   · `sourcePlayerId` 가 유일키라 다른 줄이 그 `BRK-<usn>` 을 이미 가졌으면(경합) 그냥 null
+ */
+export async function adoptLegacyPlayer(nexonSn: string, usn: string, nickname: string | null): Promise<string | null> {
+  const found = await prisma.player.findMany({
+    where: {
+      OR: [{ id: `SUP-${nexonSn}` }, { id: `SUPPLY-${nexonSn}` }, { sourcePlayerId: nexonSn }],
+      NOT: { name: { startsWith: '(합쳐짐→' } },
+      AND: [{ OR: [{ note: null }, { NOT: { note: { startsWith: 'merged-into:' } } }] }],
+    },
+    select: { id: true, sourcePlayerId: true },
+    take: 3,
+  })
+  if (found.length !== 1) return null
+  const one = found[0] as { id: string; sourcePlayerId: string | null }
+  if (one.sourcePlayerId !== null && /^BR[KX]-/.test(one.sourcePlayerId)) return null
+  try {
+    await prisma.player.update({
+      where: { id: one.id },
+      data: { sourcePlayerId: BARRACKS_PLAYER_PREFIX + usn, ...(nickname ? { name: nickname } : {}) },
+    })
+  } catch {
+    return null
+  }
+  return one.id
+}
 /** 경기 당시 클랜 스냅샷의 출처 표기 (`MatchPlayerStat.matchTimeClanSource`) */
 const CLAN_SOURCE = 'barracks-battlelog'
 
@@ -103,6 +137,8 @@ export interface BattlelogLineupResult {
   namesSkippedOld?: number
   /** `NexonIdentity` 가 이어 준 선수 */
   playersFromIdentity: number
+  /** ★옛 줄을 계정번호로 찾아 이은 선수★ (2026-09-25) — 새 줄을 만드는 대신 3rd.supply 줄에 병영 계정을 박았다 */
+  playersAdopted: number
   /**
    * ★미러 라인업이 이미 있어서 건너뛴 경기★ (2026-09-04 · D-273).
    *
@@ -466,6 +502,7 @@ export async function runBattlelogLineup(
     playersCreated: 0,
     playersReused: 0,
     playersFromIdentity: 0,
+    playersAdopted: 0,
     skippedMirrorLineup: 0,
     skipped: emptySkips(),
     byLeague: Object.fromEntries(leagues.map((l) => [l.slug, emptyLeagueCount()])),
@@ -839,6 +876,23 @@ export async function runBattlelogLineup(
             bump(plan.info.leagueSlug, 'statsCreated')
             continue
           }
+          /*
+           * ★2.5순위 — 옛 줄을 계정번호로 찾아 잇는다★ (2026-09-25 사장님 「위장닉네임 하면 같은 병영수첩인데
+           *   사이트 내에서 기록이 두개생기는거 (…) 제발 고쳐줘」)
+           *
+           *   배틀로그는 `str_usn`(16진수)과 `user_nexon_sn`(10진수)을 ★같이★ 준다. 3rd.supply 시절 줄은
+           *   `id = SUP-<10진수>` 또는 `sourcePlayerId = <10진수>` 다. 그 줄이 살아 있고 아직 병영 계정이 없으면
+           *   ★새 줄을 만들지 않고 그 줄에 병영 계정을 박는다★ — `identityFromBattlelog` 가 닉으로 하던 일을
+           *   계정번호로 한다 (닉은 위장닉이 섞여 못 믿는다 · D-221). 이 한 단이 없어서 위장닉으로 처음 보이는
+           *   사람마다 줄이 갈라졌다 (실측 649쌍 · `accountSplitMerge.ts`).
+           *   · 후보가 둘 이상이면 안 잇는다 (누구인지 모른다) · 이미 다른 병영 계정이 박힌 줄은 안 건드린다
+           */
+          const adopted = player.nexonSn ? await adoptLegacyPlayer(player.nexonSn, player.usn, player.nickname) : null
+          if (adopted !== null) {
+            playerId = adopted
+            playerOfUsn.set(player.usn, playerId)
+            result.playersAdopted += 1
+          } else {
           /* 3순위 — 새로 만든다. 닉을 모르면 계정값을 이름으로 둔다(지어내지 않는다) */
           const created = await prisma.player.upsert({
             where: { sourcePlayerId: BARRACKS_PLAYER_PREFIX + player.usn },
@@ -859,6 +913,7 @@ export async function runBattlelogLineup(
           playerId = created.id
           playerOfUsn.set(player.usn, playerId)
           result.playersCreated += 1
+          }
         } else {
           result.playersReused += 1
         }
@@ -986,7 +1041,7 @@ export async function runBattlelogLineup(
   log(
     `참가 기록 신규 ${result.statsCreated.toLocaleString()} · 갱신 ${result.statsUpdated.toLocaleString()} · ` +
       `선수 신규 ${result.playersCreated.toLocaleString()} · 재사용 ${result.playersReused.toLocaleString()} · ` +
-      `신원으로 이음 ${result.playersFromIdentity.toLocaleString()}`,
+      `신원으로 이음 ${result.playersFromIdentity.toLocaleString()} · 옛 줄 이음 ${result.playersAdopted.toLocaleString()}`,
   )
   log(
     `건너뜀 — 우리경기없음 ${result.skipped.no_match.toLocaleString()} · ` +
