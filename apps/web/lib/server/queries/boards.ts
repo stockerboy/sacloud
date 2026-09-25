@@ -773,11 +773,18 @@ function canModify(
 }
 
 /**
+ * 댓글 도배 방지 간격(초). **원본 관측값이 아니다** — 댓글에 걸린 실제 간격은 [미확인]이라
+ * `/infos`의 `BOARD_WRITE_INTERVAL`처럼 값으로 내려주지 않는다.
+ * 2026-09-25 보안검사에서 댓글 작성엔 아무 제한이 없던 게 드러나서(글쓰기만 있었다)
+ * 사람이 답글 두 개를 빠르게 쓰는 것도 막지 않을 만큼 짧게, 자동화 도배만 끊을 값으로 넣는다.
+ */
+const COMMENT_WRITE_INTERVAL = 3
+
+/**
  * 글쓰기 rate limit — **서버에서 강제한다.**
  *
  * 원본 관측값은 5분에 1글이다 (`/infos`의 `BOARD_WRITE_INTERVAL`).
  * 창(window)이 지났으면 새 창을 열고, 안 지났는데 이미 한도를 채웠으면 false를 돌려준다.
- * 댓글에도 같은 제한이 걸리는지는 [미확인]이라 글 작성에만 적용한다.
  */
 async function consumeWriteQuota(key: string, seconds: number, limit = 1): Promise<boolean> {
   const now = new Date()
@@ -1222,6 +1229,11 @@ export async function createComment(
 
   const userId = await currentUserId(request)
   if (!userId && !input.password) return invalid('비로그인 댓글은 삭제용 비밀번호가 필요합니다')
+
+  const rateKey = await voterKey(request)
+  if (!(await consumeWriteQuota(`comment:write:${rateKey}`, COMMENT_WRITE_INTERVAL))) {
+    return { ok: false, status: 429, message: '잠시 후 다시 시도해주세요' }
+  }
 
   const content = sanitizePostContent(input.content)
   if (!content.trim()) return invalid('내용을 입력해주세요')
