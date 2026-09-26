@@ -129,37 +129,55 @@ function ImageGlyph() {
 }
 
 /**
- * ★공지 칸★ — 에타에서 광고가 앉던 자리. 관리자가 `notice` 게시판에 쓴 글의 ★맨 위 하나★ 를 카드로 보인다.
- * 없으면 칸을 안 그린다 (빈 자리표시자를 두지 않는다 · CLAUDE.md 2-3).
+ * ★공지 칸★ — 에타에서 광고가 앉던 자리.
+ *
+ * ⚠ ★2026-09-26 정정★ (사장님 「공지사항 올리니까 첫번째 공지사항이 없어졌어
+ *   공지사항 올리면 무조건 누적 상단 고정시켜」) — 옛 판은 `notices` 중 ★맨 앞 하나만★
+ *   카드로 그렸다. 그래서 새 공지를 쓰면 `notices[0]` 이 새 글로 바뀌면서 ★먼저 있던
+ *   공지가 화면 어디에도 안 보이게★ 됐다(자유·Hot 목록 둘 다 `notice` 카테고리 글 자체를
+ *   빼고 그린다 — 공지의 유일한 자리가 이 카드였다). 이제 `notices` 를 ★전부★ 쌓아 그린다.
+ *
+ * 관리자가 `notice` 게시판에 쓴 글의 카드는 없으면 칸을 안 그린다(빈 자리표시자를 두지
+ * 않는다 · CLAUDE.md 2-3). 이 칸은 화면(`BoardListEta`)이 자유·Hot 어느 탭이든 똑같이
+ * 그린다 — 그래서 공지는 ★이미★ Hot 에도 늘 보인다(따로 「자동 핫게시물」 처리가 필요 없다).
  */
-export function EtaNoticeCard({ notice, text }: { notice: BoardListItem | null | undefined; text?: { title: string | null; lines: string[] } | null }) {
-  /* ★관리자가 /admin/texts 에 쓴 글이 먼저★ — 제목 한 줄 + 본문 줄들. 링크 없이 그 자리에서 읽는다 */
-  if (text && (text.title || text.lines.length > 0)) {
-    return (
-      <div className="mx-3 my-3 rounded-[14px] border border-[#2b3a5c] bg-[#121c2f] px-4 py-3">
-        <div className="flex items-center gap-2 text-[11px] font-bold tracking-[.08em] text-[#5c80e0]">
-          <span className="rounded-sm bg-[#5c80e0] px-1.5 py-0.5 text-[10px] text-[#0c1526]">공지</span>
-          SACLOUD
-        </div>
-        {text.title ? <div className="mt-1.5 text-[14.5px] font-bold text-[#f2f4f8]">{text.title}</div> : null}
-        {text.lines.length > 0 ? (
-          <ul className="mt-1 flex flex-col gap-0.5 text-[12.5px] leading-relaxed text-[#a4b0c8]">
-            {text.lines.map((l, i) => <li key={i}>{l}</li>)}
-          </ul>
-        ) : null}
-      </div>
-    )
-  }
-  if (!notice) return null
+export function EtaNoticeCard({ notices, text }: { notices?: readonly BoardListItem[] | null; text?: { title: string | null; lines: string[] } | null }) {
+  const hasText = !!(text && (text.title || text.lines.length > 0))
+  const list = notices ?? []
+  if (!hasText && list.length === 0) return null
   return (
-    <Link prefetch={false} href={`/board/notice/${notice.id}`} className="mx-3 my-3 block rounded-[14px] border border-[#2b3a5c] bg-[#121c2f] px-4 py-3 transition-colors hover:border-[#5c80e0]">
-      <div className="flex items-center gap-2 text-[11px] font-bold tracking-[.08em] text-[#5c80e0]">
-        <span className="rounded-sm bg-[#5c80e0] px-1.5 py-0.5 text-[10px] text-[#0c1526]">공지</span>
-        SACLOUD
-      </div>
-      <div className="mt-1.5 truncate text-[14.5px] font-bold text-[#f2f4f8]">{notice.title}</div>
-      <div className="mt-1 text-[11.5px] text-[#8f95af]"><RelativeTime value={notice.created_at} /></div>
-    </Link>
+    <div className="flex flex-col gap-2 px-3 py-3">
+      {/* ★관리자가 /admin/texts 에 쓴 글이 먼저★ — 제목 한 줄 + 본문 줄들. 링크 없이 그 자리에서 읽는다 */}
+      {hasText ? (
+        <div className="rounded-[14px] border border-[#2b3a5c] bg-[#121c2f] px-4 py-3">
+          <div className="flex items-center gap-2 text-[11px] font-bold tracking-[.08em] text-[#5c80e0]">
+            <span className="rounded-sm bg-[#5c80e0] px-1.5 py-0.5 text-[10px] text-[#0c1526]">공지</span>
+            SACLOUD
+          </div>
+          {text?.title ? <div className="mt-1.5 text-[14.5px] font-bold text-[#f2f4f8]">{text.title}</div> : null}
+          {text && text.lines.length > 0 ? (
+            <ul className="mt-1 flex flex-col gap-0.5 text-[12.5px] leading-relaxed text-[#a4b0c8]">
+              {text.lines.map((l, i) => <li key={i}>{l}</li>)}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+      {list.map((notice) => (
+        <Link
+          key={notice.id}
+          prefetch={false}
+          href={`/board/notice/${notice.id}`}
+          className="block rounded-[14px] border border-[#2b3a5c] bg-[#121c2f] px-4 py-3 transition-colors hover:border-[#5c80e0]"
+        >
+          <div className="flex items-center gap-2 text-[11px] font-bold tracking-[.08em] text-[#5c80e0]">
+            <span className="rounded-sm bg-[#5c80e0] px-1.5 py-0.5 text-[10px] text-[#0c1526]">공지</span>
+            SACLOUD
+          </div>
+          <div className="mt-1.5 truncate text-[14.5px] font-bold text-[#f2f4f8]">{notice.title}</div>
+          <div className="mt-1 text-[11.5px] text-[#8f95af]"><RelativeTime value={notice.created_at} /></div>
+        </Link>
+      ))}
+    </div>
   )
 }
 
@@ -226,7 +244,7 @@ export function BoardListEta({
         })}
       </div>
 
-      <EtaNoticeCard notice={notices?.[0] ?? null} text={noticeText ?? null} />
+      <EtaNoticeCard notices={notices} text={noticeText ?? null} />
 
       {error ? (
         <div className="px-4"><ErrorState message="글 목록을 불러오지 못했습니다." onRetry={onRetry} /></div>
