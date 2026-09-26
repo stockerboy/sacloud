@@ -515,6 +515,112 @@ export async function pendingPairs(
 }
 
 /**
+ * ★JSON 을 안 읽는 대기열★ — 2026-09-27 새벽 · ★아직 안 켰다★ (위 `pendingPairs` 가 기본).
+ *
+ * ⚠ 운영에서 시험하다 멈췄다 — 그 시각 DB 디스크가 포화라 새 판도 2분을 넘겼다
+ *   (책임이 새 판인지 포화인지 못 가렸다). 조용한 시간(07~13시)에 VACUUM 뒤 재서 켠다.
+ *
+ * `V1` 은 `WHERE COALESCE(NULLIF("rawClanNo",''), payload->>'clan_no')` 라서
+ * ★이름표를 다 채운 뒤에도★ 135만 줄 · 2.7GB 본체를 매번 읽었다
+ * (pg_stat_statements 실측: 702회 · 평균 45초 · 최대 558초 · 디스크 포화의 주범).
+ * 빈 문자열 줄도 payload 로 되돌아가 다시 읽었다 — 그 줄은 채우기 잡이
+ * 「원문에 번호가 없다」고 적어 둔 줄이라(`clanNameBackfill.ts`) 다시 볼 것이 없다.
+ *
+ * 그래서 ★갈래를 나눈다★:
+ *   - 번호가 있는 줄 → 인덱스(`BCMR_queue_idx` · `status_subject_rawClanNo`)만 읽는다
+ *   - ★아직 안 채운 줄(`NULL`)만★ payload 를 읽는다 — 채우기 잡이 도는 한 몇 줄 안 된다
+ *   - 빈 문자열 줄은 「번호 없음」 이다. 고르지 않는다
+ * 내보내는 모양(경기, 클랜번호)과 순서·한도는 `pendingPairs` 와 같다.
+ */
+export async function pendingPairsV2(
+  limit: number,
+  range: PendingRange = {},
+): Promise<{ matchKey: string; clanNo: string }[]> {
+  const from = range.from ?? '000000'
+  const to = range.to ?? '999999'
+
+  /* 이 연결에만 — `V1` 과 같다. 가벼워졌으니 언젠가 되돌려도 된다 */
+  await prisma.$executeRawUnsafe(`SET statement_timeout = ${PENDING_TIMEOUT_MS}`)
+
+  return prisma.$queryRaw<{ matchKey: string; clanNo: string }[]>`
+    /* ── ①-가 매치목록 · 번호가 칸에 있는 줄 (인덱스만) */
+    SELECT DISTINCT c."matchKey" AS "matchKey", c."rawClanNo" AS "clanNo"
+      FROM "BarracksClanMatchRaw" c
+     WHERE c."status" = 'ok'
+       AND c."rawClanNo" IS NOT NULL AND c."rawClanNo" <> ''
+       AND substr(c."matchKey", 1, 6) >= ${from}
+       AND substr(c."matchKey", 1, 6) < ${to}
+       AND NOT EXISTS (
+         SELECT 1 FROM "BarracksBattleLogRaw" b
+          WHERE b."matchKey" = c."matchKey"
+            AND (b."status" = 'ok' OR b."fetchCount" >= ${GIVE_UP_TRIES})
+       )
+
+     UNION
+
+    /* ── ①-나 매치목록 · 아직 안 채운 줄만 payload 를 읽는다 */
+    SELECT DISTINCT c."matchKey" AS "matchKey", c."payload"->>'clan_no' AS "clanNo"
+      FROM "BarracksClanMatchRaw" c
+     WHERE c."status" = 'ok'
+       AND c."rawClanNo" IS NULL
+       AND c."payload"->>'clan_no' IS NOT NULL
+       AND substr(c."matchKey", 1, 6) >= ${from}
+       AND substr(c."matchKey", 1, 6) < ${to}
+       AND NOT EXISTS (
+         SELECT 1 FROM "BarracksBattleLogRaw" b
+          WHERE b."matchKey" = c."matchKey"
+            AND (b."status" = 'ok' OR b."fetchCount" >= ${GIVE_UP_TRIES})
+       )
+
+     UNION
+
+    /* ── ② 이미 아는 IPL 경기 (밀린 것) — 뜻은 V1 과 같다. 번호 찾기만 인덱스로 */
+    SELECT DISTINCT m."sourceMatchId" AS "matchKey",
+           COALESCE(
+             (SELECT c2."rawClanNo"
+                FROM "BarracksClanMatchRaw" c2
+               WHERE c2."status" = 'ok' AND c2."subject" = cl."slug"
+                 AND c2."rawClanNo" IS NOT NULL AND c2."rawClanNo" <> ''
+               LIMIT 1),
+             (SELECT c2."payload"->>'clan_no'
+                FROM "BarracksClanMatchRaw" c2
+               WHERE c2."status" = 'ok' AND c2."subject" = cl."slug"
+                 AND c2."rawClanNo" IS NULL
+                 AND c2."payload"->>'clan_no' IS NOT NULL
+               LIMIT 1)
+           ) AS "clanNo"
+      FROM "Match" m
+      JOIN "League" l ON l."id" = m."leagueId" AND l."slug" = 'nolink'
+      JOIN "LeagueClan" lc ON lc."id" = m."redLeagueClanId"
+      JOIN "Clan" cl ON cl."id" = lc."clanId"
+     WHERE m."sourceMatchId" IS NOT NULL
+       AND substr(m."sourceMatchId", 1, 6) >= ${from}
+       AND substr(m."sourceMatchId", 1, 6) < ${to}
+       AND NOT EXISTS (
+         SELECT 1 FROM "BarracksBattleLogRaw" b
+          WHERE b."matchKey" = m."sourceMatchId"
+            AND (b."status" = 'ok' OR b."fetchCount" >= ${GIVE_UP_TRIES})
+       )
+       AND (
+         EXISTS (
+           SELECT 1 FROM "BarracksClanMatchRaw" c3
+            WHERE c3."status" = 'ok' AND c3."subject" = cl."slug"
+              AND c3."rawClanNo" IS NOT NULL AND c3."rawClanNo" <> ''
+         )
+         OR EXISTS (
+           SELECT 1 FROM "BarracksClanMatchRaw" c3
+            WHERE c3."status" = 'ok' AND c3."subject" = cl."slug"
+              AND c3."rawClanNo" IS NULL
+              AND c3."payload"->>'clan_no' IS NOT NULL
+         )
+       )
+
+     ORDER BY 1 DESC
+     LIMIT ${limit}
+  `
+}
+
+/**
  * ★목록을 받을 IPL 클랜★ 을 고른다.
  *
  * ⚠ ★병영수첩에서 온 것은 IPL 이다★ — SPL·10mountain 클랜을 부르면

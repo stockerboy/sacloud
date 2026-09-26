@@ -7,6 +7,16 @@
 
 ---
 
+## 0-밤. ★2026-09-27 00:1x~00:3x — 렉 원인 · 주기 10분 · 내일 08시 할 일★ (claude-11 · claude-01 인계)
+
+- 원인(pg_stat_statements): `BarracksClanMatchRaw`(135만 행 · 2.7GB)를 통째로 읽는 수집 질의들이 DB 디스크를 포화시킨다.
+  1위 `barracksCollect.pendingPairs`(평균 45초 · 최대 558초) — `WHERE COALESCE(rawClanNo, payload->>'clan_no')` 라 JSON 본체를 매번 읽는다.
+- ✅ `iplClanNumber.loadSubjectClanNoPairs` → 건너뛰기 탐색(95fbe937). 평균 14초 → 운영 실측 23~46ms. ★VPS 에 그 파일만 반영★(백업 `/root/iplClanNumber.ts.bak-20260927`).
+- ✅ VPS 크론 주기: 수집 `*/5`→`*/10` · 정규화 `*/2`→`3-59/10` · 라인업 `1-59/2`→`6-59/10` (사장님 지시). 옛 표 `/root/crontab.bak-20260927-0035`.
+- ⚠ 00:25 경 사이트 health 30초 멈춤 — 내가 돌린 시험 질의(9분 남아 있었음)와 VACUUM 이 포화에 더했다. 둘 다 취소 → 0.5초 회복.
+- ⏳ ★내일 08시(사장님이 다시 줌)★: ① `VACUUM (ANALYZE) "BarracksClanMatchRaw"`(보임표시 81% → 100%) ② `pendingPairsV2`(JSON 안 읽는 판 · 코드만 있고 안 켬) 실측 후 기본값으로 ③ 주기 되돌릴지 판단.
+- VPS 작업본에 커밋 안 된 수정 12파일이 있다(다른 세션 손복사). `git pull` 하지 말 것 — 파일 단위로 반영.
+
 ## 0-낮1. ★2026-09-25 12:0x~13:2x — 계정 갈라짐 전수조사 · 645쌍 합침 · 재발 방지★
 
 - 사장님 「계정 갈라진거 엄청 많아 위장닉네임 하면 같은 병영수첩인데 사이트 내에서 기록이 두개생기는거 전수 조사해서 제발 고쳐줘」
