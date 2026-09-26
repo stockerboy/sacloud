@@ -1157,14 +1157,31 @@ async function commentAnonLabels(boardId: string, boardUserId: string | null) {
   const all = await prisma.comment.findMany({
     where: { boardId },
     orderBy: [...COMMENT_ORDER],
-    select: { id: true, userId: true, discloseType: true, parentId: true },
+    select: { id: true, userId: true, discloseType: true, parentId: true, adminAsClanId: true },
   })
   return assignAnonymousLabels({
     postAuthorKey: boardUserId,
     subjects: nestedOrder(all)
       // 공개 댓글은 번호를 소비하지 않는다 — 소비하면 `익명2` 다음이 `익명5` 가 된다
       .filter((comment) => isAnonymousDisclose(comment.discloseType))
-      .map((comment) => ({ id: comment.id, authorKey: comment.userId })),
+      .map((comment) => ({
+        id: comment.id,
+        /*
+         * ★관리자가 대리 클랜으로 위장하면 「글쓴이」 표를 안 받는다★ (2026-09-26 사장님
+         * 「내가 쓴글 나 관리자 아닌척하고 댓글 쓸라고 하면 글쓴이라고 나와 익명1이라고
+         * 안나오도」).
+         *
+         *   `assignAnonymousLabels` 는 「글쓴이」 규칙(원문 사양 그대로 — 글 작성자 본인이
+         *   자기 글에 익명으로 달면 번호 대신 「글쓴이」)을 그대로 쓴다 — 일반 사용자는
+         *   이 규칙이 맞다. 그런데 관리자가 ★남의 클랜인 척★ 위장할 때는 「글쓴이」 표가
+         *   「이 계정이 이 글 주인이다」를 그대로 드러내 위장이 깨진다.
+         *
+         *   `authorKey` 를 `null` 로 주면(비로그인처럼) `assignAnonymousLabels` 가 그
+         *   자체로 「글쓴이 특례」를 안 타고 새 번호를 준다 — 순수 함수는 안 건드리고
+         *   ★위장한 댓글만★ 입력에서 골라 낸다.
+         */
+        authorKey: comment.adminAsClanId !== null ? null : comment.userId,
+      })),
   })
 }
 
