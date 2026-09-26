@@ -39,7 +39,18 @@ export function EtaWriter({ writer }: { writer: BoardWriter }) {
   if (isAdminWriter(writer)) return <AdminWriterName size={14} />
   const clan = writer.clan ?? null
   const clanName = affiliationName(clan?.name)
-  const who = writer.anonymous || !writer.player ? '익명' : writer.nickname
+  /*
+   * ⚠ ★2026-09-26 — 표시 이름을 여기서 다시 정하지 않는다★ (사장님 스샷 「이건
+   * 간고딩어가 쓴거니까 익명으로 표시하면 안되지」).
+   *
+   *   옛 줄은 익명이면 무조건 리터럴 '익명' 을 그렸다 — 서버가 애써 골라 준 표시
+   *   이름(목록이면 「익명」, 관리자 대리 닉네임을 줬으면 그 이름 그대로 — 위
+   *   `toBoardWriter`)을 통째로 무시했다. `WriterName.tsx`(글 상세·댓글)는 처음부터
+   *   `writer.nickname` 을 그대로 썼는데 ★목록만 따로 놀았다.★ `writer.nickname` 은
+   *   `BoardWriter` 계약상 항상 있다 — 익명이어도 서버가 이미 적절한 문자열을 넣어
+   *   보낸다. 그대로 쓴다.
+   */
+  const who = writer.nickname
   /* ★클랜명은 눌러서 클랜 페이지로★ (2026-09-25 사장님 「모든 클랜명 누르면 바로 클랜페이지로」) */
   const mark = <ClanMark clan={clan} size="xxs" alt="" />
   return (
