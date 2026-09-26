@@ -24,8 +24,15 @@ import { listBoards } from '@/lib/server/queries/boards'
 export const ROWS_V1 = 6
 /** 2026-09-24 사장님 「우리는 8개를 핫게시물로 메인페이지에」 (옛 값 10 = ROWS_V2) */
 export const ROWS_V2 = 10
+/** ★핫 글 자체를 최대 몇 개까지★ (2026-09-26 사장님 「hot 게시물은 최대 8개까지」) — 공지는 이 수를 안 먹는다 (아래) */
 const ROWS = 8
-const NOTICE_ROWS_MAX = 2
+/**
+ * ⚠ ★2026-09-26 폐지★ (사장님 「세번째 쓴 공지가 핫게로 안넘어와 메인화면에서」 —
+ * 공지를 「무조건 누적」(같은 날 앞서 지시) 하기로 한 것과 이 상한이 부딪혔다. 공지
+ * 셋째부터 여기서 잘렸다. 이제 공지는 ★전부★ 걸고, `ROWS` 예산은 안 먹는다(아래
+ * `loadRows`) — 옛 값(2)은 지우지 않는다, 되돌리려면 `take(notices, true).slice(0, NOTICE_ROWS_MAX)`.
+ */
+export const NOTICE_ROWS_MAX = 2
 
 interface Row {
   id: string
@@ -64,9 +71,12 @@ async function loadRows(): Promise<Row[]> {
       date: mmdd(b.created_at),
     }))
 
-  /* 공지는 ★두 줄까지★ — 여덟 칸이 전부 공지로 차던 것(2026-09-24 캡쳐). 나머지는 Hot 글 */
-  const rows = [...take(notices, true).slice(0, NOTICE_ROWS_MAX), ...take(hot, false)]
-  return rows.slice(0, ROWS)
+  /*
+   * ★공지는 전부 · Hot 글은 최대 ROWS개★ (2026-09-26 정정) — 공지가 셋 이상이면
+   * 셋째부터 안 보이던 것을 고쳤다(위 NOTICE_ROWS_MAX 주석). 공지는 `ROWS` 예산을
+   * 안 먹는다 — Hot 글 쪽만 여덟 개로 자른다.
+   */
+  return [...take(notices, true), ...take(hot, false).slice(0, ROWS)]
 }
 
 export async function HomeHotBoard() {
