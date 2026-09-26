@@ -110,6 +110,17 @@ export interface SearchBarProps {
   /** 후보를 골랐을 때. `key` 는 선수면 id, 클랜·리그면 slug */
   onPick?: (type: SearchType, suggestion: SearchSuggestion) => void
   /**
+   * ★최근 검색 기록★ (2026-09-26 사장님 「검색기능에서 검색기록 남게 해줘 최대
+   * 9개까지」) — 최신이 먼저다. 저장·읽기는 부르는 쪽(`HomeSearch`)이 한다(브라우저
+   * `localStorage`, 이 기기에서만 — 아이피가 아니라 기기별 기록이다). 여기는 받은
+   * 것을 ★입력칸이 비어 있고 포커스가 있을 때★ 자동완성 자리에 그리기만 한다.
+   */
+  history?: readonly { type: SearchType; query: string }[]
+  /** 기록 한 줄을 눌렀다. 그 종류·글자로 곧장 제출한다 */
+  onHistoryPick?: (type: SearchType, query: string) => void
+  /** 기록 전체 지우기 — 없으면 지우기 단추를 안 그린다 */
+  onHistoryClear?: () => void
+  /**
    * 검색창 최대 폭.
    *
    * ★기본값은 옛 값(560px) 그대로다★ — 안 넘기면 지금까지와 똑같이 그려진다
@@ -152,6 +163,9 @@ export function SearchBar({
   suggestions,
   onQueryChange,
   onPick,
+  history,
+  onHistoryPick,
+  onHistoryClear,
   /* 560 — 2026-08-30 「적진」부터의 값. 시안 홈만 720 을 넘긴다 */
   maxWidth = 560,
   sweep = false,
@@ -176,6 +190,13 @@ export function SearchBar({
       ? (suggestions ?? []).slice(0, SUGGEST_MAX_ITEMS)
       : []
   const suggestOpen = items.length > 0
+
+  /*
+   * ★최근 검색 기록 자리★ — 입력칸이 ★비어 있을 때만★ 보인다. 글자를 치기 시작하면
+   * 곧바로 위 자동완성(`suggestOpen`)으로 넘어간다 — 두 목록이 동시에 뜨지 않는다.
+   */
+  const historyItems = !dismissed && focused && text.trim() === '' ? (history ?? []) : []
+  const historyOpen = historyItems.length > 0
 
   useEffect(() => {
     if (!open) return
@@ -495,6 +516,43 @@ export function SearchBar({
 
              자리 — 검색창 바로 아래에 겹쳐 띄운다(`absolute`). 아래 문구들을
              밀어내면 누를 때마다 화면이 출렁인다. 부모(`relative`)는 바깥 div 다. */}
+      {/* --- ★최근 검색 기록★ (2026-09-26) — 입력이 비어 있을 때만, 자동완성과 같은 자리 --- */}
+      {historyOpen ? (
+        <div className="relative">
+          <ul role="listbox" className="absolute left-0 right-0 top-1 z-20 max-h-[336px] overflow-y-auto border border-line bg-card py-1">
+            <li className="flex items-center justify-between px-4 py-1.5">
+              <span className="text-[11px] text-meta">최근 검색</span>
+              {onHistoryClear ? (
+                <button type="button" onClick={onHistoryClear} className="text-[11px] text-meta underline transition-colors duration-100 hover:text-accent">
+                  지우기
+                </button>
+              ) : null}
+            </li>
+            {historyItems.map((h, index) => (
+              <li key={`${h.type}:${h.query}:${index}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDismissed(true)
+                    onHistoryPick?.(h.type, h.query)
+                  }}
+                  className="block w-full cursor-pointer border-l-2 border-l-transparent px-4 py-2.5 text-left transition-colors duration-100 hover:border-l-accent hover:bg-card-2 max-md:px-3"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-[14px] leading-5 text-[var(--color-text-strong,#f6eded)]">
+                      {h.query}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-meta">
+                      {OPTIONS.find((o) => o.type === h.type)?.label ?? ''}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {suggestOpen ? (
         <div className="relative">
           <ul

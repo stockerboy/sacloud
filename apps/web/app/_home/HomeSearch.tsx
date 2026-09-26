@@ -108,6 +108,49 @@ const LEAGUE_SHORTCUTS = FEATURED_LEAGUES.filter(
  * 응답을 화면이 쓸 모양(`SearchSuggestion`)으로 바꾸는 것도 여기서 한다 —
  * `packages/ui` 는 API 를 모른다.
  */
+/**
+ * ★최근 검색 기록★ (2026-09-26 사장님 「검색기능에서 검색기록 남게 해줘 최대
+ * 9개까지는 검색 기록 남게해줘 이거 아이피 별로 하는건가」).
+ *
+ * ★아이피가 아니라 이 기기(브라우저)★ 다 — 검색 기록은 「내가 찾아본 것」 이라
+ * 사람 단위여야 뜻이 있다. 아이피로 묶으면 같은 와이파이·카페 손님이 서로의
+ * 기록을 보게 되고, 로그인 여부와도 안 맞는다(비로그인도 검색은 한다).
+ * 그래서 서버에 남기지 않고 `localStorage` 하나로 이 브라우저 안에서만 쌓는다.
+ */
+const SEARCH_HISTORY_KEY = 'sac-search-history'
+const SEARCH_HISTORY_MAX = 9
+
+interface SearchHistoryEntry {
+  type: SearchType
+  query: string
+}
+
+function loadSearchHistory(): SearchHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(SEARCH_HISTORY_KEY)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter(
+        (e): e is SearchHistoryEntry =>
+          !!e && typeof e === 'object' && typeof (e as SearchHistoryEntry).query === 'string' && typeof (e as SearchHistoryEntry).type === 'string',
+      )
+      .slice(0, SEARCH_HISTORY_MAX)
+  } catch {
+    // 프라이빗 창 등 localStorage 가 막힌 곳 — 기록 없이 그냥 간다
+    return []
+  }
+}
+
+function saveSearchHistory(entries: readonly SearchHistoryEntry[]): void {
+  try {
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(entries.slice(0, SEARCH_HISTORY_MAX)))
+  } catch {
+    // 저장 실패해도 화면 동작에는 영향 없다 — 이번 방문 안에서만 기록이 안 남을 뿐
+  }
+}
+
 const SUGGEST_SOURCE = {
   player: {
     endpoint: 'playersSearch',
@@ -154,6 +197,36 @@ export function HomeSearch() {
      그래서 규칙 넷을 여기서 전부 건다 — 2글자 · 300ms · 이전 요청 취소 · 캐시.
      값은 `packages/ui/src/home/searchSuggest.ts` 한 곳에서 온다. */
   const [suggestions, setSuggestions] = useState<readonly SearchSuggestion[]>([])
+
+  /* ==================== 최근 검색 기록 (2026-09-26) ====================
+     이 기기(localStorage)에만 남는다 — 위 SEARCH_HISTORY_KEY 주석 참고. */
+  const [searchHistory, setSearchHistory] = useState<readonly SearchHistoryEntry[]>([])
+  useEffect(() => {
+    setSearchHistory(loadSearchHistory())
+  }, [])
+  const addSearchHistory = useCallback((type: SearchType, query: string) => {
+    const q = query.trim()
+    if (!q) return
+    setSearchHistory((prev) => {
+      const next = [{ type, query: q }, ...prev.filter((e) => !(e.type === type && e.query === q))].slice(
+        0,
+        SEARCH_HISTORY_MAX,
+      )
+      saveSearchHistory(next)
+      return next
+    })
+  }, [])
+  const clearSearchHistory = useCallback(() => {
+    setSearchHistory([])
+    saveSearchHistory([])
+  }, [])
+  const handleHistoryPick = useCallback(
+    (type: SearchType, query: string) => {
+      void handleSearch(type, query)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
   /** 방금 받아 둔 결과. `Jaehyu → Jaehy → Jaehyu` 처럼 되돌아올 때 요청을 아예 안 낸다 */
   const cacheRef = useRef(new Map<string, readonly SearchSuggestion[]>())
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -231,9 +304,11 @@ export function HomeSearch() {
     (type: SearchType, suggestion: SearchSuggestion) => {
       setNotice(null)
       setSuggestions([])
+      /* 확정된 이름으로 남긴다 — 치다 만 글자보다 나중에 다시 찾기 좋다 */
+      addSearchHistory(type, suggestion.name)
       router.push(SUGGEST_SOURCE[type].href(suggestion.key))
     },
-    [router],
+    [router, addSearchHistory],
   )
 
   /**
@@ -251,6 +326,7 @@ export function HomeSearch() {
   const handleSearch = async (type: SearchType, query: string) => {
     setNotice(null)
     setSuggestions([])
+    addSearchHistory(type, query)
 
     /*
      * ★★이미 받아 둔 답이 있으면 기다리지 않는다★★ (2026-09-20 사장님 QA)
@@ -375,6 +451,9 @@ export function HomeSearch() {
           suggestions={suggestions}
           onQueryChange={handleQueryChange}
           onPick={handlePick}
+          history={searchHistory}
+          onHistoryPick={handleHistoryPick}
+          onHistoryClear={clearSearchHistory}
         />
       </div>
 
