@@ -167,7 +167,12 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
   if (source.adminAsClan) {
     return {
       id: null,
-      nickname: anonLabel,
+      /*
+       * ★대리 닉네임★ (2026-09-26 사장님 「익명말고 닉네임 간고딩어로」) — 관리자가
+       * 직접 이름을 주면 그 이름, 안 주면 옛 방식 그대로 「익명N」. `anonAlias` 칸을
+       * 재사용한다(비로그인 글의 자동 별칭과 같은 칸 — 스키마를 새로 안 만든다).
+       */
+      nickname: source.anonAlias ?? anonLabel,
       avatar_url: null,
       role: 0,
       anonymous: true,
@@ -213,14 +218,23 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
      *   「〃xx · 익명1」 은 사실상 실명에 가깝다. 이건 ★사장님이 알고 고른 값★ 이고,
      *   숨기고 싶은 사람에게는 ★클랜 없는 계정으로 쓰는 길★ 이 남아 있다.
      *   나중에 「작은 클랜은 클랜도 감춘다」 로 바꾸려면 ★여기 한 줄★ 만 고치면 된다.
+     *
+     * ⚠ ★2026-09-26 예외 — 관리자★ (사장님 「나는 관리자니까 소속자체를 없애줘 내가
+     *   익명으로 달면 그건 무소속 익명으로 뜨게해줘」). 관리자가 대리 클랜을 안 고르고
+     *   그냥 「익명」 체크만 하면(위 `adminAsClan` 갈래를 안 타는 경우), 지금까지는
+     *   ★관리자 본인의 진짜 소속★ 이 그대로 나갔다 — 「소속 X · 글쓴이」 조합이면
+     *   관리자 계정이 그 소속 사람이라는 게 사실상 드러난다(실제로 「베리타스로 뜨고
+     *   글쓴이로 떠서 들킬뻔했다」). 관리자는 대리 클랜을 안 고른 익명이면 ★무조건
+     *   무소속★ 이다 — 일반 사용자는 이 줄의 영향을 안 받는다.
      */
+    const isAdminUser = user.role === ADMIN_ROLE
     return {
       id: null,
       nickname: anonLabel,
       avatar_url: null,
       role: 0,
       anonymous: true,
-      clan,
+      clan: isAdminUser ? null : clan,
       player: null,
     }
   }
@@ -947,7 +961,8 @@ export async function createBoard(request: Request, body: unknown): Promise<Writ
       title: input.title,
       content,
       userId,
-      anonAlias: userId ? null : generateAnonAlias(),
+      /* ★관리자 대리 닉네임★ — 클랜을 골랐을 때만 뜻이 있다 (위 계약 주석 참고) */
+      anonAlias: adminAsClan.clanId && input.as_nickname ? input.as_nickname : userId ? null : generateAnonAlias(),
       // 평문 비밀번호를 저장하지 않는다
       anonPasswordHash: userId || !input.password ? null : hashSync(input.password, 10),
       discloseType: input.disclose_type,
@@ -1367,7 +1382,8 @@ export async function createComment(
         parentId,
         content,
         userId,
-        anonAlias: userId ? null : generateAnonAlias(),
+        /* ★관리자 대리 닉네임★ — `createBoard` 와 같은 규칙 */
+        anonAlias: adminAsClan.clanId && input.as_nickname ? input.as_nickname : userId ? null : generateAnonAlias(),
         anonPasswordHash: userId || !input.password ? null : hashSync(input.password, 10),
         discloseType: input.disclose_type,
         writerApp: 0,

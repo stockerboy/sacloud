@@ -121,6 +121,13 @@ export const BoardWriteInput = z.object({
    * 값을 보내도 ★서버가 관리자인지 다시 확인한 뒤에만★ 적용한다 — 여기 값은 그냥 요청일 뿐이다.
    */
   as_clan_slug: Slug.nullable().default(null),
+  /**
+   * ★관리자 대리 닉네임★ (2026-09-26 사장님 「익명말고 닉네임 간고딩어로」) — `as_clan_slug`
+   * 와 함께 보낼 때만 뜻이 있다. 없으면 그 클랜 소속 「익명N」 으로 나간다(옛 방식 그대로).
+   * `as_clan_slug` 없이 이 값만 보내면 서버가 무시한다 — 관리자가 아니거나 클랜을
+   * 안 골랐는데 닉네임만 새는 길을 만들지 않는다.
+   */
+  as_nickname: z.string().trim().min(1).max(20).nullable().default(null),
 })
 export type BoardWriteInput = z.infer<typeof BoardWriteInput>
 
@@ -139,6 +146,8 @@ export const CommentWriteInput = z.object({
   password: z.string().min(1).nullable(),
   /** ★관리자 대리 클랜★ — `BoardWriteInput.as_clan_slug` 와 같은 뜻·같은 규칙 */
   as_clan_slug: Slug.nullable().default(null),
+  /** ★관리자 대리 닉네임★ — `BoardWriteInput.as_nickname` 과 같은 뜻·같은 규칙 */
+  as_nickname: z.string().trim().min(1).max(20).nullable().default(null),
 })
 export type CommentWriteInput = z.infer<typeof CommentWriteInput>
 
