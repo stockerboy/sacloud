@@ -263,7 +263,7 @@ export async function runRenewRequests(
     if (job.kind === 'player') {
       const player = await prisma.player.findUnique({
         where: { id: job.targetId },
-        select: { id: true, name: true, sourcePlayerId: true },
+        select: { id: true, name: true, sourcePlayerId: true, clanId: true },
       })
       if (player === null) {
         done.push(job.id)
@@ -360,7 +360,25 @@ export async function runRenewRequests(
        */
       let clan: { id: string; slug: string; name: string } | null = null
       if (clanName !== null) {
-        const sameName = clanRows.filter((c) => c.name === clanName)
+        /*
+         * ⚠ ★2026-09-26 — 완전일치가 실패하면 대소문자만 다시 본다★ (사장님
+         * 「정보갱신할때 클랜은 갱신이 안돼 닉네임은 잘바뀌는데」로 잡았다).
+         *
+         *   화면에 "Valiant" 로 뜨는 클랜이 갱신에서만 계속 "리그밖 클랜" 으로
+         *   빠졌다 — 우리 DB 이름과 병영이 돌려주는 이름이 ★대소문자만★ 다른
+         *   경우가 있다(예: "valiant" vs "Valiant"). `===` 완전일치라 그 한 글자
+         *   차이로 존재하는 클랜을 못 찾고 조용히 넘어갔다.
+         *
+         *   완전일치를 ★그대로 먼저★ 쓴다 — 이게 맞는 경우가 대부분이고 가장
+         *   빠르다. 하나도 안 걸렸을 때만 대소문자를 접어 다시 본다. 여러 개
+         *   걸리면 기존처럼 마크로 가린다 — 새 규칙이 아니라 같은 규칙을
+         *   재사용한다.
+         */
+        let sameName = clanRows.filter((c) => c.name === clanName)
+        if (sameName.length === 0) {
+          const lower = clanName.toLowerCase()
+          sameName = clanRows.filter((c) => c.name.toLowerCase() === lower)
+        }
         if (sameName.length === 1) {
           clan = sameName[0] ?? null
         } else if (sameName.length > 1) {
@@ -389,6 +407,28 @@ export async function runRenewRequests(
               where: { id: { in: stale } },
               data: { clanId: nextClanId },
             })
+          }
+        }
+        /*
+         * ⚠ ★2026-09-26 — `Player.clanId` 를 `LeaguePlayer` 가 밀렸을 때만 고쳤다★
+         * (사장님 「정보갱신할때 클랜은 갱신이 안돼 닉네임은 잘바뀌는데」로 잡았다).
+         *
+         *   화면(프로필 머리)의 「소속」은 `Player.clanId` 를 본다. 그런데 이 줄은
+         *   위 `if (stale.length > 0)` 안에서만 갱신됐다 — `LeaguePlayer` 가 이미
+         *   맞으면(리그 소속은 다른 잡이 먼저 고쳐 놓은 경우) `Player.clanId` 는
+         *   ★손도 안 댔다.★ 실측: 한 선수가 `LeaguePlayer.clanId` 는 정상(e2stro-)
+         *   인데 `Player.clanId` 는 옛 껍데기 클랜("VaIiant" — 대문자 I, 진짜
+         *   "Valiant" 클랜과는 다른 딥슬롯 잔재)을 계속 가리켜 화면에 옛 소속이
+         *   "Valiant" 처럼 보였다(글꼴에서 대문자 I 와 소문자 l 이 거의 같다).
+         *
+         *   ★이제 `Player.clanId` 는 `LeaguePlayer` 가 밀렸든 아니든 매번 맞춘다★
+         *   — 두 표가 서로 다른 원인으로 어긋날 수 있으니 따로 검사한다.
+         */
+        if (player.clanId !== nextClanId) {
+          if (!changes.some((c) => c.startsWith('소속 →'))) {
+            changes.push(`소속(개인) → ${clan === null ? '무소속' : clan.name}`)
+          }
+          if (confirm) {
             await prisma.player.update({ where: { id: player.id }, data: { clanId: nextClanId } })
           }
         }
