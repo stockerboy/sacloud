@@ -927,8 +927,13 @@ export async function createBoard(request: Request, body: unknown): Promise<Writ
   const adminAsClan = await resolveAdminAsClanId(userId, input.as_clan_slug)
   if (!adminAsClan.ok) return invalid(adminAsClan.message)
 
+  /*
+   * ★관리자는 글쓰기 한도가 없다★ (2026-09-26 사장님 「관리자는 글 계속 쓸 수 있게 해줘
+   * 한도 걸리니까 답답해」) — 대리 클랜으로 옮겨 다니며 여러 글을 빠르게 써야 하는데
+   * 5분당 1글 제한에 매번 걸렸다. 관리자만 이 창을 건너뛴다 — 일반 사용자는 그대로다.
+   */
   const key = await voterKey(request)
-  if (!(await consumeWriteQuota(`board:write:${key}`, BOARD_WRITE_INTERVAL))) {
+  if (!(await isAdmin(userId)) && !(await consumeWriteQuota(`board:write:${key}`, BOARD_WRITE_INTERVAL))) {
     return { ok: false, status: 429, message: '잠시 후 다시 시도해주세요' }
   }
 
@@ -1329,8 +1334,9 @@ export async function createComment(
   const adminAsClan = await resolveAdminAsClanId(userId, input.as_clan_slug)
   if (!adminAsClan.ok) return invalid(adminAsClan.message)
 
+  /* ★관리자는 댓글 한도도 없다★ — `createBoard` 와 같은 이유·같은 지시 (2026-09-26) */
   const rateKey = await voterKey(request)
-  if (!(await consumeWriteQuota(`comment:write:${rateKey}`, COMMENT_WRITE_INTERVAL))) {
+  if (!(await isAdmin(userId)) && !(await consumeWriteQuota(`comment:write:${rateKey}`, COMMENT_WRITE_INTERVAL))) {
     return { ok: false, status: 429, message: '잠시 후 다시 시도해주세요' }
   }
 
