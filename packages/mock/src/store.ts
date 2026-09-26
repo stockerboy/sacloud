@@ -2939,6 +2939,7 @@ function toBoardListItem(board: MockBoard, anonLabel: string = ANONYMOUS_LIST_LA
     notice: board.notice,
     /* 상단 고정은 실제 서버(관리자)만 찍는다 — Mock 픽스처에는 없다 */
     pinned: false,
+    hot_pinned: false,
   }
 }
 

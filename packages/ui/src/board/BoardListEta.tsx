@@ -27,10 +27,16 @@ import { affiliationName } from './boardCopy'
 import { isAdminWriter, isBotWriter } from './adminPost'
 import { AdminWriterName, BotWriterName } from './WriterName'
 
-/** 탭 — 사장님 순서: 인기 · 자유 (공지는 탭이 아니라 위 칸에 붙는다) */
-export const ETA_TABS: readonly { slug: string; label: string }[] = [
+/** ⚠ 2026-09-27 이전 판 — 인기 · 자유. 지우지 않는다 */
+export const ETA_TABS_V1: readonly { slug: string; label: string }[] = [
   { slug: 'hot', label: '인기' },
   { slug: 'free', label: '자유' },
+]
+
+/** 탭 — 2026-09-27 사장님 「자유게시판이 1순위고 그 오른쪽에 인기게시판」 (공지는 탭이 아니라 위 칸에 붙는다) */
+export const ETA_TABS: readonly { slug: string; label: string }[] = [
+  { slug: 'free', label: '자유' },
+  { slug: 'hot', label: '인기' },
 ]
 
 /** 글쓴이 한 조각 — [마크] 익명 · 클랜명  /  [마크] 닉네임 · 클랜명. 마크는 언제나 있다 */
@@ -116,6 +122,8 @@ export function EtaRow({ item, basePath }: { item: BoardListItem; basePath?: str
           <span className="min-w-0 flex-1 text-[15.5px] font-bold leading-snug text-[#f2f4f8] max-md:text-[13.5px]">
             {/* ★고정·공지 표식★ (2026-09-25) — 고정 글은 첫 쪽 맨 위에 얹히므로 왜 위에 있는지 보여 준다 */}
             {item.pinned ? <span className="mr-1.5 inline-block rounded-sm bg-[#5c80e0] px-1.5 py-0.5 align-middle text-[10px] font-bold text-[#0c1526]">고정</span> : null}
+            {/* ★자유게시판 맨 위 핫게시물★ (2026-09-27) — 인기 기준을 넘긴 최신 4개 */}
+            {item.hot_pinned && !item.pinned ? <span className="mr-1.5 inline-block rounded-sm border border-[#5c80e0] bg-[#5c80e0]/15 px-1.5 py-0.5 align-middle text-[10px] font-bold text-[#5c80e0]">HOT</span> : null}
             {item.notice && !item.pinned ? <span className="mr-1.5 inline-block rounded-sm border border-[#5c80e0] px-1.5 py-0.5 align-middle text-[10px] font-bold text-[#5c80e0]">공지</span> : null}
             {item.title}
           </span>

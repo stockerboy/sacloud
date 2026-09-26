@@ -26,6 +26,13 @@ export const ROWS_V1 = 6
 export const ROWS_V2 = 10
 /** ★핫 글 자체를 최대 몇 개까지★ (2026-09-26 사장님 「hot 게시물은 최대 8개까지」) — 공지는 이 수를 안 먹는다 (아래) */
 const ROWS = 8
+
+/**
+ * 「더 보기」 가 가는 곳 — 2026-09-27 사장님 「더보기 누르면 자유게시판으로」.
+ * 자유게시판 맨 위에 핫게시물 4개가 최신순으로 얹혀 있다. (옛 판 `HOT_MORE_HREF_V1`)
+ */
+const HOT_MORE_HREF = '/board/free'
+export const HOT_MORE_HREF_V1 = '/board/hot'
 /**
  * ⚠ ★2026-09-26 폐지★ (사장님 「세번째 쓴 공지가 핫게로 안넘어와 메인화면에서」 —
  * 공지를 「무조건 누적」(같은 날 앞서 지시) 하기로 한 것과 이 상한이 부딪혔다. 공지
@@ -93,7 +100,7 @@ export async function HomeHotBoard() {
           <div className="flex items-baseline justify-between px-1 pb-3">
             {/* 2026-09-25 사장님 「이 임티 달아줘」(🔥) */}
             <h2 className="text-[22px] font-black tracking-tight text-text-strong max-md:text-[18px]"><span className="mr-1.5">HOT</span><span className="font-bold">게시물</span><span className="ml-1.5">🔥</span></h2>
-            <Link prefetch={false} href="/board/hot" className="text-[13px] text-meta transition-colors hover:text-accent max-md:text-[12px]">더 보기 ›</Link>
+            <Link prefetch={false} href={HOT_MORE_HREF} className="text-[13px] text-meta transition-colors hover:text-accent max-md:text-[12px]">더 보기 ›</Link>
           </div>
           <ul className="overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1c1c1c]">
             {rows.map((r) => (
@@ -118,7 +125,7 @@ export async function HomeHotBoard() {
           <h2 className="text-[17px] font-bold text-text-strong">HOT게시판</h2>
           <Link
             prefetch={false}
-            href="/board/hot"
+            href={HOT_MORE_HREF}
             className="text-[12.5px] text-meta transition-colors hover:text-accent"
           >
             더 보기

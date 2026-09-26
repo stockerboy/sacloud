@@ -69,9 +69,16 @@ const C = DRAWER_DARK
   ? { bg: 'bg-[#0b0f18]', divide: 'divide-[#1e2a42]', text: 'text-[#e8eaf2]', dim: 'text-[#a4b0c8]', on: 'bg-[#1e2a42] text-white', close: 'text-[#e8eaf2]' }
   : { bg: 'bg-white', divide: 'divide-[#e5e7eb]', text: 'text-[#4a4a4a]', dim: 'text-[#374151]', on: 'bg-[#374151] text-white', close: 'text-[#4b5563]' }
 
-const BOARD_LINKS: readonly NavLink[] = [
+/** ⚠ 2026-09-27 이전 판 — HOT 먼저. 지우지 않는다 */
+export const BOARD_LINKS_V1: readonly NavLink[] = [
   { label: 'HOT게시판', href: '/board/hot' },
   { label: '자유게시판', href: '/board/free' },
+]
+
+/** 2026-09-27 사장님 — 자유게시판이 1순위, 그 다음 인기(HOT) */
+const BOARD_LINKS: readonly NavLink[] = [
+  { label: '자유게시판', href: '/board/free' },
+  { label: 'HOT게시판', href: '/board/hot' },
 ]
 
 function isOn(pathname: string, href: string): boolean {

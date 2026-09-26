@@ -328,9 +328,10 @@ export const MOBILE_NAV_GROUPS: readonly NavGroup[] = [
   { label: 'IPL', items: [{ label: '리그 홈', href: '/league/nolink' }] },
   { label: 'PL', items: [{ label: '리그 홈', href: '/league/supply' }] },
   { label: '열산리그', items: [{ label: '리그 홈', href: '/league/sanply' }] },
+  /* 2026-09-27 사장님 — 자유가 1순위, 그 오른쪽 HOT (옛 판은 HOT · 자유 차례였다) */
   { label: '게시판', items: [
-    { label: 'HOT', href: '/board/hot' },
     { label: '자유', href: '/board/free' },
+    { label: 'HOT', href: '/board/hot' },
   ] },
   /*
    * 참가신청은 한 화면(`/about`)이 리그를 골라 보여 준다. 어느 쪽으로 들어왔는지를

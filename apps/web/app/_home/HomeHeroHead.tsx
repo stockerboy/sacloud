@@ -25,7 +25,8 @@ const SECOND = LEAGUE_SLUGS[1] ?? MAIN
 const HERO_MENU: readonly { label: string; href: string | null }[] = [
   { label: 'PLAYERS', href: `/league/${MAIN}/rank/player` },
   { label: 'DATA', href: `/league/${MAIN}/match` },
-  { label: 'COMMUNITY', href: '/board/hot' },
+  /* 2026-09-27 — 자유게시판이 1순위 (옛 판 '/board/hot') */
+  { label: 'COMMUNITY', href: '/board/free' },
   { label: 'MATCH', href: `/league/${SECOND}/match` },
   { label: 'RECORD', href: `/league/${MAIN}/rank/clan` },
   { label: 'AND MORE ...', href: null },

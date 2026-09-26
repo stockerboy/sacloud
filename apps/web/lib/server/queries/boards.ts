@@ -334,6 +334,7 @@ function toBoardListItem(row: BoardListRow, anonLabel: string = ANONYMOUS_LIST_L
     last_edited: toKstIsoOrNull(row.lastEdited),
     notice: row.notice,
     pinned: row.pinnedAt !== null,
+    hot_pinned: false,
   }
 }
 
@@ -552,6 +553,33 @@ async function pinnedBoardIds(): Promise<string[]> {
   return rows.map((row) => row.id)
 }
 
+/**
+ * ★자유게시판 맨 위 핫게시물 4개★ (2026-09-27 사장님)
+ *
+ * > 「자유게시판에 핫게시물 최대 4개를 상단에 고정해서 보여줘 (…) 상단에 핫게시물 4개 최신순으로 고정」
+ *
+ * 인기 기준은 Hot 목록(`boardFilter` 의 hot 갈래)과 똑같다 — 공지 아님 · 좋아요 `HOT_MIN_LIKES`
+ * 이상 또는 댓글 `HOT_MIN_COMMENTS` 이상. 순서만 ★최신순★ 이다(Hot 목록은 점수순).
+ * 관리자 고정 글은 이미 위에 있으니 뺀다. 얹은 글은 아래 자유 목록에서 뺀다(같은 글 두 번 X).
+ */
+const FREE_HOT_PIN_LIMIT = 4
+
+async function freeHotPinIds(skipIds: readonly string[]): Promise<string[]> {
+  const rows = await prisma.board.findMany({
+    where: {
+      deletedAt: null,
+      notice: false,
+      ...(hidesSeedData() ? { origin: { not: SEED_ORIGIN } } : {}),
+      ...(skipIds.length > 0 ? { id: { notIn: [...skipIds] } } : {}),
+      OR: [{ likeCount: { gte: HOT_MIN_LIKES } }, { commentCount: { gte: HOT_MIN_COMMENTS } }],
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: FREE_HOT_PIN_LIMIT,
+    select: { id: true },
+  })
+  return rows.map((row) => row.id)
+}
+
 function boardFilter(query: BoardListQuery, params: SqlParams, excludeIds: readonly string[] = []): string {
   const parts: string[] = ['"Board"."deletedAt" IS NULL']
 
@@ -703,8 +731,12 @@ async function boardIdPage(query: BoardListQuery, excludeIds: readonly string[] 
 
 export async function listBoards(query: BoardListQuery): Promise<CursorPage<BoardListItem>> {
   /* 고정 글은 검색·공지 목록이 아니면 어느 쪽에서든 뺀다(위 `boardFilter`) — 첫 쪽에만 맨 위에 얹는다 */
-  const excludes = !query.q?.trim() && query.category !== 'notice' ? await pinnedBoardIds() : []
+  const adminPins = !query.q?.trim() && query.category !== 'notice' ? await pinnedBoardIds() : []
+  /* 자유게시판이면 핫게시물 4개를 관리자 고정 바로 아래에 얹는다 — 아래 목록에서는 ★모든 쪽★ 에서 뺀다 */
+  const hotPins = !query.q?.trim() && query.category === 'free' ? await freeHotPinIds(adminPins) : []
+  const excludes = [...adminPins, ...hotPins]
   const pinnedIds = pinsApply(query) ? excludes : []
+  const hotPinSet = new Set(pinsApply(query) ? hotPins : [])
 
   const page = await boardIdPage(query, excludes)
   const ids = [...pinnedIds, ...page.items]
@@ -720,7 +752,7 @@ export async function listBoards(query: BoardListQuery): Promise<CursorPage<Boar
     items: ids
       .map((id) => byId.get(id))
       .filter((row): row is BoardListRow => row !== undefined)
-      .map((row) => toBoardListItem(row)),
+      .map((row) => ({ ...toBoardListItem(row), hot_pinned: hotPinSet.has(row.id) })),
     cursor: page.cursor,
   }
 }

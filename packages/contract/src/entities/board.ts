@@ -66,6 +66,11 @@ export const BoardListItem = z.object({
    * 옛 응답과 호환되도록 기본값이 있다.
    */
   pinned: z.boolean().default(false),
+  /**
+   * ★자유게시판 맨 위 핫게시물★ (2026-09-27 사장님 「자게 상단에 핫게시물 4개 최신순으로 고정」).
+   * 인기 기준을 넘긴 글 중 최신 4개가 자유게시판 첫 쪽 맨 위에 얹힌다. 관리자 고정(`pinned`)과 별개다.
+   */
+  hot_pinned: z.boolean().default(false),
 })
 export type BoardListItem = z.infer<typeof BoardListItem>
 

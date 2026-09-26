@@ -165,7 +165,8 @@ const GNB_LINKS: readonly { icon: string; label: string; aria: string; href: str
    *     ★햄버거 서랍(사이트맵)에도 그대로 있다.★ 아래 `GNB_LINKS_20260921` 로
    *     되돌리면 상단바에 그대로 돌아온다.
    */
-  { icon: '', label: '게시판', aria: '게시판', href: '/board/hot', match: '/board' },
+  /* 2026-09-27 사장님 — 게시판은 자유게시판이 1순위 (옛 판 href 는 '/board/hot') */
+  { icon: '', label: '게시판', aria: '게시판', href: '/board/free', match: '/board' },
 ]
 
 /** ⚠ ★2026-09-22 이전 판★ — 참가신청·ABOUT 이 상단바에 있던 시절. 지우지 않는다 */

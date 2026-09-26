@@ -44,7 +44,10 @@ const DISPLAY_NAME: Readonly<Record<string, string>> = {
  *
  * 차례도 이 배열이 정한다 — 사장님이 말씀하신 «Hot / 자유 / 공지사항» 그대로다.
  */
-export const BOARD_NAV_SLUGS: readonly string[] = ['hot', 'free', 'notice']
+/** ⚠ 2026-09-27 이전 차례 — Hot / 자유 / 공지사항. 지우지 않는다 */
+export const BOARD_NAV_SLUGS_V1: readonly string[] = ['hot', 'free', 'notice']
+/** 2026-09-27 사장님 — 자유게시판이 1순위, 그 오른쪽 인기 */
+export const BOARD_NAV_SLUGS: readonly string[] = ['free', 'hot', 'notice']
 
 /**
  * 카테고리 이름을 화면 표기로 바꾼다.
