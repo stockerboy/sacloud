@@ -144,7 +144,12 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
            * 「모른다」) 관리자인데도 체크가 켜진 채 굳어 버린다. `key` 로 응답이 오면 한 번 다시 만든다.
            */
           key={infos.isSuccess ? String(viewerIsAdmin) : 'pending'}
-          requirePassword={!post.data.data.login}
+          /*
+           * ★비밀번호는 「보는 사람」 이 비로그인일 때만 묻는다★ (2026-09-27 사장님 「익명을 눌러야 등록이 돼」)
+           *   옛 판 `!post.data.data.login` 은 ★글쓴이★ 가 회원인지였다 — 비회원 글에는 로그인한 관리자도
+           *   비밀번호를 적어야 등록이 켜졌다. `/infos` 가 아직이면 옛 판 값으로 둔다.
+           */
+          requirePassword={infos.isSuccess ? !infos.data.data.user : !post.data.data.login}
           /* ★체크를 보여 준다★ — 이제 값을 실제로 보내므로 화면이 거짓말하지 않는다 */
           showAnonymousToggle
           /* ★관리자는 기본이 실명(SACLOUD)이다★ (2026-09-25) — 체크를 켜면 그때는 관리자도 익명이 된다 */
