@@ -220,13 +220,9 @@ export function HomeSearch() {
     setSearchHistory([])
     saveSearchHistory([])
   }, [])
-  const handleHistoryPick = useCallback(
-    (type: SearchType, query: string) => {
-      void handleSearch(type, query)
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  )
+  const handleHistoryPick = useCallback((type: SearchType, query: string) => {
+    void handleSearch(type, query)
+  }, [])
   /** 방금 받아 둔 결과. `Jaehyu → Jaehy → Jaehyu` 처럼 되돌아올 때 요청을 아예 안 낸다 */
   const cacheRef = useRef(new Map<string, readonly SearchSuggestion[]>())
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
