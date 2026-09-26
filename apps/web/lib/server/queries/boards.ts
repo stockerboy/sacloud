@@ -138,6 +138,8 @@ interface WriterSource {
   discloseType: number
   /** ★관리자 대리 클랜★ — 있으면 실제 소속 대신 이 클랜으로, 무조건 익명으로 보여준다 */
   adminAsClan?: AdminAsClanRow | null
+  /** ★AI Q/A 봇 위장★ — 있으면 「SACLOUD AI Q/A Bot」 이름으로, 무조건 익명으로 보여준다 */
+  postAsBot?: boolean
 }
 
 /**
@@ -164,6 +166,28 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
    *   서버가 `isAdmin` 을 확인한 뒤에만 이 칸이 채워지므로(아래 `createBoard`/`createComment`),
    *   여기서는 값이 있다는 사실 자체를 믿어도 된다.
    */
+  /*
+   * ★AI Q/A 봇으로 위장★ (2026-09-26 사장님 「내가 Ai Q/A 봇인것처럼 댓글이나 글
+   *   쓸 수 있게 해줘 관리자 권한으로 이름은 SACLOUD AI Q/A Bot」).
+   *
+   *   `adminAsClan` 과 같은 자리의 ★또 다른 위장★ 이다 — 클랜 대신 고정된 봇 이름을
+   *   쓴다. 표시 문구 자체는 여기서 정하지 않는다 — 「SACLOUD」 관리자 인격과 같은
+   *   규칙으로 화면(`isBotWriter`/`BotWriterName` · packages/ui)이 `is_bot` 하나만
+   *   보고 그린다. 여기서는 신원만 지운다(무조건 완전 익명 — adminAsClan과 같다).
+   */
+  if (source.postAsBot) {
+    return {
+      id: null,
+      nickname: anonLabel,
+      avatar_url: null,
+      role: 0,
+      anonymous: true,
+      clan: null,
+      player: null,
+      is_bot: true,
+    }
+  }
+
   if (source.adminAsClan) {
     return {
       id: null,
@@ -178,6 +202,7 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
       anonymous: true,
       clan: toClanSummaryOrNull(source.adminAsClan),
       player: null,
+      is_bot: false,
     }
   }
 
@@ -192,6 +217,7 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
       anonymous: true,
       clan: null,
       player: null,
+      is_bot: false,
     }
   }
 
@@ -236,6 +262,7 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
       anonymous: true,
       clan: isAdminUser ? null : clan,
       player: null,
+      is_bot: false,
     }
   }
 
@@ -247,6 +274,7 @@ function toBoardWriter(source: WriterSource, anonLabel: string): BoardWriter {
     anonymous: false,
     clan,
     player: toPlayerSummaryOrNull(player),
+    is_bot: false,
   }
 }
 
@@ -273,6 +301,7 @@ const BOARD_LIST_SELECT = {
   lastEdited: true,
   user: { select: BOARD_USER_SELECT },
   adminAsClan: ADMIN_AS_CLAN_SELECT,
+  postAsBot: true,
 } as const
 
 const BOARD_DETAIL_SELECT = {
@@ -905,6 +934,15 @@ async function resolveAdminAsClanId(
   return { ok: true, clanId: clan.id }
 }
 
+/**
+ * ★AI Q/A 봇으로 쓰기★ 를 푼다 — `resolveAdminAsClanId` 와 같은 규칙이다.
+ * 관리자가 아니면 `as_bot` 값을 조용히 무시한다.
+ */
+async function resolveAdminAsBot(userId: string | null, wantBot: boolean): Promise<boolean> {
+  if (!wantBot) return false
+  return isAdmin(userId)
+}
+
 export async function createBoard(request: Request, body: unknown): Promise<WriteResult<Board>> {
   const parsed = BoardWriteInput.safeParse(body)
   if (!parsed.success) return invalid('입력값을 확인해주세요')
@@ -940,6 +978,7 @@ export async function createBoard(request: Request, body: unknown): Promise<Writ
 
   const adminAsClan = await resolveAdminAsClanId(userId, input.as_clan_slug)
   if (!adminAsClan.ok) return invalid(adminAsClan.message)
+  const postAsBot = await resolveAdminAsBot(userId, input.as_bot)
 
   /*
    * ★관리자는 글쓰기 한도가 없다★ (2026-09-26 사장님 「관리자는 글 계속 쓸 수 있게 해줘
@@ -961,8 +1000,8 @@ export async function createBoard(request: Request, body: unknown): Promise<Writ
       title: input.title,
       content,
       userId,
-      /* ★관리자 대리 닉네임★ — 클랜을 골랐을 때만 뜻이 있다 (위 계약 주석 참고) */
-      anonAlias: adminAsClan.clanId && input.as_nickname ? input.as_nickname : userId ? null : generateAnonAlias(),
+      /* ★관리자 대리 닉네임★ — 클랜을 골랐을 때만 뜻이 있다 (위 계약 주석 참고). 봇이면 안 쓴다 */
+      anonAlias: postAsBot ? null : adminAsClan.clanId && input.as_nickname ? input.as_nickname : userId ? null : generateAnonAlias(),
       // 평문 비밀번호를 저장하지 않는다
       anonPasswordHash: userId || !input.password ? null : hashSync(input.password, 10),
       discloseType: input.disclose_type,
@@ -970,7 +1009,9 @@ export async function createBoard(request: Request, body: unknown): Promise<Writ
       writerApp: 0,
       hasImage: detectImage(content),
       notice: category.notice,
-      adminAsClanId: adminAsClan.clanId,
+      /* ★봇 위장이 대리 클랜보다 우선★ — 둘 다 오면(정상 화면에선 안 그런다) 봇으로 나간다 */
+      adminAsClanId: postAsBot ? null : adminAsClan.clanId,
+      postAsBot,
     },
     select: { id: true },
   })
@@ -1154,6 +1195,7 @@ const COMMENT_SELECT = {
   lastEdited: true,
   user: { select: BOARD_USER_SELECT },
   adminAsClan: ADMIN_AS_CLAN_SELECT,
+  postAsBot: true,
 } as const
 
 type CommentRow = Prisma.CommentGetPayload<{ select: typeof COMMENT_SELECT }>
@@ -1172,7 +1214,7 @@ async function commentAnonLabels(boardId: string, boardUserId: string | null) {
   const all = await prisma.comment.findMany({
     where: { boardId },
     orderBy: [...COMMENT_ORDER],
-    select: { id: true, userId: true, discloseType: true, parentId: true, adminAsClanId: true },
+    select: { id: true, userId: true, discloseType: true, parentId: true, adminAsClanId: true, postAsBot: true },
   })
   return assignAnonymousLabels({
     postAuthorKey: boardUserId,
@@ -1195,7 +1237,8 @@ async function commentAnonLabels(boardId: string, boardUserId: string | null) {
          *   자체로 「글쓴이 특례」를 안 타고 새 번호를 준다 — 순수 함수는 안 건드리고
          *   ★위장한 댓글만★ 입력에서 골라 낸다.
          */
-        authorKey: comment.adminAsClanId !== null ? null : comment.userId,
+        /* ★AI Q/A 봇 위장도 같은 대접★ — `postAsBot` 도 「글쓴이」 특례를 안 탄다 */
+        authorKey: comment.adminAsClanId !== null || comment.postAsBot ? null : comment.userId,
       })),
   })
 }
@@ -1365,6 +1408,7 @@ export async function createComment(
 
   const adminAsClan = await resolveAdminAsClanId(userId, input.as_clan_slug)
   if (!adminAsClan.ok) return invalid(adminAsClan.message)
+  const postAsBot = await resolveAdminAsBot(userId, input.as_bot)
 
   /* ★관리자는 댓글 한도도 없다★ — `createBoard` 와 같은 이유·같은 지시 (2026-09-26) */
   const rateKey = await voterKey(request)
@@ -1382,12 +1426,13 @@ export async function createComment(
         parentId,
         content,
         userId,
-        /* ★관리자 대리 닉네임★ — `createBoard` 와 같은 규칙 */
-        anonAlias: adminAsClan.clanId && input.as_nickname ? input.as_nickname : userId ? null : generateAnonAlias(),
+        /* ★관리자 대리 닉네임★ — `createBoard` 와 같은 규칙. 봇이면 안 쓴다 */
+        anonAlias: postAsBot ? null : adminAsClan.clanId && input.as_nickname ? input.as_nickname : userId ? null : generateAnonAlias(),
         anonPasswordHash: userId || !input.password ? null : hashSync(input.password, 10),
         discloseType: input.disclose_type,
         writerApp: 0,
-        adminAsClanId: adminAsClan.clanId,
+        adminAsClanId: postAsBot ? null : adminAsClan.clanId,
+        postAsBot,
       },
       select: { id: true },
     })

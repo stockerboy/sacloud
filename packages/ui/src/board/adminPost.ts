@@ -60,3 +60,22 @@ export function isAdminWriter(writer: Pick<BoardWriter, 'role' | 'anonymous'>): 
 export function isAdminPost(item: Pick<BoardListItem, 'writer'>): boolean {
   return isAdminWriter(item.writer)
 }
+
+/**
+ * ★AI Q/A 봇 인격★ (2026-09-26 사장님 「내가 Ai Q/A 봇인것처럼 댓글이나 글 쓸 수
+ * 있게 해줘 관리자 권한으로 이름은 SACLOUD AI Q/A Bot」).
+ *
+ * 「SACLOUD」 관리자 인격(위)과 같은 자리다 — 다른 점은 ★완전 익명★(`toBoardWriter`
+ * 의 `postAsBot` 갈래는 `anonymous:true`)이라는 것. 「SACLOUD」 는 「관리자가 실명으로
+ * 썼다」는 뜻이고, 이건 「이 글은 봇이 썼다」는 별개의 인격이다 — 판정을 문자열 비교가
+ * 아니라 계약의 `is_bot` 칸 하나로 한다(서버가 채운다).
+ *
+ * 그림은 새로 만들지 않는다 — 「SACLOUD」 와 같은 구름 마크를 그대로 쓴다
+ * (`CLAUDE.md` 2장 4번 · 사용자가 그림을 주기 전까지는 손으로 지어내지 않는다).
+ */
+export const BOT_DISPLAY_NAME = 'SACLOUD AI Q/A Bot'
+export const BOT_MARK_SRC = ADMIN_MARK_SRC
+
+export function isBotWriter(writer: Pick<BoardWriter, 'is_bot'>): boolean {
+  return !!writer.is_bot
+}

@@ -59,6 +59,8 @@ export function PostForm({
     disclose_type: number
     password: string | null
     as_clan_slug: string | null
+    as_nickname: string | null
+    as_bot: boolean
   }) => void
 }) {
   const [title, setTitle] = useState(initialTitle)
@@ -81,6 +83,10 @@ export function PostForm({
   const [password, setPassword] = useState('')
   /** ★관리자 대리 클랜★ — 고른 클랜의 slug. 안 고르면 null(평소처럼 관리자 본인 이름으로) */
   const [asClan, setAsClan] = useState<{ slug: string; name: string } | null>(null)
+  /** ★관리자 대리 닉네임★ (2026-09-26 사장님 「익명말고 닉네임 간고딩어로」) — 대리 클랜 골랐을 때만 뜻이 있다 */
+  const [asNickname, setAsNickname] = useState('')
+  /** ★AI Q/A 봇으로 쓰기★ (2026-09-26 사장님) — 켜면 대리 클랜 칸을 대신한다 */
+  const [asBot, setAsBot] = useState(false)
 
   const canSubmit =
     title.trim().length > 0 &&
@@ -105,8 +111,30 @@ export function PostForm({
       />
 
       {viewerIsAdmin ? (
-        <div className="mt-3">
-          <AdminAsClanPicker picked={asClan} onPick={setAsClan} />
+        <div className="mt-3 flex flex-col gap-2">
+          <label className="flex cursor-pointer select-none items-center gap-1 text-sm text-meta">
+            <input
+              type="checkbox"
+              checked={asBot}
+              onChange={(event) => setAsBot(event.target.checked)}
+              className="accent-[var(--color-accent)]"
+            />
+            AI Q/A Bot으로 쓰기 (SACLOUD AI Q/A Bot 이름으로 나갑니다)
+          </label>
+          {!asBot ? (
+            <>
+              <AdminAsClanPicker picked={asClan} onPick={setAsClan} />
+              {asClan ? (
+                <input
+                  value={asNickname}
+                  onChange={(event) => setAsNickname(event.target.value)}
+                  maxLength={20}
+                  placeholder="대리 닉네임 (안 적으면 「익명N」으로 나갑니다)"
+                  className={`h-10 w-full ${FIELD}`}
+                />
+              ) : null}
+            </>
+          ) : null}
         </div>
       ) : null}
 
@@ -143,7 +171,9 @@ export function PostForm({
               content: plainTextToHtml(content.trim()),
               disclose_type: anonymous ? 1 : 0,
               password: requirePassword ? password : null,
-              as_clan_slug: viewerIsAdmin ? (asClan?.slug ?? null) : null,
+              as_clan_slug: viewerIsAdmin && !asBot ? (asClan?.slug ?? null) : null,
+              as_nickname: viewerIsAdmin && !asBot && asClan ? (asNickname.trim() || null) : null,
+              as_bot: viewerIsAdmin && asBot,
             })
           }
           className="inline-flex h-10 w-24 items-center justify-center rounded-[var(--radius)] border border-accent text-sm text-accent transition-colors duration-100 hover:bg-card-2 disabled:border-line disabled:text-faint"

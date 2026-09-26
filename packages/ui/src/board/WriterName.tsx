@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { BoardWriter } from '@sacloud/contract'
 import { ClanMark } from '../common/ClanMark'
 import { affiliationName } from './boardCopy'
-import { ADMIN_DISPLAY_NAME, ADMIN_MARK_SRC, isAdminWriter } from './adminPost'
+import { ADMIN_DISPLAY_NAME, ADMIN_MARK_SRC, BOT_DISPLAY_NAME, BOT_MARK_SRC, isAdminWriter, isBotWriter } from './adminPost'
 
 /**
  * ★관리자 글쓴이★ (2026-09-25 사장님) — 닉네임 대신 「SACLOUD」, 클랜마크 대신 사이트 구름.
@@ -16,6 +16,20 @@ export function AdminWriterName({ size = 16, className = '' }: { size?: number; 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={ADMIN_MARK_SRC} alt="" width={size} height={size} style={{ width: size, height: size, display: 'block' }} className="shrink-0" />
       <span className="truncate font-bold text-[#5c80e0]">{ADMIN_DISPLAY_NAME}</span>
+    </span>
+  )
+}
+
+/**
+ * ★AI Q/A 봇 인격★ — `AdminWriterName` 과 같은 자리·같은 모양, 이름과 강조색만 다르다
+ * (초록 계열 — 「SACLOUD」 실명과 한눈에 갈리게). 그림은 같은 구름 마크를 그대로 쓴다.
+ */
+export function BotWriterName({ size = 16, className = '' }: { size?: number; className?: string }) {
+  return (
+    <span className={`inline-flex min-w-0 items-center gap-1 ${className}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={BOT_MARK_SRC} alt="" width={size} height={size} style={{ width: size, height: size, display: 'block' }} className="shrink-0" />
+      <span className="truncate font-bold text-[#3ccf8f]">{BOT_DISPLAY_NAME}</span>
     </span>
   )
 }
@@ -56,6 +70,8 @@ export function WriterName({
   writer: BoardWriter
   showAffiliation?: boolean
 }) {
+  /* ★AI Q/A 봇으로 위장한 글★ — 이름·마크 대신 봇 인격 (2026-09-26 사장님) */
+  if (isBotWriter(writer)) return <BotWriterName />
   /* ★관리자가 공개로 쓴 글★ — 이름·마크 대신 SACLOUD (2026-09-25 사장님) */
   if (isAdminWriter(writer)) return <AdminWriterName />
 

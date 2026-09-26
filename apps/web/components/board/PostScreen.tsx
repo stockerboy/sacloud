@@ -79,6 +79,8 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
       password: string | null
       anonymous: boolean
       as_clan_slug: string | null
+      as_nickname: string | null
+      as_bot: boolean
     }) =>
       apiSend('commentCreate', {
         body: {
@@ -88,6 +90,8 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
           disclose_type: input.anonymous ? 1 : 0,
           password: input.password,
           as_clan_slug: input.as_clan_slug,
+          as_nickname: input.as_nickname,
+          as_bot: input.as_bot,
         },
       }),
     onSuccess: invalidate,
@@ -130,7 +134,7 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
              *   표식)까지 겹쳐서 「관리자 계정이 이 글 주인이다」가 그대로 드러났다 — 대리 클랜으로
              *   위장하는 의미가 없어진다. 답글은 ★관리자든 아니든 항상 익명★ 으로 되돌린다.
              */
-            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: true, as_clan_slug: null })
+            addComment.mutate({ parent_id: parentId, content, password: null, anonymous: true, as_clan_slug: null, as_nickname: null, as_bot: false })
           }
         />
         <CommentForm
@@ -148,8 +152,16 @@ export function PostScreen({ id, basePath }: { id: string; basePath: string }) {
           /* ★관리자 대리 클랜★ (2026-09-25 사장님 「댓글 달때도 다른 클랜인척하면서 클랜 바꿔서 달 수 있게」) */
           viewerIsAdmin={viewerIsAdmin}
           renderAsClanPicker={(picked, onPick) => <AdminAsClanPicker picked={picked} onPick={onPick} />}
-          onSubmit={(content, password, anonymous, asClanSlug) =>
-            addComment.mutate({ parent_id: null, content, password, anonymous, as_clan_slug: asClanSlug })
+          onSubmit={(content, password, anonymous, asClanSlug, asNickname, asBot) =>
+            addComment.mutate({
+              parent_id: null,
+              content,
+              password,
+              anonymous,
+              as_clan_slug: asClanSlug,
+              as_nickname: asNickname,
+              as_bot: asBot,
+            })
           }
         />
       </div>

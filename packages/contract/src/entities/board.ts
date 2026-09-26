@@ -21,6 +21,13 @@ export const BoardWriter = Writer.extend({
   clan: ClanSummary.nullable().default(null),
   /** 닉네임을 누르면 갈 개인 기록의 선수. **익명이면 반드시 null** */
   player: PlayerSummary.nullable().default(null),
+  /**
+   * ★AI Q/A 봇 위장★ (2026-09-26 사장님 「내가 Ai Q/A 봇인것처럼 댓글이나 글 쓸 수
+   * 있게 해줘」) — true 면 `nickname` 이 「SACLOUD AI Q/A Bot」 으로 고정돼 있다.
+   * `role`(운영자 판정)과는 별개다 — `isAdminWriter` 처럼 문자열 비교 없이 이 칸
+   * 하나로 화면이 판정한다.
+   */
+  is_bot: z.boolean().default(false),
 })
 export type BoardWriter = z.infer<typeof BoardWriter>
 
@@ -128,6 +135,12 @@ export const BoardWriteInput = z.object({
    * 안 골랐는데 닉네임만 새는 길을 만들지 않는다.
    */
   as_nickname: z.string().trim().min(1).max(20).nullable().default(null),
+  /**
+   * ★AI Q/A 봇으로 쓰기★ (2026-09-26 사장님 「내가 Ai Q/A 봇인것처럼 댓글이나 글
+   * 쓸 수 있게 해줘 관리자 권한으로」) — true 면 `as_clan_slug`/`as_nickname` 과
+   * 상관없이 「SACLOUD AI Q/A Bot」 이름으로 나간다. 관리자가 아니면 서버가 무시한다.
+   */
+  as_bot: z.boolean().default(false),
 })
 export type BoardWriteInput = z.infer<typeof BoardWriteInput>
 
@@ -148,6 +161,8 @@ export const CommentWriteInput = z.object({
   as_clan_slug: Slug.nullable().default(null),
   /** ★관리자 대리 닉네임★ — `BoardWriteInput.as_nickname` 과 같은 뜻·같은 규칙 */
   as_nickname: z.string().trim().min(1).max(20).nullable().default(null),
+  /** ★AI Q/A 봇으로 쓰기★ — `BoardWriteInput.as_bot` 과 같은 뜻·같은 규칙 */
+  as_bot: z.boolean().default(false),
 })
 export type CommentWriteInput = z.infer<typeof CommentWriteInput>
 

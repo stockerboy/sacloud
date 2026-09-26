@@ -2852,6 +2852,7 @@ function toWriter(
       anonymous: true,
       clan: null,
       player: null,
+      is_bot: false,
     }
   }
 
@@ -2867,6 +2868,7 @@ function toWriter(
       anonymous: true,
       clan,
       player: null,
+      is_bot: false,
     }
   }
 
@@ -2877,6 +2879,7 @@ function toWriter(
     role: user.role,
     anonymous: false,
     clan,
+    is_bot: false,
     player: player ? { id: player.id, name: player.name } : null,
   }
 }

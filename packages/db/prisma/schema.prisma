@@ -1451,6 +1451,11 @@ model Board {
   /// 값이 있으면 작성자의 실제 소속 대신 ★이 클랜★ 을 익명 표시에 쓴다. 운영자 글쓰기에서만 채운다
   /// (서버가 `isAdmin` 을 확인한 뒤에만 쓴다 — 클라이언트 입력을 그대로 믿지 않는다).
   adminAsClanId String?
+  /// ★AI Q/A 봇으로 위장★ (2026-09-26 사장님 「내가 Ai Q/A 봇인것처럼 댓글이나 글
+  /// 쓸 수 있게 해줘 관리자 권한으로 이름은 SACLOUD AI Q/A Bot」). true 면 `adminAsClanId`
+  /// 와 상관없이 표시 이름이 「SACLOUD AI Q/A Bot」 으로 고정된다 — `adminAsClanId` 와
+  /// 같은 자리(운영자 글쓰기에서만, `isAdmin` 확인 후)를 대신하는 ★또 다른 위장★ 이다.
+  postAsBot Boolean @default(false)
 
   viewCount    Int     @default(0)
   likeCount    Int     @default(0)
@@ -1504,6 +1509,8 @@ model Comment {
   writerApp        Int     @default(0)
   /// ★관리자가 고른 대리 클랜★ — `Board.adminAsClanId` 와 같은 뜻·같은 규칙
   adminAsClanId String?
+  /// ★AI Q/A 봇으로 위장★ — `Board.postAsBot` 과 같은 뜻·같은 규칙
+  postAsBot Boolean @default(false)
 
   likeCount    Int @default(0)
   dislikeCount Int @default(0)

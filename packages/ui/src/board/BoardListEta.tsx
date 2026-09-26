@@ -24,8 +24,8 @@ import { Skeleton } from '../common/Skeleton'
 import { RelativeTime } from '../common/RelativeTime'
 import { formatCount } from '../common/format'
 import { affiliationName } from './boardCopy'
-import { isAdminWriter } from './adminPost'
-import { AdminWriterName } from './WriterName'
+import { isAdminWriter, isBotWriter } from './adminPost'
+import { AdminWriterName, BotWriterName } from './WriterName'
 
 /** 탭 — 사장님 순서: 인기 · 자유 (공지는 탭이 아니라 위 칸에 붙는다) */
 export const ETA_TABS: readonly { slug: string; label: string }[] = [
@@ -35,6 +35,8 @@ export const ETA_TABS: readonly { slug: string; label: string }[] = [
 
 /** 글쓴이 한 조각 — [마크] 익명 · 클랜명  /  [마크] 닉네임 · 클랜명. 마크는 언제나 있다 */
 export function EtaWriter({ writer }: { writer: BoardWriter }) {
+  /* ★AI Q/A 봇으로 위장한 글★ — 봇 인격 (2026-09-26 사장님) */
+  if (isBotWriter(writer)) return <BotWriterName size={14} />
   /* ★관리자가 공개로 쓴 글★ — SACLOUD 이름 + 사이트 구름 (2026-09-25 사장님) */
   if (isAdminWriter(writer)) return <AdminWriterName size={14} />
   const clan = writer.clan ?? null

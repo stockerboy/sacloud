@@ -260,7 +260,14 @@ export function CommentForm({
   renderAsClanPicker,
 }: {
   /** `anonymous` 가 false 면 닉네임과 소속이 모두 공개된다 (SITE_SPEC_V2 2절) */
-  onSubmit: (content: string, password: string | null, anonymous: boolean, asClanSlug: string | null) => void
+  onSubmit: (
+    content: string,
+    password: string | null,
+    anonymous: boolean,
+    asClanSlug: string | null,
+    asNickname: string | null,
+    asBot: boolean,
+  ) => void
   /** 비로그인 작성이면 삭제용 비밀번호를 받는다 */
   requirePassword: boolean
   /** 익명 체크박스를 보일지 */
@@ -286,6 +293,10 @@ export function CommentForm({
   const [password, setPassword] = useState('')
   const [anonymous, setAnonymous] = useState(defaultAnonymous)
   const [asClan, setAsClan] = useState<{ slug: string; name: string } | null>(null)
+  /** ★관리자 대리 닉네임★ — 대리 클랜 골랐을 때만 뜻이 있다 */
+  const [asNickname, setAsNickname] = useState('')
+  /** ★AI Q/A 봇으로 쓰기★ (2026-09-26 사장님) — 켜면 대리 클랜 칸을 대신한다 */
+  const [asBot, setAsBot] = useState(false)
 
   const canSubmit = content.trim().length > 0 && (!requirePassword || password.length > 0)
 
@@ -305,8 +316,36 @@ export function CommentForm({
         style={POST_ETA ? FIELD_ETA_STYLE : undefined}
         placeholder="댓글을 입력하세요."
       />
-      {viewerIsAdmin && renderAsClanPicker ? (
-        <div className="mt-3">{renderAsClanPicker(asClan, setAsClan)}</div>
+      {viewerIsAdmin ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <label
+            className="flex cursor-pointer select-none items-center gap-1 text-sm"
+            style={POST_ETA ? { color: ETA.dim } : undefined}
+          >
+            <input
+              type="checkbox"
+              checked={asBot}
+              onChange={(event) => setAsBot(event.target.checked)}
+              className="accent-[var(--color-accent)]"
+            />
+            AI Q/A Bot으로 쓰기 (SACLOUD AI Q/A Bot 이름으로 나갑니다)
+          </label>
+          {!asBot && renderAsClanPicker ? (
+            <>
+              {renderAsClanPicker(asClan, setAsClan)}
+              {asClan ? (
+                <input
+                  value={asNickname}
+                  onChange={(event) => setAsNickname(event.target.value)}
+                  maxLength={20}
+                  placeholder="대리 닉네임 (안 적으면 「익명N」으로 나갑니다)"
+                  className={INPUT}
+                  style={POST_ETA ? FIELD_ETA_STYLE : undefined}
+                />
+              ) : null}
+            </>
+          ) : null}
+        </div>
       ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {showAnonymousToggle ? (
@@ -337,7 +376,14 @@ export function CommentForm({
           type="button"
           disabled={!canSubmit}
           onClick={() => {
-            onSubmit(content.trim(), requirePassword ? password : null, anonymous, viewerIsAdmin ? asClan?.slug ?? null : null)
+            onSubmit(
+              content.trim(),
+              requirePassword ? password : null,
+              anonymous,
+              viewerIsAdmin && !asBot ? (asClan?.slug ?? null) : null,
+              viewerIsAdmin && !asBot && asClan ? (asNickname.trim() || null) : null,
+              viewerIsAdmin && asBot,
+            )
             setContent('')
             setPassword('')
           }}

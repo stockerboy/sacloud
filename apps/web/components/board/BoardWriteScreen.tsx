@@ -33,6 +33,8 @@ export function BoardWriteScreen({ category, basePath }: { category: string; bas
       disclose_type: number
       password: string | null
       as_clan_slug: string | null
+      as_nickname: string | null
+      as_bot: boolean
     }) =>
       apiSend('boardCreate', {
         body: { category, ...input, captcha_token: 'mock' },
