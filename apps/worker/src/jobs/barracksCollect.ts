@@ -418,7 +418,7 @@ export const GIVE_UP_TRIES = 3
  */
 export const PENDING_TIMEOUT_MS = 600_000
 
-export async function pendingPairs(
+export async function pendingPairsV1(
   limit: number,
   range: PendingRange = {},
 ): Promise<{ matchKey: string; clanNo: string }[]> {
@@ -515,10 +515,10 @@ export async function pendingPairs(
 }
 
 /**
- * ★JSON 을 안 읽는 대기열★ — 2026-09-27 새벽 · ★아직 안 켰다★ (위 `pendingPairs` 가 기본).
+ * ★JSON 을 안 읽는 대기열★ — 2026-09-27 01:1x 켰다 · 위 `pendingPairsV1` 을 대신한다.
  *
- * ⚠ 운영에서 시험하다 멈췄다 — 그 시각 DB 디스크가 포화라 새 판도 2분을 넘겼다
- *   (책임이 새 판인지 포화인지 못 가렸다). 조용한 시간(07~13시)에 VACUUM 뒤 재서 켠다.
+ * DB 를 Medium(4GB)으로 올리고 VACUUM(보임표시 81→100%) 뒤 운영 실측:
+ *   V1 18.6초 → 이 판 7.1초 · 전체 대기열 351쌍 ★한 줄도 안 다르다★.
  *
  * `V1` 은 `WHERE COALESCE(NULLIF("rawClanNo",''), payload->>'clan_no')` 라서
  * ★이름표를 다 채운 뒤에도★ 135만 줄 · 2.7GB 본체를 매번 읽었다
@@ -530,9 +530,9 @@ export async function pendingPairs(
  *   - 번호가 있는 줄 → 인덱스(`BCMR_queue_idx` · `status_subject_rawClanNo`)만 읽는다
  *   - ★아직 안 채운 줄(`NULL`)만★ payload 를 읽는다 — 채우기 잡이 도는 한 몇 줄 안 된다
  *   - 빈 문자열 줄은 「번호 없음」 이다. 고르지 않는다
- * 내보내는 모양(경기, 클랜번호)과 순서·한도는 `pendingPairs` 와 같다.
+ * 내보내는 모양(경기, 클랜번호)과 순서·한도는 `pendingPairsV1` 과 같다.
  */
-export async function pendingPairsV2(
+export async function pendingPairs(
   limit: number,
   range: PendingRange = {},
 ): Promise<{ matchKey: string; clanNo: string }[]> {
