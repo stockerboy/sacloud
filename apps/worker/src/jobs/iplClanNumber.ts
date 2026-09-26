@@ -120,13 +120,50 @@ export async function buildSubjectIndex(leagueId: string): Promise<{
  *   넘어간다 — 어차피 실패해도 괜찮게 설계된 보정 단계였다(위 호출부 주석). 커넥션을
  *   몇 분이 아니라 최대 5초만 붙잡는 것만으로 이 회차의 부담이 없어진다.
  */
-export async function loadSubjectClanNoPairs(): Promise<SubjectClanNoRow[]> {
+export async function loadSubjectClanNoPairsV1(): Promise<SubjectClanNoRow[]> {
   const [, rows] = await prisma.$transaction([
     prisma.$executeRawUnsafe(`SET LOCAL statement_timeout = '5000'`),
     prisma.$queryRaw<SubjectClanNoRow[]>`
       SELECT DISTINCT "subject", "rawClanNo" AS "clanNo"
       FROM "BarracksClanMatchRaw"
       WHERE "status" = 'ok' AND "rawClanNo" IS NOT NULL AND "rawClanNo" <> ''
+    `,
+  ])
+  return rows
+}
+
+/**
+ * ★건너뛰기 탐색(skip scan)★ 판 — 2026-09-27 새벽 · 위 `V1` 을 대신한다.
+ *
+ * 짝은 400여 개뿐인데 `DISTINCT` 는 인덱스 119만 항목을 ★전부★ 훑었다
+ * (pg_stat_statements 실측: 6,924회 · 평균 14초 · 최대 598초).
+ * 이미 있는 `(status, subject, rawClanNo)` 인덱스에서 「지금 짝 바로 다음 짝」 을
+ * 한 번씩만 집어 오면 짝 수만큼만 읽는다 — 운영 실측 421짝 · 46ms (차가울 때 612ms).
+ * 새 인덱스는 필요 없다. 5초 벽은 그대로 둔다.
+ */
+export async function loadSubjectClanNoPairs(): Promise<SubjectClanNoRow[]> {
+  const [, rows] = await prisma.$transaction([
+    prisma.$executeRawUnsafe(`SET LOCAL statement_timeout = '5000'`),
+    prisma.$queryRaw<SubjectClanNoRow[]>`
+      WITH RECURSIVE s AS (
+        (SELECT "subject", "rawClanNo"
+           FROM "BarracksClanMatchRaw"
+          WHERE "status" = 'ok' AND "rawClanNo" IS NOT NULL AND "rawClanNo" <> ''
+          ORDER BY "subject", "rawClanNo"
+          LIMIT 1)
+        UNION ALL
+        SELECT n."subject", n."rawClanNo"
+          FROM s
+          CROSS JOIN LATERAL (
+            SELECT "subject", "rawClanNo"
+              FROM "BarracksClanMatchRaw"
+             WHERE "status" = 'ok' AND "rawClanNo" IS NOT NULL AND "rawClanNo" <> ''
+               AND ("subject", "rawClanNo") > (s."subject", s."rawClanNo")
+             ORDER BY "subject", "rawClanNo"
+             LIMIT 1
+          ) n
+      )
+      SELECT "subject", "rawClanNo" AS "clanNo" FROM s
     `,
   ])
   return rows
